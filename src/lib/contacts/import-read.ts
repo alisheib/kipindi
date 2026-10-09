@@ -49,8 +49,9 @@
  * `mappingFor` names the columns "Column A", "Column B"… (the letters the officer's spreadsheet shows them by), finds the
  * phone column — the one whose cells most often parse as a Tanzanian mobile number — and the name and email columns by
  * their shape, and stages from the first row. The officer sees it said and can change any column.
- * ⛔ NO NUMBER IS SHOWN WHOLE (§5.14, OD25). `previewCell` is the mapping panel's ONLY way to a cell: a number becomes
- * `maskPhone`'s `+255••••NN`, and any other run of nine digits inside text becomes four bullets and its last two.
+ * ⛔ NO NUMBER IS SHOWN WHOLE (§5.14, OD25). `previewCell` is the mapping panel's ONLY way to a cell, and (C3b-fix · D9)
+ * it masks by DIGITS, never by punctuation: a cell holding seven or more digits in total, whatever separates them, is
+ * masked whole — its one mobile as `maskPhone`'s `+255••••NN`, else four bullets and its last two digits.
  *
  * ⛔ PURE AND CLIENT-SAFE: it imports src/lib/contacts modules, `tz-msisdn` and `phone-normalize` — no React, no
  * directive, no src/lib/server, no src/app, no Node built-in (`test:contacts-boundary` §2 · `test:client-graph-safe`).
@@ -67,12 +68,12 @@ import { createVcardReader } from "./vcard";
 import { XLSX_MAX_BYTES, spreadsheetHeadKind, xlsxRefusalSentence, type XlsxRefusal } from "./xlsx-limits";
 import { readXlsxInBrowser } from "./xlsx-read";
 import {
-  CONTACT_FIELDS, CONTACT_LIMITS, autoMapFile, matchHeader, normaliseHeader, scrubPhoneRuns,
+  CONTACT_FIELDS, CONTACT_LIMITS, autoMapFile, matchHeader, normaliseHeader,
   type AutoMapResult, type ColumnMapping, type ImportFieldKey, type MappedColumn,
 } from "./contact-fields";
 import { IMPORT_MAX_ROWS } from "./import-limits";
 import { firstMobileIn, firstMobileIndex, mobilesIn, type CellMobile } from "./phone-cell";
-import { TZ_COUNTRY_CODE, isSendableTzNumber, parseTzNumber } from "../tz-msisdn";
+import { TZ_COUNTRY_CODE, isSendableTzNumber, readAsciiDigits } from "../tz-msisdn";
 import { maskPhone } from "../phone-normalize";
 
 /* ══ CHARACTERS — by code, never typed ════════════════════════════════════════════════════════════ */
@@ -958,15 +959,38 @@ export function mappingFor(file: ParsedContactsFile, opts: MappingOptions = {}):
 const PREVIEW_CHARS = 32;
 
 /**
- * ⛔ A cell as the mapping panel may show it: a cell that IS a Tanzanian mobile number becomes `+255••••NN`; any other
- * run of nine or more digits inside the text becomes four bullets and its last two (`scrubPhoneRuns`); clipped to a
- * short preview. No phone number is ever drawn whole, whichever column it sits in and however the columns are mapped.
+ * ⛔ C3b-fix · D9 · the fewest digits — in TOTAL, whatever stands between them — that make a cell a number's worth: such a
+ * cell is never previewed as written. Seven is the copy table's own line (a sheet name holding seven digits is never
+ * echoed, `xlsx-limits.ts`).
+ */
+const PREVIEW_MASK_DIGITS = 7;
+/** A digit in any script — built from its code, never typed. */
+const DECIMAL_DIGIT = new RegExp(`${String.fromCharCode(92)}p{Nd}`, "u");
+
+/** Every digit a cell holds, in order, read the parser's way (`readAsciiDigits`: another keyboard's digit as 0–9). */
+function digitsIn(text: string): string[] {
+  const out: string[] = [];
+  for (const ch of readAsciiDigits(text)) if (DECIMAL_DIGIT.test(ch)) out.push(ch);
+  return out;
+}
+
+/**
+ * ⛔ A cell as the mapping panel may show it — to every viewer, the one who may read numbers included (the panel never
+ * knows the role, so it masks for all). ⭐ C3b-fix · D9 (rule D19's leak, closed): a cell is masked by its DIGITS, never
+ * by its punctuation — any cell holding seven or more digits in total, whatever separates them (commas, slashes, dots,
+ * letters: Excel's "255,757,300,014", an office's "0712/345/678"), is masked WHOLE with the book's one mask: the ONE
+ * mobile it holds as `maskPhone`'s `+255••••NN`, else that mask's four bullets and the cell's last two digits. A cell
+ * of fewer digits is shown as written (no number fits in six), clipped to a short preview.
  */
 export function previewCell(cell: string): string {
   const raw = String(cell ?? "").trim();
   if (raw === "") return "";
-  const parsed = parseTzNumber(raw);
-  const shown = parsed.verdict === "ok" && parsed.e164 !== null && NUMBER_SHAPED.test(raw) ? maskPhone(parsed.e164) : scrubPhoneRuns(raw);
+  const digits = digitsIn(raw);
+  let shown = raw;
+  if (digits.length >= PREVIEW_MASK_DIGITS) {
+    const mobile = firstMobileIn(raw);
+    shown = mobile !== null && mobile.number.e164 !== null ? maskPhone(mobile.number.e164) : `${maskPhone("")}${digits.slice(-2).join("")}`;
+  }
   const chars = Array.from(shown);
   return chars.length <= PREVIEW_CHARS ? shown : `${chars.slice(0, PREVIEW_CHARS - 1).join("")}…`;
 }

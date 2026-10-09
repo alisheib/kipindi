@@ -12,8 +12,11 @@
  *   · ⭐ C3b · THE FOUR READER GAPS, CLOSED — each asserted against the generator's ground truth (`c3bExpectations`, the
  *     rule restated over the manifest, never read back): messy-real-life.csv reads, its one broken quote ONE record "could
  *     not be read" with its row and its way out (G1); excel-multi-sheet.xlsx reads its contacts sheet past the cover page,
- *     the note naming it (G2); a second number in a phone cell (G3) and a mobile in another phone column (G4 — ONE added
- *     column read as Phone) are never listed invalid in google-contacts.csv, outlook-contacts.csv and the messy file;
+ *     the note naming it (G2); and — as the review round C3b-fix decided (D2, D3) — a record whose main phone cell yields
+ *     no mobile while the person's OWN other phone columns hold exactly one (G4 — ONE added column read as Phone) is never
+ *     listed invalid in google-contacts.csv and outlook-contacts.csv, while a record holding two or more distinct mobiles
+ *     (in one cell, or across those columns) always is; no value on the columns holds seven digits (D9); the big files
+ *     the generator writes with --big are never driven here (`qa:contacts-import-big` owns them);
  *   · THE REFUSALS — an old .xls, an .ods, an empty file, a file that is not a CSV, a renamed file — each said at the
  *     entrance with its fix, never a dead end (a file whose CONTENT is readable is read: content beats the name);
  *   · NUMBERS ALREADY IN THE BOOK (the `?u30=1` world): S15-10 · GROWTH (not a reader) sees no choices and no changes —
@@ -95,7 +98,14 @@ function manifestEntries() {
     return [];
   }
 }
-const MANIFEST = manifestEntries();
+/**
+ * ⛔ THE BIG FILES ARE NOT THIS DRIVE'S (the integrator, 2026-10-09): written only with `--big`, they belong to
+ * `qa:contacts-import-big` alone — driven here they took 660 s instead of ~500 and failed "refused only where it must be"
+ * four times (big-row-cap.csv and big-50k.xlsx at both widths). So every manifest entry the generator marks `big`, and
+ * defensively any name starting "big-", is skipped.
+ */
+const isBigEntry = (e) => e.big === true || e.name.startsWith("big-");
+const MANIFEST = manifestEntries().filter((e) => !isBigEntry(e));
 const truthOf = (name) => MANIFEST.find((e) => e.name === name) ?? null;
 /** Every file to drive: the brief's, then every other one the generator wrote (the prod-check files, the extra vCards…). */
 const ALL_FILES = [...new Set([...READABLE, ...REFUSED, ...MANIFEST.map((e) => e.name)])];
@@ -121,22 +131,37 @@ const C3B_FILES = new Map([
   ["google-contacts.csv", "Phone 1 - Value"],
   ["outlook-contacts.csv", "Mobile Phone"],
 ]);
-/** Files whose ground truth holds a record C3b makes importable through G3 (two numbers in a cell) or G4 (another phone
- *  column) — the "never listed invalid" assertion must not be vacuous for them. */
-const C3B_IMPROVES = new Set(["messy-real-life.csv", "google-contacts.csv", "outlook-contacts.csv"]);
+/** Files whose ground truth holds a record the importer reads only through G4 (the person's other phone column) — the
+ *  "never listed invalid" assertion must not be vacuous for them. ⛔ C3b-fix · D3: a cell of two DISTINCT mobiles (G3) is
+ *  refused now, so the messy file's two-number row is no longer an improvement. */
+const C3B_IMPROVES = new Set(["google-contacts.csv", "outlook-contacts.csv"]);
+/** ⭐ C3b-fix · D2 · the person's OWN phone columns G4 may read beside the main one (Outlook's and Google's spellings). */
+const OWN_PHONE_COLUMNS = new Set([
+  "Mobile Phone", "Business Phone", "Business Phone 2", "Home Phone", "Home Phone 2", "Other Phone", "Primary Phone", "Car Phone",
+]);
+const isOwnPhoneColumn = (header) => OWN_PHONE_COLUMNS.has(header) || /^Phone \d+ - Value$/.test(header);
 
 /**
- * ⭐ THE RULE RESTATED OVER THE GROUND TRUTH — never read back from the importer: a record's phone values in COLUMN order,
- * the main Phone column first (G4); the first value that IS a Tanzanian mobile (`key`), or a cell holding one (`holds`,
- * G3 — its first), is the record's number. A record with neither must be listed "not a mobile"; a record whose number
- * comes through G3 or G4 must NOT be; the broken records (G1) are exactly the "could not be read" list. (A record with a
- * number may still be invalid for another field — a bad email, a 300-character name — so only these two lists are held.)
+ * ⭐ THE RULE RESTATED OVER THE GROUND TRUTH — never read back from the importer (C3b-fix · D2, D3): a phone value's
+ * mobiles are its `key`, or the keys of the numbers a two-number cell `holds`. The record's number is the MAIN column's
+ * when its values hold exactly ONE distinct mobile ("main"); else — the main column yielding none — the person's OWN
+ * other phone columns are read, and the record has a number only when the main and those together hold exactly ONE
+ * distinct mobile ("g4"). Any other record — none, or two and more (D3: never one person's number taken out of two) —
+ * must be listed "not a mobile"; a "g4" record must NOT be; the broken records (G1) are exactly the "could not be read"
+ * list. (A record with a number may still be invalid for another field — a bad email, a 300-character name — so only
+ * these two lists are held.)
  */
 function c3bExpectations(truth, main) {
   if (!truth || !Array.isArray(truth.people)) return null;
-  const header = Array.isArray(truth.header) ? truth.header : [];
-  const rank = (ph) => (ph.source === undefined || ph.source === main ? -1 : header.indexOf(ph.source));
   const isMain = (ph) => ph.source === undefined || ph.source === main;
+  const mobilesOf = (phones) => {
+    const keys = new Set();
+    for (const ph of phones) {
+      if (typeof ph.key === "string") keys.add(ph.key);
+      else if (Array.isArray(ph.holds)) for (const k of ph.holds) keys.add(k);
+    }
+    return keys;
+  };
   const mustBeInvalid = [];
   const improved = [];
   const unreadable = [];
@@ -146,14 +171,12 @@ function c3bExpectations(truth, main) {
       unreadable.push(person.line);
       continue;
     }
-    let via = null;
-    for (const ph of [...(person.phones ?? [])].sort((a, b) => rank(a) - rank(b))) {
-      if (typeof ph.key === "string") via = isMain(ph) ? "main" : "g4";
-      else if (Array.isArray(ph.holds) && ph.holds.length > 0) via = isMain(ph) ? "g3" : "g4";
-      if (via !== null) break;
-    }
-    if (via === null) mustBeInvalid.push(person.line);
-    else if (via !== "main") improved.push(person.line);
+    const phones = Array.isArray(person.phones) ? person.phones : [];
+    const fromMain = mobilesOf(phones.filter(isMain));
+    if (fromMain.size === 1) continue;
+    const fromOwn = mobilesOf(phones.filter((ph) => isMain(ph) || (typeof ph.source === "string" && isOwnPhoneColumn(ph.source))));
+    if (fromMain.size === 0 && fromOwn.size === 1) improved.push(person.line);
+    else mustBeInvalid.push(person.line);
   }
   return { mustBeInvalid, improved, unreadable };
 }
@@ -161,6 +184,13 @@ function c3bExpectations(truth, main) {
 /** The rows a check list names, by its `data-import-row` stamps. */
 const listedRows = (page, list) =>
   page.$$eval(`${block("import-preflight")} [data-import-list="${list}"] [data-import-row]`, (els) => els.map((e) => Number(e.getAttribute("data-import-row"))));
+
+/** ⭐ C3b-fix · D9 · every value the columns step shows, one by one — the panel joins a column's first values with " · ". */
+const sampleValues = (page) =>
+  page.$$eval("[data-import-columns] tr[data-import-column] td:nth-child(2)", (tds) =>
+    tds.flatMap((td) => (td.innerText || "").split(" · ").map((v) => v.trim()).filter((v) => v !== "" && v !== "Empty")));
+/** How many digits a text holds, in any script — the separators between them never count. */
+const digitsIn = (text) => Array.from(String(text)).filter((ch) => /^\p{Nd}$/u.test(ch)).length;
 
 /* ═══ SESSIONS AND THE WORLD (copied from the U20 drive) ═══════════════════════════════════════════════════ */
 
@@ -334,18 +364,23 @@ for (const vp of VIEWPORTS) {
         ok(`${vp.name} · ${name} · S15-5 · a headerless file is read, and said so`,
           (await page.locator(block("import-mapping")).first().getAttribute("data-headerless")) === "yes" && /starts with a contact/.test(said), said.slice(0, 160));
       }
-      const values = await textOf(page, "[data-import-columns]");
-      ok(`${vp.name} · ${name} · no phone number is shown whole in the columns`, !/(?:\+?255|0)[67]\d{8}/.test(values.replace(/[\s().-]/g, "")), values.slice(0, 160));
+      // ⛔ C3b-fix · D9 · counted by DIGITS, never by punctuation: no value the columns step shows holds seven or more digits
+      // in total, whatever separates them — Excel's "255,757,300,014" and an office's "0712/345/678" included.
+      const shownValues = await sampleValues(page);
+      const whole = shownValues.filter((v) => digitsIn(v) >= 7);
+      ok(`${vp.name} · ${name} · no value on the columns holds seven or more digits (D9: a number is never shown whole, whatever separates its digits)`,
+        whole.length === 0, `${shownValues.length} value(s) · ${whole.length} with 7+ digits`);
       // ⭐ C3b · what the columns now say for the four files whose readers changed.
       if (C3B_FILES.get(name) !== undefined && C3B_FILES.get(name) !== null) {
         const phoneRow = await textOf(page, '[data-import-columns] tr[data-read-as="phone"]');
-        ok(`${vp.name} · ${name} · C3b · G4 · ONE added column, "Phone (first mobile of: …)", is read as Phone`, /Phone \(first mobile of: /.test(phoneRow)
+        ok(`${vp.name} · ${name} · C3b · G4 · ONE added column, "Phone (read from: …)", is read as Phone`, /Phone \(read from: /.test(phoneRow)
           && (await count(page, '[data-import-columns] tr[data-read-as="phone"]')) === 1, phoneRow.slice(0, 160));
       }
       if (name === "excel-multi-sheet.xlsx") {
         const notes = await textOf(page, "[data-import-notes]");
-        ok(`${vp.name} · ${name} · C3b · G2 · the workbook is read from the sheet with the phones, and the note names it`,
-          /Read the sheet .Wateja. — the first sheet with a phone column/.test(notes), notes.slice(0, 200));
+        // C3b-fix · D6 · chosen by what it holds (Wateja holds the mobiles; the hidden Hesabu is never counted: 2 of 2).
+        ok(`${vp.name} · ${name} · C3b · G2 · the workbook is read from the sheet with the mobiles, and the note names it`,
+          /Read the sheet .Wateja. \(sheet 2 of 2\)/.test(notes), notes.slice(0, 200));
       }
       if (truth !== null && truth.format === "csv" && truth.brokenAtByte !== null) {
         const said = await textOf(page, "[data-import-summary]");
@@ -361,12 +396,13 @@ for (const vp of VIEWPORTS) {
         record.outcome = "held at the columns";
         record.held = await textOf(page, "[data-import-held]");
         ok(`${vp.name} · ${name} · Next is held WITH its reason on screen`, record.held.length > 0, record.held);
-        // ⭐ C3b · G2 · a workbook is held here only when NO visible sheet has a phone column (the reader then reads the first
-        // visible one) — never the cover-page workbook, whose contacts sheet is found and read.
-        ok(`${vp.name} · ${name} · C3b · held at the columns only when no visible sheet has a phone column`, !C3B_FILES.has(name), record.held);
-        if (/[.]xlsx$/i.test(name) && /Phone column/.test(record.held)) {
-          ok(`${vp.name} · ${name} · a workbook read from a sheet with no phone column says which sheet is read and how to fix it`,
-            /first visible sheet/.test(await textOf(page, block("import-mapping"))));
+        // ⭐ C3b · G2 · none of the files whose readers C3b changed is held here — the cover-page workbook's contacts sheet is
+        // found and read (C3b-fix · D6: by the mobiles it holds).
+        ok(`${vp.name} · ${name} · C3b · none of the C3b files is held at the columns`, !C3B_FILES.has(name), record.held);
+        if (/[.]xlsx$/i.test(name) && (await count(page, "[data-import-sheet-hint]")) > 0) {
+          // C3b-fix · D8 · the sheet hint is the READER's word (no visible sheet holds a mobile), said with its way on.
+          ok(`${vp.name} · ${name} · a workbook whose sheets hold no mobile says which sheet is read and how to fix it`,
+            /first visible sheet was read/.test(await textOf(page, "[data-import-sheet-hint]")));
         }
         await shoot(page, dir, `${vp.name}-3-held`, "[data-import-held]", "The columns");
         await closeDialog(page);

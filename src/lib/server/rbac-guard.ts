@@ -214,6 +214,50 @@ export async function softCheckStaff(
 }
 
 /**
+ * ⭐ U47b-2 · THE VIEW FORM OF THE SOFT GUARD — for a READ nobody pressed, by an officer who may only LOOK: the live
+ * campaign page's poll (`campaignViewAction`), which every open page makes every ten seconds, whoever it is open for.
+ *
+ * 🔴 WHY `softCheckStaff` IS NOT THE ANSWER. It asks `canAct`. A role the Owner granted `growth` VIEW alone at `/admin/roles`
+ * (an auditor watching a send) would be refused on every poll — and each refusal writes a SECURITY
+ * `privilege_escalation_blocked` row, so an officer doing exactly what the page invited would fill the compliance log with
+ * attempted escalations (`act-gate.tsx` records the cost of that class). A poll is a read; it asks the VIEW grant.
+ *
+ * ⛔ IT IS THE SAME GUARD WITH ONE QUESTION CHANGED: the session, the STORED role (never the cookie's), the Owner's bypass,
+ * the SECURITY row on a refusal (a role with no VIEW grant for this domain is not a console user for it), and a second
+ * factor that is not "ok" refused in words, never redirected to (the officer pressed nothing). ⛔ NEVER FOR AN ACTION THE
+ * OFFICER PRESSED — a press takes `softRequireStaff` and the step-up — and never for a read that returns more than the page
+ * already renders to the same viewer: the caller shapes what it returns by the viewer's own cells.
+ * `request` is `softCheckStaff`'s: a test's parameter, never passed in production.
+ */
+export async function softViewStaff(
+  domain: AdminDomain,
+  action: string,
+  refusal: string,
+  request?: SoftGuardRequest,
+): Promise<{ ok: true; userId: string; sessionId: string } | { ok: false; error: string; secondFactor?: true }> {
+  const session = request ? await request.session() : await currentSession();
+  if (!session) redirect("/auth/admin");
+  const me = await db.user.findById(session.userId);
+  if (!me) redirect("/auth/admin");
+  if (me.role !== "ADMIN" && !(await canView(me.role as Role, domain))) {
+    // `grant: "view"` says WHICH grant was missing — the row `softRequireStaff` writes for a missing ACT grant carries no such
+    // key (and `red:admin-soft-gate` plants into THAT block, so the two must never read the same).
+    audit({
+      category: "SECURITY",
+      action: "privilege_escalation_blocked",
+      actorId: session.userId,
+      targetType: "Action",
+      targetId: action,
+      payload: { role: me.role, domain, action, grant: "view" },
+    });
+    return { ok: false, error: refusal };
+  }
+  const factor = request ? await request.secondFactor(session.userId, session.sessionId) : await checkAdminTotp(session.userId, session.sessionId);
+  if (factor !== "ok") return { ok: false, error: secondFactorRefusal(factor), secondFactor: true };
+  return { ok: true, userId: session.userId, sessionId: session.sessionId };
+}
+
+/**
  * THE CONSOLE guard — for a cross-route action that no single DOMAIN can describe.
  *
  * 🔴 WHY IT EXISTS, AND IT IS A LIVE DEFECT, NOT A REFACTOR (2026-09-06).

@@ -93,7 +93,8 @@ export function ImportCheckPanel({
 
       {mode.kind === "checking" && (
         view.totalRows >= SKELETON_FROM_ROWS ? (
-          <div className="space-y-2" data-import-checking="skeleton" aria-busy="true">
+          // `ghost`: test:dead-css read the old value, the dead class's own name, as a render of that class.
+          <div className="space-y-2" data-import-checking="ghost" aria-busy="true">
             <p className="text-body-sm text-text-secondary" role="status">{CHECK.checking}</p>
             <div className={TILE_GRID}>
               {PREFLIGHT_BUCKETS.map((b) => <SkBar key={b} className="h-[78px] w-full rounded-md" />)}

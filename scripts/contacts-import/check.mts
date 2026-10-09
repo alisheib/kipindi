@@ -7,7 +7,9 @@
  * are LITERALS here, the deterministic 5,000-row file whose counts are built into it, and the 30-row file whose every
  * row is a change. The per-choice labels and the changes pages are a READER's (identity.contact read — a COMPLIANCE
  * officer); a GROWTH officer is KEEP-only (S15-10, the review round of 2026-10-09), and C13 holds that a one-row file
- * answers them byte for byte the same whether its number is plain, stopped or erased. Each assertion is proven by a red
+ * answers them byte for byte the same whether its number is plain, stopped or erased (a tombstone, or — C8a — an erasure
+ * with no book row). C14 (C8a, S15-15) holds the check to the ONE rule of a standing erasure: a later opt-out never lifts
+ * it, a GIVEN does, and an opted-out person erased through the real step is kept. Each assertion is proven by a red
  * plant below — a defect built in memory as a replacement bundle.
  *
  * ⛔ IN-PROCESS. Every plant swaps one dependency of the check (`ImportCheckDeps`); this module reads no file and makes
@@ -20,7 +22,7 @@ import type { ChangesResult, PreflightResult, PreflightView } from "../../src/li
 import {
   ADMIN, FIVE_THOUSAND_CHANGING_LINES, FIVE_THOUSAND_COUNTS, NOW, N, B, OFFICER, OTHER, READER, UNREADABLE_SENTENCE, UNREADABLE_SENTENCE_2,
   bookRow, captureAudit, captured, checkModule, db, fiveThousandRows, fortyRows, holdsDigitRun, inFreshStore, isMasked, keyOf, mem,
-  seedBook, seedFiveThousandBook, seedFortyWorld, seedStop, seedThirtyBook, seedWord, stageFile, thirtyRows, truthCounts,
+  seedAccount, seedBook, seedFiveThousandBook, seedFortyWorld, seedStop, seedThirtyBook, seedWord, stageFile, thirtyRows, truthCounts,
 } from "../lib/contacts-import-world.mts";
 import type { StageRow } from "../lib/contacts-import-world.mts";
 import { SAMPLE_ROW_SENTENCE } from "../../src/lib/contacts/sample-sheet.ts";
@@ -28,6 +30,20 @@ import { parseTzNumber } from "../../src/lib/tz-msisdn.ts";
 import { ERASURE_EVIDENCE } from "../../src/lib/marketing/erasure-mark.ts";
 
 const { IMPORT_CHECK_DEPS, IMPORT_FACTS_READS, checkContactImport, contactImportChanges, loadImportFacts } = checkModule;
+// C8a · C14's opted-out person is erased through the REAL step (after the world module set the memory twin up).
+const { eraseMarketingFor } = await import("../../src/lib/server/marketing/erase.ts");
+
+/** C8a · one ledger row at an instant of its own — the order a history is read in is the point of C12 and C14. A row
+ *  whose evidence is a token reference is the opt-out page's (a Stop or a Resume tap); any other, an officer's. */
+async function wordAt(msisdn: string, id: string, status: "GIVEN" | "WITHDRAWN", evidence: string | null, createdAt: string): Promise<void> {
+  await db.messagingConsent.create({
+    id, channel: "SMS", identifier: msisdn, category: "MARKETING", status,
+    source: evidence !== null && evidence.startsWith("optout:") ? "OPT_OUT_PAGE" : "OPERATOR",
+    wording: "fixture wording", locale: "EN", evidence, recordedBy: null, createdAt,
+  });
+}
+const MARK = ERASURE_EVIDENCE;
+const TAP = "optout:ab**";
 
 /* ══ THE BUNDLE UNDER TEST ══════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -80,8 +96,9 @@ export const L = {
   C9: "C9 · refusals: a run still STAGING is not_staged with its view; another officer's run is not_yours and shown NOTHING; an unknown id is not_found — each with ONE check_refused audit row and nothing written; an ADMIN may check any run (X18)",
   C10: "C10 · a check past its deadline answers too_slow and writes nothing — never a partial view",
   C11: "C11 · ⭐ a READER's labels are decide()'s own: byChoice equals the literal tallies for KEEP, TAKE_FILE and FILL_BLANKS (repeats kept same_run, the erased row as the contact it reads as, the linked row as account — S15-11), changing[choice] is the in-book updates under each, and mayUpdateInBook is true",
-  C12: "C12 · ⭐ the facts are the authority's, per number: the erased tombstone IS in the book (X22), each book row carries its account link (S15-11), an active stop is suppressed and a lifted one is not, the ledger's latest word is read, NO account is read — heldByPlayer false for every number (R16) — an unknown number has no book row; and a set past one chunk (2,507 numbers) is answered whole in two chunks of THREE reads",
-  C13: "C13 · ⛔ S15-10 · a GROWTH officer (identity.contact masked) is KEEP-only and told nothing per person: a one-row file whose number is plain, stopped or erased answers the check and the changes request BYTE FOR BYTE the same — mayUpdateInBook false, KEEP's label under all three choices with every keep one count, nothing changing, the changes refused update_needs_reader with ONE audit row holding only the reason — and the 40-row file reads KEEP's label (22 · 0 · 9, every keep one count) under every choice; CONTROL: a reader's answers for the plain and the stopped number differ",
+  C12: "C12 · ⭐ the facts are the authority's, per number: the erased tombstone IS in the book (X22), each book row carries its account link (S15-11), an active stop is suppressed and a lifted one is not, the ledger's latest word is read, whether an erasure STANDS is read by the ONE rule (C8a: the marker under an opt-out tap stands, the marker under a GIVEN and a plain WITHDRAWN do not), NO account is read — heldByPlayer false for every number (R16) — an unknown number has no book row; and a set past one chunk (2,507 numbers) is answered whole in two chunks of FOUR reads",
+  C13: "C13 · ⛔ S15-10 · a GROWTH officer (identity.contact masked) is KEEP-only and told nothing per person: a one-row file whose number is plain, stopped, erased or (C8a) erased with NO book row — the marker under an opt-out tap — answers the check and the changes request BYTE FOR BYTE the same — mayUpdateInBook false, KEEP's label under all three choices with every keep one count, nothing changing, the changes refused update_needs_reader with ONE audit row holding only the reason — and the 40-row file reads KEEP's label (22 · 0 · 9, every keep one count) under every choice; CONTROL: a reader's answers for the plain and the stopped number differ",
+  C14: "C14 · ⛔ C8a · an erasure with NO book row, as the check reads it: the marker alone, the marker under an opt-out tap on an old link (defect #2) and an account that OPTED OUT and was then erased through the real step (N2) are each 'already in the book' and kept under every choice — shown as the contact it is disguised as (X22: chosen_keep under KEEP, no_change otherwise, no change listed) — while the marker under a GIVEN and a plain new number are NEW; the facts loader says so number by number, and nothing is written",
 } as const;
 
 /* ══ THE RUN ══════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -242,26 +259,76 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     await seedFortyWorld();
     await seedStop(keyOf(N(9)), "sup_c12_lift", true);
     await seedWord(keyOf(N(8)), "led_c12_n8", "WITHDRAWN");
+    // C8a · two numbers with no book row: the marker under an opt-out tap (it stands), the marker under a GIVEN (lifted).
+    await wordAt(keyOf(N(60)), "led_c12_n60a", "WITHDRAWN", MARK, "2026-09-05T08:00:00.000Z");
+    await wordAt(keyOf(N(60)), "led_c12_n60b", "WITHDRAWN", TAP, "2026-09-06T08:00:00.000Z");
+    await wordAt(keyOf(N(61)), "led_c12_n61a", "WITHDRAWN", MARK, "2026-09-05T08:00:00.000Z");
+    await wordAt(keyOf(N(61)), "led_c12_n61b", "GIVEN", TAP, "2026-09-06T08:00:00.000Z");
     const extra = Array.from({ length: 2500 }, (_, i) => `2557555${String(i).padStart(5, "0")}`);
-    const calls: Record<string, number> = { snapshots: 0, activeStops: 0, latestWords: 0 };
+    const calls: Record<string, number> = { snapshots: 0, activeStops: 0, latestWords: 0, erasureStands: 0 };
     const counting: ImportFactsReads = {
       snapshots: async (m) => { calls.snapshots++; return impl.reads.snapshots(m); },
       activeStops: async (m) => { calls.activeStops++; return impl.reads.activeStops(m); },
       latestWords: async (m) => { calls.latestWords++; return impl.reads.latestWords(m); },
+      erasureStands: async (m) => { calls.erasureStands++; return impl.reads.erasureStands(m); },
     };
-    const asked = [keyOf(B(4)), keyOf(B(3)), keyOf(N(9)), keyOf(N(8)), keyOf(B(5)), keyOf(B(1)), keyOf(N(50)), ...extra];
+    const asked = [keyOf(B(4)), keyOf(B(3)), keyOf(N(9)), keyOf(N(8)), keyOf(B(5)), keyOf(B(1)), keyOf(N(50)), keyOf(N(60)), keyOf(N(61)), ...extra];
     const facts = await loadImportFacts(asked, counting);
     const f = (local: string) => facts.get(keyOf(local));
     const erased = f(B(4));
+    const standing = {
+      tombstone: f(B(4))?.erasureStands, tapOverMarker: f(N(60))?.erasureStands, givenOverMarker: f(N(61))?.erasureStands,
+      plainWithdrawn: f(N(8))?.erasureStands, unknown: f(N(50))?.erasureStands,
+    };
     ok(L.C12, erased?.book?.sourceRef === ERASURE_EVIDENCE && erased.book.id === "mc_w_b4"
       && f(B(3))?.suppressed === true && f(N(9))?.suppressed === false
       && f(N(8))?.ledgerLatest?.status === "WITHDRAWN" && f(B(5))?.book?.id === "mc_w_b5" && f(B(5))?.book?.userId === "usr_w_player"
       && f(B(1))?.book?.userId === null && [...facts.values()].every((x) => x.heldByPlayer === false)
       && f(N(50))?.book === null && f(N(50))?.ledgerLatest === null
-      && facts.size === 2507 && extra.every((m) => facts.get(m)?.book === null)
-      && json(calls) === json({ snapshots: 2, activeStops: 2, latestWords: 2 }) && Object.keys(impl.reads).sort().join(",") === "activeStops,latestWords,snapshots",
-      `erased ${json(erased?.book?.sourceRef ?? null)} · stopped ${f(B(3))?.suppressed} · lifted ${f(N(9))?.suppressed} · word ${f(N(8))?.ledgerLatest?.status ?? "none"} · B5 link ${f(B(5))?.book?.userId ?? "none"} · reads ${json(calls)} · answered ${facts.size}`);
+      && json(standing) === json({ tombstone: true, tapOverMarker: true, givenOverMarker: false, plainWithdrawn: false, unknown: false })
+      && f(N(60))?.book === null && f(N(60))?.ledgerLatest?.evidence === TAP
+      && facts.size === 2509 && extra.every((m) => facts.get(m)?.book === null && facts.get(m)?.erasureStands === false)
+      && json(calls) === json({ snapshots: 2, activeStops: 2, latestWords: 2, erasureStands: 2 })
+      && Object.keys(impl.reads).sort().join(",") === "activeStops,erasureStands,latestWords,snapshots",
+      `erased ${json(erased?.book?.sourceRef ?? null)} · stopped ${f(B(3))?.suppressed} · lifted ${f(N(9))?.suppressed} · word ${f(N(8))?.ledgerLatest?.status ?? "none"} · B5 link ${f(B(5))?.book?.userId ?? "none"} · erasure standing ${json(standing)} · reads ${json(calls)} · answered ${facts.size}`);
   });
+
+  // ── C14 · C8a · an erasure with NO book row, read by the check from the ONE rule ──
+  {
+    const E1 = "0757500001"; // the marker alone
+    const E2 = "0757500002"; // the marker, then an opt-out tap on an old /s/ link (defect #2)
+    const E3 = "0757500003"; // an account that OPTED OUT, then was erased through the real step (N2)
+    const L1 = "0757500004"; // the marker, then a GIVEN — the number's next holder said yes
+    const P1 = "0757500005"; // a plain new number
+    const NUMBERS = [E1, E2, E3, L1, P1];
+    const file: StageRow[] = NUMBERS.map((n, i) => ({ line: i + 2, cells: [n, `Person ${i + 1}`, `person${i + 1}@example.com`, "", ""] }));
+    const seen = await inFreshStore(async () => {
+      await wordAt(keyOf(E1), "led_c14_e1", "WITHDRAWN", MARK, "2026-09-05T08:00:00.000Z");
+      await wordAt(keyOf(E2), "led_c14_e2a", "WITHDRAWN", MARK, "2026-09-05T08:00:00.000Z");
+      await wordAt(keyOf(E2), "led_c14_e2b", "WITHDRAWN", TAP, "2026-09-06T08:00:00.000Z");
+      const optedOut = await seedAccount(E3, "usr_c14_e3", "Opted Out");
+      await wordAt(keyOf(E3), "led_c14_e3", "WITHDRAWN", TAP, "2026-09-04T08:00:00.000Z");
+      const erasure = await eraseMarketingFor({ userId: optedOut.id, phoneE164: optedOut.phoneE164, officerId: null });
+      await wordAt(keyOf(L1), "led_c14_l1a", "WITHDRAWN", MARK, "2026-09-05T08:00:00.000Z");
+      await wordAt(keyOf(L1), "led_c14_l1b", "GIVEN", TAP, "2026-09-06T08:00:00.000Z");
+      const runId = await stageFile(READER, file);
+      const truth = truthCounts();
+      const r = await checkContactImport(READER, runId, impl.deps);
+      const changes = await allChanges(runId, impl.deps, READER);
+      const facts = await loadImportFacts(NUMBERS.map(keyOf), impl.reads);
+      return {
+        p: preflightOf(r), changes, marked: erasure.marketingConsentWithdrawn, book: mem().marketingContacts.size,
+        truthKept: json(truthCounts()) === json(truth), stands: NUMBERS.map((n) => facts.get(keyOf(n))?.erasureStands ?? null),
+      };
+    });
+    const p = seen.p;
+    ok(L.C14, p !== null && countsEqual(p, { new: 2, inBook: 3, repeated: 0, invalid: 0, unreadable: 0 }) && p.rows === 5
+      && sameTally(p.byChoice.KEEP, tally(2, 0, 3, 0, [3, 0, 0, 0, 0])) && sameTally(p.byChoice.TAKE_FILE, tally(2, 0, 3, 0, [0, 0, 0, 0, 3]))
+      && sameTally(p.byChoice.FILL_BLANKS, tally(2, 0, 3, 0, [0, 0, 0, 0, 3])) && json(p.changing) === json({ KEEP: 0, TAKE_FILE: 0, FILL_BLANKS: 0 })
+      && seen.changes.ok && seen.changes.lines.length === 0 && seen.marked === 1 && seen.book === 0 && seen.truthKept
+      && json(seen.stands) === json([true, true, true, false, false]),
+      p ? `${json(p.counts)} · KEEP ${json(p.byChoice.KEEP)} · TAKE_FILE ${json(p.byChoice.TAKE_FILE)} · changes ${json(seen.changes.lines)} · the opted-out account's erasure wrote ${seen.marked} marker(s) · standing ${json(seen.stands)} · book ${seen.book}` : "refused");
+  }
 
   // ── C13 · S15-10 · a GROWTH officer is told nothing per person — first the 40-row file's KEEP-only label ──
   const growthForty = await inFreshStore(async () => {
@@ -274,10 +341,16 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
   log(`40-row file, GROWTH: ${growthForty ? `mayUpdateInBook ${growthForty.mayUpdateInBook} · ${json(growthForty.byChoice.KEEP)}` : "refused"}`);
   {
     const Z = "0757400001";
-    type World = "plain" | "stopped" | "erased";
+    type World = "plain" | "stopped" | "erased" | "erasedLedger";
     const oneRow: StageRow[] = [{ line: 2, cells: [Z, "Invented Name", "", "", ""] }];
     const answersOf = (w: World, who: string): Promise<{ check: string; changes: string; p: PreflightView | null; refusals: number }> => inFreshStore(async () => {
-      await seedBook(bookRow("mc_c13", Z, w === "erased" ? { source: "IMPORT", sourceRef: ERASURE_EVIDENCE } : { displayName: "Old Name" }));
+      if (w === "erasedLedger") {
+        // C8a · no book row at all: the erasure's marker, and an opt-out tap on an old link above it.
+        await wordAt(keyOf(Z), "led_c13_mark", "WITHDRAWN", MARK, "2026-09-05T08:00:00.000Z");
+        await wordAt(keyOf(Z), "led_c13_tap", "WITHDRAWN", TAP, "2026-09-06T08:00:00.000Z");
+      } else {
+        await seedBook(bookRow("mc_c13", Z, w === "erased" ? { source: "IMPORT", sourceRef: ERASURE_EVIDENCE } : { displayName: "Old Name" }));
+      }
       if (w === "stopped") await seedStop(keyOf(Z), "sup_c13");
       const runId = await stageFile(who, oneRow);
       captured.length = 0;
@@ -289,17 +362,20 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
         && (x.payload as { reason?: unknown }).reason === "update_needs_reader").length;
       return { check: strip(r), changes: strip(c), p: preflightOf(r), refusals };
     });
-    const g = { plain: await answersOf("plain", OFFICER), stopped: await answersOf("stopped", OFFICER), erased: await answersOf("erased", OFFICER) };
+    const g = {
+      plain: await answersOf("plain", OFFICER), stopped: await answersOf("stopped", OFFICER), erased: await answersOf("erased", OFFICER),
+      erasedLedger: await answersOf("erasedLedger", OFFICER),
+    };
     const reader = { plain: await answersOf("plain", READER), stopped: await answersOf("stopped", READER) };
     const keepOnlyOne = tally(0, 0, 1, 0, [1, 0, 0, 0, 0]);
     const gp = g.plain.p;
-    const identical = g.plain.check === g.stopped.check && g.plain.check === g.erased.check
-      && g.plain.changes === g.stopped.changes && g.plain.changes === g.erased.changes;
+    const identical = g.plain.check === g.stopped.check && g.plain.check === g.erased.check && g.plain.check === g.erasedLedger.check
+      && g.plain.changes === g.stopped.changes && g.plain.changes === g.erased.changes && g.plain.changes === g.erasedLedger.changes;
     ok(L.C13, identical && fortyKeepOnly && gp !== null && gp.mayUpdateInBook === false && gp.counts.inBook === 1
       && CHOICES.every((ch) => sameTally(gp.byChoice[ch], keepOnlyOne)) && json(gp.changing) === json({ KEEP: 0, TAKE_FILE: 0, FILL_BLANKS: 0 })
       && g.plain.changes.includes('"reason":"update_needs_reader"') && g.plain.refusals === 1 && g.stopped.refusals === 1 && g.erased.refusals === 1
-      && reader.plain.p?.mayUpdateInBook === true && reader.plain.check !== reader.stopped.check,
-      `growth: plain = stopped ${g.plain.check === g.stopped.check} · plain = erased ${g.plain.check === g.erased.check} · changes alike ${g.plain.changes === g.stopped.changes} · 40-row KEEP-only ${fortyKeepOnly} · label ${gp ? json(gp.byChoice.TAKE_FILE) : "refused"} · reader told apart ${reader.plain.check !== reader.stopped.check}`);
+      && g.erasedLedger.refusals === 1 && reader.plain.p?.mayUpdateInBook === true && reader.plain.check !== reader.stopped.check,
+      `growth: plain = stopped ${g.plain.check === g.stopped.check} · plain = erased ${g.plain.check === g.erased.check} · plain = erased by the ledger ${g.plain.check === g.erasedLedger.check} · changes alike ${g.plain.changes === g.stopped.changes} · 40-row KEEP-only ${fortyKeepOnly} · label ${gp ? json(gp.byChoice.TAKE_FILE) : "refused"} · reader told apart ${reader.plain.check !== reader.stopped.check}`);
   }
 }
 
@@ -382,6 +458,27 @@ const plants: readonly RedPlant<CheckImpl>[] = [
         ...IMPORT_FACTS_READS,
         snapshots: async (msisdns) => (await IMPORT_FACTS_READS.snapshots(msisdns)).filter((r) => r.sourceRef !== ERASURE_EVIDENCE),
       };
+      return { deps: { ...REAL_DEPS, reads }, reads };
+    },
+  },
+  {
+    // ⭐ C8a's defect #2, as it shipped: the importer's facts carried only each number's LATEST ledger row.
+    name: "P14 · C8a · the loader's erasure is the ledger's LATEST word — the marker under an opt-out tap reads as no erasure, and the erased person is NEW",
+    expect: L.C14,
+    impl: () => {
+      const reads: ImportFactsReads = {
+        ...IMPORT_FACTS_READS,
+        erasureStands: async (msisdns) => (await IMPORT_FACTS_READS.latestWords(msisdns))
+          .filter((w) => w.status === "WITHDRAWN" && w.evidence === ERASURE_EVIDENCE).map((w) => w.identifier),
+      };
+      return { deps: { ...REAL_DEPS, reads }, reads };
+    },
+  },
+  {
+    name: "P14b · C8a · the loader never asks whether an erasure stands — every erasure with no book row reads as a new number",
+    expect: L.C14,
+    impl: () => {
+      const reads: ImportFactsReads = { ...IMPORT_FACTS_READS, erasureStands: async () => [] };
       return { deps: { ...REAL_DEPS, reads }, reads };
     },
   },

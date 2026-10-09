@@ -78,6 +78,12 @@
  * where the row still holds THAT claim, is DELIVERED or FAILED and its trail is still null. `test:campaign-models` §2.32
  * executes it; `test:dal-parity` §26.u43b holds both twins' shape; `test:marketing-engine` S16 drives it through a slice.
  *
+ * ── U48a · THE RESULTS' TWO READS (ENGINE-SPEC §4.16 — the live page's results card is their one caller) ───────────────────
+ * `countSentBefore` (E5: how many SENT rows were handed over before an instant) and `handedOverPage` (E30: a keyset page of
+ * the people a campaign handed a message to, by number) ask this file first too (`assertSentBeforeRead`,
+ * `assertHandedOverRead`): a missing campaign id is NO CONDITION on Postgres. Both only read. `test:campaign-models` §2.33
+ * executes them; `test:dal-parity` §26.u48a holds both twins' shape.
+ *
  * ⛔ PURE, AND NOTHING AT RUNTIME COMES FROM THE STORE OR THE CONSOLE'S UI LIBRARIES. `store.ts` and `prisma-dal.ts`
  * both import this file, so a runtime import back into `store.ts` would be a cycle through the DAL switch: types only
  * (erased). `campaign-confirm.ts` is reached for its TYPE only, and `test:campaign-models` 2.11 holds the watermark
@@ -802,6 +808,40 @@ export function assertRequeueHeld(campaignId: string, at: string): void {
 /** `lastActivity` · the campaign named. */
 export function assertActivityRead(campaignId: string): void {
   if (!isNonEmpty(campaignId)) refuse("smsCampaignRecipient.lastActivity", "an activity read names its campaign");
+}
+
+/**
+ * U48a · `countSentBefore` · THE RESULTS' "NO RECEIPT AFTER 15 MINUTES" (ENGINE-SPEC E5, §4.16): the campaign named — Prisma
+ * reads `where: { campaignId: undefined }` as NO CONDITION, so a caller that lost its id would count every campaign's SENT
+ * rows as this one's while the memory twin matched nobody — and the bound an instant in `toISOString()`'s spelling (the
+ * memory twin compares instants, Postgres timestamps; a text only one of them could read is a bound that holds in one twin).
+ */
+export function assertSentBeforeRead(campaignId: string, before: string): void {
+  const where = "smsCampaignRecipient.countSentBefore";
+  if (!isNonEmpty(campaignId)) refuse(where, "a sent-before count names its campaign");
+  if (!isInstant(before)) refuse(where, "the bound is an instant in toISOString's spelling");
+}
+
+/**
+ * U48a · THE MOST PEOPLE ONE `handedOverPage` ANSWERS — what §25's bulk keyed reads take in one call (`BULK_KEYED_READ_MAX`,
+ * store.ts, which this file may not import at runtime: a page IS a bulk read's key set, and `findActiveAmong` refuses more).
+ * `test:campaign-models` §2.33 holds the two equal.
+ */
+export const SMS_HANDED_OVER_PAGE_MAX = 2000;
+
+/**
+ * U48a · `handedOverPage` · THE STOPPED-BY-LINK WALK'S ONE READ OF A CAMPAIGN'S PEOPLE (ENGINE-SPEC E30, §4.16): the campaign
+ * named (a missing id would page every campaign's rows on Postgres), the cursor null — the first page — or the bare 255 key of
+ * the last person read (a recipient row holds no other spelling, so any other matches nothing and would end the walk early as
+ * if it were done), and 1 to `SMS_HANDED_OVER_PAGE_MAX` people. A refusal never repeats the number (§5.14).
+ */
+export function assertHandedOverRead(campaignId: string, after: string | null, limit: number): void {
+  const where = "smsCampaignRecipient.handedOverPage";
+  if (!isNonEmpty(campaignId)) refuse(where, "a handed-over read names its campaign");
+  if (after !== null && (typeof after !== "string" || !isGatewayMsisdn(after))) refuse(where, "the cursor is null or the bare 255 key of the last person read");
+  if (typeof limit !== "number" || !Number.isSafeInteger(limit) || limit < 1 || limit > SMS_HANDED_OVER_PAGE_MAX) {
+    refuse(where, `a handed-over read takes 1 to ${SMS_HANDED_OVER_PAGE_MAX} people`);
+  }
 }
 
 /**

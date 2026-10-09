@@ -8,6 +8,28 @@
 
 ---
 
+## 2026-10-09 · An erased number stays blocked, a test SMS to a typed number is for Admin and Compliance, and the back-filled contacts are re-dated (owner rulings, put to Ali in the session)
+
+**Asked** by S15 on 2026-10-09 ~06:35 EAT (`docs/CONTACTS-SCREEN-PLAN.md` §4.7, the survey of what a MASKED officer may learn
+about a number); **answered by Ali** to S14 on 2026-10-09 ~10:20 EAT, each with the recommended option:
+
+1. **An erased person's number stays BLOCKED** until its holder signs up or agrees to offers again. Add contact and the
+   importer refuse it as they refuse a tombstone ("already in the book"); a GROWTH officer's whole-number search answers
+   only "in the book" or "not in the book", never rows; and a GROWTH officer's import puts on a list only the contacts
+   that run CREATED. (§4.7 B1–B4, built in C8b.) An old spreadsheet can never bring an erased person's name back.
+2. **A test SMS to a TYPED number is for ADMIN and COMPLIANCE only.** GROWTH sends tests to its own phone. (U37c-2's Test
+   card and the typed-test door change; the R3/A19 residual narrows to two roles that already read numbers.)
+3. **The 54 contacts back-filled on 2026-10-03 are re-dated "Added 3 Oct 2026"** — a production data fix through an
+   audited door (§4.7 B8), so the "Added" date never tells a masked officer who is a player.
+
+And for the two live checks of the day — U52a's live drive (at most 6 real SMS, to the approved test number) and the
+importer's 40-contact check (its contacts removed afterwards): they run with Claude's QA logins, Ali approving each
+production sign-in himself, as auto mode's classifier requires. The temporary login "QA Import Check (Claude)" (its
+password lost with Ali-Blade15) is removed by Ali: /admin/staff → role Player.
+
+**Why:** OD54 and D19 (no player facts to a masked viewer), X22 (a browser never learns a number was erased), and the
+erasure's own promise. **Kept by** the C8b suites and the typed-test door's role check, each with its red plants.
+
 
 ## 2026-10-07 · Privacy v2026-10-07 — §5 states the 7-year record of marketing text messages and the coded referee numbers, §9 keeps the referee promise only for referees already given it, and the sign-up box is removed
 

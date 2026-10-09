@@ -108,6 +108,7 @@ import {
 } from "@/lib/marketing/campaign-status";
 import type { SegmentCostMeasure } from "@/lib/marketing/segment-cost";
 import { creditVerdict } from "@/lib/marketing/credit-guard";
+import { spendableBalance } from "@/lib/marketing/engine-rules";
 import { formatNumber, formatTzs } from "@/lib/utils";
 
 /* ══ THE SHAPES ══════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -173,6 +174,9 @@ export type StartCheckDeps = {
   fence: typeof audienceFence;
   /** E16 (`creditVerdict`). */
   credit: typeof creditVerdict;
+  /** ⭐ F-2 · the credit a check may count on: a send reply's pre-charge figure less its pending segments
+   *  (`spendableBalance` — the engine's own slice check reads it the same way). */
+  spendable: typeof spendableBalance;
   /** OD28 (`startAudienceVerdict`). */
   audienceVerdict: typeof startAudienceVerdict;
   now: () => number;
@@ -189,6 +193,7 @@ export const START_CHECK_DEPS: Readonly<StartCheckDeps> = Object.freeze({
   readBalance: () => refreshSmsBalance({ maxAgeMs: START_CREDIT_MAX_AGE_MS }),
   fence: audienceFence,
   credit: creditVerdict,
+  spendable: spendableBalance,
   audienceVerdict: startAudienceVerdict,
   now: () => Date.now(),
 });
@@ -292,15 +297,18 @@ async function pricedOf(deps: StartCheckDeps): Promise<Priced> {
 
 type CreditRefusal = { reason: "credit_unreadable" } | { reason: "credit_low"; balanceTzs: number; costTzs: number; reserveTzs: number };
 
-/** ⑨ E16 · the credit, read fresh, held to `creditVerdict`. A read that throws is unreadable — never a figure. */
-async function creditRefusal(costTzs: number, reserveTzs: number, deps: StartCheckDeps): Promise<CreditRefusal | null> {
+/** ⑨ E16 · the credit, read fresh, held to `creditVerdict`. A read that throws is unreadable — never a figure. ⭐ F-2 (the
+ *  engine's dry-fire, 2026-10-08): a send reply's figure is pre-charge, so its pending segments come off first at today's
+ *  price — as the engine's slice check takes them off, so a Resume never lets through what the next slice pauses at once. */
+async function creditRefusal(costTzs: number, reserveTzs: number, cost: SegmentCostMeasure, deps: StartCheckDeps): Promise<CreditRefusal | null> {
   let read: SmsBalanceRead | null;
   try {
     read = await deps.readBalance();
   } catch {
     read = null;
   }
-  const v = deps.credit({ balance: balanceFigureOf(read), costTzs, reserveTzs });
+  const perSegment = cost.kind === "unknown" ? 0 : cost.tzsPerSegment;
+  const v = deps.credit({ balance: deps.spendable(balanceFigureOf(read), read?.pendingSegments, perSegment), costTzs, reserveTzs });
   if (v.ok) return null;
   return v.reason === "credit_low"
     ? { reason: "credit_low", balanceTzs: v.balanceTzs, costTzs: v.costTzs, reserveTzs: v.reserveTzs }
@@ -342,7 +350,7 @@ export async function checkStart(c: StoredSmsCampaign, deps: StartCheckDeps = ST
 
   // ⑨ E16 the credit kept for codes — the console stub has no credit, and spends none
   if (provider !== "console") {
-    const credit = await creditRefusal(costTzs, priced.reserveTzs, deps);
+    const credit = await creditRefusal(costTzs, priced.reserveTzs, priced.cost, deps);
     if (credit !== null) return refuse(credit);
   }
 
@@ -469,7 +477,7 @@ export async function resumeRefusal(
   if (!priced.ok) return priced.refusal;
   const { costTzs } = projection(left, variants, priced.cost);
   if (costTzs === null) return { reason: "price_unknown" };
-  return creditRefusal(costTzs, priced.reserveTzs, deps);
+  return creditRefusal(costTzs, priced.reserveTzs, priced.cost, deps);
 }
 
 /* ══ THE SENTENCES ═══════════════════════════════════════════════════════════════════════════════════════════════════ */

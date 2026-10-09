@@ -64,7 +64,8 @@ import {
   type UploadOutcome,
 } from "../../src/lib/contacts/import-loop.ts";
 import { isParsedContactsFile, type ParsedContactsFile } from "../../src/lib/contacts/parsed-file.ts";
-import { CONTACT_MASKED_FILE, autoMapHeaders, contactExportHeader, validateMapping } from "../../src/lib/contacts/contact-fields.ts";
+import { CONTACT_MASKED_FILE, autoMapHeaders, contactExportHeader, scrubPhoneRuns, validateMapping } from "../../src/lib/contacts/contact-fields.ts";
+import { maskPhone } from "../../src/lib/phone-normalize.ts";
 import { STAGE_BATCH_MAX_ROWS, stageRowsOf, type StageRowInput } from "../../src/lib/contacts/import-limits.ts";
 import { EMPTY_FILE_SENTENCE, csvRefusalSentence, parseCsv, stripBom } from "../../src/lib/contacts/import-parse.ts";
 import { XLSX_MAX_BYTES, xlsxRefusalSentence } from "../../src/lib/contacts/xlsx-limits.ts";
@@ -86,7 +87,6 @@ const TAB = String.fromCharCode(9);
 const LF = String.fromCharCode(10);
 const CR = String.fromCharCode(13);
 const CRLF = CR + LF;
-const NINE_DIGITS = /\d{9}/;
 const json = (v: unknown): string => JSON.stringify(v);
 
 /* ══ THE BUNDLE UNDER TEST ══════════════════════════════════════════════════════════════════════ */
@@ -143,7 +143,7 @@ export const L = {
   M2: "M2 · the officer's word on the first row turns the reading over both ways (\"header\" reads it as names again)",
   M3: "M3 · ⛔ a masked export stays refused in U28's words — even when the officer says its first row is a contact",
   M4: "M4 · a header row narrower than the file is padded to the widest row, so every column can be mapped",
-  M5: "M5 · ⛔ NO NUMBER WHOLE: a cell that is a number previews as +255••••NN, a number inside text is bulleted, plain text is untouched",
+  M5: "M5 · ⛔ NO NUMBER WHOLE — C3b-fix · D9: a cell holding SEVEN or more digits in total, whatever separates them (Excel's thousands commas \"255,757,300,014\", slashes \"0712/345/678\", letters, a date's dashes), is masked whole: its one mobile as +255••••NN, else four bullets and its last two digits; plain text and a cell of six digits or fewer are untouched; no preview ever holds seven digits",
   G4a: "G4a · ⭐ C3b · G4 under C3b-fix D2 and D3 — an Outlook export gains ONE column, “Phone (read from: Mobile Phone, Business Phone, Car Phone and 2 more)”, read as Phone: the Mobile Phone cell whenever it yields a mobile (a Car Phone or Assistant's mobile beside it never read); else the ONE mobile of the person's other OWN phone columns (Business, Primary — the same mobile twice counted once); else the Mobile cell as it was; two DISTINCT mobiles there are carried together, and the server's one rule refuses them with its several-mobiles sentence; ⛔ Assistant's and Company Main Phone are never read nor named; the original columns stay, read as nothing, each saying why; validateMapping passes it, the file is valid and the file as read is untouched",
   G4b: "G4b · ⭐ C3b · G4 under D3 — Google's export: a Phone 1 - Value cell joining two DISTINCT mobiles with ' ::: ' yields none, so Phone 2 - Value is read too and all three mobiles are carried, refused by the server's one rule; a row whose mobile is only in Phone 2 - Value reads Phone 2's; the same mobile twice in Phone 1 is that mobile; the Label columns are never phone columns",
   G4c: "G4c · ⛔ CONTROL · G4 — a plain file with one phone column, a serial Namba beside a Simu column that holds every mobile, ⛔ a WEAK Namba column holding a mobile where Simu is empty (D2: never read unless it is the Phone column), an Outlook export whose every mobile is in Mobile Phone, and one whose only other mobiles sit in Assistant's and Company Main Phone (D2) gain NO column: the reading is the file as read, Phone where U28 put it",
@@ -583,10 +583,25 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
   const narrow = impl.mappingFor(NARROW_HEADER);
   ok(L.M4, narrow.headers.length === 3 && narrow.headers[2] === "" && narrow.headerRows === 1 && narrow.mapping.phone === 0,
     JSON.stringify(narrow.headers));
-  const previews = ["0712 345 678", "+255712345678", "Call Asha on 0712345678 today", "Asha", "2.55713E+11"].map((c) => impl.previewCell(c));
-  ok(L.M5, previews[0] === "+255••••78" && previews[1] === "+255••••78" && !NINE_DIGITS.test(previews[2]) && previews[2].includes("••••78")
-    && previews[3] === "Asha" && previews.every((p) => !NINE_DIGITS.test(p)),
-    previews.join(" | "));
+  // ⭐ D9 · each cell beside the preview it must get — LITERALS, decided by hand.
+  const PREVIEWS: ReadonlyArray<readonly [string, string]> = [
+    ["0712 345 678", "+255••••78"],
+    ["+255712345678", "+255••••78"],
+    ["Call Asha on 0712345678 today", "+255••••78"],
+    ["Asha", "Asha"],
+    ["2.55713E+11", "••••11"],
+    ["255,757,300,014", "+255••••14"],
+    ["0712/345/678", "+255••••78"],
+    ["0712abc345def678", "+255••••78"],
+    ["12/03/2026", "••••26"],
+    ["0712 345 678 / 0754 123 456", "••••56"],
+    ["Kariakoo 12", "Kariakoo 12"],
+    ["TSh 50,000", "TSh 50,000"],
+  ];
+  const previews = PREVIEWS.map(([cell]) => impl.previewCell(cell));
+  const digitCount = (s: string): number => s.split("").filter((ch) => ch >= "0" && ch <= "9").length;
+  const previewMisses = PREVIEWS.flatMap(([, want], i) => (previews[i] === want ? [] : [`case ${i + 1} → "${previews[i]}" (want "${want}")`]));
+  ok(L.M5, previewMisses.length === 0 && previews.every((p) => digitCount(p) < 7), previewMisses.join(" | ") || previews.join(" | "));
 
   // ── G4 · several phone columns (C3b, under C3b-fix D2 and D3) ──────────────────────────────────
   const phoneCellsOf = (m: FileMapping): string[] =>
@@ -973,6 +988,18 @@ const PLANTS: readonly RedPlant<FlowImpl>[] = [
     name: "the preview shows a cell as typed — a whole number on screen",
     expect: L.M5,
     impl: () => ({ ...real(), previewCell: (c) => c }),
+  },
+  {
+    name: "C3b-fix D9 undone — C3b's preview: masked by its punctuation, so Excel's thousands commas and an office's slashes show a number whole",
+    expect: L.M5,
+    impl: () => ({
+      ...real(),
+      previewCell: (c) => {
+        const raw = String(c ?? "").trim();
+        const parsed = parseTzNumber(raw);
+        return parsed.verdict === "ok" && parsed.e164 !== null && /^[\s'+().\d-]+$/.test(raw) ? maskPhone(parsed.e164) : scrubPhoneRuns(raw);
+      },
+    }),
   },
   {
     name: "C3b G4 undone — several phone columns read as before: the mobile only in Business or Primary Phone is lost",

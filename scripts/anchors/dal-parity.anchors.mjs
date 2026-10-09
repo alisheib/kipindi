@@ -2087,6 +2087,49 @@ export const MUTATIONS = [
     to: `  for (const r of rows) byKey.set(r.id, r);`,
     expect: "27.wire · the wiring ONLY the probe executes, pinned in both twins — the book rows keyed by NUMBER (Prisma byKey.set(r.msisdn, r); memory rows.set(msisdn, c)) and read back by the asked key; the memberships grouped by CONTACT id and read back by the row's id; the list ids derived from those memberships alone",
   },
+  {
+    // 🔴 U48a · the results' "no receipt after 15 minutes" counted over the WHOLE recipient table: every campaign's SENT
+    // rows handed over before the cutoff are this one's.
+    name: "prisma-dal.ts — countSentBefore counts every campaign's rows",
+    file: "src/lib/server/prisma-dal.ts",
+    from: 'return pc().smsCampaignRecipient.count({ where: { campaignId, status: "SENT", sentAt: { lt: new Date(before) } } });',
+    to: 'return pc().smsCampaignRecipient.count({ where: { status: "SENT", sentAt: { lt: new Date(before) } } });',
+    expect: "26.u48a.count.prisma · ⛔ the Prisma countSentBefore is ONE count WHERE the campaign is the one asked, the row is still SENT and its OWN sentAt is strictly before the bound — never the rows, never a groupBy",
+  },
+  {
+    // U48a · the memory twin counts a row at, or after, the cutoff: "after 15 minutes" is then "within 15 minutes" too.
+    name: "store.ts — the memory countSentBefore counts rows that are not older than the bound",
+    file: "src/lib/server/store.ts",
+    from: "if (Date.parse(r.sentAt) < bound) older++;",
+    to: "older++;",
+    expect: "26.u48a.count.memory · the memory countSentBefore counts ONE campaign's rows that are still SENT, with an instant, whose sentAt is strictly before the bound — compared as instants",
+  },
+  {
+    // 🔴 U48a · the stop walk's page selects whole rows: every person's token, reference and gate trail read per chunk.
+    name: "prisma-dal.ts — handedOverPage selects whole rows",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        take: limit,
+        select: { msisdn: true, sentAt: true },`,
+    to: "        take: limit,",
+    expect: "26.u48a.page.prisma · ⛔ the Prisma handedOverPage is ONE findMany of THIS campaign's SENT and DELIVERED rows with an instant, keyset on the number (gt the cursor), ordered by it, at most the limit, selecting the number and the instant ALONE",
+  },
+  {
+    // 🔴 U48a · the Prisma page loses its cursor: every chunk is the first, and the walk never ends (or counts the first
+    // chunk's stops again and again).
+    name: "prisma-dal.ts — handedOverPage forgets its cursor",
+    file: "src/lib/server/prisma-dal.ts",
+    from: "sentAt: { not: null }, ...(after === null ? {} : { msisdn: { gt: after } }) },",
+    to: "sentAt: { not: null } },",
+    expect: "26.u48a.page.prisma · ⛔ the Prisma handedOverPage is ONE findMany of THIS campaign's SENT and DELIVERED rows with an instant, keyset on the number (gt the cursor), ordered by it, at most the limit, selecting the number and the instant ALONE",
+  },
+  {
+    // U48a · the memory page loses its cursor: the same.
+    name: "store.ts — the memory handedOverPage forgets its cursor",
+    file: "src/lib/server/store.ts",
+    from: "if (after !== null && r.msisdn <= after) continue;",
+    to: "",
+    expect: "26.u48a.page.memory · the memory handedOverPage walks ONE campaign's SENT and DELIVERED rows that carry an instant, past the cursor, by number, at most the limit — { msisdn, sentAt } and nothing else",
+  },
   /* ═══ §29 · the import's check and commit (S15, 2026-10-09) — each case reintroduces ONE defect in ONE twin ═══ */
   {
     // The book read without its select: the whole row — the consent cache, the raw input — leaves Postgres.
@@ -2291,5 +2334,67 @@ export const MUTATIONS = [
     from: `        .filter((r) => r.createdBy !== q.excludeCreatedBy && (r.status === "STAGING" || r.status === "STAGED" || r.status === "COMMITTING" || r.status === "PAUSED"))`,
     to: `        .filter((r) => (r.status === "STAGING" || r.status === "STAGED" || r.status === "COMMITTING" || r.status === "PAUSED"))`,
     expect: "29.open · S15-12 · an ADMIN's read of other officers' unfinished runs is the same in both twins — the four OPEN statuses, every creator but the viewer, NEWEST first, at most CONTACT_IMPORT_OPEN_RUNS_MAX (20 in both)",
+  },
+  /* ═══ §30 · the standing erasure (C8a, S15 2026-10-09) — each case reintroduces ONE defect in ONE twin or in the rule ═══ */
+  {
+    // A same-millisecond "marker, then a yes" read the other way round on Postgres: the erasure stands where it was lifted.
+    name: "prisma-dal.ts — erasureStandsAmong loses the id tiebreak",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        select: { identifier: true, status: true, evidence: true },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],`,
+    to: `        select: { identifier: true, status: true, evidence: true },
+        orderBy: { createdAt: "desc" },`,
+    expect: "30.order · ⭐ ONE read of the asked numbers' WHOLE ledger in the ledger's own order — Prisma ONE findMany where channel, category and the key set, with NO status or evidence filter (the rule alone says which rows decide: no second definition of a marker in SQL), selecting the key, the status and the evidence, ordered createdAt DESC then id DESC; memory filtered to the same set and sorted createdAt DESC then id DESC — the tie broken on the id, as latestFor breaks it",
+  },
+  {
+    name: "store.ts — the memory erasureStandsAmong loses the id tiebreak",
+    file: "src/lib/server/store.ts",
+    from: `      rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));`,
+    to: `      rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));`,
+    expect: "30.order · ⭐ ONE read of the asked numbers' WHOLE ledger in the ledger's own order — Prisma ONE findMany where channel, category and the key set, with NO status or evidence filter (the rule alone says which rows decide: no second definition of a marker in SQL), selecting the key, the status and the evidence, ordered createdAt DESC then id DESC; memory filtered to the same set and sorted createdAt DESC then id DESC — the tie broken on the id, as latestFor breaks it",
+  },
+  {
+    // A second definition of the marker, in SQL: the day the rule's marker changes, Postgres keeps the old one.
+    name: "prisma-dal.ts — erasureStandsAmong filters the marker in its own query",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { channel: q.channel, category: q.category, identifier: { in: keys } },
+        select: { identifier: true, status: true, evidence: true },`,
+    to: `        where: { channel: q.channel, category: q.category, identifier: { in: keys }, OR: [{ status: "GIVEN" }, { status: "WITHDRAWN", evidence: ERASURE_EVIDENCE }] },
+        select: { identifier: true, status: true, evidence: true },`,
+    expect: "30.order · ⭐ ONE read of the asked numbers' WHOLE ledger in the ledger's own order — Prisma ONE findMany where channel, category and the key set, with NO status or evidence filter (the rule alone says which rows decide: no second definition of a marker in SQL), selecting the key, the status and the evidence, ordered createdAt DESC then id DESC; memory filtered to the same set and sorted createdAt DESC then id DESC — the tie broken on the id, as latestFor breaks it",
+  },
+  {
+    // ⭐ C8a's DEFECT #2, BACK ON POSTGRES ALONE: each number's LATEST row only — an opt-out tap above the marker lifts the
+    // erasure, and an old spreadsheet creates the erased person again, while every memory suite stays green.
+    name: "prisma-dal.ts — erasureStandsAmong keeps each number's latest row only",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      return erasureStandsAmongRows(keys, rows);`,
+    to: `      return erasureStandsAmongRows(keys, rows.filter((r, i) => rows.findIndex((x) => x.identifier === r.identifier) === i));`,
+    expect: "30.rule · ⭐ ONE RULE — both twins answer through erasure-mark's erasureStandsAmongRows (imported on its own line in each), which asks erasureStandsOn of each number's own rows and hands the numbers back sorted; erasureStandsOn lets a GIVEN lift the erasure, a marker set it and every other row pass; and neither twin keeps a number's latest row (C8a's defect #2)",
+  },
+  {
+    name: "store.ts — the memory erasureStandsAmong keeps each number's latest row only",
+    file: "src/lib/server/store.ts",
+    from: `      return erasureStandsAmongRows(keys, rows);`,
+    to: `      return erasureStandsAmongRows(keys, rows.filter((r, i) => rows.findIndex((x) => x.identifier === r.identifier) === i));`,
+    expect: "30.rule · ⭐ ONE RULE — both twins answer through erasure-mark's erasureStandsAmongRows (imported on its own line in each), which asks erasureStandsOn of each number's own rows and hands the numbers back sorted; erasureStandsOn lets a GIVEN lift the erasure, a marker set it and every other row pass; and neither twin keeps a number's latest row (C8a's defect #2)",
+  },
+  {
+    // The rule itself regresses to the importer's first reading: the LAST row alone decides.
+    name: "erasure-mark.ts — erasureStandsOn reads the latest row alone",
+    file: "src/lib/marketing/erasure-mark.ts",
+    from: `    if (row.status === "GIVEN") return false;
+    if (isErasureMarker(row)) return true;`,
+    to: `    return isErasureMarker(row);`,
+    expect: "30.rule · ⭐ ONE RULE — both twins answer through erasure-mark's erasureStandsAmongRows (imported on its own line in each), which asks erasureStandsOn of each number's own rows and hands the numbers back sorted; erasureStandsOn lets a GIVEN lift the erasure, a marker set it and every other row pass; and neither twin keeps a number's latest row (C8a's defect #2)",
+  },
+  {
+    // An empty chunk still costs a round trip on Postgres.
+    name: "prisma-dal.ts — erasureStandsAmong queries for an empty set",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `      const keys = bulkKeys(q.identifiers, "messagingConsent.erasureStandsAmong");
+      if (keys.length === 0) return [];`,
+    to: `      const keys = bulkKeys(q.identifiers, "messagingConsent.erasureStandsAmong");`,
+    expect: "30.bound · ⛔ §25's shape in both twins — the keys through bulkKeys (deduplicated, REFUSED above BULK_KEYED_READ_MAX, never cut off), an empty set answered with nothing, and on Postgres before any query",
   },
 ];

@@ -68,6 +68,10 @@ const CRUMB_LABELS: Record<string, string> = {
  */
 const ID_CRUMB: Record<string, string> = {
   desk: "Account",
+  // ⭐ U47b-2 review (NIT) · a campaign's trail never reads its `cmp_…` id: this neutral word stands until the live page
+  // registers the campaign's own name (`AdminCrumbLabel`), and for a campaign that is not there. A refused officer is sent to
+  // the list, not to the record (`adminNextDest`).
+  campaigns: "Campaign",
 };
 
 export function crumbsFromPath(path: string): string[] {
@@ -84,11 +88,11 @@ export function crumbsFromPath(path: string): string[] {
  * A segment that is a record ID, not a word (2026-09-13). Title-casing turned the player id in
  * /admin/players/usr_6e24… into "Usr_6e24…", a different string from the id printed on the page
  * beneath it, so an officer could not read it back or paste it into a search. Prefixed ids (usr, mkt,
- * udr, txn, kyc + underscore), any digit-bearing token with an underscore, and a long digit-bearing
+ * udr, txn, kyc, cmp + underscore), any digit-bearing token with an underscore, and a long digit-bearing
  * token (a cuid) are left verbatim. A plain word segment ("self-exclusions", "cohorts") has no digit.
  */
 function looksLikeId(p: string): boolean {
-  if (/^(usr|mkt|udr|txn|kyc)_/i.test(p)) return true;
+  if (/^(usr|mkt|udr|txn|kyc|cmp)_/i.test(p)) return true;
   if (!/\d/.test(p)) return false;
   return p.includes("_") || /^[a-z0-9]{20,}$/i.test(p);
 }

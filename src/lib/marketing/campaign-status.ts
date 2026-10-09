@@ -368,16 +368,18 @@ export const CAMPAIGN_SCREEN_ROUTES = {
 } as const satisfies Record<keyof CampaignScreens, string>;
 
 /** ⛔ Flip a value here ONLY in the change that lands its page; `test:campaigns-page` 5f refuses either one alone.
- *  ⭐ compose is ON since U37b (2026-10-02), which landed /admin/campaigns/new in the same change (M8). */
-export const CAMPAIGN_SCREENS: CampaignScreens = { compose: true, detail: false };
+ *  ⭐ compose is ON since U37b (2026-10-02), which landed /admin/campaigns/new in the same change (M8).
+ *  ⭐ detail is ON since U47b-2 (2026-10-08), which landed /admin/campaigns/[id] in the same change: every non-draft row of the
+ *  list links there, and a draft still opens in the composer. */
+export const CAMPAIGN_SCREENS: CampaignScreens = { compose: true, detail: true };
 
 /** One campaign's page, for the row link that exists only once `CAMPAIGN_SCREENS.detail` does. */
 export function campaignDetailHref(id: string): string {
   return `/admin/campaigns/${encodeURIComponent(id)}`;
 }
 
-/** A saved DRAFT reopens in the composer at its own address (`?draft=<id>`) — the one door back to a draft until U47's
- *  detail page exists (the validation audit, 2026-10-03: a saved draft could not be found again from the list). */
+/** A saved DRAFT reopens in the composer at its own address (`?draft=<id>`) — the one door to a draft: the detail page sends a
+ *  draft's id here too (the validation audit, 2026-10-03: a saved draft could not be found again from the list). */
 export function campaignDraftHref(id: string): string {
   return `${CAMPAIGN_SCREEN_ROUTES.compose}?draft=${encodeURIComponent(id)}`;
 }

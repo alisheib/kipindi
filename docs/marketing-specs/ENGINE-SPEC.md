@@ -2103,6 +2103,38 @@ E11 bounds a slice by time; U52a measures. A deploy mid-slice: the reaper settle
 `test:otp-delivery`, `test:blackball`, `test:sms-dlr`, `test:sms-cost-guard` and `test:pii-logs`.
 **Owner decision:** none.
 
+**⭐ As built · the engine's dry-fire, F-1 and F-2 (2026-10-08).** `test:marketing-dry-fire` (seven scenarios over a fake
+Blackball that charges as the real one does) found two money-check defects in the per-slice credit check (E16); both are
+fixed, and its S7 claims are strict since:
+- **F-1 · a slice is priced for the people it can still claim.** It priced a whole slice even when nobody was left: a list
+  all sent, with the credit exactly at the reserve, paused `marketing_floor` with nobody waiting and never reached DONE
+  (Resume paused it again). Now `owedForSlice(size, PENDING)` = min(the slice, those PENDING); 0 goes straight to the
+  finish (DONE, `held_rows` or a wait); a count that cannot be read prices the whole slice, the safe side.
+- **F-2 · no reading holds what was handed over around it.** A send reply's figure is pre-charge (BLACKBALL-SMS §1.4), so
+  read straight after a slice it still held that slice's charge, and the next slice could go one batch into the credit kept
+  for login codes. ⭐ Reworked after its independent review (the same day): the first fix kept a count beside each reading
+  and was exact only when a charge lands before the next reply — but Blackball bills per DELIVERED message, seconds later,
+  and under that lag consecutive slices could still dip the reserve (about TZS 190 per slice period of lag). Now `sms.ts`
+  keeps every chunk handed over — accepted, or ambiguous (the gateway may have it) — for twice `SMS_BILLING_LAG_MS` (30 s
+  by default), and a reading's `pendingSegments` is every segment handed over from that window before it was ASKED
+  (`unbilledSince`). While billing lags by no more than the window nothing is missed; what is already billed inside it is
+  counted twice — the safe side, felt only near the reserve. `SMS_BILLING_LAG_MS=0` is billing at acceptance (the dry-fire's
+  exact model). `spendableBalance` takes them off at today's price (the measured one when there is one, never below 0)
+  before `creditVerdict` judges the slice, Start and Resume read the credit the same way (so a Resume never lets through
+  what the next slice would pause at once), and the pause's record names the reading and what was taken off it.
+  ⭐ Its re-review (the same night; 75,000 seeded credit checks, no under-count but one hole): a chunk is noted at the ASK and
+  withdrawn only when it certainly never left (a throw before the wire, the gateway's own refusal), so a reading taken while
+  it is in flight counts it; the sends are kept as long as the reading in use may not hold them (a reading reused for a
+  minute after a lost reply — the hole), never longer than a reading lives; the bookkeeping never fails a send (the OTP
+  rail); the window is capped at 10 minutes. ⏳ Owed: the words when a pause is the window's ("wait a minute, then Resume"),
+  the reading and the pending in the refusal's record, a monotonic clock beside `at`, and — better than any window — what is
+  handed over and still without a receipt (Blackball bills per delivered message), once the real lag is measured.
+Held by `test:marketing-engine` S41 (a shilling under the line, nobody owed: DONE), S42 and F17 (a measured TZS 8 on both
+sides of the line; plants R-S41, R-S42, R-S42b, R-S27d, R-F17, R-F10c), `test:sms-cost-guard` §12 (the window: counted,
+aged out, ambiguous counted, refused not, two segments two, billing at acceptance; six in-place anchors) and the dry-fire's
+S7 — 7d at acceptance and ⭐ 7e with each charge landing 6 s late under the production window (plants R28, R30 F-1, R31
+F-2 a reading taken whole, R32 the window ignored: exact at acceptance, short under late billing).
+
 ---
 
 ### 4.14 · U46a · Receipts — the recipient arm, and rotating the secret
@@ -2342,6 +2374,168 @@ RETURN — pure, no directive; U47b-2 adds the page's own words to it), `scripts
       `test:marketing-engine` 91 (S38 rewritten — both routes, the real adapt 20 → 10 → 5; S40 new), red 125/125;
       `test:sms-cost-guard` 111; `test:dal-parity` 26.u43a.activity re-pinned + one anchor.
 
+✅ **AS BUILT — U47b-2 (S14, 2026-10-08): every place the build reads this section, says what it added, or reads it more
+widely than it is written, said once.** Files, all under `src/app/admin/campaigns/[id]/`: `page.tsx`, `loading.tsx`,
+`actions.ts` (the six actions and nothing else — the step is a ROUTE since the review's fix round, below), `live-run.ts` (how an act is run and answered — the part of a door that is
+not its guard — and the doors' answer types, which the driver reads from here because `test:admin-act-gate` takes a client
+module that names the actions file, even for a type, for an acting control), `live-loader.ts` (the first render),
+`live-viewer.ts` (the viewer from the STORED role), `live-client.tsx`, `live-driver.tsx`, `live-geometry.ts` (the figures'
+grid, read by the page and its ghost);
+`softViewStaff` in `rbac-guard.ts`; `CAMPAIGN_SCREENS.detail = true`; the campaigns list; `scripts/lib/campaign-visuals-page.mts`
+(the page's claims, run by `test:campaign-visuals`); the dev seed `/api/dev-test/marketing-live-seed`; the drive
+`scripts/live/marketing-u47-live-drive.mjs` (`qa:marketing-live` — written and syntax-checked; its first run is under the lock).
+- ⭐ **The poll is gated by the VIEW grant — `softViewStaff` (new, `rbac-guard.ts`).** Decision 7 says who ACTS and is silent on
+  the poll, which every page that is not driving makes every 10 s. `softRequireStaff` would refuse a role that may only LOOK
+  (AUDITOR with Growth view) on every poll and write each refusal up as `privilege_escalation_blocked` — a watcher turned into
+  a stream of attempted escalations by its own page. `softViewStaff` asks the same things in the same order (session → STORED
+  role → second factor in words) with the view grant; a role with no view grant is still refused and still written up (its
+  row carries `grant: "view"`, so it never reads as the act guard's — and `red:admin-soft-gate`'s plants, which anchor on
+  THAT block, still resolve exactly once). The
+  step takes `softCheckStaff` (= `softRequireStaff` + `refuseSecondFactor`, V5's "step uses `refuseSecondFactor`"); ✅ as
+  amended by the review's fix round: so do Pause and Stop (the brake is never lost to a lapsed 2-step — it is refused in words
+  with the step-up link, never the redirect that throws the officer's page and press away), while Start, Resume and Make a copy
+  keep `softRequireStaff` (a press keeps the step-up redirect, as a Save does). All six actions take ONE parameter, the
+  campaign's id; the step door takes it from its PATH; the viewer is `liveViewerFor(userId)` — the stored role's three
+  cells, failing closed (L2).
+- **The driver watches more than the spec says it polls.** Decision 3: "a viewer who may not act polls". Built: EVERY page that
+  is not driving polls — also an acting viewer on a CONFIRMED or PAUSED campaign — so a page never goes stale beside an officer
+  who started, paused or resumed the campaign somewhere else. The loop is keyed on the MODE (drive / watch / off), not the
+  status, so PREPARING → RUNNING does not restart it and skip the gap; the mount's reap runs ONCE for PAUSED, CANCELLED and DONE
+  (a PAUSED campaign then watches; the other two end) — the reaper is the MOUNT's (and a retry's), never a status change's, so
+  a campaign the page drove to its end is not stepped once more after its last; it starts on a tick so React's development
+  double-run makes one call.
+  The gaps are the spec's: 2 s after work, the wait's `until` (5–30 s), 5 s when busy — read off `DriverStep.busy` / `.until`
+  alone (the re-review removed the reason). A thrown STEP ends the loop as "out of date" and is NEVER retried (it may or may
+  not have reached the server); ✅ as amended by the review's fix round, a thrown POLL — a read — is asked again after 10 s,
+  20 s and 40 s before the page says so; a refusal stops it with its own sentence (a lapsed 2-step with the step-up page's
+  link in ANOTHER tab and a "Try again"; a sign-in that ended with the sign-in link; a step the server could not finish).
+- **Acts answer with the campaign as it is now, and say what happened where it can be read.** A press that landed is a toast
+  (the service's sentence, then the audit-log warning when its row did not land — ruling 543); a REFUSAL stays beside the
+  controls in a callout until the next press (it names the way on, and a toast would be gone before it was read); an act whose
+  service THREW after being handed the campaign is `unfinished` — "this may or may not have happened … check it before you
+  press again" — never "nothing was done" and never a blind retry. Each answer carries the fresh view, so the page does not
+  wait out the driver. The campaigns list is revalidated only by an act that landed.
+- **Resume is asked once more after a `busy`** (one second later, in the action — `resumeWithRetry`), per the re-review:
+  it runs inside the campaign's step flight, so a double press or this page's own step mid-flight finds it taken. A second
+  `busy` is said.
+- **Make a copy spends the officer's `marketing.campaignSave` budget** (a copy IS a saved draft) and, when it lands, goes to the
+  composer at the new draft's address with the toast — ✅ except from a page that is DRIVING (the fix round: it would end the
+  only driver, silently), which stays and offers the draft as a link for a new tab; a refusal for the budget is
+  `rate_limited` in `copyRateLimitedSentence`.
+- **The status-expected control's reason is also printed** (Start on CONFIRMED, Pause on PREPARING / RUNNING, Resume on PAUSED
+  — when it is disabled): decision 4 says the reason lives in `title`, which a phone does not show. **The figures card exists
+  only once the list has people** (`LiveWhenListed`): a CONFIRMED campaign has nothing to count and no "0" is drawn. A tile
+  whose figure is null (below the floor) is not drawn — never a zero.
+- **The ghost is the real blocks** (status, controls, figures) drawn as a campaign being sent draws them, on the figures'
+  own grid (`live-geometry.ts`); only the first card's TOP EDGE is claimed equal (the drive measures it at 1280 and 360), the
+  card heights are recorded, not claimed — they depend on the campaign.
+- **The list.** A DRAFT row links to the composer, every other row to `campaignDetailHref`; a DRAFT id at the live address
+  redirects to the composer's canonical address for the viewer (`draftAddressFor`, STD-1 — ✅ the fix round; the first build
+  sent it to the bare `?draft=` one), outside the read's `try`. ⭐ **A PAUSED row's reason goes through
+  `pausedReasonSentenceFor({ reads, mayAct }, c, counts)`** — the live page's one function — with the row's own counts and the
+  viewer's two cells decided on the server (`viewerReadsContacts`, unchanged; and `viewerMayActOnCampaigns`, failing closed),
+  so below E23's floor a masked viewer reads the one neutral sentence and one who may only look is not told to press Resume.
+  `test:campaigns-page` 5f/5k re-pinned, 5b re-pinned and 5m new (executed, with five plants).
+- ⚠️ **The composer's confirmed line (decision 6) is U40b's**, on branch `marketing-s14-u40b`, which this lineage has not merged:
+  its `campaign-confirm.tsx` already reads `CAMPAIGN_SCREENS.detail` and `campaignDetailHref`, so merging it with this unit's
+  flip makes the line a link with no composer file touched here. Merge note: that branch's list link line puts the detail page
+  first for EVERY row — keep this unit's rule (a DRAFT goes to the composer).
+- **Proof:** `test:campaign-visuals` 41 claims — V1, V4–V11 and L2 are U47b-2's (V11 and L2 beyond the spec's V1/V4–V10: the
+  first render and every act's answer, and the stored-role viewer) and W1 now pins who imports the services (the actions file
+  ALONE) — with 65 in-process plants held (27 of them the page's); `test:campaigns-page` 40, red 29/29. Not driven: the
+  lapsed-2-step state (it needs a 2-step enrolment) is covered by the executed guard claims (V5) and the driver's stop (V6).
+- **The drive** (`qa:marketing-live`): the dev seed makes one runnable campaign of ten (eight to receive, one who stopped by their
+  link, one who never said yes) and staged rows for the states no engine run reaches cheaply; the page's own sentences come
+  from the seed's `?words=1` (read from `live-copy.ts` — the drive copies none); money-busy is the platform's bet-admission gate
+  held full; the window is `marketing-send-window`'s clock; the watcher is AUDITOR with Growth view (`?u23grant=view-only`).
+- ✅ **THE U47b-2 REVIEW'S FIX ROUND (S14, 2026-10-08 — 1 MAJOR, 9 MINOR, 8 NIT, no blocker): what it changed in this section.**
+  - ⭐ **MAJOR · the step is a route, not an action** (decision 3, amended above). `live-step-door.ts` holds every decision —
+    pure and drivable in-process — and `src/app/api/admin/campaigns/[id]/step/route.ts` is thin (four facts in, the door's
+    answer out, `Cache-Control: private, no-store`, no body read, exports `POST`/`dynamic`/`runtime` and nothing else).
+    `campaignStepAction` is gone (`actions.ts` holds six). The driver's `postLiveStep` is a `fetch`: POST, this origin's
+    cookies, no body, no cache; a typed refusal is an ANSWER whatever its HTTP status, and a body it does not know THROWS (the
+    page is out of date, and never asks again). The door adds two typed refusals the action never needed: `signed_out` (401 — no
+    session, in words, with the way back to sign in; the guard's redirect is caught, never followed) whose address is the
+    console's own scrubbed one (`adminNextDest`, ruling 551(a): the SECTION, never the campaign's `cmp_…` id — `campaigns` joins
+    `ID_CRUMB`, so the trail reads "Campaign" until the live page names the campaign itself with `AdminCrumbLabel`), and
+    `unfinished` (500 — a step that threw after the guard passed: a group may or may not have gone out, so the driver stops and
+    says so; a GUARD that could not answer is the same type in its own words, since nothing was asked of the campaign and
+    nothing may have gone out). Production's dependencies are frozen with the guard and the service by identity.
+  - **Presses (MAJOR's other half, MINORS 1, 2, 6).** A press in flight disables ITS OWN control (`live-presses.ts`: a ref guards
+    the double click, state shows the pending set); Stop is pressable beside a pending Pause, and a Pause answering never
+    closes the Stop dialog the officer is reading. A toast that carries a warning or advice — the audit row that did not land,
+    a copy that would message people again, a Resume overtaken by a Stop or a Pause or the end, held people who could not be
+    put back — is `warning` with `durationMs: 0` and stays until dismissed (`toastFor`: the act's own plain sentences fade, the
+    test being the six plain `LIVE_DONE` sentences and the plain copy one, so a sentence added later defaults to STAYING).
+    Make a copy from a page that is DRIVING (PREPARING / RUNNING, an actor's tab) stays and offers the draft as a link for a new
+    tab, in words (`LIVE_COPY_ELSEWHERE`); Pause and Stop take `softCheckStaff` (see decision 7).
+  - **What the page says (MINORS 4, 5, 8).** `live-decide.ts` is the page's decisions as pure functions and the components call
+    them. "Nobody is sending" reaches an ACTOR only once its own driver has stopped (never above "Keep this page open" on a
+    first paint) and a watcher whenever it is the data's fact; a PREPARING campaign's is "no chunk for 90 s" (the row's
+    `updatedAt`, which is also its last step) in its own words; the closed send window (the engine's own wait sentence) and
+    the switch's closing time reach a viewer who is not driving; a stopped driver's last wait is not shown. The page has ONE
+    live region (`live-announce.ts`: always mounted, polite, atomic) that says the headline and why when the STATUS changes —
+    never on mount, never every two seconds; no callout is `role="status"` any more. A disabled control's reason is printed in
+    words where it matters — a role's once for all five, the status's expected control's, and any that is not the plain "not
+    in this state" (Make a copy's too) — and every other one is named to assistive technology by the element
+    `aria-describedby` points at, never title-only.
+  - **The driver (MINOR 7).** A watcher's poll that fails in transit is asked again after 10 s, 20 s and 40 s before the page says
+    it is out of date; a step never is. The hook is split into `startLiveLoop` (the effect as a function with its cleanup) and
+    the hook that wires it.
+  - **The seed (MINOR 9 and a NIT).** `?busy=` is re-entrant: each hold keeps its own release in a closure and the original
+    limits are captured only while no hold is active, so two holds then `?busy=0` put the gate back at `maxInFlight` 36;
+    `?run=` and `?stages=` refuse (409) unless the rail is the console stub; `?words=` serves every sentence the drive asserts
+    (the new ones among them), and V16 holds that to the drive's own source.
+  - **NITs.** The Stop dialog and toast of a campaign that has not begun sending (`sendingStarted`: RUNNING, or PAUSED after its
+    list was finished) do not warn of "a group already being sent"; `LIVE_ACT_UNFINISHED` is said only when the answer carries
+    the campaign (else `LIVE_ACT_UNFINISHED_NO_VIEW`'s reload words); the draft redirect and a copy's address are the composer's
+    canonical one (`draftAddressFor`, STD-1); the list's act cell asks the ACT grant alone (`liveMayActFor`); the controls keep
+    the kit's `--tap-min` (no 44 px of our own — the ghost uses the token); the drive asserts reduced motion and a scrim click.
+  - ⚠️ **What a Pause can stop**, said once and true of every tab: everything that has not passed its last check. A slice still
+    gating is vetoed by its own re-read before the wire (E6); a group ALREADY past its last check still goes (at most one,
+    `SLICE_MAX`) — which the Pause and Stop toasts and the Stop dialog say. The step leaving the action queue is what lets a
+    Pause land while a slice is still gating; it never recalls a message the wire has. (A campaign still PREPARING has sent nothing:
+    its Pause says so, as its Stop does — `pauseBeforeSending`, the checker's round below.)
+  - **Proof.** `test:campaign-visuals` 46 claims (V12–V16 new) with 136 plants held, `test:campaigns-page` 40 (5k, 5m and 1e
+    re-pinned), red 30/30. V12 drives the door in-process on spies (POST only; cross-site refused before the session is read;
+    the guard first and the viewer and the service not asked on any refusal; the STORED role against a cookie that claims ADMIN;
+    a lapsed and a never-set-up 2-step refused in words with their links; no session told, never redirected; the service's own
+    answer, role-shaped; a typed `unfinished` for a throw in the guard or the step) and the route as Next calls it. V13–V15 EXECUTE
+    the driver's and the presses' hooks and the announcement on `scripts/lib/hooks-host.mts` (a minimal hooks host over React
+    19's dispatcher, with React's development double-run and a fake clock) — the cadence, a page that leaves, a flip, Try again,
+    no double press, Stop beside Pause — and V15 renders the real client for every status and viewer. ⭐ A hook's plant is its
+    file's SOURCE with one defect written in, compiled with esbuild and evaluated with only the imports the file has; every
+    executing claim also runs the compiled real source as a control, so a broken compile path cannot turn every plant red for
+    the wrong reason. (A red run is one run per plant, and with ~135 of them it found two limits of the suite itself, hidden
+    while it was under 100 runs: a recipient row's key grew a 13th digit at run 100 — `rowKeyOf` holds 999 — and V1 looked for
+    the sum "135" in text that includes the campaign's TAG, which carries the run number, so at run 135 it failed on the tag;
+    the audience line is taken out before the figures are looked for.) Not run by the builder (heavy; the lead runs them under
+    the lock): `tsc`, `qa:marketing-live` (the drive was extended — step cadence, Pause pressed while a step is in flight, Stop
+    beside a pending Pause, a second driving tab, the session ending under a driving page, a watcher's blip, the step door over
+    real HTTP — and syntax-checked only), the full `admin-section-gate` suite (it drives a browser) and the planting reds
+    (`red:admin-soft-gate`, `red:layout-staleness`).
+  - ✅ **THE INDEPENDENT CHECKER'S ROUND (S14, 2026-10-08 — no BLOCKER, no MAJOR; 11 mutations had survived every light suite).** What
+    it changed, and the claim that now holds each (all in `test:campaign-visuals`):
+    · the Provider's `onSettled` is `dialogAfterSettled(open, act)` (live-decide.ts): only the dialog the settled press belongs to closes —
+      a Pause answering no longer closes the Stop dialog the officer is reading, and a refused Start leaves no dialog over its refusal
+      (V15 runs the function and holds the Provider's call; M22, M23);
+    · `StopCallout` (all seven stop kinds, the step-up page at both its addresses), `RefusalCallout` and `CopyLinkCallout` are exported
+      and V15 draws each alone: the sentence, the one way on (the step-up link with the right words, Try again, Reload), `target="_blank"`
+      with `rel="noopener noreferrer"` on every link that opens another tab, and `role="alert"` on every alert;
+    · the trail names the campaign (`AdminCrumbLabel`, M15) and the ghost's buttons keep the kit's `--tap-min` (M16) — V15's source pins;
+    · the step door also requires the page's own header, `X-Kp-Step: 1` (`postLiveStep` sends it, the route hands it to the door): absent or
+      wrong is a 403 that asks nothing of the session, the viewer or the service — the belt for a client that sends no
+      `Sec-Fetch-Site`; V12 holds it, and the seam between what the client sends and what the door accepts;
+    · the door's production log names the error's TYPE alone (V12 calls it with a message that holds a number; M28);
+    · a Pause of a campaign still PREPARING says "Paused — nothing has been sent, and nothing will be until you resume."
+      (`pauseBeforeSending`, in `liveDoneIsPlain`) — `sendingStarted(c)` decides, as for the Stop (T4, V15);
+    · an answer that lands after the page was left no longer navigates (a mounted ref set in the effect, safe under React's double-run;
+      only the navigate is skipped); the link a copy leaves behind stays through every other press and goes with the next Make a copy (V14);
+    · the copy action's save budget — the guard, then `rateCheckAsync(userId, "marketing.campaignSave")` on a rule the rate limiter
+      knows, then the service; refused → `rate_limited`; no other press spends it — is held by V17, which compiles `actions.ts` with stand-ins.
+    Not run by the builder (heavy): `tsc`; `qa:marketing-live` (its door-over-HTTP now sends the header, and its copy-link step now
+    expects the link to stay through a Pause).
+
 **Premises checked.** The six doors and the page gate rules (`admin-section-gate.test.mjs` §0b′: one return, a literal
 title, a self-closing child), `CAMPAIGN_SCREENS.detail` false and its pin `test:campaigns-page` 5f/5k
 (`campaigns-page.test.mts:592-603`), the list link line (`campaigns/page.tsx:88`), `REACHED_WITHOUT_NAV`
@@ -2378,21 +2572,39 @@ title, a self-closing child), `CAMPAIGN_SCREENS.detail` false and its pin `test:
    counted) — `checkStart`'s fence counts both arms whoever asks. U47b's to build.
 2. **The view-model** (`campaign-live.ts`) — ONE function, used by the page's first render AND returned by every step and
    poll, so the browser never computes a figure. Role-shaped: E23's floor; money only for `campaignMoneyVisible`.
-3. **The driver** (`live-driver.tsx`, client): while the status is PREPARING or RUNNING and the viewer may act, it calls
-   `campaignStepAction(id)` — next call after `STEP_GAP_MS` (2,000 ms) when work was done, after the wait's `until` (capped
-   at 30 s, at least 5 s) when waiting, after 5 s when busy; it stops on a terminal status. A viewer who may not act polls
-   `campaignViewAction(id)` every 10 s. On mount for PAUSED/CANCELLED/DONE an acting viewer calls the step once (reap). A
-   thrown call (deploy skew, network) stops the loop and shows "This page is out of date or lost its connection — reload it
-   to keep sending. Nothing is lost." with a Reload button. A lapsed 2-step stops it with the second-factor sentence and
-   link. `document.hidden` slows nothing on purpose (the browser does).
+3. **The driver** (`live-driver.tsx`, client): while the status is PREPARING or RUNNING and the viewer may act, it POSTs to the
+   **step door** — `POST /api/admin/campaigns/<id>/step` (`postLiveStep`) — next call after `STEP_GAP_MS` (2,000 ms) when work
+   was done, after the wait's `until` (capped at 30 s, at least 5 s) when waiting, after 5 s when busy; it stops on a terminal
+   status. A viewer who may not act polls `campaignViewAction(id)` every 10 s. On mount for PAUSED/CANCELLED/DONE an acting
+   viewer calls the step once (reap). A thrown STEP (deploy skew, network) stops the loop and shows "This page is out of date
+   or lost its connection — reload it to keep sending. Nothing is lost." with a Reload button; a thrown POLL is asked again
+   after 10 s, 20 s and 40 s first. A lapsed 2-step stops it with the second-factor sentence and link.
+   `document.hidden` slows nothing on purpose (the browser does).
+   ✅ **AMENDED (the U47b-2 review's MAJOR, S14 2026-10-08): the step is a ROUTE, not a server action.** Next 16 runs the server
+   actions a page invokes ONE AT A TIME, in the order they were called (measured: a Pause clicked 3 s into an 8 s slice reached
+   the server at 8 s), and the step is the one call that takes seconds — so as an action it made every press wait behind it:
+   the driving tab's own Pause arrived when the slice it was pressed to stop had returned. The door is built like
+   `contactsExportDoor` and the preview doors: POST only (405 naming POST), never cross-site (`Sec-Fetch-Site`, asked before
+   the session is read) and carrying the page's own header (`X-Kp-Step: 1`, the belt for a client that sends no `Sec-Fetch-Site`; absent
+   or wrong, a 403 that asks nothing), the id from the PATH and the body never read, the same guard as the action had FIRST
+   (`softCheckStaff`, growth — a lapsed 2-step refused in words with the step-up link, a visitor with no session told in words
+   with the section as the way back, never a redirect), the viewer from the STORED role, the same service, the same answer as
+   JSON with `Cache-Control: no-store`, and a throw a typed `unfinished` (never a 500 page). ⚠️ **What a Pause can stop**,
+   from this tab or any other: everything that has not passed its last check; a group already past it still goes (at most
+   one, `SLICE_MAX`) — which the Pause and Stop toasts and the Stop dialog say. Taking the step out of the queue is what lets
+   a Pause land while a slice is still gating.
 4. **Controls** — never hidden, disabled with the reason in `title`: Start (CONFIRMED) · Pause (PREPARING, RUNNING) · Resume
    (PAUSED) · Stop (any non-terminal) · Make a copy (any non-DRAFT). Start and Stop open a kit `ConfirmModal` (medium tier,
    focus on Cancel); Pause and Resume act at once with a toast.
+   ✅ As amended by the U47b-2 review: a press in flight disables ITS OWN control only (Stop is pressable while a Pause waits);
+   a disabled control's reason is printed in words where it matters and named to assistive technology otherwise, never
+   title-only; a toast that carries a warning or advice stays until dismissed.
 5. **The list:** a DRAFT row keeps linking to the composer; every other row links to the detail page; `CAMPAIGN_SCREENS.detail`
    flips to true in this commit, with the `REACHED_WITHOUT_NAV` row and 5f/5k re-pinned; a DRAFT id opened at the detail
-   address redirects to `campaignDraftHref`.
+   address redirects to the composer (✅ as built: its canonical address for the viewer, `draftAddressFor`).
 6. **The composer's confirmed line** links to the detail page (U40b D4).
-7. **Who acts:** growth act grant (`softRequireStaff("growth", …)`); the owner's control is the switch (E27).
+7. **Who acts:** growth act grant (`softRequireStaff("growth", …)`; ✅ as built, Pause, Stop and the step take
+   `softCheckStaff`, which refuses a lapsed 2-step in words); the owner's control is the switch (E27).
 8. **Live progress, as the brief asks:** the KPIs are waiting (queued) · handed over (sent) · failed · not sent (skipped by
    the checks) · no answer; under "Not sent", the reasons in the five U38b words (`AUDIENCE_BUCKET_OF`, protected one line),
    dominant first, each with its count — all from ONE `groupBy` over `(status, skipReason, failureClass)` for the campaign,
@@ -2410,14 +2622,20 @@ title, a self-closing child), `CAMPAIGN_SCREENS.detail` false and its pin `test:
 | `src/lib/server/marketing/campaign-live.ts` | create | `campaignLiveView` |
 | `src/app/admin/campaigns/[id]/page.tsx` | create | own `AdminPageGate title="SMS campaign"`; server render of the view; `AdminLoadError`; missing → words + "Back to SMS campaigns" |
 | `src/app/admin/campaigns/[id]/loading.tsx` | create | ghost = real blocks |
-| `src/app/admin/campaigns/[id]/actions.ts` | create | `campaignStepAction`, `campaignViewAction`, `startCampaignAction`, `pauseCampaignAction`, `resumeCampaignAction`, `stopCampaignAction`, `copyCampaignAction` |
+| `src/app/admin/campaigns/[id]/actions.ts` | create | `campaignViewAction`, `startCampaignAction`, `pauseCampaignAction`, `resumeCampaignAction`, `stopCampaignAction`, `copyCampaignAction` (✅ the review's MAJOR: the step is no action — next two rows) |
+| `src/app/admin/campaigns/[id]/live-step-door.ts` | create | ✅ `campaignStepDoor` — every decision of the step door (POST only, same-origin, guard first, stored-role viewer, typed answers) |
+| `src/app/api/admin/campaigns/[id]/step/route.ts` | create | ✅ `POST /api/admin/campaigns/<id>/step` — thin: four facts in, the door's answer out, no-store |
 | `src/app/admin/campaigns/[id]/live-client.tsx` | create | KPIs, bars, chips, controls, dialogs, the standing callouts |
-| `src/app/admin/campaigns/[id]/live-driver.tsx` | create | the loop |
+| `src/app/admin/campaigns/[id]/live-driver.tsx` | create | the loop, the step door's client (`postLiveStep`), the hook |
+| `src/app/admin/campaigns/[id]/live-decide.ts` | create | ✅ the pure decisions the components call (who may act, a control's state, which reasons are printed, every callout's condition, a toast, where a copy goes, the live region's words) |
+| `src/app/admin/campaigns/[id]/live-presses.ts` | create | ✅ the five presses' state: per-control pending, the last refusal, the copy link |
+| `src/app/admin/campaigns/[id]/live-announce.ts` | create | ✅ the page's one live region |
 | `src/app/admin/campaigns/[id]/live-copy.ts` | create | every sentence |
 | `src/lib/marketing/campaign-status.ts` | modify | `CAMPAIGN_SCREENS.detail = true`; `officer_paused`/`officer_stopped` sentences |
 | `src/app/admin/campaigns/page.tsx` | modify | the link rule (D5) |
 | `src/app/admin/campaigns/new/composer-loader.ts`/`composer-client.tsx` | modify | the confirmed line's link |
 | `scripts/campaign-visuals.test.mts` | create | `test:campaign-visuals` + `--prove-red` |
+| `scripts/lib/campaign-visuals-page.mts`, `scripts/lib/campaign-visuals-live.mts`, `scripts/lib/hooks-host.mts` | create | ✅ the page's claims (V1, V4–V11, L2); the fix round's V12–V16 (the door, the hooks EXECUTED on a minimal hooks host with a fake clock, the decisions, the seed — plants are the file's source with one defect, compiled); the host |
 | `scripts/campaigns-page.test.mts`, `scripts/admin-nav.test.mts` | modify | 5f/5k; the REACHED row |
 | `scripts/live/marketing-u47-live-drive.mjs` | create | `qa:marketing-live` |
 
@@ -2443,6 +2661,8 @@ export type CampaignLiveView = {
 };
 export async function campaignLiveView(id: string, viewer: { userId: string; mayAct: boolean; reads: boolean; money: boolean }): Promise<CampaignLiveView | null>;
 export type StepActionResult = { ok: true; step: SliceStepResult | EnqueueStepResult | { kind: "reaped"; reaped: number } | { kind: "idle" }; view: CampaignLiveView } | { ok: false; reason: "role" | "second_factor" | "not_found"; error: string };
+// ✅ As built: the step is `DriverStep` (no figure, no cursor, no reason), carries `said`, and the step DOOR's JSON also holds
+// { ok: false; reason: "signed_out" | "unfinished"; error: string; href?: string } — LiveStepAnswer, live-run.ts.
 ```
 
 **States and sentences** (`live-copy.ts`).
@@ -2579,6 +2799,73 @@ itemised · attribution ignoring a newer campaign.
 route for a finished campaign move "Delivered"; the honesty line before and after; the floor as GROWTH; 1280 · 360; tiles
 read. **Risks:** a receipt vocabulary beyond `DELIVRD` is still synthetic (BLACKBALL-SMS §8). **Owner decision:** none.
 
+✅ **AS BUILT — U48a (S14, 2026-10-08): every place the build reads this section, says what it added, or reads it more widely than it
+is written, said once.** Files: `src/lib/server/marketing/campaign-results.ts` (new — the three reads, the rules, the stop walk and its
+memory, the builder), `campaign-live.ts` (`CampaignResultsView` is real; `results` filled; `LiveViewDeps.results`),
+`src/app/admin/campaigns/[id]/results-card.tsx` (new), `live-copy.ts` (the words), `live-geometry.ts`, and — U47b-2's, kept small — `page.tsx`
+(one import and one block), `loading.tsx` (the ghost's block, and no reasons rows in the figures card's) and `live-client.tsx` (`useLive` is exported, and the figures card's reasons list is guarded — Mount, below); the DAL (below);
+`scripts/lib/campaign-visuals-results.mts` (R1–R13, run by `test:campaign-visuals`), the dev seed and the drive.
+- ⭐ **Two NEW READ DOORS — the section's "Files" named none, and the spec's reads need them** (U47b-1's `countByOutcome` precedent):
+  `smsCampaignRecipient.countSentBefore(campaignId, before)` — ONE count of the campaign's rows still SENT and handed over STRICTLY
+  before the bound (E5's "older than 15 minutes"; a DELIVERED, receipt-failed, unanswered or other campaign's row never) — and
+  `handedOverPage(campaignId, after, limit)` — ONE keyset findMany of its SENT and DELIVERED rows that carry an instant, by number, on the
+  unique (campaignId, msisdn) index, selecting `{ msisdn, sentAt }` alone (E30's walk). Both twins, the named type `SmsCampaignHandedOver`,
+  the rule set first (`assertSentBeforeRead`, `assertHandedOverRead`; the page's bound `SMS_HANDED_OVER_PAGE_MAX` is §25's 2,000).
+  Held by `test:dal-parity` §26.u48a (+ five anchors), `test:campaign-models` §2.33 (+ 8 plants), `test:campaign-privacy`'s
+  `P10_ACCOUNTED` (two reads) and `db:probe-campaign-models` §14 (written, never run by the builder). **No schema and no index**:
+  the count is answered from the (campaignId, status) index and then each SENT row's instant, and is asked only when some row is SENT; a
+  `(campaignId, status, sentAt)` index would make it index-only — not added (decision "none"), for the integrator to weigh at U52a.
+- ⭐ **`results` is `null` below E23's floor and for a campaign with nobody on its list** (decision 3 and the brief's "the floor sentence
+  alone"): the figures card's `view.floor` is the one sentence the page says, nothing in the results can name a split, a reason, a price
+  or whether anybody was messaged, and `LiveWhenResults` draws no card. A viewer who may read money but not numbers is floored too.
+- **Decision 1's figures, as built.** Delivered = the rows a receipt moved to DELIVERED (`rules.delivered`) and nothing else. Handed over,
+  no receipt yet = SENT. No receipt after 15 minutes = the SENT rows whose own `sentAt` is STRICTLY older than now − 15 min (a sub-row of the
+  one above; shown while some are SENT). Failed = FAILED rows split by their class — no `receipt:` prefix = "the network refused it", a
+  `receipt:` prefix = "not delivered (receipt)"; every FAILED row is exactly one. Not sent = the figures card's OWN reasons list (handed
+  in, so the five words, protected ONE line, dominant first, zeros too are worded once — the kit's `AdminBarList` in its default ink,
+  which is "neutral" as U38b's card reads OD40: no danger colour). No answer = UNCONFIRMED. Waiting = PENDING + HELD, and for a CANCELLED
+  campaign "Stopped before sending" = the headline's own figure (`resumeOutstanding`, a list that never finished included). No answer and
+  Waiting/Stopped are drawn only when there is one; the rest always. Every figure is read off the view's ONE groupBy (asked once); only the
+  15-minute count, the stop walk and — for a money reader — the price are read besides.
+- ⭐ **Decision 2's lines, from the data.** The first (OD41) stands while something was handed over (SENT or UNCONFIRMED) and NO receipt of
+  any kind — delivered, or a failure's — has reached the campaign; gone by itself after one. The second stands in the same state when
+  `receiptsSetUp` is false — ⚠️ **made exact, not "the secret is set"**: it is the DLR route's own `authorized` rule (open in development
+  with no secret and the stub; a secret counts only at the route's 16-character floor, the rotation's previous secret too — `test:campaign-visuals`
+  R7 holds it equal to the route's real function over eleven environments). ⚠️ **Its tail is not the spec's**: "Admin → System → Diagnostics
+  says how to fix it" is false on this tree (the Diagnostics tab says nothing about receipts), so the line ends "— ask the developer to set
+  them up." — to be put back when a Diagnostics line exists. The price line is the spec's sentence word for word; its "handed over" is the
+  figures card's tile (SENT + DELIVERED) and its price the owner's settings read fresh (`ok` and `readable`, else no line); for a money reader
+  above the floor only, never while nothing is handed over.
+- ⭐ **Decision 4 (stopped by their link), and what it costs.** Handed-over = SENT and DELIVERED rows with an instant (a FAILED message never
+  reached its person; an UNCONFIRMED one carries no instant to date a stop against). The walk is in chunks of 1,000, each chunk's active
+  stops in ONE `findActiveAmong`; a stop counts when its reason is WITHDRAWN, its evidence starts `optout:` (the REAL opt-out service's —
+  R4 makes one with it) and it was created at or after the message; attribution (E30) asks `listByMsisdn` for each such stop and drops it when
+  ANOTHER campaign handed that number a SENT/DELIVERED message after this one's and no later than the stop. ⚠️ Known limits, said: a stop's
+  `createdAt` is when the person first said no (a stop lifted and made again keeps it), and a stop by a TEST send's link is not told apart.
+  ⭐ **It is the one expensive figure, so it is bounded:** production keeps a campaign's count for 30 s (single-flight; a failed read is never
+  kept) and a view waits for it at most 4 s — a slower walk says "couldn't be counted just now" this once and finishes in the memory for the
+  next view. A figure that could not be read (this one, the 15-minute count) is a dash and a sentence, never a zero, and never fails the view
+  or stops its driver. A stop is therefore read up to 30 s late (the drive waits it out).
+- **Mount.** The card shares `LiveProvider`'s state through `useLive`; `page.tsx` draws `<LiveWhenResults>` after the figures, in the block
+  `live-results`, in an `AdminCard` titled "Results"; the ghost has the matching block. ✅ **The reasons are printed ONCE** (the merge with the
+  U47b-2 review's fix round, S14 2026-10-08): the figures card draws its own "Not sent, by reason" list only while the view has NO results
+  (`view.results === null`). Wherever a view carries the reasons it carries results as well — the floor hides both, and a campaign with
+  nobody on its list has no figures card — so in practice the results card prints the list and the figures card none: the figures card's
+  ghost lost its reasons rows to match, the drive reads whichever list is drawn (`[data-live-reasons]` or `[data-results-reasons]`) and
+  asserts there is one, and `test:campaign-visuals` R13 holds it (V7 holds a reader's figures card to the tiles and the chips).
+- **Proof:** `test:campaign-visuals` 60 claims on the merged tree (R1–R13 are U48a's — R1 drives the REAL DLR route, R4 the REAL opt-out
+  service), 206 plants held (38 of them the results'; the old plants R-S1/R-S2/R-S3/R-S4 also turn results claims red, and say so); the
+  suite's recipient keys are the review's `rowKeyOf`, its row part now a per-world COUNT of rows (the results' claims seed over a hundred
+  lists a world, and the first row part — the call's number times a thousand — grew a sixth digit at the hundredth call, a 13-digit number
+  `isGatewayMsisdn` refuses); V12 counts the step door's security rows BY IDENTITY, not by a before-and-after total (the in-memory audit
+  ring holds 10,000 entries, a red run of ~175 worlds fills it, and from then on the total no longer moves by one); `--only=<text>` runs a
+  SUBSET of the plants (said as one on its verdict line — the full run is the proof); `test:campaign-models` 54 claims, red 100/100;
+  `test:dal-parity` §26.u48a;
+  the drive (`qa:marketing-live`): the results card at 1280 and 360 — written, `node --check`ed, its server side (seed → Start → the
+  engine on the console rail → receipts POSTed at the real route → a stop by link → the staged states) exercised in one process; the five
+  new `red:dal-parity` anchors run alone on a copy of the tree, as the harness does, each failing exactly the one claim it names; the
+  drive's first run and `db:probe-campaign-models` §14 are the integrator's, under the lock.
+
 ---
 
 ### 4.17 · U48b · The recipients table and the export
@@ -2634,6 +2921,10 @@ browser checks or each logged NOT RUN.
 clicks are made by Jay (an ADMIN) on www.50pick.tz, signed in as himself, with Claude reading evidence read-only. Each
 chargeable SMS costs about TZS 6 (G3: the drive's cap is 6 sends = TZS 36). Run inside 08:00–20:00 EAT.
 
+> ✅ **AMENDED 2026-10-08 (Ali) — the clicks are Claude's, not Jay's.** Claude creates its own test users on production and signs in as
+> its own GROWTH login "QA Growth (Claude)"; the SMS still go only to the approved test number; there is no control number
+> (§7 Q4's "If none"). Read "AS BUILT — the run sheet" at the end of this section before this paragraph and decision 2.
+
 **Decisions.**
 1. **Pre-flight, read-only** — `npm run ops:marketing-preflight` (create; ONE `SET TRANSACTION READ ONLY` transaction
    through the Postgres public proxy, STEP 29's pattern): production serves the expected `?dpl=`; the U43-0 migration row is
@@ -2667,6 +2958,260 @@ chargeable SMS costs about TZS 6 (G3: the drive's cap is 6 sends = TZS 36). Run 
 2026-10-03).
 **Owner decisions.** The test number and Jay's time (Q4), the control number (Q4), the switch window (G1), the TZS 36 (G3),
 and after it — G2.
+
+✅ **AS BUILT — the run sheet (U52a's tools, S14, 2026-10-08; the fixes of two independent reviews the same day).** Two read-only tools, their shared core and boot module, a ledger and this sheet are built and proven on a stand-in database (`test:marketing-preflight`; `red:marketing-preflight` plants each defect in memory — the tools' and the core's own text included, loaded from a data: URL with no file written — and requires exactly the claims it names to fail). **Nobody has run them against production.** Their SQL has been read, mutated and independently reviewed, but has never met a real PostgreSQL: **`npm run -s db:probe-marketing-u52a` — both tools end to end on a scratch cluster — must be GREEN, run by the lead under the heavy-node lock, BEFORE step 0 touches production** ("Before the day" 1).
+
+**What changed since the decisions above were written (Ali, 2026-10-08).** Claude now creates its OWN test users on production and
+deletes them when testing is done. So the clicks of decision 2 are made by Claude, signed in as its own staff login **"QA Growth
+(Claude)"** (role GROWTH — never Ali's, never Jay's, never an ADMIN's). The SMS still go **only to the approved test number**
+(+255 772 619 619, a real phone nobody needs to touch). The "tap" on the stop link is made by opening the stop link's URL in a
+browser (`/s/<token>` is public — no sign-in), the URL read from the test number's row by the evidence tool. The suppressed
+**control** is §7 Q4's fallback ("If none"): there is no second number, and the refusal is proven on the test number itself —
+**sent while eligible (A) · refused after its stop (B) · sent again after "Start them again" (C)** — one number, one message, one
+list; the only thing that changed between A and B is the stop. The same-run control is recorded as NOT done. Wherever decision 2
+says "Jay", read "the test number"; its eight steps keep their order.
+
+**The tools** (both read-only, both exit non-zero unless what they were asked is true):
+
+| Tool | Key | Reads | Exit |
+|---|---|---|---|
+| `scripts/live/marketing-preflight.mjs` | `ops:marketing-preflight` | `now()` (the DATABASE's clock — every time rule is judged on it); `_prisma_migrations` (by name); `SystemConfig` (the live switch, the Marketing SMS settings, the licence-outreach record, the saved wordings — read to recognise an import attestation and to see that `source.phrase` and `adult.test` are saved); the test number's book row, its lists (name, member count), the newest basis per list, its stops, its newest ledger row, the holding account (role, status, switch, date of birth → an age band, never shown) and earlier campaign rows; ⭐ every campaign that could send now (id and status of those CONFIRMED, PREPARING, RUNNING or PAUSED) and ONE COUNT of the last day's MARKETING `SmsMessage` rows to any number but the test number (counted in SQL — no number is selected); the control's stops; the public home page (`?dpl=`) and `/api/health` (`sms.*`, a flag for the receipt secret — never the secret); the ledger file | 0 every row GO · 1 a NO-GO · 2 not run |
+| `scripts/live/marketing-campaign-evidence.mjs` | `ops:marketing-campaign-evidence` | `now()`; one campaign: its row, its recipient rows (masked), the `SmsMessage` rows of those rows and of the composer's tests (for each, only whether it went to the TEST number — a yes/no computed in SQL, never the number), its E24 audit rows (through an allow-list), the live switch's last eight audit rows, the named people's stops and ledger timeline; ⭐ with `--test`, the same ONE COUNT of the last day's marketing messages to any number but the test number (of ANY campaign); the stop token only under `--show-stop-link`; the ledger file. No network call | 0 every expectation holds and the ledger took the count · 1 not proven / a violation / the ledger refused / no such campaign · 2 not run |
+
+Both go through ONE Postgres transaction — REPEATABLE READ, so their dozen reads are one snapshot — whose first statement is
+`SET TRANSACTION READ ONLY` (read back; nothing runs unless the database says `on`); every other statement is a SELECT.
+**Before anything is loaded**, each tool rewrites Railway's PRIVATE database host (`postgres.railway.internal`, which `railway run`
+hands this PC and only Railway resolves — matched in any letter case, with or without a trailing dot) to the public proxy, host and
+port 40357 — exactly as `ops:provision-staff` does, the user, password and database untouched — loads the shared core by a DYNAMIC
+import (a static import is evaluated first: the bug the marketing referee-keys door had on production), and refuses in ONE line,
+exit 2, to start from a directory that is not the checkout it belongs to (the repo's imports resolve through that directory's
+`tsconfig.json`): `cd` to the checkout and run the same command again. ⭐ A tool knows it is the program by REAL path (`isMain`): Node's
+main URL is the script's real path while `process.argv[1]` keeps the path as typed, so through a junction or a symlink the two differ,
+and the old comparison made the tool a **silent no-op — exit 0 and not one line printed, on a tool whose exit 0 means "GO"**. Run
+through a junction, a tool now says the one line above and exits 2 (a junction made in the temporary directory is part of the suite).
+`DATABASE_URL` is never printed; the report says ONE word for the database it read — `proxy`, `loopback` or `other` — on its
+"transaction read-only" line. A `SystemConfig` value stored as TEXT is malformed, as the app's readers read it (an object or nothing);
+it is never parsed into an object here. The numbers arrive as `--test=` and
+`--control=`, are judged by the repo's numbering plan, and print only as the repo's mask (`+255••••NN`); an output filter behind
+that takes any whole number the tool was given — in any spelling: up to six dots, slashes, spaces, dashes, tabs or zero-width marks
+between its digits, a line break through it, another script's digits, next to a letter or a digit — and, for a number it was NOT given,
+any grouping of the digits by a space, bracket, dot, hyphen, slash, underscore, en dash, minus sign, tab, no-break or thin space or
+zero-width mark; the database address and every secret-named value out of any line (a text is made safe BEFORE it is cut to a
+line or to the 160 characters of an error). They select no
+person's name, e-mail, address, message body, `ip`, `userAgent` or hash; **the one name they select is a contact LIST's** (shown only
+when it reads as a plain label, else hidden). The pre-flight's only network calls are two GETs of the public site, the home page and
+`/api/health`; ⚠️ the second makes the SERVER refresh its cached SMS balance from the SMS vendor (a balance query, not a message,
+bounded and rate-limited on the server) — the only thing either tool can make anything else do. Both run through `tsx` (they import
+the repo's pure modules). **Run them through `npm run -s`: npm's banner echoes the whole command line — the typed number with it.**
+
+**The pre-flight's rows** (`build · health · migrations · switch · settings · source · window · rail · webhook · credit · ledger ·
+in-flight · elsewhere · test-number · test-book · test-lists · test-consent · test-cycle · test-fresh · control` — twenty), each GO /
+NO-GO with its reason. The **control** row is n/a without `--control` (the fallback), so a full GO reads `RESULT: GO — 19 of 19 rows (1
+not applicable)`. Every time rule reads the database's clock; the report says whose clock it used and how far this machine's is from it.
+A value flag is taken ONCE — a second `--test` (or `--origin`, `--sends`, …) is refused, never silently dropped; only
+`--drive-campaign` repeats.
+- **`source`** — the newest saved `source.phrase` is not blank (the composer will not save a campaign without a source line) and,
+  while licence outreach is OPEN, the 18+ sentence of the typed-number test (`adult.test`) is saved too (the composer refuses that test
+  up front without it). Only the version and the save date are shown, never the words.
+- **`window`** — now is inside the SAVED send window (the Marketing SMS settings' `windowStartMinute`–`windowEndMinute`, the default
+  08:00–20:00 only when nothing is saved; the end is exclusive, as the engine's) **with at least 60 minutes left** (`--min-window=<minutes>`
+  changes the 60): a start at 19:55 is held at 20:00, so inside the window is not enough.
+- ⭐ **`in-flight`** — nothing else can send while the switch is open: NO-GO while any campaign is CONFIRMED, PREPARING, RUNNING or PAUSED
+  other than the drive's own, named with its id and status. The drive's own are named with `--drive-campaign=<id>` (repeat the flag for
+  each); steps 0 and 1 name none, so any such campaign there is a stranger.
+- ⭐ **`elsewhere`** — NO-GO while one MARKETING message created in the last 24 hours went to any number but the test number, of any
+  campaign (the count is taken in SQL; no number is selected). The evidence tool carries the same check as a standing line.
+- **`test-lists`** — GO only when the test number is on a list with **EXACTLY ONE member** (two, none and an unknown size are NO-GO) **and
+  a name this tool can print**; that list is named as **the one campaign A must use**, and any larger list the number is also on is named
+  as **never to pick**. A larger list alone is NO-GO ("the drive list must hold the test number alone"): a campaign "to a book list"
+  messages everyone on it. A list of one whose name the tool will not print (an accent, a symbol, over 40 characters) is **NO-GO — rename it
+  to a plain name** so the sheet can point at it (its id is printed beside it so it can be found); beside a plain-named list of one it is only
+  mentioned.
+- **`test-consent` is the gate's consent-and-basis half, ported and held
+  to the real `mayReceiveMarketingSms` over a table of scenarios in the suite (a contact: stop × newest ledger row × licence record ×
+  book standing; an account: switch × newest row × record × age × status); it does not judge what the gate asks again at the send for an
+  account holder — self-exclusion, cooling-off, harm markers, an identity check's final refusal, under 25 with a break on record.**
+  An account whose 18th birthday falls within a day or two of now reads as the boundary and is NO-GO (stricter than the gate, never looser).
+  ⭐ **The agent-referee exclusion is NOT judged (decision of the merge round, STEP 54; option b).** Main's gate refuses `agent_referee`
+  right after the stop list, before any basis, consent included, for a number kept as an agent applicant's referee (U33r). Judging it
+  here would mean computing the keyed hash of the number — and of the e-mail of the account and of the book row at that number — under
+  the production pepper and reading `AgentRefereeKey`: secret material a read-only tool does not touch, and a second definition of a
+  keyed read that could answer "not held" falsely. So **both consent rows (`test-consent` and `test-cycle`), GO or NO-GO, say plainly
+  that it is not judged and that a held referee is SKIPPED `agent_referee` at the send**; the safe direction is the real gate's own
+  refusal, and the evidence names the reason (`--expect=skipped=agent_referee:test`; a row skipped for it is explained as "cannot be the
+  drive's test number"). `test:marketing-preflight` P6d holds the real gate to this over 1,056 more scenarios (the exclusion held by the
+  number, by the book row's e-mail, by the account's e-mail): it refuses `suppressed` first, else `agent_referee`, and the port never reads a
+  GO without carrying the exclusion in its `unjudged` list. ⚠️ One family differs in the SAFE direction: an account whose own switch is off
+  after a consent that was never withdrawn, while the licence record is OPEN, is reached by main's gate (the owner's final rule, the lapse
+  reversal) and still refused `no_consent` by the port — stricter, never looser, named and counted by P6d (18 scenarios); aligning the port
+  waits for a person's word.
+- ⭐ **`test-cycle` is the trap the stop link sets for campaign C:** "Start them again" writes a new newest ledger row (an SMS-naming
+  yes from the opt-out page, no officer behind it), so a CONTACT whose 18+ rested on an import-attestation row loses that evidence
+  at the moment of the lift — C would then be SKIPPED `age_unknown` — unless a list basis covers them (or an account holds the
+  number, whose age is the account's). The pre-flight models the two acts and says so BEFORE anything is sent.
+- **`test-fresh`** — NO-GO while any earlier campaign row, in any status, holds the test number.
+- **`ledger`** — see "The ledger": a missing file is NO-GO unless `--new-ledger`.
+
+**The evidence's expectations** — `--expect=<outcome>:<who>[,…]`, who = `test` | `control`: `sent` (SENT or DELIVERED, and a message of
+the row is on the wire) · `delivered` (a receipt moved the row) · `skipped` (SKIPPED `suppressed` with NO message on the wire;
+`skipped=<reason>` names another gate reason) · `stopped` (an active WITHDRAWN stop from the link, made after this campaign's message —
+E30) · `resumed` (that stop lifted from the link, and the newest ledger row is that yes). Also `--expect-sends=<n>` (the exact count
+of chargeable messages: the composer test's AND the campaign's), `--expect-audit=<marketing.* action>[,…]` (those E24 rows exist —
+⭐ and `marketing.campaign_paused` is proven only by the OFFICER's pause, a row with an actor and the reason `officer_paused`: the
+engine writes the same action for its own pauses, a SYSTEM row with another reason, and those are named as "not it" but never counted),
+⭐ `--expect-audience=<n>` (the campaign's CONFIRMED count — the people the confirmation fixed — is exactly n; allowed on a `--look`: the
+sheet reads it BEFORE every Start, and a campaign confirmed for another number, or never confirmed, says `DO NOT PRESS START` and exits 1),
+`--label=<A|B|C|T>` (letters and digits, never a number: a run of five digits, or anything the number wall would change, is refused),
+`--look` (look, no verdict), `--show-stop-link`, `--new-ledger`. A value flag is taken ONCE (a second `--test` is refused); only
+`--expect` and `--expect-audit` repeat. ⭐ **A missing row is never a refusal** (it fails every
+outcome but `stopped`/`resumed`); **a skip for another reason proves nothing about the stop** (`skipped=agent_referee` names the gate's
+U33r reason, and a row skipped for it is explained: that number cannot be the drive's test number); and — **whatever was asked, a
+verdict or only a look** — these are VIOLATIONS that turn the exit to 1 by themselves, and the RESULT line says so: **a message handed to a
+named number after a stop was in force when the engine took them up; a recipient row with MORE THAN ONE chargeable message (the
+engine sends one per row; a first attempt the gateway refused — FAILED, no receipt, so it never left — and the engine's retry of it are not
+two); a message — the composer's tests included — to any number that is not the test number** (computed in SQL as a yes/no; the number
+is never selected); **and, with `--test`, any MARKETING message created in the last 24 hours to a number but the test number, of ANY
+campaign** (the standing line `NO OTHER MARKETING SMS`; one COUNT in SQL, and a count that was not read is a violation too). With the gate removed, B's `skipped:test` FAILS because the row is SENT (the plan's RED). The evidence says
+plainly that **the engine records no gate or send milliseconds** (the slice's `gateMs`/`sendMs` go to the page's driver and are not
+stored); what it prints is what the rows' own stamps give — people per claim, claim → hand-over, the gap between claims.
+
+**The ledger** — `.qa-shots/marketing-setup/U52a/ledger.json` (gitignored), written atomically by every evidence run: one entry per
+campaign id holding its chargeable count (the composer test's + the campaign's), its label, the test/control outcomes and the
+verdict; every string passes the number wall on its way to the disk. A message counts unless it provably never left (a FAILED row with
+no receipt); QUEUED, UNKNOWN, ACCEPTED, DELIVERED and a receipt-failed row all count. An entry is a high-water mark (a re-run counts
+nothing twice; a lower later read never shrinks it).
+**The cap is six and is a constant of the code: a run whose count would make a seventh is REFUSED — the file is not updated, the
+evidence says `LEDGER REFUSES`, the exit is 1 — and the drive stops.** A ledger file that is not JSON, names another cap or holds a
+bad entry stops the run (exit 2) and is never reset for you. **Every run prints the ledger's ABSOLUTE path and when it was last
+written, so a ledger in the wrong checkout shows at once. A MISSING file is created only on purpose:** the pre-flight's `ledger` row
+is NO-GO and the evidence stops (exit 2) unless `--new-ledger` says the drive has not begun — the flag belongs to the first runs only
+(steps 0, 1 and 2 of the sheet) and is REFUSED once a ledger exists; a ledger that goes missing later means the counts were lost or
+this is another checkout, and the drive STOPS. The pre-flight only reads the ledger; the first evidence run (step 2) writes it.
+`ops:marketing-campaign-evidence -- --ledger [--sends=n]` prints the table (the cross-campaign discrimination: A sent · B refused ·
+C sent) and, with `--sends`, whether n more would fit — it needs no database. The pre-flight's `--sends=n` (default 1) refuses a step
+whose sends would pass the cap. ⭐ **The cap gates, it does not only meter:** the sheet runs `--ledger --sends=1` (or the pre-flight, whose
+`ledger` row says the same) BEFORE every step that can send — 2, 3, 5, 7 — and before any retry ("The gate", below); exit 1 is STOP.
+⭐ **A count that could not be written stops the drive:** the file is written through a temporary file and a rename that waits and tries
+again (up to five more times: 50 ms to 800 ms) while Windows holds the target for a moment (EPERM, EBUSY — an antivirus scan, an
+editor); if it still cannot be saved the run says `LEDGER NOT WRITTEN … the count is NOT recorded` and exits 1 — on a look as on a
+verdict — and the lead **runs the same evidence command again** (a re-run counts nothing twice) until it says the ledger took the count,
+never writes a count down by hand, and takes no further step before it does.
+
+**Before the day** — each is a fact the pre-flight or the lead checks; none is assumed.
+1. **The scratch-PostgreSQL probe is green — REQUIRED.** `npm run -s db:probe-marketing-u52a`, run by the lead under the heavy-node lock
+   from the checkout that will run the tools (it boots the scratch cluster like the other `db:probe-*` keys, migrates it from empty,
+   seeds the drive's story with made-up numbers — the `marketing.sms.settings` and `marketing.outreach.licence` rows included, so the
+   saved window, price and licence record are read from real jsonb — and runs BOTH shipped tools end to end through a real Prisma
+   client): the pre-flight's GO and NO-GO rows (`in-flight` and `elsewhere` among them), the evidence's A / B / "gate removed" / C
+   verdicts and exit codes, the types read, the audit order across seq 9 → 10, the READ ONLY refusal (25006), the REPEATABLE READ
+   transaction and an every-table fingerprint equal before and after. It touches no production. **It was written without a database and
+   has not yet run**; a `SEED ·` line is the probe's own row refused, any other FAIL is a finding about a tool.
+   Step 0 is not run on production until it is green.
+2. **Ali's word**, before the first real SMS (the plan's line): the switch window (G1), the TZS 36 cap (G3), the day. Inside the saved
+   send window (08:00–20:00 EAT unless the owner saved another) with 60 minutes to spare (the pre-flight's `window` row; the engine and
+   the test both obey it).
+3. **The build**: production serves the tree the whole predeploy chain was run on (`--expect-dpl=<sha>`, read from the page).
+4. **The QA Growth login** exists, role GROWTH, with the growth act grant (write, test, confirm, start). A login that cannot read
+   numbers sees masked rows and, below ten people, only "On campaign 1" — the evidence tool is then the reader, not the page.
+5. **The test number is in the contact book, on a list of ONE** — the pre-flight's `test-lists` row names it — with a consent or basis
+   the gate clears, and one that SURVIVES the stop link's two acts (`test-cycle`). The list's name is the drive's own and PLAIN (letters,
+   digits, spaces, `.` `_` `:` `#` `-`, up to 40 characters — the tool will not print any other, and then the row is NO-GO); its numbers are its own.
+6. **The source line is saved** (`source`): the newest `source.phrase` is not blank — and, while licence outreach is open, `adult.test`.
+7. **The composer test's route is decided** (decision point, below).
+8. **The receipt secret is set** (`webhook`) and Ali or Jay can read the Blackball portal's Out SMS `COUNT` (segments) before and
+   after, for the comparison.
+9. **The credit** covers the codes reserve plus the drive (`credit`).
+10. **Nothing else can send** (`in-flight`, `elsewhere`): no other campaign is CONFIRMED, PREPARING, RUNNING or PAUSED, and no marketing
+    message of the last 24 hours went to any number but the test number. A NO-GO there is cleared by finding out whose campaign or
+    message it is — never by switching the row off or opening the switch around it: the switch is global, and what it opens is not only the
+    drive's.
+
+**The sheet.** `<A>`/`<B>`/`<C>` = the campaign ids — the `draft=` value in the composer's address after "Save draft", which is also the
+tail of `/admin/campaigns/<id>`; `<sha>` = the commit production should serve. **Run from the checkout of the commit production runs —
+after STEP 54 that is main: `cd F:\kipindi-m14-base`** — for the whole drive (the ledger lives beside it; the tools refuse to start
+from anywhere else). Every command is `railway run --service 50pick npm run -s ops:… -- …` (`railway run` sets `DATABASE_URL`; the
+tools reach the public proxy themselves; `-s` keeps npm's banner, which echoes the typed number, off the screen). A flag may be
+repeated (`--expect=…` twice) or take a comma list; **in PowerShell a comma outside quotes splits the argument, so the sheet repeats
+the flag.** Steps 0, 1 and 2 carry `--new-ledger` (no ledger exists before step 2's evidence writes it); no later step does.
+
+⭐ **The gate** — the cap and "nothing else can send" gate the drive; they are not only read afterwards. **Before step 2 run G1 and G2;
+before each Start (steps 3, 5 and 7) and before ANY retry run G1, G2 and G3 — and press nothing on a NO-GO, an exit 1 or an exit 2:**
+- **G1 · the room and the rows** — `railway run --service 50pick npm run -s ops:marketing-preflight -- --test=+255772619619 --origin=https://www.50pick.tz --expect-switch=open --drive-campaign=<X>`
+  with `<X>` the campaign about to be started (before step 2: no `--drive-campaign`, and `--new-ledger`, the file not existing yet;
+  before a retry: the retry's own id, and the ids of the campaigns that already ran are not named — they are DONE). Before steps 2 and 3
+  the WHOLE table must be GO. From step 5 on, **read
+  only these rows** — `switch` (open, 20+ minutes left), `window` (60+ minutes left; add `--min-window=15` once the drive is under way),
+  `ledger` (one more send fits), `in-flight` (nothing but `<X>` could send) and `elsewhere` (nothing went to any other number); the
+  test-number rows describe a number that now has a campaign row and a stop, and `test-fresh` is NO-GO by then.
+- **G2 · the cap alone, no database** — `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- --ledger --sends=1`
+  exits 0 only while ONE more chargeable send fits under the cap of six (before step 2 add `--new-ledger`, as above).
+- **G3 · the audience, before each Start (steps 3, 5, 7)** — `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <X> --test=+255772619619 --look --expect-audience=1`
+  exits 0 only if the campaign is confirmed for exactly 1 person, and exits 1 on a stop broken, a double send, a message to any other
+  number or marketing going anywhere else (`DO NOT PRESS START`).
+
+| # | When | Who | Page · the control | Read back | Evidence after it | Ledger |
+|---|---|---|---|---|---|---|
+| 0 | before anything is opened | the lead | — | — | `railway run --service 50pick npm run -s ops:marketing-preflight -- --test=+255772619619 --origin=https://www.50pick.tz --expect-dpl=<sha> --new-ledger` → **RESULT: GO — 19 of 19 rows (1 not applicable)** (`control` n/a); `test-lists` names the drive list; `in-flight` and `elsewhere` are GO with no campaign named | 0 |
+| 1 | switch opened for 2 h | the lead through the audited ops door on Ali's G1 word — or Ali on the card. **Never the QA login** (opening is owner-only) | Admin → System, the "Marketing SMS sending" card ("Switch on…" → duration → "Switch on"); or `railway run --service 50pick npm run -s ops:marketing-live-switch -- open --minutes 120 --by "Claude for Ali (G1)" --reason "U52a live drive"` | the card: "On until HH:MM EAT"; the door: `DONE: ON — opened at … it switches itself off at …` | `railway run --service 50pick npm run -s ops:marketing-preflight -- --test=+255772619619 --origin=https://www.50pick.tz --expect-switch=open --new-ledger` → the `switch` row GO (20+ min left) | 0 |
+| 2 | the composer test — **send 1** | QA Growth | **Gate G1 and G2 first** (with `--new-ledger`). `/admin/campaigns/new` → Message card: name, Swahili message (it must begin "50pick", lower case; one segment) → "Save draft" → Test send card → "Send the test to" → the route below → "Send the Swahili test" | "Handed to the network at HH:MM — check your phone." (own) / "… ask the person to check their phone." (typed) — ⛔ never "delivered" | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <A> --test=+255772619619 --expect-sends=1 --expect-audit=marketing.campaign_test --label=T --new-ledger` → writes the ledger (1 of 6); "to the test number: yes" on the message | 1 |
+| 3 | **Campaign A** — send 2 | QA Growth | the same draft: Audience card → Who "Contact book" → List "<the drive list the pre-flight named>" → "Save draft" → Confirm card "Confirm audience…" → dialog "Confirm this person?" → "Confirm audience" ("Confirmed — nothing has been sent. Start it from its own page.") → `/admin/campaigns/<A>` → **Gates G1, G2 and G3 (`<X>` = `<A>`)** → "Start…" → dialog "Start sending to up to 1 person?" → "Start sending". **Keep the page open.** | "Preparing the list — 0 of 1 people written." → "Sending — 0 of 1 done." → "Finished — nobody on this campaign is left to message."; "Handed over 1"; the receipt moves the chip to "Delivered" in seconds | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <A> --test=+255772619619 --expect=delivered:test --expect-sends=2 --expect-audit=marketing.campaign_confirmed --expect-audit=marketing.campaign_started --expect-audit=marketing.campaign_finished --label=A --show-stop-link` (a `SENT` row before the receipt: wait a minute, run it again; no receipt after 15 minutes is a finding, not a retry) | 2 |
+| 4 | **the stop tap** | QA Growth's browser (no sign-in) | open `https://www.50pick.tz` + the `/s/<token>` line the step-3 command printed → "Acha ofa na habari kwa SMS" ("Stop offers and news by SMS" in English) | heading "Ofa na habari kwa SMS zimesimamishwa" / "Offers and news by SMS stopped"; "Imekamilika. Hutapokea tena …" / "Done. You will not get offers and news by SMS from 50pick again." | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <A> --test=+255772619619 --expect=delivered:test --expect=stopped:test --expect-sends=2 --label=A` | 2 |
+| 5 | **Campaign B** — zero sends | QA Growth | `/admin/campaigns/<A>` → "Make a copy" ("A copy was made as a new draft.") → the composer → "Confirm audience…" → "Confirm audience" → `/admin/campaigns/<B>` → **Gates G1, G2 and G3 (`<X>` = `<B>`)** → "Start…" → "Start sending" | "Finished — nobody on this campaign is left to message."; "Not sent (checks) 1" under "Stopped (on the stop list)" (if the login may read numbers) | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <B> --test=+255772619619 --expect=skipped:test --expect=stopped:test --expect-sends=0 --expect-audit=marketing.campaign_confirmed --expect-audit=marketing.campaign_started --expect-audit=marketing.campaign_finished --label=B` | 2 |
+| 6 | **"Start them again"** | QA Growth's browser | the same `/s/<token>` page → "Anza kupokea tena" ("Start them again") | "Umechagua kupokea ofa na habari kwa SMS tena" / "You chose to get offers and news by SMS again"; "The stop on offers and news by SMS to this number is lifted, and your choice is recorded." | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <B> --test=+255772619619 --expect=skipped:test --expect=resumed:test --expect-sends=0 --label=B` | 2 |
+| 7 | **Campaign C** — send 3 | QA Growth | "Make a copy" of A or B → "Confirm audience…" → "Confirm audience" → `/admin/campaigns/<C>` → **Gates G1, G2 and G3 (`<X>` = `<C>`)** → "Start…" → "Start sending" → **"Pause" the moment the headline reads "Preparing the list" or "Sending — 0 of 1 done"** (a one-person run is over in seconds) → "Resume" → finish | "Paused — nothing new starts sending until you resume. A group already being sent may still go out." → "Sending again." → "Finished — …" | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- <C> --test=+255772619619 --expect=delivered:test --expect=resumed:test --expect-sends=1 --expect-audit=marketing.campaign_started --expect-audit=marketing.campaign_paused --expect-audit=marketing.campaign_resumed --expect-audit=marketing.campaign_finished --label=C` | 3 |
+| 8 | the switch closed and read back | the lead through the ops door, or Ali on the card ("Switch off now") | `railway run --service 50pick npm run -s ops:marketing-live-switch -- close --by "Claude for Ali (G1)" --reason "U52a drive done"`, then `railway run --service 50pick npm run -s ops:marketing-live-switch -- status` | `DONE: switched off …` then `OFF (absent)` | `railway run --service 50pick npm run -s ops:marketing-campaign-evidence -- --ledger` (the table: A sent · B refused · C sent; 3 of 6) and, for the switch row alone, `railway run --service 50pick npm run -s ops:marketing-preflight -- --test=+255772619619 --origin=https://www.50pick.tz --expect-switch=closed` (its other rows mean nothing after the drive — `test-fresh` is NO-GO by then) | 3 |
+
+**Spare:** three sends for ONE retry of any step (a retried step is a new campaign id and a new label: D; the gate is run again before
+it). **Decision points and traps, read before step 2:**
+1. **The composer test's route.** The test card sends to "My own number — +255••••NN" (the QA login's ACCOUNT phone) or to "Another
+   number" (typed; it needs the 18+ box ticked — "the person who uses this number is 18 or older" — the licence-outreach record OPEN
+   (the pre-flight prints it beside `test-consent`), the saved `adult.test` wording and the campaign's source line set; it is
+   refused up front while any of them is missing). **Press "My own number" only if the masked number shown equals the test
+   number's mask.** If neither route reaches the test number without texting anyone else, step 2 is NOT made (the spare grows to
+   four) and the drive says so. Whichever route is pressed, step 2's evidence prints "to the test number: yes/no" for the test message,
+   and a "no" is a VIOLATION.
+2. **The 18+ trap** (above): a NO-GO on `test-cycle` is fixed BEFORE the switch is opened — by a covering list basis (U33b-L), or by
+   the number being an account's — never by skipping C.
+3. **The Pause in C is a race** with a one-person run. If the page finished before the press, `--expect-audit=…campaign_paused`
+   fails and the pause is not proven on C: that is a retry (D), not a pass. The check wants the OFFICER's own row (an actor and the
+   reason `officer_paused`): a pause the engine wrote for another reason is the same action and does not prove the button.
+4. **A SKIPPED row costs nothing.** If A's test number is SKIPPED, the evidence prints the skip reason and detail; fix the cause;
+   the ledger has not moved. A skip for `agent_referee` means the test number is kept as an agent applicant's referee (promised "we
+   never contact you for marketing"; the pre-flight does NOT judge that, and says so): it cannot be the drive's test number — Ali
+   names another, and the sheet starts again from step 0.
+5. **Never press Start on a second campaign while another is PREPARING or RUNNING**, and never push while one is (§5 rule 8).
+6. **Campaign A's audience is the list the pre-flight named, and no other.** The list holds the test number alone; any other list
+   would message everyone on it.
+
+**Stop at once, and tell Ali,** on: a NO-GO you did not expect (a `ledger` NO-GO for a missing file, an `in-flight` or `elsewhere` NO-GO
+included); an evidence run that is NOT PROVEN or says VIOLATION (a message after a stop, a double send, a message to another number,
+marketing going anywhere else — also on a `--look`); a `--look --expect-audience` that says `DO NOT PRESS START`; `LEDGER REFUSES`;
+`LEDGER NOT WRITTEN` (run the same evidence again until the ledger took the count; take no step before it does); an SMS to any number
+but the test number; a campaign that pauses for a reason the page states (read it; do not Resume blind); the window closing; the switch
+reading closed while a step is open; a tool that prints nothing at all (it is never silent: run it from the real checkout directory).
+
+**After the drive.** (a) The ledger's total against the portal's `COUNT` for the same window (the portal also counts login codes —
+say so when comparing); (b) delete Claude's QA test users when done (Ali's permission) — the recipient and message rows stay (they
+are the record that we messaged somebody; GN 478T reg 51(1)), and the audit rows keep the officer's id; (c) **decision 4**: the
+evidence prints, per claim, how long the claim → hand-over took. One-person slices measure the single-recipient path — they can
+say "the path took X s", **not** what a 20-person gate costs, so they do NOT re-derive `SLICE_START` (20), `SLICE_GATE_BUDGET_MS`
+(10 s) or `REAP_AFTER_MS`, and `STEP_GAP_MS` (2 s, `live-driver.tsx`) is the driver's own: record the numbers in the plan; the
+constants change only by a commit; (d) record in the plan that the same-run control was NOT done (Q4's fallback).
+
+**What the builder did not do, and what a GO does not mean.** The SQL of both tools was checked against `schema.prisma` and run
+against stand-ins, never against a database — which is why the scratch probe of "Before the day" 1 is REQUIRED before production (a
+failing read is named — `NOT RUN … [read: contact]` — without echoing the statement). The suite now pins each statement's contract
+(its filters, its equalities, its ORDER BY and direction) and its SELECT list item by item (a column dropped from a SELECT is a field the
+tool reads as `undefined` in production, and the stand-in cannot see it; the rows the stand-in answers with must carry exactly the
+selected names), pins the four `SystemConfig` keys to the app's own constants and to the SQL's literals, refuses a bare `ORDER BY` name
+that is also an `AS` alias of its own SELECT, and holds every call to the values it must be bound to; the trap that led to those rules
+was found by reading, not by running:
+both audit reads select `"seq"::text AS seq`, and PostgreSQL resolves a bare `ORDER BY "seq"` to that OUTPUT column — text order, 10
+before 9, and "the newest eight" the wrong eight — so they order by `"AuditLog"."seq"`.
+`test-consent` GO means the consent-and-basis half clears the number and nothing the pre-flight can read refuses it; the RG half
+for an account holder, and for every number the agent-referee exclusion, are the gate's at the send. The credit and the build come from public endpoints, not the admin pages. The
+ledger counts message rows (the engine caps a message at one segment, so a send is a segment; the portal's `COUNT` is the check).
+
 
 ---
 

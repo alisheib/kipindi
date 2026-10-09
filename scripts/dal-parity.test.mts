@@ -2868,6 +2868,63 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       !'groupBy({ by: ["status", "skipReason", "failureClass"], _count: { _all: true } })'.includes(ONE_GROUPBY));
   }
 
+  // ══ 26.u48a · THE RESULTS' TWO READS (U48a, S14 2026-10-08 — ENGINE-SPEC §4.16, E5 and E30) ═════════════════════════════
+  // ⭐ WHY THEY ARE HELD HERE. The live page's results ask two things its one groupBy cannot: how many of a campaign's SENT
+  // rows were handed over before a cutoff (`countSentBefore` — "no receipt after 15 minutes"), and the campaign's handed-over
+  // people by number (`handedOverPage` — the stopped-by-link walk's pages, each asked of §25's `findActiveAmong`).
+  // `test:campaign-visuals` R3/R4/R10 drive the MEMORY twin; a Prisma twin that loses its half is green in memory and wrong
+  // — or slow — live: a count without the campaign (every campaign's SENT rows as this one's), the rows read and counted in
+  // JavaScript (every recipient of a 150,000-person campaign on every poll), a page that selects whole rows (a token, a
+  // reference, a gate trail per person), one with no cursor (the walk never ends) or no campaign (the whole table). Their
+  // behaviour on Postgres is `db:probe-campaign-models` §14's. ⛔ No backslash anywhere in this block.
+  {
+    const flat48 = (s: string) => s.split(String.fromCharCode(13)).join("").split(String.fromCharCode(10)).map((l) => l.trim()).join(" ");
+    const U48A = ["countSentBefore", "handedOverPage"];
+    const pBefore = delegateMethod("smsCampaignRecipient", "countSentBefore");
+    const pPage = delegateMethod("smsCampaignRecipient", "handedOverPage");
+    const mBefore = memberText(rMem, "countSentBefore");
+    const mPage = memberText(rMem, "handedOverPage");
+    ok("26.u48a.parity · ⭐ BOTH twins define countSentBefore and handedOverPage — a door in one twin only works in every suite and throws on production",
+      U48A.every((n) => members(rPri).includes(n) && members(rMem).includes(n)),
+      `prisma=[${members(rPri)}] memory=[${members(rMem)}]`);
+    const U48A_SIGS: Array<[string, string]> = [
+      [rMem, "countSentBefore: (campaignId: string, before: string): number =>"],
+      [rMem, "handedOverPage: (campaignId: string, after: string | null, limit: number): SmsCampaignHandedOver[] =>"],
+      [rPri, "countSentBefore: async (campaignId: string, before: string): Promise<number> =>"],
+      [rPri, "handedOverPage: async (campaignId: string, after: string | null, limit: number): Promise<SmsCampaignHandedOver[]> =>"],
+    ];
+    const offSigs48 = U48A_SIGS.filter(([b, s]) => !b.includes(s)).map(([, s]) => s.split(":")[0]);
+    const exported48 = storeSrc.includes("export type SmsCampaignHandedOver =");
+    const imported48 = storeImport.includes("  SmsCampaignHandedOver,");
+    ok("26.u48a.named · both doors name their parameter and return types in BOTH twins (never an inline literal) — SmsCampaignHandedOver exported by store.ts, imported by prisma-dal.ts",
+      offSigs48.length === 0 && exported48 && imported48, `signatures off: [${offSigs48}] · exported ${exported48} · imported ${imported48}`);
+    ok("26.u48a.rules · ⛔ each door asks the rule set FIRST, in both twins — a missing campaign id is NO CONDITION on Postgres (every campaign's rows)",
+      before(mBefore, "assertSentBeforeRead(campaignId, before);", "for (const r of") && before(pBefore, "assertSentBeforeRead(campaignId, before);", ".count(")
+        && before(mPage, "assertHandedOverRead(campaignId, after, limit);", "for (const r of") && before(pPage, "assertHandedOverRead(campaignId, after, limit);", ".findMany("),
+      flat48(pBefore).slice(0, 200));
+    const COUNT_WHERE = 'count({ where: { campaignId, status: "SENT", sentAt: { lt: new Date(before) } } })';
+    ok("26.u48a.count.prisma · ⛔ the Prisma countSentBefore is ONE count WHERE the campaign is the one asked, the row is still SENT and its OWN sentAt is strictly before the bound — never the rows, never a groupBy",
+      pBefore.includes(COUNT_WHERE) && (pBefore.match(/[.]count[(]/g) ?? []).length === 1 && !/findMany|groupBy|aggregate/.test(pBefore),
+      flat48(pBefore).slice(0, 300));
+    ok("26.u48a.count.memory · the memory countSentBefore counts ONE campaign's rows that are still SENT, with an instant, whose sentAt is strictly before the bound — compared as instants",
+      mBefore.includes('r.campaignId !== campaignId || r.status !== "SENT" || r.sentAt === null') && mBefore.includes("Date.parse(r.sentAt) < bound"),
+      flat48(mBefore).slice(0, 300));
+    const PAGE_WHERE = 'where: { campaignId, status: { in: ["SENT", "DELIVERED"] }, sentAt: { not: null }, ...(after === null ? {} : { msisdn: { gt: after } }) },';
+    ok("26.u48a.page.prisma · ⛔ the Prisma handedOverPage is ONE findMany of THIS campaign's SENT and DELIVERED rows with an instant, keyset on the number (gt the cursor), ordered by it, at most the limit, selecting the number and the instant ALONE",
+      pPage.includes(PAGE_WHERE) && pPage.includes('orderBy: { msisdn: "asc" },') && pPage.includes("take: limit,") && pPage.includes("select: { msisdn: true, sentAt: true },")
+        && (pPage.match(/[.]findMany[(]/g) ?? []).length === 1 && !/[.]count[(]|groupBy|skip:/.test(pPage),
+      flat48(pPage).slice(0, 300));
+    ok("26.u48a.page.memory · the memory handedOverPage walks ONE campaign's SENT and DELIVERED rows that carry an instant, past the cursor, by number, at most the limit — { msisdn, sentAt } and nothing else",
+      mPage.includes('r.campaignId !== campaignId || (r.status !== "SENT" && r.status !== "DELIVERED") || r.sentAt === null') && mPage.includes("if (after !== null && r.msisdn <= after) continue;")
+        && mPage.includes("people.push({ msisdn: r.msisdn, sentAt: r.sentAt });") && mPage.includes(".slice(0, limit)"),
+      flat48(mPage).slice(0, 300));
+    // ── CONTROLS — each matcher above can reject the defect it exists for ──
+    ok("26.u48a.c1 · CONTROL · a count without the campaign, and a page without its cursor or its select, are NOT the ones 26.u48a looks for",
+      !'count({ where: { status: "SENT", sentAt: { lt: new Date(before) } } })'.includes(COUNT_WHERE)
+        && !'where: { campaignId, status: { in: ["SENT", "DELIVERED"] }, sentAt: { not: null } },'.includes(PAGE_WHERE)
+        && !'orderBy: { msisdn: "asc" }, take: limit,'.includes("select: { msisdn: true, sentAt: true },"));
+  }
+
   // ══ 26.status · THE RECIPIENT STATUS SET, ONE IN BOTH TWINS (U43-0, S10 2026-10-04 — ENGINE-SPEC §4.2, decision E4) ═══
   // ⭐ WHY IT IS HELD HERE. UNCONFIRMED reaches Postgres through its own ADD VALUE migration, one deploy before any writer
   // (55P04). The memory twin types its rows with store.ts's union; the Prisma twin reads Postgres' enum through the
@@ -4409,6 +4466,98 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   const deaf29 = controls29.filter(([, held]) => !held).map(([name]) => name);
   ok("29.c1 · CONTROL · every §29 matcher can fail: the REAL bodies pass, and ONE defect planted in each — a snapshot without its select, leaving the tombstone out or dropping the account link, a first-line read without the problems filter or over every run, a failures page by skip, a kept split by findMany, a freeze without its status, writing first, inserting its new list before it wins, or without its unique index or foreign key, a commit without its cursor, creating first, out of lock order, settling rows that are gone or moving its cursor past the staged rows, an update without the NULL arm, blanking that keeps the raw cell, members twice, DONE without its bound, open runs holding the viewer's own or unbounded, a relation that cascades — FAILS its predicate",
     deaf29.length === 0, deaf29.join(" | ") || `${controls29.length} controls held`);
+}
+
+/* ═══ §30 · The standing erasure — messagingConsent.erasureStandsAmong in both twins (C8a, S15 2026-10-09; S15-15) ═══ */
+{
+  // ⭐ WHY THIS SECTION EXISTS. The importer's facts, the commit's re-decision and the Add form ask the ledger ONE
+  // question: does an erasure stand on this number — `erasure-mark.ts`'s ONE rule, the latest of its GIVEN rows and
+  // erasure markers is a marker (a later opt-out tap never lifts it; a GIVEN does). Every behavioural suite asks it of
+  // the MEMORY twin, so a Prisma twin that read the rows in another order (a same-millisecond "marker, then a yes" read
+  // the wrong way round), filtered them by its own idea of a marker, or kept each number's LATEST row only — C8a's
+  // defect #2, back on Postgres alone — would be green in every test and wrong in production. This section holds the two
+  // twins to ONE shape: §25's bound and empty set, the ledger's own order with the id tiebreak, NO status filter in the
+  // query, both answering through the pure module's erasureStandsAmongRows — which must itself ask erasureStandsOn of
+  // each number's own rows. ⚠️ It reads TEXT, as §27–§29 do; the behaviour on Postgres is
+  // `scripts/live/contacts-import-pg-probe.mts` section 7.
+  // ⛔ No backslash anywhere in this section (§27's rule): line breaks are built with String.fromCharCode, every matcher is
+  // an `includes`, an order or a character class.
+  const NL30 = String.fromCharCode(10);
+  const CR30 = String.fromCharCode(13);
+  const flat30 = (s: string) => s.split(CR30).join("").split(NL30).map((l) => l.trim()).filter(Boolean).join(" ");
+  const NEXT_MEMBER30 = new RegExp(NL30 + " {4}[A-Za-z0-9_]+ *:");
+  const memberOf30 = (block: string, name: string): string => {
+    const at = block.indexOf(`${NL30}    ${name}: `);
+    if (at < 0) return "";
+    const next = block.slice(at + 1).search(NEXT_MEMBER30);
+    return next < 0 ? block.slice(at) : block.slice(at, at + 1 + next);
+  };
+  const before30 = (body: string, first: string, then: string): boolean => {
+    const a = body.indexOf(first), b = body.indexOf(then);
+    return a >= 0 && b > a;
+  };
+  const mem30 = memberOf30(region(storeSrc, `${NL30}  messagingConsent: {`), "erasureStandsAmong");
+  const pri30 = memberOf30(region(dalSrc, `${NL30}  messagingConsent: {`), "erasureStandsAmong");
+  const markSrc30 = decomment(readFileSync(join(SRC, "lib/marketing/erasure-mark.ts"), "utf8"));
+
+  // ── 30.0 · both twins, named ──
+  const SIG_MEM30 = "erasureStandsAmong: (q: MessagingKeyBatch): string[] =>";
+  const SIG_PRI30 = "erasureStandsAmong: async (q: MessagingKeyBatch): Promise<string[]> =>";
+  ok("30.0 · both twins implement messagingConsent.erasureStandsAmong, named — a MessagingKeyBatch answered with the numbers on which an erasure stands (string[]) — and §17's member parity holds the namespace equal in both",
+    mem30.includes(SIG_MEM30) && pri30.includes(SIG_PRI30) && mem30.length > 150 && pri30.length > 150, `${mem30.length}/${pri30.length} chars`);
+
+  // ── 30.bound · §25's bound and empty set ──
+  const KEYS30 = 'const keys = bulkKeys(q.identifiers, "messagingConsent.erasureStandsAmong");';
+  const EMPTY30 = "if (keys.length === 0) return [];";
+  const boundOk30 = (m: string, p: string): boolean => {
+    const fm = flat30(m), fp = flat30(p);
+    return before30(fm, KEYS30, EMPTY30) && before30(fp, KEYS30, EMPTY30) && before30(fp, EMPTY30, "pc()");
+  };
+  ok("30.bound · ⛔ §25's shape in both twins — the keys through bulkKeys (deduplicated, REFUSED above BULK_KEYED_READ_MAX, never cut off), an empty set answered with nothing, and on Postgres before any query",
+    boundOk30(mem30, pri30));
+
+  // ── 30.order · the asked numbers' WHOLE ledger, in the ledger's own order ──
+  const PRI_WHERE30 = "where: { channel: q.channel, category: q.category, identifier: { in: keys } },";
+  const PRI_SELECT30 = "select: { identifier: true, status: true, evidence: true },";
+  const PRI_ORDER30 = 'orderBy: [{ createdAt: "desc" }, { id: "desc" }],';
+  const MEM_FILTER30 = ".filter((r) => r.channel === q.channel && r.category === q.category && want.has(r.identifier));";
+  const MEM_ORDER30 = "rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));";
+  const orderOk30 = (m: string, p: string): boolean => {
+    const fm = flat30(m), fp = flat30(p);
+    const whereToSelect = fp.slice(Math.max(0, fp.indexOf("where:")), Math.max(0, fp.indexOf("select:")));
+    return fp.includes(PRI_WHERE30) && fp.includes(PRI_SELECT30) && fp.includes(PRI_ORDER30) && (fp.match(/pc[(][)]/g) ?? []).length === 1
+      && !/status|evidence|OR:/.test(whereToSelect) && fm.includes(MEM_FILTER30) && fm.includes(MEM_ORDER30);
+  };
+  ok("30.order · ⭐ ONE read of the asked numbers' WHOLE ledger in the ledger's own order — Prisma ONE findMany where channel, category and the key set, with NO status or evidence filter (the rule alone says which rows decide: no second definition of a marker in SQL), selecting the key, the status and the evidence, ordered createdAt DESC then id DESC; memory filtered to the same set and sorted createdAt DESC then id DESC — the tie broken on the id, as latestFor breaks it",
+    orderOk30(mem30, pri30), `${flat30(pri30).slice(0, 160)} | ${flat30(mem30).slice(0, 160)}`);
+
+  // ── 30.rule · both twins answer through the pure module, and the module asks the ONE rule per number ──
+  const ANSWER30 = "return erasureStandsAmongRows(keys, rows);";
+  const IMPORT30 = 'import { erasureStandsAmongRows } from "@/lib/marketing/erasure-mark";';
+  const ruleOk30 = (m: string, p: string, mark: string): boolean => {
+    const amongRows = flat30(region(mark, "export function erasureStandsAmongRows("));
+    const standsOn = flat30(region(mark, "export function erasureStandsOn("));
+    return flat30(m).includes(ANSWER30) && flat30(p).includes(ANSWER30) && storeSrc.includes(IMPORT30) && dalSrc.includes(IMPORT30)
+      && amongRows.includes(".filter((m) => erasureStandsOn(byNumber.get(m) ?? [])).sort();")
+      && before30(standsOn, 'if (row.status === "GIVEN") return false;', "if (isErasureMarker(row)) return true;")
+      && standsOn.includes("return false; }") && !/latest/i.test(m + p);
+  };
+  ok("30.rule · ⭐ ONE RULE — both twins answer through erasure-mark's erasureStandsAmongRows (imported on its own line in each), which asks erasureStandsOn of each number's own rows and hands the numbers back sorted; erasureStandsOn lets a GIVEN lift the erasure, a marker set it and every other row pass; and neither twin keeps a number's latest row (C8a's defect #2)",
+    ruleOk30(mem30, pri30, markSrc30), `${markSrc30.length} chars of the rule module`);
+
+  // ── CONTROLS — the REAL bodies, ONE defect planted in each, must FAIL their predicate ──
+  const planted30 = (body: string, from: string, to: string): string => body.split(from).join(to);
+  const controls30: Array<[string, boolean]> = [
+    ["a Prisma read without the id tiebreak", orderOk30(mem30, pri30) && !orderOk30(mem30, planted30(pri30, PRI_ORDER30, 'orderBy: { createdAt: "desc" },'))],
+    ["a memory read without the id tiebreak", !orderOk30(planted30(mem30, " || b.id.localeCompare(a.id)", ""), pri30)],
+    ["a Prisma read that filters the marker by itself", !orderOk30(mem30, planted30(pri30, "identifier: { in: keys } },", 'identifier: { in: keys }, OR: [{ status: "GIVEN" }, { status: "WITHDRAWN", evidence: ERASURE_EVIDENCE }] },'))],
+    ["a twin that keeps each number's latest row", ruleOk30(mem30, pri30, markSrc30) && !ruleOk30(planted30(mem30, ANSWER30, "const latest = new Map(); return [...latest.keys()];"), pri30, markSrc30)],
+    ["a module rule that reads the latest row alone", !ruleOk30(mem30, pri30, planted30(markSrc30, 'if (row.status === "GIVEN") return false;', "return isErasureMarker(row);"))],
+    ["a Prisma query on an empty set", boundOk30(mem30, pri30) && !boundOk30(mem30, planted30(pri30, EMPTY30, ""))],
+  ];
+  const deaf30 = controls30.filter(([, held]) => !held).map(([name]) => name);
+  ok("30.c1 · CONTROL · every §30 matcher can fail: the REAL bodies pass, and ONE defect planted in each — either twin's order without the id tiebreak, a Prisma read that filters the marker by itself, a twin that keeps each number's latest row, a rule that reads the latest row alone, a query on an empty set — FAILS its predicate",
+    deaf30.length === 0, deaf30.join(" | ") || `${controls30.length} controls held`);
 }
 
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);

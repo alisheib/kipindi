@@ -16,11 +16,13 @@
  * (somebody was), or `hidden` — ⛔ E23: a viewer who may not read a number, on a campaign under the floor, must not learn
  * from the WORDING whether anyone was messaged, so they read the conditional form whatever the counts say.
  *
- * Guard: `npm run test:campaign-visuals` §svc (S4–S9, T1–T8 and D1 read these words through the services; W1 holds its imports).
+ * Guard: `npm run test:campaign-visuals` §svc (S4–S9, T1–T8 and D1 read these words through the services; W1 holds its imports)
+ * and §page (V4 · V7 · V8 render the page's parts in these words; V10 holds the page's literal title to `LIVE_TITLE`).
  */
 import type { SmsCampaignRecipientStatus } from "@/lib/server/store";
 import { EAT_OFFSET_MS } from "@/lib/eat-day";
 import { MASKED_BREAKDOWN_MIN, stopReasonLabel } from "@/lib/marketing/campaign-status";
+import { formatPriceTzs } from "@/lib/marketing/sms-settings";
 import { formatNumber, formatTzs } from "@/lib/utils";
 
 /* ══ THE PIECES ═════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -204,10 +206,28 @@ export const LIVE_KEEP_OPEN = "Keep this page open while it sends — sending co
 export const LIVE_SWITCH_OFF = "Marketing SMS are switched off — this campaign waits until the owner switches them on.";
 export const LIVE_OUT_OF_DATE = "This page is out of date or lost its connection — reload it to keep sending. Nothing is lost.";
 
-/** Nobody driving (RUNNING, no claim for 90 s) — with the last step's time when there was one. */
-export function nobodyDrivingSentence(lastStepAt: string | null): string {
+/** Nobody driving (RUNNING, no claim for 90 s; PREPARING, no chunk for 90 s) — with the last step's time when there was one. */
+export function nobodyDrivingSentence(lastStepAt: string | null, status: string = "RUNNING"): string {
   const t = eatClock(lastStepAt);
-  return `Nobody is sending this campaign right now. Open it as an officer who can send, and keep the page open.${t === null ? "" : ` (Last step ${t} EAT.)`}`;
+  const doing = status === "PREPARING" ? "preparing this campaign's list" : "sending this campaign";
+  return `Nobody is ${doing} right now. Open it as an officer who can send, and keep the page open.${t === null ? "" : ` (Last step ${t} EAT.)`}`;
+}
+
+/**
+ * ⭐ THE SEND WINDOW, said to a viewer whose page is NOT stepping the campaign (a role that may only look, or a driver that
+ * stopped) — a driver is told the same by the step itself (`waitSentence`). Null while the window is open: there is nothing to
+ * explain. The words are the engine's own wait sentences, so a campaign never reads one way to a driver and another to a watcher.
+ */
+export function liveWindowSentence(w: { open: boolean; opensAt: string; reason: string | null }): string | null {
+  if (w.open === true) return null;
+  return w.reason === "quiet_hours" ? waitSentence("quiet_hours", w.opensAt === "" ? null : w.opensAt) : waitSentence("window_unreadable", null);
+}
+
+/** …and the switch's closing time, when the owner opened it for a while: "Marketing SMS stay switched on until 14:00 EAT on 9 Oct 2026." */
+export function liveSwitchClosesSentence(closesAt: string | null): string | null {
+  const t = eatClock(closesAt);
+  const d = eatDate(closesAt);
+  return t === null || d === null ? null : `Marketing SMS stay switched on until ${t} EAT on ${d}, then sending waits until the owner switches them on again.`;
 }
 
 /* ══ THE FIGURES ════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -284,11 +304,16 @@ export function startDialog(o: {
   return { title, body: parts.join(" ") };
 }
 
-/** The Stop dialog (§4.15) — its "make a copy" advice says, once anybody was messaged, that the copy messages them again. */
-export function stopDialog(reach: LiveReach): { title: string; body: string } {
+/** The Stop dialog (§4.15) — its "make a copy" advice says, once anybody was messaged, that the copy messages them again.
+ *  `sending` is whether a group could be on its way (`sendingStarted`): a campaign that has not started sending — confirmed,
+ *  or still writing its list — has no group in flight, and the review's NIT was a dialog that warned of one. */
+export function stopDialog(reach: LiveReach, sending: boolean = true): { title: string; body: string } {
   // ⭐ The U47b-1 re-review · true of the group a slice has already passed its last check for — it still goes (at most one
-  // group, `SLICE_MAX`), so "nobody more" was false in that moment.
-  const head = "Nothing new will start sending. A group already being sent may still go out, and messages already handed to the network are not recalled.";
+  // group, `SLICE_MAX`), so "nobody more" was false in that moment — from ANY tab: a stop lands at once, a slice already past
+  // its last check is not recalled. ⭐ The U47b-2 review's NIT: said only of a campaign that has begun sending.
+  const head = sending
+    ? "Nothing new will start sending. A group already being sent may still go out, and messages already handed to the network are not recalled."
+    : "Nothing has been sent, and nothing will be.";
   // ⭐ The U47b-1 review · "everyone it reaches AGAIN" said everyone is messaged twice — only those already messaged are.
   const tail = reach === "reached"
     ? "A stopped campaign can't be restarted. A copy would message everyone it reaches — including, again, the people this campaign already messaged."
@@ -309,12 +334,39 @@ export const LIVE_DONE = {
   // ⭐ The U47b-1 re-review · a slice already past its last check still sends its group (at most one, `SLICE_MAX`): "nobody
   // more" was false in that moment — said as what is true.
   pause: "Paused — nothing new starts sending until you resume. A group already being sent may still go out.",
+  /** …for a campaign that had not begun sending (the U47b-2 checker's NIT, as the Stop's below): the list is still being prepared, so
+   *  nothing has been sent and no group can be on its way. */
+  pauseBeforeSending: "Paused — nothing has been sent, and nothing will be until you resume.",
   resume: "Sending again.",
   /** ⭐ The U47b-1 review · a Resume of a list that never finished goes back to PREPARING, where the page says "Preparing the
    *  list" — never "Sending again." beside it. */
   resumePreparing: "Resumed — the list is being prepared. Keep this page open while it sends.",
   stop: "Stopped — nothing new will start sending. A group already being sent may still go out.",
+  /** …for a campaign that had not begun sending (the U47b-2 review's NIT): there is no group to go out. */
+  stopBeforeSending: "Stopped — nothing was sent, and nothing will be.",
 } as const;
+
+/**
+ * ⭐ THE U47b-2 REVIEW'S MINOR 1 · IS THIS ANSWER JUST THE ACT'S OWN PLAIN SENTENCE? Only then is a toast that fades the right
+ * way to say it. Anything the services put beside it — the audit row that did not land, a copy that would message people
+ * again, a Resume overtaken by a Stop, a Pause or the end, held people who could not be put back — is a warning or advice, and
+ * a warning that fades in four seconds is one an officer can miss: the page keeps it until it is dismissed. The test is the
+ * plain `LIVE_DONE` sentences (seven) and the plain copy sentence, so a sentence added later defaults to STAYING, which is the
+ * safe side.
+ */
+export function liveDoneIsPlain(message: string): boolean {
+  const plain: readonly string[] = [
+    LIVE_DONE.start, LIVE_DONE.pause, LIVE_DONE.pauseBeforeSending, LIVE_DONE.resume, LIVE_DONE.resumePreparing, LIVE_DONE.stop,
+    LIVE_DONE.stopBeforeSending,
+    copyDoneSentence("none"),
+  ];
+  return plain.includes(message);
+}
+
+/** What a screen reader is told when the campaign's status changes (the page's ONE live region): the headline, and why. */
+export function liveAnnouncement(v: { headline: string; stopSentence: string | null }): string {
+  return v.stopSentence === null ? v.headline : `${v.headline} ${v.stopSentence}`;
+}
 
 /** ⭐ The U47b-1 re-review · Resume's move landed and its held people could not be put back on the list: they stay parked
  *  (the campaign pauses for them once everyone else is done), said beside the act's own sentence. */
@@ -384,4 +436,165 @@ export function copyCantTravelSentence(reach: LiveReach): string {
 export function copyMessageRefusedSentence(problem: string): string {
   const said = problem.trim().replace(/[.]$/, "");
   return `This campaign can't be copied as it is: ${said}. Nothing was made.`;
+}
+
+/* ══ U47b-2 · THE PAGE'S OWN WORDS — the head, the controls, the figures' headings, the driver's stops ════════════════ */
+
+/** The page's head and its gate's title. ⛔ They are LITERALS in `page.tsx` and `loading.tsx` (`admin-section-gate.test.mjs`
+ *  §0b′ accepts no computed title on a gate); `test:campaign-visuals` V10 holds those literals equal to these. The gloss is
+ *  COPIED, never invented (§5.13): "Kampeni" is the list's own. */
+export const LIVE_TITLE = "SMS campaign";
+export const LIVE_SW = "Kampeni";
+/** A campaign that is not there — its one way on. */
+export const LIVE_BACK = "Back to SMS campaigns";
+
+/** The five controls, as their buttons say them. Start and Stop open a dialog first (the "…"); Pause, Resume and Make a
+ *  copy act at once. */
+export const LIVE_CONTROL_LABEL = {
+  start: "Start…",
+  pause: "Pause",
+  resume: "Resume",
+  stop: "Stop…",
+  copy: "Make a copy",
+} as const;
+
+/** The breakdown card's title, and the lead over the status chips. */
+export const LIVE_BREAKDOWN_TITLE = "Not sent, by reason";
+export const LIVE_CHIPS_LEAD = "Everyone on it, by status";
+
+/** A reason row's hover title (as U38b's card titles its own rows): "No consent or recorded basis: 2". */
+export function liveReasonTitle(label: string, count: number): string {
+  return `${label}: ${formatNumber(count)}`;
+}
+/** A status chip: "Waiting · 1,200". ⭐ The separator's spaces are NO-BREAK spaces: a long label wraps inside its chip at a
+ *  phone's width (STEP 54's drive: "Held — couldn't be checked or prepared · 5" ran past the card at 360px), and the count
+ *  stays on the line of the label's last word — never a "·" or a bare number alone on a line. */
+export function liveChipText(label: string, count: number): string {
+  return `${label} · ${formatNumber(count)}`;
+}
+
+/** The stored audience, in one line: "Audience: Tag: vip · Consent: given" (the list's own words, joined as the list joins them). */
+export function liveAudienceLine(lines: readonly string[]): string {
+  return `Audience: ${lines.join(" · ")}`;
+}
+
+const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
+
+/** "7 Oct 2026" on the EAT calendar, whatever the server's or the browser's zone — null for an instant that is not one. */
+export function eatDate(iso: string | null | undefined): string | null {
+  const ms = typeof iso === "string" ? Date.parse(iso) : Number.NaN;
+  if (!Number.isFinite(ms)) return null;
+  const day = new Date(ms + EAT_OFFSET_MS);
+  return `${day.getUTCDate()} ${MONTHS_SHORT[day.getUTCMonth()]} ${day.getUTCFullYear()}`;
+}
+
+/** The confirmation, in one line: "Confirmed for 1,604 people by Amina on 7 Oct 2026 at 14:10 EAT." — the count alone, at
+ *  every size (OD65: before and after sending, a count is not a breakdown). */
+export function liveConfirmedLine(c: { count: number; at: string; byName: string | null }): string {
+  const by = c.byName === null || c.byName.trim() === "" ? "" : ` by ${c.byName.trim()}`;
+  const day = eatDate(c.at);
+  return `Confirmed for ${peopleCount(c.count)}${by}${day === null ? "" : ` on ${day}`}${atClock(c.at)}.`;
+}
+
+/* ── the driver's stops (decision 3) ── */
+
+/** The page reloads itself on this — a new build's page, with the campaign exactly where it is. */
+export const LIVE_RELOAD = "Reload";
+/** After a lapsed 2-step sign-in is confirmed in the other tab, or a refusal the officer has dealt with: drive again. */
+export const LIVE_TRY_AGAIN = "Try again";
+/** The second factor's link — the step-up page, in ANOTHER tab (the guard's own sentence says so), so this page keeps its
+ *  place. */
+export const LIVE_FACTOR_LINK = "Open the 2-step sign-in";
+
+/** The step's and every act's gate refusal: a role that may not act in the campaign's domain (the act grant, decision 7). */
+export const LIVE_ROLE_REFUSAL = "Your role can't start, pause, resume, stop or copy SMS campaigns — ask an officer with growth access.";
+/** The poll's gate refusal: a role that may not even view the campaign's domain (`softViewStaff`) — the page stops updating. */
+export const LIVE_VIEW_REFUSAL = "Your role can't view SMS campaigns — this page has stopped updating.";
+/** An act whose service threw after it was handed the campaign: it may or may not have happened — never "nothing was done". */
+export const LIVE_ACT_UNFINISHED =
+  "The server stopped before it answered, so this may or may not have happened — this page now shows where the campaign is. Check it before you press again.";
+/** …and when the page could not read the campaign afterwards either (a lost connection, a new build's page): the first
+ *  sentence is NOT true then — the review's NIT. The page does not show where the campaign is; it says to reload. */
+export const LIVE_ACT_UNFINISHED_NO_VIEW =
+  "The request stopped before it answered, so this may or may not have happened — reload this page to see where the campaign is, and check it before you press again.";
+/** The sentence for an unfinished act, by whether the answer carries the campaign as it is now. */
+export function unfinishedActSentence(viewKnown: boolean): string {
+  return viewKnown ? LIVE_ACT_UNFINISHED : LIVE_ACT_UNFINISHED_NO_VIEW;
+}
+
+/** ⭐ The step door's two typed refusals the old action never needed (U47b-2 review, MAJOR): the door answers JSON, so a
+ *  signed-out visitor is told in words — never a redirect to a page the driver's fetch would read as its answer. */
+export const LIVE_SIGNED_OUT = "Your sign-in has ended, so this page has stopped sending. Sign in again and reopen this campaign to carry on — nothing is lost.";
+export const LIVE_SIGN_IN_LINK = "Sign in again";
+/** …and a step the server could not finish: a group may or may not have gone out, so the loop does not ask again by itself. */
+export const LIVE_STEP_UNFINISHED =
+  "The server stopped partway through a step, so this page has stopped sending — a group may or may not have gone out. Reload to see where the campaign is; it carries on from there.";
+/** …and a guard that could not answer at all (the session store was down): nothing was asked of the campaign, so — unlike a step
+ *  that threw — nothing may have gone out, and saying it might would be false. */
+export const LIVE_STEP_GUARD_FAILED =
+  "The server could not check your sign-in just now, so this page has stopped sending. Nothing was asked of the campaign, so nothing was sent — reload to try again.";
+
+/** Make a copy while THIS page is the one sending (PREPARING, RUNNING): the page must not leave — leaving would end the only
+ *  driver — so the new draft opens in a new tab, from a link (a tab opened after the answer would be a blocked popup). */
+export const LIVE_COPY_ELSEWHERE = "This page is sending, so it stays here — the new draft opens in a new tab.";
+export const LIVE_COPY_OPEN_DRAFT = "Open the new draft";
+
+/** Make a copy refused for the officer's save budget — a copy IS a saved draft (the composer's own budget,
+ *  `marketing.campaignSave`). */
+export function copyRateLimitedSentence(retryAfterSec: number): string {
+  const minutes = Math.max(1, Math.ceil(Number.isFinite(retryAfterSec) ? retryAfterSec / 60 : 1));
+  return `That is a lot of saves in a row — no copy was made. Try again in ${formatNumber(minutes)} min.`;
+}
+
+/* ══ U48a · THE RESULTS CARD'S WORDS — every sentence true for every reader at that moment (ENGINE-SPEC §4.16) ══════════ */
+
+/**
+ * ⛔ NEVER "DELIVERED" FOR A HAND-OVER (OD41): the one word for a receipt's delivery is "Delivered", and it heads exactly one
+ * row — the rows a receipt moved. Everything the network merely took is "handed over". ⛔ Said only to a viewer who may see the
+ * split (E23): the card is not drawn below the floor, so none of these reaches a viewer who must not learn whether anybody
+ * was messaged. ⛔ No money word but the spend line, which is handed a figure for a money reader ONLY (OD24).
+ */
+export const RESULTS_TITLE = "Results";
+
+/** Each result: the spec's title, and the one line under it that says what the count is (and is not). */
+export const RESULTS_ROW = {
+  delivered: { label: "Delivered", help: "A delivery receipt came back for these." },
+  handedOver: {
+    label: "Handed over, no receipt yet",
+    help: "The network took these messages. Delivery is confirmed by a receipt, usually in seconds — none has come back for these yet.",
+  },
+  noReceipt: { label: "No receipt after 15 minutes", help: "Handed over more than 15 minutes ago, and still no delivery receipt." },
+  failed: { label: "Failed", help: "These did not reach their people, and they are not sent again by themselves." },
+  notSent: {
+    label: "Not sent — the checks refused them",
+    help: "The checks stopped these people just before sending — the system working, not a failure.",
+  },
+  noAnswer: { label: "No answer from the network", help: "Handed to the network with no answer back — never re-sent automatically." },
+  waiting: { label: "Waiting", help: "Still to be messaged." },
+  stopped: { label: "Stopped before sending", help: "The campaign was stopped before these people were messaged." },
+  stoppedByLink: {
+    label: "Stopped by their link since this campaign",
+    help: "Their opt-out link was used after this campaign's message was handed over to them. They are stopped now and will not be messaged.",
+  },
+} as const;
+
+/** The failed, split by where they failed (the spec's two titles). */
+export const RESULTS_FAILED = { wire: "The network refused it", receipt: "Not delivered (receipt)" } as const;
+
+/** ⭐ OD41 · THE HONESTY LINES, rendered from the data (the view decides which stand): while something was handed over and no
+ *  receipt has reached this campaign — gone by itself once one does — and, as well, while this server could not take a receipt
+ *  at all, which makes "Delivered will stay at zero" true when it is said. (The spec points the second at Admin → System →
+ *  Diagnostics; that tab says nothing about receipts, so the line asks for the developer instead — said rather than false.) */
+export const RESULTS_HONESTY = {
+  noReceiptYet: "No delivery receipt has arrived for this campaign yet — 'handed over' is not 'delivered'.",
+  notSetUp: "Delivery receipts aren't set up on this server, so 'Delivered' will stay at zero — ask the developer to set them up.",
+} as const;
+
+/** A count that could not be read: said, never drawn as a zero. */
+export const RESULTS_UNREAD = "Couldn't be counted just now.";
+
+/** ⛔ OD24 · the price line — for a viewer who may read money ONLY (the view hands the figure to no one else). An estimate, and
+ *  it says so: handed over × the owner's configured price, not measured; the SMS credit is the true figure. */
+export function resultsSpendLine(o: { tzs: number; perSmsTzs: number }): string {
+  return `Estimated spend: ${formatTzs(o.tzs)} (handed over × ${formatPriceTzs(o.perSmsTzs)} per SMS, configured, not yet measured) — the SMS credit on Admin → System is the true figure.`;
 }

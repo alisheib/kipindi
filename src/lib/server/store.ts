@@ -26,6 +26,7 @@ import {
   claimWrite, settleWrite, requeueWrite, newestPerTarget, refuseHeldToken, type SmsRecipientWrite,
   assertReceipt, receiptWrite, receiptMiss, SMS_RECEIPT_FROM,
   assertSendRecord, sendRecordWrite, SMS_SEND_RECORD_FROM,
+  assertSentBeforeRead, assertHandedOverRead,
 } from "@/lib/server/marketing/campaign-model";
 // U36 · the campaign list's ONE vocabulary — this twin asks `wantsAttention` itself (the Prisma twin spreads the same
 // statuses into one count) and answers every count through the same zero-filled tallies. Pure, and it takes only TYPES
@@ -50,6 +51,8 @@ import type { ContactsFileFormat } from "@/lib/contacts/parsed-file";
 // U33a-L · THE ONE ERASURE MARK — the list-basis reads tell an emptied tombstone from a live book row by it, exactly as the
 // Prisma twin does (`test:dal-parity` §27). Its module is pure and imports nothing, so there is no cycle.
 import { ERASURE_EVIDENCE } from "@/lib/marketing/erasure-mark";
+// C8a · the ONE "does an erasure stand?" both twins' grouped read answer through (its own line: §27.5 pins the one above).
+import { erasureStandsAmongRows } from "@/lib/marketing/erasure-mark";
 // U33a-L · the list basis's ONE rule set — this twin asks it before every read or write of the table, exactly as the
 // Prisma twin does (`test:dal-parity` §27.model). It takes only TYPES back from this file, so there is no cycle.
 import { assertListBasisSeed, assertListBasisRevocation, assertListBasisKeys } from "@/lib/server/marketing/list-basis-model";
@@ -720,6 +723,18 @@ export type SmsRecipientSendRecordResult = {
   written: boolean;
 };
 
+/* ── U48a · THE RESULTS' TWO READS — `countSentBefore` and `handedOverPage` (ENGINE-SPEC §4.16, E5 and E30;
+ * `test:dal-parity` §26.u48a, `test:campaign-models` §2.33). ⚠️ NAMED, NOT INLINE: the `SmsDlrResult` note above. ── */
+/**
+ * ⭐ ONE PERSON A CAMPAIGN HANDED A MESSAGE TO — the bare number and the instant it was handed over, and nothing else: what
+ * the stopped-by-link walk asks the stops list about (E30). Only SENT and DELIVERED rows with an instant are among them
+ * (`handedOverPage`). ⛔ SERVER-SIDE ONLY: the number is a key the walk reads by and never a figure any view carries.
+ */
+export type SmsCampaignHandedOver = {
+  msisdn: string;
+  sentAt: string;
+};
+
 declare global {
   /** DEV ONLY — set by `/api/dev-test/marketing-campaigns-seed?fault=1` so the U36 drive can photograph the campaign
    *  list's error state (the rail kept with no counts, no badge). Read by the MEMORY twin's `page`, `statusCounts` and
@@ -949,7 +964,9 @@ export type OutreachBasisCover = {
   recordedAt: string;
 };
 /** A number's book standing — the gate's `bookStanding` read (U33a-G): no book row · a LIVE row and its covering basis,
- *  if any · the ERASED tombstone, which covers nothing whatever its memberships say (S9). */
+ *  if any · the ERASED tombstone, which covers nothing whatever its memberships say (S9). ⚠️ C8a · a BOOK standing, so
+ *  the tombstone alone: an erasure with no book row (the ledger's marker) reads `none` here, and the gate never needs
+ *  more — such a number's latest ledger row is always a WITHDRAWN, which it refuses first (`consent.ts` step 3). */
 export type BookStanding = {
   row: "none" | "live" | "erased";
   cover: OutreachBasisCover | null;
@@ -3561,6 +3578,20 @@ const memoryDb = {
       for (const r of ordered) if (!latest.has(r.identifier)) latest.set(r.identifier, r);
       return Array.from(latest.values()).sort((a, b) => (a.identifier < b.identifier ? -1 : a.identifier > b.identifier ? 1 : 0));
     },
+    /** ⛔ C8a · the numbers among these on which an ERASURE STANDS — the ONE rule (`erasure-mark.ts`): each number's rows
+     *  in the ledger's own order (`createdAt desc, id desc`, the tie broken as `latestFor` breaks it), handed to
+     *  `erasureStandsAmongRows`, which both twins answer through. A later opt-out never lifts an erasure; a GIVEN does.
+     *  §25's shape: through `bulkKeys`, an empty set answered with nothing; each number once, ordered; a number on which
+     *  none stands is absent. The importer's facts and the Add form read it (`test:dal-parity` §30). */
+    erasureStandsAmong: (q: MessagingKeyBatch): string[] => {
+      const keys = bulkKeys(q.identifiers, "messagingConsent.erasureStandsAmong");
+      if (keys.length === 0) return [];
+      const want = new Set(keys);
+      const rows = Array.from(store.messagingConsents.values())
+        .filter((r) => r.channel === q.channel && r.category === q.category && want.has(r.identifier));
+      rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+      return erasureStandsAmongRows(keys, rows);
+    },
   },
 
   /* ═══ SUPPRESSION (marketing U6, lift U8) ══════════════════════════════════════════════
@@ -4731,6 +4762,35 @@ const memoryDb = {
         if (newest === null || Date.parse(r.claimedAt) > Date.parse(newest)) newest = r.claimedAt;
       }
       return newest;
+    },
+    /** U48a · E5 — "NO RECEIPT AFTER 15 MINUTES": how many of the campaign's rows are STILL SENT (no receipt has moved them)
+     *  and were handed over STRICTLY before `before` — their own `sentAt`, compared as instants, never `updatedAt` or a claim.
+     *  A DELIVERED row has its receipt, an UNCONFIRMED one no hand-over instant, and a row of another campaign is none of this
+     *  one's. The rule set is asked first. The memory twin walks; the Prisma twin asks ONE count. */
+    countSentBefore: (campaignId: string, before: string): number => {
+      assertSentBeforeRead(campaignId, before);
+      const bound = Date.parse(before);
+      let older = 0;
+      for (const r of store.smsCampaignRecipients.values()) {
+        if (r.campaignId !== campaignId || r.status !== "SENT" || r.sentAt === null) continue;
+        if (Date.parse(r.sentAt) < bound) older++;
+      }
+      return older;
+    },
+    /** U48a · E30 — THE STOPPED-BY-LINK WALK'S PAGE: the campaign's SENT and DELIVERED rows that carry a hand-over instant, by
+     *  number (the campaign holds a number once), the numbers strictly after `after` (null: from the start), at most `limit`
+     *  — `{ msisdn, sentAt }` and nothing else. Keyset, never an offset: a walk of a 150,000-person list reads each row once.
+     *  A FAILED row never reached its person, an UNCONFIRMED one carries no instant to date a stop against. The rule set is
+     *  asked first. */
+    handedOverPage: (campaignId: string, after: string | null, limit: number): SmsCampaignHandedOver[] => {
+      assertHandedOverRead(campaignId, after, limit);
+      const people: SmsCampaignHandedOver[] = [];
+      for (const r of store.smsCampaignRecipients.values()) {
+        if (r.campaignId !== campaignId || (r.status !== "SENT" && r.status !== "DELIVERED") || r.sentAt === null) continue;
+        if (after !== null && r.msisdn <= after) continue;
+        people.push({ msisdn: r.msisdn, sentAt: r.sentAt });
+      }
+      return people.sort((a, b) => (a.msisdn < b.msisdn ? -1 : a.msisdn > b.msisdn ? 1 : 0)).slice(0, limit);
     },
     /** U46a · ⭐ THE RECEIPT DOOR (E28) — a delivery receipt settles ITS row and no other: written only where the row is the
      *  one named, holds the MESSAGE's number and either no reference yet or the receipt's own (the identity), AND is in a
