@@ -1,3 +1,4 @@
+✅ DONE — landing 2026-10-09 with S14's contacts push (branch `s14-importer-robust`); kept as the design record.
 # C8c — the live importer's robustness round (brief for the builder)
 
 ## Context
