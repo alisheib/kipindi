@@ -17,6 +17,9 @@
  * ⭐ The rows that could not be imported are listed a page at a time, each with its row and its sentence; "Show the
  * contacts this import added" opens the book filtered to this import (`?import=<run>`, the ONE href builder); the list
  * the contacts went on says whether its new members are covered for offers, and the way to its card when they are not.
+ * 🔴 C8b (B5) · "every member is covered" is counted as the VIEWER may count members (the Lists card's own rule, on the
+ * server), and a reader — only a reader — is also told how many more members have a 50pick account, whom a list basis
+ * never reaches (`withAccount`); for anyone else that figure does not exist.
  */
 import { useEffect, useRef, useState, type RefObject } from "react";
 import Link from "next/link";
@@ -140,6 +143,11 @@ export function ImportDonePanel({
       {result.list !== null && (
         <div className="space-y-2 rounded-md border border-border-subtle p-3" data-import-list-result={result.list.covered ? "covered" : "owed"}>
           <p className="text-body-sm text-text">{result.list.covered ? DONE.listReady(result.list.name) : DONE.listOwed(result.list.name)}</p>
+          {result.list.withAccount !== null && result.list.withAccount > 0 && (
+            <p className="text-body-sm text-text-secondary" data-import-list-with-account>
+              <Parts parts={DONE.listWithAccount(result.list.withAccount)} />
+            </p>
+          )}
           {!result.list.covered && (
             <Button type="button" size="sm" variant="ghost" onClick={onOpenLists} data-import-act="open-lists">
               {LIST.openCard}

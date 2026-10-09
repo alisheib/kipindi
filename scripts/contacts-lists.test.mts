@@ -40,6 +40,10 @@ const { LIST_BASIS_REFUSAL_SENTENCE, attestedVersionOf, recordListBasis, revokeL
 const { __wordingsStoreForTest } = await import("../src/lib/server/marketing/wordings.ts");
 const { WORDING_DEFAULTS } = await import("../src/lib/marketing/marketing-wordings.ts");
 const { auditFlush, getAuditPage } = await import("../src/lib/server/audit.ts");
+// C8b (B5) · the card's loader, and the campaign composer's own count for a list — what a masked viewer's figure must equal.
+const { listsCardView } = await import("../src/app/admin/contacts/lists-loader.ts");
+const { campaignAudienceCount, WHOLE_BOOK } = await import("../src/lib/server/marketing/audience.ts");
+const { ERASURE_EVIDENCE } = await import("../src/lib/marketing/erasure-mark.ts");
 
 type RecordInput = Parameters<typeof recordListBasis>[0];
 type Deps = NonNullable<Parameters<typeof recordListBasis>[1]>;
@@ -64,6 +68,7 @@ const L = {
   b9: "B9 · ⛔ 3b · THE TICK COUNTS ONLY FOR THE WORDS IT WAS GIVEN FOR — the owner rewords the 18+ sentence while the page is open: a recording posted for the version the page showed, a newer one, none, null, the number as text or a fraction is refused attestation_stale with its sentence and writes nothing (no basis row, no audit row); posted for the saved version it records, and the row carries the NEW words and their version",
   b10: "B10 · ⛔ 3b · the posted version is re-typed strictly (`attestedVersionOf`) — plain decimal digits naming a positive whole number are that number; empty, zero, a leading zero, a fraction, a sign, a space, an exponent, hex, eleven digits, words, a number, null, a file, an array and an object are null",
   b11: "B11 · ⛔ 3b · the wiring of the version — the loader hands the card the saved 18+ version, the card holds its tick against that version and reads it at the Record click, posts it beside the tick, and the action hands the posted field to the writer through the writer's own re-typing rule",
+  b12: "B12 · ⛔ C8b (B5) · THE CARD'S FIGURES ARE THE VIEWER'S: on a list holding a stranger (recorded), a stranger added since, a player's LINKED row (recorded) and the erased tombstone, a masked viewer reads 3 members, 2 covered and NO linked figure — every live member, the campaign composer's count EXACTLY — and a reader reads today's 2, 1 covered, and 1 more with an account; the tombstone in neither; and the recording's COMPLIANCE row keeps the figures it records today (the unlinked members alone)",
 } as const;
 
 /* ══ THE SOURCES — read ONCE; a red case plants into a COPY, in memory ══════════════════════════════════════════ */
@@ -175,6 +180,8 @@ export type ListBasisImpl = {
   readonly revoke: typeof revokeListBasis;
   /** ⛔ 3b · the posted field's re-typing rule. */
   readonly versionOf: typeof attestedVersionOf;
+  /** ⛔ C8b (B5) · the Lists card's loader, by the viewer's read cell. */
+  readonly cardView: typeof listsCardView;
 };
 /** An implementation is made for ONE run's world: the writer reads that run's wordings record (`Deps`). */
 export type MakeImpl = (deps: Deps) => ListBasisImpl;
@@ -182,6 +189,7 @@ export const REAL: MakeImpl = (deps) => ({
   record: (input) => recordListBasis(input, deps),
   revoke: revokeListBasis,
   versionOf: attestedVersionOf,
+  cardView: listsCardView,
 });
 
 async function runAssertions(make: MakeImpl, tag: string, src: Sources = SOURCES): Promise<void> {
@@ -363,8 +371,10 @@ async function runAssertions(make: MakeImpl, tag: string, src: Sources = SOURCES
     // ⛔ The card decides nothing: no rule of its own, and no phone number anywhere in it.
     const cardDecides = /currentWording[(]|db[.]|messagingConsent/.test(card);
     const cardLabelsFromSaved = card.includes("view.adultLabel");
-    // ⛔ The loader asks the DAL for coverage — it never counts members itself.
-    const loaderAsksDal = loader.includes("db.contactListBasis.coveredCount(") && !/for [(]const m of/.test(loader);
+    // ⛔ The loader asks the DAL for coverage — it never counts members itself. ⭐ C8b (B5) · the split, through the ONE
+    // viewer rule (`listFiguresFor`) with the viewer's read cell.
+    const loaderAsksDal = loader.includes("db.contactListBasis.coverageSplit(") && loader.includes("listFiguresFor(")
+      && loader.includes(", viewerReads);") && !/for [(]const m of/.test(loader);
     const wired = pkg.scripts["test:contacts-lists"] === "tsx scripts/contacts-lists.test.mts"
       && pkg.scripts["red:contacts-lists"] === "tsx scripts/contacts-lists.test.mts --prove-red"
       && (pkg.scripts.predeploy ?? "").includes("npm run test:contacts-lists")
@@ -383,6 +393,36 @@ async function runAssertions(make: MakeImpl, tag: string, src: Sources = SOURCES
     ok(p(L.b11), loaderHands && cardHolds && cardCaptures && cardPosts && actionHands,
       `loader hands it ${loaderHands} · tick held to it ${cardHolds} · read at the click ${cardCaptures} · posted ${cardPosts} · action hands it ${actionHands}`);
   }
+
+  // ── B12 · ⛔ C8b (B5) · the Lists card's figures, by viewer ─────────────────────────────────────────────────────
+  {
+    const list = await makeList(`viewer-${seq}`);
+    await addMember(list, T1);                             // a stranger, before the recording
+    // A player's LINKED row and the erased tombstone, both on the list before the recording.
+    const linkedId = `ct_${String(seq++).padStart(4, "0")}cccccccccccccccc`.slice(0, 23);
+    const tombId = `ct_${String(seq++).padStart(4, "0")}dddddddddddddddd`.slice(0, 23);
+    for (const [id, userId, sourceRef] of [[linkedId, "usr_lb_player", null], [tombId, null, ERASURE_EVIDENCE]] as const) {
+      await Promise.resolve(db.marketingContact.create({
+        id, msisdn: `25571${String(5000000 + ++phoneSeq)}`, displayName: null, email: null, operator: null,
+        source: "REGISTRATION", sourceRef, userId, consentState: "UNKNOWN", suppressedAt: null, tags: [],
+        createdBy: null, createdAt: T1, updatedAt: T1,
+      } as never));
+      await Promise.resolve(db.contactListMember.add({ listId: list, contactId: id, addedBy: OFFICER, addedAt: T1 } as never));
+    }
+    const res = await impl.record({ listId: list, officerId: OFFICER, proofNote: NOTE, adultAttested: true, attestedVersion: shown(), nowIso: T1 });
+    await addMember(list, T2);                             // a stranger added since
+    const rowOf = async (reads: boolean) => (await impl.cardView(reads)).rows.find((r) => r.id === list) ?? null;
+    const masked = await rowOf(false);
+    const reader = await rowOf(true);
+    const composer = await campaignAudienceCount({ ...WHOLE_BOOK, lists: [list] });
+    const recorded = (await auditFor("marketing.list_basis_recorded", list))[0];
+    const payload = (recorded?.payload ?? {}) as Record<string, unknown>;
+    ok(p(L.b12),
+      res.ok && masked !== null && masked.live === 3 && masked.covered === 2 && masked.withAccount === null && masked.live === composer
+        && reader !== null && reader.live === 2 && reader.covered === 1 && reader.withAccount === 1
+        && payload.members === 1 && payload.covered === 1,
+      `masked ${masked ? `${masked.covered}/${masked.live} (account ${masked.withAccount})` : "none"} · composer ${composer} · reader ${reader ? `${reader.covered}/${reader.live} + ${reader.withAccount}` : "none"} · recorded ${JSON.stringify(payload)}`);
+  }
 }
 
 /* ══ THE RED CASES ══════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -398,6 +438,10 @@ type Defect = {
   readonly ignoresVersion?: boolean;
   /** ⛔ 3b · The posted field is read loosely — any number JavaScript can make of it. */
   readonly looseVersion?: boolean;
+  /** ⛔ C8b (B5) · The card as it stood before C8b: every viewer reads coveredCount's pair — the linked members left out. */
+  readonly cardBeforeC8b?: boolean;
+  /** ⛔ C8b (B5) · Every viewer handed the READER's figures — the linked count among them. */
+  readonly cardAsReader?: boolean;
   /** ⛔ 3b · One exact line of one wired file replaced, in a COPY of its text. */
   readonly plant?: Plant;
 };
@@ -418,6 +462,19 @@ function withDefect(d: Defect): MakeImpl {
     return {
       revoke: revokeListBasis,
       versionOf: d.looseVersion ? looseVersionOf : attestedVersionOf,
+      cardView: d.cardAsReader
+        ? () => listsCardView(true)
+        : d.cardBeforeC8b
+          ? async (reads) => {
+            const v = await listsCardView(reads);
+            const rows = [];
+            for (const r of v.rows) {
+              const c = await Promise.resolve(db.contactListBasis.coveredCount(r.id));
+              rows.push({ ...r, live: c.live, covered: c.covered, withAccount: null });
+            }
+            return { ...v, rows };
+          }
+          : listsCardView,
       record: async (input) => {
         if (d.noBox) return recordListBasis({ ...input, adultAttested: true }, deps);
         if (d.ignoresVersion) return recordListBasis({ ...input, attestedVersion: deps.wording("adult.list")?.v ?? null }, deps);
@@ -448,6 +505,10 @@ const CASES: { name: string; defect: Defect; expect: string }[] = [
   { name: "the card holds a bare tick, which survives a rewording", defect: { plant: { file: "card", from: WIRE.cardHolds, to: "const ticked = tickedFor !== null;" } }, expect: L.b11 },
   { name: "the action hands the writer no version", defect: { plant: { file: "actions", from: WIRE.action, to: "attestedVersion: null," } }, expect: L.b11 },
   { name: "the loader hands the card no version", defect: { plant: { file: "loader", from: WIRE.loader, to: "adultVersion: null," } }, expect: L.b11 },
+  // ── C8b (B5) ──
+  { name: "⛔ C8b · B5 not built — every viewer reads coveredCount's pair, so a one-number list tells a masked officer whether the number is a player's", defect: { cardBeforeC8b: true }, expect: L.b12 },
+  { name: "⛔ C8b · every viewer handed the reader's figures — the masked officer reads how many members have an account", defect: { cardAsReader: true }, expect: L.b12 },
+  { name: "⛔ C8b · the loader asks the DAL's old pair, not its split", defect: { plant: { file: "loader", from: "db.contactListBasis.coverageSplit(", to: "db.contactListBasis.coveredCount(" } }, expect: L.b8 },
 ];
 
 /* ══ RUN ════════════════════════════════════════════════════════════════════════════════════════════════════════ */

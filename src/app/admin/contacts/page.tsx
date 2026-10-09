@@ -206,8 +206,9 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
   // 🔴 D19 · the read cell, from the loader — and when the read FAILED, asked on its own and failing closed: the
   // rail is role-shaped in the error state too, so a masked viewer's rail never grows a Consent axis on an error.
   const reads = view !== null ? view.viewerReads : await viewerReadsContacts().catch(() => false);
-  /* U33b-L · read soft: a Lists card that cannot load must not take the contact book down with it. */
-  const listsCard = await listsCardView().catch(() => null);
+  /* U33b-L · read soft: a Lists card that cannot load must not take the contact book down with it. 🔴 C8b (B5) · its
+     figures are the viewer's: a masked viewer counts every live member, a reader the unlinked ones and the linked beside. */
+  const listsCard = await listsCardView(reads).catch(() => null);
   // D19 + A1.1: a masked viewer sees Name, Number, Operator, Lists · Tags and Added — no per-row consent, reach,
   // source or player signal. U23 · plus the select column, first, for every viewer (ticking is a read affordance).
   const cols = reads ? 9 : 6;
@@ -482,8 +483,9 @@ async function AdminContactsContent({ searchParams }: { searchParams: Promise<Co
         {result !== null && result.total > PER_PAGE && <AdminPagination total={result.total} page={page} baseHref={baseHref} />}
 
         {/* ⭐ U33b-L · THE LISTS CARD — where a licence basis is recorded on a list, under the list of contacts it is
-            about. ⛔ Its figures are the DAL's own (`coveredCount`), the same read the gate decides from, so the screen
-            cannot promise a reach the gate will not honour. D19 · nothing here is maskable: counts, names and instants. */}
+            about. ⛔ Its figures are the DAL's own (`coverageSplit`, whose unlinked pair is the gate's `coveredCount`), so
+            the screen cannot promise a reach the gate will not honour. D19 · nothing here is maskable: counts, names and
+            instants — and (C8b · B5) a masked viewer's counts never separate members with an account from the rest. */}
         {listsCard !== null && (
           // S15 · the anchor the import's result scrolls to when a list's new members still need its basis recorded.
           <div id="contacts-lists" data-block="contacts-lists">

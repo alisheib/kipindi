@@ -35,7 +35,10 @@
  *       (the erasure reads the book before it deletes them — recorded for C8, not closed here);
  *   4 · writes: creates through THE ONE CREATE BUILDER (`newContactRow`, X6 — source IMPORT, `sourceRef` and `importId`
  *       the run), updates conditional on the book row's `updatedAt` and on it not being the erased tombstone, keeps with
- *       decide()'s SHOWN reason (⛔ X22: the word `erased` never lands in a stored row), the blanking, the list memberships;
+ *       decide()'s SHOWN reason (⛔ X22: the word `erased` never lands in a stored row), the blanking, the list memberships
+ *       — ⛔ C8b (B4, Ali's ruling of 2026-10-09): for a run whose STARTER may not read numbers, ONLY the contacts the run
+ *       creates join its list; a kept row (an ordinary contact, a player's, a stopped number) joining while an erased one
+ *       never did let that starter read off `?list=` whether a number was in the book and why. A reader's run is unchanged;
  *   5 · on a `conflict` — a contact changed since it was read, or a staged row erasure deleted since (R9) — reads its
  *       range AGAIN and decides ONCE more from fresh facts (a row that is gone is not imported, so an erased number is
  *       never created); a row that moves again is kept as `changed_during_import` (E9: never failed) and the rest commit;
@@ -64,9 +67,10 @@ import { db, CONTACT_IMPORT_OPEN_RUNS_MAX } from "@/lib/server/store";
 import type {
   ContactImportCommitBatch, ContactImportCommitCreate, ContactImportCommitOutcome, ContactImportCommitResult,
   ContactImportCommitUpdate, ContactImportFailSentence, ContactImportFailedPage, ContactImportFailedQuery,
-  ContactImportFreeze, ContactImportKeptCount, ContactImportOthersQuery, ContactImportTransition, ListBasisCoverage,
+  ContactImportFreeze, ContactImportKeptCount, ContactImportOthersQuery, ContactImportTransition, ListBasisCoverageSplit,
   StoredContactImport, StoredContactImportRow, StoredContactList, StoredContactListBasis,
 } from "@/lib/server/store";
+import { listFiguresFor } from "./list-figures";
 import { admissionSnapshot } from "@/lib/server/admission";
 import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
 import type { ContactCacheOutcome } from "@/lib/server/marketing/contact-cache";
@@ -89,7 +93,7 @@ import type { DecisionPreview, ImportCandidate, ImportChoice, RowOverrides } fro
 import { FAILURES_PAGE_ROWS } from "@/lib/contacts/import-flow";
 import type {
   CommitStepResult, FailuresResult, ImportListOption, ImportListsResult, ImportOpenRunsResult, ImportRefusal,
-  ImportRefusalReason, ImportResultResult, ImportRunView, KeptSplit, RunActResult, StartImportResult,
+  ImportRefusalReason, ImportResultResult, ImportResultView, ImportRunView, KeptSplit, RunActResult, StartImportResult,
 } from "@/lib/contacts/import-flow";
 
 /* ═══ THE PERIODS AND THE BOUNDS ═══════════════════════════════════════════════════════════════════════ */
@@ -126,8 +130,9 @@ const COMMIT_REFUSED = "contacts.import.commit_refused";
 export type ImportListStore = {
   all: () => Promise<StoredContactList[]>;
   find: (id: string) => Promise<StoredContactList | null>;
-  /** The Lists card's own figures (`contactListBasis.coveredCount`). */
-  coverage: (listId: string) => Promise<ListBasisCoverage>;
+  /** ⭐ C8b (B5) · the Lists card's own figures, split by the account link (`contactListBasis.coverageSplit`) — each viewer
+   *  is shown them through the ONE rule (`listFiguresFor`). */
+  split: (listId: string) => Promise<ListBasisCoverageSplit>;
   /** The list's ONE standing: its newest basis recording, revoked or not (U33a-L, M1). */
   newestBasis: (listId: string) => Promise<StoredContactListBasis | null>;
 };
@@ -172,6 +177,9 @@ export type ImportCommitDeps = ImportCheckDeps & {
   finishCaches: (runId: string, at: string, deps: ImportCommitDeps) => Promise<number>;
   /** R5 · the staged rows a cancel leaves unimported, off the run's two cursors (`notImportedOf`) — read BEFORE the delete. */
   leftUnimported: (run: StoredContactImport) => number;
+  /** ⛔ C8b (B4) · does this run put on its list ONLY the contacts it creates (`listCreatedOnly`: its STARTER may not read
+   *  numbers)? `driver` is whoever asked for the step — named so a red plant can mistake it for the starter. */
+  createdOnly: (run: StoredContactImport, driver: string, deps: ImportCommitDeps) => Promise<boolean>;
 };
 
 /** A new list's id: `cl_` and sixteen letters — the bulk bar's shape; no digit run that could read as a number. */
@@ -242,7 +250,7 @@ export const IMPORT_COMMIT_DEPS: ImportCommitDeps = {
   lists: {
     all: async () => db.contactList.listAll(),
     find: async (id) => db.contactList.find(id),
-    coverage: async (listId) => db.contactListBasis.coveredCount(listId),
+    split: async (listId) => db.contactListBasis.coverageSplit(listId),
     newestBasis: async (listId) => (await db.contactListBasis.listForList(listId))[0] ?? null,
   },
   openRuns: async (q) => db.contactImport.listOpenByOthers(q),
@@ -263,7 +271,18 @@ export const IMPORT_COMMIT_DEPS: ImportCommitDeps = {
   bestEffort,
   finishCaches: (runId, at, deps) => mirrorRunCreated(runId, at, deps),
   leftUnimported: (run) => notImportedOf(run),
+  createdOnly: (run, _driver, deps) => listCreatedOnly(run, deps),
 };
+
+/**
+ * ⛔ C8b (B4, Ali's ruling of 2026-10-09: "a GROWTH officer's import puts on a list only the contacts that run CREATED") ·
+ * a run whose STARTER may not read numbers (`decisionConfirmedBy` — the run's own fact; its creator before a start) puts on
+ * its list only the contacts it creates. ⭐ The starter decides, never whoever drives the step: an ADMIN resuming a masked
+ * officer's run (X18) changes nothing. ⛔ Fails closed: a read cell that cannot be read is a masked one.
+ */
+export async function listCreatedOnly(run: StoredContactImport, deps: Pick<ImportCommitDeps, "readsNumbers">): Promise<boolean> {
+  return !(await deps.readsNumbers(run.decisionConfirmedBy ?? run.createdBy).catch(() => false));
+}
 
 /* ═══ SMALL PIECES ═════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -447,11 +466,12 @@ type StepPlan = {
  * ⭐ ONE STEP'S DECISIONS, from the rows it read. Unreadable and invalid rows fail `invalid` (an invalid row whose sentence
  * is not stored yet gets it written — S15-8); the decidable rows are decided with the FROZEN choice and overrides, the
  * WHOLE run's first lines (S15-7) and fresh facts. Null when a decidable number has no first line at or before its own
- * row — ⛔ the step refuses rather than guess which row of a number wins (OD33).
+ * row — ⛔ the step refuses rather than guess which row of a number wins (OD33). ⛔ C8b (B4) · `createdOnly` (a starter
+ * who may not read numbers): only a created contact joins the run's list.
  */
 async function planStep(
   run: StoredContactImport, window: readonly StoredContactImportRow[], choice: ImportChoice, overrides: RowOverrides,
-  officerId: string, at: string, deps: ImportCommitDeps,
+  officerId: string, at: string, deps: ImportCommitDeps, createdOnly: boolean,
 ): Promise<StepPlan | null> {
   const plan: StepPlan = { creates: [], updates: [], outcomes: [], sentences: [], members: new Map(), created: new Map() };
   const decidable: Array<{ row: StoredContactImportRow; candidate: ImportCandidate }> = [];
@@ -496,11 +516,13 @@ async function planStep(
         patch: { ...d.patch },
       });
       plan.outcomes.push({ ordinal: row.ordinal, outcome: "update", reason: null });
-      if (listed) plan.members.set(row.ordinal, d.contactId);
+      if (listed && !createdOnly) plan.members.set(row.ordinal, d.contactId);
     } else {
       // ⛔ X22 · the SHOWN reason: an erased number is stored as the ordinary contact it reads as, never as `erased`.
       plan.outcomes.push({ ordinal: row.ordinal, outcome: "keep", reason: d.shown });
-      if (listed && d.contactId !== null && d.reason !== "erased") plan.members.set(row.ordinal, d.contactId);
+      // ⛔ C8b (B4) · a masked starter's run puts on the list ONLY what it created: a kept row joining (or an erased one
+      // not joining) would answer on `?list=` whether the number is in the book, and why.
+      if (listed && !createdOnly && d.contactId !== null && d.reason !== "erased") plan.members.set(row.ordinal, d.contactId);
     }
   });
   return plan;
@@ -668,10 +690,13 @@ async function settleStep(
     await auditImportRefusal(deps, COMMIT_REFUSED, officerId, run.id, "server_error", { step: "commit", why, rows });
     return importRefusal("server_error", await importRunView(officerId, (await deps.findRun(run.id)) ?? run, deps));
   };
+  // ⛔ C8b (B4, Ali's ruling of 2026-10-09) · the run of a STARTER who may not read numbers puts on its list ONLY the
+  // contacts it creates (`listCreatedOnly`) — the starter's read cell, whoever drives the step, asked each step.
+  const createdOnly = await deps.createdOnly(run, officerId, deps);
 
-  let planned = await planStep(run, firstRead, choice, overrides, officerId, at, deps);
+  let planned = await planStep(run, firstRead, choice, overrides, officerId, at, deps, createdOnly);
   // A number whose first row erasure deleted between the read and its first-line read: the range is read once more.
-  if (planned === null) planned = await planStep(run, await reread(), choice, overrides, officerId, at, deps);
+  if (planned === null) planned = await planStep(run, await reread(), choice, overrides, officerId, at, deps, createdOnly);
   if (planned === null) return refusedAs("first_line");
   let plan: StepPlan = planned;
   let result: ContactImportCommitResult = await deps.commitBatch(batchOf(plan));
@@ -680,7 +705,7 @@ async function settleStep(
   while (result.kind === "conflict" && redecided < deps.maxRedecides) {
     redecided++;
     // X3 · decided ONCE more from FRESH facts — over a FRESH read of the range (R9).
-    const again = await planStep(run, await reread(), choice, overrides, officerId, at, deps);
+    const again = await planStep(run, await reread(), choice, overrides, officerId, at, deps, createdOnly);
     if (again === null) return refusedAs("first_line");
     plan = again;
     result = await deps.commitBatch(batchOf(plan));
@@ -857,31 +882,42 @@ export function keptSplitOf(counts: readonly ContactImportKeptCount[]): Exclude<
  * `read` (S15-3 · OD54 — a stop per row is a player signal; everyone else reads one "kept as they were"), and the list the
  * contacts went on with whether EVERY live member of it is now covered by its basis — false until the basis is recorded
  * again on the Lists card, because the members this import added joined after any earlier recording.
+ * 🔴 C8b (B5) · "every live member" is the VIEWER's (`listFiguresFor`, the Lists card's own rule): a reader's figure is the
+ * members a list basis can reach — with how many more have a 50pick account beside it (`withAccount`) — and anyone
+ * else's is every live member, linked or not, with no such figure: the coverage sentence never tells a masked officer
+ * whether a member is a player's.
  */
 export async function contactImportResult(officerId: string, runId: unknown, deps: ImportCommitDeps = IMPORT_COMMIT_DEPS): Promise<ImportResultResult> {
   const opened = await openImportRun(officerId, runId, deps, COMMIT_REFUSED);
   if (!opened.ok) return opened.refusal;
   const run = opened.run;
   const view = await importRunView(officerId, run, deps);
-  const kept: KeptSplit = (await deps.readsNumbers(officerId)) ? keptSplitOf(await deps.keptSplit(run.id)) : null;
+  const reads = await deps.readsNumbers(officerId);
+  const kept: KeptSplit = reads ? keptSplitOf(await deps.keptSplit(run.id)) : null;
   const listId = run.targetListId ?? null;
   const row = listId === null ? null : await deps.lists.find(listId);
-  let list: { id: string; name: string; covered: boolean } | null = null;
+  let list: ImportResultView["list"] = null;
   if (row !== null) {
-    const coverage = await deps.lists.coverage(row.id);
-    list = { id: row.id, name: row.name, covered: coverage.live > 0 && coverage.covered === coverage.live };
+    const figures = listFiguresFor(await deps.lists.split(row.id), reads);
+    list = { id: row.id, name: row.name, covered: figures.live > 0 && figures.covered === figures.live, withAccount: figures.withAccount };
   }
   return { ok: true, result: { view, kept, list } };
 }
 
 /** The lists an import can add to — the Lists card's, A to Z — each with the card's member figure and whether its basis
- *  is in force (its newest recording, not revoked). Counts and names only: nothing here is a number. */
-export async function importListOptions(_officerId: string, deps: ImportCommitDeps = IMPORT_COMMIT_DEPS): Promise<ImportListsResult> {
+ *  is in force (its newest recording, not revoked). Counts and names only: nothing here is a number. ⭐ C8b (B5) · the
+ *  member figure is the viewer's (`listFiguresFor`): a reader's the unlinked members and the linked beside them,
+ *  anyone else's every live member and no linked figure. */
+export async function importListOptions(officerId: string, deps: ImportCommitDeps = IMPORT_COMMIT_DEPS): Promise<ImportListsResult> {
+  const reads = await deps.readsNumbers(officerId);
   const out: ImportListOption[] = [];
   for (const l of await deps.lists.all()) {
-    const coverage = await deps.lists.coverage(l.id);
+    const figures = listFiguresFor(await deps.lists.split(l.id), reads);
     const newest = await deps.lists.newestBasis(l.id);
-    out.push({ id: l.id, name: l.name, members: coverage.live, covered: newest !== null && newest.revokedAt === null });
+    out.push({
+      id: l.id, name: l.name, members: figures.live, withAccount: figures.withAccount,
+      covered: newest !== null && newest.revokedAt === null,
+    });
   }
   return { ok: true, lists: out.sort(compareListsByName) };
 }

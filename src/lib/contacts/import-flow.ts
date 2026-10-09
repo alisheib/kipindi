@@ -273,12 +273,14 @@ export type StartImportInput = {
 export type StartImportResult = ImportAnswer<{ view: ImportRunView }>;
 
 /**
- * The lists an import can add to (the Lists card's lists), by name, A to Z. `members` is the Lists card's own figure — the
- * members whose book row is live and linked to no account (`ListBasisCoverage.live`). `covered`: the list's NEWEST basis
- * recording on the Lists card is in force (recorded, not revoked). ⚠️ Members an import ADDS join after that recording,
- * so they are covered only once the basis is recorded again — the result's `list.covered` says whether that is owed.
+ * The lists an import can add to (the Lists card's lists), by name, A to Z. `members` is the Lists card's own figure, as
+ * the VIEWER may count it (C8b · B5, `listFiguresFor`): for a viewer who may read numbers, the members whose book row is
+ * live and linked to no account — and `withAccount` how many more are linked to a 50pick account; for anyone else, every
+ * live member, linked or not (the composer's count), and `withAccount` null. `covered`: the list's NEWEST basis recording
+ * on the Lists card is in force (recorded, not revoked). ⚠️ Members an import ADDS join after that recording, so they are
+ * covered only once the basis is recorded again — the result's `list.covered` says whether that is owed.
  */
-export type ImportListOption = { id: string; name: string; members: number; covered: boolean };
+export type ImportListOption = { id: string; name: string; members: number; withAccount: number | null; covered: boolean };
 export type ImportListsResult = ImportAnswer<{ lists: ImportListOption[] }>;
 
 /* ══ 5 · THE COMMIT LOOP ════════════════════════════════════════════════════════════════════════ */
@@ -324,8 +326,10 @@ export type ImportResultView = {
    *  the Lists card). Null when no list was chosen — or when the list has since been deleted.
    *  ⭐ `covered` is true only when EVERY live member of the list is covered by its newest recording (the Lists card's
    *  "covers N of N", N above 0): members the import added joined after any earlier recording, so it reads false until
-   *  the basis is recorded again on the Lists card. */
-  list: { id: string; name: string; covered: boolean } | null;
+   *  the basis is recorded again on the Lists card. ⭐ C8b (B5) · "every live member" as the VIEWER may count them — the
+   *  Lists card's own rule — and `withAccount` a reader's figure alone (null for anyone else): the members linked to a
+   *  50pick account, whom a list basis never reaches. */
+  list: { id: string; name: string; covered: boolean; withAccount: number | null } | null;
 };
 export type ImportResultResult = ImportAnswer<{ result: ImportResultView }>;
 

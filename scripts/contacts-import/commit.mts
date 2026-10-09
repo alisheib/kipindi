@@ -40,8 +40,10 @@ import { ERASURE_EVIDENCE } from "../../src/lib/marketing/erasure-mark.ts";
 const { eraseMarketingFor } = await import("../../src/lib/server/marketing/erase.ts");
 const {
   IMPORT_COMMIT_DEPS, cancelContactImport, commitContactImportStep, contactImportFailures, contactImportResult, failedRowSentence,
-  importOpenRuns, pauseContactImport, resumeContactImport, startContactImport,
+  importListOptions, importOpenRuns, pauseContactImport, resumeContactImport, startContactImport,
 } = commitModule;
+// C8b (B5) · the campaign composer's own count for a list — what a masked viewer's list figure must equal.
+const { campaignAudienceCount, WHOLE_BOOK } = await import("../../src/lib/server/marketing/audience.ts");
 const { checkContactImport, contactImportChanges } = checkModule;
 
 /* ══ THE BUNDLE UNDER TEST ══════════════════════════════════════════════════════════════════════════════════════ */
@@ -101,6 +103,8 @@ export const L = {
   M22: "M22 · ⛔ R9 · the erasure race: a person erased between a step's read and its write — their staged row deleted, their number in no book row — is NOT created: the step reads its rows again, the conflict is decided once more, and the run finishes with the other rows imported",
   M23: "M23 · ⭐ R10 · after a step has LANDED its cache mirror and its audit rows cannot turn it into a refusal: a mirror that throws once and audit rows that throw leave the step done, and the run's end mirrors every created number the truth knows (N1 GIVEN, N4 stopped)",
   M24: "M24 · ⭐ R11 · a deadlock (P2034) inside a step answers busy, retryAfterSec 5, with the run's view and one audit row naming the error's code — never server_error, never a throw — the cursor unmoved; the next step lands",
+  M26: "M26 · ⛔ C8b (B4) · A MASKED STARTER'S IMPORT PUTS ON ITS LIST ONLY THE CONTACTS IT CREATED: a GROWTH officer's 40-row KEEP run into an existing list adds its 22 new contacts and NONE of the file's numbers already in the book (an ordinary contact, a stopped one, a same-name one) — the list's earlier members (an ordinary row, a player's, the tombstone) as they were — even with an ADMIN driving every step (the starter's read cell decides, never the driver's); a reader's run still lists its kept rows (M10)",
+  M27: "M27 · ⛔ C8b (B5) · THE IMPORTER'S LIST FIGURES ARE THE VIEWER'S: the masked officer's picker counts EVERY live member of the list, the player's linked row included and the tombstone not — EXACTLY the campaign composer's count for it — with no linked figure (withAccount null), and so does their result; a reader's picker counts the members a basis can reach and, beside them, how many more have an account",
   M25: "M25 · ⛔ C8a · the commit reads the check's OWN fact, fresh at its step: an erasure that came to stand on a number with no book row AFTER the check and the start — its marker written since, alone or under an opt-out tap — keeps that row (nothing created; the row kept as the contact it reads as, chosen_keep), while the marker under a GIVEN written since still creates, and the run's other rows import",
 } as const;
 
@@ -320,6 +324,42 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     && reader.result.list !== null && reader.result.list.name === "October file" && reader.result.list.covered === false
     && masked !== null && masked.ok && masked.result.kept === null && masked.result.list === null,
     `reader ${splitOf(reader)} · admin ${splitOf(admin)} · growth ${splitOf(masked)}`);
+
+  // ── M26 · M27 · C8b · a MASKED officer's import into an EXISTING list — what joins it (B4), and the figures (B5) ──
+  await inFreshStore(async () => {
+    await seedFortyWorld();
+    const SHARED = "cl_w_shared";
+    await db.contactList.create(listRow(SHARED, "Shared list"));
+    // The list's earlier members: an ordinary contact, the player's LINKED row and the erased tombstone.
+    for (const contactId of ["mc_w_b1", "mc_w_b5", "mc_w_b4"]) await db.contactListMember.add({ listId: SHARED, contactId, addedAt: LIST_AT, addedBy: null });
+    const runId = await stageFile(OFFICER, fortyRows());
+    const { start } = await checkAndStart(runId, impl.deps, "KEEP", { kind: "existing", listId: SHARED }, {}, OFFICER);
+    // ⭐ An ADMIN drives every step (X18) — the run is still the masked officer's.
+    const driven = await drive(runId, impl.deps, ADMIN);
+    const created = bookRows().filter((c) => c.importId === runId).map((c) => c.id);
+    const members = ([...mem().contactListMembers.values()] as Array<{ listId: string; contactId: string }>)
+      .filter((m) => m.listId === SHARED).map((m) => m.contactId);
+    const kept = ["mc_w_b2", "mc_w_b3", "mc_w_b6"];
+    ok(L.M26, start.ok && driven.last?.ok === true && created.length === 22 && members.length === 25
+      && created.every((id) => members.includes(id)) && kept.every((id) => !members.includes(id))
+      && ["mc_w_b1", "mc_w_b5", "mc_w_b4"].every((id) => members.includes(id)),
+      `start ${start.ok ? "ok" : start.reason} · driven ${driven.last?.ok ? "done" : "refused"} · created ${created.length} · members ${members.length} · kept rows on it ${kept.filter((id) => members.includes(id)).join(",") || "none"}`);
+
+    const optionsOf = async (who: string) => {
+      const r = await importListOptions(who, impl.deps);
+      return r.ok ? r.lists.find((l) => l.id === SHARED) ?? null : null;
+    };
+    const maskedOption = await optionsOf(OFFICER);
+    const readerOption = await optionsOf(READER);
+    const composer = await campaignAudienceCount({ ...WHOLE_BOOK, lists: [SHARED] });
+    const maskedResult = await contactImportResult(OFFICER, runId, impl.deps);
+    const resultList = maskedResult.ok ? maskedResult.result.list : null;
+    ok(L.M27, maskedOption !== null && maskedOption.members === 24 && maskedOption.members === composer && maskedOption.withAccount === null
+      && readerOption !== null && readerOption.members === 23 && readerOption.withAccount === 1
+      && resultList !== null && resultList.withAccount === null && resultList.covered === false
+      && !json([maskedOption, maskedResult.ok ? maskedResult.result.list : null]).includes("withAccount\":1"),
+      `masked picker ${maskedOption ? `${maskedOption.members} (account ${maskedOption.withAccount})` : "none"} · composer ${composer} · reader picker ${readerOption ? `${readerOption.members} + ${readerOption.withAccount}` : "none"} · masked result ${json(resultList)}`);
+  });
 
   // ── M6 · pause, resume, cancel (ten rows a step) — and cancel before the start ──
   await inFreshStore(async () => {
@@ -830,6 +870,26 @@ const plants: readonly RedPlant<CommitImpl>[] = [
     name: "P10 · the commit forgets the list — no contact joins it",
     expect: L.M10,
     impl: () => withDeps({ commitBatch: async (b) => REAL_DEPS.commitBatch({ ...b, members: [] }) }),
+  },
+  {
+    name: "P-B4 · ⛔ C8b · B4 not built — a masked officer's kept rows join the list, so ?list= says which typed numbers are in the book",
+    expect: L.M26,
+    impl: () => withDeps({ createdOnly: async () => false }),
+  },
+  {
+    name: "P-B4b · ⛔ C8b · the rule read off the step's DRIVER — an ADMIN resuming a masked officer's run puts the kept rows on the list",
+    expect: L.M26,
+    impl: () => withDeps({ createdOnly: async (_run, driver, d) => !(await d.readsNumbers(driver)) }),
+  },
+  {
+    name: "P-B5 · ⛔ C8b · the split's linked side dropped (coveredCount's pre-C8b figure) — the masked picker leaves the player out, and composer minus picker counts the players",
+    expect: L.M27,
+    impl: () => withDeps({
+      lists: {
+        ...REAL_DEPS.lists,
+        split: async (id) => ({ ...(await REAL_DEPS.lists.split(id)), linked: { live: 0, covered: 0 } }),
+      },
+    }),
   },
   {
     name: "P11 · every viewer reads as one who may read numbers — a GROWTH officer is shown the stop split (OD54)",
