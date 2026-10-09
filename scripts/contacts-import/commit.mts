@@ -74,7 +74,8 @@ type Sources = { readonly check: string; readonly commit: string; readonly actio
 export type CommitImpl = {
   readonly deps: ImportCommitDeps;
   readonly sources: Sources;
-  /** ⭐ C8c · #14a · the refusal-audit gate's factory — M27/M27b build theirs over a clock they move, and a plant swaps it. */
+  /** ⭐ C8c · #14a · the refusal-audit gate's factory — M20, M27, M27b and M27c build their own (M20 and M27 over a clock
+   *  they move), and a plant swaps it. */
   readonly gate: typeof refusalAuditModule.refusalAuditGate;
   /** ⭐ C8c · m3 · the decision panel's reconcile after a re-check (the contract's `exceptionsLetGo`). */
   readonly exceptionsLetGo: typeof exceptionsLetGo;

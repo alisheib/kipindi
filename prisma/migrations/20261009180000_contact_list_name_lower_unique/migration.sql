@@ -41,7 +41,8 @@
 --   AFTER the deploy:
 --     SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'ContactList' AND indexname = 'ContactList_name_lower_key';
 --   expect ONE row, its definition a UNIQUE index on lower(name). No row: the NOTICE branch ran - rename one of the pair,
---   then create the index by hand with the CREATE UNIQUE INDEX statement below (outside the block).
+--   then create the index by hand, the block's own statement run on its own:
+--     CREATE UNIQUE INDEX IF NOT EXISTS "ContactList_name_lower_key" ON "ContactList" (lower("name"));
 -- The table was created empty with the book (U18), and lists are made only through the bulk bar and the importer's start.
 --
 -- ⛔ lower(), NOT NFKC. Postgres lower() is the key a plain unique index can hold on every server (normalize() needs a UTF8

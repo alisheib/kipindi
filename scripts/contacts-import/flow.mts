@@ -648,10 +648,12 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
     };
     const d = impl.copy.decide;
     const lead = partsText(impl.copy.tagsLead(2));
+    const leadOne = partsText(impl.copy.tagsLead(1));
     ok(L.N8, tones.conflict === "warning" && tones.fault === "danger" && tones.bets === "warning" && tones.dbPaused === "warning" && tones.forbidden === "danger"
       && !d.listHeading.includes("would change") && !d.tableLabel.includes("would change")
       && d.listLead.includes("a choice would change it") && d.listLead.includes("too full of tags")
-      && !lead.includes("already") && !lead.includes("import again") && lead.includes("open the contact in the book"),
+      && [lead, leadOne].every((l) => !l.includes("already") && !l.includes("import again"))
+      && lead.includes("open each contact in the book") && leadOne.includes("open the contact in the book"),
       `tones ${json(tones)} · list "${d.listHeading}" / "${d.tableLabel}" · tags lead "${lead.slice(0, 120)}"`);
   }
 

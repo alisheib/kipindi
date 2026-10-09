@@ -320,9 +320,10 @@ export const DECIDE = {
   changes: (n: number): Part[] => (n === 0 ? ["No contact changes"] : [fig(n), ` ${plural(n, "contact changes", "contacts change")}`]),
   reassure: "A blank cell never erases anything. Numbers on the stop list and erased people are never changed.",
   /** ⭐ C8c · n8 · the list holds every row some choice would change AND (#13) every contact too full of tags to take the
-   *  file's new ones — which no choice changes and nobody can set apart — so neither line says "would change" of them. */
+   *  file's new ones — which no choice changes and nobody can set apart — so neither line says "would change" of them,
+   *  and the lead names the Set apart box as a contact's own: a tags-only row has none. */
   listHeading: "Contacts that differ from your file",
-  listLead: "Each contact below differs from your file — a choice would change it, or it is too full of tags to take new ones. Set a contact a choice would change apart from the choice above if it should be treated differently.",
+  listLead: "Each contact below differs from your file: a choice would change it, or it is too full of tags to take new ones. To treat a contact differently from the choice above, tick its box under Set apart.",
   /** V2 · no contact in the book differs from the file: one line, never a heading over an empty list. */
   noChanges: "Nothing already in the book changes with this choice.",
   loading: "Loading the changes…",
@@ -507,7 +508,7 @@ export const DONE = {
   /** ⛔ n8 · never "already" (a contact may have filled up during this import) and never "import again" (a new import
    *  under Keep adds no tag at all): the way that works is the contact's own page. */
   tagsLead: (n: number): Part[] => [
-    fig(n), ` ${plural(n, "contact holds", "contacts hold")} the most tags a contact can have, so the tags listed with ${plural(n, "it", "each")} were not added. To add them, open the contact in the book, remove tags it no longer needs, and add them there.`,
+    fig(n), ` ${plural(n, "contact holds", "contacts hold")} the most tags a contact can have, so the tags listed with ${plural(n, "it", "each")} were not added. To add them, open ${plural(n, "the contact", "each contact")} in the book, remove tags it no longer needs, and add them there.`,
   ],
   tagsLoading: "Loading the contacts whose tags were not added…",
   tagsFailed: "The contacts whose tags were not added didn't load. Try again.",

@@ -1,6 +1,6 @@
 /**
- * ⭐ C8c · #14a · THE IMPORTER'S REFUSAL ROWS ARE BOUNDED — at most ONE audit row a minute for one officer, one run and one
- * reason, and none at all for a "moved".             (C8c, 2026-10-09 · docs/contacts-screen-briefs/C8c.md item 3)
+ * ⭐ C8c · #14a · THE IMPORTER'S REFUSAL ROWS ARE BOUNDED — at most ONE audit row a minute for one officer, one run, one
+ * reason and one step, and none at all for a "moved".  (C8c, 2026-10-09 · docs/contacts-screen-briefs/C8c.md item 3)
  *
  * 🔴 WHY IT EXISTS. Every refusal the importer gives writes an audit row (`contacts.import.stage_refused`,
  * `contacts.import.check_refused`, `contacts.import.commit_refused` — X23), and nothing prunes the chain: it is HMAC-chained
@@ -16,11 +16,12 @@
  *     minute); the key is the audit action, the officer, the run (or none, for a refusal before a run is opened), the
  *     reason and (the review's n4) the payload's `step` when it has one — a start and a commit step refused for one
  *     reason are two things that happened. ⭐ A ROW THE AUDIT DID NOT RECORD NEVER SILENCES THE MINUTE (n4): `audit()`
- *     never rejects, it resolves `recorded: false`; the writer then takes the admission back (`undo`), so the next refusal
- *     writes and counts the unrecorded one among its `repeats`. ⭐ THE OFFICER IS IN THE KEY on purpose — the brief's "per
- *     run per reason" would let one officer's row silence ANOTHER officer's refusal on the same run in the same minute (a `not_yours` from someone poking at another
- *     officer's import), and an audit trail must never lose WHO tried. Each officer is still held to one row a minute per
- *     run and reason, so the flood above becomes one row a minute;
+ *     never rejects, it resolves `recorded: false`; the writer then takes the admission back (`undo`), so the next
+ *     refusal writes and counts the unrecorded one among its `repeats`. ⭐ THE OFFICER IS IN THE KEY on purpose — the
+ *     brief's "per run per reason" would let one officer's row silence ANOTHER officer's refusal on the same run in the
+ *     same minute (a `not_yours` from someone poking at another officer's import), and an audit trail must never lose WHO
+ *     tried. Each officer is still held to one row a minute per run, reason and step, so the flood above becomes one row
+ *     a minute;
  *   · ⭐ the refusals a row did not write are COUNTED, and the next row written for that key carries them as `repeats`
  *     (only when there were any — every payload shape is unchanged otherwise): a flood shows as one row a minute saying how
  *     many attempts it stands for, never as a quiet trickle. A flood that stops leaves its last minute's count unwritten —
@@ -33,8 +34,8 @@
  * reason — still a bound, and the flood is gone.
  * ⛔ BOUNDED MEMORY: at most `REFUSAL_AUDIT_KEYS_MAX` keys; when full, the keys whose minute has passed are dropped, and if
  * every key is fresh the map is emptied (more rows, never fewer: the gate fails OPEN, as an audit control must).
- * ⛔ The key holds ids and a reason only — never a number, a name or a cell.
- * Guard: `test:contacts-import` (section `commit`, M27 and M27b) · `test:contacts-staging` O5.
+ * ⛔ The key holds ids, a reason and a step's word only — never a number, a name or a cell.
+ * Guard: `test:contacts-import` (section `commit`, M27, M27b and M27c) · `test:contacts-staging` O5.
  */
 
 /** The window one key writes at most one row in. */
