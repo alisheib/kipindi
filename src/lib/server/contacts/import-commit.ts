@@ -36,9 +36,10 @@
  *   4 · writes: creates through THE ONE CREATE BUILDER (`newContactRow`, X6 — source IMPORT, `sourceRef` and `importId`
  *       the run), updates conditional on the book row's `updatedAt` and on it not being the erased tombstone, keeps with
  *       decide()'s SHOWN reason (⛔ X22: the word `erased` never lands in a stored row), the blanking, the list memberships
- *       — ⛔ C8b (B4, Ali's ruling of 2026-10-09): for a run whose STARTER may not read numbers, ONLY the contacts the run
- *       creates join its list; a kept row (an ordinary contact, a player's, a stopped number) joining while an erased one
- *       never did let that starter read off `?list=` whether a number was in the book and why. A reader's run is unchanged;
+ *       — ⛔ C8b (B4, Ali's ruling of 2026-10-09; the review's M1): for a run whose CREATOR or STARTER may not read
+ *       numbers, ONLY the contacts the run creates join its list; a kept row (an ordinary contact, a player's, a stopped
+ *       number) joining while an erased one never did let the masked officer read off `?list=` whether a number was in the
+ *       book and why — the starter, or the creator whose run an ADMIN started. A run of readers alone is unchanged;
  *   5 · on a `conflict` — a contact changed since it was read, or a staged row erasure deleted since (R9) — reads its
  *       range AGAIN and decides ONCE more from fresh facts (a row that is gone is not imported, so an erased number is
  *       never created); a row that moves again is kept as `changed_during_import` (E9: never failed) and the rest commit;
@@ -79,7 +80,7 @@ import { IMPORT_STAGING_DEPS, discardContactImport } from "./import-staging";
 import type { ImportStagingDeps } from "./import-staging";
 import {
   IMPORT_CHECK_DEPS, auditImportRefusal, bagOf, classifyStagedRow, importRefusal, importRefusalOf, importRunView,
-  isRowCursor, keysetPageRows, loadImportFacts, openImportRun, walkStagedRun,
+  isRowCursor, keysetPageRows, listCreatedOnlyFor, loadImportFacts, openImportRun, walkStagedRun,
 } from "./import-check";
 import type { ImportCheckDeps } from "./import-check";
 import { parseTzNumber } from "@/lib/tz-msisdn";
@@ -177,8 +178,9 @@ export type ImportCommitDeps = ImportCheckDeps & {
   finishCaches: (runId: string, at: string, deps: ImportCommitDeps) => Promise<number>;
   /** R5 · the staged rows a cancel leaves unimported, off the run's two cursors (`notImportedOf`) — read BEFORE the delete. */
   leftUnimported: (run: StoredContactImport) => number;
-  /** ⛔ C8b (B4) · does this run put on its list ONLY the contacts it creates (`listCreatedOnly`: its STARTER may not read
-   *  numbers)? `driver` is whoever asked for the step — named so a red plant can mistake it for the starter. */
+  /** ⛔ C8b (B4 · the review's M1) · does this run put on its list ONLY the contacts it creates (`listCreatedOnly`: its
+   *  CREATOR or its STARTER may not read numbers)? `driver` is whoever asked for the step — named so a red plant can
+   *  mistake it for the starter. */
   createdOnly: (run: StoredContactImport, driver: string, deps: ImportCommitDeps) => Promise<boolean>;
 };
 
@@ -276,12 +278,14 @@ export const IMPORT_COMMIT_DEPS: ImportCommitDeps = {
 
 /**
  * ⛔ C8b (B4, Ali's ruling of 2026-10-09: "a GROWTH officer's import puts on a list only the contacts that run CREATED") ·
- * a run whose STARTER may not read numbers (`decisionConfirmedBy` — the run's own fact; its creator before a start) puts on
- * its list only the contacts it creates. ⭐ The starter decides, never whoever drives the step: an ADMIN resuming a masked
- * officer's run (X18) changes nothing. ⛔ Fails closed: a read cell that cannot be read is a masked one.
+ * a run whose CREATOR or STARTER may not read numbers (`createdBy`, and `decisionConfirmedBy` — the run's own facts) puts
+ * on its list only the contacts it creates — the ONE rule (`listCreatedOnlyFor`, import-check.ts), which the run's view
+ * asks too. ⭐ Never whoever drives the step: an ADMIN resuming a masked officer's run (X18) changes nothing. 🔴 And never
+ * the starter alone (the C8b review's M1): an ADMIN who STARTED a masked officer's staged run would have put the kept rows
+ * on the list, and the creator would have read from the list which of their file's numbers were erased. ⛔ Fails closed.
  */
 export async function listCreatedOnly(run: StoredContactImport, deps: Pick<ImportCommitDeps, "readsNumbers">): Promise<boolean> {
-  return !(await deps.readsNumbers(run.decisionConfirmedBy ?? run.createdBy).catch(() => false));
+  return listCreatedOnlyFor([run.createdBy, run.decisionConfirmedBy ?? run.createdBy], deps);
 }
 
 /* ═══ SMALL PIECES ═════════════════════════════════════════════════════════════════════════════════════ */
@@ -466,8 +470,8 @@ type StepPlan = {
  * ⭐ ONE STEP'S DECISIONS, from the rows it read. Unreadable and invalid rows fail `invalid` (an invalid row whose sentence
  * is not stored yet gets it written — S15-8); the decidable rows are decided with the FROZEN choice and overrides, the
  * WHOLE run's first lines (S15-7) and fresh facts. Null when a decidable number has no first line at or before its own
- * row — ⛔ the step refuses rather than guess which row of a number wins (OD33). ⛔ C8b (B4) · `createdOnly` (a starter
- * who may not read numbers): only a created contact joins the run's list.
+ * row — ⛔ the step refuses rather than guess which row of a number wins (OD33). ⛔ C8b (B4) · `createdOnly` (a creator
+ * or a starter who may not read numbers): only a created contact joins the run's list.
  */
 async function planStep(
   run: StoredContactImport, window: readonly StoredContactImportRow[], choice: ImportChoice, overrides: RowOverrides,
@@ -520,8 +524,8 @@ async function planStep(
     } else {
       // ⛔ X22 · the SHOWN reason: an erased number is stored as the ordinary contact it reads as, never as `erased`.
       plan.outcomes.push({ ordinal: row.ordinal, outcome: "keep", reason: d.shown });
-      // ⛔ C8b (B4) · a masked starter's run puts on the list ONLY what it created: a kept row joining (or an erased one
-      // not joining) would answer on `?list=` whether the number is in the book, and why.
+      // ⛔ C8b (B4) · a masked creator's or starter's run puts on the list ONLY what it created: a kept row joining (or an
+      // erased one not joining) would answer on `?list=` whether the number is in the book, and why.
       if (listed && !createdOnly && d.contactId !== null && d.reason !== "erased") plan.members.set(row.ordinal, d.contactId);
     }
   });
@@ -690,8 +694,9 @@ async function settleStep(
     await auditImportRefusal(deps, COMMIT_REFUSED, officerId, run.id, "server_error", { step: "commit", why, rows });
     return importRefusal("server_error", await importRunView(officerId, (await deps.findRun(run.id)) ?? run, deps));
   };
-  // ⛔ C8b (B4, Ali's ruling of 2026-10-09) · the run of a STARTER who may not read numbers puts on its list ONLY the
-  // contacts it creates (`listCreatedOnly`) — the starter's read cell, whoever drives the step, asked each step.
+  // ⛔ C8b (B4, Ali's ruling of 2026-10-09; the review's M1) · the run of a CREATOR or a STARTER who may not read numbers
+  // puts on its list ONLY the contacts it creates (`listCreatedOnly`) — their read cells, whoever drives the step, asked
+  // each step.
   const createdOnly = await deps.createdOnly(run, officerId, deps);
 
   let planned = await planStep(run, firstRead, choice, overrides, officerId, at, deps, createdOnly);

@@ -84,6 +84,10 @@ export type ImportRunView = {
   pausedBy: string | null;
   finishedAt: string | null;
   decision: ImportRunDecision | null;
+  /** ⛔ C8b (B4 · the review's M1) · a list this run adds to gets ONLY the contacts the run creates — its creator or its
+   *  starter (before the start: the viewer about to start it) may not read a number (`listCreatedOnlyFor`). The decision
+   *  panel says so to whoever starts it, an ADMIN taking over a masked officer's run included. */
+  listCreatedOnly: boolean;
 };
 
 /* ══ ONE ANSWER SHAPE FOR EVERY ACTION ══════════════════════════════════════════════════════════ */

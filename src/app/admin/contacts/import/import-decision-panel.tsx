@@ -31,8 +31,9 @@
  * start refused `list_name_taken` or `list_gone` the lists are read again (R12), so the officer can pick that list. S15-1:
  * the import records no consent and asks for no basis — the list's own card carries it, and the panel says when it is owed.
  * 🔴 C8b · a list's members are the VIEWER's figure (B5 — a reader's, with how many more have a 50pick account beside
- * them; anyone else's, every live member), and a viewer who may not read numbers is told that only the contacts the
- * import ADDS join the list (B4 — the commit's own rule).
+ * them; anyone else's, every live member), and whoever starts a run whose creator or starter may not read numbers — an
+ * ADMIN taking over a masked officer's run included — is told that only the contacts the import ADDS join the list (B4 ·
+ * the review's M1 — the run's own flag, `listCreatedOnly`, the commit's one rule).
  * ⛔ "A blank cell never erases anything; numbers on the stop list and erased people are never changed" is said here, as
  * the rule — no row is ever marked erased (X22): an erased number reads as the ordinary contact it is disguised as.
  * ⛔ The choices are named by the one list (`IMPORT_CHOICES`, `DEFAULT_IMPORT_CHOICE`) and never spelled (§D10).
@@ -527,9 +528,10 @@ export function ImportDecisionPanel({
           </Field>
         )}
         {pick.kind !== "none" && <p className="text-body-sm text-text-secondary" data-import-list-owed>{LIST.owed}</p>}
-        {/* ⭐ C8b (B4) · a viewer who may not read numbers: only the contacts the import adds join the list (the commit's
-            own rule, `import-commit.ts`) — said here, so nobody expects the numbers already in the book there. */}
-        {pick.kind !== "none" && !mayUpdate && <p className="text-body-sm text-text-secondary" data-import-list-created-only>{LIST.createdOnly}</p>}
+        {/* ⭐ C8b (B4 · the review's M1) · a run whose creator or starter may not read numbers: only the contacts the import
+            adds join the list — the RUN's own flag (`listCreatedOnly`, the commit's one rule), so an ADMIN starting a masked
+            officer's run is told too — said here, so nobody expects the numbers already in the book there. */}
+        {pick.kind !== "none" && view.listCreatedOnly && <p className="text-body-sm text-text-secondary" data-import-list-created-only>{LIST.createdOnly}</p>}
       </section>
 
       {alert !== null && <ImportAlert alert={alert} disabled={starting} />}

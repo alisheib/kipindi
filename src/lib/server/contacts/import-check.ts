@@ -338,7 +338,26 @@ export function keysetPageRows(asked: number): number {
 /* ═══ THE RUN AS THE BROWSER SEES IT ═════════════════════════════════════════════════════════════════ */
 
 /** The deps a view needs — a subset every caller's deps satisfy. */
-export type ImportViewDeps = Pick<ImportCheckDeps, "findRun" | "totals" | "userName" | "listName">;
+export type ImportViewDeps = Pick<ImportCheckDeps, "findRun" | "totals" | "userName" | "listName" | "readsNumbers">;
+
+/**
+ * ⛔ C8b (B4 · the C8b review's M1) · DOES A RUN'S LIST GET ONLY THE CONTACTS THE RUN CREATES? — yes when ANY of these
+ * officers may not read a number: the run's CREATOR (whose file it is, and who reads the list and the result afterwards)
+ * and its STARTER (who confirms the decision — before the start, the officer about to start it). 🔴 Asking the starter
+ * alone leaked again: an ADMIN who started a GROWTH officer's staged run (an open run, adopted — S15-12) put the kept
+ * rows on the list — the ordinary, the player's and the stopped number, never an erased one — so the masked creator,
+ * reading the list and the result, learned which of the file's numbers were erased (X22). ⛔ Fails closed: a read cell that
+ * cannot be read is a masked one. ONE rule: the commit (`listCreatedOnly`, import-commit.ts) and the run's view
+ * (`listCreatedOnly` on `ImportRunView`, which the decision panel says) both ask it.
+ */
+export async function listCreatedOnlyFor(officers: readonly string[], deps: Pick<ImportCheckDeps, "readsNumbers">): Promise<boolean> {
+  for (const id of new Set(officers)) {
+    let reads = false;
+    try { reads = await deps.readsNumbers(id); } catch { reads = false; }
+    if (!reads) return true;
+  }
+  return false;
+}
 
 /**
  * Who started or stopped a run, as the screen names them (X18): "you", their stored display name, or "another officer"
@@ -385,6 +404,8 @@ export async function importRunView(viewerId: string, run: StoredContactImport, 
     pausedBy: await officerLabel(viewerId, run.pausedBy, deps),
     finishedAt: run.finishedAt,
     decision: await decisionOf(run, deps),
+    // C8b (M1) · its creator and its starter — before the start, the viewer about to start it.
+    listCreatedOnly: await listCreatedOnlyFor([run.createdBy, run.decisionConfirmedBy ?? viewerId], deps),
   };
 }
 
@@ -413,6 +434,8 @@ export async function importRunViewOf(viewerId: string, view: ContactImportView,
     pausedBy: await officerLabel(viewerId, view.pausedBy, deps),
     finishedAt: view.finishedAt,
     decision: run === null ? null : await decisionOf(run, deps),
+    // C8b (M1) · its creator and its starter — a run still staging or staged has none yet: the viewer would start it.
+    listCreatedOnly: await listCreatedOnlyFor([view.createdBy, run?.decisionConfirmedBy ?? viewerId], deps),
   };
 }
 
