@@ -30,43 +30,59 @@ then: "the contacts screen"):
     import-adopt, import-preflight, import-file, import-mapping, import-mapping-next, import-apply, import-commit,
     import-done, and the dev seed POST /api/dev-test/marketing-contacts-seed?u30=1.
 
-▶ NOW (2026-10-09 ~04:15 EAT, Ali-Blade15) — where every piece is, for a session on ANY machine:
-  · C1 LIVE (`28fd214e`) · C2 LIVE (`8adbdd9f`, served since 23:34 UTC 2026-10-08, health ok).
-  · THE IMPORTER (C3–C5) — ✅ LIVE: `df835bb5` served on www.50pick.tz since 01:16:59 UTC 2026-10-09 (04:17 EAT),
-    /api/health ok, the database reachable and MIGRATED (`20261009120000_contact_import_target_list` applied).
-    ⏳ THE LIVE CHECK ON PRODUCTION is written and wired (`npm run qa:contacts-import-live`, LIVE_IMPORT_CHECK=1 + the
+▶ NOW (2026-10-09 ~06:00 EAT, Ali-Blade15) — where every piece is, for a session on ANY machine:
+  · LIVE on www.50pick.tz, each read back by `?dpl=` and /api/health: C1 `28fd214e` · C2 `8adbdd9f` + `d9c9df5f` ·
+    THE IMPORTER (C3–C5) `df835bb5`, served since 01:16:59 UTC 2026-10-09 (04:17 EAT), the database MIGRATED
+    (`20261009120000_contact_import_target_list`) · C6's big-file drive `9121d857` + `3fbceb46` · C7's export round
+    trip `e47ef26e`. Each step's proof is its §1 row; the importer's is below.
+  · IN FLIGHT (three builds; each lands only after its own battery, nothing half-done goes to main):
+    1. C3b — ⛔ HELD for its review round (§1 row C3b): the fix round C3b-fix is being built on `contacts-c3b-fix`
+       (checkout `C:\kipindi-c3bfix`), decisions D1–D10 in §4.6 (S15-14). Then a full battery, then C3b + C3b-fix to main.
+    2. C3c — big workbooks read in the browser, being built on `contacts-c3c` (checkout `C:\kipindi-s15`), design §4.5
+       (S15-13); it merges C3b-fix's shared sheet choice and title-row rule before its own battery.
+    3. C8 — S14's importer review (`docs/marketing-specs/S14-IMPORTER-REVIEW.md` on `origin/backup/marketing-s14-import`,
+       fifteen findings against S14's own importer, "S15's design meets the same questions") CHECKED against this live
+       importer (2026-10-09 ~06:00 EAT, read-only): 4, 6, 7, 8, 9, 10 and 11 do not apply; what applies, with four new
+       finds, is §1 row C8 — the gravest: an ERASED person with no book row is re-created by a later import (or the Add
+       form) once an old /s/ link adds a later ledger row, or at once when they had opted out before the erasure.
+    Builders run Node only under the heavy-node lock; both checkouts' `node_modules` are junctions into
+    `C:\kipindi-marketing` (never `npm ci` there). The integrator's tree is `C:\kipindi-marketing` (`contacts-c3b-int`).
+  · ⏳ THE LIVE CHECK ON PRODUCTION — written and wired (`npm run qa:contacts-import-live`, LIVE_IMPORT_CHECK=1 + the
     git-ignored secrets file): it imports `prod-check-40.csv` through the real dialog only if the check reads 34 new ·
     0 in the book · 3 repeated · 3 invalid, then removes every contact it added through the bulk Remove. NOT RUN: the
     session's safety classifier refused the production write (2026-10-09 ~04:30 EAT) — it waits for Ali's own go.
     ⛔ A TEMPORARY GROWTH LOGIN EXISTS FOR IT on production — "QA Import Check (Claude)", +255 700 000 091,
-    `usr_af44b503dd3d9c18d4f905bc` (made through `ops:provision-staff`, audited `staff.provisioned`; its password only in
-    the session scratchpad's git-ignored env file) — REMOVE IT when the check is done or abandoned (Ali's rule of
-    2026-10-08: "delete them when done testing"). There is no audited door to delete a staff login yet.
-    (Was: "PUSHED TO MAIN in the commit that carries this line" —) branch `contacts-import-int`. Design
-    §4 (decisions S15-1…12), contract `src/lib/contacts/import-flow.ts`. PROVEN before the push (battery 3, 2026-10-09
-    ~04:10 EAT, on `87d3e319` + the plant fix `b6faaffb`): prisma generate 0 · typecheck 0 · `next build` 0 ·
-    `test:contacts-import-db` 45/0 on PostgreSQL 18.3 (real concurrency, conflict rollbacks, the NULL-arm trap, the list
-    foreign key, 20,000 rows settled once each in 9.7 s, p95 0.19 s a step) · contacts-import 285/0 + red 308/308 ·
-    dal-parity + red (every case, §29 included) · red-anchors · contacts-staging/-boundary/-form/-page/-bulk/-export/-lists
-    + reds · 61 suites in all · the drive `qa:contacts-import` 761/0 over the 28 generated files at 360 and 1280 ·
-    admin-section-gate 21/0 · admin-action-gate 15/0 · the U20 drive 487/0 · the C2 checks 12/0 · repo clean after.
-    NEXT: the deploy read back (`?dpl=` and /api/health, the migration applied), then C3b (the four reader gaps), C6
-    (the big files through the browser), C7 (the export round trip), and the live check on production (question 4).
-  · ⏳ ASKED Ali (2026-10-09 ~01:15 EAT; defaults if unanswered = (a)): 1 who imports (a: Growth + Admin) · 2 several
-    numbers per person (a: each its own contact; the build starts with main-number-only, S15-4) · 3 a "pick from this
-    phone" button (a: no) · 4 a live check on production with Claude's own temporary login and a 40-row file, deleted
-    afterwards (a: yes — every production write still needs his click on the permission prompt).
-  ⛔ If this PC is gone: the branches `contacts-import` and `contacts-import-build` on origin hold everything —
-    `contacts-import-build` carries SNAPSHOT commits of the builders' unfinished files (e.g. `05f2e76c`, 2026-10-09
-    ~02:00 EAT: import-flow.ts, store.ts, prisma-dal.ts mid-edit) — never merge a snapshot alone; finish or re-run the
-    builds from §4 on top of it.
+    `usr_af44b503dd3d9c18d4f905bc` (made through `ops:provision-staff`, audited `staff.provisioned`; management approved
+    the QA GROWTH login on 2026-10-07, COMPLIANCE-DECISIONS item 6). Its password lives ONLY in Ali-Blade15's session
+    scratchpad (a git-ignored env file) — if that PC is gone, the check cannot run with it. REMOVE ITS STAFF ACCESS when
+    the check is done or abandoned (Ali's rule of 2026-10-08: "delete them when done testing"): Ali, signed in as the
+    Owner → /admin/staff → "QA Import Check (Claude)" → role **Player**, reason "QA import login no longer needed" —
+    `setStaffRoleAction`, audited `staff.role_changed`, its sessions revoked at once. (No door deletes an account; a
+    Player account with no known password and no staff role is inert.)
+  · ⏳ ASKED Ali (2026-10-09 ~01:15 EAT; defaults if unanswered = (a), except 2): 1 who imports (a: Growth + Admin) ·
+    2 several numbers per person — ⚠️ CORRECTED to Ali the same night: the default is ONE MAIN NUMBER PER PERSON (S15-4),
+    because two SIMs of one person double the cost and the complaint risk, and complaints get the 50pick sender name
+    blocked — which also stops login codes; "every mobile its own contact" is a separate step ONLY on Ali's explicit
+    choice (and S15-14 / C3e now govern a row with two mobiles) · 3 a "pick from this phone" button (a: no) · 4 a live
+    check on production with Claude's own temporary login and a 40-row file, deleted afterwards (a: yes — every
+    production write still needs his click on the permission prompt).
+  · THE IMPORTER'S PROOF (battery 3, 2026-10-09 ~04:10 EAT, on `87d3e319` + the plant fix `b6faaffb`, before the push):
+    prisma generate 0 · typecheck 0 · `next build` 0 · `test:contacts-import-db` 45/0 on PostgreSQL 18.3 (real
+    concurrency, conflict rollbacks, the NULL-arm trap, the list foreign key, 20,000 rows settled once each in 9.7 s, p95
+    0.19 s a step) · contacts-import 285/0 + red 308/308 · dal-parity + red (every case, §29 included) · red-anchors ·
+    contacts-staging/-boundary/-form/-page/-bulk/-export/-lists + reds · 61 suites in all · the drive
+    `qa:contacts-import` 761/0 over the 28 generated files at 360 and 1280 · admin-section-gate 21/0 · admin-action-gate
+    15/0 · the U20 drive 487/0 · the C2 checks 12/0 · repo clean after.
+  ⛔ If this PC is gone: every commit of this lane is on origin — main, and the branches `contacts-c3b`,
+    `contacts-c3b-int`, `contacts-c3b-fix`, `contacts-c3c` (each builder pushes every commit). Nothing lives only on
+    Ali-Blade15 but the scratchpad (logs, screenshots, the builders' briefs — their substance is §4.5 and §4.6 — and the
+    QA login's password).
   ⭐ AFTER A POWER-OFF OR REBOOT OF ALI-BLADE15 (Ali, 2026-10-09 ~02:00 EAT: "if the PC turns off, when I say proceed it
-    means we're up"): (1) `bash ~/heavy-node-lock.sh status` — if it names `contacts-c2` and no such job runs
-    (`Get-CimInstance Win32_Process` by command line), release it, re-reading the owner IMMEDIATELY before the `rm`;
-    (2) kill any `next dev` left on port 3101; (3) `git -C C:\kipindi-s15 status` — the builders' files on disk are newer
-    than the last snapshot: commit them as another snapshot and push before anything else; (4) the agents (the two
-    builders and the file generator) died with the PC — re-launch them from §4.4 and this block, telling each what is
-    already on disk; (5) re-queue C2.
+    means we're up"): (1) `bash ~/heavy-node-lock.sh status` — a lock naming a `contacts-*`, `c3c-builder` or
+    `c3bfix-builder` job that no process runs (`Get-CimInstance Win32_Process`, by command line) is released, re-reading
+    the owner IMMEDIATELY before the `rm`; (2) kill any `next dev` left on port 3101; (3) `git status` in
+    `C:\kipindi-marketing`, `C:\kipindi-s15` and `C:\kipindi-c3bfix` — commit and push anything on disk before anything
+    else; (4) a builder that died with the PC is re-launched from its §4 section, told what its branch already holds.
 ```
 
 ## §1 — STEPS (each its own commit, push and live proof)
@@ -78,9 +94,12 @@ then: "the contacts screen"):
 | C3 | The importer, part 1 — the file, the columns, the check (U30 + U31-B): staging only, nothing written to the book | ✅ LIVE `df835bb5` — proof in §0 |
 | C4 | The importer, part 2 — the commit loop and its bar (U32): counted by the server, resumable after a closed tab or a crash | ✅ LIVE `df835bb5` — proof in §0 |
 | C5 | Duplicate detection, seen and decided: repeats inside a file, numbers already in the book (keep · use the file's · fill blanks — readers only, S15-10), the list step | ✅ LIVE `df835bb5` — proof in §0 |
-| C3b | The readers made forgiving of real files — found by the generator's author reading the shipped readers against the 28 files (2026-10-09): **G1** a CSV with ONE broken quote is refused whole (`messy-real-life.csv`, `unterminated_quote` at its last record) → offer the rows before it, the broken record named; **G2** a workbook whose first visible sheet is a cover page finds no Phone column (`excel-multi-sheet.xlsx`) → read the sheet that holds the phones, and say which; **G3** two numbers in one phone cell (Google's ` ::: `, "0712… / 0754…") are invalid → take the first mobile, say so; **G4** Outlook's number in Business / Home / Primary while Mobile is empty is lost → fall back to the other phone columns. Proven with the generator's files | 🔨 built (contacts-c3b, not yet run) |
-| C6 | Stress: large files at the limits, through the REAL dialog on a local server (`npm run qa:contacts-import-big`, after `qa:contacts-import-files -- --big`): a 150,000-row CSV — check exactly the generator's truth (137,806 new · 9,200 repeated · 2,994 invalid), imported whole (read 0.2 s · upload + check 5.1 s · import 29.9 s); 150,000 vCards imported whole (138,071 added; read 0.9 s · 5.6 s · 31.4 s); a 42 MB vCard with photos read in 0.4 s (streamed; photos never uploaded) and checked; one row past 200,000 REFUSED with the cap named; a 1.4 MB workbook REFUSED with the save-as-CSV remedy. Two runs at once and a crash mid-commit: proven on PostgreSQL by `test:contacts-import-db` (5c, 5d–5i) and in `qa:contacts-import` (reload → adopt → resume) | ✅ `9121d857` (local) |
-| C7 | U34b — an export read back through the importer, row for row (`npm run qa:contacts-import-roundtrip`): a reader's FULL export of 49 contacts (the hard cases among them — a comma and doubled quotes in a name, formula-looking names, a line break in a note) imported back: all 49 "already in the book", nothing new, repeated, invalid or unreadable; under "use the file's version" NOTHING differs (no changes listed; 0 new · 0 updated · 49 kept); the result 0 added · 0 updated · 49 kept · 0 failed. A MASKED export (GROWTH) is refused whole in words ("These numbers are masked…"), no way on | ✅ (local, this commit) |
+| C3b | The readers made forgiving of real files — found by the generator's author reading the shipped readers against the 28 files (2026-10-09): **G1** a CSV with ONE broken quote is refused whole (`messy-real-life.csv`, `unterminated_quote` at its last record) → offer the rows before it, the broken record named; **G2** a workbook whose first visible sheet is a cover page finds no Phone column (`excel-multi-sheet.xlsx`) → read the sheet that holds the phones, and say which; **G3** two numbers in one phone cell (Google's ` ::: `, "0712… / 0754…") are invalid → take the first mobile, say so; **G4** Outlook's number in Business / Home / Primary while Mobile is empty is lost → fall back to the other phone columns. Proven with the generator's files | ⛔ HELD for its review round. Built (`579f194d`, plant fix `3127bb3c`; integrated on `contacts-c3b-int`); battery 2026-10-09 ~05:40 EAT: typecheck, `next build`, 52 suites + reds green, the big drive (150,000 rows and cards, exact) and the round trip pass. The adversarial review then found a BLOCKER — a phone cell of 200,000 spaces made the split quadratic inside a server action (the live money server) — and four MAJOR defects: G4 took Outlook's Assistant's / Company Main Phone and weak "Namba" columns as the person's number; G1's counts said "every row counted" while an unclosed quote had swallowed lines; G2 judged a sheet by its first row alone (a title row lost the customers to a 25-row staff sheet); and a second MOBILE in a row was never checked against the stop list or an erasure. → the fix round **C3b-fix** (branch `contacts-c3b-fix`; its decisions D1–D10 in §4.6, S15-14 in §4.3) |
+| C6 | Stress: large files at the limits, through the REAL dialog on a local server (`npm run qa:contacts-import-big`, after `qa:contacts-import-files -- --big`): a 150,000-row CSV — check exactly the generator's truth (137,806 new · 9,200 repeated · 2,994 invalid), imported whole (read 0.2 s · upload + check 5.1 s · import 29.9 s); 150,000 vCards imported whole (138,071 added; read 0.9 s · 5.6 s · 31.4 s); a 42 MB vCard with photos read in 0.4 s (streamed; photos never uploaded) and checked; one row past 200,000 REFUSED with the cap named; a 1.4 MB workbook REFUSED with the save-as-CSV remedy. Two runs at once and a crash mid-commit: proven on PostgreSQL by `test:contacts-import-db` (5c, 5d–5i) and in `qa:contacts-import` (reload → adopt → resume) | ✅ LIVE `9121d857` + `3fbceb46` (a drive and its record — run locally; re-run green on C3b, 2026-10-09 ~05:38 EAT) |
+| C7 | U34b — an export read back through the importer, row for row (`npm run qa:contacts-import-roundtrip`): a reader's FULL export of 49 contacts (the hard cases among them — a comma and doubled quotes in a name, formula-looking names, a line break in a note) imported back: all 49 "already in the book", nothing new, repeated, invalid or unreadable; under "use the file's version" NOTHING differs (no changes listed; 0 new · 0 updated · 49 kept); the result 0 added · 0 updated · 49 kept · 0 failed. A MASKED export (GROWTH) is refused whole in words ("These numbers are masked…"), no way on | ✅ LIVE `e47ef26e` |
+| C3c | A big Excel workbook read in the officer's browser — over 700 KB (about 25,000 rows), refused today with "save it as CSV", a remedy that can turn a 12-digit number into `2.55713E+11` for good. A workbook of 700 KB or less keeps the proven server path; the new reader is held to it by shared cell rules and a differential test (design §4.5, S15-13) | 🔨 building (branch `contacts-c3c`, checkout `C:\kipindi-s15`) |
+| C3e | Several mobile numbers for one person, in EVERY format — a vCard already chooses one TEL (live since U26) and the person's other numbers are never checked: before a row is imported on one number, its other numbers are looked up, and a row whose other number is on the stop list, erased or already in the book is kept as it is (one person, one contact) | ⬜ designed after C3b-fix — until then S15-14 holds (CSV / Excel: exactly one distinct mobile per row, or the row is refused in words) |
+| C8 | The LIVE importer's review round — S14's fifteen findings checked against this build (6 apply in part or whole) + four new finds. **MAJOR:** (#2 + N2) an erased person with NO book row is recognised only while the consent ledger's LATEST word is the erasure marker — a later Stop/Resume tap on an old /s/ link, or an opt-out BEFORE the erasure (erase.ts then writes no marker at all), lets an import or the Add form create them again with their name; (#3) a list's member figure counts only members not linked to an account, so a masked officer who imports one number into a list learns from the figure whether it is a player's (D19); (N1) the Add form answers a tombstoned number "This number can't be added to the book" — an erasure (and a former account) revealed. **MINOR:** (#1) an erased number reads "already in the book" in the check while the search cannot find it; (N3) list names are unique whatever their case only in code, not in the database; (N4) a 200,000-row check reads ~400 pages without yielding to queued bets; (#14) refusal audit rows are never pruned, and a persistent P2028/P2024 is retried forever as "bets come first"; (#13) tags not added (a contact full of tags) are never shown; (#5) the start's new-list branch and `listOpenByOthers` never ran on PostgreSQL; (#12) several dialog paths never driven (✕ during a commit, Stop during an upload or a busy wait, an existing list, an exception under KEEP); (#15) a resume of a STAGED run is untested | ⬜ design first (erasure is permanent; what a masked officer may infer), then build — after C3b-fix |
 
 ## §2 — WHAT EXISTED WHEN THE LANE BEGAN (read from the code, 2026-10-09 ~00:30 EAT)
 
@@ -174,6 +193,15 @@ And from 2026-09-25: "it's 150k approx contacts, or VCF … it could be small an
 - **S15-12 · Unfinished runs end and can be reached.** A PAUSED or COMMITTING run idle 14 days is cancelled by the nightly
   sweep (its unsettled rows deleted; the contacts already written stay — `docs/DATA-RETENTION.md`), and an ADMIN sees other
   officers' unfinished imports in the dialog and can resume or cancel them (X18 made reachable).
+- **S15-13 · A workbook over 700 KB is read in the officer's browser (C3c, §4.5).** The cap exists only because a workbook
+  is uploaded whole to ONE server action (Next's 1 MB body) and parsed on the live money server; reading it in the browser
+  removes both, and keeping the server path for the small ones means a defect in the new reader touches only files that
+  are refused today.
+- **S15-14 · One distinct mobile per row, or the row is refused in words (C3b-fix D3).** A row is one person. When a row
+  holds two DIFFERENT mobiles (two in one cell, or two across Outlook's / Google's other phone columns), the platform cannot
+  yet check the other one against the stop list or an erasure — so it imports neither and says why ("keep one"), exactly
+  as before C3b. A cell or row with ONE mobile among landlines, foreign numbers or labels yields that mobile. C3e lifts
+  this with the look-up, for every format (a vCard already chooses one TEL today).
 
 ### §4.4 — The build (files; each step committed and pushed when proven)
 - Contract: `src/lib/contacts/import-flow.ts` (pure — the types and sentences both sides share).
@@ -194,8 +222,63 @@ And from 2026-09-25: "it's 150k approx contacts, or VCF … it could be small an
   ⚠️ `test:docs` checks only `scripts/<file>` paths with no folder in them — a `scripts/<folder>/<file>` path in a doc is
   never checked (this line named a file that never existed until 2026-10-09). Read such a path before you trust it.
 
+### §4.5 — C3c: a big workbook read in the officer's browser (designed 2026-10-09 ~05:45 EAT)
+- **Why.** An .xlsx over 700 KB is refused with "save it as CSV" — and Excel writes a 12-digit number in General format
+  to CSV as `2.55713E+11`, its last digits gone for good. The cap is the transport's, not the product's (S15-13).
+- **What.** `src/lib/contacts/xlsx-read.ts` — pure and client-safe: the zip's central directory read from the file's tail,
+  each part inflated by the platform's `DecompressionStream("deflate-raw")`, a streaming XML scan (local names, so the Open
+  XML SDK's `x:` prefixes read; cells and rows without `r`; entities, CDATA, `_xHHHH_`), shared strings with rich text
+  joined and phonetic runs left out, styles for dates (exceljs 4.4.0's own date-format test and serial, 1900 and 1904),
+  formulas' cached values, merges, hidden sheets, the same caps and notes. The cell rules move to
+  `src/lib/contacts/xlsx-cells.ts` and both readers import them; the sheet is chosen by C3b-fix's shared `chooseSheet`
+  and the title row by its shared function. `readContactsFile` sends a workbook over the cap to it and returns the CSV
+  path's outcome. A browser without `deflate-raw` gets today's refusal, never a crash.
+- **Proof.** A differential section of `test:contacts-import`: the two readers give IDENTICAL files over a crafted corpus
+  (Excel, phone apps' inline strings, the Open XML SDK, LibreOffice, Google; formulas with and without values, booleans,
+  errors, dates, merges, a phone stored as a number, zip quirks) + red plants; `big-50k.xlsx` and a new `big-150k.xlsx`
+  read through the real dialog (`qa:contacts-import-big`), the 150,000-row one imported.
+- **If its builder died with Ali-Blade15:** re-launch one from this section and the branch's own commits
+  (`origin/contacts-c3c`), telling it what is already there.
+
+### §4.6 — C3b-fix: the review round's decisions (2026-10-09 ~05:50 EAT; branch `contacts-c3b-fix`)
+- **D1 (the BLOCKER).** The phone-cell split is linear (a run of blanks is skipped whole) and never runs on a cell longer
+  than the phone field's own limit (`CONTACT_LIMITS.phone`, 40 — a longer cell is invalid there already). Proven by
+  timing a 200,000-space cell.
+- **D2.** G4 reads only the person's OWN phone columns (Mobile, Business, Business 2, Home, Home 2, Other, Primary, Car;
+  Google's "Phone N - Value"; the strong headings) — never Assistant's Phone, Company Main Phone, Callback, Pager, a Fax,
+  Telex, TTY/TDD, ISDN or Radio, and never a weak alias (Number, Namba, Nambari, Contact).
+- **D3 = S15-14.** Exactly one distinct mobile per row, or the row is refused in words; the added column carries every
+  mobile of the row's own phone columns joined by " / ", so the server's one rule decides; the "rows with another number"
+  count is removed for CSV, Excel and the paste table (the vCard count stays).
+- **D4.** After a split, a bare nine-digit part is never a mobile ("+254, 712 345 678" must not become a stranger's
+  +255 712 345 678); a whole cell of nine digits keeps today's reading.
+- **D5.** An unclosed quote that swallows lines says how many lines after its row were not read — in the record's
+  sentence, a note at the columns step and the sum lines (never "every row counted" then); it applies only after at least
+  one data row, else the file is refused whole as before.
+- **D6.** The sheet is chosen by its CONTENT through one shared function (`src/lib/contacts/sheet-choice.ts`,
+  `chooseSheet`): the visible sheet whose first 200 non-empty rows hold the most mobiles; ties → tab order; the note
+  names the sheet read (counted among visible sheets) and every other sheet with numbers that was NOT read.
+- **D7 (G5).** A title above the column names, in every format: the first of the next nine rows that names a phone column
+  becomes the header, and the rows above it are left out with a note.
+- **D8.** The "no sheet has a phone column" hint comes from the reader, never from the officer's current choice.
+- **D9 (pre-existing, D19).** The columns step masks a cell for a viewer who may not read numbers by its DIGITS (7 or
+  more, whatever separates them) — "255,757,300,014" and "0712/345/678" were shown whole; the drive's privacy check
+  counts digits too.
+- **D10.** The phone-cell suite's never-failing key-shape half replaced.
+
 ## §3 — LOG (newest first)
 
+- **2026-10-09 ~06:00 EAT · C3b held; C3b-fix and C3c started; S14's findings being checked** — C3b's battery on
+  `contacts-c3b-int` (`8323dd49`, then `84b1b844`): typecheck, `next build`, 52 suites + reds green; one plant
+  (phone-cell 8) stayed green → made honest (`3127bb3c`, red then COMPLETE); `test:orphans` red on main since `b1dec89b`
+  (two landing-v3 Workflow panel scripts — not this lane's, its allowlist "may only shrink"); one dev server came up with
+  every route 500 on a next/font Inter glitch (the next one was clean — the follow-up battery now restarts a server whose
+  `/` is not 200); the big drive (150,000 rows: 137,806 new · 9,200 repeated · 2,994 invalid, exact; import 36.0 s) and
+  the round trip pass. The adversarial review → C3b HELD (§1 row) and the fix round C3b-fix (§4.6). C3c designed (§4.5)
+  and started. S14's importer review (fifteen findings) handed to a reviewer against this live importer. Docs: the plan's
+  head and §2 no longer say "not live"; the old U30/U31/U32/U34 specs carry what was built instead of their drives; the
+  tracker's U34 commit is `e47ef26e`; the proof line names the generator's real path (`test:docs` never checks a
+  `scripts/<folder>/` path).
 - **2026-10-09 · C3b built, not yet run (branch `contacts-c3b`)** — G1 a CSV keeps every record before a quotation mark never closed and lists that record as ONE unreadable record (`csvUnclosedQuoteReason`; refused whole only when nothing before it was a record; a TAB paste still splits by hand); G2 the server reads the first VISIBLE sheet whose header row has a phone column and names it in a note (`xlsxChosenSheetNote`; hidden sheets never); G3 ONE rule `src/lib/contacts/phone-cell.ts` (`firstMobileIn`) takes the first Tanzanian mobile of a several-number cell for staging's key, the check's sentence, the commit's raw text and the list paste; G4 `mappingFor` adds ONE "Phone (first mobile of: …)" column when a row's mobile sits outside the main phone column; S15-4's result line now counts a file's rows with another number too (`extraNumbersOf`); and the Excel size refusals now say "a CSV has no file-size limit (up to 200,000 rows in one import)" while too_many_rows says to split the list. Tests: csv C1l/C1lb, xlsx X32/X33 (+X27, X31), flow G4a–c/E1/P2b/R8, the new `phone-cell` section H1–H8, the drive's ground-truth expectations for the four files.
 - **2026-10-09 ~04:35 EAT · C7** — the export round trip proven (the C7 row); the tracker's U34 row to shipped.
 - **2026-10-09 ~04:30 EAT · C6** — the big files through the browser, all green (the C6 row); the importer LIVE `df835bb5`;
