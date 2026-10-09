@@ -451,7 +451,8 @@ export function RoundCountdown({ closesAtMs, label, lockAtMs, lockLabel, serverN
   const urgent = left != null && left > 0 && left <= 30;
   return (
     <div className="text-right">
-      <div className="font-mono text-micro uppercase eyebrow text-text-faint">{shownLabel}</div>
+      {/* Ends on the clock's edge, its trailing tracking taken back (F19, round 6 · C11). */}
+      <div className="font-mono text-micro uppercase eyebrow text-text-faint kp-track-end">{shownLabel}</div>
       <div
         className={urgent ? "ud-count-pulse" : undefined}
         style={{

@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Toggle } from "@/components/ui/toggle";
 import { I } from "@/components/ui/glyphs";
-import { useExitPhase } from "@/components/ui/modal";
+import { CloseX, useExitPhase } from "@/components/ui/modal";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { isNeedleHidden, setNeedleHidden, getNeedleMode, setNeedleMode, getNeedleTheme, setNeedleTheme } from "@/lib/needle-bridge";
@@ -251,17 +251,15 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
                   )}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label={t("Close", "Funga", "关闭")}
-                /* ⛔ LITERALS, NOT `h-9 w-9` — the spacing scale is overridden
-                   (tailwind.config.ts:200-215) and that pair is 64×64px, 16px larger than
-                   every other ✕ in the kit. 40px = --tap-min. */
-                className="shrink-0 grid h-[40px] w-[40px] place-items-center rounded-lg text-text-subtle transition-colors hover:bg-bg-overlay hover:text-text"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
-              </button>
+              {/* ⭐ THE ONE ✕, ON THE TITLE'S CAPITALS (round 6, 2026-10-09, review C2 — F20's convention, `CloseX` in
+                  modal.tsx). This dialog drew its own ✕ — a 40px box, its own path, `rounded-lg` — so R5-A's census, which
+                  looked for the kit glyph, never saw it: it centred 20px down the header row while the 15px title's capitals
+                  centre 0.6 × 15 = 9px down (11px low), and stood 20px (phone) / 24px (from 640) inside the panel's edge.
+                  Now it is CloseX: its 48px box rises 15px (`-mt-[15px]`) so its centre is the capitals', steps out 4px /
+                  8px (`-mr-1 sm:-mr-1.5`) to stand 16px inside the edge where Modal pins every ✕, and gives 7px back under
+                  it (`mb-[7px]`): it takes 48 − 15 + 7 = 40px of the row, the old box's 40, so the row is exactly as tall
+                  as it was and nothing below moves. */}
+              <CloseX onClick={() => setOpen(false)} label={t("Close", "Funga", "关闭")} className="-mt-[15px] mb-[7px] -mr-1 sm:-mr-1.5 shrink-0" />
             </div>
 
             {/* view-sight control */}

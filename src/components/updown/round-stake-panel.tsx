@@ -250,8 +250,10 @@ export function RoundStakePanel(props: {
             aria-label={t.market.udCustomAmount} aria-invalid={customInvalid} error={customInvalid} placeholder="0"
           />
           {/* An amount outside its bounds is a form error at the field: the danger ink, never the Down side's rose (§B2a). */}
-          <p className={cn("mt-1 text-micro amount", customInvalid ? "text-danger-fg" : "text-text-subtle")}>
-            {customInvalid ? `${t.market.udStakeRange} · ` : ""}{formatTzs(bet.min)} – {formatTzs(bet.max)}
+          {/* The range is one amount and the sentence before it wraps (round 6, review C7 — `updown-stake-controls.tsx` has
+              the measurements): a whole-line `.amount` clipped the maximum exactly when the amount was out of bounds. */}
+          <p className={cn("mt-1 text-micro", customInvalid ? "text-danger-fg" : "text-text-subtle")}>
+            {customInvalid ? `${t.market.udStakeRange} · ` : ""}<span className="amount">{formatTzs(bet.min)} – {formatTzs(bet.max)}</span>
           </p>
         </div>
       )}

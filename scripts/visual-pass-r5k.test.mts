@@ -86,7 +86,7 @@ const FILES = {
   withdraw: existsSync("src/app/wallet/withdraw/withdraw-ghost.tsx") ? "src/app/wallet/withdraw/withdraw-ghost.tsx" : "src/app/wallet/withdraw/loading.tsx", withdrawPage: "src/app/wallet/withdraw/page.tsx",
   profile: "src/app/profile/loading.tsx", profilePage: "src/app/profile/page.tsx", faces: "src/components/profile/profile-faces.ts", editor: "src/components/profile/name-editor.tsx",
   positions: "src/app/positions/positions-ghost.tsx", positionsPage: "src/app/positions/page.tsx", strip: "src/components/positions/pnl-summary-strip.tsx",
-  performance: "src/app/positions/performance/loading.tsx", performancePage: "src/app/positions/performance/page.tsx",
+  performance: "src/app/positions/performance/performance-ghost.tsx", /* R6-C moved the drawing (merged 2026-10-09) */ performancePage: "src/app/positions/performance/page.tsx",
   barGhost: "src/app/wallet/money-bar-ghost.tsx",
 } as const;
 const G = {
@@ -96,7 +96,9 @@ const G = {
   withdraw: ((m: { default?: unknown; WithdrawGhost?: unknown }) => m.WithdrawGhost ?? m.default)(req(`../${FILES.withdraw}`)),
   profile: (req(`../${FILES.profile}`) as { default: unknown }).default,
   positions: (req(`../${FILES.positions}`) as { PositionsGhost: unknown }).PositionsGhost,
-  performance: (req(`../${FILES.performance}`) as { default: unknown }).default,
+  // R6-C (merged 2026-10-09) moved the drawing into `performance-ghost.tsx` as `PerformanceGhost`, beside a server loading
+  // file that hands it the journey answer; rendered without it, it draws the classic words, as before.
+  performance: ((m: { default?: unknown; PerformanceGhost?: unknown }) => m.PerformanceGhost ?? m.default)(req(`../${FILES.performance}`)),
 };
 const ROUTES: Record<keyof typeof G, string> = { receipt: "/wallet/receipt/rec_any", deposit: "/wallet/deposit", ret: "/wallet/deposit/return", withdraw: "/wallet/withdraw", profile: "/profile", positions: "/positions", performance: "/positions/performance" };
 const ghostHtml = (k: keyof typeof G, l: Locale) => inApp(ROUTES[k], l, h(G[k] as never));
@@ -320,11 +322,11 @@ const formOrder = (s: string) => inOrder(squash(s.slice(s.indexOf("export functi
 section("3 · /wallet/deposit/return — a hero, not a card; six rows; two buttons; the footnote; and nothing of the outcome shown");
 {
   const page = squash(code(FILES.retPage)), ghost = squash(code(FILES.ret));
-  const pageOrder = inOrder(page, ['<PageContainer tier="receipt" className="pb-28 lg:pb-6 space-y-5">', "<PageHero>", "<PageHeader", '<dl className="rounded-xl glass-panel divide-y divide-border"', '<div className="flex flex-col sm:flex-row gap-2.5">', '<p className="text-body-sm leading-relaxed text-text-subtle">{t.wallet.returnFootnote}</p>']);
-  const ghostOrder = inOrder(ghost, ['<PageContainer tier="receipt" className="space-y-5 pb-28 lg:pb-6">', "<PageHero>", "<PageHeader", "<DetailsGhost>", '<div className="flex flex-col sm:flex-row gap-[10px]" aria-hidden>', '<p className="text-body-sm leading-relaxed" aria-hidden><GhostText>{t.wallet.returnFootnote}</GhostText></p>']);
+  const pageOrder = inOrder(page, ['<PageContainer tier="receipt" className="pb-28 lg:pb-6 space-y-5">', "<PageHero>", "<PageHeader", '<dl className="rounded-xl glass-panel divide-y divide-border"', '<div className="flex flex-col sm:flex-row gap-2">', '<p className="text-body-sm leading-relaxed text-text-subtle">{t.wallet.returnFootnote}</p>']);
+  const ghostOrder = inOrder(ghost, ['<PageContainer tier="receipt" className="space-y-5 pb-28 lg:pb-6">', "<PageHero>", "<PageHeader", "<DetailsGhost>", '<div className="flex flex-col sm:flex-row gap-2" aria-hidden>', '<p className="text-body-sm leading-relaxed" aria-hidden><GhostText>{t.wallet.returnFootnote}</GhostText></p>']);
   const noCard = !ghost.includes("rounded-card") && !ghost.includes("h-[var(--h-control-md)]");
-  ok("3.1 · the return ghost is the page's bands: the hero (PageHero and PageHeader), the details panel, the two `btn-lg` buttons 10px apart (`gap-2.5` ≡ `gap-[10px]`), the footnote — not the old centred card, its card of rows and its one 44px control",
-    pageOrder === "" && ghostOrder === "" && noCard && geometry("gap-2.5") === geometry("gap-[10px]"), j({ pageOrder, ghostOrder, noCard }));
+  ok("3.1 · the return ghost is the page's bands: the hero (PageHero and PageHeader), the details panel, the two `btn-lg` buttons on the page's own gap (`gap-2`, 12px — round 6 moved the pair off the stock 10px `gap-2.5`; merged 2026-10-09), the footnote — not the old centred card, its card of rows and its one 44px control",
+    pageOrder === "" && ghostOrder === "" && noCard && !ghost.includes("gap-[10px]"), j({ pageOrder, ghostOrder, noCard }));
   const cardBack = inOrder(squash(code(FILES.ret).replace("<PageHero>", '<div className="rounded-card border border-border bg-bg-elevated p-6 space-y-4 kp-shimmer-track">')), ['<PageContainer tier="receipt" className="space-y-5 pb-28 lg:pb-6">', "<PageHero>"]);
   ok("3.1′ PLANT · the centred card back in place of the hero is reported", cardBack !== "");
   const pageLabels = [...code(FILES.retPage).matchAll(/<Row label=\{t\.wallet\.(\w+)\}>/g)].map((m) => m[1]);
@@ -349,8 +351,11 @@ section("4 · /wallet/withdraw — the hero's own content class and the balance 
 {
   const page = code(FILES.withdrawPage), ghost = code(FILES.withdraw);
   const heroCls = (s: string) => /<PageHero contentClassName="([^"]+)">/.exec(s)?.[1] ?? "";
-  const balance = squash(code(FILES.moneyForm)).includes('<div className="sm:text-right shrink-0" aria-hidden> <p className="font-mono text-micro uppercase eyebrow"><GhostText>{t.wallet.available}</GhostText></p> <div className="h-[22px] w-[132px] rounded-sm bg-bg-overlay sm:ml-auto" /> </div>')
-    && squash(page).includes('<div className="sm:text-right shrink-0"> <p className="font-mono text-micro uppercase eyebrow text-text-subtle">')
+  // A JSX comment decomments to `{ }`: R6-C's note on the page's label (C11) and the ghost's beside its class sit between
+  // the block and its label (merged 2026-10-09).
+  const bare = (s: string) => squash(s).replace(/{ } /g, "");
+  const balance = bare(code(FILES.moneyForm)).includes('<div className="sm:text-right shrink-0" aria-hidden> <p className="font-mono text-micro uppercase eyebrow kp-track-end"><GhostText>{t.wallet.available}</GhostText></p> <div className="h-[22px] w-[132px] rounded-sm bg-bg-overlay sm:ml-auto" /> </div>')
+    && bare(page).includes('<div className="sm:text-right shrink-0"> <p className="font-mono text-micro uppercase eyebrow text-text-subtle kp-track-end">')
     && squash(page).includes('<Cash className="amount font-bold text-[22px] text-text leading-none block">');
   const drawn = /\/>\s*<WithdrawBalanceGhost t=\{t\} \/>\s*<\/PageHero>/.test(ghost) && ghost.includes("<WithdrawFormGhost t={t} />") && !ghost.includes("BrandSpinner");
   ok(`4.1 · the hero takes the page's own content class (\`${heroCls(page).slice(0, 60)}…\`: the balance stacks under the head on a phone, 12 + 14 + 22 = 48px) and draws the balance block's box — its label set and not shown, a bar on its figure's 22px line, never a number — and the form stands where the spinner panel stood`,
@@ -433,7 +438,10 @@ section("5 · /profile — the hero column and strip, the achievements, the twel
   ok(`5.4 · the achievements the ghost never drew: the section's key, the panel, the shelf's own grid (${shelfStyle}, 24px apart), a 64px coin (\`.badge-md\`) over each of the shelf's six names in its order — set and not shown, stacked in two parts with their last words kept (\`DotSeq stack\`, \`keepLastWords\`) — and the hint`,
     shelfStyle === "repeat(auto-fit, minmax(96px, 1fr))" && titles.length === 6 && j(figures) === j(want) && badgeMd && section5, j({ figures, want, section5 }));
   // The rows: the page's SettingRow keys for the case drawn, in its order.
-  const pageRows = [...code(FILES.profilePage).matchAll(/<SettingRow icon=\{I\.\w+\}\s+title=\{t\.(\w+\.\w+)\}\s+subtitle=\{t\.(\w+\.\w+)\}/g)].map((m) => `${m[1]}|${m[2]}`).filter((r) => !r.startsWith("agent."));
+  // R6-C (C1, merged 2026-10-09): a player's invite row asks `invite-name.ts` for its name and line; the drawing is a
+  // player's while invites pay nothing (today), so the call reads as those two keys.
+  const INVITE_ROW = "title={inviteName(t, { agent: false, paid: invitePayable })} subtitle={inviteLine(t, { agent: false, paid: invitePayable })}";
+  const pageRows = [...code(FILES.profilePage).replace(INVITE_ROW, "title={t.profile.inviteFriends} subtitle={t.profile.inviteFriendsSub}").matchAll(/<SettingRow icon=\{I\.\w+\}\s+title=\{t\.(\w+\.\w+)\}\s+subtitle=\{t\.(\w+\.\w+)\}/g)].map((m) => `${m[1]}|${m[2]}`).filter((r) => !r.startsWith("agent."));
   const ghostRows = [...code(FILES.profile).matchAll(/\[t\.(\w+\.\w+), t\.(\w+\.\w+)\]/g)].map((m) => `${m[1]}|${m[2]}`);
   const rowOk = code(FILES.profilePage).includes("className={`group relative flex items-center gap-3 overflow-hidden rounded-xl border bg-bg-elevated p-3.5 transition-colors")
     && norm("relative flex items-center gap-3 overflow-hidden rounded-xl border p-3.5") === norm("relative flex items-center gap-3 overflow-hidden rounded-xl border p-[14px]")
@@ -441,7 +449,10 @@ section("5 · /profile — the hero column and strip, the achievements, the twel
     && ghost.includes("<p className={PROFILE_ROW_TITLE}><GhostText>{title}</GhostText></p>") && page.includes("<p className={PROFILE_ROW_TITLE}>")
     && ghost.includes('<p className="mt-0.5 text-body-sm leading-snug"><GhostText>{sub}</GhostText></p>') && page.includes('<p className="mt-0.5 text-body-sm text-text-subtle leading-snug">{subtitle}</p>');
   ok(`5.5 · twelve rows, as the page shows a player (the invite row, the identity row, the rest — the ghost drew six), each the page's row: \`p-3.5\` ≡ \`p-[14px]\`, the 40px plate, the title in the row's own face (\`PROFILE_ROW_TITLE\`), the line in the line's classes`,
-    pageRows.length === 12 && j(pageRows) === j(ghostRows) && rowOk, j({ pageRows: pageRows.length, ghostRows: ghostRows.length, rowOk }));
+    pageRows.length === 12 && j(pageRows) === j(ghostRows) && rowOk && code(FILES.profilePage).includes(INVITE_ROW)
+      && raw("src/lib/journey/invite-name.ts").includes("return r.agent ? t.agent.dashTitle : r.paid ? t.profile.inviteEarn : t.profile.inviteFriends;")
+      && raw("src/lib/journey/invite-name.ts").includes("return r.agent ? t.agent.dashSubtitle : r.paid ? t.profile.inviteEarnSub : t.profile.inviteFriendsSub;"),
+    j({ pageRows: pageRows.length, ghostRows: ghostRows.length, rowOk }));
   ok("5.5′ CONTROL · R5-H's 5.6 holds the grid's 16px gap; the twelve rows at one or two columns are 12 × 70 + 11 × 16 = 1,016px on a phone, 6 × 70 + 5 × 16 = 500 from md (the ghost drew 500 and 242)",
     ghost.includes('<div className="grid grid-cols-1 gap-3 md:grid-cols-2">') && 12 * 70 + 11 * 16 === 1016 && 6 * 70 + 5 * 16 === 500);
   const signOut = page.includes('<button type="submit" className="group inline-flex w-full items-center justify-between gap-3 rounded-xl glass-panel px-4 py-3.5 hover:border-danger-border transition-colors" >')
@@ -552,13 +563,14 @@ const { parsePortfolioParams } = req("../src/lib/positions/portfolio.ts") as { p
 section("7 · /positions/performance — the page's bands in the page's order");
 {
   const page = squash(code(FILES.performancePage)), ghost = squash(code(FILES.performance));
-  const PAGE = ["<BackLink ", "<PageHeader eyebrow={t.common.positions} title={t.performance.title} />", '<section aria-label={t.performance.netPnl} className="glass-panel p-5">', '<section aria-label={t.performance.pnlOverTime} className="glass-panel p-5">',
+  const PAGE = ["<BackLink ", "<PageHeader eyebrow={section} title={t.performance.title} />", '<section aria-label={t.performance.netPnl} className="glass-panel p-5">', '<section aria-label={t.performance.pnlOverTime} className="glass-panel p-5">',
     '<section className="grid grid-cols-1 gap-3 md:grid-cols-2">', '<section className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(158px, 1fr))" }}>', '<h2 className="mb-3 flex items-baseline gap-2">', '<div className="rounded-xl border border-border bg-bg-elevated overflow-hidden divide-y divide-border/50">'];
-  const GHOST = ["<BackLinkGhost />", "<PageHeader eyebrow={t.common.positions} title={t.performance.title} />", "{`${t.performance.netPnl} · ${t.common.settled}`}", "{t.performance.pnlOverTime}",
+  const GHOST = ["<BackLinkGhost />", "<PageHeader eyebrow={journey ? t.journey.tabTickets : t.common.positions} title={t.performance.title} />", "{`${t.performance.netPnl} · ${t.common.settled}`}", "{t.performance.pnlOverTime}",
     '<section className="grid grid-cols-1 gap-3 md:grid-cols-2" aria-hidden>', '<section className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(158px, 1fr))" }} aria-hidden>', '<h2 className="mb-3 flex items-baseline gap-2">', '<div className="rounded-xl border border-border bg-bg-elevated overflow-hidden divide-y divide-border/50">'];
   const p = inOrder(page, PAGE), g = inOrder(ghost, GHOST);
   ok("7.1 · the ghost's bands are the page's, in the page's order — the back link, the head, the net P&L panel, the chart, the best-win and streak cards, the two stake tiles, the recent rows (it drew a stat card, four boxes, a streak bar, a chart and three rows: an older page)",
-    p === "" && g === "" && count(ghost, '<section className="glass-panel p-5 kp-shimmer-track" aria-hidden>') === 2, j({ p, g }));
+    p === "" && g === "" && count(ghost, '<section className="glass-panel p-5 kp-shimmer-track" aria-hidden>') === 2
+      && page.includes("const section = journey ? t.journey.tabTickets : t.common.positions;"), j({ p, g }));
   ok("7.1′ PLANT · the chart drawn before the P&L panel (the old order) is reported",
     inOrder(squash(decomment(raw(FILES.performance).replace(/(\{\/\* The net P&L panel[\s\S]*?<\/section>)\s*(\{\/\* P&L over time[\s\S]*?<\/section>)/, "$2\n$1"))), GHOST) !== "");
   // The chart: the svg's own ratio (720 × 240), not a 200px box; the twin line under sm.

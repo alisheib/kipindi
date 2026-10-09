@@ -103,6 +103,8 @@ export function JourneyTopBar({
   proposalsState,
   inviteVisible = false,
   invitePaid = false,
+  inviteAgent = false,
+  kycOffered = false,
 }: {
   /** The classic bar's own viewer shape, built once by AppShell for whichever bar it renders. */
   user: TopAppBarUser;
@@ -115,6 +117,9 @@ export function JourneyTopBar({
   proposalsState: ProposalsState;
   inviteVisible?: boolean;
   invitePaid?: boolean;
+  /** Round 6 (reviews C1, C13): the account menu's two door answers (`avatar-menu.tsx` says what each decides), the shell's. */
+  inviteAgent?: boolean;
+  kycOffered?: boolean;
 }) {
   const route = usePathname();
   const { t } = useT();
@@ -223,6 +228,8 @@ export function JourneyTopBar({
                   isAdmin={user.isAdmin ?? false}
                   proposalsState={proposalsState}
                   inviteVisible={inviteVisible}
+                  inviteAgent={inviteAgent}
+                  kycOffered={kycOffered}
                   invitePaid={invitePaid}
                   journey
                 />

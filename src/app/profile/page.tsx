@@ -18,7 +18,9 @@ import { getServerT } from "@/lib/i18n-server";
 import { formatNumber, formatTzs } from "@/lib/utils";
 import { PageContainer } from "@/components/layout/page-container";
 import { inviteIsLiveFor } from "@/lib/feature-state";
-import { isFinalRefusal } from "@/lib/kyc-refusal";
+import { isFinalRefusal, kycDoorOffered } from "@/lib/kyc-refusal";
+import { inviteLine, inviteName } from "@/lib/journey/invite-name";
+import { invitePaysPlayersNow } from "@/lib/server/invite-rewards-switch";
 // ⭐ THE SHARED MASK (`+255••••21`), so this page and the opt-out page show one person's number the
 // same way (D6). The local star copy here was one of the hand-written masks `phone-normalize.ts` retired.
 import { maskPhone } from "@/lib/phone-normalize";
@@ -62,7 +64,13 @@ export default async function ProfilePage() {
    * "fix" that by threading this value into the shelf: the shelf is called from several pages and
    * would then take a prop only one of them can supply.
    */
-  const inviteViewer = await inviteViewerFor(user.id);
+  // ⭐ …AND WHETHER INVITES PAY, beside it (round 6, review C1): the row says the page's own name, and a paid player's page
+  // is "Invite & Earn" (`invite-name.ts`). The switch's screen read (≤ 10 s snapshot, never rejects; a failed read is "not
+  // paid", so the row never promises money the page does not).
+  const [inviteViewer, invitePayable] = await Promise.all([
+    inviteViewerFor(user.id),
+    invitePaysPlayersNow().catch(() => false),
+  ]);
 
   let wallet: Awaited<ReturnType<typeof db.wallet.findByUserId>> | null = null;
   let sof: Awaited<ReturnType<typeof db.sourceOfFunds.get>> | null = null;
@@ -350,13 +358,17 @@ export default async function ProfilePage() {
               ⛔ `accent` AND the "New" badge STAY WITH THE AGENT: the highlight belongs to
               the commission dashboard, not to a share link; and the badge announced a programme
               being launched, which the player invite is not. (The accent is brand, not gilt, since
-              R5-C's gold audit — see SettingRow.) */}
+              R5-C's gold audit — see SettingRow.)
+              ⭐ …AND A PLAYER'S ROW SAYS THE PAGE'S NAME FOR THAT PLAYER (round 6, 2026-10-09, review C1): while invites pay,
+              the page is "Alika na upate zawadi / Invite & Earn" (its tab and h1), and this row said "Alika marafiki" —
+              now the one name `invite-name.ts` gives every door, its line the page's own call under it. Both shells (a
+              page body); unchanged while invites pay nothing, as today. */}
           {inviteIsLiveFor(inviteViewer) && (
             inviteViewer.agentInGoodStanding ? (
               <SettingRow icon={I.shieldcheck} title={t.agent.dashTitle} subtitle={t.agent.dashSubtitle} href="/profile/invite" accent
                 badge={t.common.newBadge} />
             ) : (
-              <SettingRow icon={I.users} title={t.profile.inviteFriends} subtitle={t.profile.inviteFriendsSub} href="/profile/invite" />
+              <SettingRow icon={I.users} title={inviteName(t, { agent: false, paid: invitePayable })} subtitle={inviteLine(t, { agent: false, paid: invitePayable })} href="/profile/invite" />
             )
           )}
           <SettingRow icon={I.user}            title={t.profile.myAccount}           subtitle={t.profile.myAccountSub}            href="/profile/account" />
@@ -375,10 +387,17 @@ export default async function ProfilePage() {
               2026-09-13 — nor is a FINAL refusal (under 18, sanctions, identity used elsewhere): `startKyc`
               refuses a restart, so "ID document · selfie · review" offered a journey the server refuses.
               The red pill above still links to /profile/kyc, which explains the refusal. */}
-          {kycLevel !== "APPROVED" && !(kycLevel === "REJECTED" && isFinalRefusal(kyc?.rejectReason)) && (
-            /* Round 5 (F17, one page, one name): the KYC page's own h1 ("Thibitisha kitambulisho / Verify your identity"),
-               as the journey's hub row and menu say since this round — the row said "Thibitisha ID / Verify ID". */
-            <SettingRow icon={I.shieldcheck}   title={t.profile.verifyIdentity}      subtitle={t.profile.verifyIdSub}            href="/profile/kyc" />
+          {/* The one question every KYC door asks (`kycDoorOffered`, kyc-refusal.ts — round 6, review C13): the Akaunti hub's
+              row and the journey's avatar menu ask it too. */}
+          {kycDoorOffered(kycLevel, kyc?.rejectReason) && (
+            /* Round 5 (F17, one page, one name) named this row after the KYC page's h1 ("Thibitisha kitambulisho / Verify
+               your identity"); ⭐ ROUND 6 (2026-10-09, review C13) — AFTER ITS TAB AND EYEBROW, "Uthibitisho wa kitambulisho /
+               Identity verification / 身份验证": the page's h1 is a headline that changes with the reader's state
+               ("Your identity is verified", "We couldn't verify you"), while its tab and eyebrow name it in every state —
+               the convention every page of that shape follows (the leaderboard's "Bingwa", /help's "Msaada", /fairness's
+               "Uthibitisho wa utatuzi": the door says the tab and the eyebrow, the h1 is the page's headline). The hub's
+               row and the journey menu say the same. */
+            <SettingRow icon={I.shieldcheck}   title={t.profile.kycIdentityVerification} subtitle={t.profile.verifyIdSub}            href="/profile/kyc" />
           )}
           <SettingRow icon={I.fileSignature}   title={t.profile.sourceOfFunds}       subtitle={t.profile.sourceOfFundsSub}                      href="/profile/source-of-funds" />
           <SettingRow icon={I.device}          title={t.profile.activeSessions}      subtitle={t.profile.activeSessionsSub}        href="/profile/sessions" />

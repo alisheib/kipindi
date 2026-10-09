@@ -149,7 +149,8 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
             </p>
           </div>
           <div className="grow text-right">
-            <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1">{t.dialog.earlyExitFee}</p>
+            {/* Ends on the fee's edge, its trailing tracking taken back (F19, round 6 · C11). */}
+            <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1 kp-track-end">{t.dialog.earlyExitFee}</p>
             <p
               className="pl-3 font-bold text-title-sm amount leading-none"
               style={{ color: isFree ? "var(--success-fg)" : "var(--text)" }}

@@ -698,7 +698,10 @@ function g10Wiring(W: World) {
   // still `topUser`, today's props, character for character (visual-pass-r4h §7 holds the spread).
   // R4-I (2026-10-09): the journey bar is also handed the break's end (`breakEnd={journeyBreak}`, for its Wallet's notice); the
   // classic arm is unchanged.
-  const SWAP_HEADER = "{journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}";
+  // Round 6 (2026-10-09, reviews C1 and C13): …and its account menu's two door answers — the agent's standing (`inviteAgent`,
+  // the invite row's one name) and `kycOffered` (its KYC row only where /profile and the hub offer it); the classic arm's
+  // props are unchanged, character for character.
+  const SWAP_HEADER = "{journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} inviteAgent={inviteViewer.agentInGoodStanding} kycOffered={journeyKycOffered} invitePaid={invitePaid} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}";
   const SWAP_RAIL = "{journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} /> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}";
   const SHELL_LAZY = "src/components/layout/shell-lazy.tsx";
   /** The two journey arms' lines in the shell's one lazy module (S6 WP6c): `next/dynamic`, server render on, no option object, the lost-chunk guard last. */
@@ -724,7 +727,8 @@ function g10Wiring(W: World) {
   // browser.
   {
     const FOOTER_PROPS = "proposalsState={proposalsState} agentDoorVisible={agentDoorVisible} inviteVisible={inviteVisible} supportEmail={SUPPORT_EMAIL()} supportPhone={SUPPORT_PHONE()} supportPhoneTel={SUPPORT_PHONE_TEL()}";
-    const SWAP_FOOTER = `{journeyShown ? <PublicFooter ${FOOTER_PROPS} journeyShown /> : <PublicFooter ${FOOTER_PROPS} />}`;
+    // Round 6 (review C1): the journey arm alone is handed the two invite answers, so its invite link says the page's own name.
+    const SWAP_FOOTER = `{journeyShown ? <PublicFooter ${FOOTER_PROPS} invitePaid={invitePaid} inviteAgent={inviteViewer.agentInGoodStanding} journeyShown /> : <PublicFooter ${FOOTER_PROPS} />}`;
     const footerSrc = W.files.get(FOOTER_FILE) ?? "";
     const tallyFooter = (needle: string) => footerSrc.split(needle).length - 1;
     const asksBalance = footerSrc.match(/<FooterLink\b[^>]*\bbalance\b[^>]*>/g) ?? [];

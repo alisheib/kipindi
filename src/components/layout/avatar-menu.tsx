@@ -13,6 +13,7 @@ import { useT, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { NeedleControlsDrawer } from "@/components/layout/needle-drawer";
 import { keepLastWords } from "@/components/ui/keep-words";
+import { inviteName } from "@/lib/journey/invite-name";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
 export function AvatarMenu({
@@ -26,6 +27,8 @@ export function AvatarMenu({
   proposalsState = "COMING_SOON",
   inviteVisible = false,
   invitePaid = false,
+  inviteAgent = false,
+  kycOffered = false,
   journey = false,
 }: {
   initials: string;
@@ -50,6 +53,18 @@ export function AvatarMenu({
    * earnings the programme is refusing.
    */
   invitePaid?: boolean;
+  /**
+   * ⭐ THE JOURNEY'S TWO ANSWERS ABOUT ITS DOORS (round 6 of the visual pass, 2026-10-09, reviews C1 and C13), resolved by
+   * the server shell as `invitePaid` is and read by the journey's menu alone (the classic menu is frozen chrome):
+   *   · `inviteAgent` — an approved agent in good standing (`inviteViewer.agentInGoodStanding`), whose /profile/invite is
+   *     the commission dashboard: with `invitePaid` it gives the invite row the page's own name (`invite-name.ts`);
+   *   · `kycOffered` — the door to /profile/kyc is offered (`kycDoorOffered`: not approved, not a final refusal, and the
+   *     row was read), the question /profile and the Akaunti hub ask before they draw the same door.
+   * ⛔ Both default FALSE, the safe direction: a journey menu that has lost the props names the plain invite and tells
+   * nobody to verify an identity — never a verified player.
+   */
+  inviteAgent?: boolean;
+  kycOffered?: boolean;
   /**
    * ⭐ THE JOURNEY'S MENU (round 4 of the visual pass, 2026-10-09, edges E31 E33), passed by `JourneyTopBar` alone:
    *   · /positions is "Tiketi zangu / My tickets / 我的注单" with the tab's ticket glyph — the journey's tab, the page's h1
@@ -142,12 +157,26 @@ export function AvatarMenu({
      kitambulisho / Verify your identity" where this row said "Kuthibitisha kitambulisho / Verify ID"; the leaderboard
      calls itself "Bingwa" in Swahili where this row said "Jedwali la Washindi"; the proposals page is "Mapendekezo ya
      Masoko / Market Proposals" where this row said "Pendekeza na upate zawadi / Propose & earn". The journey's hub and
-     footer say the page's words since this round too (`hub-rows.ts`). Classic rows keep their words (frozen chrome). */
+     footer say the page's words since this round too (`hub-rows.ts`). Classic rows keep their words (frozen chrome).
+     ⭐ ROUND 6 (2026-10-09), two more of this menu's journey rows:
+       · INVITE (review C1) — the page's own name for this reader (`invite-name.ts`): an approved agent's dashboard
+         ("Dashibodi ya wakala"), "Alika na upate zawadi" while invites pay, else "Alika marafiki". It said "Invite &
+         Earn" to an agent whose page, hub row and tab say "Agent dashboard"; the hub, the footer and /profile's row now
+         say this one name too.
+       · KYC (review C13) — offered only when the hub and /profile offer it (`kycOffered`): it asked EVERY reader, a
+         verified one too, to "Thibitisha kitambulisho / Verify your identity" over a page whose h1 tells them their
+         identity is verified. Its words are the page's tab and eyebrow, "Uthibitisho wa kitambulisho / Identity
+         verification" — the name every state of the page carries, as the hub's row says. */
   const journeyName: Partial<Record<string, string>> = journey
-    ? { "/profile/kyc": t.profile.verifyIdentity, "/leaderboard": t.leaderboard.title, "/proposals": t.proposals.title }
+    ? {
+        "/profile/kyc": t.profile.kycIdentityVerification,
+        "/leaderboard": t.leaderboard.title,
+        "/proposals": t.proposals.title,
+        "/profile/invite": inviteName(t, { agent: inviteAgent, paid: invitePaid }),
+      }
     : {};
   const rows = MENU_ROWS
-    .filter((r) => (!r.proposals || proposalsState !== "DISABLED") && (!r.invite || inviteVisible))
+    .filter((r) => (!r.proposals || proposalsState !== "DISABLED") && (!r.invite || inviteVisible) && !(journey && r.href === "/profile/kyc" && !kycOffered))
     .map((r) =>
       r.invite && !invitePaid
         ? { ...r, en: t.profile.inviteFriends, sw: t.profile.inviteFriends, zh: t.profile.inviteFriends, accent: false }

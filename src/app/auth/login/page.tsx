@@ -156,8 +156,14 @@ export default async function LoginPage({
     // /wallet/deposit and the limits page show for the same break: until when, that it cannot be shortened, that sign-in and
     // withdrawals go on. Without a readable end (an older link) it keeps `auth.coolingOffBody`, which said only "when the
     // break ends".
+    // ⭐ …AND IN THE BREAK'S OWN TONE (round 6, 2026-10-09, review C4): NEUTRAL, the treatment every other surface gives the
+    // same break — the limits page's Callout, /wallet/deposit's paused notice, the home's held box, the Wallet sheet (R4-I:
+    // "every RG notice the neutral treatment"). It was this panel's amber `warning`, which the gold census rules "a
+    // refusal the player can fix" — and nothing here is refused (sign-in goes on) or can be fixed (a break cannot be
+    // shortened); the amber is struck in gilt besides (F3). The words are unchanged. The exclusion panels above stay
+    // `danger`: each refuses the sign-in itself, a hard block the player cannot clear (R5-I's ranking).
     if (sp.cooled === "1") return {
-      tone: "warning" as const,
+      tone: "neutral" as const,
       title: t.auth.coolingOff,
       body: breakEndText
         ? keepText(fill(t.rg.breakActive, { date: breakEndText }), [breakEndText])
@@ -267,7 +273,11 @@ export default async function LoginPage({
                   ? "border-success/45 bg-success/[0.10]"
                   : errorPanel.tone === "danger"
                     ? "border-danger-500/45 bg-danger-500/[0.10]"
-                    : "border-warning-border bg-warning-bg")
+                    /* Round 6 (C4): the break's neutral box — the kit Callout's own `neutral` paint (callout.tsx), as the
+                       limits page and /wallet/deposit draw the same break. */
+                    : errorPanel.tone === "neutral"
+                      ? "border-dashed border-border bg-bg-elevated/40"
+                      : "border-warning-border bg-warning-bg")
               }
             >
               {/* ⭐ THE GLYPH ON THE TITLE'S INK, NOT 2PX UNDER IT (R4-I, 2026-10-09, tiles 128–130 · 122–127). The title is
@@ -275,8 +285,10 @@ export default async function LoginPage({
                   fallback face) 8.0px down. The 16px glyph centred 10px down (`mt-0.5`), 2px under the Chinese title and
                   1.5px under the Swahili and English ones. With no margin it centres 8px down: on the Chinese ink, and 0.6px
                   over the capitals. Twin of auth/register/register-form.tsx — keep the two in step. */}
-              <span className={"shrink-0 " + (errorPanel.tone === "success" ? "text-success-fg" : errorPanel.tone === "danger" ? "text-danger-fg" : "text-text-muted")}>
-                <I.alertCircle s={16} />
+              {/* The break's own glyph and ink in its neutral arm — the pause the limits page and the Akaunti hub draw for it,
+                  in the Callout's neutral icon ink (round 6, C4); the same 16px box, so it stands where the alert glyph stood. */}
+              <span className={"shrink-0 " + (errorPanel.tone === "success" ? "text-success-fg" : errorPanel.tone === "danger" ? "text-danger-fg" : errorPanel.tone === "neutral" ? "text-text-subtle" : "text-text-muted")}>
+                {errorPanel.tone === "neutral" ? <I.pause s={16} /> : <I.alertCircle s={16} />}
               </span>
               <div className="text-body-sm leading-snug">
                 <p className="font-display font-semibold text-text">{errorPanel.title}</p>

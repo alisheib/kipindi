@@ -35,3 +35,18 @@ export function isFinalRefusal(code: string | null | undefined): code is FinalRe
 export function holdsDocumentNumber(row: { status: string; rejectReason?: string | null }): boolean {
   return row.status !== "REJECTED" || isFinalRefusal(row.rejectReason);
 }
+
+/**
+ * IS THE DOOR TO /profile/kyc OFFERED TO THIS READER? Not once the identity is APPROVED (the door asked a verified player to
+ * do what is done — `/profile`'s ruling of 2026-09-13), and not after a FINAL refusal (`startKyc` refuses a restart; the
+ * page itself, reached from its status pill, explains the refusal). Everything else — no row yet, in review, more
+ * information asked, a refusal the player can fix — is offered.
+ * ⭐ ONE QUESTION FOR EVERY DOOR (round 6 of the visual pass, 2026-10-09, review C13): `/profile`'s settings row, the Akaunti
+ * hub's row (`hub-viewer.ts`) and the journey's avatar menu (`app-shell.tsx`) each ask this. ⛔ A KYC row that could not be
+ * READ is not "no row yet": the caller offers no door then — a verified player is never told to verify on the strength of a
+ * failed query.
+ */
+export function kycDoorOffered(status: string | null | undefined, rejectReason: string | null | undefined): boolean {
+  const level = status ?? "NOT_STARTED";
+  return level !== "APPROVED" && !(level === "REJECTED" && isFinalRefusal(rejectReason));
+}

@@ -68,8 +68,11 @@ const rule = (css: string, sel: string): string => {
 /**
  * What counts as GOLD PAINT, read comment-stripped:
  *   var    a CSS variable of the gold ramp or its aliases, the gilt material, the identity metal, the TippingBar needle,
- *          and `--warning-fg`, which IS `--gilt` (F3)
- *   tw     a Tailwind colour utility on the gold / gilt families, or on `warning-fg`
+ *          and the WARNING family — `--warning-fg`, which IS `--gilt` (F3), and since round 6 (2026-10-09, review C3) its
+ *          other spellings `--warning`, `--warning-500` (oklch 78% 0.13 86: gold by this census's own hue rule),
+ *          `--warning-bg` and `--warning-border` (its 18% and 36% washes), which it did not count: 61 paints in 23 files
+ *   tw     a Tailwind colour utility on the gold / gilt families, or on the warning family (`warning`, `-fg`, `-500`, `-bg`,
+ *          `-border`)
  *   cls    the gold material classes (`gilt-metal`, `gilt-ink`, `btn-gold`, `mat-tint-gilt`, `chip-resolved`)
  *   name   a tone or variant asked for by NAME: "gold" (any .ts/.tsx), "warning" (.tsx — where it picks a painted tone)
  *   comp   a component that draws gold inside it (`<GiltCorner`, `<RewardBurst` — gold unless it is told otherwise)
@@ -103,8 +106,8 @@ function goldHits(file: string, src: string): Hit[] {
     const push = (kind: string, re: RegExp, keep: (m: RegExpMatchArray) => boolean = () => true) => {
       for (const m of ln.matchAll(re)) if (keep(m)) out.push({ kind, match: m[0], line: i + 1 });
     };
-    push("var", /var\(\s*--(?:gilt[\w-]*|gold(?:-[\w-]+)?|metal-gold|border-gold|glow-gold|glow-jackpot|g-gold|g-jackpot|bet-jackpot|bet-streak|bar-needle(?:-glow)?|warning-fg)\s*[,)]/g);
-    push("tw", /(?<![\w-])(?:[a-z0-9-]+:)*(?:text|bg|border(?:-[tblrxyse])?|ring|fill|stroke|from|via|to|shadow|outline|decoration|accent|caret|divide|placeholder)-(?:(?:gold|gilt)(?:-[a-z0-9]+)?|warning-fg)(?:\/[\w.[\]]+)?(?![\w-])/g);
+    push("var", /var\(\s*--(?:gilt[\w-]*|gold(?:-[\w-]+)?|metal-gold|border-gold|glow-gold|glow-jackpot|g-gold|g-jackpot|bet-jackpot|bet-streak|bar-needle(?:-glow)?|warning(?:-fg|-500|-bg|-border)?)\s*[,)]/g);
+    push("tw", /(?<![\w-])(?:[a-z0-9-]+:)*(?:text|bg|border(?:-[tblrxyse])?|ring|fill|stroke|from|via|to|shadow|outline|decoration|accent|caret|divide|placeholder)-(?:(?:gold|gilt)(?:-[a-z0-9]+)?|warning(?:-fg|-500|-bg|-border)?)(?:\/[\w.[\]]+)?(?![\w-])/g);
     push("cls", /(?<![\w-])(?:gilt-metal|gilt-ink|btn-gold|mat-tint-gilt|chip-resolved)(?![\w-])/g);
     if (file.endsWith(".tsx")) push("name", /["'`](?:gold|warning)["'`]/g);
     else if (file.endsWith(".ts")) push("name", /["'`]gold["'`]/g);
@@ -134,7 +137,7 @@ function goldHits(file: string, src: string): Hit[] {
 const REGISTRY: Record<string, [number, string]> = {
   // ── allowed: money earned, money commits, the live balance, the deposit doors ───────────────────────────────────────
   "src/app/auth/register/page.tsx": [2, "the two sign-up bonus figures (money; R4-I §14.3)"],
-  "src/app/markets/[id]/page.tsx": [5, "a settled WIN's status word and payout (§M3) · the resolved seal (§B11) · the hedge caution, the token's ×2"],
+  "src/app/markets/[id]/page.tsx": [8, "a settled WIN's status word and payout (§M3) · the resolved seal (§B11) · the hedge caution's box and words, the token's ×5"],
   "src/app/positions/performance/page.tsx": [15, "a positive net and row (money earned) · the best-win crest, only with a win · the streak in identity metal"],
   "src/app/profile/invite/agent-dashboard.tsx": [4, "commission EARNED, gold only when > 0 (§M3)"],
   "src/app/profile/invite/page.tsx": [12, "the earnings dial, its wash and the Earned figure, gold only once money was earned; per-friend earnings > 0"],
@@ -154,7 +157,7 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/components/markets/bet-confirm-modal.tsx": [1, "the bet commit (D1: bet keeps gold)"],
   "src/components/markets/position-card.tsx": [2, "a settled WIN's struck payout (§M3)"],
   "src/components/markets/position-share.tsx": [4, "sharing a WIN — the celebration's own moment (§M3)"],
-  "src/components/markets/resolution-panel.tsx": [5, "the resolved seal and the winning pool's row (§M3, §B11) · the dispute and fee-cap cautions, the token's"],
+  "src/components/markets/resolution-panel.tsx": [9, "the resolved seal and the winning pool's row (§M3, §B11) · the dispute and fee-cap cautions, the token's"],
   "src/components/markets/sell-confirm-modal.tsx": [3, "the sell commit (D1: sell keeps gold) · two exit cautions, the token's"],
   "src/components/markets/win-celebration.tsx": [5, "the celebration (§M3)"],
   "src/components/positions/pnl-summary-strip.tsx": [4, "a positive settled net (money earned) · the NeedleDial — the brand needle (§B1a)"],
@@ -176,17 +179,17 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/components/ui/avatar.tsx": [1, "the tier name (identity)"],
   "src/components/updown/asset-mark.tsx": [1, "the gold ASSET's name, XAU (Q5: an asset may be metallic)"],
   // ── the kit's definitions of the gold material and its variants ───────────────────────────────────────────────────
-  "src/app/globals.css": [94, "the ramp, its aliases and `--warning-*`; `--metal-gold` and the tier/badge metal; `.btn-gold`; the seal; the needle, shimmer and sweep (§B1a); the capsule and Wallet-sheet amounts (§8a); paid money (`.kp-settled__amt`, `.kp-mine__n--gold`); `count-up-flash` (celebration); OWNER: the classic rail dot and coin, `.claret-rule`'s gilt midpoint, the classic chrome's 'coming soon' tag tint (`.cs-badge` outside page bodies and the journey); dead: `.bg-damask`; admin: `poll-flash`"],
-  "src/app/motion.css": [22, "the gilt material — gilt-metal on deposit doors and the celebration, gilt-ink on earned figures, the win toast's tint; dead: `.m-skeleton`"],
+  "src/app/globals.css": [97, "the ramp, its aliases and `--warning-*`; `--metal-gold` and the tier/badge metal; `.btn-gold`; the seal; the needle, shimmer and sweep (§B1a); the capsule and Wallet-sheet amounts (§8a); paid money (`.kp-settled__amt`, `.kp-mine__n--gold`); `count-up-flash` (celebration); OWNER: the classic rail dot and coin, `.claret-rule`'s gilt midpoint, the classic chrome's 'coming soon' tag tint (`.cs-badge` outside page bodies and the journey); dead: `.bg-damask`; admin: `poll-flash`"],
+  "src/app/motion.css": [23, "the gilt material — gilt-metal on deposit doors and the celebration, gilt-ink on earned figures, the win toast's tint; the warning toast's tint (`.mat-tint-warn`, the token's); dead: `.m-skeleton`"],
   "src/app/state-tokens.css": [2, "`.countdown--urgent` — dead CSS (no consumer)"],
   "src/components/ui/button.tsx": [2, "the `gold` variant — bet and sell commits"],
   "src/components/ui/chip.tsx": [15, "the resolved seal; the console's gold/objection chip; the amber `paused`/`warning` paints (the token's family)"],
-  "src/components/ui/dot.tsx": [3, "the `gold` and `warning` tones (the classic bell's dot)"],
+  "src/components/ui/dot.tsx": [4, "the `gold` and `warning` tones (the classic bell's dot)"],
   "src/components/ui/stat.tsx": [3, "the `gold` tone and `struck` — money"],
   "src/components/ui/toast.tsx": [11, "the gold toast (a win) · the warning toast, struck in gold — F3: never a refusal's"],
-  "src/components/markets/operation-result-modal.tsx": [7, "the `warning` result (retryable refusals, the token's) · the opt-in gold strip for earned money (no caller)"],
-  "src/components/ui/callout.tsx": [7, "the warning and maintenance tones — the warning family, the token's"],
-  "src/components/ui/notice-bar.tsx": [6, "the warning tone — the warning family, the token's"],
+  "src/components/markets/operation-result-modal.tsx": [9, "the `warning` result (retryable refusals, the token's) · the opt-in gold strip for earned money (no caller)"],
+  "src/components/ui/callout.tsx": [18, "the warning and maintenance tones — the warning family, the token's"],
+  "src/components/ui/notice-bar.tsx": [8, "the warning tone — the warning family, the token's"],
   "src/components/ui/receipt-row.tsx": [3, "the fee row's amber (a deduction) — the token's"],
   "src/components/ui/modal.tsx": [1, "the tone union (a caution confirm)"],
   "src/components/ui/confirm-dialog.tsx": [1, "the tone union"],
@@ -195,30 +198,35 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/components/updown/updown-bet-blocked-modal.tsx": [1, "the refusal variant union"],
   "src/styles/chat/chat-tokens.css": [3, "gilt-edge tokens defined and never consumed — no render"],
   // ── the warning family where somebody must act (§B11) — the paint is the owner's token (F3) ─────────────────────────
-  "src/app/agent/apply/apply-client.tsx": [2, "an officer's request · a rejected document to replace — the applicant acts"],
+  "src/app/agent/apply/apply-client.tsx": [7, "an officer's request · a rejected document to replace — the applicant acts (round 6, C3: the rejected slot's frame, wash, glyph disc and word)"],
   "src/app/agent/invite/[token]/invite-client.tsx": [2, "the invite is for another address · a fixable refusal"],
   "src/app/agent/page.tsx": [2, "'an officer has asked for one more thing' — the applicant acts (every other notice is neutral)"],
-  "src/app/auth/login/page.tsx": [7, "sign-in refusals the player can fix (F3 severity warning)"],
-  "src/app/auth/register/register-form.tsx": [3, "sign-up refusals the player can fix"],
-  "src/app/profile/kyc/page.tsx": [4, "'more information needed' — ADDITIONAL_INFO_REQUIRED, player amber (§B11)"],
-  "src/app/profile/page.tsx": [3, "the KYC 'more info' pill (§B11 player amber)"],
-  "src/app/profile/security/security-client.tsx": [2, "backup codes: two or fewer left; save them now"],
-  "src/app/profile/source-of-funds/page.tsx": [1, "the declaration's legal-attestation caution"],
+  "src/app/auth/login/page.tsx": [8, "sign-in refusals the player clears — wait, sign in again, use the password, create the account, ask us about a closed one (F3 severity warning) · their box's frame and wash; the break's panel is neutral since round 6 (C4)"],
+  "src/app/auth/register/register-form.tsx": [5, "sign-up refusals the player can fix"],
+  "src/app/profile/kyc/page.tsx": [8, "'more information needed' — ADDITIONAL_INFO_REQUIRED, player amber (§B11)"],
+  "src/app/profile/page.tsx": [5, "the KYC 'more info' pill (§B11 player amber)"],
+  "src/app/profile/security/security-client.tsx": [4, "backup codes: two or fewer left; save them now"],
+  "src/app/profile/source-of-funds/page.tsx": [3, "the declaration's legal-attestation caution"],
   "src/app/s/optout-refusal.tsx": [1, "a 'busy, try again' refusal"],
   "src/app/wallet/withdraw/page.tsx": [2, "the hold line and the tax notice — cautions on the player's money"],
   "src/app/wallet/withdraw/withdraw-confirm.tsx": [1, "the fee row's amber (a deduction)"],
-  "src/components/kyc/kyc-gate-panel.tsx": [2, "'your move' and a held wallet — somebody must act"],
+  "src/components/kyc/kyc-gate-panel.tsx": [6, "'your move' and a held wallet — somebody must act"],
   "src/components/layout/app-shell.tsx": [2, "the session-ended notice and its Sign in — the player must sign in again (OWNER: the token)"],
   "src/components/markets/comments-thread.tsx": [2, "the character counter's last 40 · the report link's hover — cautions"],
   // R5-I (2026-10-09): conviction-dial.tsx left this table — its four `warning` refusal arms (a toast struck in gold, F3)
   // are ranked by the failure registry now (`refusalVariant`: a slip the player can fix `factual`, a fault `danger`).
   "src/components/markets/house-lean-warning.tsx": [1, "'the upside is thin' — the Callout's own documented warning"],
-  "src/components/markets/objection-dialog.tsx": [2, "the dispute route's caution"],
+  "src/components/markets/objection-dialog.tsx": [5, "the dispute route's caution"],
   "src/components/ui/offline-banner.tsx": [1, "the offline notice (R5-D's area)"],
-  "src/components/ui/password-input.tsx": [4, "'OK, could be stronger' — a caution (moved off the gold ramp)"],
+  "src/components/ui/password-input.tsx": [5, "'OK, could be stronger' — a caution (moved off the gold ramp)"],
   "src/components/ui/unsaved-changes.tsx": [2, "unsaved changes — act"],
   "src/components/wallet/payout-status-notice.tsx": [1, "payouts delayed — the maintenance amber ('back shortly')"],
-  "src/lib/score-band.ts": [2, "a middling score's caution"],
+  "src/lib/score-band.ts": [3, "a middling score's caution"],
+  // Round 6 (2026-10-09, review C3): the files the census saw only once it counted the warning family's every spelling.
+  "src/app/auth/forgot-password/page.tsx": [2, "the rate-limit box's frame and wash — a refusal the player clears by waiting, as sign-in's (its words the muted ink since R4-I) (round 6, C3)"],
+  "src/app/profile/account/privacy-request-form.tsx": [2, "the erasure request's caution — what an irreversible erasure keeps by law, read before sending (as the declaration's attestation caution) (round 6, C3)"],
+  "src/components/rg/limit-usage.tsx": [1, "THE one limit ramp's caution step, 75–90% of a limit the player set (R5-C, the ramp's own note) — never gilt type, the owner's token (round 6, C3)"],
+  "src/components/ui/maintenance-badge.tsx": [1, "the maintenance flag's 'back shortly' amber, the Callout's maintenance tone (round 6, C3)"],
   // ── OWNER: classic chrome (frozen for S6/S7) and the hashed legal texts ───────────────────────────────────────────
   "src/components/layout/avatar-menu.tsx": [10, "OWNER — the classic menu's staff row and 'earn' rows (the journey's are brand)"],
   "src/components/layout/live-ticker.tsx": [1, "OWNER — the ticker's separator dot"],
@@ -269,6 +277,11 @@ const census = new Map<string, Hit[]>();
   ok("1.4‴ PLANT · the money aliases and the gilt material are seen (`var(--gilt)`, `var(--glow-gold)`, `gilt-metal`, `btn-gold`)",
     n("x.css", ".a { color: var(--gilt); box-shadow: var(--glow-gold); }\n.b { } .gilt-metal .btn-gold") === 4);
   ok("1.4⁗ PLANT · `--warning-fg` (= `--gilt`, F3) and `text-warning-fg` are seen", n("x.tsx", '<p className="text-warning-fg" style={{ color: "var(--warning-fg)" }} />') === 2);
+  // Round 6 (2026-10-09, review C3): the family's other spellings — the paints the census did not count (61 in 23 files).
+  ok("1.4⁵ PLANT · the warning family's other spellings are seen — `var(--warning)`, `var(--warning-500)`, `var(--warning-bg)`, `border-warning-border`, `bg-warning-bg/15`, `hover:bg-warning-border`, `text-warning`, `bg-warning/15`",
+    n("x.tsx", '<i style={{ color: "var(--warning)", fill: "var(--warning-500)", background: "var(--warning-bg)" }} className="border-warning-border bg-warning-bg/15 hover:bg-warning-border text-warning bg-warning/15" />') === 8);
+  ok("1.4⁵′ CONTROL · …and names that only contain the word are not paints: `warningCount`, `text-warning-subtle`, `data-warning`, `--warning-hint`",
+    n("x.ts", 'const warningCount = 1; const c = "text-warning-subtle"; const d = "data-warning"; const e = "var(--warning-hint)";') === 0);
   ok("1.5′ PLANT · gold by another spelling is seen — a hand-typed oklch at hue 84 and the trademark hex",
     n("x.tsx", 'const g = "oklch(80% 0.12 84)"; const h = "#E3BC66";') === 2);
   ok("1.5″ PLANT · a gold component drawn at its call site is seen (`<GiltCorner`, a `<RewardBurst` that defaults to gold, the resolved seal, struck type)",

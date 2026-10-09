@@ -261,8 +261,14 @@ export function UpDownStakeControls({
             placeholder="0"
           />
           {/* An amount outside its bounds is a form error at the field: the danger ink, never the Down side's rose (§B2a). */}
-          <p className={cn("mt-1 text-micro amount", customInvalid ? "text-danger-fg" : "text-text-subtle")}>
-            {customInvalid ? `${t.market.udStakeRange} · ` : ""}{formatTzs(bet.min)} – {formatTzs(bet.max)}
+          {/* ⭐ THE RANGE IS ONE AMOUNT; THE SENTENCE BEFORE IT WRAPS (round 6, 2026-10-09, review C7). The whole line was one
+              `.amount` (mono, `white-space: nowrap`), so exactly when the amount was out of bounds — the sentence in front —
+              the line ran out of the card and its maximum was clipped: Swahili 58 characters ≈ 348px against a 256px box at
+              320 (English ≈ 318px), clipped up to 390. Now the range alone is the amount ("TZS 1,000 – TZS 1,000,000", 150px,
+              whole at every width), and the sentence is the line's own words, so it takes a line of its own where the two
+              cannot share one. A valid amount's line draws exactly as before. Twin: `round-stake-panel.tsx`. */}
+          <p className={cn("mt-1 text-micro", customInvalid ? "text-danger-fg" : "text-text-subtle")}>
+            {customInvalid ? `${t.market.udStakeRange} · ` : ""}<span className="amount">{formatTzs(bet.min)} – {formatTzs(bet.max)}</span>
           </p>
         </div>
       )}

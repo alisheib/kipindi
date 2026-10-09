@@ -9,6 +9,7 @@ import { isChatbotEnabled } from "@/lib/server/ai-controls";
 import { fill, fmtRate, pctNum } from "@/lib/utils";
 import { durationHours } from "@/lib/duration-phrase";
 import { PageContainer } from "@/components/layout/page-container";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -46,6 +47,8 @@ export default async function HelpPage() {
   // if the read fails, both fail the same way rather than one advertising a
   // channel the other did not mount. E-123.
   const chatEnabled = await isChatbotEnabled().catch(() => true);
+  // The shell's own cached answer: a journey reader's door to /positions says the journey's name for it (round 6, C14).
+  const { journey } = await resolveSimpleJourney();
   return (
     <PageContainer tier="reading" className="space-y-5">
       <PageHero glow="info">
@@ -166,10 +169,13 @@ export default async function HelpPage() {
           sub={t.help.depositWithdrawHolds}
           href="/wallet"
         />
+        {/* ⭐ In the journey this door names its page as the journey does — "Tiketi zangu / My tickets / 我的注单", with the
+            tab's ticket glyph, as the avatar menu's row and the hub do (round 6, 2026-10-09, review C14): it said "Madau
+            yangu / My positions / 我的持仓" over a page whose tab and h1 say "Tiketi zangu". Everybody else reads today's. */}
         <QuickLinkCard
-          icon={<I.portfolio s={15} />}
+          icon={journey ? <I.ticket s={15} /> : <I.portfolio s={15} />}
           tone="aqua"
-          title={t.help.myPositions}
+          title={journey ? t.journey.tabTickets : t.help.myPositions}
           sub={t.help.openSettledCashOut}
           href="/positions"
         />

@@ -1,7 +1,7 @@
 {
   "_note": "UI-consistency baseline: known drift counts per rule::file. Regenerate after a remediation phase with `npm run test:ui-consistency -- --update-baseline`. DONE when this is empty. See docs/UI-CONSISTENCY-AUDIT.md.",
   "_generated": "run with --update-baseline",
-  "_total": 134,
+  "_total": 120,
   "counts": {
     "adhoc-portal::src/components/ui/unsaved-changes.tsx": 1,
     "bare-text-button::src/components/auth/resend-otp-button.tsx": 1,
@@ -28,11 +28,7 @@
     "numeric-size-utility::src/app/admin/totp-verify/page.tsx": 1,
     "numeric-size-utility::src/app/auth/admin/page.tsx": 1,
     "numeric-size-utility::src/app/help/page.tsx": 2,
-    "numeric-size-utility::src/app/markets/[id]/loading.tsx": 1,
     "numeric-size-utility::src/app/profile/kyc/page.tsx": 6,
-    "numeric-size-utility::src/app/results/loading.tsx": 1,
-    "numeric-size-utility::src/app/updown/history/history-ghost.tsx": 1,
-    "numeric-size-utility::src/app/updown/updown-ghost.tsx": 2,
     "numeric-size-utility::src/components/admin/admin-charts.tsx": 1,
     "numeric-size-utility::src/components/admin/admin-mobile-nav.tsx": 1,
     "numeric-size-utility::src/components/admin/admin-shell.tsx": 4,
@@ -40,7 +36,6 @@
     "numeric-size-utility::src/components/layout/avatar-menu.tsx": 2,
     "numeric-size-utility::src/components/layout/needle-drawer.tsx": 1,
     "numeric-size-utility::src/components/layout/notifications-panel.tsx": 7,
-    "numeric-size-utility::src/components/markets/bet-confirm-modal.tsx": 2,
     "numeric-size-utility::src/components/ui/cash.tsx": 2,
     "numeric-size-utility::src/components/ui/date-select.tsx": 6,
     "numeric-size-utility::src/components/ui/modal.tsx": 2,
@@ -70,7 +65,6 @@
     "raw-button-btn-class::src/components/markets/sell-confirm-modal.tsx": 1,
     "raw-button-btn-class::src/components/markets/win-celebration.tsx": 1,
     "raw-button-btn-class::src/components/onboarding/first-visit-primer.tsx": 2,
-    "raw-button-btn-class::src/components/profile/email-editor.tsx": 1,
     "raw-button-btn-class::src/components/rg/reality-check.tsx": 1,
     "raw-button-btn-class::src/components/updown/updown-card.tsx": 2
   }
