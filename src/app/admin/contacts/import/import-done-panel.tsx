@@ -146,14 +146,15 @@ export function ImportDonePanel({
 
       {result.list !== null && (
         // ⭐ C8b review (MINOR 2) · how many THIS import put on the list, and NONE said as itself — never "added" over nobody,
-        // never a coverage claim about members nobody added. (MINOR 4a) A reader whose list holds members with an account is
-        // told the coverage is about the members a list basis can reach.
+        // never a coverage claim about members nobody added; "it added none" only when the run is created-only AND created
+        // no contact (the re-review's MN-3). (MINOR 4a) A reader whose list holds members with an account is told the
+        // coverage is about the members a list basis can reach.
         <div
           className="space-y-2 rounded-md border border-border-subtle p-3"
           data-import-list-result={result.list.joined === 0 ? "none" : result.list.covered ? "covered" : "owed"}
         >
           <p className="text-body-sm text-text">
-            {result.list.joined === 0 ? DONE.listNone(result.list.name, result.list.createdOnly)
+            {result.list.joined === 0 ? DONE.listNone(result.list.name, result.list.createdOnly && t.create === 0)
               : result.list.covered ? DONE.listReady(result.list.name, result.list.joined, (result.list.withAccount ?? 0) > 0)
                 : DONE.listOwed(result.list.name, result.list.joined)}
           </p>

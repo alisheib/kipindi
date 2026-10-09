@@ -482,10 +482,13 @@ export const DONE = {
   listReady: (name: string, joined: number, reachOnly: boolean): string =>
     `${formatNumber(joined)} ${plural(joined, "contact", "contacts")} joined the list ${name} — every member${reachOnly ? " a list basis can reach" : ""} is covered for offers.`,
   listOwed: (name: string, joined: number): string =>
-    `${formatNumber(joined)} ${plural(joined, "contact", "contacts")} joined the list ${name}. The new members aren't covered for offers yet — record the list's basis and 18+ confirmation again on the Lists card.`,
-  /** C8b review (MINOR 2) · nobody joined — now usual for a masked officer's import of numbers already in the book (B4). */
-  listNone: (name: string, createdOnly: boolean): string => (createdOnly
-    ? `No contact joined the list ${name} — only the contacts an import adds join its list.`
+    `${formatNumber(joined)} ${plural(joined, "contact", "contacts")} joined the list ${name}. ${joined === 1 ? "The new member isn't" : "The new members aren't"} covered for offers yet — record the list's basis and 18+ confirmation again on the Lists card.`,
+  /** C8b review (MINOR 2) · nobody joined — now usual for a masked officer's import of numbers already in the book (B4).
+   *  ⛔ The re-review's MN-3: `addedNone` (a created-only run that created no contact) says what holds for THIS import —
+   *  only the contacts it adds join, and it added none — never a general rule (a reader's import lists the rows it kept
+   *  too); any other empty join is said plainly. */
+  listNone: (name: string, addedNone: boolean): string => (addedNone
+    ? `No contact joined the list ${name} — only the contacts this import adds join the list, and it added none.`
     : `No contact joined the list ${name} with this import.`),
   /** ⭐ C8b (B5) · a READER's line alone: the list's members linked to a 50pick account, beside the ones a basis reaches. */
   listWithAccount: (n: number): Part[] => [

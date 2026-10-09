@@ -55,6 +55,8 @@ export type CommitImpl = {
   readonly sources: Sources;
   /** C8b review · the ONE created-only rule (`listCreatedOnlyFor`, import-check.ts) — the real one, or a plant that fails open. */
   readonly createdOnlyFor: typeof checkModule.listCreatedOnlyFor;
+  /** C8b re-review · the result's sentences (`DONE`, import-copy.ts) — the real ones, or a plant's. */
+  readonly copy: typeof DONE;
 };
 
 const PATHS = {
@@ -81,7 +83,7 @@ function real(): CommitImpl {
   cachedSources ??= {
     check: read(PATHS.check), commit: read(PATHS.commit), actions: read(PATHS.actions), panel: read(PATHS.panel), done: read(PATHS.done),
   };
-  return { deps: REAL_DEPS, sources: cachedSources, createdOnlyFor: checkModule.listCreatedOnlyFor };
+  return { deps: REAL_DEPS, sources: cachedSources, createdOnlyFor: checkModule.listCreatedOnlyFor, copy: DONE };
 }
 const withDeps = (patch: Partial<ImportCommitDeps>): CommitImpl => ({ ...real(), deps: { ...REAL_DEPS, ...patch } });
 
@@ -115,7 +117,7 @@ export const L = {
   M33: "M33 · ⛔ C8b (B4) · A MASKED OFFICER'S IMPORT PUTS ON ITS LIST ONLY THE CONTACTS IT CREATED: a GROWTH officer's 40-row KEEP run into an existing list adds its 22 new contacts and NONE of the file's numbers already in the book (an ordinary contact, a stopped one, a same-name one) — the list's earlier members (an ordinary row, a player's, the tombstone) as they were — even with an ADMIN driving every step (the creator's and the starter's read cells decide, never the driver's); a reader's run still lists its kept rows (M10)",
   M33b: "M33b · ⛔ C8b review (M1) · AN ADMIN STARTING A MASKED OFFICER'S STAGED RUN STILL ADDS ONLY THE CREATED CONTACTS: a GROWTH officer's 40-row file, checked and STARTED by an ADMIN (the run adopted) into an existing list, puts on it its 22 new contacts and NONE of the file's numbers already in the book — the creator's read cell decides beside the starter's — and the run's view says so (listCreatedOnly) to that ADMIN before the start and after it, which is what the decision panel draws; ⛔ the ONE rule FAILS CLOSED: an officer whose read cell cannot be read counts as one who may not read; CONTROL: a reader's own run's view says nothing of the kind, and two readers whose cells answer are no created-only run",
   M34: "M34 · ⛔ C8b (B5) · THE IMPORTER'S LIST FIGURES ARE THE VIEWER'S: the masked officer's picker counts EVERY live member of the list, the player's linked row included and the tombstone not — EXACTLY the campaign composer's count for it — with no linked figure (withAccount null), and so does their result; a reader's picker counts the members a basis can reach and, beside them, how many more have an account",
-  M35: "M35 · ⭐ C8b review (MINOR 2 · 4a) · THE RESULT SAYS HOW MANY CONTACTS THIS IMPORT PUT ON ITS LIST: a masked officer's run counts its 22 created contacts (a kept contact another officer added in the run's window is not its own — the run is created-only); a masked run of numbers ALL already in the book counts NONE, which the panel says as itself — never \"joined\" or \"covered\" over nobody; a reader's run counts its kept rows that joined too and not the one already on the list (exactly the list's growth); and a reader whose list holds members with a 50pick account is told \"every member a list basis can reach is covered\"",
+  M35: "M35 · ⭐ C8b review (MINOR 2 · 4a) · THE RESULT SAYS HOW MANY CONTACTS THIS IMPORT PUT ON ITS LIST: a masked officer's run counts its 22 created contacts (a kept contact another officer added in the run's window is not its own — the run is created-only); a masked run of numbers ALL already in the book counts NONE, which the panel says as itself — \"only the contacts this import adds join the list, and it added none\" only when the run is created-only and created none (the re-review's MN-3: never a general rule), and never \"joined\" or \"covered\" over nobody; one new member owed coverage is said as one; a reader's run counts its kept rows that joined too and not the one already on the list (exactly the list's growth); and a reader whose list holds members with a 50pick account is told \"every member a list basis can reach is covered\"",
   M25: "M25 · ⛔ C8a · the commit reads the check's OWN fact, fresh at its step: an erasure that came to stand on a number with no book row AFTER the check and the start — its marker written since, alone or under an opt-out tap — keeps that row (nothing created; the row kept as the contact it reads as, chosen_keep), while the marker under a GIVEN written since still creates, and the run's other rows import",
 } as const;
 
@@ -431,12 +433,17 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     const la = a.ok ? a.result.list : null;
     const lb = b.ok ? b.result.list : null;
     const lc = c.ok ? c.result.list : null;
-    const words = DONE.listReady("Joined list", 3, true).includes("joined the list Joined list — every member a list basis can reach is covered for offers.")
-      && DONE.listReady("Joined list", 3, false).includes("every member is covered for offers.")
-      && DONE.listNone("Joined list", true).startsWith("No contact joined the list Joined list")
-      && ![DONE.listReady("X", 1, false), DONE.listOwed("X", 1), DONE.listNone("X", false)].some((s) => s.startsWith("Added to the list"));
+    // ⭐ The re-review's MN-3 and NIT: "it added none" is said of THIS import, never as a rule; one new member is one.
+    const C = impl.copy;
+    const words = C.listReady("Joined list", 3, true).includes("joined the list Joined list — every member a list basis can reach is covered for offers.")
+      && C.listReady("Joined list", 3, false).includes("every member is covered for offers.")
+      && C.listNone("Joined list", true) === "No contact joined the list Joined list — only the contacts this import adds join the list, and it added none."
+      && C.listNone("Joined list", false) === "No contact joined the list Joined list with this import."
+      && C.listOwed("Joined list", 1).startsWith("1 contact joined the list Joined list. The new member isn't covered for offers yet")
+      && C.listOwed("Joined list", 2).startsWith("2 contacts joined the list Joined list. The new members aren't covered for offers yet")
+      && ![C.listReady("X", 1, false), C.listOwed("X", 1), C.listNone("X", false)].some((s) => s.startsWith("Added to the list"));
     const panel = impl.sources.done;
-    const drawn = panel.includes("{result.list.joined === 0 ? DONE.listNone(result.list.name, result.list.createdOnly)")
+    const drawn = panel.includes("{result.list.joined === 0 ? DONE.listNone(result.list.name, result.list.createdOnly && t.create === 0)")
       && panel.includes(": result.list.covered ? DONE.listReady(result.list.name, result.list.joined, (result.list.withAccount ?? 0) > 0)")
       && panel.includes("{result.list.joined > 0 && !result.list.covered && (");
     ok(L.M35, la !== null && la.joined === 22 && la.createdOnly && lb !== null && lb.joined === 0 && lb.createdOnly
@@ -1020,6 +1027,30 @@ const plants: readonly RedPlant<CommitImpl>[] = [
     impl: () => {
       const r = real();
       return { ...r, sources: { ...r.sources, done: r.sources.done.replace("{result.list.joined === 0 ? DONE.listNone(", "{false ? DONE.listNone(") } };
+    },
+  },
+  {
+    name: "P-M3a · ⛔ C8b re-review (MN-3) · the empty join said as a GENERAL rule (\"only the contacts an import adds join its list\") — false for a reader's import, and silent on what this one added",
+    expect: L.M35,
+    impl: () => ({
+      ...real(),
+      copy: { ...DONE, listNone: (name: string, addedNone: boolean) => (addedNone ? `No contact joined the list ${name} — only the contacts an import adds join its list.` : DONE.listNone(name, false)) },
+    }),
+  },
+  {
+    name: "P-M3b · ⛔ C8b re-review (NIT) · one new member owed coverage said as many (\"The new members aren't\")",
+    expect: L.M35,
+    impl: () => ({
+      ...real(),
+      copy: { ...DONE, listOwed: (name: string, joined: number) => DONE.listOwed(name, joined).replace("The new member isn't", "The new members aren't") },
+    }),
+  },
+  {
+    name: "P-M3c · ⛔ C8b re-review (MN-3) · the panel says \"it added none\" of a created-only run that DID create contacts",
+    expect: L.M35,
+    impl: () => {
+      const r = real();
+      return { ...r, sources: { ...r.sources, done: r.sources.done.replace("result.list.createdOnly && t.create === 0)", "result.list.createdOnly)") } };
     },
   },
   {

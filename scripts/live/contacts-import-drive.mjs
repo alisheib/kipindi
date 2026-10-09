@@ -647,7 +647,7 @@ const applyCounts = async (page) => {
   ok("duplicates · ADMIN reads the kept rows split by reason (S15-3)", adminResult.keep === 0 || /Kept:/.test(split), split);
   // C8b review (MINOR 2) · the line counts the contacts THIS import put on the list, and the new list's basis is owed.
   ok("duplicates · ADMIN: the contacts went on the new list, and the result says how many joined and that its basis is owed",
-    listSaid.includes(LIST_NAME) && /joined the list/.test(listSaid) && /aren't covered for offers yet/.test(listSaid)
+    listSaid.includes(LIST_NAME) && /joined the list/.test(listSaid) && /(isn't|aren't) covered for offers yet/.test(listSaid)
       && (await adm.page.locator('[data-import-list-result="owed"]').count()) === 1,
     listSaid.slice(0, 200));
   await shoot(adm.page, dir, "7-done-admin", block("import-done"), "Import finished");
