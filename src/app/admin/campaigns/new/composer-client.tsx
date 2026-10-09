@@ -109,9 +109,9 @@ const FIELD_ORDER: CampaignDraftField[] = ["name", "bodySw", "nameFallbackSw", "
 const ON_PAGE: ReadonlySet<CampaignDraftField> = new Set(["name", "bodySw", "nameFallbackSw", "bodyEn", "nameFallbackEn", "audience"]);
 /** The refusals whose remedy is the officer's own consent switch, on their own profile. */
 const CONSENT_REASONS = ["no_consent", "consent_withdrawn", "suppressed"];
-/** U37c-2 · the typed refusals that mean THIS PAGE is out of date (the words, the record or the line changed since it
- *  loaded): the page re-reads, so the card shows the world the server just answered from. */
-const PAGE_STALE_REASONS = ["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"];
+/** U37c-2 · the typed refusals that mean THIS PAGE is out of date (the words, the record, the line or the officer's role
+ *  changed since it loaded): the page re-reads, so the card shows the world the server just answered from. */
+const PAGE_STALE_REASONS = ["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line", "typed_role"];
 
 const trimmed = (f: Fields): Fields => ({
   name: f.name.trim(), bodySw: f.bodySw.trim(), bodyEn: f.bodyEn.trim(), nameFallbackSw: f.nameFallbackSw.trim(), nameFallbackEn: f.nameFallbackEn.trim(),
@@ -408,9 +408,6 @@ export function ComposerProvider({ view, children }: { view: ReadyView; children
     startTest(async () => {
       const r = await runAdminAction(() => sendCampaignTestAction(s.id, variant, recipient ?? { kind: "own" }));
       setTest(testStateOf(r));
-      // ⛔ 2026-10-09 · refused for the officer's ROLE (changed since this page was read): read again, so the card offers
-      // "My own number" alone, as the server now answers.
-      if ("outcome" in r && r.outcome === "refused" && r.reason === "typed_role") router.refresh();
       setTesting(null);
       // The own preview now carries the officer's real stop link (minted by their first test). A typed test's link is
       // that person's, and is never shown.
@@ -908,8 +905,11 @@ export function ComposerTest() {
           <p className="text-body-sm text-text" data-test-choice="own">
             {t.ownNumberMasked !== null ? composeTestToOwn(t.ownNumberMasked) : COMPOSE_TEST_TO_OWN_UNUSABLE}
           </p>
+          {/* ⭐ ONE SENTENCE, ONE TONE: the own number's reason is said here in the card's secondary reason tone, exactly
+              as beside the disabled own radio and as Send's own reason is said — each tells why something can't be used,
+              while the refusal red stays the mark of a test that was asked for and refused (the outcome's callout). */}
           {t.ownNumberMasked === null && (
-            <p className="text-body-sm text-danger-fg" data-test-choice-why="own">{t.ownNumberProblem}</p>
+            <p className="text-body-sm text-text-secondary" data-test-choice-why="own">{t.ownNumberProblem}</p>
           )}
         </div>
       )}

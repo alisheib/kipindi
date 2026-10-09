@@ -76,14 +76,15 @@
  * by the ONE gate before a token or the wire — `typed_refused` to a masked viewer, the ONE `protected` reason to a reader
  * (the U33r review's MINOR-5: collapsed for readers too, as the split collapses it), the precise `agent_referee` ONLY in the
  * audit row — and an officer's own number that is a referee's is told it is protected, in the own-number words.
- * ⛔ §16.21 · §18.37–§18.39 (the owner's ruling of 2026-10-09) · A TEST TO A TYPED NUMBER IS FOR ADMIN AND COMPLIANCE ONLY.
- * The door decides by the officer's STORED role through ONE decider (`mayTestTypedNumber`): GROWTH and every other role is
- * refused `typed_role` in ONE sentence before anything about the number is read — never parsed, masked or set beside their
- * own, nothing reaching the rail, the gate, a token or the wire — while ADMIN (the Owner) and COMPLIANCE are taken as before
- * (§18.37, and §18.38 reads the order in the source); the loader asks the same decider of the same stored row and hands a
- * viewer who may not type the empty typed view (§18.39); and the card offers the choice only to them, saying "My own
- * number" alone to anyone else (§16.21). ⭐ So the typed claims above run as an officer who may type: `o` is the Owner
- * (ADMIN), and §18.23's and §18.33's officers are ADMIN or COMPLIANCE.
+ * ⛔ §16.21–§16.22 · §18.37–§18.39 (the owner's ruling of 2026-10-09) · A TEST TO A TYPED NUMBER IS FOR THE OWNER AND
+ * COMPLIANCE ONLY. The door decides by the officer's STORED role through ONE decider (`mayTestTypedNumber`): GROWTH and
+ * every other role is refused `typed_role` in ONE sentence — in the console's own labels for the two roles — before
+ * anything about the number is read: never parsed, masked or set beside their own, nothing reaching the rail, the gate, a
+ * token or the wire — while the Owner (the `ADMIN` role) and Compliance are taken as before (§18.37, and §18.38 reads the
+ * order in the source); the loader asks the same decider of the same stored row and hands a viewer who may not type the
+ * empty typed view (§18.39); and the card offers the choice only to them, saying "My own number" alone to anyone else, its
+ * reason in the one tone it has beside the radio (§16.21, §16.22). ⭐ So the typed claims above run as an officer who may
+ * type: `o` is the Owner, and §18.23's and §18.33's officers are the Owner or Compliance.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION — `--prove-red` plants each defect IN MEMORY and requires the
  * MATCHING assertion to fire. No file-writing call, so it stays outside `test:red-anchors` §4.
@@ -1211,7 +1212,7 @@ function checkComposerScreen(src: ScreenSources, log: (l: string) => void): stri
     // the choice is still while a test is in flight
     still: testCard.includes("disabled={!typedView.allowed || c.testing !== null}") && testCard.includes("disabled={t.ownNumberMasked === null || c.testing !== null}"),
     // a refusal that means "this page is out of date" re-reads the page
-    reread: client.includes('const PAGE_STALE_REASONS = ["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"];')
+    reread: client.includes('const PAGE_STALE_REASONS = ["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line", "typed_role"];')
       && sendBlock.includes('r.outcome === "refused" && PAGE_STALE_REASONS.includes(r.reason)) router.refresh();'),
   };
   ok("§16.20 ⭐ U37c-2 · THE CARD SAYS THE TRUE REASON AND KEEPS IN STEP — a typed test refused up front says so before \"updating\"; a disabled \"Another number\" always has its reason (save first, or updating just after a save); the choice is still while a test is in flight; and a refusal that means the page is out of date (the 18+ words, the record, the line) re-reads it",
@@ -1315,11 +1316,21 @@ function checkComposerScreen(src: ScreenSources, log: (l: string) => void): stri
     saidAlone: saidBranch.includes("{COMPOSE_TEST_TO_LEGEND}") && saidBranch.includes("composeTestToOwn(t.ownNumberMasked)")
       && saidBranch.includes('data-test-choice="own"') && saidBranch.includes('data-test-choice-why="own"')
       && !/<input|TestToChoice|COMPOSE_TEST_TO_TYPED|typedView|onPick|type="radio"/.test(saidBranch),
-    // a typed test refused for the role (changed since the page was read) re-reads the page
-    reread: sendBlock.includes('if ("outcome" in r && r.outcome === "refused" && r.reason === "typed_role") router.refresh();'),
+    // a typed test refused for the role (changed since the page was read) re-reads the page — through the ONE mechanism,
+    // the page-stale reasons, and no second path of its own
+    reread: /const PAGE_STALE_REASONS = \[[^\]]*"typed_role"[^\]]*\];/.test(client)
+      && sendBlock.includes('r.outcome === "refused" && PAGE_STALE_REASONS.includes(r.reason)) router.refresh();')
+      && !sendBlock.includes("typed_role"),
   };
   ok("§16.21 ⛔ 2026-10-09 · 'ANOTHER NUMBER' ONLY FOR A VIEWER THE DOOR LETS TYPE ONE — the card takes the server's answer (typedOffered) and names no role itself; the choice — the fieldset with both radio cards — renders only while it is offered, and nowhere else; otherwise the card says 'Send the test to' and 'My own number' as text, with no radio, no choice and nothing about another number; the target is own whenever the choice is not offered (the state, the post and data-test-target follow it; data-test-typed-offered says which); and a typed_role refusal re-reads the page",
     Object.values(offeredOnly).every(Boolean), JSON.stringify(offeredOnly));
+
+  /* §16.22 · 2026-10-09 · one sentence, one tone — the own number's reason, wherever the card says it */
+  const whyTags = [...client.matchAll(/<(?:span|p)\b[^>]*\bdata-test-choice-why=[^>]*>/g)].map((m) => m[0]);
+  const oneTone = whyTags.length === 2 && whyTags.every((tag) => /\btext-text-secondary\b/.test(tag) && !/\btext-danger/.test(tag))
+    && occurrences(testCard, "t.ownNumberProblem") === 2;
+  ok("§16.22 ⭐ 2026-10-09 · ONE SENTENCE, ONE TONE — the own number's reason (ownNumberProblem: the test send's TEST_OWN_NUMBER_UNUSABLE) is said in the card's secondary reason tone wherever the card says it — beside the disabled own radio and in the own-only card — never in the refusal red, and nowhere else",
+    oneTone, JSON.stringify({ whyTags, uses: occurrences(testCard, "t.ownNumberProblem") }));
   return failed;
 }
 
@@ -3752,8 +3763,8 @@ if (!PROVE_RED) {
     const STILL = "disabled={!typedView.allowed || c.testing !== null}";
     const restless = swapOnce(CLIENT, STILL, "disabled={!typedView.allowed}");
     /** U37c-2 · a rewording refused, and the page left showing the old words. */
-    const STALE_LIST = '["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"]';
-    const noReread = swapOnce(CLIENT, STALE_LIST, '["typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"]');
+    const STALE_LIST = '["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line", "typed_role"]';
+    const noReread = swapOnce(CLIENT, STALE_LIST, '["typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line", "typed_role"]');
     /** U37c-2 · Send no longer spends the tick. */
     const SPEND = "    const r = recipient();\n    setTickedFor(null);\n    c.sendTest(v, r);";
     const tickNeverSpent = swapOnce(CLIENT, SPEND, "    const r = recipient();\n    c.sendTest(v, r);");
@@ -3791,10 +3802,13 @@ if (!PROVE_RED) {
     /** 2026-10-09 · the typed target outlives the choice — a stale pick posts a typed test for a viewer not offered one. */
     const TARGET_FOLLOWS = 'const typed = offered && target === "typed";';
     const staleTypedTarget = swapOnce(CLIENT, TARGET_FOLLOWS, 'const typed = target === "typed";');
-    /** 2026-10-09 · a typed_role refusal leaves the page as it was read. */
-    const ROLE_REREAD = 'if ("outcome" in r && r.outcome === "refused" && r.reason === "typed_role") router.refresh();';
-    const roleNoReread = swapOnce(CLIENT, ROLE_REREAD, "");
-    type ScreenPlant ={ name: string; expect: RegExp; sources: ScreenSources; landed: () => boolean; landedAs: string };
+    /** 2026-10-09 · typed_role taken out of the page-stale reasons — the refusal leaves the page as it was read. */
+    const ROLE_REREAD = ', "typed_role"]';
+    const roleNoReread = swapOnce(CLIENT, ROLE_REREAD, "]");
+    /** 2026-10-09 · one sentence in two tones — the own-only card says the unusable number in the refusal red. */
+    const OWN_WHY_TONE = '<p className="text-body-sm text-text-secondary" data-test-choice-why="own">';
+    const twoTones = swapOnce(CLIENT, OWN_WHY_TONE, '<p className="text-body-sm text-danger-fg" data-test-choice-why="own">');
+    type ScreenPlant = { name: string; expect: RegExp; sources: ScreenSources; landed: () => boolean; landedAs: string };
     const screenPlants: ScreenPlant[] = [
       {
         name: "P9 · the composer sizes on its own — the client imports sizeSms and calls it on the body",
@@ -4012,7 +4026,13 @@ if (!PROVE_RED) {
         name: "2026-10-09 · a typed test refused for the role, and the page not re-read",
         expect: /^§16[.]21 ⛔/, sources: roleNoReread,
         landed: () => once(CLIENT, ROLE_REREAD) && !(roleNoReread.files.get(CLIENT) ?? "").includes(ROLE_REREAD),
-        landedAs: "typed_role no longer re-reads the page, so the card keeps offering a choice the server refuses",
+        landedAs: "typed_role is no longer a page-stale reason, so the card keeps offering a choice the server refuses",
+      },
+      {
+        name: "2026-10-09 · one sentence in two tones — the unusable own number said in the refusal red in the own-only card, grey beside the radio",
+        expect: /^§16[.]22 ⭐/, sources: twoTones,
+        landed: () => once(CLIENT, OWN_WHY_TONE) && (twoTones.files.get(CLIENT) ?? "").includes('text-danger-fg" data-test-choice-why="own"'),
+        landedAs: "the own-only card's reason wears the danger tone while the radio card's stays secondary",
       },
     ];
     for (const p of screenPlants) {
