@@ -10,7 +10,7 @@ const SETTLED = "2026-06-20T18:05:00.000Z";
 const samples: Record<string, string> = {
   welcome: welcomeHtml({ name: "Asha" }),
   deposit: depositConfirmedHtml({ amount: 50000, method: "M-Pesa", reference: "TXN-7F3K9Q2M1A8B", balance: 1250000 }),
-  betPlaced: betPlacedHtml({ reference: "pos_9f3k2qm1a8", side: "YES", stake: 25000, payoutIfWin: 46200, marketTitle: "Will Simba SC win the Mainland derby on Saturday?", placedAt: PLACED, resolutionDate: "2026-06-20" }),
+  betPlaced: betPlacedHtml({ reference: "pos_9f3k2qm1a8", side: "YES", stake: 25000, payoutIfWin: 46200, marketTitle: "Will Simba SC win the Mainland derby on Saturday?", placedAt: PLACED, resolvesAt: "2026-06-20T18:00:00.000Z" }),
   win: winNotificationHtml({ reference: "pos_9f3k2qm1a8", payout: 184500, stake: 50000, marketTitle: "Will Simba SC win the Mainland derby?", settledAt: SETTLED }),
   loss: lossNotificationHtml({ reference: "pos_7b22aa90fe", stake: 30000, marketTitle: "Will it rain in Dodoma before Friday?", settledAt: SETTLED }),
   cashout: cashOutReceiptHtml({ reference: "pos_9f3k2qm1a8", value: 38200, stake: 25000, marketTitle: "Will Simba SC win the Mainland derby?", soldAt: PLACED }),
