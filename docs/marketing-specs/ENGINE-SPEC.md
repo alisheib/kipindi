@@ -406,7 +406,7 @@ back, except U47a's future Retry (an operator's act, re-gated).
 |---|---|---|
 | `officer_paused` | "Paused by an officer." (the live page names who and when from the audit row) | U47b |
 | `officer_stopped` | "Stopped by an officer." | U47b |
-| `live_switch_closed` | "Paused — marketing SMS are not switched on: the owner switched them off, the time they were switched on for ran out, or the switch couldn't be read. Once Admin → System shows them on, press Resume." | U43b (✅ as built, its review: true of an off, a lapsed and an unreadable switch — before the claim or just before the wire) |
+| `live_switch_closed` | "Paused — marketing SMS are not switched on: the Owner switched them off, the time they were switched on for ran out, or the switch couldn't be read. Once Admin → System shows them on, press Resume." | U43b (✅ as built, its review: true of an off, a lapsed and an unreadable switch — before the claim or just before the wire) |
 | `MARKETING_FLOOR` · `marketing_floor` | "Paused — the SMS credit reached what is kept for login and withdrawal codes. Top up, then Resume." | U49a |
 | `credit_unreadable` | "Paused — the SMS credit couldn't be read, so sending stopped to protect login codes. Resume when Admin → System shows the credit again." | U49a |
 | `gateway_refused` | "Paused — the SMS network refused the last batch, and nothing in it was charged. Check Admin → System, then Resume." | U43b |
@@ -998,7 +998,7 @@ export async function confirmCampaign(input: ConfirmCampaignInput, viewer: { mon
   line — and this campaign has none yet. The owner sets it on Admin → System → Marketing wordings; then save this draft
   again. Nothing was confirmed."
 - `over_limit` (money reader): "This campaign could cost up to TZS 12,060 — more than the TZS 10,000 one campaign may spend.
-  Narrow the audience, or the owner raises the limit on Admin → System → Marketing SMS. Nothing was confirmed."
+  Narrow the audience, or the Owner raises the limit on Admin → System → Marketing SMS. Nothing was confirmed."
 - `over_limit` (other roles): "This campaign could cost more than one campaign may spend. Narrow the audience, or ask the
   owner to raise the limit. Nothing was confirmed."
 - `price_unknown`: "The price per SMS isn't known, so this campaign's cost can't be checked against its limit. The owner
@@ -1590,7 +1590,7 @@ export async function sendBatch(messages: SmsOutbound[], opts?: SmsBatchOptions)
 - `not_confirmed`: "Only a confirmed campaign can start."
 - `confirmation_unreadable`: "This campaign's confirmation can't be read in full, so it can't start. Stop it and confirm a
   new copy. Nothing was sent."
-- `switch_closed`: "Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending),
+- `switch_closed`: "Marketing SMS are switched off. The Owner switches them on (Admin → System → Marketing SMS sending),
   then you can start. Nothing was sent."
 - `rail_dead`: "No SMS can leave this server right now — Admin → System says why. Nothing was sent."
 - `needs_source_line`: "This campaign can reach people from the contact book, and its message has no source line. Stop it
@@ -1602,17 +1602,17 @@ export async function sendBatch(messages: SmsOutbound[], opts?: SmsBatchOptions)
   starts. Try again in a moment. Nothing was sent."
 - `settings_incomplete`: "The saved Marketing SMS settings can't be read in full, so this campaign can't be checked before
   it starts. The developer must repair them first. Nothing was sent."
-- `price_unknown`: "The price per SMS isn't known, so the budget can't be checked. The owner sets it on Admin → System →
+- `price_unknown`: "The price per SMS isn't known, so the budget can't be checked. The Owner sets it on Admin → System →
   Marketing SMS. Nothing was sent."
 - `over_budget` (money): "At today's price this campaign could cost TZS 10,800 — more than its limit of TZS 10,000. Stop it
-  and confirm a smaller copy, or the owner raises the limit. Nothing was sent." · (other roles): "At today's price this
-  campaign could cost more than its limit. Stop it and confirm a smaller copy, or ask the owner. Nothing was sent."
+  and confirm a smaller copy, or the Owner raises the limit. Nothing was sent." · (other roles): "At today's price this
+  campaign could cost more than its limit. Stop it and confirm a smaller copy, or ask the Owner. Nothing was sent."
 - `credit_unreadable`: "The SMS credit couldn't be read just now, so the campaign can't start safely. Try again in a
   minute. Nothing was sent."
 - `credit_low` (money): "Starting would leave less SMS credit than is kept for login and withdrawal codes — credit TZS
   24,000, this campaign up to TZS 9,624, kept for codes TZS 20,000. Top up, or narrow the audience. Nothing was sent." ·
   (other roles): "There isn't enough SMS credit to start this campaign and still keep what login and withdrawal codes
-  need. Ask the owner to top up. Nothing was sent."
+  need. Ask the Owner to top up. Nothing was sent."
 - `audience_uncounted`: "The audience couldn't be counted just now. Try again in a minute. Nothing was sent."
 - `audience_moved` (a reader, or a one-arm campaign): "The audience grew since it was confirmed — now 1,610, confirmed
   1,604. Nothing was sent. Stop this campaign and confirm a new copy." · (book ∪ players, a viewer who may not read
@@ -1638,7 +1638,7 @@ ends "Nobody more was messaged."; none says start, narrow the audience, or "Noth
   audience can't be read any more, so this campaign can't resume. Some people on it have already been messaged, and a new
   campaign to the same people would message them again: stop it, and send another only if that is what you want. Nobody
   more was messaged."
-- `switch_closed`: "Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending),
+- `switch_closed`: "Marketing SMS are switched off. The Owner switches them on (Admin → System → Marketing SMS sending),
   then you can resume. Nobody more was messaged."
 - `rail_dead`: "No SMS can leave this server right now — Admin → System says why. The campaign stays paused. Nobody more
   was messaged."
@@ -1650,14 +1650,14 @@ ends "Nobody more was messaged."; none says start, narrow the audience, or "Noth
   Try again in a moment. Nobody more was messaged."
 - `settings_incomplete`: "The saved Marketing SMS settings can't be read in full, so what is left to send can't be
   checked. The developer must repair them first. Nobody more was messaged."
-- `price_unknown`: "The price per SMS isn't known, so what is left to send can't be priced. The owner sets it on Admin →
+- `price_unknown`: "The price per SMS isn't known, so what is left to send can't be priced. The Owner sets it on Admin →
   System → Marketing SMS. Nobody more was messaged."
 - `credit_unreadable`: "The SMS credit couldn't be read just now, so the campaign can't resume safely. Try again in a
   minute. Nobody more was messaged."
 - `credit_low` (money): "Resuming would leave less SMS credit than is kept for login and withdrawal codes — credit TZS
   24,000, the rest of this campaign up to TZS 9,624, kept for codes TZS 20,000. Top up, then resume. Nobody more was
   messaged." · (other roles): "There isn't enough SMS credit to finish this campaign and still keep what login and
-  withdrawal codes need. Ask the owner to top up, then resume. Nobody more was messaged."
+  withdrawal codes need. Ask the Owner to top up, then resume. Nobody more was messaged."
 
 **As built · around it.**
 - `sendBatch`'s `minimumBalanceTzs` judges only an all-MARKETING batch, after the platform floor (`BALANCE_FLOOR` keeps
@@ -1719,22 +1719,22 @@ export function startRefusalSentence(r: StartRefusal, money: boolean): string;
 
 **Sentences** (`startRefusalSentence`; every one ends "Nothing was sent." where nothing was):
 - not_confirmed: "Only a confirmed campaign can start."
-- switch_closed: "Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending),
+- switch_closed: "Marketing SMS are switched off. The Owner switches them on (Admin → System → Marketing SMS sending),
   then you can start. Nothing was sent."
 - rail_dead: "No SMS can leave this server right now — Admin → System says why. Nothing was sent."
 - needs_source_line: "This campaign can reach people from the contact book, and its message has no source line. Stop it
   and confirm a copy once the owner has set the source line. Nothing was sent."
 - audience_unreadable: "The saved audience can't be read any more. Stop this campaign and confirm a new copy. Nothing was
   sent."
-- price_unknown: "The price per SMS isn't known, so the budget can't be checked. The owner sets it on Admin → System →
+- price_unknown: "The price per SMS isn't known, so the budget can't be checked. The Owner sets it on Admin → System →
   Marketing SMS. Nothing was sent."
 - over_budget (money): "At today's price this campaign could cost TZS 10,800 — more than its limit of TZS 10,000. Stop it
-  and confirm a smaller copy, or the owner raises the limit. Nothing was sent." · (other roles): "At today's price this
-  campaign could cost more than its limit. Stop it and confirm a smaller copy, or ask the owner. Nothing was sent."
+  and confirm a smaller copy, or the Owner raises the limit. Nothing was sent." · (other roles): "At today's price this
+  campaign could cost more than its limit. Stop it and confirm a smaller copy, or ask the Owner. Nothing was sent."
 - credit_low (money): "Starting would leave less SMS credit than is kept for login and withdrawal codes — credit TZS
   24,000, this campaign up to TZS 9,624, kept for codes TZS 20,000. Top up, or narrow the audience. Nothing was sent." ·
   (other roles): "There isn't enough SMS credit to start this campaign and still keep what login and withdrawal codes need.
-  Ask the owner to top up. Nothing was sent."
+  Ask the Owner to top up. Nothing was sent."
 - credit_unreadable: "The SMS credit couldn't be read just now, so the campaign can't start safely. Try again in a
   minute. Nothing was sent."
 - audience_moved: "The audience grew since it was confirmed — now 1,610, confirmed 1,604. Nothing was sent. Stop this
@@ -2716,7 +2716,7 @@ export type StepActionResult = { ok: true; step: SliceStepResult | EnqueueStepRe
 - Standing callouts: keep open (RUNNING/PREPARING) "Keep this page open while it sends — sending continues only while a page
   like this one is open." · nobody driving (RUNNING, no claim for 90 s, viewer cannot act or the driver has not run yet)
   "Nobody is sending this campaign right now. Open it as an officer who can send, and keep the page open. (Last step 14:02
-  EAT.)" · switch off "Marketing SMS are switched off — this campaign waits until the owner switches them on." · out of date
+  EAT.)" · switch off "Marketing SMS are switched off — this campaign waits until the Owner switches them on." · out of date
   (above) · second factor (the platform's sentence).
 - KPIs: "On campaign" · "Handed over" (title: "The network took the message. Delivery is confirmed by a receipt, usually in
   seconds.") · "Failed" · "Not sent (checks)" · "No answer" (title: "Handed to the network with no answer back — never

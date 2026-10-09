@@ -177,7 +177,7 @@ export const COMPOSE_TEST_SEND = { SW: "Send the Swahili test", EN: "Send the En
 export const COMPOSE_TEST_PREVIEW = { SW: "Swahili, as it will be sent to you", EN: "English, as it will be sent to you" } as const;
 export const COMPOSE_TEST_EXACT = "The exact text sent:";
 export const COMPOSE_TEST_CONSENT_LINK = "Turn on SMS offers for your own number";
-export const COMPOSE_TEST_LIVE_NOTE = "Marketing SMS are not switched on yet — a test is refused until the owner switches them on.";
+export const COMPOSE_TEST_LIVE_NOTE = "Marketing SMS are not switched on yet — a test is refused until the Owner switches them on.";
 /** U13 · the send window's hours could not be read: a CLOSED window (fail closed), said as such — never as quiet hours. */
 export const COMPOSE_TEST_WINDOW_UNREADABLE =
   "The Marketing SMS settings couldn't be read, so the send window is treated as closed — no test can be sent until they can.";

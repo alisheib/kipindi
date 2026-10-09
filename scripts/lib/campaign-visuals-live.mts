@@ -920,7 +920,7 @@ async function decisionChecks(M: Mods, S: PageSources, h: PageHarness, tag: stri
   const watching = callouts(shut, { mayAct: false, mode: "watch", stop: null });
   const stoppedDriver = callouts(shut, { mayAct: true, mode: "drive", stop: { kind: "role", sentence: "x" } });
   const windowWords = "Waiting for the send window — sending resumes at 08:00 EAT.";
-  const closesWords = "Marketing SMS stay switched on until 14:00 EAT on 8 Oct 2026, then sending waits until the owner switches them on again.";
+  const closesWords = "Marketing SMS stay switched on until 14:00 EAT on 8 Oct 2026, then sending waits until the Owner switches them on again.";
   if (!(driving.window === null && driving.switchCloses === null && watching.window === windowWords && watching.switchCloses === closesWords && stoppedDriver.window === windowWords && stoppedDriver.switchCloses === closesWords)) {
     wrong.push(`the closed window and the switch: a driver ${json([driving.window, driving.switchCloses])}, a watcher ${json([watching.window, watching.switchCloses])}, a stopped driver ${json([stoppedDriver.window, stoppedDriver.switchCloses])}`);
   }

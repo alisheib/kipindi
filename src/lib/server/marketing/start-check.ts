@@ -487,7 +487,7 @@ export function startRefusalSentence(r: StartRefusal, viewer: RefusalViewer): st
     case "confirmation_unreadable":
       return "This campaign's confirmation can't be read in full, so it can't start. Stop it and confirm a new copy. Nothing was sent.";
     case "switch_closed":
-      return "Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending), then you can start. Nothing was sent.";
+      return "Marketing SMS are switched off. The Owner switches them on (Admin → System → Marketing SMS sending), then you can start. Nothing was sent.";
     case "rail_dead":
       return "No SMS can leave this server right now — Admin → System says why. Nothing was sent.";
     case "audience_unreadable":
@@ -498,15 +498,15 @@ export function startRefusalSentence(r: StartRefusal, viewer: RefusalViewer): st
     case "settings_incomplete":
       return "The saved Marketing SMS settings can't be read in full, so this campaign can't be checked before it starts. The developer must repair them first. Nothing was sent.";
     case "price_unknown":
-      return "The price per SMS isn't known, so the budget can't be checked. The owner sets it on Admin → System → Marketing SMS. Nothing was sent.";
+      return "The price per SMS isn't known, so the budget can't be checked. The Owner sets it on Admin → System → Marketing SMS. Nothing was sent.";
     case "over_budget":
       return money
-        ? `At today's price this campaign could cost ${formatTzs(r.costTzs)} — more than its limit of ${formatTzs(r.budgetTzs)}. Stop it and confirm a smaller copy, or the owner raises the limit. Nothing was sent.`
-        : "At today's price this campaign could cost more than its limit. Stop it and confirm a smaller copy, or ask the owner. Nothing was sent.";
+        ? `At today's price this campaign could cost ${formatTzs(r.costTzs)} — more than its limit of ${formatTzs(r.budgetTzs)}. Stop it and confirm a smaller copy, or the Owner raises the limit. Nothing was sent.`
+        : "At today's price this campaign could cost more than its limit. Stop it and confirm a smaller copy, or ask the Owner. Nothing was sent.";
     case "credit_low":
       return money
         ? `Starting would leave less SMS credit than is kept for login and withdrawal codes — credit ${formatTzs(r.balanceTzs)}, this campaign up to ${formatTzs(r.costTzs)}, kept for codes ${formatTzs(r.reserveTzs)}. Top up, or narrow the audience. Nothing was sent.`
-        : "There isn't enough SMS credit to start this campaign and still keep what login and withdrawal codes need. Ask the owner to top up. Nothing was sent.";
+        : "There isn't enough SMS credit to start this campaign and still keep what login and withdrawal codes need. Ask the Owner to top up. Nothing was sent.";
     case "credit_unreadable":
       return "The SMS credit couldn't be read just now, so the campaign can't start safely. Try again in a minute. Nothing was sent.";
     case "audience_uncounted":
@@ -551,7 +551,7 @@ export function resumeRefusalSentence(r: ResumeRefusal, viewer: RefusalViewer): 
         ? "The saved audience can't be read any more, so this campaign can't resume. Some people on it have already been messaged, and a new campaign to the same people would message them again: stop it, and send another only if that is what you want. Nobody more was messaged."
         : "The saved audience can't be read any more, so this campaign can't resume. Stop it and confirm a new copy — or write a new campaign if the copy is refused. Nobody more was messaged.";
     case "switch_closed":
-      return "Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending), then you can resume. Nobody more was messaged.";
+      return "Marketing SMS are switched off. The Owner switches them on (Admin → System → Marketing SMS sending), then you can resume. Nobody more was messaged.";
     case "rail_dead":
       return "No SMS can leave this server right now — Admin → System says why. The campaign stays paused. Nobody more was messaged.";
     case "confirmation_unreadable":
@@ -565,13 +565,13 @@ export function resumeRefusalSentence(r: ResumeRefusal, viewer: RefusalViewer): 
     case "settings_incomplete":
       return "The saved Marketing SMS settings can't be read in full, so what is left to send can't be checked. The developer must repair them first. Nobody more was messaged.";
     case "price_unknown":
-      return "The price per SMS isn't known, so what is left to send can't be priced. The owner sets it on Admin → System → Marketing SMS. Nobody more was messaged.";
+      return "The price per SMS isn't known, so what is left to send can't be priced. The Owner sets it on Admin → System → Marketing SMS. Nobody more was messaged.";
     case "credit_unreadable":
       return "The SMS credit couldn't be read just now, so the campaign can't resume safely. Try again in a minute. Nobody more was messaged.";
     case "credit_low":
       return money
         ? `Resuming would leave less SMS credit than is kept for login and withdrawal codes — credit ${formatTzs(r.balanceTzs)}, the rest of this campaign up to ${formatTzs(r.costTzs)}, kept for codes ${formatTzs(r.reserveTzs)}. Top up, then resume. Nobody more was messaged.`
-        : "There isn't enough SMS credit to finish this campaign and still keep what login and withdrawal codes need. Ask the owner to top up, then resume. Nobody more was messaged.";
+        : "There isn't enough SMS credit to finish this campaign and still keep what login and withdrawal codes need. Ask the Owner to top up, then resume. Nobody more was messaged.";
   }
   return `Engine reason: ${(r as { reason: string }).reason}`;
 }

@@ -1625,7 +1625,7 @@ function checkComposerWords(w: WordsImpl, log: (l: string) => void): string[] {
         && w.bodyHint === `Begin with ${SENDER_IDENTITY} (lower case). ${JINA} prints the first name.`
         && w.saveUnfinished.includes("before saving again") && !/try again/i.test(w.saveUnfinished)
         && w.testUnfinished.includes("Check your phone") && !/try again/i.test(w.testUnfinished)
-        && w.ownNumberUnusable.includes("can't be changed") && w.ownNumberUnusable.includes("ask the owner")
+        && w.ownNumberUnusable.includes("can't be changed") && w.ownNumberUnusable.includes("ask the Owner")
         && w.ownNumberUnusable.includes("/admin/staff") && !/an account on your/i.test(w.ownNumberUnusable),
       JSON.stringify({ saved, noTest, hint: w.bodyHint, own: w.ownNumberUnusable }));
   }

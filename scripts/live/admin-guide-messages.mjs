@@ -15,10 +15,10 @@
  *   · `where` is the menu path, and is LEFT OUT where there is no one place (advice, the rules) — never "Everywhere".
  *   · NO PICTURE THAT REPEATS ANOTHER: the contacts page is pictured once (its buttons are in that picture), and a step whose
  *     words say all there is (Export, choosing the file, the decision under the check) has none.
- *   · THE CONSOLE'S OWN NAMES: the ADMIN role is "the Owner" (the console's word, capital O, as "Compliance" and "Growth" are);
- *     the list's button is "New campaign". A quoted app sentence keeps its own spelling ("until the owner switches them on"):
- *     the quote is checked against the source, so it is never re-cased here. ⛔ The SMS company is NEVER named: the System
- *     tile names it in two of its states, so those states are described here, never quoted (BALANCE_STATES).
+ *   · THE CONSOLE'S OWN NAMES: the ADMIN role is "the Owner" (the console's word, capital O, as "Compliance" and "Growth" are —
+ *     and, since 2026-10-09, the campaign sentences' too: "until the Owner switches them on"); the list's button is "New
+ *     campaign". ⛔ The SMS company is NEVER named: the System tile names it in two of its states, so those states are
+ *     described here, never quoted (BALANCE_STATES).
  *   · TRUE TO THE OWNER'S RULINGS OF 2026-10-09: a marketing SMS is sent exactly as written — nothing is added, no stop link;
  *     the typed-number test is for the Owner and Compliance only; Results says "Stopped since this campaign".
  * Each chapter in SECTIONS is printed in order; "IMPORT" (the import chapter, IMPORT_STEPS) and "MESSAGES" (the table of
@@ -416,13 +416,13 @@ export const MESSAGES = [
   { area: "Writing a campaign", message: "A campaign goes to a group, never to one phone number — take the number out of the audience. To see the message on a phone, use the test send: it goes to your own number.", meaning: "The audience is one phone number.", action: "Choose a group; use the test send for one phone." },
   { area: "Writing a campaign", message: "The character “…” is not in the GSM alphabet, which cuts a message from 160 characters to 70. Replacing it is usually enough.", check: "is not in the GSM alphabet, ", meaning: "A special character makes the SMS hold far fewer characters.", action: "Press “Replace with plain characters”." },
   { area: "Writing a campaign", message: "This is 2 messages, and the limit is 1 — you have 148 characters, and this uses 171.", check: "messages, and the limit is ", meaning: "The message is too long.", action: "Shorten it until the counter fits." },
-  { area: "Writing a campaign", message: "Marketing SMS are not switched on yet — a test is refused until the owner switches them on.", meaning: "Sending is off.", action: "Ask the Owner to switch marketing SMS on." },
+  { area: "Writing a campaign", message: "Marketing SMS are not switched on yet — a test is refused until the Owner switches them on.", meaning: "Sending is off.", action: "Ask the Owner to switch marketing SMS on." },
   { area: "Writing a campaign", message: "Couldn't save — your text is still here. Try again.", meaning: "The server did not answer this time. Nothing is lost.", action: "Try again; if it keeps failing, reload, then tell the Owner." },
   { area: "Writing a campaign", message: "Save first — the test sends the saved text.", meaning: "The test uses the saved message.", action: "Press Save draft, then send the test." },
   { area: "Writing a campaign", message: "Nobody matches this audience yet.", meaning: "Nobody in this audience may receive the campaign.", action: "Choose a wider audience." },
   // ── starting and resuming
-  { area: "Starting", message: "Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending), then you can start. Nothing was sent.", meaning: "The Owner's switch is off.", action: "Ask the Owner to switch them on, then press Start again." },
-  { area: "Starting", message: "At today's price this campaign could cost TZS 12,000 — more than its limit of TZS 10,000. Stop it and confirm a smaller copy, or the owner raises the limit. Nothing was sent.", check: "Stop it and confirm a smaller copy, or the owner raises the limit. Nothing was sent.", meaning: "The campaign could cost more than its limit.", action: "Confirm a smaller copy, or ask the Owner to raise the limit." },
+  { area: "Starting", message: "Marketing SMS are switched off. The Owner switches them on (Admin → System → Marketing SMS sending), then you can start. Nothing was sent.", meaning: "The Owner's switch is off.", action: "Ask the Owner to switch them on, then press Start again." },
+  { area: "Starting", message: "At today's price this campaign could cost TZS 12,000 — more than its limit of TZS 10,000. Stop it and confirm a smaller copy, or the Owner raises the limit. Nothing was sent.", check: "Stop it and confirm a smaller copy, or the Owner raises the limit. Nothing was sent.", meaning: "The campaign could cost more than its limit.", action: "Confirm a smaller copy, or ask the Owner to raise the limit." },
   { area: "Starting", message: "Starting would leave less SMS credit than is kept for login and withdrawal codes — credit TZS 25,000, this campaign up to TZS 9,000, kept for codes TZS 20,000. Top up, or narrow the audience. Nothing was sent.", check: "Starting would leave less SMS credit than is kept for login and withdrawal codes", meaning: "Not enough credit for this campaign and the codes.", action: "Ask the Owner to top up, or narrow the audience." },
   { area: "Starting", message: "The audience grew since it was confirmed — now 1,250, confirmed 1,200. Nothing was sent. Stop this campaign and confirm a new copy.", check: "The audience grew since it was confirmed", meaning: "People joined the audience after it was confirmed — new contacts, for example.", action: "Stop it and confirm a new copy." },
   // ── while it sends
@@ -434,7 +434,7 @@ export const MESSAGES = [
   { area: "Sending", message: "This page is out of date or lost its connection — reload it to keep sending. Nothing is lost.", meaning: "The page lost touch with the server.", action: "Reload the page." },
   // ── why it paused
   { area: "Paused", message: "Paused — the SMS credit reached what is kept for login and withdrawal codes. Top up, then Resume.", meaning: "The credit ran down to the part kept for codes.", action: "Ask the Owner to top up, then press Resume." },
-  { area: "Paused", message: "Paused — marketing SMS are not switched on: the owner switched them off, the time they were switched on for ran out, or the switch couldn't be read. Once Admin → System shows them on, press Resume.", meaning: "The switch is off.", action: "Ask the Owner to switch them on, then press Resume." },
+  { area: "Paused", message: "Paused — marketing SMS are not switched on: the Owner switched them off, the time they were switched on for ran out, or the switch couldn't be read. Once Admin → System shows them on, press Resume.", meaning: "The switch is off.", action: "Ask the Owner to switch them on, then press Resume." },
   { area: "Paused", message: "Paused — the SMS network refused the last batch, and nothing in it was charged. Check Admin → System, then Resume.", meaning: "The SMS company said no to the last group.", action: "Check System; press Resume when it is healthy." },
   { area: "Paused", message: "Paused — some people could not be checked or prepared. Resume to try them again, or Stop.", meaning: "A few people couldn't be checked.", action: "Press Resume to try them again." },
 ];

@@ -203,7 +203,7 @@ export const LIVE_WAIT_HIDDEN = `Waiting — nothing is sent just now, and it tr
 /* ══ THE STANDING CALLOUTS ═══════════════════════════════════════════════════════════════════════════════════════════ */
 
 export const LIVE_KEEP_OPEN = "Keep this page open while it sends — sending continues only while a page like this one is open.";
-export const LIVE_SWITCH_OFF = "Marketing SMS are switched off — this campaign waits until the owner switches them on.";
+export const LIVE_SWITCH_OFF = "Marketing SMS are switched off — this campaign waits until the Owner switches them on.";
 export const LIVE_OUT_OF_DATE = "This page is out of date or lost its connection — reload it to keep sending. Nothing is lost.";
 
 /** Nobody driving (RUNNING, no claim for 90 s; PREPARING, no chunk for 90 s) — with the last step's time when there was one. */
@@ -227,7 +227,7 @@ export function liveWindowSentence(w: { open: boolean; opensAt: string; reason: 
 export function liveSwitchClosesSentence(closesAt: string | null): string | null {
   const t = eatClock(closesAt);
   const d = eatDate(closesAt);
-  return t === null || d === null ? null : `Marketing SMS stay switched on until ${t} EAT on ${d}, then sending waits until the owner switches them on again.`;
+  return t === null || d === null ? null : `Marketing SMS stay switched on until ${t} EAT on ${d}, then sending waits until the Owner switches them on again.`;
 }
 
 /* ══ THE FIGURES ════════════════════════════════════════════════════════════════════════════════════════════════════ */
@@ -293,7 +293,7 @@ export function startDialog(o: {
 }): { title: string; body: string } {
   const title = `Start sending to up to ${peopleCount(o.count)}?`;
   const parts = ["Each person is checked again just before their message: anyone who has stopped, withdrew or is protected is skipped."];
-  parts.push(o.window === null ? "Messages go out only inside the owner's send window." : `Messages go out between ${o.window.opens} and ${o.window.closes} EAT.`);
+  parts.push(o.window === null ? "Messages go out only inside the Owner's send window." : `Messages go out between ${o.window.opens} and ${o.window.closes} EAT.`);
   if (o.money !== null) {
     if (o.money.costTzs !== null && o.money.limitTzs !== null) parts.push(`It can cost up to ${formatTzs(o.money.costTzs)} of the ${formatTzs(o.money.limitTzs)} limit.`);
     else if (o.money.limitTzs !== null) parts.push(`It can cost up to its ${formatTzs(o.money.limitTzs)} limit.`);
