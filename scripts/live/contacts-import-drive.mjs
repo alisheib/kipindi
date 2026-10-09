@@ -645,7 +645,11 @@ const applyCounts = async (page) => {
   ok("duplicates · ADMIN: the result's updates are the promise's (one row set apart)", adminResult.update === againCounts.update && adminResult.create === againCounts.create,
     `${JSON.stringify(adminResult)} vs ${JSON.stringify(againCounts)}`);
   ok("duplicates · ADMIN reads the kept rows split by reason (S15-3)", adminResult.keep === 0 || /Kept:/.test(split), split);
-  ok("duplicates · ADMIN: the contacts went on the new list, and the result says its basis is owed", listSaid.includes(LIST_NAME), listSaid.slice(0, 200));
+  // C8b review (MINOR 2) · the line counts the contacts THIS import put on the list, and the new list's basis is owed.
+  ok("duplicates · ADMIN: the contacts went on the new list, and the result says how many joined and that its basis is owed",
+    listSaid.includes(LIST_NAME) && /joined the list/.test(listSaid) && /aren't covered for offers yet/.test(listSaid)
+      && (await adm.page.locator('[data-import-list-result="owed"]').count()) === 1,
+    listSaid.slice(0, 200));
   await shoot(adm.page, dir, "7-done-admin", block("import-done"), "Import finished");
   summary.flows.push({ flow: "duplicates-admin", keep: keepCounts, takeFile: takeCounts, setApart: apartCounts, afterRecheck: againCounts, result: adminResult, keptSplit: split });
   await closeDialog(adm.page);
