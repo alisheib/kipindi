@@ -55,6 +55,8 @@ import {
   readXlsxContacts,
   xlsxCellText,
   xlsxNumberText,
+  type FormatForged,
+  type MergeScan,
   type NumberText,
   type XlsxInspection,
   type XlsxReadInput,
@@ -77,12 +79,16 @@ import {
   WRONG_FORMAT_KINDS,
   XLSX_MAX_BASE64_CHARS,
   XLSX_MAX_BYTES,
+  XLSX_MAX_DEPTH,
   XLSX_MAX_INFLATED_BYTES,
+  XLSX_MAX_MERGED_CELLS,
+  XLSX_MAX_MERGES,
   XLSX_MAX_ROWS,
   XLSX_REFUSALS,
   excelShortenedSentence,
   formatFileSize,
   looksExcelShortened,
+  xlsxMergeArea,
   xlsxRefusalSentence,
   type WrongFormatKind,
   type XlsxRefusal,
@@ -106,8 +112,14 @@ const LIMITS_PATH = "src/lib/contacts/xlsx-limits.ts";
 const FILE_NAME = "kitabu-255712345678.xlsx";
 const ACTOR_A = "usr_u27b_officer_a";
 const ACTOR_B = "usr_u27b_officer_b";
-/** Excel's last column, XFD. */
+/** Excel's last column, XFD, and its last row — the grid a merge ref cannot exceed. */
 const LAST_COLUMN = 16384;
+const EXCEL_LAST_ROW = 1048576;
+/** BLOCKER 3 · the pre-pass must refuse a 30,000-tag merge flood well within this; the unbounded-scan plant blows it. */
+const MERGE_SCAN_BUDGET_MS = 150;
+/** MINOR 11 · a FULL read (through exceljs) of a cap-count merge workbook must stay under this — the cap is measured so
+ *  reconciliation is ~56 ms; U27.md:51 calls > ~1.5 s a finding, so 800 ms leaves room for a loaded box. */
+const MERGE_LOAD_BUDGET_MS = 800;
 /** The 40-row fixture: a header and forty contacts. */
 const FORTY_ROWS = 41;
 
@@ -492,6 +504,37 @@ type Fixtures = {
   readonly trailing: string;
   readonly sizeMismatch: string;
   readonly broken: string;
+  /** C3c-merge-guard · the integrator's own example: a few-KB workbook with one vast `<mergeCell ref="A1:XFD1048576"/>`. */
+  readonly mergeBomb: string;
+  /** BLOCKER 1 · a ref whose row is 400 nines (out of Excel's grid): the worst area, never NaN, so it is refused. */
+  readonly mergeNaN: string;
+  /** BLOCKER 2 · a decoy `x:ref="A1"` before the real `ref="A1:XFD1048576"`: only the exact `ref` is read → refused. */
+  readonly mergeDecoy: string;
+  /** BLOCKER 3 · one part of `"<mergeCell ".repeat(N)` (no `>` at all): the 1 KiB window + early-stop keep it O(1). */
+  readonly mergeFlood: string;
+  /** The boundaries (inspected): exactly the cell / row / count caps pass, and one over (read) is refused. */
+  readonly mergeAreaAt: Buffer;
+  readonly mergeAreaOver: string;
+  readonly mergeRowsAt: Buffer;
+  readonly mergeRowsOver: string;
+  readonly mergeCountAt: Buffer;
+  readonly mergeCountOver: string;
+  /** MAJOR 9a · a numFmt formatCode past 255 characters, DOUBLE-quoted → unreadable `format`. */
+  readonly longFormat: string;
+  /** MAJOR 9a (re-review) · the same, SINGLE-quoted — the old double-quote-only byte scan missed it (bypass A). */
+  readonly longFormatSingleQuote: string;
+  /** MAJOR 9a (re-review) · the same, whitespace around `=` (`formatCode = "…"`) — also missed by the old scan. */
+  readonly longFormatSpacedEq: string;
+  /** MAJOR 9a (re-review) · a BENIGN workbook whose CELL TEXT contains `formatCode="` + 300 chars — read, never refused
+   *  (bypass B: the old unscoped scan false-refused it); must read identically in both readers (B2). */
+  readonly benignFormatText: string;
+  /** MAJOR 9b · element nesting past XLSX_MAX_DEPTH → unreadable `depth`. */
+  readonly deepNest: string;
+  /** NIT 1 · a nesting exactly AT the shared depth cap (read by both) and one past it (refused by both) — for B2. */
+  readonly depthAtCap: string;
+  readonly depthOverCap: string;
+  /** MAJOR 9c · two `<sheet>`s sharing one r:id (so one worksheet part) → unreadable `sheet_fanout`. */
+  readonly sheetFanOut: string;
 };
 
 async function buildFixtures(): Promise<Fixtures> {
@@ -655,12 +698,36 @@ async function buildFixtures(): Promise<Fixtures> {
   });
 
   const okSheet = partOf("xl/worksheets/sheet1.xml", sheetXml('<row r="1"><c r="A1" t="inlineStr"><is><t>Asha</t></is></c></row>'));
+  /** MAJOR 9a · a styles part with ONE numFmt whose attributes are given verbatim (to vary the formatCode's quoting). */
+  const numFmtStyles = (attr: string): Part =>
+    partOf("xl/styles.xml", `${XML_HEAD}<styleSheet xmlns="${TRANSITIONAL}"><numFmts count="1"><numFmt numFmtId="164" ${attr}/></numFmts></styleSheet>`);
+  /** MAJOR 9b / NIT 1 · a worksheet holding one mobile row (so at the cap it genuinely READS), then `n` nested elements
+   *  after sheetData → the deepest nesting is 1 + n (the row's own cell nests six deep, well under it). */
+  const deepSheet = (n: number): string =>
+    `${XML_HEAD}<worksheet xmlns="${TRANSITIONAL}"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>0757 300 211</t></is></c></row></sheetData>`
+    + `${"<a>".repeat(n)}${"</a>".repeat(n)}</worksheet>`;
   // The bomb: 48 MiB + 1 KiB of spaces — deflate shrinks it a thousandfold, and a plant that inflates it whole finds
   // no element to count in it.
   const bombPart = partOf("xl/worksheets/sheet1.xml", Buffer.alloc(XLSX_MAX_INFLATED_BYTES + 1024, 0x20));
   const rowsBody = Array.from({ length: XLSX_MAX_ROWS }, (_, i) => `<row r="${i + 1}"/>`).join("");
   /** Styled empty cells with no address — exceljs makes a Cell object for each; deflate shrinks them a thousandfold. */
   const styledCells = (n: number): string => sheetXml(`<row r="1">${'<c s="1"/>'.repeat(n)}</row>`);
+  /** C3c-merge-guard · a worksheet carrying `<mergeCells>` (after `<sheetData>`, where Excel writes it), no data of its own. */
+  const mergeSheet = (refs: readonly string[]): string =>
+    `${XML_HEAD}<worksheet xmlns="${TRANSITIONAL}"><sheetData/><mergeCells count="${refs.length}">`
+    + `${refs.map((ref) => `<mergeCell ref="${ref}"/>`).join("")}</mergeCells></worksheet>`;
+  const mergeBook = (refs: readonly string[]): Buffer => zipOf(workbookParts(partOf("xl/worksheets/sheet1.xml", mergeSheet(refs))));
+  /** A worksheet whose `<mergeCells>` content is given verbatim (for a decoy attribute, a comment, or a raw flood). */
+  const mergeRawSheet = (body: string): string => `${XML_HEAD}<worksheet xmlns="${TRANSITIONAL}"><sheetData/>${body}</worksheet>`;
+  const mergeRawBook = (body: string): Buffer => zipOf(workbookParts(partOf("xl/worksheets/sheet1.xml", mergeRawSheet(body))));
+  // Tiny disjoint merges (two cells each, three rows apart) — only their COUNT bites, never their area or rows.
+  const tinyMerges = (n: number): string[] => Array.from({ length: n }, (_, i) => `A${3 * i + 1}:A${3 * i + 2}`);
+  /** An A1 cell address from 1-based column and row (1→A, 27→AA). */
+  const addr = (col: number, row: number): string => {
+    let s = "";
+    for (let n = col; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + ((n - 1) % 26)) + s;
+    return `${s}${row}`;
+  };
 
   return {
     cells: base64Of(cells),
@@ -704,11 +771,44 @@ async function buildFixtures(): Promise<Fixtures> {
     trailing: base64Of(zipOf(workbookParts(okSheet), { trailing: 3 })),
     sizeMismatch: base64Of(zipOf(workbookParts({ ...okSheet, size: okSheet.size + 5 }))),
     broken: base64Of(zipOf(workbookParts(partOf("xl/worksheets/sheet1.xml", BROKEN_SHEET)))),
+    mergeBomb: base64Of(mergeBook([`A1:XFD${EXCEL_LAST_ROW}`])),
+    mergeNaN: base64Of(mergeBook([`A${"9".repeat(400)}:A${"9".repeat(400)}`])),
+    mergeDecoy: base64Of(mergeRawBook(`<mergeCells count="1"><mergeCell x:ref="A1" ref="A1:XFD${EXCEL_LAST_ROW}"/></mergeCells>`)),
+    mergeFlood: base64Of(mergeRawBook("<mergeCell ".repeat(8_000))),
+    // exactly XLSX_MAX_MERGED_CELLS cells over few rows (area boundary), and one cell more (101 × 9,901 = cap + 1):
+    mergeAreaAt: mergeBook([`A1:${addr(5000, XLSX_MAX_MERGED_CELLS / 5000)}`]),
+    mergeAreaOver: base64Of(mergeBook([`A1:${addr(101, 9901)}`])),
+    // exactly XLSX_MAX_ROWS rows in one column (row boundary, MINOR 10), and one row more:
+    mergeRowsAt: mergeBook([`A1:${addr(1, XLSX_MAX_ROWS)}`]),
+    mergeRowsOver: base64Of(mergeBook([`A1:${addr(1, XLSX_MAX_ROWS + 1)}`])),
+    mergeCountAt: mergeBook(tinyMerges(XLSX_MAX_MERGES)),
+    mergeCountOver: base64Of(mergeBook(tinyMerges(XLSX_MAX_MERGES + 1))),
+    longFormat: base64Of(zipOf([...workbookParts(okSheet), numFmtStyles(`formatCode="${"d".repeat(300)}"`)])),
+    longFormatSingleQuote: base64Of(zipOf([...workbookParts(okSheet), numFmtStyles(`formatCode='${"d".repeat(300)}'`)])),
+    longFormatSpacedEq: base64Of(zipOf([...workbookParts(okSheet), numFmtStyles(`formatCode = "${"d".repeat(300)}"`)])),
+    benignFormatText: base64Of(zipOf(workbookParts(partOf("xl/worksheets/sheet1.xml", sheetXml(
+      `<row r="1"><c r="A1" t="inlineStr"><is><t>Phone</t></is></c><c r="B1" t="inlineStr"><is><t>Note</t></is></c></row>`
+      + `<row r="2"><c r="A2" t="inlineStr"><is><t>0757 300 211</t></is></c>`
+      + `<c r="B2" t="inlineStr"><is><t>formatCode="${"d".repeat(300)}"</t></is></c></row>`,
+    ))))),
+    deepNest: base64Of(zipOf(workbookParts(partOf("xl/worksheets/sheet1.xml", deepSheet(70))))),
+    depthAtCap: base64Of(zipOf(workbookParts(partOf("xl/worksheets/sheet1.xml", deepSheet(XLSX_MAX_DEPTH - 1))))),
+    depthOverCap: base64Of(zipOf(workbookParts(partOf("xl/worksheets/sheet1.xml", deepSheet(XLSX_MAX_DEPTH))))),
+    sheetFanOut: base64Of(zipOf([
+      partOf("[Content_Types].xml", CONTENT_TYPES), partOf("_rels/.rels", ROOT_RELS),
+      partOf("xl/workbook.xml", `${XML_HEAD}<workbook xmlns="${TRANSITIONAL}" xmlns:r="${TRANSITIONAL_R}"><sheets><sheet name="A" sheetId="1" r:id="rId1"/><sheet name="B" sheetId="2" r:id="rId1"/></sheets></workbook>`),
+      partOf("xl/_rels/workbook.xml.rels", WORKBOOK_RELS), okSheet,
+    ])),
   };
 }
 
 let fixturesOnce: Promise<Fixtures> | null = null;
 const fixtures = (): Promise<Fixtures> => (fixturesOnce ??= buildFixtures());
+
+/** C3c · the fixtures above, shared with the xlsx-browser section's differential (the browser's reader on the very same
+ *  bytes) — built once per process, whichever section asks first. */
+export type XlsxSectionFixtures = Fixtures;
+export const xlsxSectionFixtures = (): Promise<XlsxSectionFixtures> => fixtures();
 
 /* ══ THE LITERAL EXPECTATIONS ═══════════════════════════════════════════════════════════════════ */
 
@@ -770,8 +870,10 @@ function specifiers(src: string): string[] {
   for (const form of IMPORT_FORMS) for (const m of src.matchAll(form)) out.push(m[1]);
   return out;
 }
+/** C3c · `xlsx-cells.ts` joined the list: the cell rules and the notes moved there, shared with the browser's reader. */
 const READER_IMPORTS = [
   "exceljs", "node:zlib", "@/lib/contacts/parsed-file", "@/lib/contacts/xlsx-limits", "@/lib/contacts/sheet-choice", "@/lib/contacts/title-rows",
+  "@/lib/contacts/xlsx-cells",
 ];
 const RUN_IMPORTS = ["@/lib/server/audit", "./import-xlsx", "@/lib/contacts/xlsx-limits"];
 const DIRECTIVE = /^\s*["']use (?:client|server)["']/;
@@ -816,11 +918,13 @@ export const L = {
   X24: "X24 · the 40-row fixture and the realistic and densest ~690 KB fixtures read to their EXACT row counts, and XLSX_MAX_INFLATED_BYTES, XLSX_MAX_ROWS and XLSX_MAX_CELL_ELEMENTS are each at least twice the densest measurement",
   X25: "X25 · ⛔ M6 — the reader flags nothing itself: no note speaks of a shortened number, and import-xlsx.ts names neither looksExcelShortened nor excelShortenedSentence",
   X26: "X26 · ⛔ ONE DETECTOR (M6, C18) — no src file but xlsx-limits.ts defines looksExcelShortened or holds a shortened-number pattern",
-  X27: "X27 · ⛔ SERVER-ONLY AND IN MEMORY — import-xlsx.ts imports exactly exceljs, node:zlib, the two contacts foundations and (C3b-fix · D6, D7) the two shared reading rules, sheet-choice and title-rows, loads with xlsx.load (no streaming reader, no file read, no console) and carries no directive; the officer wrapper imports no exceljs",
+  X27: "X27 · ⛔ SERVER-ONLY AND IN MEMORY — import-xlsx.ts imports exactly exceljs, node:zlib, the two contacts foundations, (C3b-fix · D6, D7) the two shared reading rules, sheet-choice and title-rows, and (C3c) the shared cell rules of xlsx-cells.ts, loads with xlsx.load (no streaming reader, no file read, no console) and carries no directive; the officer wrapper imports no exceljs",
   X28: "X28 · ONE READ IN FLIGHT — of two concurrent officer reads exactly one is busy and never decoded, and the slot is free again after a read, a refusal and a reader that throws",
   X29: "X29 · ⛔ ONE AUDIT ROW PER ASK, COUNTS ONLY — every officer call, busy included, writes exactly one ContactImport row (xlsx_read or xlsx_refused) whose payload is counts and fixed words: no file name, no sheet name, no cell",
   X30: "X30 · ⛔ §5.14 — no note and no refusal holds a run of 7+ digits or any cell's text, though the fixtures are full of phone numbers",
   X31: "X31 · ⛔ A1.6 — every refusal that sends the officer to CSV carries PHONE_FORMAT_REMEDY (too_large, too_big_inflated, unreadable and wrong_format all observed) — and (C3b) too_many_rows sends no one to CSV, whose import takes no more rows: it says to split the list",
+  X36: "X36 · ⛔ MAJOR 9 · THE PRE-PASS, FOR THE PRE-EXISTING DoS FAMILY — before exceljs loads a byte: a numFmt formatCode past Excel's 255 characters is unreadable (format), SCOPED to styles.xml and tokenised so a single-quoted or spaced-= value is caught too (not the old double-quote-only byte scan) while a benign formatCode=\" in CELL TEXT still reads; element nesting past the ONE shared cap (XLSX_MAX_DEPTH, 64) is unreadable (depth) while nesting exactly at it reads; and two <sheet>s resolving to ONE worksheet part (a shared r:id) is unreadable (sheet_fanout) — each a workbook that would make exceljs's date test, its tag stack, or its per-sheet reconcile run away on the money server",
+  X35: "X35 · ⛔ C3c-merge-guard · THE MERGE PRE-PASS — before exceljs loads a byte, every hostile merge is too_big_inflated: a vast A1:XFD1048576 and a tall A1:A200001 (merge_area / merge_rows, MINOR 10), a 400-digit out-of-grid ref charged the worst area not NaN (BLOCKER 1), a decoy x:ref before the real ref read as the real one (BLOCKER 2), a flood of unterminated <mergeCell with no '>' refused fast under its 1 KiB window and early-stop (BLOCKER 3, timed), and a flood of count; a merge of exactly the cell cap, of exactly the row cap, and exactly XLSX_MAX_MERGES merges each PASS the pre-pass (one more of each refused); and the ordinary B12:C12 merge is counted (one merge, two cells, one row) and read as before",
 } as const;
 
 /* ══ THE ASSERTIONS ═════════════════════════════════════════════════════════════════════════════ */
@@ -1201,6 +1305,82 @@ async function run(ctx: SectionContext<XlsxImpl>): Promise<void> {
       rowRefusals.length >= 2 ? "" : `${rowRefusals.length} too_many_rows refusal(s) observed`,
     ].filter((x) => x !== "").slice(0, 3).join(" | ")
       || `${csvRefusals.length} refusal(s) sending the officer to CSV, every one with the remedy (${[...observed].join(", ")}) · ${rowRefusals.length} too_many_rows, none sent to CSV`);
+
+  // ── X35 · C3c-merge-guard · THE MERGE PRE-PASS ──────────────────────────────────────────────
+  const x35: string[] = [];
+  // Every hostile merge is refused by the pre-pass, unloaded. These are baseline regression guards: reintroduce the
+  // BLOCKER-1 NaN, the BLOCKER-2 decoy or the BLOCKER-3 unbounded scan and the matching fixture is admitted → X35 reds.
+  x35.push(...(await refusedCases([
+    ["one vast merge A1:XFD1048576", fx.mergeBomb, "too_big_inflated", "merge_area", undefined],
+    ["a 400-digit out-of-grid row (BLOCKER 1 — the worst area, never NaN)", fx.mergeNaN, "too_big_inflated", "merge_area", undefined],
+    ["a decoy x:ref before the real ref (BLOCKER 2)", fx.mergeDecoy, "too_big_inflated", "merge_area", undefined],
+    ["a flood of unterminated <mergeCell (BLOCKER 3)", fx.mergeFlood, "too_big_inflated", "merge_area", undefined],
+    ["a merge of the cell cap + 1 covered cells", fx.mergeAreaOver, "too_big_inflated", "merge_area", undefined],
+    ["a merge of XLSX_MAX_ROWS + 1 rows (MINOR 10)", fx.mergeRowsOver, "too_big_inflated", "merge_rows", undefined],
+    ["XLSX_MAX_MERGES + 1 merge elements", fx.mergeCountOver, "too_big_inflated", "merges", undefined],
+  ], 0)));
+  // BLOCKER 3 · TIME-BOX: the shipped pre-pass refuses the 30,000-tag flood fast (1 KiB window + early-stop); the
+  // unbounded-scan plant below is O(flood²) and blows this budget (the defect is a synchronous hang).
+  const floodBytes = Buffer.from(fx.mergeFlood, "base64");
+  let floodMs = Number.POSITIVE_INFINITY;
+  for (let k = 0; k < 3; k++) {
+    const t0 = performance.now();
+    impl.inspect(floodBytes);
+    floodMs = Math.min(floodMs, performance.now() - t0);
+  }
+  if (floodMs > MERGE_SCAN_BUDGET_MS) x35.push(`the flood took ${floodMs.toFixed(0)} ms (budget ${MERGE_SCAN_BUDGET_MS})`);
+  // The boundaries (inspected, never exceljs — the bomb would hang it): exactly the caps pass, one over refused above.
+  const areaAt = impl.inspect(fx.mergeAreaAt);
+  if (!areaAt.ok || areaAt.mergeCount !== 1 || areaAt.mergedCells !== XLSX_MAX_MERGED_CELLS) {
+    x35.push(`exactly the cell cap → ${areaAt.ok ? `${areaAt.mergedCells} cells, ${areaAt.mergeCount} merge(s)` : areaAt.detail}`);
+  }
+  const rowsAt = impl.inspect(fx.mergeRowsAt);
+  if (!rowsAt.ok || rowsAt.mergedRows !== XLSX_MAX_ROWS) {
+    x35.push(`exactly the row cap → ${rowsAt.ok ? `${rowsAt.mergedRows} rows` : rowsAt.detail}`);
+  }
+  const countAt = impl.inspect(fx.mergeCountAt);
+  if (!countAt.ok || countAt.mergeCount !== XLSX_MAX_MERGES) {
+    x35.push(`exactly XLSX_MAX_MERGES → ${countAt.ok ? `${countAt.mergeCount} counted` : countAt.detail}`);
+  }
+  // MINOR 11 · a cap-count workbook that PASSES the pre-pass is then loaded by exceljs (O(merges²) reconciliation):
+  // a full read must stay well under the finding threshold, proving the cap was chosen by measurement, not hope.
+  let loadMs = Number.POSITIVE_INFINITY;
+  const countAtB64 = base64Of(fx.mergeCountAt);
+  for (let k = 0; k < 3; k++) {
+    const t0 = performance.now();
+    await read(countAtB64);
+    loadMs = Math.min(loadMs, performance.now() - t0);
+  }
+  if (loadMs > MERGE_LOAD_BUDGET_MS) x35.push(`a ${XLSX_MAX_MERGES}-merge workbook loaded in ${loadMs.toFixed(0)} ms (budget ${MERGE_LOAD_BUDGET_MS})`);
+  // An ordinary merge (the cell fixture's B12:C12): counted — one merge, two cells, one row — passes, and X20 reads it.
+  const ordinary = impl.inspect(Buffer.from(fx.cells, "base64"));
+  if (!ordinary.ok || ordinary.mergeCount !== 1 || ordinary.mergedCells !== 2 || ordinary.mergedRows !== 1) {
+    x35.push(`the cell fixture's B12:C12 → ${ordinary.ok ? `${ordinary.mergeCount} merge(s), ${ordinary.mergedCells} cell(s), ${ordinary.mergedRows} row(s)` : ordinary.detail}`);
+  }
+  ok(L.X35, x35.length === 0, x35.slice(0, 4).join(" | ")
+    || `every hostile merge refused unloaded (flood ${floodMs.toFixed(1)} ms) · the cell / row / count caps pass · a ${XLSX_MAX_MERGES}-merge load ${loadMs.toFixed(0)} ms · B12:C12 counted (1 merge, 2 cells, 1 row)`);
+
+  // ── X36 · MAJOR 9 · the pre-existing server DoS family, each refused by the pre-pass, unloaded ──
+  const x36 = await refusedCases([
+    ["a formatCode past 255 characters (double-quoted)", fx.longFormat, "unreadable", "format", undefined],
+    ["a long formatCode SINGLE-quoted (bypass A)", fx.longFormatSingleQuote, "unreadable", "format", undefined],
+    ["a long formatCode with spaces around = (bypass A)", fx.longFormatSpacedEq, "unreadable", "format", undefined],
+    ["element nesting past the depth cap", fx.deepNest, "unreadable", "depth", undefined],
+    ["nesting ONE past the shared cap (NIT 1)", fx.depthOverCap, "unreadable", "depth", undefined],
+    ["two sheets resolving to one part", fx.sheetFanOut, "unreadable", "sheet_fanout", undefined],
+  ], 0);
+  // A workbook whose CELL TEXT merely contains `formatCode="` + 300 chars is NOT a forged format — it reads (bypass B).
+  const benign = await read(fx.benignFormatText);
+  if (!benign.ok || benign.file.rows.length < 1) {
+    x36.push(`benign formatCode-in-text → ${benign.ok ? `${benign.file.rows.length} rows` : benign.refusal}`);
+  }
+  // NIT 1 · nesting exactly AT the shared cap is admitted and read (one past it is refused above, unloaded).
+  const nestAt = await read(fx.depthAtCap);
+  if (!nestAt.ok || nestAt.file.rows.length < 1) {
+    x36.push(`nesting at the shared cap (${XLSX_MAX_DEPTH}) → ${nestAt.ok ? `${nestAt.file.rows.length} rows` : nestAt.refusal}`);
+  }
+  ok(L.X36, x36.length === 0, x36.join(" | ")
+    || `a long format code (double/single-quoted, spaced =), a deep nesting, nesting at ${XLSX_MAX_DEPTH + 1} and a sheet fan-out each refused; a benign formatCode-in-text workbook and nesting at ${XLSX_MAX_DEPTH} read`);
 }
 
 /* ══ THE RED PLANTS — each a defect somebody could plausibly write, built in memory ═════════════════ */
@@ -1235,10 +1415,78 @@ const withInspection = (waved: readonly string[]): XlsxImpl => {
       const r = inspectXlsxZip(bytes, measure);
       if (r.ok || !waved.includes(r.detail)) return r;
       through.add(bytes);
-      return { ok: true, entries: r.entries, inflatedBytes: r.inflatedBytes, rowElements: 0, cellElements: 0 };
+      return { ok: true, entries: r.entries, inflatedBytes: r.inflatedBytes, rowElements: 0, cellElements: 0, mergeCount: 0, mergedCells: 0, mergedRows: 0 };
     },
     load: (bytes) => (through.has(bytes) ? stubbedLoad() : XLSX_READER_RULES.load(bytes)),
   });
+};
+
+/**
+ * ⭐ C3c-merge-guard · a plant that gives the pre-pass a BUGGY merge scan (the one seam `inspectXlsxZip` takes), and
+ * STUBS the load so a hostile file the buggy scan admits never actually reaches exceljs (which would hang). The three
+ * buggy scans below reproduce the blockers; the matching fixture, admitted or scanned slowly, reds X35.
+ */
+const withMergeScan = (scan: MergeScan): XlsxImpl =>
+  withRules({ inspect: (bytes, measure) => inspectXlsxZip(bytes, measure, scan), load: stubbedLoad });
+
+/** ⭐ MAJOR 9a (re-review) · a plant that gives the pre-pass a BUGGY format-code guard (the seam `inspectXlsxZip` takes),
+ *  STUBS the load — so the old double-quote-only byte scan, restored, admits a single-quoted/spaced-= long format. */
+const withFormatScan = (scan: FormatForged): XlsxImpl =>
+  withRules({ inspect: (bytes, measure) => inspectXlsxZip(bytes, measure, undefined, scan), load: stubbedLoad });
+
+const MERGECELL = Buffer.from("<mergeCell", "latin1");
+/** A `<mergeCell` opener's following byte is a real tag boundary (space/tab/newline/`/`/`>`), not `<mergeCells`. */
+const opensTag = (c: number): boolean => c === 0x20 || c === 0x09 || c === 0x0a || c === 0x0d || c === 0x2f || c === 0x3e;
+/** Builds a MergeScan from how it lifts the ref, turns it into area, windows the `>` search, and whether it early-stops. */
+function buggyScan(opts: {
+  readonly refOf: (tag: string) => string | null;
+  readonly area: (ref: string) => { readonly cells: number; readonly rows: number };
+  readonly window: number | null;
+  readonly earlyStop: boolean;
+}): MergeScan {
+  return (content) => {
+    let count = 0;
+    let cells = 0;
+    let rows = 0;
+    for (let at = content.indexOf(MERGECELL); at !== -1; at = content.indexOf(MERGECELL, at + MERGECELL.length)) {
+      if (opts.earlyStop && (count > XLSX_MAX_MERGES || cells > XLSX_MAX_MERGED_CELLS || rows > XLSX_MAX_ROWS)) break;
+      if (!opensTag(content[at + MERGECELL.length])) continue;
+      count++;
+      const end = opts.window === null ? content.length : Math.min(content.length, at + opts.window);
+      const gt = content.indexOf(0x3e, at + MERGECELL.length);
+      const tag = content.toString("latin1", at, gt !== -1 && gt < end ? gt + 1 : end);
+      const ref = opts.refOf(tag);
+      const a = ref === null ? { cells: XLSX_MAX_MERGED_CELLS + 1, rows: XLSX_MAX_ROWS + 1 } : opts.area(ref);
+      cells += a.cells;
+      rows += a.rows;
+    }
+    return { count, cells, rows };
+  };
+}
+/** The exact-`ref` tokenizer the fix uses (minimal), for the NaN and quadratic plants (whose bug is elsewhere). */
+const exactRef = (tag: string): string | null => {
+  const m = /<mergeCell\b[^>]*?\sref\s*=\s*"([^"]*)"/.exec(tag);
+  return m ? m[1] : null;
+};
+/** BLOCKER 2's bug: the FIRST `ref=` not preceded by a letter or digit — so a decoy `x:ref` is taken for the real one. */
+const looseRef = (tag: string): string | null => {
+  const m = /[^A-Za-z0-9]ref="([^"]*)"/.exec(` ${tag}`);
+  return m ? m[1] : null;
+};
+/** BLOCKER 1's bug: corners parsed WITHOUT the grid bound, so a 400-digit row is Infinity and `Infinity − Infinity` is NaN. */
+const nanArea = (ref: string): { cells: number; rows: number } => {
+  const corner = (s: string): { col: number; row: number } => {
+    const mm = /^\$?([A-Z]+)\$?(\d+)$/.exec(s.trim());
+    if (!mm) return { col: 1, row: 1 };
+    let col = 0;
+    for (const ch of mm[1]) col = col * 26 + (ch.charCodeAt(0) - 64);
+    return { col, row: Number(mm[2]) };
+  };
+  const parts = ref.split(":");
+  const a = corner(parts[0] ?? "");
+  const b = corner(parts.length > 1 ? parts[1] : (parts[0] ?? ""));
+  const rows = Math.abs(a.row - b.row) + 1;
+  return { cells: (Math.abs(a.col - b.col) + 1) * rows, rows };
 };
 
 /** A virtual src file in §X26's population. */
@@ -1374,6 +1622,60 @@ const PLANTS: readonly RedPlant<XlsxImpl>[] = [
     name: "zip parity dropped — an unknown method, a duplicate, a renamed local header, an unresolved name, a folder with data, trailing bytes and a size mismatch handed to exceljs",
     expect: L.X11,
     impl: () => withInspection(["method", "duplicate", "name_mismatch", "name", "folder", "layout", "size_mismatch"]),
+  },
+  {
+    name: "C3c-merge-guard · the merge-cell cap waved — a vast merge rectangle handed to exceljs to allocate a Cell for every covered cell",
+    expect: L.X35,
+    impl: () => withInspection(["merge_area"]),
+  },
+  {
+    name: "C3c-merge-guard (MINOR 10) · the merge-row cap waved — a tall merge handed to exceljs to allocate a Row for every covered row",
+    expect: L.X35,
+    impl: () => withInspection(["merge_rows"]),
+  },
+  {
+    name: "C3c-merge-guard · the merge count cap waved — a flood of merge elements handed to exceljs to reconcile O(merges²)",
+    expect: L.X35,
+    impl: () => withInspection(["merges"]),
+  },
+  {
+    name: "C3c-merge-guard (BLOCKER 1) · a corner parsed without the grid bound — a 400-digit row is Infinity, its area NaN, NaN > cap is false, admitted",
+    expect: L.X35,
+    impl: () => withMergeScan(buggyScan({ refOf: exactRef, area: nanArea, window: 1024, earlyStop: true })),
+  },
+  {
+    name: "C3c-merge-guard (BLOCKER 2) · the first ref-like attribute taken — a decoy x:ref=\"A1\" read instead of the real ref",
+    expect: L.X35,
+    impl: () => withMergeScan(buggyScan({ refOf: looseRef, area: xlsxMergeArea, window: 1024, earlyStop: true })),
+  },
+  {
+    name: "C3c-merge-guard (BLOCKER 3) · the '>' search unbounded and no early-stop — a flood of unterminated <mergeCell is O(content²), a hang",
+    expect: L.X35,
+    impl: () => withMergeScan(buggyScan({ refOf: exactRef, area: xlsxMergeArea, window: null, earlyStop: false })),
+  },
+  {
+    name: "MAJOR 9a (re-review) · the OLD double-quote-only byte scan restored — a single-quoted or spaced-= long format code slips past to exceljs",
+    expect: L.X36,
+    impl: () => withFormatScan((content, max) => {
+      const OPEN = Buffer.from('formatCode="', "latin1");
+      for (let at = content.indexOf(OPEN); at !== -1; at = content.indexOf(OPEN, at + OPEN.length)) {
+        const start = at + OPEN.length;
+        const close = content.indexOf(0x22, start);
+        if (close === -1 || close - start > max) return true;
+        at = close;
+      }
+      return false;
+    }),
+  },
+  {
+    name: "MAJOR 9b · a deeply nested workbook handed to exceljs — a tag object per open element",
+    expect: L.X36,
+    impl: () => withInspection(["depth"]),
+  },
+  {
+    name: "MAJOR 9c · a sheet fan-out handed to exceljs — one part reconciled once per sheet",
+    expect: L.X36,
+    impl: () => withInspection(["sheet_fanout"]),
   },
   {
     name: "the unreadable refusal surfaces exceljs's own message",

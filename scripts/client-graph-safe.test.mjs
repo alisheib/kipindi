@@ -189,6 +189,12 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // cell holds: the browser's reader (the list paste, the first-mobile column) and the server's staging, check and commit
     // all ask it. It imports only tz-msisdn.ts, pinned here.
     "lib/contacts/phone-cell.ts",
+    // ⭐ ADDED 2026-10-09 (S15 · C3c, decision M3). A workbook past 700 KB is read in the officer's browser: the reader
+    // (`xlsx-read.ts` — the zip, the inflate, the XML, the cells, through browser APIs alone) and the cell rules it shares
+    // with the server's exceljs reader (`xlsx-cells.ts`, ONE copy of each rule). The "use client" import dialog reaches
+    // both through import-read.ts. They import only src/lib/contacts modules, all pinned here.
+    "lib/contacts/xlsx-cells.ts",
+    "lib/contacts/xlsx-read.ts",
     // ⭐ ADDED 2026-10-09 (S15 · C3b-fix, decisions D6 and D7, M3). The ONE choice of a workbook's sheet by what it holds,
     // and the ONE rule for a title above the column names: the server's workbook reader and the browser's reader for big
     // workbooks (step C3c) both call them, and the browser's CSV reader and paste call the second. They import only

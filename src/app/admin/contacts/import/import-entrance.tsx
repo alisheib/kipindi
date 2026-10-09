@@ -8,8 +8,9 @@
  * (`import-read.ts`), and the dialog moves to the columns. What the importer reads and what it cannot (old .xls, .ods,
  * Numbers, PDF, a picture) is said BEFORE anything is chosen, with the way to save such a file; the sample sheet is one
  * tap away, beside the file control (§F21: the file control and `SampleSheetButton` live in this ONE file).
- * ⭐ READING IS A BAR ON BYTES ACTUALLY READ, with the rows read so far beside it, and a way to stop. An Excel file is
- * read by the server, said in words — no spinner for a call that takes a moment.
+ * ⭐ READING IS A BAR ON BYTES ACTUALLY READ, with the rows read so far beside it, and a way to stop. An Excel file of
+ * 700 KB or less is read by the server, said in words — no spinner for a call that takes a moment; a larger one (C3c) is
+ * read here in the browser, on the same bar as a CSV (its inflated bytes, its rows), with the same Stop.
  * ⭐ RESUMING AN UPLOAD: when the dialog carries on an unfinished upload, the same file (or the same paste) must be read
  * again — the lead says which, and from which row the upload carries on.
  * ⛔ A refusal is the reader's own sentence, with the fix in it, and the entrance stays open below it: choosing another
