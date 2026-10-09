@@ -133,7 +133,7 @@ export const L = {
   M27: "M27 · ⛔ C8c · #14a · a flood of refusals writes ONE row a minute per officer, run and reason: 200 steps with a bad cursor → one bad_request row; 50 steps on a STAGED run → one check_again row for that officer, and another officer's refusal on the same run its own row; a minute later the next bad cursor writes again, carrying repeats 199 (the refusals kept out), the first row no repeats key; the run unchanged",
   M27b: "M27b · ⛔ C8c · #14a · a moved is NEVER written: a cancel that finds the run moved on (resumed between its pause and its cancel) is answered moved with NO refusal row at all, and the gate keeps every moved out",
   M28: "M28 · ⛔ C8c · #15 · a resume of a STAGED run is REFUSED check_again — its view STAGED, the run still STAGED with no frozen decision and no pause stamp, and a step on it refused check_again with nothing settled — while a PAUSED run's resume still carries on (COMMITTING)",
-  M29: "M29 · ⭐ C8c · #14b · a persistent database fault ENDS, it does not loop: a P2028 on every step is answered busy in the DATABASE's own sentence (never the bet queue's 'bets come first'), retryAfterSec 5, four times over 35 s; the fifth, 65 s after the first, PAUSES the run (pausedBy the officer; one contacts.import.paused row, why database, faults 5) and answers db_paused 'The database is busy — the import has paused. Resume it in a few minutes.'; five quick faults within a minute on another run do NOT pause it; a step that lands ends a streak (four faults, a landed step, a fault 70 s after the first: busy, not paused); resumed, the paused run imports to done",
+  M29: "M29 · ⭐ C8c · #14b · a persistent database fault ENDS, it does not loop: a P2028 on every step is answered busy in the DATABASE's own sentence (never the bet queue's 'bets come first'), retryAfterSec 5, four times over 35 s; the fifth, 65 s after the first, PAUSES the run (paused by NOBODY — m2: no 'Paused by you' above the database's sentence, the run's and the view's pausedBy null; one contacts.import.paused row, its actor the officer, why database, faults 5) and answers db_paused 'The database is busy — the import has paused. Resume it in a few minutes.'; five quick faults within a minute on another run do NOT pause it; a step that lands ends a streak (four faults, a landed step, a fault 70 s after the first: busy, not paused); resumed, the paused run imports to done",
   M29b: "M29b · ⭐ C8c · #14b · a step whose rows keep moving ends as server_error in words the officer can act on — STEP_CONFLICT_SENTENCE, never 'something went wrong' — nothing settled and the cursor unmoved, the run still COMMITTING, and the next step decides afresh and lands (the source answers the conflict branch with that sentence)",
   M30: "M30 · ⭐ C8c · N4 · the START's re-decision walk yields to bets too: with a bet queued it reads NO staged page and waits — its own clock, inside its deadline — and once the bet has gone the start freezes the run with the label's counts",
   M31: "M31 · ⭐ C8c · #13 · the RESULT lists the tags a full contact could not take, for a reader: a TAKE_FILE import of a contact holding 20 tags whose only difference is two new tags (kept, no_change) and of one renamed with a tag that does not fit (updated) — each settled row keeps exactly its tags left out (every other row blanked, the book never past 20 tags), the result's tagsNotAdded is 2, and the failures action's tags_not_added list pages both rows in the one sentence (the failures list unchanged); a GROWTH officer's result says null and the list is refused update_needs_reader",
@@ -814,6 +814,8 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     const pausedRun = await runOf(runId);
     const pausedRows = captured.filter((x) => x.action === "contacts.import.paused");
     const pausedWhy = pausedRows.length === 1 ? (pausedRows[0].payload as { why?: unknown; faults?: unknown }) : null;
+    // m2 · the pause is nobody's: no "Paused by you" on either panel — the audit row keeps who met the fault.
+    const pausedActor = pausedRows.length === 1 ? pausedRows[0].actorId : null;
     const busyFour = answers.slice(0, 4).every((a) => !a.ok && a.reason === "busy" && a.message === DB_BUSY_SENTENCE && a.retryAfterSec === 5 && a.view !== null);
     const fifth = answers[4];
     const neverBets = answers.every((a) => a.ok || !a.message.includes("bets come first"));
@@ -845,8 +847,8 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     const finished = resumed.ok ? await drive(runId, impl.deps) : { steps: 0, last: null };
     ok(L.M29, busyFour && !fifth.ok && fifth.reason === "db_paused" && fifth.message === IMPORT_REFUSAL_SENTENCES.db_paused
       && fifth.message === "The database is busy — the import has paused. Resume it in a few minutes." && fifth.view?.status === "PAUSED"
-      && neverBets && pausedRun.status === "PAUSED" && pausedRun.pausedBy === OFFICER && pausedRun.committedThrough === 0
-      && pausedWhy !== null && pausedWhy.why === "database" && pausedWhy.faults === 5
+      && neverBets && pausedRun.status === "PAUSED" && pausedRun.pausedBy === null && fifth.view?.pausedBy === null && pausedRun.committedThrough === 0
+      && pausedWhy !== null && pausedWhy.why === "database" && pausedWhy.faults === 5 && pausedActor === OFFICER
       && quickAnswers.every((a) => !a.ok && a.reason === "busy") && quickRun.status === "COMMITTING"
       && landed.ok && landed.kind === "advanced" && !afterLanding.ok && afterLanding.reason === "busy" && (await runOf(third)).status === "COMMITTING"
       && resumed.ok && finished.last?.ok === true && finished.last.kind === "done",
@@ -1307,6 +1309,13 @@ const plants: readonly RedPlant<CommitImpl>[] = [
       const inner = commitModule.dbFaultStreaks();
       return withDeps({ dbFaults: { record: inner.record, clear: () => undefined } });
     },
+  },
+  {
+    // 🔴 the review's m2 · the database's pause is written in the officer's name: "Paused by you" above the database's
+    // own sentence, though nobody pressed Stop.
+    name: "P29d · C8c · m2 · the database pause is recorded as the officer's — the panel says 'Paused by you'",
+    expect: L.M29,
+    impl: () => withDeps({ transition: async (t) => REAL_DEPS.transition({ ...t, by: t.by ?? OFFICER }) }),
   },
   {
     // 🔴 #14b · the conflict that never settles is answered "something went wrong" again (the source's own branch).

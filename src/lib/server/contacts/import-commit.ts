@@ -695,6 +695,8 @@ async function viewNow(officerId: string, run: StoredContactImport, deps: Import
  * `DB_FAULT_SPAN_MS` ago, PAUSES the run (COMMITTING → PAUSED, one compare-and-set, audited `contacts.import.paused` with
  * why "database") and answers `db_paused`: the loop stops, and the officer resumes in a few minutes. A pause the database
  * will not write either is answered `busy` again, and the next fault asks once more.
+ * ⛔ The review's m2 · THE PAUSE IS NOBODY'S: the run is paused `by: null`, so neither panel says "Paused by you" above
+ * the database's own sentence — no officer pressed Stop. The audit row keeps the actor whose step met the fault, and why.
  */
 async function retryLater(officerId: string, run: StoredContactImport, err: unknown, deps: ImportCommitDeps): Promise<CommitStepResult> {
   const atMs = deps.now().getTime();
@@ -702,7 +704,7 @@ async function retryLater(officerId: string, run: StoredContactImport, err: unkn
   if (streak.count >= deps.dbFaultsToPause && atMs - streak.since >= deps.dbFaultSpanMs) {
     let paused: StoredContactImport | null = null;
     try {
-      paused = await deps.transition({ importId: run.id, from: ["COMMITTING"], to: "PAUSED", by: officerId, at: new Date(atMs).toISOString(), updatedBefore: null });
+      paused = await deps.transition({ importId: run.id, from: ["COMMITTING"], to: "PAUSED", by: null, at: new Date(atMs).toISOString(), updatedBefore: null });
     } catch {
       paused = null;
     }
