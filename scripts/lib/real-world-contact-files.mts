@@ -32,6 +32,13 @@
  *                                 has, two numbers in one cell, formula names, a 300-character name, a quoted line
  *                                 break, a bad email, 40 tags — and LAST a quotation mark that never closes.
  * 10 empty.csv · header-only.csv · not-really-csv.csv (a PNG) · renamed-csv.xlsx (CSV text under an .xlsx name).
+ * ⭐ C8c · the four files C3b-fix's review asked for (28–31, at the END of the makers' list — C3c adds to this file too):
+ * 28 broken-quote-mid-file.csv .. A hand-kept list whose note opens a quotation mark in the MIDDLE and never closes it:
+ *                                 the rows below are swallowed (D5 — their physical lines counted, `swallowedLines`).
+ * 29 outlook-assistant-phones.csv Outlook's export with mobiles in Assistant's Phone and Company Main Phone — another
+ *                                 person's line and the switchboard, never the person's number (D2).
+ * 31 hand-typed-title.csv ....... A CSV typed by hand: a bare title and a sub-title (no separator at all), a blank line,
+ *                                 then the column names (D7, and the vote that once read such a file as one column).
  * XLSX — written with exceljs, the library the server reads with
  * 11 excel-basic.xlsx ........... One sheet, phones as TEXT cells, 40 people.
  * 12 excel-number-cells.xlsx .... Phones stored as NUMBERS in every format Excel offers, a formula with its cached
@@ -40,6 +47,8 @@
  * 13 excel-multi-sheet.xlsx ..... A cover sheet first, the contacts second, a hidden sheet third.
  * 14 legacy-97.xls .............. The OLE2 magic and filler — an old-format file, refused with the save-as sentence.
  * 15 libreoffice.ods ............ A real STORE-only OpenDocument zip — a format the importer must NAME.
+ * 30 excel-title-staff.xlsx ..... ⭐ C8c · a small staff sheet first, then the customers under a title row (D6 by the
+ *                                 mobiles each sheet holds — `sheets` — and D7 below the title — `titleRows`).
  * vCARD
  * 16 iphone-export.vcf .......... iOS 3.0: item1 groups, X-ABLabel, type=pref, folded base64 PHOTOs ending "==".
  * 17 android-export.vcf ......... Android 2.1: QUOTED-PRINTABLE names cut by soft breaks exactly where AOSP cuts them.
@@ -219,6 +228,10 @@ export type PersonTruth = {
   /** The email and tags cells as written, where the format has them. */
   readonly email?: string | null;
   readonly tags?: string | null;
+  /** ⭐ C8c · C3b-fix · D5a · a broken CSV record only: the physical lines AFTER its first line that its open quotation
+   *  mark swallowed — the M of "it and the M lines after it" (0 when the record is the file's last line). Counted from
+   *  the lines the generator wrote inside the quote, never read back. */
+  readonly swallowedLines?: number;
 };
 
 /**
@@ -264,8 +277,17 @@ export type FileTruth = {
   /** Every record of a small file, in file order. Null for a big file (aggregates only). */
   readonly people: readonly PersonTruth[] | null;
   /** ⭐ Written only with --big (2026-10-09, the integrator): such a file belongs to `qa:contacts-import-big` alone — the
-   *  28-file drive (`scripts/live/contacts-import-drive.mjs`) skips every entry carrying it. */
+   *  every-small-file drive (`scripts/live/contacts-import-drive.mjs`) skips every entry carrying it. */
   readonly big: boolean;
+  /** ⭐ C8c · C3b-fix · D7 · the non-blank rows ABOVE the column names (a title, a sub-title), each with its real row number
+   *  and its text as written: a reader takes them out of the data with ONE note naming the rows, first to last ("Rows 1–2,
+   *  above the column names, were not read — a title."), never what they say. Absent when the column names are the first
+   *  row. A blank row among them is not listed: it is a blank row, counted as one. */
+  readonly titleRows?: ReadonlyArray<{ readonly line: number; readonly text: string }>;
+  /** ⭐ C8c · C3b-fix · D6 · a workbook's sheets in tab order — each one's name, whether Excel shows it, and how many of its
+   *  cells were WRITTEN holding exactly one Tanzanian mobile (the count `chooseSheet` reads, as built) — so a test can
+   *  restate the sheet choice instead of trusting the reader. Absent where no test needs it. */
+  readonly sheets?: ReadonlyArray<{ readonly name: string; readonly visible: boolean; readonly mobiles: number }>;
 };
 
 export type RealWorldOptions = { readonly big?: boolean };
@@ -652,6 +674,8 @@ type RecordDraft = {
   readonly tags?: string | null;
   readonly blank?: boolean;
   readonly broken?: boolean;
+  /** C8c · D5a · a broken record's swallowed physical lines (`PersonTruth.swallowedLines`). */
+  readonly swallowedLines?: number;
 };
 
 const BLANK: RecordDraft = { name: null, phones: [], blank: true };
@@ -686,6 +710,7 @@ function settlePeople(drafts: readonly RecordDraft[], firstLine: number): Person
       broken: d.broken === true,
       ...(d.email === undefined ? {} : { email: d.email }),
       ...(d.tags === undefined ? {} : { tags: d.tags }),
+      ...(d.swallowedLines === undefined ? {} : { swallowedLines: d.swallowedLines }),
     });
   }
   return out;
@@ -726,6 +751,9 @@ type Built = {
   readonly brokenAtByte: number | null;
   readonly notes: readonly string[];
   readonly people: readonly PersonTruth[];
+  /** C8c · D7 / D6 · carried to the truth only when a maker sets them (`FileTruth.titleRows`, `FileTruth.sheets`). */
+  readonly titleRows?: FileTruth["titleRows"];
+  readonly sheets?: FileTruth["sheets"];
 };
 
 function settle(b: Built): FileTruth {
@@ -745,6 +773,9 @@ function settle(b: Built): FileTruth {
     aggregate: aggregateOf(b.people),
     people: b.people,
     big: false,
+    // ⭐ C8c · after every other key, and only when set: every earlier file's manifest entry stays byte for byte as it was.
+    ...(b.titleRows === undefined ? {} : { titleRows: b.titleRows }),
+    ...(b.sheets === undefined ? {} : { sheets: b.sheets }),
   };
 }
 
@@ -815,11 +846,13 @@ type TextSpec = {
   readonly delimiter: Delimiter | null;
   readonly header: readonly string[] | null;
   readonly notes: readonly string[];
-  /** The text before the first record: Excel's sep= line and the header row. */
+  /** The text before the first record: Excel's sep= line and the header row (C8c: and a title above it). */
   readonly lead: string;
   readonly records: readonly TextRecord[];
   /** The first record's line: 2 under a header row, 1 without one. */
   readonly firstLine: number;
+  /** C8c · D7 · the title rows the lead holds above the column names (`FileTruth.titleRows`). */
+  readonly titleRows?: FileTruth["titleRows"];
 };
 
 function textBuilt(s: TextSpec): Built {
@@ -845,6 +878,7 @@ function textBuilt(s: TextSpec): Built {
     brokenAtByte: brokenAt === null ? null : encodeText(text.slice(0, brokenAt), s.encoding).length,
     notes: s.notes,
     people: settlePeople(drafts, s.firstLine),
+    ...(s.titleRows === undefined ? {} : { titleRows: s.titleRows }),
   };
 }
 
@@ -1707,12 +1741,14 @@ function makeMessy(): Built {
   put("empty", { person: "Bahati Mollel", phone: null });
 
   // LAST: a quotation mark that opens the Maelezo cell and never closes — everything to the end of the file is inside it.
+  // ⭐ C8c · D5a · the physical lines after the record's first line, as written — what `swallowedLines` counts.
   const mama = mobile(book.fresh(), "spaced");
+  const swallowed = ["Mkoa: Dar es Salaam"];
   serial += 1;
   at2.broken = lineOfNext();
   records.push({
-    text: `${[String(serial), "Mama Ntilie", mama.written, "", ""].join(",")},${QUOTE}Analipa kila Ijumaa, anakopa vitu dukani${CRLF}Mkoa: Dar es Salaam${CRLF}`,
-    draft: { name: "Mama Ntilie", phones: [mama], email: "", tags: "", broken: true },
+    text: `${[String(serial), "Mama Ntilie", mama.written, "", ""].join(",")},${QUOTE}Analipa kila Ijumaa, anakopa vitu dukani${CRLF}${swallowed.map((l) => l + CRLF).join("")}`,
+    draft: { name: "Mama Ntilie", phones: [mama], email: "", tags: "", broken: true, swallowedLines: swallowed.length },
   });
 
   return textBuilt({
@@ -1725,7 +1761,8 @@ function makeMessy(): Built {
     header,
     notes: [
       `Line ${at2.broken} opens a quotation mark that never closes: since C3b (G1) the CSV reader keeps every record above it and lists line ${at2.broken} ` +
-        "— with everything it swallowed — as ONE unreadable record. The bytes before brokenAtByte are a complete file.",
+        "— with everything it swallowed — as ONE unreadable record. The bytes before brokenAtByte are a complete file. " +
+        `The quote swallows ${swallowed.length} physical line after the record's first (swallowedLines — C3b-fix D5: "it and the line after it").`,
       "Namba (column 1) is the row serial — a WEAK phone alias; Simu ya Mkononi (column 3) is a STRONG one and must win. " +
         "Mkoa and Kiasi (TSh) are not contact fields; the last two columns have no header.",
       `Line ${at2.blank} is empty and line ${at2.spaces} holds only spaces: both blank.`,
@@ -2493,6 +2530,338 @@ async function makeProdXlsx(): Promise<Built> {
   return xlsxBuilt("prod-check-40.xlsx", QA_MIMICS, await workbookBytes(wb), QA_HEADER, "QA", QA_NOTES, settlePeople(drafts, 2));
 }
 
+/* ══ C8c · THE FOUR FILES C3b-FIX'S REVIEW ASKED FOR (28–31) ═════════════════════════════════════════════════════
+ * The review round (C3b-fix, 2026-10-09) decided D2, D5, D6 and D7 and proved them on hand-made fixtures; its builder did
+ * not reach the real-world files that hold each shape. These four are those files — each with its truth, each run past
+ * the self-check like every other — and `scripts/live/contacts-import-drive.mjs` restates each decision over them. */
+
+/** The records of a file the rows' truth says nothing about (a quote's swallowed lines, another sheet): their phones are
+ *  still asked of the code they describe, so no file here carries a value that is not the kind it was built as. */
+function assertWrittenPhones(file: string, phones: readonly PhoneDraft[]): void {
+  phones.forEach((p, i) => assertPhone(file, i + 1, p));
+}
+
+/** 28 · ⭐ C3b-fix · D5 · a quotation mark opened in the MIDDLE of a hand-kept list and never closed. */
+function makeBrokenMidFile(): Built {
+  const name = "broken-quote-mid-file.csv";
+  const rng = new Rng(name);
+  const book = new NumberBook(rng);
+  const header = [aliasHeader("phone", "Phone"), aliasHeader("name", "Name"), aliasHeader("notes", "Notes")];
+  /** The records above the broken one; and the would-be records below it, which its open quotation mark swallows. */
+  const BEFORE = 12;
+  const AFTER = 11;
+  const LANDLINE_AT = 6;
+  const REPEAT_AT = 10;
+  const REPEAT_OF = 3;
+  const NOTE_CELLS = ["", "Mteja wa zamani", "", "Anapenda SMS za Kiswahili", ""];
+  const nationals = new Map<number, string>();
+  const records: TextRecord[] = [];
+  for (let i = 1; i <= BEFORE; i++) {
+    const who = someone(rng);
+    let phone: PhoneDraft;
+    if (i === LANDLINE_AT) phone = landline(rng);
+    else if (i === REPEAT_AT) {
+      const first = nationals.get(REPEAT_OF);
+      if (first === undefined) throw new Error(`real-world-files: ${name} — the repeated person has no number yet`);
+      phone = mobile(first, "plusSpaced");
+    } else {
+      const national = book.fresh();
+      nationals.set(i, national);
+      phone = mobile(national, i % 2 === 0 ? "compact" : "spaced");
+    }
+    records.push({ text: csvLine([phone.written, who.name, NOTE_CELLS[i % NOTE_CELLS.length]], EXCEL_COMMA), draft: { name: who.name, phones: [phone] } });
+  }
+  // ⭐ THE BREAK: the Notes cell opens a quotation mark and never closes it, so every line below sits INSIDE that one cell —
+  // a person reading the file sees AFTER more people; a correct reader sees none of them. ⛔ No swallowed line may hold a
+  // quotation mark (a cell the writer quotes would): one would CLOSE the quote, and the file would be another file.
+  const mama = mobile(book.fresh(), "spaced");
+  const swallowed: string[] = [];
+  const swallowedPhones: PhoneDraft[] = [];
+  for (let i = 1; i <= AFTER; i++) {
+    const phone = mobile(book.fresh(), i % 2 === 0 ? "compact" : "spaced");
+    const text = csvLine([phone.written, someone(rng).name, ""], EXCEL_COMMA);
+    if (text.includes(QUOTE)) throw new Error(`real-world-files: ${name} — a swallowed line holds a quotation mark, which would close the quote`);
+    swallowedPhones.push(phone);
+    swallowed.push(text);
+  }
+  assertWrittenPhones(name, swallowedPhones);
+  const brokenLine = BEFORE + 2;
+  records.push({
+    text: `${[mama.written, "Mama Pendo"].join(",")},${QUOTE}Analipa kila Ijumaa${CRLF}${swallowed.join("")}`,
+    draft: { name: "Mama Pendo", phones: [mama], broken: true, swallowedLines: swallowed.length },
+  });
+  return textBuilt({
+    name,
+    format: "csv",
+    mimics: "A list kept by hand: one note in the middle opens a quotation mark that is never closed, so every row below it sits inside that one cell.",
+    encoding: "utf-8",
+    lineEnding: "crlf",
+    delimiter: "comma",
+    header,
+    notes: [
+      `Line ${brokenLine} opens a quotation mark in its Notes cell that never closes: the ${swallowed.length} physical lines after it — ` +
+        `${swallowed.length} more people, as a person reads the file — sit INSIDE that one cell (swallowedLines), so no reader can read them as rows. ` +
+        "The end-of-file case is messy-real-life.csv.",
+      `A correct reader keeps the ${BEFORE} records above line ${brokenLine} (C3b G1: a data row came before it, so the file is not refused — ` +
+        `C3b-fix D5e) and lists line ${brokenLine} as ONE record that could not be read — it and the ${swallowed.length} lines after it (D5b) — said ` +
+        `once on the columns step (D5c); the check's and the result's sum lines say the ${swallowed.length} lines after row ${brokenLine} were not ` +
+        "read, never that every row of the file was counted (D5d).",
+      `Line ${LANDLINE_AT + 1} is a landline; line ${REPEAT_AT + 1} repeats line ${REPEAT_OF + 1}'s number in another spelling.`,
+    ],
+    lead: csvLine(header, EXCEL_COMMA),
+    records,
+    firstLine: 2,
+  });
+}
+
+/** 29 · ⭐ C3b-fix · D2 · Outlook's export of an office's address book: the assistant's line and the switchboard filled in. */
+function makeOutlookAssistant(): Built {
+  const name = "outlook-assistant-phones.csv";
+  const rng = new Rng(name);
+  const book = new NumberBook(rng);
+  aliasHeader("first_name", "First Name");
+  aliasHeader("last_name", "Last Name");
+  aliasHeader("phone", "Mobile Phone");
+  // ⛔ D2 · another person's line and a shared one — proved to be no field's spelling: no reader may take either.
+  const ASSISTANT = unknownHeader("Assistant's Phone");
+  const SWITCHBOARD = unknownHeader("Company Main Phone");
+  const MOBILE = "Mobile Phone";
+  const OWN_COLUMNS = ["Business Phone", "Home Phone"] as const;
+  for (const column of [ASSISTANT, SWITCHBOARD, MOBILE, ...OWN_COLUMNS]) {
+    if (!OUTLOOK_HEADER.includes(column)) throw new Error(`real-world-files: ${name} — Outlook's header has no ${column} column`);
+  }
+  /** One row each: what Mobile Phone holds, the person's own other column (G4), the assistant's mobile, the switchboard. */
+  type Plan = {
+    readonly mobile?: "mobile" | "landline";
+    readonly own?: (typeof OWN_COLUMNS)[number];
+    readonly assistant?: true;
+    readonly switchboard?: "mobile" | "landline";
+  };
+  const PLAN: readonly Plan[] = [
+    { mobile: "mobile", assistant: true },
+    { assistant: true },
+    { mobile: "mobile", switchboard: "mobile" },
+    { switchboard: "mobile" },
+    { own: "Business Phone", assistant: true },
+    { mobile: "mobile", switchboard: "landline" },
+    { own: "Home Phone", switchboard: "mobile" },
+    { assistant: true, switchboard: "mobile" },
+    { mobile: "landline", assistant: true },
+    { mobile: "mobile" },
+    { mobile: "mobile", assistant: true, switchboard: "mobile" },
+    { mobile: "mobile" },
+  ];
+  const linesWhere = (test: (p: Plan) => boolean): string => PLAN.flatMap((p, i) => (test(p) ? [String(i + 2)] : [])).join(", ");
+  const records: TextRecord[] = PLAN.map((p) => {
+    const who = someone(rng);
+    const cell = new Map<string, string>([
+      ["First Name", who.given],
+      ["Last Name", who.family],
+      ["Company", rng.pick(ORGS)],
+      ["Job Title", rng.pick(["Meneja", "Mhasibu", "Afisa Mauzo"])],
+      ["Anniversary", "0/0/00"],
+      ["Birthday", "0/0/00"],
+      ["Gender", "Unspecified"],
+      ["Initials", `${who.given.charAt(0)}.${who.family.charAt(0)}.`],
+      ["Priority", "Normal"],
+      ["Private", "False"],
+      ["Sensitivity", "Normal"],
+    ]);
+    const phones: PhoneDraft[] = [];
+    const put = (column: string, ph: PhoneDraft): void => {
+      cell.set(column, ph.written);
+      phones.push(at(ph, column));
+    };
+    if (p.mobile === "mobile") put(MOBILE, mobile(book.fresh(), "plusSpaced"));
+    if (p.mobile === "landline") put(MOBILE, landline(rng, true));
+    if (p.own !== undefined) put(p.own, mobile(book.fresh(), "spaced"));
+    if (p.assistant === true) {
+      put(ASSISTANT, mobile(book.fresh(), "compact"));
+      cell.set("Assistant's Name", someone(rng).name);
+    }
+    if (p.switchboard === "mobile") put(SWITCHBOARD, mobile(book.fresh(), "spaced"));
+    if (p.switchboard === "landline") put(SWITCHBOARD, landline(rng));
+    return { text: csvLine(OUTLOOK_HEADER.map((h) => cell.get(h) ?? ""), OUTLOOK_STYLE), draft: { name: who.name, phones } };
+  });
+  return textBuilt({
+    name,
+    format: "csv",
+    mimics: "Outlook desktop's CSV export of an office's address book: the assistant's line and the company switchboard filled in beside — or instead of — the person's own mobile.",
+    encoding: "windows-1252",
+    lineEnding: "crlf",
+    delimiter: "comma",
+    header: OUTLOOK_HEADER,
+    notes: [
+      "C3b-fix D2: Assistant's Phone is another person's line and Company Main Phone the office switchboard — never the person's own number, " +
+        "so no reader takes either, whatever it holds. Only Mobile Phone is a phone alias; G4 reads the person's OWN other phone columns " +
+        "(Business Phone, Home Phone …) only for a row whose Mobile Phone yields no mobile. Every byte is ASCII, so either decode reads it the same.",
+      `No number — the only mobiles are the assistant's or the switchboard's: lines ${linesWhere((p) => p.mobile === undefined && p.own === undefined)}. ` +
+        `A landline in Mobile Phone beside the assistant's mobile: line ${linesWhere((p) => p.mobile === "landline")} (the landline's own refusal).`,
+      `Imported through G4 — Mobile Phone empty, ONE mobile in Business Phone or Home Phone beside a different one in Assistant's Phone or Company ` +
+        `Main Phone: lines ${linesWhere((p) => p.own !== undefined)}. A reader that took the assistant's or the switchboard's line would find two ` +
+        "mobiles in the row and refuse it (D3).",
+      `Mobile Phone's own mobile with another in Assistant's Phone or Company Main Phone beside it: lines ${linesWhere((p) => p.mobile === "mobile" && (p.assistant === true || p.switchboard === "mobile"))} — ` +
+        "the person's number is Mobile Phone's. The added column reads Phone (read from: Mobile Phone, Business Phone, Home Phone), never naming " +
+        "Assistant's Phone or Company Main Phone.",
+      "The aggregate counts every mobile WRITTEN, the assistants' and the switchboards' too; which rows have a number is the rule's (the drive restates it, c3bExpectations).",
+    ],
+    lead: csvLine(OUTLOOK_HEADER, OUTLOOK_STYLE),
+    records,
+    firstLine: 2,
+  });
+}
+
+/** 30 · ⭐ C3b-fix · D6 + D7 · a small staff sheet first, then the customers under a title row. */
+async function makeExcelTitleStaff(): Promise<Built> {
+  const name = "excel-title-staff.xlsx";
+  const rng = new Rng(name);
+  const book = new NumberBook(rng);
+  const wb = newWorkbook();
+  // Sheet 1 — the office's own staff, their column names on row 1: five mobiles, a Phone column by a strong heading.
+  const STAFF = "Wafanyakazi";
+  const staff = wb.addWorksheet(STAFF);
+  staff.addRow([aliasHeader("name", "Jina"), aliasHeader("phone", "Simu"), unknownHeader("Cheo")]);
+  staff.getColumn(1).width = 26;
+  staff.getColumn(2).width = 18;
+  const staffPhones: PhoneDraft[] = [];
+  for (const role of ["Meneja", "Mhasibu", "Afisa Mauzo", "Mlinzi", "Dereva"]) {
+    const phone = mobile(book.fresh(), "spaced");
+    staffPhones.push(phone);
+    staff.addRow([someone(rng).name, phone.written, role]).getCell(2).numFmt = "@";
+  }
+  assertWrittenPhones(name, staffPhones);
+  // Sheet 2 — the customers: a title on row 1, row 2 empty, the column names on row 3, the people from row 4.
+  const CUSTOMERS = "Wateja";
+  const ws = wb.addWorksheet(CUSTOMERS);
+  const TITLE = `Orodha ya wateja ${EM_DASH} Oktoba 2026`;
+  ws.getCell("A1").value = TITLE;
+  const header = [aliasHeader("phone", "Simu"), aliasHeader("name", "Jina"), aliasHeader("tags", "Makundi")];
+  const HEADER_ROW = 3;
+  header.forEach((h, i) => {
+    ws.getCell(HEADER_ROW, i + 1).value = h;
+  });
+  ws.getColumn(1).width = 18;
+  ws.getColumn(2).width = 28;
+  const CUSTOMERS_N = 30;
+  const LANDLINE_AT = 9;
+  const REPEAT_AT = 20;
+  const REPEAT_OF = 5;
+  const nationals = new Map<number, string>();
+  const drafts: RecordDraft[] = [];
+  let customerMobiles = 0;
+  for (let i = 1; i <= CUSTOMERS_N; i++) {
+    const who = someone(rng);
+    let phone: PhoneDraft;
+    if (i === LANDLINE_AT) phone = landline(rng);
+    else if (i === REPEAT_AT) {
+      const first = nationals.get(REPEAT_OF);
+      if (first === undefined) throw new Error(`real-world-files: ${name} — the repeated customer has no number yet`);
+      phone = mobile(first, "plusSpaced");
+    } else {
+      const national = book.fresh();
+      nationals.set(i, national);
+      phone = mobile(national, i % 3 === 0 ? "compact" : "spaced");
+    }
+    // D6 counts CELLS that hold one mobile — a repeated number's cell is one more.
+    if (phone.key !== null) customerMobiles++;
+    const tags = rng.pick(["wateja", "vip", "", "mawakala"]);
+    const row = HEADER_ROW + i;
+    ws.getCell(row, 1).value = phone.written;
+    ws.getCell(row, 1).numFmt = "@";
+    ws.getCell(row, 2).value = who.name;
+    if (tags !== "") ws.getCell(row, 3).value = tags;
+    drafts.push({ name: who.name, phones: [{ ...phone, cell: "text" }], tags });
+  }
+  // ⛔ The file's point: the customers' sheet holds MORE mobiles than the staff sheet before it.
+  if (customerMobiles <= staffPhones.length) throw new Error(`real-world-files: ${name} — the customers no longer outnumber the staff`);
+  const built = xlsxBuilt(
+    name,
+    "An office workbook: a small staff sheet first, then the customers under a title row — the shape C3b's header rule lost to the staff list.",
+    await workbookBytes(wb),
+    header,
+    CUSTOMERS,
+    [
+      `people describes the SECOND sheet, ${CUSTOMERS}: its title on row 1, row 2 empty, its column names on row ${HEADER_ROW}, ${CUSTOMERS_N} customers ` +
+        `from row ${HEADER_ROW + 1}. The first sheet, ${STAFF}, is the office's ${staffPhones.length} staff with their mobiles under column names on row 1.`,
+      `C3b-fix D6: the reader reads the VISIBLE sheet whose first rows hold the most mobiles — ${CUSTOMERS} (${customerMobiles} against ` +
+        `${staffPhones.length}; sheets), though ${STAFF} comes first and names its Phone column on row 1 (C3b's header rule read the staff) — and ` +
+        `its note names ${STAFF} as NOT read, with the way to import it (save it as its own file).`,
+      "C3b-fix D7: row 1's title leaves the data with ONE note naming row 1 (titleRows), never what it says; row 2 stays a counted blank " +
+        "row, and every row keeps its sheet row number.",
+      `Line ${HEADER_ROW + LANDLINE_AT} is a landline; line ${HEADER_ROW + REPEAT_AT} repeats line ${HEADER_ROW + REPEAT_OF}'s number in another spelling.`,
+    ],
+    settlePeople(drafts, HEADER_ROW + 1),
+  );
+  return {
+    ...built,
+    titleRows: [{ line: 1, text: TITLE }],
+    sheets: [
+      { name: STAFF, visible: true, mobiles: staffPhones.length },
+      { name: CUSTOMERS, visible: true, mobiles: customerMobiles },
+    ],
+  };
+}
+
+/** 31 · ⭐ C3b-fix · D7 · a CSV typed by hand: a bare title and a sub-title above the column names, no separator at all. */
+function makeHandTypedTitle(): Built {
+  const name = "hand-typed-title.csv";
+  const rng = new Rng(name);
+  const book = new NumberBook(rng);
+  const TITLE = "Wateja wa Oktoba 2026";
+  const SUBTITLE = "Imeandaliwa na Ofisi ya Masoko Dar es Salaam";
+  // ⛔ UNPADDED: typed, never saved by a spreadsheet — no separator a CSV reader could vote for, and no quotation mark.
+  for (const t of [TITLE, SUBTITLE]) {
+    if ([",", ";", TAB, "|", QUOTE].some((c) => t.includes(c))) throw new Error(`real-world-files: ${name} — a title row holds a separator; it must be bare`);
+  }
+  const header = [aliasHeader("phone", "Simu"), aliasHeader("name", "Jina"), aliasHeader("tags", "Makundi")];
+  /** Line 3 is blank; the column names are on line 4. */
+  const HEADER_LINE = 4;
+  const PEOPLE = 15;
+  const LANDLINE_AT = 7;
+  const REPEAT_AT = 12;
+  const REPEAT_OF = 4;
+  const TAGS = ["wateja", "", "vip", "", "dar"];
+  const nationals = new Map<number, string>();
+  const records: TextRecord[] = [];
+  for (let i = 1; i <= PEOPLE; i++) {
+    const who = someone(rng);
+    let phone: PhoneDraft;
+    if (i === LANDLINE_AT) phone = landline(rng);
+    else if (i === REPEAT_AT) {
+      const first = nationals.get(REPEAT_OF);
+      if (first === undefined) throw new Error(`real-world-files: ${name} — the repeated person has no number yet`);
+      phone = mobile(first, "compact");
+    } else {
+      const national = book.fresh();
+      nationals.set(i, national);
+      phone = mobile(national, i % 2 === 0 ? "spaced" : "plusSpaced");
+    }
+    const tags = TAGS[i % TAGS.length];
+    records.push({ text: csvLine([phone.written, who.name, tags], EXCEL_COMMA), draft: { name: who.name, phones: [phone], tags } });
+  }
+  return textBuilt({
+    name,
+    format: "csv",
+    mimics: "A list typed by hand in Notepad: a title and a sub-title on their own lines with no separator, a blank line, then the column names.",
+    encoding: "utf-8",
+    lineEnding: "crlf",
+    delimiter: "comma",
+    header,
+    notes: [
+      `Lines 1 and 2 are a title and a sub-title typed with NO separator (unpadded: no spreadsheet saved this file), line 3 is blank and line ${HEADER_LINE} ` +
+        "holds the column names. Before C8c the CSV reader's vote read line 1 alone, found no separator and read the WHOLE file as one column, " +
+        "so D7 had no column names to find (C3b-fix's open find).",
+      `A correct reader votes past the bare title rows (D7's own first-row test), reads the file comma-separated, and D7 takes rows 1${EN_DASH}2 ` +
+        "out of the data with ONE note naming them (titleRows), never what they say; line 3 stays a counted blank row and every row keeps its real number.",
+      `Line ${HEADER_LINE + LANDLINE_AT} is a landline; line ${HEADER_LINE + REPEAT_AT} repeats line ${HEADER_LINE + REPEAT_OF}'s number in another spelling.`,
+    ],
+    lead: `${TITLE}${CRLF}${SUBTITLE}${CRLF}${CRLF}${csvLine(header, EXCEL_COMMA)}`,
+    records,
+    firstLine: HEADER_LINE + 1,
+    titleRows: [{ line: 1, text: TITLE }, { line: 2, text: SUBTITLE }],
+  });
+}
+
 /* ══ THE BIG FILES (--big) — streamed to disk, aggregates only ════════════════════════════════════════════════════ */
 
 const BIG_DUPLICATE_SHARE = 0.06;
@@ -2710,6 +3079,8 @@ const SMALL_MAKERS: readonly Maker[] = [
   makeUnicodeText, makeMessy, makeEmpty, makeHeaderOnly, makeNotReallyCsv, makeRenamedCsv, makeExcelBasic,
   makeExcelNumberCells, makeExcelMultiSheet, makeLegacyXls, makeOds, makeIphone, makeAndroid, makeGoogleVcf, makeVcard4,
   makeTruncated, makeMixedLineEndings, makePaste, makeProdCsv, makeProdVcf, makeProdXlsx,
+  // ⭐ C8c · 28–31, the four files C3b-fix's review asked for — at the END of the list (C3c adds to this file too).
+  makeBrokenMidFile, makeOutlookAssistant, makeExcelTitleStaff, makeHandTypedTitle,
 ];
 
 /**
