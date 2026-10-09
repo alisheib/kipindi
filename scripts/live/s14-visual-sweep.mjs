@@ -265,7 +265,8 @@ const CONTACTS_SCROLL = '[data-block="contacts-card"] [role="region"][aria-label
 const PRESENCE = {
   inBook: "This number is in the book.",
   notInBook: "This number is not in the book.",
-  body: "For your role a whole number shows only whether it is in the book — the other filters don't apply to it. Search by name, or filter the list, to see contacts.",
+  /** C8b review (MINOR 1): the stop or withdrawal a masked officer can still record for the number. */
+  body: "For your role a whole number shows only whether it is in the book — the other filters don't apply to it — but you can still record a stop or a withdrawal for it: select it, then choose Suppress or Record a withdrawal. Search by name, or filter the list, to see contacts.",
   notInBookBody: "For your role a whole number shows only whether it is in the book. Add it with Add contact, or search by name to see contacts.",
 };
 /** The 45-row seed's first contact (`marketing-contacts-seed?count=45`, i = 0): 071 and "1000000". */
@@ -295,8 +296,10 @@ const IMPORT = {
   /** LIST.owed */
   listOwed: "People added to a list are covered for offers only once its basis is recorded again on the Lists card, after the import.",
 };
-/** DONE.listOwed — the result's list line for a new list, whose basis is not recorded yet. */
-const listOwedSentence = (name) => `Added to the list ${name}. The new members aren't covered for offers yet — record the list's basis and 18+ confirmation again on the Lists card.`;
+/** DONE.listOwed — the result's list line for a new list, whose basis is not recorded yet: how many contacts THIS import
+ *  put on the list (C8b review, MINOR 2). */
+const listOwedSentence = (name, joined) =>
+  `${joined.toLocaleString("en-US")} ${joined === 1 ? "contact" : "contacts"} joined the list ${name}. ${joined === 1 ? "The new member isn't" : "The new members aren't"} covered for offers yet — record the list's basis and 18+ confirmation again on the Lists card.`;
 const IMPORT_OLD = ["an Excel file can be up to", "this spreadsheet is", "700 KB"];
 /** xlsx-limits.ts `XLSX_MAX_BYTES`: a workbook past it is read in the browser (C3c), never uploaded. */
 const XLSX_MAX_BYTES = 700 * 1024;
@@ -769,7 +772,9 @@ function installSweepLib() {
     }
     if (a.headers) {
       const ths = Array.from(root.querySelectorAll("thead th")).map((th) => shown(th));
-      const has = (h) => ths.some((t) => t === h || t.startsWith(h + " "));
+      // The sorted column's header ends with its arrow ("Added↓", `admin-sort.tsx`): the column is the word before it.
+      const bare = (t) => t.replace(/\s*[↑↓]$/, "");
+      const has = (h) => ths.some((t) => bare(t) === h || bare(t).startsWith(h + " "));
       out.headers = { ths, lack: a.headers.want.filter((h) => !has(h)), extra: (a.headers.absent || []).filter(has) };
     }
     if (a.dates) {
@@ -1608,7 +1613,7 @@ async function importScreen(growth) {
   const tile = (key, n, label) => ({ label, sel: `[data-block="import-done"] [data-import-tile="${key}"]`, attr: ["data-value", String(n)] });
   await sweep(p, {
     ...DIALOG_STATE, state: "list-done", view: { sel: '[data-block="import-done"]', block: "start" },
-    want: [IMPORT.finished, listOwedSentence(LIST_NAME)], old: IMPORT_OLD,
+    want: [IMPORT.finished, listOwedSentence(LIST_NAME, 2)], old: IMPORT_OLD,
     exact: [
       tile("create", 2, "two contacts added"),
       tile("update", 0, "nothing updated — a masked officer keeps the book as it is"),
