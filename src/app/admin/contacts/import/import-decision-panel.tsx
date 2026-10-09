@@ -10,8 +10,10 @@
  * until a page fills or the list ends — the server bounds each page by the work behind it, so a page can be short or
  * even empty while the list goes on, and "Show more" stays while `nextAfterLine` is not null — R8), each with what
  * changes under the choice in force — ⭐ C8c · #13 · and every contact full of tags whose new tags would not be added,
- * listed with those tags (the check's `listed` is the list's total) — and each can be SET APART: kept as it is when the choice would change it, or given
- * the file's version when it would not. Changing the choice for every row clears the rows set apart, and says how many.
+ * listed with those tags (the check's `listed` is the list's total) — and each row some choice updates can be SET APART:
+ * kept as it is when the choice would change it, or given the file's version when it would not (a row listed only for
+ * its tags has no box: no choice updates it). Changing the choice for every row clears the rows set apart, and says how
+ * many.
  * ⛔ S15-10 (R1) · A VIEWER WHO MAY NOT UPDATE CONTACTS ALREADY IN THE BOOK (`mayUpdateInBook` false — the matrix's
  * identity.contact cell, never a role name) sees NO choice cards and NO changes list: one line, "Numbers already in the
  * book are kept as they are", with the server's own sentence as the why; the promise is KEEP's tally and the start posts

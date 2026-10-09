@@ -17,8 +17,8 @@
  *     reason and (the review's n4) the payload's `step` when it has one — a start and a commit step refused for one
  *     reason are two things that happened. ⭐ A ROW THE AUDIT DID NOT RECORD NEVER SILENCES THE MINUTE (n4): `audit()`
  *     never rejects, it resolves `recorded: false`; the writer then takes the admission back (`undo`), so the next refusal
- *     writes and counts the unrecorded one among its `repeats`. ⭐ THE OFFICER IS IN THE KEY on purpose — the brief's "per run per reason" would let one officer's row
- *     silence ANOTHER officer's refusal on the same run in the same minute (a `not_yours` from someone poking at another
+ *     writes and counts the unrecorded one among its `repeats`. ⭐ THE OFFICER IS IN THE KEY on purpose — the brief's "per
+ *     run per reason" would let one officer's row silence ANOTHER officer's refusal on the same run in the same minute (a `not_yours` from someone poking at another
  *     officer's import), and an audit trail must never lose WHO tried. Each officer is still held to one row a minute per
  *     run and reason, so the flood above becomes one row a minute;
  *   · ⭐ the refusals a row did not write are COUNTED, and the next row written for that key carries them as `repeats`

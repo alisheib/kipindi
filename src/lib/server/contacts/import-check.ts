@@ -49,8 +49,12 @@
  * number's first decidable line in ONE grouped read (`contactImportRow.firstLinesAmong`, S15-7), and walks at most
  * `changesWalkRows` staged rows per request — so a page can hold fewer rows than asked while `nextAfterLine` is not null.
  *
- * ⭐ C8c · N4 · BETS COME FIRST. The walk asks the bet admission queue before every page — the commit step's question,
- * asked the same way — and waits while a bet is queued, inside its own deadline (`yieldToBets`; never a second clock).
+ * ⭐ C8c · N4 · BETS COME FIRST, IN EVERY WALK HERE. Each asks the bet admission queue — the commit step's question, asked
+ * the same way — and waits while a bet is queued, inside its OWN request's deadline (`yieldToBets`; never a second clock):
+ * the check's and the start's walk (`walkStagedRun`) before every page, ending `bets_busy` when bets kept it past that
+ * deadline (the review's m5); and (the review's n6) a changes page's walk — up to `changesWalkRows` staged rows a request
+ * — before every window, ending SHORT where it stood when bets kept it past the deadline (its `nextAfterLine` the line it
+ * reached: the contract's own "a page can be short while the list goes on"), never a refusal.
  * ⭐ C8c · #14a · A REFUSAL ROW IS BOUNDED (`refusal-audit.ts`): a "moved" is never written, any other refusal at most once
  * a minute per officer, run and reason (`auditImportRefusal`, the one writer of every refusal row here and in the commit).
  * ⛔ OWNERSHIP IS STAGING'S RULE (`mayDriveImport`, X18): the run's creator, or an ADMIN read off the STORED role.
@@ -173,8 +177,9 @@ export type ImportCheckDeps = {
   /** ⭐ Bets come first: how many bets wait for an admission slot right now (`admissionSnapshot`) — the commit step's own
    *  question, asked by the walk between pages too (C8c · N4). */
   queueDepth: () => number;
-  /** C8c · N4 · wait this long (ms) — the walk's only timer: what it waits by is always `now` against its one deadline. */
-  pause: (ms: number) => Promise<void>;
+  /** C8c · N4 · sleep this long (ms) — the walk's only timer: what it waits by is always `now` against its one deadline.
+   *  (Named `sleep`, never `pause` — the review's n9: a run's PAUSE is another thing in this module and its neighbour.) */
+  sleep: (ms: number) => Promise<void>;
   /** C8c · N4 · how long the walk waits before it asks the bet queue again. */
   betWaitMs: number;
 };
@@ -230,7 +235,7 @@ export const IMPORT_CHECK_DEPS: ImportCheckDeps = {
   windowRows: CONTACT_IMPORT_ROW_PAGE_MAX,
   changesWalkRows: CHANGES_WALK_ROWS,
   queueDepth: () => admissionSnapshot().queueDepth,
-  pause: (ms) => new Promise<void>((resolve) => { setTimeout(resolve, ms); }),
+  sleep: (ms) => new Promise<void>((resolve) => { setTimeout(resolve, ms); }),
   betWaitMs: BET_YIELD_WAIT_MS,
 };
 
@@ -322,20 +327,20 @@ export type RunWalkPage = {
 /**
  * ⭐ C8c · N4 · BETS COME FIRST BETWEEN THE WALK'S PAGES TOO. The commit step asks the admission queue before it writes and
  * refuses `busy` while a bet waits (`import-commit.ts`); the walk — the check's and the start's, a 200,000-row run is ~100
- * page reads, each with four bulk fact reads — never asked, so a big check competed with bets for the database. Now,
- * before every page, it asks THE SAME QUEUE THE SAME WAY (`queueDepth`, admission's own count) and, while a bet waits,
- * WAITS (`betWaitMs` at a time) and asks again. ⛔ NEVER A SECOND CLOCK: the wait is measured by the walk's own `now`
- * against its own deadline, so a check that bets keep waiting past its deadline ends there, nothing written — and (the
- * review's m5) it says so in its OWN words (`bets_busy`: "The platform is busy with bets…"), never the slow file's ("…or
- * split the file in two", which would send the officer to cut a file that was never the problem). True when the queue
- * is clear; false when the deadline passed while bets waited.
+ * page reads, each with four bulk fact reads (and, n6, a changes page's) — never asked, so a big check competed with bets
+ * for the database. Now, before every page, it asks THE SAME QUEUE THE SAME WAY (`queueDepth`, admission's own count)
+ * and, while a bet waits, SLEEPS (`betWaitMs` at a time) and asks again. ⛔ NEVER A SECOND CLOCK: the wait is measured
+ * by the walk's own `now` against its own deadline, so a check that bets keep waiting past its deadline ends there,
+ * nothing written — and (the review's m5) it says so in its OWN words (`bets_busy`: "The platform is busy with bets…"),
+ * never the slow file's ("…or split the file in two", which would send the officer to cut a file that was never the
+ * problem). True when the queue is clear; false when the deadline passed while bets waited.
  */
 export async function yieldToBets(
-  deps: Pick<ImportCheckDeps, "queueDepth" | "pause" | "now" | "betWaitMs">, deadline: number,
+  deps: Pick<ImportCheckDeps, "queueDepth" | "sleep" | "now" | "betWaitMs">, deadline: number,
 ): Promise<boolean> {
   while (deps.queueDepth() > 0) {
     if (deps.now().getTime() > deadline) return false;
-    await deps.pause(deps.betWaitMs);
+    await deps.sleep(deps.betWaitMs);
   }
   return true;
 }
@@ -694,7 +699,9 @@ export function listedInChanges(p: DecisionPreview): boolean {
  * tags (`listedInChanges`) — with its masked number and its preview under all three (D19: no
  * contact id; X22: an erased number is previewed as the contact it reads as, which never changes). The first decidable
  * line of each number comes from ONE grouped read of the WHOLE run (S15-7), so a repeat on this page whose first row sits
- * pages earlier is never listed. ⛔ Writes nothing, and audits only a refusal.
+ * pages earlier is never listed. ⭐ C8c · n6 · it yields to queued bets before every window (`yieldToBets`, this
+ * request's own deadline), and ends short where it stood when they keep it past that. ⛔ Writes nothing, and audits only
+ * a refusal.
  */
 export async function contactImportChanges(officerId: string, input: unknown, deps: ImportCheckDeps = IMPORT_CHECK_DEPS): Promise<ChangesResult> {
   const body = bagOf(input);
@@ -720,10 +727,14 @@ export async function contactImportChanges(officerId: string, input: unknown, de
 
   const found: ChangesPageRow[] = [];
   const pageRows = keysetPageRows(deps.windowRows);
+  const deadline = deps.now().getTime() + deps.deadlineMs;
   let after = await deps.locate(run.id, afterLine, run.stagedThrough, deps.rowsAfter);
   let walked = 0;
   let lastLine = afterLine;
   for (;;) {
+    // ⭐ C8c · n6 · bets come first here too: a bet queued keeps the walk waiting before its next window, inside this
+    // request's deadline; past it the page ends short where it stood — the panel asks again from `nextAfterLine`.
+    if (!(await yieldToBets(deps, deadline))) return { ok: true, page: { rows: found, nextAfterLine: lastLine } };
     const window = await deps.rowsAfter({ importId: run.id, afterOrdinal: after, limit: pageRows });
     if (window.length === 0) return { ok: true, page: { rows: found, nextAfterLine: null } };
     const classes = window.map((row) => classifyStagedRow(row, deps.isSample));

@@ -932,7 +932,7 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
       now: () => new Date(clock.ms),
       // The start's ONLY wait: the clock moves by what it waits; the bet is admitted after the third wait (a safety stop at
       // 400 waits lets a defective walk end instead of hanging the run).
-      pause: async (ms) => {
+      sleep: async (ms) => {
         pauses++;
         clock.ms += ms;
         if (pauses === 3 || pauses >= 400) bet.leave();
@@ -966,7 +966,7 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
       }, {
         ...impl.deps,
         now: () => new Date(clock.ms),
-        pause: async (ms) => {
+        sleep: async (ms) => {
           neverPauses++;
           clock.ms += ms;
           if (neverPauses >= 2000) stuckBet.leave();

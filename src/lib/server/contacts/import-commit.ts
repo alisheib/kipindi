@@ -154,7 +154,9 @@ export type DbFaultStreak = { readonly count: number; readonly since: number };
 export type DbFaultStreaks = {
   /** One more fault on this run, at `atMs`: the streak as it stands now. */
   readonly record: (runId: string, atMs: number) => DbFaultStreak;
-  /** The run's step answered something else (or the run was paused): the streak is over. */
+  /** The DATABASE answered a step of this run (it settled rows, or found them settled), or its faults just paused the run:
+   *  the streak is over. ⛔ The review's n5 · an answer the database never gave — a bet-queue `busy`, a moved or paused
+   *  cursor, a refusal before the step's transaction, a fault that is not retryable — neither ends nor extends it. */
   readonly clear: (runId: string) => void;
 };
 
