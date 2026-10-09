@@ -80,6 +80,7 @@ import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
 import { syncPlayerToggle } from "@/lib/server/marketing/optout-service";
 import { CONTACT_LIMITS } from "@/lib/contacts/contact-fields";
 import { bookHoldsNumber, maskedNumberSearchRefusal, numberAloneOf } from "@/lib/server/contacts/number-search";
+import { RAIL_KEYS } from "@/app/admin/contacts/contacts-copy";
 import {
   BULK_PER_ROW_MAX, BULK_SAMPLE, LIST_NONE, bulkConfirmTier, isContactBulkAction, isPerRowAction, listNameKey, parseBulkTag,
   parseListName,
@@ -99,10 +100,14 @@ export const OFFICER_WITHDRAWAL_WORDING = "Recorded by staff — this person ask
 /** The evidence a run leaves on each ledger row and stop it writes, and on a player's switch audit: this, then the run id. */
 export const BULK_EVIDENCE_PREFIX = "contacts-bulk:";
 
+/** ⭐ C8b re-review (NIT) · a filter as the RAIL names it (`RAIL_KEYS`: "Consent", "Suppressed", "Source", "Player") — what
+ *  a sentence quotes, never the address's own key ("suppressed"); a key the rail does not draw is quoted as it is. */
+const axisName = (param: string): string => (RAIL_KEYS as Readonly<Record<string, string>>)[param] ?? param;
+
 export const BULK_SENTENCES = {
   badRequest: "This isn't an action the contact book offers.",
   badAudience: "The selection could not be read.",
-  role: (param: string) => `The “${param}” filter ${ROLE_REFUSAL_REASON.slice("This filter ".length)}`,
+  role: (param: string) => `The “${axisName(param)}” filter ${ROLE_REFUSAL_REASON.slice("This filter ".length)}`,
   empty: "Nothing was changed: the selection holds no contacts in the book. Clear the selection and tick the contacts again.",
   perRowCap: (n: number, max: number) =>
     `A withdrawal or a suppression writes one record per number, so it takes at most ${formatNumber(max)} contacts at a time; `
@@ -121,7 +126,7 @@ export const BULK_SENTENCES = {
   numberSearch: "For your role a whole number shows only whether it is in the book, so only Suppress and Record a withdrawal act on it — clear the search, or search by name, to tag, list or remove contacts.",
   /** C8b (B7) · a tag or a list from a filter some staff may not use — said for each of the two actions, with the way on. */
   protectedLabel: (action: "tag" | "addToList", param: string) =>
-    `A ${action === "tag" ? "tag" : "list"} made from the “${param}” filter would let staff who may not use that filter find these contacts through that ${action === "tag" ? "tag" : "list"}. `
+    `A ${action === "tag" ? "tag" : "list"} made from the “${axisName(param)}” filter would let staff who may not use that filter find these contacts through that ${action === "tag" ? "tag" : "list"}. `
     + `${action === "tag" ? "Tag these" : "Add these to a list"} by ticking them by hand, or filter by something else.`,
 } as const;
 

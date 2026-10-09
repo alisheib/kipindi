@@ -311,10 +311,10 @@ const L = {
   b12: "B12 · ⭐ ONE AUDIT ROW PER RUN, through U24's describer: action contacts.bulk.tag, the officer, the counts; a whole-number search is +255••••78 and the payload holds neither the nine digits nor the 255 key; ticked ids are a COUNT, never listed",
   b13: "B13 · ⛔ the parser builds a NEW request from named keys: a posted count, tier, officer and matched are never read — the request's keys are action, audience, list, tag and typed — and an unknown audience key refuses",
   b14: "B14 · 🔴 D19 / A1.1 · a masked role's POSTed sources, consent or player audience is refused role BEFORE any count — the preview and the run both, the store's count never asked; a reader gets the count",
-  b23: "B23 · ⛔ C8b (B7) · NO SHARED LABEL FROM A PROTECTED FILTER: a READER's tag and add-to-list over a consent, stop, source or player filter are refused protected_label — the preview and the run, BEFORE any count, nothing written, no list made — the sentence naming the axis and the way on (tick them by hand, or filter by something else); ⭐ (C8b review) \"protected\" IS THE ONE ROLE RULE'S: over every single-axis audience the label rule refuses exactly what roleRefusal refuses a masked viewer, and its source asks roleRefusal(audience, false) with no axis list of its own; CONTROLS: that reader's untag over the same filter previews, their TICKED rows are tagged and listed, and a tag over a name search previews",
+  b23: "B23 · ⛔ C8b (B7) · NO SHARED LABEL FROM A PROTECTED FILTER: a READER's tag and add-to-list over a consent, stop, source or player filter are refused protected_label — the preview and the run, BEFORE any count, nothing written, no list made — the sentence naming the axis AS THE RAIL NAMES IT (\"Player\", \"Suppressed\" — never the address's key; the role refusal too, the C8b re-review's NIT) and the way on (tick them by hand, or filter by something else); ⭐ (C8b review) \"protected\" IS THE ONE ROLE RULE'S: over every single-axis audience the label rule refuses exactly what roleRefusal refuses a masked viewer, and its source asks roleRefusal(audience, false) with no axis list of its own; CONTROLS: that reader's untag over the same filter previews, their TICKED rows are tagged and listed, and a tag over a name search previews",
   b24: "B24 · ⛔ C8b (B3) · A MASKED VIEWER'S WHOLE-NUMBER SEARCH IS NO AUDIENCE — tag, untag, add to a list and remove over it are refused number_search BEFORE any count, the preview and the run, in the bar's own sentence naming the two actions that still act on the number (the re-review's MN-1) — ⭐ BUT FOR A STOP (the integrator's ruling): suppress and record a withdrawal over the whole number ALONE act on that NUMBER — a number a row holds, the erased tombstone's and one with only an erasure marker each preview ONE (typed tier, NO sample) and run to the stop or withdrawal recorded for that number, the masked reply the total alone, the same answers for all three (X22); a number not in the book is empty, and the whole number beside another filter is refused number_search; CONTROLS: a masked NAME search previews, and a reader's whole-number search previews its one row",
   b14b: "B14b · 🔴 A1.1 · a withdrawal's split is a consent signal: a masked viewer's reply carries the total only (changed and unchanged null) and the line says the total; a reader's carries the split; a tag's reply is untouched",
-  b14c: "B14c · 🔴 OD54 · a masked role's POSTed suppressed audience — true, false, or beside an operator — is refused role BEFORE any count, the preview and the run both, naming “suppressed”; a reader gets the count of the stopped rows and the audience in words",
+  b14c: "B14c · 🔴 OD54 · a masked role's POSTed suppressed audience — true, false, or beside an operator — is refused role BEFORE any count, the preview and the run both, naming “Suppressed” (the rail's name for it); a reader gets the count of the stopped rows and the audience in words",
   b14d: "B14d · 🔴 OD54 · a suppression's split is a stop signal: a masked officer may still suppress, its preview is the TOTAL (no split key) and its reply carries the total only (changed and unchanged null), the line saying “A stop is on record for N contacts” — never “already suppressed”; a reader's carries the split",
   b15: "B15 · ⭐ the selection row is the SERVER's projection: exactly id, name and masked, the number +255••••NN — and the preview's sample is the same projection, twenty named of thirty, \"and 10 more\"",
   b16: "B16 · \"select all matching\" stores the FILTER: the page's canonical key reads back through U24's JSON parser to the same filter and carries no ids; ticks-only is ids alone, and a filter beside ids is a filter",
@@ -634,8 +634,14 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       }
     }
     const nothing = counted === 0 && (await bookSnapshot()) === before && (await db.contactList.listAll()).length === listsBefore;
+    // ⭐ C8b re-review (NIT) · the sentence names the filter as the RAIL does ("Player", "Suppressed"), never the address's
+    // key — and so does the role refusal — through the one name map.
     const words = BULK_SENTENCES.protectedLabel("tag", "consent").includes("ticking them by hand, or filter by something else")
-      && BULK_SENTENCES.protectedLabel("addToList", "player").startsWith("A list made from the “player” filter");
+      && BULK_SENTENCES.protectedLabel("addToList", "player").startsWith("A list made from the “Player” filter")
+      && BULK_SENTENCES.protectedLabel("tag", "suppressed").startsWith("A tag made from the “Suppressed” filter")
+      && BULK_SENTENCES.role("suppressed").startsWith("The “Suppressed” filter isn't available to your role")
+      && impl.sources.service.includes("made from the “${axisName(param)}” filter")
+      && impl.sources.service.includes("role: (param: string) => `The “${axisName(param)}” filter");
     // CONTROLS: the same reader's untag over a protected filter still previews; their TICKED rows are tagged and listed
     // (an audited choice); a tag over a filter that uses no protected axis (a name search) previews.
     const untag = await preview({ action: "untag", tag: "probe", audience: { consent: ["GIVEN"] }, typed: null }, true);
@@ -1289,6 +1295,16 @@ if (!PROVE_RED) {
       name: "R-B23d · ⛔ C8b review · an axis list of the label rule's own back in the bulk module, beside the role rule",
       expect: L.b23,
       impl: () => ({ ...REAL, sources: { ...REAL_SOURCES, service: `${REAL_SOURCES.service}${String.fromCharCode(10)}const PROTECTED_LABEL_AXES = ["player", "sources", "consent", "suppressed"];` } }),
+    },
+    {
+      name: "R-B23e · ⛔ C8b re-review (NIT) · the label sentence quotes the address's key (“suppressed”) — a word the rail never shows",
+      expect: L.b23,
+      impl: () => ({ ...REAL, sources: { ...REAL_SOURCES, service: REAL_SOURCES.service.replace("made from the “${axisName(param)}” filter", "made from the “${param}” filter") } }),
+    },
+    {
+      name: "R-B23f · ⛔ C8b re-review (NIT) · the role refusal quotes the address's key — “consent” where the rail says Consent",
+      expect: L.b23,
+      impl: () => ({ ...REAL, sources: { ...REAL_SOURCES, service: REAL_SOURCES.service.replace("role: (param: string) => `The “${axisName(param)}” filter", "role: (param: string) => `The “${param}” filter") } }),
     },
     {
       name: "R-B24 · ⛔ C8b · B3 not built at the bulk door — a masked viewer's forged whole-number audience is previewed and written, the row handed back",
