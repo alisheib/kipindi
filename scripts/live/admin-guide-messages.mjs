@@ -83,7 +83,7 @@ export const SECTIONS = [
         ],
         shots: ["13-bulk-bar", "14-bulk-confirm"],
         notes: [
-          "Suppress stops a number from EVER receiving marketing, and it can't be undone — use it when a person asks 50pick to stop. A role that can't see phone numbers can still record a stop or a withdrawal for a number it searched: “Select this number”, then Suppress or Record a withdrawal.",
+          "Suppress stops a number from EVER receiving marketing, and it can't be undone — use it when a person asks 50pick to stop. A role that can't see phone numbers can still record a stop or a withdrawal for a number it searched: “Select this number”, then Suppress or Record a withdrawal — the confirmation counts it without naming anyone.",
           "Remove deletes contacts from the book; the records of their consent and stops are kept.",
         ],
       },

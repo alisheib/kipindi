@@ -4569,13 +4569,13 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   // alone (`test:registration-contact` §3 and §7, `test:contacts-lists`, `test:contacts-import`), so a Prisma twin that
   // revived a row that is no longer the tombstone, deleted the memberships outside its transaction, wrote over the
   // number's mirrored caches, kept the tombstone's id or deleted the erased person's campaign records, re-dated a row its
-  // plan never saw, or left the linked members out of the split would be green in every suite and wrong in production.
-  // This section holds the twins to ONE shape, as §30 does; their
-  // behaviour on Postgres is three probes' (db-scratch, run by the integrator): reviveTombstone in
+  // plan never saw, left the linked members out of the split, or counted a list's joiners outside the run would be green
+  // in every suite and wrong in production. This section holds the twins to ONE shape, as §30 does; their behaviour on
+  // Postgres is three probes' (db-scratch, run by the integrator): reviveTombstone in
   // `scripts/live/contacts-import-pg-probe.mts` section 8 (and end to end through the backfill in
-  // `scripts/live/registration-contact-pg-probe.mts` 3c), coverageSplit in `scripts/live/list-basis-pg-probe.mts` 2l (the
-  // same scenario on the memory twin, answer for answer), redateAdded through its door in
-  // `scripts/live/registration-contact-pg-probe.mts` section 6 (the transaction's rollback in 6.4).
+  // `scripts/live/registration-contact-pg-probe.mts` 3c), joinedFromImport in the same import probe's section 9,
+  // coverageSplit in `scripts/live/list-basis-pg-probe.mts` 2l (the same scenario on the memory twin, answer for answer),
+  // redateAdded through its door in `scripts/live/registration-contact-pg-probe.mts` section 6 (the rollback in 6.4).
   //   · reviveTombstone (B1, and the review's MINOR 8 · iii) — a row under the tombstone's own id refused before anything
   //     is read; a compare-and-set FIRST (this id, this number, the erasure's mark, no link), null when it lost; then the
   //     tombstone's memberships deleted, its campaign recipient rows unlinked (kept), the tombstone deleted and the
@@ -4584,7 +4584,9 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   //   · coverageSplit (B5) — coveredCount's newest-recording bound and tombstone exclusion, the members split by the link,
   //     never the link used to drop a member;
   //   · redateAdded (B8) — the ONE shape rule first, EVERY row compared before any is written, all or nothing, each row's
-  //     createdAt set and its updatedAt the later of its own and the new instant.
+  //     createdAt set and its updatedAt the later of its own and the new instant; its bound held equal to §25's (31.bound);
+  //   · joinedFromImport (the review's MINOR 2) — the memberships added inside the run's window, never the tombstone's,
+  //     the run's created contacts or (unless created-only) the numbers its rows updated or kept.
   // ⛔ No backslash anywhere in this section (§27's rule): every matcher is an `includes` or an order.
   const NL31 = String.fromCharCode(10);
   const CR31 = String.fromCharCode(13);
@@ -4781,7 +4783,7 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     texts.filter(([, t]) => t.includes(`.${name}(`)).map(([f]) => f).sort();
   const callersOk31 = (texts: ReadonlyArray<readonly [string, string]>): boolean =>
     Object.entries(CALLERS31).every(([n, want]) => sameSet(callersOf31(texts, n), [...want]));
-  ok("31.callers · ⛔ outside the twins each new member has EXACTLY its declared callers — marketingContact.reviveTombstone the registration writer (registration-contact.ts), marketingContact.redateAdded the Added door (contacts/added-redate.ts), contactListBasis.coverageSplit the Lists card's loader and the importer's list figures (lists-loader.ts, import-commit.ts)",
+  ok("31.callers · ⛔ outside the twins each new member has EXACTLY its declared callers — marketingContact.reviveTombstone the registration writer (registration-contact.ts), marketingContact.redateAdded the Added door (contacts/added-redate.ts), contactListBasis.coverageSplit the Lists card's loader and the importer's list figures (lists-loader.ts, import-commit.ts), contactListMember.joinedFromImport the import's result (import-commit.ts)",
     texts31.length >= 4 && callersOk31(texts31),
     Object.keys(CALLERS31).map((n) => `${n}: [${callersOf31(texts31, n)}]`).join(" · "));
 
