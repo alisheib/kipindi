@@ -442,12 +442,17 @@ export const STEP_CONFLICT_SENTENCE =
   "Some of these contacts were being changed at the same moment, so this part of the file was not written. Nothing was lost — press Resume in a minute to carry on.";
 
 /**
- * ⭐ C8c · N3 · THE START'S NEW LIST, MADE BY SOMEONE ELSE MEANWHILE. The start asks `listNameKey` over every list first
- * (`list_name_taken`, the table's sentence); a list another officer creates — in ANY case — between that read and the
- * freeze is refused by the store's unique index on `lower("name")` inside the freeze's own transaction, which rolls back
- * whole: the run stays STAGED and no list of this start exists. The reason stays `list_name_taken` (the dialog reads the
- * lists again on it, and the panel turns the typed name into that list — `sameAs`), and the words say what happened and
- * what pressing Import does now. ⛔ No list name, no number.
+ * ⭐ C8c · N3 · THE START'S NEW LIST, MADE MEANWHILE. The start asks `listNameKey` over every list first
+ * (`list_name_taken`, the table's sentence); a list created — in ANY case — between that read and the freeze is refused
+ * by the store's unique index on `lower("name")` inside the freeze's own transaction, which rolls back whole: the run
+ * stays STAGED and no list of this start exists. The reason stays `list_name_taken` (the dialog reads the lists again on
+ * it), and the words say what happened and the way that WORKS:
+ *   · ⛔ the review's n3 · never "another officer" — the same officer in another tab makes that list too;
+ *   · ⛔ the review's n2 · never "press Import": Postgres's lower() follows the database's character type, and for a
+ *     letter outside ASCII it may fold where JavaScript's toLowerCase (`listNameKey`) does not — then the panel never
+ *     turns the typed name into that list, a second Import would meet the same index, and the officer would loop. So the
+ *     sentence says to CHOOSE the list from the lists read again — an existing list, which the start never creates.
+ * ⛔ No list name, no number.
  */
 export const LIST_MADE_MEANWHILE_SENTENCE =
-  "Another officer made a list with this name a moment ago, so nothing was imported yet. It is in your lists now — press Import to add these contacts to it, or type another name.";
+  "A list with this name was made a moment ago, so nothing was imported yet. Choose it from your lists to add these contacts to it, or type another name.";

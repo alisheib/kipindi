@@ -1630,19 +1630,26 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   const listMigBad19 = (code: string): boolean => code.toUpperCase().split(/[^A-Z]+/).some((w) => BAD_SQL_WORDS19.has(w));
   /** ⭐ The folder sorts AFTER every other migration (C8c: a port given a timestamp after everything main held). */
   const allMigDirs19 = readdirSync(join(ROOT, "prisma", "migrations")).filter((d) => /^[0-9]{14}_/.test(d)).sort();
-  ok("19.listci.migration · exactly one migration folder creates the case-insensitive name index - a UNIQUE index on lower(\"name\") of \"ContactList\", IF NOT EXISTS, and only when no two lists already differ by case (a release can never stop on it) - and NOTHING else: no DROP, ALTER, UPDATE, DELETE, INSERT, TRUNCATE or CONCURRENTLY; its timestamp is later than 20261009120000_contact_import_target_list's",
+  // ⭐ C8c · the review's n1 · no window: the table's SHARE lock comes BEFORE the duplicate check, and a unique_violation the
+  // build still meets is caught as the same NOTICE - the migration truly can never stop a deploy.
+  const LIST_LOCK_SQL19 = 'LOCK TABLE "ContactList" IN SHARE MODE;';
+  const LIST_CAUGHT_SQL19 = "EXCEPTION WHEN unique_violation THEN RAISE NOTICE";
+  ok("19.listci.migration · exactly one migration folder creates the case-insensitive name index - a UNIQUE index on lower(\"name\") of \"ContactList\", IF NOT EXISTS, and only when no two lists already differ by case (a release can never stop on it: the table's SHARE lock taken BEFORE that check, and a unique_violation caught as a NOTICE - n1) - and NOTHING else: no DROP, ALTER, UPDATE, DELETE, INSERT, TRUNCATE or CONCURRENTLY; its timestamp is later than 20261009120000_contact_import_target_list's",
     listMigDirs19.length === 1 && listMigCode19.includes(LIST_INDEX_SQL19) && listMigCode19.includes(LIST_GUARD_SQL19) && !listMigBad19(listMigCode19)
+      && listMigCode19.includes(LIST_LOCK_SQL19) && listMigCode19.indexOf(LIST_LOCK_SQL19) < listMigCode19.indexOf(LIST_GUARD_SQL19)
+      && listMigCode19.includes(LIST_CAUGHT_SQL19)
       && allMigDirs19.indexOf(listMigDirs19[0]) > allMigDirs19.indexOf("20261009120000_contact_import_target_list"),
     `folders ${listMigDirs19.length} · ${listMigCode19.slice(0, 140)}`);
   ok("19.listci.schema · schema.prisma is UNCHANGED for the list name - the model keeps its exact-case @unique (an expression index cannot be declared there, and a generated migration will always list this one as drift: test:migration-ownership stops it being dropped)",
     schemaModel(prismaSchemaSrc, "ContactList").split(NL19).some((l) => l.trim().split(" ").filter(Boolean).join(" ") === "name String @unique"));
-  ok("19.c8 · CONTROL · the old exact-case comparison, a findUnique lookup, an ILIKE lookup (mode: insensitive), an index on the bare column, a migration that also drops and an exact-case freeze are each reported by 19.listci.*",
+  ok("19.c8 · CONTROL · the old exact-case comparison, a findUnique lookup, an ILIKE lookup (mode: insensitive), an index on the bare column, a migration that also drops, a check without its lock and an exact-case freeze are each reported by 19.listci.*",
     !"for (const l of store.contactLists.values()) if (l.name === row.name) return null;".includes(listCompare19)
       && "const row = await pc().contactList.findUnique({ where: { name } });".includes("findUnique")
       && !'where: { name: { equals: name, mode: "insensitive" } },'.includes(LOOKUP_SQL19)
       && !sqlCode19('CREATE UNIQUE INDEX IF NOT EXISTS "ContactList_name_lower_key" ON "ContactList" ("name");').includes(LIST_INDEX_SQL19)
       && listMigBad19(sqlCode19(['DROP INDEX "ContactList_name_key";', LIST_INDEX_SQL19].join(NL19)))
       && !listMigBad19(sqlCode19(["-- a comment that says DROP and CONCURRENTLY", LIST_INDEX_SQL19].join(NL19)))
+      && !sqlCode19([LIST_GUARD_SQL19, LIST_INDEX_SQL19].join(NL19)).includes(LIST_LOCK_SQL19)
       && !"if (held.name === newList.name || held.id === newList.id) {".includes(FREEZE_COMPARE19));
 
   // ── RE-ADDING A MEMBER KEEPS THE ORIGINAL addedAt ───────────────────────────────────

@@ -12,9 +12,9 @@
  * in the future) is refused `check_stale` and the screen checks again; counts the book has moved since are refused
  * `check_again`, so the officer sees the new numbers first. ⭐ A NEW list is created inside the freeze's own write (the
  * review round's R12), so a start that loses the run, or throws, leaves no list behind and its name stays free. ⭐ C8c · N3:
- * a list another officer made meanwhile under the same name IN ANY CASE is refused there by the store's unique index on
- * `lower("name")` (both twins), the freeze rolled back, and the start says so in its own words
- * (`LIST_MADE_MEANWHILE_SENTENCE`) — the dialog reads the lists again and offers that list.
+ * a list made meanwhile under the same name IN ANY CASE — by another officer, or the same one in another tab — is refused
+ * there by the store's unique index on `lower("name")` (both twins), the freeze rolled back, and the start says so in its
+ * own words (`LIST_MADE_MEANWHILE_SENTENCE`: choose it from the lists, read again, or type another name).
  * ⛔ S15-10: a viewer who may not read numbers starts with KEEP alone — another choice, or any exception, is refused
  * `update_needs_reader`. ⭐ S15-1: NO CONSENT STEP — the import writes no consent and asks for no basis; a list's licence
  * basis lives on the Lists card.
@@ -491,8 +491,9 @@ export async function startContactImport(officerId: string, input: unknown, deps
   } catch (err) {
     const code = dbCode(err);
     // ⭐ C8c · N3 · a unique index took the name — in ANY case (the lower(name) index) — between the check above and the
-    // freeze: another officer made that list a moment ago. The freeze rolled back whole (the run is still STAGED, no list
-    // of this start exists), and the start says so in its own words; the dialog reads the lists again and offers that list.
+    // freeze: that list was made a moment ago (another officer, or this one in another tab). The freeze rolled back whole
+    // (the run is still STAGED, no list of this start exists), and the start says so in its own words; the dialog reads the
+    // lists again, and the officer chooses that list there (n2: never "press Import" — see the sentence's doc).
     if (code === "P2002" && newList !== null) return refuse("list_name_taken", LIST_MADE_MEANWHILE_SENTENCE, { why: "raced" });
     // The foreign key found the list gone.
     if (code === "P2003" && list.kind === "existing") return refuse("list_gone");

@@ -134,7 +134,7 @@ export const L = {
   M24: "M24 · ⭐ R11 · a deadlock (P2034) inside a step answers busy, retryAfterSec 5, with the run's view and one audit row naming the error's code — never server_error, never a throw — the cursor unmoved; the next step lands",
   M25: "M25 · ⛔ C8a · the commit reads the check's OWN fact, fresh at its step: an erasure that came to stand on a number with no book row AFTER the check and the start — its marker written since, alone or under an opt-out tap — keeps that row (nothing created; the row kept as the contact it reads as, chosen_keep), while the marker under a GIVEN written since still creates, and the run's other rows import",
   // ── C8c (2026-10-09) · the live importer's robustness round ──
-  M26: "M26 · ⭐ C8c · N3 · the start's NEW list meets the case-insensitive refusal in its own words: a list another officer names in ANOTHER CASE between the start's check and its freeze → the start is refused list_name_taken with LIST_MADE_MEANWHILE_SENTENCE (never the pre-check's sentence), the run still STAGED with no decision and no target, ONE list of that name (the other officer's) and none of this start's; the lists read again hold it, and a start naming it as an existing list freezes onto it",
+  M26: "M26 · ⭐ C8c · N3 · the start's NEW list meets the case-insensitive refusal in its own words: a list another officer names in ANOTHER CASE between the start's check and its freeze → the start is refused list_name_taken with LIST_MADE_MEANWHILE_SENTENCE (never the pre-check's sentence; n2 · n3 · its words name no officer and never send the officer back to Import — 'Choose it from your lists'), the run still STAGED with no decision and no target, ONE list of that name (the other officer's) and none of this start's; the lists read again hold it, and a start naming it as an existing list freezes onto it",
   M27: "M27 · ⛔ C8c · #14a · a flood of refusals writes ONE row a minute per officer, run and reason: 200 steps with a bad cursor → one bad_request row; 50 steps on a STAGED run → one check_again row for that officer, and another officer's refusal on the same run its own row; a minute later the next bad cursor writes again, carrying repeats 199 (the refusals kept out), the first row no repeats key; the run unchanged",
   M27b: "M27b · ⛔ C8c · #14a · a moved is NEVER written: a cancel that finds the run moved on (resumed between its pause and its cancel) is answered moved with NO refusal row at all, and the gate keeps every moved out",
   M28: "M28 · ⛔ C8c · #15 · a resume of a STAGED run is REFUSED check_again — its view STAGED, the run still STAGED with no frozen decision and no pause stamp, and a step on it refused check_again with nothing settled — while a PAUSED run's resume still carries on (COMMITTING)",
@@ -717,8 +717,12 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     const theirs = offered.ok ? offered.lists.find((l) => l.name.toLowerCase() === "october wateja") : undefined;
     const onto = theirs === undefined ? null : await startContactImport(OFFICER, body({ kind: "existing", listId: theirs.id }), impl.deps);
     const frozen = await runOf(runId);
+    // ⛔ the review's n2 · n3 · the words never say who made the list (the same officer in another tab makes it too) and
+    // never send the officer back to Import (a second start could meet the same index) — they say to CHOOSE that list.
+    const words = LIST_MADE_MEANWHILE_SENTENCE;
     ok(L.M26, !raced.ok && raced.reason === "list_name_taken" && raced.message === LIST_MADE_MEANWHILE_SENTENCE
       && raced.message !== IMPORT_REFUSAL_SENTENCES.list_name_taken
+      && !words.includes("officer") && !words.includes("press Import") && words.includes("Choose it from your lists")
       && afterRace.status === "STAGED" && afterRace.decisionChoice === null && afterRace.targetListId === null
       && ofThatName.length === 1 && ofThatName[0].id === "cl_other_officer"
       && theirs !== undefined && onto !== null && onto.ok && frozen.status === "COMMITTING" && frozen.targetListId === "cl_other_officer",

@@ -13,7 +13,7 @@
 -- database that ran the old folder exists.
 --
 -- HAND-WRITTEN AND EXPAND-ONLY. One statement creates one index that did not exist; nothing is altered, dropped, renamed or
--- rewritten, no column, type or enum changes, and no row is read or written. An EXPRESSION index cannot be declared in
+-- rewritten, no column, type or enum changes, and no row is written. An EXPRESSION index cannot be declared in
 -- schema.prisma (the same reason as the eight gin_trgm_ops indexes of 20260728030000_search_trgm_small_tables), so the schema
 -- is untouched and `prisma migrate diff` will always list this index as drift to drop - ⛔ never take it from a generated
 -- file: `test:migration-ownership` stops any later migration dropping it without a written @drops declaration, and the
@@ -28,31 +28,53 @@
 -- release would stop on a migration. They cannot be merged or renamed by a migration (a list may carry a basis that is
 -- evidence, and memberships are history), so the file creates nothing in that case and says so in a NOTICE: the pre-check
 -- still refuses the second spelling one officer at a time, nothing is worse than before, and the index is created by hand
--- once an officer has renamed one of the pair (`lower("name")`, unique, the same name). After a release, ask
---   SELECT indexname FROM pg_indexes WHERE indexname = 'ContactList_name_lower_key';
--- and expect one row. The table was created empty with the book (U18), and lists are made only through the bulk bar and
--- the importer's start.
+-- once an officer has renamed one of the pair (`lower("name")`, unique, the same name). ⭐ The review's n1 · NO WINDOW:
+-- the block first takes a SHARE lock on the table - every writer of a list waits (reads go on) until the block ends - so no
+-- list can land between the duplicate check and the index; and should the build still meet a duplicate, its
+-- unique_violation is caught and said in the same NOTICE, never thrown. The table holds a handful of rows: the lock lasts
+-- the time of one small index build.
+--
+-- ⭐ THE PUSH CHECKLIST (the review's m9 - the index is skipped SILENTLY when two names already differ by case):
+--   BEFORE the deploy, read-only, on the production database:
+--     SELECT lower("name") AS name_key, count(*) FROM "ContactList" GROUP BY 1 HAVING count(*) > 1;
+--   expect NO row. A row is a pair an officer must rename first (their choice which) - or the index will not be built.
+--   AFTER the deploy:
+--     SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'ContactList' AND indexname = 'ContactList_name_lower_key';
+--   expect ONE row, its definition a UNIQUE index on lower(name). No row: the NOTICE branch ran - rename one of the pair,
+--   then create the index by hand with the CREATE UNIQUE INDEX statement below (outside the block).
+-- The table was created empty with the book (U18), and lists are made only through the bulk bar and the importer's start.
 --
 -- ⛔ lower(), NOT NFKC. Postgres lower() is the key a plain unique index can hold on every server (normalize() needs a UTF8
 -- database and a server of 13 or later). The index is the BACKSTOP for the race, not the rule: the rule is `listNameKey`,
 -- asked first, so a width variant is still refused before the index is reached - and the one pair the index could refuse
--- that the rule would allow is refused in the same words, which is safe.
+-- that the rule would allow is refused in the same words, which is safe. ⚠️ The review's n2 · lower() follows the
+-- database's character type (LC_CTYPE): for ASCII letters it agrees with JavaScript's toLowerCase, which the memory twin
+-- and `listNameKey` use; for other letters it may fold LESS (the C locale folds ASCII only - the index then allows a pair
+-- the rule already refuses: harmless) or otherwise than JavaScript - the index may then refuse a name the rule allows, and
+-- the start says so without claiming who made the list and without sending the officer back to Import
+-- (`LIST_MADE_MEANWHILE_SENTENCE`: choose it from the lists), so nobody loops.
 --
 -- ⛔ NO CONCURRENTLY. `prisma migrate deploy` runs a file in ONE transaction, and CREATE INDEX CONCURRENTLY refuses to run
 -- inside one. The table holds a handful of rows, so the plain build is instant. IF NOT EXISTS lets a hand-applied run and the
 -- recorded one both succeed.
 --
--- Evidence for this file: `test:dal-parity` 19.listci.* (the file, both twins' create and find, the memory freeze's key),
--- `test:contacts-bulk` B7b (the race, executed on the memory twin), `test:contacts-import` commit M26 (the importer's start
--- meeting the same refusal), and on PostgreSQL `scripts/live/contacts-audience-pg-probe.mts` section 7 (a second spelling
--- refused in the DAL, the index in pg_indexes, BOTH branches of the DO block on a scratch table) and
--- `scripts/live/contacts-import-pg-probe.mts` section 8 (the start's new list refused in another case, rolled back).
+-- Evidence for this file: `test:dal-parity` 19.listci.* (the file - its lock before its check, its caught violation -
+-- both twins' create and find, the memory freeze's key), `test:contacts-bulk` B7b (the race, executed on the memory
+-- twin), `test:contacts-import` commit M26 (the importer's start meeting the same refusal), and on PostgreSQL
+-- `scripts/live/contacts-audience-pg-probe.mts` section 7 (a second spelling refused in the DAL, the index in pg_indexes,
+-- BOTH branches of the DO block on a scratch table) and `scripts/live/contacts-import-pg-probe.mts` section 9 (the start's
+-- new list refused in another case, rolled back).
 DO $$
 BEGIN
+  LOCK TABLE "ContactList" IN SHARE MODE;
   IF EXISTS (SELECT 1 FROM "ContactList" GROUP BY lower("name") HAVING count(*) > 1) THEN
     RAISE NOTICE 'ContactList_name_lower_key was NOT created: two lists already differ only by case. Rename one of them, then create the unique index on lower(name) by hand.';
   ELSE
-    CREATE UNIQUE INDEX IF NOT EXISTS "ContactList_name_lower_key" ON "ContactList" (lower("name"));
+    BEGIN
+      CREATE UNIQUE INDEX IF NOT EXISTS "ContactList_name_lower_key" ON "ContactList" (lower("name"));
+    EXCEPTION WHEN unique_violation THEN
+      RAISE NOTICE 'ContactList_name_lower_key was NOT created: two lists already differ only by case. Rename one of them, then create the unique index on lower(name) by hand.';
+    END;
   END IF;
 END
 $$;
