@@ -1524,7 +1524,8 @@ export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
   },
   {
     // A registered player's number walked by their book row (contactId set) is read as a stranger: no account, so the
-    // source line is required — and on a campaign without one, the player is refused.
+    // message greets them with the book's fallback, never their own first name, and the trail says origin:book. (Until
+    // the owner's ruling of 2026-10-09 a book origin also needed the source line, and the player was refused.)
     name: "R-S6 (the spec's) · the origin taken from the row kind — a book row read as the book, never the account that holds the number",
     expect: [L.s6],
     impl: withDeps((d) => ({

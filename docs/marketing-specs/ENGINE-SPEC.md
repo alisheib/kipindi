@@ -7,6 +7,15 @@
 > the day; file:line references are to that tree (the U33p files are now committed).
 > This touches real sends, money (SMS credit) and personal data, so EVERY unit here keeps its adversarial review before
 > its push (plan §0 verification policy) — except U41 (docs) and the screen-only parts noted.
+>
+> ⟶ **2026-10-09 · the owner's ruling** (`docs/COMPLIANCE-DECISIONS.md`, the top entry): a marketing SMS is sent exactly
+> as the officer wrote it. Nothing is appended — no source line, no "50pick 18+", no helpline, no "Acha:" stop link
+> (`marketingFooter()` is empty) — and the counter's room is the whole message (160 GSM-7 characters, 70 in Unicode).
+> The renderer neither prints, prices nor requires a source phrase (P14 and F5's refusal are gone; E17's origin now
+> decides only the name and the language). Every recipient row still gets its opt-out token (E1 stands), and
+> `/s/<token>` keeps working for every link sent before. Every passage below that prints, prices or proves a footer, a
+> stop link or a source line in a message describes the design before that ruling; the code holds the present
+> (`test:campaign-compose` §9–§13, `test:marketing-engine` S1/S6/S23, the dry-fire's S1.messages).
 
 | Field | Value |
 |---|---|
@@ -89,7 +98,8 @@ U13 and U43b.
 4. G1 for U52a: the switch opened for the drive window only (by the owner on the card, or by Claude through the audited
    ops door on Ali's delegation — §4 U49s D9).
 5. G2: the first real campaign — the Swahili message (starts "50pick", ≤ 80 characters while the source line is blank, or
-   the counter's room once it is set), the audience, the day.
+   the counter's room once it is set), the audience, the day. ⟶ 2026-10-09 (the owner's ruling): the room is the whole
+   message — 160 GSM-7 characters, less the `{jina}` reserve when the name is used — since nothing is appended.
 
 ### 0.4 Deliberately NOT in this track (and when each comes)
 

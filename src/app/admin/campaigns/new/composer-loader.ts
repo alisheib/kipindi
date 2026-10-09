@@ -137,7 +137,7 @@ export type ComposeTestView = {
   liveNote: string | null;
   /** U13 · M12 · said up front while the send window is closed — read as the test send reads it (`liveSendWindow`). */
   windowNote: string | null;
-  /** U37c · a test to ANOTHER number — offered only once its three number-independent checks pass. */
+  /** U37c · a test to ANOTHER number — offered only once its two number-independent checks pass. */
   typed: ComposeTypedView;
 };
 
@@ -161,7 +161,8 @@ export type ComposeView =
       kind: "ready";
       draft: ComposeDraftView | null;
       readOnly: boolean;
-      /** M5 · U37s · the source line the counter prices (`composerSourcePhrase`) — blank: it prices the reserve. */
+      /** M5 · U37s · the line handed to the template's verdict (`composerSourcePhrase`) — which, since the owner's ruling
+       *  of 2026-10-09, neither prints, prices nor judges it. */
       sourcePhrase: string;
       /** U37s · this DRAFT carries a different line than the one saved now (none, an older one, or one since cleared) —
        *  so Save is offered even with nothing typed, and the screen says why (`composerSourceLineStale`). */
@@ -186,10 +187,11 @@ function fieldsOf(c: StoredSmsCampaign): CampaignDraftFields {
 }
 
 /**
- * ⭐ U37s · THE LINE THE COUNTER PRICES IS THE LINE THE SAVE WILL STAMP. A new composer and a DRAFT are priced with the
- * SAVED line (`savedSourcePhrase`) — a draft's next save re-stamps it, so pricing the line stamped on it earlier would
- * let the counter pass a body the save then refuses. A campaign past DRAFT is priced with the line frozen on it. Blank
- * ("") while nothing is saved: the counter then reserves the longest line allowed.
+ * ⭐ U37s · THE LINE HANDED TO THE VERDICT IS THE LINE THE SAVE WILL STAMP — the SAVED line (`savedSourcePhrase`) for a
+ * new composer and a DRAFT (a draft's next save re-stamps it), the line frozen on a campaign past DRAFT, blank ("") while
+ * nothing is saved. Until the owner's ruling of 2026-10-09 the counter priced this line (and reserved the longest one
+ * allowed while it was blank); since then nothing is appended, so `counterFor` and `validateCampaignTemplate` take it
+ * and ignore it — it moves no number on the screen.
  */
 export function composerSourcePhrase(draft: StoredSmsCampaign | null, saved: string | null): string {
   if (draft !== null && draft.status !== "DRAFT") return draft.sourcePhrase ?? "";
