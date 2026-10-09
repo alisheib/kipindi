@@ -7,8 +7,11 @@
  * So every step carries the menu path, what to do, and a picture of THAT page wherever a picture shows what the words cannot —
  * taken here, on a local in-memory server (zero production risk), with made-up people. ⛔ NO PICTURE THAT REPEATS ANOTHER: the
  * contacts page is pictured once (the Add, Import and Export buttons are all in it), the check's one picture serves its two
- * steps, and a step the words cover alone (Export, choosing the file) has none — so the capture takes no picture the PDF
- * does not print. What the document itself leaves out (a cover page, a version stamp, a heading over a chapter's only step)
+ * steps, a campaign SENDING is pictured in 6.3 and 7.1 and not again after Resume, and a step the words cover alone (Export,
+ * choosing the file) has none — so the capture takes no picture the PDF does not print. ⛔ NOR ANYTHING BESIDE WHAT A PICTURE
+ * IS ABOUT: the menu, the switch's card and the System page's tiles are framed (`shootPart`, `shoot`'s clip), so no audit
+ * feed, Bet queue or Maintenance card is printed for a manager to wonder about; every context reads English (`englishContext`).
+ * What the document itself leaves out (a cover page, a version stamp, a heading over a chapter's only step)
  * is said at THE DOCUMENT below; the words' own rules are `admin-guide-messages.mjs`'s header.
  * ⛔ Every message the guide quotes is checked against the source first: a guide that quotes a sentence the platform no
  * longer says refuses to build (naming it).
@@ -666,14 +669,11 @@ async function runB() {
     await shoot(page, "46-paused");
   });
   await step("47-resume", async () => {
+    // Resumed in the window, then sent to the end — no picture of it SENDING again: 6.3 and 7.1 picture a sending campaign
+    // already, and that second picture under 7.2 left half a page empty (the owner's "nothing unnecessary", 2026-10-09).
     await pinWindow(12);
     await page.locator(ctl("resume")).first().click();
     await statusIs(page, "RUNNING", 20_000);
-    // Resume's own toast ("Sending again.") covered the header's corner: dismissed once it shows, before the picture — and no
-    // longer a wait than before (the ten are sent within seconds, and this picture is the campaign SENDING, not finished).
-    await page.waitForSelector("button[data-toast-dismiss]", { timeout: 1_000 }).catch(() => {});
-    await clearToasts(page);
-    await shoot(page, "47-resumed");
     if (!(await statusIs(page, "DONE", 90_000))) throw new Error("the campaign did not finish");
     await wait(1200);
     await clearToasts(page);
@@ -763,9 +763,10 @@ const PAGE_SHOT_MM = 124;
 /** Every dialog prints at this share of its size on screen — near the window's own, so all words match. */
 const DIALOG_SCALE = 0.42;
 /** The tallest a window or a dialog prints; the widest a dialog that stands beside the words (they keep 80 mm); the tallest a
- *  row of two may be. */
+ *  row of two may be. A dialog's 124 mm is the import's check (760 × 1347): at 168 its step's block missed the page under 3.3
+ *  by a few millimetres and left half of it empty, and at 124 its words are still the window pictures' size. */
 const MAX_PAGE_SHOT_MM = 200;
-const MAX_DIALOG_MM = 168;
+const MAX_DIALOG_MM = 124;
 const MAX_BESIDE_W_MM = 96;
 const MAX_ROW_MM = 100;
 /** How much smaller a row of two may be drawn to fit the text's width — a tenth, which the eye does not see. */

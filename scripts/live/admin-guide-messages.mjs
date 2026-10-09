@@ -13,8 +13,9 @@
  *     Steps WITH a title are numbered within their chapter ("2.1"), never by a running count that collides with the
  *     chapter numbers ("2 · The contact book" over step "2" was the old PDF's page 3).
  *   · `where` is the menu path, and is LEFT OUT where there is no one place (advice, the rules) — never "Everywhere".
- *   · NO PICTURE THAT REPEATS ANOTHER: the contacts page is pictured once (its buttons are in that picture), and a step whose
- *     words say all there is (Export, choosing the file, the decision under the check) has none.
+ *   · NO PICTURE THAT REPEATS ANOTHER: the contacts page is pictured once (its buttons are in that picture), a campaign
+ *     sending is pictured in 6.3 and 7.1 (not again under Pause and resume), and a step whose words say all there is (Export,
+ *     choosing the file, the decision under the check) has none.
  *   · THE CONSOLE'S OWN NAMES: the ADMIN role is "the Owner" (the console's word, capital O, as "Compliance" and "Growth" are —
  *     and, since 2026-10-09, the campaign sentences' too: "until the Owner switches them on"); the list's button is "New
  *     campaign". ⛔ The SMS company is NEVER named: the System tile names it in two of its states, so those states are
@@ -223,9 +224,9 @@ export const SECTIONS = [
         title: "Read the figures",
         where: "Growth → SMS campaigns → the campaign",
         do: [
-          "On campaign — everyone on its list. Handed over — the network took the message. Failed — did not reach the person.",
-          "Not sent (checks) — the checks stopped them, the system working. No answer — never sent again by itself. Waiting — still to go.",
-          "“Not sent, by reason” lists why people were skipped.",
+          "On campaign — everyone on its list. Handed over — the network took the message. Failed — it did not reach the person.",
+          "Not sent (checks) — the safety checks stopped them; that is not a fault. “Not sent, by reason” says why.",
+          "No answer — the network never replied; it is not sent again by itself. Waiting — still to go.",
         ],
         shots: ["45-running-figures"],
       },
@@ -237,7 +238,7 @@ export const SECTIONS = [
           "Resume checks the switch, the SMS network and the credit for what is left, then carries on.",
           "The page says who paused it and when.",
         ],
-        shots: ["46-paused", "47-resumed"],
+        shots: ["46-paused"],
       },
       {
         title: "When a campaign pauses by itself",
@@ -393,7 +394,7 @@ export const IMPORT_STEPS = [
 export const BALANCE_STATES = [
   { shows: "A figure, and “Healthy”", meaning: "The live balance, read just now.", action: "Nothing — check it before a big campaign." },
   { shows: "A figure, and “Low” in amber", meaning: "The credit is below the alert level.", action: "Ask the Owner to top up soon." },
-  { shows: "A figure, and “Below the … floor” in red", meaning: "The credit is below the part kept for login and withdrawal codes; marketing must wait.", action: "Ask the Owner to top up now." },
+  { shows: "A figure, and “Below the TZS 20,000 floor” in red", meaning: "The credit is below the part kept for login and withdrawal codes; marketing must wait.", action: "Ask the Owner to top up now." },
   { shows: "A dash, and “reload in a few seconds”", meaning: "The balance is still being read.", action: "Reload the page after a few seconds." },
   { shows: "A dash, and “Couldn't read the balance”", meaning: "The SMS company did not answer this time.", action: "Reload later. If it stays, tell the Owner." },
   { shows: "A red dash, and a setup note", meaning: "The SMS connection is not set up correctly on the server — no SMS can be sent, login codes included.", action: "Tell the Owner at once." },
@@ -428,7 +429,7 @@ export const MESSAGES = [
   // ── while it sends
   { area: "Sending", message: "Keep this page open while it sends — sending continues only while a page like this one is open.", meaning: "This page is what keeps the campaign going.", action: "Leave the page open until it says Finished." },
   { area: "Sending", message: "Waiting for the send window — sending resumes at 08:00 EAT.", check: "Waiting for the send window — sending resumes at ", meaning: "Outside the sending hours.", action: "Nothing — it goes on by itself when the window opens." },
-  { area: "Sending", message: "Waiting a moment — the platform is paying out or taking bets, and money always goes first. Sending resumes by itself.", meaning: "Money work comes first.", action: "Nothing — it goes on by itself." },
+  { area: "Sending", message: "Waiting a moment — the platform is paying out or taking bets, and money always goes first. Sending resumes by itself.", meaning: "Payouts and bets come first.", action: "Nothing — it goes on by itself." },
   { area: "Sending", message: "Waiting — a login or withdrawal code failed in the last two minutes, so marketing steps aside. It tries again at 14:10 EAT.", check: "so marketing steps aside. It tries again ", meaning: "Login codes come first.", action: "Nothing — it tries again by itself." },
   { area: "Sending", message: "Nobody is sending this campaign right now. Open it as an officer who can send, and keep the page open.", check: "Open it as an officer who can send, and keep the page open.", meaning: "No page is open to keep it going.", action: "Open the campaign and keep the page open." },
   { area: "Sending", message: "This page is out of date or lost its connection — reload it to keep sending. Nothing is lost.", meaning: "The page lost touch with the server.", action: "Reload the page." },
