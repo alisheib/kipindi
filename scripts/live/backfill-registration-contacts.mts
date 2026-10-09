@@ -2,8 +2,9 @@
  * ⭐ EVERY CLIENT IS A CONTACT — THE BACKFILL (the owner, 2026-10-03). From that day both sign-up doors make the new
  * client's number a contact (`src/lib/server/marketing/registration-contact.ts`). This makes every EXISTING client one
  * too, through the SAME rule: it walks every PLAYER account on a +255 number by id (U38a's keyset, a page at a time)
- * and asks `ensureRegistrationContact` once per account — create, revive an erased number's emptied row as the client's
- * own (C8b · B1: the new holder's sign-up lifts the block, and the tombstone's old lists are dropped), link an officer's
+ * and asks `ensureRegistrationContact` once per account — create, revive (replace an erased number's emptied row with the
+ * client's own FRESH row: C8b · B1, the new holder's sign-up lifts the block; the tombstone's old lists are dropped and
+ * its campaign records unlinked, the review's MINOR 8), link an officer's
  * or an import's contact, or leave alone with the reason (staff, agents, closed and erased accounts, numbers the ONE
  * table does not call a Tanzanian mobile, a row another account holds).
  * ⭐ C8b (B8) · every row it creates or revives says "Added" at the moment of the run, never the client's sign-up date.

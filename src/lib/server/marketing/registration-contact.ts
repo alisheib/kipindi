@@ -527,11 +527,12 @@ export function registrationDryRunDeps(): RegistrationContactDeps {
     book: {
       findByMsisdn: REGISTRATION_BOOK.findByMsisdn,
       create: async (row) => row,
-      // C8b (B1) · a revival answers as if it had landed — the tombstone's id and number, the sign-up's fields, no
-      // membership deleted (nothing is).
+      // C8b (B1, and the review's MINOR 8) · a revival answers as if it had landed — the sign-up's own fresh row (its own
+      // id; the tombstone's number and caches), no membership deleted and no campaign record unlinked (nothing is).
       revive: async (tombstone, row) => ({
-        row: { ...row, id: tombstone.id, msisdn: tombstone.msisdn, consentState: tombstone.consentState, suppressedAt: tombstone.suppressedAt },
+        row: { ...row, msisdn: tombstone.msisdn, consentState: tombstone.consentState, suppressedAt: tombstone.suppressedAt },
         membershipsDeleted: 0,
+        recipientsUnlinked: 0,
       }),
       link: async (row, userId) => ({ ...row, userId }),
     },
