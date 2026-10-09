@@ -1,0 +1,13 @@
+09:00:23 queued: wait note written
+09:00:24 lock taken
+09:00:25 kipindi-a8i2-ctl at 9cb959384 (the hotfix on main 6f276f04)
+09:00:46 prisma generate exit=0
+09:01:44 typecheck exit=0 — 0 error(s)
+09:01:46 test:static-cache-scope exit=0 — static-cache-scope: 15 passed, 0 failed
+09:01:51 test:red-anchors exit=0 — red-anchors: 4971 passed, 0 failed
+09:01:58 test:decomment exit=0 — ALL PASS — 22 passed, 0 failed
+09:02:01 test:guards-exist exit=1 — ═════════════════════════════════════════════════════�
+09:02:02 test:docs exit=0 — ✅ every reference in docs/ resolves.
+09:02:04 test:source-bytes exit=0 — source-bytes: 7 passed, 0 failed
+09:02:04 chain end
+09:02:04 lock released

@@ -1,0 +1,35 @@
+P1 CAUGHT on 1.1, 1.2 · restored byte-identical · the journey's deposit eyebrow back to "WEKA PESA" (repeats the h1 in Swahili)
+P2 CAUGHT on 1.1 · restored byte-identical · the journey's withdraw heading back to "Toa fedha"
+P3 CAUGHT on 1.3′, 2.1 · restored byte-identical · the deposit page's tab back to "Amana" for everybody
+P4 CAUGHT on 1.3 · restored byte-identical · the deposit page's h1 back to `common.deposit`
+P5 CAUGHT on 1.5 · restored byte-identical · the deposit commit back to "Amana" for everybody
+P6 CAUGHT on 1.4′ · restored byte-identical · the deposit loading file without the journey answer
+P7 CAUGHT on 1.4′ · restored byte-identical · the root ghost drawing the classic deposit head
+P8 CAUGHT on 1.6′ · restored byte-identical · the withdraw page's tab back to "Toa" for everybody
+P9 CAUGHT on 1.6″ · restored byte-identical · the withdraw ghost's eyebrow back to "TOA"
+P10 CAUGHT on 1.7 · restored byte-identical · the provider's return's eyebrow back to "AMANA" for everybody
+P11 CAUGHT on 1.8 · restored byte-identical · the capture harness expecting "Amana" again
+P12 CAUGHT on 3.1 · restored byte-identical · /updown/history's tab back to "Juu na Chini zako" for a journey reader
+P13 CAUGHT on 3.2 · restored byte-identical · the Up & Down board's history pill back to "Juu na Chini zako" in the journey
+P14 CAUGHT on 3.3, 2.4 · restored byte-identical · /profile's help row back to "Help & support"
+P15 CAUGHT on 3.4 · restored byte-identical · the agent's top-up back to "Ongeza fedha kwenye pochi yangu" in the journey
+P16 CAUGHT on 3.5 · restored byte-identical · an agent's invite tab back to "Alika na upate zawadi"
+P17 CAUGHT on 2.4 · restored byte-identical · the hub's withdraw row back to "Toa" (a door drifting from its page)
+P18 CAUGHT on 2.7 · restored byte-identical · a new door to the deposit screen, its words unruled (on the receipt page)
+P19 CAUGHT on 4.4 · restored byte-identical · the opt-out footer's licence line without `flex-1` (a size container would collapse)
+P20 CAUGHT on 4.4 · restored byte-identical · the opt-out footer's licence sentence printed plain
+P21 CAUGHT on 4.8 · restored byte-identical · the offline document's Swahili threshold under the name (240px)
+P22 CAUGHT on 4.7 · restored byte-identical · the offline document's licence sentence without the name span
+P23 CAUGHT on 4.8 · restored byte-identical · the offline document's licence line not a size container
+P24 CAUGHT on 4.10 · restored byte-identical · global-error's licence line printed plain
+P25 CAUGHT on 4.3 · restored byte-identical · global-error's copy of the pattern drifted (the zh break hint no longer allowed)
+P26 CAUGHT on 4.4 · restored byte-identical · `keepRegulator` keeping nothing
+P27 CAUGHT on 4.1 · restored byte-identical · the pattern losing the Swahili name
+P28 CAUGHT on 4.12 · restored byte-identical · a new line printing the regulator's name, unclassified (on the agent page)
+P29 CAUGHT on 4.14 · restored byte-identical · legal prose wrapped (a keep span in the terms page)
+P30 CAUGHT on 2.2 · restored byte-identical · the avatar menu's journey leaderboard row back to its classic words
+
+MUTATION PROOF r5g — 30/30 caught on their named check, 0 missed, 0 not applied; 30/30 files restored byte-identical (sha-256)
+(node:24048) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+EXIT 0

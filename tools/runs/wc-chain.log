@@ -1,0 +1,15 @@
+16:49:19 waiting for wb2-chain.done
+12:07:35 wb2-chain.done is there: exit=0
+12:07:35 queued: wait note written
+12:07:35 waiting (owner: marketing-s14 turn-d since 2026-10-08T11:38:23Z pid 292906; queue: asheib-c5 vodacom: wc-chain queued since 2026-10-08T12:07:35Z)
+12:12:38 waiting (owner: marketing-s14 turn-d since 2026-10-08T11:38:23Z pid 292906; queue: asheib-c5 vodacom: wc-chain queued since 2026-10-08T12:07:35Z)
+12:14:09 lock taken
+12:14:09 AFTER 4c1a8dff in kipindi-a8j
+12:23:27 wc-tiles: exit=1 · tree same —   · React’s DEV-only measure error, listed and never failed (a production build has no such measure): 0 qa:journey-shell — 1643 passed · 2 failed · 2 blocked · 333 tiles in C:\Users\asheib\AppData\Local\Temp\claude\C--Users-asheib\0e745525-51fe-4451-ace7-c9987576fc15\scratchpad\wp12\tiles · 8.8 min Green is not a read: open every tile, one by one, in the order of its number. 
+12:26:05 wc-preview: exit=1 · tree same —   name: 'TimeoutError' } Node.js v24.19.0 
+12:26:47 wc-footer: exit=0 · tree same — > node scripts/footer-reachable.mjs [footer-reachable] 90 link probes across 6 cells [footer-reachable] 102 passed, 0 failed 
+12:27:31 wc-footer-red: exit=1 · tree same —   ✗ en@768 · "WhatsApp channel" is tappable — covered by nav (fixed)   ✗ sw@768 · "Chaneli ya WhatsApp" is tappable — covered by nav (fixed) [footer-reachable] 97 passed, 5 failed 
+12:28:29 wc-footer-j: exit=0 · tree same — > node scripts/footer-reachable.mjs --journey [footer-reachable] 90 link probes across 6 cells  (--journey) [footer-reachable] 108 passed, 0 failed 
+12:35:24 wc-footer-j-red: exit=3 · tree same — 
+12:35:24 chain end
+12:35:24 lock released

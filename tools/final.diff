@@ -1,0 +1,161 @@
+diff --git a/scripts/cls-budget.mjs b/scripts/cls-budget.mjs
+index 88cbdf7e..47d7f161 100644
+--- a/scripts/cls-budget.mjs
++++ b/scripts/cls-budget.mjs
+@@ -46,3 +46,6 @@ import { localisedContext, assertLang } from "./qa-locale.mjs";
+ 
+-const BASE = process.argv[2] || process.env.BASE || "https://www.50pick.tz";
++// NO PRODUCTION DEFAULT (live-target-safe.test.mjs §1b). This used to fall back to the live site, so a run with no
++// target measured production without anyone choosing it. Loopback is the default now; production is reached by
++// NAMING it, as the examples at the top do.
++const BASE = process.argv[2] || process.env.BASE || "http://localhost:3001";
+ const RED = process.env.RED_SHELL === "1";
+diff --git a/scripts/detail-order-and-hints.mjs b/scripts/detail-order-and-hints.mjs
+index 02193ae1..5a430c5e 100644
+--- a/scripts/detail-order-and-hints.mjs
++++ b/scripts/detail-order-and-hints.mjs
+@@ -59,3 +59,7 @@ import { LOCALE_COOKIE, assertLang } from "./qa-locale.mjs";
+ 
+-const BASE = process.argv[2] || process.env.BASE || "https://www.50pick.tz";
++// NO PRODUCTION DEFAULT (live-target-safe.test.mjs §1b). This drive SIGNS IN as the QA player `mobile01` through the
++// real form on any non-local target, so a run with no target used to sign in on production without anyone choosing
++// it. Loopback is the default now (the shared harness's own), where it takes the dev-only /auth/demo door instead;
++// production is reached by NAMING it, as the examples at the top do.
++const BASE = process.argv[2] || process.env.BASE || "http://localhost:3001";
+ 
+diff --git a/scripts/fairness-phone.mjs b/scripts/fairness-phone.mjs
+index 09d273b1..65bd01b0 100644
+--- a/scripts/fairness-phone.mjs
++++ b/scripts/fairness-phone.mjs
+@@ -33,3 +33,6 @@ import { localisedContext, assertLang } from "./qa-locale.mjs";
+ 
+-const BASE = process.argv[2] || process.env.BASE || "https://www.50pick.tz";
++// NO PRODUCTION DEFAULT (live-target-safe.test.mjs §1b). This used to fall back to the live site, so a run with no
++// target measured production without anyone choosing it. Loopback is the default now; production is reached by
++// NAMING it, as the examples at the top do.
++const BASE = process.argv[2] || process.env.BASE || "http://localhost:3001";
+ const RED = process.env.RED_TABLE === "1";
+diff --git a/scripts/focus-and-fit.mjs b/scripts/focus-and-fit.mjs
+index d1d1738e..40cdaf86 100644
+--- a/scripts/focus-and-fit.mjs
++++ b/scripts/focus-and-fit.mjs
+@@ -35,3 +35,6 @@ import { localisedContext, assertLang } from "./qa-locale.mjs";
+ 
+-const BASE = process.argv[2] || process.env.BASE || "https://www.50pick.tz";
++// NO PRODUCTION DEFAULT (live-target-safe.test.mjs §1b). This used to fall back to the live site, so a run with no
++// target measured production without anyone choosing it. Loopback is the default now; production is reached by
++// NAMING it, as the examples at the top do.
++const BASE = process.argv[2] || process.env.BASE || "http://localhost:3001";
+ const RED = {
+diff --git a/scripts/ghost-landing.mjs b/scripts/ghost-landing.mjs
+index 8b01255e..9367f918 100644
+--- a/scripts/ghost-landing.mjs
++++ b/scripts/ghost-landing.mjs
+@@ -49,3 +49,6 @@ import { localisedContext, assertLang } from "./qa-locale.mjs";
+ 
+-const BASE = process.argv[2] || process.env.BASE || "https://www.50pick.tz";
++// NO PRODUCTION DEFAULT (live-target-safe.test.mjs §1b). This used to fall back to the live site, so a run with no
++// target measured production without anyone choosing it. Loopback is the default now; production is reached by
++// NAMING it, as the examples at the top do.
++const BASE = process.argv[2] || process.env.BASE || "http://localhost:3001";
+ const RED_GHOST = process.env.RED_GHOST === "1";
+diff --git a/scripts/live-target-safe.test.mjs b/scripts/live-target-safe.test.mjs
+index 0715215b..f69e7ede 100644
+--- a/scripts/live-target-safe.test.mjs
++++ b/scripts/live-target-safe.test.mjs
+@@ -88,7 +88,18 @@ console.log("\n[live-target-safe] §1 no script takes a production URL as its DE
+    * (b) A STANDALONE ENTRY POINT that defaults to production without saying so in its name is the same SHAPE and a
+-   *     smaller risk: somebody types its name, so somebody chose it. Five exist today. They are NOT exempted and
+-   *     NOT silently fixed — changing five scripts' targets at once, without knowing which genuinely measure the
+-   *     live bundle (`bundle-css-probe`, `perf-smoke`) and which are local capture tools, would trade a known
+-   *     footgun for an unknown breakage. So they are PINNED: the count may only shrink, and every name is printed
+-   *     on every run so the list cannot rot quietly into scenery.
++   *     smaller risk: somebody types its name, so somebody chose it. Five existed when this was written. They were
++   *     NOT exempted and NOT silently fixed — changing five scripts' targets at once, without knowing which genuinely
++   *     measure the live bundle (`bundle-css-probe`, `perf-smoke`) and which are local capture tools, would trade a
++   *     known footgun for an unknown breakage. So they were PINNED: the count may only shrink, and every name is
++   *     printed on every run so the list cannot rot quietly into scenery.
++   *
++   *     2026-10-08 · IT HAD GROWN INSTEAD, TO THIRTEEN. Eight scripts were added after the pin (cls-budget,
++   *     detail-order-and-hints, fairness-phone, focus-and-fit, ghost-landing, qa/landing-ten, qa/landing-v3/og-prod,
++   *     signup-funnel), all in the shape this rule counts. Three of the thirteen SIGN IN. detail-order-and-hints and
++   *     landing-ten sign in as the QA player `mobile01`, so with production as the default a bare run of either WAS a
++   *     production sign-in — the incident this file exists for. pager-wallet-shots signs in as a QA-fleet player
++   *     through the shared harness, which already defaulted to loopback, so it disagreed with itself about its target.
++   *     Those nine now default to loopback (`http://localhost:3001`, the safe line §3 below uses). FOUR remain, every
++   *     one a read-only probe of the live site whose own header says so: `bundle-css-probe` (reaches production only
++   *     under `--live`), `outcome-parity`, `perf-smoke`, and `timer-date-shots` (which names two live market ids).
++   *     The ceiling was lowered to four in the same change, which is the ratchet's own rule.
+    */
+@@ -96,3 +107,3 @@ console.log("\n[live-target-safe] §1 no script takes a production URL as its DE
+   ok("§1a a SHARED module never defaults to a production origin", SHARED.length === 0, SHARED.join(" | "));
+-  const ENTRY_CEILING = 5;
++  const ENTRY_CEILING = 4;
+   const entry = offenders.filter((o) => !SHARED.includes(o));
+diff --git a/scripts/pager-wallet-shots.mjs b/scripts/pager-wallet-shots.mjs
+index 08846e33..c62194c9 100644
+--- a/scripts/pager-wallet-shots.mjs
++++ b/scripts/pager-wallet-shots.mjs
+@@ -3,4 +3,5 @@
+  *
+- *   npm run qa:pager-wallet                        # against production
+- *   BASE=http://localhost:3000 npm run qa:pager-wallet
++ *   npm run qa:pager-wallet                        # a LOCAL dev server on :3001 (the harness's own default)
++ *   BASE=http://localhost:3000 LIVE_BASE=http://localhost:3000 npm run qa:pager-wallet
++ *   BASE=https://50pick.tz LIVE_BASE=https://50pick.tz npm run qa:pager-wallet   # PRODUCTION: name it, in both
+  *
+@@ -41,3 +42,7 @@ import { loginOnce } from "./live/harness.mjs";
+ 
+-const BASE = process.env.BASE || "https://50pick.tz";
++// NO PRODUCTION DEFAULT (live-target-safe.test.mjs §1b). This drive signs in once as a QA-fleet player (below), and
++// its own target used to be production while the shared harness it signs in through already defaults to loopback:
++// two answers for one address. Loopback is the default now, matching the harness; production is reached by NAMING
++// it in BOTH places, BASE for the measurement and LIVE_BASE for the sign-in.
++const BASE = process.env.BASE || "http://localhost:3001";
+ const WIDTHS = (process.env.WIDTHS || "360,393,768,1024,1280").split(",").map(Number);
+diff --git a/scripts/qa/landing-ten.mjs b/scripts/qa/landing-ten.mjs
+index c1b529af..424953e8 100644
+--- a/scripts/qa/landing-ten.mjs
++++ b/scripts/qa/landing-ten.mjs
+@@ -3,6 +3,6 @@
+  *
+- *   node landing-ten.mjs                 # the whole matrix against production
++ *   node landing-ten.mjs                 # the whole matrix against a LOCAL server, http://localhost:3001
+  *   node landing-ten.mjs --pass=base     # one pass only: base | states | orientation
+  *   RED=V4 node landing-ten.mjs --red    # plant V4's defect and assert V4 — and ONLY V4 — fires
+- *   BASE=https://www.50pick.tz node ...
++ *   BASE=https://www.50pick.tz node ...  # PRODUCTION: name it. The `signedin` cells sign in as `mobile01` there
+  *
+@@ -76,3 +76,7 @@ const { chromium } = await import(pathToFileURL(PW).href);
+ 
+-const BASE = process.env.BASE || "https://www.50pick.tz";
++// NO PRODUCTION DEFAULT (live-target-safe.test.mjs §1b). The `signedin` cells sign in as the QA player `mobile01`
++// through the harness on whatever BASE names, so a bare run used to sign in on production without anyone choosing
++// it. Loopback is the default now (the shared harness's own); production is reached by NAMING it:
++// BASE=https://www.50pick.tz. `--compile` never reads BASE, so it still runs bare.
++const BASE = process.env.BASE || "http://localhost:3001";
+ const OUT = process.env.OUT || join(REPO, ".qa-shots", "landing-ten");
+diff --git a/scripts/qa/landing-v3/og-prod.mjs b/scripts/qa/landing-v3/og-prod.mjs
+index 67131bf7..a7ed7dae 100644
+--- a/scripts/qa/landing-v3/og-prod.mjs
++++ b/scripts/qa/landing-v3/og-prod.mjs
+@@ -14,3 +14,6 @@ import { join } from "node:path";
+ 
+-const BASE = (process.env.BASE || "https://www.50pick.tz").replace(/\/$/, "");
++// NO PRODUCTION DEFAULT (live-target-safe.test.mjs §1b). This used to fall back to the live site, so a run with no
++// target read production without anyone choosing it. Loopback is the default now (a local run also needs OG_HOST,
++// below); production is reached by NAMING it, as the example at the top does.
++const BASE = (process.env.BASE || "http://localhost:3001").replace(/\/$/, "");
+ const OUT = process.env.OUT || ".qa-shots/landing-v3/og";
+diff --git a/scripts/signup-funnel.mjs b/scripts/signup-funnel.mjs
+index ef90ef1f..83fa0af4 100644
+--- a/scripts/signup-funnel.mjs
++++ b/scripts/signup-funnel.mjs
+@@ -29,3 +29,6 @@ import { localisedContext, assertLang } from "./qa-locale.mjs";
+ 
+-const BASE = process.argv[2] || process.env.BASE || "https://www.50pick.tz";
++// NO PRODUCTION DEFAULT (live-target-safe.test.mjs §1b). This used to fall back to the live site, so a run with no
++// target measured production without anyone choosing it. Loopback is the default now; production is reached by
++// NAMING it, as the examples at the top do.
++const BASE = process.argv[2] || process.env.BASE || "http://localhost:3001";
+ const RED_WIDE = process.env.RED_WIDE === "1";

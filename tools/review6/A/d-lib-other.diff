@@ -1,0 +1,876 @@
+diff --git a/src/lib/auth-landing.ts b/src/lib/auth-landing.ts
+index f20c92820..cc19250cd 100644
+--- a/src/lib/auth-landing.ts
++++ b/src/lib/auth-landing.ts
+@@ -2,10 +2,11 @@
+  * WHERE A DOOR SENDS SOMEONE - one rule per question (route audit 2026-10-06, cluster B).
+  * landingAfterAuth: after a sign-in or sign-up. accountRefusalPath: an account refusal's panel on the login page.
+  * authDoorHrefs: the guest header's Sign in / Sign up. Pure and client-safe: it imports only safe-next.ts,
+- * referral-code.ts and a type. S9/S10 reuse these instead of writing second copies.
++ * referral-code.ts, break-end.ts (pure) and a type. S9/S10 reuse these instead of writing second copies.
+  */
+ import { boundedNext, isAdminPath, isAuthPath, pathWithQuery, sanitizeNext, withWelcome } from "@/lib/safe-next";
+ import { normalizeReferralCode } from "@/lib/referral-code";
++import { breakEndParam } from "@/lib/break-end";
+ import type { FailureDetail } from "@/lib/failure-reasons";
+ 
+ /** Staff (any role but PLAYER/AGENT): an /admin next, else /admin. A player or agent: the safe next (never an /admin one) or
+@@ -18,14 +19,15 @@ export function landingAfterAuth(opts: { role: string | null | undefined; next:
+   return withWelcome(next || "/", opts.kind);
+ }
+ 
+-/** The login page's panel for an account refusal: closed=1, the three exclusion standings (serving carries its date), else
+- *  error=blocked; a safe next kept. */
++/** The login page's panel for an account refusal: closed=1, the three exclusion standings (serving carries its END — the
++ *  instant, `breakEndParam`, never its UTC day: R4-I, 2026-10-09), else error=blocked; a safe next kept. */
+ export function accountRefusalPath(detail: FailureDetail | undefined, next: string): string {
+   const qs = new URLSearchParams();
+   if (detail?.accountClosed) qs.set("closed", "1");
+   else if (detail?.standing && detail.standing !== "diverged") {
+     qs.set("excluded", detail.standing);
+-    if (detail.standing === "serving" && detail.until) qs.set("until", detail.until.slice(0, 10));
++    const end = detail.standing === "serving" ? breakEndParam(detail.until) : null;
++    if (end) qs.set("until", end);
+   } else qs.set("error", "blocked");
+   const safe = sanitizeNext(next);
+   if (safe) qs.set("next", safe);
+diff --git a/src/lib/break-end.ts b/src/lib/break-end.ts
+new file mode 100644
+index 000000000..5b8ab1ec3
+--- /dev/null
++++ b/src/lib/break-end.ts
+@@ -0,0 +1,113 @@
++/**
++ * THE END OF A BREAK OR A SELF-EXCLUSION — one way to carry it, one way to read it back, one way to say it (the visual
++ * pass, round 4, helper R4-I, 2026-10-09; the edges findings E9, E16, E17, E52, E55).
++ *
++ * 🔴 WHAT THE TILES SHOWED. Five surfaces state when a player's own protective choice ends, and they said it four ways:
++ *   · the sign-in page after a self-exclusion printed the raw query value, "hadi 2026-10-10" — a DATE with no time, so a
++ *     24-hour exclusion taken at 05:05 EAT read as if it ended at midnight (tiles 113–130);
++ *   · the bet refusal printed the server's English formatter, "hadi 9 Oct 2026, 06:02" on Swahili and Chinese screens
++ *     (tiles 036 040 044 102 106 110);
++ *   · the sign-in page after a break said only "when the break ends" — the end was never carried there (tiles 003–011);
++ *   · /wallet/deposit and the limits page said it right, "9 Okt, 06:02" (`formatEatDateTime`).
++ * ⭐ So the end travels as the INSTANT (`breakEndParam`, canonical ISO-8601 in UTC) and is always printed by
++ * `formatBreakEnd`: the East Africa clock (Tanzania's own day, fixed UTC+3), the reader's month words, the date AND the
++ * time — `formatEatDateTime`, the formatter the deposit page and the limits callout already use.
++ * ⛔ A query value is PRINTED, NEVER BELIEVED: `readBreakEndParam` accepts exactly the two shapes a server writes — the
++ * canonical instant this module writes, or the bare `YYYY-MM-DD` older links carry — and nothing else ("7 Oct. To reopen
++ * pay …" falls back to the sentence with no date). Nothing decides anything on it: the gate reads the database.
++ * ⚠️ No "EAT" is printed after the time. Every player-facing time on the platform is already EAT without a suffix (the
++ * receipts, a market's close, the deposit notice, the limits callout); one surface with a suffix would imply the others
++ * are on another clock. Whether to add it everywhere is the owner's call (listed in R4-I's report), not a format change.
++ * Pure — no React, no server import — so the sign-in page, the bet panel and the Wallet sheet share it.
++ */
++import { formatEatDate, formatEatDateTime } from "@/lib/eat-day";
++
++/** A reader's running break or self-exclusion, as a page needs it: when it ends, and which of the two it is. */
++export type BreakState = { until: string; exclusion: boolean };
++
++/** `isLockedOut`'s answer as a `BreakState`, or null when nothing is running. */
++export function breakStateOf(lock: { locked: boolean; until: string | null; reason: string | null }): BreakState | null {
++  return lock.locked && lock.until ? { until: lock.until, exclusion: lock.reason === "self_exclusion" } : null;
++}
++
++/**
++ * The same answer from the settings row's two timers (the shell holds the row already): an exclusion first, as
++ * `isLockedOut` asks, then a break; null when neither runs past `nowMs` or a timer does not parse.
++ */
++export function breakStateFromTimers(selfExclusionUntil: string | null | undefined, coolingOffUntil: string | null | undefined, nowMs: number): BreakState | null {
++  const ex = selfExclusionUntil ? Date.parse(selfExclusionUntil) : Number.NaN;
++  if (Number.isFinite(ex) && ex > nowMs) return { until: selfExclusionUntil!, exclusion: true };
++  const co = coolingOffUntil ? Date.parse(coolingOffUntil) : Number.NaN;
++  if (Number.isFinite(co) && co > nowMs) return { until: coolingOffUntil!, exclusion: false };
++  return null;
++}
++
++/** The end as a URL carries it: the instant, canonical (`2026-10-10T02:05:00.000Z`), or null for anything that is not one. */
++export function breakEndParam(iso: string | null | undefined): string | null {
++  if (!iso) return null;
++  const ms = Date.parse(iso);
++  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
++}
++
++/** An end read back from a URL: the instant, and whether it carried a time (a bare day from an older link does not). */
++export type BreakEnd = { atMs: number; withTime: boolean };
++
++const INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
++const DAY = /^\d{4}-\d{2}-\d{2}$/;
++
++/**
++ * `?until=` as a page may print it, or null. Two shapes only, each round-tripped so "2026-02-31" or an instant with an
++ * hour of 25 is refused rather than rolled over into another day.
++ */
++export function readBreakEndParam(raw: string | readonly string[] | undefined | null): BreakEnd | null {
++  const s = Array.isArray(raw) ? raw[0] : raw;
++  if (typeof s !== "string") return null;
++  if (INSTANT.test(s)) {
++    const ms = Date.parse(s);
++    return Number.isFinite(ms) && new Date(ms).toISOString() === s ? { atMs: ms, withTime: true } : null;
++  }
++  if (DAY.test(s)) {
++    const ms = Date.parse(`${s}T00:00:00.000Z`);
++    return Number.isFinite(ms) && new Date(ms).toISOString().slice(0, 10) === s ? { atMs: ms, withTime: false } : null;
++  }
++  return null;
++}
++
++/**
++ * THE ONE WAY AN END READS: `formatEatDateTime` — "9 Okt, 06:02", "9 Oct, 06:02", "2026年10月9日 06:02" (the year joins
++ * the date when it is not this EAT year; Chinese always carries it). A bare day from an older link has no time to give,
++ * so it reads as its own calendar date alone ("10 Okt"), never shifted by a clock it never had.
++ */
++export function formatBreakEnd(end: BreakEnd | number, nowMs: number, monthsShort: readonly string[], locale: "en" | "sw" | "zh"): string {
++  const e: BreakEnd = typeof end === "number" ? { atMs: end, withTime: true } : end;
++  return e.withTime
++    ? formatEatDateTime(e.atMs, nowMs, monthsShort, locale)
++    : formatEatDate(e.atMs, nowMs, monthsShort, locale);
++}
++
++/**
++ * An approved break/exclusion sentence with its end filled in, for the kit's `EmptyState` body: the words, and the end
++ * as a run to keep whole — `EmptyState` draws it as one `white-space: nowrap` span (`emptyStateBody`), the `keepText`
++ * convention. ⭐ Round 5 (2026-10-09, review 3 H4): the date's own spaces used to become no-break spaces, the body's old
++ * mechanism, and travelled into a copy and a find-in-page; now every character of the sentence is the dictionary's and
++ * the formatter's. The slot is filled through a replacer, so a `$&` is inert.
++ */
++export function breakSentence(
++  template: string, untilIso: string, nowMs: number, monthsShort: readonly string[], locale: "en" | "sw" | "zh",
++): { text: string; keep: readonly string[] } {
++  const date = formatBreakEnd(Date.parse(untilIso), nowMs, monthsShort, locale);
++  return { text: template.replace(/\{date\}/g, () => date), keep: [date] };
++}
++
++/**
++ * The first sentence of an approved sentence that holds `{date}` — the status line of a row that has room for one
++ * sentence ("Mapumziko yanaendelea hadi {date}." of `rg.breakActive`). The words are the approved sentence's own, cut at
++ * its own full stop, never re-worded; null when the template has no `{date}` or no full stop after it.
++ */
++export function firstDateSentence(template: string): string | null {
++  const at = template.indexOf("{date}");
++  if (at < 0) return null;
++  const rest = template.slice(at + "{date}".length);
++  const stop = /[.。!?！？]/.exec(rest);
++  return stop ? template.slice(0, at + "{date}".length + stop.index + 1) : null;
++}
+diff --git a/src/lib/error-copy.ts b/src/lib/error-copy.ts
+index b754ca559..e8b279d25 100644
+--- a/src/lib/error-copy.ts
++++ b/src/lib/error-copy.ts
+@@ -22,7 +22,7 @@
+  * email (no ZH variant exists there by decision). Those pass through unchanged.
+  */
+ import type { Dict } from "@/lib/i18n-dict";
+-import { hasReason, renderFailure, type FailureReason, type FailureDetail } from "@/lib/failure-reasons";
++import { hasReason, renderFailure, type FailureReason, type FailureDetail, type WhenFormat } from "@/lib/failure-reasons";
+ import { formatTzs } from "@/lib/utils";
+ 
+ export type ActionFailure = {
+@@ -35,7 +35,9 @@ export type ActionFailure = {
+   detail?: FailureDetail;
+ };
+ 
+-export function errorCopy(t: Dict, r: ActionFailure): string {
++/** `when` (R4-I, 2026-10-09): the caller's formatter for an instant, so a break's end reads in the reader's own words —
++ *  `renderFailure`'s last argument. A caller without a locale omits it and the end prints as the server wrote it. */
++export function errorCopy(t: Dict, r: ActionFailure, when?: WhenFormat): string {
+   // ⭐ THE REGISTRY FIRST, AND THIS IS WHAT LETS A PHRASE TEST BE DELETED RATHER THAN LEFT
+   // BESIDE ITS REPLACEMENT. Once a service says WHY in a machine token, nothing below needs to
+   // guess it back out of English prose — same row, same copy, same figures as `renderFailure`
+@@ -46,6 +48,7 @@ export function errorCopy(t: Dict, r: ActionFailure): string {
+       t.error as unknown as Record<string, string>,
+       t.error.somethingDidntWork,
+       formatTzs,
++      when,
+     ).body;
+   }
+   const err = r.error ?? "";
+diff --git a/src/lib/failure-reasons.ts b/src/lib/failure-reasons.ts
+index 7f5b1d615..619d17876 100644
+--- a/src/lib/failure-reasons.ts
++++ b/src/lib/failure-reasons.ts
+@@ -541,8 +541,19 @@ export interface FailureDetail {
+   balance?: number;
+   needed?: number;
+   retryAfterSec?: number;
+-  /** ISO instant a self-exclusion or break ends. */
++  /**
++   * When a self-exclusion or break ends. ⚠️ The betting and deposit gates have always written it already FORMATTED, by the
++   * server's English formatter ("9 Oct 2026, 06:02"), and a renderer handed no `when` still prints it that way.
++   */
+   until?: string;
++  /**
++   * ⭐ R4-I (2026-10-09, edges E17 E52, tiles 036 040 044 102 106 110) · THE SAME END AS AN ISO INSTANT, for the reader's
++   * own formatter. `until` above reached a Swahili and a Chinese refusal as "hadi 9 Oct 2026, 06:02" — an English month,
++   * and a format unlike the deposit page's "9 Okt, 06:02". A surface that knows its reader's language passes `when`
++   * (`renderFailure`'s last argument, `formatBreakEnd` in practice), and the end then reads like every other break end.
++   * Additive: `until` stays for every renderer that has no locale, and for the audit's English sentence.
++   */
++  untilAt?: string;
+   /** TZS still to be wagered before a bonus can be withdrawn. */
+   remaining?: number;
+   /** What would actually land after the withdrawal fee — the NET, beside the minimum. */
+@@ -607,6 +618,28 @@ export function hasReason<T extends { reason?: string }>(r: T | null | undefined
+   return !!r?.reason && Object.prototype.hasOwnProperty.call(REASONS, r.reason);
+ }
+ 
++/**
++ * ⭐ HOW LOUD A REFUSAL IS — THE FEEDBACK LAW'S ONE FORM (DESIGN_AUTHORITY §F2/§F3; R5-I, the visual pass's round 5,
++ * 2026-10-09). The rank is this registry's, never a surface's own: the reason a refusal carries, else the one its code
++ * names (`reasonForCode`). A refusal the player can fix (`warning`) or a fact (`info`) is the calm `factual` toast — no
++ * popup, no error buzz (§F2: "Refusal — the player can fix it: popup ⛔ never · toast ✅ factual · haptic ⛔ silent"). A
++ * hard block or a real fault (`error`) is `danger`, with the result dialog where it must be acknowledged — and so is a
++ * refusal this registry cannot rank, which is the safe direction: an unclassified refusal reads as a failure, never as
++ * reassurance. The Sell button ranked its refusals so first (S6 A8h); the dial and Up & Down's quick bet rank theirs
++ * through this, and every other refusal toast on a player's surface with them.
++ */
++export function refusalReason(r: unknown): FailureReason | null {
++  // `unknown`, not `{ reason?; code? }`: an action's refusal type that carries neither (`{ ok: false; error }`) is still
++  // a refusal to rank — unranked, so `danger` — and a weak type would refuse it at compile time.
++  const o = (r ?? {}) as { reason?: string; code?: string };
++  return hasReason(o) ? o.reason : reasonForCode(typeof o.code === "string" ? o.code : undefined);
++}
++
++/** The toast variant a refusal takes, from its registry rank (see `refusalReason`). */
++export function refusalVariant(reason: FailureReason | null): "danger" | "factual" {
++  return reason !== null && REASONS[reason].severity !== "error" ? "factual" : "danger";
++}
++
+ export interface RenderedFailure {
+   severity: Severity;
+   channel: Channel;
+@@ -618,6 +651,19 @@ export interface RenderedFailure {
+ 
+ /** The formatter a surface hands in — its own locale-aware TZS formatter. */
+ export type MoneyFormat = (tzs: number) => string;
++/** R4-I · the formatter a surface hands in for an instant — its reader's own (`formatBreakEnd`). */
++export type WhenFormat = (atMs: number) => string;
++
++/**
++ * R4-I · THE END A REFUSAL NAMES, as its reader reads it: `detail.untilAt` through the surface's own `when` when both are
++ * there and the instant parses, else `detail.until` as the server wrote it, else "—". Exported so a surface can keep the
++ * very text it put into the sentence as one unbreakable run (`keepText`).
++ */
++export function failureUntil(detail: FailureDetail | undefined, when?: WhenFormat): string {
++  const at = detail?.untilAt ? Date.parse(detail.untilAt) : Number.NaN;
++  if (when && Number.isFinite(at)) return when(at);
++  return detail?.until ?? "—";
++}
+ 
+ /**
+  * ONE renderer. Given a refusal and the dictionary, produce the sentence, the severity and
+@@ -628,12 +674,15 @@ export type MoneyFormat = (tzs: number) => string;
+  * has no business being a headline in front of a Swahili or Chinese player.
+  *
+  * @param fallback the caller's generic localized sentence, used when no reason is present.
++ * @param when     R4-I · optional: the caller's formatter for an instant, used for `{until}` when the refusal carries
++ *                 `detail.untilAt` (see `failureUntil`). Without it `{until}` is printed as before.
+  */
+ export function renderFailure(
+   r: ReasonedFailure | null | undefined,
+   dict: Record<string, string>,
+   fallback: string,
+   money: MoneyFormat,
++  when?: WhenFormat,
+ ): RenderedFailure {
+   // ⭐ C2 SECOND TRANCHE · fall back to the CODE before falling back to nothing. Most of the
+   // wallet / KYC / auth / proposals refusals already carry a distinct machine code; until
+@@ -658,7 +707,7 @@ export function renderFailure(
+     remaining: d.remaining != null ? money(d.remaining) : "—",
+     net: d.net != null ? money(d.net) : "—",
+     sec: String(Math.max(1, Math.ceil((r as ReasonedFailure).retryAfterSec ?? d.retryAfterSec ?? 60))),
+-    until: d.until ?? "—",
++    until: failureUntil(d, when),
+     // ⚠️ Passed through as a STRING with no formatting at all. Every other value here goes
+     // through `money()` or `String(Math…)`; a phone suffix is neither a quantity nor a
+     // currency, and `"0044"` — a real suffix on production — must survive as `0044`.
+diff --git a/src/lib/i18n.tsx b/src/lib/i18n.tsx
+index 3e03496a2..9edae9cb5 100644
+--- a/src/lib/i18n.tsx
++++ b/src/lib/i18n.tsx
+@@ -164,13 +164,16 @@ export function useT() {
+  * `lcl-orbit` and `lcl-pulse` were both reported as names with NO CONSUMER —
+  * which is to say, as safe to delete.
+  */
++/* ⭐ THE BRAND FAMILY, NOT THE BETTING PAIR (R5-I, the visual pass's round 5, 2026-10-09). The glyphs alternated the YES
++   green and the NO rose — a decoration in the two sides' inks while a language changes (DESIGN_AUTHORITY §B2a); they
++   alternate the brand family's two text steps now, the one non-money accent (R5-C), around the brand pulse at the centre. */
+ const GLYPHS = [
+-  { char: "Hi",  color: "oklch(78% 0.16 152)" },    // yes-green
+-  { char: "\u8BED", color: "oklch(78% 0.16 22)" },  // no-red — 语
+-  { char: "Ha",  color: "oklch(78% 0.16 152)" },    // yes-green
+-  { char: "\u597D", color: "oklch(78% 0.16 22)" },  // no-red — 好
+-  { char: "Sw",  color: "oklch(78% 0.16 152)" },    // yes-green
+-  { char: "En",  color: "oklch(78% 0.16 22)" },     // no-red
++  { char: "Hi",  color: "var(--brand-300)" },
++  { char: "\u8BED", color: "var(--brand-200)" },  // 语
++  { char: "Ha",  color: "var(--brand-300)" },
++  { char: "\u597D", color: "var(--brand-200)" },  // 好
++  { char: "Sw",  color: "var(--brand-300)" },
++  { char: "En",  color: "var(--brand-200)" },
+ ] as const;
+ 
+ export function LocaleChangeOverlay() {
+diff --git a/src/lib/journey/journey-on.ts b/src/lib/journey/journey-on.ts
+index 715485894..190794a3f 100644
+--- a/src/lib/journey/journey-on.ts
++++ b/src/lib/journey/journey-on.ts
+@@ -50,16 +50,37 @@ export function journeyFlagServerSnapshot(): boolean {
+   return false;
+ }
+ 
+-/** Raise the flag and announce it; the returned cleanup lowers it and announces that. `JourneyFlag`'s effect. */
++/**
++ * Raise the flag and announce it; the returned cleanup lowers it and announces that. `JourneyFlag`'s LAYOUT effect.
++ * ⭐ THE PHASES, BOTH WAYS (round 5's follow-up, R5-H · G-3), so the shell a `router.refresh()` swaps in is painted with
++ * the answer that matches it in its first frame:
++ *   · UP, before the journey shell's first paint. The flag mounts in the commit that draws the journey's header and
++ *     tabs (it stands bare beside them, so the transition waits for its chunk as for theirs); its layout effect runs
++ *     after that commit's mutations — the shell's mark is already in — and the announcement makes every subscribed
++ *     reader re-render, synchronously, before the browser paints.
++ *   · DOWN, before the classic shell's first paint. The cleanup runs in the commit that removes the journey's shell, and
++ *     React runs a removed component's layout cleanup BEFORE it removes the host nodes that follow it: the shell's mark is
++ *     still in the document there, so a reader asking then still reads "on". The attribute goes, and is announced, at
++ *     once; and the change is announced again once the commit is done — a microtask, which runs after the whole commit
++ *     and before the browser paints (the readers' re-render is a synchronous update, flushed in a microtask too).
++ * A passive effect and cleanup ran after the paint both ways: one painted frame of the old answer (R5-D). The not-found
++ * mark announces on the same phases (`lib/not-found-mark.ts`).
++ */
+ export function raiseJourneyFlag(): () => void {
+   document.documentElement.setAttribute(JOURNEY_FLAG_ATTR, "");
+   window.dispatchEvent(new Event(JOURNEY_FLAG_EVENT));
+   return () => {
+     document.documentElement.removeAttribute(JOURNEY_FLAG_ATTR);
+     window.dispatchEvent(new Event(JOURNEY_FLAG_EVENT));
++    queueMicrotask(announceJourneyFlagAfterCommit);
+   };
+ }
+ 
++/** The second announcement of a lowering, once the commit that took the shell's mark out is done (see above). */
++function announceJourneyFlagAfterCommit(): void {
++  if (typeof window !== "undefined") window.dispatchEvent(new Event(JOURNEY_FLAG_EVENT));
++}
++
+ /** True while the shell has put this page in the new journey. */
+ export function useJourneyOn(): boolean {
+   return useSyncExternalStore(subscribeJourneyFlag, journeyFlagSnapshot, journeyFlagServerSnapshot);
+diff --git a/src/lib/not-found-mark.ts b/src/lib/not-found-mark.ts
+new file mode 100644
+index 000000000..04ebea57e
+--- /dev/null
++++ b/src/lib/not-found-mark.ts
+@@ -0,0 +1,100 @@
++/**
++ * IS A NOT-FOUND PAGE ON SCREEN? — the browser's answer, for the overlays and the journey's chrome, which stand outside
++ * the page and are handed no prop by it (2026-10-09, the Vodacom visual pass round 4, R4-J; the integrator's not-found
++ * item and R4-K's ruling).
++ *
++ * The shared not-found view (`components/ui/not-found-view.tsx`) renders `NotFoundMark`
++ * (`components/ui/not-found-mark.tsx`): an empty, hidden span with the id below, carrying the path it was drawn for, and
++ * an event raised when it mounts and when it goes. `useNotFoundShown` reads it.
++ *
++ * ⭐ WHY THE OVERLAYS ASK. `surfaces.ts` lists `/markets/<id>` as a page the journey re-draws — a question, whose bet panel
++ * the Needle, the channels panel and the chat bubble stand down for — and the path of a market that does not exist is the
++ * same path. So on that not-found page a journey reader lost the bubble and the Needle to a bet panel that is not there,
++ * and the journey's Maswali tab was lit for a question that is not there. A not-found page is no journey page and no
++ * tab's page, whatever its path says: each stand-down term is joined by `&& !notFoundShown`, and the chrome lights no
++ * tab while the mark is up.
++ * ⭐ AND THE POLLS STOP. The bell and the Akaunti tab's dot ask their question through a Server Action, and a Server
++ * Action POSTs to the page's own address: on a not-found address Next answers 404, and every signed-in player on a
++ * not-found page logged "Failed to load resource: 404" for each beat. While the mark is up neither counter is mounted.
++ *
++ * ⭐ THE ANSWER IS FOR THE PATH ON SCREEN, IN EVERY FRAME (2026-10-09, the visual pass round 5, review F4). It was the
++ * span's presence alone, and leaving a not-found page the router renders the next page in a transition while the old
++ * span is still in the document: the chrome rendered the NEW path with "not found" — no tab lit, the overlays standing
++ * where a not-found page stands them — and that frame was painted, because the mark's going was announced by an effect
++ * cleanup, which a transition's commit runs after the paint. So the span now carries the path it was drawn for
++ * (`data-path`), the snapshot is that path, and the answer is "the mark's path IS the path being drawn"
++ * (`isNotFoundFor`): the old page's span answers "no" for the new path in the very render that draws it. And arriving,
++ * the mark announces itself in a LAYOUT effect, so the chrome's answer turns before that commit's first paint (React
++ * flushes the update a layout effect schedules before it yields to the browser); its going is announced once React has
++ * taken the span out and before that commit's paint (round 5's follow-up, R5-H · G-3, the journey flag's phases:
++ * `announceNotFoundAfterCommit`) — for a move the answer was already "no" for every path but its own, and a refresh
++ * that finds the record at the same address no longer paints a frame of "not found" over it.
++ * ⚠️ IT ASSUMES A PAGE THAT IS LEFT LEAVES THE DOCUMENT, in the commit that draws the next one — and so does the CSS rule
++ * below. Next 16 keeps left pages mounted in a hidden `<Activity>` only with `cacheComponents` on, which this app does not
++ * turn on; with it, the old span would stay, `getElementById` could find it, and the CSS would rest the next page's tab.
++ * `test:visual-pass-r5d` §5 pins the config and the framework's two lines.
++ *
++ * ⭐ THE SERVER SNAPSHOT IS "NO MARK", like `useJourneyOn`'s: a server render, and the hydration that matches it, are what
++ * they were. React checks the store right after hydrating, and the mark is then in the document.
++ * ⚠️ BEFORE THE SCRIPTS RUN, ONLY CSS CAN ANSWER, and it can only answer where the server's HTML says "not found". The
++ * root not-found (an address no route matches) is drawn by the server with the mark in it: `:root:has(#kp-not-found)`
++ * (globals.css) rests the lit tab from the first paint. A record that is not there — a question, a round, a proposal —
++ * is found missing INSIDE a loading boundary: React 19.2's server renderer runs no class error boundary, so that HTML is
++ * the page's loading ghost, with no mark, and React's own record of the verdict: the boundary's `<template
++ * data-dgst="NEXT_HTTP_ERROR_FALLBACK;404">` (written by the server, or by React's inline `$RX` script when the verdict
++ * streams in later). The same rule reads that template (round 5, review F5), so the tab rests from the moment the
++ * verdict is in the document, while the ghost stands until the scripts draw the not-found page.
++ * ⛔ NO "use client" HERE, AND ONLY CLIENT CODE MAY LOAD IT — `journey-on.ts`'s rule, for its reason: a hook in a server
++ * component builds and then fails on its first render. `test:visual-pass-r4j` §5 holds its loaders.
++ */
++import { useSyncExternalStore } from "react";
++import { usePathname } from "next/navigation";
++
++/** The id of the empty, hidden span the not-found view writes into the page. */
++export const NOT_FOUND_MARK = "kp-not-found";
++/** The span's attribute: the path the not-found page was drawn for. */
++export const NOT_FOUND_PATH_ATTR = "data-path";
++/** Raised when the mark mounts and when it goes. */
++export const NOT_FOUND_EVENT = "50pick:not-found";
++
++export function subscribeNotFound(onChange: () => void): () => void {
++  window.addEventListener(NOT_FOUND_EVENT, onChange);
++  return () => window.removeEventListener(NOT_FOUND_EVENT, onChange);
++}
++
++/** The path the page on screen is a not-found for, or null when no mark is up (client only). */
++export function notFoundSnapshot(): string | null {
++  return document.getElementById(NOT_FOUND_MARK)?.getAttribute(NOT_FOUND_PATH_ATTR) ?? null;
++}
++
++/** ⛔ Always "no mark": the server render, and the hydration that matches it, are today's page. */
++export function notFoundServerSnapshot(): string | null {
++  return null;
++}
++
++/** Announce that the mark came or went: `NotFoundMark`'s layout effect, on mount (and on a move to another path). */
++export function announceNotFound(): void {
++  window.dispatchEvent(new Event(NOT_FOUND_EVENT));
++}
++
++/**
++ * Announce the mark's going once the commit that takes it out is done, before the browser paints — `NotFoundMark`'s
++ * layout cleanup. React runs a removed component's layout cleanup before it removes the span, so an announcement made
++ * there would still read the old path; a microtask runs after the whole commit and before the paint (the journey
++ * flag's lowering, `lib/journey/journey-on.ts`, on the same phases — round 5's follow-up, R5-H · G-3).
++ */
++export function announceNotFoundAfterCommit(): void {
++  queueMicrotask(() => { if (typeof window !== "undefined") announceNotFound(); });
++}
++
++/** The one decision: a not-found page is on screen for `path` when the mark that is up was drawn for `path`. */
++export function isNotFoundFor(markPath: string | null, path: string): boolean {
++  return markPath !== null && markPath === path;
++}
++
++/** True while a not-found page is on screen — for the path being drawn, never for the page before it. */
++export function useNotFoundShown(): boolean {
++  const path = usePathname() ?? "";
++  const markPath = useSyncExternalStore(subscribeNotFound, notFoundSnapshot, notFoundServerSnapshot);
++  return isNotFoundFor(markPath, path);
++}
+diff --git a/src/lib/notification-appearance.ts b/src/lib/notification-appearance.ts
+index c88f82ea0..ebf7f79db 100644
+--- a/src/lib/notification-appearance.ts
++++ b/src/lib/notification-appearance.ts
+@@ -70,7 +70,11 @@ export const tintFor = (k: Kind) => {
+        the neighbours: every other non-gold tone on this list reads
+        `border-<family>-border bg-<family>-bg/30 text-<family>-fg`. */
+     case "DEPOSIT":      return "border-success-border bg-success-bg/30 text-success-fg";
+-    case "WITHDRAW":     return "border-warning-border bg-warning-bg/30 text-warning-fg";
++    /* ⛔ NOT AMBER (R5-C, the second gold audit, 2026-10-09). A withdrawal is the player's own money moving (§M3a D1:
++       "earns nothing"), and nobody must act on it — amber's one meaning (§B11) — so the warning family, whose
++       `--warning-fg` IS `--gilt`, claimed both alarm and gold. It reads the informational tone its account-side
++       neighbours read (KYC, RG); the payment's own status keeps the §B11 words on the row it opens. */
++    case "WITHDRAW":     return "border-info-border bg-info-bg/30 text-info-fg";
+     case "KYC":          return "border-info-border bg-info-bg/30 text-info-fg";
+     case "RG":           return "border-info-border bg-info-bg/30 text-info-fg";
+     /* 🔴 §B2a — and a SECURITY notice is not a lost bet. `--no-*` is the ink that means *your
+@@ -78,8 +82,11 @@ export const tintFor = (k: Kind) => {
+        `danger` is the app-state family for "something needs your attention now", same recipe. */
+     case "SECURITY":     return "border-danger-border bg-danger-bg/30 text-danger-fg";
+     case "MATCH_START":  return "border-border bg-bg-overlay text-text-muted";
+-    case "AFFILIATE":    return "border-gold-700 bg-gold-500/10 text-gold-300";
+-    case "PROPOSAL":     return "border-gold-700 bg-gold-500/10 text-gold-300";
++    /* ⛔ The header above says it: "A WIN IS THE ONLY MONEY OUTCOME THAT IS GOLD". An affiliate notice (a friend joined,
++       a code shared) and a proposal notice (reviewed, approved, listed) are KINDS, mostly not money — and an approval
++       is permission, not money (§B11). They were the gold plate; they read the informational tone (R5-C, 2026-10-09). */
++    case "AFFILIATE":    return "border-info-border bg-info-bg/30 text-info-fg";
++    case "PROPOSAL":     return "border-info-border bg-info-bg/30 text-info-fg";
+     // Informational, never a "bet now" nudge → royal/info, never gold.
+     case "WATCHLIST":    return "border-info-border bg-info-bg/30 text-info-fg";
+     default:             return "border-border bg-bg-overlay text-text-muted";
+diff --git a/src/lib/notification-text.ts b/src/lib/notification-text.ts
+new file mode 100644
+index 000000000..5fa315206
+--- /dev/null
++++ b/src/lib/notification-text.ts
+@@ -0,0 +1,96 @@
++/**
++ * HOW A NOTIFICATION'S SENTENCE IS PUT TOGETHER, AND HOW AN OLD ONE IS READ — one plain module, imported by the writer
++ * (`notification-service.ts`) and by both readers (the bell, `notifications-panel.tsx`, and `/notifications`), so the rule
++ * that writes a sentence and the rule that repairs an old one cannot drift apart. Pure: `test:visual-pass-r3c` drives it.
++ *
++ * 🔴 ROUND 3 OF THE VISUAL PASS, 2026-10-09, tile 192 (/notifications, sw 1280). One row read
++ *     "…limefutwa: Dev fixture — source withdrawn before settlement.. Dau lako lote limerejeshwa kwenye pochi yako.
++ *      · pos_34d10350dfa7510cfad5"
++ * — two defects of composition, not of words:
++ *   · a DOUBLE FULL STOP: the template ends the officer's reason with its own ".", and the reason already had one;
++ *   · a RAW POSITION ID IN PROSE: " · pos_…" was appended to every notice about one position. It is there for
++ *     `notify()`'s 90-second de-duplication, which compares the message and the link — two refunds of the same stake on
++ *     the same market must stay two notices — and it told the reader nothing they could use.
++ * ⭐ The id's job moves to the LINK: a notice about one position now opens THAT ticket — the market's page (or the Up &
++ * Down round's) at the position's own anchor, the very place `/positions/<id>` resolves to (`position-permalink.ts`,
++ * E-101) — so the link is unique per position, the de-duplication stays honest, and the sentence carries no id.
++ */
++import { positionAnchorId, positionPermalinkHref } from "@/lib/position-permalink";
++
++/**
++ * A clause handed in from outside (an officer's reason) ends where the template ends it: its own closing full stop is
++ * dropped before the template's is added, so the sentence never reads "..". A clause that ends in "?" or "!" keeps its
++ * mark and takes none. `stop` is the language's own: "." for Swahili and English, "。" for Chinese.
++ */
++export function endClause(text: string, stop: "." | "。"): string {
++  const t = text.trimEnd();
++  if (/[!?！？…]$/.test(t)) return t;
++  return `${t.replace(/[.。]+$/, "")}${stop}`;
++}
++
++/**
++ * ⭐ A TITLE OR A REASON QUOTED INSIDE A NOTICE, CUT TO ITS ROOM (the visual pass, round 5, R5-B, 2026-10-09; F10, tile 192).
++ * 🔴 Every emitter cut what it quoted with `.slice(0, n)` — at 60 characters (sw/en) or 45 (zh) on the verdict notice, 50 to
++ * 120 elsewhere — with no mark, so a long market name ended mid-word ("…watakuwa juu ya jedwali la NBC ifikapo raun") and
++ * read as a typo, not as a cut. The bell and /notifications print the body WHOLE (no clamp: the bell truncates only its
++ * one-line title), but the same body is the web push, whose lock screen shows its first lines only — so the quote stays
++ * cut, to keep the sentence that matters ("No money has moved yet…") in view, and the cut now says so:
++ *   · a text that fits is returned exactly as given;
++ *   · a cut ends on "…" and is at most `max` characters with it, counted in code points, so a surrogate pair is never split;
++ *   · it ends at a space, never inside a word — Swahili and English — and a word is everything between two spaces, so a
++ *     figure ("2026-27", "$80/bbl") or a name ("S&P") is never split either;
++ *   · Chinese breaks between characters, so it may end at any ideograph — but never inside a Latin word or a figure the
++ *     title carries ("NBC", "2026-27"): the cut steps back to that run's start;
++ *   · a lone word longer than the room is cut at a character (there is no better place);
++ *   · it never ends on a space, a comma, a colon, a semicolon, a full stop, a dash, a middle dot, an ellipsis of its own or
++ *     an opening bracket or quote — Latin or Chinese (「『（【〈《〔) — before the "…" (a closing quote stays: it
++ *     belongs to the words before it).
++ * Pure, so a writer (`notification-service.ts`) and a suite can run the same rule.
++ * ⚠️ Rows already written keep their text: a notice is a record of what was said, and nothing rewrites it.
++ */
++const CJK = /[⺀-鿿豈-﫿　-〿＀-￯]/;
++const SPACE = /\s/;
++const TRAILING_JUNK = /[\s,;:.·\-–—(\[{“‘«「『（【〈《〔…、，：；。]+$/u;
++export function clipQuote(text: string, max: number): string {
++  const chars = Array.from(text);
++  if (chars.length <= max) return text;
++  const room = Math.max(1, max - 1); // one for the "…"
++  // A line may end between i−1 and i where either side is a space or an ideograph; anywhere else is inside a word.
++  const boundary = (i: number) => SPACE.test(chars[i - 1]) || SPACE.test(chars[i]) || CJK.test(chars[i - 1]) || CJK.test(chars[i]);
++  let cut = room;
++  while (cut > 0 && !boundary(cut)) cut--;
++  // A lone word longer than the room has no better place: it is cut where the room ends.
++  if (cut === 0) cut = room;
++  const head = chars.slice(0, cut).join("").replace(TRAILING_JUNK, "");
++  return `${head.length > 0 ? head : chars.slice(0, room).join("")}…`;
++}
++
++/**
++ * Where a notice about ONE position leads: that ticket. On a long-form market it is the market's page at the ticket's
++ * anchor; with no market id (an orphaned position) it is the permalink, which finds the ticket's home itself. Without a
++ * position the notice keeps the link it was given.
++ */
++export function ticketHref(marketId: string, positionId: string | undefined, fallback: string): string {
++  if (!positionId) return fallback;
++  return marketId ? `/markets/${marketId}#${positionAnchorId(positionId)}` : positionPermalinkHref(positionId);
++}
++
++/** The Up & Down round's page at the ticket's anchor — what the permalink resolves an Up & Down position to. */
++export function roundTicketHref(roundHref: string, positionId: string | undefined): string {
++  if (!positionId) return roundHref;
++  return `${roundHref.split("#")[0]}#${positionAnchorId(positionId)}`;
++}
++
++/**
++ * A STORED sentence, as the reader sees it. Rows written before round 3 still carry the old composition, and an inbox
++ * keeps them: so the readers drop a raw position reference (" · pos_…", appended to the body or to a win's market name)
++ * and mend the doubled full stop the old template made (".." → ".", ".。" → "。"). A sentence written today has neither,
++ * so it passes through unchanged. ⚠️ Only those two shapes: an ellipsis ("...") is not touched, and an id the reader
++ * should see is never written this way — a receipt states its "Reference" in words.
++ */
++export function readableNotificationBody(body: string): string {
++  return body
++    .replace(/ · pos_[A-Za-z0-9_]+(?=$|[\s.,;:!?。，])/g, "")
++    .replace(/(^|[^.])\.\.(?!\.)/g, "$1.")
++    .replace(/\.。/g, "。");
++}
+diff --git a/src/lib/offline-document.ts b/src/lib/offline-document.ts
+new file mode 100644
+index 000000000..a593566e9
+--- /dev/null
++++ b/src/lib/offline-document.ts
+@@ -0,0 +1,228 @@
++/**
++ * ⭐ THE OFFLINE DOCUMENT — what `/offline` answers (`src/app/offline/route.ts`), and so what the service worker shows
++ * a player whose connection is gone (`public/sw.js` precaches it and serves it to any navigation the network could not
++ * answer). Built here, as one string, from the dictionary, the brand mark's one geometry and the design tokens.
++ *
++ * 🔴 WHY IT IS NOT A PAGE ANY MORE (R4-G, the Vodacom visual pass, 2026-10-09 — edge scenario 9, tiles 453–485).
++ * `/offline` was `src/app/offline/page.tsx`, so it rendered inside the ROOT LAYOUT: AppShell around it, for whoever
++ * asked. The service worker precached it at install with `cache.add("/offline")` — a same-origin request, so the
++ * session cookie and the `kp-locale` cookie rode along — and kept that HTML for the life of the cache. Three defects
++ * came out of that one fact, and the tiles show all three:
++ *   1. THE WRONG LANGUAGE. The cached copy was the server's render in the language of the moment it was cached (the
++ *      drive installed it in Swahili), so every English and Chinese tile read "Hauko mtandaoni" with `<html lang="sw">`.
++ *      The page claimed to "localise from the kp-locale cookie even when served from cache"; it could only do that
++ *      once React hydrated, and hydration needs the page's script chunks — which the worker never caches (offline:
++ *      `net::ERR_INTERNET_DISCONNECTED` on each). And even hydrated, the provider changes its STATE from the cookie,
++ *      never `<html lang>` (`i18n.tsx`: only `setLocale` writes it).
++ *   2. A PERSON'S PAGE, KEPT. The cached copy was the WHOLE SHELL rendered for the person signed in at install: the
++ *      journey header with "Salio TZS 100,000" on every tile, the staff preview strip, the avatar — or the classic
++ *      bar with the balance and the name. Offline, anybody on that phone later (after sign-out, a shared handset) was
++ *      shown that player's header and balance, and the player a balance that was days old.
++ *   3. A HYDRATION MISMATCH BACK ONLINE (tile 455). That HTML was rendered for the URL `/offline` and is shown at the
++ *      URL the player asked for (`/positions`): when its chunks did load, React hydrated a tree whose path-, time- and
++ *      session-derived attributes no longer matched the client's, and the Next.js error dialog opened.
++ *
++ * ⭐ SO THE DOCUMENT IS NOW THIS STRING, AND EACH DEFECT IS IMPOSSIBLE BY CONSTRUCTION, NOT BY CARE:
++ *   · NO PERSON. It is built from no request: no cookie, no header, no session is read (`route.ts` reads only the
++ *     public licence number), and the worker fetches it with `credentials: "omit"` besides. It has no header, no
++ *     balance, no name, no sign-in state, no preview strip — nothing of the shell at all.
++ *   · THE LANGUAGE OF NOW. Every phrase is here in every language the dictionary holds, each in a `lang` span; the
++ *     script in the head reads `kp-locale` from `document.cookie` (then the saved choice, as the provider does) when
++ *     the page is SHOWN, sets `<html lang>` and the title, and the stylesheet shows only that language's spans. The
++ *     words are the dictionary's own (`common.offline`, `common.offlineHint`, `error.tryAgain`, the footer's
++ *     regulator lines) — no sentence is written here.
++ *   · NOTHING TO HYDRATE. No React, no Next.js runtime, no script but its own two: there is no tree to mismatch, and
++ *     nothing it needs can be missing offline — the mark, the glyphs, the backdrop and the styles are all inline.
++ *   · IT RECOVERS. "Jaribu tena" reloads the address the player asked for; the browser's `online` event does the
++ *     same by itself; on `/offline` itself (nothing there to retry) both go home.
++ *
++ * ⭐ ONE LOOK, FOR THE CLASSIC AND THE JOURNEY ALIKE — decided, and why. The page's body was already the same in both
++ * (the mark, the wifi-off disc, the title, the hint, the pill retry on the topographic backdrop); only the chrome
++ * around it differed, and the chrome is exactly what carried the person. Which of the two a phone is shown is decided
++ * on the server from the session and the preview pass; a document that must read neither cannot know it, and a guess
++ * would be wrong for one of them. So both get the body they already had, drawn from the same tokens, with the
++ * regulator lines a page must carry (18+, the Gaming Board licence, the stop line — `public-footer.tsx`: LCCP SR 5.1.5)
++ * below the fold, as `OptOutShell` carries them.
++ * ⚠️ THE ONE THING IT CANNOT CARRY: the brand faces. next/font self-hosts Sora and Inter under build-hashed names that
++ * only the app's own stylesheet knows, so this document names them first and falls back to the system face, exactly
++ * as `global-error.tsx` does for the same reason.
++ * ⛔ Every token, the primary button's paint, the backdrop, the two glyphs and the dictionary words are held to their
++ * sources by `test:offline-neutral` — a copy here that drifts fails there.
++ */
++import { dict, DEFAULT_LOCALE, type Dict, type Locale } from "@/lib/i18n-dict";
++import { markInnerSvg } from "@/lib/brand-mark";
++
++/** The path the document is served at — the service worker's `OFFLINE_URL` names the same. */
++export const OFFLINE_PATH = "/offline";
++/** The language cookie the language menu writes and the root layout reads (`layout.tsx`, `i18n.tsx` COOKIE_NAME). */
++export const OFFLINE_LOCALE_COOKIE = "kp-locale";
++/** Every language the dictionary holds, in its own order: the document carries all of them and shows one. */
++export const OFFLINE_LOCALES = Object.keys(dict) as Locale[];
++/** The retry button, which the document's own script answers. */
++export const OFFLINE_RETRY_ID = "kp-offline-retry";
++
++/**
++ * The design tokens the document paints with, each exactly as `src/app/globals.css` declares it (its one site — E-117).
++ * The document cannot load that stylesheet offline, so it declares them itself; `test:offline-neutral` §5 compares each.
++ */
++export const OFFLINE_TOKENS = {
++  "--bg": "oklch(6.5% 0.130 268)",
++  "--bg-elevated": "oklch(22% 0.140 268)",
++  "--bg-overlay": "oklch(11% 0.110 268)",
++  "--border": "oklch(36% 0.130 268)",
++  "--text": "oklch(98% 0.012 268)",
++  "--text-muted": "oklch(86% 0.040 268)",
++  "--text-subtle": "oklch(70% 0.080 268)",
++  "--pearl-50": "oklch(99% 0.006 268)",
++  "--brand-500": "oklch(63% 0.180 262)",
++  "--claret-400": "oklch(60% 0.160 15)",
++  "--gold-300": "oklch(86% 0.110 84)",
++  "--gilt": "var(--gold-300)",
++  "--font-cjk": "'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Noto Sans SC', 'Source Han Sans SC'",
++  "--font-display": "'Sora', system-ui, var(--font-cjk), sans-serif",
++  "--font-body": "'Inter', system-ui, var(--font-cjk), sans-serif",
++  "--font-mono": "'JetBrains Mono', ui-monospace, var(--font-cjk), monospace",
++  "--type-body": "15px",
++  "--type-micro": "11px",
++  "--h-control-md": "44px",
++  "--r-pill": "999px",
++  "--w-board": "1280px",
++} as const;
++
++/** `.btn-primary`'s paint, property for property as `globals.css` writes it (`test:offline-neutral` §5). */
++export const OFFLINE_PRIMARY = {
++  background: "linear-gradient(180deg, oklch(53% 0.20 268) 0%, oklch(48% 0.20 268) 100%)",
++  color: "var(--pearl-50)",
++  "border-color": "oklch(40% 0.20 268)",
++  "box-shadow": "inset 0 0 0 1px oklch(74% 0.16 268 / 0.32), 0 2px 8px -2px oklch(20% 0.10 268 / 0.50), 0 8px 22px -10px oklch(48% 0.20 268 / 0.55)",
++  "letter-spacing": "0.005em",
++  "text-shadow": "0 1px 0 oklch(20% 0.10 268 / 0.40)",
++} as const;
++
++/** `BrandTopo` (`src/components/brand-topo.tsx`) at the opacity the offline page drew it: its tile, ink and four contours. */
++export const OFFLINE_TOPO = {
++  opacity: 0.09,
++  width: 240,
++  height: 180,
++  stroke: "oklch(96% 0.005 240)",
++  strokeWidth: "0.6",
++  paths: [
++    "M 0 90 Q 60 60 120 90 T 240 90",
++    "M 0 60 Q 60 30 120 60 T 240 60",
++    "M 0 120 Q 60 100 120 120 T 240 120",
++    "M 0 150 Q 60 130 120 150 T 240 150",
++  ],
++} as const;
++
++/** The two line glyphs the page drew (`I.wifiOff`, `I.rotateCcw` in `src/components/ui/glyphs.tsx`), as their inner SVG. */
++export const OFFLINE_GLYPHS = {
++  wifiOff: '<path d="M8.5 13.2a6.3 6.3 0 0 1 7 0"/><path d="M5 10a10.6 10.6 0 0 1 4.2-2.3M14.8 7.7A10.6 10.6 0 0 1 19 10"/><circle cx="12" cy="17.2" r="1" fill="currentColor" stroke="none"/><path d="M4 4l16 16"/>',
++  rotateCcw: '<path d="M3 12a9 9 0 1 0 2.6-6.3L3 8"/><path d="M3 3.5V8h4.5"/>',
++} as const;
++
++const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
++/** A value for an inline script: JSON, with every `<` escaped so no string can close the element it sits in. */
++const js = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
++const tFor = (l: Locale) => dict[l] as Dict;
++/** One phrase in every language, each in a span the stylesheet shows only under its own `<html lang>`. */
++const say = (pick: (t: Dict) => string) => OFFLINE_LOCALES.map((l) => `<span class="l" lang="${l}">${esc(pick(tFor(l)))}</span>`).join("");
++/** A 24-grid line glyph, drawn as `glyphs.tsx`'s `G` draws it. */
++const glyph = (inner: string, s: number) =>
++  `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
++/** The tab title in each language: the app's title template, `%s · 50pick`. */
++const titleOf = (l: Locale) => `${tFor(l).common.offline} · 50pick`;
++
++/**
++ * The head script: the language the player has NOW — `kp-locale` from the cookie, else the saved choice (the
++ * provider's own order, `i18n.tsx`), else the platform default — onto `<html lang>` and the title, before first paint.
++ */
++function localiser(): string {
++  const titles = Object.fromEntries(OFFLINE_LOCALES.map((l) => [l, titleOf(l)]));
++  return `(function(){var L=${js(OFFLINE_LOCALES)},T=${js(titles)},N=${js(OFFLINE_LOCALE_COOKIE)},l=${js(DEFAULT_LOCALE)},v=null;`
++    + `try{var m=document.cookie.match(new RegExp("(?:^|; )"+N+"=([^;]*)"));if(m)v=decodeURIComponent(m[1])}catch(e){}`
++    + `if(L.indexOf(v)<0){try{v=localStorage.getItem(N)}catch(e){v=null}}`
++    + `if(L.indexOf(v)>=0)l=v;document.documentElement.lang=l;document.title=T[l]})();`;
++}
++
++/** The body script: the retry reloads the address the player asked for, and so does the connection coming back. */
++function recovery(): string {
++  return `(function(){function again(){if(location.pathname===${js(OFFLINE_PATH)})location.replace("/");else location.reload()}`
++    + `var b=document.getElementById(${js(OFFLINE_RETRY_ID)});if(b)b.addEventListener("click",again);`
++    + `window.addEventListener("online",again)})();`;
++}
++
++function stylesheet(): string {
++  const tokens = Object.entries(OFFLINE_TOKENS).map(([k, v]) => `${k}:${v}`).join(";");
++  const primary = Object.entries(OFFLINE_PRIMARY).map(([k, v]) => `${k}:${v}`).join(";");
++  const hide = OFFLINE_LOCALES.map((l) => `html:not([lang="${l}"]) .l[lang="${l}"]`).join(",");
++  return [
++    `:root{${tokens};color-scheme:dark}`,
++    `*,*::before,*::after{box-sizing:border-box}`,
++    `html{-webkit-text-size-adjust:100%;text-size-adjust:100%}`,
++    `body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:var(--type-body);line-height:1.5;-webkit-font-smoothing:antialiased;font-feature-settings:"ss01","cv11";-webkit-tap-highlight-color:transparent}`,
++    `svg{display:block}`,
++    `${hide}{display:none}`,
++    `.kp-off{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:100vh;min-height:100svh;padding:32px 16px}`,
++    `.kp-off__topo{position:absolute;inset:0;width:100%;height:100%;opacity:${OFFLINE_TOPO.opacity};pointer-events:none}`,
++    `.kp-off__col{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;max-width:400px;text-align:center}`,
++    `.kp-off__disc{margin-top:32px;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:var(--r-pill);border:1px solid var(--border);background:var(--bg-overlay);color:var(--text-subtle)}`,
++    `.kp-off__title{margin:20px 0 0;font-family:var(--font-display);font-size:28px;line-height:1.25;letter-spacing:-0.85px;font-weight:700;color:var(--text)}`,
++    `.kp-off__hint{margin:12px 0 0;font-size:13px;line-height:1.375;color:var(--text-muted)}`,
++    `.kp-off__retry{margin:32px 0 0;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:var(--h-control-md);padding:0 16px;border:1px solid transparent;border-radius:var(--r-pill);font-family:var(--font-body);font-size:14px;font-weight:600;line-height:inherit;white-space:nowrap;cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-appearance:none;appearance:none;${primary}}`,
++    `.kp-off__retry:focus-visible{outline:2px solid var(--brand-500);outline-offset:2px;box-shadow:0 0 0 4px oklch(63% 0.18 262 / 0.25)}`,
++    `.kp-off__rg{background:color-mix(in oklab,var(--bg-elevated) 40%,transparent)}`,
++    `.kp-off__rule{height:1px;max-width:var(--w-board);margin:0 auto;background:linear-gradient(90deg,transparent,var(--claret-400) 18%,var(--gilt) 50%,var(--claret-400) 82%,transparent);opacity:.95}`,
++    `.kp-off__rg-in{max-width:var(--w-board);margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;gap:12px}`,
++    `.kp-off__rg-row{display:flex;align-items:center;gap:10px}`,
++    `.kp-off__18{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:2px solid var(--text-subtle);border-radius:var(--r-pill);font-family:var(--font-display);font-weight:700;font-size:var(--type-micro);color:var(--text)}`,
++    `.kp-off__rg p{margin:0;font-size:13px;line-height:18px;letter-spacing:-0.05px;text-wrap:balance;word-break:keep-all}`,
++    `.kp-off__rg .kp-off__gbt{color:var(--text-muted);line-height:1.625}`,
++    `.kp-off__lic{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--text-subtle)}`,
++    `.kp-off__stop{font-style:italic;color:var(--text-subtle)}`,
++    `@media (min-width:1024px){.kp-off__rg-in{padding-left:32px;padding-right:32px}}`,
++  ].join("");
++}
++
++/**
++ * The whole document. ⛔ Its only input is the licence number, a public fact (`/admin/system`): nothing about the
++ * person asking can reach it, because nothing about the request is read.
++ */
++export function offlineDocument({ licenceNumber }: { licenceNumber: string }): string {
++  const topo = OFFLINE_TOPO.paths
++    .map((d) => `<path d="${d}" fill="none" stroke="${OFFLINE_TOPO.stroke}" stroke-width="${OFFLINE_TOPO.strokeWidth}"/>`)
++    .join("");
++  return "<!doctype html>"
++    + `<html lang="${DEFAULT_LOCALE}" translate="no" class="notranslate">`
++    + "<head>"
++    + `<meta charset="utf-8">`
++    + `<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover">`
++    + `<meta name="theme-color" content="#0a0e33">`
++    + `<meta name="google" content="notranslate">`
++    + `<meta name="robots" content="noindex">`
++    + `<title>${esc(titleOf(DEFAULT_LOCALE))}</title>`
++    + `<script>${localiser()}</script>`
++    + `<style>${stylesheet()}</style>`
++    + "</head>"
++    + "<body>"
++    + `<main id="main-content" class="kp-off">`
++    + `<svg class="kp-off__topo" aria-hidden="true"><defs><pattern id="kp-off-topo" x="0" y="0" width="${OFFLINE_TOPO.width}" height="${OFFLINE_TOPO.height}" patternUnits="userSpaceOnUse">${topo}</pattern></defs><rect width="100%" height="100%" fill="url(#kp-off-topo)"/></svg>`
++    + `<div class="kp-off__col">`
++    + `<svg class="kp-off__mark" viewBox="0 0 100 100" width="64" height="64" role="img" aria-label="50pick">${markInnerSvg("color", false)}</svg>`
++    + `<span class="kp-off__disc" aria-hidden="true">${glyph(OFFLINE_GLYPHS.wifiOff, 18)}</span>`
++    + `<h1 class="kp-off__title">${say((t) => t.common.offline)}</h1>`
++    + `<p class="kp-off__hint">${say((t) => t.common.offlineHint)}</p>`
++    + `<button type="button" id="${OFFLINE_RETRY_ID}" class="kp-off__retry">${glyph(OFFLINE_GLYPHS.rotateCcw, 14)}<span>${say((t) => t.error.tryAgain)}</span></button>`
++    + "</div>"
++    + "</main>"
++    + `<footer class="kp-off__rg">`
++    + `<div class="kp-off__rule" aria-hidden="true"></div>`
++    + `<div class="kp-off__rg-in">`
++    + `<div class="kp-off__rg-row"><span class="kp-off__18">${say((t) => t.footer.eighteenPlus)}</span><p class="kp-off__gbt">${say((t) => t.footer.licensedByGbt)}</p></div>`
++    + `<p class="kp-off__lic">${say((t) => t.footer.license)}: ${esc(licenceNumber)}</p>`
++    + `<p class="kp-off__stop">${say((t) => t.footer.stopGambling)}</p>`
++    + "</div>"
++    + "</footer>"
++    + `<script>${recovery()}</script>`
++    + "</body>"
++    + "</html>";
++}
+diff --git a/src/lib/status-tone.ts b/src/lib/status-tone.ts
+index c86e5f80b..ede2c6e22 100644
+--- a/src/lib/status-tone.ts
++++ b/src/lib/status-tone.ts
+@@ -231,6 +231,26 @@ export const STATUS_TONE = {
+   FAILED:     { player: "rose" },
+   REVERSED:   { player: "slate" },
+   CANCELLED:  { player: "slate" },
++  // ── A BONUS GRANT'S STATE, on the player's /wallet (R5-I, the visual pass's round 5, 2026-10-09) ────────────────────
++  /**
++   * ⭐ GRANT-SCOPED KEYS, for the reason the KYC keys below give: the namespace is FLAT, and `QUEUED`, `FULFILLED` and
++   * `PENDING_KYC` are words another family reads with another meaning (the account page shows a PENDING_KYC account as
++   * ACTIVE). Every grant word but the running one (ACTIVE draws its progress, not a chip) wore the WARNING chip — amber,
++   * struck in gilt (F3) — and amber means SOMEBODY MUST ACT (§B11). Nobody must:
++   *   · QUEUED — waiting its turn: royal, as PENDING is royal everywhere (correction 2).
++   *   · PENDING_KYC — historic since 2026-09-13 (nothing mints one; `wallet/page.tsx`): a wait, royal — the account page
++   *     ruled the same straggler "not a warning".
++   *   · FULFILLED ("Unlocked") — done, and the money is the player's: success green, as a completed payment is (item 5).
++   *     ⛔ Not gilt: the chip is a WORD, and a word is not money (R5-C's ruling on a paying friend's chip, invite/page.tsx);
++   *     gold is for an earned FIGURE, and this row's figure is no longer bonus money (E-224 suppresses it).
++   *   · EXPIRED, CANCELLED, FORFEITED — terminal and inert: slate, as EXPIRED and CANCELLED already are above.
++   */
++  GRANT_QUEUED:      { player: "royal" },
++  GRANT_PENDING_KYC: { player: "royal" },
++  GRANT_FULFILLED:   { player: "green" },
++  GRANT_EXPIRED:     { player: "slate" },
++  GRANT_CANCELLED:   { player: "slate" },
++  GRANT_FORFEITED:   { player: "slate" },
+   // ── KYC STAGE on the player roster (2026-09-11, Ali's request) ────────────────────────────
+   /**
+    * ⚠️ KYC-SCOPED KEYS, DELIBERATELY — and the reason is three screens up, not a preference.
+@@ -311,6 +331,15 @@ export function playerStatusInk(word: string): string | null {
+   return tone && tone in TONE_INK ? TONE_INK[tone as keyof typeof TONE_INK] : null;
+ }
+ 
++/**
++ * A bonus grant's state (`BonusGrantStatus`) → its chip, through the grant-scoped keys (R5-I, 2026-10-09) — or null for a
++ * state with no entry: `ACTIVE`, which draws its progress rather than a word, and anything unknown. The same contract as
++ * `playerStatusChip`: the caller states its fallback where it can see it.
++ */
++export function grantStatusChip(status: string | undefined): StatusChipVariant | null {
++  return status ? playerStatusChip("GRANT_" + status) : null;
++}
++
+ /**
+  * ⭐ A POSITION'S STATUS CHIP, DECIDED ONCE (the Vodacom plan S6, S6-PLAN WP9 step 4). The classic position card and
+  * the journey's ticket card both paint a ticket's state, and both paint it through THIS, so the two cards cannot come

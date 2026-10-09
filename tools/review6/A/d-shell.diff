@@ -1,0 +1,803 @@
+diff --git a/src/components/journey/account/hub-row.tsx b/src/components/journey/account/hub-row.tsx
+index 5ac10a770..aa16af121 100644
+--- a/src/components/journey/account/hub-row.tsx
++++ b/src/components/journey/account/hub-row.tsx
+@@ -10,22 +10,26 @@
+ import Link from "next/link";
+ import { I } from "@/components/ui/glyphs";
+ import { Cash } from "@/components/ui/cash";
++import { DotSeq } from "@/components/ui/dot-seq";
+ import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
+ import { NeedleControlsDrawer } from "@/components/layout/needle-drawer";
+-import { formatTzs } from "@/lib/utils";
+-import type { Dict } from "@/lib/i18n-dict";
++import { formatTzs, fill } from "@/lib/utils";
++import { firstDateSentence, formatBreakEnd } from "@/lib/break-end";
++import { keepText } from "@/components/ui/keep-run";
++import type { Dict, Locale } from "@/lib/i18n-dict";
+ import { hubWord, type HubRow, type HubViewer } from "@/components/journey/account/hub-rows";
+ import { UnreadRow } from "@/components/journey/account/unread-row";
+ import { LanguageRow } from "@/components/journey/account/language-row";
+ import { CardSizeRow } from "@/components/journey/account/card-size-row";
+ 
+-export function HubRowItem({ row, t, viewer }: { row: HubRow; t: Dict; viewer: HubViewer }) {
++export function HubRowItem({ row, t, viewer, locale }: { row: HubRow; t: Dict; viewer: HubViewer; locale?: Locale }) {
+   if (row.kind === "language") return <LanguageRow />;
+   if (row.kind === "cardSize") return <CardSizeRow />;
+   if (row.kind === "needle") {
++    // The hub's own row (the drawer's `hub-row` trigger), not the account menu's in a padded item (round 3, 2026-10-09).
+     return (
+-      <li className="kp-hub__needle">
+-        <NeedleControlsDrawer variant="menu-row" />
++      <li>
++        <NeedleControlsDrawer variant="hub-row" />
+       </li>
+     );
+   }
+@@ -33,22 +37,50 @@ export function HubRowItem({ row, t, viewer }: { row: HubRow; t: Dict; viewer: H
+     return <UnreadRow userId={viewer.signedIn ? viewer.userId : null} href={row.href} label={hubWord(t, row.label)} />;
+   }
+   const Glyph = I[row.glyph];
++  const label = <span className="kp-hub__label">{hubWord(t, row.label)}</span>;
++  /* ⭐ R4-I (2026-10-09; edges E58, tile 092 · 026 059) · A RUNNING BREAK IS STATED ON ITS OWN ROW. "Pumzika" was offered
++     during an active break with no word that one was running, or until when. Its second line is now the first sentence of
++     the break's own approved paragraph, `rg.breakActive` — "Mapumziko yanaendelea hadi 9 Okt, 06:02." — its end said by
++     the one formatter and kept one run; an exclusion states `rg.exclusionActive`'s on its own row. The row still lands on
++     the break section, which carries the whole paragraph. */
++  const running = viewer.signedIn && viewer.breakEnd && locale
++    && ((row.id === "break" && !viewer.breakEnd.exclusion) || (row.id === "exclude" && viewer.breakEnd.exclusion))
++    ? viewer.breakEnd : null;
++  const statusTemplate = running ? firstDateSentence(running.exclusion ? t.rg.exclusionActive : t.rg.breakActive) : null;
++  const statusDate = running && statusTemplate && locale ? formatBreakEnd(Date.parse(running.until), Date.now(), t.common.monthsShort, locale) : null;
++  const status = statusTemplate && statusDate ? keepText(fill(statusTemplate, { date: statusDate }), [statusDate]) : null;
+   return (
+     <li>
+       <Link href={row.href as never} className="kp-hub__row">
+         <span className="kp-hub__glyph" aria-hidden><Glyph s={20} /></span>
+         <span className="kp-hub__text">
+-          <span className="kp-hub__label">{hubWord(t, row.label)}</span>
+-          {row.sub && <span className="kp-hub__sub">{hubWord(t, row.sub)}</span>}
++          {/* The programme's flag rides its label (WP12's tiles 124, 255, 297, 2026-10-08): beside it where both fit,
++              under it where they do not — it no longer takes the label's width from the row and folds
++              "Pendekeza na upate zawadi" in two at 390. `.kp-hub__head`. */}
++          {row.extra === "proposals" && viewer.signedIn ? (
++            <span className="kp-hub__head">
++              {label}
++              <ProposalsStateBadge state={viewer.proposalsState} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" />
++            </span>
++          ) : label}
++          {row.sub && <HubSub text={hubWord(t, row.sub)} />}
++          {status && <span className="kp-hub__sub" data-testid={`hub-status-${row.id}`}>{status}</span>}
+         </span>
+         {row.extra === "balance" && viewer.signedIn && viewer.balance !== null && (
+           <Cash className="kp-hub__money">{formatTzs(viewer.balance)}</Cash>
+         )}
+-        {row.extra === "proposals" && viewer.signedIn && (
+-          <ProposalsStateBadge state={viewer.proposalsState} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" />
+-        )}
+         <I.chevronRight s={18} className="kp-hub__chev" aria-hidden />
+       </Link>
+     </li>
+   );
+ }
++
++/**
++ * A row's second line. One that names several things — "Maswali ya kawaida · Simu · Barua pepe" — is drawn as those
++ * things, so it breaks only BETWEEN them and never on a dangling "·" (WP12's tiles 276, 277, 2026-10-08). The mechanism
++ * is `DotSeq` (dot-seq.tsx) since round 3 (2026-10-09), when the legal header and the invite page needed it too. The
++ * words are the dictionary's own, split at its own " · "; the dots are drawn, not read.
++ */
++function HubSub({ text }: { text: string }) {
++  return <DotSeq text={text} className="kp-hub__sub" />;
++}
+diff --git a/src/components/journey/account/hub-rows.ts b/src/components/journey/account/hub-rows.ts
+index c221a12f3..30854e766 100644
+--- a/src/components/journey/account/hub-rows.ts
++++ b/src/components/journey/account/hub-rows.ts
+@@ -19,6 +19,7 @@
+  */
+ import type { ViewerDoors } from "@/lib/journey/viewer-doors";
+ import type { ProposalsState } from "@/lib/server/proposals-config";
++import type { BreakState } from "@/lib/break-end";
+ 
+ /** A signed-in reader, as `loadHubViewer` (`src/lib/server/hub-viewer.ts`) composes one. */
+ export type HubMember = {
+@@ -32,6 +33,9 @@ export type HubMember = {
+   balance: number | null;
+   /** A frozen or closed wallet: Pochi says so, and no money door is offered — the wallet sheet's own rule. */
+   walletHeld: boolean;
++  /** R4-I · the reader's running break or exclusion and its end — Pumzika states it (`hub-row.tsx`); null when none runs
++   *  or the read failed (optional: a reader composed without it shows no status). */
++  breakEnd?: BreakState | null;
+   /** "Verify ID" is offered: the KYC row was read, and it is neither approved nor a final refusal. */
+   kycOffered: boolean;
+   /** An approved agent in good standing, whose invite door is their commission dashboard. */
+@@ -49,18 +53,44 @@ export const HUB_WORDS = [
+   "journey.hubGroupProfile", "journey.hubGroupHelp", "journey.hubGroupSettings", "journey.hubGroupAgent",
+   "journey.hubGroupFairnessHelp", "journey.hubGroupLegal",
+   "common.wallet", "common.balanceFrozen", "journey.withdrawAction",
+-  "common.results", "common.live", "common.leaderboard",
++  "common.results", "common.live", "leaderboard.title",
+   "footer.setLimits", "journey.hubLimitsSub", "footer.takeABreak", "footer.selfExclude",
+-  "profile.inviteFriends", "agent.dashTitle", "common.proposeEarn",
+-  "common.profile", "common.verifyId", "profile.verifyIdSub", "footer.resolutionAttestation",
++  "profile.inviteFriends", "agent.dashTitle", "proposals.title",
++  "common.profile", "profile.verifyIdentity", "profile.verifyIdSub", "footer.resolutionAttestation",
+   "common.help", "journey.hubHelpSub", "common.notifications", "common.search", "agent.footerLink",
+-  "footer.privacyNotice", "footer.amlKyc", "footer.terms", "footer.gameRtp",
++  "common.consentMore", "footer.amlKyc", "footer.terms", "footer.gameRtp",
+ ] as const;
++
++/*
++ * ⭐ ONE PAGE, ONE NAME — EVERY ROW (round 5 of the visual pass, 2026-10-09, F17; the R4-H rule of edges E4 / E33: a door
++ * names its page as the page names itself). Each row was held to the name its page gives itself — its title, the
++ * eyebrow that names it, its h1 — and four said something else; each now takes the page's own words, from keys the
++ * dictionary already has:
++ *   · Thibitisha kitambulisho / Verify your identity / 验证您的身份 — the KYC page's h1 (`profile.verifyIdentity`); the row
++ *     said "Thibitisha ID" / "Verify ID" (tile 331);
++ *   · Bingwa / Leaderboard / 排行榜 — the leaderboard's own title, its eyebrow and its <title> (`leaderboard.title`); the
++ *     row said "Jedwali la Washindi" in Swahili;
++ *   · Mapendekezo ya Masoko / Market Proposals / 市场提议 — the proposals page's own title (`proposals.title`, its eyebrow
++ *     and its h1); the row said "Pendekeza na upate zawadi / Propose & earn / 提议赚钱";
++ *   · Sera ya faragha / Privacy policy / 隐私政策 — the privacy page's title ("Sera ya Faragha / Privacy Policy / 隐私政策",
++ *     page-local, as every legal title is), in the one key that already carries those words (`common.consentMore`, the
++ *     consent prompt's link to the same page); the row said "Notisi ya faragha / Privacy notice / 隐私声明".
++ * The journey's other doors to these pages say the same since this round: its footer (`public-footer.tsx`, the journey
++ * arm), its avatar menu (`avatar-menu.tsx`, the journey's menu) and the profile page's KYC row.
++ * The rest match their page already: Matokeo, Mubashara (the live page's title and h1), Uthibitisho wa utatuzi, Msaada,
++ * Pochi, Arifa, Wasifu, Alika marafiki, Masharti ya huduma, Kuwa wakala. They differ by design where a row names an ACT on
++ * its page rather than the page — Weka mipaka, Pumzika, Jizuie (owner-approved RG doors, each landing on its own
++ * section), Tafuta — and Toa pesa is the journey's own word for its money doors (its Wallet sheet's button says the
++ * same), while the withdraw page itself says "Toa" over "Toa fedha": that page's words are the wallet's to align. They
++ * cannot match yet where no key holds the page's name: the rules page ("RTP ya mchezo na sheria" for "Kanuni za
++ * Michezo") and the Swahili AML title ("Sera ya AML / KYC" for "Sera ya Kuzuia Uoshaji wa Fedha na KYC") — both S12
++ * items, words this pass cannot add.
++ */
+ export type HubWord = (typeof HUB_WORDS)[number];
+ 
+ /** A glyph of `I` (`components/ui/glyphs.tsx`). The row renderer indexes `I` with it, so a wrong name fails the build. */
+ export type HubGlyph =
+-  | "wallet" | "arrowUpFromLine" | "checkCircle" | "radio" | "podium" | "shield" | "pause" | "circleStop"
++  | "wallet" | "arrowUpFromLine" | "resolved" | "radio" | "podium" | "shield" | "pause" | "circleStop"
+   | "users" | "sparkle" | "user" | "idCard" | "sealCheck" | "headset" | "search" | "shieldcheck"
+   | "fileText" | "tippingScales" | "info";
+ 
+@@ -94,9 +124,12 @@ export type HubGroupKey =
+ /** One card: a list named by its group word — never a navigation landmark (S6-PLAN WP5 step 2). */
+ export type HubGroup = { key: HubGroupKey; label: HubWord; rows: HubRow[] };
+ 
+-const RESULTS: HubRow = { id: "results", kind: "link", href: "/results", label: "common.results", glyph: "checkCircle" };
++/** ⭐ Matokeo wears the results page's own glyph (round 5, the check on tile 197): `checkCircle` drew the same circled check
++ *  as Uthibitisho wa utatuzi's `sealCheck` one card below, two doors under one sign. `resolved` — the check in its rays — is
++ *  the one /results' header, the classic menu's Results row and the trust band already draw. */
++const RESULTS: HubRow = { id: "results", kind: "link", href: "/results", label: "common.results", glyph: "resolved" };
+ const LIVE: HubRow = { id: "live", kind: "link", href: "/live", label: "common.live", glyph: "radio" };
+-const LEADERBOARD: HubRow = { id: "leaderboard", kind: "link", href: "/leaderboard", label: "common.leaderboard", glyph: "podium" };
++const LEADERBOARD: HubRow = { id: "leaderboard", kind: "link", href: "/leaderboard", label: "leaderboard.title", glyph: "podium" };
+ const FAIRNESS: HubRow = { id: "fairness", kind: "link", href: "/fairness", label: "footer.resolutionAttestation", glyph: "sealCheck" };
+ /** ⛔ Msaada's second line names no phone number (§0h point 10). */
+ const HELP: HubRow = { id: "help", kind: "link", href: "/help", label: "common.help", sub: "journey.hubHelpSub", glyph: "headset" };
+@@ -138,7 +171,7 @@ function guestGroups(): HubGroup[] {
+       key: "legal",
+       label: "journey.hubGroupLegal",
+       rows: [
+-        { id: "privacy", kind: "link", href: "/legal/privacy", label: "footer.privacyNotice", glyph: "fileText" },
++        { id: "privacy", kind: "link", href: "/legal/privacy", label: "common.consentMore", glyph: "fileText" },
+         { id: "aml", kind: "link", href: "/legal/aml", label: "footer.amlKyc", glyph: "shieldcheck" },
+         { id: "terms", kind: "link", href: "/legal/terms", label: "footer.terms", glyph: "tippingScales" },
+         { id: "rules", kind: "link", href: "/legal/rules", label: "footer.gameRtp", glyph: "info" },
+@@ -164,11 +197,11 @@ function memberGroups(v: HubMember): HubGroup[] {
+     });
+   }
+   if (v.doors.proposalsVisible) {
+-    share.push({ id: "proposals", kind: "link", href: "/proposals", label: "common.proposeEarn", glyph: "sparkle", extra: "proposals" });
++    share.push({ id: "proposals", kind: "link", href: "/proposals", label: "proposals.title", glyph: "sparkle", extra: "proposals" });
+   }
+ 
+   const profile: HubRow[] = [{ id: "profile", kind: "link", href: "/profile", label: "common.profile", glyph: "user" }];
+-  if (v.kycOffered) profile.push({ id: "kyc", kind: "link", href: "/profile/kyc", label: "common.verifyId", sub: "profile.verifyIdSub", glyph: "idCard" });
++  if (v.kycOffered) profile.push({ id: "kyc", kind: "link", href: "/profile/kyc", label: "profile.verifyIdentity", sub: "profile.verifyIdSub", glyph: "idCard" });
+   profile.push(FAIRNESS);
+ 
+   // Kuwa wakala under the footer's own rule: the programme open, or the reader already inside it (§0h point 9).
+@@ -193,6 +226,40 @@ export function hubRowsFor(v: HubViewer): HubGroup[] {
+   return v.signedIn ? memberGroups(v) : guestGroups();
+ }
+ 
++/**
++ * How many of a card's rows draw from 1024, where the hub has two columns: the language row hides there (the journey
++ * header carries the language menu) and the card-size row from 640 — each says so on its own `<li>`
++ * (`language-row.tsx`, `card-size-row.tsx`). `hubColumnCut` weighs the cards with it.
++ */
++export function wideRowCount(rows: readonly HubRow[]): number {
++  return rows.filter((r) => r.kind !== "language" && r.kind !== "cardSize").length;
++}
++
++/**
++ * WHERE THE HUB'S TWO COLUMNS PART, from 1024 (WP12's tiles 122-317, 2026-10-08). A row-major grid paired the cards by
++ * row, so a ~73px band opened under the shorter card of each pair against the 16px between cards everywhere else. The
++ * page now stacks the cards in two independent columns, and the columns are this ONE order cut once: the first `k`
++ * cards down the left, the rest down the right. So the DOM, the keyboard and the eye keep `hubRowsFor`'s order, and
++ * below 1024 the two columns stack back into the single one, unchanged.
++ * `k` leaves the two columns most nearly level, given each card's `wideRowCount`: a row is the 56px rung and its 1px
++ * hairline, a card adds its 2px border less the last hairline, and every card after the first in a column adds the
++ * 16px gap. A tie goes to the longer left column. With fewer than two cards there is no cut.
++ */
++export function hubColumnCut(rowCounts: readonly number[]): number {
++  const height = (counts: readonly number[]) =>
++    counts.reduce((h, n) => h + 57 * n + 1, 0) + 16 * Math.max(0, counts.length - 1);
++  let cut = rowCounts.length;
++  let tallest = Infinity;
++  for (let k = 1; k < rowCounts.length; k++) {
++    const h = Math.max(height(rowCounts.slice(0, k)), height(rowCounts.slice(k)));
++    if (h <= tallest) {
++      tallest = h;
++      cut = k;
++    }
++  }
++  return cut;
++}
++
+ /** A word from a dictionary (`t`), or "" when the path is missing — `hubWordProblems` keeps that from happening. */
+ export function hubWord(t: unknown, key: HubWord): string {
+   let v: unknown = t;
+diff --git a/src/components/journey/journey-flag.tsx b/src/components/journey/journey-flag.tsx
+index a65131bef..95ac6af5f 100644
+--- a/src/components/journey/journey-flag.tsx
++++ b/src/components/journey/journey-flag.tsx
+@@ -10,11 +10,16 @@
+  * WP6c this file rode in every page's first load with the shell's other lazy parts (VODACOM-PLAN §0h point 20).
+  * ⭐ The cleanup lowers the flag and announces it: an Owner Stop or a pass ending swaps the shell on `router.refresh()`,
+  * this unmounts, and every overlay comes back without a reload.
++ * ⭐ IN THE COMMIT THAT SWAPS THE SHELL, BEFORE ITS PAINT (round 5's follow-up, R5-H · G-3): a LAYOUT effect raises it
++ * and its cleanup lowers it, and AppShell mounts it bare beside the journey's header and tabs, so it lands in the very
++ * commit that first paints them — a `router.refresh()` that switches the journey on or off paints the matching answer
++ * in its first frame. `raiseJourneyFlag` has the two phases. It was a passive effect, which a transition's commit runs
++ * after the paint: one frame of the old answer either way (R5-D).
+  */
+-import { useEffect } from "react";
++import { useLayoutEffect } from "react";
+ import { raiseJourneyFlag } from "@/lib/journey/journey-on";
+ 
+ export function JourneyFlag() {
+-  useEffect(() => raiseJourneyFlag(), []);
++  useLayoutEffect(() => raiseJourneyFlag(), []);
+   return null;
+ }
+diff --git a/src/components/journey/journey-top-bar.tsx b/src/components/journey/journey-top-bar.tsx
+index 21ea0af6f..1ee71fa9a 100644
+--- a/src/components/journey/journey-top-bar.tsx
++++ b/src/components/journey/journey-top-bar.tsx
+@@ -17,10 +17,11 @@
+  * ── ⭐ THE S4 FIT RULES ARE STYLESHEET RULES, NOT NUMBERS HERE ──────────────────────────────────────────────────
+  * The phone row was measured in Chromium with the real fonts (`VODACOM-PLAN.md` §0g design call 10): 6px gaps, the
+  * 26px mark in a 44px link that borrows 9px of gutter each side, 10px capsule padding, 12/10 on the pill; below 360
+- * a 12px gutter, no "+" glyph and a 12px figure. From 640 the row takes the classic bar's own steps (WP6a step 1): its
+- * gutter and gaps, and its right-hand controls grouped as one cluster with the cluster's own spacing, which is why
+- * they sit in one wrapper here. Each is a rule in `globals.css` (the journey header's family and the capsule's), so
+- * `test:journey-shell` §7 reads them as written and WP6b's header-fit gate reads them as computed (A5).
++ * no "+" glyph and a 12px figure. The row's gutter is the page's own, 16px below 1024 and 32px from it (2026-10-08,
++ * the owner's rule: the header's edge is the page's edge at every width). From 640 the row takes the classic bar's
++ * own gaps (WP6a step 1), and its right-hand controls grouped as one cluster with the cluster's own spacing, which is
++ * why they sit in one wrapper here. Each is a rule in `globals.css` (the journey header's family and the capsule's),
++ * so `test:journey-shell` §7 reads them as written and WP6b's header-fit gate reads them as computed (A5).
+  * ⛔ No inline style here: an inline number is one a probe cannot tell from a decision.
+  *
+  * ── ⭐ THE "+" IS ITS OWN SPAN ───────────────────────────────────────────────────────────────────────────────────
+@@ -36,7 +37,8 @@
+  * ── ⛔ ONE UNREAD POLLER PER WIDTH ───────────────────────────────────────────────────────────────────────────────
+  * The bell polls on its own every 30 s, and so does the Akaunti tab's dot. The bell shows from 1024 and the rail
+  * below it, so the bell is MOUNTED only where it shows (`pollersAt`), never merely hidden: a hidden bell still asks.
+- * Its slot keeps its width, so the cluster does not move when the bell arrives just after hydration.
++ * Its slot keeps its width, so the cluster does not move when the bell arrives just after hydration — and since R4-J
++ * (2026-10-09, E36) the slot is not empty until then: the server draws the bell's still twin there (`BellStill`).
+  *
+  * ── THE DESTINATIONS FROM 1024 ───────────────────────────────────────────────────────────────────────────────────
+  * The kit's section language, not the canvas's pills (§0h point 7): an underline says "you are here" on a
+@@ -52,6 +54,7 @@ import { LanguageMenu } from "@/components/ui/language-menu";
+ import { NotificationsPanel } from "@/components/layout/notifications-panel";
+ import { AvatarMenu } from "@/components/layout/avatar-menu";
+ import { WalletBalanceCaptioned, useLiveBalance } from "@/components/layout/wallet-balance-pill";
++import type { BreakState } from "@/lib/break-end";
+ import type { TopAppBarUser } from "@/components/layout/top-app-bar";
+ import { TicketsGuestSheet } from "@/components/journey/tickets-guest-sheet";
+ import { I } from "@/components/ui/glyphs";
+@@ -59,34 +62,72 @@ import { useT } from "@/lib/i18n";
+ import { JOURNEY_TABS, activeTabFor, tabAriaCurrent, tabLabel } from "@/lib/nav/active-tab";
+ import { journeyHeaderState } from "@/lib/journey/header-state";
+ import { pollersAt, useLgUp } from "@/lib/journey/one-poller";
++import { useNotFoundShown } from "@/lib/not-found-mark";
+ import type { ProposalsState } from "@/lib/server/proposals-config";
+ 
+ /** One class for every destination, link or button: a guest's Tiketi zangu must not read as another kind of thing. */
+ const JNAV = "kp-jnav__link";
+ 
++/**
++ * ⭐ THE BELL BEFORE IT RINGS (2026-10-09, the visual pass round 4, R4-J; E36). The live bell (`NotificationsPanel`) is
++ * mounted only where it shows and only once the browser has said so (`pollersAt`: a mounted bell polls), so the
++ * server's HTML held an EMPTY slot at 1280 — the header painted without its bell until the page's scripts ran, on a
++ * slow network for seconds. This is the bell's own box and glyph — the same wrapper, the same 40px round control, the
++ * same 20px glyph in the same span — drawn by the server, as a plain link to the notifications page: before the
++ * scripts arrive it works the way the page's other links do, and the live bell takes its place, pixel for pixel, the
++ * moment it may mount. It is also what a not-found page shows (no poll there: `lib/not-found-mark.ts`), where the
++ * live bell's Server Action could only be answered 404.
++ * ⚠️ `h-[40px] w-[40px]` is the live bell's `h-7 w-7` written as what it renders (the spacing scale is overridden in
++ * tailwind.config.ts: `7` IS 40px), so `test:ui-consistency`'s numeric-size rule has nothing new to baseline.
++ */
++function BellStill({ label }: { label: string }) {
++  return (
++    <div className="relative z-10">
++      <Link
++        href="/notifications"
++        aria-label={label}
++        className="relative inline-flex h-[40px] w-[40px] items-center justify-center rounded-full transition-colors text-text-subtle hover:text-text hover:bg-bg-overlay/40"
++      >
++        <span aria-hidden className="inline-flex">
++          <I.bell s={20} />
++        </span>
++      </Link>
++    </div>
++  );
++}
++
+ export function JourneyTopBar({
+   user,
+   onBreak,
++  breakEnd = null,
+   proposalsState,
+   inviteVisible = false,
+   invitePaid = false,
+ }: {
+   /** The classic bar's own viewer shape, built once by AppShell for whichever bar it renders. */
+   user: TopAppBarUser;
+-  /** The reader is on a self-imposed break (AppShell's `promoSuppressed`): no "+ Weka pesa" (S4). */
++  /** The reader is on a self-imposed break (AppShell's `promoSuppressed`): no "+ Weka pesa" (S4), and no Deposit in the
++   *  Wallet the capsule opens (2026-10-08, `wallet-sheet.tsx`). */
+   onBreak: boolean;
++  /** R4-I · the reader's break and its end (AppShell, from the settings row it holds), so the Wallet says why it offers no
++   *  Deposit. Null when no break runs or the read failed. */
++  breakEnd?: BreakState | null;
+   proposalsState: ProposalsState;
+   inviteVisible?: boolean;
+   invitePaid?: boolean;
+ }) {
+-  const pathname = usePathname();
++  const route = usePathname();
+   const { t } = useT();
+   // The live figure, as the classic bar feeds its capsule: a deposit landing over SSE moves it with no navigation.
+   const liveBalance = useLiveBalance(user.balance ?? 0);
+   const pollers = pollersAt(useLgUp());
++  // ⭐ R4-J (2026-10-09) · A NOT-FOUND PAGE IS NO PAGE OF OURS, whatever its address says (`lib/not-found-mark.ts`): the
++  // bar reads no path there — no destination lit (the market not-found lit Maswali) — and mounts no bell.
++  const notFoundShown = useNotFoundShown();
++  const pathname = notFoundShown ? null : route;
+   const [sheetOpen, setSheetOpen] = useState(false);
+   // The bar outlives the page: a sheet left open would wait over the page the reader went to.
+-  useEffect(() => { setSheetOpen(false); }, [pathname]);
++  useEffect(() => { setSheetOpen(false); }, [route]);
+   const state = journeyHeaderState({
+     isAuthed: user.isAuthed,
+     balance: user.balance,
+@@ -140,7 +181,7 @@ export function JourneyTopBar({
+             while the row's groups take the row's. */}
+         <div className="kp-jhdr__cluster">
+           {state.capsule !== "none" && (
+-            <WalletBalanceCaptioned balance={liveBalance} held={state.capsule === "held"} />
++            <WalletBalanceCaptioned balance={liveBalance} held={state.capsule === "held"} onBreak={onBreak} breakEnd={breakEnd} />
+           )}
+           {state.pill && (
+             <Link
+@@ -165,10 +206,12 @@ export function JourneyTopBar({
+           )}
+ 
+           {/* From 1024 only: on a phone, Akaunti holds the language control, the notifications and the account. */}
+-          <span className="hidden lg:inline-flex"><LanguageMenu /></span>
++          {/* `journey` on both (R5-C, the second gold audit, 2026-10-09): the current language's tick and the bell's unread
++              signs are the journey's brand ink, not gold (Q5); the classic bar mounts the same two without it, unchanged. */}
++          <span className="hidden lg:inline-flex"><LanguageMenu journey /></span>
+           {user.isAuthed && (
+             <>
+-              <span className="hidden lg:inline-flex kp-jhdr__bell">{pollers.bell && <NotificationsPanel />}</span>
++              <span className="hidden lg:inline-flex kp-jhdr__bell">{pollers.bell && !notFoundShown ? <NotificationsPanel journey /> : <BellStill label={t.common.notifications} />}</span>
+               <span className="hidden lg:inline-flex">
+                 <AvatarMenu
+                   initials={user.initials}
+@@ -181,6 +224,7 @@ export function JourneyTopBar({
+                   proposalsState={proposalsState}
+                   inviteVisible={inviteVisible}
+                   invitePaid={invitePaid}
++                  journey
+                 />
+               </span>
+             </>
+diff --git a/src/components/layout/app-shell.tsx b/src/components/layout/app-shell.tsx
+index e69fea1bc..c79178c80 100644
+--- a/src/components/layout/app-shell.tsx
++++ b/src/components/layout/app-shell.tsx
+@@ -7,10 +7,14 @@ import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/server/su
+ // tabs) come from ONE client module, `./shell-lazy`, which declares each with `next/dynamic` (the Vodacom plan S6,
+ // WP6c; VODACOM-PLAN §0h point 20). They are rendered below under the names they always had, where they always were,
+ // with the same props, each in the Suspense boundary it always had, which is now that part's only one (next/dynamic
+-// adds none): keep every part the one child of its own. A part whose code never arrives is left out rather than taking
+-// the page down (`nothingIfLost`, there). ⛔ NEVER A REACT LAZY HERE: this is a SERVER component, and its own
+-// `React.lazy` bindings kept nothing out of the first load (production and a local build, 2026-10-03): every module
+-// they named rode in the scripts every page loads first, for every visitor. `test:journey-shell` §12 holds this.
++// adds none): keep every part the one child of its own — save the journey's header and tabs, which stand in none, so
++// that the page's first HTML draws them (R4-J, 2026-10-09; the note at their mount), and the journey flag, which stands
++// bare beside them so that it mounts in the commit that first paints them (R5-H, G-3; the note at its mount). A part
++// whose code never arrives is left out rather than taking the page down (`nothingIfLost`, there). ⛔ NEVER A REACT
++// LAZY HERE: this is a SERVER component, and its own `React.lazy` bindings kept nothing out of the first load
++// (production and a local build, 2026-10-03): every module they named rode in the scripts every page loads first,
++// for every visitor.
++// `test:journey-shell` §12 holds this.
+ import {
+   LazyPullToRefresh, LazyNotifyPoller, LazyEventStream, LazyInstallInvite, LazyConsentPrompt, LazyChannelsPanel,
+   LazyJourneyFlag, LazyWinCelebration, LazySellResultHost, LazyJourneyTopBar, LazyJourneyTabs,
+@@ -46,6 +50,7 @@ import { PreviewMarker } from "./preview-marker";
+ import { FunnelUtm } from "@/components/analytics/funnel-utm";
+ import { isStaffRole } from "@/lib/server/roles";
+ import { displayLabel, displayInitials } from "@/lib/display-label";
++import { maskPhone } from "@/lib/phone-normalize";
+ import { getServerT } from "@/lib/i18n-server";
+ import { getPlatformConfig, maintenanceMessage } from "@/lib/server/platform-config";
+ import { getProposalsConfig } from "@/lib/server/proposals-config";
+@@ -59,6 +64,7 @@ import { LICENCE_NUMBER } from "@/lib/support-config";
+ import { isOptOutPath } from "@/lib/marketing/optout";
+ import type { Dict } from "@/lib/i18n-server";
+ import { isSafePath } from "@/lib/safe-next";
++import { breakStateFromTimers, type BreakState } from "@/lib/break-end";
+ 
+ export async function AppShell({ children }: { children: React.ReactNode }) {
+   const { t, locale } = await getServerT();
+@@ -155,6 +161,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
+    * OFFER, never a refusal (`feature-state.ts` LAW 1), so failing open is the correct direction.
+    */
+   let promoSuppressed = false;
++  /** R4-I · the journey Wallet's one consumer of the break's END (see the note at `promoSuppressed` below). */
++  let journeyBreak: BreakState | null = null;
+   /**
+    * ⛔ THE INSTALL INVITATION IS WITHDRAWN (2026-09-13) — Ali: "keep only the socials popup … hide the
+    * install for now, later we activate". Resolved HERE, on the server, from the one feature table; the
+@@ -255,6 +263,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
+     const until = (iso: string | null | undefined) => (iso ? Date.parse(iso) : 0);
+     promoSuppressed =
+       until(rg?.selfExclusionUntil) > now || until(rg?.coolingOffUntil) > now;
++    /* ⭐ R4-I (2026-10-09; edges E58, tiles 014 017 020 047 050 053 080 083 086) · THE BREAK'S END NOW HAS A CONSUMER — the
++       player's own, on the player's own screen. The journey's Wallet drops "Weka pesa" during a break, and it did so
++       without a word; it now says why, in the sentence /wallet/deposit prints for the same break (`rg.breakActive` and its
++       end), so the Wallet the capsule opens is handed the end. Only the JOURNEY bar receives it (the classic bar's props
++       are untouched), it is derived from the same row (no query), and every OFFER still reads the one boolean above. */
++    journeyBreak = breakStateFromTimers(rg?.selfExclusionUntil, rg?.coolingOffUntil, now);
+   }
+ 
+   // The live ticker's REAL settlements. Batched with the config read rather than awaited at its
+@@ -349,6 +363,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
+      attribute the browser beacon reads before it sends anything: staff, a preview pass and an account whose read
+      failed are "off"; everybody else is counted in the journey they are shown. `/api/funnel` needs no cookie. */
+   const funnelScopeValue = journeyPreview || funnelViewer === "staff" || funnelViewer === "unknown" ? "off" : journeyShown ? "new" : "old";
++  /* ⭐ ONE PHONE, ONE MASK IN THE JOURNEY (round 4 of the visual pass, 2026-10-09, edges E32): the account menu read
++     "+255*****84" (`topUser`'s stars, above) while the hub and the profile hero read "+255••••84" — `maskPhone`
++     (phone-normalize.ts) is the one definition of a masked number, and a short value masks to dots rather than being
++     echoed. The journey's header is handed that mask; ⛔ the classic bar keeps `topUser` exactly as it was (frozen
++     chrome for S6/S7, `qa:classic-shell-parity`), so a classic menu still reads its stars until S15. */
++  const journeyUser = session ? { ...topUser, phone: maskPhone(session.phoneE164) } : topUser;
+ 
+   return (
+     <div className="min-h-screen flex flex-col bg-bg-base text-text">
+@@ -372,13 +392,39 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
+       <Suspense fallback={null}><NavProgress /></Suspense>
+       {/* ⭐ THE JOURNEY'S HEADER AND TABS (Vodacom plan S6, WP6b), for a request the resolver shows the journey to and
+           for no other: every other request gets today's bar and rail with today's props, in the two else arms. Each
+-          journey arm is lazy, a `next/dynamic` part of `./shell-lazy` (WP6c; see the note at its import), and the
+-          server still renders it into the page, so a fallback shows only while its code is on the way — a beat of a
+-          streamed page, or a switch into the journey mid-visit
+-          (a preview pass turned on). The header's fallback is therefore the bar's own empty box, with its height, its
+-          panel and its border, so nothing below it moves; the tabs need none, because the rail is anchored to the
+-          viewport and takes no room in the page. */}
+-      {journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar user={topUser} onBreak={promoSuppressed} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /></Suspense> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}
++          journey arm is lazy, a `next/dynamic` part of `./shell-lazy` (WP6c; see the note at its import): its CODE is a
++          chunk of its own, so a classic visitor never downloads it, and the server renders its MARKUP into the page.
++          ⛔ AND THAT MARKUP IS PART OF THE PAGE'S FIRST HTML, IN NO SUSPENSE BOUNDARY (2026-10-09, the visual pass round 4,
++          R4-J; E36). Each arm was the one child of its own boundary, the header's over the bar's empty box. React 19.2's
++          server renderer OUTLINES a finished boundary of more than 500 bytes once the shell it stands in passes 12,800
++          (`flushedByteSize = request.byteSize`, then `flushedByteSize + boundary.byteSize > progressiveChunkSize` and
++          `isEligibleForOutlining`, react-dom-server, in node_modules/next/dist/compiled): the fallback goes into the HTML
++          where the part stands, and the part itself goes after the rest of the shell, in a hidden div that only React's
++          inline `$RC` script moves into place, on an animation frame and at most every 300ms (`$RC`/`$RV` in the same
++          file). The count is the WHOLE shell's, wherever the boundary stands in it, so on all 16 Slow 3G mid-load tiles
++          (277–342) the header band was the empty box, one colour (5,2,79) from y0 to y53, and the rail was not drawn at
++          all (the page colour, 8,0,41, over y716–779), while the probe found both in the document; and with scripting
++          off they never appear. Rendered bare, both are drawn where they stand by the first paint
++          (`test:visual-pass-r4j` §1 proves the outlining on React's own server renderer).
++          ⭐ What the boundaries kept back, and what keeps it now: the capsule's FIGURE for a reader who hid balances (a
++          choice in the browser's storage the server cannot read) — the journey capsule is drawn masked until it is read
++          (`WalletBalanceCaptioned`); and the bell, mounted only once the browser says where it shows — its still twin
++          holds the slot (`BellStill`, journey-top-bar.tsx). The empty box's other job, holding the bar's height while
++          its code arrived, has nothing left to do: a document's first HTML holds the bar itself, and a switch into the
++          journey mid-visit is a router transition, which keeps the bar it had until the new one is ready.
++          ⚠️ What the boundaries also did, and what that costs now: a part with no boundary of its own hydrates with the
++          page, so the page's hydration also waits for the header's and the rail's chunks — each a few kilobytes, named
++          in the page's head (next/dynamic's PreloadChunks) and fetched beside the page's own scripts. And a chunk that
++          never arrives leaves its part out (`nothingIfLost`) as before, but the server's markup then has no client
++          twin, so React renders the whole page again in the browser, without that part, instead of that part alone.
++          ⚠️ AND A SERVER RENDER ERROR IN EITHER PART IS NO LONGER CONTAINED (round 5, review G2). React's server
++          renderer contains a throw only in a Suspense boundary above it (its boundary drew the fallback and let the page
++          through); with none, the throw ends the shell and the whole document fails — a 500 for the page that was asked.
++          Neither part throws today: each draws from the props computed above and reads nothing of its own on the server.
++          Kept that way on purpose — a boundary to contain it would outline the part behind the shell again (E36). The
++          root loading file's journey ghost stands in the shell the same way (`components/journey/route-ghost.tsx`).
++          Classic visitors are untouched: these two arms are the journey's. */}
++      {journeyShown ? <LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} breakEnd={journeyBreak} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}
+       {/* ⭐ THE PREVIEW MARKER — first under the bar, so whoever holds this browser knows at once that they are
+           looking at pages players do not see yet, and has the way out on the same line. */}
+       {journeyPreview && <PreviewMarker label={t.journey.previewMarker} exit={t.journey.previewExit} />}
+@@ -386,13 +432,29 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
+       {/* ⭐ THE JOURNEY FLAG (Vodacom plan S6, WP7) — for a request the resolver shows the journey to, and for no other.
+           It renders nothing. While it is mounted the html element carries the journey's attribute, and that is how
+           the Needle, the channels panel and the chat bubble (mounted where no prop reaches them) stand down on the
+-          journey's own pages; a classic page never carries it. */}
+-      {journeyShown && <Suspense fallback={null}><LazyJourneyFlag /></Suspense>}
+-      {/* ⭐ AND THE SHELL'S MARK, IN THE SERVER'S HTML (`lib/journey/shell-mark.ts`): the flag above arrives in its own
+-          chunk, after hydration, and the Needle once drew for a few frames before it landed. With the mark on the page
+-          from the first byte, every overlay reads the answer right after hydrating. A classic page never carries it. */}
++          journey's own pages; a classic page never carries it.
++          ⭐ BARE, BESIDE THE HEADER AND THE TABS (round 5's follow-up, R5-H · G-3): in no Suspense boundary of its own, so a
++          `router.refresh()` that switches the journey on waits for its chunk as it waits for theirs and mounts it in the
++          commit that first paints the journey's header — and its layout effect raises the flag before that paint
++          (`raiseJourneyFlag` has both directions). In a boundary of its own it could land a commit later, the journey's
++          chrome painted while the overlays still read the classic answer. It renders nothing, so the first HTML gains no
++          markup (only its boundary's two comment markers go); its chunk, a few hundred bytes, is preloaded in the head
++          beside the header's and the rail's, and the page's hydration waits for it as for theirs. */}
++      {journeyShown && <LazyJourneyFlag />}
++      {/* ⭐ AND THE SHELL'S MARK, IN THE SERVER'S HTML (`lib/journey/shell-mark.ts`): the flag above arrives with its own
++          chunk, at hydration at the earliest, and the Needle once drew for a few frames before it landed. With the mark
++          on the page from the first byte, every overlay reads the answer right after hydrating. A classic page never
++          carries it. */}
+       {journeyShown && <span hidden id={JOURNEY_SHELL_MARK} />}
+       {funnelScopeValue !== "off" && <FunnelUtm />}
++      {/* ⭐ THE OFFLINE NOTICE — IN THE FLOW, UNDER THE HEADER, FIRST OF THE NOTICES (R4-G, 2026-10-09; edge scenario 9).
++          It was a FIXED strip at the viewport's top over everything (`z-[200]`), and it lay on the header of both shells:
++          its words ran over the mark, the capsule and the pill on a phone, over the nav links at 1280, and it took their
++          clicks — offline, no header control could be pressed (the drive's 1280 tap timed out three times on the band).
++          It is now the kit's `NoticeBar` here, like the notices below it: it covers nothing and pushes the page down by
++          its own height while the browser is offline. Mounted here once, in its own boundary, still imported statically
++          (`test:journey-shell` 12.shell.offline). */}
++      <Suspense fallback={null}><OfflineBanner /></Suspense>
+       <AnnouncementBanner maintenance={maintBanner} announcement={announcement} />
+       {/* 🔴 E-381 · the in-place answer to a session that ended during a refresh — see the note at
+           `endedReason`. Server-rendered, and its only action is a plain `<a>`. */}
+@@ -456,7 +518,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
+       {/* `supportEmail` is resolved HERE for the third time on this line's own logic (E-226):
+           the footer is `"use client"`, so a `SUPPORT_EMAIL()` call inside it reads the browser
+           bundle's module default and can never show the address an officer saved. */}
+-      <PublicFooter proposalsState={proposalsState} agentDoorVisible={agentDoorVisible} inviteVisible={inviteVisible} supportEmail={SUPPORT_EMAIL()} supportPhone={SUPPORT_PHONE()} supportPhoneTel={SUPPORT_PHONE_TEL()} />
++      {/* ⭐ THE FOOTER'S TWO ARMS (2026-10-09, the visual pass), as the header's and the rail's: the else arm is today's
++          element with today's props, so a request the resolver does not show the journey to is served main's footer —
++          its markup and boxes (`qa:classic-shell-parity`) and its props in the page's RSC data. The journey arm alone
++          says `journeyShown`, which balances the proposals link (`test:simple-journey-flag` 10.shell.chrome.footer). */}
++      {journeyShown ? <PublicFooter proposalsState={proposalsState} agentDoorVisible={agentDoorVisible} inviteVisible={inviteVisible} supportEmail={SUPPORT_EMAIL()} supportPhone={SUPPORT_PHONE()} supportPhoneTel={SUPPORT_PHONE_TEL()} journeyShown /> : <PublicFooter proposalsState={proposalsState} agentDoorVisible={agentDoorVisible} inviteVisible={inviteVisible} supportEmail={SUPPORT_EMAIL()} supportPhone={SUPPORT_PHONE()} supportPhoneTel={SUPPORT_PHONE_TEL()} />}
+       {/* DG-P-11 — the rail's `More` needs the feature state for the same two reasons the bar
+           and the footer already take it: DISABLED hides every proposals entry point, and the
+           state flag (coming-soon / maintenance) must read the same on a phone as on a laptop. */}
+@@ -464,7 +530,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
+           the centre slot is a money-in control and `/wallet/deposit` REFUSES a held wallet, so
+           that slot becomes the Wallet door instead. Same input, same rule, two surfaces — read
+           from the one place the wallet's status is resolved (`topUser` above). */}
+-      {journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} /></Suspense> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}
++      {journeyShown ? <LazyJourneyTabs userId={session?.userId ?? null} /> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}
+       <RealityCheckHost enabled={!!session} intervalMin={realityCheckMin} userId={session?.userId ?? null} />
+       {/* 🔴 SESSION-GATED, like its neighbours on the lines above and below (audit F-08).
+           It was the only one of the three that was not, and the omission had no upper bound.
+@@ -491,9 +557,6 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
+       <Suspense fallback={null}>
+         <AuthFlash />
+       </Suspense>
+-      <Suspense fallback={null}>
+-        <OfflineBanner />
+-      </Suspense>
+       <Suspense fallback={null}>
+         <LazyPullToRefresh />
+       </Suspense>
+diff --git a/src/components/layout/wallet-balance-pill.tsx b/src/components/layout/wallet-balance-pill.tsx
+index ee5117108..1453e2837 100644
+--- a/src/components/layout/wallet-balance-pill.tsx
++++ b/src/components/layout/wallet-balance-pill.tsx
+@@ -23,6 +23,7 @@ import { cn, formatTzs, formatBalancePill, formatNumber } from "@/lib/utils";
+ import { CashEye, useCashHidden } from "@/components/ui/cash";
+ import { I } from "@/components/ui/glyphs";
+ import { WalletSheet } from "@/components/layout/wallet-sheet";
++import type { BreakState } from "@/lib/break-end";
+ 
+ /**
+  * 🔴 THE MASK IS A LAYOUT INPUT, NOT DECORATION — which is why it has a name now.
+@@ -462,12 +463,23 @@ export function WalletBalancePill({ balance, held = false }: { balance: number;
+  * ⚠️ All paint is in globals.css (the kp-jbal rules), on tokens. The flash is a data attribute the stylesheet
+  * answers, not an inline style, so the classic capsule's inline border stays the only one in this file.
+  */
+-export function WalletBalanceCaptioned({ balance, held = false }: { balance: number; held?: boolean }) {
++export function WalletBalanceCaptioned({ balance, held = false, onBreak = false, breakEnd = null }: { balance: number; held?: boolean; onBreak?: boolean; breakEnd?: BreakState | null }) {
+   const { t } = useT();
+   const [open, setOpen] = useState(false);
+   const capsuleRef = useRef<HTMLButtonElement>(null);
+   const { display, flashing, delta } = useBalanceRoll(balance);
+-  const hidden = useCashHidden();
++  /* ⭐ MASKED UNTIL THE READER'S CHOICE IS READ (2026-10-09, the visual pass round 4, R4-J; E36). "Hide balances" lives
++     in the browser's storage (`useCashHidden`), so the server cannot know it, and since R4-J the journey header is in the
++     page's FIRST HTML — painted before any script runs, on a slow network for seconds. Drawn from the server's answer
++     alone, the capsule would show the real figure to a reader who hid it, for as long as the page's scripts take. So the
++     server's render, and the hydration that matches it, draw the mask; the figure arrives with the first render after
++     hydration, in the same render as the stored choice (both are set by this component's effects, in one batch). The
++     box is the wider of figure and mask (D31), so nothing moves when it does. ⛔ Journey only: the classic pill and every
++     `Cash` keep their own reading of the choice. */
++  const chosen = useCashHidden();
++  const [choiceRead, setChoiceRead] = useState(false);
++  useEffect(() => { setChoiceRead(true); }, []);
++  const hidden = chosen || !choiceRead;
+   // A frozen wallet keeps its capsule and says so in the caption ("Salio · limegandishwa"), beside a lock.
+   const caption = held ? t.common.balanceFrozen : t.journey.balanceCaption;
+   // The TARGET, not the rolling value: the reserved box and the name are final from the first frame.
+@@ -504,7 +516,7 @@ export function WalletBalanceCaptioned({ balance, held = false }: { balance: num
+           )}
+         </span>
+       </button>
+-      <WalletSheet open={open} onClose={() => setOpen(false)} balance={balance} held={held} anchorRef={capsuleRef} journey />
++      <WalletSheet open={open} onClose={() => setOpen(false)} balance={balance} held={held} anchorRef={capsuleRef} journey onBreak={onBreak} breakEnd={breakEnd} />
+     </>
+   );
+ }
+diff --git a/src/components/layout/wallet-sheet.tsx b/src/components/layout/wallet-sheet.tsx
+index 86d951832..687ce56e6 100644
+--- a/src/components/layout/wallet-sheet.tsx
++++ b/src/components/layout/wallet-sheet.tsx
+@@ -21,16 +21,26 @@
+  * journey header's captioned balance. That capsule has no eye of its own: this sheet's eye and its Withdraw
+  * are what keep both one tap from the capsule (V19, redefined). Without the flag the words are today's, so
+  * the classic capsule's Wallet renders exactly as before.
++ * ⛔ 2026-10-08 · `onBreak` (the journey's Wallet only): a reader on a self-imposed break is offered no Deposit, the
++ * rule the journey header (no "+ Weka pesa", S4) and `/wallet` (`depositOpen`, 2026-10-06) already keep, because
++ * `/wallet/deposit` refuses one during a break. Withdraw stays, alone and full width: a break does not stop
++ * withdrawals. The flag is AppShell's `promoSuppressed`, which gates an OFFER and fails OPEN (`feature-state.ts` LAW 1)
++ * — after a failed read the Deposit shows and the deposit screen still refuses. ⭐ R4-I (2026-10-09): it now says why —
++ * the shell hands the journey's Wallet the break's end too (`breakEnd`, app-shell.tsx), and the sheet shows the deposit
++ * page's own notice for it ("Deposits paused" over `rg.breakActive`). The header still drops its pill without a word.
+  */
+ 
+ import * as React from "react";
+ import Link from "next/link";
+ import { Modal } from "@/components/ui/modal";
+ import { Button } from "@/components/ui/button";
+-import { Cash, CashEye } from "@/components/ui/cash";
++import { Cash, CashEye, useCashHidden } from "@/components/ui/cash";
+ import { I } from "@/components/ui/glyphs";
+ import { useT } from "@/lib/i18n";
+-import { formatTzs } from "@/lib/utils";
++import { fill, formatTzs } from "@/lib/utils";
++import { keepLastWords } from "@/components/ui/keep-words";
++import { keepText } from "@/components/ui/keep-run";
++import { formatBreakEnd, type BreakState } from "@/lib/break-end";
+ 
+ export function WalletSheet({
+   open,
+@@ -39,18 +49,47 @@ export function WalletSheet({
+   held,
+   anchorRef,
+   journey = false,
++  onBreak = false,
++  breakEnd = null,
+ }: {
+   open: boolean;
+   onClose: () => void;
+   balance: number;
+   held: boolean;
+   anchorRef: React.RefObject<HTMLElement | null>;
+-  /** S6 · the journey capsule's Wallet: its two doors read "Weka pesa" and "Toa pesa". Omitted, today's words. */
++  /** S6 · the journey capsule's Wallet: its two doors read "Weka pesa" and "Toa pesa", and its figure takes the capsule's
++   *  ink (gold on a live balance only). Omitted, today's words and today's ink. */
+   journey?: boolean;
++  /** S6 · the reader is on a self-imposed break (AppShell's `promoSuppressed`): no Deposit, Withdraw alone. The journey
++   *  capsule passes it; omitted, both doors as today. */
++  onBreak?: boolean;
++  /** R4-I · the break and its end (the journey capsule passes it): the sheet says why it offers no Deposit. */
++  breakEnd?: BreakState | null;
+ }) {
+-  const { t } = useT();
++  const { t, locale } = useT();
++  /* ⭐ R4-I (2026-10-09; edges E58, tiles 014 017 020 047 050 053 080 083 086) · A WITHHELD DOOR SAYS WHY. During a break the
++     Wallet dropped "Weka pesa" and left Withdraw alone with no word about it. It now says what /wallet/deposit says for the
++     same break: "Deposits paused" over the break's own sentence and its end (`rg.breakActive`; an exclusion
++     `rg.exclusionActive`), in the held notice's box, the end one run (`keepText`). Drawn only when the Deposit is withheld
++     for a break and the end is known; a held wallet keeps its own notice. */
++  const breakText = !held && onBreak && breakEnd
++    ? (() => {
++        const date = formatBreakEnd(Date.parse(breakEnd.until), Date.now(), t.common.monthsShort, locale);
++        return keepText(fill(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, { date }), [date]);
++      })()
++    : null;
+   const depVia = React.useId();
+   const wdVia = React.useId();
++  const hidden = useCashHidden();
++  /* ⭐ 2026-10-08 · THE JOURNEY'S WALLET READS ITS FIGURE IN THE CAPSULE'S INK (WP12 tiles 088–092). DESIGN_AUTHORITY
++     rule 8a: the captioned balance is gold on a live balance only, plain ink when held or masked (its rule in
++     globals.css: gold marks money you can use). A frozen wallet's capsule read "TZS 100,000" in plain ink and the Wallet it opened read the same figure in
++     gold (measured: #F5F8FF against #F3CB7A), so one balance spoke two inks a tap apart. The figure now answers the
++     same two states the capsule's rule names (`.kp-wsheet__amt` in globals.css).
++     ⛔ The journey's Wallet only: the classic capsule's figure is gold in every state and its Wallet matches it, and
++     classic readers' pages do not change during S6/S7. */
++  const plainHeld = journey && held;
++  const plainMasked = journey && hidden;
+ 
+   return (
+     <Modal
+@@ -68,31 +107,47 @@ export function WalletSheet({
+       <div data-testid="wallet-sheet">
+         <p className="kp-wsheet__label">{held ? t.common.balanceFrozen : t.wallet.available}</p>
+         <div className="kp-wsheet__bal">
+-          <p className="kp-wsheet__amt"><Cash>{formatTzs(balance)}</Cash></p>
++          <p className="kp-wsheet__amt" data-held={plainHeld ? "" : undefined} data-masked={plainMasked ? "" : undefined}><Cash>{formatTzs(balance)}</Cash></p>
+           <CashEye size={16} />
+         </div>
+       </div>
+ 
++      {breakText && (
++        <div className="kp-wsheet__held" role="status" data-testid="wallet-sheet-break">
++          <p className="kp-wsheet__held-t">{t.wallet.depositPausedTitle}</p>
++          <p className="kp-wsheet__held-b">{breakText}</p>
++        </div>
++      )}
++
+       {held ? (
+         <div className="kp-wsheet__held" role="status">
+           <p className="kp-wsheet__held-t">{t.kycGate.frozenTitle}</p>
+-          <p className="kp-wsheet__held-b">{t.kycGate.frozenBody}</p>
++          {/* Its last two words break together (round 3, 2026-10-09, tile 092): "…itakueleza" / "kinachofuata." left the
++              last word alone at 390. The notice's line is 248px at 320 and the pair at most 150 ("itakueleza
++              kinachofuata."), so it always fits. */}
++          <p className="kp-wsheet__held-b">{keepLastWords(t.kycGate.frozenBody)}</p>
+         </div>
+       ) : (
+-        <div className="kp-wsheet__pair">
+-          <div className="kp-wsheet__col">
+-            <Link
+-              href="/wallet/deposit"
+-              onClick={onClose}
+-              aria-describedby={depVia}
+-              className="btn gilt-metal btn-lg kp-wsheet__act"
+-              data-testid="wallet-sheet-deposit"
+-            >
+-              <I.plus s={16} />
+-              {journey ? t.journey.depositAction : t.common.deposit}
+-            </Link>
+-            <span id={depVia} className="kp-wsheet__via">{t.wallet.mobileMoney}</span>
+-          </div>
++        <div className={onBreak ? "kp-wsheet__pair kp-wsheet__pair--one" : "kp-wsheet__pair"}>
++          {!onBreak && (
++            <div className="kp-wsheet__col">
++              <Link
++                href="/wallet/deposit"
++                onClick={onClose}
++                aria-describedby={depVia}
++                className="btn gilt-metal btn-lg kp-wsheet__act"
++                data-testid="wallet-sheet-deposit"
++              >
++                <I.plus s={16} />
++                {journey ? t.journey.depositAction : t.common.deposit}
++              </Link>
++              {/* ⭐ The journey's captions keep their last two words together (round 4 of the visual pass, 2026-10-09,
++                  edges tile 496): at en 320 "Mobile money or card" (134px) wraps in its 133px column, and left "card"
++                  alone; now "Mobile money" / "or card". The widest pair is 47px ("ya simu"), a column is 133 at 320. ⛔ The classic
++                  capsule's Wallet keeps today's text (frozen chrome for S6/S7). */}
++              <span id={depVia} className="kp-wsheet__via">{journey ? keepLastWords(t.wallet.mobileMoney) : t.wallet.mobileMoney}</span>
++            </div>
++          )}
+           <div className="kp-wsheet__col">
+             <Link
+               href="/wallet/withdraw"
+@@ -104,7 +159,7 @@ export function WalletSheet({
+               <I.arrowUpFromLine s={16} />
+               {journey ? t.journey.withdrawAction : t.common.withdraw}
+             </Link>
+-            <span id={wdVia} className="kp-wsheet__via">{t.wallet.mobileMoneyOnly}</span>
++            <span id={wdVia} className="kp-wsheet__via">{journey ? keepLastWords(t.wallet.mobileMoneyOnly) : t.wallet.mobileMoneyOnly}</span>
+           </div>
+         </div>
+       )}

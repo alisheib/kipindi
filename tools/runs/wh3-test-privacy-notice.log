@@ -1,0 +1,130 @@
+
+§0 · controls
+PASS §0a the three locale blocks were cut and are non-trivial — en=12767 sw=13759 zh=6565
+PASS §0b every locale has sections 1-9
+PASS §0c the comment stripper keeps code after a glob in a line comment
+
+§1 · the version moves with the English text, and has a compliance entry
+PASS §1a the version is one label in en/sw/zh, equal to the pin, over the pinned English text, with its entry — v2026-10-07 · en 88b049bf80b1
+
+§2 · every outbound dependency's processor is named in §4, in all three languages
+PASS §2a every dependency is classified, and every outbound one's processor is named in en/sw/zh §4 — 19 dependencies
+PASS §2b the witnesses are real: Postmark sends with open and click tracking, the chat calls Anthropic, Sentry scrubs before send
+PASS §2c the chat sends the conversation and no account data (the §4 sentence's premise)
+PASS §2d the scrub removes what §4 says it removes — Tanzanian mobile numbers, 12+ digit numbers, email addresses
+
+§2e · every SMS provider the code can select is named in §4, with what it receives
+PASS §2e every SMS provider sms.ts can select is named in en/sw/zh §4 with what it receives, and the transport sends exactly that — blackball console
+
+§3 · §8 states only what the code does
+PASS §3a en/sw/zh §8 carry the true claims and none of the retired ones
+PASS §3b the code behind §8: HMAC-SHA-256 sessions, scrypt passwords and OTPs, AES-256-GCM two-factor keys and backups, HSTS
+PASS §3c the ISO 27001 / pentest sentence still rests on a recorded attestation
+
+§4 · every cookie the code writes is described in §7, with its lifetime read from the code
+PASS §4a the cookies the code writes are exactly the pinned set — _ga _ga_W66WRL67MQ kp-density kp-kyc-notice kp-locale kp_admin_totp kp_pending_2fa kp_preview kp_revoked kp_session
+PASS §4b the session cap and the sign-out note's lifetime were read from the code — 7 days · 30 s
+PASS §4b the preview pass's longest life was read from the code, and is at most a day — 24 hours
+PASS §4c each cookie is described in en/sw/zh §7, with the lifetimes the code sets
+
+§4d · §3 consent, §4 payment gateway, §5 retention — each tied to the code
+PASS §4d en/sw/zh §3/§4/§5 say only what the code does: Selcom named, no unwired Azampay, no retired statement, consent withdrawable where it says
+
+§4e · every external host the CSP admits is classified; Google Analytics is described as it runs
+PASS §4e every CSP host is classified, and en/sw/zh §4/§7 describe Google Analytics as the code configures it — 3 external hosts · G-W66WRL67MQ · 395 days
+
+§5 · planted controls
+PASS §5a control · each planted copy found its target
+PASS §5b control · a restored 'TLS 1.2+' is reported — en §7/§8 carries a retired claim /TLS 1\.2/; en §7/§8 carries a retired claim /1\.2\+/; en §8 does not say connections use TLS (HTTPS)
+PASS §5c control · a processor dropped from ONE locale is reported — sw §4 does not name "Postmark" (postmark)
+PASS §5d control · a restored theme cookie is reported — en §7/§8 carries a retired claim /theme preference/i
+PASS §5e control · a one-word English change without a new version is reported — the English text hashes to b5bf86ad5ee0, pinned 88b049bf80b1 — a changed English text needs a new version and a compliance entry
+PASS §5f control · a locale that kept the old version label is reported — the three version lines disagree (en=2026-10-07 sw=2026-09-26 zh=2026-10-07)
+PASS §5g control · an unclassified new dependency is reported — dependency "resend" is unclassified: does it send personal data off the box? add it to OUTBOUND (and name its processor in §4) or to LOCAL
+PASS §5h control · a new cookie write is caught by the census — ["kp_theme"]
+PASS §5i control · a compliance log without the version's entry is reported
+PASS §5an control · the preview cookie unnamed in ONE locale (sw) is reported — sw §7 does not say "kp_preview" (kp_preview)
+PASS §5ao control · a preview cookie life other than the code's in ONE locale (zh) is reported — zh §7 does not say "最长 24 小时" (kp_preview)
+PASS §5j control · planted §4/§5 copies found their targets
+PASS §5k control · Azampay restored to ONE locale is reported
+PASS §5l control · the retired marketing retention is reported
+PASS §5m control · a consent promise with no control behind it is reported
+PASS §5n control · planted §4e copies found their targets
+PASS §5o control · a new external host in the CSP is reported
+PASS §5p control · Google Analytics dropped from ONE locale's §4 is reported
+PASS §5q control · a cookie lifetime changed in code only is reported (and 730 days is past the browser cap)
+PASS §5r control · ad storage granted is reported
+PASS §5s control · /admin dropped from the exclusions is reported
+PASS §5u control · planted guard/img copies found their targets
+PASS §5v control · the transport guard removed is reported
+PASS §5w control · analytics hosts restored to img-src are reported
+PASS §5t control · the retired 'no tracking cookies' claim restored is reported
+
+§4f · Google Analytics runs only with consent, and the notice says exactly that
+PASS §4f en/sw/zh §3/§4/§7 say analytics is opt-in, and the tag, the prompt and the withdrawal do what they say — deny 180 days · grant 395 days
+
+§4g · visit counts: what §2 and §5 say is what the schema and the beacon do
+PASS §4g en/sw/zh §2/§5 describe the visit counts, the tables hold no personal field, the browser stores nothing — 400 days
+
+§4h · journey counts: what §2, §5 and §7 say is what the schema, the beacon and the key do
+PASS §4h en/sw/zh §2/§5/§7 describe the journey counts and the kp-utm key; the table holds no personal field; the beacon keeps only that key — 400 days
+PASS §4h control · planted journey-count copies found their targets
+PASS §4h control · a userId column on the funnel table is reported
+PASS §4h control · a funnel beacon that keeps the tags in localStorage is reported
+PASS §4h control · the journey-count period dropped from ONE locale (zh) is reported
+PASS §5x control · planted consent and visit-count copies found their targets
+PASS §5y control · a tag no longer gated on consent is reported
+PASS §5z control · a bright Allow beside a grey Decline is reported
+PASS §5aa control · analytics restored under legitimate interest (en) is reported
+PASS §5ab control · the §7 control dropped from ONE locale (sw) is reported
+PASS §5ac control · a consent prompt hidden behind a feature flag is reported
+PASS §5ah control · Google Analytics retention changed in ONE locale (zh) is reported
+PASS §5ag control · a fetch transport that no longer re-checks consent at send time is reported
+PASS §5ad control · an ip column on the visit table is reported
+PASS §5ae control · a beacon that touches localStorage is reported
+PASS §5af control · the visit-count sentence dropped from ONE locale (sw) is reported
+PASS §5ai control · planted SMS-gateway copies found their targets
+PASS §5aj control · the SMS gateway dropped from ONE locale (zh) is reported
+PASS §5ak control · a new SMS provider in the union is reported until §4 names it
+PASS §5al control · a gateway with no delivery receipt is reported (§4 says it tells us whether each message was delivered)
+
+§4h · zh: no space after full-width punctuation
+PASS §4h zh puts no space after a full-width colon, stop, comma or closing bracket
+PASS §5am control · the §1 {" "} after "联系方式：" put back is reported
+
+§4i · U33r · §9's promise to referees is kept by the gate — old words hold the cut-off at null, new words let it wait for the backfill
+PASS §4i every locale's §9 keeps the promise CONDITIONALLY (the new words, for the referees named before the version) — and with the cut-off null the gate still refuses a promised referee
+PASS §4i.b ⛔ U33r · MAJOR-2 · the referee cut-off waits for the backfill — while production's record is null the backfill reads outstanding, and whatever the record says the cut-off is set only once it reads reconciled
+PASS §5ap control · planted §4i copies found their targets
+PASS §5aq control · the gate's referee refusal removed is reported — and so is the account's-address question alone (the third pass)
+PASS §5ar control · the OLD words in ONE locale (en) with the cut-off set are reported — even with the backfill recorded — and the same words with the cut-off null are not, on that count
+PASS §5as control · the NEW words with the cut-off set and the backfill RECORDED are not reported at all
+PASS §5at control · the NEW words with the cut-off set and the backfill OUTSTANDING are reported — and only on that count
+PASS §5au control · the marker typed away in ONE locale (zh) reads as the OLD words, and with the cut-off set is reported
+PASS §5av control · the promise dropped from ONE locale (sw) with the cut-off set is reported — the cut-off names a re-wording sw does not print
+PASS §5aw control · §4i.b's rule holds whatever the record says — null and outstanding with no cut-off passes, null read as reconciled fails, a set record outstanding with the cut-off set fails, reconciled with it set passes, outstanding with none passes
+
+§4j · what erasure keeps: §5, §6, §9, the erasure note and the data-rights file, pinned whole, and the record held to the code
+PASS §4j en/sw/zh §5's three bullets, §6's Erasure line, §9's two paragraphs and the erasure note — and the data-rights sentence — are the pinned words, whole; erasure only unlinks the record; nothing deletes it; DATA-RETENTION agrees
+PASS §4j control · planted copies found their targets
+PASS §4j control · ONE word changed in the Swahili §9 second paragraph is reported by its pin
+PASS §4j control · the Chinese erasure note telling the old story (erased when the period ends) is reported by its pin
+PASS §4j control · the Swahili §6 Erasure line put back to "AML retention requirements" is reported by its pin
+PASS §4j control · the referee numbers bullet dropped from ONE language (zh) is reported
+PASS §4j control · the data-rights sentence's "only" put back (false beside the other records) is reported
+PASS §4j control · erasure deleting the recipient rows instead of unlinking them is reported
+PASS §4j control · a src file that deletes recipient rows is reported
+
+§4k · §9: the referee promise kept for those named before the label, management's sentences for those named after
+PASS §4k en/sw/zh §9 keep the old promise only for referees named before 2026-10-07 (one constant, printed in §5 and §9, recorded, never ahead of the page), and tell those named after management's two sentences while the stop link exists
+PASS §4k control · planted §9 copies found their targets
+PASS §4k control · the coded number called irreversible again (en: "it cannot be turned back into the number") is reported
+PASS §4k control · the coded number called irreversible again in ONE language (zh: "无法还原为该号码") is reported
+PASS §4k control · the old promise made to everyone again (sw) is reported
+PASS §4k control · the label typed into ONE language (zh) instead of printed from the constant is reported
+PASS §4k control · the line named as "this version" (en) is reported
+PASS §4k control · a label later than the page's version, with no COMPLIANCE heading, is reported
+PASS §4k control · the stop sentence dropped while the stop link exists is reported
+PASS §4k control · the stop sentence kept after the footer loses its link is reported
+
+ALL PASS — 96 passed, 0 failed

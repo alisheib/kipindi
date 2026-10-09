@@ -126,6 +126,15 @@
 50. (R5-I) On the old dial, reaching a SESSION LIMIT (an RG limit) now shows its unchanged sentence as a message that
     stays until read, instead of the red ✗ pop-up — as Up & Down already does. Confirm?
 51. (R5-I) The leaderboard's rate of return is now neutral text with its sign (not green/red, not gold). Right?
+52. (R5-G) Sign-up has two names in both shells: the header's "Jisajili / Sign up / 注册" vs the page's eyebrow, tab and
+    submit "Fungua akaunti / Create account / 创建账户". One name — which? (Growing the header pill re-measures S4's fit.)
+53. (R5-G) Where may "earn" stand (D5)? The agent's avatar menu says "Invite & Earn" while the hub and page say "Agent
+    dashboard"; a paid player's page and menu say "Alika na upate zawadi" while the hub and footer say "Alika marafiki".
+54. (R5-G) The licence line's wording differs by surface (regulator copy, not reworded): en email lacks "the"; sw footer
+    "Leseni ya…" vs global-error "Imepewa leseni na…"; zh 获得…许可 vs 由…发照; the auth shell uses "GBT".
+55. (R5-G) "Kuwa wakala" vs "Kuwa Wakala wa 50pick" — R5-A ruled them one name; strict would use `agent.title`.
+56. (Review A) During a break the invite and proposals doors stay open (no break gate) — close them too?
+57. (Review A) The CLASSIC chrome's deposit doors stay during a break (frozen until launch) — fix at launch?
 
 ## S12 (live-word corrections, ship with S12)
 - Swahili "Arifa {n}" reads like one more chip beside "Pesa 3" on the notifications filter row (G1): "{n} arifa".
@@ -148,6 +157,10 @@
 - (R5-C) The factual validation toasts have no next-step line (F4) — new keys.
 - (R5-I) The share button's "Couldn't copy" has no next step and no existing key fits.
 - (R5-I) The agent application's submit pop-up prints the server's English error (apply-client.tsx ~175) — reason keys.
+- (R5-G) "Thibitisha amana" (common.confirmDeposit, the submit and dialog title) on a journey screen named "Weka pesa" —
+  suggest "Thibitisha kuweka pesa" for native review.
+- (R5-G) The push-settings page and the inbox share one name, "Arifa / Notifications / 通知" — the settings page needs its own.
+- (R5-G) auth.licensedByGbt uses the acronym "GBT".
 
 ## S8 (the journey bet sheet)
 - A player on a break (or self-excluded but signed in) can open the old dial, pick a side and a stake, and is refused

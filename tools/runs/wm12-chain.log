@@ -1,0 +1,7 @@
+00:55:44 waiting for wm11-chain.done
+03:10:54 wm11-chain.done is there: exit=0
+03:10:54 queued: wait note written
+03:10:54 lock taken
+03:13:56 wm12-live: exit=0 · tree same —   ✓ no-side detail shows pick-side gate, not a dial   ✓ authed flow no console errors ✅ ALL PASS — 334 passed, 0 failed 
+03:13:56 chain end
+03:13:56 lock released

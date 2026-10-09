@@ -1,0 +1,874 @@
+diff --git a/src/app/auth/forgot-password/page.tsx b/src/app/auth/forgot-password/page.tsx
+index bd803326c..c6a8cb9ff 100644
+--- a/src/app/auth/forgot-password/page.tsx
++++ b/src/app/auth/forgot-password/page.tsx
+@@ -81,8 +81,9 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
+               {t.common.enterPhoneOrEmail}
+             </div>
+           )}
++          {/* R4-I (2026-10-09, R4-K's gold audit): the sentence in the muted ink, not gold — a wait earns nothing (F3, §M3). */}
+           {sp.error === "rate_limited" && (
+-            <div role="alert" className="rounded-md border border-warning-border bg-warning-bg px-3.5 py-3 text-[13px] text-gold-300">
++            <div role="alert" className="rounded-md border border-warning-border bg-warning-bg px-3.5 py-3 text-[13px] text-text-muted">
+               {retrySec > 0 ? <RateLimitBanner seconds={retrySec} clearHref={clearHref} /> : t.common.tooManyAttempts}
+             </div>
+           )}
+@@ -167,7 +168,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
+                 href={`tel:${SUPPORT_PHONE_TEL()}`}
+                 className="flex items-center gap-2.5 rounded-md border border-border bg-bg-elevated px-3 py-2.5 hover:border-brand-400 transition-colors"
+               >
+-                <I.phone s={14} className="text-gold-300 shrink-0" />
++                <I.phone s={14} className="text-brand-300 shrink-0" />
+                 <div className="min-w-0">
+                   <p className="font-mono text-[11px] font-bold text-text"><span className="underline underline-offset-2">{SUPPORT_PHONE()}</span></p>
+                   <p className="text-[10px] text-text-subtle">{t.common.businessHours}</p>
+@@ -177,7 +178,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
+                 href={`mailto:${SUPPORT_EMAIL()}?subject=Password%20reset%20request`}
+                 className="flex items-center gap-2.5 rounded-md border border-border bg-bg-elevated px-3 py-2.5 hover:border-brand-400 transition-colors"
+               >
+-                <I.mail s={14} className="text-gold-300 shrink-0" />
++                <I.mail s={14} className="text-brand-300 shrink-0" />
+                 <div className="min-w-0">
+                   {/* `break-all`, not `truncate` — the same string, on the same product, already
+                       renders this way at src/app/help/page.tsx:180, so the two pages are one
+diff --git a/src/app/auth/login/actions.ts b/src/app/auth/login/actions.ts
+index 29d602699..6d0e82328 100644
+--- a/src/app/auth/login/actions.ts
++++ b/src/app/auth/login/actions.ts
+@@ -9,6 +9,7 @@ import { verifyPlayer2faChallenge } from "@/lib/server/player-2fa";
+ // The same-origin rule for `next`, shared with the journey's pending-bet link (Vodacom plan S3).
+ import { isAdminPath, isAuthPath, isSafePath, sanitizeNext } from "@/lib/safe-next";
+ import { accountRefusalPath, landingAfterAuth } from "@/lib/auth-landing";
++import { breakEndParam } from "@/lib/break-end";
+ import { normalizeReferralCode } from "@/lib/referral-code";
+ import { phoneCodeSignInEnabled } from "@/lib/server/otp-door";
+ 
+@@ -79,8 +80,9 @@ export async function startLoginAction(formData: FormData) {
+     if (result.code === "SUSPENDED" && result.detail?.accountClosed) redirect(accountRefusalPath(result.detail, safeNext) as never);
+     const standing = result.detail?.standing;
+     if (result.code === "SUSPENDED" && standing && standing !== "diverged") {
+-      const until = standing === "serving" && result.detail?.until
+-        ? `&until=${encodeURIComponent(result.detail.until.slice(0, 10))}` : "";
++      // The instant, not its UTC day (R4-I, 2026-10-09): the panel says the end with its time, on the East Africa clock.
++      const endParam = standing === "serving" ? breakEndParam(result.detail?.until) : null;
++      const until = endParam ? `&until=${encodeURIComponent(endParam)}` : "";
+       redirect(`/auth/login?excluded=${standing}${until}${safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""}`);
+     }
+     const isLockout = result.code === "RATE_LIMITED" && /locked/i.test(result.error);
+@@ -217,8 +219,9 @@ export async function verifyLoginOtpAction(formData: FormData) {
+       if (result.detail?.accountClosed) redirect(accountRefusalPath(result.detail, safeNext) as never);
+       const standing = result.detail?.standing;
+       if (standing && standing !== "diverged") {
+-        const until = standing === "serving" && result.detail?.until
+-          ? `&until=${encodeURIComponent(result.detail.until.slice(0, 10))}` : "";
++        // The instant, not its UTC day (R4-I, 2026-10-09) — as the password door above.
++        const endParam = standing === "serving" ? breakEndParam(result.detail?.until) : null;
++        const until = endParam ? `&until=${encodeURIComponent(endParam)}` : "";
+         redirect(`/auth/login?excluded=${standing}${until}${safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""}`);
+       }
+       redirect(`/auth/login?error=blocked${safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""}`);
+diff --git a/src/app/auth/login/page.tsx b/src/app/auth/login/page.tsx
+index 486f1e515..09b11f903 100644
+--- a/src/app/auth/login/page.tsx
++++ b/src/app/auth/login/page.tsx
+@@ -16,6 +16,9 @@ import { sessionEndedThisRequest } from "@/lib/server/session";
+ import { cookies } from "next/headers";
+ import { isSafePath, sanitizeNext } from "@/lib/safe-next";
+ import { normalizeReferralCode } from "@/lib/referral-code";
++import { fill } from "@/lib/utils";
++import { formatBreakEnd, readBreakEndParam } from "@/lib/break-end";
++import { keepText } from "@/components/ui/keep-run";
+ 
+ export async function generateMetadata() {
+   const { t } = await getServerT();
+@@ -35,8 +38,14 @@ export default async function LoginPage({
+   // See `bounce-authed.ts` — it also records why moving this to the middleware would have
+   // shipped an infinite redirect loop against B-13's revoked-device flow.
+   await bounceIfAuthed();
+-  const { t } = await getServerT();
++  const { t, locale } = await getServerT();
+   const sp = await searchParams;
++  /* ⭐ THE END OF THE PLAYER'S OWN BREAK OR EXCLUSION, AS THE REDIRECT CARRIED IT (R4-I, 2026-10-09; edges E9 E16 E55).
++     `?until=` is the instant the server wrote (`breakEndParam`), or a bare day from an older link; anything else reads
++     as no date at all. It is PRINTED, never believed: no gate reads it. One formatter says it (`formatBreakEnd` — the
++     East Africa clock, the reader's month words, date and time), and the sentence keeps it one run (`keepText`). */
++  const breakEnd = readBreakEndParam(sp.until);
++  const breakEndText = breakEnd ? formatBreakEnd(breakEnd, Date.now(), t.common.monthsShort, locale) : null;
+   // 🔴 E-381 · WHY THE LAST SESSION ENDED, AND ONLY WHAT IS TRUE OF IT.
+   //  · `?revoked=1` — `/auth/session-ended` found a NEWER session in the registry: the one cause
+   //    "signed in on another device" is true for.
+@@ -115,34 +124,44 @@ export default async function LoginPage({
+     if (sp.excluded === "minimum_served") return {
+       tone: "danger" as const,
+       title: t.auth.selfExclusionEnded,
+-      body: t.auth.selfExclusionEndedBody,
++      body: keepText(t.auth.selfExclusionEndedBody),
+       cta: null,
+       contact: true,
+     };
+     if (sp.excluded === "permanent") return {
+       tone: "danger" as const,
+       title: t.auth.selfExclusionActive,
+-      body: t.auth.selfExclusionPermanentBody,
++      body: keepText(t.auth.selfExclusionPermanentBody),
+       cta: null,
+       contact: true,
+     };
+     // ⛔ `until` IS PRINTED INSIDE A DANGER PANEL ON THE REAL DOMAIN, so only what the server writes is printed (review of the
+-    // route audit, 2026-10-07): the sign-in action and `accountRefusalPath` both send a bare `YYYY-MM-DD`. Any other text —
+-    // "7 Oct. To reopen today pay TZS 10,000 to …" — falls back to the sentence with no date. A replacer function, so a
+-    // `$&` in a date could never be expanded either.
++    // route audit, 2026-10-07): the sign-in action, `accountRefusalPath` and the exclusion's own action send the instant
++    // (`breakEndParam`), and an older link a bare `YYYY-MM-DD` — `readBreakEndParam` accepts those two shapes and nothing
++    // else. Any other text — "7 Oct. To reopen today pay TZS 10,000 to …" — falls back to the sentence with no date. `fill`
++    // substitutes through a replacer, so a `$&` could never be expanded either.
++    // ⭐ (R4-I, 2026-10-09, tiles 113–130) It used to print the raw value — "hadi 2026-10-10", a date with no time, so a
++    // 24-hour exclusion taken at 05:05 read as ending at midnight — and the value broke across lines ("2026-" / "10-10").
+     if (sp.excluded === "serving" || sp.excluded === "1") return {
+       tone: "danger" as const,
+       title: t.auth.selfExclusionActive,
+-      body: sp.until && /^\d{4}-\d{2}-\d{2}$/.test(sp.until) && Number.isFinite(Date.parse(`${sp.until}T00:00:00Z`))
+-        ? t.auth.selfExclusionUntilBody.replace("{date}", () => sp.until!)
+-        : t.auth.selfExclusionBody,
++      body: breakEndText
++        ? keepText(fill(t.auth.selfExclusionUntilBody, { date: breakEndText }), [breakEndText])
++        : keepText(t.auth.selfExclusionBody),
+       cta: null,
+       contact: true,
+     };
++    // ⭐ THE BREAK, WITH ITS END (R4-I, 2026-10-09, tiles 003–011). `coolOffAction` now carries the end here as the exclusion
++    // carries its own, and the panel says it in the break's own approved sentence — `rg.breakActive`, the sentence
++    // /wallet/deposit and the limits page show for the same break: until when, that it cannot be shortened, that sign-in and
++    // withdrawals go on. Without a readable end (an older link) it keeps `auth.coolingOffBody`, which said only "when the
++    // break ends".
+     if (sp.cooled === "1") return {
+       tone: "warning" as const,
+       title: t.auth.coolingOff,
+-      body: t.auth.coolingOffBody,
++      body: breakEndText
++        ? keepText(fill(t.rg.breakActive, { date: breakEndText }), [breakEndText])
++        : keepText(t.auth.coolingOffBody),
+       cta: null,
+     };
+     switch (sp.error) {
+@@ -251,7 +270,12 @@ export default async function LoginPage({
+                     : "border-warning-border bg-warning-bg")
+               }
+             >
+-              <span className={"mt-0.5 shrink-0 " + (errorPanel.tone === "success" ? "text-success-fg" : errorPanel.tone === "danger" ? "text-danger-fg" : "text-gold-300")}>
++              {/* ⭐ THE GLYPH ON THE TITLE'S INK, NOT 2PX UNDER IT (R4-I, 2026-10-09, tiles 128–130 · 122–127). The title is
++                  13px Sora in a 17.9px line: its capitals centre 8.6px down the line, and a Chinese title's ink (the CJK
++                  fallback face) 8.0px down. The 16px glyph centred 10px down (`mt-0.5`), 2px under the Chinese title and
++                  1.5px under the Swahili and English ones. With no margin it centres 8px down: on the Chinese ink, and 0.6px
++                  over the capitals. Twin of auth/register/register-form.tsx — keep the two in step. */}
++              <span className={"shrink-0 " + (errorPanel.tone === "success" ? "text-success-fg" : errorPanel.tone === "danger" ? "text-danger-fg" : "text-text-muted")}>
+                 <I.alertCircle s={16} />
+               </span>
+               <div className="text-body-sm leading-snug">
+@@ -296,8 +320,10 @@ export default async function LoginPage({
+                     href={errorPanel.cta.href as never}
+                     /* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215),
+                        so `h-9` was a 64px capsule around 12.5px type. 40px = --tap-min.
+-                       Twin of auth/register/register-form.tsx — keep the two in step. */
+-                    className="mt-2 inline-flex h-[40px] items-center px-3.5 rounded-pill border border-gold-700 bg-gold-500/10 font-display font-bold text-[12.5px] text-gold-300 hover:bg-gold-500/20 transition-colors"
++                       Twin of auth/register/register-form.tsx — keep the two in step.
++                       ⭐ R4-I (2026-10-09, R4-K's gold audit): the brand's ink, not gold — "Create one", "Reset password"
++                       earn nothing (Q5, §M3); the warning glyph above is the muted ink for the same reason (F3). */
++                    className="mt-2 inline-flex h-[40px] items-center px-3.5 rounded-pill border border-brand-500/60 bg-brand-500/10 font-display font-bold text-[12.5px] text-brand-300 hover:bg-brand-500/20 transition-colors"
+                   >
+                     {errorPanel.cta.label} →
+                   </Link>
+@@ -342,10 +368,16 @@ export default async function LoginPage({
+               )}
+             </Field>
+ 
++            {/* ⭐ THE WAY BACK INTO AN ACCOUNT IS READ, AND PRESSED, LIKE A LINK (R4-I, 2026-10-09; edges E12, tiles 003–011
++                · 113–130). It was a 10px mono microlabel in the subtle ink — capitals 8px tall (9px in Chinese), under the
++                12.5px reading floor — on the one control a locked-out player needs. It now wears the page's other link,
++                "Create one" below: 13px (`text-body-sm`), the brand ink, semibold, and a 40px (`--tap-min`) tap height —
++                whose extra 22px its own margins absorb (`-my-[11px]`: 40 less the 18px line, halved), as side-picker's
++                "change side" absorbs its 44px, so the row is still one line and the button below does not move down. */}
+             <div className="flex items-center justify-end -mt-2">
+               <Link
+                 href={forgotHref as never}
+-                className="font-mono text-micro uppercase tracking-[0.14em] text-text-subtle hover:text-text"
++                className="-my-[11px] inline-flex min-h-[var(--tap-min)] items-center text-body-sm font-semibold text-brand-300 hover:text-brand-200 underline-offset-2 hover:underline"
+               >
+                 {t.auth.forgotPassword}
+               </Link>
+diff --git a/src/app/auth/otp/page.tsx b/src/app/auth/otp/page.tsx
+index 50f4fe577..a01dea42a 100644
+--- a/src/app/auth/otp/page.tsx
++++ b/src/app/auth/otp/page.tsx
+@@ -12,6 +12,7 @@ import { OtpExpiryCountdown } from "@/components/auth/otp-expiry-countdown";
+ import { getServerT } from "@/lib/i18n-server";
+ import { sanitizeNext } from "@/lib/safe-next";
+ import { phoneCodeSignInEnabled } from "@/lib/server/otp-door";
++import { maskPhone } from "@/lib/phone-normalize";
+ 
+ export async function generateMetadata() {
+   const { t } = await getServerT();
+@@ -36,7 +37,9 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
+   // expiry (`?exp=` from the issue/resend hop). undefined → component's TTL default.
+   const expTs = sp.exp ? Date.parse(sp.exp) : NaN;
+   const otpRemainingSec = Number.isFinite(expTs) ? Math.max(0, (expTs - Date.now()) / 1000) : undefined;
+-  const masked = phone ? phone.slice(0, 4) + "*****" + phone.slice(-2) : "+255*****";
++  // R4-I (2026-10-09, R4-H's E32): the platform's one mask (`maskPhone`, "+255••••84" — the hub's and the hero's), not a
++  // hand-rolled "+255*****84": one phone reads one way everywhere.
++  const masked = phone ? maskPhone(phone) : "+255••••";
+   const errorMsg: Record<string, string> = {
+     wrong_code: t.auth.wrongCode,
+     expired: t.auth.codeExpired,
+diff --git a/src/app/auth/register/page.tsx b/src/app/auth/register/page.tsx
+index cf68044a9..709b7cfab 100644
+--- a/src/app/auth/register/page.tsx
++++ b/src/app/auth/register/page.tsx
+@@ -132,14 +132,11 @@ export default async function RegisterPage({
+             subtitle={t.auth.tanzaniaMobile18}
+           />
+ 
++          {/* ⭐ R4-I (2026-10-09, R4-K's gold audit — Q5 "gold is money, and nothing else"): a bonus IS money, so its FIGURE
++              keeps gold (`.amount`); the card around it, its gift plate, its hint and the referral code are not money and
++              wear the neutral card, the brand plate and the muted ink. They were a gilt card from edge to edge. */}
+           {referral && (
+-            <div
+-              className="overflow-hidden rounded-xl border"
+-              style={{
+-                borderColor: "color-mix(in oklab, var(--gold-500) 36%, transparent)",
+-                background: "linear-gradient(135deg, color-mix(in oklab, var(--gold-500) 16%, var(--bg-elevated)), var(--bg-elevated))",
+-              }}
+-            >
++            <div className="overflow-hidden rounded-xl border border-border bg-bg-elevated">
+               <div className="flex items-center gap-3 p-3.5">
+                 <FiftyMark size={40} />
+                 <div className="min-w-0 flex-1">
+@@ -150,8 +147,8 @@ export default async function RegisterPage({
+                   <p className="text-[14px] font-bold text-text">{referral.verifiedAgent ? fill(t.agent.invitedBy, { name: referral.referrerName }) : `${t.auth.invitedBy} ${referral.referrerName}`}</p>
+                   {/* A sign-up offer only: the ribbon never carries a deposit-tied bonus (RG policy, 2026-09-26). */}
+                   {referral.newPlayerBonusTzs > 0 && (
+-                    <p className="mt-1 text-body-sm font-semibold text-gold-300">
+-                      {`${t.auth.signUpAndGet} ${formatTzs(referral.newPlayerBonusTzs)} ${t.auth.toStart}`}
++                    <p className="mt-1 text-body-sm font-semibold text-text-muted">
++                      {t.auth.signUpAndGet} <span className="amount text-gold-300">{formatTzs(referral.newPlayerBonusTzs)}</span> {t.auth.toStart}
+                     </p>
+                   )}
+                 </div>
+@@ -160,20 +157,14 @@ export default async function RegisterPage({
+           )}
+ 
+           {invite && (
+-            <div
+-              className="overflow-hidden rounded-xl border"
+-              style={{
+-                borderColor: "color-mix(in oklab, var(--gold-500) 36%, transparent)",
+-                background: "linear-gradient(135deg, color-mix(in oklab, var(--gold-500) 16%, var(--bg-elevated)), var(--bg-elevated))",
+-              }}
+-            >
++            <div className="overflow-hidden rounded-xl border border-border bg-bg-elevated">
+               <div className="flex items-center gap-3 p-3.5">
+-                <IconPlate size={40} className="bg-gold-500/15 text-gold-300">
++                <IconPlate size={40} className="bg-brand-500/15 text-brand-300">
+                   <I.gift s={20} />
+                 </IconPlate>
+                 <div className="min-w-0 flex-1">
+-                  <p className="text-[14px] font-bold text-text">{t.auth.claimBonus} {formatTzs(invite.bonusAmountTzs)}</p>
+-                  <p className="mt-1 text-body-sm font-semibold text-gold-300">{t.auth.bonusWalletHint}</p>
++                  <p className="text-[14px] font-bold text-text">{t.auth.claimBonus} <span className="amount text-gold-300">{formatTzs(invite.bonusAmountTzs)}</span></p>
++                  <p className="mt-1 text-body-sm font-semibold text-text-muted">{t.auth.bonusWalletHint}</p>
+                 </div>
+               </div>
+             </div>
+@@ -197,7 +188,7 @@ export default async function RegisterPage({
+                   prefix="REF"
+                   mono
+                   aria-label="Referral code"
+-                  className="text-gold-300 font-semibold"
++                  className="text-text font-semibold"
+                 />
+               </Field>
+             )}
+diff --git a/src/app/auth/register/register-form.tsx b/src/app/auth/register/register-form.tsx
+index 70c7d78af..e15d26aeb 100644
+--- a/src/app/auth/register/register-form.tsx
++++ b/src/app/auth/register/register-form.tsx
+@@ -155,7 +155,8 @@ export function RegisterForm({
+               : "border-warning-border bg-warning-bg")
+           }
+         >
+-          <span className={"mt-0.5 shrink-0 " + (errorPanel.tone === "danger" ? "text-danger-fg" : "text-gold-300")}>
++          {/* The glyph centres on the title's ink (R4-I, 2026-10-09) — twin of auth/login/page.tsx, which says why. */}
++          <span className={"shrink-0 " + (errorPanel.tone === "danger" ? "text-danger-fg" : "text-text-muted")}>
+             <I.alertCircle s={16} />
+           </span>
+           <div className="text-body-sm leading-snug">
+@@ -166,7 +167,8 @@ export function RegisterForm({
+                 href={errorPanel.cta.href as never}
+                 /* ⚠️ LITERAL, not `h-9` — spacing is overridden (tailwind.config.ts:200-215),
+                    so `h-9` was a 64px capsule around 12.5px type. 40px = --tap-min. */
+-                className="mt-2 inline-flex h-[40px] items-center px-3.5 rounded-pill border border-gold-700 bg-gold-500/10 font-display font-bold text-[12.5px] text-gold-300 hover:bg-gold-500/20 transition-colors"
++                /* R4-I · the brand's ink, not gold — twin of auth/login/page.tsx, which says why. */
++                className="mt-2 inline-flex h-[40px] items-center px-3.5 rounded-pill border border-brand-500/60 bg-brand-500/10 font-display font-bold text-[12.5px] text-brand-300 hover:bg-brand-500/20 transition-colors"
+               >
+                 {errorPanel.cta.label} →
+               </Link>
+diff --git a/src/app/auth/reset-password/page.tsx b/src/app/auth/reset-password/page.tsx
+index 7008cd262..b7187f243 100644
+--- a/src/app/auth/reset-password/page.tsx
++++ b/src/app/auth/reset-password/page.tsx
+@@ -74,7 +74,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
+             </span>
+ 
+             <AuthHeader
+-              tone="no"
++              tone="danger"
+               eyebrow={c.eyebrow}
+               title={c.title}
+               subtitle={c.body}
+@@ -120,7 +120,9 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
+             title={t.common.setNewPassword}
+             subtitle={t.common.strongPassword}
+           >
+-            <p className="mt-1.5 flex items-center gap-1.5 text-body-sm text-gold-300">
++            {/* R4-I (2026-10-09, R4-K's gold audit applied to the last gold text on the auth pages): the link's lifetime in
++                the muted ink, not gold — a time limit has earned nothing (DESIGN_AUTHORITY Q5, §M3, F3). */}
++            <p className="mt-1.5 flex items-center gap-1.5 text-body-sm text-text-muted">
+               <I.clock s={12} />
+               {t.common.thisLinkExpires}
+             </p>
+diff --git a/src/app/auth/session-ended/route.ts b/src/app/auth/session-ended/route.ts
+index a5d96dda8..22fb1faea 100644
+--- a/src/app/auth/session-ended/route.ts
++++ b/src/app/auth/session-ended/route.ts
+@@ -26,6 +26,7 @@ import { verifySession } from "@/lib/server/crypto";
+ import { db } from "@/lib/server/store";
+ import { selfExclusionStanding } from "@/lib/server/responsible-gambling";
+ import { sanitizeNext } from "@/lib/safe-next";
++import { breakEndParam } from "@/lib/break-end";
+ 
+ export const dynamic = "force-dynamic";
+ 
+@@ -74,7 +75,10 @@ export async function GET(req: NextRequest) {
+       const standing = await selfExclusionStanding(user.id).catch(() => null);
+       if (standing?.state === "serving") {
+         params.set("excluded", standing.permanent ? "permanent" : "serving");
+-        if (!standing.permanent) params.set("until", standing.until.slice(0, 10));
++        // The END, the instant — not its UTC day (R4-I, 2026-10-09): the sign-in panel says it with its time, on the East
++        // Africa clock, as every other door to that panel now carries it (`breakEndParam`; test:visual-pass-r4i 1.4).
++        const end = standing.permanent ? null : breakEndParam(standing.until);
++        if (end) params.set("until", end);
+       } else if (standing?.state === "minimum_served") {
+         params.set("excluded", "minimum_served");
+       } else {
+diff --git a/src/app/auth/verify-email/page.tsx b/src/app/auth/verify-email/page.tsx
+index 204fad425..2d2328b22 100644
+--- a/src/app/auth/verify-email/page.tsx
++++ b/src/app/auth/verify-email/page.tsx
+@@ -147,7 +147,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
+           </span>
+ 
+           <AuthHeader
+-            tone={good ? "yes" : "no"}
++            tone={good ? "success" : "danger"}
+             eyebrow={c.eyebrow}
+             title={c.title}
+             subtitle={c.body}
+diff --git a/src/app/profile/responsible-gambling/actions.ts b/src/app/profile/responsible-gambling/actions.ts
+index fc4e1c3bd..f90a86002 100644
+--- a/src/app/profile/responsible-gambling/actions.ts
++++ b/src/app/profile/responsible-gambling/actions.ts
+@@ -6,6 +6,7 @@ import { currentSession } from "@/lib/server/auth-service";
+ import { signInPathForAction } from "@/lib/server/sign-in-path";
+ import { setLimits, selfExclude, coolOff, selfExclusionStandingOf, SELF_EXCLUSION_PERIODS_SEC, COOLING_OFF_PERIODS_SEC } from "@/lib/server/responsible-gambling";
+ import { destroySession } from "@/lib/server/session";
++import { breakEndParam } from "@/lib/break-end";
+ 
+ function n(s: FormDataEntryValue | null): number | null {
+   if (s === null) return null;
+@@ -58,7 +59,12 @@ export async function selfExcludeAction(formData: FormData) {
+   const untilIso = res?.data?.until ?? null;
+   const standing = untilIso ? selfExclusionStandingOf(untilIso) : null;
+   if (standing?.state === "serving" && standing.permanent) redirect("/auth/login?excluded=permanent");
+-  const until = untilIso ? `&until=${encodeURIComponent(untilIso.slice(0, 10))}` : "";
++  // ⭐ THE INSTANT, NOT THE DAY (R4-I, 2026-10-09, tiles 113–130). This sent `untilIso.slice(0, 10)` — the UTC calendar
++  // day — so a 24-hour exclusion taken at 05:05 EAT read "until 2026-10-10" with no time, as if it ended at midnight (and an
++  // end between 00:00 and 03:00 EAT named the day before). `breakEndParam` carries the instant; the page says it on the
++  // East Africa clock in the reader's words (`formatBreakEnd`).
++  const endParam = breakEndParam(untilIso);
++  const until = endParam ? `&until=${encodeURIComponent(endParam)}` : "";
+   redirect(`/auth/login?excluded=serving${until}`);
+ }
+ 
+@@ -69,7 +75,11 @@ export async function coolOffAction(formData: FormData) {
+   if (!(period in COOLING_OFF_PERIODS_SEC)) {
+     redirect(`/profile/responsible-gambling?reason=rg_period_invalid`);
+   }
+-  await coolOff(session.userId, period as keyof typeof COOLING_OFF_PERIODS_SEC);
++  const res = await coolOff(session.userId, period as keyof typeof COOLING_OFF_PERIODS_SEC);
+   await destroySession();
+-  redirect("/auth/login?cooled=1");
++  // ⭐ THE BREAK'S END TRAVELS WITH IT (R4-I, 2026-10-09, tiles 003–011), as the exclusion's does above: the landing panel
++  // said only "when the break ends". `coolOff` returns the end it wrote (the furthest of the old and the new one); the page
++  // prints it, and decides nothing on it.
++  const endParam = breakEndParam(res?.data?.until ?? null);
++  redirect(`/auth/login?cooled=1${endParam ? `&until=${encodeURIComponent(endParam)}` : ""}`);
+ }
+diff --git a/src/app/profile/responsible-gambling/page.tsx b/src/app/profile/responsible-gambling/page.tsx
+index 0de3e6322..7d1e6a5f7 100644
+--- a/src/app/profile/responsible-gambling/page.tsx
++++ b/src/app/profile/responsible-gambling/page.tsx
+@@ -19,6 +19,9 @@ import { SubmitButton } from "@/components/ui/submit-button";
+ import { FeedbackSettings } from "@/components/settings/feedback-settings";
+ import { formatTzs, fill } from "@/lib/utils";
+ import { formatEatDateTime } from "@/lib/eat-day";
++import { formatBreakEnd } from "@/lib/break-end";
++import { keepText } from "@/components/ui/keep-run";
++import { rgPeriodFieldPx } from "@/components/rg/rg-period-width";
+ import { getServerT } from "@/lib/i18n-server";
+ import { bannerFor } from "@/lib/failure-banner";
+ import { PageContainer } from "@/components/layout/page-container";
+@@ -47,6 +50,15 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
+     { id: "24h", label: t.rg.dur24h },
+     { id: "1w",  label: t.rg.dur1week },
+   ];
++  // ⭐ ONE WIDTH FOR BOTH PERIOD FIELDS (R4-I, 2026-10-09, tile 001): the break's button stood at x186 and the
++  // exclusion's at x201, because each field took its own legend's width. `rg-period-width.ts` says how it is measured.
++  // And one width for both BUTTONS (each reserves the other's label, `widthOf`), so the two forms — field, gap, button —
++  // are one width and wrap at one screen width: with two button widths, one fell under its field while the other stood
++  // beside it (Swahili 337–354px).
++  const periodFieldPx = rgPeriodFieldPx(
++    [t.rg.breakLength, t.rg.exclusionPeriod],
++    [...COOLING_OFF_OPTIONS, ...SELF_EXCLUSION_OPTIONS].map((o) => o.label),
++  );
+   const session = await currentSession();
+   if (!session) redirect("/auth/login?next=/profile/responsible-gambling");
+   // B-1 — no swallow: the fallback object fabricated "no limits, no exclusion,
+@@ -82,6 +94,11 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
+ 
+   const sp = await searchParams;
+   const banner = bannerFor(sp.reason, t.error as unknown as Record<string, string>);
++  /** R4-I · an approved break/exclusion sentence with its end, said by the one formatter and kept one run. */
++  const endSentence = (template: string, iso: string) => {
++    const date = formatBreakEnd(Date.parse(iso), Date.now(), t.common.monthsShort, locale);
++    return keepText(fill(template, { date }), [date]);
++  };
+ 
+   return (
+     <PageContainer tier="reading" className="space-y-5">
+@@ -106,32 +123,56 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
+           ⭐ The date carries its time (2026-10-06), as /wallet/deposit and the server's own refusal do: a
+           one-hour break that ends today read "until 6 Oct 2026", which says nothing about when. And it is in the
+           reader's month words on the East Africa clock (`formatEatDateTime`, §L4) — `formatDateTime` printed English
+-          months in every locale. */}
++          months in every locale.
++          ⭐ AT READING SIZE, AND WHOLE (R4-I, 2026-10-09, tiles 030–032 · 063–065 · 096–098). The kit's `sm` Callout set
++          this sentence — the page's key statement about a running break — in `text-caption`, 11px (capitals 8px), under
++          the 12.5px reading floor (`test:type-scale` §3). It takes the kit's `md` rung, the standing page-level notice:
++          `text-body-sm`, 13px, in the same box family. The end is said by the one formatter (`formatBreakEnd`) and kept one
++          run, and the Chinese sentence no longer leaves "现。" alone on its last line (`keepText`).
++          ⭐ NEUTRAL, NOT WARNING (R4-K's gold audit, the same day): the warning tone is struck in gilt (`--warning-fg` IS
++          `--gilt`, DESIGN_AUTHORITY F3) and a running break has earned nothing — the neutral box, each with its own
++          section's glyph (the break's pause, the exclusion's lock). */}
+       {rg.selfExclusionUntil && Date.parse(rg.selfExclusionUntil) > Date.now() ? (
+-        <Callout tone="warning">{fill(t.rg.exclusionActive, { date: formatEatDateTime(Date.parse(rg.selfExclusionUntil), Date.now(), t.common.monthsShort, locale) })}</Callout>
++        <Callout tone="neutral" size="md" glyph="lock">{endSentence(t.rg.exclusionActive, rg.selfExclusionUntil)}</Callout>
+       ) : rg.coolingOffUntil && Date.parse(rg.coolingOffUntil) > Date.now() ? (
+-        <Callout tone="warning">{fill(t.rg.breakActive, { date: formatEatDateTime(Date.parse(rg.coolingOffUntil), Date.now(), t.common.monthsShort, locale) })}</Callout>
++        <Callout tone="neutral" size="md" glyph="pause">{endSentence(t.rg.breakActive, rg.coolingOffUntil)}</Callout>
+       ) : null}
+ 
+-      <PageHero glow="yes">
++      {/* ⭐ The account pages' accent (`info`), as /profile/account, /kyc, /sessions and /source-of-funds wear it. It was
++          the YES green — glow and eyebrow — on the page a player opens when gambling is hurting them: §B2a names the RG
++          support panel as the betting pair's misuse, and this hero was its last trace (R5-I, 2026-10-09). The words, the
++          glyph and every RG notice below are unchanged. */}
++      <PageHero glow="info">
+         <PageHeader
+-          tone="yes"
++          tone="info"
+           icon={<I.shieldcheck s={14} />}
+           eyebrow={t.rg.playerProtection}
+           title={t.profile.responsibleGambling}
+         />
+-        <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
++        {/* text-balance (round 3, 2026-10-09, tile 179): "Weka mipaka ya amana na muda, pumzika au" / "jizuie." left the
++            last word alone at 390. Balanced, the two lines read "Weka mipaka ya amana na" / "muda, pumzika au jizuie."
++            (164 and 152px of 308 — measured with the repo's Inter); en "Set deposit and time limits," / "take a break,
++            or self-exclude.". */}
++        <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose text-balance">
+           {t.rg.pageDescription}
+         </p>
+       </PageHero>
+ 
+       {/* C2h — self-care sunrise line-art + yes-toned support callout, surfaced
+           early so anyone seeking help sees it immediately (no gambling imagery). */}
+-      <section className="flex items-start gap-3.5 rounded-xl border border-success-border bg-success/[0.08] p-4 lg:p-5">
+-        <RgSunriseArt size={44} className="shrink-0 text-success-fg" />
++      {/* ONE CONTENT EDGE PER COLUMN (round 4, 2026-10-09, tile 182): the card pads sideways like the hero, px-5 lg:px-6
++          (its height is unchanged), and the art is drawn 4.75px inside its own box — the leftmost stroke, the line at x7
++          of 56 less its round cap, at 44px — so it steps back the whole 4px of that (-ml-1; a fractional step would be
++          snapped with the svg's box) and its ink's first pixel is the column's: x41 at 390 (as before) and x165 at 1280,
++          where it stood at x162 under the hero's x165. */}
++      <section className="flex items-start gap-3.5 rounded-xl border border-success-border bg-success/[0.08] px-5 py-4 lg:px-6 lg:py-5">
++        <RgSunriseArt size={44} className="-ml-1 shrink-0 text-success-fg" />
+         <div className="min-w-0">
+           <p className="font-display text-[14px] font-semibold text-success-fg">{t.rg.supportAvailable}</p>
+-          <p className="mt-1 text-body-sm text-text-muted leading-snug">
++          {/* text-balance (round 3, 2026-10-09, tile 179): the link stood alone on line 2, "Msaada wa kimataifa kupitia" /
++              "begambleaware.org.". Balanced it reads "Msaada wa kimataifa" / "kupitia begambleaware.org." (en
++              "International support" / "at begambleaware.org."). Only the wrap changes; the words and the link do not. */}
++          <p className="mt-1 text-body-sm text-text-muted leading-snug text-balance">
+             {/* ⛔ No helpline line since the owner's ruling of 2026-10-06 (docs/COMPLIANCE-DECISIONS.md). */}
+             {t.rg.intlSupport}{" "}<a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-success-fg underline underline-offset-2">begambleaware.org</a>.
+           </p>
+@@ -149,9 +190,14 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
+         <p className="text-body-sm text-text-muted leading-snug">
+           {t.rg.limitsDescription}
+         </p>
++        {/* ⭐ THE NEUTRAL NOTICE, AT READING SIZE (R5-C, the second gold audit, 2026-10-09). The last RG notice on this page
++            still wore the warning box — `--warning-*` fill and edge, a warning triangle — at 12px, under the 12.5px floor.
++            A limit change waiting out its cooling-off asks nothing of anyone and has earned nothing: the warning tone is
++            struck in gilt (`--warning-fg` IS `--gilt`, DESIGN_AUTHORITY F3; Q5), and §B11 keeps amber for "somebody must
++            act". It is R4-I's RG notice now, as the break and the exclusion above: the kit `Callout`, `neutral`, `md`
++            (13px), with the clock that says it is waiting. The words, the date and their order are unchanged. */}
+         {hasPendingIncrease && (
+-          <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg p-3 text-[12px]">
+-            <I.warning s={14} />
++          <Callout tone="neutral" size="md" glyph="clock">
+             <div className="space-y-1.5">
+               {await Promise.all(pendingChanges.map(async (c) => (
+                 <div key={c.label}>
+@@ -167,7 +213,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
+                 </div>
+               )))}
+             </div>
+-          </div>
++          </Callout>
+         )}
+         <form action={setLimitsAction} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+           <Field name="dailyDepositLimit"        label={t.rg.dailyDeposit}      defaultValue={rg.dailyDepositLimit}        placeholder={t.rg.egDay} />
+@@ -212,7 +258,9 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
+           {t.rg.breakDescription}
+         </p>
+         <form action={coolOffAction} className="flex flex-wrap items-end gap-2">
+-          <div>
++          {/* R4-I · the one width both period fields take (`periodFieldPx`), and one button width (`widthOf`), so this
++              button and Jizuie's stand in line at every screen width. */}
++          <div style={{ width: periodFieldPx }}>
+             <FieldLegend className="block mb-1.5">{t.rg.breakLength}</FieldLegend>
+             <Select
+               name="period"
+@@ -220,7 +268,10 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
+               options={COOLING_OFF_OPTIONS.map((o) => ({ value: o.id, label: o.label }))}
+             />
+           </div>
+-          <RgConfirmSubmit label={t.common.startABreak} body={t.rg.breakDescription} icon={<I.pause s={13} />} buttonClass="btn btn-ghost btn-md" />
++          <RgConfirmSubmit label={t.common.startABreak} body={t.rg.breakDescription} icon={<I.pause s={13} />} buttonClass="btn btn-ghost btn-md"
++            choice={{ field: "period", label: t.rg.breakLength, options: COOLING_OFF_OPTIONS.map((o) => ({ value: o.id, label: o.label })) }}
++            widthOf={t.common.selfExclude}
++          />
+         </form>
+       </section>
+ 
+@@ -240,7 +291,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
+           {t.rg.selfExcludeDescription}
+         </p>
+         <form action={selfExcludeAction} className="flex flex-wrap items-end gap-2">
+-          <div>
++          <div style={{ width: periodFieldPx }}>
+             <FieldLegend className="block mb-1.5">{t.rg.exclusionPeriod}</FieldLegend>
+             <Select
+               name="period"
+@@ -248,7 +299,10 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
+               options={SELF_EXCLUSION_OPTIONS.map((o) => ({ value: o.id, label: o.label }))}
+             />
+           </div>
+-          <RgConfirmSubmit label={t.common.selfExclude} body={t.rg.selfExcludeDescription} icon={<I.lock s={13} />} buttonClass="btn btn-claret btn-md" />
++          <RgConfirmSubmit label={t.common.selfExclude} body={t.rg.selfExcludeDescription} icon={<I.lock s={13} />} buttonClass="btn btn-claret btn-md"
++            choice={{ field: "period", label: t.rg.exclusionPeriod, options: SELF_EXCLUSION_OPTIONS.map((o) => ({ value: o.id, label: o.label })) }}
++            widthOf={t.common.startABreak}
++          />
+         </form>
+       </section>
+     </PageContainer>
+diff --git a/src/components/rg/limit-usage.tsx b/src/components/rg/limit-usage.tsx
+index cc5564588..f822defd2 100644
+--- a/src/components/rg/limit-usage.tsx
++++ b/src/components/rg/limit-usage.tsx
+@@ -19,6 +19,15 @@ import { formatTzs } from "@/lib/utils";
+  * gate's list in globals.css §6 governs `infinite` animations, which a one-shot
+  * transition is not. With motion off the bar renders at its final length instantly.
+  */
++/**
++ * THE ONE RAMP for every limit meter in the product (R5-C, the second gold audit, 2026-10-09): `/profile/activity`'s
++ * meters read it too, so the two pages that show a player their limits cannot draw the same usage two ways. Neutral
++ * royal, the warning step from 75% (a caution — its amber is the `--warning-*` family, whose paint is the owner's token,
++ * DESIGN_AUTHORITY F3), the app-state danger from 90% or once the cap is reached — never the betting pair (§B2a), never gilt.
++ */
++export const limitUsageFill = (pct: number, reached: boolean): string =>
++  reached || pct >= 90 ? "var(--danger-500)" : pct >= 75 ? "var(--warning)" : "var(--royal-400)";
++
+ export function LimitUsageMeter({
+   label,
+   used,
+@@ -34,8 +43,7 @@ export function LimitUsageMeter({
+   const pct = cap > 0 ? (used / cap) * 100 : 0;
+   const clamped = Math.max(0, Math.min(100, pct));
+   const reached = used >= cap;
+-  const fill =
+-    reached || pct >= 90 ? "var(--danger-500)" : pct >= 75 ? "var(--warning)" : "var(--royal-400)";
++  const fill = limitUsageFill(pct, reached);
+ 
+   return (
+     <div>
+diff --git a/src/components/rg/reality-check.tsx b/src/components/rg/reality-check.tsx
+index 9e3b4ccf7..811fc06d8 100644
+--- a/src/components/rg/reality-check.tsx
++++ b/src/components/rg/reality-check.tsx
+@@ -130,23 +130,33 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
+       labelledBy="reality-check-title"
+       panelClassName="overflow-hidden"
+     >
+-      {/* Gold rail at top */}
+-      <div aria-hidden className="absolute inset-x-0 top-0 h-[2px]" style={{ background: "linear-gradient(90deg, var(--gold-500), var(--gold-300), var(--gold-500))" }} />
+-
++      {/* ⛔ NO GOLD ON THE REALITY CHECK (R5-C, the second gold audit, 2026-10-09). It wore a gold rail across its top, a
++          gold clock and the minutes in gold: the ink of money earned (DESIGN_AUTHORITY §M3; Q5 "gold is money, and nothing
++          else") on the one prompt whose job is to make a player stop and think. It is an RG notice, and R4-I gave every RG
++          notice the neutral treatment: the sheet's own edge, the clock in the subtle ink of the disc it sits on, and the
++          minutes in the heading's own ink (mono, §T5). The words and the four doors are unchanged. */}
+       <div className="space-y-4">
+-        <div className="flex items-center gap-2.5">
++        {/* ⭐ THE TITLE'S FIRST LINE ON THE CORNER ✕ (round 5 of the visual pass, 2026-10-09, F20 — the one convention,
++            `CloseX` in modal.tsx; a position only, no word of this RG notice changes). Modal pins the ✕ 40px under the
++            panel's padding edge; this row started at the padding (24px, 32px from 1024) and centred a one-line title on the
++            40px badge, so the title's capitals stood 43.6px down — the ✕ 3.6px above them on a phone and 11.6px from 1024
++            — and a title that wrapped lifted its first line further. The title now hangs from the badge's centre (its
++            first line centred on it, 20px less half its 1.25 line), so a second line grows downward, and the row rises to
++            put those capitals — 20 − 0.025em = 19.6px down it — on the ✕. The row keeps 48px clear of the ✕ on its right,
++            as every dialog title does (`.kp-modal-title`), so a long title wraps before it instead of running under it. */}
++        <div className="-mt-[3.6px] lg:-mt-[11.6px] flex items-start gap-2.5 pr-8">
+           {/* ⛔ LITERALS, NOT `h-8 w-8` — the spacing scale is overridden
+               (tailwind.config.ts:200-215) and that pair is 48×48px. 40px = --tap-min, the
+               badge disc every other section heading in the product uses. */}
+-          <span className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md bg-bg-inset border border-border text-gold-300">
++          <span className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md bg-bg-inset border border-border text-text-subtle">
+             <I.clock s={18} />
+           </span>
+           <h2
+             id="reality-check-title"
+-            className="font-display text-[15.5px] font-bold leading-tight text-text"
++            className="mt-[calc(20px-0.625em)] font-display text-[15.5px] font-bold leading-tight text-text"
+           >
+             {t.rg.playingFor}{" "}
+-            <span className="font-mono text-gold-300">{elapsedMin}</span>{" "}
++            <span className="font-mono">{elapsedMin}</span>{" "}
+             {elapsedMin === 1 ? t.rg.minute : t.rg.minutes}
+           </h2>
+         </div>
+diff --git a/src/components/rg/rg-confirm-submit.tsx b/src/components/rg/rg-confirm-submit.tsx
+index 764bda5da..e72823b6b 100644
+--- a/src/components/rg/rg-confirm-submit.tsx
++++ b/src/components/rg/rg-confirm-submit.tsx
+@@ -13,23 +13,48 @@
+  *
+  * Consolidates the former SelfExcludeConfirm + CoolOffConfirm (identical
+  * scaffold) into one primitive — the caller supplies label/body/icon/button.
++ *
++ * ⭐ R4-I (2026-10-09, edges E16 · E20, tiles 002 and 112) · THE DIALOG NAMES WHAT IS BEING CONFIRMED. It said only the
++ * section's description — "Mapumziko mafupi…" — and never the length the player had picked in the form behind it ("Saa
++ * 1"), so the last screen before a one-way break did not say how long it was. `choice` names the form's field and its
++ * options: the dialog reads the picked option when it OPENS (`onOpen`, the snapshot hook) and shows it under the
++ * sentence as the form shows it — the field's own legend over the option's own label, two existing words, no sentence
++ * composed. (The end itself is not stated here: no approved sentence says "will end at"; the sign-in panel the action
++ * lands on states it, `?cooled=1&until=…`.) The description keeps its last two words together and no line opens on its
++ * dash (`keepText`: "pesa." stood alone on 002).
++ *
++ * ⭐ R4-I (edges E21, tile 001) · `widthOf` — ONE WIDTH FOR THE PAGE'S TWO BUTTONS. The limits page draws two of these
++ * side by side in two forms ("Pumzika" and "Jizuie"), each beside a period field of one shared width. Two labels of two
++ * widths wrapped their forms at two different screen widths: in Swahili between 337 and 354px the break's button fell
++ * under its field while the exclusion's stood beside it (English 377–378, modelled). The trigger now reserves the
++ * other form's label too — drawn invisibly in the same grid cell, `aria-hidden`, as CSS generated content — so both
++ * buttons are as wide as the wider of the two, in every language and every font, and the two forms wrap at one width.
++ * The name, the text and what a drive's `has-text` finds are the label alone.
+  */
+ 
+-import { useRef, type ReactNode } from "react";
++import { useRef, useState, type ReactNode } from "react";
+ import { useFormStatus } from "react-dom";
+ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
++import { keepText } from "@/components/ui/keep-run";
++import { FieldLegend } from "@/components/ui/field-legend";
+ 
+ export function RgConfirmSubmit({
+   label,
+   body,
+   icon,
+   buttonClass = "btn btn-claret btn-md",
++  choice,
++  widthOf,
+ }: {
+   /** Both the trigger label and the confirm-button label (same word). */
+   label: string;
+   body: ReactNode;
+   icon?: ReactNode;
+   buttonClass?: string;
++  /** The form field whose picked option the dialog names, its legend, and its options (value → the label shown). */
++  choice?: { field: string; label: string; options: readonly { value: string; label: string }[] };
++  /** A sibling button's label whose width this trigger reserves, invisibly, so the two are one width (see the header). */
++  widthOf?: string;
+ }) {
+   const buttonRef = useRef<HTMLButtonElement>(null);
+   const submitForm = () => buttonRef.current?.closest("form")?.requestSubmit();
+@@ -40,22 +65,54 @@ export function RgConfirmSubmit({
+   // round-trip settles, instead of vanishing while a self-exclusion is still
+   // being written — the one action a player will absolutely re-click.
+   const { pending } = useFormStatus();
++  // The option picked in the form when the dialog opened — read from the form's own field, by its value.
++  const [picked, setPicked] = useState<string | null>(null);
++  const snapshot = () => {
++    if (!choice) return;
++    const field = buttonRef.current?.closest("form")?.elements.namedItem(choice.field);
++    const value = field && "value" in field ? String((field as { value: unknown }).value) : "";
++    setPicked(choice.options.find((o) => o.value === value)?.label ?? null);
++  };
+ 
+   return (
+     <ConfirmDialog
+       pending={pending}
+       tone="claret"
+       title={label}
+-      body={typeof body === "string" ? <p>{body}</p> : body}
++      body={
++        <>
++          {typeof body === "string" ? <p>{keepText(body)}</p> : body}
++          {choice && picked && (
++            <p className="mt-3" data-testid="rg-confirm-choice">
++              {/* The form's own legend recipe over the picked option, as the form draws the pair. */}
++              <FieldLegend as="span" className="block">{choice.label}</FieldLegend>
++              <span className="mt-0.5 block font-display text-body font-semibold text-text">{picked}</span>
++            </p>
++          )}
++        </>
++      }
+       confirmLabel={label}
++      onOpen={snapshot}
+       onConfirm={submitForm}
+       /* ⭐ S6 A8j — the confirm submits the host's form, and so nothing else may (`submitsForm`, in `confirm-dialog.tsx`).
+          Today's two hosts hold no text field, so Enter could not submit them; a field added later cannot open the hole. */
+       submitsForm
+       trigger={
+         <button ref={buttonRef} type="button" className={`${buttonClass} inline-flex items-center gap-1.5`}>
+-          {icon}
+-          {label}
++          {widthOf ? (
++            /* One grid cell, two items centred in it: the icon and the label, and — invisible, aria-hidden — the same
++               icon beside the sibling's label. The sibling's words are CSS generated content (`data-reserve`), never a
++               text node, so no text search and no accessible name ever meets them; the cell is the wider of the two. */
++            <span className="grid justify-items-center">
++              <span className="col-start-1 row-start-1 inline-flex items-center gap-1.5">{icon}{label}</span>
++              <span aria-hidden data-reserve={widthOf} className="invisible col-start-1 row-start-1 inline-flex items-center gap-1.5 after:content-[attr(data-reserve)]">{icon}</span>
++            </span>
++          ) : (
++            <>
++              {icon}
++              {label}
++            </>
++          )}
+         </button>
+       }
+     />
+diff --git a/src/components/rg/rg-period-width.ts b/src/components/rg/rg-period-width.ts
+new file mode 100644
+index 000000000..dd3b6c397
+--- /dev/null
++++ b/src/components/rg/rg-period-width.ts
+@@ -0,0 +1,38 @@
++/**
++ * ONE WIDTH FOR THE TWO PERIOD FIELDS ON THE LIMITS PAGE — so "Pumzika" and "Jizuie" stand on one line (the visual pass,
++ * round 4, helper R4-I, 2026-10-09; edges E21, tile 001).
++ *
++ * 🔴 WHAT TILE 001 SHOWED. Each form is a legend over a Select, then its button, in a wrapping row. The wrapper took the
++ * width of whichever was wider — and that was the LEGEND: "UREFU WA MAPUMZIKO" is 133px and "KIPINDI CHA KUJIZUIA" 148px
++ * (10px mono capitals tracked 0.14em: 7.4px a letter), so the break's field ran x41–173 and its button stood at x186,
++ * the exclusion's ran x41–188 and its button at x201. Two forms of one page, 15px out of line.
++ * ⭐ Both wrappers now take ONE width: the widest of the two legends and of every option either Select can show, in the
++ * page's language — each measured in its own face, the legend at 10px mono + 1.4px tracking a glyph, the Select's label
++ * at 16px mono (9.6px a glyph) plus the trigger's chrome (16px padding a side, the 12px gap, the 10px chevron, a 1px
++ * border a side). An ideograph is a full em in either face. Both buttons then start at the same x in every language.
++ * And the two BUTTONS are one width too — each reserves the other's label (`RgConfirmSubmit`'s `widthOf`) — so each
++ * form is field + 12 + one button width, and the two wrap at the same screen width: a button never falls under its
++ * field in one form while the other's stands beside it.
++ * Pure, so `test:visual-pass-r4i` drives the very numbers the page uses.
++ */
++
++const IDEOGRAPH = /[⺀-鿿豈-﫿　-〿＀-￯]/;
++
++/** A FieldLegend's width: `font-mono text-micro uppercase` with the eyebrow's 0.14em tracking. */
++export function legendPx(text: string): number {
++  return [...text.toUpperCase()].reduce((w, c) => w + (IDEOGRAPH.test(c) ? 10 : 6) + 1.4, 0);
++}
++
++/** The md Select trigger's chrome around its label: px-3 (16) × 2, gap-2 (12), the 10px chevron, 1px border × 2. */
++export const SELECT_CHROME_PX = 16 * 2 + 12 + 10 + 2;
++
++/** A md Select trigger's width for a label: 16px mono, 9.6px a glyph, an ideograph 16. */
++export function selectPx(label: string): number {
++  return [...label].reduce((w, c) => w + (IDEOGRAPH.test(c) ? 16 : 9.6), 0) + SELECT_CHROME_PX;
++}
++
++/** The one width both period fields take: every legend and every option of both forms, rounded up to a whole pixel. */
++export function rgPeriodFieldPx(legends: readonly string[], options: readonly string[]): number {
++  // The epsilon keeps a width that is whole in exact arithmetic (20 × 7.4 = 148) from rounding up on its float tail.
++  return Math.ceil(Math.max(...legends.map(legendPx), ...options.map(selectPx)) - 1e-6);
++}
+diff --git a/src/components/rg/self-care-art.tsx b/src/components/rg/self-care-art.tsx
+index 663db32ff..bb03e1251 100644
+--- a/src/components/rg/self-care-art.tsx
++++ b/src/components/rg/self-care-art.tsx
+@@ -25,7 +25,9 @@ export function RgSunriseArt({ size = 44, className }: { size?: number; classNam
+       <line x1="41.5" y1="25.5" x2="45" y2="22" />
+       <line x1="12" y1="40" x2="7" y2="40" />
+       <line x1="44" y1="40" x2="49" y2="40" />
+-      <circle cx="28" cy="40" r="2.4" fill="var(--yes-300)" stroke="none" />
++      {/* The sun's point in the art's own ink (the support panel's success family) — it was the YES side's green, the last
++          betting ink in the panel §B2a names (R5-I, 2026-10-09). */}
++      <circle cx="28" cy="40" r="2.4" fill="currentColor" stroke="none" />
+     </svg>
+   );
+ }
+diff --git a/src/lib/auth-landing.ts b/src/lib/auth-landing.ts
+index f20c92820..cc19250cd 100644
+--- a/src/lib/auth-landing.ts
++++ b/src/lib/auth-landing.ts
+@@ -2,10 +2,11 @@
+  * WHERE A DOOR SENDS SOMEONE - one rule per question (route audit 2026-10-06, cluster B).
+  * landingAfterAuth: after a sign-in or sign-up. accountRefusalPath: an account refusal's panel on the login page.
+  * authDoorHrefs: the guest header's Sign in / Sign up. Pure and client-safe: it imports only safe-next.ts,
+- * referral-code.ts and a type. S9/S10 reuse these instead of writing second copies.
++ * referral-code.ts, break-end.ts (pure) and a type. S9/S10 reuse these instead of writing second copies.
+  */
+ import { boundedNext, isAdminPath, isAuthPath, pathWithQuery, sanitizeNext, withWelcome } from "@/lib/safe-next";
+ import { normalizeReferralCode } from "@/lib/referral-code";
++import { breakEndParam } from "@/lib/break-end";
+ import type { FailureDetail } from "@/lib/failure-reasons";
+ 
+ /** Staff (any role but PLAYER/AGENT): an /admin next, else /admin. A player or agent: the safe next (never an /admin one) or
+@@ -18,14 +19,15 @@ export function landingAfterAuth(opts: { role: string | null | undefined; next:
+   return withWelcome(next || "/", opts.kind);
+ }
+ 
+-/** The login page's panel for an account refusal: closed=1, the three exclusion standings (serving carries its date), else
+- *  error=blocked; a safe next kept. */
++/** The login page's panel for an account refusal: closed=1, the three exclusion standings (serving carries its END — the
++ *  instant, `breakEndParam`, never its UTC day: R4-I, 2026-10-09), else error=blocked; a safe next kept. */
+ export function accountRefusalPath(detail: FailureDetail | undefined, next: string): string {
+   const qs = new URLSearchParams();
+   if (detail?.accountClosed) qs.set("closed", "1");
+   else if (detail?.standing && detail.standing !== "diverged") {
+     qs.set("excluded", detail.standing);
+-    if (detail.standing === "serving" && detail.until) qs.set("until", detail.until.slice(0, 10));
++    const end = detail.standing === "serving" ? breakEndParam(detail.until) : null;
++    if (end) qs.set("until", end);
+   } else qs.set("error", "blocked");
+   const safe = sanitizeNext(next);
+   if (safe) qs.set("next", safe);

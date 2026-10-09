@@ -1,0 +1,604 @@
+=== src/app/account/page.tsx
+30:import { getServerT } from "@/lib/i18n-server";
+44:  const { t } = await getServerT();
+45:  return { title: t.journey.tabAccount };
+51:  const [{ t, locale }, session] = await Promise.all([getServerT(), currentSession()]);
+69:        <h1 className="font-display text-title-lg font-bold leading-tight text-text">{t.journey.tabAccount}</h1>
+=== src/app/agent/apply/page.tsx
+4:import { getServerT } from "@/lib/i18n-server";
+17:  const { t } = await getServerT();
+18:  return { title: t.agent.applyTitle };
+35:  const { t } = await getServerT();
+61:      <h1 className="sr-only">{t.agent.applyTitle}</h1>
+=== src/app/agent/invite/[token]/page.tsx
+3:import { PageHeader } from "@/components/ui/page-header";
+6:import { getServerT } from "@/lib/i18n-server";
+15:  const { t } = await getServerT();
+16:  return { title: t.agent.inviteTitle };
+28:  const { t, locale } = await getServerT();
+39:        <PageHeader eyebrow={t.agent.eyebrow} title={t.agent.inviteTitle} />
+40:        <EmptyState kind="default" title={why} body={t.agent.heroSub}
+48:      <PageHeader eyebrow={t.agent.eyebrow} title={t.agent.inviteTitle} subtitle={t.agent.inviteBody} />
+=== src/app/agent/page.tsx
+4:import { PageHeader } from "@/components/ui/page-header";
+12:import { getServerT } from "@/lib/i18n-server";
+28:  const { t } = await getServerT();
+29:  return { title: t.agent.title };
+52:  const { t, locale } = await getServerT();
+171:      <PageHeader eyebrow={t.agent.eyebrow} title={t.agent.title} subtitle={t.agent.heroSub} />
+=== src/app/agent/status/page.tsx
+4:import { PageHeader } from "@/components/ui/page-header";
+10:import { getServerT } from "@/lib/i18n-server";
+23:  const { t } = await getServerT();
+24:  return { title: t.agent.statusTitle };
+42:  const { t, locale } = await getServerT();
+70:      <PageHeader eyebrow={t.agent.eyebrow} title={t.agent.statusTitle} />
+73:        <EmptyState kind="default" title={t.agent.noApplication} body={t.agent.noApplicationBody}
+=== src/app/auth/2fa/page.tsx
+10:import { getServerT } from "@/lib/i18n-server";
+14:  const { t } = await getServerT();
+15:  return { title: t.security.challengeTitle };
+19:  const { t } = await getServerT();
+37:          eyebrow={t.security.eyebrow}
+38:          title={t.security.challengeTitle}
+39:          subtitle={backup ? t.security.challengeBackupHint : t.security.challengeHint}
+=== src/app/auth/forgot-password/page.tsx
+10:import { getServerT } from "@/lib/i18n-server";
+14:  const { t } = await getServerT();
+15:  return { title: t.auth.forgotPassword };
+19:  const { t } = await getServerT();
+65:            eyebrow={t.auth.forgotPassword}
+66:            title={t.common.recoverAccount}
+67:            subtitle={t.common.recoverBody}
+=== src/app/auth/login/page.tsx
+13:import { getServerT } from "@/lib/i18n-server";
+24:  const { t } = await getServerT();
+25:  return { title: t.auth.signInTitle };
+41:  const { t, locale } = await getServerT();
+104:      title: t.auth.passwordReset,
+112:      title: t.auth.accountClosed,
+126:      title: t.auth.selfExclusionEnded,
+133:      title: t.auth.selfExclusionActive,
+147:      title: t.auth.selfExclusionActive,
+161:      title: t.auth.coolingOff,
+171:          title: t.auth.noAccountYet,
+178:          title: t.auth.wrongCredentials,
+185:          title: t.auth.tooManyTries,
+197:          title: t.auth.smsDown,
+=== src/app/auth/otp/page.tsx
+12:import { getServerT } from "@/lib/i18n-server";
+18:  const { t } = await getServerT();
+19:  return { title: t.common.verification };
+31:  const { t } = await getServerT();
+56:            eyebrow={t.common.verification}
+57:            title={t.common.enterCode}
+58:            subtitle={<>{t.common.codeSent} <span className="font-mono text-text font-semibold">{masked}</span>.</>}
+=== src/app/auth/register/page.tsx
+15:import { getServerT } from "@/lib/i18n-server";
+23:  const { t } = await getServerT();
+31:  const ogImage = `${appUrl()}/api/og/page?title=${encodeURIComponent(ogTitle)}&sub=${encodeURIComponent(ogSub)}`;
+33:    title: t.auth.signUpTitle,
+41:    openGraph: { ...ROOT_OPEN_GRAPH, title: ogTitle, description: ogSub, images: [{ url: ogImage, width: 1200, height: 630 }] },
+42:    twitter: { card: "summary_large_image", title: ogTitle, description: ogSub, images: [ogImage] },
+55:  const { t, locale } = await getServerT();
+130:            eyebrow={t.auth.signUpTitle}
+131:            title={t.auth.welcomeTo50pick}
+132:            subtitle={t.auth.tanzaniaMobile18}
+=== src/app/auth/reset-password/page.tsx
+12:import { getServerT } from "@/lib/i18n-server";
+16:  const { t } = await getServerT();
+17:  return { title: t.common.resetPassword };
+24:  const { t } = await getServerT();
+26:  const errorCopy: Record<Exclude<TokenState, "valid">, { eyebrow: string; title: string; body: string }> = {
+29:      title: t.common.linkExpiredTitle,
+34:      title: t.common.linkInvalidTitle,
+39:      title: t.common.linkEmailChangedTitle,
+78:              eyebrow={c.eyebrow}
+79:              title={c.title}
+80:              subtitle={c.body}
+119:            eyebrow={t.common.resetPassword}
+120:            title={t.common.setNewPassword}
+121:            subtitle={t.common.strongPassword}
+=== src/app/auth/verify-email/page.tsx
+11:import { getServerT } from "@/lib/i18n-server";
+16:  const { t } = await getServerT();
+17:  return { title: t.common.confirmEmailTitle };
+22:  const { t } = await getServerT();
+49:              eyebrow={t.common.confirmEmailTitle}
+50:              title={t.common.confirmEmailPasswordTitle}
+51:              subtitle={t.common.confirmEmailPasswordBody}
+99:      title: t.common.emailConfirmedTitle,
+105:      title: t.common.emailAlreadyConfirmedTitle,
+111:      title: t.common.emailMismatchTitle,
+117:      title: t.common.emailInvalidTitle,
+151:            eyebrow={c.eyebrow}
+152:            title={c.title}
+153:            subtitle={c.body}
+=== src/app/fairness/page.tsx
+11:import { PageHeader } from "@/components/ui/page-header";
+12:import { PageHero } from "@/components/ui/page-hero";
+41:import { getServerT } from "@/lib/i18n-server";
+46:  const { t } = await getServerT();
+47:  return { title: t.common.resolutionAttestation };
+102:  const { t, locale } = await getServerT();
+189:        <PageHero glow="info">
+190:          <PageHeader eyebrow={t.common.resolutionAttestation} title={t.common.howAMarketResolves} tone="info" icon={<I.shieldcheck s={18} />} />
+191:        </PageHero>
+298:            title={
+=== src/app/help/page.tsx
+3:import { PageHeader } from "@/components/ui/page-header";
+4:import { PageHero } from "@/components/ui/page-hero";
+6:import { getServerT } from "@/lib/i18n-server";
+14:  const { t } = await getServerT();
+15:  return { title: t.common.help };
+38:  const { t, locale } = await getServerT();
+51:      <PageHero glow="info">
+52:        <PageHeader tone="info" eyebrow={t.help.pageTitle} title={t.help.heading} />
+53:      </PageHero>
+81:          title={t.help.callUs}
+89:          title={t.help.emailLabel}
+98:            title={t.help.liveChat}
+158:          title={t.help.responsibleGambling}
+165:          title={t.help.walletHelp}
+=== src/app/leaderboard/page.tsx
+18:import { PageHeader } from "@/components/ui/page-header";
+25:import { getServerT, type Dict } from "@/lib/i18n-server";
+43:  const { t } = await getServerT();
+45:  const og = `/api/og/page?title=${encodeURIComponent(title)}`;
+247:  const { t } = await getServerT();
+315:      <PageHeader eyebrow={t.leaderboard.title} title={t.leaderboard.topPredictors} />
+320:          title={t.leaderboard.emptyTitle}
+=== src/app/legal/agent-terms/page.tsx
+3:import { getServerT, type Locale } from "@/lib/i18n-server";
+12:  const { t } = await getServerT();
+13:  return { title: `${t.agent.termsLink} · 50pick` };
+59:  const { t, locale } = await getServerT();
+84:        <LegalSection n="1" title="What an agent is, and is not">
+88:        <LegalSection n="2" title="Applying">
+92:        <LegalSection n="3" title="Commission">
+97:        <LegalSection n="4" title="Your recruits">
+101:        <LegalSection n="5" title="Standing">
+105:        <LegalSection n="6" title="Your referees' information">
+108:        <LegalSection n="7" title="General">
+115:        <LegalSection n="1" title="Wakala ni nani, na si nani">
+119:        <LegalSection n="2" title="Kuomba">
+123:        <LegalSection n="3" title="Kamisheni">
+=== src/app/legal/aml/page.tsx
+3:import { getServerT, type Locale } from "@/lib/i18n-server";
+6:  const { locale } = await getServerT();
+7:  return { title: TITLE[locale] };
+67:      <LegalSection n="1" title="Customer due diligence (CDD)">
+85:      <LegalSection n="2" title="Enhanced due diligence (EDD)">
+98:      <LegalSection n="3" title="Suspicious-activity reporting (SAR)">
+106:      <LegalSection n="4" title="Sanctions and politically exposed persons (PEP)">
+124:      <LegalSection n="5" title="Record retention">
+131:      <LegalSection n="6" title="Training + governance">
+138:      <LegalSection n="7" title="Contact + reporting">
+148:      <LegalSection n="1" title="Uchunguzi wa kina wa mteja (CDD)">
+166:      <LegalSection n="2" title="Uchunguzi ulioimarishwa (EDD)">
+179:      <LegalSection n="3" title="Kuripoti shughuli za kutiliwa shaka (SAR)">
+187:      <LegalSection n="4" title="Vikwazo na watu wanaojulikana kisiasa (PEP)">
+=== src/app/legal/privacy/page.tsx
+3:import { getServerT, type Locale } from "@/lib/i18n-server";
+15:  const { locale } = await getServerT();
+16:  return { title: TITLE[locale] };
+111:      <LegalSection n="1" title="Data controller">
+119:      <LegalSection n="2" title="What we collect">
+131:      <LegalSection n="3" title="Lawful basis">
+141:      <LegalSection n="4" title="Sharing">
+158:      <LegalSection n="5" title="Retention">
+172:      <LegalSection n="6" title="Your rights">
+183:      <LegalSection n="7" title="Cookies">
+200:      <LegalSection n="8" title="Security">
+209:      <LegalSection n="9" title="People who are not our customers (referees)">
+233:      <LegalSection n="1" title="Msimamizi wa data">
+241:      <LegalSection n="2" title="Tunachokusanya">
+=== src/app/legal/responsible-gambling/page.tsx
+3:import { getServerT, type Locale } from "@/lib/i18n-server";
+9:  const { locale } = await getServerT();
+10:  return { title: TITLE[locale] };
+66:      <LegalSection n="1" title="Our commitment">
+73:      <LegalSection n="2" title="Tools we provide">
+91:      <LegalSection n="3" title="Markers of harm">
+102:      <LegalSection n="4" title="Operator responsibilities">
+110:      <LegalSection n="5" title="Get help">
+120:      <LegalSection n="1" title="Ahadi yetu">
+127:      <LegalSection n="2" title="Zana tunazotoa">
+145:      <LegalSection n="3" title="Viashiria vya madhara">
+155:      <LegalSection n="4" title="Wajibu wa mwendeshaji">
+163:      <LegalSection n="5" title="Pata msaada">
+173:      <LegalSection n="1" title="我们的承诺">
+=== src/app/legal/rules/page.tsx
+3:import { getServerT, type Locale } from "@/lib/i18n-server";
+26:  const { locale } = await getServerT();
+27:  return { title: TITLE[locale] };
+112:  const { locale } = await getServerT();
+121:        eyebrow={EYEBROW[locale]}
+122:        title={TITLE[locale]}
+123:        subtitle={SUBTITLE[locale]}
+136:          title={c.yesNo[0]}
+143:          title={c.upDown[0]}
+149:      <LegalSection n="1" title={c.common}>
+194:  title: string;
+=== src/app/legal/rules/up-down/page.tsx
+2:import { getServerT, type Locale } from "@/lib/i18n-server";
+12:  const { locale } = await getServerT();
+13:  return { title: TITLE[locale] };
+41:  const { locale } = await getServerT();
+52:        eyebrow={EYEBROW[locale]}
+53:        title={TITLE[locale]}
+54:        subtitle={SUBTITLE[locale]}
+=== src/app/legal/rules/yes-no/page.tsx
+2:import { getServerT, type Locale } from "@/lib/i18n-server";
+16:  const { locale } = await getServerT();
+17:  return { title: TITLE(locale) };
+57:  const { locale } = await getServerT();
+63:        eyebrow={EYEBROW[locale]}
+64:        title={TITLE(locale)}
+65:        subtitle={SUBTITLE[locale]}
+=== src/app/legal/terms/page.tsx
+3:import { getServerT, type Locale } from "@/lib/i18n-server";
+12:  const { locale } = await getServerT();
+13:  return { title: TITLE[locale] };
+97:      <LegalSection n="1" title="Operator + licence">
+106:      <LegalSection n="2" title="Account eligibility">
+115:      <LegalSection n="3" title="Identity verification (KYC)">
+132:      <LegalSection n="3a" title="If we cannot verify you">
+155:      <LegalSection n="4" title="How price-competition markets work">
+195:      <LegalSection n="5" title="Settlement and payout">
+208:      <LegalSection n="6" title="Voids and disputes">
+219:      <LegalSection n="7" title="Responsible gambling">
+227:      <LegalSection n="8" title="Account closure">
+234:      <LegalSection n="9" title="Liability">
+242:      <LegalSection n="10" title="Changes">
+=== src/app/live/page.tsx
+19:import { PageHero } from "@/components/ui/page-hero";
+29:import { getServerT } from "@/lib/i18n-server";
+34:  const { t } = await getServerT();
+35:  return { title: t.common.live };
+45:    getServerT(),
+156:    id: m.id, title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh), yesPct, productLine: m.productLine, roundId: m.roundId,
+171:            position — and this PageHero was handed a **24px margin-top nobody wrote**. Measured
+179:          <h1 className="sr-only">{t.common.live} {t.common.markets}</h1>
+180:          {/* C1e — aqua PageHero masthead. Gives /live a real identity (not a slim
+183:          <PageHero glow="aqua" watermark={200}>
+205:            <FeaturedContest markets={topContested} eyebrow={t.market.mostContested} openLabel={t.market.openMarket} />
+206:          </PageHero>
+220:            title={q ? `${t.market.noLiveMatch} "${q}"` : t.market.noLiveNow}
+=== src/app/markets/[id]/page.tsx
+55:import { getServerT } from "@/lib/i18n-server";
+86:  const { t, locale } = await getServerT();
+88:  try { m = await getMarket(id); } catch { return { title: t.market.title }; }
+116:    title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh),
+124:      title: isWin ? `Won ${formatTzs(win!.payout)} on 50pick` : m.titleEn,
+130:      title: isWin ? `Won ${formatTzs(win!.payout)} on 50pick` : m.titleEn,
+155:  const { t, locale } = await getServerT();
+591:            <ShareButton marketId={m.id} title={m.titleEn} refCode={myRefCode} />
+635:          <h1 data-stem={QUESTION_STEM.test(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)) ? "" : undefined}
+1232:function similarTimeLeft(iso: string, t: Awaited<ReturnType<typeof getServerT>>["t"], nowMs: number): string {
+=== src/app/markets/page.tsx
+18:import { getServerT } from "@/lib/i18n-server";
+51:  const { t } = await getServerT();
+52:  return { title: t.market.title };
+143:  const { t } = await getServerT();
+185:      <h1 className="sr-only">{t.market.title}</h1>
+238:  const { t } = await getServerT();
+485:  t: Awaited<ReturnType<typeof getServerT>>["t"];
+518:        title={title}
+=== src/app/notifications/page.tsx
+38:import { PageHeader } from "@/components/ui/page-header";
+51:import { getServerT } from "@/lib/i18n-server";
+63:  const { t } = await getServerT();
+64:  return { title: t.notif.title };
+69:function relTime(iso: string, t: Awaited<ReturnType<typeof getServerT>>["t"]): string {
+84:  const { t, locale } = await getServerT();
+152:  const EMPTY: Record<NotificationFilter, { title: string; body?: string }> = {
+153:    all: { title: t.notif.noNotifications, body: t.notif.noNotificationsHint },
+154:    unread: { title: t.notif.emptyUnread },
+155:    money: { title: t.notif.emptyMoney },
+156:    account: { title: t.notif.emptyAccount },
+157:    cleared: { title: t.notif.emptyCleared, body: t.notif.clearedHint },
+176:      <PageHeader
+179:        eyebrow={t.notif.eyebrow}
+=== src/app/page.tsx
+25:import { getServerT } from "@/lib/i18n-server";
+51:  const { t } = await getServerT();
+58:    title: { absolute: `50pick — ${t.auth.railTagline}` },
+135:    getServerT(),
+=== src/app/positions/[positionId]/page.tsx
+=== src/app/positions/page.tsx
+6:import { PageHeader } from "@/components/ui/page-header";
+35:import { getServerT } from "@/lib/i18n-server";
+44:  const { t } = await getServerT();
+48:  return { title: journey ? t.journey.tabTickets : t.common.positions };
+53:  const { t, locale } = await getServerT();
+137:      title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh),
+321:        <PageHeader eyebrow={t.common.positions} title={t.positions.headline} subtitle={t.positions.headlineBody} />
+392:          title={emptyTitle}
+541:  title: string;
+555:      title={title}
+=== src/app/positions/performance/page.tsx
+4:import { PageHeader } from "@/components/ui/page-header";
+14:import { getServerT } from "@/lib/i18n-server";
+28:  const { t } = await getServerT();
+29:  return { title: t.performance.title };
+38:  const { t, locale } = await getServerT();
+156:      title: m ? pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh) : p.marketId.slice(0, 8),
+177:      <PageHeader eyebrow={t.common.positions} title={t.performance.title} />
+204:           the same 328px offset from its `<PageHeader>` as `/positions`, on a page nobody had
+209:          title={t.performance.noPerformance}
+=== src/app/profile/account/page.tsx
+5:import { PageHeader } from "@/components/ui/page-header";
+6:import { PageHero } from "@/components/ui/page-hero";
+39:import { getServerT } from "@/lib/i18n-server";
+47:  const { t } = await getServerT();
+48:  return { title: t.profile.myAccount };
+67:  const { t, locale } = await getServerT();
+215:      <PageHero glow="info">
+216:        <PageHeader
+219:          eyebrow={t.profile.myAccount}
+220:          title={t.profile.myAccount}
+222:      </PageHero>
+=== src/app/profile/activity/page.tsx
+13:import { PageHeader } from "@/components/ui/page-header";
+22:import { getServerT, type Dict } from "@/lib/i18n-server";
+29:  const { t } = await getServerT();
+30:  return { title: t.activity.title };
+40:  const { t } = await getServerT();
+107:      <PageHeader tone="info" icon={<I.chart s={22} />} eyebrow={t.activity.eyebrow} title={t.activity.title} />
+145:          title={t.activity.emptyTitle}
+=== src/app/profile/invite/page.tsx
+23:import { getServerT } from "@/lib/i18n-server";
+31:  const { t } = await getServerT();
+51:  return { title: (payable || agent) ? t.profile.inviteEarn : t.profile.inviteFriends };
+135:  const { t, locale } = await getServerT();
+265:      <h1 className="sr-only">{paid ? t.profile.inviteEarn : t.profile.inviteFriends}</h1>
+568:            title={paid ? t.profile.noReferralsYet : t.profile.noFriendsYet}
+=== src/app/profile/kyc/page.tsx
+5:import { PageHeader } from "@/components/ui/page-header";
+6:import { PageHero } from "@/components/ui/page-hero";
+30:import { getServerT, type Dict, type Locale } from "@/lib/i18n-server";
+41:  const { t } = await getServerT();
+42:  return { title: t.profile.kycIdentityVerification };
+46:  const { t, locale } = await getServerT();
+204:      <PageHero glow="info">
+205:        <PageHeader
+208:          eyebrow={t.profile.kycIdentityVerification}
+209:          title={kyc?.status === "APPROVED" ? t.profile.verifyTitleApproved : finalRefusal ? t.kycGate.titleRejected : t.profile.verifyIdentity}
+229:      </PageHero>
+429:                title={(t.profile as unknown as Record<string, string>)[spec.ruleKey]}
+862:        title={title}
+=== src/app/profile/notifications/page.tsx
+5:import { PageHeader } from "@/components/ui/page-header";
+9:import { getServerT } from "@/lib/i18n-server";
+25:  const { t } = await getServerT();
+26:  return { title: t.push.pageTitle };
+46:  const { t, locale } = await getServerT();
+62:      <PageHeader tone="info" icon={<I.bellRing s={22} />} eyebrow={t.push.eyebrow} title={t.push.pageTitle} />
+=== src/app/profile/page.tsx
+16:import { getServerT } from "@/lib/i18n-server";
+26:  const { t } = await getServerT();
+27:  return { title: t.profile.title };
+40:  const { t, locale } = await getServerT();
+147:        <h1 className="sr-only">
+150:        {/* Background — the page hero every /profile page wears (`PageHero`'s `info` glow over `--hero-panel-grad`) + mark
+350:              <SettingRow icon={I.shieldcheck} title={t.agent.dashTitle} subtitle={t.agent.dashSubtitle} href="/profile/invite" accent
+353:              <SettingRow icon={I.users} title={t.profile.inviteFriends} subtitle={t.profile.inviteFriendsSub} href="/profile/invite" />
+356:          <SettingRow icon={I.user}            title={t.profile.myAccount}           subtitle={t.profile.myAccountSub}            href="/profile/account" />
+357:          <SettingRow icon={I.chart}           title={t.activity.title}              subtitle={t.activity.settingSub}             href="/profile/activity" />
+362:          <SettingRow icon={I.receipt}         title={t.receipts.title}              subtitle={t.receipts.settingSub}             href="/wallet/receipts" />
+363:          <SettingRow icon={I.star}            title={t.watchlist.title}             subtitle={t.watchlist.settingSub}            href="/watchlist" />
+364:          <SettingRow icon={I.bellRing}        title={t.push.pageTitle}              subtitle={t.push.settingSub}                 href="/profile/notifications" />
+365:          <SettingRow icon={I.settings}        title={t.profile.responsibleGambling} subtitle={t.profile.responsibleGamblingSub}              href="/profile/responsible-gambling" />
+=== src/app/profile/responsible-gambling/page.tsx
+7:import { PageHeader } from "@/components/ui/page-header";
+8:import { PageHero } from "@/components/ui/page-hero";
+25:import { getServerT } from "@/lib/i18n-server";
+32:  const { t } = await getServerT();
+33:  return { title: t.rg.playerProtection };
+38:  const { t, locale } = await getServerT();
+145:      <PageHero glow="info">
+146:        <PageHeader
+149:          eyebrow={t.rg.playerProtection}
+150:          title={t.profile.responsibleGambling}
+159:      </PageHero>
+=== src/app/profile/security/page.tsx
+4:import { PageHeader } from "@/components/ui/page-header";
+8:import { getServerT } from "@/lib/i18n-server";
+15:  const { t } = await getServerT();
+16:  return { title: t.security.title };
+21:  const { t } = await getServerT();
+32:      <PageHeader tone="info" icon={<I.keyRound s={22} />} eyebrow={t.security.eyebrow} title={t.security.title} />
+=== src/app/profile/sessions/page.tsx
+6:import { PageHeader } from "@/components/ui/page-header";
+7:import { PageHero } from "@/components/ui/page-hero";
+11:import { getServerT, type Dict } from "@/lib/i18n-server";
+19:  const { t } = await getServerT();
+20:  return { title: t.profile.activeSessions };
+36:  const { t, locale } = await getServerT();
+76:      <PageHero glow="info">
+77:        <PageHeader
+80:          eyebrow={t.profile.activeSessions}
+81:          title={t.profile.activeSessions}
+86:      </PageHero>
+=== src/app/profile/source-of-funds/page.tsx
+5:import { PageHeader } from "@/components/ui/page-header";
+6:import { PageHero } from "@/components/ui/page-hero";
+16:import { getServerT } from "@/lib/i18n-server";
+23:  const { t } = await getServerT();
+24:  return { title: t.profile.sourceOfFunds };
+29:  const { t, locale } = await getServerT();
+85:      <PageHero glow="info">
+86:        <PageHeader
+89:          eyebrow="AML"
+90:          title={t.profile.sourceOfFunds}
+95:      </PageHero>
+=== src/app/proposals/[id]/page.tsx
+15:import { getServerT } from "@/lib/i18n-server";
+34:  const { t, locale } = await getServerT();
+38:  } catch { return { title: t.proposals.title }; }
+40:  if (!p) return getProposalsConfig().state === "DISABLED" ? { title: t.proposals.title } : notFoundMetadata();
+41:  return { title: pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh) };
+45:  const { t, locale } = await getServerT();
+71:        <h1 className="font-display text-title-lg font-bold leading-tight tracking-[-0.02em] text-balance">{keepFigures(pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh))}</h1>
+=== src/app/proposals/new/page.tsx
+4:import { PageHeader } from "@/components/ui/page-header";
+5:import { PageHero } from "@/components/ui/page-hero";
+13:import { getServerT } from "@/lib/i18n-server";
+17:  const { t } = await getServerT();
+18:  return { title: t.common.submitProposal };
+23:  const { t } = await getServerT();
+44:      <PageHero>
+46:          <PageHeader eyebrow={t.common.submitProposal} title={t.common.suggestMarket} icon={<I.trophy s={18} />} />
+49:      </PageHero>
+55:          title={state === "MAINTENANCE" ? t.proposals.maintenanceTitle : t.proposals.comingSoonTitle}
+=== src/app/proposals/page.tsx
+12:import { PageHero } from "@/components/ui/page-hero";
+13:import { PageHeader } from "@/components/ui/page-header";
+22:import { getServerT } from "@/lib/i18n-server";
+45:  const { t } = await getServerT();
+47:  const og = `/api/og/page?title=${encodeURIComponent(title)}`;
+68:  const { t, locale } = await getServerT();
+79:        <h1 className="sr-only">{t.proposals.title}</h1>
+81:          title={t.proposals.unavailableTitle}
+179:          `PageHeader` renders an `<h1>` of its own, unconditionally (`page-header.tsx:45`, 25
+184:          ⚠️ `app/updown/page.tsx` has two `<PageHeader>` call sites and is NOT a second case —
+187:          better heading anyway: `t.proposals.title` survives as PageHeader's own eyebrow
+194:          That branch renders no `PageHeader`, so the h1 looked unpaired; it renders
+195:          `ProposalsUnavailable`, which had an `<h1>` of its own
+205:      <PageHero contentClassName="relative z-10 p-5 lg:p-6 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+=== src/app/results/page.tsx
+38:import { getServerT } from "@/lib/i18n-server";
+44:  const { t } = await getServerT();
+46:  const og = `/api/og/page?title=${encodeURIComponent(title)}`;
+74:  const { t } = await getServerT();
+97:      <h1 className="sr-only">{t.results.title}</h1>
+111:          `<h1 class="sr-only">` (`position:absolute`). On the container the rung would have
+126:          `sr-only` `<h1>`, and gap ignores an absolutely-positioned child for the same reason.
+147:  const { t, locale } = await getServerT();
+212:    title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh),
+557:              title={searching ? `${t.results.noResultsMatch} "${qRaw}"` : t.results.noResolvedYet}
+597:function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMarkets>>[number]; t: Awaited<ReturnType<typeof getServerT>>["t"]; locale: Awaited<ReturnType<typeof getServerT>>["locale"] }) {
+=== src/app/s/[token]/page.tsx
+2:import { getServerT } from "@/lib/i18n-server";
+42:  const { t } = await getServerT();
+44:    title: t.optout.title,
+84:  const { t } = await getServerT();
+119:        eyebrow={SENDER_IDENTITY}
+=== src/app/s/page.tsx
+1:import { getServerT } from "@/lib/i18n-server";
+16:  const { t } = await getServerT();
+18:  return { title: t.optout.title, robots: { index: false, follow: false } };
+22:  const { t } = await getServerT();
+=== src/app/updown/[roundId]/page.tsx
+30:import { getServerT } from "@/lib/i18n-server";
+69:  t: Awaited<ReturnType<typeof getServerT>>["t"],
+100:  const { t } = await getServerT();
+104:  } catch { return { title: t.market.udTitle }; }
+106:  return { title: d.titleEn };
+119:  const { t, locale } = await getServerT();
+421:              <h1 className="m-0 flex flex-wrap items-center gap-2">
+=== src/app/updown/history/page.tsx
+15:import { PageHeader } from "@/components/ui/page-header";
+22:import { getServerT } from "@/lib/i18n-server";
+47:  const { t } = await getServerT();
+48:  return { title: t.market.udHistoryTitle };
+87:  const { t, locale } = await getServerT();
+306:          <PageHeader eyebrow={t.market.udTitle} title={t.market.udHistoryTitle} subtitle={t.market.udHistoryBody} />
+380:            title={
+=== src/app/updown/page.tsx
+15:import { PageHeader } from "@/components/ui/page-header";
+21:import { getServerT } from "@/lib/i18n-server";
+36:  const { t } = await getServerT();
+37:  return { title: t.market.udTitle };
+54:  const { t, locale } = await getServerT();
+74:        <PageHeader eyebrow={t.market.udStreaming} title={t.market.udTitle} subtitle={t.market.udTagline} />
+76:          <EmptyState title={t.market.udNoRounds} body={t.market.udNoRoundsBody} />
+100:          tile 200 at sw 390). This page used to set the whole PageHeader in a flex row with the pills, so the tagline
+103:      <PageHeader
+104:        eyebrow={t.market.udStreaming}
+105:        title={t.market.udTitle}
+106:        subtitle={t.market.udTagline}
+280:              title={t.market.udNextRoundSoon}
+284:            <EmptyState title={t.market.udNoRounds} body={t.market.udNoRoundsBody} />
+=== src/app/wallet/deposit/page.tsx
+5:import { PageHeader } from "@/components/ui/page-header";
+6:import { PageHero } from "@/components/ui/page-hero";
+16:import { getServerT } from "@/lib/i18n-server";
+40:  const { t } = await getServerT();
+41:  return { title: t.common.deposit };
+64:  const { t, locale } = await getServerT();
+150:      <PageHero>
+151:        <PageHeader
+153:          eyebrow={t.common.addFunds}
+154:          title={t.common.deposit}
+155:          subtitle={t.wallet.mobileMoney}
+157:      </PageHero>
+223:            title={t.wallet.depositPausedTitle}
+243:            title={t.wallet.depositPausedTitle}
+=== src/app/wallet/deposit/return/page.tsx
+34:import { PageHeader } from "@/components/ui/page-header";
+35:import { PageHero } from "@/components/ui/page-hero";
+38:import { getServerT } from "@/lib/i18n-server";
+56:  const { t } = await getServerT();
+57:  return { title: t.common.deposit };
+69:  const { t, locale } = await getServerT();
+115:      <PageHero>
+116:        <PageHeader
+123:          eyebrow={t.common.deposit}
+124:          title={heading}
+125:          subtitle={body}
+127:      </PageHero>
+142:        <Callout tone="info" title={t.wallet.returnPendingWarnTitle}>
+=== src/app/wallet/page.tsx
+16:import { getServerT } from "@/lib/i18n-server";
+44:  const { t } = await getServerT();
+45:  return { title: t.wallet.title };
+142:  const { t } = await getServerT();
+=== src/app/wallet/receipt/[id]/page.tsx
+39:import { PageHeader } from "@/components/ui/page-header";
+40:import { PageHero } from "@/components/ui/page-hero";
+44:import { getServerT } from "@/lib/i18n-server";
+58:  const { t } = await getServerT();
+59:  return { title: t.wallet.receiptEyebrow };
+67:  const { t, locale } = await getServerT();
+95:      <PageHero>
+96:        <PageHeader
+99:          eyebrow={t.wallet.receiptEyebrow}
+100:          title={<span className="amount"><Cash>{formatTzs(Math.abs(txn.amount))}</Cash></span>}
+101:          subtitle={`${typeWord} · ${method}`}
+103:      </PageHero>
+=== src/app/wallet/receipts/page.tsx
+23:import { PageHeader } from "@/components/ui/page-header";
+32:import { getServerT } from "@/lib/i18n-server";
+59:  const { t } = await getServerT();
+60:  return { title: t.receipts.title };
+69:  const { t, locale } = await getServerT();
+128:      <PageHeader
+131:        eyebrow={t.wallet.title}
+132:        title={t.receipts.title}
+133:        subtitle={t.receipts.subtitle}
+181:          title={emptyTitle}
+=== src/app/wallet/withdraw/page.tsx
+6:import { PageHeader } from "@/components/ui/page-header";
+7:import { PageHero } from "@/components/ui/page-hero";
+28:import { getServerT } from "@/lib/i18n-server";
+38:  const { t } = await getServerT();
+39:  return { title: t.wallet.withdrawTitle };
+52:  const { t } = await getServerT();
+166:      <PageHero contentClassName="relative z-10 p-5 lg:p-6 flex flex-col items-start gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+167:          <PageHeader
+169:            eyebrow={t.wallet.withdrawTitle}
+170:            title={t.wallet.moveFundsOut}
+171:            subtitle={t.wallet.mobileMoneyOnly}
+186:      </PageHero>
+325:            <NoticeRow icon={<I.shieldcheck s={15} className="text-info-fg" />} title={t.wallet.securedByKyc} body={t.wallet.securedBody} />
+326:            <NoticeRow icon={<I.alertCircle s={15} className="text-warning-fg" />} title={t.wallet.taxNotice} body={fill(t.wallet.taxBody, { pct: pctNum(wcfg.withdrawalFeeRate) })} />
+=== src/app/watchlist/page.tsx
+26:import { PageHeader } from "@/components/ui/page-header";
+37:import { getServerT } from "@/lib/i18n-server";
+58:  const { t } = await getServerT();
+59:  return { title: t.watchlist.title };
+70:  const { t, locale } = await getServerT();
+173:      <PageHeader tone="info" icon={<I.star s={22} />} eyebrow={t.watchlist.eyebrow} title={t.watchlist.title} />
+219:          title={emptyTitle}

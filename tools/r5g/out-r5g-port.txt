@@ -1,0 +1,172 @@
+
+── 1 · G-1 · the deposit and withdraw screens name themselves as their journey doors do (Amana / Toa fedha under Weka pesa / Toa pesa) 
+  ok   1.1 · a journey reader's deposit and withdraw screens take their doors' words for the tab, the h1 and the deposit's commit, under the Wallet's eyebrow (sw POCHI / Weka pesa · POCHI / Toa pesa); a classic reader's keep today's keys
+  ok   1.1′ CONTROL · the defect was real: in Swahili the screens said "Amana" and "Toa fedha" (tab "Toa") under journey doors saying "Weka pesa" and "Toa pesa"
+  ok   1.2 · the journey's eyebrow never repeats its heading in any language, and it is the Wallet's own name — /wallet's tab and /wallet/receipts' eyebrow (the sub-page convention)
+  ok   1.2′ CONTROL · today's eyebrows over the journey's headings would repeat them: sw "WEKA PESA" over "Weka pesa", en "WITHDRAW" over "Withdraw", zh 提现 over 提现
+  ok   1.2″ PLANT · a journey arm that kept "WEKA PESA" as the deposit's eyebrow is reported (it repeats the h1 in Swahili)
+  ok   1.3 · the deposit page's head reads `depositNames(t, journey)` after the page's own resolver, its commit is handed the same answer, and no name key is spelled in the page
+  ok   1.3′ · RUN: its <title> is the h1's word — journey "Weka pesa", classic "Amana" in Swahili, and the same rule in en and zh
+  ok   1.4 · RENDERED in the root layout's providers: the deposit ghost draws the page's own eyebrow and h1 for a journey reader and for a classic one, in every language
+  ok   1.4′ · RUN: the segment's loading file — a server file asking the journey answer alone (R5-H's convention) — hands the drawing `{ journey }` and nothing else, for both readers in every language; the root ghost, a journey reader's alone, hands it `journey`
+  ok   1.4″ PLANT · the root ghost's old call (no journey answer) drew "Amana" before a journey screen that lands as "Weka pesa" — reported as a ghost whose words do not land where the page's do
+  ok   1.5 · the deposit's commit says the screen's name (sw journey "Weka pesa", classic "Amana"), from the page's own answer
+  ok   1.6 · the withdraw page's head reads `withdrawNames(t, journey)` after its session check, and no name key is spelled in the page
+  ok   1.6′ · RUN: its <title> — journey "Toa pesa", classic "Toa" in Swahili; en and zh by the same rule
+  ok   1.6″ · RUN: the withdraw page's loading file — a server file asking the journey answer alone, its drawing beside it in `withdraw-ghost.tsx` (R5-H's convention) — hands the drawing `{ journey }` and draws the page's own eyebrow and h1 for either reader, in every language
+  ok   1.7 · the provider's return names the deposit as the deposit screen's tab does — its <title> RUN and its eyebrow read from the same answer ("WEKA PESA" for a journey reader, "AMANA" for a classic one)
+  ok   1.8 · the capture harness expects the journey's h1 on the two screens (the lock turn's tiles read "Weka pesa" / "Toa pesa")
+  ok   1.9 · one home: the six readers import `money-names.ts`, which is pure (an erased type import, no directive)
+
+── 2 · G-1's sweep · every journey door against the page it opens, per locale — and every door to the two money pages 
+  ok   2.1 · every page's name is read from its own source (37 pages: each tab title and h1 proved in the file that sets it)
+  ok   2.2 · every door is read from its own source (97 doors: the tabs, the hub for a guest, a player and an agent, the header and the Wallet sheet, the Wallet, the receipt, the bell, Up & Down, /profile's rows, the avatar menu, the journey footer rendered in three languages)
+  ok   2.3 · every door that must name its page opens a page this census knows
+  ok   2.4 · every door ruled `name` says its page's own name — its tab or its h1 — in sw, en and zh (letter case aside)
+  ok   2.5 CONTROL · every door kept for S12 or for the owner still differs from its page in some language — the day the words land, this flips and the verdict is re-ruled
+  ok   2.6 · every door that differs says why (an act, a kind, the front page, the brand, a notice, a withdrawn promo, S12, or the owner's)
+     census (sw · en · zh):
+       [name] header · the gilt pill: Weka pesa → Weka pesa · Deposit → Deposit · 充值 → 充值
+       [name] header · Ingia: Ingia → Ingia · Sign in → Sign in · 登录 → 登录
+       [owner] header · Jisajili: Jisajili → Fungua akaunti · Sign up → Create account · 注册 → 创建账户
+       [name] Wallet sheet · deposit: Weka pesa → Weka pesa · Deposit → Deposit · 充值 → 充值
+       [name] Wallet sheet · withdraw: Toa pesa → Toa pesa · Withdraw → Withdraw · 提现 → 提现
+       [action] Wallet sheet · Fungua pochi: Fungua pochi → Pochi | h1 Pesa zako · Open wallet → Wallet | h1 Your funds · 打开钱包 → 钱包 | h1 您的资金
+       [name] /wallet · Weka pesa button: Weka pesa → Weka pesa · Deposit → Deposit · 充值 → 充值
+       [name] /wallet · Toa pesa button: Toa pesa → Toa pesa · Withdraw → Withdraw · 提现 → 提现
+       [name] /wallet · the zero balance's link: Weka pesa → Weka pesa · Deposit → Deposit · 充值 → 充值
+       [name] /wallet · the empty book's door: Weka pesa → Weka pesa · Deposit → Deposit · 充值 → 充值
+       [action] /wallet · Risiti zote: Risiti zote → Risiti · All receipts → Receipts · 全部收据 → 收据
+       [name] /wallet/receipts · the empty book's door: Weka pesa → Weka pesa · Deposit → Deposit · 充值 → 充值
+       [name] /wallet/deposit · back: Pochi → Pochi | h1 Pesa zako · Wallet → Wallet | h1 Your funds · 钱包 → 钱包 | h1 您的资金
+       [name] /wallet/deposit · the break's Toa pesa: Toa pesa → Toa pesa · Withdraw → Withdraw · 提现 → 提现
+       [name] /wallet/withdraw · back: Pochi → Pochi | h1 Pesa zako · Wallet → Wallet | h1 Your funds · 钱包 → 钱包 | h1 您的资金
+       [action] the provider's return · back to the wallet: Rudi kwenye pochi → Pochi | h1 Pesa zako · Back to wallet → Wallet | h1 Your funds · 返回钱包 → 钱包 | h1 您的资金
+       [action] the provider's return · view receipt: Angalia risiti → Risiti · View receipt → Receipt · 查看收据 → 收据
+       [action] the provider's return · try again: Jaribu tena → Weka pesa · Try again → Deposit · 再试一次 → 充值
+       [action] the receipt · all receipts: Risiti zote → Risiti · All receipts → Receipts · 全部收据 → 收据
+       [action] the receipt · back to the wallet: Rudi kwenye pochi → Pochi | h1 Pesa zako · Back to wallet → Wallet | h1 Your funds · 返回钱包 → 钱包 | h1 您的资金
+       [action] bell · see all: Ona zote → Arifa · See all → Notifications · 查看全部 → 通知
+       [notice] bell · a notice: ‹the notice's sentence› → Arifa · ‹the notice's sentence› → Notifications · ‹the notice's sentence› → 通知
+       [action] home · the Up & Down band: Cheza Juu na Chini → Juu na Chini · Play Up & Down → Up & Down · 玩涨跌 → 涨跌
+       [action] home · all rounds: Raundi zote → Juu na Chini · All rounds → Up & Down · 全部回合 → 涨跌
+       [action] home · the next round: Cheza raundi ijayo → Juu na Chini · Play the next round → Up & Down · 玩下一回合 → 涨跌
+       [name] /updown · the history pill: Tiketi zangu → Tiketi zangu · My tickets → My tickets · 我的注单 → 我的注单
+       [name] /updown/history · the empty list's board door: Juu na Chini → Juu na Chini · Up & Down → Up & Down · 涨跌 → 涨跌
+       [kind] Tiketi zangu's switch · Maswali: Maswali → Tiketi zangu · Questions → My tickets · 问题 → 我的注单
+       [kind] Tiketi zangu's switch · Juu/Chini: Juu/Chini → Tiketi zangu · Up & Down → My tickets · 涨跌 → 我的注单
+       [name] Up & Down · not enough money (card): Weka pesa → Weka pesa · Deposit → Deposit · 充值 → 充值
+       [name] Up & Down · not enough money (round): Weka pesa → Weka pesa · Deposit → Deposit · 充值 → 充值
+       [name] /agent/apply · the shortfall's top-up: Weka pesa → Weka pesa · Deposit → Deposit · 充值 → 充值
+       [action] /profile/kyc · continue: Endelea → Toa pesa · Continue → Withdraw · 继续 → 提现
+       [dormant] the cash back promo: Weka sasa → Weka pesa · Deposit now → Deposit · 立即充值 → 充值
+       [home] tab · questions: Maswali → / · Questions → / · 问题 → /
+       [s12] tab · updown: Juu/Chini → Juu na Chini · Up & Down → Up & Down · 涨跌 → 涨跌
+       [name] tab · tickets: Tiketi zangu → Tiketi zangu · My tickets → My tickets · 我的注单 → 我的注单
+       [name] tab · account: Akaunti → Akaunti · Account → Account · 账户 → 账户
+       [name] hub (guest) · results: Matokeo → Matokeo · Results → Results · 结果 → 结果
+       [name] hub (guest) · live: Mubashara → Mubashara · Live → Live · 直播 → 直播
+       [name] hub (guest) · leaderboard: Bingwa → Bingwa | h1 Watabiri bora · Leaderboard → Leaderboard | h1 Top predictors · 排行榜 → 排行榜 | h1 顶级预测者
+       [name] hub (guest) · fairness: Uthibitisho wa utatuzi → Uthibitisho wa utatuzi | h1 Soko linatatuliwa vipi · Resolution attestation → Resolution attestation | h1 How a market resolves · 结算证明 → 结算证明 | h1 市场如何结算
+       [name] hub (guest) · help: Msaada → Msaada | h1 Tunaweza kukusaidiaje? · Help → Help | h1 How can we help? · 帮助 → 帮助 | h1 我们能帮您什么？
+       [action] hub (guest) · limits: Weka mipaka → Sera ya Mchezo Salama · Set limits → Responsible Gambling Policy · 设置限额 → 负责任博彩政策
+       [action] hub (guest) · break: Pumzika → Sera ya Mchezo Salama · Take a break → Responsible Gambling Policy · 休息一下 → 负责任博彩政策
+       [action] hub (guest) · exclude: Jizuie → Sera ya Mchezo Salama · Self-exclude → Responsible Gambling Policy · 自我排除 → 负责任博彩政策
+       [name] hub (guest) · privacy: Sera ya faragha → Sera ya Faragha · Privacy policy → Privacy Policy · 隐私政策 → 隐私政策
+       [s12] hub (guest) · aml: Sera ya AML / KYC → Sera ya Kuzuia Uoshaji wa Fedha na KYC · AML / KYC policy → AML & KYC Policy · 反洗钱/KYC政策 → 反洗钱与 KYC 政策
+       [name] hub (guest) · terms: Masharti ya huduma → Masharti ya Huduma · Terms of service → Terms of Service · 服务条款 → 服务条款
+       [s12] hub (guest) · rules: RTP ya mchezo na sheria → Kanuni za Michezo · Game RTP & rules → Game Rules · 游戏RTP和规则 → 游戏规则
+       [name] hub (member) · wallet: Pochi → Pochi | h1 Pesa zako · Wallet → Wallet | h1 Your funds · 钱包 → 钱包 | h1 您的资金
+       [name] hub (member) · withdraw: Toa pesa → Toa pesa · Withdraw → Withdraw · 提现 → 提现
+       [action] hub (member) · limits: Weka mipaka → Ulinzi wa mchezaji | h1 Vikomo · Set limits → Player protection | h1 Responsible gambling · 设置限额 → 玩家保护 | h1 负责任博彩
+       [action] hub (member) · break: Pumzika → Ulinzi wa mchezaji | h1 Vikomo · Take a break → Player protection | h1 Responsible gambling · 休息一下 → 玩家保护 | h1 负责任博彩
+       [action] hub (member) · exclude: Jizuie → Ulinzi wa mchezaji | h1 Vikomo · Self-exclude → Player protection | h1 Responsible gambling · 自我排除 → 玩家保护 | h1 负责任博彩
+       [name] hub (member) · invite: Alika marafiki → Alika marafiki · Invite friends → Invite friends · 邀请朋友 → 邀请朋友
+       [name] hub (member) · proposals: Mapendekezo ya Masoko → Mapendekezo ya Masoko | h1 Pigia kura soko unayotaka · Market Proposals → Market Proposals | h1 Vote for the markets you want to see · 市场提议 → 市场提议 | h1 为您想看到的市场投票
+       [name] hub (member) · profile: Wasifu → Wasifu · Profile → Profile · 个人资料 → 个人资料
+       [name] hub (member) · kyc: Thibitisha kitambulisho → Uthibitisho wa kitambulisho | h1 Thibitisha kitambulisho · Verify your identity → Identity verification | h1 Verify your identity · 验证您的身份 → 身份验证 | h1 验证您的身份
+       [name] hub (member) · notifications: Arifa → Arifa · Notifications → Notifications · 通知 → 通知
+       [action] hub (member) · search: Tafuta → Masoko · Search → Markets · 搜索 → 市场
+       [brand] hub (member) · agent: Kuwa wakala → Kuwa Wakala wa 50pick · Become an agent → Become a 50pick Agent · 成为代理 → 成为 50pick 代理
+       [name] hub (agent) · invite: Dashibodi ya wakala → Dashibodi ya wakala · Agent dashboard → Agent dashboard · 代理面板 → 代理面板
+       [name] avatar menu · Wasifu: Wasifu → Wasifu · Profile → Profile · 个人资料 → 个人资料
+       [name] avatar menu · Pochi: Pochi → Pochi | h1 Pesa zako · Wallet → Wallet | h1 Your funds · 钱包 → 钱包 | h1 您的资金
+       [name] avatar menu · Matokeo: Matokeo → Matokeo · Results → Results · 结果 → 结果
+       [name] avatar menu · invite (unpaid): Alika marafiki → Alika marafiki · Invite friends → Invite friends · 邀请朋友 → 邀请朋友
+       [owner] avatar menu · invite (paid — a paid player or an agent): Alika na upate zawadi → Dashibodi ya wakala · Invite & Earn → Agent dashboard · 邀请赚钱 → 代理面板
+       [name] avatar menu · Tiketi zangu (journey): Tiketi zangu → Tiketi zangu · My tickets → My tickets · 我的注单 → 我的注单
+       [name] avatar menu · Bingwa (journey): Bingwa → Bingwa | h1 Watabiri bora · Leaderboard → Leaderboard | h1 Top predictors · 排行榜 → 排行榜 | h1 顶级预测者
+       [name] avatar menu · Mapendekezo (journey): Mapendekezo ya Masoko → Mapendekezo ya Masoko | h1 Pigia kura soko unayotaka · Market Proposals → Market Proposals | h1 Vote for the markets you want to see · 市场提议 → 市场提议 | h1 为您想看到的市场投票
+       [name] avatar menu · KYC (journey): Thibitisha kitambulisho → Uthibitisho wa kitambulisho | h1 Thibitisha kitambulisho · Verify your identity → Identity verification | h1 Verify your identity · 验证您的身份 → 身份验证 | h1 验证您的身份
+       [name] /profile · agent.dashTitle: Dashibodi ya wakala → Dashibodi ya wakala · Agent dashboard → Agent dashboard · 代理面板 → 代理面板
+       [name] /profile · profile.inviteFriends: Alika marafiki → Alika marafiki · Invite friends → Invite friends · 邀请朋友 → 邀请朋友
+       [name] /profile · profile.myAccount: Akaunti yangu → Akaunti yangu · My account → My account · 我的账户 → 我的账户
+       [name] /profile · activity.title: Shughuli zako → Shughuli zako · Your activity → Your activity · 您的活动 → 您的活动
+       [name] /profile · receipts.title: Risiti → Risiti · Receipts → Receipts · 收据 → 收据
+       [name] /profile · watchlist.title: Orodha ya kufuatilia → Orodha ya kufuatilia · Watchlist → Watchlist · 关注列表 → 关注列表
+       [name] /profile · push.pageTitle: Arifa → Arifa · Notifications → Notifications · 通知 → 通知
+       [name] /profile · profile.responsibleGambling: Vikomo → Ulinzi wa mchezaji | h1 Vikomo · Responsible gambling → Player protection | h1 Responsible gambling · 负责任博彩 → 玩家保护 | h1 负责任博彩
+       [name] /profile · security.title: Usalama → Usalama · Security → Security · 安全 → 安全
+       [name] /profile · profile.verifyIdentity: Thibitisha kitambulisho → Uthibitisho wa kitambulisho | h1 Thibitisha kitambulisho · Verify your identity → Identity verification | h1 Verify your identity · 验证您的身份 → 身份验证 | h1 验证您的身份
+       [name] /profile · profile.sourceOfFunds: Asili ya fedha → Asili ya fedha · Source of funds → Source of funds · 资金来源 → 资金来源
+       [name] /profile · profile.activeSessions: Vifaa vilivyounganishwa → Vifaa vilivyounganishwa · Active sessions → Active sessions · 活跃会话 → 活跃会话
+       [name] /profile · common.help: Msaada → Msaada | h1 Tunaweza kukusaidiaje? · Help → Help | h1 How can we help? · 帮助 → 帮助 | h1 我们能帮您什么？
+       [action] journey footer · /profile/responsible-gambling: Weka mipaka → Ulinzi wa mchezaji | h1 Vikomo · Set limits → Player protection | h1 Responsible gambling · 设置限额 → 玩家保护 | h1 负责任博彩
+       [action] journey footer · /legal/responsible-gambling: Pumzika / Jizuie → Sera ya Mchezo Salama · Take a break / Self-exclude → Responsible Gambling Policy · 休息一下 / 自我排除 → 负责任博彩政策
+       [name] journey footer · /fairness: Uthibitisho wa utatuzi → Uthibitisho wa utatuzi | h1 Soko linatatuliwa vipi · Resolution attestation → Resolution attestation | h1 How a market resolves · 结算证明 → 结算证明 | h1 市场如何结算
+       [name] journey footer · /proposals: Mapendekezo ya Masoko → Mapendekezo ya Masoko | h1 Pigia kura soko unayotaka · Market Proposals → Market Proposals | h1 Vote for the markets you want to see · 市场提议 → 市场提议 | h1 为您想看到的市场投票
+       [s12] journey footer · /legal/rules: RTP ya mchezo na sheria → Kanuni za Michezo · Game RTP & rules → Game Rules · 游戏RTP和规则 → 游戏规则
+       [name] journey footer · /profile/invite: Alika marafiki → Alika marafiki · Invite friends → Invite friends · 邀请朋友 → 邀请朋友
+       [brand] journey footer · /agent: Kuwa wakala → Kuwa Wakala wa 50pick · Become an agent → Become a 50pick Agent · 成为代理 → 成为 50pick 代理
+       [name] journey footer · /help: Msaada → Msaada | h1 Tunaweza kukusaidiaje? · Help → Help | h1 How can we help? · 帮助 → 帮助 | h1 我们能帮您什么？
+       [name] journey footer · /legal/privacy: Sera ya faragha → Sera ya Faragha · Privacy policy → Privacy Policy · 隐私政策 → 隐私政策
+       [s12] journey footer · /legal/aml: Sera ya AML / KYC → Sera ya Kuzuia Uoshaji wa Fedha na KYC · AML / KYC policy → AML & KYC Policy · 反洗钱/KYC政策 → 反洗钱与 KYC 政策
+       [name] journey footer · /legal/terms: Masharti ya huduma → Masharti ya Huduma · Terms of service → Terms of Service · 服务条款 → 服务条款
+       [action] journey footer · /profile/account: Hamisha / funga akaunti yangu → Akaunti yangu · Export / close my account → My account · 导出/关闭我的账户 → 我的账户
+  ok   2.4′ PLANT · the deposit screen's old Swahili name on a journey door ("Amana" → a page named "Weka pesa") is reported
+  ok   2.4″ PLANT · the page's old name with the doors' new words (the defect this item fixed) is reported
+  ok   2.8 · no two pages share a name unless ruled: /positions + /updown/history; /wallet/receipt/[id] + /wallet/receipts; /notifications + /profile/notifications
+  ok   2.8′ CONTROL · the S12 pair still shares its name (it flips the day the settings page gets its own)
+  ok   2.8″ PLANT · the withdraw screen titled with the deposit's name ("Weka pesa") — two pages under one name — is reported
+     the sites: src/app/agent/apply/apply-client.tsx → /wallet/deposit · src/app/wallet/deposit/page.tsx → /wallet/withdraw · src/app/wallet/deposit/return/page.tsx → /wallet/deposit · src/app/wallet/receipts/page.tsx → /wallet/deposit · src/app/wallet/wallet-client.tsx → /wallet/deposit · src/app/wallet/wallet-client.tsx → /wallet/withdraw · src/components/journey/journey-top-bar.tsx → /wallet/deposit · src/components/layout/top-app-bar.tsx → /wallet/deposit · src/components/layout/wallet-sheet.tsx → /wallet/deposit · src/components/layout/wallet-sheet.tsx → /wallet/withdraw · src/components/ui/cashback-promo.tsx → /wallet/deposit · src/components/updown/round-stake-panel.tsx → /wallet/deposit · src/components/updown/updown-stake-controls.tsx → /wallet/deposit
+  ok   2.7 · every door to /wallet/deposit and /wallet/withdraw in the product (13 sites) is in the census with its words ruled, or classic-only chrome (the classic bar's pill)
+  ok   2.7′ PLANT · a new door to the deposit screen added anywhere (here: the receipt page) is reported as unruled
+
+── 3 · G-1's sweep fixes · the history page's tab and its pill, /profile's help row, the agent's top-up, an agent's invite tab 
+  ok   3.1 · RUN: /updown/history's tab follows its h1 — "Tiketi zangu" for a journey reader (Tiketi zangu's Up & Down kind, as /positions' tab), "Juu na Chini zako" for everybody else
+  ok   3.1′ CONTROL · its h1 for a journey reader IS "Tiketi zangu" (the tickets' head), and its tab was "Juu na Chini zako" for everybody
+  ok   3.2 · the Up & Down board's history pill names the page it opens for a journey reader — "Tiketi zangu" and the tab's ticket sign — and keeps "Juu na Chini zako" and its portfolio sign for everybody else
+  ok   3.3 · /profile's help row names the help page as the page does — "Help" / "帮助" (its tab), where it said "Help & support" / "帮助与支持"
+  ok   3.3′ CONTROL · the words differed in English and Chinese only ("Msaada" in both Swahili keys) — why R5-A's Swahili read missed it
+  ok   3.3″ · the chat's RG card keeps its "Msaada" door's words (an RG surface: never reworded)
+  ok   3.4 · the agent's top-up door says the deposit screen's journey name ("Weka pesa") beside the header's own pill; a classic reader keeps "Ongeza fedha kwenye pochi yangu"
+  ok   3.5 · RUN: an agent's invite tab is the dashboard's own name ("Dashibodi ya wakala", its h1 and its hub row), asked as the body asks it; a player's tab is unchanged; a failed read is "not an agent"
+  ok   3.5′ CONTROL · the agent's tab said "Alika na upate zawadi" over a body headed "Dashibodi ya wakala"
+
+── 4 · G-5 · the regulator's one name — one pattern, kept whole wherever its line can hold it, on every line that prints it 
+  ok   4.1 · one pattern finds the name in each language's licence sentence (sw "Bodi ya Michezo ya Kubahatisha Tanzania", en "Gaming Board of Tanzania", zh "坦桑尼亚博彩委员会"), and cuts it without changing a character
+  ok   4.2 · one home: `keepRegulator` and the offline document both read `regulator-name.ts`; neither spells the pattern; the module is pure and holds no invisible character
+  ok   4.3 · global-error's copy of the pattern is the one pattern, character for character once its escapes are read
+  ok   4.3′ PLANT · a copy that lost the zh name's break-hint allowance is reported
+  ok   4.4 · RENDERED: the opt-out shell's licence line is a `.kp-gbt` line taking the row's remainder (`flex-1`), its words the dictionary's with the name in its keep span, in every language
+  ok   4.5 · the line is the row less the roundel (28px) and its gap (10px) — vw − 70 under 1024 — and the name is kept from globals.css's own widths (en 168, sw 263, zh 120: the name and its full stop, sw 259.3, en 164.7, zh 116.5px, plus 3)
+  ok   4.6 · the widths the rule changes: en 320–334 ("Licensed by the Gaming" / "Board of Tanzania." → "Licensed by the" / "Gaming Board of Tanzania.") and sw 333–390 (→ "Leseni ya" / "Bodi ya Michezo ya Kubahatisha Tanzania."); under 333 no Swahili line can hold the name and it wraps as before; zh is one line from 320
+  ok   4.4′ PLANT · the line made a size container without `flex-1` (a contained line has no width of its own to give its flex row: it would collapse) is reported
+  ok   4.7 · RUN: the offline document's licence line holds each language's name in a `.kp-gbt-name` span, the sentence's characters unchanged
+  ok   4.8 · its line is the row's remainder and a size container (`.kp-off__gbt`), and the name is nowrap from globals.css's own widths (sw 263, en 168, zh 120) — CSS only, no new script
+  ok   4.8′ PLANT · a Swahili threshold drifted from globals.css (240px: under the name's 259.3px, it would overflow) is reported
+  ok   4.9 · the system faces the offline document falls back to (Roboto, Segoe UI, Helvetica Neue, Noto Sans, Arial) all set Latin narrower than Inter (0.4775 em) — a width that holds the name in Inter holds it in each
+  ok   4.10 · RENDERED: global-error's licence line keeps the name as an inline-block in every language (its own face and no stylesheet: the browser measures whether the line can hold it)
+  ok   4.11 · the line it changes: sw (345.4px) wraps on every phone to 393px and its greedy break fell inside the name; the name (218.0px) fits a 320 phone's 272px column whole; en (250.7px) and zh (159.9px) are one line from 320
+  ok   4.10′ PLANT · the line printed plain (the name splittable again) is reported
+  ok   4.12 · every source that prints the regulator's name (20 files, the dictionary aside) is classified: kept whole (5), frozen, never able to split, legal prose under D19a, the acronym, or not a player's line
+  ok   4.12′ PLANT · a new line printing the name (the dashboard's licence strip, say) is reported as unclassified
+  ok   4.13 · the lines left alone cannot tear the name: the OG card's row 613 of 1080px; the email's line 231 of 300px at 320; the waterfall's label begins with the name in every language
+  ok   4.14 · legal prose is left as published: none of the 14 legal files wraps the name, and this item's diff touches none (D19a's pin; a policy version ships any change there)
+
+── 5 · classic readers keep their words: the money pages, their ghosts, the classic footer; the shared bodies changed are named 
+  ok   5.1 · a classic reader's deposit ghost is today's: "Weka pesa" over "Amana"
+  ok   5.2 · the classic footer keeps main's licence line: no keep span, no size container (frozen chrome)
+  ok   5.3 · the two shared-body changes classic readers see too: /profile's help row ("Help" / "帮助"; Swahili unchanged) and an approved agent's invite tab ("Dashibodi ya wakala")
+
+visual-pass-r5g: 61 passed, 0 failed

@@ -1,0 +1,111 @@
+[audit] ADMIN agent.config.updated test-officer AgentConfig#global
+[audit] ADMIN agent.config.updated test-officer AgentConfig#global
+[audit] SYSTEM affiliate.account.created sec_agent_already AffiliateAccount#sec_agent_already
+[audit] ADMIN agent.application.started sec_app1 AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] ADMIN agent.application.document_uploaded sec_app1 AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] ADMIN agent.application.referees_set sec_app1 AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] ADMIN agent.application.referees_set sec_app1 AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] ADMIN agent.application.referees_set sec_app1 AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] ADMIN agent.application.referees_set sec_app1 AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] ADMIN agent.application.referees_set sec_app1 AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] ADMIN agent.application.document_uploaded sec_app1 AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] ADMIN agent.application.document_uploaded sec_app1 AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] ADMIN agent.application.document_uploaded sec_app1 AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] ADMIN agent.application.document_uploaded sec_app1 AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] ADMIN agent.application.document_uploaded sec_app1 AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] ADMIN agent.application.document_uploaded sec_app1 AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] ADMIN agent.application.document_uploaded sec_app1 AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] ADMIN agent.application.referees_set sec_app1 AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] ADMIN agent.application.document_uploaded sec_app1 AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] ADMIN agent.fee.reference_recorded sec_app1 AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] ADMIN agent.application.submitted sec_app1 AgentApplication#agp_8ce2ba1d6873ee07ac45
+[email-stub] To: s***@t.tz | Subject: Agent application awaiting approval · Applicant 07ac45
+[audit] ADMIN agent.application.started sec_app_dup AgentApplication#agp_053d8f0b1daef4e05d8f
+[audit] SYSTEM affiliate.account.created sec_app1 AffiliateAccount#sec_app1
+[audit] COMPLIANCE agent.approve.refused sec_officer AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] COMPLIANCE agent.fee.amount_mismatch sec_officer AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] COMPLIANCE agent.fee.amount_mismatch sec_officer AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] COMPLIANCE agent.fee.reconciled sec_officer AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] SECURITY agent.review.self_blocked sec_app1 AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] COMPLIANCE agent.approved sec_officer User#sec_app1
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user sec_app1… (user.email=s***@t.tz)
+[audit] COMPLIANCE agent.approve.refused sec_officer AgentApplication#agp_8ce2ba1d6873ee07ac45
+[audit] ADMIN agent.application.started sec_app2 AgentApplication#agp_be592dc5bba7b71556be
+[audit] ADMIN agent.application.document_uploaded sec_app2 AgentApplication#agp_be592dc5bba7b71556be
+[audit] ADMIN agent.application.document_uploaded sec_app2 AgentApplication#agp_be592dc5bba7b71556be
+[audit] ADMIN agent.application.document_uploaded sec_app2 AgentApplication#agp_be592dc5bba7b71556be
+[audit] ADMIN agent.application.document_uploaded sec_app2 AgentApplication#agp_be592dc5bba7b71556be
+[audit] ADMIN agent.application.document_uploaded sec_app2 AgentApplication#agp_be592dc5bba7b71556be
+[audit] ADMIN agent.application.document_uploaded sec_app2 AgentApplication#agp_be592dc5bba7b71556be
+[audit] ADMIN agent.application.document_uploaded sec_app2 AgentApplication#agp_be592dc5bba7b71556be
+[audit] ADMIN agent.application.referees_set sec_app2 AgentApplication#agp_be592dc5bba7b71556be
+[audit] ADMIN agent.application.document_uploaded sec_app2 AgentApplication#agp_be592dc5bba7b71556be
+[audit] ADMIN agent.fee.reference_recorded sec_app2 AgentApplication#agp_be592dc5bba7b71556be
+[audit] ADMIN agent.application.submitted sec_app2 AgentApplication#agp_be592dc5bba7b71556be
+[email-stub] To: s***@t.tz | Subject: Agent application awaiting approval · Applicant 1556be
+[audit] COMPLIANCE agent.fee.reconciled sec_officer AgentApplication#agp_be592dc5bba7b71556be
+[audit] COMPLIANCE agent.application.rejected sec_officer AgentApplication#agp_be592dc5bba7b71556be
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user sec_app2… (user.email=s***@t.tz)
+[audit] COMPLIANCE agent.fee.refunded sec_officer AgentApplication#agp_be592dc5bba7b71556be
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user sec_app2… (user.email=s***@t.tz)
+[audit] ADMIN agent.application.started sec_app3 AgentApplication#agp_1278bbd7dd322d3ad984
+[audit] ADMIN agent.application.document_uploaded sec_app3 AgentApplication#agp_1278bbd7dd322d3ad984
+[audit] ADMIN agent.application.document_uploaded sec_app3 AgentApplication#agp_1278bbd7dd322d3ad984
+[audit] ADMIN agent.application.document_uploaded sec_app3 AgentApplication#agp_1278bbd7dd322d3ad984
+[audit] ADMIN agent.application.document_uploaded sec_app3 AgentApplication#agp_1278bbd7dd322d3ad984
+[audit] ADMIN agent.application.document_uploaded sec_app3 AgentApplication#agp_1278bbd7dd322d3ad984
+[audit] ADMIN agent.application.document_uploaded sec_app3 AgentApplication#agp_1278bbd7dd322d3ad984
+[audit] ADMIN agent.application.document_uploaded sec_app3 AgentApplication#agp_1278bbd7dd322d3ad984
+[audit] ADMIN agent.application.referees_set sec_app3 AgentApplication#agp_1278bbd7dd322d3ad984
+[audit] ADMIN agent.application.document_uploaded sec_app3 AgentApplication#agp_1278bbd7dd322d3ad984
+[audit] ADMIN agent.fee.reference_recorded sec_app3 AgentApplication#agp_1278bbd7dd322d3ad984
+[audit] ADMIN agent.application.submitted sec_app3 AgentApplication#agp_1278bbd7dd322d3ad984
+[email-stub] To: s***@t.tz | Subject: Agent application awaiting approval · Applicant 3ad984
+[audit] COMPLIANCE agent.fee.waived sec_officer AgentApplication#agp_1278bbd7dd322d3ad984
+[audit] COMPLIANCE agent.application.rejected sec_officer AgentApplication#agp_1278bbd7dd322d3ad984
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user sec_app3… (user.email=s***@t.tz)
+[audit] ADMIN agent.application.started sec_app4 AgentApplication#agp_e93588f2c8897fc889a4
+[audit] ADMIN agent.application.document_uploaded sec_app4 AgentApplication#agp_e93588f2c8897fc889a4
+[audit] ADMIN agent.application.document_uploaded sec_app4 AgentApplication#agp_e93588f2c8897fc889a4
+[audit] ADMIN agent.application.document_uploaded sec_app4 AgentApplication#agp_e93588f2c8897fc889a4
+[audit] ADMIN agent.application.document_uploaded sec_app4 AgentApplication#agp_e93588f2c8897fc889a4
+[audit] ADMIN agent.application.document_uploaded sec_app4 AgentApplication#agp_e93588f2c8897fc889a4
+[audit] ADMIN agent.application.document_uploaded sec_app4 AgentApplication#agp_e93588f2c8897fc889a4
+[audit] ADMIN agent.application.document_uploaded sec_app4 AgentApplication#agp_e93588f2c8897fc889a4
+[audit] ADMIN agent.application.referees_set sec_app4 AgentApplication#agp_e93588f2c8897fc889a4
+[audit] ADMIN agent.application.document_uploaded sec_app4 AgentApplication#agp_e93588f2c8897fc889a4
+[audit] ADMIN agent.fee.reference_recorded sec_app4 AgentApplication#agp_e93588f2c8897fc889a4
+[audit] ADMIN agent.application.submitted sec_app4 AgentApplication#agp_e93588f2c8897fc889a4
+[email-stub] To: s***@t.tz | Subject: Agent application awaiting approval · Applicant c889a4
+[audit] COMPLIANCE agent.fee.waived sec_officer AgentApplication#agp_e93588f2c8897fc889a4
+[audit] COMPLIANCE agent.application.info_requested sec_officer AgentApplication#agp_e93588f2c8897fc889a4
+[email] sending "Your agent application needs one more thing" → s***@t.tz (tag=agent-info-requested)
+[email-stub] To: s***@t.tz | Subject: Your agent application needs one more thing
+[audit] COMPLIANCE agent.approve.refused sec_officer AgentApplication#agp_e93588f2c8897fc889a4
+[audit] ADMIN agent.application.document_uploaded sec_app4 AgentApplication#agp_e93588f2c8897fc889a4
+[audit] ADMIN agent.application.submitted sec_app4 AgentApplication#agp_e93588f2c8897fc889a4
+[email-stub] To: s***@t.tz | Subject: Agent application awaiting approval · Applicant c889a4
+[audit] SYSTEM notification.deduped system Notification#ntf_2f1f78ec89100a156eca
+[audit] SYSTEM notification.deduped system Notification#ntf_3db70d1c499ac8c5eb90
+[audit] SYSTEM notification.deduped system Notification#ntf_740ee6b709869370c071
+[audit] SYSTEM affiliate.account.created sec_app4 AffiliateAccount#sec_app4
+[audit] COMPLIANCE agent.approved sec_officer User#sec_app4
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user sec_app4… (user.email=s***@t.tz)
+[audit] COMPLIANCE agent.deactivated sec_officer User#sec_app4
+[email] sending "Your 50pick agent account has been paused" → s***@t.tz (tag=agent-deactivated)
+[email-stub] To: s***@t.tz | Subject: Your 50pick agent account has been paused
+[audit] COMPLIANCE agent.reactivated sec_officer User#sec_app4
+[audit] COMPLIANCE agent.revoked sec_officer User#sec_app4
+[email] sending "Your 50pick agent partnership has ended" → s***@t.tz (tag=agent-revoked)
+[email-stub] To: s***@t.tz | Subject: Your 50pick agent partnership has ended
+[email-stub] To: n***@example.tz | Subject: You are invited to become a Verified 50pick Agent
+[audit] COMPLIANCE agent.invitation.issued sec_officer AgentInvitation#agi_d665e936fe7ed682ce4f
+[email-stub] To: n***@example.tz | Subject: Your 50pick agent invitation code
+[audit] AUTH otp.agent_invite.sent system Email#n•••@example.tz
+[audit] SECURITY agent.invitation.identity_mismatch sec_wrong_person AgentInvitation#agi_d665e936fe7ed682ce4f
+[audit] SECURITY agent.invitation.otp_failed sec_invitee AgentInvitation#agi_d665e936fe7ed682ce4f
+[audit] COMPLIANCE agent.invitation.accepted sec_invitee AgentInvitation#agi_d665e936fe7ed682ce4f
+[email-stub] To: l***@example.tz | Subject: You are invited to become a Verified 50pick Agent
+[audit] COMPLIANCE agent.invitation.issued sec_officer AgentInvitation#agi_d6e328e6078bb47cfeb4
+
+agent-application-security: 111 passed, 0 failed

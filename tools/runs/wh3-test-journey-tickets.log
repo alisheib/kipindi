@@ -1,0 +1,77 @@
+journey-tickets — Tiketi zangu (Vodacom plan S6, WP9 and WP10)
+
+§1 · the pages — the resolver asked once, the journey's view before the classic JSX, the history page's header alone
+PASS 1.ask · /positions asks the one resolver once, after its session check — the shell's own answer for this request, never a page deciding for itself
+PASS 1.first · a journey request returns the journey's view BEFORE the classic JSX, which stays the page's one classic return
+PASS 1.handed · the view is handed what the page read and priced — the rows, the positions, their markets, the priced exits — and nothing read for it alone
+PASS 1.meta · the tab title follows the same answer: Tiketi zangu for a journey request, today's word for everybody else
+PASS 1.history · /updown/history asks the same resolver after its session check and swaps ONLY its header, through two sibling ternaries standing where its back link and header stood — the tickets' head for a journey request, today's two elements for everybody else
+PASS 1.history.kept · …its gutter wrapper, its fragment scroll and its poller are everybody's, above the swap
+
+§2 · the card — no figure before the result, one link that reaches 44px, one colour rule, the number kept, the classic pieces shelved
+PASS 2.open · an unresolved ticket shows no payout figure — Malipo · Matokeo yakitoka — whatever its market is doing (SJ-4, §C3, §0h point 22)
+PASS 2.final · a settled ticket shows what was paid: a win its payout (and says it was won), a loss 0, a refund the stake, a sale what it sold for, and 0 where nothing was recorded
+PASS 2.render · the card draws the rule's two answers and nothing else: the unresolved arm prints the words and no money, and the card reads no projection, no stamp and no exact-figure word — so a ticket whose selling has closed, stamped or not, shows no figure either
+PASS 2.title · the question is the card's only link — to its market — the short title where one is approved, the full one held to two lines
+PASS 2.reach · the question's link reaches 44px and moves nothing: 12px of padding each way (step 2 of this repo's scale) around its 20px line, taken back by the same negative margin — side-picker's absorber — with the two-line clamp on the words inside, never on the padded link
+PASS 2.chip · the state's colour is ONE rule both cards call — positionStatusChip, LOSS in the betting rose — and neither card spells it again
+PASS 2.ticket · the ticket number stays (A19), on a line that may break so a narrow card never clips it
+PASS 2.shelved · no share button, profit strip, yes/no bar, search, sort, sheet, countdown ring, classic card or classic header (its eyebrow says “Nafasi”) on the journey's view or its bar's journey variant, and no row 2 on that variant (A19, WP9 step 5)
+
+§3 · the dates — on the server, through formatEatDateTime in the reader's month words, with the render's clock
+PASS 3.server · the card is drawn on the server and dates every instant through formatEatDateTime, in the reader's month words and asked with the render's own clock — never a formatter of its own, and never an English one
+PASS 3.clock · its one clock time (WP10) is formatClock of the free-sell instant it hands the Sell button, read on the server — never the placement plus a grace
+
+§4 · the words — no nafasi in Swahili, no 持仓 in Chinese, every word in three languages, no result count, seven lenses
+PASS 4.nafasi · no Swahili word the journey's Tiketi view reads says “nafasi” — its files, the bar's journey variant and every helper it calls, the journey arms of both error pages and the tab title (A7, SJ-19)
+PASS 4.zh · no Chinese word the view reads says 持仓 (“holdings”): an empty outcome lens reads the journey's own copies, which say 注单, the ticket (§0h point 27)
+PASS 4.words · every word the view reads resolves in en, sw and zh
+PASS 4.count · the bar's journey variant draws no result count and no count on any lens (the canvas draws none), and names its strip journey.ticketsFilterAria
+PASS 4.lenses · …and keeps all seven lenses (§0h point 11) on the shared bar's rail
+PASS 4.rail · both bars render ONE rail element, PositionsRail, which carries the hook and the bar's class: the hook is written once in the file, so red:filter-language's vacuity case still removes the only one
+
+§5 · the switch — the kit's link rail, loaded lazily, each page its own kind
+PASS 5.rail · the switch hands its wrapper the kit's underline rail in link mode — each kind a link to its page, current by aria-current — and no tab widget (A5)
+PASS 5.lazy · ticket-switch.tsx imports nothing from @/components/ui/tabs at runtime: its wrapper, a client file, asks for the kit's Tabs through next/dynamic with the server render on and takes only its item type, so a classic reader's first load carries none of the kit's code (VODACOM-PLAN §0h point 20)
+PASS 5.current · each page passes its own kind: /positions is Maswali and /updown/history is Juu/Chini, so the current link is the page being read (A12)
+
+§6 · the guest sheet — back to /positions
+PASS 6.next · a guest's Tiketi zangu signs up or in and comes back to /positions — both doors carry next=%2Fpositions, and the edge sends a signed-out visit to /positions to sign in too
+
+§7 · the view — the poller, the fragment, the anchor, the Utendaji door below the list
+PASS 7.poll · the view refreshes every 20 s and scrolls to a ticket's fragment, as the classic page does
+PASS 7.anchor · every card carries the id a fragment names, ringed when targeted and offset under the header
+PASS 7.performance · the Utendaji link keeps /positions/performance a door on a journey phone (A15): a quiet small link after the list and the pager, for a reader with a ticket, and nothing beside the name (§0h point 33)
+
+§8 · no house — no house name, no read, no pricing in the journey's files
+PASS 8.house · no house name in any journey Tiketi file — the page reads the exit's pricing inputs and prices with them, and none of them reaches this view
+PASS 8.reads · nothing in the journey's Tiketi files reads a store, a session or the words, or prices an exit: the page did
+
+§9 · the sell button — the server's instant bound once, the journey look, its clock time and its free-price flag, the gate that names the card
+PASS 9.host · the card binds the server's instant once — the helper's own call, about this bet's placement and the market as read — in a server component (A8)
+PASS 9.look · …and hands the button that instant, the journey's look, the instant's clock time read on the server from the same binding, and whether the page priced the exit inside its free window (WP10)
+PASS 9.gate · test:sell-grace-truth §2 names the card among the hosts it must find and holds its clock label to the instant (2.label), so neither can change unseen
+
+§10 · loading and errors — one ghost picked on the server, the error words from the flag
+PASS 10.loading · each loading file asks the per-request resolver beside the words, in one Promise.all, and reads no session of its own (§0h point 21)
+PASS 10.ghost · each loading file returns ONE ghost by the answer: /positions Tiketi zangu's for a journey request, BEFORE its one classic return, which keeps every block of today's; /updown/history swaps only its two head lines, each a sibling ternary where it stood
+PASS 10.pick · the ghosts are picked and drawn on the server: neither loading file nor the ghosts' file is client code, reads the flag hook or imports a “use client” module, and no file in components/journey/tickets/ is client code but the switch's rail wrapper (5.lazy)
+PASS 10.error · both error pages — client components, never drawn on the server, each mounting in the browser as a fresh render — choose their words from useJourneyOn(), which reads the shell's mark already in the page: the tickets' for a journey reader from its first paint, today's for everybody else
+
+§11 · the wiring
+PASS 11.wired · test:journey-tickets runs this file and is in predeploy; red:journey-tickets runs it with --prove-red (A14)
+
+§12 · the sell look — the card's alone, today's button without it, one sale, the free offer and its lapse, the server's time and figure, no nafasi
+PASS 12.opt-in · the journey look is the journey card's alone: every other file that renders SellButton (found on disk — /positions' classic list and the question page's holder block among them) passes no look and no clock label, so it draws today's button (the free-price flag is every host's since S6 A8b)
+PASS 12.default · without the look the button draws today's markup: its classic return, from the variant to the end of the file, is today's line for line, and the dialogs it shares are today's two but for the journey's three words under the look; since S6 A8h the result a sale opens is drawn from its own module, today's words and figures line for line
+PASS 12.dialogs · one pair of dialogs for both looks, drawn by both returns: the journey's three words only under the look, and the confirm's own defaults are today's question and keep button; since S6 A8h the result is one module's, `SellResultModal`, which the shell's host draws in the look the button handed it and the button draws only as its fallback, the journey's word under a refusal written there
+PASS 12.sale · the sale is one code path for both looks: in submit, one action call, one latch, one deferred toast, the notifications refresh once and the page refresh twice — the sale's own and, since S6 A8c, the one a refusal for a moved price asks, inside the refusal branch only, with the button waiting on it — the action, the latch, the toast and the notifications refresh nowhere else, and the journey's one button opens the same confirm
+PASS 12.free · the free offer: its line names the server's clock time, a <time> naming the instant, and — only while it runs — the countdown to that instant; the button reads 'Uza bila ada' over 'Rudishiwa {amount} kamili', the amount the server's own figure (value), never the stake; and every piece of it is drawn only on the free offer
+PASS 12.lapse · once the countdown has run out with a free price still drawn, the price is withdrawn — nothing to press, 'Inapakia…' and no figure — a confirm still showing it closes, and the page is asked for the server's answer at once, once per run of the countdown; the sale's own refresh stays the sale's (the file's three page refreshes: the sale's, a moved price's since S6 A8c, and this one); and since S6 A8c a moved price waits the same way, ahead of a sale in flight
+PASS 12.paid · a price with a fee keeps today's honest 'Uza sasa' with today's figure and fee — a fee of 0 is not printed — and the button's one fee rule is today's
+PASS 12.closed · once selling has shut the look says so in words, 'Kuuza kumefungwa' and the journey's sentence, with no button to press — from the first paint, because the server's own verdict decides it before this phone's clock does
+PASS 12.edge · the journey's button wears the kit's outlined class, its only boundary drawn in the kit's token for a control's edge — the canvas's own colour, the one the platform holds to the 3:1 floor for a money control's edge (DESIGN_AUTHORITY's accessibility floor), where the kit's default edge is a card's decorative one
+PASS 12.arith · the look computes nothing and formats no time: no arithmetic among its expressions, no Date, no formatter of time, no Intl, no stake; its figures are formatTzs(value), formatNumber(value) and today's fee
+PASS 12.words · the journey's sell path (the look, the shared dialogs under it, the confirm with the journey's words, the toasts) says no 'nafasi' and reads none of the three classic lines that do; every word resolves in en, sw and zh; its one Chinese 持仓 is the sold receipt's small heading and its three Swahili 'toa' words today's cash-out headings, each named (§0h point 36)
+
+JOURNEY TICKETS — all 50 checks passed

@@ -1,7 +1,12 @@
 # R5-K / R5-L brief — every loading ghost lands where its page lands, box for box (follow-up)
 
 You are helper R5-K or R5-L (your prompt says which, and your routes) in the follow-up round of 50pick's visual pass
-for Vodacom. Read first, completely: S\briefs\r5-common.md (the rules — CONSISTENCY above all; where it says
+for Vodacom. Worktree: F:\kipindi-r5k (R5-K) or F:\kipindi-r5l (R5-L), each on its own branch at vodacom-visual's tip
+9677a3f5 (rebased on main 118fc75c, with R5-A..F, R5-H and R5-I merged). Working at the same time: R5-G (porting its
+names work onto this tip — it touches deposit/withdraw loading and DepositGhost: if your route is one of those, keep
+your hunks small and name the overlap), R5-J (counts and figures), and three read-only reviewers. ⚠️ OMEGA's memory is
+shared and near its limit until the marketing session finishes: run suites strictly one at a time, never a dev
+server, build, tsc, browser or battery (test:all). Read first, completely: S\briefs\r5-common.md (the rules — CONSISTENCY above all; where it says
 "1699302a" read the tip named in your prompt), then R5-H's commit message on the branch (`git log --format=%B --grep
 "R5-H" -1` in your worktree): it moved every player loading drawing to a client module (one convention, written in
 src/components/ui/page-loader.tsx — the drawing reads its words with useT(); a loading file that needs a server answer

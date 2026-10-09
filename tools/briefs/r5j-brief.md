@@ -3,7 +3,12 @@
 You are helper R5-J in the follow-up round of 50pick's visual pass for Vodacom. Read first, completely:
 S\briefs\r5-common.md (the rules — CONSISTENCY above all; where it says "1699302a" read the tip named below), then
 S\visual\triage-r5.md (§ "For the follow-up round") and the R5 reports' notes quoted here.
-Worktree: F:\kipindi-r5j (branch vodacom-visual-r5j at vodacom-visual's tip __TIP__, which carries R5-A..F merged).
+Worktree: F:\kipindi-r5j (branch vodacom-visual-r5j at vodacom-visual's tip 9677a3f5: rebased on main 118fc75c, with
+R5-A..F, R5-H and R5-I merged). Working at the same time in their own worktrees: R5-G (one page one name, the
+regulator's name — porting onto this tip), R5-K and R5-L (rebuilding loading ghosts) and three read-only reviewers.
+⚠️ OMEGA's memory is shared and near its limit until the marketing session finishes: run suites strictly one at a
+time, never a dev server, build, tsc, browser or battery (test:all). R5-I added `refusalReason`/`refusalVariant` and
+R5-E `moneyRuns`/`figureRuns` — read them before adding any counting or figure helper.
 Suite: scripts/visual-pass-r5j.test.mts → test:visual-pass-r5j.
 S = C:\Users\asheib\AppData\Local\Temp\claude\C--Users-asheib\0e745525-51fe-4451-ace7-c9987576fc15\scratchpad
 

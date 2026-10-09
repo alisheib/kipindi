@@ -1,0 +1,330 @@
+diff --git a/src/app/wallet/deposit/actions.ts b/src/app/wallet/deposit/actions.ts
+index ffc153033..b14770559 100644
+--- a/src/app/wallet/deposit/actions.ts
++++ b/src/app/wallet/deposit/actions.ts
+@@ -13,6 +13,7 @@ import { DEPOSIT_MIN_TZS, DEPOSIT_MAX_TZS, type DepositInput } from "@/lib/serve
+ import type { CardCheckoutContext } from "@/lib/server/payments";
+ import { getServerT } from "@/lib/i18n-server";
+ import { errorCopy } from "@/lib/error-copy";
++import { formatBreakEnd } from "@/lib/break-end";
+ 
+ /** Absolute base for the URLs we hand Selcom to send the buyer back to. Must be
+  *  the real public host — a relative path is meaningless to the gateway. */
+@@ -24,7 +25,7 @@ export async function depositAction(formData: FormData) {
+ 
+   // B-7 — every refusal this action redirects with is rendered verbatim by the
+   // deposit page, so it must be minted in the player's own language, here.
+-  const { t } = await getServerT();
++  const { t, locale } = await getServerT();
+ 
+   const amount = parseInt(String(formData.get("amount") ?? "0"), 10);
+   // Pass the chosen provider through (don't coerce to MPESA) — the schema validates it.
+@@ -141,7 +142,8 @@ export async function depositAction(formData: FormData) {
+     // action, where the confirmed email is now asked (`wallet/withdraw/actions.ts`).
+     // B-7 — the service's English string is audit truth; the player reads the
+     // dictionary line for its code (bilingual gateway reasons pass through).
+-    return fail(errorCopy(t, result));
++    // A break's end in the reader's words (R4-I, 2026-10-09): `formatBreakEnd`, as the deposit page's own notice says it.
++    return fail(errorCopy(t, result, (at) => formatBreakEnd(at, Date.now(), t.common.monthsShort, locale)));
+   }
+   const data = result.data!;
+ 
+diff --git a/src/app/wallet/deposit/deposit-confirm.tsx b/src/app/wallet/deposit/deposit-confirm.tsx
+index 9bbbde8c6..f0bb59986 100644
+--- a/src/app/wallet/deposit/deposit-confirm.tsx
++++ b/src/app/wallet/deposit/deposit-confirm.tsx
+@@ -83,7 +83,8 @@ export function DepositConfirm() {
+     if (!form) return false;
+     const err = validate(form);
+     if (err) {
+-      toast({ title: err, variant: "warning" });
++      // F3 — a slip the player can fix is the `factual` toast; `warning` is struck in gold (R5-C, 2026-10-09).
++      toast({ title: err, variant: "factual" });
+       return false;
+     }
+     return true;
+@@ -108,7 +109,7 @@ export function DepositConfirm() {
+     // native bubbles are suppressed (V-3).
+     const err = validate(form);
+     if (err) {
+-      toast({ title: err, variant: "warning" });
++      toast({ title: err, variant: "factual" });
+       return false;
+     }
+     form.noValidate = true;
+@@ -152,8 +153,13 @@ export function DepositConfirm() {
+          count; Enter now opens this dialog, exactly as the button does (in WebKit before Safari 16.4 it still does
+          nothing: see `submitsForm`). */
+       submitsForm
++      /* ⭐ D1 FOR THE TRIGGER TOO (R5-C, the second gold audit, 2026-10-09). This button reads "Confirm deposit" and is
++         the commit's first press; it stayed GOLD ("money-in → gold trigger", a micro-spec — record, not rule, §0) while
++         the dialog's own button became brand under D1: "a deposit or a withdrawal commit is brand — not gold … moving
++         your own money … earns nothing, so gold overstates it" (DESIGN_AUTHORITY §M3a). One action, one ink, at the
++         money-commit footprint (`btn-lg`). The deposit DOOR (the header pill, the rail's coin) keeps its gold. */
+       trigger={
+-        <button ref={buttonRef} type="button" className="btn btn-gold btn-lg w-full">
++        <button ref={buttonRef} type="button" className="btn btn-primary btn-lg w-full">
+           {t.common.confirmDeposit}
+         </button>
+       }
+diff --git a/src/app/wallet/deposit/page.tsx b/src/app/wallet/deposit/page.tsx
+index 5e3ba64bc..c50deff5b 100644
+--- a/src/app/wallet/deposit/page.tsx
++++ b/src/app/wallet/deposit/page.tsx
+@@ -28,7 +28,9 @@ import { PageContainer } from "@/components/layout/page-container";
+ import { DEPOSIT_QUICK_AMOUNTS } from "@/lib/journey/shortfall";
+ import { isLockedOut } from "@/lib/server/responsible-gambling";
+ import { fill } from "@/lib/utils";
+-import { formatEatDateTime } from "@/lib/eat-day";
++import { formatBreakEnd } from "@/lib/break-end";
++import { keepText } from "@/components/ui/keep-run";
++import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+ import { readFlash } from "@/lib/server/flash-message";
+ import { pathWithQuery } from "@/lib/safe-next";
+ 
+@@ -123,6 +125,9 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
+   // ⭐ THE ONE ANSWER for everything on this page that would invite money in: the cash back promo, the trust strip, and
+   // which payout notice is drawn (a paused wallet is never told "you can still add funds" under "Deposits paused").
+   const moneyInPaused = !!breakUntil || walletHeld;
++  // R4-I · the break's end, said once by the one formatter; and which shell's words the notice's Withdraw door wears.
++  const breakEndText = breakUntil ? formatBreakEnd(Date.parse(breakUntil), Date.now(), t.common.monthsShort, locale) : null;
++  const { journey } = await resolveSimpleJourney();
+   const adminTest = !!user && ADMIN_TEST_ROLES.has(user.role) && process.env.NODE_ENV !== "production" && process.env.ADMIN_TEST_DEPOSITS !== "false";
+   const maxAmount = adminTest ? 1_000_000_000 : DEPOSIT_MAX_TZS;
+   const quickAmounts = adminTest ? [100_000, 1_000_000, 5_000_000, 20_000_000, 100_000_000] : QUICK_AMOUNTS;
+@@ -196,18 +201,41 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
+           held wallet first; both refuse). Its sentence is the RG page's: `rg.breakActive` for a cooling-off (the end date,
+           that it cannot be shortened, that withdrawals are not stopped), `rg.exclusionActive` for a self-exclusion, which
+           promises neither sign-in nor withdrawals. The date carries its time, as the server's refusal does, in the reader's
+-          month words on the East Africa clock (`formatEatDateTime`, §L4; `formatDateTime` printed English months). No button:
+-          there is nothing to do here until the date, and nothing on this page may invite a deposit before it. */}
++          month words on the East Africa clock (`formatBreakEnd` — `formatEatDateTime`, §L4; `formatDateTime` printed English
++          months). Nothing on this page may invite a deposit before the date.
++          ⭐ …BUT A BREAK IS NOT A DEAD END (R4-I, 2026-10-09, tiles 093–095 · 027–029 · 060–062). The sentence says
++          withdrawals go on, and the notice gave no way to them: a cooling-off now carries the Withdraw door, in the words
++          the shell's own Wallet uses (the journey's "Toa pesa", else the classic "Toa"). A self-exclusion promises no
++          withdrawal, so it gets none. The notice's body takes the card's width (it was held to 42ch, ~234px of a 575px card
++          at 1280, in four balanced lines), and the button's edge closes the card as the plate opens it: 32px of padding
++          above and below on a phone, 48px from 640 (the text's line box left 38/53px under its ink). The sentence keeps the
++          end one run, no line opens on a dash ("——您仍可登录" in Chinese), and no last word stands alone (`keepText`). */}
+       {breakUntil ? (
+         <div data-testid="deposit-break">
+-          <Callout tone="warning" layout="stack" glyph="lock" role="status" titleAs="h2" title={t.wallet.depositPausedTitle}>
+-            <p className="text-balance break-keep [overflow-wrap:anywhere]">{fill(breakIsExclusion ? t.rg.exclusionActive : t.rg.breakActive, { date: formatEatDateTime(Date.parse(breakUntil), Date.now(), t.common.monthsShort, locale) })}</p>
++          {/* R4-I (2026-10-09, R4-K's gold audit): `neutral`, not `warning` — the warning tone is struck in gilt
++              (`--warning-fg` IS `--gilt`, DESIGN_AUTHORITY F3), and a paused deposit has earned nothing. The lock stays. */}
++          <Callout
++            tone="neutral"
++            layout="stack"
++            glyph="lock"
++            role="status"
++            titleAs="h2"
++            title={t.wallet.depositPausedTitle}
++            bodyWidth="full"
++            action={breakIsExclusion ? undefined : (
++              <Link href="/wallet/withdraw" className="btn btn-ghost btn-md btn-pill inline-flex items-center gap-1.5" data-testid="deposit-break-withdraw">
++                <I.arrowUpFromLine s={14} />
++                {journey ? t.journey.withdrawAction : t.common.withdraw}
++              </Link>
++            )}
++          >
++            <p className="text-balance break-keep [overflow-wrap:anywhere]">{keepText(fill(breakIsExclusion ? t.rg.exclusionActive : t.rg.breakActive, { date: breakEndText ?? "" }), breakEndText ? [breakEndText] : [])}</p>
+           </Callout>
+         </div>
+       ) : walletHeld ? (
+         <div data-testid="deposit-paused">
+           <Callout
+-            tone="warning"
++            tone="neutral"
+             layout="stack"
+             glyph="lock"
+             role="status"
+@@ -225,15 +253,24 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
+           </Callout>
+         </div>
+       ) : (
+-      <form action={depositAction} className="group/deposit rounded-xl glass-panel p-5 lg:p-6 space-y-5">
++      <form action={depositAction} className="group/deposit rounded-xl glass-panel p-5 lg:p-6">
++        {/* ⭐ THE FORM'S RHYTHM LIVES ON THIS WRAPPER, NOT ON THE <form> (2026-10-08, the visual pass's round 3, tiles
++            067–069 / 173–174). React's server renderer writes `<input type="hidden" name="$ACTION_ID_…">` straight after
++            the <form> tag of a server-action form (react-dom-server: pushAdditionalFormField), with no `hidden`
++            attribute, so Tailwind 3's `space-y-5` on the form counted it as a sibling and put 24px above "CHAGUA NJIA YA KULIPA": 51px
++            from the card's border to its first line against the card's 24px sides. Inside this wrapper the first child has
++            no sibling before it whatever React adds to the form. */}
++        <div className="space-y-5">
+           {/* 🔴 ONE KEY PER ATTEMPT, AND A REFUSAL ENDS THE ATTEMPT (2026-10-06). A refused or failed attempt is a finished
+               intent. The key lives in a ref, and Next keeps this page mounted across its own `?error=` redirect (the
+               router's state key ignores the query), so a retry re-sent the SAME key — and a used key replays its row: a
+               synchronous FAILED came back as ok and no new attempt was made. Keyed on the signed refusal, each refusal is
+               a new key; a double tap or a lost response on the SAME screen still dedupes. */}
+           <IdempotencyKeyField key={sp.error ?? ""} />
+-        {/* The journey funnel (Vodacom plan S3b): a deposit started from a not-enough-money state says so. */}
+-        {sp.from === "low-balance" && <input type="hidden" name="origin" value="low_balance" />}
++          {/* The journey funnel (Vodacom plan S3b): a deposit started from a not-enough-money state says so.
++              `hidden` keeps it out of the wrapper's `space-y-5` sibling count, as on the key above (2026-10-08, WP12 tile 068):
++              without it a low-balance deposit put the 24px gap back above the method chooser. */}
++          {sp.from === "low-balance" && <input type="hidden" hidden name="origin" value="low_balance" />}
+           <fieldset>
+             <FieldLegend as="legend" className="mb-2">
+               {t.wallet.choosePaymentMethod}
+@@ -292,6 +329,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
+           {/* Deposit confirms before dispatch (audit M9), matching bet + withdraw.
+               Money-in → gold trigger (micro-spec §1). */}
+           <DepositConfirm />
++        </div>
+       </form>
+       )}
+ 
+diff --git a/src/app/wallet/withdraw/page.tsx b/src/app/wallet/withdraw/page.tsx
+index f4d45fea2..91c4f072c 100644
+--- a/src/app/wallet/withdraw/page.tsx
++++ b/src/app/wallet/withdraw/page.tsx
+@@ -244,8 +244,15 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
+       ) : (
+       <form
+         action={withdrawAction}
+-        className={`rounded-xl glass-panel p-5 lg:p-6 space-y-5 ${canSubmit ? "" : "opacity-60"}`}
++        className={`rounded-xl glass-panel p-5 lg:p-6 ${canSubmit ? "" : "opacity-60"}`}
+       >
++        {/* ⭐ THE FORM'S RHYTHM LIVES ON THIS WRAPPER, NOT ON THE <form> (2026-10-08, the visual pass's round 3, tiles
++            067–069 / 173–174). React's server renderer writes `<input type="hidden" name="$ACTION_ID_…">` straight after
++            the <form> tag of a server-action form (react-dom-server: pushAdditionalFormField), with no `hidden`
++            attribute, so Tailwind 3's `space-y-5` on the form counted it as a sibling and put 24px above "MAHALI": 51px
++            from the card's border to its first line against the card's 24px sides. Inside this wrapper the first child has
++            no sibling before it whatever React adds to the form. */}
++        <div className="space-y-5">
+           {/* 🔴 A refusal ends the attempt, so each signed `?error=` is a new key (2026-10-06) — the deposit page's note
+               says why: this page stays mounted across its own redirect, and a used key replays its row. */}
+           <IdempotencyKeyField key={sp.error ?? ""} />
+@@ -320,6 +327,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
+           </div>
+ 
+           {canSubmit ? <WithdrawConfirm feeRate={wcfg.withdrawalFeeRate} /> : <SubmitButton label={t.common.confirm} pendingLabel={t.common.loading} disabled={!canSubmit} />}
++        </div>
+       </form>
+       )}
+     </PageContainer>
+diff --git a/src/app/wallet/withdraw/withdraw-confirm.tsx b/src/app/wallet/withdraw/withdraw-confirm.tsx
+index 8dd538960..12e0ecfa0 100644
+--- a/src/app/wallet/withdraw/withdraw-confirm.tsx
++++ b/src/app/wallet/withdraw/withdraw-confirm.tsx
+@@ -101,7 +101,8 @@ export function WithdrawConfirm({ feeRate }: { feeRate: number }) {
+     if (!form) return false;
+     const err = validate(form);
+     if (err) {
+-      toast({ title: err, variant: "warning" });
++      // F3 — a slip the player can fix is the `factual` toast; `warning` is struck in gold (R5-C, 2026-10-09).
++      toast({ title: err, variant: "factual" });
+       return false;
+     }
+     return true;
+@@ -145,7 +146,7 @@ export function WithdrawConfirm({ feeRate }: { feeRate: number }) {
+     // correctness — native bubbles are suppressed (V-3).
+     const err = validate(form);
+     if (err) {
+-      toast({ title: err, variant: "warning" });
++      toast({ title: err, variant: "factual" });
+       return false;
+     }
+     form.noValidate = true;
+@@ -171,9 +172,13 @@ export function WithdrawConfirm({ feeRate }: { feeRate: number }) {
+               the Amount line, which moves 15px/semibold → 16px/bold (`emphasis="amount"`)
+               to match the deposit confirm. That convergence is the point of the exercise,
+               not a side effect: one label, one meaning, one rendering. The hierarchy here
+-              survives it — YOU RECEIVE stays the loudest line because it is the only GOLD
+-              one, and gold is legitimate there (M3: money about to be received, not a
+-              projection). */}
++              survives it — YOU RECEIVE is the bottom line: the divider above it, the last
++              figure, at the amount's size and weight.
++              ⛔ NOT GOLD (R5-C, the second gold audit, 2026-10-09). It was "the only GOLD one …
++              money about to be received" — but it is the player's OWN money leaving their
++              wallet, and D1 says of exactly that: "moving your own money into or out of your
++              own wallet earns nothing, so gold overstates it" (DESIGN_AUTHORITY §M3a; §M3:
++              struck gold appears only where money was EARNED). `total` takes the text's ink. */}
+           <ReceiptBox className="mb-3">
+             <ReceiptRow emphasis="amount" label={t.common.amountLabel} value={formatTzs(summary.amount)} />
+             <ReceiptRow emphasis="fee" tone="warning" label={t.wallet.taxNotice} value={`−${formatTzs(fee)}`} />
+@@ -210,11 +215,14 @@ export function WithdrawConfirm({ feeRate }: { feeRate: number }) {
+          browser submits on Enter, and before the page woke the same Enter posted it as plain HTML. Now it opens this
+          dialog, exactly as the button does (in WebKit before Safari 16.4 it does nothing at all: see `submitsForm`). */
+       submitsForm
++      /* ⭐ D1 FOR THE TRIGGER TOO (R5-C, the second gold audit, 2026-10-09): "Confirm withdrawal" is the commit's first
++         press and it was GOLD while the dialog's own button is brand under D1 ("a deposit or a withdrawal commit is brand
++         — not gold", DESIGN_AUTHORITY §M3a). One action, one ink — the deposit confirm's twin. */
+       trigger={
+         <button
+           ref={buttonRef}
+           type="button"
+-          className="btn btn-gold btn-lg w-full"
++          className="btn btn-primary btn-lg w-full"
+         >
+           {t.common.confirmWithdrawal}
+         </button>
+diff --git a/src/components/wallet/amount-field.tsx b/src/components/wallet/amount-field.tsx
+index 74a1ed186..de2cd77dd 100644
+--- a/src/components/wallet/amount-field.tsx
++++ b/src/components/wallet/amount-field.tsx
+@@ -12,6 +12,16 @@
+ import { useState } from "react";
+ import { Input } from "@/components/ui/input";
+ import { FieldLegend } from "@/components/ui/field-legend";
++import { moneyRuns } from "@/lib/fill-nodes";
++import { formatNumber } from "@/lib/utils";
++
++/**
++ * ⭐ THE EXAMPLE IS WRITTEN AS THE PLATFORM WRITES A FIGURE (2026-10-09, the visual pass's round 3, tiles 069 and 174).
++ * It read "10000", the one place a player met a figure with no thousands separator; every amount elsewhere is
++ * `formatNumber`'s "10,000". The box still takes the digits however they are typed — a comma is dropped on entry
++ * (`input.tsx`, strict numeric mode) — so the example teaches nothing the field refuses.
++ */
++const AMOUNT_EXAMPLE = formatNumber(10_000);
+ 
+ const fmt = (v: number) => (v >= 1_000_000 ? `${v / 1_000_000}M` : v >= 1_000 ? `${v / 1_000}K` : String(v));
+ 
+@@ -54,7 +64,7 @@ export function AmountField({
+         name={name}
+         inputMode="numeric"
+         autoComplete="off"
+-        placeholder="10000"
++        placeholder={AMOUNT_EXAMPLE}
+         prefix="TZS"
+         mono
+         size="lg"
+@@ -98,8 +108,10 @@ export function AmountField({
+       )}
+ 
+       {/* break-keep: Chinese breaks only at spaces and punctuation (text-balance alone split 最高 and 需先); it changes
+-          nothing for Latin text, and overflow-wrap still wraps an over-long run. */}
+-      {hint && <p className="mt-2 text-body-sm text-text-subtle text-balance break-keep [overflow-wrap:anywhere]">{hint}</p>}
++          nothing for Latin text, and overflow-wrap still wraps an over-long run.
++          ⭐ Its figures are money, so each is an `.amount` (§M4, `moneyRuns`): "TZS 1,015 … TZS 5,000,000" was set in the
++          body face (2026-10-09, tiles 069 and 174), the only amounts on either form not in mono. */}
++      {hint && <p className="mt-2 text-body-sm text-text-subtle text-balance break-keep [overflow-wrap:anywhere]">{moneyRuns(hint)}</p>}
+     </div>
+   );
+ }
+diff --git a/src/components/wallet/idempotency-key-field.tsx b/src/components/wallet/idempotency-key-field.tsx
+index 83be1527c..3d55f154f 100644
+--- a/src/components/wallet/idempotency-key-field.tsx
++++ b/src/components/wallet/idempotency-key-field.tsx
+@@ -13,8 +13,19 @@ import { useRef } from "react";
+  * client `useRef` persists across the server re-render, so retrying the same
+  * form re-submits the SAME key and the server dedupes it. Mirrors the bet
+  * path's per-intent `useRef` key.
++ *
++ * ⭐ THE `hidden` ATTRIBUTE IS LAYOUT, NOT A REPEAT OF `type="hidden"` (2026-10-08, WP12 tiles 067/068/173/174).
++ * Tailwind 3's `space-y-*` gives a margin to every child that FOLLOWS a sibling not carrying `[hidden]`, and an
++ * `<input type="hidden">` paints nothing but is still such a sibling. As the first child of the deposit and withdraw
++ * forms it handed the first visible child — the method chooser's fieldset — the form's 24px gap ABOVE it: 24px of blank
++ * at the top of the card (measured 50px above "CHAGUA NJIA YA KULIPA" / "MAHALI" against 27px above the hero's eyebrow
++ * and 24px at the card's sides). With `hidden` the selector skips it, so the card's padding is the only space above
++ * its first line. A `hidden` input is still submitted with its form; nothing else about it changes.
++ * ⚠️ It was not the only such input: React writes its own `$ACTION_ID_…` hidden input first in every server-action form,
++ * so the two money forms now keep their rhythm on an inner wrapper (round 3, 2026-10-08). This attribute still keeps
++ * THIS input from counting inside that wrapper.
+  */
+ export function IdempotencyKeyField({ name = "idempotencyKey" }: { name?: string }) {
+   const key = useRef<string>(crypto.randomUUID());
+-  return <input type="hidden" name={name} value={key.current} />;
++  return <input type="hidden" hidden name={name} value={key.current} />;
+ }

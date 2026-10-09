@@ -1,0 +1,276 @@
+"use client";
+
+import { useEffect, useState, useTransition } from "react";
+import QRCode from "qrcode";
+import { useRouter } from "next/navigation";
+import { I } from "@/components/ui/glyphs";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { OtpInput } from "@/components/ui/otp-input";
+import { PasswordInput } from "@/components/ui/password-input";
+import { FieldLegend } from "@/components/ui/field-legend";
+import { Chip } from "@/components/ui/chip";
+import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n";
+import { startEnrollAction, confirmEnrollAction, disable2faAction, regenerateBackupCodesAction } from "./actions";
+
+type Phase = "idle" | "enrolling" | "codes";
+
+export function SecurityClient({ enabled, backupRemaining, hasPassword }: { enabled: boolean; backupRemaining: number; hasPassword: boolean }) {
+  const { t } = useT();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [pending, start] = useTransition();
+
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [otpauthUrl, setOtpauthUrl] = useState<string | null>(null);
+  const [secret, setSecret] = useState<string | null>(null);
+  const [qr, setQr] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+  const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
+  const [disarm, setDisarm] = useState<null | "disable" | "regen">(null);
+  const [disarmCode, setDisarmCode] = useState("");
+  // A-X3 · turning two-step on asks for the current password first (when the account has one).
+  const [pwPanel, setPwPanel] = useState(false);
+  const [pw, setPw] = useState("");
+
+  // Render the otpauth URI to a QR data-URI (client-only, no network).
+  useEffect(() => {
+    if (!otpauthUrl) { setQr(null); return; }
+    let alive = true;
+    QRCode.toDataURL(otpauthUrl, { width: 220, margin: 1, color: { dark: "#0b0a1f", light: "#ffffff" } })
+      .then((url) => { if (alive) setQr(url); })
+      .catch(() => { if (alive) setQr(null); });
+    return () => { alive = false; };
+  }, [otpauthUrl]);
+
+  // FEEDBACK LAW (DESIGN_AUTHORITY §F) — a refusal states the reason AND the next step.
+  // This returned a bare TITLE, so the generic branch reached the player as "Something
+  // went wrong. Try again." with nothing saying what had (or had not) happened to their
+  // account. Each branch now carries its own body; the pair is what the toast renders.
+  // `danger` is kept deliberately: this is the two-factor rail, and a change that did not
+  // take on the control guarding the account is an error, not a fixable slip.
+  // A-X3 · the two current-password refusals say nothing changed (title), then why and
+  // what next (body); the wait is the server's own `retryAfterSec`, never a guess.
+  const errFor = (e?: string, sec?: number): { title: string; body: string } =>
+    e === "rate_limited" ? { title: t.security.errRateLimited, body: t.security.errRateLimitedBody }
+    : e === "invalid"    ? { title: t.security.errInvalid,     body: t.security.errInvalidBody }
+    : e === "password_wrong"      ? { title: t.security.errGeneric, body: t.error.errPwCurrentWrong }
+    : e === "reauth_rate_limited" ? { title: t.security.errGeneric, body: t.error.errRateLimited.replace("{sec}", String(Math.max(1, sec ?? 60))) }
+    :                      { title: t.security.errGeneric,     body: t.security.errGenericBody };
+  const errToast = (e?: string) => {
+    const c = errFor(e);
+    toast({ title: c.title, description: c.body, variant: "danger" });
+  };
+
+  // A-X3 · `password` is the current password ("" for an account that has none). It is cleared
+  // after every attempt. Already on (another tab or device got there first) is not an error:
+  // say so and refresh into the "on" view. The refusals carry the server's wait, so they render
+  // the same pair at the same severity as `errToast`, with `errFor`'s second argument
+  // (feedback-law 3.8/3.9 hold `errToast` by its one-argument opening).
+  function beginEnroll(password: string) {
+    start(async () => {
+      const r = await startEnrollAction(password);
+      setPw("");
+      if (r.error === "already_enabled") {
+        setPwPanel(false);
+        toast({ title: t.security.enabledToast, variant: "success" });
+        router.refresh();
+        return;
+      }
+      if (!r.ok || !r.otpauthUrl) {
+        const c = errFor(r.error, r.retryAfterSec);
+        toast({ title: c.title, description: c.body, variant: "danger" });
+        return;
+      }
+      setPwPanel(false);
+      setOtpauthUrl(r.otpauthUrl);
+      setSecret(r.secret ?? null);
+      setCode("");
+      setPhase("enrolling");
+    });
+  }
+
+  function confirmEnroll() {
+    start(async () => {
+      const r = await confirmEnrollAction(code);
+      if (!r.ok || !r.backupCodes) { errToast(r.error); return; }
+      setBackupCodes(r.backupCodes);
+      setPhase("codes");
+    });
+  }
+
+  function finishCodes() {
+    setPhase("idle");
+    setBackupCodes(null);
+    setOtpauthUrl(null);
+    setSecret(null);
+    toast({ title: t.security.enabledToast, variant: "success" });
+    router.refresh();
+  }
+
+  function runDisarm() {
+    const kind = disarm;
+    start(async () => {
+      if (kind === "regen") {
+        const r = await regenerateBackupCodesAction(disarmCode);
+        if (!r.ok || !r.backupCodes) { errToast(r.error); return; }
+        setDisarm(null); setDisarmCode("");
+        setBackupCodes(r.backupCodes);
+        setPhase("codes");
+      } else {
+        const r = await disable2faAction(disarmCode);
+        if (!r.ok) { errToast(r.error); return; }
+        setDisarm(null); setDisarmCode("");
+        toast({ title: t.security.disabledToast, variant: "success" });
+        router.refresh();
+      }
+    });
+  }
+
+  // ── One-time backup-codes reveal (shared by enroll + regenerate) ──
+  if (phase === "codes" && backupCodes) {
+    return <BackupCodes codes={backupCodes} onDone={finishCodes} t={t} toast={toast} />;
+  }
+
+  // ── Enrolling: QR + verify ──
+  if (phase === "enrolling") {
+    return (
+      <section className="rounded-xl glass-panel p-5 space-y-4">
+        <div>
+          <p className="gilt-eyebrow mb-1">{t.security.setupEyebrow}</p>
+          <p className="text-[13px] text-text-muted">{t.security.scanHint}</p>
+        </div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="rounded-lg border border-border bg-white p-2">
+            {qr ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={qr} alt={t.security.qrAlt} width={200} height={200} className="block" />
+            ) : (
+              <div className="h-[200px] w-[200px] animate-pulse rounded bg-bg-inset" aria-hidden />
+            )}
+          </div>
+          {secret && (
+            <div className="text-center">
+              {/* DG-A-14 — "Or enter this key manually" is an instruction the player reads,
+                  not a section eyebrow naming a block. It loses the uppercase + tracking
+                  dressing and moves off text-micro (10px) up to text-body-sm (13px), the
+                  smallest rung above §T4's 12.5px reading floor. */}
+              <p className="mb-1 font-mono text-body-sm text-text-subtle">{t.security.manualKey}</p>
+              <code className="select-all break-all font-mono text-[12.5px] text-text">{secret}</code>
+            </div>
+          )}
+        </div>
+        <div className="space-y-2 border-t border-border pt-4">
+          <p className="text-[13px] text-text-muted">{t.security.enterCodeHint}</p>
+          <OtpInput value={code} onChange={(e) => setCode(e.target.value)} placeholder="• • • • • •" aria-label={t.security.codeLabel} />
+          <div className="flex gap-2">
+            <Button variant="ghost" size="md" onClick={() => { setPhase("idle"); setOtpauthUrl(null); }} disabled={pending}>{t.common.cancel}</Button>
+            <Button variant="primary" size="md" fullWidth loading={pending} disabled={code.length < 6} onClick={confirmEnroll}>{t.security.verifyEnable}</Button>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // ── Idle: enabled or disabled status ──
+  return (
+    <section className="rounded-xl glass-panel p-5 space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:200-215)
+              and `h-10` renders 80px. */}
+          <span className={`inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md ${enabled ? "bg-yes-500/10 text-yes-300" : "bg-brand-500/10 text-brand-300"}`}>
+            <I.shieldcheck s={18} />
+          </span>
+          <div>
+            <p className="font-display text-[15px] font-semibold text-text leading-tight">{t.security.totpTitle}</p>
+            <p className="mt-0.5 text-body-sm text-text-subtle leading-snug">{t.security.totpBody}</p>
+          </div>
+        </div>
+        <Chip variant={enabled ? "success" : "neutral"} size="md">{enabled ? t.security.on : t.security.off}</Chip>
+      </div>
+
+      {!enabled ? (
+        pwPanel ? (
+          // A-X3 · the current password, in the disarm panel's recipe; a password-less account never sees it.
+          <div className="space-y-2 rounded-md border border-border bg-bg-overlay/40 p-3">
+            <FieldLegend as="label" htmlFor="tfa-current-pw" className="block mb-1.5">{t.common.currentPassword}</FieldLegend>
+            <PasswordInput
+              id="tfa-current-pw"
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && pw && !pending) { e.preventDefault(); beginEnroll(pw); } }}
+              autoComplete="current-password"
+              placeholder="••••••••"
+            />
+            <p className="text-body-sm text-text-muted">{t.common.reauthHint}</p>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => { setPwPanel(false); setPw(""); }} disabled={pending}>{t.common.cancel}</Button>
+              <Button variant="primary" size="sm" fullWidth loading={pending} disabled={!pw} onClick={() => beginEnroll(pw)}>{t.common.continue}</Button>
+            </div>
+          </div>
+        ) : (
+          <Button variant="primary" size="md" fullWidth loading={pending} leading={<I.keyRound s={16} />} onClick={hasPassword ? () => { setPw(""); setPwPanel(true); } : () => beginEnroll("")}>
+            {t.security.enable}
+          </Button>
+        )
+      ) : (
+        <div className="space-y-3 border-t border-border pt-4">
+          <div className="flex items-center justify-between gap-3 text-[13px]">
+            <span className="text-text-muted">{t.security.backupRemaining}</span>
+            <Chip variant={backupRemaining <= 2 ? "warning" : "neutral"} size="sm">{backupRemaining}</Chip>
+          </div>
+
+          {disarm === null ? (
+            <div className="flex flex-wrap gap-2">
+              <Button variant="ghost" size="sm" onClick={() => { setDisarm("regen"); setDisarmCode(""); }}>{t.security.regenerate}</Button>
+              <Button variant="danger" size="sm" onClick={() => { setDisarm("disable"); setDisarmCode(""); }}>{t.security.disable}</Button>
+            </div>
+          ) : (
+            <div className="space-y-2 rounded-md border border-border bg-bg-overlay/40 p-3">
+              <p className="text-body-sm text-text-muted">{disarm === "disable" ? t.security.disableConfirm : t.security.regenConfirm}</p>
+              <OtpInput value={disarmCode} onChange={(e) => setDisarmCode(e.target.value)} placeholder="• • • • • •" aria-label={t.security.codeLabel} />
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setDisarm(null)} disabled={pending}>{t.common.cancel}</Button>
+                <Button variant={disarm === "disable" ? "danger" : "primary"} size="sm" fullWidth loading={pending} disabled={disarmCode.length < 6} onClick={runDisarm}>
+                  {disarm === "disable" ? t.security.disable : t.security.regenerate}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function BackupCodes({ codes, onDone, t, toast }: { codes: string[]; onDone: () => void; t: ReturnType<typeof useT>["t"]; toast: ReturnType<typeof useToast>["toast"] }) {
+  const [ack, setAck] = useState(false);
+  const copyAll = () => {
+    navigator.clipboard?.writeText(codes.join("\n")).then(
+      () => toast({ title: t.security.codesCopied, variant: "success" }),
+      () => {},
+    );
+  };
+  return (
+    <section className="rounded-xl glass-panel p-5 space-y-4">
+      <div>
+        <p className="gilt-eyebrow mb-1">{t.security.backupTitle}</p>
+        <p className="text-[13px] text-text-muted">{t.security.backupBody}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-2 rounded-md border border-gilt/40 bg-bg-overlay/40 p-3">
+        {codes.map((c) => (
+          <code key={c} className="select-all text-center font-mono text-[13px] tracking-[0.06em] text-text">{c}</code>
+        ))}
+      </div>
+      <div className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] text-warning-fg">
+        <I.warning s={13} className="mt-[1px] shrink-0" />
+        <span>{t.security.backupWarn}</span>
+      </div>
+      <Button variant="ghost" size="sm" leading={<I.copy s={14} />} onClick={copyAll}>{t.security.copyCodes}</Button>
+      <Checkbox checked={ack} onChange={setAck} label={t.security.savedAck} className="text-[13px] text-text-muted" />
+      <Button variant="primary" size="md" fullWidth disabled={!ack} onClick={onDone}>{t.security.done}</Button>
+    </section>
+  );
+}

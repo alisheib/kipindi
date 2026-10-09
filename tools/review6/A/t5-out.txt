@@ -1,0 +1,20 @@
+== src/components/journey/tickets/tickets-view.tsx
+   52 export function TicketsView({ rows, positions, markets, prices, lens, page, serverNow, locale, t, breakBody = null }: {
+   66 breakBody?: KeptBody | null;
+   88 const breakNow = firstTicket && !!breakBody;
+   89 const emptyBody = breakNow && breakBody ? breakBody
+  106 action={breakNow ? null : firstTicket ? (
+  109 <Link href={"/" as never} className="btn btn-primary btn-md">{t.journey.ticketsBrowse}</Link>
+== src/app/updown/history/page.tsx
+   23 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+   24 import { TicketsHead } from "@/components/journey/tickets/ticket-switch";
+   92 const { journey } = await resolveSimpleJourney();
+  303 {journey ? <TicketsHead current="updown" t={t} /> : <BackLink fallbackHref="/updown" label={t.market.udBackToBoard} />}
+  386 body={cause === "no-rows" ? t.market.udNoHistoryBody : t.market.udHistoryBody}
+  389 <Link href="/updown" className="btn btn-primary btn-md">{t.market.udTitle}</Link>
+dict  1080 udNoHistoryBody: "Back a round on the board and it appears here.",
+dict  2968 ticketsBrowse: "See questions",
+dict  3883 udNoHistoryBody: "Weka dau kwenye ubao na litaonekana hapa.",
+dict  5350 ticketsBrowse: "Tazama maswali",
+dict  6235 udNoHistoryBody: "在版面上参与一回合，就会显示在这里。",
+dict  7695 ticketsBrowse: "查看问题",

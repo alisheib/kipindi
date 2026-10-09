@@ -1,0 +1,4 @@
+R6-A running log (fixer R6-A; worktree F:\kipindi-r6a, branch vodacom-visual-r6a @ 89893725)
+==========================================================================================
+2026-10-09 ~20:05 EAT  Read r5-common.md + r6a-brief.md + review6/A (notes-A.md, log.txt tail, t2/t4/t5 scripts+outputs).
+                       Worktree clean at 89893725. node_modules is a junction (never delete).

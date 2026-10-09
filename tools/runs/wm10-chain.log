@@ -1,0 +1,7 @@
+00:41:24 waiting for wm9-chain.done
+02:32:41 wm9-chain.done is there: exit=0
+02:32:41 queued: wait note written
+02:32:41 lock taken
+02:43:03 wm10-seal-j: exit=0 · tree same — LOCAL REHEARSAL · --journey, through a preview pass — http://localhost:3074   14 public + 10 gated routes × 7 widths × 3 locales   504 cells measured · 0 problem(s) 
+02:43:03 chain end
+02:43:03 lock released

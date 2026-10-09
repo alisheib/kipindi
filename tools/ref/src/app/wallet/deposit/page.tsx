@@ -1,0 +1,328 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { I } from "@/components/ui/glyphs";
+import { BackLink } from "@/components/ui/back-link";
+import { PageHeader } from "@/components/ui/page-header";
+import { PageHero } from "@/components/ui/page-hero";
+import { FieldLegend } from "@/components/ui/field-legend";
+import { Input } from "@/components/ui/input";
+import { CashbackPromo } from "@/components/ui/cashback-promo";
+import { bonusIsLiveFor } from "@/lib/feature-state";
+import { currentSession } from "@/lib/server/auth-service";
+import { moneyFormMsisdn, normalizeTzLocalDigits } from "@/lib/phone-normalize";
+import { DepositNumberChoice } from "@/components/wallet/deposit-number-choice";
+import { db } from "@/lib/server/store";
+import { getBonusConfig } from "@/lib/server/bonus-config";
+import { getServerT } from "@/lib/i18n-server";
+import { depositAction } from "./actions";
+import { DEPOSIT_MAX_TZS } from "@/lib/server/validators";
+import { DepositAmount } from "./deposit-amount";
+import { DepositConfirm } from "./deposit-confirm";
+import { IdempotencyKeyField } from "@/components/wallet/idempotency-key-field";
+import { ProviderRadioGrid } from "@/components/wallet/provider-radio-grid";
+import { CardBillingFields } from "@/components/wallet/card-billing-fields";
+import { Callout } from "@/components/ui/callout";
+import { getPayoutStatus } from "@/lib/server/payout-status";
+import { PayoutStatusNotice } from "@/components/wallet/payout-status-notice";
+import { PageContainer } from "@/components/layout/page-container";
+import { DEPOSIT_QUICK_AMOUNTS } from "@/lib/journey/shortfall";
+import { isLockedOut } from "@/lib/server/responsible-gambling";
+import { fill } from "@/lib/utils";
+import { formatEatDateTime } from "@/lib/eat-day";
+import { readFlash } from "@/lib/server/flash-message";
+import { pathWithQuery } from "@/lib/safe-next";
+
+// Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
+// "Deposit", which a Swahili player saw in their browser tab and history.
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.common.deposit };
+}
+
+const ADMIN_TEST_ROLES = new Set(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+
+const PROVIDERS = [
+  { id: "MPESA",        name: "M-Pesa",        hue: 152 },
+  { id: "AIRTEL_MONEY", name: "Airtel Money",  hue: 22 },
+  { id: "HALO_PESA",    name: "HaloPesa",      hue: 80 },
+  { id: "MIXX",         name: "Mixx by Yas",   hue: 280 },
+  { id: "CARD",         name: "Card",          hue: 200 },
+] as const;
+
+// ONE ladder: the bet sheet's low-balance chips read the same amounts (Vodacom plan S3, `lib/journey/shortfall.ts`).
+const QUICK_AMOUNTS = [...DEPOSIT_QUICK_AMOUNTS];
+
+export default async function DepositPage({ searchParams }: { searchParams: Promise<{
+  error?: string; provider?: string; amount?: string; msisdn?: string; from?: string;
+  bFirst?: string; bLast?: string; bAddr?: string; bCity?: string; bRegion?: string; bPost?: string;
+}> }) {
+  const session = await currentSession();
+  // The whole address survives the sign-in — `?from=low-balance` (the funnel's source tag) and anything carried.
+  if (!session) redirect(`/auth/login?next=${encodeURIComponent(pathWithQuery("/wallet/deposit", await searchParams))}`);
+  const { t, locale } = await getServerT();
+
+  // A player about to put money IN has the most right to know we cannot get it out.
+  const payouts = await getPayoutStatus();
+
+  const sp = await searchParams;
+  // ⛔ Only a sentence the deposit action signed (`flash-message.ts`) — a hand-made `?error=` used to print
+  // whatever it said under "Deposit failed", on a money page, on the real domain (2026-10-06).
+  const errorMsg = readFlash("deposit-error", sp.error);
+  const prevProvider = sp.provider ?? "";
+  const prevAmount = sp.amount ?? "";
+  // ⭐ Jay item #8 — see the note in `moneyFormMsisdn`. Same rule, same reason: this action
+  // also omits an empty msisdn from its carry params (`deposit/actions.ts:46`).
+  const prevMsisdn = moneyFormMsisdn(session.phoneE164, sp.msisdn, errorMsg != null);
+  // Billing values round-tripped through the error redirect so a rejected card
+  // deposit never makes the player retype their address.
+  const prevBilling = {
+    firstName: sp.bFirst ?? "",
+    lastName: sp.bLast ?? "",
+    address1: sp.bAddr ?? "",
+    city: sp.bCity ?? "",
+    region: sp.bRegion ?? "",
+    postcode: sp.bPost ?? "",
+  };
+
+  // 🔴 NOT SWALLOWED (2026-10-06). A failed read throws to `wallet/error.tsx` ("your funds are safe" · Try again), the
+  // answer /wallet and /wallet/withdraw already give (B-1), rather than guessing at the account. Until 2026-10-07 this
+  // read picked the email door; it now decides only the staff test-funding bounds below. The wallet-status and break
+  // reads stay graceful.
+  const user = await db.user.findById(session.userId);
+  // ⭐ NO DOOR OF THIS SCREEN'S OWN SINCE 2026-10-07 — a deposit asks no email question and no identity question (owner
+  // rulings 2026-10-07 and 2026-09-13). A confirmed email is asked before a WITHDRAWAL, beside identity
+  // (`/wallet/withdraw`, `wallet-service.withdraw()`), so this page reads neither. From 2026-09-05 to 2026-09-13 an
+  // identity panel stood in front of the form, and from 2026-07-18 to 2026-10-07 an email door did; both are deleted,
+  // not hidden. ⛔ Do not restore either: the server asks neither question on a deposit, so a door here would be a wall
+  // the platform does not have. What remains below is the money control (a held wallet) and the player's own break.
+  // 🔴 A WALLET THAT IS NOT ACTIVE GETS NO FORM (2026-09-14) — the rule `/wallet/withdraw` already applies. A freeze
+  // (an officer's hold, a final refusal) stops deposits too, and `wallet-service.deposit()` refuses on the wallet
+  // status before anything else, so this page says so INSTEAD of the form. It is a
+  // money control, not an identity status: the notice names the freeze and the way to support, and nothing else.
+  // ⚠️ A failed read keeps today's form — the server still refuses a held wallet on submit.
+  let walletHeld = false;
+  try {
+    const w = await db.wallet.findByUserId(session.userId);
+    walletHeld = !!w && w.status !== "ACTIVE";
+  } catch { /* graceful — the server is the enforcement */ }
+  // ⭐ THE BREAK IS DRAWN BEFORE EVERY OTHER DOOR (2026-10-06). The SERVER's order is a held wallet first, then the
+  // break, then the caps (`wallet-service.deposit()`). This page draws the break first because it is the player's own
+  // decision and carries a date; a held wallet and a break both refuse, so for a player who is both only the words
+  // differ, never the outcome. Before this read existed, a player on a cooling-off break with an unconfirmed address was
+  // shown the (since deleted) email door, confirmed the address, and was then refused for the break: two contradictory
+  // stories on one screen, and a nudge to deposit during a break the player chose. The
+  // break's own sentence stands in place of the form, with its end date — and a SELF-EXCLUSION gets the
+  // exclusion's sentence, never the cooling-off one ("you can still sign in … does not stop withdrawals").
+  // ⚠️ A failed read keeps the page as it was — the server still refuses a deposit during a break.
+  let breakUntil: string | null = null;
+  let breakIsExclusion = false;
+  try {
+    const lock = await isLockedOut(session.userId);
+    if (lock.locked && lock.until) { breakUntil = lock.until; breakIsExclusion = lock.reason === "self_exclusion"; }
+  } catch { /* graceful — the server is the enforcement */ }
+  // ⭐ THE ONE ANSWER for everything on this page that would invite money in: the cash back promo, the trust strip, and
+  // which payout notice is drawn (a paused wallet is never told "you can still add funds" under "Deposits paused").
+  const moneyInPaused = !!breakUntil || walletHeld;
+  const adminTest = !!user && ADMIN_TEST_ROLES.has(user.role) && process.env.NODE_ENV !== "production" && process.env.ADMIN_TEST_DEPOSITS !== "false";
+  const maxAmount = adminTest ? 1_000_000_000 : DEPOSIT_MAX_TZS;
+  const quickAmounts = adminTest ? [100_000, 1_000_000, 5_000_000, 20_000_000, 100_000_000] : QUICK_AMOUNTS;
+  const bonusCfg = getBonusConfig();
+  /* ⛔ PRODUCT STATE SITS ABOVE OPERATOR CONFIG, AND BOTH DISPLAY SURFACES MUST SAY SO.
+     `/wallet` already gated this on `bonusIsLiveFor()`; this page did not. So an operator
+     flipping `cashbackEnabled` back on at /admin/config would have resurrected the promo
+     HERE while /wallet stayed silent — the withdrawn programme advertising itself on one of
+     its two surfaces, which is exactly the "half-on" failure the one-seam rule exists to
+     prevent. `feature-state.ts` is explicit: an operator cannot switch a withdrawn feature
+     back on by editing a row. */
+  const showCashback = bonusIsLiveFor() && bonusCfg.enabled && bonusCfg.cashbackEnabled && bonusCfg.cashbackPercentage > 0;
+
+  return (
+    <PageContainer tier="form" className="space-y-5">
+      <BackLink fallbackHref="/wallet" label={t.wallet.title} />
+
+      {/* ⛔ NO GOLD ON THE DEPOSIT SCREEN (§M3a D1, 2026-10-07): moving your own money into your own wallet earns nothing,
+          and the receipt and the card-return page of this same deposit are plain — the flow no longer goes gold, then plain. */}
+      <PageHero>
+        <PageHeader
+          icon={<I.arrowDownToLine s={14} className="text-text-subtle" />}
+          eyebrow={t.common.addFunds}
+          title={t.common.deposit}
+          subtitle={t.wallet.mobileMoney}
+        />
+      </PageHero>
+
+      {errorMsg && (
+        <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-danger-border bg-danger-bg px-4 py-3">
+          <I.alertCircle s={16} />
+          <div className="text-body-sm leading-snug">
+            <p className="font-display font-semibold text-text">{t.wallet.depositFailed}</p>
+            <p className="mt-0.5 text-text-muted">{errorMsg}</p>
+          </div>
+        </div>
+      )}
+
+      {/* 🔴 Deliberately ABOVE the cashback promo. If we cannot pay withdrawals, a player has to
+          learn that BEFORE we offer them a bonus for putting money in — showing the incentive
+          first and the limitation later is the shape of a scam, whatever the intent.
+          ⭐ The DEPOSIT variant says "you can still add funds" (2026-10-06): true only when money in is open. During a
+          break or over a hold the page says "Deposits paused", so it draws the withdraw variant's sentence instead. */}
+      <PayoutStatusNotice
+        status={payouts.status}
+        variant={moneyInPaused ? "withdraw" : "deposit"}
+        note={payouts.note}
+        labels={{
+          delayedTitle: t.wallet.payoutsDelayedTitle,
+          delayedBody: t.wallet.payoutsDelayedBody,
+          unavailableTitle: t.wallet.payoutsUnavailableTitle,
+          unavailableBody: t.wallet.payoutsUnavailableBody,
+          depositWarning: t.wallet.payoutsUnavailableDepositWarning,
+        }}
+      />
+
+      {/* …and never an incentive to a player on a break, or to a held wallet (2026-10-06). */}
+      {showCashback && !moneyInPaused && <CashbackPromo percent={bonusCfg.cashbackPercentage} mode={bonusCfg.cashbackMode} compact cta={false} />}
+
+      {/* ── NO DOOR, ONLY THE TWO THINGS THAT REALLY STOP MONEY IN ──────────────
+          The ladder is: register → deposit and play → verify identity + confirm email → withdraw
+          (owner rulings 2026-09-13 and 2026-10-07). On THIS screen nothing is asked of the player
+          before the form; the server enforces the held wallet, the break and the caps either way
+          (`wallet-service.deposit()` asks held wallet → RG lockout → caps + SOF).
+          ⛔ The identity panel that stood here from 2026-09-05 to 2026-09-13, and the email door that
+          stood here from 2026-07-18 to 2026-10-07, are deleted with the deposit gates they mirrored.
+          Do not restore either by reading an older ruling. */}
+      {/* 🔴 A HELD WALLET GETS NO FORM (2026-09-14).
+          ⛔ Not `KycGatePanel` — the deposit screen draws no identity panel (`test:kyc-at-withdrawal` B1.1).
+          ⭐ AND A BREAK IS DRAWN BEFORE BOTH (2026-10-06) — the player's own decision, with a date (the server refuses the
+          held wallet first; both refuse). Its sentence is the RG page's: `rg.breakActive` for a cooling-off (the end date,
+          that it cannot be shortened, that withdrawals are not stopped), `rg.exclusionActive` for a self-exclusion, which
+          promises neither sign-in nor withdrawals. The date carries its time, as the server's refusal does, in the reader's
+          month words on the East Africa clock (`formatEatDateTime`, §L4; `formatDateTime` printed English months). No button:
+          there is nothing to do here until the date, and nothing on this page may invite a deposit before it. */}
+      {breakUntil ? (
+        <div data-testid="deposit-break">
+          <Callout tone="warning" layout="stack" glyph="lock" role="status" titleAs="h2" title={t.wallet.depositPausedTitle}>
+            <p className="text-balance break-keep [overflow-wrap:anywhere]">{fill(breakIsExclusion ? t.rg.exclusionActive : t.rg.breakActive, { date: formatEatDateTime(Date.parse(breakUntil), Date.now(), t.common.monthsShort, locale) })}</p>
+          </Callout>
+        </div>
+      ) : walletHeld ? (
+        <div data-testid="deposit-paused">
+          <Callout
+            tone="warning"
+            layout="stack"
+            glyph="lock"
+            role="status"
+            titleAs="h2"
+            title={t.wallet.depositPausedTitle}
+            action={
+              // The same door as the withdraw panel's frozen state (`kyc-gate-panel.tsx`: support → /help).
+              <Link href="/help" className="btn btn-primary btn-md btn-pill inline-flex items-center gap-1.5">
+                <I.mail s={14} />
+                {t.kycGate.frozenCta}
+              </Link>
+            }
+          >
+            <p className="text-balance break-keep [overflow-wrap:anywhere]">{t.wallet.depositPausedBody}</p>
+          </Callout>
+        </div>
+      ) : (
+      <form action={depositAction} className="group/deposit rounded-xl glass-panel p-5 lg:p-6 space-y-5">
+        {/* 🔴 ONE KEY PER ATTEMPT, AND A REFUSAL ENDS THE ATTEMPT (2026-10-06). A refused or failed attempt is a finished
+            intent. The key lives in a ref, and Next keeps this page mounted across its own `?error=` redirect (the
+            router's state key ignores the query), so a retry re-sent the SAME key — and a used key replays its row: a
+            synchronous FAILED came back as ok and no new attempt was made. Keyed on the signed refusal, each refusal is
+            a new key; a double tap or a lost response on the SAME screen still dedupes. */}
+        <IdempotencyKeyField key={sp.error ?? ""} />
+        {/* The journey funnel (Vodacom plan S3b): a deposit started from a not-enough-money state says so. */}
+        {sp.from === "low-balance" && <input type="hidden" name="origin" value="low_balance" />}
+        <fieldset>
+          <FieldLegend as="legend" className="mb-2">
+            {t.wallet.choosePaymentMethod}
+          </FieldLegend>
+          {/* Brand names stay literal; "Card" is a word, so it comes from the dictionary (id unchanged). */}
+          <ProviderRadioGrid
+            providers={PROVIDERS.map((p) => (p.id === "CARD" ? { ...p, name: t.wallet.methodCard } : p))}
+            defaultProvider={prevProvider}
+            unavailableLabel={t.common.temporarilyUnavailable}
+          />
+        </fieldset>
+
+        <DepositAmount max={maxAmount} quickAmounts={quickAmounts} adminTest={adminTest} defaultValue={prevAmount} />
+
+        {/* Handset number — mobile-money rails only. Hidden (not unmounted) for
+            CARD, where the buyer enters their details on Selcom's page instead
+            and there is no USSD prompt to push anywhere. No html `required`: it
+            would block submit while hidden. depositAction enforces it. */}
+        <div className="group-has-[#provider-CARD:checked]/deposit:hidden">
+          <FieldLegend as="label" htmlFor="msisdn" className="block mb-2">
+            {t.wallet.mobileMoneyNumber}
+          </FieldLegend>
+          <Input
+            id="msisdn"
+            name="msisdn"
+            type="tel"
+            inputMode="numeric"
+            pattern="\d{9}"
+            maxLength={9}
+            placeholder="712 345 678"
+            prefix="+255"
+            mono
+            defaultValue={prevMsisdn}
+          />
+          <p className="mt-1.5 text-body-sm text-text-subtle text-balance">{t.wallet.mobileMoneyNumberHint}</p>
+          {/* 🔴 `E-215`'s OTHER HALF. Withdrawal states its destination and refuses any
+              other; deposit OFFERS one, because money arriving from a friend's handset is
+              ordinary and blocking it would break real top-ups. The prefill alone was not
+              enough: a box that already holds your own number reads as settled rather than
+              editable, so the player who needs a different number never thinks to try. */}
+          <DepositNumberChoice
+            registered={normalizeTzLocalDigits(session.phoneE164)}
+            current={prevMsisdn}
+            copy={{ useAnother: t.wallet.useAnotherNumber, useMine: t.wallet.useMyNumber }}
+          />
+        </div>
+
+        {/* Billing details — CARD only. Selcom rejects card orders without them. */}
+        <CardBillingFields
+          copy={{
+            legend: t.wallet.billingLegend,
+            why: t.wallet.billingWhy,
+            firstName: t.wallet.billingFirstName,
+            lastName: t.wallet.billingLastName,
+            address: t.wallet.billingAddress,
+            city: t.wallet.billingCity,
+            region: t.wallet.billingRegion,
+            postcode: t.wallet.billingPostcode,
+          }}
+          defaults={prevBilling}
+        />
+
+        {/* Deposit confirms before dispatch (audit M9), matching bet + withdraw.
+            Money-in → gold trigger (micro-spec §1). */}
+        <DepositConfirm />
+      </form>
+      )}
+
+      {/* Trust strip — the regulator seal is a licensed asset (⊘ pending, Ali);
+          this slot is a deliberately-labeled placeholder, never a fabricated mark. */}
+      {/* 2026-09-14 — how a deposit is credited means nothing to a wallet that cannot take one: pass 2 of the visual
+          audit found it under the "Deposits paused" notice. The same holds during a break (2026-10-06): `moneyInPaused`. */}
+      {!moneyInPaused && (
+      <div className="flex items-center gap-3 rounded-xl border border-border bg-bg-elevated/60 px-4 py-3">
+        <span
+          aria-hidden
+          /* ⚠️ LITERAL, not `h-10 w-10` — `theme.extend.spacing` is overridden
+             (tailwind.config.ts:200-215), so `h-10` renders 80px and made this
+             empty placeholder the loudest object on the deposit screen. */
+          className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center border border-dashed border-border text-text-subtle"
+          style={{ borderRadius: "var(--r-md)" }}
+        >
+          <I.shieldcheck s={18} />
+        </span>
+        <p className="text-body-sm text-text-subtle leading-relaxed">
+          {t.wallet.securedDepositBody}
+        </p>
+      </div>
+      )}
+    </PageContainer>
+  );
+}

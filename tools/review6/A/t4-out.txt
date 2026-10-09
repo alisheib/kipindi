@@ -1,0 +1,32 @@
+== markets/[id]/page.tsx
+  238 const myPositions = session ? (await listPositionsForUser(session.userId)).filter((p) => p.marketId === m!.id) : [];
+  244 const breakEnd = session
+  249 const breakDate = breakEnd ? formatBreakEnd(Date.parse(breakEnd.until), Date.now(), t.common.monthsShort, locale) : null;
+  334 const bettingOpen = !isResolved && m.status === "LIVE" && !closedByTime && !selectionClosed;
+  690 {bettingOpen ? (
+  691 session ? (
+  741 <SidePicker
+  966 {myPositions.length === 0 && (breakEnd && breakDate ? (
+  968 {keepText(fill(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, { date: breakDate }), [breakDate])}
+ 1177 {!breakEnd && <p className="mb-4 text-body-sm text-text-muted">{t.market.similarMarketsBody}</p>}
+
+== bet surfaces: lines that consult a break / exclusion (none = offered during a break)
+  src/components/markets/side-picker.tsx: NONE
+  src/components/markets/conviction-dial.tsx: NONE
+  src/components/markets/bet-confirm-modal.tsx: NONE
+  src/components/markets/market-card.tsx: NONE
+  src/components/home/landing-hero.tsx: 94,424,425,429,442,473,475,476
+       94 breakEnd?: { exclusion: boolean; date: string } | null;
+       424 const breakEnd = mine?.breakEnd ?? null;
+       425 const onBreak = !!breakEnd;
+       429 const emptyWallet = !held && !onBreak && balance !== null && balance <= 0;
+       442 held || emptyWallet || onBreak ? null : <p className="kp-mine__lead">{t.home.picksNone}</p>
+       473 ) : breakEnd ? (
+       475 <p className="kp-mine__held-t">{breakEnd.exclusion ? t.auth.selfExclusionActive : t.auth.coolingOff}</p>
+       476 <p className="kp-mine__held-b">{keepText(fill(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, { date: brea
+  src/app/updown/page.tsx: NONE
+  src/app/updown/[roundId]/page.tsx: NONE
+  src/components/updown/updown-card.tsx: NONE
+  src/components/updown/round-stake-panel.tsx: NONE
+  src/components/updown/updown-stake-controls.tsx: NONE
+  src/components/updown/use-quick-bet.ts: NONE

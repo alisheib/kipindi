@@ -1,0 +1,7 @@
+16:13:19 waiting for wj-chain.done
+16:19:50 wj-chain.done is there: exit=0
+16:19:50 queued: wait note written
+16:19:50 lock taken
+16:22:10 prod qa:live exit=0 — .env.qa.local removed qa:live exit=0 ✅ ALL PASS — 343 passed, 0 failed 
+16:22:10 chain end
+16:22:10 lock released

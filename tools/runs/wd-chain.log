@@ -1,0 +1,12 @@
+16:49:19 waiting for wc-chain.done
+12:35:37 wc-chain.done is there: exit=0
+12:35:37 queued: wait note written
+12:35:37 lock taken
+12:35:38 AFTER 4c1a8dff in kipindi-a8j
+12:41:45 wd-seal: exit=0 · tree same — LOCAL REHEARSAL — http://localhost:3073   13 public + 10 gated routes × 4 widths × 3 locales   276 cells measured · 0 problem(s) 
+12:52:20 wd-seal-j: exit=0 · tree same — LOCAL REHEARSAL · --journey, through a preview pass — http://localhost:3073   14 public + 10 gated routes × 7 widths × 3 locales   504 cells measured · 0 problem(s) 
+12:55:52 wd-live: exit=0 · tree same —   ✓ no-side detail shows pick-side gate, not a dial   ✓ authed flow no console errors ✅ ALL PASS — 334 passed, 0 failed 
+13:02:33 wd-g1: exit=3 · tree same — 
+13:03:47 wd-g1-red: exit=0 · tree same —     13538  ← rowLanded     13549  /account · a signed-in journey shell · dot 8, row 8 RED · journey-unread-handover — A's count (6) drawn on the Akaunti dot while B's first answer was held: CAUGHT by 3.held, and by nothing else 
+13:03:47 chain end
+13:03:47 lock released

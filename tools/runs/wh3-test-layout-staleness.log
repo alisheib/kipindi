@@ -1,0 +1,90 @@
+
+E-70 · no layout-computed value may go stale across a soft navigation
+
+§1 · the population — every layout under src/app, walked, never listed
+  ok   1.0 44 console section layouts are EXACTLY the gate wrapper (they decide nothing else)
+  ok   1.0b · CONTROL · every computed prop spelling is REFUSED by 1.0's shape, and a plain literal is accepted — so the shape rejects what it is for
+  ok   1.1 ⛔ RATCHET · 4 layouts under src/app, and the reviewed count is 4
+  ok   1.2 ⭐ POSITIVE CONTROL · the walker really found the root layout and the three nested ones
+
+§2 · a layout may not answer "where am I?" from the x-pathname header
+  ok   1.3 ⭐ POSITIVE CONTROL · the rendered population reaches app-shell.tsx and the section gate
+  ok   2.1 ⛔ RATCHET · src/app/admin/layout.tsx reads x-pathname and is REVIEWED with a written reason
+  ok   2.1 src/app/auth/layout.tsx does not read the x-pathname header at all
+  ok   2.1 src/app/layout.tsx does not read the x-pathname header at all
+  ok   2.1 src/app/legal/layout.tsx does not read the x-pathname header at all
+  ok   2.1 src/app/legal/legal-nav.tsx does not read the x-pathname header at all
+  ok   2.1 src/components/admin/admin-nav-groups.ts does not read the x-pathname header at all
+  ok   2.1 ⛔ RATCHET · src/components/admin/admin-section-gate.tsx reads x-pathname and is REVIEWED with a written reason
+  ok   2.1 src/components/admin/admin-shell.tsx does not read the x-pathname header at all
+  ok   2.1 src/components/analytics/google-tag.tsx does not read the x-pathname header at all
+  ok   2.1 src/components/analytics/site-visit-beacon.tsx does not read the x-pathname header at all
+  ok   2.1 src/components/brand.tsx does not read the x-pathname header at all
+  ok   2.1 ⛔ RATCHET · src/components/layout/app-shell.tsx reads x-pathname and is REVIEWED with a written reason
+  ok   2.1 src/components/layout/dom-translation-guard.tsx does not read the x-pathname header at all
+  ok   2.1 src/components/layout/lazy-overlays.tsx does not read the x-pathname header at all
+  ok   2.1 src/components/theme-provider.tsx does not read the x-pathname header at all
+  ok   2.1 src/components/ui/glyphs.tsx does not read the x-pathname header at all
+  ok   2.1 src/components/ui/scroll-restore.tsx does not read the x-pathname header at all
+  ok   2.1 src/lib/app-url.ts does not read the x-pathname header at all
+  ok   2.1 src/lib/card-spacing.ts does not read the x-pathname header at all
+  ok   2.1 src/lib/i18n-dict.ts does not read the x-pathname header at all
+  ok   2.1 src/lib/i18n-server.ts does not read the x-pathname header at all
+  ok   2.1 src/lib/i18n.tsx does not read the x-pathname header at all
+  ok   2.1 src/lib/server/ai-controls.ts does not read the x-pathname header at all
+  ok   2.1 src/lib/server/auth-service.ts does not read the x-pathname header at all
+  ok   2.1 src/lib/server/crypto.ts does not read the x-pathname header at all
+  ok   2.1 src/lib/server/rbac.ts does not read the x-pathname header at all
+  ok   2.1 src/lib/server/roles.ts does not read the x-pathname header at all
+  ok   2.1 src/lib/server/store.ts does not read the x-pathname header at all
+  ok   2.1 src/lib/server/support-config.ts does not read the x-pathname header at all
+  ok   2.1 src/lib/server/totp-cookie.ts does not read the x-pathname header at all
+  ok   2.1 src/lib/server/totp.ts does not read the x-pathname header at all
+  ok   2.1 src/lib/support-config.ts does not read the x-pathname header at all
+  ok   2.2 ⭐ POSITIVE CONTROL · the READS_PATHNAME pattern can still match real source
+  ok   2.3 …and the reviewed list may only SHRINK — every entry still exists on disk
+  ok   2.4 src/app/admin/layout.tsx does not render a <Link> carrying a server-decided aria-current
+  ok   2.4 src/app/auth/layout.tsx does not render a <Link> carrying a server-decided aria-current
+  ok   2.4 src/app/layout.tsx does not render a <Link> carrying a server-decided aria-current
+  ok   2.4 src/app/legal/layout.tsx does not render a <Link> carrying a server-decided aria-current
+
+§3 · the current route is answered by the client, where it is knowable
+  ok   3.1 the legal nav Ali reported is a client component that reads usePathname()
+  ok   3.1b the legal nav Ali reported — the pathname is what DECIDES its rendered value, not just something it asks for
+  ok   3.1 the admin sidebar (already correct before this work) is a client component that reads usePathname()
+  ok   3.1b the admin sidebar (already correct before this work) — the pathname is what DECIDES its rendered value, not just something it asks for
+  ok   3.1 the admin breadcrumb trail is a client component that reads usePathname()
+  ok   3.1b the admin breadcrumb trail — the pathname is what DECIDES its rendered value, not just something it asks for
+  ok   3.1 the admin mobile drawer is a client component that reads usePathname()
+  ok   3.1b the admin mobile drawer — the pathname is what DECIDES its rendered value, not just something it asks for
+  ok   3.1 the journey tab rail is a client component that reads usePathname()
+  ok   3.1b the journey tab rail — the pathname is what DECIDES its rendered value, not just something it asks for
+  ok   3.1 the journey header's destinations is a client component that reads usePathname()
+  ok   3.1b the journey header's destinations — the pathname is what DECIDES its rendered value, not just something it asks for
+  ok   3.2 legal/layout.tsx hands the nav server-resolved LABELS and no route decision
+  ok   3.3 admin-shell renders <AdminCrumbs fallback=…> rather than building the trail itself
+  ok   3.4 …and the mobile drawer is handed a fallbackKey, not an activeKey
+  ok   3.5 the admin sidebar announces the current page with aria-current, not with colour alone
+  ok   3.5 the admin mobile drawer announces the current page with aria-current, not with colour alone
+  ok   3.5 the legal nav announces the current page with aria-current, not with colour alone
+
+§4 · the bounce off login/register runs in the PAGES, which do re-execute
+  ok   4.1 auth/layout.tsx no longer gates anything on a request header
+  ok   4.2 src/app/auth/login/page.tsx CALLS bounceIfAuthed()
+  ok   4.2 src/app/auth/register/page.tsx CALLS bounceIfAuthed()
+  ok   4.3 ⛔ the bounce resolves the session (not just the cookie's signature) — the property that keeps B-13's revoked-device flow from looping for ever
+
+§5 · the top-bar balance has a live feed, and something actually feeds it
+  ok   5.1 the pill subscribes to the balance event
+  ok   5.1b exactly ONE balance listener in the pill's file — the captioned balance is fed the figure, it does not subscribe
+  ok   5.2 the SSE hook bridges wallet:balance onto that window event
+  ok   5.3 /api/events forwards wallet:balance — it is in ALL_EVENTS
+  ok   5.3b …and it is USER-SCOPED, so one player's balance can never reach another's stream
+  ok   5.4 the bus types it and accepts it off the Redis wire
+  ok   5.5 market-service defines the publisher
+  ok   5.6 ⭐ POSITIVE CONTROL · the walker found real money paths (an empty set would pass 5.7 vacuously)
+  ok   5.7 ⛔ RATCHET · every function that moves Wallet.balance also publishes it
+  ok   5.8 wallet-service still emits the same event on the deposit / withdrawal / adjustment paths
+
+layout-staleness: 75 passed, 0 failed
+layout-staleness: OK — every current-page decision is made where the route is known, and the balance chain is whole end to end

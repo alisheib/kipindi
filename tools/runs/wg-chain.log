@@ -1,0 +1,26 @@
+13:05:36 waiting for wd-chain.done
+13:05:36 wd-chain.done is there: exit=0
+13:05:36 queued: wait note written
+13:05:36 waiting (owner: marketing-s14 engine-heavy since 2026-10-08T12:51:37Z pid 307303; queue: asheib-c5 vodacom: wg-chain queued since 2026-10-08T13:05:36Z)
+13:10:40 waiting (owner: marketing-s14 engine-heavy since 2026-10-08T12:51:37Z pid 307303; queue: asheib-c5 vodacom: wg-chain queued since 2026-10-08T13:05:36Z)
+13:15:43 waiting (owner: marketing-s14 engine-heavy since 2026-10-08T12:51:37Z pid 307303; queue: asheib-c5 vodacom: wg-chain queued since 2026-10-08T13:05:36Z)
+13:20:46 waiting (owner: marketing-s14 engine-heavy since 2026-10-08T12:51:37Z pid 307303; queue: asheib-c5 vodacom: wg-chain queued since 2026-10-08T13:05:36Z)
+13:25:49 waiting (owner: marketing-s14 engine-heavy since 2026-10-08T12:51:37Z pid 307303; queue: asheib-c5 vodacom: wg-chain queued since 2026-10-08T13:05:36Z)
+13:30:53 waiting (owner: marketing-s14 engine-heavy since 2026-10-08T12:51:37Z pid 307303; queue: asheib-c5 vodacom: wg-chain queued since 2026-10-08T13:05:36Z)
+13:35:56 waiting (owner: marketing-s14 engine-heavy since 2026-10-08T12:51:37Z pid 307303; queue: asheib-c5 vodacom: wg-chain queued since 2026-10-08T13:05:36Z)
+13:41:01 waiting (owner: marketing-s14 engine-heavy since 2026-10-08T12:51:37Z pid 307303; queue: asheib-c5 vodacom: wg-chain queued since 2026-10-08T13:05:36Z)
+13:46:05 waiting (owner: marketing-s14 engine-heavy since 2026-10-08T12:51:37Z pid 307303; queue: asheib-c5 vodacom: wg-chain queued since 2026-10-08T13:05:36Z)
+13:51:09 waiting (owner: marketing-s14 engine-heavy since 2026-10-08T12:51:37Z pid 307303; queue: asheib-c5 vodacom: wg-chain queued since 2026-10-08T13:05:36Z)
+13:51:24 lock taken
+13:51:30 kipindi-a8i2-ctl at 75487060 (the control: main without the fix)
+13:54:40 wg-ctl: exit=0 · tree same — sw@1280 · HTTP 200 · hydration errors 1 · box in server HTML true · server hint "" · browser hint "Chini 5 · Juu 120"     Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed  CONTROL HOLDS — without the fix the probe sees the hydration error and a server HTML with no bounds (4/4 loads) 
+13:54:40 kipindi-a8i2-ctl at 2b98b99e (the fix)
+13:55:23 wg-fix: exit=0 · tree same — sw@390 · HTTP 200 · hydration errors 0 · box in server HTML true · server hint "Chini 5 · Juu 120" · browser hint "Chini 5 · Juu 120" sw@1280 · HTTP 200 · hydration errors 0 · box in server HTML true · server hint "Chini 5 · Juu 120" · browser hint "Chini 5 · Juu 120" PASS — 4/4 loads: no hydration error, and the server's HTML states the bounds the browser shows 
+13:59:21 wg-tabs: exit=3 · tree same —   · React’s DEV-only measure error, listed and never failed (a production build has no such measure): 0 qa:journey-shell — 271 passed · 0 failed · 3 blocked · 54 tiles in C:\Users\asheib\AppData\Local\Temp\claude\C--Users-asheib\0e745525-51fe-4451-ace7-c9987576fc15\scratchpad\hyd\tabs · 3.4 min Green is not a read: open every tile, one by one, in the order of its number. 
+14:00:39 wg-preview: exit=0 · tree same — §6 · no page error anywhere   PASS 6.1 no page errors or console errors in any context 33/33 passed — tiles in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/hyd/preview 
+14:02:18 wg-diag: exit=0 · tree same — §6 · no page error anywhere   PASS 6.1 no page errors or console errors in any context 33/33 passed — tiles in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/hyd/preview-diag 
+14:02:19 kipindi-a8j at 4c1a8dff for the two WP12 reruns
+14:05:05 wg-g1: exit=0 · tree same —     13257  ← rowLanded     13263  /account · a signed-in journey shell · dot 8, row 8 14/14 passed — qa:journey-unread-handover 
+14:05:59 wg-footer-j-red: exit=1 · tree same —   ✗ en@768 · "WhatsApp channel" is tappable — covered by nav (fixed)   ✗ sw@768 · "Chaneli ya WhatsApp" is tappable — covered by nav (fixed) [footer-reachable] 103 passed, 5 failed 
+14:05:59 chain end
+14:05:59 lock released

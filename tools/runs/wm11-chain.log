@@ -1,0 +1,8 @@
+00:46:19 waiting for wm10-chain.done
+02:43:28 wm10-chain.done is there: exit=0
+02:43:29 queued: wait note written
+02:43:29 lock taken
+03:09:40 wm11-bar: exit=1 · tree same —   ✗ /watchlist zh 1280: NO [data-filter-rail]   ✗ /fairness zh 1280: NO [data-filter-rail]   ✗ /positions/performance zh 1280: NO [data-filter-rail] 
+03:10:39 wm11-red-bar: exit=1 · tree same — > node scripts/red-bar-geometry.mjs http://localhost:3074 REFUSING: qa:bar-geometry is already RED on /proposals (untouched tree) — fix that first, or a mutation there cannot be shown to cause anything.   ✗ /proposals sw 1280: NO [data-filter-rail] 
+03:10:39 chain end
+03:10:39 lock released

@@ -1,0 +1,582 @@
+diff --git a/src/app/page.tsx b/src/app/page.tsx
+index a05f9d8aa..2e48fe1e0 100644
+--- a/src/app/page.tsx
++++ b/src/app/page.tsx
+@@ -9,7 +9,7 @@ import { listSources, sourceNameFor, type TrustedSource } from "@/lib/server/sou
+ 
+ import { getCardCharts } from "@/lib/server/market-history";
+ import { getSession } from "@/lib/server/session";
+-import { getPlatformStats } from "@/lib/server/platform-stats";
++import { getPlatformStats, readPaidOutTzs } from "@/lib/server/platform-stats";
+ import { LandingHero, LandingProof, QuestionBoard } from "@/components/home/landing-hero";
+ import { HowItWorks } from "@/components/home/how-it-works";
+ import { TopicTiles } from "@/components/home/topic-tiles";
+@@ -23,10 +23,13 @@ import { shownYesPct } from "@/lib/markets/price-state";
+ import { BOARD_LENSES, heroFigures, type BoardLens, type HeroRow } from "@/lib/markets/hero";
+ import { landingComposition } from "@/lib/markets/landing";
+ import { getServerT } from "@/lib/i18n-server";
++import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+ import { getGlobalConfig } from "@/lib/server/market-config";
+ import { ratesFrom } from "@/app/legal/rules/_shared";
+-import { landingPicks } from "@/lib/server/landing-picks";
++import { landingPicks, paidOutBehind } from "@/lib/server/landing-picks";
+ import { db } from "@/lib/server/store";
++import { isLockedOut } from "@/lib/server/responsible-gambling";
++import { breakStateOf, formatBreakEnd } from "@/lib/break-end";
+ import { getKillSwitches } from "@/lib/server/payment-ops";
+ import { heroRailNames, heroRails } from "@/lib/server/payout-rails";
+ import type { LandingMine } from "@/components/home/landing-hero";
+@@ -44,16 +47,25 @@ export const dynamic = "force-dynamic";
+  * `metadataBase` in the layout resolves these to the absolute site URL, which is why they are
+  * written relative and there is no second copy of the base URL here to drift.
+  */
+-export const metadata: Metadata = {
+-  alternates: { canonical: "/" },
+-  // ⛔ SPREAD, NEVER REPLACE. `openGraph: { url: "/" }` on its own wiped og:image, og:locale,
+-  // og:site_name and og:type from this page — Next merges metadata per FIELD, so a partial
+-  // openGraph object replaces the layout’s entire one. Measured 0 of each on "/" against 6 on
+-  // /markets, on the same deploy.
+-  // ⚠️ `url` is KEPT rather than dropped: nothing here isolates whether Next synthesises og:url
+-  // from `alternates.canonical`, and dropping it would risk re-deleting the tag this replaces.
+-  openGraph: { ...ROOT_OPEN_GRAPH, url: "/" },
+-};
++export async function generateMetadata(): Promise<Metadata> {
++  const { t } = await getServerT();
++  return {
++    // ⭐ THE TAB SPEAKS THE READER'S LANGUAGE (round 4 of the visual pass, 2026-10-09, edges E5): the home's title was the
++    // layout's English default, "50pick — Predict events. Not chance.", in Swahili and Chinese too (38 sw and 37 zh tiles),
++    // while every other page names itself in the reader's words. The same composition, its line from the dictionary's own
++    // tagline (`auth.railTagline`: "Tabiri matukio. Si bahati." · "预测事件，而非运气。"); `absolute`, because the
++    // layout's template would add " · 50pick" to a title that already opens with the name. No new words.
++    title: { absolute: `50pick — ${t.auth.railTagline}` },
++    alternates: { canonical: "/" },
++    // ⛔ SPREAD, NEVER REPLACE. `openGraph: { url: "/" }` on its own wiped og:image, og:locale,
++    // og:site_name and og:type from this page — Next merges metadata per FIELD, so a partial
++    // openGraph object replaces the layout’s entire one. Measured 0 of each on "/" against 6 on
++    // /markets, on the same deploy.
++    // ⚠️ `url` is KEPT rather than dropped: nothing here isolates whether Next synthesises og:url
++    // from `alternates.canonical`, and dropping it would risk re-deleting the tag this replaces.
++    openGraph: { ...ROOT_OPEN_GRAPH, url: "/" },
++  };
++}
+ 
+ /**
+  * THE LANDING PAGE — round-2 kit README §1 / SPEC §1 + §3, applied in batch 3.
+@@ -235,19 +247,38 @@ export default async function LandingPage({ searchParams }: {
+   ]);
+   const udRound = udDetail ? toUpdownBandRound(udDetail, locale) : null;
+   const isAuthed = !!session;
++  // The signed-in block names /positions by the journey tab's own key for a journey reader (round 4, edges E4). The one
++  // cached resolver every journey page asks; a visitor's block has no such link, so a visitor is never asked about.
++  const journey = isAuthed && (await resolveSimpleJourney()).journey;
+   // ⭐ WP14 part 2 · the signed-in hero's own reads, in parallel. Each fails to NULL on its own, and a
+   // null part renders nothing (B-1: a failed read is not a zero). The wallet row is the same one the
+   // header reads (app-shell), so the hero's balance and the chip cannot disagree.
++  // ⭐ R4-I (2026-10-09; edges E19, tiles 013 016 019 046 049 052 079 082 085) · AND WHETHER THE READER IS ON A BREAK, in
++  // the same batch. It gates an INVITATION ("choose a side…"), so it fails OPEN: a failed read is "not on a break", the
++  // shell's `promoSuppressed` rule (feature-state.ts LAW 1), and the bet path still refuses during a break. Its end is
++  // said here, once, the way every break end is said (`formatBreakEnd`), and handed to the hero as words.
+   const mine: LandingMine | null = session
+     ? await Promise.all([
+         landingPicks(session.userId, nowMs).catch(() => null),
+         Promise.resolve().then(() => db.wallet.findByUserId(session.userId)).catch(() => undefined),
+-      ]).then(([picks, wallet]) => ({
++        Promise.resolve().then(() => isLockedOut(session.userId))
++          .then(breakStateOf)
++          .catch(() => null),
++      ]).then(([picks, wallet, breakEnd]) => ({
+         picks,
+         balance: wallet === undefined ? null : (wallet?.balance ?? 0),
+         held: !!wallet && wallet.status !== "ACTIVE",
++        breakEnd: breakEnd ? { exclusion: breakEnd.exclusion, date: formatBreakEnd(Date.parse(breakEnd.until), nowMs, t.common.monthsShort, locale) } : null,
+       }))
+     : null;
++  // ⛔ ONE SCREEN, NOT TWO TRUTHS ABOUT ONE LEDGER (round 3, 2026-10-08). The proof band's "paid out to players" is
++  // memoised for a minute; the reader's "paid to you this week" is read now. When the memo is below what this reader
++  // alone was paid, it predates their payout — read the total again, and if it is still behind, withhold the slot
++  // rather than print a figure the screen itself contradicts (`paidOutBehind`, landing-picks.ts).
++  const ownPicks = mine?.picks ?? null;
++  const paidOutTzs = paidOutBehind(stats.paidOutTzs, ownPicks)
++    ? await readPaidOutTzs().then((fresh) => (paidOutBehind(fresh, ownPicks) ? null : fresh))
++    : stats.paidOutTzs;
+ 
+   // ⚠️ `timeLeftStr` LEFT THIS FILE WITH THE GRID (WP9). It was the shared wrapper around
+   // `timeLeftLabel` for the grid cards; the featured card and the board rows each build their own
+@@ -268,12 +299,13 @@ export default async function LandingPage({ searchParams }: {
+         cards={{ charts: cardCharts, traders: traderMap }}
+         mine={mine}
+         rails={heroRailNames(railPauses)}
++        journey={journey}
+       />
+ 
+       {/* ── §1a′ THE PROOF — the three figures, the whole board's conviction, the closing-soonest
+           board. Directly under the hero since v3, so the hero's first screen is the pitch and a
+           live market (WP2 / V15). */}
+-      <LandingProof figures={figures} t={t} paidOutTzs={stats.paidOutTzs} />
++      <LandingProof figures={figures} t={t} paidOutTzs={paidOutTzs} />
+ 
+       {/* ── §1a″ THE BOARD — the landing's ONE market list (WP9 · R15). Its section header and its
+           ordering rail are `QuestionBoard`'s; the rail's two lenses are computed on the server from
+diff --git a/src/app/positions/page.tsx b/src/app/positions/page.tsx
+index d73ce66b2..d9acaa722 100644
+--- a/src/app/positions/page.tsx
++++ b/src/app/positions/page.tsx
+@@ -15,7 +15,9 @@ import { currentSession } from "@/lib/server/auth-service";
+ import { ensureAffiliateAccount, inviteViewerFor } from "@/lib/server/affiliate-service";
+ import { inviteIsLiveFor } from "@/lib/feature-state";
+ import { EmptyState } from "@/components/ui/empty-state";
++import type { EmptyStateBody } from "@/components/ui/empty-state-text";
+ import { SearchBox } from "@/components/ui/search-box";
++import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
+ import { fieldNames, matchesQuery, parseQuery, POSITION_SEARCH } from "@/lib/search";
+ import { PositionsBar, type PortfolioCounts } from "./positions-bar";
+ import {
+@@ -35,6 +37,8 @@ import { pickLocalized } from "@/lib/localized";
+ import { PageContainer } from "@/components/layout/page-container";
+ import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+ import { TicketsView } from "@/components/journey/tickets/tickets-view";
++import { isLockedOut } from "@/lib/server/responsible-gambling";
++import { breakSentence, breakStateOf } from "@/lib/break-end";
+ 
+ export async function generateMetadata() {
+   const { t } = await getServerT();
+@@ -258,8 +262,21 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
+      filter miss and the wrong one for a SEARCH miss — there is nothing to widen, only words to
+      change — which is exactly the "never one generic message" rule applied one level down from
+      the title. Caught by reading the rendered empty state rather than by any assertion. */
++  /* ⭐ R4-I (2026-10-09; edges E19, tiles 021–023 · 054–056 · 087–089) · DURING A BREAK THE EMPTY LIST DOES NOT SAY "BET".
++     A player with no ticket was told to pick a market and commit a prediction ("Chagua swali, bonyeza NDIO au HAPANA…" in
++     the journey, "Pick a market and drag the conviction dial…" here), with a button to the board, while betting is paused.
++     For a reader on a break the empty list says the break's own sentence with its end — the one /wallet/deposit and the
++     limits page show — and offers no way to bet. The read fails OPEN (it gates an invitation, `feature-state.ts` LAW 1):
++     a failed read keeps today's empty state, and the bet path still refuses. */
++  const breakEnd = await Promise.resolve().then(() => isLockedOut(session.userId))
++    .then(breakStateOf)
++    .catch(() => null);
++  const breakBody = breakEnd
++    ? breakSentence(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, serverNow, t.common.monthsShort, locale)
++    : null;
+   const emptyBody =
+-    cause === "no-rows" ? t.positions.noOpenBody
++    cause === "no-rows" && breakBody ? breakBody
++    : cause === "no-rows" ? t.positions.noOpenBody
+     : cause === "lens-empty" ? t.positions.emptyLensBody
+     : cause === "search-miss" ? t.positions.emptySearchBody
+     : cause === "window-miss" ? t.positions.emptyWindowBody
+@@ -283,6 +300,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
+         serverNow={serverNow}
+         locale={locale}
+         t={t}
++        breakBody={breakBody}
+       />
+     );
+   }
+@@ -330,7 +348,8 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
+             unrealised: t.positions.unrealised,
+             settledPnl: t.positions.settledPnl,
+             winRate: t.positions.winRate,
+-            ofSettled: `${settled.length} ${t.common.settled}`,
++            // The count's sentence word, not the tab label ("3 imekamilika", never "3 Imekamilika") — /results' tally rule (round 4).
++            ofSettled: `${settled.length} ${t.market.tickerSettled}`,
+           }}
+         />
+       )}
+@@ -354,11 +373,14 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
+       {positions.length > 0 && (
+         <>
+           {/* ⭐ Search sits OUTSIDE the sheet at every width — a player who can see the box knows
+-              the page is searchable. `helpFields` teaches the grammar by clickable example. */}
++              the page is searchable. `helpFields` teaches the grammar by clickable example.
++              ⭐ One band with the bar (round 4, 2026-10-09, `QUERY_SEARCH_BAND_CLASS`): the empty echo row and the page's
++              32px left 67px between the box and the lens pills; the band leaves 42, as above it and under the bar. */}
+           <SearchBox
+             placeholder={t.positions.searchPlaceholder}
+             ariaLabel={t.positions.searchPlaceholder}
+             helpFields={fieldNames(POSITION_SEARCH)}
++            className={QUERY_SEARCH_BAND_CLASS}
+           />
+           <PositionsBar state={state} counts={counts} resultCount={matched.length} t={t} />
+         </>
+@@ -369,7 +391,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
+           kind="positions"
+           title={emptyTitle}
+           body={emptyBody}
+-          browseLabel={cause === "no-rows" ? t.positions.browseMarkets : undefined}
++          browseLabel={cause === "no-rows" && !breakBody ? t.positions.browseMarkets : undefined}
+           exits={exits.map((e) => ({
+             id: e.id,
+             // ⛔ The count is REAL and cross-filtered — `portfolioExits` never offers an exit whose
+@@ -454,7 +476,9 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
+                         size={40}
+                         ariaLabel={closed ? t.positions.selectionClosed : t.positions.selectionCloses}
+                       />
+-                      <p className={`flex items-center gap-1.5 text-[11px] font-mono ${closed ? "text-gold-300" : "text-text-subtle"}`}>
++                      {/* "Selection closed" is CLOSED — royal to the player (§B11), in the dictionary's word ink (brand-300),
++                          never gold (Q5; R5-C, the second gold audit, 2026-10-09). The market page says it the same way. */}
++                      <p className={`flex items-center gap-1.5 text-[11px] font-mono ${closed ? "text-brand-300" : "text-text-subtle"}`}>
+                         <I.calendarClock s={11} />
+                         {closed
+                           ? t.positions.selectionClosed
+@@ -515,7 +539,7 @@ function Empty({
+ }: {
+   kind: "positions" | "default";
+   title: string;
+-  body?: string;
++  body?: EmptyStateBody;
+   browseLabel?: string;
+   /** ⛔ Each carries a REAL, cross-filtered count — never an exit to another empty page. */
+   exits?: Array<{ id: string; label: string; href: string }>;
+diff --git a/src/components/home/landing-hero.tsx b/src/components/home/landing-hero.tsx
+index e99976f4e..9ae8cfc9f 100644
+--- a/src/components/home/landing-hero.tsx
++++ b/src/components/home/landing-hero.tsx
+@@ -30,9 +30,11 @@
+  *
+  * ⚠️ SPACES. Every space between two elements is an explicit `{" "}` or sits inside a dict string:
+  * SWC has dropped the whitespace around JSX expressions on production before.
+- * ⚠️ `brand.tsx` is a "use client" module. `FiftyWordmark` and `FiftyMark` are rendered here as JSX
+- * only — calling a helper exported by a client module from this server component once took every
+- * page down while the typecheck and the build stayed green.
++ * ⚠️ `brand.tsx` is a "use client" module. `FiftyMark` (here) and `FiftyWordmark` (the claim, in
++ * `hero-intro.tsx`) are rendered as JSX only — calling a helper exported by a client module from this
++ * server component once took every page down while the typecheck and the build stayed green.
++ * ⭐ THE CLAIM, THE H1 AND THE TRUST ROWS LIVE IN `hero-intro.tsx` (2026-10-09, R4-J), moved verbatim
++ * so the journey's loading ghost for `/` draws the same intro without loading this file.
+  *
+  * ⭐ ONE DOM, PLACED BY GRID AREAS — never a second copy. Below 1024 the three blocks stack in
+  * source order (intro → card → act); from 1024 the intro and the act share the left column and the
+@@ -56,31 +58,41 @@
+  */
+ import Link from "next/link";
+ import { I } from "@/components/ui/glyphs";
++import { keepText } from "@/components/ui/keep-run";
+ import { MarketCard } from "@/components/markets/market-card";
+ // ⭐ THE ONE FILTER CONTROL LANGUAGE (WP9 · R16). The board's ordering rail is `FilterPill`, not a
+ // bespoke toggle, and this file is declared to `test:filter-language` because of it — §3.1/§3.2 assert
+ // that every declared surface imports the primitive and renders it IN ITS OWN SOURCE.
+ import { FilterPill } from "@/components/ui/filter-pill";
+-import { FiftyMark, FiftyWordmark, TippingBar } from "@/components/brand";
++import { FiftyMark, TippingBar } from "@/components/brand";
++// The claim, the h1 and the trust rows: the hero's static intro, a module of its own so the loading ghost for `/` can draw
++// it too without loading this file's market card (R4-J, 2026-10-09; `hero-intro.tsx` says why).
++import { Ask, Claim, TrustLines } from "./hero-intro";
+ import { fill, formatNumber, formatTzs, formatTzsCompact } from "@/lib/utils";
+ import { pickLocalized } from "@/lib/localized";
+ import { timeLeftLabel } from "@/lib/markets/time-left";
+ import { formatEatDate } from "@/lib/eat-day";
+-import { FIRST_LICENSED_EVIDENCE } from "@/lib/support-config";
+-import { railListParts } from "@/lib/rail-list";
+ import type { Dict, Locale } from "@/lib/i18n-dict";
+ import { boardLenses, QUESTION_BOARD_SIZE } from "@/lib/markets/hero";
+ import type { BoardLens, HeroFigures, HeroRow } from "@/lib/markets/hero";
+ import { sideWord } from "@/lib/side-label";
+ import { priceState } from "@/lib/markets/price-state";
+ import { Cash } from "@/components/ui/cash";
++import { DotSeq } from "@/components/ui/dot-seq";
++import { keepFigures } from "@/components/ui/keep-words";
+ import type { LandingPicks } from "@/lib/server/landing-picks";
+ 
+ /**
+  * What the signed-in hero knows about the player (landing v3 · WP14 part 2). Each part is null when
+  * its read FAILED — and a null part renders nothing, never a zero (B-1).
+  */
+-export type LandingMine = { picks: LandingPicks | null; balance: number | null; held: boolean };
++export type LandingMine = {
++  picks: LandingPicks | null; balance: number | null; held: boolean;
++  /** R4-I · the reader's own break or exclusion, its end already said by the page in the reader's words (`formatBreakEnd`);
++   *  null when none runs or the read failed (it fails open). Optional, so a caller that does not know draws the block as
++   *  before. */
++  breakEnd?: { exclusion: boolean; date: string } | null;
++};
+ 
+ export type HeroCardData = {
+   charts: Map<string, { spark?: number[]; move24h?: number }>;
+@@ -101,6 +113,11 @@ type Props = {
+    * only rails whose payout path is live and that no officer has paused (R8(6)). Empty → no row.
+    */
+   rails: readonly string[];
++  /**
++   * The request is shown the journey (`resolveSimpleJourney`). It names one door only: the signed-in block's link to
++   * /positions takes the journey tab's own name (see `SignedInAct`). Omitted, today's words.
++   */
++  journey?: boolean;
+ };
+ 
+ /** Escape a word for use inside a RegExp — the side words are data, not patterns. */
+@@ -134,115 +151,6 @@ function Inked({ text, yes, no }: { text: string; yes: string; no: string }) {
+   );
+ }
+ 
+-/**
+- * The claim — "50pick │ Tanzania's first licensed prediction market" (spec §4; R9).
+- *
+- * ⭐ A CLASS OF ITS OWN, NOT THE SHARED EYEBROW: `.kp-hero__eyebrow` also styles the section labels
+- * further down the page, and the claim is the brightest small text on the first screen (`--text`,
+- * mono 600), where those are quiet labels. Its tracking joins the one 0.14em list in globals.css.
+- * ⭐ THE WORDMARK IS THE LOGO USED AS A LOGO — below 1280 the header shows only the mark, so the name
+- * "50pick" reaches the first screen here. From 1280 the header carries the wordmark and this one is
+- * hidden (CSS), with its rule.
+- * ⛔ "FIRST" IS READ ONLY INSIDE THE EVIDENCE BRANCH BELOW. `test:hero-copy` §1 fails if
+- * `heroClaimFirst` is read anywhere else, or if any other string claims a first.
+- * The text is stored in sentence case; CSS does the capitals.
+- */
+-function Claim({ t }: { t: Dict }) {
+-  return (
+-    <p className="kp-hero__claim">
+-      <span className="kp-hero__claim-mark"><FiftyWordmark size={15} tz={false} /></span>{" "}
+-      <span className="kp-hero__claim-rule" aria-hidden />{" "}
+-      <span className="kp-hero__claim-text">{FIRST_LICENSED_EVIDENCE() ? t.home.heroClaimFirst : t.home.heroClaim}</span>
+-    </p>
+-  );
+-}
+-
+-/**
+- * The h1 — the question in the reader's language: "NDIO au HAPANA?" · "YES or NO?" · "是还是否？"
+- * (INHERIT-MANIFEST R7(3)).
+- *
+- * ⭐ THE SIDE WORDS ARE THE BUTTONS' OWN WORDS BY CONSTRUCTION: `sideWord(t, …, "MARKET")` fills them,
+- * so the headline cannot say "NDIYO" while the buttons say "NDIO". Each wears its outcome ink (§B2);
+- * the connective ("au" / "or" / "还是") is the quiet word, one weight of the same face.
+- * ⭐ TWO GROUPS THAT DO NOT BREAK INSIDE: "NDIO au" and "HAPANA?". The only break is the dict string's
+- * own space after the connective (none in zh, which fits one line), so a narrow screen reads two
+- * designed lines, never "NDIO" alone over "au HAPANA?".
+- * ⛔ No `lang` attribute: since R7(3) the h1 IS in the page's language.
+- * `test:hero-copy` §2 pins `{yes}` before `{no}`, each exactly once, in every locale; the fallback
+- * below only keeps a malformed string readable.
+- */
+-function Ask({ t }: { t: Dict }) {
+-  const yes = sideWord(t, "YES", "MARKET");
+-  const no = sideWord(t, "NO", "MARKET");
+-  const s = t.home.heroAsk;
+-  const a = s.indexOf("{yes}");
+-  const b = s.indexOf("{no}");
+-  if (a < 0 || b < a) return <h1 className="kp-hero__headline">{fill(s, { yes, no })}</h1>;
+-  const between = s.slice(a + "{yes}".length, b);
+-  const conn = between.trimEnd();
+-  const gap = between.slice(conn.length);
+-  return (
+-    <h1 className="kp-hero__headline">
+-      {s.slice(0, a)}
+-      <span className="kp-hero__grp">
+-        <span className="kp-hero__side" data-side="yes">{yes}</span>
+-        <span className="kp-hero__conn">{conn}</span>
+-      </span>
+-      {gap}
+-      <span className="kp-hero__grp">
+-        <span className="kp-hero__side" data-side="no">{no}</span>
+-        <span className="kp-hero__q">{s.slice(b + "{no}".length)}</span>
+-      </span>
+-    </h1>
+-  );
+-}
+-
+-/**
+- * The trust rows — ONE list, the same for a visitor and a player, above the featured card.
+- *
+- *   row 1 · 18+ · "Licensed by the Gaming Board of Tanzania."
+- *   row 2 · "Deposit and withdraw with M-Pesa, Airtel Money, HaloPesa or Mixx by Yas."
+- *
+- * ⭐ ROW 1 IS THE FOOTER'S OWN WORDS. `footer.eighteenPlus` and `footer.licensedByGbt` are assessed
+- * keys, reused verbatim. ⛔ No helpline (the owner's ruling of 2026-10-06). The gambling-warning
+- * SENTENCE is not here (R7(2)): the footer keeps it on every page. The licence NUMBER stays in the
+- * footer too (K39).
+- * ⭐ ROW 2 NAMES ONLY WALLETS THAT PAY OUT (R8(6)). `rails` is computed on the server from the money
+- * path's own definitions (`server/payout-rails.ts`) and joined by `Intl.ListFormat` in the reader's
+- * language (`rail-list.ts`): the names are never typed into the dictionary, and a rail an officer has
+- * paused is not named while it is paused. No rails → no row, never "Deposit and withdraw with ."
+- * ⭐ WHY ABOVE THE CARD: on a phone the rows after the card and the CTAs began below the first screen,
+- * so 18+ and the licence never reached it (K29, P15). In the SOURCE, not by CSS
+- * `order` — keyboard and screen-reader order must match the screen (WCAG 1.3.2).
+- * ⛔ No `aria-label` on the roundel: "18+" is its text, and ARIA prohibits a label on a generic span.
+- * `role="list"`: WebKit drops the list role from a `ul` styled `list-style: none` (VoiceOver on iPhone).
+- * ⚠️ `ul.kp-hero__trust` is read by the landing gate (V8's text map, V21) and by capture.mjs.
+- */
+-function TrustLines({ t, locale, rails }: { t: Dict; locale: Locale; rails: readonly string[] }) {
+-  const parts = railListParts(locale, rails);
+-  const at = t.home.heroRails.indexOf("{rails}");
+-  const before = at < 0 ? t.home.heroRails : t.home.heroRails.slice(0, at);
+-  const after = at < 0 ? "" : t.home.heroRails.slice(at + "{rails}".length);
+-  return (
+-    <ul className="kp-hero__trust" role="list">
+-      <li>
+-        <span className="kp-rg__18">{t.footer.eighteenPlus}</span>
+-        <span>{t.footer.licensedByGbt}</span>
+-      </li>
+-      {parts.length > 0 && (
+-        <li>
+-          <span className="kp-hero__trust-glyph" aria-hidden><I.mobileMoney s={16} /></span>
+-          <span>
+-            {before}
+-            {parts.map((p, i) => (p.rail ? <span key={i} className="kp-hero__rail">{p.text}</span> : p.text))}
+-            {after}
+-          </span>
+-        </li>
+-      )}
+-    </ul>
+-  );
+-}
+-
+ /**
+  * ONE ROW OF THE CLOSING-SOONEST BOARD (landing v3 · WP4).
+  *
+@@ -281,30 +189,38 @@ function QuestionRow({ row, t, locale, nowMs }: { row: HeroRow; t: Dict; locale:
+   // The card's own names for the pair, so one control has one vocabulary: no figure without a price.
+   const yesAria = (price.kind === "priced" ? t.market.backSideAria.replace("{pct}", String(price.yesPct)) : t.market.backSideAriaNoPrice).replace("{side}", yesWord);
+   const noAria = (price.kind === "priced" ? t.market.backSideAria.replace("{pct}", String(100 - price.yesPct)) : t.market.backSideAriaNoPrice).replace("{side}", noWord);
++  /* ⭐ THE META LINE BREAKS ONLY BETWEEN ITS FACTS (round 4 of the visual pass, 2026-10-09, edges tiles 248 249 257 258 266
++     267): "Closes 27 Sep · Settles on {source} · Pool TZS n · n predictors" was one sentence of text, so at 360 its first
++     line ended on the dot ("…Linatatuliwa kwa bot.go.tz ·" / "Bwawa TZS 0 · 0 watabiri"). It is `DotSeq` now, the one
++     idiom for "A · B · C" (dot-seq.tsx): each fact one flex item, its dot hanging in the gap, so no line ends or opens on
++     "·". The facts are the same words and wear the same classes and `data-market-part` hooks, through `renderPart`. */
++  const settles = row.sourceName ? `${settlesPre}${row.sourceName}${settlesPost}` : null;
++  const pool = `${t.common.pool} ${formatTzs(row.pool)}`;
++  const depth = `${formatNumber(row.predictors)} ${row.predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}`;
++  const metaPart = (part: string) =>
++    part === closes ? <span className="kp-qrow__close">{closes}</span>
++    : part === settles ? (
++      <span className="kp-qrow__src">
++        {settlesPre}
++        <span className="kp-qrow__srcname" data-market-part="source">{row.sourceName}</span>
++        {settlesPost}
++      </span>
++    )
++    // The pool is REAL even when it is zero, so it is always stated (V18, K48). Each part draws its words as the row
++    // always did (the same expressions; the strings above are only how DotSeq knows which part it is holding).
++    : part === pool ? <span className="kp-qrow__pool" data-market-part="pool">{t.common.pool}{" "}{formatTzs(row.pool)}</span>
++    : part === depth ? (
++      <span className="kp-qrow__depth" data-market-part="predictors">
++        {formatNumber(row.predictors)}{" "}{row.predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}
++      </span>
++    )
++    : part;
+   return (
+     <li className="kp-qrow" data-price={price.kind} data-market-surface="board" data-row-id={row.id}>
+       <Link href={`/markets/${row.id}` as never} className="kp-qrow__head">
+-        <span className="kp-qrow__q">{title}</span>
+-        <span className="kp-qrow__meta">
+-          <span className="kp-qrow__close">{closes}</span>
+-          {row.sourceName && (
+-            <>
+-              {" · "}
+-              <span className="kp-qrow__src">
+-                {settlesPre}
+-                <span className="kp-qrow__srcname" data-market-part="source">{row.sourceName}</span>
+-                {settlesPost}
+-              </span>
+-            </>
+-          )}
+-          {" · "}
+-          {/* The pool is REAL even when it is zero, so it is always stated (V18, K48). */}
+-          <span className="kp-qrow__pool" data-market-part="pool">{t.common.pool}{" "}{formatTzs(row.pool)}</span>
+-          {" · "}
+-          <span className="kp-qrow__depth" data-market-part="predictors">
+-            {formatNumber(row.predictors)}{" "}{row.predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}
+-          </span>
+-        </span>
++        {/* `keepFigures` (round 4, edges 197 255): "2026-27" and "dakika 28:00" never break inside. */}
++        <span className="kp-qrow__q">{keepFigures(title)}</span>
++        <DotSeq text={[closes, settles, pool, depth].filter(Boolean).join(" · ")} className="kp-qrow__meta" renderPart={metaPart} />
+       </Link>
+       <div className="kp-qrow__read">
+         <div className="kp-qrow__line">
+@@ -353,7 +269,7 @@ function QuestionRow({ row, t, locale, nowMs }: { row: HeroRow; t: Dict; locale:
+   );
+ }
+ 
+-export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, rails }: Props) {
++export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, rails, journey = false }: Props) {
+   const { featured } = figures;
+   const chart = featured ? cards.charts.get(featured.id) : undefined;
+ 
+@@ -429,7 +345,7 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine,
+               follow the card (the delivery's placement map P4); from 1024 they sit in the left column
+               under the intro. A player gets their own block instead, with Set limits (WP14 part 2). */}
+           {isAuthed ? (
+-            <SignedInAct t={t} mine={mine ?? null} />
++            <SignedInAct t={t} mine={mine ?? null} journey={journey} />
+           ) : (
+             <>
+               <div className="kp-hero__ctas">
+@@ -458,6 +374,16 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine,
+   );
+ }
+ 
++/**
++ * The payment method's name as `sentence` spells it — "pesa ya simu", "mobile money" — found by the Wallet's own label for
++ * it (`wallet.mobileMoneyOnly`, in any case), as the one run `keepText` keeps whole; none when the sentence names it
++ * otherwise (R5-B, 2026-10-09). No new words: both strings are the dictionary's.
++ */
++export function methodRunIn(sentence: string, method: string): string[] {
++  const at = sentence.toLowerCase().indexOf(method.toLowerCase());
++  return at < 0 || method.length === 0 ? [] : [sentence.slice(at, at + method.length)];
++}
++
+ /**
+  * THE SIGNED-IN HERO (landing v3 · WP14 part 2 — the delivery's wallet scenario §4a and §4c).
+  *
+@@ -490,17 +416,30 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine,
+  * ⛔ A frozen wallet still says so, and still gets no money control — the same rule as the Wallet
+  * (`wallet-sheet.tsx`), now trivially true because this block has none at all.
+  */
+-function SignedInAct({ t, mine }: { t: Dict; mine: LandingMine | null }) {
++function SignedInAct({ t, mine, journey }: { t: Dict; mine: LandingMine | null; journey: boolean }) {
+   const picks = mine?.picks ?? null;
+   const balance = mine?.balance ?? null;
+   const held = !!mine?.held;
++  // R4-I · the reader's break, its end already in the reader's words (the page says it, `formatBreakEnd`).
++  const breakEnd = mine?.breakEnd ?? null;
++  const onBreak = !!breakEnd;
+   const noPicks = !!picks && picks.open === 0 && picks.awaiting === 0 && picks.paidThisWeekTzs === 0;
+   // At zero the empty-balance prompt already says what to do next; the no-picks sentence beside it said it twice.
+-  const emptyWallet = !held && balance !== null && balance <= 0;
++  // ⛔ R4-I · not during a break either: "Add funds … to make your next pick" invites both things a break pauses.
++  const emptyWallet = !held && !onBreak && balance !== null && balance <= 0;
++  // ⛔ AND A FROZEN WALLET IS NOT INVITED TO PICK (round 3's tiles 090 091 095 096 099 100, 2026-10-08): "Choose a side
++  // on a market to make your first" stood directly above "Your wallet is frozen" — an invitation the platform refuses.
++  // The held notice speaks alone, as the Wallet and the journey header withhold their money invitations for a held
++  // wallet (`wallet-sheet.tsx`, `header-state.ts`). No new words: the sentence is simply not shown.
++  // ⛔ …AND NEITHER IS A PLAYER ON A BREAK (R4-I, 2026-10-09; edges E19, tiles 013 016 019 046 049 052 079 082 085): "Bado
++  // huna chaguo. Chagua upande…" asked a player who had just paused their own betting to bet now. The break gets the held
++  // wallet's whole treatment: the invitation is not shown, and the break's own notice speaks in its place — the title the
++  // sign-in page gives it (`auth.coolingOff`) over the sentence /wallet/deposit and the limits page give it
++  // (`rg.breakActive`, with its end); an exclusion its own pair. No new words.
+   return (
+     <div className="kp-mine" data-testid="landing-mine">
+       {picks && (noPicks ? (
+-        emptyWallet ? null : <p className="kp-mine__lead">{t.home.picksNone}</p>
++        held || emptyWallet || onBreak ? null : <p className="kp-mine__lead">{t.home.picksNone}</p>
+       ) : (
+         <div>
+           <p className="kp-mine__eyebrow">{t.home.yourPicks}</p>
+@@ -531,14 +470,29 @@ function SignedInAct({ t, mine }: { t: Dict; mine: LandingMine | null }) {
+           <p className="kp-mine__held-t">{t.kycGate.frozenTitle}</p>
+           <p className="kp-mine__held-b">{t.kycGate.frozenBody}</p>
+         </div>
++      ) : breakEnd ? (
++        <div className="kp-mine__held" role="status" data-testid="landing-mine-break">
++          <p className="kp-mine__held-t">{breakEnd.exclusion ? t.auth.selfExclusionActive : t.auth.coolingOff}</p>
++          <p className="kp-mine__held-b">{keepText(fill(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, { date: breakEnd.date }), [breakEnd.date])}</p>
++        </div>
+       ) : emptyWallet ? (
+-        <p className="kp-mine__lead">{t.home.emptyBalance}</p>
++        /* ⭐ THE PAYMENT METHOD'S NAME STAYS WHOLE (round 5 of the visual pass, R5-B, 2026-10-09, tiles 079 083): balanced
++           at 1024–1280 the lead broke inside it — "…kwa pesa ya" / "simu au kadi…", "…by mobile" / "money or card…" — the
++           way the trust line above never breaks a rail's name (`.kp-hero__rail`). It is one run now (`keepText`), found by
++           the Wallet's own label for it (`methodRunIn`); the lines become "…kwa pesa ya simu" / "au kadi…" (382 | 282px)
++           and "…Add funds by" / "mobile money or card…" (295 | 367). At 390 the run cannot end the first line, so the lead
++           takes three lines there, as it already does at 320. Chinese names it 手机钱包, which `keep-all` keeps. */
++        <p className="kp-mine__lead">{keepText(t.home.emptyBalance, methodRunIn(t.home.emptyBalance, t.wallet.mobileMoneyOnly))}</p>
+       ) : null}
+       {/* The block's two doors, and neither is money: the player's own positions — which is what the
+           figures above are ABOUT — and the RG limits, one tap from the first screen (K37). */}
+       <div className="kp-mine__links">
++        {/* ⭐ ONE PAGE, ONE NAME (round 4 of the visual pass, 2026-10-09, edges E4): in the journey /positions is the tab
++            "Tiketi zangu / My tickets / 我的注单" — its h1 and its tab say so — so this link takes the tab's own key, where
++            it read "Nafasi zangu / My positions / 我的持仓". A classic reader keeps today's words (the classic nav names
++            the page "Nafasi", and its home link "Nafasi zangu"). No new words. */}
+         <Link href={"/positions" as never} className="kp-mine__limits">
+-          {t.home.myPositions}
++          {journey ? t.journey.tabTickets : t.home.myPositions}
+           <I.arrowRight s={14} />
+         </Link>
+         <Link href="/profile/responsible-gambling" className="kp-mine__limits">

@@ -1,0 +1,1688 @@
+9677a3f54 2026-10-09 18:57:23 +0300 Visual pass round 5 (R5-H): every loading ghost a client reference, not a drawn tree in every refresh; the ghosts' bands the pages' bands; the journey flag and the not-found mark in the first paint they belong to
+From the code review's G1/G2 (R5-D's technique, extended) and R5-B's and R5-D's follow-ups G-2, G-2b and G-3.
+
+G-2 · every player loading.tsx was a server component, so Next put its whole drawn tree into every payload that
+renders the segment — the document, every move into it, and every router.refresh() (which renders from the root).
+Measured per segment (sw): wallet/receipts 9,556 B, results 8,217, positions 5,125 (journey) / 8,065 (classic), wallet
+6,826, agent 4,875, markets 4,721 … — 92,274 B over all player segments. One convention now, written once in
+src/components/ui/page-loader.tsx: the drawing is client code and reads its own words with useT() (the root layout
+gives the provider the language from the kp-locale cookie, the same expression getServerT uses — the server's HTML is
+unchanged); a loading file that needs no server answer IS the drawing ("use client"); one that needs an answer stays a
+server file and hands the drawing only that answer (the journey answer, `bonusLive`). The journey's pictures ride R5-D's
+lazy binding, pinned to the page (`<LazyJourneyRouteGhost rails at="/positions" />`), so no server file imports one.
+After: 19–100 B per segment element, 3,298 B over all of them; per refresh /wallet/receipts 16,868 → 541 B (67.5 → 2.2
+KB a minute), /markets/[id] 8,579 → 933, /updown/[roundId] while awaiting a result 3,793 → 524 every 5 s. The drawn
+markup is byte-identical (react-dom/server, 39 files × 3 languages × 2 shells: 222/234 identical, the other 12 the G-2b
+bands below). Admin's 61 loading files (staff-only, English-pinned, never polled) and /s/[token] are left as they are.
+
+G-2b · /wallet's ghost drew no bar, no door spacing and two blocks where the page has one section: its list landed
+133px low on a phone, up to 216px at lg in Swahili. One bar ghost for both money books (money-bar-ghost.tsx, /wallet and
+/wallet/receipts), its pills the kit pill's box with the page's own words set but not shown (the page's groups wrap at
+1024/1280 in sw and en; R5-B's fixed boxes drew one line and the receipts list landed 56px low on desktop). The sweep's
+exact band fixes: a shared BackLinkGhost (the 44px BackLink box) on deposit, withdraw, performance, round, question,
+history, agent/apply and agent/status (added on the receipt, removed from the agent invite); /results 24px between the
+carousel and the grid; /markets' count line 17.25px; /live's hero padding; /wallet/receipts' 79px rows; /profile's
+16px grid gap; /agent's own PageHeader; /updown (the real header and tagline, one 48px phone trigger, 44px durations,
+the BoardViz band, the price tape); /updown/[roundId] two columns from lg with the action panel first; /markets/[id]'s
+header bands; the tickets rail ghost's `data-rail-ghost`; /updown/history's search band and bar and its 89.5px tiles.
+Ghosts that need a rebuild are listed for the next helpers.
+
+G-3 · journey-flag.tsx raised `data-journey` in a passive effect inside its own Suspense, and journey-on's cleanup
+announced the change while the shell's mark was still in the DOM — since React 19.2 (as Next ships it) a transition's
+passive effects run after the paint, so one painted frame showed the old answer in both directions. The flag is raised
+in a layout effect from a bare mount beside the journey header and tabs (the commit that first paints them); lowered at
+once and announced again in a microtask after the commit (a deleted component's layout cleanup runs before its host
+nodes go). Siblings: the not-found mark's departure; strip-autoscroll's `data-edges` (no faded end on the first frame
+after a move). The route entrance (route-transition.tsx) is proposed as a patch and proved in a browser separately.
+
+Guards: test:visual-pass-r5h (52 checks with controls and plants: G-2's transport, the journey pictures, G-3's phases
+and the census of every DOM-mark writer, G-2b, the sweep's plant matrix). Mutation proof: 41 planted, 41 caught on the
+named check, all restored byte-identical. Re-pins (each with its reason): r5d 2.1/2.6′/2.10/2.10″ and READERS, r4j
+3.4/3.4′/5.2/5.2′, journey-tickets §10, journey-shell 5.component/5.mount/12.shell.wrapped (+12.shell.flag), r4c 1.6,
+r5b 2.4/9.3/9.4, withdrawn-features §5f, design-frozen, the measure anchor `loading-tier-drifts`; test:measure compares
+38 tier pairs again (35 since R5-D).
+
+Merged onto R5-A..F + R5-I (rebased on main 118fc75c) with no conflict. Pushed when Ali asked that nothing stay on one
+machine (2026-10-09 ~19:10 EAT) while its merged-tree proof was still running (181 suites, 29+ red twins, all seven
+round-5 mutation proofs) — anything it finds is fixed forward in a later commit.
+
+Classic viewers: the transport moves no pixel; the ghost band fixes apply to both shells; strips' first frame after a
+move is right; the flag change is journey-only.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+fabf68dea 2026-10-09 18:39:14 +0300 test: two red twins green again — the colour gate judges the standalone /offline document against its own tokens, and implicit-submit's confirm plants anchor on the prop's own line
+Found by R5-I's red-twin sweep; both were red on the branch before round 5's last merges.
+- red:css-vars-defined missed its E-286 control since round 4: src/lib/offline-document.ts (R4-G) writes the /offline
+  page with its own token map, and its `"--gilt": …` key certified the app's --gilt — the real declaration deleted from
+  globals.css, the gate stayed green. A standalone document is now its own scope: its definitions certify only its own
+  uses, and every token it uses must be defined inside it (it loads no app stylesheet: 21 used, 21 defined). New
+  positive control `a-standalone-document-defines-its-own-tokens` (its own --gilt deleted → reported, though the app
+  still defines the name); the harness now plants into each case's own file (it always wrote globals.css). 7/7 cases.
+- red:implicit-submit 59/61: R5-C put a note between `submitsForm` and `trigger={` in the deposit and withdraw
+  confirms, so the two-line plant anchor occurred 0 times. The plants now anchor on the prop's own line. 61/61.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+42a2003d6 2026-10-09 18:33:08 +0300 Visual pass round 5 (R5-I): every state in its own ink — the betting YES/NO colours only for a bet's two sides, app state in the success and danger families, a refusal the player can fix said calmly, grant states in their own tones
+The follow-up to R5-C's gold audit, for the state inks (§B2a: the betting pair is for the two sides of a bet, never for
+"error" or "danger"). Measured by a census over player code: 390 uses of the betting pair in 72 files, now 283 in 49,
+each ruled in a REGISTRY (a side, its price, an outcome, a position's side; the owner's LOSS ruling; §B12.2 charts;
+§B1a's mark; kit tones no screen calls; owner/frozen; dead).
+
+I-1 · the pair used for app state, moved to the app-state families:
+- The result dialogs' success/failure circles and the failure dialog's main button (`btn-no` → `btn-primary`); detail
+  rows in app-state inks; a placed bet's strip keeps its side colour. Bet, Up & Down receipt and refusal, deposit and
+  withdraw, sale.
+- global-error's error box and "CRITICAL ERROR" eyebrow (danger values written out — that page loads no stylesheet).
+- Destructive controls in the danger ink (clear photo, dismiss a notice, Sign out on /profile and /profile/sessions),
+  as Sign out in the avatar menu and Delete on a comment already were; form errors at the field (the dial's two
+  out-of-range chips, Up & Down's custom amount, proposals/new, the password pair).
+- Things that went well in the success family (2FA on, attestation seals and the paid-out tick, the sell confirm's free
+  window and "No fee", an uploaded agent-application slot). Auth eyebrows success/danger as their icons.
+- The RG page hero: `info`, as /profile/account, /kyc, /sessions and /source-of-funds (words unchanged; the `yes` and
+  `rose` hero options removed). /profile's hero and open count as the other /profile pages.
+- /profile/activity's Won/Net labels one neutral ink; /updown/history's net: gilt > 0, rose < 0, text at 0 (the rule of
+  /positions/performance and the P&L strip; registered in R5-C's census); the /wallet history row on the Receipts row's
+  plates; the leaderboard's rate of return in text ink with its sign; the payout notice's edge the danger border; the
+  stale chart line danger; the language loader brand; Up & Down's placed pulse success (it was green on a DOWN bet);
+  the journey balance ±delta text; the journey bell's count the brand pip and "Clear all" the danger hover (classic
+  bell frozen).
+- The count badge's fill `--brand-600`: pearl digits 3.48:1 → 5.04:1 (the journey Arifa count and admin counters too).
+
+I-2 · fixable refusals said calmly: the old dial opened the ✗ result pop-up over every refusal (a short balance
+included) and struck its toasts in gold. One helper ranks every refusal by the failure registry (`refusalReason` /
+`refusalVariant`, the rule the Sell button already followed): a refusal the player can fix, or a plain fact, is a calm
+`factual` toast that stays until read; a hard block or fault is `danger` with the pop-up (Retry where the outcome is
+unknown). The short-balance line is Up & Down's faint info line at 13px (words unchanged). Siblings: Up & Down's quick
+bet ranked; the uploaders', name editor's, invite, Lipa, share and agent-application slips factual (three printed the
+browser's English error — now `t.toast.pickJpgPng`); server refusals across export, privacy request, proposals,
+comments, objections, avatar, votes, KYC and the agent application ranked by the registry. Password, 2FA and email stay
+`danger` (feedback-law's pins; an owner question).
+
+I-3 · grant states: every non-running grant word was a hand-made 8px warning pill. Now `grantStatusChip`: queued and
+historic pending-KYC royal, unlocked success, expired/cancelled/forfeited slate, on the standard 18px chip. The
+source-of-funds banner is royal while under review (amber only for "resubmit"); a pending declaration's box follows
+its status.
+
+Guards: test:visual-pass-r5i (112 checks: the census ratchet and REGISTRY, the I-1 sites rendered, the toast sweep,
+the grant tones executed, 21 new colour pairs each ≥ 4.5:1, what must stay); test:feedback-law §11 (+10, executed),
+red:feedback-law +3 (29/29); test:betting-ink §7 (+8). Mutation proof: 58 planted, 58 caught on the named check, all
+restored byte-identical. Re-pins (each with its reason): r5c's registry, design-frozen, eyebrow-roles, type-scale
+(−2/−2), r4i 7.5, updown-bet-feedback 3.4.
+
+Merged onto R5-A..F (rebased on main 118fc75c), no conflict beyond the suite list. On the merged tree: 218 suites (the reds main's
+own or the shared Prisma client's), 29 red twins (red:css-vars-defined and red:implicit-submit red before this merge —
+fixed in the next commit), and four rounds' mutation proofs (R5-I 58, R5-A 41, R5-C 59, R5-E 27) re-run clean.
+
+Owner items: the classic bell's rose badge (2.64:1) and NO-rose hover; the classic capsule's ±delta; the board's "hot"
+chip in the NO rose; the crest's YES/NO split; password/2FA/email refusals still red; "Unlocked" success or gold; one
+tone for a rejected source-of-funds declaration; payout credits neutral or gold; the dial's session-limit refusal now a
+sticky calm message (words unchanged, as Up & Down); a neutral rate of return. S12: "Couldn't copy" has no next step;
+the agent application's pop-up prints the server's English error.
+
+Classic viewers see the shared-body changes above; the classic chrome (bell, capsule) is unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+eaed15d08 2026-10-09 17:45:48 +0300 Visual pass round 5 (R5-A): the home card on the claim's capitals, one page one name in the journey, every close ✕ on its title's capitals, counts grouped and lower-case, the regulator's name and the legal titles kept whole, right-aligned tracked labels ending on their column's edge
+From round 5's read of 88ee1a42. Every item re-measured first and brought, with its siblings, to one convention.
+
+- F2: the home's featured card was centred against the intro and the act together, so its top fell 2px over to 66px
+  under the claim's capitals (48 desktop tiles, y191–259). From 1024 the grid hangs from its top line (`auto 1fr`,
+  `align-items: start`) and the card is lowered onto the claim's first ink row: 3px (the mono claim's capitals start
+  0.305em = 3.97px into its line, hinted onto row 4), 2px in zh. Both shells (a shared body); the loading ghost too.
+- F12: /results' count line printed the capitalised label ("2 Watabiri"); it now reads "2 watabiri" through formatNumber
+  and the plural keys, as the cards do. Siblings: the card's count (toLocaleString → formatNumber), the /results tally
+  grouped ("12,479 imetatuliwa"), the leaderboard's lower-cased label from its own key.
+- F15: /markets' pool chips were dictionary strings ("TZS 10k+", sans, lower-case k); now formatTzsCompact of the very
+  floor the filter applies, in `.amount` mono ("TZS 10K+"), as every other money chip.
+- F16: legal titles kept a connective with its noun (legalTitle(): sw ya/za/wa/la/cha/vya/kwa/na, en of/and/&, pairs
+  ≤ 10 characters): "Kanuni / za Michezo", "Terms / of Service", "Sera / ya Faragha" at the widths where they wrap; all
+  24 titles swept at 320–412, names never split.
+- F17: one page, one name in the journey — the hub, the avatar menu, the footer and the profile's KYC row now name each
+  page as the page names itself (KYC "Thibitisha kitambulisho", leaderboard "Bingwa", proposals "Mapendekezo ya Masoko",
+  privacy "Sera ya faragha", help "Msaada"); /live's eyebrow "MUBASHARA" (page and ghost). Classic chrome keeps its
+  words (frozen); the RG doors name an action by design.
+- F18: the regulator's name is one name wherever its line can hold it (keepRegulator + size containers `.kp-gbt`): the
+  journey footer at en 1024 reads "Licensed by the / Gaming Board of Tanzania."; the hero's trust row at sw 360–390 and
+  en 320 the same. A narrower line wraps as before; it can never overflow.
+- F19: right-aligned tracked labels end where their neighbours end (R3-C's trailing-tracking take-back): the price
+  caption ("NDIO" x355 → x357, the figure's edge), the card's one-sided move label, the bar's right label, the /results
+  spotlight flag and Up & Down's live note (`kp-track-end`).
+- F20: one convention for every close ✕ — centred on its title's first-line capitals, its box 16px inside the panel's
+  right edge; CloseX is the single ✕. Channels panel (1.70px low → ≈0.1), how-it-works, share and objection dialogs
+  (`.kp-modal-title`), ConfirmModal (from the medallion's centre to the title's capitals), sell confirm (a header-row
+  CloseX), bet confirm (16px in; its hand-drawn ✕ now the one CloseX, announced "Funga" not a second "Ghairi"), filter
+  sheet (the one CloseX, its box 16px inside the sheet's edge — 12px further in), install card, the reality check
+  (position only, no word changed), toast.
+  ONE IN-FLIGHT RULE: while a request a dialog sent is in flight (Cancel disabled, scrim and Esc refused), its ✕ is
+  withheld too — a corner ✕ is not drawn (`showClose={!pending}`), a header-row ✕ keeps its box but is invisible and
+  disabled (`CloseX withheld`), so no row changes height and no body moves (ConfirmModal's old removal could lift the
+  body mid-request). A busy dialog that stays closable keeps its ✕. Siblings: the sell and bet confirms, the objection
+  dialog; and in admin, five corner ✕s that were drawn but dead mid-request (objection decision, hold, settle, stuck
+  payout, proposal actions), and three confirms kept open across their own request without `loading` (proposal arm and
+  delete, Up & Down's switch to simulated prices) — whose ✕ and Cancel could close them mid-request, and Arm fire twice.
+- F5: the tile harness parks the pointer (R4-G's parkPointer) and waits past --t-base before every shot — no tile taken
+  in a hover state.
+- §A5: /results withholds its search band and filter bar when the archive is empty, as its siblings do.
+- Checks: /markets' search stands 34px over its pills at every width (was 31 on phones, 35 on desktop), ghost too; the
+  guest hub's Matokeo row takes /results' own glyph; the Up & Down chart's load has a 12s deadline (the existing "Chati
+  haipatikani — inajaribu tena", polling retries, a late answer still draws); the grid card's pool figure gets a
+  screen-reader word (no room at 320 for a visible one — owner item).
+
+Guards: test:visual-pass-r5a (91 checks; a ✕ census over every ✕ site in src — 30 sites in 24 files — that fails on
+an unclassified ✕ and on a hand-drawn ✕ in a dialog; the in-flight rule over 27 dialogs and 4 confirms). Mutation proof:
+41 planted, 41 caught on the named check, all restored byte-identical. Re-pins (each with its reason): r4d §7.1, r4h
+§6.5, r4i §4, r4j §3.8, r3c §10.3, featured-card §2.15 + its anchors, eyebrow-roles (two STATUS_CHIP signatures),
+enter-where-pressed 2.3, campaign-gates kitHeld, updown-filter-sheet 10.
+
+Merged onto R5-B/C/D/E/F (rebased on main 118fc75c): the /results spotlight flag is R5-C's brand ink with R5-A's tracked
+span (r5a 7.2, r5c 2.4 and the eyebrow-roles signature follow it); keepRegulator matches the zh name's zero-width break
+hint as any format character (`\p{Cf}`), so the source names no invisible character (R5-E's census, r5e §6.5). On the
+merged tree: every suite reading a touched file, R5-A's and R5-E's lists, the red twins, and the three rounds' mutation
+proofs (R5-A 41, R5-C 59, R5-E 27) re-run.
+
+Owner items: the grid card's pool label at 320; ConfirmModal's ✕ on the title; the journey's proposals doors without
+"earn"; sw "Bingwa" vs "Jedwali la Washindi"; the legal titles' connective rule. S12: the rules page's name key, the sw
+AML and limits door names, sw "hai" vs "Mubashara", the zh regulator's two names, `proposals.earned` "umepataa".
+
+Classic viewers see the shared-body changes (home card, legal titles, hero trust row, NDIO and the bar's label,
+/results, the leaderboard row, every dialog and sheet ✕, /profile's KYC row, /live's eyebrow, the chart deadline,
+/markets' gap and chips, the ✕ withheld while a bet, sale or objection is in flight, the filter sheet's ✕ 12px in); the
+classic footer and avatar menu are unchanged (frozen chrome).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+a65e0f045 2026-10-09 17:12:01 +0300 Visual pass round 5 (R5-E): every market title balanced with its figures whole, Chinese units and currencies kept with their numbers, no invisible character inserted into any sentence, the keep-words helpers linear and cluster-safe
+From round 5's read of 88ee1a42 and the third code review (H1–H5). Every item re-measured first and brought, with its
+siblings, to one convention.
+
+- F1/F4: the featured card's title wore `text-wrap: pretty`, Chromium's orphan rule — at zh 320 it pulled one character
+  of 超过 down with the unbreakable "200毫米" ("…降雨超 / 过200毫米", tile 029: 163 + 76px); elsewhere it is plain greedy
+  ("…exceeds 200mm / in July", tile 023). It takes the card's own `balance`, as do the board rows: "达累斯萨拉姆七月 /
+  降雨超过200毫米", "Dar es Salaam rainfall / exceeds 200mm in July". Over 16 zh titles at 4 widths `balance` cuts the
+  fewest Chinese words (featured 2 vs greedy 7 / pretty 14). Every title surface now follows one convention,
+  keepFigures + balance: the /live carousel, /results notable, /proposals list and page, the classic position card,
+  /fairness, the bet dialog's title (and its result subtitle and the performance best-market line keep figures whole).
+- H1: keepFigures took any one or two ideographs as a unit and dropped a currency before a unit word: "超过[15万美]元？",
+  "[7月降]雨量", "TZS [4,200以上]". A closed Chinese unit list (longest first) and a currency head: "超过[15万美元]？",
+  "[7月]降雨量", "[TZS 4,200]以上", "[8月1日]收于", "Simba watapata [TZS 1 bilioni]?"; a month keeps only a day (so
+  "December" / "2026" may wrap at 320). Over the reviewer's 20,000-title corpus the words are unchanged.
+- H2/H3: no helper glues across more than one non-collapsible space (`KEPT_SPACE`, every keep helper), and keepNameEnd
+  never splits a grapheme cluster ICU keeps whole (0 splits over planes 0, 1, 14 in nine contexts — 1,165,680 strings).
+- H4: the empty states inserted U+2060 and U+00A0 into the dictionary's sentences; they now draw held runs as nowrap
+  spans, nothing inserted (0 inserted characters over 7,968 sentences, the UAX #14 break opportunities identical). The
+  zh break date is one run. The Up & Down stamp is one span; every amount in a toast is an `.amount` (§M4) through one
+  toaster-wide rule (the refused sale's no-break space removed); "TZS −4,200", "−TZS 1,234" read whole (moneyRuns).
+- The CJK gap is a generated space (`.kp-cjk-gap::after`), never copied, searched or in textContent.
+- H5: keep-units.tsx (no importers) deleted.
+- Timing: every helper linear (keepText 498 → 76 ms, keepLastWords 234 → 0.3 ms on 10,000-character inputs); exactly
+  equivalent output over 28,563 strings × 8 helpers.
+
+Guards: test:visual-pass-r5e (60 checks: the tile reproductions, the title census, the inserted-character ratchet).
+Mutation proof: 27 planted, 27 caught on the named check, all restored byte-identical. Re-pins (each with its reason):
+r3c, r4d 3.9, r4i, r4k, journey-tickets, sell-price-guard (and two plants), popup-fit, the money-format anchor.
+
+Merged onto R5-B/C/D/F (rebased on main 118fc75c): /results' notable title keeps R5-C's brand hover with R5-E's balance and
+whole figures; r5e 2.1's pin follows that hover ink. On the merged tree: 153 suites (the reds main's own or the shared
+Prisma client's), red:journey-tickets/sell-price-guard/visual-pass-r4k, and the 27-plant proof re-run clean.
+
+Owner items: very wide figures on a market h1 at 320; Chinese words still cut under balance at 320 (fewer, not zero);
+mono amounts in every toast; a month and its year may wrap apart. S12: none.
+
+Classic viewers see the same balanced titles, whole figures, empty states and toast amounts (shared bodies); classic
+chrome is untouched.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+144ca751b 2026-10-09 16:51:14 +0300 test(visual-pass-r4e): 10.2 reads the privacy page's version date from the page instead of pinning it
+Main moved the privacy notice to v2026-10-09 (S14, "Toleo 2026-10-09"); 10.2 had pinned "Toleo 2026-10-07", so it went
+red on the rebase while the page draws exactly what it guards: "Act 2022" kept whole, the date and every word unchanged.
+The date is now read from the page's META, so the next policy version cannot break it again.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+d82f2a288 2026-10-09 16:23:39 +0300 Visual pass round 5 (R5-C): the second gold audit — gold only where money was earned, every other highlight in the brand's own blue, identity in metal, and a census that fails on any new gold use until it is ruled
+From round 5's read of 88ee1a42 (tiles 281–333's gold list and the earlier audit's leftovers). One rule, written into
+the suite and applied file by file (88 files, 431 gold sites, each ruled in the suite's REGISTRY):
+- Money earned is gold: payout, celebration, resolved seal, WIN, a granted bonus, commission above 0 — and, by D1,
+  §8a and §M3a, the bet/sell commits, the live balance and the deposit door.
+- A highlight that is not money takes the BRAND family (--brand-300 ink 10.0:1, --brand-400 marks 7.0:1, --brand-500
+  rings and fills 5.0:1) — already the product's "this one": the active pill, the selected glow, the rail's unread dot,
+  the focus ring, the link ink.
+- Identity (tier, rank, streak, achievement, assets) is metal (--metal-gold, 8.4:1), never the money ink.
+- Words keep their §B11 tone; amber only where somebody must act (its gilt paint is the owner's token, F3).
+
+Fixed, with their siblings:
+- The notifications page's unread dot (gold → brand, as the rail's); the journey bell's dot and wash.
+- /agent: one tile treatment for its three facts, the fee box in text ink, step 5 a royal disc, six notices neutral
+  (only "an officer asked for one more thing" stays amber); /agent/apply, /agent/status, the agent dashboard (gold only
+  when commission > 0), the Lipa panel's number and fee.
+- /proposals: eyebrow subtle, hero info, coming-soon box royal, Create primary; the proposal page's "view resolved
+  market" a ghost button.
+- /results: the notable card's crown and "MATOKEO MASHUHURI" brand on a royal edge; the page glyph subtle. The resolved
+  pill keeps the seal (allowed, guarded).
+- /fairness: the numerals take the list's ink in R4-E's face (R4-E's measured alignment kept); step 4 a brand ring.
+- Badges: the ring brand-500, the count brand-300, the coin metal. The KYC stepper's current step brand.
+- The RG pending-increase box: the kit Callout (neutral, clock glyph, 13px — R4-I's RG notice size), words unchanged;
+  the reality check without gold (rail, clock, minutes); the account's COOLED_OFF chip neutral.
+- The onboarding primer: no gilt corners; progress strip, step bars and pager dot brand; eyebrow subtle; "drag" and
+  "share" brand.
+- The password section: key and eyebrow subtle, the kit primary + ghost Save pair, two toasts factual.
+- Uploads, consent and install glyphs brand; leaderboard podium #1, hot-streak chip and the performance streak chain
+  metal; the performance best-win crest gold only with a win.
+- Wallet: balance eyebrow subtle; the dormant bonus card neutral with brand progress (D5); the dormant cashback promo's
+  tag neutral and its CTA primary. D1: "Confirm deposit" / "Confirm withdrawal" primary, the deposit loading ghost's
+  confirm brand (in the shared DepositGhost since R5-D), "you receive" in text ink, four validation toasts factual.
+- The wallet result modal: pending/in review royal info; reversed, cancelled and held a new slate neutral variant;
+  failed danger. The exact "payout if win" on an unsettled position in text ink (§B12).
+- Invite and agent share buttons primary; Earned figure and dial gold only once earned; a paying friend's chip success.
+- The resolution panel and round page: heading and evidence glyphs subtle, the quote rule the market page's border; the
+  seal keeps its gilt. The classic dial's range connectors neutral. global-error: "Try again" primary, the RG link
+  brand (the mark's needle keeps its gilt). The landing's eyebrow tick brand. Comments: report toast factual, "hidden"
+  neutral. Source of funds: "under review" royal pending.
+- Kit: Callout's gilt boxes → info; PageHeader, PageHero, Toggle and SubmitButton lose `gold`; `.gilt-eyebrow` the
+  eyebrow ink, `.gilt-rule` a border line; ::selection and the nav-progress glow brand; the closing-soon pill and the
+  hero hairline neutral; carousels' pips and arrows brand; CLOSED words the royal word ink; GiltCorner takes an `ink`
+  (the legal header's corners claret, §B4).
+- The "INAKUJA" tag is neutral in page bodies and the journey; classic chrome keeps its tint (frozen; owner item).
+
+Allowed and pinned (REFUTED as defects): the resolved seal, TippingBar's gilt needle (§B1a), the empty states' single
+gold accent (§C7), WIN pills.
+
+Guards: test:visual-pass-r5c (91 checks) — §1 a census ratchet (a new gold use anywhere in player code fails until
+ruled and registered), §2–§7 the items, the one accent, unearned money, the warning family, sanctioned gold that must
+stay, the owner pins; test:gold-is-money extended (45: the leaderboard and badge icons join the identity list, the
+money aliases join its token pattern, §2b the coin's rules are metal). Mutation proof: 59 planted, 59 caught on the
+named check, 59/59 restored byte-identical. Re-pins (each with its reason): design-frozen, spacing-scale (−1: the RG
+box's hand-rolled `gap-2.5` left for the kit Callout; with R5-B's −1, 453), eyebrow-roles (8 keys re-signed, roles
+unchanged), the measure anchor agent-fact-tile-pads-14, journey-shell 7.cluster and 8.poll.bar, r4j 1.4/1.4′/5.7, r4e
+7.2, and two e2e drives that now find the deposit button by its words.
+
+Merged onto R5-B + R5-D: the deposit ghost's confirm moved with R5-D's DepositGhost (its stale "gold confirm" comment
+too); the primer keeps R5-B's dock padding and both notes; the spacing ratchet carries both removals.
+
+Owner items (not changed): the warning token's paint (an amber off gold's hue proposed), classic chrome's remaining gold
+(rail/header dots, bell, language tick, avatar menu, ticker separator, INAKUJA), the claret rule's gold midpoint, the
+legal RG links (ship with the next policy version), and four questions (landing totals, §C7's accent, the crest's
+chroma, §C5's flames).
+
+Classic viewers see the page-body changes above; the frozen chrome (header nav, rail, bell, language tick, avatar
+menu, ticker, capsule, footer) is unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+3215ddfce 2026-10-09 15:43:47 +0300 Visual pass round 5 (R5-B): the Wallet's footer, the tabs and the docked sheets on the column's rhythm, notices dated in the reader's language and cut at a word, one name for each money action in the journey, an empty inbox without filters
+From round 5's read of 88ee1a42. Every item was re-measured first and brought, with its siblings, to one convention.
+
+- F3: the Wallet sheet and popover's hairline sat 16–18px under the content and 8px over Funga (tiles 132/133). The
+  journey's foot padding is now --sp-4, giving 16 | 16 in every state (held, normal, break). The filter sheet (already
+  16|16) is the reference; bands with their own padding differ legitimately.
+- F6: Tiketi zangu's sub-tabs started 12px (underline) and 20px (label) inside the column edge (167: x28/x36 vs x16).
+  Journey [data-section-rail] now takes the header nav's tab geometry: 12px padding, the underline exactly the
+  label's width, the rail reaching into the gutter. First label and underline sit on x16 / x132. /wallet's rail and
+  its loading ghost (`data-rail-ghost`) follow.
+- F7: docked sheets drew their border and edge light along the screen's last row (y778/y779). In the journey the box
+  runs 1px past the screen with no bottom border, for the Wallet, guest, primer, reality-check, filter and Needle-drawer
+  sheets and the chat sheet. Nothing moves.
+- F8: the journey bell badge has no drop shadow, so the dome's shoulder is untouched (425 → 475, as its mirror).
+  Classic keeps glow and drop.
+- F9: a Swahili notice read "kuanzia 9 Oct 2026, 11:53". market-service built ONE English date into all three bodies.
+  The verdict and revoked-agent notices, and their emails, now format per locale ("Malipo kuanzia 9 Okt, 11:53" /
+  "2026年10月9日 11:53"). Stored past notices keep their text.
+- F10: 82 + 3 `.slice(0,n)` title cuts in notices, and four email subjects, now cut at a word boundary with "…"
+  (clipQuote). A Chinese cut never falls inside a Latin word or figure. The wallet ledger's money-record descriptions
+  are untouched (pinned by red:updown-void-copy).
+- F11: the journey Wallet's buttons read "Amana" / "Toa" under a header pill saying "Weka pesa". In the journey the
+  header buttons, the balance card and both empty-state doors now use journey.depositAction / withdrawAction. The sw
+  pair fits one row at 320.
+- F13: Wallet 1280 had 59px above "Risiti zote" and 49px below. The door rides the search band's rhythm (R4-C's
+  technique), 42 | 42, the list 24px higher; the tap target stays 44.
+- F14: the count line under the chips sat 8px down. One constant, QUERY_BAR_ROW1_WRAP_CLASS, for both bars and the
+  receipts ghost gives 12 | 12 (/markets' rhythm).
+- /notifications (§A5, consistency): the search and the filter bar are withheld on a genuinely empty inbox, as on its
+  eight siblings, and kept once there is a notice (cleared ones too).
+- The zero-balance lead keeps "mobile money" / "pesa ya simu" whole (keepText with the Wallet's own method label).
+- The deposit and withdraw check badge sits 4px into its corner: 7px clear of the logo at 320 (was 3).
+- Judged, not changed (owner questions):
+  - the header focus rings sit 2px from the next control at 390 (the S4 fit rule's 6px gaps);
+  - zh boxed text is 1.5px high (CJK ideographs sit ~0.12em higher than Latin; every zh box shows it).
+
+Classic viewers get the shared fixes: dates and cuts in new notices and emails, F13/F14 on /wallet and
+/wallet/receipts, the empty inbox, the home lead, the badge and /wallet's ghost rail. F3/F6/F7/F8/F11 are journey-only.
+
+Guards:
+- test:visual-pass-r5b, 75 checks; it drives the notifier and email in-process.
+- Re-pinned: house-bot-reports' notifier hashes (notifyMarketCancelled, notifyObjectionDecided, notifyVerdictRecorded
+  and ForMarket, with a replica reproducing HEAD's pins), journey-shell 7.bell "none" plus a new plant, spacing-scale
+  455 → 454, landing-mine 3, visual-pass-r3c 8.8 and cert-c3's paysAt.
+- Mutation proof on the merged tree: 36/36 caught, all restored byte-identical.
+
+On the merged tip (with R5-D): 40 suites exit 0, among them:
+- r5b 75, r5d, r5f, journey-shell 433 and its red 186/186;
+- spacing-scale, density-contract, landing-mine, cert-c3 1529;
+- notifications-page, wallet-reach, wallet-receipts, journey-tickets, offline-neutral;
+- every visual-pass suite, money-format, failure-reasons, timer-date, filter-language, measure, static-cache-scope,
+  guards-exist and red-anchors.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+10d0a5e28 2026-10-09 15:18:44 +0300 Visual pass round 5 (R5-D): the code review's offline, not-found and route-ghost findings — the loading ghosts and the not-found view out of every payload, a real market never served as "not found", the worker caching only images and fonts
+From the three independent code reviews of vodacom-visual (review 1 F1–F5, review 2 G1–G2), each re-verified first.
+
+- F1: the market's generateMetadata called notFound() when its read FAILED. In Next 16.2.4 the MetadataOutlet rethrows
+  beside the page, so a database blip replaced a real market (maybe holding the reader's money) with the 404 and
+  noindex. There is now one rule for the three record pages (market, round, proposal):
+  - a failed read gives the board's title in the reader's language (existing keys; the round and proposal had used an
+    English section title);
+  - a missing record gives the not-found's own metadata;
+  - nothing throws.
+  All 59 generateMetadata are checked and pinned.
+- F2 (the service-worker half; the next.config half is hotfix 9cb95938 on main):
+  - sw.js matched by file suffix before navigations and stored any ok answer, so a signed-in page at /markets/abc.png
+    (and its ?_rsc= data) was kept and served to the next visitor offline.
+  - Navigations are now handled first, only an ok image or font is stored, and the cache name goes v5 → v6.
+- F3: the offline document was never refreshed. A navigation the network answered now refreshes /offline in the
+  background: at most once per wake, only when the copy is missing or a day old, cookieless, and a failure keeps the old
+  copy.
+- F4: leaving a not-found page, the next page rendered one frame with notFoundShown. The mark now carries the path it
+  was drawn for, and the chrome believes it only for that path. Arrival is announced in a layout effect. All 9
+  useSyncExternalStore readers are classified (10 at the merge: main's admin-crumbs, already keyed by the path).
+- F5: under a loading.tsx the server writes the ghost and a NEXT_HTTP_ERROR_FALLBACK;404 template, with no mark
+  (verified on React's production renderer). The five first-paint rules now read that template too.
+- G1: the route-ghost set (27 KB of Flight in every journey document and every refresh) becomes a client chunk
+  (route-ghost-lazy.tsx; words from the client dictionary; the server passes only the payout rails).
+  - Three page drawings moved byte-for-byte into shared modules.
+  - The not-found view became client code too (its words in not-found-words.ts).
+  - A new guard fails if any server module takes a non-component value from a client module.
+  Measured with the reviewer's script:
+  - the root's two elements: 33,287 → 486 B per journey document and refresh;
+  - /markets/[id] (15 s refresh): 187.6 → 34.3 KB/min;
+  - /updown/[roundId] (5 s): 439 → 45.5 KB/min.
+- G2: a server error in the bare journey header and tabs, or in the ghost's server render, fails the document. This is
+  documented at both mounts; nothing in them can throw.
+
+Classic viewers see the same loading box (byte for byte, no ghost reference), the same not-found pages (their payloads
+~5.5 KB smaller), a record page's title in their own language when only the metadata read fails, and the same
+worker. F4 and F5 are journey-only.
+
+For the integrator, outside this helper's area:
+- src/proxy.ts's matcher skips addresses ending in image extensions, so a page there gets no security headers
+  (separate hotfix);
+- the segment loading skeletons still ride every refresh of their pages;
+- journey-flag.tsx raises its flag in a passive effect.
+
+Guards: test:visual-pass-r5d (43 checks); offline-neutral §11/§12 (10 plants); r4j §5 extended; the r4k pins and anchor
+follow the moved words. Mutation proof on the merged tree: 27/27 caught, 16/16 files byte-identical.
+
+On the merged, rebased tip: 41 suites exit 0, among them:
+- r5d 43, offline-neutral and its red, r4j, r4k and its red;
+- journey-tickets, journey-shell and simple-journey-flag, each with its red;
+- measure, ui-consistency, red-anchors, decomment, route-census, client-graph-safe, shell-boundary;
+- static-cache-scope, guards-exist, docs, and every visual-pass suite.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+78f9e1a0c 2026-10-09 12:56:24 +0300 qa:bar-geometry repaired (R5-F): it guards again — painted boxes, an empty book or a short page said NOT MEASURED, never a pass or a false defect
+The drive read RED on main itself: 88 failures on a6331ca1, 89 on 90cb52ea, 92 on 88ee1a42. Its red twin refused to
+run while it was red, so neither proved anything. Every line classified; none is something a person would see.
+
+- "NO [data-filter-rail]", 63 lines (7 routes × 3 widths × 3 locales): not stale. Every route still carries its bar,
+  and each withholds it on an empty book by design (§A5; all seven guards date from 2026-09-08). The lock turn ran on
+  an unseeded in-memory store, and `fixture:player` — built for exactly this — had never run on OMEGA.
+- "OVERLAP", 14 lines, all /markets 360: since U4 (2c9380e00) the phone bar is one grid line with a masked,
+  sideways-scrolling lens strip. The "overlaps" were the parts of chips past the strip's edge, clipped by the strip and
+  neither painted nor tappable there. The drive compared layout boxes; its exemption covered only viewport clipping.
+- "THE BAR DID NOT STICK" / "ANOTHER STICKY SURFACE … header.sticky.top-0", 11 (main) and 15 (tip): on the thin store
+  scrollTo(1200) stopped at the page's end (559). Each bar's parent had ended and pushed it under the header, which is
+  correct sticky behaviour. The probe (M15x) reproduced all 18 positions on both trees. The tip's 4 extra lines are
+  round 4's tighter bands (the bar 35px higher on /results), not a regression.
+
+The repair:
+- new scripts/live/bar-geometry-rules.mjs, shared by the drive, the red twin and the suite:
+  - overlap is measured on PAINTED boxes, each control cut by every ancestor that clips it;
+  - a page with rows but no bar fails, and a page with no rows is BAR NOT MEASURED;
+  - the stick is measured by scrolling inside the bar's own range (up to 1200px past its place), where the bar must sit
+    on its `top` within 2px; rows below its parent fail, and a page too short is STICK NOT MEASURED; a declared
+    surface measured nowhere makes the run SKIPPED (exit 3).
+- The drive has 13 surfaces: /wallet/receipts added (012cccbc9's sticky bar no gate measured), and
+  /positions/performance declared withheld (it needs two settled products). It signs in at `/auth/demo?receipts=1`.
+- red:bar-geometry:
+  - its precondition checks every route × width × locale under proof (it checked /markets only at 1280, while case 4
+    ran at 360), requires green AND measured, and matches `expect` on ✗ lines only ("stick" was also inside "Two
+    sticky surfaces");
+  - sort-summary-unbound is re-pointed to /watchlist at 360 (since U4 it could not bite on /markets).
+- The anchors resolve once on main and the tip.
+
+The lock turn runs `fixture:player`, the drive and its red twin on ONE fresh server per tree (the fixture lives in that
+server's memory), with main as the control.
+
+Guard: test:visual-pass-r5f, 81 checks. It replays the logged boxes and the 18 stick positions through the old and new
+rules, keeps every plant red, and runs the in-browser probes on a small fake DOM. Mutation proof: 22/22 caught, files
+byte-identical.
+
+Suites, all exit 0 on the R5-F tree: red-anchors 5026, decomment, filter-language 303, live-target-safe, hooks-order,
+ui-consistency, i18n, journey-shell 433, simple-journey-flag, eyebrow-roles, type-scale, spacing-scale, design-frozen,
+css-vars-defined and stacking. On the merged branch: visual-pass-r5f, red-anchors, decomment, filter-language and
+live-target-safe exit 0, and node --check passes on all four scripts.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+5cee85b0d 2026-10-09 11:59:52 +0300 Visual pass round 4 (R4-I): every break and exclusion end said with its time in the reader's language, no "bet now" during a break, the old dial legible and its confirm on one screen, the auth and RG pages whole and without gold
+From the edge scenarios' break, self-exclusion and sign-in read (M9). Every finding was re-measured first. No
+dictionary string changed: the approved responsible-gambling sentences are composed and their values formatted.
+
+- E35 FIRST — no hole for the same person. A self-excluded person cannot register again with the same phone (+255… or
+  07…: ALREADY_EXISTS, auth-service.ts 586–589) or email (any case: EMAIL_EXISTS, 602–610). They are told "account
+  already exists — sign in", and signing in lands on the exclusion panel with its end. Proved in-process (§13), with
+  plants. OWNER: a NEW phone + email registers a fresh account; nothing at sign-up ties a person to an excluded one.
+- Ends with time:
+  - The exclusion panel printed the raw URL day ("hadi 2026-10-10", split "2026- / 10-10").
+  - The refusal said "hadi 9 Oct 2026, 06:02" (English month in sw/zh, split).
+  - The cooled sign-in panel and the RG confirm gave no end at all.
+  - Five redirects and the bell's two RG notices cut the UTC day.
+  src/lib/break-end.ts is now the one path: breakEndParam writes the instant; readBreakEndParam accepts only it or a
+  round-tripped day, never used for logic; formatBreakEnd = formatEatDateTime. Each end sits in an approved sentence
+  as one unbreakable run: "hadi 10 Okt, 05:05" / "until 10 Oct, 05:05" / "至 2026年10月10日 05:05". The cooled
+  redirect carries &until=; the confirm names the picked length.
+- No "bet now" during a break, as R3-A did for a held wallet, failing open:
+  - the home lead and add-funds prompt give way to the break notice;
+  - Tiketi zangu shows the break sentence without "Tazama maswali";
+  - classic /positions has no Browse;
+  - the market page shows the break sentence and hides "place another".
+  Generic product lines are an OWNER question.
+- The journey Wallet sheet says why Deposit is gone: "Deposits paused" over rg.breakActive with its end. The shell
+  derives journeyBreak from the row it already reads; the classic bar's props are unchanged. The hub's Pumzika row
+  shows its status.
+- The deposit-paused notice:
+  - centred, 32/32 on phones and 48/48 from 640;
+  - full-width text;
+  - neutral tone (gold is money);
+  - a cooling-off gets a Withdraw door ("Toa pesa" in the journey, "Toa" in classic).
+- The old dial (live for classic players):
+  - the scale is legible: 10px, 6.67:1, and a figure only where it clears the thumb;
+  - the caption has its own lines;
+  - the 1280 pill no longer covers "UAMUZI WAKO";
+  - the confirm is capped at 100dvh−40px, with the clock, Confirm, Ghairi and the footnote always on screen.
+  "Possible winnings" is in mono, the Multiplier label is centred, "YOU ARE PICKING" sits on one line and the
+  dialog's widows are kept. The refusal drops its repeated eyebrow and is an alertdialog with its reason and focus.
+- Dialog ✕: the bet confirm's sits on the title's cap band (28 vs 27.94px); ConfirmModal's sits on the medallion's
+  centre in the header row, without growing it.
+- RG page: the two limit forms line up (one field and one button width, the other's label reserved invisibly). The
+  callout is 13px (it was 11) and zh "现。" is kept with 提现.
+- Auth:
+  - the eyebrows are brand, not gold (R4-K's ruling), as are the CTAs; bonus cards keep gold only on the money;
+  - the forgot-password link is 13px with a 40px tap area, and the form does not grow;
+  - the zh exclusion icon sits on the title's ink;
+  - widows are kept;
+  - from 1024 the brand panel stands on the header's 32px edge, and its wordmark is hidden from 1280.
+  The OTP page uses maskPhone. "INAISHA" becomes "INATATULIWA" (common.resolves).
+
+Merged onto R4-G/H/J/K: the journey bar is handed breakEnd={journeyBreak} beside R4-H's journeyUser. The pins in
+simple-journey-flag SWAP_HEADER and r4i 9.3 / 10.2 follow R4-H's shape.
+
+Guards:
+- test:visual-pass-r4i: 128 checks. It renders AuthHeader, HubRowItem, Callout, RgConfirmSubmit and loadHubViewer,
+  and runs §13/§15 on the in-memory store.
+- Mutation proof on the merged tree: 88 planted, 88 caught, all restored byte-identical (one anchor re-pointed to
+  R4-H's call line).
+
+On the merged tree: 60 suites exit 0, among them:
+- r4i 128, the r3c/r4c/r4d/r4e/r4h/r4j/r4k suites and offline-neutral;
+- timer-date, enter-where-pressed, implicit-submit;
+- rg-race, rg-doors, rg-cash-incentive, rg-policy, rg-limit-change, failure-reasons, popup-fit;
+- journey-shell, journey-account, journey-tickets, simple-journey-flag;
+- type-scale, money-format, tap-target, eyebrow-roles, landing-mine, featured-card;
+- the kyc suites, payments, card-return-order, deposit-phone, journey-funnel, wallet-freeze and red-anchors.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+37dd8a460 2026-10-09 11:21:16 +0300 Visual pass round 4 (R4-J): the journey's header and tabs in the first paint, no cross-fade of the chrome on a tap, each page's own loading ghost, and a not-found page that is not a question page
+From the edge scenarios' Slow-3G and not-found read (M9). Every finding was re-measured from the tiles first.
+
+- E36: on all 16 mid-load tiles the journey header band was one colour (5,2,79) and the rail was missing, while the
+  DOM held both.
+  - Cause: each journey arm was the only child of its own <Suspense>, and React 19.2's server renderer outlines a
+    finished boundary over 500 bytes once the shell passes 12,800. The fallback (an empty .kp-jhdr, or nothing) is
+    written in place, and the part waits in a hidden div for the inline $RC script; with scripting off it never
+    appears.
+  - Fix: both arms render bare in AppShell, journey only. test:visual-pass-r4j §1 proves the outlining on React's own
+    server renderer, with a boxed control.
+  - What the boundary protected is kept another way:
+    - the capsule is drawn masked until the browser's stored choice is read (WalletBalanceCaptioned), with the same
+      box widths (D31);
+    - the client-mounted bell has a still twin (BellStill, a plain link to /notifications) holding its slot.
+  - Cost: a page's hydration now also waits for the two small preloaded chunks.
+- E37/E41: 22 of 27 tap frames showed the chrome doubled and dimmed ("TZS 188,888"), and two tabs were lit.
+  - Cause: route-transition.tsx started a View Transition of the whole document after the router had committed, so
+    both snapshots were of the new page, and the rail's pip froze mid-transition.
+  - Fix: a journey reader gets the page wrapper's CSS entrance only (journeyFlagSnapshot), and the journey's rail
+    pip and nav underline do not transition. The classic cross-fade is untouched.
+  - Tile 328's blank is a CDP capture inside the transition's render suppression; a viewer keeps the last frame.
+- E38: every journey loading state was the root SectionLoader box (phones y252–612; at 1280 x32–1247 against the
+  x132–1147 column). The root loading now draws JourneyRouteGhost for a journey reader (AppShell's own gates), and
+  RoutePick picks the page's own ghost:
+  - "/" — the hero's intro, moved into hero-intro.tsx;
+  - /positions — TicketsGhost;
+  - /account — the hub column;
+  - /updown, /updown/history, /wallet/deposit, its return and /markets/<id> — their loading files;
+  - any other page — a frameless spinner.
+  /live's search ghost wears QUERY_SEARCH_BAND_CLASS (R4-H's request). To check in the lock turn: the ghosts ride in
+  every journey document.
+- E39: framework, not changed. Next 16 streams the <title> inside Suspense "Next.Metadata"; on navigation React removes
+  the old one before the new resolves (app-router.js 97–109, react-dom-client 10136–10148, 17083–17088).
+- E40: the rest rule handles tile 269's caption (decideRest moves the disc 14px clear). The drive tiled ~560 ms after
+  its own scroll without waiting for window.needle.resting(); a drive copy waits for it, so no product change.
+- Not-found pages: the market and Up & Down 404s lit Maswali / Juu-Chini, hid the Needle, the chat bubble and the
+  channels panel (surfaces.ts treats /markets/<id> as the redrawn question page), and polled server actions that 404
+  on the unmatched URL.
+  - A not-found mark is added: src/lib/not-found-mark.ts, plus a hidden #kp-not-found from NotFoundView.
+  - The overlays stand down only when `journeyOn && isJourneySurface(pathname) && !notFoundShown`.
+  - No tab is lit there, and the Akaunti dot's counter and the live bell are not mounted there.
+  - A journey-only `:root:has(#kp-not-found)` rule puts the server-lit tab back to rest from the first paint.
+
+Classic viewers: header, tabs, loading box, cross-fade, rail CSS, bell and capsule are unchanged. Page-body changes for
+both shells: the /live loading band, the hero refactor (same output), and the hidden mark on not-found pages.
+
+Guards: test:visual-pass-r4j, 69 checks. journey-shell is extended (§8 bell slot, §9 census, §11 the stand-down term,
+§12, 433 checks) and simple-journey-flag's anchors are generalised. Mutation proof: 22/22 plants caught on the merged
+tree, every file restored byte-identical.
+
+On the merged tip: 40 suites exit 0, including r4j 69, journey-shell 433, red:journey-shell 185/185,
+simple-journey-flag and its red, hero-copy, needle-host, stacking, reduce-motion, the r3c/r4c/r4d/r4e/r4h/r4k
+suites, offline-neutral and red-anchors.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+92b4cc11d 2026-10-09 07:11:34 +0300 Visual pass round 4 (R4-H): long names stay in their column and the profile cannot slide, no typed letter lost, titles keep their figures whole, one page one name in the journey, the toaster under the header, the home's title in the reader's language, receipts' ids without stragglers
+From the edge scenarios' read (M9). Every finding was re-measured first, and every "after" is computed (round 5's tiles read them).
+
+- Profile hero (233–235): after the 40-character names, the hero was scrolled 32px sideways and read "ZS 50,000". The cause was an overflow-hidden section (still a scroll container) revealing the name button, 141..722 wide at 360, when focus returned to it. Now:
+  - the section is overflow-clip;
+  - the name button is max-w-full;
+  - the name breaks (overflow-wrap anywhere, balanced, keepNameEnd: never one character alone).
+  The hub's CJK name breaks 10·10·10·10 where balance is supported, never 13·13·13·1.
+- Name editor: a 30ms delayed re-select swallowed the first 1–2 typed keys (the saved names lost their first letters). It now focuses and selects once, in the layout effect that mounts the field, with no timer.
+- Board rows' meta line goes through DotSeq, so no line ends on "·".
+- keepFigures (keep-words.tsx) keeps a figure with its range and unit whole — "2026-27赛季", "dakika 28:00", "$5.5 bilioni" — on cards, board rows, the market h1, the ticket card and /live. /live's KeepHyphenated no longer swallows a whole Chinese title into one nowrap span.
+- E30, the /markets card's two-line clamp: BY DESIGN. It is the card height contract (--mcard-base); there is no cross-engine word-boundary ellipsis. For the owner: MarketCard does not read S2's approved short titles (cardTitle).
+- Journey account menu (journey prop):
+  - the Needle row is on the menu row's own geometry: inset 16, gap 10, chevron at the edge;
+  - "Pendekeza na / upate zawadi";
+  - /positions is named by the journey tab's own key (journey.tabTickets), with its ticket glyph;
+  - the phone is masked by maskPhone, as on the hub and hero ("+255••••84", not "+255*****84");
+  - no gold on an invitation to earn (R4-K's audit: Q5, M3, D5). Invite & Earn and Propose & earn are drawn in the row family's ink.
+  The classic menu is frozen chrome and keeps all of these.
+- The home's signed-in link to /positions uses the tab's key in the journey. /profile/account's mask is maskPhone for both shells.
+- The journey's toaster (data-toaster, journey-only rule) hangs under its header: 72px on phones, 64 from 640.
+- The home's document title was the layout's English default in every language. It is now "50pick — " + the existing auth.railTagline: sw "50pick — Tabiri matukio. Si bahati.", zh "50pick — 预测事件，而非运气。", en unchanged.
+- Journey Wallet sheet at 320 (journey-only):
+  - the doors pad 12px and the glyph no longer shrinks (the ⊕ was crushed to ~4px);
+  - the captions keep their last two words together ("Mobile money / or card").
+- The featured card's hover no longer lifts the category watermark behind its controls.
+- Receipts (S9's note): keepIdRuns cuts a long id into runs of four with a break point between them, a short tail joined to the run before, in a balanced block. Both receipts; the id is unchanged.
+- R4-C's leftover: /live, /updown/history and /profile/account wear the search band (34·34, 34·34·34, 26·26·26).
+
+Guards: test:visual-pass-r4h, 81 checks (79 from R4-H, plus 6.8 / 6.8′ for the journey menu's gold, added at merge). R4-H's on-disk mutation proof caught 33/33, with files restored byte-identical. Re-pinned: simple-journey-flag SWAP_HEADER, journey-tickets TITLE_WORDS, landing-mine §3, and spacing-scale's ceiling 457 → 455. That last drop is R4-K's: the not-found pages' hand-rolled p-3.5 cards, which R4-K's merge check did not run.
+
+On the merged tip, 42 suites exit 0, among them:
+- the r3c/r4c/r4d/r4e/r4h/r4k suites, offline-neutral, journey-shell, journey-account, simple-journey-flag;
+- density-contract, featured-card, eyebrow-roles, type-scale, money-format, spacing-scale 455, journey-tickets, landing-mine;
+- wallet-reach, wallet-receipts, card-return-order, share-preview, gold-is-money, and red-anchors.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+0dbaa1186 2026-10-09 07:07:58 +0300 Visual pass round 4 (R4-K): one not-found design without gold, its titles and noindex right, a faded wave and the house edge; Chinese centred lines on their ink; the market title clear of its watermark; three gold-is-money defects fixed
+From the edge scenarios' read (M9). Every finding was re-measured first and every "after" computed.
+
+- Not-found:
+  - The root page (also /updown/[roundId]'s) and the market and proposal not-founds were two designs: a gold "404" and gold link, cards in another order, no wave. All three now render one shared view, src/components/ui/not-found-view.tsx: Home · Markets · Help, one brand-300 link, no gold. Proposals keeps its own way out.
+  - Headings and hints are balanced, with keep-all + break-word for zh. "Hatukupata / ukurasa huo"; the zh hint is two lines at 320–1280.
+  - The 1280 wave fades its edges over 64px (it was a hard 640px box).
+  - The phone edge is 16px (px-3), not 24.
+  - Titles: a market's generateMetadata calls notFound(), so Next read the deepest not-found's metadata, which had none, and the title fell back to the root's English default. The market and proposal not-founds now export the root's metadata, which also sets robots noindex, nofollow. /updown and /proposals return it when the read succeeded and found nothing.
+  - HTTP 200 with a streamed noindex is the framework's: the loading.tsx shell flushes the status before notFound() (app-render.js 1894–1897). It is documented, not changed.
+- The "Failed to load resource: 404" on not-found pages is not a missing file. Every referenced asset exists. The journey's unread dot and the bell poll through server actions, and those POST to the current URL, so on an unmatched path Next answers 404. The client still accepts the reply.
+- Chinese centred lines ending in 。 or ？ sat 4–4.5px left of centre: YaHei's advance leaves the mark's right part empty. hangCjkMarks() (src/lib/cjk-marks.tsx) pulls each mark back 0.65em (？ 0.5em) and pays it back with a measured space when text follows, so a line-end mark stops at its ink (predicted ≤0.2px). Latin is returned unchanged (5,310 sw/en strings checked). It is on the empty state, the side picker's question and the not-found hint.
+- Market page at zh 768: the title ran 22px over the category watermark. The h1 reserves the mark's 2em box + 12px (8px of air at every width). R4-D's first-line indent is kept.
+- Gold is money (Q5, M3, F3):
+  - The countdown labels move from gilt (text-warning-fg) to text-subtle.
+  - The not-found gold is gone.
+  - The market page's guest eyebrow "登录以预测" moves to text-subtle.
+  - Rulings handed on: the auth eyebrows (auth-panel tone gold → brand) and the deposit-paused / RG callouts (warning → neutral) → R4-I; the avatar menu's Propose & earn sparkle → R4-H; the token itself (`--warning-fg: var(--gilt)`) → owner.
+- Not fixed: the zh empty-state title rendering in SimSun with synthetic bold. The served stack already lists YaHei, so Chromium-on-Windows fallback picks the face; a CDP font probe runs in the next lock turn. The market not-found also hides the chat bubble and the Needle (surfaces.ts treats /markets/<id> as the redrawn question page); the fix needs the overlay files and follows.
+
+Guards: test:visual-pass-r4k (77 checks); red:visual-pass-r4k, 17/17 plants caught with 9 files restored byte-identical (its mutations are in scripts/anchors, audited by red-anchors). Re-pinned: visual-pass-r3c 2.4, measure-system, the ui-consistency baseline, eyebrow-roles.
+
+On the merged tip: 34 suites exit 0, including r4k 77, red:r4k 17/17, r3c, r4c, r4d, r4e, offline-neutral, eyebrow-roles, journey-shell, gold-is-money, contrast, type-scale, route-census and red-anchors 5026.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+a57bda6ac 2026-10-09 06:29:00 +0300 Offline (R4-G): the offline page holds no person and speaks the language of the moment, old cached copies are dropped, and the offline notice sits under the header instead of on it
+The edge scenarios (M9, scenario 9) found a live defect for every player.
+
+- public/sw.js precached "/offline" with `cache.add`, so the request carried the session, kp-locale and preview cookies. /offline was a page inside the root layout, so the cached HTML was AppShell for whoever was signed in at install. It held:
+  - for a classic player: TopAppBar's name, initials, masked phone, avatar, userId, balance, held flag and admin flag;
+  - for a journey player: the capsule "Salio TZS 100,000", the gold pill, `onBreak` and the staff preview strip.
+  Offline, any later visitor on that device was shown that person's header and balance. An English or Chinese player read it in Swahili: it never hydrated, because the worker caches no chunks, and the provider never writes <html lang>. Back online it hydrated at another address into an aria-current mismatch ("2 Issues").
+- The OfflineBanner was a fixed z-[200] strip over the 56px header of both shells. Its words ran over the mark, the capsule and the pill, and at 1280 it took the nav links' clicks: elementFromPoint returned the banner, and the drive's 1280 tap timed out three times.
+- sw.js's no-cache fallback was English and Swahili only, in sentences outside the dictionary.
+
+The fix:
+- /offline is a route handler (src/app/offline/route.ts) returning one self-contained document (src/lib/offline-document.ts). It has no layout, no shell and no React, so there is nothing to hydrate. It reads nothing from the request; its only input is the public licence number. The worker fetches it with credentials "omit" and cache "reload".
+- Every phrase (common.offline, common.offlineHint, error.tryAgain, the footer's 18+ / licence / stop lines) appears once per language. A head script reads kp-locale (then the saved choice, then Swahili) and sets <html lang> and the title before first paint. No new words.
+- Retry and the browser's `online` event reload the address the player asked for. Nothing reloads while still offline.
+- It is one look for both shells: the mark (brand-mark.ts geometry), the wifi-off disc, the backdrop, the pill retry, and 16px gutters. Its fonts fall back to the system font, as global-error.tsx's do, because next/font's files are build-hashed.
+- CACHE_NAME 50pick-v4 → v5, so `activate` deletes every older cache on devices that already hold a person's page. The offline lookup reads only the current cache.
+- Push and the static-asset strategy are unchanged.
+- The banner is the kit's warning NoticeBar, in AppShell's flow under the header, first of the notices. It has no position and no z-index; role="alert" is kept through a new `assertive` prop (off by default, so the other bars are unchanged). The 200 rung is removed from the stacking contract, KNOWN_ROOT_RUNGS, tailwind's `banner` and needle.css's note. Online, nothing changes.
+
+Guards:
+- test:offline-neutral, 65 checks. It runs sw.js's install/activate/fetch/push in a sandbox against a recording cache, and the document's scripts for 11 cookie/storage cases.
+- red:offline-neutral 23/23, in-process: precache with credentials, a session read in the route, the old cache name, a hard-coded language, a fixed banner, a fallback without Chinese, and more.
+- journey-shell drops its three /offline page checks (it is not a page now), and route-census and the stacking contract follow.
+
+On the merged tip: 31 suites exit 0, including offline-neutral, red:offline-neutral 23/23, journey-shell 432, stacking, design-frozen, route-census, simple-journey-flag, needle-host, the r3c/r4c/r4d/r4e suites and red-anchors 4990.
+
+The scratch edges drive (outside the repo) parks the pointer before every tile, logs every failed subresource, and probes the cached document, the notice's box and what is on top at each header control. The browser proof runs in the next lock turn.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+23081d0f9 2026-10-09 05:42:57 +0300 Visual pass round 4 (R4-E): the hub's card-size row back to the hub's rhythm, the Needle row's glyph in the family's ink, the sheet × on the cap centre, badge names whole, one content edge per column, deposit methods without a hole, the journey capsule centred
+Every finding was re-measured first. Every "after" is computed; the next tile round reads them.
+
+- Card-size row (259, R3-C's regression): the switch sat on the label's line (146.5) while the glyph centred on the
+  row (156.5), and the row was 61px against the hub's 56.
+  - It is now a plain hub row: glyph, a text column (label and value paired on one line, `.kp-hub__pair`, the hint
+    under them), then the switch, with glyph and switch centred on the row.
+  - keepSentences wraps the hint only between its sentences.
+  - Predicted on 259: 56px, glyph and switch both at 153.5, the hint on one line.
+  - Accepted consequence, measured: a switch centred on the row covers both text lines, so the text column is
+    viewport − 154px. The sw hint (224.9px) takes two lines at sw 360 (a 73px row), and en/zh at 320 also take two.
+    Both are whole sentences, never split words. A shorter sw hint is an S12 candidate.
+- Needle hub row (122–130): NeedleMark's 0.5-opacity r42 ring drew at half ink and 18.4px. A new I.needle glyph
+  (the family's r9 ring, the mark's tilt, one ink) draws the row. The mark keeps its two tones where it IS the mark.
+- Sheet × (116, 117): phones sat 1–1.5px below the cap band, for two reasons: Sora's cap band sits 0.5px above the
+  line box's middle, and a −4.5px margin put the docked sheet's top on a half pixel. The margin is now −4px from the
+  type token, and the sheet height is whole: about +0.3px everywhere.
+- Badge names (186, 188): DotSeq stacks a centred sequence (`stack`, one part per line, dot transparent) and shapes
+  each part. "First Win" sits over "Ushindi wa Kwanza", and no line opens or ends on "·" or leaves "Kwanza" alone.
+- Content edges: the /profile stat strip, the RG help card (its art −4px of its ink inset), the RG sound card and the
+  proposals notice now share the column's 20/24px edge (x41 at 390, x165 at 1280). The /profile AKAUNTI grid moves
+  from 12px to the hub's 16.
+- /fairness: the numerals hang from a .fairness-steps counter at the heading's edge (x165–166), not the browser's
+  outside markers.
+- Wallet "Weka mipaka" (journey only, since the classic capsule opens the same sheet): the square focus ring gets
+  the radius, padding and `.btn` halo, and no word moves.
+- Agent stat hints are balanced. The privacy version line keeps a year with its word ("Act 2022", keepYears).
+- Deposit methods (069): ProviderRadioGrid becomes a 6-track grid from 640. A last row of two takes three tracks
+  each, and a last row of one takes the row. Phones have two columns, and a lone Card spans the row. Withdraw's four
+  rails are 2×2 on phones and four across from 768.
+- Journey capsule: a short figure sat right in the box D31 reserves for 999,999 (TZS 0: 39 | 10). Rule 8a decides
+  the box, not where the words sit in it, so the caption, figure and delta are centred (24.4 | 24.4). The caption is
+  now centred at every balance, too: at TZS 258,208 on 390 it sits ~34px left of its old flush-right spot. Classic
+  capsule unchanged.
+
+Merged onto R4-C:
+- DotSeq had grown two props for one job: R4-C's `renderPart` (notifications) and R4-E's `keep` (legal line, badge
+  names). They are now one, `renderPart`, with R4-E's `stack` kept. The legal header and the badge shelf use
+  renderPart, and the r4e and r3c 9.4 pins follow.
+- eyebrow-roles' signature for the notification restore control follows R4-C's `-mt-1`: the same site and role
+  (CONTROL_LABEL). R4-C's commit read red there alone.
+
+Guards: test:visual-pass-r4e, 68 checks with a control or plant for each fix. Re-pinned: visual-pass-r3c
+§1.3/1.6–1.8, §6.1, §9.4, wallet-reach 8.18, and the journey-header-fit anchor. On the R4-E tree: red:wallet-reach
+27/27, red:density-contract 5/5, red:journey-account 48/48.
+
+On the merged tip: 76 suites exit 0, among them visual-pass-r4e 68, r4c 38, r4d 63, r3c 70, journey-account,
+journey-shell, wallet-reach 84, eyebrow-roles 645, icon-sizes, privacy-notice, payments, red-anchors 4989. Two reds:
+test:dead-css is main's own, and test:house-bot-disclosure's D19a pin is red by construction while the legal tree
+differs from main.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+dc7e7eada 2026-10-09 05:36:26 +0300 Visual pass round 4 (R4-C): a search box and its filter bar are one band, the /markets divider centred on what the eye sees, notification titles and bodies whole with money in mono, their actions on the icon's centre; the tile tool waits for unread signs and the chart's fade
+Every finding was re-measured first. Every "after" is computed from the code; the next tile round reads them.
+
+- The band under the search box: 69px on /results, 59–60 on notifications, 49 on /live, 69 on /watchlist, 77 on
+  /proposals, 67 on classic /positions; chips → sort 8–10px.
+  - Two causes. SearchBox always reserves its 25px echo row. Each page put its own rung between the box and the bar
+    (/results' py-2.5 wrapper + gap-5, notifications' space-y-5).
+  - One rule: a search box and its bar are one band, at the page's rung + the bar's own 10px on every side, rows 12
+    apart inside the bar (which also clears the selected chip's halo). `QUERY_SEARCH_BAND_CLASS` (the doubled
+    `.kp-search-band` selector outranks space-y) is on /results, /watchlist, /proposals, /fairness, notifications and
+    classic /positions; QUERY_BAR_ROW2 is pt-2; Tiketi zangu's hand-typed pb-2 becomes QUERY_BAR_ROW1_ALONE (42/42,
+    was 42/44); the loading ghosts follow.
+  - Predicted: /results 34 / 12 / 34 (content 31px higher), notifications 34 / 34 / 12 / 34, /markets 35 / 12 / 12 / 34.
+- /markets divider (196, 172): the rule sat 31 | 14 from the ink around it, because an unselected pill's ink stops 17px
+  inside its box. When the last pill is unselected the rule moves to −24px: 22 | 23. A selected last pill keeps 14 | 14,
+  clear of its halo.
+- Notifications (193, 194):
+  - Titles go through DotSeq with moneyRuns (a new optional renderPart; without it DotSeq's output is byte-identical),
+    so "TZS 4,200" is mono and whole and the break falls between the clauses.
+  - Bodies go through moneySentence(): money runs plus the last two words kept together as an inline-block, so no
+    widow. Chinese is untouched.
+  - The ✓ / × controls rise 4px onto the icon plate's centre.
+- /results 390's "unsignalled" 4th lens: REFUTED. The strip carries R3-C's 64px end ramp (HAPANA's "0" is ~52% dimmer)
+  and the 4th pill begins past the strip's visible end. Unchanged.
+- Tile tool (qa-journey-shell):
+  - The tickets tiles wait for the unread signs.
+  - shoot() waits for the Up & Down chart's fade to reach opacity 1 (R4-D: tile 164 was shot 26% into it). It is a
+    wait only, and it reports rather than fails.
+
+Guards:
+- test:visual-pass-r4c, 38 checks, with plants for each fix.
+- Re-pinned: visual-pass-r3c 4.3′, journey-tickets CLASSIC_GHOST[4], spacing-scale's ceiling 460 → 457, and the
+  bar-geometry anchor for the band.
+- red:journey-tickets 107/107 on the R4-C tree.
+
+On the merged tip: 31 suites exit 0, among them filter-language, density-contract, notifications-page, journey-tickets,
+journey-shell, money-format, spacing-scale, needle-host 94 and red-anchors 4989, plus node --check. test:dead-css's
+exit 1 is main's own.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+5cd52ae2c 2026-10-09 05:29:12 +0300 Visual pass round 4 (R4-D): Up & Down's axis in dollars and its controls on one rhythm, /live's cards level on a 16px grid, the bar caption on the bar's centre, the market page's star and title edge, the tallies' sentence word
+Every finding was re-measured first. Every "after" is computed from the code and the fonts; the next tile round
+reads them.
+
+- Up & Down chart (164, 202):
+  - The price scale read "2896.04": the engine's own price format has no grouping. It is now a custom format through
+    `usd()`, so the scale, the live tag and the crosshair read "$2,896.04", as the page does.
+  - The axis's faint ink on 164 was the capture, not the ink: every delta on that tile is 0.25–0.26 of 202's, so it
+    was shot ~26% into the chart's 520ms fade-in. `--text-subtle` measures 6.3:1 on the card.
+- Chart controls (202): the key's bare span hung on the page's 22.4px line. The gaps were 4 / 8 / 12px. The wrapper is
+  now flex (a 14px line), its foot is computed from JetBrains Mono's TTF, and the rails are gap-y-2: 12 / 12 / 12.
+- Round page panel (165, 166):
+  - The stake is set in `.amount`.
+  - A new EstimateNote hangs the ×-note's lines beside an 11px column, as the ⓘ note's do. It is on the panel, the
+    board card and the locked-side panel, whose 10px note rises to 13px.
+  - A line that opens on the quote stamp opens on a capital (`.ud-cap-first` / first-letter), so it reads
+    "Imenukuliwa 04:01:21 EAT", and the same word stays lower case inside the sentence. The words are unchanged.
+- /live (178, 196):
+  - The Up & Down chip's 20px box made its card's row 6px taller. TAG_BOX_Y gives the bare label the same box, so the
+    three cards are level.
+  - `.market-grid` was a bare 14px, on no ladder and ruled nowhere. It is now `--sp-4` (16px), as Tiketi zangu and
+    the hub use; the phone's Compact 10px is unchanged.
+- Bar caption: `space-between` centred the lean word between two unequal labels, 7–7.5px left of the bar's centre. A
+  `1fr auto 1fr` grid puts it on the bar's centre. Sides never wrap; the caption gives way.
+- Market page (161, 162):
+  - The source link's icon ink stops 2.03px short of its box, so the star's gaps read 27 / 25. `-mr-[2px]` makes
+    them 25 / 25.
+  - The title's first capital stood 2px in from the page edge (Sora 700's 0.082em bearing, from the font). A
+    first-line indent of −0.075em fixes it, decided by the first letter, never by locale.
+- Tallies: /results' "0 imetatuliwa · TZS 0 Imekamilika" used the tab label. They now use the sentence word
+  `market.tickerSettled`: on /results, the result cards, and /positions' win-rate hint ("3 imekamilika"). That hint
+  renders only for a holder, so qa:classic-shell-parity's empty portfolio cells are unchanged.
+- /markets 390 count line (195): it sat 6px under the pill and 8px over the hairline. `--sp-2` each way gives 12 / 12;
+  the bar grows 8px.
+- The lean label is upright: no mono italic is loaded, so the browser sheared it.
+
+Guards: test:visual-pass-r4d, 63 checks (it reads the source through decomment). The mutation proof caught 21 of 21
+planted defects.
+
+On the merged tip (rebased on main): 32 suites exit 0, among them updown-chart, market-columns, money-format,
+type-scale, contrast, density-contract, featured-card, eyebrow-roles, journey-shell, i18n and red-anchors 4989. On
+the R4-D tree: 122 suites, all 42 updown-* among them. test:dead-css's exit 1 is main's own: a6331ca1 reads the
+contacts importer's data-import-checking="skeleton" as a render of .skeleton.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+935eabc6d 2026-10-09 05:25:22 +0300 Classic parity (R4-F): the footer's balance is the journey's alone, and the classic /positions empty state is named — the compare has nothing unexplained
+M8's v2 compare (90cb52ea against main d9b7a5b6's baseline) read 38/39: 4.1 found 224 cells changed, every one of them
+by this pass.
+
+- The footer, in all 224 cells. G2's FooterLink `balance` put one class (text-balance) on the proposals label, and at
+  768/1024 the COMING SOON pill's boxes moved (5 lines, signatures unchanged). The footer is classic CHROME, frozen for
+  S6/S7, so the balance is now the journey's alone.
+  - app-shell.tsx renders the footer in two arms, as the header and the rail do. The else arm is today's element with
+    today's props, so the classic page's RSC data is main's too.
+  - public-footer.tsx takes `journeyShown` (default false), and the link is `balance={journeyShown}`.
+  - Rendered offline, the classic span's class is exactly main's string.
+  - Consequence (owner item 13): classic viewers keep main's greedy break, so the pill again sits alone on its line at
+    768/1024.
+- The classic /positions empty state, in 24 cells. G3 added classes and R3-C (INK_TOP) cropped the drawing to its
+  ink. It is a shared page BODY, fixed for every player, so it is named in EXPECTED_DIFFS, never re-baselined (A3):
+  - `positions-empty-state` covers the three tag pairs, verbatim;
+  - `positions-empty-state-layout-en` and `-layout-sw` cover 13 measured lines × 4 widths, plus each language's link
+    pair. Every other box sits 14px higher and nothing moves sideways.
+  - New harness check 4.2b (missingAlongside, 4.6's twin for the matrix) holds the layout entries to the markup entry.
+  - New synthetic proofs: P.5p (each entry matches only its own change) and P.6p (4.2b reports a missing layout entry).
+- VODACOM-PLAN §0i lists the three entries, as A3 requires.
+
+Replayed offline on the two capture files with the harness's own code:
+- the synthetic control: 57/57;
+- §4 passes everything but the footer fields, which this capture predates;
+- with the footer region set to the baseline's, 9/9;
+- footer markup with the class removed: 224/224 equal to the baseline, byte for byte.
+The browser compare runs in the next lock turn.
+
+Guards: test:simple-journey-flag 10.shell.chrome.footer, 135/135; red:simple-journey-flag 40/40, with 3 new plants:
+the else arm saying journeyShown, the link balanced for everyone, and the default true.
+On the merged tip (rebased on main): journey-shell 435, journey-account 85, ui-consistency, visual-pass-r3c 70,
+red-anchors 4989, decomment 22, hooks-order, source-bytes, design-frozen, stacking 139, and node --check.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+24b9fe157 2026-10-09 05:00:09 +0300 The Needle (R4-B): the chat bubble is an obstacle shown or faded, ring included — the dial no longer rests under it
+Round 4 (tile 313, hub, zh 320): the dial (ink x293–319, y635–688) rested partly under the chat bubble (box
+x260–304 × y656–700, ring ink x256–308 × y649–703). Compared with the same dial unobstructed on 305, the bubble hid
+136 of its 994 ink pixels. The stacking is the house rule (the bubble at z60 over the Needle's z45: a fidget must never
+cover a control); the rest check was what failed.
+
+- Cause: the control census skips a control with pointer-events none (needle.tsx), and both of the bubble's fades
+  set exactly that: D3 while scrolling and for 250 ms after, and D75 after 3 s with no touch. The rest check runs
+  180 ms after a scroll, inside D3, so the bubble was invisible to it, and the disc stayed at the height restored from
+  the previous page. When the bubble was shown, it counted only as a 44px box, without the pulse ring that paints 5px
+  outside it (314 and 315 rested 9 and 11px from the ring, inside their 14 and 15.4px).
+- needle-rest.ts:
+  - a new input `above`, kept glow + 4 from the disc's box at every tier;
+  - bubbleInk grows the bubble's box to its ring at full breathe (5px, 5.48 around the 56px bubble);
+  - restReach: a third of the viewport, but for a disc under the bubble, as far as the nearest height clear of it
+    (130px on a 740 × 360 landscape phone).
+- needle.tsx: bubblesInBand reads every .cm-fab at its .cm-bubble, shown or faded. It skips only visibility:hidden,
+  takes the fade's translate back off, and never tests pointer-events or opacity. The MutationObserver re-checks when
+  the lazy bubble arrives or leaves. The bubble itself is untouched (ChatRoot, chat-styles.css, globals.css).
+- Replayed on the vendored engine: 313 → y580 at tier 0, 15px from the bubble's ink; 314 → 580; 315 → 574, 17px clear;
+  en 305 unchanged at 546; a dense page keeps 14px even at the lowest tier; landscape 290 → 160.
+- en and zh rest at different heights for one cell, by design. The rest is the nearest acceptable height from where
+  the disc already is, and that position carries between pages. en's licence line reaches into the band and moves
+  it; zh's ends at x188 and did not.
+
+Guards: test:needle-host §6, 26 checks (94/94 in all). It reads the ring's inset and breathe from chat-styles.css and
+the box from ChatRoot, holds the ink model to the ring measured on 305 within 1.5px, and replays the four tiles' rests.
+Plants:
+- the bubble dropped from the obstacle set (the disc stays at 634, overlapping 17 × 39);
+- the bubble as its box only (the tiles' 586 / 580);
+- the reach held to a third;
+- three source plants.
+needle-rest.test.mjs §9 (browser) asserts, at 320/390/1024, that a bubble arriving moves a parked disc with no scroll,
+and that shown, idle-faded and scroll-faded bubbles are each cleared by glow + 4; node --check 0.
+
+On the merged tip: needle-host 94, journey-shell 435, stacking 139, chat-availability, decomment 22, red-anchors 4935.
+On the R4-B tree: 16 suites exit 0, and red:journey-shell 181/181. tsc and the browser suite run in the next lock turn.
+Noted for the owner (with item 10): at zh 390 hub-top the dial sits over the 排行榜 row's right end, 9px from its
+chevron, because the hub's cards fill the right edge and nothing clear is in reach.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+55f4bca31 2026-10-09 04:58:43 +0300 Visual pass round 4 (R4-A): the featured card's category and time apart, its empty-state pair centred, its pool labelled as money, and the ticker's fade off the label
+Round 4's readers measured these; each was re-measured first. Every "after" is computed, and the next tile round reads
+them.
+
+- The top row at sw 390 (045 077 089 102 015 037, classic 001 007): when the category+time tail fit on line 1,
+  "UCHUMI" and "masaa 1 yamebaki" sat 9px apart (the time's own word space is 7px), so they read as one phrase. 412
+  had 31px, en 390 124. `.mcardp-tail` takes a 16px column gap (row gap 5px, the large-text stack unchanged). At sw
+  390 the tail now wraps to line 2 as it does at 360: category left, time right. Whenever it shares a line the gap
+  is at least ~18px. en, zh and 768+ are unchanged.
+  A consequence, read on the tiles: at sw 390 the card grows ~21px. Under the staff preview strip (110px) its YES/NO
+  ends ~2px under the bottom rail on the preview tiles. Players never see that strip, so they keep ~110px of
+  clearance, and V15's 360 × 740 budget is untouched (360 already wrapped).
+- The no-bets pair ("Hakuna dau bado" / "Kuwa wa kwanza kutabiri") sat 18 above / 28 below between the pool bar and
+  YES/NO at 768–1280, and 14 / 18 at phone widths. A new token --mcard-empty-drop (derived from --mcard-traders-h and
+  --mcard-act-mt, so it follows each density) moves the pair down and takes the same back under it. It is centred
+  within 0.5px, and the card's height (--mcard-base) and the skeleton are unchanged.
+- The featured card's pool figure: "TZS 10,800" was 11px, dim and unlabelled. It now reads "Bwawa / Pool / 奖池 TZS
+  10,800", the board row's own words on the same page (t.common.pool; no dictionary change), at --type-small on the
+  row's 16.5px line, the figure as .amount in --text at 600. The grid cards' 11px figure is unchanged: R3-A
+  measured no room for a label at 360.
+- The journey ticker: round 3's fade started at the label's last letter, so a faded glyph sat 1px after "MUBASHARA"
+  ("MUBASHARAsiku" at 321 325 330 332). The label now carries 16px of solid ground, then the 24px fade — 40px, the
+  end cap's own — and the viewport's padding follows. Item 1 rests ~8px clear of the fade. Journey only; the classic
+  ticker is untouched.
+
+Guards: featured-card 2.16 / 2.17 / 2.18 with controls (2.17 re-derives above and below from the tokens for both
+densities, within 0.5px), 2.15's markup pin, and red anchors for each; journey-shell 7.ticker-fade re-pinned (--sp-4 at
+16px), two plants re-targeted, two new ("the fade touches the label again").
+
+On the merged tip: featured-card 82, journey-shell 435, hero-contract, landing-contract, red-anchors 4935. On the R4-A
+tree: 21 named suites and ~35 more that read these files exit 0; red:journey-shell 183/183 (367 proofs),
+red:featured-card 18/18, red:ticker-honesty 28/28, red:hero-copy 27, red:density-contract 5/5. test:orphans' exit 1
+is main's own (two landing-v3 panel files). tsc and the tiles run in the next lock turn.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+4cc494366 2026-10-09 04:29:45 +0300 Journey bell: the count badge clears the dome — 1px higher, and no rose glow on the journey's opaque bar
+Round 4's readers (tiles 268 269 276 277 278 at 1024/1280) measured R3-D's badge off the dome but touching it: the
+ring's corner met the dome's top-right shoulder (red x919–938 y8–21 against the dome's x911–921 y22–31 at 1024), and
+the rose lift's 8px glow dyed the shoulder's stroke (x918–921 y21–24; (920,22) = 83,24,69 against the left shoulder's
+145,141,186).
+
+- globals.css, the journey slot only: the pip rises 1px (top −3), opening a 1px gap between its ring and the dome. It
+  cannot move right, because "99+" at the pulse's peak already ends 1px from the avatar. It also drops the lift's
+  rose glow and keeps its dark drop. The glow exists because the classic bar is glass, where a flat drop disappears
+  (the lift's own note), and the journey's bar is an opaque panel (7.frame). Classic pips keep both.
+- test:journey-shell 7.bell pins top −3 and the dark-drop-only box-shadow (no 8px term). New plant "the rose glow comes
+  back to the journey bell's pip"; the !important plant follows the new top.
+
+journey-shell 435; red:journey-shell 181/181 caught, 363 proofs held, the new plant landed; stacking 139,
+css-vars-defined, design-frozen, dead-css. Read on the next tiles.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+de07d4a07 2026-10-09 04:10:09 +0300 The Needle (R3-B follow-up): the host's rest glide advances whole engine steps per frame — no judder at top speed
+Lock turn M7 ran test:needle-rest in a browser on the merged tip: 49/50. §1 "no teleport (change of step between
+frames ≤ 6 px)" measured 6.50, on a 158px glide that otherwise passed (settles in 800ms, overshoot 0, max step 10.03).
+
+- Cause, worked out on the vendored engine, not guessed. The engine moves the disc in fixed 8.33ms steps and carries
+  leftover time between frames, and the host fed it each frame's real interval. When the leftover sits on a step
+  boundary, frames a few tenths of a millisecond long or short alternate three steps then one: 3.3 → 10.0px at peak,
+  a change of up to 6.72. Replayed over 2,520 jittered runs, the old host went over 6px in 355 of them (worst 6.72,
+  worst step 10.03 — M7's figures). The spring's own motion at an even 60fps changes by at most 2.96. A dropped frame
+  looks different (a ~33ms interval, velocity unchanged). It surfaced now because R3-B's clearance lengthened the
+  glide: the artefact passes 6px from about 142px.
+- needle-rest.ts (newGlideClock, glideFrame) and needle.tsx's tick, for the host's own rest glide only (a player's
+  throw keeps real-time stepping). The first frame sets the time base with the leftover centred. After that the
+  engine advances round(min(this interval, the previous one) / 8.33) whole steps: 2 per frame at 60Hz, 1 at 120Hz,
+  whatever the jitter. A single dropped frame lengthens the glide by a frame instead of jumping.
+- Also fixed: grabbing the disc mid-glide (pointer, bounce tap, Escape, Space/Enter, arrows) left the glide flag set,
+  so the player's throw then landed with no haptic and no rest check. Each grab now calls endGlide().
+- needle-rest §1's failure detail prints the two steps and their two frame intervals, so the next failure says which
+  kind it is. The 6px limit is unchanged.
+
+Replayed with the fix, 2,520 runs each, at 60Hz, 16.54ms, 16.80ms, 90, 120, 144 and 50Hz with ±0.3/1/2ms jitter: 158px
+worst change 3.66, 0 over 6px; 246px (full reach) worst 5.71, 0 over 6px; durations ≤ 1.11s, overshoot 0, landing on
+target; one dropped frame anywhere ≤ 3.14 (old host 10.79). Guard: test:needle-host §5 (68/68) — the old host's
+judder as a plant, the fixed host across rates and jitter, a dropped frame, and pins for the tick's condition and the
+grab handlers.
+
+On the tip: needle-host 68, journey-shell 435, stacking 139, hooks-order, decomment 22, design-frozen, red-anchors
+4925; needle-rest syntax ok. The browser re-run of needle-rest is queued under the lock.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+70beda99e 2026-10-09 03:55:21 +0300 DotSeq: real spaces around the hidden dot — copied and read text says "A · B", not "A·B"
+Lock turn M7's local qa:live (on fd7a1fe6) flagged three Swahili legal pages: "no words run together after an inline
+tag" — "·</span>Imetolewa", "·</span>Yanaanza", "·</span>Zinaanza". R3-C's DotSeq (the legal header's version line,
+the hub's subtitles, the invite call) put each part's hidden dot straight against the next word. It looked right on
+screen, but the text itself read "…2026-10-07·Imetolewa" to a copy and paste, and to a reader that does not separate
+flex items.
+
+- dot-seq.tsx: one space before and one after the aria-hidden dot, as real text, so each sequence carries the
+  dictionary's own "A · B". Both spaces open a flex item, where white space collapses, so nothing moves on the screen.
+- visual-pass-r3c 9.1 pins the new markup and adds qa:live's own rule (a </span> whose last character is not a space,
+  followed by a word): the defect, put back, fails 9.1 statically.
+
+visual-pass-r3c 70/70, journey-account 85, privacy-notice 96, ui-consistency, hooks-order, dead-css. Live proof: qa:live
+on this tip in the next lock turn.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+4fc42d07a 2026-10-09 02:42:13 +0300 house-bot-reports: two pins R3-C moved, re-pinned in the open — the cancellation notice re-measured with its change reviewed, and one money site 4 lines down
+Lock turn M6 ran test:house-bot-reports alone on the visual branch (exit 1) and on main (exit 0); the branch's
+three failures all trace to R3-C's notification changes.
+
+- 0.198.2 / 0.198.c2: the player's cancellation notice (notifyMarketCancelled) is byte-pinned (PLAYER_NOTIFIER_HASHES)
+  so that no house reader or word reaches a player's notice. Its rule: "a change here is a change to a player's
+  notice: re-measure only with the change reviewed as one". Reviewed:
+  - an officer's reason that already ends in "." no longer gets a second one (endClause);
+  - the " · pos_…" suffix left the words for the link (ticketHref: the refunded ticket, falling back to /wallet);
+  - no house reader, no house word, the same three sentences otherwise.
+  The measure was reproduced outside the suite (sha256 over the declaration's decommented text, trailing spaces and
+  blank lines dropped). It gives main's stored hash for all five notifiers on origin/main, and on the branch it
+  changes only this one: 0feaad92… → 303f06a9fa81…. The four others are untouched.
+- 0.232.2: the seven money sites are line-pinned on purpose. R3-C's win notice in settleMarket stopped appending the
+  position id to its words, four lines above the emergency void, so that site reads 4697. Main's line 4693 is the
+  same db.txn.create write, compared line by line; the six before it do not move. The pin's own history records the
+  move.
+
+The suite needs the scratch Postgres (both stores, no memory-only mode); it runs in the next lock turn on this tip.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+eaf4ccc96 2026-10-09 02:23:26 +0300 Round 3's two ratchet slips: the market watermark keeps the frozen glyph size, and the new suites read source through the shared scanner
+Lock turn M6's battery on 17087f07 found both (static; fixed without the lock):
+
+- test:icon-sizes (DG-A-19): R3-D's watermark wrote <Cat s={56}>, a value outside the frozen glyph set, and the old 96
+  was left unused. The watermark's size is its box's h-[2em] w-[2em]; `s` is only the svg's own width and height
+  before the stylesheet (the stroke is in the glyph's own units). So it keeps the frozen 96 it always drew at, with a
+  note saying so. Nothing renders differently.
+- test:decomment 2.1 (the private-stripper population may only shrink, ceiling 20 → 21): R3-B's needle-host and
+  R3-C's visual-pass-r3c each carried a private comment stripper. Both now read source through
+  scripts/lib/decomment.mts, and r3c's stylesheet through decommentCss. As test:decomment asks of any conversion,
+  each suite's full output was captured before and after: IDENTICAL for both.
+
+icon-sizes: 19 frozen sizes, no drift, no slack. decomment 22/22. needle-host 57/57 and visual-pass-r3c 70/70, with
+their output unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+c5b7b9db5 2026-10-09 01:37:03 +0300 Chip strips: a 64px trailing fade, so "there is more" shows even when the next chip lies wholly past the edge
+R3-C measured /results at sw 390 (tile 326). The fourth lens, "Batili 1", began at x284 with its label from x300; the
+strip ends at 302, and G1's 32px ramp is transparent from 294. So the ramp fell on that chip's padding and dimmed only
+HAPANA's "2": the row read as finished, and its chips added up to 5 of the legend's 6.
+
+- globals.css (below 1024): the trailing ramp in the "end" and "both" masks runs opaque to 100% − 72px and transparent
+  8px inside the edge, as before — 64px instead of 32, so it always lies over the last visible label. A strip with
+  nothing hidden, or scrolled to its end, is still not masked. The keyboard's scroll padding at the end grows to 72px,
+  so a focused chip stops clear of the ramp.
+- test:visual-pass-r3c 3.4 follows the end padding. 3.5: every ramp is at least 64px, ends 8px inside, and the end
+  padding reaches past it. 3.5′: G1's 32px put back is reported.
+
+visual-pass-r3c 70/70, filter-language, density-contract, ui-consistency, dead-css, design-frozen, tap-target,
+journey-tickets 51. Read on the next tiles: /markets, /results, notifications and Tiketi zangu at 320–412.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+cda8bd3b8 2026-10-09 01:35:49 +0300 Visual pass round 3 (R3-C): widows, the YES/NO pair, empty states centred, whole chip halos, notifications without ".." or raw ids, the leaderboard's tier and heads, the hub's Needle row, the guest sheet's ×, upright Chinese
+Round 3's readers measured these; each was re-measured first. Every "after" is computed, not shot, and the next tile
+round reads them. Two are visible layout changes to look at on the tiles: the card-size row and the invite hero on a
+phone.
+
+- Widows, seven surfaces. keepLastWords (ui/keep-words.tsx, G1's nowrap-span method) on the held Wallet's notice
+  and the fairness lead. The hub's card-size row takes the rail menu's own layout (.kp-hub__row--switch: the hint on
+  its own line across the row): one line from 360, two whole lines at 320, and the row ~62px instead of 73. The RG
+  page's two paragraphs are balanced. Below sm the invite call takes the card's width under the dial, two phrases
+  ("Shiriki kiungo chako" / "uone wanaojiunga"). The privacy notice's version line no longer ends on "·".
+- One dotted-sequence idiom: G2's HubSub becomes ui/dot-seq.tsx (DotSeq), and .kp-hub__seq* is renamed .kp-seq*, with
+  a mono variant whose 3ch gap is " · " exactly. Merge with R3-A: the featured card's meta line (.mcardp-src__*) sits
+  on the same rules as a selector list. featured-card 2.14 pins the merged rules, and visual-pass-r3c's rule() reads
+  a selector inside a list (never a longer selector that only starts with it).
+- EmptyState: an UPPER au/or UPPER pair stays on one line ("NDIO au HAPANA", "YES or NO"; pairOnOneLine beside G3's
+  dashOnItsWord, both in ui/empty-state-text.ts, no-break spaces built in code). Content was 56 above / 48 below in its
+  box, because each drawing's ink starts 7–14 units down its own canvas. INK_TOP gives each viewBox its first ink row,
+  so it reads 48 / 48 at the same scale.
+- Strips: the selected pill's halo (--glow-selected reaches 11px) was clipped square by the scroller. Below 1024 the
+  strip keeps 12px of room on the block and leading sides, with negative margins, so no pill moves. The leading fade and
+  scroll-padding move in by the same 12px.
+- /results' "HAPANA 2" plate was the capture's pointer resting on the pill (the hover fill). qa:journey-shell now
+  parks the pointer at the left edge after it navigates. "Batili" is the fourth lens, so no filter is missing.
+- Notifications: an officer's reason that already ends in "." got a second one, and endClause() drops the reason's
+  own stop. " · pos_…" was appended to sentences to keep notify()'s 90 s dedupe apart. The id now lives in each
+  notice's link (/markets/<id>#<position>, the ticket itself), so the words carry no id. The cancelled-market notice
+  links to its refunded ticket (it was /wallet). Old stored rows are shown cleaned (lib/notification-text.ts, in the
+  bell and on /notifications).
+- Leaderboard: the "Fedha" (silver) tier was drawn in money gold. It is plain ink now, and the dead gold accent leaves
+  PageRibbon. The sort row loses the extra padding the kp-qrow collision left (32 / 32). Right-aligned heads give back
+  their trailing tracking (every admin table).
+- The hub's Needle row is a real hub row (needle-drawer variant "hub-row": the 20px glyph slot, the value in the
+  value's type, the 18px chevron). The .kp-hub__needle rules are gone.
+- The guest tickets sheet's × stood 4–4.5px above the title's line. The title's first line is centred on the close box
+  (margin −4.5px), as G2 did for the channels panel.
+- zh: html:lang(zh) { font-synthesis-style: none } — no fake italic on Chinese (the footer's RG motto).
+- Missing unread signs: not a regression (no file on the unread path changed), but capture timing. qa:journey-shell's
+  unreadLanded() waits for the counter mounted at that width and asks the Arifa row to read again; a sign still
+  missing is logged.
+
+Guards: the new test:visual-pass-r3c (68, each fix with a control or plant); gold-is-money holds page-ribbon.tsx;
+house-bot-money's cases find rows by link and assert no id in the words; the D19-1 red anchor follows the new win call.
+
+On the merged tree (R3-A + R3-B + R3-D + R3-C), all exit 0: journey-shell 435, journey-account 85, journey-tickets
+51, visual-pass-r3c 68, featured-card 76, landing-mine, hero-copy, needle-host, red-anchors, stacking,
+ui-consistency, density-contract, type-scale, money-format, measure, market-columns, design-frozen, dead-css,
+css-vars-defined, hooks-order, gold-is-money, contrast, tap-target, popup-fit, filter-language, social-panel,
+updown-digest, updown-bell, notifications-page, position-permalink, settlement-gate, cert-c3, guards-exist,
+client-graph-safe, spacing-scale, wallet-reach, implicit-submit, layout-staleness. Reds: journey-shell 180/180,
+journey-account 48/48, journey-tickets 107/107. test:house-bot-disclosure's D19a byte pin now also reads
+legal/_components.tsx (markup only, no word). tsc, the DB suites (house-bot-money) and the browser proof run in lock
+turns M6/M7.
+
+Open, for the owner: the leaderboard podium's gold ring and crown and the HotChip gold flame (Q5, "no streak flames").
+Open, for the coordinator: on /results at sw 390 the fourth chip's label sits wholly past the strip's end, so the
+32px trailing fade dims nothing but HAPANA's "2" — a wider ramp is proposed.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+af088bcfe 2026-10-09 01:35:24 +0300 red:implicit-submit: the "kit Button after WithdrawConfirm" plant follows the withdraw form's wrapper
+My money-form fix (329d1ad7) moved the withdraw form's body into an inner <div className="space-y-5">. The plant
+"a kit Button of no type drawn AFTER WithdrawConfirm" anchored on the guard's line followed directly by "</form>",
+which no longer exists, so red:implicit-submit failed with that plant unresolved (R3-C found it; M1 did not run this
+red). The plant now anchors on the guard's line, the wrapper's </div> and </form>, and puts the Button inside the
+wrapper, where a later edit would add it. Same defect, same check (4.5).
+
+test:implicit-submit green; red:implicit-submit 61/61 caught, 1/1 green held, and this plant PROVED.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+c906cad90 2026-10-09 01:24:24 +0300 Visual pass round 3 (R3-D): the journey bell clear of its badge and centred, money in the mono face, the market page's columns, watermark and star, level ticket rows, one content edge per column, readable captions
+Round 3's readers measured these; each was re-measured on the tiles first. Every "after" is computed — the next tile
+round reads them (the ticket subgrid most of all).
+
+- Journey header bell (1024/1280): the "25" badge (anchored by its right edge in the classic bell's inline style,
+  notifications-panel.tsx, which S6 must not touch) filled the dome. In the journey only, it is re-anchored from the
+  left (top −2, left 21; !important beats the inline style, as E-101c does), so the dome is clear at rest and at the
+  pulse's peak, "99+" included; the badge's own 8px glow still tints the dome's corner. The bell sat 25 / 29 between
+  the locale box and the avatar (the avatar's sm:ml-1). The bell's slot takes the same 4px, giving 29 / 29. That slot
+  only shows from 1024, so the 10.7px slack at 320 is untouched.
+- Money: the limits line "TZS 1,015 · … TZS 5,000,000" was in sans. moneyRuns() (lib/fill-nodes.tsx) wraps each
+  whole "TZS + figure" of a dictionary sentence in .amount. The amount placeholder reads formatNumber(10_000), i.e.
+  "10,000". The market page's KIASI and WATABIRI values are mono. INAISHA is the kit's <Stat> (a new sm-plain size,
+  13px mono) with its calendar-clock icon; the page's private KPI component is gone. The date stays at 13px: zh's
+  date with its year does not fit the tile at 18px.
+- Market page:
+  - The right column started 16px low, because space-y counted the hidden heading. It is now flex with a gap, and
+    the heading stays first for screen readers.
+  - The category watermark climbed into the gold rule and under SHIRIKI. It now sits on the question's own box,
+    centred, at twice the title size.
+  - Chanzo, the star and SHIRIKI are one right-aligned group, so the star no longer floats alone at x29.
+- Tickets:
+  - The ticket-number line takes the clock line's flex shape and gap (2px → 4px). The "pos_…" line itself is by
+    design (A19: what a player quotes to support).
+  - From 768, behind @supports, cards in a row share their rows by subgrid, so the DAU labels and detail lines are
+    level. Each card now always renders its fifth (Sell) row, empty when nothing can be sold. Phones and engines
+    without subgrid keep today's layout.
+- Up & Down: the subtitle broke 92 / 164px because the whole PageHeader sat beside the pills. PageHeader gains an
+  optional actions slot; without it, it renders exactly as before.
+- One content edge per column: fairness' "Inavyofanya kazi" card and help's contact and quick-link cards pad like
+  their heroes (p-5 lg:p-6); agent stat tiles take p-4.
+- Readable text: every <Stat> hint is text-body-sm (the 10px captions were sentences; §T4's 12.5 floor). zh stat
+  labels are 11px untracked (§T3's sub-micro tier is for UPPERCASE microlabels only, and Chinese has no case).
+- /profile/invite: the link field (46px, inline-block with a descender gap) and the Nakili button (44px) now share
+  one 44px box.
+- KYC: the "VYA KUAMBATANISHA" label was redundant under the legend, and untrue (nothing is attached at that step).
+  It is removed.
+- Back links: the chevron's point is drawn 3.7px inside its box. -ml-[3px], derived from the glyph's path, puts its
+  tip on the card's edge.
+
+Guards: journey-shell 7.bell + 5 plants; money-format §6 + 3 mutations; market-columns §5–§7 + 6; journey-tickets
+2.rows + 4; updown-filter-sheet §12 + 2; measure §8 + 3; type-scale §8 with a control (its ratchets lowered by these
+changes only); share-link-readable §4 + 2; id-documents + 1.
+
+On the merged tree (with R3-A and R3-B): journey-shell 435, red:journey-shell 180/180 (361 proofs), journey-tickets
+51, red:journey-tickets 107/107, red-anchors 4925, stacking 139, ui-consistency, density-contract 36, type-scale,
+money-format 69, measure, market-columns 25, design-frozen, dead-css, css-vars-defined, hooks-order, landing-mine
+37, featured-card 76, hero-copy 17, needle-host 57, updown-filter-sheet 55, share-link-readable 19, id-documents,
+filter-language, tap-target, gold-is-money, contrast. On the R3-D tree: ~70 more suites and 8 red twins, all 0.
+tsc and the browser proof run in the next lock turn.
+
+S12: profile.idDocsNeeded is now unused (en/sw/zh); delete it the next time the dictionary is opened.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+4c8ad7789 2026-10-09 01:03:40 +0300 The Needle (R3-B): a resize mid-glide no longer strands the dial on the wrong edge; its rest clears text, controls and open panels by its glow; panels stack above it
+Round 3 measured the dial wholly inside the viewport (296, 295), parked on the LEFT edge over row icons (304, 307,
+315), mid-page on a button (299), touching a pill, a stat line and the 18+ ring (257, 265, 273, 194, 301, 309, 310),
+and over the open channels panel (321). Measured again on the tiles, all confirmed.
+
+- One cause for the first two: the rest glide sets an absolute target (needle.tsx), and on a resize applyViewport
+  called reclamp(), which clamps a body that is not parked but leaves its target. The glide landed on the old width's
+  tuck x, the engine judged it untucked, and it re-parked on the nearest edge by the disc's centre: after 390 → 1024
+  the centre was at 392 < 512, so it parked LEFT. save() stored "left", and every later page restored it. Neither a
+  drag nor a rest the logic chose.
+- A new pure module, src/lib/needle-rest.ts (reseat): applyViewport reclamps only when the laid-out geometry changed.
+  When the rail moves (width or diameter), any glide, park or peek finishes at its rest, tucked half off the SAME edge
+  at the height it was heading for. A height-only change keeps the glide and clamps its end.
+- Clearance (REST_TIERS), measured from the disc's box, which is the rim's ink within 1.2px. The glow reaches 10px at
+  360, 11.4 at 390 and 25 on a 900px short side. Tier 0: nothing within glow + 4. Tier 1: content and text clear of
+  glow + 4, with a card's frame allowed under it. Tier 2: the rim 8px off content and text. Tier 3: 4px (the old rule).
+  Tier 4: 4px off every control, text accepted (E-413's floor). Text counts the painted box around it (the 18+ ring);
+  small icons and images count too. A check that comes due mid-glide runs when the glide lands.
+- Open surfaces: the channels panel, install card and consent card go to z-50, above the Needle (45) and below the
+  menus (60). The rest counts open surfaces whole ([data-needle-keepout], [data-invitation], fixed or absolute
+  dialogs, menus and listboxes), and a MutationObserver re-checks when one appears or goes.
+- qa:journey-shell's shoot() waits up to 6 s for window.needle.resting() before each tile. A dial that never settles
+  is a failing line, so a mid-glide tile like 194 is no longer captured as a rest.
+
+Guards: the new test:needle-host (57 checks) replays the capture's resizes on the vendored engine. With the old host
+it reproduces x≈292 at 360, the left park, x=0 at the wall and the 30px pop; with the new host none of them occur. It
+also covers the tiers on synthetic boxes and the host wiring. test:stacking: three rows, six laws, and a control (the
+panel planted back at z-40 reads below the Needle). needle-rest.test.mjs (browser) gains §5 clearance with controls,
+§6 an opening panel, §7 a resize mid-glide on both rails, §8 a scroll mid-glide; node --check 0.
+
+On the merged tree: needle-host 57/57, journey-shell 434, red:journey-shell 175/175 (351 proofs), stacking 139,
+red-anchors 4891, popup-fit, ui-consistency, design-frozen, hooks-order. On the R3-B tree, 45 suites exit 0 and
+5 reds (social-panel, enter-where-pressed, marketing-optout, install-invite, journey-shell). test:orphans' exit 1 is
+main's own: two landing-v3 panel files. tsc and the browser suite run in the next lock turn.
+
+Known: a player whose dial this bug stored on the left keeps it there until they throw it back (a bug-caused left
+cannot be told from a thrown one).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+c1e5bb5af 2026-10-09 00:36:11 +0300 Visual pass round 3 (R3-A): the home hero's Chinese breaks and widows, the Swahili headline's optical edge, the ticker's edges, a held wallet's lead, and a paid-out figure that could contradict a player
+Round 3's nine readers measured these on the tiles; each was re-measured before the change. Nothing here is from
+a browser yet: the predicted pixels below are computed, and the next tile round reads them.
+
+- zh 1024: the trust line broke "…充值和提 / 现。" and the signed-in lead broke "…第一次选 / 择。" and "…下一 / 次选择。",
+  new since the hero's edge went to 32. `.kp-hero__trust` and `.kp-mine__lead` keep CJK words whole under :lang(zh)
+  (keep-all, overflow-wrap anywhere) and are balanced. Lines now break between clauses.
+- zh 320 meta line "…截止 · 结算来 / 源：CoinGecko": its two parts are flex items (the hub's dotted-sequence pattern,
+  the " · " clipped when a part opens a line, still read aloud), and zh keeps its words: "2026年10月9日 截止" /
+  "结算来源：CoinGecko".
+- Widows: "Tanzania." alone in the licence row (sw 360/390, en 320, the classic home too — a shared body) and
+  "first." alone in the signed-in lead (en 1024). Both are balanced.
+- The sw headline "NDIO au / HAPANA?" sat 3 / 4.4 / 5.2px inside the edge at 44 / 60 / 72px (N and H side bearing,
+  ~0.07em; Y 0.3–0.45px, 是 1.2px). `Ask` marks a side-word group that starts with a measured stem letter (/^[HN]/,
+  never the locale) and the CSS pulls it left by --hero-stem, with the group before it giving the width back, so a
+  one-line headline does not move. The h1's pinned markup is unchanged.
+- Card empty states: "Hakuna dau bado" was ~10px at 4.2–4.3:1. The no-bets line, the be-first line and the featured
+  no-pool words take --type-small (the ladder's first step above the 12.5px floor), with line boxes that keep the
+  measured card heights. Not changed: the grid card's "No pool yet" at 360 sw would wrap its meta row.
+- A held wallet: the signed-in lead invited a first pick above "Pochi yako imegandishwa". It is now withheld for a held
+  or empty wallet, as the Wallet and the header already withhold their invitations. The lead and the frozen box share
+  one measure (--mine-measure): the lead ran 16px past the box at sw 1280.
+- The LIVE ticker (journey only; classic viewers are served what they were): a soft fade where the label meets the
+  track instead of a glyph cut at full ink; from 1024 the strip's content edges are the page's (LIVE at 32, pause to
+  W−32); the separator dot is centred (19/47px → 32/32). The label's and viewport's inline styles moved to CSS with
+  identical values.
+- "TZS 48,208 paid to you this week" above "TZS 0 PAID OUT TO PLAYERS". The platform figure (all confirmed payout and
+  cash-out transactions) can trail a player's own week inside the stats cache's 60 s, or after a cash-out whose ledger
+  write failed (market-service marks the position first). paidOutBehind() detects it; readPaidOutTzs() re-reads past
+  the cache; a figure still behind is withheld.
+
+Guards: landing-mine §4 (37), featured-card 2.14 / 2.15 with red anchors, hero-copy §2c with 4 plants, journey-shell
+7.ticker-edge / 7.ticker-fade / 7.ticker-dot with 6 plants (7.landing-edge widened). design-frozen's live-ticker inline
+budget 2 → 1.
+
+All exit 0: hero-copy, hero-contract, landing-contract, landing-mine, featured-card, ui-consistency, density-contract,
+design-frozen, type-scale, gold-is-money, contrast, dead-css, css-vars-defined, stacking, journey-shell 434,
+ticker-honesty, hooks-order, tokens, spacing-scale, and 40 more suites that read these files. Reds: hero-copy 27/27,
+journey-shell 175/175 (351 proofs), featured-card 13/13, ticker-honesty 28/28, density-contract 5/5. tsc and the
+browser proof run in the next lock turn.
+
+For the owner: "PAID OUT TO PLAYERS" counts house-bot winnings (no user filter in sumConfirmedByTypes) — what a
+public money figure includes is a ruling, so it is unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+5e562bceb 2026-10-08 23:57:36 +0300 Filter bars: the row's hook is .kp-qbar-row — G1's .kp-qrow was the landing board's question row, and it laid every filter bar out as one
+Round 3, tile 326: on /results at sw 390 "Vichujio" dropped to its own line under the sort pill (207px free beside it;
+round 2 had it on the row), over a 69px empty band between the search box and the chips. G1 hung its divider rule on
+a kp-qrow class added to QUERY_BAR_ROW2_CLASS, but .kp-qrow is already the landing board's question row (globals.css: a
+grid with areas, padding-block 16px, a bottom border; tablet and desktop steps). Defined after the utilities, it
+beat the row's own flex, gap and padding, so every filter bar built on QUERY_BAR_ROW2_CLASS (markets, results,
+tickets, notifications, leaderboard, fairness, the loading skeleton) was laid out as a board row since G1.
+
+- query-bar.tsx: QUERY_BAR_ROW2_CLASS's hook is kp-qbar-row, a name nothing else uses.
+- globals.css: the divider rule reads .kp-qbar-row:has(.kp-qdiv), with a note on why the name must stay its own.
+- test:density-contract 4q, the guard: the row's kp- hook is styled in globals.css only by the divider's :has rule,
+  and no other component wears it. Its control re-runs the same measure on a copy with the old kp-qrow put back,
+  which must be reported.
+
+density-contract 36/36, --prove-red 5/5; filter-language, stacking 129/129, dead-css, ui-consistency,
+journey-tickets 50/50, css-vars-defined, design-frozen, section-rail, red-anchors 4883/0. qa:bar-geometry and its red
+need a server; they run in the next lock turn, with the re-tiling.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+d52e6f809 2026-10-08 23:53:31 +0300 Money forms: the first line sits at the card's padding — the form's rhythm moves onto a wrapper React's injected input stays out of
+Round 3 read the deposit form's first line still 51px below the card's border at 320/390 and 59px at 1280 (tiles
+067–069). Tile 068 was pixel-identical to round 2, so G4's fix had not reached the browser. The cause G4 did not see:
+React's server renderer writes <input type="hidden" name="$ACTION_ID_…"> straight after the <form> tag of every
+server-action form (react-dom-server, pushAdditionalFormField, startHiddenInputChunk = '<input type="hidden"' — no
+hidden attribute). Tailwind 3's space-y-5 on the form counted it as a sibling and put the 24px gap above the first
+visible block. G4's hidden attribute on our own two inputs was right but not enough.
+
+- deposit/page.tsx and withdraw/page.tsx: space-y-5 moves off the <form> onto one inner <div>, so the first child has no
+  sibling before it whatever React adds to the form. The body is re-indented under the wrapper; git diff -w is +22/−3.
+  The form keeps its classes (group/deposit, glass-panel, p-5 lg:p-6, withdraw's opacity-60).
+- IdempotencyKeyField's note says what its hidden attribute still does (inside the wrapper) and what it could not do.
+
+Predicted: the first line ("CHAGUA NJIA YA KULIPA", "MAHALI") sits at the card's padding plus the legend's own
+leading, about 27px below the border under 1024 and 35px from 1024 — the hero card's distances above it. Verified in
+the next tile round.
+
+Suites that read these pages, all exit 0: agent-fee-wallet-path 61, cashback-hidden 15, implicit-submit,
+journey-funnel, kyc-approved-copy 87, kyc-at-withdrawal 154, msisdn-prefill 24, payments, payout-destination 36,
+cert-f1, route-census, timer-date 77, wallet-freeze 73, ui-consistency, tap-target, hooks-order, density-contract,
+layout-staleness, money-format 51.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+a17a669b7 2026-10-08 21:01:56 +0300 Tiketi zangu: the Maswali empty state's call to action at 44px, like the Juu/Chini tab beside it and the canvas
+G3 (tiles 233–248) measured the two tabs' empty states: the Juu/Chini call to action is btn-md (44px), the Maswali
+one btn-sm (40px). The canvas draws 44px. The two now match, so the switch leads to one empty state with one button
+height. Only the first-ticket call to action changes; the ghost lens-exit buttons stay btn-sm, as on both tabs.
+
+journey-tickets 50/50, tap-target, ui-consistency, hooks-order, journey-shell 431/431. Verified in the next tile round
+(the lock turns running now test the branch at 8a2d9d26).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+47a233ba2 2026-10-08 20:59:36 +0300 Visual pass G2: the Akaunti hub without bands or orphans, the profile invite's spacing, the footer pill, the channels panel's ×
+The owner's rule (2026-10-08): only perfect visual and logical results. Every item was measured on the tiles with pixel
+scans first.
+
+- "Pendekeza na upate zawadi" wrapped beside its INAKUJA badge (tiles 124, 255, 297), because the badge took 84px of
+  the label's line. Label and badge now share a head (.kp-hub__head). From 360 the badge drops under the label like a
+  subtitle when both do not fit, and the row stays 56px. Below 360 it never wraps, which would make a 72px row. DOM
+  order is unchanged.
+- The guest "Msaada" subtitle wrapped word by word (73px row at 360 with "pepe" alone). HubSub splits a subtitle at the
+  dictionary's own " · " into parts that never break inside themselves. The dots are decorative, centred in the gaps,
+  and clipped at a line's start. The same applies to every dotted hub subtitle, which look the same on one line.
+- The two-column hub opened 73px bands under shorter cards (257, 280, 258, 300, 125). It is now two flex columns, cut
+  where they are most nearly level (hubColumnCut on wideRowCount's rows; the staff card always goes last on the
+  right). DOM, keyboard and reading order are hubRowsFor's. Below 1024 the columns stack and phones are
+  pixel-identical. The visible change: cards no longer pair side by side at 1024+.
+- The footer's proposals link left its COMING SOON pill alone on a line at 1024 (299, 307) and at en 768. That link
+  alone gets text-balance (FooterLink's new balance prop).
+- /profile/invite: "MARAFIKI ZAKO" sat 6–7px under the buttons against the page's 28px rhythm (a !mt-1 override). The
+  label, its note and the list are now one block taking the stack's 24px, with 12px between label and list. The diff
+  is mostly re-indentation.
+- Orphans: the zh card-size hint ("…任何内 / 容。") keeps its words whole (.kp-hub__sub:lang(zh)), and the guest lead
+  ("zako.", "tickets.") is balanced.
+- The channels panel's × sat 13.5px below the title's line and the first row 62.5px from the title against 46px
+  between rows. It is now items-center with a 2px top gap: the × on the title's line and 46px everywhere. Class
+  changes only.
+
+Reported, not changed: the badge names are bilingual EN · SW in every locale. They are hard-coded in
+achievements.ts, so this goes to S12 (dictionary keys per locale). Also for S12: a shorter sw help subtitle ("Maswali ·
+Simu · Barua pepe") would give a 56px row at 320/360.
+
+On the merged tree: journey-account 85/85, journey-shell 431/431, ui-consistency, density-contract, dead-css,
+design-frozen, stacking 129/129, css-vars-defined, popup-fit, social-panel 53/53, tap-target, spacing-scale. On the
+G2 tree: tsc 0 under the shared lock, and 50 suites green. No dictionary string changed. Browser proof on the
+combined branch under the lock.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+54ad2bc47 2026-10-08 20:58:36 +0300 Visual pass G3: Tiketi zangu's cards whole and level, empty states without widows, the guest sheet and the market sign-in card balanced
+The owner's rule (2026-10-08): only perfect visual and logical results. Every item was measured on the tiles: pixel
+scans at 1x, and text widths with fontkit against the repo's own Inter and JetBrains Mono, within ~1% of the tiles.
+
+- Ticket payout words wrapped ("Matokeo / yakitoka", "When the result is / in": a 115px cell at 320, 150 at 390).
+  The stake and payout row splits 2 : 3. The stake column never narrows below its own figure, and "TZS 1,000,000" is
+  the widest (PLATFORM_MAX_STAKE). Its words are balanced. The loading ghost mirrors the split.
+- The ticket's question was clamped to two lines, so at 320 "…kutakuwa kijani…" hid "kesho?". It is now whole at every
+  width with balanced lines. The canvas draws it unclamped, and the board's Q6 clamp is for browsing cards. The card is
+  a flex column; its heading's margins were worked through, so every line lands on the same pixels.
+- Ragged 1280 rows (card bottoms 745 against 725, gaps 16 and 36) came from items-start, now removed. Cards in a row
+  share a height, and the detail block grows, so Sell rows sit level on the card floor.
+- Empty states: widows ("hapa.", "here."), a line opening with "—", and zh "显 / 示". The body is balanced, CJK words
+  stay whole (keep-all, plus break-word for an over-long run), and dashOnItsWord keeps a spaced dash with the word
+  before it. It is built with String.fromCharCode, so the source holds no invisible characters. This applies to every
+  EmptyState.
+- The Up & Down history empty card was 360px while Maswali's filled the content width. It now has fill={journey}, and
+  classic readers get today's markup.
+- The guest tickets sheet title (en 320, "tickets" alone) and the market sign-in card ("hili" alone at sw 390; zh "号。"
+  alone at 320) are balanced, and the zh note keeps its words whole.
+
+Merged with G1 on the ticket title: G3's whole, balanced heading holds G1's keepUnits words, on one line. The test pins
+that spelling (TITLE_WORDS), and G3's plant ("the full question is held to two lines again") clamps it.
+
+On the merged tree: test:journey-tickets 50/50; red:journey-tickets 103/103 caught, 207 proofs held. On the G3 tree:
+tsc 0 under the shared lock, and 62 suites green (every one that reads a touched file). The Tailwind CLI compiled every
+new class. No dictionary string changed. Browser proof on the combined branch under the lock.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+831973613 2026-10-08 20:08:14 +0300 qa:journey-preview: a control is driven only once React owns the page
+A precondition for the drive, not a fix for what stopped it. WP12's turn C stopped once in §5 on a "Create the link"
+button that stayed disabled. The cause was the Modal taking focus back 30 ms after it opened, fixed in e16f9353. The
+recorder caught focus snapping back at +28 ms with both fields filled.
+
+This closes a second race the same drive could meet: settle() waited for <main> and 900 ms, and on a slow first
+compile the server's HTML can be up before React attaches, so a click could land on markup with no handler. settle()
+now also waits for a React fiber on <main>, the test qa:journey-shell's HYDRATED holds its header to. A page that
+never hydrates fails at the 120 s timeout instead of being driven.
+
+An earlier copy of this commit (e1da6165) claimed it explained the §5 stop. It did not, and it was not pushed.
+
+Proof: qa:journey-preview runs on this branch in the visual pass's lock turn.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+ca03e51bc 2026-10-08 20:06:55 +0300 Journey Wallet: no Deposit for a reader on a break — Withdraw alone, full width
+Found while planning the edge-scenario capture (a player on a cooling-off break). The journey header withholds
+"+ Weka pesa" during a break (S4), and /wallet stops inviting a deposit (depositOpen, 2026-10-06), because
+/wallet/deposit refuses one and shows the break's sentence. But the Wallet the balance capsule opens still offered
+Weka pesa beside Toa pesa: a door to an action the next screen refuses.
+
+- wallet-sheet.tsx: a new onBreak prop. When it is set, the Deposit column is not rendered and the pair becomes one
+  column (.kp-wsheet__pair--one), so Withdraw stands alone at the full width. A break does not stop withdrawals.
+- The flag is AppShell's promoSuppressed, carried by the journey bar (onBreak) through WalletBalanceCaptioned to its
+  sheet. It gates an OFFER and fails OPEN (feature-state.ts LAW 1): after a failed read the Deposit shows and the
+  deposit screen still refuses. No sentence is added. The shell hands the browser one boolean and never the
+  break's date, and the header drops its pill without one too.
+- The classic capsule's Wallet is never told (classic chrome is frozen for S6/S7); its bar has no break rule either.
+
+Guards: test:wallet-reach §7 "a reader on a BREAK gets no Deposit" (the column inside {!onBreak && (…)},
+Withdraw outside it, the one-column rule) and 8c.1b "the break reaches the Wallet" (bar → capsule → journey sheet;
+the classic sheet unchanged). 8.3's and 8c.1's pins follow the new line. red:wallet-reach has 3 new mutations: the
+column leaves its guard, the bar stops passing the flag, the capsule drops it. One anchor moves with the line it
+mutates.
+
+wallet-reach 84/84; red:wallet-reach 27/27 caught, files restored, green after. Also green: red-anchors (4883),
+journey-shell (431), popup-fit, layout-staleness, landing-mine, gold-is-money, dead-css, design-frozen, stacking,
+density-contract, ui-consistency, css-vars-defined, tap-target, hooks-order. Browser proof: the edge capture's
+break scenario (its Wallet-sheet tiles) on this branch, under the shared lock.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+c17efd072 2026-10-08 20:01:51 +0300 Journey home: the hero and every band keep the header's edge (16px to 1023, 32px from 1024)
+The same owner's rule on `/`. The hero (.kp-hero__inner) and every band (.kp-band__inner, which is every section on
+the home page) step to 24px at 768. Against the header's and the pages' 16 / 32, that put `/` 8px inside the
+header from 768 and 8px outside it from 1024 (G5's tiles 017/018 and 047/048).
+
+The fix is scoped to the journey, by the shell's server-rendered mark: `:root:has(#kp-journey-shell)`. The span is in
+the HTML before any script runs, so the first paint already has these values and nothing moves on hydration.
+Classic viewers are served what they were (VODACOM-PLAN §0i; qa:classic-shell-parity), and the classic home keeps
+its 24. A browser without :has() keeps 24, which is the classic look and not a break. The global alternative would
+have moved the classic home for every player now, against the plan's rule that nothing changes for players before
+the launch.
+
+- globals.css: one journey block at 768 (var(--sp-4)) and one at 1024 (var(--sp-8)) for both containers. The desktop
+  rhythm comment notes that the 768 step is the classic's.
+- test:journey-shell 7.landing-edge holds both blocks, exactly once each, the base rules' 16, and the mark's id. Four
+  plants are each caught by it: the journey steps to 24 at 768; the 32 step is lost; the scope is dropped (the
+  classic home would move); the mark is renamed under the rule.
+
+test:journey-shell 431/431; red:journey-shell 169/169 caught, 339 proofs held. Browser proof (tiles of `/` at 768,
+1024, 1150 and 1280 in both shells) runs on the combined branch under the shared lock.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+f5082b11a 2026-10-08 20:01:50 +0300 Journey header: the page's edge at every width — 16px below 1024, 32px from 1024
+The owner's rule (2026-10-08): the header's edge is the page's edge at every width. The tiles measured the journey
+header 4px outside the page at 320 (its 12px gutter against the page's 16), and 8px inside it from 640 (the classic
+bar's 24px) and 8px outside it from 1024 (24 against the page's 32). The row now pads exactly as PageContainer
+(`px-3 lg:px-6`, 16 / 32 on this repo's scale), in one step at the page's own breakpoint.
+
+- globals.css: .kp-jhdr__row pads var(--sp-4); the 360 step and the 640 gutter are gone; the 1024 rule adds
+  var(--sp-8). The gaps are unchanged.
+- Fit, read off the tiles: the least slack is now sw at 320 with TZS 999,999 or a hidden balance, 18.7 → 10.7px,
+  more than any glyph. The "+" and the 12px figure below 360 stay.
+- journey-header-fit.mjs: the gutter probe expects 16px below 1024 and 32px from it. Its red twin has 10 mutations
+  (was 9): gutter-12-returns, edge-32-from-1024-lost, gutter-24-from-640-returns.
+- test:journey-shell: 7.gutter holds the base 16, no 360/640/1280 padding, 32 at 1024, four row blocks, the tokens,
+  PageContainer's spelling and the Tailwind scale. 7.steps now reads the classic bar's gaps only, since its gutter
+  is no longer the journey's. New plants: the old 12px returns; 24 returns from 640; the 1024 step is lost; a 360
+  step comes back; the pages move their edge while the header keeps the old one.
+- VODACOM-PLAN §0g design call 10 and the WP6b record, and S6-PLAN A5 (WP6a step 1, §7 tests, the WP6b mutation
+  list), carry the dated amendment.
+
+test:journey-shell 430 checks and red:journey-shell 165/165 on the G5 tree; tsc exit 0; 26 more static suites
+green. The browser proof (qa:journey-header-fit 66/66 expected, red:journey-header-fit 10/10) runs on the combined
+branch under the shared lock.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+f47c6f2b9 2026-10-08 20:01:49 +0300 Visual pass G4: the money forms' top gap, the legal nav's active edge, the journey sheet's held figure, the chat bubble on a notched phone
+The owner's rule (2026-10-08): only perfect visual and logical results. Each item was measured on the tiles with
+pixel scans.
+
+- Deposit and withdraw forms opened with ~24px too much space (tiles 068, 173, 174: 51px above the first line
+  against 24 at the sides). Each form's first child is the idempotency key's <input type="hidden">. Without the
+  hidden ATTRIBUTE it counts as a sibling for space-y's `> :not([hidden]) ~ :not([hidden])`, so the fieldset got the
+  gap. The key input (IdempotencyKeyField, both forms) and the deposit page's low-balance origin input now carry
+  `hidden`; a hidden input is still submitted. These page bodies are shared, so classic readers get the fix too.
+- Legal nav: the active label sat 2px right of the others (tile 206: x=33 against 31), because its border-l-2 sat
+  outside the px-3.5. The active row pads 12px left (2 + 12 = 14).
+- Journey Wallet sheet: a held wallet's figure was gold (#F3CB7A, tile 092) while the capsule was plain. That breaks
+  DESIGN_AUTHORITY rule 8a (gold on a live balance only). WalletSheet sets data-held / data-masked on the figure
+  when `journey` is set, and those read in plain ink. The classic sheet is unchanged.
+- Chat bubble: on a notched iPhone (viewport-fit=cover) its lower ~19px sat on the rail's last tab, because the rail
+  adds env(safe-area-inset-bottom) and the bubble did not. .cm-fab now takes the inset as margin-bottom. Where the
+  inset is 0 (every tile, every desktop) nothing moves.
+
+One pin updated: test:journey-funnel 9.form spells the origin input with `hidden`.
+
+Reported, not changed: the header gutter at 320 (since amended by its own commit, the page's edge at every width);
+the classic capsule's missing "TZS" below 640 (classic chrome, frozen for S6/S7); and the focus-scroll reserve that
+lets the bubble cover up to 36 of 44px of a right-edge control (AA holds, AAA does not; an owner call).
+
+On the G4 tree, under the shared lock: tsc exit 0, 60 static suites green. Browser proof on the combined branch.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+a883dd5a3 2026-10-08 20:01:48 +0300 Visual pass G1: cards, Chinese number units, strip fades, filter dividers, the Needle over text, pill height, carousel caption
+The owner's rule (2026-10-08): only perfect visual and logical results. Every item was measured on the S6 tiles with
+pixel scans before it was changed.
+
+- Featured card's top row (sw 320/360): the weather glyph, its label and the time left wrapped as three loose items
+  and split apart. The glyph and label are now one unit (.mcardp-catgrp) and, with the time left, one tail
+  (.mcardp-tail) that stays on the chips' line or moves down whole. The 2px nudge moved to the chip before it, so
+  one-line rows keep the same 7px gap. en, zh and 768+ are unchanged.
+- Chinese titles broke "200 / 毫米". No CSS property keeps only that break in all three engines (keep-all
+  unbreaks the whole title; U+2060 is stripped by short-title.ts). New keepUnits() (ui/keep-units.tsx) wraps a
+  number and its next one or two Han characters in a nowrap span. sw/en markup is byte-identical, and one regex
+  serves server and client. Applied on the market card, the journey ticket card and the live carousel.
+- Filter strips: a hard cut at the leading edge, and the trailing fade ran into the next control. strip-autoscroll
+  now sets data-edges (start/end/both/none). The leading fade shows only once scrolled; the trailing ramp ends 8px
+  inside the strip; scroll-padding-inline keeps a focused chip clear of both fades. With no JavaScript yet it
+  behaves as "end", so hydration changes nothing.
+- A stray divider at the end of a wrapped filter row (tiles 170, 194). The rule is now the ::before of the group it
+  introduces, so it can never end a line. Only rows with a divider change (:has); without :has the old rule stays.
+- The Needle sat over the /markets stat line at 390. Its rest check counted controls only. It now also counts
+  visible text in the dial's band, prefers a rest clear of both, and falls back to the control-only rule (E-413)
+  when none is in reach. bottom-nav.tsx's comment named a needle-rest.css that never existed; corrected.
+  needle-rest.test.mjs restates the rule (it needs a server; it runs in the lock turn).
+- IMEBATILISHWA and the royal state pills were 20px against 18px. Chip gains metrics?: "status" | "base"; the state
+  pills on ticket-card and position-card use "base". Every other call site is unchanged.
+- The live carousel's caption was truncated at 390 (its comment meant ≤320 only). It now wraps on balanced lines,
+  with the gap to the pager 16 → 12 so "SHAKA ZAIDI" fits at 320. Two lines fit the arrows' 44px row.
+
+Pins updated, each exactly what the fix changes: journey-tickets (the title words go through keepUnits) and
+needle-rest. No dictionary string changed.
+
+Static suites, run on the G1 tree: 58 green. A full tsc and the browser proof (tiles, needle-rest) run on the
+combined branch under the shared lock.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+----
+
+
+==================== REVIEWER A NOTES (appended 2026-10-09 19:45) ====================
+# Reviewer A — running notes (verified items only). Tip 9677a3f5 (F:\kipindi-rev, read-only).
+
+## Findings so far
+A1 HIGH (RG) CONFIRMED — RG confirmation EMAILS state the end as the UTC calendar day, no time.
+   src/lib/server/responsible-gambling.ts:38-39 `fmtDate` (toLocaleDateString en-GB, NO timeZone → server zone; Railway = UTC,
+   nothing sets TZ), used at :335 (selfExclusionHtml endDate) and :373 (coolOffHtml endDate);
+   src/lib/server/email.ts selfExclusionHtml (~1585: EN + SW lines both `endDate`, SW with English month) and coolOffHtml
+   (~1598: SW line `untilIso.slice(0, 10)`). Bell notices (notifyCoolOff/notifySelfExclusion) were fixed by R4-I; the
+   emails (the "durable record") were not, and R5-B fixed only the revoked-agent letter.
+   Repro: t2-rg-email.mts (TZ=UTC) → t2-out.txt: 24h break taken 9 Oct 01:30 EAT → bell "hadi 10 Okt, 01:30", email
+   "until 09 Oct 2026" / "hadi 2026-10-09" (a day early); 1h break → "until 09 Oct 2026" (no time); exclusion SW line
+   "Akaunti yako imefungwa hadi 09 Oct 2026" (English month).
+
+A2 HIGH (RG) CONFIRMED (code path) — the market page offers the full bet panel during a break/exclusion.
+   src/app/markets/[id]/page.tsx: breakEnd read at :244-249 (isLockedOut) but `bettingOpen` :334 ignores it; SidePicker
+   rendered at ~:742 inside `bettingOpen && session`; the same page now prints the break sentence under "Your positions"
+   (:966-968) and hides "place another" (:1177). No bet surface reads the break (grep: no isLockedOut/breakEnd/onBreak in
+   side-picker, conviction-dial, updown pages/components, market-card, landing board). Server refuses (cooling_off /
+   self_excluded, market-service ~1128).
+
+A3 LOW CONFIRMED — proxy matcher still skips not-found PAGES under the static carve-outs and any /favicon.ico… /favicon.svg…
+   prefix (unescaped dots): t3-proxy.cjs → t3-out.txt (Next's own getMiddlewareMatchers): SKIPPED /icons/nope, /icons/nope.png,
+   /brand/x, /og/x, /pay/x, /screenshots/x, /email-signatures/x, /favicon.icon, /favicon.ico/x, /faviconXico, /favicon.svgz.
+   A missing file there renders the root _not-found inside RootLayout → AppShell (layout.tsx:231) = the signed-in header
+   (name, masked phone, balance) with none of withSecurityHeaders' headers (XFO DENY, CSP, nosniff, Referrer-Policy, HSTS)
+   and no x-pathname. Next's 404 path forces Cache-Control private,no-store (node_modules/next/dist/server/lib/router-server.js:475)
+   so no edge caching. Also proxy.ts:252-260's "known gap" note still says the matcher skips ANY image-extension path (stale).
+
+A4 LOW CONFIRMED — readableNotificationBody (src/lib/notification-text.ts:91-95) mends ".." in EVERY displayed body, new rows
+   included (notifications/page.tsx:119, notifications-panel.tsx:63-65): "range 1..2 here" → "range 1.2 here" (t1-out.txt).
+   Free text (officer notes/reasons, titles) passes through it.
+
+A5 LOW CONFIRMED (code) — /updown/[roundId] generateMetadata titles a FOUND round `d.titleEn` in every language
+   (getRoundDetail returns only titleEn, updown-board.ts:1364); R5-D localized only the failed-read title.
+
+## Checked and sound (so far)
+- sw.js: navigation branch first; keepable() image/font only; v6 name; refreshOffline guarded; offline doc person-free (route reads only licence).
+- next.config immutable sources: exact folders; 404 path overrides Cache-Control (no edge cache of a page).
+- market/updown/proposal generateMetadata: failed read → board title, missing → not-found metadata, nothing throws.
+- getProposalDetail ignores viewer for visibility → metadata and body agree.
+- hub-viewer lockout batch fails to no status; breakStateOf reason "self_exclusion" matches isLockedOut.
+- notify() never rejects; ticketHref/roundTicketHref keep dedupe unique per position; async notifiers caught or fire-and-forget safely.
+- instantIn/formatBreakEnd: per-locale months, EAT, year rule; NaN → "—" (t1-out.txt).
+- clipQuote: code-point safe, word boundary, CJK; endClause; firstDateSentence (t1-out.txt).
+- deposit/withdraw: hidden inputs still submit; break notice withdraw door only for cooling-off; errorCopy when.
+- admin R5-A dialogs: loading disables confirm/cancel/✕/scrim/Esc; pending clears when the action resolves; throw → error boundary.
+- ConfirmModal form submit re-checks `armed && !loading`.
+- one-sided refund = VOID + BET_REFUND on both sides of paidOutBehind (consistent).
+- resolveSimpleJourney fails closed (WITHDRAWN); server loading files read only cached resolver / feature flag.
+- notifications page: counts read failure throws to error.tsx (never an "empty inbox").
+- getRgSettings writes only on missing row / due pending change (idempotent upsert).
+
+[A notes +] A2 now CONFIRMED by static trace t4-break-bet.cjs -> t4-out.txt: markets/[id]/page.tsx breakEnd read :244, used
+only at :966-968 and :1177; bettingOpen :334 has no break term; SidePicker :741 inside bettingOpen&&session. Bet surfaces with
+NO break/exclusion read: side-picker, conviction-dial, bet-confirm-modal, market-card, updown page/[roundId]/card/round-stake-
+panel/stake-controls/use-quick-bet. landing-hero reads it only in SignedInAct (lead + notice), not the featured card/board.
+Checked sound: dial BUSY (no reason) only from AdmissionBusy before money moves -> calm toast + new key on re-tap is safe;
+thrown action -> system_error (error) -> danger + same-key Retry kept. Up & Down: toast tone only. Cashback promo gated by
+depositOpen (excludes break). Callout change paint-only. Footer: no RG line removed. global-error keeps RG link. No new raw
+HTML sinks in src/public. hub RG row ids "break"/"exclude" match hub-row status logic. verdict notice guarded on
+objectionsClosedAt. RG actions unchanged but for the instant param.
+
+[A notes +] A6 HIGH (RG) CONFIRMED (static, t5-tickets-tabs.cjs -> t5-out.txt): Tiketi zangu's Juu/Chini tab
+(/updown/history, journey TicketsHead current="updown" :303) has NO break read; its no-rows empty state (:386-389) says
+"Weka dau kwenye ubao na litaonekana hapa." / "Back a round on the board…" with a primary "Juu na Chini" button to /updown —
+while R4-I made the Maswali tab (tickets-view.tsx :88-109) drop "Tazama maswali" and say the break. Same page, two tabs,
+one fixed. Classic /updown/history the same (both shells).
+A1 sibling: betPlacedHtml "Resolves" row = market.resolutionAt.slice(0,10) (UTC day) in market-service ~1846 (pre-existing).
+Checked sound: journey capsule hidden on a failed balance read (header-state.ts:43-44 read→"none"); every
+useSyncExternalStore in the bare journey header tree has a server snapshot (no SSR throw → no 500); /results and
+notifications reads throw to error.tsx (no false "empty"); admin objection/settle/hold/stuck-payout close on success,
+stay open with exits on refusal; updown/history `journey` defined; auth permanent exclusion handled (auth-service :166).
+
+[A notes +] A1 permanent case reproduced (t2-out.txt): selfExclusionHtml → "You've locked your account for permanent. Betting,
+deposits, and login are disabled until 15 Sept 2126." / "Akaunti yako imefungwa hadi 15 Sept 2126." (the sign-in panel
+says permanent; R4-I's bell notice now says "until 15 Sep 2126, 14:00" — unreadable in practice: session revoked, push
+suppressed for RG-locked).
+A6 sibling: /positions/performance no-bets empty state (page.tsx :206-211) "Weka utabiri wako wa kwanza…" + primary
+"Browse markets" during a break — R4-I removed exactly that Browse from /positions. /watchlist's "browse to follow" is not a
+bet invitation (excluded).
+A7 LOW CONFIRMED (code): notifyWin body `${label.en} paid out.` (notification-service.ts:377-379) with the WHOLE market title
+(market-service.ts:4145) — the one market-title quote R5-B's clipQuote sweep did not reach (it had no .slice); on the push
+lock screen a long title pushes "paid out"/"kimelipa" out of view (the rationale clipQuote states).
+Checked sound: kyc-gate-panel / payout-status-notice / notice-bar / offline-banner hunks paint/role only; no RG notice removed.
+
+[A notes +] FINAL numbering for the report: A1 RG emails (HIGH) · A2 market/Up&Down bet panel during a break (HIGH) ·
+A3 Tiketi zangu Juu/Chini + /positions/performance invite a bet during a break (HIGH) · A4 proxy skips not-found pages
+under static folders/favicon prefix (LOW, security hardening) · A5 readableNotificationBody ".." over-repair (LOW) ·
+A6 round metadata English title (LOW) · A7 win notice unclipped title (LOW). Report handed back 2026-10-09.

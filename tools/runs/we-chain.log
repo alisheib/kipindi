@@ -1,0 +1,17 @@
+12:55:05 waiting for wg-chain.done
+14:06:16 wg-chain.done is there: exit=0
+14:06:16 queued: wait note written
+14:06:16 waiting (owner: marketing-s14 pushfinal-heavy since 2026-10-08T14:02:43Z pid 328631; queue: asheib-c5 vodacom: we-chain queued since 2026-10-08T14:06:16Z)
+14:11:19 waiting (owner: marketing-s14 pushfinal-heavy since 2026-10-08T14:02:43Z pid 328631; queue: asheib-c5 vodacom: we-chain queued since 2026-10-08T14:06:16Z)
+14:16:23 waiting (owner: marketing-s14 pushfinal-heavy since 2026-10-08T14:02:43Z pid 328631; queue: asheib-c5 vodacom: we-chain queued since 2026-10-08T14:06:16Z)
+14:21:27 waiting (owner: marketing-s14 pushfinal-heavy since 2026-10-08T14:02:43Z pid 328631; queue: asheib-c5 vodacom: we-chain queued since 2026-10-08T14:06:16Z)
+14:26:30 waiting (owner: marketing-s14 pushfinal-heavy since 2026-10-08T14:02:43Z pid 328631; queue: asheib-c5 vodacom: we-chain queued since 2026-10-08T14:06:16Z)
+14:31:34 waiting (owner: marketing-s14 pushfinal-heavy since 2026-10-08T14:02:43Z pid 328631; queue: asheib-c5 vodacom: we-chain queued since 2026-10-08T14:06:16Z)
+14:36:37 waiting (owner: marketing-s14 pushfinal-heavy since 2026-10-08T14:02:43Z pid 328631; queue: asheib-c5 vodacom: we-chain queued since 2026-10-08T14:06:16Z)
+14:41:40 waiting (owner: marketing-s14 pushfinal-heavy since 2026-10-08T14:02:43Z pid 328631; queue: asheib-c5 vodacom: we-chain queued since 2026-10-08T14:06:16Z)
+14:46:44 waiting (owner: marketing-s14 pushfinal-heavy since 2026-10-08T14:02:43Z pid 328631; queue: asheib-c5 vodacom: we-chain queued since 2026-10-08T14:06:16Z)
+14:51:02 lock taken
+14:51:02 AFTER 4c1a8dff in kipindi-a8j
+14:53:29 we-webkit: exit=1 · tree same —      ⛔ the in-memory demo account is now CLOSED: restart the server before the next drive   FAIL Z · no page error during the drive (2 known, not A8j's: the RG page's hydration mismatch, the dev server's hot-reload chunk) — /: Fetch API cannot load http: /localhost:3073/__nextjs_original-stack-frames due to access control checks. | /: Fetch API cannot load http: /localhost:3073/ due to access control checks. | /: Unhandled Promise Rejection: ChunkLoadError: Failed to load chunk /_next/static/chunks/src_lib_needle-physics_0a29lyi.js from module [project]/src/lib/needle-physics.js [app-client] (ecmascript, async IMPLICIT SUBMIT (drive, webkit) — 15 passed, 1 failed: Z 
+14:53:29 chain end
+14:53:29 lock released

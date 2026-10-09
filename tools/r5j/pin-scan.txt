@@ -1,0 +1,42 @@
+src/components/markets/discovery-bar.tsx :: "resultCount ==="
+    scripts/discovery-board-probe.mjs · scripts/filter-stress.mjs · scripts/live/kyc-roster-drive.mjs · scripts/live-results-board.mjs
+src/app/leaderboard/page.tsx :: "<td className=\"p-"
+    scripts/lib/house-bot-console-cases.mts · scripts/visual-pass-r5i.test.mts
+src/app/markets/[id]/page.tsx :: "import { formatTzsCompact, formatTzs, fill } from \""
+    scripts/anchors/timer-date.anchors.mjs
+src/app/positions/performance/page.tsx :: "<span className=\"ml-"
+    scripts/journey-tickets.test.mts · scripts/sell-grace-truth.test.mts
+src/components/ui/time-select.tsx :: "font-mono text-["
+    scripts/anchors/contrast-callsite.anchors.mjs · scripts/anchors/one-sided.anchors.mjs · scripts/anchors/share-link-readable.anchors.mjs · scripts/design-gate/eyebrow-roles.mjs · scripts/journey-shell.test.mts · scripts/journey-tickets.test.mts · scripts/live/ops/d37-tile-fit.mjs · scripts/one-sided.test.mts · scripts/qa-classic-shell-parity.mjs · scripts/red-e100.cjs · scripts/red-labels.mjs · scripts/red-updown-pricing.cjs · scripts/type-scale.test.mts · scripts/updown-match.test.mts · scripts/visual-pass-r5a.test.mts · scripts/visual-pass-r5b.test.mts · scripts/visual-pass-r5h.test.mts
+src/components/markets/discovery-bar.tsx :: "import { formatTzsCompact } from \""
+    scripts/kyc-stage.test.mts · scripts/visual-pass-r5a.test.mts
+src/app/positions/page.tsx :: "ofSettled: `${settled.length} ${t.market.tickerSettled}`,"
+    scripts/visual-pass-r4d.test.mts
+src/app/proposals/[id]/page.tsx :: "<span className=\"font-mono text-["
+    scripts/anchors/contrast-callsite.anchors.mjs · scripts/anchors/one-sided.anchors.mjs · scripts/journey-tickets.test.mts · scripts/one-sided.test.mts · scripts/red-labels.mjs · scripts/red-updown-pricing.cjs · scripts/visual-pass-r5h.test.mts
+src/app/updown/history/page.tsx :: "<div className=\"mt-"
+    scripts/anchors/house-bot-console.anchors.mjs · scripts/anchors/updown-filter-sheet.anchors.mjs · scripts/enter-where-pressed.test.mts · scripts/journey-tickets.test.mts · scripts/visual-pass-r4i.test.mts · scripts/visual-pass-r5h.test.mts
+src/app/updown/history/page.tsx :: "{g.bets.length} {t.market.udBets}"
+    scripts/design-gate/eyebrow-roles.mjs
+src/components/analytics/analytics-choice.tsx :: "<p className=\"min-w-"
+    scripts/visual-pass-r4i.test.mts
+src/components/layout/notifications-panel.tsx :: "aria-label={`${t.common.notifications}${unread >"
+    scripts/tap-target.test.mts
+src/components/layout/notifications-panel.tsx :: "` (${unread})` : \"\"}`}"
+    scripts/tap-target.test.mts
+src/components/markets/operation-result-modal.tsx :: "function withWholeFigures(title: string) {"
+    scripts/sell-grace-truth.test.mts
+src/components/markets/operation-result-modal.tsx :: "return title.split(FIGURE).map((part, i) => (i"
+    scripts/sell-grace-truth.test.mts
+src/components/markets/operation-result-modal.tsx :: "<span key={i} className=\"amount\">{part}</span> : part))"
+    scripts/sell-grace-truth.test.mts
+src/components/markets/operation-result-modal.tsx :: "withWholeFigures(title) : title}"
+    scripts/sell-grace-truth.test.mts
+src/components/ui/pagination.tsx :: ").toLocaleString()}"
+    scripts/backfill-fee-snapshots.mts · scripts/campaign-compose.test.mts · scripts/design-gate/eyebrow-roles.mjs · scripts/fee.cjs · scripts/live/ops/selcom-statement-census.cjs · scripts/load/spike-b-read-oom.mts · scripts/ops-money-inventory.mjs · scripts/ops-qa-fleet.mts · scripts/tz-msisdn.test.mts
+src/components/ui/pagination.tsx :: "{Math.min(safePage"
+    scripts/design-gate/eyebrow-roles.mjs
+src/components/ui/search-box.tsx :: "{invalidReason"
+    scripts/contacts-page.test.mts
+
+163 removed code lines, 169 fragments, 20 quoted in scripts/

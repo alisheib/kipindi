@@ -1,0 +1,547 @@
+diff --git a/src/app/not-found.tsx b/src/app/not-found.tsx
+index 035e74e2a..4475d57cc 100644
+--- a/src/app/not-found.tsx
++++ b/src/app/not-found.tsx
+@@ -1,153 +1,36 @@
+-import Link from "next/link";
+-import { cookies } from "next/headers";
+-import { I } from "@/components/ui/glyphs";
+-import { FiftyMark } from "@/components/brand";
+-import { BrandTopo } from "@/components/brand-topo";
++import type { Metadata } from "next";
+ import { getServerT } from "@/lib/i18n-server";
+-import { localeOrDefault } from "@/lib/i18n-dict";
+-
+-/* ── Inline i18n dict for this server component (cannot use useT) ─────── */
+-const t404 = {
+-  en: {
+-    notFoundCode: "404",
+-    notFound: "Page not found",
+-    notFoundBody: "We couldn\u2019t find that page",
+-    notFoundHint: "The link may be stale, the market may have resolved, or the URL was typed in slightly off. Pick a destination below to keep going.",
+-    home: "Home",
+-    markets: "Markets",
+-    help: "Help",
+-    browseOpenMarkets: "Browse open markets",
+-  },
+-  sw: {
+-    notFoundCode: "404",
+-    notFound: "Hakuna ukurasa",
+-    notFoundBody: "Hatukupata ukurasa huo",
+-    notFoundHint: "Kiungo kinaweza kuwa kimepitwa na wakati, soko linaweza kuwa limetatuliwa, au URL imeandikwa vibaya. Chagua mahali pa kwenda hapa chini.",
+-    home: "Mwanzo",
+-    markets: "Masoko",
+-    help: "Msaada",
+-    browseOpenMarkets: "Tazama masoko yaliyo wazi",
+-  },
+-  zh: {
+-    notFoundCode: "404",
+-    notFound: "\u9875\u9762\u672a\u627e\u5230",
+-    notFoundBody: "\u6211\u4eec\u627e\u4e0d\u5230\u8be5\u9875\u9762",
+-    notFoundHint: "\u94fe\u63a5\u53ef\u80fd\u5df2\u5931\u6548\uff0c\u5e02\u573a\u53ef\u80fd\u5df2\u7ed3\u7b97\uff0c\u6216URL\u8f93\u5165\u6709\u8bef\u3002\u8bf7\u9009\u62e9\u4ee5\u4e0b\u76ee\u7684\u5730\u7ee7\u7eed\u3002",
+-    home: "\u9996\u9875",
+-    markets: "\u5e02\u573a",
+-    help: "\u5e2e\u52a9",
+-    browseOpenMarkets: "\u6d4f\u89c8\u5f00\u653e\u5e02\u573a",
+-  },
+-} as const;
+-
+-type Locale = keyof typeof t404;
++import { NotFoundView } from "@/components/ui/not-found-view";
++import { NOT_FOUND_WORDS, notFoundTitle } from "@/components/ui/not-found-words";
+ 
+ /**
+- * Resolve locale: the visitor's chosen language (the `kp-locale` cookie), else Swahili — the platform default, the same
+- * rule every other page uses (`localeOrDefault`). The browser's Accept-Language is no longer consulted: a 404 must not
+- * speak a different language from the page the visitor just left.
++ * The page's title and robots, in the visitor's language — the visitor's chosen language (the `kp-locale` cookie), else
++ * Swahili, the platform default, the rule every other page uses (`getServerT` → `localeOrDefault`). The browser's
++ * Accept-Language is not consulted: a 404 must not speak a different language from the page the visitor just left.
++ *
++ * ⭐ EVERY NOT-FOUND IN THE APP ANSWERS WITH THIS (2026-10-09, the visual pass's round 4, E47). `/markets/[id]` and
++ * `/proposals/[id]` export it from their own not-found files — the error convention reads the DEEPEST not-found's
++ * metadata, and theirs had none, so a missing market kept the root layout's English "50pick — Predict events. Not
++ * chance." — and `/account` imports it for everybody the journey is not shown to.
++ * ⭐ AND IT SAYS `noindex` IN THE HEAD. Under a `loading.tsx` the response is committed (200) before `notFound()` runs;
++ * Next then streams `<meta name="robots" content="noindex">` with the not-found UI, but the head still carried the root
++ * layout's "index, follow" beside it (measured on a dev server, `/markets/mkt_doesnotexist`). The page's own robots now
++ * replace the root's, so the head and the stream agree.
+  */
+-async function resolveLocale(): Promise<Locale> {
+-  const jar = await cookies();
+-  return localeOrDefault(jar.get("kp-locale")?.value);
+-}
+-
+-export async function generateMetadata() {
+-  const lang = await resolveLocale();
+-  const d = t404[lang];
+-  return { title: `${d.notFound} · ${d.notFoundCode}` };
++export async function generateMetadata(): Promise<Metadata> {
++  const { locale } = await getServerT();
++  return { title: notFoundTitle(NOT_FOUND_WORDS[locale]), robots: { index: false, follow: false } };
+ }
+ 
+ /**
+- * Global 404 page — caught by Next.js App Router whenever a request hits
+- * a URL that doesn't match a route. We give the player a branded landing
+- * with three explicit next-steps so they can keep moving instead of
+- * bouncing off the platform. Industry standard for licensed operators:
+- * the 404 must NOT look like a system error and must offer a clear path
+- * back to the play surfaces.
++ * Global 404 page — caught by Next.js App Router whenever a request hits a URL that doesn't match a route, and whenever
++ * a segment with no not-found of its own calls `notFound()` (`/updown/[roundId]`). We give the player a branded landing
++ * with three explicit next-steps so they can keep moving instead of bouncing off the platform. Industry standard for
++ * licensed operators: the 404 must NOT look like a system error and must offer a clear path back to the play surfaces.
+  *
+- * No PII is rendered here — the URL the player tried is not echoed back,
+- * so the page is safe to log + cache.
++ * No PII is rendered here — the URL the player tried is not echoed back, so the page is safe to log + cache.
+  */
+ export default async function NotFound() {
+-  const lang = await resolveLocale();
+-  const d = t404[lang];
+-  const { t } = await getServerT();
+-
+-  return (
+-    // Same kit frame as the shared RouteError (A3): FiftyMark 64 over a faint
+-    // BrandTopo, a glyph badge, neutral chrome. A 404 is "not found", not an
+-    // error — so the badge is royal/info (not the RouteError rose alert tint),
+-    // and there's no gold here (404 isn't earned-money).
+-    <div className="kp-shortpage relative mx-auto flex min-h-[80svh] max-w-[640px] flex-col items-center justify-center overflow-hidden px-5 py-10 text-center">
+-      <BrandTopo id="notfound-topo" opacity={0.09} />
+-      <div className="relative flex flex-col items-center">
+-        <FiftyMark size={64} />
+-        <div
+-          /* ⚠️ LITERALS, not `h-11 w-11` — spacing is overridden (tailwind.config.ts:200-215)
+-             so `h-11` renders 96px, i.e. a medallion that rivalled the size={64} mark above it. */
+-          className="mb-3 mt-5 inline-flex h-[44px] w-[44px] items-center justify-center rounded-full border border-brand-600 bg-brand-500/10 text-brand-300"
+-          style={{ boxShadow: "0 0 0 7px color-mix(in oklab, var(--brand-500) 8%, transparent)" }}
+-        >
+-          <I.search s={19} />
+-        </div>
+-        <p className="font-mono text-micro font-bold uppercase tracking-[0.20em] text-text-subtle">
+-          {d.notFoundCode} · {d.notFound}
+-        </p>
+-        <h1 className="mt-2 font-display text-title-lg font-bold leading-tight tracking-[-0.02em] text-text">
+-          {d.notFoundBody}
+-        </h1>
+-        <p className="mt-3 max-w-[420px] text-[13px] leading-relaxed text-text-subtle">
+-          {d.notFoundHint}
+-        </p>
+-        {/* 🔴 D68 · THREE ACROSS AT EVERY WIDTH, BECAUSE ONE PER ROW PUT THEM OFF THE SCREEN.
+-            This page tells the player to choose where to go next, and at 320×640 — the smallest supported
+-            phone — not one destination was usable: measured, the first was 61.6% visible behind the bottom
+-            rail and the other two were **entirely off-screen**, with nothing at rest to say they existed.
+-            Each card stacks a 28px glyph over its label inside `p-3.5`, so it is 101.5px tall and three of
+-            them are 304px — more than the page had left after the mark, the badge, the code line, the
+-            heading and the hint. ⭐ The labels are one short word each (`Mwanzo` / `Masoko` / `Msaada`,
+-            and shorter in EN and ZH), so three across at 320 gives each ~86px of an ~48px word and turns
+-            304px into one row. The `sm:` gate was the whole defect: the phone got the layout designed for
+-            the case where there is room to spare. */}
+-        <nav aria-label={t.error.recoveryLinks} className="mt-6 grid w-full max-w-[420px] grid-cols-3 gap-2.5">
+-          <Link
+-            href="/"
+-            className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-brand-400 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"
+-          >
+-            <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-bg-inset text-text-subtle group-hover:text-brand-300 transition-colors">
+-              <I.arrowRight s={13} style={{ transform: "rotate(180deg)" }} />
+-            </span>
+-            <p className="font-display text-[13px] font-semibold text-text">{d.home}</p>
+-          </Link>
+-          <Link
+-            href="/markets"
+-            className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-brand-400 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"
+-          >
+-            <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-bg-inset text-text-subtle group-hover:text-brand-300 transition-colors">
+-              <I.chart s={13} />
+-            </span>
+-            <p className="font-display text-[13px] font-semibold text-text">{d.markets}</p>
+-          </Link>
+-          <Link
+-            href="/help"
+-            className="group rounded-xl border border-border bg-bg-elevated p-3.5 text-left transition-all hover:border-brand-400 hover:bg-bg-overlay hover:-translate-y-0.5 hover:shadow-[var(--shadow-3)]"
+-          >
+-            <span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-bg-inset text-text-subtle group-hover:text-brand-300 transition-colors">
+-              <I.info s={13} />
+-            </span>
+-            <p className="font-display text-[13px] font-semibold text-text">{d.help}</p>
+-          </Link>
+-        </nav>
+-        <Link
+-          href="/markets"
+-          className="mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200"
+-        >
+-          <I.globe s={12} />
+-          {d.browseOpenMarkets}
+-          <I.arrowRight s={12} />
+-        </Link>
+-      </div>
+-    </div>
+-  );
++  const { t, locale } = await getServerT();
++  return <NotFoundView words={NOT_FOUND_WORDS[locale]} recoveryLabel={t.error.recoveryLinks} />;
+ }
+diff --git a/src/app/proposals/[id]/not-found.tsx b/src/app/proposals/[id]/not-found.tsx
+index ad2f18734..91324fd94 100644
+--- a/src/app/proposals/[id]/not-found.tsx
++++ b/src/app/proposals/[id]/not-found.tsx
+@@ -1,50 +1,26 @@
+-import Link from "next/link";
+-import { cookies } from "next/headers";
+-import { I } from "@/components/ui/glyphs";
+-import { FiftyMark } from "@/components/brand";
+-import { dict, localeOrDefault, type Locale } from "@/lib/i18n-dict";
++import { getServerT } from "@/lib/i18n-server";
++import { NotFoundView } from "@/components/ui/not-found-view";
++import { NOT_FOUND_WORDS } from "@/components/ui/not-found-words";
++import { generateMetadata as notFoundMetadata } from "@/app/not-found";
+ 
+ /**
+- * Colocated not-found for /proposals/[id] — mirrors markets/[id]/not-found so an
+- * invalid proposal id returns a real 404 with the branded fallback (not the
+- * generic app 404 at HTTP 200). Uses inline cookie locale (metadata can't run
+- * in not-found pages).
++ * Colocated not-found for /proposals/[id] — the app's one not-found view (`not-found-view.tsx`): the same kicker, the
++ * same three cards in the same order, and its own way out, back to the proposals board, under them in the one link
++ * colour. (It wore a gold "404" and a gold link — gold is money, §M3/Q5 — and put its way back in the first card.)
++ * ⚠️ The status is whatever the stream committed before `notFound()` ran — this segment has a `loading.tsx`; see
++ * `markets/[id]/not-found.tsx`. The title and the head's `noindex` are the not-found's own, below.
+  */
+-export default async function ProposalNotFound() {
+-  const jar = await cookies();
+-  const locale: Locale = localeOrDefault(jar.get("kp-locale")?.value);
+-  const t = dict[locale];
++export async function generateMetadata() {
++  return notFoundMetadata();
++}
+ 
++export default async function ProposalNotFound() {
++  const { t, locale } = await getServerT();
+   return (
+-    <div className="kp-shortpage mx-auto flex min-h-[80svh] max-w-[640px] flex-col items-center justify-center px-5 py-10 text-center">
+-      <div className="mb-5">
+-        <FiftyMark size={64} />
+-      </div>
+-      <p className="font-mono text-micro font-bold uppercase tracking-[0.20em] text-gold-300">
+-        {t.error.notFoundCode}
+-      </p>
+-      <h1 className="mt-2 font-display text-title-lg font-bold leading-tight tracking-[-0.02em] text-text">
+-        {t.error.notFoundBody}
+-      </h1>
+-      <p className="mt-3 max-w-[420px] text-[13px] leading-relaxed text-text-subtle">
+-        {t.error.notFoundHint}
+-      </p>
+-      <nav aria-label={t.error.recoveryLinks} className="mt-6 grid w-full max-w-[420px] grid-cols-1 gap-2 sm:grid-cols-3">
+-        <Link href="/proposals" className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-brand-400 hover:bg-bg-overlay">
+-          <p className="font-display text-[13px] font-semibold text-text">{t.error.backToProposals}</p>
+-        </Link>
+-        <Link href="/markets" className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-brand-400 hover:bg-bg-overlay">
+-          <p className="font-display text-[13px] font-semibold text-text">{t.common.markets}</p>
+-        </Link>
+-        <Link href="/help" className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-brand-400 hover:bg-bg-overlay">
+-          <p className="font-display text-[13px] font-semibold text-text">{t.common.help}</p>
+-        </Link>
+-      </nav>
+-      <Link href="/proposals" className="mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200">
+-        <I.globe s={12} />
+-        {t.error.backToProposals}
+-        <I.arrowRight s={12} />
+-      </Link>
+-    </div>
++    <NotFoundView
++      words={NOT_FOUND_WORDS[locale]}
++      recoveryLabel={t.error.recoveryLinks}
++      way={{ href: "/proposals", label: t.error.backToProposals }}
++    />
+   );
+ }
+diff --git a/src/app/proposals/[id]/page.tsx b/src/app/proposals/[id]/page.tsx
+index eb618123d..0ef0204d5 100644
+--- a/src/app/proposals/[id]/page.tsx
++++ b/src/app/proposals/[id]/page.tsx
+@@ -14,21 +14,31 @@ import { CategoryIcon, categoryLabel } from "@/components/proposals/category-ico
+ import { RewardBurst } from "@/components/brand/reward-burst";
+ import { getServerT } from "@/lib/i18n-server";
+ import { pickLocalized } from "@/lib/localized";
++import { keepFigures } from "@/components/ui/keep-words";
+ import { formatTzsSigned } from "@/lib/utils";
+ import { PageContainer } from "@/components/layout/page-container";
++import { generateMetadata as notFoundMetadata } from "@/app/not-found";
+ 
+ export const dynamic = "force-dynamic";
+ 
+ // Shared-proposal links carried the generic "50pick" title before this — now the
+ // browser-tab/OG title is the proposal's own title (matches markets/[id]).
++// ⭐ 2026-10-09 (the visual pass's round 4, E47): a proposal that does not exist is titled as the not-found it renders —
++// the not-found page's own metadata, in the page's language, with `noindex` — never the English "Proposal". Only when
++// the read SUCCEEDED and found nothing; a failed read keeps the neutral default, as the page sends it to error.tsx.
++// ⭐ THE NEUTRAL DEFAULT IS THE BOARD'S TITLE, IN THE READER'S LANGUAGE (round 5, review F1 — one rule for every record
++// page's metadata, `markets/[id]/page.tsx` has it): `t.proposals.title`, the key `/proposals` is titled by, where it was
++// the English "Proposal" in every language. Nothing here throws, so a failed read never decides the page.
+ export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+   const { id } = await params;
+-  const { locale } = await getServerT();
++  const { t, locale } = await getServerT();
++  let p: Awaited<ReturnType<typeof getProposalDetail>> = null;
+   try {
+-    const p = await getProposalDetail(id, null);
+-    if (p) return { title: pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh) };
+-  } catch { /* graceful — fall through to default */ }
+-  return { title: "Proposal" };
++    p = await getProposalDetail(id, null);
++  } catch { return { title: t.proposals.title }; }
++  // DISABLED: the page redirects to the board, so this address names no proposal page either way.
++  if (!p) return getProposalsConfig().state === "DISABLED" ? { title: t.proposals.title } : notFoundMetadata();
++  return { title: pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh) };
+ }
+ 
+ export default async function ProposalDetailPage({ params }: { params: Promise<{ id: string }> }) {
+@@ -57,7 +67,8 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
+           <Chip variant="neutral"><CategoryIcon category={p.category} />{categoryLabel(t, p.category)}</Chip>
+           <span className="ml-auto font-mono text-[10.5px] text-text-subtle">{t.common.resolves} {p.resolutionDate}</span>
+         </div>
+-        <h1 className="font-display text-title-lg font-bold leading-tight tracking-[-0.02em]">{pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh)}</h1>
++        {/* A question, set as every market title is (round 5, R5-E — F1 F4, review 3 H1): balanced, its figures whole. */}
++        <h1 className="font-display text-title-lg font-bold leading-tight tracking-[-0.02em] text-balance">{keepFigures(pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh))}</h1>
+         {p.description && <p className="mt-2 text-[13px] leading-relaxed text-text-muted">{p.description}</p>}
+         <div className="mt-3.5 flex items-center gap-3">
+           <VoteControl proposalId={p.id} up={p.up} down={p.down} myVote={p.myVote} horizontal disabled={!active || !open} />
+@@ -141,9 +152,12 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
+           <p className="mb-3 font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{t.common.statusLabel}</p>
+           <StatusTimeline current={timelineStep(p)} />
+           {open && <p className="mt-1 text-body-sm text-text-subtle">{t.common.officerReviewsNext}</p>}
++          {/* One way to the market in both states (R5-C, the second gold audit, 2026-10-09): it turned GOLD once the market
++              resolved — but a link to a market is a control, not the market's resolved seal (that is the chip on its page,
++              §M3), and the proposer's money is the crest above (Q5). */}
+           {p.publishedMarketId && (
+             <Link href={`/markets/${p.publishedMarketId}` as never}>
+-              <Button variant={p.status === "RESOLVED" ? "gold" : "ghost"} size="md" fullWidth className="mt-3" trailing={<I.arrowRight s={15} />}>
++              <Button variant="ghost" size="md" fullWidth className="mt-3" trailing={<I.arrowRight s={15} />}>
+                 {p.status === "RESOLVED" ? t.common.viewResolvedMarket : t.common.viewLiveMarket}
+               </Button>
+             </Link>
+diff --git a/src/app/proposals/page.tsx b/src/app/proposals/page.tsx
+index 18d96502a..466a3cde5 100644
+--- a/src/app/proposals/page.tsx
++++ b/src/app/proposals/page.tsx
+@@ -21,9 +21,11 @@ import { StatusBadge } from "@/components/proposals/status-badge";
+ import { CategoryIcon, categoryLabel } from "@/components/proposals/category-icon";
+ import { getServerT } from "@/lib/i18n-server";
+ import { pickLocalized } from "@/lib/localized";
++import { keepFigures } from "@/components/ui/keep-words";
+ import { formatTzs, formatNumber } from "@/lib/utils";
+ import { PageContainer } from "@/components/layout/page-container";
+ import { SearchBox } from "@/components/ui/search-box";
++import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
+ import { parseQuery, matchesQuery, fieldNames, BOARD_PROPOSAL_SEARCH } from "@/lib/search";
+ import { ProposalsBar, type BoardCounts } from "./proposals-bar";
+ import {
+@@ -196,21 +198,25 @@ export default async function ProposalsPage({
+           looked WITHIN a file. That h1 is a `<p>` now, matching `ui/empty-state.tsx:53`, and
+           the sentence above is true. ⛔ A page's h1 count is the page PLUS everything it
+           renders. */}
+-      <PageHero glow="gold" contentClassName="relative z-10 p-5 lg:p-6 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
++      {/* ⭐ NO GOLD ON THE PAGE'S OWN FRAME (R5-C, the second gold audit, 2026-10-09; DESIGN_AUTHORITY Q5 "gold is money,
++          and nothing else"): proposing a market is not money. The hero and its eyebrow take the page defaults (info glow,
++          subtle eyebrow — the trophy rides in that ink), and "Create" is the primary action every other page's own action
++          is. The gold left here is money: a proposer's granted bonus on its row. */}
++      <PageHero contentClassName="relative z-10 p-5 lg:p-6 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+         <div className="flex flex-col items-start gap-2">
+-          <PageHeader tone="gold" icon={<I.trophy s={18} />} eyebrow={t.proposals.title} title={t.proposals.voteForMarkets} />
+-          {/* Gilt "coming soon" here, amber "maintenance" here, nothing when active. */}
++          <PageHeader icon={<I.trophy s={18} />} eyebrow={t.proposals.title} title={t.proposals.voteForMarkets} />
++          {/* A quiet neutral "coming soon" here, amber "maintenance" here, nothing when active. */}
+           <ProposalsStateBadge state={state} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} />
+         </div>
+         {active && (
+           <Link href={"/proposals/new" as never} className="shrink-0">
+-            <Button variant="gold" size="md" leading={<I.plus s={15} />}>{t.proposals.create}</Button>
++            <Button variant="primary" size="md" leading={<I.plus s={15} />}>{t.proposals.create}</Button>
+           </Link>
+         )}
+       </PageHero>
+ 
+       {/* Reward promo — shown only when the feature is live (the state banner
+-          carries the message otherwise, so this gold CTA isn't redundant). */}
++          carries the message otherwise, so this CTA isn't redundant). */}
+       {active && <ProposePromo href="/proposals/new" />}
+ 
+       {/* Guided state banner — gilt (coming soon) / amber (maintenance). */}
+@@ -237,8 +243,10 @@ export default async function ProposalsPage({
+       {rows.length > 0 && (
+         <>
+           {/* ⛔ NOT STICKY — see `/results/page.tsx`'s note. `QUERY_BAR_CLASS` already sticks at
+-              `top-[56px]`, so a second sticky band at the same offset overlaps it by 91px. */}
+-          <div className="py-2.5">
++              `top-[56px]`, so a second sticky band at the same offset overlaps it by 91px.
++              ⭐ One band with the bar (round 4, 2026-10-09, `QUERY_SEARCH_BAND_CLASS`): `py-2.5` left 77px between the box
++              and the lens pills on this page's 32px rung; the band leaves 42, as under the bar. */}
++          <div className={QUERY_SEARCH_BAND_CLASS}>
+             <Suspense>
+               <SearchBox
+                 placeholder={t.proposals.searchProposals}
+@@ -298,7 +306,7 @@ export default async function ProposalsPage({
+           title={t.proposals.noProposalsYet}
+           body={`${t.proposals.noProposalsBody} ${t.proposals.noProposalsReward} ${formatTzs(cfg.prizeTzs)}.`}
+           action={
+-            <Link href={"/proposals/new" as never}><Button variant="gold" size="sm" leading={<I.plus s={12} />}>{t.proposals.create}</Button></Link>
++            <Link href={"/proposals/new" as never}><Button variant="primary" size="sm" leading={<I.plus s={12} />}>{t.proposals.create}</Button></Link>
+           }
+         />
+       ) : (
+@@ -318,7 +326,7 @@ export default async function ProposalsPage({
+             : t.market.filterMissBody
+           }
+           action={
+-            <Link href={"/proposals/new" as never}><Button variant="gold" size="sm" leading={<I.plus s={12} />}>{t.proposals.create}</Button></Link>
++            <Link href={"/proposals/new" as never}><Button variant="primary" size="sm" leading={<I.plus s={12} />}>{t.proposals.create}</Button></Link>
+           }
+         />
+       )}
+@@ -343,7 +351,8 @@ function ProposalCard({ p, disabled, t, locale, ageStr }: { p: ProposalView; dis
+           <Chip variant="neutral"><CategoryIcon category={p.category} />{categoryLabel(t, p.category)}</Chip>
+           <span className="ml-auto font-mono text-[10.5px] text-text-subtle">{ageStr(p.createdAt)}</span>
+         </div>
+-        <p className="font-display text-[15.5px] font-semibold leading-snug tracking-[-0.01em] text-text">{pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh)}</p>
++        {/* A question, set as every market title is (round 5, R5-E — F1 F4, review 3 H1): balanced, its figures whole. */}
++        <p className="font-display text-[15.5px] font-semibold leading-snug tracking-[-0.01em] text-text text-balance">{keepFigures(pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh))}</p>
+         {p.description && <p className="mt-1.5 text-body-sm leading-relaxed text-text-muted line-clamp-2">{p.description}</p>}
+         <div className="mt-2.5 flex items-center gap-3.5 font-mono text-[11px] text-text-subtle">
+           <span>{t.proposals.byProposer} {p.proposerMasked}</span>
+diff --git a/src/app/updown/[roundId]/page.tsx b/src/app/updown/[roundId]/page.tsx
+index 79d2c9c2c..52e33d994 100644
+--- a/src/app/updown/[roundId]/page.tsx
++++ b/src/app/updown/[roundId]/page.tsx
+@@ -15,8 +15,10 @@
+  * Gold appears at most twice and both are earned/committed money: the Confirm button and
+  * a winning payout. Everything else is neutral or YES/NO — never gold for decoration.
+  */
++import type { Metadata } from "next";
+ import Link from "next/link";
+ import { notFound } from "next/navigation";
++import { generateMetadata as notFoundMetadata } from "@/app/not-found";
+ import { BackLink } from "@/components/ui/back-link";
+ import { Chip } from "@/components/ui/chip";
+ import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
+@@ -83,10 +85,25 @@ const eyebrow = "m-0 font-mono text-micro font-semibold uppercase eyebrow text-t
+ // fmtEAT moved to updown-source-label.ts (E-262) — the board chart panel now renders the
+ // same receipt line, and two private copies of one formatter is the drift that file stops.
+ 
+-export async function generateMetadata({ params }: { params: Promise<{ roundId: string }> }) {
++/**
++ * ⭐ A ROUND THAT DOES NOT EXIST IS TITLED AS THE NOT-FOUND IT RENDERS (2026-10-09, the visual pass's round 4, E47): the
++ * not-found page's own metadata — "Hakuna ukurasa · 404", in the page's language, with `noindex` — where the tab used to
++ * read "Up & Down · 50pick" over a page that said the round was not there. Only when the read SUCCEEDED and found
++ * nothing (the page's own rule, UD-15); a failed read keeps the neutral title, as the page sends it to error.tsx.
++ * ⭐ THE NEUTRAL TITLE IS THE BOARD'S, IN THE READER'S LANGUAGE (round 5, review F1 — one rule for every record page's
++ * metadata, `markets/[id]/page.tsx` has it): `t.market.udTitle`, the key `/updown` is titled by ("Juu na Chini",
++ * "涨跌"), where it was the English "Up & Down" in every language. Nothing here throws, so a failed read never decides
++ * the page.
++ */
++export async function generateMetadata({ params }: { params: Promise<{ roundId: string }> }): Promise<Metadata> {
+   const { roundId } = await params;
+-  const d = await getRoundDetail(roundId).catch(() => null);
+-  return { title: d?.titleEn ?? "Up & Down" };
++  const { t } = await getServerT();
++  let d: Awaited<ReturnType<typeof getRoundDetail>> = null;
++  try {
++    d = await getRoundDetail(roundId);
++  } catch { return { title: t.market.udTitle }; }
++  if (!d) return notFoundMetadata();
++  return { title: d.titleEn };
+ }
+ 
+ export default async function UpDownRoundPage({
+@@ -170,16 +187,18 @@ export default async function UpDownRoundPage({
+     const o = decideOutcomeByTargets(heroLive, round.upTarget, round.downTarget);
+     return o.voidReason === "source-failed" ? null : o.outcome === "UP" ? "up" as const : o.outcome === "DOWN" ? "down" as const : "level" as const;
+   })();
+-  // No-break spaces: "imenukuliwa 18:55:02 EAT" is one unit and never splits at a line end.
++  // "imenukuliwa 18:55:02 EAT" is one unit and never splits at a line end: one nowrap run. Round 5 (2026-10-09, review 3
++  // H4's sweep): it was no-break spaces — characters in the page's text, travelling into a copy and a find-in-page — and
++  // is now a span, the keep helpers' convention (keep-words.tsx); the words are the dictionary's and the formatter's.
+   const quotedAt = asset.sourceQuotedAt ? fmtEAT(asset.sourceQuotedAt) : null;
+-  const stamp = quotedAt ? `${t.market.udQuoted}\u00A0${quotedAt.replace(/ /g, "\u00A0")}` : null;
++  const stamp = quotedAt ? <span className="whitespace-nowrap">{t.market.udQuoted} {quotedAt}</span> : null;
+   const moveText = move == null || move === 0 ? null
+     : !decided && tone === "level" ? fill(t.market.udLevelBy, { amount: `$${Math.abs(move).toFixed(dec)}` })
+       : `${move > 0 ? t.market.udAboveOpenBy : t.market.udBelowOpenBy} $${Math.abs(move).toFixed(dec)}`;
+   // E-53 · the KIND of market, never the vendor. The class arrives already resolved from
+   // the server (`publicSourceClassFor`), so the domain is not in this payload to leak.
+   const source = decided
+-    ? `${t.market[SOURCE_CLASS_KEY[asset.sourceClass]]}${stamp ? ` · ${stamp}` : ""}`
++    ? <>{t.market[SOURCE_CLASS_KEY[asset.sourceClass]]}{stamp && <>{" · "}{stamp}</>}</>
+     : t.market[SOURCE_CLASS_KEY[asset.sourceClass]];
+   // Two clauses, never split inside: the move and its quote stamp. Below 400 they stack and the "·" hides, so no
+   // line ends on a dangling dot — the landing band's own rule (frame panel round 3, 2026-09-27).
+@@ -777,7 +796,9 @@ export default async function UpDownRoundPage({
+                   <dl className="mt-[11px] grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-[5px] font-mono text-[10.5px]">
+                     <dt className="text-text-faint">{t.market.udSource}</dt>
+                     <dd className="m-0 text-text-muted">{t.market[SOURCE_CLASS_KEY[asset.sourceClass]]}</dd>
+-                    <dt className="text-text-faint">{t.market.udQuoted}</dt>
++                    {/* The stamp's mid-sentence word used as a label opens on a capital, like "Chanzo" and "Ilionekana"
++                        around it — the hero's rule (`.ud-cap-first`, round 4); the word itself is unchanged. */}
++                    <dt className="ud-cap-first text-text-faint">{t.market.udQuoted}</dt>
+                     <dd className="m-0 tabular-nums text-text-muted">{fmtEAT(quotedAt) ?? "—"}</dd>
+                     <dt className="text-text-faint">{t.market.udObserved}</dt>
+                     <dd className="m-0 tabular-nums text-text-muted">{fmtEAT(observedAt) ?? "—"}</dd>
+@@ -835,7 +856,9 @@ export default async function UpDownRoundPage({
+                   {t.market.udEvidenceExcerpt}
+                   <span className="ml-2 normal-case tracking-normal text-text-faint">· staff only</span>
+                 </p>
+-                <pre className="m-0 font-mono text-[10.5px] text-text-muted" style={{ ...inset, borderLeft: "2px solid color-mix(in oklab, var(--gilt) 55%, transparent)", borderRadius: "var(--r-sm)", padding: "11px 13px", lineHeight: 1.65, whiteSpace: "pre-wrap", overflowWrap: "break-word" }}>{evidence}</pre>
++                {/* The quote's rule is the market page's own (`border-l-2 border-border/60`), not gilt: a source excerpt is
++                    not money (R5-C, the second gold audit, 2026-10-09; Q5) — the resolution panel's evidence reads the same. */}
++                <pre className="m-0 font-mono text-[10.5px] text-text-muted" style={{ ...inset, borderLeft: "2px solid color-mix(in oklab, var(--border) 60%, transparent)", borderRadius: "var(--r-sm)", padding: "11px 13px", lineHeight: 1.65, whiteSpace: "pre-wrap", overflowWrap: "break-word" }}>{evidence}</pre>
+               </div>
+             )}
+ 
+diff --git a/src/app/updown/page.tsx b/src/app/updown/page.tsx
+index 23f660bbb..475c87551 100644
+--- a/src/app/updown/page.tsx
++++ b/src/app/updown/page.tsx
+@@ -96,12 +96,19 @@ export default async function UpDownPage({
+       {/* Rounds turn over in minutes, so the board refreshes itself. */}
+       <RefreshPoller intervalMs={20_000} />
+ 
+-      <div className="flex items-start justify-between gap-3">
+-        <PageHeader eyebrow={t.market.udStreaming} title={t.market.udTitle} subtitle={t.market.udTagline} />
+-        {/* ⭐ THE RULES DOOR — this product had none. It takes the SAME pill recipe as the
++      {/* ⭐ THE PILLS STAND BESIDE THE TITLE, AND THE TAGLINE RUNS UNDER BOTH (2026-10-09, the visual pass's round 3,
++          tile 200 at sw 390). This page used to set the whole PageHeader in a flex row with the pills, so the tagline
++          was squeezed into what they left and broke in two ("Je, bei itakuwa / juu au chini muda ukiisha?", 92px over
++          164px) in a 357px column one ~260px line fits. `actions` puts them in the heading's own row. */}
++      <PageHeader
++        eyebrow={t.market.udStreaming}
++        title={t.market.udTitle}
++        subtitle={t.market.udTagline}
++        actions={
++        /* ⭐ THE RULES DOOR — this product had none. It takes the SAME pill recipe as the
+             history link beside it rather than a second idiom, so the header stays one row of
+             equals. The label collapses to the glyph under `sm`, exactly as its neighbour does,
+-            which is what keeps two pills off the title at 360. */}
++            which is what keeps two pills off the title at 360. */
+         <div className="mt-1 flex shrink-0 items-center gap-2">
+           <Link
+             href="/legal/rules/up-down"
+@@ -126,7 +133,8 @@ export default async function UpDownPage({
+             <I.chevronRight s={11} />
+           </Link>
+         </div>
+-      </div>
++        }
++      />
+ 
+       {/* ── Price tape — real readings only; an asset with no confirmed price
+              shows an em-dash rather than a plausible-looking zero. ─────────── */}
+@@ -143,8 +151,9 @@ export default async function UpDownPage({
+             </span>
+           </span>
+         ))}
++        {/* Round 5 (F19): the note ends on the row's edge — its trailing 0.10em taken back (`kp-track-end`, globals.css). */}
+         <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.10em] text-text-faint">
+-          <span className="live-dot" /> {t.market.udStreaming}
++          <span className="live-dot" /> <span className="kp-track-end kp-track-end--10">{t.market.udStreaming}</span>
+         </span>
+       </div>
+ 

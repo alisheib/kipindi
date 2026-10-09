@@ -1,0 +1,22 @@
+19:16:23 waiting for wa-chain.done
+19:16:24 wa-chain.done is there: exit=0
+19:16:24 waiting (owner: marketing-s14 checks since 2026-10-07T15:54:58Z pid 149114; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-07T17:45:58Z)
+19:21:27 waiting (owner: marketing-s14 checks since 2026-10-07T15:54:58Z pid 149114; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-07T17:45:58Z)
+19:26:30 waiting (owner: marketing-s14 checks since 2026-10-07T15:54:58Z pid 149114; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-07T17:45:58Z)
+19:31:33 waiting (owner: marketing-s14 checks since 2026-10-07T15:54:58Z pid 149114; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-07T17:45:58Z)
+19:33:19 lock taken
+19:34:06 typecheck of the WP12 tip 311a03da exit=0 — 0 error(s)
+19:34:10 BEFORE a3312e74 · AFTER 311a03da · harness F:/kipindi-wp12/scripts/qa-classic-shell-parity.mjs
+19:34:13 kipindi-a8i2 at 7c859cdf (pre-S6)
+19:40:39 wb-v2-provered: exit=0 · tree same —   PASS P.sell|en|1280|/positions ⭐ the /positions card's Sell button letters spaced out is reported in regions.button.layout, and nowhere outside regions.button. — regions.button.layout: 4 of 4 element line(s) differ; first: button style letter-spacing: 0.07px → 2px   PASS P.sell|en|1280|/positions ⭐ the /positions card's free strip re-inked is reported in regions.strip.layout, and nowhere outside regions.strip. — regions.strip.layout: 1 of 4 element line(s) differ; first: div style display: - → flex, position: - → static, z-index: - → auto, visibility: - → visible 81/81 passed — prove-red · tree 7c859cdf · 169s 
+20:02:16 wb-v2-base: exit=0 · tree same —   sw · the header's content ends 0px past the 320px viewport (rightmost: div); its row overflows by 0px baseline written: C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/wp12/parity-v2-7c859cdf-omega.json — base 7c859cdf, 224 cells, 461 blobs. Next: a null --compare on a FRESH server at this commit must exit 0. 30/30 passed — baseline · tree 7c859cdf · 1269s 
+20:23:40 wb-v2-null: exit=0 · tree same —   PASS 4.5 each named Sell difference is seen in all of its cells or in none   PASS 4.6 each measured Sell difference is seen in all of its cells whenever the served change that causes it is seen 39/39 passed — compare · tree 7c859cdf · 1255s 
+20:23:41 kipindi-a8i2 at a3312e74 (WP12's parent)
+20:26:53 wb-f-provered: exit=0 · tree same —   PASS P.sell|en|1280|/positions ⭐ the /positions card's Sell button letters spaced out is reported in regions.button.layout, and nowhere outside regions.button. — regions.button.layout: 4 of 4 element line(s) differ; first: button style letter-spacing: 0.07px → 2px   PASS P.sell|en|1280|/positions ⭐ the /positions card's free strip re-inked is reported in regions.strip.layout, and nowhere outside regions.strip. — regions.strip.layout: 1 of 4 element line(s) differ; first: div style color: oklab(0.979997 -0.000428766 -0.0119691) → rgb(255, 0, 0) 81/81 passed — prove-red · tree a3312e74 · 164s 
+20:48:21 wb-f-base: exit=0 · tree same —   sw · the header's content ends 0px past the 320px viewport (rightmost: div); its row overflows by 0px baseline written: C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/wp12/parity-a3312e74.json — base a3312e74, 224 cells, 451 blobs. Next: a null --compare on a FRESH server at this commit must exit 0. 30/30 passed — baseline · tree a3312e74 · 1260s 
+21:09:50 wb-f-null: exit=0 · tree same —   PASS 4.5 each named Sell difference is seen in all of its cells or in none   PASS 4.6 each measured Sell difference is seen in all of its cells whenever the served change that causes it is seen 39/39 passed — compare · tree a3312e74 · 1258s 
+21:09:51 kipindi-a8j at 311a03da (the WP12 tip)
+21:32:24 wb-f-wp12: exit=0 · tree same —   PASS 4.5 each named Sell difference is seen in all of its cells or in none   PASS 4.6 each measured Sell difference is seen in all of its cells whenever the served change that causes it is seen 39/39 passed — compare · tree 311a03da · 1257s 
+21:39:03 wb-v2-wp12: exit=3 · tree same — 
+21:39:03 chain end
+21:39:04 lock released

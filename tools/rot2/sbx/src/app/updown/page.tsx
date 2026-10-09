@@ -1,0 +1,354 @@
+/**
+ * /updown — the Up & Down board.
+ *
+ * Per `Markets Appearing.txt`: this destination holds ONLY the short-term price rounds.
+ * `/markets` holds long-form polls; `/live` shows both. That split is enforced at the
+ * data layer (`listMarkets()` defaults to `productLine: "MARKET"`), not by filtering
+ * here.
+ *
+ * Built to `docs/design-system/v2-2026-07-27/02-components/_specs-as-delivered/D2-updown-board-spec.md`, with one
+ * correction to the brief: the grid stays 3-across at 1920 rather than widening to 4 —
+ * the platform has a fixed 3-tier max-width system (1280 grid / 1080 content / 640
+ * forms) and the board must not break it.
+ */
+import Link from "next/link";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { RefreshPoller } from "@/components/ui/refresh-poller";
+import { I } from "@/components/ui/glyphs";
+import { getBoard } from "@/lib/server/updown-board";
+import { currentSession } from "@/lib/server/auth-service";
+import { getServerT } from "@/lib/i18n-server";
+import { pickLocalized } from "@/lib/localized";
+import { UpDownCard } from "@/components/updown/updown-card";
+import { UpDownResultAnnouncer } from "@/components/updown/updown-result-announcer";
+import { UpDownBoardTabs } from "@/components/updown/updown-board-tabs";
+import { BoardViz } from "@/components/charts/board-viz";
+import { OutcomeCubes } from "@/components/charts/outcome-cubes";
+import { UpDownChartLab } from "@/components/charts/updown-chart-lab";
+import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
+import { heroMovePct, heroPrice, msOrNull, roundIsSettled } from "@/lib/updown-card-phase";
+import { usd } from "@/lib/usd-price";
+
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.market.udTitle };
+}
+
+// usd() → the ONE spelling in @/lib/usd-price (session 80 — six private copies unified).
+
+/** The board header's pill recipe — ONE definition, because the two pills must match each other
+ *  and because a second copy of its `tracking-[0.10em]` is what took the arbitrary-tracking
+ *  ratchet 236 → 237. `test:type-scale` §6 caught it. */
+const HEADER_PILL =
+  "inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 py-2 font-mono text-caption uppercase tracking-[0.10em] text-text-muted hover:text-text hover:border-brand-400 transition-colors";
+
+export default async function UpDownPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ asset?: string; d?: string }>;
+}) {
+  const sp = await searchParams;
+  const { t, locale } = await getServerT();
+  const session = await currentSession();
+  // ⛔ UD-15 · NO `.catch(() => null)` HERE ANY MORE. Swallowing the read rendered a
+  // DB outage as a calm "No rounds open right now" — an empty state is a statement
+  // about the WORLD ("nothing scheduled"), not about the PLATFORM. A real throw now
+  // reaches error.tsx: named, retryable, honest. The empty branch below remains for
+  // the query that SUCCEEDED and found nothing.
+  const board = await getBoard({
+    assetKey: sp.asset,
+    /* ⛔ A URL-SUPPLIED NUMBER IS NOT A NUMBER UNTIL IT IS CHECKED (2026-09-18). `?d=abc` made
+       `Number(sp.d)` **NaN** and `?d=-5` a negative duration, and both were passed straight
+       into the board query as a real filter value. Anything unreadable is now simply absent,
+       which is the same thing as "no duration filter" and the branch below already handles it. */
+    durationMinutes: Number.isInteger(Number(sp.d)) && Number(sp.d) > 0 ? Number(sp.d) : undefined,
+    userId: session?.userId,
+  });
+
+  if (board.assets.length === 0) {
+    return (
+      <div className="mx-auto w-full max-w-board px-3 lg:px-6 py-6">
+        <PageHeader eyebrow={t.market.udStreaming} title={t.market.udTitle} subtitle={t.market.udTagline} />
+        <div className="mt-6">
+          <EmptyState title={t.market.udNoRounds} body={t.market.udNoRoundsBody} />
+        </div>
+      </div>
+    );
+  }
+
+  const { assets, activeAsset, activeDuration, rounds, recent, chainPaused, stakeBounds, walletBalance } = board;
+  const href = (assetKey: string, d?: number) => `/updown?asset=${assetKey}${d ? `&d=${d}` : ""}`;
+  // ⭐ R5(c) · F1 (2026-09-27) · the round IN PLAY — the board's first unsettled round with frozen targets. The terminal's
+  // live line is read against its targets, so the chart and the card under it paint one confirmed read one way.
+  // ⛔ Only the two targets travel: the terminal charts history, never the round's frame (§B12.6).
+  const inPlay = rounds.find((r) => !roundIsSettled(r.state) && r.upTarget != null && r.downTarget != null) ?? null;
+  const isAuthed = !!session;
+  // ⛔ NO IDENTITY READ ON THE BOARD SINCE 2026-09-13 — a stake asks no identity question
+  // (`kyc-gate.ts`), so quick-bet is armed for every signed-in player. The `kycBlocked` read and prop
+  // that switched it off from 2026-09-05 are deleted; do not restore them.
+
+
+  return (
+    <div className="mx-auto w-full max-w-board px-3 lg:px-6 py-6">
+      {/* Rounds turn over in minutes, so the board refreshes itself. */}
+      <RefreshPoller intervalMs={20_000} />
+
+      <div className="flex items-start justify-between gap-3">
+        <PageHeader eyebrow={t.market.udStreaming} title={t.market.udTitle} subtitle={t.market.udTagline} />
+        {/* ⭐ THE RULES DOOR — this product had none. It takes the SAME pill recipe as the
+            history link beside it rather than a second idiom, so the header stays one row of
+            equals. The label collapses to the glyph under `sm`, exactly as its neighbour does,
+            which is what keeps two pills off the title at 360. */}
+        <div className="mt-1 flex shrink-0 items-center gap-2">
+          <Link
+            href="/legal/rules/up-down"
+            /* ⛔ THE LABEL COLLAPSES BELOW `sm`, SO THE NAME MUST NOT. Same rule, same words as
+               the deposit CTA in `top-app-bar.tsx:302-320`: the glyph and its `aria-label` stay,
+               so a phone is never handed an unnameable control. The label is the SAME key the
+               span carries — one string, two presentations, never a second wording to translate. */
+            aria-label={t.common.readFullRules}
+            className={HEADER_PILL}
+          >
+            <I.scrollText s={13} />
+            <span className="hidden sm:inline">{t.common.readFullRules}</span>
+          </Link>
+          {/* This game's own portfolio — separate from the long-form Bets page. */}
+          <Link
+            href="/updown/history"
+            aria-label={t.market.udHistoryTitle}
+            className={HEADER_PILL}
+          >
+            <I.portfolio s={13} />
+            <span className="hidden sm:inline">{t.market.udHistoryTitle}</span>
+            <I.chevronRight s={11} />
+          </Link>
+        </div>
+      </div>
+
+      {/* ── Price tape — real readings only; an asset with no confirmed price
+             shows an em-dash rather than a plausible-looking zero. ─────────── */}
+      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl px-3.5 py-2.5"
+           style={{ background: "var(--bg-inset)", border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)" }}>
+        {assets.map((a) => (
+          <span key={a.id} className="inline-flex items-baseline gap-2">
+            <span className="font-mono text-micro font-semibold uppercase eyebrow text-text-subtle">
+              {pickLocalized(locale, a.nameEn, a.nameSw, a.nameZh)}
+            </span>
+            <span className="font-mono text-[13px] font-bold tabular-nums"
+                  style={{ color: a.livePrice == null ? "var(--text-faint)" : "var(--text)" }}>
+              {a.livePrice == null ? "—" : usd(a.livePrice, a.decimals)}
+            </span>
+          </span>
+        ))}
+        <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.10em] text-text-faint">
+          <span className="live-dot" /> {t.market.udStreaming}
+        </span>
+      </div>
+
+      {/* ⭐ UD-13 · asset/duration tabs are a FILTER: the client shell below runs the
+          navigation in a transition and keeps the live board on screen (dimmed) while
+          the filtered one streams in — no skeleton flash, no countdown restart. */}
+      <UpDownBoardTabs
+        /* 🔴 PLAYER-FILTERS 2026-09-09 · AN ASSET CHIP NOW CARRIES THE DURATION THE PLAYER IS ON.
+           ⛔ IT USED TO BE `href(a.key)` — ASSET ONLY, NO `d`. So every asset tap threw the
+           player's chosen round length away and the server re-picked one
+           (`updown-board.ts`: `runningDurations(...)[0] ?? durations[0]`, i.e. the SHORTEST
+           running chain). Two consequences, both of which read to a player as the control doing
+           something other than what it says:
+             · tapping Gold while on Bitcoin 15 min lands on Gold 15 min only by luck — the
+               fixture's gold runs 15/30/60, so it did; BTC's shortest is 3, so coming back
+               landed on **3 min**, not the 15 the player had chosen and could still see;
+             · tapping the asset ALREADY IN FORCE — the most natural "nothing should happen" tap
+               there is — silently moved a player from 15 min to 3 min.
+           ⭐ Ali, relaying players: *"they click a time, maybe 15mins, and it clicks something
+           else."* This is one of the two mechanisms that produces exactly that sentence, and it
+           is the one that needs no race and no slow network to reproduce.
+           ⛔ THE DURATION IS CARRIED ONLY WHEN THE TARGET ASSET ACTUALLY RUNS IT. Gold does not
+           run a 3-minute chain, so `?asset=XAU&d=3` would ask for a chain that does not exist and
+           `getBoard` would fall through to a default anyway — the difference being that the URL
+           would then be a false statement about what the player asked for. Where the duration
+           does not carry, we omit it and let the server choose, which is the old behaviour kept
+           for exactly the case it was right about. */
+        assetTabs={assets.map((a) => ({
+          key: a.key,
+          href: href(a.key, activeDuration != null && a.durations.includes(activeDuration) ? activeDuration : undefined),
+          label: pickLocalized(locale, a.nameEn, a.nameSw, a.nameZh),
+        }))}
+        durationTabs={activeAsset ? activeAsset.durations.map((d) => ({ d, href: href(activeAsset.key, d) })) : []}
+        activeAssetKey={activeAsset?.key ?? null}
+        activeDuration={activeDuration}
+        assetsLabel={t.market.udAssets}
+        durationsLabel={t.market.udDurations}
+        minLabel={t.market.udMin}
+        sheetTitle={t.market.udFilterTitle}
+        /* UD-13c · the trigger's key. ⛔ `filtersOpen` is the EXISTING word the /markets
+           trigger already uses in all three languages — not a second key for one noun. */
+        sheetLabel={t.market.filtersOpen}
+        sheetAria={t.market.udFilterAria}
+        sheetClose={t.market.filtersClose}
+        sheetDone={t.common.done}
+      >
+
+      {/* ── CHART-SPRINT B · the heartbeat strip and the live round chart, one switch.
+             CUBES (real outcomes, oldest → newest) stays the default; CHART is the
+             current round's confirmed price action against its open (A-5 throughout —
+             both bodies render real data or nothing, and a missing body removes the
+             toggle rather than offering an empty destination). ────────────────────── */}
+      {(recent.length > 0 || activeAsset != null) && (
+        <BoardViz
+          labels={{
+            aria: t.market.udViewAria,
+            cubes: t.market.udViewCubes,
+            chart: t.market.udViewChart,
+            cubesEyebrow: t.market.udLastRounds,
+            chartEyebrow: t.market.udLiveChart,
+          }}
+          cubes={recent.length > 0 ? (
+            <OutcomeCubes
+              outcomes={recent}
+              labels={{ up: t.market.udUp, down: t.market.udDown, void: t.market.statusVoid, oldestNewest: t.market.udOldestNewest }}
+            />
+          ) : null}
+          // CHART-SPRINT-2 · chart mode is offered whenever an asset is active.
+          // ⚠️ The ROUND frame was REMOVED by Ali's closing order (2026-09-04
+          // evening, §B12.6): the terminal is history-only; the round's own
+          // numbers live on the cards below and the detail hero.
+          chart={activeAsset != null ? (
+            <UpDownChartLab
+              assetKey={activeAsset.key}
+              locale={locale}
+              labels={{
+                railAria: t.market.udRangeAria,
+                styleAria: t.market.udStyleAria,
+                curve: t.market.udStyleCurve,
+                candles: t.market.udStyleCandles,
+                noCandles: t.market.udNoCandles,
+                empty: t.market.udNoReads,
+                loading: t.common.loading,
+                error: t.market.udChartError,
+                chartAria: `${pickLocalized(locale, activeAsset.nameEn, activeAsset.nameSw, activeAsset.nameZh)} ${t.market.udLiveChart}`,
+                // E-53 grammar for the terminal's receipt footer — the KIND of
+                // market, never the vendor; the quote time is per-poll client data.
+                sourceLabel: t.market[SOURCE_CLASS_KEY[activeAsset.sourceClass]],
+                quotedWord: t.market.udQuoted,
+                confirmedPrice: t.market.udConfirmedPrice,
+              }}
+              round={inPlay ? { upTarget: inPlay.upTarget, downTarget: inPlay.downTarget } : null}
+            />
+          ) : null}
+        />
+      )}
+
+      {/* ── The grid. 1 / 2 / 3 columns — and STAYS 3 at 1920. ───────────── */}
+      <div className="mt-4">
+        {/* ⛔ E-67 · THE GATE IS "ARE THERE ROUNDS", NOT "IS THE CHAIN RUNNING".
+            This read `chainPaused || rounds.length === 0`, which was survivable only while a
+            chain being STOPPED implied no rounds existed. Since Ali stopped automatic emission
+            (*"my admins will enter and generate every 5 min"*) EVERY chain is STOPPED and rounds
+            are created by hand — so that condition hid a real, live, playable round behind
+            "No rounds open right now". Measured: `udr_cd386bbaeaf63be696f5`, open price
+            63,719.98, targets set, live until 21:15 UTC, and completely invisible to players.
+            A chain's state says whether MORE rounds will appear; it says nothing about whether
+            the one on the board can be played. */}
+        {/* ⭐ THE RESULT MOMENT (Ali, 2026-08-05). Announces on the OBSERVED transition of a
+            round this viewer holds from unsettled → settled, which the RefreshPoller above
+            delivers by re-rendering this server tree without remounting client children.
+            ⛔ In-app only — no email, no push, no inbox row. Ali's 2026-07-24 suppression of
+            per-round Up & Down notifications STANDS; this renders data the page already has. */}
+        <UpDownResultAnnouncer rounds={rounds.map((r) => ({ roundId: r.roundId, settledAtMs: r.resolvedAtMs, myResult: r.myResult }))} />
+        {rounds.length === 0 ? (
+          // ⭐ UD-22 · a chain between rounds is NOT an idle market. Rounds are
+          // operator-generated (E-67), so the gap between them showed the same copy as
+          // "nothing here today" and a player could not tell "wait a bit" from "leave".
+          // When the asset+duration resolves to a real chain, say the honest thing —
+          // the next round is being prepared — without promising a cadence manual
+          // generation does not guarantee. (Copy flagged for Ali's sign-off in §9.)
+          activeDuration != null ? (
+            <EmptyState
+              title={t.market.udNextRoundSoon}
+              body={t.market.udNextRoundSoonBody.replace("{n}", String(activeDuration))}
+            />
+          ) : (
+            <EmptyState title={t.market.udNoRounds} body={t.market.udNoRoundsBody} />
+          )
+        ) : (
+          <div className="grid items-stretch gap-4"
+               style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
+            {rounds.map((r) => (
+              <UpDownCard
+                key={r.roundId}
+                roundId={r.roundId}
+                // UD-22 · assembled server-side on the round itself, so the card and
+                // `/updown/[roundId]` confirm a bet with the same sentences.
+                receipt={r.receipt}
+                assetName={pickLocalized(locale, activeAsset!.nameEn, activeAsset!.nameSw, activeAsset!.nameZh)}
+                assetTicker={activeAsset!.key}
+                assetIcon={activeAsset!.iconKey}
+                durationMinutes={r.durationMinutes}
+                decimals={activeAsset!.decimals}
+                /* 🔴 D36 · A SETTLED CARD USED TO KEEP TICKING TODAY'S PRICE. This was
+                   `activeAsset!.livePrice` on every card whatever its state, so a resolved round
+                   showed the current quote in the big bold figure at its top — while its own
+                   settled pod, three rows below, printed the honest `open → close`. One card,
+                   one round, two prices, and the wrong one was the loud one.
+                   ⭐ The rule is not new: `/updown/[roundId]` has had it since E-72. It now lives
+                   in `heroPrice` so the board and the round page cannot answer differently.
+                   ⛔ A void round with no close price lands on the card's own A-5 branch — an
+                   em-dash and "awaiting read" — and that is correct. Never `?? livePrice`. */
+                livePrice={heroPrice({ state: r.state, closePrice: r.closePrice, livePrice: activeAsset!.livePrice })}
+                openPrice={r.openPrice}
+                upTarget={r.upTarget}
+                downTarget={r.downTarget}
+                /* ⛔ THE MOVE COMES FROM THE PRICE THE CARD ACTUALLY PRINTS. Deriving it from the
+                   live quote while the figure above it came from the close is how one card shows
+                   a percentage its own two numbers do not produce. */
+                movePct={heroMovePct({ state: r.state, openPrice: r.openPrice, closePrice: r.closePrice, livePrice: activeAsset!.livePrice })}
+                closesAtMs={Date.parse(r.closesAt)}
+                /* ⛔ `msOrNull`, NOT `x ? Date.parse(x) : null` (2026-09-18). `Date.parse` answers
+                   **NaN** for a string it cannot read, and NaN is not null, so the old spelling
+                   handed NaN straight to the card. ✅ What that fixes: `formatClock(NaN)` threw
+                   `RangeError` out of render into the route error boundary, losing the whole board
+                   to a clock caption. ⛔ What it does NOT fix: `roundPhase`'s `pastLock` collapses
+                   for null exactly as it did for NaN, so an unreadable lock instant still reads as
+                   "no betting window" — see `msOrNull`'s own header. */
+                selectionClosesAtMs={msOrNull(r.selectionClosedAt)}
+                serverNowMs={r.serverNowMs}
+                expectedResultAtMs={/* E-99 · null under the sample floor → no clock, never a
+                                        guessed one. */ r.expectedResultAtMs}
+                /* ⭐ E-166 · what this card says once its round is finished. The instants are
+                   the SERVER's — the chain's own next boundary and the successor market's own
+                   lock — so the card never invents "when does the next match start". */
+                resolvedAtMs={r.resolvedAtMs}
+                successor={r.successor}
+                myExactPayout={r.myExactPayout}
+                myPayoutIfUp={r.myPayoutIfUp}
+                myPayoutIfDown={r.myPayoutIfDown}
+                volumeTzs={r.volumeTzs}
+                players={r.players}
+                pricing={r.pricing}
+                state={r.state}
+                outcome={r.outcome === "VOID" ? null : r.outcome}
+                closePrice={r.closePrice}
+                voidReason={r.voidReason as never}
+                sourceClass={activeAsset!.sourceClass}
+                sourceQuotedAt={activeAsset!.sourceQuotedAt}
+                marketId={r.marketId}
+                isAuthed={isAuthed}
+                minStake={stakeBounds.min}
+                maxStake={stakeBounds.max}
+                walletBalance={walletBalance}
+                myUpStake={r.myUpStake}
+                myDownStake={r.myDownStake}
+                myRefundedStake={r.myRefundedStake}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+      </UpDownBoardTabs>
+    </div>
+  );
+}

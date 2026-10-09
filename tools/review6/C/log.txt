@@ -1,0 +1,131 @@
+# Reviewer C (cross-surface consistency) — running log. Tip reviewed: 9677a3f5 (F:\kipindi-rev, read-only)
+# Status words: CONFIRMED (reproduced/derived from code with line numbers), PLAUSIBLE (traced, needs a browser), CANDIDATE (not yet verified)
+# Scratch: S\review6\C\  (commits.txt = git log of 118fc75c..HEAD; src.diff = the src diff; s\ = scripts)
+
+## Findings (updated as verified)
+
+C1 [CONFIRMED — s\c1-invite.mts runs hubRowsFor + quotes the menu/footer/page lines] /profile/invite has up to three names in the journey for one reader.
+   sw: agent -> hub "Dashibodi ya wakala" / menu "Alika na upate zawadi" / footer "Alika marafiki" / <title> "Alika na upate zawadi" / h1 "Dashibodi ya wakala";
+       paid player -> hub+footer "Alika marafiki" / menu+<title>+h1 "Alika na upate zawadi". (en/zh the same shape.) visible title is page.tsx 270-272.
+   hub-rows.ts memberGroups: label = agentInStanding ? agent.dashTitle : profile.inviteFriends (never inviteEarn)
+   avatar-menu.tsx 151-153: journey keeps the classic literal "Invite & Earn / Alika na upate zawadi / 邀请赚钱" when invitePaid
+     (app-shell.tsx 338: invitePaid = payable || agentInGoodStanding)
+   public-footer.tsx 277: profile.inviteFriends always (journey arm too)
+   page: invite/page.tsx 51 <title> (payable||agent) ? inviteEarn : inviteFriends; 265/268 h1+visible title paid ? inviteEarn : inviteFriends;
+         agent-dashboard.tsx 101/104 h1+visible "Dashibodi ya wakala" (agent.dashTitle)
+   => approved agent (journey): hub "Dashibodi ya wakala", menu "Alika na upate zawadi", footer "Alika marafiki", <title> "Alika na upate zawadi", h1 "Dashibodi ya wakala"
+   => paid-programme player (journey): hub+footer "Alika marafiki", menu + page title/h1 "Alika na upate zawadi"
+
+C2 [CONFIRMED — s\c2-closes.mjs: both files are dialog hosts, 0 `<I.x` sites, absent from the census table; geometry from classes] the ✕ census (visual-pass-r5a 8.10, matches only `<I.x`) misses two dialog closes drawn as inline SVG:
+   needle-drawer.tsx 255-264 (role=dialog at 212): 40px box, rounded-lg, own path, centred 20px down the header row
+     while the 15px title's capitals centre 9px down (11px low); box 20px (px-4) / 24px (sm:p-5) inside the panel edge, not 16
+   ChatPanel.tsx 102-113 (role=dialog at 91): .cm-close 32x32 (chat-styles.css 208), centred on a 36px mark + two-line header
+   (also: bell panel notifications-panel.tsx 608-616 a 40px/13px hand ✕ — census-named "not changed", journey mounts it from 1024)
+
+C3 [CANDIDATE→verifying] the gold census misses the warning family's other spellings: --warning-500 = oklch(78% 0.13 86)
+   (globals.css 203) is gold by the census's own hue rule (70-100, C>=0.04), but only `warning-fg` / "warning" are counted.
+   Unregistered amber paints: ui/maintenance-badge.tsx 40; rg/limit-usage.tsx 29; profile/account/privacy-request-form.tsx 99;
+   auth/forgot-password/page.tsx 86 (the rate-limit box's frame/wash, its words moved to muted by R4-I); motion.css .mat-tint-warn 437.
+
+C4 [CONFIRMED by code: login 159-166 tone "warning" → 267-270 classes; deposit/page.tsx 214-233 Callout tone="neutral" with R4-I's
+    reason "a paused deposit has earned nothing"; RG page 138 Callout neutral] sign-in's break panel is amber (auth/login/page.tsx 159-166 tone "warning" -> 270 border-warning-border
+   bg-warning-bg) while the same break sentence (rg.breakActive) is neutral on every other surface: RG page Callout neutral
+   (profile/responsible-gambling/page.tsx 138), /wallet/deposit (R4-I neutral), home .kp-mine__held (globals 6711), market page
+   subtle italic, wallet sheet, reality check ("R4-I gave every RG notice the neutral treatment"). r5c registry rules login's
+   warning arms "sign-in refusals the player can fix" — a break cannot be shortened.
+
+C5 [KNOWN, queued to R5-G G-1] sw money doors "Weka pesa"/"Toa pesa" vs deposit h1+<title> "Amana", withdraw eyebrow+<title> "Toa", h1 "Toa fedha".
+
+C6 [CONFIRMED — s\c6-round-title.mts: sw/zh <title> "Bitcoin Up or Down · 15 min"; h1 sw "Bitcoin Juu na Chini"+"15 dakika", zh "比特币 涨跌"+"15 分钟";
+    even en: "Up or Down" (title) vs "Up & Down" (h1)] /updown/[roundId] <title> is English for every reader on a successful read
+   (updown/[roundId]/page.tsx 106 `return { title: d.titleEn }`; getRoundDetail exposes only titleEn, updown-board.ts 1364/1447),
+   while its h1 is `${asset name in locale} ${t.market.udTitle}` (page.tsx 425-427) and R5-D's rule (same function) says
+   "the board's title in the reader's language". Stored titleSw/titleZh exist (updown-service.ts 756-758).
+
+C3 update: CONFIRMED — s\c3-warning-gold.mjs (the suite's VAR/TW regexes copied verbatim, checked equal): --warning-500 is gold by
+   the census's own rule; 61 warning-family paints uncounted; 4 files wholly unregistered (forgot-password 86, privacy-request-form 99,
+   rg/limit-usage 29 [its ramp is ruled in a comment, R5-C], ui/maintenance-badge 40).
+
+C7 [CONFIRMED — s\c7-ud-range.mts] Up & Down custom-amount range line: updown-stake-controls.tsx 264-265 puts the whole sentence
+   (udStakeRange + " · " + min – max) in ONE `.amount` <p> (globals.css 1040: .amount = mono + white-space:nowrap). Invalid state:
+   sw 58 chars ≈ 348px, en 53 ≈ 318px at 10px mono vs the .mcardp content box (15px padding, overflow:hidden): 320 → 256px (sw over 92,
+   en over 62), 360 → 296 (sw 52, en 22), 390 → 326 (sw 22). The max figure is clipped exactly when the player needs it.
+   Pre-existing on main (line was `text-no-300`); R5-I rewrote this line (ink) without seeing the nowrap. Fix: `.amount` on the two
+   figures only (or moneyRuns), the <p> plain text-micro.
+
+C8 [CONFIRMED by grid arithmetic; browser would show it] /updown board grid `repeat(auto-fill, minmax(300px, 1fr))` (updown/page.tsx
+   288; ghost updown-ghost.tsx 58) inside px-3 (16px) gutters: at 320 the content box is 288px, the one track is 300px, so every round
+   card overflows by 12px — right edge 4px from the screen (left 16) — until 332px. No 320 /updown tile exists (tiles-r5 has 390/1280).
+   Fix: minmax(min(300px, 100%), 1fr).
+   SIBLING (worse): /updown/history page.tsx 457 `minmax(320px, 1fr)` in max-w-reading px-3: at 320 each round card is 320px from
+   x16 → x336; html/body overflow-x: clip (globals.css 944-945, 979-980) cuts its right border + 14px padding (p-3.5) at the screen
+   edge, the right-aligned NET figure ending at x321; clipped until 352px. Same fix. (Both pre-existing on main.)
+
+C9 [CONFIRMED by code] F20's "every close ✕ on its title's first-line capitals" has an unruled class: the crest/seal-first dialogs keep
+   Modal's corner ✕ (showClose default; modal.tsx 576 `absolute right-3 top-3` → centre 40px down) on no title —
+   OperationResultModal (operation-result-modal.tsx 413-421; panel !p-0, body p-6/lg:p-7 = 32/40px, 64px crest centred 64/72px down,
+   h2 ≈130px+ down) used by the bet/sell/deposit/withdraw/Up&Down-blocked/agent-apply/agent-invite/proposal-create results;
+   WinCelebration (win-celebration.tsx 286-293, pt-10 = 80px before the seal). Neither the census nor F20's list names them.
+   ConfirmModal had the same medallion-first shape and R5-A moved its ✕ to the title (modal.tsx 845-863).
+
+C10 [CONFIRMED by code] the journey's bell (NotificationsPanel journey, mounted from 1024) draws a notice's title `truncate` plain and
+   its body plain sans (notifications-panel.tsx 672-680) while /notifications draws the same words through DotSeq+moneyRuns and
+   moneySentence (notifications/page.tsx 294/302/308; R4-C "titles and bodies whole with money in mono"). Same notice, two
+   treatments; the journey arm is not frozen (R5-I already gives it `journey` inks). LOW.
+
+C11 [CONFIRMED by code; ≈1.4px each] F19 ("a right-aligned tracked label ends where its neighbours end … the same for each label of
+   this kind", globals.css 5183-5201) fixed 5 sites; these right-aligned eyebrows (.eyebrow.eyebrow = 0.14em, 1.4px at 10px) over a
+   right-aligned figure keep their trailing tracking: bet-confirm-modal.tsx 313-315 (STAKE over TZS stake), sell-confirm-modal.tsx
+   151-152 (EARLY EXIT FEE), wallet/withdraw/page.tsx 173-174 (AVAILABLE, sm:text-right), updown/history/page.tsx 544-545 (NET RETURN),
+   updown/[roundId]/page.tsx 600-601 (YOUR PICK · STAKE), updown/price-hero.tsx 173-174 (OPEN), updown/round-countdown.tsx 453-454,
+   positions/performance/page.tsx 394-396 (status label, 0.08em). (conviction-dial 1498 ends on InfoHint's icon — fine.)
+
+C12 [CONFIRMED — s\c12-bet-stake-wrap.mts, model calibrated on edges tile 035 (sw 360: NDIO 70px, "TZS 1,000" 117px, one line)]
+   The bet confirm's stake "TZS {formatNumber(stake)}" (bet-confirm-modal.tsx 315) is mono but NOT `.amount` (no nowrap) and its
+   side|stake row (301) is `flex items-baseline justify-between` with no wrap, so the stake splits "TZS" / "1,000" on two lines:
+   320 → every sw HAPANA stake, every en stake, sw NDIO from 10,000; 360 → sw HAPANA from 10,000, en from 10,000, sw NDIO at 1,000,000;
+   390 → 1,000,000 (sw HAPANA, en). The sibling sell confirm solved exactly this (S6 A8f, sell-confirm-modal.tsx 142-160: `.amount`
+   figure + `flex-wrap … gap-y-2` so the right column drops below). R4-I's own note (bet-confirm 331-332) says "a money figure is an
+   amount (.amount: mono, tabular, never split) — the stake above it is mono" but left the stake un-`.amount`. MEDIUM (money commit).
+   Fix: the stake `<p className="amount …">` + the row `flex flex-wrap items-baseline justify-between gap-x-3 gap-y-2` (A8f's shape).
+
+C13 [CONFIRMED by code] the journey avatar menu (from 1024, journey-top-bar.tsx 215-229) offers "Thibitisha kitambulisho / Verify your
+   identity / 验证您的身份" (avatar-menu.tsx 147 journeyName["/profile/kyc"] = t.profile.verifyIdentity; MENU_ROWS 415 has no KYC gate;
+   AvatarMenu gets no KYC state) to EVERY signed-in reader — a verified one too — while the journey hub shows the door only when
+   kycOffered (hub-rows.ts `if (v.kycOffered)`: not approved, not a final refusal) and the page's h1 for a verified reader is
+   "Utambulisho wako umethibitishwa / Your identity is verified" (kyc/page.tsx 209). R5-A's rename turned the neutral classic words
+   ("Verify ID / 身份验证") into an imperative for everybody. Fix: hand the menu the hub's kycOffered (or the page's state word).
+   The product's own rule, profile/page.tsx 367-375: "an APPROVED identity is not offered 'Verify ID' again: the row asked a verified
+   player to do something already done" (+ final refusals) — the hub and /profile obey it; the journey menu does not.
+   Sibling note: the KYC page's own <title>+eyebrow "Uthibitisho wa kitambulisho" vs its h1/doors "Thibitisha kitambulisho" — every
+   other F17 door follows the <title>/eyebrow (Bingwa, Msaada, Uthibitisho wa utatuzi), KYC follows the h1.
+
+C14 [CONFIRMED by code] journey doors that still call /positions "positions" (the journey names it "Tiketi zangu / My tickets / 我的注单":
+   tab, h1 ticket-switch.tsx 45, <title> positions/page.tsx 48, hub, menu, home link landing-hero 494-496, error.tsx 30 ticketsBack):
+   - the bet result's secondary CTA after EVERY bet, both shells: conviction-dial.tsx 1875 `t.common.viewPositions` "Tazama nafasi /
+     View positions / 查看持仓" → router.push("/positions") (1883). The dial has no journey prop; R5-B gave the sell result one
+     (sell-result.tsx 95 journey.sellUnchanged "Tiketi…").
+   - /positions/performance (linked from the journey tickets view, tickets-view.tsx 155): BackLink label t.common.positions "Nafasi"
+     (performance/page.tsx 176) and eyebrow "NAFASI" (177).
+   - /help QuickLinkCard t.help.myPositions "Madau yangu / My positions / 我的持仓" → /positions (help/page.tsx 169-174).
+   (sibling wording: the market page's section t.market.yourPositions "Nafasi zako" lists the reader's tickets.)
+
+C15 [CONFIRMED by code] /updown/history's <title> ignores the journey: updown/history/page.tsx 46-49 always `t.market.udHistoryTitle`
+   ("Juu na Chini zako / Your Up & Down / 您的涨跌"), while in the journey the page IS Tiketi zangu's Juu/Chini tab with h1 "Tiketi
+   zangu" (303 TicketsHead → ticket-switch.tsx 45) — its sibling /positions has "THE TAB TITLE FOLLOWS THE PAGE (S6 WP9)"
+   (positions/page.tsx 43-49: journey ? tabTickets : positions). Fix: the same resolveSimpleJourney ternary. LOW.
+
+C16 [CONFIRMED by code; not on any r5 tile — the tiles' cards carry no signal] the board card's top row draws its two pills at two
+   sizes: the status chip is `size="xs"` (market-card.tsx 467: 9px type, 0 6px padding; always a status variant → 23px) and the signal
+   chip beside it has no size → `md` (476-481: 10.5px type/21px box for TIPPING, 11px/23px for HOT, SOON, NEW; 8–9px padding)
+   (chip.tsx size table 162-176). Same row, 9px vs 10.5–11px type, and 23 vs 21px for TIPPING — the "height follows its colour"
+   class G1 fixed on tickets (metrics="base"). Pre-existing (PV-13c promoted `.mcardp .chip` to `xs` on the status chip only); every
+   board surface (/markets, /live, /watchlist, home, similar markets) in both shells. Fix: `size="xs"` (+ `metrics`) on the signal chip.
+
+C17 [CONFIRMED by code] the classic position card keeps `line-clamp-2` on the held question (position-card.tsx 135) while its
+   journey twin, the ticket card, shows it whole (ticket-card.tsx 113: G3 "the ticket's question was clamped … hid 'kesho?' … now
+   whole at every width … the board's Q6 clamp is for browsing cards"); R5-E added balance+keepFigures there with the comment "the
+   journey's ticket card sets the same question the same way" (133-134) — it does not (no clamp there). LOW. Fix: drop the clamp.
+
+## Checked and sound (one line each)
+- Spacing: inverted stock keys (2.5/3.5) in changed player files 199 → 192; every new-file use is a byte move (s\stock-count.mjs).

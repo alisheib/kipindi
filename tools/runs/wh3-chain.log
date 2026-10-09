@@ -1,0 +1,40 @@
+13:02:41 waiting (owner: marketing-s14 s14-final-campaign since 2026-10-09T12:07:29Z pid 526732; queue: asheib-c5 vodacom: kipindi-hotfix queued since 2026-10-09T12:21:15Z)
+13:07:44 waiting (owner: marketing-s14 s14-final-campaign since 2026-10-09T12:07:29Z pid 526732; queue: asheib-c5 vodacom: kipindi-hotfix queued since 2026-10-09T12:21:15Z)
+13:10:31 lock taken
+13:10:41 kipindi-a8i2-ctl at 11167ae29 (the proxy hotfix on main)
+13:11:19 prisma generate exit=0
+13:12:39 typecheck exit=0 — 0 error(s)
+13:13:00 test:proxy-scope exit=0 — proxy-scope: 5 passed, 0 failed
+13:13:01 test:static-cache-scope exit=0 — static-cache-scope: 15 passed, 0 failed
+13:13:02 test:admin-action-gate exit=0 — ALL PASS — admin-action-gate: 15 passed, 0 failed
+13:13:16 test:agent-application-security exit=0 — agent-application-security: 111 passed, 0 failed
+13:13:18 test:contacts-boundary exit=0 — contacts-boundary: 35 passed, 0 failed
+13:13:20 test:docs exit=0 — ✅ every reference in docs/ resolves.
+13:13:24 test:journey-shell exit=0 — JOURNEY SHELL — all 430 checks passed
+13:13:25 test:journey-tickets exit=0 — JOURNEY TICKETS — all 50 checks passed
+13:13:30 test:labels exit=0 — ALL PASS — 3 locales × 2 products, 1414 files scanned, 11/11 private maps
+13:13:31 test:layout-staleness exit=0 — layout-staleness: OK — every current-page decision is made where the route is known, and the balance chain is whole end to end
+13:13:33 test:marketing-optout exit=0 — marketing-optout: 121 passed, 0 failed
+13:13:36 test:privacy-notice exit=0 — ALL PASS — 96 passed, 0 failed
+13:13:38 test:proxy-scope exit=0 — proxy-scope: 5 passed, 0 failed
+13:13:44 test:simple-journey-flag exit=0 — 134 passed, 0 failed
+13:13:46 test:sms-dlr exit=0 — [audit] SYSTEM sms.dlr.received system 
+13:13:48 test:wallet-status-writers exit=0 — wallet-status-writers: 51 passed, 0 failed
+13:13:52 test:red-anchors exit=0 — red-anchors: 4971 passed, 0 failed
+13:14:02 test:decomment exit=0 — ALL PASS — 22 passed, 0 failed
+13:14:04 test:guards-exist exit=0 — ══════════════════════════════════════════════�
+13:14:05 test:docs exit=0 — ✅ every reference in docs/ resolves.
+13:15:34 server up after 4s
+13:15:39   ok page /markets/zz-probe.png — x-frame-options: DENY · CSP · Cache-Control: no-cache, must-revalidate
+13:15:40   ok page /positions/abc.jpg — x-frame-options: DENY · CSP · 
+13:15:43   ok page /u/federico.svg — x-frame-options: DENY · CSP · Cache-Control: no-cache, must-revalidate
+13:15:44   ok page /markets/mexico — x-frame-options: DENY · CSP · Cache-Control: no-cache, must-revalidate
+13:15:46   ok page /markets — x-frame-options: DENY · CSP · Cache-Control: no-cache, must-revalidate
+13:16:12   ⛔ PAGE / — no X-Frame-Options DENY (none) · 
+13:16:14   ⛔ STATIC /icons/icon-192.png — no cache-control
+13:16:16   ⛔ STATIC /brand/mark-color.svg — no cache-control
+13:16:19   ⛔ STATIC /favicon.ico — no cache-control
+13:16:19 headers: 4 problem(s)
+13:16:20 server stopped (left: 0)
+13:16:20 chain end
+13:16:20 lock released

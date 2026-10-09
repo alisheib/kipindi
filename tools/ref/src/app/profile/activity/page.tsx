@@ -1,0 +1,237 @@
+/**
+ * "Your activity" — money-honesty dashboard (F2b).
+ *
+ * Every figure is a REAL DB aggregate over the player's own CONFIRMED
+ * transactions (see `activity-summary.ts`). Personal money is wrapped in <Cash>
+ * (respects the global balance-privacy mask). Zeros are shown honestly on an
+ * empty period — never fabricated filler. RG limits-used is computed from the
+ * exact sums the deposit/loss gates enforce, so it cannot drift from them.
+ */
+import { redirect } from "next/navigation";
+import { I } from "@/components/ui/glyphs";
+import { BackLink } from "@/components/ui/back-link";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Cash } from "@/components/ui/cash";
+import { Stat } from "@/components/ui/stat";
+import { FilterPill } from "@/components/ui/filter-pill";
+import { getSession } from "@/lib/server/session";
+import { getActivitySummary, getRgUsage, type ActivityPeriod } from "@/lib/server/activity-summary";
+import { formatTzs, cn } from "@/lib/utils";
+import { getServerT, type Dict } from "@/lib/i18n-server";
+import Link from "next/link";
+import { PageContainer } from "@/components/layout/page-container";
+
+// Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
+// "Your activity", which a Swahili player saw in their browser tab and history.
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.activity.title };
+}
+export const dynamic = "force-dynamic";
+
+const PERIODS: ActivityPeriod[] = ["week", "month", "all"];
+function isPeriod(v: string | undefined): v is ActivityPeriod {
+  return v === "week" || v === "month" || v === "all";
+}
+
+export default async function ActivityPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
+  const { t } = await getServerT();
+  const session = await getSession();
+  if (!session) redirect("/auth/login?next=/profile/activity");
+  const { period: rawPeriod } = await searchParams;
+  /**
+   * ⭐ `all` IS THE DEFAULT, AND IT USED TO BE `month` — Ali's ruling, 2026-09-09 (PLAYER QUERY §12 ②).
+   *
+   * 🔴 THE DEFAULT WAS TELLING A PLAYER THEY HAD NO HISTORY. `summary.empty` hides the whole money
+   * block, so a player whose activity is older than thirty days opened their own activity page —
+   * on the BARE URL, having chosen nothing — and read *"No activity yet"*. A true sentence about a
+   * window nobody selected, and a false statement about their account.
+   *
+   * ⛔ AND IT WAS THE ONLY NARROWING DEFAULT ON THE PLATFORM. All seven other player surfaces
+   * (`positions/portfolio.ts`, `wallet/ledger.ts`, `results/archive.ts`, `proposals/board.ts`,
+   * `updown/history-query.ts`, `account/activity.ts`, `fairness/attestations.ts`) default to
+   * `all`, and `lib/query/windows.ts` says why in writing: *"an operator opens a console to look
+   * at a period, a player opens their own history to see everything they have done. A window that
+   * defaults to narrowing would hide a player's own money behind a control they never touched."*
+   *
+   * ⚠️ The ids stay `week | month | all` — see the note below on why this page keeps its own
+   * vocabulary rather than adopting `PLAYER_PRESETS`. Only the DEFAULT moved.
+   */
+  const period: ActivityPeriod = isPeriod(rawPeriod) ? rawPeriod : "all";
+
+  const [summary, rg] = await Promise.all([
+    getActivitySummary(session.userId, period),
+    getRgUsage(session.userId),
+  ]);
+
+  /**
+   * ⭐ PLAYER QUERY, TASK 4.13 — AND THE BOARD NAMED THE WRONG DEFECT.
+   *
+   * The plan said *"adopt the shared window vocabulary so 'last 30 days' means the same span as on
+   * `/wallet`."* That is ALREADY TRUE, byte for byte: `periodSince` returns `now - 7 * DAY_MS` and
+   * `now - 30 * DAY_MS`, and `windows.ts`' `inWindow` computes `ms >= nowMs - 7 * DAY_MS` and
+   * `ms >= nowMs - 30 * DAY_MS`. The spans were never in disagreement.
+   *
+   * 🔴 THE DEFECT IS THE WORD. These rolling windows were labelled *"This week"* and *"This
+   * month"* — `Wiki hii` / `Mwezi huu`, 本周 / 本月 — in all three locales. On 8 September, "This
+   * month" showed **9 August to 8 September**: mostly August. A CALENDAR word over a ROLLING
+   * window, on the one page whose own header calls itself a money-honesty surface. ⛔ That is an
+   * A-5 breach — a statement about a span that is not the span — and it is the reason to do this
+   * task at all.
+   *
+   * ⭐ SO THE LABELS NOW COME FROM THE SHARED VOCABULARY ITSELF (`t.common.range7d` /
+   * `range30d` / `rangeAll`), which is what "adopt the vocabulary" can honestly mean here: the
+   * same words `/wallet`, `/positions`, `/results` and `/updown/history` put on the same spans.
+   * A player reading "30 days" on two pages is now entitled to the same window AND is told the
+   * same thing about it.
+   *
+   * ⛔ THE IDS STAY `week|month|all`, AND THAT IS DELIBERATE. `?period=` is this page's own param
+   * and pre-dates the shared vocabulary; renaming the values would break every bookmark and
+   * in-product link for the sake of matching a convention no player can see — Stage 3's ruling,
+   * applied. ⚠️ AND `today`/`yesterday` CANNOT BE ADOPTED YET, which is why this is a words-only
+   * change: `yesterday` is the only preset with a TWO-SIDED bound, and the entire read is
+   * one-sided — `sumUserByTypesSince` builds `createdAt: { gte: … }` with no upper bound anywhere.
+   * Adopting it needs a new bounded aggregate AND its in-memory twin, and `test:dal-parity` checks
+   * stored FIELDS rather than method signatures, so a twin that quietly dropped the upper bound
+   * would leave every suite green while `yesterday` returned all-time. Filed, not faked.
+   */
+  const periodLabel: Record<ActivityPeriod, string> = {
+    week: t.common.range7d, month: t.common.range30d, all: t.common.rangeAll,
+  };
+
+  return (
+    <PageContainer tier="reading" className="space-y-5">
+      <BackLink fallbackHref="/profile" label={t.profile.title} />
+      <PageHeader tone="info" icon={<I.chart s={22} />} eyebrow={t.activity.eyebrow} title={t.activity.title} />
+
+      {/* Period tabs. ⚠️ The comment here used to read "positions idiom" and it was exactly
+          right — this rail carried the same class string as /positions, /proposals, /results
+          and /profile/account, byte for byte. That is why batch 5's scan, which listed six
+          surfaces, missed it: it is not a *variant* of the divergence, it IS the divergence.
+          One primitive now, like every other rail. */}
+      <nav className="flex flex-wrap items-center gap-1.5 -mx-1 px-1 overflow-x-auto" aria-label={t.activity.periodAria} data-filter-rail>
+        {PERIODS.map((p) => (
+          <FilterPill
+            key={p}
+            /* ⛔ THE BARE URL IS THE UNNARROWED STATE. This omitted `?period=` for `month`, so the
+               clean, shareable, refresh-safe URL WAS the thirty-day narrowing — §K 6c rule 6 says
+               defaults are omitted from the URL, and while the default was `month` this line was
+               faithfully encoding the wrong default. It now omits `all`. */
+            href={`/profile/activity${p === "all" ? "" : `?period=${p}`}`}
+            label={periodLabel[p]}
+            on={p === period}
+            semantics="tab"
+          />
+        ))}
+      </nav>
+
+      {/**
+        * 🔴 THE EMPTY STATE SWALLOWED THE RESPONSIBLE-GAMBLING PANEL. `summary.empty` describes the
+        * MONEY SUMMARY for the chosen window — so a player who had set a deposit limit and simply
+        * had a quiet 30 days saw no limits at all: not their cap, not their usage, not the link to
+        * change them. The panel below is the one thing on this page that is NOT about the window
+        * (its meters are daily/weekly/monthly by definition), and it was hidden by a window's
+        * emptiness.
+        *
+        * ⛔ AND IT IS AN RG SURFACE, WHICH IS WHY THIS IS NOT A LAYOUT NICETY. A player looking for
+        * their own limits — the population most likely to be looking — was shown "no activity yet"
+        * and invited to go and bet. ⭐ Only the money section is conditional now.
+        */}
+      {summary.empty && (
+        <EmptyState
+          kind="positions"
+          title={t.activity.emptyTitle}
+          body={t.activity.emptyBody}
+          action={<Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.activity.browseMarkets}</Link>}
+        />
+      )}
+      {!summary.empty && (
+        <>
+          {/* Money-honesty tiles — all wrapped in <Cash> (privacy mask). */}
+          <section className="rounded-xl glass-panel p-5">
+            <p className="gilt-eyebrow mb-1">{t.activity.moneyEyebrow}</p>
+            <p className="mb-3 text-body-sm text-text-subtle">{t.activity.forPeriod} {periodLabel[period].toLowerCase()}.</p>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+              {/* ⭐ STAGE 9b — was a local `MoneyTile`; now the kit <Stat> at the `lg`
+                  rung (17px, mt-1, leading-tight) in the `tile` box (rounded-lg,
+                  border/60, bg-overlay/40, px-3.5 py-3) with the `wide` label (10px
+                  semibold 0.12em). Box, label, icon row and the yes/no label tint are
+                  carried across unchanged. `money` keeps the <Cash> mask this tile was
+                  the ONE fork that never dropped — and pins the face to mono, which
+                  fixes the one thing it got wrong: it painted TZS in Sora (§M4/§T5). */}
+              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.deposits}    value={formatTzs(summary.deposits)}    icon={<I.arrowDown s={14} />} />
+              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.withdrawals} value={formatTzs(summary.withdrawals)} icon={<I.arrowUp s={14} />} />
+              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.staked}      value={formatTzs(summary.staked)}      icon={<I.coins s={14} />} />
+              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.won}         value={formatTzs(summary.won)}         icon={<I.trophy s={14} />} labelTone="yes" />
+              {/* ⭐ REFUNDS ARE THEIR OWN TILE SINCE 2026-09-09, and they used to be inside Won.
+                  A voided market returns your stake, and counting that as WON overstated both
+                  this row and the net beside it — a player who never won anything could read a
+                  positive "Won". ⛔ It is also the campaign's own complaint: a player must be able
+                  to tell won from lost from voided-and-refunded, and folding two of those three
+                  into one number is this surface answering its own question wrongly.
+                  ⚠️ NO `labelTone` — a refund is not a win and must not borrow the yes-green. */}
+              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.refunds}     value={formatTzs(summary.refunds)}     icon={<I.rotateCcw s={14} />} />
+              {/* The signed net keeps its explicit "+" — <Cash> masks from the first
+                  DIGIT, so the sign and the TZS prefix survive the blur exactly as they
+                  did in the fork. */}
+              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.net}         value={summary.net >= 0 ? `+${formatTzs(summary.net)}` : formatTzs(summary.net)} icon={<I.activity s={14} />} labelTone={summary.net >= 0 ? "yes" : "no"} />
+            </div>
+            <p className="mt-3 text-body-sm leading-relaxed text-text-subtle">{t.activity.netNote}</p>
+          </section>
+        </>
+      )}
+
+      {/* ⛔ RESPONSIBLE-GAMBLING LIMITS — OUTSIDE THE WINDOW CONDITIONAL, ALWAYS. Its meters are
+          daily / weekly / monthly by definition and have nothing to do with `?period=`; hiding
+          them because the chosen window happened to be quiet took a player's own limits away from
+          them at exactly the moment they were most likely to be looking for them. */}
+      <section className="rounded-xl glass-panel p-5 space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className="gilt-eyebrow">{t.activity.limitsEyebrow}</p>
+          <Link href="/profile/responsible-gambling" className="inline-flex items-center gap-1 font-mono text-[11px] text-accent-400 hover:text-text underline">
+            {t.activity.manageLimits}<I.chevronRight s={12} />
+          </Link>
+        </div>
+        <LimitMeter label={t.activity.depositDaily}   used={rg.dailyDeposit.used}   limit={rg.dailyDeposit.limit}   t={t} />
+        <LimitMeter label={t.activity.depositWeekly}  used={rg.weeklyDeposit.used}  limit={rg.weeklyDeposit.limit}  t={t} />
+        <LimitMeter label={t.activity.depositMonthly} used={rg.monthlyDeposit.used} limit={rg.monthlyDeposit.limit} t={t} />
+        <LimitMeter label={t.activity.lossDaily}      used={rg.dailyLoss.used}      limit={rg.dailyLoss.limit}      t={t} tone="no" />
+      </section>
+    </PageContainer>
+  );
+}
+
+/* ⭐ STAGE 9b — `MoneyTile` is deleted; the tiles above are `ui/stat`. It was the only
+ * one of the ten Stat forks that kept the <Cash> privacy path, which is precisely why
+ * the primitive makes that path a PROP rather than a thing each copy remembers. */
+
+/**
+ * "Used X of Y" meter. No cap set → shows the used figure with a "no limit set"
+ * hint (encourages setting one, RG-positive) and no bar. Over-cap → clamped bar
+ * in the danger tone. Personal money wrapped in <Cash>.
+ */
+function LimitMeter({ label, used, limit, t, tone = "brand" }: { label: string; used: number; limit: number | null; t: Dict; tone?: "brand" | "no" }) {
+  const hasLimit = limit !== null && limit > 0;
+  const pct = hasLimit ? Math.min(100, Math.round((used / limit!) * 100)) : 0;
+  const over = hasLimit && used >= limit!;
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between gap-3 text-[12px]">
+        <span className="text-text-muted">{label}</span>
+        <span className="font-mono tabular-nums text-text-subtle">
+          <Cash>{formatTzs(used)}</Cash>
+          {hasLimit ? <> / <Cash>{formatTzs(limit!)}</Cash></> : <span className="ml-1 text-text-faint">· {t.activity.noLimitSet}</span>}
+        </span>
+      </div>
+      {hasLimit && (
+        <div className="h-2.5 w-full overflow-hidden rounded-pill bg-bg-inset" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={label}>
+          <div
+            className={cn("h-full rounded-pill transition-[width]", over ? "bg-no-500" : tone === "no" ? "bg-warning-fg" : "bg-brand-500")}
+            style={{ width: `${Math.max(2, pct)}%` }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}

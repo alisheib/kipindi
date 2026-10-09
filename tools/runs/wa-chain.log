@@ -1,0 +1,46 @@
+13:06:35 waiting for the k-chain to end
+13:07:05 standing back over: lock marketing-s14 u13-turn since 2026-10-07T12:56:01Z pid 84044 · note money-doors-0e (asheib-0b) phase-b receipts: tsc+test:all+db (30s, idle 0s)
+13:08:05 waiting (owner: marketing-s14 u13-turn since 2026-10-07T12:56:01Z pid 84044; queue: money-doors-0e (asheib-0b) phase-b receipts: tsc+test:all+db suites+build+drives+pdfs queued since 2026-10-07T12:38:29Z (place kept by marketing-s14))
+13:13:08 waiting (owner: marketing-s14 u13-turn since 2026-10-07T12:56:01Z pid 84044; queue: money-doors-0e (asheib-0b) phase-b receipts: tsc+test:all+db suites+build+drives+pdfs queued since 2026-10-07T12:38:29Z (place kept by marketing-s14))
+13:18:10 waiting (owner: marketing-s14 u13-turn since 2026-10-07T12:56:01Z pid 84044; queue: money-doors-0e (asheib-0b) phase-b receipts: tsc+test:all+db suites+build+drives+pdfs queued since 2026-10-07T12:38:29Z (place kept by marketing-s14))
+13:23:12 waiting (owner: marketing-s14 u13-turn since 2026-10-07T12:56:01Z pid 84044; queue: money-doors-0e (asheib-0b) phase-b receipts: tsc+test:all+db suites+build+drives+pdfs queued since 2026-10-07T12:38:29Z (place kept by marketing-s14))
+13:28:14 waiting (owner: marketing-s14 u13-turn since 2026-10-07T12:56:01Z pid 84044; queue: money-doors-0e (asheib-0b) phase-b receipts: tsc+test:all+db suites+build+drives+pdfs queued since 2026-10-07T12:38:29Z (place kept by marketing-s14))
+13:33:16 waiting (owner: marketing-s14 u13-turn since 2026-10-07T12:56:01Z pid 84044; queue: money-doors-0e (asheib-0b) phase-b receipts: tsc+test:all+db suites+build+drives+pdfs queued since 2026-10-07T12:38:29Z (place kept by marketing-s14))
+13:38:18 waiting (owner: marketing-s14 u13-turn since 2026-10-07T12:56:01Z pid 84044; queue: money-doors-0e (asheib-0b) phase-b receipts: tsc+test:all+db suites+build+drives+pdfs queued since 2026-10-07T12:38:29Z (place kept by marketing-s14))
+13:43:20 waiting (owner: marketing-s14 u13-turn since 2026-10-07T12:56:01Z pid 84044; queue: money-doors-0e (asheib-0b) phase-b receipts: tsc+test:all+db suites+build+drives+pdfs queued since 2026-10-07T12:38:29Z (place kept by marketing-s14))
+13:48:22 waiting (owner: money-doors-0e (asheib-0b) phase-b-batch since 2026-10-07T13:48:18Z pid 97541; queue: marketing-s14 queued for: marketing-s14 u13-drives (place kept by asheib-0b))
+13:53:29 waiting (owner: money-doors-0e (asheib-0b) phase-b-batch since 2026-10-07T13:48:18Z pid 97541; queue: marketing-s14 queued for: marketing-s14 u13-drives (place kept by asheib-0b))
+13:58:32 waiting (owner: money-doors-0e (asheib-0b) phase-b-batch since 2026-10-07T13:48:18Z pid 97541; queue: marketing-s14 queued for: marketing-s14 u13-drives (place kept by asheib-0b))
+14:03:33 waiting (owner: money-doors-0e (asheib-0b) phase-b-batch since 2026-10-07T13:48:18Z pid 97541; queue: marketing-s14 queued for: marketing-s14 u13-drives (place kept by asheib-0b))
+14:08:35 waiting (owner: money-doors-0e (asheib-0b) phase-b-batch since 2026-10-07T13:48:18Z pid 97541; queue: marketing-s14 queued for: marketing-s14 u13-drives (place kept by asheib-0b))
+14:13:37 waiting (owner: money-doors-0e (asheib-0b) phase-b-batch since 2026-10-07T13:48:18Z pid 97541; queue: marketing-s14 queued for: marketing-s14 u13-drives (place kept by asheib-0b))
+14:18:39 waiting (owner: money-doors-0e (asheib-0b) phase-b-batch since 2026-10-07T13:48:18Z pid 97541; queue: marketing-s14 queued for: marketing-s14 u13-drives (place kept by asheib-0b))
+14:23:42 waiting (owner: money-doors-0e (asheib-0b) phase-b-batch since 2026-10-07T13:48:18Z pid 97541; queue: marketing-s14 queued for: marketing-s14 u13-drives (place kept by asheib-0b))
+14:28:44 waiting (owner: money-doors-0e (asheib-0b) phase-b-batch since 2026-10-07T13:48:18Z pid 97541; queue: marketing-s14 queued for: marketing-s14 u13-drives (place kept by asheib-0b))
+14:33:46 waiting (owner: money-doors-0e (asheib-0b) phase-b-batch since 2026-10-07T13:48:18Z pid 97541; queue: marketing-s14 queued for: marketing-s14 u13-drives (place kept by asheib-0b))
+14:38:48 waiting (owner: money-doors-0e (asheib-0b) phase-b-batch since 2026-10-07T13:48:18Z pid 97541; queue: marketing-s14 queued for: marketing-s14 u13-drives (place kept by asheib-0b))
+14:43:50 waiting (owner: money-doors-0e (asheib-0b) phase-b-batch since 2026-10-07T13:48:18Z pid 97541; queue: marketing-s14 queued for: marketing-s14 u13-drives (place kept by asheib-0b))
+14:48:52 waiting (owner: money-doors-0e (asheib-0b) phase-b-batch since 2026-10-07T13:48:18Z pid 97541; queue: marketing-s14 queued for: marketing-s14 u13-drives (place kept by asheib-0b))
+14:53:54 waiting (owner: money-doors-0e (asheib-0b) phase-b-batch since 2026-10-07T13:48:18Z pid 97541; queue: marketing-s14 queued for: marketing-s14 u13-drives (place kept by asheib-0b))
+14:58:56 waiting (owner: money-doors-0e (asheib-0b) phase-b-batch since 2026-10-07T13:48:18Z pid 97541; queue: marketing-s14 queued for: marketing-s14 u13-drives (place kept by asheib-0b))
+15:04:00 waiting (owner: money-doors-0e (asheib-0b) phase-b-batch since 2026-10-07T13:48:18Z pid 97541; queue: marketing-s14 queued for: marketing-s14 u13-drives (place kept by asheib-0b))
+15:09:02 waiting (owner: money-doors-0e (asheib-0b) phase-b-batch since 2026-10-07T13:48:18Z pid 97541; queue: marketing-s14 queued for: marketing-s14 u13-drives (place kept by asheib-0b))
+15:14:04 waiting (owner: money-doors-0e (asheib-0b) phase-b-batch since 2026-10-07T13:48:18Z pid 97541; queue: marketing-s14 queued for: marketing-s14 u13-drives (place kept by asheib-0b))
+15:15:19 queued: wait note written
+15:19:06 waiting (owner: marketing-s14 u13-drives since 2026-10-07T13:37:56Z pid 97456; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-07T13:08:05Z)
+15:24:09 waiting (owner: marketing-s14 u13-drives since 2026-10-07T13:37:56Z pid 97456; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-07T13:08:05Z)
+15:29:15 waiting (owner: marketing-s14 u13-drives since 2026-10-07T13:37:56Z pid 97456; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-07T13:08:05Z)
+15:34:18 waiting (owner: marketing-s14 u13-drives since 2026-10-07T13:37:56Z pid 97456; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-07T13:08:05Z)
+15:39:21 waiting (owner: marketing-s14 u13-drives since 2026-10-07T13:37:56Z pid 97456; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-07T13:08:05Z)
+15:44:24 waiting (owner: marketing-s14 u13-drives since 2026-10-07T13:37:56Z pid 97456; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-07T13:08:05Z)
+15:49:27 waiting (owner: marketing-s14 u13-drives since 2026-10-07T13:37:56Z pid 97456; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-07T13:08:05Z)
+15:54:30 waiting (owner: marketing-s14 u13-drives since 2026-10-07T13:37:56Z pid 97456; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-07T13:08:05Z)
+15:54:45 lock taken
+15:54:46 WP12 tree at ec4734af, fingerprint 8c0fa0db9851, clean: yes
+15:55:47 typecheck exit=0 — 0 error(s)
+16:02:08 battery exit=1 —   437/467 green · 377.3s total   FAILED: test:audit-drain, test:live-target-safe, test:type-scale, test:red-anchors, test:contacts-staging-db, test:revoked-deadend, test:admin-section-gate, test:needle-rest, test:kyc-restart-docs, test:house-bot-migrations, test:house-bot-money, test:house-bot-caps, test:house-bot-designation, test:house-bot-engine, test:house-bot-comms, test:house-bot-holder-lifecycle, test:house-bot-info-edge, test:house-bot-reports, test:house-bot-console, test:kyc-copy-truth, test:stacking, test:tap-target, test:decomment, test:updown-digest, test:updown-source-class, test:payout-view, test:orphans, test:eyebrow-roles, test:failure-reasons, test:house-bot-ops 
+16:02:08 fingerprint after the battery: 8c0fa0db9851
+17:45:39 red:all exit=1 —   LEFT THE TREE DIRTY: red:house-bot-console, red:agent-policy, red:player-invite-unpaid, red:invite-payable-db, red:programme-isolation, red:no-double-pay, red:commission-bounded, red:agent-eligibility, red:rg-doors, red:webhook-money, red:css-vars-defined, red:tax-report, red:kyc-gate, red:icon-sizes, red:ai-vocabulary, red:section-rail, red:validation-focus   ⛔ inspect and restore by hand before committing — this is how if (true) reached production.   FAILED: red:dal-parity, red:house-bot-engine, red:house-bot-money, red:house-bot-console, red:house-bot-c5, red:agent-policy, red:player-invite-unpaid, red:invite-payable-db, red:programme-isolation, red:no-double-pay, red:commission-bounded, red:agent-eligibility, red:rg-doors, red:webhook-money, red:css-vars-defined, red:tax-report, red:policy-lines, red:kyc-copy-truth, red:kyc-gate, red:withdraw-email-gate, red:icon-sizes, red:ico
+17:45:39 fingerprint after red:all: 8c0fa0db9851 — tree same
+17:45:39 chain end
+17:45:39 lock released

@@ -69,6 +69,14 @@
 15. The offline page uses the phone's own font (ours would need the font files stored). Keep?
 23. The old bet dial's tiny thumb text is below the reading size (the new bet sheet, S8, replaces it). Drop it now?
 
+## From the last helpers and reviewers
+52. Sign-up is called "Jisajili" in the header but "Fungua akaunti" on its page. Which one?
+53. Where may the word "earn" appear (invite and agent doors use it in some places, not others)?
+54. The licence line is worded differently on different screens (regulator copy — we didn't change it). Align it?
+55. "Kuwa wakala" vs "Kuwa Wakala wa 50pick" — the same name, or make them identical?
+56. During a break, should the Invite and Propose doors close too?
+57. The old (classic) header's Deposit buttons still show during a break (frozen until launch). Fix at launch?
+
 ## Process
 24. A screen-checking tool was broken on main; it is repaired on the Vodacom branch (ships with it).
 5, 6. Two earlier reports (small-text work order; two unused test files).

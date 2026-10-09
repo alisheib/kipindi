@@ -1,0 +1,8 @@
+08:44:36 waiting for wbm-chain.done
+08:44:36 wbm-chain.done is there: exit=0
+08:44:36 queued: wait note written
+08:44:37 lock taken
+08:49:19 wm16e-stick-tip: exit=0 · tree same —   zh /results       natural top 210 · scrollY 559/559 · bar top -49 (h 176, sticky 56px) · parent <div flex flex-col gap-5> -471→127 · main bottom 397 · room below bar in parent 0   zh /notifications natural top 321 · scrollY 559/559 · bar top -10 (h 120, sticky 56px) · parent <div mx-auto w-full max-w-reading px-3 lg:px-6 py-6 space-y-5> -503→142 · main bottom 397 · room below bar in parent 32   zh /markets       natural top 194 · scrollY 559/559 · bar top -125 (h 120, sticky 56px) · parent <div mx-auto w-full max-w-board px-3 lg:px-6 py-6> -503→27 · main bottom 397 · room below bar in parent 32 
+08:50:15 wm16e-stick-main: exit=0 · tree same —   zh /results       natural top 245 · scrollY 559/559 · bar top 0 (h 172, sticky 56px) · parent <div flex flex-col gap-5> -471→172 · main bottom 397 · room below bar in parent 0   zh /notifications natural top 336 · scrollY 559/559 · bar top 5 (h 116, sticky 56px) · parent <div mx-auto w-full max-w-reading px-3 lg:px-6 py-6 space-y-5> -503→153 · main bottom 397 · room below bar in parent 32   zh /markets       natural top 194 · scrollY 559/559 · bar top -119 (h 116, sticky 56px) · parent <div mx-auto w-full max-w-board px-3 lg:px-6 py-6> -503→29 · main bottom 397 · room below bar in parent 32 
+08:50:15 chain end
+08:50:15 lock released

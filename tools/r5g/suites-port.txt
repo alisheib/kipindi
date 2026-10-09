@@ -1,0 +1,96 @@
+touched src files: 22
+scripts reading them: 96 (12 are libs/anchors, run through their suites)
+red:card-return-order	app/wallet/deposit/return/page.tsx
+red:contacts-boundary	app/global-error.tsx, components/layout/app-shell.tsx
+red:deposit-phone	app/wallet/deposit/page.tsx
+red:enter-where-pressed	components/layout/app-shell.tsx
+red:footer-reachable	components/layout/app-shell.tsx
+red:hero-copy	app/wallet/withdraw/page.tsx
+red:implicit-submit	app/wallet/deposit/deposit-confirm.tsx, app/wallet/deposit/page.tsx, app/wallet/withdraw/page.tsx
+red:journey-account	components/journey/account/hub-rows.ts
+red:journey-funnel	app/wallet/deposit/page.tsx, components/layout/app-shell.tsx
+red:journey-shell	app/agent/apply/apply-client.tsx, app/global-error.tsx, app/profile/page.tsx, app/updown/page.tsx, components/journey/account/hub-rows.ts, components/layout/app-shell.tsx
+red:journey-tickets	app/updown/history/page.tsx, components/journey/route-ghost.tsx, components/ui/keep-words.tsx
+red:marketing-optout	components/layout/app-shell.tsx, components/ui/keep-words.tsx
+red:offline-neutral	components/layout/app-shell.tsx, lib/offline-document.ts, lib/regulator-name.ts
+red:sell-price-guard	components/layout/app-shell.tsx
+red:shell-boundary	components/journey/account/hub-rows.ts
+red:simple-journey-flag	components/layout/app-shell.tsx
+red:social-panel	components/layout/app-shell.tsx
+red:tz-msisdn	app/wallet/withdraw/page.tsx
+red:updown-digest	app/updown/history/page.tsx
+red:updown-history-pnl	app/updown/history/page.tsx
+red:updown-positions-visible	app/updown/history/page.tsx
+test:agent-fee-wallet-path	app/agent/apply/apply-client.tsx
+test:agent-terms-binding	app/agent/apply/page.tsx
+test:betting-ink	app/agent/apply/apply-client.tsx, app/profile/page.tsx
+test:card-return-order	app/wallet/deposit/return/page.tsx
+test:cashback-hidden	app/wallet/deposit/page.tsx
+test:cert-f1	app/wallet/deposit/page.tsx, app/wallet/withdraw/page.tsx
+test:client-error-report	app/global-error.tsx
+test:contacts-boundary	app/global-error.tsx, components/layout/app-shell.tsx
+test:css-vars-defined	lib/offline-document.ts
+test:deposit-phone	app/wallet/deposit/page.tsx
+test:design-frozen	app/global-error.tsx, app/profile/invite/page.tsx, app/profile/page.tsx
+test:enter-where-pressed	components/layout/app-shell.tsx
+test:erasure	app/profile/page.tsx, components/layout/app-shell.tsx
+test:hero-copy	app/wallet/withdraw/page.tsx
+test:implicit-submit	app/wallet/deposit/deposit-confirm.tsx, app/wallet/deposit/page.tsx, app/wallet/withdraw/page.tsx
+test:install-invite	components/layout/app-shell.tsx
+test:journey-account	components/journey/account/hub-rows.ts
+test:journey-funnel	app/wallet/deposit/page.tsx, components/layout/app-shell.tsx
+test:journey-shell	app/agent/apply/apply-client.tsx, app/global-error.tsx, app/profile/page.tsx, app/updown/page.tsx, components/journey/account/hub-rows.ts, components/layout/app-shell.tsx
+test:journey-tickets	app/updown/history/page.tsx, components/journey/route-ghost.tsx, components/ui/keep-words.tsx
+test:kyc-at-withdrawal	app/agent/apply/apply-client.tsx, app/wallet/deposit/page.tsx, app/wallet/deposit/return/page.tsx, app/wallet/withdraw/page.tsx
+test:layout-staleness	components/layout/app-shell.tsx
+test:lipa-qr	app/agent/apply/apply-client.tsx
+test:marketing-optout	components/layout/app-shell.tsx, components/ui/keep-words.tsx
+test:measure	app/global-error.tsx, app/updown/history/page.tsx, app/updown/page.tsx, components/layout/app-shell.tsx
+test:money-minimums	app/wallet/withdraw/page.tsx
+test:msisdn-prefill	app/wallet/deposit/page.tsx, app/wallet/withdraw/page.tsx
+test:offline-neutral	components/layout/app-shell.tsx, lib/offline-document.ts, lib/regulator-name.ts
+test:one-sided	app/updown/page.tsx
+test:payments	app/wallet/deposit/page.tsx, app/wallet/withdraw/page.tsx
+test:payout-destination	app/wallet/deposit/page.tsx
+test:popup-fit	app/agent/apply/apply-client.tsx, app/wallet/deposit/deposit-confirm.tsx
+test:position-permalink	app/updown/history/page.tsx
+test:privacy-notice	components/layout/app-shell.tsx
+test:read-tiers	components/layout/app-shell.tsx
+test:refresh-cadence	app/updown/page.tsx
+test:route-census	app/wallet/deposit/page.tsx
+test:sell-price-guard	components/layout/app-shell.tsx
+test:shell-boundary	components/journey/account/hub-rows.ts, components/layout/app-shell.tsx
+test:simple-journey-flag	components/layout/app-shell.tsx
+test:social-panel	components/layout/app-shell.tsx
+test:stacking	components/layout/app-shell.tsx
+test:support-contact	app/global-error.tsx
+test:ticker-honesty	components/layout/app-shell.tsx
+test:timer-date	app/wallet/deposit/page.tsx
+test:type-scale	app/global-error.tsx
+test:tz-msisdn	app/wallet/withdraw/page.tsx
+test:updown-clock-guard	app/updown/page.tsx
+test:updown-filter-sheet	app/updown/page.tsx
+test:updown-handover	app/updown/page.tsx
+test:updown-history-pnl	app/updown/history/page.tsx
+test:updown-match	app/updown/page.tsx
+test:updown-positions-visible	app/updown/history/page.tsx
+test:updown-pricing	app/updown/page.tsx
+test:updown-result-announce	app/updown/page.tsx
+test:visual-pass-r3c	app/profile/invite/page.tsx, components/layout/app-shell.tsx
+test:visual-pass-r4e	app/profile/page.tsx, components/ui/keep-words.tsx
+test:visual-pass-r4h	app/profile/page.tsx, app/updown/history/page.tsx, app/wallet/deposit/return/page.tsx, components/layout/app-shell.tsx, components/ui/keep-words.tsx
+test:visual-pass-r4i	app/wallet/deposit/page.tsx, components/layout/app-shell.tsx
+test:visual-pass-r4j	app/wallet/deposit/loading.tsx, components/journey/route-ghost.tsx, components/layout/app-shell.tsx, components/ui/keep-words.tsx, lib/journey/money-names.ts
+test:visual-pass-r5a	app/profile/page.tsx, app/updown/page.tsx, components/journey/route-ghost.tsx
+test:visual-pass-r5b	app/updown/history/page.tsx, app/wallet/deposit/page.tsx, components/journey/account/hub-rows.ts
+test:visual-pass-r5c	app/agent/apply/apply-client.tsx, app/global-error.tsx, app/profile/invite/page.tsx, app/profile/page.tsx, app/updown/history/page.tsx, app/wallet/deposit/deposit-confirm.tsx, app/wallet/deposit/loading.tsx, app/wallet/withdraw/page.tsx, components/layout/app-shell.tsx, lib/offline-document.ts
+test:visual-pass-r5d	app/updown/page.tsx, components/journey/route-ghost.tsx, components/layout/app-shell.tsx, lib/journey/money-names.ts
+test:visual-pass-r5e	components/ui/keep-words.tsx
+test:visual-pass-r5g	app/agent/apply/apply-client.tsx, app/agent/apply/page.tsx, app/global-error.tsx, app/profile/invite/page.tsx, app/profile/page.tsx, app/updown/history/page.tsx, app/updown/page.tsx, app/wallet/deposit/deposit-confirm.tsx, app/wallet/deposit/deposit-ghost.tsx, app/wallet/deposit/loading.tsx, app/wallet/deposit/page.tsx, app/wallet/deposit/return/page.tsx, app/wallet/withdraw/loading.tsx, app/wallet/withdraw/page.tsx, components/journey/account/hub-rows.ts, components/journey/route-ghost.tsx, components/layout/app-shell.tsx, components/ui/keep-words.tsx, lib/offline-document.ts, app/wallet/withdraw/withdraw-ghost.tsx, lib/journey/money-names.ts, lib/regulator-name.ts
+test:visual-pass-r5h	app/profile/page.tsx, app/updown/history/page.tsx, app/updown/page.tsx, app/wallet/deposit/deposit-ghost.tsx, components/journey/route-ghost.tsx, components/layout/app-shell.tsx
+test:visual-pass-r5i	app/agent/apply/apply-client.tsx, app/global-error.tsx, app/profile/page.tsx, app/updown/history/page.tsx, app/wallet/deposit/page.tsx
+test:wallet-freeze	app/wallet/deposit/page.tsx, app/wallet/withdraw/page.tsx, components/layout/app-shell.tsx
+test:wallet-receipts	app/profile/page.tsx, app/wallet/deposit/return/page.tsx
+test:withdrawn-features	app/profile/invite/page.tsx
+
+scripts with no test:/red: entry (drives, libs, anchors): scripts/anchors/cashback-hidden.anchors.mjs scripts/anchors/chart-one-home.anchors.mjs scripts/anchors/css-vars-defined.anchors.mjs scripts/anchors/install-invite.anchors.mjs scripts/anchors/lipa-qr.anchors.mjs scripts/anchors/measure.anchors.mjs scripts/anchors/msisdn-prefill.anchors.mjs scripts/anchors/read-tiers.anchors.mjs scripts/anchors/support-contact.anchors.mjs scripts/anchors/ticker-honesty.anchors.mjs scripts/anchors/updown-filter-sheet.anchors.mjs scripts/anchors/withdrawn-features.anchors.mjs scripts/design-gate/eyebrow-roles.mjs scripts/live-s30-e70.mjs

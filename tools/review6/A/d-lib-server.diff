@@ -1,0 +1,942 @@
+diff --git a/src/lib/server/email.ts b/src/lib/server/email.ts
+index 8e7d71e85..0f57cb1eb 100644
+--- a/src/lib/server/email.ts
++++ b/src/lib/server/email.ts
+@@ -22,7 +22,10 @@ import { LinkTrackingOptions } from "postmark/dist/client/models/message/Support
+ import { resolvePhoneEmail } from "./email-map";
+ import { isSuppressed } from "./email-suppression";
+ import { appUrl } from "@/lib/app-url";
+-import { formatTzs, formatDateShort } from "@/lib/utils";
++import { formatTzs } from "@/lib/utils";
++// R5-B (2026-10-09, F9): a day a letter states, in each of its lines' own words (`agentRevokedHtml`) — the notice's rule.
++import { formatEatDate } from "@/lib/eat-day";
++import { dict } from "@/lib/i18n-dict";
+ import { AGENT_REJECT_REASON } from "@/lib/admin-status-lexicon";
+ // E-101 · an email that quotes a Reference must link to THAT reference, not to a list.
+ import { positionPermalinkHref } from "@/lib/position-permalink";
+@@ -2180,12 +2183,21 @@ export function agentDeactivatedHtml(): string {
+ 
+ /** The partnership has ENDED. ⛔ No product link — support is the route (NO_PRODUCT_LINK). */
+ export function agentRevokedHtml({ reapplyAt }: { reapplyAt: string | null }): string {
+-  const when = reapplyAt ? formatDateShort(reapplyAt) : null;
++  /* ⭐ R5-B (2026-10-09, F9) · THE DATE IN EACH LINE'S OWN WORDS. `formatDateShort` made one English date ("06 Dec") and the
++     Swahili line printed it too ("…kuanzia 06 Dec"). It is a DAY, so each line takes `formatEatDate` in its own month words
++     on the East Africa clock — "6 Dec" / "6 Des" (the year added when it is not this one) — exactly as the bell's notice
++     (`notifyAgentRevoked`) says it. A value that does not parse states no date, as a missing one did.
++     ⚠️ Only the month WORDS come from the dictionary (`common.monthsShort`, the one list every date on the platform reads,
++     as `updown-digest.ts` does); the letter's sentences stay its own English and Swahili (the note on `SOCIAL_EMAIL_LABEL`). */
++  const at = reapplyAt ? Date.parse(reapplyAt) : Number.NaN;
++  const now = Date.now();
++  const whenEn = Number.isFinite(at) ? formatEatDate(at, now, dict.en.common.monthsShort, "en") : null;
++  const whenSw = Number.isFinite(at) ? formatEatDate(at, now, dict.sw.common.monthsShort, "sw") : null;
+   return wrap(`
+     ${eyebrow("Agent programme", "Mpango wa mawakala")}
+     ${heading("Your agent partnership has ended")}
+-    ${subtitle(`A compliance officer has ended your agent partnership. Your code no longer recruits and no new commission accrues. Commission already paid stays in your wallet.${when ? ` You may apply again from ${when}.` : ""}`)}
+-    ${subtitleSw(`Afisa wa uzingatiaji amekomesha ushirikiano wako wa uwakala. Msimbo wako hauandikishi tena na hakuna kamisheni mpya. Kamisheni iliyokwisha lipwa inabaki kwenye pochi yako.${when ? ` Unaweza kuomba tena kuanzia ${when}.` : ""}`)}
++    ${subtitle(`A compliance officer has ended your agent partnership. Your code no longer recruits and no new commission accrues. Commission already paid stays in your wallet.${whenEn ? ` You may apply again from ${whenEn}.` : ""}`)}
++    ${subtitleSw(`Afisa wa uzingatiaji amekomesha ushirikiano wako wa uwakala. Msimbo wako hauandikishi tena na hakuna kamisheni mpya. Kamisheni iliyokwisha lipwa inabaki kwenye pochi yako.${whenSw ? ` Unaweza kuomba tena kuanzia ${whenSw}.` : ""}`)}
+     <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">Support: <a href="mailto:${REPLY_TO()}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO()}</a></p>
+   `);
+ }
+diff --git a/src/lib/server/hub-viewer.ts b/src/lib/server/hub-viewer.ts
+index d49029eff..a60420bff 100644
+--- a/src/lib/server/hub-viewer.ts
++++ b/src/lib/server/hub-viewer.ts
+@@ -28,6 +28,8 @@ import { viewerDoorsFor } from "@/lib/journey/viewer-doors";
+ import { displayInitials, displayLabel } from "@/lib/display-label";
+ import { maskPhone } from "@/lib/phone-normalize";
+ import { isFinalRefusal } from "@/lib/kyc-refusal";
++import { isLockedOut } from "@/lib/server/responsible-gambling";
++import { breakStateOf } from "@/lib/break-end";
+ import type { HubViewer } from "@/components/journey/account/hub-rows";
+ 
+ /** Every read the hub makes — passed in, so the suite can stand in either store and fail any one of them. */
+@@ -39,6 +41,8 @@ export type HubViewerDeps = {
+   invitePayable: () => Promise<boolean>;
+   agentEnabled: () => boolean;
+   proposalsState: () => ProposalsState;
++  /** R4-I · the reader's break or exclusion (`isLockedOut`). Optional, so a stand-in without it reads none. */
++  lockout?: (userId: string) => Promise<{ locked: boolean; until: string | null; reason: string | null }>;
+ };
+ 
+ /** The shipped reads. `inviteViewerFor` and the invite switch already fail closed; the catch here is the belt. */
+@@ -50,6 +54,7 @@ export const HUB_VIEWER_DEPS: HubViewerDeps = {
+   invitePayable: () => invitePaysPlayersNow().catch(() => false),
+   agentEnabled: () => getAgentConfig().enabled,
+   proposalsState: () => getProposalsConfig().state,
++  lockout: (userId) => isLockedOut(userId),
+ };
+ 
+ /** A read that throws before it hands back a promise still settles as a failure — never as an escape from the batch. */
+@@ -64,12 +69,14 @@ function attempt<T>(read: () => Promise<T>): Promise<T> {
+ /** The hub's reader: a guest for no user id, else the signed-in reader with every door composed. Never throws. */
+ export async function loadHubViewer(userId: string | null, deps: HubViewerDeps = HUB_VIEWER_DEPS): Promise<HubViewer> {
+   if (!userId) return { signedIn: false };
+-  const [u, w, k, iv, paid] = await Promise.allSettled([
++  const [u, w, k, iv, paid, lock] = await Promise.allSettled([
+     attempt(() => deps.user(userId)),
+     attempt(() => deps.wallet(userId)),
+     attempt(() => deps.kyc(userId)),
+     attempt(() => deps.inviteViewer(userId)),
+     attempt(() => deps.invitePayable()),
++    // R4-I · in the same batch. It feeds a STATUS line, never a door: a failed read (or no reader) shows none.
++    attempt(() => (deps.lockout ? deps.lockout(userId) : Promise.resolve(null))),
+   ]);
+   const user = u.status === "fulfilled" ? u.value : null;
+   const wallet = w.status === "fulfilled" ? w.value : null;
+@@ -90,6 +97,7 @@ export async function loadHubViewer(userId: string | null, deps: HubViewerDeps =
+     phone: maskPhone(user?.phoneE164),
+     balance: wallet ? wallet.balance : null,
+     walletHeld: !!wallet && wallet.status !== "ACTIVE",
++    breakEnd: lock.status === "fulfilled" && lock.value ? breakStateOf(lock.value) : null,
+     kycOffered,
+     agentInStanding: inviteViewer.agentInGoodStanding === true,
+     proposalsState,
+diff --git a/src/lib/server/landing-picks.ts b/src/lib/server/landing-picks.ts
+index 0062cb7f4..97b21ec25 100644
+--- a/src/lib/server/landing-picks.ts
++++ b/src/lib/server/landing-picks.ts
+@@ -52,6 +52,22 @@ export function tallyPicks(rows: readonly PickRow[], markets: ReadonlyMap<string
+   return { open, awaiting, paidThisWeekTzs: paid };
+ }
+ 
++/**
++ * True when the platform's "paid out to players" figure is provably BEHIND this reader's own read — below what they
++ * alone were paid this week. Pure.
++ *
++ * ⭐ WHY (round 3, 2026-10-08): one screen said "TZS 48,208 paid to you this week" over "TZS 0 paid out to players"
++ * (tiles 133 135 137, a seeded demo store). The platform figure is memoised for a minute (`getPlatformStats`) and the
++ * picks are read per request, so after a player's first win the two can disagree in production too, while that
++ * player's payouts are most of what the platform has ever paid. The page then reads the total again past the memo
++ * (`readPaidOutTzs`); a total STILL behind means the ledger and the positions disagree, and the slot is withheld
++ * rather than contradict the reader's own figure (B-1: a figure known to be incomplete is not printed). A failed read
++ * on either side decides nothing.
++ */
++export function paidOutBehind(platformPaidOutTzs: number | null, picks: LandingPicks | null): boolean {
++  return platformPaidOutTzs !== null && picks !== null && picks.paidThisWeekTzs > platformPaidOutTzs;
++}
++
+ export async function landingPicks(userId: string, nowMs: number): Promise<LandingPicks> {
+   const positions = await listPositionsForUser(userId, 5_000, "MARKET");
+   const weekStart = eatWeekStartMs(nowMs);
+diff --git a/src/lib/server/market-service.ts b/src/lib/server/market-service.ts
+index 3186d33de..a54de9903 100644
+--- a/src/lib/server/market-service.ts
++++ b/src/lib/server/market-service.ts
+@@ -57,6 +57,10 @@ import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, no
+   notifyVerdictRecorded } from "./notification-service";
+ import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml, oneSidedRefundHtml, marketResolutionAdminHtml, marketCancelledRefundHtml, marketCancelledAdminHtml, bonusFulfilledHtml, selectionClosedHtml } from "./email";
+ import { onRecruitBet, onRecruitSettlement, clawbackMarketCommission } from "./affiliate-service";
++// R5-B (2026-10-09, F10): a market's name quoted in a notice — the bell, its push, an email's subject line — is cut at a word
++// boundary, with "…" (notification-text.ts). The ledger's own descriptions ("… on \"<title>\"") are money records, pinned
++// by `red:updown-void-copy`, and are not touched here.
++import { clipQuote } from "@/lib/notification-text";
+ import { postLedgerEntries, stakeEntries, settlementPayoutEntries, refundEntries, cashoutEntries, withMoneyTx } from "./ledger";
+ import type { ServiceResult } from "./auth-service";
+ import { marketStore, positionStore } from "./market-dal";
+@@ -1124,9 +1128,9 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext):
+     // token a refactor drops silently — and a ternary hides it from that pin. Measured:
+     // `red:failure-reasons` reported this very mutation as NOT CAUGHT while the ternary stood.
+     if (lockout.reason === "cooling_off") {
+-      return { ok: false, error: `Cooling-off until ${until}.`, code: "SUSPENDED", reason: "cooling_off", detail: { until } };
++      return { ok: false, error: `Cooling-off until ${until}.`, code: "SUSPENDED", reason: "cooling_off", detail: { until, untilAt: lockout.until! } };
+     }
+-    return { ok: false, error: `Self-exclusion until ${until}.`, code: "SUSPENDED", reason: "self_excluded", detail: { until } };
++    return { ok: false, error: `Self-exclusion until ${until}.`, code: "SUSPENDED", reason: "self_excluded", detail: { until, untilAt: lockout.until! } };
+   }
+ 
+   // 🔴 E-235 · THE PLAYER'S OWN SESSION TIME LIMIT, ENFORCED — IT NEVER WAS BEFORE.
+@@ -1834,7 +1838,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext):
+     // pools freeze, where it is a fact rather than a moving projection.
+     sendEmailToUser(userId, (email) => ({
+       to: email,
+-      subject: `Bet placed · ${opts.side} on "${market.titleEn.slice(0, 40)}"`,
++      subject: `Bet placed · ${opts.side} on "${clipQuote(market.titleEn, 40)}"`,
+       html: betPlacedHtml({
+         reference: c.positionId, side: opts.side, stake: opts.stake,
+         marketTitle: market.titleEn, placedAt: c.placedAt, resolutionDate: market.resolutionAt.slice(0, 10),
+@@ -1860,9 +1864,9 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext):
+         titleEn: `Bet placed · ${sideWordIn("en", opts.side, "UPDOWN")} ${formatTzs(opts.stake)}`,
+         titleSw: `Dau limewekwa · ${sideWordIn("sw", opts.side, "UPDOWN")} ${formatTzs(opts.stake)}`,
+         titleZh: `已下注 · ${sideWordIn("zh", opts.side, "UPDOWN")} ${formatTzs(opts.stake)}`,
+-        bodyEn: `${market.titleEn.slice(0, 60)} — you're in this round.`,
+-        bodySw: `${market.titleSw.slice(0, 60)} — uko kwenye raundi hii.`,
+-        bodyZh: `${(market.titleZh ?? market.titleEn).slice(0, 40)} — 您已参与本回合。`,
++        bodyEn: `${clipQuote(market.titleEn, 60)} — you're in this round.`,
++        bodySw: `${clipQuote(market.titleSw, 60)} — uko kwenye raundi hii.`,
++        bodyZh: `${clipQuote(market.titleZh ?? market.titleEn, 40)} — 您已参与本回合。`,
+         url: "/updown",
+         // ⭐ BETS COALESCE WITH EACH OTHER; OUTCOMES DO NOT. A stake notice is only
+         // interesting until the next one, so every bet shares one tag and the newest
+@@ -2135,7 +2139,7 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
+     if (mine.every((p) => p.houseBotId != null)) continue;
+     sendEmailToUser(userId, (email) => ({
+       to: email,
+-      subject: `Betting closed — if you're right you receive ${formatTzs(Math.max(ifYes, ifNo))} · ${m.titleEn.slice(0, 40)}`,
++      subject: `Betting closed — if you're right you receive ${formatTzs(Math.max(ifYes, ifNo))} · ${clipQuote(m.titleEn, 40)}`,
+       html: selectionClosedHtml({
+         marketTitle: m.titleEn, closedAt: m.selectionClosedAt ?? m.resolutionAt, resolvesAt: m.resolutionAt, marketId: m.id,
+         payoutIfYes: mine.some((p) => p.side === "YES") ? ifYes : null,
+@@ -2277,7 +2281,9 @@ export async function notifyVerdictRecordedForMarket(
+    * balance — the one thing this notice exists to prevent.
+    */
+   if (m.settledAt) return { bettors: 0 };
+-  const paysFrom = formatDateTime(m.objectionsClosedAt);
++  // ⭐ The INSTANT, not a string: each language's body says it in its own words (R5-B, 2026-10-09 — `formatDateTime` made
++  // one English string, so the Swahili and Chinese bodies read "kuanzia 9 Oct 2026, 11:53").
++  const paysAt = m.objectionsClosedAt;
+ 
+   const everyPosition = await listPositionsForMarket(marketId);
+   const open = everyPosition.filter((p) => p.status === "OPEN");
+@@ -2289,7 +2295,7 @@ export async function notifyVerdictRecordedForMarket(
+       marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh),
+       marketId: m.id,
+       outcome,
+-      paysFrom,
++      paysAt,
+       reversed: opts?.reversed === true,
+       // SEAM:verdictStanding — a player whose every position here is house-marked is not invited to object,
+       // by the SAME predicate `objectionEligibility` refuses with (all positions, any status). Ruling 145.
+@@ -2350,7 +2356,7 @@ async function alertOfficersMarketDue(m: StoredMarket): Promise<void> {
+     notifyAdminMarketResolution(o.id, { title: m.titleEn, marketId: m.id }).catch(() => {});
+     sendEmailToUser(o.id, (email) => ({
+       to: email,
+-      subject: `Market awaiting resolution · ${m.titleEn.slice(0, 60)}`,
++      subject: `Market awaiting resolution · ${clipQuote(m.titleEn, 60)}`,
+       html: marketResolutionAdminHtml({ title: m.titleEn, closedAt: m.resolutionAt, reviewUrl: "/admin/resolver-queue" }),
+       tag: "market-resolve-admin",
+       trackLinks: false,
+@@ -4136,7 +4142,11 @@ export async function settleMarket(
+           // E-101 · the bell entry opens THIS ticket. It used to open `/positions`, which is
+           // the long-form list — right product here by luck (this branch is suppressed for
+           // Up & Down), wrong row always.
+-          notifyWin(p.userId, payout, localizedText(`${m.titleEn} · ${p.id}`, m.titleSw ? `${m.titleSw} · ${p.id}` : null, m.titleZh ? `${m.titleZh} · ${p.id}` : null), positionPermalinkHref(p.id));
++          notifyWin(p.userId, payout, localizedText(m.titleEn, m.titleSw, m.titleZh), positionPermalinkHref(p.id));
++          // ⭐ ↑ The market's name alone (round 3 of the visual pass, 2026-10-09): " · pos_…" was appended to it, a raw id
++          // in the sentence ("<title> · pos_… kimelipa."). The link is this position's own permalink, so two wins on one
++          // market already stay two notices. (Written UNDER the call: `test:updown-digest` §5 looks 400 characters back
++          // from it for the `perEventNotificationsSuppressed` gate, and a note above would push the gate out of reach.)
+           // SEAM:emailWin — no per-stake email for a house-marked position (04 F6); the bell is any player's (ruling 143).
+           if (p.houseBotId == null) sendEmailToUser(p.userId, (email) => ({
+             to: email,
+@@ -4781,7 +4791,7 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
+       notifyAdminMarketCancelled(o.id, { title: m.titleEn, reason, refundedCount, refundedTzs }).catch(() => {});
+       sendEmailToUser(o.id, (email) => ({
+         to: email,
+-        subject: `Market cancelled · ${m.titleEn.slice(0, 50)}`,
++        subject: `Market cancelled · ${clipQuote(m.titleEn, 50)}`,
+         html: marketCancelledAdminHtml({ title: m.titleEn, reason, refundedCount, refundedTzs }),
+         tag: "market-cancelled-admin",
+         trackLinks: false,
+diff --git a/src/lib/server/notification-service.ts b/src/lib/server/notification-service.ts
+index 05b427e33..5d65cdbee 100644
+--- a/src/lib/server/notification-service.ts
++++ b/src/lib/server/notification-service.ts
+@@ -23,7 +23,7 @@ import { db } from "./store";
+ import { randomId } from "./crypto";
+ import { emit } from "./event-bus";
+ import type { StoredNotification } from "./store";
+-import { formatTzs, formatDateShort } from "@/lib/utils";
++import { formatTzs } from "@/lib/utils";
+ // 2026-09-13 · the one review-wait number every surface quotes (the submitted notice and the officer's
+ // overdue-review alert), and the label that alert names a player by.
+ import { KYC_REVIEW_SLA_HOURS } from "@/lib/kyc-sla";
+@@ -34,7 +34,14 @@ import {
+ import type { LocalizedText } from "@/lib/localized";
+ import { sideWordIn, outcomeWordIn, type StoredSide, type StoredOutcome } from "@/lib/side-label";
+ import type { NotificationFilter, NotificationSort } from "@/lib/notification-filters";
++// Round 3 of the visual pass (2026-10-09): a position's notice opens its ticket instead of printing its id, and an
++// officer's reason never ends on "..". The rules live in one plain module the readers share (notification-text.ts).
++import { clipQuote, endClause, roundTicketHref, ticketHref } from "@/lib/notification-text";
+ import { EDITABLE_ROLES, domainForPath, isOwnerOnlyPath } from "./roles";
++// R4-I (2026-10-09): a break's or an exclusion's end, said the one way every screen says it (see `breakEndIn` below).
++import { formatBreakEnd } from "@/lib/break-end";
++// R5-B (2026-10-09): every other moment a notice states, in the reader's month words on the East Africa clock (`instantIn`).
++import { formatEatDate, formatEatDateTime } from "@/lib/eat-day";
+ 
+ export type NotifyInput = Omit<StoredNotification, "id" | "userId" | "readAt" | "dismissedAt" | "createdAt"> & {
+   userId: string;
+@@ -313,23 +320,24 @@ export function notifyBetPlaced(userId: string, opts: {
+   /** The poll's OWN rates. Hardcoding these numbers is how the copy came to lie. */
+   cashOutFeeRate: number; freeExitGraceMinutes: number; paidExitWindowMinutes?: number;
+ }) {
+-  const ref = opts.positionId ? ` · ${opts.positionId}` : "";
+   // These were hardcoded "free exit within 5 min, then 9% fee applies" (and the
+   // Swahili silently omitted the fee entirely). Both numbers now come from the
+   // poll's frozen snapshot, so they cannot drift from what we actually charge.
++  // ⭐ No position id in the sentence (round 3, 2026-10-09): the notice opens the ticket, so the LINK is what keeps two
++  // bets on one market two notices (`ticketHref`, notification-text.ts).
+   const mins = opts.freeExitGraceMinutes;
+   const pct = +(opts.cashOutFeeRate * 100).toFixed(1);
+   const paid = opts.paidExitWindowMinutes ?? 0;
+   // Default policy: no paid tail — after the free window it locks to settlement.
+   const bodyEn = paid > 0
+-    ? `${opts.marketTitle.en.slice(0, 70)} · free exit within ${mins} min, then a ${pct}% fee applies.${ref}`
+-    : `${opts.marketTitle.en.slice(0, 70)} · free exit within ${mins} min, then it locks to settlement.${ref}`;
++    ? `${clipQuote(opts.marketTitle.en, 70)} · free exit within ${mins} min, then a ${pct}% fee applies.`
++    : `${clipQuote(opts.marketTitle.en, 70)} · free exit within ${mins} min, then it locks to settlement.`;
+   const bodySw = paid > 0
+-    ? `${opts.marketTitle.sw.slice(0, 50)} · toka bila gharama ndani ya dakika ${mins}, baadaye ada ya ${pct}% itatumika.${ref}`
+-    : `${opts.marketTitle.sw.slice(0, 50)} · toka bila gharama ndani ya dakika ${mins}, kisha linafungwa hadi malipo.${ref}`;
++    ? `${clipQuote(opts.marketTitle.sw, 50)} · toka bila gharama ndani ya dakika ${mins}, baadaye ada ya ${pct}% itatumika.`
++    : `${clipQuote(opts.marketTitle.sw, 50)} · toka bila gharama ndani ya dakika ${mins}, kisha linafungwa hadi malipo.`;
+   const bodyZh = paid > 0
+-    ? `${opts.marketTitle.zh.slice(0, 50)} · ${mins} 分钟内可免费退出，之后按 ${pct}% 收取手续费。${ref}`
+-    : `${opts.marketTitle.zh.slice(0, 50)} · ${mins} 分钟内可免费退出，之后将锁定至结算。${ref}`;
++    ? `${clipQuote(opts.marketTitle.zh, 50)} · ${mins} 分钟内可免费退出，之后按 ${pct}% 收取手续费。`
++    : `${clipQuote(opts.marketTitle.zh, 50)} · ${mins} 分钟内可免费退出，之后将锁定至结算。`;
+   return notify({
+     userId,
+     kind: "BET_PLACED",
+@@ -344,7 +352,7 @@ export function notifyBetPlaced(userId: string, opts: {
+     bodyEn,
+     bodySw,
+     bodyZh,
+-    href: `/markets/${opts.marketId}`,
++    href: ticketHref(opts.marketId, opts.positionId, `/markets/${opts.marketId}`),
+   });
+ }
+ 
+@@ -378,7 +386,6 @@ export function notifyWin(userId: string, amount: number, label: LocalizedText,
+  * delay the player's awareness of their loss (LCCP harm-prevention).
+  */
+ export function notifyLoss(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string }) {
+-  const ref = opts.positionId ? ` · ${opts.positionId}` : "";
+   return notify({
+     userId,
+     kind: "LOSS",
+@@ -394,13 +401,14 @@ export function notifyLoss(userId: string, opts: { stake: number; marketTitle: L
+     // moment it had been placed and lost. `投注未中` is the idiomatic "the bet did not
+     // win" and cannot be read as a placement failure.
+     titleZh: `投注未中 · ${formatTzs(opts.stake)}`,
+-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · your side didn't win.${ref}`,
++    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · your side didn't win.`,
+     // ⚠️ Carries the market title, like EN and ZH. Without it a Swahili player with
+     // several open positions got "your side didn't win" with nothing saying WHICH
+     // market — the one thing the receipt exists to identify.
+-    bodySw: `${opts.marketTitle.sw.slice(0, 70)} · Upande wako haukushinda.${ref}`,
+-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 您所选的一方未获胜。${ref}`,
+-    href: `/markets/${opts.marketId}`,
++    bodySw: `${clipQuote(opts.marketTitle.sw, 70)} · Upande wako haukushinda.`,
++    bodyZh: `${clipQuote(opts.marketTitle.zh, 50)} · 您所选的一方未获胜。`,
++    // The ticket, not a position id in the sentence (round 3, 2026-10-09; notification-text.ts).
++    href: ticketHref(opts.marketId, opts.positionId, `/markets/${opts.marketId}`),
+   });
+ }
+ 
+@@ -466,17 +474,19 @@ function notifyUpDownResult(
+   opts: UpDownResultOpts,
+   copy: { titleEn: string; titleSw: string; titleZh: string; bodyEn: string; bodySw: string; bodyZh: string },
+ ) {
+-  // The position id makes two rounds' rows textually distinct even when stake and
+-  // outcome match — belt and braces beside the per-round href, because the 90-second
+-  // dedupe compares the rendered message AND the link.
+-  const ref = opts.positionId ? ` · ${opts.positionId}` : "";
++  // The position id keeps two positions' rows apart even when round, stake and outcome match — the 90-second dedupe
++  // compares the rendered message AND the link. ⭐ It rides the LINK, not the sentence (round 3, 2026-10-09: " · pos_…"
++  // was appended to the words): the round's page at the ticket's anchor, where `/positions/<id>` resolves to.
++  // ⚠️ `opts` is re-pointed rather than the `href:` line edited: `red:updown-bell` anchors its href mutations on that
++  // line, byte for byte (scripts/anchors/updown-bell.anchors.mjs), and they still mean what they say.
++  opts = { ...opts, roundHref: roundTicketHref(opts.roundHref, opts.positionId) };
+   return notify({
+     userId,
+     kind,
+     titleEn: copy.titleEn, titleSw: copy.titleSw, titleZh: copy.titleZh,
+-    bodyEn: `${copy.bodyEn}${ref}`,
+-    bodySw: `${copy.bodySw}${ref}`,
+-    bodyZh: `${copy.bodyZh}${ref}`,
++    bodyEn: copy.bodyEn,
++    bodySw: copy.bodySw,
++    bodyZh: copy.bodyZh,
+     href: opts.roundHref,
+   }, { pushTag: opts.pushTag });
+ }
+@@ -487,9 +497,9 @@ export function notifyUpDownWin(userId: string, opts: UpDownResultOpts & { payou
+     titleEn: `You won ${formatTzs(opts.payout)}`,
+     titleSw: `Umeshinda ${formatTzs(opts.payout)}`,
+     titleZh: `您赢得 ${formatTzs(opts.payout)}`,
+-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · paid to your wallet.`,
+-    bodySw: `${opts.marketTitle.sw.slice(0, 50)} · imelipwa kwenye pochi yako.`,
+-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 已支付至您的钱包。`,
++    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · paid to your wallet.`,
++    bodySw: `${clipQuote(opts.marketTitle.sw, 50)} · imelipwa kwenye pochi yako.`,
++    bodyZh: `${clipQuote(opts.marketTitle.zh, 50)} · 已支付至您的钱包。`,
+   });
+ }
+ 
+@@ -503,9 +513,9 @@ export function notifyUpDownLoss(userId: string, opts: UpDownResultOpts) {
+     titleEn: `Bet lost · ${formatTzs(opts.stake)}`,
+     titleSw: `Dau limepotea · ${formatTzs(opts.stake)}`,
+     titleZh: `投注未中 · ${formatTzs(opts.stake)}`,
+-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · your side didn't win.`,
+-    bodySw: `${opts.marketTitle.sw.slice(0, 50)} · upande wako haukushinda.`,
+-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 您所选的一方未获胜。`,
++    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · your side didn't win.`,
++    bodySw: `${clipQuote(opts.marketTitle.sw, 50)} · upande wako haukushinda.`,
++    bodyZh: `${clipQuote(opts.marketTitle.zh, 50)} · 您所选的一方未获胜。`,
+   });
+ }
+ 
+@@ -522,9 +532,9 @@ export function notifyUpDownRefund(userId: string, opts: UpDownResultOpts) {
+     titleEn: `Refunded · ${formatTzs(opts.stake)}`,
+     titleSw: `Umerudishiwa · ${formatTzs(opts.stake)}`,
+     titleZh: `已退款 · ${formatTzs(opts.stake)}`,
+-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · the round was voided and your stake came back in full.`,
+-    bodySw: `${opts.marketTitle.sw.slice(0, 50)} · raundi ilibatilishwa na dau lako limerudi lote.`,
+-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 本回合已作废，您的本金已全额退回。`,
++    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · the round was voided and your stake came back in full.`,
++    bodySw: `${clipQuote(opts.marketTitle.sw, 50)} · raundi ilibatilishwa na dau lako limerudi lote.`,
++    bodyZh: `${clipQuote(opts.marketTitle.zh, 50)} · 本回合已作废，您的本金已全额退回。`,
+   });
+ }
+ 
+@@ -534,9 +544,9 @@ export function notifyUpDownOneSidedRefund(userId: string, opts: UpDownResultOpt
+     titleEn: `Refunded · ${formatTzs(opts.stake)}`,
+     titleSw: `Umerudishiwa · ${formatTzs(opts.stake)}`,
+     titleZh: `已退款 · ${formatTzs(opts.stake)}`,
+-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · only one side had bets, so your stake came back in full.`,
+-    bodySw: `${opts.marketTitle.sw.slice(0, 50)} · upande mmoja tu ulikuwa na dau, hivyo dau lako limerudi lote.`,
+-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 仅一方有投注，您的本金已全额退回。`,
++    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · only one side had bets, so your stake came back in full.`,
++    bodySw: `${clipQuote(opts.marketTitle.sw, 50)} · upande mmoja tu ulikuwa na dau, hivyo dau lako limerudi lote.`,
++    bodyZh: `${clipQuote(opts.marketTitle.zh, 50)} · 仅一方有投注，您的本金已全额退回。`,
+   });
+ }
+ 
+@@ -588,9 +598,9 @@ export function notifyWatchedClosingSoon(userId: string, opts: { marketTitle: Lo
+     titleEn: "A market you follow closes soon",
+     titleSw: "Soko unalofuatilia linafunga karibuni",
+     titleZh: "您关注的市场即将关闭",
+-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · selections close in about ${opts.minutes} minutes.`,
+-    bodySw: `${opts.marketTitle.sw.slice(0, 50)} · uchaguzi unafunga baada ya takriban dakika ${opts.minutes}.`,
+-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 选择将在约 ${opts.minutes} 分钟后关闭。`,
++    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · selections close in about ${opts.minutes} minutes.`,
++    bodySw: `${clipQuote(opts.marketTitle.sw, 50)} · uchaguzi unafunga baada ya takriban dakika ${opts.minutes}.`,
++    bodyZh: `${clipQuote(opts.marketTitle.zh, 50)} · 选择将在约 ${opts.minutes} 分钟后关闭。`,
+     href: `/markets/${opts.marketId}`,
+   });
+ }
+@@ -612,9 +622,9 @@ export function notifyWatchedSettled(userId: string, opts: { marketTitle: Locali
+     titleEn: "A market you follow has settled",
+     titleSw: "Soko unalofuatilia limetatuliwa",
+     titleZh: "您关注的市场已结算",
+-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · resolved ${outcomeWordIn("en", opts.outcome, "MARKET")}.`,
+-    bodySw: `${opts.marketTitle.sw.slice(0, 50)} · matokeo: ${outcomeWordIn("sw", opts.outcome, "MARKET")}.`,
+-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 结果：${outcomeWordIn("zh", opts.outcome, "MARKET")}。`,
++    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} · resolved ${outcomeWordIn("en", opts.outcome, "MARKET")}.`,
++    bodySw: `${clipQuote(opts.marketTitle.sw, 50)} · matokeo: ${outcomeWordIn("sw", opts.outcome, "MARKET")}.`,
++    bodyZh: `${clipQuote(opts.marketTitle.zh, 50)} · 结果：${outcomeWordIn("zh", opts.outcome, "MARKET")}。`,
+     href: `/markets/${opts.marketId}`,
+   });
+ }
+@@ -652,8 +662,8 @@ export function notifySelectionClosed(userId: string, opts: {
+   const oneW = { en: sideWordIn("en", side, "MARKET"), sw: sideWordIn("sw", side, "MARKET"), zh: sideWordIn("zh", side, "MARKET") };
+ 
+   const bodyEn = both
+-    ? `${opts.marketTitle.en.slice(0, 60)} · Betting is closed. If ${yesW.en} wins you receive ${formatTzs(opts.payoutIfYes)}; if ${noW.en} wins you receive ${formatTzs(opts.payoutIfNo)}.`
+-    : `${opts.marketTitle.en.slice(0, 60)} · Betting is closed. If ${oneW.en} wins you receive ${formatTzs(only)}.`;
++    ? `${clipQuote(opts.marketTitle.en, 60)} · Betting is closed. If ${yesW.en} wins you receive ${formatTzs(opts.payoutIfYes)}; if ${noW.en} wins you receive ${formatTzs(opts.payoutIfNo)}.`
++    : `${clipQuote(opts.marketTitle.en, 60)} · Betting is closed. If ${oneW.en} wins you receive ${formatTzs(only)}.`;
+   const bodySw = both
+     ? `Kuweka dau kumefungwa. ${yesW.sw} ikishinda utapata ${formatTzs(opts.payoutIfYes)}; ${noW.sw} ikishinda utapata ${formatTzs(opts.payoutIfNo)}.`
+     : `Kuweka dau kumefungwa. ${oneW.sw} ikishinda utapata ${formatTzs(only)}.`;
+@@ -662,8 +672,8 @@ export function notifySelectionClosed(userId: string, opts: {
+   // side — the player loses which side it was. 「」 marks it as the option's NAME. The same
+   // reasoning bracketed `backYesAria` and `probOverTime` in the dictionary.
+   const bodyZh = both
+-    ? `${opts.marketTitle.zh.slice(0, 50)} · 投注已截止。若「${yesW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfYes)}；若「${noW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfNo)}。`
+-    : `${opts.marketTitle.zh.slice(0, 50)} · 投注已截止。若「${oneW.zh}」获胜您将获得 ${formatTzs(only)}。`;
++    ? `${clipQuote(opts.marketTitle.zh, 50)} · 投注已截止。若「${yesW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfYes)}；若「${noW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfNo)}。`
++    : `${clipQuote(opts.marketTitle.zh, 50)} · 投注已截止。若「${oneW.zh}」获胜您将获得 ${formatTzs(only)}。`;
+ 
+   return notify({
+     userId,
+@@ -962,9 +972,9 @@ export function notifyProposalUnderReview(userId: string, opts: { titleEn: strin
+     titleEn: "Your proposal is under review",
+     titleSw: "Pendekezo lako linakaguliwa",
+     titleZh: "您的提案正在审核中",
+-    bodyEn: `"${opts.titleEn.slice(0, 60)}" — the 50pick team is reviewing it. We'll notify you ASAP.`,
++    bodyEn: `"${clipQuote(opts.titleEn, 60)}" — the 50pick team is reviewing it. We'll notify you ASAP.`,
+     bodySw: "Timu ya 50pick inalikagua. Tutakujulisha haraka iwezekanavyo.",
+-    bodyZh: `"${opts.titleEn.slice(0, 60)}" — 50pick 团队正在审核。我们会尽快通知您。`,
++    bodyZh: `"${clipQuote(opts.titleEn, 60)}" — 50pick 团队正在审核。我们会尽快通知您。`,
+     href: "/proposals",
+   });
+ }
+@@ -986,9 +996,9 @@ export async function notifyAdminObjectionFiled(objectionId: string, marketTitle
+       titleEn: "Objection filed · settlement frozen",
+       titleSw: "Pingamizi limewasilishwa · malipo yamesimamishwa",
+       titleZh: "已提出异议 · 结算已冻结",
+-      bodyEn: `A player disputes the result of "${marketTitle.slice(0, 55)}". No money moves until you rule.`,
++      bodyEn: `A player disputes the result of "${clipQuote(marketTitle, 55)}". No money moves until you rule.`,
+       bodySw: `Mchezaji anapinga matokeo ya soko hili. Hakuna malipo hadi utakapoamua.`,
+-      bodyZh: `有玩家对 "${marketTitle.slice(0, 55)}" 的结果提出异议。在您裁定前不会有任何资金变动。`,
++      bodyZh: `有玩家对 "${clipQuote(marketTitle, 55)}" 的结果提出异议。在您裁定前不会有任何资金变动。`,
+       href: "/admin/objections",
+     });
+   }
+@@ -1002,14 +1012,14 @@ export function notifyObjectionDecided(userId: string, opts: { upheld: boolean;
+     titleSw: opts.upheld ? "Pingamizi lako limekubaliwa" : "Pingamizi lako limekaguliwa",
+     titleZh: opts.upheld ? "您的异议已获支持" : "您的异议已审核",
+     bodyEn: opts.upheld
+-      ? `An officer agreed with you and corrected the result before any payout. ${opts.note.slice(0, 120)}`
+-      : `An officer reviewed your objection and the result stands. ${opts.note.slice(0, 120)}`,
++      ? `An officer agreed with you and corrected the result before any payout. ${clipQuote(opts.note, 120)}`
++      : `An officer reviewed your objection and the result stands. ${clipQuote(opts.note, 120)}`,
+     bodySw: opts.upheld
+       ? "Afisa amekubaliana nawe na amerekebisha matokeo kabla ya malipo yoyote."
+       : "Afisa amekagua pingamizi lako na matokeo yamebaki vilevile.",
+     bodyZh: opts.upheld
+-      ? `审核人员认同您的意见，并已在赔付前更正结果。${opts.note.slice(0, 120)}`
+-      : `审核人员已审核您的异议，原结果维持不变。${opts.note.slice(0, 120)}`,
++      ? `审核人员认同您的意见，并已在赔付前更正结果。${clipQuote(opts.note, 120)}`
++      : `审核人员已审核您的异议，原结果维持不变。${clipQuote(opts.note, 120)}`,
+     href: `/markets/${opts.marketId}`,
+   });
+ }
+@@ -1033,7 +1043,8 @@ export function notifyObjectionDecided(userId: string, opts: { upheld: boolean;
+  * a control on paper. This notice is what keeps that description true at one hour.
+  *
+  * ⛔ IT STATES A TIME, NEVER A NUMBER OF HOURS. The caller passes the market's own
+- * `objectionsClosedAt`, already formatted. A "you have 1 hour" phrasing would be a second
++ * `objectionsClosedAt`, the instant, and each language says it in its own words (`instantIn`, R5-B 2026-10-09: it was one
++ * English string in all three bodies — "Malipo kuanzia 9 Oct 2026, 11:53"). A "you have 1 hour" phrasing would be a second
+  * definition of `objectionWindowHours` living in a notification — the defect RULES.md §5 and
+  * `test:rate-copy` exist to prevent — and it would be wrong for any market sealed before the
+  * window changed, which keeps its original deadline.
+@@ -1052,8 +1063,8 @@ export function notifyVerdictRecorded(userId: string, opts: {
+   marketTitle: LocalizedText;
+   marketId: string;
+   outcome: StoredOutcome;
+-  /** The market's own `objectionsClosedAt`, pre-formatted by the caller. */
+-  paysFrom: string;
++  /** The market's own `objectionsClosedAt` — the instant (ISO-8601); each body says it in its own language. */
++  paysAt: string;
+   /** True when this verdict REPLACED an earlier one (an upheld objection, remedy REVERSE). */
+   reversed?: boolean;
+   /** Every position the player has on this market is house-marked, so they have no standing to object (ruling 145). */
+@@ -1078,7 +1089,8 @@ export function notifyVerdictRecorded(userId: string, opts: {
+     : opts.reversed ? `结果已更正：${word.zh}` : `结果已记录：${word.zh}`;
+ 
+   const title = opts.marketTitle;
+-  return notify({
++  // The payout time in each reader's words, East Africa's clock — never the platform's one English string (R5-B).
++  return instantIn(opts.paysAt, formatEatDateTime, "—").then((paysFrom) => notify({
+     userId,
+     kind: "VERDICT",
+     titleEn,
+@@ -1086,11 +1098,11 @@ export function notifyVerdictRecorded(userId: string, opts: {
+     titleZh,
+     // ⛔ A player whose ONLY positions here are house-marked has no standing to object (`objectionEligibility`), so
+     // their notice never invites an objection the platform would refuse. It names nothing (D19c, ruling 145).
+-    bodyEn: `${title.en.slice(0, 60)} · No money has moved yet. Payout from ${opts.paysFrom}${opts.houseOnly ? "." : " — if you think this result is wrong, object before then."}`,
+-    bodySw: `${title.sw.slice(0, 60)} · Hakuna fedha iliyohamishwa bado. Malipo kuanzia ${opts.paysFrom}${opts.houseOnly ? "." : " — kama unaamini matokeo haya si sahihi, pinga kabla ya muda huo."}`,
+-    bodyZh: `${title.zh.slice(0, 45)} · 尚未有任何资金转移。赔付不早于 ${opts.paysFrom}${opts.houseOnly ? "。" : " — 若您认为该结果有误，请在此之前提出异议。"}`,
++    bodyEn: `${clipQuote(title.en, 60)} · No money has moved yet. Payout from ${paysFrom.en}${opts.houseOnly ? "." : " — if you think this result is wrong, object before then."}`,
++    bodySw: `${clipQuote(title.sw, 60)} · Hakuna fedha iliyohamishwa bado. Malipo kuanzia ${paysFrom.sw}${opts.houseOnly ? "." : " — kama unaamini matokeo haya si sahihi, pinga kabla ya muda huo."}`,
++    bodyZh: `${clipQuote(title.zh, 45)} · 尚未有任何资金转移。赔付不早于 ${paysFrom.zh}${opts.houseOnly ? "。" : " — 若您认为该结果有误，请在此之前提出异议。"}`,
+     href: `/markets/${opts.marketId}`,
+-  });
++  }));
+ }
+ 
+ /** In-app alert to an officer that a NEW proposal is awaiting review. Lands in
+@@ -1101,9 +1113,9 @@ export function notifyAdminProposalReview(adminUserId: string, opts: { proposerL
+     titleEn: "New proposal to review",
+     titleSw: "Pendekezo jipya la kukagua",
+     titleZh: "有新提案待审核",
+-    bodyEn: `${opts.proposerLabel} proposed "${opts.titleEn.slice(0, 60)}" — tap to review.`,
++    bodyEn: `${opts.proposerLabel} proposed "${clipQuote(opts.titleEn, 60)}" — tap to review.`,
+     bodySw: `${opts.proposerLabel} amependekeza soko jipya — bonyeza kukagua.`,
+-    bodyZh: `${opts.proposerLabel} 提交了 "${opts.titleEn.slice(0, 60)}" — 点击审核。`,
++    bodyZh: `${opts.proposerLabel} 提交了 "${clipQuote(opts.titleEn, 60)}" — 点击审核。`,
+     href: "/admin/proposals",
+   });
+ }
+@@ -1136,9 +1148,9 @@ export function notifyProposalApproved(userId: string, opts: { titleEn: string;
+         titleEn: `Proposal approved · ${amount} credited`,
+         titleSw: `Pendekezo limekubaliwa · ${amount} imewekwa`,
+         titleZh: `提案已通过 · ${amount} 已到账`,
+-        bodyEn: `"${opts.titleEn.slice(0, 55)}" was approved. ${amount} was added to your balance — it is yours to withdraw.`,
++        bodyEn: `"${clipQuote(opts.titleEn, 55)}" was approved. ${amount} was added to your balance — it is yours to withdraw.`,
+         bodySw: `Pendekezo lako limekubaliwa. ${amount} imewekwa kwenye salio lako — unaweza kuitoa.`,
+-        bodyZh: `"${opts.titleEn.slice(0, 55)}" 已通过审核。${amount} 已计入您的余额，可随时提现。`,
++        bodyZh: `"${clipQuote(opts.titleEn, 55)}" 已通过审核。${amount} 已计入您的余额，可随时提现。`,
+         href: "/wallet",
+       });
+     }
+@@ -1148,9 +1160,9 @@ export function notifyProposalApproved(userId: string, opts: { titleEn: string;
+         titleEn: `Proposal approved · bonus ${amount} reserved`,
+         titleSw: `Pendekezo limekubaliwa · bonasi ${amount} imehifadhiwa`,
+         titleZh: `提案已通过 · 已预留 ${amount} 奖金`,
+-        bodyEn: `"${opts.titleEn.slice(0, 55)}" was approved. Your ${amount} bonus activates automatically once your current bonus completes.`,
++        bodyEn: `"${clipQuote(opts.titleEn, 55)}" was approved. Your ${amount} bonus activates automatically once your current bonus completes.`,
+         bodySw: `Pendekezo lako limekubaliwa. Bonasi ya ${amount} itaanza mara bonasi yako ya sasa itakapokamilika.`,
+-        bodyZh: `"${opts.titleEn.slice(0, 55)}" 已通过审核。您的 ${amount} 奖金将在当前奖金完成后自动激活。`,
++        bodyZh: `"${clipQuote(opts.titleEn, 55)}" 已通过审核。您的 ${amount} 奖金将在当前奖金完成后自动激活。`,
+         href: "/wallet",
+       });
+     }
+@@ -1159,9 +1171,9 @@ export function notifyProposalApproved(userId: string, opts: { titleEn: string;
+       titleEn: `Proposal approved · bonus ${amount} credited`,
+       titleSw: `Pendekezo limekubaliwa · bonasi ${amount}`,
+       titleZh: `提案已通过 · ${amount} 奖金已到账`,
+-      bodyEn: `"${opts.titleEn.slice(0, 55)}" was approved. ${amount} is in your bonus wallet.`,
++      bodyEn: `"${clipQuote(opts.titleEn, 55)}" was approved. ${amount} is in your bonus wallet.`,
+       bodySw: `Pendekezo lako limekubaliwa. ${amount} ipo kwenye pochi yako ya bonasi.`,
+-      bodyZh: `"${opts.titleEn.slice(0, 55)}" 已通过审核。${amount} 已存入您的奖金钱包。`,
++      bodyZh: `"${clipQuote(opts.titleEn, 55)}" 已通过审核。${amount} 已存入您的奖金钱包。`,
+       href: "/wallet",
+     });
+   }
+@@ -1170,9 +1182,9 @@ export function notifyProposalApproved(userId: string, opts: { titleEn: string;
+     titleEn: "Your proposal was approved",
+     titleSw: "Pendekezo lako limekubaliwa",
+     titleZh: "您的提案已通过",
+-    bodyEn: `"${opts.titleEn.slice(0, 60)}" was approved by the 50pick team.`,
++    bodyEn: `"${clipQuote(opts.titleEn, 60)}" was approved by the 50pick team.`,
+     bodySw: "Pendekezo lako limekubaliwa na timu ya 50pick.",
+-    bodyZh: `"${opts.titleEn.slice(0, 60)}" 已获 50pick 团队通过。`,
++    bodyZh: `"${clipQuote(opts.titleEn, 60)}" 已获 50pick 团队通过。`,
+     href: "/proposals",
+   });
+ }
+@@ -1183,9 +1195,9 @@ export function notifyProposalListed(userId: string, opts: { titleEn: string; ma
+     titleEn: "Your proposal is now live",
+     titleSw: "Pendekezo lako sasa ni soko",
+     titleZh: "您的提案已上线",
+-    bodyEn: `"${opts.titleEn.slice(0, 60)}" is a market now — share it.`,
++    bodyEn: `"${clipQuote(opts.titleEn, 60)}" is a market now — share it.`,
+     bodySw: "Sasa ni soko — lishiriki.",
+-    bodyZh: `"${opts.titleEn.slice(0, 60)}" 现已成为市场 — 分享出去吧。`,
++    bodyZh: `"${clipQuote(opts.titleEn, 60)}" 现已成为市场 — 分享出去吧。`,
+     href: `/markets/${opts.marketId}`,
+   });
+ }
+@@ -1196,9 +1208,9 @@ export function notifyProposalChanges(userId: string, opts: { titleEn: string; n
+     titleEn: "Changes requested on your proposal",
+     titleSw: "Mabadiliko yanahitajika",
+     titleZh: "您的提案需要修改",
+-    bodyEn: opts.note ? `Officer note: ${opts.note.slice(0, 80)}` : `"${opts.titleEn.slice(0, 60)}" needs a tweak before listing.`,
++    bodyEn: opts.note ? `Officer note: ${clipQuote(opts.note, 80)}` : `"${clipQuote(opts.titleEn, 60)}" needs a tweak before listing.`,
+     bodySw: "Rekebisha kabla ya kuorodheshwa.",
+-    bodyZh: opts.note ? `审核意见：${opts.note.slice(0, 80)}` : `"${opts.titleEn.slice(0, 60)}" 上架前需要做一处调整。`,
++    bodyZh: opts.note ? `审核意见：${clipQuote(opts.note, 80)}` : `"${clipQuote(opts.titleEn, 60)}" 上架前需要做一处调整。`,
+     href: "/proposals",
+   });
+ }
+@@ -1209,9 +1221,10 @@ export function notifyProposalDeclined(userId: string, opts: { titleEn: string;
+     titleEn: "Your proposal was declined",
+     titleSw: "Pendekezo limekataliwa",
+     titleZh: "您的提案未被采纳",
+-    bodyEn: `"${opts.titleEn.slice(0, 50)}" — reason: ${opts.reason}.`,
+-    bodySw: `Sababu: ${opts.reason}.`,
+-    bodyZh: `"${opts.titleEn.slice(0, 50)}" — 原因：${opts.reason}。`,
++    // `endClause`: the reason's own closing stop gives way to the template's, so it never reads ".." (round 3).
++    bodyEn: `"${clipQuote(opts.titleEn, 50)}" — reason: ${endClause(opts.reason, ".")}`,
++    bodySw: `Sababu: ${endClause(opts.reason, ".")}`,
++    bodyZh: `"${clipQuote(opts.titleEn, 50)}" — 原因：${endClause(opts.reason, "。")}`,
+     href: "/proposals",
+   });
+ }
+@@ -1223,36 +1236,41 @@ export function notifyProposalDeclined(userId: string, opts: { titleEn: string;
+  *  ONE notice — and a player holding two positions saw a single receipt for money that
+  *  came back twice. That is the ordinary case on a voided market, not a corner: the
+  *  platform allows repeat bets by design. `notifyCashout` and `notifyOneSidedRefund`
+- *  already carry the reference for exactly this reason; these two did not. */
++ *  already carry the reference for exactly this reason; these two did not.
++ *  ⭐ Since round 3 of the visual pass (2026-10-09) the reference rides the LINK — the notice opens that ticket
++ *  (`ticketHref`, notification-text.ts) — and never the sentence, where " · pos_…" told the reader nothing. */
+ export function notifyRefund(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string }) {
+-  const ref = opts.positionId ? ` · ${opts.positionId}` : "";
+   return notify({
+     userId,
+     kind: "DEPOSIT",
+     titleEn: `Refund · ${formatTzs(opts.stake)} returned`,
+     titleSw: `Kurudishiwa · ${formatTzs(opts.stake)}`,
+     titleZh: `退款 · 已退回 ${formatTzs(opts.stake)}`,
+-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} was voided. Your stake has been returned.${ref}`,
+-    bodySw: `${opts.marketTitle.sw.slice(0, 70)} limebatilishwa. Dau lako limerudishwa.${ref}`,
+-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} 已作废。您的本金已全额退回。${ref}`,
+-    href: `/markets/${opts.marketId}`,
++    bodyEn: `${clipQuote(opts.marketTitle.en, 70)} was voided. Your stake has been returned.`,
++    bodySw: `${clipQuote(opts.marketTitle.sw, 70)} limebatilishwa. Dau lako limerudishwa.`,
++    bodyZh: `${clipQuote(opts.marketTitle.zh, 50)} 已作废。您的本金已全额退回。`,
++    href: ticketHref(opts.marketId, opts.positionId, `/markets/${opts.marketId}`),
+   });
+ }
+ 
+ /** Player notice: a market they had a stake in was cancelled (emergency void).
+- *  Carries the admin's reason and confirms the full refund. */
++ *  Carries the admin's reason and confirms the full refund.
++ *  🔴 ROUND 3 (2026-10-09, tile 192): it read "…before settlement.. Dau lako lote limerejeshwa kwenye pochi yako.
++ *  · pos_34d10350dfa7510cfad5" — the officer's reason kept its own full stop under the template's, and the position
++ *  id was appended to the sentence. `endClause` ends the reason once, in the reader's own stop; the id rides the
++ *  link, which opens the refunded ticket on its market's page (it opened /wallet, and one link for every refund of a
++ *  market is why the id had to be in the words). The wallet is still where the sentence says the money went. */
+ export function notifyMarketCancelled(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; reason: string; positionId?: string }) {
+-  const ref = opts.positionId ? ` · ${opts.positionId}` : "";
+   return notify({
+     userId,
+     kind: "DEPOSIT", // money returned to the wallet
+     titleEn: `Market cancelled · ${formatTzs(opts.stake)} refunded`,
+     titleSw: `Soko limefutwa · ${formatTzs(opts.stake)} imerejeshwa`,
+     titleZh: `市场已取消 · 已退款 ${formatTzs(opts.stake)}`,
+-    bodyEn: `"${opts.marketTitle.en.slice(0, 60)}" was cancelled: ${opts.reason.slice(0, 120)}. Your full stake has been returned to your wallet.${ref}`,
+-    bodySw: `"${opts.marketTitle.sw.slice(0, 60)}" limefutwa: ${opts.reason.slice(0, 120)}. Dau lako lote limerejeshwa kwenye pochi yako.${ref}`,
+-    bodyZh: `"${opts.marketTitle.zh.slice(0, 60)}" 已取消：${opts.reason.slice(0, 120)}。您的本金已全额退回钱包。${ref}`,
+-    href: "/wallet",
++    bodyEn: `"${clipQuote(opts.marketTitle.en, 60)}" was cancelled: ${endClause(clipQuote(opts.reason, 120), ".")} Your full stake has been returned to your wallet.`,
++    bodySw: `"${clipQuote(opts.marketTitle.sw, 60)}" limefutwa: ${endClause(clipQuote(opts.reason, 120), ".")} Dau lako lote limerejeshwa kwenye pochi yako.`,
++    bodyZh: `"${clipQuote(opts.marketTitle.zh, 60)}" 已取消：${endClause(clipQuote(opts.reason, 120), "。")}您的本金已全额退回钱包。`,
++    href: ticketHref(opts.marketId, opts.positionId, "/wallet"),
+   });
+ }
+ 
+@@ -1264,9 +1282,9 @@ export function notifyAdminMarketCancelled(adminUserId: string, opts: { title: s
+     titleEn: `Market cancelled · ${opts.refundedCount} refunded`,
+     titleSw: `Soko limefutwa · ${opts.refundedCount} wamerejeshewa`,
+     titleZh: `市场已取消 · ${opts.refundedCount} 人已退款`,
+-    bodyEn: `"${opts.title.slice(0, 60)}" was emergency-voided — ${formatTzs(opts.refundedTzs)} refunded to ${opts.refundedCount} ${opts.refundedCount === 1 ? "player" : "players"}. Reason: ${opts.reason.slice(0, 100)}`,
++    bodyEn: `"${clipQuote(opts.title, 60)}" was emergency-voided — ${formatTzs(opts.refundedTzs)} refunded to ${opts.refundedCount} ${opts.refundedCount === 1 ? "player" : "players"}. Reason: ${clipQuote(opts.reason, 100)}`,
+     bodySw: `Soko limefutwa kwa dharura. ${formatTzs(opts.refundedTzs)} imerejeshwa.`,
+-    bodyZh: `"${opts.title.slice(0, 60)}" 已紧急作废 — 已向 ${opts.refundedCount} 位玩家退款 ${formatTzs(opts.refundedTzs)}。原因：${opts.reason.slice(0, 100)}`,
++    bodyZh: `"${clipQuote(opts.title, 60)}" 已紧急作废 — 已向 ${opts.refundedCount} 位玩家退款 ${formatTzs(opts.refundedTzs)}。原因：${clipQuote(opts.reason, 100)}`,
+     href: "/admin/markets",
+   });
+ }
+@@ -1286,7 +1304,7 @@ export function notifyCashout(userId: string, opts: {
+   /** The poll's OWN frozen free-exit window. Never hardcode it here. */
+   freeExitGraceMinutes: number;
+ }) {
+-  const ref = opts.positionId ? ` · ${opts.positionId}` : "";
++  // The position rides the link, not the sentence (round 3, 2026-10-09; `ticketHref`, notification-text.ts).
+   const mins = opts.freeExitGraceMinutes;
+   return notify({
+     userId,
+@@ -1295,31 +1313,31 @@ export function notifyCashout(userId: string, opts: {
+     titleSw: `${opts.inGracePeriod ? "Toka bila gharama" : "Umetoa"} · ${formatTzs(opts.amount)}`,
+     titleZh: `${opts.inGracePeriod ? "免费退出" : "已套现"} · ${formatTzs(opts.amount)}`,
+     bodyEn: opts.inGracePeriod
+-      ? `Full stake returned — sold within the ${mins}-min grace window, no fee.${ref}`
+-      : `Early exit from ${opts.marketTitle.en.slice(0, 60)}. Funds in wallet.${ref}`,
++      ? `Full stake returned — sold within the ${mins}-min grace window, no fee.`
++      : `Early exit from ${clipQuote(opts.marketTitle.en, 60)}. Funds in wallet.`,
+     bodySw: opts.inGracePeriod
+-      ? `Pesa yote imerudishwa — umetoka ndani ya dakika ${mins}.${ref}`
+-      : `Umetoka mapema. Pesa imo kwenye pochi yako.${ref}`,
++      ? `Pesa yote imerudishwa — umetoka ndani ya dakika ${mins}.`
++      : `Umetoka mapema. Pesa imo kwenye pochi yako.`,
+     bodyZh: opts.inGracePeriod
+-      ? `本金已全额退回 — 在 ${mins} 分钟免费窗口内卖出，不收取手续费。${ref}`
+-      : `已从 ${opts.marketTitle.zh.slice(0, 50)} 提前退出。款项已存入钱包。${ref}`,
+-    href: `/markets/${opts.marketId}`,
++      ? `本金已全额退回 — 在 ${mins} 分钟免费窗口内卖出，不收取手续费。`
++      : `已从 ${clipQuote(opts.marketTitle.zh, 50)} 提前退出。款项已存入钱包。`,
++    href: ticketHref(opts.marketId, opts.positionId, `/markets/${opts.marketId}`),
+   });
+ }
+ 
+ /** One-sided refund — all bets were on the same side so everyone gets their stake back at 0% fee. */
+ export function notifyOneSidedRefund(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string }) {
+-  const ref = opts.positionId ? ` · ${opts.positionId}` : "";
++  // The position rides the link, not the sentence (round 3, 2026-10-09; `ticketHref`, notification-text.ts).
+   return notify({
+     userId,
+     kind: "WIN",
+     titleEn: `Full refund · ${formatTzs(opts.stake)}`,
+     titleSw: `Pesa imerudishwa · ${formatTzs(opts.stake)}`,
+     titleZh: `全额退款 · ${formatTzs(opts.stake)}`,
+-    bodyEn: `${opts.marketTitle.en.slice(0, 60)} — all bets were on one side. Full stake returned, no fee.${ref}`,
+-    bodySw: `${opts.marketTitle.sw.slice(0, 60)} — wote walibetia upande mmoja. Dau lako lote limerudishwa bila gharama.${ref}`,
+-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} — 所有投注都在同一方。本金全额退回，不收取手续费。${ref}`,
+-    href: `/markets/${opts.marketId}`,
++    bodyEn: `${clipQuote(opts.marketTitle.en, 60)} — all bets were on one side. Full stake returned, no fee.`,
++    bodySw: `${clipQuote(opts.marketTitle.sw, 60)} — wote walibetia upande mmoja. Dau lako lote limerudishwa bila gharama.`,
++    bodyZh: `${clipQuote(opts.marketTitle.zh, 50)} — 所有投注都在同一方。本金全额退回，不收取手续费。`,
++    href: ticketHref(opts.marketId, opts.positionId, `/markets/${opts.marketId}`),
+   });
+ }
+ 
+@@ -1354,9 +1372,9 @@ export function notifyAdminMarketResolution(adminUserId: string, opts: { title:
+     titleEn: "Market awaiting resolution",
+     titleSw: "Soko linasubiri uamuzi",
+     titleZh: "市场等待裁定",
+-    bodyEn: `"${opts.title.slice(0, 70)}" has closed — resolve the outcome.`,
+-    bodySw: `"${opts.title.slice(0, 50)}" limefungwa — tatua matokeo.`,
+-    bodyZh: `"${opts.title.slice(0, 50)}" 已关闭 — 请裁定结果。`,
++    bodyEn: `"${clipQuote(opts.title, 70)}" has closed — resolve the outcome.`,
++    bodySw: `"${clipQuote(opts.title, 50)}" limefungwa — tatua matokeo.`,
++    bodyZh: `"${clipQuote(opts.title, 50)}" 已关闭 — 请裁定结果。`,
+     href: "/admin/resolver-queue",
+   });
+ }
+@@ -1561,32 +1579,77 @@ export function notifyPasswordChanged(userId: string) {
+   });
+ }
+ 
++/**
++ * ⭐ A BREAK'S OR AN EXCLUSION'S END, IN EACH READER'S OWN WORDS (the visual pass, round 4, R4-I, 2026-10-09). The two
++ * notices below printed `until.slice(0, 10)` — the UTC calendar day, with no time — so a one-hour break read "hadi
++ * 2026-10-09", and an end between 00:00 and 03:00 EAT named the day before. They now carry the end the way every screen
++ * states it (`formatBreakEnd`: the East Africa clock, date AND time, the reader's month words — "9 Okt, 06:02",
++ * "9 Oct, 06:02", "2026年10月9日 06:02"). The sentences are unchanged; only the value they carry. The month words are the
++ * dictionary's own (the same lazy read `sideWords` makes); a value that does not parse keeps the old day.
++ */
++async function breakEndIn(untilIso: string): Promise<LocalizedText> {
++  return instantIn(untilIso, formatBreakEnd, untilIso.slice(0, 10));
++}
++
++/**
++ * ⭐ ONE INSTANT, EACH READER'S WORDS — the path every date or time a notice carries takes (the visual pass, round 5, R5-B,
++ * 2026-10-09; F9, tile 192). 🔴 A Swahili verdict notice read "…Malipo kuanzia 9 Oct 2026, 11:53…": the caller formatted
++ * the payout time ONCE, with the platform's English formatter, and the one string went into the Swahili, English and
++ * Chinese bodies alike. A row stores all three bodies at once, so each is now said in its own language at writing time:
++ * `say` is one of eat-day's localized formatters (`formatEatDateTime` for a moment, `formatEatDate` for a day,
++ * `formatBreakEnd` for a break's end), the month words are the dictionary's own, the clock is East Africa's (fixed UTC+3,
++ * the platform's day). R4-I's `breakEndIn` is this path with its own formatter. A value that does not parse, or a
++ * dictionary that fails to load, gives every language `fallback`.
++ * ⚠️ Rows already written keep their text: a notice is a record of what was said, and nothing rewrites it.
++ */
++async function instantIn(
++  iso: string,
++  say: (atMs: number, nowMs: number, monthsShort: readonly string[], locale: "en" | "sw" | "zh") => string,
++  fallback: string,
++): Promise<LocalizedText> {
++  const at = Date.parse(iso);
++  if (!Number.isFinite(at)) return { en: fallback, sw: fallback, zh: fallback };
++  try {
++    const { dict } = await import("@/lib/i18n-dict");
++    const now = Date.now();
++    return {
++      en: say(at, now, dict.en.common.monthsShort, "en"),
++      sw: say(at, now, dict.sw.common.monthsShort, "sw"),
++      zh: say(at, now, dict.zh.common.monthsShort, "zh"),
++    };
++  } catch {
++    return { en: fallback, sw: fallback, zh: fallback };
++  }
++}
++
+ /** Confirmation that self-exclusion is active. Email is the durable record; this
+  *  in-app copy ensures the player sees it even with no email on file. */
+-export function notifySelfExclusion(userId: string, opts: { until: string }) {
++export async function notifySelfExclusion(userId: string, opts: { until: string }) {
++  const end = await breakEndIn(opts.until);
+   return notify({
+     userId,
+     kind: "RG",
+     titleEn: "Self-exclusion active",
+     titleSw: "Kujizuia kumeanza",
+     titleZh: "自我限制已生效",
+-    bodyEn: `Your account is closed to betting and deposits until ${opts.until.slice(0, 10)}.`,
+-    bodySw: `Akaunti yako imefungwa kuweka dau na amana hadi ${opts.until.slice(0, 10)}.`,
+-    bodyZh: `您的账户已停止投注与充值，直至 ${opts.until.slice(0, 10)}。`,
++    bodyEn: `Your account is closed to betting and deposits until ${end.en}.`,
++    bodySw: `Akaunti yako imefungwa kuweka dau na amana hadi ${end.sw}.`,
++    bodyZh: `您的账户已停止投注与充值，直至 ${end.zh}。`,
+     href: "/profile/responsible-gambling",
+   });
+ }
+ 
+-export function notifyCoolOff(userId: string, opts: { until: string }) {
++export async function notifyCoolOff(userId: string, opts: { until: string }) {
++  const end = await breakEndIn(opts.until);
+   return notify({
+     userId,
+     kind: "RG",
+     titleEn: "Cool-off break active",
+     titleSw: "Mapumziko yameanza",
+     titleZh: "冷静期已开始",
+-    bodyEn: `Betting and deposits are paused until ${opts.until.slice(0, 10)}.`,
+-    bodySw: `Kuweka dau na amana kumesimamishwa hadi ${opts.until.slice(0, 10)}.`,
+-    bodyZh: `投注与充值已暂停，直至 ${opts.until.slice(0, 10)}。`,
++    bodyEn: `Betting and deposits are paused until ${end.en}.`,
++    bodySw: `Kuweka dau na amana kumesimamishwa hadi ${end.sw}.`,
++    bodyZh: `投注与充值已暂停，直至 ${end.zh}。`,
+     href: "/profile/responsible-gambling",
+   });
+ }
+@@ -1992,18 +2055,22 @@ export function notifyAgentDeactivated(userId: string) {
+ /**
+  * The partnership has ENDED — distinct from a pause. The person is a player again and the agent
+  * dashboard is gone, so the honest door is the status page, which carries the re-apply date.
++ * ⭐ The date is said in each reader's words (R5-B, 2026-10-09): it was `formatDateShort`, English month names in the
++ * Swahili and Chinese bodies too ("…kuanzia 06 Dec"). It is a DAY, so `formatEatDate` (the year added when it is not
++ * this one), through the one path every notice's date takes (`instantIn`).
+  */
+-export function notifyAgentRevoked(userId: string, opts: { reapplyAt: string | null }) {
+-  const when = opts.reapplyAt ? formatDateShort(opts.reapplyAt) : null;
++export async function notifyAgentRevoked(userId: string, opts: { reapplyAt: string | null }) {
++  const when = opts.reapplyAt ? await instantIn(opts.reapplyAt, formatEatDate, "") : null;
++  const has = !!when && when.en !== "";
+   return notify({
+     userId,
+     kind: "KYC",
+     titleEn: "Your agent partnership has ended",
+     titleSw: "Ushirikiano wako wa uwakala umekwisha",
+     titleZh: "您的代理合作已结束",
+-    bodyEn: `Your code no longer recruits and no new commission accrues. Commission already paid stays in your wallet.${when ? ` You may apply again from ${when}.` : ""}`,
+-    bodySw: `Msimbo wako hauandikishi tena na hakuna kamisheni mpya. Kamisheni iliyokwisha lipwa inabaki kwenye pochi yako.${when ? ` Unaweza kuomba tena kuanzia ${when}.` : ""}`,
+-    bodyZh: `您的代理码不再招募，也不再累积新佣金。已支付的佣金仍在您的钱包中。${when ? `您可从 ${when} 起重新申请。` : ""}`,
++    bodyEn: `Your code no longer recruits and no new commission accrues. Commission already paid stays in your wallet.${has ? ` You may apply again from ${when!.en}.` : ""}`,
++    bodySw: `Msimbo wako hauandikishi tena na hakuna kamisheni mpya. Kamisheni iliyokwisha lipwa inabaki kwenye pochi yako.${has ? ` Unaweza kuomba tena kuanzia ${when!.sw}.` : ""}`,
++    bodyZh: `您的代理码不再招募，也不再累积新佣金。已支付的佣金仍在您的钱包中。${has ? `您可从 ${when!.zh} 起重新申请。` : ""}`,
+     href: "/agent/status",
+   });
+ }
+@@ -2109,7 +2176,7 @@ export async function notifyAdminsKycReviewOverdue(opts: {
+   kycId: string; userId: string; playerLabel: string; submittedAt: string; hoursWaiting: number;
+ }): Promise<void> {
+   const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+-  const label = opts.playerLabel.slice(0, 60);
++  const label = clipQuote(opts.playerLabel, 60);
+   for (const o of officers) {
+     await notify({
+       userId: o.id,
+diff --git a/src/lib/server/platform-stats.ts b/src/lib/server/platform-stats.ts
+index ea0a087cd..01cd172b0 100644
+--- a/src/lib/server/platform-stats.ts
++++ b/src/lib/server/platform-stats.ts
+@@ -183,9 +183,22 @@ export async function getPlatformStats(): Promise<PlatformStats> {
+   // plausible 50, and the card gates on the pool rather than on a guess. null now means UNKNOWN
+   // and the hero withholds the slot; a real zero still prints, because a platform that has paid
+   // out nothing yet should say so.
+-  const paidOutTzs = await Promise.resolve(db.txn.sumConfirmedByTypes(["BET_PAYOUT", "CASHOUT"]))
+-    .catch(() => null);
++  const paidOutTzs = await readPaidOutTzs();
+   const value: PlatformStats = { settledCount: resolved.length, recentSettlements: settlements, paidOutTzs };
+   globalThis.__50PICK_PLATFORM_STATS = { at: now, value };
+   return value;
+ }
++
++/**
++ * Σ CONFIRMED payouts + cash-outs, read NOW — the memo's own read above, and its one home.
++ *
++ * ⭐ EXPORTED FOR ONE CASE (2026-10-08, round 3): the landing reads it again, past the memo, only when the cached
++ * figure is below what the signed-in reader alone was paid this week (`paidOutBehind`, landing-picks.ts). Every win
++ * and cash-out writes its CONFIRMED txn with the position (market-service.ts: inside the settlement's money
++ * transaction; after the cash-out's credit), so a fresh total is never below one player's own payouts — the memo's
++ * age (`TTL_MS`) is the gap, and a real player can meet it only while their payouts are most of what the platform
++ * has paid. null = the read failed, never a zero.
++ */
++export async function readPaidOutTzs(): Promise<number | null> {
++  return Promise.resolve(db.txn.sumConfirmedByTypes(["BET_PAYOUT", "CASHOUT"])).catch(() => null);
++}
+diff --git a/src/lib/server/wallet-service.ts b/src/lib/server/wallet-service.ts
+index cd0c3d62a..0182cc0ad 100644
+--- a/src/lib/server/wallet-service.ts
++++ b/src/lib/server/wallet-service.ts
+@@ -171,9 +171,9 @@ export async function deposit(
+     const until = formatDateTime(lockout.until!);
+     // Two branches for the same reason as the betting gate — see the note there.
+     if (lockout.reason === "cooling_off") {
+-      return { ok: false, error: `You are in a cooling-off period until ${until}.`, code: "SUSPENDED", reason: "cooling_off", detail: { until } };
++      return { ok: false, error: `You are in a cooling-off period until ${until}.`, code: "SUSPENDED", reason: "cooling_off", detail: { until, untilAt: lockout.until! } };
+     }
+-    return { ok: false, error: `You are in a self-exclusion period until ${until}.`, code: "SUSPENDED", reason: "self_excluded", detail: { until } };
++    return { ok: false, error: `You are in a self-exclusion period until ${until}.`, code: "SUSPENDED", reason: "self_excluded", detail: { until, untilAt: lockout.until! } };
+   }
+ 
+   // ── Atomic reservation: RG deposit-cap + SOF gate + PROCESSING row (audit C4) ──

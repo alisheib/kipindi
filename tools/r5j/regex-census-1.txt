@@ -1,0 +1,115 @@
+src/app/proposals/new/create-form.tsx:62  /^\d{4}-\d{2}-\d{2}$/
+src/app/proposals/new/create-form.tsx:64  /^\d{4}-\d{2}-\d{2}$/
+src/app/wallet/withdraw/page.tsx:241  /^\d{1,9}$/
+src/app/wallet/withdraw/withdraw-confirm.tsx:95  /^\d{9}$/
+src/components/chat/messages/Primitives.tsx:42  /(\[\d+\]|\{[^}]+\}|\*\*[^*]+\*\*)/g
+src/components/chat/messages/Primitives.tsx:44  /^\[\d+\]$/
+src/components/chat/messages/Primitives.tsx:80  /^\d+\.\s/
+src/components/chat/messages/Primitives.tsx:82  /^\d+\.\s/
+src/components/chat/messages/Primitives.tsx:83  /^\d+\.\s*/
+src/components/markets/conviction-dial.tsx:419  /[^\d]/g
+src/components/markets/conviction-dial.tsx:442  /[^\d]/g
+src/components/markets/conviction-dial.tsx:469  /[^\d.]/g
+src/components/markets/conviction-dial.tsx:506  /[^\d]/g
+src/components/markets/operation-result-modal.tsx:188  /(−?TZS −?[0-9][0-9,]*)/
+src/components/ui/cash.tsx:88  /^([^\d]*)/
+src/components/ui/input.tsx:123  /[0-9]/
+src/components/ui/input.tsx:125  /,([0-9]{1,2})([^0-9]*)$/
+src/components/ui/input.tsx:150  /[^\d.]/g
+src/components/ui/input.tsx:243  /[0-9]/
+src/components/ui/input.tsx:246  /[0-9]/
+src/components/ui/input.tsx:289  /^[0-9]+$/
+src/components/ui/input.tsx:295  /[0-9]/
+src/components/ui/input.tsx:303  /[0-9]/
+src/components/ui/input.tsx:305  /[0-9]/
+src/components/ui/input.tsx:310  /[0-9]/
+src/components/ui/keep-run.tsx:135  new RegExp(`(^|\\D)(\\d+${KEPT_SPACE}\\S{1,3}${KEPT_SPACE}\\d+)`)
+src/components/ui/keep-words.tsx:99  new RegExp(`\\S(${KEPT_SPACE}(?:1[89]|2\\d)\\d{2})(?=$|[\\s.,;:!?)\\]。，；：])`)
+src/components/ui/keep-words.tsx:157  /^(?:TZS|USD|KES)$/
+src/components/ui/keep-words.tsx:162  /^(?:0?[1-9]|[12]\d|3[01])$/
+src/components/ui/keep-words.tsx:167  new RegExp(`(?:\\b(${UNIT_BEFORE})(${KEPT_SPACE}))?([$€£]?\\d+(?:[.,:]\\d+)*(?:[-–/]\\d+(?:[.,:]\\d+)*)*%?)`
+    + `(?:(\\s?(?:${ZH_UNIT}))|(-[A-Za-z][a-z]*)\\b|(${KEPT_SP)
+src/components/ui/keep-words.tsx:178  /\d/
+src/components/ui/password-input.tsx:170  /\d/
+src/components/ui/time-mask.ts:133  /^(\d{2}):(\d{2})$/
+src/components/ui/time-mask.ts:145  /^(\d{2}):(\d{2})$/
+src/components/updown/stake-math.ts:31  /[^\d]/g
+src/components/wallet/amount-field.tsx:50  /^\d+$/
+src/lib/break-end.ts:55  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
+src/lib/break-end.ts:56  /^\d{4}-\d{2}-\d{2}$/
+src/lib/contacts/contact-fields.ts:915  /^[\s'+().\d-]+$/
+src/lib/contacts/import-decide.ts:127  /^[1-9][0-9]*$/
+src/lib/contacts/import-read.ts:666  /^[\s'+().\d-]+$/
+src/lib/contacts/import-read.ts:674  /\d{6,}/
+src/lib/contacts/import-read.ts:744  /^[0-9]+$/
+src/lib/contacts/vcard.ts:981  /\B(?=(\d{3})+(?!\d))/g
+src/lib/contacts/xlsx-limits.ts:224  /\B(?=(\d{3})+(?!\d))/g
+src/lib/contacts/xlsx-limits.ts:396  /^\s*[+-]?\d(?:[.,]\d+)?E\+\d{1,2}\s*$/i
+src/lib/eat-day.ts:45  /^\d{4}-\d{2}-\d{2}$/
+src/lib/fill-nodes.tsx:49  /[+\u2212]?TZS[\u00a0 ]\u2212?\d+(?:,\d{3})*(?:\.\d+)?[KMB]?/g
+src/lib/house-bot/clock.ts:216  /^(\d{2}):(\d{2})$/
+src/lib/house-bot/clock.ts:222  /[\d:]/g
+src/lib/house-bot/constants.ts:87  /^[0-9a-f-]{36}$/
+src/lib/house-bot/rules.ts:194  /^\d+$/
+src/lib/house-bot/rules.ts:195  /^0+(?=\d)/
+src/lib/house-bot/rules.ts:220  /\B(?=(\d{3})+(?!\d))/g
+src/lib/house-bot/rules.ts:3047  /^(.+):(\d+)$/
+src/lib/id-documents.ts:180  /^\d{20}$/
+src/lib/id-documents.ts:207  /^[A-Z]{1,2}[0-9]{7,8}$/
+src/lib/id-documents.ts:295  /^\d{20}$/
+src/lib/journey/pending-bet.ts:39  /^[1-9][0-9]{0,8}$/
+src/lib/legal/kept-promises.ts:92  /(^|[^0-9])[0-9]{1,2}:[0-9]{2}([^0-9]|$)/
+src/lib/legal/kept-promises.ts:93  /(^|[^0-9a-z])[0-9]{1,2} ?(am|pm)([^a-z]|$)/
+src/lib/legal/kept-promises.ts:94  /(^|[^0-9a-z])[0-9]{1,2} ?(a[.]m[.]|p[.]m[.])/
+src/lib/legal/kept-promises.ts:95  /(^|[^0-9])[0-9]{1,2} o'clock/
+src/lib/legal/kept-promises.ts:96  /(^|[^0-9a-z])[0-9]{1,2}h([0-9]{2})?([^0-9a-z]|$)/
+src/lib/legal/kept-promises.ts:97  /(^|[^0-9.])[0-9]{1,2}[.][0-9]{2}([^0-9]|$)/
+src/lib/legal/kept-promises.ts:98  /[0-9]{1,2} ?[点时]/
+src/lib/legal/kept-promises.ts:107  /(^|[^a-z])(once|twice|thrice|[0-9]+ times?) (a|per|each|every) (day|week|month|year)([^a-z]|$)/
+src/lib/legal/kept-promises.ts:108  /(^|[^a-z])[0-9]+ (messages?|sms|texts?|offers?) (a|per|each|every) (day|week|month|year)([^a-z]|$)/
+src/lib/legal/kept-promises.ts:113  /(^|[^a-z])mara ([0-9]+|moja|mbili|tatu|nne|tano|sita|saba|nane|tisa|kumi) (kwa|kila) (siku|wiki|mwezi|mwaka)([^a-z]|$)/
+src/lib/legal/kept-promises.ts:114  /(^|[^a-z])(ujumbe|matangazo|ofa|sms) ([0-9]+|mmoja|miwili|mitatu|minne|mitano) (kwa|kila) (siku|wiki|mwezi|mwaka)([^a-z]|$)/
+src/lib/legal/kept-promises.ts:120  /每(天|日|周|星期|月|年) ?[0-9一二两三四五六七八九十]+ ?(条|次|则)/
+src/lib/legal/kept-promises.ts:304  new RegExp(`(^|[^0-9])([0-9]{1,2}):([0-9]{2})${MERIDIEM}(?=[^0-9]|$)`)
+src/lib/legal/kept-promises.ts:305  new RegExp(`(^|[^0-9.])([0-9]{1,2})[.]([0-9]{2})${MERIDIEM}(?=[^0-9]|$)`)
+src/lib/legal/kept-promises.ts:306  /(^|[^0-9a-z:.])([0-9]{1,2}) ?(am|pm|a[.]m[.]|p[.]m[.])(?![a-z])/g
+src/lib/legal/kept-promises.ts:307  /(^|[^0-9])([0-9]{1,2}) o'clock/g
+src/lib/legal/kept-promises.ts:308  /(^|[^0-9a-z])([0-9]{1,2})h([0-9]{2})?(?=[^0-9a-z]|$)/g
+src/lib/legal/kept-promises.ts:309  /([0-9]{1,2}) ?([点时])/g
+src/lib/legal/policy-lines.ts:325  /第 (?=[0-9])/g
+src/lib/legal/policy-lines.ts:326  /([0-9]) (?=小时|分钟|岁|节|周|个月|天|EAT)/g
+src/lib/legal/policy-lines.ts:327  /(^|[^a-z])(miaka|sehemu ya|saa|dakika|wiki|mwezi|miezi|siku) (?=[0-9])/gi
+src/lib/legal/policy-lines.ts:328  /([0-9]) (?=EAT)/g
+src/lib/legal/policy-lines.ts:480  /[<>{}]|&(?:[a-z]+|#[0-9]+|#x[0-9a-f]+);/i
+src/lib/legal/policy-lines.ts:483  new RegExp("[0-9](?:[ .()+/,-]?[0-9]){6,}")
+src/lib/legal/policy-lines.ts:703  /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:[.][0-9]{1,3})?Z$/
+src/lib/legal/policy-lines.ts:1013  /^[0-9]{1,6}$/
+src/lib/lipa.ts:51  /(\d{4})(?=\d)/g
+src/lib/marketing/campaign-confirm.ts:84  /^(0|[1-9][0-9]{0,6})$/
+src/lib/marketing/campaign-confirm.ts:121  new RegExp(`^[0-9a-f]{${MEMBERS_KEY_HEX_CHARS}}$`)
+src/lib/marketing/engine-rules.ts:303  /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{3}Z$/
+src/lib/marketing/marketing-wordings.ts:255  /(?<![0-9])18(?![0-9])/
+src/lib/marketing/marketing-wordings.ts:397  /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:[.][0-9]{1,3})?Z$/
+src/lib/marketing/marketing-wordings.ts:566  /^[0-9]{1,6}$/
+src/lib/marketing/sms-settings.ts:92  /^[0-9]{1,9}$/
+src/lib/marketing/sms-settings.ts:105  /^[0-9]{1,4}(?:[.][0-9]{1,2})?$/
+src/lib/markets/short-title.ts:113  /^[1-9]\d{0,2}(?:,\d{3})+(?:\.\d+)?$/
+src/lib/markets/short-title.ts:114  /^[1-9]\d{0,2}(?:\.\d{3})+(?:,\d+)?$/
+src/lib/markets/short-title.ts:115  /^\d+(?:[.,]\d+)?$/
+src/lib/markets/short-title.ts:120  /^0+(?=\d)/
+src/lib/markets/short-title.ts:135  /\d+(?:[.,]\d+)*/g
+src/lib/phone-normalize.ts:270  /^255[67]\d{8}$/
+src/lib/phone-normalize.ts:321  /^255\d{9}$/
+src/lib/search/query.ts:87  /\{(\d+)(?:,(\d*))?\}/g
+src/lib/search/query.ts:89  /\{(\d+)(?:,(\d*))?\}/
+src/lib/tax-report.ts:120  /^\d{1,3}(\.\d{1,2})?$/
+src/lib/tax-report.ts:143  /^\d{4}-\d{2}-\d{2}$/
+src/lib/tax-report.ts:533  /^\d{4}-(0[1-9]|1[0-2])$/
+src/lib/tax-report.ts:619  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/
+src/lib/tax-report.ts:788  /^(-)?(\d+)(?:\.(\d{1,}))?$/
+src/lib/use-modal-lock.ts:59  /maximum-scale\s*=\s*([\d.]+)/
+src/lib/use-modal-lock.ts:64  /maximum-scale\s*=\s*[\d.]+/
+src/lib/use-modal-lock.ts:90  /maximum-scale\s*=\s*[\d.]+/
+src/lib/zoned-time.ts:43  /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/
+
+690 files, 112 digit/currency patterns

@@ -1,0 +1,310 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { I } from "@/components/ui/glyphs";
+import { BackLink } from "@/components/ui/back-link";
+import { PageHeader } from "@/components/ui/page-header";
+import { PageHero } from "@/components/ui/page-hero";
+import { currentSession } from "@/lib/server/auth-service";
+import { db } from "@/lib/server/store";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { Input, Field as KitField } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { FieldLegend } from "@/components/ui/field-legend";
+import { Chip } from "@/components/ui/chip";
+import { submitSourceOfFundsAction } from "./actions";
+import { formatEatDate } from "@/lib/eat-day";
+import { getServerT } from "@/lib/i18n-server";
+import { bannerFor } from "@/lib/failure-banner";
+import { PageContainer } from "@/components/layout/page-container";
+
+// Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
+// "Source of funds", which a Swahili player saw in their browser tab and history.
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.profile.sourceOfFunds };
+}
+export const dynamic = "force-dynamic";
+
+export default async function SourceOfFundsPage({ searchParams }: { searchParams?: Promise<{ reason?: string; saved?: string; src?: string; occ?: string; band?: string; emp?: string; other?: string }> }) {
+  const { t, locale } = await getServerT();
+
+  const SOURCES: { id: string; label: string; glyph: keyof typeof I }[] = [
+    { id: "salary",       label: t.profile.sofSalary,      glyph: "sofSalary" },
+    { id: "business",     label: t.profile.sofBusiness,    glyph: "sofBusiness" },
+    { id: "savings",      label: t.profile.sofSavings,     glyph: "sofSavings" },
+    { id: "investments",  label: t.profile.sofInvestments, glyph: "sofInvestment" },
+    { id: "inheritance",  label: t.profile.sofInheritance, glyph: "sofGift" },
+    { id: "other",        label: t.profile.sofOther,       glyph: "fileText" },
+  ];
+
+  const BANDS = [
+    { id: "under-12m", label: t.profile.sofBand1 },
+    { id: "12m-50m",   label: t.profile.sofBand2 },
+    { id: "50m-200m",  label: t.profile.sofBand3 },
+    { id: "over-200m", label: t.profile.sofBand4 },
+  ];
+  const session = await currentSession();
+  if (!session) redirect("/auth/login?next=/profile/source-of-funds");
+  let existing: Awaited<ReturnType<typeof db.sourceOfFunds.get>> | null = null;
+  try { existing = await db.sourceOfFunds.get(session.userId); } catch { /* graceful */ }
+  const sp = (await searchParams) ?? {};
+  const banner = bannerFor(sp.reason, t.error as unknown as Record<string, string>);
+  // Restore form values from error redirect (takes precedence over existing record for the current attempt)
+  const prevSource = sp.src ?? existing?.declaredSource ?? "";
+  const prevOcc = sp.occ ?? existing?.declaredOccupation ?? "";
+  const prevBand = sp.band ?? existing?.declaredAnnualIncomeBand ?? "";
+  const prevEmp = sp.emp ?? existing?.declaredEmployer ?? "";
+  const prevOther = sp.other ?? existing?.declaredOther ?? "";
+  const statusTone =
+    existing?.reviewStatus === "ACCEPTED" ? "success"
+    : existing?.reviewStatus === "REJECTED" ? "danger"
+    : "warning";
+  // Humanize the raw enums before showing them to the player.
+  const STATUS_LABEL: Record<string, string> = { PENDING: t.common.underReview, ACCEPTED: t.common.accepted, REJECTED: t.profile.rejected };
+  const statusLabel = existing ? (STATUS_LABEL[existing.reviewStatus] ?? existing.reviewStatus) : "";
+  const sourceLabel = existing ? (SOURCES.find((s) => s.id === existing.declaredSource)?.label ?? existing.declaredSource) : "";
+  const bandLabel = existing ? (BANDS.find((b) => b.id === existing.declaredAnnualIncomeBand)?.label ?? existing.declaredAnnualIncomeBand) : "";
+
+  return (
+    <PageContainer tier="form" className="space-y-5">
+      <BackLink fallbackHref="/profile" label={t.common.profile} />
+
+      {banner && (
+        <div role="alert" className="rounded-xl border border-danger-border bg-danger-bg px-4 py-3 text-[13px] text-danger-fg">
+          {banner.body}
+        </div>
+      )}
+      {sp.saved && !banner && (
+        <div role="status" className="rounded-xl border border-success-border bg-success-bg px-4 py-3 text-[13px] text-success-fg">
+          {t.profile.declarationSaved}
+        </div>
+      )}
+
+      <PageHero glow="info">
+        <PageHeader
+          tone="info"
+          icon={<I.fileSignature s={14} className="text-info-fg" />}
+          eyebrow="AML"
+          title={t.profile.sourceOfFunds}
+        />
+        <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
+          {t.profile.sofDescription}
+        </p>
+      </PageHero>
+
+      {existing?.reviewStatus === "REJECTED" && (
+        <section role="alert" className="rounded-xl border border-danger-border bg-danger-bg p-4">
+          <div className="flex items-start gap-2.5">
+            <I.alertCircle s={18} />
+            <div className="min-w-0">
+              <p className="font-display text-[14px] font-bold text-danger-fg">{t.profile.sofResubmit}</p>
+              <p className="mt-1 text-body-sm text-text-muted leading-snug">
+                {t.profile.sofResubmitBody}
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {existing && existing.reviewStatus !== "REJECTED" && (
+        <section className="rounded-xl border border-success-border bg-success-bg p-4 space-y-1.5">
+          <div className="flex items-center gap-2">
+            <Pill tone={statusTone as "success" | "danger" | "warning"}>{statusLabel}</Pill>
+            <p className="font-mono text-[11px] text-text-subtle tabular-nums">
+              {t.common.submitted} {formatEatDate(Date.parse(existing.submittedAt), Date.now(), t.common.monthsShort, locale)}
+            </p>
+          </div>
+          <p className="text-body-sm text-text-muted leading-snug">
+            {t.profile.sourceOfFunds}: <span className="font-semibold text-text">{sourceLabel}</span> · {existing.declaredOccupation}
+            {existing.declaredEmployer ? ` · ${existing.declaredEmployer}` : ""}
+            <br />{t.profile.sofIncomeBand}: <span className="font-semibold text-text">{bandLabel}</span>
+          </p>
+          {existing.reviewStatus === "PENDING" && (
+            <p className="font-mono text-[11px] text-text-subtle">{t.profile.sofPendingNote}</p>
+          )}
+        </section>
+      )}
+
+      <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-5">
+        <div className="flex items-center gap-2">
+          <I.fileSignature s={16} className="text-info-fg" />
+          <h2 className="font-display text-[15px] font-semibold text-text">{t.profile.declaration}</h2>
+        </div>
+
+        <form action={submitSourceOfFundsAction} className="space-y-5">
+          <fieldset>
+            <FieldLegend as="legend" className="mb-2">
+              {t.profile.sourceOfFunds}
+            </FieldLegend>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {SOURCES.map((s, i) => {
+                const Glyph = I[s.glyph];
+                // §A3 — the real radio is `sr-only`, which clips to a 1×1 box, so the
+                // catch-all focus outline in globals.css was painted on something no
+                // player can see and tabbing this fieldset showed nothing. The ring
+                // lands on the visible tile instead. `has-[:focus-visible]`, not
+                // `peer-focus-visible`: the input is this label's CHILD and Tailwind's
+                // `peer-*` compiles to `~`, which cannot match a parent. A real
+                // `outline` rather than a shadow ring — forced-colors strips
+                // box-shadow and keeps outline (E-129, `.gilt-metal:focus-visible`).
+                return (
+                  <label
+                    key={s.id}
+                    className="group relative flex flex-col items-center gap-1.5 px-2 py-3 rounded-md border border-border bg-bg-overlay hover:border-brand-400 cursor-pointer transition-colors has-[:checked]:border-brand-500 has-[:checked]:bg-brand-500/10 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[color:var(--brand-400)]"
+                  >
+                    <input
+                      type="radio"
+                      name="declaredSource"
+                      value={s.id}
+                      required
+                      defaultChecked={prevSource ? prevSource === s.id : i === 0}
+                      className="sr-only peer"
+                    />
+                    {/* C2g — per-source glyph; SoF is compliance → royal, never gold. */}
+                    <Glyph s={20} className="text-text-subtle transition-colors peer-checked:text-brand-300" />
+                    {/* DG-P-14 · §T6 — ONE CONTROL FAMILY, ONE FACE, AND THE LAW PICKS IT.
+                        This tile is the same radio tile the wallet ships from
+                        `components/wallet/provider-radio-grid.tsx` (glyph above, name below, the
+                        same 2-up/3-up grid), and the two labels read in two faces: Inter 13/500
+                        there (`:87`, no family class, so it inherits `body`), Sora 13/700 here.
+                        §T6 (DESIGN_AUTHORITY.md:1037) assigns display = Sora, body = Inter,
+                        numerals/labels = JetBrains Mono — and "Salary"/"Business"/"Savings" is a
+                        sentence-case word that IS this radio's whole accessible name, i.e. a
+                        CONTROL by §T3's enclosure test (:961-963), not a page or section heading
+                        (§T2 reserves the display steps for those) and not a numeral. ⇒ body ⇒
+                        Inter. Decided by law, not by preference, and byte-identical to the
+                        shipped wallet twin so the two can never drift again (§0a).
+                        ⚠️ Sora and Inter are both 13px/leading-tight here, so the glyph stack
+                        above does not move; only the letterforms and the weight change. */}
+                    <span className="font-medium text-body-sm text-text text-center leading-tight">{s.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </fieldset>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field
+              name="declaredOccupation"
+              label={t.profile.occupation}
+              required
+              minLength={2}
+              maxLength={200}
+              defaultValue={prevOcc}
+              placeholder={t.profile.sofOccPlaceholder}
+            />
+            <Field
+              name="declaredEmployer"
+              label={t.profile.employer}
+              maxLength={200}
+              defaultValue={prevEmp}
+              placeholder={t.profile.sofEmployerPlaceholder}
+            />
+          </div>
+
+          <fieldset>
+            <FieldLegend as="legend" className="mb-2">
+              {t.profile.annualIncome}
+            </FieldLegend>
+            {/* ⛔ TWO COLUMNS AT EVERY WIDTH (2026-09-14). Four columns in this form-width card left
+                each band about 100px, so "TZS 50M – 200M" broke after the dash in every locale and
+                Swahili split "TZS" from its figure on three of the four bands. */}
+            <div className="grid grid-cols-2 gap-2">
+              {/* §A3 — same sr-only-radio blind spot as the source tiles above; the
+                  focus ring has to land on the visible tile, as a real `outline`. */}
+              {BANDS.map((b, i) => (
+                <label
+                  key={b.id}
+                  className="relative flex items-center justify-center gap-1 px-2 py-3 rounded-md border border-border bg-bg-overlay hover:border-brand-400 cursor-pointer transition-colors has-[:checked]:border-brand-500 has-[:checked]:bg-brand-500/10 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[color:var(--brand-400)]"
+                >
+                  <input
+                    type="radio"
+                    name="declaredAnnualIncomeBand"
+                    value={b.id}
+                    required
+                    defaultChecked={prevBand ? prevBand === b.id : i === 0}
+                    className="sr-only peer"
+                  />
+                  {/* DG-P-14 · §T5 — THE THIRD FACE IN THIS FAMILY IS MONO, AND MONO IS RIGHT.
+                      These labels are money — "Under TZS 12M", "TZS 12M – 50M" — so §T5
+                      (DESIGN_AUTHORITY.md:1034-1036) and §M4 put them in JetBrains Mono. ⛔ Do
+                      NOT flatten them to Inter for the sake of one face.
+                      ⭐ WHAT WAS MISSING IS §T5's OTHER HALF. Tailwind's `font-mono` sets
+                      family only; every `font-variant-numeric: tabular-nums` in `globals.css`
+                      belongs to a named class (`.mono`, `.tabular`, `.amount`, …) and none of
+                      them reaches this span — so four TZS figures in a 2×2 grid were rendering
+                      with proportional digits. `tabular-nums` is the rest of the law.
+                      §T1/§T7 — `text-[11px]` was a hand-typed size and 11px IS the reachable
+                      ladder's `caption` rung (tailwind.config.ts:192), which also brings the
+                      rung's own 15px line box (was the inherited 1.5 × 11 = 16.5), so each band
+                      tile loses 1.5px of height and stays well clear of §A2's floor at 47px. */}
+                  <span className="font-mono tabular-nums text-caption font-bold text-text text-center">{b.label}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <div>
+            <FieldLegend as="label" htmlFor="declaredOther" className="block mb-2">
+              {t.profile.otherDetails}
+            </FieldLegend>
+            <Textarea
+              id="declaredOther"
+              name="declaredOther"
+              rows={3}
+              maxLength={500}
+              defaultValue={prevOther}
+              placeholder={t.profile.sofDetailsPlaceholder}
+            />
+          </div>
+
+          {/* C2g — declaration with signature line-art. */}
+          <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg p-3.5">
+            <I.fileSignature s={18} className="shrink-0 mt-0.5 text-warning-fg" />
+            <div className="space-y-1">
+              <p className="font-display text-body-sm font-semibold text-text">{t.profile.bySubmitting}</p>
+              <p className="text-body-sm text-text-muted leading-snug">
+                {t.profile.sofDisclaimer}
+              </p>
+            </div>
+          </div>
+
+          <SubmitButton label={t.common.confirm} pendingLabel={t.common.loading} />
+        </form>
+      </section>
+    </PageContainer>
+  );
+}
+
+// Delegates to the kit <Input>/<Field> so this form matches the platform
+// (shared height, --bg-inset, brand focus). Same signature → call sites unchanged.
+function Field({
+  name, label, required, minLength, maxLength, defaultValue, placeholder,
+}: {
+  name: string;
+  label: string;
+  required?: boolean;
+  minLength?: number;
+  maxLength?: number;
+  defaultValue?: string;
+  placeholder?: string;
+}) {
+  return (
+    <KitField label={label}>
+      <Input
+        name={name}
+        type="text"
+        required={required}
+        minLength={minLength}
+        maxLength={maxLength}
+        defaultValue={defaultValue}
+        placeholder={placeholder}
+      />
+    </KitField>
+  );
+}
+
+// Thin adapter to the canonical <Chip> so status pills match the rest of the app.
+function Pill({ tone, children }: { tone: "success" | "danger" | "warning"; children: React.ReactNode }) {
+  return <Chip variant={tone} size="md">{children}</Chip>;
+}

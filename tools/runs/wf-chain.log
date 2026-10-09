@@ -1,0 +1,14 @@
+16:49:19 waiting for we-chain.done
+14:53:49 we-chain.done is there: exit=0
+14:53:49 queued: wait note written
+14:53:50 lock taken
+14:53:50 S7 tip c37b5e47
+14:54:24 red:ticker-honesty exit=0 — control: the verdict matches whole check ids (11.2 is not 11.21, 11.22 or 11.2j; 1.1 is not 1.1-control) 28/28 real defects caught, each on its own assertion RED PROOF COMPLETE 
+14:54:24 kipindi-s7 tree unchanged after the ticker red
+14:54:40 red:simple-journey-flag exit=0 — 37/37 caught 
+14:54:45 kipindi-a8i2 at c37b5e47 for the probe
+15:02:38 wf-probe: exit=0 · tree same —   390 en · rung canvas (30/1.12) (h1 67.2) · no bar, 1-line title, picks 64: 640→109.8  740→209.8  844→313.8   390 zh · rung --type-display-2 (44) (h1 98.6) · no bar, 1-line title, picks 64: 640→78.4  740→178.4  844→282.4 problems: none · 152s · C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/runs/wf-probe.json 
+15:02:38 kipindi-a8j at 4c1a8dff for the reduced-motion drive
+15:05:50 wf-ewp-reduced: exit=0 · tree same —   PASS Z · no page error during the drive ENTER WHERE PRESSED (drive) — 24 passed, 0 failed (market http://localhost:3073/markets/mkt_89b8117c4e43c8b9ebc4?side=YES) 
+15:05:50 chain end
+15:05:51 lock released

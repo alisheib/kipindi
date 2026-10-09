@@ -1,0 +1,11 @@
+proxy-scope — the proxy runs for every page; only static files skip it
+  matcher: /((?!_next/static|_next/image|favicon.ico|favicon.svg|icons/|brand/|pay/|og/|screenshots/|email-signatures/).*)
+§1 · every page address runs the proxy (its security headers, x-pathname, the admin belt)
+  ok   1.1 · all 25 page addresses run the proxy
+§2 · static files skip it
+  ok   2.1 · every file under public/icons, public/brand, public/pay, public/og, public/screenshots, public/email-signatures skips the proxy (31 files)
+  ok   2.2 · the favicons and Next's build output and image optimiser skip it
+§3 · the control and the plant
+  ok   3.1 CONTROL · the old suffix matcher skipped pages: /markets/x.png, /positions/abc.jpg, /u/federico.svg ran no proxy
+  ok   3.2 PLANT · the old suffix matcher put back is reported by §1
+proxy-scope: 5 passed, 0 failed

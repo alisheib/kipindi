@@ -1,0 +1,137 @@
+PASS 1 · before anything, a consented contact is refused ONLY on age (U11) — never on suppression — refused by age_unknown
+PASS 2 · the stop reports success — {"ok":true,"state":"stopped"}
+PASS 3 · ⭐ …and the GATE now refuses the number, ON ITS SUPPRESSION — the success is a claim about the database, not about the request — refused by suppressed
+PASS 4 · ⛔ ONE CLICK — the page puts no confirmation step between the tap and the write
+PASS 5 · a WITHDRAWN ledger row was appended — got WITHDRAWN
+PASS 6 · ⛔ VERBATIM (§5.7) — the row stores the SENTENCE this person read, not a key into today's copy — stored "Acha ofa na habari kwa SMS — Bonyeza mar"
+PASS 7 · the ledger row names the opt-out page as its source
+PASS 8 · ⛔ §5.14 + D6 — the evidence carries a token REFERENCE, never the live token and never a raw phone number — ledger optout:Q8****** · suppression optout:Q8******
+PASS 9 · stopping an already-stopped number says so plainly rather than failing — {"ok":true,"state":"already"}
+PASS 10 · …and it did NOT write a second suppression row — 1 rows
+PASS 11 · the resubscribe reports success — {"ok":true,"state":"resumed"}
+PASS 12 · 🔴 …and the GATE GIVES BACK ITS PRE-STOP ANSWER, not `suppressed` — without this, 'start them again' is a false success — refused by age_unknown, before the stop age_unknown
+PASS 13 · ⛔ A LIFT NEVER REMOVES A ROW (OD11) — the evidence that they once said no survives — 1 rows
+PASS 14 · ⭐ …and the ORIGINAL refusal date is untouched, so 'when did they say no' is still answerable — createdAt 2026-10-09T13:13:33.635Z liftedAt 2026-10-09T13:13:33.640Z
+PASS 14b · ⛔ D6 — the lift's own reason names the token REFERENCE, never the live token — liftedReason optout:Q8******
+PASS 15 · ⛔ D6 — the GIVEN row records the CONSENT sentence shown beside the button (`push.marketingBody`), never the stop instruction — stored "Anza kupokea tena — Ofa na habari za 50pick mara kwa mara kw"
+PASS 16 · stopping again after a resubscribe reports success — {"ok":true,"state":"stopped"}
+PASS 17 · 🔴 …and the GATE REFUSES IT AGAIN ON THE SUPPRESSION ITSELF — re-suppression must RE-ARM a lifted row, not hand it back — refused by suppressed
+PASS 18 · ⭐ …and it STILL did not move the original refusal date, and still did not add a row — createdAt 2026-10-09T13:13:33.635Z liftedAt null
+PASS 19 · the player's own marketing toggle starts ON
+[audit] COMPLIANCE privacy.marketing_consent.withdrawn system User#ou0-1
+PASS 20 · ⭐ stopping from the LINK turns the PLAYER'S OWN PROFILE TOGGLE off — `User.phoneE164` is `+255…` and the marketing key is bare `255…`, so a bare lookup would have found nobody and silently done nothing — toggle is false
+PASS 21 · …and the gate refuses the player, on the suppression — refused by suppressed
+[audit] COMPLIANCE privacy.marketing_consent.given system User#ou0-1
+PASS 22 · a resubscribe turns the player's toggle back on
+PASS 23 · ⭐ A TOKEN MINTED 400 DAYS AGO STILL RESOLVES (OD43) — a link that stops working is a person who cannot leave
+PASS 24 · …and it still stops the marketing — {"ok":true,"state":"stopped"}
+PASS 25 · ⛔ AN UNMINTED TOKEN IS REFUSED, NEVER QUIETLY SUCCEEDED — a success nobody can act on is the defect this unit exists to prevent — {"ok":false,"reason":"unknown"}
+PASS 26 · a malformed token is refused too — {"ok":false,"reason":"malformed"}
+PASS 27 · ⛔ …and BOTH are refused, so `/s/` never becomes an oracle telling a stranger which tokens are live
+PASS 28 · a refused token wrote NO suppression row for anybody
+PASS 29 · 🔴 A SUPPRESSION ROW CARRYING NO LIFT FIELD AT ALL STILL REFUSES — the predicate fails CLOSED, because `undefined === null` is false and the open direction is a breach — false here means a person who said stop is marketable again
+PASS 30 · …and the gate agrees, on the suppression — refused by suppressed
+PASS 31 · ⭐ D6 — a token typed in LOWER or MIXED case resolves and stops the same number (URL bars do not capitalise) — lower true · mixed true · stop {"ok":true,"state":"stopped"} · gate suppressed
+PASS 32 · ⛔ D6 — 'start them again' on an OPERATOR suppression lifts NOTHING and writes no consent: one tap on an old SMS never undoes a stop somebody else made — answer {"ok":true,"state":"already"} · gate suppressed · lifted null · ledger oc0-5→oc0-5
+PASS 32b · 🔴 the reason follows the stop NOW IN FORCE: an officer's stop over the person's own takes it over, and a re-armed row carries the new reason — so the old link lifts neither — over {"ok":true,"state":"already"} · OPERATOR/null · rearmed COMPLAINT/null/2026-03-01T00:00:00.000Z
+[optout] stop failed: planted: the ledger write failed once
+PASS 33 · ⚠️ CONTROL — the planted failure really fired: the first STOP reported an error, not a success — {"ok":false,"reason":"error"}
+[audit] COMPLIANCE privacy.marketing_consent.withdrawn system User#our0-7
+PASS 34 · 🔴 D6 — a STOP whose ledger write failed is REPAIRED by the retry: the latest ledger row is WITHDRAWN and the player's toggle is off — retry {"ok":true,"state":"already"} · ledger WITHDRAWN · toggle false
+PASS 35 · 🔴 D6 — a token minted from `+255…` (User.phoneE164) is keyed bare, so its STOP makes the gate refuse the number ON ITS SUPPRESSION — token minted · stop {"ok":true,"state":"stopped"} · gate suppressed
+[optout] refused a mint with an unusable identifier
+PASS 35b · …and an unusable number mints NOTHING — a caller that gets null must not send
+PASS 36 · ⛔ D6 — a SELF-EXCLUDED player's toggle is never switched back on from an unauthenticated link — answer {"ok":true,"state":"resumed"} · toggle false · gate no_consent
+PASS 37a · ⭐ D6 — a walker's MISSES run the GET budget dry, and a dry budget makes no lookup at all — 15 of 45 misses refused unread · a valid link behind the dry address: {"ok":false,"reason":"throttled"}
+PASS 37c · 🔴 2026-09-27 — a dry budget reads as BUSY (nothing changed, try again), never 'this link does not work'; malformed and unknown stay ONE sentence, and a failed read is 'did not go through' — {"throttled":"busy","unknown":"invalid","malformed":"invalid","failed":"failed","resolved":null}
+PASS 37b · ⭐ D6 — a person opening their OWN valid link never spends the budget, however often — 0 of 45 opens of a valid link were refused
+PASS 38a · ⭐ D6 — a script POSTing unknown tokens runs its address dry and is then refused with `error`, never a success — {"ok":false,"reason":"error"} {"ok":false,"reason":"error"} {"ok":false,"reason":"error"}
+PASS 38b · ⭐ D6 — one valid link's acts are capped per LINK (no ledger flood from a held token), and the first taps all land — {"ok":false,"reason":"error"} {"ok":false,"reason":"error"} {"ok":false,"reason":"error"}
+PASS 38c · …and a hit costs the ADDRESS nothing — remaining 29
+PASS S1 · ⛔ `/s` IS EXCLUDED FROM GOOGLE ANALYTICS — the token is a path SEGMENT, so stripping the query would not have saved it — checked /s/Q8WRRF3Q
+PASS S1b · CONTROL · the exclusion is a SEGMENT match — `/settings` and `/support` still report
+PASS S2 · ⛔ `/s` IS NOT PROTECTED — an opt-out that demands a login is one an imported contact can never use (ETA s.32(1)(c))
+PASS S2b · CONTROL · the protected list is real — `/wallet` still is
+PASS S3 · the route is force-dynamic — a cached opt-out page would show one person another's state
+PASS S4 · ⛔ NOINDEX — a crawler following one of these links is a crawler CLICKING an opt-out
+PASS S5 · the page renders a MASKED number, never the raw one (§5.14)
+PASS S5b · ⛔ the invalid-token refusal does NOT tell the reader to tap a button that is not there — <Callout
+        layout="stack"
+        tone={kind === "invalid" ? "neutral" : kind === "b
+PASS S5c · ⭐ D6 — the refusal names a next step: the profile toggle (a plain <a>, never <Link>) and our desk from `support-config` — function NextSteps({ t, retryHref }: { t: Dict; retryHref?: string }) {
+  return
+PASS S5d · 🔴 2026-09-27 — the page picks its refusal through `refusalKindFor`, and the BUSY and FAILED refusals offer a retry of the same link (a plain <a>); the invalid one does not — <Callout
+        layout="stack"
+        tone={kind === "invalid" ? "neutral" : kind === "busy" ? "warning" : "danger"}
+ 
+PASS S5e · ⭐ 2026-09-27 — the refusal's two buttons are their OWN group, one shared width and a real gap, with our desk as a separate group below — group "flex w-full max-w-xs flex-col items-stretch gap-2"
+PASS S6 · ⭐ D6 — the loading state describes ONE button and says its words to a screen reader
+PASS S6b · ⭐ 2026-09-27 — the skeleton is the page's OWN parts: `PageHeader`, the shared classes (`optout-classes.ts`) and the same strings, as transparent text on bars, so every line wraps where the real one will — BAR = "text-transparent bg-bg-elevated rounded-sm ring-1 ring-inset ring-border box-decoration-clone"
+PASS S6c · 🔴 2026-09-27 — the read-aloud line is the LAST child of the spaced stack, never the first (its gap drew the stop button 24px low at 360) — sr-only at 3517 · action at 3125
+PASS S6d · 🔴 2026-09-27 — the skeleton is VISIBLE: bars and the action take the shared loader's surface (elevated, bordered), never a ~1:1 overlay tint, and the action says its words on screen — BAR = "text-transparent bg-bg-elevated rounded-sm ring-1 ring-inset ring-border box-decoration-clone" · action data-skeleton="action" className="flex h-[var(--h-control-lg)] w-full items-cent
+PASS S7.sw · each state has its own distinct sentence in SW — 8 distinct of 8
+PASS S7b.sw · 🔴 and NO state's sentence CONTAINS another's — a shorter one inside a longer one is a reader that reports the opposite of what the page says — none
+PASS S7c.sw · ⭐ D6 — idle, stopped and resumed each have their OWN heading — Acha ofa na habari kwa SMS | Ofa na habari kwa SMS zimesimamishwa | Umechagua kupokea ofa na habari kwa SMS tena
+PASS S7d.sw · ⛔ D6 — the resumed sentence and heading make NO delivery promise — Umechagua kupokea ofa na habari kwa SMS tena · Kizuizi cha ofa na habari kwa SMS kimeondolewa kwa namba hii, na chaguo lako limehifadhiwa.
+PASS S7e.sw · ⛔ D6 — the invalid-link sentence never says the link is "not ours" — Kiungo hiki hakifanyi kazi — huenda hakijakamilika au kimeandikwa vibaya. Hakuna kilichobadilika.
+PASS S7f.sw · the next-step sentence names the toggle and the path by placeholder, so a rename cannot strand it — Ili kuziacha kwa njia nyingine, ingia kisha zima “{toggle}” kwenye {path}, au wasiliana nasi.
+PASS S7g.sw · ⭐ 2026-09-27 — every heading and the stop button name what they stop with the consent's own noun (`push.marketingTitle`), and no opt-out sentence uses an older name — noun "ofa na habari kwa sms" · Acha ofa na habari kwa SMS | Ofa na habari kwa SMS zimesimamishwa | Umechagua kupokea ofa na habari kwa SMS tena | Acha ofa na habari kwa SMS
+PASS S7h.sw · ⭐ 2026-09-27 — every opt-out string set break-keep carries its break hints, and the strings the LEDGER stores carry none — hints in place · evidence clean
+PASS S7.en · each state has its own distinct sentence in EN — 8 distinct of 8
+PASS S7b.en · 🔴 and NO state's sentence CONTAINS another's — a shorter one inside a longer one is a reader that reports the opposite of what the page says — none
+PASS S7c.en · ⭐ D6 — idle, stopped and resumed each have their OWN heading — Stop offers and news by SMS | Offers and news by SMS stopped | You chose to get offers and news by SMS again
+PASS S7d.en · ⛔ D6 — the resumed sentence and heading make NO delivery promise — You chose to get offers and news by SMS again · The stop on offers and news by SMS to this number is lifted, and your choice is recorded.
+PASS S7e.en · ⛔ D6 — the invalid-link sentence never says the link is "not ours" — This link does not work — it may be incomplete or mistyped. Nothing has changed.
+PASS S7f.en · the next-step sentence names the toggle and the path by placeholder, so a rename cannot strand it — To stop them another way, sign in and switch off “{toggle}” under {path}, or contact us.
+PASS S7g.en · ⭐ 2026-09-27 — every heading and the stop button name what they stop with the consent's own noun (`push.marketingTitle`), and no opt-out sentence uses an older name — noun "offers and news by sms" · Stop offers and news by SMS | Offers and news by SMS stopped | You chose to get offers and news by SMS again | Stop offers and news by SMS
+PASS S7h.en · ⭐ 2026-09-27 — every opt-out string set break-keep carries its break hints, and the strings the LEDGER stores carry none — hints in place · evidence clean
+PASS S7.zh · each state has its own distinct sentence in ZH — 8 distinct of 8
+PASS S7b.zh · 🔴 and NO state's sentence CONTAINS another's — a shorter one inside a longer one is a reader that reports the opposite of what the page says — none
+PASS S7c.zh · ⭐ D6 — idle, stopped and resumed each have their OWN heading — 停止接收​短信优惠与资讯 | 短信优惠与资讯​已停止 | 您已选择​重新接收​短信优惠与资讯
+PASS S7d.zh · ⛔ D6 — the resumed sentence and heading make NO delivery promise — 您已选择​重新接收​短信优惠与资讯 · 已为此号码​解除​短信优惠与资讯的​停止设置，并已记录​您的选择。
+PASS S7e.zh · ⛔ D6 — the invalid-link sentence never says the link is "not ours" — 此链接​无法使用——可能​不完整​或输入有误。没有任何变化。
+PASS S7f.zh · the next-step sentence names the toggle and the path by placeholder, so a rename cannot strand it — 如需通过​其他方式停止，请登录后​在“{path}”中​关闭“{toggle}”，或联系我们。
+PASS S7g.zh · ⭐ 2026-09-27 — every heading and the stop button name what they stop with the consent's own noun (`push.marketingTitle`), and no opt-out sentence uses an older name — noun "短信优惠与资讯" · 停止接收​短信优惠与资讯 | 短信优惠与资讯​已停止 | 您已选择​重新接收​短信优惠与资讯 | 停止接收短信优惠与资讯
+PASS S7h.zh · ⭐ 2026-09-27 — every opt-out string set break-keep carries its break hints, and the strings the LEDGER stores carry none — hints in place · evidence clean
+PASS S8 · ⛔ the success sentence is rendered from the SERVER'S ANSWER, never painted on the click
+PASS S9 · ⛔ NO CONFIRMATION STEP CAN EXIST — the component's state union is exactly the five outcomes, with no step between the tap and the write — union = [already,error,idle,resumed,stopped]
+PASS S10 · the alphabet is the 32-character ambiguity-free one, and 256 divides by it exactly — so the fold carries NO modulo bias
+PASS S11 · ⛔ I, O, 0 and 1 are absent — a token is read off a phone screen and typed by hand
+PASS S11b · ⭐ D6 — the alphabet has NO lower-case member, so folding case can never make two tokens collide
+PASS S12 · 200 mints produced 200 DISTINCT tokens, every one of the right shape — 200 distinct
+PASS S13 · the mint is BOUNDED — an unbounded retry against a filling table is an outage that looks like a hang — 6 attempts
+PASS S14 · ⛔ A TAKEN TOKEN IS REFUSED, and the live link still points at the SAME person — an upsert would silently re-point it — 255720000001 → 255720000001
+PASS S15 · ⭐ the SMS footer's path and this route agree, because both come from ONE constant
+PASS S16 · the token length the footer measures is the length this page accepts
+PASS S17.sw · ⛔ D6 — RESUME stores `resubscribeButton — push.marketingBody` and never the stop instruction; STOP still stores its own — Anza kupokea tena — Ofa na habari za 50pick mara kwa mara kwa SMS kwen
+PASS S17.en · ⛔ D6 — RESUME stores `resubscribeButton — push.marketingBody` and never the stop instruction; STOP still stores its own — Start them again — Occasional 50pick offers and news by SMS to your ph
+PASS S17.zh · ⛔ D6 — RESUME stores `resubscribeButton — push.marketingBody` and never the stop instruction; STOP still stores its own — 重新开始接收 — 我们会不定期通过短信向您的手机号码发送 50pick 的优惠和资讯。您可随时关闭——有关您的账户、投注和资金的消息仍会发送
+PASS S18 · ⭐ D6 — the heading is chosen from the state (stopped / resumed / idle), never fixed
+PASS S18b · ⛔ D6 — the resume button carries its OWN consent sentence (`push.marketingBody`), and the stop instruction is not beside it — : mayResume ? (
+        <div className={`${ACT_GROUP} border-t border-border pt-
+PASS S18c · ⭐ D6 — the answer is ANNOUNCED (status, or alert for a failure) and focus moves to it
+PASS S18d · 🔴 D6 — a failed act keeps offering THE SAME act: the button follows `isSuppressed`, moved only by an ok answer
+PASS S18e · 🔴 D6 — a REJECTED action is this page's own error sentence, never the root error boundary
+PASS S18f · ⭐ D6 — the confirmation is body text (`md`), never an 11px footnote — 2 of 2 callouts are md
+PASS S18g · the acts go through the BUDGETED service, from a request-read address
+PASS S18h · ⭐ 2026-09-27 — a failed tap shows our desk (phone and email, read on the SERVER) under the error, and the client never reads the support config — {state === "error" && ( <div ref={errRef} tabIndex={-1} className="focus:outline-none"> <Callout size="md" tone="danger" role="alert"> 
+PASS S18i · 🔴 2026-09-27 — a failed tap moves NOTHING under the thumb: the alert and our desk come after the button, what is above it reads the last OK answer, and the alert takes focus without a scroll — error sentence at 9957 · last button ends at 9510
+PASS S18j · ⭐ 2026-09-27 — the tapped button stays READABLE while its answer is on the way (the disabled dim is outranked on a busy button) — BUSY_LEGIBLE = "aria-busy:disabled:opacity-85 aria-busy:disabled:cursor-progress"
+PASS S18k · ⭐ 2026-09-27 — the headings and notices keep zh words whole (break-keep, only on strings that carry break hints) and never end on one word; the ledger's sentence gets text-pretty only — classes true · client true · refusal true
+PASS S19 · ⭐ D6 — the page's number reads `+255••••NN`, the shared mask, never `2557••••NN` (the operator digit) — +255••••03
+PASS S19c · ⚠️ CONTROL — the old bare-key mask (`2557••••NN`) FAILS the S19 pattern, so S19 is capable of failing — 2557••••01 / +255••••01
+PASS S19b · ⛔ D6 — an officer's stop is `resumable: false`, a person's own stop `resumable: true` — and the REASON is never handed to the page — {"operator":false,"person":true}
+PASS S20 · ⭐ D6 — `/s` gets its own shell, decided BEFORE the session read (an ended session's redirect would put the opt-out behind a login) — branch at 4940
+PASS S20b · ⛔ D6 — the opt-out shell carries NO sign-in/up, nav, rail, footer menus, invitations or soft links — none
+PASS S20c · ⭐ …and it DOES carry the logo, the language menu, the landmark, the skip link and the regulator lines
+PASS S20d · ⭐ the responsible-gambling sentence stays and no helpline comes back (the owner's ruling, 2026-10-06), and the 18+ roundel carries no aria-label (ARIA prohibits one on a generic span) — rg line at 1725 · helpline at -1
+PASS S21 · ⛔ D6 — first-visit-primer.tsx stays off the opt-out page, and only off it — /^\/(auth|admin|s)(\/|$)/
+PASS S21 · ⛔ D6 — ChatRoot.tsx stays off the opt-out page, and only off it — /^\/(auth|admin|s)(\/|$)/
+PASS S21 · ⛔ D6 — channels-panel.tsx stays off the opt-out page, and only off it — /^\/s(\/|$)|^\/(auth|admin)(\/|$)|^\/(legal|profile)\/responsible-gambling(\/|$)|^\/markets\/?$/
+PASS S21b · the shell's own test is a SEGMENT match built from `OPTOUT_PATH` — bare `/s` and `/s/<one segment>` only; a deeper path gets the FULL shell, so its 404 never renders inside the stripped one — hit all · wrongly hit none
+PASS S23 · 🔴 2026-09-27 — bare `/s` (a link that lost its token) is the opt-out REFUSAL, not the root 404 inside the stripped shell — noindex and force-dynamic — return <OptOutRefusal t={t} kind="invalid" />;
+[audit] COMPLIANCE privacy.marketing_consent.withdrawn system User#ou0-1
+[audit] COMPLIANCE privacy.marketing_consent.given system User#ou0-1
+PASS S22 · ⛔ D6 — the player's toggle audit rows name the token REFERENCE, never the live token (`/admin/audit` prints payloads) — 4 rows · [{"marketingOptIn":true,"via":"optout","tokenRef":"55******"},{"marketingOptIn":false,"via":"optout","tokenRef":"55*****
+
+marketing-optout: 121 passed, 0 failed

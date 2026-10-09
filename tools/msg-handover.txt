@@ -1,0 +1,9 @@
+docs(vodacom): S6 visual pass handover - everything pushed (Ali: we may continue on another machine); IN FLIGHT ~19:50 EAT points to S6-VISUAL-PASS-STATE.md
+
+The S6 visual pass is on origin/vodacom-visual (9677a3f5, not live): rounds 1-4, the edge read and round 5's R5-A..F,
+R5-H and R5-I merged and proved on the merged tree. R5-G's finished work: origin/vodacom-visual-r5g-wip. The session's
+tools: origin/vodacom-visual-tools. The new S6-VISUAL-PASS-STATE.md says what is merged, what runs on OMEGA (R5-G's
+port, R5-J, R5-K/L, three reviewers - static only until the marketing session frees the machine), how it goes live, the
+helpers' briefs and every question for Ali (51 + S12 + S8).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

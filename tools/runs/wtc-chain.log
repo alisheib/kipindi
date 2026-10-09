@@ -1,0 +1,7 @@
+11:30:39 queued: wait note written
+11:30:39 lock taken
+11:30:42 kipindi-a8i2-ctl at 7689cc763 (the rebased tip)
+11:31:12 prisma generate exit=0
+11:32:18 typecheck exit=0 — 0 error(s)
+11:32:18 chain end
+11:32:18 lock released

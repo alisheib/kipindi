@@ -1,0 +1,16 @@
+08:36:11 waiting for wa2-chain.done
+11:27:52 wa2-chain.done is there: exit=0
+11:27:52 queued: wait note written
+11:27:52 waiting (owner: marketing-s14 turn-c since 2026-10-08T10:26:40Z pid 277714; queue: asheib-c5 vodacom: wb2-chain queued since 2026-10-08T11:27:52Z)
+11:32:56 waiting (owner: marketing-s14 turn-c since 2026-10-08T10:26:40Z pid 277714; queue: asheib-c5 vodacom: wb2-chain queued since 2026-10-08T11:27:52Z)
+11:36:14 lock taken
+11:36:15 AFTER 4c1a8dff in kipindi-a8j
+11:36:16 .next cleared in kipindi-a8j
+11:38:00 wb2-v2-wp12: exit=2 · tree same — §0 · the base (S6-PLAN A18) REFUSED — the baseline was captured at 7c859cdf, and this tree cannot be compared with it: 8 merge(s) since the baseline carried served files in from elsewhere — 07b7cd60 brought 3 served file(s): src/app/admin/campaigns/new/actions.ts, src/app/admin/campaigns/new/composer-client.tsx, src/app/admin/campaigns/new/composer-loader.ts; d4ddc8f5 brought 6 served file(s): src/app/api/webhooks/blackball/route.ts, src/lib/server/boot-checks.ts, src/lib/server/marketing/campaign-model.ts …; c2b90990 brought 4 served file(s): package.json, src/lib/server/marketing/audience-fence.ts, src/lib/server/marketing/campaign-confirm-service.ts …; 5a8613eb brought 12 served
+11:38:00 the v2 compare was refused on the merges since 7c859cdf: again with --allow-base
+12:00:41 wb2-v2-wp12-ab: exit=1 · tree same —   PASS 4.6 each measured Sell difference is seen in all of its cells whenever the served change that causes it is seen   this run's capture, for reading beside the baseline: C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/wp12/parity-v2-7c859cdf-omega.json.current.json 37/38 passed — compare · tree 4c1a8dff · ⚠ BASE OVERRIDDEN (--allow-base) · 1326s 
+12:02:05 wb2-jhf: exit=0 · tree same —   least slack: 17.5px at sw 360 player-999999 (rightmost: Weka pesa)   rail labels on more than one line: sw 320 guest: Tiketi zangu (2 lines) · sw 320 player-999999: Tiketi zangu (2 lines) · sw 320 player-9.9M: Tiketi zangu (2 lines) · sw 320 zero: Tiketi zangu (2 lines) · sw 320 held: Tiketi zangu (2 lines) · sw 320 masked: Tiketi zangu (2 lines) 6/6 passed — qa:journey-header-fit · 66 cells 
+12:02:58 wb2-red-hf: exit=0 · tree same —   control: clean tree, 0 clipped — witness en=1024 sw=1024   CAUGHT  deposit-label-stops-yielding — en: button[Account menu] 989..1029>vw1024  ·  sw: button[Menyu ya akaunti] 1027..1067>vw1024   1/1 proven · 0 missed · 0 broken · 0 file(s) left modified 
+12:07:18 wb2-red-jhf: exit=0 · tree same —   CAUGHT  pill-pads-16-below-360 — sw 320 player-999999 — pill-left: padding-left 16px, not 12px   CAUGHT  steps-from-640-lost — sw 768 guest — gutter: padding-left 16px, not 24px RED · journey-header-fit — 9/9 caught · 0 missed · 0 broken · 0 file(s) left modified 
+12:07:18 chain end
+12:07:18 lock released

@@ -1,0 +1,53 @@
+# R5-G suite run — 2026-10-09T16:02:22.066Z — F:\kipindi-r5g
+
+== test:journey-account EXIT 0 (2.7s)
+   … PASS 7.defaults · the shipped reads answer on the twin — the invite switch, the agent programme and proposals through their own caches, none throws
+   … PASS 7.ran · the database-mode process ran its checks and exited clean
+   … JOURNEY ACCOUNT — all 85 checks passed
+
+== red:journey-account EXIT 0 (1.8s)
+   …   ok   PLANT LANDED · the programme is never asked (the agent door shut whatever the switch says)
+   …   ok     └─ fires: 6.fail.agent.c
+   … RED CONTROL — 48/48 caught · all 97 proofs held
+
+== test:journey-shell EXIT 0 (3.1s)
+   …   PASS 12.nodefer.platform · no server module in src defers a "use client" module through import(…) — React.lazy, next/dynamic or any wrapper: from a server file that module joins the first load all the same
+   …   PASS 12.c · CONTROL · the readers can fail: the lazy reader takes lazy(, React.lazy( and lazy<T>( and leaves makelazy( and a Lazy name alone; the import reader takes lazy by name or renamed, from react only; the list r
+   … JOURNEY SHELL — all 433 checks passed
+
+== red:journey-shell EXIT 0 (28.6s)
+   …   ok   PLANT LANDED · a red run's witness is left in the stylesheet (a hard kill)
+   …   ok     └─ fires: ^10\.leash\.witness ·
+   … RED CONTROL — 186/186 caught · all 373 proofs held
+
+== test:shell-boundary EXIT 0 (1.0s)
+   …   ok   4.1 AppShell still decides the player chrome from the REQUEST PATH in the root layout
+   … shell-boundary: 15 passed, 0 failed
+   … shell-boundary: OK — both crossings are hard navigations, so each destination gets its own shell
+
+== test:visual-pass-r5a EXIT 0 (13.4s)
+   …   ok   11.5 BY DESIGN · the spotlight's state chip is 20px beside the 18px category chip: status chips are 2px taller at every size (chip.tsx, the kit's metrics), centred 1px each way
+   …   ok   11.6 BY DESIGN · the AML title's third line is under the bottom rail's elevation shadow at that scroll (232 against 245 at most), not a gradient of its own
+   … visual-pass-r5a: 91 passed, 0 failed
+
+== test:visual-pass-r5b EXIT 0 (3.0s)
+   …   ok   11.5 · the deposit pip stands 4px into the tile's corner: 7.5px clear of the logo at sw 320 (a 113px tile, a 48px plate)
+   …   ok   11.5′ CONTROL · at 8px in (`1.5`) it was 3.5 — tile 067's 3 clear columns (plate to x121, pip from x125)
+   … 75 passed, 0 failed
+
+== test:visual-pass-r5g EXIT 0 (2.6s)
+   …   ok   5.2 · the classic footer keeps main's licence line: no keep span, no size container (frozen chrome)
+   …   ok   5.3 · the two shared-body changes classic readers see too: /profile's help row ("Help" / "帮助"; Swahili unchanged) and an approved agent's invite tab ("Dashibodi ya wakala")
+   … visual-pass-r5g: 61 passed, 0 failed
+
+== test:i18n EXIT 0 (1.1s)
+   …   PASS no file inside the console mounts an UNPINNED I18nProvider
+   …   PASS CONTROL · the scan read the console (100+ files) and would catch an unpinned provider
+   … ALL PASS — en=2628 sw=2628 zh=2628 keys
+
+== test:decomment EXIT 0 (4.9s)
+   …   note  worst case: scripts/qa/landing-ten.mjs — 33535 characters lost to line-comments-first
+   …   PASS 5.3 …and that script is inside the set pii-in-logs §3 scans
+   … ALL PASS — 22 passed, 0 failed
+
+# done

@@ -1,0 +1,21 @@
+static-cache-scope — the one-year immutable cache is for static files only
+§1 · every immutable source names a real static place
+  ok   1.locate · next.config.ts's headers() sends the immutable cache to at least the build output
+  ok   1.real · /icons/:path* is a folder under public/
+  ok   1.real · /brand/:path* is a folder under public/
+  ok   1.real · /pay/:path* is a folder under public/
+  ok   1.real · /og/:path* is a folder under public/
+  ok   1.real · /screenshots/:path* is a folder under public/
+  ok   1.real · /email-signatures/:path* is a folder under public/
+  ok   1.real · /favicon.ico is a file under public/
+  ok   1.real · /favicon.svg is a file under public/
+§2 · the static files keep their long cache
+  ok   2.1 · every file in icons, brand, pay, og, screenshots, email-signatures matches (31 files)
+  ok   2.2 · the favicons and a hashed chunk match
+  ok   2.3 · the service worker and the manifest are NOT immutable (they must revalidate)
+§3 · no page address is ever sent the immutable cache
+  ok   3.1 · none of 25 page addresses matches an immutable source
+§4 · the control and the plant
+  ok   4.1 CONTROL · the old suffix rule matches the pages production cached (/markets/x.png, /markets/mexico, /u/federico)
+  ok   4.2 PLANT · the old suffix rule put back into the list is reported by §3
+static-cache-scope: 15 passed, 0 failed

@@ -1,0 +1,45 @@
+02:46:49 waiting for wm13-chain.done
+03:21:51 wm13-chain.done is there: exit=0
+03:21:51 waiting for vis-ready5.done
+03:21:51 vis-ready5.done is there: exit=0
+03:21:52 queued: wait note written
+03:21:52 lock taken
+03:21:52 kipindi-a8i2-ctl at 88ee1a42c (the final tip, on main a6331ca19)
+03:22:08 prisma generate exit=0
+03:23:01 typecheck exit=0 — 0 error(s)
+04:04:17 battery exit=1 —   473/482 green · 2476.5s total   FAILED: test:contacts-staging-db, test:campaign-gates, test:revoked-deadend, test:admin-section-gate, test:needle-rest, test:house-bot-money, test:house-bot-disclosure, test:orphans, test:dead-css 
+04:04:18   'gave no reason': 0 · fingerprint after: 8c0fa0db9851
+04:04:44 the battery's control: 9 suite(s), alone here and on main a6331ca19 (ready: 1)
+04:08:47   test:contacts-staging-db alone: visual exit=1 · main exit=1
+04:09:20   test:campaign-gates alone: visual exit=1 · main exit=1
+04:11:08   test:revoked-deadend alone: visual exit=1 · main exit=1
+04:12:46   test:admin-section-gate alone: visual exit=1 · main exit=1
+04:14:24   test:needle-rest alone: visual exit=1 · main exit=1
+04:21:46   test:house-bot-money alone: visual exit=0 · main exit=0
+04:22:24   test:house-bot-disclosure alone: visual exit=4 · main exit=0   ⛔ THE BRANCH ONLY
+04:22:45   test:orphans alone: visual exit=1 · main exit=1
+04:22:54   test:dead-css alone: visual exit=1 · main exit=1
+04:23:17 red:journey-shell exit=0 · tree same — RED CONTROL — 183/183 caught · all 367 proofs held
+04:23:47 red:wallet-reach exit=0 · tree same — RED PROOF COMPLETE
+04:23:50 red:journey-tickets exit=0 · tree same — RED CONTROL — 107/107 caught · all 215 proofs held
+04:23:52 red:density-contract exit=0 · tree same — 5/5 planted violations caught in all
+04:23:55 red:hero-copy exit=0 · tree same — red:hero-copy: 27 caught, MISSED = 0
+04:24:35 red:featured-card exit=0 · tree same — RED PROOF COMPLETE
+04:25:05 red:ticker-honesty exit=0 · tree same — RED PROOF COMPLETE
+04:25:18 red:market-columns exit=0 · tree same — RED PROOF COMPLETE
+04:25:39 red:money-format exit=0 · tree same — RED PROOF COMPLETE
+04:26:14 red:measure exit=0 · tree same — 8/8 proven · 0 missed · 0 broken harness
+04:26:28 red:share-link-readable exit=0 · tree same — RED PROOF COMPLETE
+04:26:47 red:updown-filter-sheet exit=0 · tree same — RED PROOF COMPLETE
+04:28:20 red:id-documents exit=0 · tree same — RED PROOF COMPLETE
+04:28:22 red:social-panel exit=0 · tree same — 8/8 planted defects caught on their named assertion
+04:28:38 red:install-invite exit=0 · tree same — Every declared defect is caught by a named check, and the tree is clean.
+04:28:52 red:enter-where-pressed exit=0 · tree same — RED CONTROL — 103/103 caught
+04:28:54 red:marketing-optout exit=0 · tree same — RED PROOF COMPLETE
+04:29:02 red:simple-journey-flag exit=0 · tree same — 40/40 caught
+04:29:07 red:implicit-submit exit=0 · tree same — RED CONTROL — 61/61 caught · 1/1 green held
+04:29:09 red:card-return-order exit=0 · tree same — RED CONTROL — 10/10 caught
+04:29:11 red:deposit-phone exit=0 · tree same — RED CONTROL — 7/7 caught
+04:31:49 red:journey-funnel exit=0 · tree same — RED CONTROL — 26/26 caught
+04:31:49 chain end
+04:31:49 lock released

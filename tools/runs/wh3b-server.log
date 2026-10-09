@@ -1,0 +1,270 @@
+▲ Next.js 16.2.4 (webpack)
+- Local:         http://localhost:3077
+- Network:       http://192.168.66.144:3077
+✓ Ready in 433ms
+Warning: Custom Cache-Control headers detected for the following routes:
+  - /_next/static/:path*
+
+Setting a custom Cache-Control header can break Next.js development behavior.
+○ Compiling /instrumentation ...
+⚠ ./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+[audit-drain] armed — this process will wait up to 5000ms for the audit queue on SIGTERM/SIGINT.
+[scheduler] boot hydrate — armed 0 pending market timer(s)
+[lifecycle] ticker started — every 60s
+[lifecycle] payment fast poll (deposits + payouts) — every 15s
+[house-bot] engine started on local-632bfd69293f — first pass in 20s
+- Experiments (use with caution):
+  · optimizePackageImports
+
+⚠ ./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+⚠ ./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+⚠ ./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+⚠ ./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+
+./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+./src/lib/server/admission.ts
+./src/lib/server/house-bot/transient.ts
+./src/lib/server/house-bot/outcomes.ts
+./src/lib/server/house-bot/holder-hook.ts
+./src/lib/server/auth-service.ts
+./src/app/_actions/notifications.ts
+
+./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+./src/lib/server/admission.ts
+./src/lib/server/market-service.ts
+./src/app/page.tsx
+ GET / 200 in 26.3s (next.js: 24.9s, proxy.ts: 96ms, application-code: 1300ms)
+⚠ ./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+
+./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+./src/lib/server/admission.ts
+./src/lib/server/house-bot/transient.ts
+./src/lib/server/house-bot/outcomes.ts
+./src/lib/server/house-bot/holder-hook.ts
+./src/lib/server/auth-service.ts
+./src/app/_actions/notifications.ts
+
+./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+./src/lib/server/admission.ts
+./src/lib/server/market-service.ts
+./src/app/page.tsx
+⚠ ./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+
+./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+./src/lib/server/admission.ts
+./src/lib/server/house-bot/transient.ts
+./src/lib/server/house-bot/outcomes.ts
+./src/lib/server/house-bot/holder-hook.ts
+./src/lib/server/auth-service.ts
+./src/app/_actions/notifications.ts
+
+./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+./src/lib/server/admission.ts
+./src/lib/server/market-service.ts
+./src/app/page.tsx
+ GET /markets/zz-probe.png 200 in 10.8s (next.js: 10.0s, proxy.ts: 38ms, application-code: 814ms)
+ GET /markets/zz-probe.png 200 in 154ms (next.js: 17ms, proxy.ts: 12ms, application-code: 125ms)
+⚠ ./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+
+./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+./src/lib/server/admission.ts
+./src/lib/server/house-bot/transient.ts
+./src/lib/server/house-bot/outcomes.ts
+./src/lib/server/house-bot/holder-hook.ts
+./src/lib/server/auth-service.ts
+./src/app/_actions/notifications.ts
+
+./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+./src/lib/server/admission.ts
+./src/lib/server/market-service.ts
+./src/app/page.tsx
+⚠ ./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+
+./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+./src/lib/server/admission.ts
+./src/lib/server/market-service.ts
+./src/app/markets/actions.ts
+
+./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+./src/lib/server/admission.ts
+./src/lib/server/market-service.ts
+./src/app/page.tsx
+ GET /u/federico.svg 404 in 28.3s (next.js: 27.6s, proxy.ts: 6ms, application-code: 663ms)
+ GET /u/federico.svg 404 in 95ms (next.js: 6ms, proxy.ts: 9ms, application-code: 80ms)
+ GET /markets/mexico 200 in 481ms (next.js: 295ms, proxy.ts: 5ms, application-code: 181ms)
+ GET /markets/mexico 200 in 122ms (next.js: 6ms, proxy.ts: 5ms, application-code: 111ms)
+⚠ ./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+
+./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+./src/lib/server/admission.ts
+./src/lib/server/market-service.ts
+./src/app/markets/actions.ts
+
+./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+./src/lib/server/admission.ts
+./src/lib/server/market-service.ts
+./src/app/page.tsx
+⚠ ./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+
+./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+./src/lib/server/admission.ts
+./src/lib/server/market-service.ts
+./src/app/markets/actions.ts
+
+./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+./src/lib/server/admission.ts
+./src/lib/server/market-service.ts
+./src/app/markets/[id]/page.tsx
+ GET /markets 200 in 2.1s (next.js: 1306ms, proxy.ts: 7ms, application-code: 737ms)
+ GET /markets 200 in 187ms (next.js: 3ms, proxy.ts: 4ms, application-code: 180ms)
+⚠ ./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+
+./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+./src/lib/server/admission.ts
+./src/lib/server/market-service.ts
+./src/app/markets/actions.ts
+
+./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+./src/lib/server/admission.ts
+./src/lib/server/market-service.ts
+./src/app/markets/[id]/page.tsx
+⚠ ./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+
+./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+./src/lib/server/admission.ts
+./src/lib/server/market-service.ts
+./src/app/markets/actions.ts
+
+./src/lib/server/monitoring.ts
+Critical dependency: the request of a dependency is an expression
+
+Import trace for requested module:
+./src/lib/server/monitoring.ts
+./src/lib/server/admission.ts
+./src/lib/server/market-service.ts
+./src/app/markets/[id]/page.tsx
+ GET / 200 in 1552ms (next.js: 917ms, proxy.ts: 4ms, application-code: 631ms)
+ GET / 200 in 125ms (next.js: 2ms, proxy.ts: 5ms, application-code: 117ms)

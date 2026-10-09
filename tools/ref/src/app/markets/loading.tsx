@@ -1,0 +1,142 @@
+import { getServerT } from "@/lib/i18n-server";
+import { PageContainer } from "@/components/layout/page-container";
+import { PLAYER_PER_PAGE } from "@/components/ui/pagination";
+import { MARKET_CARD_H } from "@/components/markets/card-geometry";
+import {
+  QUERY_BAR_CLASS,
+  QUERY_BAR_ROW1_CLASS,
+  QUERY_BAR_ROW2_CLASS,
+  QUERY_GROUP_CLASS,
+  QUERY_STRIP_CLASS,
+} from "@/components/ui/query-bar";
+
+/**
+ * /markets loading skeleton.
+ *
+ * 🔴 A SKELETON'S ONLY JOB IS TO BE THE RIGHT SHAPE. This one was not, and the mismatch was
+ * measured in a real browser at 1280 on 2026-08-10, not estimated:
+ *
+ *   · cards          220px  →  the real card is 349.4px  (129px deficit PER ROW)
+ *   · filter rail    6 pills at 32px  →  the real rail was 13 pills at 48px, 750px tall
+ *   · promo block    absent          →  84px on the real page
+ *   · search         inside the right column → the real one was FULL WIDTH above both columns
+ *
+ * So the page it drew was not the page that arrived: over four rows the grid alone jumped by
+ * more than 500px, and the whole board shifted sideways as the search bar moved out of the
+ * column. That is the B-29 finding recurring — a skeleton that lies about the page is worse
+ * than no skeleton, because it commits the layout to a shape and then breaks the commitment
+ * while the reader's eye is already moving.
+ *
+ * ⚠️ REWRITTEN 2026-08-13 with the round-2 discovery bar. The 13-pill vertical rail and the
+ * two-column split are GONE; so is the propose promo, which the kit removes from this route.
+ * The shape is now: header row → search → sticky two-row filter bar → full-width grid.
+ * Drawing the old rail here would have re-created the exact defect this file documents.
+ *
+ * ⚠️ THE STRUCTURE BELOW MIRRORS `page.tsx` WRAPPER-FOR-WRAPPER — same `PageContainer` tier,
+ * same header row, same search, same bar height, same `.market-grid`. The shimmer blocks are
+ * the only difference. Keep it that way, and in the same commit.
+ *
+ * ⛔ Card height and count are NOT re-typed here: `MARKET_CARD_H` is the one shared definition
+ * (`components/markets/card-geometry.ts`) and the count comes from `PLAYER_PER_PAGE`. That is
+ * how the two skeletons stay equal — the previous pair drifted to 220 vs 349 precisely because
+ * each carried its own literal.
+ */
+/**
+ * The status segment widths, in `STATUS_IDS` order: open · today · new · progress · watch · all.
+ * Exported so a guard can count them against the real status list without parsing JSX.
+ */
+export const STATUS_PILL_W = [64, 104, 60, 92, 84, 52];
+
+export default async function MarketsLoading() {
+  const { t } = await getServerT();
+  return (
+    <PageContainer tier="board">
+      {/* Header row — title left, the live-count + volume line right. The real page renders
+          both; drawing only the title made the row a different height. */}
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="font-mono text-caption font-bold uppercase eyebrow text-text-subtle">{t.market.title}</p>
+        <div className="kp-shimmer-track h-4 w-40 rounded bg-bg-elevated" aria-hidden />
+      </div>
+
+      {/* Search — full width, with the echo row reserved exactly as the real box reserves it.
+          ⚠️ THE BOX IS `--h-input` PLUS 2px, NOT `--h-input`. The real `.input-group` renders
+          **46px**: globals.css's own note says its PADDING box is 44 (`--h-input`), and Tailwind
+          borders sit outside a padding box but inside a border-box height — so a ghost given
+          `h-[var(--h-input)]` with a `border` draws 44 where the field draws 46. Measured on
+          production: `.search-box-wrap` 71px = 46 + 8 (`mt-1.5`) + 17 (the echo row). */}
+      <div aria-hidden className="search-box-wrap">
+        {/* ⚠️ TOKEN, not `h-11` — spacing is overridden (tailwind.config.ts:200-215) so `h-11`
+            drew 96px. This ghosts `<Input size="md">`, which reads --h-input (44px); consume the
+            same token so the ghost and the field can never drift apart. */}
+        <div className="kp-shimmer-track h-[calc(var(--h-input)+2px)] rounded-lg border border-border bg-bg-inset" />
+        <p className="mt-1.5 min-h-[17px]" />
+      </div>
+
+      {/* The discovery bar — TWO rows at the real 44px control height, so the grid below starts
+          where it will actually start. Row 1: status segments + count. Row 2: sort + direction,
+          odds, pool, topic.
+          ⛔ EVERY WRAPPER CLASS HERE IS IMPORTED, NOT RE-TYPED. Each one of them was a literal
+          until 2026-09-24, and the copies had drifted: row 1 said `flex-wrap` where the real
+          strip says `overflow-x-auto`, so at 360 the six status pills (456px of them) stacked
+          into THREE lines and row 2's six controls into three more. Measured on production
+          during a real client-side hop, the ghost put the first card at y=557 and the board put
+          it at y=318 — the grid jumped **239px upward** as the content arrived. CLS scored that
+          0.0000, because layout-shift only counts nodes present BEFORE and AFTER and the ghost
+          nodes are removed rather than moved. The metric is blind here; the eye is not. */}
+      {/* 🔴 THE FOUR HOOKS BELOW ARE LOAD-BEARING AND THEY ARE WHY THIS BAR IS 76px AND NOT 172.
+          Under 640px in Compact, `globals.css` re-lays THIS bar as a GRID — strip | sort | filters
+          on one line, with the result count spanning a second — and it gates that on
+          `.kp-discovery-bar:has(> [data-bar-row])`, placing each cell by `[data-strip-autoscroll]`,
+          `[data-bar-cell="sort"]`, `.kp-fsheet` and `[data-result-count]`. A ghost that copies the
+          CLASSES but not the ATTRIBUTES misses the gate, falls back to two flex rows, and at 360
+          its 210 + 170px row-2 pills then wrap into a third: measured on production, ghost bar
+          **172px against a real 76px**, putting the board 95px too low. ⛔ Opting in is not
+          decoration — it is how the ghost inherits the compaction by construction instead of being
+          told a number that the density switch and the 300px branch would both invalidate. */}
+      <div aria-hidden className={QUERY_BAR_CLASS}>
+        <div className={QUERY_BAR_ROW1_CLASS} data-bar-row>
+          <div className={QUERY_STRIP_CLASS} data-strip-autoscroll>
+            {/* ⛔ ONE WIDTH PER STATUS, IN `STATUS_IDS` ORDER — open · today · new · progress ·
+                watch · all. The widths are per-LABEL so they stay literal, but the COUNT is not
+                allowed to drift: `test:board-discovery` §7 asserts this array is exactly as long
+                as `STATUS_IDS`. It was five entries when a sixth status shipped on 2026-09-06,
+                which would have drawn a bar one pill short and then widened it under the
+                reader's eye — the B-29 shape this file's own header exists to document. */}
+            {STATUS_PILL_W.map((w, i) => (
+              <div key={i} className="kp-shimmer-track h-[44px] rounded-pill bg-bg-elevated" style={{ width: w }} />
+            ))}
+          </div>
+          <div className="kp-shimmer-track h-4 w-[80px] shrink-0 rounded bg-bg-elevated" data-result-count="" />
+        </div>
+        <div className={QUERY_BAR_ROW2_CLASS} data-bar-row>
+          {/* Sort + direction, and the phone's single filters button — the two controls this row
+              renders at EVERY width. Their widths are the DESKTOP ones; under 640 the grid above
+              sizes both from their own content, so these numbers only apply where the bar is
+              genuinely two flex rows. */}
+          <div className="kp-shimmer-track h-[44px] w-[210px] rounded-pill bg-bg-elevated" data-bar-cell="sort" />
+          <div className="kp-fsheet kp-shimmer-track h-[44px] w-[170px] rounded-pill bg-bg-elevated" />
+          {/* ⛔ ODDS, POOL AND TOPIC ARE DESKTOP-ONLY. On a phone the real bar folds all three
+              behind the button above (`FilterSheet`), and their desktop rows carry
+              `QUERY_GROUP_CLASS`, which is `hidden … lg:flex`. Ghosting them unconditionally drew
+              four 44px pills a phone never receives. Consume the SAME visibility class rather
+              than re-stating the breakpoint, so a change to one moves both. */}
+          {[56, 92, 88, 84].map((w, i) => (
+            <div key={i} className={QUERY_GROUP_CLASS}>
+              <div className="kp-shimmer-track h-[44px] rounded-pill bg-bg-elevated" style={{ width: w }} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="market-grid mt-3" aria-hidden>
+        {Array.from({ length: PLAYER_PER_PAGE }).map((_, i) => (
+          <div
+            key={i}
+            className="kp-shimmer-track rounded-md border border-border bg-bg-elevated"
+            style={{ height: MARKET_CARD_H }}
+          />
+        ))}
+      </div>
+    </PageContainer>
+  );
+}

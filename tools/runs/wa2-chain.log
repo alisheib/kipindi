@@ -1,0 +1,66 @@
+19:18:09 waiting for wb-chain.done
+21:39:18 wb-chain.done is there: exit=0
+21:39:18 waiting for wp12-pushed.done
+08:28:59 wp12-pushed.done is there: exit=0
+08:28:59 vodacom-wp12 moved to 4c1a8dff (main 17693fdc, the fix 4c1a8dff)
+08:28:59 waiting (owner: asheib-c5 vodacom push-readback: WP12 push + production qa:live, ~20 min (agreed with marketing asheib-25) since 2026-10-07T21:39:08Z; queue: marketing-s14 queued for: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984)
+08:33:31 queued: wait note written
+08:34:02 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+08:39:09 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+08:44:12 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+08:49:16 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+08:54:19 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+08:59:22 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+09:04:25 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+09:09:28 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+09:14:31 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+09:19:34 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+09:24:37 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+09:29:40 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+09:34:43 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+09:39:46 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+09:44:49 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+09:49:52 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+09:54:55 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+09:59:58 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+10:05:01 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+10:10:04 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+10:15:07 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+10:20:10 waiting (owner: marketing-s14 turn-b since 2026-10-08T08:26:33Z pid 263984; queue: asheib-c5 vodacom: kipindi-wp12 queued since 2026-10-08T08:28:59Z)
+10:20:56 lock taken
+10:20:57 tree 4c1a8dff, fingerprint 8c0fa0db9851 · census: 0 postgres alive, 0 orphaned
+10:21:02 typecheck exit=0 — 0 error(s)
+10:52:24 battery exit=1 —   453/471 green · 1877.9s total   FAILED: test:audit-drain, test:live-target-safe, test:type-scale, test:red-anchors, test:revoked-deadend, test:admin-section-gate, test:needle-rest, test:house-bot-holder-lifecycle, test:kyc-copy-truth, test:stacking, test:tap-target, test:decomment, test:updown-digest, test:updown-source-class, test:payout-view, test:orphans, test:eyebrow-roles, test:failure-reasons 
+10:52:24   sweeps reported by db:scratch: 0 · retries: 0 · 'gave no reason': 0
+10:52:25   census after the battery: 0 postgres alive, 0 orphaned
+10:52:25 fingerprint after the battery: 8c0fa0db9851
+10:52:27 the battery's control: 18 suite(s), alone on WP12 and on main f89dcdb9 (a8i2 ready: 1)
+10:52:39   test:audit-drain alone: WP12 exit=1 · main exit=1
+10:52:44   test:live-target-safe alone: WP12 exit=1 · main exit=1
+10:52:53   test:type-scale alone: WP12 exit=1 · main exit=1
+10:53:00   test:red-anchors alone: WP12 exit=1 · main exit=1
+10:54:47   test:revoked-deadend alone: WP12 exit=1 · main exit=1
+10:56:26   test:admin-section-gate alone: WP12 exit=1 · main exit=1
+10:58:05   test:needle-rest alone: WP12 exit=1 · main exit=1
+10:58:11   test:house-bot-holder-lifecycle alone: WP12 exit=4 · main exit=4
+10:58:15   test:kyc-copy-truth alone: WP12 exit=1 · main exit=1
+10:58:19   test:stacking alone: WP12 exit=1 · main exit=1
+10:58:22   test:tap-target alone: WP12 exit=1 · main exit=1
+10:58:29   test:decomment alone: WP12 exit=1 · main exit=1
+10:58:39   test:updown-digest alone: WP12 exit=1 · main exit=1
+10:58:42   test:updown-source-class alone: WP12 exit=1 · main exit=1
+10:58:44   test:payout-view alone: WP12 exit=1 · main exit=1
+10:59:04   test:orphans alone: WP12 exit=1 · main exit=1
+10:59:06   test:eyebrow-roles alone: WP12 exit=5 · main exit=5
+10:59:22   test:failure-reasons alone: WP12 exit=1 · main exit=1
+10:59:23   census after the alone runs: 0 postgres alive, 0 orphaned · a8i2 clean · wp12 fingerprint 8c0fa0db9851
+10:59:23 turn A's red:all, not passed: DIRTY agent-eligibility;DIRTY agent-policy;DIRTY ai-vocabulary;DIRTY commission-bounded;DIRTY css-vars-defined;DIRTY icon-sizes;DIRTY invite-payable-db;DIRTY no-double-pay;DIRTY player-invite-unpaid;DIRTY programme-isolation;DIRTY rg-doors;DIRTY section-rail;DIRTY tax-report;DIRTY validation-focus;DIRTY webhook-money;FAIL admin-charts;FAIL ai-cycles;FAIL bar-geometry;FAIL bonus-one-side;FAIL cert-expiry;FAIL contrast;FAIL count-truth;FAIL decomment;FAIL failure-reasons;FAIL footer-reachable;FAIL house-bot-c5;FAIL house-bot-engine;FAIL house-bot-money;FAIL icon-sizes-slack;FAIL kyc-copy-truth;FAIL margin-series;FAIL policy-lines;FAIL social-home;FAIL social-panel;FAIL social-promo;FAIL social-rel;FAIL social-token;FAIL tab-anchors;FAIL tap-floor;FAIL tap-rung;FAIL updown-bet-feedback;FAIL updown-chain-stats;FAIL updown-digest;FAIL updown-handover;FAIL updown-result-announce;FAIL withdraw-email-gate;TIME dal-parity;TIME house-bot-console;TIME kyc-gate;
+10:59:23 again here: admin-charts,agent-eligibility,agent-policy,ai-cycles,ai-vocabulary,bar-geometry,bonus-one-side,cert-expiry,commission-bounded,contrast,count-truth,css-vars-defined,decomment,failure-reasons,footer-reachable,icon-sizes,icon-sizes-slack,invite-payable-db,kyc-copy-truth,margin-series,no-double-pay,player-invite-unpaid,policy-lines,programme-isolation,rg-doors,section-rail,social-home,social-panel,social-promo,social-rel,social-token,tab-anchors,tap-floor,tap-rung,tax-report,updown-bet-feedback,updown-chain-stats,updown-digest,updown-handover,updown-result-announce,validation-focus,webhook-money,withdraw-email-gate · left to turn G: dal-parity,house-bot-c5,house-bot-console,house-bot-engine,house-bot-money,kyc-gate
+11:20:04 reds again exit=1 — PASS red:agent-policy ·;PASS red:player-invite-unpaid ·;PASS red:invite-payable-db ·;FAIL red:programme-isolation ·;PASS red:no-double-pay ·;PASS red:commission-bounded ·;PASS red:agent-eligibility ·;PASS red:rg-doors 26/26;PASS red:webhook-money 4/4;PASS red:css-vars-defined ·;PASS red:tax-report 75/75;FAIL red:policy-lines 48/49;FAIL red:kyc-copy-truth ·;PASS red:withdraw-email-gate ·;FAIL red:icon-sizes ·;FAIL red:icon-sizes-slack ·;PASS red:ai-vocabulary 5/5;PASS red:section-rail ·;PASS red:validation-focus ·;FAIL red:tap-floor ·;FAIL red:tap-rung ·;FAIL red:contrast 3/25;PASS red:contrast-callsite 5/5;PASS red:contrast-rendered 5/5;FAIL red:updown-chain-stats 8/9;FAIL red:updown-digest 5/7;FAIL red:cert-expiry 2/3;FAIL red:updown-bet-feedback 4/7;FAIL red:updown-result-announce 5/8;FAIL red:margin-series ·;FAIL red:admin-charts ·;FAIL red:bonus-one-side 6/7;FAIL red:failure-reasons ·;FAIL red:updown-handover 18/19;FAIL red:decomment ·;FAIL red:ai-cycles ·;FAIL red:tab-anchors ·;FAIL red:bar-geometry ·;FAIL red:count-truth ·;FAIL red:social-home ·;FAIL red:social-token ·;FAIL red:social-rel ·;FAIL red:social-promo ·;FAIL red:footer-reachable ·;FAIL red:social-panel ·;FAILED: red:programme-isolation, red:policy-lines,;
+11:20:05   census after the reds: 0 postgres alive, 0 orphaned
+11:20:05 the control on main bd7147eb in kipindi-a8i2: admin-charts,ai-cycles,bar-geometry,bonus-one-side,cert-expiry,contrast,count-truth,decomment,failure-reasons,footer-reachable,icon-sizes,icon-sizes-slack,kyc-copy-truth,margin-series,policy-lines,programme-isolation,social-home,social-panel,social-promo,social-rel,social-token,tab-anchors,tap-floor,tap-rung,updown-bet-feedback,updown-chain-stats,updown-digest,updown-handover,updown-result-announce
+11:27:45   on main: FAIL red:programme-isolation ·;PASS red:policy-lines 49/49;FAIL red:kyc-copy-truth ·;FAIL red:icon-sizes ·;FAIL red:icon-sizes-slack ·;FAIL red:tap-floor ·;FAIL red:tap-rung ·;FAIL red:contrast 3/25;PASS red:contrast-callsite 5/5;PASS red:contrast-rendered 5/5;PASS red:updown-chain-stats 9/9;PASS red:updown-digest 7/7;FAIL red:cert-expiry 2/3;PASS red:updown-bet-feedback 7/7;PASS red:updown-result-announce 8/8;FAIL red:margin-series ·;FAIL red:admin-charts ·;FAIL red:bonus-one-side 6/7;FAIL red:failure-reasons ·;PASS red:updown-handover 19/19;PASS red:decomment ·;FAIL red:ai-cycles ·;FAIL red:tab-anchors ·;FAIL red:bar-geometry ·;FAIL red:count-truth ·;FAIL red:social-home ·;FAIL red:social-token ·;FAIL red:social-rel ·;FAIL red:social-promo ·;FAIL red:footer-reachable ·;FAIL red:social-panel ·;FAILED: red:programme-isolation, red:kyc-copy-truth,;
+11:27:45   kipindi-a8i2 clean after the control
+11:27:45 fingerprint at the end: 8c0fa0db9851 — tree same
+11:27:45 chain end
+11:27:45 lock released

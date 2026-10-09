@@ -1,0 +1,20 @@
+08:56:10 queued: wait note written
+08:56:10 lock taken
+08:56:10 kipindi-hotfix at 6f276f049 + 3 changed file(s)
+08:56:55 typecheck exit=2 — 15 error(s)
+08:56:56 test:static-cache-scope exit=0 — static-cache-scope: 15 passed, 0 failed
+08:57:55 server up after 4s
+08:58:04   ok page /markets/zz-probe.png — Cache-Control: no-cache, must-revalidate
+08:58:04   ok page /markets/mexico — Cache-Control: no-cache, must-revalidate
+08:58:23   ok page /u/federico — Cache-Control: no-cache, must-revalidate
+08:58:26   ok page /positions/abc.jpg — Cache-Control: no-cache, must-revalidate
+08:58:28   ok page /markets — Cache-Control: no-cache, must-revalidate
+08:58:29   ok page / — Cache-Control: no-cache, must-revalidate
+08:58:29   ok static /icons/icon-192.png — Cache-Control: public, max-age=31536000, immutable
+08:58:29   ok static /brand/mark-color.svg — Cache-Control: public, max-age=31536000, immutable
+08:58:29   ok static /favicon.ico — Cache-Control: public, max-age=31536000, immutable
+08:58:29   ok static /favicon.svg — Cache-Control: public, max-age=31536000, immutable
+08:58:29 headers: 0 problem(s)
+08:58:31 server stopped (left: 0)
+08:58:31 chain end
+08:58:31 lock released

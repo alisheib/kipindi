@@ -1,0 +1,25 @@
+22:27:13 waiting for wm6-chain.done
+23:47:19 wm6-chain.done is there: exit=0
+23:47:19 waiting for vis-ready2.done
+23:47:19 vis-ready2.done is there: exit=0
+23:47:19 queued: wait note written
+23:47:19 waiting (owner: marketing-s14 step54-final since 2026-10-08T22:42:53Z pid 422843; queue: asheib-c5 vodacom: wm7-chain queued since 2026-10-08T23:47:19Z)
+23:52:22 waiting (owner: marketing-s14 step54-final since 2026-10-08T22:42:53Z pid 422843; queue: asheib-c5 vodacom: wm7-chain queued since 2026-10-08T23:47:19Z)
+23:57:26 waiting (owner: marketing-s14 step54-final since 2026-10-08T22:42:53Z pid 422843; queue: asheib-c5 vodacom: wm7-chain queued since 2026-10-08T23:47:19Z)
+00:02:29 waiting (owner: marketing-s14 step54-final since 2026-10-08T22:42:53Z pid 422843; queue: asheib-c5 vodacom: wm7-chain queued since 2026-10-08T23:47:19Z)
+00:07:32 lock taken
+00:07:32 kipindi-a8i2-ctl at fd7a1fe6d (M6's 17087f071 plus R3-C)
+00:07:39 typecheck exit=0 — 0 error(s)
+00:10:04 wm7-jhf: exit=0 · tree same —   least slack: 10.7px at sw 320 player-999999 (rightmost: Weka pesa)   rail labels on more than one line: sw 320 guest: Tiketi zangu (2 lines) · sw 320 player-999999: Tiketi zangu (2 lines) · sw 320 player-9.9M: Tiketi zangu (2 lines) · sw 320 zero: Tiketi zangu (2 lines) · sw 320 held: Tiketi zangu (2 lines) · sw 320 masked: Tiketi zangu (2 lines) 6/6 passed — qa:journey-header-fit · 66 cells 
+00:14:39 wm7-red-jhf: exit=0 · tree same —   CAUGHT  gutter-24-from-640-returns — sw 768 guest — gutter: padding-left 24px, not 16px   CAUGHT  edge-32-from-1024-lost — sw 1024 guest — gutter: padding-left 16px, not 32px RED · journey-header-fit — 10/10 caught · 0 missed · 0 broken · 0 file(s) left modified 
+00:34:58 wm7-seal-j: exit=1 · tree same —     /leaderboard@360·zh LOAD FAILED Error: page.goto: net::ERR_CONNECTION_REFUSED at h     /leaderboard@390·zh LOAD FAILED Error: page.goto: net::ERR_CONNECTION_REFUSED at h     /leaderboard@768·zh LOAD FAILED Error: page.goto: net::ERR_CONNECTION_REFUSED at h 
+00:41:03 wm7-seal: exit=0 · tree same — LOCAL REHEARSAL — http://localhost:3074   13 public + 10 gated routes × 4 widths × 3 locales   276 cells measured · 0 problem(s) 
+00:44:55 wm7-needle: exit=1 · tree same — [needle-rest] 49 passed, 1 failed FAILURES:   · §1 no teleport (change of step between frames ≤ 6 px) max=6.50 
+00:45:48 wm7-bar: exit=2 · tree same — > fiftypick@0.1.0 qa:bar-geometry > node scripts/live/bar-geometry-drive.mjs 🔴 could not sign in at /auth/demo — a run asked to sign in and unable to has measured nothing. 
+00:46:25 wm7-red-bar: exit=1 · tree same — > fiftypick@0.1.0 red:bar-geometry > node scripts/red-bar-geometry.mjs REFUSING: qa:bar-geometry is already RED on /proposals (untouched tree) — fix that first, or a mutation there cannot be shown to cause anything. 
+00:48:59 wm7-preview: exit=0 · tree same — §6 · no page error anywhere   PASS 6.1 no page errors or console errors in any context 33/33 passed — tiles in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/preview-m7 
+00:52:13 wm7-live: exit=1 · tree same —   - [sw] /legal/rules no words run together after an inline tag ·</span>Imetolewa   - [sw] /legal/rules/yes-no no words run together after an inline tag ·</span>Yanaanza   - [sw] /legal/rules/up-down no words run together after an inline tag ·</span>Zinaanza 
+00:55:30 wm7-live2: exit=1 · tree same —   - [sw] /legal/rules no words run together after an inline tag ·</span>Imetolewa   - [sw] /legal/rules/yes-no no words run together after an inline tag ·</span>Yanaanza   - [sw] /legal/rules/up-down no words run together after an inline tag ·</span>Zinaanza 
+01:06:43 wm7-tiles: exit=0 · tree same —   · React’s DEV-only measure error, listed and never failed (a production build has no such measure): 0 qa:journey-shell — 1659 passed · 0 failed · 0 blocked · 336 tiles in C:\Users\asheib\AppData\Local\Temp\claude\C--Users-asheib\0e745525-51fe-4451-ace7-c9987576fc15\scratchpad\visual\tiles-r4 · 10.4 min Green is not a read: open every tile, one by one, in the order of its number. 
+01:06:43 chain end
+01:06:43 lock released

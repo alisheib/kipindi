@@ -1,0 +1,552 @@
+# R5-G suite run — 2026-10-09T16:18:52.700Z — F:\kipindi-r5g
+
+== test:visual-pass-r5g EXIT 0 (2.7s)
+   …   ok   5.2 · the classic footer keeps main's licence line: no keep span, no size container (frozen chrome)
+   …   ok   5.3 · the two shared-body changes classic readers see too: /profile's help row ("Help" / "帮助"; Swahili unchanged) and an approved agent's invite tab ("Dashibodi ya wakala")
+   … visual-pass-r5g: 61 passed, 0 failed
+
+== test:visual-pass-r5h EXIT 0 (8.0s)
+   …   ok   5.12 · /updown/history: the page's search band (`mt-5 pb-5`) and its bar's two rows before the strip, the strip's tiles 89.5px
+   …   ok   5.13 PLANT · each of the 11 fixes undone in memory, one at a time, is reported by its own check and by no other
+   … visual-pass-r5h: 52 passed, 0 failed
+
+== test:visual-pass-r5d EXIT 0 (9.4s)
+   …   ok   5.2 · a page that is left leaves the document: next.config turns no cacheComponents on, and without it Next keeps ONE router entry and wraps no segment in a hidden <Activity> (bfcache-state-manager.js, layout-rout
+   …   ok   5.2′ PLANT · cacheComponents turned on is reported
+   … visual-pass-r5d: 44 passed, 0 failed
+
+== test:visual-pass-r4j EXIT 0 (2.7s)
+   …   ok   5.10 · no other page renders the mark
+   …   ok   5.11 · the snapshot is the path the span was drawn for (null with no span), every coming and going is heard once, and letting go stops listening
+   … visual-pass-r4j: 79 passed, 0 failed
+
+== test:offline-neutral EXIT 0 (0.9s)
+   …   PASS 12.not-ok · a page the server answered with an error refreshes nothing
+   …   PASS 12.keeps · a refresh the server refuses leaves the kept copy as it was — the phone is never left without its offline document
+   … OFFLINE NEUTRAL — all checks passed
+
+== red:offline-neutral EXIT 0 (2.0s)
+   … PROVED   a refresh tried when the network failed too — caught by 12.offline
+   … PROVED   a refresh on a server error too (any answer) — caught by 12.not-ok
+   … RED CONTROL — 33/33 caught
+
+== test:journey-shell EXIT 0 (3.3s)
+   …   PASS 12.nodefer.platform · no server module in src defers a "use client" module through import(…) — React.lazy, next/dynamic or any wrapper: from a server file that module joins the first load all the same
+   …   PASS 12.c · CONTROL · the readers can fail: the lazy reader takes lazy(, React.lazy( and lazy<T>( and leaves makelazy( and a Lazy name alone; the import reader takes lazy by name or renamed, from react only; the list r
+   … JOURNEY SHELL — all 434 checks passed
+
+== red:journey-shell EXIT 0 (26.1s)
+   …   ok   PLANT LANDED · a red run's witness is left in the stylesheet (a hard kill)
+   …   ok     └─ fires: ^10\.leash\.witness ·
+   … RED CONTROL — 188/188 caught · all 377 proofs held
+
+== test:red-anchors EXIT 0 (3.0s)
+   …   PASS 4.2 · ⛔ …and if that count drops, LOWER THE CEILING in the same commit — 64 vs 64 — a ceiling above the real count stops being a ratchet
+   …      still un-audited (64): red:labels, red:updown-result-clock, red:mobile-visual-plan, red:combobox-truncate, red:unwrappable-id, red:aipoll-reap, red:aipoll-publish, red:stake-bounds, red:updown-cutover, red:contrast,
+   … red-anchors: 5070 passed, 0 failed
+
+== test:decomment EXIT 0 (4.3s)
+   …   note  worst case: scripts/qa/landing-ten.mjs — 33535 characters lost to line-comments-first
+   …   PASS 5.3 …and that script is inside the set pii-in-logs §3 scans
+   … ALL PASS — 22 passed, 0 failed
+
+== test:hooks-order EXIT 0 (1.3s)
+   … hooks-order: 7 passed, 0 failed
+   … all green
+
+== test:measure EXIT 0 (2.2s)
+   …   PASS 8. the back link's chevron hands back its side bearing, so its tip sits on the edge the link heads
+   …   PASS 8. ⭐ CONTROL — the bearing derivation reads the glyph (a 3px bearing for the point at x9)
+   … ALL PASS — 735 tsx files
+
+== red:measure EXIT 0 (62.0s)
+   …         the back link's chevron keeps its glyph's 3px side bearing, so its tip stands 3px inside the edge of the card it heads (x19 against 16)
+   …         → FAIL 8. the back link's chevron hands back its side bearing, so its tip sits on the edge the link heads — bearing 3px (t
+   … 8/8 proven · 0 missed · 0 broken harness
+
+== test:ui-consistency EXIT 0 (2.7s)
+   …     PASS K8b CONTROL · a copy of input.tsx that mounts the notice only once it holds words (the first build) fails K8's judge — a region created already holding its words is announced unreliably
+   …     PASS K8c CONTROL · a copy of input.tsx whose empty notice carries one more class (py-1) fails K8's judge — the empty region would take a height under every field
+   …   ALL PASS — no new UI-consistency drift beyond the tracked baseline.
+
+== test:i18n EXIT 0 (1.8s)
+   …   PASS no file inside the console mounts an UNPINNED I18nProvider
+   …   PASS CONTROL · the scan read the console (100+ files) and would catch an unpinned provider
+   … ALL PASS — en=2628 sw=2628 zh=2628 keys
+
+== test:simple-journey-flag EXIT 0 (7.4s)
+   … PASS 12.db.outcome.unrecorded · an act that LANDED but whose outcome row failed is reported as landed, with a warning
+   … PASS 12.db.ran · the database-mode process ran its checks and exited clean
+   … 135 passed, 0 failed
+
+== red:simple-journey-flag EXIT 0 (10.5s)
+   … [audit] ADMIN journey.preview.link.opened system JourneyPreviewLink#3333333333333333
+   … PROVED                               the shell's lazy module imports the journey header statically (S6 WP6c)
+   … 41/41 caught
+
+== test:eyebrow-roles EXIT 0 (1.2s)
+   …   215 site(s) in another role — control label · status chip · data value · type-to-confirm · celebration · prose
+   …      of which 15 carry `.row-link` — the row navigation link, a CONTROL LABEL whose case and 0.10em live in globals.css (DG-A-08)
+   … ✅ 639 sites, every one accounted for.
+
+== test:type-scale EXIT 0 (2.3s)
+   …   PASS §8 ⭐ CONTROL — the hint reader sees a sub-floor hint where one is written
+   …   Ladder adoption: 2300 semantic vs 861 arbitrary (72.8% on the scale). DONE = every ratchet at 0.
+   … ALL PASS — 1440 source files, 188 money elements.
+
+== test:spacing-scale EXIT 0 (2.6s)
+   … PASS 3: ⛔ the scanner can still SEE the backlog it is ratcheting — 453 usages across 165 files — a collapse here is the matcher, not a cleanup
+   … PASS 4: 🔴 the proposals row no longer tightens at the sm breakpoint — sm:gap-3.5 is 14px against a base gap-3 of 16px — wider layout, tighter gutter
+   … spacing-scale: 10 passed, 0 failed · 453 inverted usages in 165 files
+
+== test:design-frozen EXIT 0 (1.6s)
+   …   PASS PC14 css: a hand-typed radius is seen
+   …   (ratchet holds 32 tsx file(s) / 139 value(s), 1 stylesheet(s) / 78 value(s) — every number may only shrink)
+   … PASS — design primitives are frozen
+
+== test:css-vars-defined EXIT 0 (2.2s)
+   …   standalone src/lib/offline-document.ts: 21 defined · 21 referenced without a fallback
+   … PASS every var() reference resolves to a definition
+   … css-vars-defined: 299 references checked, 0 undefined.
+
+== test:stacking EXIT 0 (1.9s)
+   … PASS 8.4 the automation block can be opted out of, so the primer can be photographed — the block is kept — ~10 drives assume the primer is absent — but a driver can now ask for it
+   … PASS 8.5 ⚠️ CONTROL — the UA block still exists (removing it would break ~10 drives)
+   … 137 passed, 0 failed
+
+== test:guards-exist EXIT 0 (38.4s)
+   … ══════════════════════════════════════════════════════════════════════
+   …   GUARDS EXIST: 9 passed, 0 failed
+   … ══════════════════════════════════════════════════════════════════════
+
+== test:client-graph-safe EXIT 0 (4.2s)
+   …   ✓ §1 ratchet · every pinned module exists and was walked 56 of 56
+   …   ✓ §1 no pinned client-reachable module reaches the Prisma client
+   … ALL PASS — client-graph-safe: 5 passed, 0 failed
+
+== test:route-census EXIT 0 (1.1s)
+   … PASS 2.4 CONTROL: admin and api are excluded from the population
+   … route-census: 6 passed, 0 failed · 58 routes on disk · 58 named in §4
+   … route-census: OK — every client-facing route has a ruling, and every ruling has a route
+
+== test:shell-boundary EXIT 0 (1.0s)
+   …   ok   4.1 AppShell still decides the player chrome from the REQUEST PATH in the root layout
+   … shell-boundary: 15 passed, 0 failed
+   … shell-boundary: OK — both crossings are hard navigations, so each destination gets its own shell
+
+== red:shell-boundary EXIT 0 (13.5s)
+        FAIL 1.3 …written as a plain <a>, not <Link> — a soft nav keeps the shell-less admin layout — <Link href="/" aria-label="Back to app" className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md bord
+        FAIL 2.3 …written as a plain <a>, not <Link> — a soft nav keeps the PLAYER layout, and the console renders inside player chrome (session 21's observation) — <Link href="/admin" role="menuitem" className={cn("group flex items-center gap-2.5 rounded-lg px-2
+        FAIL 1.1 the `Back to app` control still exists (href="/") — no element with href="/" in admin-shell.tsx — did the control move? this suite is now blind
+        FAIL 1.2 …and there is exactly one of it — 0 found
+        FAIL 2.2 …and there is exactly one of it — 2 found
+        FAIL 2.3 …written as a plain <a>, not <Link> — a soft nav keeps the PLAYER layout, and the console renders inside player chrome (session 21's observation) — <Link href="/admin">
+        FAIL 2b.3 …written as a plain <a>, not <Link> — a soft nav keeps the player layout around the console — <Link href="/admin" className="kp-hub__row">
+        FAIL 2b.4 the hub's rows data is found and carries no console href — a row renders as a soft <Link>, which is E-70 — "/admin
+   … ── mutation: the root-cause check made unfalsifiable (§4 must not be a rubber stamp) ──
+   …    exit=0  failures=0  · missed, AS DOCUMENTED
+   … 7/7 required mutations caught (+1 documented-miss) — files restored byte-for-byte.
+
+== test:journey-account EXIT 0 (3.0s)
+   … PASS 7.defaults · the shipped reads answer on the twin — the invite switch, the agent programme and proposals through their own caches, none throws
+   … PASS 7.ran · the database-mode process ran its checks and exited clean
+   … JOURNEY ACCOUNT — all 85 checks passed
+
+== red:journey-account EXIT 0 (1.8s)
+   …   ok   PLANT LANDED · the programme is never asked (the agent door shut whatever the switch says)
+   …   ok     └─ fires: 6.fail.agent.c
+   … RED CONTROL — 48/48 caught · all 97 proofs held
+
+== test:visual-pass-r5a EXIT 0 (2.6s)
+   …   ok   11.5 BY DESIGN · the spotlight's state chip is 20px beside the 18px category chip: status chips are 2px taller at every size (chip.tsx, the kit's metrics), centred 1px each way
+   …   ok   11.6 BY DESIGN · the AML title's third line is under the bottom rail's elevation shadow at that scroll (232 against 245 at most), not a gradient of its own
+   … visual-pass-r5a: 91 passed, 0 failed
+
+== test:visual-pass-r5b EXIT 0 (7.3s)
+   …   ok   11.5 · the deposit pip stands 4px into the tile's corner: 7.5px clear of the logo at sw 320 (a 113px tile, a 48px plate)
+   …   ok   11.5′ CONTROL · at 8px in (`1.5`) it was 3.5 — tile 067's 3 clear columns (plate to x121, pip from x125)
+   … 75 passed, 0 failed
+
+== test:visual-pass-r5c EXIT 0 (2.3s)
+   …   ok   7.6 · the regulator-letter frame's corners are claret (§B4), not gilt
+   …   ok   7.7 · OWNER · the classic chrome's 'coming soon' tag keeps its gold tint; page bodies (#main-content) and the journey wear the neutral tag
+   … visual-pass-r5c: 91 passed, 0 failed
+
+== test:visual-pass-r5e EXIT 0 (15.5s)
+   …   ok   9.1′ CONTROL · "December 2026" would not (225px) — why a month keeps only its day (1.3″) — nor would an absurd figure ("TZS 10,000,000 bilioni")
+   …        (wider than the 220px line at 320: "TZS 10,000,000" 229.0px, "USD 100 million" 221.5px; "?" after one adds 15.2px)
+   … visual-pass-r5e: 60 passed, 0 failed
+
+== test:visual-pass-r5i EXIT 0 (2.8s)
+   …   ok   6.7 · OWNER · `hot` still shares the NO rose with `no` in the chip (the split is the owner's call, §B2a)
+   …   ok   6.8 · no RG notice, helpline or limit control was touched: the RG page keeps its three neutral notices and its limits form
+   … visual-pass-r5i: 112 passed, 0 failed
+
+== test:visual-pass-r3c EXIT 0 (1.3s)
+   …   ok   10.2 · the wait outlasts one failed read's retry (21–39 s) and asks the once-reading Arifa row to read again
+   …   ok   10.3 · after pressing the hub's Matokeo row the pointer moves off the page's controls (the HAPANA hover fill on tile 326)
+   … visual-pass-r3c: 70 passed, 0 failed
+
+== test:visual-pass-r4e EXIT 0 (1.7s)
+   …   ok   12.3′ PLANT · flush-right put back is reported (the slack all on one side)
+   …   ok   12.4 · journey-only: the captioned capsule is the only wearer of these classes
+   … visual-pass-r4e: 68 passed, 0 failed
+
+== test:visual-pass-r4h EXIT 0 (2.1s)
+   …   ok   14.1 · each page's gaps around its search equal its rung + 10: /live 34 · 34, /updown/history 34 · 34 · 34, /profile/account 26 · 26 · 26
+   …   ok   14.1′ PLANT · /live's band dropped is reported
+   … visual-pass-r4h: 81 passed, 0 failed
+
+== test:visual-pass-r4i EXIT 0 (35.0s)
+   …   ok   15.2 · EXECUTED · …and so does the exclusion's
+   …   ok   15.2′ CONTROL · what they printed — the UTC day — carried no time and no month word
+   … visual-pass-r4i: 128 passed, 0 failed
+
+== test:journey-tickets EXIT 0 (2.1s)
+   … PASS 12.arith · the look computes nothing and formats no time: no arithmetic among its expressions, no Date, no formatter of time, no Intl, no stake; its figures are formatTzs(value), formatNumber(value) and today's fee
+   … PASS 12.words · the journey's sell path (the look, the shared dialogs under it, the confirm with the journey's words, the toasts) says no 'nafasi' and reads none of the three classic lines that do; every word resolves in
+   … JOURNEY TICKETS — all 51 checks passed
+
+== red:journey-tickets EXIT 0 (91.9s)
+   …   ok   PLANT LANDED · a word on the sell path is missing in Chinese
+   …   ok     └─ fires: 12.words
+   … RED CONTROL — 111/111 caught · all 223 proofs held
+
+== test:journey-funnel EXIT 0 (8.0s)
+   …   PASS 10.report · from the rows: two confirmed deposits, one followed by the player's bet within 30 minutes (the house-marked bet at 5 minutes does not count); one more player with a first bet
+   …   PASS 10.panel · the panel is mounted on /admin/insights AFTER the page's access check, and it contains its own read failure
+   … JOURNEY FUNNEL — all checks passed
+
+== red:journey-funnel EXIT 0 (157.0s)
+   … [email-stub] To: u***@t.tz | Subject: Deposit confirmed · TZS 4,000
+   … PROVED   an unsafe utm value kept
+   … RED CONTROL — 26/26 caught
+
+== test:card-return-order EXIT 0 (3.7s)
+   … PASS 4.8 a second `?` from the gateway still finds the deposit (PAID)
+   … PASS 4.9 control: without our id the same return reads UNKNOWN (what a charged payer was shown)
+   … CARD RETURN ORDER — all checks passed
+
+== red:card-return-order EXIT 0 (1.6s)
+   … PROVED   the page reads sp.order_id raw again
+   … PROVED   the test gateway appends an order_id of its own again (the July blind spot)
+   … RED CONTROL — 10/10 caught
+
+== test:contacts-boundary EXIT 0 (6.8s)
+   … PASS §7.4 the Excel-shortened detector catches 2.55713E+11 in every spelling and never a whole number
+   … PASS §7.5 a note's row list reads "rows 4, 9 and 12" and stops at NOTE_LIST_CAP with the true count — rows 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, …46, 47, 48, 49, 50 and 10 more
+   … contacts-boundary: 35 passed, 0 failed
+
+== red:contacts-boundary EXIT 0 (3.7s)
+   FAIL red2:§1.2 …nor the package exceljs (its browser build would ship ~948 KB into the admin chunk with typecheck and build green) — src/app/admin/contacts/contacts-import-dialog.tsx → exceljs
+   FAIL red2:§3.1 the src files with a VALUE import of exceljs are exactly the report writer (plus U27b's reader once it exists) — importers: src/app/admin/contacts/contacts-import-dialog.tsx, src/lib/server/contacts/import-xlsx.ts, src/lib/server/reports/xlsx.ts
+   FAIL red2:§3.2 no "use client" file anywhere in src reaches exceljs (every client walked, leaves respected) — src/app/admin/contacts/contacts-import-dialog.tsx → exceljs
+   FAIL red3:§1.1 no owned client file and no client island an owned route renders reaches src/lib/server/** except through a "use server" leaf — src/app/admin/contacts/contacts-import-dialog.tsx → src/lib/contacts/parsed-file.ts → src/lib/server/store.ts | src/a
+   FAIL red3:§1.3 …nor a Node builtin — src/app/admin/contacts/contacts-import-dialog.tsx → src/lib/contacts/parsed-file.ts → src/lib/server/store.ts → src/lib/server/crypto.ts → node:crypto | src/app/admin/contacts/contacts-import-dialog.tsx → src/lib/contacts/p
+   FAIL red3:§2.2 src/lib/contacts/** reaches no src/lib/server/**, no src/app/** (not even a leaf) and no "use client" module — src/lib/contacts/parsed-file.ts → src/lib/server/store.ts | src/lib/contacts/parsed-file.ts → src/lib/server/store.ts → src/lib/server
+   FAIL red3:§2.3 …and no exceljs and no Node builtin — src/lib/server/crypto.ts → node:crypto | src/lib/server/crypto.ts → node:util
+   FAIL red3:§2.5 the two foundations (parsed-file.ts, xlsx-limits.ts) exist and import nothing at all — src/lib/contacts/parsed-file.ts: 1 import(s)
+   … FAIL red29:§7.1 the sniffer reads the FULL magic bytes (a CSV starting "PK" is text), and the classifier tells xlsx, ods, xls and protected apart — protected even when EncryptionInfo sits past the first 4 KB — a protecte
+   …    caught → §7.1 the sniffer reads the FULL magic bytes (a CSV starting "PK" is text), and the classifier tells xlsx, ods, xls and protected apart — protected even when EncryptionInfo sits past the first 4 KB
+   … 28/28 caught · 1/1 green control(s) held · RED PROOF COMPLETE
+
+== test:deposit-phone EXIT 0 (1.1s)
+   … PASS 4.1 the nine digits travel in a hidden field under the caller's name
+   … PASS 4.2 the visible box carries no name (it would post the spaced "712 345 678")
+   … DEPOSIT PHONE — all checks passed
+
+== red:deposit-phone EXIT 0 (1.2s)
+   … PROVED   the buttons assign el.value again (the posted number would not follow)
+   … PROVED   the PhoneInput drops its hidden field
+   … RED CONTROL — 7/7 caught
+
+== test:enter-where-pressed EXIT 0 (1.7s)
+   … §6 · the first focus (A8i-2)
+   …   PASS 6.1 · a dialog whose first target cannot take focus (disabled, or gone) gives focus to its first control that can — never to a dead button, which left focus behind the scrim
+   … ENTER WHERE PRESSED — all checks passed
+
+== red:enter-where-pressed EXIT 0 (17.0s)
+   … PROVED   ConfirmModal names no way out (a seal over a withdrawal confirm hands focus back to Send funds)
+   … PROVED   a disabled first target is given focus all the same (focus stays behind the scrim)
+   … RED CONTROL — 103/103 caught
+
+== test:hero-copy EXIT 0 (4.3s)
+   … PASS §5b-control CONTROL: the same two walks DO find a key that is still alive and still read
+   … state: claim P ("first", evidence 2026-09-27 · INHERIT-MANIFEST R9) · rails [M-Pesa, Airtel Money, HaloPesa, Mixx by Yas]
+   … hero-copy: 17 passed, 0 failed
+
+== red:hero-copy EXIT 0 (2.7s)
+   … CAUGHT §5b the board's rail reads the retired landing key again instead of /markets' own sort word → src/components/home/landing-hero.tsx still reads heroBoardEyebrow
+   … CAUGHT §5b-control the live key the control watches is deleted, so §5b's dictionary walk loses its subject → home.pickASideNow is gone from sw — 5b's dictionary walk has no live subject
+   … red:hero-copy: 27 caught, MISSED = 0
+
+== test:implicit-submit EXIT 0 (3.4s)
+   …   PASS 5.1 · this suite runs in predeploy, and its red twin is declared — in-process, with --prove-red
+   …   PASS 5.2 · the real-browser half is declared beside it: a local drive, outside predeploy, because it withdraws
+   … IMPLICIT SUBMIT — all checks passed
+
+== red:implicit-submit EXIT 0 (7.2s)
+   … PROVED   its drive undeclared
+   …            failed: 5.2
+   … RED CONTROL — 61/61 caught · 1/1 green held
+
+== test:marketing-optout EXIT 0 (7.6s)
+   … marketing-optout: 121 passed, 0 failed
+   … [optout] stop failed: planted: the ledger write failed once
+   … [optout] refused a mint with an unusable identifier
+
+== red:marketing-optout EXIT 0 (2.0s)
+   FAIL red1:23 · ⭐ A TOKEN MINTED 400 DAYS AGO STILL RESOLVES (OD43) — a link that stops working is a person who cannot leave — the page refused a link it minted
+   FAIL red1:24 · …and it still stops the marketing — {"ok":false,"reason":"unknown"}
+   FAIL red1:37b · ⭐ D6 — a person opening their OWN valid link never spends the budget, however often — 45 of 45 opens of a valid link were refused
+   FAIL red2:4 · ⛔ ONE CLICK — the page puts no confirmation step between the tap and the write
+   FAIL red3:12 · 🔴 …and the GATE GIVES BACK ITS PRE-STOP ANSWER, not `suppressed` — without this, 'start them again' is a false success — refused by suppressed, before the stop age_unknown
+   FAIL red3:14 · ⭐ …and the ORIGINAL refusal date is untouched, so 'when did they say no' is still answerable — createdAt 2026-10-09T16:29:10.994Z liftedAt null
+   FAIL red3:16 · stopping again after a resubscribe reports success — {"ok":true,"state":"already"}
+   FAIL red4:17 · 🔴 …and the GATE REFUSES IT AGAIN ON THE SUPPRESSION ITSELF — re-suppression must RE-ARM a lifted row, not hand it back — refused by consent_withdrawn
+   … RED PROOF COMPLETE
+   … [optout] stop failed: planted: the ledger write failed once
+   … [optout] refused a mint with an unusable identifier
+
+== test:sell-price-guard EXIT 0 (3.4s)
+   … PASS 7.away · a move to another page closes the result, as leaving the page did before A8h (a phone's own Back among them), and drops the way back read on the page left behind
+   … PASS 7.focus · when the result closes, focus goes back near the control that opened the sale, never to a field: the button remembers that control when its confirm opens and hands it over (7.handed), the host reads the pa
+   … SELL PRICE GUARD — all 54 checks passed
+
+== red:sell-price-guard EXIT 0 (3.4s)
+   …   ok   PLANT LANDED · each Sell button keeps its own last refusal again (a refusal on one ticket stays beside another ticket's sale, and refusals across tickets stack)
+   …   ok     └─ fires: 7.stays
+   … RED CONTROL — sell-price-guard: 83/83 caught · all 167 proofs held
+
+== test:social-panel EXIT 0 (1.8s)
+   …   ✓ 7.8 ⛔ the WhatsApp row still says "channel" — a bare WhatsApp promises an inbox nobody staffs
+   …   ✓ 7.9 ⛔ the heading claims nothing about content that could become false
+   … ALL PASS — 53 passed, 0 failed
+
+== red:social-panel EXIT 0 (1.9s)
+   …   ✓ CAUGHT    shell-inverted - the shell's self-exclusion comparison inverted - tripped: 3.1 the derivation is `until(...) > now`, not its inverse
+   …   ✓ CAUGHT    elision - a class with an elision in src/ - tripped: 6.1 no arbitrary-value class anywhere in src/ contains an elision
+   … 8/8 planted defects caught on their named assertion
+
+== test:tz-msisdn EXIT 0 (1.4s)
+   …   ok   §8 ⭐ the withdraw page's hand-rolled grouping regex is gone
+   …   ok   §8 …and it renders through the shared formatter
+   … TZ MSISDN — all checks passed
+
+== red:tz-msisdn EXIT 0 (1.3s)
+   …   ok   PLANT LANDED · a parser that rebuilds the NDC index on every call
+   …   ok     └─ fires: §6 the build counter is what makes that visible at all
+   … RED CONTROL — all 46 proofs held
+
+== test:updown-history-pnl EXIT 0 (1.0s)
+   … PASS §4d control · the old spilling sub-line IS detected
+   … PASS §4e control · stripComments removes prose that names the defect
+   … ALL PASS — 26 passed, 0 failed
+
+== red:updown-history-pnl EXIT 0 (9.5s)
+   … RED control PASSED — every mutation turned the named assertion red, and the tree is clean.
+   … (node:10736) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+   … (Use `node --trace-deprecation ...` to show where the warning was created)
+
+== test:updown-positions-visible EXIT 0 (1.1s)
+   …   ok   5.9 every udHistoryCapped translation keeps the {n} placeholder
+   … updown-positions-visible: 29 passed, 0 failed
+   … updown-positions-visible: OK — every position renders on both surfaces, the read cap is stated, and a hedge is not flattened to one side
+
+== red:updown-positions-visible EXIT 0 (6.0s)
+   …   ok   D4 · myPositionFor caps across ALL rounds, then filters to this one → guard went RED
+   … red:updown-positions-visible: 4/4 defects caught
+   … red:updown-positions-visible: OK — every pre-fix defect is seen, and the tree is restored
+
+== red:updown-digest EXIT 0 (12.7s)
+   … ✓ RED   raw-param-filter (?day=lol empties the page with no way out)
+   …          updown-digest (E-37 + E-43): 72 passed, 1 failed — new: one validated day drives the filter, the chip AND the empty state
+   … 7/7 defects caught by the guard
+
+== test:agent-fee-wallet-path EXIT 0 (3.1s)
+   … §9 every agent fee email describes the wallet rail
+   … §6 no live agent copy still describes the out-of-band rail
+   … ALL PASS — 61 passed, 0 failed
+
+== test:agent-terms-binding EXIT 0 (1.6s)
+   … ── §3 · the version cannot lag the binding text ────────────────
+   … ── §4 · what a person read and what was recorded cannot diverge 
+   … ALL PASS — 20 passed, 0 failed
+
+== test:betting-ink EXIT 0 (1.5s)
+   … PASS §7g control · the journey bell's count back in the NO rose is reported
+   … PASS §7h control · a destructive hover in the NO rose is reported — group-hover:border-no-700 group-hover:text-no-300
+   … ALL PASS — 35 passed, 0 failed
+
+== test:cashback-hidden EXIT 0 (1.9s)
+   … PASS 3: ⭐ the live mode is REQUEST, so that branch was already inert — REQUEST
+   … PASS 3: ⛔ the bonus service never reads the offer switch — a granted bonus fulfils regardless
+   … cashback-hidden: 15 passed, 0 failed
+
+== test:cert-f1 EXIT 0 (1.4s)
+   … ────────────────────────────────────────────────────────────────
+   …   PAYOUT HONESTY (F1): 80 passed, 0 failed
+   … ────────────────────────────────────────────────────────────────
+
+== test:client-error-report EXIT 0 (1.3s)
+   … PASS §6e control · a fetch-only boundary IS detected
+   … PASS §6f control · the ordering test can fail
+   … ALL PASS — 56 passed, 0 failed
+
+== test:erasure EXIT 0 (20.4s)
+   …   §5 is the one that matters: a document that was erased is still spent.
+   … ────────────────────────────────────────────────────────────────
+   … ALL PASS — 351 passed, 0 failed
+
+== test:install-invite EXIT 0 (1.8s)
+   …   ok   9.3 …and a value the module does not understand falls back to the shipped state, never ACTIVE
+   … install-invite: 51 passed, 0 failed
+   … install-invite: OK — the app is installable, the invitation asks quietly, and it never covers a money control
+
+== test:kyc-at-withdrawal EXIT 0 (14.5s)
+   … [email] sendEmailToUser withheld — money mail to an unconfirmed address for user usr_74687d5ca3… (user.email=l***@t.tz)
+   … [email] sendEmailToUser withheld — money mail to an unconfirmed address for user usr_74687d5ca3… (user.email=l***@t.tz)
+   … [email] sendEmailToUser withheld — money mail to an unconfirmed address for user usr_74687d5ca3… (user.email=l***@t.tz)
+
+== test:layout-staleness EXIT 0 (0.9s)
+   …   ok   5.8 wallet-service still emits the same event on the deposit / withdrawal / adjustment paths
+   … layout-staleness: 75 passed, 0 failed
+   … layout-staleness: OK — every current-page decision is made where the route is known, and the balance chain is whole end to end
+
+== test:lipa-qr EXIT 0 (14.5s)
+   …   PASS 4.3c CONTROL · …while a docblock merely NAMING the field is not
+   …   PASS 4.4 no wallet surface renders the static QR (it would credit no wallet)
+   … ALL PASS — OCEAN ENTERTAINMENT LIMITED · Lipa 7006 3747 · selcom-lipa-qr.d997c1d2.svg
+
+== test:money-minimums EXIT 0 (3.8s)
+   … PASS 5.2 the dev stress harness clamps at the platform minimum
+   … money-minimums: 35 passed, 0 failed
+   … [email] sendEmailToUser skipped — no email for user mm_dep… (user.email=null, phone=+25574…)
+
+== test:msisdn-prefill EXIT 0 (1.0s)
+   … PASS 6: ⛔ the destination is NOT a disabled input
+   … PASS 6: ⭐ the screen states the rule, localized
+   … msisdn-prefill: 24 passed, 0 failed
+
+== test:one-sided EXIT 0 (3.3s)
+   …   PASS 16.9 …and it states no price: no split, no needle, no figure (the kit default is 62), an em-dash hidden from a reader
+   …   PASS 16.9-control the priced dial DOES draw its split and its figure (the matchers can see one)
+   … ALL PASS — one-sided markets
+
+== test:payments EXIT 0 (20.4s)
+   … [audit] WALLET deposit.dispatch usr_result User#usr_result
+   … payment-webhook: 77 passed, 0 failed
+   … [audit] WALLET deposit.pending usr_result Transaction#txn_f21b9cf293c5a8151fec5b10
+
+== test:payout-destination EXIT 0 (1.2s)
+   … PASS 6: ⛔ `deposit()` does NOT apply the payout-destination rule
+   … PASS 6: ⭐ and the deposit screen offers a real 'use another number' control
+   … payout-destination: 36 passed, 0 failed
+
+== test:popup-fit EXIT 0 (2.0s)
+   …   ok   3.2 ★★ and it is NOT clamped — a player must be able to read the whole thing before committing money
+   … popup-fit: 13 passed, 0 failed
+   … popup-fit: OK — 78 popups walked, 6 carry a clip and every one of those carries a reason
+
+== test:position-permalink EXIT 0 (1.0s)
+   …   ok   6.3 it uses the shared rule rather than re-deriving the destination
+   …   ok   6.4 a ticket that is not the viewer's does not say whether it exists
+   … 31 passed, 0 failed
+
+== test:privacy-notice EXIT 0 (3.1s)
+   … PASS §4k control · the stop sentence missing while a footer carries its link again is reported
+   … PASS §4k control · the stop sentence put back while no offer carries a link is reported
+   … ALL PASS — 100 passed, 0 failed
+
+== test:read-tiers EXIT 0 (2.4s)
+   … PASS 9.2 ⛔ the estimate's money decider asks readCell(money.figures) for read TOGETHER WITH canView(accounting) — masked is not readable, ADMIN is not exempt — export async function campaignMoneyVisible(role: Role): Prom
+   … PASS 9.3 ⭐ POSITIVE CONTROL · §9 reads the real decider, not an empty slice — 7181 bytes · decider 184 chars
+   … read-tiers: 83 passed, 0 failed
+
+== test:refresh-cadence EXIT 0 (1.4s)
+   …   ok   5c.3 ⭐ and `active` is false the moment a successor is in hand
+   …   ok   5c.4 ⛔ the page's clock is the SERVER's, so the bound cannot be beaten by a fast handset
+   … 34 passed, 0 failed
+
+== test:support-contact EXIT 0 (51.9s)
+   … PASS §0 the population is non-empty
+   … PASS §0 the file sweep found src
+   … 77 passed, 0 failed
+
+== test:ticker-honesty EXIT 0 (1.1s)
+   … ticker-honesty: 117 assertions passed
+   … all green
+
+== test:timer-date EXIT 0 (1.1s)
+   … PASS 4: …and formatEatDate of NaN too
+   … PASS 4: CONTROL — a real instant still reads in the reader's month words — 8 Okt, 15:18
+   … timer-date: 77 passed, 0 failed
+
+== test:updown-clock-guard EXIT 0 (1.3s)
+   … PASS §7u control · §7c's assertion REJECTS a `?? livePrice` helper
+   … PASS §7v control · a second copy of the settled spelling IS counted
+   … ALL PASS — 62 passed, 0 failed
+
+== test:updown-filter-sheet EXIT 0 (1.0s)
+   … PASS 12: PageHeader's actions row holds the eyebrow and the title only; the subtitle renders once, under the row — row ends @1175 · subtitle @1293
+   … PASS 12: ⭐ CONTROL — the shape as it shipped is still recognised
+   … updown-filter-sheet: 55 passed, 0 failed
+
+== test:updown-handover EXIT 0 (1.2s)
+   …   ok   10.4 ⛔ and the fallback survives an all-stopped platform rather than going dark
+   …   ok   10.5 ⛔ the TABS still offer every length — a chain's state says whether MORE rounds will appear, not whether the ones there can be played (E-67)
+   … ALL PASS — 117 passed, 0 failed
+
+== test:updown-match EXIT 0 (19.7s)
+   … PASS 13.9 a round already aged at render is past tense on the SERVER (data-aged, no :has())
+   … PASS 13.10 nothing on the band is gold
+   … ALL PASS — 116 passed, 0 failed
+
+== test:updown-pricing EXIT 0 (0.9s)
+   …   ok   7.4 no surface brands a big multiplier — no 'big win', 'jackpot' or 'boost' copy
+   … updown-pricing: 61 passed, 0 failed
+   … ✓ the multiplier a player is shown is the one the money path would pay.
+
+== test:updown-result-announce EXIT 0 (1.0s)
+   …   ok   6.udUpDown · …and not three copies of the English
+   … updown-result-announce: 39 passed, 0 failed
+   … updown-result-announce: OK — win celebrates, loss and refund state their own truth, and nothing leaves the app
+
+== test:wallet-freeze EXIT 0 (6.4s)
+   … PASS 9.4b · …and the panel turns it on exactly while the email step is shown
+   … PASS 9.4c · control · a hook that never listens fails 9.4
+   … wallet-freeze: 73 passed, 0 failed
+
+== test:wallet-receipts EXIT 0 (2.3s)
+   … PASS 8.1 the Prisma read filters by type and orders createdAt desc, then id desc
+   … PASS 8.2 the in-memory twin exists with the same signature
+   … wallet-receipts: 57 passed, 0 failed
+
+== test:withdrawn-features EXIT 0 (5.5s)
+   … 88 passed · 0 failed
+   … [email] sendEmailToUser withheld — money mail to an unconfirmed address for user w5e_ref… (user.email=w***@t.tz)
+   … [house-bot] the feature is WITHDRAWN — the engine is not started and no timer is armed (04 F2)
+
+== test:dead-css EXIT 0 (22.1s)
+   …        18  src/app/motion.css
+   …        15  src/styles/chat/chat-styles.css
+   … DEAD CSS — all checks passed
+
+== test:orphans EXIT 1 (15.3s)
+   …    Either wire it into package.json (preferred — that is what it was written for),
+   …    delete it, or add it to scripts/orphan-allowlist.json with a reason.
+   … ──────────────────────────────────────────────────────────────────────
+
+== test:campaign-gates EXIT 0 (4.8s)
+   … PASS 6.7 · ⭐ test:campaign-gates and red:campaign-gates resolve to this file, and predeploy runs test:campaign-gates exactly once, right after test:campaign-confirm
+   … PASS 6.9 · the shipped wiring is the real doors — CONFIRM_DEPS hands in audienceFence, fenceForViewer, signFence, verifyFence, decideConfirm, campaignAudienceRefusal, breakdownVisible, the settings' re-read, estimate.ts'
+   … campaign-gates: 65 passed, 0 failed
+
+== test:house-bot-disclosure EXIT 4 (98.3s)
+   FAIL 5.1 · ⛔ D19a · every published word is `origin/main`'s own — the two rulebooks, Terms, the privacy notice, the AML and responsible-gambling pages, the agent terms, the legal chrome, the Terms version stamp and the whole dictionary, all identical to d71152
+   FAIL 5.1.c3 · POSITIVE CONTROL · not one changed file is inside the pinned population — the pin holds the published words without refusing the lane's own work, which is the failure mode a protection guard actually has — and the detector that says so is PROVED 
+   … fatal: path 'src/app/legal-does-not-exist/page.tsx' does not exist in 'origin/main'
+   … fatal: path 'src/lib/terms-version.tsx' does not exist in 'origin/main'
+   … !! FLOOR — test:house-bot-disclosure ran 116 assertion(s), fewer than the 118 a green run printed. Cases that stop running are not cases that pass.
+
+# done

@@ -1,0 +1,8 @@
+01:10:53 waiting for wm12-chain.done
+03:14:02 wm12-chain.done is there: exit=0
+03:14:02 queued: wait note written
+03:14:02 lock taken
+03:17:52 wm13-needle: exit=0 · tree same —   ✓ §8 257 · it does not stay where the old page sent it: at rest it clears the control by ≥ 15.4px, and resting() is true {"target":304,"y":238,"gap":16,"resting":true}   ✓ §8 …and the next scroll-idle does not move it again (no chain) [needle-rest] 50 passed, 0 failed 
+03:21:38 wm13-needle2: exit=0 · tree same —   ✓ §8 257 · it does not stay where the old page sent it: at rest it clears the control by ≥ 15.4px, and resting() is true {"target":304,"y":238,"gap":16,"resting":true}   ✓ §8 …and the next scroll-idle does not move it again (no chain) [needle-rest] 50 passed, 0 failed 
+03:21:38 chain end
+03:21:38 lock released

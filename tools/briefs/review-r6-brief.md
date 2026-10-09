@@ -7,9 +7,12 @@ the new "journey" shell (flagged; classic players see the classic shell, whose C
 both shells share. It is about to go LIVE to real players with real money. The owner's rule: only perfect visual AND
 logical results ship; nothing found is deferred as small. Your job is to find what is still wrong before it ships.
 
-WHERE: read-only. The tree is F:\kipindi-vis at the tip named in your prompt; the review range is
-`git -C F:/kipindi-vis diff $(git -C F:/kipindi-vis merge-base HEAD origin/main) HEAD` (≈40 commits; read each commit's
-message too — `git log --format='%h %s%n%b' <base>..HEAD` — they state what each change promises). You may write
+WHERE: read-only. The tree is F:\kipindi-rev, detached at vodacom-visual's 9677a3f5 (a stable copy — the integrator
+keeps merging into F:\kipindi-vis; never read there). The review range is
+`git -C F:/kipindi-rev diff 118fc75c HEAD` (main's tip under the branch; ≈45 commits — read each commit's message too:
+`git -C F:/kipindi-rev log --format='%h %s%n%b' 118fc75c..HEAD`; they state what each change promises).
+⚠️ OMEGA's memory is shared and near its limit: run scripts strictly one at a time, small, and never a dev server,
+build, tsc, browser or test battery. You may write
 scratch scripts ONLY under S\review6\<your letter>\ and run them with node/tsx (node_modules is shared; never delete
 or install anything). Do NOT edit the repo, commit, push, stash, take the lock F:/kipindi-locks/heavy-node.lock, run
 tsc, start a dev server or a browser. Git Bash eats backslashes in `-e` scripts and heredocs: write script FILES.

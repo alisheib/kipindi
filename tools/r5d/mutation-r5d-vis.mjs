@@ -51,7 +51,9 @@ const PLANTS = [
   { name: "F4 · the one decision answers presence", suite: "r4j", expect: /^5\.15 /,
     edits: [{ file: "src/lib/not-found-mark.ts", from: "  return markPath !== null && markPath === path;", to: "  return markPath !== null;" }] },
   { name: "F4 · arrival announced by a passive effect (a transition paints the not-found page with a tab lit first)", suite: "r4j", expect: /^5\.2 /,
-    edits: [{ file: "src/components/ui/not-found-mark.tsx", from: "  useLayoutEffect(() => { announceNotFound(); }, [path]);", to: "  useEffect(() => { announceNotFound(); }, [path]);" }] },
+    edits: [ // R5-H: the file imports only useLayoutEffect now — the plant brings useEffect in with it
+      { file: "src/components/ui/not-found-mark.tsx", from: "import { useLayoutEffect } from \"react\";", to: "import { useEffect, useLayoutEffect } from \"react\";" },
+      { file: "src/components/ui/not-found-mark.tsx", from: "  useLayoutEffect(() => { announceNotFound(); }, [path]);", to: "  useEffect(() => { announceNotFound(); }, [path]);" }] },
   { name: "F4 · the mark names no path", suite: "r4j", expect: /^5\.2 /,
     edits: [{ file: "src/components/ui/not-found-mark.tsx", from: "return <span hidden id={NOT_FOUND_MARK} data-path={path} />;", to: "return <span hidden id={NOT_FOUND_MARK} />;" }] },
   // ── F5 · the first paint reads the server's verdict ───────────────────────────────────────────────────────────────
@@ -70,7 +72,7 @@ const PLANTS = [
       { file: "src/app/loading.tsx", from: "    return <LazyJourneyRouteGhost rails={heroRailNames(null)} />;", to: "    return <LazyJourneyRouteGhost rails={heroRailNames(null)} t={(await getServerT()).t} />;" },
     ] },
   { name: "G1 · a second drawing of the deposit's ghost in the root ghost (not the one its loading file renders)", suite: "r5d", expect: /^2\.10 /,
-    edits: [{ file: "src/components/journey/route-ghost.tsx", from: "        \"/wallet/deposit\": <DepositGhost t={t} />,", to: "        \"/wallet/deposit\": <div className=\"mx-auto w-full max-w-form px-3 py-6\" aria-busy=\"true\" />," }] },
+    edits: [{ file: "src/components/journey/route-ghost.tsx", from: "    \"/wallet/deposit\": <DepositGhost journey />,", to: "    \"/wallet/deposit\": <div className=\"mx-auto w-full max-w-form px-3 py-6\" aria-busy=\"true\" />," }] }, // R5-H/R5-G: the routes table
   // ── G1's sibling · the not-found elements ─────────────────────────────────────────────────────────────────────────
   { name: "G1′ · the not-found view drawn on the server again (no directive: ~6 KB in every payload)", suite: "r5d", expect: /^4\.(1|2) /,
     edits: [{ file: "src/components/ui/not-found-view.tsx", from: "\"use client\";\n\nimport Link from \"next/link\";", to: "import Link from \"next/link\";" }] },

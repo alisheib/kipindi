@@ -1,0 +1,37 @@
+Comment-stripper guard
+  root: F:/kipindi-a8i2-ctl/
+
+── 1 · the scanner survives every hazard, and still actually strips ──────────
+  PASS 1.1 a `/*` inside a `//` line does not swallow the code after it   (E-186)
+  PASS 1.2 a `//` inside a block comment does not swallow that block's terminator
+  PASS 1.3 a comment delimiter inside a STRING literal opens nothing   (E-189)
+  PASS 1.4 a comment delimiter inside a TEMPLATE literal opens nothing   (E-189)
+  PASS 1.5 an UNTERMINATED block comment keeps the rest, it does not swallow to EOF
+  PASS 1.6 an UNQUOTED `://` URL is not mistaken for a line comment
+  PASS 1.7 CONTROL: a line comment really is removed
+  PASS 1.8 CONTROL: a block comment really is removed
+  PASS 1.9 newlines survive, so the line numbers of surviving code do not move
+
+── 2 · one helper, imported — counted by shape, not by name ──────────────────
+  PASS 2.1 the private-stripper population may only shrink (20, ceiling 20)
+  PASS 2.2 …and if it drops, LOWER THE CEILING in the same commit (20 vs 20)
+  PASS 2.3 CONTROL: the shared helper is actually imported (160 scripts)
+  PASS 2.4 CONTROL: the scan read a plausible number of scripts (1520)
+
+── 3 · the blindness is demonstrated, not asserted in prose ──────────────────
+  PASS 3.1 block-comments-first loses the code after a `/*` in a `//` line   (E-186)
+  PASS 3.2 line-comments-first loses the code after a `//` inside a block comment
+  PASS 3.3 …and each retired order is FINE on the other's hazard — neither is simply worse
+  PASS 3.4 …and BOTH are blind to a delimiter inside a string   (E-189 was not new)
+
+── 4 · the contract, checked against a second implementation ─────────────────
+  PASS 4.1 the shipped scanner agrees with an independent tokeniser on every file (2935)
+  PASS 4.2 CONTROL: the corpus was actually walked (2935 files)
+
+── 5 · why the fix is a literal-aware scanner and not an ordering ────────────
+  PASS 5.1 a guard really does strip comments from scripts/, not only from src/
+  PASS 5.2 the E-186 repair would go blind over a script this repo really reads
+  note  worst case: scripts/qa/landing-ten.mjs — 33535 characters lost to line-comments-first
+  PASS 5.3 …and that script is inside the set pii-in-logs §3 scans
+
+ALL PASS — 22 passed, 0 failed

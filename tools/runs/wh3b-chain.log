@@ -1,0 +1,16 @@
+13:25:51 queued: wait note written
+13:25:51 lock taken
+13:26:29 server up after 2s
+13:26:40   ok page /markets/zz-probe.png — x-frame-options: DENY · CSP · Cache-Control: no-cache, must-revalidate
+13:26:41   ok page /positions/abc.jpg — x-frame-options: DENY · CSP · 
+13:27:09   ok page /u/federico.svg — x-frame-options: DENY · CSP · Cache-Control: no-cache, must-revalidate
+13:27:10   ok page /markets/mexico — x-frame-options: DENY · CSP · Cache-Control: no-cache, must-revalidate
+13:27:13   ok page /markets — x-frame-options: DENY · CSP · Cache-Control: no-cache, must-revalidate
+13:27:15   ok page / — x-frame-options: DENY · CSP · Cache-Control: no-cache, must-revalidate
+13:27:15   ok static /icons/icon-192.png — Cache-Control: public, max-age=31536000, immutable
+13:27:15   ok static /brand/mark-color.svg — Cache-Control: public, max-age=31536000, immutable
+13:27:16   ok static /favicon.ico — Cache-Control: public, max-age=31536000, immutable
+13:27:16 headers: 0 problem(s)
+13:27:17 server stopped (left: 0)
+13:27:17 chain end
+13:27:17 lock released

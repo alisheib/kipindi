@@ -1,0 +1,246 @@
+src/app/agent/apply/apply-client.tsx:177  [fill days]  String(limits.reviewSlaDays)
+src/app/agent/apply/apply-client.tsx:284  [fill days]  String(limits.refereeHoldDays)
+src/app/agent/apply/apply-client.tsx:349  [jsx-child]  !app.feeWaived && LIPA_QR_RELEASED && <LipaQrPanel lipa={lipa} account={fee.destinationAccount} amountTzs={fee.totalTzs} />
+src/app/agent/apply/apply-client.tsx:497  [fill mb]  String(maxMb)
+src/app/agent/invite/[token]/invite-client.tsx:67  [fill address]  addressMasked
+src/app/agent/invite/[token]/invite-client.tsx:113  [fill address]  addressMasked
+src/app/agent/invite/[token]/page.tsx:55  [fill date]  formatEatDate(Date.parse(preview.expiresAt), Date.now(), t.common.monthsShort, locale)
+src/app/agent/page.tsx:144  [fill date]  fmtDate(view.invitationExpiresAt)
+src/app/agent/page.tsx:153  [fill date]  fmtDate(view.reapplyAt)
+src/app/agent/page.tsx:161  [fill date]  e.until ? fmtDate(e.until) : ""
+src/app/agent/page.tsx:189  [fill pct]  String(cfg.defaultCommissionPct)
+src/app/agent/page.tsx:201  [fill days]  String(cfg.reviewSlaDays)
+src/app/agent/page.tsx:207  [jsx-child]  cta.kind === "signin" && ( <> <Link href={"/auth/login?next=/agent" as never}><Button variant="primary" size="lg" leading={<I.user s={16} />}>{t.agent.ctaSignIn
+src/app/agent/page.tsx:268  [fill mb]  String(mb)
+src/app/agent/page.tsx:286  [fill days]  String(cfg.refundDeadlineDays)
+src/app/agent/page.tsx:311  [jsx-child]  LIPA_QR_RELEASED && ( <LipaQrPanel lipa={lipaDisplay()} account={cfg.feeDestinationAccount} amountTzs={fee.totalTzs} /> )
+src/app/agent/page.tsx:324  [fill months]  String(cfg.commissionWindowMonths)
+src/app/agent/status/page.tsx:88  [fill date]  d(view.app.submittedAt)
+src/app/agent/status/page.tsx:89  [fill date]  d(view.app.reviewedAt)
+src/app/agent/status/page.tsx:97  [fill days]  String(view.reviewSlaDays)
+src/app/agent/status/page.tsx:127  [fill date]  d(view.refund.refundedAt)
+src/app/agent/status/page.tsx:127  [fill ref]  view.refund.reference ?? "—"
+src/app/agent/status/page.tsx:128  [fill date]  view.refund.dueAt ? d(view.refund.dueAt) : "—"
+src/app/agent/status/page.tsx:132  [fill date]  d(view.reapplyAt)
+src/app/agent/status/page.tsx:140  [fill date]  view.reapplyAt ? d(view.reapplyAt) : "—"
+src/app/auth/login/page.tsx:149  [fill date]  breakEndText
+src/app/auth/login/page.tsx:163  [fill date]  breakEndText
+src/app/auth/login/page.tsx:205  [replace {email}]  SUPPORT_EMAIL()
+src/app/auth/otp/page.tsx:65  [jsx-child]  error === "rate_limited" && retrySec > 0 && ( <> {t.auth.requestCodeIn} <CountdownPill seconds={retrySec} />.</> )
+src/app/auth/register/page.tsx:147  [fill name]  referral.referrerName
+src/app/fairness/fairness-bar.tsx:166  [replace {n}]  resultPhrase
+src/app/leaderboard/page.tsx:442  [jsx-child]  rows.length >= 3 && <Podium top={rows} t={t} />
+src/app/leaderboard/page.tsx:530  [jsx-child]  streak > 1 ? t.leaderboard.winsLabel : t.leaderboard.winLabel
+src/app/legal/agent-terms/page.tsx:94  [jsx-child]  window ? `You earn for ${window} months after each recruit joins.` : "You earn for as long as your recruits play."
+src/app/legal/legal-nav.tsx:135  [jsx-child]  n.label
+src/app/legal/_components.tsx:141  [jsx-child]  n
+src/app/live/featured-contest.tsx:184  [replace {side}]  sideWord(t, "YES", m.productLine)
+src/app/live/featured-contest.tsx:233  [replace {n}]  String(i + 1)
+src/app/live/pulse-grid.tsx:253  [replace {side}]  sideWord(t, "YES", productLine)
+src/app/live/pulse-grid.tsx:274  [replace {side}]  sideWord(t, price.emptySide, productLine)
+src/app/markets/page.tsx:423  [jsx-child]  searching ? t.market.marketsMatch : t.market.recentlyResolved
+src/app/markets/[id]/page.tsx:324  [replace {side}]  sideWord(t, emptySide, "MARKET")
+src/app/markets/[id]/page.tsx:877  [replace {side}]  sideWord(t, "YES", "MARKET")
+src/app/markets/[id]/page.tsx:942  [jsx-child]  m.selectionClosedAt && !isSelectionClosed(m) && ( <Countdown to={m.selectionClosedAt} label={t.market.selectionClosesIn} serverNow={Date.now()} at={formatEatDat
+src/app/markets/[id]/page.tsx:968  [fill date]  breakDate
+src/app/markets/[id]/page.tsx:1123  [jsx-child]  probChart.ranges.length > 0 && ( <ChartToggle series={probChart.series as Record<string, { t: string; ts: number; p: number }[]>} ranges={probChart.ranges} defa
+src/app/markets/[id]/page.tsx:1221  [template]  encodeURIComponent("/markets/" + m.id)
+src/app/notifications/bulk-bar.tsx:55  [jsx-child]  countLabel
+src/app/notifications/page.tsx:209  [jsx-child]  !inboxEmpty && ( <NotificationsBar filter={filter} sort={sort} counts={counts} resultCount={total} hrefWith={hrefWith} t={t} /> )
+src/app/notifications/page.tsx:333  [jsx-child]  total > PLAYER_PER_PAGE && ( <Pagination total={total} page={page} perPage={PLAYER_PER_PAGE} baseHref={baseHref} ofLabel={t.common.of} prevLabel={t.common.previ
+src/app/positions/performance/page.tsx:192  [jsx-child]  settledAll.length > 0 && lenses.length > 2 && ( <PerformanceBar state={state} lenses={lenses} counts={counts} resultCount={totalBets} t={t} /> )
+src/app/positions/positions-bar.tsx:188  [replace {n}]  resultPhrase
+src/app/profile/account/account-bar.tsx:171  [replace {n}]  resultPhrase
+src/app/profile/account/page.tsx:175  [replace {cat}]  auditCategoryLabel(t, state.act)
+src/app/profile/invite/agent-dashboard.tsx:122  [fill pct]  String(dash.commissionPct)
+src/app/profile/invite/agent-dashboard.tsx:126  [fill months]  String(dash.windowMonths)
+src/app/profile/invite/agent-dashboard.tsx:179  [fill pct]  String(dash.commissionPct)
+src/app/profile/invite/agent-dashboard.tsx:201  [jsx-child]  rows.length > 0 && ( <RecruitsBar state={state} counts={counts} resultCount={totalCount} t={t} /> )
+src/app/profile/invite/agent-dashboard.tsx:214  [template]  i < paged.length - 1 ? "border-b border-border" : ""
+src/app/profile/invite/page.tsx:507  [fill wager]  bonusCfg.defaultWagerMultiplier
+src/app/profile/invite/page.tsx:539  [template]  i < s.recruits.length - 1 ? "border-b border-border" : ""
+src/app/profile/kyc/page.tsx:628  [template]  requiredSlots.length >= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"
+src/app/profile/notifications/marketing-consent.tsx:41  [jsx-child]  template.slice(at + "{date}".length)
+src/app/profile/responsible-gambling/page.tsx:100  [fill date]  date
+src/app/profile/security/security-client.tsx:59  [replace {sec}]  String(Math.max(1, sec ?? 60))
+src/app/proposals/new/page.tsx:50  [jsx-child]  active ? ( <CreateProposalForm rateLimit={cfg.rateLimit} openCount={openCount} platformTz={getPlatformTimezone()} /> ) : ( <ProposalsBlockedComposer state={stat
+src/app/proposals/proposals-bar.tsx:215  [replace {n}]  resultPhrase
+src/app/results/notable-carousel.tsx:145  [replace {n}]  String(i + 1)
+src/app/results/page.tsx:466  [jsx-child]  archiveRows.length > 0 && <ResultsBar state={state} counts={counts} resultCount={totalCount} t={t} />
+src/app/results/page.tsx:477  [template]  totalCount === 1 ? t.results.resultMatch : t.results.resultsMatch
+src/app/results/page.tsx:644  [replace {side}]  sideWord(t, "YES", m.productLine)
+src/app/results/page.tsx:660  [jsx-child]  m.predictorCount === 1 ? t.market.predictorsCountOne : t.market.predictorsCount
+src/app/results/results-bar.tsx:206  [replace {n}]  resultPhrase
+src/app/s/optout-refusal.tsx:50  [replace {path}]  `${t.common.profile} → ${t.common.notifications}`
+src/app/s/optout-refusal.tsx:50  [replace {toggle}]  t.push.marketingTitle
+src/app/updown/history/history-bar.tsx:166  [replace {n}]  resultPhrase
+src/app/updown/page.tsx:209  [jsx-child]  (recent.length > 0 || activeAsset != null) && ( <BoardViz labels={{ aria: t.market.udViewAria, cubes: t.market.udViewCubes, chart: t.market.udViewChart, cubesEy
+src/app/updown/page.tsx:281  [replace {n}]  String(activeDuration)
+src/app/updown/[roundId]/page.tsx:764  [replace {side}]  t.market.udUp
+src/app/wallet/deposit/actions.ts:71  [replace {max}]  DEPOSIT_MAX_TZS.toLocaleString("en-US")
+src/app/wallet/deposit/actions.ts:71  [replace {min}]  DEPOSIT_MIN_TZS.toLocaleString("en-US")
+src/app/wallet/deposit/actions.ts:72  [toLocaleString]  DEPOSIT_MIN_TZS.toLocaleString("en-US")
+src/app/wallet/deposit/actions.ts:73  [toLocaleString]  DEPOSIT_MAX_TZS.toLocaleString("en-US")
+src/app/wallet/deposit/page.tsx:232  [fill date]  breakEndText ?? ""
+src/app/wallet/money-bar-ghost.tsx:35  [jsx-child]  count
+src/app/wallet/receipts/loading.tsx:31  [replace {n}]  "00"
+src/app/wallet/receipts/page.tsx:138  [jsx-child]  cause !== "no-rows" && <ReceiptsBar state={state} counts={counts} resultCount={matched.length} t={t} />
+src/app/wallet/receipts/receipts-bar.tsx:114  [replace {n}]  resultPhrase
+src/app/wallet/wallet-bar.tsx:153  [replace {n}]  resultPhrase
+src/app/wallet/wallet-client.tsx:427  [jsx-child]  grants.length - GRANTS_SHOWN > 1 ? t.common.moreBonuses : t.common.moreBonus
+src/app/wallet/wallet-ghost.tsx:132  [replace {n}]  "00"
+src/app/wallet/withdraw/page.tsx:204  [fill date]  new Date(payouts.declaredAt).toLocaleDateString("en-GB")
+src/app/watchlist/watchlist-bar.tsx:175  [replace {n}]  resultPhrase
+src/components/agent/commission-waterfall.tsx:108  [fill pct]  formatPct(s.ratePct)
+src/components/agent/commission-waterfall.tsx:144  [template]  s.id === "netPayout" ? "text-body font-bold text-text" : s.deduction ? "text-body-sm text-text-muted" : s.subtotal ? "text-body-sm font-semibold text-text" : "t
+src/components/agent/commission-waterfall.tsx:168  [fill pct]  formatPct(effectivePctOfWinnings)
+src/components/brand.tsx:338  [replace {pct}]  String(target)
+src/components/brand.tsx:488  [jsx-child]  ` /* ⚠️ ON A CLASS, NOT IN THE style ATTRIBUTE — the same reason as .pr-ring above. This is an ambient loop that ships on /markets (the main board) and on the p
+src/components/charts/pnl-chart.tsx:102  [jsx-child]  data[data.length - 1].label
+src/components/charts/terminal-chart.tsx:506  [toLocaleString]  v.toLocaleString(locale, { minimumFractionDigits: decimalsRef.current, maximumFractionDigits: decimalsRef.current })
+src/components/chat/messages/Primitives.tsx:20  [replace {href}]  href
+src/components/chat/messages/Primitives.tsx:20  [replace {n}]  String(n)
+src/components/chat/messages/Primitives.tsx:20  [String()]  String(n)
+src/components/chat/messages/Primitives.tsx:21  [jsx-child]  n
+src/components/home/hero-intro.tsx:76  [fill yes]  yes
+src/components/home/hero-intro.tsx:76  [fill no]  no
+src/components/home/hero-intro.tsx:94  [jsx-child]  s.slice(b + "{no}".length)
+src/components/home/how-it-works.tsx:30  [fill pct]  feePct
+src/components/home/landing-hero.tsx:185  [fill date]  formatEatDate(row.bettableUntilMs, nowMs, t.common.monthsShort, locale)
+src/components/home/landing-hero.tsx:188  [replace {side}]  sideWord(t, price.emptySide, "MARKET")
+src/components/home/landing-hero.tsx:190  [replace {side}]  yesWord
+src/components/home/landing-hero.tsx:190  [replace {pct}]  String(price.yesPct)
+src/components/home/landing-hero.tsx:191  [replace {side}]  noWord
+src/components/home/landing-hero.tsx:191  [replace {pct}]  String(100 - price.yesPct)
+src/components/home/landing-hero.tsx:199  [template]  row.predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount
+src/components/home/landing-hero.tsx:214  [jsx-child]  row.predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount
+src/components/home/landing-hero.tsx:334  [fill date]  formatEatDate(featured.bettableUntilMs, nowMs, t.common.monthsShort, locale)
+src/components/home/landing-hero.tsx:476  [fill date]  breakEnd.date
+src/components/home/landing-hero.tsx:530  [fill yesPct]  figures.yesShare
+src/components/home/landing-hero.tsx:531  [fill noPct]  100 - figures.yesShare
+src/components/home/trust-band.tsx:53  [jsx-child]  text.slice(i + accent.length)
+src/components/home/trust-band.tsx:257  [fill date]  formatEatDate(row.settledAtMs, nowMs, t.common.monthsShort, locale)
+src/components/home/updown-match-digits.tsx:31  [fill s]  secs
+src/components/home/updown-match-digits.tsx:31  [fill m]  Math.floor(secs / 60)
+src/components/home/updown-match-digits.tsx:31  [fill s]  secs % 60
+src/components/home/updown-match-state.tsx:64  [template]  secondsUntil(round.betsCloseAtMs, n) === 0 ? 1 : 0
+src/components/home/updown-match-state.tsx:64  [template]  n >= round.closesAtMs ? 1 : 0
+src/components/home/updown-match-words.tsx:67  [fill amount]  amount
+src/components/home/updown-match-words.tsx:119  [fill time]  time(latest.ms)
+src/components/home/updown-match-words.tsx:128  [fill amount]  amt(Math.abs(dev))
+src/components/home/updown-match-words.tsx:136  [fill time]  time(round.opensAtMs)
+src/components/home/updown-match-words.tsx:137  [fill time]  time(round.opensAtMs)
+src/components/home/updown-match-words.tsx:150  [fill margin]  amt(margin)
+src/components/home/updown-match-words.tsx:151  [fill upWord]  up
+src/components/home/updown-match-words.tsx:151  [fill up]  amt(upT)
+src/components/home/updown-match-words.tsx:151  [fill downWord]  down
+src/components/home/updown-match-words.tsx:151  [fill down]  amt(downT)
+src/components/home/updown-match-words.tsx:156  [fill close]  time(round.closesAtMs)
+src/components/home/updown-match-words.tsx:157  [fill close]  time(round.closesAtMs)
+src/components/home/updown-match-words.tsx:167  [fill time]  clock(r.ms)
+src/components/home/updown-match-words.tsx:167  [fill move]  moveWords(t, r, open, decimals)
+src/components/home/updown-match-words.tsx:171  [fill open]  clock(round.opensAtMs)
+src/components/home/updown-match-words.tsx:171  [fill lock]  clock(round.betsCloseAtMs)
+src/components/home/updown-match-words.tsx:171  [fill close]  clock(round.closesAtMs)
+src/components/home/updown-match-words.tsx:171  [fill reads]  readsWords
+src/components/journey/account/hub-row.tsx:51  [fill date]  statusDate
+src/components/journey/journey-tabs.tsx:128  [jsx-child]  children(unread)
+src/components/journey/tickets/tickets-view.tsx:92  [replace {no}]  sideWord(t, "NO", "MARKET")
+src/components/journey/tickets/tickets-view.tsx:92  [replace {yes}]  sideWord(t, "YES", "MARKET")
+src/components/layout/away-summary-bar.tsx:92  [replace {n}]  n(s.wins)
+src/components/layout/away-summary-bar.tsx:94  [replace {n}]  n(s.losses)
+src/components/layout/away-summary-bar.tsx:96  [replace {n}]  n(s.voids)
+src/components/layout/away-summary-bar.tsx:97  [replace {n}]  n(s.total)
+src/components/layout/needle-drawer.tsx:126  [jsx-child]  shownLabel
+src/components/layout/needle-drawer.tsx:184  [jsx-child]  shownLabel
+src/components/layout/needle-drawer.tsx:247  [jsx-child]  t( "An optional fidget on the edge. It never affects your account.", "Kichezeo cha hiari kwenye ukingo. Hakiathiri akaunti yako.", "屏幕边缘的可选小玩具，绝不影响您的账户。", )
+src/components/layout/notifications-panel.tsx:89  [String()]  String(n)
+src/components/layout/notifications-panel.tsx:501  [template]  unread > 0 ? ` (${countText(unread)})` : ""
+src/components/layout/notifications-panel.tsx:501  [template]  countText(unread)
+src/components/layout/notifications-panel.tsx:762  [jsx-child]  unread > 0 && <Dot tone={unreadDot} aria-hidden />
+src/components/layout/notifications-panel.tsx:764  [jsx-child]  unread === 1 ? t.notif.unreadOne : t.notif.unreadN.replace("{n}", countText(unread))
+src/components/layout/notifications-panel.tsx:764  [replace {n}]  countText(unread)
+src/components/layout/wallet-sheet.tsx:78  [fill date]  date
+src/components/markets/bet-confirm-modal.tsx:350  [replace {side}]  sideWord(t, side, "MARKET")
+src/components/markets/conviction-dial.tsx:1171  [replace {side}]  sideWord(t, lock, "MARKET")
+src/components/markets/conviction-dial.tsx:1243  [replace {side}]  sideLabel
+src/components/markets/conviction-dial.tsx:1540  [replace {max}]  String(maxDial)
+src/components/markets/conviction-dial.tsx:1540  [replace {min}]  String(minDial)
+src/components/markets/discovery-bar.tsx:305  [replace {n}]  resultPhrase
+src/components/markets/market-card.tsx:387  [fill yesPct]  yesPct
+src/components/markets/market-card.tsx:387  [fill yesWord]  sideWord(t, "YES", productLine)
+src/components/markets/market-card.tsx:387  [fill noPct]  100 - yesPct
+src/components/markets/market-card.tsx:387  [fill noWord]  sideWord(t, "NO", productLine)
+src/components/markets/market-card.tsx:427  [replace {side}]  sideWord(t, emptySide, productLine)
+src/components/markets/market-card.tsx:594  [replace {side}]  sideWord(t, "YES", productLine)
+src/components/markets/market-card.tsx:635  [jsx-child]  predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount
+src/components/markets/market-card.tsx:660  [replace {side}]  sideWord(t, "YES", productLine)
+src/components/markets/market-card.tsx:660  [replace {pct}]  String(yesPct)
+src/components/markets/market-card.tsx:663  [replace {side}]  sideWord(t, "NO", productLine)
+src/components/markets/market-card.tsx:663  [replace {pct}]  String(100 - yesPct)
+src/components/markets/position-share.tsx:65  [replace {title}]  marketTitle
+src/components/markets/position-share.tsx:75  [replace {title}]  marketTitle
+src/components/markets/position-share.tsx:75  [replace {side}]  sideWord(t, side, "MARKET")
+src/components/markets/share-button.tsx:60  [replace {title}]  title
+src/components/markets/side-picker.tsx:147  [replace {pct}]  String(yesPct)
+src/components/markets/side-picker.tsx:162  [replace {pct}]  String(100 - yesPct)
+src/components/markets/watch-star.tsx:78  [template]  encodeURIComponent(pathname || `/markets/${marketId}`)
+src/components/onboarding/first-visit-primer.tsx:285  [replace {n}]  "1"
+src/components/onboarding/first-visit-primer.tsx:286  [replace {n}]  "200"
+src/components/onboarding/first-visit-primer.tsx:293  [replace {side}]  yesWord
+src/components/onboarding/first-visit-primer.tsx:294  [replace {side}]  noWord
+src/components/onboarding/first-visit-primer.tsx:297  [replace {side}]  yesWord
+src/components/onboarding/first-visit-primer.tsx:427  [template]  (step + 1) / CARDS.length
+src/components/onboarding/first-visit-primer.tsx:451  [replace {n}]  String(i + 1)
+src/components/onboarding/first-visit-primer.tsx:536  [jsx-child]  step === CARDS.length - 1 ? t.common.gotIt : t.common.next
+src/components/onboarding/first-visit-primer.tsx:539  [jsx-child]  step < CARDS.length - 1 && <I.chevronRight s={14} />
+src/components/profile/ip-reveal.tsx:55  [jsx-child]  shown ? ip : masked
+src/components/profile/kyc-doc-uploader.tsx:102  [replace {label}]  label
+src/components/ui/cashback-promo.tsx:82  [replace {pct}]  String(percent)
+src/components/ui/cashback-promo.tsx:86  [replace {wager}]  String(wagerMultiplier)
+src/components/ui/cashback-promo.tsx:86  [replace {pct}]  String(percent)
+src/components/ui/count-badge.tsx:102  [jsx-child]  count > max ? `${max}+` : count
+src/components/ui/duration-input.tsx:197  [replace {unit}]  unitLabels[unit]
+src/components/ui/keep-words.tsx:81  [template]  out.length
+src/components/ui/keep-words.tsx:85  [template]  out.length
+src/components/ui/keep-words.tsx:110  [template]  out.length
+src/components/ui/keep-words.tsx:110  [jsx-child]  text.slice(at, space + m[1].length)
+src/components/ui/keep-words.tsx:207  [template]  out.length
+src/components/ui/language-menu.tsx:124  [replace {lang}]  NAMES[locale]
+src/components/ui/modal.tsx:705  [String()]  String(n)
+src/components/ui/not-found-view.tsx:109  [jsx-child]  words.markets
+src/components/ui/password-input.tsx:125  [jsx-child]  showStrength && val.length > 0 && <PasswordStrength value={val} />
+src/components/ui/progress-bar.tsx:98  [toLocaleString]  value.toLocaleString()
+src/components/ui/progress-bar.tsx:98  [toLocaleString]  safeMax.toLocaleString()
+src/components/ui/sensitive-reveal.tsx:100  [jsx-child]  shown && raw !== null ? raw : masked
+src/components/ui/tabs.tsx:211  [jsx-child]  item.count !== undefined && <CountBadge count={item.count} tone="brand" size="sm" />
+src/components/ui/unsaved-changes.tsx:503  [jsx-child]  shownLabel
+src/components/ui/unsaved-changes.tsx:505  [jsx-child]  shownDetail
+src/components/ui/unsaved-changes.tsx:525  [jsx-child]  shownDiscard && ( <Button type="button" variant="ghost" size="sm" onClick={shownDiscard} disabled={shownSaving}> {shownDiscardLabel} </Button> )
+src/components/ui/unsaved-changes.tsx:527  [jsx-child]  shownDiscardLabel
+src/components/ui/unsaved-changes.tsx:531  [jsx-child]  shownSave && !anchorOnScreen && ( <Button type="button" variant="primary" size="sm" onClick={shownSave} loading={shownSaving}> {shownSaveLabel} </Button> )
+src/components/ui/unsaved-changes.tsx:533  [jsx-child]  shownSaveLabel
+src/components/updown/round-action-panel.tsx:138  [replace {time}]  lockClock ?? "—"
+src/components/updown/round-countdown.tsx:384  [jsx-child]  shownCaption
+src/components/updown/round-countdown.tsx:411  [jsx-child]  shownDigits
+src/components/updown/round-countdown.tsx:454  [jsx-child]  shownLabel
+src/components/updown/round-stake-panel.tsx:132  [replace {side}]  t.market.udUp
+src/components/updown/round-stake-panel.tsx:133  [replace {side}]  t.market.udDown
+src/components/updown/stake-math.ts:26  [String()]  String(n)
+src/components/updown/updown-bet-receipt-modal.tsx:103  [replace {mins}]  String(exitMinutes)
+src/components/updown/updown-board-tabs.tsx:247  [replace {duration}]  activeDurText
+src/components/updown/updown-board-tabs.tsx:247  [replace {asset}]  activeAssetText
+src/components/updown/updown-card.tsx:702  [replace {side}]  t.market.udUp
+src/components/updown/updown-card.tsx:703  [replace {side}]  t.market.udDown
+src/components/updown/updown-card.tsx:865  [jsx-child]  playersText
+src/components/updown/updown-card.tsx:905  [replace {side}]  t.market.udUp
+src/components/updown/updown-card.tsx:1066  [replace {time}]  lockClock
+src/components/updown/updown-card.tsx:1066  [replace {time}]  "—"
+src/components/updown/updown-card.tsx:1177  [jsx-child]  handover.phase === "live" ? t.market.udNextMatchLiveBody : handover.phase === "counting" ? t.market.udNextMatchCountingBody : handover.phase === "waiting" ? t.m
+src/components/updown/updown-stake-controls.tsx:105  [jsx-child]  text.slice(lead[0].length)
+src/components/updown/updown-stake-controls.tsx:165  [replace {side}]  t.market.udUp
+src/components/updown/updown-stake-controls.tsx:166  [replace {side}]  t.market.udDown
+src/components/updown/use-quick-bet.ts:212  [String()]  String(n + 1)
+src/lib/markets/card-close-label.ts:58  [replace {n}]  String(label.n)
+
+465 files, 244 hits

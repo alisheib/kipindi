@@ -1,0 +1,13 @@
+16:07:28 waiting for wh2-chain.done
+16:10:58 wh2-chain.done is there: exit=0
+16:10:58 queued: wait note written
+16:10:58 lock taken
+16:10:59 kipindi-a8i2-ctl at de58d851
+16:16:18 wj-diag2-1: exit=1 · tree same —   name: 'TimeoutError' } Node.js v24.19.0 
+16:16:19   run 1: DIAG2 §5 · the button NEVER ARMED after the fills
+16:18:05 wj-diag2-2: exit=1 · tree same —   name: 'TimeoutError' } Node.js v24.19.0 
+16:18:06   run 2: DIAG2 §5 · the button NEVER ARMED after the fills
+16:19:38 wj-diag2-3: exit=0 · tree same — §6 · no page error anywhere   PASS 6.1 no page errors or console errors in any context 33/33 passed — tiles in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/hyd/preview-diag2-3 
+16:19:38   run 3: DIAG2 §5 · the button ARMED after the fills
+16:19:38 chain end
+16:19:38 lock released

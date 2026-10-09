@@ -1,0 +1,337 @@
+diff --git a/src/components/layout/app-shell.tsx b/src/components/layout/app-shell.tsx
+index 08fe8d2c..b40972b7 100644
+--- a/src/components/layout/app-shell.tsx
++++ b/src/components/layout/app-shell.tsx
+@@ -25,6 +25,7 @@ import { BottomNav } from "./bottom-nav";
+ import { PublicFooter } from "./public-footer";
+ import { AuthFlash } from "./auth-flash";
+ import { NavProgress } from "@/components/ui/nav-progress";
++import { KeyGuard } from "@/components/ui/key-guard";
+ import { RouteTransition } from "@/components/ui/route-transition";
+ import { getSession, sessionEndedThisRequest, type SessionEndReason } from "@/lib/server/session";
+ import { NoticeBar, NoticeBarAction } from "@/components/ui/notice-bar";
+@@ -375,6 +376,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
+           hydrating. It is now the `<Reveal>` client wrapper, which renders the attribute from
+           state so React owns it. Do not reintroduce a shell-level DOM mutation for this. */}
+       <HeaderScrollCast />
++      {/* ⭐ S6 A8i-2 · THE KEY GUARD (`key-guard.tsx`): a key held down presses once, wherever it is on the page, and
++          nothing behind the top dialog takes Enter or Space. It renders nothing. Every `Modal` installs it too, for a page
++          outside this shell. */}
++      <KeyGuard />
+       <Suspense fallback={null}><NavProgress /></Suspense>
+       {/* ⭐ THE JOURNEY'S HEADER AND TABS (Vodacom plan S6, WP6b), for a request the resolver shows the journey to and
+           for no other: every other request gets today's bar and rail with today's props, in the two else arms. Each
+diff --git a/src/components/markets/bet-confirm-modal.tsx b/src/components/markets/bet-confirm-modal.tsx
+index 858b2570..acaeca23 100644
+--- a/src/components/markets/bet-confirm-modal.tsx
++++ b/src/components/markets/bet-confirm-modal.tsx
+@@ -20,6 +20,9 @@
+  *     with focus on Confirm, so Enter there confirms — the button's own press;
+  *     Enter on Cancel cancels and Enter in a dialog opened on top acts in that
+  *     dialog. There is no window listener any more (see the note at its old place).
++ *   • S6 A8i-2 (2026-10-07): every opening draws Confirm enabled (the note at
++ *     `wasOpen`), and for its first moment a press in it presses nothing, so a
++ *     double press on the dial cannot confirm (`modal-stack.ts`, `ARMING_MS`).
+  */
+ 
+ import { useEffect, useRef, useState } from "react";
+@@ -89,6 +92,17 @@ export function BetConfirmModal({
+   // poll with a different grace contradicted itself inside a single disclosure.
+   const exitLabel = t.dialog.freeExitLabel.replace(/\{mins\}/g, String(graceMins));
+   const [remainingMs, setRemainingMs] = useState(QUOTE_HOLD_MS);
++  /* ⭐ S6 A8i-2 · EVERY OPENING DRAWS CONFIRM ENABLED. A quote that lapsed left `remainingMs` at 0, and the quote effect
++     below resets it only after an opening has been drawn, so the next opening's first frame drew Confirm DISABLED while
++     `Modal` was about to give it focus: on a slow phone that had not redrawn by then, focus stayed on the dial behind the
++     scrim, and the next Enter opened another confirm with a new key instead of confirming (review 2026-10-07). The clock
++     is reset on the rising edge of `open`, during render, as `useExitPhase` handles its edge (`modal.tsx`), so no frame of
++     an opening is drawn with the last one's 0 s, and a confirm that is leaving keeps the figure it closed on. */
++  const [wasOpen, setWasOpen] = useState(open);
++  if (open !== wasOpen) {
++    setWasOpen(open);
++    if (open) setRemainingMs(QUOTE_HOLD_MS);
++  }
+   const startedAtRef = useRef<number>(0);
+   const rafRef = useRef<number | null>(null);
+   const confirmRef = useRef<HTMLButtonElement>(null);
+diff --git a/src/components/markets/sell-button.tsx b/src/components/markets/sell-button.tsx
+index 514e9992..f926e04c 100644
+--- a/src/components/markets/sell-button.tsx
++++ b/src/components/markets/sell-button.tsx
+@@ -336,10 +336,14 @@ export function SellButton({
+   // BOTH latches below stay, because they close different windows. `pending` is
+   // `useTransition` state read from the closure of the render that built this `submit`, so
+   // a second call in the same tick — before React has re-rendered — still reads it false and
+-  // walks straight through. Since A8i Enter is the sell button's own press, which React
+-  // re-renders after, but a double press from any surface (two fast clicks, a script) is the
+-  // same window. `inFlight` is set SYNCHRONOUSLY on the first call, so it is the only one
+-  // that closes that tick. `pending` stays because it is the in-repo precedent
++  // walks straight through. No player can reach that window: two clicks or two Enters are two
++  // tasks, and React commits the first one's `pending` (the transition's pending flag is an
++  // urgent update, flushed in a microtask) before the second runs, so the button is already
++  // `disabled` and takes no second press — and since S6 A8i-2 a second press within
++  // `ARMING_MS` of the confirm taking focus presses nothing at all. Only a second call in the
++  // SAME task reaches here: a script, or two synthetic `.click()` calls in a row. `inFlight`
++  // is set SYNCHRONOUSLY on the first call, so it is the only one that closes that tick.
++  // `pending` stays because it is the in-repo precedent
+   // (`conviction-dial.tsx`'s `submit` opens with exactly it) and it refuses a repeat
+   // arriving from any surface that never armed the ref.
+   const inFlight = useRef(false);
+diff --git a/src/components/ui/modal.tsx b/src/components/ui/modal.tsx
+index 7a2ec237..26da0889 100644
+--- a/src/components/ui/modal.tsx
++++ b/src/components/ui/modal.tsx
+@@ -8,7 +8,9 @@
+  * switch, emergency-void) shipped WITHOUT the Android scroll/zoom lock, a
+  * focus trap, or focus-return. This is the one source of truth: portal +
+  * useModalLock + Esc + focus-trap + focus-return + the held-key rule (a key
+- * held down from before presses nothing, S6 A8i) + kit scrim/animation.
++ * held down from before presses nothing, S6 A8i) + the dialog stack (only the
++ * top dialog takes focus or a key; S6 A8i-2, `modal-stack.ts`) + kit
++ * scrim/animation.
+  *
+  *   <Modal open onClose ariaLabel="…"> …custom panel content… </Modal>
+  *
+@@ -33,12 +35,67 @@ import { Spinner } from "@/components/ui/spinner";
+ import { haptics } from "@/lib/haptics";
+ import { useModalLock } from "@/lib/use-modal-lock";
+ import { swallowsHeldKey, keyTargetOf } from "@/lib/held-key";
++import {
++  armBeat, closeLayer, closePlan, heirsOf, isTopLayer, nextOpenOrder, openLayer, openLayers, topOf, whereIs, type Layer,
++} from "@/lib/modal-stack";
++import { installKeyGuard } from "./key-guard";
+ import { useT } from "@/lib/i18n";
+ import { parseTypedCount } from "@/lib/marketing/campaign-confirm";
+ 
+ const FOCUSABLE =
+   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+ 
++/* ═══════════════════════════════════════════════════════════════════════════
++   ⭐ S6 A8i-2 · THE DIALOG STACK, AS MODAL STANDS ON IT. The rules live in
++   `modal-stack.ts`, pure; what follows reads the page for them and acts.
++   ═══════════════════════════════════════════════════════════════════════════ */
++
++/** How many frames a dialog waits for its first target to be drawn and enabled before it gives focus to its first
++ *  control that can be pressed instead (`focusIn`, in Modal): about a sixth of a second. */
++const FOCUS_TRIES = 10;
++/** Withheld from assistive technology — a leaving dialog's ghost among it: focus there is nowhere (A8h's test,
++ *  `sell-result-host.tsx`). */
++const NOWHERE = "[aria-hidden='true'], [inert]";
++
++/** Focus is "nowhere": no element, the page itself, a removed element, or withheld content. */
++function isNowhere(node: unknown): boolean {
++  if (!(node instanceof Element)) return true;
++  return node === document.body || node === document.documentElement || !node.isConnected || node.closest(NOWHERE) !== null;
++}
++
++/** An open dropdown's combobox: it keeps focus while its list is open, so an Escape pressed there is the list's. */
++function openList(node: unknown): boolean {
++  return node instanceof Element && node.getAttribute("role") === "combobox" && node.getAttribute("aria-expanded") === "true";
++}
++
++/**
++ * ⭐ WHERE FOCUS GOES WHEN A DIALOG CLOSES. The rule is `closePlan`, pure; this reads the page for it and does what it says.
++ * 🔴 It was one line: focus back to whatever had it when the dialog opened, always. So when the win seal closed over the
++ * Sell confirm, focus went back to the confirm's money button, and a second Enter about 60 ms later, meant for the seal or
++ * for the next one, SOLD the ticket (W2, proven in a real browser 2026-10-07); and when a confirm's quote lapsed under the
++ * seal, focus went back to the dial behind the seal's scrim, where the Enter meant for the seal opened a new confirm.
++ * ⭐ Now a dialog still open whose way back lay inside the closing one takes the closing one's way back (`heirsOf`), and
++ * focus moves only when it was inside the closing dialog or nowhere: back where it was when the dialog opened if that lies
++ * in the dialog now on top (or nothing is open any more), else to the top dialog's own first control. Whatever takes focus
++ * is armed (`ARMING_MS`): a second press a moment later presses nothing.
++ */
++function leave(layer: Layer) {
++  const wasTop = isTopLayer(layer);
++  const box = layer.root();
++  closeLayer(layer);
++  const rest = openLayers();
++  for (const heir of heirsOf(box, rest)) heir.restoreTo = layer.restoreTo;
++  const now = document.activeElement;
++  const focus = box?.contains(now) ? "inside" : isNowhere(now) ? "nowhere" : "elsewhere";
++  const back = layer.restoreTo instanceof HTMLElement ? layer.restoreTo : null;
++  const plan = closePlan(wasTop, focus, whereIs(rest, back, isNowhere(back)));
++  const top = topOf(rest);
++  if (plan.move === "back") back?.focus();
++  if (plan.move === "top") top?.focusIn();
++  if (plan.move === "back" && plan.arm === "top") armBeat(top?.root() ?? null, performance.now());
++  if (plan.arm === "back" && back) armBeat(back, performance.now());
++}
++
+ /* ═══════════════════════════════════════════════════════════════════════════
+    ⭐ THE EXIT PHASE — §M2, "each rung pairs with its arrival and every arrival
+    has its exit".
+@@ -226,6 +283,9 @@ export function Modal({
+     return () => window.removeEventListener("resize", measure);
+   }, [open, anchored, anchorRef]);
+   const panelRef = React.useRef<HTMLDivElement>(null);
++  /* ⭐ S6 A8i-2 · the dialog's portal root, its scrim and its panel: what the dialog stack asks "is it in this dialog?"
++     of (`modal-stack.ts`). */
++  const rootRef = React.useRef<HTMLDivElement>(null);
+   const prevFocus = React.useRef<HTMLElement | null>(null);
+   /* §M2 — the modal rung's exit is `.m-out` over one `--t-quick` beat.
+      ⛔ `useModalLock`, the focus trap and the focus RETURN all stay keyed to
+@@ -236,6 +296,10 @@ export function Modal({
+ 
+   useModalLock(open);
+   React.useEffect(() => { setMounted(true); }, []);
++  /* ⭐ S6 A8i-2 · THE KEY GUARD STANDS WHEREVER A DIALOG CAN OPEN (`key-guard.tsx`). AppShell installs it on every player
++     page; a page outside the shell (the console) gets it from the first dialog it mounts, open or not, so it already
++     stands when one opens. It is installed once per page, by whichever asks first. */
++  React.useEffect(() => { installKeyGuard(); }, []);
+ 
+   // 🔴 THE CALLBACKS ARE HELD IN REFS SO THEY ARE NOT EFFECT DEPENDENCIES.
+   //
+@@ -269,37 +333,85 @@ export function Modal({
+      every keystroke that changes the condition — which is exactly when it is load-bearing. */
+   const closeOnEscRef = React.useRef(closeOnEsc);
+   React.useEffect(() => { closeOnEscRef.current = closeOnEsc; }, [closeOnEsc]);
++  /* ⭐ S6 A8i-2 · the dialog stack orders open dialogs by this (`modal-stack.ts`), read at opening through a ref for the
++     reason the comment above `onCloseRef` gives. */
++  const zIndexRef = React.useRef(zIndex);
++  React.useEffect(() => { zIndexRef.current = zIndex; }, [zIndex]);
+ 
+   React.useEffect(() => {
+     if (!open) return;
+     // Remember what had focus so keyboard/SR users land back on the trigger.
+     prevFocus.current = document.activeElement as HTMLElement | null;
+-    // Captured now, not read at cleanup time: by then the DOM may have moved on, and
+-    // this is the element that was focused when the dialog actually opened.
+-    const restoreTo = prevFocus.current;
+     const focusables = () =>
+       Array.from(panelRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []);
+-    const timer = setTimeout(() => {
+-      const target = initialFocusRef.current?.current ?? focusables()[0] ?? panelRef.current;
++    /* ⭐ S6 A8i-2 · THIS DIALOG TAKES FOCUS ONLY WHILE IT IS THE TOP ONE, AND NEVER ON A BUTTON THAT CANNOT BE PRESSED.
++       🔴 A dialog opened beneath the win seal (a bet refused while the seal was up, or a confirm opened in the seal's
++       first 30 ms) took focus 30 ms later all the same, behind the seal's scrim, where the Enter meant for the seal
++       retried or confirmed the bet. It now waits, and takes focus when the dialogs over it close (`leave`).
++       🔴 And a first target still disabled at 30 ms (the bet confirm's Confirm, drawn disabled for a frame after a lapsed
++       quote, on a slow phone) took no focus at all, which stayed on the dial behind the scrim: the target now gets a few
++       frames (`FOCUS_TRIES`), and then the first control that can be pressed takes focus instead.
++       Each focus given here arms the dialog's beat (`modal-stack.ts`): for its first moment a fresh press in it presses
++       nothing, so a double press cannot confirm. */
++    let frame = 0;
++    const focusIn = (triesLeft: number) => {
++      if (!isTopLayer(layer)) return;
++      const want = initialFocusRef.current?.current ?? null;
++      const ready = want !== null && want.isConnected && !want.matches(":disabled");
++      if (initialFocusRef.current && !ready && triesLeft > 0) {
++        frame = requestAnimationFrame(() => focusIn(triesLeft - 1));
++        return;
++      }
++      const target = (ready ? want : null) ?? focusables()[0] ?? panelRef.current;
+       target?.focus();
+-    }, 30);
++      armBeat(rootRef.current, performance.now());
++    };
++    // The way back is captured now, not read at cleanup time: by then the DOM may have moved on,
++    // and this is the element that was focused when the dialog actually opened.
++    const layer: Layer = {
++      z: zIndexRef.current,
++      seq: nextOpenOrder(),
++      root: () => rootRef.current,
++      restoreTo: prevFocus.current,
++      focusIn: () => focusIn(FOCUS_TRIES),
++    };
++    openLayer(layer);
++    const timer = setTimeout(() => focusIn(FOCUS_TRIES), 30);
+     const onKey = (e: KeyboardEvent) => {
+       /* ⭐ S6 A8i · A KEY HELD DOWN FROM BEFORE PRESSES NOTHING HERE (`held-key.ts`). The focus this effect moves onto
+          `initialFocus` 30 ms after opening is where a still-held key's repeats land, so without this a held Enter or
+          Space on the bet dial opened the confirm and then pressed Confirm. A dialog acts on Enter only where it is
+-         pressed: the first keydown of a press is the button's own, as everywhere else in the product. */
++         pressed: the first keydown of a press is the button's own, as everywhere else in the product.
++         ⭐ S6 A8i-2 · the key guard (`key-guard.tsx`) now runs this rule on every keydown of the page first, in the
++         capture phase, and stops what it swallows, so a held repeat no longer reaches this line while the guard stands:
++         it stays as the rule's second line of defence, and `test:enter-where-pressed` 2.4 holds it. */
+       if (swallowsHeldKey(e.key, e.repeat, keyTargetOf(e.target))) { e.preventDefault(); return; }
++      /* ⭐ S6 A8i-2 · ONLY THE TOP DIALOG ANSWERS A KEY. Every open dialog listens here, and every one answered: one Escape
++         closed the win seal AND the confirm under it, the lower one first, and the trap of a dialog underneath pulled
++         focus into its own panel from behind the seal. A covered dialog now leaves every key to the one on top. */
++      if (!isTopLayer(layer)) return;
+       /* ⛔ Escape obeys the same condition the scrim does when a caller sets one. It is still
+          swallowed either way: a refused Escape that bubbled would close the dialog's own parent
+-         surface instead, which is a worse answer than nothing happening. */
+-      if (e.key === "Escape") { e.preventDefault(); if (closeOnEscRef.current) onCloseRef.current(); return; }
++         surface instead, which is a worse answer than nothing happening.
++         ⭐ S6 A8i-2 · an Escape pressed on an open dropdown (its combobox keeps focus while the list is open) or in a
++         surface drawn over this dialog (a calendar it opened) is that surface's: it closes the list, and the dialog stays. */
++      if (e.key === "Escape") {
++        if (openList(e.target) || whereIs(openLayers(), e.target, isNowhere(e.target)) === "above") return;
++        e.preventDefault(); if (closeOnEscRef.current) onCloseRef.current(); return;
++      }
+       if (e.key !== "Tab") return;
+       // Focus trap: keep Tab inside the dialog instead of leaking behind the scrim.
+       const f = focusables();
+       if (f.length === 0) return;
+       const first = f[0], last = f[f.length - 1];
+       const active = document.activeElement;
+-      if (e.shiftKey && (active === first || !panelRef.current?.contains(active))) {
++      /* ⭐ S6 A8i-2 · focus outside this panel (on the scrim, on the page behind, in a dialog underneath, or nowhere) is
++         brought into it, both ways: a plain Tab from there used to walk the page behind the scrim. A surface drawn over
++         this dialog (a calendar it opened) keeps its own Tab. */
++      if (whereIs(openLayers(), active, isNowhere(active)) === "above") return;
++      if (!panelRef.current?.contains(active)) {
++        e.preventDefault(); (e.shiftKey ? last : first).focus();
++      } else if (e.shiftKey && active === first) {
+         e.preventDefault(); last.focus();
+       } else if (!e.shiftKey && active === last) {
+         e.preventDefault(); first.focus();
+@@ -308,9 +420,10 @@ export function Modal({
+     window.addEventListener("keydown", onKey);
+     return () => {
+       clearTimeout(timer);
++      cancelAnimationFrame(frame);
+       window.removeEventListener("keydown", onKey);
+-      // Restore focus to the trigger (guard: it may have unmounted).
+-      restoreTo?.focus?.();
++      // ⭐ S6 A8i-2 · focus goes back only from inside this dialog, never behind the dialog now on top (`leave`, above).
++      leave(layer);
+     };
+   }, [open]);
+ 
+@@ -318,14 +431,19 @@ export function Modal({
+ 
+   return createPortal(
+     <div
++      ref={rootRef}
+       role={role}
+       /* ⛔ ONCE IT IS LEAVING IT IS NOT A DIALOG ANY MORE. Focus has already been
+-         returned to the trigger by the effect above, so the fading ghost must not
++         given back by the effect above (`leave`), so the fading ghost must not
+          keep claiming `aria-modal` (which tells AT the rest of the page is inert)
+          and must not be clickable — a scrim that still closes something, or a
+-         Confirm still hittable, during the fade is a real mis-click. */
++         Confirm still hittable, during the fade is a real mis-click.
++         ⭐ S6 A8i-2 · AND IT IS INERT, so nothing in it can take focus or a key: its
++         Confirm stayed pressable from the keyboard through the beat it is drawn for,
++         and one Escape that closed every dialog could leave focus on it. */
+       aria-modal={exiting ? undefined : "true"}
+       aria-hidden={exiting || undefined}
++      inert={exiting || undefined}
+       aria-busy={exiting ? undefined : ariaBusy}
+       aria-label={labelledBy ? undefined : ariaLabel}
+       aria-labelledby={labelledBy}
+diff --git a/src/components/ui/select.tsx b/src/components/ui/select.tsx
+index 1cc0cd8f..6ffb9ab1 100644
+--- a/src/components/ui/select.tsx
++++ b/src/components/ui/select.tsx
+@@ -266,7 +266,9 @@ export function Select({
+    *     or committed, the reset row, and Enter always chose the value already there;
+    *   · the opening key itself also reached the listener (attached by that same commit), so ArrowDown
+    *     opened the list AND moved one row.
+-   * While the list is open the listener owns every key; the opening key never reaches it.
++   * While the list is open the listener owns every key pressed in this control — on its trigger, in its list, or on the
++   * page itself when a click left focus there (S6 A8i: a key pressed in anything else is that thing's); the opening key
++   * never reaches it.
+    * Guards: `npm run test:select-keyboard` (the contract) and `npm run qa:select-keyboard` (the keys). */
+   const onTriggerKey = (e: React.KeyboardEvent) => {
+     if (open) return;
+@@ -287,6 +289,8 @@ export function Select({
+          lose its Enter to this listener, which picked an option here and cancelled the press of the dialog's button. */
+       const at = e.target as Node | null;
+       if (at !== document.body && !triggerRef.current?.contains(at) && !listRef.current?.contains(at)) return;
++      /* ⭐ S6 A8i-2 · inside a dialog this Escape closes the list and only the list: `Modal` leaves an Escape pressed on the
++         open combobox to it, where it used to close the dialog as well, with whatever had been entered in it. */
+       if (e.key === "Escape") { setOpen(false); triggerRef.current?.focus(); }
+       // ⛔ ARROW KEYS SKIP DISABLED OPTIONS. Landing focus on something Enter refuses to select
+       // is a dead end that reads as a broken dropdown — and it is only reachable by keyboard, so

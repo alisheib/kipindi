@@ -1,0 +1,139 @@
+PASS §0 control: an authorised receipt returns 200
+PASS §0 control: …and actually moved the row to DELIVERED — DELIVERED
+PASS §0 control: …and stamped deliveredAt
+[audit] SYSTEM sms.dlr.received system 
+PASS §1 a wrong token is 401
+PASS §1 an absent token is 401
+[audit] SYSTEM webhook.blackball.rejected system 
+PASS §1 the right token in the QUERY is accepted
+[audit] SYSTEM webhook.blackball.rejected system 
+[audit] SYSTEM sms.dlr.received system 
+PASS §1 the right token in the HEADER is accepted
+[audit] SYSTEM sms.dlr.received system 
+PASS §1 a rejected call writes NOTHING
+PASS §1 ⛔ no secret + a LIVE blackball provider is refused even off production
+PASS §1 …while no secret + the console stub stays open for local testing
+[audit] SYSTEM webhook.blackball.rejected system 
+[audit] SYSTEM sms.dlr.received system 
+PASS §2 the body is byte-for-byte {"status":"Ok"} — {"status":"Ok"}
+PASS §3 an unknown reference still returns 200
+[audit] SYSTEM sms.dlr.unknown_reference system 
+PASS §3 …with the same {"status":"Ok"} body: never a 404 probing oracle
+[audit] SYSTEM sms.dlr.received system 
+[audit] SYSTEM sms.dlr.unknown_reference system 
+[audit] SYSTEM sms.dlr.received system 
+PASS §3 the unknown-reference audit keeps the raw status token — {"rawStatus":"VENDOR_TOKEN_X","description":"Vendor description Y","msisdn":"+255••••19"}
+PASS §3 …and the vendor's description, verbatim
+PASS §3 …and never the full msisdn
+[audit] SECURITY sms.dlr.msisdn_mismatch system SmsMessage#sms_000000000000000000000006
+[audit] SYSTEM sms.dlr.received system 
+PASS §4 a receipt for a DIFFERENT msisdn writes nothing — ACCEPTED
+PASS §4 …and audits it as a SECURITY event
+[audit] SYSTEM sms.dlr.received system 
+PASS §5 the same receipt twice leaves deliveredAt untouched
+[audit] SYSTEM sms.dlr.received system 
+PASS §5 ⛔ a later FAILED does NOT overwrite a settled DELIVERED — DELIVERED
+PASS §5 …and no failedAt is stamped on it
+PASS §6 the mapper recognises the delivered family
+[audit] SYSTEM sms.dlr.received system 
+PASS §6 ⭐ Blackball's observed receipt (DELIVRD / Success) moves the row to DELIVERED — DELIVERED DELIVRD Success
+PASS §6 …and the failed family
+PASS §6 …is case- and whitespace-insensitive
+PASS §6 ⛔ an unknown token maps to NULL, never to DELIVERED
+PASS §6 ⛔ an empty token maps to NULL
+[audit] SYSTEM sms.dlr.received system 
+[audit] SYSTEM sms.dlr.unmapped_status system SmsMessage#sms_000000000000000000000009
+PASS §6 an unmapped receipt leaves the row's status alone — ACCEPTED
+PASS §6 …but records the RAW token, so the vocabulary is learned not invented — SOMETHING_NEW
+[audit] SYSTEM sms.dlr.received system 
+PASS §6 …and audits it for an operator to read
+PASS §7 a delivered invite receipt writes InviteEntry.DELIVERED
+[audit] SYSTEM sms.dlr.received system 
+PASS §7 a failed invite receipt writes InviteEntry.BOUNCED — BOUNCED
+PASS §7 …with a reason an officer can read
+[audit] SYSTEM sms.dlr.received system 
+PASS §7 ⛔ a REGISTERED entry is never demoted by a late receipt
+[audit] SYSTEM sms.dlr.received system 
+PASS §7 control: the first receipt did write
+[audit] SYSTEM sms.dlr.received system 
+[audit] SYSTEM sms.dlr.received system 
+PASS §7 a replayed receipt does not re-run the invite write — SENT
+[audit] SYSTEM sms.dlr.received system 
+PASS §8 the SmsMessage row moves
+PASS §8 ⛔ the Otp is still ACTIVE after a delivery report — active=1
+PASS §8 ⛔ …not consumed
+PASS §8 ⛔ …and its attempt budget is untouched
+PASS §9 /api/webhooks/blackball is not behind the session guard
+PASS §9 control: the predicate actually protects /wallet
+PASS §10 a non-JSON body is 400, not a 500
+[audit] SYSTEM sms.dlr.malformed system 
+PASS §10 a body with no statuses array is acked, not a crash
+[audit] SYSTEM sms.dlr.malformed system 
+PASS §10 ⛔ an empty callback writes NO sms.dlr.received row — 18 -> 18
+[audit] SYSTEM sms.dlr.unknown_reference system 
+[audit] SYSTEM sms.dlr.received system 
+PASS §10 control: a callback carrying lines IS audited
+PASS §10 lines with no reference are skipped without throwing
+[audit] SYSTEM sms.dlr.received system 
+PASS §11 a GET answers 200
+PASS §11 …with exactly {"status":"Ok"}
+PASS §11 …and writes nothing
+PASS §11 ⛔ a SINGLE status object (no statuses array) is applied, not dropped
+[audit] SYSTEM sms.dlr.received system 
+PASS §11 ⛔ a BARE array of status objects is applied
+[audit] SYSTEM sms.dlr.received system 
+[audit] SYSTEM sms.dlr.malformed system 
+PASS §11 ⛔ an unrecognised shape is acked but AUDITED as sms.dlr.malformed — 2 -> 3
+PASS §11 …recording key NAMES only, never values — {"reason":"unrecognised-shape","contentType":"application/json","bytes":62,"keys":["msgId","deliveryState","phone"]}
+[audit] SYSTEM sms.dlr.malformed system 
+PASS §11 ⛔ a non-JSON body is 400 AND audited, not silently lost
+PASS §11 a repeated malformed shape is deduped
+PASS §11 control: {statuses: []} is recognised, not malformed
+[audit] SYSTEM sms.dlr.received system 
+PASS §12 D1 ⭐ a DELIVRD receipt moves its SENT recipient to DELIVERED at the message's own instant: the reference, the claim and every other column kept — SENT -> DELIVERED · deliveredAt 2026-10-09T13:13:46.134Z (the message's 2026-10-09T13:13:46.134Z) · claim tok_dlr12_0001
+PASS §12 D1 …and the callback's ONE audit row counts it under campaign, beside invites — {"lines":1,"applied":1,"replayed":0,"unknownRef":0,"unmapped":0,"mismatch":0,"invites":0,"campaign":1}
+[audit] SYSTEM sms.dlr.received system 
+[audit] SYSTEM sms.dlr.received system 
+PASS §12 D2 a replay re-runs nothing: a receipt whose message did not move leaves its recipient as it was, even one still SENT — the same receipt twice: DELIVERED, then unchanged · counted 0 · the overlap's row SENT
+[audit] SYSTEM sms.dlr.received system 
+[audit] SYSTEM sms.dlr.received system 
+PASS §12 D3 ⛔ a late FAILED after DELIVERED is discarded: the recipient stays DELIVERED, with no failedAt, class or error — DELIVERED -> DELIVERED
+[audit] SYSTEM sms.dlr.received system 
+[audit] SYSTEM sms.dlr.received system 
+PASS §12 D3b ⭐ a receipt never moves a row another writer settled: FAILED, SKIPPED and HELD rows stay as they were though their message moved — messages DELIVERED,DELIVERED,FAILED · rows FAILED,SKIPPED,HELD
+[audit] SYSTEM sms.dlr.received system 
+PASS §12 D4 ⭐ an UNCONFIRMED row settles on a late receipt: DELIVERED, the receipt's reference written where the row had none — DELIVERED · reference written
+PASS §12 D4b a FAILED receipt writes its class receipt:<token> and the vendor's words as the error, every phone number scrubbed before the cut — FAILED · receipt:UNDELIV · the error ends "xxx ••••78 i"
+[audit] SYSTEM sms.dlr.received system 
+PASS §12 D4c a FAILED receipt whose words fold into a number again after one scrub still lands: FAILED, its words read until no number is left — FAILED · "Rejected ••••••••78 by network" · refused by the door false
+[audit] SYSTEM sms.dlr.received system 
+PASS §12 D5 a receipt that beats the slice's settle sets its claimed row DELIVERED with the claim kept, and the slice's later settle of it is lost — PENDING -> DELIVERED · the settle after it: settled 0, lost [rcp_dlr12_007_0]
+[audit] SECURITY sms.dlr.recipient_mismatch system SmsCampaignRecipient#rcp_dlr12_008_0
+[audit] SECURITY sms.dlr.recipient_mismatch system SmsCampaignRecipient#rcp_dlr12_008_1
+[audit] SYSTEM sms.dlr.received system 
+PASS §12 D6 ⛔ a receipt for the row of another number, or for a row holding another message's reference, writes nothing — PENDING/no reference · SENT/sms_000000000000000000000034
+PASS §12 D6 …and each is audited SECURITY as sms.dlr.recipient_mismatch, naming the numbers masked and never in full — [{"reference":"sms_000000000000000000000035","heldReference":"sms_000000000000000000000034","expected":"+255••••81","got":"+255••••81"},{"reference":"sms_000000000000000000000033","heldReference":null,"expected":"+255••••80","got":"+255••••01"}]
+[audit] SYSTEM sms.dlr.recipient_failed system SmsCampaignRecipient#rcp_dlr12_009_1
+[audit] SYSTEM sms.dlr.received system 
+PASS §12 D6c a receipt the door refuses (a reference another row holds, P2002) writes nothing, is audited by its code alone, and still answers 200 — {"reference":"sms_000000000000000000000036","rawStatus":"DELIVRD","code":"P2002"}
+[audit] SECURITY sms.dlr.recipient_unverified system SmsCampaignRecipient#rcp_dlr12_010_0
+[audit] SYSTEM sms.dlr.received system 
+PASS §12 D6d ⛔ a campaign line without the message's number moves no recipient row: the row as it was, audited SECURITY by its code alone, and the reply still Ok — the row SENT -> SENT · {"reference":"sms_000000000000000000000037","rawStatus":"REJECTD","code":"msisdn_missing"}
+PASS §12 D6d …and the other arms are untouched by that rule: the same POST's invite line, without a number too, settles its invite as before — {"lines":2,"applied":2,"replayed":0,"unknownRef":0,"unmapped":0,"mismatch":0,"invites":1,"campaign":0}
+[audit] SYSTEM sms.dlr.received system 
+PASS §12 D7 a test send's receipt settles its SmsMessage row and touches no recipient, even one its target id names — the row PENDING -> PENDING · counted 0
+[audit] SYSTEM sms.dlr.unknown_reference system 
+[audit] SYSTEM sms.dlr.received system 
+PASS §12 D8 three lines in one POST reach each its own arm: the campaign row DELIVERED, the invite DELIVERED, the unknown reference acked and audited — campaign DELIVERED · invite DELIVERED
+PASS §12 D8 …and ONE audit row counts them: 3 lines, 2 applied, 1 unknown, 1 invite, 1 campaign — {"lines":3,"applied":2,"replayed":0,"unknownRef":1,"unmapped":0,"mismatch":0,"invites":1,"campaign":1}
+PASS §12 D9 ⭐ while PREVIOUS is set the old secret is accepted beside the current one, in the query and in the header, and a receipt carrying it is applied — {"old":true,"oldHeader":true,"current":true,"third":false,"none":false,"empty":false}
+PASS §12 D9 ⛔ while PREVIOUS is set a third value, an absent token and an empty one are still refused — {"old":true,"oldHeader":true,"current":true,"third":false,"none":false,"empty":false}
+PASS §12 D9 ⭐ with PREVIOUS unset only the current secret works: the old one, a third value and an absent or empty token are each refused — {"old":false,"current":true,"third":false,"none":false,"empty":false}
+PASS §12 D9 ⛔ a PREVIOUS shorter than 16 characters, or set empty, is never compared: neither it nor an absent token gets in, and the current still does — {"value":false,"none":false,"current":true} {"none":false,"empty":false,"current":true}
+PASS §12 D9 boot says the exact sentence while PREVIOUS is set, says too that a short one is never accepted, and says nothing once it is gone — "[sms] WARNING: BLACKBALL_WEBHOOK_SECRET_PREVIOUS is set — remove it once Blackball's callback URL carries the new secret."
+PASS §12 D9 ⛔ a CURRENT secret shorter than the floor is never compared either: even its own exact value is refused, while one of exactly the floor is accepted — {"own":false,"header":false,"none":false} · exactly the floor true
+PASS §12 D9 ONE floor, 16 characters, for boot and the receiver: boot calls a secret unusable exactly where the receiver stops comparing it — floor 16 · boot: 15 unusable true, 16 unusable false
+PASS §12 D10 the reply stays exactly {"status":"Ok"} for a campaign receipt, for one the door refused and for a batch — ["{\"status\":\"Ok\"}","{\"status\":\"Ok\"}","{\"status\":\"Ok\"}"]
+
+sms-dlr: 82 passed, 0 failed
+[audit] SYSTEM sms.dlr.received system 

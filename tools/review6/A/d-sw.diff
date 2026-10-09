@@ -1,0 +1,303 @@
+diff --git a/public/sw.js b/public/sw.js
+index 48c0ac00d..de2d0a765 100644
+--- a/public/sw.js
++++ b/public/sw.js
+@@ -1,9 +1,9 @@
+ /**
+  * 50pick Service Worker — offline fallback + push notification support.
+  *
+- * Strategy: network-first for pages (always fresh), cache-first for static
+- * assets (fonts, icons, images). Push notifications display even when the
+- * app is closed.
++ * Strategy: network-first for pages (always fresh), stale-while-revalidate for
++ * static files (fonts, icons, images) — and only an image or a font is ever
++ * kept. Push notifications display even when the app is closed.
+  *
+  * Registered from src/lib/register-sw.ts (client-side, lazy).
+  */
+@@ -16,19 +16,39 @@
+ // v3 → v4 (2026-09-14, E-381 §6 item 13): static assets are now stale-while-revalidate, so a same-URL asset
+ // refreshes on the next visit by itself — this name no longer has to be bumped by hand for that. The bump
+ // clears caches written by the old cache-first rule once.
+-const CACHE_NAME = "50pick-v4";
++// 🔴 v4 → v5 (2026-10-09, R4-G · the privacy and money-truth fix): EVERY CACHE UP TO v4 MAY HOLD A PERSON'S PAGE.
++// "/offline" was a page rendered inside the app shell, and `cache.add` sent the session cookie with it, so the cached
++// copy was the header of whoever was signed in at install — their balance, their avatar, the staff preview strip —
++// shown offline to anybody on that phone afterwards. The name is bumped so `activate` below deletes those caches on
++// every device that already holds one; the new copy is fetched with no cookie (`precacheRequest`) and is a document
++// that reads nothing from its request (`src/app/offline/route.ts`).
++// 🔴 v5 → v6 (2026-10-09, round 5, review F2 · the static rule's half of hotfix 9cb95938): EVERY NAME UP TO v5 RAN A
++// STATIC RULE THAT COULD KEEP A PAGE. It matched by the address's file name alone and kept whatever answered, so a
++// signed-in reader's page at `/markets/x.png` (a not-found inside their app shell) was stored and answered first to the
++// next visitor of that address on the same phone (a sandbox run of this worker). The rule now never takes a navigation
++// and keeps only an image or a font (`keepable`, below); the name moves so `activate` drops what an older one stored.
++// v5 itself never reached production (main ran v4), so devices there go v4 → v6. ⛔ Never reuse a name up to v5.
++const CACHE_NAME = "50pick-v6";
+ // C2j — dedicated branded offline route (precached below) instead of falling
+-// back to the data-heavy home page.
++// back to the data-heavy home page. Since R4-G a self-contained document, not a page: `src/lib/offline-document.ts`.
+ const OFFLINE_URL = "/offline";
+ 
+ // Static assets worth caching for instant repeat loads
+ const PRECACHE = [
+-  "/offline",
++  OFFLINE_URL,
+   "/favicon.svg",
+   "/favicon.ico",
+   "/brand/mark-color.svg",
+ ];
+ 
++/**
++ * ⛔ A PRECACHE REQUEST CARRIES NO COOKIE (R4-G, 2026-10-09). `cache.add(url)` builds a same-origin request, and a
++ * same-origin request sends the session cookie: the server rendered "/offline" for the person signed in and this
++ * worker kept it. `credentials: "omit"` sends no cookie at all (no session, no language, no preview pass), and
++ * `cache: "reload"` lets no HTTP-cache copy answer in the network's place.
++ */
++const precacheRequest = (url) => new Request(url, { credentials: "omit", cache: "reload" });
++
+ // Install: precache critical assets.
+ // ⚠️ E-381 §6 item 13 · ONE AT A TIME, NOT addAll. `cache.addAll` is atomic: one failed precache fetch (a deploy
+ // in progress, a flaky connection) rejected the whole install and discarded the worker — and with it the offline
+@@ -36,23 +56,94 @@ const PRECACHE = [
+ self.addEventListener("install", (event) => {
+   event.waitUntil(
+     caches.open(CACHE_NAME).then((cache) =>
+-      Promise.allSettled(PRECACHE.map((url) => cache.add(url)))),
++      Promise.allSettled(PRECACHE.map((url) => cache.add(precacheRequest(url))))),
+   );
+   self.skipWaiting();
+ });
+ 
+-/** The branded offline page if it is cached, otherwise a minimal one — never `undefined`. */
++/**
++ * The last resort, when even the offline document was never cached: its own three languages — each phrase exactly as
++ * `src/lib/i18n-dict.ts` writes `common.offline`, `common.offlineHint` and `error.tryAgain` (`test:offline-neutral`
++ * holds every one to the dictionary) — chosen when it is SHOWN from the `kp-locale` cookie or the saved choice, with a
++ * retry, and a reload by itself when the connection comes back. Swahili, the platform default, when nothing is chosen.
++ */
++const FALLBACK_DEFAULT = "sw";
++const FALLBACK_WORDS = {
++  en: { offline: "You’re offline", hint: "Some features may not work", retry: "Try again" },
++  sw: { offline: "Hauko mtandaoni", hint: "Baadhi ya vipengele huenda visifanye kazi", retry: "Jaribu tena" },
++  zh: { offline: "您已离线", hint: "部分功能可能无法使用", retry: "再试一次" },
++};
++
++function fallbackDocument() {
++  const langs = Object.keys(FALLBACK_WORDS);
++  const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
++  const say = (k) => langs.map((l) => `<span class="l" lang="${l}">${esc(FALLBACK_WORDS[l][k])}</span>`).join("");
++  const hide = langs.map((l) => `html:not([lang="${l}"]) .l[lang="${l}"]`).join(",");
++  const titles = JSON.stringify(Object.fromEntries(langs.map((l) => [l, `${FALLBACK_WORDS[l].offline} · 50pick`]))).replace(/</g, "\\u003c");
++  return `<!doctype html><html lang="${FALLBACK_DEFAULT}" translate="no" class="notranslate"><head><meta charset="utf-8">`
++    + '<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="google" content="notranslate">'
++    + `<title>${esc(FALLBACK_WORDS[FALLBACK_DEFAULT].offline)} · 50pick</title>`
++    + `<script>(function(){var L=${JSON.stringify(langs)},T=${titles},N="kp-locale",l="${FALLBACK_DEFAULT}",v=null;`
++    + 'try{var m=document.cookie.match(new RegExp("(?:^|; )"+N+"=([^;]*)"));if(m)v=decodeURIComponent(m[1])}catch(e){}'
++    + "if(L.indexOf(v)<0){try{v=localStorage.getItem(N)}catch(e){v=null}}"
++    + "if(L.indexOf(v)>=0)l=v;document.documentElement.lang=l;document.title=T[l]})();</script>"
++    + `<style>${hide}{display:none}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0d2e;color:#e8e9f5;`
++    + "font:16px system-ui,sans-serif;text-align:center;padding:24px}h1{font-size:20px;margin:0 0 8px}p{margin:0 0 20px}"
++    + "button{font:600 14px system-ui,sans-serif;height:44px;padding:0 16px;border-radius:999px;border:1px solid oklch(40% 0.20 268);"
++    + "background:oklch(53% 0.20 268);color:oklch(99% 0.006 268);cursor:pointer}</style></head>"
++    + `<body><main id="main-content"><h1>${say("offline")}</h1><p>${say("hint")}</p>`
++    + `<button type="button" id="kp-offline-retry">${say("retry")}</button></main>`
++    + `<script>(function(){function again(){if(location.pathname===${JSON.stringify(OFFLINE_URL)})location.replace("/");else location.reload()}`
++    + 'var b=document.getElementById("kp-offline-retry");if(b)b.addEventListener("click",again);'
++    + 'window.addEventListener("online",again)})();</script></body></html>';
++}
++
++/**
++ * The offline document if it is cached, otherwise the last resort above — never `undefined`.
++ * ⛔ Looked up in THIS worker's cache only: a cache from an older name can never answer, even in the moment before
++ * `activate` has deleted it.
++ */
+ function offlineResponse() {
+-  return caches.match(OFFLINE_URL).then((cached) => cached || new Response(
+-    '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+-      + '<title>50pick · offline</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;'
+-      + 'background:#0b0d2e;color:#e8e9f5;font:16px system-ui,sans-serif;text-align:center;padding:24px">'
+-      + '<div><p style="font-weight:700;font-size:20px">You are offline</p>'
+-      + '<p>Check your connection and try again · Hakuna mtandao, jaribu tena.</p></div></body>',
++  return caches.open(CACHE_NAME).then((cache) => cache.match(OFFLINE_URL)).then((cached) => cached || new Response(
++    fallbackDocument(),
+     { status: 503, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } },
+   ));
+ }
+ 
++/**
++ * ⭐ THE OFFLINE DOCUMENT IS KEPT FRESH BY THE NAVIGATIONS THAT SUCCEED (2026-10-09, round 5, review F3). It was fetched
++ * at install and never again: a phone kept that copy for the cache's whole life — the licence number the route bakes in,
++ * and any later fix to `offline-document.ts`, never reached it — and a precache that failed at install was never tried
++ * again, so that phone had only the last resort above. Now a navigation the network answered also refreshes it, in the
++ * background (`event.waitUntil`), with the precache's own cookieless request: at most one look per worker wake, and a
++ * fetch only when the kept copy is missing or not from the last day by its own `date` header (which the cache keeps),
++ * so browsing costs one small request a day. `cache.add` writes only a response that is ok, so a failed refresh leaves
++ * the kept copy as it was.
++ */
++const OFFLINE_REFRESH_MS = 24 * 60 * 60 * 1000;
++let offlineLooked = false;
++function refreshOffline() {
++  if (offlineLooked) return Promise.resolve();
++  offlineLooked = true;
++  return caches.open(CACHE_NAME).then((cache) => cache.match(OFFLINE_URL).then((kept) => {
++    const age = kept ? Math.abs(Date.now() - Date.parse(kept.headers.get("date") || "")) : NaN;
++    if (age < OFFLINE_REFRESH_MS) return undefined;
++    return cache.add(precacheRequest(OFFLINE_URL));
++  })).catch(() => undefined);
++}
++
++/**
++ * ⛔ ONLY AN IMAGE OR A FONT IS KEPT (round 5, review F2; see the v6 note above). The static rule below picks requests by
++ * the address, and an address can end in ".png" without naming a file — `/markets/x.png` is a page. Navigations never
++ * reach that rule (the navigation branch comes first), and what the network answers is stored only when it says it is
++ * an image or a font: never a page (`text/html`), and never the router's data for one (`text/x-component`, which a move
++ * inside the app to such an address fetches).
++ */
++const KEEPABLE_TYPE = /^(?:image|font)\//i;
++function keepable(response) {
++  return response.ok && KEEPABLE_TYPE.test(response.headers.get("content-type") || "");
++}
++
+ // Activate: clean old caches
+ self.addEventListener("activate", (event) => {
+   event.waitUntil(
+@@ -63,7 +154,7 @@ self.addEventListener("activate", (event) => {
+   self.clients.claim();
+ });
+ 
+-// Fetch: network-first for navigation, cache-first for static assets
++// Fetch: network-first for navigation, stale-while-revalidate for static files
+ self.addEventListener("fetch", (event) => {
+   const { request } = event;
+   const url = new URL(request.url);
+@@ -74,7 +165,23 @@ self.addEventListener("fetch", (event) => {
+   // API routes — always network, never cache
+   if (url.pathname.startsWith("/api/")) return;
+ 
+-  // Static assets (fonts, images, icons) — cache-first
++  // Navigation — network-first, offline fallback.
++  // ⛔ FIRST, BEFORE THE STATIC RULE (round 5, review F2): a navigation is a page whatever its address ends in
++  // (`/markets/x.png`), and it is never stored.
++  if (request.mode === "navigate") {
++    // ⛔ E-381 §6 item 13 · `caches.match` resolves to `undefined` when the page was never cached, and
++    // `respondWith(undefined)` throws — the player got the browser's own network-error page instead of ours.
++    // ⭐ A page the network answered also keeps the offline document fresh, in the background (`refreshOffline`).
++    event.respondWith(
++      fetch(request).then((response) => {
++        if (response.ok) event.waitUntil(refreshOffline());
++        return response;
++      }, () => offlineResponse()),
++    );
++    return;
++  }
++
++  // Static files (fonts, images, icons) — stale-while-revalidate
+   if (
+     url.pathname.startsWith("/icons/") ||
+     url.pathname.startsWith("/brand/") ||
+@@ -83,10 +190,11 @@ self.addEventListener("fetch", (event) => {
+   ) {
+     // Stale-while-revalidate: answer from the cache at once when we can, and refresh the entry in the background,
+     // so a replaced logo at the same URL reaches the player on their next visit (it used to need a CACHE_NAME bump).
++    // ⛔ Only an image or a font is stored (`keepable`), so only an image or a font can ever answer from here.
+     event.respondWith(
+       caches.open(CACHE_NAME).then((cache) => cache.match(request).then((cached) => {
+         const network = fetch(request).then((response) => {
+-          if (response.ok) cache.put(request, response.clone());
++          if (keepable(response)) cache.put(request, response.clone());
+           return response;
+         });
+         if (cached) { event.waitUntil(network.catch(() => undefined)); return cached; }
+@@ -95,16 +203,6 @@ self.addEventListener("fetch", (event) => {
+     );
+     return;
+   }
+-
+-  // Navigation — network-first, offline fallback
+-  if (request.mode === "navigate") {
+-    // ⛔ E-381 §6 item 13 · `caches.match` resolves to `undefined` when the page was never cached, and
+-    // `respondWith(undefined)` throws — the player got the browser's own network-error page instead of ours.
+-    event.respondWith(
+-      fetch(request).catch(() => offlineResponse()),
+-    );
+-    return;
+-  }
+ });
+ 
+ // Push notifications — display even when app is closed
+diff --git a/src/app/offline/page.tsx b/src/app/offline/page.tsx
+deleted file mode 100644
+index 1d6b78fb4..000000000
+--- a/src/app/offline/page.tsx
++++ /dev/null
+@@ -1,39 +0,0 @@
+-"use client";
+-
+-/**
+- * C2j — branded /offline route. The service worker precaches this and serves it
+- * as the navigation fallback when the network is down (public/sw.js). Client
+- * component so it localises from the kp-locale cookie even when served from
+- * cache. FiftyMark + "You're offline" + a retry that reloads once back online.
+- */
+-import { FiftyMark } from "@/components/brand";
+-import { BrandTopo } from "@/components/brand-topo";
+-import { I } from "@/components/ui/glyphs";
+-import { useT } from "@/lib/i18n";
+-
+-export default function OfflinePage() {
+-  const { t } = useT();
+-  return (
+-    <div className="relative isolate flex min-h-[calc(100vh-44px)] items-center justify-center overflow-hidden px-4 py-10">
+-      <BrandTopo opacity={0.09} />
+-      <div className="relative z-10 flex max-w-[400px] flex-col items-center text-center">
+-        <FiftyMark size={64} />
+-        {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:200-215),
+-            so `h-10` was an 80px disc rivalling the size={64} mark above it. */}
+-        <span className="mt-6 inline-flex h-[40px] w-[40px] items-center justify-center rounded-full border border-border bg-bg-overlay text-text-subtle">
+-          <I.wifiOff s={18} />
+-        </span>
+-        <h1 className="mt-4 font-display text-title-lg font-bold leading-tight text-text">{t.common.offline}</h1>
+-        <p className="mt-2 text-[13px] leading-snug text-text-muted">{t.common.offlineHint}</p>
+-        <button
+-          type="button"
+-          onClick={() => window.location.reload()}
+-          className="btn btn-primary btn-md btn-pill mt-6 inline-flex items-center gap-1.5"
+-        >
+-          <I.rotateCcw s={14} />
+-          {t.error.tryAgain}
+-        </button>
+-      </div>
+-    </div>
+-  );
+-}
+diff --git a/src/app/offline/route.ts b/src/app/offline/route.ts
+new file mode 100644
+index 000000000..d747aa6ac
+--- /dev/null
++++ b/src/app/offline/route.ts
+@@ -0,0 +1,25 @@
++/**
++ * `/offline` — THE SERVICE WORKER'S OFFLINE DOCUMENT (`public/sw.js` precaches it and shows it to any navigation the
++ * network could not answer). The document itself, and why it is built the way it is, is `src/lib/offline-document.ts`.
++ *
++ * 🔴 A ROUTE HANDLER, NOT A PAGE — AND THAT IS THE FIX, NOT A STYLE (R4-G, 2026-10-09). As `page.tsx` it was rendered
++ * inside the root layout, so the copy the worker cached was AppShell for whoever was signed in at that moment — their
++ * header, their balance, the staff preview strip — in the language of that moment, and it hydrated into a mismatch
++ * when shown at another address. A route handler renders no layout, no shell and no React: the answer is one string.
++ * ⛔ IT READS NOTHING FROM THE REQUEST. No `cookies()`, no `headers()`, no session — the only input is the public
++ * licence number (`/admin/system`), so every visitor is sent the same bytes, and nothing about a person can be cached.
++ * `test:offline-neutral` holds this file to that (and plants a session read to prove it would see one).
++ * ⛔ 200, not 503: `cache.add` refuses a response that is not ok, and the worker would have nothing to show.
++ */
++import { getSupportConfig } from "@/lib/server/support-config";
++import { offlineDocument } from "@/lib/offline-document";
++
++export const dynamic = "force-dynamic";
++export const runtime = "nodejs";
++
++export function GET(): Response {
++  return new Response(offlineDocument({ licenceNumber: getSupportConfig().licenceNumber }), {
++    status: 200,
++    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
++  });
++}

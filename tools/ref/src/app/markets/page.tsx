@@ -1,0 +1,584 @@
+import { Suspense, cache } from "react";
+import { fill, formatTzsCompact } from "@/lib/utils";
+import { timeLeftLabel } from "@/lib/markets/time-left";
+import Link from "next/link";
+import { SignalPip } from "@/components/brand";
+import { MarketCard } from "@/components/markets/market-card";
+import { shownYesPct } from "@/lib/markets/price-state";
+import {
+  listMarkets,
+  isClosedByTime,
+  isSelectionClosed,
+  traderSeedsByMarket,
+  MARKET_CATEGORIES,
+  type MarketCategory,
+} from "@/lib/server/market-service";
+import { getCardCharts } from "@/lib/server/market-history";
+import { countCommentsByMarkets } from "@/lib/server/comments-store";
+import { getServerT } from "@/lib/i18n-server";
+import { outcomeWord } from "@/lib/side-label";
+import { getSession } from "@/lib/server/session";
+import { listWatchedMarketIds } from "@/lib/server/watchlist-service";
+
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageContainer } from "@/components/layout/page-container";
+import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
+import { SearchBox } from "@/components/ui/search-box";
+import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
+import { RefreshPoller } from "@/components/ui/refresh-poller";
+import { DiscoveryBar, type DiscoveryCounts } from "@/components/markets/discovery-bar";
+import { MARKET_CARD_H } from "@/components/markets/card-geometry";
+import {
+  ODDS_IDS,
+  POOL_IDS,
+  STATUS_IDS,
+  DEFAULT_STATE,
+  buildDiscoveryHref,
+  countFor,
+  emptyCause,
+  matchesStatus,
+  filterRows,
+  parseDiscoveryParams,
+  relaxations,
+  sortRows,
+  type DiscoveryRow,
+  type DiscoveryState,
+  type RelaxationId,
+} from "@/lib/markets/discovery";
+import { categoryLabel } from "@/lib/markets/category-label";
+
+export async function generateMetadata() {
+  const { t } = await getServerT();
+  return { title: t.market.title };
+}
+export const dynamic = "force-dynamic";
+
+type SP = Record<string, string | string[] | undefined>;
+
+/**
+ * ⭐ ONE BOARD READ PER REQUEST (B-17). The header figure, every control's count and the grid
+ * all consume this same array; each used to run its own query (up to four board fetches per
+ * render). `cache()` dedupes across the page's streamed sections within one request render.
+ *
+ * ⛔ B-1 — NO SWALLOW. The page cannot distinguish "no live markets" from "read failed", so a
+ * failed board read must throw to `markets/error.tsx`. It must never render an empty board.
+ * (The enrichments below — traders, charts, comments — DO degrade with `.catch()`: their
+ * absence garnishes a card, it never mimics an empty board.)
+ *
+ * ⚠️ The read spans LIVE ∪ CLOSED, because `All` is the UNSETTLED book (PLAN-OF-RECORD §8.2).
+ *
+ * 🔴 THE `isClosedByTime` FILTER WAS REMOVED HERE ON 2026-09-06, AND THAT IS THE WHOLE POINT OF
+ * THE `progress` LENS. This line used to read `live.filter((m) => !isClosedByTime(m))` under a
+ * comment saying "a LIVE market past its settlement clock is in the resolver queue, not on the
+ * board". The comment was true and the consequence was not acceptable: `/results` reads
+ * RESOLVED ∪ VOIDED only (`listTerminalMarkets`), so a market past its resolution clock and not
+ * yet sealed appeared on **no player surface at all**. A player who had bet could still find it
+ * under `/positions`; a player who had not simply lost it. Ali, 2026-09-06: "as long as
+ * selection closed but result not out he should see it."
+ *
+ * ⚠️ Nothing is admitted to `open` by this. A row past `resolutionAt` is necessarily past
+ * `selectionClosedAt ?? resolutionAt` too, so `isSelectionClosed` is true for every row this
+ * change adds, and `open`/`today` both require `!selectionClosed`. That holds only because
+ * `selectionClosedAt < resolutionAt` is enforced at creation — asserted, not assumed, by
+ * `test:board-discovery`.
+ *
+ * ⛔ productLine stays the MARKET default. `test:product-line` lists this file as
+ * MUST_STAY_DEFAULT: opting into "ALL" would flood the board with Up & Down rounds (~300k/yr).
+ */
+const getBoard = cache(async () => {
+  const [live, closed] = await Promise.all([
+    listMarkets({ status: "LIVE" }),
+    listMarkets({ status: "CLOSED" }),
+  ]);
+  return [...live, ...closed];
+});
+
+const getWatchedIds = cache(async (userId: string | null): Promise<Set<string>> => {
+  if (!userId) return new Set();
+  return new Set(await listWatchedMarketIds(userId).catch(() => []));
+});
+
+type BoardMarket = Awaited<ReturnType<typeof getBoard>>[number];
+
+/**
+ * Decorate a stored market into the shape the pure contract reasons about.
+ *
+ * ⚠️ `yesPct` is null on an empty pool, and on a one-sided one (WP6 — see `shownYesPct`). `impliedYesPct` returns a hardcoded 50 when nobody has
+ * staked (`market-service.ts:232-236`) — passing that into an odds bucket would file a
+ * cold-start market under "Close call · 40–60%" on a number nobody produced.
+ *
+ * ⚠️ `bettableUntilMs` is `selectionClosedAt ?? resolutionAt` — the deadline the CARD shows.
+ * The board once sorted and windowed by `resolutionAt` while every card stated
+ * time-to-betting-close, so the board contradicted its own cards.
+ */
+function toRow(m: BoardMarket, watched: Set<string>, move24h: number | undefined): DiscoveryRow {
+  const pool = m.yesPool + m.noPool;
+  return {
+    id: m.id,
+    category: m.category,
+    pool,
+    predictors: m.predictorCount,
+    // ONE definition of "priced, or null because there is no price" — shared with the landing hero
+    // and the market card (`price-state.ts`), so no two surfaces disagree about which markets have
+    // a crowd price (B9 / law 81). ⭐ Null for a ONE-SIDED pool too (WP6, ruling 13): its card says
+    // "One side only", so the odds filters must not file it under long shots at 0%.
+    yesPct: shownYesPct(m.yesPool, m.noPool),
+    move24h,
+    createdAtMs: Date.parse(m.createdAt),
+    bettableUntilMs: Date.parse(m.selectionClosedAt ?? m.resolutionAt),
+    resolvesAtMs: Date.parse(m.resolutionAt),
+    selectionClosed: isSelectionClosed(m),
+    // ⛔ THE VERDICT, NOT THE SETTLEMENT. `resolvedOutcome` is stamped when an officer records
+    // the answer; `settledAt` is when the money moves, and they are hours apart across the
+    // objection window. Ali's stopping condition for the `progress` lens is the RESULT, so it is
+    // this column the lens must read — keying off `settledAt` would keep advertising a market
+    // whose answer everybody already knows.
+    verdictRecorded: m.resolvedOutcome != null,
+    status: m.status as DiscoveryRow["status"],
+    watched: watched.has(m.id),
+  };
+}
+
+export default async function MarketsPage({ searchParams }: { searchParams: Promise<SP> }) {
+  const { t } = await getServerT();
+  const board = await getBoard();
+  const spTop = await searchParams;
+
+  /**
+   * 🔴 THE HEADER COUNTS THE SET IT NAMES, AND NOTHING WIDER.
+   *
+   * The word here is "live", so it counts markets a player can act on — the SAME predicate the
+   * `Open` segment uses, read from the same place. It deliberately does NOT count the whole
+   * board: the board now spans LIVE ∪ CLOSED (because `All` is the unsettled book), and a
+   * header reading "49 live" over a book containing three settled-and-waiting markets would be
+   * false in the exact way that shipped once already — "40 live · TZS 1,659k in play" printed
+   * above a grid of ZERO cards, at nine of nine viewport × locale combinations. The number was
+   * factually true of *something*; it just was not true of what the sentence claimed.
+   *
+   * ⛔ `matchesStatus` is imported rather than re-expressed. A second copy of "open" here is
+   * how the header and the segment start disagreeing.
+   */
+  const NO_WATCH = new Set<string>();
+  const nowMs = Date.now();
+  // 🔴 THE HEADER RESTATED THE WHOLE BOOK OVER A FILTERED GRID — the defect this file’s own
+  // docblock above describes, in a second place. Arriving from the landing page’s "Michezo · 30
+  // hai · TZS 452K" tile, this line read "58 hai · TZS 635K" one tap later, and all six topic
+  // destinations printed the identical pair. The sentence names no topic, so it was true of the
+  // book — and it sits directly above a grid it was not describing, which is exactly the shape
+  // recorded above: "factually true of something; it just was not true of what the sentence
+  // claimed." Measured on production 2026-09-24 at 360 sw.
+  // ⛔ THE TOPIC AXIS ONLY, DELIBERATELY. The header is a statement about the BOOK a reader has
+  // narrowed to, not about a transient search string or an odds band, and widening it to every
+  // axis would make "0 live" appear the moment someone selected a settled-only view. `filterRows`
+  // is reused rather than a topic predicate written here, so there is still one definition of
+  // what a topic contains; the text matcher is the constant-true function because no text axis is
+  // being applied.
+  const topicState: DiscoveryState = { ...DEFAULT_STATE, topic: parseDiscoveryParams(spTop, MARKET_CATEGORIES).topic };
+  const topicRows = filterRows(board.map((m) => toRow(m, NO_WATCH, undefined)), topicState, nowMs, () => true);
+  const openMarkets = topicRows.filter((r) => matchesStatus(r, "open", nowMs));
+  const openVolume = openMarkets.reduce((sum, r) => sum + r.pool, 0);
+
+  return (
+    <PageContainer tier="board">
+      {/* Accessible page heading (WCAG 1.3.1 / 2.4.6). Visually hidden — the design uses a
+          slim content-first header, not a marketing H1. */}
+      <h1 className="sr-only">{t.market.title}</h1>
+      {/* Odds, volumes and time-left stay current without an F5. Pauses when backgrounded. */}
+      <RefreshPoller intervalMs={30_000} />
+
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="font-mono text-caption font-bold uppercase eyebrow text-text-subtle">
+          {t.market.title}
+        </p>
+        {/* Aqua (not gilt) by design: gold is reserved for earned-money moments. */}
+        <p className="flex items-center gap-1.5 whitespace-nowrap font-mono text-[12.5px] tabular-nums">
+          <SignalPip size={7} className="mr-0.5" />
+          <span className="font-semibold text-text">{openMarkets.length}</span>
+          <span className="text-text-subtle">{t.market.liveCount}</span>
+          {/* 🔴 A ZERO POOL IS NOT STATED, FOR THE SAME REASON THE TOPIC TILES STOPPED STATING IT.
+              Making this header honour the topic filter was right, and it reintroduced the exact
+              dead string the tiles had just been cleared of: /markets?topic=tech, ?topic=weather and
+              ?topic=macro each printed "TZS 0" — 3 of 7 topic destinations, reached by tapping a tile
+              that deliberately no longer says it. The count is never omitted, so a quiet topic still
+              says how many questions it holds.
+              ⛔ This is not the cold-start rule being relaxed: that rule forbids INVENTING a figure
+              nobody produced. Omitting a true zero states nothing false. */}
+          {openVolume > 0 && (
+            <>
+            <span className="text-border-strong">·</span>
+            {/* ⭐ ONE FIGURE, ONE GRAMMAR. This printed `TZS 1280k` while the landing hero
+                printed the SAME quantity — both sum yesPool+noPool over the open rows from
+                the same `discovery.ts` — as `TZS 1.3M`, on adjacent pages a player moves
+                between in one tap. The local `/1000` also had no magnitude threshold, so a
+                quiet book printed `TZS 0k`. `formatTzsCompact` owns the grammar and emits
+                its own `TZS ` prefix — do not put one back in front of it. */}
+            <span className="font-semibold text-text">{formatTzsCompact(openVolume)}</span>
+            <span className="text-text-subtle">{t.market.tzsInPlay}</span>
+            </>
+          )}
+        </p>
+      </div>
+
+      <SearchBox
+        placeholder={t.common.searchMarkets}
+        ariaLabel={t.common.searchMarkets}
+        helpFields={fieldNames(MARKET_SEARCH)}
+      />
+
+      <Suspense fallback={<GridSkeleton />}>
+        <DiscoveryBoard searchParams={searchParams} />
+      </Suspense>
+    </PageContainer>
+  );
+}
+
+async function DiscoveryBoard({ searchParams }: { searchParams: Promise<SP> }) {
+  const { t } = await getServerT();
+  const sp = await searchParams;
+  const session = await getSession().catch(() => null);
+  const userId = session?.userId ?? null;
+
+  const state = parseDiscoveryParams(sp, MARKET_CATEGORIES);
+  const board = await getBoard();
+  const watched = await getWatchedIds(userId);
+  const now = Date.now();
+
+  // The shared search grammar (src/lib/search) — quoted phrase, -exclude, field:. Injected into
+  // the contract rather than reimplemented there, so there is one definition of matching.
+  const parsed = parseQuery(state.q, { fields: fieldNames(MARKET_SEARCH) });
+  const byId = new Map(board.map((m) => [m.id, m] as const));
+  const matchesText = (r: DiscoveryRow) => {
+    const m = byId.get(r.id);
+    return m ? matchesQuery(parsed, m as unknown as Record<string, string | null | undefined>, MARKET_SEARCH) : false;
+  };
+
+  /**
+   * `Biggest move` needs a board-wide `move24h`, not one scoped to the rendered page — a sort
+   * cannot rank rows it has no value for. Fetched ONLY for that sort, so the ordinary board
+   * still pays for the cards it draws. A-5: absent stays absent and is partitioned last by the
+   * comparator; it is never coerced to 0.
+   */
+  const moveMap =
+    state.sort === "move"
+      ? await getCardCharts(board.map((m) => m.id)).catch(() => new Map())
+      : new Map();
+
+  const rows = board.map((m) => toRow(m, watched, moveMap.get(m.id)?.move24h));
+
+  // Counts are CROSS-FILTERED — the number beside a control is what pressing it would yield.
+  const counts: DiscoveryCounts = {
+    status: Object.fromEntries(
+      STATUS_IDS.map((s) => [s, countFor(rows, state, now, matchesText, { status: s })]),
+    ) as DiscoveryCounts["status"],
+    odds: Object.fromEntries(
+      ODDS_IDS.map((o) => [o, countFor(rows, state, now, matchesText, { odds: o })]),
+    ) as DiscoveryCounts["odds"],
+    pool: Object.fromEntries(
+      POOL_IDS.map((p) => [p, countFor(rows, state, now, matchesText, { pool: p })]),
+    ) as DiscoveryCounts["pool"],
+    topic: Object.fromEntries(
+      ["all", ...MARKET_CATEGORIES].map((c) => [c, countFor(rows, state, now, matchesText, { topic: c })]),
+    ),
+  };
+
+  const matched = sortRows(filterRows(rows, state, now, matchesText), state);
+
+  // Paging. The pager total IS the bar's result count — same variable, never recomputed.
+  const pageNum = Math.max(1, parseInt(String(sp.page ?? "1"), 10) || 1);
+  const totalPages = Math.max(1, Math.ceil(matched.length / PLAYER_PER_PAGE));
+  const safePage = Math.min(pageNum, totalPages);
+  const paged = matched.slice((safePage - 1) * PLAYER_PER_PAGE, safePage * PLAYER_PER_PAGE);
+
+  const topics = [
+    { id: "all", label: t.market.catAll },
+    ...MARKET_CATEGORIES.map((c) => ({ id: c, label: categoryLabel(t, c) })),
+  ];
+
+  // 🔴 "RECENTLY RESOLVED" ONCE SHOWED THE OLDEST RESULTS ON THE PLATFORM, FOREVER.
+  // `listMarkets` orders `resolutionAt: "asc"` because that is right for a LIVE board — soonest
+  // to close, first. Slicing that ascending list for RESOLVED rows pins the three that resolved
+  // EARLIEST in the platform's history. Measured on production 2026-08-10: three markets from
+  // 5 July offered as "recently resolved" while markets settled on 1–2 August sat below them.
+  // ⛔ Never slice a board-ordered list for a "recent" section — re-sort by the clock the
+  // section names. It stays a strip BELOW the grid: `All` is the unsettled book, and the
+  // settled archive is /results.
+  const resolvedAll = (await listMarkets({ status: "RESOLVED" }).catch(() => []))
+    .slice()
+    .sort((a, b) => b.resolutionAt.localeCompare(a.resolutionAt));
+  const searching = parsed.mode !== "empty";
+  const resolved = searching
+    ? resolvedAll.filter((m) => matchesQuery(parsed, m as unknown as Record<string, string | null | undefined>, MARKET_SEARCH)).slice(0, 6)
+    : resolvedAll.slice(0, 3);
+
+  const drawIds = [...paged.map((r) => r.id), ...resolved.map((m) => m.id)];
+  // B-1 — deliberate degrade: these are garnish on the cards, never the board itself.
+  const traderMap = await traderSeedsByMarket(drawIds).catch(() => new Map());
+  const cardCharts = await getCardCharts(drawIds).catch(() => new Map());
+  const commentCounts = await countCommentsByMarkets(drawIds).catch(() => new Map<string, number>());
+
+  const cause = emptyCause(state, matched.length, board.length);
+
+  // 🔴 THIS WAS A COPY, AND IT WAS THE DEFECTIVE ONE — corrected in batch 4. It floored the minute
+  // branch with a plain `Math.floor`, so a market with forty seconds of betting left rendered
+  // "0m left" on the busiest board on the platform while the detail page said "1m left" for the
+  // same market at the same instant. `src/lib/markets/time-left.ts` is the ONE definition and it
+  // floors at `Math.max(1, …)`: zero is reserved for genuinely closed, which the caller detects
+  // first. ⚠️ The plan's §8.8 listed only TWO surviving copies (`/live` + the detail page) — this
+  // third one was on `/markets` itself and went unnamed. Read the helper's header before adding
+  // any new caller.
+  const nowMs = Date.now();
+  const timeLeftStr = (iso: string): string =>
+    timeLeftLabel(Date.parse(iso), nowMs, {
+      closed: t.market.closed,
+      days: t.market.timeLeftD,
+      hours: t.market.timeLeftH,
+      minutes: t.market.timeLeftM,
+    }, fill);
+
+  return (
+    <>
+      <DiscoveryBar
+        state={state}
+        counts={counts}
+        resultCount={matched.length}
+        topics={topics}
+        t={t}
+        signedIn={!!userId}
+      />
+
+      <section data-board="grid" className="market-grid mt-3">
+        {paged.map((r) => {
+          const m = byId.get(r.id)!;
+          const cc = cardCharts.get(m.id) ?? { spark: [] };
+          return (
+            <MarketCard
+              productLine={"MARKET"}
+              key={m.id}
+              id={m.id}
+              titleEn={m.titleEn}
+              titleSw={m.titleSw}
+              titleZh={m.titleZh}
+              category={m.category}
+              yesPool={m.yesPool}
+              noPool={m.noPool}
+              predictors={m.predictorCount}
+              timeLeft={
+                r.selectionClosed ? t.market.waitingForResults : timeLeftStr(m.selectionClosedAt ?? m.resolutionAt)
+              }
+              // SOON reads the milliseconds from the label's own deadline and clock — so it fires in sw and
+              // zh too (landing v3 WP3, L17); the label was only ever tested in English.
+              msLeft={r.selectionClosed ? undefined : Date.parse(m.selectionClosedAt ?? m.resolutionAt) - nowMs}
+              status={m.status === "CLOSED" ? "CLOSED" : "LIVE"}
+              selectionClosed={r.selectionClosed}
+              sourceUrl={m.sourceUrl}
+              spark={cc.spark}
+              move24h={cc.move24h}
+              traders={traderMap.get(m.id)}
+              comments={commentCounts.get(m.id) ?? 0}
+            />
+          );
+        })}
+        {cause && <BoardEmptyState cause={cause} state={state} rows={rows} now={now} matchesText={matchesText} t={t} />}
+      </section>
+
+      {totalPages > 1 && (
+        <div className="mt-6 overflow-hidden rounded-lg border border-border bg-bg-elevated/40">
+          <Pagination
+            total={matched.length}
+            page={safePage}
+            perPage={PLAYER_PER_PAGE}
+            baseHref={buildDiscoveryHref(state)}
+            ofLabel={t.common.of}
+            prevLabel={t.common.previousPage}
+            nextLabel={t.common.nextPage}
+firstLabel={t.common.firstPage}
+lastLabel={t.common.lastPage}
+          />
+        </div>
+      )}
+
+      {/* 🔴 DG-P-04 · §S1 — `mt-10` WAS 80px, AND 80 IS ON NEITHER LADDER. The Tailwind spacing
+          scale is overridden (`tailwind.config.ts`), so `mt-10` renders 80px — a value that is
+          not in `--sp-*` (…24 · 32 · 40 · 48 · 64…) and not one of the four gaps §Spacing says
+          a long page is allowed (`--rh-tight` 24 · `--rh-close` 32 · `--rh-section` 64 ·
+          `--rh-chapter` 96). Measured on production 2026-08-29 with `npm run qa:dg-rhythm`:
+          this band's margin-top was **80px**, the largest of the five different gaps /markets
+          spaces itself with.
+          ⭐ It takes `--rh-section`: this is a section boundary inside one page (open markets →
+          recently resolved), and the token also carries the two-rung ladder — 64 on a phone,
+          96 from 768 — which a flat `mt-10` never did. ⛔ NOT `--rh-chapter`: §Spacing records
+          that it has zero consumers deliberately, because a 144 chapter gap is PRODUCED where
+          two bands' paddings meet, not declared. The `style` form is the house idiom for a
+          rhythm token in TSX — `app/page.tsx:212` and `components/home/trust-band.tsx:91`. */}
+      {resolved.length > 0 && (
+        <section style={{ marginTop: "var(--rh-section)" }}>
+          <div className="mb-3 flex items-baseline justify-between gap-2">
+            <h2 className="font-display text-[20px] font-semibold text-text">
+              {searching ? t.market.marketsMatch : t.market.recentlyResolved}
+            </h2>
+            <Link
+              href={"/results" as never}
+              className="whitespace-nowrap font-mono text-[11.5px] font-semibold text-brand-300 transition-colors hover:text-text"
+            >
+              {t.market.allResults}
+            </Link>
+          </div>
+          <div className="market-grid">
+            {resolved.map((m) => (
+              <MarketCard
+                productLine={"MARKET"}
+                key={m.id}
+                id={m.id}
+                titleEn={m.titleEn}
+                titleSw={m.titleSw}
+                titleZh={m.titleZh}
+                category={m.category}
+                yesPool={m.yesPool}
+                noPool={m.noPool}
+                predictors={m.predictorCount}
+                // §L3 — the THIRD copy of this shape, and the one actually on the board.
+                // It rendered "已结算 YES" live: a translated label closing around the stored
+                // token. `/results` and `/watchlist` carried the same line.
+                timeLeft={m.resolvedOutcome === "VOID" ? t.common.voided : `${t.market.resolvedOutcome} ${outcomeWord(t, m.resolvedOutcome ?? "VOID", "MARKET")}`}
+                status="RESOLVED"
+                resolvedOutcome={m.resolvedOutcome}
+                sourceUrl={m.sourceUrl}
+                spark={(cardCharts.get(m.id) ?? { spark: [] }).spark}
+                comments={commentCounts.get(m.id) ?? 0}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+    </>
+  );
+}
+
+/**
+ * The board is empty for one of four genuinely different reasons, and each gets its own exit.
+ *
+ * ⛔ Never one generic message with one generic CTA. Three compensations for the 2026-08-10
+ * empty board all failed because they sat downstream of the thing that emptied it — the
+ * see-wider nudge in particular required `live.length > 0`, so it switched off exactly when the
+ * board was emptiest. Every exit here carries a REAL count and is offered only when that count
+ * is greater than zero, so an exit can never lead to another empty board.
+ */
+function BoardEmptyState({
+  cause,
+  state,
+  rows,
+  now,
+  matchesText,
+  t,
+}: {
+  cause: NonNullable<ReturnType<typeof emptyCause>>;
+  state: DiscoveryState;
+  rows: DiscoveryRow[];
+  now: number;
+  matchesText: (r: DiscoveryRow) => boolean;
+  t: Awaited<ReturnType<typeof getServerT>>["t"];
+}) {
+  const RELAX_LABEL: Record<RelaxationId, string> = {
+    pool: t.market.relaxPool,
+    odds: t.market.relaxOdds,
+    topic: t.market.relaxTopic,
+    q: t.market.relaxQuery,
+    status: t.market.relaxStatus,
+  };
+
+  const title =
+    cause === "search-miss" ? `${t.market.noLiveMatch} "${state.q}"`
+    : cause === "watching-empty" ? t.market.watchingEmptyTitle
+    : cause === "progress-empty" ? t.market.progressEmptyTitle
+    : cause === "no-inventory" ? t.market.noMarketsAvailable
+    : t.market.filterMissTitle;
+  const body =
+    cause === "search-miss" ? t.market.checkSpelling
+    : cause === "watching-empty" ? t.market.watchingEmptyBody
+    : cause === "progress-empty" ? t.market.progressEmptyBody
+    : cause === "no-inventory" ? t.market.noMarketsAvailableBody
+    : t.market.filterMissBody;
+
+  // An empty PLATFORM is not the filters' fault and must not offer to widen them.
+  // ⚠️ `progress-empty` KEEPS its exits. Unlike `no-inventory` it is a statement about this lens
+  // only — there are markets, none of them is waiting on a result — so "see everything" is a
+  // real and useful door, and `relaxations` only ever offers one whose count is above zero.
+  const exits = cause === "no-inventory" ? [] : relaxations(rows, state, now, matchesText);
+
+  return (
+    <div className="col-span-full">
+      <EmptyState
+        kind="markets"
+        title={title}
+        body={body}
+        action={
+          exits.length > 0 ? (
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {exits.map((r, i) => (
+                <Link
+                  key={r.id}
+                  href={buildDiscoveryHref(state, r.patch) as never}
+                  replace
+                  scroll={false}
+                  className={`btn btn-sm ${i === 0 ? "btn-primary" : "btn-ghost"}`}
+                >
+                  {RELAX_LABEL[r.id]}
+                  <span className="ml-1.5 font-mono text-[11px] tabular-nums opacity-80">{r.count}</span>
+                </Link>
+              ))}
+            </div>
+          ) : undefined
+        }
+      />
+    </div>
+  );
+}
+
+/**
+ * THE skeleton a visitor actually sees — the grid is inside a Suspense boundary and this is
+ * what the first HTML response carries. (`loading.tsx` only paints on a client-side navigation
+ * into the route.) Height and count are pinned to the real values: `MARKET_CARD_H` is the one
+ * shared definition, and the count comes from `PLAYER_PER_PAGE` rather than being re-typed, so
+ * a page-size change moves both together.
+ */
+function GridSkeleton() {
+  return (
+    <div className="market-grid mt-3" aria-hidden>
+      {Array.from({ length: PLAYER_PER_PAGE }).map((_, i) => (
+        <div
+          key={i}
+          className="kp-shimmer-track overflow-hidden rounded-md border border-border bg-bg-elevated"
+          style={{ height: MARKET_CARD_H }}
+        >
+          <div className="space-y-3 p-4">
+            <div className="flex items-center gap-2">
+              {/* ⚠️ WIDTH IS A LITERAL, not `w-12` — spacing is overridden
+                  (tailwind.config.ts:200-215) so `w-12` is 128px, twice any real category chip.
+                  (`h-5` and `w-16` are NOT overridden keys and read as written.) */}
+              <div className="h-5 w-[64px] rounded-pill bg-bg-overlay" />
+              <div className="h-5 w-16 rounded-pill bg-bg-overlay" />
+            </div>
+            <div className="h-4 w-3/4 rounded bg-bg-overlay" />
+            <div className="h-4 w-1/2 rounded bg-bg-overlay" />
+            {/* The real card carries a probability block, the tipping bar, a trader row and the
+                money buttons between the title and the footer. Reserving them keeps the INTERNAL
+                rhythm honest too, not just the outer box. */}
+            {/* ⚠️ LITERAL, not `h-8` (48px on the overridden scale) — the probability figure. */}
+            <div className="mt-4 h-[28px] w-20 rounded bg-bg-overlay" />
+            <div className="mt-4 h-[7px] w-full rounded-pill bg-bg-overlay" />
+            <div className="mt-3 h-5 w-32 rounded bg-bg-overlay" />
+            <div className="mt-3 flex gap-2">
+              {/* ⚠️ TOKEN, not `h-9` — spacing is overridden (tailwind.config.ts:200-215) so
+                  `h-9` drew 64px for the card's YES/NO buttons, which globals.css pins at
+                  exactly `--tap-min` (`.mcardp-actions .btn { height: var(--tap-min) }`).
+                  That was a 24px jump per card on every board load. Consume the SAME token. */}
+              <div className="h-[var(--tap-min)] flex-1 rounded-md bg-bg-overlay" />
+              <div className="h-[var(--tap-min)] flex-1 rounded-md bg-bg-overlay" />
+            </div>
+            <div className="mt-3 h-4 w-24 rounded bg-bg-overlay" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}

@@ -1,0 +1,19 @@
+matcher: /((?!_next/static|_next/image|favicon.ico|favicon.svg|icons/|brand/|pay/|og/|screenshots/|email-signatures/).*)
+proxy RUNS     /
+proxy RUNS     /markets/x.png
+proxy RUNS     /admin/players/x.png
+proxy SKIPPED  /icons/icon-192.png
+proxy SKIPPED  /icons/nope
+proxy SKIPPED  /icons/nope.png
+proxy SKIPPED  /brand/x
+proxy SKIPPED  /og/x
+proxy SKIPPED  /pay/x
+proxy SKIPPED  /screenshots/x
+proxy SKIPPED  /email-signatures/x
+proxy SKIPPED  /favicon.ico
+proxy SKIPPED  /favicon.icon
+proxy SKIPPED  /favicon.ico/x
+proxy SKIPPED  /faviconXico
+proxy SKIPPED  /favicon.svgz
+proxy SKIPPED  /_next/static/chunks/x.js
+proxy SKIPPED  /_next/image

@@ -1,0 +1,18 @@
+16:23:12 waiting for wk-chain.done
+16:23:12 wk-chain.done is there: exit=0
+16:23:12 queued: wait note written
+16:23:12 waiting (owner: visual-g4 tsc+static-suites (G4 visual pass, F:/kipindi-v4, ~15 min) since 2026-10-08T16:22:33Z pid 349453; queue: asheib-c5 vodacom: wl-chain queued since 2026-10-08T16:23:12Z)
+16:26:15 lock taken
+16:26:15 kipindi-a8i2-ctl at 1e588aaa (the Modal focus fix)
+16:26:33 prisma generate exit=0
+16:28:12 wl-preview-1: exit=0 · tree same — §6 · no page error anywhere   PASS 6.1 no page errors or console errors in any context 33/33 passed — tiles in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/hyd/preview-fix-1 
+16:28:12   run 1: DIAG2 §5 · the button ARMED after the fills
+16:30:21 wl-preview-2: exit=0 · tree same — §6 · no page error anywhere   PASS 6.1 no page errors or console errors in any context 33/33 passed — tiles in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/hyd/preview-fix-2 
+16:30:22   run 2: DIAG2 §5 · the button ARMED after the fills
+16:32:02 wl-preview-3: exit=0 · tree same — §6 · no page error anywhere   PASS 6.1 no page errors or console errors in any context 33/33 passed — tiles in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/hyd/preview-fix-3 
+16:32:02   run 3: DIAG2 §5 · the button ARMED after the fills
+16:35:15 wl-ewp-chromium: exit=0 · tree same —   PASS Z · no page error during the drive ENTER WHERE PRESSED (drive) — 24 passed, 0 failed (market http://localhost:3074/markets/mkt_71a62a01f339cbae8f14?side=YES) 
+16:38:39 wl-ewp-webkit: exit=1 · tree same —   FAIL Z · no page error during the drive — Unhandled Promise Rejection: ChunkLoadError: Failed to load chunk /_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_0yjw1oe._.js from module [turbopack]/browser/dev/hmr-client/ | Fetch API cannot load http: /localhost:3074/ due to access control checks. | Unhandled Promise Rejection: ChunkLoadError: Failed to load chunk /_next/static/chunks/src_lib_needle-physics_0a29lyi.js from module [project]/src/lib/needle-physics.js [app-client] (ecmascript, async ENTER WHERE PRESSED (drive) — 23 passed, 1 failed: Z (market http://localhost:3074/markets/mkt_fd395ddd06262268098e?side=YES) 
+16:40:49 wl-implicit: exit=0 · tree same —      ⛔ the in-memory demo account is now CLOSED: restart the server before the next drive   PASS Z · no page error during the drive IMPLICIT SUBMIT (drive, chromium) — 15 passed, 0 failed · skipped: P1x 
+16:40:49 chain end
+16:40:50 lock released

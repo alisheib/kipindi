@@ -1,0 +1,589 @@
+diff --git a/src/app/markets/[id]/loading.tsx b/src/app/markets/[id]/loading.tsx
+index fa9da4070..fa6b079e9 100644
+--- a/src/app/markets/[id]/loading.tsx
++++ b/src/app/markets/[id]/loading.tsx
+@@ -1,26 +1,40 @@
+-import { getServerT } from "@/lib/i18n-server";
++"use client";
++
+ import { PageContainer } from "@/components/layout/page-container";
++import { BackLinkGhost } from "@/components/ui/back-link";
+ 
+-export default async function MarketDetailLoading() {
+-  const { t } = await getServerT();
++/**
++ * ⭐ IT READS NOTHING (2026-10-09, the visual pass round 5, review G1): it asked for the words and drew none of them, and
++ * that read was all that kept this file off the browser. The journey's root loading state
++ * (`components/journey/route-ghost.tsx`) now draws this very skeleton there, on a move to a question.
++ * ⭐ CLIENT CODE (round 5's follow-up, R5-H · G-2): so a refresh of a question (every 15 s) carries this skeleton's
++ * reference, not its tree — `components/ui/page-loader.tsx` has the convention.
++ */
++export default function MarketDetailLoading() {
+   // Width MUST match markets/[id]/page.tsx (1080). It was 1100, so every navigation
+   // to a market detail page reflowed by 20px the moment the real page took over.
+   return (
+     <PageContainer tier="reading" className="space-y-5">
+-      {/* Back link skeleton */}
+-      <div className="h-3 w-[64px] rounded bg-bg-overlay kp-shimmer-track" aria-hidden />
+-
+-      {/* Header skeleton */}
+-      <header className="space-y-2" aria-hidden>
+-        <div className="flex items-center gap-2">
+-          <div className="h-5 w-[64px] rounded-pill bg-bg-overlay kp-shimmer-track" />
+-          {/* ⚠️ WIDTH IS A LITERAL, not `w-12` — spacing is overridden
+-              (tailwind.config.ts:200-215) so `w-12` is 128px, twice any real chip. */}
+-          <div className="h-5 w-[64px] rounded-pill bg-bg-overlay kp-shimmer-track" />
+-        </div>
+-        <div className="h-7 rounded bg-bg-overlay kp-shimmer-track" style={{ width: "min(620px, 90%)" }} />
+-        <div className="h-5 w-48 rounded bg-bg-overlay kp-shimmer-track" />
+-      </header>
++      {/* The back link and the header as the page stands them: the header 16px (`mt-3`) under the BackLink's 44px box,
++          on no rhythm of the container's (R5-H · G-2b: a 16px bar sat 24px over the header, which stood 20px high). */}
++      <div>
++        <BackLinkGhost />
++        {/* Header skeleton */}
++        <header className="mt-3" aria-hidden>
++          {/* ⭐ THE PAGE'S HEADER BANDS (R5-H · G-2b): the chips beside the 40px watch and share buttons (a 40px row), 16px,
++              the 1px hairline (neutral here: the page's is the gilt seal of a real question), 16px, then the question — one
++              line of it, 35px, 45px from `md` (`text-title-lg` / `md:text-display-3`, leading-tight); a longer question
++              wraps, which a ghost cannot know. It drew 24px chips, a 40px title bar and a subtitle the page does not have. */}
++          <div className="mb-3 flex h-[40px] items-center gap-2">
++            <div className="h-[25px] w-[64px] rounded-pill bg-bg-overlay kp-shimmer-track" />
++            {/* ⚠️ WIDTH IS A LITERAL, not `w-12` — spacing is overridden
++                (tailwind.config.ts:200-215) so `w-12` is 128px, twice any real chip. */}
++            <div className="h-[25px] w-[64px] rounded-pill bg-bg-overlay kp-shimmer-track" />
++          </div>
++          <div className="mb-3 h-px w-full bg-border" />
++          <div className="h-[35px] rounded bg-bg-overlay kp-shimmer-track md:h-[45px]" style={{ width: "min(620px, 90%)" }} />
++        </header>
++      </div>
+ 
+       {/* B-29 / V-2 — mirror the REAL layout: content LEFT, bet widget RIGHT
+           (and widget FIRST on mobile). The old skeleton painted the dial in the
+diff --git a/src/app/markets/[id]/not-found.tsx b/src/app/markets/[id]/not-found.tsx
+index c4a8ac9d5..1ab43653c 100644
+--- a/src/app/markets/[id]/not-found.tsx
++++ b/src/app/markets/[id]/not-found.tsx
+@@ -1,69 +1,32 @@
+-import Link from "next/link";
+-import { cookies } from "next/headers";
+-import { I } from "@/components/ui/glyphs";
+-import { FiftyMark } from "@/components/brand";
+-import { dict, localeOrDefault, type Locale } from "@/lib/i18n-dict";
++import { getServerT } from "@/lib/i18n-server";
++import { NotFoundView } from "@/components/ui/not-found-view";
++import { NOT_FOUND_WORDS } from "@/components/ui/not-found-words";
++import { generateMetadata as notFoundMetadata } from "@/app/not-found";
+ 
+ /**
+- * Colocated not-found page for the /markets/[id] segment.
++ * Colocated not-found page for the /markets/[id] segment — the app's one not-found view (`not-found-view.tsx`), in the
++ * one card order, with the one way out (the open markets).
+  *
+- * Without this file Next.js 16 calls `notFound()` from MarketDetail
+- * server-component, renders our global `app/not-found.tsx`, but
+- * returns HTTP 200 instead of 404 — search engines + tooling read
+- * that as "the page exists" which is wrong. A segment-level
+- * not-found.tsx forces the right status while keeping the same
+- * branded fallback the catch-all uses.
++ * 🔴 IT DOES NOT MAKE THE STATUS 404, WHATEVER THIS NOTE USED TO SAY. Measured (2026-10-09, a dev server, curl):
++ * `/markets/mkt_doesnotexist` answers HTTP **200**. This segment has a `loading.tsx` (and the root has one), so Next
++ * flushes the shell — and commits the status — before `MarketDetail` reads the market and calls `notFound()`: the
++ * error lands inside a Suspense boundary, is caught by the HTML renderer (`createHTMLErrorHandler`,
++ * next/dist/esm/server/app-render/create-error-handler.js:107) and only adds `<meta name="robots" content="noindex">`
++ * to the stream (make-get-server-inserted-html.js:29–36). A 404 status is set only when the error escapes the shell
++ * (app-render.js:1894–1897). ⛔ Do not buy a 404 by deleting a `loading.tsx` (every async route keeps one); the head
++ * says `noindex` through the metadata below, which is what a crawler acts on.
+  *
+- * Uses inline cookie-based locale (cannot use generateMetadata in
+- * not-found pages).
++ * ⭐ THE TITLE IS THE NOT-FOUND'S, IN THE PAGE'S LANGUAGE (E47). Whenever Next resolves this segment's metadata under
++ * the not-found convention it reads the DEEPEST not-found's — this file's; with no export here the tab kept the root's
++ * English default. ⚠️ CORRECTED IN ROUND 5 (review F1): the page's own metadata no longer calls `notFound()` (thrown
++ * there, it replaced a REAL market with this page whenever its read failed) — for a market the read did not find, it
++ * answers this same metadata itself, so the tab says the same either way.
+  */
+-export default async function MarketNotFound() {
+-  const jar = await cookies();
+-  const locale: Locale = localeOrDefault(jar.get("kp-locale")?.value);
+-  const t = dict[locale];
++export async function generateMetadata() {
++  return notFoundMetadata();
++}
+ 
+-  return (
+-    <div className="kp-shortpage mx-auto flex min-h-[80svh] max-w-[640px] flex-col items-center justify-center px-5 py-10 text-center">
+-      <div className="mb-5">
+-        <FiftyMark size={64} />
+-      </div>
+-      <p className="font-mono text-micro font-bold uppercase tracking-[0.20em] text-gold-300">
+-        {t.error.notFoundCode}
+-      </p>
+-      <h1 className="mt-2 font-display text-title-lg font-bold leading-tight tracking-[-0.02em] text-text">
+-        {t.error.notFoundBody}
+-      </h1>
+-      <p className="mt-3 max-w-[420px] text-[13px] leading-relaxed text-text-subtle">
+-        {t.error.notFoundHint}
+-      </p>
+-      <nav aria-label={t.error.recoveryLinks} className="mt-6 grid w-full max-w-[420px] grid-cols-1 gap-2 sm:grid-cols-3">
+-        <Link
+-          href="/markets"
+-          className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-brand-400 hover:bg-bg-overlay"
+-        >
+-          <p className="font-display text-[13px] font-semibold text-text">{t.common.markets}</p>
+-        </Link>
+-        <Link
+-          href="/"
+-          className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-brand-400 hover:bg-bg-overlay"
+-        >
+-          <p className="font-display text-[13px] font-semibold text-text">{t.common.home}</p>
+-        </Link>
+-        <Link
+-          href="/help"
+-          className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-brand-400 hover:bg-bg-overlay"
+-        >
+-          <p className="font-display text-[13px] font-semibold text-text">{t.common.help}</p>
+-        </Link>
+-      </nav>
+-      <Link
+-        href="/markets"
+-        className="mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200"
+-      >
+-        <I.globe s={12} />
+-        {t.error.browseOpenMarkets}
+-        <I.arrowRight s={12} />
+-      </Link>
+-    </div>
+-  );
++export default async function MarketNotFound() {
++  const { t, locale } = await getServerT();
++  return <NotFoundView words={NOT_FOUND_WORDS[locale]} recoveryLabel={t.error.recoveryLinks} />;
+ }
+diff --git a/src/app/markets/[id]/page.tsx b/src/app/markets/[id]/page.tsx
+index 338a7059c..1a1005249 100644
+--- a/src/app/markets/[id]/page.tsx
++++ b/src/app/markets/[id]/page.tsx
+@@ -5,6 +5,7 @@ import { I, categoryGlyph } from "@/components/ui/glyphs";
+ // E-101b · a fragment names a row; this is what actually scrolls to it.
+ import { HashFocus } from "@/components/ui/hash-focus";
+ import { BackLink } from "@/components/ui/back-link";
++import { keepFigures } from "@/components/ui/keep-words";
+ import { TippingBar } from "@/components/brand";
+ import { Countdown } from "@/components/markets/countdown";
+ import { ShareButton } from "@/components/markets/share-button";
+@@ -47,6 +48,9 @@ import { formatTzsCompact, formatTzs, fill } from "@/lib/utils";
+ // Every date this page prints is in the reader's month words on the East Africa clock (§L4): `formatDateTime` and
+ // `formatDeadline` printed English months in every locale.
+ import { formatEatDateTime } from "@/lib/eat-day";
++import { breakStateOf, formatBreakEnd } from "@/lib/break-end";
++import { keepText } from "@/components/ui/keep-run";
++import { isLockedOut } from "@/lib/server/responsible-gambling";
+ import { appUrl } from "@/lib/app-url";
+ import { getServerT } from "@/lib/i18n-server";
+ import { sideWord, outcomeWord } from "@/lib/side-label";
+@@ -56,18 +60,33 @@ import { pickLocalized, pickCriterion, marketCategoryLabel } from "@/lib/localiz
+ import { PageContainer } from "@/components/layout/page-container";
+ import { signoffOf } from "@/lib/markets/signoff";
+ import { objectionRulings } from "@/lib/server/reversals";
++import { generateMetadata as notFoundMetadata } from "@/app/not-found";
+ 
+ 
+ export const dynamic = "force-dynamic";
+ 
++/**
++ * ⭐ THE METADATA NEVER DECIDES WHAT THE PAGE IS (2026-10-09, the visual pass's round 5, review F1). This read used to
++ * swallow a failure and then call `notFound()` on the empty result — and Next 16 renders a `notFound()` thrown here as
++ * the segment's not-found page: `MetadataOutlet` stands beside the page, under the page's own boundaries, and throws the
++ * metadata's error there (next/dist/esm/lib/metadata/metadata.js, `MetadataOutlet`; app-render's create-component-tree
++ * renders it with the page). So one database blip in this read, while the body's own read succeeded, served a REAL
++ * market — perhaps holding the reader's money — as "Hakuna ukurasa · 404" with `noindex, nofollow`: what B-1 forbids the
++ * body (at its read, below).
++ * ⭐ ONE RULE FOR EVERY RECORD PAGE'S METADATA (here, `/updown/[roundId]` and `/proposals/[id]`): a FAILED read answers
++ * the section's title in the reader's language — the key its board page is titled by (`t.market.title`, "Masoko") —
++ * and says nothing about the record; a read that SUCCEEDED and found nothing answers the not-found page's own metadata
++ * (its title and `noindex`); nothing here throws. The body's read alone decides the page: the market, the error page
++ * with its retry, or the not-found page.
++ */
+ export async function generateMetadata(
+   { params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ w?: string }> },
+ ): Promise<Metadata> {
+   const { id } = await params;
++  const { t, locale } = await getServerT();
+   let m: Awaited<ReturnType<typeof getMarket>> | null = null;
+-  try { m = await getMarket(id); } catch { /* graceful */ }
+-  if (!m) notFound();
+-  const { locale } = await getServerT();
++  try { m = await getMarket(id); } catch { return { title: t.market.title }; }
++  if (!m) return notFoundMetadata();
+   // ⭐ The share preview's words come from the SAME rule as its image (`share-preview.ts`, landing v3
+   // WP14b): "YES 62% · NO 38%" only where both sides hold money; "One side only." / "No bets yet." where
+   // there is no price. It used to print "YES 100% · NO 0%" and an invented "YES 50% · NO 50%".
+@@ -115,6 +134,17 @@ export async function generateMetadata(
+   };
+ }
+ 
++/**
++ * ⭐ THE QUESTION OPENS ON THE PAGE'S EDGE (2026-10-09, the visual pass's round 4, tiles 161 and 162). Sora draws a
++ * straight-stem capital with a side bearing, so "Mvua …" began 2px inside the edge the back link, the chips and the
++ * hairline keep (M's ink from x18 at 390, x134.6 at 1280, against 16 and 132): 2.17px of 28 and 2.68px of 36, i.e.
++ * 0.0775 and 0.0744em — 0.075em, within 0.1px of each. The font's own outline agrees on the letters: at weight 700 every
++ * straight-stem capital below starts at 0.082em of the em (the rendered ink runs ~0.2px proud of the outline, as R3-A
++ * found for the headline's 800), I at 0.084. Only the h1's FIRST line is set back (`text-indent`), and only when the
++ * question starts on one of these — the letter decides, never the locale. ⛔ Measure a letter before adding it.
++ */
++const QUESTION_STEM = /^[BDEFHIKLMNPR]/u;
++
+ export default async function MarketDetail({
+   params,
+   searchParams,
+@@ -130,7 +160,8 @@ export default async function MarketDetail({
+   // B-1 — no swallow on the PRIMARY read: a failed query must throw to
+   // markets/error.tsx (retry), never 404 a market that may be holding money.
+   // notFound() fires only when the query succeeded and the row is absent.
+-  // (generateMetadata's own catch above deliberately stays — title garnish.)
++  // ⛔ THIS read is the only one that decides the page. generateMetadata reads the market too, and its catch answers the
++  // board's neutral title, never "missing" (round 5, F1: a notFound() there replaced the page — its note has why).
+   const m = await getMarket(id);
+   if (!m) notFound();
+ 
+@@ -205,6 +236,17 @@ export default async function MarketDetail({
+   // B-1: a swallowed positions read rendered "You haven't bet yet" to a player
+   // whose stake is IN this market. Fail loudly to markets/error.tsx instead.
+   const myPositions = session ? (await listPositionsForUser(session.userId)).filter((p) => p.marketId === m!.id) : [];
++  /* ⭐ R4-I (2026-10-09; edges E19, tiles 033 037 041 066 070 074 099 103 107) · THE READER'S OWN BREAK, so the page stops
++     telling a player who has paused their betting to bet: "Tumia kidhibiti kuanza" ("Use the dial to get started") under
++     Your positions, and "Live now — place another prediction without going back" over Similar markets. It gates two
++     INVITATIONS, so it fails OPEN (a failed read is "not on a break", `feature-state.ts` LAW 1); the bet itself is refused
++     by the server either way. */
++  const breakEnd = session
++    ? await Promise.resolve().then(() => isLockedOut(session.userId))
++        .then(breakStateOf)
++        .catch(() => null)
++    : null;
++  const breakDate = breakEnd ? formatBreakEnd(Date.parse(breakEnd.until), Date.now(), t.common.monthsShort, locale) : null;
+   /**
+    * 🔴 THE SHARE BUTTON USED TO MINT A REFERRAL CODE FOR EVERY SIGNED-IN PLAYER, and the
+    * binding it produced is PERMANENT — `bindRecruit` writes `recruitedBy` once and never
+@@ -484,18 +526,8 @@ export default async function MarketDetail({
+       {/* ── Back link ── */}
+       <BackLink fallbackHref="/markets" label={t.common.markets} />
+ 
+-      {/* ── Page header — title, badges, share ──
+-          A7: faint 96px category-glyph watermark behind the question (isolate
+-          keeps the -z-10 mark above the header bg but below the content). */}
+-      <header className="relative isolate mt-3 mb-5">
+-        {(() => {
+-          const Cat = I[categoryGlyph(m.category)];
+-          return (
+-            <span aria-hidden className="pointer-events-none absolute right-1 bottom-0 -z-10 text-text opacity-[0.07]">
+-              <Cat s={96} />
+-            </span>
+-          );
+-        })()}
++      {/* ── Page header — title, badges, share ── */}
++      <header className="mt-3 mb-5">
+         <div className="mb-3 flex flex-wrap items-center gap-2">
+           <Chip variant="cat" size="lg">{marketCategoryLabel(t, m.category)}</Chip>
+           {/* C1a hero state — LIVE only while actually accepting predictions
+@@ -511,10 +543,13 @@ export default async function MarketDetail({
+               {t.market.closingSoon} · {minsToDeadline} {t.common.minsUnit}
+             </span>
+           )}
++          {/* ⭐ CLOSED IS ROYAL ON THE PLAYER'S OWN MARKET PAGE (R5-C, the second gold audit, 2026-10-09). DESIGN_AUTHORITY
++              §B11 names this exact pill as its third correction running backwards: "markets/[id]/page.tsx paints CLOSED in
++              the gilt family (--warning-fg resolves to --gilt) … while that market's card renders CLOSED royal". Both of
++              its states — closed and waiting, closed and settling — are CLOSED, so both wear the royal chip's paint
++              (`Chip variant="pending"`, the dictionary's royal: brand-600/26%, brand-500/55%, brand-300). */}
+           {heroState === "waiting" && (
+-            <span className={`inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-caption font-bold uppercase tracking-[0.10em] ${
+-              settling ? "border-warning-border bg-warning-bg text-warning-fg" : "border-gold-500/40 bg-gold-500/10 text-gold-300"
+-            }`}>
++            <span className="inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-caption font-bold uppercase tracking-[0.10em] border-brand-500/[0.55] bg-brand-600/[0.26] text-brand-300">
+               <I.hourglassOff s={13} />
+               {settling ? t.market.closedAwaitingSettlement : t.market.selectionClosedWaiting}
+             </span>
+@@ -531,17 +566,30 @@ export default async function MarketDetail({
+               is convicted and the prose link is not; the open question about inline links is
+               recorded in the register for Ali rather than decided here.
+               ⚠️ `-my-` absorbs the growth so the header row does not move. */}
+-          <a
+-            href={m.sourceUrl}
+-            target="_blank"
+-            rel="noopener noreferrer"
+-            className="inline-flex items-center gap-1 ml-auto min-h-[var(--tap-min)] -my-[11px] py-[11px] text-[12px] font-mono text-text-muted hover:text-text"
+-          >
+-            {t.common.source}
+-            <I.ext s={12} />
+-          </a>
+-          <WatchStar marketId={m.id} initial={watching} signedIn={!!session} />
+-          <ShareButton marketId={m.id} title={m.titleEn} refCode={myRefCode} />
++          {/* ⭐ THE THREE ACTIONS ARE ONE GROUP, AND THE GROUP WRAPS WHOLE (2026-10-09, the visual pass's round 3, tiles
++              161 and 199 at 390). Each used to be its own item in this wrapping row, with `ml-auto` on the source link
++              alone, so at 390 the row broke between them: "Chanzo" stayed up with the chips and the star and SHIRIKI
++              opened line 2 at the left — the star's glyph, with no visible box of its own, floating at x29–42 against
++              the chips' edge at 16 and SHIRIKI's at 68. Grouped, they share the right edge on whichever line they land:
++              beside the chips at 1280 exactly as before, and together under them on a phone.
++              ⭐ AND THE STAR STANDS MIDWAY BETWEEN ITS NEIGHBOURS' INK (round 4, 2026-10-09, tiles 161 162). The boxes
++              were 12px apart both sides, but the `ext` glyph's ink stops short of its 12px box — its path's right edge is
++              x19 + the 0.95 half-stroke of 24, so 2.03px of air — while the star's sits centred in its 40px box. Ink to
++              ink that read 27 | 25 (x964→992, x1005→1031 at 1280). `-mr-[2px]` gives the link's box back that bearing:
++              25 | 25. The tap box is unchanged; only the gap after it closes. */}
++          <div className="ml-auto flex items-center gap-2">
++            <a
++              href={m.sourceUrl}
++              target="_blank"
++              rel="noopener noreferrer"
++              className="inline-flex items-center gap-1 -mr-[2px] min-h-[var(--tap-min)] -my-[11px] py-[11px] text-[12px] font-mono text-text-muted hover:text-text"
++            >
++              {t.common.source}
++              <I.ext s={12} />
++            </a>
++            <WatchStar marketId={m.id} initial={watching} signedIn={!!session} />
++            <ShareButton marketId={m.id} title={m.titleEn} refCode={myRefCode} />
++          </div>
+         </div>
+         {/* C1a — slim gilt hairline framing the question ("seal of the real") */}
+         <div aria-hidden className="gilt-hairline mb-3" />
+@@ -559,7 +607,35 @@ export default async function MarketDetail({
+             `text-title-md md:text-title-lg` (22/28) — that demotes the market question below
+             every other page title, which is the opposite of what this page is for.
+             2026-09-13 — balanced wrapping: sw titles left one word alone on line two. */}
+-        <h1 className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance">{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
++        {/* A7 — the faint category glyph is a watermark BEHIND THE QUESTION, so it is drawn on the question's own box:
++            centred on it, two of its ems tall (56px under its 28px rung, 72px under 36), `isolate` keeping the -z-10
++            mark above the page and under the words.
++            ⭐ 2026-10-09 (the visual pass's round 3, tiles 161, 162, 199): it hung from the whole header's bottom-right
++            at 96px, taller than the question, so it climbed into the row above — the gilt hairline ran through the
++            weather cloud (y356 through its arc at y353–360 at 390; y273 across it at 1280) and the cloud's top sat
++            under SHIRIKI (y217–256). On the question's box, computed from the glyph paths (the 1.9 stroke included) for
++            a one-line question, the tightest case: the hairline keeps ≥5px of air (forex, whose arrows reach y0.85 of
++            24, at 72px; the weather cloud 6.5px) and the band below ≥13px. A longer question only adds room.
++            The size is the box's `h-[2em] w-[2em]`; `s` is only the svg's own width/height before the stylesheet, and it
++            stays the frozen 96 the watermark always drew at (test:icon-sizes — a new value would grow the glyph set).
++            ⭐ AND THE QUESTION'S COLUMN ENDS BEFORE IT (2026-10-09, the visual pass's round 4, E49, tile 433 at zh 768): the
++            h1 ran the full width, so a long question set its last glyph over the mark — 赛's ink to x701 across the
++            football at x680–741. The h1 now stops `2em + 12px` short of the right edge: the mark's 2em box, its `right-1`
++            (4px), and 8px of air, in the h1's own em (the mark is sized by the same rung), so at every width the words
++            wrap before the mark and the mark stands beside them. The first-line indent (R4-D) is untouched. */}
++        <div className="relative isolate">
++          {(() => {
++            const Cat = I[categoryGlyph(m.category)];
++            return (
++              <span aria-hidden className="pointer-events-none absolute right-1 top-1/2 -z-10 flex -translate-y-1/2 text-text opacity-[0.07] text-title-lg md:text-display-3">
++                <Cat s={96} className="h-[2em] w-[2em]" />
++              </span>
++            );
++          })()}
++          <h1 data-stem={QUESTION_STEM.test(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)) ? "" : undefined}
++            className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance pr-[calc(2em+12px)] data-[stem]:indent-[-0.075em]"
++          >{/* `keepFigures` (round 4, edges 197 199 255): "2026-27" and "dakika 28:00" never break inside. */}{keepFigures(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}</h1>
++        </div>
+       </header>
+ 
+       {/* ── Main two-column layout ──
+@@ -603,8 +679,14 @@ export default async function MarketDetail({
+             2026-09-13 — offset 72px = the 56px sticky header (an inline height in top-app-bar.tsx;
+             no token exists) + 16px air. The old spacing key resolved to 32px on this scale, so
+             the stuck card slid under the header. loading.tsx mirrors it. */}
++        {/* ⭐ A FLEX COLUMN WITH A GAP, NOT `space-y-3` (2026-10-09, the visual pass's round 3, tile 162 at 1280, and
++            161 at 390). The signed-in branch opens on the D40 heading, which is `sr-only` — out of flow, taking no room
++            — and `space-y-*` counts siblings in DOM order, so the first card a player SEES still took the 16px rung
++            the heading "held" (DESIGN_AUTHORITY §S1's trap): the bet column began at y370 beside the probability bar's
++            y354, and 16px further from the question on a phone. `gap` spaces in-flow items only, and an absolutely
++            positioned child is not one, so the heading stays first in the region (D40) and costs nothing. */}
+         <div className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1 lg:self-stretch">
+-        <aside className="space-y-3 lg:sticky lg:top-[72px] lg:z-10" aria-labelledby={BET_PANEL_HEADING}>
++        <aside className="flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10" aria-labelledby={BET_PANEL_HEADING}>
+           {bettingOpen ? (
+             session ? (
+               <>
+@@ -684,13 +766,21 @@ export default async function MarketDetail({
+                     "var(--hero-panel-grad)",
+                 }}
+               >
+-                <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">
++                {/* ⭐ The panel's eyebrow in the eyebrow's ink, not gold (2026-10-09, round 4's gold audit): "Ingia ili
++                    kutabiri" / 登录以预测 is an invitation to sign in, and gold is money that was earned (§M3; Q5 "gold is
++                    money, and nothing else"). It is the same slot the signed-in side picker fills with "Chagua upande
++                    wako", in `text-text-subtle` — one panel, one eyebrow ink for either viewer. */}
++                <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
+                   {t.market.signInToPredict}
+                 </p>
+-                <h2 id={BET_PANEL_HEADING} className="mt-1.5 font-display text-[18px] font-bold text-text leading-tight">
++                {/* ⭐ Balanced, both centred lines (2026-10-08, the visual pass, tile 199): at sw 390 the title's 292px
++                    measure held "Weka dau lako kwenye soko" (258px) and left "hili" alone; balanced it reads "Weka dau
++                    lako / kwenye soko hili". The note under it is balanced too, and its Chinese breaks only at its
++                    comma (keep-all, with break-word as the floor), never inside 手机号. */}
++                <h2 id={BET_PANEL_HEADING} className="mt-1.5 font-display text-[18px] font-bold text-text leading-tight text-balance">
+                   {t.market.placeYourStake}
+                 </h2>
+-                <p className="mt-1.5 text-body-sm text-text-muted leading-snug">
++                <p className="mt-1.5 text-body-sm text-text-muted leading-snug text-balance [word-break:keep-all] [overflow-wrap:break-word]">
+                   {t.market.browseForFree}
+                 </p>
+                 {(() => {
+@@ -731,11 +821,15 @@ export default async function MarketDetail({
+               </>
+             )
+           ) : selectionClosed && !closedByTime ? (
++            /* ⭐ THE TWO CLOSED PANELS ARE ONE PANEL (R5-C, the second gold audit, 2026-10-09): the calm card, the state word
++               and its glyph in the dictionary's royal word ink (`TONE_INK.royal`, brand-300 — §B11: CLOSED is royal to the
++               player). This one was gold, its sibling below the warning box with a gilt eyebrow; neither state is money
++               (Q5) and nobody must act on either (§B11's amber). */
+             <div className="rounded-xl border border-border bg-bg-elevated p-6 text-center">
+               <div className="flex items-center justify-center gap-2 mb-2">
+-                <I.hourglassOff s={18} className="text-gold-300" />
++                <I.hourglassOff s={18} className="text-brand-300" />
+               </div>
+-              <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">
++              <p className="font-mono text-micro uppercase eyebrow font-bold text-brand-300">
+                 {t.market.selectionClosedBadge}
+               </p>
+               <h2 id={BET_PANEL_HEADING} className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.waitingForResultsAside}</h2>
+@@ -745,8 +839,8 @@ export default async function MarketDetail({
+               </p>
+             </div>
+           ) : closedByTime ? (
+-            <div className="rounded-xl border border-warning-border bg-warning-bg p-6 text-center">
+-              <p className="font-mono text-micro uppercase eyebrow font-bold text-warning-fg">
++            <div className="rounded-xl border border-border bg-bg-elevated p-6 text-center">
++              <p className="font-mono text-micro uppercase eyebrow font-bold text-brand-300">
+                 {t.market.closedAwaitingSettlement}
+               </p>
+               <h2 id={BET_PANEL_HEADING} className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.noMoreBets}</h2>
+@@ -798,14 +892,26 @@ export default async function MarketDetail({
+             {/* "TZS 0" is factually true, but on a fresh market it reads as
+                 failure rather than as an opening. Same words the card uses, so
+                 the two surfaces say the same thing about the same state. */}
+-            {/* ⭐ STAGE 9b — the first two are the kit <Stat>: `card` box (rounded-md,
+-                border, bg-elevated, p-3), `widest` label (10px semibold 0.14em) and the
+-                `xl` rung (18px, mt-1, leading-tight). A pixel-for-pixel mapping.
+-                ⚠️ The THIRD is still the local `KPI` and that is deliberate — see the
+-                note on the function below. */}
+-            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.volume}     value={freshMarket ? t.market.noPoolYet : formatTzsCompact(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
+-            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.predictors} value={String(m.predictorCount)}     icon={<I.users s={14} />} />
+-            <KPI label={t.market.resolves}   value={formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)} mono className="col-span-2 sm:col-span-1" />
++            {/* ⭐ STAGE 9b — the kit <Stat>: `card` box (rounded-md, border, bg-elevated, p-3), `widest` label (10px
++                semibold 0.14em) and the `xl` rung (18px, mt-1, leading-tight).
++                ⭐ 2026-10-09 (the visual pass's round 3, tile 162): ALL THREE ARE THE KIT'S NOW, AND EVERY FIGURE IS MONO.
++                The pool figure "TZS 5K" was set in the display face (§M4: money is `.amount`, mono and untracked) and the
++                predictor count beside it too (§T5: every numeral is mono); the close time was the last tile on the
++                local `KPI` fork, with no glyph where its neighbours carry one and a 14px label row against their 15px,
++                so its value stood 2px above theirs (y468 against y470). It is the `sm-plain` rung that fork's own note
++                asked for (13px mono, regular, its rung's own 18px line), which puts its figures' tops within half a pixel
++                of the 18px ones: a timestamp stays quieter than the two figures, on their line. It keeps 13px because
++                18px does not fit its column: the Chinese date carries its year ("2026年10月9日 00:53", ~194px at 18px)
++                in a 145–163px tile from 1024. "No pool yet" is words, so it keeps the display face.
++                ⭐ R4-I (2026-10-09; edges E23, tiles 041 042 074 075 107 108) · THE LABEL SAYS WHAT THE TIME IS. The value is the
++                RESULT time (`resolutionAt`) — picks close before it, as the countdown below states — and English
++                and Chinese label it so ("Resolves", "结算时间"), but Swahili read "INAISHA", "it ends", which a player takes
++                for the end of picking. The tile now wears the word the proposal page puts before the same date,
++                `common.resolves` — "INATATULIWA" / "RESOLVES" / "结算于" (the Stat sets it in capitals). No new words.
++                R4-I · and "Hakuna bwawa bado" no longer leaves "bado" alone in its tile at 390 (tile 037): `keepText`. */}
++            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.volume} font={freshMarket ? undefined : "mono"} value={freshMarket ? keepText(t.market.noPoolYet) : <span className="amount">{formatTzsCompact(m.yesPool + m.noPool)}</span>} icon={<I.chart s={14} />} />
++            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.predictors} font="mono" value={String(m.predictorCount)} icon={<I.users s={14} />} />
++            <Stat size="sm-plain" labelStyle="widest" boxed="card" label={t.common.resolves} value={formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)} icon={<I.calendarClock s={14} />} className="col-span-2 sm:col-span-1" />
+           </div>
+ 
+           {/* 2b. Resolution panel — outcome, attestation, pool + fee (resolved only) */}
+@@ -836,8 +942,10 @@ export default async function MarketDetail({
+               {m.selectionClosedAt && !isSelectionClosed(m) && (
+                 <Countdown to={m.selectionClosedAt} label={t.market.selectionClosesIn} serverNow={Date.now()} at={formatEatDateTime(Date.parse(m.selectionClosedAt), Date.now(), t.common.monthsShort, locale)} />
+               )}
++              {/* CLOSED, in the dictionary's royal word ink (§B11; R5-C, 2026-10-09) — it was `--gold-300` beside the two
++                  clocks R4-K moved off gilt. */}
+               {m.selectionClosedAt && isSelectionClosed(m) && m.status === "LIVE" && (
+-                <div className="flex items-center gap-2 text-[12.5px] font-semibold" style={{ color: "var(--gold-300)" }}>
++                <div className="flex items-center gap-2 text-[12.5px] font-semibold text-brand-300">
+                   <I.hourglassOff s={14} />
+                   {t.market.selectionClosedWaiting}
+                 </div>
+@@ -853,11 +961,17 @@ export default async function MarketDetail({
+                 <I.portfolio s={15} />
+                 {t.market.yourPositions}
+               </h2>
+-              {myPositions.length === 0 && (
++              {/* R4-I · during a break the empty list says the break, with its end (the sentence /wallet/deposit and the
++                  limits page show), in place of the invitation to use the dial. */}
++              {myPositions.length === 0 && (breakEnd && breakDate ? (
++                <p className="text-body-sm text-text-subtle italic" data-testid="market-break">
++                  {keepText(fill(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, { date: breakDate }), [breakDate])}
++                </p>
++              ) : (
+                 <p className="text-body-sm text-text-subtle italic">
+                   {t.market.noBetYet}
+                 </p>
+-              )}
++              ))}
+               {myPositions.map((p) => {
+                 const liveValue = positionCashOutValues.get(p.id) ?? null;
+                 const sellShut = p.status === "OPEN" && (isSelectionClosed(m) || positionSellable.get(p.id) === false);
+@@ -890,15 +1004,23 @@ export default async function MarketDetail({
+                       </div>
+                       <span className="font-bold tabular-nums text-text">{formatTzs(p.stake)}</span>
+                     </div>
++                    {/* ⭐ GOLD ONLY ON A WIN'S PAYOUT (R5-C, the second gold audit, 2026-10-09). The line was gold for every
++                        settled ticket — "Paid TZS 0" on a loss, a refund on a void — and §M3 gives gold to money EARNED
++                        (§C4: "VOID / refunded is NEUTRAL"; §M7: a loss gets the receipt). The journey's ticket card already
++                        draws it so (`ticket-card.tsx`: gold and struck only when won). */}
+                     {p.status !== "OPEN" && (
+                       <div className="flex items-center justify-between font-mono text-[11px]">
+                         <span className="text-text-muted">{t.market.paidLabel}</span>
+-                        <span className="font-bold tabular-nums text-gold-300">{formatTzs(p.finalPayout ?? 0)}</span>
++                        <span className={`font-bold tabular-nums ${p.status === "WIN" ? "text-gold-300" : "text-text"}`}>{formatTzs(p.finalPayout ?? 0)}</span>
+                       </div>
+                     )}
+                     <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+-                      <p className="font-mono text-[10px] tracking-[0.06em] text-text-muted tabular-nums">
+-                        <I.ticket s={10} className="inline -mt-px mr-0.5 opacity-60" />
++                      {/* The ticket glyph stands off its number by the clock line's own 4px (`gap-1`), in the same flex
++                          shape: it sat inline with a 2px margin, so its ink came 2px from "pos_…" while the clock's came
++                          5px from its words (2026-10-09, the visual pass's round 3, tile 162: x174–183 → 186 against
++                          x361–369 → 375). The id may break (E-100). */}
++                      <p className="flex min-w-0 items-center gap-1 break-all font-mono text-[10px] tracking-[0.06em] text-text-muted tabular-nums">
++                        <I.ticket s={10} className="shrink-0 opacity-60" />
+                         {p.id}
+                       </p>
+                       <p className="flex items-center gap-1 font-mono text-[10px] tracking-[0.04em] text-text-faint tabular-nums">
+@@ -1051,7 +1173,8 @@ export default async function MarketDetail({
+                 {t.market.similarMarkets}
+               </h2>
+             </div>
+-            <p className="mb-4 text-body-sm text-text-muted">{t.market.similarMarketsBody}</p>
++            {/* R4-I · the line that says "place another prediction" is not said to a reader on a break; the markets stay. */}
++            {!breakEnd && <p className="mb-4 text-body-sm text-text-muted">{t.market.similarMarketsBody}</p>}
+             {/* The shared board grid at EVERY width now. It used to be forced to
+                 `lg:!grid-cols-1` because this block lived inside the 360px rail, which is
+                 also why the titles truncated mid-word. Full width, each card gets ~470px. */}
+@@ -1115,29 +1238,5 @@ function similarTimeLeft(iso: string, t: Awaited<ReturnType<typeof getServerT>>[
+   }, fill);
+ }
+ 
+-/**
+- * ⚠️ STAGE 9b — THIS FORK IS DOWN TO ONE CONSUMER AND IS NOT DELETED YET.
+- *
+- * Its `mono` branch is the reason. That branch paints the resolution time at **13px,
+- * weight 400**, and `ui/stat` has neither: its nearest rung is `xs` at 13.5px, and it
+- * applies `font-bold` to every value unconditionally. Migrating this call site would
+- * make the timestamp half a pixel larger AND bold — a visible restyle of a live
+- * surface, which is not what a consolidation is allowed to buy.
+- *
+- * ⛔ So the `!mono` branch is now dead code kept ONLY as the record of what the two
+- * migrated tiles above render; do not add a third caller. The fix is one of:
+- *   (a) a `sm-plain` rung in `ui/stat.tsx` (13px mono, weight 400), or
+- *   (b) an owner decision to accept 13.5/bold — at which point this function goes.
+- * Either way it is a change to a file this pass does not own.
+- */
+-function KPI({ label, value, icon, mono, className }: { label: string; value: string; icon?: React.ReactNode; mono?: boolean; className?: string }) {
+-  return (
+-    <div className={`rounded-md border border-border bg-bg-elevated p-3 ${className ?? ""}`}>
+-      <div className="flex items-center gap-1.5 text-text-subtle">
+-        {icon}
+-        <p className="font-mono text-micro uppercase eyebrow font-semibold">{label}</p>
+-      </div>
+-      <p className={`mt-1 ${mono ? "font-mono text-[13px]" : "font-display text-[18px] font-bold"} tabular-nums text-text leading-tight`}>{value}</p>
+-    </div>
+-  );
+-}
++/* The local `KPI` fork that stood here is gone (2026-10-09): its last tile, the close time, is the kit <Stat>'s
++   `sm-plain` rung — option (a) of the fork's own note — so the strip is one component again. */

@@ -1,0 +1,27 @@
+17:11:15 waiting for vis-ready.done
+17:59:49 vis-ready.done is there: exit=0
+17:59:49 queued: wait note written
+17:59:49 lock taken
+17:59:50 kipindi-a8i2-ctl at 8a2d9d26 (vodacom-visual, on main e16f9353)
+18:00:41 prisma generate exit=0
+18:01:54 typecheck exit=0 — 0 error(s)
+18:57:21 battery exit=1 —   468/474 green · 3321.3s total   FAILED: test:audit-drain, test:revoked-deadend, test:admin-section-gate, test:needle-rest, test:house-bot-disclosure, test:orphans 
+18:57:22   'gave no reason': 0 · fingerprint after: 8c0fa0db9851
+18:58:02 the battery's control: 6 suite(s), alone here and on main d9b7a5b6 (ready: 1)
+18:58:20   test:audit-drain alone: visual exit=1 · main exit=1
+19:00:00   test:revoked-deadend alone: visual exit=1 · main exit=1
+19:01:38   test:admin-section-gate alone: visual exit=1 · main exit=1
+19:03:16   test:needle-rest alone: visual exit=1 · main exit=1
+19:05:15   test:house-bot-disclosure alone: visual exit=4 · main exit=0   ⛔ THE BRANCH ONLY
+19:05:37   test:orphans alone: visual exit=1 · main exit=1
+19:06:00 red:journey-shell exit=0 · tree same —   ok     └─ fires: ^10\.leash\.witness · RED CONTROL — 169/169 caught · all 339 proofs held 
+19:06:37 red:wallet-reach exit=0 · tree same — 27/27 caught · files restored: all · green after restore: true RED PROOF COMPLETE 
+19:09:46 wm1-jhf: exit=0 · tree same —   least slack: 10.7px at sw 320 player-999999 (rightmost: Weka pesa)   rail labels on more than one line: sw 320 guest: Tiketi zangu (2 lines) · sw 320 player-999999: Tiketi zangu (2 lines) · sw 320 player-9.9M: Tiketi zangu (2 lines) · sw 320 zero: Tiketi zangu (2 lines) · sw 320 held: Tiketi zangu (2 lines) · sw 320 masked: Tiketi zangu (2 lines) 6/6 passed — qa:journey-header-fit · 66 cells 
+19:14:27 wm1-red-jhf: exit=0 · tree same —   CAUGHT  gutter-24-from-640-returns — sw 768 guest — gutter: padding-left 24px, not 16px   CAUGHT  edge-32-from-1024-lost — sw 1024 guest — gutter: padding-left 16px, not 32px RED · journey-header-fit — 10/10 caught · 0 missed · 0 broken · 0 file(s) left modified 
+19:25:10 wm1-seal-j: exit=0 · tree same — LOCAL REHEARSAL · --journey, through a preview pass — http://localhost:3074   14 public + 10 gated routes × 7 widths × 3 locales   504 cells measured · 0 problem(s) 
+19:34:09 wm1-seal: exit=0 · tree same — LOCAL REHEARSAL — http://localhost:3074   13 public + 10 gated routes × 4 widths × 3 locales   276 cells measured · 0 problem(s) 
+19:37:06 wm1-needle: exit=0 · tree same —   ✓ §4 360px · no sample rests on a control (was 6 of 40 across 360 and 768) 0/20 ·    ✓ §4 768px · no sample rests on a control (was 6 of 40 across 360 and 768) 0/20 ·  [needle-rest] 20 passed, 0 failed 
+19:38:22 wm1-preview: exit=0 · tree same — §6 · no page error anywhere   PASS 6.1 no page errors or console errors in any context 33/33 passed — tiles in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/preview-m1 
+19:40:14 wm1-live: exit=1 · tree same —   name: 'TimeoutError' } Node.js v24.19.0 
+19:40:14 chain end
+19:40:15 lock released

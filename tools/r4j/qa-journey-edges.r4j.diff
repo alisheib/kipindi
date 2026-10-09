@@ -1,0 +1,54 @@
+diff --git a/C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/edges/qa-journey-edges.mjs b/C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/r4j/qa-journey-edges-r4j.mjs
+index 91f4dca..0dc928f 100644
+--- a/C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/edges/qa-journey-edges.mjs
++++ b/C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/r4j/qa-journey-edges-r4j.mjs
+@@ -323,13 +323,13 @@ const E = {
+     page: 'Its market page from the top: the title as the h1 (text-balance), wrapped whole, then the bet panel.',
+   },
+   loading: {
+-    'mid-load': 'Document load under Slow 3G (2,000 ms latency, 50 kB/s each way), cache off: the first frame showing the page’s loading UI (loading.tsx: the root SectionLoader on / and /account, TicketsGhost on /positions) before any content; the header should already be drawn.',
++    'mid-load': 'Document load under Slow 3G (2,000 ms latency, 50 kB/s each way), cache off: the first frame showing the page’s loading UI (R4-J: the page’s own ghost in its own column — the hero’s intro as bars on /, TicketsGhost on /positions, the hub’s column and cards on /account) before any content; the header (logo, 18+, capsule, pill; at 1280 the links, language, bell, avatar) and the rail already drawn.',
+     loaded: 'The same page once the throttle is lifted and it has loaded and hydrated: the content where the skeleton stood (the ghosts’ own rule: nothing moves when the data lands).',
+     'tap-mid': 'A tap on the tab (or the desktop link) under Slow 3G from an already loaded page: the most telling frame before the content — the target’s skeleton if drawn, else the progress bar or the pending mark; if probe.kind says no loading UI after 1.5 s, the player saw a dead tap.',
+   },
+   notfound: {
+-    'markets-mkt_doesnotexist': 'The market not-found page (markets/[id]/not-found.tsx: the 404 code, error.notFoundBody, links to Markets, Home and Help) inside the journey shell: header and tabs, Maswali lit (the /markets section). HTTP 404 expected; a 200 here is a soft 404 (a loading.tsx streams before notFound fires).',
+-    'updown-udr_doesnotexist': 'An Up & Down round that does not exist: the global not-found page inside the journey shell, Juu/Chini lit. HTTP 404 expected.',
++    'markets-mkt_doesnotexist': 'The market not-found page (markets/[id]/not-found.tsx: the 404 code, error.notFoundBody, links to Markets, Home and Help) inside the journey shell: header and tabs, NO tab lit, the chat bubble and the Needle shown (R4-J: a not-found page is no journey page and no tab’s page — outside.notFoundMark), the console clean. HTTP 404 expected; a 200 here is a soft 404 (a loading.tsx streams before notFound fires).',
++    'updown-udr_doesnotexist': 'An Up & Down round that does not exist: the global not-found page inside the journey shell, no tab lit (R4-J). HTTP 404 expected.',
+     'does-not-exist': 'The global not-found page (app/not-found.tsx) inside the journey shell, no tab lit, its three recovery links. HTTP 404 expected.',
+   },
+   viewports: 'The page at an odd viewport: 740×360 (a landscape phone: tabs, a very short screen — the sticky header and the bottom rail must leave room to read), 768×1024 (a tablet: still the tabs), 1024×768 (a landscape tablet: the desktop links from 1024).',
+@@ -1138,8 +1138,24 @@ async function tile(v, meta, { clip = null, buffer = null, probe = null, noteTex
+     // Sign up button 2px raised (151 175), a 是 button glowing (184), a rail label after a tap (455 459).
+     await parkPointer(p);
+     await settle(p, 260);
++    // ⭐ R4-J (E40): a tile shows the Needle AT REST, never on its way there — R3-B's read for drives
++    // (`window.needle.resting()`), which qa-journey-shell already waits on. Tile 269 was shot ~560 ms after the drive's
++    // own scrollIntoView: inside the host's post-scroll check (180 ms) and the glide that follows it.
++    await p.waitForFunction(() => { const n = window.needle; return !n || typeof n.resting !== 'function' || n.resting(); }, null, { timeout: 5_000 }).catch(() => {});
++    await settle(p, 120);
+   }
+   const facts = await readFacts(p);
++  // R4-J: what stands outside the page — the not-found mark, the chat bubble, the Needle — and the tab's title.
++  const outside = await p.evaluate(() => {
++    const root = document.getElementById('needle-root');
++    return {
++      notFoundMark: !!document.getElementById('kp-not-found'),
++      chat: !!document.querySelector('.cm-fab'),
++      needle: !!root && !root.classList.contains('needle-suppressed') && root.childElementCount > 0,
++      needleResting: window.needle && typeof window.needle.resting === 'function' ? window.needle.resting() : null,
++      title: document.title,
++    };
++  }).catch(() => null);
+   const errs = v.errs;
+   v.errs = freshErrs();
+   seq += 1;
+@@ -1191,6 +1207,7 @@ async function tile(v, meta, { clip = null, buffer = null, probe = null, noteTex
+     devOnlyErrors: errs.devOnly,
+     /** Every subresource that answered ≥ 400 or failed since the last tile: url, status (null = no answer), type. */
+     failedRequests: errs.failed,
++    outside,
+     probe,
+     note: noteText,
+     flags,

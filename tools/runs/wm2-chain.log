@@ -1,0 +1,14 @@
+17:11:15 waiting for wm1-chain.done
+19:40:30 wm1-chain.done is there: exit=0
+19:40:30 queued: wait note written
+19:40:31 waiting (owner: marketing-s14 step54-trial since 2026-10-08T19:34:28Z pid 397099; queue: asheib-c5 vodacom: wm2-chain queued since 2026-10-08T19:40:30Z)
+19:45:34 waiting (owner: marketing-s14 step54-trial since 2026-10-08T19:34:28Z pid 397099; queue: asheib-c5 vodacom: wm2-chain queued since 2026-10-08T19:40:30Z)
+19:50:39 waiting (owner: marketing-s14 step54-trial since 2026-10-08T19:34:28Z pid 397099; queue: asheib-c5 vodacom: wm2-chain queued since 2026-10-08T19:40:30Z)
+19:52:10 lock taken
+19:52:10 kipindi-a8i2-ctl at 8a2d9d26 (the tree M1 proved)
+20:02:54 wm2-tiles: exit=3 · tree same —   · React’s DEV-only measure error, listed and never failed (a production build has no such measure): 0 qa:journey-shell — 1645 passed · 0 failed · 2 blocked · 333 tiles in C:\Users\asheib\AppData\Local\Temp\claude\C--Users-asheib\0e745525-51fe-4451-ace7-c9987576fc15\scratchpad\visual\tiles-m · 9.9 min Green is not a read: open every tile, one by one, in the order of its number. 
+20:04:26 kipindi-a8i2 at main d9b7a5b6 · prisma generate exit=0
+20:34:32 wm2-par-base: exit=0 · tree same —   sw · the header's content ends 0px past the 320px viewport (rightmost: div); its row overflows by 0px baseline written: C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/parity-main-d9b7a5b6.json — base d9b7a5b6, 224 cells, 451 blobs. Next: a null --compare on a FRESH server at this commit must exit 0. 30/30 passed — baseline · tree d9b7a5b6 · 1315s 
+20:38:53 wm2-par-cmp: exit=2 · tree same — §0 · the base (S6-PLAN A18) REFUSED — the baseline was captured at d9b7a5b6, and this tree cannot be compared with it: d9b7a5b6 is not an ancestor of HEAD 8a2d9d26 — the branch was rebased, or this is another branch.   Re-capture from the pre-S6 parent into a NEW file (A18), or pass --allow-base to compare anyway. 
+20:38:53 chain end
+20:38:54 lock released

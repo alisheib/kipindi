@@ -1,0 +1,60 @@
+"use client";
+
+import { PageContainer } from "@/components/layout/page-container";
+import { DepositFormGhost } from "@/app/wallet/money-form-ghost";
+import { PageHeader } from "@/components/ui/page-header";
+import { BackLinkGhost } from "@/components/ui/back-link";
+import { PageHero } from "@/components/ui/page-hero";
+import { I } from "@/components/ui/glyphs";
+import { useT } from "@/lib/i18n";
+
+/**
+ * B-29 / V-2 — the skeleton mirrors the FORM the page actually renders, instead of the
+ * old centered spinner panel that repainted into a completely different shape.
+ * ⭐ IN THE PAGE'S OWN CARD AND ORDER since round 5's follow-up (R5-K, 2026-10-09): the providers, then the amount with
+ * its pills and hint, the handset with its hint and button, the confirm, then the trust strip — each part in its own
+ * classes with the page's words set and not shown (`money-form-ghost.tsx`, which says what it measured: the amount was
+ * drawn first, with no card, 86px tiles for 106, no strip — the page ended 347–589px from where its ghost did).
+ * ⭐ ONE DRAWING, TWO READERS (2026-10-09, the visual pass round 5, review G1): `loading.tsx` (this folder) renders it,
+ * and the journey's root loading state (`components/journey/route-ghost.tsx`) draws it on a move to /wallet/deposit.
+ * ⭐ CLIENT CODE THAT READS ITS OWN WORDS (round 5's follow-up, R5-H · G-2): so the loading file hands it nothing and a
+ * refresh carries its reference, not this tree — `components/ui/page-loader.tsx` has the convention.
+ */
+export function DepositGhost() {
+  const { t } = useT();
+  /* ⭐ DG-P-04 · §S1 — THE RHYTHM IS DECLARED ON THE CONTAINER, NOT SPRINKLED PER ELEMENT.
+     This read `<PageContainer tier="form">` + `<header className="mb-6">`, i.e. a 32px gap
+     typed onto one child, while the page it stands in for (`page.tsx`, same directory)
+     declares `space-y-5` = 24px. So the deposit form MOVED 8px the instant the skeleton was
+     replaced, on a money surface. Measured, not guessed: `form` is the most unanimous tier in
+     the product — 10 of 10 containers that declare a rhythm declare `space-y-5`. */
+  return (
+    <PageContainer tier="form" className="space-y-5">
+      {/* 🔴 DG-P-03 · §L1 · §K — THIS SKELETON NAMED THE PAGE TWO DIFFERENT THINGS, ON A MONEY
+          FORM. It drew the eyebrow "Deposit" over an h1 reading **"Loading"**, while
+          `page.tsx:88` renders eyebrow "Add funds" over the h1 "Deposit" — so BOTH strings
+          changed the instant the data landed, and for the moment before it the page's own
+          heading was the word `Loading`. §L1: one name per destination. `positions/loading.tsx`
+          states this rule in its own header; this file was the counter-example.
+          ⭐ It now renders the SAME three components the page does, with the same props —
+          BackLink ghost, `PageHero` and `PageHeader` (plain since 2026-10-07, §M3a D1) — so the shape and
+          the words are the page's, not a second copy of them. The h1 recipe was also
+          `font-display text-[28px] font-bold text-text`, missing the `leading-tight
+          tracking-[-0.02em]` `PageHeader` carries, so the heading changed line-height too. */}
+      {/* The back link: the BackLink's own 44px box (`BackLinkGhost`, R5-H · G-2b) — a 20px bar stood here, 24px short. */}
+      <BackLinkGhost />
+
+      <PageHero>
+        <PageHeader
+          icon={<I.arrowDownToLine s={14} className="text-text-subtle" />}
+          eyebrow={t.common.addFunds}
+          title={t.common.deposit}
+          subtitle={t.wallet.mobileMoney}
+        />
+      </PageHero>
+
+      {/* The form card and the trust strip, as the page draws them for a mobile-money deposit (`money-form-ghost.tsx`). */}
+      <DepositFormGhost t={t} />
+    </PageContainer>
+  );
+}

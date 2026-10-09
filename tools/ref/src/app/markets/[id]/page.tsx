@@ -1,0 +1,1143 @@
+import Link from "next/link";
+import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
+import { I, categoryGlyph } from "@/components/ui/glyphs";
+// E-101b · a fragment names a row; this is what actually scrolls to it.
+import { HashFocus } from "@/components/ui/hash-focus";
+import { BackLink } from "@/components/ui/back-link";
+import { TippingBar } from "@/components/brand";
+import { Countdown } from "@/components/markets/countdown";
+import { ShareButton } from "@/components/markets/share-button";
+import { WatchStar } from "@/components/markets/watch-star";
+import { isWatching } from "@/lib/server/watchlist-service";
+import { resolveWinShareToken } from "@/lib/server/share-token";
+import { SidePicker } from "@/components/markets/side-picker";
+import { MarketCard } from "@/components/markets/market-card";
+import { getSimilarMarkets } from "@/lib/server/market-service";
+import { ChartToggle } from "@/components/charts/chart-toggle";
+import { SellButton } from "@/components/markets/sell-button";
+import { ResolutionPanel } from "@/components/markets/resolution-panel";
+import { Chip } from "@/components/ui/chip";
+import { Stat } from "@/components/ui/stat";
+import { cashOutValue, freeExitEndsAt, getMarket, isClosedByTime, isSelectionClosed, listPositionsForUser, ratesFor } from "@/lib/server/market-service";
+import { priceState } from "@/lib/markets/price-state";
+import { sharePreviewDescription, sharePreviewPrice, sharePreviewSettled } from "@/lib/markets/share-preview";
+import { ROOT_OPEN_GRAPH } from "../../layout";
+import { timeLeftLabel } from "@/lib/markets/time-left";
+import { poolFee } from "@/lib/payout";
+import { getEffectiveConfig } from "@/lib/server/market-config";
+import { getProbabilityChart } from "@/lib/server/market-history";
+import { roundStore } from "@/lib/server/updown-dal";
+// ⛔ The ONE place UP/DOWN ↔ YES/NO is mapped — `updown-service.ts` says so in its header,
+// and "if a second translation appears anywhere, delete it". The UPDOWN bounce below needs
+// the YES→UP direction; a hand-written ternary here would be exactly that second copy.
+import { sideToOutcome } from "@/lib/server/updown-service";
+import { currentSession } from "@/lib/server/auth-service";
+import { db } from "@/lib/server/store";
+import { ensureAffiliateAccount, inviteViewerFor, normalizeReferralCode } from "@/lib/server/affiliate-service";
+import { inviteIsLiveFor } from "@/lib/feature-state";
+import { listComments } from "@/lib/server/comments-store";
+import { CommentsThread } from "@/components/markets/comments-thread";
+import { RefreshPoller } from "@/components/ui/refresh-poller";
+// ⛔ `pctNum` went with `feeHeadlinePct` (B3) — its only consumer here was the hedge copy,
+// which no longer interpolates a rate. An import kept "just in case" is how a deleted rate
+// quietly comes back. ⚠️ `fill` STAYS: `similarTimeLeft` passes it to `timeLeftLabel`, a use
+// tsc caught the moment the import was removed on the strength of a grep for `fill(`.
+import { formatTzsCompact, formatTzs, fill } from "@/lib/utils";
+// Every date this page prints is in the reader's month words on the East Africa clock (§L4): `formatDateTime` and
+// `formatDeadline` printed English months in every locale.
+import { formatEatDateTime } from "@/lib/eat-day";
+import { appUrl } from "@/lib/app-url";
+import { getServerT } from "@/lib/i18n-server";
+import { sideWord, outcomeWord } from "@/lib/side-label";
+import { renderFailure } from "@/lib/failure-reasons";
+import { getBonusSummary } from "@/lib/server/bonus-service";
+import { pickLocalized, pickCriterion, marketCategoryLabel } from "@/lib/localized";
+import { PageContainer } from "@/components/layout/page-container";
+import { signoffOf } from "@/lib/markets/signoff";
+import { objectionRulings } from "@/lib/server/reversals";
+
+
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata(
+  { params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ w?: string }> },
+): Promise<Metadata> {
+  const { id } = await params;
+  let m: Awaited<ReturnType<typeof getMarket>> | null = null;
+  try { m = await getMarket(id); } catch { /* graceful */ }
+  if (!m) notFound();
+  const { locale } = await getServerT();
+  // ⭐ The share preview's words come from the SAME rule as its image (`share-preview.ts`, landing v3
+  // WP14b): "YES 62% · NO 38%" only where both sides hold money; "One side only." / "No bets yet." where
+  // there is no price. It used to print "YES 100% · NO 0%" and an invented "YES 50% · NO 50%".
+  const preview = sharePreviewPrice(m.yesPool, m.noPool, m.predictorCount);
+  // ⭐ C1 · a settled market's preview leads with its result ("Result: NO."), never a price or a lean.
+  // "MARKET" is safe: an UPDOWN market is redirected by the page body, and its round page has its own metadata.
+  const settled = sharePreviewSettled(m.status, m.resolvedOutcome, "MARKET");
+
+  // F5 — a shared WIN link carries a signed token. When it validates, the share
+  // preview becomes the win card. The token only names the position; the amount
+  // is re-read from the ledger by the OG renderer, so it can't be faked.
+  const { w } = await searchParams;
+  let win: Awaited<ReturnType<typeof resolveWinShareToken>> = null;
+  if (w) { try { win = await resolveWinShareToken(w); } catch { /* graceful */ } }
+  const isWin = !!win && win.marketId === id;
+
+  const desc = isWin
+    ? `Won ${formatTzs(win!.payout)} on ${win!.side} · ${m.titleEn}`
+    : sharePreviewDescription(preview, settled);
+  const ogImage = isWin
+    ? `/api/og/market/${id}?w=${encodeURIComponent(w!)}`
+    : `/api/og/market/${id}`;
+
+  return {
+    // Browser-tab title follows the viewer's language; OG/Twitter cards stay
+    // English (canonical — crawlers/share previews carry no locale cookie).
+    title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh),
+    description: desc,
+    // ⛔ Never write a bare `openGraph` object here: Next merges metadata per FIELD, so a partial object
+    // replaces the root's whole — this page, the one every share links to, emitted no og:type, og:site_name
+    // or og:locale until WP14b. ⛔ And no `url`: a win link carries `?w=`, and a scraper that follows
+    // og:url would fetch the plain market page and lose the win card.
+    openGraph: {
+      ...ROOT_OPEN_GRAPH,
+      title: isWin ? `Won ${formatTzs(win!.payout)} on 50pick` : m.titleEn,
+      description: desc,
+      images: [{ url: ogImage, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: isWin ? `Won ${formatTzs(win!.payout)} on 50pick` : m.titleEn,
+      description: desc,
+      images: [ogImage],
+    },
+  };
+}
+
+export default async function MarketDetail({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ side?: "YES" | "NO"; w?: string; csort?: string; ref?: string }>;
+}) {
+  const { t, locale } = await getServerT();
+  const { id } = await params;
+  const sp = await searchParams;
+  const { side } = sp;
+  const commentOrder = sp.csort === "oldest" ? "oldest" : "newest";
+  // B-1 — no swallow on the PRIMARY read: a failed query must throw to
+  // markets/error.tsx (retry), never 404 a market that may be holding money.
+  // notFound() fires only when the query succeeded and the row is absent.
+  // (generateMetadata's own catch above deliberately stays — title garnish.)
+  const m = await getMarket(id);
+  if (!m) notFound();
+
+  // Up & Down is a SEPARATE game with its own detail surface (countdown, price,
+  // quick-bet). This route renders the long-form-poll detail, which is the wrong UI
+  // for a 5-minute price round — so any link that lands an Up & Down market here
+  // (a shared /live card, an old bookmark, a search result) is bounced to the round
+  // page. Fixing it at the destination means every caller routes correctly, not just
+  // the ones we remembered to special-case.
+  if (m.productLine === "UPDOWN") {
+    const round = await roundStore.getByMarketId(m.id).catch(() => null);
+    // The SAME guard the SidePicker below takes (`initialSide`). `side` is TYPED
+    // "YES" | "NO", but that is a compile-time claim about a URL — at runtime it is
+    // whatever the query string carried, and it was being interpolated into the
+    // redirect target raw. And translating it is the other half of the fix: Up & Down
+    // speaks UP/DOWN, so `/updown/[roundId]` locks a side only on "UP" or "DOWN" and an
+    // untranslated `?side=YES` was silently discarded there — a player who tapped YES on
+    // an Up & Down card landed on the unlocked, both-ways dial the betting-flow
+    // invariant forbids. Validate, then translate through the single mapping.
+    const lockedSide = side === "YES" || side === "NO" ? sideToOutcome(side) : null;
+    redirect(round ? `/updown/${round.id}${lockedSide ? `?side=${lockedSide}` : ""}` : "/updown");
+  }
+
+  // ⭐ C1 · the card's price rule on the page the card links to (`price-state.ts`; ruling 13, L14, D29):
+  // a figure only where both pools hold money (1–99), none on an empty or one-sided pool — so the page
+  // can no longer print the 100/0 or the invented 50/50 the card stopped printing in WP6.
+  // Display only: the dial prices from the raw pools; `cashOutValue` and `poolFee` read the pools.
+  const price = priceState(m.yesPool, m.noPool);
+  const yesPct = price.kind === "priced" ? price.yesPct : null;
+  const emptySide = price.kind === "oneSided" ? price.emptySide : null;
+  const neverBet = m.predictorCount === 0;
+  const outcomeLabel = m.resolvedOutcome ? outcomeWord(t, m.resolvedOutcome, "MARKET") : null;
+  const sharePrice = sharePreviewPrice(m.yesPool, m.noPool, m.predictorCount);
+
+  // The resolution criterion FOR THIS READER, and the fact of whether we had it.
+  // ⛔ Not `pickLocalized`: that helper discards the fallback, which is right for a
+  // title and wrong for the sentence the payout turns on. See src/lib/localized.ts.
+  const criterion = pickCriterion(locale, m.resolutionCriterion, m.resolutionCriterionSw, m.resolutionCriterionZh);
+
+  // THIS POLL'S OWN RATES — frozen onto the market at creation and loaded with it.
+  //
+  // No config read, and therefore NO FALLBACK TO GUESS AT. The old code did
+  // `try { getEffectiveConfig(m.id) } catch { …commissionRate: 0.03, reserveRate: 0.01… }`,
+  // and that catch branch summed to a 4% fee — while settlement used the real 9%.
+  // So if the config read ever threw, every player on this page was quietly shown
+  // a 4% platform fee and a 4%-based projection, and then paid at 9%. It failed
+  // silently, in the player's favour on screen and against them in the wallet.
+  //
+  // It cannot happen now: the rates ride on the market row. There is nothing to
+  // fetch, nothing to fail, and nothing to invent.
+  const marketRates = ratesFor(m);
+  // Used only by the RESOLVED panel below, where the outcome is known — pass it so a
+  // loser-share poll shows the fee actually charged (a slice of the side that lost).
+  const marketFee = poolFee(
+    m.yesPool,
+    m.noPool,
+    marketRates,
+    m.resolvedOutcome === "YES" || m.resolvedOutcome === "NO" ? m.resolvedOutcome : undefined,
+  );
+  // ⛔ `feeHeadlinePct` WAS REMOVED HERE (2026-08-14, B3). It existed for exactly one
+  // consumer — the two hedge bodies — and those now quote no rate at all, because the fee
+  // is stated by the payout projection in the same panel and RULES.md §7 exists to keep a
+  // rate from being written twice. A computed rate with no reader is the next inline number
+  // waiting to go stale; it is deleted rather than left for tsc to ignore.
+  // Stake BOUNDS are entry-time, so they correctly read LIVE config (a poll does
+  // not freeze how much you may stake) — and buyPosition re-validates them
+  // server-side anyway, so the dial showing a stale bound cannot cost anyone
+  // money. Only the FEE is frozen to the poll. Deliberately un-caught: if config
+  // is unreadable we fail loudly rather than invent a limit.
+  const stakeCfg = await getEffectiveConfig(m.id);
+  const session = await currentSession();
+  // B-1: a swallowed positions read rendered "You haven't bet yet" to a player
+  // whose stake is IN this market. Fail loudly to markets/error.tsx instead.
+  const myPositions = session ? (await listPositionsForUser(session.userId)).filter((p) => p.marketId === m!.id) : [];
+  /**
+   * 🔴 THE SHARE BUTTON USED TO MINT A REFERRAL CODE FOR EVERY SIGNED-IN PLAYER, and the
+   * binding it produced is PERMANENT — `bindRecruit` writes `recruitedBy` once and never
+   * re-attributes. So every shared market link was quietly recruiting, paying nothing today
+   * but standing ready to pay against attributions nobody chose if the programme returned.
+   * ⭐ A code is now minted only for an account the programme belongs to; everyone else
+   * shares the plain link they always believed they were sharing. Same fix in
+   * `positions/page.tsx`, which had the identical line.
+   * ⚠️ 2026-09-25 — THE PROGRAMME RETURNED, UNPAID. `invite` is ACTIVE, so every player in good
+   * standing now gets their code on this link BY DESIGN, and a friend who signs up through it is bound
+   * and counted (`docs/PLAYER-INVITE-UNPAID.md` §2). "Paying nothing" holds only while the Owner's
+   * switch on `/admin/affiliate` says Not payable (under the `inviteRewards` ceiling, 2026-09-26) — make
+   * invites payable and every bind already written earns on the recruit's next event (§12).
+   */
+  // ⭐ Standing, not role: a deactivated agent's code leaves the share link in the same instant
+  // it leaves the bind (`inviteViewerFor` reads the same predicate the bind gate does).
+  const myRefCode = session && inviteIsLiveFor(await inviteViewerFor(session.userId))
+    ? await ensureAffiliateAccount(session.userId).then((a) => a.code).catch(() => undefined)
+    : undefined;
+  // F3 — is this market on the signed-in player's watchlist?
+  let watching = false;
+  if (session) { try { watching = await isWatching(m.id, session.userId); } catch { /* graceful */ } }
+  const isResolved = m.status === "RESOLVED" || m.status === "VOIDED";
+  // The card's expression (`market-card.tsx`): a stamped verdict, or a resolved or void status.
+  const settled = !!m.resolvedOutcome || isResolved;
+
+  // "Similar markets" rail — other genuinely bettable markets so a confirmed bet
+  // flows into another instead of a dead end. This page is MARKET-only (Up & Down was
+  // redirected to /updown above), so it always fills. Best-effort — a failure here
+  // must never take down the market page.
+  // 3 fills one clean row at desktop (the detail-page grid is 3-across); a 4th would
+  // strand a single card on a second row.
+  const similar = await getSimilarMarkets(m, 3).catch(() => []);
+  // The similar cards' ONE clock: each card's time-left label and its SOON milliseconds read this instant.
+  const simNow = Date.now();
+
+  // F11 — decide the viewer's objection standing HERE, on the server, so the panel
+  // never dangles a control the service would refuse. The same rules are re-checked
+  // under the market lock when they actually file.
+  let objectionState: React.ComponentProps<typeof ResolutionPanel>["objection"] = { state: "SIGNED_OUT" };
+  if (isResolved && session) {
+    const { objectionEligibility, listObjectionsForUser } = await import("@/lib/server/objections-service");
+    const mine = (await listObjectionsForUser(session.userId)).find(
+      (o) => o.marketId === m!.id && o.status === "OPEN",
+    );
+    if (mine) {
+      objectionState = { state: "OPEN", objectionId: mine.id };
+    } else {
+      const elig = await objectionEligibility(session.userId, m.id);
+      objectionState = elig.eligible
+        ? { state: "ELIGIBLE" }
+        : elig.why === "NO_POSITION" ? { state: "NO_POSITION" }
+        // D19c, ruling 146: the server's reason stays on the server; the panel gets a neutral state.
+        : elig.why === "HOUSE_STAKE_ONLY" ? { state: "NOT_ELIGIBLE" }
+        : elig.why === "WINDOW_CLOSED" ? { state: "WINDOW_CLOSED" }
+        : elig.why === "ALREADY_SETTLED" ? { state: "ALREADY_SETTLED" }
+        : { state: "SIGNED_OUT" };
+    }
+  }
+
+  // ⭐ WHO SIGNED IT OFF — THE ONE RULE (lib/markets/signoff.ts), the same the landing's settled strip,
+  // /fairness and /api/fairness/recent read, so a reader who follows a settled row here reads the same
+  // answer. Two-officer attestation is claimed ONLY for genuinely distinct human officers — never the
+  // automatic resolver ("system_*") — and a verdict an upheld objection REVERSED or VOIDED is said to be
+  // corrected on objection, never credited to whoever signed the verdict that was thrown out (v3 review:
+  // this page derived it inline and did not know objections existed).
+  const signoff = isResolved ? signoffOf(m, (await objectionRulings()).get(m.id)) : null;
+  const twoOfficer = signoff === "two";
+  // Single-admin (the default authorization): ONE genuine human officer sealed it. Distinct from
+  // automatic resolution, which claims neither line.
+  const singleOfficer = signoff === "one";
+  const correctedOnObjection = signoff === "objection";
+  // The refund rule (WP6 · L22): ONE conditional sentence in every UNSETTLED phase, the card's own words.
+  // Once settled, the resolution panel says what was paid; nothing here claims it.
+  const oneSidedNote = emptySide && !settled ? t.market.oneSidedNote.replace("{side}", sideWord(t, emptySide, "MARKET")) : null;
+  // closed-by-time = the resolutionAt clock has elapsed but no resolver
+  // has run yet. The dial cannot accept a bet here (server enforces),
+  // so the page swaps it out for an "awaiting settlement" card.
+  const closedByTime = isClosedByTime(m) && !isResolved;
+  const selectionClosed = isSelectionClosed(m) && !isResolved;
+  // D40 · ONE truth for "this panel can still take a bet", read by the bet aside's branch AND
+  // by the heading that names it. It used to be written out at the branch only, and the heading
+  // did not exist; the moment both needed it, a second copy of this expression would have been
+  // a second definition of when the market is open — the shape RULES.md §7 exists to forbid.
+  const bettingOpen = !isResolved && m.status === "LIVE" && !closedByTime && !selectionClosed;
+  // The bet panel's heading id. Exactly one of the five aside branches renders at a time, so
+  // they all carry this id and `aria-labelledby` resolves in every state.
+  const BET_PANEL_HEADING = "bet-panel-heading";
+  // COLD-START — the same rule the board and the card use (volume 0 +
+  // predictors 0 on a live, still-open market), so the three surfaces can never
+  // disagree about whether a market has a crowd price. One rule, one meaning.
+  const freshMarket =
+    m.status === "LIVE" && !selectionClosed && !closedByTime && !isResolved &&
+    m.yesPool + m.noPool === 0 && m.predictorCount === 0;
+  // The empty rail's words (the card's caption rule): "No bets yet" only where nobody EVER bet (a pool
+  // emptied by a cash-out has no pool, but somebody did bet); "Be the first" only while it is open.
+  // ⛔ And only while UNSETTLED: "yet" is false of a finished market, whose rail already names its verdict —
+  // the card's caption and the share image (the OG route) drop it for the same reason.
+  const railCaption = price.kind === "none" && neverBet && !settled ? (freshMarket ? `${t.market.noBetsYet} · ${t.market.beFirst}` : t.market.noBetsYet) : null;
+  // A settled split is the pool's FINAL shape, not a lean (the /results spotlight and the settled share
+  // image say the same).
+  const leanWords = isResolved
+    ? { tipping: t.market.resFinalPool, leansYes: t.market.resFinalPool, leansNo: t.market.resFinalPool }
+    : { tipping: t.market.tipping, leansYes: t.market.leansYes, leansNo: t.market.leansNo };
+  // ⭐ R6(1) · the note is information, not an alarm (the card's note, and the Up & Down G5 rule), and it
+  // has no heading: "One side only" names the state under the rail. Built ONCE and placed in ONE of two
+  // mutually exclusive spots — the money control while betting is open (on a phone the bet panel paints
+  // first), under the rail once betting has closed and before the market is settled.
+  const oneSidedCallout = oneSidedNote ? (
+    <p data-one-sided-note="" className="mcardp-onesided-note flex items-start gap-1.5">
+      <I.info s={13} className="mt-0.5 shrink-0 text-text-subtle" /><span>{oneSidedNote}</span>
+    </p>
+  ) : null;
+
+  // ── C1a hero lifecycle state — open · closing · waiting · resolved ──
+  // Server-computed (page is force-dynamic + RefreshPoller re-fetches every 15s,
+  // so the "<1h closing" window and the minute readout stay fresh).
+  const settling = closedByTime || (m.status === "CLOSED" && !selectionClosed);
+  const nextDeadlineIso = m.selectionClosedAt && !selectionClosed ? m.selectionClosedAt : m.resolutionAt;
+  const msToDeadline = nextDeadlineIso ? Date.parse(nextDeadlineIso) - Date.now() : Number.POSITIVE_INFINITY;
+  const closingSoon = !isResolved && m.status === "LIVE" && !selectionClosed && !closedByTime && msToDeadline > 0 && msToDeadline <= 3600_000;
+  const minsToDeadline = Math.max(1, Math.ceil(msToDeadline / 60_000));
+  const heroState: "open" | "closing" | "waiting" | "resolved" = isResolved
+    ? "resolved"
+    : selectionClosed || closedByTime || m.status === "CLOSED"
+      ? "waiting"
+      : closingSoon
+        ? "closing"
+        : "open";
+
+  // Pre-compute cash-out values for positions (cashOutValue is async). `sellable`
+  // is false once the exit window has passed — the sell control must then show
+  // "selling closed" rather than a price the server would refuse.
+  const positionCashOutValues = new Map<string, number | null>();
+  const positionSellable = new Map<string, boolean>();
+  // S6 A8b — whether that price is the free window's on a LIVE question (`cashOutValue`'s own `inGracePeriod`, as
+  // `/positions` reads it), so the Sell button can withdraw it the moment its countdown runs out instead of offering it
+  // until this page's next refresh (15 s).
+  const positionPricedFree = new Map<string, boolean>();
+  for (const p of myPositions) {
+    if (!isResolved && (m.status === "LIVE" || m.status === "CLOSED") && p.status === "OPEN") {
+      try {
+        // ⛔ `bonusStakeTzs` is load-bearing, not decorative: cashOutValue returns
+        // `sellable: false` for a bonus-funded position because the server refuses
+        // to sell one. Drop it here and the button prices a sale that always fails.
+        const co = await cashOutValue({ side: p.side, stake: p.stake, placedAt: p.placedAt, bonusStakeTzs: p.bonusStakeTzs, houseBotId: p.houseBotId }, { id: m.id, yesPool: m.yesPool, noPool: m.noPool, resolutionAt: m.resolutionAt, selectionClosedAt: m.selectionClosedAt, feeSnapshot: m.feeSnapshot });
+        positionCashOutValues.set(p.id, co.sellable ? co.value : null);
+        positionSellable.set(p.id, co.sellable);
+        positionPricedFree.set(p.id, m.status === "LIVE" && co.sellable && co.inGracePeriod);
+      } catch { positionCashOutValues.set(p.id, null); positionSellable.set(p.id, false); }
+    } else {
+      positionCashOutValues.set(p.id, null);
+      positionSellable.set(p.id, false);
+    }
+  }
+
+  // History — REAL snapshots only. This used to call seedHistory() first, which
+  // fabricated a random walk whenever history was empty; since history lived in
+  // a Map wiped on every deploy, that meant every market, every time. Deleted.
+  // A market without enough real points renders no chart (A-5 no-fabrication).
+  // B-1 — deliberate degrade: chart + comments are enrichment on the market
+  // detail; a failed read renders no chart / no thread, which the page already
+  // does for genuinely-sparse markets.
+  let probChart: Awaited<ReturnType<typeof getProbabilityChart>> = { series: {}, ranges: [] };
+  try { probChart = await getProbabilityChart(m.id); } catch { /* graceful */ }
+  /**
+   * ⭐ PLAYER QUERY, TASK 4.12 — BOUNDED, AND ORDERED BY THE URL.
+   *
+   * 🔴 THIS READ HAD NO LIMIT, on a page anyone can open. `store.listForMarket` has accepted a
+   * `limit` since it was written and no caller ever passed one — and because `toView` resolves an
+   * author per comment, a four-thousand-comment thread issued four thousand `db.user.findById`
+   * calls to render fifteen. ⛔ The thread's `INITIAL_SHOW = 15` is a RENDER cap, not a read cap.
+   *
+   * ⚠️ THE ORDER IS APPLIED BEFORE THE CAP, inside the store. "Oldest first" therefore returns the
+   * OLDEST 200 rather than the newest 200 read backwards — which is what a client-side `.reverse()`
+   * would have given, and it would have been indistinguishable from the truth on any thread short
+   * enough to check by hand.
+   */
+  let comments: Awaited<ReturnType<typeof listComments>> = { comments: [], total: 0, capped: false };
+  try { comments = await listComments(m.id, session?.userId ?? null, { order: commentOrder }); } catch { /* graceful */ }
+
+  // Pre-fetch wallet balance so we don't have an unguarded await in JSX.
+  // B-1: a failed read used to render balance=0 → the dial fired "insufficient
+  // balance" at a FUNDED player on the commit screen. On failure pass undefined
+  // — the dial's `balance !== undefined` guard suppresses the warning and the
+  // server remains the real gate.
+  // 🔴 THE DIAL MUST BE GIVEN THE **SPENDABLE** BALANCE, NOT THE CASH ONE.
+  // `buyPosition` funds a stake from `balance` FIRST and then from `bonusBalance`
+  // (market-service.ts:745-749), so the money a player can actually stake is the sum.
+  // Passing `balance` alone made the CLIENT gate stricter than the SERVER gate: a
+  // player holding a bonus grant had Place disabled and read "insufficient balance"
+  // over a stake the server would have funded without complaint — the platform
+  // refusing to spend the bonus it had just given them.
+  let myBalance: number | undefined;
+  // ⛔ NO IDENTITY READ ON THIS PAGE SINCE 2026-09-13. A stake asks no identity question
+  // (`kyc-gate.ts`); from 2026-09-05 to 2026-09-13 this page read the KYC row and replaced the
+  // conviction dial with an identity panel, and both are deleted. Do not restore them.
+  if (session) {
+    try {
+      const w = await db.wallet.findByUserId(session.userId);
+      myBalance = (w?.balance ?? 0) + (w?.bonusBalance ?? 0);
+    } catch { myBalance = undefined; }
+  }
+
+  // Pre-compute hedge-warning for the aside
+  const openPositions = myPositions.filter((p) => p.status === "OPEN");
+  const heldSides = new Set(openPositions.map((p) => p.side));
+  const hedgeBoth = heldSides.has("YES") && heldSides.has("NO");
+  const hedgeOpposite = (side === "YES" && heldSides.has("NO")) || (side === "NO" && heldSides.has("YES"));
+  /* 🔴 D39 · THIS JOINED THE STORED TOKENS, so a Swahili player read "YES + NO" inside a
+     Swahili sentence — at the moment the page tells them what they already hold. `sideWord` is
+     the one home for that word and this file already reaches for it at :519-520 and :630.
+     ⛔ `"MARKET"` is not a guess: an UPDOWN market never reaches this page (it is redirected
+     above), and it is the same literal every other call here passes. */
+  const heldLabel = [...heldSides].map((s) => sideWord(t, s, "MARKET")).join(" + ");
+
+  // ── B2 · THE BONUS WARNING, BEFORE THEY CONFIRM (docs/RULES.md §2.5) ────────
+  //
+  // A stake taken while an OPEN position exists on the other side of this market accrues NO
+  // turnover toward a bonus requirement. That is a rule the player cannot see happening — the
+  // bet succeeds, the money moves, and their wagering counter simply does not advance. Telling
+  // them afterwards is not an option, so they are told before.
+  //
+  // ⛔ IT IS A WARNING, NOT A GATE. The bet still goes through if they choose. And it is shown
+  // ONLY to a player who actually holds an unfulfilled grant — production has zero grants
+  // today, so for everyone else this renders nothing at all.
+  //
+  // ⛔ AND IT CANNOT BE COMPUTED INSIDE THE BET TRANSACTION. `getBonusSummary` issues its own
+  // wallet read and would block on the bet's own uncommitted row — the P2028 self-deadlock
+  // documented at `bonus-service.ts:235-243`. It belongs on the READ path, which is exactly
+  // right for a warning: the server still applies the rule regardless of what was shown.
+  let bonusWagerWarning: string | null = null;
+  if (session && hedgeOpposite) {
+    try {
+      const b = await getBonusSummary(session.userId);
+      if (b.activeCount > 0 && b.activeWagerRemainingTzs > 0) {
+        bonusWagerWarning = renderFailure(
+          { ok: false, error: "", reason: "bonus_wagering_one_side", detail: { remaining: b.activeWagerRemainingTzs } },
+          t.error as unknown as Record<string, string>,
+          "",
+          formatTzs,
+        ).body;
+      }
+    } catch {
+      // ⚠️ A failed bonus read must not take the market page down, and must not invent a
+      // warning either. Silence here is correct: the SERVER still applies §2.5 whatever this
+      // panel showed, so the worst case is a player who is surprised, not one who is wronged.
+      bonusWagerWarning = null;
+    }
+  }
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: m.titleEn,
+    // ⭐ C1 · og:description, twitter and JSON-LD come from ONE string (`share-preview.ts`): no invented
+    // "YES 50% · NO 50%" on an empty pool, no 100/0 on a one-sided one.
+    description: sharePreviewDescription(sharePrice, sharePreviewSettled(m.status, m.resolvedOutcome, "MARKET")),
+    startDate: m.createdAt,
+    endDate: m.resolutionAt,
+    eventStatus: isResolved ? "https://schema.org/EventCompleted" : "https://schema.org/EventScheduled",
+    organizer: { "@type": "Organization", name: "50pick", url: appUrl() },
+    location: { "@type": "VirtualLocation", url: `${appUrl()}/markets/${id}` },
+  };
+
+  return (
+    <PageContainer tier="reading">
+      {/* Escape `<` → <: JSON.stringify does NOT escape it, so a proposal
+          title containing `</script>` would break out of this block (stored XSS,
+          audit H1). Titles also reject `<`/`>` at submission (proposals-service). */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
+      {/* Auto-refresh every 15s on the detail page — tighter than the
+          grid because a player on this page is about to bet and needs
+          the freshest possible odds/pool/status. */}
+      <RefreshPoller intervalMs={15_000} />
+      <HashFocus />
+      {/* ── Back link ── */}
+      <BackLink fallbackHref="/markets" label={t.common.markets} />
+
+      {/* ── Page header — title, badges, share ──
+          A7: faint 96px category-glyph watermark behind the question (isolate
+          keeps the -z-10 mark above the header bg but below the content). */}
+      <header className="relative isolate mt-3 mb-5">
+        {(() => {
+          const Cat = I[categoryGlyph(m.category)];
+          return (
+            <span aria-hidden className="pointer-events-none absolute right-1 bottom-0 -z-10 text-text opacity-[0.07]">
+              <Cat s={96} />
+            </span>
+          );
+        })()}
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <Chip variant="cat" size="lg">{marketCategoryLabel(t, m.category)}</Chip>
+          {/* C1a hero state — LIVE only while actually accepting predictions
+              (open/closing); waiting & resolved carry their own state chips.
+              2026-09-13 — `market.statusLive`, the key the market cards use: zh `common.live`
+              is 直播 ("broadcast") while the card the player tapped said 实时. */}
+          {(heroState === "open" || heroState === "closing") && m.status === "LIVE" && (
+            <Chip variant="live" size="lg" dot>{t.market.statusLive}</Chip>
+          )}
+          {heroState === "closing" && (
+            <span className="closing-pill inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-caption font-bold uppercase tracking-[0.10em] tabular-nums">
+              <I.hourglassHalf s={13} />
+              {t.market.closingSoon} · {minsToDeadline} {t.common.minsUnit}
+            </span>
+          )}
+          {heroState === "waiting" && (
+            <span className={`inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-caption font-bold uppercase tracking-[0.10em] ${
+              settling ? "border-warning-border bg-warning-bg text-warning-fg" : "border-gold-500/40 bg-gold-500/10 text-gold-300"
+            }`}>
+              <I.hourglassOff s={13} />
+              {settling ? t.market.closedAwaitingSettlement : t.market.selectionClosedWaiting}
+            </span>
+          )}
+          {isResolved && m.resolvedOutcome && (
+            <Chip variant="resolved" size="lg">{t.market.resolvedOutcome} · {outcomeWord(t, m.resolvedOutcome ?? "VOID", "MARKET")}</Chip>
+          )}
+          {/* 🔴 D86 · A STANDALONE CONTROL AT ~55x18, IN A ROW WITH TWO 40x40 ONES.
+              Measured ~55x18 in Swahili and ~40x18 in Chinese: it declared no height, so its box
+              came from the 12px type alone while WatchStar and ShareButton beside it are both 40
+              square. ⛔ It is NOT the criterion's inline source URL further down the page — that
+              one sits inside a sentence and is phrasing content, and Law 9 (DESIGN_AUTHORITY §A2)
+              is written about CONTROLS. This one stands alone in a control row, which is why it
+              is convicted and the prose link is not; the open question about inline links is
+              recorded in the register for Ali rather than decided here.
+              ⚠️ `-my-` absorbs the growth so the header row does not move. */}
+          <a
+            href={m.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 ml-auto min-h-[var(--tap-min)] -my-[11px] py-[11px] text-[12px] font-mono text-text-muted hover:text-text"
+          >
+            {t.common.source}
+            <I.ext s={12} />
+          </a>
+          <WatchStar marketId={m.id} initial={watching} signedIn={!!session} />
+          <ShareButton marketId={m.id} title={m.titleEn} refCode={myRefCode} />
+        </div>
+        {/* C1a — slim gilt hairline framing the question ("seal of the real") */}
+        <div aria-hidden className="gilt-hairline mb-3" />
+        {/* 🔴 DG-P-03 · §T2 — THE MARKET QUESTION, WHICH THE RULEBOOK NAMES BY NAME.
+            `DESIGN_AUTHORITY` §T2 files this exact line as a live violation of §T1 — *"the
+            market question itself is off the ladder: `src/app/markets/[id]/page.tsx` renders it
+            as a hand-typed `text-[26px] md:text-[34px]`"* — and prescribes the fix in the same
+            breath: **move the question onto the ladder, ⛔ never re-tune `--type-h1` to match
+            it.** So this is law-decided, not taste.
+            ▶ The base takes `text-title-lg` (28), which is §T2's own page-title step and the
+            size every other page h1 already uses (`page-header.tsx:45`, 25 call sites) — so the
+            question stops being the one h1 in the product at its own size. The `md:` step is
+            KEPT and lands on `text-display-3` (36): the desktop emphasis is a deliberate part
+            of this page's composition, and 36 is the next rung above 28. ⛔ NOT
+            `text-title-md md:text-title-lg` (22/28) — that demotes the market question below
+            every other page title, which is the opposite of what this page is for.
+            2026-09-13 — balanced wrapping: sw titles left one word alone on line two. */}
+        <h1 className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance">{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
+      </header>
+
+      {/* ── Main two-column layout ──
+          On mobile (flex-col): aside renders first (order-1) so the
+          betting widget is above-the-fold, then content below (order-2).
+          On desktop (lg:grid): left=content, right=sticky aside. ── */}
+      {/* 🔴 D40 · THE BET PANEL IS NOW FIRST IN THE SOURCE, AND THAT IS THE WHOLE FIX.
+          `order` moves what a player SEES and never what the DOM says, so for as long as the
+          aside was source child 2 with `order-1`, a screen reader, a keyboard and reader mode
+          got it LAST. Measured on production 2026-09-25 at 320/360/412 x sw/en/zh: DOM
+          [0,1,2], visual [1,0,2], nine cells of nine. The outline read title -> "Nafasi zako"
+          -> "Kigezo cha utatuzi" -> the entire bet widget -> "Masoko yanayofanana", so the
+          money control on the page was announced under the heading for the small print.
+          ⛔ NOTHING MOVED ON SCREEN AND THE `order-*` CLASSES STAY. With source order
+          [aside, content, similar] and orders [1,2,3] the painted order is byte-identical to
+          before — that is the zero-diff this change has to hold, and the classes are what make
+          the intent survive the next reorder. Desktop is untouched for a different reason:
+          all three children are placed EXPLICITLY (`lg:col-start-*` / `lg:row-start-*`), and
+          explicit grid placement ignores source order outright.
+          ⚠️ Desktop reading order does change, aside-then-content. Both sit in row 1 at the
+          same y, so neither is "before" the other visually, and the mobile layout already
+          declares which one the player came for. */}
+      {/* Desktop is an explicit 2-col x 2-row grid so the right column can carry a
+          SECOND block under the sticky bet widget (Step 4). The left column spans
+          both rows. Mobile is untouched: it stays a flex column and every child
+          keeps the order it had. */}
+      <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[1fr_360px] lg:grid-rows-[auto_auto] lg:items-start lg:gap-6">
+
+        {/* ══ RIGHT ASIDE — betting widget ══
+            order-1 on mobile (above-the-fold, first thing seen) AND first in the source since
+            D40, so the two agree; order-2 + sticky on desktop (stays in view while scrolling) */}
+        {/* ⭐ THE PANEL STICKS ONLY WITHIN ROW 1 (2026-09-14). A sticky box is held inside its
+            PARENT's box, not its grid cell. While this aside was itself the grid item its parent
+            was the whole grid, so on scroll the pinned panel rode down into row 2 and sat on the
+            full-width Similar markets cards (the third card's chips hidden at 1280). The wrapper
+            below is now the grid item and stretches to row 1's height, so the sticky aside
+            inside it stops at the end of row 1 and never enters the row below.
+            z-10 predates that: it stopped related cards, which then sat in this same column,
+            from painting over the stuck panel. Nothing reaches the panel now; it stays as a
+            cheap guard, well under the nav (z-40) and the Needle (z-45).
+            2026-09-13 — offset 72px = the 56px sticky header (an inline height in top-app-bar.tsx;
+            no token exists) + 16px air. The old spacing key resolved to 32px on this scale, so
+            the stuck card slid under the header. loading.tsx mirrors it. */}
+        <div className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1 lg:self-stretch">
+        <aside className="space-y-3 lg:sticky lg:top-[72px] lg:z-10" aria-labelledby={BET_PANEL_HEADING}>
+          {bettingOpen ? (
+            session ? (
+              <>
+              {/* D40 · THE ONLY BRANCH WITH NO HEADING OF ITS OWN, so it gets one that is read
+                  and not seen. The other four states already name themselves in a heading; this
+                  one opens on the dial, and a bet panel with no heading is what put the money
+                  control under "Resolution criterion" in the outline. Existing copy, already
+                  visible on this very page for a guest — `src/lib/i18n*` belongs to another
+                  session today, so nothing here mints a new string. */}
+              <h2 id={BET_PANEL_HEADING} className="sr-only">{t.market.placeYourStake}</h2>
+              {oneSidedCallout}
+              {/* Hedge warning — shown when player already has a position */}
+              {openPositions.length > 0 && (
+                <div className="rounded-lg border border-warning-border bg-warning-bg px-3.5 py-2.5">
+                  {/* DG-A-14 · §T4 — "You already hold <side> here" is a sentence about the
+                      player's own money, not a section eyebrow, but it was set uppercase with
+                      0.14em tracking at text-micro (10px) — 2.5px under the 12.5px reading
+                      floor and dressed as an identifier. The uppercase and the tracking are
+                      dropped and the size moves to text-body-sm. The warning colour and the
+                      font-bold stay, so this line still reads as the louder half of the panel
+                      against the muted body directly below it. */}
+                  <p className="font-mono text-body-sm font-bold text-warning-fg">
+                    {t.market.youAlreadyHold} {heldLabel} {t.market.here}
+                  </p>
+                  <p className="mt-1 text-body-sm leading-snug text-text-muted">
+                    {/* ⛔ NO `fill({pct})` HERE ANY MORE. Both hedge bodies stated the
+                        RETIRED capped-commission rule and were unreachable behind the
+                        2026-08-04 guard; RULES.md §2.4 makes them live. They now quote no
+                        rate at all — the fee is stated by the payout projection directly
+                        below, and RULES.md §7 exists because a number written twice is a
+                        number that will disagree with itself. */}
+                    {hedgeBoth
+                      ? t.market.hedgeBothBody
+                      : hedgeOpposite
+                        ? t.market.hedgeOppositeBody
+                        : t.market.hedgeAddBody}
+                  </p>
+                  {/* B2 · the bonus consequence, and ONLY for a player who holds an
+                      unfulfilled grant. Separated from the hedge body above because it is a
+                      different fact about a different thing — one is what the market will do,
+                      this is what their bonus will not do. */}
+                  {bonusWagerWarning && (
+                    <p className="mt-2 pt-2 border-t border-warning-border text-body-sm leading-snug font-semibold text-warning-fg">
+                      {bonusWagerWarning}
+                    </p>
+                  )}
+                </div>
+              )}
+              {/* ⛔ The identity panel that replaced this dial for an unverified player from
+                  2026-09-05 to 2026-09-13 is deleted: a stake asks no identity question
+                  (`kyc-gate.ts`). Every signed-in player gets the dial. */}
+              <SidePicker
+                marketId={m.id}
+                marketTitle={pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}
+                yesPool={m.yesPool}
+                noPool={m.noPool}
+                resolutionAt={m.resolutionAt}
+                closesAt={m.selectionClosedAt ?? m.resolutionAt}
+                serverNow={Date.now()}
+                balance={myBalance}
+                initialSide={side === "YES" || side === "NO" ? side : undefined}
+                rates={marketRates}
+                minStake={stakeCfg.minStake}
+                maxStake={stakeCfg.maxStake}
+                boardHref="/markets"
+              />
+              </>
+            ) : (
+              <>
+              {oneSidedCallout}
+              {/* Sign-in CTA — styled to invite prediction */}
+              <div
+                className="rounded-xl border border-border bg-bg-elevated p-6 text-center"
+                style={{
+                  background:
+                    "radial-gradient(420px 160px at 50% 0%, oklch(45% 0.10 240 / 0.20), transparent 60%), " +
+                    "var(--hero-panel-grad)",
+                }}
+              >
+                <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">
+                  {t.market.signInToPredict}
+                </p>
+                <h2 id={BET_PANEL_HEADING} className="mt-1.5 font-display text-[18px] font-bold text-text leading-tight">
+                  {t.market.placeYourStake}
+                </h2>
+                <p className="mt-1.5 text-body-sm text-text-muted leading-snug">
+                  {t.market.browseForFree}
+                </p>
+                {(() => {
+                  const betNext = "/markets/" + m.id + (side === "YES" || side === "NO" ? `?side=${side}` : "");
+                  /**
+                   * 🔴 THE REFERRAL CODE USED TO DIE HERE, AND THAT MADE EVERY SHARED MARKET LINK A
+                   * LIE. `ShareButton` appends `?ref=<code>` to the URL a player sends; the friend
+                   * opens `/markets/<id>?ref=CODE`, reads the market, taps Sign up — and this CTA
+                   * rebuilt the query from `next` alone, so the code never reached
+                   * `/auth/register`, which is the ONLY reader of it. The sharer was told their
+                   * friends would be counted; not one of them ever was.
+                   *
+                   * ⚠️ IT PREDATES THE UNPAID INVITE — agents' shared market links were equally
+                   * dead — but that programme's links are rare and this one is every player's, so
+                   * it stops being a curiosity and becomes the common path.
+                   *
+                   * ⛔ NORMALISED, NOT PASSED THROUGH. `normalizeReferralCode` is the same one the
+                   * bind and the ribbon use, so a malformed or over-length code degrades to "no
+                   * ref" here exactly as it would there — never truncated into somebody else's
+                   * code. An unknown code still binds nothing; it simply renders no ribbon.
+                   * ⭐ No cookie and no storage: the code rides the query string the visitor is
+                   * already carrying, so nothing is tracked and the privacy notice is unchanged.
+                   */
+                  const shared = normalizeReferralCode(typeof sp.ref === "string" ? sp.ref : null);
+                  const q = `?next=${encodeURIComponent(betNext)}${shared ? `&ref=${encodeURIComponent(shared)}` : ""}`;
+                  return (
+                    <div className="mt-4 grid grid-cols-1 xs:grid-cols-2 gap-2">
+                      <Link href={`/auth/register${q}` as never} className="btn btn-primary btn-md btn-pill">
+                        {t.common.signUp}
+                      </Link>
+                      <Link href={`/auth/login${q}` as never} className="btn btn-ghost btn-md btn-pill">
+                        {t.common.signIn}
+                      </Link>
+                    </div>
+                  );
+                })()}
+              </div>
+              </>
+            )
+          ) : selectionClosed && !closedByTime ? (
+            <div className="rounded-xl border border-border bg-bg-elevated p-6 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <I.hourglassOff s={18} className="text-gold-300" />
+              </div>
+              <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">
+                {t.market.selectionClosedBadge}
+              </p>
+              <h2 id={BET_PANEL_HEADING} className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.waitingForResultsAside}</h2>
+              <p className="mt-3 text-body-sm text-text-muted leading-snug">
+                {t.market.newPredictionsNotAccepted}
+                {m.resolutionAt && ` ${t.market.resultsExpectedBy} ${formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)}.`}
+              </p>
+            </div>
+          ) : closedByTime ? (
+            <div className="rounded-xl border border-warning-border bg-warning-bg p-6 text-center">
+              <p className="font-mono text-micro uppercase eyebrow font-bold text-warning-fg">
+                {t.market.closedAwaitingSettlement}
+              </p>
+              <h2 id={BET_PANEL_HEADING} className="mt-1.5 font-display text-[15px] font-bold text-text">{t.market.noMoreBets}</h2>
+              <p className="mt-1 text-[13px] italic text-text-subtle">{t.market.closedWaitSubtitle}</p>
+              <p className="mt-3 text-body-sm text-text-muted leading-snug">
+                {t.market.countdownEndedBody}
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border bg-bg-elevated p-6 text-center">
+              <h2 id={BET_PANEL_HEADING} className="font-display text-[15px] font-semibold text-text">{t.market.marketClosedForPredictions}</h2>
+            </div>
+          )}
+        </aside>
+        </div>
+
+        {/* ══ LEFT — market information & analysis ══
+            order-2 on mobile (below the bet widget), order-1 on desktop (left col) */}
+        <section className="order-2 lg:order-1 lg:col-start-1 lg:row-start-1 min-w-0 space-y-5">
+
+          {/* 1. Probability bar — the card's rule (C1): a price only where both pools hold money, else the
+              dashed rail NAMED for its state — the verdict once settled, "One side only" where money sits
+              on one side, "No bets yet" only where nobody ever bet, "No pool yet" where a cash-out emptied
+              it. A printed price is 1–99, so the full pill can no longer draw here. */}
+          <TippingBar
+            yesPct={yesPct ?? undefined}
+            height={28}
+            showLabels
+            resolved={isResolved}
+            empty={yesPct === null}
+            emptyLabel={outcomeLabel ?? (emptySide ? t.market.oneSideOnly : neverBet ? t.market.noBetsYet : t.market.noPoolYet)}
+            // "MARKET" is safe here and only here: an UPDOWN row never reaches this render —
+            // it is redirected to /updown near the top of this function.
+            probabilityLabel={t.market.probBarAria.replace("{side}", sideWord(t, "YES", "MARKET"))}
+            labels={{ yes: sideWord(t, "YES", "MARKET"), no: sideWord(t, "NO", "MARKET"), ...leanWords }}
+          />
+          {railCaption && (
+            <p className="-mt-3 text-center font-mono text-[11px] tracking-[0.06em] text-text-faint">{railCaption}</p>
+          )}
+          {emptySide && <p className="-mt-3 flex justify-center"><span className="mcardp-oneside">{t.market.oneSideOnly}</span></p>}
+          {!bettingOpen && oneSidedCallout}
+
+          {/* 2. KPI strip — volume, participation, timing at a glance.
+              2026-09-13 — two columns on a phone with the date tile spanning both: three across
+              at 360 wrapped every label one word per line. `sm` and up is unchanged. */}
+          {/* 2026-09-14 — at lg the first tile is wider: "Hakuna bwawa bado" left "bado" alone on line two
+              at 1280, in equal thirds of the narrower left column. */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)_minmax(0,1fr)]">
+            {/* "TZS 0" is factually true, but on a fresh market it reads as
+                failure rather than as an opening. Same words the card uses, so
+                the two surfaces say the same thing about the same state. */}
+            {/* ⭐ STAGE 9b — the first two are the kit <Stat>: `card` box (rounded-md,
+                border, bg-elevated, p-3), `widest` label (10px semibold 0.14em) and the
+                `xl` rung (18px, mt-1, leading-tight). A pixel-for-pixel mapping.
+                ⚠️ The THIRD is still the local `KPI` and that is deliberate — see the
+                note on the function below. */}
+            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.volume}     value={freshMarket ? t.market.noPoolYet : formatTzsCompact(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
+            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.predictors} value={String(m.predictorCount)}     icon={<I.users s={14} />} />
+            <KPI label={t.market.resolves}   value={formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)} mono className="col-span-2 sm:col-span-1" />
+          </div>
+
+          {/* 2b. Resolution panel — outcome, attestation, pool + fee (resolved only) */}
+          {isResolved && m.resolvedOutcome && (
+            <ResolutionPanel
+              marketId={m.id}
+              outcome={m.resolvedOutcome}
+              resolvedAt={m.resolutionStage2At ?? m.updatedAt}
+              twoOfficer={twoOfficer}
+              singleOfficer={singleOfficer}
+              correctedOnObjection={correctedOnObjection}
+              sourceUrl={m.sourceUrl}
+              objectionsClosedAt={m.objectionsClosedAt}
+              serverNow={Date.now()}
+              yesPool={m.yesPool}
+              noPool={m.noPool}
+              fee={marketFee}
+              rates={marketRates}
+              evidence={m.resolutionEvidence}
+              settledAt={m.settledAt}
+              objection={objectionState}
+            />
+          )}
+
+          {/* 3b. Countdown — selection close + resolution (live only) */}
+          {!isResolved && (
+            <div className="glass-panel p-4 space-y-2.5">
+              {m.selectionClosedAt && !isSelectionClosed(m) && (
+                <Countdown to={m.selectionClosedAt} label={t.market.selectionClosesIn} serverNow={Date.now()} at={formatEatDateTime(Date.parse(m.selectionClosedAt), Date.now(), t.common.monthsShort, locale)} />
+              )}
+              {m.selectionClosedAt && isSelectionClosed(m) && m.status === "LIVE" && (
+                <div className="flex items-center gap-2 text-[12.5px] font-semibold" style={{ color: "var(--gold-300)" }}>
+                  <I.hourglassOff s={14} />
+                  {t.market.selectionClosedWaiting}
+                </div>
+              )}
+              <Countdown to={m.resolutionAt} label={m.selectionClosedAt ? t.market.resultsIn : t.market.closesIn} serverNow={Date.now()} at={formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)} />
+            </div>
+          )}
+
+          {/* 4. Your open positions — relevant context before reading the criterion */}
+          {session && (
+            <section className="rounded-xl border border-border bg-bg-elevated p-5 space-y-3">
+              <h2 className="font-display text-[15px] font-semibold text-text flex items-center gap-2">
+                <I.portfolio s={15} />
+                {t.market.yourPositions}
+              </h2>
+              {myPositions.length === 0 && (
+                <p className="text-body-sm text-text-subtle italic">
+                  {t.market.noBetYet}
+                </p>
+              )}
+              {myPositions.map((p) => {
+                const liveValue = positionCashOutValues.get(p.id) ?? null;
+                const sellShut = p.status === "OPEN" && (isSelectionClosed(m) || positionSellable.get(p.id) === false);
+                return (
+                  /* ⭐ E-101 · THE LANDING TARGET for `/positions/<id>`. The fragment IS the
+                     position id, so this card is what the browser scrolls to — and `scroll-mt`
+                     keeps the sticky header off the row it just landed on. Without the id the
+                     fragment matches nothing, the page silently opens at the top, and the deep
+                     link is indistinguishable from the generic `/positions` href it replaced. */
+                  <div key={p.id} id={p.id} className="ticket-target scroll-mt-24 rounded-md border border-border bg-bg-overlay/40 p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2 font-mono text-[12px]">
+                      <div className="flex items-center gap-2">
+                        {/* ⛔ RAW PRISMA ENUMS, ON THE ROW ABOUT THIS PLAYER'S OWN MONEY.
+                            The side printed `p.side` ("YES"/"NO") and the state printed
+                            `p.status` ("OPEN"/"WIN"/"LOSS"/"VOID") plus a hardcoded
+                            English "CASHED" — untranslated in every locale, while the
+                            status chip in the same header three hundred lines above was
+                            fully localised. A Swahili player reading "NDIO" on the card
+                            they arrived from met "YES" here. */}
+                        <span className={`font-bold ${p.side === "YES" ? "text-yes-300" : "text-no-300"}`}>{sideWord(t, p.side, "MARKET")}</span>
+                        <span className={`text-micro uppercase tracking-[0.10em] font-semibold ${
+                          p.status === "OPEN" ? "text-info-fg" : p.status === "WIN" ? "text-gold-300" : p.status === "LOSS" ? "text-no-300" : "text-text-subtle"
+                        }`}>{
+                          p.status === "OPEN" ? t.market.posOpen
+                          : p.status === "WIN" ? t.market.posWin
+                          : p.status === "LOSS" ? t.market.posLoss
+                          : p.status === "CASHED_OUT" ? t.market.posCashed
+                          : t.market.posVoid
+                        }</span>
+                      </div>
+                      <span className="font-bold tabular-nums text-text">{formatTzs(p.stake)}</span>
+                    </div>
+                    {p.status !== "OPEN" && (
+                      <div className="flex items-center justify-between font-mono text-[11px]">
+                        <span className="text-text-muted">{t.market.paidLabel}</span>
+                        <span className="font-bold tabular-nums text-gold-300">{formatTzs(p.finalPayout ?? 0)}</span>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                      <p className="font-mono text-[10px] tracking-[0.06em] text-text-muted tabular-nums">
+                        <I.ticket s={10} className="inline -mt-px mr-0.5 opacity-60" />
+                        {p.id}
+                      </p>
+                      <p className="flex items-center gap-1 font-mono text-[10px] tracking-[0.04em] text-text-faint tabular-nums">
+                        <I.clock s={10} className="opacity-70 shrink-0" />
+                        {/* The date is one unit after the word: a narrow phone breaks the line before it, never inside it
+                            (it read "Imefunguliwa 4 Oct 2026, / 13:55" at 320; test:sell-grace-truth 5.opened). */}
+                        <span>{t.market.opened}{" "}<span className="whitespace-nowrap">{formatEatDateTime(Date.parse(p.placedAt), Date.now(), t.common.monthsShort, locale)}</span></span>
+                      </p>
+                    </div>
+                    {(liveValue !== null || sellShut) && (
+                      <SellButton
+                        positionId={p.id}
+                        stake={p.stake}
+                        value={liveValue ?? 0}
+                        // The free window's end from THIS poll's frozen grace — the server's own instant,
+                        // the one `cashOutValue` sells free inside (S6 A8; `test:sell-grace-truth`).
+                        freeUntil={freeExitEndsAt({ placedAt: p.placedAt }, m)}
+                        closesAt={m.selectionClosedAt ?? m.resolutionAt}
+                        alreadyClosed={sellShut}
+                        serverNow={Date.now()}
+                        // S6 A8b: the page priced this exit inside its free window, so a lapsed free price is withdrawn.
+                        pricedFree={positionPricedFree.get(p.id) === true}
+                        // S6 A8d: this row leaves the button 84px narrower than /positions, so below 640 it stacks its label and figure.
+                        stackOnPhone
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </section>
+          )}
+
+          {/* 5. Resolution criterion — the rules of the bet */}
+          <section className="glass-panel p-5">
+            <h2 className="font-display text-[15px] font-semibold text-text mb-2 flex items-center gap-2">
+              <I.fileCheck s={15} className="text-text-subtle" />
+              {t.market.resolutionCriterion}
+            </h2>
+            {/* `lang` names the language the text is ACTUALLY in, which on a fallback
+                is not the page's language — so a screen reader stops reading English
+                with Swahili phonetics. That is the same fact the note below states,
+                spent twice: once for a reader, once for a listener. */}
+            <p lang={criterion.shownIn} className="text-[14px] leading-relaxed text-text-muted whitespace-pre-line">{criterion.text}</p>
+
+            {/* ⭐ F6 · THE PAGE SAYS WHICH LANGUAGE THIS IS, BECAUSE THIS PARAGRAPH IS
+                THE RULE THE PAYOUT TURNS ON. It used to render `m.resolutionCriterion`
+                raw into all three locales: a Swahili player got an English paragraph
+                under a Swahili heading, with nothing to distinguish "we wrote it this
+                way" from "we have not translated it". A player who cannot read the
+                criterion cannot check that the rule which took their stake is the rule
+                they agreed to.
+                ⛔ Both notes are non-English-only by construction — `fellBack` is false
+                for `en`, and the binding note is gated on the locale — so an English
+                reader sees exactly what they saw before. */}
+            {criterion.fellBack ? (
+              <p className="mt-2.5 flex items-start gap-1.5 text-body-sm leading-relaxed text-text-subtle">
+                <I.globe s={12} className="mt-[3px] shrink-0 opacity-70" />
+                <span>{t.market.criterionNoTranslation}</span>
+              </p>
+            ) : locale !== "en" ? (
+              // A translation is on screen — so the player is told, plainly, that the
+              // English is the version officers resolve against, and is given it. It
+              // is one tap away rather than absent: the binding text must never be
+              // something a player has to change language to read.
+              <details className="mt-2.5 group">
+                <summary className="flex cursor-pointer list-none items-start gap-1.5 text-body-sm leading-relaxed text-text-subtle hover:text-text-muted">
+                  <I.globe s={12} className="mt-[3px] shrink-0 opacity-70" />
+                  <span>
+                    {t.market.criterionEnglishBinding}{" "}
+                    <span className="underline underline-offset-2">{t.market.criterionShowEnglish}</span>
+                  </span>
+                </summary>
+                <p className="mt-2 border-l-2 border-border/60 pl-3 text-[13px] leading-relaxed text-text-muted whitespace-pre-line" lang="en">
+                  {m.resolutionCriterion}
+                </p>
+              </details>
+            ) : null}
+
+            {/* 🔴 D88 · A STANDALONE LINK AT 221x33, SEVEN PIXELS UNDER THE FLOOR.
+                Measured 2026-09-25 at 320/360/412 in all three locales: 221.2x33, 259.7x33, 311.7x33,
+                with no pseudo-element behind it. ⛔ IT IS NOT AN INLINE PROSE LINK and must not be
+                excused as one: this paragraph contains an icon and this link and nothing else, so
+                the link IS the control — which is exactly how `qa:detail-order-hints` §5 tells the
+                two apart (a link is exempt only when its paragraph says more than it does).
+                ⚠️ The real inline case is elsewhere on this page and is deliberately left alone; the
+                open question of whether Law 9 should say anything about links inside a sentence is
+                recorded in the register for Ali rather than decided by this edit.
+                `-my-` absorbs the growth, so the criterion block does not get taller. */}
+            <p className="mt-3 pt-3 border-t border-border/50 font-mono text-[11px] text-text-subtle flex items-center gap-1.5">
+              <I.ext s={11} />
+              <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[var(--tap-min)] -my-[4px] py-[4px] items-center text-text-muted hover:text-text underline break-all">{m.sourceUrl}</a>
+            </p>
+          </section>
+
+          {/* 6. Probability chart — the signature viz, OPEN by default since
+              CHART-SPRINT C (the fold ruling it honoured predates this layout —
+              see chart-toggle.tsx's header; the bet aside is order-1 on mobile,
+              so expanding displaces no money control). Player's collapse
+              persists per device. */}
+          {probChart.ranges.length > 0 && (
+            <ChartToggle
+              series={probChart.series as Record<string, { t: string; ts: number; p: number }[]>}
+              ranges={probChart.ranges}
+              defaultRange={probChart.ranges[probChart.ranges.length - 1]}
+              height={240}
+            />
+          )}
+        </section>
+
+        {/* ══ RELATED MARKETS — FULL WIDTH, BELOW BOTH COLUMNS ══
+            🔴 THIS MOVED BACK ON 2026-08-25, AND THE REASON IS THAT ITS OWN PREMISE HAD
+            STOPPED BEING TRUE. It sat in the right column, under the sticky bet widget,
+            justified by the sentence that used to be here: *"dead space from `lg:` up while
+            the left column ran on for another 1,500px."* Measured on production, that is
+            false for every live market: the bet panel is **209px** and this rail is
+            **1,127px**, so the right column totalled **1,360px** against a left column of
+            **842–989px**. The rail ALONE was taller than the whole left column.
+            ⭐ So the void did not go away in 2026-08-06 — it MOVED, from the right column to
+            the LEFT one, which is the primary reading column and therefore the conspicuous
+            place to leave a hole. Measured 2026-08-25 across 8 LIVE markets at 1536: **8 of
+            8 left a 371–518px void**, and nothing guarded it, which is why nobody noticed.
+            ⛔ THE LESSON IS THE PREMISE, NOT THE PLACEMENT. "The left column runs long" was
+            true of the markets that existed when it was written and was never re-measured.
+            A layout decision resting on a content measurement has to say which measurement,
+            so this one does: the numbers above, and `test:market-columns` drives the rule.
+            ⭐ Full width also fixes what the 360px rail was doing to the CARDS — each one now
+            gets ~470px in the shared board grid instead of a column that truncated titles
+            mid-word.
+            ⚠️ MOBILE IS UNCHANGED, which is the constraint the original move also respected:
+            this section is `order-3`, so on a phone it still renders exactly where it did —
+            after the two columns, before comments.
+
+            This is the SAME similar-markets rail that used to sit full-width
+            below both columns — MOVED, never duplicated. On mobile it keeps the
+            identical position it had (order-3: after the two columns, before
+            comments), so the phone layout is byte-for-byte what it was.
+
+            Only content that already rendered LAST on mobile can move into this
+            rail without reordering the phone. That is why the criterion, the
+            source and the KPI facts stay in the left column: relocating them
+            would have been exactly the mobile change this step forbids. */}
+        {similar.length > 0 && (
+          <section
+            className="order-3 lg:col-span-2 lg:row-start-2 min-w-0"
+            aria-labelledby="similar-markets-heading"
+          >
+            <div className="mb-3 flex items-center gap-2">
+              <I.sparkle s={15} />
+              <h2 id="similar-markets-heading" className="font-display text-[16px] font-bold text-text">
+                {t.market.similarMarkets}
+              </h2>
+            </div>
+            <p className="mb-4 text-body-sm text-text-muted">{t.market.similarMarketsBody}</p>
+            {/* The shared board grid at EVERY width now. It used to be forced to
+                `lg:!grid-cols-1` because this block lived inside the 360px rail, which is
+                also why the titles truncated mid-word. Full width, each card gets ~470px. */}
+            <div className="market-grid">
+              {similar.map((s) => (
+                /* ONE clock per card: the label and SOON's milliseconds read the same instant (L17). */
+                <MarketCard
+                  productLine={"MARKET"}
+                  key={s.id}
+                  id={s.id}
+                  titleEn={s.titleEn}
+                  titleSw={s.titleSw}
+                  titleZh={s.titleZh}
+                  category={s.category}
+                  yesPool={s.yesPool}
+                  noPool={s.noPool}
+                  predictors={s.predictorCount}
+                  // ⚠️ Counts down to BETTING CLOSE, not to resolution. This rail is a
+                  // "place another prediction" invitation, so a countdown to the
+                  // settlement instant promises betting time the market will not
+                  // accept — on a sports poll, hours of it. Matches the board and the
+                  // card, which both show `selectionClosedAt ?? resolutionAt`.
+                  timeLeft={isSelectionClosed(s) ? t.market.waitingForResults : similarTimeLeft(s.selectionClosedAt ?? s.resolutionAt, t, simNow)}
+                  msLeft={isSelectionClosed(s) ? undefined : Date.parse(s.selectionClosedAt ?? s.resolutionAt) - simNow}
+                  status="LIVE"
+                  selectionClosed={isSelectionClosed(s)}
+                  sourceUrl={s.sourceUrl}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+
+      {/* ── Comments — full width, below both columns ── */}
+      <CommentsThread
+        marketId={m.id}
+        initialComments={comments.comments}
+        total={comments.total}
+        capped={comments.capped}
+        order={commentOrder}
+        marketHref={`/markets/${m.id}`}
+        canPost={!!session}
+        signInHref={`/auth/login?next=${encodeURIComponent("/markets/" + m.id)}`}
+      />
+    </PageContainer>
+  );
+}
+
+/** Compact "time left" for a similar-market card — mirrors the board's phrasing so a
+ *  card reads the same here as it does on /markets.
+ *  This copy already floored at `Math.max(1, …)`, i.e. it was the CORRECT one of the four and the
+ *  reason the drift was visible at all: it disagreed with three boards that rendered "0m left".
+ *  Pointed at `src/lib/markets/time-left.ts` in batch 4 — behaviour-identical, one definition. */
+function similarTimeLeft(iso: string, t: Awaited<ReturnType<typeof getServerT>>["t"], nowMs: number): string {
+  return timeLeftLabel(Date.parse(iso), nowMs, {
+    closed: t.market.closed,
+    days: t.market.timeLeftD,
+    hours: t.market.timeLeftH,
+    minutes: t.market.timeLeftM,
+  }, fill);
+}
+
+/**
+ * ⚠️ STAGE 9b — THIS FORK IS DOWN TO ONE CONSUMER AND IS NOT DELETED YET.
+ *
+ * Its `mono` branch is the reason. That branch paints the resolution time at **13px,
+ * weight 400**, and `ui/stat` has neither: its nearest rung is `xs` at 13.5px, and it
+ * applies `font-bold` to every value unconditionally. Migrating this call site would
+ * make the timestamp half a pixel larger AND bold — a visible restyle of a live
+ * surface, which is not what a consolidation is allowed to buy.
+ *
+ * ⛔ So the `!mono` branch is now dead code kept ONLY as the record of what the two
+ * migrated tiles above render; do not add a third caller. The fix is one of:
+ *   (a) a `sm-plain` rung in `ui/stat.tsx` (13px mono, weight 400), or
+ *   (b) an owner decision to accept 13.5/bold — at which point this function goes.
+ * Either way it is a change to a file this pass does not own.
+ */
+function KPI({ label, value, icon, mono, className }: { label: string; value: string; icon?: React.ReactNode; mono?: boolean; className?: string }) {
+  return (
+    <div className={`rounded-md border border-border bg-bg-elevated p-3 ${className ?? ""}`}>
+      <div className="flex items-center gap-1.5 text-text-subtle">
+        {icon}
+        <p className="font-mono text-micro uppercase eyebrow font-semibold">{label}</p>
+      </div>
+      <p className={`mt-1 ${mono ? "font-mono text-[13px]" : "font-display text-[18px] font-bold"} tabular-nums text-text leading-tight`}>{value}</p>
+    </div>
+  );
+}

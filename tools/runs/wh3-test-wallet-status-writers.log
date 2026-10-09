@@ -1,0 +1,86 @@
+
+§1 · the population — every wallet write in src/
+PASS 1.1 the walk read every .ts/.tsx under src/ — 1415 files (floor 800)
+PASS 1.2 ⛔ RATCHET · the census found exactly the wallet write sites measured — 36 sites (pinned 36 — a changed count is a changed population: read §1's list, then move the pin)
+     26 of 36 sites write status or freezeReasons (or could not be read):
+       · fixture      src/app/api/dev-test/affiliate-e2e/route.ts:68 (mkUser) · .wallet.create( · status ACTIVE
+       · fixture      src/app/api/dev-test/affiliate-integration/route.ts:33 (mkUser) · .wallet.create( · status ACTIVE
+       · fixture      src/app/api/dev-test/affiliate-security/route.ts:42 (mkUser) · .wallet.create( · status ACTIVE
+       · fixture      src/app/api/dev-test/affiliate-seed-recruits/route.ts:30 (mkUser) · .wallet.create( · status ACTIVE
+       · fixture      src/app/api/dev-test/affiliate-stress/route.ts:43 (mkUser) · .wallet.create( · status ACTIVE
+       · fixture      src/app/api/dev-test/fresh-kyc-player/route.ts:44 (POST) · .wallet.create( · status ACTIVE
+       · fixture      src/app/api/dev-test/proposals-e2e/route.ts:36 (mkUser) · .wallet.create( · status ACTIVE
+       · fixture      src/app/api/dev-test/proposals-security/route.ts:34 (mkUser) · .wallet.create( · status ACTIVE
+       · fixture      src/app/api/dev-test/proposals-seed/route.ts:25 (mkUser) · .wallet.create( · status ACTIVE
+       · fixture      src/app/api/dev-test/proposals-stress/route.ts:30 (mkUser) · .wallet.create( · status ACTIVE
+       · fixture      src/app/api/dev-test/resolve-seed-markets/route.ts:47 (makeUser) · .wallet.create( · status ACTIVE
+       · fixture      src/app/api/dev-test/seed-admin/route.ts:94 (POST) · .wallet.create( · status ACTIVE
+       · fixture      src/app/api/dev-test/seed-player-portfolio/route.ts:67 (makeOfficer) · .wallet.create( · status ACTIVE
+       · fixture      src/app/api/dev-test/seed-tax-books/route.ts:64 (POST) · .wallet.create( · status ACTIVE
+       · fixture      src/app/api/dev-test/stress-bulk-bet/route.ts:80 (ensureStressUsers) · .wallet.create( · status ACTIVE
+       · fixture      src/app/api/dev-test/stress-money/route.ts:44 (POST) · .wallet.create( · status ACTIVE
+       · fixture      src/app/api/dev-test/stress-regulator-grade/route.ts:134 (provisionUsers) · .wallet.create( · status ACTIVE
+       · fixture      src/app/auth/demo/route.ts:230 (ensureDemoUser) · .wallet.create( · status ACTIVE
+       · registration src/lib/server/auth-service.ts:682 (registerWithPassword) · .wallet.create( · status ACTIVE
+       · transport    src/lib/server/prisma-dal.ts:2237 (prismaDb) · .wallet.create( · status <computed> · freezeReasons
+       · transport    src/lib/server/prisma-dal.ts:2256 (prismaDb) · .wallet.update( · status — · opaque
+       · transport    src/lib/server/store.ts:2623 (memoryDb) · wallets.set( · status — · opaque
+       · transport    src/lib/server/store.ts:2628 (memoryDb) · wallets.set( · status — · opaque
+       · transport    src/lib/server/store.ts:2660 (memoryDb) · wallets.set( · status — · opaque
+       · close        src/lib/server/user-service.ts:159 (closeAccount) · .wallet.update( · status CLOSED
+       · freeze       src/lib/server/wallet-freeze.ts:64 (applyFreeze) · .wallet.update( · status <computed> · freezeReasons
+PASS 1.3 the other sites were read and write neither field (balance, hold, pending only) — 10 site(s)
+
+§2 · nothing outside the allow-list writes a wallet's status or reasons
+PASS 2.1 ⛔ no writer of Wallet.status / Wallet.freezeReasons outside the allow-list — 0 violation(s)
+PASS 2.2 ⛔ RATCHET · applyFreeze is ONE site — the reason set has one writer — 1
+PASS 2.3 ⛔ RATCHET · closeAccount is ONE site, and it writes CLOSED — 1
+PASS 2.4 ⛔ RATCHET · registration creates the wallet at exactly ONE site (the password sign-up) — 1
+PASS 2.5 ⛔ RATCHET · production status writers total exactly 3 — 3
+PASS 2.6 both stores are seen as transport (the census reads the layer under db.wallet.*) — src/lib/server/prisma-dal.ts:2237 (prismaDb), src/lib/server/prisma-dal.ts:2256 (prismaDb), src/lib/server/store.ts:2623 (memoryDb), src/lib/server/store.ts:2628 (memoryDb), src/lib/server/store.ts:2660 (memoryDb)
+PASS 2.7 the dev fixtures are in the population, each file proven dev-only — 18 site(s) in 18 file(s)
+PASS 2.8 …and /auth/demo is among them (a route, not under dev-test, with no proxy block of its own)
+PASS 2.9 ⛔ RATCHET · src/lib/server/store.ts · db.wallet has exactly adjust, create, findByUserId, listAll, update — no member that sets a status by another name — adjust, create, findByUserId, listAll, update
+PASS 2.10 ⛔ src/lib/server/store.ts · wallet.adjust moves amounts only — it assigns no status and no freezeReasons — 1047 chars read
+PASS 2.9 ⛔ RATCHET · src/lib/server/prisma-dal.ts · db.wallet has exactly adjust, create, findByUserId, listAll, update — no member that sets a status by another name — adjust, create, findByUserId, listAll, update
+PASS 2.10 ⛔ src/lib/server/prisma-dal.ts · wallet.adjust moves amounts only — it assigns no status and no freezeReasons — 1547 chars read
+
+§3 · CONTROLS: each planted writer is caught, and the harmless shapes are not
+PASS 3.1 CONTROL · the real kyc-service.ts has no violation
+PASS 3.2 ⭐ CONTROL · …and one `db.wallet.update(w.id, { status: "ACTIVE" })` added to it is FLAGGED
+PASS 3.3 CONTROL · the closeAccount write is present to mutate
+PASS 3.4 ⭐ CONTROL · closeAccount writing ACTIVE instead of CLOSED is FLAGGED
+PASS 3.5 ⭐ CONTROL · a second writer in wallet-freeze.ts, outside applyFreeze, is FLAGGED
+PASS 3.6 CONTROL · the registration create is present to mutate
+PASS 3.7 ⭐ CONTROL · registration creating a FROZEN wallet is FLAGGED
+PASS 3.8 ⭐ CONTROL · the Prisma shape `tx.wallet.update({ where, data: { freezeReasons: [] } })` is FLAGGED
+PASS 3.9 ⭐ CONTROL · the shorthand `{ status }` is FLAGGED
+PASS 3.10 ⭐ CONTROL · a patch held in a variable is read through its declaration and FLAGGED
+PASS 3.11 ⭐ CONTROL · a status assigned onto `data` after its declaration is FLAGGED
+PASS 3.12 ⭐ CONTROL · an unreadable patch (a parameter) is FLAGGED, not assumed harmless
+PASS 3.13 ⭐ CONTROL · a spread into the patch is FLAGGED
+PASS 3.14 ⭐ CONTROL · raw SQL into "Wallet" is FLAGGED
+PASS 3.15 CONTROL · a balance-only update is seen and NOT flagged
+PASS 3.16 CONTROL · a write that exists only in a comment is not a site (the shared stripper)
+PASS 3.17 CONTROL · a dev-test fixture that refuses first is allowed
+PASS 3.18 ⭐ CONTROL · …the same fixture with NO production refusal is FLAGGED
+PASS 3.19 ⭐ CONTROL · …and with the refusal AFTER its first await is FLAGGED
+PASS 3.20 ⭐ CONTROL · …and with the proxy's production block gone is FLAGGED
+PASS 3.21 ⭐ CONTROL · a fixture outside the two fixture roots is FLAGGED even when it refuses
+PASS 3.22 ⭐ CONTROL · raw SQL with escaped quotes in a string literal (`\"Wallet\"`) is FLAGGED
+PASS 3.23 ⭐ CONTROL · raw SQL naming the schema (`"public"."Wallet"`) is FLAGGED
+PASS 3.24 ⭐ CONTROL · a caller of a DAL method the census does not know (`db.wallet.setStatus(`) is FLAGGED
+PASS 3.25 ⭐ CONTROL · …and the member itself, planted in store.ts, breaks the DAL census
+PASS 3.26 ⭐ CONTROL · an `adjust` that assigns a status is caught by 2.10's test
+PASS 3.27 ⭐ CONTROL · a production refusal another condition can switch off (`&& process.env.ALLOW !== "1"`) is FLAGGED
+PASS 3.28 ⭐ CONTROL · a refusing async GET beside a NON-refusing sync `export function POST` is FLAGGED
+PASS 3.29 ⭐ CONTROL · a handler exported as `export const PUT =` cannot be proven, so the file is FLAGGED
+PASS 3.30 ⭐ CONTROL · a proxy block another condition can switch off is FLAGGED
+PASS 3.31 ⭐ CONTROL · a parameter sharing its name with ANOTHER function's literal is still opaque and FLAGGED
+PASS 3.32 ⭐ CONTROL · a module-level literal SHADOWED by the writer's own parameter is FLAGGED
+PASS 3.33 CONTROL · a module-level literal used by name, not shadowed, is read and NOT flagged
+PASS 3.34 ⭐ CONTROL · a wallet delegate held under another name (`const wal = db.wallet; wal.update(…)`) is FLAGGED
+PASS 3.35 ⭐ CONTROL · a destructured delegate (`const { wallet } = db`) is FLAGGED
+PASS 3.36 ⭐ CONTROL · a bracketed delegate (`db["wallet"].update(`) is FLAGGED
+
+wallet-status-writers: 51 passed, 0 failed

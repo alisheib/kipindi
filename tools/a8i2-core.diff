@@ -1,0 +1,335 @@
+diff --git a/src/components/ui/key-guard.tsx b/src/components/ui/key-guard.tsx
+new file mode 100644
+index 00000000..59fc0d40
+--- /dev/null
++++ b/src/components/ui/key-guard.tsx
+@@ -0,0 +1,71 @@
++"use client";
++
++/**
++ * ⭐ THE KEY GUARD — A KEY HELD DOWN PRESSES ONCE, WHEREVER IT IS, AND NOTHING BEHIND THE TOP DIALOG TAKES A KEY (Vodacom plan
++ * S6 A8i-2, 2026-10-07 · live for every player).
++ *
++ * 🔴 WHAT THIS CLOSES. A8i ran the held-key rule (`held-key.ts`) inside each open dialog's own window listener, which left
++ * the page outside a dialog, and a dialog whose host stops keys, unguarded:
++ *   · Enter held on Up & Down's UP placed a new bet on every repeat, about thirty a second, each with a fresh idempotency
++ *     key, until the balance or the rate limit ran out; Enter held on "Hifadhi nafasi" closed the Sell confirm and its
++ *     repeats opened it again (proven in a real browser, 2026-10-07);
++ *   · the board card's controls stop Enter and Space on their way up (UD-16), so the window listener of the receipt drawn
++ *     inside them never heard its repeats: a held Enter on "Endelea kucheza" closed the receipt and then bet on UP, again
++ *     and again.
++ * ⭐ So the rule runs ONCE, for the whole page, FIRST: this window listener in the CAPTURE phase sees every keydown before
++ * any element, React handler or bubbling listener does, and a key it swallows is both prevented (the browser presses
++ * nothing) and stopped (no handler acts on it). The decision is `swallowsKey` (`modal-stack.ts`): a held repeat that would
++ * press something, a press behind the top dialog, and a fresh press in a dialog's arming beat. Any other press is
++ * untouched: a tap of Enter on UP with no dialog open is a bet, every time (repeat taps are repeat bets, Ali's standing
++ * decision).
++ * ⭐ AND A SPACE PRESSES ONLY WHERE IT WENT DOWN. Space presses on its release, and a Space whose press began elsewhere (held
++ * on the dial while the confirm took focus) or was swallowed presses nothing when it is let go; the browsers do not agree
++ * on that by themselves.
++ * ⛔ A KEY THAT IS COMPOSING TEXT (an input method's Enter or Space, Chinese among them) is never touched.
++ * Installed once per page (`installed`): by AppShell's mount on every player page, and by every `Modal` when it mounts, so
++ * a page outside the shell (the console) has it wherever a dialog can open.
++ */
++import { useEffect } from "react";
++import { keyTargetOf } from "@/lib/held-key";
++import { currentBeat, inBeat, openLayers, swallowsKey, swallowsSpaceUp, whereIs } from "@/lib/modal-stack";
++
++let installed = false;
++/** The element the last fresh Space went down on, when that press was let through; null when it was swallowed. */
++let spacePressedOn: EventTarget | null = null;
++
++function onKeyDown(e: KeyboardEvent) {
++  if (e.key !== "Enter" && e.key !== " ") return;
++  // An input method's composing key is the text's: its keydown says so, or reports key code 229, as Safari's last one does.
++  if (e.isComposing || e.keyCode === 229) return;
++  const t = keyTargetOf(e.target);
++  // A key with no control under it, on the page itself, presses nothing: it is nowhere, and no dialog rule refuses it.
++  const where = whereIs(openLayers(), e.target, t === null || t.tag === "BODY" || t.tag === "HTML");
++  const swallow = swallowsKey(e.key, e.repeat, t, where, inBeat(currentBeat(), e.target, performance.now()));
++  if (e.key === " " && !e.repeat) spacePressedOn = swallow ? null : e.target;
++  if (!swallow) return;
++  e.preventDefault();
++  e.stopPropagation();
++}
++
++function onKeyUp(e: KeyboardEvent) {
++  if (e.key !== " ") return;
++  const pressedHere = e.target === spacePressedOn;
++  spacePressedOn = null;
++  if (!swallowsSpaceUp(e.key, keyTargetOf(e.target), pressedHere)) return;
++  e.preventDefault();
++  e.stopPropagation();
++}
++
++/** Installs the guard on this page, once: keydown and keyup on the window, in the capture phase. */
++export function installKeyGuard(): void {
++  if (installed || typeof window === "undefined") return;
++  installed = true;
++  window.addEventListener("keydown", onKeyDown, true);
++  window.addEventListener("keyup", onKeyUp, true);
++}
++
++/** AppShell's mount of the guard. It renders nothing. */
++export function KeyGuard() {
++  useEffect(() => { installKeyGuard(); }, []);
++  return null;
++}
+diff --git a/src/lib/held-key.ts b/src/lib/held-key.ts
+index bfe0c551..97954cd4 100644
+--- a/src/lib/held-key.ts
++++ b/src/lib/held-key.ts
+@@ -1,22 +1,30 @@
+ /**
+- * A KEY HELD DOWN FROM BEFORE PRESSES NOTHING IN A DIALOG (Vodacom plan S6 A8i, 2026-10-06 · live for every player).
++ * A KEY HELD DOWN PRESSES ONCE, WHEREVER IT IS (Vodacom plan S6 A8i, 2026-10-06; on the whole page since A8i-2, 2026-10-07 ·
++ * live for every player).
+  *
+  * 🔴 WHAT THIS CLOSES. A dialog moves focus onto its primary button 30 ms after it opens (`modal.tsx`). A key that opened
+  * it and is still held keeps sending keydowns, and from that instant they land on the primary: the browser presses a
+  * focused button on every repeated Enter, and on the release of a Space whose repeat reached it. Holding Enter or Space on
+  * the bet dial for about half a second therefore opened the bet confirm and then placed the bet — the confirm was on
+  * screen for a frame. The press a dialog asks for must begin inside it.
++ * 🔴 AND OUTSIDE A DIALOG (A8i-2). A8i ran this rule only inside an open dialog, so Enter held on Up & Down's UP placed a
++ * new bet on every repeat — about thirty a second, each with its own idempotency key — and Enter held on "Hifadhi nafasi"
++ * closed the Sell confirm and its repeats opened it again (proven in a real browser). The key guard (`key-guard.tsx`) now
++ * runs this rule on every keydown of the page, first, in the window's capture phase.
+  *
+- * ⭐ THE RULE. While a dialog is open, a key's AUTO-REPEAT (`KeyboardEvent.repeat`) that would press something is
+- * swallowed:
++ * ⭐ THE RULE. A key's AUTO-REPEAT (`KeyboardEvent.repeat`) that would press something is swallowed (`swallowsHeldKey`).
++ * What presses (`pressesSomething`):
+  *   · Enter, anywhere but text that takes a new line (a textarea, an editable region) — Enter presses a focused button or
+  *     link and submits the form of a focused field;
+  *   · Space, on a control Space presses (a button, a summary, a checkbox, a radio, a role that says so) — never in a text
+  *     field, where a held Space is typing, and never on a link, which Space does not press.
+- * The first keydown of every press is untouched, so a deliberate press works exactly as it did.
++ * The first keydown of every press is untouched by this rule, so a deliberate press works exactly as it did: a tap of
++ * Enter on UP is a bet each time (repeat taps are repeat bets, Ali's standing decision). Only the dialog stack refuses a
++ * fresh press — behind the top dialog, in a dialog's first moment, and on what a closing dialog has just given focus back
++ * to (`modal-stack.ts`).
+  *
+- * ⛔ PURE AND DOM-FREE, so `test:enter-where-pressed` runs the very rule the dialog runs; `keyTargetOf` is the one place
+- * that reads an element.
++ * ⛔ PURE AND DOM-FREE, so `test:enter-where-pressed` runs the very rule the guard runs; `keyTargetOf` is the one place
++ * that reads an element, and `test:enter-where-pressed` 1.7 runs it on element-shaped stand-ins.
+  */
+ 
+ /** What the rule needs to know about the element a key went to. */
+@@ -37,14 +45,19 @@ function spacePresses(t: KeyTarget): boolean {
+   return t.role !== null && SPACE_PRESSES_ROLE.has(t.role);
+ }
+ 
+-/** True when this keydown is a held key's repeat that would press something — the dialog swallows it. */
+-export function swallowsHeldKey(key: string, repeat: boolean, target: KeyTarget | null): boolean {
+-  if (!repeat) return false;
++/** True when this key, pressed on this target, presses something: what a held repeat is swallowed for here, and what the
++ *  dialog stack refuses behind the top dialog and in an arming beat (`modal-stack.ts`). */
++export function pressesSomething(key: string, target: KeyTarget | null): boolean {
+   if (key === "Enter") return !(target && (target.tag === "TEXTAREA" || target.editable));
+   if (key === " ") return target !== null && spacePresses(target);
+   return false;
+ }
+ 
++/** True when this keydown is a held key's repeat that would press something — the key guard swallows it, wherever it lands. */
++export function swallowsHeldKey(key: string, repeat: boolean, target: KeyTarget | null): boolean {
++  return repeat && pressesSomething(key, target);
++}
++
+ /** The element a keydown went to, as the rule reads it; `null` when the target is not an element. */
+ export function keyTargetOf(el: EventTarget | null): KeyTarget | null {
+   const e = el as HTMLElement | null;
+diff --git a/src/lib/modal-stack.ts b/src/lib/modal-stack.ts
+new file mode 100644
+index 00000000..37cc55e0
+--- /dev/null
++++ b/src/lib/modal-stack.ts
+@@ -0,0 +1,188 @@
++/**
++ * ⭐ THE DIALOG STACK — WHICH OPEN DIALOG IS ON TOP, AND WHAT A KEY OR A FOCUS MOVE MAY DO ABOUT IT (Vodacom plan S6 A8i-2,
++ * 2026-10-07 · live for every player).
++ *
++ * 🔴 WHAT THIS CLOSES. Every `Modal` acted as if it were the only dialog on screen, and the win seal (zIndex 1700) opens over
++ * the bet confirm or the Sell confirm (100) on any poll tick. A five-lens review of A8i found, and a real browser proved:
++ *   · the seal's close gave focus back to the Sell confirm's money button, so a second Enter about 60 ms later, meant for
++ *     the seal or for the next one, SOLD the ticket (W2, 2026-10-07);
++ *   · a confirm whose quote lapsed under the seal gave focus back to the dial, behind the seal's scrim, where the Enter
++ *     meant for the seal opened a new confirm and the next Enter placed the bet unseen;
++ *   · a dialog opened beneath the seal (a bet refused while it was up) took focus all the same, and one Escape closed every
++ *     open dialog, the lower one first.
++ *
++ * ⭐ THE RULES, each a pure function, so `test:enter-where-pressed` runs the very rules the dialogs and the key guard run:
++ *   · ORDER (`ordered`, `topOf`): by zIndex, then by open order; of two dialogs at one z, the later is drawn over.
++ *   · WHERE (`whereIs`): a key or a focus lands in the top dialog; above it (in a surface put in the page after it, as a
++ *     dropdown's list or a calendar it opened); behind it (in a covered dialog, or on the page under its scrim); or nowhere
++ *     (the page itself).
++ *   · ONLY THE TOP DIALOG takes focus and answers Escape and Tab (`modal.tsx`), and NOTHING BEHIND IT TAKES ENTER OR SPACE
++ *     (`swallowsKey`, asked by the key guard).
++ *   · CLOSING (`closePlan`, `heirsOf`): focus moves only from inside the closing dialog or from nowhere, and never behind
++ *     the dialog now on top; a way back that lay inside the closing dialog is handed on.
++ *   · THE ARMING BEAT (`ARMING_MS`, `inBeat`): for a moment after a dialog takes focus, and after a closing one gives focus
++ *     back to the page, a fresh press there presses nothing.
++ * ⛔ NO BROWSER GLOBAL IS READ HERE: the caller hands in the elements (anything with `contains` and
++ * `compareDocumentPosition`) and the clock. The registry at the end is the page's one list of open dialogs, kept by `Modal`.
++ */
++import { pressesSomething, swallowsHeldKey, type KeyTarget } from "./held-key";
++
++/** What the stack reads of an element: whether another node lies inside it, and where another lies in the document. */
++export type Box = {
++  contains(other: unknown): boolean;
++  compareDocumentPosition(other: unknown): number;
++};
++
++/** One open dialog, as the stack keeps it. */
++export type Layer = {
++  /** Its zIndex: `Modal`'s `zIndex`, 100 unless raised (the win seal and the reality check sit at 1700). */
++  z: number;
++  /** Its open order (`nextOpenOrder`). */
++  seq: number;
++  /** Its portal root (its scrim and its panel), read when asked: null until it has been drawn. */
++  root: () => Box | null;
++  /** Where focus goes back when it closes: what had focus when it opened. A closing dialog may hand it on (`heirsOf`). */
++  restoreTo: unknown;
++  /** Gives focus to its own first target (its `initialFocus`, else its first control), and arms its beat. */
++  focusIn: () => void;
++};
++
++/** Bottom first, top last: by zIndex, then by open order. */
++export function ordered<L extends Layer>(layers: readonly L[]): L[] {
++  return [...layers].sort((a, b) => a.z - b.z || a.seq - b.seq);
++}
++
++/** The dialog drawn over every other, or null when none is open. */
++export function topOf<L extends Layer>(layers: readonly L[]): L | null {
++  const all = ordered(layers);
++  return all.length > 0 ? all[all.length - 1] : null;
++}
++
++/** Where a key or a focus lands, seen from the top dialog. */
++export type Where = "free" | "nowhere" | "top" | "above" | "behind";
++
++/** `DOCUMENT_POSITION_FOLLOWING`: the other node comes after this one in the document. */
++const FOLLOWING = 4;
++
++/**
++ * "free": no dialog is open. "nowhere": no element, or the page itself (`nowhere`, as the caller reads it). "top": inside
++ * the top dialog. "behind": inside a covered dialog, or on the page under the top dialog's scrim. "above": in a surface put
++ * in the page after the top dialog opened, as a dropdown's list or a calendar it opened, drawn over it.
++ */
++export function whereIs(layers: readonly Layer[], node: unknown, nowhere: boolean): Where {
++  const top = topOf(layers);
++  if (!top) return "free";
++  if (nowhere || node === null || node === undefined) return "nowhere";
++  const root = top.root();
++  if (root !== null && root.contains(node)) return "top";
++  if (layers.some((l) => l !== top && l.root()?.contains(node) === true)) return "behind";
++  return root !== null && (root.compareDocumentPosition(node) & FOLLOWING) !== 0 ? "above" : "behind";
++}
++
++/** What a closing dialog does with focus — leaves it, gives it back where it was, or gives it to the dialog now on top —
++ *  and what it arms: that dialog, or what it gave focus back to. */
++export type ClosePlan = { move: "none" | "back" | "top"; arm: "none" | "top" | "back" };
++
++/**
++ * `wasTop`: the closing dialog was the top one. `focus`: where focus is as it closes: inside it; nowhere (the page itself,
++ * a removed element, withheld content); or elsewhere, somewhere real, which is left alone. `back`: where its way back lies
++ * among the dialogs still open (`whereIs`).
++ */
++export function closePlan(wasTop: boolean, focus: "inside" | "nowhere" | "elsewhere", back: Where): ClosePlan {
++  if (focus === "elsewhere") return { move: "none", arm: "none" };
++  // A covered dialog closing (its quote lapsing under the seal) moves nobody's focus, unless focus was inside it.
++  if (!wasTop) return focus === "inside" ? { move: "top", arm: "top" } : { move: "none", arm: "none" };
++  // Nothing open any more: back to the control that opened it, armed.
++  if (back === "free") return { move: "back", arm: "back" };
++  // Its way back lies in the dialog now on top (the seal closing over the confirm), or over it: back there, that dialog armed.
++  if (back === "top" || back === "above") return { move: "back", arm: "top" };
++  // Its way back is behind the dialog now on top, or gone: that dialog's own first control instead, armed.
++  return { move: "top", arm: "top" };
++}
++
++/** The dialogs still open whose way back lies inside the closing one; each takes the closing dialog's way back instead. */
++export function heirsOf<L extends Layer>(closing: Box | null, remaining: readonly L[]): L[] {
++  if (closing === null) return [];
++  return remaining.filter((l) => l.restoreTo !== null && l.restoreTo !== undefined && closing.contains(l.restoreTo));
++}
++
++/**
++ * ⭐ THE ARMING BEAT, IN MILLISECONDS: for this long after a dialog takes focus (on opening, and when a dialog drawn over it
++ * closes), and after a closing dialog gives focus back to the page, a fresh Enter or Space there presses nothing.
++ * WHY 400. It outlasts the win seal's own rhythm: two seals queued are presented 350 ms apart (`win-celebration.tsx`), so
++ * an Enter meant for the second seal that lands on the confirm under them lands inside this beat, never after it (from the
++ * moment the second seal is drawn, the confirm is behind it). It covers a double press (two Enters 60 to 250 ms apart; the
++ * proven W2 was 60 ms), key chatter (under 50 ms) and the seal's auto-dismiss racing a press. And it is shorter than anyone
++ * takes to read a confirm and decide, so a press that follows reading is never refused. The same under reduced motion: it
++ * is input, not motion. `test:enter-where-pressed` 5.7 holds it above the seal's gap and at most 600 ms.
++ */
++export const ARMING_MS = 400;
++
++/** The armed moment: until when, and within what (a dialog's root, or the control focus was given back to). */
++export type Beat = { until: number; within: Box | null };
++
++/** True when `node` lies within the armed place and `now` is still inside the beat. */
++export function inBeat(beat: Beat | null, node: unknown, now: number): boolean {
++  return beat !== null && now < beat.until && beat.within !== null && beat.within.contains(node);
++}
++
++/**
++ * ⭐ THE KEY GUARD'S DECISION (`key-guard.tsx` asks it of every keydown of the page, first): true when this keydown must
++ * press nothing —
++ *   · a held key's repeat that would press something, anywhere (`swallowsHeldKey`);
++ *   · an Enter or a Space behind the top dialog (a covered dialog's button, the page under the scrim), whatever it is on;
++ *   · a fresh press that would press something, in the arming beat.
++ * Any other keydown is untouched: with no dialog open, a fresh Enter on Up & Down's UP is a bet, every time (repeat taps
++ * are repeat bets, Ali's standing decision) — save in the beat after a closing dialog has just given focus back to it.
++ */
++export function swallowsKey(key: string, repeat: boolean, target: KeyTarget | null, where: Where, beat: boolean): boolean {
++  if (swallowsHeldKey(key, repeat, target)) return true;
++  if (key !== "Enter" && key !== " ") return false;
++  if (where === "behind") return true;
++  return !repeat && beat && pressesSomething(key, target);
++}
++
++/**
++ * True when a Space released here would press what it is released on though its press did not go down there — held on the
++ * dial while the confirm took focus, or swallowed when it went down. Space presses on its release, and the browsers do not
++ * agree on what a release on another control does; here it does nothing.
++ */
++export function swallowsSpaceUp(key: string, target: KeyTarget | null, pressedHere: boolean): boolean {
++  return key === " " && !pressedHere && pressesSomething(" ", target);
++}
++
++// ── THE PAGE'S OPEN DIALOGS, kept by `Modal`: laid on at opening, taken off at closing (`modal.tsx`) ──────────────────────
++const open: Layer[] = [];
++let opened = 0;
++let armed: Beat | null = null;
++
++/** The next open order. */
++export function nextOpenOrder(): number {
++  opened += 1;
++  return opened;
++}
++/** Lays an opening dialog on the stack. */
++export function openLayer(layer: Layer): void {
++  open.push(layer);
++}
++/** Takes a closing dialog off the stack. */
++export function closeLayer(layer: Layer): void {
++  const at = open.indexOf(layer);
++  if (at >= 0) open.splice(at, 1);
++}
++/** The dialogs open now, in no order (`ordered` orders them). */
++export function openLayers(): Layer[] {
++  return open.slice();
++}
++/** True when this dialog is the top one. */
++export function isTopLayer(layer: Layer): boolean {
++  return topOf(open) === layer;
++}
++/** Arms the beat within `within`, from `now` (the caller's clock). */
++export function armBeat(within: Box | null, now: number): void {
++  armed = { until: now + ARMING_MS, within };
++}
++/** The armed moment, or null. */
++export function currentBeat(): Beat | null {
++  return armed;
++}

@@ -1,0 +1,39 @@
+22:27:14 waiting (owner: marketing-s14 step54-drive (diagnose and rerun the live-page drive; the follow-up of step54-heavy inside the same hold, agreed with asheib-87 at 21:50Z) since 2026-10-08T21:47:19Z until 22:45Z; queue: asheib-c5 vodacom: wm3-chain queued since 2026-10-08T20:39:05Z)
+22:32:17 waiting (owner: marketing-s14 step54-drive (diagnose and rerun the live-page drive; the follow-up of step54-heavy inside the same hold, agreed with asheib-87 at 21:50Z) since 2026-10-08T21:47:19Z until 22:45Z; queue: asheib-c5 vodacom: wm3-chain queued since 2026-10-08T20:39:05Z)
+22:37:20 waiting (owner: marketing-s14 step54-drive (diagnose and rerun the live-page drive; the follow-up of step54-heavy inside the same hold, agreed with asheib-87 at 21:50Z) since 2026-10-08T21:47:19Z until 22:45Z; queue: asheib-c5 vodacom: wm3-chain queued since 2026-10-08T20:39:05Z)
+22:42:23 lock taken
+22:42:25 kipindi-a8i2-ctl at 17087f071 (vodacom-visual after round 3, on main d9b7a5b69)
+22:42:46 prisma generate exit=0
+22:43:51 typecheck exit=0 — 0 error(s)
+23:21:21 battery exit=1 —   466/476 green · 2243.7s total   FAILED: test:audit-drain, test:revoked-deadend, test:admin-section-gate, test:needle-rest, test:house-bot-money, test:house-bot-reports, test:house-bot-disclosure, test:icon-sizes, test:decomment, test:orphans 
+23:21:21   'gave no reason': 0 · fingerprint after: 8c0fa0db9851
+23:22:01 the battery's control: 10 suite(s), alone here and on main 50d1a4ad7 (ready: 1)
+23:22:11   test:audit-drain alone: visual exit=0 · main exit=0
+23:23:58   test:revoked-deadend alone: visual exit=1 · main exit=1
+23:25:36   test:admin-section-gate alone: visual exit=1 · main exit=1
+23:27:15   test:needle-rest alone: visual exit=1 · main exit=1
+23:34:40   test:house-bot-money alone: visual exit=0 · main exit=0
+23:40:06   test:house-bot-reports alone: visual exit=1 · main exit=0   ⛔ THE BRANCH ONLY
+23:40:36   test:house-bot-disclosure alone: visual exit=4 · main exit=0   ⛔ THE BRANCH ONLY
+23:40:38   test:icon-sizes alone: visual exit=1 · main exit=0   ⛔ THE BRANCH ONLY
+23:40:45   test:decomment alone: visual exit=1 · main exit=0   ⛔ THE BRANCH ONLY
+23:41:06   test:orphans alone: visual exit=1 · main exit=1
+23:41:29 red:journey-shell exit=0 · tree same — RED CONTROL — 180/180 caught · all 361 proofs held
+23:41:59 red:wallet-reach exit=0 · tree same — RED PROOF COMPLETE
+23:42:02 red:journey-tickets exit=0 · tree same — RED CONTROL — 107/107 caught · all 215 proofs held
+23:42:04 red:density-contract exit=0 · tree same — 5/5 planted violations caught in all
+23:42:07 red:hero-copy exit=0 · tree same — red:hero-copy: 27 caught, MISSED = 0
+23:42:40 red:featured-card exit=0 · tree same — RED PROOF COMPLETE
+23:43:09 red:ticker-honesty exit=0 · tree same — RED PROOF COMPLETE
+23:43:22 red:market-columns exit=0 · tree same — RED PROOF COMPLETE
+23:43:43 red:money-format exit=0 · tree same — RED PROOF COMPLETE
+23:44:14 red:measure exit=0 · tree same — 8/8 proven · 0 missed · 0 broken harness
+23:44:28 red:share-link-readable exit=0 · tree same — RED PROOF COMPLETE
+23:44:47 red:updown-filter-sheet exit=0 · tree same — RED PROOF COMPLETE
+23:46:20 red:id-documents exit=0 · tree same — RED PROOF COMPLETE
+23:46:22 red:social-panel exit=0 · tree same — 8/8 planted defects caught on their named assertion
+23:46:37 red:install-invite exit=0 · tree same — Every declared defect is caught by a named check, and the tree is clean.
+23:46:51 red:enter-where-pressed exit=0 · tree same — RED CONTROL — 103/103 caught
+23:46:53 red:marketing-optout exit=0 · tree same — RED PROOF COMPLETE
+23:46:53 chain end
+23:46:53 lock released

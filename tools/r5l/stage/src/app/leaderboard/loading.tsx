@@ -1,0 +1,151 @@
+"use client";
+
+import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
+import { PageContainer } from "@/components/layout/page-container";
+import { PageHeader } from "@/components/ui/page-header";
+import { PLAYER_PER_PAGE } from "@/components/ui/pagination";
+import { QUERY_BAR_ROW2_CLASS } from "@/components/ui/query-bar";
+import { PillGhost, SortGhost } from "@/components/ui/query-bar-ghost";
+import { Words } from "@/components/ui/ghost-kit";
+import type { Dict } from "@/lib/i18n-dict";
+
+/**
+ * ⭐ CLIENT CODE, ITS WORDS ITS OWN (round 5's follow-up, R5-H · G-2): the words are the client dictionary's (`useT`), so
+ * a refresh of this page carries the drawing's reference, not its tree, and the server's HTML is what it was —
+ * `components/ui/page-loader.tsx` has the convention.
+ *
+ * ⭐ THE BOARD THAT IS COMING, BAND FOR BAND (2026-10-09, round 5's follow-up, R5-L). The ghost drew the header, then a
+ * 162px spinner box the page does not have, then eight 56px boxes with no table head — where the page draws, on its 32px
+ * rung (`space-y-6`): the ribbon (51px at 1280, measured on tile 178), the product lens (44), the sort (44), the podium
+ * (236) and the table with its 35px head. So the first row it promised stood 450px above the page's at 1280, and the
+ * table head appeared from nothing. Every band below is the page's own box — `PageRibbon`'s, the kit pill's, `QuerySort`'s,
+ * the podium's columns, the `admin-tbl` table (its own CSS pads the cells: 12px over each row, 10 over the head) — with
+ * the page's own words set and not shown (`ghost-kit.tsx`, `query-bar-ghost.tsx`), so each wraps where the page's does.
+ * ⚠️ THE BOARD DRAWN IS THE COMMON ONE: more players than a page holds (production ranks 41), so page one's twelve rows
+ * (`PLAYER_PER_PAGE`) under a podium of three; the cap sentence (a board of fifty) and the pager under the rows are not
+ * drawn — how many pages is the data's, and nothing lands below the rows but the footer. The podium's three hold one hot
+ * streak each (tile 178), a short handle on one line, and the leader's tier is silver; a longer handle wraps on a phone.
+ */
+export default function LeaderboardLoading() {
+  const { t } = useT();
+  // Width MUST match leaderboard/page.tsx (1080). It was 1280, so the skeleton was
+  // 200px wider than the board that replaced it — a visible snap on every visit.
+  return (
+    <PageContainer tier="reading" className="space-y-6">
+      {/* 🔴 DG-P-03 · §K — THIS COPY OF `PageHeader` WAS NOT EVEN AN ACCURATE ONE, which is the
+          argument for adopting the kit rather than retyping it. The h1 read
+          `font-display text-[28px] font-bold text-text` — **missing `leading-tight` and
+          `tracking-[-0.02em]`** — so the heading changed its line-height AND its letter-spacing
+          the instant the board replaced the skeleton, and the eyebrow had no `mb-1` either.
+          `leaderboard/page.tsx:210` renders `<PageHeader>` as a direct child of the container,
+          so this does too, with the same two strings. ⛔ No `<header>` wrapper: the page has
+          none, and adding one here would put the skeleton a level deeper than the thing it
+          stands in for. (The width mismatch this file's own header records was the same class
+          of defect, found the same way.) */}
+      <PageHeader eyebrow={t.leaderboard.title} title={t.leaderboard.topPredictors} />
+
+      {/* The ribbon — `PageRibbon`'s box: three stats, each its label beside its figure, wrapping as the page's. */}
+      <div className="rounded-xl border border-border bg-bg-elevated/60 px-4 py-3 flex flex-wrap items-baseline gap-x-6 gap-y-2 text-transparent" aria-hidden>
+        {[
+          [t.leaderboard.topTier, t.leaderboard.tierSilver.split(" ")[0]],
+          [t.leaderboard.bestRoi, "00.0%"],
+          [t.leaderboard.predictorsCount, "00"],
+        ].map(([label, value], i) => (
+          <div key={i} className="flex items-baseline gap-2 min-w-0">
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <p className="font-mono text-micro uppercase eyebrow font-bold whitespace-nowrap"><Words>{label}</Words></p>
+            </div>
+            <p className="font-mono text-body-lg font-bold tabular-nums whitespace-nowrap leading-none"><Words ink="title">{value}</Words></p>
+          </div>
+        ))}
+      </div>
+
+      {/* The product lens — the page's three pills, their words. */}
+      <div className="flex flex-wrap items-center gap-1.5 -mx-1 px-1" aria-hidden>
+        <PillGhost label={t.common.all} />
+        <PillGhost label={t.common.markets} />
+        <PillGhost label={t.market.udTitle} />
+      </div>
+
+      {/* The sort — its own row on the page's rhythm (`py-0`, as the page's). */}
+      <div className={cn(QUERY_BAR_ROW2_CLASS, "py-0")} aria-hidden>
+        <SortGhost label={t.common.sort} value={t.leaderboard.bestRoi} />
+      </div>
+
+      <PodiumGhost t={t} />
+
+      {/* The table — the page's own `admin-tbl` in its glass scroller: the head, then the page's rows. */}
+      <div className="scrollx overflow-x-auto rounded-xl glass-panel text-transparent" aria-hidden>
+        <table className="admin-tbl min-w-[640px]">
+          <thead className="border-b border-border bg-bg-overlay">
+            <tr className="font-mono text-micro uppercase eyebrow">
+              <th className="text-left p-3 w-14"><Words>#</Words></th>
+              <th className="text-left p-3"><Words>{t.leaderboard.tablePredictor}</Words></th>
+              <th className="text-right p-3"><Words>{t.leaderboard.tableRoi}</Words></th>
+              <th className="text-left p-3 hidden md:table-cell"><Words>{t.leaderboard.tableStakes}</Words></th>
+              <th className="text-right p-3 hidden md:table-cell"><Words>{t.leaderboard.tableStreak}</Words></th>
+              <th className="text-right p-3"><Words>{t.leaderboard.tableResolved}</Words></th>
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: PLAYER_PER_PAGE }).map((_, i) => (
+              <tr key={i} className="border-b border-border last:border-b-0">
+                <td className="p-3 font-mono font-bold tabular-nums"><Words>{String(i + 1)}</Words></td>
+                <td className="p-3">
+                  <div className="flex items-center gap-2">
+                    {/* The 28px crest (`Avatar size="sm"`, `.crest-holder`), the handle, the 22px tier badge. */}
+                    <span className="crest-holder kp-shimmer-track bg-bg-overlay" style={{ width: 28, height: 28, borderRadius: "50%" }} />
+                    <span className="font-medium"><Words ink="title">@handle</Words></span>
+                    <span className="tier-badge bg-bg-overlay" />
+                  </div>
+                </td>
+                <td className="p-3 text-right font-mono tabular-nums font-bold"><Words>+00.0%</Words></td>
+                {/* The 14-day sparkline's 32px (`VolumeSparkline height={32}`), from 768 — it sets the row there. */}
+                <td className="p-3 hidden md:table-cell"><div className="h-[32px] w-[140px] rounded-sm bg-bg-overlay/40 kp-shimmer-track" /></td>
+                <td className="p-3 text-right hidden md:table-cell font-mono tabular-nums"><Words>—</Words></td>
+                <td className="p-3 text-right font-mono tabular-nums"><Words>00</Words></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </PageContainer>
+  );
+}
+
+/** The podium — the page's own section, grid and columns: #2, #1 (its crown, the 56px crest; 12px raised, which moves
+ *  no box) and #3 (48px crests), each its handle and 22px tier badge (stacked below 640), the rate, a hot streak and the
+ *  resolved count. The bottoms align (`items-end`), so the tallest column — the leader's — sets the band. */
+function PodiumGhost({ t }: { t: Dict }) {
+  return (
+    <section className="rounded-xl glass-panel px-4 pt-6 pb-4 text-transparent" aria-hidden>
+      <div className="grid grid-cols-3 items-end gap-2 sm:gap-4">
+        {[2, 1, 3].map((rank) => {
+          const first = rank === 1;
+          const size = first ? 56 : 48;
+          return (
+            <div key={rank} className={`flex min-w-0 flex-col items-center text-center ${first ? "-translate-y-3" : ""}`}>
+              <span className="mb-1 block h-[22px]" />
+              <div className="relative rounded-full" style={{ padding: 3 }}>
+                <span className="crest-holder kp-shimmer-track bg-bg-overlay" style={{ width: size, height: size, borderRadius: "50%" }} />
+              </div>
+              <div className="mt-2 flex max-w-full flex-col items-center gap-1 sm:flex-row sm:gap-1.5">
+                <span className="min-w-0 break-words font-medium"><Words ink="title">@handle</Words></span>
+                <span className="tier-badge bg-bg-overlay" />
+              </div>
+              <span className="mt-0.5 font-mono text-[13px] font-bold tabular-nums"><Words>+00.0%</Words></span>
+              <span className="mt-1">
+                <span className="inline-flex items-center gap-1 rounded-pill border border-transparent bg-bg-overlay px-2 py-0.5 font-mono text-[10px] font-bold">
+                  <span className="h-[11px] w-[11px] shrink-0" />
+                  {`0 ${t.leaderboard.winLabel}`}
+                </span>
+              </span>
+              <span className="mt-1 font-mono text-[10px]"><Words>{`0 ${t.results.resolved}`}</Words></span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}

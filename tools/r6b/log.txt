@@ -1,0 +1,3 @@
+R6-B log (fixer R6-B, worktree F:/kipindi-r6b)
+2026-10-09 20:05:03 START: read r5-common.md + r6b-brief.md completely.
+20:05:48 Read reviewer evidence: S/review6/B (t2-trap, shims->F:/kipindi-rev, t3-chart-deadline, t1/t5 timing, t4 namend) and S/review6/A (notes-A.md, log.txt tail: A3=proxy(brief A4), A4=.. mend(brief A5), A5=round metadata(brief A6), A7 notifyWin). Worktree clean at 89893725, branch vodacom-visual-r6b.

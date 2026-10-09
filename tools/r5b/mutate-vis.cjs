@@ -22,7 +22,7 @@ const M = [
     `${J} :is([data-section-rail], [data-rail-ghost]) > * { padding-inline: var(--sp-5); }`, "2.1"],
   ["F6 the rule's line drawn from the rail's own left (12px into the gutter)", "src/app/globals.css",
     "var(--sp-3) 100% / calc(100% - var(--sp-3)) 1px no-repeat border-box", "0 100% / 100% 1px no-repeat border-box", "2.1"],
-  ["F6 /wallet's ghost back on 14px with the display face", "src/app/wallet/loading.tsx",
+  ["F6 /wallet's ghost back on 14px with the display face", "src/app/wallet/wallet-ghost.tsx", // R5-H moved the drawing
     "whitespace-nowrap px-4 text-body-sm font-semibold text-text-subtle", "whitespace-nowrap px-3.5 font-display text-[13px] text-text-subtle", "2.4"],
   // §3 F7
   ["F7 Modal's panel without its dock mark", "src/components/ui/modal.tsx",
@@ -79,10 +79,10 @@ const M = [
   // §9 F14
   ["F14 the wrapped row back on a 4px gap", "src/components/ui/query-bar.tsx",
     "flex-wrap justify-end gap-y-1.5 -mb-1 lg:mb-0 lg:flex-nowrap`;", "flex-wrap justify-end gap-y-1 -mb-1 lg:mb-0 lg:flex-nowrap`;", "9.1"],
-  ["F14 the receipts ghost retyping the old wrap", "src/app/wallet/receipts/loading.tsx",
+  ["F14 the receipts ghost retyping the old wrap", "src/app/wallet/money-bar-ghost.tsx", // R5-H: one bar ghost for both books
     "<div className={QUERY_BAR_ROW1_WRAP_CLASS}>", "<div className={`${QUERY_BAR_ROW1_WRAP_CLASS} gap-y-1 lg:flex-nowrap`}>", "9.3"],
-  ["F14 the ghost's count back on its 12px bar", "src/app/wallet/receipts/loading.tsx",
-    '<div className="flex h-[17.25px] shrink-0 items-center"><div className="h-3 w-[80px] rounded bg-bg-overlay" /></div>',
+  ["F14 the ghost's count back on its 12px bar", "src/app/wallet/money-bar-ghost.tsx", // R5-H: the count in its own type
+    '<p className="shrink-0 font-mono text-[11.5px] tabular-nums text-transparent"><span className="rounded bg-bg-overlay">{count}</span></p>',
     '<div className="h-3 w-[80px] shrink-0 rounded bg-bg-overlay" />', "9.4"],
   // §10 /notifications
   ["§A5 the cleared rows forgotten", "src/app/notifications/page.tsx",

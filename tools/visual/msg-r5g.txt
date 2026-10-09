@@ -1,0 +1,39 @@
+Visual pass round 5 (R5-G): one page, one name — the journey's money pages take the journey's words; every door censused; the regulator's name kept whole wherever it renders
+
+The follow-up to R5-A's F17 and F18 (R5-B's journey money pair, R5-H's client ghosts).
+
+G-1 · in the journey, /wallet/deposit's h1 read "Amana" under the eyebrow "WEKA PESA" and /wallet/withdraw's "Toa fedha"
+under "TOA", beneath doors that all say "Weka pesa" / "Toa pesa". One home now, src/lib/journey/money-names.ts
+(`depositNames` / `withdrawNames`): for a journey reader the tab, the h1 and the deposit commit are the journey's pair
+(`journey.depositAction` / `withdrawAction`) and the eyebrow is the wallet section (`wallet.title`) — the product's
+sub-page convention (/wallet/receipts "POCHI / Risiti"); a classic reader keeps today's words. Read by the pages
+(metadata via resolveSimpleJourney, the head, the confirm), the provider's return page, DepositGhost and the new
+WithdrawGhost (client drawings taking only `journey`, R5-H's convention: deposit/loading.tsx and withdraw/loading.tsx
+are server files that ask the journey answer and hand the drawing that one answer; the route ghost passes `journey`).
+After (journey): "POCHI / Weka pesa", "WALLET / Deposit", 钱包 / 充值; "POCHI / Toa pesa"; nothing moves vertically.
+The census: 97 journey doors, per locale — 61 name their page, 22 name an act, the rest classified (kind, home, brand,
+notice, dormant; 5 S12 and 2 owner held as controls). Fixed by it: the /updown/history tab follows its journey h1
+("Tiketi zangu"); the /updown history pill in the journey; /profile's help row says the page's own "Help" / 帮助 (both
+shells); the agent top-up door says "Weka pesa" in the journey; an approved agent's /profile/invite tab is "Agent
+dashboard", as its body.
+
+G-5 · the regulator's name (one pattern, src/lib/regulator-name.ts, read by keepRegulator and the offline document):
+the opt-out shell footer, the /offline document (CSS container rules held equal to globals.css) and global-error (an
+inline-block — that page ships no stylesheet) now keep "Gaming Board of Tanzania" / "Bodi ya Michezo ya Kubahatisha
+Tanzania" whole wherever the line can hold it; narrower lines wrap as before. 20 files that print the name classified
+(legal prose left as published — D19a).
+
+Guards: test:visual-pass-r5g (61 checks; the door census, the 13 money-page door sites, the 20 regulator files). Mutation
+proof: 30 planted, 30 caught on the named check, all restored byte-identical — on this tip (ported onto 9677a3f5 with
+R5-H's ghosts: 6 conflicts resolved by R5-H's convention; the classic deposit and withdraw ghosts byte-identical to the
+tip's in sw/en/zh). 103 of 105 suites exit 0 on the ported tree (the two known reds: test:orphans, D19a). Re-pins:
+offline-neutral 3.imports / 4.footer, r4j 3.4, r5d 2.8, qa-journey-shell's PAGE_HEADINGS.
+
+Owner items: sign-up's two names ("Jisajili" vs "Fungua akaunti"); where "earn" may stand (D5); the licence line's
+wording by surface (regulator copy, not reworded); "Kuwa wakala" strictness. S12: "Thibitisha amana" on a screen named
+"Weka pesa"; the push-settings page shares the inbox's name; the zh regulator's two names; the auth shell's "GBT".
+
+Classic viewers: the money pages' words unchanged; /profile's help row ("Help" / 帮助) and an approved agent's invite
+tab change in both shells; the regulator's name kept whole on the opt-out footer, /offline and the error page.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

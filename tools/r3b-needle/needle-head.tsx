@@ -1,0 +1,878 @@
+﻿"use client";
+
+/**
+ * The Needle — a persistent, physically-simulated pause object for 50pick.
+ *
+ * Integration per docs/design-system/v2-2026-07-27/09-needle/CLAUDE-CODE-BRIEF.md.
+ * The engine (`needle-physics.js`) and haptics (`needle-haptics.js`) are VENDORED
+ * libraries — not edited. The host below is PORTED from `Needle Playground.html`
+ * (its <script type="module"> block), wrapped in a React mount lifecycle. Behaviour,
+ * physics, sizing, speed and rotations are the playground's, unchanged. What is
+ * adapted, and only for integration:
+ *   · mounted ONCE in the app shell; every listener removed on unmount (no leaks);
+ *   · elements looked up WITHIN #needle-root (not document) so ids can't clash;
+ *   · a visibility gate — hidden on money surfaces (wallet/deposit/withdraw routes
+ *     and open money modals), when the player toggles it off in the navbar, and, for a
+ *     journey viewer, on the new journey's own pages (the Vodacom plan S6, WP7);
+ *   · session() driven from a per-tab session clock; acknowledge() from an event;
+ *     onRecord forwarded to analytics only and NEVER rendered.
+ *
+ * Hard rules honoured (CLAUDE-CODE-BRIEF §4): one instance, below every overlay/modal
+ * (z 25 — see needle.css; 50pick modals are z 100, not the brief's assumed 1000), hidden
+ * on money surfaces, colour untouched, reduced-motion respected by the engine, personal
+ * best never displayed.
+ */
+
+import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import { getPrefs, type NeedleTheme } from "@/lib/haptics";
+import { isMoneySurface, isJourneySurface } from "@/lib/surfaces";
+import { useJourneyOn } from "@/lib/journey/journey-on";
+import { PEPSI_PATHS, PEPSI_TRANSFORM } from "@/lib/needle-art";
+import type { NeedleOptions } from "@/lib/needle-physics";
+import "./needle.css";
+
+// ⭐ ONE HOME. `isMoneySurface` moved to `@/lib/surfaces` UNCHANGED — same regex, same answer —
+// when the install invitation needed the same class of judgement. Copying it would have given the
+// platform two definitions of "a money surface" to drift apart, which is the shape this repo has
+// now filed for the nav-key resolver, the crumb resolver and the campaign-handoff locator (four
+// times). ⚠️ The invitation uses the WIDER `isCommitSurface` from the same file; read the note
+// there before assuming the two are interchangeable.
+
+/* Verbatim body markup from the playground (the #safe + #needle tree), with the
+   SVG paint-def ids namespaced `ndl-*` so `url(#faceL)` etc. can never resolve to
+   an app glyph gradient of the same name. Element ids (needle/tilt/hit/…) are kept
+   and looked up within the root, so they cannot clash either. */
+const MARKUP = `
+<div id="safe" aria-hidden="true"></div>
+<div id="needle" role="presentation">
+  <div id="tilt">
+    <span id="wake"></span>
+    <span id="glow"></span>
+    <span id="trail"></span>
+    <span id="whole"></span>
+    <span id="shadow"></span>
+    <span id="ring"></span>
+    <svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">
+      <defs>
+        <linearGradient id="ndl-faceL" x1="0.2" y1="0" x2="0.8" y2="1">
+          <stop offset="0%"   style="stop-color: var(--ndl-face-a-hi)"></stop>
+          <stop offset="100%" style="stop-color: var(--ndl-face-a-lo)"></stop>
+        </linearGradient>
+        <linearGradient id="ndl-faceR" x1="0.2" y1="0" x2="0.8" y2="1">
+          <stop offset="0%"   style="stop-color: var(--ndl-face-b-hi)"></stop>
+          <stop offset="100%" style="stop-color: var(--ndl-face-b-lo)"></stop>
+        </linearGradient>
+        <linearGradient id="ndl-spec" x1="0.12" y1="0" x2="0.72" y2="1">
+          <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.17"></stop>
+          <stop offset="30%"  stop-color="#ffffff" stop-opacity="0.04"></stop>
+          <stop offset="56%"  stop-color="#0A0E28" stop-opacity="0.12"></stop>
+          <stop offset="100%" stop-color="#0A0E28" stop-opacity="0.42"></stop>
+        </linearGradient>
+        <radialGradient id="ndl-gloss" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.30"></stop>
+          <stop offset="55%"  stop-color="#ffffff" stop-opacity="0.10"></stop>
+          <stop offset="100%" stop-color="#ffffff" stop-opacity="0"></stop>
+        </radialGradient>
+        <clipPath id="ndl-face"><circle cx="50" cy="50" r="46"></circle></clipPath>
+        <radialGradient id="ndl-vig" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="62%"  stop-color="#0A0E28" stop-opacity="0"></stop>
+          <stop offset="88%"  stop-color="#0A0E28" stop-opacity="0.16"></stop>
+          <stop offset="100%" stop-color="#0A0E28" stop-opacity="0.40"></stop>
+        </radialGradient>
+        <linearGradient id="ndl-rim" x1="0.15" y1="0" x2="0.85" y2="1">
+          <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.52"></stop>
+          <stop offset="42%"  stop-color="#ffffff" stop-opacity="0.06"></stop>
+          <stop offset="100%" style="stop-color: var(--ndl-rim-warm)" stop-opacity="0.34"></stop>
+        </linearGradient>
+        <radialGradient id="ndl-hub" cx="0.34" cy="0.28" r="0.85">
+          <stop offset="0%"   style="stop-color: var(--ndl-hub-0)"></stop>
+          <stop offset="42%"  style="stop-color: var(--ndl-hub-1)"></stop>
+          <stop offset="78%"  style="stop-color: var(--ndl-hub-2)"></stop>
+          <stop offset="100%" style="stop-color: var(--ndl-hub-3)"></stop>
+        </radialGradient>
+        <linearGradient id="ndl-blendA" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" style="stop-color: var(--ndl-blend-a)"></stop>
+          <stop offset="100%" style="stop-color: var(--ndl-blend-b)"></stop>
+        </linearGradient>
+        <filter id="ndl-cast" x="-40%" y="-40%" width="180%" height="180%">
+          <feDropShadow dx="0" dy="7" stdDeviation="6.5" flood-color="oklch(5% 0.05 268)" flood-opacity="0.58"></feDropShadow>
+        </filter>
+      </defs>
+
+      <g filter="url(#ndl-cast)">
+        <g id="disc" style="transform-origin: 50px 50px">
+          <g class="ndl-house">
+            <path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63 Z" fill="url(#ndl-faceL)"></path>
+            <path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63 Z" fill="url(#ndl-faceR)"></path>
+            <path d="M 38.87 5.37 A 46 46 0 0 0 61.13 94.63" fill="none" style="stroke: var(--ndl-inlay-a)" stroke-width="var(--inlay, 2.6)" opacity="0.95"></path>
+            <path d="M 38.87 5.37 A 46 46 0 0 1 61.13 94.63" fill="none" style="stroke: var(--ndl-inlay-b)" stroke-width="var(--inlay, 2.6)" opacity="0.95"></path>
+            <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" style="stroke: var(--ndl-seam-shadow)" stroke-width="7.5" stroke-linecap="round" opacity="0.62"></line>
+            <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" stroke-width="var(--needlew, 4.4)" stroke-linecap="round"
+                  style="stroke: var(--ndl-seam); filter: drop-shadow(0 0 3px var(--ndl-seam-glow))"></line>
+          </g>
+          <g class="ndl-art" transform="${PEPSI_TRANSFORM}">
+            ${PEPSI_PATHS.map((p) => `<path d="${p.d}" fill="${p.fill}"></path>`).join("\n            ")}
+          </g>
+        </g>
+        <circle id="blend" cx="50" cy="50" r="46" fill="url(#ndl-blendA)" opacity="0"></circle>
+        <g id="smearA" style="transform-origin: 50px 50px" opacity="0">
+          <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" style="stroke: var(--ndl-smear)" stroke-width="3.6" stroke-linecap="round"></line>
+        </g>
+        <g id="smearB" style="transform-origin: 50px 50px" opacity="0">
+          <line x1="38.39" y1="3.43" x2="61.61" y2="96.57" style="stroke: var(--ndl-smear)" stroke-width="3" stroke-linecap="round"></line>
+        </g>
+        <circle cx="50" cy="50" r="46" fill="url(#ndl-spec)"></circle>
+        <circle cx="50" cy="50" r="46" fill="url(#ndl-vig)"></circle>
+        <circle cx="50" cy="50" r="46.4" fill="none" style="stroke: var(--ndl-ring)" stroke-width="1.4" opacity="0.72"></circle>
+        <circle cx="50" cy="50" r="47.3" fill="none" stroke="url(#ndl-rim)" stroke-width="1.5"></circle>
+        <circle id="edgeArc" cx="50" cy="50" r="47.3" fill="none" stroke="var(--aqua-300)" stroke-width="1.9" opacity="0"
+                style="filter: drop-shadow(0 0 5px color-mix(in oklab, var(--aqua-400) 70%, transparent))"></circle>
+        <g class="ndl-pivot-stack">
+          <circle cx="50" cy="50" r="10" fill="#0A0E28" opacity="0.34"></circle>
+          <circle cx="50" cy="50" r="7.4" fill="#0A0E28" opacity="0.58"></circle>
+          <circle cx="50" cy="50" r="6.3" fill="url(#ndl-hub)"></circle>
+          <circle cx="50" cy="50" r="6.3" fill="none" style="stroke: var(--ndl-hub-ring)" stroke-width="0.5" opacity="0.7"></circle>
+          <circle cx="47.9" cy="47.6" r="1.7" style="fill: var(--ndl-hub-spec)" opacity="0.72"></circle>
+          <circle cx="50" cy="50" r="1.5" style="fill: var(--ndl-pivot)"></circle>
+        </g>
+      </g>
+    </svg>
+    <span id="hit" role="button" tabindex="0" aria-label="Needle — an optional fidget toy. Nothing here affects your account. Space to spin, arrow keys to move, Escape to tuck it away."></span>
+  </div>
+</div>`;
+
+type NeedleApi = { setSuppressed: (v: boolean) => void; recheckRest: () => void };
+type Hx = typeof import("@/lib/needle-haptics");
+
+/**
+ * The ported playground host. Populates `root`, builds the engine, wires every
+ * listener, and returns a cleanup that removes all of them. Never rewrites the
+ * engine or the renderer — this is the playground's own logic, scoped to React.
+ */
+function mountNeedle(
+  root: HTMLDivElement,
+  NeedleBody: typeof import("@/lib/needle-physics").NeedleBody,
+  hx: Hx,
+  apiRef: { current: NeedleApi | null },
+  wantSuppressed: { current: boolean },
+): () => void {
+  const { haptic, hapticImpact, hapticDetent, setMuted } = hx;
+
+  root.innerHTML = MARKUP;
+  const $ = (id: string) => root.querySelector<HTMLElement>("#" + id)!;
+
+  const el = $("needle");
+  const tilt = $("tilt");
+  const hit = $("hit");
+  const disc = $("disc");
+  const trail = $("trail");
+  const whole = $("whole");
+  const glow = $("glow");
+  const ring = $("ring");
+  const shadow = $("shadow");
+  const wake = $("wake");
+  const edgeArc = $("edgeArc");
+  const blend = $("blend");
+  const smearA = $("smearA");
+  const smearB = $("smearB");
+  const safe = $("safe");
+
+  // Listener registry — the single most likely integration bug is a leaked listener,
+  // so every addEventListener goes through on() and is removed on cleanup.
+  const listeners: Array<[EventTarget, string, EventListenerOrEventListenerObject, (boolean | AddEventListenerOptions)?]> = [];
+  const on = (t: EventTarget, type: string, h: EventListenerOrEventListenerObject, opts?: boolean | AddEventListenerOptions) => {
+    t.addEventListener(type, h, opts);
+    listeners.push([t, type, h, opts]);
+  };
+
+  function clampN(v: number, lo: number, hi: number) { return v < lo ? lo : v > hi ? hi : v; }
+
+  /* ⭐ ALL THREE CLAMP GATES, READ LIVE — §M6. This was the OS media query ALONE,
+     so a player who switched "Reduce motion" ON in Settings → Sound & feedback
+     still got the full motion trail, the speed glow and the 3D lean. The in-app
+     switch reaches CSS through the universal clamp in motion.css
+     (`html.kp-reduce-motion *`, `[data-motion="minimal"] *`); this engine paints
+     in JS, where no clamp can reach it, so the gate has to be read here.
+     ⚠️ `data-motion="reduced"` (the low-end-Android THROTTLE) is deliberately NOT
+     one of these. That tier keeps full durations and switches ambient LOOPS off,
+     and the needle's one ambient loop — the parked wake halo — is already gated
+     for it in globals.css §6 (`#needle-root #wake.on`). Calming the physics here
+     as well would take the interaction away from the device it was tuned on.
+     ⚠️ Cached, not recomputed: `calmed` is read inside the paint loop, and three
+     documentElement reads per frame at 60fps is not free on that same device. */
+  const mq = matchMedia("(prefers-reduced-motion: reduce)");
+  const readCalm = () => {
+    const r = document.documentElement;
+    return mq.matches
+      || r.classList.contains("kp-reduce-motion")
+      || r.getAttribute("data-motion") === "minimal";
+  };
+  let calmed = readCalm();
+  let raf: number | null = null, last = 0, pid: number | null = null;
+  let samples: Array<{ x: number; y: number; a: number; t: number }> = [];
+  let down: { x: number; y: number; t: number } | null = null, wasParked = false;
+  let pending: { x: number; y: number } | null = null;
+  let blurStep = -1, trailOpa = -1, tiltStr = "", squash = 1, squashV = 0, shadowOn = -1, wakeOn: string | number = -1, blendOpa = -1;
+  let hoverOut = 0, hoverTo = 0, presenceOn = -1, wholeOpa = -1;
+  let mode = getPrefs().needleMode;   // "spin" (grab/flick) | "bounce" (tap repels it)
+
+  // Visibility state: hidden on money routes / toggle (routeSuppressed, from React)
+  // OR while a money modal is open (modalSuppress, from events). While hidden the
+  // loop is paused; the instance and its saved position persist.
+  let routeSuppressed = false;
+  let modalSuppress = 0;
+  const isSuppressed = () => routeSuppressed || modalSuppress > 0;
+
+  let keepOuts: Array<{ x: number; y: number; w: number; h: number }> = [], keepOutAt = -1;
+  function readKeepOuts() {
+    const now = performance.now();
+    if (now - keepOutAt < 8) return keepOuts;
+    keepOutAt = now;
+    const els = document.querySelectorAll("[data-needle-keepout]");
+    if (!els.length) { keepOuts = keepOuts.length ? [] : keepOuts; return keepOuts; }
+    const next: Array<{ x: number; y: number; w: number; h: number }> = [];
+    for (const n of els) {
+      const r = (n as HTMLElement).getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) next.push({ x: r.left, y: r.top, w: r.width, h: r.height });
+    }
+    keepOuts = next;
+    return keepOuts;
+  }
+
+  /* CSS env() safe-area insets (notch / home indicator). The object still respects the
+     DEVICE's safe areas, but NOT the app bars — it floats ABOVE them (z-45) and passes over
+     them freely, so they must never wall it in (that is what made it stick to a bar). */
+  function insets() {
+    const s = getComputedStyle(safe);
+    return {
+      top: parseFloat(s.paddingTop) || 0,
+      right: parseFloat(s.paddingRight) || 0,
+      bottom: parseFloat(s.paddingBottom) || 0,
+      left: parseFloat(s.paddingLeft) || 0,
+    };
+  }
+
+  function viewport() {
+    const vv = window.visualViewport;
+    return { w: Math.round(vv ? vv.width : innerWidth), h: Math.round(vv ? vv.height : innerHeight) };
+  }
+
+  function diameter() {
+    // Cap at 64, not 88. The strokes hold a constant ~2.3 CSS px, so on a big (88px)
+    // desktop disc they read thin and washed — the crisp, premium look on mobile comes
+    // from the SMALLER disc making the gold needle + rim proportionally bolder. Keeping it
+    // FAB-scale (56–64) everywhere makes desktop as refined as mobile.
+    const v = viewport();
+    return Math.round(clampN(Math.min(v.w, v.h) * 0.155, 56, 64));
+  }
+
+  function haloInset() {
+    const v = viewport();
+    const t = clampN((Math.min(v.w, v.h) - 360) / (900 - 360), 0, 1);
+    return -(14 + t * 20).toFixed(1);
+  }
+
+  const opts: NeedleOptions = {
+    size: diameter(),
+    bounds: () => { const v = viewport(); return { w: v.w, h: v.h, insets: insets() }; },
+    obstacles: readKeepOuts,
+    onImpact: (i) => {
+      hapticImpact(i.speed);
+      squashV -= Math.min(0.09, i.speed * 0.05);
+      if (calmed) return;
+      ring.style.transition = "none";
+      ring.style.opacity = String(Math.min(0.55, i.speed * 0.55));
+      ring.style.transform = `translate(${-i.nx * 7}px, ${-i.ny * 7}px) scale(1)`;
+      requestAnimationFrame(() => {
+        ring.style.transition = "opacity 280ms linear, transform 280ms cubic-bezier(0.32,0.72,0,1)";
+        ring.style.opacity = "0";
+        ring.style.transform = "translate(0,0) scale(1.26)";
+      });
+    },
+    onCross: () => haptic("cross"),
+    // A rest glide (E-400 ①) ends in the engine's own park, so it lands here too: no haptic for it — the player did
+    // nothing — and no re-check, or a glide could chain into another.
+    onPark: () => { if (gliding) { gliding = false; glideQuietUntil = performance.now() + 2000; save(); return; } haptic("tuck"); save(); scheduleClear(); },
+    // …and the sleep that follows a glide is silent too (measured: it buzzed once per glide before this).
+    onSleep: () => { el.style.willChange = "auto"; if (performance.now() >= glideQuietUntil) { haptic("settled"); scheduleClear(); } save(); },
+    onTrue: () => haptic("trueFound"),
+    onDetent: (strength, quarters) => hapticDetent(strength, quarters),
+    onCatch: (info) => {
+      haptic("catch");
+      squashV -= Math.min(0.12, info.w * 0.06);
+      start();
+    },
+    // Analytics: one event per completed interaction, never per frame.
+    onInteraction: (d) => { try { window.dispatchEvent(new CustomEvent("needle:interaction", { detail: d })); } catch { /* ignore */ } },
+    // Personal best — analytics ONLY, never rendered (CLAUDE-CODE-BRIEF §3b/§4.7).
+    onRecord: (kind, best) => { try { window.dispatchEvent(new CustomEvent("needle:record", { detail: { kind, best } })); } catch { /* ignore */ } },
+  };
+  const body = new NeedleBody(opts);
+  body.calm = calmed ? 0.34 : 1;
+  /* Re-read on every path that can flip a gate. The OS query fires `change`; the
+     in-app switch (`settings/feedback-settings.tsx` → `toggleMotion`) mutates the
+     documentElement class AND `data-motion` directly and dispatches NO event at
+     all, so the attribute itself is what has to be watched. One repaint on the
+     flip, so the trail, the glow and the lean take the new value immediately
+     instead of waiting for the next interaction to wake the loop. */
+  const applyCalm = () => {
+    const next = readCalm();
+    if (next === calmed) return;
+    calmed = next;
+    body.calm = calmed ? 0.34 : 1;
+    paint(0);
+  };
+  on(mq, "change", applyCalm);
+  const motionGateObserver = new MutationObserver(applyCalm);
+  motionGateObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-motion"] });
+
+  /* Rest on the LEFT/RIGHT rails only. The object floats ABOVE the nav bars (z-45) and
+     passes over them freely during a throw, but it should COME TO REST on a side rail —
+     off the reading column and off the top/bottom bars where the tabs and buttons live, so
+     it never settles on top of a nav control. This is the design's own stated preference
+     ("sides win — a disc on the top or bottom edge eats the reading column"). Overriding
+     this instance method is host customisation, NOT an edit to the vendored engine; the
+     engine's internal auto-park calls this.nearestEdge(), so it is respected everywhere. */
+  body.nearestEdge = () => {
+    const L = body.limits();
+    return (body.cx - L.minX) <= ((L.maxX + body.size) - body.cx) ? "left" : "right";
+  };
+
+  /* ── ⭐ E-400 ① · COME TO REST WHERE NOTHING IS UNDER IT ─────────────────────────────────────────────────────
+     Measured 2026-09-14 at 360 and 768: the parked disc and its tap pad cover a 12–16px strip of the right edge at one
+     fixed height, and landed on an interactive control in 6 of 40 samples (a CTA's end, the Rounds/Chart toggle, a
+     footer link). No static pose fixes that — a deeper tuck is a 16px target, under the 24px minimum exactly where it
+     overlaps. So on REST (a park or a sleep), on SCROLL-IDLE, on a route change and on a resize, the host measures the
+     footprint (the visible disc ∪ the tap pad); if an interactive element is under it, it picks the NEAREST rail
+     position within a third of the viewport where nothing is, and glides there on the engine's OWN park spring
+     (`target` + `parking`, exactly the path `parkTo` takes) — or snaps under reduced motion. If no clear position
+     exists within reach it stays where it is. The engine is not edited: this is host logic, like `nearestEdge`.
+     ⛔ Never while held, mid-throw, parking, suppressed, or on a top/bottom edge; never chained (a glide's own park
+     does not re-check); `test:needle-rest` reviews the glide frame by frame. */
+  const INTERACTIVE = 'a[href],button,input:not([type="hidden"]),select,textarea,summary,[role="button"],[role="link"],[role="tab"],[role="switch"],[role="checkbox"],[role="menuitem"],[tabindex]:not([tabindex="-1"])';
+  const CLEARANCE = 4;
+  let gliding = false;
+  let glideQuietUntil = 0;
+  let clearTimer: number | null = null;
+  /* The footprint from the ENGINE's pose, not the DOM: the disc's box (the tap pad sits inside it on a side rail),
+     clipped to the viewport. ⚠️ Measured 2026-09-14: under reduced motion the app's universal clamp gives #needle a
+     near-zero transition, so getBoundingClientRect() right after a paint still returned the previous position and the
+     rest check looked at the wrong place. Geometry has no such lag. */
+  function footprint() {
+    const v = viewport();
+    return { left: Math.max(0, body.x), right: Math.min(v.w, body.x + body.size), top: body.y, bottom: body.y + body.size };
+  }
+  /* What must not be under the disc is a control's CONTENT — its text, icon or field — or the whole of a SMALL
+     control (≤ 64px either way). Measured: on /markets and /live every rail height crosses a full-width card link, so
+     "any control" left no clear position at all, while 16px of a 328px card's padding hides nothing a player needs.
+     The session-96 cases were all content: a CTA's label end, the Rounds/Chart toggle, a footer link. */
+  const SMALL_CONTROL = 64;
+  function contentRects(n: HTMLElement, band: { left: number; right: number }) {
+    const out: Array<{ left: number; right: number; top: number; bottom: number }> = [];
+    const r = n.getBoundingClientRect();
+    const inBand = (x: { left: number; right: number }) => x.right >= band.left - CLEARANCE && x.left <= band.right + CLEARANCE;
+    if (r.width <= SMALL_CONTROL || r.height <= SMALL_CONTROL || n.matches("input,select,textarea")) {
+      if (inBand(r)) out.push({ left: r.left, right: r.right, top: r.top, bottom: r.bottom });
+      return out;
+    }
+    const walker = document.createTreeWalker(n, NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!(node.textContent || "").trim() || node.parentElement?.closest("svg")) continue;
+      range.selectNodeContents(node);
+      for (const t of range.getClientRects()) if (t.width > 0 && inBand(t)) out.push({ left: t.left, right: t.right, top: t.top, bottom: t.bottom });
+    }
+    for (const e of n.querySelectorAll("svg,img,video,canvas,input,select,textarea")) {
+      if (e.parentElement?.closest("svg")) continue;
+      const t = e.getBoundingClientRect();
+      if (t.width > 0 && inBand(t)) out.push({ left: t.left, right: t.right, top: t.top, bottom: t.bottom });
+    }
+    return out;
+  }
+  function controlsInBand(fp: { left: number; right: number }) {
+    const out: Array<{ left: number; right: number; top: number; bottom: number }> = [];
+    for (const n of document.querySelectorAll<HTMLElement>(INTERACTIVE)) {
+      if (root.contains(n)) continue;
+      const r = n.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) continue;
+      if (r.right < fp.left - CLEARANCE || r.left > fp.right + CLEARANCE) continue;
+      if (r.bottom < -viewport().h || r.top > 2 * viewport().h) continue;
+      const cs = getComputedStyle(n);
+      if (cs.visibility === "hidden" || cs.pointerEvents === "none") continue;
+      out.push(...contentRects(n, fp));
+    }
+    return out;
+  }
+  /* ⭐ 2026-10-08 · G1 [193] · READABLE TEXT IS SOMETHING UNDER IT TOO. The census above counts CONTROLS only
+     (the session-96 cases), so the disc rested on the /markets stat line at 390 in Swahili — "● 40 hai · TZS 49K
+     katika mchezo" cut at "mche", the board's own money figure line, which is text and not a control. ⛔ The page
+     reserves no room for the rest position, and never did: the `needle-rest.css` that `bottom-nav.tsx` cites was
+     never written (no commit ever added it) — the rest position is this host logic, and it had a blind spot.
+     So the visible text in the band is read as well: a TreeWalker over the page that skips the Needle, controls
+     (counted above, by their own rule), svg and script, and every subtree whose box neither reaches the band nor
+     overflows — so on a phone it reads the few elements at the right edge, not the page. Text that is not seen
+     (`visibility: hidden` slides, an `opacity: 0` ancestor, a 1px screen-reader-only box) is not counted. */
+  const TEXT_SKIP = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE", "svg", "IFRAME", "CANVAS", "VIDEO", "IMG", "SELECT", "TEXTAREA"]);
+  // Both spellings of the options: Chromium 105–120 read `checkOpacity`/`checkVisibilityCSS`, later engines the
+  // `…Property` names; an engine ignores the pair it does not know.
+  type CheckVisibility = (o?: { opacityProperty?: boolean; visibilityProperty?: boolean; checkOpacity?: boolean; checkVisibilityCSS?: boolean }) => boolean;
+  function seen(el: Element) {
+    const check = (el as Element & { checkVisibility?: CheckVisibility }).checkVisibility;
+    return check
+      ? check.call(el, { opacityProperty: true, visibilityProperty: true, checkOpacity: true, checkVisibilityCSS: true })
+      : getComputedStyle(el).visibility === "visible";
+  }
+  function textInBand(fp: { left: number; right: number }, rows: { top: number; bottom: number }) {
+    const out: Array<{ left: number; right: number; top: number; bottom: number }> = [];
+    const inBand = (x: { left: number; right: number }) => x.right >= fp.left - CLEARANCE && x.left <= fp.right + CLEARANCE;
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+      acceptNode(n) {
+        if (n.nodeType === Node.TEXT_NODE) return (n.textContent || "").trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        const el = n as Element;
+        if (el === root || TEXT_SKIP.has(el.tagName) || el.matches(INTERACTIVE)) return NodeFilter.FILTER_REJECT;
+        const r = el.getBoundingClientRect();
+        // `display: contents` reports an empty box and still holds laid-out text; any other empty box holds none.
+        if (r.width === 0 && r.height === 0) return getComputedStyle(el).display === "contents" ? NodeFilter.FILTER_SKIP : NodeFilter.FILTER_REJECT;
+        // Only the rows a rest within reach can occupy (the caller's window), so a long page costs nothing extra.
+        const near = inBand(r) && r.bottom >= rows.top && r.top <= rows.bottom;
+        const overflows = el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
+        return near || overflows ? NodeFilter.FILTER_SKIP : NodeFilter.FILTER_REJECT;
+      },
+    });
+    const range = document.createRange();
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const parent = node.parentElement;
+      if (!parent) continue;
+      range.selectNodeContents(node);
+      let visible: boolean | null = null;
+      for (const t of range.getClientRects()) {
+        if (t.width <= 1 || t.height <= 1 || !inBand(t)) continue;
+        visible ??= seen(parent);
+        if (!visible) break;
+        out.push({ left: t.left, right: t.right, top: t.top, bottom: t.bottom });
+      }
+    }
+    return out;
+  }
+  /* A rest taken KNOWING text was under it (no gap in the text within reach): it is not re-decided until the page
+     moves under it. Without this, a rest chosen by the control-only floor below could, on the next scroll-idle,
+     find a text-clear spot within reach of its NEW height and glide again — a chain, which E-413 forbids
+     (`test:needle-rest` §1). Compared with 2px of slack: the park spring lands within a pixel of its target. */
+  let textAccepted: { y: number; sx: number; sy: number } | null = null;
+  const acceptText = (y: number) => { textAccepted = { y, sx: window.scrollX, sy: window.scrollY }; };
+  /** The y to rest at: `null` = already clear (or not applicable), `undefined` = nothing clear within reach. */
+  function clearRestY(): number | null | undefined {
+    if (!body.parked || body.held || body.parking || isSuppressed()) return null;
+    if (body.edge !== "left" && body.edge !== "right") return null;
+    const fp = footprint();
+    const under = (rects: Array<{ left: number; right: number; top: number; bottom: number }>) => (dy: number) => rects.some((r) =>
+      r.left < fp.right + CLEARANCE && r.right > fp.left - CLEARANCE
+      && r.top < fp.bottom + dy + CLEARANCE && r.bottom > fp.top + dy - CLEARANCE);
+    const reach = viewport().h / 3;
+    const onControl = under(controlsInBand(fp));
+    const settled = textAccepted !== null && Math.abs(textAccepted.y - body.y) < 2
+      && textAccepted.sx === window.scrollX && textAccepted.sy === window.scrollY;
+    const onText: (dy: number) => boolean = settled ? () => false : under(textInBand(fp, { top: fp.top - reach - CLEARANCE, bottom: fp.bottom + reach + CLEARANCE }));
+    if (!onControl(0) && !onText(0)) return null;
+    const L = body.limits();
+    const m = 14;
+    const minY = L.minY + m;
+    const maxY = Math.max(minY, L.maxY - m);
+    const nearest = (clear: (dy: number) => boolean) => {
+      for (let d = 2; d <= reach; d += 2) {
+        for (const sign of [-1, 1]) {
+          const y = body.y + sign * d;
+          if (y < minY || y > maxY) continue;
+          if (clear(y - body.y)) return y;
+        }
+      }
+      return undefined;
+    };
+    // First choice: the nearest rest with neither a control nor a line of text under it.
+    const clearOfAll = nearest((dy) => !onControl(dy) && !onText(dy));
+    if (clearOfAll !== undefined) { textAccepted = null; return clearOfAll; }
+    // ⛔ E-413's guarantee is the floor and text never weakens it: off a CONTROL even where no gap in the
+    // text is within reach (a dense page). Text alone with nowhere clear to go stays put, as before.
+    if (!onControl(0)) { acceptText(body.y); return undefined; }
+    const offControl = nearest((dy) => !onControl(dy));
+    if (offControl !== undefined) acceptText(offControl);
+    return offControl;
+  }
+  function settleClear() {
+    clearTimer = null;
+    const y = clearRestY();
+    if (y === null || y === undefined) return;
+    if (calmed) {
+      body.y = y;
+      body.snapPark(body.edge);
+      paint(0);
+      save();
+      return;
+    }
+    gliding = true;
+    body.parked = false;
+    body.parking = true;
+    body.target = { x: body.x, y };
+    start();
+  }
+  function scheduleClear(delay = 180) {
+    if (clearTimer !== null) window.clearTimeout(clearTimer);
+    clearTimer = window.setTimeout(settleClear, delay);
+  }
+
+  let saved: { x?: number; y?: number; edge?: string } | null = null;
+  try { saved = JSON.parse(localStorage.getItem("50pick.needle.pos") || "null"); } catch { /* ignore */ }
+  body.y = saved && Number.isFinite(saved.y) ? (saved.y as number) : viewport().h * 0.5 - body.radius;
+  // Restore only a side edge — a stale "top"/"bottom" from before this fix would re-tuck
+  // it under the chrome on first paint.
+  const savedEdge = saved && (saved.edge === "left" || saved.edge === "right") ? saved.edge : "right";
+  body.snapPark(savedEdge);
+  paint(0);
+
+  function save() {
+    try { localStorage.setItem("50pick.needle.pos", JSON.stringify({ x: Math.round(body.x), y: Math.round(body.y), edge: body.edge })); } catch { /* ignore */ }
+  }
+
+  function paint(dt: number) {
+    if (dt) {
+      const f = clampN(dt / 16.67, 0, 3);
+      hoverOut += (hoverTo - hoverOut) * 0.22 * f;
+      if (Math.abs(hoverTo - hoverOut) < 0.05) hoverOut = hoverTo;
+    }
+    const nx = body.edge === "right" ? -1 : body.edge === "left" ? 1 : 0;
+    const ny = body.edge === "bottom" ? -1 : body.edge === "top" ? 1 : 0;
+    const ox = body.parked ? nx * hoverOut : 0;
+    const oy = body.parked ? ny * hoverOut : 0;
+    el.style.transform = `translate3d(${(body.x + ox).toFixed(2)}px, ${(body.y + oy).toFixed(2)}px, 0)`;
+    disc.style.transform = `rotate(${body.a.toFixed(2)}deg)`;
+
+    const sp = Math.abs(body.w);
+    const dir = body.w < 0 ? 1 : -1;
+    const lag = Math.min(46, sp * 26);
+    const gA = Math.min(0.5, sp * 0.42);
+    const gB = Math.min(0.28, sp * 0.24);
+    if (Math.abs(gA - blurStep) > 0.015) {
+      smearA.setAttribute("opacity", gA.toFixed(3));
+      smearB.setAttribute("opacity", gB.toFixed(3));
+      blurStep = gA;
+    }
+    if (gA > 0.004) {
+      smearA.style.transform = `rotate(${(body.a + dir * lag * 0.5).toFixed(2)}deg)`;
+      smearB.style.transform = `rotate(${(body.a + dir * lag).toFixed(2)}deg)`;
+    }
+    const bo = Math.min(0.9, Math.max(0, (sp - 0.55) * 0.85));
+    if (Math.abs(bo - blendOpa) > 0.015) { blend.setAttribute("opacity", bo.toFixed(3)); blendOpa = bo; }
+
+    const o = calmed ? 0 : Math.min(0.66, sp / 2.2);
+    if (Math.abs(o - trailOpa) > 0.02) { trail.style.opacity = o.toFixed(2); trailOpa = o; }
+    if (o > 0.01) trail.style.transform = `rotate(${(body.a * (body.w < 0 ? -1 : 1) * 0.35 + (body.w < 0 ? 180 : 0)).toFixed(1)}deg)`;
+    const wo = calmed ? 0 : Math.max(0, (sp / 2.8 - 0.88) / 0.12) * 0.85;
+    if (Math.abs(wo - wholeOpa) > 0.02) { whole.style.opacity = wo.toFixed(2); wholeOpa = wo; }
+
+    const lean = calmed ? 0 : 1;
+    const rx = clampN(-body.vy * 2.6, -7, 7) * lean;
+    const ry = clampN(body.vx * 2.6, -7, 7) * lean;
+    if (dt) {
+      const f = clampN(dt / 16.67, 0, 3);
+      squashV += (1 - squash) * 0.055 * f;
+      squashV *= Math.pow(0.86, f);
+      squash += squashV * f;
+    }
+    const t = `perspective(420px) rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) scale(${squash.toFixed(4)})`;
+    if (t !== tiltStr) { tilt.style.transform = t; tiltStr = t; }
+
+    const tucked = body.parked ? 1 : 0;
+    if (tucked !== shadowOn) { shadow.style.opacity = tucked ? "0.9" : "0"; shadowOn = tucked; }
+    const wantWake = body.parked && !body.held ? body.edge : "";
+    if (wantWake !== wakeOn) {
+      wake.classList.toggle("on", !!wantWake);
+      edgeArc.setAttribute("opacity", wantWake ? "0.85" : "0");
+      hit.className = wantWake ? "tuck-" + wantWake : "";
+      if (wantWake) hit.style.setProperty("--npad", body.padPx() + "px");
+      const at = body.edge === "right" ? "28% 50%" : body.edge === "left" ? "72% 50%"
+               : body.edge === "top" ? "50% 72%" : "50% 28%";
+      wake.style.background = wantWake
+        ? `radial-gradient(circle at ${at}, color-mix(in oklab, var(--aqua-400) 46%, transparent) 0%, color-mix(in oklab, var(--aqua-500) 20%, transparent) 38%, transparent 64%)`
+        : "none";
+      wakeOn = wantWake;
+    }
+    if (body.presence !== presenceOn) {
+      const pr = body.presence;
+      wake.style.setProperty("--pmax", (0.42 + pr * 0.58).toFixed(3));
+      wake.style.animationDuration = (4.6 - pr * 1.4).toFixed(2) + "s";
+      if (body.parked) hit.style.setProperty("--npad", body.padPx() + "px");
+      presenceOn = pr;
+    }
+  }
+
+  function start() {
+    if (raf) return;
+    if (isSuppressed()) return;   // never run the loop while hidden
+    last = performance.now();
+    el.style.willChange = "transform";
+    const tick = (t: number) => {
+      let dt = t - last; last = t;
+      if (dt > 50) dt = 50;
+      if (body.held) applyDrag();
+      body.advance(dt);
+      paint(dt);
+      raf = (body.awake || Math.abs(1 - squash) > 0.0015 || hoverOut !== hoverTo) ? requestAnimationFrame(tick) : null;
+      if (!raf) { squash = 1; squashV = 0; paint(0); }
+    };
+    raf = requestAnimationFrame(tick);
+  }
+  function stop() { if (raf) { cancelAnimationFrame(raf); raf = null; } }
+
+  /* BOUNCE mode: a tap REPELS the object away from the finger. Same proven engine — a
+     viewport-normalised linear impulse away from the tap point (so it feels identical on
+     phone and desktop), a little spin for life, a kick-squash and an impact haptic. The
+     swept wall collisions + restitution do the bouncing; it settles to the logo, ready for
+     the next tap. No grab/drag in this mode: every press repels. */
+  function bounceFrom(px: number, py: number) {
+    body.held = null; body.parking = false; body.parked = false; body.target = null;
+    let dx = body.cx - px, dy = body.cy - py;
+    let d = Math.hypot(dx, dy);
+    if (d < 1) { const rad = (body.a * Math.PI) / 180; dx = Math.cos(rad); dy = Math.sin(rad); d = 1; }
+    const kick = body.maxLin() * 0.92;
+    body.vx = (dx / d) * kick;
+    body.vy = (dy / d) * kick;
+    body.w = body.w + (dx >= 0 ? 1 : -1) * 0.7;   // a little spin; the engine guard() caps it
+    body.settling = false; body.stillFor = 0;
+    body.startRun();
+    squashV -= 0.07;                               // a satisfying kick-squash
+    hapticImpact(Math.hypot(body.vx, body.vy));    // px/ms — proportional impact haptic
+    start();
+  }
+
+  on(hit, "pointerdown", ((e: PointerEvent) => {
+    if (e.button) return;
+    if (pid !== null) return;
+    if (mode === "bounce") { e.preventDefault(); bounceFrom(e.clientX, e.clientY); return; }
+    pid = e.pointerId;
+    wasParked = body.parked || body.parking;
+    down = { x: e.clientX, y: e.clientY, t: performance.now() };
+    body.hold(wasParked ? "move" : body.grabKind(e.clientX, e.clientY));
+    samples = [{ x: e.clientX, y: e.clientY, a: Math.atan2(e.clientY - body.cy, e.clientX - body.cx) * 180 / Math.PI, t: performance.now() }];
+    hit.style.cursor = "grabbing";
+    glow.style.opacity = "1";
+    haptic("grab");
+    if (hit.setPointerCapture) hit.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    start();
+  }) as EventListener);
+
+  on(window, "pointermove", ((e: PointerEvent) => {
+    if (!body.held || (pid !== null && e.pointerId !== pid)) return;
+    e.preventDefault();
+    pending = { x: e.clientX, y: e.clientY };
+  }) as EventListener, { passive: false });
+
+  function applyDrag() {
+    if (!pending) return;
+    const l = samples[samples.length - 1];
+    if (body.held === "move") {
+      body.dragBy(pending.x - l.x, pending.y - l.y);
+      samples.push({ x: pending.x, y: pending.y, a: l.a, t: performance.now() });
+    } else {
+      const a = body.turnTo(pending.x, pending.y, l.a);
+      samples.push({ x: pending.x, y: pending.y, a, t: performance.now() });
+    }
+    if (samples.length > 8) samples.shift();
+    pending = null;
+  }
+
+  function release(e?: PointerEvent) {
+    if (!body.held || (pid !== null && e && e.pointerId != null && e.pointerId !== pid)) return;
+    applyDrag();
+    pid = null;
+    pending = null;
+    hit.style.cursor = "grab";
+    glow.style.opacity = "0";
+    const moved = down && e && e.clientX != null ? Math.hypot(e.clientX - down.x, e.clientY - down.y) : 0;
+    const quick = down ? performance.now() - down.t < 320 : false;
+    if (wasParked && quick && moved < 8) { haptic("wake"); body.wake(true); start(); return; }
+    body.release(samples, body.held);
+    start();
+  }
+  on(window, "pointerup", release as EventListener);
+  on(window, "pointercancel", release as EventListener);
+  on(window, "blur", (() => release()) as EventListener);
+
+  on(hit, "keydown", ((e: KeyboardEvent) => {
+    const step = e.shiftKey ? 48 : 12;
+    if (e.key === "Escape") { e.preventDefault(); body.held = null; body.parkTo(body.nearestEdge()); start(); return; }
+    if (mode === "bounce" && (e.key === " " || e.key === "Enter")) {
+      // Keyboard equivalent of a repel — bounce away along the current angle.
+      e.preventDefault();
+      const rad = (body.a * Math.PI) / 180;
+      bounceFrom(body.cx + Math.cos(rad) * 80, body.cy + Math.sin(rad) * 80);
+      return;
+    }
+    if (e.key === " " || e.key === "Enter") {
+      e.preventDefault();
+      if (body.parked || body.parking) body.wake(); else body.flick(1.7);
+      start();
+      return;
+    }
+    const map: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+    if (map[e.key]) { e.preventDefault(); body.unpark(); body.dragBy(map[e.key][0], map[e.key][1]); start(); }
+  }) as EventListener);
+
+  on(hit, "pointerenter", ((e: PointerEvent) => {
+    if (e.pointerType === "touch" || !body.parked) return;
+    hoverTo = 7; start();
+  }) as EventListener);
+  on(hit, "pointerleave", (() => { hoverTo = 0; start(); }) as EventListener);
+
+  function applyViewport() {
+    const d = diameter();
+    if (d !== body.size) body.setSize(d);
+    el.style.setProperty("--nsize", d + "px");
+    el.style.setProperty("--inlay", (2.6 * (88 / d)).toFixed(2));
+    el.style.setProperty("--halo", haloInset() + "%");
+    el.style.setProperty("--needlew", (4.4 * Math.max(1, 74 / d)).toFixed(2));
+    body.reclamp();
+    paint(0);
+  }
+  applyViewport();
+
+  on(window, "resize", applyViewport as EventListener);
+  on(window, "orientationchange", (() => setTimeout(applyViewport, 120)) as EventListener);
+  if (window.visualViewport) {
+    on(window.visualViewport, "resize", applyViewport as EventListener);
+    on(window.visualViewport, "scroll", applyViewport as EventListener);
+  }
+  // Scroll-idle: any scroller (capture), not just the window. Passive — it only arms a timer.
+  on(document, "scroll", (() => scheduleClear()) as EventListener, { capture: true, passive: true });
+  on(window, "resize", (() => scheduleClear(260)) as EventListener);
+  scheduleClear(900);
+
+  on(document, "visibilitychange", (() => {
+    if (document.hidden) stop();
+    else if (body.awake && !isSuppressed()) { body.acc = 0; start(); }
+  }) as EventListener);
+
+  /* ── session clock: drives presence. Derived from a per-tab start timestamp so it
+     survives hide/show and route changes without a running counter. Called on mount
+     and once a minute (CLAUDE-CODE-BRIEF §3). */
+  function sessionTick() {
+    let s = 0;
+    try { s = Number(sessionStorage.getItem("50pick.needle.sessionStart")) || 0; } catch { /* ignore */ }
+    if (!s) { s = Date.now(); try { sessionStorage.setItem("50pick.needle.sessionStart", String(s)); } catch { /* ignore */ } }
+    const minutes = (Date.now() - s) / 60000;
+    if (body.setSession(minutes)) { paint(0); if (!isSuppressed() && body.awake) start(); }
+  }
+  sessionTick();
+  const sessionTimer = window.setInterval(sessionTick, 60000);
+
+  // Platform API — mount once, these are the only two calls a page makes.
+  const api = {
+    session: (minutes: number) => { if (body.setSession(minutes)) { paint(0); if (!isSuppressed()) start(); } },
+    acknowledge: () => { if (body.acknowledge() && !isSuppressed()) start(); },
+  };
+  (window as unknown as { needle?: typeof api; __needle?: typeof body }).needle = api;
+  (window as unknown as { needle?: typeof api; __needle?: typeof body }).__needle = body;
+
+  // acknowledge() from app code: dispatch `needle:acknowledge` when a HELD position
+  // resolves (see src/lib/needle-bridge.ts → acknowledgeNeedle()).
+  on(window, "needle:acknowledge", (() => api.acknowledge()) as EventListener);
+
+  // Money-modal suppression: bet-confirm / cash-out / stake sheets dispatch these
+  // while open so the object is hidden during a live money commit (a fidget beside
+  // one is a dark pattern — CLAUDE-CODE-BRIEF §4.1).
+  const recompute = () => {
+    if (isSuppressed()) { root.classList.add("needle-suppressed"); stop(); }
+    else { root.classList.remove("needle-suppressed"); if (body.awake) start(); scheduleClear(400); }
+  };
+  on(window, "50pick:needle-suppress", (() => { modalSuppress++; recompute(); }) as EventListener);
+  on(window, "50pick:needle-release", (() => { modalSuppress = Math.max(0, modalSuppress - 1); recompute(); }) as EventListener);
+
+  // React-driven visibility (money routes + navbar toggle).
+  function setSuppressed(v: boolean) { routeSuppressed = v; recompute(); }
+  apiRef.current = { setSuppressed, recheckRest: () => scheduleClear(450) };
+  setSuppressed(wantSuppressed.current);   // apply whatever React already computed
+
+  // Live-sync the Needle's mute cache with the app's "Sound & feedback" master switch,
+  // and the interaction mode (spin/bounce) with the drawer.
+  on(window, "50pick:feedback-changed", (() => {
+    try { setMuted(getPrefs().haptics === false); } catch { /* ignore */ }
+    try { mode = getPrefs().needleMode; } catch { /* ignore */ }
+  }) as EventListener);
+  try { setMuted(getPrefs().haptics === false); } catch { /* ignore */ }
+
+  // ── cleanup: remove EVERY listener, cancel the loop, drop the API, empty the root.
+  return () => {
+    stop();
+    if (clearTimer !== null) window.clearTimeout(clearTimer);
+    motionGateObserver.disconnect();
+    window.clearInterval(sessionTimer);
+    for (const [t, type, h, opts] of listeners) t.removeEventListener(type, h, opts as EventListenerOptions);
+    const w = window as unknown as { needle?: unknown; __needle?: unknown };
+    if (w.needle === api) delete w.needle;
+    if (w.__needle === body) delete w.__needle;
+    apiRef.current = null;
+    root.innerHTML = "";
+  };
+}
+
+export function Needle() {
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const apiRef = useRef<NeedleApi | null>(null);
+  const wantSuppressed = useRef(false);
+  const pathname = usePathname();
+  // ⭐ S6 WP7 · the shell's answer, through the flag it raises: false for everybody else, and on the server.
+  const journeyOn = useJourneyOn();
+  const [hiddenPref, setHiddenPref] = useState(false);
+  /* ⭐ SSR renders the HOUSE disc, always — never the persisted value, which lives in
+     localStorage and is unreadable on the server. Reading it after mount is what keeps
+     the markup hydration-safe; the swap is a CSS variable change, so it costs one paint
+     and cannot be seen as a flash of the wrong geometry. */
+  const [theme, setTheme] = useState<NeedleTheme>("50pick");
+
+  // Track the persisted show/hide preference and the disc's theme; the settings panel,
+  // the navbar toggle and the controls drawer all dispatch "50pick:feedback-changed".
+  useEffect(() => {
+    const sync = () => {
+      setHiddenPref(getPrefs().needleHidden === true);
+      setTheme(getPrefs().needleTheme);
+    };
+    sync();
+    window.addEventListener("50pick:feedback-changed", sync);
+    return () => window.removeEventListener("50pick:feedback-changed", sync);
+  }, []);
+
+  // Mount the engine ONCE. The shell keeps a single instance across route changes;
+  // visibility is a display toggle, never a remount (remounting resets position).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const root = hostRef.current;
+    if (!root) return;
+    let cancelled = false;
+    let cleanup: (() => void) | null = null;
+    (async () => {
+      const [{ NeedleBody }, hx] = await Promise.all([
+        import("@/lib/needle-physics"),
+        import("@/lib/needle-haptics"),
+      ]);
+      if (cancelled || !hostRef.current) return;
+      cleanup = mountNeedle(hostRef.current, NeedleBody, hx, apiRef, wantSuppressed);
+    })();
+    return () => { cancelled = true; if (cleanup) cleanup(); };
+  }, []);
+
+  // Visibility gate: hide on money surfaces or when toggled off — and, for a journey viewer, on the
+  // journey's own pages (S6 WP7: the extra term is false for everybody else, so their gate is today's).
+  // Written to a ref so the engine picks it up even if it finishes mounting after this runs.
+  useEffect(() => {
+    const suppressed = hiddenPref || isMoneySurface(pathname) || (journeyOn && isJourneySurface(pathname));
+    wantSuppressed.current = suppressed;
+    apiRef.current?.setSuppressed(suppressed);
+    // A new page is new content under the rail (E-400 ①).
+    apiRef.current?.recheckRest();
+  }, [hiddenPref, pathname, journeyOn]);
+
+  return <div id="needle-root" ref={hostRef} data-needle-theme={theme} />;
+}
+
+export default Needle;
