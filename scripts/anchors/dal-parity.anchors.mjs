@@ -2522,6 +2522,15 @@ export const MUTATIONS = [
     expect: "31.redate · ⭐ C8b (B8) · ADDED PUT RIGHT, ALL OR NOTHING — both twins ask the ONE shape rule first (added-redate-model.ts: at most ADDED_REDATE_MAX rows, each id once, every instant readable, never earlier than the one it replaces); Prisma ONE transaction (its only pc()) of conditional raw updates — createdAt set, updatedAt the greatest of its own and the new instant, where the id AND the expected createdAt — a row that counts 0 throwing inside it and answered changed; memory EVERY row compared before the first write, the later stamp kept; neither touches updatedBy",
   },
   {
+    // ⭐ C8b review (NIT) · the re-dating's bound moved alone: no longer §25's, so a batch one twin's keyed read refuses
+    // passes the shape rule (or the other way round).
+    name: "added-redate-model.ts — ADDED_REDATE_MAX no longer §25's BULK_KEYED_READ_MAX",
+    file: "src/lib/server/contacts/added-redate-model.ts",
+    from: `export const ADDED_REDATE_MAX = 2000;`,
+    to: `export const ADDED_REDATE_MAX = 2500;`,
+    expect: "31.bound · ⛔ the C8b review's NIT · ADDED_REDATE_MAX (added-redate-model.ts, which cannot import the store) is the SAME number as §25's BULK_KEYED_READ_MAX (store.ts) — one batch bound, written twice and held equal here",
+  },
+  {
     // ⭐ C8b review (MINOR 2) · the join count without its window, on Postgres alone: every member the run's numbers ever
     // had on the list reads as joined by this import — "N contacts joined" over a list it put nobody on.
     name: "prisma-dal.ts — joinedFromImport counts without the run's window",

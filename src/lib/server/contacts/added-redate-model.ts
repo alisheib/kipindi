@@ -23,7 +23,7 @@
 import type { ContactAddedRedate } from "@/lib/server/store";
 
 /** The most rows one re-dating takes — §25's `BULK_KEYED_READ_MAX`, the same number (the store's constant is not imported:
- *  the store imports this module). */
+ *  the store imports this module), held equal to it by `test:dal-parity` 31.bound (the C8b review's NIT). */
 export const ADDED_REDATE_MAX = 2000;
 /** A contact id as the store mints them (`mc_` and letters; the dev seed's `mc_seed_000`). ⛔ A character class only. */
 const CONTACT_ID = /^[A-Za-z0-9_-]{1,64}$/;

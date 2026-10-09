@@ -4722,6 +4722,22 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   ok("31.redate · ⭐ C8b (B8) · ADDED PUT RIGHT, ALL OR NOTHING — both twins ask the ONE shape rule first (added-redate-model.ts: at most ADDED_REDATE_MAX rows, each id once, every instant readable, never earlier than the one it replaces); Prisma ONE transaction (its only pc()) of conditional raw updates — createdAt set, updatedAt the greatest of its own and the new instant, where the id AND the expected createdAt — a row that counts 0 throwing inside it and answered changed; memory EVERY row compared before the first write, the later stamp kept; neither touches updatedBy",
     redateOk31(memRedate, priRedate, model31), `${priRedate.slice(0, 120)} | ${memRedate.slice(0, 120)}`);
 
+  // ── 31.bound · the C8b review's NIT — ADDED_REDATE_MAX is §25's BULK_KEYED_READ_MAX, the same number, HELD ──
+  // added-redate-model.ts cannot import the store's constant (the store imports the model), so it writes the number again;
+  // this holds the two equal, so a change to §25's bound that forgets the re-dating is red here.
+  const constOf31 = (src: string, name: string): number => {
+    const head = `export const ${name} = `;
+    const line = src.split(NL31).map((l) => l.trim()).find((l) => l.startsWith(head)) ?? "";
+    const raw = (line.slice(head.length).split(";")[0] ?? "").split("_").join("").trim();
+    return raw === "" ? Number.NaN : Number(raw);
+  };
+  const boundOk31 = (model: string, store: string): boolean => {
+    const a = constOf31(model, "ADDED_REDATE_MAX");
+    return Number.isInteger(a) && a > 0 && a === constOf31(store, "BULK_KEYED_READ_MAX");
+  };
+  ok("31.bound · ⛔ the C8b review's NIT · ADDED_REDATE_MAX (added-redate-model.ts, which cannot import the store) is the SAME number as §25's BULK_KEYED_READ_MAX (store.ts) — one batch bound, written twice and held equal here",
+    boundOk31(model31, storeSrc), `${constOf31(model31, "ADDED_REDATE_MAX")} · ${constOf31(storeSrc, "BULK_KEYED_READ_MAX")}`);
+
   // ── 31.joined · the C8b review's MINOR 2 — how many contacts an import put on its list ──
   const PRI_WINDOW31 = 'and m."addedAt" >= ${q.sinceIso}::timestamptz and m."addedAt" <= ${q.untilIso}::timestamptz';
   const PRI_TOMB_J31 = 'and c."sourceRef" is distinct from ${ERASURE_EVIDENCE}::text';
@@ -4796,6 +4812,10 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     ["a Prisma re-dating without its compare", redateOk31(memRedate, priRedate, model31) && !redateOk31(memRedate, planted31(priRedate, ' and "createdAt" = ${r.expectedCreatedAt}::timestamptz', ""), model31)],
     ["a memory re-dating that writes before it has checked every row", !redateOk31(planted31(memRedate, MEM_CHECK31, ""), priRedate, model31)],
     ["a shape rule that lets one contact be named twice", !redateOk31(memRedate, priRedate, planted31(model31, 'if (seen.has(row.id)) refuse("one contact is named twice");', ""))],
+    ["a re-dating bound one past §25's — the model's number moved alone", boundOk31(model31, storeSrc) && !boundOk31(planted31(model31,
+      `export const ADDED_REDATE_MAX = ${constOf31(model31, "ADDED_REDATE_MAX")};`, `export const ADDED_REDATE_MAX = ${constOf31(model31, "ADDED_REDATE_MAX") + 1};`), storeSrc)],
+    ["§25's bound moved alone — the store's number changed, the re-dating's not", !boundOk31(model31, planted31(storeSrc,
+      `export const BULK_KEYED_READ_MAX = ${constOf31(storeSrc, "BULK_KEYED_READ_MAX")};`, `export const BULK_KEYED_READ_MAX = ${constOf31(storeSrc, "BULK_KEYED_READ_MAX") * 2};`))],
     ["a second writer of Added — a page action re-dating rows itself", callersOk31(texts31)
       && !callersOk31([...texts31, ["app/admin/contacts/planted-actions.ts", "await db.marketingContact.redateAdded(rows);"] as const])],
     ["the revival called from a second place — the importer reviving a tombstone", !callersOk31(texts31.map(([f, t]) =>
@@ -4806,7 +4826,7 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     ["a memory join count that ignores created-only — a masked run's kept rows counted", !joinedOk31(planted31(memJoined, MEM_ONLY31, "if (true) {"), priJoined)],
   ];
   const deaf31 = controls31.filter(([, held]) => !held).map(([name]) => name);
-  ok("31.c1 · CONTROL · every §31 matcher can fail: the REAL bodies pass, and ONE defect planted in each — a revival that does not ask the mark, deletes the memberships outside its transaction, keeps them, writes the caches (either twin), keeps the tombstone's id (either twin), deletes the erased person's campaign records, stamps them through updateMany, counts them outside its transaction, leaves them pointing at the deleted row, takes a row under the tombstone's own id, or writes over a taken id; a recipient link that cascades (the schema or its migration); a split that drops the linked members or counts the tombstone; a re-dating without its compare or writing before every row is checked; a shape rule that lets one contact be named twice; a second caller of the re-dating or the revival; a join count without its window, counting the tombstone, or blind to created-only — FAILS its predicate",
+  ok("31.c1 · CONTROL · every §31 matcher can fail: the REAL bodies pass, and ONE defect planted in each — a revival that does not ask the mark, deletes the memberships outside its transaction, keeps them, writes the caches (either twin), keeps the tombstone's id (either twin), deletes the erased person's campaign records, stamps them through updateMany, counts them outside its transaction, leaves them pointing at the deleted row, takes a row under the tombstone's own id, or writes over a taken id; a recipient link that cascades (the schema or its migration); a split that drops the linked members or counts the tombstone; a re-dating without its compare or writing before every row is checked; a shape rule that lets one contact be named twice; a re-dating bound or §25's bound moved alone; a second caller of the re-dating or the revival; a join count without its window, counting the tombstone, or blind to created-only — FAILS its predicate",
     deaf31.length === 0, deaf31.join(" | ") || `${controls31.length} controls held`);
 }
 
