@@ -5134,6 +5134,19 @@ export const prismaDb = {
               throw new ContactImportBatchConflict((gone.length > 0 ? gone : g.ordinals).sort((x, y) => x - y));
             }
           }
+          // ⭐ C8c · #13 · a settled row whose file tags were not all added KEEPS exactly those tags (the blanking above
+          // emptied them), so the result can list it — S15-8's one exception, ONE statement per distinct list of tags.
+          const byTagsLeft = new Map<string, { tags: string[]; ordinals: number[] }>();
+          for (const left of b.tagsLeft ?? []) {
+            if (left.tags.length === 0) continue;
+            const key = JSON.stringify(left.tags);
+            const group = byTagsLeft.get(key) ?? { tags: [...left.tags], ordinals: [] };
+            group.ordinals.push(left.ordinal);
+            byTagsLeft.set(key, group);
+          }
+          for (const g of byTagsLeft.values()) {
+            await tx.contactImportRow.updateMany({ where: { importId: b.importId, ordinal: { in: g.ordinals } }, data: { tags: g.tags } });
+          }
           if (b.listId !== null && members.length > 0) {
             const live = await tx.marketingContact.findMany({
               where: { id: { in: members }, OR: [{ sourceRef: null }, { sourceRef: { not: ERASURE_EVIDENCE } }] },
@@ -5216,6 +5229,20 @@ export const prismaDb = {
         take: Math.max(0, Math.min(q.limit, CONTACT_IMPORT_FAILED_PAGE_MAX)),
       });
       const total = await pc().contactImportRow.count({ where: { importId: q.importId, outcome: "fail" } });
+      return { rows: rows.map(toStoredContactImportRow), total };
+    },
+    /** §29 · ⭐ C8c · #13 · the run's settled rows whose file tags were NOT all added: kept or updated rows still holding
+     *  tags after the blanking (`tags` not empty — a Postgres text[] filter), after `q.afterLine`, ascending by line — a
+     *  keyset on the line, never `skip` — at most `q.limit` (clamped to `CONTACT_IMPORT_FAILED_PAGE_MAX`), and their total
+     *  COUNTED separately. */
+    tagsLeftPage: async (q: ContactImportFailedQuery): Promise<ContactImportFailedPage> => {
+      const rows = await pc().contactImportRow.findMany({
+        where: { importId: q.importId, outcome: { in: ["keep", "update"] }, tags: { isEmpty: false }, line: { gt: q.afterLine } },
+        orderBy: { line: "asc" },
+        // The failures page's clamp, written min-of-max so a red anchor on failedPage's own line still resolves once.
+        take: Math.min(Math.max(0, q.limit), CONTACT_IMPORT_FAILED_PAGE_MAX),
+      });
+      const total = await pc().contactImportRow.count({ where: { importId: q.importId, outcome: { in: ["keep", "update"] }, tags: { isEmpty: false } } });
       return { rows: rows.map(toStoredContactImportRow), total };
     },
     /** §29 · the run's KEPT rows counted by their stored reason — ONE groupBy, never the rows (OD26). */

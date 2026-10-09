@@ -185,6 +185,8 @@ function headersCovering(headers: readonly string[], mapping: ColumnMapping): st
 /** How a refusal is painted: a wait or a re-check is not an error; everything else is said as one. */
 const REFUSAL_TONE: Partial<Record<ImportRefusalReason, ImportAlertState["tone"]>> = {
   busy: "warning",
+  // C8c · #14b · the database refused every step for over a minute and the run paused itself: a wait, not a fault.
+  db_paused: "warning",
   rate_limited: "warning",
   xlsx_busy: "warning",
   check_again: "warning",
@@ -1115,7 +1117,7 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
               extraNumbers={extra.current.runId === phase.result.view.id ? extra.current.count : 0}
               extraUnit={extra.current.unit}
               cut={cutFor(phase.result.view)}
-              loadFailures={(runId, afterLine) => ACTIONS.failures({ runId, afterLine })}
+              loadFailures={(runId, afterLine, list) => ACTIONS.failures({ runId, afterLine, list })}
               onClose={onClose}
               onOpenLists={openLists}
               focusRef={buttonFocus}

@@ -4151,7 +4151,7 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       && !emailMem28(memByEmail.split(".trim().toLowerCase() === norm").join(" === norm")));
 }
 
-/* ═══ §29 · The import's check and commit — snapshotsAmong · firstLinesAmong · failedPage · keptSplit · freezeDecision · commitBatch in both twins (S15, 2026-10-09; decisions X3 · S15-6/7/8) ═══ */
+/* ═══ §29 · The import's check and commit — snapshotsAmong · firstLinesAmong · failedPage · tagsLeftPage · keptSplit · freezeDecision · commitBatch in both twins (S15, 2026-10-09; decisions X3 · S15-6/7/8; C8c · #13) ═══ */
 {
   // ⭐ WHY THIS SECTION EXISTS. The importer's six DAL members carry the rules that keep a 200,000-row import exact, and
   // every behavioural suite (`test:contacts-import` sections check and commit) runs them on the MEMORY twin. So a Prisma
@@ -4185,11 +4185,13 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   const memRun = region(storeSrc, `${NL29}  contactImport: {`);
   const priRow = region(dalSrc, `${NL29}  contactImportRow: {`);
   const memRow = region(storeSrc, `${NL29}  contactImportRow: {`);
-  const NAMES29 = ["snap", "first", "failed", "kept", "freeze", "commit", "open"] as const;
+  const NAMES29 = ["snap", "first", "failed", "kept", "freeze", "commit", "open", "tags"] as const;
   type Name29 = (typeof NAMES29)[number];
   const MEMBER29: Record<Name29, [string, "book" | "run" | "row"]> = {
     snap: ["snapshotsAmong", "book"], first: ["firstLinesAmong", "row"], failed: ["failedPage", "row"], kept: ["keptSplit", "row"],
     freeze: ["freezeDecision", "run"], commit: ["commitBatch", "run"], open: ["listOpenByOthers", "run"],
+    // C8c · #13 · the settled rows whose file tags were not all added.
+    tags: ["tagsLeftPage", "row"],
   };
   const blockOf = (twin: "pri" | "mem", where: "book" | "run" | "row"): string =>
     twin === "pri" ? (where === "book" ? priBook : where === "run" ? priRun : priRow) : (where === "book" ? memBook : where === "run" ? memRun : memRow);
@@ -4198,14 +4200,14 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
 
   // ── 29.0 · THE PARSER ──
   const SNAP_KEYS29 = ["id", "msisdn", "displayName", "email", "notes", "tags", "sourceRef", "importId", "updatedAt", "userId"];
-  const BATCH_KEYS29 = ["importId", "fromCursor", "toCursor", "at", "by", "creates", "updates", "outcomes", "sentences", "listId", "members"];
+  const BATCH_KEYS29 = ["importId", "fromCursor", "toCursor", "at", "by", "creates", "updates", "outcomes", "sentences", "listId", "members", "tagsLeft"];
   const FREEZE_KEYS29 = ["importId", "choice", "overrides", "targetListId", "newList", "by", "at"];
   const OTHERS_KEYS29 = ["excludeCreatedBy", "limit"];
-  ok("29.0 · the parser sees §29's named shapes — MarketingContactSnapshot's ten columns, ContactImportCommitBatch's eleven keys, the freeze's seven, the open-runs query's two — and all seven members resolve in BOTH twins",
+  ok("29.0 · the parser sees §29's named shapes — MarketingContactSnapshot's ten columns, ContactImportCommitBatch's twelve keys (C8c · #13's tagsLeft among them), the freeze's seven, the open-runs query's two — and all eight members resolve in BOTH twins",
     sameSet(storedKeys("MarketingContactSnapshot"), SNAP_KEYS29) && sameSet(storedKeys("ContactImportCommitBatch"), BATCH_KEYS29)
       && sameSet(storedKeys("ContactImportFreeze"), FREEZE_KEYS29) && sameSet(storedKeys("ContactImportOthersQuery"), OTHERS_KEYS29)
       && NAMES29.every((n) => pri29[n].length > 100 && mem29[n].length > 100),
-    `snapshot [${setDiff(SNAP_KEYS29, storedKeys("MarketingContactSnapshot")) || "10"}] · batch [${setDiff(BATCH_KEYS29, storedKeys("ContactImportCommitBatch")) || "11"}] · freeze [${setDiff(FREEZE_KEYS29, storedKeys("ContactImportFreeze")) || "7"}] · regions ${NAMES29.map((n) => `${pri29[n].length}/${mem29[n].length}`).join(" ")}`);
+    `snapshot [${setDiff(SNAP_KEYS29, storedKeys("MarketingContactSnapshot")) || "10"}] · batch [${setDiff(BATCH_KEYS29, storedKeys("ContactImportCommitBatch")) || "12"}] · freeze [${setDiff(FREEZE_KEYS29, storedKeys("ContactImportFreeze")) || "7"}] · regions ${NAMES29.map((n) => `${pri29[n].length}/${mem29[n].length}`).join(" ")}`);
 
   // ── 29.named ──
   const SIGS29: Record<Name29, [string, string]> = {
@@ -4216,6 +4218,7 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     freeze: ["freezeDecision: (f: ContactImportFreeze): StoredContactImport | null =>", "freezeDecision: async (f: ContactImportFreeze): Promise<StoredContactImport | null> =>"],
     commit: ["commitBatch: (b: ContactImportCommitBatch): ContactImportCommitResult =>", "commitBatch: async (b: ContactImportCommitBatch): Promise<ContactImportCommitResult> =>"],
     open: ["listOpenByOthers: (q: ContactImportOthersQuery): StoredContactImport[] =>", "listOpenByOthers: async (q: ContactImportOthersQuery): Promise<StoredContactImport[]> =>"],
+    tags: ["tagsLeftPage: (q: ContactImportFailedQuery): ContactImportFailedPage =>", "tagsLeftPage: async (q: ContactImportFailedQuery): Promise<ContactImportFailedPage> =>"],
   };
   const TYPES29 = [
     "MarketingContactSnapshot", "ContactImportFirstLinesQuery", "ContactImportFirstLine", "ContactImportFailedQuery", "ContactImportFailedPage",
@@ -4290,6 +4293,23 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     flat29(b).includes('if (row.outcome === "keep") counts.set(row.outcomeReason, (counts.get(row.outcomeReason) ?? 0) + 1);');
   ok("29.kept · keptSplit is counted from the rows in both twins — Prisma ONE groupBy on outcomeReason where outcome keep (never findMany); memory every keep row by its reason",
     keptPri29(pri29.kept) && keptMem29(mem29.kept), `${pri29.kept.length}/${mem29.kept.length} chars`);
+
+  // ── 29.tags · C8c · #13 · the tags a full contact could not take, kept on the settled row and read back ──
+  const TAGS_WHERE_PRI29 = 'where: { importId: q.importId, outcome: { in: ["keep", "update"] }, tags: { isEmpty: false }, line: { gt: q.afterLine } },';
+  const TAGS_TOTAL_PRI29 = 'const total = await pc().contactImportRow.count({ where: { importId: q.importId, outcome: { in: ["keep", "update"] }, tags: { isEmpty: false } } });';
+  const tagsPri29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes(TAGS_WHERE_PRI29) && f.includes('orderBy: { line: "asc" },') && f.includes("take: Math.min(Math.max(0, q.limit), CONTACT_IMPORT_FAILED_PAGE_MAX),")
+      && f.includes(TAGS_TOTAL_PRI29) && !f.includes("skip:");
+  };
+  const TAGS_LEFT_MEM29 = 'const left = Array.from(runRows.values()).filter((row) => (row.outcome === "keep" || row.outcome === "update") && row.tags.length > 0);';
+  const tagsMem29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes(TAGS_LEFT_MEM29) && f.includes(".filter((row) => row.line > q.afterLine)") && f.includes(".sort((a, b) => a.line - b.line)")
+      && f.includes(".slice(0, Math.max(0, Math.min(q.limit, CONTACT_IMPORT_FAILED_PAGE_MAX)))") && f.includes("return { rows: page, total: left.length };");
+  };
+  ok("29.tags · ⭐ C8c · #13 · tagsLeftPage is the failures page's own keyset in both twins — the settled KEEP or UPDATE rows still holding tags (Prisma's text[] isEmpty false; memory a non-empty list), line after afterLine, ascending, clamped to CONTACT_IMPORT_FAILED_PAGE_MAX and never skip — and their total COUNTED separately",
+    tagsPri29(pri29.tags) && tagsMem29(mem29.tags), `${pri29.tags.length}/${mem29.tags.length} chars`);
 
   // ── 29.freeze · the start's compare-and-set, and R12's new list born inside it ──
   const FREEZE_FIELDS29 = ['status: "COMMITTING",', "decisionChoice: f.choice", "decisionOverrides: ", "decisionConfirmedAt: ", "decisionConfirmedBy: f.by,"];
@@ -4431,6 +4451,22 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   ok("29.gone · ⛔ R9 · every row a step settles must still be there, unsettled — Prisma counts each outcome group's update and THROWS a conflict naming the rows gone when it falls short (the step rolls back whole); memory checks every outcome's row before its first write — so a number erasure took away between the step's read and its write is never created",
     gonePri29(pri29.commit) && goneMem29(mem29.commit));
 
+  // ── 29.tagsleft · C8c · #13 · the write half of 29.tags (after 29.blank and 29.gone, whose anchors it is ordered by) ──
+  const TAGS_LOOP29 = "for (const left of b.tagsLeft ?? []) {";
+  const TAGS_WRITE_PRI29 = "await tx.contactImportRow.updateMany({ where: { importId: b.importId, ordinal: { in: g.ordinals } }, data: { tags: g.tags } });";
+  const TAGS_WRITE_MEM29 = "if (row && row.outcome !== null && left.tags.length > 0) staged.set(left.ordinal, { ...row, tags: [...left.tags] });";
+  const tagsLeftPri29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes(TAGS_LOOP29) && f.includes(TAGS_WRITE_PRI29) && before29(f, BLANK_PRI29, TAGS_WRITE_PRI29) && before29(f, GONE_PRI29, TAGS_WRITE_PRI29)
+      && before29(f, TAGS_WRITE_PRI29, 'data: { status: "DONE"');
+  };
+  const tagsLeftMem29 = (b: string): boolean => {
+    const f = flat29(b);
+    return f.includes(TAGS_LOOP29) && f.includes(TAGS_WRITE_MEM29) && before29(f, BLANK_MEM29, TAGS_WRITE_MEM29);
+  };
+  ok("29.tagsleft · ⭐ C8c · #13 · a settled row whose file tags were not all added KEEPS exactly those tags in both twins — written AFTER the blanking that empties them (Prisma inside the step's ONE transaction, after the settled rows are counted and before DONE; memory only on a row this batch settled), so the result can list it",
+    tagsLeftPri29(pri29.commit) && tagsLeftMem29(mem29.commit));
+
   // ── 29.bounds · R17 · the cursor moves forward, within the staged rows, in both twins ──
   const BOUNDS_PRI29 = "if (bounds === null || b.toCursor < b.fromCursor || b.toCursor > bounds.stagedThrough) {";
   const BOUNDS_MEM29 = 'if (b.toCursor < b.fromCursor || b.toCursor > batchRun.stagedThrough) throw new Error("commitBatch: the cursor must move forward, within the staged rows");';
@@ -4522,9 +4558,15 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     ["a Prisma cursor moved past the staged rows", boundsPri29(pri29.commit) && !boundsPri29(planted29(pri29.commit, BOUNDS_PRI29, "if (bounds === null) {"))],
     ["open runs that include the viewer's own", openMem29(mem29.open) && !openMem29(planted29(mem29.open, OPEN_NOT_MINE29, ""))],
     ["open runs unbounded on Postgres", openPri29(pri29.open) && !openPri29(planted29(pri29.open, OPEN_TAKE29, "take: q.limit,"))],
+    // ── C8c · #13 ──
+    ["a tags-left page that also lists failed rows", tagsPri29(pri29.tags) && !tagsPri29(planted29(pri29.tags, 'outcome: { in: ["keep", "update"] }, tags', "tags"))],
+    ["a tags-left page by skip", !tagsPri29(planted29(pri29.tags, 'orderBy: { line: "asc" },', 'orderBy: { line: "asc" }, skip: q.afterLine,'))],
+    ["a memory tags-left page holding rows with no tags", tagsMem29(mem29.tags) && !tagsMem29(planted29(mem29.tags, " && row.tags.length > 0);", ");"))],
+    ["tags left written before the blanking", tagsLeftPri29(pri29.commit) && !tagsLeftPri29(planted29(planted29(pri29.commit, TAGS_WRITE_PRI29, ""), BLANK_PRI29, `${TAGS_WRITE_PRI29} ${BLANK_PRI29}`))],
+    ["a memory commit that never keeps the tags left", tagsLeftMem29(mem29.commit) && !tagsLeftMem29(planted29(mem29.commit, TAGS_WRITE_MEM29, ""))],
   ];
   const deaf29 = controls29.filter(([, held]) => !held).map(([name]) => name);
-  ok("29.c1 · CONTROL · every §29 matcher can fail: the REAL bodies pass, and ONE defect planted in each — a snapshot without its select, leaving the tombstone out or dropping the account link, a first-line read without the problems filter or over every run, a failures page by skip, a kept split by findMany, a freeze without its status, writing first, inserting its new list before it wins, or without its unique index or foreign key, a commit without its cursor, creating first, out of lock order, settling rows that are gone or moving its cursor past the staged rows, an update without the NULL arm, blanking that keeps the raw cell, members twice, DONE without its bound, open runs holding the viewer's own or unbounded, a relation that cascades — FAILS its predicate",
+  ok("29.c1 · CONTROL · every §29 matcher can fail: the REAL bodies pass, and ONE defect planted in each — a snapshot without its select, leaving the tombstone out or dropping the account link, a first-line read without the problems filter or over every run, a failures page by skip, a kept split by findMany, a freeze without its status, writing first, inserting its new list before it wins, or without its unique index or foreign key, a commit without its cursor, creating first, out of lock order, settling rows that are gone or moving its cursor past the staged rows, an update without the NULL arm, blanking that keeps the raw cell, members twice, DONE without its bound, open runs holding the viewer's own or unbounded, a relation that cascades, and (C8c · #13) a tags-left page that lists failed rows, pages by skip or holds rows with no tags, and tags left written before the blanking or never — FAILS its predicate",
     deaf29.length === 0, deaf29.join(" | ") || `${controls29.length} controls held`);
 }
 

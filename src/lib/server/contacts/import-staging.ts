@@ -38,6 +38,8 @@ import { randomBytes } from "node:crypto";
 import { db, CONTACT_IMPORT_ROW_PAGE_MAX } from "@/lib/server/store";
 import type { ContactImportStatus, ContactImportTotals, StoredContactImport, StoredContactImportRow } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
+import { IMPORT_REFUSAL_AUDIT } from "./refusal-audit";
+import type { RefusalAuditGate } from "./refusal-audit";
 import { firstMobileIn } from "@/lib/contacts/phone-cell";
 import { CONTACT_FIELDS, charCount, draftContactRow, validateMapping } from "@/lib/contacts/contact-fields";
 import type { ColumnMapping } from "@/lib/contacts/contact-fields";
@@ -261,6 +263,8 @@ export type ImportStagingDeps = {
   /** An ADMIN may adopt any run (X18) — read off the STORED role, never a posted one. */
   isAdmin: (userId: string) => Promise<boolean>;
   audit: typeof audit;
+  /** ⭐ C8c · #14a · which refusals get a row (`refusal-audit.ts`): at most one a minute per officer, run and reason. */
+  refusalAudit: RefusalAuditGate;
   now: () => Date;
   newRunId: () => string;
 };
@@ -277,6 +281,7 @@ export const IMPORT_STAGING_DEPS: ImportStagingDeps = {
   stuckDays: CONTACT_IMPORT_STUCK_DAYS,
   isAdmin: async (userId) => (await db.user.findById(userId))?.role === "ADMIN",
   audit,
+  refusalAudit: IMPORT_REFUSAL_AUDIT,
   now: () => new Date(),
   // Twenty letters: a run id rides in audit rows and in the book's `sourceRef`, and must never hold a digit run.
   newRunId: () => `ci_${Array.from(randomBytes(20), (b) => String.fromCharCode(97 + (b % 26))).join("")}`,
@@ -292,13 +297,18 @@ function mappingKey(m: ColumnMapping): string {
 const refusal = (reason: StagingRefusalReason, message: string, view: ContactImportView | null = null): StagingRefusal =>
   ({ ok: false, reason, message, view });
 
-/** ⛔ The refusal's audit row: ids, counts and the reason — never a number, a name, a cell or the file's name (X23). */
+/** ⛔ The refusal's audit row: ids, counts and the reason — never a number, a name, a cell or the file's name (X23).
+ *  ⭐ C8c · #14a · bounded by the importer's ONE gate (`refusal-audit.ts`): at most one row a minute per officer, run and
+ *  reason — the next row written carries how many refusals it stands for (`repeats`). */
 async function auditRefusal(
   deps: ImportStagingDeps, officerId: string, importId: string | null, reason: StagingRefusalReason, detail: Record<string, number> = {},
 ): Promise<void> {
+  const action = "contacts.import.stage_refused";
+  const verdict = deps.refusalAudit.admit({ action, officerId, importId, reason });
+  if (!verdict.write) return;
   await deps.audit({
-    category: "ADMIN", action: "contacts.import.stage_refused", actorId: officerId, targetType: "ContactImport",
-    targetId: importId, payload: { reason, ...detail },
+    category: "ADMIN", action, actorId: officerId, targetType: "ContactImport",
+    targetId: importId, payload: verdict.repeats > 0 ? { reason, ...detail, repeats: verdict.repeats } : { reason, ...detail },
   });
 }
 

@@ -37,7 +37,9 @@ import {
 import { CONTACT_LIMITS } from "../../src/lib/contacts/contact-fields.ts";
 import { parseTzNumber, readAsciiDigits } from "../../src/lib/tz-msisdn.ts";
 import { adjustTally } from "../../src/lib/contacts/import-decide.ts";
-import { NOW, OFFICER, captureAudit, checkModule, commitModule, inFreshStore, mem, stageFile, staging } from "../lib/contacts-import-world.mts";
+import {
+  NOW, OFFICER, TEST_REFUSAL_AUDIT, captureAudit, checkModule, commitModule, inFreshStore, mem, stageFile, staging,
+} from "../lib/contacts-import-world.mts";
 
 /* ⛔ Control characters from their codes — the editing tools decode escape text into raw characters. */
 const LF = String.fromCharCode(10);
@@ -77,8 +79,9 @@ const { checkContactImport } = checkModule;
 const REAL_DEPS: ImportCommitDeps = {
   ...IMPORT_COMMIT_DEPS,
   audit: captureAudit,
+  refusalAudit: TEST_REFUSAL_AUDIT,
   now: () => NOW,
-  stagingDeps: { ...IMPORT_COMMIT_DEPS.stagingDeps, audit: captureAudit, now: () => NOW },
+  stagingDeps: { ...IMPORT_COMMIT_DEPS.stagingDeps, audit: captureAudit, refusalAudit: TEST_REFUSAL_AUDIT, now: () => NOW },
 };
 
 let cached: PhoneCellImpl | null = null;

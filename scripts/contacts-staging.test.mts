@@ -39,6 +39,7 @@ import {
   IMPORT_STAGING_DEPS, STAGING_SENTENCES,
 } from "../src/lib/server/contacts/import-staging.ts";
 import type { ImportStagingDeps, StageContactRowsResult } from "../src/lib/server/contacts/import-staging.ts";
+import { refusalAuditGate } from "../src/lib/server/contacts/refusal-audit.ts";
 import {
   IMPORT_MAX_ROWS, STAGE_BATCH_BODY_MARGIN, STAGE_BATCH_MAX_BYTES, STAGE_BATCH_MAX_ROWS, STAGE_ROW_TOO_LARGE,
   packStageBatches, stageBatchBytes, stageFigures, stageRowFor, stageRowsOf, utf8Length,
@@ -81,7 +82,10 @@ const ADMIN = "usr_stage_admin";
 const NOW = new Date("2026-10-02T09:00:00.000Z");
 const DAY = 24 * 60 * 60 * 1000;
 const iso = (ms: number) => new Date(ms).toISOString();
-const TEST_DEPS: ImportStagingDeps = { ...IMPORT_STAGING_DEPS, audit: captureAudit, now: () => NOW };
+/** ⭐ C8c · #14a · the refusal-audit gate on the suite's FIXED clock — reset by every fresh store, so no check's refusal row
+ *  is kept out by another check's (production's gate is one per process, on the wall clock). */
+const TEST_REFUSAL_AUDIT = refusalAuditGate(() => NOW.getTime());
+const TEST_DEPS: ImportStagingDeps = { ...IMPORT_STAGING_DEPS, audit: captureAudit, refusalAudit: TEST_REFUSAL_AUDIT, now: () => NOW };
 
 type Impl = { deps: ImportStagingDeps };
 const REAL: Impl = { deps: TEST_DEPS };
@@ -144,6 +148,7 @@ async function inFreshStore(fn: () => Promise<void>): Promise<void> {
   for (const k of FLAT) (m[k] as Map<string, unknown>).clear();
   m.contactImportRows.clear();
   captured.length = 0;
+  TEST_REFUSAL_AUDIT.reset();
   try {
     await db.user.create(makeUser(OFFICER, "+255754900001", "GROWTH"));
     await db.user.create(makeUser(OTHER, "+255754900002", "GROWTH"));
@@ -331,11 +336,12 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const adminView = await contactImportView(ADMIN, id, deps);
     const adminPush = await stageContactRows(ADMIN, stageBody(id, 1, rowsFrom(2, 2)), deps);
     const notYours = captured.filter((x) => x.action === "contacts.import.stage_refused" && (x.payload as { reason?: string })?.reason === "not_yours");
+    // ⭐ C8c · #14a · the push and the discard are ONE officer refused not_yours on ONE run in one minute: one row.
     return [theirs.ok && !theirs.adopted && theirs.view.id !== id
       && peek === null && !push.ok && push.reason === "not_yours" && push.view === null
       && !drop.ok && drop.reason === "not_yours" && drop.view === null
       && adminView !== null && !adminView.mine && adminView.createdBy === OFFICER
-      && adminPush.ok && adminPush.view.stagedThrough === 2 && !adminPush.view.mine && notYours.length === 2,
+      && adminPush.ok && adminPush.view.stagedThrough === 2 && !adminPush.view.mine && notYours.length === 1,
       `peek ${peek === null ? "null" : "SEEN"} · push ${reasonOf(push)} · admin ${adminPush.ok ? adminPush.view.stagedThrough : adminPush.reason}`];
   });
 

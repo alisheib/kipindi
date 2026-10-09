@@ -14,7 +14,9 @@
  * ⛔ S15-3 · THE KEPT ROWS ARE SPLIT BY REASON ONLY FOR A VIEWER WHO MAY READ NUMBERS: the server sends the split for that
  * viewer alone (`KeptSplit`, OD54 — a stop per row is a player signal); everyone else reads one "kept as they were".
  * ⭐ S15-4 · HOW MANY PEOPLE HAD ANOTHER NUMBER that was not imported is said, when this tab read the file.
- * ⭐ The rows that could not be imported are listed a page at a time, each with its row and its sentence; "Show the
+ * ⭐ The rows that could not be imported are listed a page at a time, each with its row and its sentence — and (C8c · #13,
+ * a READER's alone: `tagsNotAdded` is null for anyone else) so are the contacts imported without all their new tags, each
+ * with the tags left out (the decide() header's promise: listed, never silently dropped); "Show the
  * contacts this import added" opens the book filtered to this import (`?import=<run>`, the ONE href builder); the list
  * the contacts went on says whether its new members are covered for offers, and the way to its card when they are not.
  */
@@ -24,18 +26,63 @@ import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { extraNumbersNote, type ExtraNumbersUnit } from "@/lib/contacts/import-read";
-import type { FailuresResult, ImportResultView } from "@/lib/contacts/import-flow";
+import type { FailuresResult, ImportResultView, ImportRowList } from "@/lib/contacts/import-flow";
 import { contactsHref } from "../contacts-query";
 import { CHECK, DONE, IMPORT_CLOSE, IMPORT_TRY_AGAIN, LIST, type SumCut } from "./import-copy";
 import { ActionsRow, ButtonText, ImportAlert, Parts, SectionHeading, Tile } from "./import-parts";
 
-type Failures = {
+type RowPages = {
   readonly rows: ReadonlyArray<{ line: number; sentence: string }>;
   readonly total: number | null;
   readonly next: number | null;
   readonly loading: boolean;
   readonly failed: boolean;
 };
+
+/**
+ * ⭐ ONE PAGED LIST OF THE RESULT'S ROWS — the rows that could not be imported, or (C8c · #13) a reader's rows whose new tags
+ * were not added: page 1 read once when there are any (loading from the first frame, so "Show more" never flashes before
+ * it), "Show more" asks from the server's `nextAfterLine` (R8), a failed read offers Try again.
+ */
+function useRowPages(
+  load: (runId: string, afterLine: number, list: ImportRowList) => Promise<FailuresResult>, runId: string, list: ImportRowList, count: number,
+): { readonly pages: RowPages; readonly more: (after: number) => Promise<void> } {
+  const [pages, setPages] = useState<RowPages>({ rows: [], total: null, next: 0, loading: count > 0, failed: false });
+  const live = useRef(true);
+  useEffect(() => {
+    live.current = true;
+    return () => {
+      live.current = false;
+    };
+  }, []);
+
+  const more = async (after: number) => {
+    setPages((f) => ({ ...f, loading: true, failed: false }));
+    try {
+      const r = await load(runId, after, list);
+      if (!live.current) return;
+      if (!r.ok) {
+        setPages((f) => ({ ...f, loading: false, failed: true }));
+        return;
+      }
+      setPages((f) => {
+        const seen = new Set(f.rows.map((x) => x.line));
+        return { rows: [...f.rows, ...r.rows.filter((x) => !seen.has(x.line))], total: r.total, next: r.nextAfterLine, loading: false, failed: false };
+      });
+    } catch {
+      if (live.current) setPages((f) => ({ ...f, loading: false, failed: true }));
+    }
+  };
+
+  const asked = useRef<string | null>(null);
+  useEffect(() => {
+    if (count === 0 || asked.current === runId) return;
+    asked.current = runId;
+    void more(0);
+    // A result is read once; "Show more" asks for the next page.
+  }, [runId, count]);
+  return { pages, more };
+}
 
 export function ImportDonePanel({
   result, notImported, extraNumbers, extraUnit, cut, loadFailures, onClose, onOpenLists, focusRef,
@@ -49,7 +96,8 @@ export function ImportDonePanel({
   /** S15-4 · people with another number not imported, as this tab read the file (0 when it did not read it). */
   extraNumbers: number;
   extraUnit: ExtraNumbersUnit;
-  loadFailures: (runId: string, afterLine: number) => Promise<FailuresResult>;
+  /** A page of one of the result's row lists (`importFailuresAction` — `list` "tags_not_added" for C8c · #13's). */
+  loadFailures: (runId: string, afterLine: number, list: ImportRowList) => Promise<FailuresResult>;
   onClose: () => void;
   onOpenLists: () => void;
   focusRef: RefObject<HTMLButtonElement | null>;
@@ -57,41 +105,10 @@ export function ImportDonePanel({
   const view = result.view;
   const t = view.totals;
   const cancelled = view.status === "CANCELLED";
-  // Loading from the first frame when there are failures to read, so "Show more" never flashes before the first page.
-  const [failures, setFailures] = useState<Failures>({ rows: [], total: null, next: 0, loading: t.fail > 0, failed: false });
-  const live = useRef(true);
-  useEffect(() => {
-    live.current = true;
-    return () => {
-      live.current = false;
-    };
-  }, []);
-
-  const more = async (after: number) => {
-    setFailures((f) => ({ ...f, loading: true, failed: false }));
-    try {
-      const r = await loadFailures(view.id, after);
-      if (!live.current) return;
-      if (!r.ok) {
-        setFailures((f) => ({ ...f, loading: false, failed: true }));
-        return;
-      }
-      setFailures((f) => {
-        const seen = new Set(f.rows.map((x) => x.line));
-        return { rows: [...f.rows, ...r.rows.filter((x) => !seen.has(x.line))], total: r.total, next: r.nextAfterLine, loading: false, failed: false };
-      });
-    } catch {
-      if (live.current) setFailures((f) => ({ ...f, loading: false, failed: true }));
-    }
-  };
-
-  const asked = useRef<string | null>(null);
-  useEffect(() => {
-    if (t.fail === 0 || asked.current === view.id) return;
-    asked.current = view.id;
-    void more(0);
-    // A result is read once; "Show more" asks for the next page.
-  }, [view.id, t.fail]);
+  const { pages: failures, more } = useRowPages(loadFailures, view.id, "failed", t.fail);
+  // ⭐ C8c · #13 · a reader's alone: null for anyone else (S15-10), and then the section is never drawn.
+  const tagsCount = result.tagsNotAdded ?? 0;
+  const { pages: tags, more: moreTags } = useRowPages(loadFailures, view.id, "tags_not_added", tagsCount);
 
   const tiles: Array<{ name: string; label: string; value: number }> = [
     { name: "create", label: DONE.tiles.create, value: t.create },
@@ -184,6 +201,48 @@ export function ImportDonePanel({
           {/* ⭐ R8 · "Show more" while the server says the list goes on — whatever the last page held. */}
           {!failures.loading && !failures.failed && failures.next !== null && (
             <Button type="button" size="sm" variant="ghost" onClick={() => void more(failures.next ?? 0)} data-import-act="failures-more">
+              {DONE.failuresMore}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* ⭐ C8c · #13 · the contacts imported WITHOUT all their new tags (each already full of tags) — a reader's list. */}
+      {tagsCount > 0 && (
+        <div className="space-y-1.5" data-import-tags-not-added={tagsCount}>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <SectionHeading>{DONE.tagsHeading}</SectionHeading>
+            {tags.rows.length > 0 && (
+              <span className="text-body-sm text-text-subtle"><Parts parts={CHECK.showing(tags.rows.length, tags.total ?? tagsCount)} /></span>
+            )}
+          </div>
+          <p className="text-body-sm text-text-secondary"><Parts parts={DONE.tagsLead(tagsCount)} /></p>
+          {tags.rows.length > 0 && (
+            <ScrollX label={DONE.tagsHeading} className="max-h-[260px] overflow-y-auto">
+              <table className="admin-tbl">
+                <tbody>
+                  {tags.rows.map((r) => (
+                    <tr key={r.line} data-import-tags-row={r.line}>
+                      <td className="tabular align-top"><Parts parts={CHECK.row(r.line)} /></td>
+                      <td className="align-top break-words">{r.sentence}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </ScrollX>
+          )}
+          {tags.loading && <p className="text-body-sm text-text-secondary" role="status">{DONE.tagsLoading}</p>}
+          {tags.failed && (
+            <ImportAlert
+              alert={{
+                tone: "warning",
+                text: DONE.tagsFailed,
+                actions: [{ label: IMPORT_TRY_AGAIN, run: () => void moreTags(tags.next ?? 0), act: "tags-retry" }],
+              }}
+            />
+          )}
+          {!tags.loading && !tags.failed && tags.next !== null && (
+            <Button type="button" size="sm" variant="ghost" onClick={() => void moreTags(tags.next ?? 0)} data-import-act="tags-more">
               {DONE.failuresMore}
             </Button>
           )}

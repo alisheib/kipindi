@@ -1367,10 +1367,14 @@ export type ContactImportCommitUpdate = {
 export type ContactImportCommitOutcome = { ordinal: number; outcome: ImportOutcome; reason: string | null };
 /** S15-8 · the sentence a failed row keeps once its cells are blanked — written into `problems` BEFORE the blanking. */
 export type ContactImportFailSentence = { ordinal: number; sentence: string };
+/** ⭐ C8c · #13 · a settled row whose file tags were NOT all added (the contact already holds the most tags a contact can
+ *  have — `mergeTags`' `notAdded`): the tags left out, which the row keeps after the blanking so the result can list it. */
+export type ContactImportTagsLeft = { ordinal: number; tags: string[] };
 /**
  * ⭐ X3 · ONE STEP OF THE COMMIT, AS ONE WRITE: the cursor moves `fromCursor` → `toCursor` by compare-and-set while the
  * run is COMMITTING, and in the same transaction the creates, the guarded updates, the failure sentences, the outcomes
- * with the blanking (S15-8), the list memberships, and DONE when `toCursor` is the run's `stagedThrough`.
+ * with the blanking (S15-8), the tags left out (C8c · #13), the list memberships, and DONE when `toCursor` is the run's
+ * `stagedThrough`.
  */
 export type ContactImportCommitBatch = {
   importId: string;
@@ -1385,6 +1389,10 @@ export type ContactImportCommitBatch = {
   listId: string | null;
   /** Contact ids to put on the list — the store adds only those that still exist and are not the erased tombstone. */
   members: string[];
+  /** ⭐ C8c · #13 · the step's rows whose file tags were not all added — each keeps exactly those tags once settled
+   *  (S15-8's one exception: the result lists them, `contactImportRow.tagsLeftPage`). OPTIONAL so a batch written before
+   *  C8c (a probe's, a replayed one) means "none". */
+  tagsLeft?: ContactImportTagsLeft[];
 };
 /** `advanced`: written · `moved`: the cursor was not `fromCursor` (or the run not COMMITTING) — NOTHING written ·
  *  `conflict`: a create the unique index refused, an update whose guard failed, or a staged row the step would settle
@@ -4375,6 +4383,12 @@ const memoryDb = {
           ...row, outcome: o.outcome, outcomeReason: o.reason, rawPhone: "", displayName: null, email: null, notes: null, tags: [],
         });
       }
+      // ⭐ C8c · #13 · a settled row whose file tags were not all added KEEPS exactly those tags (the blanking above emptied
+      // them), so the result can list it — S15-8's one exception, the run's own retention.
+      for (const left of b.tagsLeft ?? []) {
+        const row = staged.get(left.ordinal);
+        if (row && row.outcome !== null && left.tags.length > 0) staged.set(left.ordinal, { ...row, tags: [...left.tags] });
+      }
       if (b.listId !== null) {
         for (const contactId of members) {
           const member = store.marketingContacts.get(contactId);
@@ -4459,6 +4473,20 @@ const memoryDb = {
         .slice(0, Math.max(0, Math.min(q.limit, CONTACT_IMPORT_FAILED_PAGE_MAX)))
         .map((row) => ({ ...row, tags: [...row.tags], problems: row.problems.map((p) => ({ ...p })) }));
       return { rows: page, total: failed.length };
+    },
+    /** §29 · ⭐ C8c · #13 · the run's settled rows whose file tags were NOT all added (a contact already full of tags): the
+     *  kept or updated rows still holding tags after the blanking — after `q.afterLine`, ascending by line, at most `q.limit`
+     *  (clamped to `CONTACT_IMPORT_FAILED_PAGE_MAX`), and the run's total of them counted separately. The failures page's
+     *  own shape. */
+    tagsLeftPage: (q: ContactImportFailedQuery): ContactImportFailedPage => {
+      const runRows: Map<number, StoredContactImportRow> = store.contactImportRows.get(q.importId) ?? new Map<number, StoredContactImportRow>();
+      const left = Array.from(runRows.values()).filter((row) => (row.outcome === "keep" || row.outcome === "update") && row.tags.length > 0);
+      const page = left
+        .filter((row) => row.line > q.afterLine)
+        .sort((a, b) => a.line - b.line)
+        .slice(0, Math.max(0, Math.min(q.limit, CONTACT_IMPORT_FAILED_PAGE_MAX)))
+        .map((row) => ({ ...row, tags: [...row.tags], problems: row.problems.map((p) => ({ ...p })) }));
+      return { rows: page, total: left.length };
     },
     /** §29 · the run's KEPT rows counted by their stored reason — the result's split (S15-3), counted from the rows
      *  (OD26), never stored. Ordered by reason. */

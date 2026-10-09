@@ -111,7 +111,9 @@ export type ImportRefusalReason =
   // update contacts already in the book (S15-10)
   | "check_stale" | "update_needs_reader"
   // the commit
-  | "paused" | "cancelled" | "done" | "moved" | "busy";
+  | "paused" | "cancelled" | "done" | "moved" | "busy"
+  // C8c · #14b · the database refused every step for over a minute: the step paused the run (never "bets come first")
+  | "db_paused";
 
 export type ImportRefusal = {
   ok: false;
@@ -194,6 +196,14 @@ export type PreflightView = {
   changing: Readonly<Record<ImportChoice, number>>;
   /** When the book was read. The check is advisory: the commit decides again at write time. */
   checkedAt: string;
+  /**
+   * ⭐ C8c · #13 · how many in-book rows the changes pages LIST — every first-occurrence row in the book that some choice
+   * would update, AND (the decide() header's promise: tags that do not fit are listed, never silently dropped) every one
+   * whose new tags some choice could not add because the contact already holds the most tags a contact can have (it reads
+   * "nothing to change" otherwise). At least `changing` under every choice; ZERO for a viewer who may not update the book
+   * (S15-10: no per-row changes at all).
+   */
+  listed: number;
   /**
    * ⛔ S15-10 (the review round of 2026-10-09, on OD54 · OD65): may THIS viewer update contacts already in the book from a
    * file? True only for a viewer whose identity.contact cell is `read` (the matrix, never a role name). For anyone else
@@ -306,7 +316,10 @@ export type ImportOpenRunsResult = ImportAnswer<{ runs: ImportRunView[] }>;
 
 /** The rows that could not be imported, a page at a time, by file row, with the sentence (never the raw value). */
 export const FAILURES_PAGE_ROWS = 50;
-export type FailuresInput = { runId: string; afterLine: number };
+/** ⭐ C8c · #13 · which of the result's row lists a page is of: the rows that could not be imported (the default), or — a
+ *  reader's alone (S15-10) — the rows whose new tags were not added (`tagsNotAddedSentence`). */
+export type ImportRowList = "failed" | "tags_not_added";
+export type FailuresInput = { runId: string; afterLine: number; list?: ImportRowList };
 export type FailuresResult = ImportAnswer<{ rows: Array<{ line: number; sentence: string }>; total: number; nextAfterLine: number | null }>;
 
 /* ══ 6 · THE RESULT ══════════════════════════════════════════════════════════════════════════════ */
@@ -326,8 +339,23 @@ export type ImportResultView = {
    *  "covers N of N", N above 0): members the import added joined after any earlier recording, so it reads false until
    *  the basis is recorded again on the Lists card. */
   list: { id: string; name: string; covered: boolean } | null;
+  /**
+   * ⭐ C8c · #13 · how many rows the import settled WITHOUT all their new tags (the contact already held the most tags a
+   * contact can have) — listed a page at a time through the failures action with `list: "tags_not_added"`. ⛔ A reader's
+   * alone: null for a viewer who may not read numbers (S15-10 — no per-row changes at all; such a viewer imports with KEEP,
+   * which adds no tag anyway).
+   */
+  tagsNotAdded: number | null;
 };
 export type ImportResultResult = ImportAnswer<{ result: ImportResultView }>;
+
+/**
+ * ⭐ C8c · #13 · THE ONE SENTENCE for tags a full contact could not take — the changes table's line and the result's row,
+ * the same words in both. The tags are the import's own stored labels (U28's tag rule: never a phone number).
+ */
+export function tagsNotAddedSentence(tags: readonly string[]): string {
+  return `Not added, the contact is full of tags: ${tags.join(", ")}`;
+}
 
 /* ══ THE SENTENCES — every refusal, one whole sentence with the next step ═════════════════════════ */
 
@@ -361,7 +389,26 @@ export const IMPORT_REFUSAL_SENTENCES: Readonly<Record<Exclude<ImportRefusalReas
   done: "This import has finished.",
   moved: "Another window moved this import on. Showing where it is now.",
   busy: "The platform is busy right now — bets come first. The import carries on by itself as soon as it is free.",
+  db_paused: "The database is busy — the import has paused. Resume it in a few minutes.",
 };
+
+/**
+ * ⭐ C8c · #14b · THE DATABASE'S OWN "NOT NOW", IN ITS OWN WORDS. A step the database turned away (a deadlock, no free
+ * connection, a transaction timeout — `RETRYABLE_DB_CODES`) is answered `busy`, so the loop waits it out as it waits for
+ * bets — but ⛔ never in the bet queue's sentence ("bets come first" is the admission queue's, `busy`'s own): this one.
+ * After `DB_FAULTS_TO_PAUSE` such answers in a row on one run, over at least `DB_FAULT_SPAN_MS`, the step PAUSES the run
+ * and answers `db_paused` instead (its sentence in the table above).
+ */
+export const DB_BUSY_SENTENCE = "The database is busy right now. The import waits and carries on by itself in a moment.";
+
+/**
+ * ⭐ C8c · #14b · A STEP WHOSE ROWS KEPT MOVING. A step decides again once from fresh facts and then keeps the rows that
+ * moved again (X3, E9); a step whose write was still refused after that wrote nothing and ends as `server_error` — said in
+ * words the officer can act on (the paused panel's Resume decides that part of the file afresh), never "something went
+ * wrong". ⛔ No number, no name.
+ */
+export const STEP_CONFLICT_SENTENCE =
+  "Some of these contacts were being changed at the same moment, so this part of the file was not written. Nothing was lost — press Resume in a minute to carry on.";
 
 /**
  * ⭐ C8c · N3 · THE START'S NEW LIST, MADE BY SOMEONE ELSE MEANWHILE. The start asks `listNameKey` over every list first

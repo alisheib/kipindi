@@ -9,7 +9,8 @@
  * The contacts that would change are listed a page at a time (`importChangesAction`, asked again from `nextAfterLine`
  * until a page fills or the list ends — the server bounds each page by the work behind it, so a page can be short or
  * even empty while the list goes on, and "Show more" stays while `nextAfterLine` is not null — R8), each with what
- * changes under the choice in force, and each can be SET APART: kept as it is when the choice would change it, or given
+ * changes under the choice in force — ⭐ C8c · #13 · and every contact full of tags whose new tags would not be added,
+ * listed with those tags (the check's `listed` is the list's total) — and each can be SET APART: kept as it is when the choice would change it, or given
  * the file's version when it would not. Changing the choice for every row clears the rows set apart, and says how many.
  * ⛔ S15-10 (R1) · A VIEWER WHO MAY NOT UPDATE CONTACTS ALREADY IN THE BOOK (`mayUpdateInBook` false — the matrix's
  * identity.contact cell, never a role name) sees NO choice cards and NO changes list: one line, "Numbers already in the
@@ -113,9 +114,15 @@ type ListsState = { readonly state: "loading" | "ready" | "failed"; readonly opt
 const firstUpdating = (row: ChangesPageRow): ImportChoice | null =>
   IMPORT_CHOICES.find((c) => row.preview.byChoice[c].kind === "update") ?? null;
 
-/** What one choice does to one row, in words: each replaced value (email and notes named, never shown), the tags. */
+/** What one choice does to one row, in words: each replaced value (email and notes named, never shown), the tags.
+ *  ⭐ C8c · #13 · a contact full of tags whose only difference is new tags reads "Nothing to change" — and lists the tags
+ *  that are not added, never silently. */
 function changeLines(p: ChoicePreview): string[] {
-  if (p.kind === "keep") return [KEEP_REASON[p.reason ?? "chosen_keep"]];
+  if (p.kind === "keep") {
+    const out = [KEEP_REASON[p.reason ?? "chosen_keep"]];
+    if (p.tagsNotAdded.length > 0) out.push(DECIDE.tagsNotAdded(p.tagsNotAdded));
+    return out;
+  }
   const out: string[] = [];
   for (const o of p.overwrites) {
     if (o.field === "displayName") out.push(DECIDE.name(o.from, o.to));
@@ -155,8 +162,9 @@ export function ImportDecisionPanel({
   const { pick, newName, nameTouched } = draft;
   const [cleared, setCleared] = useState<number | null>(null);
   const [dropped, setDropped] = useState<number | null>(null);
-  /** How many in-book rows differ from the file under any choice — the changes list's whole length, as the check counted. */
-  const listTotal = Math.max(0, ...IMPORT_CHOICES.map((c) => preflight.changing[c]));
+  /** How many in-book rows the changes list holds — the server's own count of its pages' rows (C8c · #13: the rows some
+   *  choice would update, and those whose new tags a full contact could not take). */
+  const listTotal = Math.max(0, preflight.listed);
   const [changes, setChanges] = useState<ChangesState>({ rows: [], next: null, loading: inBook > 0 && mayUpdate && listTotal > 0, failed: false });
   const [lists, setLists] = useState<ListsState>({ state: "loading", options: [] });
   const [asking, setAsking] = useState<"overwrite" | "discard" | null>(null);

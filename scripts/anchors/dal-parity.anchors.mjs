@@ -2220,6 +2220,24 @@ export const MUTATIONS = [
     expect: "29.failed · failedPage is a keyset on the line in both twins — outcome fail, line after afterLine, ascending, the page clamped to CONTACT_IMPORT_FAILED_PAGE_MAX (50 in both) and never skip — and the total COUNTED separately (Prisma count, memory every failed row)",
   },
   {
+    // 🔴 C8c · #13 · the Prisma tags-left page loses its outcome filter: on Postgres the result's "tags not added" list
+    // would hold any row still carrying tags — a FAILED row's, whose tags were never meant for the book.
+    name: "prisma-dal.ts — tagsLeftPage reads every row still holding tags, failed ones included",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { importId: q.importId, outcome: { in: ["keep", "update"] }, tags: { isEmpty: false }, line: { gt: q.afterLine } },`,
+    to: `        where: { importId: q.importId, tags: { isEmpty: false }, line: { gt: q.afterLine } },`,
+    expect: "29.tags · ⭐ C8c · #13 · tagsLeftPage is the failures page's own keyset in both twins — the settled KEEP or UPDATE rows still holding tags (Prisma's text[] isEmpty false; memory a non-empty list), line after afterLine, ascending, clamped to CONTACT_IMPORT_FAILED_PAGE_MAX and never skip — and their total COUNTED separately",
+  },
+  {
+    // 🔴 C8c · #13 · the memory commit drops the tags left out: every memory suite would read "no tags not added" while
+    // Postgres keeps them — the result's list differs by twin.
+    name: "store.ts — the memory commit never keeps the tags a full contact could not take",
+    file: "src/lib/server/store.ts",
+    from: `        if (row && row.outcome !== null && left.tags.length > 0) staged.set(left.ordinal, { ...row, tags: [...left.tags] });`,
+    to: `        // (the tags left out are dropped)`,
+    expect: "29.tagsleft · ⭐ C8c · #13 · a settled row whose file tags were not all added KEEPS exactly those tags in both twins — written AFTER the blanking that empties them (Prisma inside the step's ONE transaction, after the settled rows are counted and before DONE; memory only on a row this batch settled), so the result can list it",
+  },
+  {
     // Two starts both freeze the run on Postgres: the second decision overwrites the first mid-commit.
     name: "prisma-dal.ts — the freeze loses its STAGED status from the where",
     file: "src/lib/server/prisma-dal.ts",

@@ -13,7 +13,7 @@
  */
 import { formatNumber } from "@/lib/utils";
 import type { ImportChoice, ShownKeepReason } from "@/lib/contacts/import-decide";
-import { IMPORT_REFUSAL_SENTENCES, type PreflightBucket } from "@/lib/contacts/import-flow";
+import { IMPORT_REFUSAL_SENTENCES, tagsNotAddedSentence, type PreflightBucket } from "@/lib/contacts/import-flow";
 import { IMPORT_MAX_ROWS } from "@/lib/contacts/import-limits";
 import { SHEET_SAMPLE_ROWS } from "@/lib/contacts/sheet-choice";
 import { formatFileSize, PHONE_FORMAT_REMEDY, XLSX_MAX_BYTES } from "@/lib/contacts/xlsx-limits";
@@ -313,7 +313,8 @@ export const DECIDE = {
   colApart: "Set apart",
   tableLabel: "Contacts that would change",
   tagsAdded: (tags: readonly string[]): string => `Tags added: ${tags.join(", ")}`,
-  tagsNotAdded: (tags: readonly string[]): string => `Not added, the contact is full of tags: ${tags.join(", ")}`,
+  /** ⭐ C8c · #13 · the contract's ONE sentence — the result's row says it in the same words. */
+  tagsNotAdded: (tags: readonly string[]): string => tagsNotAddedSentence(tags),
   noName: "No name",
   keepAsIs: "Leave this contact as it is",
   useFile: "Use the file's version for this contact",
@@ -468,6 +469,13 @@ export const DONE = {
   failuresMore: "Show more",
   failuresLoading: "Loading the rows that couldn't be imported…",
   failuresFailed: "The rows that couldn't be imported didn't load. Try again.",
+  /** ⭐ C8c · #13 · a reader's list of the contacts that were imported WITHOUT all their new tags (each full of tags). */
+  tagsHeading: "Tags not added",
+  tagsLead: (n: number): Part[] => [
+    fig(n), ` ${plural(n, "contact already holds", "contacts already hold")} the most tags a contact can have, so some of the file's tags were not added. Remove tags from ${plural(n, "it", "them")} in the book, then import again to add the rest.`,
+  ],
+  tagsLoading: "Loading the contacts whose tags were not added…",
+  tagsFailed: "The contacts whose tags were not added didn't load. Try again.",
   showAdded: "Show the contacts this import added",
   listReady: (name: string): string => `Added to the list ${name} — every member is covered for offers.`,
   listOwed: (name: string): string =>

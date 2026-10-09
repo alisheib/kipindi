@@ -42,12 +42,17 @@
  * `changing` zero and `mayUpdateInBook` false — and the changes pages refuse them `update_needs_reader`: "0 contacts
  * change" for a one-line file would otherwise say whether that one number is stopped or erased (OD54 · OD65).
  *
- * ⭐ THE CHANGES PAGES. The in-book rows that would change under ANY of the three choices, in FILE order after a line,
+ * ⭐ THE CHANGES PAGES. The in-book rows that would change under ANY of the three choices — and (C8c · #13) every one whose
+ * new tags a choice could not add because the contact is full of tags (`listedInChanges`) — in FILE order after a line,
  * `CHANGES_PAGE_ROWS` a page, each with its masked number and its preview under all three choices (D19: no contact id).
  * A page finds where to start by bisecting the keyset on the line (lines strictly increase with ordinals), reads each
  * number's first decidable line in ONE grouped read (`contactImportRow.firstLinesAmong`, S15-7), and walks at most
  * `changesWalkRows` staged rows per request — so a page can hold fewer rows than asked while `nextAfterLine` is not null.
  *
+ * ⭐ C8c · N4 · BETS COME FIRST. The walk asks the bet admission queue before every page — the commit step's question,
+ * asked the same way — and waits while a bet is queued, inside its own deadline (`yieldToBets`; never a second clock).
+ * ⭐ C8c · #14a · A REFUSAL ROW IS BOUNDED (`refusal-audit.ts`): a "moved" is never written, any other refusal at most once
+ * a minute per officer, run and reason (`auditImportRefusal`, the one writer of every refusal row here and in the commit).
  * ⛔ OWNERSHIP IS STAGING'S RULE (`mayDriveImport`, X18): the run's creator, or an ADMIN read off the STORED role.
  * ⛔ SERVER-ONLY, NO DIRECTIVE, NO ACTION. Its one caller is `import-actions.ts`, which gates and rate-limits first.
  * Guard: `test:contacts-import` (section `check`, in-process red) · `test:dal-parity` §29 (the DAL members it reads).
@@ -58,7 +63,10 @@ import type {
   StoredContactImport, StoredContactImportRow, StoredMessagingConsent, StoredSuppression,
 } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
+import { admissionSnapshot } from "@/lib/server/admission";
 import { mayReveal } from "@/lib/server/rbac";
+import { IMPORT_REFUSAL_AUDIT } from "./refusal-audit";
+import type { RefusalAuditGate } from "./refusal-audit";
 import { IMPORT_STAGING_DEPS, STAGING_SENTENCES, isImportRunId, mayDriveImport } from "./import-staging";
 import type { ContactImportView, StagingRefusal } from "./import-staging";
 import { phoneCellRefusal } from "@/lib/contacts/phone-cell";
@@ -83,6 +91,8 @@ import type {
 export const IMPORT_CHECK_DEADLINE_MS = 75_000;
 /** How many staged rows one changes request walks at most; past it the page ends early and says where to go on. */
 export const CHANGES_WALK_ROWS = 10_000;
+/** ⭐ C8c · N4 · while a bet waits for an admission slot, the walk asks the queue again this often — inside its deadline. */
+export const BET_YIELD_WAIT_MS = 250;
 /** ⛔ A line, an ordinal and a cursor are Postgres INTEGERs (staging's review F2): a larger one is refused here. */
 const INT4_MAX = 2_147_483_647;
 /** Who started (or stopped) a run, when it is not the viewer and their name cannot be shown. */
@@ -141,6 +151,8 @@ export type ImportCheckDeps = {
   plan: typeof planImportRows;
   /** decide() under all three choices for one row — `previewFor`. */
   preview: typeof previewFor;
+  /** ⭐ C8c · #13 · is this preview a changes-page row (`listedInChanges`) — the pages and the check's `listed` count. */
+  listed: (p: DecisionPreview) => boolean;
   /** M2 · the sample sheet's example numbers are invalid. */
   isSample: (msisdn: string) => boolean;
   /** ⛔ D19 · the ONE mask a number leaves the server through. */
@@ -150,11 +162,21 @@ export type ImportCheckDeps = {
   /** ⛔ OD33 · the first-line map is the WHOLE run's: carried from page to page. A red plant sets false to prove it. */
   firstLinesAcrossPages: boolean;
   audit: typeof audit;
+  /** ⭐ C8c · #14a · which refusals get a row (`refusal-audit.ts`): never a "moved", at most one a minute per officer, run
+   *  and reason. Production's one gate per process; a suite's own over its fixed clock. */
+  refusalAudit: RefusalAuditGate;
   now: () => Date;
   deadlineMs: number;
   /** The keyset page the walk reads — one staging batch's worth. */
   windowRows: number;
   changesWalkRows: number;
+  /** ⭐ Bets come first: how many bets wait for an admission slot right now (`admissionSnapshot`) — the commit step's own
+   *  question, asked by the walk between pages too (C8c · N4). */
+  queueDepth: () => number;
+  /** C8c · N4 · wait this long (ms) — the walk's only timer: what it waits by is always `now` against its one deadline. */
+  pause: (ms: number) => Promise<void>;
+  /** C8c · N4 · how long the walk waits before it asks the bet queue again. */
+  betWaitMs: number;
 };
 
 /* ═══ THE ONE BISECTION — where a changes page starts ═════════════════════════════════════════════════ */
@@ -196,15 +218,20 @@ export const IMPORT_CHECK_DEPS: ImportCheckDeps = {
   listName: async (listId) => (await db.contactList.find(listId))?.name ?? null,
   plan: planImportRows,
   preview: previewFor,
+  listed: listedInChanges,
   isSample: isSampleMsisdn,
   mask: (msisdn) => maskPhone(msisdn),
   locate: firstOrdinalAfterLine,
   firstLinesAcrossPages: true,
   audit,
+  refusalAudit: IMPORT_REFUSAL_AUDIT,
   now: () => new Date(),
   deadlineMs: IMPORT_CHECK_DEADLINE_MS,
   windowRows: CONTACT_IMPORT_ROW_PAGE_MAX,
   changesWalkRows: CHANGES_WALK_ROWS,
+  queueDepth: () => admissionSnapshot().queueDepth,
+  pause: (ms) => new Promise<void>((resolve) => { setTimeout(resolve, ms); }),
+  betWaitMs: BET_YIELD_WAIT_MS,
 };
 
 /* ═══ THE FACTS — the authority's, per number ════════════════════════════════════════════════════════ */
@@ -293,10 +320,31 @@ export type RunWalkPage = {
 };
 
 /**
+ * ⭐ C8c · N4 · BETS COME FIRST BETWEEN THE WALK'S PAGES TOO. The commit step asks the admission queue before it writes and
+ * refuses `busy` while a bet waits (`import-commit.ts`); the walk — the check's and the start's, a 200,000-row run is ~100
+ * page reads, each with four bulk fact reads — never asked, so a big check competed with bets for the database. Now,
+ * before every page, it asks THE SAME QUEUE THE SAME WAY (`queueDepth`, admission's own count) and, while a bet waits,
+ * WAITS (`betWaitMs` at a time) and asks again. ⛔ NEVER A SECOND CLOCK: the wait is measured by the walk's own `now`
+ * against its own deadline, so a check that bets keep waiting past its deadline answers `too_slow` exactly as a slow one
+ * does (nothing written either way — the officer checks again). True when the queue is clear; false when the deadline
+ * passed while bets waited.
+ */
+export async function yieldToBets(
+  deps: Pick<ImportCheckDeps, "queueDepth" | "pause" | "now" | "betWaitMs">, deadline: number,
+): Promise<boolean> {
+  while (deps.queueDepth() > 0) {
+    if (deps.now().getTime() > deadline) return false;
+    await deps.pause(deps.betWaitMs);
+  }
+  return true;
+}
+
+/**
  * ⭐ THE ONE WALK — the check's and the start's. Pages of `windowRows` staged rows in ordinal order; the running map of
  * each number's first DECIDABLE line, updated BEFORE the page is decided (the first row of a number on this page maps
  * to itself, so decide() calls it first); the facts of the page's numbers; decide() under all three choices. A deadline
- * passed between pages answers "too_slow" — nothing is ever written, so stopping is free.
+ * passed between pages answers "too_slow" — nothing is ever written, so stopping is free. ⭐ C8c · N4 · before every page
+ * the walk yields to queued bets (`yieldToBets`), inside the same deadline.
  */
 export async function walkStagedRun(
   run: StoredContactImport, deps: ImportCheckDeps, deadline: number, visit: (page: RunWalkPage) => void,
@@ -306,6 +354,7 @@ export async function walkStagedRun(
   let after = 0;
   for (;;) {
     if (deps.now().getTime() > deadline) return "too_slow";
+    if (!(await yieldToBets(deps, deadline))) return "too_slow";
     const rows = await deps.rowsAfter({ importId: run.id, afterOrdinal: after, limit: pageRows });
     if (rows.length === 0) return "done";
     const first = deps.firstLinesAcrossPages ? running : new Map<string, number>();
@@ -428,7 +477,7 @@ export function importRefusalSentence(reason: ImportRefusalReason): string {
     case "forbidden": case "rate_limited": case "server_error": case "xlsx_busy": case "not_staged": case "too_slow":
     case "bad_choice": case "bad_exceptions": case "bad_list": case "list_name_taken": case "list_gone": case "already_started":
     case "check_again": case "check_stale": case "update_needs_reader": case "paused": case "cancelled": case "done":
-    case "moved": case "busy":
+    case "moved": case "busy": case "db_paused":
       return IMPORT_REFUSAL_SENTENCES[reason];
     default:
       return IMPORT_REFUSAL_SENTENCES.server_error;
@@ -447,20 +496,27 @@ export async function importRefusalOf(viewerId: string, r: StagingRefusal, deps:
   return { ok: false, reason: r.reason, message: r.message, view: r.view === null ? null : await importRunViewOf(viewerId, r.view, deps) };
 }
 
-/** The audit row of a refusal — ⛔ ids, counts and the reason: never a number, a name, a cell or the file's name (X23). */
+/**
+ * The audit row of a refusal — ⛔ ids, counts and the reason: never a number, a name, a cell or the file's name (X23).
+ * ⭐ C8c · #14a · BOUNDED (`refusal-audit.ts`): a "moved" is never written, and any other refusal at most once a minute for
+ * one officer, one run and one reason — the next row written for that key carries how many it stands for (`repeats`).
+ */
 export async function auditImportRefusal(
-  deps: Pick<ImportCheckDeps, "audit">, action: string, officerId: string, importId: string | null, reason: ImportRefusalReason,
+  deps: Pick<ImportCheckDeps, "audit" | "refusalAudit">, action: string, officerId: string, importId: string | null, reason: ImportRefusalReason,
   detail: Record<string, number | string | boolean> = {},
 ): Promise<void> {
+  const verdict = deps.refusalAudit.admit({ action, officerId, importId, reason });
+  if (!verdict.write) return;
   await deps.audit({
-    category: "ADMIN", action, actorId: officerId, targetType: "ContactImport", targetId: importId, payload: { reason, ...detail },
+    category: "ADMIN", action, actorId: officerId, targetType: "ContactImport", targetId: importId,
+    payload: verdict.repeats > 0 ? { reason, ...detail, repeats: verdict.repeats } : { reason, ...detail },
   });
 }
 
 /** A run the officer may drive — found, and theirs or an ADMIN's (X18) — or the refusal, audited. Only a WELL-FORMED
  *  run id ever reaches an audit row (staging's review F1). */
 export async function openImportRun(
-  officerId: string, runId: unknown, deps: Pick<ImportCheckDeps, "findRun" | "isAdmin" | "audit">, refusedAction: string,
+  officerId: string, runId: unknown, deps: Pick<ImportCheckDeps, "findRun" | "isAdmin" | "audit" | "refusalAudit">, refusedAction: string,
 ): Promise<{ ok: true; run: StoredContactImport } | { ok: false; refusal: ImportRefusal }> {
   const run = isImportRunId(runId) ? await deps.findRun(runId) : null;
   if (run === null) {
@@ -530,6 +586,7 @@ export async function checkContactImport(officerId: string, runId: unknown, deps
     create: 0, update: 0, keep: 0, overwrites: 0, keepBy: zeroKeepBy(),
   }));
   const changing: Record<ImportChoice, number> = byEveryChoice(() => 0);
+  let listedRows = 0;
   let rows = 0;
   let broken = false;
 
@@ -561,7 +618,11 @@ export async function checkContactImport(officerId: string, runId: unknown, deps
         counts.new++;
       } else {
         counts.inBook++;
-        if (preview.kind === "inBook") for (const ch of IMPORT_CHOICES) if (preview.byChoice[ch].kind === "update") changing[ch]++;
+        if (preview.kind === "inBook") {
+          for (const ch of IMPORT_CHOICES) if (preview.byChoice[ch].kind === "update") changing[ch]++;
+          // ⭐ C8c · #13 · the changes pages' own rule, counted — the panel's total is the list it reads.
+          if (deps.listed(preview)) listedRows++;
+        }
       }
     }
     byChoice = byEveryChoice((ch) => addTallies(byChoice[ch], page.plan.byChoice[ch]) as ShownTally);
@@ -589,6 +650,8 @@ export async function checkContactImport(officerId: string, runId: unknown, deps
     byChoice: mayUpdateInBook ? byChoice : byEveryChoice(() => ({ ...keepOnly, keepBy: { ...keepOnly.keepBy } })),
     changing: mayUpdateInBook ? changing : byEveryChoice(() => 0),
     checkedAt: deps.now().toISOString(),
+    // ⛔ S15-10 · a viewer who may not update the book is listed no per-row change at all.
+    listed: mayUpdateInBook ? listedRows : 0,
     mayUpdateInBook,
   };
   await deps.audit({
@@ -601,8 +664,19 @@ export async function checkContactImport(officerId: string, runId: unknown, deps
 /* ═══ THE CHANGES — in-book rows a choice would change, a page at a time ════════════════════════════════════ */
 
 /**
+ * ⭐ C8c · #13 · THE ONE RULE FOR A CHANGES-PAGE ROW — the check's `listed` count and the pages themselves ask it, so the
+ * total the panel shows is the list it reads: a row in the book that some choice would UPDATE, or whose new tags some
+ * choice could not add (the contact already holds the most tags a contact can have — decide() keeps it `no_change` and
+ * lists the tags, `tagsNotAdded`, as its header promises: "listed, never silently dropped").
+ */
+export function listedInChanges(p: DecisionPreview): boolean {
+  return p.kind === "inBook" && IMPORT_CHOICES.some((ch) => p.byChoice[ch].kind === "update" || p.byChoice[ch].tagsNotAdded.length > 0);
+}
+
+/**
  * ⭐ ONE PAGE OF CHANGES, in FILE order after `afterLine`: every decidable, first-occurrence row that is in the book and
- * that at least one of the three choices would UPDATE, with its masked number and its preview under all three (D19: no
+ * that at least one of the three choices would UPDATE — or (C8c · #13) leave new tags out of, the contact being full of
+ * tags (`listedInChanges`) — with its masked number and its preview under all three (D19: no
  * contact id; X22: an erased number is previewed as the contact it reads as, which never changes). The first decidable
  * line of each number comes from ONE grouped read of the WHOLE run (S15-7), so a repeat on this page whose first row sits
  * pages earlier is never listed. ⛔ Writes nothing, and audits only a refusal.
@@ -652,7 +726,8 @@ export async function contactImportChanges(officerId: string, input: unknown, de
       if (firstLine === undefined || firstLine > c.line || f === undefined) throw new Error("contactImportChanges: a decidable row has no first line or no facts");
       if (firstLine < c.line) continue;
       const preview = deps.preview(c.candidate, { ...f, repeatOf: null }, run.id);
-      if (preview.kind !== "inBook" || !IMPORT_CHOICES.some((ch) => preview.byChoice[ch].kind === "update")) continue;
+      // ⭐ C8c · #13 · a row some choice updates — or whose new tags a full contact cannot take (`listedInChanges`).
+      if (preview.kind !== "inBook" || !deps.listed(preview)) continue;
       found.push({ line: c.line, masked: deps.mask(c.msisdn), preview });
       if (found.length >= CHANGES_PAGE_ROWS) return { ok: true, page: { rows: found, nextAfterLine: c.line } };
     }
