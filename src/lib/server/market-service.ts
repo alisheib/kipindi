@@ -2291,7 +2291,12 @@ export async function notifyVerdictRecordedForMarket(
   // One message per PLAYER, not per position — a hedged holder with six positions on one
   // market gets one notice about one verdict.
   const bettors = Array.from(new Set(open.map((p) => p.userId)));
-  for (const userId of bettors) {
+  // ⭐ EACH NOTICE AWAITED (2026-10-10): every caller fires this function and forgets it (`void ….catch`), so waiting here
+  // holds up no seal and no ruling — but what it returns now settles once the notices are written. Since R5-B each notice
+  // is written after its payout time is put in the reader's words (`instantIn`, an await), and a caller that awaited this
+  // function read the bell before any row existed: `test:settlement-gate` §15's three refusal controls passed with their
+  // guards deleted (`red:officer-hold` cases 4, 5 and 7). A failed notice still fails alone, as `.catch` let it.
+  await Promise.allSettled(bettors.map((userId) =>
     notifyVerdictRecorded(userId, {
       marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh),
       marketId: m.id,
@@ -2301,8 +2306,7 @@ export async function notifyVerdictRecordedForMarket(
       // SEAM:verdictStanding — a player whose every position here is house-marked is not invited to object,
       // by the SAME predicate `objectionEligibility` refuses with (all positions, any status). Ruling 145.
       houseOnly: everyPosition.filter((p) => p.userId === userId).every((p) => p.houseBotId != null),
-    }).catch(() => {});
-  }
+    })));
   return { bettors: bettors.length };
 }
 

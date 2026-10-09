@@ -2054,11 +2054,17 @@ export const PLAYER_NOTIFIER_HASHES: Readonly<Record<string, string>> = {
   // house reader, no house word, no new sentence; `marketCancelledRefundHtml` is untouched and keeps its hash.
   //   was · notifyMarketCancelled 303f06a9… · notifyObjectionDecided 72d9f9fe… · notifyVerdictRecorded 42c58491… ·
   //         notifyVerdictRecordedForMarket e9589970…
+  // ⭐ RE-MEASURED 2026-10-10, THE CHANGE REVIEWED AS ONE (after the visual pass's round 6): `notifyVerdictRecordedForMarket`
+  // awaits each player's notice (`Promise.allSettled`) where it fired them and returned — every caller still fires it and
+  // forgets it; what changed is that its own promise settles once the rows exist, so `test:settlement-gate` §15's refusal
+  // controls read the bell after the notices and can fail again (`red:officer-hold` 13/13; 10/13 since R5-B's `instantIn`).
+  // Not a word of any notice moved; the same measure reproduces 84c86d46… on the function before the change.
+  //   was · notifyVerdictRecordedForMarket 84c86d46…
   notifyMarketCancelled: "2a1da0938e5fce9b1cc3636e4f4e69e0fb0bb1a512513b175312375f0d37c1b9",
   notifyObjectionDecided: "715f4026aa917afa661c735fc0129d51eef99666ce8a843bbe7dec2751f3c9d9",
   notifyVerdictRecorded: "cb4d94a7fcd3d2743bd46624e338bf872b1dcde0cc113d4008c78a4c3fc69e93",
   marketCancelledRefundHtml: "9459244bfe07cd3e2166c2c9d56efb330290f00b133ac4a052e0d3159c8a1c9b",
-  notifyVerdictRecordedForMarket: "84c86d46f3c30c4c21f122d9db260311b4987032983285a17623b890b5d9e2c2",
+  notifyVerdictRecordedForMarket: "70065688df40f2c4a6ed766158098dc121241ac3ede2b564dca3e45dc505ac03",
 };
 /** One function declaration's own text (the fnBody of seam 6.h1b, cut by the syntax tree at its closing brace), or "". */
 export function functionDeclarationText(file: string, code: string, name: string): string {
