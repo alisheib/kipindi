@@ -408,6 +408,9 @@ export function ComposerProvider({ view, children }: { view: ReadyView; children
     startTest(async () => {
       const r = await runAdminAction(() => sendCampaignTestAction(s.id, variant, recipient ?? { kind: "own" }));
       setTest(testStateOf(r));
+      // ⛔ 2026-10-09 · refused for the officer's ROLE (changed since this page was read): read again, so the card offers
+      // "My own number" alone, as the server now answers.
+      if ("outcome" in r && r.outcome === "refused" && r.reason === "typed_role") router.refresh();
       setTesting(null);
       // The own preview now carries the officer's real stop link (minted by their first test). A typed test's link is
       // that person's, and is never shown.
@@ -450,7 +453,6 @@ export function ComposerMessage() {
   const c = useComposer();
   const { view, fields, verdict } = c;
   const off = c.saving || view.readOnly || !c.mayAct;
-  const phraseSet = view.sourcePhrase.trim() !== "";
   const swJina = scanPlaceholders(fields.bodySw).jina > 0;
   const enWritten = fields.bodyEn.trim() !== "";
   const enJina = enWritten && scanPlaceholders(fields.bodyEn).jina > 0;
@@ -501,7 +503,6 @@ export function ComposerMessage() {
           </Field>
           <ComposerCounter
             counter={verdict.counters.SW}
-            phraseSet={phraseSet}
             disabled={off}
             onFold={() => c.setField("bodySw", foldToGsm7(fields.bodySw))}
           />
@@ -533,7 +534,6 @@ export function ComposerMessage() {
             <>
               <ComposerCounter
                 counter={verdict.counters.EN}
-                phraseSet={phraseSet}
                 disabled={off}
                 onFold={() => c.setField("bodyEn", foldToGsm7(fields.bodyEn))}
               />
@@ -808,15 +808,20 @@ export function ComposerTest() {
   const { view, saved } = c;
   const t = view.test;
   const typedView = t.typed;
+  // ⛔ 2026-10-09 · "ANOTHER NUMBER" ONLY WHERE THE DOOR WOULD TAKE IT: a test to a typed number is for ADMIN and COMPLIANCE
+  // alone, and the server says which this viewer is (`typedOffered`, from their STORED role — the door's own decider).
+  // Not offered: the card's one way is the officer's own number, said, never a choice — and the target is own, whatever
+  // was picked before the page was read again. Guard: `test:campaign-compose` §16.21.
+  const offered = t.typedOffered;
   // ⛔ U37c-2 · THE TYPED NUMBER LIVES HERE, AND NOWHERE ELSE — never the address, never storage, never the provider:
   // this card holds the digits, posts them once with the test, and the server re-types them.
-  const [target, setTarget] = useState<TestTarget>(t.ownNumberMasked !== null ? "own" : "typed");
+  const [target, setTarget] = useState<TestTarget>(t.ownNumberMasked !== null || !offered ? "own" : "typed");
   const [digits, setDigits] = useState("");
   // ⛔ THE 18+ TICK CONFIRMS ONE THING: this draft, these words, this number, this send. It is held as the key it was
   // given for — so a changed number, a reworded `adult.test`, another draft or a switch of target unticks it — and every
   // Send spends it (the server records a confirmation for one attempt only, §18.32).
   const [tickedFor, setTickedFor] = useState<string | null>(null);
-  const typed = target === "typed";
+  const typed = offered && target === "typed";
   const tickKey = `${saved?.id ?? ""}|${typedView.attestation?.version ?? ""}|${digits}`;
   const ticked = tickedFor === tickKey;
   const pick = (v: TestTarget) => { setTarget(v); setTickedFor(null); };
@@ -868,26 +873,46 @@ export function ComposerTest() {
   };
 
   return (
-    <div className="space-y-3" data-test-card={ready ? "ready" : "blocked"} data-test-target={target}>
-      <fieldset className="space-y-2" data-test-to-choice>
-        <legend className="mb-1 text-body-sm font-semibold text-text">{COMPOSE_TEST_TO_LEGEND}</legend>
-        <TestToChoice
-          value="own"
-          checked={!typed}
-          disabled={t.ownNumberMasked === null || c.testing !== null}
-          onPick={pick}
-          label={t.ownNumberMasked !== null ? composeTestToOwn(t.ownNumberMasked) : COMPOSE_TEST_TO_OWN_UNUSABLE}
-          why={t.ownNumberMasked !== null ? null : t.ownNumberProblem}
-        />
-        <TestToChoice
-          value="typed"
-          checked={typed}
-          disabled={!typedView.allowed || c.testing !== null}
-          onPick={pick}
-          label={COMPOSE_TEST_TO_TYPED}
-          why={typedView.allowed ? null : typedWhy}
-        />
-      </fieldset>
+    <div
+      className="space-y-3"
+      data-test-card={ready ? "ready" : "blocked"}
+      data-test-target={typed ? "typed" : "own"}
+      data-test-typed-offered={offered ? "yes" : "no"}
+    >
+      {/* ⛔ 2026-10-09 · the choice exists only for a viewer the door lets type a number. For anyone else the card says its
+          one way — never a radio with nothing beside it, and never "Another number" disabled with a reason: "My own number",
+          in the words the choice uses, as the card said it before there was a second way. */}
+      {offered ? (
+        <fieldset className="space-y-2" data-test-to-choice>
+          <legend className="mb-1 text-body-sm font-semibold text-text">{COMPOSE_TEST_TO_LEGEND}</legend>
+          <TestToChoice
+            value="own"
+            checked={!typed}
+            disabled={t.ownNumberMasked === null || c.testing !== null}
+            onPick={pick}
+            label={t.ownNumberMasked !== null ? composeTestToOwn(t.ownNumberMasked) : COMPOSE_TEST_TO_OWN_UNUSABLE}
+            why={t.ownNumberMasked !== null ? null : t.ownNumberProblem}
+          />
+          <TestToChoice
+            value="typed"
+            checked={typed}
+            disabled={!typedView.allowed || c.testing !== null}
+            onPick={pick}
+            label={COMPOSE_TEST_TO_TYPED}
+            why={typedView.allowed ? null : typedWhy}
+          />
+        </fieldset>
+      ) : (
+        <div className="space-y-1" data-test-to="own">
+          <p className="text-body-sm font-semibold text-text">{COMPOSE_TEST_TO_LEGEND}</p>
+          <p className="text-body-sm text-text" data-test-choice="own">
+            {t.ownNumberMasked !== null ? composeTestToOwn(t.ownNumberMasked) : COMPOSE_TEST_TO_OWN_UNUSABLE}
+          </p>
+          {t.ownNumberMasked === null && (
+            <p className="text-body-sm text-danger-fg" data-test-choice-why="own">{t.ownNumberProblem}</p>
+          )}
+        </div>
+      )}
 
       {typed && typedView.allowed && (
         <div className="space-y-3" data-test-typed>

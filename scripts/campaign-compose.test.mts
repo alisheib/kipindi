@@ -76,6 +76,14 @@
  * by the ONE gate before a token or the wire — `typed_refused` to a masked viewer, the ONE `protected` reason to a reader
  * (the U33r review's MINOR-5: collapsed for readers too, as the split collapses it), the precise `agent_referee` ONLY in the
  * audit row — and an officer's own number that is a referee's is told it is protected, in the own-number words.
+ * ⛔ §16.21 · §18.37–§18.39 (the owner's ruling of 2026-10-09) · A TEST TO A TYPED NUMBER IS FOR ADMIN AND COMPLIANCE ONLY.
+ * The door decides by the officer's STORED role through ONE decider (`mayTestTypedNumber`): GROWTH and every other role is
+ * refused `typed_role` in ONE sentence before anything about the number is read — never parsed, masked or set beside their
+ * own, nothing reaching the rail, the gate, a token or the wire — while ADMIN (the Owner) and COMPLIANCE are taken as before
+ * (§18.37, and §18.38 reads the order in the source); the loader asks the same decider of the same stored row and hands a
+ * viewer who may not type the empty typed view (§18.39); and the card offers the choice only to them, saying "My own
+ * number" alone to anyone else (§16.21). ⭐ So the typed claims above run as an officer who may type: `o` is the Owner
+ * (ADMIN), and §18.23's and §18.33's officers are ADMIN or COMPLIANCE.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION — `--prove-red` plants each defect IN MEMORY and requires the
  * MATCHING assertion to fire. No file-writing call, so it stays outside `test:red-anchors` §4.
@@ -305,51 +313,43 @@ function checkEnvelope(compose: Composer, log: (l: string) => void): string[] {
   };
   const TOKEN = "a1b2c3d4";
 
-  /* ── §9 · the footer is what it says it is ─────────────────────────────── */
-  log("\n§9 · THE FOOTER, MEASURED");
+  /* ── §9 · NOTHING IS APPENDED — the owner's ruling of 2026-10-09 (COMPLIANCE-DECISIONS) ── */
+  log("\n§9 · NOTHING IS APPENDED — the message is sent exactly as the officer wrote it (2026-10-09)");
   {
-    const f = marketingFooter(TOKEN, "SW");
-    log(`       ${JSON.stringify(f)}`);
-    ok("§9 the footer carries the sender identity", f.includes(SENDER_IDENTITY));
-    ok("§9 …the age restriction, in the Swahili already shipped on the registration screen", f.includes("18+"));
-    ok("§9 …the helpline (the one 50pick publishes — OQ4)", f.includes(statutorySmsHelpline()));
-    ok("§9 …and a working opt-out link", f.includes(`${shortDomain()}/s/${TOKEN}`), f);
-    ok("§9 ⭐ it is 49 septets — and that number is COMPUTED, not typed",
-      sizeSms(f).units === 49, `${sizeSms(f).units} septets`);
-    ok("§9 the footer is itself GSM-7 — a footer that forced UCS-2 would halve every message",
-      sizeSms(f).encoding === "GSM7");
-    ok("§9 it begins with a newline, and that newline is counted", f.startsWith("\n"));
-    ok("§9 the English footer costs exactly the same, so the budget does not move with locale",
-      sizeSms(marketingFooter(TOKEN, "EN")).units === sizeSms(f).units);
+    const footers = [marketingFooter(TOKEN, "SW"), marketingFooter(TOKEN, "EN"), marketingFooter(TOKEN, "SW", "Namba yako ipo orodhani kwetu.")];
+    ok("§9 ⭐ the footer is EMPTY in both languages and with any source phrase", footers.every((f) => f === ""), JSON.stringify(footers));
+    const sent = compose("50pick: soka leo. Weka dau sasa.", TOKEN);
+    ok("§9 ⭐ no stop link, no 18+, no helpline and no token in a composed message",
+      !sent.text.includes("/s/") && !sent.text.includes("18+") && !sent.text.includes(statutorySmsHelpline()) && !sent.text.includes(TOKEN)
+        && !sent.text.includes("Acha"), JSON.stringify(sent.text));
   }
 
   /* ── §10 · the budget is derived from the real deployment URL ──────────── */
   log("\n§10 · THE OPERATOR'S BUDGET");
   {
     const budget = operatorBudget("SW");
-    ok("§10 ⭐ the budget is 111 characters — 160 minus the footer, computed from both",
-      budget === SMS_LIMITS.GSM7.single - 49 && budget === 111, `${budget}`);
+    ok("§10 ⭐ the budget is the whole message — 160 characters, computed, in both languages",
+      budget === SMS_LIMITS.GSM7.single && operatorBudget("EN") === budget, `${budget}`);
     // ⭐ THE DOMAIN IS NOT TYPED ANYWHERE. If `appUrl()` ever changes, this is what notices.
     ok("§10 ⭐ the short domain is DERIVED from the real appUrl(), not typed",
       appUrl().replace(/^https?:\/\//, "").replace(/^www\./, "") === shortDomain(),
       `appUrl ${appUrl()} → ${shortDomain()}`);
     ok("§10 control · the derivation actually produced something",
       shortDomain().length > 3 && !shortDomain().includes("/"), shortDomain());
-    ok("§10 ⛔ a longer domain would cost budget, and the guard would see it",
-      operatorBudget("SW") > operatorBudget("SW", "x".repeat(10)));
-    // OQ3's shadow, priced rather than argued about.
+    // ⛔ The source phrase is never printed (2026-10-09), so it costs nothing.
     const withSource = operatorBudget("SW", "Umetupa namba yako 50pick.");
-    ok("§10 ⚠️ if OQ3 forces the source phrase inline, the budget falls to about 89",
-      withSource >= 80 && withSource <= 92, `${withSource}`);
+    ok("§10 ⛔ a source phrase costs nothing — it is never printed", withSource === budget, `${withSource}`);
     log(`       budget ${budget} without a source phrase, ${withSource} with one`);
   }
 
-  /* ── §11 · nothing composes without the footer ─────────────────────────── */
-  log("\n§11 · NOTHING COMPOSES WITHOUT THE FOOTER");
+  /* ── §11 · the composed text IS the officer's text ─────────────────────── */
+  log("\n§11 · THE COMPOSED TEXT IS THE OFFICER'S TEXT");
   {
     const c = compose("50pick: soka leo. Weka dau sasa.", TOKEN);
     ok("§11 a good body composes", c.ok, c.problems.join(" | "));
-    ok("§11 ⭐ and the composed text ENDS with the footer", c.text.endsWith(marketingFooter(TOKEN, "SW")));
+    const padded = compose("  50pick: soka leo. Weka dau sasa. ", TOKEN);
+    ok("§11 ⭐ the composed text IS the officer's text, trimmed — nothing appended", padded.text === "50pick: soka leo. Weka dau sasa.",
+      JSON.stringify(padded.text));
     ok("§11 ⭐ the size is taken of the WHOLE message, not the body",
       c.size.units === sizeSms(c.text).units, `${c.size.units} vs ${sizeSms(c.text).units}`);
 
@@ -360,8 +360,8 @@ function checkEnvelope(compose: Composer, log: (l: string) => void): string[] {
       noIdentity.problems.some((p) => p.length > 30 && !/[A-Z]{4,}_/.test(p)), noIdentity.problems.join(" | "));
 
     ok("§11 an empty body is refused", !compose("", TOKEN).ok);
-    ok("§11 ⭐ a missing or wrong-length opt-out token is refused — a message with no way to stop is unlawful",
-      !compose("50pick: habari", "").ok && !compose("50pick: habari", "short").ok);
+    ok("§11 ⭐ the token is never printed — a message composes, as written, whatever token it is handed",
+      ["", "short", TOKEN].every((t) => { const x = compose("50pick: habari", t); return x.ok && x.text === "50pick: habari"; }));
 
     // ⭐ THE BUDGET BOUNDARY, BOTH SIDES.
     const at = "50pick " + "a".repeat(operatorBudget("SW") - 7);
@@ -388,7 +388,7 @@ function checkEnvelope(compose: Composer, log: (l: string) => void): string[] {
 
   /* ── §13 · ONE cap, and the budget in the message's own encoding (2026-09-26) ── */
   // 🔴 `SMS_MAX_SEGMENTS` said 2 while the composer refused anything over 1, and the refusal quoted the
-  // GSM-7 budget (111) for a UCS-2 message whose real room is 70 − 49 = 21.
+  // GSM-7 budget for a UCS-2 message. Since nothing is appended (2026-10-09) the rooms are the whole 160 and 70.
   log("\n§13 · ONE SEGMENT CAP, AND THE BUDGET IN THE MESSAGE'S OWN ENCODING");
   {
     const at = compose("50pick " + "a".repeat(operatorBudget("SW") - 7), TOKEN);
@@ -396,12 +396,13 @@ function checkEnvelope(compose: Composer, log: (l: string) => void): string[] {
     ok("§13 ⛔ the composer and the plan agree on the cap — both accept the at-budget message and both refuse one more",
       at.ok && planSms(at.text, 1).withinCap && !over.ok && !planSms(over.text, 1).withinCap,
       `at ok=${at.ok} withinCap=${planSms(at.text, 1).withinCap} · over ok=${over.ok} withinCap=${planSms(over.text, 1).withinCap}`);
-    ok("§13 the UCS-2 budget is 70 minus the footer, computed — 21", operatorBudget("SW", "", "UCS2") === SMS_LIMITS.UCS2.single - 49,
+    ok("§13 the UCS-2 budget is the whole 70, computed", operatorBudget("SW", "", "UCS2") === SMS_LIMITS.UCS2.single,
       `${operatorBudget("SW", "", "UCS2")}`);
-    const curly = "50pick: leo ni siku ya soka’ ok"; // 31 characters, one curly apostrophe → UCS-2
+    // 71 characters with one curly apostrophe → UCS-2, one past its 70.
+    const curly = `50pick: ${"a".repeat(SMS_LIMITS.UCS2.single - 8)}${String.fromCharCode(0x2019)}`;
     const c = compose(curly, TOKEN);
-    ok("§13 ⭐ a short body with one ’ is two messages, and the refusal quotes its REAL room (21), not 111",
-      c.size.encoding === "UCS2" && c.size.segments === 2 && c.problems.some((p) => p.includes("you have 21 characters")) && !c.problems.some((p) => p.includes("111")),
+    ok("§13 ⭐ a UCS-2 body over 70 is two messages, and the refusal quotes its REAL room (70), not 160",
+      c.size.encoding === "UCS2" && c.size.segments === 2 && c.problems.some((p) => p.includes("you have 70 characters")) && !c.problems.some((p) => p.includes("you have 160")),
       c.problems.join(" | "));
     ok("§13 …and states what the body uses, in the same units", c.problems.some((p) => p.includes(`this uses ${curly.length}`)), c.problems.join(" | "));
   }
@@ -535,7 +536,7 @@ const NBSP15 = cc(0x00A0);
 const ZWSP15 = cc(0x200B);
 const ZOE = `Zo${cc(0xEB)}`;
 const ONEIL = `O${RSQ15}Neil`;
-/** §15.15 · one pasted curly quote — Unicode, and with the source line's reserve kept, no room at all. */
+/** §15.15 · one pasted curly quote — Unicode: its whole 70 characters of room, since nothing is appended (2026-10-09). */
 const UNI15 = `50pick: leo ni siku ya soka${RSQ15} karibu`;
 /** A RIGHT-TO-LEFT OVERRIDE — a format character the name cleaner drops (it would reverse a name in a list). */
 const RLO16 = cc(0x202E);
@@ -753,8 +754,8 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
     // the counter's own `budget − bodyUnits`, which is how `left` is computed and so could not fail.
     const room6 = operatorBudget("SW", PHRASE) - unitsIn(worstTyped(t6.bodySw).trim(), "GSM7");
     const room6a = operatorBudget("EN", PHRASE) - unitsIn(worstTyped(t6a.bodyEn).trim(), "GSM7");
-    ok("§15.6 left is the room restated by hand — the budget with the phrase, less the worst-case body — and the footer is 49 septets in GSM-7, in both languages",
-      c6.left === room6 && c6a.left === room6a && c6.footerUnits === 49 && c6.encoding === "GSM7" && c6a.footerUnits === 49,
+    ok("§15.6 left is the room restated by hand — the budget, less the worst-case body — and the footer is 0 (nothing is appended), in both languages",
+      c6.left === room6 && c6a.left === room6a && c6.footerUnits === 0 && c6.encoding === "GSM7" && c6a.footerUnits === 0,
       `left ${c6.left}/${c6a.left} vs ${room6}/${room6a} · footer ${c6.footerUnits}/${c6a.footerUnits}`);
   }
 
@@ -791,34 +792,22 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
       JSON.stringify(enBlank.text));
   }
 
-  /* ── §15.9 · M5 · the source phrase: priced in, never dropped, never missing ── */
+  /* ── §15.9 · the source phrase: neither printed, priced nor required (the owner's ruling of 2026-10-09) ── */
   {
-    const atP9 = fillTo(HEAD, operatorBudget("SW", PHRASE));
+    const atP9 = fillTo(HEAD, operatorBudget("SW"));
     const with9 = impl.counterFor(atP9, "SW", FB, PHRASE);
+    const blank9 = impl.counterFor(atP9, "SW", FB, "");
     const over9 = impl.counterFor(`${atP9}a`, "SW", FB, PHRASE);
-    ok("§15.9 ⭐ M5 · the counter PRICES a stored source phrase — its own septets and the space after it — so the room falls by exactly that",
-      with9.ok && with9.left === 0 && with9.segments === 1 && with9.sourceUnits === unitsIn(`${PHRASE} `, "GSM7")
-        && with9.budget === operatorBudget("SW", PHRASE) && !over9.ok && over9.segments === 2,
-      `with ok=${with9.ok} left=${with9.left} source=${with9.sourceUnits} budget=${with9.budget} · one more ok=${over9.ok} segments=${over9.segments}`);
-    const atR9 = fillTo(HEAD, operatorBudget("SW", RESERVE));
-    const blank9 = impl.counterFor(atR9, "SW", FB, "");
-    const spaces9 = impl.counterFor(atR9, "SW", FB, "   ");
-    const longest9 = impl.counterFor(atR9, "SW", FB, MAX_PHRASE);
-    const past9 = impl.counterFor(`${atR9}a`, "SW", FB, "");
-    ok(`§15.9 ⭐ M5 · PRICED IN BEFORE THE WORDING EXISTS — a blank phrase (or one of spaces) reserves the longest allowed, ${SOURCE_PHRASE_MAX_CHARS} septets and its space, so a body that fits today still fits the longest wording G5 can supply`,
-      blank9.ok && blank9.left === 0 && blank9.sourceUnits === SOURCE_PHRASE_MAX_CHARS + 1 && blank9.budget === operatorBudget("SW", RESERVE)
-        && spaces9.ok && spaces9.units === blank9.units && longest9.ok && longest9.units === blank9.units && !past9.ok && past9.segments === 2,
-      `blank ok=${blank9.ok} left=${blank9.left} source=${blank9.sourceUnits} · spaces ${spaces9.units} · longest ok=${longest9.ok} ${longest9.units} vs ${blank9.units} · one more segments=${past9.segments}`);
+    ok("§15.9 ⭐ the counter does NOT price a source phrase — stored or blank, the room is the whole message's",
+      with9.ok && with9.left === 0 && with9.segments === 1 && with9.sourceUnits === 0 && with9.budget === operatorBudget("SW")
+        && blank9.ok && blank9.units === with9.units && blank9.sourceUnits === 0 && !over9.ok && over9.segments === 2,
+      `with ok=${with9.ok} left=${with9.left} source=${with9.sourceUnits} budget=${with9.budget} · blank ${blank9.units} · one more ok=${over9.ok} segments=${over9.segments}`);
     const t9 = tpl({ sourcePhrase: PHRASE });
     const book9 = impl.renderForRecipient(t9, { variant: "SW", name: null, token: TT, origin: "book" });
-    ok("§15.9 ⭐ a book contact's message CARRIES the phrase — the footer's own line begins with it (OQ3's safe default) — and still begins with the officer's 50pick",
-      book9.ok && book9.text.startsWith(`${SENDER_IDENTITY}:`) && book9.text.endsWith(`${NL15}${PHRASE} ${marketingFooter(TT, "SW").slice(1)}`),
-      `${JSON.stringify(book9.text)} · ${book9.problems.join(" | ")}`);
-    const acct9 = impl.renderForRecipient(t9, { variant: "SW", name: "Asha", token: TT, origin: "account" });
     const odd9 = impl.renderForRecipient(t9, { variant: "SW", name: null, token: TT, origin: "imported" as unknown as RecipientOrigin });
-    ok('§15.9 ⛔ only exactly origin "account" goes without the phrase — an unknown origin carries it (never dropped)',
-      acct9.ok && !acct9.text.includes(PHRASE) && odd9.text.includes(PHRASE), `${JSON.stringify(acct9.text)} · ${JSON.stringify(odd9.text)}`);
-    // ⛔ OQ3 / owner gate G5: until the wording exists, a number that is not the person's own cannot be sent at all.
+    ok("§15.9 ⭐ a book contact's message is the officer's text alone — the fallback greets them, and no phrase is printed, for any origin",
+      book9.ok && book9.text === `50pick: Habari ${FB}, soka leo.` && odd9.ok && !odd9.text.includes(PHRASE),
+      `${JSON.stringify(book9.text)} · ${JSON.stringify(odd9.text)} · ${book9.problems.join(" | ")}`);
     const blankT9 = tpl();
     const refused9 = [
       impl.renderForRecipient(blankT9, { variant: "SW", name: null, token: TT, origin: "book" }),
@@ -827,14 +816,14 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
       impl.renderForRecipient(tpl({ bodyEn: EN_BODY }), { variant: "EN", name: null, token: TT, origin: "book" }),
     ];
     const acctBlank9 = impl.renderForRecipient(blankT9, { variant: "SW", name: "Asha", token: TT, origin: "account" });
-    ok("§15.9 ⛔ M5 · NO SOURCE LINE YET (OQ3, owner gate G5) — a book contact, an unknown origin, a phrase of spaces and an English book recipient are all REFUSED, never sent without one; an account recipient still renders ok",
-      refused9.every((x) => !x.ok && has(x.problems, "no source line")) && acctBlank9.ok && !has(acctBlank9.problems, "no source line"),
+    ok("§15.9 ⛔ no source line is required — a book contact, an unknown origin, a phrase of spaces and an English book recipient all render ok without one, as an account recipient does",
+      refused9.every((x) => x.ok && !has(x.problems, "no source line")) && acctBlank9.ok,
       `${refused9.map((x) => `ok=${x.ok}`).join(",")} · account ok=${acctBlank9.ok} · ${refused9[0].problems.join(" | ")}`);
   }
 
   /* ── §15.10 · a recycled number never prints the previous holder's name ── */
   {
-    // With a source line, so the message checked is one that would actually be sent (§15.9 refuses a book contact without).
+    // (A source line is stored here; it is never printed since the owner's ruling of 2026-10-09.)
     const rec = impl.renderForRecipient(tpl({ sourcePhrase: PHRASE }), { variant: "SW", name: "Asha", token: TT, origin: "book" });
     ok("§15.10 ⛔ a BOOK contact is greeted by the fallback even when a name is handed in",
       rec.ok && rec.text.startsWith(`50pick: Habari ${FB},`) && !rec.text.includes("Asha"), `${JSON.stringify(rec.text)} · ${rec.problems.join(" | ")}`);
@@ -849,16 +838,12 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
     const brace = v({}, "Source {jina}");
     const twoLine = v({}, `Source${NL15}list`);
     const fine = v({}, PHRASE);
-    ok("§15.11 ⛔ the source line is refused with a brace or a line break — and a plain one is accepted",
-      !brace.ok && (brace.problems.sourcePhrase?.length ?? 0) > 0 && !twoLine.ok && (twoLine.problems.sourcePhrase?.length ?? 0) > 0 && fine.ok,
-      JSON.stringify({ brace: brace.problems, twoLine: twoLine.problems, fine: fine.problems }));
     const atMax = v({}, "x".repeat(SOURCE_PHRASE_MAX_CHARS));
     const overMax = v({}, "x".repeat(SOURCE_PHRASE_MAX_CHARS + 1));
     const euroOver = v({}, `${"x".repeat(SOURCE_PHRASE_MAX_CHARS - 1)}${EURO15}`);
-    ok(`§15.11 ⛔ the source line is at most ${SOURCE_PHRASE_MAX_CHARS} septets, refused on its OWN field — one over, or a euro sign that makes it one over, is refused there and not blamed on the body; exactly ${SOURCE_PHRASE_MAX_CHARS} is accepted`,
-      atMax.ok && !overMax.ok && has(overMax.problems.sourcePhrase, `limit is ${SOURCE_PHRASE_MAX_CHARS}`) && overMax.problems.bodySw === undefined
-        && !euroOver.ok && has(euroOver.problems.sourcePhrase, `limit is ${SOURCE_PHRASE_MAX_CHARS}`),
-      JSON.stringify({ atMax: atMax.problems, overMax: overMax.problems, euroOver: euroOver.problems }));
+    ok("§15.11 ⭐ the source line no longer judges the template — a braced, a two-line, an over-long and a Unicode-forcing line are all accepted (it is never printed, 2026-10-09)",
+      [brace, twoLine, fine, atMax, overMax, euroOver].every((x) => x.ok && x.problems.sourcePhrase === undefined),
+      JSON.stringify({ brace: brace.problems, twoLine: twoLine.problems, overMax: overMax.problems, euroOver: euroOver.problems }));
     ok(`§15.12 the campaign name is required and at most ${CAMPAIGN_NAME_MAX_CHARS} characters`,
       !v({ name: "  " }).ok && v({ name: "  " }).problems.name !== undefined
         && !v({ name: "n".repeat(CAMPAIGN_NAME_MAX_CHARS + 1) }).ok && v({ name: "n".repeat(CAMPAIGN_NAME_MAX_CHARS) }).ok);
@@ -900,7 +885,7 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
         for (const origin of ["account", "book"] as RecipientOrigin[]) {
           for (const name of ["Ali", "Christabella"]) {
             cases13++;
-            const expected = whole && (origin === "account" || sourcePhrase.trim().length > 0);
+            const expected = whole;
             const r = impl.renderForRecipient(t, { variant, name, token: TT, origin });
             if (r.ok) sent13++;
             else refused13++;
@@ -909,7 +894,7 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
         }
       }
     }
-    ok(`§15.13 ⭐ THE RENDERER RE-RUNS THE STORED TEMPLATE'S VERDICT, WHOLE — over ${cases13} renders of ${stored13.length} stored templates, a message is sendable exactly when validateCampaignTemplate passes the WHOLE template (both languages, both fallbacks, the source line) and, for a number that is not the person's own, a source line exists`,
+    ok(`§15.13 ⭐ THE RENDERER RE-RUNS THE STORED TEMPLATE'S VERDICT, WHOLE — over ${cases13} renders of ${stored13.length} stored templates, a message is sendable exactly when validateCampaignTemplate passes the WHOLE template (both languages, both fallbacks), for every origin`,
       disagree.length === 0 && cases13 === stored13.length * 8 && sent13 > 0 && refused13 > 0,
       `${disagree.length} disagree: ${disagree.slice(0, 3).join(" | ")} · sent ${sent13} refused ${refused13}`);
     const enVerdict = impl.validate(draft({ bodyEn: enOver13.bodyEn }), PHRASE);
@@ -932,8 +917,8 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
     const asStored = [braced13, lineBreak13].flatMap((t) => (["account", "book"] as RecipientOrigin[]).map((origin) => ({
       line: JSON.stringify(t.sourcePhrase), origin, r: impl.renderForRecipient(t, { variant: "SW", name: "Asha", token: TT, origin }),
     })));
-    ok("§15.13 ⛔ the source line is checked AS STORED, whatever the origin — a braced line and one ending in a line break are refused for an account recipient (who is never sent the line) as for a book contact",
-      asStored.every((x) => !x.r.ok && has(x.r.problems, STALE) && has(x.r.problems, "The source line")),
+    ok("§15.13 ⭐ the source line no longer refuses anyone — a braced line and one ending in a line break, for an account and a book contact alike, render the officer's text alone (it is never printed, 2026-10-09)",
+      asStored.every((x) => x.r.ok && !x.r.text.includes("Source") && !x.r.text.includes(PHRASE)),
       asStored.map((x) => `${x.line}/${x.origin} ok=${x.r.ok}`).join(" · "));
   }
 
@@ -958,11 +943,12 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
     const room15 = impl.counterFor(UNI15, "SW", FB, "Chanzo");
     const negatives = [...c15.problems, ...many15.problems, ...room15.problems, ...(v15.problems.bodySw ?? [])].filter((p) => NEG_NUMBER.test(p));
     const first15 = c15.problems[0] ?? "";
-    ok("§15.15 ⭐ A UNICODE BODY IS TOLD IN ONE SENTENCE WHAT TO REPLACE, AND NEVER A NEGATIVE ROOM — one curly quote with the source line's reserve kept reads 'Unicode leaves no room once the required footer is added' and 'replace:' the curly apostrophe by its label, first, on the counter and on the field; seven offenders name five and count the rest; a short source line's positive room is quoted; no sentence holds a negative number",
-      !c15.ok && first15.startsWith("Unicode leaves no room once the required footer is added") && first15.endsWith(`replace: ${RSQ15} (curly apostrophe).`)
+    ok("§15.15 ⭐ A UNICODE BODY IS TOLD IN ONE SENTENCE WHAT TO REPLACE, AND NEVER A NEGATIVE ROOM — one curly quote reads 'Unicode cuts this message to 70 characters' (nothing is appended, so Unicode keeps its whole 70) and 'replace:' the curly apostrophe by its label, first, on the counter and on the field; seven offenders name five and count the rest; a stored source line changes nothing; no sentence names a footer or holds a negative number",
+      !c15.ok && c15.budget === 70 && first15 === `Unicode cuts this message to 70 characters — replace: ${RSQ15} (curly apostrophe).`
         && v15.problems.bodySw?.[0] === first15
         && many15.offenders.length === 7 && (many15.problems[0] ?? "").endsWith(" and 2 more.") && (many15.problems[0] ?? "").includes("(en dash)")
-        && room15.budget > 0 && (room15.problems[0] ?? "").startsWith(`Unicode cuts this message to ${room15.budget} characters`)
+        && room15.budget === 70 && (room15.problems[0] ?? "") === first15
+        && ![...c15.problems, ...many15.problems, ...room15.problems].some((p) => p.includes("footer"))
         && negatives.length === 0,
       JSON.stringify({ first: c15.problems, many: many15.problems[0], room: room15.problems, negatives }));
   }
@@ -1306,6 +1292,34 @@ function checkComposerScreen(src: ScreenSources, log: (l: string) => void): stri
     card16.includes("tabIndex={flagged ? -1 : undefined}") && !card16.includes("tabIndex={-1}")
       && card16.includes('className={flagged ? "space-y-2 rounded-md brand-focus" : "space-y-2 rounded-md"}'),
     `card ${card16.length} chars · tab stops in it: ${occurrences(card16, "tabIndex=")}`);
+
+  /* §16.21 · 2026-10-09 · the owner's ruling: "Another number" only for a viewer the door lets type one (§18.37–§18.39) */
+  const iOffered = testCard.indexOf("{offered ? (");
+  const iChoice = testCard.indexOf('<fieldset className="space-y-2" data-test-to-choice>');
+  const iTypedChoice = testCard.indexOf('value="typed"');
+  const iElse = iTypedChoice < 0 ? -1 : testCard.indexOf(") : (", iTypedChoice);
+  const iSaid = testCard.indexOf('<div className="space-y-1" data-test-to="own">');
+  const saidBranch = iSaid < 0 ? "" : testCard.slice(iSaid, testCard.indexOf("</div>", iSaid));
+  const offeredOnly = {
+    // the server's answer, never a decision of the card's own — no role is named in the client's code
+    fromServer: testCard.includes("const offered = t.typedOffered;") && !/mayTestTypedNumber|[.]role\b|"ADMIN"|"COMPLIANCE"|"GROWTH"/.test(client),
+    // the target is own whenever the choice is not offered — the state, what is posted, and the card's handles
+    ownFirst: testCard.includes('useState<TestTarget>(t.ownNumberMasked !== null || !offered ? "own" : "typed")'),
+    follows: testCard.includes('const typed = offered && target === "typed";') && testCard.includes('data-test-target={typed ? "typed" : "own"}')
+      && testCard.includes('data-test-typed-offered={offered ? "yes" : "no"}'),
+    // the choice — the fieldset and both radio cards — only inside the offered branch, and "Another number" nowhere else
+    guarded: iOffered > 0 && iChoice > iOffered && iTypedChoice > iChoice && iElse > iTypedChoice && iSaid > iElse
+      && occurrences(testCard, "data-test-to-choice") === 1 && occurrences(testCard, 'value="typed"') === 1
+      && occurrences(client, "{COMPOSE_TEST_TO_TYPED}") === 1,
+    // otherwise "Send the test to" and "My own number", said — no radio, no choice, nothing about another number
+    saidAlone: saidBranch.includes("{COMPOSE_TEST_TO_LEGEND}") && saidBranch.includes("composeTestToOwn(t.ownNumberMasked)")
+      && saidBranch.includes('data-test-choice="own"') && saidBranch.includes('data-test-choice-why="own"')
+      && !/<input|TestToChoice|COMPOSE_TEST_TO_TYPED|typedView|onPick|type="radio"/.test(saidBranch),
+    // a typed test refused for the role (changed since the page was read) re-reads the page
+    reread: sendBlock.includes('if ("outcome" in r && r.outcome === "refused" && r.reason === "typed_role") router.refresh();'),
+  };
+  ok("§16.21 ⛔ 2026-10-09 · 'ANOTHER NUMBER' ONLY FOR A VIEWER THE DOOR LETS TYPE ONE — the card takes the server's answer (typedOffered) and names no role itself; the choice — the fieldset with both radio cards — renders only while it is offered, and nowhere else; otherwise the card says 'Send the test to' and 'My own number' as text, with no radio, no choice and nothing about another number; the target is own whenever the choice is not offered (the state, the post and data-test-target follow it; data-test-typed-offered says which); and a typed_role refusal re-reads the page",
+    Object.values(offeredOnly).every(Boolean), JSON.stringify(offeredOnly));
   return failed;
 }
 
@@ -1340,6 +1354,8 @@ const { maskPhone } = await import("../src/lib/phone-normalize.ts");
 const AUDIENCE = await import("../src/lib/server/marketing/audience.ts");
 const COMPOSE_COPY = await import("../src/app/admin/campaigns/new/composer-copy.ts");
 const LOADER = await import("../src/app/admin/campaigns/new/composer-loader.ts");
+/** 2026-10-09 · §18.37 asks the typed test's role decider of every role the console names. */
+const ROLES = await import("../src/lib/server/roles.ts");
 /** U13 · the test send and the send loop are handed a FIXED window here (ENGINE-SPEC §5 rule 9): §17–§18 hold at any clock,
  *  and §18.33 closes it on purpose. */
 const { ALWAYS_OPEN, ALWAYS_CLOSED } = await import("./lib/send-window.mts");
@@ -1374,15 +1390,18 @@ function u37bKey(): string {
 }
 
 type OfficerFixture = { id: string; key: string; phone: string };
-/** An officer's own account — a GROWTH user — with consent given the way a person gives it (the profile switch's writer). */
-async function u37bOfficer(opts: { consent?: boolean; dob?: string | null; displayName?: string | null; phone?: string } = {}): Promise<OfficerFixture> {
+/** Every role `roles.ts` names — §18.37 asks the door with each. */
+type FixtureRole = "PLAYER" | "AGENT" | "MODERATOR" | "ADMIN" | "COMPLIANCE" | "SUPPORT" | "FINANCE" | "GROWTH" | "AUDITOR";
+/** An officer's own account — a GROWTH user unless `role` says (2026-10-09: a test to a typed number needs ADMIN or
+ *  COMPLIANCE) — with consent given the way a person gives it (the profile switch's writer). */
+async function u37bOfficer(opts: { consent?: boolean; dob?: string | null; displayName?: string | null; phone?: string; role?: FixtureRole } = {}): Promise<OfficerFixture> {
   const key = u37bKey();
   const phone = opts.phone ?? `+${key}`;
   const id = `usr_u37b_${u37bSeq}`;
   const at = new Date().toISOString();
   await db.user.create({
     id, phoneE164: phone, email: null, passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
-    role: "GROWTH", status: "ACTIVE", locale: "EN", displayName: opts.displayName === undefined ? "Asha Officer" : opts.displayName,
+    role: opts.role ?? "GROWTH", status: "ACTIVE", locale: "EN", displayName: opts.displayName === undefined ? "Asha Officer" : opts.displayName,
     dob: opts.dob === undefined ? "1990-01-01" : opts.dob, region: "TZ", acceptedTermsVersion: "v1", acceptedTermsAt: at,
     marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, emailVerifiedAt: null, createdAt: at, updatedAt: at,
     lastLoginAt: at, closedAt: null,
@@ -1393,6 +1412,8 @@ async function u37bOfficer(opts: { consent?: boolean; dob?: string | null; displ
   }
   return { id, key: opts.phone ? phone.replace(/[^0-9]/g, "") : key, phone };
 }
+/** ⛔ 2026-10-09 · an officer who may type a number — the Owner (ADMIN); the ruling admits COMPLIANCE too (§18.37). */
+const u37bTypist = (opts: Parameters<typeof u37bOfficer>[0] = {}): Promise<OfficerFixture> => u37bOfficer({ ...opts, role: "ADMIN" });
 
 const U37B_SAVER = "usr_u37b_saver";
 /** The real save's door with a silent audit — for fixtures, never for the save under test. */
@@ -1549,11 +1570,11 @@ function checkComposerWords(w: WordsImpl, log: (l: string) => void): string[] {
   {
     const spaced = (s: string) => s.split(NBSP15).join(" ");
     const uni = counterFor(UNI15, "SW", FB, "");
-    const gsmOver = counterFor(`${fillTo(HEAD, operatorBudget("SW", RESERVE))}aa`, "SW", FB, "");
+    const gsmOver = counterFor(`${fillTo(HEAD, operatorBudget("SW"))}aa`, "SW", FB, "");
     const lineU = spaced(w.counterLine(uni));
     const lineG = spaced(w.counterLine(gsmOver));
-    ok(`§16.12 ⛔ THE COUNTER LINE NEVER ASKS FOR A CUT THAT CANNOT FIX IT — while Unicode leaves no room it reads 'Unicode leaves no room · ${uni.segments} messages · the limit is ${SMS_MAX_SEGMENTS}', no 'over' and no negative; a GSM-7 body two past its room still reads '2 over'`,
-      uni.budget <= 0 && lineU === `Unicode leaves no room · ${uni.segments} messages · the limit is ${SMS_MAX_SEGMENTS}`
+    ok(`§16.12 ⛔ THE COUNTER LINE NEVER ASKS FOR A CUT THAT CANNOT FIX IT — Unicode keeps its whole 70 (nothing is appended), so a short Unicode body reads '${uni.left} characters left · 1 message · Unicode', no 'over' and no negative; a GSM-7 body two past its room reads '2 over'`,
+      uni.budget === 70 && lineU === `${uni.left} characters left · 1 message · Unicode`
         && !/over/.test(lineU) && !NEG_NUMBER.test(lineU)
         && lineG === `2 over · ${gsmOver.segments} messages · the limit is ${SMS_MAX_SEGMENTS}`,
       `unicode "${lineU}" (room ${uni.budget}) · GSM-7 "${lineG}"`);
@@ -1766,18 +1787,18 @@ async function checkSave(impl: ComposeImpl, log: (l: string) => void): Promise<s
   const phraseOf = (r: Awaited<ReturnType<typeof saveUnder>>, row: StoredRow | null) =>
     row === null ? (r.ok ? "no row" : r.error) : JSON.stringify(row.sourcePhrase);
 
-  await claim("§17.13 ⭐ U37s · A DRAFT SAVE STAMPS THE SAVED SOURCE LINE — saved while the line reads 'Namba yako ipo orodhani kwetu.', a new draft stores exactly that line; and the server's verdict PRICES the stamped line: a body sized to a 12-character line's room is saved under that line with its own counter's segments, and refused on the body under the 30-character reserve a blank line holds", async () => {
+  await claim("§17.13 ⭐ U37s · A DRAFT SAVE STILL STAMPS THE SAVED SOURCE LINE, AND NEVER PRICES IT — saved while the line reads 'Namba yako ipo orodhani kwetu.', a new draft stores exactly that line; a body sized to the whole message's room is saved under a 12-character line with its own counter's segments, and under a blank line too (the line is never printed — 2026-10-09)", async () => {
     const stamped = await saveUnder(LINE37S_A, draftInput({ name: "Stamped line" }));
     const row = stamped.ok ? await db.smsCampaign.find(stamped.id) : null;
-    const sized = draftInput({ name: "Priced line", bodySw: fillTo(HEAD, operatorBudget("SW", LINE37S_B)) });
+    const sized = draftInput({ name: "Priced line", bodySw: fillTo(HEAD, operatorBudget("SW")) });
     const priced = await saveUnder(LINE37S_B, sized);
     const pricedRow = priced.ok ? await db.smsCampaign.find(priced.id) : null;
-    const reserved = await saveUnder(null, sized);
+    const blank = await saveUnder(null, sized);
     const own = counterFor(sized.bodySw, "SW", FB, LINE37S_B);
     return [row !== null && row.sourcePhrase === LINE37S_A
-      && pricedRow !== null && pricedRow.sourcePhrase === LINE37S_B && pricedRow.segmentsSw === own.segments && own.budget >= 0
-      && !reserved.ok && reserved.reason === "invalid" && (reserved.problems.bodySw?.length ?? 0) > 0,
-      `stamped ${phraseOf(stamped, row)} · priced ${phraseOf(priced, pricedRow)} (${pricedRow?.segmentsSw}/${own.segments}, room ${own.budget}) · under the reserve ${reserved.ok ? "SAVED" : reserved.reason}`];
+      && pricedRow !== null && pricedRow.sourcePhrase === LINE37S_B && pricedRow.segmentsSw === own.segments && own.left === 0 && own.segments === 1
+      && blank.ok,
+      `stamped ${phraseOf(stamped, row)} · priced ${phraseOf(priced, pricedRow)} (${pricedRow?.segmentsSw}/${own.segments}, left ${own.left}) · under a blank line ${blank.ok ? "SAVED" : blank.reason}`];
   });
 
   await claim("§17.14 ⛔ U37s · BLANK WHILE UNSAVED — with no line saved a draft stores NO source line (null, never the reserve's placeholder), and so does a line saved as spaces only; and the ONE reader answers null on a store where no line was ever saved", async () => {
@@ -1974,7 +1995,9 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
   let cmp = "";
   let cmp2 = "";
   try {
-    o = await officer();
+    // ⛔ 2026-10-09 · the Owner (ADMIN): the typed claims below send as `o`, and a test to a typed number is for ADMIN and
+    // COMPLIANCE only (§18.37) — the own-number claims are the same for every role.
+    o = await officer({ role: "ADMIN" });
     cmp = await u37bDraft();
     cmp2 = await u37bDraft();
   } catch (err) {
@@ -2173,7 +2196,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       `${tries.map(reasonOf).join(", ")} · retry after ${wait}s · audit rows ${rows.length}`];
   });
 
-  await claim("§18.9 ONE NUMBER, ONE LINK — two tests leave exactly ONE opt-out token for the officer's key, and both messages carry it", async () => {
+  await claim("§18.9 ONE NUMBER, ONE TOKEN, NO LINK — two tests leave exactly ONE opt-out token for the officer's key (kept for the stop page), and NEITHER message carries it — the message is the officer's text (2026-10-09)", async () => {
     const o9 = await officer();
     const cmp9 = await u37bDraft();
     const { send: spy } = u37bSpy();
@@ -2181,7 +2204,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     const b = await send({ campaignId: cmp9, variant: "SW" }, o9.id, { send: spy });
     const tokens = await db.marketingOptOutToken.listFor(o9.key);
     const link = tokens.length === 1 ? `/s/${tokens[0].token}` : "(no single token)";
-    return [a.ok && b.ok && tokens.length === 1 && a.text.endsWith(link) && b.text.endsWith(link), `tokens ${tokens.length}`];
+    return [a.ok && b.ok && tokens.length === 1 && !a.text.includes(link) && !b.text.includes(link) && !a.text.includes("/s/") && !b.text.includes("/s/"), `tokens ${tokens.length}`];
   });
 
   await claim("§18.10 every attempt past the budget writes ONE marketing.campaign_test row with its outcome and reason, against the campaign, the number MASKED — no fixture key and no nine national digits in any row", async () => {
@@ -2252,7 +2275,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       `${sends} sends · ${over.length} over: ${over.slice(0, 3).join(" | ")} · ${reached} at the account bound exactly`];
   });
 
-  await claim("§18.13 ⭐ THE ORIGIN IS CHOSEN — the officer's own number renders as an ACCOUNT recipient (their first name; no source line, even once one is stored) — and a TYPED number renders as a CONTACT-BOOK recipient: the {jina} fallback, never the holder's own first name, and the stored source line", async () => {
+  await claim("§18.13 ⭐ THE ORIGIN IS CHOSEN — the officer's own number renders as an ACCOUNT recipient (their first name; no source line, even once one is stored) — and a TYPED number renders as a CONTACT-BOOK recipient: the {jina} fallback, never the holder's own first name, and NO source line, though one is stored (2026-10-09)", async () => {
     const o13 = await officer({ displayName: "Juma Mkuu" });
     const blankId = await u37bDraft();
     const phraseId = await u37bDraft();
@@ -2263,7 +2286,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     // U37c · another officer types Juma's number, the record open and the line stored: a book recipient, never "Juma".
     const typed = await sendTyped(phraseId, `+${o13.key}`, o.id, { over: { send: spy } });
     return [set !== null && blank.ok && blank.text.startsWith("50pick: Habari Juma,") && phrased.ok && !phrased.text.includes(PHRASE)
-      && typed.ok && typed.target === "typed" && typed.text.includes(`Habari ${FB},`) && !typed.text.includes("Juma") && typed.text.includes(PHRASE),
+      && typed.ok && typed.target === "typed" && typed.text.includes(`Habari ${FB},`) && !typed.text.includes("Juma") && !typed.text.includes(PHRASE),
       `blank ${blank.ok ? JSON.stringify(blank.text.slice(0, 30)) : `${reasonOf(blank)}: ${blank.error}`} · phrased ${phrased.ok ? (phrased.text.includes(PHRASE) ? "CARRIES THE PHRASE" : "no phrase") : reasonOf(phrased)} · typed ${typed.ok ? JSON.stringify(typed.text.slice(0, 30)) : `${reasonOf(typed)}: ${typed.error}`}`];
   });
 
@@ -2317,7 +2340,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       `${reasonOf(m.result)} · fetches ${m.fetches} · rows ${m.rows} · tokens ${m.tokens}`];
   });
 
-  await claim("§18.17 ⭐ U37c · A TYPED NUMBER REACHES EXACTLY ITS KEY, WHATEVER THE SPELLING — its national and international spellings give ONE key; each test is ONE SmsMessage row (MARKETING, SmsCampaignTest) to that key, rendered as a CONTACT-BOOK recipient (the {jina} fallback and the stored source line); its audit row says target typed, the number masked, basis LICENCE_TEST with its test: ref, the 18+ wording's version and a ta_ attempt ref of letters only — and no digit run of the key", async () => {
+  await claim("§18.17 ⭐ U37c · A TYPED NUMBER REACHES EXACTLY ITS KEY, WHATEVER THE SPELLING — its national and international spellings give ONE key; each test is ONE SmsMessage row (MARKETING, SmsCampaignTest) to that key, rendered as a CONTACT-BOOK recipient (the {jina} fallback; the stored source line is never printed); its audit row says target typed, the number masked, basis LICENCE_TEST with its test: ref, the 18+ wording's version and a ta_ attempt ref of letters only — and no digit run of the key", async () => {
     const id = await phrasedDraft();
     const k = u37bKey();
     const sp = spellings(k);
@@ -2332,7 +2355,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     const json = JSON.stringify(mine);
     return [a.ok && b.ok && a.target === "typed" && b.target === "typed" && a.maskedTo === maskPhone(k) && b.maskedTo === maskPhone(k)
       && rows.length === 2 && rows.every((m) => m.msisdn === k && m.purpose === "MARKETING" && m.targetType === TEST.CAMPAIGN_TEST_TARGET_TYPE && m.targetId === id)
-      && a.text.includes(`Habari ${FB},`) && a.text.includes(PHRASE)
+      && a.text.includes(`Habari ${FB},`) && !a.text.includes(PHRASE)
       && mine.length === 2 && p.basis === "LICENCE_TEST" && /^test:ta_[a-z]{16}$/.test(String(p.basisRef)) && /^ta_[a-z]{16}$/.test(String(p.attemptRef))
       && att?.key === "adult.test" && att?.version === 3 && p.to === maskPhone(k) && !json.includes(k) && !json.includes(k.slice(3)),
       JSON.stringify({ a: reasonOf(a), b: reasonOf(b), rows: rows.length, audited: mine.length, payload: p })];
@@ -2435,7 +2458,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       JSON.stringify({ masked: masked.map(reasonOf), reader: reader.map(reasonOf), handed: handed.map(reasonOf), leaks: leaks.length })];
   });
 
-  await claim("§18.21 ⛔ U37c · THE STOP LINK IS NEVER SHOWN — a typed test hands the officer the text with the MEASUREMENT token while the wire carries the number's REAL token, and that number's token row exists", async () => {
+  await claim("§18.21 ⛔ U37c · NO STOP LINK ON THE WIRE — a typed test hands the officer exactly the text the wire carries, and neither carries a token; the number's token row is still made, for the stop page (2026-10-09)", async () => {
     const id = await phrasedDraft();
     const k = u37bKey();
     const { send: spy, spy: seen } = u37bSpy();
@@ -2445,11 +2468,11 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     const shown = row === null ? null : renderForRecipient(u37bTemplate(row), { variant: "SW", name: null, token: footerMeasurementToken(), origin: "book" });
     const wire = row === null || token === "" ? null : renderForRecipient(u37bTemplate(row), { variant: "SW", name: null, token, origin: "book" });
     return [r.ok && token.length === 8 && shown !== null && shown.ok && wire !== null && wire.ok && r.text === shown.text
-      && seen.messages.length === 1 && seen.messages[0].body === wire.text && !r.text.includes(token) && seen.messages[0].body.includes(token),
+      && seen.messages.length === 1 && seen.messages[0].body === wire.text && seen.messages[0].body === r.text && !r.text.includes(token) && !seen.messages[0].body.includes(token),
       `${reasonOf(r)} · token ${token.length ? "made" : "none"} · shown is the measurement render ${r.ok && shown !== null && shown.ok ? r.text === shown.text : false}`];
   });
 
-  await claim("§18.22 ⭐ U37c · THE TYPED PREVIEW IS THE SAME FOR EVERY NUMBER — the loader's typed view renders the saved draft as a CONTACT-BOOK recipient with the measurement token, takes no number (draft and facts only), labels the tick with the saved adult.test version, and says why a typed test can't be offered in the test send's own order and words: licence outreach closed, then the 18+ wording unsaved, then no source line on the draft (with no preview), and a saved text that cannot render for a book recipient is refused in the render's own words, never offered", async () => {
+  await claim("§18.22 ⭐ U37c · THE TYPED PREVIEW IS THE SAME FOR EVERY NUMBER — the loader's typed view renders the saved draft as a CONTACT-BOOK recipient with the measurement token, takes no number (draft and facts only), labels the tick with the saved adult.test version, and says why a typed test can't be offered in the test send's own order and words: licence outreach closed, then the 18+ wording unsaved, then no source line on the draft (its preview is shown — the line itself is never printed), and a saved text that cannot render for a book recipient is refused in the render's own words, never offered", async () => {
     const id = await phrasedDraft();
     const blankId = await u37bDraft();
     const row = await db.smsCampaign.find(id);
@@ -2485,21 +2508,22 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     const takesNoNumber = paramNames.join(",") === "draft,facts" && LOADER.composeTypedView.length === 2;
     return [ready.allowed && ready.why === null && expected.ok && ready.preview?.SW === expected.text && ready.attestation?.version === 3
       && !closed.allowed && closed.why === TEST.TEST_TYPED_OUTREACH_CLOSED && !unsaved.allowed && unsaved.why === TEST.TEST_TYPED_NO_ATTESTATION_WORDING
-      && !noLine.allowed && noLine.why === TEST.TEST_TYPED_NEEDS_SOURCE_LINE && noLine.preview === null && takesNoNumber && refusedInItsWords,
+      && !noLine.allowed && noLine.why === TEST.TEST_TYPED_NEEDS_SOURCE_LINE && noLine.preview !== null && takesNoNumber && refusedInItsWords,
       JSON.stringify({ ready: { allowed: ready.allowed, why: ready.why, same: ready.preview?.SW === (expected.ok ? expected.text : null) }, closed: closed.why, unsaved: unsaved.why, noLine: noLine.why, takesNoNumber, unrenderable: unrenderable.why })];
   });
 
   await claim("§18.23 ⛔ U37c · S24 · THE TYPED BUDGETS — five typed tests to one number from three officers pass and the sixth is refused typed_rate_limited with the recipient's sentence, while another number is still allowed and the bucket key holds no digit run of the number; one officer's eleventh typed test to eleven numbers is refused typed_rate_limited with the officer's sentence while their own-number test still passes; and a refusal before the gate spends neither budget", async () => {
     const id = await phrasedDraft();
     const k = u37bKey();
-    const three = [await officer(), await officer(), await officer()];
+    // 2026-10-09 · officers who may type a number: the Owner and two COMPLIANCE officers.
+    const three = [await officer({ role: "ADMIN" }), await officer({ role: "COMPLIANCE" }), await officer({ role: "COMPLIANCE" })];
     const { send: spy } = u37bSpy();
     const real = { rateTyped: impl.testDeps.rateTyped, rateTo: impl.testDeps.rateTo, send: spy };
     const toOne: TestResult[] = [];
     for (let i = 0; i < 6; i++) toOne.push(await sendTyped(id, `+${k}`, three[i % 3].id, { over: real }));
     const other = await sendTyped(id, `+${u37bKey()}`, three[0].id, { over: real });
     const bucket = TEST.testToBucket(k);
-    const busy = await officer();
+    const busy = await officer({ role: "COMPLIANCE" });
     const many: TestResult[] = [];
     for (let i = 0; i < 11; i++) many.push(await sendTyped(id, `+${u37bKey()}`, busy.id, { over: real }));
     const own = await send({ campaignId: id, variant: "SW" }, busy.id, { send: spy });
@@ -2668,9 +2692,10 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
   });
 
   await claim("§18.33 ⛔ U13 · M12 · THE TEST SEND OBEYS THE SEND WINDOW — outside it (03:00 EAT) the officer's own test and a typed one are each refused 'held' with the window's sentence, word for word, before a token, a row or the wire: no token minted, no SmsMessage row, the gate never asked, and the masked audit row says held: quiet_hours; a window that closes between that check and the send still holds the test, with no row", async () => {
-    const o33 = await officer();
+    // 2026-10-09 · a COMPLIANCE officer: the typed half needs a role that may type a number.
+    const o33 = await officer({ role: "COMPLIANCE" });
     const id = await phrasedDraft();
-    const QUIET = "It's outside the send window (08:00–20:00 EAT), so no test can be sent now — try again at 08:00.";
+    const QUIET ="It's outside the send window (08:00–20:00 EAT), so no test can be sent now — try again at 08:00.";
     const start = audits.length;
     let gates = 0;
     const counting = async (m: string) => { gates++; return mayReceiveMarketingSms(m); };
@@ -2764,8 +2789,134 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       && !words(prewire).includes("refused") && words(refused).includes("nothing reached your phone") && words(prewire).includes("nothing reached your phone"),
       `REJECTED: ${reasonOf(refused)} "${words(refused)}" · UNKNOWN: ${reasonOf(prewire)} "${words(prewire)}"`];
   });
+
+  /* ══ §18.37–§18.39 · THE OWNER'S RULING OF 2026-10-09 — A TEST TO A TYPED NUMBER IS FOR ADMIN AND COMPLIANCE ONLY ══ */
+  await claim(S18_37, async () => {
+    const id = await phrasedDraft();
+    const start = audits.length;
+    // Everything a typed test could reach past the role, counted: the rail, the switch, the window, the record, the typed
+    // budgets, the gate, the floor, the token store and the wire.
+    const n = { rail: 0, live: 0, window: 0, outreach: 0, budgets: 0, gate: 0, floor: 0, tokens: 0 };
+    const { send: spy, spy: wire } = u37bSpy();
+    const counted: Partial<TestDeps> = {
+      rail: () => { n.rail++; return null; },
+      liveSwitch: async () => { n.live++; return impl.readSwitch(); },
+      window: () => { n.window++; return ALWAYS_OPEN(); },
+      gateReads: { ...OPEN_READS, outreach: () => { n.outreach++; return OPEN_OUTREACH; } } as TestDeps["gateReads"],
+      rateTyped: async () => { n.budgets++; return ALLOW(); },
+      rateTo: async () => { n.budgets++; return ALLOW(); },
+      gate: async () => { n.gate++; return { ok: true as const, basis: "LICENCE_TEST" as const, basisRef: "test:fixture" }; },
+      sleep: async () => { n.floor++; },
+      ensureToken: async (raw: string) => { n.tokens++; return impl.ensureToken(raw); },
+      send: spy,
+    };
+    const asRole = (r: TestResult): boolean => !r.ok && r.outcome === "refused" && r.reason === "typed_role"
+      && r.error === TEST.TEST_TYPED_ROLE_REFUSED && r.target === "typed";
+    const stranger = u37bKey();
+    const numbers: string[] = [stranger];
+    const roleOf = new Map<string, string | null>();
+    const said: string[] = [];
+    let refused = true;
+    // ⛔ Every role but the two tries a typed number four ways: a valid one, ticked; a malformed one (never parsed — not
+    // bad_number); its own in another spelling, unticked (never compared — not the own path); and with a reader's options.
+    for (const role of ["GROWTH", "FINANCE", "SUPPORT", "AUDITOR", "MODERATOR", "PLAYER", "AGENT"] as FixtureRole[]) {
+      const who = await officer({ role });
+      roleOf.set(who.id, role);
+      numbers.push(who.key);
+      const tries = [
+        await sendTyped(id, `+${stranger}`, who.id, { over: counted }),
+        await sendTyped(id, "12345", who.id, { over: counted }),
+        await sendTyped(id, spellings(who.key).local, who.id, { attested: false, over: counted }),
+        await sendTyped(id, `+${stranger}`, who.id, { reads: true, over: counted }),
+      ];
+      if (!tries.every(asRole) || (await tokenCount(who.key)) !== 0) refused = false;
+      said.push(`${role} ${tries.map(reasonOf).join("/")}`);
+    }
+    // ⛔ The browser's word: a role posted beside the recipient, and inside it, is never read.
+    const growth = await officer({ role: "GROWTH" });
+    roleOf.set(growth.id, "GROWTH");
+    const posted = await impl.test({
+      campaignId: id, variant: "SW", role: "ADMIN",
+      recipient: { kind: "typed", number: `+${stranger}`, adultAttested: true, attestedVersion: ADULT_TEST.v, role: "ADMIN" },
+    } as unknown as TestInput, growth.id, deps(typedOver(counted)), { viewerReads: true });
+    // ⛔ An officer the store holds no row for has no role, so no typed test.
+    const nobodyId = `usr_u37b_nobody_${u37bSeq}`;
+    roleOf.set(nobodyId, null);
+    const nobody = await sendTyped(id, `+${stranger}`, nobodyId, { over: counted });
+    // ⭐ GROWTH's own test still goes — "My own number", the one way its card offers.
+    const { send: ownSpy, spy: ownWire } = u37bSpy();
+    const own = await send({ campaignId: id, variant: "SW" }, growth.id, { send: ownSpy });
+    // ⭐ ADMIN (the Owner) and COMPLIANCE, as before: through the ONE gate to the wire.
+    const { send: okSpy, spy: okWire } = u37bSpy();
+    const allowed = [
+      await sendTyped(id, `+${u37bKey()}`, (await officer({ role: "ADMIN" })).id, { over: { send: okSpy } }),
+      await sendTyped(id, `+${u37bKey()}`, (await officer({ role: "COMPLIANCE" })).id, { over: { send: okSpy } }),
+    ];
+    // ONE masked row per refused attempt — the door's own, against the campaign, with the stored role and no `to`.
+    const rows = audits.slice(start).filter((a) => a.action === TEST.CAMPAIGN_TEST_ACTION && a.payload?.reason === "typed_role");
+    const rowsOk = rows.length === 7 * 4 + 2 && rows.every((a) => a.targetId === id && a.payload?.outcome === "refused"
+      && a.payload?.target === "typed" && !("to" in (a.payload ?? {})) && roleOf.has(a.actorId ?? "")
+      && a.payload?.role === roleOf.get(a.actorId ?? ""));
+    const json = JSON.stringify(rows);
+    const quiet = numbers.every((k) => !json.includes(k) && !json.includes(k.slice(3))) && !/(?<![0-9])255[0-9]{9}(?![0-9])/.test(json)
+      && !/[0-9]/.test(TEST.TEST_TYPED_ROLE_REFUSED);
+    const untouched = Object.values(n).every((x) => x === 0) && wire.calls === 0 && (await tokenCount(stranger)) === 0;
+    // The decider, of every role roles.ts names and of values that are none of them.
+    const every: string[] = [...ROLES.STAFF_ROLES, "PLAYER", "AGENT"];
+    const admitted = every.filter((r) => TEST.mayTestTypedNumber(r)).sort().join(",");
+    const strays = [null, undefined, "", "admin", "Admin", "OWNER", " ADMIN", "__proto__", "constructor", "toString"]
+      .filter((r) => TEST.mayTestTypedNumber(r as string | null | undefined));
+    return [refused && asRole(posted) && asRole(nobody) && own.ok && own.target === "own" && ownWire.calls === 1
+      && allowed.every((r) => r.ok && r.target === "typed") && okWire.calls === 2 && rowsOk && quiet && untouched
+      && new Set(every).size === 9 && admitted === "ADMIN,COMPLIANCE" && strays.length === 0,
+      JSON.stringify({ said, posted: reasonOf(posted), nobody: reasonOf(nobody), own: reasonOf(own), allowed: allowed.map(reasonOf), rows: rows.length, rowsOk, quiet, n, wire: wire.calls, admitted, strays })];
+  });
+
+  await claim("§18.38 ⛔ 2026-10-09 · THE ROLE IS ASKED FIRST, OF THE STORED ROW, BY THE ONE DECIDER — in sendCampaignTest the typed role check (mayTestTypedNumber(officer?.role), refused typed_role in TEST_TYPED_ROLE_REFUSED) sits right after the officer's stored read (deps.users.findById(officerId)) and before the typed number is parsed (parseTzNumber(recipient.number)), masked (maskPhone(key)) or set beside the officer's own (key === ownKey); the door asks it once and reads no role from the request; and the decider is a full record over every role, ADMIN and COMPLIANCE alone true", async () => {
+    const src = impl.testSendSource.split(CR17).join("");
+    const fnAt = src.indexOf("export async function sendCampaignTest(");
+    const fn = fnAt < 0 ? "" : src.slice(fnAt);
+    const at = (s: string): number => fn.indexOf(s);
+    const iRead = at("const officer = await deps.users.findById(officerId);");
+    const iCheck = at('if (recipient.kind === "typed" && !mayTestTypedNumber(officer?.role)) {');
+    const iRefuse = at('return refuse("typed_role", TEST_TYPED_ROLE_REFUSED);');
+    const iParse = at("parseTzNumber(recipient.number)");
+    const iMask = at("maskPhone(key)");
+    const iOwn = at("key === ownKey");
+    const order = iRead > 0 && iCheck > iRead && iRefuse > iCheck && iParse > iRefuse && iMask > iParse && iOwn > iParse;
+    const once = fn.split("mayTestTypedNumber(").length - 1 === 1 && !/\b(?:input|recipient|options|raw)[?]?[.]role\b/.test(fn);
+    const recAt = src.indexOf("const MAY_TYPE_A_NUMBER: Readonly<Record<Role, boolean>> = {");
+    const rec = recAt < 0 ? "" : src.slice(recAt, src.indexOf("};", recAt));
+    const entries = [...rec.matchAll(/^ {2}([A-Z]+): (true|false),$/gm)].map((m) => `${m[1]}=${m[2]}`);
+    const record = entries.length === 9 && new Set(entries.map((e) => e.split("=")[0])).size === 9
+      && entries.filter((e) => e.endsWith("=true")).sort().join(",") === "ADMIN=true,COMPLIANCE=true"
+      && src.includes('import type { Role } from "@/lib/server/roles";')
+      && src.includes('return typeof role === "string" && Object.prototype.hasOwnProperty.call(MAY_TYPE_A_NUMBER, role) && MAY_TYPE_A_NUMBER[role as Role] === true;');
+    return [order && once && record, JSON.stringify({ iRead, iCheck, iRefuse, iParse, iMask, iOwn, once, entries })];
+  });
+
+  await claim("§18.39 ⛔ 2026-10-09 · THE CARD IS OFFERED 'ANOTHER NUMBER' ONLY WHERE THE DOOR WOULD TAKE IT — loadComposer asks the door's own decider (mayTestTypedNumber, imported from campaign-test-send.ts) once, of the officer's STORED row (db.user.findById of the session's user — the row the door re-reads), never of the address; it hands typedOffered beside the typed view; a viewer who may not type gets the empty view (TYPED_NOT_OFFERED: not allowed, no reason, no preview, no 18+ words, frozen) and composeTypedView is never asked for them, while every other viewer gets composeTypedView's own", async () => {
+    const loader = impl.loaderSource.split(CR17).join("");
+    const fnAt = loader.indexOf("export async function loadComposer(");
+    const fn = fnAt < 0 ? "" : loader.slice(fnAt);
+    const READ = "const officer = session ? await db.user.findById(session.userId) : null;";
+    const DECIDE = "const typedOffered = mayTestTypedNumber(officer?.role);";
+    const wiring = {
+      imported: loader.includes('import { mayTestTypedNumber } from "@/lib/server/marketing/campaign-test-send";'),
+      decided: fn.indexOf(READ) > 0 && fn.indexOf(DECIDE) > fn.indexOf(READ) && fn.split("mayTestTypedNumber(").length - 1 === 1,
+      handed: /typed: typedOffered\s*\?\s*composeTypedView\(draft, \{/.test(fn) && /:\s*TYPED_NOT_OFFERED,\s*typedOffered,/.test(fn)
+        && fn.split("composeTypedView(").length - 1 === 1,
+      typedField: /typed: ComposeTypedView;[\s\S]{0,900}?typedOffered: boolean;/.test(loader),
+    };
+    const empty = LOADER.TYPED_NOT_OFFERED;
+    const emptyOk = Object.isFrozen(empty) && empty.allowed === false && empty.why === null && empty.preview === null
+      && empty.attestation === null && Object.keys(empty).sort().join(",") === "allowed,attestation,preview,why";
+    return [Object.values(wiring).every(Boolean) && emptyOk, JSON.stringify({ ...wiring, emptyOk })];
+  });
   return failed;
 }
+/** 2026-10-09 · §18.37's claim — named once, so its red cases expect exactly what the run says. */
+const S18_37 = "§18.37 ⛔ 2026-10-09 · A TEST TO A TYPED NUMBER IS FOR ADMIN AND COMPLIANCE ONLY, BY THE STORED ROLE — GROWTH, FINANCE, SUPPORT, AUDITOR, MODERATOR, PLAYER, AGENT and an officer with no row are each refused typed_role in ONE sentence that names no number, before anything about the number is read: a malformed number is never parsed (not bad_number), their own number in another spelling is never compared (not the own path), a reader's options change nothing, and nothing reaches the rail, the switch, the window, the record, the typed budgets, the gate, the floor, the token store or the wire; each attempt writes ONE masked marketing.campaign_test row (typed_role, target typed, the campaign named, the stored role, no to, no digit run of a number); a role posted beside the recipient is never read; GROWTH's own test still goes; ADMIN (the Owner) and COMPLIANCE are handed over as before; and the decider admits exactly those two of every role roles.ts names, and nothing that is none of them";
 /** U33r · §18.36's claim — named once, so its red case expects exactly what the run says. */
 const S18_36 = "§18.36 ⛔ U33r · A PROMISED AGENT REFEREE IS NEVER SENT A TEST — a typed test to a number an applicant gave as a referee is refused through the ONE gate: a viewer who may not read numbers gets typed_refused and its ONE sentence, a reader gets the ONE protected reason and sentence (MINOR-5: collapsed for readers too, as the split collapses it), the audit row ALONE records agent_referee, for both; zero transport calls and zero tokens; and an officer whose OWN number is a referee's is told it is protected, in the own-number words";
 
@@ -2888,13 +3039,26 @@ if (!PROVE_RED) {
   type EnvPlant = { name: string; expect: RegExp; compose: Composer; landed: () => boolean; landedAs: string };
   const envPlants: EnvPlant[] = [
     {
-      // ⭐ THE DEFECT THIS WHOLE UNIT EXISTS TO PREVENT. Size the body, send body + footer, and every
-      // quote is short by 49 septets — a 140-character body reads as one message and sends as two.
-      name: "the composer sizes the BODY and the engine sends body + footer",
+      // ⭐ THE OWNER'S RULING (2026-10-09): nothing is appended. A footer back on the message is a message nobody wrote.
+      name: "a footer appended again — the stop link, 18+ and the helpline back on every message",
+      expect: /^§11 ⭐ the composed text IS the officer's text/,
+      compose: (body, token) => { const c = REAL(body, token); return { ...c, text: `${c.text}\n50pick 18+ ${statutorySmsHelpline()} Acha: ${shortDomain()}/s/${token}` }; },
+      landed: () => true,
+      landedAs: "a composer that appends anything sends a message the officer did not write",
+    },
+    {
+      name: "the stop link printed again — the token appended to the officer's text",
+      expect: /^§9 ⭐ no stop link, no 18\+, no helpline and no token/,
+      compose: (body, token) => { const c = REAL(body, token); return { ...c, text: `${c.text} ${shortDomain()}/s/${token}` }; },
+      landed: () => true,
+      landedAs: "the token in the text is the stop link the owner ruled out",
+    },
+    {
+      name: "the size taken of the body's first ten characters, not of the message sent",
       expect: /^§11 ⭐ the size is taken of the WHOLE message, not the body/,
-      compose: (body, token) => ({ ...REAL(body, token), size: sizeSms(body) }),
-      landed: () => sizeSms("50pick " + "a".repeat(140)).segments === 1 && REAL("50pick " + "a".repeat(140), "a1b2c3d4").size.segments === 2,
-      landedAs: "a 147-character body is one segment alone and two with the footer — 49 septets of difference",
+      compose: (body, token) => ({ ...REAL(body, token), size: sizeSms((body ?? "").slice(0, 10)) }),
+      landed: () => REAL("50pick: soka leo. Weka dau sasa.", "a1b2c3d4").size.units !== sizeSms("50pick: so").units,
+      landedAs: "a message longer than ten characters is priced as ten",
     },
     {
       name: "the identity check dropped — ETA s.32(1)(b) unenforced",
@@ -2907,22 +3071,16 @@ if (!PROVE_RED) {
       landedAs: "the real composer refuses a body that does not begin with the sender identity",
     },
     {
-      name: "the footer made optional — an opt-out that is not in the message",
-      expect: /^§11 ⭐ and the composed text ENDS with the footer/,
-      compose: (body, token) => ({ ...REAL(body, token), text: body }),
-      landed: () => true,
-      landedAs: "a composer that can emit a body with no footer is one an officer can send without one",
-    },
-    {
-      name: "the opt-out token unchecked — a lawful-looking message with a dead link",
-      expect: /^§11 ⭐ a missing or wrong-length opt-out token is refused/,
+      name: "the token checked again — a message refused for the stop link it no longer carries",
+      expect: /^§11 ⭐ the token is never printed/,
       compose: (body, token) => {
         const c = REAL(body, token);
-        const problems = c.problems.filter((p) => !p.includes("opt-out link"));
-        return { ...c, problems, ok: problems.length === 0 };
+        if (token.length === 8) return c;
+        const problems = [...c.problems, "The opt-out link is missing or the wrong length."];
+        return { ...c, problems, ok: false };
       },
-      landed: () => REAL("50pick: habari", "").problems.some((p) => p.includes("opt-out link")),
-      landedAs: "the real composer refuses an empty token",
+      landed: () => REAL("50pick: habari", "").ok,
+      landedAs: "the real composer composes with any token",
     },
     {
       // 🔴 The pre-2026-09-26 shape: the composer allowed what `withinCap` allowed (2), or the reverse.
@@ -2938,8 +3096,8 @@ if (!PROVE_RED) {
       landedAs: "the real composer refuses a two-segment message on the cap",
     },
     {
-      name: "the budget quoted in GSM-7 whatever the encoding — 111 for a UCS-2 message",
-      expect: /^§13 ⭐ a short body with one ’ is two messages/,
+      name: "the budget quoted in GSM-7 whatever the encoding — 160 for a UCS-2 message",
+      expect: /^§13 ⭐ a UCS-2 body over 70 is two messages/,
       compose: (body, token) => {
         const c = REAL(body, token);
         const real = operatorBudget("SW", "", c.size.encoding);
@@ -3152,29 +3310,23 @@ if (!PROVE_RED) {
       const { name: _n, ...rest } = real.problems;
       return { ...real, problems: rest, ok: Object.keys(rest).length === 0 };
     };
-    /** The source line's length limit removed — a long phrase would surface only as the officer's body over the cap. */
-    const phraseNoLimit: typeof validateCampaignTemplate = (f, phrase) => {
+    /** §15.11 · the source line JUDGED again — a braced line refuses the whole template (it is never printed, 2026-10-09). */
+    const phraseJudged: typeof validateCampaignTemplate = (f, phrase) => {
       const real = validateCampaignTemplate(f, phrase);
-      const kept = (real.problems.sourcePhrase ?? []).filter((p) => !p.includes("the limit is"));
-      const { sourcePhrase: _p, ...rest } = real.problems;
-      const problems = kept.length > 0 ? { ...rest, sourcePhrase: kept } : rest;
-      return { ...real, problems, ok: Object.keys(problems).length === 0 };
+      if (!/[{}]/.test(phrase ?? "")) return real;
+      return { ...real, problems: { ...real.problems, sourcePhrase: ["The source line cannot carry a placeholder or a brace."] }, ok: false };
     };
-    /** §15.6 · `left` against the room WITHOUT the phrase — the officer told they have the phrase's septets more than they do. */
+    /** §15.6 · `left` against the room LESS the old 49-septet footer — the officer told they have 49 characters fewer. */
     const leftNoPhrase: typeof counterFor = (body, variant, fallback, phrase) => {
       const c = counterFor(body, variant, fallback, phrase);
-      return { ...c, left: operatorBudget(variant, "", c.encoding) - c.bodyUnits };
+      return { ...c, left: c.budget - 49 - c.bodyUnits };
     };
-    /** §15.13 · the renderer WITHOUT the template re-check — each recipient's own message checked, nothing else (M5's refusal kept). */
+    /** §15.13 · the renderer WITHOUT the template re-check — each recipient's own message checked, nothing else. */
     const noRecheck: typeof renderForRecipient = (t, r) => {
       const english = r.variant === "EN" && t.bodyEn.trim().length > 0;
       const fallback = english ? t.nameFallbackEn : t.nameFallbackSw;
-      const fromAccount = r.origin === "account";
-      const phrase = fromAccount ? "" : t.sourcePhrase.trim();
-      const jina = fromAccount ? jinaFor(r.name, fallback) : fallback;
-      const c = composeMarketing(renderBody(english ? t.bodyEn : t.bodySw, jina), r.token, english ? "EN" : "SW", phrase);
-      const problems = !fromAccount && !phrase ? [...c.problems, "no source line"] : c.problems;
-      return { ...c, problems, ok: problems.length === 0 };
+      const jina = r.origin === "account" ? jinaFor(r.name, fallback) : fallback;
+      return composeMarketing(renderBody(english ? t.bodyEn : t.bodySw, jina), r.token, english ? "EN" : "SW");
     };
     /**
      * §15.13 · the re-check WITHOUT the worst case — a stored template refused for SIZE alone is let through to every
@@ -3198,9 +3350,11 @@ if (!PROVE_RED) {
       const english = r.variant === "EN" && t.bodyEn.trim().length > 0;
       return renderForRecipient(english ? { ...t, bodySw: SENDER_IDENTITY } : { ...t, bodyEn: "" }, r);
     };
-    /** §15.13 · the source line checked only where it is printed, and trimmed — an account recipient's check never sees it. */
-    const phraseWhereSent: typeof renderForRecipient = (t, r) =>
-      renderForRecipient({ ...t, sourcePhrase: r.origin === "account" ? "" : t.sourcePhrase.trim() }, r);
+    /** §15.13 · the source line PRINTED again — appended to a book contact's message (the owner ruled it out, 2026-10-09). */
+    const phrasePrinted: typeof renderForRecipient = (t, r) => {
+      const real = renderForRecipient(t, r);
+      return r.origin === "account" || t.sourcePhrase.trim() === "" ? real : { ...real, text: `${real.text}\n${t.sourcePhrase.trim()}` };
+    };
     /** §15.14 · the fallback judged UNTRIMMED, as the screen judged it before the audit — "Mteja " refused, Save disabled. */
     const untrimmedFallback: typeof validateCampaignTemplate = (f, phrase) => {
       const real = validateCampaignTemplate(f, phrase);
@@ -3209,12 +3363,11 @@ if (!PROVE_RED) {
       const problems = { ...real.problems, nameFallbackSw: [`The word for ${JINA} must be letters, at most ${JINA_MAX_CHARS} characters.`] };
       return { ...real, problems, ok: false };
     };
-    /** §15.15 · the envelope's own sentences as the counter's — "you have -10 characters" for one pasted curly quote. */
+    /** §15.15 · the Unicode sentence naming a footer again — "before the required footer", which nothing appends any more. */
     const rawEnvelope: typeof counterFor = (body, variant, fallback, phrase) => {
       const real = counterFor(body, variant, fallback, phrase);
       if (real.encoding !== "UCS2") return real;
-      const c = composeMarketing(renderBody(body ?? "", worstCaseJina()), footerMeasurementToken(), variant, (phrase ?? "").trim() || RESERVE);
-      return { ...real, problems: c.problems };
+      return { ...real, problems: real.problems.map((p) => p.replace(" characters — replace:", " characters before the required footer — replace:")) };
     };
     /** §15.16 · the name only trimmed — a name of zero-width spaces is a name, and the invisible characters count. */
     const nameTrimmedOnly: typeof validateCampaignTemplate = (f, phrase) => {
@@ -3393,18 +3546,12 @@ if (!PROVE_RED) {
       },
       {
         name: "the source line's rules dropped",
-        expect: [/^§15\.11 ⛔ the source line is refused/],
-        impl: { ...R, validate: phraseUnchecked },
-        landed: () => !validateCampaignTemplate(draft(), "Source {jina}").ok && phraseUnchecked(draft(), "Source {jina}").ok,
-        landedAs: "a braced source line is accepted",
+        expect: [/^§15\.11 ⭐ the source line no longer judges/],
+        impl: { ...R, validate: phraseJudged },
+        landed: () => validateCampaignTemplate(draft(), "Source {jina}").ok && !phraseJudged(draft(), "Source {jina}").ok,
+        landedAs: "a braced source line refuses the template again",
       },
-      {
-        name: "the source line's length limit removed — a long phrase blamed on the officer's body instead",
-        expect: [/^§15\.11 ⛔ the source line is at most/],
-        impl: { ...R, validate: phraseNoLimit },
-        landed: () => !validateCampaignTemplate(draft(), LONG_PHRASE).ok && phraseNoLimit(draft(), LONG_PHRASE).ok,
-        landedAs: "a phrase one septet over the limit is accepted",
-      },
+
       {
         name: "the campaign's name unchecked",
         expect: [/^§15\.12/],
@@ -3413,15 +3560,15 @@ if (!PROVE_RED) {
         landedAs: "a nameless campaign is accepted",
       },
       {
-        name: "§15.6 · left computed against the room WITHOUT the phrase",
+        name: "§15.6 · left computed against the room LESS the old 49-septet footer",
         expect: [/^§15\.6 left/],
         impl: { ...R, counterFor: leftNoPhrase },
-        landed: () => leftNoPhrase(atP, "SW", FB, PHRASE).left - counterFor(atP, "SW", FB, PHRASE).left === unitsIn(`${PHRASE} `, "GSM7"),
-        landedAs: "the officer is told they have the phrase's septets more than they do",
+        landed: () => counterFor(atP, "SW", FB, PHRASE).left - leftNoPhrase(atP, "SW", FB, PHRASE).left === 49,
+        landedAs: "the officer is told they have 49 characters fewer than they do",
       },
       {
         name: "§15.13 · the renderer drops the template re-check — each recipient's own message checked, nothing else",
-        expect: [/^§15\.13 ⭐/, /^§15\.13 ⛔ a stored body/, /^§15\.13 ⛔ the source line/],
+        expect: [/^§15\.13 ⭐ THE RENDERER/, /^§15\.13 ⛔ a stored body/],
         impl: { ...R, renderForRecipient: noRecheck },
         landed: () => !renderForRecipient(over13, acct("Ali")).ok && noRecheck(over13, acct("Ali")).ok,
         landedAs: "a stored body 3 over in the worst case is sent to a short name",
@@ -3441,12 +3588,12 @@ if (!PROVE_RED) {
         landedAs: "a Swahili recipient of a campaign whose English body is over the cap is sent the Swahili message",
       },
       {
-        name: "§15.13 · the source line checked only where it is printed, and trimmed",
-        expect: [/^§15\.13 ⛔ the source line/],
-        impl: { ...R, renderForRecipient: phraseWhereSent },
-        landed: () => !renderForRecipient(tpl({ sourcePhrase: "Source {jina}" }), acct("Asha")).ok
-          && phraseWhereSent(tpl({ sourcePhrase: "Source {jina}" }), acct("Asha")).ok,
-        landedAs: "an account recipient of a campaign with a braced source line is sent the message",
+        name: "§15.13 · the source line printed again for a book contact",
+        expect: [/^§15\.13 ⭐ the source line no longer refuses/],
+        impl: { ...R, renderForRecipient: phrasePrinted },
+        landed: () => phrasePrinted(tpl({ sourcePhrase: PHRASE }), { ...acct(null), origin: "book" as RecipientOrigin }).text.includes(PHRASE)
+          && !renderForRecipient(tpl({ sourcePhrase: PHRASE }), { ...acct(null), origin: "book" as RecipientOrigin }).text.includes(PHRASE),
+        landedAs: "a book contact's message carries the stored source line",
       },
       {
         name: "control · a counter that says one message and ok for everything",
@@ -3463,11 +3610,11 @@ if (!PROVE_RED) {
         landedAs: "'Mteja ' passes the real verdict and is refused by the plant",
       },
       {
-        name: "§15.15 · the envelope's sentences as the counter's — one curly quote quotes a negative room",
+        name: "§15.15 · the Unicode sentence names the required footer again",
         expect: [/^§15[.]15 ⭐/],
         impl: { ...R, counterFor: rawEnvelope },
-        landed: () => rawEnvelope(UNI15, "SW", FB, "").problems.some((p) => NEG_NUMBER.test(p)) && !counterFor(UNI15, "SW", FB, "").problems.some((p) => NEG_NUMBER.test(p)),
-        landedAs: "the plant's sentences hold a negative room; the real counter's hold none",
+        landed: () => rawEnvelope(UNI15, "SW", FB, "").problems.some((p) => p.includes("footer")) && !counterFor(UNI15, "SW", FB, "").problems.some((p) => p.includes("footer")),
+        landedAs: "the plant's sentence names a footer; the real counter's names none",
       },
       {
         name: "§15.16 · the name only trimmed — zero-width spaces make a name",
@@ -3630,7 +3777,19 @@ if (!PROVE_RED) {
     const carryDropped = swapOnce(CLIENT, CARRY_POST, "audience: view.audience.params");
     const alwaysInvite = swapOnce(CLIENT, SAVED_CALL, "composeSaved(c.saved.savedAt, true)");
     const alwaysFocusable = swapOnce(CLIENT, FLAGGED_STOP, "tabIndex={-1}");
-    type ScreenPlant = { name: string; expect: RegExp; sources: ScreenSources; landed: () => boolean; landedAs: string };
+    /** 2026-10-09 · the card's own idea of who may type a number, over the server's (`typedOffered`). */
+    const OFFERED_FROM_SERVER = "const offered = t.typedOffered;";
+    const offeredToAll = swapOnce(CLIENT, OFFERED_FROM_SERVER, "const offered = true;");
+    /** 2026-10-09 · the radio cards rendered for every viewer — the offered guard dropped. */
+    const OFFERED_GUARD = "{offered ? (";
+    const unguardedChoice = swapOnce(CLIENT, OFFERED_GUARD, "{true ? (");
+    /** 2026-10-09 · the typed target outlives the choice — a stale pick posts a typed test for a viewer not offered one. */
+    const TARGET_FOLLOWS = 'const typed = offered && target === "typed";';
+    const staleTypedTarget = swapOnce(CLIENT, TARGET_FOLLOWS, 'const typed = target === "typed";');
+    /** 2026-10-09 · a typed_role refusal leaves the page as it was read. */
+    const ROLE_REREAD = 'if ("outcome" in r && r.outcome === "refused" && r.reason === "typed_role") router.refresh();';
+    const roleNoReread = swapOnce(CLIENT, ROLE_REREAD, "");
+    type ScreenPlant ={ name: string; expect: RegExp; sources: ScreenSources; landed: () => boolean; landedAs: string };
     const screenPlants: ScreenPlant[] = [
       {
         name: "P9 · the composer sizes on its own — the client imports sizeSms and calls it on the body",
@@ -3825,6 +3984,31 @@ if (!PROVE_RED) {
         landed: () => once(CLIENT, FLAGGED_STOP) && (alwaysFocusable.files.get(CLIENT) ?? "").includes("tabIndex={-1}"),
         landedAs: "the card carries tabIndex -1 with nothing wrong",
       },
+      /* ── 2026-10-09 · the owner's ruling on the card: "Another number" only where the door would take it ── */
+      {
+        name: "2026-10-09 · the card offers \"Another number\" to every viewer — the server's answer ignored",
+        expect: /^§16[.]21 ⛔/, sources: offeredToAll,
+        landed: () => once(CLIENT, OFFERED_FROM_SERVER) && (offeredToAll.files.get(CLIENT) ?? "").includes("const offered = true;"),
+        landedAs: "the card decides it may offer the choice whatever typedOffered says",
+      },
+      {
+        name: "2026-10-09 · the choice rendered whether or not it is offered — the guard around the radio cards dropped",
+        expect: /^§16[.]21 ⛔/, sources: unguardedChoice,
+        landed: () => once(CLIENT, OFFERED_GUARD) && !(unguardedChoice.files.get(CLIENT) ?? "").includes(OFFERED_GUARD),
+        landedAs: "the fieldset with both radio cards renders for a viewer who may not type a number",
+      },
+      {
+        name: "2026-10-09 · a typed target kept when the choice is not offered — the card would post a typed test for GROWTH",
+        expect: /^§16[.]21 ⛔/, sources: staleTypedTarget,
+        landed: () => once(CLIENT, TARGET_FOLLOWS) && (staleTypedTarget.files.get(CLIENT) ?? "").includes('const typed = target === "typed";'),
+        landedAs: "the typed state outlives the choice it was picked from",
+      },
+      {
+        name: "2026-10-09 · a typed test refused for the role, and the page not re-read",
+        expect: /^§16[.]21 ⛔/, sources: roleNoReread,
+        landed: () => once(CLIENT, ROLE_REREAD) && !(roleNoReread.files.get(CLIENT) ?? "").includes(ROLE_REREAD),
+        landedAs: "typed_role no longer re-reads the page, so the card keeps offering a choice the server refuses",
+      },
     ];
     for (const p of screenPlants) {
       ok(`PLANT LANDED · ${p.name}`, p.landed(), p.landedAs);
@@ -3839,9 +4023,9 @@ if (!PROVE_RED) {
     const W = REAL_WORDS;
     /** §16.11 · the fold offered only when EVERY offender folds — one emoji hides it for a curly quote. */
     const foldEvery: typeof COMPOSE_COPY.foldOffered = (c) => c.encoding === "UCS2" && c.offenders.length > 0 && c.offenders.every((o) => o.foldable);
-    /** §16.12 · "N over" whatever the encoding — dozens of characters to cut for one curly quote. */
-    const overLine: typeof COMPOSE_COPY.counterLine = (c) => (c.left < 0 || c.segments > SMS_MAX_SEGMENTS
-      ? `${Math.max(1, -c.left)} over · ${c.segments} messages · the limit is ${SMS_MAX_SEGMENTS}`
+    /** §16.12 · "Unicode leaves no room" though Unicode keeps its whole 70 — a cut asked for that no cut can fix. */
+    const overLine: typeof COMPOSE_COPY.counterLine = (c) => (c.encoding === "UCS2"
+      ? `Unicode leaves no room · ${c.segments} messages · the limit is ${SMS_MAX_SEGMENTS}`
       : COMPOSE_COPY.counterLine(c));
     /** §16.13 · the bare "Saved 14:02" — nothing says that nothing was sent, or what is next. */
     const bareSaved: typeof COMPOSE_COPY.composeSaved = (at) => `Saved ${at.slice(11, 16)}`;
@@ -3859,10 +4043,10 @@ if (!PROVE_RED) {
         landedAs: "an emoji beside a curly quote: offered by the real rule, hidden by the plant",
       },
       {
-        name: "§16.12 · 'N over' while Unicode leaves no room",
+        name: "§16.12 · 'Unicode leaves no room' though Unicode keeps its whole 70",
         expect: /^§16[.]12 ⛔/, words: { ...W, counterLine: overLine },
-        landed: () => /over/.test(overLine(counterFor(UNI15, "SW", FB, ""))) && !/over/.test(COMPOSE_COPY.counterLine(counterFor(UNI15, "SW", FB, ""))),
-        landedAs: "one curly quote reads as characters to cut in the plant, and as no room in the real line",
+        landed: () => /no room/.test(overLine(counterFor(UNI15, "SW", FB, ""))) && !/no room/.test(COMPOSE_COPY.counterLine(counterFor(UNI15, "SW", FB, ""))),
+        landedAs: "one curly quote reads as no room in the plant, and as characters left in the real line",
       },
       {
         name: "§16.13 · the bare 'Saved HH:MM' — nothing was sent goes unsaid",
@@ -4535,6 +4719,58 @@ if (!PROVE_RED) {
     const GATE_CALL = "mayReceiveMarketingSms(m, deps.now(), deps.gateReads, { testAttestation })";
     const standInGate = R.testSendSource.split(GATE_CALL).join("allowTypedTest(m, testAttestation)");
 
+    /* ── 2026-10-09 · the owner's ruling (a test to a typed number is for ADMIN and COMPLIANCE only): each lands on its own,
+     *    then must fire its claim ── */
+    /** The role check removed — every officer's stored role passes it, as if the check were not there. */
+    const everyoneTypes: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => realTest(input, officerId, {
+      ...deps,
+      users: { findById: async (id) => { const u = await deps.users.findById(id); return u === null ? null : { ...u, role: "ADMIN" as const }; } },
+    }, options);
+    /** The browser's word honoured — a role posted beside the recipient taken over the stored one. */
+    const postedRole: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => {
+      const posted = (input as unknown as { role?: unknown } | null)?.role;
+      return realTest(input, officerId, {
+        ...deps,
+        users: {
+          findById: async (id) => {
+            const u = await deps.users.findById(id);
+            return u !== null && typeof posted === "string" ? { ...u, role: posted as typeof u.role } : u;
+          },
+        },
+      }, options);
+    };
+    /** The role asked only AFTER the typed number is read: parsed first (a malformed one answered in the plan's words), then
+     *  set beside the officer's own (their own in another spelling taken as their own). */
+    const roleAfterNumber: typeof realTest = async (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => {
+      const rec = recipientOf(input);
+      if (rec?.kind !== "typed") return realTest(input, officerId, deps, options);
+      const p = parseTzNumber(rec.number);
+      if (p.verdict !== "ok" || !p.msisdn) return { ok: false, outcome: "refused", reason: "bad_number", error: p.reason, target: "typed" };
+      const me = await deps.users.findById(officerId);
+      const mine = me === null ? null : parseTzNumber(me.phoneE164);
+      return mine !== null && mine.verdict === "ok" && mine.msisdn === p.msisdn
+        ? realTest({ ...input, recipient: { kind: "own" } } as TestInput, officerId, deps, options)
+        : realTest(input, officerId, deps, options);
+    };
+    /** The door's source with the role check gone, and with it moved below the parse of the typed number. */
+    const LF_TEST_SRC = R.testSendSource.split(CR17).join("");
+    const ROLE_CHECK_SRC = [
+      '  if (recipient.kind === "typed" && !mayTestTypedNumber(officer?.role)) {',
+      "    trail.role = officer?.role ?? null;",
+      '    return refuse("typed_role", TEST_TYPED_ROLE_REFUSED);',
+      "  }",
+      "",
+    ].join(NL15);
+    const PARSED_SRC = `    if (typed.verdict !== "ok" || !typed.msisdn) return refuse("bad_number", typed.reason);${NL15}`;
+    const roleGoneSrc = LF_TEST_SRC.split(ROLE_CHECK_SRC).join("");
+    const roleMovedSrc = roleGoneSrc.split(PARSED_SRC).join(`${PARSED_SRC}  ${ROLE_CHECK_SRC.split(NL15).join(`${NL15}  `)}`);
+    /** The loader offering "Another number" to every viewer, and handing every viewer the whole typed view. */
+    const LOADER_DECIDES = "const typedOffered = mayTestTypedNumber(officer?.role);";
+    const loaderOffersAll = R.loaderSource.split(LOADER_DECIDES).join("const typedOffered = true;");
+    const LOADER_EMPTY = ": TYPED_NOT_OFFERED,";
+    const loaderHandsAll = R.loaderSource.split(LOADER_EMPTY)
+      .join(': composeTypedView(draft, { outreachOpen: licenceOutreach().state === "open", adult: currentWording("adult.test") }),');
+
     type TestPlant = { name: string; expect: RegExp[]; impl: ComposeImpl; landed: () => Promise<boolean>; landedAs: string };
     const testPlants: TestPlant[] = [
       {
@@ -4757,7 +4993,7 @@ if (!PROVE_RED) {
         name: "U37c · a typed recipient honoured without the officer's 18+ confirmation",
         expect: [/^§18\.18 ⛔/], impl: { ...R, test: noAttestation },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const real = await realTest(typedInput(id, `+${u37bKey()}`, false), o.id, typedLanded({ send: u37bSpy().send }));
           const planted = await noAttestation(typedInput(id, `+${u37bKey()}`, false), o.id, typedLanded({ send: u37bSpy().send }));
@@ -4769,7 +5005,7 @@ if (!PROVE_RED) {
         name: "U37c-2 · a tick recorded against words the officer never saw (the version check skipped)",
         expect: [/^§18\.32 ⛔/], impl: { ...R, test: staleHonoured },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const old = (cid: string) => ({ campaignId: cid, variant: "SW", recipient: { kind: "typed", number: `+${u37bKey()}`, adultAttested: true, attestedVersion: P_ADULT.v - 1 } }) as unknown as TestInput;
           const real = await realTest(old(id), o.id, typedLanded({ send: u37bSpy().send }));
@@ -4782,7 +5018,7 @@ if (!PROVE_RED) {
         name: "U37c · a typed number rendered as an ACCOUNT recipient",
         expect: [/^§18\.13 ⭐/, /^§18\.17 ⭐/], impl: { ...R, test: typedAsAccount },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const real = await realTest(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ send: u37bSpy().send }));
           const planted = await typedAsAccount(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ send: u37bSpy().send }));
@@ -4794,7 +5030,7 @@ if (!PROVE_RED) {
         name: "U37c · the confirmation honoured for a player — the gate's player branch skipped on a typed test",
         expect: [/^§18\.19 ⛔/], impl: { ...R, test: playerSkipped },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const minor = await u37bOfficer({ dob: "2012-06-01" });
           const id = await phrased();
           const real = await realTest(typedInput(id, `+${minor.key}`), o.id, typedLanded({ send: u37bSpy().send }));
@@ -4807,7 +5043,7 @@ if (!PROVE_RED) {
         name: "U33r · a typed test whose gate never asks the referee keys — a promised agent referee tested on",
         expect: [/^§18[.]36 ⛔/], impl: { ...R, test: refereeSkipped },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const k = u37bKey();
           await recordRefereeKeys({ contacts: [`+${k}`], namedAt: "2026-09-08T10:00:00.000Z" });
@@ -4821,7 +5057,7 @@ if (!PROVE_RED) {
         name: "U37c · a typed refusal itemised for a masked viewer",
         expect: [/^§18\.20 ⛔/], impl: { ...R, test: itemised },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const k = u37bKey();
           const real = await realTest(typedInput(id, `+${k}`), o.id, typedLanded({ gateReads: P_WITHDRAWN(k) }));
@@ -4834,7 +5070,7 @@ if (!PROVE_RED) {
         name: "U37c · the real token returned to the screen",
         expect: [/^§18\.21 ⛔/], impl: { ...R, test: realTokenShown },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const k = u37bKey();
           const planted = await realTokenShown(typedInput(id, `+${k}`), o.id, typedLanded({ send: u37bSpy().send }));
@@ -4874,7 +5110,7 @@ if (!PROVE_RED) {
         landed: async () => {
           const id = await phrased();
           const k = u37bKey();
-          const officers = [await u37bOfficer(), await u37bOfficer()];
+          const officers = [await u37bTypist(), await u37bTypist()];
           const over = { rateTo: TEST.CAMPAIGN_TEST_DEPS.rateTo, send: u37bSpy().send };
           const results = [];
           for (let i = 0; i < 6; i++) results.push(await noRecipientBudget(typedInput(id, `+${k}`), officers[i % 2].id, typedLanded(over)));
@@ -4887,7 +5123,7 @@ if (!PROVE_RED) {
         expect: [/^§18\.23 ⛔/], impl: { ...R, test: noTypedBudget },
         landed: async () => {
           const id = await phrased();
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const over = { rateTyped: TEST.CAMPAIGN_TEST_DEPS.rateTyped, send: u37bSpy().send };
           const results = [];
           for (let i = 0; i < 11; i++) results.push(await noTypedBudget(typedInput(id, `+${u37bKey()}`), o.id, typedLanded(over)));
@@ -4899,7 +5135,7 @@ if (!PROVE_RED) {
         name: "U37c · the basis returned to the client",
         expect: [/^§18\.20 ⛔/], impl: { ...R, test: basisReturned },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const planted = await basisReturned(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ send: u37bSpy().send }));
           return planted.ok && "basis" in planted;
@@ -4910,7 +5146,7 @@ if (!PROVE_RED) {
         name: "U37c · a typed budget spent before the number-independent checks",
         expect: [/^§18\.23 ⛔/], impl: { ...R, test: spentEarly },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           let real = 0;
           let planted = 0;
@@ -4924,7 +5160,7 @@ if (!PROVE_RED) {
         name: "U37c · the response floor skipped",
         expect: [/^§18\.27 ⛔/], impl: { ...R, test: noFloor },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const waits = (n: number[]) => ({ now: () => new Date(), sleep: async (ms: number) => { n.push(ms); } });
           const real: number[] = [];
@@ -4939,7 +5175,7 @@ if (!PROVE_RED) {
         name: "U37c · typed tests skip the live switch",
         expect: [/^§18\.5′/], impl: { ...R, test: typedSkipsSwitch },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           let realAsked = 0;
           let plantAsked = 0;
@@ -4954,7 +5190,7 @@ if (!PROVE_RED) {
         name: "U37c · a token minted before the pre-check",
         expect: [/^§18\.26 ⛔/], impl: { ...R, test: tokenFirst },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const k = u37bKey();
           await tokenFirst(typedInput(id, `+${k}`), o.id, typedLanded({ gateReads: P_WITHDRAWN(k) }));
@@ -4966,7 +5202,7 @@ if (!PROVE_RED) {
         name: "U37c · typed allowed while the record is closed",
         expect: [/^§18\.25 ⛔/], impl: { ...R, test: closedIgnored },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const real = await realTest(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ gateReads: DB_GATE_READS, send: u37bSpy().send }));
           const planted = await closedIgnored(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ gateReads: DB_GATE_READS, send: u37bSpy().send }));
@@ -4978,7 +5214,7 @@ if (!PROVE_RED) {
         name: "U37c · the officer's own number, typed, required a confirmation",
         expect: [/^§18\.24 ⭐/], impl: { ...R, test: ownNeedsTick },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const real = await realTest(typedInput(id, `+${o.key}`, false), o.id, typedLanded({ send: u37bSpy().send }));
           const planted = await ownNeedsTick(typedInput(id, `+${o.key}`, false), o.id, typedLanded({ send: u37bSpy().send }));
@@ -4996,7 +5232,7 @@ if (!PROVE_RED) {
         name: "U37c review · a number over 40 characters let through",
         expect: [/^§18\.29 ⛔/], impl: { ...R, test: uncappedNumber },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const long = `+${u37bKey()}${" ".repeat(30)}`;
           const real = await realTest(typedInput(id, long), o.id, typedLanded({ send: u37bSpy().send }));
@@ -5009,7 +5245,7 @@ if (!PROVE_RED) {
         name: "U37c review · a bad number answered with a generic sentence",
         expect: [/^§18\.29 ⛔/], impl: { ...R, test: genericNumber },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const r = await genericNumber(typedInput(id, "12345"), o.id, typedLanded());
           return !r.ok && r.outcome === "refused" && r.reason === "bad_number" && r.error !== parseTzNumber("12345").reason;
@@ -5020,7 +5256,7 @@ if (!PROVE_RED) {
         name: "U37c review · OD61 undone — the typed path writes the RG COMPLIANCE row",
         expect: [/^§18\.30 ⛔/], impl: { ...R, test: rgLineWritten },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const p = await u37bOfficer();
           await selfExclude(p.id, "24h");
           const id = await phrased();
@@ -5035,7 +5271,7 @@ if (!PROVE_RED) {
         name: "U37c review · dispatch handed the pre-check's answer instead of asking again",
         expect: [/^§18\.31 ⛔/], impl: { ...R, test: noReask },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           let asked = 0;
           const counting = async (m: string) => { asked++; return mayReceiveMarketingSms(m, new Date(), P_READS, { testAttestation: { officerId: o.id, at: new Date().toISOString(), attemptRef: "ta_landedlandedland", wordingVersion: 3 } }); };
@@ -5079,6 +5315,69 @@ if (!PROVE_RED) {
           return !real.ok && !real.error.includes("network refused") && !planted.ok && planted.error.includes("The network refused the message (UNKNOWN)");
         },
         landedAs: "the real test says an UNKNOWN failure couldn't be handed to the network, and the plant's says the network refused it",
+      },
+      /* ── 2026-10-09 · the owner's ruling: a test to a typed number is for ADMIN and COMPLIANCE only ── */
+      {
+        name: "2026-10-09 · the role check removed — a GROWTH officer's typed test sent",
+        expect: [/^§18[.]37 ⛔/], impl: { ...R, test: everyoneTypes },
+        landed: async () => {
+          const g = await u37bOfficer();
+          const id = await phrased();
+          const real = await realTest(typedInput(id, `+${u37bKey()}`), g.id, typedLanded({ send: u37bSpy().send }));
+          const planted = await everyoneTypes(typedInput(id, `+${u37bKey()}`), g.id, typedLanded({ send: u37bSpy().send }));
+          return !real.ok && real.outcome === "refused" && real.reason === "typed_role" && planted.ok && planted.target === "typed";
+        },
+        landedAs: "GROWTH's typed test: refused typed_role by the real door, handed over by the plant",
+      },
+      {
+        name: "2026-10-09 · the browser's word honoured — a role posted beside the recipient taken over the stored one",
+        expect: [/^§18[.]37 ⛔/], impl: { ...R, test: postedRole },
+        landed: async () => {
+          const g = await u37bOfficer();
+          const id = await phrased();
+          const forged = { ...(typedInput(id, `+${u37bKey()}`) as unknown as Record<string, unknown>), role: "ADMIN" } as unknown as TestInput;
+          const real = await realTest(forged, g.id, typedLanded({ send: u37bSpy().send }));
+          const planted = await postedRole(forged, g.id, typedLanded({ send: u37bSpy().send }));
+          return !real.ok && real.outcome === "refused" && real.reason === "typed_role" && planted.ok;
+        },
+        landedAs: "a GROWTH post naming role ADMIN: refused by the real door, handed over by the plant",
+      },
+      {
+        name: "2026-10-09 · the role asked only after the typed number is read — a malformed number answered in the plan's words",
+        expect: [/^§18[.]37 ⛔/], impl: { ...R, test: roleAfterNumber },
+        landed: async () => {
+          const g = await u37bOfficer();
+          const id = await phrased();
+          const real = await realTest(typedInput(id, "12345"), g.id, typedLanded());
+          const planted = await roleAfterNumber(typedInput(id, "12345"), g.id, typedLanded());
+          return !real.ok && real.outcome === "refused" && real.reason === "typed_role" && !planted.ok && planted.outcome === "refused" && planted.reason === "bad_number";
+        },
+        landedAs: "GROWTH's malformed number: typed_role from the real door, bad_number (it was parsed) from the plant",
+      },
+      {
+        name: "2026-10-09 · the door's role check removed from its source",
+        expect: [/^§18[.]38 ⛔/], impl: { ...R, testSendSource: roleGoneSrc },
+        landed: async () => LF_TEST_SRC.split(ROLE_CHECK_SRC).length === 2 && !roleGoneSrc.includes("mayTestTypedNumber(officer?.role)"),
+        landedAs: "the role check resolves exactly once in the real source and is cut out in memory",
+      },
+      {
+        name: "2026-10-09 · the door's role check moved below the parse of the typed number",
+        expect: [/^§18[.]38 ⛔/], impl: { ...R, testSendSource: roleMovedSrc },
+        landed: async () => LF_TEST_SRC.split(ROLE_CHECK_SRC).length === 2 && LF_TEST_SRC.split(PARSED_SRC).length === 2
+          && roleMovedSrc.indexOf("mayTestTypedNumber(officer?.role)") > roleMovedSrc.indexOf("parseTzNumber(recipient.number)"),
+        landedAs: "in memory the role is asked only after parseTzNumber has read the number",
+      },
+      {
+        name: "2026-10-09 · the loader offers \"Another number\" to every viewer",
+        expect: [/^§18[.]39 ⛔/], impl: { ...R, loaderSource: loaderOffersAll },
+        landed: async () => R.loaderSource.split(LOADER_DECIDES).length === 2 && loaderOffersAll.includes("const typedOffered = true;"),
+        landedAs: "the loader's decision resolves exactly once and is swapped for true in memory",
+      },
+      {
+        name: "2026-10-09 · the loader hands a viewer who may not type the whole typed view (its 18+ words and preview)",
+        expect: [/^§18[.]39 ⛔/], impl: { ...R, loaderSource: loaderHandsAll },
+        landed: async () => R.loaderSource.split(LOADER_EMPTY).length === 2 && !loaderHandsAll.includes(LOADER_EMPTY),
+        landedAs: "the empty view's branch resolves exactly once and is swapped for composeTypedView in memory",
       },
     ];
     for (const p of testPlants) {

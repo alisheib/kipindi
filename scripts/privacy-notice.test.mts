@@ -67,9 +67,9 @@ const ok = (label: string, cond: boolean, why = "", evidence = "") => {
 const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 /* ── The pinned facts. Moving any of these is a legal act: a dated COMPLIANCE-DECISIONS entry comes with it. ── */
-const PRIVACY_VERSION = "2026-10-07";
+const PRIVACY_VERSION = "2026-10-09";
 /** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one. */
-const PRIVACY_EN_SHA = "88b049bf80b1";
+const PRIVACY_EN_SHA = "763de452023a";
 /** Every cookie name the code writes, as of v2026-09-30. A new one must be described in §7 first. */
 const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-density", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_preview", "kp_revoked", "kp_session"];
 // ⭐ `_ga` / `_ga_W66WRL67MQ` joined the census 2026-09-15.2: gtag.js SETS them, and our code EXPIRES them when consent is
@@ -944,11 +944,11 @@ console.log("\n§4j · what erasure keeps: §5, §6, §9, the erasure note and t
   /** ⛔ THE PINS — sha256 (12 hex) of each text, whitespace-collapsed. Moving one is a change of published words. */
   const TEXT_PINS: Record<string, string> = {
     "en §5 first bullet": "d849b2d90cce", "sw §5 first bullet": "4e3f0109a8fb", "zh §5 first bullet": "0f83ff42c325",
-    "en §5 record bullet": "3c32b3b9f11d", "sw §5 record bullet": "f4ca0a478d04", "zh §5 record bullet": "fe70c2ffced3",
+    "en §5 record bullet": "5bfffd9a290b", "sw §5 record bullet": "0637ce779d4f", "zh §5 record bullet": "07d83e61d0fb",
     "en §5 referee numbers bullet": "759980721b5f", "sw §5 referee numbers bullet": "cd5575e2769c", "zh §5 referee numbers bullet": "724a23800660",
     "en §6 Erasure": "d92355281cf7", "sw §6 Erasure": "89c0ca55cb2b", "zh §6 Erasure": "ef70992f350e",
     "en §9 first paragraph": "85aa1bcc73a0", "sw §9 first paragraph": "3ec321fcfaf5", "zh §9 first paragraph": "877ece96400b",
-    "en §9 second paragraph": "655a862c8ac1", "sw §9 second paragraph": "5079ce41cd8c", "zh §9 second paragraph": "6384d026c548",
+    "en §9 second paragraph": "130847f5f7ea", "sw §9 second paragraph": "1c44564e0b3a", "zh §9 second paragraph": "0ec28565a93c",
     'en the note under "Erase my data"': "4c0b74e089f4", 'sw the note under "Erase my data"': "88d387d24b5b", 'zh the note under "Erase my data"': "d5d322ec1b8b",
     "en the data-rights erasure sentence": "63c74d586aa8",
   };
@@ -1021,9 +1021,9 @@ console.log("\n§4j · what erasure keeps: §5, §6, §9, the erasure note and t
  * HMAC of the number under the server's pepper, and whoever holds the pepper can hash every Tanzanian mobile number and
  * compare: "(it cannot be turned back into the number)" overclaimed, and was replaced on 2026-10-07 (the lead's decision;
  * COMPLIANCE-DECISIONS "Privacy v2026-10-07").
- * ⚠️ THE STOP SENTENCE IS TIED TO `marketingFooter()` FOR NOW — true only while every offer carries its stop link. When
- * U43b makes the link ONE setting (management's item 7: it goes, with these words, in the commit that files the written
- * confirmation), RE-TIE this check to that setting, so §9's stop sentence goes exactly when the link does.
+ * ⚠️ THE STOP SENTENCE IS TIED TO `marketingFooter()` — true only while every offer carries its stop link. Since the owner's
+ * ruling of 2026-10-09 (Privacy v2026-10-09) the footer is EMPTY: no offer carries the link, so §9 says no stop sentence,
+ * and this tie keeps it gone — a footer that carries the link again needs the sentence back, with a new version.
  * ══════════════════════════════════════════════════════════════════════════ */
 console.log("\n§4k · §9: the referee promise kept for those named before the label, management's sentences for those named after");
 {
@@ -1085,13 +1085,16 @@ console.log("\n§4k · §9: the referee promise kept for those named before the 
   const plantTypedLabelZh = pageSrc.replace("在本政策 {REFEREE_PROMISE_REWORDED_IN} 版之前，", `在本政策 ${REFEREE_PROMISE_REWORDED_IN} 版之前，`);
   const plantRelative = pageSrc.replace("Until version {REFEREE_PROMISE_REWORDED_IN} of this policy", "Until this version of this policy");
   // (The 10-space indent picks §9's own line: the page's history comment quotes the same sentence.)
-  const plantNoStop = pageSrc.replace("          You can stop them at any time with the link in every offer.", "");
-  const footerWithoutLink = offerFooter.replace(`${OPTOUT_PATH}${footerMeasurementToken()}`, "");
+  // ⭐ Since 2026-10-09 no offer carries a stop link (the footer is empty), so §9 says no stop sentence: the controls plant
+  // the sentence BACK, and a footer that carries a link again.
+  // (The 10-space indent picks §9's own line: the page's history comment quotes the same sentence.)
+  const plantStopBack = pageSrc.replace("          as a referee after that: 50pick may send you offers by SMS.", "          as a referee after that: 50pick may send you offers by SMS. You can stop them at any time with the link in every offer.");
+  const footerWithLink = `${offerFooter}\n50pick 18+ Acha: 50pick.tz${OPTOUT_PATH}${footerMeasurementToken()}`;
   // The parenthesis as it read before 2026-10-07's correction, put back into ONE language at a time.
   const plantOverclaimEn = pageSrc.replace("(not the number itself)", "(it cannot be turned back into the number)");
   const plantOverclaimZh = pageSrc.replace("（并非号码本身）", "（无法还原为该号码）");
   ok("§4k control · planted §9 copies found their targets",
-    [plantOldPromiseSw !== pageSrc, plantTypedLabelZh !== pageSrc, plantRelative !== pageSrc, plantNoStop !== pageSrc, footerWithoutLink !== offerFooter,
+    [plantOldPromiseSw !== pageSrc, plantTypedLabelZh !== pageSrc, plantRelative !== pageSrc, plantStopBack !== pageSrc, footerWithLink !== offerFooter,
       plantOverclaimEn !== pageSrc, plantOverclaimZh !== pageSrc].every(Boolean));
   ok("§4k control · the coded number called irreversible again (en: \"it cannot be turned back into the number\") is reported",
     refereeWordsDefects(plantOverclaimEn, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.startsWith("en calls the coded referee number irreversible")));
@@ -1106,10 +1109,10 @@ console.log("\n§4k · §9: the referee promise kept for those named before the 
   ok("§4k control · a label later than the page's version, with no COMPLIANCE heading, is reported",
     refereeWordsDefects(pageSrc, offerFooter, "2099-01-01", decisionsSrc).some((x) => x.includes("later than the version the page prints"))
       && refereeWordsDefects(pageSrc, offerFooter, "2099-01-01", decisionsSrc).some((x) => x.includes("has no \"Privacy v2099-01-01\" heading")));
-  ok("§4k control · the stop sentence dropped while the stop link exists is reported",
-    refereeWordsDefects(plantNoStop, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.includes("while every offer carries its stop link")));
-  ok("§4k control · the stop sentence kept after the footer loses its link is reported",
-    refereeWordsDefects(pageSrc, footerWithoutLink, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.includes("carries no stop link")));
+  ok("§4k control · the stop sentence missing while a footer carries its link again is reported",
+    refereeWordsDefects(pageSrc, footerWithLink, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.includes("while every offer carries its stop link")));
+  ok("§4k control · the stop sentence put back while no offer carries a link is reported",
+    refereeWordsDefects(plantStopBack, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.includes("carries no stop link")));
 }
 
 

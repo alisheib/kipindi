@@ -48,6 +48,7 @@ import {
   TEST_TEMPLATE_INVALID,
 } from "@/lib/server/marketing/campaign-test-send";
 import { licenceOutreach } from "@/lib/server/marketing/outreach-record";
+import { mayTestTypedNumber } from "@/lib/server/marketing/campaign-test-send";
 import { currentWording } from "@/lib/server/marketing/wordings";
 import { liveSendWindow } from "@/lib/server/marketing/dispatch";
 import { composeTestWindowNote } from "./composer-copy";
@@ -142,6 +143,14 @@ export type ComposeTestView = {
   windowNote: string | null;
   /** U37c · a test to ANOTHER number — offered only once its three number-independent checks pass. */
   typed: ComposeTypedView;
+  /**
+   * ⛔ 2026-10-09 · MAY THIS VIEWER SEND A TEST TO A TYPED NUMBER AT ALL? The owner's ruling: ADMIN (the Owner) and
+   * COMPLIANCE only — asked of the door's own decider (`mayTestTypedNumber`) with the officer's STORED role, the row the
+   * door re-reads for every test, so the card offers the choice only to a viewer the door would take it from. False: the
+   * Test card shows "My own number" alone — no "Another number", no reason beside it — and `typed` is `TYPED_NOT_OFFERED`,
+   * carrying no preview and no 18+ words this viewer could use.
+   */
+  typedOffered: boolean;
 };
 
 /** U37c · what the Test card needs to offer a test to a TYPED number — ⛔ the loader takes no number. */
@@ -242,6 +251,15 @@ export function composeTypedView(
   const unrenderable = why === null && !sw.ok ? (sw.problems[0] ?? TEST_TEMPLATE_INVALID) : null;
   return { allowed: why === null && unrenderable === null, why: why ?? unrenderable, preview, attestation };
 }
+
+/**
+ * ⛔ 2026-10-09 · THE TYPED VIEW OF A VIEWER WHO MAY NOT TYPE A NUMBER (`typedOffered` false) — nothing to offer and
+ * nothing to show: not allowed, no reason (the card does not offer the choice at all, so there is nothing to explain
+ * beside it), no preview and no 18+ words. `composeTypedView` is never asked for them: whatever the record, the words or
+ * the draft, the door refuses their typed test (`typed_role`). Frozen — one value, never edited in place.
+ * Guard: `test:campaign-compose` §18.39 (the loader's decision and this value) · §16.21 (the card).
+ */
+export const TYPED_NOT_OFFERED: ComposeTypedView = Object.freeze({ allowed: false, why: null, preview: null, attestation: null });
 
 /**
  * ⭐ U38b · THE CAMPAIGN DOORS THE COMPOSER READS AN AUDIENCE THROUGH — its address at the campaign's own parser, a stored
@@ -516,6 +534,8 @@ export async function loadComposer(sp: ComposeParams): Promise<ComposeView> {
   // ── the officer's own account: the number a test reaches, the name it prints, the token it carries ──
   const session = await currentSession();
   const officer = session ? await db.user.findById(session.userId) : null;
+  // ⛔ 2026-10-09 · may this officer type a number at all? The door's own decider, asked of the same STORED row it re-reads.
+  const typedOffered = mayTestTypedNumber(officer?.role);
   const parsed = officer ? parseTzNumber(officer.phoneE164) : null;
   const key = parsed !== null && parsed.verdict === "ok" && parsed.msisdn ? parsed.msisdn : null;
   const tokens = key !== null ? await db.marketingOptOutToken.listFor(key) : [];
@@ -550,7 +570,10 @@ export async function loadComposer(sp: ComposeParams): Promise<ComposeView> {
       preview,
       liveNote: live.ok ? null : COMPOSE_TEST_LIVE_NOTE,
       windowNote: composeTestWindowNote(await liveSendWindow()),
-      typed: composeTypedView(draft, { outreachOpen: licenceOutreach().state === "open", adult: currentWording("adult.test") }),
+      typed: typedOffered
+        ? composeTypedView(draft, { outreachOpen: licenceOutreach().state === "open", adult: currentWording("adult.test") })
+        : TYPED_NOT_OFFERED,
+      typedOffered,
     },
   };
 }

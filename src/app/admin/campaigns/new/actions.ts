@@ -12,8 +12,11 @@
  * ⛔ THE TEST TAKES EXACTLY (campaignId, variant, recipient) — no body, by its signature (`test:campaign-compose` §16.4
  * reads this parameter list). The recipient is the officer's own account number by default; U37c adds a TYPED number
  * with the officer's 18+ confirmation, re-typed here by `testRecipientOf` whatever was posted (absent = their own — an
- * old page's two-argument post), and judged by the ONE gate like any campaign recipient. The viewer's read grant decides
- * how a typed refusal is worded (D19) — it comes from the session, never from the request.
+ * old page's two-argument post), and judged by the ONE gate like any campaign recipient. ⛔ 2026-10-09 · a typed number
+ * only from ADMIN (the Owner) or COMPLIANCE — the owner's ruling, decided by the door itself on the officer's STORED row,
+ * re-read for this request (`mayTestTypedNumber`, refused `typed_role` before the number is read): never by this action's
+ * arguments, never by the browser. The viewer's read grant decides how a typed refusal is worded (D19) — it comes from
+ * the session, never from the request.
  * ⛔ A REFUSAL IS NOT A REVALIDATION: only a save that landed invalidates the list.
  * ⭐ EVERY REFUSAL CARRIES ITS REASON (validation audit, 2026-10-03), so the screen prints the sentence alone and offers
  * only the next step that can work: `role` (no retry can win it), `rate_limited` (the sentence says when), and
@@ -117,8 +120,9 @@ export async function saveCampaignDraftAction(
   return { ...result, href: await savedDraftAddress(result.id, reads) };
 }
 
-/** ⛔ Test the SAVED draft — on the officer's OWN number, or (U37c) a typed one with their 18+ confirmation. Three
- *  parameters, and none is a body: `recipient` is re-typed by `testRecipientOf`, whatever was posted. */
+/** ⛔ Test the SAVED draft — on the officer's OWN number, or (U37c) a typed one with their 18+ confirmation, which the
+ *  door takes only from ADMIN or COMPLIANCE (2026-10-09, by the stored role). Three parameters, and none is a body:
+ *  `recipient` is re-typed by `testRecipientOf`, whatever was posted. */
 export async function sendCampaignTestAction(campaignId: string, variant: CampaignVariant, recipient?: unknown): Promise<CampaignTestResult | Refused> {
   const g = await softRequireStaff("growth", "marketing.campaign.test", COMPOSE_ROLE_REFUSAL);
   if (!g.ok) return { ok: false, reason: "role", error: g.error };

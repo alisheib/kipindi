@@ -48,11 +48,12 @@ export const COMPOSE_FIELD = {
   fallbackEn: "English word for {jina}",
   fallbackHint: "Printed when a name can't be used — letters only, at most 12.",
 } as const;
-/** Under the Swahili body, built from the rule's own values — the identity the law needs first, and the one placeholder. */
+/** Under the Swahili body, built from the rule's own values — the sender named first, and the one placeholder. */
 export const COMPOSE_BODY_SW_HINT = `Begin with ${SENDER_IDENTITY} (lower case). ${JINA} prints the first name.`;
 export const COMPOSE_EN_NONE = "No English text — everyone gets the Swahili message.";
 export const COMPOSE_EN_RULE = "English goes to players whose account language is English; everyone else gets Swahili.";
-export const COMPOSE_STOP_LINK = "Includes the stop link, which is required and is counted.";
+/** Under the counter (the owner's ruling of 2026-10-09): nothing is appended to a marketing SMS. */
+export const COMPOSE_AS_WRITTEN = "Sent exactly as written — nothing is added to it.";
 export const COMPOSE_JINA_RESERVE = "{jina} keeps 12 characters for the name.";
 export const COMPOSE_FORCED = "Forced to Unicode by:";
 export const COMPOSE_FOLD = "Replace with plain characters";
@@ -89,13 +90,6 @@ export const COMPOSE_READ_ONLY = "This campaign is no longer a draft — its mes
 export const COMPOSE_MISSING = "This draft wasn't found — it may have been removed, or the link is wrong.";
 export const COMPOSE_START = "Start a new SMS campaign";
 
-/** The room a blank source line keeps (M5 · OQ3, owner gate G5) — or, once it is set, that it is counted. */
-export function composeSourceLine(sourceUnits: number, phraseSet: boolean): string {
-  return phraseSet
-    ? "The source line a contact-book number needs is set, and counted."
-    : `${formatNumber(sourceUnits)} characters are kept for the source line a contact-book number needs — its wording is not set yet.`;
-}
-
 /**
  * "Draft saved 14:02 — nothing was sent." — the console's clock and what a save is NOT. ⛔ The test below is named as the
  * next step ONLY when this page can send one (`canTest`: the live switch open, the send window open, the officer's own
@@ -125,8 +119,9 @@ const keep = (s: string) => s.split(" ").join(NB);
 /**
  * ⭐ THE COUNTER LINE, numbers kept with their words: "80 characters left · 1 message · GSM-7", or over the cap
  * "12 over · 2 messages · the limit is 1". Every figure is the worst-case whole message's (`counterFor`).
- * ⛔ While Unicode leaves no room at all (the footer and the source line take its 70), "N over" would ask the officer to
- * cut N characters that no cut can fix — the line says there is no room, and the sentence names what to replace.
+ * ⛔ While Unicode leaves no room at all, "N over" would ask the officer to cut N characters that no cut can fix — the
+ * line says there is no room, and the sentence names what to replace. (Since nothing is appended — 2026-10-09 — a Unicode
+ * message keeps its whole 70.)
  */
 export function counterLine(c: VariantCounter): string {
   if (c.left < 0 || c.segments > SMS_MAX_SEGMENTS) {
