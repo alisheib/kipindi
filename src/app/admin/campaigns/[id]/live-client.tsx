@@ -378,8 +378,10 @@ export function LiveProgress() {
           <p className="text-body-sm text-text-secondary">{LIVE_CHIPS_LEAD}</p>
           <ul className="flex flex-wrap gap-2">
             {view.chips.map((c) => (
-              <li key={c.status} data-live-chip-status={c.status}>
-                <Chip size="md" variant="neutral"><span className="whitespace-nowrap">{liveChipText(c.label, c.count)}</span></Chip>
+              // ⭐ The kit Chip wraps a long label and grows to fit it (G-7); the label is NOT held on one line here, so at a
+              //    phone's width the longest status stays inside the card (`liveChipText` keeps the count with its last word).
+              <li key={c.status} data-live-chip-status={c.status} className="max-w-full">
+                <Chip size="md" variant="neutral">{liveChipText(c.label, c.count)}</Chip>
               </li>
             ))}
           </ul>

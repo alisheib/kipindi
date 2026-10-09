@@ -466,9 +466,11 @@ export const LIVE_CHIPS_LEAD = "Everyone on it, by status";
 export function liveReasonTitle(label: string, count: number): string {
   return `${label}: ${formatNumber(count)}`;
 }
-/** A status chip: "Waiting · 1,200". */
+/** A status chip: "Waiting · 1,200". ⭐ The separator's spaces are NO-BREAK spaces: a long label wraps inside its chip at a
+ *  phone's width (STEP 54's drive: "Held — couldn't be checked or prepared · 5" ran past the card at 360px), and the count
+ *  stays on the line of the label's last word — never a "·" or a bare number alone on a line. */
 export function liveChipText(label: string, count: number): string {
-  return `${label} · ${formatNumber(count)}`;
+  return `${label} · ${formatNumber(count)}`;
 }
 
 /** The stored audience, in one line: "Audience: Tag: vip · Consent: given" (the list's own words, joined as the list joins them). */
