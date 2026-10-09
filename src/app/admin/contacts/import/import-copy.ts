@@ -13,7 +13,9 @@
  */
 import { formatNumber } from "@/lib/utils";
 import type { ImportChoice, ShownKeepReason } from "@/lib/contacts/import-decide";
-import { IMPORT_REFUSAL_SENTENCES, tagsNotAddedSentence, type PreflightBucket } from "@/lib/contacts/import-flow";
+import {
+  IMPORT_REFUSAL_SENTENCES, STEP_CONFLICT_SENTENCE, tagsNotAddedSentence, type ImportRefusalReason, type PreflightBucket,
+} from "@/lib/contacts/import-flow";
 import { IMPORT_MAX_ROWS } from "@/lib/contacts/import-limits";
 import { SHEET_SAMPLE_ROWS } from "@/lib/contacts/sheet-choice";
 import { formatFileSize, PHONE_FORMAT_REMEDY, XLSX_MAX_BYTES } from "@/lib/contacts/xlsx-limits";
@@ -59,6 +61,35 @@ function sumTail(cut: SumCut): Part[] {
     " — every row of your file up to row ", fig(cut.line), " is counted once; the ", fig(cut.lines),
     ` ${plural(cut.lines, "line", "lines")} after it ${plural(cut.lines, "was", "were")} not read, because a quote in that row is never closed.`,
   ];
+}
+
+/* ══ HOW A REFUSAL IS PAINTED ═════════════════════════════════════════════════════════════════════ */
+
+/** An alert's tone (`ImportAlertState["tone"]`, import-parts.tsx). */
+export type RefusalTone = "danger" | "warning" | "info";
+
+/** A wait or a re-check is not an error; everything else is said as one. */
+const REFUSAL_TONE: Partial<Record<ImportRefusalReason, RefusalTone>> = {
+  busy: "warning",
+  // C8c · #14b · the database refused every step for over a minute and the run paused itself: a wait, not a fault.
+  db_paused: "warning",
+  // C8c · m5 · bets kept the check (or the start) waiting past its deadline: a wait, not a fault of the file.
+  bets_busy: "warning",
+  rate_limited: "warning",
+  xlsx_busy: "warning",
+  check_again: "warning",
+  bad_exceptions: "warning",
+  check_stale: "info",
+  update_needs_reader: "info",
+};
+
+/** ⭐ C8c · the review's n8 · refusals told as a WAIT by their own words, whatever their reason: a step whose rows kept
+ *  moving ends as `server_error`, but its sentence says nothing was lost and to press Resume in a minute. */
+const WARNING_SENTENCES: ReadonlySet<string> = new Set([STEP_CONFLICT_SENTENCE]);
+
+/** ⭐ The ONE rule for a refusal's tone — the dialog's alerts ask it (`test:contacts-import` flow N8). */
+export function refusalTone(refusal: { readonly reason: ImportRefusalReason; readonly message: string }): RefusalTone {
+  return WARNING_SENTENCES.has(refusal.message) ? "warning" : REFUSAL_TONE[refusal.reason] ?? "danger";
 }
 
 /* ══ THE BUTTON AND THE DIALOG ════════════════════════════════════════════════════════════════════ */
@@ -288,8 +319,10 @@ export const DECIDE = {
   recommended: "Recommended",
   changes: (n: number): Part[] => (n === 0 ? ["No contact changes"] : [fig(n), ` ${plural(n, "contact changes", "contacts change")}`]),
   reassure: "A blank cell never erases anything. Numbers on the stop list and erased people are never changed.",
-  listHeading: "What would change",
-  listLead: "Each contact below differs from your file. Set one apart from the choice above if it should be treated differently.",
+  /** ⭐ C8c · n8 · the list holds every row some choice would change AND (#13) every contact too full of tags to take the
+   *  file's new ones — which no choice changes and nobody can set apart — so neither line says "would change" of them. */
+  listHeading: "Contacts that differ from your file",
+  listLead: "Each contact below differs from your file — a choice would change it, or it is too full of tags to take new ones. Set a contact a choice would change apart from the choice above if it should be treated differently.",
   /** V2 · no contact in the book differs from the file: one line, never a heading over an empty list. */
   noChanges: "Nothing already in the book changes with this choice.",
   loading: "Loading the changes…",
@@ -311,7 +344,7 @@ export const DECIDE = {
   colContact: "Contact",
   colChange: "With this choice",
   colApart: "Set apart",
-  tableLabel: "Contacts that would change",
+  tableLabel: "Contacts that differ from your file",
   tagsAdded: (tags: readonly string[]): string => `Tags added: ${tags.join(", ")}`,
   /** ⭐ C8c · #13 · the contract's ONE sentence — the result's row says it in the same words. */
   tagsNotAdded: (tags: readonly string[]): string => tagsNotAddedSentence(tags),
@@ -471,8 +504,10 @@ export const DONE = {
   failuresFailed: "The rows that couldn't be imported didn't load. Try again.",
   /** ⭐ C8c · #13 · a reader's list of the contacts that were imported WITHOUT all their new tags (each full of tags). */
   tagsHeading: "Tags not added",
+  /** ⛔ n8 · never "already" (a contact may have filled up during this import) and never "import again" (a new import
+   *  under Keep adds no tag at all): the way that works is the contact's own page. */
   tagsLead: (n: number): Part[] => [
-    fig(n), ` ${plural(n, "contact already holds", "contacts already hold")} the most tags a contact can have, so some of the file's tags were not added. Remove tags from ${plural(n, "it", "them")} in the book, then import again to add the rest.`,
+    fig(n), ` ${plural(n, "contact holds", "contacts hold")} the most tags a contact can have, so the tags listed with ${plural(n, "it", "each")} were not added. To add them, open the contact in the book, remove tags it no longer needs, and add them there.`,
   ],
   tagsLoading: "Loading the contacts whose tags were not added…",
   tagsFailed: "The contacts whose tags were not added didn't load. Try again.",

@@ -48,7 +48,7 @@ import {
   type ReadOutcome,
 } from "../../src/lib/contacts/import-read.ts";
 import { SEVERAL_MOBILES_SENTENCE, firstMobileIn, mobilesIn, phoneCellRefusal } from "../../src/lib/contacts/phone-cell.ts";
-import { CHECK, DONE, partsText, sumCutOf } from "../../src/app/admin/contacts/import/import-copy.ts";
+import { CHECK, DECIDE, DONE, partsText, refusalTone, sumCutOf } from "../../src/app/admin/contacts/import/import-copy.ts";
 import { parseTzNumber } from "../../src/lib/tz-msisdn.ts";
 import {
   BUSY_BACKOFF_SEC,
@@ -72,6 +72,7 @@ import { dropTitleRows } from "../../src/lib/contacts/title-rows.ts";
 import { XLSX_MAX_BYTES, xlsxRefusalSentence } from "../../src/lib/contacts/xlsx-limits.ts";
 import {
   IMPORT_REFUSAL_SENTENCES,
+  STEP_CONFLICT_SENTENCE,
   type CommitStepInput,
   type CommitStepResult,
   type ImportRefusalReason,
@@ -104,6 +105,8 @@ export type FlowImpl = {
   readonly sources: { readonly read: string; readonly loop: string; readonly dialog: string };
   /** C3b-fix · D5d · the check's and the result's sum lines, and the ONE rule for how they end. */
   readonly sums: { readonly check: typeof CHECK.sum; readonly done: typeof DONE.sum; readonly cutOf: typeof sumCutOf };
+  /** ⭐ C8c · n8 · the copy table's refusal tone, its changes list's words and the result's tags lead. */
+  readonly copy: { readonly refusalTone: typeof refusalTone; readonly decide: typeof DECIDE; readonly tagsLead: typeof DONE.tagsLead };
 };
 
 const read = (rel: string): string => decomment(readFileSync(join(REPO_ROOT, rel), "utf8")).split(CRLF).join(LF);
@@ -125,6 +128,7 @@ function real(): FlowImpl {
       dialog: read("src/app/admin/contacts/import/contacts-import-dialog.tsx"),
     },
     sums: { check: CHECK.sum, done: DONE.sum, cutOf: sumCutOf },
+    copy: { refusalTone, decide: DECIDE, tagsLead: DONE.tagsLead },
   };
   return cached;
 }
@@ -138,6 +142,7 @@ export const L = {
   P1c: "P1c · ⭐ S15-4 · a line with a second number keeps the FIRST, and the paste's note names that row; a foreign number yields to a Tanzanian one on its line",
   P1d: "P1d · ⛔ C8c · D4 IN THE LIST PASTE — a pasted line's number is read in the CELL it was written in, by the ONE rule: 'Asha +254, 712 345 678' (the line the fix builder found), '254/712345678 Juma', 'Baraka 00254; 712345678' and 'Neema +254 or 712 345 678' stage their whole cell — the server's own rule reads NO mobile in it and never the stranger's 255712345678, its sentence the Kenyan or the too-long one — each name without the code; CONTROLS: 'Asha 712 345 678' and '712345678' (a whole cell of nine digits, Excel's dropped 0) still read 255712345678, and '12. 0712 345 678 Asha', '255, 0712 345 678 Asha' and '0712 345 678 / 0754 111 222 Asha' their first mobile, as before; ⭐ M1 · a word between two separators is no cut — '1, Asha, 0712 345 678' reads 255712345678 with the name '1, Asha', and '1,Asha,0712345678,Arusha' keeps both names",
   P1e: "P1e · ⛔ C8c · m1 · D4 FOR A NUMBER STANDING ALONE — a bare nine digits after ANY digit run on its line is judged a PART, never a whole cell: 'Asha +254 (Kenya) 712 345 678', '+254: 712345678', 'Tel +254 / Mob 712 345 678' and '1, Asha, 712345678' stage the stretch from that run, which the server's one rule refuses in its own words (the Kenyan number's, or one too long) — never the stranger's 255712345678 — each name the line less the number's own cell ('1, Asha' survives); CONTROLS: 'Asha 712 345 678' (no digit before it), a chat stamp's and an enumeration's digits ('[12/03/2026, 10:15] Juma: …', '12. Asha …'), a Tanzanian code before it ('+255 (TZ) 712 345 678') and a complete number ('1, Asha, 0712 345 678') read 255712345678 as before",
+  N8: "N8 · ⭐ C8c · the review's n8 · the words around #13's rows and a conflicted step's tone: refusalTone paints server_error with STEP_CONFLICT_SENTENCE as a WARNING (nothing lost, Resume in a minute) while a plain server_error stays danger, bets_busy and db_paused warnings, forbidden danger; the changes list's heading and table never say 'would change' of every row (a tags-only row changes under no choice) and its lead names both kinds; the result's tags lead says neither 'already' nor 'import again' — the way that works is the contact in the book",
   P2: "P2 · a TAB paste is an Excel copy: cells split on the tab with Excel's quoting, a blank line counted, its first row header-matched (Phone, Name; one header row)",
   P2b: "P2b · ⭐ C3b · a TAB paste whose quotation mark never closes is split by hand — every line kept, its quotation marks as typed, nothing unreadable — never cut by the CSV reader's one unreadable record (G1)",
   P3: "P3 · a list paste maps Phone and Name with no header row, named as the field list names them — never \"Column A…\", never read as a headerless file — and U28's validateMapping passes it",
@@ -631,6 +636,25 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
   ok(L.P1e, aloneBad.length === 0,
     aloneBad.join(" | ") || `${ALONE.length} lines judged a part and refused · ${ALONE_CONTROLS.length} controls read as before`);
 
+  // ── N8 · C8c · the review's n8 · the words around #13's rows, and a conflicted step painted as the wait it is ──
+  {
+    const tone = impl.copy.refusalTone;
+    const tones = {
+      conflict: tone({ reason: "server_error", message: STEP_CONFLICT_SENTENCE }),
+      fault: tone({ reason: "server_error", message: IMPORT_REFUSAL_SENTENCES.server_error }),
+      bets: tone({ reason: "bets_busy", message: IMPORT_REFUSAL_SENTENCES.bets_busy }),
+      dbPaused: tone({ reason: "db_paused", message: IMPORT_REFUSAL_SENTENCES.db_paused }),
+      forbidden: tone({ reason: "forbidden", message: IMPORT_REFUSAL_SENTENCES.forbidden }),
+    };
+    const d = impl.copy.decide;
+    const lead = partsText(impl.copy.tagsLead(2));
+    ok(L.N8, tones.conflict === "warning" && tones.fault === "danger" && tones.bets === "warning" && tones.dbPaused === "warning" && tones.forbidden === "danger"
+      && !d.listHeading.includes("would change") && !d.tableLabel.includes("would change")
+      && d.listLead.includes("a choice would change it") && d.listLead.includes("too full of tags")
+      && !lead.includes("already") && !lead.includes("import again") && lead.includes("open the contact in the book"),
+      `tones ${json(tones)} · list "${d.listHeading}" / "${d.tableLabel}" · tags lead "${lead.slice(0, 120)}"`);
+  }
+
   const table = impl.parsePaste(TAB_PASTE);
   const tableMap = impl.mappingFor(table, { list: isListPaste(TAB_PASTE) });
   ok(L.P2, !isListPaste(TAB_PASTE) && table.format === "paste" && isParsedContactsFile(table)
@@ -1069,6 +1093,16 @@ const PLANTS: readonly RedPlant<FlowImpl>[] = [
         const tail = new RegExp("[0-9]{3} ?[0-9]{3} ?[0-9]{3}$");
         return { ...f, rows: f.rows.map((r) => ({ ...r, cells: [tail.exec(r.cells[0])?.[0] ?? r.cells[0], ...r.cells.slice(1)] })) };
       },
+    }),
+  },
+  {
+    // 🔴 the review's n8 · the tone read off the reason alone: the conflicted step's "nothing lost, press Resume" is
+    // painted as a fault.
+    name: "C8c · n8 · a refusal's tone is its reason's alone — the conflicted step's server_error is painted danger",
+    expect: L.N8,
+    impl: () => ({
+      ...real(),
+      copy: { ...real().copy, refusalTone: (r) => (r.reason === "server_error" ? "danger" : refusalTone(r)) },
     }),
   },
   {

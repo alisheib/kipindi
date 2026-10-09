@@ -49,7 +49,6 @@ import { isParsedContactsFile, type ParsedContactsFile } from "@/lib/contacts/pa
 import {
   bucketsAdd,
   type ImportRefusal,
-  type ImportRefusalReason,
   type ImportResultView,
   type ImportRunView,
   type PreflightView,
@@ -110,6 +109,7 @@ import {
   OTHERS,
   RESUME_FILE,
   partsText,
+  refusalTone,
   stepLine,
   sumCutOf,
   type SumCut,
@@ -181,21 +181,6 @@ function headersCovering(headers: readonly string[], mapping: ColumnMapping): st
   for (const v of Object.values(mapping)) if (typeof v === "number" && v + 1 > width) width = v + 1;
   return Array.from({ length: width }, (_, i) => headers[i] ?? "");
 }
-
-/** How a refusal is painted: a wait or a re-check is not an error; everything else is said as one. */
-const REFUSAL_TONE: Partial<Record<ImportRefusalReason, ImportAlertState["tone"]>> = {
-  busy: "warning",
-  // C8c · #14b · the database refused every step for over a minute and the run paused itself: a wait, not a fault.
-  db_paused: "warning",
-  // C8c · m5 · bets kept the check (or the start) waiting past its deadline: a wait, not a fault of the file.
-  bets_busy: "warning",
-  rate_limited: "warning",
-  xlsx_busy: "warning",
-  check_again: "warning",
-  bad_exceptions: "warning",
-  check_stale: "info",
-  update_needs_reader: "info",
-};
 
 /* ═══ THE PAGE HEAD'S BUTTON ═══════════════════════════════════════════════════════════════════════ */
 
@@ -336,8 +321,10 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
   }, [go]);
 
   /** A refusal said in the phase it happened in: the server's sentence, verbatim, and the ways on. */
+  // ⭐ How a refusal is painted is the copy table's ONE rule (`refusalTone`): a wait or a re-check is not an error — the
+  // review's n8 · a step whose rows kept moving included, whatever its reason — and everything else is said as one.
   const refused = (refusal: ImportRefusal, actions: readonly AlertAction[] = []): ImportAlertState => ({
-    tone: REFUSAL_TONE[refusal.reason] ?? "danger",
+    tone: refusalTone(refusal),
     text: refusal.message,
     actions,
   });
