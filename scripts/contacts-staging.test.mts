@@ -331,17 +331,21 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const id = await open(OFFICER, { totalRows: 10 });
     const theirs = await openContactImport(OTHER, openBody({ totalRows: 10 }), deps);
     const peek = await contactImportView(OTHER, id, deps);
-    const push = await stageContactRows(OTHER, stageBody(id, 1, rowsFrom(2, 2)), deps);
-    const drop = await discardContactImport(OTHER, id, deps);
+    // ⭐ C8c · m6 · the refusal gate's own clock moves past its minute between the push and the discard, so each is held to
+    // its OWN row (the gate's bound — one a minute per key — is test:contacts-import M26/M27's).
+    const gateClock = { ms: NOW.getTime() };
+    const gated: ImportStagingDeps = { ...deps, refusalAudit: refusalAuditGate(() => gateClock.ms) };
+    const push = await stageContactRows(OTHER, stageBody(id, 1, rowsFrom(2, 2)), gated);
+    gateClock.ms += 61_000;
+    const drop = await discardContactImport(OTHER, id, gated);
     const adminView = await contactImportView(ADMIN, id, deps);
     const adminPush = await stageContactRows(ADMIN, stageBody(id, 1, rowsFrom(2, 2)), deps);
     const notYours = captured.filter((x) => x.action === "contacts.import.stage_refused" && (x.payload as { reason?: string })?.reason === "not_yours");
-    // ⭐ C8c · #14a · the push and the discard are ONE officer refused not_yours on ONE run in one minute: one row.
     return [theirs.ok && !theirs.adopted && theirs.view.id !== id
       && peek === null && !push.ok && push.reason === "not_yours" && push.view === null
       && !drop.ok && drop.reason === "not_yours" && drop.view === null
       && adminView !== null && !adminView.mine && adminView.createdBy === OFFICER
-      && adminPush.ok && adminPush.view.stagedThrough === 2 && !adminPush.view.mine && notYours.length === 1,
+      && adminPush.ok && adminPush.view.stagedThrough === 2 && !adminPush.view.mine && notYours.length === 2,
       `peek ${peek === null ? "null" : "SEEN"} · push ${reasonOf(push)} · admin ${adminPush.ok ? adminPush.view.stagedThrough : adminPush.reason}`];
   });
 

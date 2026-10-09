@@ -127,7 +127,7 @@ export const L = {
   M17: "M17 · the failures pages: by FILE row, ascending, at most 50 a page, the true total on every page, nextAfterLine null only at the end — all 1,000 of the 5,000-row file's",
   M18: "M18 · ⭐ C4 · a created number the ledger or the stop list knows has its cache MIRRORED (N1 said yes → GIVEN; N4 is stopped → suppressedAt the stop's own time); one they do not know stays UNKNOWN with no stop",
   M19: "M19 · ⛔ what only the source can show: the cores import nothing that sends or writes consent (no sms, dispatch, opt-out, consent-ledger or ledger-stamp module, and — R16 — nothing from the gate's module at all) and call no ledger or stop writer; the action file is \"use server\" and exports EXACTLY the sixteen actions, each async",
-  M20: "M20 · ⛔ S15-10 · a GROWTH officer (identity.contact masked) imports with KEEP alone: the check says mayUpdateInBook false, and a start with TAKE_FILE, FILL_BLANKS or any exception — even a KEEP one — is refused update_needs_reader, audited with counts only (ONE row for the four — C8c · #14a, one a minute per officer, run and reason) and nothing written; the same officer's KEEP start freezes",
+  M20: "M20 · ⛔ S15-10 · a GROWTH officer (identity.contact masked) imports with KEEP alone: the check says mayUpdateInBook false, and a start with TAKE_FILE, FILL_BLANKS or any exception — even a KEEP one — is refused update_needs_reader, audited with counts only — FOUR rows, the refusal gate's clock a minute apart between them (C8c · m6: #14a bounds a burst, M26/M27's, never this record) — and nothing written; the same officer's KEEP start freezes",
   M21: "M21 · ⭐ S15-12 · an ADMIN sees the runs OTHER officers left open — STAGING, STAGED, COMMITTING, PAUSED, never DONE or CANCELLED, never their own — newest first, at most 20, each named by its starter and carrying no id; a GROWTH officer asking (the dialog asks for everyone) is answered ok with NO runs and ZERO audit rows — never a refusal",
   M22: "M22 · ⛔ R9 · the erasure race: a person erased between a step's read and its write — their staged row deleted, their number in no book row — is NOT created: the step reads its rows again, the conflict is decided once more, and the run finishes with the other rows imported",
   M23: "M23 · ⭐ R10 · after a step has LANDED its cache mirror and its audit rows cannot turn it into a refusal: a mirror that throws once and audit rows that throw leave the step done, and the run's end mirrors every created number the truth knows (N1 GIVEN, N4 stopped)",
@@ -506,9 +506,15 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     const checked = await checkContactImport(OFFICER, runId, impl.deps);
     const label = checked.ok ? labelOf(checked.preflight.byChoice.KEEP) : { create: 0, update: 0, keep: 0 };
     const fresh = checked.ok ? checked.preflight.checkedAt : "";
+    // ⭐ m6 · the refusal gate's own clock moves a minute and a second between the asks, so each refusal is its own row (the
+    // gate's bound — one a minute per key — is M26/M27's; here every refusal is held to its row and its counts-only shape).
+    const gateClock = { ms: NOW.getTime() };
+    const deps20: ImportCommitDeps = { ...impl.deps, refusalAudit: impl.gate(() => gateClock.ms) };
     const ask = (o: Record<string, unknown>) => startContactImport(OFFICER, {
       runId, choice: "KEEP", exceptions: {}, list: { kind: "none" }, expected: label, checkedAt: fresh, ...o,
-    }, impl.deps);
+    }, deps20).finally(() => {
+      gateClock.ms += 61_000;
+    });
     captured.length = 0;
     const refused = [
       await ask({ choice: "TAKE_FILE" }),
@@ -522,7 +528,7 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     const keep = await ask({});
     const frozen = await runOf(runId);
     ok(L.M20, checked.ok && checked.preflight.mayUpdateInBook === false
-      && refused.every((r) => !r.ok && r.reason === "update_needs_reader") && rowsOf.length === 1 && keysOk && untouched
+      && refused.every((r) => !r.ok && r.reason === "update_needs_reader") && rowsOf.length === 4 && keysOk && untouched
       && keep.ok && frozen.status === "COMMITTING" && frozen.decisionChoice === "KEEP" && !holdsDigitRun(json(rowsOf)),
       `${refused.map((r) => (r.ok ? "ok" : r.reason)).join(" · ")} · audit rows ${rowsOf.length} (keys ${keysOk}) · keep ${keep.ok ? "ok" : keep.reason}`);
   });
