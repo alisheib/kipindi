@@ -76,6 +76,14 @@
  * by the ONE gate before a token or the wire — `typed_refused` to a masked viewer, the ONE `protected` reason to a reader
  * (the U33r review's MINOR-5: collapsed for readers too, as the split collapses it), the precise `agent_referee` ONLY in the
  * audit row — and an officer's own number that is a referee's is told it is protected, in the own-number words.
+ * ⛔ §16.21 · §18.37–§18.39 (the owner's ruling of 2026-10-09) · A TEST TO A TYPED NUMBER IS FOR ADMIN AND COMPLIANCE ONLY.
+ * The door decides by the officer's STORED role through ONE decider (`mayTestTypedNumber`): GROWTH and every other role is
+ * refused `typed_role` in ONE sentence before anything about the number is read — never parsed, masked or set beside their
+ * own, nothing reaching the rail, the gate, a token or the wire — while ADMIN (the Owner) and COMPLIANCE are taken as before
+ * (§18.37, and §18.38 reads the order in the source); the loader asks the same decider of the same stored row and hands a
+ * viewer who may not type the empty typed view (§18.39); and the card offers the choice only to them, saying "My own
+ * number" alone to anyone else (§16.21). ⭐ So the typed claims above run as an officer who may type: `o` is the Owner
+ * (ADMIN), and §18.23's and §18.33's officers are ADMIN or COMPLIANCE.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION — `--prove-red` plants each defect IN MEMORY and requires the
  * MATCHING assertion to fire. No file-writing call, so it stays outside `test:red-anchors` §4.
@@ -1284,6 +1292,34 @@ function checkComposerScreen(src: ScreenSources, log: (l: string) => void): stri
     card16.includes("tabIndex={flagged ? -1 : undefined}") && !card16.includes("tabIndex={-1}")
       && card16.includes('className={flagged ? "space-y-2 rounded-md brand-focus" : "space-y-2 rounded-md"}'),
     `card ${card16.length} chars · tab stops in it: ${occurrences(card16, "tabIndex=")}`);
+
+  /* §16.21 · 2026-10-09 · the owner's ruling: "Another number" only for a viewer the door lets type one (§18.37–§18.39) */
+  const iOffered = testCard.indexOf("{offered ? (");
+  const iChoice = testCard.indexOf('<fieldset className="space-y-2" data-test-to-choice>');
+  const iTypedChoice = testCard.indexOf('value="typed"');
+  const iElse = iTypedChoice < 0 ? -1 : testCard.indexOf(") : (", iTypedChoice);
+  const iSaid = testCard.indexOf('<div className="space-y-1" data-test-to="own">');
+  const saidBranch = iSaid < 0 ? "" : testCard.slice(iSaid, testCard.indexOf("</div>", iSaid));
+  const offeredOnly = {
+    // the server's answer, never a decision of the card's own — no role is named in the client's code
+    fromServer: testCard.includes("const offered = t.typedOffered;") && !/mayTestTypedNumber|[.]role\b|"ADMIN"|"COMPLIANCE"|"GROWTH"/.test(client),
+    // the target is own whenever the choice is not offered — the state, what is posted, and the card's handles
+    ownFirst: testCard.includes('useState<TestTarget>(t.ownNumberMasked !== null || !offered ? "own" : "typed")'),
+    follows: testCard.includes('const typed = offered && target === "typed";') && testCard.includes('data-test-target={typed ? "typed" : "own"}')
+      && testCard.includes('data-test-typed-offered={offered ? "yes" : "no"}'),
+    // the choice — the fieldset and both radio cards — only inside the offered branch, and "Another number" nowhere else
+    guarded: iOffered > 0 && iChoice > iOffered && iTypedChoice > iChoice && iElse > iTypedChoice && iSaid > iElse
+      && occurrences(testCard, "data-test-to-choice") === 1 && occurrences(testCard, 'value="typed"') === 1
+      && occurrences(client, "{COMPOSE_TEST_TO_TYPED}") === 1,
+    // otherwise "Send the test to" and "My own number", said — no radio, no choice, nothing about another number
+    saidAlone: saidBranch.includes("{COMPOSE_TEST_TO_LEGEND}") && saidBranch.includes("composeTestToOwn(t.ownNumberMasked)")
+      && saidBranch.includes('data-test-choice="own"') && saidBranch.includes('data-test-choice-why="own"')
+      && !/<input|TestToChoice|COMPOSE_TEST_TO_TYPED|typedView|onPick|type="radio"/.test(saidBranch),
+    // a typed test refused for the role (changed since the page was read) re-reads the page
+    reread: sendBlock.includes('if ("outcome" in r && r.outcome === "refused" && r.reason === "typed_role") router.refresh();'),
+  };
+  ok("§16.21 ⛔ 2026-10-09 · 'ANOTHER NUMBER' ONLY FOR A VIEWER THE DOOR LETS TYPE ONE — the card takes the server's answer (typedOffered) and names no role itself; the choice — the fieldset with both radio cards — renders only while it is offered, and nowhere else; otherwise the card says 'Send the test to' and 'My own number' as text, with no radio, no choice and nothing about another number; the target is own whenever the choice is not offered (the state, the post and data-test-target follow it; data-test-typed-offered says which); and a typed_role refusal re-reads the page",
+    Object.values(offeredOnly).every(Boolean), JSON.stringify(offeredOnly));
   return failed;
 }
 
@@ -1318,6 +1354,8 @@ const { maskPhone } = await import("../src/lib/phone-normalize.ts");
 const AUDIENCE = await import("../src/lib/server/marketing/audience.ts");
 const COMPOSE_COPY = await import("../src/app/admin/campaigns/new/composer-copy.ts");
 const LOADER = await import("../src/app/admin/campaigns/new/composer-loader.ts");
+/** 2026-10-09 · §18.37 asks the typed test's role decider of every role the console names. */
+const ROLES = await import("../src/lib/server/roles.ts");
 /** U13 · the test send and the send loop are handed a FIXED window here (ENGINE-SPEC §5 rule 9): §17–§18 hold at any clock,
  *  and §18.33 closes it on purpose. */
 const { ALWAYS_OPEN, ALWAYS_CLOSED } = await import("./lib/send-window.mts");
@@ -1352,15 +1390,18 @@ function u37bKey(): string {
 }
 
 type OfficerFixture = { id: string; key: string; phone: string };
-/** An officer's own account — a GROWTH user — with consent given the way a person gives it (the profile switch's writer). */
-async function u37bOfficer(opts: { consent?: boolean; dob?: string | null; displayName?: string | null; phone?: string } = {}): Promise<OfficerFixture> {
+/** Every role `roles.ts` names — §18.37 asks the door with each. */
+type FixtureRole = "PLAYER" | "AGENT" | "MODERATOR" | "ADMIN" | "COMPLIANCE" | "SUPPORT" | "FINANCE" | "GROWTH" | "AUDITOR";
+/** An officer's own account — a GROWTH user unless `role` says (2026-10-09: a test to a typed number needs ADMIN or
+ *  COMPLIANCE) — with consent given the way a person gives it (the profile switch's writer). */
+async function u37bOfficer(opts: { consent?: boolean; dob?: string | null; displayName?: string | null; phone?: string; role?: FixtureRole } = {}): Promise<OfficerFixture> {
   const key = u37bKey();
   const phone = opts.phone ?? `+${key}`;
   const id = `usr_u37b_${u37bSeq}`;
   const at = new Date().toISOString();
   await db.user.create({
     id, phoneE164: phone, email: null, passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
-    role: "GROWTH", status: "ACTIVE", locale: "EN", displayName: opts.displayName === undefined ? "Asha Officer" : opts.displayName,
+    role: opts.role ?? "GROWTH", status: "ACTIVE", locale: "EN", displayName: opts.displayName === undefined ? "Asha Officer" : opts.displayName,
     dob: opts.dob === undefined ? "1990-01-01" : opts.dob, region: "TZ", acceptedTermsVersion: "v1", acceptedTermsAt: at,
     marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, emailVerifiedAt: null, createdAt: at, updatedAt: at,
     lastLoginAt: at, closedAt: null,
@@ -1371,6 +1412,8 @@ async function u37bOfficer(opts: { consent?: boolean; dob?: string | null; displ
   }
   return { id, key: opts.phone ? phone.replace(/[^0-9]/g, "") : key, phone };
 }
+/** ⛔ 2026-10-09 · an officer who may type a number — the Owner (ADMIN); the ruling admits COMPLIANCE too (§18.37). */
+const u37bTypist = (opts: Parameters<typeof u37bOfficer>[0] = {}): Promise<OfficerFixture> => u37bOfficer({ ...opts, role: "ADMIN" });
 
 const U37B_SAVER = "usr_u37b_saver";
 /** The real save's door with a silent audit — for fixtures, never for the save under test. */
@@ -1952,7 +1995,9 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
   let cmp = "";
   let cmp2 = "";
   try {
-    o = await officer();
+    // ⛔ 2026-10-09 · the Owner (ADMIN): the typed claims below send as `o`, and a test to a typed number is for ADMIN and
+    // COMPLIANCE only (§18.37) — the own-number claims are the same for every role.
+    o = await officer({ role: "ADMIN" });
     cmp = await u37bDraft();
     cmp2 = await u37bDraft();
   } catch (err) {
@@ -2470,14 +2515,15 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
   await claim("§18.23 ⛔ U37c · S24 · THE TYPED BUDGETS — five typed tests to one number from three officers pass and the sixth is refused typed_rate_limited with the recipient's sentence, while another number is still allowed and the bucket key holds no digit run of the number; one officer's eleventh typed test to eleven numbers is refused typed_rate_limited with the officer's sentence while their own-number test still passes; and a refusal before the gate spends neither budget", async () => {
     const id = await phrasedDraft();
     const k = u37bKey();
-    const three = [await officer(), await officer(), await officer()];
+    // 2026-10-09 · officers who may type a number: the Owner and two COMPLIANCE officers.
+    const three = [await officer({ role: "ADMIN" }), await officer({ role: "COMPLIANCE" }), await officer({ role: "COMPLIANCE" })];
     const { send: spy } = u37bSpy();
     const real = { rateTyped: impl.testDeps.rateTyped, rateTo: impl.testDeps.rateTo, send: spy };
     const toOne: TestResult[] = [];
     for (let i = 0; i < 6; i++) toOne.push(await sendTyped(id, `+${k}`, three[i % 3].id, { over: real }));
     const other = await sendTyped(id, `+${u37bKey()}`, three[0].id, { over: real });
     const bucket = TEST.testToBucket(k);
-    const busy = await officer();
+    const busy = await officer({ role: "COMPLIANCE" });
     const many: TestResult[] = [];
     for (let i = 0; i < 11; i++) many.push(await sendTyped(id, `+${u37bKey()}`, busy.id, { over: real }));
     const own = await send({ campaignId: id, variant: "SW" }, busy.id, { send: spy });
@@ -2646,9 +2692,10 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
   });
 
   await claim("§18.33 ⛔ U13 · M12 · THE TEST SEND OBEYS THE SEND WINDOW — outside it (03:00 EAT) the officer's own test and a typed one are each refused 'held' with the window's sentence, word for word, before a token, a row or the wire: no token minted, no SmsMessage row, the gate never asked, and the masked audit row says held: quiet_hours; a window that closes between that check and the send still holds the test, with no row", async () => {
-    const o33 = await officer();
+    // 2026-10-09 · a COMPLIANCE officer: the typed half needs a role that may type a number.
+    const o33 = await officer({ role: "COMPLIANCE" });
     const id = await phrasedDraft();
-    const QUIET = "It's outside the send window (08:00–20:00 EAT), so no test can be sent now — try again at 08:00.";
+    const QUIET ="It's outside the send window (08:00–20:00 EAT), so no test can be sent now — try again at 08:00.";
     const start = audits.length;
     let gates = 0;
     const counting = async (m: string) => { gates++; return mayReceiveMarketingSms(m); };
@@ -2742,8 +2789,134 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       && !words(prewire).includes("refused") && words(refused).includes("nothing reached your phone") && words(prewire).includes("nothing reached your phone"),
       `REJECTED: ${reasonOf(refused)} "${words(refused)}" · UNKNOWN: ${reasonOf(prewire)} "${words(prewire)}"`];
   });
+
+  /* ══ §18.37–§18.39 · THE OWNER'S RULING OF 2026-10-09 — A TEST TO A TYPED NUMBER IS FOR ADMIN AND COMPLIANCE ONLY ══ */
+  await claim(S18_37, async () => {
+    const id = await phrasedDraft();
+    const start = audits.length;
+    // Everything a typed test could reach past the role, counted: the rail, the switch, the window, the record, the typed
+    // budgets, the gate, the floor, the token store and the wire.
+    const n = { rail: 0, live: 0, window: 0, outreach: 0, budgets: 0, gate: 0, floor: 0, tokens: 0 };
+    const { send: spy, spy: wire } = u37bSpy();
+    const counted: Partial<TestDeps> = {
+      rail: () => { n.rail++; return null; },
+      liveSwitch: async () => { n.live++; return impl.readSwitch(); },
+      window: () => { n.window++; return ALWAYS_OPEN(); },
+      gateReads: { ...OPEN_READS, outreach: () => { n.outreach++; return OPEN_OUTREACH; } } as TestDeps["gateReads"],
+      rateTyped: async () => { n.budgets++; return ALLOW(); },
+      rateTo: async () => { n.budgets++; return ALLOW(); },
+      gate: async () => { n.gate++; return { ok: true as const, basis: "LICENCE_TEST" as const, basisRef: "test:fixture" }; },
+      sleep: async () => { n.floor++; },
+      ensureToken: async (raw: string) => { n.tokens++; return impl.ensureToken(raw); },
+      send: spy,
+    };
+    const asRole = (r: TestResult): boolean => !r.ok && r.outcome === "refused" && r.reason === "typed_role"
+      && r.error === TEST.TEST_TYPED_ROLE_REFUSED && r.target === "typed";
+    const stranger = u37bKey();
+    const numbers: string[] = [stranger];
+    const roleOf = new Map<string, string | null>();
+    const said: string[] = [];
+    let refused = true;
+    // ⛔ Every role but the two tries a typed number four ways: a valid one, ticked; a malformed one (never parsed — not
+    // bad_number); its own in another spelling, unticked (never compared — not the own path); and with a reader's options.
+    for (const role of ["GROWTH", "FINANCE", "SUPPORT", "AUDITOR", "MODERATOR", "PLAYER", "AGENT"] as FixtureRole[]) {
+      const who = await officer({ role });
+      roleOf.set(who.id, role);
+      numbers.push(who.key);
+      const tries = [
+        await sendTyped(id, `+${stranger}`, who.id, { over: counted }),
+        await sendTyped(id, "12345", who.id, { over: counted }),
+        await sendTyped(id, spellings(who.key).local, who.id, { attested: false, over: counted }),
+        await sendTyped(id, `+${stranger}`, who.id, { reads: true, over: counted }),
+      ];
+      if (!tries.every(asRole) || (await tokenCount(who.key)) !== 0) refused = false;
+      said.push(`${role} ${tries.map(reasonOf).join("/")}`);
+    }
+    // ⛔ The browser's word: a role posted beside the recipient, and inside it, is never read.
+    const growth = await officer({ role: "GROWTH" });
+    roleOf.set(growth.id, "GROWTH");
+    const posted = await impl.test({
+      campaignId: id, variant: "SW", role: "ADMIN",
+      recipient: { kind: "typed", number: `+${stranger}`, adultAttested: true, attestedVersion: ADULT_TEST.v, role: "ADMIN" },
+    } as unknown as TestInput, growth.id, deps(typedOver(counted)), { viewerReads: true });
+    // ⛔ An officer the store holds no row for has no role, so no typed test.
+    const nobodyId = `usr_u37b_nobody_${u37bSeq}`;
+    roleOf.set(nobodyId, null);
+    const nobody = await sendTyped(id, `+${stranger}`, nobodyId, { over: counted });
+    // ⭐ GROWTH's own test still goes — "My own number", the one way its card offers.
+    const { send: ownSpy, spy: ownWire } = u37bSpy();
+    const own = await send({ campaignId: id, variant: "SW" }, growth.id, { send: ownSpy });
+    // ⭐ ADMIN (the Owner) and COMPLIANCE, as before: through the ONE gate to the wire.
+    const { send: okSpy, spy: okWire } = u37bSpy();
+    const allowed = [
+      await sendTyped(id, `+${u37bKey()}`, (await officer({ role: "ADMIN" })).id, { over: { send: okSpy } }),
+      await sendTyped(id, `+${u37bKey()}`, (await officer({ role: "COMPLIANCE" })).id, { over: { send: okSpy } }),
+    ];
+    // ONE masked row per refused attempt — the door's own, against the campaign, with the stored role and no `to`.
+    const rows = audits.slice(start).filter((a) => a.action === TEST.CAMPAIGN_TEST_ACTION && a.payload?.reason === "typed_role");
+    const rowsOk = rows.length === 7 * 4 + 2 && rows.every((a) => a.targetId === id && a.payload?.outcome === "refused"
+      && a.payload?.target === "typed" && !("to" in (a.payload ?? {})) && roleOf.has(a.actorId ?? "")
+      && a.payload?.role === roleOf.get(a.actorId ?? ""));
+    const json = JSON.stringify(rows);
+    const quiet = numbers.every((k) => !json.includes(k) && !json.includes(k.slice(3))) && !/(?<![0-9])255[0-9]{9}(?![0-9])/.test(json)
+      && !/[0-9]/.test(TEST.TEST_TYPED_ROLE_REFUSED);
+    const untouched = Object.values(n).every((x) => x === 0) && wire.calls === 0 && (await tokenCount(stranger)) === 0;
+    // The decider, of every role roles.ts names and of values that are none of them.
+    const every: string[] = [...ROLES.STAFF_ROLES, "PLAYER", "AGENT"];
+    const admitted = every.filter((r) => TEST.mayTestTypedNumber(r)).sort().join(",");
+    const strays = [null, undefined, "", "admin", "Admin", "OWNER", " ADMIN", "__proto__", "constructor", "toString"]
+      .filter((r) => TEST.mayTestTypedNumber(r as string | null | undefined));
+    return [refused && asRole(posted) && asRole(nobody) && own.ok && own.target === "own" && ownWire.calls === 1
+      && allowed.every((r) => r.ok && r.target === "typed") && okWire.calls === 2 && rowsOk && quiet && untouched
+      && new Set(every).size === 9 && admitted === "ADMIN,COMPLIANCE" && strays.length === 0,
+      JSON.stringify({ said, posted: reasonOf(posted), nobody: reasonOf(nobody), own: reasonOf(own), allowed: allowed.map(reasonOf), rows: rows.length, rowsOk, quiet, n, wire: wire.calls, admitted, strays })];
+  });
+
+  await claim("§18.38 ⛔ 2026-10-09 · THE ROLE IS ASKED FIRST, OF THE STORED ROW, BY THE ONE DECIDER — in sendCampaignTest the typed role check (mayTestTypedNumber(officer?.role), refused typed_role in TEST_TYPED_ROLE_REFUSED) sits right after the officer's stored read (deps.users.findById(officerId)) and before the typed number is parsed (parseTzNumber(recipient.number)), masked (maskPhone(key)) or set beside the officer's own (key === ownKey); the door asks it once and reads no role from the request; and the decider is a full record over every role, ADMIN and COMPLIANCE alone true", async () => {
+    const src = impl.testSendSource.split(CR17).join("");
+    const fnAt = src.indexOf("export async function sendCampaignTest(");
+    const fn = fnAt < 0 ? "" : src.slice(fnAt);
+    const at = (s: string): number => fn.indexOf(s);
+    const iRead = at("const officer = await deps.users.findById(officerId);");
+    const iCheck = at('if (recipient.kind === "typed" && !mayTestTypedNumber(officer?.role)) {');
+    const iRefuse = at('return refuse("typed_role", TEST_TYPED_ROLE_REFUSED);');
+    const iParse = at("parseTzNumber(recipient.number)");
+    const iMask = at("maskPhone(key)");
+    const iOwn = at("key === ownKey");
+    const order = iRead > 0 && iCheck > iRead && iRefuse > iCheck && iParse > iRefuse && iMask > iParse && iOwn > iParse;
+    const once = fn.split("mayTestTypedNumber(").length - 1 === 1 && !/\b(?:input|recipient|options|raw)[?]?[.]role\b/.test(fn);
+    const recAt = src.indexOf("const MAY_TYPE_A_NUMBER: Readonly<Record<Role, boolean>> = {");
+    const rec = recAt < 0 ? "" : src.slice(recAt, src.indexOf("};", recAt));
+    const entries = [...rec.matchAll(/^ {2}([A-Z]+): (true|false),$/gm)].map((m) => `${m[1]}=${m[2]}`);
+    const record = entries.length === 9 && new Set(entries.map((e) => e.split("=")[0])).size === 9
+      && entries.filter((e) => e.endsWith("=true")).sort().join(",") === "ADMIN=true,COMPLIANCE=true"
+      && src.includes('import type { Role } from "@/lib/server/roles";')
+      && src.includes('return typeof role === "string" && Object.prototype.hasOwnProperty.call(MAY_TYPE_A_NUMBER, role) && MAY_TYPE_A_NUMBER[role as Role] === true;');
+    return [order && once && record, JSON.stringify({ iRead, iCheck, iRefuse, iParse, iMask, iOwn, once, entries })];
+  });
+
+  await claim("§18.39 ⛔ 2026-10-09 · THE CARD IS OFFERED 'ANOTHER NUMBER' ONLY WHERE THE DOOR WOULD TAKE IT — loadComposer asks the door's own decider (mayTestTypedNumber, imported from campaign-test-send.ts) once, of the officer's STORED row (db.user.findById of the session's user — the row the door re-reads), never of the address; it hands typedOffered beside the typed view; a viewer who may not type gets the empty view (TYPED_NOT_OFFERED: not allowed, no reason, no preview, no 18+ words, frozen) and composeTypedView is never asked for them, while every other viewer gets composeTypedView's own", async () => {
+    const loader = impl.loaderSource.split(CR17).join("");
+    const fnAt = loader.indexOf("export async function loadComposer(");
+    const fn = fnAt < 0 ? "" : loader.slice(fnAt);
+    const READ = "const officer = session ? await db.user.findById(session.userId) : null;";
+    const DECIDE = "const typedOffered = mayTestTypedNumber(officer?.role);";
+    const wiring = {
+      imported: loader.includes('import { mayTestTypedNumber } from "@/lib/server/marketing/campaign-test-send";'),
+      decided: fn.indexOf(READ) > 0 && fn.indexOf(DECIDE) > fn.indexOf(READ) && fn.split("mayTestTypedNumber(").length - 1 === 1,
+      handed: /typed: typedOffered\s*\?\s*composeTypedView\(draft, \{/.test(fn) && /:\s*TYPED_NOT_OFFERED,\s*typedOffered,/.test(fn)
+        && fn.split("composeTypedView(").length - 1 === 1,
+      typedField: /typed: ComposeTypedView;[\s\S]{0,900}?typedOffered: boolean;/.test(loader),
+    };
+    const empty = LOADER.TYPED_NOT_OFFERED;
+    const emptyOk = Object.isFrozen(empty) && empty.allowed === false && empty.why === null && empty.preview === null
+      && empty.attestation === null && Object.keys(empty).sort().join(",") === "allowed,attestation,preview,why";
+    return [Object.values(wiring).every(Boolean) && emptyOk, JSON.stringify({ ...wiring, emptyOk })];
+  });
   return failed;
 }
+/** 2026-10-09 · §18.37's claim — named once, so its red cases expect exactly what the run says. */
+const S18_37 = "§18.37 ⛔ 2026-10-09 · A TEST TO A TYPED NUMBER IS FOR ADMIN AND COMPLIANCE ONLY, BY THE STORED ROLE — GROWTH, FINANCE, SUPPORT, AUDITOR, MODERATOR, PLAYER, AGENT and an officer with no row are each refused typed_role in ONE sentence that names no number, before anything about the number is read: a malformed number is never parsed (not bad_number), their own number in another spelling is never compared (not the own path), a reader's options change nothing, and nothing reaches the rail, the switch, the window, the record, the typed budgets, the gate, the floor, the token store or the wire; each attempt writes ONE masked marketing.campaign_test row (typed_role, target typed, the campaign named, the stored role, no to, no digit run of a number); a role posted beside the recipient is never read; GROWTH's own test still goes; ADMIN (the Owner) and COMPLIANCE are handed over as before; and the decider admits exactly those two of every role roles.ts names, and nothing that is none of them";
 /** U33r · §18.36's claim — named once, so its red case expects exactly what the run says. */
 const S18_36 = "§18.36 ⛔ U33r · A PROMISED AGENT REFEREE IS NEVER SENT A TEST — a typed test to a number an applicant gave as a referee is refused through the ONE gate: a viewer who may not read numbers gets typed_refused and its ONE sentence, a reader gets the ONE protected reason and sentence (MINOR-5: collapsed for readers too, as the split collapses it), the audit row ALONE records agent_referee, for both; zero transport calls and zero tokens; and an officer whose OWN number is a referee's is told it is protected, in the own-number words";
 
@@ -3604,7 +3777,19 @@ if (!PROVE_RED) {
     const carryDropped = swapOnce(CLIENT, CARRY_POST, "audience: view.audience.params");
     const alwaysInvite = swapOnce(CLIENT, SAVED_CALL, "composeSaved(c.saved.savedAt, true)");
     const alwaysFocusable = swapOnce(CLIENT, FLAGGED_STOP, "tabIndex={-1}");
-    type ScreenPlant = { name: string; expect: RegExp; sources: ScreenSources; landed: () => boolean; landedAs: string };
+    /** 2026-10-09 · the card's own idea of who may type a number, over the server's (`typedOffered`). */
+    const OFFERED_FROM_SERVER = "const offered = t.typedOffered;";
+    const offeredToAll = swapOnce(CLIENT, OFFERED_FROM_SERVER, "const offered = true;");
+    /** 2026-10-09 · the radio cards rendered for every viewer — the offered guard dropped. */
+    const OFFERED_GUARD = "{offered ? (";
+    const unguardedChoice = swapOnce(CLIENT, OFFERED_GUARD, "{true ? (");
+    /** 2026-10-09 · the typed target outlives the choice — a stale pick posts a typed test for a viewer not offered one. */
+    const TARGET_FOLLOWS = 'const typed = offered && target === "typed";';
+    const staleTypedTarget = swapOnce(CLIENT, TARGET_FOLLOWS, 'const typed = target === "typed";');
+    /** 2026-10-09 · a typed_role refusal leaves the page as it was read. */
+    const ROLE_REREAD = 'if ("outcome" in r && r.outcome === "refused" && r.reason === "typed_role") router.refresh();';
+    const roleNoReread = swapOnce(CLIENT, ROLE_REREAD, "");
+    type ScreenPlant ={ name: string; expect: RegExp; sources: ScreenSources; landed: () => boolean; landedAs: string };
     const screenPlants: ScreenPlant[] = [
       {
         name: "P9 · the composer sizes on its own — the client imports sizeSms and calls it on the body",
@@ -3798,6 +3983,31 @@ if (!PROVE_RED) {
         expect: /^§16[.]16 /, sources: alwaysFocusable,
         landed: () => once(CLIENT, FLAGGED_STOP) && (alwaysFocusable.files.get(CLIENT) ?? "").includes("tabIndex={-1}"),
         landedAs: "the card carries tabIndex -1 with nothing wrong",
+      },
+      /* ── 2026-10-09 · the owner's ruling on the card: "Another number" only where the door would take it ── */
+      {
+        name: "2026-10-09 · the card offers \"Another number\" to every viewer — the server's answer ignored",
+        expect: /^§16[.]21 ⛔/, sources: offeredToAll,
+        landed: () => once(CLIENT, OFFERED_FROM_SERVER) && (offeredToAll.files.get(CLIENT) ?? "").includes("const offered = true;"),
+        landedAs: "the card decides it may offer the choice whatever typedOffered says",
+      },
+      {
+        name: "2026-10-09 · the choice rendered whether or not it is offered — the guard around the radio cards dropped",
+        expect: /^§16[.]21 ⛔/, sources: unguardedChoice,
+        landed: () => once(CLIENT, OFFERED_GUARD) && !(unguardedChoice.files.get(CLIENT) ?? "").includes(OFFERED_GUARD),
+        landedAs: "the fieldset with both radio cards renders for a viewer who may not type a number",
+      },
+      {
+        name: "2026-10-09 · a typed target kept when the choice is not offered — the card would post a typed test for GROWTH",
+        expect: /^§16[.]21 ⛔/, sources: staleTypedTarget,
+        landed: () => once(CLIENT, TARGET_FOLLOWS) && (staleTypedTarget.files.get(CLIENT) ?? "").includes('const typed = target === "typed";'),
+        landedAs: "the typed state outlives the choice it was picked from",
+      },
+      {
+        name: "2026-10-09 · a typed test refused for the role, and the page not re-read",
+        expect: /^§16[.]21 ⛔/, sources: roleNoReread,
+        landed: () => once(CLIENT, ROLE_REREAD) && !(roleNoReread.files.get(CLIENT) ?? "").includes(ROLE_REREAD),
+        landedAs: "typed_role no longer re-reads the page, so the card keeps offering a choice the server refuses",
       },
     ];
     for (const p of screenPlants) {
@@ -4509,6 +4719,58 @@ if (!PROVE_RED) {
     const GATE_CALL = "mayReceiveMarketingSms(m, deps.now(), deps.gateReads, { testAttestation })";
     const standInGate = R.testSendSource.split(GATE_CALL).join("allowTypedTest(m, testAttestation)");
 
+    /* ── 2026-10-09 · the owner's ruling (a test to a typed number is for ADMIN and COMPLIANCE only): each lands on its own,
+     *    then must fire its claim ── */
+    /** The role check removed — every officer's stored role passes it, as if the check were not there. */
+    const everyoneTypes: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => realTest(input, officerId, {
+      ...deps,
+      users: { findById: async (id) => { const u = await deps.users.findById(id); return u === null ? null : { ...u, role: "ADMIN" as const }; } },
+    }, options);
+    /** The browser's word honoured — a role posted beside the recipient taken over the stored one. */
+    const postedRole: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => {
+      const posted = (input as unknown as { role?: unknown } | null)?.role;
+      return realTest(input, officerId, {
+        ...deps,
+        users: {
+          findById: async (id) => {
+            const u = await deps.users.findById(id);
+            return u !== null && typeof posted === "string" ? { ...u, role: posted as typeof u.role } : u;
+          },
+        },
+      }, options);
+    };
+    /** The role asked only AFTER the typed number is read: parsed first (a malformed one answered in the plan's words), then
+     *  set beside the officer's own (their own in another spelling taken as their own). */
+    const roleAfterNumber: typeof realTest = async (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => {
+      const rec = recipientOf(input);
+      if (rec?.kind !== "typed") return realTest(input, officerId, deps, options);
+      const p = parseTzNumber(rec.number);
+      if (p.verdict !== "ok" || !p.msisdn) return { ok: false, outcome: "refused", reason: "bad_number", error: p.reason, target: "typed" };
+      const me = await deps.users.findById(officerId);
+      const mine = me === null ? null : parseTzNumber(me.phoneE164);
+      return mine !== null && mine.verdict === "ok" && mine.msisdn === p.msisdn
+        ? realTest({ ...input, recipient: { kind: "own" } } as TestInput, officerId, deps, options)
+        : realTest(input, officerId, deps, options);
+    };
+    /** The door's source with the role check gone, and with it moved below the parse of the typed number. */
+    const LF_TEST_SRC = R.testSendSource.split(CR17).join("");
+    const ROLE_CHECK_SRC = [
+      '  if (recipient.kind === "typed" && !mayTestTypedNumber(officer?.role)) {',
+      "    trail.role = officer?.role ?? null;",
+      '    return refuse("typed_role", TEST_TYPED_ROLE_REFUSED);',
+      "  }",
+      "",
+    ].join(NL15);
+    const PARSED_SRC = `    if (typed.verdict !== "ok" || !typed.msisdn) return refuse("bad_number", typed.reason);${NL15}`;
+    const roleGoneSrc = LF_TEST_SRC.split(ROLE_CHECK_SRC).join("");
+    const roleMovedSrc = roleGoneSrc.split(PARSED_SRC).join(`${PARSED_SRC}  ${ROLE_CHECK_SRC.split(NL15).join(`${NL15}  `)}`);
+    /** The loader offering "Another number" to every viewer, and handing every viewer the whole typed view. */
+    const LOADER_DECIDES = "const typedOffered = mayTestTypedNumber(officer?.role);";
+    const loaderOffersAll = R.loaderSource.split(LOADER_DECIDES).join("const typedOffered = true;");
+    const LOADER_EMPTY = ": TYPED_NOT_OFFERED,";
+    const loaderHandsAll = R.loaderSource.split(LOADER_EMPTY)
+      .join(': composeTypedView(draft, { outreachOpen: licenceOutreach().state === "open", adult: currentWording("adult.test") }),');
+
     type TestPlant = { name: string; expect: RegExp[]; impl: ComposeImpl; landed: () => Promise<boolean>; landedAs: string };
     const testPlants: TestPlant[] = [
       {
@@ -4731,7 +4993,7 @@ if (!PROVE_RED) {
         name: "U37c · a typed recipient honoured without the officer's 18+ confirmation",
         expect: [/^§18\.18 ⛔/], impl: { ...R, test: noAttestation },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const real = await realTest(typedInput(id, `+${u37bKey()}`, false), o.id, typedLanded({ send: u37bSpy().send }));
           const planted = await noAttestation(typedInput(id, `+${u37bKey()}`, false), o.id, typedLanded({ send: u37bSpy().send }));
@@ -4743,7 +5005,7 @@ if (!PROVE_RED) {
         name: "U37c-2 · a tick recorded against words the officer never saw (the version check skipped)",
         expect: [/^§18\.32 ⛔/], impl: { ...R, test: staleHonoured },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const old = (cid: string) => ({ campaignId: cid, variant: "SW", recipient: { kind: "typed", number: `+${u37bKey()}`, adultAttested: true, attestedVersion: P_ADULT.v - 1 } }) as unknown as TestInput;
           const real = await realTest(old(id), o.id, typedLanded({ send: u37bSpy().send }));
@@ -4756,7 +5018,7 @@ if (!PROVE_RED) {
         name: "U37c · a typed number rendered as an ACCOUNT recipient",
         expect: [/^§18\.13 ⭐/, /^§18\.17 ⭐/], impl: { ...R, test: typedAsAccount },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const real = await realTest(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ send: u37bSpy().send }));
           const planted = await typedAsAccount(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ send: u37bSpy().send }));
@@ -4768,7 +5030,7 @@ if (!PROVE_RED) {
         name: "U37c · the confirmation honoured for a player — the gate's player branch skipped on a typed test",
         expect: [/^§18\.19 ⛔/], impl: { ...R, test: playerSkipped },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const minor = await u37bOfficer({ dob: "2012-06-01" });
           const id = await phrased();
           const real = await realTest(typedInput(id, `+${minor.key}`), o.id, typedLanded({ send: u37bSpy().send }));
@@ -4781,7 +5043,7 @@ if (!PROVE_RED) {
         name: "U33r · a typed test whose gate never asks the referee keys — a promised agent referee tested on",
         expect: [/^§18[.]36 ⛔/], impl: { ...R, test: refereeSkipped },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const k = u37bKey();
           await recordRefereeKeys({ contacts: [`+${k}`], namedAt: "2026-09-08T10:00:00.000Z" });
@@ -4795,7 +5057,7 @@ if (!PROVE_RED) {
         name: "U37c · a typed refusal itemised for a masked viewer",
         expect: [/^§18\.20 ⛔/], impl: { ...R, test: itemised },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const k = u37bKey();
           const real = await realTest(typedInput(id, `+${k}`), o.id, typedLanded({ gateReads: P_WITHDRAWN(k) }));
@@ -4808,7 +5070,7 @@ if (!PROVE_RED) {
         name: "U37c · the real token returned to the screen",
         expect: [/^§18\.21 ⛔/], impl: { ...R, test: realTokenShown },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const k = u37bKey();
           const planted = await realTokenShown(typedInput(id, `+${k}`), o.id, typedLanded({ send: u37bSpy().send }));
@@ -4848,7 +5110,7 @@ if (!PROVE_RED) {
         landed: async () => {
           const id = await phrased();
           const k = u37bKey();
-          const officers = [await u37bOfficer(), await u37bOfficer()];
+          const officers = [await u37bTypist(), await u37bTypist()];
           const over = { rateTo: TEST.CAMPAIGN_TEST_DEPS.rateTo, send: u37bSpy().send };
           const results = [];
           for (let i = 0; i < 6; i++) results.push(await noRecipientBudget(typedInput(id, `+${k}`), officers[i % 2].id, typedLanded(over)));
@@ -4861,7 +5123,7 @@ if (!PROVE_RED) {
         expect: [/^§18\.23 ⛔/], impl: { ...R, test: noTypedBudget },
         landed: async () => {
           const id = await phrased();
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const over = { rateTyped: TEST.CAMPAIGN_TEST_DEPS.rateTyped, send: u37bSpy().send };
           const results = [];
           for (let i = 0; i < 11; i++) results.push(await noTypedBudget(typedInput(id, `+${u37bKey()}`), o.id, typedLanded(over)));
@@ -4873,7 +5135,7 @@ if (!PROVE_RED) {
         name: "U37c · the basis returned to the client",
         expect: [/^§18\.20 ⛔/], impl: { ...R, test: basisReturned },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const planted = await basisReturned(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ send: u37bSpy().send }));
           return planted.ok && "basis" in planted;
@@ -4884,7 +5146,7 @@ if (!PROVE_RED) {
         name: "U37c · a typed budget spent before the number-independent checks",
         expect: [/^§18\.23 ⛔/], impl: { ...R, test: spentEarly },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           let real = 0;
           let planted = 0;
@@ -4898,7 +5160,7 @@ if (!PROVE_RED) {
         name: "U37c · the response floor skipped",
         expect: [/^§18\.27 ⛔/], impl: { ...R, test: noFloor },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const waits = (n: number[]) => ({ now: () => new Date(), sleep: async (ms: number) => { n.push(ms); } });
           const real: number[] = [];
@@ -4913,7 +5175,7 @@ if (!PROVE_RED) {
         name: "U37c · typed tests skip the live switch",
         expect: [/^§18\.5′/], impl: { ...R, test: typedSkipsSwitch },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           let realAsked = 0;
           let plantAsked = 0;
@@ -4928,7 +5190,7 @@ if (!PROVE_RED) {
         name: "U37c · a token minted before the pre-check",
         expect: [/^§18\.26 ⛔/], impl: { ...R, test: tokenFirst },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const k = u37bKey();
           await tokenFirst(typedInput(id, `+${k}`), o.id, typedLanded({ gateReads: P_WITHDRAWN(k) }));
@@ -4940,7 +5202,7 @@ if (!PROVE_RED) {
         name: "U37c · typed allowed while the record is closed",
         expect: [/^§18\.25 ⛔/], impl: { ...R, test: closedIgnored },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const real = await realTest(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ gateReads: DB_GATE_READS, send: u37bSpy().send }));
           const planted = await closedIgnored(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ gateReads: DB_GATE_READS, send: u37bSpy().send }));
@@ -4952,7 +5214,7 @@ if (!PROVE_RED) {
         name: "U37c · the officer's own number, typed, required a confirmation",
         expect: [/^§18\.24 ⭐/], impl: { ...R, test: ownNeedsTick },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const real = await realTest(typedInput(id, `+${o.key}`, false), o.id, typedLanded({ send: u37bSpy().send }));
           const planted = await ownNeedsTick(typedInput(id, `+${o.key}`, false), o.id, typedLanded({ send: u37bSpy().send }));
@@ -4970,7 +5232,7 @@ if (!PROVE_RED) {
         name: "U37c review · a number over 40 characters let through",
         expect: [/^§18\.29 ⛔/], impl: { ...R, test: uncappedNumber },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const long = `+${u37bKey()}${" ".repeat(30)}`;
           const real = await realTest(typedInput(id, long), o.id, typedLanded({ send: u37bSpy().send }));
@@ -4983,7 +5245,7 @@ if (!PROVE_RED) {
         name: "U37c review · a bad number answered with a generic sentence",
         expect: [/^§18\.29 ⛔/], impl: { ...R, test: genericNumber },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           const r = await genericNumber(typedInput(id, "12345"), o.id, typedLanded());
           return !r.ok && r.outcome === "refused" && r.reason === "bad_number" && r.error !== parseTzNumber("12345").reason;
@@ -4994,7 +5256,7 @@ if (!PROVE_RED) {
         name: "U37c review · OD61 undone — the typed path writes the RG COMPLIANCE row",
         expect: [/^§18\.30 ⛔/], impl: { ...R, test: rgLineWritten },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const p = await u37bOfficer();
           await selfExclude(p.id, "24h");
           const id = await phrased();
@@ -5009,7 +5271,7 @@ if (!PROVE_RED) {
         name: "U37c review · dispatch handed the pre-check's answer instead of asking again",
         expect: [/^§18\.31 ⛔/], impl: { ...R, test: noReask },
         landed: async () => {
-          const o = await u37bOfficer();
+          const o = await u37bTypist();
           const id = await phrased();
           let asked = 0;
           const counting = async (m: string) => { asked++; return mayReceiveMarketingSms(m, new Date(), P_READS, { testAttestation: { officerId: o.id, at: new Date().toISOString(), attemptRef: "ta_landedlandedland", wordingVersion: 3 } }); };
@@ -5053,6 +5315,69 @@ if (!PROVE_RED) {
           return !real.ok && !real.error.includes("network refused") && !planted.ok && planted.error.includes("The network refused the message (UNKNOWN)");
         },
         landedAs: "the real test says an UNKNOWN failure couldn't be handed to the network, and the plant's says the network refused it",
+      },
+      /* ── 2026-10-09 · the owner's ruling: a test to a typed number is for ADMIN and COMPLIANCE only ── */
+      {
+        name: "2026-10-09 · the role check removed — a GROWTH officer's typed test sent",
+        expect: [/^§18[.]37 ⛔/], impl: { ...R, test: everyoneTypes },
+        landed: async () => {
+          const g = await u37bOfficer();
+          const id = await phrased();
+          const real = await realTest(typedInput(id, `+${u37bKey()}`), g.id, typedLanded({ send: u37bSpy().send }));
+          const planted = await everyoneTypes(typedInput(id, `+${u37bKey()}`), g.id, typedLanded({ send: u37bSpy().send }));
+          return !real.ok && real.outcome === "refused" && real.reason === "typed_role" && planted.ok && planted.target === "typed";
+        },
+        landedAs: "GROWTH's typed test: refused typed_role by the real door, handed over by the plant",
+      },
+      {
+        name: "2026-10-09 · the browser's word honoured — a role posted beside the recipient taken over the stored one",
+        expect: [/^§18[.]37 ⛔/], impl: { ...R, test: postedRole },
+        landed: async () => {
+          const g = await u37bOfficer();
+          const id = await phrased();
+          const forged = { ...(typedInput(id, `+${u37bKey()}`) as unknown as Record<string, unknown>), role: "ADMIN" } as unknown as TestInput;
+          const real = await realTest(forged, g.id, typedLanded({ send: u37bSpy().send }));
+          const planted = await postedRole(forged, g.id, typedLanded({ send: u37bSpy().send }));
+          return !real.ok && real.outcome === "refused" && real.reason === "typed_role" && planted.ok;
+        },
+        landedAs: "a GROWTH post naming role ADMIN: refused by the real door, handed over by the plant",
+      },
+      {
+        name: "2026-10-09 · the role asked only after the typed number is read — a malformed number answered in the plan's words",
+        expect: [/^§18[.]37 ⛔/], impl: { ...R, test: roleAfterNumber },
+        landed: async () => {
+          const g = await u37bOfficer();
+          const id = await phrased();
+          const real = await realTest(typedInput(id, "12345"), g.id, typedLanded());
+          const planted = await roleAfterNumber(typedInput(id, "12345"), g.id, typedLanded());
+          return !real.ok && real.outcome === "refused" && real.reason === "typed_role" && !planted.ok && planted.outcome === "refused" && planted.reason === "bad_number";
+        },
+        landedAs: "GROWTH's malformed number: typed_role from the real door, bad_number (it was parsed) from the plant",
+      },
+      {
+        name: "2026-10-09 · the door's role check removed from its source",
+        expect: [/^§18[.]38 ⛔/], impl: { ...R, testSendSource: roleGoneSrc },
+        landed: async () => LF_TEST_SRC.split(ROLE_CHECK_SRC).length === 2 && !roleGoneSrc.includes("mayTestTypedNumber(officer?.role)"),
+        landedAs: "the role check resolves exactly once in the real source and is cut out in memory",
+      },
+      {
+        name: "2026-10-09 · the door's role check moved below the parse of the typed number",
+        expect: [/^§18[.]38 ⛔/], impl: { ...R, testSendSource: roleMovedSrc },
+        landed: async () => LF_TEST_SRC.split(ROLE_CHECK_SRC).length === 2 && LF_TEST_SRC.split(PARSED_SRC).length === 2
+          && roleMovedSrc.indexOf("mayTestTypedNumber(officer?.role)") > roleMovedSrc.indexOf("parseTzNumber(recipient.number)"),
+        landedAs: "in memory the role is asked only after parseTzNumber has read the number",
+      },
+      {
+        name: "2026-10-09 · the loader offers \"Another number\" to every viewer",
+        expect: [/^§18[.]39 ⛔/], impl: { ...R, loaderSource: loaderOffersAll },
+        landed: async () => R.loaderSource.split(LOADER_DECIDES).length === 2 && loaderOffersAll.includes("const typedOffered = true;"),
+        landedAs: "the loader's decision resolves exactly once and is swapped for true in memory",
+      },
+      {
+        name: "2026-10-09 · the loader hands a viewer who may not type the whole typed view (its 18+ words and preview)",
+        expect: [/^§18[.]39 ⛔/], impl: { ...R, loaderSource: loaderHandsAll },
+        landed: async () => R.loaderSource.split(LOADER_EMPTY).length === 2 && !loaderHandsAll.includes(LOADER_EMPTY),
+        landedAs: "the empty view's branch resolves exactly once and is swapped for composeTypedView in memory",
       },
     ];
     for (const p of testPlants) {
