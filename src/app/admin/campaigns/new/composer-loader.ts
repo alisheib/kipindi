@@ -45,10 +45,9 @@ import type { AudienceSplitView } from "./audience-view-model";
 import { wholeNumberAudienceProblem, CAMPAIGN_AUDIENCE_UNREADABLE, savedSourcePhrase } from "@/lib/server/marketing/campaign-draft";
 import {
   TEST_OWN_NUMBER_UNUSABLE, TEST_TYPED_OUTREACH_CLOSED, TEST_TYPED_NO_ATTESTATION_WORDING, TEST_TYPED_NEEDS_SOURCE_LINE,
-  TEST_TEMPLATE_INVALID,
+  TEST_TEMPLATE_INVALID, mayTestTypedNumber,
 } from "@/lib/server/marketing/campaign-test-send";
 import { licenceOutreach } from "@/lib/server/marketing/outreach-record";
-import { mayTestTypedNumber } from "@/lib/server/marketing/campaign-test-send";
 import { currentWording } from "@/lib/server/marketing/wordings";
 import { liveSendWindow } from "@/lib/server/marketing/dispatch";
 import { composeTestWindowNote } from "./composer-copy";
@@ -141,7 +140,7 @@ export type ComposeTestView = {
   liveNote: string | null;
   /** U13 · M12 · said up front while the send window is closed — read as the test send reads it (`liveSendWindow`). */
   windowNote: string | null;
-  /** U37c · a test to ANOTHER number — offered only once its three number-independent checks pass. */
+  /** U37c · a test to ANOTHER number — allowed only once its three number-independent checks pass. */
   typed: ComposeTypedView;
   /**
    * ⛔ 2026-10-09 · MAY THIS VIEWER SEND A TEST TO A TYPED NUMBER AT ALL? The owner's ruling: the Owner and Compliance
@@ -155,7 +154,7 @@ export type ComposeTestView = {
 
 /** U37c · what the Test card needs to offer a test to a TYPED number — ⛔ the loader takes no number. */
 export type ComposeTypedView = {
-  /** Typed tests may be offered: licence outreach open, `adult.test` saved, and this draft carrying a source line. */
+  /** Typed tests are allowed: licence outreach open, `adult.test` saved, and this draft carrying a source line. */
   allowed: boolean;
   /** The first number-independent refusal, in the test send's own words (§3.7 step 6) — null when allowed. */
   why: string | null;

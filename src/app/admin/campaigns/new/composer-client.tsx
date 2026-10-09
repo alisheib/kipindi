@@ -16,8 +16,11 @@
  * worst-case counter in `campaign-template.ts` (the reserved name, the source line or its room, the statutory footer) —
  * and nothing in this directory sizes a message itself (`test:campaign-compose` §16.2). The server re-validates on
  * save and stores ITS figures; the screen is a preview of that verdict, never a substitute for it.
- * ⛔ OD45 · NO SENDER INPUT: the sender line is the server's, read-only. ⛔ NO NUMBER INPUT: the test card names the
- * officer's own number, masked, and has nothing to type into. ⛔ OD24 · NO MONEY on this page.
+ * ⛔ OD45 · NO SENDER INPUT: the sender line is the server's, read-only. ⛔ ONE NUMBER INPUT, AND ONLY FOR THE OWNER AND
+ * COMPLIANCE: the Test card's kit `PhoneInput` for a test to another number (U37c-2), drawn only when the server offers
+ * this viewer that choice (`typedOffered`, the owner's ruling of 2026-10-09) and "Another number" is allowed and picked.
+ * Anyone else's card — and the card while the officer's own number is chosen — names their own number, masked, with
+ * nothing to type into. ⛔ OD24 · NO MONEY on this page.
  * ⭐ ONE SAVE. Save is disabled WITH its reason (beside it and in its title), never hidden; a refusal keeps the text.
  * ⭐ THE TEST SENDS THE SAVED TEXT: unsaved or edited text disables it ("Save first"), and the preview is the server's
  * rendering of the saved revision — the exact text, its footer's line break and its real link included.

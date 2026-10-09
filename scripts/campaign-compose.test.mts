@@ -2706,7 +2706,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     // 2026-10-09 · a Compliance officer: the typed half needs a role that may type a number.
     const o33 = await officer({ role: "COMPLIANCE" });
     const id = await phrasedDraft();
-    const QUIET ="It's outside the send window (08:00–20:00 EAT), so no test can be sent now — try again at 08:00.";
+    const QUIET = "It's outside the send window (08:00–20:00 EAT), so no test can be sent now — try again at 08:00.";
     const start = audits.length;
     let gates = 0;
     const counting = async (m: string) => { gates++; return mayReceiveMarketingSms(m); };
@@ -2918,7 +2918,9 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     const READ = "const officer = session ? await db.user.findById(session.userId) : null;";
     const DECIDE = "const typedOffered = mayTestTypedNumber(officer?.role);";
     const wiring = {
-      imported: loader.includes('import { mayTestTypedNumber } from "@/lib/server/marketing/campaign-test-send";'),
+      // the door's decider, in the loader's ONE import of the door's module
+      imported: /import \{[^}]*\bmayTestTypedNumber\b[^}]*\} from "@\/lib\/server\/marketing\/campaign-test-send";/.test(loader)
+        && loader.split('from "@/lib/server/marketing/campaign-test-send";').length - 1 === 1,
       decided: fn.indexOf(READ) > 0 && fn.indexOf(DECIDE) > fn.indexOf(READ) && fn.split("mayTestTypedNumber(").length - 1 === 1,
       handed: /typed: typedOffered\s*\?\s*composeTypedView\(draft, \{/.test(fn) && /:\s*TYPED_NOT_OFFERED,\s*typedOffered,/.test(fn)
         && fn.split("composeTypedView(").length - 1 === 1,
