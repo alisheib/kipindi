@@ -827,8 +827,12 @@ function buildPdfHtml() {
   const creditTable = `<table class="credit"><colgroup><col style="width:31%"><col style="width:41%"><col style="width:28%"></colgroup>
     <thead><tr><th>The tile shows</th><th>It means</th><th>Do this</th></tr></thead><tbody>
     ${BALANCE_STATES.map((b) => `<tr><td>${esc(b.shows)}</td><td>${esc(b.meaning)}</td><td>${esc(b.action)}</td></tr>`).join("")}</tbody></table>`;
-  /** The messages, one table per place they appear — each under its own heading, never split from it or across a page. */
-  const messageGroups = [...new Set(MESSAGES.map((m) => m.area))].map((a) => `<div class="group"><h3>${esc(a)}</h3><table>
+  /** The messages, one table per place they appear — each under its own heading, never split from it. A short group
+   *  (up to KEEP_GROUP_ROWS) never splits across a page; a longer one carries on over the page break with its header row
+   *  repeated — kept whole, the Contacts group (18 rows) was pushed past the page, and its chapter heading and its own
+   *  heading each stood alone on an otherwise empty page (2026-10-09). */
+  const KEEP_GROUP_ROWS = 8;
+  const messageGroups = [...new Set(MESSAGES.map((m) => m.area))].map((a) => `<div class="group${MESSAGES.filter((m) => m.area === a).length <= KEEP_GROUP_ROWS ? " keep" : ""}"><h3>${esc(a)}</h3><table class="messages">
     <colgroup><col style="width:50%"><col style="width:25%"><col style="width:25%"></colgroup>
     <thead><tr><th>Message</th><th>It means</th><th>Do this</th></tr></thead><tbody>
     ${MESSAGES.filter((m) => m.area === a).map((m) => `<tr><td class="quote">${esc(m.message)}</td><td>${esc(m.meaning)}</td><td>${esc(m.action)}</td></tr>`).join("")}</tbody></table></div>`);
@@ -850,7 +854,9 @@ function buildPdfHtml() {
   };
   const body = sections.map((sec, i) => {
     const head = `<h2><span class="n">${i + 1}</span>${esc(sec.title)}</h2>${sec.lead ? `<p class="lead">${esc(sec.lead)}</p>` : ""}`;
-    if (sec.steps === "MESSAGES") return `<section><div class="lead-block">${head}${messageGroups[0] ?? ""}</div>${messageGroups.slice(1).join("")}</section>`;
+    // The chapter's heading is kept with the first group's first rows by `break-after: avoid`, never by one unbreakable
+    // block: a block taller than the space left was moved whole, leaving its heading behind.
+    if (sec.steps === "MESSAGES") return `<section>${head}${messageGroups.join("")}</section>`;
     let k = 0;
     return `<section>${sec.steps.map((s, j) => stepHtml(s, s.title ? `${i + 1}.${++k}` : "", j === 0 ? head : "")).join("")}</section>`;
   }).join("");
@@ -865,7 +871,9 @@ function buildPdfHtml() {
     h3 { font-size: 12pt; margin: 0 0 1.5mm; }
     h2 .n, h3 .n { color: #c9a227; margin-right: 3mm; }
     .step { margin: 0 0 5mm; }
-    .lead-block, figure, .note, .group, table, tr { break-inside: avoid; page-break-inside: avoid; }
+    .lead-block, figure, .note, .group.keep, table.credit, tr { break-inside: avoid; page-break-inside: avoid; }
+    h2, h3, .lead { break-after: avoid; page-break-after: avoid; }
+    thead { display: table-header-group; }
     .group { margin: 0 0 5mm; } .group h3 { margin: 0 0 1mm; }
     .where { margin: 0 0 1.5mm; color: #374151; font-weight: 600; }
     .lead { margin: 0 0 3mm; color: #374151; }

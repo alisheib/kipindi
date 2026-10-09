@@ -521,13 +521,14 @@ function installSweepLib() {
     }
     let target = null;
     let rect = null;
+    let measure = null;
     if (v.text) {
       const scope = document.querySelector(v.root) || document.body;
       const r = findRange(scope, v.text);
-      if (r) { target = r.startContainer; rect = r.getBoundingClientRect(); }
+      if (r) { target = r.startContainer; rect = r.getBoundingClientRect(); measure = () => r.getBoundingClientRect(); }
     } else if (v.sel) {
       const el = document.querySelector(v.sel);
-      if (el) { target = el; rect = el.getBoundingClientRect(); }
+      if (el) { target = el; rect = el.getBoundingClientRect(); measure = () => el.getBoundingClientRect(); }
     }
     if (target === null || rect === null) return { found: false, why: `not on the page: ${v.text ? `"${v.text}"` : v.sel}` };
     const sc = scrollerOf(target);
@@ -538,6 +539,12 @@ function installSweepLib() {
       : rect.top + rect.height / 2 - (frame.top + frame.height / 2);
     if (sc) sc.scrollTop += delta;
     else window.scrollBy(0, delta);
+    // A region that scrolls only sideways (the contacts table on a phone: its overflow-x makes overflow-y compute to auto)
+    // moves its subject by a pixel at most — the subject stayed off the screen. The window then takes the rest.
+    const after = sc ? measure() : null;
+    if (after && (after.top < 0 || after.bottom > vh)) {
+      window.scrollBy(0, v.block === "start" || after.height > vh * 0.9 ? after.top - 76 : after.top + after.height / 2 - vh / 2);
+    }
     if (v.scrollX) {
       const x = document.querySelector(v.scrollX);
       if (x) x.scrollLeft = x.scrollWidth;
