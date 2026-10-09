@@ -145,7 +145,7 @@ export const L = {
   H3: "H3 · ⛔ a cell of only foreign or only landline numbers yields NO number, and its sentence is its FIRST number's own (parseTzNumber's) — never 'keep one'; a cell of one such number keeps its whole-cell sentence",
   H4: "H4 · ⛔ NEVER A JOIN — two numbers kept apart by spaces alone are not split and yield nothing, and every key any cell yields is exactly 255 and nine digits",
   H5: "H5 · a cell that IS one number is that number — spaced, bracketed, dashed, dotted, the trunk zero, the apostrophe guard, Excel's thousands commas — with the whole trimmed cell as its text; an empty cell and a word yield nothing, with parseTzNumber's own sentence",
-  H6: "H6 · ⭐ ONE RULE ON THE SERVER — stagedRowFrom stages a two-number cell with the FIRST mobile's key while rawPhone keeps the whole cell, and the check's classifier reads it decidable; a cell of two foreign numbers stages no key and is invalid with its first number's sentence",
+  H6: "H6 · ⭐ ONE RULE ON THE SERVER — stagedRowFrom stages a two-number cell with the FIRST mobile's key while rawPhone keeps the whole cell, and the check's classifier reads it decidable; a cell of two foreign numbers, and one of two landlines (whose whole cell would read 'keep one'), stage no key and are invalid with their first number's sentence",
   H7: "H7 · ⛔ PURE — phone-cell.ts imports ../tz-msisdn alone, carries no directive, no backslash and no raw control character but its line ends, and is pinned in client-graph-safe",
   H8: "H8 · ⭐ END TO END on the memory twin — a two-number cell and a two-foreign cell are checked (1 new · 1 not a mobile, its sentence the first number's), started with KEEP and committed in one step: ONE contact is created on the first number, its raw text the number it was read from, and no book row holds the second number",
 } as const;
@@ -220,11 +220,19 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
   // ── H6 · the server's two readers ──
   const two = impl.stagedRowFrom({ line: 2, cells: ["0757 300 001 / 0757 300 002", "Upendo Swai"] }, 1, RUN, AT);
   const none = impl.stagedRowFrom({ line: 3, cells: ["+254 712 345 678 / +256 772 123 456", "Wanjiru Kamau"] }, 2, RUN, AT);
+  // ⛔ Two landlines: their whole cell is nineteen digits, which parseTzNumber words "Keep one" — so this row, unlike the
+  // two foreign numbers (whose whole cell and first number share the "+254…" sentence), tells the rule's sentence apart.
+  const lines = impl.stagedRowFrom({ line: 4, cells: ["022 211 3456 / 022 211 3457", "Ofisi Kuu"] }, 3, RUN, AT);
   const twoClass = two === null ? null : impl.classify(two, () => false);
   const noneClass = none === null ? null : impl.classify(none, () => false);
+  const linesClass = lines === null ? null : impl.classify(lines, () => false);
+  const sentenceOf = (c: typeof noneClass): string => (c?.kind === "invalid" ? c.sentence : "");
   ok(L.H6, two !== null && two.msisdn === FIRST_KEY && two.rawPhone === "0757 300 001 / 0757 300 002" && twoClass?.kind === "decidable"
-    && none !== null && none.msisdn === null && noneClass?.kind === "invalid" && noneClass.sentence === parseTzNumber("+254 712 345 678").reason,
-    `two numbers → ${two?.msisdn ?? "no key"} (${twoClass?.kind ?? "-"}) · two foreign → ${none?.msisdn ?? "no key"} (${noneClass?.kind ?? "-"}: ${noneClass?.kind === "invalid" ? noneClass.sentence : ""})`);
+    && none !== null && none.msisdn === null && noneClass?.kind === "invalid" && noneClass.sentence === parseTzNumber("+254 712 345 678").reason
+    && lines !== null && lines.msisdn === null && linesClass?.kind === "invalid" && linesClass.sentence === parseTzNumber("022 211 3456").reason
+    && !linesClass.sentence.includes("Keep one"),
+    `two numbers → ${two?.msisdn ?? "no key"} (${twoClass?.kind ?? "-"}) · two foreign → ${none?.msisdn ?? "no key"} (${noneClass?.kind ?? "-"}: ${sentenceOf(noneClass)})`
+    + ` · two landlines → ${lines?.msisdn ?? "no key"} (${linesClass?.kind ?? "-"}: ${sentenceOf(linesClass)})`);
 
   // ── H7 · the source ──
   const specs = [...impl.source.matchAll(/^\s*import\b[^;]*?from\s*["']([^"']+)["']/gm)].map((m) => m[1]);
@@ -351,7 +359,7 @@ const PLANTS: readonly RedPlant<PhoneCellImpl>[] = [
     }),
   },
   {
-    name: "the check words a no-mobile cell by the whole cell — 'keep one' for two foreign numbers",
+    name: "the check words a no-mobile cell by the whole cell — 'keep one' for two landlines",
     expect: L.H6,
     impl: () => ({
       ...real(),
