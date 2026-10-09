@@ -907,9 +907,10 @@ export async function contactImportResult(officerId: string, runId: unknown, dep
 /** The lists an import can add to — the Lists card's, A to Z — each with the card's member figure and whether its basis
  *  is in force (its newest recording, not revoked). Counts and names only: nothing here is a number. ⭐ C8b (B5) · the
  *  member figure is the viewer's (`listFiguresFor`): a reader's the unlinked members and the linked beside them,
- *  anyone else's every live member and no linked figure. */
+ *  anyone else's every live member and no linked figure. ⛔ Fails closed: a read cell that cannot be read is a masked
+ *  viewer's (the picker still opens, with the figures every role may see). */
 export async function importListOptions(officerId: string, deps: ImportCommitDeps = IMPORT_COMMIT_DEPS): Promise<ImportListsResult> {
-  const reads = await deps.readsNumbers(officerId);
+  const reads = await deps.readsNumbers(officerId).catch(() => false);
   const out: ImportListOption[] = [];
   for (const l of await deps.lists.all()) {
     const figures = listFiguresFor(await deps.lists.split(l.id), reads);
