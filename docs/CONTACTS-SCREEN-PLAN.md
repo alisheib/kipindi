@@ -313,7 +313,8 @@ learns a number was erased", setup doc ~2862) · the residual Ali ACCEPTED (STEP
 "a whole-number lookup tells an officer a number is probably a client".
 **What the survey found a masked officer can tell today** (O ordinary · P a player's · E erased · S stopped):
 1. Add contact (lookup and Save; 30 a minute, no audit row): O/P/S "already in the book" + an Open link; E with a
-   tombstone "This number can't be added to the book" (erasure revealed); E with only the ledger marker → "free", and
+   tombstone "This number can't be added to the book" (erasure revealed — *note, 2026-10-09: C8b · B2 made it "This
+   number is already in the book.", the same sentence as O/P/S, with no link*); E with only the ledger marker → "free", and
    Save re-creates the person (C8a).
 2. A whole-number search finds O/P/S, never E; a sign-up row's "Added" is the account's sign-up date, so any "Added"
    before 2026-10-02 (when the book got its first writer) is certainly a player's — also through the Added sort, the
