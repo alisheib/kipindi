@@ -16,8 +16,9 @@
  * occurrence never claims a number (`firstLines`' own rule, import-decide.ts).
  *   · unreadable — the record carries a read error (X19);
  *   · invalid — a field problem (X20), a cell that yields no Tanzanian mobile (`phoneCellRefusal` — `parseTzNumber`'s
- *     sentence; for a cell of several numbers none of which is a mobile, its first number's — C3b · G3), or one of the
- *     sample sheet's example numbers (`SAMPLE_ROW_SENTENCE`, M2) — ⛔ the sentence never repeats the cell;
+ *     sentence; for a cell of several numbers none of which is a mobile, its first number's — C3b · G3; for a cell holding
+ *     two or more distinct mobiles, the words that say so — D3), or one of the sample sheet's example numbers
+ *     (`SAMPLE_ROW_SENTENCE`, M2) — ⛔ the sentence never repeats the cell;
  *   · repeated — a decidable row whose number an EARLIER decidable row carries;
  *   · new — decide() creates it; in the book — anything else decide() reads (a player's number, a stopped one, an
  *     erased one disguised as the ordinary contact it reads as — X22) — ⭐ S15-2: there is NO "has an account" box.
@@ -251,7 +252,8 @@ export type StagedRowClass =
  * ⭐ THE ONE CLASSIFIER — the check's buckets and the commit's `fail('invalid')` read it, so the two cannot disagree.
  * A read error (X19) → unreadable; a field problem (X20) → invalid with its sentence; no number → invalid with the
  * ONE phone-cell rule's sentence for the cell (`phoneCellRefusal`: `parseTzNumber`'s, or — C3b · G3 — for a cell of
- * several numbers none of which is a Tanzanian mobile, its first number's); a sample-sheet number (M2) → invalid with
+ * several numbers none of which is a Tanzanian mobile, its first number's, and — D3 — for a cell holding two or more
+ * distinct mobiles, `SEVERAL_MOBILES_SENTENCE`); a sample-sheet number (M2) → invalid with
  * `SAMPLE_ROW_SENTENCE`; else decidable. ⛔ Every sentence names the problem, never the cell. The key itself is staging's
  * (`stagedRowFrom`, through the same rule's `firstMobileIn`) — never derived again here.
  */

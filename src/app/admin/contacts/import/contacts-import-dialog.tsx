@@ -56,8 +56,8 @@ import {
   type StartImportInput,
 } from "@/lib/contacts/import-flow";
 import { isDeploySkewError, runCommit, runUpload, type BusyState } from "@/lib/contacts/import-loop";
+import type { CsvUnclosedQuote } from "@/lib/contacts/import-parse";
 import {
-  extraNumbersOf,
   isListPaste,
   mappingFor,
   parsePastedText,
@@ -111,6 +111,8 @@ import {
   RESUME_FILE,
   partsText,
   stepLine,
+  sumCutOf,
+  type SumCut,
 } from "./import-copy";
 import { ImportAdoptPanel } from "./import-adopt-panel";
 import { ImportCheckPanel } from "./import-check-panel";
@@ -228,7 +230,7 @@ export function ImportContactsButton() {
 /* ═══ THE DIALOG ═══════════════════════════════════════════════════════════════════════════════════ */
 
 /** A file read and ready for its columns: the parsed shape, its digest and name, and S15-4's count — the reader's for a
- *  vCard's cards and a list paste's lines; for any other file it is counted from the columns chosen (C3b, `openRun`). */
+ *  vCard's cards and a list paste's lines, and none for any other file (C3b-fix · D3: such a file leaves no mobile out). */
 type Ready = {
   readonly file: ParsedContactsFile;
   readonly digest: string;
@@ -236,6 +238,10 @@ type Ready = {
   readonly list: boolean;
   readonly extraNumbers: number;
   readonly extraUnit: ExtraNumbersUnit;
+  /** C3b-fix · D5 · a CSV whose quotation mark never closed: its row and the lines it swallowed — null for any other file. */
+  readonly unclosed: CsvUnclosedQuote | null;
+  /** C3b-fix · D8 · the server's reader said no visible sheet of the workbook holds a mobile — false for any other file. */
+  readonly noMobileSheet: boolean;
 };
 
 /** Which loop a stopped run was in — where the officer is told it stopped. */
@@ -292,6 +298,10 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
   const staging = useRef<{ digest: string; rows: readonly StageRowInput[] } | null>(null);
   /** S15-4 · the count of people with another number, for the run this tab read the file for. */
   const extra = useRef<{ runId: string | null; count: number; unit: ExtraNumbersUnit }>({ runId: null, count: 0, unit: "line" });
+  /** ⭐ C3b-fix · D5d · the quotation mark never closed this tab's read found, for the run it opened — the sum lines' cut. */
+  const unclosedRef = useRef<{ runId: string | null; unclosed: CsvUnclosedQuote | null }>({ runId: null, unclosed: null });
+  /** ⭐ C3b-fix · D5d · how a run's sum lines end — the copy table's ONE rule (`sumCutOf`) over what this tab read. */
+  const cutFor = (view: ImportRunView): SumCut => sumCutOf(view, unclosedRef.current);
 
   const go = useCallback((next: Phase, nextAlert: ImportAlertState | null = null) => {
     if (!alive.current) return;
@@ -474,7 +484,10 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
       return go({ at: "entrance", resume, mode: IDLE }, { tone: "danger", text, actions: [] });
     }
     if (out.kind === "parsed") {
-      prepare({ file: out.file, digest: out.digest, name: file.name || null, list: false, extraNumbers: out.extraNumbers, extraUnit: "card" }, resume);
+      prepare({
+        file: out.file, digest: out.digest, name: file.name || null, list: false, extraNumbers: out.extraNumbers, extraUnit: "card",
+        unclosed: out.unclosed, noMobileSheet: false,
+      }, resume);
       return;
     }
     // ⭐ An Excel workbook: read by the server (U27b), checked here before a single row is shown.
@@ -494,7 +507,11 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
       go({ at: "entrance", resume, mode: IDLE }, { tone: "danger", text: ENTRANCE.xlsxGarbled, actions: [] });
       return;
     }
-    prepare({ file: r.answer.file, digest: workbook.digest, name: file.name || null, list: false, extraNumbers: 0, extraUnit: "line" }, resume);
+    // ⭐ C3b-fix · D8 · the reader's own word on the sheets — the only thing the columns step's sheet hint is shown on.
+    prepare({
+      file: r.answer.file, digest: workbook.digest, name: file.name || null, list: false, extraNumbers: 0, extraUnit: "line",
+      unclosed: null, noMobileSheet: r.answer.noMobileSheet === true,
+    }, resume);
   };
 
   const onPaste = async (text: string, resume: ImportRunView | null): Promise<void> => {
@@ -508,7 +525,7 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
       return;
     }
     if (!alive.current) return;
-    prepare({ file, digest, name: null, list, extraNumbers: list ? pasteExtraNumbers(text) : 0, extraUnit: "line" }, resume);
+    prepare({ file, digest, name: null, list, extraNumbers: list ? pasteExtraNumbers(text) : 0, extraUnit: "line", unclosed: null, noMobileSheet: false }, resume);
   };
 
   /** A file read: an empty one is said so; a resumed upload goes straight on; anything else shows its columns. */
@@ -534,7 +551,7 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
       const reading = headerRows === auto.headerRows
         ? auto
         : mappingFor(ready.file, { list: ready.list, firstRow: headerRows === 1 ? "header" : "contact" });
-      // ⭐ C3b · G4 · the rows come from the file AS THE READING STAGES IT — its first-mobile column included, as before.
+      // ⭐ C3b · G4 · the rows come from the file AS THE READING STAGES IT — its added phone column included, as before.
       const rows = stageRowsOf(reading.file, resume.mapping, headerRows);
       const figures = stageFigures(rows);
       if (figures.totalRows !== resume.totalRows || figures.unreadable !== resume.unreadable) continue;
@@ -583,14 +600,10 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
       return;
     }
     staging.current = { digest: ready.digest, rows };
-    // ⭐ S15-4 · C3b · a vCard's cards and a list paste's lines were counted by their readers; any other file's rows are
-    // counted from the columns chosen — a second number in the phone cell (G3), or in another phone column (G4).
-    const counted = ready.list || ready.file.format === "vcard";
-    extra.current = {
-      runId: r.answer.view.id,
-      count: counted ? ready.extraNumbers : extraNumbersOf(choice),
-      unit: counted ? ready.extraUnit : "row",
-    };
+    // ⭐ S15-4 · a vCard's cards and a list paste's lines are counted by their readers. ⛔ C3b-fix · D3: a file's rows are
+    // never counted — a row holding two or more mobiles is refused with its sentence, so no mobile is left out silently.
+    extra.current = { runId: r.answer.view.id, count: ready.extraNumbers, unit: ready.extraUnit };
+    unclosedRef.current = { runId: r.answer.view.id, unclosed: ready.unclosed };
     await upload(r.answer.view);
   };
 
@@ -1034,6 +1047,7 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
               mode={phase.at === "uploading"
                 ? { kind: "uploading", view: phase.view, busy: phase.busyState, stopping: phase.stopping }
                 : { kind: "checking", view: phase.view }}
+              cut={cutFor(phase.view)}
               alert={alert}
               onStopUpload={stopNow}
               focusRef={headingFocus}
@@ -1042,7 +1056,13 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
 
           {phase.at === "review" && (
             <>
-              <ImportCheckPanel mode={{ kind: "checked", view: phase.view, preflight: phase.preflight }} alert={null} onStopUpload={stopNow} focusRef={headingFocus} />
+              <ImportCheckPanel
+                mode={{ kind: "checked", view: phase.view, preflight: phase.preflight }}
+                cut={cutFor(phase.view)}
+                alert={null}
+                onStopUpload={stopNow}
+                focusRef={headingFocus}
+              />
               <ImportDecisionPanel
                 key={phase.view.id}
                 view={phase.view}
@@ -1094,6 +1114,7 @@ function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void })
               notImported={phase.notImported}
               extraNumbers={extra.current.runId === phase.result.view.id ? extra.current.count : 0}
               extraUnit={extra.current.unit}
+              cut={cutFor(phase.result.view)}
               loadFailures={(runId, afterLine) => ACTIONS.failures({ runId, afterLine })}
               onClose={onClose}
               onOpenLists={openLists}

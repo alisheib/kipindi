@@ -189,6 +189,12 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // cell holds: the browser's reader (the list paste, the first-mobile column) and the server's staging, check and commit
     // all ask it. It imports only tz-msisdn.ts, pinned here.
     "lib/contacts/phone-cell.ts",
+    // ⭐ ADDED 2026-10-09 (S15 · C3b-fix, decisions D6 and D7, M3). The ONE choice of a workbook's sheet by what it holds,
+    // and the ONE rule for a title above the column names: the server's workbook reader and the browser's reader for big
+    // workbooks (step C3c) both call them, and the browser's CSV reader and paste call the second. They import only
+    // phone-cell.ts, xlsx-limits.ts, contact-fields.ts and the parsed shape's type, all pinned here.
+    "lib/contacts/sheet-choice.ts",
+    "lib/contacts/title-rows.ts",
     // ⭐ ADDED 2026-10-01 (marketing S10, the pure engines): client-safe src/lib/marketing modules the composer, the
     // estimate and the confirmation will import into client components — each must stay free of the Prisma client.
     "lib/marketing/erasure-mark.ts",

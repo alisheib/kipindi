@@ -7,9 +7,11 @@
  * preview is masked, and real `File`s are read through the real streamed reader — a CSV and its digest, an old .xls, an
  * Excel file over the cap, an empty file, a vCard with two numbers on a card, an aborted read, a file past the run's cap.
  * ⭐ C3b: a CSV with one broken quote at its end is read with that record unreadable (G1, R8) while a TAB paste with one
- * is split by hand (P2b); Outlook's and Google's several phone columns gain ONE first-mobile column read as Phone (G4a,
- * G4b), and a file that would gain nothing — one phone column, a serial beside the phones — gains none (G4c); S15-4's
- * count of people whose other number is not imported now covers a file's cells and phone columns too (E1).
+ * is split by hand (P2b); Outlook's and Google's several phone columns gain ONE added column read as Phone (G4a, G4b) —
+ * under the review round's D2 only the person's OWN phone columns, never Assistant's or Company Main Phone nor a weak
+ * "Namba", and under D3 only for a row whose phone column yields no mobile, carrying ALL its other mobiles when there
+ * are two or more so the server's one rule refuses the row — and a file that would gain nothing gains none (G4c); D3
+ * also removed S15-4's count over a file's rows (E1: no mobile is left out silently, so there is none to count).
  * ⭐ THE LOOPS' PROPERTIES, EACH AGAINST A STUBBED SERVER that keeps its own cursor (the server's builder and the lead hold
  * the commit loop to exactly these): the bar shows only the server's cursor; Stop pauses on the server, then stops; a
  * refusal comes back verbatim; only `busy` is waited out — never given up on while Stop is not pressed (R6, the review
@@ -30,13 +32,12 @@ import { decomment } from "../lib/decomment.mts";
 import { REPO_ROOT } from "../lib/tracked-files.mts";
 import type { ImportSection, RedPlant, SectionContext } from "../contacts-import.test.mts";
 import {
-  FIRST_MOBILE_HEADER_START,
-  FIRST_MOBILE_SOURCE_NOTE,
+  ADDED_PHONE_HEADER_START,
+  ADDED_PHONE_SOURCE_NOTE,
   PASTE_LINE_NO_NUMBER,
   PASTE_LIST_NOTE,
   READ_TOO_MANY_ROWS,
   extraNumbersNote,
-  extraNumbersOf,
   isListPaste,
   isPhoneColumnHeader,
   mappingFor,
@@ -46,7 +47,8 @@ import {
   type FileMapping,
   type ReadOutcome,
 } from "../../src/lib/contacts/import-read.ts";
-import { firstMobileIn, phoneCellParts } from "../../src/lib/contacts/phone-cell.ts";
+import { SEVERAL_MOBILES_SENTENCE, firstMobileIn, mobilesIn, phoneCellRefusal } from "../../src/lib/contacts/phone-cell.ts";
+import { CHECK, DONE, partsText, sumCutOf } from "../../src/app/admin/contacts/import/import-copy.ts";
 import { parseTzNumber } from "../../src/lib/tz-msisdn.ts";
 import {
   BUSY_BACKOFF_SEC,
@@ -62,9 +64,10 @@ import {
   type UploadOutcome,
 } from "../../src/lib/contacts/import-loop.ts";
 import { isParsedContactsFile, type ParsedContactsFile } from "../../src/lib/contacts/parsed-file.ts";
-import { CONTACT_MASKED_FILE, autoMapHeaders, contactExportHeader, validateMapping } from "../../src/lib/contacts/contact-fields.ts";
+import { CONTACT_MASKED_FILE, autoMapHeaders, contactExportHeader, scrubPhoneRuns, validateMapping } from "../../src/lib/contacts/contact-fields.ts";
+import { maskPhone } from "../../src/lib/phone-normalize.ts";
 import { STAGE_BATCH_MAX_ROWS, stageRowsOf, type StageRowInput } from "../../src/lib/contacts/import-limits.ts";
-import { EMPTY_FILE_SENTENCE, parseCsv } from "../../src/lib/contacts/import-parse.ts";
+import { EMPTY_FILE_SENTENCE, csvRefusalSentence, parseCsv, stripBom } from "../../src/lib/contacts/import-parse.ts";
 import { XLSX_MAX_BYTES, xlsxRefusalSentence } from "../../src/lib/contacts/xlsx-limits.ts";
 import {
   IMPORT_REFUSAL_SENTENCES,
@@ -84,20 +87,22 @@ const TAB = String.fromCharCode(9);
 const LF = String.fromCharCode(10);
 const CR = String.fromCharCode(13);
 const CRLF = CR + LF;
-const NINE_DIGITS = /\d{9}/;
+const json = (v: unknown): string => JSON.stringify(v);
 
 /* ══ THE BUNDLE UNDER TEST ══════════════════════════════════════════════════════════════════════ */
 
 export type FlowImpl = {
   readonly parsePaste: typeof parsePastedText;
   readonly mappingFor: typeof mappingFor;
-  readonly extraNumbersOf: typeof extraNumbersOf;
   readonly previewCell: typeof previewCell;
   readonly readFile: typeof readContactsFile;
   readonly runCommit: typeof runCommit;
   readonly runUpload: typeof runUpload;
   readonly isSkew: typeof isDeploySkewError;
-  readonly sources: { readonly read: string; readonly loop: string };
+  /** The reader, the loop and (C3b-fix · D3) the dialog that opens a run with S15-4's count — decommented. */
+  readonly sources: { readonly read: string; readonly loop: string; readonly dialog: string };
+  /** C3b-fix · D5d · the check's and the result's sum lines, and the ONE rule for how they end. */
+  readonly sums: { readonly check: typeof CHECK.sum; readonly done: typeof DONE.sum; readonly cutOf: typeof sumCutOf };
 };
 
 const read = (rel: string): string => decomment(readFileSync(join(REPO_ROOT, rel), "utf8")).split(CRLF).join(LF);
@@ -108,13 +113,17 @@ function real(): FlowImpl {
   cached = {
     parsePaste: parsePastedText,
     mappingFor,
-    extraNumbersOf,
     previewCell,
     readFile: readContactsFile,
     runCommit,
     runUpload,
     isSkew: isDeploySkewError,
-    sources: { read: read("src/lib/contacts/import-read.ts"), loop: read("src/lib/contacts/import-loop.ts") },
+    sources: {
+      read: read("src/lib/contacts/import-read.ts"),
+      loop: read("src/lib/contacts/import-loop.ts"),
+      dialog: read("src/app/admin/contacts/import/contacts-import-dialog.tsx"),
+    },
+    sums: { check: CHECK.sum, done: DONE.sum, cutOf: sumCutOf },
   };
   return cached;
 }
@@ -129,15 +138,16 @@ export const L = {
   P2: "P2 · a TAB paste is an Excel copy: cells split on the tab with Excel's quoting, a blank line counted, its first row header-matched (Phone, Name; one header row)",
   P2b: "P2b · ⭐ C3b · a TAB paste whose quotation mark never closes is split by hand — every line kept, its quotation marks as typed, nothing unreadable — never cut by the CSV reader's one unreadable record (G1)",
   P3: "P3 · a list paste maps Phone and Name with no header row, named as the field list names them — never \"Column A…\", never read as a headerless file — and U28's validateMapping passes it",
+  P4: "P4 · ⭐ C3b-fix · D7 — a TAB paste copied with two title rows above its column names: the titles leave the data (lines 3–5 kept as pasted), ONE note names rows 1–2 and never their words, and the column names map Phone and Name with one header row",
   M1: "M1 · ⭐ S15-5 · a file whose first row is a contact is READ: \"Column A…\" headers, the phone, email and name columns found from the cells, no header row — row 1 staged too",
   M2: "M2 · the officer's word on the first row turns the reading over both ways (\"header\" reads it as names again)",
   M3: "M3 · ⛔ a masked export stays refused in U28's words — even when the officer says its first row is a contact",
   M4: "M4 · a header row narrower than the file is padded to the widest row, so every column can be mapped",
-  M5: "M5 · ⛔ NO NUMBER WHOLE: a cell that is a number previews as +255••••NN, a number inside text is bulleted, plain text is untouched",
-  G4a: "G4a · ⭐ C3b · G4 — an Outlook export whose Mobile Phone is empty on a row while Business Phone (or Primary Phone) holds the mobile gains ONE column, “Phone (first mobile of: Mobile Phone, Business Phone, Home Phone and 2 more)”, read as Phone: each row's FIRST phone cell holding a Tanzanian mobile (Mobile first; a Car Phone mobile beside it not taken), else the Mobile cell — so a row with no mobile anywhere reads as before; the original columns stay, read as nothing, each saying why; validateMapping passes it, the staged rows carry those cells, the file is valid and the file as read is untouched",
-  G4b: "G4b · ⭐ C3b · G4 — Google's export: a Phone 1 - Value cell joining two numbers with ' ::: ' is the row's phone (its first mobile is the key the server stages — G3 before G4), and a row whose mobile is only in Phone 2 - Value reads Phone 2's cell; the Label columns are never phone columns",
-  G4c: "G4c · ⛔ CONTROL · G4 — a plain file with one phone column, a serial Namba beside a Simu column that holds every mobile, and an Outlook export whose every mobile is in Mobile Phone gain NO column: the reading is the file as read, Phone where U28 put it",
-  E1: "E1 · ⭐ S15-4 said for cells and columns too (C3b): extraNumbersOf counts the rows whose person had another number that is not imported — a second number in the phone cell (G3), a number in another phone column beside the one read (G4) — never a serial or an extension, and the result's sentence counts rows; a plain file counts none",
+  M5: "M5 · ⛔ NO NUMBER WHOLE — C3b-fix · D9: a cell holding SEVEN or more digits in total, whatever separates them (Excel's thousands commas \"255,757,300,014\", slashes \"0712/345/678\", letters, a date's dashes), is masked whole: its one mobile as +255••••NN, else four bullets and its last two digits; plain text and a cell of six digits or fewer are untouched; no preview ever holds seven digits",
+  G4a: "G4a · ⭐ C3b · G4 under C3b-fix D2 and D3 — an Outlook export gains ONE column, “Phone (read from: Mobile Phone, Business Phone, Car Phone and 2 more)”, read as Phone: the Mobile Phone cell whenever it yields a mobile (a Car Phone or Assistant's mobile beside it never read); else the ONE mobile of the person's other OWN phone columns (Business, Primary — the same mobile twice counted once); else the Mobile cell as it was; two DISTINCT mobiles there are carried together, and the server's one rule refuses them with its several-mobiles sentence; ⛔ Assistant's and Company Main Phone are never read nor named; the original columns stay, read as nothing, each saying why; validateMapping passes it, the file is valid and the file as read is untouched",
+  G4b: "G4b · ⭐ C3b · G4 under D3 — Google's export: a Phone 1 - Value cell joining two DISTINCT mobiles with ' ::: ' yields none, so Phone 2 - Value is read too and all three mobiles are carried, refused by the server's one rule; a row whose mobile is only in Phone 2 - Value reads Phone 2's; the same mobile twice in Phone 1 is that mobile; the Label columns are never phone columns",
+  G4c: "G4c · ⛔ CONTROL · G4 — a plain file with one phone column, a serial Namba beside a Simu column that holds every mobile, ⛔ a WEAK Namba column holding a mobile where Simu is empty (D2: never read unless it is the Phone column), an Outlook export whose every mobile is in Mobile Phone, and one whose only other mobiles sit in Assistant's and Company Main Phone (D2) gain NO column: the reading is the file as read, Phone where U28 put it",
+  E1: "E1 · ⛔ C3b-fix · D3 — the S15-4 count is NEVER taken over a file's rows: import-read.ts exports no row counter and no \"row\" unit, and the dialog opens a run with the reader's own count (a vCard's cards, a list paste's lines) — a row holding two or more mobiles is refused by the server's rule, so no mobile is left out silently",
   R1: "R1 · a CSV File is STREAMED into the reader: its rows read, its digest the sha-256 of its exact bytes, progress reported in bytes",
   R2: "R2 · an old .xls is refused before anything is uploaded, in xlsx-limits' own sentence",
   R3: "R3 · ⛔ an Excel file over the cap is refused BEFORE it is uploaded, its size named (too_large)",
@@ -145,7 +155,9 @@ export const L = {
   R5: "R5 · ⭐ S15-4 · a vCard card with two numbers yields one row, the count of such cards, and the note that says it",
   R6: "R6 · an aborted read comes back aborted — nothing kept",
   R7: "R7 · ⛔ CRASH CONTROL · a file past the run's cap stops being read and says how to split it",
-  R8: "R8 · ⭐ C3b · G1 — a CSV File whose LAST record opens a quotation mark never closed is READ, not refused: its rows kept, that record listed unreadable on its own line with the reader's sentence, and both staged",
+  R8: "R8 · ⭐ C3b · G1 — a CSV File whose LAST record opens a quotation mark never closed is READ, not refused: its rows kept, that record listed unreadable on its own line with the reader's sentence, and both staged — ⭐ C3b-fix · D5: the outcome carries the row and the ONE line the quote swallowed, and the file's note says it",
+  R9: "R9 · ⭐ C3b-fix · D5d — the check's and the result's sum lines never claim \"every row of your file is counted once\" when a quote never closed swallowed lines: they count every row UP TO that row and say how many lines after it were not read; a run this tab did not read whose CSV holds an unreadable record claims only the rows read; a quote that swallowed nothing, and every other run, keep the whole-file claim",
+  R10: "R10 · ⭐ C3b-fix · D7 at the CSV door — a CSV File whose first row is a title reads from its column names (row 2 the header, row 3 its contact, ONE note naming row 1), and ⛔ D5e after the title leaves: a title, the column names and a broken quote with no data row before it is refused whole, in the reader's own sentence, never read as a file of no contacts",
   C1: "C1 · ⛔ THE BAR IS THE SERVER'S CURSOR — every figure shown is a cursor the server answered with, never past the server's own",
   C2: "C2 · ⭐ STOP IS READ BETWEEN STEPS: the run is paused ON THE SERVER, then the loop stops — no step after the pause",
   C3: "C3 · ⛔ a refusal ends the loop with the server's refusal, verbatim (its reason and its sentence)",
@@ -365,33 +377,61 @@ const NARROW_HEADER: ParsedContactsFile = {
 
 /** C3b · G1 at the paste: a TAB paste whose third line opens a quotation mark that never closes. */
 const TAB_BROKEN = [`Phone${TAB}Name`, `0712 345 678${TAB}Asha`, `0754 123 456${TAB}"Mama, Neema`, `0688 111 222${TAB}Juma`].join(CRLF);
+/** C3b-fix · D7 at the paste: two title rows copied with the table, the column names on the third line. */
+const TAB_TITLED = [
+  "Orodha ya wateja", `Imeandaliwa na ofisi${TAB}Oktoba`, `Jina${TAB}Simu`, `Asha${TAB}0712 345 678`, `Baraka${TAB}0754 123 456`,
+].join(CRLF);
+/** The title note for rows 1–2 — a LITERAL (the en dash from its code). */
+const TITLE_NOTE_1_2 = `Rows 1${String.fromCharCode(0x2013)}2, above the column names, were not read — a title.`;
+const TITLE_NOTE_1 = "Row 1, above the column names, was not read — a title.";
 
-/* ── C3b · G4 · several phone columns ── */
-const OUTLOOK_HEADER = ["First Name", "Last Name", "Business Phone", "Home Phone", "Mobile Phone", "Primary Phone", "Car Phone", "E-mail Address"];
-/** Outlook's shape: lines 3 (Business only) and 5 (Primary only) hold their mobile OUTSIDE Mobile Phone; line 4 a Home
- *  landline beside the mobile; line 6 a Car Phone mobile beside a different Mobile one; lines 7 and 8 no mobile at all. */
+/* ── C3b · G4 under C3b-fix · D2 and D3 · several phone columns ── */
+const OUTLOOK_HEADER = [
+  "First Name", "Last Name", "Assistant's Phone", "Business Phone", "Car Phone", "Company Main Phone", "Home Phone", "Mobile Phone",
+  "Primary Phone", "E-mail Address",
+];
+/** One Outlook row: a name, then each phone column by its header, the rest empty. */
+const outlookRow = (line: number, first: string, phones: Readonly<Record<string, string>>, email = ""): { line: number; cells: string[] } => ({
+  line,
+  cells: OUTLOOK_HEADER.map((h, i) => (i === 0 ? first : i === 1 ? "Mtei" : h === "E-mail Address" ? email : phones[h] ?? "")),
+});
+/** Outlook's shape, every case on its own line: the Mobile Phone cell yields (with a landline, a Car Phone mobile, an
+ *  Assistant's mobile beside it — never read); the mobile only in Business or Primary Phone; no mobile anywhere; TWO
+ *  distinct mobiles in Business and Home Phone; the SAME mobile in Business and Primary Phone; ⛔ mobiles only in
+ *  Assistant's and Company Main Phone — another person's lines (D2). */
 const OUTLOOK_LIKE: ParsedContactsFile = {
-  format: "csv", fileName: "outlook.csv", width: 8, blankRows: 0, notes: [], unreadable: [],
+  format: "csv", fileName: "outlook.csv", width: 10, blankRows: 0, notes: [], unreadable: [],
   rows: [
     { line: 1, cells: [...OUTLOOK_HEADER] },
-    { line: 2, cells: ["Asha", "Juma", "", "", "0712 345 601", "", "", "asha@example.com"] },
-    { line: 3, cells: ["Baraka", "Moshi", "0754 345 602", "", "", "", "", ""] },
-    { line: 4, cells: ["Neema", "Kimaro", "", "022 211 3456", "0688 345 603", "", "", ""] },
-    { line: 5, cells: ["Juma", "Said", "", "", "", "0765 345 604", "", ""] },
-    { line: 6, cells: ["Rehema", "John", "", "", "0713 345 605", "", "0714 345 606", ""] },
-    { line: 7, cells: ["Zawadi", "Ali", "", "022 211 3457", "", "", "", ""] },
-    { line: 8, cells: ["Hassani", "Omari", "+254 712 345 678", "", "", "", "", ""] },
+    outlookRow(2, "Asha", { "Mobile Phone": "0712 345 601" }, "asha@example.com"),
+    outlookRow(3, "Baraka", { "Business Phone": "0754 345 602" }),
+    outlookRow(4, "Neema", { "Home Phone": "022 211 3456", "Mobile Phone": "0688 345 603" }),
+    outlookRow(5, "Juma", { "Primary Phone": "0765 345 604" }),
+    outlookRow(6, "Rehema", { "Mobile Phone": "0713 345 605", "Car Phone": "0714 345 606" }),
+    outlookRow(7, "Zawadi", { "Home Phone": "022 211 3457" }),
+    outlookRow(8, "Hassani", { "Business Phone": "+254 712 345 678" }),
+    outlookRow(9, "Upendo", { "Business Phone": "0754 345 607", "Home Phone": "0688 345 608" }),
+    outlookRow(10, "Faraji", { "Business Phone": "0754 345 609", "Primary Phone": "+255 754 345 609" }),
+    outlookRow(11, "Saidi", { "Assistant's Phone": "0715 345 610", "Company Main Phone": "0716 345 611" }),
+    outlookRow(12, "Halima", { "Mobile Phone": "0717 345 612", "Assistant's Phone": "0718 345 613" }),
   ],
 };
-/** The first-mobile column's cells for lines 2–8, and its header — LITERALS, decided by hand. */
-const OUTLOOK_PICKS = ["0712 345 601", "0754 345 602", "0688 345 603", "0765 345 604", "0713 345 605", "", ""];
-const OUTLOOK_FIRST_MOBILE = "Phone (first mobile of: Mobile Phone, Business Phone, Home Phone and 2 more)";
+/** The added column's cells for lines 2–12, and its header — LITERALS, decided by hand. Line 9 carries BOTH mobiles in
+ *  their compact spelling, for the server's one rule to refuse; lines 7, 8 and 11 keep the (empty) Mobile Phone cell. */
+const OUTLOOK_PICKS = [
+  "0712 345 601", "0754 345 602", "0688 345 603", "0765 345 604", "0713 345 605", "", "", "0754345607 / 0688345608", "0754 345 609", "",
+  "0717 345 612",
+];
+const OUTLOOK_ADDED = "Phone (read from: Mobile Phone, Business Phone, Car Phone and 2 more)";
 /** The same export with every mobile in Mobile Phone (a Home landline and a Car mobile beside two of them): no column. */
 const OUTLOOK_ALL_IN_MOBILE: ParsedContactsFile = { ...OUTLOOK_LIKE, rows: [OUTLOOK_LIKE.rows[0], OUTLOOK_LIKE.rows[1], OUTLOOK_LIKE.rows[3], OUTLOOK_LIKE.rows[5]] };
+/** ⛔ D2 · an export whose only mobiles sit in Assistant's and Company Main Phone, and one beside a Mobile Phone mobile:
+ *  never read — no column. */
+const OUTLOOK_OTHERS_ONLY: ParsedContactsFile = { ...OUTLOOK_LIKE, rows: [OUTLOOK_LIKE.rows[0], OUTLOOK_LIKE.rows[10], OUTLOOK_LIKE.rows[11]] };
 
 const GOOGLE_HEADER = ["First Name", "Last Name", "Phone 1 - Label", "Phone 1 - Value", "Phone 2 - Label", "Phone 2 - Value"];
-/** Google's shape: line 2 joins two numbers with " ::: " in Phone 1 AND has another mobile in Phone 2; line 3 a landline
- *  in Phone 1 and its mobile only in Phone 2; line 4 one mobile. */
+/** Google's shape: line 2 joins two DISTINCT mobiles with " ::: " in Phone 1 AND has another mobile in Phone 2; line 3 a
+ *  landline in Phone 1 and its mobile only in Phone 2; line 4 one mobile; line 5 the SAME mobile twice in Phone 1. */
 const GOOGLE_LIKE: ParsedContactsFile = {
   format: "csv", fileName: "google.csv", width: 6, blankRows: 0, notes: [], unreadable: [],
   rows: [
@@ -399,10 +439,11 @@ const GOOGLE_LIKE: ParsedContactsFile = {
     { line: 2, cells: ["Asha", "Juma", "Mobile", "+255 712 345 611 ::: +255 754 345 612", "Mobile", "0688 345 613"] },
     { line: 3, cells: ["Baraka", "Moshi", "Work", "022 211 3458", "Mobile", "+255 765 345 614"] },
     { line: 4, cells: ["Neema", "Kimaro", "Mobile", "0713 345 615", "", ""] },
+    { line: 5, cells: ["Juma", "Said", "Mobile", "0713 345 616 ::: +255 713 345 616", "", ""] },
   ],
 };
-const GOOGLE_PICKS = ["+255 712 345 611 ::: +255 754 345 612", "+255 765 345 614", "0713 345 615"];
-const GOOGLE_FIRST_MOBILE = "Phone (first mobile of: Phone 1 - Value, Phone 2 - Value)";
+const GOOGLE_PICKS = ["0712345611 / 0754345612 / 0688345613", "+255 765 345 614", "0713 345 615", "0713 345 616 ::: +255 713 345 616"];
+const GOOGLE_ADDED = "Phone (read from: Phone 1 - Value, Phone 2 - Value)";
 
 /** The controls: one phone column; a serial Namba beside the Simu column that holds every mobile. */
 const ONE_PHONE: ParsedContactsFile = {
@@ -422,25 +463,24 @@ const NAMBA_SIMU: ParsedContactsFile = {
     { line: 4, cells: ["3", "Neema", ""] },
   ],
 };
-
-/** S15-4 · one phone column: a cell holding two numbers, one holding a number and its extension, one plain. */
-const TWO_IN_CELL: ParsedContactsFile = {
-  format: "csv", fileName: "two.csv", width: 2, blankRows: 0, notes: [], unreadable: [],
+/** ⛔ D2 · a WEAK "Namba" column holding a mobile on the row whose Simu cell is empty: Namba is never read — the row
+ *  stages Simu's empty cell (and is refused for it), and no column is added. */
+const NAMBA_HOLDS_MOBILE: ParsedContactsFile = {
+  format: "csv", fileName: "orodha-namba.csv", width: 3, blankRows: 0, notes: [], unreadable: [],
   rows: [
-    { line: 1, cells: ["Phone", "Name"] },
-    { line: 2, cells: ["0712 345 631 / 0754 345 632", "Asha"] },
-    { line: 3, cells: ["0688 345 633 / ext 12", "Baraka"] },
-    { line: 4, cells: ["0765 345 634", "Neema"] },
+    { line: 1, cells: ["Namba", "Jina", "Simu"] },
+    { line: 2, cells: ["0712 345 624", "Asha", ""] },
+    { line: 3, cells: ["2", "Baraka", "0754 345 625"] },
   ],
 };
 
-/** The first-mobile column's index in a reading, or -1. */
-const firstMobileAt = (m: FileMapping): number => m.headers.findIndex((h) => h.startsWith(FIRST_MOBILE_HEADER_START));
+/** The added phone column's index in a reading, or -1. */
+const addedAt = (m: FileMapping): number => m.headers.findIndex((h) => h.startsWith(ADDED_PHONE_HEADER_START));
 
-/** A plant's first-mobile column: the reading's own column REBUILT by another chooser over the same phone columns (the
- *  main one first, then the others left to right) — the faithful way to plant a wrong choice. */
-function rebuildFirstMobile(m: FileMapping, choose: (cells: readonly string[], order: readonly number[], main: number) => string): FileMapping {
-  const at = firstMobileAt(m);
+/** A plant's added column: the reading's own column REBUILT by another chooser over the same phone columns (the main one
+ *  first, then the others left to right) — the faithful way to plant a wrong choice. */
+function rebuildAdded(m: FileMapping, choose: (cells: readonly string[], order: readonly number[], main: number) => string): FileMapping {
+  const at = addedAt(m);
   if (at < 0) return m;
   const headers = m.headers.slice(0, at);
   const main = autoMapHeaders(headers).mapping.phone ?? headers.findIndex((h) => isPhoneColumnHeader(h));
@@ -466,8 +506,8 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
   // ── W0 · the two modules are pure ─────────────────────────────────────────────────────────────
   const specs = (src: string): string[] => [...src.matchAll(/^\s*import\b[^;]*?from\s*["']([^"']+)["']/gm)].map((m) => m[1]);
   const readAllowed = new Set([
-    "./parsed-file", "./import-parse", "./vcard", "./xlsx-limits", "./contact-fields", "./import-limits", "./phone-cell", "../tz-msisdn",
-    "../phone-normalize",
+    "./parsed-file", "./import-parse", "./title-rows", "./vcard", "./xlsx-limits", "./contact-fields", "./import-limits", "./phone-cell",
+    "../tz-msisdn", "../phone-normalize",
   ]);
   const loopAllowed = new Set(["./import-limits", "./import-flow"]);
   const readSpecs = specs(impl.sources.read);
@@ -512,6 +552,13 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
     && rowsOf(tabBroken) === `1:Phone|Name ; 2:0712 345 678|Asha ; 3:0754 123 456|"Mama, Neema ; 4:0688 111 222|Juma`,
     `${rowsOf(tabBroken)} · unreadable ${JSON.stringify(tabBroken.unreadable)}`);
 
+  // ── P4 · C3b-fix · D7 · a title copied above the column names ──
+  const titled = impl.parsePaste(TAB_TITLED);
+  const titledMap = impl.mappingFor(titled);
+  ok(L.P4, rowsOf(titled) === `3:Jina|Simu ; 4:Asha|0712 345 678 ; 5:Baraka|0754 123 456` && json(titled.notes) === json([TITLE_NOTE_1_2])
+    && isParsedContactsFile(titled) && titledMap.headerRows === 1 && titledMap.mapping.phone === 1 && titledMap.mapping.name === 0,
+    `${rowsOf(titled)} · notes ${json(titled.notes)} · ${json(titledMap.mapping)}`);
+
   const listMap = impl.mappingFor(list, { list: true });
   ok(L.P3, listMap.headerRows === 0 && listMap.mapping.phone === 0 && listMap.mapping.name === 1 && listMap.refusal === null
     && !listMap.headerless && !listMap.headers.some((h) => /^Column [A-Z]+$/.test(h))
@@ -534,56 +581,78 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
   const narrow = impl.mappingFor(NARROW_HEADER);
   ok(L.M4, narrow.headers.length === 3 && narrow.headers[2] === "" && narrow.headerRows === 1 && narrow.mapping.phone === 0,
     JSON.stringify(narrow.headers));
-  const previews = ["0712 345 678", "+255712345678", "Call Asha on 0712345678 today", "Asha", "2.55713E+11"].map((c) => impl.previewCell(c));
-  ok(L.M5, previews[0] === "+255••••78" && previews[1] === "+255••••78" && !NINE_DIGITS.test(previews[2]) && previews[2].includes("••••78")
-    && previews[3] === "Asha" && previews.every((p) => !NINE_DIGITS.test(p)),
-    previews.join(" | "));
+  // ⭐ D9 · each cell beside the preview it must get — LITERALS, decided by hand.
+  const PREVIEWS: ReadonlyArray<readonly [string, string]> = [
+    ["0712 345 678", "+255••••78"],
+    ["+255712345678", "+255••••78"],
+    ["Call Asha on 0712345678 today", "+255••••78"],
+    ["Asha", "Asha"],
+    ["2.55713E+11", "••••11"],
+    ["255,757,300,014", "+255••••14"],
+    ["0712/345/678", "+255••••78"],
+    ["0712abc345def678", "+255••••78"],
+    ["12/03/2026", "••••26"],
+    ["0712 345 678 / 0754 123 456", "••••56"],
+    ["Kariakoo 12", "Kariakoo 12"],
+    ["TSh 50,000", "TSh 50,000"],
+  ];
+  const previews = PREVIEWS.map(([cell]) => impl.previewCell(cell));
+  const digitCount = (s: string): number => s.split("").filter((ch) => ch >= "0" && ch <= "9").length;
+  const previewMisses = PREVIEWS.flatMap(([, want], i) => (previews[i] === want ? [] : [`case ${i + 1} → "${previews[i]}" (want "${want}")`]));
+  ok(L.M5, previewMisses.length === 0 && previews.every((p) => digitCount(p) < 7), previewMisses.join(" | ") || previews.join(" | "));
 
-  // ── G4 · several phone columns (C3b) ──────────────────────────────────────────────────────────
+  // ── G4 · several phone columns (C3b, under C3b-fix D2 and D3) ──────────────────────────────────
   const phoneCellsOf = (m: FileMapping): string[] =>
     stageRowsOf(m.file, m.mapping, m.headerRows).map((r) => ("cells" in r ? r.cells[m.mapping.phone ?? -1] ?? "" : "(unreadable)"));
   const outlook = impl.mappingFor(OUTLOOK_LIKE);
-  const sourceNoted = [2, 3, 4, 5, 6].every((i) => {
+  const outlookPicks = phoneCellsOf(outlook);
+  const sourceNoted = [3, 4, 6, 7, 8].every((i) => {
     const c = outlook.columns[i];
-    return c !== undefined && c.status === "unused" && c.field === "phone" && c.note === FIRST_MOBILE_SOURCE_NOTE;
+    return c !== undefined && c.status === "unused" && c.field === "phone" && c.note === ADDED_PHONE_SOURCE_NOTE;
   });
+  const othersUnread = [2, 5].every((i) => outlook.columns[i]?.status === "unknown") && !/Assistant|Company/.test(outlook.headers[10] ?? "");
   const mappingKey = (m: Readonly<Record<string, number | undefined>>): string =>
     JSON.stringify(Object.entries(m).filter(([, v]) => v !== undefined).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
-  ok(L.G4a, outlook.headers.length === 9 && outlook.headers[8] === OUTLOOK_FIRST_MOBILE && outlook.headerRows === 1
-    && mappingKey(outlook.mapping) === mappingKey({ first_name: 0, last_name: 1, phone: 8, email: 7 })
-    && sourceNoted && outlook.columns[8]?.status === "mapped" && outlook.columns[8]?.field === "phone"
+  // The server's ONE rule over the carried cells: line 9's two mobiles are refused in its words; every other pick yields
+  // exactly what its row's own phone cells hold.
+  const carried = outlookPicks[7] ?? "";
+  ok(L.G4a, outlook.headers.length === 11 && outlook.headers[10] === OUTLOOK_ADDED && outlook.headerRows === 1
+    && mappingKey(outlook.mapping) === mappingKey({ first_name: 0, last_name: 1, phone: 10, email: 9 })
+    && sourceNoted && othersUnread && outlook.columns[10]?.status === "mapped" && outlook.columns[10]?.field === "phone"
     && outlook.phoneProblem === null && outlook.refusal === null && validateMapping(outlook.headers, outlook.mapping).ok
-    && isParsedContactsFile(outlook.file) && outlook.file.width === 9 && outlook.file !== OUTLOOK_LIKE
-    && JSON.stringify(phoneCellsOf(outlook)) === JSON.stringify(OUTLOOK_PICKS)
-    && OUTLOOK_LIKE.width === 8 && OUTLOOK_LIKE.rows.every((r) => r.cells.length === 8),
-    `${outlook.headers[8] ?? "(no column)"} · ${JSON.stringify(outlook.mapping)} · picks ${JSON.stringify(phoneCellsOf(outlook))}`);
+    && isParsedContactsFile(outlook.file) && outlook.file.width === 11 && outlook.file !== OUTLOOK_LIKE
+    && JSON.stringify(outlookPicks) === JSON.stringify(OUTLOOK_PICKS)
+    && firstMobileIn(carried) === null && phoneCellRefusal(carried) === SEVERAL_MOBILES_SENTENCE
+    && json(mobilesIn(carried).map((m) => m.number.msisdn)) === json(["255754345607", "255688345608"])
+    && OUTLOOK_LIKE.width === 10 && OUTLOOK_LIKE.rows.every((r) => r.cells.length === 10),
+    `${outlook.headers[10] ?? "(no column)"} · ${JSON.stringify(outlook.mapping)} · picks ${JSON.stringify(outlookPicks)}`);
 
   const google = impl.mappingFor(GOOGLE_LIKE);
-  const googleKey = firstMobileIn(phoneCellsOf(google)[0] ?? "")?.number.msisdn ?? null;
-  ok(L.G4b, google.headers[6] === GOOGLE_FIRST_MOBILE && google.mapping.phone === 6 && validateMapping(google.headers, google.mapping).ok
-    && JSON.stringify(phoneCellsOf(google)) === JSON.stringify(GOOGLE_PICKS) && googleKey === "255712345611"
+  const googlePicks = phoneCellsOf(google);
+  const googleKeys = googlePicks.map((cell) => firstMobileIn(cell)?.number.msisdn ?? null);
+  ok(L.G4b, google.headers[6] === GOOGLE_ADDED && google.mapping.phone === 6 && validateMapping(google.headers, google.mapping).ok
+    && JSON.stringify(googlePicks) === JSON.stringify(GOOGLE_PICKS)
+    && json(googleKeys) === json([null, "255765345614", "255713345615", "255713345616"]) && phoneCellRefusal(googlePicks[0] ?? "") === SEVERAL_MOBILES_SENTENCE
     && google.columns[3]?.status === "unused" && google.columns[5]?.status === "unused"
     && google.columns[2]?.status === "unknown" && google.columns[4]?.status === "unknown",
-    `${google.headers[6] ?? "(no column)"} · picks ${JSON.stringify(phoneCellsOf(google))} · key ${googleKey}`);
+    `${google.headers[6] ?? "(no column)"} · picks ${JSON.stringify(googlePicks)} · keys ${json(googleKeys)}`);
 
-  const controls = [ONE_PHONE, NAMBA_SIMU, OUTLOOK_ALL_IN_MOBILE].map((f) => ({ f, m: impl.mappingFor(f) }));
-  const added = controls.filter(({ f, m }) => m.file !== f || firstMobileAt(m) >= 0 || m.headers.length !== f.width);
-  ok(L.G4c, added.length === 0 && controls[0].m.mapping.phone === 1 && controls[1].m.mapping.phone === 2 && controls[2].m.mapping.phone === 4,
-    added.map(({ f, m }) => `${f.fileName}: ${m.headers[m.headers.length - 1]}`).join(" | ")
-      || controls.map(({ f, m }) => `${f.fileName} → Phone in column ${m.mapping.phone}`).join(" · "));
+  const controls = [ONE_PHONE, NAMBA_SIMU, NAMBA_HOLDS_MOBILE, OUTLOOK_ALL_IN_MOBILE, OUTLOOK_OTHERS_ONLY].map((f) => ({ f, m: impl.mappingFor(f) }));
+  const grew = controls.filter(({ f, m }) => m.file !== f || addedAt(m) >= 0 || m.headers.length !== f.width);
+  const nambaPhones = phoneCellsOf(controls[2].m);
+  ok(L.G4c, grew.length === 0 && json(controls.map(({ m }) => m.mapping.phone)) === json([1, 2, 2, 7, 7]) && json(nambaPhones) === json(["", "0754 345 625"])
+    && !isPhoneColumnHeader("Namba") && !isPhoneColumnHeader("Assistant's Phone") && !isPhoneColumnHeader("Company Main Phone")
+    && !isPhoneColumnHeader("Business Fax") && !isPhoneColumnHeader("Pager") && !isPhoneColumnHeader("Callback") && !isPhoneColumnHeader("Radio Phone")
+    && isPhoneColumnHeader("Business Phone") && isPhoneColumnHeader("Phone 2 - Value") && isPhoneColumnHeader("Simu 2"),
+    grew.map(({ f, m }) => `${f.fileName}: ${m.headers[m.headers.length - 1]}`).join(" | ")
+      || `${controls.map(({ f, m }) => `${f.fileName} → Phone in column ${m.mapping.phone}`).join(" · ")} · Namba file stages ${json(nambaPhones)}`);
 
-  // ── E1 · S15-4's count, for cells and columns ──
-  const twoInCell = impl.mappingFor(TWO_IN_CELL);
-  const extras = {
-    outlook: impl.extraNumbersOf(outlook),
-    google: impl.extraNumbersOf(google),
-    cell: impl.extraNumbersOf(twoInCell),
-    plain: impl.extraNumbersOf(controls[0].m),
-    serial: impl.extraNumbersOf(controls[1].m),
-  };
-  ok(L.E1, JSON.stringify(extras) === JSON.stringify({ outlook: 2, google: 2, cell: 1, plain: 0, serial: 0 })
-    && extraNumbersNote(2, "row") === "2 rows hold more than one phone number. One number per person is imported — the first mobile number — and the others are not.",
-    JSON.stringify(extras));
+  // ── E1 · D3 · no row count ──
+  const rowCounter = /export\s+function\s+extraNumbersOf\b|["']row["']/.test(impl.sources.read);
+  const dialogCounts = /extraNumbersOf|unit:\s*counted|["']row["']/.test(impl.sources.dialog)
+    || !impl.sources.dialog.includes("count: ready.extraNumbers, unit: ready.extraUnit");
+  ok(L.E1, !rowCounter && !dialogCounts && extraNumbersNote(2, "card") !== null && extraNumbersNote(2, "line") !== null,
+    `import-read.ts counts rows: ${rowCounter} · the dialog counts rows: ${dialogCounts}`);
 
   // ── R · real files through the real reader ────────────────────────────────────────────────────
   if (typeof File !== "function") {
@@ -631,10 +700,56 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
     const r8 = await readOne(impl, new File([bytesOf(brokenText)], "broken.csv", { type: "text/csv" }));
     const r8File = r8.out.kind === "parsed" ? r8.out.file : null;
     const r8Staged = r8File === null ? [] : stageRowsOf(r8File, { phone: 0, name: 1 }, 1);
+    const r8Unclosed = r8.out.kind === "parsed" ? r8.out.unclosed : null;
     ok(L.R8, r8File !== null && r8File.rows.length === 2 && r8File.unreadable.length === 1 && r8File.unreadable[0].line === 3
-      && r8File.unreadable[0].reason.startsWith("Row 3 opens a quote (") && r8Staged.length === 2 && "readError" in (r8Staged[1] ?? {}),
-      r8.out.kind === "parsed" ? `${r8.out.file.rows.length} rows · unreadable ${JSON.stringify(r8.out.file.unreadable)}` : JSON.stringify(r8.out).slice(0, 160));
+      && r8File.unreadable[0].reason.startsWith("Row 3 opens a quote (") && r8File.unreadable[0].reason.includes("it and the line after it could not be read")
+      && r8Staged.length === 2 && "readError" in (r8Staged[1] ?? {})
+      && json(r8Unclosed) === json({ line: 3, lines: 1 }) && r8File.notes.some((n) => n.startsWith("Row 3 opens a quote (") && n.endsWith("it and the line after it were not read.")),
+      r8.out.kind === "parsed" ? `${r8.out.file.rows.length} rows · unreadable ${JSON.stringify(r8.out.file.unreadable)} · unclosed ${json(r8Unclosed)} · notes ${json(r8.out.file.notes)}` : JSON.stringify(r8.out).slice(0, 160));
+
+    // C3b-fix · D7 at the door: a title above the column names — padded with the separator, as Excel and Sheets write
+    // every row of a sheet to CSV — then a title, the names and a broken quote (D5e).
+    const titledCsv = `Orodha ya wateja,${CRLF}Jina,Simu${CRLF}Asha,0712 345 678${CRLF}`;
+    const r10 = await readOne(impl, new File([bytesOf(titledCsv)], "orodha.csv", { type: "text/csv" }));
+    const r10File = r10.out.kind === "parsed" ? r10.out.file : null;
+    const r10Map = r10File === null ? null : impl.mappingFor(r10File);
+    const brokenTitled = `Orodha ya wateja,${CRLF}Jina,Simu${CRLF}${String.fromCharCode(34)}Asha,0712 345 678${CRLF}Baraka,0754 123 456${CRLF}`;
+    const r10b = await readOne(impl, new File([bytesOf(brokenTitled)], "orodha-broken.csv", { type: "text/csv" }));
+    ok(L.R10, r10File !== null && json(r10File.rows.map((r) => r.line)) === json([2, 3]) && json(r10File.notes) === json([TITLE_NOTE_1])
+      && r10Map !== null && r10Map.headerRows === 1 && r10Map.mapping.phone === 1
+      && r10b.out.kind === "refused" && r10b.out.cause === "csv" && r10b.out.sentence === csvRefusalSentence("unterminated_quote", 3),
+      `${r10File === null ? JSON.stringify(r10.out).slice(0, 120) : `lines ${json(r10File.rows.map((r) => r.line))} · notes ${json(r10File.notes)}`}`
+      + ` · broken after a title: ${r10b.out.kind === "refused" ? r10b.out.sentence.slice(0, 80) : r10b.out.kind}`);
   }
+
+  // ── R9 · D5d · the sum lines ──────────────────────────────────────────────────────────────────
+  const counts5 = [1, 0, 0, 1, 1];
+  const terms = [{ n: 1, word: "added" }, { n: 0, word: "updated" }, { n: 0, word: "kept" }, { n: 2, word: "couldn't be imported" }];
+  const cutTail = " — every row of your file up to row 3 is counted once; the 1 line after it was not read, because a quote in that row is never closed.";
+  const wholeTail = " — every row of your file is counted once.";
+  const readTail = " — every row read from your file is counted once.";
+  const sums = {
+    checkCut: partsText(impl.sums.check(counts5, 3, { line: 3, lines: 1 })),
+    checkNone: partsText(impl.sums.check(counts5, 3, null)),
+    checkUnknown: partsText(impl.sums.check(counts5, 3, "unknown")),
+    checkNothingSwallowed: partsText(impl.sums.check(counts5, 3, { line: 3, lines: 0 })),
+    doneCut: partsText(impl.sums.done(terms, 3, { line: 3, lines: 12 })),
+    doneUnknown: partsText(impl.sums.done(terms, 3, "unknown")),
+  };
+  const view = (id: string, format: string, unreadable: number) => ({ id, format, unreadable });
+  const cuts = [
+    impl.sums.cutOf(view("ci_a", "csv", 1), { runId: "ci_a", unclosed: { line: 7, lines: 4 } }),
+    impl.sums.cutOf(view("ci_a", "csv", 0), { runId: "ci_a", unclosed: null }),
+    impl.sums.cutOf(view("ci_b", "csv", 1), { runId: "ci_a", unclosed: { line: 7, lines: 4 } }),
+    impl.sums.cutOf(view("ci_b", "csv", 0), { runId: null, unclosed: null }),
+    impl.sums.cutOf(view("ci_c", "vcard", 2), { runId: null, unclosed: null }),
+  ];
+  ok(L.R9, sums.checkCut === `1 + 0 + 0 + 1 + 1 = 3 rows${cutTail}` && sums.checkNone.endsWith(wholeTail) && sums.checkUnknown.endsWith(readTail)
+    && sums.checkNothingSwallowed.endsWith(wholeTail) && !sums.checkUnknown.includes(wholeTail.slice(3))
+    && sums.doneCut.endsWith(" — every row of your file up to row 3 is counted once; the 12 lines after it were not read, because a quote in that row is never closed.")
+    && sums.doneUnknown.endsWith(readTail) && !sums.doneCut.includes(wholeTail.slice(3))
+    && json(cuts) === json([{ line: 7, lines: 4 }, null, "unknown", null, null]),
+    `${json(sums)} · cuts ${json(cuts)}`);
 
   // ── C · the commit loop ───────────────────────────────────────────────────────────────────────
   {
@@ -829,6 +944,18 @@ const PLANTS: readonly RedPlant<FlowImpl>[] = [
     }),
   },
   {
+    name: "C3b-fix D7 undone at the paste — a title copied above the column names read as them",
+    expect: L.P4,
+    impl: () => ({
+      ...real(),
+      parsePaste: (t) => {
+        if (isListPaste(t)) return parsePastedText(t);
+        const read = parseCsv(t, { delimiter: "tab" });
+        return read.ok && read.file.unreadable.length === 0 ? { ...read.file, format: "paste", fileName: null } : parsePastedText(t);
+      },
+    }),
+  },
+  {
     name: "a list paste is header-matched like a file (no Phone column)",
     expect: L.P3,
     impl: () => ({ ...real(), mappingFor: (f, o) => mappingFor(f, { ...(o ?? {}), list: false }) }),
@@ -859,13 +986,25 @@ const PLANTS: readonly RedPlant<FlowImpl>[] = [
     impl: () => ({ ...real(), previewCell: (c) => c }),
   },
   {
+    name: "C3b-fix D9 undone — C3b's preview: masked by its punctuation, so Excel's thousands commas and an office's slashes show a number whole",
+    expect: L.M5,
+    impl: () => ({
+      ...real(),
+      previewCell: (c) => {
+        const raw = String(c ?? "").trim();
+        const parsed = parseTzNumber(raw);
+        return parsed.verdict === "ok" && parsed.e164 !== null && /^[\s'+().\d-]+$/.test(raw) ? maskPhone(parsed.e164) : scrubPhoneRuns(raw);
+      },
+    }),
+  },
+  {
     name: "C3b G4 undone — several phone columns read as before: the mobile only in Business or Primary Phone is lost",
     expect: L.G4a,
     impl: () => ({
       ...real(),
       mappingFor: (f, o) => {
         const m = mappingFor(f, o);
-        const at = firstMobileAt(m);
+        const at = addedAt(m);
         if (at < 0) return m;
         const headers = m.headers.slice(0, at);
         const auto = autoMapHeaders(headers);
@@ -874,46 +1013,100 @@ const PLANTS: readonly RedPlant<FlowImpl>[] = [
     }),
   },
   {
-    name: "the first-mobile column reads only the main phone column — no fallback to the others",
+    name: "the added column reads only the main phone column — no fallback to the others",
     expect: L.G4a,
-    impl: () => ({ ...real(), mappingFor: (f, o) => rebuildFirstMobile(mappingFor(f, o), (cells, _order, main) => cells[main] ?? "") }),
+    impl: () => ({ ...real(), mappingFor: (f, o) => rebuildAdded(mappingFor(f, o), (cells, _order, main) => cells[main] ?? "") }),
   },
   {
-    name: "the first-mobile column takes the LAST mobile among the phone columns (a Car Phone over the Mobile one)",
+    name: "C3b-fix D3 undone at G4 — C3b's FIRST mobile among the phone columns: of Business's and Home's two mobiles, Business's is taken",
     expect: L.G4a,
     impl: () => ({
       ...real(),
-      mappingFor: (f, o) => rebuildFirstMobile(mappingFor(f, o), (cells, order, main) => {
-        const hits = order.filter((i) => firstMobileIn(cells[i] ?? "") !== null);
-        return cells[hits.length > 0 ? hits[hits.length - 1] : main] ?? "";
+      mappingFor: (f, o) => rebuildAdded(mappingFor(f, o), (cells, order, main) => {
+        const hit = order.find((i) => firstMobileIn(cells[i] ?? "") !== null);
+        return cells[hit ?? main] ?? "";
       }),
     }),
   },
   {
-    name: "the first-mobile column asks only whether a WHOLE cell is a number — a ' ::: ' cell passed over for Phone 2's (G3 skipped)",
+    name: "C3b-fix D2 undone — Assistant's Phone and Company Main Phone read as the person's own: another person's numbers carried",
+    expect: L.G4a,
+    impl: () => ({
+      ...real(),
+      mappingFor: (f, o) => {
+        const m = mappingFor(f, o);
+        const strangers = m.headers.flatMap((h, i) => (/^(Assistant's Phone|Company Main Phone)$/.test(h) ? [i] : []));
+        return rebuildAdded(m, (cells, order, main) => {
+          if (firstMobileIn(cells[main] ?? "") !== null) return cells[main] ?? "";
+          const found = [...order, ...strangers].flatMap((i) => mobilesIn(cells[i] ?? ""))
+            .filter((x, k, all) => all.findIndex((y) => y.number.msisdn === x.number.msisdn) === k);
+          if (found.length === 0) return cells[main] ?? "";
+          return found.length === 1 ? found[0].text : found.map((x) => `0${(x.number.msisdn ?? "").slice(3)}`).join(" / ");
+        });
+      },
+    }),
+  },
+  {
+    name: "the added column asks only whether a WHOLE cell is a number — a ' ::: ' cell of two mobiles passed over for Phone 2's",
     expect: L.G4b,
     impl: () => ({
       ...real(),
-      mappingFor: (f, o) => rebuildFirstMobile(mappingFor(f, o), (cells, order, main) => {
+      mappingFor: (f, o) => rebuildAdded(mappingFor(f, o), (cells, order, main) => {
         const hit = order.find((i) => parseTzNumber(cells[i] ?? "").verdict === "ok");
         return cells[hit ?? main] ?? "";
       }),
     }),
   },
   {
-    name: "a first-mobile column added to every file with a phone column — the reading never the file as read",
+    name: "the phone column's own two mobiles left out — Phone 2's single mobile carried as if it were the person's one",
+    expect: L.G4b,
+    impl: () => ({
+      ...real(),
+      mappingFor: (f, o) => rebuildAdded(mappingFor(f, o), (cells, order, main) => {
+        if (firstMobileIn(cells[main] ?? "") !== null) return cells[main] ?? "";
+        const found = order.slice(1).flatMap((i) => mobilesIn(cells[i] ?? ""));
+        if (found.length === 0) return cells[main] ?? "";
+        return found.length === 1 ? found[0].text : found.map((x) => `0${(x.number.msisdn ?? "").slice(3)}`).join(" / ");
+      }),
+    }),
+  },
+  {
+    name: "an added column on every file with a phone column — the reading never the file as read",
     expect: L.G4c,
     impl: () => ({
       ...real(),
       mappingFor: (f, o) => {
         const m = mappingFor(f, o);
         const main = m.mapping.phone;
-        if (m.headerRows !== 1 || main === undefined || firstMobileAt(m) >= 0) return m;
+        if (m.headerRows !== 1 || main === undefined || addedAt(m) >= 0) return m;
         const width = m.headers.length;
-        const header = `${FIRST_MOBILE_HEADER_START}${m.headers[main]})`;
+        const header = `${ADDED_PHONE_HEADER_START}${m.headers[main]})`;
         const rows = m.file.rows.map((row, r) => ({
           line: row.line,
           cells: [...Array.from({ length: width }, (_, i) => row.cells[i] ?? ""), r === 0 ? header : row.cells[main] ?? ""],
+        }));
+        return { ...m, headers: [...m.headers, header], mapping: { ...m.mapping, phone: width }, file: { ...m.file, rows, width: width + 1 } };
+      },
+    }),
+  },
+  {
+    name: "C3b-fix D2 undone — a WEAK Namba column read as the person's phone where Simu is empty (a serial may be read as a number)",
+    expect: L.G4c,
+    impl: () => ({
+      ...real(),
+      mappingFor: (f, o) => {
+        const m = mappingFor(f, o);
+        const main = m.mapping.phone;
+        const namba = m.headers.indexOf("Namba");
+        if (m.headerRows !== 1 || main === undefined || namba < 0 || namba === main || addedAt(m) >= 0) return m;
+        const width = m.headers.length;
+        const header = `${ADDED_PHONE_HEADER_START}${m.headers[main]}, Namba)`;
+        const rows = m.file.rows.map((row, r) => ({
+          line: row.line,
+          cells: [
+            ...Array.from({ length: width }, (_, i) => row.cells[i] ?? ""),
+            r === 0 ? header : firstMobileIn(row.cells[main] ?? "") !== null ? row.cells[main] ?? "" : row.cells[namba] ?? "",
+          ],
         }));
         return { ...m, headers: [...m.headers, header], mapping: { ...m.mapping, phone: width }, file: { ...m.file, rows, width: width + 1 } };
       },
@@ -953,19 +1146,23 @@ const PLANTS: readonly RedPlant<FlowImpl>[] = [
     impl: () => ({ ...real(), readFile: (f, o) => readContactsFile(f, { onProgress: o.onProgress }) }),
   },
   {
-    name: "S15-4's count reads only the phone column — the numbers in the other phone columns go unsaid",
+    name: "C3b-fix D3 undone in the dialog — a file's rows counted again (C3b's row count beside the readers' own)",
     expect: L.E1,
     impl: () => ({
       ...real(),
-      extraNumbersOf: (r) => extraNumbersOf({ ...r, headers: r.headers.map((h) => (h.startsWith(FIRST_MOBILE_HEADER_START) ? "Phone" : h)) }),
+      sources: {
+        ...real().sources,
+        dialog: real().sources.dialog.split("count: ready.extraNumbers, unit: ready.extraUnit")
+          .join(`count: counted ? ready.extraNumbers : extraNumbersOf(choice), unit: counted ? ready.extraUnit : ${JSON.stringify("row")}`),
+      },
     }),
   },
   {
-    name: "S15-4's count takes every part of a cell as a number — an extension counted as a second number",
+    name: "the reader exports a row counter again",
     expect: L.E1,
     impl: () => ({
       ...real(),
-      extraNumbersOf: (r) => r.file.rows.slice(r.headerRows).filter((row) => phoneCellParts(row.cells[r.mapping.phone ?? -1] ?? "").length > 1).length,
+      sources: { ...real().sources, read: `${real().sources.read}${LF}export function extraNumbersOf(reading: unknown): number { return reading === null ? 0 : 1; }${LF}` },
     }),
   },
   {
@@ -980,6 +1177,50 @@ const PLANTS: readonly RedPlant<FlowImpl>[] = [
           : out;
       },
     }),
+  },
+  {
+    name: "C3b-fix D7 undone at the CSV door — a title read as the column names",
+    expect: L.R10,
+    impl: () => ({
+      ...real(),
+      readFile: async (f, o) => {
+        const out = await readContactsFile(f, o);
+        if (out.kind !== "parsed" || out.file.format !== "csv") return out;
+        const asRead = parseCsv(stripBom(await f.text()).text, { fileName: f.name });
+        return asRead.ok ? { ...out, file: asRead.file } : out;
+      },
+    }),
+  },
+  {
+    name: "C3b-fix D5e undone after a title leaves — the column names and one unreadable record read as a file of no contacts",
+    expect: L.R10,
+    impl: () => ({
+      ...real(),
+      readFile: async (f, o) => {
+        const out = await readContactsFile(f, o);
+        if (out.kind !== "refused" || out.cause !== "csv" || !out.sentence.startsWith("Row 3 opens a quotation mark")) return out;
+        const file: ParsedContactsFile = {
+          format: "csv", fileName: f.name, width: 2, blankRows: 0, notes: [TITLE_NOTE_1],
+          rows: [{ line: 2, cells: ["Jina", "Simu"] }], unreadable: [{ line: 3, reason: "Row 3 opens a quote." }],
+        };
+        return { kind: "parsed", file, digest: DIGEST, extraNumbers: 0, unclosed: { line: 3, lines: 1 } };
+      },
+    }),
+  },
+  {
+    name: "C3b-fix D5 undone at the door — the lines a quote swallowed never reach the dialog",
+    expect: L.R8,
+    impl: () => ({ ...real(), readFile: async (f, o) => { const out = await readContactsFile(f, o); return out.kind === "parsed" ? { ...out, unclosed: null } : out; } }),
+  },
+  {
+    name: "C3b-fix D5d undone — the check's sum says every row of the file was counted, whatever a quote swallowed",
+    expect: L.R9,
+    impl: () => ({ ...real(), sums: { ...real().sums, check: (counts, rows) => CHECK.sum(counts, rows, null) } }),
+  },
+  {
+    name: "a run read in another tab claims every row of its file — the lines a quote may have swallowed unsaid",
+    expect: L.R9,
+    impl: () => ({ ...real(), sums: { ...real().sums, cutOf: (v, here) => (here.runId === v.id ? here.unclosed : null) } }),
   },
   {
     name: "a file past the cap is read whole and handed on",

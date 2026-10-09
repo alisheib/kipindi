@@ -15,6 +15,7 @@ import { formatNumber } from "@/lib/utils";
 import type { ImportChoice, ShownKeepReason } from "@/lib/contacts/import-decide";
 import { IMPORT_REFUSAL_SENTENCES, type PreflightBucket } from "@/lib/contacts/import-flow";
 import { IMPORT_MAX_ROWS } from "@/lib/contacts/import-limits";
+import { SHEET_SAMPLE_ROWS } from "@/lib/contacts/sheet-choice";
 import { formatFileSize, PHONE_FORMAT_REMEDY, XLSX_MAX_BYTES } from "@/lib/contacts/xlsx-limits";
 
 /* ══ PARTS — a sentence with figures in it ═══════════════════════════════════════════════════════ */
@@ -27,6 +28,38 @@ export function partsText(parts: readonly Part[]): string {
   return parts.map((p) => (typeof p === "string" ? p : formatNumber(p.n))).join("");
 }
 const plural = (n: number, one: string, many: string): string => (n === 1 ? one : many);
+
+/**
+ * ⭐ C3b-fix · D5d · HOW A SUM LINE ENDS — the check's and the result's. null: every row of the file is counted once. A
+ * cut — a CSV whose quotation mark never closed, as this tab read it (`CsvUnclosedQuote`): every row UP TO that row is
+ * counted once, and the lines after it it swallowed were NOT read, said with their number. "unknown": the run's file was
+ * read in another tab or before a reload, and a CSV holding an unreadable record may have lost lines that way, so the
+ * line claims only the rows that were read. ⛔ NEVER "every row of your file is counted once" when lines were swallowed.
+ */
+export type SumCut = { readonly line: number; readonly lines: number } | "unknown" | null;
+
+/**
+ * ⭐ C3b-fix · D5d · the cut for a run's sum lines. The run this tab read the file for (`readHere.runId`): its own
+ * finding — the lines a quotation mark never closed swallowed, or none. Any other run (read in another tab, or before a
+ * reload): a CSV holding an unreadable record may have lost lines that way — it is the one way a CSV run holds one — so
+ * "unknown"; every other run reads null (every row of the file).
+ */
+export function sumCutOf(
+  view: { readonly id: string; readonly format: string; readonly unreadable: number },
+  readHere: { readonly runId: string | null; readonly unclosed: { readonly line: number; readonly lines: number } | null },
+): SumCut {
+  if (readHere.runId === view.id) return readHere.unclosed;
+  return view.format === "csv" && view.unreadable > 0 ? "unknown" : null;
+}
+
+function sumTail(cut: SumCut): Part[] {
+  if (cut === "unknown") return [" — every row read from your file is counted once."];
+  if (cut === null || cut.lines <= 0) return [" — every row of your file is counted once."];
+  return [
+    " — every row of your file up to row ", fig(cut.line), " is counted once; the ", fig(cut.lines),
+    ` ${plural(cut.lines, "line", "lines")} after it ${plural(cut.lines, "was", "were")} not read, because a quote in that row is never closed.`,
+  ];
+}
 
 /* ══ THE BUTTON AND THE DIALOG ════════════════════════════════════════════════════════════════════ */
 
@@ -169,8 +202,10 @@ export const MAPPING = {
   noValues: "Empty",
   unnamed: "No column name",
   pickPhone: "Or use Change on the column that holds the phone numbers.",
-  /** ⭐ C3b · G2 · shown only when NO visible sheet has a phone column — the reader then reads the first visible one. */
-  sheetHint: "No visible sheet in this workbook has a column named for phone numbers, so its first visible sheet was read. If the contacts are on another sheet, name their phone column Phone (or Simu), save, and choose the file again.",
+  /** ⭐ C3b-fix · D6/D8 · shown only when the READER says no visible sheet's first rows hold a Tanzanian mobile (the sheet is
+   *  chosen by what it holds, never by a column's name) — it then read the first visible one. The sample's size is the
+   *  chooser's own constant; the format step is the ONE remedy clause (A1.6), interpolated. */
+  sheetHint: `No visible sheet in this workbook holds a Tanzanian mobile number in its first ${SHEET_SAMPLE_ROWS} rows, so its first visible sheet was read. If the contacts are on a hidden sheet, unhide it; if their numbers show like 2.55713E+11, ${PHONE_FORMAT_REMEDY} — then save, and choose the file again.`,
   nameWins: "The Name column is used, so this one is not read.",
   cannotRead: "This column can't be read.",
   tableLabel: "The file's columns",
@@ -210,13 +245,14 @@ export const CHECK = {
     invalid: "Can't be imported as written",
     unreadable: "Could not be read",
   } satisfies Record<PreflightBucket, string>,
-  sum: (counts: readonly number[], rows: number): Part[] => {
+  /** ⭐ The five counts summed — ending as `cut` says (D5d: never "every row of your file" when lines were swallowed). */
+  sum: (counts: readonly number[], rows: number, cut: SumCut = null): Part[] => {
     const parts: Part[] = [];
     counts.forEach((n, i) => {
       if (i > 0) parts.push(" + ");
       parts.push(fig(n));
     });
-    parts.push(" = ", fig(rows), ` ${plural(rows, "row", "rows")} — every row of your file is counted once.`);
+    parts.push(" = ", fig(rows), ` ${plural(rows, "row", "rows")}`, ...sumTail(cut));
     return parts;
   },
   nothingWritten: "Nothing has been written to the book yet.",
@@ -408,14 +444,15 @@ export const DONE = {
   tiles: { create: "Added", update: "Updated", keep: "Kept as they were", fail: "Couldn't be imported" },
   /** The words of each term of the sum line — the tiles' own, and (a cancelled import) the rows it never reached. */
   terms: { create: "added", update: "updated", keep: "kept", fail: "couldn't be imported", rest: "not imported" },
-  /** ⭐ R5 · every row of the file counted once, each term named — written only when the terms add up to the file's rows. */
-  sum: (terms: ReadonlyArray<{ readonly n: number; readonly word: string }>, rows: number): Part[] => {
+  /** ⭐ R5 · every row of the file counted once, each term named — written only when the terms add up to the file's rows;
+   *  ending as `cut` says (C3b-fix · D5d: never "every row of your file" when a quote never closed swallowed lines). */
+  sum: (terms: ReadonlyArray<{ readonly n: number; readonly word: string }>, rows: number, cut: SumCut = null): Part[] => {
     const out: Part[] = [];
     terms.forEach((t, i) => {
       if (i > 0) out.push(" + ");
       out.push(fig(t.n), ` ${t.word}`);
     });
-    out.push(" = ", fig(rows), ` ${plural(rows, "row", "rows")} — every row of your file is counted once.`);
+    out.push(" = ", fig(rows), ` ${plural(rows, "row", "rows")}`, ...sumTail(cut));
     return out;
   },
   keptSplit: (inBook: number, stop: number, repeated: number, chosen: number): Part[] => [

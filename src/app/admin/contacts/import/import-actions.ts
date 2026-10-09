@@ -148,7 +148,7 @@ export async function readXlsxImportAction(input: ReadXlsxInput): Promise<ReadXl
   try {
     const body = bag(input);
     const r = await readXlsxForOfficer(g.userId, { base64: text(body.base64), fileName: typeof body.fileName === "string" ? body.fileName : null });
-    if (r.ok) return { ok: true, file: r.file };
+    if (r.ok) return { ok: true, file: r.file, noMobileSheet: r.noMobileSheet };
     if (r.refusal === "busy") return { ok: false, reason: "xlsx_busy", message: IMPORT_REFUSAL_SENTENCES.xlsx_busy, view: null, retryAfterSec: 3 };
     return { ok: false, reason: "xlsx_refused", message: r.message, view: null };
   } catch (err) {

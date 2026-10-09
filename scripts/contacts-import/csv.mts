@@ -9,8 +9,10 @@
  *
  * ⭐ THE PLAN'S SENTENCES, ASSERTED (§9 U25 and DECISIONS-U21-U28 C15–C19 · M6): quotes, doubled quotes and embedded
  * line breaks (§C1b–§C1d); CRLF and the lone CR (§C1f, §C1g); `line` as Excel numbers records (§C1e, §C1i, §C2b);
- * cells raw (§C1n); C3b's G1 — a quotation mark never closed after rows costs ONE unreadable record, not the file
- * (§C1l), and refuses the file when nothing came before it (§C1lb); the refusals naming their row (§C1lb, §C1m, §C1o);
+ * cells raw (§C1n); C3b's G1 — a quotation mark never closed after a data row costs ONE unreadable record, not the
+ * file (§C1l), its sentence, note and stats saying how many lines it swallowed (C3b-fix · D5, §C1l and §C1lc), and
+ * refuses the file when no data row came before it (§C1lb, the header alone included — D5e); the refusals naming their
+ * row (§C1lb, §C1m, §C1o);
  * the BOM stripped at decode time (§C2a,
  * §C5d); `sep=` on the first line after the mark (§C2b–§C2d); the vote on the FIRST NON-BLANK RECORD, once per
  * candidate with its own quote rules (§C3a–§C3g), beaten by a manual choice (§C3h) and consistent with
@@ -48,6 +50,8 @@ import {
   buildCsvReader,
   buildFormatDetector,
   createCsvReader,
+  csvUnclosedQuoteNote,
+  csvUnclosedQuoteReason,
   decodeBytes,
   detectFormat,
   parseCsv,
@@ -133,6 +137,9 @@ export type CsvImpl = {
   readonly decodeOptions: { readonly fatal: boolean; readonly ignoreBOM: boolean };
   readonly decode: (bytes: Uint8Array, encoding: TextEncodingLabel) => string;
   readonly detect: (head: Uint8Array, fileName: string | null) => DetectedFormat;
+  /** C3b-fix · D5 · the broken record's staged sentence and its columns-step note. */
+  readonly unclosedReason: typeof csvUnclosedQuoteReason;
+  readonly unclosedNote: typeof csvUnclosedQuoteNote;
   /** import-parse.ts as the guards read it: comments stripped, CRLF normalised. */
   readonly source: string;
   /** import-parse.ts exactly as on disk, comments included — §C8b's character scan. */
@@ -153,6 +160,8 @@ function real(): CsvImpl {
     decodeOptions: DECODE_OPTIONS,
     decode: decodeBytes,
     detect: detectFormat,
+    unclosedReason: csvUnclosedQuoteReason,
+    unclosedNote: csvUnclosedQuoteNote,
     source: decomment(raw).split(CRLF).join(LF),
     rawSource: raw,
   };
@@ -221,11 +230,13 @@ const INCH = lines(["Item,Phone", '5" screen,0712345609', "Redio,0754345610"]);
 const STRAY = lines(["Name,Phone", '"abc"def,0712345611', "Juma,0754345612"]);
 const STRAY_NOTE = "Row 2 has text after the closing quotation mark of a cell; that text was kept as part of the cell.";
 
-/** C1l — ⭐ C3b · G1: row 4 opens a quotation mark and never closes it; three records came before it. */
+/** C1l — ⭐ C3b · G1: row 4 opens a quotation mark and never closes it; three records came before it, and the quote
+ *  swallowed ONE more physical line (Juma's) — the file's final line end starts no line (C3b-fix · D5a). */
 const UNTERMINATED = lines(["Name,Phone", "Asha,0712345613", "Baraka,0754345614", '"Neema,0688345615', "Juma,0712345616"]);
-/** The one sentence for the broken record, typed here as a LITERAL (the quotation mark from its code). */
-const unclosedReason = (line: number): string =>
-  `Row ${line} opens a quote (${QUOTE}) that is never closed, so it and everything after it could not be read. Close or remove that quote, or delete the row, and import again.`;
+/** The one sentence for the broken record and its columns-step note, typed here as LITERALS (the mark from its code). */
+const unclosedReason = (line: number, after: string): string =>
+  `Row ${line} opens a quote (${QUOTE}) that is never closed, so ${after} could not be read. Close or remove that quote, or delete the row, and import again.`;
+const unclosedNote = (line: number, after: string): string => `Row ${line} opens a quote (${QUOTE}) that is never closed, so ${after} not read.`;
 const UNTERMINATED_FILE = {
   format: "csv",
   fileName: null,
@@ -236,8 +247,8 @@ const UNTERMINATED_FILE = {
   ],
   width: 2,
   blankRows: 0,
-  notes: [],
-  unreadable: [{ line: 4, reason: unclosedReason(4) }],
+  notes: [unclosedNote(4, "it and the line after it were")],
+  unreadable: [{ line: 4, reason: unclosedReason(4, "it and the line after it") }],
 };
 /** C1l — the messy file's own shape: a quoted line break and a blank line before a record whose THIRD cell opens a
  *  quotation mark that never closes (line 5), and a record after it that the quote swallowed. */
@@ -254,12 +265,19 @@ const G1_MID_FILE = {
   ],
   width: 3,
   blankRows: 1,
-  notes: [],
-  unreadable: [{ line: 5, reason: unclosedReason(5) }],
+  notes: [unclosedNote(5, "it and the line after it were")],
+  unreadable: [{ line: 5, reason: unclosedReason(5, "it and the line after it") }],
 };
-/** C1lb — the CONTROLS: nothing before the broken quote was a record, so the file is still refused whole. */
+/** C1lb — the CONTROLS: no DATA row came before the broken quote, so the file is still refused whole — it opens the first
+ *  record; only blank lines come before it; ⭐ C3b-fix · D5e: only the header row comes before it. */
 const FIRST_BROKEN = QUOTE + "Name,Phone" + CRLF + "Asha,0712345613" + CRLF;
 const BLANKS_THEN_BROKEN = CRLF + CRLF + QUOTE + "Neema,0688345615" + CRLF + "Juma,0712345616" + CRLF;
+const HEADER_THEN_BROKEN = "Name,Phone" + CRLF + QUOTE + "Asha,0712345613" + CRLF + "Juma,0712345616" + CRLF;
+/** C1lc — ⭐ C3b-fix · D5a: the lines a quote swallowed, as written: none (the broken record is the last line, with and
+ *  without a final line end) and three through a CRLF, a lone CR and a LF. */
+const BROKEN_LAST = "Name,Phone" + CRLF + "Asha,0712345613" + CRLF + "Baraka,0754345614" + CRLF + QUOTE + "Neema,0688345615";
+const BROKEN_LAST_EOL = BROKEN_LAST + CRLF;
+const BROKEN_MIXED = "Name,Notes" + CRLF + "Asha,ok" + CRLF + "Baraka," + QUOTE + "one" + CRLF + "two" + CR + "three" + LF + "four" + CRLF;
 const unterminatedRefusal = (line: number) => ({
   ok: false,
   problem: "unterminated_quote",
@@ -437,8 +455,9 @@ export const L = {
   C1i: "C1i · blank records — an empty line, a row of commas, a quoted empty cell, spaces — are never emitted, are counted in blankRows, and keep their numbers: the row after four of them is on line 7",
   C1j: "C1j · a quotation mark inside an unquoted cell is literal: the 5-inch screen keeps its mark in one cell, and no note is written",
   C1k: "C1k · text after a closing quotation mark is kept (a quoted abc then def reads abcdef) with ONE note naming row 2",
-  C1l: "C1l · ⭐ C3b · G1 — ONE broken quote no longer costs the file: every record BEFORE the record that opens a quotation mark never closed is kept (rows 1–3 of a five-line file; rows 1–3 after a quoted line break, with a blank line counted), and that record with everything it swallowed is ONE unreadable record on its own line (4; 5), its sentence naming the row and the way out, never a cell — the records count holds it, no swallowed cell becomes a row, and isParsedContactsFile holds",
-  C1lb: "C1lb · ⛔ CONTROL · G1 — when NOTHING before the broken quote was a record (it opens the first record; or only blank lines come before it) the file is still a REFUSAL naming that row (1; 3), never a file",
+  C1l: "C1l · ⭐ C3b · G1 — ONE broken quote no longer costs the file: every record BEFORE the record that opens a quotation mark never closed is kept (rows 1–3 of a five-line file; rows 1–3 after a quoted line break, with a blank line counted), and that record with everything it swallowed is ONE unreadable record on its own line (4; 5) — ⭐ C3b-fix · D5: its sentence names the row, the ONE line after it the quote swallowed and the way out, ONE note says it on the columns step, and the stats carry {line, lines} — never a cell; the records count holds it, no swallowed cell becomes a row, and isParsedContactsFile holds",
+  C1lb: "C1lb · ⛔ CONTROL · G1 — when no DATA row came before the broken quote (it opens the first record; only blank lines come before it; ⭐ C3b-fix · D5e: only the header row comes before it) the file is still a REFUSAL naming that row (1; 3; 2), never a file",
+  C1lc: "C1lc · ⭐ C3b-fix · D5a/D5b — the lines a quote swallowed are counted as written: none for a broken last record (with or without a final line end — \"so it could not be read\"), three through a CRLF, a lone CR and a LF (chunked between CR and LF too); and the STAGED sentence never carries seven digits — a row and a count that would reach them are said in words (\"every line after it\") while the note keeps the figure",
   C1m: "C1m · ⛔ a cell of 32,768 characters is a refusal naming its row, in one chunk or in 1,000-character chunks, while 32,767 characters is read",
   C1n: "C1n · cells stay RAW — spaces, a leading zero, an apostrophe guard and Excel's 2.55713E+11 as written: no trim, no coercion, no unguard",
   C1o: "C1o · ⛔ a first record that does not end within 1 MiB is a refusal naming row 1, in one chunk or in 64 KB chunks",
@@ -550,9 +569,10 @@ function run(ctx: SectionContext<CsvImpl>): void {
   const swallowed = [unterminated, midBroken].flatMap((r) => cellsOf(r).flat()).filter((c) => c.includes("Neema") || c.includes("Juma"));
   const g1Faults = [
     same(fileOf(unterminated), UNTERMINATED_FILE) && unterminated.stats.records === 4 && unterminated.stats.refused === null
-      ? "" : `the five-line file: ${brief(unterminated)} · ${visible(fileOf(unterminated)?.unreadable ?? [])} · ${unterminated.stats.records} record(s)`,
-    same(fileOf(midBroken), G1_MID_FILE) && midBroken.stats.records === 5
-      ? "" : `the quoted-break file: ${brief(midBroken)} · ${visible(fileOf(midBroken)?.unreadable ?? [])} · ${midBroken.stats.records} record(s)`,
+      && same(unterminated.stats.unclosed, { line: 4, lines: 1 })
+      ? "" : `the five-line file: ${brief(unterminated)} · ${visible(fileOf(unterminated)?.unreadable ?? [])} · ${visible(fileOf(unterminated)?.notes ?? [])} · ${unterminated.stats.records} record(s) · ${visible(unterminated.stats.unclosed)}`,
+    same(fileOf(midBroken), G1_MID_FILE) && midBroken.stats.records === 5 && same(midBroken.stats.unclosed, { line: 5, lines: 1 })
+      ? "" : `the quoted-break file: ${brief(midBroken)} · ${visible(fileOf(midBroken)?.unreadable ?? [])} · ${visible(fileOf(midBroken)?.notes ?? [])} · ${midBroken.stats.records} record(s) · ${visible(midBroken.stats.unclosed)}`,
     isParsedContactsFile(fileOf(unterminated)) && isParsedContactsFile(fileOf(midBroken)) ? "" : "not a valid ParsedContactsFile",
     swallowed.length === 0 ? "" : `a swallowed cell became a row: ${visible(swallowed)}`,
   ].filter((x) => x !== "");
@@ -560,8 +580,28 @@ function run(ctx: SectionContext<CsvImpl>): void {
 
   const firstBroken = read(FIRST_BROKEN);
   const blanksBroken = read(BLANKS_THEN_BROKEN);
-  ok(L.C1lb, same(firstBroken.result, unterminatedRefusal(1)) && same(blanksBroken.result, unterminatedRefusal(3)),
-    `first record: ${brief(firstBroken)} · after two blank lines: ${brief(blanksBroken)}`);
+  const headerBroken = read(HEADER_THEN_BROKEN);
+  ok(L.C1lb, same(firstBroken.result, unterminatedRefusal(1)) && same(blanksBroken.result, unterminatedRefusal(3))
+    && same(headerBroken.result, unterminatedRefusal(2)) && headerBroken.stats.unclosed === null,
+    `first record: ${brief(firstBroken)} · after two blank lines: ${brief(blanksBroken)} · after the header alone: ${brief(headerBroken)}`);
+
+  // ── C1lc · D5a/D5b · the lines swallowed, counted as written; the staged sentence's digits ──
+  const last = read(BROKEN_LAST);
+  const lastEol = read(BROKEN_LAST_EOL);
+  const mixed = read(BROKEN_MIXED);
+  // Chunked right between the CR and the LF of the first line end inside the quote.
+  const mixedChunked = readIn(chunked(BROKEN_MIXED, BROKEN_MIXED.indexOf("one" + CR) + 4));
+  const lineCounts = [last, lastEol, mixed, mixedChunked].map((r) => r.stats.unclosed);
+  const bigReason = impl.unclosedReason(123_456, 12);
+  const edgeReason = impl.unclosedReason(99_999, 9);
+  const digitsIn = (s: string): number => s.split("").filter((ch) => ch >= "0" && ch <= "9").length;
+  ok(L.C1lc, same(lineCounts, [{ line: 4, lines: 0 }, { line: 4, lines: 0 }, { line: 3, lines: 3 }, { line: 3, lines: 3 }])
+    && same(fileOf(last)?.unreadable, [{ line: 4, reason: unclosedReason(4, "it") }]) && same(fileOf(last)?.notes, [unclosedNote(4, "it was")])
+    && same(fileOf(mixed)?.unreadable, [{ line: 3, reason: unclosedReason(3, "it and the 3 lines after it") }])
+    && bigReason === unclosedReason(123_456, "it and every line after it") && digitsIn(bigReason) < 7
+    && edgeReason === unclosedReason(99_999, "it and the 9 lines after it") && digitsIn(edgeReason) < 7
+    && impl.unclosedNote(123_456, 12) === unclosedNote(123_456, "it and the 12 lines after it were"),
+    `${visible(lineCounts)} · "${bigReason}" · "${edgeReason}"`);
 
   const over = read(LONG_OVER);
   const overChunked = readIn(chunked(LONG_OVER, 1000));
@@ -1393,6 +1433,41 @@ const PLANTS: readonly RedPlant<CsvImpl>[] = [
     name: "a first record that never closes let through as a file with no rows — the refusal's control undone",
     expect: L.C1lb,
     impl: () => withRules({ unclosedQuote: () => "unreadable" }),
+  },
+  {
+    name: "C3b-fix D5e undone — a header row alone before the broken quote keeps a file of no contacts",
+    expect: L.C1lb,
+    impl: () => withRules({ unclosedQuote: (rowsBefore) => (rowsBefore > 0 ? "unreadable" : "refuse") }),
+  },
+  {
+    name: "C3b-fix D5 undone — the broken record says 'everything after it' again, the lines it swallowed never counted",
+    expect: L.C1l,
+    impl: () => withOutput((r) => mapFile(r, (file) => ({
+      ...file,
+      unreadable: file.unreadable.map((u) => ({
+        ...u,
+        reason: `Row ${u.line} opens a quote (${QUOTE}) that is never closed, so it and everything after it could not be read. Close or remove that quote, or delete the row, and import again.`,
+      })),
+    }))),
+  },
+  {
+    name: "C3b-fix D5c undone — the columns step says nothing of the lines a quote swallowed",
+    expect: L.C1l,
+    impl: () => withOutput((r) => mapFile(r, (file) => ({ ...file, notes: file.notes.filter((n) => !n.includes("opens a quote")) }))),
+  },
+  {
+    name: "a final line end counted as a swallowed line — one line more than the file holds",
+    expect: L.C1lc,
+    impl: () => withRules({ countSwallowed: (inside) => countChar(inside, LF) }),
+  },
+  {
+    name: "the staged sentence carries the figure whatever its digits — staging then withholds the whole sentence",
+    expect: L.C1lc,
+    impl: () => ({
+      ...real(),
+      unclosedReason: (line, lines) =>
+        `Row ${line} opens a quote (${QUOTE}) that is never closed, so it and the ${lines} lines after it could not be read. Close or remove that quote, or delete the row, and import again.`,
+    }),
   },
   {
     name: "the broken record's sentence quotes what it swallowed",

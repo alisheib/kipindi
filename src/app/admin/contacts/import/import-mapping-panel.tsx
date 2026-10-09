@@ -9,8 +9,9 @@
  * `CONTACT_FIELDS` themselves, so this panel can never offer a field the book does not have, and never Consent (OD10).
  * ⭐ S15-5 · A FILE WITH NO HEADER ROW is said in words ("column B will be read as the phone number") and imported from
  * its first row; the officer can turn that reading over either way with one box, and the columns are read again.
- * ⛔ NO NUMBER IS SHOWN WHOLE: every value passes `previewCell` (`+255••••NN`, other long digit runs bulleted), whichever
- * column it sits in and however the columns are mapped.
+ * ⛔ NO NUMBER IS SHOWN WHOLE: every value passes `previewCell` — since C3b-fix · D9 a cell holding seven or more digits in
+ * total, whatever separates them, is masked whole (`+255••••NN`, or four bullets and its last two) — whichever column it
+ * sits in and however the columns are mapped.
  * ⛔ NEXT IS HELD, WITH ITS REASON ON SCREEN, until U28's own `validateMapping` passes (Phone chosen, one column per field,
  * no column that cannot be read) — the same check the server runs on the open; a masked export is refused outright.
  */
@@ -29,7 +30,7 @@ import { ENTRANCE, MAPPING } from "./import-copy";
 import { ActionsRow, ButtonText, ImportAlert, Parts, SectionHeading, type ImportAlertState } from "./import-parts";
 
 /** What the officer settled on: the mapping, the header row it was made against, how many rows are column names, and
- *  (C3b · G4) the file AS THE READING STAGES IT — the file itself, or with its one first-mobile column added. */
+ *  (C3b · G4) the file AS THE READING STAGES IT — the file itself, or with its one added phone column. */
 export type MappingChoice = {
   readonly mapping: ColumnMapping;
   readonly headers: string[];
@@ -37,8 +38,14 @@ export type MappingChoice = {
   readonly file: ParsedContactsFile;
 };
 
-/** The file the panel reads: its parsed shape, its name (null for a paste), and whether it is a list paste. */
-export type MappingSource = { readonly file: ParsedContactsFile; readonly name: string | null; readonly list: boolean };
+/** The file the panel reads: its parsed shape, its name (null for a paste), whether it is a list paste, and (C3b-fix · D8)
+ *  the server reader's word that no visible sheet of the workbook holds a mobile. */
+export type MappingSource = {
+  readonly file: ParsedContactsFile;
+  readonly name: string | null;
+  readonly list: boolean;
+  readonly noMobileSheet: boolean;
+};
 
 /** The fields read only when no Name column is (U28): the name parts, derived from the list — never spelled. */
 const NAME_PARTS: ReadonlySet<ImportFieldKey> = new Set(
@@ -71,7 +78,7 @@ export function ImportMappingPanel({
   const [mapping, setMapping] = useState<ColumnMapping>(initial.mapping);
   const [open, setOpen] = useState<number | null>(null);
 
-  // ⭐ C3b · G4 · the file AS THIS READING STAGES IT (a first-mobile column may be added): its samples, its counts, and the
+  // ⭐ C3b · G4 · the file AS THIS READING STAGES IT (a phone column may be added): its samples, its counts, and the
   // rows Next stages. A new reading is always made from the file as read (`source.file`), never from this one.
   const file = reading.file;
   const headerRows = reading.headerRows;
@@ -129,11 +136,12 @@ export function ImportMappingPanel({
         </Callout>
       )}
       {file.format === "vcard" && <p className="text-body-sm text-text-secondary">{MAPPING.vcard}</p>}
-      {/* ⭐ C3b · G2 · a workbook none of whose visible sheets has a phone column: the reader read its first visible sheet
-          (a cover page before the contacts is passed over when a later sheet has one), and the officer is told so and
-          how to name the phone column. */}
-      {file.format === "xlsx" && noPhone && !reading.headerless && reading.refusal === null && (
-        <Callout tone="warning" role="status">{MAPPING.sheetHint}</Callout>
+      {/* ⭐ C3b-fix · D8 · the READER said no visible sheet holds a Tanzanian mobile (`noMobileSheet`), so it read the first
+          visible one: said here on that word alone — never on the column the officer has chosen as Phone. */}
+      {source.noMobileSheet && file.format === "xlsx" && reading.refusal === null && (
+        <div data-import-sheet-hint>
+          <Callout tone="warning" role="status">{MAPPING.sheetHint}</Callout>
+        </div>
       )}
 
       {canTurnFirstRow && (
