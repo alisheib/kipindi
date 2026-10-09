@@ -267,16 +267,16 @@ function decodedText(file: Blob, encoding: TextEncodingLabel, onBytes: (n: numbe
 }
 
 /** The refusals of a big workbook that are about its SIZE (the dialog's cause), the rest being about its format. */
-const SIZE_REFUSALS: ReadonlySet<XlsxRefusal> = new Set<XlsxRefusal>(["too_large", "too_big_inflated", "too_many_rows"]);
+const SIZE_REFUSALS: ReadonlySet<XlsxRefusal> = new Set<XlsxRefusal>(["too_large", "old_browser", "too_big_inflated", "too_many_rows"]);
 
 /**
  * ⭐ C3c · A WORKBOOK PAST THE UPLOAD CAP, READ IN THE BROWSER (`xlsx-read.ts`): `parsed` exactly as a CSV is — the digest
  * over the exact bytes (read once more, whole: `crypto.subtle` has no incremental digest), and `extraNumbers` 0, as the
  * CSV path returns it (S15-4's count of a file's rows is the columns step's, never the reader's). Its file name is the
  * one the server's reader is handed for a small workbook, so the same File reads the same whichever reader reads it. A
- * refusal is the copy table's sentence; a Stop is `aborted`, nothing kept.
+ * refusal is the copy table's sentence; a Stop is `aborted`, nothing kept. Not exported (NIT 14) — `readContactsFile` is its only caller.
  */
-export async function readBigWorkbook(file: File, name: string | null, opts: ReadOptions): Promise<ReadOutcome> {
+async function readBigWorkbook(file: File, name: string | null, opts: ReadOptions): Promise<ReadOutcome> {
   const out = await readXlsxInBrowser(file, { fileName: name ?? "workbook.xlsx", onProgress: opts.onProgress, signal: opts.signal });
   if (out.kind === "aborted") return { kind: "aborted" };
   if (out.kind === "refused") return refused(out.message, SIZE_REFUSALS.has(out.refusal) ? "size" : "format");

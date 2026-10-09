@@ -759,7 +759,7 @@ export const L = {
   B9: "B9 · ⭐ BIG — the generator's big-50k.xlsx and big-150k.xlsx (exceljs's streaming writer, data descriptors, both past 700 KB) read in the browser to every record on its own line, and their phone cells give the generator's truth exactly: distinct numbers, repeats and refusals",
   B10: "B10 · ⛔ THE ROW CAP — a workbook of XLSX_MAX_ROWS + 1 rows is refused too_many_rows in the copy table's words (never sent to CSV), the read stopped at the first row past the cap; exactly XLSX_MAX_ROWS rows are read whole",
   B11: "B11 · ⛔ THE INFLATE BUDGET — 1 GiB of inflated bytes across every part read is the shipped budget, and a sheet that inflates past the budget — its declared size forged to 1 KB — is too_big_inflated by what it inflated to, never read on",
-  B12: "B12 · ⛔ AN OLD BROWSER — a DecompressionStream without deflate-raw (its constructor throws) gets today's too_large answer with the file's size, CSV and the remedy clause, before a byte is inflated — from the reader, and through readContactsFile",
+  B12: "B12 · ⛔ AN OLD BROWSER (MINOR 13) — a DecompressionStream without deflate-raw (its constructor throws) gets the old_browser answer, before a byte is inflated: it says the BROWSER is too old (never 'up to 700 KB'), names an up-to-date browser, and keeps CSV with the remedy clause — from the reader, and through readContactsFile as a size cause",
   B13: "B13 · ⭐ THE DOOR — readContactsFile reads a workbook past 700 KB in the browser: parsed, format xlsx, the reader's rows, the sha-256 of its exact bytes, extraNumbers 0, and the reader's D8 word (a big workbook holding no mobile says so, big-50k does not); a big zip the reader refuses comes back refused in the copy table's words; a workbook within the cap still goes to the server as base64",
   B14: "B14 · STOP AND THE BAR — the reader's last report is its whole total with every row element counted, its reports never move backwards, and a read stopped by the signal returns aborted, nothing read on",
   B15: "B15 · ⛔ PURE AND ONE COPY — xlsx-cells.ts and xlsx-read.ts carry no directive, import only src/lib/contacts modules, name no Buffer, Node built-in, require or DOMParser, hold no backslash and no raw control character but line ends, and are pinned in client-graph-safe; and import-xlsx.ts takes its cell rules from xlsx-cells.ts, keeping no copy of its own",
@@ -970,7 +970,9 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
     throw new TypeError("Unsupported compression format: 'deflate-raw'");
   };
   const old = await impl.build({ ...impl.rules, inflater: throwing })(blob(bigBook), { fileName: "big-50k.xlsx" });
-  const tooLarge = xlsxRefusalSentence("too_large", { bytes: bigBook.length });
+  // ⭐ MINOR 13 · the old-browser refusal is its OWN sentence — the browser is too old, not Excel capped — naming a
+  // current browser and keeping CSV with the keep-every-digit remedy; it never claims a file-size limit.
+  const oldSentence = xlsxRefusalSentence("old_browser");
   const original = globalThis.DecompressionStream;
   class OldBrowserDecompressionStream {
     constructor(format: string) {
@@ -985,9 +987,10 @@ async function run({ impl, ok, log }: Ctx): Promise<void> {
   } finally {
     (globalThis as { DecompressionStream: unknown }).DecompressionStream = original;
   }
-  ok(L.B12, old.kind === "refused" && old.refusal === "too_large" && old.message === tooLarge && old.stats.inflatedBytes === 0
-    && tooLarge.includes(formatFileSize(bigBook.length)) && tooLarge.includes("CSV") && tooLarge.includes(PHONE_FORMAT_REMEDY)
-    && door.kind === "refused" && door.sentence === tooLarge,
+  ok(L.B12, old.kind === "refused" && old.refusal === "old_browser" && old.message === oldSentence && old.stats.inflatedBytes === 0
+    && !oldSentence.includes("700 KB") && !/\bup to\b/.test(oldSentence) && oldSentence.includes("up-to-date")
+    && oldSentence.includes("CSV") && oldSentence.includes(PHONE_FORMAT_REMEDY)
+    && door.kind === "refused" && door.sentence === oldSentence && door.cause === "size",
     `the reader: ${brief(old)} · the door: ${door.kind === "refused" ? door.sentence.slice(0, 90) : door.kind}`);
 
   // ── B13 · the door ──

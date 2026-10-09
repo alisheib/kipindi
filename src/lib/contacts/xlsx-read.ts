@@ -244,8 +244,9 @@ function removeStretches(s: string, open: string, close: string): string {
 /** y m d h M s b — the letters exceljs's `isDateFmt` looks for. */
 const DATE_LETTERS: ReadonlySet<number> = new Set(Array.from("ymdhMsb", (ch) => ch.charCodeAt(0)));
 
-/** exceljs's `utils.isDateFmt`: square-bracketed and double-quoted stretches removed, then any date letter. */
-export function excelIsDateFormat(format: string | undefined): boolean {
+/** exceljs's `utils.isDateFmt`: square-bracketed and double-quoted stretches removed, then any date letter.
+ *  Not exported (NIT 14) — the shipped `isDateFormat` rule alone uses it; a plant swaps in its own. */
+function excelIsDateFormat(format: string | undefined): boolean {
   if (!format) return false;
   const bare = removeStretches(removeStretches(format, "[", "]"), DQUOTE_TEXT, DQUOTE_TEXT);
   for (let i = 0; i < bare.length; i++) if (DATE_LETTERS.has(bare.charCodeAt(i))) return true;
@@ -1803,8 +1804,6 @@ const WORKSHEETS_FOLDER = "xl/worksheets/";
 /** A workbook's sheet, resolved to its part: the sheets exceljs would list, in tab order. */
 type ResolvedSheet = { readonly name: string; readonly visible: boolean; readonly entry: ZipEntry; readonly order: number };
 
-const emptyStats = (bytes: number): XlsxBrowserStats => ({ bytes, inflatedBytes: 0, entries: 0, rows: 0, blankRows: 0, width: 0, sheets: 0, ms: 0 });
-
 /** A reader built from `rules`. ⛔ It never throws: anything unforeseen is the copy table's unreadable sentence. */
 export function buildXlsxBrowserReader(rules: XlsxBrowserRules): (file: Blob, opts?: XlsxBrowserOptions) => Promise<XlsxBrowserResult> {
   return async (file, opts = {}) => {
@@ -1826,8 +1825,9 @@ export function buildXlsxBrowserReader(rules: XlsxBrowserRules): (file: Blob, op
     });
     try {
       if (opts.signal?.aborted) return { kind: "aborted" };
-      // 0 · ⭐ AN OLD BROWSER: no raw-deflate inflater — today's answer for a big workbook, before a byte is read.
-      if (!rules.platformReady(rules.inflater)) return refused("too_large", "no_inflate", { bytes: file.size });
+      // 0 · ⭐ AN OLD BROWSER: no raw-deflate inflater — MINOR 13: say the browser is too old (not that Excel is capped),
+      // name a current browser, keep CSV as a second way. Before a byte is read.
+      if (!rules.platformReady(rules.inflater)) return refused("old_browser", "no_inflate");
 
       // 1 · the zip, walked as the server walks it
       const entries = await readZipDirectory(file);
@@ -1964,6 +1964,3 @@ export function buildXlsxBrowserReader(rules: XlsxBrowserRules): (file: Blob, op
 
 /** ⭐ THE browser reader, on the shipped rules. `import-read.ts` calls it for a workbook past `XLSX_MAX_BYTES`. */
 export const readXlsxInBrowser: (file: Blob, opts?: XlsxBrowserOptions) => Promise<XlsxBrowserResult> = buildXlsxBrowserReader(XLSX_BROWSER_RULES);
-
-/** The stats of a read that never began. */
-export const XLSX_BROWSER_ZERO_STATS: XlsxBrowserStats = emptyStats(0);

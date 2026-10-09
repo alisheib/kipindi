@@ -280,6 +280,7 @@ export type WrongFormatKind = "xls" | "protected" | "xlsb" | "ods" | "strict" | 
 /** Every way an Excel file can be refused, client-side check and server read alike. */
 export type XlsxRefusal =
   | "too_large"
+  | "old_browser"
   | "not_base64"
   | "wrong_format"
   | "too_big_inflated"
@@ -291,7 +292,7 @@ export type XlsxRefusal =
   | "forbidden";
 /** Every refusal, complete by construction: a new member of the union without an entry here fails to compile. */
 const REFUSAL_SET: Record<XlsxRefusal, true> = {
-  too_large: true, not_base64: true, wrong_format: true, too_big_inflated: true, too_many_rows: true,
+  too_large: true, old_browser: true, not_base64: true, wrong_format: true, too_big_inflated: true, too_many_rows: true,
   no_visible_sheet: true, empty: true, unreadable: true, busy: true, forbidden: true,
 };
 export const XLSX_REFUSALS = Object.keys(REFUSAL_SET) as readonly XlsxRefusal[];
@@ -379,14 +380,23 @@ export function xlsxRefusalSentence(r: XlsxRefusal, ctx: XlsxRefusalContext = {}
   const cap = formatFileSize(XLSX_MAX_BYTES);
   switch (r) {
     case "too_large": {
+      // ⛔ C3c · NOT the dialog's path: a workbook past the upload cap is read in the browser (xlsx-read.ts), so this is
+      //    said only to a DIRECT post over the server action's 1 MB body — a non-dialog caller, for whom the 700 KB
+      //    transport cap IS the limit. An old browser that cannot inflate is `old_browser` below, not this.
       const size = typeof ctx.bytes === "number" && Number.isFinite(ctx.bytes) && ctx.bytes > 0 ? formatFileSize(ctx.bytes) : null;
       const opening = size
         ? `This spreadsheet is ${size} — an Excel file can be up to ${cap} here.`
         : `This spreadsheet is too large — an Excel file can be up to ${cap} here.`;
       return `${opening} ${SAVE_AS_CSV} ${KEEP_EVERY_DIGIT}`;
     }
+    case "old_browser":
+      // ⭐ MINOR 13 · the browser cannot inflate a zip (no DecompressionStream "deflate-raw") — it is the browser that is
+      //   too old, NOT that Excel has a size limit. Name the remedy (a current browser) and keep CSV as a second way.
+      return `This browser is too old to open a large Excel file here. Open this page in an up-to-date Chrome, Edge, Firefox or Safari and choose the file again, or save it as CSV. ${IF_CSV_KEEP_EVERY_DIGIT}`;
     case "too_big_inflated":
-      return `This spreadsheet holds more data than an Excel file can carry here. ${SAVE_AS_CSV} ${KEEP_EVERY_DIGIT}`;
+      // ⭐ MAJOR 8 · what trips this now is the CELL count (the grid, the stored-object and merge caps), not a byte size,
+      //   so it no longer claims a file-size limit: it asks the officer to drop what the import does not read.
+      return `This workbook holds more cells than one import can read. Delete the columns and sheets the import doesn't need — it reads the phone, name, email, tags and notes — and unmerge any merged cells, then save it and choose it again. Or save it as CSV. ${IF_CSV_KEEP_EVERY_DIGIT}`;
     case "too_many_rows":
       // ⛔ C3b · never "save it as CSV": a CSV of the same rows is refused too (X28 — one import's row cap IS this one).
       return `This spreadsheet has more than ${groupThousands(XLSX_MAX_ROWS)} rows — the most one import can take. Delete any empty rows below the contacts, or split the list into files of at most ${groupThousands(XLSX_MAX_ROWS)} rows, then save it and choose it again.`;

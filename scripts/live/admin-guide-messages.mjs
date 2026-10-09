@@ -340,7 +340,9 @@ export const IMPORT_STEPS = [
     where: "Growth → Contacts → Import contacts",
     do: [
       "Drop or choose an Excel file (.xlsx), a CSV, or a phone's contacts file (.vcf) — or press Paste instead and paste cells from Excel or a chat.",
-      "There is no file-size limit for an Excel file, a CSV or a phone's contacts file — one import takes up to 200,000 rows. Old .xls, .ods, Numbers, PDFs and pictures can't be read — save the list as .xlsx or CSV first.",
+      // ⭐ NIT 15 · QUOTED verbatim from the entrance (import-copy.ts ENTRANCE.limits and ENTRANCE.cannot), never paraphrased.
+      "No file-size limit for Excel, CSV or a phone's contacts file — up to 200,000 rows in one import.",
+      "Old Excel files (.xls), OpenDocument (.ods), Apple Numbers, PDFs and pictures can't be read — save the list as .xlsx or CSV first.",
       "If the window closes or the page reloads, open Import contacts again: an unfinished import carries on from where it stopped.",
     ],
     shots: ["i1-import-button"],
