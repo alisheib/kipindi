@@ -4442,7 +4442,8 @@ export const prismaDb = {
      *  the book and its `updatedAt` to the LATER of its own and that moment (`greatest`). ⛔ Raw SQL on purpose: the column
      *  is `@updatedAt`, and Prisma's update would stamp the clock over the instant this write chooses. A row that counts 0
      *  throws inside the transaction, so Postgres rolls back every row before it, and the answer names it — `changed`,
-     *  nothing written. The memory twin mirrors it; `test:dal-parity` §31 holds the pair; the pg probe's section 8 runs it. */
+     *  nothing written. The memory twin mirrors it; `test:dal-parity` §31 holds the pair; on Postgres it runs through its
+     *  one caller, the "Added" door, in `scripts/live/registration-contact-pg-probe.mts` section 6 (the rollback in 6.4). */
     redateAdded: async (rows: ContactAddedRedate[]): Promise<ContactAddedRedateResult> => {
       assertAddedRedates(rows);
       if (rows.length === 0) return { ok: true, written: 0 };
@@ -4856,7 +4857,8 @@ export const prismaDb = {
      *  newest-recording bound (M1), then four filtered counts: the live members linked to no account and those of them
      *  covered (`coveredCount`'s pair exactly), and the same two over the live members linked to an account. The tombstone
      *  is left out NULL-SAFELY (`is distinct from`, as `coveredCount` does). ⚠️ `::int`, not bigint. ⛔ What a viewer is
-     *  SHOWN, never a second "who is covered" — the gate and the basis audit keep `coveredCount`. */
+     *  SHOWN, never a second "who is covered" — the gate and the basis audit keep `coveredCount`. On Postgres:
+     *  `scripts/live/list-basis-pg-probe.mts` 2l, the same scenario on the memory twin answer for answer (5a). */
     coverageSplit: async (listId: string): Promise<ListBasisCoverageSplit> => {
       assertListBasisKeys("contactListBasis.coverageSplit", [listId]);
       // ⚠️ Its own names and line shapes, on purpose: `red:dal-parity` anchors coveredCount's lines, which must stay unique.
