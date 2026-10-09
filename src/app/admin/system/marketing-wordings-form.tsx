@@ -1,16 +1,17 @@
 "use client";
 
 /**
- * U33w · THE "MARKETING WORDINGS" CARD — every basis wording, 18+ confirmation, the bought-list notice and the source line,
- * each with its saved history, edited on its own tab of /admin/system (`?tab=wordings`; spec §5.1; the owner rule of
- * 2026-10-03).
+ * U33w · THE "MARKETING WORDINGS" CARD — every basis wording, 18+ confirmation and the bought-list notice, each with its
+ * saved history, edited on its own tab of /admin/system (`?tab=wordings`; spec §5.1; the owner rule of 2026-10-03).
+ * ⛔ The source line (`source.phrase`, G5) left the card on 2026-10-09 (`CARD_KEYS` below): nothing is appended to a
+ * marketing SMS, so no message prints it and nothing asks for it — its saved versions stay in the record as history.
  *
  * ⭐ A BOX NOBODY SAVED HOLDS A SUGGESTION, AND SAYS SO. It is prefilled with the code's default (`WORDING_DEFAULTS` — the
  * card's prefill is the one place a default may be read, W1c) and marked "Not saved — this is a suggestion". ⛔ It is NOT
  * saved by a save of some other box: an admin approves it on purpose, by ticking "Approve and save this wording" — or by
  * editing it, which ticks the box (`approvesOnEdit`; it can be unticked). So approving the bought-list notice never
- * approves the licence basis by accident, and the source line (Ali's words, G5) is never saved alongside the G4 drafts
- * unless it was typed. A box already saved is saved again only when its words changed — the server appends a version.
+ * approves the licence basis by accident. A box already saved is saved again only when its words changed — the server
+ * appends a version.
  * ⛔ M2 · WHAT IS SENT IS DECIDED BY THE PURE MODULE (`wordingsToSave`), AND THE SERVER HOLDS THE SAME RULE: the request
  * says `approve.<key>=1` for a suggestion it approves and `base.<key>` for the version count each wording was edited from
  * (`wordingsPostEntries`), and the server refuses a suggestion sent without its approval and a page that is out of date.
@@ -32,7 +33,7 @@ import { useLayoutEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Field, Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { FormColumn } from "@/components/ui/form-column";
@@ -43,7 +44,6 @@ import { ActReadOnly, useMayAct } from "@/components/admin/act-gate";
 import { runAdminAction } from "@/lib/client/run-admin-action";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { consentBasisFor, type ConsentBasisKey } from "@/lib/marketing/consent-basis";
-import { SOURCE_PHRASE_MAX_CHARS } from "@/lib/marketing/campaign-template";
 import {
   WORDING_DEFAULTS, WORDING_KEYS, WORDING_RULE, approvesOnEdit, normalizeWording, wordingFieldName, wordingProblems,
   wordingsPostEntries, wordingsToSave, type WordingCardState, type WordingKey,
@@ -67,8 +67,20 @@ const APPROVE_LABEL = "Approve and save this wording";
 /** Why Save is off when nothing is to be saved — beside the button, and in the toast of a save asked for anyway. */
 const HELD_IDLE = "Change a wording, or tick “Approve and save this wording”, to save.";
 
+/** A wording this card shows a box for — every one but the source line. */
+type CardKey = Exclude<WordingKey, "source.phrase">;
+/**
+ * ⭐ THE BOXES THIS CARD SHOWS, in the card's order — every wording but `source.phrase`. Since the owner's ruling of
+ * 2026-10-09 nothing is appended to a marketing SMS: no message prints the source line, no draft takes it and no
+ * confirmation or Start asks for it, so it has no box here. ⛔ It stays a wording (`WORDING_KEYS`): its saved versions are
+ * history in the same record, read whole (a key dropped from that list would read the record "in part"), and the owner
+ * door's G5 still saves it as it always did. The card never sends it — its text is never edited here, so the pure module
+ * (`wordingsToSave`) never picks it.
+ */
+const CARD_KEYS: readonly CardKey[] = WORDING_KEYS.filter((k): k is CardKey => k !== "source.phrase");
+
 /** The card's labels and hints — English console copy, in plain words; the rules they state are `WORDING_RULE`'s. */
-const WORDING_COPY: Readonly<Record<WordingKey, { label: string; hint: string }>> = {
+const WORDING_COPY: Readonly<Record<CardKey, { label: string; hint: string }>> = {
   "basis.OWN_FORM": { label: `Basis · ${basisLabel("OWN_FORM")}`, hint: CONSENT_HINT },
   "basis.OWN_EVENT": { label: `Basis · ${basisLabel("OWN_EVENT")}`, hint: CONSENT_HINT },
   "basis.AGENT_ROSTER": { label: `Basis · ${basisLabel("AGENT_ROSTER")}`, hint: CONSENT_HINT },
@@ -96,18 +108,13 @@ const WORDING_COPY: Readonly<Record<WordingKey, { label: string; hint: string }>
     label: "Notice · before a bought list is stored",
     hint: "Shown to the officer before a bought or third-party list is stored.",
   },
-  "source.phrase": {
-    label: "Source line",
-    hint: "Says where the number came from, in every message to a number that is not a player's own account. Blank means those numbers can't be sent a campaign. A draft takes the line when it is next saved; a confirmed campaign keeps the line it was confirmed with.",
-  },
 };
 
-/** The length a box allows, said before it is typed into (DESIGN_AUTHORITY §A7). */
-function lengthLine(key: WordingKey): string {
+/** The length a box allows, said before it is typed into (DESIGN_AUTHORITY §A7). Every box here is measured in
+ *  characters (the source line, measured in septets, has no box since 2026-10-09). */
+function lengthLine(key: CardKey): string {
   const rule = WORDING_RULE[key];
-  return rule.min !== null && rule.max !== null
-    ? `${rule.min} to ${rule.max} characters.`
-    : `At most ${SOURCE_PHRASE_MAX_CHARS} characters, on one line.`;
+  return rule.min !== null && rule.max !== null ? `${rule.min} to ${rule.max} characters.` : "";
 }
 
 /** The id of a wording's status line — named by its box's `aria-describedby`, so the version and the "not saved" are read
@@ -167,8 +174,9 @@ export function MarketingWordingsForm({ rows }: { rows: WordingRowView[] }) {
   const [serverProblems, setServerProblems] = useState<Partial<Record<WordingKey, string[]>>>({});
 
   const edited = (key: WordingKey): boolean => normalizeWording(text[key]) !== normalizeWording(initial[key]);
-  /* ⛔ M2 · what a save sends is the pure module's decision — a saved box whose words changed, a source line typed, and a
-     suggestion ONLY when its box is ticked — each with the version count it was edited from. */
+  /* ⛔ M2 · what a save sends is the pure module's decision — a saved box whose words changed, and a suggestion ONLY when
+     its box is ticked — each with the version count it was edited from. (The source line has no box, so its text is
+     never edited and never sent.) */
   const cardState: WordingCardState = {
     texts: text,
     saved: Object.fromEntries(
@@ -189,8 +197,8 @@ export function MarketingWordingsForm({ rows }: { rows: WordingRowView[] }) {
   const blocked = toSave.filter((key) => wordingProblems(key, text[key]).length > 0);
   const canSave = toSave.length > 0 && blocked.length === 0;
   /* Work that leaving would lose: a box typed into, or a suggestion ticked. */
-  const dirty = WORDING_KEYS.some((key) => edited(key) || approve[key] === true);
-  const savedCount = WORDING_KEYS.filter((key) => newest(key) !== null).length;
+  const dirty = CARD_KEYS.some((key) => edited(key) || approve[key] === true);
+  const savedCount = CARD_KEYS.filter((key) => newest(key) !== null).length;
 
   const onText = (key: WordingKey, value: string) => {
     setText((cur) => ({ ...cur, [key]: value }));
@@ -240,17 +248,13 @@ export function MarketingWordingsForm({ rows }: { rows: WordingRowView[] }) {
     });
   };
 
-  const statusOf = (key: WordingKey): { line: string; saved: boolean } => {
+  const statusOf = (key: CardKey): { line: string; saved: boolean } => {
     const n = newest(key);
-    if (n !== null) {
-      const cleared = WORDING_RULE[key].clearable && n.text === "" ? " No source line is set." : "";
-      return { line: `Version ${n.v}, saved ${n.savedAtLabel} ${n.savedByWords}.${cleared}`, saved: true };
-    }
-    if (WORDING_RULE[key].clearable) return { line: "Not set yet.", saved: false };
+    if (n !== null) return { line: `Version ${n.v}, saved ${n.savedAtLabel} ${n.savedByWords}.`, saved: true };
     return { line: "Not saved — this is a suggestion. Nothing is recorded with it until it is saved.", saved: false };
   };
 
-  const historyOf = (key: WordingKey) => {
+  const historyOf = (key: CardKey) => {
     const versions = versionsOf(key);
     if (versions.length === 0) return null;
     return (
@@ -263,7 +267,7 @@ export function MarketingWordingsForm({ rows }: { rows: WordingRowView[] }) {
           {[...versions].reverse().map((v) => (
             <li key={v.v} className="text-body-sm">
               <p className="text-text-subtle">Version {v.v} · {v.savedAtLabel} · {v.savedByName}</p>
-              <p className="mt-0.5 whitespace-pre-wrap break-words text-text-secondary">{v.text === "" ? "Blank — no source line." : v.text}</p>
+              <p className="mt-0.5 whitespace-pre-wrap break-words text-text-secondary">{v.text}</p>
             </li>
           ))}
         </ol>
@@ -278,7 +282,7 @@ export function MarketingWordingsForm({ rows }: { rows: WordingRowView[] }) {
       <div className="space-y-3">
         <ActReadOnly note="Only an admin can change the marketing wordings." />
         <ul className="space-y-4">
-          {WORDING_KEYS.map((key) => {
+          {CARD_KEYS.map((key) => {
             const n = newest(key);
             const suggestion = WORDING_DEFAULTS[key];
             return (
@@ -304,12 +308,11 @@ export function MarketingWordingsForm({ rows }: { rows: WordingRowView[] }) {
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className="space-y-4" noValidate data-testid="marketing-wordings-form">
-      <p className="text-body-sm text-text-secondary">{savedCount} of {WORDING_KEYS.length} wordings saved.</p>
+      <p className="text-body-sm text-text-secondary">{savedCount} of {CARD_KEYS.length} wordings saved.</p>
       <FormColumn measure="form" className="space-y-5">
-        {WORDING_KEYS.map((key) => {
+        {CARD_KEYS.map((key) => {
           const status = statusOf(key);
           const error = shownError(key);
-          const clearable = WORDING_RULE[key].clearable;
           const statusId = statusIdOf(key);
           return (
             <div key={key} data-wording={key}>
@@ -318,20 +321,16 @@ export function MarketingWordingsForm({ rows }: { rows: WordingRowView[] }) {
                 hint={`${WORDING_COPY[key].hint} ${lengthLine(key)}`}
                 error={error}
                 dataField={wordingFieldName(key)}
-                optional={clearable}
               >
                 {/* ⛔ No box is ever disabled or read-only (the owner rule: no locked box) — the Support contacts card's
-                    shape; a viewer who may not act gets the read-only view above, not greyed boxes. */}
-                {clearable ? (
-                  <Input value={text[key]} onChange={(e) => onText(key, e.currentTarget.value)} autoComplete="off" error={error !== undefined} aria-describedby={statusId} />
-                ) : (
-                  <WordingBox value={text[key]} onChange={(e) => onText(key, e.currentTarget.value)} error={error !== undefined} aria-describedby={statusId} />
-                )}
+                    shape; a viewer who may not act gets the read-only view above, not greyed boxes. (The one-line box
+                    went with the source line, 2026-10-09: every box left is a wording box.) */}
+                <WordingBox value={text[key]} onChange={(e) => onText(key, e.currentTarget.value)} error={error !== undefined} aria-describedby={statusId} />
               </Field>
               <p id={statusId} className={`mt-1.5 text-body-sm ${status.saved ? "text-text-subtle" : "text-warning-fg"}`} data-wording-status={status.saved ? "saved" : "unsaved"}>
                 {status.line}
               </p>
-              {newest(key) === null && !clearable && (
+              {newest(key) === null && (
                 <Checkbox
                   checked={approve[key] === true}
                   onChange={(on) => setApprove((cur) => ({ ...cur, [key]: on }))}

@@ -13,14 +13,14 @@
  * subtracts a figure; this file only says whether "Who" was chosen and which words describe it.
  *
  * ⭐ THE COUNTER IS THE RENDERER'S. Each variant's live counter is `validateCampaignTemplate` → `counterFor` — the ONE
- * worst-case counter in `campaign-template.ts` (the reserved name, the source line or its room, the statutory footer) —
+ * worst-case counter in `campaign-template.ts` (the reserved name; nothing is appended since the owner's ruling of 2026-10-09) —
  * and nothing in this directory sizes a message itself (`test:campaign-compose` §16.2). The server re-validates on
  * save and stores ITS figures; the screen is a preview of that verdict, never a substitute for it.
  * ⛔ OD45 · NO SENDER INPUT: the sender line is the server's, read-only. ⛔ NO NUMBER INPUT: the test card names the
  * officer's own number, masked, and has nothing to type into. ⛔ OD24 · NO MONEY on this page.
  * ⭐ ONE SAVE. Save is disabled WITH its reason (beside it and in its title), never hidden; a refusal keeps the text.
  * ⭐ THE TEST SENDS THE SAVED TEXT: unsaved or edited text disables it ("Save first"), and the preview is the server's
- * rendering of the saved revision — the exact text, its footer's line break and its real link included.
+ * rendering of the saved revision — the exact text sent, with nothing appended (the owner's ruling of 2026-10-09).
  * ⛔ AN ACT CONTROL: `useMayAct()` disables Save and the tests with the reason for a view-only role, and both actions
  * re-check on the server (`softRequireStaff`).
  * ⭐ VALIDATION TAKES YOU THERE (validation audit, 2026-10-03): the "Can't save yet" reason is a button to the field it
@@ -65,9 +65,8 @@ import {
   COMPOSE_AUDIENCE_CLEAR, COMPOSE_AUDIENCE_LEAD, COMPOSE_BODY_SW_HINT,
   COMPOSE_DISCARD_BODY, COMPOSE_DISCARD_CANCEL, COMPOSE_DISCARD_CONFIRM, COMPOSE_DISCARD_TITLE, COMPOSE_EN_NONE,
   COMPOSE_EN_RULE, COMPOSE_FIELD, COMPOSE_NO_CHANGES, COMPOSE_READ_ONLY, COMPOSE_RELOAD, COMPOSE_SAVE, COMPOSE_SAVE_AS_NEW,
-  COMPOSE_SOURCE_LINE_STALE,
   COMPOSE_SAVE_AS_NEW_AUDIENCE, COMPOSE_SAVE_FAILED, COMPOSE_TEST_BUDGET, COMPOSE_TEST_CONSENT_LINK, COMPOSE_TEST_EXACT,
-  COMPOSE_TEST_NOT_DRAFT, COMPOSE_TEST_PREVIEW, COMPOSE_TEST_SAVE_FIRST, COMPOSE_TEST_SEND, COMPOSE_TEST_TOKEN_NOTE,
+  COMPOSE_TEST_NOT_DRAFT, COMPOSE_TEST_PREVIEW, COMPOSE_TEST_SAVE_FIRST, COMPOSE_TEST_SEND,
   COMPOSE_TEST_UPDATING, COMPOSE_TRY_AGAIN, composeSaveBlocked, composeSaved, composeTestHandedOver,
   COMPOSE_TEST_TO_LEGEND, COMPOSE_TEST_TO_OWN_UNUSABLE, COMPOSE_TEST_TO_TYPED, COMPOSE_TEST_NUMBER_LABEL, COMPOSE_TEST_NUMBER_HINT,
   COMPOSE_TEST_TYPED_PREVIEW, COMPOSE_TEST_TYPED_NOTE, COMPOSE_TEST_NEED_NUMBER, COMPOSE_TEST_FIX_NUMBER, COMPOSE_TEST_NEED_TICK, composeTestToOwn,
@@ -83,11 +82,12 @@ type Problems = Partial<Record<CampaignDraftField, string[]>>;
 type Saved = { id: string; draftRevision: number; savedAt: string | null; fields: Fields };
 /**
  * A refusal, by its reason. `failed` is a save lost in transit (no reason came back): the text is kept and Try again
- * offered — and so for `source_unreadable` (U37s: the source line's fresh read did not answer; nothing was saved).
- * `role`, `rate_limited` and `unfinished` are the actions' own — printed alone, with no retry that cannot work.
+ * offered. (U37s's `source_unreadable` — the source line's fresh read did not answer — is gone since the owner's ruling
+ * of 2026-10-09: the save reads no line.) `role`, `rate_limited` and `unfinished` are the actions' own — printed alone,
+ * with no retry that cannot work.
  */
 type Refusal = {
-  kind: "invalid" | "not_found" | "not_draft" | "stale" | "source_unreadable" | "failed" | "role" | "rate_limited" | "unfinished";
+  kind: "invalid" | "not_found" | "not_draft" | "stale" | "failed" | "role" | "rate_limited" | "unfinished";
   message: string;
   /** A stale save (or a draft confirmed since): the stored draft's own address, which "Reload" goes to. */
   href?: string;
@@ -109,9 +109,10 @@ const FIELD_ORDER: CampaignDraftField[] = ["name", "bodySw", "nameFallbackSw", "
 const ON_PAGE: ReadonlySet<CampaignDraftField> = new Set(["name", "bodySw", "nameFallbackSw", "bodyEn", "nameFallbackEn", "audience"]);
 /** The refusals whose remedy is the officer's own consent switch, on their own profile. */
 const CONSENT_REASONS = ["no_consent", "consent_withdrawn", "suppressed"];
-/** U37c-2 · the typed refusals that mean THIS PAGE is out of date (the words, the record or the line changed since it
- *  loaded): the page re-reads, so the card shows the world the server just answered from. */
-const PAGE_STALE_REASONS = ["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"];
+/** U37c-2 · the typed refusals that mean THIS PAGE is out of date (the words or the record changed since it loaded): the
+ *  page re-reads, so the card shows the world the server just answered from. (`typed_needs_source_line` is gone since the
+ *  owner's ruling of 2026-10-09: a typed test needs no source line.) */
+const PAGE_STALE_REASONS = ["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording"];
 
 const trimmed = (f: Fields): Fields => ({
   name: f.name.trim(), bodySw: f.bodySw.trim(), bodyEn: f.bodyEn.trim(), nameFallbackSw: f.nameFallbackSw.trim(), nameFallbackEn: f.nameFallbackEn.trim(),
@@ -269,7 +270,8 @@ export function ComposerProvider({ view, children }: { view: ReadyView; children
     setServerProblems({});
   }
 
-  const verdict = validateCampaignTemplate(fields, view.sourcePhrase);
+  // ⛔ No source line is handed to the verdict (the owner's ruling of 2026-10-09) — the save's own call hands none either.
+  const verdict = validateCampaignTemplate(fields, "");
   const dirty = saved === null ? !sameFields(fields, EMPTY) : !sameFields(fields, saved.fields);
 
   /** What a field shows: the server's refusal after a save, else the live verdict once there is something to judge. */
@@ -300,10 +302,10 @@ export function ComposerProvider({ view, children }: { view: ReadyView; children
               field: firstKey !== null && ON_PAGE.has(firstKey) ? firstKey : null,
             }
           : null;
-  // ⭐ U37s · a draft carrying another line than the one saved now is never "no changes": only a save re-stamps it.
-  // ⭐ Nor is an audience on screen that the draft does not store (a rail pick): only a save keeps it (`audience.unsaved`) —
-  // and the Confirm card (U40b) will not open on it, since a confirmation freezes the STORED audience.
-  const blocked = shared ?? (saved !== null && !dirty && !view.sourceLineStale && !view.audience.unsaved ? { reason: COMPOSE_NO_CHANGES, field: null } : null);
+  // ⭐ An audience on screen that the draft does not store (a rail pick) is never "no changes": only a save keeps it
+  // (`audience.unsaved`) — and the Confirm card (U40b) will not open on it, since a confirmation freezes the STORED
+  // audience. (U37s's stale source line no longer counts as a change: no draft's line matters since 2026-10-09.)
+  const blocked = shared ?? (saved !== null && !dirty && !view.audience.unsaved ? { reason: COMPOSE_NO_CHANGES, field: null } : null);
   const saveBlocked: string | null = blocked?.reason ?? null;
   const blockedField: CampaignDraftField | null = blocked?.field ?? null;
   const canSave = saveBlocked === null && !saving;
@@ -409,10 +411,9 @@ export function ComposerProvider({ view, children }: { view: ReadyView; children
       const r = await runAdminAction(() => sendCampaignTestAction(s.id, variant, recipient ?? { kind: "own" }));
       setTest(testStateOf(r));
       setTesting(null);
-      // The own preview now carries the officer's real stop link (minted by their first test). A typed test's link is
-      // that person's, and is never shown.
-      if ("outcome" in r && r.outcome === "handed_over" && r.target === "own") router.refresh();
-      // ⛔ §18.32 · the 18+ words (or the record, or the line) changed since this page opened: read again, so the box shows
+      // ⭐ A handed-over test changes nothing the page shows: the preview is the text as sent, and since the owner's ruling
+      // of 2026-10-09 nothing is appended to it — no stop link, so no token to re-read (§16.22).
+      // ⛔ §18.32 · the 18+ words (or the record) changed since this page opened: read again, so the box shows
       // the words a tick confirms and "Another number" is offered only as the server now answers.
       if ("outcome" in r && r.outcome === "refused" && PAGE_STALE_REASONS.includes(r.reason)) router.refresh();
     });
@@ -450,7 +451,6 @@ export function ComposerMessage() {
   const c = useComposer();
   const { view, fields, verdict } = c;
   const off = c.saving || view.readOnly || !c.mayAct;
-  const phraseSet = view.sourcePhrase.trim() !== "";
   const swJina = scanPlaceholders(fields.bodySw).jina > 0;
   const enWritten = fields.bodyEn.trim() !== "";
   const enJina = enWritten && scanPlaceholders(fields.bodyEn).jina > 0;
@@ -501,7 +501,6 @@ export function ComposerMessage() {
           </Field>
           <ComposerCounter
             counter={verdict.counters.SW}
-            phraseSet={phraseSet}
             disabled={off}
             onFold={() => c.setField("bodySw", foldToGsm7(fields.bodySw))}
           />
@@ -533,7 +532,6 @@ export function ComposerMessage() {
             <>
               <ComposerCounter
                 counter={verdict.counters.EN}
-                phraseSet={phraseSet}
                 disabled={off}
                 onFold={() => c.setField("bodyEn", foldToGsm7(fields.bodyEn))}
               />
@@ -595,7 +593,7 @@ export function ComposerMessage() {
             && c.saveAsNewBlocked !== null && c.saveAsNewBlocked !== c.saveBlocked && (
             <span className="mt-1 block text-body-sm" data-compose-save-new-reason>{c.saveAsNewBlocked}</span>
           )}
-          {(c.refusal.kind === "failed" || c.refusal.kind === "source_unreadable") && (
+          {c.refusal.kind === "failed" && (
             <span className="mt-2 block">
               <Button type="button" size="sm" variant="ghost" onClick={c.save} disabled={!c.canSave}>{COMPOSE_TRY_AGAIN}</Button>
             </span>
@@ -604,9 +602,6 @@ export function ComposerMessage() {
       )}
       {c.refusal !== null && c.refusal.kind === "invalid" && (
         <p className="text-body-sm text-danger-fg" role="alert" data-compose-refusal="invalid">{c.refusal.message}</p>
-      )}
-      {view.sourceLineStale && !view.readOnly && (
-        <p className="text-body-sm text-text-secondary" data-compose-source-stale>{COMPOSE_SOURCE_LINE_STALE}</p>
       )}
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
@@ -917,7 +912,6 @@ export function ComposerTest() {
         </div>
       ))}
       {fresh && typed && <p className="text-body-sm text-text-tertiary" data-test-typed-note>{COMPOSE_TEST_TYPED_NOTE}</p>}
-      {fresh && !typed && !t.tokenReady && <p className="text-body-sm text-text-tertiary">{COMPOSE_TEST_TOKEN_NOTE}</p>}
       {reason !== null && backToNumber && (
         <button
           type="button"

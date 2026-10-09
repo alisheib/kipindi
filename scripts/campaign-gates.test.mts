@@ -72,9 +72,7 @@ const AUD = await import("../src/lib/server/marketing/audience.ts");
 const SETTINGS = await import("../src/lib/server/marketing/sms-settings.ts");
 const EST = await import("../src/lib/server/marketing/estimate.ts");
 const { MARKETING_SMS_SETTINGS_DEFAULTS } = await import("../src/lib/marketing/sms-settings.ts");
-const { readSavedSourcePhrase } = await import("../src/lib/server/marketing/campaign-draft.ts");
 const LOADER = await import("../src/app/admin/campaigns/new/composer-loader.ts");
-const { composerSourceLineStale } = LOADER;
 const COPY = await import("../src/app/admin/campaigns/new/composer-copy.ts");
 const DOORS = await import("../src/app/admin/campaigns/new/confirm-doors.ts");
 const SPLIT = await import("../src/lib/server/marketing/audience-split.ts");
@@ -156,8 +154,8 @@ const L = {
   s20: "4.20 · a write that lands but loses its reply is reported confirmed — the row's own stamp read back — with exactly one confirmed row, never 'nothing was confirmed'",
   s20b: "4.20b · ⛔ A WRITE THAT IS NOT THIS ONE IS NEVER CLAIMED — another officer's confirmation landing before this write throws is not taken for it (the error reaches the caller, no confirmed row for this officer); nor is the same officer's twin in the SAME millisecond (one confirmed row in all)",
   s21: "4.21 · ⭐ ruling 543 · THE CONFIRMATION SAYS BOTH HALVES — its answer carries recorded: true when the marketing.campaign_confirmed row is in the log, and recorded: false (the campaign still CONFIRMED) when the audit reports it was not",
-  g51: "G5.1 · ⭐ E18 · needs_source_line for the book and for both with no source line on the draft — the view blocked with the spec's sentence, the confirmation refused, nothing frozen — while a players-only campaign with none confirms",
-  g51b: "G5.1b · the draft's stamped source line must be the one saved now — an older stamp is unsaved (view blocked, confirmation refused), a saved line that cannot be read is source_unreadable, and once saved again it confirms; and the rule blocks exactly where the composer's composerSourceLineStale (or a blank stamp) does, on every pair",
+  g51: "G5.1 · ⭐ E18 IS GONE (the owner's ruling of 2026-10-09: nothing is appended to a marketing SMS, so no source line is printed or required) — a book campaign with no source line (none, or spaces) and a book ∪ players one with an empty line view unblocked and CONFIRM, as a players-only one with none does; and the service holds no source-line rule, sentence or read (no needs_source_line, unsaved or source_unreadable among its refusals, no sourceRule or freshLine among its deps, no sourceLineRefusal)",
+  g51b: "G5.1b · ⭐ A STAMPED LINE IS NEVER JUDGED (U37s's stale-stamp gate gone with the line, 2026-10-09) — a book draft stamped with an older line than the suite's saved one, and one stamped with a line nobody saved, view unblocked and confirm",
   g52: "G5.2 · ⭐ E15 · THE LIMIT — 1,667 people at TZS 6 (TZS 10,002) are refused over_limit, the money reader told 'TZS 10,002' and 'TZS 10,000' and GROWTH told no figure, nothing frozen; 1,666 (TZS 9,996) confirm with budgetTzs 10,000, estimateTzs 9,996 and estimateSegments 1,666 — the population × the saved segments × the price (X15)",
   g54: "G5.4 · a MEASURED price wins over the configured one in the freeze, through the SHIPPED loader (CONFIRM_DEPS.cost — estimate.ts's loadSegmentCost) over a send history on the memory twin — on the Blackball rail its history measures TZS 5 beside a configured TZS 6, and 7 × 1 × 5 = TZS 35 is frozen; on the console rail, which has none, the configured TZS 6 stands (TZS 42)",
   g55: "G5.5 · ⛔ OD63 · settings that cannot be read — a read that failed, a row not read in full, a read that throws — are settings_unreadable, never priced from the defaults; a price nobody knows is price_unknown; nothing frozen",
@@ -170,7 +168,7 @@ const L = {
   x5: "6.5 · ⛔ OD27 tripwire — ConfirmCampaignInput declares exactly campaignId, typed, watermark and actorId: no posted count can reach the gate",
   x6: '6.6 · ⭐ the confirm keys have exactly ONE src writer — the transition(… to: "CONFIRMED" …) in campaign-confirm-service.ts (dev-only seed routes aside), whose patch names every confirm key',
   x7: "6.7 · ⭐ test:campaign-gates and red:campaign-gates resolve to this file, and predeploy runs test:campaign-gates exactly once, right after test:campaign-confirm",
-  x9: "6.9 · the shipped wiring is the real doors — CONFIRM_DEPS hands in audienceFence, fenceForViewer, signFence, verifyFence, decideConfirm, campaignAudienceRefusal, breakdownVisible, sourceLineRefusal, the FRESH source-line read, the settings' re-read, estimate.ts's ONE cost loader (loadSegmentCost), spendRefusal, confirmInstant, confirmedByThisWrite and audit; FENCE_DEPS campaignAudienceCount, walkCampaignAudience, isUnfilteredCampaignAudience and membersKeyOf",
+  x9: "6.9 · the shipped wiring is the real doors — CONFIRM_DEPS hands in audienceFence, fenceForViewer, signFence, verifyFence, decideConfirm, campaignAudienceRefusal, breakdownVisible, the settings' re-read, estimate.ts's ONE cost loader (loadSegmentCost), spendRefusal, confirmInstant, confirmedByThisWrite and audit; FENCE_DEPS campaignAudienceCount, walkCampaignAudience, isUnfilteredCampaignAudience and membersKeyOf",
   // ── §UI · U40b · THE CONFIRMATION ON SCREEN (ENGINE-SPEC §4.6, and the U40b review's fixes) ──
   u1: "UI.1 · ⭐ 6.4 · A5 · THE CONFIRM BUTTON IS NEVER FOCUSED WHEN THE DIALOG OPENS, NOR AFTER A REFUSAL — modal.tsx keeps `initialFocus={isHard ? inputRef : cancelRef}` byte-identical, exactly once; the Confirm card renders the kit's ConfirmModal once (no Modal and no dialog role of its own) and NEVER re-keys it: a refusal RE-ARMS it (`armKey` = `${watermark}:${attempt}` — the box cleared and the first target given the focus again through the opening's own focusIn, no remount, no blink), and the attempt is bumped in the router's re-arm branch and nowhere else",
   u2: "UI.2 · ⭐ OD67 · THE DIALOG'S TIER IS THE VIEW'S, NEVER THE COUNT'S (the U40a re-review's ruling) — on a listed-size audience of 3 the gate is the TYPED tier (the bare count to type, the digit keypad) for a viewer who may not read a number and the list tier for a reader; 7 people are typed for both; a view with no tier or no count opens nothing; and the card spreads `confirmGate(view)` into the dialog, with no CONFIRM_ENUMERATE_MAX, no confirmTier and no count compared in the card or the copy",
@@ -525,16 +523,11 @@ const REAL: Impl = {
   },
 };
 
-/** The suite's one fixed injection: the saved source line, read fresh (by the view and the confirmation alike), is LINE. */
-const SUITE_LINE: Partial<ConfirmDeps> = {
-  freshLine: () => ({ ok: true, phrase: LINE }),
-};
-/** The dependencies one call gets: production's, the suite's source line, the impl's fence, an assertion's own, and the
- *  plant's last word. */
+/** The dependencies one call gets: production's, the impl's fence, an assertion's own, and the plant's last word. (No
+ *  source line is injected: since the owner's ruling of 2026-10-09 the confirmation reads none — G5.1.) */
 function depsOf(impl: Impl, over: Partial<ConfirmDeps> = {}): ConfirmDeps {
   return impl.finish({
     ...SVC.CONFIRM_DEPS,
-    ...SUITE_LINE,
     fence: (c) => FEN.audienceFence(c, impl.fenceDeps),
     ...over,
   });
@@ -1122,49 +1115,40 @@ async function runAssertions(impl: Impl): Promise<void> {
 
   // ── §G · §4.5'S OWN ──
   await claim(L.g51, async () => {
+    // ⭐ The owner's ruling of 2026-10-09: nothing is appended, so a campaign that can reach the contact book needs no line.
     const book = await draft(w, "g51book", tagF("g-n7"), { sourcePhrase: null });
     const vb = await viewOf(impl, w, book, READER);
     const rb = await confirmOf(impl, w, book, "7", vb?.watermark ?? null, READER);
-    const both = await draft(w, "g51both", X9F, { sourcePhrase: null });
+    const spaces = await draft(w, "g51spaces", tagF("g-n7"), { sourcePhrase: "   " });
+    const vs = await viewOf(impl, w, spaces, READER);
+    const rs = await confirmOf(impl, w, spaces, "7", vs?.watermark ?? null, READER);
+    const both = await draft(w, "g51both", X9F, { sourcePhrase: "" });
     const vt = await viewOf(impl, w, both, READER);
     const rt = await confirmOf(impl, w, both, String(vt?.count ?? ""), vt?.watermark ?? null, READER);
     const players = await draft(w, "g51players", YAS_PLAYERS, { sourcePhrase: null });
     const vp = await viewOf(impl, w, players, READER);
     const rp = await confirmOf(impl, w, players, null, vp?.watermark ?? null, READER);
-    const SENTENCE = SVC.CONFIRM_SERVICE_COPY.needs_source_line({ money: true, costTzs: null, limitTzs: null });
-    const refusedBoth = [rb, rt].every((r) => !r.ok && r.reason === "needs_source_line" && r.message === SENTENCE)
-      && [vb, vt].every((v) => v?.blocked === "needs_source_line" && v.message === SENTENCE)
-      && [book, both].every((id) => rowOf(id)?.status === "DRAFT" && rowOf(id)?.audienceCount === null);
-    // A stamp of spaces, or an empty one, is no line — whatever is saved now.
-    const blank = D.sourceRule({ sourcePhrase: "   " }, tagF("g-n7"), { ok: true, phrase: LINE }) === "needs_source_line"
-      && D.sourceRule({ sourcePhrase: "" }, X9F, { ok: true, phrase: null }) === "needs_source_line";
-    return [refusedBoth && blank && SENTENCE.includes("source line") && vp?.blocked === null && rp.ok,
-      `book ${show(rb)} · both ${show(rt)} · blank stamps ${blank} · players ${showView(vp)} ${show(rp)}`];
+    const unblocked = [vb, vs, vt, vp].every((v) => v !== null && v.blocked === null && v.message === null);
+    const confirmed = [rb, rs, rt, rp].every((r) => r.ok) && [book, spaces, both, players].every((id) => rowOf(id)?.status === "CONFIRMED");
+    // …and nothing of the gate is left to put back by a wiring slip: no reason, no sentence, no rule, no read.
+    const copy = SVC.CONFIRM_SERVICE_COPY as Readonly<Record<string, unknown>>;
+    const shippedDeps = SVC.CONFIRM_DEPS as unknown as Readonly<Record<string, unknown>>;
+    const gone = ["needs_source_line", "unsaved", "source_unreadable"].every((k) => !(k in copy))
+      && ["sourceRule", "freshLine"].every((k) => !(k in shippedDeps)) && !("sourceLineRefusal" in SVC);
+    return [unblocked && confirmed && gone,
+      `book ${showView(vb)} ${show(rb)} · spaces ${show(rs)} · both ${showView(vt)} ${show(rt)} · players ${show(rp)} · nothing of the rule left ${gone}`];
   });
 
   await claim(L.g51b, async () => {
-    const id = await draft(w, "g51b", tagF("g-n7"), { sourcePhrase: OLD_LINE });
-    const v = await viewOf(impl, w, id, READER);
-    // The view reads the line FRESH, as the confirmation does: one that cannot be read blocks it, in the same words.
-    const vu = await viewOf(impl, w, id, READER, { freshLine: () => ({ ok: false }) });
-    const r = await confirmOf(impl, w, id, "7", v?.watermark ?? null, READER);
-    const unread = await confirmOf(impl, w, id, "7", v?.watermark ?? null, READER, { freshLine: () => ({ ok: false }) });
-    await db.smsCampaign.update(id, { sourcePhrase: LINE }, { draftRevision: 0 }, new Date().toISOString());
-    const v2 = await viewOf(impl, w, id, READER);
-    const r2 = await confirmOf(impl, w, id, "7", v2?.watermark ?? null, READER);
-    // The rule against the composer's own test, on every pair of a stamped line and a saved one (a blank stamp is G5.1's).
-    const rule = depsOf(impl).sourceRule;
-    let agree = true;
-    for (const stamp of [LINE, OLD_LINE]) {
-      for (const saved of [null, LINE, OLD_LINE]) {
-        const row = { ...(rowOf(id) as StoredSmsCampaign), status: "DRAFT" as const, sourcePhrase: stamp };
-        if ((rule(row, tagF("g-n7"), { ok: true, phrase: saved }) !== null) !== composerSourceLineStale(row, saved)) agree = false;
-        if (rule(row, YAS_PLAYERS, { ok: true, phrase: saved }) !== null) agree = false;
-      }
-    }
-    return [v?.blocked === "unsaved" && vu?.blocked === "source_unreadable" && !r.ok && r.reason === "unsaved" && !unread.ok
-      && unread.reason === "source_unreadable" && v2?.blocked === null && r2.ok && agree,
-    `${showView(v)} · unread view ${showView(vu)} · ${show(r)} · unread ${show(unread)} · saved again ${show(r2)} · agrees ${agree}`];
+    // A stamp other than the suite's saved line (LINE) — an older one, and one nobody ever saved — is never compared.
+    const older = await draft(w, "g51b", tagF("g-n7"), { sourcePhrase: OLD_LINE });
+    const vo = await viewOf(impl, w, older, READER);
+    const ro = await confirmOf(impl, w, older, "7", vo?.watermark ?? null, READER);
+    const never = await draft(w, "g51b_never", tagF("g-n7"), { sourcePhrase: "Namba hii haikuhifadhiwa na mtu." });
+    const vn = await viewOf(impl, w, never, READER);
+    const rn = await confirmOf(impl, w, never, "7", vn?.watermark ?? null, READER);
+    return [vo?.blocked === null && ro.ok && vn?.blocked === null && rn.ok && [older, never].every((id) => rowOf(id)?.status === "CONFIRMED"),
+      `older ${showView(vo)} ${show(ro)} · never saved ${showView(vn)} ${show(rn)}`];
   });
 
   await claim(L.g52, async () => {
@@ -1512,7 +1496,6 @@ async function runAssertions(impl: Impl): Promise<void> {
     const answered = (answer: ConfirmAnswerFacts | null): ConfirmTriggerFacts => ({ ...base, answer });
     const none = { money: false, costTzs: null, limitTzs: null };
     const OVER = SVC.CONFIRM_SERVICE_COPY.over_limit(none);
-    const SOURCE = SVC.CONFIRM_SERVICE_COPY.needs_source_line(none);
     const NO_BODY = SVC.CONFIRM_SERVICE_COPY.no_body(none);
     const NOT_FOUND = PURE.CONFIRM_REFUSAL_COPY.not_found({ fresh: null, shown: null });
     const READ_ONLY = "Read-only: the AUDITOR role can view SMS campaigns but not change it.";
@@ -1536,7 +1519,6 @@ async function runAssertions(impl: Impl): Promise<void> {
       ["nobody", answered(seen({ blocked: "audience_empty", message: PURE.CONFIRM_REFUSAL_COPY.audience_empty({ fresh: 0, shown: null }) })), COPY.COMPOSE_CONFIRM_NOBODY],
       ["no message", answered(seen({ blocked: "no_body", message: NO_BODY })), T(NO_BODY)],
       ["over the limit", answered(seen({ blocked: "over_limit", message: OVER })), T(OVER)],
-      ["no source line", answered(seen({ blocked: "needs_source_line", message: SOURCE })), T(SOURCE)],
       ["no longer a draft", answered(seen({ blocked: "not_draft", message: "x" })), COPY.COMPOSE_CONFIRM_ALREADY],
       ["a read that failed", answered(said("error")), COPY.COMPOSE_CONFIRM_UNCOUNTED],
       ["a read lost in transit", answered({ ok: false, error: "Server error — nothing may have applied. Refresh before retrying." }), COPY.COMPOSE_CONFIRM_UNCOUNTED],
@@ -1593,7 +1575,8 @@ async function runAssertions(impl: Impl): Promise<void> {
       movedMasked: A({ draft: id, ...other }, row, false).unsaved === true,
       bare: A({ draft: id }, row, true).unsaved === false,
       fresh: A({ ...own }, null, true).unsaved === false,
-      save: client.includes("!dirty && !view.sourceLineStale && !view.audience.unsaved"),
+      // (2026-10-09: U37s's `!view.sourceLineStale` left this rule with the stale-line flag — no draft's line matters.)
+      save: client.includes("!dirty && !view.audience.unsaved ? { reason: COMPOSE_NO_CHANGES"),
       hook: client.includes("audienceUnsaved: c.view.audience.unsaved,"),
     };
     return [Object.values(checks).every(Boolean), json(checks)];
@@ -1695,8 +1678,8 @@ async function runAssertions(impl: Impl): Promise<void> {
     const role = O(refusal("role", COPY.COMPOSE_CONFIRM_ROLE_REFUSAL));
     const notDraft = O(refusal("not_draft"));
     const notFound = O(refusal("not_found"));
-    const others = ["audience_moved", "typed_mismatch", "typed_required", "stale_view", "draft_changed", "audience_empty", "needs_source_line",
-      "over_limit", "price_unknown", "unsaved", "no_body", "settings_unreadable", "source_unreadable", "audience_unreadable", "audience_refused"]
+    const others = ["audience_moved", "typed_mismatch", "typed_required", "stale_view", "draft_changed", "audience_empty",
+      "over_limit", "price_unknown", "no_body", "settings_unreadable", "audience_unreadable", "audience_refused"]
       .map((reason) => [reason, O(refusal(reason))] as const);
     const rearm = A(ready, "the notice");
     const routes = {
@@ -2113,7 +2096,7 @@ async function runAssertions(impl: Impl): Promise<void> {
     const wiring = {
       fence: c.fence === FEN.audienceFence, shape: c.shape === SVC.fenceForViewer, sign: c.sign === FEN.signFence,
       verify: c.verify === FEN.verifyFence, decide: c.decide === PURE.decideConfirm, refusal: c.refusal === AUD.campaignAudienceRefusal,
-      breakdown: c.breakdown === breakdownVisible, sourceRule: c.sourceRule === SVC.sourceLineRefusal, freshLine: c.freshLine === readSavedSourcePhrase,
+      breakdown: c.breakdown === breakdownVisible,
       settings: c.settings === SETTINGS.reloadMarketingSmsSettings, cost: c.cost === EST.loadSegmentCost, spendRule: c.spendRule === SVC.spendRefusal,
       stamp: c.stamp === SVC.confirmInstant, ownWrite: c.ownWrite === SVC.confirmedByThisWrite, audit: c.audit === audit,
       count: f.count === AUD.campaignAudienceCount, walk: f.walk === AUD.walkCampaignAudience,
@@ -2316,6 +2299,34 @@ if (!PROVE_RED) {
     return DOORS.readConfirmCardFor(userId, row === null ? req : { ...req, draftRevision: row.draftRevision, audience: null }, asDraft);
   };
 
+  /**
+   * R-G5.1 · R-G5.1b · a source-line rule put back IN FRONT OF the service, as E18 (and U37s's stamp check) stood until the
+   * owner's ruling of 2026-10-09: the view of a draft the rule refuses is blocked in its reason, and its confirmation is
+   * refused before anything is counted or written. (The service holds no such rule — G5.1 — so a plant can only wrap it.)
+   */
+  const lineGateBack = (rule: (row: StoredSmsCampaign, filter: ContactAudienceFilter) => string | null): Partial<Impl> => {
+    // ⛔ The row is read from the store itself, never through the deps an assertion hands in: 4.20b counts the reads its
+    // stand-in door answers, and a plant that took one of them would break a claim it does not name.
+    const why = async (id: string, _deps: ConfirmDeps | undefined): Promise<string | null> => {
+      const row = rowOf(id);
+      if (row === null || row.status !== "DRAFT") return null;
+      const read = FEN.readCampaignAudience(row.audienceFilter);
+      return read.ok ? rule(row, read.filter) : null;
+    };
+    return {
+      view: async (id, viewer, deps) => {
+        const v = await SVC.campaignConfirmView(id, viewer, deps);
+        const r = v === null ? null : await why(id, deps);
+        return v === null || r === null ? v : { ...v, blocked: r as CampaignConfirmView["blocked"], message: `planted: ${r}` };
+      },
+      confirm: async (input, viewer, deps) => {
+        const r = await why(input.campaignId, deps);
+        return r === null
+          ? SVC.confirmCampaign(input, viewer, deps)
+          : { ok: false, reason: r as Extract<ConfirmCampaignResult, { ok: false }>["reason"], freshCount: null, message: `planted: ${r}` };
+      },
+    };
+  };
   /** A plant that replaces a source anchor is built when its turn comes, so an anchor that has gone fails that plant alone. */
   type Plant = { name: string; expect: Label[]; impl: Partial<Impl> | (() => Partial<Impl>) };
   const plants: Plant[] = [
@@ -2381,10 +2392,13 @@ if (!PROVE_RED) {
         const reachable = (await firstKeysOf(c.audienceFilter)).filter((k) => parseTzNumber(k).verdict === "ok");
         return { ...f, sample: reachable.slice(0, 5).map((k) => ({ masked: maskPhone(k), operator: parseTzNumber(k).operator?.brand ?? null })) };
       } })) },
-    { name: "R-G5.1 · E18's source-line check removed", expect: [L.g51],
-      impl: finishWith((d) => ({ ...d, sourceRule: (row, f, s) => { const r = SVC.sourceLineRefusal(row, f, s); return r === "needs_source_line" ? null : r; } })) },
-    { name: "R-G5.1b · a stamp the owner has since changed is confirmed (and an unread line too)", expect: [L.g51b],
-      impl: finishWith((d) => ({ ...d, sourceRule: (row, f, s) => { const r = SVC.sourceLineRefusal(row, f, s); return r === "unsaved" || r === "source_unreadable" ? null : r; } })) },
+    { name: "R-G5.1 · E18's source-line gate put back (a book campaign with no source line blocked and refused needs_source_line)", expect: [L.g51],
+      impl: lineGateBack((row, f) => (f.population !== "players" && (row.sourcePhrase ?? "").trim() === "" ? "needs_source_line" : null)) },
+    { name: "R-G5.1b · U37s's stale-stamp gate put back (a stamp that is not the saved line blocked and refused unsaved)", expect: [L.g51b],
+      impl: lineGateBack((row, f) => {
+        const stamp = (row.sourcePhrase ?? "").trim();
+        return f.population !== "players" && stamp !== "" && stamp !== LINE ? "unsaved" : null;
+      }) },
     { name: "R-G5.2 · E15's limit check removed", expect: [L.g52],
       impl: finishWith((d) => ({ ...d, spendRule: (cost) => (cost === null ? "price_unknown" : null) })) },
     // The write lands with a budget the confirmation did not ask for, so a lost reply's read-back (4.20) rightly refuses to

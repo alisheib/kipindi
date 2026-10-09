@@ -81,7 +81,9 @@ on `DECISIONS-U21-U28.md` (C1–C26), which still binds.
 - **M2/M3 · U30's `invalid` bucket** includes sample-sheet numbers (with the sample-sheet sentence), Excel-shortened
   numbers (`excelShortenedSentence`) and any field problem with the field named.
 - **M5 · Source phrase:** `SmsCampaign.sourcePhrase`; the renderer AND the worst-case counter include it for every
-  non-account source until OQ3 is answered (priced in, never dropped).
+  non-account source until OQ3 is answered (priced in, never dropped). ⟶ 2026-10-09 · SUPERSEDED by the owner's ruling
+  (`docs/COMPLIANCE-DECISIONS.md`, the top entry): nothing is appended to a marketing SMS, so the renderer and the
+  counter neither print nor price the phrase; the column stays, as history.
 - **M6 · §5.8 record:** `SmsCampaignRecipient.gateTrail` (JSON: every check and its verdict, the wording and source)
   written by U43 for EVERY recipient, sent or skipped.
 - **M7 · Bulk "record consent"** arrives with U33b's basis picker (U23 omits it until then; said on the bar).
@@ -104,3 +106,5 @@ start · G3 real spend beyond the ledger cap or a top-up · G4 U33's four consen
 (TOTP-enrolled, never his login) for live checks and the ping measurement · G8 which real numbers a live import may
 write · G9 setting SMS_PRICE_PER_SEGMENT_TZS · G10 public/DSAR text · G11 every 🔵 → ✅ that needs an admin session
 · G12 officer "Suppress" permanence.
+⟶ 2026-10-09: G5's question (OQ3) is answered by the owner's ruling — the source phrase does not go into the body;
+nothing is appended to a marketing SMS (`docs/COMPLIANCE-DECISIONS.md`, the top entry).

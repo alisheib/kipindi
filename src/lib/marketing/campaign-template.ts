@@ -26,20 +26,14 @@
  * A Swahili word inside an English SMS reads wrong, so each variant carries its own (`nameFallbackSw` /
  * `nameFallbackEn` — DECISIONS X12's column names). It is required only when that variant's body uses `{jina}`.
  *
- * ── THE SOURCE PHRASE (DECISIONS M5 · OQ3) ──────────────────────────────────
- * ⚠️ ETA s.31(c): a message to a number that did not come from the person's own account must say where it came from.
- * HOW, inside 160 characters, is OQ3 — still open (owner gate G5). Its built safe default: the FOOTER carries a short
- * phrase for every non-account recipient (`marketingFooter` begins its own line with it). So the phrase is:
- *   · PRICED IN — the counter always sizes it: the stored phrase, or, while the wording is still blank, the longest one
- *     allowed (`SOURCE_PHRASE_MAX_CHARS`), exactly as `{jina}` reserves the longest name. The worst case is a book
- *     contact; a players-only campaign over-reserves, which costs characters, never money — and a draft priced today
- *     still fits when G5 supplies the wording.
- *   · NEVER DROPPED — the renderer prints it for every recipient that is not exactly `origin: "account"`. An unknown
- *     origin carries it too: a dropped phrase is the unlawful direction, an extra one only costs room.
- *   · NEVER MISSING — while the campaign's phrase is blank, the renderer REFUSES every such recipient; an account
- *     recipient is unaffected (`test:campaign-compose` §15.9).
- * ⛔ The WORDING is not written here — no new Swahili sentence is invented for players (§5.13, OQ9). It is campaign
- * data (`SmsCampaign.sourcePhrase`).
+ * ── THE SOURCE PHRASE — NOT PRINTED SINCE 2026-10-09 ─────────────────────────
+ * ⛔ The owner's ruling (COMPLIANCE-DECISIONS § "2026-10-09 · Privacy v2026-10-09 — a marketing SMS is sent exactly as
+ * the officer wrote it: no stop link, no 18+, no helpline, no source line (owner ruling)"): NOTHING is appended to a marketing SMS. The phrase
+ * is still campaign data (`SmsCampaign.sourcePhrase`, stamped from the saved wording), but it is never printed, never
+ * priced by the counter and never required: no recipient is refused for its absence, and its wording no longer judges
+ * the template. (Until then — DECISIONS M5 · OQ3, owner gate G5 — the footer carried it for every recipient that was not
+ * exactly an account, the counter reserved its longest form, and the renderer refused a book recipient while it was
+ * blank.)
  *
  * ── WHO GETS ENGLISH ────────────────────────────────────────────────────────
  * OD42: English only to an account whose language is English AND only when an English body exists; everyone else —
@@ -78,11 +72,9 @@ export const JINA_MAX_CHARS = 12;
 export const CAMPAIGN_NAME_MAX_CHARS = 80;
 
 /**
- * The longest source phrase (M5 · OQ3), in septets as printed — refused beyond it on its OWN field (never surfacing
- * as a negative room blamed on the officer's body), and the room the counter keeps while the wording is still blank
- * (owner gate G5). ⭐ Delegated call (U37a review, 2026-10-01): 30 keeps every campaign's room at 80 or more — the
- * floor `test:campaign-compose` §10 sets for a realistic phrase (its fixture is 26). ⛔ One constant for the rule and
- * the reserve: raising it shrinks every blank-phrase campaign's room by the same amount.
+ * The longest source phrase (M5 · OQ3), in septets — the `source.phrase` wording's own limit (`sourcePhraseProblems`, the
+ * G5 door's rule). ⭐ Delegated call (U37a review, 2026-10-01): 30. ⛔ Since the owner's ruling of 2026-10-09 the line is
+ * never printed, so the counter keeps NO room for it and no campaign's room depends on this figure.
  */
 export const SOURCE_PHRASE_MAX_CHARS = 30;
 
@@ -191,11 +183,6 @@ export function worstCaseJina(): string {
   return "W".repeat(JINA_MAX_CHARS);
 }
 
-/** The room a BLANK source phrase keeps (M5): the longest one allowed, single-septet, so no wording G5 picks costs more. */
-function worstCaseSourcePhrase(): string {
-  return "W".repeat(SOURCE_PHRASE_MAX_CHARS);
-}
-
 export function renderBody(body: string, jina: string): string {
   return (body ?? "").split(JINA).join(jina);
 }
@@ -249,26 +236,30 @@ function templateChecks(body: string, fallback: string): { body: string[]; fallb
   return { body: bodyProblems, fallback: fallbackProblems };
 }
 
+const LINE_BREAKS = [String.fromCharCode(10), String.fromCharCode(13)];
+
 /**
- * The source phrase's own refusals — it is printed to strangers under our sender ID. ⛔ Read AS STORED (untrimmed) by
- * both `validateCampaignTemplate` and the renderer, so a trailing line break fails the two of them alike.
+ * ⭐ THE SOURCE LINE'S OWN SHAPE RULE — what the `source.phrase` wording may be saved as (the Marketing wordings record,
+ * written by the G5 door). ⛔ Nothing in the renderer calls it since the owner's ruling of 2026-10-09: the line is neither
+ * printed, priced nor required, and it no longer judges the template. It is kept so G5 works as it always has — a saved
+ * line keeps the shape it always had: no placeholder or brace, one line, at most `SOURCE_PHRASE_MAX_CHARS` septets
+ * (measured trimmed; an extension character costs two), and the GSM alphabet only. Read AS STORED (untrimmed), so a
+ * trailing line break is refused. Blank is no line, and no problem.
+ * Guard: `test:marketing-wordings` W4 · `test:marketing-owner-save` O8.
  */
-function sourcePhraseProblems(phrase: string): string[] {
+export function sourcePhraseProblems(phrase: string): string[] {
   const p = phrase ?? "";
   if (p.trim().length === 0) return [];
   const out: string[] = [];
-  if (/[{}]/.test(p)) out.push("The source line cannot carry a placeholder or a brace.");
-  if (/[\r\n]/.test(p)) out.push("The source line must be one line.");
-  // Measured as printed (trimmed), in septets: an extension character costs two, as it does on the wire.
+  if (p.includes("{") || p.includes("}")) out.push("The source line cannot carry a placeholder or a brace.");
+  if (LINE_BREAKS.some((b) => p.includes(b))) out.push("The source line must be one line.");
   const septets = unitsIn(p.trim(), "GSM7");
   if (septets > SOURCE_PHRASE_MAX_CHARS) {
     out.push(`The source line is ${septets} characters — the limit is ${SOURCE_PHRASE_MAX_CHARS}.`);
   }
   if (encodingFor(p) === "UCS2") {
-    out.push(
-      `The source line has a character outside the GSM alphabet (${describeOffenders(p).map((o) => o.label).join(", ")}), ` +
-        "which would cut every message it is in from 160 characters to 70.",
-    );
+    // ⛔ It names what to replace and nothing it no longer does: no message carries the line since 2026-10-09.
+    out.push(`The source line has a character outside the GSM alphabet (${describeOffenders(p).map((o) => o.label).join(", ")}) — use plain characters.`);
   }
   return out;
 }
@@ -320,15 +311,15 @@ const UNICODE_NAMED_MAX = 5;
 
 /**
  * ⭐ A UNICODE BODY'S ONE SENTENCE — what to replace, named by `describeOffenders`' labels (an invisible character by
- * its code point, never a blank), and the room Unicode leaves. ⛔ It never quotes a negative room: whenever the footer
- * and the source line (or its reserve) take all of Unicode's 70 characters, there is no room to quote.
+ * its code point, never a blank), and the room Unicode leaves. ⛔ It never quotes a negative room. Since nothing is
+ * appended (the owner's ruling of 2026-10-09) Unicode keeps its whole 70, so the no-room branch guards only a future footer.
  */
 function unicodeProblem(offenders: OffenderView[], room: number): string {
   const named = offenders.slice(0, UNICODE_NAMED_MAX).map((o) => o.label).join(", ");
   const more = offenders.length > UNICODE_NAMED_MAX ? ` and ${offenders.length - UNICODE_NAMED_MAX} more` : "";
   const why = room <= 0
-    ? "Unicode leaves no room once the required footer is added"
-    : `Unicode cuts this message to ${room} characters before the required footer`;
+    ? "Unicode leaves no room"
+    : `Unicode cuts this message to ${room} characters`;
   return `${why} — replace: ${named}${more}.`;
 }
 
@@ -352,21 +343,18 @@ export type VariantCounter = {
   variant: CampaignVariant;
   empty: boolean;
   encoding: SmsEncoding;
-  /** Of the WORST-CASE whole message: the body with the reserved name, the source phrase (or its reserve), the footer. */
+  /** Of the WORST-CASE whole message — the body with the reserved name; nothing is appended (2026-10-09). */
   segments: number;
   units: number;
   /** The officer's part, the reserved name included (septets in GSM-7, UTF-16 units in UCS-2). */
   bodyUnits: number;
-  /** What the officer may write: the one-segment limit minus the footer and the source phrase (or its reserve). */
+  /** What the officer may write: the whole message's cap, since nothing is appended (2026-10-09). */
   budget: number;
   /** `budget − bodyUnits`. Negative is "over". */
   left: number;
-  /** The statutory footer alone — 49 septets with today's domain. */
+  /** The footer alone — 0 since the owner's ruling of 2026-10-09 (nothing is appended). */
   footerUnits: number;
-  /**
-   * The source phrase and the space after it. ⛔ Never 0 (M5): while the phrase is blank it is the reserve — the
-   * longest phrase allowed (`SOURCE_PHRASE_MAX_CHARS`) and its space.
-   */
+  /** The source phrase's room — 0 since the owner's ruling of 2026-10-09 (the phrase is not printed). */
   sourceUnits: number;
   /** The room `{jina}` keeps for a name — `JINA_MAX_CHARS` per placeholder, 0 without one. */
   jinaReserve: number;
@@ -381,24 +369,19 @@ export type VariantCounter = {
 /**
  * ⭐ THE LIVE COUNTER FOR ONE VARIANT — the worst case of every message this body can become.
  *
- * It composes `renderBody(body, worstCaseJina())` WITH the source phrase and the footer, through the same
- * `composeMarketing` the renderer uses, and sizes THAT. ⛔ Never the body alone (49 septets short: the U4 defect), never
- * the placeholder as typed (4 short per name: the U37 defect), never without the phrase (M5) — and never without ROOM
- * for one: while the phrase is blank it reserves the longest allowed (`SOURCE_PHRASE_MAX_CHARS`), as `{jina}` reserves
- * the longest name, so a draft priced today still fits when G5 supplies the wording.
- *
- * ⛔ `sourcePhrase` is REQUIRED, not defaulted: a caller cannot forget to price it by leaving it out.
+ * It composes `renderBody(body, worstCaseJina())` through the same `composeMarketing` the renderer uses, and sizes THAT
+ * — ⛔ never the placeholder as typed (4 short per name: the U37 defect). Nothing is appended (the owner's ruling of
+ * 2026-10-09), so the message priced is the message sent. `sourcePhrase` is still taken, so every caller keeps one
+ * signature; it is no longer printed or priced.
  */
 export function counterFor(body: string, variant: CampaignVariant, fallback: string, sourcePhrase: string): VariantCounter {
   const v: CampaignVariant = variant === "EN" ? "EN" : "SW";
   const raw = body ?? "";
-  const stored = (sourcePhrase ?? "").trim();
-  // ⭐ M5 · PRICED IN BEFORE THE WORDING EXISTS: a blank (or all-space) phrase is sized as the longest one allowed.
-  const phrase = stored.length > 0 ? stored : worstCaseSourcePhrase();
+  void sourcePhrase;
   const scan = scanPlaceholders(raw);
   const rendered = renderBody(raw, worstCaseJina());
   const token = footerMeasurementToken();
-  const composed = composeMarketing(rendered, token, v, phrase);
+  const composed = composeMarketing(rendered, token, v);
   const encoding = composed.size.encoding;
   const bodyUnits = unitsIn(rendered.trim(), encoding);
   const checks = templateChecks(raw, fallback);
@@ -414,7 +397,7 @@ export function counterFor(body: string, variant: CampaignVariant, fallback: str
     budget: composed.budget,
     left: composed.budget - bodyUnits,
     footerUnits: unitsIn(marketingFooter(token, v), encoding),
-    sourceUnits: unitsIn(`${phrase} `, encoding),
+    sourceUnits: 0,
     jinaReserve: scan.jina * unitsIn(worstCaseJina(), encoding),
     offenders,
     problems,
@@ -436,7 +419,7 @@ export function campaignNameHoldsNumber(digits: string): string {
 
 /* ══ THE WHOLE DRAFT ═════════════════════════════════════════════════════════ */
 
-/** A field the verdict can speak about: the officer's five, and the server-supplied source phrase. */
+/** A field the verdict can speak about: the officer's five, and the server-supplied source phrase (no longer judged, 2026-10-09). */
 export type TemplateField = keyof CampaignDraftFields | "sourcePhrase";
 
 export type TemplateVerdict = {
@@ -449,7 +432,7 @@ export type TemplateVerdict = {
 
 /**
  * ⭐ THE TEMPLATE'S OWN VERDICT — every field but the staff-only name: the Swahili body (required), the English body
- * (optional, checked in full when present), both fallbacks, the source line. ONE function: `validateCampaignTemplate`
+ * (optional, checked in full when present), both fallbacks. ONE function: `validateCampaignTemplate`
  * shows it on the screen and on save, and `renderForRecipient` re-runs it, whole, on the stored row — so the verdict an
  * officer saved and the verdict a send obeys cannot disagree.
  */
@@ -459,8 +442,8 @@ function templateFieldVerdict(t: CampaignTemplate): Pick<TemplateVerdict, "probl
     if (list.length > 0) problems[k] = [...(problems[k] ?? []), ...list];
   };
 
+  // The source phrase is no longer printed (the owner's ruling of 2026-10-09), so it no longer judges the template.
   const phrase = t.sourcePhrase ?? "";
-  add("sourcePhrase", sourcePhraseProblems(phrase));
 
   const sw = counterFor(t.bodySw ?? "", "SW", t.nameFallbackSw ?? "", phrase);
   if (sw.empty) add("bodySw", ["The Swahili message is required — it is the one every recipient can be sent."]);
@@ -482,9 +465,8 @@ function templateFieldVerdict(t: CampaignTemplate): Pick<TemplateVerdict, "probl
  * The verdict the screen shows AND the server re-runs on save (U37b) — one function, so the two cannot disagree; the
  * renderer re-runs its template part (`templateFieldVerdict`) on every stored row.
  * ⛔ Swahili is required; English is optional, and validated in full when present.
- * ⛔ `sourcePhrase` is REQUIRED (M5): both counters are priced with it (a blank one reserves the longest allowed), and
- * a caller cannot forget it by leaving it out. ⛔ A blank phrase is NOT a refusal here — a players-only campaign may
- * be saved without one; the renderer refuses each recipient who would need it.
+ * `sourcePhrase` is still taken (one signature for every caller); since the owner's ruling of 2026-10-09 it is neither
+ * printed, priced nor required.
  */
 export function validateCampaignTemplate(f: CampaignDraftFields, sourcePhrase: string): TemplateVerdict {
   const problems: TemplateVerdict["problems"] = {};
@@ -523,11 +505,6 @@ export function variantFor(
 ): CampaignVariant {
   return userLocale === "EN" && (t?.bodyEn ?? "").trim().length > 0 ? "EN" : "SW";
 }
-
-/** M5 · the refusal for a number that did not come from the person's own account, while the campaign has no phrase. */
-const NO_SOURCE_LINE =
-  "This number did not come from the person's own account, so the law requires the message to say where it came " +
-  "from — and this campaign has no source line yet (OQ3, owner gate G5), so it cannot be sent.";
 
 /** The fields as the composer screen names them — for the sentences that refuse a stale template. */
 const FIELD_LABELS: Record<TemplateField, string> = {
@@ -568,10 +545,10 @@ function staleTemplateProblems(stale: TemplateVerdict["problems"]): string[] {
  * with a sentence saying the stored template no longer passes its own check. So a stale or hand-edited row is never
  * half-sent — not to the Swahili readers while the English body is broken, not to the short names while the long ones
  * are refused — and U38/U40's counts never disagree with what went out (`test:campaign-compose` §15.13). The
- * recipient's own message is checked too: its opt-out token is the one thing only it can get wrong.
+ * recipient's own message is checked too (its text as sent).
  *
- * ⛔ M5 · NEVER WITHOUT THE SOURCE LINE: a number that is not exactly `origin: "account"` is refused while the campaign
- * has no source phrase (OQ3, owner gate G5). This is the one place every send passes, so no caller has to remember it.
+ * ⛔ Since the owner's ruling of 2026-10-09 nothing is appended: no source phrase is printed and none is required, for
+ * any origin. A book contact still gets the fallback word for `{jina}`, never a name.
  */
 export function renderForRecipient(t: CampaignTemplate, r: CampaignRecipient): MarketingCompose {
   const english = r?.variant === "EN" && (t.bodyEn ?? "").trim().length > 0;
@@ -582,13 +559,11 @@ export function renderForRecipient(t: CampaignTemplate, r: CampaignRecipient): M
   // ⛔ ONLY exactly "account" counts as the person's own: anything else is treated as a book contact.
   const fromAccount = r?.origin === "account";
   const jina = fromAccount ? jinaFor(r.name, fallback) : fallback;
-  const phrase = fromAccount ? "" : (t.sourcePhrase ?? "").trim();
-  const composed = composeMarketing(renderBody(body, jina), r?.token ?? "", variant, phrase);
+  const composed = composeMarketing(renderBody(body, jina), r?.token ?? "", variant);
   // The template's whole verdict first (the cause), then this message's own — each sentence once.
   const problems: string[] = [];
   for (const p of [...staleTemplateProblems(templateFieldVerdict(t).problems), ...composed.problems]) {
     if (!problems.includes(p)) problems.push(p);
   }
-  if (!fromAccount && phrase.length === 0) problems.push(NO_SOURCE_LINE);
   return { ...composed, problems, ok: problems.length === 0 };
 }

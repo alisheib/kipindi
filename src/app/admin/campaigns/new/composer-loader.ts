@@ -21,9 +21,9 @@
  * and the window control read ONE address — the composer's own, built by ONE href builder (`composeHref`).
  * ⭐ THE SENDER LINE (OD45) is the server's `SMS_SENDER_ID`, read-only, and a dead rail speaks Admin → System's own words
  * (`railProblemNote`) — never a second wording of the fault.
- * ⭐ THE TEST CARD reads the officer's OWN account: the number masked, the first name the renderer would print, and their
- * existing opt-out token for the preview (a GET mints nothing — until the first test the link shows as xxxxxxxx). The
- * preview is the SAVED draft rendered by THE ONE renderer, as an account recipient — exactly what a test sends.
+ * ⭐ THE TEST CARD reads the officer's OWN account: the number masked and the first name the renderer would print. The
+ * preview is the SAVED draft rendered by THE ONE renderer, as an account recipient — exactly what a test sends: nothing
+ * is appended since the owner's ruling of 2026-10-09, so no opt-out token is read for it (a GET mints nothing).
  * ⛔ No money is read and none is passed (OD24).
  * ⭐ WHAT THE FORM SHOWS AGAINST WHAT IS SAVED: the audience on screen is compared with the one the draft stores (`unsaved`).
  * ⛔ U40b · THE CONFIRM CARD IS NOT COUNTED HERE: a render of the composer never walks the stored audience for it — its view
@@ -42,10 +42,9 @@ import type { AudienceParse, ContactAudienceFilter } from "@/lib/server/marketin
 import { audienceSplit, audienceWalkCount } from "@/lib/server/marketing/audience-split";
 import { audienceCountView, audienceSplitView } from "./audience-view-model";
 import type { AudienceSplitView } from "./audience-view-model";
-import { wholeNumberAudienceProblem, CAMPAIGN_AUDIENCE_UNREADABLE, savedSourcePhrase } from "@/lib/server/marketing/campaign-draft";
+import { wholeNumberAudienceProblem, CAMPAIGN_AUDIENCE_UNREADABLE } from "@/lib/server/marketing/campaign-draft";
 import {
-  TEST_OWN_NUMBER_UNUSABLE, TEST_TYPED_OUTREACH_CLOSED, TEST_TYPED_NO_ATTESTATION_WORDING, TEST_TYPED_NEEDS_SOURCE_LINE,
-  TEST_TEMPLATE_INVALID,
+  TEST_OWN_NUMBER_UNUSABLE, TEST_TYPED_OUTREACH_CLOSED, TEST_TYPED_NO_ATTESTATION_WORDING, TEST_TEMPLATE_INVALID,
 } from "@/lib/server/marketing/campaign-test-send";
 import { licenceOutreach } from "@/lib/server/marketing/outreach-record";
 import { currentWording } from "@/lib/server/marketing/wordings";
@@ -132,26 +131,25 @@ export type ComposeTestView = {
   ownNumberMasked: string | null;
   /** Why no test can reach their number — the test send's own sentence — or null. */
   ownNumberProblem: string | null;
-  /** Their existing opt-out token is in the preview (else it shows as the measurement placeholder). */
-  tokenReady: boolean;
   /** The SAVED draft as a test sends it, per variant, and the revision it was rendered from. */
   preview: { SW: string; EN: string | null; revision: number } | null;
   /** Said up front when the live switch would refuse a test (a real carrier, the switch closed). */
   liveNote: string | null;
   /** U13 · M12 · said up front while the send window is closed — read as the test send reads it (`liveSendWindow`). */
   windowNote: string | null;
-  /** U37c · a test to ANOTHER number — offered only once its three number-independent checks pass. */
+  /** U37c · a test to ANOTHER number — offered only once its two number-independent checks pass. */
   typed: ComposeTypedView;
 };
 
 /** U37c · what the Test card needs to offer a test to a TYPED number — ⛔ the loader takes no number. */
 export type ComposeTypedView = {
-  /** Typed tests may be offered: licence outreach open, `adult.test` saved, and this draft carrying a source line. */
+  /** Typed tests may be offered: licence outreach open and `adult.test` saved (no source line is needed since the owner's
+   *  ruling of 2026-10-09). */
   allowed: boolean;
   /** The first number-independent refusal, in the test send's own words (§3.7 step 6) — null when allowed. */
   why: string | null;
-  /** The SAVED draft as a CONTACT-BOOK recipient gets it — the `{jina}` fallback, its stored source line, the measurement
-   *  token for the stop link — the same for every number. Null while it cannot render (no source line). */
+  /** The SAVED draft as a CONTACT-BOOK recipient gets it — the `{jina}` fallback, nothing appended — the same for every
+   *  number. Null while it cannot render. */
   preview: { SW: string; EN: string | null; revision: number } | null;
   /** The saved `adult.test` confirmation — the tick's label, verbatim — and its version; null while unsaved. */
   attestation: { text: string; version: number } | null;
@@ -163,11 +161,9 @@ export type ComposeView =
       kind: "ready";
       draft: ComposeDraftView | null;
       readOnly: boolean;
-      /** M5 · U37s · the source line the counter prices (`composerSourcePhrase`) — blank: it prices the reserve. */
-      sourcePhrase: string;
-      /** U37s · this DRAFT carries a different line than the one saved now (none, an older one, or one since cleared) —
-       *  so Save is offered even with nothing typed, and the screen says why (`composerSourceLineStale`). */
-      sourceLineStale: boolean;
+      /* ⛔ No source line in the view (the owner's ruling of 2026-10-09): U37s's `sourcePhrase` (the line the counter
+         priced) and `sourceLineStale` (a draft stamped with another line than the one saved, offered a Save and a note)
+         are gone — no line is printed, priced, stamped or required, so a draft's old one can never matter. */
       audience: ComposeAudienceView;
       sender: ComposeSenderView;
       test: ComposeTestView;
@@ -187,27 +183,10 @@ function fieldsOf(c: StoredSmsCampaign): CampaignDraftFields {
   };
 }
 
-/**
- * ⭐ U37s · THE LINE THE COUNTER PRICES IS THE LINE THE SAVE WILL STAMP. A new composer and a DRAFT are priced with the
- * SAVED line (`savedSourcePhrase`) — a draft's next save re-stamps it, so pricing the line stamped on it earlier would
- * let the counter pass a body the save then refuses. A campaign past DRAFT is priced with the line frozen on it. Blank
- * ("") while nothing is saved: the counter then reserves the longest line allowed.
- */
-export function composerSourcePhrase(draft: StoredSmsCampaign | null, saved: string | null): string {
-  if (draft !== null && draft.status !== "DRAFT") return draft.sourcePhrase ?? "";
-  return saved ?? "";
-}
-
-/**
- * ⭐ U37s · A DRAFT WHOSE STAMP IS NOT THE SAVED LINE — saved before the line existed (every draft before U37s stores
- * none), stamped with a line changed since, or carrying a line since cleared. Only a save re-stamps it, and with nothing
- * typed the screen would otherwise refuse that save as "no changes" while its counter, which prices the saved line, reads
- * "set". ⛔ Never true past DRAFT: a confirmed campaign keeps its own line by design.
- */
-export function composerSourceLineStale(draft: StoredSmsCampaign | null, saved: string | null): boolean {
-  if (draft === null || draft.status !== "DRAFT") return false;
-  return (draft.sourcePhrase ?? null) !== (saved ?? null);
-}
+/* ⛔ U37s's two deciders are gone (the owner's ruling of 2026-10-09): `composerSourcePhrase` (the line the counter priced,
+   the SAVED one for a draft) and `composerSourceLineStale` (a draft whose stamp was not the saved line). Nothing is
+   appended to a marketing SMS, the draft save stamps no line, and no confirmation or Start asks for one — so this loader
+   reads no `source.phrase` wording at all (`test:campaign-compose` §17.19 · §17.20). */
 
 function templateOf(c: StoredSmsCampaign): CampaignTemplate {
   const f = fieldsOf(c);
@@ -216,11 +195,11 @@ function templateOf(c: StoredSmsCampaign): CampaignTemplate {
 
 /**
  * ⭐ U37c · THE TYPED TEST'S VIEW, decided from the same facts the test send checks first (§3.7 step 6), in its
- * order and in its words: licence outreach open, `adult.test` saved, and the draft's STORED source line (the ROW's —
- * U37s: a draft saved before the line existed carries none until it is saved again) — and "allowed" only with a preview,
- * so a saved text that cannot render for a book recipient is refused in the render's words. ⛔ It takes no number: the preview
- * is the book-origin render of the saved draft with the measurement token, the same for every number, and the stop link
- * made for a real number is never shown.
+ * order and in its words: licence outreach open, then `adult.test` saved — and "allowed" only with a preview, so a saved
+ * text that cannot render for a book recipient is refused in the render's words. (A draft with no source line is no
+ * refusal since the owner's ruling of 2026-10-09: nothing is appended, so no line is printed.) ⛔ It takes no number: the
+ * preview is the book-origin render of the saved draft, the same for every number, and no token made for a real number
+ * is ever shown.
  */
 export function composeTypedView(
   draft: StoredSmsCampaign | null,
@@ -231,8 +210,7 @@ export function composeTypedView(
   const template = templateOf(draft);
   const why = !facts.outreachOpen ? TEST_TYPED_OUTREACH_CLOSED
     : attestation === null ? TEST_TYPED_NO_ATTESTATION_WORDING
-      : template.sourcePhrase.trim() === "" ? TEST_TYPED_NEEDS_SOURCE_LINE
-        : null;
+      : null;
   const render = (variant: "SW" | "EN") => renderForRecipient(template, { variant, name: null, token: footerMeasurementToken(), origin: "book" });
   const sw = render("SW");
   const en = template.bodyEn.trim() === "" ? null : render("EN");
@@ -513,25 +491,24 @@ export async function loadComposer(sp: ComposeParams): Promise<ComposeView> {
     if (draft === null) return { kind: "missing" };
   }
 
-  // ── the officer's own account: the number a test reaches, the name it prints, the token it carries ──
+  // ── the officer's own account: the number a test reaches, the name it prints ──
+  // ⭐ No opt-out token is read: since the owner's ruling of 2026-10-09 nothing is appended to a message, so the preview
+  // is the same text whatever token the number holds (the test send still makes one, for the stop page).
   const session = await currentSession();
   const officer = session ? await db.user.findById(session.userId) : null;
   const parsed = officer ? parseTzNumber(officer.phoneE164) : null;
   const key = parsed !== null && parsed.verdict === "ok" && parsed.msisdn ? parsed.msisdn : null;
-  const tokens = key !== null ? await db.marketingOptOutToken.listFor(key) : [];
-  const token = tokens.length > 0 ? tokens[0].token : null;
 
   let preview: ComposeTestView["preview"] = null;
   if (draft !== null && draft.status === "DRAFT") {
     const template = templateOf(draft);
     const name = firstNameFor({ userDisplayName: officer?.displayName ?? null });
     const text = (variant: "SW" | "EN") =>
-      renderForRecipient(template, { variant, name, token: token ?? footerMeasurementToken(), origin: "account" }).text;
+      renderForRecipient(template, { variant, name, token: footerMeasurementToken(), origin: "account" }).text;
     preview = { SW: text("SW"), EN: template.bodyEn.trim() === "" ? null : text("EN"), revision: draft.draftRevision };
   }
 
   const live = marketingLiveGate(smsProviderResolution(), await readMarketingLiveSwitch());
-  const savedLine = savedSourcePhrase();
 
   return {
     kind: "ready",
@@ -539,14 +516,11 @@ export async function loadComposer(sp: ComposeParams): Promise<ComposeView> {
       id: draft.id, draftRevision: draft.draftRevision, status: draft.status, updatedAt: draft.updatedAt, fields: fieldsOf(draft),
     },
     readOnly: draft !== null && draft.status !== "DRAFT",
-    sourcePhrase: composerSourcePhrase(draft, savedLine),
-    sourceLineStale: composerSourceLineStale(draft, savedLine),
     audience: composeAudienceView(sp, draft, await viewerReadsContacts()),
     sender: senderView(),
     test: {
       ownNumberMasked: key !== null ? maskPhone(key) : null,
       ownNumberProblem: key !== null ? null : TEST_OWN_NUMBER_UNUSABLE,
-      tokenReady: token !== null,
       preview,
       liveNote: live.ok ? null : COMPOSE_TEST_LIVE_NOTE,
       windowNote: composeTestWindowNote(await liveSendWindow()),

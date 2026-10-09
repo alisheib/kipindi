@@ -28,7 +28,7 @@
  *        (§4i is the final-rule gate's own section; these two are named apart from it.)
  *
  * ⭐ U33p (2026-10-04) · THREE BULLETS ARE ADMIN-EDITED LINES NOW (`legal.policy_lines`): the §3 Consent bullet, a new §3
- * licence bullet, and the §4 Blackball bullet. The page wraps each in a `PolicyLine` element whose children are today's
+ * licence bullet, and the §4 SMS gateway bullet. The page wraps each in a `PolicyLine` element whose children are today's
  * literal bullet, printed until an admin saves the line. This suite reads the page with those tags stripped
  * (`scripts/lib/policy-line-source.mts`), so every check, every plant and the English hash pin read exactly the text the
  * page prints while nothing is saved — the pin holds untouched. A SAVED line is held to the same words at the save: the
@@ -46,7 +46,8 @@ import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { stripPolicyLineTags } from "./lib/policy-line-source.mts";
 import {
-  ANALYTICS_CONSENT_WORDS, CONSENT_ONLY_CLAUSE, CONSENT_WITHDRAW_PATH, SMS_GATEWAY_WORDS, comparePolicyVersions, isPolicyVersion,
+  ANALYTICS_CONSENT_WORDS, CONSENT_ONLY_CLAUSE, CONSENT_WITHDRAW_PATH, POLICY_LINE_DEFAULTS, SMS_GATEWAY_WORDS, comparePolicyVersions,
+  holdsRequiredWord, isPolicyVersion,
 } from "../src/lib/legal/policy-lines.ts";
 // §4j reads the note under "Erase my data" from the dictionary; §4k reads whether every offer carries its stop link, and
 // the ONE constant §5 and §9 print as the referees' line.
@@ -67,9 +68,11 @@ const ok = (label: string, cond: boolean, why = "", evidence = "") => {
 const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 /* ── The pinned facts. Moving any of these is a legal act: a dated COMPLIANCE-DECISIONS entry comes with it. ── */
-const PRIVACY_VERSION = "2026-10-07";
-/** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one. */
-const PRIVACY_EN_SHA = "88b049bf80b1";
+const PRIVACY_VERSION = "2026-10-09";
+/** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one.
+ *  (Re-pinned 2026-10-09 within v2026-10-09: §4's SMS gateway bullet names no company — COMPLIANCE-DECISIONS "Privacy
+ *  v2026-10-09", item 5.) */
+const PRIVACY_EN_SHA = "c07fb05a02d9";
 /** Every cookie name the code writes, as of v2026-09-30. A new one must be described in §7 first. */
 const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-density", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_preview", "kp_revoked", "kp_session"];
 // ⭐ `_ga` / `_ga_W66WRL67MQ` joined the census 2026-09-15.2: gtag.js SETS them, and our code EXPIRES them when consent is
@@ -186,21 +189,27 @@ ok("§2d the scrub removes what §4 says it removes — Tanzanian mobile numbers
 /* ════════════════════════════════════════════════════════════════════════════
  * §2e · THE SMS GATEWAY — v2026-09-26. Blackball is reached by `fetch`, not by an npm dependency, so §2a's census of
  * `package.json` cannot see it: it carried every SMS from 2026-09-16 while §4 named it nowhere. The population is
- * the provider union in `sms.ts`; every real provider (the `console` stub delivers nothing) must be named in §4.
+ * the provider union in `sms.ts`; every real provider (the `console` stub delivers nothing) must be described in §4.
+ * ⛔ 2026-10-09 · DESCRIBED, NEVER NAMED (Ali, in the session: "we can't mention Blackball, they won't allow it … just tell
+ * them they can stop, but no need to mention Blackball, they don't want it"). §4 says what the gateway is and what it
+ * receives — "Our SMS gateway in Tanzania …" — and the company's name is refused anywhere in a locale's text.
  * ══════════════════════════════════════════════════════════════════════════ */
-console.log("\n§2e · every SMS provider the code can select is named in §4, with what it receives");
+console.log("\n§2e · every SMS provider the code can select is described in §4, with what it receives — and never named");
 const SMS_STUBS = new Set(["console"]);
-/** provider id → the words §4 must carry in EACH locale: the name, the role, what it receives, and that marketing needs consent. */
+/** provider id → the words §4 must carry in EACH locale: the role, what it receives, and that marketing needs consent. */
 const SMS_WORDS: Record<string, Record<Loc, string[]>> = {
-  // ⭐ U33p · the gateway's facts are the policy-line validator's own table (a SAVED Blackball line must keep them); the
-  // consent-only clause is today's promise — required of the page as it prints until a save, and the very words licence
-  // outreach may not open beside (spec §5.3). Same strings as before, read from one home.
+  // ⭐ U33p · the gateway's facts are the policy-line validator's own table (a SAVED gateway line must keep them), read by
+  // its one matcher (`holdsRequiredWord`: a word may open the line with a capital); the consent-only clause is today's
+  // promise — required of the page as it prints until a save, and the very words licence outreach may not open beside
+  // (spec §5.3). Same strings as before, read from one home.
   blackball: {
     en: [...SMS_GATEWAY_WORDS.en, CONSENT_ONLY_CLAUSE.en],
     sw: [...SMS_GATEWAY_WORDS.sw, CONSENT_ONLY_CLAUSE.sw],
     zh: [...SMS_GATEWAY_WORDS.zh, CONSENT_ONLY_CLAUSE.zh],
   },
 };
+/** provider id → the company name no locale may print (2026-10-09: the provider does not allow it). */
+const SMS_NAME_NEVER_PRINTED: Record<string, string> = { blackball: "Blackball" };
 const smsProviders = (sms: string) =>
   [...(sms.match(/export type SmsProviderId = ([^;]+);/)?.[1] ?? "").matchAll(/"([a-z0-9_-]+)"/g)].map((m) => m[1]);
 function smsDefects(src: string, sms: string, transport: string, receiptRoute: boolean): string[] {
@@ -211,8 +220,12 @@ function smsDefects(src: string, sms: string, transport: string, receiptRoute: b
   for (const id of ids) {
     if (SMS_STUBS.has(id)) continue;
     const words = SMS_WORDS[id];
-    if (!words) { d.push(`SMS provider "${id}" is unclassified: name its gateway in §4 (all three languages), then add it to SMS_WORDS`); continue; }
-    for (const l of LOCS) for (const w of words[l]) if (!section(bl[l], "4").includes(w)) d.push(`${l} §4 does not say "${w}" (SMS provider ${id})`);
+    if (!words) { d.push(`SMS provider "${id}" is unclassified: describe its gateway in §4 (all three languages), then add it to SMS_WORDS`); continue; }
+    for (const l of LOCS) for (const w of words[l]) if (!holdsRequiredWord(section(bl[l], "4"), w)) d.push(`${l} §4 does not say "${w}" (SMS provider ${id})`);
+    const name = SMS_NAME_NEVER_PRINTED[id];
+    if (name !== undefined) {
+      for (const l of LOCS) if (code(bl[l]).includes(name)) d.push(`${l} names the SMS gateway's company "${name}" — Ali, 2026-10-09: "we can't mention Blackball, they won't allow it"`);
+    }
   }
   // The witnesses behind the sentence: what the request carries, and the receipt that reports delivery.
   if (ids.includes("blackball")) {
@@ -224,7 +237,7 @@ function smsDefects(src: string, sms: string, transport: string, receiptRoute: b
 const smsSrc = code(read("src/lib/server/sms.ts"));
 const smsTransportSrc = code(read("src/lib/server/sms-blackball.ts"));
 const smsReceiptRoute = existsSync(join(ROOT, "src/app/api/webhooks/blackball/route.ts"));
-ok("§2e every SMS provider sms.ts can select is named in en/sw/zh §4 with what it receives, and the transport sends exactly that",
+ok("§2e every SMS provider sms.ts can select is described in en/sw/zh §4 with what it receives — by its role, its company never named (2026-10-09) — and the transport sends exactly that",
   smsDefects(pageSrc, smsSrc, smsTransportSrc, smsReceiptRoute).length === 0,
   smsDefects(pageSrc, smsSrc, smsTransportSrc, smsReceiptRoute).join("; "), smsProviders(smsSrc).join(" "));
 
@@ -715,12 +728,22 @@ ok("§5ad control · an ip column on the visit table is reported", visitDefects(
 ok("§5ae control · a beacon that touches localStorage is reported", visitDefects(pageSrc, schemaSrc, visitsServer, plantStorage, visitsClient).some((x) => x.includes("browser storage")));
 ok("§5af control · the visit-count sentence dropped from ONE locale (sw) is reported", visitDefects(plantVisitSw, schemaSrc, visitsServer, beaconSrc, visitsClient).some((x) => x.startsWith("sw §2")));
 
-// §2e's controls — the v2026-09-26 defect put back, a second provider wired, and the delivery receipt removed.
-const plantSmsZh = pageSrc.replace("<li>Blackball（坦桑尼亚），我们的短信网关", "<li>短信服务商（坦桑尼亚），我们的短信网关");
+// §2e's controls — the v2026-09-26 defect put back (the gateway's sentence gone from one locale), a second provider wired,
+// and the delivery receipt removed; and since 2026-10-09 the company's name put back, and the Swahili role words lost.
+const ZH_GATEWAY_BULLET = `<li>${POLICY_LINE_DEFAULTS["privacy.smsGateway"].zh}</li>`;
+const plantSmsZh = pageSrc.replace(ZH_GATEWAY_BULLET, "");
+const SW_GATEWAY_OPENING = "<li>Lango letu la SMS nchini Tanzania";
+const plantSmsNameSw = pageSrc.replace(SW_GATEWAY_OPENING, "<li>Blackball, lango letu la SMS nchini Tanzania");
+const plantSmsRoleSw = pageSrc.replace(SW_GATEWAY_OPENING, "<li>Huduma yetu ya SMS nchini Tanzania");
 const plantSmsProvider = smsSrc.replace('export type SmsProviderId = "blackball" | "console";', 'export type SmsProviderId = "blackball" | "africastalking" | "console";');
-ok("§5ai control · planted SMS-gateway copies found their targets", plantSmsZh !== pageSrc && plantSmsProvider !== smsSrc);
-ok("§5aj control · the SMS gateway dropped from ONE locale (zh) is reported",
-  smsDefects(plantSmsZh, smsSrc, smsTransportSrc, smsReceiptRoute).some((x) => x.startsWith("zh §4") && x.includes('"Blackball"')));
+ok("§5ai control · planted SMS-gateway copies found their targets",
+  [plantSmsZh !== pageSrc, plantSmsNameSw !== pageSrc, plantSmsRoleSw !== pageSrc, plantSmsProvider !== smsSrc].every(Boolean));
+ok("§5aj control · the SMS gateway's sentence dropped from ONE locale (zh) is reported",
+  smsDefects(plantSmsZh, smsSrc, smsTransportSrc, smsReceiptRoute).some((x) => x.startsWith("zh §4") && x.includes('"短信网关"')));
+ok("§5an control · the gateway's company named again in ONE locale (sw) is reported (2026-10-09: \"we can't mention Blackball\")",
+  smsDefects(plantSmsNameSw, smsSrc, smsTransportSrc, smsReceiptRoute).some((x) => x.startsWith("sw names the SMS gateway's company")));
+ok("§5ao control · the Swahili role words gone — no \"lango letu la SMS\", with its opening capital or without — is reported",
+  smsDefects(plantSmsRoleSw, smsSrc, smsTransportSrc, smsReceiptRoute).some((x) => x.startsWith("sw §4") && x.includes('"lango letu la SMS"')));
 ok("§5ak control · a new SMS provider in the union is reported until §4 names it",
   smsDefects(pageSrc, plantSmsProvider, smsTransportSrc, smsReceiptRoute).some((x) => x.includes('"africastalking" is unclassified')));
 ok("§5al control · a gateway with no delivery receipt is reported (§4 says it tells us whether each message was delivered)",
@@ -889,9 +912,10 @@ console.log(String.fromCharCode(10) + "§4i · U33r · §9's promise to referees
  * And the record they state is held to the code: erasure's ONE write to a recipient row clears the account link
  * (U16a's `unlinkUser`, through `erase.ts`), no code deletes a recipient row, and DATA-RETENTION keeps the campaign and
  * opt-out-link rows at 7 years. ⛔ BLOCK-SCOPED: nothing here is a module-level name another section could collide with.
- * ⚠️ §9's second paragraph ends with the stop sentence, which is true only while every offer carries its stop link: when
- * U43b makes the link ONE setting and the link goes (management's item 7), the sentence goes with it, these three §9
- * pins move with the words, and §4k's tie is re-tied to that setting.
+ * ⭐ v2026-10-09 (the owner's ruling that a marketing SMS is sent exactly as the officer wrote it): no offer carries a stop
+ * link, so §9's stop sentence went (§4k's tie keeps it gone) and §5's record bullet no longer names "the stop link it
+ * carried" — those pins moved with the page — and the note under "Erase my data" (en/sw/zh) and the data-rights erasure
+ * sentence no longer name it either: "(the number, the message and what happened to it)"; those four pins moved too.
  * ══════════════════════════════════════════════════════════════════════════ */
 console.log("\n§4j · what erasure keeps: §5, §6, §9, the erasure note and the data-rights file, pinned whole, and the record held to the code");
 {
@@ -944,13 +968,13 @@ console.log("\n§4j · what erasure keeps: §5, §6, §9, the erasure note and t
   /** ⛔ THE PINS — sha256 (12 hex) of each text, whitespace-collapsed. Moving one is a change of published words. */
   const TEXT_PINS: Record<string, string> = {
     "en §5 first bullet": "d849b2d90cce", "sw §5 first bullet": "4e3f0109a8fb", "zh §5 first bullet": "0f83ff42c325",
-    "en §5 record bullet": "3c32b3b9f11d", "sw §5 record bullet": "f4ca0a478d04", "zh §5 record bullet": "fe70c2ffced3",
+    "en §5 record bullet": "5bfffd9a290b", "sw §5 record bullet": "0637ce779d4f", "zh §5 record bullet": "07d83e61d0fb",
     "en §5 referee numbers bullet": "759980721b5f", "sw §5 referee numbers bullet": "cd5575e2769c", "zh §5 referee numbers bullet": "724a23800660",
     "en §6 Erasure": "d92355281cf7", "sw §6 Erasure": "89c0ca55cb2b", "zh §6 Erasure": "ef70992f350e",
     "en §9 first paragraph": "85aa1bcc73a0", "sw §9 first paragraph": "3ec321fcfaf5", "zh §9 first paragraph": "877ece96400b",
-    "en §9 second paragraph": "655a862c8ac1", "sw §9 second paragraph": "5079ce41cd8c", "zh §9 second paragraph": "6384d026c548",
-    'en the note under "Erase my data"': "4c0b74e089f4", 'sw the note under "Erase my data"': "88d387d24b5b", 'zh the note under "Erase my data"': "d5d322ec1b8b",
-    "en the data-rights erasure sentence": "63c74d586aa8",
+    "en §9 second paragraph": "130847f5f7ea", "sw §9 second paragraph": "1c44564e0b3a", "zh §9 second paragraph": "0ec28565a93c",
+    'en the note under "Erase my data"': "9ceccaaa37ba", 'sw the note under "Erase my data"': "0d3679b468dc", 'zh the note under "Erase my data"': "100e9ed7190a",
+    "en the data-rights erasure sentence": "b4408276a7a8",
   };
   /** What the data-rights file (English only) must say, and must no longer say — read in words, beside its pin. */
   const DSAR_RECORD = [
@@ -989,8 +1013,17 @@ console.log("\n§4j · what erasure keeps: §5, §6, §9, the erasure note and t
   const plantDsarOnly = dsarSentence.replace("We also keep your phone number in our record", "We keep your phone number only in our record");
   const plantEraseDelete = eraseSrc.replace("db.smsCampaignRecipient.unlinkUser(", "db.smsCampaignRecipient.deleteForUser(");
   const plantDeleter = { path: join(ROOT, "src/lib/server/marketing/planted.ts"), src: "export const p = (db: any, id: string) => db.smsCampaignRecipient.deleteMany({ where: { userId: id } });\n" };
+  // 2026-10-09 · the record as said since the owner's ruling, and the stop link it no longer names — put back.
+  const RECORD_NOW = "(the number, the message and what happened to it)";
+  const plantNoteLinkEn = { ...erasureNotes, en: erasureNotes.en.replace(RECORD_NOW, "(the number, the message, what happened to it and its stop link)") };
+  const plantDsarLink = dsarSentence.replace(RECORD_NOW, "(the number, the message, what happened to it and the stop link it carried)");
   ok("§4j control · planted copies found their targets",
-    [plantP2Sw !== pageSrc, plantNoteZh.zh !== erasureNotes.zh, plantS6Sw !== pageSrc, plantRefereesZh !== pageSrc, plantDsarOnly !== dsarSentence, plantEraseDelete !== eraseSrc].every(Boolean));
+    [plantP2Sw !== pageSrc, plantNoteZh.zh !== erasureNotes.zh, plantS6Sw !== pageSrc, plantRefereesZh !== pageSrc, plantDsarOnly !== dsarSentence, plantEraseDelete !== eraseSrc,
+      plantNoteLinkEn.en !== erasureNotes.en, plantDsarLink !== dsarSentence].every(Boolean));
+  ok("§4j control · the stop link put back into the English note under \"Erase my data\" (no message carries one since 2026-10-09) is reported by its pin",
+    campaignRecordDefects(pageSrc, eraseSrc, dsarSentence, plantNoteLinkEn, retentionDoc, srcFiles).some((x) => x.startsWith('en the note under "Erase my data" reads')));
+  ok("§4j control · the stop link put back into the data-rights erasure sentence is reported by its pin",
+    campaignRecordDefects(pageSrc, eraseSrc, plantDsarLink, erasureNotes, retentionDoc, srcFiles).some((x) => x.startsWith("en the data-rights erasure sentence reads")));
   ok("§4j control · ONE word changed in the Swahili §9 second paragraph is reported by its pin",
     campaignRecordDefects(plantP2Sw, eraseSrc, dsarSentence, erasureNotes, retentionDoc, srcFiles).some((x) => x.startsWith("sw §9 second paragraph reads")));
   ok("§4j control · the Chinese erasure note telling the old story (erased when the period ends) is reported by its pin",
@@ -1021,9 +1054,9 @@ console.log("\n§4j · what erasure keeps: §5, §6, §9, the erasure note and t
  * HMAC of the number under the server's pepper, and whoever holds the pepper can hash every Tanzanian mobile number and
  * compare: "(it cannot be turned back into the number)" overclaimed, and was replaced on 2026-10-07 (the lead's decision;
  * COMPLIANCE-DECISIONS "Privacy v2026-10-07").
- * ⚠️ THE STOP SENTENCE IS TIED TO `marketingFooter()` FOR NOW — true only while every offer carries its stop link. When
- * U43b makes the link ONE setting (management's item 7: it goes, with these words, in the commit that files the written
- * confirmation), RE-TIE this check to that setting, so §9's stop sentence goes exactly when the link does.
+ * ⚠️ THE STOP SENTENCE IS TIED TO `marketingFooter()` — true only while every offer carries its stop link. Since the owner's
+ * ruling of 2026-10-09 (Privacy v2026-10-09) the footer is EMPTY: no offer carries the link, so §9 says no stop sentence,
+ * and this tie keeps it gone — a footer that carries the link again needs the sentence back, with a new version.
  * ══════════════════════════════════════════════════════════════════════════ */
 console.log("\n§4k · §9: the referee promise kept for those named before the label, management's sentences for those named after");
 {
@@ -1085,13 +1118,16 @@ console.log("\n§4k · §9: the referee promise kept for those named before the 
   const plantTypedLabelZh = pageSrc.replace("在本政策 {REFEREE_PROMISE_REWORDED_IN} 版之前，", `在本政策 ${REFEREE_PROMISE_REWORDED_IN} 版之前，`);
   const plantRelative = pageSrc.replace("Until version {REFEREE_PROMISE_REWORDED_IN} of this policy", "Until this version of this policy");
   // (The 10-space indent picks §9's own line: the page's history comment quotes the same sentence.)
-  const plantNoStop = pageSrc.replace("          You can stop them at any time with the link in every offer.", "");
-  const footerWithoutLink = offerFooter.replace(`${OPTOUT_PATH}${footerMeasurementToken()}`, "");
+  // ⭐ Since 2026-10-09 no offer carries a stop link (the footer is empty), so §9 says no stop sentence: the controls plant
+  // the sentence BACK, and a footer that carries a link again.
+  // (The 10-space indent picks §9's own line: the page's history comment quotes the same sentence.)
+  const plantStopBack = pageSrc.replace("          as a referee after that: 50pick may send you offers by SMS.", "          as a referee after that: 50pick may send you offers by SMS. You can stop them at any time with the link in every offer.");
+  const footerWithLink = `${offerFooter}\n50pick 18+ Acha: 50pick.tz${OPTOUT_PATH}${footerMeasurementToken()}`;
   // The parenthesis as it read before 2026-10-07's correction, put back into ONE language at a time.
   const plantOverclaimEn = pageSrc.replace("(not the number itself)", "(it cannot be turned back into the number)");
   const plantOverclaimZh = pageSrc.replace("（并非号码本身）", "（无法还原为该号码）");
   ok("§4k control · planted §9 copies found their targets",
-    [plantOldPromiseSw !== pageSrc, plantTypedLabelZh !== pageSrc, plantRelative !== pageSrc, plantNoStop !== pageSrc, footerWithoutLink !== offerFooter,
+    [plantOldPromiseSw !== pageSrc, plantTypedLabelZh !== pageSrc, plantRelative !== pageSrc, plantStopBack !== pageSrc, footerWithLink !== offerFooter,
       plantOverclaimEn !== pageSrc, plantOverclaimZh !== pageSrc].every(Boolean));
   ok("§4k control · the coded number called irreversible again (en: \"it cannot be turned back into the number\") is reported",
     refereeWordsDefects(plantOverclaimEn, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.startsWith("en calls the coded referee number irreversible")));
@@ -1106,10 +1142,10 @@ console.log("\n§4k · §9: the referee promise kept for those named before the 
   ok("§4k control · a label later than the page's version, with no COMPLIANCE heading, is reported",
     refereeWordsDefects(pageSrc, offerFooter, "2099-01-01", decisionsSrc).some((x) => x.includes("later than the version the page prints"))
       && refereeWordsDefects(pageSrc, offerFooter, "2099-01-01", decisionsSrc).some((x) => x.includes("has no \"Privacy v2099-01-01\" heading")));
-  ok("§4k control · the stop sentence dropped while the stop link exists is reported",
-    refereeWordsDefects(plantNoStop, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.includes("while every offer carries its stop link")));
-  ok("§4k control · the stop sentence kept after the footer loses its link is reported",
-    refereeWordsDefects(pageSrc, footerWithoutLink, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.includes("carries no stop link")));
+  ok("§4k control · the stop sentence missing while a footer carries its link again is reported",
+    refereeWordsDefects(pageSrc, footerWithLink, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.includes("while every offer carries its stop link")));
+  ok("§4k control · the stop sentence put back while no offer carries a link is reported",
+    refereeWordsDefects(plantStopBack, offerFooter, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.includes("carries no stop link")));
 }
 
 

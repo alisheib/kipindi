@@ -11,7 +11,8 @@
  *   · `rg.marketing`           /legal/responsible-gambling §4, the first bullet (the marketing promise);
  *   · `privacy.lawfulConsent`  /legal/privacy §3, the Consent bullet;
  *   · `privacy.lawfulLicence`  /legal/privacy §3, a NEW bullet after Consent — blank by default, so it is not printed;
- *   · `privacy.smsGateway`     /legal/privacy §4, the Blackball bullet;
+ *   · `privacy.smsGateway`     /legal/privacy §4, the SMS gateway bullet — which names no gateway company since Ali's
+ *                              word of 2026-10-09 ("we can't mention Blackball, they won't allow it");
  *   · `profile.outreachNote`   the note under the offers switch on /profile/notifications — printed (U33a-P) only for a
  *                              player whose switch is ON on the LICENCE basis (no yes given, licence outreach open), and
  *                              blank by default, so nothing prints until it is saved (the card says so).
@@ -28,6 +29,10 @@
  * English hash pins (`test:rg-policy`, `test:privacy-notice`) are untouched by construction. These copies exist for the
  * card's prefill, the validator's hints, the default's fingerprint and the consent-only checks — and L1 holds them equal to
  * the pages.
+ * ⭐ 2026-10-09 (Ali, in the session: "we can't mention Blackball, they won't allow it … just tell them they can stop"):
+ * no public text names the SMS gateway's company. The gateway default — today's page text, in the page's JSX alike — lost
+ * only that name (its consent-only clause stays: it is true while licence outreach is closed), and the line production
+ * saves is his approved one (`docs/marketing-approvals/2026-10-09/approval-G10.json`).
  *
  * ⭐ EVERY LINE KEEPS ITS HISTORY (review F12 — the wordings' precedent). A save APPENDS a version, server-stamped
  * (`rev` 1, 2, 3 …, `savedAt`, `savedBy`); a saved version is never rewritten or removed (`policyHistoryProblem`, run
@@ -41,9 +46,9 @@
  * ⛔ A SAVE IS CHECKED, NEVER LOCKED (spec §5.2). Every language: 20–600 characters (the note: 10–200), plain text, no
  * phone number (nor any run of seven or more digits), no unbroken run longer than 30 characters in English or Swahili. The
  * RG line is read against `KEPT_PROMISES` (`./kept-promises`) in EVERY language: a promise the code does not keep is
- * refused, naming it; a kept promise the published line makes and the new one drops gets a hint. The Blackball bullet must
- * keep the processor facts `test:privacy-notice` §2e requires, and the Consent bullet the words §4d and §4f require — one
- * table, exported HERE and imported by that suite.
+ * refused, naming it; a kept promise the published line makes and the new one drops gets a hint. The SMS gateway bullet
+ * must keep the processor facts `test:privacy-notice` §2e requires, and the Consent bullet the words §4d and §4f require —
+ * one table, exported HERE and imported by that suite, read by one matcher (`holdsRequiredWord`).
  *
  * ⭐ THE VERSION MOVES WITH NEW WORDS, NEVER WITH A REVIEW (spec §5.2; review F1 · F5). A save that changes the words a page
  * prints stamps that page's version with today's EAT date — a second the same day `.2`, then `.3` — and records the code
@@ -136,7 +141,7 @@ export type PolicyPageSpec = {
    widen it to a string). */
 const PAGES: Record<PolicyPage, PolicyPageSpec> = {
   rg: { path: "/legal/responsible-gambling", title: "Responsible Gambling Policy", codeVersion: "2026-10-06", versionKey: "version.rg" },
-  privacy: { path: "/legal/privacy", title: "Privacy Policy", codeVersion: "2026-10-07", versionKey: "version.privacy" },
+  privacy: { path: "/legal/privacy", title: "Privacy Policy", codeVersion: "2026-10-09", versionKey: "version.privacy" },
 };
 
 export const POLICY_PAGES: Readonly<Record<PolicyPage, PolicyPageSpec>> = Object.freeze(PAGES);
@@ -144,17 +149,29 @@ export const POLICY_PAGES: Readonly<Record<PolicyPage, PolicyPageSpec>> = Object
 /* ══ THE WORDS A LINE MUST KEEP — one table, imported by test:privacy-notice ═════════════════════════════════════════ */
 
 /**
- * ⭐ THE SMS GATEWAY'S FACTS — the processor words `test:privacy-notice` §2e requires of §4 in each language: who the gateway
- * is, its role, and what it receives. A saved Blackball line must keep every one. ⛔ The suite IMPORTS this table (its
- * `SMS_WORDS`), so the validator and the guard read one list — never retyped (spec §5.2). The consent clause §2e also
- * requires of today's page is NOT a fact about the gateway: it is the promise a save exists to move
- * (`CONSENT_ONLY_CLAUSE`, below).
+ * ⭐ THE SMS GATEWAY'S FACTS — the processor words `test:privacy-notice` §2e requires of §4 in each language: the gateway's
+ * role and what it receives. A saved gateway line must keep every one (`holdsRequiredWord`). ⛔ The suite IMPORTS this table
+ * (its `SMS_WORDS`), so the validator and the guard read one list — never retyped (spec §5.2).
+ * ⛔ 2026-10-09 · NO COMPANY NAME (Ali, in the session: "we can't mention Blackball, they won't allow it … just tell them
+ * they can stop, but no need to mention Blackball, they don't want it"). Until then each list began with "Blackball"; the
+ * line now names the gateway by its role alone, and §2e refuses the company's name anywhere on the page.
  */
 export const SMS_GATEWAY_WORDS: Readonly<Record<PolicyLocale, readonly string[]>> = Object.freeze({
-  en: ["Blackball", "SMS gateway", "your phone number and the text of each message"],
-  sw: ["Blackball", "lango letu la SMS", "namba yako ya simu na maandishi ya kila ujumbe"],
-  zh: ["Blackball", "短信网关", "您的电话号码和每条短信的内容"],
+  en: ["SMS gateway", "your phone number and the text of each message"],
+  sw: ["lango letu la SMS", "namba yako ya simu na maandishi ya kila ujumbe"],
+  zh: ["短信网关", "您的电话号码和每条短信的内容"],
 });
+
+/**
+ * ⭐ DOES A LINE SAY A REQUIRED WORD? — exactly, or with its first letter capitalised, as where the word opens the line (the
+ * Swahili gateway line opens "Lango letu la SMS" since 2026-10-09). ONE matcher, asked by the validator, by
+ * `test:privacy-notice` §2e and by `test:policy-lines` L1 — so a word can never pass one of them and fail another.
+ */
+export function holdsRequiredWord(text: string, word: string): boolean {
+  if (text.includes(word)) return true;
+  const opening = word.charAt(0).toUpperCase() + word.slice(1);
+  return opening !== word && text.includes(opening);
+}
 
 /** ⭐ Where a person withdraws consent — `test:privacy-notice` §4d requires §3 to say it (its `CONSENT_PATH`, imported). */
 export const CONSENT_WITHDRAW_PATH: Readonly<Record<PolicyLocale, string>> = Object.freeze({
@@ -171,7 +188,7 @@ export const ANALYTICS_CONSENT_WORDS: Readonly<Record<PolicyLocale, readonly str
 });
 
 /**
- * ⛔ THE CONSENT-ONLY CLAUSE of today's Blackball bullet, per language (spec §5.3, A37). `test:policy-lines` L1 holds each
+ * ⛔ THE CONSENT-ONLY CLAUSE of today's SMS gateway bullet, per language (spec §5.3, A37). `test:policy-lines` L1 holds each
  * one as a substring of its own language's default, so this cannot drift from the page; each is also one of the
  * `CONSENT_ONLY_PHRASES` opening check 1 scans for.
  */
@@ -258,11 +275,14 @@ const DEFAULTS: Record<PolicyLineKey, PolicyTexts> = {
   },
   // ⭐ A NEW bullet — blank, so nothing is printed until an admin saves words in all three languages (Appendix B.4).
   "privacy.lawfulLicence": { en: "", sw: "", zh: "" },
-  // /legal/privacy §4, the Blackball bullet.
+  // /legal/privacy §4, the SMS gateway bullet — the page as it ships with licence outreach CLOSED, so its consent-only
+  // clause is true wherever nothing is saved (production prints its saved line). ⛔ Since 2026-10-09 it names no company
+  // (Ali: "we can't mention Blackball, they won't allow it"): it opened "Blackball, our SMS gateway …" until then, and
+  // every other word is kept.
   "privacy.smsGateway": {
-    en: "Blackball, our SMS gateway in Tanzania, which sends our text messages, such as one-time codes and, only if you agree to receive them, offers and news: it receives your phone number and the text of each message, and tells us whether each message was delivered",
-    sw: "Blackball, lango letu la SMS nchini Tanzania, linalotuma ujumbe wetu mfupi (SMS), kama misimbo ya matumizi ya mara moja na, ikiwa tu umekubali kuzipokea, ofa na habari: hupokea namba yako ya simu na maandishi ya kila ujumbe, na hutuambia kama kila ujumbe umefika",
-    zh: "Blackball（坦桑尼亚），我们的短信网关：发送我们的短信，例如一次性验证码，以及仅在您同意接收时发送的优惠和资讯；接收您的电话号码和每条短信的内容，并告知我们每条短信是否已送达",
+    en: "Our SMS gateway in Tanzania, which sends our text messages, such as one-time codes and, only if you agree to receive them, offers and news: it receives your phone number and the text of each message, and tells us whether each message was delivered",
+    sw: "Lango letu la SMS nchini Tanzania, linalotuma ujumbe wetu mfupi (SMS), kama misimbo ya matumizi ya mara moja na, ikiwa tu umekubali kuzipokea, ofa na habari: hupokea namba yako ya simu na maandishi ya kila ujumbe, na hutuambia kama kila ujumbe umefika",
+    zh: "我们在坦桑尼亚的短信网关：发送我们的短信，例如一次性验证码，以及仅在您同意接收时发送的优惠和资讯；接收您的电话号码和每条短信的内容，并告知我们每条短信是否已送达",
   },
   // ⚠️ Blank: no note until one is saved (Appendix B.6) — U33a-P prints it, under a switch ON on the licence basis.
   "profile.outreachNote": { en: "", sw: "", zh: "" },
@@ -377,9 +397,9 @@ export type PolicyLineParts = { readonly label: string | null; readonly rest: st
 
 /**
  * ⭐ WHERE THE BOLD ENDS (spec §5.2: "where a line starts with a label followed by ': ', the page prints the part before the
- * colon in bold, keeping today's look"). Only a LABELLED line has one — the Blackball bullet holds a colon too, and is never
- * bold. The label ends at the first ": " or full-width "：" (Chinese takes no space after it) within 60 characters; a line
- * with none prints plain.
+ * colon in bold, keeping today's look"). Only a LABELLED line has one — the SMS gateway bullet holds a colon too, and is
+ * never bold. The label ends at the first ": " or full-width "：" (Chinese takes no space after it) within 60 characters;
+ * a line with none prints plain.
  */
 export function policyLineParts(key: PolicyLineKey, text: string): PolicyLineParts {
   if (!isPolicyLineKey(key) || !SPEC[key].labelled) return { label: null, rest: text };
@@ -530,7 +550,7 @@ export function policyLineProblems(
     if (holdsPhone(t)) add("has_phone", POLICY_LINE_SENTENCE.hasPhone);
     if (l !== "zh" && holdsLongWord(t)) add("long_word", POLICY_LINE_SENTENCE.longWord);
     if (spec.words !== null) {
-      const missing = spec.words.perLocale[l].filter((w) => !t.includes(w));
+      const missing = spec.words.perLocale[l].filter((w) => !holdsRequiredWord(t, w));
       if (missing.length > 0) add("words_missing", POLICY_LINE_SENTENCE.wordsMissing(missing, spec.words.why));
     }
     if (spec.promises) {
@@ -1063,7 +1083,7 @@ export function holdsConsentOnlyPhrase(text: string, locale: PolicyLocale): bool
  * ⭐ THE OPENING CHECKS THAT READ THE SAVED POLICY LINES — the three of spec §5.3 the public texts own (the fourth,
  * `PRE_LEDGER_OFFS`, is U33a-R's). Each failing check is named, in order; `[]` means the texts no longer contradict
  * licence outreach:
- *   1 · `privacy_gateway` — the Blackball line has been SAVED, and none of the four page lines, in ANY language, still says
+ *   1 · `privacy_gateway` — the SMS gateway line has been SAVED, and none of the four page lines, in ANY language, still says
  *                           marketing goes only to people who agree (review F11: `CONSENT_ONLY_PHRASES`, read over the
  *                           words each page prints NOW);
  *   2 · `privacy_lawful`  — the licence line has been saved with words, and the Consent line saved: new words, or a review

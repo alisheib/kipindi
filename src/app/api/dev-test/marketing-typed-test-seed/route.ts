@@ -4,9 +4,10 @@
  * ⛔ 404 IN PRODUCTION, before anything else, like every route under `dev-test/` (`test:cert-devroutes`). It is reachable
  * only where `NODE_ENV` is not `production`, which on this platform means a developer's own machine.
  *
- * ⭐ WHY THIS EXISTS. A test to a typed number is offered only once licence outreach is OPEN, `adult.test` is SAVED and the
- * draft carries a source line — three owner acts. A drive cannot reach any of the Test card's typed states without them,
- * and each of the three "disabled, because …" states needs the world one step short of open. ⭐ EVERY STEP GOES THROUGH
+ * ⭐ WHY THIS EXISTS. A test to a typed number is offered only once licence outreach is OPEN and `adult.test` is SAVED — two
+ * owner acts (until the owner's ruling of 2026-10-09 the draft also had to carry a source line). A drive cannot reach any
+ * of the Test card's typed states without them, and each "disabled, because …" state needs the world one step short of
+ * open. ⭐ EVERY STEP GOES THROUGH
  * THE PLATFORM'S OWN WRITER — `savePolicyLines`, `saveMarketingWordings`, `openLicenceOutreach` / `closeLicenceOutreach`,
  * `ensureOptOutToken` + `stopMarketing` — never a hand-built row, so the card reads exactly what an owner's saves leave.
  *
@@ -16,7 +17,8 @@
  *   POST ?adult=1              — save `adult.test` (its suggested wording, approved on purpose)
  *   POST ?adult=2              — save a REWORDING of `adult.test` (a new version) — the drive's "reworded while the
  *                                page was open" state (§18.32)
- *   POST ?source=1             — save the source line G5 chose, "Namba yako ipo orodhani kwetu."
+ *   POST ?source=1             — save the source line G5 chose, "Namba yako ipo orodhani kwetu." (nothing needs it since
+ *                                2026-10-09 — no message prints the line; kept for the drives written before)
  *   POST ?stop=<phone>         — a real stop on that number: its token as the send path gets it (`ensureOptOutToken`,
  *                                the one it already has, else a new one), then the stop itself
  * Each is idempotent: a wording or line already saved with the same text writes nothing new.
@@ -41,15 +43,17 @@ const PASSING_LINES: Readonly<Partial<Record<PolicyLineKey, Record<(typeof POLIC
     sw: "Hakuna matangazo kwa mchezaji aliyejizuia, kwa mchezaji aliye kwenye mapumziko hadi atakapokubali tena baada ya mapumziko kuisha, kwa mchezaji anayeonyesha dalili ya madhara (sehemu ya 3), wala kwa mtu yeyote aliye chini ya umri wa miaka 18. Umri wa mchezaji ni tarehe ya kuzaliwa aliyotupa, ikilinganishwa na ukaguzi wetu wa utambulisho; kwa mtu ambaye si mchezaji wa 50pick, tunatuma tu baada ya mfanyakazi wetu kuthibitisha kwa maandishi kwamba mtu huyo ana umri wa miaka 18 au zaidi, na kamwe bila uthibitisho huo.",
     zh: "不向已自我排除的玩家、处于冷静期的玩家（直至其在冷静期结束后重新同意）、出现伤害迹象的玩家（见第 3 节），以及未满 18 岁的人发送营销信息。玩家的年龄以其向我们提供并经身份核验比对的出生日期为准；对于非 50pick 玩家，只有在我们的工作人员以书面形式确认此人已年满 18 岁后，我们才会发送，没有该确认绝不发送。",
   },
+  // ⭐ These two as approved by Ali on 2026-10-09 (no marketing SMS carries a stop link; the gateway's company is named
+  // nowhere — "we can't mention Blackball"): word for word `docs/marketing-approvals/2026-10-09/approval-G10.json`.
   "privacy.smsGateway": {
-    en: "Blackball, our SMS gateway in Tanzania, which sends our text messages, such as one-time codes and 50pick offers and news, which you can stop at any time with the stop link in every offer or under Profile → Notifications: it receives your phone number and the text of each message, and tells us whether each message was delivered",
-    sw: "Blackball, lango letu la SMS nchini Tanzania, linalotuma ujumbe wetu mfupi (SMS), kama misimbo ya matumizi ya mara moja na ofa na habari za 50pick, ambazo unaweza kuzisimamisha wakati wowote kwa kiungo cha kusimamisha kilicho katika kila ofa au kwenye Wasifu → Arifa: hupokea namba yako ya simu na maandishi ya kila ujumbe, na hutuambia kama kila ujumbe umefika",
-    zh: "Blackball（坦桑尼亚），我们的短信网关：发送我们的短信，例如一次性验证码以及 50pick 的优惠和资讯——您可随时通过每条优惠短信中的退订链接或在“个人资料 → 通知”中停止接收；接收您的电话号码和每条短信的内容，并告知我们每条短信是否已送达",
+    en: "Our SMS gateway in Tanzania, which sends our text messages, such as one-time codes and 50pick offers and news, which you can stop at any time under Profile → Notifications: it receives your phone number and the text of each message, and tells us whether each message was delivered",
+    sw: "Lango letu la SMS nchini Tanzania, linalotuma ujumbe wetu mfupi (SMS), kama misimbo ya matumizi ya mara moja na ofa na habari za 50pick, ambazo unaweza kuzisimamisha wakati wowote kwenye Wasifu → Arifa: hupokea namba yako ya simu na maandishi ya kila ujumbe, na hutuambia kama kila ujumbe umefika",
+    zh: "我们在坦桑尼亚的短信网关：发送我们的短信，例如一次性验证码以及 50pick 的优惠和资讯——您可随时在“个人资料 → 通知”中停止接收；接收您的电话号码和每条短信的内容，并告知我们每条短信是否已送达",
   },
   "privacy.lawfulLicence": {
-    en: "Our Gaming Board of Tanzania licence: 50pick offers and news by SMS, sent to adult Tanzanian mobile numbers under our licence — you can stop them at any time with the stop link in every offer or under Profile → Notifications, and once you stop we do not send them again unless you ask",
-    sw: "Leseni yetu ya Bodi ya Michezo ya Kubahatisha Tanzania: ofa na habari za 50pick kwa SMS, zinazotumwa kwa namba za simu za Tanzania za watu wazima chini ya leseni yetu — unaweza kuzisimamisha wakati wowote kwa kiungo cha kusimamisha kilicho katika kila ofa au kwenye Wasifu → Arifa, na ukishasimamisha hatutumi tena isipokuwa ukiomba",
-    zh: "我们的坦桑尼亚博彩委员会牌照：50pick 短信优惠与资讯，依据我们的牌照发送至坦桑尼亚成年人的手机号码——您可随时通过每条优惠短信中的退订链接或在“个人资料 → 通知”中停止接收；一旦停止，除非您要求，我们不会再次发送",
+    en: "Our Gaming Board of Tanzania licence: 50pick offers and news by SMS, sent to adult Tanzanian mobile numbers under our licence — you can stop them at any time under Profile → Notifications, and once you stop we do not send them again unless you ask",
+    sw: "Leseni yetu ya Bodi ya Michezo ya Kubahatisha Tanzania: ofa na habari za 50pick kwa SMS, zinazotumwa kwa namba za simu za Tanzania za watu wazima chini ya leseni yetu — unaweza kuzisimamisha wakati wowote kwenye Wasifu → Arifa, na ukishasimamisha hatutumi tena isipokuwa ukiomba",
+    zh: "我们的坦桑尼亚博彩委员会牌照：50pick 短信优惠与资讯，依据我们的牌照发送至坦桑尼亚成年人的手机号码——您可随时在“个人资料 → 通知”中停止接收；一旦停止，除非您要求，我们不会再次发送",
   },
   "privacy.lawfulConsent": {
     en: "Consent: 50pick offers and news by SMS for anyone who asks for them, which you can withdraw at any time under Profile → Notifications; and Google Analytics — only if you allow it when first asked, and you can change that at any time in §7 of this policy",

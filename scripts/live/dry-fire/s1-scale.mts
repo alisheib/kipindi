@@ -111,16 +111,18 @@ export async function scale(h: Harness, n: number): Promise<Record<string, unkno
     const account = p.userId !== null;
     const en = account && p.locale === "EN";
     const first = (p.name ?? "").split(" ")[0];
-    if (!r.optOutToken || !text.includes(r.optOutToken)) bad.push(`${p.cls}: the stop link is not the row's token`);
-    if (account && text.includes(SOURCE_LINE)) bad.push(`${p.cls}: an account was shown the source line`);
-    if (!account && !text.includes(SOURCE_LINE)) bad.push(`${p.cls}: a book contact was not shown the source line`);
+    // ⛔ The owner's ruling of 2026-10-09: the message is the officer's text alone — the row keeps its stop token (for the
+    // stop page), and no message carries a link, a token or the source line.
+    if (!r.optOutToken) bad.push(`${p.cls}: the row keeps no stop token`);
+    if (text.includes("/s/") || (r.optOutToken && text.includes(r.optOutToken))) bad.push(`${p.cls}: the message carries a stop link`);
+    if (text.includes(SOURCE_LINE)) bad.push(`${p.cls}: the message carries the source line`);
     if (en ? !text.includes("today's offer") : !text.includes("ofa ya leo")) bad.push(`${p.cls}: the wrong language (${en ? "EN" : "SW"} owed)`);
     if (r.locale !== (en ? "EN" : "SW")) bad.push(`${p.cls}: the row says locale ${r.locale}`);
     const greeted = account && first !== "" ? first : en ? FALLBACK_EN : FALLBACK_SW;
     if (!text.includes(greeted)) bad.push(`${p.cls}: greeted by the wrong name`);
     if (!account && p.name !== null && first !== "" && text.includes(first) && first !== FALLBACK_SW) bad.push(`${p.cls}: a book contact's stored name was printed`);
   }
-  claimNow(h, "S1.messages", "each message carries ITS row's stop-link token, the right language, the account's own name (a contact the fallback) and the source line only for a book contact", bad.length === 0 && checked > 0, `${num(checked)} messages read; ${bad.length === 0 ? "all true" : bad.slice(0, 3).join("; ")}`);
+  claimNow(h, "S1.messages", "each message is the officer's text alone — no stop link, no source line (the row keeps its stop token) — in the right language, greeted by the account's own name (a contact the fallback)", bad.length === 0 && checked > 0, `${num(checked)} messages read; ${bad.length === 0 ? "all true" : bad.slice(0, 3).join("; ")}`);
 
   // ── E1: a refused person is never given a permanent link ──
   const skippedNew = rows.filter((r) => r.status === "SKIPPED" && !(world.byKey.get(r.msisdn)?.oldToken));

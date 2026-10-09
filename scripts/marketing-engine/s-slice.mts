@@ -60,7 +60,7 @@ const L = {
   s3: "S3 · ⭐ E7 · A status:false BATCH — every claimed row back to PENDING with attempts + 1 and its claim cleared, ZERO FAILED rows, ONE pause gateway_refused and ONE SYSTEM paused row whose detail is the gateway's words; the stop reason says nothing was charged",
   s4: "S4 · E7 · A WHOLE-BATCH HOLD (BALANCE_FLOOR, MARKETING_FLOOR) — every claimed row back to PENDING with attempts unchanged, ZERO FAILED, the campaign paused with that key and ONE paused row; the gateway was never asked twice",
   s5: "S5 · ⭐ E8 · A GATE THAT THROWS FOR ONE PERSON — that row PENDING with attempts 1 while the others are SENT; the same person three steps running is HELD (attempts 3, class gate_unanswered) — outstanding, never settled, never sent",
-  s6: "S6 · ⭐ E17 · WHO HOLDS THE NUMBER NOW DECIDES THE ORIGIN — a registered player walked by their BOOK row renders as account (their own first name, NO source line) and, on a campaign with a BLANK source line, is SENT, not refused; a number no account holds renders book (the fallback, the source line, Swahili); an English-language account gets the English body",
+  s6: "S6 · ⭐ E17 · WHO HOLDS THE NUMBER NOW DECIDES THE ORIGIN — a registered player walked by their BOOK row renders as account (their own first name, NO source line) and, on a campaign with a BLANK source line, is SENT, not refused; a number no account holds renders book (the fallback, Swahili — and NO source line: nothing is appended since 2026-10-09); an English-language account gets the English body",
   s7: "S7 · ⭐ E1 · THE TOKEN IS ENSURED AT SEND, AFTER THE GATE — a person the gate refuses gets NO token row (and is SKIPPED with the gate's reason); a cleared person who already holds a token is sent THAT token and no second row is minted; a cleared person with none gets exactly one, carried on the row",
   s8: "S8 · THE SWITCH CLOSING MID-CAMPAIGN — on a real carrier with the owner's switch closed, open but past its closing time, or unreadable (a read that throws), the next step pauses live_switch_closed BEFORE any claim, with one paused row; and its sentence is true of all three (switched off, ran out, couldn't be read)",
   s9: "S9 · ⭐ A PAUSE LANDING DURING GATING (the 3rd gate call pauses the campaign) — beforeSend vetoes the send: ZERO wire calls, every claimed row back to PENDING with its claim cleared and attempts unchanged, and the step answers not_running PAUSED",
@@ -77,7 +77,7 @@ const L = {
   s20: "S20 · ⭐ THE REAL SEND PATH (sendBatch, a stubbed fetch, no network) — a 504 reply is ambiguous: the rows UNCONFIRMED under their SmsMessage references, those rows UNKNOWN (purpose MARKETING), the campaign paused gateway_unanswered; a status:false 400 is a refusal: the rows released with attempts 1, their SmsMessage rows FAILED, paused gateway_refused with the gateway's words; an accepted reply: the rows SENT under their ACCEPTED rows' references, the credit kept for codes handed to the batch",
   s21: "S21 · ⭐ E16 · THE CREDIT KEPT FOR CODES, PER SLICE — on a real carrier with TZS 100,000 the slice sends and hands the TZS 20,000 kept to the batch (its trail says so); TZS 20,010 against the 2 people still owed at TZS 6 (TZS 12 — a slice is priced for the people it can still claim, F-1) pauses marketing_floor; and each cause that cannot be read pauses in its OWN words, the words Resume refuses with — a failed credit read credit_unreadable, settings that cannot be read settings_unreadable, saved sizes that cannot be read sizes_unreadable, no price price_unknown — each BEFORE any claim, each with its sentence; on the console stub neither the settings nor the credit is read and no floor is handed on",
   s22: "S22 · AS BUILT · THE RE-CHECK BEFORE THE WIRE COULD NOT ANSWER — every cleared row back to PENDING unchanged, ZERO wire calls, waiting before_send_unanswered; three slices running pauses before_send_unanswered with one paused row and its sentence; a slice that answers resets the count",
-  s23: "S23 · THE TEMPLATE'S OWN VERDICT — a stored message that no longer passes its own check pauses template_invalid BEFORE any claim, with a scrubbed detail and a sentence that never prescribes a copy as if it reached nobody (a copy would message people again — only if that is what you want); while a message refused for ONE person (a book number on a campaign with a blank source line) holds that person (+1) and pauses nothing",
+  s23: "S23 · THE TEMPLATE'S OWN VERDICT — a stored message that no longer passes its own check pauses template_invalid BEFORE any claim, with a scrubbed detail and a sentence that never prescribes a copy as if it reached nobody (a copy would message people again — only if that is what you want); while a book number on a campaign with a BLANK source line is SENT — the line is neither printed nor required (2026-10-09)",
   s24: "S24 · THE RAIL — a dead rail pauses NOT_CONFIGURED and an unrecognised provider pauses PROVIDER_UNRECOGNISED (never live_switch_closed, which the owner cannot fix) — BEFORE any claim",
   s25: "S25 · ⭐ E10 · ONE SLICE IN FLIGHT PER PROCESS — while one campaign's slice gates, a step of ANOTHER campaign answers waiting busy and claims nothing; once it has finished the other step runs; a flight eleven minutes old STILL holds (the flight is kept apart from REAP_AFTER_MS — twice it), one twenty-one minutes old no longer does",
   s26: "S26 · ⭐ DC-5 · NO PHONE NUMBER REFUSES A SETTLE — a gateway error and a gate detail that echo a number are settled with the number masked (four bullets and its last two digits), every trail string scrubbed — while a reference whose characters hold a phone-shaped run is kept WHOLE in the trail's source, as the rule set reads a source word by word; and a patch the rule set still refuses is SET ASIDE (its row keeps the claim, for the reaper) while the rest of the slice settles",
@@ -277,7 +277,7 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
     const r = await stepWith(impl, w.cid, engineDeps(freshState(), wire));
     const rows = await Promise.all(seats.map((s) => rowOf(s.id)));
     const whole = rows.every((x) => x !== null && x.status === "SENT" && x.smsReference === `ref_${x.id}` && typeof x.sentAt === "string"
-      && typeof x.optOutToken === "string" && x.optOutToken.length === 8 && x.locale === "SW" && x.segments === 1 && (x.bodyLen ?? 0) > 40);
+      && typeof x.optOutToken === "string" && x.optOutToken.length === 8 && x.locale === "SW" && x.segments === 1 && (x.bodyLen ?? 0) > 20);
     const trail = rows[0]?.gateTrail ?? [];
     const shape = trail.map((g) => g.check).join(",") === "campaign,live_switch,send_window,credit,gate,render,dispatch"
       && trail[0]?.source === w.cid && trail[4]?.verdict === "ok" && (trail[4]?.source ?? "").startsWith("CONSENT:ledger:")
@@ -378,7 +378,7 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
     const text1 = wire.sent[0]?.body ?? "";
     const accountOk = row1?.status === "SENT" && text1.startsWith("50pick: Habari Neema,") && !text1.includes(SOURCE_LINE)
       && row1.gateTrail?.[5]?.source === "origin:account;name:account";
-    // ② a number no account holds (cleared by a gate that clears all) renders book: the fallback, the source line, Swahili
+    // ② a number no account holds (cleared by a gate that clears all) renders book: the fallback, Swahili, no source line
     const v = worldOf("s6b");
     await runningCampaign(v.cid, { count: 1, bodyEn: "50pick: Hi {jina}, today's offer." });
     await seat(v.cid, [{ id: v.rid(0), key: v.key(0) }]);
@@ -386,7 +386,7 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
     const r2 = await stepWith(impl, v.cid, engineDeps(freshState(), wire2, { gate: CLEARS_ALL }));
     const row2 = await rowOf(v.rid(0));
     const text2 = wire2.sent[0]?.body ?? "";
-    const bookOk = row2?.status === "SENT" && row2.locale === "SW" && text2.startsWith("50pick: Habari Rafiki,") && text2.includes(SOURCE_LINE)
+    const bookOk = row2?.status === "SENT" && row2.locale === "SW" && text2.startsWith("50pick: Habari Rafiki,") && !text2.includes(SOURCE_LINE)
       && row2.gateTrail?.[5]?.source === "origin:book;name:fallback";
     // ③ an English-language account gets the English body
     const e = worldOf("s6c");
@@ -845,7 +845,7 @@ async function runSectionS(impl: SImpl, ok: Check): Promise<void> {
     const sentence = impl.stopLabel("template_invalid");
     const words = sentence.includes("a copy would message them again") && sentence.includes("only if that is what you want");
     return [rA.kind === "paused" && rA.reason === "template_invalid" && claimedNone(a.cid) && wire.calls === 0 && pausedA.length === 1 && detail.length > 0
-      && words && rB.kind === "sent" && rowB?.status === "PENDING" && rowB.attempts === 1 && cB?.status === "RUNNING",
+      && words && rB.kind === "sent" && rowB?.status === "SENT" && cB?.status !== "PAUSED",
       `stored: ${said(rA)} detail "${detail.slice(0, 60)}" · one person: ${said(rB)} row ${rowB?.status}/${rowB?.attempts} campaign ${cB?.status}`];
   });
 
@@ -1524,7 +1524,8 @@ export const S_PLANTS: ReadonlyArray<EnginePlant<SImpl>> = [
   },
   {
     // A registered player's number walked by their book row (contactId set) is read as a stranger: no account, so the
-    // source line is required — and on a campaign without one, the player is refused.
+    // message greets them with the book's fallback, never their own first name, and the trail says origin:book. (Until
+    // the owner's ruling of 2026-10-09 a book origin also needed the source line, and the player was refused.)
     name: "R-S6 (the spec's) · the origin taken from the row kind — a book row read as the book, never the account that holds the number",
     expect: [L.s6],
     impl: withDeps((d) => ({

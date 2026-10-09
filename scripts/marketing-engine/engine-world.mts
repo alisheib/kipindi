@@ -95,7 +95,8 @@ export async function bookContact(id: string, key: string, userId: string | null
 
 /* ══ CAMPAIGNS ═══════════════════════════════════════════════════════════════════════════════════════════════════════ */
 
-/** The source line every fixture campaign carries (≤ 30 septets, one line, GSM-7) — a book recipient's message needs it. */
+/** The source line every fixture campaign stores (≤ 30 septets, one line, GSM-7). Since the owner's ruling of 2026-10-09
+ *  no message prints it — S6 proves it is on no wire, for an account or a book recipient alike. */
 export const SOURCE_LINE = "Kutoka orodha ya 50pick.";
 export const BODY_SW = "50pick: Habari {jina}, ofa ya leo.";
 export const BODY_EN = "50pick: Hi {jina}, today's offer.";

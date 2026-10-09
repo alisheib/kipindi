@@ -48,19 +48,18 @@ export const COMPOSE_FIELD = {
   fallbackEn: "English word for {jina}",
   fallbackHint: "Printed when a name can't be used — letters only, at most 12.",
 } as const;
-/** Under the Swahili body, built from the rule's own values — the identity the law needs first, and the one placeholder. */
+/** Under the Swahili body, built from the rule's own values — the sender named first, and the one placeholder. */
 export const COMPOSE_BODY_SW_HINT = `Begin with ${SENDER_IDENTITY} (lower case). ${JINA} prints the first name.`;
 export const COMPOSE_EN_NONE = "No English text — everyone gets the Swahili message.";
 export const COMPOSE_EN_RULE = "English goes to players whose account language is English; everyone else gets Swahili.";
-export const COMPOSE_STOP_LINK = "Includes the stop link, which is required and is counted.";
+/** Under the counter (the owner's ruling of 2026-10-09): nothing is appended to a marketing SMS. */
+export const COMPOSE_AS_WRITTEN = "Sent exactly as written — nothing is added to it.";
 export const COMPOSE_JINA_RESERVE = "{jina} keeps 12 characters for the name.";
 export const COMPOSE_FORCED = "Forced to Unicode by:";
 export const COMPOSE_FOLD = "Replace with plain characters";
 export const COMPOSE_SAVE = "Save draft";
 export const COMPOSE_NO_CHANGES = "Nothing to save — no changes since the last save.";
-/** U37s · a DRAFT stamped with another line than the one saved now: only a save brings it up to date (`sourceLineStale`). */
-export const COMPOSE_SOURCE_LINE_STALE =
-  "This draft's source line isn't the one saved now on Admin → System → Marketing wordings — save the draft to bring it up to date.";
+/* (U37s's stale-line note is gone since the owner's ruling of 2026-10-09: no draft carries a line that matters.) */
 export const COMPOSE_SAVE_FAILED = "Couldn't save — your text is still here. Try again.";
 /** The save stopped ON THE SERVER after it was handed the text — it may have written the row, so: check, never retry blind. */
 export const COMPOSE_SAVE_UNFINISHED =
@@ -88,13 +87,6 @@ export const COMPOSE_READ_ONLY = "This campaign is no longer a draft — its mes
 /** `?draft=<id>` naming nothing: said in words, with one way on — never a blank form posing as that draft. */
 export const COMPOSE_MISSING = "This draft wasn't found — it may have been removed, or the link is wrong.";
 export const COMPOSE_START = "Start a new SMS campaign";
-
-/** The room a blank source line keeps (M5 · OQ3, owner gate G5) — or, once it is set, that it is counted. */
-export function composeSourceLine(sourceUnits: number, phraseSet: boolean): string {
-  return phraseSet
-    ? "The source line a contact-book number needs is set, and counted."
-    : `${formatNumber(sourceUnits)} characters are kept for the source line a contact-book number needs — its wording is not set yet.`;
-}
 
 /**
  * "Draft saved 14:02 — nothing was sent." — the console's clock and what a save is NOT. ⛔ The test below is named as the
@@ -125,8 +117,9 @@ const keep = (s: string) => s.split(" ").join(NB);
 /**
  * ⭐ THE COUNTER LINE, numbers kept with their words: "80 characters left · 1 message · GSM-7", or over the cap
  * "12 over · 2 messages · the limit is 1". Every figure is the worst-case whole message's (`counterFor`).
- * ⛔ While Unicode leaves no room at all (the footer and the source line take its 70), "N over" would ask the officer to
- * cut N characters that no cut can fix — the line says there is no room, and the sentence names what to replace.
+ * ⛔ While Unicode leaves no room at all, "N over" would ask the officer to cut N characters that no cut can fix — the
+ * line says there is no room, and the sentence names what to replace. (Since nothing is appended — 2026-10-09 — a Unicode
+ * message keeps its whole 70.)
  */
 export function counterLine(c: VariantCounter): string {
   if (c.left < 0 || c.segments > SMS_MAX_SEGMENTS) {
@@ -179,7 +172,6 @@ export const COMPOSE_AUDIENCE_CLEAR = "Remove the filter";
 export const COMPOSE_TEST_SAVE_FIRST = "Save first — the test sends the saved text.";
 export const COMPOSE_TEST_UPDATING = "Updating to the saved text…";
 export const COMPOSE_TEST_NOT_DRAFT = "Only a draft can be tested.";
-export const COMPOSE_TEST_TOKEN_NOTE = "Your stop link is made the first time you send a test; until then it shows as xxxxxxxx.";
 export const COMPOSE_TEST_BUDGET = "Up to 3 tests at once, then one every 10 minutes.";
 export const COMPOSE_TEST_SEND = { SW: "Send the Swahili test", EN: "Send the English test" } as const;
 export const COMPOSE_TEST_PREVIEW = { SW: "Swahili, as it will be sent to you", EN: "English, as it will be sent to you" } as const;
@@ -221,8 +213,9 @@ export const COMPOSE_TEST_TYPED_PREVIEW = {
   SW: "Swahili, as it will be sent to that number",
   EN: "English, as it will be sent to that number",
 } as const;
-export const COMPOSE_TEST_TYPED_NOTE =
-  `The name is your word for ${JINA}, never the person's own, and their stop link is made for them and isn't shown here.`;
+/** Under the typed preview: the greeting is the officer's `{jina}` word. ⛔ It names no stop link — nothing is appended to
+ *  a test or a campaign since the owner's ruling of 2026-10-09 (`test:campaign-compose` §16.22). */
+export const COMPOSE_TEST_TYPED_NOTE = `The name is your word for ${JINA}, never the person's own.`;
 /** Send's reason while no whole number has been typed. */
 export const COMPOSE_TEST_NEED_NUMBER = "Type the number to test on.";
 /** Send's reason while the typed number is one the plan refuses — the plan's own sentence is already under the field, so
@@ -284,7 +277,7 @@ export function composeConfirmReadRateLimited(retryAfterSec: number): string {
   const seconds = Math.max(1, Math.ceil(retryAfterSec));
   return `That is a lot of counts in a row — nothing was counted. Try again in ${seconds} s.`;
 }
-/** A blocked answer can be asked for again (the owner has set the source line, the audience has changed): the same read. */
+/** A blocked answer can be asked for again (the audience has changed, the owner has raised the limit): the same read. */
 export const COMPOSE_CONFIRM_CHECK_AGAIN = "Check again";
 /** The draft was saved elsewhere after this form was loaded: what a confirmation would freeze is not the text on screen. */
 export const COMPOSE_CONFIRM_STALE = "This draft was saved elsewhere after this page loaded — reload the page to see it, then confirm.";

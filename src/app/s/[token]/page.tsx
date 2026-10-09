@@ -11,9 +11,10 @@ import { optOutClientKey } from "./client-key";
  * `/s/[token]` — THE WAY OUT OF A MARKETING SMS. No login, one click, and a distinct sentence
  * for every way it can fail.
  *
- * ⭐ WHY THE PATH IS TWO CHARACTERS. Every character of it is a septet inside a 160-character
- * message whose statutory footer already costs 49 of them (`footer.ts`), so `/s/` plus an
- * eight-character token is the entire address. ⛔ The path and the token length are imported,
+ * ⭐ WHY THE PATH IS TWO CHARACTERS. Until the owner's ruling of 2026-10-09 every character of it
+ * was a septet inside a 160-character message whose footer cost 49 of them (`footer.ts`), so `/s/`
+ * plus an eight-character token was the entire address. No message prints the link since then;
+ * this page stays for every link already sent. ⛔ The path and the token length are imported,
  * never re-typed: a second definition of either is a link that resolves in a test and 404s in
  * somebody's hand.
  *

@@ -168,11 +168,11 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
         >
           <Input name="phone" defaultValue={config.phone} onChange={(e) => setPhone(e.currentTarget.value)} required />
         </Field>
-        {/* ⭐ Owner's ruling, 2026-10-06: any number, our own desk included, and no player page shows it —
-            the one place it still goes out is the footer of a marketing SMS. */}
+        {/* ⭐ Owner's ruling, 2026-10-06: any number, our own desk included, and no player page shows it — and since his
+            ruling of 2026-10-09 no marketing SMS carries it either (nothing is appended), so it is kept on record. */}
         <Field
           label="Helpline"
-          hint={<>Any number. Not shown on the website; printed in the footer of every marketing SMS. {dialsLine(helplineDialPreview)}</>}
+          hint={<>Any number. Not shown on the website or in any SMS — kept on record. {dialsLine(helplineDialPreview)}</>}
           dataField="support-helpline"
         >
           <Input name="nationalHelpline" defaultValue={config.nationalHelpline} onChange={(e) => setHelpline(e.currentTarget.value)} required />
@@ -197,7 +197,7 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
       <PendingChangesBar
         dirty={dirty}
         saving={pending}
-        detail="Support contacts and the licence are shown on public pages; the helpline goes out in marketing SMS."
+        detail="Support contacts and the licence are shown on public pages; the helpline is kept on record."
         saveAnchor={saveRef}
         onSave={() => cfgFormRef.current?.requestSubmit()}
         /* ⛔ `reset()` fires no event, so the dial previews' mirrors are put back by hand — or

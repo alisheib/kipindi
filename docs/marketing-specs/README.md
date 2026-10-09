@@ -14,4 +14,14 @@ The specs, binding decisions and adversarial critiques behind the 52-unit progra
   found in today's SMS code, and the owner's questions (each with its built default).
 - `reviews/` — the first tranche's adversarial review records (2026-10-01), as returned.
 
+⟶ **2026-10-09 · the owner's ruling** (`docs/COMPLIANCE-DECISIONS.md`, the top entry): a marketing SMS — a campaign's or
+a test's — is sent exactly as the officer wrote it. Nothing is appended: no source line, no "50pick 18+", no helpline, no
+"Acha:" stop link; the counter's room is the whole message (160 GSM-7 characters, 70 in Unicode). Every recipient row
+still gets its opt-out token, and `/s/<token>` keeps working for every link sent before. Every passage in these files
+that prints, prices or proves a footer, a stop link, "50pick 18+", the helpline or a source line in a message describes
+the design before that ruling — the code, its suites and the tracker hold the present. E18 (a contact-book campaign's
+source line at confirm and Start) and U37s (the line stamped on drafts, its stale flag, its box on the wordings card)
+went with it. `ENGINE-SPEC.md`, `U33a-U37c-OD58.md` and `U37.md` carry the same note at their head, and
+`DECISIONS-U29-U40.md` at M5 and G5.
+
 Moved here from a session's scratch folder on 2026-10-03: until then they existed on one laptop only.

@@ -1,12 +1,13 @@
 /**
  * ⭐ U40a · THE CONFIRMATION, SERVER — the view a confirmation is opened on (`campaignConfirmView`) and the ONE write that
- * confirms (`confirmCampaign`). ENGINE-SPEC §4.5 decision 2; OD27, X9, X13, X15, E15, E18, E27; OD60, OD65, OD66, OD67.
+ * confirms (`confirmCampaign`). ENGINE-SPEC §4.5 decision 2; OD27, X9, X13, X15, E15, E27; OD60, OD65, OD66, OD67 (and E18,
+ * superseded by the owner's ruling of 2026-10-09 — see the refusals below).
  *
  * ── THE ORDER (§4.5 decision 2) ──────────────────────────────────────────────────────────────────────────────────
  *   find (a DRAFT, else `not_found` / `not_draft`) → the stored audience read at the campaign's door → this viewer's role
  *   rule → a FRESH fence (`audienceFence`: the ONE walk's count, the members key for THIS draft) held to what this viewer
- *   may see (`fenceForViewer`, OD67) → `decideConfirm` (OD27) → E18 the source line, read fresh → the estimate frozen (the
- *   SAVED segments × the fresh count × the measured price, else the settings' price, X15) → E15 the limit → ONE
+ *   may see (`fenceForViewer`, OD67) → `decideConfirm` (OD27) → the estimate frozen (the SAVED segments × the fresh
+ *   count × the measured price, else the settings' price, X15) → E15 the limit → ONE
  *   `transition(DRAFT → CONFIRMED, draftRevision)` writing every confirm key → a null answer read back once to say why
  *   (`confirmWriteRefusal`).
  * ⛔ OD27 · THE GATE IS THE SERVER'S RECOUNT. The browser sends the text the modal armed on and the SIGNED claim it was
@@ -25,10 +26,9 @@
  *   · `audience_refused` — ⛔ OD66 · a filter THIS viewer's role may not count (`campaignAudienceRefusal`): for a viewer
  *     who may not read a number, both populations at once, a search, a consent/source/player/stop axis. Refused BEFORE
  *     the count, so neither the view nor a refusal sentence ("Type 7 to confirm") can say a number the role rule hides.
- *   · `needs_source_line` — ⛔ E18 · an audience that can reach the contact book (the book, or both) whose stored message
- *     carries no source line. A players-only campaign needs none.
- *   · `unsaved` — the draft's stamped source line is not the one saved now (U37s; changed or cleared since): confirming
- *     freezes the SAVED message, so it is saved again first. `source_unreadable` — that fresh read could not answer.
+ *   · (E18's `needs_source_line` and U37s's `unsaved` / `source_unreadable` are GONE since the owner's ruling of
+ *     2026-10-09: nothing is appended to a marketing SMS, so no source line is printed and none is required — a campaign
+ *     to contact-book numbers confirms without one, and no saved line is read. `test:campaign-gates` G5.1 · G5.1b.)
  *   · `no_body` — the stored sizes cannot be priced (`savedVariantSizes`; the door never stores such a row — fail closed).
  *   · `settings_unreadable` — ⛔ OD63 · the Marketing SMS settings were re-read and could not be read in full: the limit is
  *     unknown, and a default standing in for the owner's value is never confirmed against.
@@ -89,8 +89,7 @@ import type { SettingsReload } from "@/lib/server/marketing/sms-settings";
 import { campaignMoneyVisible, loadSegmentCost } from "@/lib/server/marketing/estimate";
 import { mayReveal } from "@/lib/server/rbac";
 import type { Role } from "@/lib/server/roles";
-import { CAMPAIGN_AUDIENCE_UNREADABLE, readSavedSourcePhrase } from "@/lib/server/marketing/campaign-draft";
-import type { SourcePhraseRead } from "@/lib/server/marketing/campaign-draft";
+import { CAMPAIGN_AUDIENCE_UNREADABLE } from "@/lib/server/marketing/campaign-draft";
 import { CONFIRM_REFUSAL_COPY, CONFIRM_TIER_COLUMN, confirmWriteRefusal, decideConfirm } from "@/lib/marketing/campaign-confirm";
 import type { ConfirmOutcomeReason, ConfirmTier } from "@/lib/marketing/campaign-confirm";
 import { campaignEstimate, savedVariantSizes } from "@/lib/marketing/campaign-estimate";
@@ -163,11 +162,11 @@ export async function confirmViewerFor(userId: string | null, deps: ConfirmViewe
 
 /** The refusals only this service can see (the header). The pure ones are `ConfirmOutcomeReason`. */
 export type ConfirmServiceRefusal =
-  | "audience_unreadable" | "audience_refused" | "needs_source_line" | "unsaved" | "source_unreadable"
+  | "audience_unreadable" | "audience_refused"
   | "no_body" | "settings_unreadable" | "price_unknown" | "over_limit";
 
 /** Why the confirm trigger is disabled — the first refusal a correctly typed confirmation of this view would get, read
- *  from the same sources at the same moment (the source line too is read fresh, as the confirmation reads it). */
+ *  from the same sources at the same moment. */
 export type ConfirmBlocked = "not_draft" | "audience_empty" | ConfirmServiceRefusal;
 
 /** The estimate a confirmation would freeze. `money` is null for a viewer who may not read money — no figure, no key. */
@@ -233,11 +232,6 @@ export const CONFIRM_SERVICE_COPY: Readonly<Record<ConfirmServiceRefusal, (n: Co
   audience_unreadable: () => `${CAMPAIGN_AUDIENCE_UNREADABLE} Nothing was confirmed.`,
   audience_refused: () =>
     "Your role can't confirm this audience: it uses a filter your role can't count. An officer who may read phone numbers can confirm it. Nothing was confirmed.",
-  needs_source_line: () =>
-    "This audience can include people from the contact book, so the message must carry its source line — and this campaign has none yet. The owner sets it on Admin → System → Marketing wordings; then save this draft again. Nothing was confirmed.",
-  unsaved: () =>
-    "This draft was saved with a source line that has since been changed or cleared. Save the draft again, then confirm. Nothing was confirmed.",
-  source_unreadable: () => "The saved source line couldn't be read just now — try again in a moment. Nothing was confirmed.",
   no_body: () => "This draft has no saved message to price. Save the Swahili message first. Nothing was confirmed.",
   settings_unreadable: () =>
     "The Marketing SMS settings couldn't be read just now, so this campaign's cost can't be checked against its limit. Try again in a moment. Nothing was confirmed.",
@@ -277,25 +271,11 @@ export function confirmMoneyLine(money: CampaignConfirmEstimate["money"]): strin
 
 /* ══ THE RULES — exported, and handed in, so the suite can plant each one's absence ══════════════════════════════ */
 
-/**
- * ⛔ E18 · THE SOURCE LINE, AS A CONFIRMATION READS IT. An audience that can reach the contact book (the book, or both)
- * confirms only when its STORED message carries a source line, and only the line saved now: a blank stamp is
- * `needs_source_line`; a stamp the owner has since changed or cleared is `unsaved` (the composer's own test,
- * `composerSourceLineStale` — `test:campaign-gates` holds the two equal); a saved line that could not be read is
- * `source_unreadable`. A players-only campaign prints no source line (E17), so it needs none.
- */
-export function sourceLineRefusal(
-  row: Pick<StoredSmsCampaign, "sourcePhrase">,
-  filter: Pick<ContactAudienceFilter, "population">,
-  saved: SourcePhraseRead,
-): "needs_source_line" | "unsaved" | "source_unreadable" | null {
-  if (filter.population === "players") return null;
-  const stamped = typeof row.sourcePhrase === "string" ? row.sourcePhrase.trim() : "";
-  if (stamped === "") return "needs_source_line";
-  if (!saved || saved.ok !== true) return "source_unreadable";
-  const now = typeof saved.phrase === "string" ? saved.phrase.trim() : "";
-  return stamped !== now ? "unsaved" : null;
-}
+/* ⛔ NO SOURCE-LINE RULE (the owner's ruling of 2026-10-09). E18 confirmed an audience that could reach the contact book
+   only when its stored message carried a source line — and, under U37s, only the line saved now. Nothing is appended to
+   a marketing SMS any more, so no line is printed and none is required: `sourceLineRefusal`, its two deps (`sourceRule`,
+   `freshLine`) and its three refusals are gone, and `test:campaign-gates` G5.1 · G5.1b hold them gone. The column
+   `sourcePhrase` stays on the row as history; nothing here reads it. */
 
 /** ⛔ E15 · THE SPEND CEILING: no price is `price_unknown`; strictly above the limit is `over_limit`; at it confirms. */
 export function spendRefusal(costTzs: number | null, limitTzs: number): "price_unknown" | "over_limit" | null {
@@ -381,10 +361,6 @@ export type ConfirmDeps = {
   breakdown: typeof breakdownVisible;
   /** The split door, asked for a reader only (`audienceSplit`) — U40b: with what is left of the read's wait for a slot. */
   split: (f: ContactAudienceFilter, viewerReads: boolean, waitMs?: number) => Promise<AudienceSplitResult>;
-  /** E18 (`sourceLineRefusal`). */
-  sourceRule: typeof sourceLineRefusal;
-  /** The saved source line READ FRESH (`readSavedSourcePhrase`) — by the view and by the confirmation alike. */
-  freshLine: () => Promise<SourcePhraseRead> | SourcePhraseRead;
   /** The Marketing SMS settings, re-read (`reloadMarketingSmsSettings`) — the price and the limit. */
   settings: () => Promise<SettingsReload>;
   /** The price of one segment — `estimate.ts`'s ONE cost loader (`loadSegmentCost`): measured from our own delivered sends,
@@ -414,8 +390,6 @@ export const CONFIRM_DEPS: Readonly<ConfirmDeps> = Object.freeze({
   refusal: campaignAudienceRefusal,
   breakdown: breakdownVisible,
   split: (f: ContactAudienceFilter, viewerReads: boolean, waitMs?: number) => audienceSplit(f, { viewerReads, waitMs }),
-  sourceRule: sourceLineRefusal,
-  freshLine: readSavedSourcePhrase,
   settings: reloadMarketingSmsSettings,
   cost: loadSegmentCost,
   spendRule: spendRefusal,
@@ -435,15 +409,6 @@ async function recordedBy(deps: ConfirmDeps, entry: Parameters<typeof audit>[0])
     return r !== null && typeof r === "object" && (r as { recorded?: unknown }).recorded === true;
   } catch {
     return false;
-  }
-}
-
-/** The saved source line read fresh — or a read that could not answer (a throw is one). */
-async function freshLineOf(deps: ConfirmDeps): Promise<SourcePhraseRead> {
-  try {
-    return await deps.freshLine();
-  } catch {
-    return { ok: false };
   }
 }
 
@@ -525,8 +490,7 @@ async function audienceViewFor(filter: ContactAudienceFilter, count: number, vie
  * ⭐ WHAT A CONFIRMATION IS OPENED ON — counted fresh, every call: the watermark the modal posts back, the tier, the number
  * to type, the audience in words and as this viewer may see it, the list (a reader's), the estimate it would freeze, and
  * why it is blocked: the first refusal a correctly typed confirmation of this view would get, in its own words — read
- * from the same sources, the source line included (fresh, as the confirmation reads it; never this process's cache, which
- * would say `unsaved` for every book draft before the wordings have loaded, and stale things on a stale instance).
+ * from the same sources. (No source line is read since the owner's ruling of 2026-10-09: none is required.)
  * ⛔ null when the campaign does not exist; a failed read THROWS (the host says so — never a zero).
  */
 export async function campaignConfirmView(campaignId: string, viewer: ConfirmViewer, deps: ConfirmDeps = CONFIRM_DEPS): Promise<CampaignConfirmView | null> {
@@ -554,9 +518,8 @@ export async function campaignConfirmView(campaignId: string, viewer: ConfirmVie
   const left = Math.max(0, CONFIRM_SLOT_WAIT_MS - (fenced.waitedMs ?? 0));
   const split = await audienceViewFor(filter, count, viewer, deps, left);
   const spend = await spendOf(row, count, deps);
-  const line = deps.sourceRule(row, filter, await freshLineOf(deps));
-  // The order is the confirmation's: nobody (the gate's first answer), then E18, then the estimate.
-  const blocked: Exclude<ConfirmBlocked, "not_draft"> | null = count === 0 ? "audience_empty" : line ?? spend.refusal;
+  // The order is the confirmation's: nobody (the gate's first answer), then the estimate.
+  const blocked: Exclude<ConfirmBlocked, "not_draft"> | null = count === 0 ? "audience_empty" : spend.refusal;
   const message = blocked === null ? null
     : blocked === "audience_empty" ? CONFIRM_REFUSAL_COPY.audience_empty({ fresh: count, shown: null })
       : CONFIRM_SERVICE_COPY[blocked](moneyWords(viewer, spend));
@@ -642,12 +605,6 @@ export async function confirmCampaign(
     });
   }
   const freeze = decision.freeze;
-
-  // ── E18 · the source line, read fresh — this acts on it ──
-  const line = deps.sourceRule(row, filter, await freshLineOf(deps));
-  if (line !== null) {
-    return refuse(line, { targetId: row.id, freshCount: freeze.count, tier: freeze.tier, message: CONFIRM_SERVICE_COPY[line](none) });
-  }
 
   // ── the estimate frozen (X15), and E15 · the limit ──
   const spend = await spendOf(row, freeze.count, deps);

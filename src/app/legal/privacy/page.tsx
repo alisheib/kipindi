@@ -68,7 +68,9 @@ const TITLE: Record<Locale, string> = {
 // (`src/lib/legal/privacy-referees.ts`, ONE constant) keep that promise — the final-rule gate's referee exclusion, kept
 // with a coded form of each such number that §5's new referee bullet states and §9 explains, whose cutoff is the instant
 // the re-worded §9 first went live — and referees named after it are told management's two sentences ("50pick may send
-// you offers by SMS." "You can stop them at any time with the link in every offer."). ⛔ §9 names the version by its
+// you offers by SMS." — and, until 2026-10-09, "You can stop them at any time with the link in every offer."). 2026-10-09
+// (Privacy v2026-10-09, the owner's ruling that a marketing SMS is sent exactly as written): no offer carries a stop link
+// any more, so §9's stop sentence and §5's "the stop link it carried" are gone, in every language. ⛔ §9 names the version by its
 // LABEL, never "this version": a later version would move a relative phrase and with it the promise. ⛔ §9 calls the coded
 // form "not the number itself", NEVER "it cannot be turned back into the number": it is an HMAC under the server's
 // pepper, and whoever holds the pepper can hash every Tanzanian mobile number and compare (`test:privacy-notice` §4k
@@ -78,10 +80,17 @@ const TITLE: Record<Locale, string> = {
 // is said in the data-rights file (`privacy.ts`, rights.erasure) and under "Erase my data"
 // (`profile.privacyRequestErasureNote`); `test:privacy-notice` §4j pins every one of these texts and ties them to the
 // code, and §4k holds §9.
+// 2026-10-09, the same version (Ali in the session, ~15:00 EAT: "we can't mention Blackball, they won't allow it … just
+// tell them they can stop, but no need to mention Blackball"): §4's SMS gateway bullet names the gateway by its role
+// alone — "Our SMS gateway in Tanzania, …" — in all three languages, every other word kept: it is the page as it ships
+// with licence outreach closed, so its consent-only clause stays true here (`test:policy-lines` L1 holds the code's
+// default equal to it), and production prints its saved line, his approved words
+// (`docs/marketing-approvals/2026-10-09/approval-G10.json`). `test:privacy-notice` §2e refuses the name in every language;
+// COMPLIANCE-DECISIONS.md "Privacy v2026-10-09", item 5, records his words and the line.
 const META: Record<Locale, string> = {
-  en: "Version 2026-10-07 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
-  sw: "Toleo 2026-10-07 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
-  zh: "版本 2026-10-07 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
+  en: "Version 2026-10-09 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
+  sw: "Toleo 2026-10-09 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
+  zh: "版本 2026-10-09 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
 };
 
 /**
@@ -137,7 +146,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Cloud hosting providers: Railway, in the United States (region us-west2), which runs the app, holds its databases and keeps backups of them; and Cloudflare R2, in Western Europe, which stores identity documents, selfies and encrypted database backups; and GitHub Actions, in the United States, which creates the nightly database backup and test-restores it before it is encrypted and stored</li>
           <li>Cloudflare&apos;s network, which carries every connection to www.50pick.tz: each request is decrypted at the Cloudflare data centre nearest to you and encrypted again on its way to our servers</li>
           <li>Postmark, in the United States, which sends our emails: it keeps a record of each email, and records when an email is opened and which link in it is clicked</li>
-          <PolicyLine line="privacy.smsGateway" locale="en" /* ⛔ prints only until saved */><li>Blackball, our SMS gateway in Tanzania, which sends our text messages, such as one-time codes and, only if you agree to receive them, offers and news: it receives your phone number and the text of each message, and tells us whether each message was delivered</li></PolicyLine>
+          <PolicyLine line="privacy.smsGateway" locale="en" /* ⛔ prints only until saved */><li>Our SMS gateway in Tanzania, which sends our text messages, such as one-time codes and, only if you agree to receive them, offers and news: it receives your phone number and the text of each message, and tells us whether each message was delivered</li></PolicyLine>
           <li>Anthropic, which writes the answers in the 50pick Help chat: it receives the messages of that conversation, not your account details; it stores data in the United States and may process a request in the United States, Europe, Asia or Australia</li>
           <li>Sentry, in the European Union, which receives error reports from our servers: Tanzanian phone numbers, email addresses and long numbers such as a NIDA number are removed from a report before it is sent</li>
           <li>Google Analytics, run by Google, only if you allow analytics, which measures how the website is used: it receives the address and title of each page you open, with any part that could identify you removed; your browser and device type; an approximate location derived from your IP address; and a random identifier kept in a cookie. It does not receive your name, phone number, email address or account details, and it is not used for advertising. It does not run on staff pages or on a page opened from a password-reset, email-verification or agent-invitation link. Google may process this data in the United States and other countries</li>
@@ -152,7 +161,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Prediction and transaction history: at least 7 years</li>
           <li>Audit log entries: at least 7 years</li>
           <li>Marketing consent: until you withdraw it, close your account, or 2 years pass without you signing in</li>
-          <li>Records of marketing text messages (offers and news by SMS): at least 7 years. For each message they hold the number it was sent to, the message, what happened to it and the stop link it carried. If you ask us to erase a closed account, we remove which account they belonged to and keep the rest</li>
+          <li>Records of marketing text messages (offers and news by SMS): at least 7 years. For each message they hold the number it was sent to, the message and what happened to it. If you ask us to erase a closed account, we remove which account they belonged to and keep the rest</li>
           <li>A coded form of the phone number of each agent referee named before version {REFEREE_PROMISE_REWORDED_IN}: kept for as long as 50pick sends marketing messages, so that we never contact them for marketing (§9)</li>
           <li>Visit counts, daily totals that identify no one: 400 days</li>
           <li>Journey counts, daily totals that identify no one: 400 days</li>
@@ -215,7 +224,6 @@ function content(): Record<Locale, React.ReactNode> { return {
           marketing messages; asking us to destroy your information removes everything else, but
           not this coded form, because without it we could not keep the promise. If you are named
           as a referee after that: 50pick may send you offers by SMS.
-          You can stop them at any time with the link in every offer.
         </p>
       </LegalSection>
     </>
@@ -260,7 +268,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Watoa huduma za wingu: Railway, nchini Marekani (kanda us-west2), inayoendesha programu, kuhifadhi hifadhidata zake na nakala rudufu zake; na Cloudflare R2, barani Ulaya Magharibi, inayohifadhi nyaraka za utambulisho, selfie na nakala rudufu za hifadhidata zilizosimbwa; na GitHub Actions, nchini Marekani, inayotengeneza nakala rudufu ya kila usiku ya hifadhidata na kuijaribu kabla ya kusimbwa na kuhifadhiwa</li>
           <li>Mtandao wa Cloudflare, unaopitisha kila muunganisho wa www.50pick.tz: kila ombi husimbuliwa katika kituo cha data cha Cloudflare kilicho karibu nawe na kusimbwa tena linapoelekea kwenye seva zetu</li>
           <li>Postmark, nchini Marekani, inayotuma barua pepe zetu: huhifadhi kumbukumbu ya kila barua pepe, na hurekodi barua pepe inapofunguliwa na kiungo kinachobofywa ndani yake</li>
-          <PolicyLine line="privacy.smsGateway" locale="sw" /* ⛔ prints only until saved */><li>Blackball, lango letu la SMS nchini Tanzania, linalotuma ujumbe wetu mfupi (SMS), kama misimbo ya matumizi ya mara moja na, ikiwa tu umekubali kuzipokea, ofa na habari: hupokea namba yako ya simu na maandishi ya kila ujumbe, na hutuambia kama kila ujumbe umefika</li></PolicyLine>
+          <PolicyLine line="privacy.smsGateway" locale="sw" /* ⛔ prints only until saved */><li>Lango letu la SMS nchini Tanzania, linalotuma ujumbe wetu mfupi (SMS), kama misimbo ya matumizi ya mara moja na, ikiwa tu umekubali kuzipokea, ofa na habari: hupokea namba yako ya simu na maandishi ya kila ujumbe, na hutuambia kama kila ujumbe umefika</li></PolicyLine>
           <li>Anthropic, inayoandika majibu katika gumzo la Msaada wa 50pick: hupokea ujumbe wa mazungumzo hayo, si taarifa za akaunti yako; huhifadhi data nchini Marekani na inaweza kuchakata ombi nchini Marekani, Ulaya, Asia au Australia</li>
           <li>Sentry, katika Umoja wa Ulaya, inayopokea ripoti za hitilafu kutoka kwenye seva zetu: namba za simu za Tanzania, anwani za barua pepe na namba ndefu kama namba ya NIDA huondolewa kwenye ripoti kabla haijatumwa</li>
           <li>Google Analytics, inayoendeshwa na Google, ikiwa tu utaruhusu takwimu, inayopima jinsi tovuti inavyotumika: hupokea anwani na kichwa cha kila ukurasa unaofungua, sehemu yoyote inayoweza kukutambulisha ikiwa imeondolewa; aina ya kivinjari na kifaa chako; eneo la takriban linalotokana na anwani yako ya IP; na kitambulisho cha nasibu kinachohifadhiwa kwenye kidakuzi. Haipokei jina lako, namba ya simu, anwani ya barua pepe wala taarifa za akaunti yako, na haitumiki kwa matangazo. Haiendeshwi kwenye kurasa za wafanyakazi wala kwenye ukurasa uliofunguliwa kutoka kiungo cha kubadilisha nenosiri, cha kuthibitisha barua pepe au cha mwaliko wa wakala. Google inaweza kuchakata data hii nchini Marekani na nchi nyingine</li>
@@ -275,7 +283,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Historia ya utabiri na miamala: angalau miaka 7</li>
           <li>Maingizo ya kumbukumbu za ukaguzi (audit log): angalau miaka 7</li>
           <li>Ridhaa ya matangazo: hadi utakapoiondoa, kufunga akaunti yako, au miaka 2 ipite bila kuingia</li>
-          <li>Kumbukumbu za SMS za ofa na habari: angalau miaka 7. Kwa kila ujumbe tunahifadhi namba ya simu, maandishi ya ujumbe, kilichotokea kwa ujumbe huo na kiungo cha “Acha” kilichokuwa ndani yake. Ukituomba kufuta akaunti iliyofungwa, uhusiano wa kumbukumbu hizo na akaunti yako huondolewa, na sehemu iliyobaki huhifadhiwa</li>
+          <li>Kumbukumbu za SMS za ofa na habari: angalau miaka 7. Kwa kila ujumbe tunahifadhi namba ya simu, maandishi ya ujumbe na kilichotokea kwa ujumbe huo. Ukituomba kufuta akaunti iliyofungwa, uhusiano wa kumbukumbu hizo na akaunti yako huondolewa, na sehemu iliyobaki huhifadhiwa</li>
           <li>Namba ya simu ya kila mdhamini wa wakala aliyetajwa kabla ya toleo la {REFEREE_PROMISE_REWORDED_IN} la sera hii, ikiwa imegeuzwa kuwa msimbo: huhifadhiwa kwa muda wote ambao 50pick inatuma ujumbe wa matangazo, ili tusiwasiliane naye kamwe kwa matangazo (§9)</li>
           <li>Hesabu za matembeleo, jumla za kila siku zisizomtambulisha mtu yeyote: siku 400</li>
           <li>Hesabu za safari, jumla za kila siku zisizomtambulisha mtu yeyote: siku 400</li>
@@ -340,7 +348,6 @@ function content(): Record<Locale, React.ReactNode> { return {
           kila kitu kingine huondolewa, lakini si msimbo huu, kwa sababu bila huo tusingeweza
           kutimiza ahadi hiyo. Kama umetajwa kuwa mdhamini baada ya hapo:
           50pick inaweza kukutumia ofa kwa SMS.
-          Unaweza kuzisimamisha wakati wowote kwa kiungo cha kusimamisha kilicho katika kila ofa.
         </p>
       </LegalSection>
     </>
@@ -385,7 +392,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>云托管服务商：Railway（美国，us-west2 区域），运行本应用、存放其数据库并保存数据库备份；Cloudflare R2（西欧），存放身份证件、自拍照及加密的数据库备份；以及 GitHub Actions（美国），负责生成每晚的数据库备份，并在加密存储前进行恢复验证</li>
           <li>Cloudflare 网络：承载所有访问 www.50pick.tz 的连接；每个请求在离您最近的 Cloudflare 数据中心解密，并在发往我们服务器的途中重新加密</li>
           <li>Postmark（美国）：发送我们的电子邮件；保存每封邮件的记录，并记录邮件何时被打开以及其中哪个链接被点击</li>
-          <PolicyLine line="privacy.smsGateway" locale="zh" /* ⛔ prints only until saved */><li>Blackball（坦桑尼亚），我们的短信网关：发送我们的短信，例如一次性验证码，以及仅在您同意接收时发送的优惠和资讯；接收您的电话号码和每条短信的内容，并告知我们每条短信是否已送达</li></PolicyLine>
+          <PolicyLine line="privacy.smsGateway" locale="zh" /* ⛔ prints only until saved */><li>我们在坦桑尼亚的短信网关：发送我们的短信，例如一次性验证码，以及仅在您同意接收时发送的优惠和资讯；接收您的电话号码和每条短信的内容，并告知我们每条短信是否已送达</li></PolicyLine>
           <li>Anthropic：为“50pick 帮助”聊天撰写回答；接收该对话中的消息，不含您的账户信息；数据存储于美国，请求可能在美国、欧洲、亚洲或澳大利亚处理</li>
           <li>Sentry（欧盟）：接收我们服务器的错误报告；报告发送前，会删除其中的坦桑尼亚电话号码、电子邮箱地址以及 NIDA 号码等长数字</li>
           <li>Google Analytics（由 Google 运营，仅在您允许分析时启用）：衡量网站的使用情况；接收您打开的每个页面的地址与标题（已删除任何可能识别您身份的部分）、您的浏览器与设备类型、根据您的 IP 地址推断的大致位置，以及保存在 cookie 中的随机标识符。不接收您的姓名、电话号码、电子邮箱地址或账户信息，也不用于广告。不在员工页面上运行，也不在通过重置密码、验证邮箱或代理邀请链接打开的页面上运行。Google 可能在美国及其他国家处理这些数据</li>
@@ -400,7 +407,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>预测与交易历史：至少 7 年</li>
           <li>审计日志条目：至少 7 年</li>
           <li>营销同意：直至您撤回、注销账户，或连续 2 年未登录</li>
-          <li>短信优惠与资讯的记录：至少 7 年。我们为每条短信保存所发往的号码、短信内容、发送结果，以及短信中用于停止接收的链接。如您要求删除已注销的账户，我们将删除这些记录与您账户的关联，其余内容予以保留</li>
+          <li>短信优惠与资讯的记录：至少 7 年。我们为每条短信保存所发往的号码、短信内容和发送结果。如您要求删除已注销的账户，我们将删除这些记录与您账户的关联，其余内容予以保留</li>
           <li>本政策 {REFEREE_PROMISE_REWORDED_IN} 版之前被提名的每位代理推荐人的电话号码（编码形式）：只要 50pick 仍在发送营销信息即予保留，以确保我们绝不会为营销目的联系他们（见第 9 条）</li>
           <li>访问计数（不识别任何人的每日总数）：400 天</li>
           <li>使用流程计数（不识别任何人的每日总数）：400 天</li>
@@ -437,7 +444,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           当有人申请成为 50pick 代理时，会向我们提供两位推荐人的姓名、联系方式及国民身份证扫描件，并确认每位推荐人均已同意。若您是此类推荐人：我们仅为核实该申请而保存您的信息（以及如下文所述，您号码的一种编码形式）；身份证扫描件在决定作出后 {AGENT_REFEREE_DOC_HOLD_DAYS} 天销毁，申请被拒绝时立即销毁；您也可以写信给第 1 条所列的数据控制者，要求提前销毁您的信息——无需拥有账户。
         </p>
         <p>
-          在本政策 {REFEREE_PROMISE_REWORDED_IN} 版之前，我们曾告知每位推荐人：我们绝不会为营销目的联系他们。若您在此之前被提名为推荐人，这一承诺依然有效：我们绝不会为营销目的联系您。为了信守这一承诺，只要 50pick 仍在发送营销信息，我们就会保留您电话号码的一种编码形式（并非号码本身）；如您要求我们销毁您的信息，其他所有信息都会删除，但这一编码形式不会删除，因为没有它我们就无法信守这一承诺。若您在此之后被提名为推荐人：50pick 可能会通过短信向您发送优惠。您可随时通过每条优惠短信中的退订链接停止接收。
+          在本政策 {REFEREE_PROMISE_REWORDED_IN} 版之前，我们曾告知每位推荐人：我们绝不会为营销目的联系他们。若您在此之前被提名为推荐人，这一承诺依然有效：我们绝不会为营销目的联系您。为了信守这一承诺，只要 50pick 仍在发送营销信息，我们就会保留您电话号码的一种编码形式（并非号码本身）；如您要求我们销毁您的信息，其他所有信息都会删除，但这一编码形式不会删除，因为没有它我们就无法信守这一承诺。若您在此之后被提名为推荐人：50pick 可能会通过短信向您发送优惠。
         </p>
       </LegalSection>
     </>

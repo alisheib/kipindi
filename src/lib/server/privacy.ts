@@ -394,6 +394,10 @@ export async function buildDsarBundle(userId: string) {
       //    (DATA-RETENTION §1: "Never deleted — by design"); and "only" is gone — the number also
       //    stays in the log of the security codes texted to it and in the payment records, both
       //    kept because the law requires them, which the last sentence now says.
+      //  · And on 2026-10-09 (the owner's ruling that a marketing SMS is sent exactly as the officer wrote
+      //    it — COMPLIANCE-DECISIONS "Privacy v2026-10-09"): "and the stop link it carried" is gone, since
+      //    no marketing text message carries a stop link any more; the note under "Erase my data" says
+      //    the same record in the same words.
       //
       // ⛔ IT DESCRIBES A PARTIAL FULFILMENT AND SAYS WHICH PART. That is the honest shape of
       // erasure for a licensed operator, and it is the posture `/admin/retention` already
@@ -408,7 +412,7 @@ export async function buildDsarBundle(userId: string) {
         + "under POCA Cap 423 §16 and cannot be erased before then. We also keep your phone "
         + "number in our record of your marketing choices, so that we never send you marketing "
         + "again, and in the records of the marketing text messages we sent to it: those records "
-        + "(the number, the message, what happened to it and the stop link it carried) are kept "
+        + "(the number, the message and what happened to it) are kept "
         + "for at least 7 years, as the record GN 478T reg 51(1) requires; erasure removes which "
         + "account they belonged to and keeps the rest. The records of the security codes we "
         + "texted to your number, and your payment records, which the law requires us to keep, "

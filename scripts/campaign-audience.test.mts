@@ -925,7 +925,8 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       `round trips ${trips.join(",")} · unknown ${json(popUnknown)} · at the book's address ${json(popAtBook)}`);
 
     // B2 · a population saved through the composer, read back by both campaign doors
-    const quietDeps = { ...CAMPAIGN_DRAFT_DEPS, audit: () => undefined, sourcePhrase: () => ({ ok: true as const, phrase: null }) };
+    // (No source-line reader to stub since the owner's ruling of 2026-10-09: the draft save reads none.)
+    const quietDeps = { ...CAMPAIGN_DRAFT_DEPS, audit: () => undefined };
     type DraftInput = Parameters<typeof saveCampaignDraft>[0];
     const draftInput = (over: Partial<DraftInput> = {}): DraftInput => ({
       id: null, draftRevision: null, name: "U38b population", bodySw: "50pick: Habari, mechi kubwa leo.", bodyEn: "",
@@ -996,7 +997,8 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       : impl.audienceView(Object.fromEntries(windowHome.searchParams.entries()), windowed, true);
     const everySaveGoesHome = NEW_SRC("new/actions.ts").includes("return { ...result, href: await savedDraftAddress(result.id, reads) };")
       && NEW_SRC("new/composer-client.tsx").includes("if (r.href && r.href !== here) router.replace(r.href as never, { scroll: false });");
-    const saveTakes = NEW_SRC("new/composer-client.tsx").includes("!dirty && !view.sourceLineStale && !view.audience.unsaved ? { reason: COMPOSE_NO_CHANGES")
+    // (2026-10-09: U37s's `!view.sourceLineStale` is gone from this rule with the stale-line flag — no draft's line matters.)
+    const saveTakes = NEW_SRC("new/composer-client.tsx").includes("!dirty && !view.audience.unsaved ? { reason: COMPOSE_NO_CHANGES")
       && NEW_SRC("new/composer-client.tsx").includes("!c.dirty && !view.audience.unsaved ? composeSaved(");
     ok(p(L.b2u),
       ownView?.unsaved === false && movedView?.unsaved === true && movedMasked?.unsaved === true && bareView?.unsaved === false

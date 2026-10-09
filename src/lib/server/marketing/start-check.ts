@@ -17,9 +17,9 @@
  *       stub passes it (no handset, no money — U47b's local drive starts a campaign on it). ⚠️ An unrecognised provider is
  *       not a closed switch — the gate can pass it whatever the switch says — so ③ names it.
  *   ③  rail_dead — `smsRailProblem`: no SMS can leave this server at all.
- *   ④  needs_source_line — E18: an audience that can reach the contact book (the book, or both) whose frozen message has no
- *       source line; a players-only campaign needs none. Judged on the stored filter, so a filter that cannot be read is
- *       ⑤'s.
+ *   ④  (GONE since the owner's ruling of 2026-10-09 — E18's `needs_source_line`: nothing is appended to a marketing SMS,
+ *       so no source line is printed and none is required; a campaign to contact-book numbers starts without one. The
+ *       numbering is kept, so every other step keeps its name. `test:marketing-engine` F1 holds it gone.)
  *   ⑤  audience_unreadable — the stored filter no longer reads at the campaign's door. ⛔ THE ONLY STEP THAT SAYS SO:
  *       "confirm a new copy" is a true remedy only for a filter that cannot be read.
  *   ⑥  settings_unreadable — the Marketing SMS settings re-read did not answer (or threw): try again.
@@ -120,7 +120,7 @@ export type CampaignPopulation = "book" | "players" | "both";
 export type StartRefusal =
   | {
       reason:
-        | "not_confirmed" | "confirmation_unreadable" | "switch_closed" | "needs_source_line" | "audience_unreadable"
+        | "not_confirmed" | "confirmation_unreadable" | "switch_closed" | "audience_unreadable"
         | "settings_unreadable" | "settings_incomplete" | "price_unknown" | "credit_unreadable" | "audience_uncounted"
         | "members_unverified" | "members_changed";
     }
@@ -260,13 +260,6 @@ async function shutOf(provider: SmsProviderResolution, deps: StartCheckDeps): Pr
   return rail === null ? null : { reason: "rail_dead", rail };
 }
 
-/** ⛔ E18 · an audience that can reach the contact book (the book, or both) whose frozen message carries no source line.
- *  A players-only campaign prints none (E17) — the same rule the confirmation applies to a blank stamp. */
-function sourceLineMissing(c: Pick<StoredSmsCampaign, "sourcePhrase">, filter: Pick<ContactAudienceFilter, "population">): boolean {
-  if (filter.population === "players") return false;
-  return (typeof c.sourcePhrase === "string" ? c.sourcePhrase.trim() : "") === "";
-}
-
 const populationOf = (filter: Pick<ContactAudienceFilter, "population">): CampaignPopulation =>
   filter.population === "players" ? "players" : filter.population === "both" ? "both" : "book";
 
@@ -335,9 +328,8 @@ export async function checkStart(c: StoredSmsCampaign, deps: StartCheckDeps = ST
   const shut = await shutOf(provider, deps);
   if (shut !== null) return refuse(shut);
 
-  // ④ E18 the source line · ⑤ the stored audience
+  // ⑤ the stored audience (④, the source line, is gone — the owner's ruling of 2026-10-09: none is printed)
   const read = readCampaignAudience(c.audienceFilter);
-  if (read.ok && sourceLineMissing(c, read.filter)) return refuse({ reason: "needs_source_line" });
   if (!read.ok) return refuse({ reason: "audience_unreadable" });
   const population = populationOf(read.filter);
 
@@ -498,8 +490,6 @@ export function startRefusalSentence(r: StartRefusal, viewer: RefusalViewer): st
       return "Marketing SMS are switched off. The owner switches them on (Admin → System → Marketing SMS sending), then you can start. Nothing was sent.";
     case "rail_dead":
       return "No SMS can leave this server right now — Admin → System says why. Nothing was sent.";
-    case "needs_source_line":
-      return "This campaign can reach people from the contact book, and its message has no source line. Stop it and confirm a copy once the owner has set the source line. Nothing was sent.";
     case "audience_unreadable":
       // A copy carries the same stored filter, and U47b's copy refuses one it cannot read: the other way out is said too.
       return "The saved audience can't be read any more. Stop this campaign and confirm a new copy — or write a new campaign if the copy is refused. Nothing was sent.";

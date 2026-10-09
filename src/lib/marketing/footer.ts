@@ -1,5 +1,15 @@
 /**
- * ⭐ THE STATUTORY ENVELOPE — what every marketing SMS must carry, appended by the engine and
+ * ⛔ OWNER RULING 2026-10-09 — A MARKETING SMS IS SENT EXACTLY AS THE OFFICER WROTE IT. Nothing is appended: no
+ * source line, no "50pick 18+", no helpline, no "Acha:" stop link (COMPLIANCE-DECISIONS § "2026-10-09 · Privacy
+ * v2026-10-09 — a marketing SMS is sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no source
+ * line (owner ruling)").
+ * `marketingFooter` is therefore EMPTY and `operatorBudget` is the whole message's cap; the composed text is the
+ * officer's message with `{jina}` filled in, and `test:campaign-compose` plants a footer to prove nothing is added.
+ * What stays: the message must still BEGIN with "50pick" (the officer's own text, checked — the sender is named), and
+ * the opt-out path and token length stay for the `/s/<token>` page, so a link already sent keeps working.
+ * The envelope below is the history of what the engine appended until that ruling.
+ *
+ * ⭐ (UNTIL 2026-10-09) THE STATUTORY ENVELOPE — what every marketing SMS must carry, appended by the engine and
  * impossible for an officer to remove.
  *
  * 🔴 D5: NO SMS THIS PLATFORM SENDS CARRIES A SENDER IDENTITY OR A RESPONSIBLE-GAMING FOOTER, and
@@ -58,9 +68,6 @@ export const SENDER_IDENTITY = "50pick";
 
 export type MarketingLocale = "SW" | "EN";
 
-/** ⛔ Swahili is the DEFAULT player language (§5.13), so it is first here and everywhere. */
-const STOP_WORD: Record<MarketingLocale, string> = { SW: "Acha", EN: "Stop" };
-
 /**
  * ⭐ THE SHORT DOMAIN IS DERIVED FROM `appUrl()`, NEVER TYPED.
  *
@@ -79,50 +86,35 @@ export function shortDomain(): string {
 }
 
 /**
- * The footer, exactly as it will be sent. ⛔ The leading newline is part of it and part of its cost.
- *
- * `\n50pick 18+ 0800110011 Acha: 50pick.tz/s/<token>`
- *
- * ⭐ IT CARRIES THE SOURCE PHRASE — OQ3's built safe default, word for word: "the footer carries a short source
- * phrase" (DECISIONS M5). Given one, the footer's own line begins with it, one space before the identity:
- * `\n<source phrase> 50pick 18+ 0800110011 Acha: 50pick.tz/s/<token>` — the engine's line, never the officer's, and
- * "counted with its trailing space" exactly as the OQ3 row prices it. Without one (an account recipient, and every
- * caller before U37a) it is the 49-septet footer above, byte for byte.
+ * ⛔ EMPTY SINCE THE OWNER'S RULING OF 2026-10-09 — nothing is appended to a marketing SMS (see this file's header). It
+ * stays a function with the arguments it always took, so every caller and every suite that sizes "the message as sent"
+ * keeps ONE door; it answers the empty string for every token, language and phrase.
+ * (Until that ruling it was `\n[<source phrase> ]50pick 18+ <helpline> Acha: 50pick.tz/s/<token>` — 49 septets, more with
+ * a phrase.)
  */
 export function marketingFooter(token: string, locale: MarketingLocale = "SW", sourcePhrase = ""): string {
-  // ⛔ Trimmed BEFORE the emptiness test: a phrase of spaces is no phrase.
-  const phrase = (sourcePhrase ?? "").trim();
-  return `\n${phrase ? `${phrase} ` : ""}${SENDER_IDENTITY} 18+ ${statutorySmsHelpline()} ${STOP_WORD[locale]}: ${shortDomain()}${OPTOUT_PATH}${token}`;
+  void token;
+  void locale;
+  void sourcePhrase;
+  return "";
 }
 
-/** A token of the right shape, for measuring the footer without minting a real one. */
+/** A token of the opt-out page's length — still handed in by the callers that once printed it. */
 export function footerMeasurementToken(): string {
   return "x".repeat(OPTOUT_TOKEN_CHARS);
 }
 
 /**
- * ⭐ WHAT AN OFFICER ACTUALLY HAS TO WRITE IN — computed, never typed.
- *
- * The single-segment limit minus the footer. With today's domain that is 160 − 49 = **111**, and the
- * composer prints THAT number rather than 160.
- *
- * ⚠️ `sourcePhrase` is OQ3's shadow. If the lawyer's answer to "how must ETA s.31(c)'s source of the
- * personal information be given inside a 160-character SMS" is "in the body", that phrase comes out
- * of the same 160 and the budget drops accordingly. Passing it here prices that answer instead of
- * arguing about it. The footer carries it (`marketingFooter`), counted with its trailing space, so the
- * budget is simply the cap less the footer AS SENT.
- *
- * 🔴 ENCODING-AWARE SINCE 2026-09-26. It always subtracted from the GSM-7 limit, so a UCS-2 message was
- * told "you have 111 characters" when 70 − 49 = 21 fit. `encoding` is the MESSAGE's, and the footer is
- * sized in it (`unitsIn`). The cap is `SMS_MAX_SEGMENTS` — the one the composer refuses at.
+ * ⭐ WHAT AN OFFICER HAS TO WRITE IN — the whole message's cap (160 in the GSM alphabet, 70 in Unicode, times
+ * `SMS_MAX_SEGMENTS`), since nothing is appended (the owner's ruling of 2026-10-09). Still computed through the footer,
+ * which is empty, so the budget and the composed message can never disagree.
  */
 export function operatorBudget(locale: MarketingLocale = "SW", sourcePhrase = "", encoding: SmsEncoding = "GSM7"): number {
-  // ⭐ ONE call for the footer and the phrase it carries, so the budget and the composed message cannot disagree.
   return capUnits(encoding) - unitsIn(marketingFooter(footerMeasurementToken(), locale, sourcePhrase), encoding);
 }
 
 export type MarketingCompose = {
-  /** Body + footer (carrying the source phrase when there is one) — what is actually sent, and what is sized. */
+  /** The message exactly as sent — the officer's text with `{jina}` filled in, nothing appended (2026-10-09). */
   text: string;
   size: SmsSize;
   budget: number;
@@ -132,12 +124,10 @@ export type MarketingCompose = {
 };
 
 /**
- * Compose a marketing message. ⛔ THE FOOTER IS NOT OPTIONAL AND NOT A PARAMETER — there is no call
- * shape that produces a marketing body without it, which is the only way "un-removable" is true of
- * software rather than of a policy document.
+ * Compose a marketing message: the officer's text, trimmed, with NOTHING appended (the owner's ruling of 2026-10-09).
  *
- * ⛔ AND THE SIZE IS TAKEN OF THE COMPOSED TEXT. Sizing the body and appending the footer afterwards
- * is the defect this whole unit exists to prevent; `test:campaign-compose` plants exactly that.
+ * ⛔ THE SIZE IS TAKEN OF THE COMPOSED TEXT — the text that is sent — so the counter, the test send and the real send
+ * can never price one message and send another.
  *
  * ⛔ ONE CALLER IN `src/` (U37a): `lib/marketing/campaign-template.ts`, the renderer the counter, the test send and
  * the real send all go through. A screen or an engine composing here on its own is how the officer is shown one
@@ -150,35 +140,25 @@ export function composeMarketing(
   sourcePhrase = "",
 ): MarketingCompose {
   const trimmed = (body ?? "").trim();
-  // 🔴 THE SOURCE PHRASE WENT IN FRONT OF THE BODY UNTIL U37a (2026-10-01): `${source}${trimmed}`. The identity
-  // check then read the PHRASE, so any phrase that did not itself begin with "50pick" (§10's realistic fixture is
-  // one) refused every message carrying it; and the over-cap sentence counted the phrase as the officer's text
-  // while quoting a budget that had already taken it out. Nothing passed a phrase yet, so nothing shipped wrong.
-  // ⭐ OQ3's built safe default says the FOOTER carries the phrase, and now it literally does (U37a review):
-  // `marketingFooter` begins its own line with it — never the officer's line — at exactly the units `operatorBudget`
-  // prices, and the officer's own "50pick" stays first.
-  const phrase = (sourcePhrase ?? "").trim();
-  const text = `${trimmed}${marketingFooter(token, locale, phrase)}`;
+  // ⛔ The owner's ruling of 2026-10-09: the text sent IS the officer's text. The footer is empty, so neither the token
+  // nor the phrase is printed (a link sent before the ruling keeps working through `/s/<token>`).
+  const text = `${trimmed}${marketingFooter(token, locale, sourcePhrase)}`;
   const size = sizeSms(text);
   // ⭐ The budget in the encoding this message will actually go out in — a single ’ makes it UCS-2.
-  const budget = operatorBudget(locale, phrase, size.encoding);
+  const budget = operatorBudget(locale, sourcePhrase, size.encoding);
   const problems: string[] = [];
 
-  // ETA s.32(1)(b) — identity at the START, not somewhere in the middle.
+  // The sender is named at the START — the officer's own "50pick", checked, never added.
   if (!trimmed.startsWith(SENDER_IDENTITY)) {
-    problems.push(`The message must begin with “${SENDER_IDENTITY}” so the sender is identified, as the law requires.`);
+    problems.push(`The message must begin with “${SENDER_IDENTITY}” so the sender is identified.`);
   }
   if (trimmed.length === 0) {
     problems.push("The message is empty.");
   }
-  if (token.length !== OPTOUT_TOKEN_CHARS) {
-    problems.push(`The opt-out link is missing or the wrong length, so this message would give no way to stop.`);
-  }
   // ⛔ THE ONE CAP (`SMS_MAX_SEGMENTS`), never a second literal here — the two disagreed until 2026-09-26.
   if (size.segments > SMS_MAX_SEGMENTS) {
     problems.push(
-      `This is ${size.segments} messages, and the limit is ${SMS_MAX_SEGMENTS} — you have ${budget} characters before the required footer, ` +
-        // ⛔ The OFFICER's text against the OFFICER's room: the phrase is already inside `budget`.
+      `This is ${size.segments} messages, and the limit is ${SMS_MAX_SEGMENTS} — you have ${budget} characters, ` +
         `and this uses ${unitsIn(trimmed, size.encoding)}.`,
     );
   }

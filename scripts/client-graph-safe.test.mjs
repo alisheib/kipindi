@@ -101,8 +101,8 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // ceiling and its one decision (`simpleJourneyFor`). Seven player routes import it, and its own header forbids a
     // server import; the database half lives in `lib/server/simple-journey-switch.ts` and must stay there.
     "lib/feature-state.ts",
-    // The statutory footer a composer screen renders beside the body; it imports only app-url
-    // and sms-compose, both zero-import, and must stay that way.
+    // The marketing footer the composer screen sizes the body through (empty since the owner's ruling of 2026-10-09);
+    // it imports only app-url and sms-compose, both zero-import, and must stay that way.
     "lib/marketing/footer.ts",
     // ⭐ ADDED 2026-09-30 (Vodacom plan S2). The short-title rules and the competition list lead the same double life:
     // the admin edit and the journey card (S7) render them in the browser, while `createMarket`, the narrow writer and

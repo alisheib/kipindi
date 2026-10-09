@@ -8,6 +8,55 @@
 
 ---
 
+## 2026-10-09 · Privacy v2026-10-09 — a marketing SMS is sent exactly as the officer wrote it: no stop link, no 18+, no helpline, no source line (owner ruling)
+
+**Ali, 2026-10-09 ~10:35 EAT, in the session, choosing the first campaign's words:** "no — we agreed no stop links in SMS and
+no 18+ … the message as it is is sent, nothing added by you"; "please update any rules. our licence allows us to fully send
+to anyone"; "we are licensed, and we are the owners of the platform, and we have a marketing team — we are asking"; "the law
+in Tanzania is different, no such compliance on marketing"; "make sure everywhere it should be reflected also changes".
+
+1. **The engine adds NOTHING to a campaign SMS or a test SMS.** The text sent is the officer's message with `{jina}` filled
+   in — no source line, no "50pick 18+", no helpline, no "Acha:" stop link. The composer's one-SMS limit is counted on that
+   text alone (160 characters, 70 in Unicode). The message still begins with "50pick" — the officer's own text, checked.
+2. **Who may be sent offers is unchanged** — anyone with a Tanzanian mobile, under the licence (§ "2026-10-07 · Marketing SMS
+   go to anyone with a phone — consent is not a condition (the owner's FINAL rule), and his approvals given in the
+   session"). The send-time gate keeps every protection that is not part of the message: never the self-excluded, a player
+   in a responsible-gambling hold, a person without 18+ evidence, a number that stopped or was erased. Players keep the
+   offers switch on Profile → Notifications; a link sent before this ruling (`/s/<token>`) keeps working.
+3. **Privacy v2026-10-09:** §9 no longer tells new referees they can stop offers "with the link in every offer", and §5's
+   marketing-message record no longer names "the stop link it carried" — in English, Swahili and Chinese.
+4. **This supersedes** the stop-link condition of § "2026-10-07 · Management's answers for the first marketing campaign — a
+   small pilot, no frequency cap, two-step sign-in off, and the stop link (owner rulings, put to Ali in the session)" (the
+   link was to stay until the written confirmation from TRA and the Gaming Board was filed — the owner removes it now) and
+   the statutory envelope D5 recorded in `src/lib/marketing/footer.ts` (ETA Cap 442 s.32(1)(b)–(c) opt-out; s.32(2)(d) and GBT
+   Code cl. 3.7.1–3.7.2 responsible-gaming message and helpline). Claude stated those citations to the owner before he
+   confirmed the ruling.
+5. **Still owed, needing the owner's approval of new words:** the two PUBLIC POLICY LINES saved on production
+   (`privacy.smsGateway`, `privacy.lawfulLicence`, en/sw/zh — Appendix B's words, G10) still say an offer can be stopped
+   "with the stop link in every offer or under Profile → Notifications"; they are re-worded to "under Profile →
+   Notifications" and saved through the owner door once Ali approves the new words.
+   ✅ **Approved by Ali, 2026-10-09 ~15:00 EAT, in the session** (to S14): `privacy.lawfulLicence` (en/sw/zh) and the
+   licence basis's suggestion `basis.LICENCE_OUTREACH`, exactly as filed in `docs/marketing-approvals/2026-10-09/`
+   (`approval-G10.json`, `approval-G4.json`). `privacy.smsGateway` NOT as filed: *"we can't mention Blackball, they won't
+   allow it … just tell them they can stop, but no need to mention Blackball, they don't want it"* — so it names the
+   gateway by its role alone, every other word as filed, and is approved as:
+   - en: "Our SMS gateway in Tanzania, which sends our text messages, such as one-time codes and 50pick offers and news,
+     which you can stop at any time under Profile → Notifications: it receives your phone number and the text of each
+     message, and tells us whether each message was delivered"
+   - sw: "Lango letu la SMS nchini Tanzania, linalotuma ujumbe wetu mfupi (SMS), kama misimbo ya matumizi ya mara moja na
+     ofa na habari za 50pick, ambazo unaweza kuzisimamisha wakati wowote kwenye Wasifu → Arifa: hupokea namba yako ya
+     simu na maandishi ya kila ujumbe, na hutuambia kama kila ujumbe umefika"
+   - zh: "我们在坦桑尼亚的短信网关：发送我们的短信，例如一次性验证码以及 50pick 的优惠和资讯——您可随时在“个人资料 → 通知”中停止接收；接收您的电话号码和每条短信的内容，并告知我们每条短信是否已送达"
+
+   No public text names the gateway's company since: the code's own §4 bullet (the page as it ships with licence outreach
+   closed) lost the name the same way and keeps its consent-only clause, `SMS_GATEWAY_WORDS` no longer requires it, and
+   `test:privacy-notice` §2e refuses it in every language (staff screens — Admin → System, the SMS credit alerts — still
+   name the provider). The files are carried out through the owner door as its header sets out: status → check → apply
+   each → ONE redeploy.
+
+**Kept by** `test:campaign-compose` §9–§13 (a plant that appends any footer fails), §15.9, §15.13, §18.9, §18.21;
+`test:privacy-notice` §1 and §4k; the dry-fire's S1.messages.
+
 ## 2026-10-09 · An erased number stays blocked, a test SMS to a typed number is for Admin and Compliance, and the back-filled contacts are re-dated (owner rulings, put to Ali in the session)
 
 **Asked** by S15 on 2026-10-09 ~06:35 EAT (`docs/CONTACTS-SCREEN-PLAN.md` §4.7, the survey of what a MASKED officer may learn

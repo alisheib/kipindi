@@ -35,8 +35,9 @@
  * the officer's live counter and every recipient's message. 🔴 `{jina}` is 8 septets as typed (two extension braces),
  * so a counter that sized the template as typed under-reserved every name over 8 letters and made an at-budget message
  * TWO segments for exactly those recipients; §15 sizes the worst-case name instead and proves the bound over a corpus
- * of real and hostile names, prices the source phrase (DECISIONS M5 — reserving the longest one while it is blank),
- * refuses a number that is not the person's own while the campaign has no source line, re-runs the stored template's
+ * of real and hostile names, holds that the source phrase is neither printed, priced nor required since the owner's
+ * ruling of 2026-10-09 (until then DECISIONS M5 priced it — reserving the longest one while it was blank — and a number
+ * that was not the person's own was refused while the campaign had none), re-runs the stored template's
  * WHOLE verdict for every recipient — one campaign, one verdict (§15.13) — and holds the name rules (folded, never cut,
  * a book contact never greeted by a stored name). §16 holds that nothing else in `src/` calls `composeMarketing`.
  *
@@ -64,10 +65,12 @@
  * either refusal can keep the officer's text as a NEW draft, which carries the audience on screen (`carry`) or is not
  * offered — never the whole book by omission; the saved line invites a test only when the page can send one; and the
  * Audience card takes focus only while it shows a problem.
- * ⭐ §17.13–§17.16 (U37s, 2026-10-05) · THE SOURCE LINE IS STAMPED. A DRAFT save stamps the SAVED `source.phrase` wording
- * and the server's verdict prices exactly that line; blank (null) while nothing is saved, a line of spaces included; an
- * edit re-stamps — never a stale line — while a confirmed campaign keeps its own; and the composer's counter prices the
- * line the next save will stamp (a campaign past DRAFT, its frozen one).
+ * ⭐ §17.13–§17.20 (U37s, 2026-10-05; re-ruled 2026-10-09) · NO SOURCE LINE IS STAMPED. Until the owner's ruling of
+ * 2026-10-09 a DRAFT save stamped the SAVED `source.phrase` wording, read fresh (an unreadable one refused the save), the
+ * composer priced it and flagged a draft whose stamp was stale. Nothing is appended now: a new draft stores no line
+ * whatever the wording holds, an edit leaves the row's own line as it is (history), a confirmed campaign keeps its own,
+ * no save is refused for a line, the composer hands the verdict none, and nothing flags a stale one — each held by a
+ * plant that puts the old rule back.
  * ⭐ §16.15 · §18.33 (U13, 2026-10-07) · THE SEND WINDOW. Every test send and send loop here is handed a FIXED open window
  * (`scripts/lib/send-window.mts`, ENGINE-SPEC §5 rule 9), so the suite is green at any hour; §18.33 closes it on purpose:
  * the test is refused held in the window's own sentence before a token, a row or the wire (M12), and the saved line
@@ -305,51 +308,43 @@ function checkEnvelope(compose: Composer, log: (l: string) => void): string[] {
   };
   const TOKEN = "a1b2c3d4";
 
-  /* ── §9 · the footer is what it says it is ─────────────────────────────── */
-  log("\n§9 · THE FOOTER, MEASURED");
+  /* ── §9 · NOTHING IS APPENDED — the owner's ruling of 2026-10-09 (COMPLIANCE-DECISIONS) ── */
+  log("\n§9 · NOTHING IS APPENDED — the message is sent exactly as the officer wrote it (2026-10-09)");
   {
-    const f = marketingFooter(TOKEN, "SW");
-    log(`       ${JSON.stringify(f)}`);
-    ok("§9 the footer carries the sender identity", f.includes(SENDER_IDENTITY));
-    ok("§9 …the age restriction, in the Swahili already shipped on the registration screen", f.includes("18+"));
-    ok("§9 …the helpline (the one 50pick publishes — OQ4)", f.includes(statutorySmsHelpline()));
-    ok("§9 …and a working opt-out link", f.includes(`${shortDomain()}/s/${TOKEN}`), f);
-    ok("§9 ⭐ it is 49 septets — and that number is COMPUTED, not typed",
-      sizeSms(f).units === 49, `${sizeSms(f).units} septets`);
-    ok("§9 the footer is itself GSM-7 — a footer that forced UCS-2 would halve every message",
-      sizeSms(f).encoding === "GSM7");
-    ok("§9 it begins with a newline, and that newline is counted", f.startsWith("\n"));
-    ok("§9 the English footer costs exactly the same, so the budget does not move with locale",
-      sizeSms(marketingFooter(TOKEN, "EN")).units === sizeSms(f).units);
+    const footers = [marketingFooter(TOKEN, "SW"), marketingFooter(TOKEN, "EN"), marketingFooter(TOKEN, "SW", "Namba yako ipo orodhani kwetu.")];
+    ok("§9 ⭐ the footer is EMPTY in both languages and with any source phrase", footers.every((f) => f === ""), JSON.stringify(footers));
+    const sent = compose("50pick: soka leo. Weka dau sasa.", TOKEN);
+    ok("§9 ⭐ no stop link, no 18+, no helpline and no token in a composed message",
+      !sent.text.includes("/s/") && !sent.text.includes("18+") && !sent.text.includes(statutorySmsHelpline()) && !sent.text.includes(TOKEN)
+        && !sent.text.includes("Acha"), JSON.stringify(sent.text));
   }
 
   /* ── §10 · the budget is derived from the real deployment URL ──────────── */
   log("\n§10 · THE OPERATOR'S BUDGET");
   {
     const budget = operatorBudget("SW");
-    ok("§10 ⭐ the budget is 111 characters — 160 minus the footer, computed from both",
-      budget === SMS_LIMITS.GSM7.single - 49 && budget === 111, `${budget}`);
+    ok("§10 ⭐ the budget is the whole message — 160 characters, computed, in both languages",
+      budget === SMS_LIMITS.GSM7.single && operatorBudget("EN") === budget, `${budget}`);
     // ⭐ THE DOMAIN IS NOT TYPED ANYWHERE. If `appUrl()` ever changes, this is what notices.
     ok("§10 ⭐ the short domain is DERIVED from the real appUrl(), not typed",
       appUrl().replace(/^https?:\/\//, "").replace(/^www\./, "") === shortDomain(),
       `appUrl ${appUrl()} → ${shortDomain()}`);
     ok("§10 control · the derivation actually produced something",
       shortDomain().length > 3 && !shortDomain().includes("/"), shortDomain());
-    ok("§10 ⛔ a longer domain would cost budget, and the guard would see it",
-      operatorBudget("SW") > operatorBudget("SW", "x".repeat(10)));
-    // OQ3's shadow, priced rather than argued about.
+    // ⛔ The source phrase is never printed (2026-10-09), so it costs nothing.
     const withSource = operatorBudget("SW", "Umetupa namba yako 50pick.");
-    ok("§10 ⚠️ if OQ3 forces the source phrase inline, the budget falls to about 89",
-      withSource >= 80 && withSource <= 92, `${withSource}`);
+    ok("§10 ⛔ a source phrase costs nothing — it is never printed", withSource === budget, `${withSource}`);
     log(`       budget ${budget} without a source phrase, ${withSource} with one`);
   }
 
-  /* ── §11 · nothing composes without the footer ─────────────────────────── */
-  log("\n§11 · NOTHING COMPOSES WITHOUT THE FOOTER");
+  /* ── §11 · the composed text IS the officer's text ─────────────────────── */
+  log("\n§11 · THE COMPOSED TEXT IS THE OFFICER'S TEXT");
   {
     const c = compose("50pick: soka leo. Weka dau sasa.", TOKEN);
     ok("§11 a good body composes", c.ok, c.problems.join(" | "));
-    ok("§11 ⭐ and the composed text ENDS with the footer", c.text.endsWith(marketingFooter(TOKEN, "SW")));
+    const padded = compose("  50pick: soka leo. Weka dau sasa. ", TOKEN);
+    ok("§11 ⭐ the composed text IS the officer's text, trimmed — nothing appended", padded.text === "50pick: soka leo. Weka dau sasa.",
+      JSON.stringify(padded.text));
     ok("§11 ⭐ the size is taken of the WHOLE message, not the body",
       c.size.units === sizeSms(c.text).units, `${c.size.units} vs ${sizeSms(c.text).units}`);
 
@@ -360,8 +355,8 @@ function checkEnvelope(compose: Composer, log: (l: string) => void): string[] {
       noIdentity.problems.some((p) => p.length > 30 && !/[A-Z]{4,}_/.test(p)), noIdentity.problems.join(" | "));
 
     ok("§11 an empty body is refused", !compose("", TOKEN).ok);
-    ok("§11 ⭐ a missing or wrong-length opt-out token is refused — a message with no way to stop is unlawful",
-      !compose("50pick: habari", "").ok && !compose("50pick: habari", "short").ok);
+    ok("§11 ⭐ the token is never printed — a message composes, as written, whatever token it is handed",
+      ["", "short", TOKEN].every((t) => { const x = compose("50pick: habari", t); return x.ok && x.text === "50pick: habari"; }));
 
     // ⭐ THE BUDGET BOUNDARY, BOTH SIDES.
     const at = "50pick " + "a".repeat(operatorBudget("SW") - 7);
@@ -373,22 +368,22 @@ function checkEnvelope(compose: Composer, log: (l: string) => void): string[] {
       compose(over, TOKEN).problems.some((p) => p.includes(String(operatorBudget("SW")))), compose(over, TOKEN).problems.join(" | "));
   }
 
-  /* ── §12 · ONE helpline — OQ4 answered ─────────────────────────────────── */
-  // ⭐ Until 2026-09-26 this section asserted the footer DIFFERED from the published helpline, because
-  // OQ4 (ours, or the Gaming Board Code's 0800110051?) was Ali's to answer. He answered: "the right
-  // helpline is ours." — read as: the number 50pick already publishes (labelled on the site as the
-  // national helpline), not a line 50pick runs. The section now pins the answer the other way round.
-  log("\n§12 · ONE HELPLINE — the footer carries the number support-config publishes (OQ4, answered 2026-09-26)");
+  /* ── §12 · NO HELPLINE IN A MESSAGE — the owner's ruling of 2026-10-09 ──────────── */
+  // ⭐ Until 2026-09-26 this section asserted the footer DIFFERED from the published helpline, because OQ4 (ours, or the
+  // Gaming Board Code's 0800110051?) was Ali's to answer; from his answer that day ("the right helpline is ours") until
+  // 2026-10-09 it pinned the footer to the number support-config publishes. Since the owner's ruling of 2026-10-09 nothing
+  // is appended to a marketing SMS, so it pins that NEITHER number reaches a message — the published one or the Board's.
+  log("\n§12 · NO HELPLINE IN A MESSAGE — neither the number support-config publishes nor the Gaming Board Code's (2026-10-09)");
   {
     const support = readFileSync(new URL("../src/lib/support-config.ts", import.meta.url), "utf8");
     const published = (support.match(/nationalHelpline:\s*"([^"]+)"/) || [])[1] ?? "";
     ok("§12 control · support-config's published helpline was actually read", published.length > 5, `read "${published}"`);
-    checkHelpline(published, statutorySmsHelpline(), marketingFooter, ok);
+    checkHelpline(published, marketingFooter, (body) => compose(body, TOKEN).text, ok);
   }
 
   /* ── §13 · ONE cap, and the budget in the message's own encoding (2026-09-26) ── */
   // 🔴 `SMS_MAX_SEGMENTS` said 2 while the composer refused anything over 1, and the refusal quoted the
-  // GSM-7 budget (111) for a UCS-2 message whose real room is 70 − 49 = 21.
+  // GSM-7 budget for a UCS-2 message. Since nothing is appended (2026-10-09) the rooms are the whole 160 and 70.
   log("\n§13 · ONE SEGMENT CAP, AND THE BUDGET IN THE MESSAGE'S OWN ENCODING");
   {
     const at = compose("50pick " + "a".repeat(operatorBudget("SW") - 7), TOKEN);
@@ -396,12 +391,13 @@ function checkEnvelope(compose: Composer, log: (l: string) => void): string[] {
     ok("§13 ⛔ the composer and the plan agree on the cap — both accept the at-budget message and both refuse one more",
       at.ok && planSms(at.text, 1).withinCap && !over.ok && !planSms(over.text, 1).withinCap,
       `at ok=${at.ok} withinCap=${planSms(at.text, 1).withinCap} · over ok=${over.ok} withinCap=${planSms(over.text, 1).withinCap}`);
-    ok("§13 the UCS-2 budget is 70 minus the footer, computed — 21", operatorBudget("SW", "", "UCS2") === SMS_LIMITS.UCS2.single - 49,
+    ok("§13 the UCS-2 budget is the whole 70, computed", operatorBudget("SW", "", "UCS2") === SMS_LIMITS.UCS2.single,
       `${operatorBudget("SW", "", "UCS2")}`);
-    const curly = "50pick: leo ni siku ya soka’ ok"; // 31 characters, one curly apostrophe → UCS-2
+    // 71 characters with one curly apostrophe → UCS-2, one past its 70.
+    const curly = `50pick: ${"a".repeat(SMS_LIMITS.UCS2.single - 8)}${String.fromCharCode(0x2019)}`;
     const c = compose(curly, TOKEN);
-    ok("§13 ⭐ a short body with one ’ is two messages, and the refusal quotes its REAL room (21), not 111",
-      c.size.encoding === "UCS2" && c.size.segments === 2 && c.problems.some((p) => p.includes("you have 21 characters")) && !c.problems.some((p) => p.includes("111")),
+    ok("§13 ⭐ a UCS-2 body over 70 is two messages, and the refusal quotes its REAL room (70), not 160",
+      c.size.encoding === "UCS2" && c.size.segments === 2 && c.problems.some((p) => p.includes("you have 70 characters")) && !c.problems.some((p) => p.includes("you have 160")),
       c.problems.join(" | "));
     ok("§13 …and states what the body uses, in the same units", c.problems.some((p) => p.includes(`this uses ${curly.length}`)), c.problems.join(" | "));
   }
@@ -410,22 +406,26 @@ function checkEnvelope(compose: Composer, log: (l: string) => void): string[] {
 }
 
 /**
- * §12's two assertions as a function of the VALUES, so `--prove-red` can hand it the Board's number
- * back in the footer (docs-prompt-17, 2026-09-26: §12 had no plant, so "a test fails if the Board's
- * number gets back in" had never been shown able to fail — §5.11).
- * ⚠️ "The published one" is the number 50pick already publishes, which every public surface labels
- * the national helpline — not a line 50pick operates (OQ4 as clarified 2026-09-26).
+ * §12's two assertions as a function of the VALUES, so `--prove-red` can hand it a footer that prints a helpline again
+ * (docs-prompt-17, 2026-09-26: §12 had no plant, so "a test fails if the Board's number gets back in" had never been
+ * shown able to fail — §5.11). ⭐ Since the owner's ruling of 2026-10-09 the claim is the other way round from OQ4's: NO
+ * number is printed — neither the one 50pick publishes (which every public surface once labelled the national helpline)
+ * nor the Gaming Board Code's 0800110051 — in a footer or a composed message, in either language. Spaces are ignored, so
+ * "0800 11 0011" is found however a footer would space it.
  */
 function checkHelpline(
   published: string,
-  helpline: string,
   footer: (token: string, locale: "SW" | "EN") => string,
+  composed: (body: string) => string,
   ok: (label: string, cond: boolean, extra?: string) => void,
 ): void {
-  ok("§12 ⭐ the marketing footer's helpline IS the published one — one number, not a second",
-    published.replace(/\s/g, "") === helpline, `footer "${helpline}" · published "${published}"`);
-  ok("§12 …and the Gaming Board Code's 0800110051 appears nowhere in a composed footer",
-    !footer("a1b2c3d4", "SW").includes("0800110051") && !footer("a1b2c3d4", "EN").includes("0800110051"));
+  const unspaced = (t: string): string => t.split(" ").join("");
+  const texts = [footer("a1b2c3d4", "SW"), footer("a1b2c3d4", "EN"), composed("50pick: soka leo. Weka dau sasa.")];
+  const dial = unspaced(published);
+  ok("§12 ⭐ the published helpline is printed in no footer and no composed message — nothing is appended (2026-10-09)",
+    dial.length > 5 && texts.every((t) => !unspaced(t).includes(dial)), `published "${published}" · ${JSON.stringify(texts)}`);
+  ok("§12 …and the Gaming Board Code's 0800110051 appears nowhere either",
+    texts.every((t) => !unspaced(t).includes("0800110051")), JSON.stringify(texts));
 }
 
 /* ══ §14 — THE FOLD (the Vodacom plan S2, 2026-09-30) ═══════════════════════
@@ -535,7 +535,7 @@ const NBSP15 = cc(0x00A0);
 const ZWSP15 = cc(0x200B);
 const ZOE = `Zo${cc(0xEB)}`;
 const ONEIL = `O${RSQ15}Neil`;
-/** §15.15 · one pasted curly quote — Unicode, and with the source line's reserve kept, no room at all. */
+/** §15.15 · one pasted curly quote — Unicode: its whole 70 characters of room, since nothing is appended (2026-10-09). */
 const UNI15 = `50pick: leo ni siku ya soka${RSQ15} karibu`;
 /** A RIGHT-TO-LEFT OVERRIDE — a format character the name cleaner drops (it would reverse a name in a list). */
 const RLO16 = cc(0x202E);
@@ -606,7 +606,7 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
 
   /* ── §15.1 · {jina} reserves the longest name, not its own 8 septets ── */
   {
-    // The room with no source line yet: the cap less the footer and the longest phrase's room, which the counter keeps (M5, §15.9).
+    // The room whatever the source line: the whole message's — nothing is appended, and no phrase is priced (2026-10-09, §15.9).
     const budget = operatorBudget("SW", RESERVE);
     const atBudget = fillTo(HEAD, budget);
     const c1 = impl.counterFor(atBudget, "SW", FB, "");
@@ -627,8 +627,8 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
     const W12 = "W".repeat(JINA_MAX_CHARS);
     const templates: Array<{ label: string; t: CampaignTemplate; origins: RecipientOrigin[]; tight?: true }> = [
       {
-        // ⛔ No source line yet (owner gate G5): only an account recipient can be sent — a book contact is REFUSED (§15.9).
-        label: "no source line yet", origins: ["account"],
+        // ⭐ No source line: a book contact is sent as an account recipient is — none is required since 2026-10-09 (§15.9).
+        label: "no source line", origins: ["account", "book"],
         t: tpl({ bodySw: fillTo(HEAD, operatorBudget("SW", RESERVE)), bodyEn: fillTo(HEAD_EN, operatorBudget("EN", RESERVE)) }),
       },
       {
@@ -674,9 +674,9 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
       atCap.length === 0, atCap.join(" | "));
     ok("§15.2 control · …and the bound is REACHED: on the longest phrase and fallback, every book contact's message is its counter, unit for unit",
       reached === NAMES.length * 2, `${reached} of ${NAMES.length * 2}`);
-    // 10 renders a name: 2 languages × 1 origin with no source line yet (a book contact is refused there), × 2 for the two with one.
+    // 12 renders a name: 2 languages × 2 origins × 3 templates — a book contact is sent on every one, with a line or without.
     ok(`§15.2 ⭐ BOUND PROPERTY · over ${cases} renders, every real message is within the counter's units, its encoding (GSM-7) and its segments, and sendable`,
-      violations.length === 0 && cases === NAMES.length * 10, `${violations.length} over: ${violations.slice(0, 3).join(" | ")}`);
+      violations.length === 0 && cases === NAMES.length * 12, `${violations.length} over: ${violations.slice(0, 3).join(" | ")}`);
   }
 
   /* ── §15.3 · the name: folded, first word, letters, never cut ── */
@@ -737,7 +737,7 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
 
   /* ── §15.6 · the counter is the WHOLE message ── */
   {
-    // ⭐ A book contact on a 12-letter fallback IS the worst case: the longest name, the phrase, the footer.
+    // ⭐ A book contact on a 12-letter fallback IS the worst case: the longest name — and nothing else, since 2026-10-09.
     const t6 = tpl({ nameFallbackSw: worstCaseJina(), sourcePhrase: PHRASE });
     const c6 = impl.counterFor(t6.bodySw, "SW", t6.nameFallbackSw, t6.sourcePhrase);
     const r6 = impl.renderForRecipient(t6, { variant: "SW", name: null, token: TT, origin: "book" });
@@ -745,7 +745,7 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
     const t6a = tpl({ bodyEn: EN_BODY, nameFallbackEn: worstCaseJina(), sourcePhrase: PHRASE });
     const c6a = impl.counterFor(t6a.bodyEn, "EN", t6a.nameFallbackEn, t6a.sourcePhrase);
     const r6a = impl.renderForRecipient(t6a, { variant: "EN", name: null, token: TT, origin: "book" });
-    ok("§15.6 ⭐ THE COUNTER IS THE WHOLE MESSAGE — its units are the rendered worst case's (a book contact on a 12-letter fallback: body, source phrase, footer) in both languages, and an account recipient's is exactly the phrase's room less",
+    ok("§15.6 ⭐ THE COUNTER IS THE WHOLE MESSAGE — its units are the rendered worst case's (a book contact on a 12-letter fallback: the body alone, no phrase and no footer appended since 2026-10-09) in both languages, its parts add up, and an account recipient on a 12-letter name is the same size",
       c6.units === sizeSms(r6.text).units && c6a.units === sizeSms(r6a.text).units
         && c6.units === c6.bodyUnits + c6.sourceUnits + c6.footerUnits && sizeSms(a6.text).units === c6.units - c6.sourceUnits,
       `book ${c6.units} vs ${sizeSms(r6.text).units} · EN book ${c6a.units} vs ${sizeSms(r6a.text).units} · account ${sizeSms(a6.text).units} · parts ${c6.bodyUnits}+${c6.sourceUnits}+${c6.footerUnits}`);
@@ -753,8 +753,8 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
     // the counter's own `budget − bodyUnits`, which is how `left` is computed and so could not fail.
     const room6 = operatorBudget("SW", PHRASE) - unitsIn(worstTyped(t6.bodySw).trim(), "GSM7");
     const room6a = operatorBudget("EN", PHRASE) - unitsIn(worstTyped(t6a.bodyEn).trim(), "GSM7");
-    ok("§15.6 left is the room restated by hand — the budget with the phrase, less the worst-case body — and the footer is 49 septets in GSM-7, in both languages",
-      c6.left === room6 && c6a.left === room6a && c6.footerUnits === 49 && c6.encoding === "GSM7" && c6a.footerUnits === 49,
+    ok("§15.6 left is the room restated by hand — the budget, less the worst-case body — and the footer is 0 (nothing is appended), in both languages",
+      c6.left === room6 && c6a.left === room6a && c6.footerUnits === 0 && c6.encoding === "GSM7" && c6a.footerUnits === 0,
       `left ${c6.left}/${c6a.left} vs ${room6}/${room6a} · footer ${c6.footerUnits}/${c6a.footerUnits}`);
   }
 
@@ -786,39 +786,27 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
     ok("§15.8 ⛔ ZH, SW, null and undefined all get Swahili", others.every((l) => impl.variantFor(withEn, l) === "SW"),
       others.map((l) => impl.variantFor(withEn, l)).join(","));
     const enBlank = impl.renderForRecipient(tpl({ bodyEn: "" }), { variant: "EN", name: null, token: TT, origin: "account" });
-    ok("§15.8 an EN recipient of a campaign with no English body is sent the SWAHILI message, fallback and footer",
+    ok("§15.8 an EN recipient of a campaign with no English body is sent the SWAHILI message and its fallback (nothing appended, 2026-10-09)",
       enBlank.ok && enBlank.text.startsWith(`50pick: Habari ${FB},`) && enBlank.text.endsWith(marketingFooter(TT, "SW")),
       JSON.stringify(enBlank.text));
   }
 
-  /* ── §15.9 · M5 · the source phrase: priced in, never dropped, never missing ── */
+  /* ── §15.9 · the source phrase: neither printed, priced nor required (the owner's ruling of 2026-10-09) ── */
   {
-    const atP9 = fillTo(HEAD, operatorBudget("SW", PHRASE));
+    const atP9 = fillTo(HEAD, operatorBudget("SW"));
     const with9 = impl.counterFor(atP9, "SW", FB, PHRASE);
+    const blank9 = impl.counterFor(atP9, "SW", FB, "");
     const over9 = impl.counterFor(`${atP9}a`, "SW", FB, PHRASE);
-    ok("§15.9 ⭐ M5 · the counter PRICES a stored source phrase — its own septets and the space after it — so the room falls by exactly that",
-      with9.ok && with9.left === 0 && with9.segments === 1 && with9.sourceUnits === unitsIn(`${PHRASE} `, "GSM7")
-        && with9.budget === operatorBudget("SW", PHRASE) && !over9.ok && over9.segments === 2,
-      `with ok=${with9.ok} left=${with9.left} source=${with9.sourceUnits} budget=${with9.budget} · one more ok=${over9.ok} segments=${over9.segments}`);
-    const atR9 = fillTo(HEAD, operatorBudget("SW", RESERVE));
-    const blank9 = impl.counterFor(atR9, "SW", FB, "");
-    const spaces9 = impl.counterFor(atR9, "SW", FB, "   ");
-    const longest9 = impl.counterFor(atR9, "SW", FB, MAX_PHRASE);
-    const past9 = impl.counterFor(`${atR9}a`, "SW", FB, "");
-    ok(`§15.9 ⭐ M5 · PRICED IN BEFORE THE WORDING EXISTS — a blank phrase (or one of spaces) reserves the longest allowed, ${SOURCE_PHRASE_MAX_CHARS} septets and its space, so a body that fits today still fits the longest wording G5 can supply`,
-      blank9.ok && blank9.left === 0 && blank9.sourceUnits === SOURCE_PHRASE_MAX_CHARS + 1 && blank9.budget === operatorBudget("SW", RESERVE)
-        && spaces9.ok && spaces9.units === blank9.units && longest9.ok && longest9.units === blank9.units && !past9.ok && past9.segments === 2,
-      `blank ok=${blank9.ok} left=${blank9.left} source=${blank9.sourceUnits} · spaces ${spaces9.units} · longest ok=${longest9.ok} ${longest9.units} vs ${blank9.units} · one more segments=${past9.segments}`);
+    ok("§15.9 ⭐ the counter does NOT price a source phrase — stored or blank, the room is the whole message's",
+      with9.ok && with9.left === 0 && with9.segments === 1 && with9.sourceUnits === 0 && with9.budget === operatorBudget("SW")
+        && blank9.ok && blank9.units === with9.units && blank9.sourceUnits === 0 && !over9.ok && over9.segments === 2,
+      `with ok=${with9.ok} left=${with9.left} source=${with9.sourceUnits} budget=${with9.budget} · blank ${blank9.units} · one more ok=${over9.ok} segments=${over9.segments}`);
     const t9 = tpl({ sourcePhrase: PHRASE });
     const book9 = impl.renderForRecipient(t9, { variant: "SW", name: null, token: TT, origin: "book" });
-    ok("§15.9 ⭐ a book contact's message CARRIES the phrase — the footer's own line begins with it (OQ3's safe default) — and still begins with the officer's 50pick",
-      book9.ok && book9.text.startsWith(`${SENDER_IDENTITY}:`) && book9.text.endsWith(`${NL15}${PHRASE} ${marketingFooter(TT, "SW").slice(1)}`),
-      `${JSON.stringify(book9.text)} · ${book9.problems.join(" | ")}`);
-    const acct9 = impl.renderForRecipient(t9, { variant: "SW", name: "Asha", token: TT, origin: "account" });
     const odd9 = impl.renderForRecipient(t9, { variant: "SW", name: null, token: TT, origin: "imported" as unknown as RecipientOrigin });
-    ok('§15.9 ⛔ only exactly origin "account" goes without the phrase — an unknown origin carries it (never dropped)',
-      acct9.ok && !acct9.text.includes(PHRASE) && odd9.text.includes(PHRASE), `${JSON.stringify(acct9.text)} · ${JSON.stringify(odd9.text)}`);
-    // ⛔ OQ3 / owner gate G5: until the wording exists, a number that is not the person's own cannot be sent at all.
+    ok("§15.9 ⭐ a book contact's message is the officer's text alone — the fallback greets them, and no phrase is printed, for any origin",
+      book9.ok && book9.text === `50pick: Habari ${FB}, soka leo.` && odd9.ok && !odd9.text.includes(PHRASE),
+      `${JSON.stringify(book9.text)} · ${JSON.stringify(odd9.text)} · ${book9.problems.join(" | ")}`);
     const blankT9 = tpl();
     const refused9 = [
       impl.renderForRecipient(blankT9, { variant: "SW", name: null, token: TT, origin: "book" }),
@@ -827,14 +815,14 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
       impl.renderForRecipient(tpl({ bodyEn: EN_BODY }), { variant: "EN", name: null, token: TT, origin: "book" }),
     ];
     const acctBlank9 = impl.renderForRecipient(blankT9, { variant: "SW", name: "Asha", token: TT, origin: "account" });
-    ok("§15.9 ⛔ M5 · NO SOURCE LINE YET (OQ3, owner gate G5) — a book contact, an unknown origin, a phrase of spaces and an English book recipient are all REFUSED, never sent without one; an account recipient still renders ok",
-      refused9.every((x) => !x.ok && has(x.problems, "no source line")) && acctBlank9.ok && !has(acctBlank9.problems, "no source line"),
+    ok("§15.9 ⛔ no source line is required — a book contact, an unknown origin, a phrase of spaces and an English book recipient all render ok without one, as an account recipient does",
+      refused9.every((x) => x.ok && !has(x.problems, "no source line")) && acctBlank9.ok,
       `${refused9.map((x) => `ok=${x.ok}`).join(",")} · account ok=${acctBlank9.ok} · ${refused9[0].problems.join(" | ")}`);
   }
 
   /* ── §15.10 · a recycled number never prints the previous holder's name ── */
   {
-    // With a source line, so the message checked is one that would actually be sent (§15.9 refuses a book contact without).
+    // (A source line is stored here; it is never printed since the owner's ruling of 2026-10-09.)
     const rec = impl.renderForRecipient(tpl({ sourcePhrase: PHRASE }), { variant: "SW", name: "Asha", token: TT, origin: "book" });
     ok("§15.10 ⛔ a BOOK contact is greeted by the fallback even when a name is handed in",
       rec.ok && rec.text.startsWith(`50pick: Habari ${FB},`) && !rec.text.includes("Asha"), `${JSON.stringify(rec.text)} · ${rec.problems.join(" | ")}`);
@@ -849,16 +837,12 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
     const brace = v({}, "Source {jina}");
     const twoLine = v({}, `Source${NL15}list`);
     const fine = v({}, PHRASE);
-    ok("§15.11 ⛔ the source line is refused with a brace or a line break — and a plain one is accepted",
-      !brace.ok && (brace.problems.sourcePhrase?.length ?? 0) > 0 && !twoLine.ok && (twoLine.problems.sourcePhrase?.length ?? 0) > 0 && fine.ok,
-      JSON.stringify({ brace: brace.problems, twoLine: twoLine.problems, fine: fine.problems }));
     const atMax = v({}, "x".repeat(SOURCE_PHRASE_MAX_CHARS));
     const overMax = v({}, "x".repeat(SOURCE_PHRASE_MAX_CHARS + 1));
     const euroOver = v({}, `${"x".repeat(SOURCE_PHRASE_MAX_CHARS - 1)}${EURO15}`);
-    ok(`§15.11 ⛔ the source line is at most ${SOURCE_PHRASE_MAX_CHARS} septets, refused on its OWN field — one over, or a euro sign that makes it one over, is refused there and not blamed on the body; exactly ${SOURCE_PHRASE_MAX_CHARS} is accepted`,
-      atMax.ok && !overMax.ok && has(overMax.problems.sourcePhrase, `limit is ${SOURCE_PHRASE_MAX_CHARS}`) && overMax.problems.bodySw === undefined
-        && !euroOver.ok && has(euroOver.problems.sourcePhrase, `limit is ${SOURCE_PHRASE_MAX_CHARS}`),
-      JSON.stringify({ atMax: atMax.problems, overMax: overMax.problems, euroOver: euroOver.problems }));
+    ok("§15.11 ⭐ the source line no longer judges the template — a braced, a two-line, an over-long and a Unicode-forcing line are all accepted (it is never printed, 2026-10-09)",
+      [brace, twoLine, fine, atMax, overMax, euroOver].every((x) => x.ok && x.problems.sourcePhrase === undefined),
+      JSON.stringify({ brace: brace.problems, twoLine: twoLine.problems, overMax: overMax.problems, euroOver: euroOver.problems }));
     ok(`§15.12 the campaign name is required and at most ${CAMPAIGN_NAME_MAX_CHARS} characters`,
       !v({ name: "  " }).ok && v({ name: "  " }).problems.name !== undefined
         && !v({ name: "n".repeat(CAMPAIGN_NAME_MAX_CHARS + 1) }).ok && v({ name: "n".repeat(CAMPAIGN_NAME_MAX_CHARS) }).ok);
@@ -900,7 +884,7 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
         for (const origin of ["account", "book"] as RecipientOrigin[]) {
           for (const name of ["Ali", "Christabella"]) {
             cases13++;
-            const expected = whole && (origin === "account" || sourcePhrase.trim().length > 0);
+            const expected = whole;
             const r = impl.renderForRecipient(t, { variant, name, token: TT, origin });
             if (r.ok) sent13++;
             else refused13++;
@@ -909,7 +893,7 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
         }
       }
     }
-    ok(`§15.13 ⭐ THE RENDERER RE-RUNS THE STORED TEMPLATE'S VERDICT, WHOLE — over ${cases13} renders of ${stored13.length} stored templates, a message is sendable exactly when validateCampaignTemplate passes the WHOLE template (both languages, both fallbacks, the source line) and, for a number that is not the person's own, a source line exists`,
+    ok(`§15.13 ⭐ THE RENDERER RE-RUNS THE STORED TEMPLATE'S VERDICT, WHOLE — over ${cases13} renders of ${stored13.length} stored templates, a message is sendable exactly when validateCampaignTemplate passes the WHOLE template (both languages, both fallbacks), for every origin`,
       disagree.length === 0 && cases13 === stored13.length * 8 && sent13 > 0 && refused13 > 0,
       `${disagree.length} disagree: ${disagree.slice(0, 3).join(" | ")} · sent ${sent13} refused ${refused13}`);
     const enVerdict = impl.validate(draft({ bodyEn: enOver13.bodyEn }), PHRASE);
@@ -932,8 +916,8 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
     const asStored = [braced13, lineBreak13].flatMap((t) => (["account", "book"] as RecipientOrigin[]).map((origin) => ({
       line: JSON.stringify(t.sourcePhrase), origin, r: impl.renderForRecipient(t, { variant: "SW", name: "Asha", token: TT, origin }),
     })));
-    ok("§15.13 ⛔ the source line is checked AS STORED, whatever the origin — a braced line and one ending in a line break are refused for an account recipient (who is never sent the line) as for a book contact",
-      asStored.every((x) => !x.r.ok && has(x.r.problems, STALE) && has(x.r.problems, "The source line")),
+    ok("§15.13 ⭐ the source line no longer refuses anyone — a braced line and one ending in a line break, for an account and a book contact alike, render the officer's text alone (it is never printed, 2026-10-09)",
+      asStored.every((x) => x.r.ok && !x.r.text.includes("Source") && !x.r.text.includes(PHRASE)),
       asStored.map((x) => `${x.line}/${x.origin} ok=${x.r.ok}`).join(" · "));
   }
 
@@ -958,11 +942,12 @@ function checkTemplate(impl: TemplateImpl, log: (l: string) => void): string[] {
     const room15 = impl.counterFor(UNI15, "SW", FB, "Chanzo");
     const negatives = [...c15.problems, ...many15.problems, ...room15.problems, ...(v15.problems.bodySw ?? [])].filter((p) => NEG_NUMBER.test(p));
     const first15 = c15.problems[0] ?? "";
-    ok("§15.15 ⭐ A UNICODE BODY IS TOLD IN ONE SENTENCE WHAT TO REPLACE, AND NEVER A NEGATIVE ROOM — one curly quote with the source line's reserve kept reads 'Unicode leaves no room once the required footer is added' and 'replace:' the curly apostrophe by its label, first, on the counter and on the field; seven offenders name five and count the rest; a short source line's positive room is quoted; no sentence holds a negative number",
-      !c15.ok && first15.startsWith("Unicode leaves no room once the required footer is added") && first15.endsWith(`replace: ${RSQ15} (curly apostrophe).`)
+    ok("§15.15 ⭐ A UNICODE BODY IS TOLD IN ONE SENTENCE WHAT TO REPLACE, AND NEVER A NEGATIVE ROOM — one curly quote reads 'Unicode cuts this message to 70 characters' (nothing is appended, so Unicode keeps its whole 70) and 'replace:' the curly apostrophe by its label, first, on the counter and on the field; seven offenders name five and count the rest; a stored source line changes nothing; no sentence names a footer or holds a negative number",
+      !c15.ok && c15.budget === 70 && first15 === `Unicode cuts this message to 70 characters — replace: ${RSQ15} (curly apostrophe).`
         && v15.problems.bodySw?.[0] === first15
         && many15.offenders.length === 7 && (many15.problems[0] ?? "").endsWith(" and 2 more.") && (many15.problems[0] ?? "").includes("(en dash)")
-        && room15.budget > 0 && (room15.problems[0] ?? "").startsWith(`Unicode cuts this message to ${room15.budget} characters`)
+        && room15.budget === 70 && (room15.problems[0] ?? "") === first15
+        && ![...c15.problems, ...many15.problems, ...room15.problems].some((p) => p.includes("footer"))
         && negatives.length === 0,
       JSON.stringify({ first: c15.problems, many: many15.problems[0], room: room15.problems, negatives }));
   }
@@ -1142,8 +1127,8 @@ function checkComposerScreen(src: ScreenSources, log: (l: string) => void): stri
   const reaches = [...src.files].flatMap(([rel, text]) =>
     SIZER_NAMES.filter((n) => new RegExp(`(?<![A-Za-z0-9_$])${n}(?![A-Za-z0-9_$])`).test(text)).map((n) => `${rel.slice(SCREEN_DIR.length)}:${n}`));
   const fromTemplate = /import\s*\{[^}]*validateCampaignTemplate[^}]*\}\s*from\s*"@\/lib\/marketing\/campaign-template"/.test(client)
-    && client.includes("validateCampaignTemplate(fields, view.sourcePhrase)") && counter.includes("counterLine(counter)");
-  ok("§16.2 ⛔ the screen sizes nothing itself — its live verdict is validateCampaignTemplate (counterFor) from campaign-template.ts, priced with the campaign's own source line, and no composer file names a sizer (sizeSms, encodingFor, planSms, unitsIn, operatorBudget, capUnits, marketingFooter, composeMarketing)",
+    && client.includes('validateCampaignTemplate(fields, "")') && counter.includes("counterLine(counter)");
+  ok("§16.2 ⛔ the screen sizes nothing itself — its live verdict is validateCampaignTemplate (counterFor) from campaign-template.ts, handed no source line (nothing is appended since the owner's ruling of 2026-10-09), and no composer file names a sizer (sizeSms, encodingFor, planSms, unitsIn, operatorBudget, capUnits, marketingFooter, composeMarketing)",
     reaches.length === 0 && fromTemplate, `named: [${reaches.join(", ")}] · verdict from the template ${fromTemplate}`);
 
   /* §16.3 · OD45 — no sender control */
@@ -1225,11 +1210,32 @@ function checkComposerScreen(src: ScreenSources, log: (l: string) => void): stri
     // the choice is still while a test is in flight
     still: testCard.includes("disabled={!typedView.allowed || c.testing !== null}") && testCard.includes("disabled={t.ownNumberMasked === null || c.testing !== null}"),
     // a refusal that means "this page is out of date" re-reads the page
-    reread: client.includes('const PAGE_STALE_REASONS = ["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"];')
+    reread: client.includes('const PAGE_STALE_REASONS = ["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording"];')
       && sendBlock.includes('r.outcome === "refused" && PAGE_STALE_REASONS.includes(r.reason)) router.refresh();'),
   };
-  ok("§16.20 ⭐ U37c-2 · THE CARD SAYS THE TRUE REASON AND KEEPS IN STEP — a typed test refused up front says so before \"updating\"; a disabled \"Another number\" always has its reason (save first, or updating just after a save); the choice is still while a test is in flight; and a refusal that means the page is out of date (the 18+ words, the record, the line) re-reads it",
+  ok("§16.20 ⭐ U37c-2 · THE CARD SAYS THE TRUE REASON AND KEEPS IN STEP — a typed test refused up front says so before \"updating\"; a disabled \"Another number\" always has its reason (save first, or updating just after a save); the choice is still while a test is in flight; and a refusal that means the page is out of date (the 18+ words, the record) re-reads it — no source line is one of them since 2026-10-09",
     Object.values(inStep).every(Boolean), JSON.stringify(inStep));
+
+  /* §16.22 · the owner's ruling of 2026-10-09 — nothing is appended to a test, so the Test card names no stop link. Read on
+     the decommented sources: a comment may say what was removed; a sentence on the card may not. (§16.21 is the typed-test
+     role rule's, 2026-10-09.) */
+  const loader21 = src.files.get(`${SCREEN_DIR}composer-loader.ts`) ?? "";
+  const STOP_WORDS21 = /stop link|xxxxxxxx/i;
+  const naming21 = [...src.files].filter(([, text]) => STOP_WORDS21.test(text)).map(([rel]) => rel.slice(SCREEN_DIR.length));
+  const typedNote21 = /export const COMPOSE_TEST_TYPED_NOTE = `([^`]+)`;/.exec(copy)?.[1] ?? "";
+  const ownToken21 = /export const TEST_TOKEN_UNAVAILABLE = "([^"]+)";/.exec(src.testService)?.[1] ?? "";
+  const typedToken21 = /export const TEST_TYPED_TOKEN_UNAVAILABLE = "([^"]+)";/.exec(src.testService)?.[1] ?? "";
+  const noLink21 = {
+    composer: naming21.length === 0,
+    testSend: !STOP_WORDS21.test(src.testService),
+    noTokenNote: !copy.includes("COMPOSE_TEST_TOKEN_NOTE") && !client.includes("COMPOSE_TEST_TOKEN_NOTE"),
+    noTokenReady: !loader21.includes("tokenReady") && !client.includes("tokenReady"),
+    typedNote: typedNote21 === "The name is your word for ${JINA}, never the person's own.",
+    prepared: ownToken21 === "Your test couldn't be prepared, so nothing was sent — try again."
+      && typedToken21 === "The test for this number couldn't be prepared, so nothing was sent — try again.",
+  };
+  ok("§16.22 ⛔ THE TEST CARD NAMES NO STOP LINK (the owner's ruling of 2026-10-09) — no composer file and no test-send sentence says 'stop link' or shows the xxxxxxxx placeholder; there is no token note and no tokenReady; the typed note is the name's sentence alone; and a token that could not be made says the test couldn't be prepared",
+    Object.values(noLink21).every(Boolean), `${JSON.stringify(noLink21)} · naming [${naming21.join(", ")}]`);
 
   /* §16.5 · OD24 — no money */
   const money = [...src.files].filter(([, text]) => /TZS|formatTzs/.test(text)).map(([rel]) => rel.slice(SCREEN_DIR.length));
@@ -1250,7 +1256,7 @@ function checkComposerScreen(src: ScreenSources, log: (l: string) => void): stri
     reason7.includes("<button") && reason7.includes("onClick={c.goToBlocked}") && reason7.includes("data-compose-save-reason")
       && goTo7.includes("focusFirstInvalid(root, keys)") && goTo7.includes('"not-rendered"')
       && client.includes('data-field="audience"')
-      && cut7.length === 0 && client.includes("validateCampaignTemplate(fields, view.sourcePhrase)"),
+      && cut7.length === 0 && client.includes('validateCampaignTemplate(fields, "")'),
     `reason ${reason7.length} chars · goToField ${goTo7.length} chars · maxLength in [${cut7.join(", ")}]`);
 
   /* §16.8 · a refusal offers only the step that can work; both bodies show their error; the Swahili hint; the Remove control */
@@ -1473,10 +1479,8 @@ type ComposeImpl = {
   dispatch: typeof dispatchSlice;
   /** The composer's Audience card (`composeAudienceView`) — §17.8 asks it for a masked viewer, the save's own rule. */
   audienceView: typeof LOADER.composeAudienceView;
-  /** U37s · the line the composer's counter prices (`composerSourcePhrase`) — §17.16. */
-  sourceLine: typeof LOADER.composerSourcePhrase;
-  /** U37s · the composer's stale-stamp flag (`composerSourceLineStale`) — §17.19. */
-  staleLine: typeof LOADER.composerSourceLineStale;
+  /* (U37s's two composer deciders, `composerSourcePhrase` and `composerSourceLineStale`, are gone since the owner's ruling
+     of 2026-10-09 — §17.16 and §17.19 hold the loader to having neither.) */
   /** U37c · the Test card's typed view (`composeTypedView`) — §18.22. */
   typedView: typeof LOADER.composeTypedView;
   /** U37s · the three files whose wiring §17.20 reads: the save, the loader and the screen. */
@@ -1491,14 +1495,12 @@ const REAL_COMPOSE: ComposeImpl = {
   testSendSource: readFileSync(new URL("../src/lib/server/marketing/campaign-test-send.ts", import.meta.url), "utf8"),
   dispatch: dispatchSlice,
   audienceView: LOADER.composeAudienceView,
-  sourceLine: LOADER.composerSourcePhrase,
-  staleLine: LOADER.composerSourceLineStale,
   typedView: LOADER.composeTypedView,
   draftSource: readFileSync(new URL("../src/lib/server/marketing/campaign-draft.ts", import.meta.url), "utf8"),
   loaderSource: readFileSync(new URL("../src/app/admin/campaigns/new/composer-loader.ts", import.meta.url), "utf8"),
   clientSource: readFileSync(new URL("../src/app/admin/campaigns/new/composer-client.tsx", import.meta.url), "utf8"),
 };
-/** U37s · §17.18 saves the source line through the SHIPPED setter — the store the save reads. */
+/** U37s · §17.13–§17.18 save the source line through the SHIPPED setter — the store U37s's save read, and no save reads now. */
 const WORDINGS = await import("../src/lib/server/marketing/wordings.ts");
 /** U37s · Ali's approved source line (G5, 2026-10-05 — 30 septets, the limit) and a shorter line, as saved wordings would read. */
 const LINE37S_A = "Namba yako ipo orodhani kwetu.";
@@ -1549,11 +1551,11 @@ function checkComposerWords(w: WordsImpl, log: (l: string) => void): string[] {
   {
     const spaced = (s: string) => s.split(NBSP15).join(" ");
     const uni = counterFor(UNI15, "SW", FB, "");
-    const gsmOver = counterFor(`${fillTo(HEAD, operatorBudget("SW", RESERVE))}aa`, "SW", FB, "");
+    const gsmOver = counterFor(`${fillTo(HEAD, operatorBudget("SW"))}aa`, "SW", FB, "");
     const lineU = spaced(w.counterLine(uni));
     const lineG = spaced(w.counterLine(gsmOver));
-    ok(`§16.12 ⛔ THE COUNTER LINE NEVER ASKS FOR A CUT THAT CANNOT FIX IT — while Unicode leaves no room it reads 'Unicode leaves no room · ${uni.segments} messages · the limit is ${SMS_MAX_SEGMENTS}', no 'over' and no negative; a GSM-7 body two past its room still reads '2 over'`,
-      uni.budget <= 0 && lineU === `Unicode leaves no room · ${uni.segments} messages · the limit is ${SMS_MAX_SEGMENTS}`
+    ok(`§16.12 ⛔ THE COUNTER LINE NEVER ASKS FOR A CUT THAT CANNOT FIX IT — Unicode keeps its whole 70 (nothing is appended), so a short Unicode body reads '${uni.left} characters left · 1 message · Unicode', no 'over' and no negative; a GSM-7 body two past its room reads '2 over'`,
+      uni.budget === 70 && lineU === `${uni.left} characters left · 1 message · Unicode`
         && !/over/.test(lineU) && !NEG_NUMBER.test(lineU)
         && lineG === `2 over · ${gsmOver.segments} messages · the limit is ${SMS_MAX_SEGMENTS}`,
       `unicode "${lineU}" (room ${uni.budget}) · GSM-7 "${lineG}"`);
@@ -1759,137 +1761,157 @@ async function checkSave(impl: ComposeImpl, log: (l: string) => void): Promise<s
       JSON.stringify({ stored: row.audienceFilter, carry: kept.carry, copied: copied?.audienceFilter ?? (copy === null ? "nothing carried" : copy.ok ? "no row" : copy.error), book: book.carry, hidden: hidden.carry, refused: refused.carry })];
   });
 
-  /* ── §17.13–§17.16 · U37s, the source line stamped (2026-10-05) ── */
-  /** The save as it runs while the saved `source.phrase` wording reads `line` (null: nothing saved). */
-  const saveUnder = (line: string | null, input: DraftInput) =>
-    impl.save(input, officerId, { viewerReads: true }, { ...deps, sourcePhrase: () => ({ ok: true, phrase: line }) } as typeof DRAFT.CAMPAIGN_DRAFT_DEPS);
-  const phraseOf = (r: Awaited<ReturnType<typeof saveUnder>>, row: StoredRow | null) =>
-    row === null ? (r.ok ? "no row" : r.error) : JSON.stringify(row.sourcePhrase);
+  /* ── §17.13–§17.20 · U37s re-ruled (the owner's ruling of 2026-10-09): no source line is stamped, read or flagged ── */
+  /** The `source.phrase` wording saved through the SHIPPED setter (`saveMarketingWordings`) — "" clears it. */
+  const saveLine37 = async (text: string): Promise<boolean> => {
+    const base = WORDINGS.wordingHistory("source.phrase").length;
+    const res = await WORDINGS.saveMarketingWordings({ "source.phrase": text, "approve.source.phrase": "1", "base.source.phrase": String(base) }, "usr_u37s_owner");
+    return res.ok === true;
+  };
+  /** A DRAFT carrying `line` as a save stamped it before the ruling — written through the campaign door's own draft writer
+   *  (a draft patch may still name the column; only the save no longer does). null: the draft as the save made it. */
+  const rowWithLine = async (name: string, line: string | null): Promise<StoredRow | null> => {
+    const made = await impl.save(draftInput({ name }), officerId, { viewerReads: true }, deps);
+    if (!made.ok) return null;
+    if (line === null) return db.smsCampaign.find(made.id);
+    return db.smsCampaign.update(made.id, { sourcePhrase: line }, { draftRevision: made.draftRevision }, new Date().toISOString());
+  };
+  const lineOf = (row: StoredRow | null): string => (row === null ? "no row" : JSON.stringify(row.sourcePhrase));
 
-  await claim("§17.13 ⭐ U37s · A DRAFT SAVE STAMPS THE SAVED SOURCE LINE — saved while the line reads 'Namba yako ipo orodhani kwetu.', a new draft stores exactly that line; and the server's verdict PRICES the stamped line: a body sized to a 12-character line's room is saved under that line with its own counter's segments, and refused on the body under the 30-character reserve a blank line holds", async () => {
-    const stamped = await saveUnder(LINE37S_A, draftInput({ name: "Stamped line" }));
-    const row = stamped.ok ? await db.smsCampaign.find(stamped.id) : null;
-    const sized = draftInput({ name: "Priced line", bodySw: fillTo(HEAD, operatorBudget("SW", LINE37S_B)) });
-    const priced = await saveUnder(LINE37S_B, sized);
-    const pricedRow = priced.ok ? await db.smsCampaign.find(priced.id) : null;
-    const reserved = await saveUnder(null, sized);
-    const own = counterFor(sized.bodySw, "SW", FB, LINE37S_B);
-    return [row !== null && row.sourcePhrase === LINE37S_A
-      && pricedRow !== null && pricedRow.sourcePhrase === LINE37S_B && pricedRow.segmentsSw === own.segments && own.budget >= 0
-      && !reserved.ok && reserved.reason === "invalid" && (reserved.problems.bodySw?.length ?? 0) > 0,
-      `stamped ${phraseOf(stamped, row)} · priced ${phraseOf(priced, pricedRow)} (${pricedRow?.segmentsSw}/${own.segments}, room ${own.budget}) · under the reserve ${reserved.ok ? "SAVED" : reserved.reason}`];
+  await claim("§17.13 ⭐ NO SOURCE LINE IS STAMPED (the owner's ruling of 2026-10-09) — with a line saved through the SHIPPED setter, a new draft saved through the SHIPPED deps stores NO source line (null), and so does one saved once the line is cleared; a body sized to the whole message's room saves with its own counter's segments", async () => {
+    let saved = false;
+    let cleared = false;
+    try {
+      saved = await saveLine37(LINE37S_A);
+      const under = await impl.save(draftInput({ name: "No stamp under a line" }), officerId, { viewerReads: true }, deps);
+      const underRow = under.ok ? await db.smsCampaign.find(under.id) : null;
+      const sized = draftInput({ name: "Sized under a line", bodySw: fillTo(HEAD, operatorBudget("SW")) });
+      const priced = await impl.save(sized, officerId, { viewerReads: true }, deps);
+      const pricedRow = priced.ok ? await db.smsCampaign.find(priced.id) : null;
+      const own = counterFor(sized.bodySw, "SW", FB, "");
+      cleared = await saveLine37("");
+      const after = await impl.save(draftInput({ name: "No stamp once cleared" }), officerId, { viewerReads: true }, deps);
+      const afterRow = after.ok ? await db.smsCampaign.find(after.id) : null;
+      return [saved && underRow !== null && underRow.sourcePhrase === null
+        && pricedRow !== null && pricedRow.sourcePhrase === null && pricedRow.segmentsSw === own.segments && own.left === 0 && own.segments === 1
+        && cleared && afterRow !== null && afterRow.sourcePhrase === null,
+        `line saved ${saved} · under it ${lineOf(underRow)} · sized ${lineOf(pricedRow)} (${pricedRow?.segmentsSw}/${own.segments}, left ${own.left}) · cleared ${cleared} · after ${lineOf(afterRow)}`];
+    } finally {
+      // ⛔ The store is left as it was found — no line — whatever failed above, so no later section reads one.
+      if (saved && !cleared) await saveLine37("");
+    }
   });
 
-  await claim("§17.14 ⛔ U37s · BLANK WHILE UNSAVED — with no line saved a draft stores NO source line (null, never the reserve's placeholder), and so does a line saved as spaces only; and the ONE reader answers null on a store where no line was ever saved", async () => {
-    const none = await saveUnder(null, draftInput({ name: "Unsaved line" }));
-    const spaces = await saveUnder("   ", draftInput({ name: "Spaces line" }));
-    const noneRow = none.ok ? await db.smsCampaign.find(none.id) : null;
-    const spacesRow = spaces.ok ? await db.smsCampaign.find(spaces.id) : null;
-    const reader = DRAFT.savedSourcePhrase();
-    return [noneRow !== null && noneRow.sourcePhrase === null && spacesRow !== null && spacesRow.sourcePhrase === null && reader === null,
-      `unsaved ${phraseOf(none, noneRow)} · spaces ${phraseOf(spaces, spacesRow)} · reader ${JSON.stringify(reader)}`];
+  await claim("§17.14 ⛔ AN EDIT LEAVES THE ROW'S OWN LINE — a draft carrying a line stamped before the ruling, edited while ANOTHER line is saved, still carries its own (history: the edit names no line) with its revision moved on and its new text stored; a draft carrying none, edited, still carries none", async () => {
+    let saved = false;
+    try {
+      const withA = await rowWithLine("Kept line", LINE37S_A);
+      const withNone = await rowWithLine("Kept none", null);
+      if (withA === null || withNone === null) return [false, "fixture refused"];
+      saved = await saveLine37(LINE37S_B);
+      const NEW_TEXT = "50pick: Toleo jipya.";
+      const editA = await impl.save(draftInput({ id: withA.id, draftRevision: withA.draftRevision, name: "Kept line", bodySw: NEW_TEXT }), officerId, { viewerReads: true }, deps);
+      const editNone = await impl.save(draftInput({ id: withNone.id, draftRevision: withNone.draftRevision, name: "Kept none", bodySw: NEW_TEXT }), officerId, { viewerReads: true }, deps);
+      const a = await db.smsCampaign.find(withA.id);
+      const n = await db.smsCampaign.find(withNone.id);
+      return [saved && editA.ok && a !== null && a.sourcePhrase === LINE37S_A && a.draftRevision === withA.draftRevision + 1 && a.bodySw === NEW_TEXT
+        && editNone.ok && n !== null && n.sourcePhrase === null && n.bodySw === NEW_TEXT,
+        `edit of a line-carrying draft ${editA.ok ? lineOf(a) : editA.reason} rev ${a?.draftRevision} · edit of one with none ${editNone.ok ? lineOf(n) : editNone.reason}`];
+    } finally {
+      // ⛔ The store is left with no line, whatever failed above.
+      if (saved) await saveLine37("");
+    }
   });
 
-  await claim("§17.15 ⛔ U37s · AN EDIT RE-STAMPS; A CONFIRMED CAMPAIGN KEEPS ITS OWN — a draft stamped under line A and edited after the saved line became B stores B, never the stale A, and edited after the line was cleared stores none; a campaign confirmed under A keeps A when the line changes, and a save of it is refused 'not_draft' with A untouched", async () => {
-    const made = await saveUnder(LINE37S_A, draftInput({ name: "Re-stamped line" }));
-    if (!made.ok) return [false, `fixture refused: ${made.error}`];
-    const edited = await saveUnder(LINE37S_B, draftInput({ id: made.id, draftRevision: 0, name: "Re-stamped line" }));
-    const row = await db.smsCampaign.find(made.id);
-    const cleared = await saveUnder(null, draftInput({ id: made.id, draftRevision: 1, name: "Re-stamped line" }));
-    const clearedRow = await db.smsCampaign.find(made.id);
-    const frozen = await saveUnder(LINE37S_A, draftInput({ name: "Frozen line" }));
-    if (!frozen.ok) return [false, `fixture refused: ${frozen.error}`];
-    await u37bConfirm(frozen.id);
-    const late = await saveUnder(LINE37S_B, draftInput({ id: frozen.id, draftRevision: 0, name: "Frozen line" }));
-    const frozenRow = await db.smsCampaign.find(frozen.id);
-    return [edited.ok && row !== null && row.sourcePhrase === LINE37S_B
-      && cleared.ok && clearedRow !== null && clearedRow.sourcePhrase === null
-      && !late.ok && late.reason === "not_draft" && frozenRow !== null && frozenRow.status === "CONFIRMED" && frozenRow.sourcePhrase === LINE37S_A,
-      `edited ${edited.ok ? JSON.stringify(row?.sourcePhrase) : edited.reason} · cleared ${cleared.ok ? JSON.stringify(clearedRow?.sourcePhrase) : cleared.reason} · confirmed ${late.ok ? "SAVED" : late.reason}, keeps ${JSON.stringify(frozenRow?.sourcePhrase)}`];
+  await claim("§17.15 ⛔ A CONFIRMED CAMPAIGN KEEPS ITS OWN LINE — a campaign confirmed while carrying a line keeps it, and a save of it is refused 'not_draft' with the line untouched", async () => {
+    const frozen = await rowWithLine("Frozen line", LINE37S_A);
+    if (frozen === null) return [false, "fixture refused"];
+    const at = new Date().toISOString();
+    const moved = await db.smsCampaign.transition(frozen.id, {
+      from: ["DRAFT"], to: "CONFIRMED", draftRevision: frozen.draftRevision, at,
+      patch: { audienceCount: 5, confirmTier: "TYPED", audienceWatermark: null, estimateSegments: 5, estimateTzs: null, budgetTzs: null, confirmedBy: "usr_u37b_owner", confirmedAt: at },
+    });
+    const late = await impl.save(draftInput({ id: frozen.id, draftRevision: frozen.draftRevision, name: "Frozen line" }), officerId, { viewerReads: true }, deps);
+    const row = await db.smsCampaign.find(frozen.id);
+    return [moved !== null && !late.ok && late.reason === "not_draft" && row !== null && row.status === "CONFIRMED" && row.sourcePhrase === LINE37S_A,
+      `confirmed ${moved !== null} · a save of it ${late.ok ? "SAVED" : late.reason}, keeps ${lineOf(row)}`];
   });
 
-  await claim("§17.16 ⭐ U37s · THE COUNTER PRICES THE LINE THE SAVE STAMPS — a new composer and a DRAFT stamped under an older line are priced with the SAVED line (the next save re-stamps it), and with the reserve (blank) once the saved line is cleared or while none was ever saved; a campaign past DRAFT is priced with its own frozen line, whatever is saved now", async () => {
-    const draftA = { status: "DRAFT", sourcePhrase: LINE37S_A } as unknown as StoredRow;
-    const confirmedA = { status: "CONFIRMED", sourcePhrase: LINE37S_A } as unknown as StoredRow;
-    const confirmedNone = { status: "CONFIRMED", sourcePhrase: null } as unknown as StoredRow;
-    const v = impl.sourceLine;
-    const got = {
-      fresh: v(null, LINE37S_B), draft: v(draftA, LINE37S_B), never: v(null, null), cleared: v(draftA, null),
-      confirmed: v(confirmedA, LINE37S_B), confirmedNone: v(confirmedNone, LINE37S_B),
+  await claim("§17.16 ⭐ THE COMPOSER HANDS THE VERDICT NO LINE — the loader has no line decider (`composerSourcePhrase`) and puts no line in its view; the screen's live verdict is handed \"\", as the save's own call is — so the counter an officer reads is the one the save stores", async () => {
+    const loaderModule = LOADER as unknown as Readonly<Record<string, unknown>>;
+    const loader = decomment(impl.loaderSource);
+    const client = decomment(impl.clientSource);
+    const draft = decomment(impl.draftSource);
+    const handed = {
+      noDecider: !("composerSourcePhrase" in loaderModule) && !loader.includes("composerSourcePhrase"),
+      noViewLine: !loader.includes("sourcePhrase: composer") && !client.includes("view.sourcePhrase"),
+      screen: client.includes('validateCampaignTemplate(fields, "")'),
+      save: draft.includes('deps.validate(fields, "")'),
     };
-    return [got.fresh === LINE37S_B && got.draft === LINE37S_B && got.never === "" && got.cleared === ""
-      && got.confirmed === LINE37S_A && got.confirmedNone === "", JSON.stringify(got)];
+    return [Object.values(handed).every(Boolean), JSON.stringify(handed)];
   });
 
-  /* ── §17.17–§17.20 · U37s review (2026-10-05): the fresh read, the real wiring, the stale draft ── */
-  await claim("§17.17 ⛔ U37s · A SOURCE LINE THAT COULD NOT BE READ IS NO SAVE — with the fresh read answering no answer, a new draft is refused 'source_unreadable' with its sentence and writes no row, and an edit of a draft stamped A is refused with A and its revision untouched — never a guessed or blank stamp over a good line", async () => {
+  /* ── §17.17–§17.20 · what U37s's review (2026-10-05) added — the fresh read, the real wiring, the stale flag — gone ── */
+  await claim("§17.17 ⛔ NO SAVE IS REFUSED FOR A LINE — handed deps that carry a source reader which cannot answer (the reader U37s asked), a new draft is saved and written, and an edit of a line-carrying draft is saved with its line kept: the door asks no reader; and the door exports no reader and no 'source_unreadable' sentence", async () => {
     const unread = { ...deps, sourcePhrase: () => ({ ok: false as const }) } as typeof DRAFT.CAMPAIGN_DRAFT_DEPS;
     const before = campaignCount();
     const fresh = await impl.save(draftInput({ name: "Unread line" }), officerId, { viewerReads: true }, unread);
     const written = campaignCount() - before;
-    const made = await saveUnder(LINE37S_A, draftInput({ name: "Unread edit" }));
-    if (!made.ok) return [false, `fixture refused: ${made.error}`];
-    const edit = await impl.save(draftInput({ id: made.id, draftRevision: 0, name: "Unread edit", bodySw: "50pick: Toleo jipya." }), officerId, { viewerReads: true }, unread);
-    const row = await db.smsCampaign.find(made.id);
-    return [!fresh.ok && fresh.reason === "source_unreadable" && fresh.error === DRAFT.CAMPAIGN_SOURCE_LINE_UNREADABLE && written === 0
-      && !edit.ok && edit.reason === "source_unreadable" && row !== null && row.sourcePhrase === LINE37S_A && row.draftRevision === 0,
-      `new ${fresh.ok ? "SAVED" : fresh.reason} (rows written ${written}) · edit ${edit.ok ? "SAVED" : edit.reason} · stamp ${JSON.stringify(row?.sourcePhrase)} rev ${row?.draftRevision}`];
+    const withA = await rowWithLine("Unread edit", LINE37S_A);
+    if (withA === null) return [false, "fixture refused"];
+    const edit = await impl.save(draftInput({ id: withA.id, draftRevision: withA.draftRevision, name: "Unread edit", bodySw: "50pick: Toleo jipya." }), officerId, { viewerReads: true }, unread);
+    const row = await db.smsCampaign.find(withA.id);
+    const draftModule = DRAFT as unknown as Readonly<Record<string, unknown>>;
+    const noReader = ["CAMPAIGN_SOURCE_LINE_UNREADABLE", "readSavedSourcePhrase", "savedSourcePhrase"].every((k) => !(k in draftModule))
+      && !("sourcePhrase" in (DRAFT.CAMPAIGN_DRAFT_DEPS as unknown as Readonly<Record<string, unknown>>));
+    return [fresh.ok && written === 1 && edit.ok && row !== null && row.sourcePhrase === LINE37S_A && row.draftRevision === withA.draftRevision + 1 && noReader,
+      `new ${fresh.ok ? "SAVED" : fresh.reason} (rows written ${written}) · edit ${edit.ok ? "SAVED" : edit.reason} · line ${lineOf(row)} rev ${row?.draftRevision} · no reader exported ${noReader}`];
   });
 
-  await claim("§17.18 ⭐ U37s · THE REAL WIRING — the line saved through the SHIPPED setter (`saveMarketingWordings`) is stamped by a draft saved through the SHIPPED deps, the composer's reader agrees, the stale flag reads true for a draft stamped before the line existed and false once it is re-saved; the line is then cleared through the setter, and a new draft stamps none again", async () => {
-    const quiet = { ...DRAFT.CAMPAIGN_DRAFT_DEPS, audit: async () => ({}) };
-    const saveLine = async (text: string) => {
-      const base = WORDINGS.wordingHistory("source.phrase").length;
-      const res = await WORDINGS.saveMarketingWordings({ "source.phrase": text, "approve.source.phrase": "1", "base.source.phrase": String(base) }, "usr_u37s_owner");
-      return res.ok === true;
-    };
-    const early = await impl.save(draftInput({ name: "Before the line" }), officerId, { viewerReads: true }, quiet);
+  await claim("§17.18 ⭐ G5 IS KEPT, AND TAKEN BY NOTHING — the line still saves through the SHIPPED setter as a new version the record reads back whole (history, and the owner door's G5 saves through the same writer), while a draft saved under it takes none; cleared, it reads blank again", async () => {
     let saved = false;
     let cleared = false;
     try {
-      saved = await saveLine(LINE37S_A);
-      const shown = DRAFT.savedSourcePhrase();
-      const earlyRow = early.ok ? await db.smsCampaign.find(early.id) : null;
-      const staleBefore = impl.staleLine(earlyRow, shown);
-      const resaved = early.ok ? await impl.save(draftInput({ id: early.id, draftRevision: 0, name: "Before the line" }), officerId, { viewerReads: true }, quiet) : null;
-      const resavedRow = early.ok ? await db.smsCampaign.find(early.id) : null;
-      const staleAfter = impl.staleLine(resavedRow, DRAFT.savedSourcePhrase());
-      cleared = await saveLine("");
-      const after = await impl.save(draftInput({ name: "After the clear" }), officerId, { viewerReads: true }, quiet);
-      const afterRow = after.ok ? await db.smsCampaign.find(after.id) : null;
-      return [saved && shown === LINE37S_A && impl.sourceLine(null, shown) === LINE37S_A
-        && earlyRow !== null && earlyRow.sourcePhrase === null && staleBefore === true
-        && resaved !== null && resaved.ok && resavedRow !== null && resavedRow.sourcePhrase === LINE37S_A && staleAfter === false
-        && cleared && DRAFT.savedSourcePhrase() === null && afterRow !== null && afterRow.sourcePhrase === null,
-        JSON.stringify({ saved, shown, early: earlyRow?.sourcePhrase ?? (early.ok ? "no row" : early.error), staleBefore, resaved: resavedRow?.sourcePhrase, staleAfter, cleared, after: afterRow?.sourcePhrase ?? (after.ok ? "no row" : after.error) })];
+      const before = WORDINGS.wordingHistory("source.phrase").length;
+      saved = await saveLine37(LINE37S_A);
+      const history = WORDINGS.wordingHistory("source.phrase");
+      const kept = history.length === before + 1 && history[history.length - 1]?.text === LINE37S_A
+        && WORDINGS.currentWording("source.phrase")?.text === LINE37S_A;
+      const draft = await impl.save(draftInput({ name: "Saved under G5's line" }), officerId, { viewerReads: true }, deps);
+      const row = draft.ok ? await db.smsCampaign.find(draft.id) : null;
+      cleared = await saveLine37("");
+      const blank = (WORDINGS.currentWording("source.phrase")?.text ?? "") === "";
+      return [saved && kept && row !== null && row.sourcePhrase === null && cleared && blank,
+        `saved ${saved} · kept as version ${history.length} ${kept} · the draft's line ${lineOf(row)} · cleared ${cleared}, blank ${blank}`];
     } finally {
       // ⛔ The store is left as it was found — no line — whatever failed above, so no later section reads one.
-      if (saved && !cleared) await saveLine("");
+      if (saved && !cleared) await saveLine37("");
     }
   });
 
-  await claim("§17.19 ⭐ U37s · THE STALE FLAG — a DRAFT stamped with no line, an older line, or a line since cleared reads stale against the saved one; a DRAFT carrying the saved line, or none while none is saved, does not; a new composer and a campaign past DRAFT never do", async () => {
-    const d = (status: string, sourcePhrase: string | null) => ({ status, sourcePhrase }) as unknown as StoredRow;
-    const s = impl.staleLine;
-    const got = {
-      none_vs_A: s(d("DRAFT", null), LINE37S_A), A_vs_B: s(d("DRAFT", LINE37S_A), LINE37S_B), A_vs_cleared: s(d("DRAFT", LINE37S_A), null),
-      A_vs_A: s(d("DRAFT", LINE37S_A), LINE37S_A), none_vs_none: s(d("DRAFT", null), null),
-      fresh: s(null, LINE37S_A), confirmed: s(d("CONFIRMED", LINE37S_A), LINE37S_B),
+  await claim("§17.19 ⭐ NO STALE FLAG — the loader exports no `composerSourceLineStale` and puts no `sourceLineStale` in its view; the copy exports no stale-line note; the screen renders none (`data-compose-source-stale`) and its no-changes rule is the audience's alone (`!dirty && !view.audience.unsaved`) — a draft's old line never offers a Save or blocks one", async () => {
+    const loaderModule = LOADER as unknown as Readonly<Record<string, unknown>>;
+    const loader = decomment(impl.loaderSource);
+    const client = decomment(impl.clientSource);
+    const flag = {
+      noDecider: !("composerSourceLineStale" in loaderModule) && !loader.includes("composerSourceLineStale"),
+      noField: !loader.includes("sourceLineStale") && !client.includes("sourceLineStale"),
+      noNote: !client.includes("data-compose-source-stale") && !client.includes("COMPOSE_SOURCE_LINE_STALE"),
+      rule: client.includes("!dirty && !view.audience.unsaved ? { reason: COMPOSE_NO_CHANGES"),
     };
-    return [got.none_vs_A && got.A_vs_B && got.A_vs_cleared && !got.A_vs_A && !got.none_vs_none && !got.fresh && !got.confirmed,
-      JSON.stringify(got)];
+    return [Object.values(flag).every(Boolean), JSON.stringify(flag)];
   });
 
-  await claim("§17.20 ⛔ U37s · THE WIRES, READ — the save's shipped deps stamp `readSavedSourcePhrase`, which reads `freshWording(\"source.phrase\")`; the loader prices and flags from ONE `savedSourcePhrase()` read (`composerSourcePhrase(draft, savedLine)`, `composerSourceLineStale(draft, savedLine)`); and the screen's no-changes rule gives way to `view.sourceLineStale` and says so (`data-compose-source-stale`)", async () => {
-    const deps37 = impl.draftSource.slice(impl.draftSource.indexOf("export const CAMPAIGN_DRAFT_DEPS"));
+  await claim("§17.20 ⛔ THE WIRES, READ — the draft door reads no wording (no import of the wordings, no `freshWording(` or `currentWording(`), a new row is written with `sourcePhrase: null` and an edit's patch names no line; and the loader reads no saved line (no `savedSourcePhrase`, no \"source.phrase\")", async () => {
+    const draft = decomment(impl.draftSource);
+    const loader = decomment(impl.loaderSource);
+    const patchAt = draft.indexOf("const patch: SmsCampaignDraftPatch = {");
+    const patch = patchAt < 0 ? "" : draft.slice(patchAt, draft.indexOf("};", patchAt));
     const wires = {
-      depsStampFresh: /sourcePhrase:\s*readSavedSourcePhrase,/.test(deps37.slice(0, deps37.indexOf("};"))),
-      readsFresh: /export async function readSavedSourcePhrase\(\)[\s\S]{0,200}freshWording\("source\.phrase"\)/.test(impl.draftSource),
-      oneRead: /const savedLine = savedSourcePhrase\(\);/.test(impl.loaderSource),
-      prices: /sourcePhrase: composerSourcePhrase\(draft, savedLine\),/.test(impl.loaderSource),
-      flags: /sourceLineStale: composerSourceLineStale\(draft, savedLine\),/.test(impl.loaderSource),
-      screenRule: /!dirty && !view\.sourceLineStale/.test(impl.clientSource),
-      screenSays: impl.clientSource.includes("data-compose-source-stale") && impl.clientSource.includes("COMPOSE_SOURCE_LINE_STALE"),
+      noImport: !draft.includes("@/lib/server/marketing/wordings") && !/(?:freshWording|currentWording)[(]/.test(draft),
+      bornWithNone: (draft.match(/sourcePhrase: null,/g) ?? []).length === 1,
+      editNamesNone: patch.length > 50 && !patch.includes("sourcePhrase"),
+      loaderReadsNone: !loader.includes("savedSourcePhrase") && !loader.includes('"source.phrase"'),
     };
     return [Object.values(wires).every(Boolean), JSON.stringify(wires)];
   });
@@ -1988,7 +2010,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     return [v.ok && row !== null && row.status === "DRAFT" && row.bodyEn === null && row.sourcePhrase === null, JSON.stringify(v)];
   });
 
-  await claim("§18.1 ⭐ HAPPY PATH (the console stub, the switch absent) — handed over via the stub, and EXACTLY ONE SmsMessage row: purpose MARKETING, target SmsCampaignTest / the campaign id, to the officer's own key — the text THE ONE renderer's for the stored draft, the officer's first name and their own new token, ending in the statutory footer, and the number masked", async () => {
+  await claim("§18.1 ⭐ HAPPY PATH (the console stub, the switch absent) — handed over via the stub, and EXACTLY ONE SmsMessage row: purpose MARKETING, target SmsCampaignTest / the campaign id, to the officer's own key — the text THE ONE renderer's for the stored draft and the officer's first name, with nothing appended (their new token is made, for the stop page, and printed nowhere — 2026-10-09), and the number masked", async () => {
     const before = await tokenCount(o.key);
     const r = await send({ campaignId: cmp, variant: "SW" }, o.id, { send: TEST.CAMPAIGN_TEST_DEPS.send });
     const rows = smsRowsFor(cmp);
@@ -1999,7 +2021,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     return [r.ok && r.outcome === "handed_over" && r.via === "stub" && rows.length === 1 && rows[0].purpose === "MARKETING"
       && rows[0].targetType === TEST.CAMPAIGN_TEST_TARGET_TYPE && rows[0].targetId === cmp && rows[0].msisdn === o.key
       && before === 0 && tokens.length === 1 && token.length === 8 && expected !== null && expected.ok && r.text === expected.text
-      && r.text.startsWith("50pick: Habari Asha,") && r.text.endsWith(marketingFooter(token, "SW")) && r.maskedTo === maskPhone(o.key)
+      && r.text.startsWith("50pick: Habari Asha,") && !r.text.includes(token) && r.maskedTo === maskPhone(o.key)
       && r.maskedTo.includes(MASK_DOTS) && !r.maskedTo.includes(o.key.slice(5)),
       `${reasonOf(r)}${r.ok ? ` via ${r.via}` : `: ${r.error}`} · rows ${rows.length} [${rows.map((m) => `${m.purpose}/${m.targetType}`).join(",")}] · tokens ${before} → ${tokens.length}`];
   });
@@ -2173,7 +2195,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       `${tries.map(reasonOf).join(", ")} · retry after ${wait}s · audit rows ${rows.length}`];
   });
 
-  await claim("§18.9 ONE NUMBER, ONE LINK — two tests leave exactly ONE opt-out token for the officer's key, and both messages carry it", async () => {
+  await claim("§18.9 ONE NUMBER, ONE TOKEN, NO LINK — two tests leave exactly ONE opt-out token for the officer's key (kept for the stop page), and NEITHER message carries it — the message is the officer's text (2026-10-09)", async () => {
     const o9 = await officer();
     const cmp9 = await u37bDraft();
     const { send: spy } = u37bSpy();
@@ -2181,7 +2203,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     const b = await send({ campaignId: cmp9, variant: "SW" }, o9.id, { send: spy });
     const tokens = await db.marketingOptOutToken.listFor(o9.key);
     const link = tokens.length === 1 ? `/s/${tokens[0].token}` : "(no single token)";
-    return [a.ok && b.ok && tokens.length === 1 && a.text.endsWith(link) && b.text.endsWith(link), `tokens ${tokens.length}`];
+    return [a.ok && b.ok && tokens.length === 1 && !a.text.includes(link) && !b.text.includes(link) && !a.text.includes("/s/") && !b.text.includes("/s/"), `tokens ${tokens.length}`];
   });
 
   await claim("§18.10 every attempt past the budget writes ONE marketing.campaign_test row with its outcome and reason, against the campaign, the number MASKED — no fixture key and no nine national digits in any row", async () => {
@@ -2252,7 +2274,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       `${sends} sends · ${over.length} over: ${over.slice(0, 3).join(" | ")} · ${reached} at the account bound exactly`];
   });
 
-  await claim("§18.13 ⭐ THE ORIGIN IS CHOSEN — the officer's own number renders as an ACCOUNT recipient (their first name; no source line, even once one is stored) — and a TYPED number renders as a CONTACT-BOOK recipient: the {jina} fallback, never the holder's own first name, and the stored source line", async () => {
+  await claim("§18.13 ⭐ THE ORIGIN IS CHOSEN — the officer's own number renders as an ACCOUNT recipient (their first name; no source line, even once one is stored) — and a TYPED number renders as a CONTACT-BOOK recipient: the {jina} fallback, never the holder's own first name, and NO source line, though one is stored (2026-10-09)", async () => {
     const o13 = await officer({ displayName: "Juma Mkuu" });
     const blankId = await u37bDraft();
     const phraseId = await u37bDraft();
@@ -2263,7 +2285,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     // U37c · another officer types Juma's number, the record open and the line stored: a book recipient, never "Juma".
     const typed = await sendTyped(phraseId, `+${o13.key}`, o.id, { over: { send: spy } });
     return [set !== null && blank.ok && blank.text.startsWith("50pick: Habari Juma,") && phrased.ok && !phrased.text.includes(PHRASE)
-      && typed.ok && typed.target === "typed" && typed.text.includes(`Habari ${FB},`) && !typed.text.includes("Juma") && typed.text.includes(PHRASE),
+      && typed.ok && typed.target === "typed" && typed.text.includes(`Habari ${FB},`) && !typed.text.includes("Juma") && !typed.text.includes(PHRASE),
       `blank ${blank.ok ? JSON.stringify(blank.text.slice(0, 30)) : `${reasonOf(blank)}: ${blank.error}`} · phrased ${phrased.ok ? (phrased.text.includes(PHRASE) ? "CARRIES THE PHRASE" : "no phrase") : reasonOf(phrased)} · typed ${typed.ok ? JSON.stringify(typed.text.slice(0, 30)) : `${reasonOf(typed)}: ${typed.error}`}`];
   });
 
@@ -2317,7 +2339,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       `${reasonOf(m.result)} · fetches ${m.fetches} · rows ${m.rows} · tokens ${m.tokens}`];
   });
 
-  await claim("§18.17 ⭐ U37c · A TYPED NUMBER REACHES EXACTLY ITS KEY, WHATEVER THE SPELLING — its national and international spellings give ONE key; each test is ONE SmsMessage row (MARKETING, SmsCampaignTest) to that key, rendered as a CONTACT-BOOK recipient (the {jina} fallback and the stored source line); its audit row says target typed, the number masked, basis LICENCE_TEST with its test: ref, the 18+ wording's version and a ta_ attempt ref of letters only — and no digit run of the key", async () => {
+  await claim("§18.17 ⭐ U37c · A TYPED NUMBER REACHES EXACTLY ITS KEY, WHATEVER THE SPELLING — its national and international spellings give ONE key; each test is ONE SmsMessage row (MARKETING, SmsCampaignTest) to that key, rendered as a CONTACT-BOOK recipient (the {jina} fallback; the stored source line is never printed); its audit row says target typed, the number masked, basis LICENCE_TEST with its test: ref, the 18+ wording's version and a ta_ attempt ref of letters only — and no digit run of the key", async () => {
     const id = await phrasedDraft();
     const k = u37bKey();
     const sp = spellings(k);
@@ -2332,7 +2354,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     const json = JSON.stringify(mine);
     return [a.ok && b.ok && a.target === "typed" && b.target === "typed" && a.maskedTo === maskPhone(k) && b.maskedTo === maskPhone(k)
       && rows.length === 2 && rows.every((m) => m.msisdn === k && m.purpose === "MARKETING" && m.targetType === TEST.CAMPAIGN_TEST_TARGET_TYPE && m.targetId === id)
-      && a.text.includes(`Habari ${FB},`) && a.text.includes(PHRASE)
+      && a.text.includes(`Habari ${FB},`) && !a.text.includes(PHRASE)
       && mine.length === 2 && p.basis === "LICENCE_TEST" && /^test:ta_[a-z]{16}$/.test(String(p.basisRef)) && /^ta_[a-z]{16}$/.test(String(p.attemptRef))
       && att?.key === "adult.test" && att?.version === 3 && p.to === maskPhone(k) && !json.includes(k) && !json.includes(k.slice(3)),
       JSON.stringify({ a: reasonOf(a), b: reasonOf(b), rows: rows.length, audited: mine.length, payload: p })];
@@ -2435,7 +2457,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       JSON.stringify({ masked: masked.map(reasonOf), reader: reader.map(reasonOf), handed: handed.map(reasonOf), leaks: leaks.length })];
   });
 
-  await claim("§18.21 ⛔ U37c · THE STOP LINK IS NEVER SHOWN — a typed test hands the officer the text with the MEASUREMENT token while the wire carries the number's REAL token, and that number's token row exists", async () => {
+  await claim("§18.21 ⛔ U37c · NO STOP LINK ON THE WIRE — a typed test hands the officer exactly the text the wire carries, and neither carries a token; the number's token row is still made, for the stop page (2026-10-09)", async () => {
     const id = await phrasedDraft();
     const k = u37bKey();
     const { send: spy, spy: seen } = u37bSpy();
@@ -2445,11 +2467,11 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     const shown = row === null ? null : renderForRecipient(u37bTemplate(row), { variant: "SW", name: null, token: footerMeasurementToken(), origin: "book" });
     const wire = row === null || token === "" ? null : renderForRecipient(u37bTemplate(row), { variant: "SW", name: null, token, origin: "book" });
     return [r.ok && token.length === 8 && shown !== null && shown.ok && wire !== null && wire.ok && r.text === shown.text
-      && seen.messages.length === 1 && seen.messages[0].body === wire.text && !r.text.includes(token) && seen.messages[0].body.includes(token),
+      && seen.messages.length === 1 && seen.messages[0].body === wire.text && seen.messages[0].body === r.text && !r.text.includes(token) && !seen.messages[0].body.includes(token),
       `${reasonOf(r)} · token ${token.length ? "made" : "none"} · shown is the measurement render ${r.ok && shown !== null && shown.ok ? r.text === shown.text : false}`];
   });
 
-  await claim("§18.22 ⭐ U37c · THE TYPED PREVIEW IS THE SAME FOR EVERY NUMBER — the loader's typed view renders the saved draft as a CONTACT-BOOK recipient with the measurement token, takes no number (draft and facts only), labels the tick with the saved adult.test version, and says why a typed test can't be offered in the test send's own order and words: licence outreach closed, then the 18+ wording unsaved, then no source line on the draft (with no preview), and a saved text that cannot render for a book recipient is refused in the render's own words, never offered", async () => {
+  await claim("§18.22 ⭐ U37c · THE TYPED PREVIEW IS THE SAME FOR EVERY NUMBER — the loader's typed view renders the saved draft as a CONTACT-BOOK recipient, takes no number (draft and facts only), labels the tick with the saved adult.test version, and says why a typed test can't be offered in the test send's own order and words: licence outreach closed, then the 18+ wording unsaved; a draft with NO source line is offered with its preview (none is needed since the owner's ruling of 2026-10-09); and a saved text that cannot render for a book recipient is refused in the render's own words, never offered", async () => {
     const id = await phrasedDraft();
     const blankId = await u37bDraft();
     const row = await db.smsCampaign.find(id);
@@ -2483,10 +2505,13 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       }
     }
     const takesNoNumber = paramNames.join(",") === "draft,facts" && LOADER.composeTypedView.length === 2;
+    // ⭐ 2026-10-09 · no source line is needed: the blank draft is offered, previewed as a book recipient gets it.
+    const blankExpected = renderForRecipient(u37bTemplate(blank), { variant: "SW", name: null, token: footerMeasurementToken(), origin: "book" });
+    const lineFree = noLine.allowed && noLine.why === null && blankExpected.ok && noLine.preview?.SW === blankExpected.text;
     return [ready.allowed && ready.why === null && expected.ok && ready.preview?.SW === expected.text && ready.attestation?.version === 3
       && !closed.allowed && closed.why === TEST.TEST_TYPED_OUTREACH_CLOSED && !unsaved.allowed && unsaved.why === TEST.TEST_TYPED_NO_ATTESTATION_WORDING
-      && !noLine.allowed && noLine.why === TEST.TEST_TYPED_NEEDS_SOURCE_LINE && noLine.preview === null && takesNoNumber && refusedInItsWords,
-      JSON.stringify({ ready: { allowed: ready.allowed, why: ready.why, same: ready.preview?.SW === (expected.ok ? expected.text : null) }, closed: closed.why, unsaved: unsaved.why, noLine: noLine.why, takesNoNumber, unrenderable: unrenderable.why })];
+      && lineFree && takesNoNumber && refusedInItsWords,
+      JSON.stringify({ ready: { allowed: ready.allowed, why: ready.why, same: ready.preview?.SW === (expected.ok ? expected.text : null) }, closed: closed.why, unsaved: unsaved.why, noLine: { allowed: noLine.allowed, why: noLine.why, previewed: noLine.preview !== null }, takesNoNumber, unrenderable: unrenderable.why })];
   });
 
   await claim("§18.23 ⛔ U37c · S24 · THE TYPED BUDGETS — five typed tests to one number from three officers pass and the sixth is refused typed_rate_limited with the recipient's sentence, while another number is still allowed and the bucket key holds no digit run of the number; one officer's eleventh typed test to eleven numbers is refused typed_rate_limited with the officer's sentence while their own-number test still passes; and a refusal before the gate spends neither budget", async () => {
@@ -2524,7 +2549,7 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       `${reasonOf(r)}${r.ok ? ` · ${r.target} · ${JSON.stringify(r.text.slice(0, 24))}` : `: ${r.error}`}`];
   });
 
-  await claim("§18.25 ⛔ U37c · TYPED TESTS ARE REFUSED UP FRONT — the same answer for a player's number and a stranger's, with ZERO gate calls: licence outreach closed (typed_outreach_closed), the 18+ wording unsaved (typed_no_attestation_wording), and a draft with no source line (typed_needs_source_line)", async () => {
+  await claim("§18.25 ⛔ U37c · TYPED TESTS ARE REFUSED UP FRONT — the same answer for a player's number and a stranger's, with ZERO gate calls: licence outreach closed (typed_outreach_closed) and the 18+ wording unsaved (typed_no_attestation_wording); and a draft with NO source line is no refusal since the owner's ruling of 2026-10-09 — a typed test on it reaches the gate and is handed over", async () => {
     const id = await phrasedDraft();
     const blankId = await u37bDraft();
     const player = await officer();
@@ -2534,7 +2559,6 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
     const cases: { want: string; campaign: string; over: Partial<TestDeps> }[] = [
       { want: "typed_outreach_closed", campaign: id, over: { gateReads: DB_GATE_READS } },
       { want: "typed_no_attestation_wording", campaign: id, over: { adultTestWording: () => null } },
-      { want: "typed_needs_source_line", campaign: blankId, over: {} },
     ];
     const got: string[] = [];
     let same = true;
@@ -2544,7 +2568,13 @@ async function checkTestSend(impl: ComposeImpl, log: (l: string) => void): Promi
       got.push(`${reasonOf(a)} | ${reasonOf(b)}`);
       if (reasonOf(a) !== c.want || reasonOf(b) !== c.want || a.ok || b.ok || a.error !== b.error) same = false;
     }
-    return [same && gates === 0, `${got.join(" · ")} · gate calls ${gates}`];
+    // ⭐ 2026-10-09 · the line is never printed, so a draft without one is tested like any other: up front it is refused
+    // nothing, and the gate decides it.
+    const upFrontGates = gates;
+    const { send: lineSpy } = u37bSpy();
+    const lineFree = await sendTyped(blankId, `+${u37bKey()}`, o.id, { over: { gate: spyGate, send: lineSpy } });
+    return [same && upFrontGates === 0 && lineFree.ok && gates > upFrontGates,
+      `${got.join(" · ")} · gate calls up front ${upFrontGates} · the draft with no line ${reasonOf(lineFree)}`];
   });
 
   await claim("§18.26 ⛔ U37c · A REFUSED TYPED NUMBER GETS NO TOKEN — the pre-check refuses before a stop link is minted: a withdrawn number has no token row after its refused test", async () => {
@@ -2888,13 +2918,26 @@ if (!PROVE_RED) {
   type EnvPlant = { name: string; expect: RegExp; compose: Composer; landed: () => boolean; landedAs: string };
   const envPlants: EnvPlant[] = [
     {
-      // ⭐ THE DEFECT THIS WHOLE UNIT EXISTS TO PREVENT. Size the body, send body + footer, and every
-      // quote is short by 49 septets — a 140-character body reads as one message and sends as two.
-      name: "the composer sizes the BODY and the engine sends body + footer",
+      // ⭐ THE OWNER'S RULING (2026-10-09): nothing is appended. A footer back on the message is a message nobody wrote.
+      name: "a footer appended again — the stop link, 18+ and the helpline back on every message",
+      expect: /^§11 ⭐ the composed text IS the officer's text/,
+      compose: (body, token) => { const c = REAL(body, token); return { ...c, text: `${c.text}\n50pick 18+ ${statutorySmsHelpline()} Acha: ${shortDomain()}/s/${token}` }; },
+      landed: () => true,
+      landedAs: "a composer that appends anything sends a message the officer did not write",
+    },
+    {
+      name: "the stop link printed again — the token appended to the officer's text",
+      expect: /^§9 ⭐ no stop link, no 18\+, no helpline and no token/,
+      compose: (body, token) => { const c = REAL(body, token); return { ...c, text: `${c.text} ${shortDomain()}/s/${token}` }; },
+      landed: () => true,
+      landedAs: "the token in the text is the stop link the owner ruled out",
+    },
+    {
+      name: "the size taken of the body's first ten characters, not of the message sent",
       expect: /^§11 ⭐ the size is taken of the WHOLE message, not the body/,
-      compose: (body, token) => ({ ...REAL(body, token), size: sizeSms(body) }),
-      landed: () => sizeSms("50pick " + "a".repeat(140)).segments === 1 && REAL("50pick " + "a".repeat(140), "a1b2c3d4").size.segments === 2,
-      landedAs: "a 147-character body is one segment alone and two with the footer — 49 septets of difference",
+      compose: (body, token) => ({ ...REAL(body, token), size: sizeSms((body ?? "").slice(0, 10)) }),
+      landed: () => REAL("50pick: soka leo. Weka dau sasa.", "a1b2c3d4").size.units !== sizeSms("50pick: so").units,
+      landedAs: "a message longer than ten characters is priced as ten",
     },
     {
       name: "the identity check dropped — ETA s.32(1)(b) unenforced",
@@ -2907,22 +2950,16 @@ if (!PROVE_RED) {
       landedAs: "the real composer refuses a body that does not begin with the sender identity",
     },
     {
-      name: "the footer made optional — an opt-out that is not in the message",
-      expect: /^§11 ⭐ and the composed text ENDS with the footer/,
-      compose: (body, token) => ({ ...REAL(body, token), text: body }),
-      landed: () => true,
-      landedAs: "a composer that can emit a body with no footer is one an officer can send without one",
-    },
-    {
-      name: "the opt-out token unchecked — a lawful-looking message with a dead link",
-      expect: /^§11 ⭐ a missing or wrong-length opt-out token is refused/,
+      name: "the token checked again — a message refused for the stop link it no longer carries",
+      expect: /^§11 ⭐ the token is never printed/,
       compose: (body, token) => {
         const c = REAL(body, token);
-        const problems = c.problems.filter((p) => !p.includes("opt-out link"));
-        return { ...c, problems, ok: problems.length === 0 };
+        if (token.length === 8) return c;
+        const problems = [...c.problems, "The opt-out link is missing or the wrong length."];
+        return { ...c, problems, ok: false };
       },
-      landed: () => REAL("50pick: habari", "").problems.some((p) => p.includes("opt-out link")),
-      landedAs: "the real composer refuses an empty token",
+      landed: () => REAL("50pick: habari", "").ok,
+      landedAs: "the real composer composes with any token",
     },
     {
       // 🔴 The pre-2026-09-26 shape: the composer allowed what `withinCap` allowed (2), or the reverse.
@@ -2938,8 +2975,8 @@ if (!PROVE_RED) {
       landedAs: "the real composer refuses a two-segment message on the cap",
     },
     {
-      name: "the budget quoted in GSM-7 whatever the encoding — 111 for a UCS-2 message",
-      expect: /^§13 ⭐ a short body with one ’ is two messages/,
+      name: "the budget quoted in GSM-7 whatever the encoding — 160 for a UCS-2 message",
+      expect: /^§13 ⭐ a UCS-2 body over 70 is two messages/,
       compose: (body, token) => {
         const c = REAL(body, token);
         const real = operatorBudget("SW", "", c.size.encoding);
@@ -2957,25 +2994,33 @@ if (!PROVE_RED) {
       failures.length === 0 ? "NOTHING failed — the guard cannot see this defect" : `failed instead: ${failures.slice(0, 2).join(" | ")}`);
   }
 
-  /* ── §12's plant: the Gaming Board Code's number back in the footer (OQ4) ── */
-  // ⭐ The real published number and the real footer, with ONLY the helpline swapped — so the two §12
-  // assertions are the ones that must fire, and nothing else about the footer is under test here.
+  /* ── §12's plants: a helpline printed again — the Board's number, or the published one (2026-10-09) ── */
+  // ⭐ The real published number and the real (empty) footer, with ONE line put back on it — so the §12 assertion that
+  // names that number is the one that must fire, and nothing else about the footer is under test here.
   {
     const support = readFileSync(new URL("../src/lib/support-config.ts", import.meta.url), "utf8");
     const published = (support.match(/nationalHelpline:\s*"([^"]+)"/) || [])[1] ?? "";
     const BOARD = "0800110051";
-    const planted = (token: string, locale: "SW" | "EN") => marketingFooter(token, locale).replace(statutorySmsHelpline(), BOARD);
-    ok("PLANT LANDED · the Board's 0800110051 back in the footer in place of the published helpline",
-      planted("a1b2c3d4", "SW").includes(BOARD) && planted("a1b2c3d4", "EN").includes(BOARD) && !planted("a1b2c3d4", "SW").includes(statutorySmsHelpline()),
-      JSON.stringify(planted("a1b2c3d4", "SW")));
-    const failures: string[] = [];
-    checkHelpline(published, BOARD, planted, (label, cond) => { if (!cond) failures.push(label); });
-    for (const expect of [/^§12 ⭐ the marketing footer's helpline IS the published one/, /^§12 …and the Gaming Board Code's 0800110051 appears nowhere/]) {
-      ok(`  └─ fires: ${expect.source.slice(0, 56)}`, failures.some((f) => expect.test(f)),
+    const composed12 = (body: string) => composeMarketing(body, "a1b2c3d4").text;
+    /** A footer with the old envelope's line back on it, carrying `number` — what a revert of the ruling would print. */
+    const footerWith = (number: string) => (token: string, locale: "SW" | "EN") => `${marketingFooter(token, locale)}${NL15}50pick 18+ ${number}`;
+    const cases12 = [
+      { name: "the Board's 0800110051 back in the footer (the number OQ4 ruled out, on a message the owner ruled bare)", number: BOARD,
+        expect: /^§12 …and the Gaming Board Code's 0800110051 appears nowhere/ },
+      { name: "the published helpline back in the footer (the statutory envelope as it stood until 2026-10-09)", number: statutorySmsHelpline(),
+        expect: /^§12 ⭐ the published helpline is printed in no footer/ },
+    ];
+    for (const c of cases12) {
+      const planted = footerWith(c.number);
+      ok(`PLANT LANDED · ${c.name}`, planted("a1b2c3d4", "SW").includes(c.number) && planted("a1b2c3d4", "EN").includes(c.number),
+        JSON.stringify(planted("a1b2c3d4", "SW")));
+      const failures: string[] = [];
+      checkHelpline(published, planted, composed12, (label, cond) => { if (!cond) failures.push(label); });
+      ok(`  └─ fires: ${c.expect.source.slice(0, 56)}`, failures.some((f) => c.expect.test(f)),
         failures.length === 0 ? "NOTHING failed — the guard cannot see this defect" : `failed instead: ${failures.join(" | ")}`);
     }
     const control: string[] = [];
-    checkHelpline(published, statutorySmsHelpline(), marketingFooter, (label, cond) => { if (!cond) control.push(label); });
+    checkHelpline(published, marketingFooter, composed12, (label, cond) => { if (!cond) control.push(label); });
     ok("  └─ control: the same two assertions pass on the shipped footer", control.length === 0, control.join(" | "));
   }
 
@@ -3050,10 +3095,12 @@ if (!PROVE_RED) {
     const book = (name: string | null = null) => ({ variant: "SW" as CampaignVariant, name, token: TT, origin: "book" as RecipientOrigin });
     const acct = (name: string | null) => ({ variant: "SW" as CampaignVariant, name, token: TT, origin: "account" as RecipientOrigin });
 
-    /** P1 · the body sized BEFORE the footer and the phrase are appended (the U4 defect, one layer up). */
-    const bodyFirst: typeof counterFor = (body, variant, fallback, phrase) => {
-      const s = sizeSms(renderBody(body, worstCaseJina()).trim());
-      return { ...counterFor(body, variant, fallback, phrase), units: s.units, segments: s.segments };
+    /** P1 · the counter sizing something other than the message sent — the old 49-septet footer still priced on top of a
+     *  message that carries none since the owner's ruling of 2026-10-09. (Until then P1 was the U4 defect one layer up — the
+     *  body sized BEFORE the footer was appended — which cannot exist now: the body IS the message.) */
+    const footerStillPriced: typeof counterFor = (body, variant, fallback, phrase) => {
+      const real = counterFor(body, variant, fallback, phrase);
+      return { ...real, units: real.units + 49 };
     };
     /** P2 · the template sized AS TYPED — `{jina}` counted as its own 8 septets (the phrase, or its reserve, still priced). */
     const asTyped: typeof counterFor = (body, variant, fallback, phrase) => {
@@ -3094,25 +3141,23 @@ if (!PROVE_RED) {
     const enFromBlank: typeof renderForRecipient = (t, r) => (r.variant === "EN"
       ? composeMarketing(renderBody(t.bodyEn, jinaFor(r.name, t.nameFallbackEn)), r.token, "EN", r.origin === "account" ? "" : t.sourcePhrase)
       : renderForRecipient(t, r));
-    /** M5 · the counter prices NO source phrase — neither the stored one nor, while it is blank, the reserve. */
-    const counterNoPhrase: typeof counterFor = (body, variant, fallback, phrase) => {
+    /** M5 undone · the counter prices the stored source phrase again — the room less the phrase and its space, for a line
+     *  no message prints since the owner's ruling of 2026-10-09. (Until then the plant was the opposite defect, a counter
+     *  that priced no phrase; the real counter now prices none, so that one could no longer be told apart.) */
+    const phrasePriced: typeof counterFor = (body, variant, fallback, phrase) => {
       const real = counterFor(body, variant, fallback, phrase);
-      const c = composeMarketing(renderBody(body, worstCaseJina()), footerMeasurementToken(), variant, "");
-      return {
-        ...real, units: c.size.units, segments: c.size.segments, budget: c.budget, left: c.budget - real.bodyUnits, sourceUnits: 0,
-        problems: c.problems, ok: c.ok && real.fallbackProblems.length === 0,
-      };
+      const p = (phrase ?? "").trim();
+      if (p === "") return real;
+      const cost = unitsIn(`${p} `, real.encoding);
+      return { ...real, units: real.units + cost, budget: real.budget - cost, left: real.left - cost, sourceUnits: cost, ok: real.ok && real.left - cost >= 0 };
     };
-    /** M5 · the stored phrase priced, but NOTHING reserved while it is blank — the draft that breaks when G5 lands. */
-    const counterNoReserve: typeof counterFor = (body, variant, fallback, phrase) =>
-      ((phrase ?? "").trim() ? counterFor(body, variant, fallback, phrase) : counterNoPhrase(body, variant, fallback, phrase));
-    /** M5 · the renderer drops the stored phrase from a book contact's message — and still calls it sendable. */
-    const renderNoPhrase: typeof renderForRecipient = (t, r) => {
-      const real = renderForRecipient(t, r);
-      const phrase = t.sourcePhrase.trim();
-      const text = phrase ? real.text.replace(`${NL15}${phrase} `, NL15) : real.text;
-      return { ...real, text, size: sizeSms(text) };
-    };
+    /** M5 undone · the longest phrase reserved again while the line is blank — the room cut for a line nobody prints. (Until
+     *  2026-10-09 the plant was the opposite: nothing reserved while the phrase was blank.) */
+    const reserveBack: typeof counterFor = (body, variant, fallback, phrase) =>
+      ((phrase ?? "").trim() ? counterFor(body, variant, fallback, phrase) : phrasePriced(body, variant, fallback, RESERVE));
+    /* (M5's "the renderer drops the stored phrase from a book contact's message" plant is GONE: no message prints the
+       phrase since the owner's ruling of 2026-10-09, so there is nothing to drop — printing it again is planted below, in
+       front of the body (§15.9) and on its own line (§15.13).) */
     /** M5 · the phrase put FIRST — `composeMarketing`'s placement before U37a — so the message no longer begins with 50pick. */
     const phraseFirst: typeof renderForRecipient = (t, r) => {
       const real = renderForRecipient(t, r);
@@ -3122,19 +3167,17 @@ if (!PROVE_RED) {
       const problems = text.startsWith(SENDER_IDENTITY) ? real.problems : [...real.problems, "The message must begin with 50pick."];
       return { ...real, text, size: sizeSms(text), problems, ok: problems.length === 0 };
     };
-    /** OQ3 · the phrase at the END of the officer's line, before the footer's newline (U37a's first placement) — same size, not in the footer. */
-    const phraseOnBodyLine: typeof renderForRecipient = (t, r) => {
+    /* (OQ3's "the phrase at the END of the officer's line, before the footer's newline" plant is GONE: since the owner's
+       ruling of 2026-10-09 there is no footer line and no phrase to place on either line.) */
+    /** M5 undone · the blank-phrase refusal BACK — a book contact (or any origin but an account) refused while the campaign
+     *  has no source line, in the renderer's old words. (Until 2026-10-09 the plant was that refusal removed.) */
+    const NO_SOURCE_LINE_WAS = "This number did not come from the person's own account, so the law requires the message to say where it came "
+      + "from — and this campaign has no source line yet (OQ3, owner gate G5), so it cannot be sent.";
+    const blankRefusalBack: typeof renderForRecipient = (t, r) => {
       const real = renderForRecipient(t, r);
-      const phrase = r.origin === "account" ? "" : t.sourcePhrase.trim();
-      if (!phrase) return real;
-      const text = real.text.replace(`${NL15}${phrase} `, ` ${phrase}${NL15}`);
-      return { ...real, text, size: sizeSms(text) };
-    };
-    /** M5 · the blank-phrase refusal removed — a book contact is sent no source line while G5 is open. */
-    const noSourceRefusal: typeof renderForRecipient = (t, r) => {
-      const real = renderForRecipient(t, r);
-      const problems = real.problems.filter((p) => !p.includes("no source line"));
-      return { ...real, problems, ok: problems.length === 0 };
+      if (r?.origin === "account" || (t.sourcePhrase ?? "").trim() !== "") return real;
+      const problems = [...real.problems, NO_SOURCE_LINE_WAS];
+      return { ...real, problems, ok: false };
     };
     /** The recycled number · a book contact greeted by the name a caller handed in. */
     const bookName: typeof renderForRecipient = (t, r) => renderForRecipient(t, { ...r, origin: "account" });
@@ -3152,29 +3195,23 @@ if (!PROVE_RED) {
       const { name: _n, ...rest } = real.problems;
       return { ...real, problems: rest, ok: Object.keys(rest).length === 0 };
     };
-    /** The source line's length limit removed — a long phrase would surface only as the officer's body over the cap. */
-    const phraseNoLimit: typeof validateCampaignTemplate = (f, phrase) => {
+    /** §15.11 · the source line JUDGED again — a braced line refuses the whole template (it is never printed, 2026-10-09). */
+    const phraseJudged: typeof validateCampaignTemplate = (f, phrase) => {
       const real = validateCampaignTemplate(f, phrase);
-      const kept = (real.problems.sourcePhrase ?? []).filter((p) => !p.includes("the limit is"));
-      const { sourcePhrase: _p, ...rest } = real.problems;
-      const problems = kept.length > 0 ? { ...rest, sourcePhrase: kept } : rest;
-      return { ...real, problems, ok: Object.keys(problems).length === 0 };
+      if (!/[{}]/.test(phrase ?? "")) return real;
+      return { ...real, problems: { ...real.problems, sourcePhrase: ["The source line cannot carry a placeholder or a brace."] }, ok: false };
     };
-    /** §15.6 · `left` against the room WITHOUT the phrase — the officer told they have the phrase's septets more than they do. */
+    /** §15.6 · `left` against the room LESS the old 49-septet footer — the officer told they have 49 characters fewer. */
     const leftNoPhrase: typeof counterFor = (body, variant, fallback, phrase) => {
       const c = counterFor(body, variant, fallback, phrase);
-      return { ...c, left: operatorBudget(variant, "", c.encoding) - c.bodyUnits };
+      return { ...c, left: c.budget - 49 - c.bodyUnits };
     };
-    /** §15.13 · the renderer WITHOUT the template re-check — each recipient's own message checked, nothing else (M5's refusal kept). */
+    /** §15.13 · the renderer WITHOUT the template re-check — each recipient's own message checked, nothing else. */
     const noRecheck: typeof renderForRecipient = (t, r) => {
       const english = r.variant === "EN" && t.bodyEn.trim().length > 0;
       const fallback = english ? t.nameFallbackEn : t.nameFallbackSw;
-      const fromAccount = r.origin === "account";
-      const phrase = fromAccount ? "" : t.sourcePhrase.trim();
-      const jina = fromAccount ? jinaFor(r.name, fallback) : fallback;
-      const c = composeMarketing(renderBody(english ? t.bodyEn : t.bodySw, jina), r.token, english ? "EN" : "SW", phrase);
-      const problems = !fromAccount && !phrase ? [...c.problems, "no source line"] : c.problems;
-      return { ...c, problems, ok: problems.length === 0 };
+      const jina = r.origin === "account" ? jinaFor(r.name, fallback) : fallback;
+      return composeMarketing(renderBody(english ? t.bodyEn : t.bodySw, jina), r.token, english ? "EN" : "SW");
     };
     /**
      * §15.13 · the re-check WITHOUT the worst case — a stored template refused for SIZE alone is let through to every
@@ -3198,9 +3235,11 @@ if (!PROVE_RED) {
       const english = r.variant === "EN" && t.bodyEn.trim().length > 0;
       return renderForRecipient(english ? { ...t, bodySw: SENDER_IDENTITY } : { ...t, bodyEn: "" }, r);
     };
-    /** §15.13 · the source line checked only where it is printed, and trimmed — an account recipient's check never sees it. */
-    const phraseWhereSent: typeof renderForRecipient = (t, r) =>
-      renderForRecipient({ ...t, sourcePhrase: r.origin === "account" ? "" : t.sourcePhrase.trim() }, r);
+    /** §15.13 · the source line PRINTED again — appended to a book contact's message (the owner ruled it out, 2026-10-09). */
+    const phrasePrinted: typeof renderForRecipient = (t, r) => {
+      const real = renderForRecipient(t, r);
+      return r.origin === "account" || t.sourcePhrase.trim() === "" ? real : { ...real, text: `${real.text}\n${t.sourcePhrase.trim()}` };
+    };
     /** §15.14 · the fallback judged UNTRIMMED, as the screen judged it before the audit — "Mteja " refused, Save disabled. */
     const untrimmedFallback: typeof validateCampaignTemplate = (f, phrase) => {
       const real = validateCampaignTemplate(f, phrase);
@@ -3209,12 +3248,11 @@ if (!PROVE_RED) {
       const problems = { ...real.problems, nameFallbackSw: [`The word for ${JINA} must be letters, at most ${JINA_MAX_CHARS} characters.`] };
       return { ...real, problems, ok: false };
     };
-    /** §15.15 · the envelope's own sentences as the counter's — "you have -10 characters" for one pasted curly quote. */
+    /** §15.15 · the Unicode sentence naming a footer again — "before the required footer", which nothing appends any more. */
     const rawEnvelope: typeof counterFor = (body, variant, fallback, phrase) => {
       const real = counterFor(body, variant, fallback, phrase);
       if (real.encoding !== "UCS2") return real;
-      const c = composeMarketing(renderBody(body ?? "", worstCaseJina()), footerMeasurementToken(), variant, (phrase ?? "").trim() || RESERVE);
-      return { ...real, problems: c.problems };
+      return { ...real, problems: real.problems.map((p) => p.replace(" characters — replace:", " characters before the required footer — replace:")) };
     };
     /** §15.16 · the name only trimmed — a name of zero-width spaces is a name, and the invisible characters count. */
     const nameTrimmedOnly: typeof validateCampaignTemplate = (f, phrase) => {
@@ -3270,11 +3308,11 @@ if (!PROVE_RED) {
     type TemplatePlant = { name: string; expect: RegExp[]; impl: TemplateImpl; landed: () => boolean; landedAs: string };
     const templatePlants: TemplatePlant[] = [
       {
-        name: "P1 · the counter sizes the body BEFORE the footer is appended",
-        expect: [/^§15\.6 ⭐/],
-        impl: { ...R, counterFor: bodyFirst },
-        landed: () => counterFor(atP, "SW", FB, PHRASE).units - bodyFirst(atP, "SW", FB, PHRASE).units === 49 + unitsIn(`${PHRASE} `, "GSM7"),
-        landedAs: "the at-budget body alone is short of the message as sent by the footer's 49 septets and the phrase's",
+        name: "P1 · the counter sizes something other than the message sent — the old 49-septet footer still priced on top",
+        expect: [/^§15[.]6 ⭐/],
+        impl: { ...R, counterFor: footerStillPriced },
+        landed: () => footerStillPriced(atP, "SW", FB, PHRASE).units - counterFor(atP, "SW", FB, PHRASE).units === 49 && marketingFooter(TT, "SW") === "",
+        landedAs: "the counter quotes 49 septets more than the message, which carries nothing on top",
       },
       {
         name: "P2 · the counter sizes {jina} as typed (8 septets), not the longest name (12)",
@@ -3333,28 +3371,18 @@ if (!PROVE_RED) {
         landedAs: "the blank English body composes as an empty, refused message",
       },
       {
-        name: "M5 · the counter prices no source phrase — neither the stored one nor the reserve",
-        expect: [/^§15\.9 ⭐ M5 · the counter PRICES/, /^§15\.9 ⭐ M5 · PRICED IN/],
-        impl: { ...R, counterFor: counterNoPhrase },
-        landed: () => !counterFor(atNone, "SW", FB, PHRASE).ok && counterNoPhrase(atNone, "SW", FB, PHRASE).ok,
-        landedAs: "a body at the no-phrase room is over the cap with the phrase and passes without it",
+        name: "M5 undone · the counter prices the stored source phrase again — a line no message prints",
+        expect: [/^§15[.]9 ⭐ the counter does NOT price/],
+        impl: { ...R, counterFor: phrasePriced },
+        landed: () => counterFor(atNone, "SW", FB, PHRASE).ok && !phrasePriced(atNone, "SW", FB, PHRASE).ok,
+        landedAs: "a body at the whole message's room passes, and is refused once the phrase is priced",
       },
       {
-        name: "M5 · nothing reserved while the phrase is blank — the draft that breaks when G5 supplies the wording",
-        expect: [/^§15\.9 ⭐ M5 · PRICED IN/],
-        impl: { ...R, counterFor: counterNoReserve },
-        landed: () => counterFor(atNone, "SW", FB, "").segments === 2 && counterNoReserve(atNone, "SW", FB, "").ok,
-        landedAs: "a body at the no-phrase room passes on a blank phrase, and is two messages once any wording is priced",
-      },
-      {
-        name: "M5 · the renderer drops the source phrase for a book contact",
-        expect: [/^§15\.9 ⭐ a book/],
-        impl: { ...R, renderForRecipient: renderNoPhrase },
-        landed: () => {
-          const r = renderNoPhrase(tpl({ sourcePhrase: PHRASE }), book());
-          return r.ok && !r.text.includes(PHRASE);
-        },
-        landedAs: "a book contact's message goes out with no source, and is still called sendable",
+        name: "M5 undone · the longest phrase reserved again while the line is blank",
+        expect: [/^§15[.]9 ⭐ the counter does NOT price/],
+        impl: { ...R, counterFor: reserveBack },
+        landed: () => counterFor(atNone, "SW", FB, "").ok && !reserveBack(atNone, "SW", FB, "").ok,
+        landedAs: "a body at the whole message's room passes on a blank line, and is refused once the reserve is kept",
       },
       {
         name: "M5 · the source phrase placed BEFORE the body (composeMarketing before U37a)",
@@ -3364,18 +3392,11 @@ if (!PROVE_RED) {
         landedAs: "the message begins with the phrase, not with 50pick",
       },
       {
-        name: "OQ3 · the source phrase on the officer's line, before the footer's newline (U37a's first placement)",
-        expect: [/^§15\.9 ⭐ a book/],
-        impl: { ...R, renderForRecipient: phraseOnBodyLine },
-        landed: () => phraseOnBodyLine(tpl({ sourcePhrase: PHRASE }), book()).text.includes(` ${PHRASE}${NL15}`),
-        landedAs: "the phrase ends the officer's line instead of beginning the footer's — the same size, not the safe default",
-      },
-      {
-        name: "M5 · the blank-phrase refusal removed — a book contact sent no source line while G5 is open",
-        expect: [/^§15\.9 ⛔ M5 · NO SOURCE LINE/],
-        impl: { ...R, renderForRecipient: noSourceRefusal },
-        landed: () => has(renderForRecipient(tpl(), book()).problems, "no source line") && noSourceRefusal(tpl(), book()).ok,
-        landedAs: "the real renderer refuses a book contact on a blank phrase; the plant sends it",
+        name: "M5 undone · the blank-phrase refusal back — a book contact refused while the campaign has no source line",
+        expect: [/^§15[.]9 ⛔ no source line is required/],
+        impl: { ...R, renderForRecipient: blankRefusalBack },
+        landed: () => renderForRecipient(tpl(), book()).ok && !blankRefusalBack(tpl(), book()).ok,
+        landedAs: "the real renderer sends a book contact with no line; the plant refuses it, in the old words",
       },
       {
         name: "the recycled number · a book contact greeted by a stored name",
@@ -3393,18 +3414,12 @@ if (!PROVE_RED) {
       },
       {
         name: "the source line's rules dropped",
-        expect: [/^§15\.11 ⛔ the source line is refused/],
-        impl: { ...R, validate: phraseUnchecked },
-        landed: () => !validateCampaignTemplate(draft(), "Source {jina}").ok && phraseUnchecked(draft(), "Source {jina}").ok,
-        landedAs: "a braced source line is accepted",
+        expect: [/^§15\.11 ⭐ the source line no longer judges/],
+        impl: { ...R, validate: phraseJudged },
+        landed: () => validateCampaignTemplate(draft(), "Source {jina}").ok && !phraseJudged(draft(), "Source {jina}").ok,
+        landedAs: "a braced source line refuses the template again",
       },
-      {
-        name: "the source line's length limit removed — a long phrase blamed on the officer's body instead",
-        expect: [/^§15\.11 ⛔ the source line is at most/],
-        impl: { ...R, validate: phraseNoLimit },
-        landed: () => !validateCampaignTemplate(draft(), LONG_PHRASE).ok && phraseNoLimit(draft(), LONG_PHRASE).ok,
-        landedAs: "a phrase one septet over the limit is accepted",
-      },
+
       {
         name: "the campaign's name unchecked",
         expect: [/^§15\.12/],
@@ -3413,15 +3428,15 @@ if (!PROVE_RED) {
         landedAs: "a nameless campaign is accepted",
       },
       {
-        name: "§15.6 · left computed against the room WITHOUT the phrase",
+        name: "§15.6 · left computed against the room LESS the old 49-septet footer",
         expect: [/^§15\.6 left/],
         impl: { ...R, counterFor: leftNoPhrase },
-        landed: () => leftNoPhrase(atP, "SW", FB, PHRASE).left - counterFor(atP, "SW", FB, PHRASE).left === unitsIn(`${PHRASE} `, "GSM7"),
-        landedAs: "the officer is told they have the phrase's septets more than they do",
+        landed: () => counterFor(atP, "SW", FB, PHRASE).left - leftNoPhrase(atP, "SW", FB, PHRASE).left === 49,
+        landedAs: "the officer is told they have 49 characters fewer than they do",
       },
       {
         name: "§15.13 · the renderer drops the template re-check — each recipient's own message checked, nothing else",
-        expect: [/^§15\.13 ⭐/, /^§15\.13 ⛔ a stored body/, /^§15\.13 ⛔ the source line/],
+        expect: [/^§15\.13 ⭐ THE RENDERER/, /^§15\.13 ⛔ a stored body/],
         impl: { ...R, renderForRecipient: noRecheck },
         landed: () => !renderForRecipient(over13, acct("Ali")).ok && noRecheck(over13, acct("Ali")).ok,
         landedAs: "a stored body 3 over in the worst case is sent to a short name",
@@ -3441,12 +3456,12 @@ if (!PROVE_RED) {
         landedAs: "a Swahili recipient of a campaign whose English body is over the cap is sent the Swahili message",
       },
       {
-        name: "§15.13 · the source line checked only where it is printed, and trimmed",
-        expect: [/^§15\.13 ⛔ the source line/],
-        impl: { ...R, renderForRecipient: phraseWhereSent },
-        landed: () => !renderForRecipient(tpl({ sourcePhrase: "Source {jina}" }), acct("Asha")).ok
-          && phraseWhereSent(tpl({ sourcePhrase: "Source {jina}" }), acct("Asha")).ok,
-        landedAs: "an account recipient of a campaign with a braced source line is sent the message",
+        name: "§15.13 · the source line printed again for a book contact",
+        expect: [/^§15\.13 ⭐ the source line no longer refuses/],
+        impl: { ...R, renderForRecipient: phrasePrinted },
+        landed: () => phrasePrinted(tpl({ sourcePhrase: PHRASE }), { ...acct(null), origin: "book" as RecipientOrigin }).text.includes(PHRASE)
+          && !renderForRecipient(tpl({ sourcePhrase: PHRASE }), { ...acct(null), origin: "book" as RecipientOrigin }).text.includes(PHRASE),
+        landedAs: "a book contact's message carries the stored source line",
       },
       {
         name: "control · a counter that says one message and ok for everything",
@@ -3463,11 +3478,11 @@ if (!PROVE_RED) {
         landedAs: "'Mteja ' passes the real verdict and is refused by the plant",
       },
       {
-        name: "§15.15 · the envelope's sentences as the counter's — one curly quote quotes a negative room",
+        name: "§15.15 · the Unicode sentence names the required footer again",
         expect: [/^§15[.]15 ⭐/],
         impl: { ...R, counterFor: rawEnvelope },
-        landed: () => rawEnvelope(UNI15, "SW", FB, "").problems.some((p) => NEG_NUMBER.test(p)) && !counterFor(UNI15, "SW", FB, "").problems.some((p) => NEG_NUMBER.test(p)),
-        landedAs: "the plant's sentences hold a negative room; the real counter's hold none",
+        landed: () => rawEnvelope(UNI15, "SW", FB, "").problems.some((p) => p.includes("footer")) && !counterFor(UNI15, "SW", FB, "").problems.some((p) => p.includes("footer")),
+        landedAs: "the plant's sentence names a footer; the real counter's names none",
       },
       {
         name: "§15.16 · the name only trimmed — zero-width spaces make a name",
@@ -3600,8 +3615,10 @@ if (!PROVE_RED) {
     const STILL = "disabled={!typedView.allowed || c.testing !== null}";
     const restless = swapOnce(CLIENT, STILL, "disabled={!typedView.allowed}");
     /** U37c-2 · a rewording refused, and the page left showing the old words. */
-    const STALE_LIST = '["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"]';
-    const noReread = swapOnce(CLIENT, STALE_LIST, '["typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"]');
+    const STALE_LIST = '["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording"]';
+    const noReread = swapOnce(CLIENT, STALE_LIST, '["typed_outreach_closed", "typed_no_attestation_wording"]');
+    /** 2026-10-09 · the source line put back among the reasons the page is out of date — a reason no door can answer now. */
+    const lineReread = swapOnce(CLIENT, STALE_LIST, '["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording", "typed_needs_source_line"]');
     /** U37c-2 · Send no longer spends the tick. */
     const SPEND = "    const r = recipient();\n    setTickedFor(null);\n    c.sendTest(v, r);";
     const tickNeverSpent = swapOnce(CLIENT, SPEND, "    const r = recipient();\n    c.sendTest(v, r);");
@@ -3611,6 +3628,17 @@ if (!PROVE_RED) {
     /** U37c-2 · the typed number logged from the provider's send. */
     const SEND_OPEN = "    setTesting(variant);\n    setTest({ kind: \"idle\" });";
     const numberLogged = swapOnce(CLIENT, SEND_OPEN, `${SEND_OPEN}\n    console.info("test to", recipient);`);
+    /** §16.22 · the owner's ruling of 2026-10-09 undone on the card — the token note exported again. */
+    const tokenNoteBack = withFile(COPY, (t) => `${t}${NL15}export const COMPOSE_TEST_TOKEN_NOTE = "Your stop link is made the first time you send a test; until then it shows as xxxxxxxx.";`);
+    /** §16.22 · the typed note promising the person's own stop link again. */
+    const TYPED_NOTE22 = "export const COMPOSE_TEST_TYPED_NOTE = `The name is your word for ${JINA}, never the person's own.`;";
+    const typedNoteLink = swapOnce(COPY, TYPED_NOTE22,
+      "export const COMPOSE_TEST_TYPED_NOTE = `The name is your word for ${JINA}, never the person's own, and their stop link is made for them and isn't shown here.`;");
+    /** §16.22 · the test send's token sentence naming the stop link again. */
+    const OWN_TOKEN22 = `export const TEST_TOKEN_UNAVAILABLE = "Your test couldn't be prepared, so nothing was sent — try again.";`;
+    const tokenSentenceLink: ScreenSources = {
+      ...S, testService: S.testService.replace(OWN_TOKEN22, `export const TEST_TOKEN_UNAVAILABLE = "Your stop link couldn't be made, so nothing was sent — try again.";`),
+    };
     const SAVE_ROLE = `"marketing.campaign.save", COMPOSE_ROLE_REFUSAL);${NL15}  if (!g.ok) return { ok: false, reason: "role", error: g.error };`;
     const NAME_ONCHANGE = 'onChange={(e) => c.setField("name", e.target.value)}';
     const ASK_FIRST = "onClick={() => c.askDiscard(true)}";
@@ -3735,10 +3763,34 @@ if (!PROVE_RED) {
         landedAs: "attestation_stale is no longer a page-stale reason",
       },
       {
+        name: "2026-10-09 · the source line put back among the page-stale reasons (typed_needs_source_line)",
+        expect: /^§16\.20 ⭐/, sources: lineReread,
+        landed: () => once(CLIENT, STALE_LIST) && (lineReread.files.get(CLIENT) ?? "").includes('"typed_needs_source_line"]'),
+        landedAs: "the client re-reads the page on a refusal the test send no longer makes",
+      },
+      {
         name: "U37c-2 · the number's problem said twice — under the field and again beside Send",
         expect: /^§16\.18 ⭐/, sources: saidTwice,
         landed: () => once(CLIENT, BACK_LABEL) && !(saidTwice.files.get(CLIENT) ?? "").includes(BACK_LABEL),
         landedAs: "the button beside Send prints {reason} — the plan's sentence — instead of the way back",
+      },
+      {
+        name: "§16.22 · the token note back on the Test card — 'Your stop link is made the first time you send a test'",
+        expect: /^§16[.]22 ⛔/, sources: tokenNoteBack,
+        landed: () => !(S.files.get(COPY) ?? "").includes("COMPOSE_TEST_TOKEN_NOTE") && (tokenNoteBack.files.get(COPY) ?? "").includes("COMPOSE_TEST_TOKEN_NOTE"),
+        landedAs: "the copy exports the token note again",
+      },
+      {
+        name: "§16.22 · the typed note promising the person's own stop link again",
+        expect: /^§16[.]22 ⛔/, sources: typedNoteLink,
+        landed: () => once(COPY, TYPED_NOTE22) && (typedNoteLink.files.get(COPY) ?? "").includes("their stop link is made for them"),
+        landedAs: "the typed note ends with the stop-link clause",
+      },
+      {
+        name: "§16.22 · the test send's token sentence naming the stop link again",
+        expect: /^§16[.]22 ⛔/, sources: tokenSentenceLink,
+        landed: () => S.testService.includes(OWN_TOKEN22) && tokenSentenceLink.testService.includes("Your stop link couldn't be made"),
+        landedAs: "TEST_TOKEN_UNAVAILABLE says 'Your stop link couldn't be made' again",
       },
       {
         name: "P10′ · the test action takes a bare number — sendCampaignTestAction(campaignId, variant, to: string)",
@@ -3839,9 +3891,9 @@ if (!PROVE_RED) {
     const W = REAL_WORDS;
     /** §16.11 · the fold offered only when EVERY offender folds — one emoji hides it for a curly quote. */
     const foldEvery: typeof COMPOSE_COPY.foldOffered = (c) => c.encoding === "UCS2" && c.offenders.length > 0 && c.offenders.every((o) => o.foldable);
-    /** §16.12 · "N over" whatever the encoding — dozens of characters to cut for one curly quote. */
-    const overLine: typeof COMPOSE_COPY.counterLine = (c) => (c.left < 0 || c.segments > SMS_MAX_SEGMENTS
-      ? `${Math.max(1, -c.left)} over · ${c.segments} messages · the limit is ${SMS_MAX_SEGMENTS}`
+    /** §16.12 · "Unicode leaves no room" though Unicode keeps its whole 70 — a cut asked for that no cut can fix. */
+    const overLine: typeof COMPOSE_COPY.counterLine = (c) => (c.encoding === "UCS2"
+      ? `Unicode leaves no room · ${c.segments} messages · the limit is ${SMS_MAX_SEGMENTS}`
       : COMPOSE_COPY.counterLine(c));
     /** §16.13 · the bare "Saved 14:02" — nothing says that nothing was sent, or what is next. */
     const bareSaved: typeof COMPOSE_COPY.composeSaved = (at) => `Saved ${at.slice(11, 16)}`;
@@ -3859,10 +3911,10 @@ if (!PROVE_RED) {
         landedAs: "an emoji beside a curly quote: offered by the real rule, hidden by the plant",
       },
       {
-        name: "§16.12 · 'N over' while Unicode leaves no room",
+        name: "§16.12 · 'Unicode leaves no room' though Unicode keeps its whole 70",
         expect: /^§16[.]12 ⛔/, words: { ...W, counterLine: overLine },
-        landed: () => /over/.test(overLine(counterFor(UNI15, "SW", FB, ""))) && !/over/.test(COMPOSE_COPY.counterLine(counterFor(UNI15, "SW", FB, ""))),
-        landedAs: "one curly quote reads as characters to cut in the plant, and as no room in the real line",
+        landed: () => /no room/.test(overLine(counterFor(UNI15, "SW", FB, ""))) && !/no room/.test(COMPOSE_COPY.counterLine(counterFor(UNI15, "SW", FB, ""))),
+        landedAs: "one curly quote reads as no room in the plant, and as characters left in the real line",
       },
       {
         name: "§16.13 · the bare 'Saved HH:MM' — nothing was sent goes unsaid",
@@ -3993,43 +4045,42 @@ if (!PROVE_RED) {
       return realSave(input, officerId, opts, deps);
     };
 
-    /** U37s · the save never stamps the line — every draft born with no source line, whatever is saved. */
-    const neverStamps: typeof realSave = (input, officerId, opts, deps = DRAFT.CAMPAIGN_DRAFT_DEPS) =>
-      realSave(input, officerId, opts, { ...deps, campaigns: { ...deps.campaigns, create: (row) => deps.campaigns.create({ ...row, sourcePhrase: null }) } });
-    /** U37s · THE SPEC'S PLANT — the save keeps a stale line: an edit's patch leaves the line stamped on it earlier. */
-    const staleLine: typeof realSave = (input, officerId, opts, deps = DRAFT.CAMPAIGN_DRAFT_DEPS) =>
-      realSave(input, officerId, opts, {
-        ...deps,
-        campaigns: {
-          ...deps.campaigns,
-          update: (id, patch, guard, at) => {
-            const { sourcePhrase: _stamped, ...kept } = patch;
-            return deps.campaigns.update(id, kept, guard, at);
-          },
-        },
-      });
-    /** U37s · a line read as spaces stored as it was read — blank kept as text, not as no line. */
-    const rawLine: typeof realSave = async (input, officerId, opts, deps = DRAFT.CAMPAIGN_DRAFT_DEPS) => {
-      const read = await deps.sourcePhrase();
-      const raw = read.ok ? read.phrase : null;
-      return realSave(input, officerId, opts, { ...deps, campaigns: { ...deps.campaigns, create: (row) => deps.campaigns.create({ ...row, sourcePhrase: raw }) } });
+    /* ⭐ §17.13–§17.20's plants — each puts back one piece of U37s that the owner's ruling of 2026-10-09 took out. */
+    /** The `source.phrase` wording saved through the shipped setter ("" clears it) — a plant's world, cleared after it. */
+    const setLine37 = async (text: string): Promise<boolean> => {
+      const base = WORDINGS.wordingHistory("source.phrase").length;
+      const res = await WORDINGS.saveMarketingWordings({ "source.phrase": text, "approve.source.phrase": "1", "base.source.phrase": String(base) }, "usr_u37s_owner");
+      return res.ok === true;
     };
-    /** U37s · the counter prices the line stamped on the draft earlier, not the one its next save stamps. */
-    const stampCounter: typeof LOADER.composerSourcePhrase = (draft) => draft?.sourcePhrase ?? "";
-    /** U37s review · a read that could not answer taken as "no line" — a good stamp replaced by none. */
-    const guessesBlank: typeof realSave = (input, officerId, opts, deps = DRAFT.CAMPAIGN_DRAFT_DEPS) =>
+    /** The line saved now, as U37s stamped it: trimmed, null when blank. */
+    const savedLine37 = (): string | null => (WORDINGS.currentWording("source.phrase")?.text ?? "").trim() || null;
+    /** 2026-10-09 undone · the save stamps the SAVED source line again — every new draft born with the line saved now. */
+    const stampsAgain: typeof realSave = (input, officerId, opts, deps = DRAFT.CAMPAIGN_DRAFT_DEPS) =>
+      realSave(input, officerId, opts, { ...deps, campaigns: { ...deps.campaigns, create: (row) => deps.campaigns.create({ ...row, sourcePhrase: savedLine37() }) } });
+    /** 2026-10-09 undone · an edit re-stamps — the row's own line replaced by the one saved now. */
+    const restamps: typeof realSave = (input, officerId, opts, deps = DRAFT.CAMPAIGN_DRAFT_DEPS) =>
       realSave(input, officerId, opts, {
         ...deps,
-        sourcePhrase: async () => {
-          const r = await deps.sourcePhrase();
-          return r.ok ? r : { ok: true, phrase: null };
-        },
+        campaigns: { ...deps.campaigns, update: (id, patch, guard, at) => deps.campaigns.update(id, { ...patch, sourcePhrase: savedLine37() }, guard, at) },
       });
-    /** U37s review · the stale flag never raised — an old draft reads "no changes" and can't be re-stamped. */
-    const neverStale: typeof LOADER.composerSourceLineStale = () => false;
-    /** U37s review · one source string swapped in memory — each anchor resolves exactly once in the real source. */
+    /** 2026-10-09 undone · the save asks a source reader again, and refuses as U37s did when it cannot answer. */
+    const readsAgain: typeof realSave = async (input, officerId, opts, deps = DRAFT.CAMPAIGN_DRAFT_DEPS) => {
+      const reader = (deps as unknown as { sourcePhrase?: () => Promise<{ ok: boolean }> | { ok: boolean } }).sourcePhrase;
+      const read = reader === undefined ? { ok: true } : await reader();
+      if (!read.ok) {
+        return { ok: false, reason: "source_unreadable", error: "The campaign's source line couldn't be read just now, so the draft wasn't saved — try again in a moment." } as unknown as Awaited<ReturnType<typeof realSave>>;
+      }
+      return realSave(input, officerId, opts, deps);
+    };
+    /** One source string swapped in memory — each anchor resolves exactly once in the real source. */
     const swapIn = (src: string, anchor: string, planted: string) => (src.split(anchor).length === 2 ? src.replace(anchor, planted) : src);
     const UNREAD_37S = { ok: false as const };
+    const VERDICT_37 = 'validateCampaignTemplate(fields, "")';
+    const NO_CHANGES_37 = "!dirty && !view.audience.unsaved ? { reason: COMPOSE_NO_CHANGES";
+    const READ_ONLY_37 = 'readOnly: draft !== null && draft.status !== "DRAFT",';
+    const UTILS_37 = 'import { formatClock } from "@/lib/utils";';
+    const AUDIENCE_PATCH_37 = "...(audience.write ? { audienceFilter: audience.key } : {}),";
+    const LOADER_DRAFT_IMPORT_37 = 'import { wholeNumberAudienceProblem, CAMPAIGN_AUDIENCE_UNREADABLE } from "@/lib/server/marketing/campaign-draft";';
 
     type SavePlant = { name: string; expect: RegExp[]; impl: ComposeImpl; landed: () => Promise<boolean>; landedAs: string };
     const savePlants: SavePlant[] = [
@@ -4168,92 +4219,100 @@ if (!PROVE_RED) {
         landedAs: "a stored tag filter carries as tag=vip on the real card and as no filter on the plant's",
       },
       {
-        name: "U37s · the save never stamps the saved source line",
-        expect: [/^§17[.]13 ⭐/], impl: { ...R, save: neverStamps },
+        name: "2026-10-09 · the save stamps the saved source line again",
+        expect: [/^§17[.]13 ⭐/, /^§17[.]18 ⭐/], impl: { ...R, save: stampsAgain },
         landed: async () => {
-          const under = { ...QUIET_DRAFT_DEPS, sourcePhrase: () => ({ ok: true as const, phrase: LINE37S_A }) };
-          const real = await realSave(draftInput({ name: "Landed stamp" }), LANDED, reads, under);
-          const planted = await neverStamps(draftInput({ name: "Landed no stamp" }), LANDED, reads, under);
-          const a = real.ok ? await db.smsCampaign.find(real.id) : null;
-          const b = planted.ok ? await db.smsCampaign.find(planted.id) : null;
-          return a !== null && a.sourcePhrase === LINE37S_A && b !== null && b.sourcePhrase === null;
+          const put = await setLine37(LINE37S_A);
+          try {
+            const real = await realSave(draftInput({ name: "Landed no stamp" }), LANDED, reads, QUIET_DRAFT_DEPS);
+            const planted = await stampsAgain(draftInput({ name: "Landed stamp" }), LANDED, reads, QUIET_DRAFT_DEPS);
+            const a = real.ok ? await db.smsCampaign.find(real.id) : null;
+            const b = planted.ok ? await db.smsCampaign.find(planted.id) : null;
+            return put && a !== null && a.sourcePhrase === null && b !== null && b.sourcePhrase === LINE37S_A;
+          } finally {
+            await setLine37("");
+          }
         },
-        landedAs: "under a saved line the real save stamps it and the plant stores none",
+        landedAs: "under a saved line the real save stores none and the plant stamps it",
       },
       {
-        name: "U37s · the save keeps a stale source line on an edit",
-        expect: [/^§17[.]15 ⛔/], impl: { ...R, save: staleLine },
+        name: "2026-10-09 · an edit re-stamps the line (the row's own line replaced by the one saved now)",
+        expect: [/^§17[.]14 ⛔/], impl: { ...R, save: restamps },
         landed: async () => {
-          const made = await realSave(draftInput({ name: "Landed stale line" }), LANDED, reads, { ...QUIET_DRAFT_DEPS, sourcePhrase: () => ({ ok: true as const, phrase: LINE37S_A }) });
+          const made = await realSave(draftInput({ name: "Landed kept line" }), LANDED, reads, QUIET_DRAFT_DEPS);
           if (!made.ok) return false;
-          const edit = await staleLine(draftInput({ id: made.id, draftRevision: 0, name: "Landed stale line" }), LANDED, reads, { ...QUIET_DRAFT_DEPS, sourcePhrase: () => ({ ok: true as const, phrase: LINE37S_B }) });
-          const row = await db.smsCampaign.find(made.id);
-          return edit.ok && row !== null && row.draftRevision === 1 && row.sourcePhrase === LINE37S_A;
+          const withA = await db.smsCampaign.update(made.id, { sourcePhrase: LINE37S_A }, { draftRevision: made.draftRevision }, new Date().toISOString());
+          if (withA === null) return false;
+          const put = await setLine37(LINE37S_B);
+          try {
+            const edit = await restamps(draftInput({ id: withA.id, draftRevision: withA.draftRevision, name: "Landed kept line" }), LANDED, reads, QUIET_DRAFT_DEPS);
+            const row = await db.smsCampaign.find(withA.id);
+            return put && edit.ok && row !== null && row.sourcePhrase === LINE37S_B;
+          } finally {
+            await setLine37("");
+          }
         },
-        landedAs: "an edit saved after the line became B still carries A",
+        landedAs: "an edit saved while B is saved replaces the row's own A with B",
       },
       {
-        name: "U37s · a line of spaces stored as text",
-        expect: [/^§17[.]14 ⛔/], impl: { ...R, save: rawLine },
+        name: "2026-10-09 · the save asks a source reader again and refuses when it cannot answer",
+        expect: [/^§17[.]17 ⛔/], impl: { ...R, save: readsAgain },
         landed: async () => {
-          const r = await rawLine(draftInput({ name: "Landed spaces" }), LANDED, reads, { ...QUIET_DRAFT_DEPS, sourcePhrase: () => ({ ok: true as const, phrase: "   " }) });
-          const row = r.ok ? await db.smsCampaign.find(r.id) : null;
-          return row !== null && row.sourcePhrase === "   ";
+          const unread = { ...QUIET_DRAFT_DEPS, sourcePhrase: () => UNREAD_37S } as typeof DRAFT.CAMPAIGN_DRAFT_DEPS;
+          const real = await realSave(draftInput({ name: "Landed unread, real" }), LANDED, reads, unread);
+          const planted = await readsAgain(draftInput({ name: "Landed unread, plant" }), LANDED, reads, unread);
+          return real.ok && !planted.ok && (planted as { reason?: string }).reason === "source_unreadable";
         },
-        landedAs: "a line of three spaces is stored as three spaces",
+        landedAs: "handed a reader that cannot answer, the real save saves and the plant refuses source_unreadable",
       },
       {
-        name: "U37s · the counter prices the draft's earlier stamp",
-        expect: [/^§17[.]16 ⭐/], impl: { ...R, sourceLine: stampCounter },
-        landed: async () => {
-          const draftA = { status: "DRAFT", sourcePhrase: LINE37S_A } as unknown as StoredRow;
-          return stampCounter(draftA, LINE37S_B) === LINE37S_A && LOADER.composerSourcePhrase(draftA, LINE37S_B) === LINE37S_B;
-        },
-        landedAs: "a DRAFT stamped A under a saved B: the real counter prices B, the plant A",
+        name: "2026-10-09 · the screen's verdict handed the view's line again",
+        expect: [/^§17[.]16 ⭐/],
+        impl: { ...R, clientSource: swapIn(R.clientSource, VERDICT_37, "validateCampaignTemplate(fields, view.sourcePhrase)") },
+        landed: async () => R.clientSource.split(VERDICT_37).length === 2,
+        landedAs: "the screen's verdict call resolves exactly once and is swapped in memory",
       },
       {
-        name: "U37s review · a source line that could not be read stamped as none",
-        expect: [/^§17[.]17 ⛔/], impl: { ...R, save: guessesBlank },
-        landed: async () => {
-          const made = await realSave(draftInput({ name: "Landed unread" }), LANDED, reads, { ...QUIET_DRAFT_DEPS, sourcePhrase: () => ({ ok: true as const, phrase: LINE37S_A }) });
-          if (!made.ok) return false;
-          const unread = { ...QUIET_DRAFT_DEPS, sourcePhrase: () => UNREAD_37S };
-          const real = await realSave(draftInput({ id: made.id, draftRevision: 0, name: "Landed unread" }), LANDED, reads, unread);
-          const planted = await guessesBlank(draftInput({ id: made.id, draftRevision: 0, name: "Landed unread" }), LANDED, reads, unread);
-          const row = await db.smsCampaign.find(made.id);
-          return !real.ok && real.reason === "source_unreadable" && planted.ok && row !== null && row.sourcePhrase === null;
-        },
-        landedAs: "the real save refuses an unread line; the plant saves and wipes the stamp",
-      },
-      {
-        name: "U37s review · the stale flag never raised",
-        expect: [/^§17[.]19 ⭐/], impl: { ...R, staleLine: neverStale },
-        landed: async () => {
-          const old = { status: "DRAFT", sourcePhrase: null } as unknown as StoredRow;
-          return LOADER.composerSourceLineStale(old, LINE37S_A) && !neverStale(old, LINE37S_A);
-        },
-        landedAs: "a draft stamped before the line existed: the real flag is raised, the plant's is not",
-      },
-      {
-        name: "U37s review · the shipped deps stamp no line",
-        expect: [/^§17[.]20 ⛔/],
-        impl: { ...R, draftSource: swapIn(R.draftSource, "sourcePhrase: readSavedSourcePhrase,", "sourcePhrase: () => ({ ok: true, phrase: null }),") },
-        landed: async () => R.draftSource.split("sourcePhrase: readSavedSourcePhrase,").length === 2,
-        landedAs: "the deps line resolves exactly once in the real save and is swapped in memory",
-      },
-      {
-        name: "U37s review · the loader prices the draft's own stamp",
-        expect: [/^§17[.]20 ⛔/],
-        impl: { ...R, loaderSource: swapIn(R.loaderSource, "sourcePhrase: composerSourcePhrase(draft, savedLine),", 'sourcePhrase: draft?.sourcePhrase ?? "",') },
-        landed: async () => R.loaderSource.split("sourcePhrase: composerSourcePhrase(draft, savedLine),").length === 2,
-        landedAs: "the loader's pricing line resolves exactly once and is swapped in memory",
-      },
-      {
-        name: "U37s review · the screen keeps 'no changes' for a stale draft",
-        expect: [/^§17[.]20 ⛔/],
-        impl: { ...R, clientSource: swapIn(R.clientSource, "!dirty && !view.sourceLineStale", "!dirty") },
-        landed: async () => R.clientSource.split("!dirty && !view.sourceLineStale").length === 2,
+        name: "2026-10-09 · the stale flag back in the screen's no-changes rule",
+        expect: [/^§17[.]19 ⭐/],
+        impl: { ...R, clientSource: swapIn(R.clientSource, NO_CHANGES_37, "!dirty && !view.sourceLineStale && !view.audience.unsaved ? { reason: COMPOSE_NO_CHANGES") },
+        landed: async () => R.clientSource.split(NO_CHANGES_37).length === 2,
         landedAs: "the screen's no-changes rule resolves exactly once and is swapped in memory",
+      },
+      {
+        name: "2026-10-09 · the loader flags a stale line again",
+        expect: [/^§17[.]19 ⭐/],
+        impl: { ...R, loaderSource: swapIn(R.loaderSource, READ_ONLY_37, `${READ_ONLY_37} sourceLineStale: false,`) },
+        landed: async () => R.loaderSource.split(READ_ONLY_37).length === 2,
+        landedAs: "the view's read-only line resolves exactly once and gains the flag in memory",
+      },
+      {
+        name: "2026-10-09 · the draft door reads the wordings again",
+        expect: [/^§17[.]20 ⛔/],
+        impl: { ...R, draftSource: swapIn(R.draftSource, UTILS_37, `import { currentWording } from "@/lib/server/marketing/wordings"; ${UTILS_37}`) },
+        landed: async () => R.draftSource.split(UTILS_37).length === 2,
+        landedAs: "the door's utils import resolves exactly once and gains the wordings import in memory",
+      },
+      {
+        name: "2026-10-09 · a new draft born with the saved line again (the door's own source)",
+        expect: [/^§17[.]20 ⛔/],
+        impl: { ...R, draftSource: swapIn(R.draftSource, "sourcePhrase: null,", 'sourcePhrase: currentWording("source.phrase")?.text ?? null,') },
+        landed: async () => R.draftSource.split("sourcePhrase: null,").length === 2,
+        landedAs: "the new row's line resolves exactly once and is swapped in memory",
+      },
+      {
+        name: "2026-10-09 · an edit's patch names the line again (the door's own source)",
+        expect: [/^§17[.]20 ⛔/],
+        impl: { ...R, draftSource: swapIn(R.draftSource, AUDIENCE_PATCH_37, `sourcePhrase: null, ${AUDIENCE_PATCH_37}`) },
+        landed: async () => R.draftSource.split(AUDIENCE_PATCH_37).length === 2,
+        landedAs: "the edit's audience line resolves exactly once and the patch gains a line in memory",
+      },
+      {
+        name: "2026-10-09 · the loader reads the saved line again",
+        expect: [/^§17[.]20 ⛔/],
+        impl: { ...R, loaderSource: swapIn(R.loaderSource, LOADER_DRAFT_IMPORT_37, LOADER_DRAFT_IMPORT_37.replace("CAMPAIGN_AUDIENCE_UNREADABLE }", "CAMPAIGN_AUDIENCE_UNREADABLE, savedSourcePhrase }")) },
+        landed: async () => R.loaderSource.split(LOADER_DRAFT_IMPORT_37).length === 2,
+        landedAs: "the loader's draft-door import resolves exactly once and names the reader in memory",
       },
     ];
     for (const p of savePlants) {
@@ -4368,7 +4427,8 @@ if (!PROVE_RED) {
         },
       },
     });
-    /** The test rendered as a CONTACT-BOOK recipient — false for the officer's own number, and refused while there is no source line. */
+    /** The test rendered as a CONTACT-BOOK recipient — false for the officer's own number: they are greeted by the `{jina}`
+     *  fallback, never their own first name. (Until 2026-10-09 it was also refused while there was no source line.) */
     const asBook: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS) =>
       realTest(input, officerId, { ...deps, render: (t, r) => renderForRecipient(t, { ...r, origin: "book" }) });
     /** The account name printed RAW on the wire — no fold, no first word, no letters rule — around the one renderer. */
@@ -4420,9 +4480,14 @@ if (!PROVE_RED) {
       const forced = r && r.kind === "typed" ? { ...input, recipient: { ...r, attestedVersion: v } } : input;
       return realTest(forced as TestInput, officerId, deps, options);
     };
-    /** A.4 · a typed number rendered as an ACCOUNT recipient — no source line, and a holder's own name could print. */
-    const typedAsAccount: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) =>
-      realTest(input, officerId, { ...deps, render: (t, r) => renderForRecipient(t, { ...r, origin: "account" }) }, options);
+    /** A.4 · a typed number rendered as an ACCOUNT recipient — the account path's name printed where the `{jina}` fallback
+     *  belongs (here the officer's own first name): a stranger greeted by somebody else's name. (Until 2026-10-09 the plant
+     *  only switched the origin, which also dropped the source line; with nothing appended that alone shows nothing.) */
+    const typedAsAccount: typeof realTest = async (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => {
+      const officerRow = await deps.users.findById(officerId);
+      const name = firstNameFor({ userDisplayName: officerRow?.displayName ?? null });
+      return realTest(input, officerId, { ...deps, render: (t, r) => renderForRecipient(t, { ...r, origin: "account", name: r.name ?? name }) }, options);
+    };
     /** A.8 · the confirmation honoured for a player — the gate's player branch skipped on a typed test. */
     const playerSkipped: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) =>
       realTest(input, officerId, { ...deps, gateReads: { ...deps.gateReads, userByPhone: () => null } }, options);
@@ -4431,11 +4496,14 @@ if (!PROVE_RED) {
       realTest(input, officerId, { ...deps, gateReads: { ...deps.gateReads, refereeHeld: () => false } }, options);
     /** A.8 · a typed refusal itemised for a masked viewer. */
     const itemised: typeof realTest = (input, officerId, deps) => realTest(input, officerId, deps, { viewerReads: true });
-    /** A.8 · the real token returned to the screen. */
+    /** A.8 · the real token returned to the screen — the number's own stop-page token printed in the text the officer is
+     *  shown. (Until 2026-10-09 the plant returned the wire's text, whose stop link carried the token; nothing is appended
+     *  since, so the wire carries none and the plant prints the token the render was handed.) */
     const realTokenShown: typeof realTest = async (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => {
-      let wire = "";
-      const r = await realTest(input, officerId, { ...deps, dispatch: (rows, d) => { wire = rows[0]?.body ?? ""; return deps.dispatch(rows, d); } }, options);
-      return r.ok && r.target === "typed" && wire !== "" ? { ...r, text: wire } : r;
+      let token = "";
+      const measured = footerMeasurementToken();
+      const r = await realTest(input, officerId, { ...deps, render: (t, rc) => { if (rc.token !== measured) token = rc.token; return deps.render(t, rc); } }, options);
+      return r.ok && r.target === "typed" && token !== "" ? { ...r, text: `${r.text} ${shortDomain()}/s/${token}` } : r;
     };
     /** A.8 · no per-recipient budget. */
     const noRecipientBudget: typeof realTest = (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => realTest(input, officerId, { ...deps, rateTo: ALLOW }, options);
@@ -4493,8 +4561,25 @@ if (!PROVE_RED) {
     /** U37c-2 · "allowed" without a preview — a text that cannot render for a book recipient offered anyway. */
     const renderIgnored: typeof LOADER.composeTypedView = (draft, facts) => {
       const v = LOADER.composeTypedView(draft, facts);
-      const upFront: Array<string | null> = [TEST.TEST_TYPED_OUTREACH_CLOSED, TEST.TEST_TYPED_NO_ATTESTATION_WORDING, TEST.TEST_TYPED_NEEDS_SOURCE_LINE];
+      const upFront: Array<string | null> = [TEST.TEST_TYPED_OUTREACH_CLOSED, TEST.TEST_TYPED_NO_ATTESTATION_WORDING];
       return draft !== null && !v.allowed && v.why !== null && !upFront.includes(v.why) ? { ...v, allowed: true, why: null } : v;
+    };
+    /** The refusal the owner's ruling of 2026-10-09 took away, in its old words — what the two plants below put back. */
+    const NEEDS_LINE_WAS = "A test to another number needs the campaign's source line, and this draft has none — it is added when the draft is "
+      + "saved after the owner sets it (gate G5). Send yourself a test for now.";
+    /** 2026-10-09 undone · the typed test's source-line gate back at the door — a draft with no line refused up front. */
+    const lineGateBackTest: typeof realTest = async (input, officerId, deps = TEST.CAMPAIGN_TEST_DEPS, options) => {
+      const rec = recipientOf(input);
+      const c = await deps.campaigns.find(String((input as unknown as { campaignId?: unknown })?.campaignId ?? ""));
+      if (rec !== null && rec.kind === "typed" && c !== null && (c.sourcePhrase ?? "").trim() === "") {
+        return { ok: false, outcome: "refused", reason: "typed_needs_source_line" as never, error: NEEDS_LINE_WAS, target: "typed" };
+      }
+      return realTest(input, officerId, deps, options);
+    };
+    /** 2026-10-09 undone · the loader's typed view refusing a draft with no line again. */
+    const lineGateBackView: typeof LOADER.composeTypedView = (draft, facts) => {
+      const v = LOADER.composeTypedView(draft, facts);
+      return draft !== null && v.allowed && (draft.sourcePhrase ?? "").trim() === "" ? { ...v, allowed: false, why: NEEDS_LINE_WAS } : v;
     };
     /** Review · a 41-character number let through — the cap gone, the extra text trimmed off before the re-typing. */
     const uncappedNumber: typeof realTest = (input, officerId, deps, options) => {
@@ -4748,9 +4833,9 @@ if (!PROVE_RED) {
           const { send } = u37bSpy();
           const real = await realTest({ campaignId: id, variant: "SW" }, o.id, landedDeps({ send }));
           const planted = await asBook({ campaignId: id, variant: "SW" }, o.id, landedDeps({ send }));
-          return real.ok && !planted.ok;
+          return real.ok && planted.ok && real.text.startsWith("50pick: Habari Asha,") && planted.text.startsWith(`50pick: Habari ${FB},`);
         },
-        landedAs: "with no source line, the real test is sent and the book-origin one refused",
+        landedAs: "the real own test greets the officer by their first name; the book-origin one greets them with the fallback",
       },
       /* ── U37c ── */
       {
@@ -4786,9 +4871,9 @@ if (!PROVE_RED) {
           const id = await phrased();
           const real = await realTest(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ send: u37bSpy().send }));
           const planted = await typedAsAccount(typedInput(id, `+${u37bKey()}`), o.id, typedLanded({ send: u37bSpy().send }));
-          return real.ok && real.text.includes(PHRASE) && planted.ok && !planted.text.includes(PHRASE);
+          return real.ok && real.text.includes(`Habari ${FB},`) && planted.ok && !planted.text.includes(`Habari ${FB},`);
         },
-        landedAs: "the real typed test carries the source line; the plant's carries none",
+        landedAs: "the real typed test greets the stranger with the fallback; the plant's greets them by the officer's own name",
       },
       {
         name: "U37c · the confirmation honoured for a player — the gate's player branch skipped on a typed test",
@@ -4855,6 +4940,28 @@ if (!PROVE_RED) {
           return !LOADER.composeTypedView(broken, facts).allowed && renderIgnored(broken, facts).allowed;
         },
         landedAs: "the real view refuses the unrenderable text; the plant offers it",
+      },
+      {
+        // The plant refuses before anything about the officer is read, so its landing needs no role that may type a number.
+        name: "2026-10-09 undone · the typed test's source-line gate back at the door — a draft with no line refused up front",
+        expect: [/^§18[.]25 ⛔/], impl: { ...R, test: lineGateBackTest },
+        landed: async () => {
+          const id = await u37bDraft();
+          const planted = await lineGateBackTest(typedInput(id, `+${u37bKey()}`), "usr_u37c_plant", typedLanded({ send: u37bSpy().send }));
+          return !planted.ok && planted.outcome === "refused" && planted.reason === "typed_needs_source_line" && planted.error === NEEDS_LINE_WAS;
+        },
+        landedAs: "a typed test on a draft with no line is refused typed_needs_source_line, in the old words",
+      },
+      {
+        name: "2026-10-09 undone · the typed view refusing a draft with no source line again",
+        expect: [/^§18[.]22 ⭐/], impl: { ...R, typedView: lineGateBackView },
+        landed: async () => {
+          const row = await db.smsCampaign.find(await u37bDraft());
+          if (row === null) return false;
+          const facts = { outreachOpen: true, adult: P_ADULT };
+          return LOADER.composeTypedView(row, facts).allowed && !lineGateBackView(row, facts).allowed;
+        },
+        landedAs: "the real view offers the draft with no line; the plant refuses it, in the old words",
       },
       {
         name: "U37c · the typed preview built for a number",

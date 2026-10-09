@@ -15,16 +15,14 @@ import { Button } from "@/components/ui/button";
 import type { VariantCounter } from "@/lib/marketing/campaign-template";
 import { SMS_MAX_SEGMENTS } from "@/lib/sms-compose";
 import {
-  COMPOSE_FOLD, COMPOSE_FORCED, COMPOSE_JINA_RESERVE, COMPOSE_STOP_LINK, composeSourceLine, counterAnnounce, counterLine,
+  COMPOSE_AS_WRITTEN, COMPOSE_FOLD, COMPOSE_FORCED, COMPOSE_JINA_RESERVE, counterAnnounce, counterLine,
   foldOffered,
 } from "./composer-copy";
 
 export function ComposerCounter({
-  counter, phraseSet, disabled, onFold,
+  counter, disabled, onFold,
 }: {
   counter: VariantCounter;
-  /** The campaign's source line is set (else its room is reserved — M5). */
-  phraseSet: boolean;
   disabled: boolean;
   onFold: () => void;
 }) {
@@ -48,9 +46,9 @@ export function ComposerCounter({
           )}
         </div>
       )}
-      <p className="text-body-sm text-text-tertiary">{COMPOSE_STOP_LINK}</p>
+      {/* The owner's ruling of 2026-10-09: the message is sent exactly as written — no footer, no stop link, no source line. */}
+      <p className="text-body-sm text-text-tertiary" data-counter-as-written>{COMPOSE_AS_WRITTEN}</p>
       {counter.jinaReserve > 0 && <p className="text-body-sm text-text-tertiary" data-counter-jina>{COMPOSE_JINA_RESERVE}</p>}
-      <p className="text-body-sm text-text-tertiary" data-counter-source>{composeSourceLine(counter.sourceUnits, phraseSet)}</p>
     </div>
   );
 }

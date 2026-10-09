@@ -12,10 +12,11 @@
  *       prints, in all three languages (the version every stamp records as its base);
  *   L1  ⛔ nothing prints differently until a save — each default IS today's page text, byte for byte, in every language,
  *       decoded from the JSX inside the page's own wrapper; each wrapper sits where its line prints (RG §4 first bullet;
- *       Privacy §3 Consent, then the licence bullet; Privacy §4 Blackball) and carries its one-line note; every default is
+ *       Privacy §3 Consent, then the licence bullet; Privacy §4 the SMS gateway) and carries its one-line note; every default is
  *       a fixed point of the normaliser and passes its own rules with no problem and no hint; the renderer prints a saved
- *       line equal to today's text in today's markup; the consent-only clause and the required words are substrings of
- *       the defaults; and both English hash pins, recomputed over the stripped pages, are the pins the sibling suites hold;
+ *       line equal to today's text in today's markup; the consent-only clause and the required words are said by the
+ *       defaults (one matcher, `holdsRequiredWord`), the gateway default names no company (2026-10-09); and both English
+ *       hash pins, recomputed over the stripped pages, are the pins the sibling suites hold;
  *   L2  the pages print a saved line in place of the default — the wrapper's renderer, the wiring of both pages and their
  *       META, and the RG page's `content()` rendered before (today's text) and after a live save (the saved line);
  *   L3  the validator — every promise's words READ as it in EVERY language (F2 · F3): the late-night words matched whole
@@ -67,7 +68,7 @@ import { KEPT_PROMISES, PROMISE_KEYS, promisesIn, type KeptPromise, type Promise
 import {
   ANALYTICS_CONSENT_WORDS, CONSENT_ONLY_CLAUSE, CONSENT_WITHDRAW_PATH, EMPTY_POLICY_LINES, POLICY_DEFAULT_SEND_WINDOW, POLICY_LINE_DEFAULTS,
   POLICY_LINE_KEYS, POLICY_LINE_RULES, POLICY_LINE_SENTENCE, POLICY_LINE_SPEC, POLICY_LOCALES, POLICY_LOCALE_NAME, POLICY_PAGES,
-  POLICY_PAGE_KEYS, SMS_GATEWAY_WORDS, comparePolicyVersions, holdsConsentOnlyPhrase, isPolicyVersion, isReviewVersion,
+  POLICY_PAGE_KEYS, SMS_GATEWAY_WORDS, comparePolicyVersions, holdsConsentOnlyPhrase, holdsRequiredWord, isPolicyVersion, isReviewVersion,
   mergePolicyLines, metaWithVersion, nextPolicyVersion, normalizePolicyLine, normalizedPolicyTexts, policyBaseFieldName,
   policyDefaultFingerprint, policyLineChanges, policyLineParts, policyLineProblems, policyLineState, policyLinesPostEntries,
   policyLinesToSave, policyOpeningProblems, policyReviewFieldName, policyTextFieldName, printedPolicyVersion, readPolicyLines,
@@ -107,11 +108,11 @@ const ok = (label: string, cond: boolean, detail = "") => {
 
 const L = {
   l0: "L0 · the keys, the pages and their versions — five lines in the card's order, each on its page (the profile note on none), only the licence bullet and the note clearable, only the two §3 bullets labelled, and each page's code version the one its META prints in en, sw and zh",
-  l1: "L1 · ⛔ nothing prints differently until a save — each default is today's page text byte for byte in every language, decoded from the JSX inside the page's own wrapper; each wrapper sits where its line prints, in its own language's block, with its one-line note; every default is a fixed point of the normaliser and passes its own rules with no problem and no hint; a saved line equal to today's text prints today's markup; the consent-only clause and the required words are substrings of the defaults; and both English hash pins, over the stripped pages, are the sibling suites' pins",
+  l1: "L1 · ⛔ nothing prints differently until a save — each default is today's page text byte for byte in every language, decoded from the JSX inside the page's own wrapper; each wrapper sits where its line prints, in its own language's block, with its one-line note; every default is a fixed point of the normaliser and passes its own rules with no problem and no hint; a saved line equal to today's text prints today's markup; the consent-only clause and the required words are said by the defaults (one matcher, `holdsRequiredWord`), and the gateway default names no company (2026-10-09); and both English hash pins, over the stripped pages, are the sibling suites' pins",
   l2: "L2 · the pages print a saved line in place of the default — the wrapper prints the saved words in today's markup, its children while it has none and nothing for a saved blank; both pages are wired to it and print META through policyMeta; and the RG page's own content() prints today's text before a live save and the saved line after it, with the licence bullet, the version derived from the code's, and the record readable",
   l3: "L3 · the validator — every promise's words read as it in every language (the late-night words matched whole, a clock time in any spelling, the Swahili and Chinese late-night words, a frequency cap) and judged by the map: refused by name while unkept (the frequency cap), accepted while kept (the late-night window, since U13); each kept promise accepted and the two age promises read apart; a kept promise the published line makes and the new one drops a hint; one language changed and another not a hint; a blank language, markup, a phone number or any run of seven digits, an unbroken run over 30 characters, too long, too short, a missing gateway word and a missing Consent word each refused in its own words, every problem at once; the clearable lines all or nothing; the Appendix B drafts pass; every no-break space read as a space and the RG sw and zh binding applied again; Chinese tightened with Latin–Han spacing kept; and the normaliser idempotent",
   l4: "L4 · the version — the first save of an EAT day stamps the day, a second .2, a third .3, up to four digits; the next day the bare date; ONE function prints the version from code, stamp and base, so a same-day code bump or a code edit after a .2 stamp never reuses a label; META prints that version; through the store each page moves once per save of new words, a review-only save writes its marker and audit row and moves nothing, the profile note moves none, the audit row names the version, and every expected stamp is derived from the code's versions",
-  l5: "L5 · the opening checks read the saved lines — nothing saved, or today's words saved, fails all three; the Appendix B lines pass, and so does a Consent bullet reviewed against today's code default, but not one reviewed against an old one; a consent-only phrase in the Blackball line in en, sw or zh (or capitalised), or in any other page line, fails check 1; a blank licence bullet fails check 2; an RG line that names no staff fails check 3",
+  l5: "L5 · the opening checks read the saved lines — nothing saved, or today's words saved, fails all three; the Appendix B lines pass, and so does a Consent bullet reviewed against today's code default, but not one reviewed against an old one; a consent-only phrase in the SMS gateway line in en, sw or zh (or capitalised), or in any other page line, fails check 1; a blank licence bullet fails check 2; an RG line that names no staff fails check 3",
   l6: "L6 · the store — a valid save is verified and audited { before, after, changes } as config.policy_lines_updated, with the code default's fingerprint; an unchanged save writes nothing; today's words are written only with the review tick, as a marker that prints nothing new and moves no version, and only once; new words append and version 1 stays as it was; the append-only check refuses a rewrite, a drop, two at once, a misnumbering and an unknown key, and the server runs it before every write; a newer build's field is read and kept; a stale page (behind or ahead) is refused under its box and writes nothing; a process that never loaded the row refuses and is not readable; a row read in part is never rewritten and is not readable (M1) while a row read in full saves; two saves at once keep both lines (D9)",
   l7: "L7 · the wiring — the action asks requireAdmin first, reads its form with patchFromForm, saves through the verified setter, names a box per refusal, reports the moved lines and revalidates both legal pages; the card validates live against the words printed now, re-reads every saved line on load, builds its request with policyLinesToSave and policyLinesPostEntries, never holds a save silently, imports nothing from the server and says where the note prints (under the offers switch, only for a player reached under the licence — U33a-P shipped it); the page renders it on its own tab and reads its rows only there; the server module is the live store, runs its append-only check, stamps only for moved lines and exports the readable predicate; the pure modules are pure and pinned; the sibling suites import the shared tables and read the pages stripped; the scripts, predeploy (right after test:privacy-notice) and the drive's key",
   l8: "L8 · the request read as hostile — the card sends exactly the lines that change (a review only for a line printing today's text that is not clearable and not already reviewed against today's default), its request reads back exactly, and a missing language or base, a stray review, an unknown field, a number, a fourth language, a prototype key, a bad count, a bad tick, a saved version posted whole, a review marker, an array, a version or a stamp is not understood — and through the store writes nothing",
@@ -158,15 +159,18 @@ const B2: PolicyTexts = {
   sw: "Hakuna matangazo kwa mchezaji aliyejizuia, kwa mchezaji aliye kwenye mapumziko hadi atakapokubali tena baada ya mapumziko kuisha, kwa mchezaji anayeonyesha dalili ya madhara (sehemu ya 3), wala kwa mtu yeyote aliye chini ya umri wa miaka 18. Umri wa mchezaji ni tarehe ya kuzaliwa aliyotupa, ikilinganishwa na ukaguzi wetu wa utambulisho; kwa mtu ambaye si mchezaji wa 50pick, tunatuma tu baada ya mfanyakazi wetu kuthibitisha kwa maandishi kwamba mtu huyo ana umri wa miaka 18 au zaidi, na kamwe bila uthibitisho huo.",
   zh: "不向已自我排除的玩家、处于冷静期的玩家（直至其在冷静期结束后重新同意）、出现伤害迹象的玩家（见第 3 节），以及未满 18 岁的人发送营销信息。玩家的年龄以其向我们提供并经身份核验比对的出生日期为准；对于非 50pick 玩家，只有在我们的工作人员以书面形式确认此人已年满 18 岁后，我们才会发送，没有该确认绝不发送。",
 };
+/* ⭐ B3 and B4 as approved by Ali on 2026-10-09 (the owner's ruling: no marketing SMS carries a stop link) — the stop-link
+   clause out, every other word kept, and the gateway line less its company's name ("we can't mention Blackball")
+   (`docs/marketing-approvals/2026-10-09/approval-G10.json`, held by test:marketing-owner-save O19). */
 const B3: PolicyTexts = {
-  en: "Blackball, our SMS gateway in Tanzania, which sends our text messages, such as one-time codes and 50pick offers and news, which you can stop at any time with the stop link in every offer or under Profile → Notifications: it receives your phone number and the text of each message, and tells us whether each message was delivered",
-  sw: "Blackball, lango letu la SMS nchini Tanzania, linalotuma ujumbe wetu mfupi (SMS), kama misimbo ya matumizi ya mara moja na ofa na habari za 50pick, ambazo unaweza kuzisimamisha wakati wowote kwa kiungo cha kusimamisha kilicho katika kila ofa au kwenye Wasifu → Arifa: hupokea namba yako ya simu na maandishi ya kila ujumbe, na hutuambia kama kila ujumbe umefika",
-  zh: "Blackball（坦桑尼亚），我们的短信网关：发送我们的短信，例如一次性验证码以及 50pick 的优惠和资讯——您可随时通过每条优惠短信中的退订链接或在“个人资料 → 通知”中停止接收；接收您的电话号码和每条短信的内容，并告知我们每条短信是否已送达",
+  en: "Our SMS gateway in Tanzania, which sends our text messages, such as one-time codes and 50pick offers and news, which you can stop at any time under Profile → Notifications: it receives your phone number and the text of each message, and tells us whether each message was delivered",
+  sw: "Lango letu la SMS nchini Tanzania, linalotuma ujumbe wetu mfupi (SMS), kama misimbo ya matumizi ya mara moja na ofa na habari za 50pick, ambazo unaweza kuzisimamisha wakati wowote kwenye Wasifu → Arifa: hupokea namba yako ya simu na maandishi ya kila ujumbe, na hutuambia kama kila ujumbe umefika",
+  zh: "我们在坦桑尼亚的短信网关：发送我们的短信，例如一次性验证码以及 50pick 的优惠和资讯——您可随时在“个人资料 → 通知”中停止接收；接收您的电话号码和每条短信的内容，并告知我们每条短信是否已送达",
 };
 const B4: PolicyTexts = {
-  en: "Our Gaming Board of Tanzania licence: 50pick offers and news by SMS, sent to adult Tanzanian mobile numbers under our licence — you can stop them at any time with the stop link in every offer or under Profile → Notifications, and once you stop we do not send them again unless you ask",
-  sw: "Leseni yetu ya Bodi ya Michezo ya Kubahatisha Tanzania: ofa na habari za 50pick kwa SMS, zinazotumwa kwa namba za simu za Tanzania za watu wazima chini ya leseni yetu — unaweza kuzisimamisha wakati wowote kwa kiungo cha kusimamisha kilicho katika kila ofa au kwenye Wasifu → Arifa, na ukishasimamisha hatutumi tena isipokuwa ukiomba",
-  zh: "我们的坦桑尼亚博彩委员会牌照：50pick 短信优惠与资讯，依据我们的牌照发送至坦桑尼亚成年人的手机号码——您可随时通过每条优惠短信中的退订链接或在“个人资料 → 通知”中停止接收；一旦停止，除非您要求，我们不会再次发送",
+  en: "Our Gaming Board of Tanzania licence: 50pick offers and news by SMS, sent to adult Tanzanian mobile numbers under our licence — you can stop them at any time under Profile → Notifications, and once you stop we do not send them again unless you ask",
+  sw: "Leseni yetu ya Bodi ya Michezo ya Kubahatisha Tanzania: ofa na habari za 50pick kwa SMS, zinazotumwa kwa namba za simu za Tanzania za watu wazima chini ya leseni yetu — unaweza kuzisimamisha wakati wowote kwenye Wasifu → Arifa, na ukishasimamisha hatutumi tena isipokuwa ukiomba",
+  zh: "我们的坦桑尼亚博彩委员会牌照：50pick 短信优惠与资讯，依据我们的牌照发送至坦桑尼亚成年人的手机号码——您可随时在“个人资料 → 通知”中停止接收；一旦停止，除非您要求，我们不会再次发送",
 };
 const B5: PolicyTexts = {
   en: "Consent: 50pick offers and news by SMS for anyone who asks for them, which you can withdraw at any time under Profile → Notifications; and Google Analytics — only if you allow it when first asked, and you can change that at any time in §7 of this policy",
@@ -530,7 +534,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     for (const l of POLICY_LOCALES) {
       const gateway = impl.defaults["privacy.smsGateway"][l], consent = impl.defaults["privacy.lawfulConsent"][l];
       if (!gateway.includes(CONSENT_ONLY_CLAUSE[l])) problems.push(`the ${l} consent-only clause is not in the gateway default`);
-      for (const w of SMS_GATEWAY_WORDS[l]) if (!gateway.includes(w)) problems.push(`"${w}" is not in the ${l} gateway default`);
+      for (const w of SMS_GATEWAY_WORDS[l]) if (!holdsRequiredWord(gateway, w)) problems.push(`"${w}" is not in the ${l} gateway default`);
+      // ⛔ 2026-10-09 · the gateway is named by its role alone (Ali: "we can't mention Blackball, they won't allow it").
+      if (gateway.includes("Blackball")) problems.push(`the ${l} gateway default names the gateway's company`);
       for (const w of [CONSENT_WITHDRAW_PATH[l], ...ANALYTICS_CONSENT_WORDS[l]]) if (!consent.includes(w)) problems.push(`"${w}" is not in the ${l} Consent default`);
     }
     // Both English hash pins, over the stripped pages, are the pins the sibling suites hold.
@@ -667,7 +673,8 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const shortOk = v("rg.marketing", { ...B2, zh: "太短了。" }).problems.zh.some((x) => x.code === "too_short" && x.sentence === POLICY_LINE_SENTENCE.tooShort(20));
     const gw = (over: Partial<PolicyTexts>) => v("privacy.smsGateway", { ...B3, ...over });
     const wordsOk = gw({ en: B3.en.split("SMS gateway").join("text service") }).problems.en.some((x) => x.code === "words_missing" && x.sentence.includes("“SMS gateway”"))
-      && codesOf(gw({ sw: B3.sw.split("lango letu la SMS").join("huduma yetu") }).problems.sw).includes("words_missing")
+      // (The Swahili role word opens the line — "Lango letu la SMS" — and is read with its capital: `holdsRequiredWord`.)
+      && codesOf(gw({ sw: B3.sw.split("Lango letu la SMS").join("Huduma yetu") }).problems.sw).includes("words_missing")
       && codesOf(gw({ zh: B3.zh.split("短信网关").join("服务") }).problems.zh).includes("words_missing")
       && codesOf(gw({ en: B3.en.split("your phone number and the text of each message").join("some details") }).problems.en).includes("words_missing");
     const consentOk = codesOf(v("privacy.lawfulConsent", { ...B5, en: B5.en.split("Profile → Notifications").join("your profile") }).problems.en).includes("words_missing")
@@ -1332,7 +1339,7 @@ function mapWords(record: PolicyLinesRecord, keys: readonly PolicyLineKey[], fn:
   for (const k of keys) out[k] = record[k].map((v) => (isReviewVersion(v) ? v : fn(v)));
   return out as PolicyLinesRecord;
 }
-/** L5's F11 plant · check 1 reads the Blackball line alone. */
+/** L5's F11 plant · check 1 reads the SMS gateway line alone. */
 const gatewayOnly = (record: PolicyLinesRecord): ReturnType<typeof policyOpeningProblems> => {
   const out = policyOpeningProblems(record).filter((c) => c !== "privacy_gateway");
   const g = policyLineState("privacy.smsGateway", record["privacy.smsGateway"]);
@@ -1472,7 +1479,7 @@ function cases(problems: string[]): Array<{ name: string; expect: string; impl: 
       }),
     },
     {
-      name: "⛔ the required words dropped — a saved Blackball line may stop naming the gateway or what it receives",
+      name: "⛔ the required words dropped — a saved SMS gateway line may stop naming the gateway or what it receives",
       expect: L.l3,
       impl: withProblems(withoutCode("words_missing")),
     },
@@ -1507,7 +1514,7 @@ function cases(problems: string[]): Array<{ name: string; expect: string; impl: 
       impl: { ...REAL, opening: (record) => policyOpeningProblems(mapWords(record, ["privacy.smsGateway"], (v) => ({ ...v, sw: "" }))) },
     },
     {
-      name: "⛔ F11 · check 1 reads the Blackball line alone — a consent-only phrase in the licence, Consent or RG line passes",
+      name: "⛔ F11 · check 1 reads the SMS gateway line alone — a consent-only phrase in the licence, Consent or RG line passes",
       expect: L.l5,
       impl: { ...REAL, opening: gatewayOnly },
     },
@@ -1586,7 +1593,7 @@ function cases(problems: string[]): Array<{ name: string; expect: string; impl: 
       expect: L.l7,
       impl: srcPlant({
         privacySuite: REAL_SOURCES.privacySuite.replace("[...SMS_GATEWAY_WORDS.en, CONSENT_ONLY_CLAUSE.en]",
-          '["Blackball", "SMS gateway", "your phone number and the text of each message", "only if you agree to receive them"]'),
+          '["SMS gateway", "your phone number and the text of each message", "only if you agree to receive them"]'),
       }),
     },
     {

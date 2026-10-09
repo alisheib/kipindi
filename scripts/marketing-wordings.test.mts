@@ -59,7 +59,7 @@ import type {
 } from "../src/lib/marketing/marketing-wordings.ts";
 import { CONSENT_BASES, consentBasisFor, importConsentWording, checkConsentBasisInput } from "../src/lib/marketing/consent-basis.ts";
 import { holdsPhoneRun } from "../src/lib/contacts/contact-fields.ts";
-import { validateCampaignTemplate } from "../src/lib/marketing/campaign-template.ts";
+import { validateCampaignTemplate, sourcePhraseProblems } from "../src/lib/marketing/campaign-template.ts";
 import { __wordingsStoreForTest, MARKETING_WORDINGS_AUDIT, WORDINGS_REFUSAL_SENTENCE } from "../src/lib/server/marketing/wordings.ts";
 import type { WordingsStore } from "../src/lib/server/marketing/wordings.ts";
 import { REAL_BASIS, controlVerdict, defaultReachOf, sourceOf } from "./marketing-consent/consent-basis.mts";
@@ -82,11 +82,11 @@ const L = {
   w1c: "W1c · ⚠️ CONTROL — the detector on a fixed population finds every shape it claims to see (CONSENT_BASES[..].defaultWording, WORDING_DEFAULTS, a barrel, a helper, chained, a variable, the door's answer, a non-null assertion, raw SQL; pc() receivers, createManyAndReturn, upsert) and lets the card's prefill, the pin, the catalogue, a writer taking the catalogue's labels and a writer reading currentWording through",
   w2: "W2 · a save appends only on change — earlier versions byte-identical, v increments, the server stamps savedBy and savedAt, an unchanged text writes nothing and audits nothing, and every other wording keeps its history, in the cache and in the row",
   w3: "W3 · ⛔ a POST that rewrites or drops a past version is refused — a posted history, a version object, the whole record, an unknown field, a non-string, a malformed approval or count is not understood; a rebuilt history that rewrites, drops, renumbers or doubles a version is refused; nothing is written and no audit row is made",
-  w4: "W4 · each rule refuses its own case with its own sentence, every problem is listed at once (one wording and several), every suggestion passes its own rules, the source line is judged by the renderer's own verdict, the normaliser is idempotent (a saved wording reads back as saved), a number written with solidi or commas is a number (m6), and a valid save is stored normalised and audited { before, after, changes }",
+  w4: "W4 · each rule refuses its own case with its own sentence, every problem is listed at once (one wording and several), every suggestion passes its own rules, the source line is judged by its own rule (never by the template's verdict, which no longer judges it — 2026-10-09), the normaliser is idempotent (a saved wording reads back as saved), a number written with solidi or commas is a number (m6), and a valid save is stored normalised and audited { before, after, changes }",
   w5: "W5 · ⛔ basis.LICENCE_OUTREACH can never be saved claiming consent — without 'has not agreed' (or 'never agreed' / 'did not agree') it is refused, so is a denial beside an agreement, an opt-in, permission, acceptance, a sign-up, a request or a subscription (m3), and the store writes nothing; the bought-list basis is held to the same plain denial in its own words",
   w6: "W6 · isImportAttestationSaved is true for every SAVED pair of a first-party basis version and an adult.consent version — and false for an unsaved default, a near copy, the adult sentence alone, THIRD_PARTY or LICENCE with it glued on, recordedBy null, a source other than IMPORT; a new row composes the newest pair",
   w7: "W7 · a process that never loaded the row refuses the save — nothing written, no audit row — and its readers answer null and recognise nothing (it fails closed)",
-  w8: "W8 · the wiring — the action asks requireAdmin first, reads its form with patchFromForm, saves through the verified setter, names a box per refusal and revalidates three pages; the card validates live, builds its request with wordingsToSave and wordingsPostEntries, ticks on edit with approvesOnEdit, never holds a save silently (m4), names each tick's wording and links each status line; the page renders it on its own tab and reads its rows only there (m7); the pure module is pure and pinned; the server's live store is makeStore over WORDING_RULES, queued, refusing a partly read row (M1) and re-checking the record it writes (m2); the suite and its red run in predeploy, right after test:marketing-consent",
+  w8: "W8 · the wiring — the action asks requireAdmin first, reads its form with patchFromForm, saves through the verified setter, names a box per refusal and revalidates three pages; the card validates live, builds its request with wordingsToSave and wordingsPostEntries, ticks on edit with approvesOnEdit, never holds a save silently (m4), names each tick's wording and links each status line, and shows no source-line box since the owner's ruling of 2026-10-09 (its boxes, list and count are CARD_KEYS — every wording but source.phrase); the page renders it on its own tab and reads its rows only there (m7); the pure module is pure and pinned; the server's live store is makeStore over WORDING_RULES, queued, refusing a partly read row (M1) and re-checking the record it writes (m2); the suite and its red run in predeploy, right after test:marketing-consent",
   w9: "W9 · ⛔ M2 · a suggestion is saved only on purpose, and the SERVER holds the rule — the card never sends an unticked suggestion, sends a ticked or edited one with approve.<key>=1, the source line only when typed, a saved wording only when changed, each with its version count; a hand-built POST of the nine suggestions with no approval field is refused key by key in its own words and writes nothing, and the same POST approved saves all nine",
   w10: "W10 · m1 · a page out of date is refused — a save built on a version count that is not the count saved now (behind or ahead) is refused under its box ('Someone saved this wording since you opened the page — reload to see it.'), nothing is written, and the same save from the current count is version 2",
   w11: "W11 · m3 · a consent basis that negates its agreement AFTER the word ('agreed to nothing', 'agreed to no offers', 'agreed, but not to SMS') is refused in its own words while the suggestions and an accented consent still pass, and a basis or 18+ wording holding a letter from another alphabet (a Cyrillic or Greek look-alike of a Latin letter) is refused in plain words — by the store too, writing nothing",
@@ -425,7 +425,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       { name: "a consent basis that never says agreed", key: "basis.OWN_EVENT", text: "This person gave their number to 50pick staff at a 50pick event and asked about 50pick offers by SMS.", codes: "consent_not_stated", sentence: WORDING_SENTENCE.consentNotStated },
       { name: "a consent basis that says agreed only in a denial", key: "basis.OWN_EVENT", text: "This person gave their number to 50pick staff at a 50pick shop but never agreed to receive offers by SMS.", codes: "consent_negated", sentence: WORDING_SENTENCE.consentNegated },
       { name: "a bought list that never denies an agreement", key: "basis.THIRD_PARTY", text: "This number came from a bought list, and 50pick may message the person about offers.", codes: "not_agreed_missing", sentence: WORDING_SENTENCE.notAgreedThirdParty },
-      { name: "the licence basis without the licence", key: "basis.LICENCE_OUTREACH", text: "50pick may send this person offers by SMS as outreach. The person has not agreed to receive them; every message carries a stop link.", codes: "licence_missing", sentence: WORDING_SENTENCE.licence },
+      { name: "the licence basis without the licence", key: "basis.LICENCE_OUTREACH", text: "50pick may send this person offers by SMS as outreach. The person has not agreed to receive them; a stop is kept for good.", codes: "licence_missing", sentence: WORDING_SENTENCE.licence },
       { name: "the licence basis without the stop", key: "basis.LICENCE_OUTREACH", text: "50pick may send this person offers by SMS under its Gaming Board of Tanzania licence. The person has not agreed to receive them.", codes: "stop_missing", sentence: WORDING_SENTENCE.stop },
       { name: "an 18+ sentence without 18", key: "adult.consent", text: "They told us they are adults.", codes: "eighteen_missing", sentence: WORDING_SENTENCE.eighteen },
       { name: "a basis without 50pick", key: "basis.THIRD_PARTY", text: "This number came from a bought or third-party list; the person never agreed to hear from us.", codes: "brand_missing", sentence: WORDING_SENTENCE.brand },
@@ -438,14 +438,17 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       const got = impl.problems(c.key, c.text);
       return codesOf(got) !== c.codes || (c.sentence !== undefined && got[0]?.sentence !== c.sentence);
     }).map((c) => `${c.name}: ${codesOf(impl.problems(c.key, c.text)) || "none"}`);
-    // The source line is judged by the RENDERER's own verdict — the one every campaign save and every send re-runs.
+    // The source line is judged by its OWN rule (`sourcePhraseProblems`) — since the owner's ruling of 2026-10-09 the
+    // renderer neither prints nor judges it, so the template's verdict says nothing of it (held here too).
     const probe = { name: "Probe", bodySw: "50pick", bodyEn: "", nameFallbackSw: "", nameFallbackEn: "" };
-    const renderer = (t: string): string[] => validateCampaignTemplate(probe, normalizeWording(t)).problems.sourcePhrase ?? [];
+    const own = (t: string): string[] => sourcePhraseProblems(normalizeWording(t));
+    const templateSays = (t: string): number => (validateCampaignTemplate(probe, normalizeWording(t)).problems.sourcePhrase ?? []).length;
     const sourceTexts = ["a".repeat(31), `Orodha ya 50pick${RIGHT_QUOTE}s`, "Orodha {jina}"];
     const sourceWrong = sourceTexts.filter((t) => {
       const got = impl.problems("source.phrase", t);
-      const want = renderer(t);
-      return want.length === 0 || codesOf(got) !== want.map(() => "source_line").join(",") || JSON.stringify(got.map((x) => x.sentence)) !== JSON.stringify(want);
+      const want = own(t);
+      return want.length === 0 || codesOf(got) !== want.map(() => "source_line").join(",") || JSON.stringify(got.map((x) => x.sentence)) !== JSON.stringify(want)
+        || templateSays(t) > 0;
     });
     // Every problem at once — in one wording, and across two in one save.
     const allAtOnce = codesOf(impl.problems("basis.LICENCE_OUTREACH", "hello there")) === "too_short,brand_missing,licence_missing,not_agreed_missing,stop_missing"
@@ -503,24 +506,24 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const LIC: WordingKey = "basis.LICENCE_OUTREACH";
     const claims = [
       "50pick may send this person offers and news by SMS under its Gaming Board of Tanzania licence because they agreed to receive them; a stop is kept for good.",
-      "50pick may send this person offers by SMS under its licence. The person consented to receive them, and every message carries a stop link.",
+      "50pick may send this person offers by SMS under its licence. The person consented to receive them, and a stop is kept for good.",
       "50pick may send this person offers by SMS under its licence. The person has not agreed to receive them, but agreed to hear from us; a stop ends it.",
-      "50pick may send this person offers by SMS under its licence; the person hasn't agreed, and every message carries a stop link.",
+      "50pick may send this person offers by SMS under its licence; the person hasn't agreed, and a stop is kept for good.",
       // m3 · every other way of saying they agreed, beside a plain denial.
-      "50pick may send this person offers by SMS under its licence. The person has not agreed to receive them, but opted in to our list; every message carries a stop link.",
-      "50pick may send this person offers by SMS under its licence. The person has not agreed, but gave us permission to write; every message carries a stop link.",
-      "50pick may send this person offers by SMS under its licence. The person has not agreed, but accepted our terms; every message carries a stop link.",
-      "50pick may send this person offers by SMS under its licence. The person has not agreed, but signed up at a stand; every message carries a stop link.",
-      "50pick may send this person offers by SMS under its licence. The person has not agreed, but asked for offers; every message carries a stop link.",
-      "50pick may send this person offers by SMS under its licence. The person has not agreed, but subscribed to our news; every message carries a stop link.",
-      "50pick may send this person offers by SMS under its licence. The person has not agreed, but consented by phone; every message carries a stop link.",
+      "50pick may send this person offers by SMS under its licence. The person has not agreed to receive them, but opted in to our list; a stop is kept for good.",
+      "50pick may send this person offers by SMS under its licence. The person has not agreed, but gave us permission to write; a stop is kept for good.",
+      "50pick may send this person offers by SMS under its licence. The person has not agreed, but accepted our terms; a stop is kept for good.",
+      "50pick may send this person offers by SMS under its licence. The person has not agreed, but signed up at a stand; a stop is kept for good.",
+      "50pick may send this person offers by SMS under its licence. The person has not agreed, but asked for offers; a stop is kept for good.",
+      "50pick may send this person offers by SMS under its licence. The person has not agreed, but subscribed to our news; a stop is kept for good.",
+      "50pick may send this person offers by SMS under its licence. The person has not agreed, but consented by phone; a stop is kept for good.",
     ];
     const denials = [
       impl.defaults[LIC],
-      "50pick may message this person by SMS as outreach under its Gaming Board of Tanzania licence; the person never agreed to it, and a stop link ends it.",
-      "Under its licence, 50pick may send this person offers by SMS. The person did not agree to them; every message carries a stop link.",
+      "50pick may message this person by SMS as outreach under its Gaming Board of Tanzania licence; the person never agreed to it, and a stop ends it.",
+      "Under its licence, 50pick may send this person offers by SMS. The person did not agree to them; a stop is kept for good.",
       // m3 · a NEGATED permission is a denial too, not a claim.
-      "50pick may message this person by SMS as outreach under its Gaming Board of Tanzania licence; the person never agreed to it and gave no permission, and a stop link ends it.",
+      "50pick may message this person by SMS as outreach under its Gaming Board of Tanzania licence; the person never agreed to it and gave no permission, and a stop ends it.",
     ];
     const claimed = claims.filter((t) => !impl.problems(LIC, t).some((x) => x.code === "not_agreed_missing"));
     const deniedButRefused = denials.filter((t) => impl.problems(LIC, t).length > 0);
@@ -610,7 +613,13 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && src.form.includes("wordingsToSave(cardState)") && src.form.includes("wordingsPostEntries(sending)")
       && src.form.includes("approvesOnEdit(key, versionsOf(key).length)") && neverSilent
       && src.form.includes("ariaLabel={`${APPROVE_LABEL}: ${WORDING_COPY[key].label}`}")
-      && (src.form.match(/aria-describedby=[{]statusId[}]/g) ?? []).length === 2 && src.form.includes("id={statusId}");
+      && (src.form.match(/aria-describedby=[{]statusId[}]/g) ?? []).length === 1 && src.form.includes("id={statusId}");
+    // ⭐ 2026-10-09 · THE SOURCE LINE HAS NO BOX (the owner's ruling: nothing is appended, so nothing reads the line). The
+    // card's boxes, its read-only list and its count run over CARD_KEYS — every wording but `source.phrase` — and nothing
+    // on the card runs a box loop over every key again. (One status link above: the one-line box went with the line.)
+    const noSourceBox = src.form.includes('const CARD_KEYS: readonly CardKey[] = WORDING_KEYS.filter((k): k is CardKey => k !== "source.phrase");')
+      && (src.form.match(/[{]CARD_KEYS[.]map[(][(]key[)] => [{]/g) ?? []).length === 2 && !src.form.includes("{WORDING_KEYS.map((key) => {")
+      && src.form.includes("{savedCount} of {CARD_KEYS.length} wordings saved.") && !src.form.includes('"source.phrase": {');
     const groupAt = src.page.indexOf('{tab === "wordings" && (<>');
     const groupEnd = groupAt < 0 ? -1 : src.page.indexOf("</>)}", groupAt);
     const cardAt = src.page.indexOf("<MarketingWordingsForm");
@@ -645,7 +654,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       && scripts["red:marketing-wordings"] === "tsx scripts/marketing-wordings.test.mts --prove-red"
       && chain.filter((x) => x === "npm run test:marketing-wordings").length === 1
       && atSuite > 0 && chain[atSuite - 1] === "npm run test:marketing-consent";
-    const conds = { actionOk, cardOk, neverSilent, pageOk, pureOk, serverOk, partRead, recheck, pinOk, wired };
+    const conds = { actionOk, cardOk, neverSilent, noSourceBox, pageOk, pureOk, serverOk, partRead, recheck, pinOk, wired };
     ok(p(L.w8), Object.values(conds).every(Boolean), `${JSON.stringify(conds)} · the pure module loads [${specs.join(", ")}]`);
   }
 
@@ -989,6 +998,12 @@ function cases(problems: string[]): Array<{ name: string; expect: string; impl: 
       impl: withProblems((k, t) => wordingProblems(k, t).slice(0, 1)),
     },
     {
+      // The base of 2026-10-09 shipped exactly this: the renderer stopped judging the line and the wording lost its rule.
+      name: "the source line's own rule dropped — a line over 30 septets, a brace or a Unicode character saved for the G5 door",
+      expect: L.w4,
+      impl: withProblems((k, t) => wordingProblems(k, t).filter((x) => x.code !== "source_line")),
+    },
+    {
       name: "a consent basis saved without saying the person agreed — the consent rule removed",
       expect: L.w4,
       impl: withProblems((k, t) => wordingProblems(k, t).filter((x) => x.code !== "consent_not_stated")),
@@ -1053,6 +1068,13 @@ function cases(problems: string[]): Array<{ name: string; expect: string; impl: 
       name: "W8 · the card stops validating as the admin types (wordingProblems no longer called)",
       expect: L.w8,
       impl: srcPlant({ form: REAL_SOURCES.form.split("wordingProblems(").join("(() => [])(") }),
+    },
+    {
+      // ⭐ The owner's ruling of 2026-10-09 undone on the card: the boxes run over every wording again, the source line's
+      // among them — a box for a line no message prints.
+      name: "W8 · 2026-10-09 · the source line's box back on the card (the boxes over every wording again)",
+      expect: L.w8,
+      impl: srcPlant({ form: REAL_SOURCES.form.split("{CARD_KEYS.map((key) => {").join("{WORDING_KEYS.map((key) => {") }),
     },
     {
       name: "m4 · the card's own submit holds a blocked save silently again (Enter in a box does nothing)",

@@ -59,7 +59,8 @@ import { SMS_RECIPIENTS_BY_NUMBER_MAX } from "@/lib/server/marketing/campaign-mo
  *   · `campaignMessages` — every row that reached the network (handed over, delivered, no answer from the network, or
  *     not delivered after the network had it): when it was handed over, the status in words, the campaign's text for
  *     the variant that row went out in — the template AS STORED, `{jina}` as written (the name it printed is the
- *     person's own, and the footer's token is a live credential) — and when it was delivered;
+ *     person's own, and a message sent before the owner's ruling of 2026-10-09 carried the number's live token in its
+ *     footer; none carries one since) — and when it was delivered;
  *   · `notSent` — every other row: refused at sending (in U38a's five-bucket words, `NOT_SENT_REASON`), never handed to
  *     the network, or still waiting. ⚠️ Wider than the engine spec's field list (SKIPPED only), on purpose: a row of a
  *     stopped campaign stays PENDING for ever (E25) and still holds the person's number, so it is in their file too.
