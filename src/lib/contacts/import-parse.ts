@@ -30,6 +30,15 @@
  * to every candidate that reads it cleanly. The highest count among those wins; a tie goes to the candidate order
  * and is noted; no candidate at all means ONE column (and a later row holding a candidate is noted). The vote never
  * holds more than `MAX_HEADER_CHARS`.
+ * ⭐ C8c · A BARE TITLE NEVER DECIDES "ONE COLUMN" (C3b-fix's open find 2): a hand-typed CSV that opens with a title
+ * typed without a separator — "Contacts October" on line 1, its column names on line 3 — was read as ONE column whole,
+ * and D7 (`title-rows.ts`) then had no column names to find. When the first non-blank record is one cell under EVERY
+ * candidate and D7's own first-row test says it may be a title (`voteLooksPast` = `mayBeTitleRow`: no Phone column, not a
+ * contact, not a masked export's header), the vote reads the NEXT non-blank record instead — up to `voteRecordsMax`
+ * records (the first and `TITLE_ROWS_LOOKAHEAD` more, D7's own bound) — and decides on the first record a candidate
+ * appears in. A first record holding a candidate decides at once, and a bare first record that is a contact (a
+ * single-column list of numbers) still means one column: nothing else changes. The title stays a row of the file (one
+ * cell), and D7 takes it out with its note, its line numbers real.
  *
  * ── WHAT A FILE BECOMES ───────────────────────────────────────────────────────────────────────────────
  *   · each row's `line` is the record as Excel numbers it: the `sep=` line hidden, a quoted line break inside one
@@ -60,8 +69,9 @@
  * `detectFormat` lets the content beat the file name — a `.txt` of vCards is vCards — through `vcard.ts`'s
  * `looksLikeVcard` (C17) and `xlsx-limits.ts`' ONE spreadsheet classifier and refusal copy (C18).
  *
- * ⛔ PURE AND CLIENT-SAFE — OD29 parses CSV in the browser. It imports only `./parsed-file`, `./vcard` and
- * `./xlsx-limits` (C17 allows `src/lib/contacts` modules and `tz-msisdn`, nothing else): no directive, no server
+ * ⛔ PURE AND CLIENT-SAFE — OD29 parses CSV in the browser. It imports only `./parsed-file`, `./vcard`,
+ * `./xlsx-limits` and (C8c, D7's first-row test for the vote) `./title-rows` (C17 allows `src/lib/contacts` modules and
+ * `tz-msisdn`, nothing else): no directive, no server
  * module, no Node built-in. It defines NO formula-guard pair (C16: that is `csv-write.ts`) and no second parsed
  * shape (C15). Every special character is written as a character code — the editing tools decode escape text into
  * raw characters — so this file holds no escape text at all. Every behaviour comes from `buildCsvReader(rules)`;
@@ -69,6 +79,7 @@
  * Guard: `npm run test:contacts-import` (the `csv` section) · red: `npm run red:contacts-import`.
  */
 import { formatRowList, type ParsedContactsFile, type ParsedRow, type UnreadableRecord } from "./parsed-file";
+import { TITLE_ROWS_LOOKAHEAD, mayBeTitleRow } from "./title-rows";
 import { looksLikeVcard } from "./vcard";
 import { PHONE_FORMAT_REMEDY, spreadsheetHeadKind, xlsxRefusalSentence } from "./xlsx-limits";
 
@@ -129,8 +140,9 @@ const isCandidateCode = (c: number): boolean => c === COMMA || c === SEMICOLON |
 export const MAX_FIELD_CHARS = 32_767;
 
 /**
- * The most text the vote holds while it waits for the first non-blank record to end (1 MiB). A first record that
- * has not ended by then — almost always a quotation mark that never closed — refuses the file.
+ * The most text the vote holds while it waits for the record it decides on to end (1 MiB) — the first non-blank record,
+ * and (C8c) the few bare titles it may look past before it. A record that has not ended by then — almost always a
+ * quotation mark that never closed — refuses the file.
  */
 export const MAX_HEADER_CHARS = 1_048_576;
 
@@ -231,7 +243,8 @@ export function readSepDirective(text: string, final = true): SepDirective | nul
 
 /**
  * One candidate's scan, fed the text after the byte-order mark and the `sep=` line as it arrives. It skips blank
- * records and stops right after its FIRST NON-BLANK RECORD ends, read with the candidate's own quote rules.
+ * records and stops right after its FIRST NON-BLANK RECORD ends, read with the candidate's own quote rules. (C8c · the
+ * voter starts a new scan after a bare title it looks past — `makeVoter`.)
  */
 export interface CandidateScan {
   /** Reads `text` from `from`; returns how many characters it read. */
@@ -248,13 +261,17 @@ export interface CandidateScan {
   readonly irregular: boolean;
   /** The line of the record it is reading now — what a refusal names while the vote is still open. */
   readonly pendingLine: number;
+  /** ⭐ C8c · that record's cells, read by this candidate's rules — what the vote asks `voteLooksPast` of. A scan that does
+   *  not keep them (a suite's own) leaves it out, and the vote then never looks past its record. */
+  readonly cells?: readonly string[];
 }
 
-/** What the vote decided, and what it read to decide it. */
+/** What the vote decided, and what it read to decide it. ⭐ C8c · "the record" is the first non-blank record — or, when
+ *  the vote looked past bare titles before it (`voteLooksPast`), the first record after them. */
 export type DelimiterVote = {
   /** The winner, or null when no candidate appears outside quotes on the record: one column. */
   readonly delimiter: CsvDelimiter | null;
-  /** Each candidate's count on its first non-blank record, read with its own quote rules. */
+  /** Each candidate's count on the record, read with its own quote rules. */
   readonly counts: Readonly<Record<CsvDelimiter, number>>;
   /** The candidates under whose quote rules that record's quoting breaks — they lose to any that read it cleanly. */
   readonly irregular: readonly CsvDelimiter[];
@@ -262,9 +279,9 @@ export type DelimiterVote = {
   readonly tie: boolean;
   /** The candidates sharing the highest count (only the winner when there is no tie; none for one column). */
   readonly tied: readonly CsvDelimiter[];
-  /** The record the winner counted on — the first non-blank record — or null for one column. */
+  /** The record the winner counted on (its REAL line, the records looked past counted) — or null for one column. */
   readonly line: number | null;
-  /** Every candidate reached the end of its first non-blank record, or the text ended. */
+  /** Every candidate reached the end of the record, or the text ended. */
   readonly complete: boolean;
   /** Characters the scans read, all candidates together — bounded by the header, never the file. */
   readonly chars: number;
@@ -302,6 +319,11 @@ export type CsvRules = {
   readonly unclosedQuote: (rowsBefore: number) => "unreadable" | "refuse";
   /** C3b-fix · D5a · the physical lines a quotation mark never closed swallowed, from the text inside it. */
   readonly countSwallowed: (inside: string) => number;
+  /** ⭐ C8c · may the vote look PAST a record that is one cell under every candidate — D7's own first-row test
+   *  (`mayBeTitleRow`: a title above the column names, never a contact, never a masked export's header)? */
+  readonly voteLooksPast: (cells: readonly string[]) => boolean;
+  /** ⭐ C8c · the most non-blank records the vote reads: the first, and at most `TITLE_ROWS_LOOKAHEAD` after it. */
+  readonly voteRecordsMax: number;
 };
 
 /* ══ THE TOKENIZER — one pass, its state carried across chunks ══════════════════════════════════════════ */
@@ -555,6 +577,7 @@ function scanCandidate(code: number, rules: CsvRules): CandidateScan {
   let count = 0;
   let line: number | null = null;
   let irregular = false;
+  let kept: readonly string[] | undefined;
   const tokenizer = makeTokenizer(
     code,
     rules,
@@ -564,6 +587,7 @@ function scanCandidate(code: number, rules: CsvRules): CandidateScan {
         count = cells.length - 1;
         line = at;
         irregular = irregularQuotes;
+        kept = cells;
         done = true;
         return true;
       },
@@ -595,6 +619,9 @@ function scanCandidate(code: number, rules: CsvRules): CandidateScan {
     get pendingLine() {
       return tokenizer.line();
     },
+    get cells() {
+      return kept;
+    },
   };
 }
 
@@ -613,6 +640,9 @@ export const CSV_RULES: CsvRules = {
   // the first row may be the header, so that is two rows: a header alone keeps nothing worth a file.
   unclosedQuote: (rowsBefore) => (rowsBefore >= 2 ? "unreadable" : "refuse"),
   countSwallowed: swallowedLines,
+  // ⭐ C8c · D7's own first-row test, and its own lookahead: a bare title never decides "one column" for the file.
+  voteLooksPast: mayBeTitleRow,
+  voteRecordsMax: 1 + TITLE_ROWS_LOOKAHEAD,
 };
 
 type Candidate = { readonly delimiter: CsvDelimiter; readonly scan: CandidateScan; chars: number };
@@ -627,29 +657,84 @@ type Voter = {
 
 const NO_COUNTS: Readonly<Record<CsvDelimiter, number>> = { comma: 0, semicolon: 0, tab: 0, pipe: 0 };
 
+/**
+ * ⭐ THE VOTER — one ROUND of scans per record it reads. ⭐ C8c · A BARE TITLE NEVER DECIDES "ONE COLUMN": when every
+ * candidate's record is ONE cell (no candidate outside quotes) and that cell may be a title above the column names
+ * (`rules.voteLooksPast` — D7's own first-row test, `mayBeTitleRow`), the vote looks past it: a new round of scans reads
+ * the next non-blank record, up to `rules.voteRecordsMax` records in all, and the first record on which a candidate appears
+ * decides as before. A first record with a candidate decides at once, exactly as before (a header row is never looked
+ * past); a bare record that is a contact — a single-column list of numbers — decides "one column", exactly as before.
+ * Lines keep their real numbers: each round's scans count from 1, and the rounds before it are added back.
+ */
 function makeVoter(rules: CsvRules): Voter {
-  const candidates: Candidate[] = rules.candidates.map((d) => ({
+  const startRound = (): Candidate[] => rules.candidates.map((d) => ({
     delimiter: d,
     scan: rules.scanCandidate(CSV_DELIMITER_CODES[d], rules),
     chars: 0,
   }));
+  let candidates = startRound();
+  let rounds = 1;
+  /** The lines the rounds looked past took, and the characters their scans read (all candidates together). */
+  let lineOffset = 0;
+  let charsBefore = 0;
+  /** Where in the vote's text the current round began, and how much text the voter was handed before this feed. */
+  let roundStart = 0;
+  let handed = 0;
+  /** The record a round looked past ended on a CR: a LF right after it is that line end's, never a blank record. */
+  let pendingLf = false;
   let finished = false;
   const complete = (): boolean => finished || candidates.every((c) => c.scan.done);
+  /** Every candidate ended its record at the same place, on ONE cell, and that cell may be a title. */
+  const looksPast = (): boolean => {
+    if (rounds >= rules.voteRecordsMax) return false;
+    const first = candidates[0];
+    const cells = first?.scan.cells;
+    if (first === undefined || cells === undefined || first.scan.line === null) return false;
+    const alike = candidates.every((c) => c.scan.done && c.scan.line !== null && c.scan.count === 0
+      && c.chars === first.chars && c.scan.pendingLine === first.scan.pendingLine);
+    return alike && rules.voteLooksPast(cells);
+  };
   return {
     feed: (text) => {
-      for (const c of candidates) if (!c.scan.done) c.chars += c.scan.feed(text, 0);
-      return complete();
+      const base = handed;
+      handed += text.length;
+      let from = 0;
+      for (;;) {
+        // ⭐ A CRLF's LF, left behind by the record the last round stopped at: it begins no record of the next round.
+        if (pendingLf && from < text.length) {
+          pendingLf = false;
+          if (text.charCodeAt(from) === LF) {
+            from++;
+            roundStart++;
+          }
+        }
+        if (from >= text.length) return complete() && !looksPast();
+        const part = from === 0 ? text : text.slice(from);
+        for (const c of candidates) if (!c.scan.done) c.chars += c.scan.feed(part, 0);
+        if (!complete()) return false;
+        if (!looksPast()) return true;
+        // ⭐ C8c · the record was a bare title: the next round reads on from right after it.
+        const used = candidates[0]?.chars ?? 0;
+        lineOffset += (candidates[0]?.scan.pendingLine ?? 1) - 1;
+        for (const c of candidates) charsBefore += c.chars;
+        roundStart += used;
+        pendingLf = used > 0 && text.charCodeAt(roundStart - 1 - base) === CR;
+        rounds++;
+        candidates = startRound();
+        from = roundStart - base;
+      }
     },
     finish: () => {
       for (const c of candidates) c.scan.finish();
       finished = true;
     },
-    result: () => decideVote(candidates, complete()),
+    result: () => decideVote(candidates, complete(), lineOffset, charsBefore),
   };
 }
 
-/** The candidates that read the record cleanly compete (all of them when none does); the highest count wins. */
-function decideVote(candidates: readonly Candidate[], complete: boolean): DelimiterVote {
+/** The candidates that read the record cleanly compete (all of them when none does); the highest count wins. Lines are
+ *  the round's own plus `lineOffset` — the records an earlier round looked past (C8c). */
+function decideVote(candidates: readonly Candidate[], complete: boolean, lineOffset = 0, charsBefore = 0): DelimiterVote {
   const counts: Record<CsvDelimiter, number> = { ...NO_COUNTS };
   const irregular: CsvDelimiter[] = [];
   let chars = 0;
@@ -666,16 +751,17 @@ function decideVote(candidates: readonly Candidate[], complete: boolean): Delimi
   for (const c of pool) if (c.scan.count > best) best = c.scan.count;
   const winners = best > 0 ? pool.filter((c) => c.scan.count === best) : [];
   const winner = winners.length > 0 ? winners[0] : null;
+  const winnerLine = winner === null ? null : winner.scan.line;
   return {
     delimiter: winner === null ? null : winner.delimiter,
     counts,
     irregular,
     tie: winners.length > 1,
     tied: winners.map((c) => c.delimiter),
-    line: winner === null ? null : winner.scan.line,
+    line: winnerLine === null ? null : winnerLine + lineOffset,
     complete,
-    chars,
-    pendingLine: pending === 0 ? 1 : pending,
+    chars: charsBefore + chars,
+    pendingLine: (pending === 0 ? 1 : pending) + lineOffset,
   };
 }
 

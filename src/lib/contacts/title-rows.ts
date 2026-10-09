@@ -17,7 +17,12 @@
  *   · ⛔ A CONTACT IS NEVER A TITLE: the search stops at a row that is itself a contact, so a list that opens with its data
  *     is never cut down to a later row that happens to read "Phone";
  *   · lines keep their REAL row numbers (C15: "row 14" is row 14 in the officer's own spreadsheet), the blank rows stay
- *     counted, and `width` is the widest row left.
+ *     counted, and `width` is the widest row left;
+ *   · ⭐ C8c · AN UNPADDED TITLE IN A HAND-TYPED CSV ("Contacts October" alone on line 1, the column names on line 3) once
+ *     made the CSV reader decide the whole file was ONE column, and this rule then had no column names to find. The
+ *     reader's vote now asks this file's own first-row test (`mayBeTitleRow`) of a first record that is one cell under
+ *     every separator and looks past it — at most `TITLE_ROWS_LOOKAHEAD` such records — so the file is read with its
+ *     real separator and the title leaves here with the same note, never quoted, its row numbers real.
  *
  * ⛔ PURE AND CLIENT-SAFE: it imports `./contact-fields` (U28's one field list — the header match) and the parsed shape's
  * type alone, and is pinned in `test:client-graph-safe`. No directive, no server module, no builtin.
@@ -42,6 +47,21 @@ function strongPhoneHeader(cells: readonly string[]): boolean {
   return match.kind === "field" && match.field === "phone" && match.strength === "strong";
 }
 
+/**
+ * ⭐ D7's FIRST-ROW TEST, ONE function (C8c): may this row be a title ABOVE the column names? It maps NO Phone column (by
+ * any heading, strong or weak), it is not itself a contact (S15-5's test, `autoMapHeaders().headerless`), and it is not a
+ * masked export's refused header (that refusal must reach the columns step). `dropTitleRows` asks it of a file's first
+ * row; ⭐ the CSV reader's vote asks it of a first record that is ONE CELL under every separator — a bare title typed
+ * with no separator, "Contacts October" — before it decides the file is one column (`import-parse.ts`, `voteLooksPast`):
+ * an UNPADDED title no longer turns a whole hand-typed CSV into one column, so this file can find its column names.
+ */
+export function mayBeTitleRow(cells: readonly string[]): boolean {
+  const read = autoMapHeaders(cells);
+  if (read.mapping.phone !== undefined || read.headerless) return false;
+  // ⛔ A masked export's refused header (phone_masked) is never a title: its refusal must reach the columns step.
+  return !(read.refusal !== null && read.columns.some((c) => c.status === "notImported" && c.note === read.refusal));
+}
+
 /** ⭐ The ONE note for the rows a title took — rows named, never what they hold. */
 export function titleRowsNote(first: number, last: number): string {
   return first === last
@@ -57,10 +77,7 @@ export function titleRowsNote(first: number, last: number): string {
 export function dropTitleRows(file: ParsedContactsFile): ParsedContactsFile {
   const rows: readonly ParsedRow[] = file.rows;
   if (file.format === "vcard" || rows.length < 2) return file;
-  const first = autoMapHeaders(rows[0].cells);
-  if (first.mapping.phone !== undefined || first.headerless) return file;
-  // ⛔ A masked export's refused header (phone_masked) is never a title: its refusal must reach the columns step.
-  if (first.refusal !== null && first.columns.some((c) => c.status === "notImported" && c.note === first.refusal)) return file;
+  if (!mayBeTitleRow(rows[0].cells)) return file;
   const last = Math.min(rows.length - 1, TITLE_ROWS_LOOKAHEAD);
   for (let k = 1; k <= last; k++) {
     const cells = rows[k].cells;

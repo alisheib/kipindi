@@ -67,7 +67,8 @@ import { isParsedContactsFile, type ParsedContactsFile } from "../../src/lib/con
 import { CONTACT_MASKED_FILE, autoMapHeaders, contactExportHeader, scrubPhoneRuns, validateMapping } from "../../src/lib/contacts/contact-fields.ts";
 import { maskPhone } from "../../src/lib/phone-normalize.ts";
 import { STAGE_BATCH_MAX_ROWS, stageRowsOf, type StageRowInput } from "../../src/lib/contacts/import-limits.ts";
-import { EMPTY_FILE_SENTENCE, csvRefusalSentence, parseCsv, stripBom } from "../../src/lib/contacts/import-parse.ts";
+import { CSV_RULES, EMPTY_FILE_SENTENCE, buildCsvReader, csvRefusalSentence, parseCsv, stripBom } from "../../src/lib/contacts/import-parse.ts";
+import { dropTitleRows } from "../../src/lib/contacts/title-rows.ts";
 import { XLSX_MAX_BYTES, xlsxRefusalSentence } from "../../src/lib/contacts/xlsx-limits.ts";
 import {
   IMPORT_REFUSAL_SENTENCES,
@@ -159,6 +160,7 @@ export const L = {
   R8: "R8 · ⭐ C3b · G1 — a CSV File whose LAST record opens a quotation mark never closed is READ, not refused: its rows kept, that record listed unreadable on its own line with the reader's sentence, and both staged — ⭐ C3b-fix · D5: the outcome carries the row and the ONE line the quote swallowed, and the file's note says it",
   R9: "R9 · ⭐ C3b-fix · D5d — the check's and the result's sum lines never claim \"every row of your file is counted once\" when a quote never closed swallowed lines: they count every row UP TO that row and say how many lines after it were not read; a run this tab did not read whose CSV holds an unreadable record claims only the rows read; a quote that swallowed nothing, and every other run, keep the whole-file claim",
   R10: "R10 · ⭐ C3b-fix · D7 at the CSV door — a CSV File whose first row is a title reads from its column names (row 2 the header, row 3 its contact, ONE note naming row 1), and ⛔ D5e after the title leaves: a title, the column names and a broken quote with no data row before it is refused whole, in the reader's own sentence, never read as a file of no contacts",
+  R10c: "R10c · ⭐ C8c · D7 for an UNPADDED title at the CSV door (C3b-fix's open find 2): a hand-typed CSV whose line 1 is a bare title (no separator), line 2 blank and line 3 the column names reads TWO columns — rows 3–5 at their real lines, ONE note naming row 1 and never its words — and maps Phone and Name from line 3, one header row",
   C1: "C1 · ⛔ THE BAR IS THE SERVER'S CURSOR — every figure shown is a cursor the server answered with, never past the server's own",
   C2: "C2 · ⭐ STOP IS READ BETWEEN STEPS: the run is paused ON THE SERVER, then the loop stops — no step after the pause",
   C3: "C3 · ⛔ a refusal ends the loop with the server's refusal, verbatim (its reason and its sentence)",
@@ -758,6 +760,18 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
       && r10b.out.kind === "refused" && r10b.out.cause === "csv" && r10b.out.sentence === csvRefusalSentence("unterminated_quote", 3),
       `${r10File === null ? JSON.stringify(r10.out).slice(0, 120) : `lines ${json(r10File.rows.map((r) => r.line))} · notes ${json(r10File.notes)}`}`
       + ` · broken after a title: ${r10b.out.kind === "refused" ? r10b.out.sentence.slice(0, 80) : r10b.out.kind}`);
+
+    // ⭐ C8c · C3b-fix's open find 2 · an UNPADDED title, typed by hand: nothing but the words on line 1, a blank line, the
+    // column names on line 3 — once read as ONE column whole, so D7 found no names.
+    const bareTitled = `Contacts October${CRLF}${CRLF}Jina,Simu${CRLF}Asha,0712 345 678${CRLF}Baraka,0754 123 456${CRLF}`;
+    const r10c = await readOne(impl, new File([bytesOf(bareTitled)], "hand-typed.csv", { type: "text/csv" }));
+    const r10cFile = r10c.out.kind === "parsed" ? r10c.out.file : null;
+    const r10cMap = r10cFile === null ? null : impl.mappingFor(r10cFile);
+    ok(L.R10c, r10cFile !== null && json(r10cFile.rows.map((r) => [r.line, r.cells.length])) === json([[3, 2], [4, 2], [5, 2]])
+      && json(r10cFile.notes) === json([TITLE_NOTE_1]) && !json(r10cFile.notes).includes("October") && r10cFile.width === 2
+      && r10cMap !== null && r10cMap.headerRows === 1 && r10cMap.mapping.phone === 1 && r10cMap.mapping.name === 0 && r10cMap.phoneProblem === null,
+      r10cFile === null ? JSON.stringify(r10c.out).slice(0, 160)
+        : `rows ${json(r10cFile.rows.map((r) => [r.line, r.cells.length]))} · notes ${json(r10cFile.notes)} · mapping ${r10cMap === null ? "-" : json(r10cMap.mapping)}`);
   }
 
   // ── R9 · D5d · the sum lines ──────────────────────────────────────────────────────────────────
@@ -1240,6 +1254,20 @@ const PLANTS: readonly RedPlant<FlowImpl>[] = [
         if (out.kind !== "parsed" || out.file.format !== "csv") return out;
         const asRead = parseCsv(stripBom(await f.text()).text, { fileName: f.name });
         return asRead.ok ? { ...out, file: asRead.file } : out;
+      },
+    }),
+  },
+  {
+    // 🔴 C8c undone at the door: the vote decides on the bare title — the file read as ONE column, D7 finds no names.
+    name: "C8c undone at the CSV door — an unpadded title makes the hand-typed file one column",
+    expect: L.R10c,
+    impl: () => ({
+      ...real(),
+      readFile: async (f, o) => {
+        const out = await readContactsFile(f, o);
+        if (out.kind !== "parsed" || out.file.format !== "csv") return out;
+        const asRead = buildCsvReader({ ...CSV_RULES, voteLooksPast: () => false }).parse(stripBom(await f.text()).text, { fileName: f.name });
+        return asRead.ok ? { ...out, file: dropTitleRows(asRead.file) } : out;
       },
     }),
   },
