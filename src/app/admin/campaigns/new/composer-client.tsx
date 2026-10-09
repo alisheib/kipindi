@@ -16,8 +16,11 @@
  * worst-case counter in `campaign-template.ts` (the reserved name; nothing is appended since the owner's ruling of 2026-10-09) —
  * and nothing in this directory sizes a message itself (`test:campaign-compose` §16.2). The server re-validates on
  * save and stores ITS figures; the screen is a preview of that verdict, never a substitute for it.
- * ⛔ OD45 · NO SENDER INPUT: the sender line is the server's, read-only. ⛔ NO NUMBER INPUT: the test card names the
- * officer's own number, masked, and has nothing to type into. ⛔ OD24 · NO MONEY on this page.
+ * ⛔ OD45 · NO SENDER INPUT: the sender line is the server's, read-only. ⛔ ONE NUMBER INPUT, AND ONLY FOR THE OWNER AND
+ * COMPLIANCE: the Test card's kit `PhoneInput` for a test to another number (U37c-2), drawn only when the server offers
+ * this viewer that choice (`typedOffered`, the owner's ruling of 2026-10-09) and "Another number" is allowed and picked.
+ * Anyone else's card — and the card while the officer's own number is chosen — names their own number, masked, with
+ * nothing to type into. ⛔ OD24 · NO MONEY on this page.
  * ⭐ ONE SAVE. Save is disabled WITH its reason (beside it and in its title), never hidden; a refusal keeps the text.
  * ⭐ THE TEST SENDS THE SAVED TEXT: unsaved or edited text disables it ("Save first"), and the preview is the server's
  * rendering of the saved revision — the exact text sent, with nothing appended (the owner's ruling of 2026-10-09).
@@ -109,10 +112,10 @@ const FIELD_ORDER: CampaignDraftField[] = ["name", "bodySw", "nameFallbackSw", "
 const ON_PAGE: ReadonlySet<CampaignDraftField> = new Set(["name", "bodySw", "nameFallbackSw", "bodyEn", "nameFallbackEn", "audience"]);
 /** The refusals whose remedy is the officer's own consent switch, on their own profile. */
 const CONSENT_REASONS = ["no_consent", "consent_withdrawn", "suppressed"];
-/** U37c-2 · the typed refusals that mean THIS PAGE is out of date (the words or the record changed since it loaded): the
- *  page re-reads, so the card shows the world the server just answered from. (`typed_needs_source_line` is gone since the
- *  owner's ruling of 2026-10-09: a typed test needs no source line.) */
-const PAGE_STALE_REASONS = ["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording"];
+/** U37c-2 · the typed refusals that mean THIS PAGE is out of date (the words, the record or the officer's role changed since
+ *  it loaded): the page re-reads, so the card shows the world the server just answered from. (`typed_needs_source_line` is
+ *  gone since the owner's ruling of 2026-10-09: a typed test needs no source line.) */
+const PAGE_STALE_REASONS = ["attestation_stale", "typed_outreach_closed", "typed_no_attestation_wording", "typed_role"];
 
 const trimmed = (f: Fields): Fields => ({
   name: f.name.trim(), bodySw: f.bodySw.trim(), bodyEn: f.bodyEn.trim(), nameFallbackSw: f.nameFallbackSw.trim(), nameFallbackEn: f.nameFallbackEn.trim(),
@@ -803,15 +806,20 @@ export function ComposerTest() {
   const { view, saved } = c;
   const t = view.test;
   const typedView = t.typed;
+  // ⛔ 2026-10-09 · "ANOTHER NUMBER" ONLY WHERE THE DOOR WOULD TAKE IT: a test to a typed number is for the Owner and
+  // Compliance alone, and the server says which this viewer is (`typedOffered`, from their STORED role — the door's own decider).
+  // Not offered: the card's one way is the officer's own number, said, never a choice — and the target is own, whatever
+  // was picked before the page was read again. Guard: `test:campaign-compose` §16.21.
+  const offered = t.typedOffered;
   // ⛔ U37c-2 · THE TYPED NUMBER LIVES HERE, AND NOWHERE ELSE — never the address, never storage, never the provider:
   // this card holds the digits, posts them once with the test, and the server re-types them.
-  const [target, setTarget] = useState<TestTarget>(t.ownNumberMasked !== null ? "own" : "typed");
+  const [target, setTarget] = useState<TestTarget>(t.ownNumberMasked !== null || !offered ? "own" : "typed");
   const [digits, setDigits] = useState("");
   // ⛔ THE 18+ TICK CONFIRMS ONE THING: this draft, these words, this number, this send. It is held as the key it was
   // given for — so a changed number, a reworded `adult.test`, another draft or a switch of target unticks it — and every
   // Send spends it (the server records a confirmation for one attempt only, §18.32).
   const [tickedFor, setTickedFor] = useState<string | null>(null);
-  const typed = target === "typed";
+  const typed = offered && target === "typed";
   const tickKey = `${saved?.id ?? ""}|${typedView.attestation?.version ?? ""}|${digits}`;
   const ticked = tickedFor === tickKey;
   const pick = (v: TestTarget) => { setTarget(v); setTickedFor(null); };
@@ -863,26 +871,49 @@ export function ComposerTest() {
   };
 
   return (
-    <div className="space-y-3" data-test-card={ready ? "ready" : "blocked"} data-test-target={target}>
-      <fieldset className="space-y-2" data-test-to-choice>
-        <legend className="mb-1 text-body-sm font-semibold text-text">{COMPOSE_TEST_TO_LEGEND}</legend>
-        <TestToChoice
-          value="own"
-          checked={!typed}
-          disabled={t.ownNumberMasked === null || c.testing !== null}
-          onPick={pick}
-          label={t.ownNumberMasked !== null ? composeTestToOwn(t.ownNumberMasked) : COMPOSE_TEST_TO_OWN_UNUSABLE}
-          why={t.ownNumberMasked !== null ? null : t.ownNumberProblem}
-        />
-        <TestToChoice
-          value="typed"
-          checked={typed}
-          disabled={!typedView.allowed || c.testing !== null}
-          onPick={pick}
-          label={COMPOSE_TEST_TO_TYPED}
-          why={typedView.allowed ? null : typedWhy}
-        />
-      </fieldset>
+    <div
+      className="space-y-3"
+      data-test-card={ready ? "ready" : "blocked"}
+      data-test-target={typed ? "typed" : "own"}
+      data-test-typed-offered={offered ? "yes" : "no"}
+    >
+      {/* ⛔ 2026-10-09 · the choice exists only for a viewer the door lets type a number. For anyone else the card says its
+          one way — never a radio with nothing beside it, and never "Another number" disabled with a reason: "My own number",
+          in the words the choice uses, as the card said it before there was a second way. */}
+      {offered ? (
+        <fieldset className="space-y-2" data-test-to-choice>
+          <legend className="mb-1 text-body-sm font-semibold text-text">{COMPOSE_TEST_TO_LEGEND}</legend>
+          <TestToChoice
+            value="own"
+            checked={!typed}
+            disabled={t.ownNumberMasked === null || c.testing !== null}
+            onPick={pick}
+            label={t.ownNumberMasked !== null ? composeTestToOwn(t.ownNumberMasked) : COMPOSE_TEST_TO_OWN_UNUSABLE}
+            why={t.ownNumberMasked !== null ? null : t.ownNumberProblem}
+          />
+          <TestToChoice
+            value="typed"
+            checked={typed}
+            disabled={!typedView.allowed || c.testing !== null}
+            onPick={pick}
+            label={COMPOSE_TEST_TO_TYPED}
+            why={typedView.allowed ? null : typedWhy}
+          />
+        </fieldset>
+      ) : (
+        <div className="space-y-1" data-test-to="own">
+          <p className="text-body-sm font-semibold text-text">{COMPOSE_TEST_TO_LEGEND}</p>
+          <p className="text-body-sm text-text" data-test-choice="own">
+            {t.ownNumberMasked !== null ? composeTestToOwn(t.ownNumberMasked) : COMPOSE_TEST_TO_OWN_UNUSABLE}
+          </p>
+          {/* ⭐ ONE SENTENCE, ONE TONE: the own number's reason is said here in the card's secondary reason tone, exactly
+              as beside the disabled own radio and as Send's own reason is said — each tells why something can't be used,
+              while the refusal red stays the mark of a test that was asked for and refused (the outcome's callout). */}
+          {t.ownNumberMasked === null && (
+            <p className="text-body-sm text-text-secondary" data-test-choice-why="own">{t.ownNumberProblem}</p>
+          )}
+        </div>
+      )}
 
       {typed && typedView.allowed && (
         <div className="space-y-3" data-test-typed>

@@ -24,6 +24,21 @@
  * answer is the same for a player's number and a stranger's. The officer's own number typed in
  * another spelling IS their own number: the own path, no confirmation.
  *
+ * ⛔ 2026-10-09 · A TEST TO A TYPED NUMBER IS FOR THE OWNER AND COMPLIANCE ONLY — the owner's ruling (COMPLIANCE-DECISIONS
+ * § "2026-10-09 · An erased number stays blocked, a test SMS to a typed number is for Admin and Compliance, and the
+ * back-filled contacts are re-dated (owner rulings, put to Ali in the session)", item 2); GROWTH, and every other role,
+ * tests on its own phone only. The Owner is the `ADMIN` role in this codebase (`roles.ts`: "ADMIN = Owner", and the
+ * console labels it "Owner"), so the Owner may type a number. It is decided by the role on the officer's STORED row — the
+ * row this door reads for the request at step 3 (`deps.users.findById`), never the browser's word — through ONE decider,
+ * `mayTestTypedNumber`, which the composer's loader asks too, so the Test card offers "Another number" only to a viewer
+ * this door would take one from. A typed test from any other role is refused `typed_role` after the officer's own budget,
+ * the campaign's checks (steps 1–2) and the request's shape (`bad_recipient`), and BEFORE ANYTHING ABOUT THE NUMBER IS
+ * READ: it is never parsed, masked or set beside the officer's own — so the ONE
+ * sentence (`TEST_TYPED_ROLE_REFUSED`) names no number and no reason about one, the answer and its timing are the same for
+ * every number (no floor is waited), and their own number typed in another spelling is refused too (the own path above is
+ * for a role that may type) — and nothing reaches the rail, the switch, the window, the record, the typed budgets, the
+ * gate, a token or the wire. Its masked row is the door's own: reason `typed_role`, the stored role, and no `to`.
+ *
  * ⛔ D19 · S23 · S25 · A TEST IS NOT A MEMBERSHIP ORACLE. A viewer who may not read numbers gets ONE sentence for every
  * gate refusal of a typed number (`typed_refused`); a reader gets the reason, with the protected reasons collapsed
  * (`protected`). The result never carries a basis. Every typed outcome decided at the gate or after it returns no sooner
@@ -94,6 +109,7 @@ import type { CampaignTemplate, CampaignVariant, RecipientOrigin } from "@/lib/m
 import { footerMeasurementToken } from "@/lib/marketing/footer";
 import { parseTzNumber } from "@/lib/tz-msisdn";
 import { maskPhone } from "@/lib/phone-normalize";
+import type { Role } from "@/lib/server/roles";
 
 /** The target type every test `SmsMessage` row carries — U14's cap counts `SmsCampaignRecipient` rows only (M12). */
 export const CAMPAIGN_TEST_TARGET_TYPE = "SmsCampaignTest";
@@ -103,6 +119,35 @@ export const CAMPAIGN_TEST_ACTION = "marketing.campaign_test";
 export const TYPED_TEST_MIN_MS = 3000;
 /** U37c · a typed number is at most this many characters as posted — the field's own cap. Longer is a malformed request. */
 export const TYPED_NUMBER_MAX_CHARS = 40;
+
+/**
+ * ⛔ 2026-10-09 · WHO MAY SEND A TEST TO A TYPED NUMBER — the owner's ruling (see the header): the Owner (the `ADMIN`
+ * role) and Compliance (`COMPLIANCE`). Nobody else; GROWTH tests on its own phone.
+ * ⛔ IT IS THE ROLE, NOT A GRANT AND NOT A READ CELL, because the ruling names two roles. So no edit at /admin/roles moves
+ * it either way: GROWTH granted `identity.contact` read still tests on its own phone, and a Compliance officer whose cell
+ * the Owner masked may still type one — and is told every gate refusal in the ONE D19 sentence (`typed_refused`), as
+ * before. (Reaching the composer at all is the growth act grant's, checked by the action before this door is asked.)
+ * ⛔ A FULL RECORD over every role `roles.ts` names, so a role added there is a compile error here — decided, never
+ * defaulted in; any other value (none, a misspelling, a forged string) may not type.
+ */
+const MAY_TYPE_A_NUMBER: Readonly<Record<Role, boolean>> = {
+  ADMIN: true,
+  COMPLIANCE: true,
+  GROWTH: false,
+  FINANCE: false,
+  SUPPORT: false,
+  AUDITOR: false,
+  MODERATOR: false,
+  PLAYER: false,
+  AGENT: false,
+};
+
+/** ⭐ 2026-10-09 · THE ONE DECIDER — this door refuses a typed test by it (step 3) and the composer's loader decides by it
+ *  whether the Test card offers "Another number" at all (`typedOffered`): each asks it of the officer's STORED role.
+ *  Guard: `test:campaign-compose` §18.37 (every role, at the door) · §18.38 (asked first; the full record) · §18.39. */
+export function mayTestTypedNumber(role: string | null | undefined): boolean {
+  return typeof role === "string" && Object.prototype.hasOwnProperty.call(MAY_TYPE_A_NUMBER, role) && MAY_TYPE_A_NUMBER[role as Role] === true;
+}
 
 /** U37c · who the test goes to: the officer's own number, or a typed one with the officer's 18+ confirmation — and the
  *  VERSION of the `adult.test` words the officer read when they ticked (null when none was posted), so a confirmation is
@@ -126,6 +171,7 @@ export type CampaignTestRefusalReason =
   | "rate_limited" | "not_found" | "not_draft" | "no_english_body" | "own_number_unusable" | "rail_dead"
   | "live_sends_closed" | "template_invalid" | "token_unavailable" | MarketingSkipReason | "held" | "failed"
   /* U37c · a typed test's own refusals */
+  | "typed_role" /* 2026-10-09 · the officer's stored role may not type a number (`mayTestTypedNumber`) */
   | "bad_recipient" | "bad_number" | "attestation_missing" | "typed_outreach_closed" | "typed_no_attestation_wording"
   | "typed_rate_limited" | "typed_refused" | "protected" | "attestation_stale";
 
@@ -172,6 +218,10 @@ export const TEST_WINDOW_UNREADABLE =
 /** §7.1 · ⛔ D19 — the ONE sentence a viewer who may not read numbers gets for EVERY gate refusal of a typed number. */
 export const TEST_TYPED_REFUSED =
   "No test was sent: this number can't receive this campaign's messages. Choose another number, or test on your own.";
+/** ⛔ 2026-10-09 · the ONE sentence for a typed test from a role that may not type a number (`mayTestTypedNumber`) — said
+ *  before anything about the number is read, so it names no number and no reason about one; its remedy is the only test
+ *  that role has, the officer's own phone. */
+export const TEST_TYPED_ROLE_REFUSED = "Tests to another number are for the Owner and Compliance only — send yourself a test.";
 export const TEST_BAD_RECIPIENT = "That test request wasn't understood — reload the page and try again.";
 export const TEST_ATTESTATION_MISSING = "Tick the box to confirm the person who uses this number is 18 or older.";
 /** ⛔ The tick was given for words the owner has since changed — the confirmation is not recorded against new words. */
@@ -499,6 +549,14 @@ export async function sendCampaignTest(
   // ── 3 · ⛔ THE RECIPIENT — the officer's own account's number, or the typed one, judged by the numbering plan ──
   if (recipient === null) return refuse("bad_recipient", TEST_BAD_RECIPIENT);
   const officer = await deps.users.findById(officerId);
+  // ⛔ 2026-10-09 · A TYPED NUMBER IS FOR THE OWNER AND COMPLIANCE ONLY — by the role on the row read just above, for this
+  // request: any other role (and an officer with no row) is refused HERE, before the number is parsed, masked or set beside
+  // their own, so the sentence and the masked row say nothing about it (see the header). Their own test is "My own
+  // number" — the one way their card shows them.
+  if (recipient.kind === "typed" && !mayTestTypedNumber(officer?.role)) {
+    trail.role = officer?.role ?? null;
+    return refuse("typed_role", TEST_TYPED_ROLE_REFUSED);
+  }
   const ownParsed = officer === null ? null : parseTzNumber(officer.phoneE164);
   const ownKey = ownParsed !== null && ownParsed.verdict === "ok" && ownParsed.msisdn ? ownParsed.msisdn : null;
   let key: string;

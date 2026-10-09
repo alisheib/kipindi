@@ -45,6 +45,7 @@ import type { AudienceSplitView } from "./audience-view-model";
 import { wholeNumberAudienceProblem, CAMPAIGN_AUDIENCE_UNREADABLE } from "@/lib/server/marketing/campaign-draft";
 import {
   TEST_OWN_NUMBER_UNUSABLE, TEST_TYPED_OUTREACH_CLOSED, TEST_TYPED_NO_ATTESTATION_WORDING, TEST_TEMPLATE_INVALID,
+  mayTestTypedNumber,
 } from "@/lib/server/marketing/campaign-test-send";
 import { licenceOutreach } from "@/lib/server/marketing/outreach-record";
 import { currentWording } from "@/lib/server/marketing/wordings";
@@ -137,13 +138,21 @@ export type ComposeTestView = {
   liveNote: string | null;
   /** U13 · M12 · said up front while the send window is closed — read as the test send reads it (`liveSendWindow`). */
   windowNote: string | null;
-  /** U37c · a test to ANOTHER number — offered only once its two number-independent checks pass. */
+  /** U37c · a test to ANOTHER number — allowed only once its two number-independent checks pass. */
   typed: ComposeTypedView;
+  /**
+   * ⛔ 2026-10-09 · MAY THIS VIEWER SEND A TEST TO A TYPED NUMBER AT ALL? The owner's ruling: the Owner and Compliance
+   * only — asked of the door's own decider (`mayTestTypedNumber`) with the officer's STORED role, the row the
+   * door re-reads for every test, so the card offers the choice only to a viewer the door would take it from. False: the
+   * Test card shows "My own number" alone — no "Another number", no reason beside it — and `typed` is `TYPED_NOT_OFFERED`,
+   * carrying no preview and no 18+ words this viewer could use.
+   */
+  typedOffered: boolean;
 };
 
 /** U37c · what the Test card needs to offer a test to a TYPED number — ⛔ the loader takes no number. */
 export type ComposeTypedView = {
-  /** Typed tests may be offered: licence outreach open and `adult.test` saved (no source line is needed since the owner's
+  /** Typed tests are allowed: licence outreach open and `adult.test` saved (no source line is needed since the owner's
    *  ruling of 2026-10-09). */
   allowed: boolean;
   /** The first number-independent refusal, in the test send's own words (§3.7 step 6) — null when allowed. */
@@ -220,6 +229,15 @@ export function composeTypedView(
   const unrenderable = why === null && !sw.ok ? (sw.problems[0] ?? TEST_TEMPLATE_INVALID) : null;
   return { allowed: why === null && unrenderable === null, why: why ?? unrenderable, preview, attestation };
 }
+
+/**
+ * ⛔ 2026-10-09 · THE TYPED VIEW OF A VIEWER WHO MAY NOT TYPE A NUMBER (`typedOffered` false) — nothing to offer and
+ * nothing to show: not allowed, no reason (the card does not offer the choice at all, so there is nothing to explain
+ * beside it), no preview and no 18+ words. `composeTypedView` is never asked for them: whatever the record, the words or
+ * the draft, the door refuses their typed test (`typed_role`). Frozen — one value, never edited in place.
+ * Guard: `test:campaign-compose` §18.39 (the loader's decision and this value) · §16.21 (the card).
+ */
+export const TYPED_NOT_OFFERED: ComposeTypedView = Object.freeze({ allowed: false, why: null, preview: null, attestation: null });
 
 /**
  * ⭐ U38b · THE CAMPAIGN DOORS THE COMPOSER READS AN AUDIENCE THROUGH — its address at the campaign's own parser, a stored
@@ -496,6 +514,8 @@ export async function loadComposer(sp: ComposeParams): Promise<ComposeView> {
   // is the same text whatever token the number holds (the test send still makes one, for the stop page).
   const session = await currentSession();
   const officer = session ? await db.user.findById(session.userId) : null;
+  // ⛔ 2026-10-09 · may this officer type a number at all? The door's own decider, asked of the same STORED row it re-reads.
+  const typedOffered = mayTestTypedNumber(officer?.role);
   const parsed = officer ? parseTzNumber(officer.phoneE164) : null;
   const key = parsed !== null && parsed.verdict === "ok" && parsed.msisdn ? parsed.msisdn : null;
 
@@ -524,7 +544,10 @@ export async function loadComposer(sp: ComposeParams): Promise<ComposeView> {
       preview,
       liveNote: live.ok ? null : COMPOSE_TEST_LIVE_NOTE,
       windowNote: composeTestWindowNote(await liveSendWindow()),
-      typed: composeTypedView(draft, { outreachOpen: licenceOutreach().state === "open", adult: currentWording("adult.test") }),
+      typed: typedOffered
+        ? composeTypedView(draft, { outreachOpen: licenceOutreach().state === "open", adult: currentWording("adult.test") })
+        : TYPED_NOT_OFFERED,
+      typedOffered,
     },
   };
 }
