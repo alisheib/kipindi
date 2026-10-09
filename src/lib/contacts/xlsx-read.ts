@@ -56,7 +56,10 @@
  * `dropTitleRows` (title-rows.ts), on the file as read — rows only, the real line numbers kept, one note.
  * ⭐ THE CAPS, the server's own: `XLSX_MAX_ROWS` (a sheet past that many row elements stops being read at once, and a
  * non-blank row past it refuses — `too_many_rows`), `XLSX_MAX_GRID_CELLS` (the chosen sheet laid out densely — the
- * server's grid rule, `too_big_inflated`), `XLSX_MAX_ENTRIES`. Two of this reader's own, each a guard of WORK or MEMORY:
+ * server's grid rule, `too_big_inflated`), `XLSX_MAX_ENTRIES`, and `XLSX_MAX_MERGES` (C3c-merge-guard: a sheet past that
+ * many `<mergeCell>` ranges is `too_big_inflated` as it is read — the overlap check and the per-row merge index below
+ * stay bounded, so a forged merge flood cannot freeze the officer's tab; the per-cell merge lookup is a binary search
+ * over column-disjoint ranges, never a scan of all of them). Two more of this reader's own, each a guard of WORK or MEMORY:
  *   · ⭐ THE INFLATE BUDGET, `XLSX_BROWSER_INFLATE_BUDGET` = 1 GiB of inflated bytes across EVERY part read (the
  *     workbook, its relationships, the styles, the shared strings, every visible sheet). WHY 1 GiB: the largest
  *     legitimate workbook this reader can be asked for is bounded by the import's own caps — 200,000 rows and 4,000,000
@@ -91,6 +94,7 @@ import {
   ODS_MIMETYPE,
   XLSX_MAX_ENTRIES,
   XLSX_MAX_GRID_CELLS,
+  XLSX_MAX_MERGES,
   XLSX_MAX_ROWS,
   xlsxRefusalSentence,
   type WrongFormatKind,
@@ -386,6 +390,9 @@ export type XlsxBrowserRules = {
   readonly trimTrailing: boolean;
   readonly maxRows: number;
   readonly maxGridCells: number;
+  /** ⭐ C3c-merge-guard · the most `<mergeCell>` ranges one sheet may carry (XLSX_MAX_MERGES): past it the sheet is
+   *  `too_big_inflated`. It bounds the overlap check and the per-row merge index below, so a forged flood cannot freeze the tab. */
+  readonly maxMerges: number;
   readonly maxStoredCells: number;
   readonly inflateBudget: number;
   readonly maxText: number;
@@ -427,6 +434,7 @@ export const XLSX_BROWSER_RULES: XlsxBrowserRules = {
   trimTrailing: true,
   maxRows: XLSX_MAX_ROWS,
   maxGridCells: XLSX_MAX_GRID_CELLS,
+  maxMerges: XLSX_MAX_MERGES,
   maxStoredCells: XLSX_BROWSER_MAX_STORED_CELLS,
   inflateBudget: XLSX_BROWSER_INFLATE_BUDGET,
   maxText: XLSX_BROWSER_MAX_TEXT,
@@ -1423,6 +1431,9 @@ class SheetPart implements XmlHandler {
       bottom: one(Math.max(rowA, rowB)),
       right: one(Math.max(colA, colB)),
     });
+    // ⭐ C3c-merge-guard · a sheet past the merge cap stops being read at once: exceljs's O(merges²) reconciliation and
+    // this reader's overlap check and per-row merge index all stay bounded, so a forged flood never freezes the tab.
+    if (this.sheet.merges.length > this.run.rules.maxMerges) throw refuseWith("too_big_inflated", "merges");
   }
 
   private isDateStyle(styleId: number): boolean {
@@ -1574,8 +1585,38 @@ function layOut(sheet: SheetRead, rules: XlsxBrowserRules, opts: { readonly caps
   const numbers = [...sheet.rows.keys()];
   if (!sheet.ordered) numbers.sort((a, b) => a - b);
   const merges = [...sheet.merges].sort((a, b) => a.top - b.top);
+  // ⭐ C3c-merge-guard · the merges spanning the current line, kept sorted by LEFT. They are column-DISJOINT (an overlap
+  // is refused before layout), so a cell's one covering merge is found by binary search — O(log) a cell, never
+  // O(merges) — and the set is pruned LAZILY: it is scanned only when the line passes the earliest bottom, so a tall
+  // merge costs no per-row work. Both keep a forged many-merge sheet (up to `maxMerges`) from freezing the officer's tab.
   const active: MergeRange[] = [];
   let next = 0;
+  let minBottom = Number.POSITIVE_INFINITY;
+  const activate = (m: MergeRange): void => {
+    let lo = 0;
+    let hi = active.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (active[mid].left < m.left) lo = mid + 1;
+      else hi = mid;
+    }
+    active.splice(lo, 0, m);
+    if (m.bottom < minBottom) minBottom = m.bottom;
+  };
+  /** The one merge covering `col` among the active (disjoint) ranges, or null: the rightmost whose left ≤ col, if its right ≥ col. */
+  const covering = (col: number): MergeRange | null => {
+    let lo = 0;
+    let hi = active.length - 1;
+    let at = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (active[mid].left <= col) {
+        at = mid;
+        lo = mid + 1;
+      } else hi = mid - 1;
+    }
+    return at >= 0 && active[at].right >= col ? active[at] : null;
+  };
   const rows: ParsedRow[] = [];
   const flagged: Record<CellFlag, number[]> = { formula_without_result: [], error: [], merged: [] };
   let grid = 0;
@@ -1587,8 +1628,12 @@ function layOut(sheet: SheetRead, rules: XlsxBrowserRules, opts: { readonly caps
     return found;
   };
   for (const line of numbers) {
-    while (next < merges.length && merges[next].top <= line) active.push(merges[next++]);
-    for (let k = active.length - 1; k >= 0; k--) if (active[k].bottom < line) active.splice(k, 1);
+    while (next < merges.length && merges[next].top <= line) activate(merges[next++]);
+    if (line > minBottom) {
+      for (let k = active.length - 1; k >= 0; k--) if (active[k].bottom < line) active.splice(k, 1);
+      minBottom = Number.POSITIVE_INFINITY;
+      for (const m of active) if (m.bottom < minBottom) minBottom = m.bottom;
+    }
     const record = sheet.rows.get(line);
     if (record === undefined) continue;
     const { cols, texts, flags, formulaAt } = record;
@@ -1611,12 +1656,10 @@ function layOut(sheet: SheetRead, rules: XlsxBrowserRules, opts: { readonly caps
       const col = cols[k];
       let text = texts[k];
       let flag = flags === null ? FLAG_NONE : flags[k];
-      for (const m of active) {
-        if (col >= m.left && col <= m.right && !(line === m.top && col === m.left)) {
-          text = rules.coveredText(() => textAt(m.top, m.left));
-          flag = FLAG_NONE;
-          break;
-        }
+      const m = covering(col);
+      if (m !== null && !(line === m.top && col === m.left)) {
+        text = rules.coveredText(() => textAt(m.top, m.left));
+        flag = FLAG_NONE;
       }
       if (flag === FLAG_FORMULA && formulaAt !== null) {
         const address = formulaAt.get(k);
