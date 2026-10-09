@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { EMPTY_STATE_BOX, EMPTY_STATE_TITLE, EMPTY_STATE_BODY } from "./empty-state-classes";
 import { emptyStateBody } from "./empty-state-text";
+import { hangCjkMarks } from "@/lib/cjk-marks";
 
 type Kind =
   | "markets" | "positions" | "leaderboard" | "notifications" | "audit" | "sources"
@@ -78,8 +79,10 @@ export function EmptyState({
       <div className="mx-auto mb-4 inline-flex items-center justify-center text-text-faint" aria-hidden>
         {illustration ?? <DefaultIllustration kind={kind} />}
       </div>
-      <p className={cn(EMPTY_STATE_TITLE, "text-text")}>{title}</p>
-      {body && <p className={cn(EMPTY_STATE_BODY, "text-text-subtle")}>{emptyStateBody(body)}</p>}
+      {/* ⭐ Both lines are centred, so a Chinese mark that ends one hangs its empty half (`hangCjkMarks`, 2026-10-09,
+          round 4, E50: "…显示在这里。" stood 4.5px left of the box's centre on tiles 427 428). Latin text is untouched. */}
+      <p className={cn(EMPTY_STATE_TITLE, "text-text")}>{hangCjkMarks(title)}</p>
+      {body && <p className={cn(EMPTY_STATE_BODY, "text-text-subtle")}>{hangCjkMarks(emptyStateBody(body))}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );

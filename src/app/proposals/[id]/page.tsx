@@ -16,19 +16,25 @@ import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 import { formatTzsSigned } from "@/lib/utils";
 import { PageContainer } from "@/components/layout/page-container";
+import { generateMetadata as notFoundMetadata } from "@/app/not-found";
 
 export const dynamic = "force-dynamic";
 
 // Shared-proposal links carried the generic "50pick" title before this — now the
 // browser-tab/OG title is the proposal's own title (matches markets/[id]).
+// ⭐ 2026-10-09 (the visual pass's round 4, E47): a proposal that does not exist is titled as the not-found it renders —
+// the not-found page's own metadata, in the page's language, with `noindex` — never the English "Proposal". Only when
+// the read SUCCEEDED and found nothing; a failed read keeps the neutral default, as the page sends it to error.tsx.
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const { locale } = await getServerT();
+  let p: Awaited<ReturnType<typeof getProposalDetail>> = null;
   try {
-    const p = await getProposalDetail(id, null);
-    if (p) return { title: pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh) };
-  } catch { /* graceful — fall through to default */ }
-  return { title: "Proposal" };
+    p = await getProposalDetail(id, null);
+  } catch { return { title: "Proposal" }; }
+  // DISABLED: the page redirects to the board, so this address names no proposal page either way.
+  if (!p) return getProposalsConfig().state === "DISABLED" ? { title: "Proposal" } : notFoundMetadata();
+  return { title: pickLocalized(locale, p.titleEn, p.titleSw, p.titleZh) };
 }
 
 export default async function ProposalDetailPage({ params }: { params: Promise<{ id: string }> }) {

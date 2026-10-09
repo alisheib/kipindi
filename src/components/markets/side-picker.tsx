@@ -20,6 +20,7 @@ import { sideWord } from "@/lib/side-label";
 import { priceState } from "@/lib/markets/price-state";
 import type { PollRates } from "@/lib/payout";
 import { sendFunnel } from "@/lib/journey/funnel-beacon";
+import { hangCjkMarks } from "@/lib/cjk-marks";
 
 type Props = {
   marketId: string;
@@ -127,8 +128,11 @@ export function SidePicker({
       <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle text-center">
         {t.common.pickYourSide}
       </p>
+      {/* ⭐ The question and the line under the buttons are centred, so a Chinese ？ or 。 that ends one hangs its empty
+          part (`hangCjkMarks`, 2026-10-09, round 4, E50: both lines stood 4px left of the panel's centre on tile 433).
+          Latin text is untouched. */}
       <h3 className="mt-1.5 mb-4 font-display text-[17px] font-bold text-text leading-tight text-center">
-        {t.market.whichWay}
+        {hangCjkMarks(t.market.whichWay)}
       </h3>
       {/* 🔴 NO PRICE WITHOUT TWO SIDES — the same rule the card obeys (`priceState`).
           On an EMPTY pool these buttons once read "YES @ 50% · NO @ 50%" (the default of the
@@ -161,7 +165,7 @@ export function SidePicker({
         </button>
       </div>
       <p className="mt-3 text-center text-body-sm text-text-subtle leading-snug">
-        {t.market.chooseSideHelp}
+        {hangCjkMarks(t.market.chooseSideHelp)}
       </p>
     </div>
   );

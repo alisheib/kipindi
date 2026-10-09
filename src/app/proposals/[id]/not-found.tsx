@@ -1,50 +1,25 @@
-import Link from "next/link";
-import { cookies } from "next/headers";
-import { I } from "@/components/ui/glyphs";
-import { FiftyMark } from "@/components/brand";
-import { dict, localeOrDefault, type Locale } from "@/lib/i18n-dict";
+import { getServerT } from "@/lib/i18n-server";
+import { NOT_FOUND_WORDS, NotFoundView } from "@/components/ui/not-found-view";
+import { generateMetadata as notFoundMetadata } from "@/app/not-found";
 
 /**
- * Colocated not-found for /proposals/[id] — mirrors markets/[id]/not-found so an
- * invalid proposal id returns a real 404 with the branded fallback (not the
- * generic app 404 at HTTP 200). Uses inline cookie locale (metadata can't run
- * in not-found pages).
+ * Colocated not-found for /proposals/[id] — the app's one not-found view (`not-found-view.tsx`): the same kicker, the
+ * same three cards in the same order, and its own way out, back to the proposals board, under them in the one link
+ * colour. (It wore a gold "404" and a gold link — gold is money, §M3/Q5 — and put its way back in the first card.)
+ * ⚠️ The status is whatever the stream committed before `notFound()` ran — this segment has a `loading.tsx`; see
+ * `markets/[id]/not-found.tsx`. The title and the head's `noindex` are the not-found's own, below.
  */
-export default async function ProposalNotFound() {
-  const jar = await cookies();
-  const locale: Locale = localeOrDefault(jar.get("kp-locale")?.value);
-  const t = dict[locale];
+export async function generateMetadata() {
+  return notFoundMetadata();
+}
 
+export default async function ProposalNotFound() {
+  const { t, locale } = await getServerT();
   return (
-    <div className="kp-shortpage mx-auto flex min-h-[80svh] max-w-[640px] flex-col items-center justify-center px-5 py-10 text-center">
-      <div className="mb-5">
-        <FiftyMark size={64} />
-      </div>
-      <p className="font-mono text-micro font-bold uppercase tracking-[0.20em] text-gold-300">
-        {t.error.notFoundCode}
-      </p>
-      <h1 className="mt-2 font-display text-title-lg font-bold leading-tight tracking-[-0.02em] text-text">
-        {t.error.notFoundBody}
-      </h1>
-      <p className="mt-3 max-w-[420px] text-[13px] leading-relaxed text-text-subtle">
-        {t.error.notFoundHint}
-      </p>
-      <nav aria-label={t.error.recoveryLinks} className="mt-6 grid w-full max-w-[420px] grid-cols-1 gap-2 sm:grid-cols-3">
-        <Link href="/proposals" className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-brand-400 hover:bg-bg-overlay">
-          <p className="font-display text-[13px] font-semibold text-text">{t.error.backToProposals}</p>
-        </Link>
-        <Link href="/markets" className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-brand-400 hover:bg-bg-overlay">
-          <p className="font-display text-[13px] font-semibold text-text">{t.common.markets}</p>
-        </Link>
-        <Link href="/help" className="rounded-xl border border-border bg-bg-elevated p-3 text-left transition-colors hover:border-brand-400 hover:bg-bg-overlay">
-          <p className="font-display text-[13px] font-semibold text-text">{t.common.help}</p>
-        </Link>
-      </nav>
-      <Link href="/proposals" className="mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200">
-        <I.globe s={12} />
-        {t.error.backToProposals}
-        <I.arrowRight s={12} />
-      </Link>
-    </div>
+    <NotFoundView
+      words={NOT_FOUND_WORDS[locale]}
+      recoveryLabel={t.error.recoveryLinks}
+      way={{ href: "/proposals", label: t.error.backToProposals }}
+    />
   );
 }

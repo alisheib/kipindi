@@ -583,7 +583,12 @@ export default async function MarketDetail({
             a one-line question, the tightest case: the hairline keeps ≥5px of air (forex, whose arrows reach y0.85 of
             24, at 72px; the weather cloud 6.5px) and the band below ≥13px. A longer question only adds room.
             The size is the box's `h-[2em] w-[2em]`; `s` is only the svg's own width/height before the stylesheet, and it
-            stays the frozen 96 the watermark always drew at (test:icon-sizes — a new value would grow the glyph set). */}
+            stays the frozen 96 the watermark always drew at (test:icon-sizes — a new value would grow the glyph set).
+            ⭐ AND THE QUESTION'S COLUMN ENDS BEFORE IT (2026-10-09, the visual pass's round 4, E49, tile 433 at zh 768): the
+            h1 ran the full width, so a long question set its last glyph over the mark — 赛's ink to x701 across the
+            football at x680–741. The h1 now stops `2em + 12px` short of the right edge: the mark's 2em box, its `right-1`
+            (4px), and 8px of air, in the h1's own em (the mark is sized by the same rung), so at every width the words
+            wrap before the mark and the mark stands beside them. The first-line indent (R4-D) is untouched. */}
         <div className="relative isolate">
           {(() => {
             const Cat = I[categoryGlyph(m.category)];
@@ -594,7 +599,7 @@ export default async function MarketDetail({
             );
           })()}
           <h1 data-stem={QUESTION_STEM.test(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)) ? "" : undefined}
-            className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance data-[stem]:indent-[-0.075em]"
+            className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance pr-[calc(2em+12px)] data-[stem]:indent-[-0.075em]"
           >{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
         </div>
       </header>
@@ -727,7 +732,11 @@ export default async function MarketDetail({
                     "var(--hero-panel-grad)",
                 }}
               >
-                <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">
+                {/* ⭐ The panel's eyebrow in the eyebrow's ink, not gold (2026-10-09, round 4's gold audit): "Ingia ili
+                    kutabiri" / 登录以预测 is an invitation to sign in, and gold is money that was earned (§M3; Q5 "gold is
+                    money, and nothing else"). It is the same slot the signed-in side picker fills with "Chagua upande
+                    wako", in `text-text-subtle` — one panel, one eyebrow ink for either viewer. */}
+                <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
                   {t.market.signInToPredict}
                 </p>
                 {/* ⭐ Balanced, both centred lines (2026-10-08, the visual pass, tile 199): at sw 390 the title's 292px

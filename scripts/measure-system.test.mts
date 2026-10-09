@@ -78,9 +78,9 @@ const RAW_WIDTH_ALLOWLIST = new Set<string>([
   "src/app/proposals/page.tsx",           // py-12, on the DISABLED state only —
                                           //   the board itself IS migrated
   // ── Full-height centring compositions, not measure containers ─────────────
-  "src/app/not-found.tsx",                // min-h-[80svh] px-5 py-10, centred
-  "src/app/markets/[id]/not-found.tsx",   // min-h-[80svh] px-5 py-10, centred
-  "src/app/proposals/[id]/not-found.tsx", // min-h-[80svh] px-5 py-10, centred
+  // ⭐ THE THREE NOT-FOUND PAGES LEFT THIS LIST ON 2026-10-09 (the visual pass's round 4, E43/E51): they render the one
+  //    `components/ui/not-found-view.tsx`, which states the 640px column as the `max-w-form` tier token and the house
+  //    16px gutter (`px-3`), so no hand-typed width is left to list. The list may only shrink.
   "src/components/ui/route-error.tsx",    // min-h-[60svh] px-5 py-12, centred
   // ⭐ D45 · THE FOUR UP & DOWN ENTRIES LEFT THIS LIST ON 2026-09-24, and the list may only
   //    shrink, so they cannot come back quietly. They stated a flat `px-4` — which is **20px**

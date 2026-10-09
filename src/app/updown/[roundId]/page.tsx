@@ -15,8 +15,10 @@
  * Gold appears at most twice and both are earned/committed money: the Confirm button and
  * a winning payout. Everything else is neutral or YES/NO — never gold for decoration.
  */
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { generateMetadata as notFoundMetadata } from "@/app/not-found";
 import { BackLink } from "@/components/ui/back-link";
 import { Chip } from "@/components/ui/chip";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
@@ -83,10 +85,20 @@ const eyebrow = "m-0 font-mono text-micro font-semibold uppercase eyebrow text-t
 // fmtEAT moved to updown-source-label.ts (E-262) — the board chart panel now renders the
 // same receipt line, and two private copies of one formatter is the drift that file stops.
 
-export async function generateMetadata({ params }: { params: Promise<{ roundId: string }> }) {
+/**
+ * ⭐ A ROUND THAT DOES NOT EXIST IS TITLED AS THE NOT-FOUND IT RENDERS (2026-10-09, the visual pass's round 4, E47): the
+ * not-found page's own metadata — "Hakuna ukurasa · 404", in the page's language, with `noindex` — where the tab used to
+ * read "Up & Down · 50pick" over a page that said the round was not there. Only when the read SUCCEEDED and found
+ * nothing (the page's own rule, UD-15); a failed read keeps the neutral "Up & Down", as the page sends it to error.tsx.
+ */
+export async function generateMetadata({ params }: { params: Promise<{ roundId: string }> }): Promise<Metadata> {
   const { roundId } = await params;
-  const d = await getRoundDetail(roundId).catch(() => null);
-  return { title: d?.titleEn ?? "Up & Down" };
+  let d: Awaited<ReturnType<typeof getRoundDetail>> = null;
+  try {
+    d = await getRoundDetail(roundId);
+  } catch { return { title: "Up & Down" }; }
+  if (!d) return notFoundMetadata();
+  return { title: d.titleEn };
 }
 
 export default async function UpDownRoundPage({

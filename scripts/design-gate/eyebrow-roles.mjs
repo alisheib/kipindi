@@ -240,13 +240,9 @@ export const NOT_EYEBROW = new Map([
   ["app/leaderboard/loading.tsx :: <p className=\"font-mono text-caption uppercase tracking-[0.18em] text-text-muted\"> ↵ {t.common.loading}", "OTHER"],
   ["app/leaderboard/page.tsx :: <span className=\"inline-flex items-center rounded-pill border border-border bg-bg-overlay px-2 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.10em] text-text", "STATUS_CHIP"],
   ["app/live/pulse-grid.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.16em] text-text-subtle\"> ↵ {t.common.loadingMore}", "OTHER"],
-  ["app/markets/[id]/not-found.tsx :: <p className=\"font-mono text-micro font-bold uppercase tracking-[0.20em] text-gold-300\"> ↵ {t.error.notFoundCode}", "CELEBRATION"],
-  ["app/markets/[id]/not-found.tsx :: className=\"mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200\" ↵ >", "CONTROL_LABEL"],
   ["app/markets/[id]/page.tsx :: <span className=\"closing-pill inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-caption font-bold uppercase tracking-[0.10em] tabular-nu", "STATUS_CHIP"],
   ["app/markets/[id]/page.tsx :: <span className={`inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-caption font-bold uppercase tracking-[0.10em] ${ ↵ settling ? \"borde", "STATUS_CHIP"],
   ["app/markets/[id]/page.tsx :: <span className={`text-micro uppercase tracking-[0.10em] font-semibold ${ ↵ p.status === \"OPEN\" ? \"text-info-fg\" : p.status === \"WIN\" ? \"text-gold-300\" : p.status === \"LO", "STATUS_CHIP"],
-  ["app/not-found.tsx :: <p className=\"font-mono text-micro font-bold uppercase tracking-[0.20em] text-text-subtle\"> ↵ {d.notFoundCode} · {d.notFound}", "CELEBRATION"],
-  ["app/not-found.tsx :: className=\"mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200\" ↵ >", "CONTROL_LABEL"],
   ["app/notifications/bulk-bar.tsx :: <span className=\"font-mono text-micro font-bold uppercase text-text-subtle truncate\"> ↵ {countLabel}", "STATUS_CHIP"],
   ["app/notifications/row-actions.tsx :: className=\"-mt-1 shrink-0 inline-flex items-center gap-1 min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-accent-400 hover:text-text hover:bg-bg", "CONTROL_LABEL"],
   ["app/positions/page.tsx :: <div className=\"mb-1.5 flex items-center justify-between gap-2 font-mono text-micro uppercase tracking-[0.12em] tabular-nums\"> ↵ <span className=\"font-bold text-yes-300\">", "OTHER"],
@@ -257,8 +253,6 @@ export const NOT_EYEBROW = new Map([
   ["app/profile/kyc/page.tsx :: <span className=\"inline-flex items-center gap-1 rounded-pill border border-success-border bg-success-bg px-2.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0", "STATUS_CHIP"],
   ["app/profile/kyc/page.tsx :: className=\"font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text\" ↵ >", "CONTROL_LABEL"],
   ["app/profile/page.tsx :: <span className=\"inline-flex items-center rounded-pill border border-gold-700/50 bg-gold-500/15 px-1.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.08em] t", "STATUS_CHIP"],
-  ["app/proposals/[id]/not-found.tsx :: <Link href=\"/proposals\" className=\"mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200\"> ↵ <I.globe s", "CONTROL_LABEL"],
-  ["app/proposals/[id]/not-found.tsx :: <p className=\"font-mono text-micro font-bold uppercase tracking-[0.20em] text-gold-300\"> ↵ {t.error.notFoundCode}", "CELEBRATION"],
   ["app/proposals/[id]/page.tsx :: <p className=\"mb-3 font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300\">{t.common.yourProposalApproved}</p> ↵ <RewardBurst", "CELEBRATION"],
   ["app/results/page.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300\"> ↵ <I.crown s={13} /> {t.results.notab", "STATUS_CHIP"],
   ["app/updown/[roundId]/page.tsx :: <p className=\"mt-1 flex items-center gap-1.5 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle\"> ↵ {isOpen && <span className=\"live-dot\" />}", "STATUS_CHIP"],
@@ -333,6 +327,11 @@ export const NOT_EYEBROW = new Map([
   // chip wears `filterPillClass`; neither is uppercase or tracked.
   ["components/ui/duration-input.tsx :: \"font-mono uppercase tracking-[0.06em] text-text-subtle group-hover:text-text transition-colors leading-none\", ↵ size === \"sm\" ? \"text-[9px]\" : \"text-[10px]\",", "CONTROL_LABEL"],
   ["components/ui/modal.tsx :: className=\"mt-1 w-full rounded-lg border border-border-strong bg-bg-overlay px-3 py-2.5 font-mono text-body-lg tracking-[0.2em] uppercase text-text outline-none focus:bor", "TYPE_TO_CONFIRM"],
+  // ⭐ 2026-10-09 (the visual pass's round 4, E43): the three not-found pages render ONE view, so their six declarations
+  // (app/not-found.tsx, app/markets/[id]/not-found.tsx, app/proposals/[id]/not-found.tsx — two each, the market and
+  // proposal ones in gold) are these two. Roles unchanged: the 0.20em kicker is RouteError's family, the link a control.
+  ["components/ui/not-found-view.tsx :: <p className=\"font-mono text-micro font-bold uppercase tracking-[0.20em] text-text-subtle\"> ↵ {words.notFoundCode} · {words.notFound}", "CELEBRATION"],
+  ["components/ui/not-found-view.tsx :: className=\"mt-6 inline-flex items-center gap-2 font-mono text-caption uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200\" ↵ >", "CONTROL_LABEL"],
   ["components/ui/page-loader.tsx :: <p className=\"font-mono text-caption uppercase tracking-[0.18em] text-text-muted\"> ↵ {t.common.loading}", "STATUS_CHIP"],
   ["components/ui/pagination.tsx :: <p className=\"font-mono text-micro tracking-[0.14em] uppercase text-text-subtle\"> ↵ {((safePage - 1) * perPage + 1).toLocaleString()}–{Math.min(safePage * perPage, total)", "OTHER"],
   ["components/ui/password-input.tsx :: <p className={cn(\"mt-1 font-mono text-label sm:text-micro uppercase tracking-[0.14em] font-bold\", fgCls)}> ↵ {label}", "STATUS_CHIP"],

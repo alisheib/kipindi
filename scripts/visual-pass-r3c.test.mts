@@ -136,7 +136,10 @@ section("2 · the empty state: a YES/NO pair on one line, and content centred in
   ok("2.3′ PLANT · the dash rule alone does not hold the pair — the pair rule is what does",
     !dashOnItsWord("bonyeza NDIO au HAPANA — tiketi").includes(`NDIO${NBSP}au`));
   const es = read("src/components/ui/empty-state.tsx");
-  ok("2.4 · EmptyState renders its body through emptyStateBody", es.includes("{emptyStateBody(body)}") && !/function dashOnItsWord/.test(es));
+  // ⚠️ Pin moved 2026-10-09 (round 4, R4-K, E50): the body now also passes through `hangCjkMarks` — a centred Chinese
+  // line hangs the empty half of the mark that ends it — so the call reads `{hangCjkMarks(emptyStateBody(body))}`.
+  // emptyStateBody is still the body's one text rule and still applied first; only the wrapper is new.
+  ok("2.4 · EmptyState renders its body through emptyStateBody", es.includes("{hangCjkMarks(emptyStateBody(body))}") && !/function dashOnItsWord/.test(es));
 
   // ⭐ EACH DRAWING'S INK TOP, COMPUTED FROM ITS OWN GEOMETRY, IS ITS ROW IN INK_TOP (floor), AND EACH SVG USES ITS ROW.
   const inkTop = INK_TOP_OF(es);

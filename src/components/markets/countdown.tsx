@@ -70,7 +70,13 @@ export function Countdown({ to, label, serverNow, at }: { to: string; label?: st
           0.4px exactly as before — the label renders pixel-for-pixel what it did. The date
           takes the ladder's own spacing and so adds no `tracking-` utility either (§6). */}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2">
-        <span className="font-mono text-micro uppercase eyebrow text-warning-fg">{resolvedLabel}</span>
+        {/* ⭐ THE LABEL IS A LABEL, NOT A WARNING, AND NOT GOLD (2026-10-09, the visual pass's round 4, gold audit; tiles
+            041 042 433). "Uchaguzi unafungwa baada ya" / "Matokeo baada ya" wore `--warning-fg`, which IS `--gilt`
+            (DESIGN_AUTHORITY F3) — the capsule's gold, on a clock that pays nothing: §M3 "struck gold appears only where
+            money was earned", Q5 "gold is money, and nothing else". Nothing is wrong while a question is open, and a
+            closing one says so in its own pill beside the category chip. The ink is the page's label ink — the KPI tiles'
+            labels above it and this clock's own unit labels below are `text-text-subtle`. */}
+        <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{resolvedLabel}</span>
         {/* ⭐ A <time> WITH THE MACHINE-READABLE INSTANT, not a styled span. `dateTime` carries
             the SAME `to` the clock counts down to, which is what lets a live driver assert the
             date NAMES the right moment rather than merely that some date is present — a date
