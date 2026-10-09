@@ -1,5 +1,6 @@
 import { FilterGroupKey } from "@/components/ui/filter-pill";
 import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_WRAP_CLASS, QUERY_BAR_ROW2_CLASS, QUERY_GROUP_CLASS, QueryGroupDivider } from "@/components/ui/query-bar";
+import { PillGhost } from "@/components/ui/query-bar-ghost";
 import type { Dict } from "@/lib/i18n-dict";
 
 /**
@@ -52,12 +53,6 @@ export function MoneyBarGhost({ t, lenses, count }: { t: Dict; lenses: readonly 
   );
 }
 
-/** A pill while it loads: `filterPillClass`'s box (its geometry, not its ink) with the label set and not shown. */
-function PillGhost({ label }: { label: string }) {
-  return (
-    <span className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-pill border border-transparent bg-bg-overlay px-3 text-[13px] font-semibold text-transparent kp-shimmer-track">
-      {label}
-      <span className="font-mono text-[11px] font-bold tabular-nums">00</span>
-    </span>
-  );
-}
+/* The pill — `filterPillClass`'s box with the label set and not shown — is `query-bar-ghost.tsx`'s `PillGhost` since round
+   5's follow-up (R5-L): /results', /markets' and /leaderboard's ghosts draw the same pill, so it lives once, beside the
+   other parts every bar ghost draws. */

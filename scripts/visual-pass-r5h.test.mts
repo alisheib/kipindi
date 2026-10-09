@@ -560,12 +560,15 @@ function ghostPills(html: string): string[] {
   const { filterPillClass } = req("../src/components/ui/filter-pill.tsx") as { filterPillClass: (o: { rank?: string; on: boolean }) => string };
   const GEOMETRY = /^(?:inline-flex|shrink-0|items-center|justify-center|gap-[\d.]+|whitespace-nowrap|rounded-pill|border|min-h-\[[^\]]+\]|text-\[\d+px\]|font-semibold|px-[\d.]+)$/;
   const want = filterPillClass({ rank: "primary", on: false }).split(/\s+/).filter((c) => GEOMETRY.test(c));
-  const ghost = code(BAR_GHOST);
+  // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-L): the pill is `query-bar-ghost.tsx`'s `PillGhost` now — /results', /markets' and
+  // /leaderboard's ghosts draw the same pill — so its box is read there, and the money books' ghost must import it.
+  const ghost = code("src/components/ui/query-bar-ghost.tsx");
+  const imported = /import \{ PillGhost \} from "@\/components\/ui\/query-bar-ghost";/.test(code(BAR_GHOST)) && !/function PillGhost/.test(code(BAR_GHOST));
   const pill = (s: string) => /function PillGhost[\s\S]*?<span className="([^"]+)">/.exec(s)?.[1].split(/\s+/) ?? [];
   const has = (s: string) => want.length >= 11 && want.every((c) => pill(s).includes(c)) && pill(s).includes("text-transparent") && pill(s).includes("border-transparent");
   const countOk = (s: string) => s.includes('<span className="font-mono text-[11px] font-bold tabular-nums">00</span>') && code("src/components/ui/filter-pill.tsx").includes('"font-mono text-[11px] font-bold tabular-nums"');
   ok(`4.4 · each pill is the kit pill's box — every geometry class of \`filterPillClass\` (${want.join(" ")}), its 1px border transparent and its words transparent — with FilterPill's own count type: as wide as the page's pill`,
-    has(ghost) && countOk(ghost), j({ want, got: pill(ghost) }));
+    has(ghost) && countOk(ghost) && imported, j({ want, got: pill(ghost), imported }));
   ok("4.4′ PLANT · a pill a step narrower (`px-2.5`) is reported", !has(ghost.replace("rounded-pill border border-transparent bg-bg-overlay px-3", "rounded-pill border border-transparent bg-bg-overlay px-2.5")));
   const html = inApp("/wallet", "sw", h(WalletGhost as never, { bonusLive: false } as never));
   const bar = html.slice(html.indexOf('class="kp-discovery-bar'), html.indexOf('class="kp-wallet-door'));
@@ -612,8 +615,10 @@ function ghostPills(html: string): string[] {
 section("5 · G-2b's sweep · the bands the audit measured exactly from the classes, each held against its page");
 {
   // ⭐ THE BACK LINK: every ghost whose page opens on `BackLink` draws `BackLinkGhost`, the link's own 44px box. A census:
-  // each player loading file's drawings (generic PageLoader routes aside — they draw no page's bands by design) against
-  // the page beside it; the agent programme's shared ghost draws one unless its route says `back={false}`.
+  // each player loading file's drawings against the page beside it. Since R5-L a generic PageLoader route's own file draws
+  // its page's opening bands, so it is held here too (a server file that only hands PageLoader numbers — /proposals/[id],
+  // whose first band is its data — is passed over), and each agent route draws its own bands (the shared `AgentGhost`
+  // and its `back={false}` are gone).
   const BL = squash(code("src/components/ui/back-link.tsx"));
   const box = BL.includes('className="min-h-[44px] inline-flex items-center gap-1.5 text-label font-mono uppercase tracking-[0.16em]')
     && inApp("/", "sw", h((req("../src/components/ui/back-link.tsx") as { BackLinkGhost: unknown }).BackLinkGhost as never)).startsWith('<div class="flex min-h-[44px] items-center" aria-hidden="true"><div class="h-3 w-[64px] rounded bg-bg-overlay kp-shimmer-track"></div></div>');
@@ -626,8 +631,7 @@ section("5 · G-2b's sweep · the bands the audit measured exactly from the clas
       if (draws.some((d) => d.endsWith("components/ui/page-loader.tsx"))) continue;
       const pageOpens = /<BackLink\b/.test(decomment(text(page))) && !/journey \? <TicketsHead/.test(decomment(text(page)));
       const historyClassic = f === "src/app/updown/history/loading.tsx";
-      const agent = draws.some((d) => d.endsWith("app/agent/loading-shared.tsx"));
-      const ghostHas = agent ? !/back=\{false\}/.test(decomment(text(f))) : draws.some((d) => /<BackLinkGhost \/>/.test(decomment(text(d))));
+      const ghostHas = draws.some((d) => /<BackLinkGhost \/>/.test(decomment(text(d))));
       const want = historyClassic ? true : pageOpens;
       if (ghostHas !== want) wrong.push(`${f}: page ${pageOpens ? "opens on" : "has no"} BackLink, ghost ${ghostHas ? "draws" : "does not draw"} one`);
     }
@@ -645,6 +649,7 @@ const sweep = (text: (p: string) => string) => {
   const t = (p: string) => squash(decomment(text(p)));
   const resultsPage = t("src/app/results/page.tsx"), resultsGhost = t("src/app/results/loading.tsx");
   const mkGhost = t("src/app/markets/loading.tsx"), liveGhost = t("src/app/live/loading.tsx"), hero = t("src/components/ui/page-hero.tsx");
+  const barKit = t("src/components/ui/query-bar-ghost.tsx"), livePage = t("src/app/live/page.tsx");
   const rcGhost = t("src/app/wallet/receipts/loading.tsx"), rcRow = t("src/components/wallet/receipt-list-row.tsx");
   const pfPage = t("src/app/profile/page.tsx"), pfGhost = t("src/app/profile/loading.tsx");
   const agPage = t("src/app/agent/page.tsx"), agGhost = t("src/app/agent/loading.tsx");
@@ -659,11 +664,17 @@ const sweep = (text: (p: string) => string) => {
     // (the page holds an emptied JSX note between its two wrappers — `{}` once decommented)
     "5.2 results": /<div className="flex flex-col gap-5 lg:flex-row lg:gap-6"> (?:\{\} )*<div className="min-w-0 flex-1">/.test(resultsPage)
       && resultsGhost.includes('<div className="flex flex-col gap-5 lg:flex-row lg:gap-6"> <div className="min-w-0 flex-1">')
-      && resultsGhost.includes('<div className="mb-5 min-h-[458px]" aria-hidden>')
-      && resultsGhost.includes('<div className="kp-shimmer-track h-[44px] w-[134px] rounded-pill bg-bg-elevated lg:hidden" />'),
+      // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-L): the carousel is the notable card's own box (no 458px reservation, which was
+      // 118px too tall at 1280) and the Filters pill the trigger's own box (`lg:hidden` in its root) — `test:visual-pass-r5l` §5.
+      && resultsGhost.includes("{notable && <NotableGhost />}") && resultsGhost.includes('<div className="mb-5" aria-hidden>')
+      && resultsGhost.includes("<FiltersGhost label={t.market.filtersOpen} />") && barKit.includes('<div className="kp-fsheet lg:hidden">'),
     "5.3 markets": mkGhost.includes('<div className="flex h-[17.25px] shrink-0 items-center" data-result-count=""><div className="kp-shimmer-track h-3 w-[80px] rounded bg-bg-elevated" /></div>')
-      && mkGhost.includes('<div className="kp-fsheet kp-shimmer-track h-[44px] w-[170px] rounded-pill bg-bg-elevated lg:hidden" />'),
-    "5.4 live": hero.includes('contentClassName = "relative z-10 p-5 lg:p-6"') && liveGhost.includes('<div className="relative z-10 p-5 lg:p-6">'),
+      // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-L): the Filters pill is the trigger's own box with its word (`FiltersGhost`, whose
+      // root is `kp-fsheet lg:hidden`) — the 170px box pushed the phone grid past the bar's edge.
+      && mkGhost.includes("<FiltersGhost label={t.market.filtersOpen} />") && barKit.includes('<div className="kp-fsheet lg:hidden">'),
+    // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-L): the hero ghost IS `PageHero`, with the page's props — its own padding by construction.
+    "5.4 live": hero.includes('contentClassName = "relative z-10 p-5 lg:p-6"') && liveGhost.includes('<PageHero glow="aqua" watermark={200}>')
+      && livePage.includes('<PageHero glow="aqua" watermark={200}>'),
     "5.5 receipts": rcRow.includes('<p className="amount shrink-0 whitespace-nowrap font-mono text-body font-semibold text-text">') && rcRow.includes('<div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">')
       && rcGhost.includes('<div className="flex h-[20px] items-center justify-between gap-3">') && rcGhost.includes('<div className="mt-1.5 flex h-[18px] items-center justify-between gap-3">')
       && rcGhost.includes('<div className="h-[18px] w-[88px] rounded-pill bg-bg-overlay/60 kp-shimmer-track" />'),
@@ -706,8 +717,8 @@ const sweep = (text: (p: string) => string) => {
   // PLANTS — each fix undone in memory, one at a time, and its check alone reported.
   const PLANTS: Array<[string, string, string, string]> = [
     ["5.2 results", "src/app/results/loading.tsx", '<div className="min-w-0 flex-1">', "<div>"],
-    ["5.3 markets", "src/app/markets/loading.tsx", 'h-[44px] w-[170px] rounded-pill bg-bg-elevated lg:hidden', "h-[44px] w-[170px] rounded-pill bg-bg-elevated"],
-    ["5.4 live", "src/app/live/loading.tsx", '<div className="relative z-10 p-5 lg:p-6">', '<div className="relative z-10 p-5">'],
+    ["5.3 markets", "src/app/markets/loading.tsx", "<FiltersGhost label={t.market.filtersOpen} />", '<div className="kp-fsheet kp-shimmer-track h-[44px] w-[170px] rounded-pill bg-bg-elevated" />'],
+    ["5.4 live", "src/app/live/loading.tsx", '<PageHero glow="aqua" watermark={200}>', '<PageHero glow="aqua" watermark={200} contentClassName="relative z-10 p-5">'],
     ["5.5 receipts", "src/app/wallet/receipts/loading.tsx", '<div className="h-[18px] w-[88px] rounded-pill', '<div className="h-[22px] w-[88px] rounded-pill'],
     ["5.6 profile", "src/app/profile/loading.tsx", '<div className="grid grid-cols-1 gap-3 md:grid-cols-2">', '<div className="grid grid-cols-1 gap-2 md:grid-cols-2">'],
     ["5.7 agent", "src/app/agent/loading.tsx", " subtitle={t.agent.heroSub} />", " />"],
