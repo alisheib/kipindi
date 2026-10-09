@@ -276,7 +276,7 @@ export const SECTIONS = [
         do: [
           "Delivered — a delivery receipt came back. Handed over, no receipt yet — the network took it; receipts usually come in seconds.",
           "Failed, and Not sent by reason, say who did not get it and why.",
-          "Stopped by their link — people who used the stop link after this campaign.",
+          "Stopped since this campaign — people this campaign reached who have stopped offers since.",
           "The estimated spend is shown to the roles that may see money; the SMS credit on System is the true figure.",
         ],
         shots: ["52-finished", "53-results"],

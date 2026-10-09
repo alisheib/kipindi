@@ -5501,7 +5501,7 @@ export const prismaDb = {
       assertSentBeforeRead(campaignId, before);
       return pc().smsCampaignRecipient.count({ where: { campaignId, status: "SENT", sentAt: { lt: new Date(before) } } });
     },
-    /** U48a · E30 — THE STOPPED-BY-LINK WALK'S PAGE: ONE findMany of the campaign's SENT and DELIVERED rows that carry a
+    /** U48a · E30 — THE STOPPED-SINCE WALK'S PAGE: ONE findMany of the campaign's SENT and DELIVERED rows that carry a
      *  hand-over instant, by number — keyset on the unique (campaignId, msisdn) index (`gt` the cursor; null: from the start),
      *  at most `limit`, selecting the number and the instant ALONE (never a row, a token or a reference). A FAILED row never
      *  reached its person, an UNCONFIRMED one carries no instant to date a stop against. The rule set is asked first. */

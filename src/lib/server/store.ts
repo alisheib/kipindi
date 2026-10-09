@@ -727,8 +727,9 @@ export type SmsRecipientSendRecordResult = {
  * `test:dal-parity` §26.u48a, `test:campaign-models` §2.33). ⚠️ NAMED, NOT INLINE: the `SmsDlrResult` note above. ── */
 /**
  * ⭐ ONE PERSON A CAMPAIGN HANDED A MESSAGE TO — the bare number and the instant it was handed over, and nothing else: what
- * the stopped-by-link walk asks the stops list about (E30). Only SENT and DELIVERED rows with an instant are among them
- * (`handedOverPage`). ⛔ SERVER-SIDE ONLY: the number is a key the walk reads by and never a figure any view carries.
+ * the stopped-since walk asks the stop list and the consent ledger about (E30). Only SENT and DELIVERED rows with an instant
+ * are among them (`handedOverPage`). ⛔ SERVER-SIDE ONLY: the number is a key the walk reads by and never a figure any view
+ * carries.
  */
 export type SmsCampaignHandedOver = {
   msisdn: string;
@@ -4777,7 +4778,7 @@ const memoryDb = {
       }
       return older;
     },
-    /** U48a · E30 — THE STOPPED-BY-LINK WALK'S PAGE: the campaign's SENT and DELIVERED rows that carry a hand-over instant, by
+    /** U48a · E30 — THE STOPPED-SINCE WALK'S PAGE: the campaign's SENT and DELIVERED rows that carry a hand-over instant, by
      *  number (the campaign holds a number once), the numbers strictly after `after` (null: from the start), at most `limit`
      *  — `{ msisdn, sentAt }` and nothing else. Keyset, never an offset: a walk of a 150,000-person list reads each row once.
      *  A FAILED row never reached its person, an UNCONFIRMED one carries no instant to date a stop against. The rule set is

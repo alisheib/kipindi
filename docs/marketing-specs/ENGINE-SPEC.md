@@ -44,7 +44,7 @@ push → proof live (`?dpl=` + the deploy log for the migration). Owner waits an
 | 13 | **U43b** | The slice: reap → slice-wide checks → claim → gate EVERY recipient → prepare (token + render) → send → settle; `dispatchSlice`'s additive hooks; the transport fix; the five-driver control. Built as **U43b-1** (dispatch hooks + the transport fix, 5–8 h) then **U43b-2** (the engine, 9–14 h) — §4.13 | U43a · U43y · U49a · U13 · U33a-G | nothing calls it until U47b | 14–22 | D |
 | 14 | **U46a** | Receipts: the DLR route's recipient arm (monotonic, identity-checked), the previous-secret overlap for rotation | U43a (DAL serial) | the arm only acts on rows U43b writes | 5–8 | D |
 | 15 | **U47b** | The live campaign page `/admin/campaigns/[id]`: Start · Pause · Resume · Stop · Make a copy, the page driver, the states and the yields in words. Built as **U47b-1** (services + view-model, no action, 6–9 h) then **U47b-2** (page, actions, driver, drive, 8–13 h) — §4.15 | U43b · U49a · U42 | Start needs the switch open (G1) | 14–22 | — |
-| 16 | **U48a** | Results on the live page: delivered (receipts), failed, not sent by reason, no answer, stopped by link, the honesty lines | U47b · U46a | read-only | 5–8 | — |
+| 16 | **U48a** | Results on the live page: delivered (receipts), failed, not sent by reason, no answer, stopped since this campaign (was "by link" — re-ruled 2026-10-09), the honesty lines | U47b · U46a | read-only | 5–8 | — |
 | 17 | **U48b** | The recipients table (server-paged, masked) and the CSV export | U48a | read-only | 7–12 | — |
 | 18 | **U52a** | The live drive on production: ≤ 6 chargeable sends to the approved test number, discrimination, receipts, the stop link's page (since 2026-10-09 opened from the recipient row — no SMS carries the link) | all above · the whole predeploy chain once | — | 4–8 (+ owner waits) | — |
 
@@ -330,9 +330,15 @@ Each is decided on Ali's standing delegation of technical calls (§0, 2026-10-02
   monotonic in the WHERE, run only when the `SmsMessage` row moved, identity-checked (target id, msisdn, reference).
 - **E29 · The webhook secret can be rotated without losing receipts:** an optional `BLACKBALL_WEBHOOK_SECRET_PREVIOUS` is
   accepted beside the current one while the vendor's URL is changed.
-- **E30 · "Stopped by their link since this campaign"** = this campaign's handed-over recipients whose number now has an
-  active `WITHDRAWN` stop with `optout:` evidence created after their `sentAt` — read through §25's `findActiveAmong`, no new
-  member; attributed to the most recent campaign sent to that number before the stop.
+- **E30 · "Stopped since this campaign"** (re-ruled 2026-10-09 — it was "Stopped by their link since this campaign"; since
+  COMPLIANCE-DECISIONS § "2026-10-09 · Privacy v2026-10-09 — a marketing SMS is sent exactly as the officer wrote it: no stop
+  link, no 18+, no helpline, no source line (owner ruling)" no message carries a link, so a count of link stops would read 0
+  for ever) = this campaign's handed-over recipients whose number now has a stop IN FORCE made at or after their `sentAt`,
+  whatever made it — an active stop-list row of any reason (§25's `findActiveAmong`: the opt-out page's, an officer's
+  Suppress) or the number's latest ledger word a WITHDRAWN (§25's `latestAmong`: the profile switch turned off, an officer's
+  recorded withdrawal, the opt-out page's row), never the erasure's marker or a lapse; no new member. One number counts once,
+  dated by the later record; a number that is ERASED (`isErasedNumber`, the importer's and the Add form's ONE function) never
+  counts; attributed to the most recent campaign sent to that number before the stop.
 
 ---
 
@@ -2771,27 +2777,31 @@ fixture is synthetic. Whether receipts are set up is `BLACKBALL_WEBHOOK_SECRET`'
    minutes (E5) · failed, split "the network refused it" (wire) / "not delivered" (receipt) · not sent, by the five reason
    buckets (`AUDIENCE_BUCKET_OF`, protected one line — `AdminBarList`, neutral ink, dominant first) · no answer
    (UNCONFIRMED, "never re-sent automatically") · waiting / stopped before sending (PENDING + HELD; "stopped before sending"
-   for a CANCELLED campaign) · stopped by their link since this campaign (E30).
+   for a CANCELLED campaign) · stopped since this campaign (E30 — re-ruled 2026-10-09; it was "stopped by their link").
 2. **The honesty lines, from the data (OD41):** "No delivery receipt has arrived for this campaign yet — 'handed over' is not
    'delivered'." while none has, gone once one does; "Delivery receipts aren't set up on this server, so 'Delivered' will stay
    at zero — Admin → System → Diagnostics says how to fix it." when the secret is unset; and the price line for money readers:
    "Estimated spend: TZS 8,412 (handed over × TZS 6 per SMS, configured, not yet measured) — the SMS credit on Admin → System is
    the true figure."
 3. **The floor (E23)** applies; a masked viewer never sees reasons under 10.
-4. **Stopped by link** is read with `suppression.findActiveAmong` over this campaign's handed-over numbers (chunks of
-   1,000), counting `reason WITHDRAWN`, evidence starting `optout:`, `createdAt >= sentAt`; a number whose stop is later than
-   a newer campaign's message to it is not counted here.
+4. **Stopped since this campaign** (re-ruled 2026-10-09, E30) is read over this campaign's handed-over numbers (chunks of
+   1,000) with `suppression.findActiveAmong` (an active stop of any reason) and `messagingConsent.latestAmong` (the latest
+   ledger word a WITHDRAWN that is neither the erasure's marker nor a lapse), each made at or after `sentAt`; one number
+   once; an erased number never; a number whose stop is later than a newer campaign's message to it is not counted here.
+   (It was "stopped by link": `reason WITHDRAWN`, evidence starting `optout:`, read with `findActiveAmong` alone.)
 
 **Files.** `src/lib/server/marketing/campaign-live.ts` (results), `src/lib/server/marketing/campaign-results.ts` (create —
-the reads: counts by status/failureClass/skipReason, the receipt presence, stopped-by-link), `src/app/admin/campaigns/[id]/results-card.tsx`
+the reads: counts by status/failureClass/skipReason, the receipt presence, stopped since), `src/app/admin/campaigns/[id]/results-card.tsx`
 (create), `live-copy.ts`, `scripts/campaign-visuals.test.mts` (§R).
 
 **Sentences.** Section titles: "Delivered" · "Handed over, no receipt yet" · "No receipt after 15 minutes" · "Failed" ("The
 network refused it" · "Not delivered (receipt)") · "Not sent — the checks refused them" (the five labels as U38b) · "No answer
-from the network" · "Stopped before sending" · "Stopped by their link since this campaign".
+from the network" · "Stopped before sending" · "Stopped since this campaign" (re-ruled 2026-10-09; it was "Stopped by their
+link since this campaign"), its line "People this campaign reached who have stopped offers since — on their profile, by asking
+us, or by a link from an older message. They will not be messaged again."
 **Tests** (§R): R1 ⭐ `accepted` is never counted delivered — only receipts move "Delivered" (the plan's OD41 rule); R2 the
 honesty line present with zero receipts and absent after one; R3 the 15-minute figure counts SENT rows older than 15 min with
-no receipt and nothing else; R4 ⭐ stopped-by-link attribution (a stop after this campaign's message counts; a stop before
+no receipt and nothing else; R4 ⭐ stopped-since attribution (a stop after this campaign's message counts; a stop before
 it, or after a newer campaign's message to the same number, does not); R5 the reasons are the five buckets, protected one
 line, for every role; R6 the floor. **Plants:** handed over counted as delivered · the honesty line hard-coded · protected
 itemised · attribution ignoring a newer campaign.
@@ -2836,12 +2846,23 @@ memory, the builder), `campaign-live.ts` (`CampaignResultsView` is real; `result
   them up." — to be put back when a Diagnostics line exists. The price line is the spec's sentence word for word; its "handed over" is the
   figures card's tile (SENT + DELIVERED) and its price the owner's settings read fresh (`ok` and `readable`, else no line); for a money reader
   above the floor only, never while nothing is handed over.
-- ⭐ **Decision 4 (stopped by their link), and what it costs.** Handed-over = SENT and DELIVERED rows with an instant (a FAILED message never
-  reached its person; an UNCONFIRMED one carries no instant to date a stop against). The walk is in chunks of 1,000, each chunk's active
-  stops in ONE `findActiveAmong`; a stop counts when its reason is WITHDRAWN, its evidence starts `optout:` (the REAL opt-out service's —
-  R4 makes one with it) and it was created at or after the message; attribution (E30) asks `listByMsisdn` for each such stop and drops it when
-  ANOTHER campaign handed that number a SENT/DELIVERED message after this one's and no later than the stop. ⚠️ Known limits, said: a stop's
-  `createdAt` is when the person first said no (a stop lifted and made again keeps it), and a stop by a TEST send's link is not told apart.
+- ⭐ **Decision 4 (stopped since this campaign — re-ruled 2026-10-09; built 2026-10-08 as "stopped by their link"), and what it costs.**
+  Handed-over = SENT and DELIVERED rows with an instant (a FAILED message never reached its person; an UNCONFIRMED one carries no instant to
+  date a stop against). The walk is in chunks of 1,000; each chunk's stop list (ONE `findActiveAmong`) and its numbers' latest ledger words
+  (ONE `latestAmong`) are asked side by side, and `stopsSince` keeps ONE entry per number whose stop in force was made at or after the
+  message: an active stop-list row of any reason (the opt-out page's WITHDRAWN, an officer's Suppress — OPERATOR — a complaint), or a latest
+  word that is a WITHDRAWN but neither the erasure's marker nor a lapse (`isLedgerStop`: the profile switch turned off — `recordPlayerMarketingChoice`
+  writes that row first, and it is the switch's only dated record — an officer's recorded withdrawal, the opt-out page's own row); a number with
+  both is dated by the LATER (a stop-list row made again keeps its first `createdAt`). ⛔ The numbers found are then asked whether they are
+  ERASED (`erasedAmong`: the ONE function `isErasedNumber` over the book's key-only presence — `msisdnsPresent` with and without the tombstone —
+  and C8a's `erasureStandsAmong`), and an erased one is never counted. Attribution (E30) asks `listByMsisdn` for each one left and drops it
+  when ANOTHER campaign handed that number a SENT/DELIVERED message after this one's and no later than the stop. Found and said (the brief
+  asked): before the ruling the walk counted ONE erased case — a link stop made after the message by a person erased later (`erase.ts` never
+  touches a stop) — and the gate files an erased number under "Withdrew consent" at send time; this figure follows neither, so a counted
+  person who is erased later leaves it, as one who turns offers back on does. ⚠️ Known limits, said: a person stopped again by an officer's
+  Suppress after being started again (no ledger row; the stop-list row keeps its first instant) may not be counted (toward fewer); a stop
+  that follows a TEST send or an invite is not told apart, and the walk is by number (a recycled number's next holder is not told apart) —
+  those two can give the campaign before a stop that something else prompted.
   ⭐ **It is the one expensive figure, so it is bounded:** production keeps a campaign's count for 30 s (single-flight; a failed read is never
   kept) and a view waits for it at most 4 s — a slower walk says "couldn't be counted just now" this once and finishes in the memory for the
   next view. A figure that could not be read (this one, the 15-minute count) is a dash and a sentence, never a zero, and never fails the view
@@ -2865,6 +2886,20 @@ memory, the builder), `campaign-live.ts` (`CampaignResultsView` is real; `result
   engine on the console rail → receipts POSTed at the real route → a stop by link → the staged states) exercised in one process; the five
   new `red:dal-parity` anchors run alone on a copy of the tree, as the harness does, each failing exactly the one claim it names; the
   drive's first run and `db:probe-campaign-models` §14 are the integrator's, under the lock.
+- ✅ **AS AMENDED — E30 re-ruled (S14's builder, 2026-10-09, after the owner's ruling that no message carries a link).** The row is
+  "Stopped since this campaign" with the owner's line under it; it is named `stoppedSince` everywhere — the view's field, `ResultsDeps`,
+  `data-results-row`, `STOPPED_SINCE_TTL_MS`, the memory's global (nothing stored or published carried the old name). Decision 4 above says
+  what is counted and what is not. ⭐ It is ONE number with no split by kind, so it never says which way a person stopped (a switch turned
+  off is a player's act alone — D19 / A1.1 is why it is not split). The dev seed's `?stop=` stops its people three ways in turn through the
+  real writers — the opt-out page, `recordPlayerMarketingChoice` OFF, `runContactBulk` "suppress" — and answers how many landed by kind;
+  `?words=` serves `stoppedTtlMs`; the drive stops three, one each way, and reads 3 under the new label, line and attribute; the admin
+  guide says "Stopped since this campaign — people this campaign reached who have stopped offers since." **Proof:** `test:campaign-visuals`
+  62 claims (R4 rewritten; R10, R11 and R12 widened; R14 — every kind, a number once, only a stop in force, never an erased person — and
+  R15 — the platform's own writers and the REAL erasure — new); the results' plants run alone (`--only=R-R`): 51 of 51 held, of 220
+  plants in all (a subset, not the proof; R-R4b–n, R-R10f–g,
+  R-R11g–h and R-R12g–h new or rewritten); `test:dal-parity` 2228, `test:campaign-models` 54, `test:dead-css` and `test:pii-logs` 15 green;
+  the seed's `?stop=` run in one process (three landed, one each way; the walk 0 → 3). The full `red:campaign-visuals`, the typecheck and
+  the drive's run are the integrator's, under the lock.
 
 ---
 
@@ -3301,7 +3336,7 @@ ledger counts message rows (the engine caps a message at one segment, so a send 
   migration folder against production's.
 - **R5 · Spam complaints → a TCRA sender block → login and withdrawal codes lost** (U33a R2). Kept: stops first, the opt-out
   link in every SMS, the window, the TZS 10,000 first cap; U14 before a second campaign; watch the `/s/` stop rate after
-  the first campaign (U48a's stopped-by-link figure).
+  the first campaign (U48a's "Stopped since this campaign" figure — since 2026-10-09 every way a person stops, a link's among them).
 - **R6 · D19 residuals.** The floor of 10 raises the bar; differencing two large filters remains possible (recorded).
 - **R7 · The evidence-based reaper** relies on `sendBatch` writing rows before the wire; pinned by a source-order check.
 - **R8 · The webhook secret** travelled in chat; until rotated, a forger who has it can mark rows delivered (no money
