@@ -156,6 +156,7 @@
     "ops:marketing-preflight": "tsx scripts/live/marketing-preflight.mjs",
     "ops:marketing-campaign-evidence": "tsx scripts/live/marketing-campaign-evidence.mjs",
     "ops:marketing-referee-keys": "tsx scripts/ops/marketing-referee-keys.mts",
+    "ops:contacts-added-redate": "tsx scripts/ops/contacts-added-redate.mts",
     "db:probe-contacts-audience": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/live/contacts-audience-pg-probe.mts",
     "db:probe-campaign-models": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/live/campaign-models-pg-probe.mts",
     "db:probe-campaigns-list": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/live/campaigns-list-pg-probe.mts",

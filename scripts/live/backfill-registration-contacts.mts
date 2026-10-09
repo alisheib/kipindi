@@ -2,11 +2,15 @@
  * ⭐ EVERY CLIENT IS A CONTACT — THE BACKFILL (the owner, 2026-10-03). From that day both sign-up doors make the new
  * client's number a contact (`src/lib/server/marketing/registration-contact.ts`). This makes every EXISTING client one
  * too, through the SAME rule: it walks every PLAYER account on a +255 number by id (U38a's keyset, a page at a time)
- * and asks `ensureRegistrationContact` once per account — create, link an officer's or an import's contact, or leave
- * alone with the reason (staff, agents, closed and erased accounts, numbers the ONE table does not call a Tanzanian
- * mobile, an erased number's tombstone, a row another account holds).
+ * and asks `ensureRegistrationContact` once per account — create, revive an erased number's emptied row as the client's
+ * own (C8b · B1: the new holder's sign-up lifts the block, and the tombstone's old lists are dropped), link an officer's
+ * or an import's contact, or leave alone with the reason (staff, agents, closed and erased accounts, numbers the ONE
+ * table does not call a Tanzanian mobile, a row another account holds).
+ * ⭐ C8b (B8) · every row it creates or revives says "Added" at the moment of the run, never the client's sign-up date.
+ * The rows the run of 2026-10-03 dated with each client's sign-up are put right by the audited door
+ * `ops:contacts-added-redate` (`scripts/ops/contacts-added-redate.mts`).
  *
- * ⭐ IDEMPOTENT: a second run creates and links nothing and repairs no cache — its counts say so.
+ * ⭐ IDEMPOTENT: a second run creates, revives and links nothing and repairs no cache — its counts say so.
  * ⛔ IT PRINTS COUNTS ONLY (`registrationBackfillReport`) — never a number, a name or an email.
  * ⛔ IT WRITES NO CONSENT: the book's consent column is U24's mirror of the ledger, and OD8's zero backfill stands.
  * ⛔ A LOOPBACK DATABASE ONLY, unless `--production` is passed — and that run is the owner's, approved by hand. Every

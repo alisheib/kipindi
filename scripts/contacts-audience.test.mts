@@ -101,8 +101,11 @@ const TWINS = new Set([STORE, PRISMA_DAL]);
  *  set-based writes reach the store's `…Where` members through `contactAudienceWrites` (audience.ts), never directly.
  *  U34a (S10, 2026-10-02): `contacts/export.ts` — the export's count and its keyset walk, capped at the audited count.
  *  U38b (S13, 2026-10-07): `campaigns/new/audience-rail.tsx` — the composer's audience rail reads the book's tags for its
- *  Tag axis through the resolver's own tag reader (`contactTagCounts`), as the contact book's loader does; it reads no row. */
-const READERS = [LOADER, "lib/server/marketing/contact-bulk.ts", "lib/server/contacts/export.ts", "app/admin/campaigns/new/audience-rail.tsx"];
+ *  Tag axis through the resolver's own tag reader (`contactTagCounts`), as the contact book's loader does; it reads no row.
+ *  C8b · B8 (S14, 2026-10-09): `contacts/added-redate.ts` — the ops door that re-dates the backfill's rows walks the book's
+ *  linked sign-up rows (`SIGNUP_ROWS`: source REGISTRATION, linked) through the resolver's keyset walk; it prints counts
+ *  only, and its one write is by id (`marketingContact.redateAdded`), never a set path. */
+const READERS = [LOADER, "lib/server/marketing/contact-bulk.ts", "lib/server/contacts/export.ts", "app/admin/campaigns/new/audience-rail.tsx", "lib/server/contacts/added-redate.ts"];
 
 /** The book's SET readers — the members that return many rows or count them. Point lookups (`find`,
  *  `findByMsisdn`, `listByUserId`, `listMemberships`) are not a path from a filter. */
