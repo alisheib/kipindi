@@ -38,9 +38,10 @@
  *         tombstone's), deleting its list memberships and — through the foreign key's SET NULL — unlinking its campaign
  *         records (kept, no stamp moved), in ONE transaction; a second revival answers null, and two at once on two
  *         connections leave exactly one winner;
- *      9  C8b review (MINOR 2) · contactListMember.joinedFromImport — the memberships a run put on its list, in ONE
+ *     11  C8b review (MINOR 2) · contactListMember.joinedFromImport — the memberships a run put on its list, in ONE
  *         statement: inside its window, its created contacts and (unless created-only) the numbers its rows updated or
- *         kept, never the tombstone, the edges inclusive;
+ *         kept, never the tombstone, the edges inclusive (numbered 11 so it never collides with s14-importer-robust's
+ *         sections 9 and 10);
  *   S  a second FRESH process stages 20,000 rows and settles them in 500-row steps — p50/p95 per call printed, every
  *      row settled exactly once asserted.
  * Every expectation is written HERE BY HAND — an oracle independent of either twin.
@@ -1068,8 +1069,8 @@ async function phaseC(): Promise<void> {
         `${results.map((r) => (r === null ? "null" : r.row.id)).join(" + ")} · ${holders.length} row(s) for the number`);
     });
 
-    /* ── 9 · C8b review (MINOR 2) · contactListMember.joinedFromImport — how many contacts a run put on its list ── */
-    await section("9", async () => {
+    /* ── 11 · C8b review (MINOR 2) · contactListMember.joinedFromImport — how many contacts a run put on its list ── */
+    await section("11", async () => {
       const J = { made: num("571", 1), kept: num("571", 2), upd: num("571", 3), before: num("571", 4), other: num("571", 5), tomb: num("571", 6), late: num("571", 7) };
       const LJ = "cl_probe_joined";
       await K.mustList(LJ);
@@ -1096,7 +1097,7 @@ async function phaseC(): Promise<void> {
       const everyone = await counted(() => db.contactListMember.joinedFromImport({ ...q, createdOnly: false }));
       const createdOnly = await db.contactListMember.joinedFromImport({ ...q, createdOnly: true });
       const atEdges = await db.contactListMember.joinedFromImport({ ...q, sinceIso: inside, untilIso: inside, createdOnly: false });
-      ok("9.1 · ⭐ C8b review (MINOR 2) ON POSTGRES · joinedFromImport counts, in ONE statement, the memberships added inside the run's window whose contact the run CREATED or whose number one of its rows UPDATED or KEPT — 3: the created one, the kept one, the updated one; NOT the member that joined before the window, the run's created contact that joined after it, another contact, or the tombstone whose number the run kept — and a created-only run counts its created contact alone (1); the window's ends are inclusive",
+      ok("11.1 · ⭐ C8b review (MINOR 2) ON POSTGRES · joinedFromImport counts, in ONE statement, the memberships added inside the run's window whose contact the run CREATED or whose number one of its rows UPDATED or KEPT — 3: the created one, the kept one, the updated one; NOT the member that joined before the window, the run's created contact that joined after it, another contact, or the tombstone whose number the run kept — and a created-only run counts its created contact alone (1); the window's ends are inclusive",
         everyone.value === 3 && everyone.queries.length === 1 && createdOnly === 1 && atEdges === 3,
         `${everyone.value} in ${everyone.queries.length} statement(s) · created-only ${createdOnly} · at the edges ${atEdges}`);
     });

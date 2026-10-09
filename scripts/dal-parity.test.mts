@@ -4573,7 +4573,7 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   // in every suite and wrong in production. This section holds the twins to ONE shape, as §30 does; their behaviour on
   // Postgres is three probes' (db-scratch, run by the integrator): reviveTombstone in
   // `scripts/live/contacts-import-pg-probe.mts` section 8 (and end to end through the backfill in
-  // `scripts/live/registration-contact-pg-probe.mts` 3c), joinedFromImport in the same import probe's section 9,
+  // `scripts/live/registration-contact-pg-probe.mts` 3c), joinedFromImport in the same import probe's section 11,
   // coverageSplit in `scripts/live/list-basis-pg-probe.mts` 2l (the same scenario on the memory twin, answer for answer),
   // redateAdded through its door in `scripts/live/registration-contact-pg-probe.mts` section 6 (the rollback in 6.4).
   //   · reviveTombstone (B1, and the review's MINOR 8 · iii) — a row under the tombstone's own id refused before anything
