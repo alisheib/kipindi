@@ -5,7 +5,7 @@
  * Enter or blur saves; Esc cancels. Backed by updateProfileBasicsAction.
  */
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Spinner } from "@/components/ui/spinner";
 import { I } from "@/components/ui/glyphs";
@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { updateProfileBasicsAction } from "@/app/profile/actions";
 import { errorCopy } from "@/lib/error-copy";
+import { keepNameEnd } from "@/components/ui/keep-words";
 
 export function ProfileNameEditor({
   currentName,
@@ -45,10 +46,21 @@ export function ProfileNameEditor({
     savingRef.current = false;
     setValue(currentName ?? "");
     setEditing(true);
-    // `autoFocus` on the input owns FOCUS (deterministic, at mount); this deferred
-    // call owns only the SELECTION, so tapping the name replaces it in one gesture.
-    setTimeout(() => inputRef.current?.select(), 30);
   };
+
+  /* 🔴 NO KEYSTROKE IS EVER LOST (round 4 of the visual pass, 2026-10-09, edges E27). The selection used to be made 30ms
+     after the editor opened (`setTimeout(select, 30)`), so whatever was typed in those 30ms was selected and then replaced
+     by the next key: the edge drive typed "Mwanaisha…" and saved "wanaisha…", "Mwanaishakhamis…" saved "anaishakhamis…",
+     "欧阳慕容…" saved "阳慕容…" — a fast typist, or a slow phone, loses the first letters of their own name. Focus and
+     selection now happen in the commit that mounts the field, before the browser handles another event: the next key
+     replaces the whole name, as tapping the name always meant, and every key after it lands. Nothing selects again. */
+  useLayoutEffect(() => {
+    if (!editing) return;
+    const field = inputRef.current;
+    if (!field) return;
+    field.focus();
+    field.select();
+  }, [editing]);
 
   const close = (returnFocus: boolean) => {
     returnFocusRef.current = returnFocus;
@@ -159,16 +171,23 @@ export function ProfileNameEditor({
      grows, so this column shifts down 5px at 390 / 2.5px from 768, once.
      ⭐ AND IT MUST MATCH THE FIELD AT :127, which shares this slot: the two states are one
      control in two modes, so they settle on ONE height or the row jumps on tap. */
+  /* ⭐ THE NAME BREAKS INSIDE ITS COLUMN (round 4 of the visual pass, 2026-10-09, edges tiles 218–220 233–235, E24 E25).
+     An unbroken 40-letter name had no break rule: the button ran 141..722 at 360, its pencil off the card and its focus
+     ring cut, while the hub breaks the same name cleanly. Now the name may break anywhere when it must
+     (`overflow-wrap: anywhere`, which also lets the flex item shrink below its longest word — `break-word` would not),
+     balances its lines, keeps its last two characters together (`keepNameEnd`), and the button never outgrows its
+     column (`max-w-full`). With nothing wider than the column, returning focus here after a save has nothing to reveal,
+     so the hero has nothing to scroll sideways (the hero is `overflow-clip` as well, profile/page.tsx). */
   return (
     <button
       ref={triggerRef}
       type="button"
       onClick={enter}
-      className="mt-1.5 inline-flex min-h-[40px] items-center gap-2 group text-left"
+      className="mt-1.5 inline-flex min-h-[40px] max-w-full items-center gap-2 group text-left"
       aria-label={t.common.editDisplayName}
     >
-      <span className="font-display text-[24px] md:text-[28px] font-bold leading-tight tracking-[-0.02em] text-text">
-        {currentName && currentName.trim() !== "" ? currentName : (
+      <span className="min-w-0 font-display text-[24px] md:text-[28px] font-bold leading-tight tracking-[-0.02em] text-text text-balance [overflow-wrap:anywhere]">
+        {currentName && currentName.trim() !== "" ? keepNameEnd(currentName) : (
           <span className="text-text-subtle italic">{fallbackPlaceholder}</span>
         )}
       </span>

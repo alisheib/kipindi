@@ -28,6 +28,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { loadHubViewer } from "@/lib/server/hub-viewer";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { getServerT } from "@/lib/i18n-server";
+import { keepNameEnd } from "@/components/ui/keep-words";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +71,8 @@ export default async function AccountHubPage() {
           <div className="kp-hub__id">
             <span className="kp-hub__initials" aria-hidden>{viewer.initials}</span>
             <span className="kp-hub__who">
-              <span className="kp-hub__name">{viewer.name}</span>
+              {/* Balanced, and never one character alone on its last line (round 4, edges 236 240 244): `.kp-hub__name`. */}
+              <span className="kp-hub__name">{keepNameEnd(viewer.name)}</span>
               <span className="kp-hub__phone">{viewer.phone}</span>
             </span>
           </div>

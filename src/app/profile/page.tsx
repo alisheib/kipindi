@@ -123,7 +123,14 @@ export default async function ProfilePage() {
     <PageContainer tier="reading" className="space-y-6">
       {/* ── Hero — kit-faithful: tilted FiftyMark watermark, OKLCH gradient,
             mono-stamped meta, picture uploader badge. No off-brand tokens. */}
-      <section className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated">
+      {/* 🔴 `overflow-clip` OVER `overflow-hidden` (round 4 of the visual pass, 2026-10-09, edges tiles 233–235, E24). A box
+          that hides its overflow is still a scroll container, and this one has overflow to scroll: the watermark below
+          stands 32px past its right edge (`-right-6`), and an unbroken name ran 580px past it. Saving a name returns focus
+          to the name's button (name-editor.tsx), the browser scrolled the hero sideways to reveal it, and the scroll stayed:
+          the whole hero 32px left, the avatar ring cut, "ZS 50,000", a bare strip at the right. `clip` clips the same box
+          and is no scroll container, so nothing can move it; `hidden` stays first for an engine without `clip` (Safari
+          before 16), where the name's own break rule (E25) leaves nothing to reveal. */}
+      <section className="relative overflow-hidden overflow-clip rounded-xl border border-border bg-bg-elevated">
         {/* 🔴 DG-P-04 · §S1 — THE h1 MOVED INSIDE THE HERO, AND THE MOVE IS LOAD-BEARING.
             It was the container's FIRST child. `space-y-*` is not a gap; it is
             `> :not([hidden]) ~ :not([hidden]) { margin-top }`, a SIBLING selector that counts

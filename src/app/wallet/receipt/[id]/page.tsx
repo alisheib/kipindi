@@ -49,6 +49,7 @@ import { STATE_STATUSES } from "@/lib/wallet/ledger";
 import { hasReceipt, methodLabel, presentedStatus, receiptStatusWord, receiptTypeWord } from "@/lib/wallet/receipts";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { Cash } from "@/components/ui/cash";
+import { keepIdRuns } from "@/components/ui/keep-words";
 import { PageContainer } from "@/components/layout/page-container";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
@@ -125,11 +126,12 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
         )}
         <Row label={t.wallet.method}>{method}</Row>
         <Row label={t.wallet.transactionId}>
-          <span className="font-mono break-all">{txn.id}</span>
+          {/* The same rule as the deposit's return receipt (round 4, G20): whole runs of four, balanced. `keepIdRuns`. */}
+          <span className="block font-mono text-balance">{keepIdRuns(txn.id)}</span>
         </Row>
         {txn.providerRef && (
           <Row label={t.wallet.gatewayReference}>
-            <span className="font-mono break-all">{txn.providerRef}</span>
+            <span className="block font-mono text-balance">{keepIdRuns(txn.providerRef)}</span>
           </Row>
         )}
         {/* Dates in the numeral face (§T5), as the list prints the same instant. */}

@@ -78,8 +78,10 @@ const { tallyPicks, eatWeekStartMs, paidOutBehind } = await import("../src/lib/s
   const hero = decomment(readFileSync(join(ROOT, "src/components/home/landing-hero.tsx"), "utf8"));
   const page = decomment(readFileSync(join(ROOT, "src/app/page.tsx"), "utf8"));
   const act = hero.slice(hero.indexOf("function SignedInAct"), hero.indexOf("function", hero.indexOf("function SignedInAct") + 10));
+  // ⚠️ `journey={journey}` since round 4 of the visual pass (2026-10-09, edges E4): in the journey the block's link to
+  // /positions takes the tab's own name; the rest of the block is the same for both (visual-pass-r4h §8 holds the switch).
   ok("3: a signed-in player gets SignedInAct where a visitor gets the CTAs",
-     /\{isAuthed \? \(\s*<SignedInAct t=\{t\} mine=\{mine \?\? null\} \/>/.test(hero));
+     /\{isAuthed \? \(\s*<SignedInAct t=\{t\} mine=\{mine \?\? null\} journey=\{journey\} \/>/.test(hero));
   // ⭐ Re-pointed 2026-09-27 (hero v3, spec §9): the trust rows moved from the act block into the
   // INTRO, above the featured card (R7). Same intent — one list, rendered for a visitor AND a player,
   // before the player's block — now asserted where the list actually lives.

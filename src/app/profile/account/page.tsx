@@ -10,6 +10,8 @@ import { FilterPill } from "@/components/ui/filter-pill";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Pagination, PLAYER_PER_PAGE, parsePage } from "@/components/ui/pagination";
 import { SearchBox } from "@/components/ui/search-box";
+import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
+import { maskPhone } from "@/lib/phone-normalize";
 import { parseQuery, matchesQuery, fieldNames, ACCOUNT_ACTIVITY_SEARCH } from "@/lib/search";
 import { AccountActivityBar, type ActivityCounts } from "./account-bar";
 import { auditCategoryLabel, auditActionLabel } from "@/lib/account/category-label";
@@ -224,9 +226,10 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
           <Item label={t.common.yourName} value={user?.displayName ?? "—"} />
           <Item
             label={t.auth.phone}
-            value={user?.phoneE164
-              ? `${user.phoneE164.slice(0, 4)}*****${user.phoneE164.slice(-2)}`
-              : "—"}
+            /* ONE PHONE, ONE MASK (round 4 of the visual pass, 2026-10-09, edges E32): this read "+255*****84" in the audit
+               log's stars while /profile and the hub read "+255••••84" — `maskPhone` (phone-normalize.ts) is the one
+               definition of a masked number, and a short or malformed value masks to dots instead of being echoed. */
+            value={user?.phoneE164 ? maskPhone(user.phoneE164) : "—"}
           />
           <Item label={t.profile.region} value={user?.region ?? "—"} />
           <Item
@@ -277,8 +280,13 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
           <>
             {/* ⛔ NOT STICKY. `QUERY_BAR_CLASS` already sticks at `top-[56px]`, and two sticky
                 surfaces cannot share one offset — that is the 91px overlap `qa:bar-geometry` found
-                on three routes at once. */}
-            <div className="py-1">
+                on three routes at once.
+                ⭐ THE SEARCH AND THE PANEL'S BAR ARE ONE BAND (round 4 of the visual pass, 2026-10-09, R4-C's leftover):
+                `QUERY_SEARCH_BAND_CLASS`, as on every page with a search over its bar. The panel's rung is 16px
+                (`space-y-3`), so the box stands 26 under the heading, the pills 26 under the box and the table 26 under
+                the bar's last row — 16 + 10 each — where `py-1` put the box 20 under the heading and the pills 55 under it
+                (the empty echo row's 25 + 4 + 16 + 10). */}
+            <div className={QUERY_SEARCH_BAND_CLASS}>
               <Suspense>
                 <SearchBox
                   placeholder={t.profile.searchActivity}

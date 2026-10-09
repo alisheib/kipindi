@@ -281,8 +281,11 @@ const TITLE_LINK = "<Link href={" + BT + "/markets/${p.marketId}" + BT + " as ne
  * ⚠️ Until 2026-10-08 this pinned a two-line clamp on the full question; the visual pass (tile 211) found it cutting the
  * bet's own question at 320 ("…kutakuwa kijani…" with "kesho?" hidden), so the pin now holds the opposite: no clamp.
  * `keepUnits` (2026-10-08 · G1): the same words, with a number and its Chinese unit ("200毫米") kept on one line.
+ * ⚠️ `keepFigures` since round 4 of the visual pass (2026-10-09, edges 197 255): keep-words.tsx's title rule, which keeps
+ * `keepUnits`' ideograph unit and adds a season ("2026-27") and a unit word ("dakika 28:00") — the same words, every
+ * title surface on one rule (visual-pass-r4h §5 holds it).
  */
-const TITLE_WORDS = `hover:underline">{keepUnits(title.text)}</Link>`;
+const TITLE_WORDS = `hover:underline">{keepFigures(title.text)}</Link>`;
 /** The heading the question sits in: one 20px line per line of words (16px type, leading 1.25), its lines balanced. */
 const TITLE_HEADING = `<h2 className="mt-3 font-display text-body-lg font-semibold leading-tight text-text text-balance">`;
 /** The link's reach: the scale's step 2 of padding above and below, taken back by the same step as negative margin. */
@@ -1022,7 +1025,7 @@ const stampedShowsExact = swap(CARD, UNRESOLVED_STAT,
   `m.selectionClosedNotifiedAt ? <Stat label={t.market.payoutIfWin} value={formatTzs(p.stake)} tone="gold" money hint={t.market.payoutExactNote} /> : ${UNRESOLVED_STAT}`);
 const cardIsALink = swap(CARD, "<h2 className=", `<Link href={"/markets" as never}>open</Link><h2 className=`);
 const reachDropped = swap(CARD, TITLE_REACH, `className="block py-2 hover:underline"`);
-const titleClamped = swap(CARD, "{keepUnits(title.text)}</Link>", `<span className={title.short ? undefined : "line-clamp-2"}>{keepUnits(title.text)}</span></Link>`);
+const titleClamped = swap(CARD, "{keepFigures(title.text)}</Link>", `<span className={title.short ? undefined : "line-clamp-2"}>{keepFigures(title.text)}</span></Link>`);
 const chipCopied = swap(CARD, "variant={positionStatusChip(p.status)}", `variant={p.status === "LOSS" ? "no" : "warning"}`);
 const classicChipBack = swap(CLASSIC_CARD, "variant={positionStatusChip(status)}", `variant={status === "LOSS" ? "no" : "warning"}`);
 const numberGone = swap(CARD, "{p.id}</p>", "</p>");

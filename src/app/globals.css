@@ -4978,12 +4978,14 @@ html[data-sheet-open] .route-enter { animation: none; }
    `transform` also leaves the transition list with it: a transition naming a
    property nothing changes is a promise the next reader will try to keep.
    ⚠️ `.2s` ×3 → `--t-base` (220), the nearest rung to 200. */
-.mcardp-watermark { position: absolute; bottom: -18px; right: -14px; color: var(--border-strong); opacity: 0.055; pointer-events: none; z-index: 0;
-  transition: opacity var(--t-base) linear, color var(--t-base) linear; }
+/* 🔴 ROUND 4 OF THE VISUAL PASS (2026-10-09, edges tiles 160 184, E13) · AND THE HOVER LEG IS GONE TOO. The glyph bleeds
+   out of the card's bottom-right corner, which is where the foot keeps its controls — the share glyph, "Details" and the
+   (i) button — so lifting it 0.055 → 0.22 in --brand-400 on hover lit a decoration (28,38,122 against the card's ground)
+   directly behind three controls, at the moment the pointer is on the card to use them. A control is read over a quiet
+   ground; the card's own hover already answers the pointer (the ring and the lift above), so the watermark simply stays
+   at rest. Nothing else changes: the glyph, its place and its resting ink are the kit's. */
+.mcardp-watermark { position: absolute; bottom: -18px; right: -14px; color: var(--border-strong); opacity: 0.055; pointer-events: none; z-index: 0; }
 .mcardp-watermark svg { width: 140px; height: 140px; }
-@media (hover: hover) {
-  .mcardp:hover .mcardp-watermark { opacity: 0.22; color: var(--brand-400); }
-}
 .mcardp > *:not(.mcardp-watermark) { position: relative; z-index: 1; }
 .mcardp-top { display: flex; align-items: center; flex-wrap: nowrap; gap: 5px; min-height: 20px; }
 /* 🔴 D65 · AT LARGE TEXT THIS ROW CUT THE CATEGORY WORD TO A SINGLE LETTER.
@@ -6288,6 +6290,14 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    frozen until S15 (the classic capsule's Wallet keeps the catch-all's square ring). */
 :root:has(#kp-journey-shell) .kp-wsheet__link { margin-inline: calc(-1 * var(--sp-1)); padding-inline: var(--sp-1); border-radius: var(--r-sm); }
 :root:has(#kp-journey-shell) .kp-wsheet__link:focus-visible { box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25); }
+/* ⭐ The journey's Wallet doors keep their glyph whole (round 4 of the visual pass, 2026-10-09, edges tile 488, E2). At 320
+   a door is 133px wide; `.btn-lg`'s 20px a side leaves 91px for the glyph, the 8px gap and the label, and the journey's
+   "Weka pesa" (Inter 600 15px, ~79.5px) needs 103.5 — so the 16px ⊕ shrank to ~4px, the one flex item that could give
+   (the label is nowrap). The glyph no longer shrinks, and the doors pad 12px a side, which leaves 107px: the content is
+   centred, so wherever it fit before nothing moves (Toa pesa 90, Deposit 80, Withdraw 94 — which squeezed its arrow to
+   13px at en 320 the same way). ⚠️ Journey-only: the classic capsule opens this same sheet (frozen until S15). */
+:root:has(#kp-journey-shell) .kp-wsheet__act { padding-inline: var(--sp-3); }
+:root:has(#kp-journey-shell) .kp-wsheet__act > svg { flex-shrink: 0; }
 
 /* ── S6 · THE CAPTIONED BALANCE (SJ-15) — the journey header's wallet door ──────────────────────────────────
    "Salio" over "TZS 2,000": one 44px button that opens the Wallet above. Only the journey header renders it
@@ -6360,7 +6370,11 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-hub__id { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg-elevated); }
 .kp-hub__initials { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border: 1px solid var(--border-strong); border-radius: var(--r-pill); background: var(--bg-royal-soft); font-family: var(--font-display); font-weight: 700; font-size: var(--type-h4); color: var(--text); }
 .kp-hub__who { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
-.kp-hub__name { font-family: var(--font-display); font-weight: 600; font-size: var(--type-h4); line-height: 1.25; color: var(--text); overflow-wrap: anywhere; }
+/* The name balances its lines (round 4 of the visual pass, 2026-10-09, edges tiles 236 240 244, E26): 40 Chinese characters
+   broke 13 · 13 · 13 · 1 at 360, the last alone. Balanced they read 10 · 10 · 10 · 10 (Chromium 114, Firefox 121, Safari
+   17.5); and on any engine `keepNameEnd` (keep-words.tsx) keeps the last two characters together, so a line never holds
+   one alone. */
+.kp-hub__name { font-family: var(--font-display); font-weight: 600; font-size: var(--type-h4); line-height: 1.25; color: var(--text); overflow-wrap: anywhere; text-wrap: balance; }
 .kp-hub__phone { font-family: var(--font-mono); font-size: var(--type-small); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-subtle); }
 .kp-hub__grid { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: var(--sp-4); }
 /* From 1024 the two columns stack on their own (WP12's tiles 122-317, 2026-10-08): the row-major grid paired the cards
@@ -6838,6 +6852,15 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    so at equal specificity they win and the utility is ignored — the classic bar's `.btn` lesson, measured at 360.
    The nav and the desktop-only wrappers take their display from their utilities and nothing else. */
 .kp-jhdr { height: 56px; background: var(--panel); border-bottom: 1px solid var(--border); }
+/* ⭐ THE JOURNEY'S TOASTS HANG UNDER ITS HEADER (round 4 of the visual pass, 2026-10-09, edges tiles 203 218 233 235, E34).
+   The toaster is fixed to the viewport's top (toast.tsx), so "Jina limesasishwa" lay over the header's controls — the
+   capsule, the pill, the language box, the bell and the avatar at 1280 (x998–1244 y20–95), the whole header on a phone.
+   In the journey the stack starts at the header's foot (56px): on a phone its own 16px top padding sets the first toast
+   at 72, and from 640 it stands 8px under the header (64), where the account menu hangs (`sm:top-[64px]`). The header is
+   sticky at the top, so this holds at every scroll position. ⛔ Journey-only: the classic overlays are parity-captured
+   chrome (`qa:classic-shell-parity`), and the hook is an attribute, which that census does not name. */
+:root:has(#kp-journey-shell) [data-toaster] { top: 56px; }
+@media (min-width: 640px) { :root:has(#kp-journey-shell) [data-toaster] { top: calc(56px + var(--sp-2)); } }
 .kp-jhdr__row { display: flex; align-items: center; gap: 6px; height: 100%; max-width: var(--w-board); margin-inline: auto; padding-inline: var(--sp-4); }
 /* The right-hand controls, grouped as the classic bar groups them: one gap on a phone, the cluster's own from 640. */
 .kp-jhdr__cluster { display: flex; flex-shrink: 0; align-items: center; gap: 6px; }

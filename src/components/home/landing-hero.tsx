@@ -74,6 +74,8 @@ import type { BoardLens, HeroFigures, HeroRow } from "@/lib/markets/hero";
 import { sideWord } from "@/lib/side-label";
 import { priceState } from "@/lib/markets/price-state";
 import { Cash } from "@/components/ui/cash";
+import { DotSeq } from "@/components/ui/dot-seq";
+import { keepFigures } from "@/components/ui/keep-words";
 import type { LandingPicks } from "@/lib/server/landing-picks";
 
 /**
@@ -101,6 +103,11 @@ type Props = {
    * only rails whose payout path is live and that no officer has paused (R8(6)). Empty → no row.
    */
   rails: readonly string[];
+  /**
+   * The request is shown the journey (`resolveSimpleJourney`). It names one door only: the signed-in block's link to
+   * /positions takes the journey tab's own name (see `SignedInAct`). Omitted, today's words.
+   */
+  journey?: boolean;
 };
 
 /** Escape a word for use inside a RegExp — the side words are data, not patterns. */
@@ -293,30 +300,38 @@ function QuestionRow({ row, t, locale, nowMs }: { row: HeroRow; t: Dict; locale:
   // The card's own names for the pair, so one control has one vocabulary: no figure without a price.
   const yesAria = (price.kind === "priced" ? t.market.backSideAria.replace("{pct}", String(price.yesPct)) : t.market.backSideAriaNoPrice).replace("{side}", yesWord);
   const noAria = (price.kind === "priced" ? t.market.backSideAria.replace("{pct}", String(100 - price.yesPct)) : t.market.backSideAriaNoPrice).replace("{side}", noWord);
+  /* ⭐ THE META LINE BREAKS ONLY BETWEEN ITS FACTS (round 4 of the visual pass, 2026-10-09, edges tiles 248 249 257 258 266
+     267): "Closes 27 Sep · Settles on {source} · Pool TZS n · n predictors" was one sentence of text, so at 360 its first
+     line ended on the dot ("…Linatatuliwa kwa bot.go.tz ·" / "Bwawa TZS 0 · 0 watabiri"). It is `DotSeq` now, the one
+     idiom for "A · B · C" (dot-seq.tsx): each fact one flex item, its dot hanging in the gap, so no line ends or opens on
+     "·". The facts are the same words and wear the same classes and `data-market-part` hooks, through `renderPart`. */
+  const settles = row.sourceName ? `${settlesPre}${row.sourceName}${settlesPost}` : null;
+  const pool = `${t.common.pool} ${formatTzs(row.pool)}`;
+  const depth = `${formatNumber(row.predictors)} ${row.predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}`;
+  const metaPart = (part: string) =>
+    part === closes ? <span className="kp-qrow__close">{closes}</span>
+    : part === settles ? (
+      <span className="kp-qrow__src">
+        {settlesPre}
+        <span className="kp-qrow__srcname" data-market-part="source">{row.sourceName}</span>
+        {settlesPost}
+      </span>
+    )
+    // The pool is REAL even when it is zero, so it is always stated (V18, K48). Each part draws its words as the row
+    // always did (the same expressions; the strings above are only how DotSeq knows which part it is holding).
+    : part === pool ? <span className="kp-qrow__pool" data-market-part="pool">{t.common.pool}{" "}{formatTzs(row.pool)}</span>
+    : part === depth ? (
+      <span className="kp-qrow__depth" data-market-part="predictors">
+        {formatNumber(row.predictors)}{" "}{row.predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}
+      </span>
+    )
+    : part;
   return (
     <li className="kp-qrow" data-price={price.kind} data-market-surface="board" data-row-id={row.id}>
       <Link href={`/markets/${row.id}` as never} className="kp-qrow__head">
-        <span className="kp-qrow__q">{title}</span>
-        <span className="kp-qrow__meta">
-          <span className="kp-qrow__close">{closes}</span>
-          {row.sourceName && (
-            <>
-              {" · "}
-              <span className="kp-qrow__src">
-                {settlesPre}
-                <span className="kp-qrow__srcname" data-market-part="source">{row.sourceName}</span>
-                {settlesPost}
-              </span>
-            </>
-          )}
-          {" · "}
-          {/* The pool is REAL even when it is zero, so it is always stated (V18, K48). */}
-          <span className="kp-qrow__pool" data-market-part="pool">{t.common.pool}{" "}{formatTzs(row.pool)}</span>
-          {" · "}
-          <span className="kp-qrow__depth" data-market-part="predictors">
-            {formatNumber(row.predictors)}{" "}{row.predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}
-          </span>
-        </span>
+        {/* `keepFigures` (round 4, edges 197 255): "2026-27" and "dakika 28:00" never break inside. */}
+        <span className="kp-qrow__q">{keepFigures(title)}</span>
+        <DotSeq text={[closes, settles, pool, depth].filter(Boolean).join(" · ")} className="kp-qrow__meta" renderPart={metaPart} />
       </Link>
       <div className="kp-qrow__read">
         <div className="kp-qrow__line">
@@ -365,7 +380,7 @@ function QuestionRow({ row, t, locale, nowMs }: { row: HeroRow; t: Dict; locale:
   );
 }
 
-export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, rails }: Props) {
+export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, rails, journey = false }: Props) {
   const { featured } = figures;
   const chart = featured ? cards.charts.get(featured.id) : undefined;
 
@@ -441,7 +456,7 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, 
               follow the card (the delivery's placement map P4); from 1024 they sit in the left column
               under the intro. A player gets their own block instead, with Set limits (WP14 part 2). */}
           {isAuthed ? (
-            <SignedInAct t={t} mine={mine ?? null} />
+            <SignedInAct t={t} mine={mine ?? null} journey={journey} />
           ) : (
             <>
               <div className="kp-hero__ctas">
@@ -502,7 +517,7 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, 
  * ⛔ A frozen wallet still says so, and still gets no money control — the same rule as the Wallet
  * (`wallet-sheet.tsx`), now trivially true because this block has none at all.
  */
-function SignedInAct({ t, mine }: { t: Dict; mine: LandingMine | null }) {
+function SignedInAct({ t, mine, journey }: { t: Dict; mine: LandingMine | null; journey: boolean }) {
   const picks = mine?.picks ?? null;
   const balance = mine?.balance ?? null;
   const held = !!mine?.held;
@@ -553,8 +568,12 @@ function SignedInAct({ t, mine }: { t: Dict; mine: LandingMine | null }) {
       {/* The block's two doors, and neither is money: the player's own positions — which is what the
           figures above are ABOUT — and the RG limits, one tap from the first screen (K37). */}
       <div className="kp-mine__links">
+        {/* ⭐ ONE PAGE, ONE NAME (round 4 of the visual pass, 2026-10-09, edges E4): in the journey /positions is the tab
+            "Tiketi zangu / My tickets / 我的注单" — its h1 and its tab say so — so this link takes the tab's own key, where
+            it read "Nafasi zangu / My positions / 我的持仓". A classic reader keeps today's words (the classic nav names
+            the page "Nafasi", and its home link "Nafasi zangu"). No new words. */}
         <Link href={"/positions" as never} className="kp-mine__limits">
-          {t.home.myPositions}
+          {journey ? t.journey.tabTickets : t.home.myPositions}
           <I.arrowRight s={14} />
         </Link>
         <Link href="/profile/responsible-gambling" className="kp-mine__limits">

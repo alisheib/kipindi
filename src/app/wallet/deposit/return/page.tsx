@@ -43,6 +43,7 @@ import { cardReturnOrderId } from "@/lib/wallet/card-return";
 import { settleDepositFromReturn } from "@/lib/server/wallet-service";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { Cash } from "@/components/ui/cash";
+import { keepIdRuns } from "@/components/ui/keep-words";
 import { PageContainer } from "@/components/layout/page-container";
 import { KycFirstDepositNotice } from "@/components/wallet/kyc-first-deposit-notice";
 import { cookies } from "next/headers";
@@ -156,11 +157,13 @@ export default async function DepositReturnPage({
             <span className="text-text">{methodLabel(t, outcome.txn.provider)}</span>
           </Row>
           <Row label={t.wallet.transactionId}>
-            <span className="font-mono text-text break-all">{outcome.txn.id}</span>
+            {/* An id breaks in whole runs of four, its lines balanced, never one or two characters alone (round 4 of the visual
+              pass, 2026-10-09, S9's note G20: `break-all` broke a long reference wherever the line ran out). `keepIdRuns`. */}
+            <span className="block font-mono text-text text-balance">{keepIdRuns(outcome.txn.id)}</span>
           </Row>
           {outcome.txn.providerRef && (
             <Row label={t.wallet.gatewayReference}>
-              <span className="font-mono text-text break-all">{outcome.txn.providerRef}</span>
+              <span className="block font-mono text-text text-balance">{keepIdRuns(outcome.txn.providerRef)}</span>
             </Row>
           )}
           <Row label={t.wallet.date}>

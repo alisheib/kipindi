@@ -77,3 +77,96 @@ export function keepYears(text: string): ReactNode {
   out.push(text.slice(from));
   return out;
 }
+
+/**
+ * A MARKET TITLE'S FIGURES STAY WHOLE (round 4 of the visual pass, 2026-10-09, edges tiles 197 199 253 255 256): a season
+ * never breaks at its hyphen — the Chinese page read "辛巴俱乐部赢得2026-" / "27赛季NBC超级联赛" — and a number never parts
+ * from its unit — the Swahili page read "atavunja dakika" / "28:00 kwenye 10K". Titles are data, so the words are never
+ * touched: each figure run goes in a `white-space: nowrap` span (the reason `keepUnits` gives: what every engine honours,
+ * and the text a reader copies or a screen reader names is unchanged).
+ * A RUN is a number — digits with their own separators (2,650 · 5.5 · 28:00), a currency sign before them, a range after
+ * them (2026-27 · 24/7 · 2026–27), a % — together with its unit on ONE side:
+ *   · a Chinese unit of one or two ideographs straight after it ("200毫米", "27赛季" — `keepUnits`' rule, kept);
+ *   · a hyphenated unit ("30-day", "7-day");
+ *   · a unit word after it ("28 minutes", "$5.5 bilioni") or before it ("dakika 28:00", "nyuzi 32", "TZS 10,000"), from the
+ *     closed lists below — a measure noun, a magnitude, a currency code — and a month on either side of a day ("1 Agosti",
+ *     "April 15"). Where a word stands on both sides, the month or the unit after wins and the word before stays plain text
+ *     ("tarehe 1 Agosti" keeps "1 Agosti"), so a run is never more than one word and its number.
+ * A bare number with no unit and no range ("2,650", "28:00") has no break inside it to protect and stays plain text, so a
+ * title without a run renders byte for byte as before. ⚠️ Proper nouns are data and are never joined ("World Athletics",
+ * "NBC Premier League"). ⚠️ The lists are closed on purpose: a run cannot grow past a word and a number (≤ 20 characters in
+ * every seeded title), which fits the narrowest title line on every surface, where an open rule ("a number keeps the word
+ * before it") would join "ya 2,650" and "on 1" and could not promise that. ⛔ Deterministic, no lookbehind (a client
+ * bundle holding one fails to parse on Safari before 16.4), CJK-safe: the unit words are Latin, the ideograph rule is
+ * `keepUnits`' own.
+ */
+const MONTHS = "January|February|March|April|May|June|July|August|September|October|November|December|Januari|Februari|Machi|Aprili|Mei|Juni|Julai|Agosti|Septemba|Oktoba|Novemba|Desemba";
+const UNIT_BEFORE = `dakika|saa|sekunde|siku|wiki|mwezi|miezi|mwaka|miaka|nyuzi|asilimia|tarehe|milioni|bilioni|TZS|USD|KES|${MONTHS}`;
+const UNIT_AFTER = `minutes?|hours?|seconds?|days?|weeks?|months?|years?|degrees?|percent|million|billion|milioni|bilioni|${MONTHS}`;
+/** Groups: 1 the word before + 2 its space · 3 the number · 4 an ideograph unit · 5 a hyphenated unit · 6 a space + 7 the word after. */
+const FIGURE = new RegExp(
+  `(?:\\b(${UNIT_BEFORE})(\\s+))?([$€£]?\\d+(?:[.,:]\\d+)*(?:[-–/]\\d+(?:[.,:]\\d+)*)*%?)`
+    + `(?:(\\s?[㐀-䶿一-鿿豈-﫿]{1,2})|(-[a-z]+)\\b|(\\s+)(${UNIT_AFTER})\\b)?`,
+  "g",
+);
+/** A break could fall inside the run: a space, a range's mark, or an ideograph (UAX #14 lets a line end before one). */
+const BREAKABLE = /[\s\-–/㐀-䶿一-鿿豈-﫿]/;
+
+export function keepFigures(text: string): ReactNode {
+  if (!/\d/.test(text)) return text;
+  const out: ReactNode[] = [];
+  let from = 0;
+  for (const m of text.matchAll(FIGURE)) {
+    const [, before, gap, num, ideo, hyph, space, after] = m;
+    // One side only: a unit after the number wins, and the word before then stays plain text.
+    const tail = ideo ?? hyph ?? (after !== undefined ? space + after : "");
+    const head = tail === "" && before !== undefined ? before + gap : "";
+    const start = (m.index ?? 0) + (before !== undefined && head === "" ? before.length + gap.length : 0);
+    const run = head + num + tail;
+    // A run with no break inside it (a bare "2,650") is left as text.
+    if (!BREAKABLE.test(run)) continue;
+    out.push(text.slice(from, start), <span key={`f${out.length}`} className="whitespace-nowrap">{run}</span>);
+    from = start + run.length;
+  }
+  if (out.length === 0) return text;
+  out.push(text.slice(from));
+  return out;
+}
+
+/**
+ * A NAME NEVER ENDS ON ONE CHARACTER ALONE (round 4 of the visual pass, 2026-10-09, edges tiles 236 240 244): the hub's
+ * 40-character Chinese name broke 13 · 13 · 13 · 1 at 360, its last character alone on a fourth line, and an unbroken
+ * 40-letter name that must break anywhere could leave one letter the same way. The name's last two characters (and the
+ * space between them, if any) go in one nowrap span, so a last line holds two at least. Two characters always fit a line,
+ * so this can never overflow — unlike `keepLastWords`, whose pair of words a long name could make wider than its column.
+ * A name of two characters or fewer is returned untouched; the text itself is unchanged.
+ */
+const NAME_END = /\S\s*\S\s*$/u;
+
+export function keepNameEnd(name: string): ReactNode {
+  const at = name.search(NAME_END);
+  if (at <= 0) return name;
+  return [name.slice(0, at), <span key="name-end" className="whitespace-nowrap">{name.slice(at)}</span>];
+}
+
+/**
+ * AN ID BREAKS IN WHOLE RUNS OF FOUR (round 4 of the visual pass, 2026-10-09, S9's note G20): on the deposit's return
+ * receipt at 390 a long transaction id or gateway reference broke under `break-all` wherever its line ran out, leaving
+ * one or two characters alone on a second line. Now the id is cut into runs of four, each one nowrap, with a `<wbr>`
+ * between them — the only places a line may end — and a short last run (fewer than four) joins the run before it, so a
+ * second line always holds four characters or more. `txn_` + 12 is four whole runs. The characters are unchanged and
+ * `<wbr>` carries no text, so a copy, a search and a screen reader read the id exactly. The caller balances the lines.
+ */
+export function keepIdRuns(id: string): ReactNode {
+  const chars = Array.from(id);
+  if (chars.length <= 7) return id;
+  const runs: string[] = [];
+  for (let i = 0; i < chars.length; i += 4) runs.push(chars.slice(i, i + 4).join(""));
+  // More than seven characters make two runs at least, so a short tail always has a run to join.
+  const tail = runs[runs.length - 1];
+  if (Array.from(tail).length < 4) { runs.pop(); runs[runs.length - 1] += tail; }
+  return runs.flatMap((r, i) => {
+    const run = <span key={`r${i}`} className="whitespace-nowrap">{r}</span>;
+    return i === 0 ? [run] : [<wbr key={`w${i}`} />, run];
+  });
+}

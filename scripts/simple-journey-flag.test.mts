@@ -692,7 +692,10 @@ function g10Wiring(W: World) {
   // height, panel and border), so a journey page does not jump while that code arrives; the tabs need none, because
   // the rail takes no room in the page. And nothing else renders or loads the journey chrome, or loads it into a
   // classic layout component.
-  const SWAP_HEADER = '{journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar user={topUser} onBreak={promoSuppressed} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /></Suspense> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}';
+  // ⚠️ `user={journeyUser}` since round 4 of the visual pass (2026-10-09, edges E32): the journey's header is handed
+  // `topUser` with its phone masked by `maskPhone`, the one mask the hub and the profile hero use; the classic arm is
+  // still `topUser`, today's props, character for character (visual-pass-r4h §7 holds the spread).
+  const SWAP_HEADER = '{journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /></Suspense> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}';
   const SWAP_RAIL = "{journeyShown ? <Suspense fallback={null}><LazyJourneyTabs userId={session?.userId ?? null} /></Suspense> : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}";
   const SHELL_LAZY = "src/components/layout/shell-lazy.tsx";
   /** The two journey arms' lines in the shell's one lazy module (S6 WP6c): `next/dynamic`, server render on, no option object, the lost-chunk guard last. */

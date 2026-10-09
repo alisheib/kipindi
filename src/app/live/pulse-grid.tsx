@@ -1,12 +1,14 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Fragment, Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { BrandSpinner, TippingBar } from "@/components/brand";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { marketCategoryLabel, pickLocalized } from "@/lib/localized";
 import { useT } from "@/lib/i18n";
 import { SearchBox } from "@/components/ui/search-box";
+import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
+import { keepFigures } from "@/components/ui/keep-words";
 import { fieldNames, MARKET_SEARCH } from "@/lib/search";
 import { sideWord } from "@/lib/side-label";
 import { priceState } from "@/lib/markets/price-state";
@@ -109,14 +111,20 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
         * many of them are painted at once.
         */}
       {/* ⚠️ SUSPENSE: in `url` mode `SearchBox` reads `useSearchParams`, which needs a boundary —
-          every other surface that uses it wraps it the same way. */}
-      <Suspense>
-        <SearchBox
-          placeholder={t.common.searchLiveMarkets}
-          ariaLabel={t.common.searchLiveMarkets}
-          helpFields={fieldNames(MARKET_SEARCH)}
-        />
-      </Suspense>
+          every other surface that uses it wraps it the same way.
+          ⭐ THE SEARCH IS A BAND (round 4 of the visual pass, 2026-10-09, R4-C's leftover; tile 205 measured 49px under the
+          box): `QUERY_SEARCH_BAND_CLASS`, as on every other page with a search. /live has no query bar, so the box's echo row
+          lies 15px into the gap below it (globals.css `.kp-search-band`): on the page's 24px rung the box stands 34 under
+          the hero and the wall 34 under the box — 24 + 10 over, 25 − 15 + 24 under — where it stood 24 over and 49 under. */}
+      <div className={QUERY_SEARCH_BAND_CLASS}>
+        <Suspense>
+          <SearchBox
+            placeholder={t.common.searchLiveMarkets}
+            ariaLabel={t.common.searchLiveMarkets}
+            helpFields={fieldNames(MARKET_SEARCH)}
+          />
+        </Suspense>
+      </div>
 
       {/* ⛔ The search-miss empty state lives in `page.tsx` now, beside the count it must agree
           with. A second one here would be a second definition of "nothing matched". */}
@@ -146,10 +154,17 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
  * Renders a title with every hyphenated token ("30-day", "month-end?", "Man-City") in a nowrap span, so a balanced
  * wrap can move the whole token but never break after its hyphen (E-400 ⑦b). `split` with a capturing group puts
  * the tokens at odd indices and the text between them — spaces included — at even ones, so no space is added or lost.
+ * ⭐ ROUND 4 (2026-10-09, edges 197 255): a token stops at an ideograph, its hyphen touches a letter, and the text
+ * between the tokens keeps its figures whole. `\S*` ran across Chinese, which has no spaces, so
+ * "辛巴俱乐部赢得2026-27赛季NBC超级联赛" was ONE token — the whole title in one nowrap span, wider than any card. A token
+ * is now a run of non-space, non-Han characters around a hyphen with a letter on one side ("month-end?", "30-day"); a
+ * range of two numbers ("2026-27") is a figure, and `keepFigures` (keep-words.tsx, the cards' and the market page's own
+ * rule) shapes the text between the tokens, so "2026-27赛季" and "dakika 28:00" never break inside. A part with no
+ * figure renders as the plain text it was (a keyed fragment, no element).
  */
 export function KeepHyphenated({ text }: { text: string }) {
-  const parts = text.split(/(\S*[\p{L}\p{N}]-[\p{L}\p{N}]\S*)/u);
-  return <>{parts.map((part, i) => (i % 2 === 1 ? <span key={i} className="whitespace-nowrap">{part}</span> : part))}</>;
+  const parts = text.split(/([^\s\p{Script=Han}]*(?:\p{L}-[\p{L}\p{N}]|\p{N}-\p{L})[^\s\p{Script=Han}]*)/u);
+  return <>{parts.map((part, i) => (i % 2 === 1 ? <span key={i} className="whitespace-nowrap">{part}</span> : <Fragment key={i}>{keepFigures(part)}</Fragment>))}</>;
 }
 
 /**

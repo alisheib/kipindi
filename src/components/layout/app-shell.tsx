@@ -46,6 +46,7 @@ import { PreviewMarker } from "./preview-marker";
 import { FunnelUtm } from "@/components/analytics/funnel-utm";
 import { isStaffRole } from "@/lib/server/roles";
 import { displayLabel, displayInitials } from "@/lib/display-label";
+import { maskPhone } from "@/lib/phone-normalize";
 import { getServerT } from "@/lib/i18n-server";
 import { getPlatformConfig, maintenanceMessage } from "@/lib/server/platform-config";
 import { getProposalsConfig } from "@/lib/server/proposals-config";
@@ -349,6 +350,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
      attribute the browser beacon reads before it sends anything: staff, a preview pass and an account whose read
      failed are "off"; everybody else is counted in the journey they are shown. `/api/funnel` needs no cookie. */
   const funnelScopeValue = journeyPreview || funnelViewer === "staff" || funnelViewer === "unknown" ? "off" : journeyShown ? "new" : "old";
+  /* ⭐ ONE PHONE, ONE MASK IN THE JOURNEY (round 4 of the visual pass, 2026-10-09, edges E32): the account menu read
+     "+255*****84" (`topUser`'s stars, above) while the hub and the profile hero read "+255••••84" — `maskPhone`
+     (phone-normalize.ts) is the one definition of a masked number, and a short value masks to dots rather than being
+     echoed. The journey's header is handed that mask; ⛔ the classic bar keeps `topUser` exactly as it was (frozen
+     chrome for S6/S7, `qa:classic-shell-parity`), so a classic menu still reads its stars until S15. */
+  const journeyUser = session ? { ...topUser, phone: maskPhone(session.phoneE164) } : topUser;
 
   return (
     <div className="min-h-screen flex flex-col bg-bg-base text-text">
@@ -378,7 +385,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           (a preview pass turned on). The header's fallback is therefore the bar's own empty box, with its height, its
           panel and its border, so nothing below it moves; the tabs need none, because the rail is anchored to the
           viewport and takes no room in the page. */}
-      {journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar user={topUser} onBreak={promoSuppressed} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /></Suspense> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}
+      {journeyShown ? <Suspense fallback={<div aria-hidden="true" className="kp-jhdr" />}><LazyJourneyTopBar user={journeyUser} onBreak={promoSuppressed} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} /></Suspense> : <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} invitePaid={invitePaid} />}
       {/* ⭐ THE PREVIEW MARKER — first under the bar, so whoever holds this browser knows at once that they are
           looking at pages players do not see yet, and has the way out on the same line. */}
       {journeyPreview && <PreviewMarker label={t.journey.previewMarker} exit={t.journey.previewExit} />}

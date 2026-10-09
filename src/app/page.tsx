@@ -23,6 +23,7 @@ import { shownYesPct } from "@/lib/markets/price-state";
 import { BOARD_LENSES, heroFigures, type BoardLens, type HeroRow } from "@/lib/markets/hero";
 import { landingComposition } from "@/lib/markets/landing";
 import { getServerT } from "@/lib/i18n-server";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { getGlobalConfig } from "@/lib/server/market-config";
 import { ratesFrom } from "@/app/legal/rules/_shared";
 import { landingPicks, paidOutBehind } from "@/lib/server/landing-picks";
@@ -44,16 +45,25 @@ export const dynamic = "force-dynamic";
  * `metadataBase` in the layout resolves these to the absolute site URL, which is why they are
  * written relative and there is no second copy of the base URL here to drift.
  */
-export const metadata: Metadata = {
-  alternates: { canonical: "/" },
-  // ⛔ SPREAD, NEVER REPLACE. `openGraph: { url: "/" }` on its own wiped og:image, og:locale,
-  // og:site_name and og:type from this page — Next merges metadata per FIELD, so a partial
-  // openGraph object replaces the layout’s entire one. Measured 0 of each on "/" against 6 on
-  // /markets, on the same deploy.
-  // ⚠️ `url` is KEPT rather than dropped: nothing here isolates whether Next synthesises og:url
-  // from `alternates.canonical`, and dropping it would risk re-deleting the tag this replaces.
-  openGraph: { ...ROOT_OPEN_GRAPH, url: "/" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerT();
+  return {
+    // ⭐ THE TAB SPEAKS THE READER'S LANGUAGE (round 4 of the visual pass, 2026-10-09, edges E5): the home's title was the
+    // layout's English default, "50pick — Predict events. Not chance.", in Swahili and Chinese too (38 sw and 37 zh tiles),
+    // while every other page names itself in the reader's words. The same composition, its line from the dictionary's own
+    // tagline (`auth.railTagline`: "Tabiri matukio. Si bahati." · "预测事件，而非运气。"); `absolute`, because the
+    // layout's template would add " · 50pick" to a title that already opens with the name. No new words.
+    title: { absolute: `50pick — ${t.auth.railTagline}` },
+    alternates: { canonical: "/" },
+    // ⛔ SPREAD, NEVER REPLACE. `openGraph: { url: "/" }` on its own wiped og:image, og:locale,
+    // og:site_name and og:type from this page — Next merges metadata per FIELD, so a partial
+    // openGraph object replaces the layout’s entire one. Measured 0 of each on "/" against 6 on
+    // /markets, on the same deploy.
+    // ⚠️ `url` is KEPT rather than dropped: nothing here isolates whether Next synthesises og:url
+    // from `alternates.canonical`, and dropping it would risk re-deleting the tag this replaces.
+    openGraph: { ...ROOT_OPEN_GRAPH, url: "/" },
+  };
+}
 
 /**
  * THE LANDING PAGE — round-2 kit README §1 / SPEC §1 + §3, applied in batch 3.
@@ -235,6 +245,9 @@ export default async function LandingPage({ searchParams }: {
   ]);
   const udRound = udDetail ? toUpdownBandRound(udDetail, locale) : null;
   const isAuthed = !!session;
+  // The signed-in block names /positions by the journey tab's own key for a journey reader (round 4, edges E4). The one
+  // cached resolver every journey page asks; a visitor's block has no such link, so a visitor is never asked about.
+  const journey = isAuthed && (await resolveSimpleJourney()).journey;
   // ⭐ WP14 part 2 · the signed-in hero's own reads, in parallel. Each fails to NULL on its own, and a
   // null part renders nothing (B-1: a failed read is not a zero). The wallet row is the same one the
   // header reads (app-shell), so the hero's balance and the chip cannot disagree.
@@ -276,6 +289,7 @@ export default async function LandingPage({ searchParams }: {
         cards={{ charts: cardCharts, traders: traderMap }}
         mine={mine}
         rails={heroRailNames(railPauses)}
+        journey={journey}
       />
 
       {/* ── §1a′ THE PROOF — the three figures, the whole board's conviction, the closing-soonest

@@ -26,6 +26,7 @@ import { eatDayWindow, isInEatDay, eatDayKey, formatEatDay } from "@/lib/eat-day
 import { pickLocalized } from "@/lib/localized";
 import { formatTzs, formatTzsSigned } from "@/lib/utils";
 import { SearchBox } from "@/components/ui/search-box";
+import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
 import { fieldNames, matchesQuery, parseQuery, UD_ROUND_SEARCH } from "@/lib/search";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { HistoryBar, type UdCounts } from "./history-bar";
@@ -325,9 +326,15 @@ export default async function UpDownHistoryPage({ searchParams }: {
           ⛔ Measured, not reasoned: `qa:bar-geometry` reported `bar@-252` here while every other
           surface reported `bar@56`. ⭐ The bar is now a direct child of the page container, which
           spans the list — the same shape the other six query surfaces already had. */}
+      {/* ⭐ THE SEARCH AND THE BAR ARE ONE BAND (round 4 of the visual pass, 2026-10-09, R4-C's leftover):
+          `QUERY_SEARCH_BAND_CLASS`, as on every page with a search over its bar. This page spaces its blocks by margin, on
+          a 24px rung (the strip's `mt-5` under the bar), so the band takes the rung above it (`mt-5`) and below it
+          (`pb-5`: the bar must stay the container's direct child, or it would stop sticking): the box 34 under the head,
+          the pills 34 under the box, the strip 34 under the bar — where `mt-4` put the box 20 under the head and the empty
+          echo row the pills 35 under it. */}
       {allRows.length > 0 && (
         <>
-        <div className="mt-4">
+        <div className={`${QUERY_SEARCH_BAND_CLASS} mt-5 pb-5`}>
           <SearchBox
             placeholder={t.market.udSearchPlaceholder}
             ariaLabel={t.market.udSearchPlaceholder}

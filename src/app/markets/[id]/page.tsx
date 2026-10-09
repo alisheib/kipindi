@@ -5,6 +5,7 @@ import { I, categoryGlyph } from "@/components/ui/glyphs";
 // E-101b · a fragment names a row; this is what actually scrolls to it.
 import { HashFocus } from "@/components/ui/hash-focus";
 import { BackLink } from "@/components/ui/back-link";
+import { keepFigures } from "@/components/ui/keep-words";
 import { TippingBar } from "@/components/brand";
 import { Countdown } from "@/components/markets/countdown";
 import { ShareButton } from "@/components/markets/share-button";
@@ -600,7 +601,7 @@ export default async function MarketDetail({
           })()}
           <h1 data-stem={QUESTION_STEM.test(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)) ? "" : undefined}
             className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance pr-[calc(2em+12px)] data-[stem]:indent-[-0.075em]"
-          >{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
+          >{/* `keepFigures` (round 4, edges 197 199 255): "2026-27" and "dakika 28:00" never break inside. */}{keepFigures(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}</h1>
         </div>
       </header>
 

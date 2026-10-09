@@ -52,7 +52,7 @@
  */
 import Link from "next/link";
 import { Chip } from "@/components/ui/chip";
-import { keepUnits } from "@/components/ui/keep-units";
+import { keepFigures } from "@/components/ui/keep-words";
 import { Stat } from "@/components/ui/stat";
 import { I } from "@/components/ui/glyphs";
 import { SellButton } from "@/components/markets/sell-button";
@@ -109,9 +109,9 @@ export function TicketCard({ p, m, price, t, locale, serverNow }: {
             open or refunded ticket's royal pill took the taller status metrics, and its card sat 2px low. */}
         <Chip size="sm" metrics="base" variant={positionStatusChip(p.status)}>{positionStatusWord(t, p.status, "MARKET")}</Chip>
       </div>
-      {/* `keepUnits` (2026-10-08 · G1): a Chinese "200毫米" never breaks between the number and its unit. */}
+      {/* `keepFigures` (2026-10-08 · G1; round 4, edges 197 255): "200毫米", "2026-27" and "dakika 28:00" never break inside. */}
       <h2 className="mt-3 font-display text-body-lg font-semibold leading-tight text-text text-balance">
-        <Link href={`/markets/${p.marketId}` as never} className="-my-2 block py-2 hover:underline">{keepUnits(title.text)}</Link>
+        <Link href={`/markets/${p.marketId}` as never} className="-my-2 block py-2 hover:underline">{keepFigures(title.text)}</Link>
       </h2>
       <div className="mt-3 grid grid-cols-[minmax(max-content,2fr)_minmax(0,3fr)] gap-3 text-balance">
         <Stat label={t.dialog.stakeLabel} value={formatTzs(p.stake)} money />

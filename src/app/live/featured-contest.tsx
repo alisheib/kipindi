@@ -16,7 +16,7 @@ import { leanWords, sideWord } from "@/lib/side-label";
 import { TippingBar } from "@/components/brand";
 import { I } from "@/components/ui/glyphs";
 // 2026-10-08 · G1: a Chinese "200毫米" in a slide's question never breaks between the number and its unit.
-import { keepUnits } from "@/components/ui/keep-units";
+import { keepFigures } from "@/components/ui/keep-words";
 import { useT } from "@/lib/i18n";
 
 // ⛔ `productLine` is REQUIRED, not optional. /live carries both products (see `pulse-grid`),
@@ -163,7 +163,7 @@ export function FeaturedContest({
                 data-slide-active={i === idx ? "" : undefined}
                 className="font-display text-[19px] lg:text-[24px] font-semibold leading-tight text-text group-hover:text-aqua-100"
               >
-                {keepUnits(mm.title)}
+                {keepFigures(mm.title)}
               </h2>
             ))}
           </div>

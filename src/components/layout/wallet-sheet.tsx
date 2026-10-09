@@ -117,7 +117,11 @@ export function WalletSheet({
                 <I.plus s={16} />
                 {journey ? t.journey.depositAction : t.common.deposit}
               </Link>
-              <span id={depVia} className="kp-wsheet__via">{t.wallet.mobileMoney}</span>
+              {/* ⭐ The journey's captions keep their last two words together (round 4 of the visual pass, 2026-10-09,
+                  edges tile 496): at en 320 "Mobile money or card" (134px) wraps in its 133px column, and left "card"
+                  alone; now "Mobile money" / "or card". The widest pair is 47px ("ya simu"), a column is 133 at 320. ⛔ The classic
+                  capsule's Wallet keeps today's text (frozen chrome for S6/S7). */}
+              <span id={depVia} className="kp-wsheet__via">{journey ? keepLastWords(t.wallet.mobileMoney) : t.wallet.mobileMoney}</span>
             </div>
           )}
           <div className="kp-wsheet__col">
@@ -131,7 +135,7 @@ export function WalletSheet({
               <I.arrowUpFromLine s={16} />
               {journey ? t.journey.withdrawAction : t.common.withdraw}
             </Link>
-            <span id={wdVia} className="kp-wsheet__via">{t.wallet.mobileMoneyOnly}</span>
+            <span id={wdVia} className="kp-wsheet__via">{journey ? keepLastWords(t.wallet.mobileMoneyOnly) : t.wallet.mobileMoneyOnly}</span>
           </div>
         </div>
       )}

@@ -12,6 +12,7 @@ import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { useT, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { NeedleControlsDrawer } from "@/components/layout/needle-drawer";
+import { keepLastWords } from "@/components/ui/keep-words";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
 export function AvatarMenu({
@@ -25,6 +26,7 @@ export function AvatarMenu({
   proposalsState = "COMING_SOON",
   inviteVisible = false,
   invitePaid = false,
+  journey = false,
 }: {
   initials: string;
   name: string;
@@ -48,6 +50,17 @@ export function AvatarMenu({
    * earnings the programme is refusing.
    */
   invitePaid?: boolean;
+  /**
+   * ⭐ THE JOURNEY'S MENU (round 4 of the visual pass, 2026-10-09, edges E31 E33), passed by `JourneyTopBar` alone:
+   *   · /positions is "Tiketi zangu / My tickets / 我的注单" with the tab's ticket glyph — the journey's tab, the page's h1
+   *     and the hub call it that, and this menu said "Nafasi / Positions / 持仓" (one page, one name: the tab's own key);
+   *   · a label that wraps keeps its last two words together ("Pendekeza na" / "upate zawadi" beside INAKUJA, never
+   *     "Pendekeza na upate" / "zawadi");
+   *   · the Needle's row is a row of this menu (`variant="menu-item"`): its glyph, label and value on the rows' own 16px
+   *     inset and 10px gap, its chevron's ink on their right edge, where a padded wrapper set it 8px in and 12px short.
+   * ⛔ Omitted — the classic bar — everything renders as it did: the classic avatar menu is frozen chrome for S6/S7.
+   */
+  journey?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -129,8 +142,16 @@ export function AvatarMenu({
     .map((r) =>
       r.invite && !invitePaid
         ? { ...r, en: t.profile.inviteFriends, sw: t.profile.inviteFriends, zh: t.profile.inviteFriends, accent: false }
-        : r,
-    );
+        : journey && r.href === "/positions"
+          ? { ...r, icon: I.ticket, en: t.journey.tabTickets, sw: t.journey.tabTickets, zh: t.journey.tabTickets }
+          : r,
+    )
+    /* ⛔ NO GOLD ON AN INVITATION TO EARN, IN THE JOURNEY (round 4's gold audit, 2026-10-09, edge tile 209). Q5 "gold is
+       money, and nothing else"; M3 "struck gold appears only where money was earned"; D5 "on an inducement, a house
+       colour becomes a marketing claim" — the paid Invite and Propose & earn rows promise money nobody has earned, so
+       the journey draws them in the row family's ink. The classic menu keeps its accent: classic chrome is frozen for
+       S6/S7 (`qa:classic-shell-parity`). */
+    .map((r) => (journey && r.accent ? { ...r, accent: false } : r));
   /* ⭐ DG-P-11 — WHICH ROW IS THE CURRENT PAGE, BY LONGEST MATCH.
      ⛔ Longest-match is load-bearing, not tidiness: `/profile` is a prefix of both
      `/profile/invite` and `/profile/kyc`, so a plain per-row test would raise THREE current
@@ -241,6 +262,7 @@ export function AvatarMenu({
                   /* The state flag rides the proposals row only: gilt coming-soon /
                      amber maintenance / nothing when ACTIVE. */
                   proposalsBadge={r.proposals ? proposalsState : undefined}
+                  journey={journey}
                 />
               ))}
             </ul>
@@ -294,9 +316,15 @@ export function AvatarMenu({
             {/* The Needle — opens the controls drawer (show/hide + Spin/Bounce). Lives
                 here (not as an always-visible top-bar button) because the header already
                 overflows at 1024–1279px; the avatar menu is the right home for it. */}
-            <div className="border-t border-border px-2 py-2">
-              <NeedleControlsDrawer variant="menu-row" />
-            </div>
+            {journey ? (
+              <div className="border-t border-border py-1">
+                <NeedleControlsDrawer variant="menu-item" />
+              </div>
+            ) : (
+              <div className="border-t border-border px-2 py-2">
+                <NeedleControlsDrawer variant="menu-row" />
+              </div>
+            )}
             <div className="border-t border-border">
               <ConfirmDialog
                 tone="claret"
@@ -371,7 +399,7 @@ const MENU_ROWS: readonly MenuRow[] = [
   { href: "/profile/kyc",    icon: I.shieldcheck, en: "Verify ID",      sw: "Kuthibitisha kitambulisho", zh: "身份验证" },
 ];
 
-function Item({ href, icon: Ico, en, sw, zh, accent, current, proposalsBadge }: { href: string; icon: (p: { s?: number; className?: string }) => React.ReactElement; en: string; sw: string; zh: string; accent?: boolean; current?: boolean; proposalsBadge?: ProposalsState }) {
+function Item({ href, icon: Ico, en, sw, zh, accent, current, proposalsBadge, journey = false }: { href: string; icon: (p: { s?: number; className?: string }) => React.ReactElement; en: string; sw: string; zh: string; accent?: boolean; current?: boolean; proposalsBadge?: ProposalsState; journey?: boolean }) {
   const { t, locale } = useT();
   // System language only — no adjacent second-language gloss.
   const primary = locale === "sw" ? sw : locale === "zh" ? zh : en;
@@ -408,7 +436,9 @@ function Item({ href, icon: Ico, en, sw, zh, accent, current, proposalsBadge }: 
         )}
       >
         <span className={accent ? "text-gold-300" : "text-text-subtle"}><Ico s={15} /></span>
-        {primary}
+        {/* The journey's label keeps its last two words together (`keepLastWords`: the widest two-word end is ~88px at
+            Sora 13px, inside the label's ~139px beside INAKUJA — visual-pass-r4h §6.6); one span, so the words stay one flex item. */}
+        {journey ? <span>{keepLastWords(primary)}</span> : primary}
         {proposalsBadge && (
           <ProposalsStateBadge state={proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-auto" />
         )}

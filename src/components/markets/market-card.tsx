@@ -9,7 +9,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Modal } from "@/components/ui/modal";
 import { ShareButton } from "@/components/markets/share-button";
 import { Chip } from "@/components/ui/chip";
-import { keepUnits } from "@/components/ui/keep-units";
+import { keepFigures } from "@/components/ui/keep-words";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { cn, fill, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
@@ -504,9 +504,10 @@ export function MarketCard({
         <div className="mcardp-qwrap">
           {/* The featured card is only ever the landing hero's, where it follows the page's h1
               directly — so its question is the h2, and the heading order has no gap (WP17). */}
-          {/* `keepUnits` (2026-10-08 · G1 [029 059 074 084 097 109]): "200毫米" never breaks between the
-              number and its unit; a Swahili or English title is returned untouched. */}
-          {featured ? <h2 className="mcardp-q">{keepUnits(title)}</h2> : <h3 className="mcardp-q">{keepUnits(title)}</h3>}
+          {/* `keepFigures` (2026-10-08 · G1 [029 059 074 084 097 109]; round 4, edges 197 253 255): "200毫米" never breaks
+              between the number and its unit, nor "2026-27" at its hyphen, nor "dakika 28:00" between the unit and the
+              number; a title with no such run is returned untouched. */}
+          {featured ? <h2 className="mcardp-q">{keepFigures(title)}</h2> : <h3 className="mcardp-q">{keepFigures(title)}</h3>}
           {/* A grid card's source line lives in the question column, so it stays with its question when
               the grid stretches the card (the head grows, the column does not move). */}
           {!featured && metaLine && <p className="mcardp-src">{metaLine}</p>}

@@ -183,6 +183,7 @@ export function JourneyTopBar({
                   proposalsState={proposalsState}
                   inviteVisible={inviteVisible}
                   invitePaid={invitePaid}
+                  journey
                 />
               </span>
             </>
