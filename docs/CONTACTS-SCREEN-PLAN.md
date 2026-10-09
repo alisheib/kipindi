@@ -164,8 +164,9 @@ And from 2026-09-25: "it's 150k approx contacts, or VCF … it could be small an
    writes), a phone's contacts export (.vcf from iPhone, Android, Google), or **paste** (from Excel or a chat). The
    sample sheet is one tap away. Files the importer can't read (old .xls, .ods, .numbers, PDF, a picture) are named and
    told how to save them as .xlsx or CSV.
-3. **Reading** — in the browser, streamed; the bar counts rows read. An Excel file is read by the server (≤ 700 KB;
-   larger ones are told how to save as CSV, which has no such limit).
+3. **Reading** — in the browser, streamed; the bar counts rows read. An Excel file of 700 KB or less is read by the
+   server; a larger one is read in the browser too (C3c, §4.5 — landing 2026-10-09 with S14's contacts push; until it
+   lands a larger workbook is told how to save as CSV).
 4. **The columns** (`import-mapping`): each column of the file, its first values, and what it will be read as (Phone ·
    Name · Email · Tags · Notes · Not used), matched automatically in English and Swahili; the officer can change any.
    A file with **no header row** is recognised ("Your file starts with a contact, not column names — column B will be
@@ -262,6 +263,9 @@ And from 2026-09-25: "it's 150k approx contacts, or VCF … it could be small an
   never checked (this line named a file that never existed until 2026-10-09). Read such a path before you trust it.
 
 ### §4.5 — C3c: a big workbook read in the officer's browser (designed 2026-10-09 ~05:45 EAT)
+⟶ 2026-10-09: built on `s14-c3c`, landing with S14's contacts push. Once it lands no workbook is refused for its size
+in the dialog — the "refused with 'save it as CSV'" below is the state it was designed against; 700 KB stays only as
+the server action's own upload cap (a direct post over it, or an old browser that cannot inflate a zip).
 - **Why.** An .xlsx over 700 KB is refused with "save it as CSV" — and Excel writes a 12-digit number in General format
   to CSV as `2.55713E+11`, its last digits gone for good. The cap is the transport's, not the product's (S15-13).
 - **What.** `src/lib/contacts/xlsx-read.ts` — pure and client-safe: the zip's central directory read from the file's tail,
