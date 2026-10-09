@@ -213,9 +213,9 @@ export const IMPORT_CHECK_DEPS: ImportCheckDeps = {
  * row — the erased tombstone INCLUDED, so an erased number reads as in the book (X22), and the row's account link
  * (S15-11) — whether a stop is in force, its latest ledger word, and (C8a) whether an erasure STANDS on it by the ONE
  * rule — so a number with no book row whose marker an opt-out tap has since covered still reads erased, and a number an
- * opted-out person was erased on carries the marker `erase.ts` now always writes. `heldByPlayer` is false: the account
- * read fed only the consent seam S15-1 retired (R16). ⛔ A number that was not asked about is absent, and decide() throws
- * on it: there is no default.
+ * opted-out person is erased on carries the marker `erase.ts` now writes over an opt-out too. `heldByPlayer` is false:
+ * the account read fed only the consent seam S15-1 retired (R16). ⛔ A number that was not asked about is absent, and
+ * decide() throws on it: there is no default.
  */
 export async function loadImportFacts(msisdns: readonly string[], reads: ImportFactsReads = IMPORT_FACTS_READS): Promise<FactsByNumber> {
   const keys = Array.from(new Set(msisdns));

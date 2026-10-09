@@ -20,8 +20,10 @@
  * ⛔ C8a · …AND AN ERASURE WITH NO BOOK ROW. When the erased person had no book row, the erasure's only word is the
  * marker on the ledger — and the lookup and the save ask the SAME question the importer asks (`standingOf`, through
  * `erasure-mark.ts`'s `isErasedNumber` and its ONE rule: the latest of the number's GIVEN rows and erasure markers is a
- * marker), so such a number is refused exactly as a tombstoned one is — the same answer, the same sentence, no id. A
- * later opt-out tap never lifts the erasure; a GIVEN does (the number's next holder).
+ * marker), so such a number is refused with exactly a tombstoned one's answer — the same reason, the same sentence, no
+ * id. A later opt-out tap never lifts the erasure; a GIVEN does (the number's next holder). ⚠️ The ledger is asked
+ * BEFORE the create, while a tombstone is also refused by the unique index at the write itself: an erasure whose marker
+ * lands between this check and the create is not refused — a window of milliseconds, recorded for C8, not closed here.
  * ⭐ THE EDIT IS COMPARE-AND-SET (`updateIfUnchanged` in both twins, decision C25): two officers editing one contact
  * cannot silently overwrite each other — the second save is refused as stale. It writes the four fields and the
  * stamp, and never the number, `sourceRef`, the link, the caches or the provenance.

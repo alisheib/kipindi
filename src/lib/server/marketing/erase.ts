@@ -96,9 +96,13 @@ import { mirrorContactCache } from "@/lib/server/marketing/contact-cache";
  * linked book row left to empty, and none is reached here.)
  * ⚠️ C8a · PAST ERASURES ARE NOT REPAIRED. An account erased since U18b whose own number's latest row was ALREADY a
  * WITHDRAWN when it was erased (it had opted out) carries no erasure marker — step 1 skipped it until C8a — and its number
- * is gone from `User` by design (the tombstone), so it cannot be found now. Nothing here invents a backfill: such a number
- * stands erased only where a tombstone holds it (the book row step 2 emptied, which decides alone); with no book row the
- * importer and the Add form treat it as a number with no erasure. Recorded for the lane, never guessed at here.
+ * is gone from `User` by design (the tombstone), so this step cannot find it now. Nothing here invents a backfill: such a
+ * number stands erased only where a tombstone holds it (the book row step 2 emptied, which decides alone); with no book
+ * row the importer and the Add form treat it as a number with no erasure. How many such erasures exist was NOT measured
+ * here (a build does not read production) — recorded for the lane, never guessed at.
+ * ⚠️ A RACE THIS STEP DOES NOT CLOSE (C8a's review, recorded for C8): the book rows are read once, BEFORE step 1, and the
+ * staged rows deleted only at step 2b — so an import step whose write lands between the two creates a row step 2 never
+ * sees (the import's R9 covers only a write that lands after 2b). A window of milliseconds; closing it is not this step.
  */
 export type MarketingErasureCounts = {
   /** WITHDRAWN rows appended to the consent ledger: the account's own number unless its latest row is already the

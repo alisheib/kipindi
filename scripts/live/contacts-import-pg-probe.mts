@@ -890,7 +890,7 @@ async function phaseC(): Promise<void> {
       const ALL = Object.values(E);
       const WANT = [E.mark, E.tap, E.lapse, E.reErased, E.tieStands].sort();
       const asked = await counted(() => db.messagingConsent.erasureStandsAmong({ channel: "SMS", category: "MARKETING", identifiers: [...ALL, E.tap] }));
-      ok("7.1 · ⭐ C8a · erasureStandsAmong answers on Postgres EXACTLY the numbers on which an erasure stands, decided here by hand — the marker alone; the marker under an opt-out tap (defect #2) and under a lapse; the marker again after a GIVEN; a marker and a GIVEN in ONE millisecond with the marker's id the later — and NOT the marker under a GIVEN, the GIVEN with the marker's id the later, an opt-out alone, a GIVEN carrying the mark's evidence, a tap after a GIVEN lifted it, or a number with no row — each once (one asked twice), ordered, in ONE statement",
+      ok("7.1 · ⭐ C8a · erasureStandsAmong answers on Postgres EXACTLY the numbers on which an erasure stands, decided here by hand — the marker alone; the marker under an opt-out tap (defect #2) and under a lapse; the marker again after a GIVEN; a marker and a GIVEN in ONE millisecond with the marker's id the later — and NOT the marker under a GIVEN, a marker and a GIVEN in ONE millisecond with the GIVEN's id the later, an opt-out alone, a GIVEN carrying the mark's evidence, a tap after a GIVEN lifted it, or a number with no row — each once (one asked twice), ordered, in ONE statement",
         eq(asked.value, WANT) && asked.queries.length === 1, `${json(asked.value)} · ${asked.queries.length} statement(s)`);
       const offRule: string[] = [];
       for (const identifier of ALL) {
