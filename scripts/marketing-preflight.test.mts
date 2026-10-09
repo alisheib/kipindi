@@ -2757,7 +2757,7 @@ if (!PROVE_RED) {
       impl: { parts: { ...EV.PARTS, standingFindings: (f: unknown, a: unknown) => (EV.PARTS.standingFindings as (x: unknown, y: unknown) => Array<{ kind: string }>)(f, a).filter((s) => s.kind !== "double_send") } } },
     { name: "R-V20 · the standing 'to the test number only' check finds nothing", expect: [L.e8],
       impl: { parts: { ...EV.PARTS, standingFindings: (f: unknown, a: unknown) => (EV.PARTS.standingFindings as (x: unknown, y: unknown) => Array<{ kind: string }>)(f, a).filter((s) => s.kind !== "other_number") } } },
-    { name: "R-V21 · a LOOK never exits 1 — its violations are counted as none (the review's X1)", expect: [L.e2, L.e8, L.e9, L.e10, L.l3],
+    { name: "R-V21 · a LOOK never exits 1 — its violations are counted as none (the review's X1)", expect: [L.e2, L.e8, L.e9, L.e10, L.e11, L.l3],
       impl: { parts: { ...EV.PARTS, lookViolations: () => 0 } } },
     { name: "R-V22 · a look carries a verdict: its judged result says proven (V16 of the review)", expect: [L.e0],
       impl: { judgeEvidence: ((f: unknown, a: unknown, l: unknown, p: unknown) => ({ ...(EV.judgeEvidence as unknown as (...x: unknown[]) => object)(f, a, l, p), proven: true })) as never } },
