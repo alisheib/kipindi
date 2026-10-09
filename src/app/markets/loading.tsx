@@ -8,9 +8,12 @@ import {
   QUERY_BAR_CLASS,
   QUERY_BAR_ROW1_CLASS,
   QUERY_BAR_ROW2_CLASS,
-  QUERY_GROUP_CLASS,
   QUERY_STRIP_CLASS,
+  QueryGroupDivider,
 } from "@/components/ui/query-bar";
+import { FiltersGhost, GroupGhost, MenuGhost, PillGhost, SortGhost } from "@/components/ui/query-bar-ghost";
+import { POOL_FLOORS } from "@/lib/markets/discovery";
+import { formatTzsCompact } from "@/lib/utils";
 
 /**
  * /markets loading skeleton.
@@ -42,6 +45,14 @@ import {
  * (`components/markets/card-geometry.ts`) and the count comes from `PLAYER_PER_PAGE`. That is
  * how the two skeletons stay equal — the previous pair drifted to 220 vs 349 precisely because
  * each carried its own literal.
+ * ⭐ AND SINCE ROUND 5'S FOLLOW-UP (R5-L) THERE IS ONE SKELETON, NOT TWO. The page's Suspense fallback was
+ * `GridSkeleton` — the skeleton a DOCUMENT load paints first — and it drew the grid alone, `mt-3`: no bar at all, so the
+ * first card stood 92px above where the page puts it on a phone (the one-line bar's 84 and the grid's 8 more) and 180px
+ * at 1280 in Swahili. The bar and the grid below are `MarketsBoardGhost`, this file's drawing and the page's fallback.
+ * ⭐ AND ROW 2 FROM `lg` CARRIES THE PAGE'S WORDS: the sort, the odds and pool groups (each behind the page's own divider,
+ * with its key and pills — `query-bar-ghost.tsx`) and the topic menu wrap where the page's do — two lines at 1024 and
+ * 1280 in Swahili and English (and at 1024 in Chinese), measured from the served fonts (S/r5l/measure-routes.cts), where
+ * five typed boxes drew one: the grid landed 56px below the ghost's promise.
  */
 /**
  * The status segment widths, in `STATUS_IDS` order: open · today · new · progress · watch · all.
@@ -79,6 +90,19 @@ export default function MarketsLoading() {
         <p className="mt-1.5 min-h-[17px]" />
       </div>
 
+      <MarketsBoardGhost />
+    </PageContainer>
+  );
+}
+
+/**
+ * The board while it loads — the bar, then the grid: this file's drawing AND `markets/page.tsx`'s Suspense fallback, so a
+ * document's first paint and a move's are one drawing (R5-L). Drawn for a board with a page of cards.
+ */
+export function MarketsBoardGhost() {
+  const { t } = useT();
+  return (
+    <>
       {/* The discovery bar — TWO rows at the real 44px control height, so the grid below starts
           where it will actually start. Row 1: status segments + count. Row 2: sort + direction,
           odds, pool, topic.
@@ -119,24 +143,33 @@ export default function MarketsLoading() {
           <div className="flex h-[17.25px] shrink-0 items-center" data-result-count=""><div className="kp-shimmer-track h-3 w-[80px] rounded bg-bg-elevated" /></div>
         </div>
         <div className={QUERY_BAR_ROW2_CLASS} data-bar-row>
-          {/* Sort + direction, and the phone's single filters button — the two controls this row
-              renders at EVERY width. Their widths are the DESKTOP ones; under 640 the grid above
-              sizes both from their own content, so these numbers only apply where the bar is
-              genuinely two flex rows. */}
-          <div className="kp-shimmer-track h-[44px] w-[210px] rounded-pill bg-bg-elevated" data-bar-cell="sort" />
-          {/* The phone's Filters button — `lg:hidden`, as `FilterSheet` is (R5-H · G-2b: `.kp-fsheet` hides nothing at lg,
-              so the ghost drew a 170px pill at 1280 in a row the page does not have). */}
-          <div className="kp-fsheet kp-shimmer-track h-[44px] w-[170px] rounded-pill bg-bg-elevated lg:hidden" />
+          {/* Sort + direction, and the phone's single Filters button — the two controls this row renders below `lg`,
+              each the page's own box with its words (`query-bar-ghost.tsx`, R5-L): under 640 the phone grid places them by
+              the page's own hooks (`data-bar-cell`, `.kp-fsheet`) and folds the Filters label away as it folds the page's.
+              They were a 210px and a 170px box: wider than the page's cells, they pushed the phone grid past the bar's
+              edge. The Filters button is `lg:hidden`, as `FilterSheet` is (R5-H · G-2b). */}
+          <SortGhost label={t.common.sort} value={t.market.sortPool} />
+          <FiltersGhost label={t.market.filtersOpen} />
           {/* ⛔ ODDS, POOL AND TOPIC ARE DESKTOP-ONLY. On a phone the real bar folds all three
               behind the button above (`FilterSheet`), and their desktop rows carry
               `QUERY_GROUP_CLASS`, which is `hidden … lg:flex`. Ghosting them unconditionally drew
               four 44px pills a phone never receives. Consume the SAME visibility class rather
-              than re-stating the breakpoint, so a change to one moves both. */}
-          {[56, 92, 88, 84].map((w, i) => (
-            <div key={i} className={QUERY_GROUP_CLASS}>
-              <div className="kp-shimmer-track h-[44px] rounded-pill bg-bg-elevated" style={{ width: w }} />
-            </div>
-          ))}
+              than re-stating the breakpoint, so a change to one moves both.
+              ⭐ AND THEY ARE THE PAGE'S GROUPS (R5-L): each behind the page's divider (the row's 29px gap is keyed on it),
+              its key and its pills with the page's words — the pool's floors set as money, as the page sets them — then
+              the topic menu's own box. Four typed boxes drew one line where the page's row takes two. */}
+          <QueryGroupDivider />
+          <GroupGhost label={t.market.oddsKey}>
+            {[t.market.oddsAny, t.market.oddsCall, t.market.oddsCont, t.market.oddsLong].map((o) => <PillGhost key={o} label={o} />)}
+          </GroupGhost>
+          <QueryGroupDivider />
+          <GroupGhost label={t.market.poolKey}>
+            <PillGhost label={t.market.poolAny} />
+            <PillGhost label={`${formatTzsCompact(POOL_FLOORS["10k"])}+`} amount />
+            <PillGhost label={`${formatTzsCompact(POOL_FLOORS["50k"])}+`} amount />
+          </GroupGhost>
+          <QueryGroupDivider />
+          <MenuGhost label={t.common.topic} value={t.market.catAll} />
         </div>
       </div>
 
@@ -150,6 +183,6 @@ export default function MarketsLoading() {
           />
         ))}
       </div>
-    </PageContainer>
+    </>
   );
 }

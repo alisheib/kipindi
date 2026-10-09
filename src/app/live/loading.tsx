@@ -2,7 +2,10 @@
 
 import { useT } from "@/lib/i18n";
 import { PageContainer } from "@/components/layout/page-container";
+import { PageHero } from "@/components/ui/page-hero";
+import { ButtonGhost, GhostText } from "@/components/ui/ghost-kit";
 import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
+import type { Dict, Locale } from "@/lib/i18n-dict";
 
 /**
  * `/live` loading skeleton — the ghost a player sees after tapping "Mubashara".
@@ -25,78 +28,93 @@ import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
  * is blind to every skeleton on the site. That is how this survived: it is on the path a
  * player takes (tap the bottom nav) and off the path the harness took.
  *
- * ⭐ THE FIXED ROWS ARE STRUCTURE, NOT LITERALS. The arrows are 44px because the real arrows
- * are; the CTA row carries the same `flex-wrap` and the same child widths, so it breaks onto a
- * second line at the SAME width the real one does (100px at ≤360 where the dot rail wraps
- * under the button, 44px from 414 up) without this file knowing where that width is. The
- * tipping bar is 57px at every width — measured at 320/360/414/1280. The search box consumes
- * `search-box-wrap` and `--h-input` rather than restating them.
- *
- * ⚠️ ONE NUMBER IS A JUDGEMENT AND IT IS THE QUESTION'S LINE COUNT. Six lines on a phone,
- * three from `lg` — measured across the six featured markets at each width, and written as the
- * arithmetic (`6 × leading-tight × 19px`) so it can be re-derived rather than re-guessed. The
- * hero now shows the TALLEST of the six on every slide (`featured-contest.tsx` stacks them),
- * so this is a stable target rather than whichever market happened to be up.
+ * ⭐ THE FIXED ROWS ARE STRUCTURE, NOT LITERALS. The hero is `PageHero` itself, with the page's props. The arrows are
+ * 44px because the real arrows are; the tipping bar is 57px at every width (measured at 320/360/414/1280); the search
+ * box consumes `search-box-wrap` and `--h-input` rather than restating them.
+ * ⭐ AND SINCE ROUND 5'S FOLLOW-UP (R5-L) THE TWO ROWS THAT WRAP ON WORDS CARRY THE PAGE'S WORDS:
+ *   · THE CTA ROW. Its button is the button's own box with "Open market" in it (`.btn .btn-md`), beside the dot rail's six
+ *     24px targets — so it breaks where the page's breaks. It was a 150px box: the ghost's row took two lines below 392px
+ *     where the page's takes one from 375–376 (Swahili and English) and 345 (Chinese) — at 390, the most common phone, the
+ *     hero stood 56px taller than the page's and the wall landed that much higher than promised.
+ *   · THE WALL'S CARDS. Each is the PulseCard's own stack: its 20px tag row, the title box at the page's own minimum —
+ *     three lines in Swahili, two in English and Chinese (`min-h-[4.125em]` / `min-h-[2.75em]` at 13.5px, snug) — the 9px
+ *     bar and the 18px price line. They were 180px in every language: 2.7px short in Swahili and 15.9px too tall in
+ *     English and Chinese a card (164.1px), 47.6px over the wall's first three rows.
+ * ⚠️ ONE NUMBER IS A JUDGEMENT AND IT IS THE QUESTION'S LINE COUNT. The hero shows the TALLEST of the six questions
+ * on every slide (`featured-contest.tsx` stacks them), so the stack is the tallest of six titles — since R5-L on the
+ * rule /results' notable card takes for its three: the tallest of N is the board's title at the N/(N+1) quantile, from
+ * the served fonts (S/r5l/measure-titles-steps.cts) — four lines below 359px in Swahili, three to 489 (to 421 in English
+ * and Chinese), two beyond, at 24px from 1024. Drawn on the breakpoints: four below 360 in Swahili (three in English and
+ * Chinese), three to 639, two from 640 — a line more than the judgement from 490 (422) to 639. It was six lines on a
+ * phone and three from `lg`, measured across one day's six featured markets (2026-09-24): on today's board (tiles 175
+ * and 176, whose questions take two lines at 390 and at 1280) that stood 95px over at 390 and 30 at 1280; the rule's
+ * three and two stand 24 and 0 over. Written as the arithmetic (`lines × leading-tight × px`) so it is re-derived,
+ * not re-guessed.
+ * ⚠️ The carousel drawn holds six markets (`liveContest` features at most six): six dots in the rail.
  * ⭐ CLIENT CODE, ITS WORDS ITS OWN (round 5's follow-up, R5-H · G-2): the words are the client dictionary's (`useT`), so
  * a refresh of this page carries the drawing's reference, not its tree, and the server's HTML is what it was —
  * `components/ui/page-loader.tsx` has the convention.
  */
 export default function LiveLoading() {
-  const { t } = useT();
+  const { t, locale } = useT();
   return (
     <PageContainer tier="board" className="space-y-5">
       {/* The `<div>` wrapper is load-bearing on the real page (it pairs the `sr-only` h1 with
           the hero so `space-y-5`, a sibling selector, counts the same children). Mirroring it
           here keeps the ghost's rhythm identical to the content's. */}
       <div>
-        <header className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated" aria-hidden>
-          {/* PageHero's own content padding, `p-5 lg:p-6` (page-hero.tsx) — R5-H · G-2b: `p-5` alone made the hero 16px
-              short from 1024, and the wall under it stood 16px high. */}
-          <div className="relative z-10 p-5 lg:p-6">
-            {/* Eyebrow row — pulse + LIVE + the live/tipping count. */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <span className="kp-shimmer-track block h-[18px] w-[18px] rounded-full bg-bg-overlay" />
-                {/* The page's own eyebrow word since round 5 (`common.live`, F17), so the ghost's row is the page's. */}
-                <p className="font-mono text-label uppercase eyebrow font-bold text-text">{t.common.live}</p>
+        {/* The page's own `PageHero`, the page's props (R5-L): its frame, its glow and its padding, `p-5 lg:p-6`. */}
+        <PageHero glow="aqua" watermark={200}>
+          {/* Eyebrow row — pulse + LIVE + the live/tipping count. */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="kp-shimmer-track block h-[18px] w-[18px] rounded-full bg-bg-overlay" aria-hidden />
+              {/* The page's own eyebrow word since round 5 (`common.live`, F17), so the ghost's row is the page's. */}
+              <p className="font-mono text-label uppercase eyebrow font-bold text-text">{t.common.live}</p>
+            </div>
+            <div className="kp-shimmer-track h-[13px] w-[112px] rounded bg-bg-overlay" aria-hidden />
+          </div>
+
+          <div className="mt-4" aria-hidden>
+            {/* Contest eyebrow + the two 44px arrow controls and the `n / N` counter. */}
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <div className="kp-shimmer-track h-3 w-40 min-w-0 rounded bg-bg-overlay" />
+              <div className="flex shrink-0 items-center gap-2">
+                <div className="kp-shimmer-track h-[44px] w-[44px] rounded-full border border-border" />
+                {/* the `n / N` counter. ⚠️ LITERAL, not `w-7` — spacing is overridden
+                    (tailwind.config.ts:200-215), so `w-7` is not 28px and
+                    `test:ui-consistency` rejects the numeric utility by name. */}
+                <div className="kp-shimmer-track h-3 w-[32px] rounded bg-bg-overlay" />
+                <div className="kp-shimmer-track h-[44px] w-[44px] rounded-full border border-border" />
               </div>
-              <div className="kp-shimmer-track h-[13px] w-[112px] rounded bg-bg-overlay" />
             </div>
 
-            <div className="mt-4">
-              {/* Contest eyebrow + the two 44px arrow controls and the `n / N` counter. */}
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <div className="kp-shimmer-track h-3 w-40 min-w-0 rounded bg-bg-overlay" />
-                <div className="flex shrink-0 items-center gap-2">
-                  <div className="kp-shimmer-track h-[44px] w-[44px] rounded-full border border-border" />
-                  {/* the `n / N` counter. ⚠️ LITERAL, not `w-7` — spacing is overridden
-                      (tailwind.config.ts:200-215), so `w-7` is not 28px and
-                      `test:ui-consistency` rejects the numeric utility by name. */}
-                  <div className="kp-shimmer-track h-3 w-[32px] rounded bg-bg-overlay" />
-                  <div className="kp-shimmer-track h-[44px] w-[44px] rounded-full border border-border" />
-                </div>
+            <div className="max-w-[64ch]">
+              {/* The question stack at the judgement's line count (the header) — `mb-4` is the real stack's margin (20px
+                  on this scale), the same class, not a copy of the number it resolves to. Its bars stay inside every
+                  minimum: three below 640, two from it. */}
+              <div className={`mb-4 ${locale === "sw" ? "min-h-[calc(4*1.25*19px)] xs:min-h-[calc(3*1.25*19px)]" : "min-h-[calc(3*1.25*19px)]"} sm:min-h-[calc(2*1.25*19px)] lg:min-h-[calc(2*1.25*24px)]`}>
+                <div className="kp-shimmer-track h-[19px] w-full rounded bg-bg-overlay" />
+                <div className="kp-shimmer-track mt-[4.75px] h-[19px] w-full rounded bg-bg-overlay sm:w-[82%]" />
+                <div className="kp-shimmer-track mt-[4.75px] h-[19px] w-[82%] rounded bg-bg-overlay sm:hidden" />
               </div>
-
-              <div className="max-w-[64ch]">
-                {/* The question. `mb-4` is the real h2's margin (20px on this scale) — the same
-                    class, not a copy of the number it resolves to. */}
-                <div className="mb-4 min-h-[calc(6*1.25*19px)] lg:min-h-[calc(3*1.25*24px)]">
-                  <div className="kp-shimmer-track h-[19px] w-full rounded bg-bg-overlay" />
-                  <div className="kp-shimmer-track mt-[4.75px] h-[19px] w-full rounded bg-bg-overlay" />
-                  <div className="kp-shimmer-track mt-[4.75px] h-[19px] w-[82%] rounded bg-bg-overlay" />
-                </div>
-                {/* TippingBar with labels — 57px at 320, 360, 414 and 1280 alike. */}
-                <div className="kp-shimmer-track h-[57px] w-full rounded bg-bg-overlay" />
-                {/* CTA + dot rail. Same wrapper, same gap, same child widths, so it wraps where
-                    the real row wraps. `--h-control-md` is the `.btn-md` height. */}
-                <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <div className="kp-shimmer-track h-[var(--h-control-md)] w-[150px] rounded-md bg-bg-overlay" />
-                  <div className="h-[40px] w-[144px]" />
+              {/* TippingBar with labels — 57px at 320, 360, 414 and 1280 alike. */}
+              <div className="kp-shimmer-track h-[57px] w-full rounded bg-bg-overlay" />
+              {/* CTA + dot rail — the page's row: the button's own box with its words, then the rail's six 24px targets
+                  (`featured-contest.tsx`), `flex-wrap` and the same 16px gap, so it wraps where the page's row wraps. */}
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <ButtonGhost size="md">{t.market.openMarket}</ButtonGhost>
+                <div className="flex items-center">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <span key={i} className="grid h-[40px] w-[24px] place-items-center">
+                      <span className="block h-1.5 rounded-full bg-bg-overlay" style={{ width: i === 0 ? 18 : 6 }} />
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
           </div>
-        </header>
+        </PageHero>
       </div>
 
       {/* Search — the real box and its echo row, by class rather than by measurement.
@@ -110,17 +128,38 @@ export default function LiveLoading() {
         </div>
       </div>
 
-      {/* The wall. 180px is the PulseCard, measured at 178–183 on production across four widths
-          — the one number in this file that was already right. */}
+      {/* The wall — eight PulseCards' own stacks, in the reader's language (the title box's minimum is the locale's). */}
       <div className="market-grid" aria-hidden>
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div
-            key={i}
-            className="kp-shimmer-track rounded-lg border border-border bg-bg-elevated"
-            style={{ height: 180 }}
-          />
-        ))}
+        {Array.from({ length: 8 }).map((_, i) => <PulseCardGhost key={i} t={t} locale={locale} />)}
       </div>
     </PageContainer>
+  );
+}
+
+/** A PulseCard (`pulse-grid.tsx`) while it loads: its own box (`rounded-xl border p-4`, a column), the tag row — the
+ *  topic tag's 13px glyph and word in its 2px-padded, 1px-bordered box beside the time left — the title's box at the
+ *  page's own minimum for the language, the 9px bar 16px under it, and the 18px price line 10px under that. */
+function PulseCardGhost({ t, locale }: { t: Dict; locale: Locale }) {
+  return (
+    <div className="kp-shimmer-track flex flex-col rounded-xl border border-border bg-bg-elevated p-4 text-transparent">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="inline-flex items-center gap-1.5 font-mono text-micro uppercase eyebrow">
+          <span className="inline-flex items-center gap-1.5 py-0.5 border-y border-transparent">
+            <span className="h-[13px] w-[13px] shrink-0" /><GhostText>{t.market.catSports}</GhostText>
+          </span>
+        </span>
+        <span className="h-[8px] w-[64px] rounded-sm bg-bg-overlay/40" />
+      </div>
+      <div className={`font-display text-[13.5px] font-semibold leading-snug ${locale === "sw" ? "min-h-[4.125em]" : "min-h-[2.75em]"}`}>
+        <div className="mt-[0.1875em] h-[1em] w-full rounded bg-bg-overlay" />
+        <div className="mt-[0.375em] h-[1em] w-3/4 rounded bg-bg-overlay" />
+      </div>
+      <div className="mt-3 h-[9px] w-full rounded-full bg-bg-overlay" />
+      {/* The price line: one 12px line (18px), its two sides at the ends. */}
+      <div className="mt-[10px] flex h-[18px] items-center justify-between">
+        <span className="h-[8px] w-[72px] rounded-sm bg-bg-overlay/40" />
+        <span className="h-[8px] w-[72px] rounded-sm bg-bg-overlay/40" />
+      </div>
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 import { FilterGroupKey } from "@/components/ui/filter-pill";
 import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_WRAP_CLASS, QUERY_BAR_ROW2_CLASS, QUERY_GROUP_CLASS, QueryGroupDivider } from "@/components/ui/query-bar";
+import { CountGhost, PillGhost } from "@/components/ui/query-bar-ghost";
 import type { Dict } from "@/lib/i18n-dict";
 
 /**
@@ -32,7 +33,7 @@ export function MoneyBarGhost({ t, lenses, count }: { t: Dict; lenses: readonly 
         <div className="flex min-w-0 flex-1 basis-full items-center gap-1 overflow-hidden lg:flex-wrap lg:overflow-visible">
           {lenses.map((label, i) => <PillGhost key={i} label={label} />)}
         </div>
-        <p className="shrink-0 font-mono text-[11.5px] tabular-nums text-transparent"><span className="rounded bg-bg-overlay">{count}</span></p>
+        <CountGhost count={count} />
       </div>
       {/* Row 2 — one Filters button on a phone; from lg the two groups, each in the page's own wrapper with its divider
           (`QueryGroupDivider`: the row's 29px column gap is keyed on it) and its key, so the row wraps as the page's. */}
@@ -52,12 +53,6 @@ export function MoneyBarGhost({ t, lenses, count }: { t: Dict; lenses: readonly 
   );
 }
 
-/** A pill while it loads: `filterPillClass`'s box (its geometry, not its ink) with the label set and not shown. */
-function PillGhost({ label }: { label: string }) {
-  return (
-    <span className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-pill border border-transparent bg-bg-overlay px-3 text-[13px] font-semibold text-transparent kp-shimmer-track">
-      {label}
-      <span className="font-mono text-[11px] font-bold tabular-nums">00</span>
-    </span>
-  );
-}
+/* The pill — `filterPillClass`'s box with the label set and not shown — and the result count are `query-bar-ghost.tsx`'s
+   `PillGhost` and `CountGhost` since round 5's follow-up (R5-L, R5-K): /results', /markets', /leaderboard's and
+   /positions' ghosts draw the same pill and count, so each lives once, beside the other parts every bar ghost draws. */

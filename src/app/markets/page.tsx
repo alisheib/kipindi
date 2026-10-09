@@ -27,7 +27,7 @@ import { SearchBox } from "@/components/ui/search-box";
 import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { DiscoveryBar, type DiscoveryCounts } from "@/components/markets/discovery-bar";
-import { MARKET_CARD_H } from "@/components/markets/card-geometry";
+import { MarketsBoardGhost } from "./loading";
 import {
   ODDS_IDS,
   POOL_IDS,
@@ -227,7 +227,11 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
         className="kp-markets-search"
       />
 
-      <Suspense fallback={<GridSkeleton />}>
+      {/* ⭐ THE FALLBACK IS THE ROUTE'S OWN BOARD GHOST (round 5's follow-up, R5-L): the bar and the grid as `loading.tsx`
+          draws them — one drawing for a document's first paint and a move's, and a client reference (no drawn tree in this
+          page's payload, which every 30s refresh re-sends). It replaces `GridSkeleton`, which drew the grid alone: no bar, so
+          the first card stood 92px high on a phone and 180px at 1280 in Swahili. */}
+      <Suspense fallback={<MarketsBoardGhost />}>
         <DiscoveryBoard searchParams={searchParams} />
       </Suspense>
     </PageContainer>
@@ -536,55 +540,6 @@ function BoardEmptyState({
           ) : undefined
         }
       />
-    </div>
-  );
-}
-
-/**
- * THE skeleton a visitor actually sees — the grid is inside a Suspense boundary and this is
- * what the first HTML response carries. (`loading.tsx` only paints on a client-side navigation
- * into the route.) Height and count are pinned to the real values: `MARKET_CARD_H` is the one
- * shared definition, and the count comes from `PLAYER_PER_PAGE` rather than being re-typed, so
- * a page-size change moves both together.
- */
-function GridSkeleton() {
-  return (
-    <div className="market-grid mt-3" aria-hidden>
-      {Array.from({ length: PLAYER_PER_PAGE }).map((_, i) => (
-        <div
-          key={i}
-          className="kp-shimmer-track overflow-hidden rounded-md border border-border bg-bg-elevated"
-          style={{ height: MARKET_CARD_H }}
-        >
-          <div className="space-y-3 p-4">
-            <div className="flex items-center gap-2">
-              {/* ⚠️ WIDTH IS A LITERAL, not `w-12` — spacing is overridden
-                  (tailwind.config.ts:200-215) so `w-12` is 128px, twice any real category chip.
-                  (`h-5` and `w-16` are NOT overridden keys and read as written.) */}
-              <div className="h-5 w-[64px] rounded-pill bg-bg-overlay" />
-              <div className="h-5 w-16 rounded-pill bg-bg-overlay" />
-            </div>
-            <div className="h-4 w-3/4 rounded bg-bg-overlay" />
-            <div className="h-4 w-1/2 rounded bg-bg-overlay" />
-            {/* The real card carries a probability block, the tipping bar, a trader row and the
-                money buttons between the title and the footer. Reserving them keeps the INTERNAL
-                rhythm honest too, not just the outer box. */}
-            {/* ⚠️ LITERAL, not `h-8` (48px on the overridden scale) — the probability figure. */}
-            <div className="mt-4 h-[28px] w-20 rounded bg-bg-overlay" />
-            <div className="mt-4 h-[7px] w-full rounded-pill bg-bg-overlay" />
-            <div className="mt-3 h-5 w-32 rounded bg-bg-overlay" />
-            <div className="mt-3 flex gap-2">
-              {/* ⚠️ TOKEN, not `h-9` — spacing is overridden (tailwind.config.ts:200-215) so
-                  `h-9` drew 64px for the card's YES/NO buttons, which globals.css pins at
-                  exactly `--tap-min` (`.mcardp-actions .btn { height: var(--tap-min) }`).
-                  That was a 24px jump per card on every board load. Consume the SAME token. */}
-              <div className="h-[var(--tap-min)] flex-1 rounded-md bg-bg-overlay" />
-              <div className="h-[var(--tap-min)] flex-1 rounded-md bg-bg-overlay" />
-            </div>
-            <div className="mt-3 h-4 w-24 rounded bg-bg-overlay" />
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
