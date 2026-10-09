@@ -14,13 +14,16 @@
  *     (`countSentBefore`), asked only when some row is SENT;
  *   · E30 · "stopped since this campaign" — a keyset walk of the campaign's handed-over people in chunks of 1,000
  *     (`handedOverPage`), each chunk's stops in force in TWO queries side by side — the stop list's (§25's
- *     `findActiveAmong`) and each number's latest word in the consent ledger (§25's `latestAmong`), no new member — then,
- *     for the few that stopped only, whether an erasure stands on them (three grouped reads, `erasedAmong`) and the
- *     attribution below. It is the one expensive figure, so production asks it through a single-flight memory of
- *     `STOPPED_SINCE_TTL_MS` per campaign (a 150,000-person campaign is not walked on every step and every watcher's poll;
- *     a read that failed is never kept) — and a view waits for it at most `RESULTS_READ_BUDGET_MS`: a walk still running
- *     says "couldn't be counted just now" this once and goes on without the view, so the next view finds it done (the page
- *     never hangs on the biggest list);
+ *     `findActiveAmong`) and each number's latest word in the consent ledger (§25's `latestAmong`), no new member — then the
+ *     attribution below for the few that stopped. ⚠️ The ledger's query is the costlier one: Prisma's `latestAmong` reads
+ *     EVERY ledger row of every number in the chunk and keeps each number's newest in code — fine at today's cap (a first
+ *     campaign of at most ~1,600 people: two chunks), ~150 whole-history reads per walk at a 150,000-person campaign. OWED,
+ *     to a later unit under §25: `messagingConsent.latestWordsAmong`, the five columns the rule reads (`identifier`,
+ *     `status`, `source`, `evidence`, `createdAt`) of each number's newest row alone, in one query. It is the one expensive
+ *     figure, so production asks it through a single-flight memory of `STOPPED_SINCE_TTL_MS` per campaign (a 150,000-person
+ *     campaign is not walked on every step and every watcher's poll; a read that failed is never kept) — and a view waits
+ *     for it at most `RESULTS_READ_BUDGET_MS`: a walk still running says "couldn't be counted just now" this once and goes on
+ *     without the view, so the next view finds it done (the page never hangs on the biggest list);
  *   · the configured price — for a viewer who may read money only.
  * ⛔ A READ THAT FAILS IS SAID, NEVER A ZERO: the two counts above come back `null` and the card says "couldn't be counted
  * just now" — an auxiliary figure never stops the page or its driver (a thrown call stops the driver for good).
@@ -64,23 +67,33 @@
  *   ⛔ ONE FIGURE, NEVER SPLIT BY KIND: the switch turned off is an account holder's act alone, so "how many stopped which way"
  *     would tell a masked viewer that somebody on the list holds an account (D19 / A1.1 — the contact book's bulk bar hides its
  *     own split for the same reason). The row says how many, never which way.
- *   ⛔ AN ERASED PERSON IS NEVER COUNTED. A number that is erased by the ONE function the importer and the Add form ask
- *     (`isErasedNumber`, `erasure-mark.ts`: a book row decides alone — the erasure's tombstone is erased — and with no row the
- *     ledger's ONE rule) is left out whatever stop it holds (`erasedAmong`, asked only of the numbers a chunk found stopped).
- *     Found while building this, and said: the walk before counted ONE erased case — a person whose own link stop was made
- *     after the message and who was erased later (`erase.ts` never touches a stop, so the row stood and passed) — and at send
- *     time the gate files an erased number under "Withdrew consent" (its marker is a WITHDRAWN). This figure follows
- *     neither. ⚠️ So a person counted here who is erased later leaves the count — as one who turns offers back on does: the
- *     fall does not single out an erasure (X22).
+ *     ⚠️ RECORDED, as R6's differencing is (ENGINE-SPEC §6): a masked officer's OWN Suppress or Record a withdrawal on ONE
+ *     ticked contact this campaign reached moves the figure by one — or by none when that person had already stopped since (a
+ *     Suppress over a stop in force changes nothing this counts; `withdrawEach` writes nothing over a latest WITHDRAWN) — which
+ *     is the OD54 split the bulk bar hides from that officer ("already suppressed", "already withdrawn"). Recorded, not
+ *     hidden; the owner is told.
+ *   ⛔ ERASURE-BLIND BY DESIGN (X22 — S14's review of this unit, 2026-10-09). An erasure neither ADDS anyone — its marker is no
+ *     stop (`isLedgerStop`) — nor TAKES anyone out: a stop-list row, which `erase.ts` never touches, keeps counting while the
+ *     gate keeps refusing the number, and a ledger-only stop that the marker supersedes as the latest word falls exactly as a
+ *     later GIVEN makes it fall. 🔴 Leaving erased people OUT (this unit's first build asked `isErasedNumber` of every number
+ *     it found stopped) let a masked officer tell an erasure from a removal: an officer's Suppress or a complaint can never
+ *     be lifted (`lift` refuses every reason but WITHDRAWN; the profile switch lifts only a stop the person made), so for those
+ *     stops an erasure was the ONLY way out of the count — Suppress one ticked row (+1); the row later gone from the book: the
+ *     figure falls, erased; it stays, removed. It also under-counted a person who said yes again after an erasure and then
+ *     stopped. Found and said (the brief asked): before the ruling the walk already counted an erased person's own link stop
+ *     (`erase.ts` keeps it) — which this keeps, for every stop-list row; at send time the gate files an erased number under
+ *     "Withdrew consent" (its marker is a WITHDRAWN) — which this does not follow: the marker is no stop.
  * ⭐ ATTRIBUTED TO THE MOST RECENT CAMPAIGN BEFORE THE STOP: a stop made after a NEWER campaign's message to the same number is
  * that campaign's, not this one's — counted here only when no other campaign handed the number a message between this one's and
  * the stop. A stop BEFORE this campaign's message is not this campaign's; a message that was never handed over (SKIPPED,
  * FAILED) reached nobody.
  * ⚠️ KNOWN LIMITS, said rather than hidden: a stop-list row made again keeps its FIRST instant, so a person who stopped, was
  * started again and was then stopped by an officer's Suppress (which writes no ledger row) after this campaign's message may
- * not be counted (toward fewer); a stop that follows a TEST send or an invite is not told apart from one that follows the
- * campaign before it, and the walk is by number, as every figure here is — a recycled number's next holder is not told apart:
- * those two can give the campaign before a stop that something else prompted, which this figure cannot see.
+ * not be counted (toward fewer) — or, when its first instant falls after this campaign's message, counted here though a
+ * newer campaign's message came before the officer's stop; a stop that follows a TEST send or an invite is not told apart
+ * from one that follows the campaign before it, and the walk is by number, as every figure here is — a recycled number's
+ * next holder is not told apart: those two can give the campaign before a stop that something else prompted, which this
+ * figure cannot see.
  *
  * ── WHO SEES WHAT ───────────────────────────────────────────────────────────────────────────────────────────────────────
  * ⛔ E23 · THE FLOOR — a viewer below it (`hidden`: may not read a number, fewer than 10 rows) gets NO results at all, so
@@ -102,7 +115,7 @@ import type { SmsProviderResolution } from "@/lib/server/sms";
 import { reloadMarketingSmsSettings } from "@/lib/server/marketing/sms-settings";
 import { WEBHOOK_SECRET_MIN_CHARS } from "@/lib/server/webhook-secret-floor";
 import { RECEIPT_CLASS_PREFIX } from "@/lib/marketing/engine-rules";
-import { ERASURE_EVIDENCE, isErasedNumber, isErasureMarker } from "@/lib/marketing/erasure-mark";
+import { isErasureMarker } from "@/lib/marketing/erasure-mark";
 import { outstandingRows, recipientRows } from "@/lib/marketing/campaign-status";
 import type { CampaignResultsView } from "@/lib/server/marketing/campaign-live";
 
@@ -111,8 +124,8 @@ import type { CampaignResultsView } from "@/lib/server/marketing/campaign-live";
 /** E5 · a message handed over this long ago with no receipt is worth saying (receipts usually come in seconds — BLACKBALL-SMS
  *  §3a measured eleven). STRICTLY older: at exactly this age it is not yet "after 15 minutes". */
 export const NO_RECEIPT_AFTER_MS = 15 * 60_000;
-/** E30 · the people read per chunk of the stop walk — and so the most keys any of its grouped reads takes (each refuses above
- *  2,000): the stop list's and the ledger's for the whole chunk, the erasure's for the ones it found stopped. */
+/** E30 · the people read per chunk of the stop walk — and so the keys each of its two grouped reads takes, the stop list's and
+ *  the ledger's (each refuses above 2,000). */
 export const STOP_WALK_CHUNK = 1000;
 /** A walk that has not ended after this many chunks (two million people) is not a walk: it refuses, and the figure is unread. */
 export const STOP_WALK_PAGES_MAX = 2000;
@@ -270,31 +283,8 @@ export function attributedElsewhere(rows: readonly MessageRef[], o: { campaignId
 
 /* ══ THE STOP WALK (E30) ════════════════════════════════════════════════════════════════════════════════════════════ */
 
-/**
- * ⛔ THE NUMBERS AMONG THESE THAT ARE ERASED — by the ONE function the importer and the Add form ask (`isErasedNumber`,
- * `erasure-mark.ts`): a number's book row decides alone (the erasure's tombstone is erased, an ordinary row is not), and with no
- * book row the ledger's ONE rule does (C8a's grouped read, `erasureStandsAmong`). ⭐ The book is read KEY-ONLY, twice
- * (`msisdnsPresent` with the tombstone and without it): a number present only with it is the tombstone — no name, e-mail or
- * note of a book row ever leaves the store for this. Three grouped reads side by side, each of at most a chunk of keys; each
- * number once, in code-unit order. The walk asks it only of the numbers a chunk found stopped.
- */
-export async function erasedAmong(msisdns: readonly string[]): Promise<string[]> {
-  const keys = [...new Set(msisdns)];
-  if (keys.length === 0) return [];
-  const [inBook, ordinaryInBook, standing] = await Promise.all([
-    db.marketingContact.msisdnsPresent({ msisdns: keys, excludeSourceRef: null }),
-    db.marketingContact.msisdnsPresent({ msisdns: keys, excludeSourceRef: ERASURE_EVIDENCE }),
-    db.messagingConsent.erasureStandsAmong({ channel: "SMS", category: "MARKETING", identifiers: keys }),
-  ]);
-  const present = new Set(inBook);
-  const ordinary = new Set(ordinaryInBook);
-  const stands = new Set(standing);
-  return keys
-    .filter((m) => isErasedNumber(present.has(m) ? { sourceRef: ordinary.has(m) ? null : ERASURE_EVIDENCE } : null, stands.has(m)))
-    .sort();
-}
-
-/** Every read and rule the walk makes — swappable for the suite's in-process plants; production passes none. */
+/** Every read and rule the walk makes — swappable for the suite's in-process plants; production passes none. ⛔ No erasure
+ *  read among them, on purpose: the figure is erasure-blind (the header, X22). */
 export type StopWalkDeps = {
   /** A keyset page of the campaign's handed-over people (`handedOverPage`, both twins). */
   page: (campaignId: string, after: string | null, limit: number) => Promise<SmsCampaignHandedOver[]>;
@@ -302,8 +292,6 @@ export type StopWalkDeps = {
   stops: (batch: MessagingKeyBatch) => Promise<StoredSuppression[]>;
   /** §25 · each of one chunk's numbers' LATEST word in the consent ledger — ONE query (`latestAmong`). */
   words: (batch: MessagingKeyBatch) => Promise<StoredMessagingConsent[]>;
-  /** ⛔ The numbers among these that are erased (`erasedAmong`) — asked only of the ones a chunk found stopped. */
-  erased: (msisdns: string[]) => Promise<string[]>;
   /** The campaigns' messages to ONE number from an instant on (U16a's `listByMsisdn`), newest first. */
   messages: (msisdn: string, sinceIso: string) => Promise<MessageRef[]>;
   /** The people per chunk. */
@@ -316,7 +304,6 @@ export const STOP_WALK_DEPS: Readonly<StopWalkDeps> = Object.freeze({
   page: async (campaignId: string, after: string | null, limit: number) => db.smsCampaignRecipient.handedOverPage(campaignId, after, limit),
   stops: async (batch: MessagingKeyBatch) => db.suppression.findActiveAmong(batch),
   words: async (batch: MessagingKeyBatch) => db.messagingConsent.latestAmong(batch),
-  erased: async (msisdns: string[]) => erasedAmong(msisdns),
   messages: async (msisdn: string, sinceIso: string) => db.smsCampaignRecipient.listByMsisdn(msisdn, sinceIso),
   chunk: STOP_WALK_CHUNK,
   rules: Object.freeze({ stopsSince, attributedElsewhere }),
@@ -325,9 +312,9 @@ export const STOP_WALK_DEPS: Readonly<StopWalkDeps> = Object.freeze({
 /**
  * ⭐ HOW MANY OF THIS CAMPAIGN'S PEOPLE HAVE STOPPED OFFERS SINCE ITS MESSAGE (E30, the header): walk the handed-over people by
  * number in chunks; ask each chunk's stop list and its numbers' latest ledger words, one query each, side by side; keep ONE stop
- * per number made at or after the message (`stopsSince`); leave out the erased (asked of those alone); and drop the stops another
- * campaign's newer message to the same number explains. A read that fails THROWS (the caller says "unread"); a walk that does
- * not move refuses rather than loop. Reads numbers, keeps none, returns a count.
+ * per number made at or after the message (`stopsSince`); and drop the stops another campaign's newer message to the same number
+ * explains. ⛔ Erasure-blind: nothing here asks whether a number was erased (the header, X22). A read that fails THROWS (the
+ * caller says "unread"); a walk that does not move refuses rather than loop. Reads numbers, keeps none, returns a count.
  */
 export async function stoppedSinceOf(campaignId: string, deps: StopWalkDeps = STOP_WALK_DEPS): Promise<number> {
   let after: string | null = null;
@@ -338,15 +325,10 @@ export async function stoppedSinceOf(campaignId: string, deps: StopWalkDeps = ST
     if (page.length === 0) return stopped;
     const batch: MessagingKeyBatch = { channel: "SMS", category: "MARKETING", identifiers: [...new Set(page.map((p) => p.msisdn))] };
     const [stops, words] = await Promise.all([deps.stops(batch), deps.words(batch)]);
-    const found = deps.rules.stopsSince(page, stops, words);
-    if (found.length > 0) {
-      const erased = new Set(await deps.erased(found.map((f) => f.msisdn)));
-      for (const f of found) {
-        if (erased.has(f.msisdn)) continue;
-        const rows = await deps.messages(f.msisdn, f.sentAt);
-        if (deps.rules.attributedElsewhere(rows, { campaignId, sentAt: f.sentAt, stopAt: f.stopAt })) continue;
-        stopped++;
-      }
+    for (const f of deps.rules.stopsSince(page, stops, words)) {
+      const rows = await deps.messages(f.msisdn, f.sentAt);
+      if (deps.rules.attributedElsewhere(rows, { campaignId, sentAt: f.sentAt, stopAt: f.stopAt })) continue;
+      stopped++;
     }
     if (page.length < deps.chunk) return stopped;
     const last = page[page.length - 1].msisdn;

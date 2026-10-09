@@ -151,7 +151,8 @@ export type CampaignResultsView = {
   /** PENDING + HELD still to be messaged — or, once the campaign was stopped, everybody it did not message (the headline's figure). */
   left: { count: number; stopped: boolean };
   /** E30 · people this campaign reached who have stopped offers since its message, whatever way (the stop list, the ledger's
-   *  latest word) — the erased never among them; null when it could not be counted. */
+   *  latest word) — erasure-blind by design (X22: an erasure adds nobody and takes nobody out); null when it could not be
+   *  counted. */
   stoppedSince: number | null;
   /** OD41 · which honesty lines stand, decided from the data. */
   honesty: { noReceiptYet: boolean; notSetUp: boolean };

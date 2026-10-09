@@ -55,8 +55,8 @@
  *   R7  whether receipts are set up is the DLR route's own rule; R8 ⛔ OD24 · the price line for a money reader only;
  *   R9  the failed split, no answer and what is left, agreeing with the figures; R10 the stop walk and its cost;
  *   R11 the card; R12 the wiring; R13 the reasons are printed once (the results card's, never the figures card's as well);
- *   R14 ⭐ every way a person stops counts, a number once, only a stop in force, never an erased person (E30 as re-ruled
- *       2026-10-09); R15 ⭐ the platform's own writers move it, and the real erasure takes a stopped person out.
+ *   R14 ⭐ every way a person stops counts, a number once, only a stop in force, and erasure-blind (E30 as re-ruled
+ *       2026-10-09; X22); R15 ⭐ the platform's own writers move it, and the real erasure adds nobody and takes nobody out.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION (§5.11). `--prove-red` proves the baseline green first, then plants each defect IN MEMORY
  * (a dependency handed to a service or the view, a wrapper of a service, a source text replaced in memory) and requires

@@ -19,7 +19,7 @@
  * ⭐ The reasons and the failed split are the kit's `AdminBarList` in its own ink — "not sent" is the checks working, never
  * danger (OD40) — dominant first, protected ONE line (the view's list, worded once), the five words always.
  *
- * Guard: `npm run test:campaign-visuals` §R (R1–R12) · Red: `npm run red:campaign-visuals`.
+ * Guard: `npm run test:campaign-visuals` §R (R1–R15) · Red: `npm run red:campaign-visuals`.
  */
 import type { ReactNode } from "react";
 import { Callout } from "@/components/ui/callout";

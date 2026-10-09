@@ -22,10 +22,11 @@
  *   R12 the wiring — the doors by identity, the module's reach, the mount and the ghost;
  *   R13 the reasons are printed ONCE — by the results card; the figures card keeps its own list only for a view with no results;
  *   R14 ⭐ every way a person stops counts — the link, the switch, an officer's Suppress and recorded withdrawal, a complaint —
- *       a number ONCE, and only a stop in force: never a lifted stop, a switch turned back on, the erasure's marker, a lapse,
- *       nor an ERASED person (the owner's ruling of 2026-10-09: no message carries a link any more);
+ *       a number ONCE, and only a stop in force: never a lifted stop, a switch turned back on, the erasure's marker, a lapse;
+ *       and ERASURE-BLIND (X22): a stop an erasure leaves standing keeps counting (the owner's ruling of 2026-10-09: no message
+ *       carries a link any more; S14's review: an erasure must not be told from a removal by this figure);
  *   R15 ⭐ the platform's OWN writers move it — the opt-out page, the profile switch, the bulk bar's Suppress and Record a
- *       withdrawal — and the REAL erasure takes a stopped person out and adds nobody.
+ *       withdrawal — and the REAL erasure adds nobody and takes nobody out.
  * ⛔ This file holds no backslash (an editing tool decodes them): patterns are built from character classes and codes.
  */
 import { readFileSync, readdirSync } from "node:fs";
@@ -57,7 +58,7 @@ const CONSENT = await import("../../src/lib/server/marketing/consent.ts");
 const BULK = await import("../../src/lib/server/marketing/contact-bulk.ts");
 const ERASE = await import("../../src/lib/server/marketing/erase.ts");
 const { WHOLE_BOOK } = await import("../../src/lib/server/marketing/audience.ts");
-const { ERASURE_EVIDENCE, isErasureMarker } = await import("../../src/lib/marketing/erasure-mark.ts");
+const { ERASURE_EVIDENCE, isErasedNumber, isErasureMarker } = await import("../../src/lib/marketing/erasure-mark.ts");
 const { AppRouterContext } = await import("next/dist/shared/lib/app-router-context.shared-runtime.js");
 const { db, BULK_KEYED_READ_MAX } = await import("../../src/lib/server/store.ts");
 const { DISPATCH_TARGET_TYPE } = await import("../../src/lib/server/marketing/dispatch.ts");
@@ -85,12 +86,12 @@ export const LABELS = {
   r7: "R7 · WHETHER A RECEIPT CAN ARRIVE IS THE DLR ROUTE'S OWN RULE — receiptsSetUp equals the route's real `authorized` over a matrix of environments (no secret in production and out of it, on the live rail and the stub; a secret one character short of the floor and at it; the rotation's previous secret alone), and the process's own environment is read as the route reads it",
   r8: "R8 · ⛔ OD24 · THE PRICE LINE FOR A VIEWER WHO MAY READ MONEY ONLY — a money reader's results carry handed over (SENT + DELIVERED) × the configured price and the card says it in exactly the spec's sentence (TZS 6 and TZS 6.50 both); a GROWTH officer and a viewer who may only look get no price, no TZS anywhere in the view or the card, and the price is not even asked; nothing is said while nothing is handed over or when the price cannot be read; below the floor a money reader gets nothing",
   r9: "R9 · THE FAILED SPLIT, NO ANSWER AND WHAT IS LEFT, AGREEING WITH THE FIGURES — failed rows split by their class (no receipt: prefix = the network refused it; a receipt: prefix = reported undelivered), every one in exactly one; no answer; waiting is PENDING + HELD, and for a stopped campaign everybody it did not message — the headline's own figure, a list that never finished included; every result adds to the figures card (Delivered + Handed over = its Handed over, Failed, Not sent, No answer, Waiting) and the view asks its ONE groupBy exactly once",
-  r10: "R10 · THE STOP WALK AND ITS COST — walked in chunks (a list of an exact multiple of the chunk ends on an empty page), each chunk's stop list and its numbers' ledger words asked in ONE query each of at most a chunk of numbers, whether an erasure stands asked only of the people a chunk found stopped, every person once; the real chunk is 1,000 and fits the bulk read's bound; production keeps a campaign's count for a short time and shares a walk in flight — a failed walk is never kept; a count that cannot be made is unread, never a zero, and never fails the view; a view never waits longer than its budget for the walk — one that is slower says unread THIS time and the memory finds it done for the next; nothing is asked of a campaign that handed nothing over",
+  r10: "R10 · THE STOP WALK AND ITS COST — walked in chunks (a list of an exact multiple of the chunk ends on an empty page), each chunk's stop list and its numbers' ledger words asked in ONE query each of at most a chunk of numbers, every person once; the real chunk is 1,000 and fits the bulk read's bound; production keeps a campaign's count for a short time and shares a walk in flight — a failed walk is never kept; a count that cannot be made is unread, never a zero, and never fails the view; a view never waits longer than its budget for the walk — one that is slower says unread THIS time and the memory finds it done for the next; nothing is asked of a campaign that handed nothing over",
   r11: "R11 · THE CARD — the spec's titles in the spec's order (Delivered · Handed over, no receipt yet · No receipt after 15 minutes · Failed with The network refused it and Not delivered (receipt) · Not sent — the checks refused them · No answer from the network · Stopped before sending · Stopped since this campaign, the owner's words under it and the link-only row's words nowhere); the Delivered row prints Delivered and never Handed over (distinct numbers); the honesty and price lines are the spec's sentences; an unread count is a dash and its sentence; nothing is drawn below the floor; and the card's file does no arithmetic on a count, formats no money, reads no clock and reaches nothing of the server",
   r12: "R12 · THE WIRING — the view's results deps frozen and wired to the REAL doors by identity and by source; the results module names no send and writes nothing; only the live view imports it; the card is imported by the page alone, which mounts it behind LiveWhenResults in its own block under the figures; the ghost has the matching block; the client exports the one hook the card reads",
   r13: "R13 · THE REASONS ARE PRINTED ONCE — over a reader's campaign above the floor the whole page (status, controls, figures and results) draws the five reasons in the results card and none in the figures card, and not the figures card's 'Not sent, by reason' title; the same view with its results taken away keeps the figures card's own list; a masked viewer on nine rows is drawn neither; the figures card's file guards its list on the view having no results",
-  r14: "R14 · ⭐ EVERY WAY A PERSON STOPS, AND ONLY A STOP IN FORCE (E30 as re-ruled 2026-10-09: no message carries a link) — after this campaign's message a stop by the link, the offers switch turned off, an officer's Suppress, an officer's recorded withdrawal and a complaint each count; a number on the stop list AND in the ledger counts ONCE; a lifted stop, a switch turned back on, the erasure's marker under an ordinary book row and a lapse do not; and an ERASED person never counts — stopped and then erased (the tombstone), a link stop under an erasure with no book row, a tombstone whose ledger a later yes reopened",
-  r15: "R15 · ⭐ THE PLATFORM'S OWN WRITERS MOVE IT — on a campaign handed over five minutes ago: the opt-out page's stop, the profile switch turned off, an officer's Suppress and an officer's Record a withdrawal (the bulk bar's own run) each answer ok, write what the rules read, and count once — 0 before, 5 after (the four, and one more switched off), a switch turned off and back on not among them; then the REAL erasure takes the stopped person it erases out (4) and adds nobody it erases who never stopped",
+  r14: "R14 · ⭐ EVERY WAY A PERSON STOPS, AND ONLY A STOP IN FORCE (E30 as re-ruled 2026-10-09: no message carries a link) — after this campaign's message a stop by the link, the offers switch turned off, an officer's Suppress, an officer's recorded withdrawal and a complaint each count; a number on the stop list AND in the ledger counts ONCE; a lifted stop, a switch turned back on, the erasure's marker under an ordinary book row and a lapse do not; and the figure is ERASURE-BLIND (X22) — an officer's Suppress and then an erasure (the tombstone), a link stop under an erasure with no book row, and a stop made after a later yes reopened the ledger under a tombstone each still count, while a switch turned off that the erasure's marker then superseded does not, exactly as a later yes would make it fall",
+  r15: "R15 · ⭐ THE PLATFORM'S OWN WRITERS MOVE IT — on a campaign handed over before the writers ran: the opt-out page's stop, the profile switch turned off, an officer's Suppress and an officer's Record a withdrawal (the bulk bar's own run) each answer ok, write what the rules read, and count once — 0 before, 5 after (the four, and one more stopped by their link), a switch turned off and back on not among them; then the REAL erasure changes nothing (X22): the stopped person it erases still counts, their stop standing, and nobody it erases who never stopped is added — 5",
 } as const;
 export type ResultsLabel = (typeof LABELS)[keyof typeof LABELS];
 
@@ -749,7 +750,6 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
     const pages: Array<string | null> = [];
     const batches: number[] = [];
     const wordBatches: number[] = [];
-    const erasedAsked: number[] = [];
     const seen = new Set<string>();
     let twice = 0;
     const walkDeps: StopWalkDeps = {
@@ -757,12 +757,11 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
       page: async (id, after, limit) => { pages.push(after); const p = await impl.walkDeps.page(id, after, limit); for (const x of p) { if (seen.has(x.msisdn)) twice++; seen.add(x.msisdn); } return p; },
       stops: async (b) => { batches.push(b.identifiers.length); return impl.walkDeps.stops(b); },
       words: async (b) => { wordBatches.push(b.identifiers.length); return impl.walkDeps.words(b); },
-      erased: async (m) => { erasedAsked.push(m.length); return impl.walkDeps.erased(m); },
     };
     const counted = await impl.walk(c.id, walkDeps);
-    // the stop list and the ledger: ONE query each per chunk of seven; the erasure: only the two of each chunk who stopped
+    // the stop list and the ledger: ONE query each per chunk of seven, and nothing else asked of a chunk
     const chunked = counted === 6 && pages.length === 4 && pages[0] === null && json(batches) === json([7, 7, 7]) && json(wordBatches) === json([7, 7, 7])
-      && json(erasedAsked) === json([2, 2, 2]) && twice === 0 && seen.size === 21;
+      && twice === 0 && seen.size === 21;
     // (2) the real chunk: 1,000 people, and the first page the bulk read's bound allows
     const real = RES.STOP_WALK_CHUNK === 1000 && RES.STOP_WALK_DEPS.chunk === 1000 && RES.STOP_WALK_CHUNK <= BULK_KEYED_READ_MAX
       && MODEL.SMS_HANDED_OVER_PAGE_MAX === BULK_KEYED_READ_MAX;
@@ -853,7 +852,7 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
     });
     const nothing = asked.length === 0 && iv.results?.stoppedSince === 0 && iv.results.noReceiptAfter15 === 0;
     return [chunked && real && twoPages && remembered && inside && expired && notKept && asRejection && budgeted && guarded && unread && nothing,
-      `chunks of 7 over 21: counted ${counted} (want 6), pages ${pages.length}, stop-list batches ${json(batches)}, ledger batches ${json(wordBatches)}, erasure asked of ${json(erasedAsked)}, twice ${twice} · 1,001 people → pages ${json(bigPages)} count ${bigCount} · real chunk ${real} · production: ${walks} walk(s) for 3 askers ${json(shared)} · memory: inside ${inside} expired ${expired} failure not kept ${notKept} throw-as-rejection ${asRejection} · a slow walk: first look ${json(firstLook.results?.stoppedSince)}, the next ${json(secondLook.results?.stoppedSince)} · a stuck walk refuses ${stuck}, an endless one is cut at ${counter} pages ${endless} · failed walk: ${json(down.results?.stoppedSince)} "${valueOf(downHtml, "stoppedSince")}", a ledger that fails throws ${ledgerDown} · nobody handed over: asked [${asked.join(",")}]`];
+      `chunks of 7 over 21: counted ${counted} (want 6), pages ${pages.length}, stop-list batches ${json(batches)}, ledger batches ${json(wordBatches)}, twice ${twice} · 1,001 people → pages ${json(bigPages)} count ${bigCount} · real chunk ${real} · production: ${walks} walk(s) for 3 askers ${json(shared)} · memory: inside ${inside} expired ${expired} failure not kept ${notKept} throw-as-rejection ${asRejection} · a slow walk: first look ${json(firstLook.results?.stoppedSince)}, the next ${json(secondLook.results?.stoppedSince)} · a stuck walk refuses ${stuck}, an endless one is cut at ${counter} pages ${endless} · failed walk: ${json(down.results?.stoppedSince)} "${valueOf(downHtml, "stoppedSince")}", a ledger that fails throws ${ledgerDown} · nobody handed over: asked [${asked.join(",")}]`];
   });
 
   /* ── R11 · the card ── */
@@ -923,15 +922,11 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
     const frozen = R === RES.RESULTS_DEPS && Object.isFrozen(R) && Object.isFrozen(R.rules) && Object.isFrozen(RES.STOP_WALK_DEPS) && Object.isFrozen(RES.STOP_WALK_DEPS.rules)
       && R.rules.delivered === RES.deliveredRows && R.rules.failedSplit === RES.failedSplitOf && R.rules.honesty === RES.honestyOf
       && RES.STOP_WALK_DEPS.rules.stopsSince === RES.stopsSince && RES.STOP_WALK_DEPS.rules.attributedElsewhere === RES.attributedElsewhere;
-    // the walk's doors: the stop list and the ledger's latest word (§25), the erasure through the ONE function over the book's
-    // key-only presence and C8a's grouped read, and the attribution's read
+    // the walk's doors: the stop list and the ledger's latest word (§25), the marker's rule from erasure-mark, and the
+    // attribution's read
     const doors = s.results.includes("db.smsCampaignRecipient.countSentBefore(campaignId, before)") && s.results.includes("db.smsCampaignRecipient.handedOverPage(campaignId, after, limit)")
       && s.results.includes("db.suppression.findActiveAmong(batch)") && s.results.includes("db.messagingConsent.latestAmong(batch)")
-      && s.results.includes("erased: async (msisdns: string[]) => erasedAmong(msisdns)")
-      && s.results.includes("db.marketingContact.msisdnsPresent({ msisdns: keys, excludeSourceRef: null })")
-      && s.results.includes("db.marketingContact.msisdnsPresent({ msisdns: keys, excludeSourceRef: ERASURE_EVIDENCE })")
-      && s.results.includes("db.messagingConsent.erasureStandsAmong({") && s.results.includes("isErasedNumber(")
-      && s.results.includes('import { ERASURE_EVIDENCE, isErasedNumber, isErasureMarker } from "@/lib/marketing/erasure-mark";')
+      && s.results.includes('import { isErasureMarker } from "@/lib/marketing/erasure-mark";')
       && s.results.includes("db.smsCampaignRecipient.listByMsisdn(msisdn, sinceIso)")
       && s.live.includes("results: RESULTS_DEPS,") && s.live.includes("campaignResults({");
     // The send names are spelled in halves: marketing-window's W6 walks every file under scripts/ for the send path's NAME as text,
@@ -1012,25 +1007,25 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
     await listStop(numbers.k7, T - 30 * MIN, { lifted: true });                         // a lifted stop
     await word(numbers.k8, T - 30 * MIN);                                               // the switch turned off…
     await word(numbers.k8, T - 20 * MIN, { status: "GIVEN" });                          // …and on again
-    await bookRow(numbers.k9);                                                          // an ordinary book row — so not erased —
+    await bookRow(numbers.k9);                                                          // an ordinary book row…
     await word(numbers.k9, T - 30 * MIN, MARKER);                                       // …under an erasure's marker: no stop
     await word(numbers.k10, T - 30 * MIN, { source: "RETENTION_LAPSE", evidence: null }); // a lapse: no stop
-    // ── ⛔ not counted: an ERASED person, whatever they stopped by ──
+    // ── ⛔ ERASURE-BLIND (X22): an erasure adds nobody and takes nobody out ──
     await listStop(numbers.k11, T - 30 * MIN, { reason: "OPERATOR", evidence: STAFF }); // an officer's stop, which the erasure keeps…
     await word(numbers.k11, T - 20 * MIN, MARKER);                                      // …then erased: the marker…
-    await bookRow(numbers.k11, { tombstone: true });                                    // …and the tombstone
+    await bookRow(numbers.k11, { tombstone: true });                                    // …and the tombstone — still counted
     await listStop(numbers.k12, T - 30 * MIN);                                          // a link stop, which the erasure keeps…
-    await word(numbers.k12, T - 20 * MIN, MARKER);                                      // …under an erasure with no book row
+    await word(numbers.k12, T - 20 * MIN, MARKER);                                      // …under an erasure with no book row — counted
     await word(numbers.k13, T - 30 * MIN);                                              // the switch turned off, then erased: the
-    await word(numbers.k13, T - 20 * MIN, MARKER);                                      // marker is the ledger's latest word…
-    await bookRow(numbers.k13, { tombstone: true });                                    // …and the tombstone
-    await bookRow(numbers.k14, { tombstone: true });                                    // the tombstone decides alone, though…
+    await word(numbers.k13, T - 20 * MIN, MARKER);                                      // marker is the ledger's latest word, so the
+    await bookRow(numbers.k13, { tombstone: true });                                    // switch's stop falls, as a later yes would
+    await bookRow(numbers.k14, { tombstone: true });                                    // a tombstone, and…
     await word(numbers.k14, T - 50 * MIN, MARKER);
     await word(numbers.k14, T - 45 * MIN, { status: "GIVEN" });                         // …a later yes reopened the ledger…
-    await word(numbers.k14, T - 30 * MIN);                                              // …and the switch was then turned off
+    await word(numbers.k14, T - 30 * MIN);                                              // …and the switch was then turned off — counted
     const v = await results(K.id);
     const html = card(v);
-    const counted = v.results?.stoppedSince === 6 && valueOf(html, "stoppedSince") === "6";
+    const counted = v.results?.stoppedSince === 9 && valueOf(html, "stoppedSince") === "9";
     // the ledger's rule beside it: of the WITHDRAWN rows, the erasure's marker and a lapse are no stop
     const rule = RES.isLedgerStop({ status: "WITHDRAWN", source: "PROFILE", evidence: "/profile/notifications" })
       && RES.isLedgerStop({ status: "WITHDRAWN", source: "OPERATOR", evidence: STAFF })
@@ -1038,7 +1033,7 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
       && !RES.isLedgerStop({ status: "WITHDRAWN", source: "RETENTION_LAPSE", evidence: null })
       && !RES.isLedgerStop({ status: "GIVEN", source: "PROFILE", evidence: "/profile/notifications" });
     return [counted && rule,
-      `counted ${v.results?.stoppedSince} (want 6: k1 a link, k2 the switch, k3 an officer's Suppress, k4 a recorded withdrawal, k5 a complaint, k6 both records once — not k7 lifted, k8 back on, k9 a marker, k10 a lapse, k11–k14 erased) · card "${valueOf(html, "stoppedSince")}" · the ledger's rule ${rule}`];
+      `counted ${v.results?.stoppedSince} (want 9: k1 a link, k2 the switch, k3 an officer's Suppress, k4 a recorded withdrawal, k5 a complaint, k6 both records once, and — erasure-blind — k11 a Suppress then erased, k12 a link stop under an erasure, k14 a stop after a reopened ledger; not k7 lifted, k8 back on, k9 a marker, k10 a lapse, k13 a switch-off the marker superseded) · card "${valueOf(html, "stoppedSince")}" · the ledger's rule ${rule}`];
   });
 
   /* ── R15 · ⭐ the platform's own writers move it ── */
@@ -1108,16 +1103,18 @@ export async function resultsClaims(impl: ResultsImpl, h: ResultsHarness): Promi
       && s3?.reason === "OPERATOR" && w4?.status === "WITHDRAWN" && w4.source === "OPERATOR" && (await db.suppression.find(keyOf("p4"))) === null
       && w5?.status === "GIVEN";
     const after = await results(P.id);
-    // the REAL erasure: the stopped person it erases leaves the count though their stop stands; one who never stopped is not added
+    // ⛔ X22 · the REAL erasure changes nothing here: the stopped person it erases still counts — their stop stands, as the gate
+    // still refuses them — and one it erases who never stopped is not added (the marker is no stop)
     const e6 = await ERASE.eraseMarketingFor({ userId: u6, phoneE164: `+${numbers.p6}`, officerId: OFFICER });
     const e7 = await ERASE.eraseMarketingFor({ userId: u7, phoneE164: `+${numbers.p7}`, officerId: OFFICER });
     const w6 = await db.messagingConsent.latestFor(keyOf("p6"));
+    const w7 = await db.messagingConsent.latestFor(keyOf("p7"));
     const erased = e6.marketingConsentWithdrawn === 1 && e6.marketingContactsEmptied === 1 && e7.marketingConsentWithdrawn === 1
-      && w6 !== null && isErasureMarker(w6) && (await db.suppression.find(keyOf("p6"))) !== null;
+      && w6 !== null && isErasureMarker(w6) && w7 !== null && isErasureMarker(w7) && (await db.suppression.find(keyOf("p6"))) !== null;
     const last = await results(P.id);
-    const moved = before.results?.stoppedSince === 0 && after.results?.stoppedSince === 5 && last.results?.stoppedSince === 4;
+    const moved = before.results?.stoppedSince === 0 && after.results?.stoppedSince === 5 && last.results?.stoppedSince === 5;
     return [acts && spelled && erased && moved,
-      `before ${before.results?.stoppedSince} → after the writers ${after.results?.stoppedSince} (want 5: p1 the page, p2 the switch, p3 Suppress, p4 a recorded withdrawal, p6 the page; not p5, off and on) → after two erasures ${last.results?.stoppedSince} (want 4) · the writers answered ok ${acts} · wrote what the rules read ${spelled} · erased (the marker, the tombstone, p6's stop kept) ${erased}`];
+      `before ${before.results?.stoppedSince} → after the writers ${after.results?.stoppedSince} (want 5: p1 the page, p2 the switch, p3 Suppress, p4 a recorded withdrawal, p6 the page; not p5, off and on) → after two erasures ${last.results?.stoppedSince} (want 5 — erasure-blind) · the writers answered ok ${acts} · wrote what the rules read ${spelled} · erased (the markers, the tombstone, p6's stop kept) ${erased}`];
   });
 }
 
@@ -1144,6 +1141,22 @@ export function resultsPlants(phoneLabel: string): ResultsPlant[] {
     viewDeps: (d) => ({ ...d, results: { ...d.results, ...over(d) } }),
   });
   const withWalk = (over: Partial<StopWalkDeps>): { results: ResultsImpl } => withResults({ walkDeps: { ...base.walkDeps, ...over } });
+  /** R-R4l's defect — this unit's FIRST build, kept here as the plant S14's review asked for: the numbers among these on which an
+   *  erasure stands by the ONE function (`isErasedNumber`) over the book's key-only presence and C8a's grouped read. Production
+   *  asks no such thing: the figure is erasure-blind (X22). */
+  const erasedAmongFirstBuild = async (msisdns: readonly string[]): Promise<Set<string>> => {
+    const keys = [...new Set(msisdns)];
+    if (keys.length === 0) return new Set();
+    const [inBook, ordinaryInBook, standing] = await Promise.all([
+      db.marketingContact.msisdnsPresent({ msisdns: keys, excludeSourceRef: null }),
+      db.marketingContact.msisdnsPresent({ msisdns: keys, excludeSourceRef: ERASURE_EVIDENCE }),
+      db.messagingConsent.erasureStandsAmong({ channel: "SMS", category: "MARKETING", identifiers: keys }),
+    ]);
+    const present = new Set(inBook);
+    const ordinary = new Set(ordinaryInBook);
+    const stands = new Set(standing);
+    return new Set(keys.filter((m) => isErasedNumber(present.has(m) ? { sourceRef: ordinary.has(m) ? null : ERASURE_EVIDENCE } : null, stands.has(m))));
+  };
   /** The memory twin's recipient rows, for a plant that reads them directly (a fixture only). */
   const memRows = (): Map<string, StoredSmsCampaignRecipient> =>
     (globalThis as unknown as { __50PICK_STORE: { smsCampaignRecipients: Map<string, StoredSmsCampaignRecipient> } }).__50PICK_STORE.smsCampaignRecipients;
@@ -1193,22 +1206,17 @@ export function resultsPlants(phoneLabel: string): ResultsPlant[] {
     { name: "R-R4i · a stop read as in force after a later yes — every withdrawal since the message, not the ledger's latest word", expect: [L.r14, L.r15],
       impl: withWalk({ words: async (b) => (await Promise.all(b.identifiers.map((i) => db.messagingConsent.listFor({ channel: b.channel, identifier: i, category: b.category }))))
         .flat().filter((w) => w.status === "WITHDRAWN") }) },
-    { name: "R-R4j · the erasure's marker read as a staff stop — any WITHDRAWN row taken for a person's no", expect: [L.r14],
+    { name: "R-R4j · the erasure's marker read as a staff stop — any WITHDRAWN row taken for a person's no (an erasure ADDS the people it erases)", expect: [L.r14, L.r15],
       impl: withWalk({ rules: { ...base.walkDeps.rules, stopsSince: (people, stops, words) =>
         RES.stopsSince(people, stops, words.map((w) => (isErasureMarker(w) ? { ...w, evidence: "contacts-bulk:planted" } : w))) } }) },
     { name: "R-R4k · a lapse read as a stop — the two-year lapse's row counted as the person's no", expect: [L.r14],
       impl: withWalk({ rules: { ...base.walkDeps.rules, stopsSince: (people, stops, words) =>
         RES.stopsSince(people, stops, words.map((w) => (w.source === RES.LAPSE_SOURCE ? { ...w, source: "PROFILE" as const } : w))) } }) },
-    { name: "R-R4l · an erased person counted — whether an erasure stands is never asked", expect: [L.r14, L.r15],
-      impl: withWalk({ erased: async () => [] }) },
-    { name: "R-R4m · the erasure read off the book alone — an erasure with no book row (the ledger's marker) is not seen", expect: [L.r14],
-      impl: withWalk({ erased: async (m) => {
-        const all = new Set(await db.marketingContact.msisdnsPresent({ msisdns: m, excludeSourceRef: null }));
-        const ordinary = new Set(await db.marketingContact.msisdnsPresent({ msisdns: m, excludeSourceRef: ERASURE_EVIDENCE }));
-        return m.filter((x) => all.has(x) && !ordinary.has(x));
-      } }) },
-    { name: "R-R4n · the erasure read off the ledger alone — the book's tombstone, which decides alone, is not asked", expect: [L.r14],
-      impl: withWalk({ erased: async (m) => db.messagingConsent.erasureStandsAmong({ channel: "SMS", category: "MARKETING", identifiers: m }) }) },
+    { name: "R-R4l · an erasure takes a standing stop out — the walk leaves out every number an erasure stands on (this unit's first build, `erasedAmong`), so a masked officer could tell an erasure from a removal by the figure (X22)", expect: [L.r14, L.r15],
+      impl: withWalk({
+        stops: async (b) => { const s = await base.walkDeps.stops(b); const gone = await erasedAmongFirstBuild(s.map((x) => x.identifier)); return s.filter((x) => !gone.has(x.identifier)); },
+        words: async (b) => { const w = await base.walkDeps.words(b); const gone = await erasedAmongFirstBuild(w.map((x) => x.identifier)); return w.filter((x) => !gone.has(x.identifier)); },
+      }) },
     { name: "R-R7 · 'set up' means a secret is set — a secret one short of the floor, and the open stub, read the wrong way", expect: [L.r7],
       impl: withResults({ setUp: (r) => r.secret !== "" }) },
     { name: "R-R7b · production's 'set up' is a constant — the dep ignores the environment", expect: [L.r7],
@@ -1234,9 +1242,9 @@ export function resultsPlants(phoneLabel: string): ResultsPlant[] {
       impl: withResults({ walk: async (id, deps) => RES.stoppedSinceOf(id, {
         ...deps, words: async (b) => (await Promise.all(b.identifiers.map((i) => deps.words({ ...b, identifiers: [i] })))).flat(),
       }) }) },
-    { name: "R-R10g · the erasure asked of everybody — every person of a chunk, not only the ones it found stopped", expect: [L.r10],
+    { name: "R-R10h · a ledger read that fails is taken for no words — the walk answers a count with the switch's stops missing, never unread", expect: [L.r10],
       impl: withResults({ walk: async (id, deps) => RES.stoppedSinceOf(id, {
-        ...deps, page: async (c, a, l) => { const p = await deps.page(c, a, l); if (p.length > 0) await deps.erased(p.map((x) => x.msisdn)); return p; },
+        ...deps, words: async (b) => { try { return await deps.words(b); } catch { return []; } },
       }) }) },
     { name: "R-R11 · the Delivered row prints what was handed over — the network's taking a message passes for its delivery in the browser", expect: [L.r1, L.r11],
       impl: withResults({ render: (view, o) => base.render({ ...view, results: view.results === null ? null : { ...view.results, delivered: view.results.handedOver } }, o) }) },
@@ -1267,8 +1275,6 @@ export function resultsPlants(phoneLabel: string): ResultsPlant[] {
       impl: withSources({ live: plantIn(S.live, "results: RESULTS_DEPS,", "results: { ...RESULTS_DEPS },") }) },
     { name: "R-R12f · the browser's card imports the server module by value — the stop walk's reads reach the client's file", expect: [L.r12],
       impl: withSources({ importers: new Map([...S.importers, ["src/app/admin/campaigns/[id]/results-card.tsx", `import { campaignResults } from "@/lib/server/marketing/campaign-results";`]]) }) },
-    { name: "R-R12g · the erasure decided by a rule of the results module's own — not erasure-mark's isErasedNumber, the ONE function the importer and the Add form ask", expect: [L.r12],
-      impl: withSources({ results: plantIn(S.results, "isErasedNumber(present.has(m)", "erasedHere(present.has(m)") }) },
     { name: "R-R12h · the ledger read a number at a time — the walk's words through listFor, not §25's grouped latestAmong", expect: [L.r12],
       impl: withSources({ results: plantIn(S.results, "db.messagingConsent.latestAmong(batch)", "db.messagingConsent.listFor(batch)") }) },
     { name: "R-R13 · the figures card prints its own list beside the results' — the reasons twice (the guard on the view having no results removed from the client's file)", expect: [L.r13],
