@@ -1080,16 +1080,23 @@ export type ContactCasResult =
 /* ═══ C8b · WHAT A MASKED OFFICER MAY KNOW ABOUT A NUMBER (docs/CONTACTS-SCREEN-PLAN.md §4.7) — two book writes, named ═══
  * Every DAL signature below is NAMED: dal-parity's `region()` would read an inline literal as the body. */
 /**
- * C8b (B1) · AN ERASED NUMBER'S EMPTIED ROW, REVIVED AS A NEW CLIENT'S (`marketingContact.reviveTombstone`). `id` and
- * `msisdn` name the tombstone — BOTH must still be the tombstone's (the erasure's mark, no link) when the write lands —
- * and `row` is the row a sign-up writes today (`registration-contact.ts`, the ONE caller): every field of it but the id,
- * the number and the two caches is written. ⛔ The caches (`consentState`, `suppressedAt`) stay the tombstone's — the
- * number's mirrored truth, which the caller's mirror reads again right after.
+ * C8b (B1) · AN ERASED NUMBER'S EMPTIED ROW, REPLACED BY A NEW CLIENT'S OWN FRESH ROW (`marketingContact.reviveTombstone`).
+ * `id` and `msisdn` name the tombstone — BOTH must still be the tombstone's (the erasure's mark, no link) when the write
+ * lands — and `row` is the row a sign-up writes today (`registration-contact.ts`, the ONE caller), under its OWN new id.
+ * ⛔ C8b review (MINOR 8 · iii, the lead's decision) · NEVER THE TOMBSTONE'S ID: the tombstone is DELETED and `row` is
+ * CREATED in its place, so a recycled number's new holder inherits none of the erased person's links — no list
+ * membership, no campaign recipient row pointing at their row (those rows are KEPT, with their number, and lose the
+ * link), no id a masked officer once saw in an edit link. A `row` under the tombstone's own id is refused (thrown) before
+ * anything is read. Every field of `row` is written but the number — the tombstone's, which the compare proves is the
+ * same — and the two caches (`consentState`, `suppressedAt`), which are the tombstone's: the NUMBER's mirrored truth, not
+ * the person's, which the caller's mirror reads again right after.
  */
 export type ContactTombstoneRevival = { id: string; msisdn: string; row: StoredMarketingContact };
-/** C8b (B1) · the revival's answer: the row as written, and how many list memberships the tombstone still held — each
- *  DELETED in the same step, so the revived row inherits no old list and no old list's coverage. */
-export type ContactTombstoneRevived = { row: StoredMarketingContact; membershipsDeleted: number };
+/** C8b (B1) · the revival's answer: the fresh row as written; how many list memberships the tombstone still held — each
+ *  DELETED in the same step, so the new row inherits no old list and no old list's coverage; and how many campaign
+ *  recipient rows lost their link to it — each KEPT, its number, status and trail untouched (the record that we
+ *  messaged that number, kept for its own period). */
+export type ContactTombstoneRevived = { row: StoredMarketingContact; membershipsDeleted: number; recipientsUnlinked: number };
 /**
  * C8b (B8) · ONE ROW'S "ADDED", PUT RIGHT (`marketingContact.redateAdded`) — the ops door `ops:contacts-added-redate`'s ONE
  * write. `expectedCreatedAt` is the compare (the row must still say it, as an instant), `createdAt` the moment the row
@@ -3902,25 +3909,40 @@ const memoryDb = {
       store.marketingContacts.set(id, next);
       return { ok: true, row: next };
     },
-    /** C8b (B1) · ⭐ THE TOMBSTONE REVIVED AS A NEW CLIENT'S ROW — `registration-contact.ts`'s ONE call (a NEW account's
-     *  sign-up, or the backfill, on a number whose book row erasure emptied). ONE step, as the Prisma twin's ONE
-     *  transaction: the row must still BE the tombstone — this id AND this number, the erasure's mark, no link — or nothing
-     *  is written and the answer is null; then every list membership it still holds is DELETED (a revived row inherits no
-     *  old list, and no old list's coverage); then the row becomes `row`, every field NAMED — never a spread — but the id,
-     *  the number and the two caches, which stay the tombstone's (the number's mirrored truth; the caller mirrors again).
-     *  JavaScript runs this to the end before any other write, so the check and the writes are one step. A copy comes back. */
+    /** C8b (B1) · ⭐ THE TOMBSTONE REPLACED BY A NEW CLIENT'S OWN FRESH ROW — `registration-contact.ts`'s ONE call (a NEW
+     *  account's sign-up, or the backfill, on a number whose book row erasure emptied). ONE step, as the Prisma twin's ONE
+     *  transaction. ⛔ A `row` under the tombstone's own id is refused before anything is read (C8b review, MINOR 8 · iii:
+     *  never the tombstone's id). The row must still BE the tombstone — this id AND this number, the erasure's mark, no
+     *  link — or nothing is written and the answer is null; a fresh id another row already holds THROWS, as Postgres'
+     *  primary key would. Then, in this order: every list membership the tombstone still holds is DELETED (the new row
+     *  inherits no old list, and no old list's coverage); every campaign recipient row linked to it loses that link —
+     *  `contactId` to null and nothing else: Postgres' `SetNull` on the tombstone's delete, emulated as `removeWhere`
+     *  emulates it (U35b) — and is KEPT, the record that we messaged the number; the tombstone is DELETED (the twin's one
+     *  delete of a contact outside `removeWhere`, making the same moves itself); and `row` is CREATED under its
+     *  own id, the unique index pointed at it, every field NAMED — never a spread — but the number and the two caches,
+     *  which are the tombstone's (the number's mirrored truth; the caller mirrors again). JavaScript runs this to the end
+     *  before any other write, so the check and the writes are one step. A copy comes back. */
     reviveTombstone: (revival: ContactTombstoneRevival): ContactTombstoneRevived | null => {
+      if (revival.row.id === revival.id) throw new Error("marketingContact.reviveTombstone: the new row must be FRESH, never under the tombstone id — nothing was done.");
       const tomb = store.marketingContacts.get(revival.id);
       if (!tomb || tomb.msisdn !== revival.msisdn || tomb.sourceRef !== ERASURE_EVIDENCE || tomb.userId !== null) return null;
+      const r = revival.row;
+      if (store.marketingContacts.has(r.id)) throw new Error("marketingContact.reviveTombstone: the fresh row's id is already a contact's — nothing was done.");
       let membershipsDeleted = 0;
       for (const [k, m] of store.contactListMembers) {
         if (m.contactId !== tomb.id) continue;
         store.contactListMembers.delete(k);
         membershipsDeleted++;
       }
-      const r = revival.row;
+      let recipientsUnlinked = 0;
+      for (const rec of store.smsCampaignRecipients.values()) {
+        if (rec.contactId !== tomb.id) continue;
+        rec.contactId = null;
+        recipientsUnlinked++;
+      }
+      store.marketingContacts.delete(tomb.id);
       const next: StoredMarketingContact = {
-        id: tomb.id,
+        id: r.id,
         msisdn: tomb.msisdn,
         rawInput: r.rawInput,
         displayName: r.displayName,
@@ -3940,8 +3962,9 @@ const memoryDb = {
         updatedAt: r.updatedAt,
         updatedBy: r.updatedBy,
       };
-      store.marketingContacts.set(tomb.id, next);
-      return { row: { ...next, tags: [...next.tags] }, membershipsDeleted };
+      store.marketingContacts.set(next.id, next);
+      store.contactsByMsisdn.set(next.msisdn, next.id);
+      return { row: { ...next, tags: [...next.tags] }, membershipsDeleted, recipientsUnlinked };
     },
     /** C8b (B8) · ⭐ "ADDED" PUT RIGHT, ALL OR NOTHING — the ops door's ONE write (`added-redate.ts`). At most
      *  `BULK_KEYED_READ_MAX` rows, each id once, every instant readable — else it THROWS before anything is read, as the
@@ -4101,8 +4124,9 @@ const memoryDb = {
       return out;
     },
     /** vb7 (review m1) · REMOVE every row the audience holds AMONG `ids` — a bulk Remove's confirmed ids — ALL OR
-     *  NOTHING, as the Prisma twin's ONE transaction is. ⭐ Through `removeWhere` itself, so this twin still deletes a
-     *  contact in ONE place (the cascade, the freed index, the campaign SET NULL — `test:dal-parity` §23, §26), over the
+     *  NOTHING, as the Prisma twin's ONE transaction is. ⭐ Through `removeWhere` itself, so this twin's bulk Remove still
+     *  deletes a contact in ONE place (the cascade, the freed index, the campaign SET NULL — `test:dal-parity` §23, §26; the
+     *  one other delete, the tombstone's replacement `reviveTombstone`, makes the same moves itself — §31), over the
      *  audience narrowed to those ids (∩ any ids it already holds). The rows are chosen in one synchronous pass before
      *  any is deleted, and nothing in that loop can throw part-way. */
     removeBoundWhere: (w: ContactAudienceWhere, ids: readonly string[]): ContactBulkCount =>

@@ -11,9 +11,10 @@
  *      number in it.
  *   §2 THE RULE — `ensureRegistrationContact` on seeded accounts: the row's shape, the cache from the ledger, an officer's
  *      contact LINKED (not duplicated, not overwritten, its stamp kept — OD56), clients only, already-linked a read.
- *   §3 THE RECYCLED-NUMBER RULES — ⭐ C8b (B1): an erased tombstone REVIVED as the new client's own row (the sign-up's
- *      row, the clock as "Added", its old lists deleted, in ONE compare-and-set step that never overwrites a row that is
- *      no longer the tombstone); U18b: a row linked to another account never re-pointed.
+ *   §3 THE RECYCLED-NUMBER RULES — ⭐ C8b (B1): an erased tombstone REPLACED by the new client's own FRESH row (the
+ *      sign-up's row under its own new id — never the tombstone's, the review's MINOR 8 — the clock as "Added", the old
+ *      lists deleted, the erased person's campaign records kept and unlinked, in ONE compare-and-set step that never
+ *      overwrites a row that is no longer the tombstone); U18b: a row linked to another account never re-pointed.
  *   §4 THE AUDIT — the masked number, the account, field names; no whole number, name or email.
  *   §5 THE BACKFILL — the dry run writes nothing; every PLAYER on +255 visited once, in pages; counts exactly the world's;
  *      a second run changes nothing; no number or name in its counts or its report.
@@ -44,7 +45,9 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment } from "./lib/decomment.mts";
 import { db } from "../src/lib/server/store.ts";
-import type { ContactAddedRedate, MessagingKey, PlayerWalk, PlayerWalkQuery, StoredMarketingContact, StoredUser } from "../src/lib/server/store.ts";
+import type {
+  ContactAddedRedate, MessagingKey, PlayerWalk, PlayerWalkQuery, StoredMarketingContact, StoredSmsCampaignRecipient, StoredUser,
+} from "../src/lib/server/store.ts";
 import { audit, auditFlush, getAuditForTargetsDurable, getAuditPage } from "../src/lib/server/audit.ts";
 import {
   ADDED_REDATE_ACTIONS, ADDED_REDATE_TARGET, addedRedateApplyCommand, addedRedateDeps, addedRedateStatus, addedRedateVerdict,
@@ -77,7 +80,7 @@ const rawRead = (rel: string) => readFileSync(join(ROOT, rel), "utf8").split(CR 
 /* ═══ THE MEMORY TWIN, AND ONLY IT ═══════════════════════════════════════════════════════════════ */
 
 type WorldKey = "users" | "usersByPhone" | "marketingContacts" | "contactsByMsisdn" | "messagingConsents" | "suppressions"
-  | "wallets" | "walletsByUser" | "otps" | "contactLists" | "contactListMembers";
+  | "wallets" | "walletsByUser" | "otps" | "contactLists" | "contactListMembers" | "smsCampaignRecipients";
 const memory = (globalThis as unknown as { __50PICK_STORE?: Record<WorldKey, Map<string, unknown>> }).__50PICK_STORE;
 if (!memory || (process.env.DATABASE_URL && process.env.USE_PRISMA_DAL !== "false")) {
   console.error("test:registration-contact runs on the MEMORY twin only — unset DATABASE_URL. Nothing was run.");
@@ -86,7 +89,7 @@ if (!memory || (process.env.DATABASE_URL && process.env.USE_PRISMA_DAL !== "fals
 const MEM = memory as Record<WorldKey, Map<string, unknown>>;
 const WORLD: readonly WorldKey[] = [
   "users", "usersByPhone", "marketingContacts", "contactsByMsisdn", "messagingConsents", "suppressions", "wallets", "walletsByUser", "otps",
-  "contactLists", "contactListMembers",
+  "contactLists", "contactListMembers", "smsCampaignRecipients",
 ];
 
 /** An EMPTY world for `fn` — the maps a run touches are copied, emptied, and put back afterwards, whatever happened. */
@@ -104,7 +107,9 @@ async function inEmptyWorld(fn: () => Promise<void>): Promise<void> {
 }
 
 /** The book, the accounts and the evidence, serialised — a write anywhere in them moves it. */
-const STATE: readonly WorldKey[] = ["users", "marketingContacts", "contactsByMsisdn", "messagingConsents", "suppressions", "contactLists", "contactListMembers"];
+const STATE: readonly WorldKey[] = [
+  "users", "marketingContacts", "contactsByMsisdn", "messagingConsents", "suppressions", "contactLists", "contactListMembers", "smsCampaignRecipients",
+];
 const snapshot = (): string => STATE.map((k) => `${k}=${JSON.stringify([...MEM[k].entries()])}`).join("|");
 
 /** One member of the book's memory twin swapped for the length of `fn` — in memory, never on disk — and put back. */
@@ -209,6 +214,17 @@ function bookRow(id: string, phone: string, o: Partial<StoredMarketingContact> =
     sourceRef: null, userId: null, consentState: "UNKNOWN", suppressedAt: null, tags: [], notes: null, importId: null,
     createdAt: "2026-09-01T08:00:00.000Z", createdBy: "usr_officer_rc", updatedAt: "2026-09-15T10:00:00.000Z", updatedBy: "usr_officer_rc",
     ...o,
+  };
+}
+
+/** ⭐ C8b review (MINOR 8) · a campaign recipient row as a send left it — written by hand straight into the memory twin's
+ *  map (this suite runs no campaign; only the revival reads these rows): SENT, linked to a book row, no account. */
+function recipientRow(id: string, msisdn: string, contactId: string, sentAt: string): StoredSmsCampaignRecipient {
+  return {
+    id, campaignId: `cmp_rc_${RUN}`, msisdn, contactId, userId: null, status: "SENT", smsReference: `REF-${id}`, optOutToken: null,
+    locale: "SW", failureClass: null, error: null, skipReason: null, skipDetail: null, claimToken: null, claimedAt: null,
+    attempts: 1, segments: 1, bodyLen: 30, costTzs: null, gateTrail: null, createdAt: sentAt, updatedAt: sentAt, sentAt,
+    deliveredAt: null, failedAt: null,
   };
 }
 
@@ -355,12 +371,12 @@ const L = {
   r4: "2.4 · ⛔ OD56 · a link is not an edit: the linked row's own updatedAt and updatedBy are written back — an officer's open dialog stays valid, a masked viewer sees nothing move",
   r5: "2.5 · ⛔ CLIENTS ONLY: GROWTH, ADMIN and AGENT accounts, a +254 number, a 064 number, a landline, a CLOSED account, an erased account and a bootstrap-admin number are each skipped with their own reason, and the book, the ledger and the audit are untouched",
   r6: "2.6 · already linked to this account is a READ: already_linked with the row's id, no write, no audit row, the store byte-identical",
-  t1: "3.1 · ⭐ C8b (B1) · AN ERASED TOMBSTONE IS REVIVED AS THE NEW CLIENT'S OWN ROW — the holder's own act lifts the block: the SAME row (one row for the number, its id kept) becomes exactly the row a sign-up writes — linked, source REGISTRATION, the account id as sourceRef, the account's name and email, no notes, tags, import or officer, the clock as Added — nothing of the erased person's kept, the cache mirrored from the ledger, its TWO old list memberships deleted (the lists and another contact's membership kept), and a second call is a read",
+  t1: "3.1 · ⭐ C8b (B1 · the review's MINOR 8) · AN ERASED TOMBSTONE IS REPLACED BY THE NEW CLIENT'S OWN FRESH ROW — the holder's own act lifts the block: the tombstone is GONE and ONE row holds the number under a NEW id (the builder's, never the tombstone's) — exactly the row a sign-up writes: linked, source REGISTRATION, the account id as sourceRef, the account's name and email, no notes, tags, import or officer, the clock as Added — nothing of the erased person's kept, the cache the number's (the ledger's word), the TWO old list memberships deleted and none on the new row (the lists and another contact's membership kept), the erased person's TWO campaign records KEPT and pointing at nobody (number, status and stamps untouched; the other contact's record still linked), and a second call is a read",
   t2: "3.2 · ⛔ U18b · A ROW LINKED TO ANOTHER ACCOUNT IS NOT THIS PERSON'S: it keeps its link and every field, nothing is created, and the answer carries no contact id",
-  t3: "3.3 · ⛔ C8b (B1) · THE REVIVAL IS A COMPARE-AND-SET: a tombstone that stopped being one between the read and the write (another account's sign-up linked it first) is NOT overwritten — the store refuses, the rule reads the row again and keeps it as the other account's, nothing of this account written",
-  a1: "4.1 · every write is audited like U22's: contacts.contact.registered, .revived and .linked with the MASKED number, the account, the field names and where it came from (a revival with how many list memberships it deleted) — and no whole number, name or email in any of this run's registration audit rows",
+  t3: "3.3 · ⛔ C8b (B1) · THE REVIVAL IS A COMPARE-AND-SET: a tombstone that stopped being one between the read and the write (another account's sign-up replaced it first) is NOT overwritten — the store refuses, the rule reads the number's row again and keeps it as the other account's, nothing of this account written",
+  a1: "4.1 · every write is audited like U22's: contacts.contact.registered, .revived and .linked with the MASKED number, the account, the field names and where it came from (a revival on the NEW row, with how many list memberships it deleted and how many campaign records it unlinked) — and no whole number, name or email in any of this run's registration audit rows",
   b0: "5.0 · ⭐ the backfill's DRY RUN writes nothing (the store and the audit untouched) and predicts the real run's outcomes",
-  b1: "5.1 · ⭐ THE BACKFILL walks every PLAYER account on a +255 number by id, in pages of two, each exactly ONCE, and its counts by outcome, skip reason and cache are exactly the world's (C8b: the erased number's tombstone REVIVED as its new client's row) — staff, an agent, an erased account and a foreign number never walked (the census counts them)",
+  b1: "5.1 · ⭐ THE BACKFILL walks every PLAYER account on a +255 number by id, in pages of two, each exactly ONCE, and its counts by outcome, skip reason and cache are exactly the world's (C8b: the erased number's tombstone REPLACED by its new client's own fresh row, the tombstone gone) — staff, an agent, an erased account and a foreign number never walked (the census counts them)",
   b2: "5.2 · ⭐ THE BACKFILL IS IDEMPOTENT: a second run creates, revives and links nothing, repairs no cache, writes no audit row, and leaves the store byte-identical",
   b3: "5.3 · ⛔ the backfill holds no number and no name: its counts and every line of its report carry none of the world's numbers, names or emails",
   s1: "6.1 · THE WIRING: the sign-up door calls registrationContactAtSignup(user) exactly ONCE - after its account row and after its wallet (the money first) - auth-service appends NO consent-ledger row (the SMS-offers box was removed 2026-10-07), creates an account at exactly ONE site, and never calls the unbounded ensureRegistrationContact",
@@ -604,6 +620,12 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       await db.contactListMember.add({ listId: id, contactId: tomb.id, addedAt: "2026-08-05T08:00:00.000Z", addedBy: "usr_officer_rc" });
     }
     await db.contactListMember.add({ listId: LISTS[0], contactId: bystander.id, addedAt: "2026-08-05T08:00:00.000Z", addedBy: "usr_officer_rc" });
+    // ⭐ C8b review (MINOR 8) · the erased person was messaged twice through their book row, the bystander once — the
+    // records erasure's account unlink leaves pointing at the rows (U16a clears the account, never the book row).
+    const RCP = { t1: `rcp_rc_t1_${RUN}`, t2: `rcp_rc_t2_${RUN}`, by: `rcp_rc_by_${RUN}` };
+    MEM.smsCampaignRecipients.set(RCP.t1, recipientRow(RCP.t1, tomb.msisdn, tomb.id, "2026-08-10T08:00:00.000Z"));
+    MEM.smsCampaignRecipients.set(RCP.t2, recipientRow(RCP.t2, tomb.msisdn, tomb.id, "2026-08-12T08:00:00.000Z"));
+    MEM.smsCampaignRecipients.set(RCP.by, recipientRow(RCP.by, bystander.msisdn, bystander.id, "2026-08-12T08:00:00.000Z"));
     await ledger(T.phoneE164, "GIVEN", "2026-08-02T08:00:00.000Z");
     await ledger(T.phoneE164, "WITHDRAWN", "2026-08-20T08:00:00.000Z");
     const rT = await impl.ensure(T, { now: atClock });
@@ -612,17 +634,27 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     const againT = await impl.ensure(T, { now: atClock });
     await auditFlush();
     await check(p(L.t1), async () => {
-      const row = await db.marketingContact.find(tomb.id);
+      const gone = await db.marketingContact.find(tomb.id);
+      const row = await db.marketingContact.findByMsisdn(tomb.msisdn);
       const memberships = await db.contactListMember.listMemberships(tomb.id);
+      const onFresh = row === null ? -1 : (await db.contactListMember.listMemberships(row.id)).length;
       const listsKept = (await Promise.all(LISTS.map((id) => db.contactList.find(id)))).every((l) => l !== null);
       const byKept = (await db.contactListMember.listMemberships(bystander.id)).length === 1;
-      const shaped = row !== null && row.id === tomb.id && row.msisdn === tomb.msisdn && row.userId === T.id && row.source === "REGISTRATION"
-        && row.sourceRef === T.id && row.displayName === "New Holder" && row.email === "new.holder@example.tz" && row.notes === null
-        && row.tags.length === 0 && row.importId === null && row.createdBy === null && row.updatedBy === null
+      const rec = (id: string) => MEM.smsCampaignRecipients.get(id) as StoredSmsCampaignRecipient | undefined;
+      const unlinked = [RCP.t1, RCP.t2].every((id) => {
+        const r = rec(id);
+        return r !== undefined && r.contactId === null && r.status === "SENT" && r.msisdn === tomb.msisdn && r.userId === null
+          && r.updatedAt === r.createdAt && r.smsReference === `REF-${id}`;
+      });
+      const byLink = rec(RCP.by)?.contactId === bystander.id;
+      const shaped = row !== null && row.id !== tomb.id && ID_SHAPE.test(row.id) && row.msisdn === tomb.msisdn && row.userId === T.id
+        && row.source === "REGISTRATION" && row.sourceRef === T.id && row.displayName === "New Holder" && row.email === "new.holder@example.tz"
+        && row.notes === null && row.tags.length === 0 && row.importId === null && row.createdBy === null && row.updatedBy === null
         && row.createdAt === CLOCK && row.updatedAt === CLOCK && row.rawInput === T.phoneE164 && row.consentState === "WITHDRAWN";
-      return [rT.outcome === "revived" && "contactId" in rT && rT.contactId === tomb.id && shaped && rowsFor(T.phoneE164) === 1
-        && memberships.length === 0 && listsKept && byKept && againT.outcome === "already_linked" && snapshot() === beforeAgain,
-        `${JSON.stringify(rT)} · ${row ? `${row.source} linked ${row.userId === T.id} "${row.displayName}" added ${row.createdAt} by ${row.createdBy}` : "NO ROW"} · memberships ${memberships.length} · lists kept ${listsKept} · bystander ${byKept} · again ${againT.outcome}, store ${snapshot() === beforeAgain ? "unchanged" : "CHANGED"}`];
+      return [rT.outcome === "revived" && "contactId" in rT && row !== null && rT.contactId === row.id && gone === null && shaped
+        && rowsFor(T.phoneE164) === 1 && memberships.length === 0 && onFresh === 0 && listsKept && byKept && unlinked && byLink
+        && againT.outcome === "already_linked" && snapshot() === beforeAgain,
+        `${JSON.stringify(rT)} · the tombstone ${gone === null ? "gone" : "STILL THERE"} · ${row ? `${row.id === tomb.id ? "the TOMBSTONE'S id" : "a fresh id"}, ${row.source} linked ${row.userId === T.id} "${row.displayName}" added ${row.createdAt} by ${row.createdBy}` : "NO ROW"} · memberships ${memberships.length}/${onFresh} · lists kept ${listsKept} · bystander ${byKept} · records ${[RCP.t1, RCP.t2].map((id) => (rec(id) === undefined ? "DELETED" : rec(id)?.contactId === null ? "unlinked" : `linked to ${rec(id)?.contactId === row?.id ? "the NEW row" : "the old row"}`)).join("/")}, the bystander's ${byLink ? "linked" : "CHANGED"} · again ${againT.outcome}, store ${snapshot() === beforeAgain ? "unchanged" : "CHANGED"}`];
     });
 
     const O = account(`rc${RUN}_o`, num(42));
@@ -658,8 +690,8 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       book: {
         ...REGISTRATION_BOOK,
         revive: async (tombstone, row) => {
-          // The other sign-up lands first, through the store's own revival …
-          await db.marketingContact.reviveTombstone({ id: tombstone.id, msisdn: tombstone.msisdn, row: { ...firstComer, id: tombstone.id } });
+          // The other sign-up lands first, through the store's own revival (its own fresh row) …
+          await db.marketingContact.reviveTombstone({ id: tombstone.id, msisdn: tombstone.msisdn, row: firstComer });
           // … and only then this one's — which must find the row no longer the tombstone.
           return impl.revive(tombstone, row);
         },
@@ -667,10 +699,11 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
     };
     const rQ = await impl.ensure(Q, racing);
     await check(p(L.t3), async () => {
-      const row = await db.marketingContact.find(qTomb.id);
-      return [rQ.outcome === "kept_other_account" && !("contactId" in rQ) && row !== null && row.userId === Q0.id
-        && row.displayName === "First Comer" && row.email === null && rowsFor(Q.phoneE164) === 1,
-        `${JSON.stringify(rQ)} · the row ${row ? `linked to ${row.userId === Q0.id ? "the first comer" : row.userId === Q.id ? "THIS account" : row.userId}, "${row.displayName}"` : "GONE"}`];
+      const row = await db.marketingContact.findByMsisdn(qTomb.msisdn);
+      const gone = await db.marketingContact.find(qTomb.id);
+      return [rQ.outcome === "kept_other_account" && !("contactId" in rQ) && row !== null && row.id === firstComer.id && row.userId === Q0.id
+        && row.displayName === "First Comer" && row.email === null && gone === null && rowsFor(Q.phoneE164) === 1,
+        `${JSON.stringify(rQ)} · the number's row ${row ? `linked to ${row.userId === Q0.id ? "the first comer" : row.userId === Q.id ? "THIS account" : row.userId}, "${row.displayName}"` : "GONE"} · the tombstone ${gone === null ? "gone" : "STILL THERE"}`];
     });
 
     /* ── §4 · THE AUDIT ──────────────────────────────────────────────────────────────────────────── */
@@ -687,7 +720,9 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       const createdId = "contactId" in rA1 ? rA1.contactId : "";
       const reg = entries.find((e) => e.action === "contacts.contact.registered" && e.targetId === createdId);
       const lnk = entries.find((e) => e.action === "contacts.contact.linked" && e.targetId === X.id);
-      const rev = entries.find((e) => e.action === "contacts.contact.revived" && e.targetId === tomb.id);
+      // ⭐ C8b review (MINOR 8) · the revival's row names the NEW row — never the tombstone it replaced.
+      const freshId = rT.outcome === "revived" ? rT.contactId : "";
+      const rev = entries.find((e) => e.action === "contacts.contact.revived" && e.targetId === freshId && freshId !== tomb.id);
       const pr = (reg?.payload ?? {}) as Record<string, unknown>;
       const pl = (lnk?.payload ?? {}) as Record<string, unknown>;
       const pv = (rev?.payload ?? {}) as Record<string, unknown>;
@@ -698,7 +733,7 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
         && !!lnk && lnk.actorId === D.id && pl.keptSource === "OPERATOR" && pl.number === maskPhone(keyOf(D.phoneE164)) && pl.account === D.id
         && !!rev && rev.actorId === T.id && rev.targetType === "MarketingContact" && pv.number === maskPhone(keyOf(T.phoneE164)) && pv.account === T.id
         && pv.via === "signup" && JSON.stringify(pv.fields) === JSON.stringify(["displayName", "email"]) && pv.membershipsDeleted === 2
-        && mine.length >= 4 && dirty.length === 0,
+        && pv.recipientsUnlinked === 2 && mine.length >= 4 && dirty.length === 0,
         `registered ${JSON.stringify(reg?.payload ?? null)} · linked ${JSON.stringify(lnk?.payload ?? null)} · revived ${JSON.stringify(rev?.payload ?? null)} · ${mine.length} row(s) · ${dirty.length ? `CARRY ${dirty.join(",")}` : "clean"}`];
     });
 
@@ -729,7 +764,8 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       await db.marketingContact.create(bookRow(`mc_rc_b6_${RUN}`, W.w6.phoneE164, { source: "REGISTRATION", sourceRef: W.w6x.id, userId: W.w6x.id, displayName: "Previous holder", createdBy: null, updatedBy: null }));
       const bootstrapPhones = new Set([W.w9.phoneE164]);
       const WALKED = [W.w1, W.w2, W.w3, W.w4, W.w5, W.w6, W.w6x, W.w7, W.w8, W.w9].map((u) => u.id).sort();
-      // ⭐ C8b (B1) · w5's tombstone is REVIVED as w5's own row (until C8b it was kept).
+      // ⭐ C8b (B1) · w5's tombstone is REPLACED by w5's own fresh row (until C8b it was kept; until the review it was
+      // rewritten in place).
       const OUTCOMES = { created: 2, revived: 1, linked: 1, already_linked: 1, kept_other_account: 1, skipped: 4, failed: 0 };
       const SKIPS = { not_a_player: 0, bootstrap_admin: 1, closed: 2, erased: 0, not_tz_mobile: 1 };
       const WORLD_SECRETS = [
@@ -755,12 +791,15 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       await check(p(L.b1), async () => {
         const made = [await db.marketingContact.findByMsisdn(keyOf(W.w1.phoneE164)), await db.marketingContact.findByMsisdn(keyOf(W.w2.phoneE164))];
         const linked = await db.marketingContact.find(`mc_rc_b3_${RUN}`);
-        const revived = await db.marketingContact.find(`mc_rc_b5_${RUN}`);
+        // ⭐ C8b review (MINOR 8) · w5's number is held by a FRESH row; the tombstone is gone.
+        const revived = await db.marketingContact.findByMsisdn(keyOf(W.w5.phoneE164));
+        const tombGone = (await db.marketingContact.find(`mc_rc_b5_${RUN}`)) === null;
         const once = visits.length === WALKED.length && [...visits].sort().join(",") === WALKED.join(",");
         return [first.accounts === 14 && first.walked === 10 && first.missing === 0 && eqCounts(first.outcomes, OUTCOMES) && eqCounts(first.skipped, SKIPS)
           && eqCounts(first.cache, { none: 0, unchanged: 5, updated: 1, failed: 0 }) && once
           && made[0]?.userId === W.w1.id && made[0]?.consentState === "GIVEN" && made[1]?.userId === W.w2.id && linked?.userId === W.w3.id
-          && revived?.userId === W.w5.id && revived.source === "REGISTRATION" && revived.sourceRef === W.w5.id,
+          && revived?.userId === W.w5.id && revived.source === "REGISTRATION" && revived.sourceRef === W.w5.id
+          && revived.id !== `mc_rc_b5_${RUN}` && tombGone,
           `accounts ${first.accounts} · walked ${first.walked} (${visits.length} visits) · ${JSON.stringify(first.outcomes)} · ${JSON.stringify(first.skipped)} · cache ${JSON.stringify(first.cache)}`];
       });
 
@@ -1249,8 +1288,8 @@ const keepTombstones: Ensure = async (user, deps = {}) => {
   return ensureRegistrationContact(user, deps);
 };
 
-/** 🔴 C8b · the revival that keeps the tombstone's LISTS — the row written exactly right, and every membership it held put
- *  back: the new client inherits the erased person's lists, and those lists' coverage. */
+/** 🔴 C8b · the revival that keeps the tombstone's LISTS — the row written exactly right, and every membership the
+ *  tombstone held put back on the NEW row: the new client inherits the erased person's lists, and those lists' coverage. */
 const reviveKeepingLists: Ensure = (user, deps = {}) => ensureRegistrationContact(user, {
   ...deps,
   book: {
@@ -1258,9 +1297,92 @@ const reviveKeepingLists: Ensure = (user, deps = {}) => ensureRegistrationContac
     revive: async (tombstone, row) => {
       const held = await db.contactListMember.listMemberships(tombstone.id);
       const revived = await REGISTRATION_BOOK.revive(tombstone, row);
-      for (const m of held) await db.contactListMember.add(m);
+      if (revived !== null) for (const m of held) await db.contactListMember.add({ ...m, contactId: revived.row.id });
       return revived;
     },
+  },
+});
+
+/** The erased person's campaign records — the rows still linked to the tombstone, read straight off the memory twin. */
+const recordsOf = (contactId: string): StoredSmsCampaignRecipient[] =>
+  [...MEM.smsCampaignRecipients.values()].map((r) => r as StoredSmsCampaignRecipient).filter((r) => r.contactId === contactId);
+
+/** 🔴 C8b review (MINOR 8 · iii) · the revival as it stood BEFORE the review — the tombstone REWRITTEN IN PLACE under its
+ *  own id (its lists deleted, its caches kept): the new client's row is the erased person's old row, so their campaign
+ *  records point at the new client, and the id a masked officer once saw in an edit link is back on a sign-up row. */
+const reviveInPlace: Ensure = (user, deps = {}) => ensureRegistrationContact(user, {
+  ...deps,
+  book: {
+    ...bookOf(deps),
+    revive: async (tombstone, row) => {
+      const tomb = MEM.marketingContacts.get(tombstone.id) as StoredMarketingContact | undefined;
+      if (!tomb || tomb.sourceRef !== ERASURE_EVIDENCE || tomb.userId !== null) return null;
+      let membershipsDeleted = 0;
+      for (const [k, m] of MEM.contactListMembers) {
+        if ((m as { contactId?: string }).contactId !== tomb.id) continue;
+        MEM.contactListMembers.delete(k);
+        membershipsDeleted++;
+      }
+      const next: StoredMarketingContact = { ...row, id: tomb.id, msisdn: tomb.msisdn, consentState: tomb.consentState, suppressedAt: tomb.suppressedAt };
+      MEM.marketingContacts.set(tomb.id, next);
+      return { row: { ...next }, membershipsDeleted, recipientsUnlinked: 0 };
+    },
+  },
+});
+
+/** 🔴 C8b review (MINOR 8) · the revival that DELETES the erased person's campaign records — the record that we messaged the
+ *  number, kept for its own period, gone with the tombstone. */
+const reviveDeletingRecords: Ensure = (user, deps = {}) => ensureRegistrationContact(user, {
+  ...deps,
+  book: {
+    ...bookOf(deps),
+    revive: async (tombstone, row) => {
+      const theirs = recordsOf(tombstone.id).map((r) => r.id);
+      const revived = await REGISTRATION_BOOK.revive(tombstone, row);
+      if (revived !== null) for (const id of theirs) MEM.smsCampaignRecipients.delete(id);
+      return revived;
+    },
+  },
+});
+
+/** 🔴 C8b review (MINOR 8) · the revival that RE-POINTS the erased person's campaign records at the new client's row — a fresh
+ *  id, and the old links handed over anyway. */
+const reviveRepointingRecords: Ensure = (user, deps = {}) => ensureRegistrationContact(user, {
+  ...deps,
+  book: {
+    ...bookOf(deps),
+    revive: async (tombstone, row) => {
+      const theirs = recordsOf(tombstone.id);
+      const revived = await REGISTRATION_BOOK.revive(tombstone, row);
+      if (revived !== null) for (const r of theirs) r.contactId = revived.row.id;
+      return revived;
+    },
+  },
+});
+
+/** 🔴 C8b review (MINOR 8) · the memory twin's SET NULL forgotten — the erased person's records left pointing at the deleted
+ *  tombstone, a row production no longer has. */
+const reviveLeavingRecords: Ensure = (user, deps = {}) => ensureRegistrationContact(user, {
+  ...deps,
+  book: {
+    ...bookOf(deps),
+    revive: async (tombstone, row) => {
+      const theirs = recordsOf(tombstone.id);
+      const revived = await REGISTRATION_BOOK.revive(tombstone, row);
+      if (revived !== null) for (const r of theirs) r.contactId = tombstone.id;
+      return revived;
+    },
+  },
+});
+
+/** 🔴 C8b review (MINOR 8) · the revival's SYSTEM row without its count of the campaign records it unlinked. */
+const revivalAuditWithoutRecords: Ensure = (user, deps = {}) => ensureRegistrationContact(user, {
+  ...deps,
+  audit: (entry) => {
+    if (entry.action !== "contacts.contact.revived") return (deps.audit ?? audit)(entry);
+    const { recipientsUnlinked: _dropped, ...payload } = (entry.payload ?? {}) as Record<string, unknown>;
+    void _dropped;
+    return (deps.audit ?? audit)({ ...entry, payload });
   },
 });
 
@@ -1274,14 +1396,14 @@ const reviveKeepingAdded: Ensure = (user, deps = {}) => ensureRegistrationContac
   },
 });
 
-/** 🔴 C8b · the revival without its compare — whatever row the id names now is overwritten, another account's included. */
+/** 🔴 C8b · the revival without its compare — whatever row holds the number now is overwritten, another account's included. */
 const reviveWithoutCompare: NonNullable<RegistrationContactDeps["book"]>["revive"] = async (tombstone, row) => {
-  const now = await db.marketingContact.find(tombstone.id);
+  const now = await db.marketingContact.findByMsisdn(tombstone.msisdn);
   if (now === null) return null;
   const written = await db.marketingContact.update(now.id, {
     userId: row.userId, displayName: row.displayName, email: row.email, source: row.source, sourceRef: row.sourceRef,
   }, row.updatedAt);
-  return written === null ? null : { row: written, membershipsDeleted: 0 };
+  return written === null ? null : { row: written, membershipsDeleted: 0, recipientsUnlinked: 0 };
 };
 
 /** 🔴 C8b · the revival unaudited — the one SYSTEM row that says an erased number's row was given to a new client. */
@@ -1594,6 +1716,31 @@ if (!PROVE_RED) {
       name: "⛔ C8b · the revival keeps the erased person's Added and provenance on the new client's row",
       expect: L.t1,
       impl: { ...REAL, ensure: reviveKeepingAdded },
+    },
+    {
+      name: "⛔ C8b review (MINOR 8 · iii) · the revival as it stood before the review — the tombstone rewritten IN PLACE, its id kept, the erased person's campaign records pointing at the new client",
+      expect: L.t1,
+      impl: { ...REAL, ensure: reviveInPlace },
+    },
+    {
+      name: "⛔ C8b review (MINOR 8) · the revival DELETES the erased person's campaign records — the record that we messaged the number gone",
+      expect: L.t1,
+      impl: { ...REAL, ensure: reviveDeletingRecords },
+    },
+    {
+      name: "⛔ C8b review (MINOR 8) · the revival re-points the erased person's campaign records at the new client's fresh row",
+      expect: L.t1,
+      impl: { ...REAL, ensure: reviveRepointingRecords },
+    },
+    {
+      name: "⛔ C8b review (MINOR 8) · the memory twin's SET NULL forgotten — the erased person's records left pointing at the deleted tombstone",
+      expect: L.t1,
+      impl: { ...REAL, ensure: reviveLeavingRecords },
+    },
+    {
+      name: "⛔ C8b review (MINOR 8) · the revival's SYSTEM row without its count of the campaign records it unlinked",
+      expect: L.a1,
+      impl: { ...REAL, ensure: revivalAuditWithoutRecords },
     },
     {
       name: "⛔ C8b · the revival without its compare — the first comer's row overwritten by the second sign-up",

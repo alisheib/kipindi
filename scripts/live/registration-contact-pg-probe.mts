@@ -8,8 +8,10 @@
  * millisecond on a `timestamptz(3)` column (OD56); and that a second backfill is a pure read. This seeds a world of
  * every case through the REAL `db`, runs the backfill dry, real and again, and checks the rows by raw SQL against
  * answers written here by hand.
- * ⭐ C8b · and since C8b: the erased tombstone REVIVED as its new client's row by the backfill, its list membership
- * deleted in the same transaction (B1); every created or revived row's "Added" the run's clock, never the sign-up (B8);
+ * ⭐ C8b · and since C8b: the erased tombstone REPLACED by its new client's own FRESH row by the backfill (B1, and the
+ * review's MINOR 8: a new id, never the tombstone's), its list membership deleted and its campaign record unlinked —
+ * kept, no stamp moved — in the same transaction; every created or revived row's "Added" the run's clock, never the
+ * sign-up (B8);
  * and §6, the audited door `ops:contacts-added-redate` (`src/lib/server/contacts/added-redate.ts`) on Postgres — rows in
  * the OLD writer's shape found through the REAL audit log's durable reader, re-dated in ONE transaction to their records'
  * instants, an officer's later stamp kept, its COMPLIANCE rows on the table, a second apply nothing to do, and a race
@@ -102,6 +104,18 @@ await db.marketingContact.create(contact("prc_c_w6", "255751200006", { source: "
 await db.contactList.create({ id: "prc_list", name: "Probe list", description: null, createdAt: "2026-08-01T08:00:00.000Z", createdBy: "probe_officer", updatedAt: "2026-08-01T08:00:00.000Z", updatedBy: "probe_officer" });
 await db.contactListMember.add({ listId: "prc_list", contactId: "prc_c_w5", addedAt: "2026-08-05T08:00:00.000Z", addedBy: "probe_officer" });
 await db.contactListMember.add({ listId: "prc_list", contactId: "prc_c_w3", addedAt: "2026-08-05T08:00:00.000Z", addedBy: "probe_officer" });
+// ⭐ C8b review (MINOR 8) · the erased person was messaged through that row — the record erasure's account unlink leaves
+// pointing at the tombstone (U16a clears the account, never the book row).
+const RECORD_AT = "2026-07-20T08:00:00.000Z";
+await pg.$executeRawUnsafe(
+  `insert into "SmsCampaign" (id, name, status, "bodySw", "codingSw", "segmentsSw", "audienceFilter", "createdBy", "createdAt", "updatedAt")
+   values ('prc_cmp', 'Probe campaign', 'DONE', '50pick: probe.', 'GSM7', 1, '{}', 'probe_officer', $1::timestamptz, $1::timestamptz)`, RECORD_AT);
+await pg.$executeRawUnsafe(
+  `insert into "SmsCampaignRecipient" (id, "campaignId", msisdn, "contactId", status, "smsReference", "createdAt", "updatedAt", "sentAt")
+   values ('prc_rcp_w5', 'prc_cmp', '255751200005', 'prc_c_w5', 'SENT', 'REF-prc_rcp_w5', $1::timestamptz, $1::timestamptz, $1::timestamptz)`, RECORD_AT);
+type RecordRow = { contactId: string | null; status: string; smsReference: string | null; updatedAt: Date };
+const recordOf = async (): Promise<RecordRow | null> => (await pg.$queryRawUnsafe<RecordRow[]>(
+  `select "contactId", status::text as status, "smsReference", "updatedAt" from "SmsCampaignRecipient" where id = 'prc_rcp_w5'`))[0] ?? null;
 
 const landed = await census();
 ok("0b · CONTROL · the world was written THROUGH db INTO POSTGRES — 13 accounts, 4 contacts, 3 ledger rows read back by raw SQL",
@@ -116,7 +130,8 @@ const book = async (): Promise<BookRow[]> => pg.$queryRawUnsafe<BookRow[]>(
 const rowOf = (rows: BookRow[], msisdn: string) => rows.find((r) => r.msisdn === msisdn) ?? null;
 const iso = (v: unknown) => (v instanceof Date ? v.toISOString() : String(v));
 const outcomesOf = (c: { outcomes: Record<string, number>; skipped: Record<string, number> }) => json({ o: c.outcomes, s: c.skipped });
-// ⭐ C8b (B1) · w5's tombstone is REVIVED as prc_w5's own row (until C8b it was kept: `kept_erased`).
+// ⭐ C8b (B1) · w5's tombstone is REPLACED by prc_w5's own fresh row (until C8b it was kept: `kept_erased`; until the
+// review's MINOR 8 it was rewritten in place).
 const EXPECTED = json({
   o: { created: 2, revived: 1, linked: 1, already_linked: 1, kept_other_account: 1, skipped: 3, failed: 0 },
   s: { not_a_player: 0, bootstrap_admin: 0, closed: 2, erased: 0, not_tz_mobile: 1 },
@@ -161,13 +176,18 @@ ok("3b · ⭐ OD56 ON POSTGRES · the officer's row is LINKED with every typed f
     && w3.notes === "Met at the stand." && json(w3.tags) === json(["vip"]) && iso(w3.updatedAt) === "2026-09-15T10:00:00.123Z" && w3.updatedBy === "probe_officer",
   json(w3));
 const w5Lists = await memberships("prc_c_w5");
+const w5FreshLists = w5 ? await memberships(String(w5.id)) : -1;
 const w3Lists = await memberships("prc_c_w3");
-ok("3c · ⭐ C8b (B1) ON POSTGRES · the erased tombstone is REVIVED as prc_w5's own row — the SAME id, linked, source REGISTRATION, the account's email, no name, notes, tags, import or officer, the run's instant as Added, the ledger's WITHDRAWN — and its list membership is GONE (the officer's contact keeps its own); ⛔ the row linked to another account is byte-identical to how it was seeded",
-  !!w5 && w5.id === "prc_c_w5" && w5.userId === "prc_w5" && w5.source === "REGISTRATION" && w5.sourceRef === "prc_w5" && w5.email === "next.holder@example.tz"
+const w5Record = await recordOf();
+const tombGone = after1.every((r) => r.id !== "prc_c_w5");
+ok("3c · ⭐ C8b (B1 · the review's MINOR 8) ON POSTGRES · the erased tombstone is REPLACED by prc_w5's own FRESH row — the tombstone gone, a new id holding the number, linked, source REGISTRATION, the account's email, no name, notes, tags, import or officer, the run's instant as Added, the ledger's WITHDRAWN — its list membership GONE and none on the new row (the officer's contact keeps its own), and the erased person's campaign record KEPT and pointing at no book row (status, reference and updatedAt untouched); ⛔ the row linked to another account is byte-identical to how it was seeded",
+  !!w5 && w5.id !== "prc_c_w5" && tombGone && w5.userId === "prc_w5" && w5.source === "REGISTRATION" && w5.sourceRef === "prc_w5" && w5.email === "next.holder@example.tz"
     && w5.displayName === null && w5.notes === null && json(w5.tags) === json([]) && w5.importId === null && w5.createdBy === null
-    && duringRun(w5.createdAt) && w5.consentState === "WITHDRAWN" && w5Lists === 0 && w3Lists === 1
+    && duringRun(w5.createdAt) && w5.consentState === "WITHDRAWN" && w5Lists === 0 && w5FreshLists === 0 && w3Lists === 1
+    && w5Record !== null && w5Record.contactId === null && w5Record.status === "SENT" && w5Record.smsReference === "REF-prc_rcp_w5"
+    && iso(w5Record.updatedAt) === RECORD_AT
     && same(w6, rowOf(seededRows, "255751200006")),
-  `${json(w5)} · memberships ${w5Lists} (the officer's ${w3Lists}) · ${json(w6)}`);
+  `${json(w5)} · the tombstone ${tombGone ? "gone" : "STILL THERE"} · memberships ${w5Lists}/${w5FreshLists} (the officer's ${w3Lists}) · the record ${json(w5Record)} · ${json(w6)}`);
 ok("3d · ⛔ no row for staff, an agent, a closed or erased account, a 064 or a foreign number — the book holds exactly 6 rows",
   after1.length === 6 && ["255751200007", "255751200008", "255641200009", "255751200010", "255751200011", "254712200012"].every((m) => rowOf(after1, m) === null),
   `${after1.length} rows`);

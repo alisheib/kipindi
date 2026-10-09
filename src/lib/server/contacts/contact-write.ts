@@ -19,9 +19,10 @@
  * ⭐ C8b (B1 · B2, Ali's ruling of 2026-10-09: "an erased person's number stays blocked until its holder signs up or agrees
  * to offers again") · THE BOOK BLOCKS AN ERASED NUMBER, AND A BLOCKED NUMBER ANSWERS EXACTLY LIKE ONE ALREADY IN THE BOOK.
  * `bookBlocks` is the ONE test, asked of one number: its tombstone (`sourceRef = "erasure"`, decision C3 — a book row
- * decides alone), or with no book row an erasure standing on it (C8a's ONE rule, `erasure-mark.ts`: the latest of the
- * number's GIVEN rows and erasure markers is a marker — a later opt-out tap never lifts it; a GIVEN does, and so does a
- * NEW ACCOUNT registering the number, which revives the tombstone as its own row, `registration-contact.ts`). The lookup
+ * decides alone, so ONLY a NEW ACCOUNT registering the number lifts it, by putting its own fresh row in the tombstone's
+ * place, `registration-contact.ts`; a later GIVEN does not), or with no book row an erasure standing on it (C8a's ONE
+ * rule, `erasure-mark.ts`: the latest of the number's GIVEN rows and erasure markers is a marker — a later opt-out tap
+ * never lifts it; a GIVEN does, and so does a new account registering the number, whose own row then decides). The lookup
  * and the save answer such a number "already in the book" (`CONTACT_DUPLICATE`, reason `duplicate`) and write nothing —
  * 🔴 until C8b they answered "This number can't be added to the book", the one sentence in the console that said a
  * number's holder had asked to be erased (X22). A blocked number carries NO contact id — there is no row anybody may open
@@ -233,7 +234,8 @@ export function newContactRow(fields: NewContactFields, id: string = newContactI
 /* ═══ ERASED ROWS (C3, A1.7) — AND ERASED NUMBERS WITH NO ROW (C8a): THE BOOK BLOCKS THEM (C8b · B1) ══════════════ */
 
 /** Is this book ROW the erased tombstone? A row decides alone (`isErasedNumber` with a row). Its callers hold a row: the
- *  edit's opener, the create the index refused, and sign-up's writer (`registration-contact.ts`, which revives it). */
+ *  edit's opener, the create the index refused, and sign-up's writer (`registration-contact.ts`, which replaces it with the
+ *  new client's own fresh row). */
 export function isErasedContact(row: Pick<StoredMarketingContact, "sourceRef">): boolean {
   return isErasedNumber(row, false);
 }

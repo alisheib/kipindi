@@ -129,7 +129,7 @@ const ALIASES: RegExp[] = [
 /** A Prisma delegate on the book's tables, reached by anything but `db.` (pc(), prisma()!, a transaction's tx). */
 const PRISMA_DIRECT = new RegExp(`(?<!\\bdb)\\.${NS}\\.\\w+\\s*\\(`);
 /** vb7 · inside the MEMORY twin, its own facade (`memoryDb.marketingContact.removeWhere(…)`, which removeBoundWhere
- *  calls so the twin still deletes a contact in ONE place) is the twin calling itself, not a Prisma delegate. `memoryDb`
+ *  calls so the twin's bulk Remove still deletes a contact in ONE place) is the twin calling itself, not a Prisma delegate. `memoryDb`
  *  is module-local to store.ts, so the exemption applies to that file alone. */
 const PRISMA_DIRECT_IN_STORE = new RegExp(`(?<!\\bdb|\\bmemoryDb)\\.${NS}\\.\\w+\\s*\\(`);
 const MEMORY_MAPS = /\.(marketingContacts|contactListMembers|contactsByMsisdn|contactLists)\b/;

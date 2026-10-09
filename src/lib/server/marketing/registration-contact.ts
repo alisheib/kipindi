@@ -35,20 +35,32 @@
  *     own `updatedAt` is written back (OD56: a link is not an edit — an officer's open dialog stays valid, and a masked
  *     viewer, who is handed that stamp, sees nothing move). Then the mirror.
  *   · ALREADY LINKED TO THIS ACCOUNT → nothing (the mirror is asked, and writes only when the cache is wrong).
- *   · ⭐ AN ERASED TOMBSTONE (`sourceRef = erasure`) → REVIVED AS THIS CLIENT'S ROW (C8b · B1, Ali's ruling of 2026-10-09:
- *     "an erased person's number stays blocked until its holder signs up or agrees to offers again"). The book BLOCKS an
- *     erased number — the importer and the Add form answer it "already in the book" and write nothing — and the block is
- *     lifted only by the holder's own act: a later GIVEN, or a NEW ACCOUNT registering the number, which is this. So the
- *     emptied row becomes exactly the row a sign-up writes today (the builder's row: the link, the account's name and
- *     email, source REGISTRATION, the clock as "Added", no officer, no tags, no notes, no import) in ONE step of the store
- *     (`marketingContact.reviveTombstone` — one transaction on Postgres): the write lands only while the row is still the
- *     tombstone, and every list membership the tombstone still held is DELETED in the same step, so the new client
- *     inherits no old list and no old list's coverage (erasure deletes them itself since C8b; a tombstone made before C8b
- *     may still hold some). ⛔ Nothing of the erased person comes back: the row carries only the NEW account's own
- *     details. The ledger is not touched — an erasure marker standing on the number still refuses it at the gate until a
- *     GIVEN lifts it — and the caches stay the tombstone's until the mirror runs, right after. Audited
- *     `contacts.contact.revived`. 🔴 Until C8b the tombstone was KEPT (`kept_erased`), so a recycled number's new client
- *     was never a contact and the number answered "can't be added" to every officer — a disclosed erasure.
+ *   · ⭐ AN ERASED TOMBSTONE (`sourceRef = erasure`) → REPLACED BY THIS CLIENT'S OWN FRESH ROW (C8b · B1, Ali's ruling of
+ *     2026-10-09: "an erased person's number stays blocked until its holder signs up or agrees to offers again"). The book
+ *     BLOCKS an erased number — the importer and the Add form answer it "already in the book" and write nothing — and a
+ *     TOMBSTONE's block is lifted ONLY by a NEW ACCOUNT registering the number, which is this. ⛔ A later GIVEN does NOT
+ *     lift it (C8b review, MINOR 3): a book row decides alone (`bookBlocks`, `contact-write.ts`), so "agrees to offers
+ *     again" lifts only an erasure marker standing on a number with NO book row (C8a's ledger rule). So the tombstone is
+ *     DELETED and the row a sign-up writes today is CREATED in its place — the builder's row: its OWN new id, the link,
+ *     the account's name and email, source REGISTRATION, the clock as "Added", no officer, no tags, no notes, no import —
+ *     in ONE step of the store (`marketingContact.reviveTombstone` — one transaction on Postgres): the write lands only
+ *     while the row is still the tombstone; every list membership the tombstone still held is DELETED first (erasure
+ *     deletes them itself since C8b; a tombstone made before C8b may still hold some), so the new client inherits no old
+ *     list and no old list's coverage; and every campaign recipient row still linked to the tombstone LOSES that link
+ *     and is KEPT. ⭐ C8b review (MINOR 8 · iii, the lead's decision) · A FRESH ROW, NEVER THE TOMBSTONE'S ID: until then
+ *     the tombstone itself was rewritten, so the erased person's campaign recipient rows (whose `contactId` erasure's
+ *     account unlink keeps) pointed at the new client's row, and an id a masked officer once saw in an edit link came
+ *     back on a sign-up row.
+ *     ⛔ WHAT REMAINS OF THE ERASED PERSON, EXACTLY. In the new row: the NUMBER, and its two caches — the number's
+ *     mirrored consent and stop, copied from the tombstone and written again by the mirror right after — and nothing
+ *     else. Beside it, keyed by the number and not touched here: the consent ledger's rows (the erasure marker among
+ *     them, which still refuses the number at the gate until the new holder's own GIVEN lifts it), any stop that stood
+ *     (erasure never lifts one), the opt-out links, and the campaign recipient rows (the record that we messaged the
+ *     number, kept for its own period — linked to no account since the erasure and, since this, to no book row). And the
+ *     audit chain's rows about the OLD row's id (the masked number and field names, never a name). Audited
+ *     `contacts.contact.revived` on the new row, with the memberships deleted and the recipient rows unlinked as counts.
+ *     🔴 Until C8b the tombstone was KEPT (`kept_erased`), so a recycled number's new client was never a contact and the
+ *     number answered "can't be added" to every officer — a disclosed erasure.
  *     ⚠️ C8a · the TOMBSTONE alone is asked here, on purpose: with NO book row, a sign-up writes the new account's own
  *     row even where an erasure stands on the number (the ledger's marker, `erasure-mark.ts`'s ONE rule). A sign-up is
  *     the account holder's own act, and its row — at sign-up or by the backfill — carries only that ACCOUNT's own
@@ -102,7 +114,7 @@ export type RegistrationContactStage = "read" | "create" | "revive" | "link" | "
 
 export type RegistrationContactResult =
   | { outcome: "created"; contactId: string; cache: ContactCacheOutcome }
-  /** C8b (B1) · an erased number's emptied row, now this client's own row — the id is theirs now. */
+  /** C8b (B1) · an erased number's emptied row REPLACED by this client's own fresh row — its id, never the tombstone's. */
   | { outcome: "revived"; contactId: string; cache: ContactCacheOutcome }
   | { outcome: "linked"; contactId: string; cache: ContactCacheOutcome }
   | { outcome: "already_linked"; contactId: string; cache: ContactCacheOutcome }
@@ -118,7 +130,8 @@ export type RegistrationContactResult =
 export type RegistrationBook = {
   findByMsisdn: (msisdn: string) => Promise<StoredMarketingContact | null>;
   create: (row: StoredMarketingContact) => Promise<StoredMarketingContact | null>;
-  /** C8b (B1) · the tombstone becomes `row` (the sign-up's own row) in ONE step — null when it was no longer the tombstone. */
+  /** C8b (B1) · the tombstone replaced by `row` (the sign-up's own fresh row, under its own id) in ONE step — null when it
+   *  was no longer the tombstone. */
   revive: (tombstone: StoredMarketingContact, row: StoredMarketingContact) => Promise<ContactTombstoneRevived | null>;
   link: (row: StoredMarketingContact, userId: string) => Promise<StoredMarketingContact | null>;
 };
@@ -145,8 +158,9 @@ export type RegistrationContactDeps = {
 export const REGISTRATION_BOOK: Readonly<RegistrationBook> = Object.freeze({
   findByMsisdn: async (msisdn: string) => Promise.resolve(db.marketingContact.findByMsisdn(msisdn)),
   create: async (row: StoredMarketingContact) => Promise.resolve(db.marketingContact.create(row)),
-  /** ⭐ C8b (B1) · THE ONE REVIVAL: the tombstone, named by its id AND its number, becomes the sign-up's row in ONE step,
-   *  its list memberships deleted with it (`marketingContact.reviveTombstone`). */
+  /** ⭐ C8b (B1) · THE ONE REVIVAL: the tombstone, named by its id AND its number, is DELETED and the sign-up's own fresh
+   *  row CREATED in its place in ONE step — its list memberships deleted, its campaign recipient rows unlinked and kept
+   *  (`marketingContact.reviveTombstone`). */
   revive: async (tombstone: StoredMarketingContact, row: StoredMarketingContact) =>
     Promise.resolve(db.marketingContact.reviveTombstone({ id: tombstone.id, msisdn: tombstone.msisdn, row })),
   /** ⭐ THE ONE LINK WRITE: `userId` and nothing else, with the row's own `updatedAt` written back (OD56). */
@@ -309,13 +323,14 @@ export async function ensureRegistrationContact(
       if (row === null) throw new Error("the book refused the row but holds none for its number");
     }
     if (isErasedContact(row)) {
-      // ⭐ C8b (B1) · the holder's own act lifts the block: the tombstone becomes this client's row, in ONE step.
+      // ⭐ C8b (B1) · the holder's own act lifts the block: the tombstone is replaced by this client's own fresh row (the
+      // builder's, under its own new id), in ONE step.
       stage = "revive";
       const revived = await book.revive(row, registrationRow(user, gate.number, deps));
       if (revived !== null) {
         // Recorded before the cache is asked, so a mirror fault cannot lose its audit row.
         recordWrite(deps, user, "contacts.contact.revived", revived.row, {
-          fields: filledFields(revived.row), membershipsDeleted: revived.membershipsDeleted,
+          fields: filledFields(revived.row), membershipsDeleted: revived.membershipsDeleted, recipientsUnlinked: revived.recipientsUnlinked,
         });
         stage = "mirror";
         return { outcome: "revived", contactId: revived.row.id, cache: await mirror(msisdn) };

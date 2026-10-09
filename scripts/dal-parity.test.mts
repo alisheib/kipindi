@@ -2712,8 +2712,9 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     /findUnique\(\{ where: \{ id \} \}\)/.test(pFind) && /return row \? \{ \.\.\.row \} : null;/.test(memberText(cMem, "find"))
       && /gateTrail: row\.gateTrail === null \? null : row\.gateTrail\.map\(\(g\) => \(\{ \.\.\.g \}\)\)/.test(memberText(rMem, "find")));
   // ⭐ THE SET NULL LINK, MIRRORED. Postgres nulls `SmsCampaignRecipient.contactId` when a contact row is deleted (the FK's
-  // onDelete: SetNull); the memory twin deletes contacts in ONE place — U23's `removeWhere` — and must do the same, or
-  // every suite keeps a recipient pointing at a contact production no longer has.
+  // onDelete: SetNull); the memory twin's bulk Remove deletes contacts in ONE place — U23's `removeWhere` — and must do
+  // the same, or every suite keeps a recipient pointing at a contact production no longer has. (The one other delete, the
+  // tombstone's replacement `reviveTombstone`, makes the same move itself — held by §31.revive.)
   const mRemove = memberText(region(storeSrc, "\n  marketingContact: {"), "removeWhere");
   ok("26.setnull.memory · ⛔ the memory twin's contact removal sets a recipient's contactId to null and deletes no recipient — Postgres' SET NULL, mirrored",
     mRemove.length > 100 && /for \(const r of store\.smsCampaignRecipients\.values\(\)\) if \(r\.contactId === c\.id\) r\.contactId = null;/.test(mRemove)
@@ -4567,16 +4568,19 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   // ⭐ WHY THIS SECTION EXISTS. C8b adds three members to both twins, and every behavioural suite drives the MEMORY twin
   // alone (`test:registration-contact` §3 and §7, `test:contacts-lists`, `test:contacts-import`), so a Prisma twin that
   // revived a row that is no longer the tombstone, deleted the memberships outside its transaction, wrote over the
-  // number's mirrored caches, re-dated a row its plan never saw, or left the linked members out of the split would be
-  // green in every suite and wrong in production. This section holds the twins to ONE shape, as §30 does; their
+  // number's mirrored caches, kept the tombstone's id or deleted the erased person's campaign records, re-dated a row its
+  // plan never saw, or left the linked members out of the split would be green in every suite and wrong in production.
+  // This section holds the twins to ONE shape, as §30 does; their
   // behaviour on Postgres is three probes' (db-scratch, run by the integrator): reviveTombstone in
   // `scripts/live/contacts-import-pg-probe.mts` section 8 (and end to end through the backfill in
   // `scripts/live/registration-contact-pg-probe.mts` 3c), coverageSplit in `scripts/live/list-basis-pg-probe.mts` 2l (the
   // same scenario on the memory twin, answer for answer), redateAdded through its door in
   // `scripts/live/registration-contact-pg-probe.mts` section 6 (the transaction's rollback in 6.4).
-  //   · reviveTombstone (B1) — a compare-and-set FIRST (this id, this number, the erasure's mark, no link), null when it
-  //     lost, then the tombstone's memberships deleted and every field of the sign-up's row written but the id, the number
-  //     and the two caches — in ONE transaction on Postgres, one synchronous step in memory;
+  //   · reviveTombstone (B1, and the review's MINOR 8 · iii) — a row under the tombstone's own id refused before anything
+  //     is read; a compare-and-set FIRST (this id, this number, the erasure's mark, no link), null when it lost; then the
+  //     tombstone's memberships deleted, its campaign recipient rows unlinked (kept), the tombstone deleted and the
+  //     sign-up's row CREATED under its own fresh id, every field of it written but the number and the two caches — in
+  //     ONE transaction on Postgres, one synchronous step in memory;
   //   · coverageSplit (B5) — coveredCount's newest-recording bound and tombstone exclusion, the members split by the link,
   //     never the link used to drop a member;
   //   · redateAdded (B8) — the ONE shape rule first, EVERY row compared before any is written, all or nothing, each row's
@@ -4627,26 +4631,54 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   ok("31.0 · both twins implement marketingContact.reviveTombstone, marketingContact.redateAdded, contactListBasis.coverageSplit and (the C8b review's MINOR 2) contactListMember.joinedFromImport, each NAMED (ContactTombstoneRevival → ContactTombstoneRevived | null · ContactAddedRedate[] → ContactAddedRedateResult · a list id → ListBasisCoverageSplit · ContactListJoinedQuery → a count), and §19's and §27's member parity hold the namespaces equal",
     SIGS31.every(([body, sig]) => body.includes(sig) && body.length > 200), SIGS31.map(([b]) => b.length).join("/"));
 
-  // ── 31.revive · B1 — the compare first, the memberships in the same step, the caches never written ──
+  // ── 31.revive · B1, and the review's MINOR 8 (iii) — a FRESH row; the compare first; four moves in ONE step; the caches the number's ──
   const REVIVE_FIELDS31 = ["rawInput", "displayName", "email", "ndc", "operator", "source", "sourceRef", "userId", "tags", "notes", "importId", "createdAt", "createdBy", "updatedAt", "updatedBy"];
-  const PRI_WHERE31 = "where: { id: revival.id, msisdn: revival.msisdn, sourceRef: ERASURE_EVIDENCE, userId: null },";
-  const PRI_LOST31 = "if (won.count !== 1) return null;";
+  const SAME_ID31 = 'if (revival.row.id === revival.id) throw new Error("marketingContact.reviveTombstone: the new row must be FRESH, never under the tombstone id — nothing was done.");';
+  const PRI_LOCK31 = 'where "id" = ${revival.id} and "msisdn" = ${revival.msisdn} and "sourceRef" = ${ERASURE_EVIDENCE} and "userId" is null for update`;';
+  const PRI_LOST31 = "if (held.length !== 1 || tomb === undefined) return null;";
   const PRI_MEMBERS31 = "const membershipsDeleted = (await tx.contactListMember.deleteMany({ where: { contactId: revival.id } })).count;";
+  const PRI_COUNT31 = "const recipientsUnlinked = await tx.smsCampaignRecipient.count({ where: { contactId: revival.id } });";
+  const PRI_DROP31 = "await tx.marketingContact.delete({ where: { id: revival.id } });";
+  const PRI_CREATE31 = "const row = await tx.marketingContact.create({ data: { id: r.id, msisdn: revival.msisdn,";
+  const PRI_CACHES31 = "consentState: tomb.consentState as never, suppressedAt: tomb.suppressedAt,";
   const MEM_CAS31 = "if (!tomb || tomb.msisdn !== revival.msisdn || tomb.sourceRef !== ERASURE_EVIDENCE || tomb.userId !== null) return null;";
+  const MEM_TAKEN31 = "if (store.marketingContacts.has(r.id)) throw new Error(";
   const MEM_MEMBERS31 = "if (m.contactId !== tomb.id) continue; store.contactListMembers.delete(k);";
-  const MEM_SET31 = "store.marketingContacts.set(tomb.id, next);";
+  const MEM_UNLINK31 = "if (rec.contactId !== tomb.id) continue; rec.contactId = null;";
+  const MEM_DROP31 = "store.marketingContacts.delete(tomb.id);";
+  const MEM_SET31 = "store.marketingContacts.set(next.id, next); store.contactsByMsisdn.set(next.msisdn, next.id);";
+  /** Every step present, each after the one before it. */
+  const inOrder31 = (body: string, steps: readonly string[]): boolean =>
+    steps.every((s, i) => (i === 0 ? body.includes(s) : before31(body, steps[i - 1], s)));
+  // ⭐ The Prisma twin unlinks the erased person's campaign records through the foreign key's own SET NULL (its delete of
+  // the tombstone) — so the schema and the one migration that made that key are held here too: a key that cascaded
+  // would DELETE the records the revival must keep (the 7-year record that we messaged the number).
+  const squash31 = (s: string): string => s.split(" ").filter(Boolean).join(" ");
+  const recipientSchema31 = squash31(flat31(schemaModel(prismaSchemaSrc, "SmsCampaignRecipient")));
+  const MIGS31 = join(ROOT, "prisma", "migrations");
+  const fkSql31 = readdirSync(MIGS31, { withFileTypes: true }).filter((e) => e.isDirectory())
+    .map((e) => { try { return readFileSync(join(MIGS31, e.name, "migration.sql"), "utf8"); } catch { return ""; } })
+    .join(NL31).split(NL31).filter((l) => l.includes("SmsCampaignRecipient_contactId_fkey"));
+  const FK_SCHEMA31 = "contact MarketingContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)";
+  const FK_SQL31 = 'ALTER TABLE "SmsCampaignRecipient" ADD CONSTRAINT "SmsCampaignRecipient_contactId_fkey" FOREIGN KEY ("contactId") REFERENCES "MarketingContact"("id") ON DELETE SET NULL ON UPDATE CASCADE;';
+  const setNullOk31 = (schemaText: string, sqlLines: readonly string[]): boolean =>
+    schemaText.includes(FK_SCHEMA31) && sqlLines.length === 1 && (sqlLines[0] ?? "").trim() === FK_SQL31;
   const reviveOk31 = (m: string, p: string): boolean => {
     const priFields = REVIVE_FIELDS31.every((k) => p.includes(`${k}: r.${k},`) || p.includes(`${k}: r.${k} as never,`) || p.includes(`${k}: new Date(r.${k}),`));
     const memFields = REVIVE_FIELDS31.every((k) => m.includes(`${k}: r.${k},`) || m.includes(`${k}: [...r.${k}],`));
-    return p.includes("return pc().$transaction(async (tx) => {") && count31(p, "pc()") === 1
-      && before31(p, "const won = await tx.marketingContact.updateMany({", PRI_WHERE31) && before31(p, PRI_WHERE31, PRI_LOST31)
-      && before31(p, PRI_LOST31, PRI_MEMBERS31) && !/consentState|suppressedAt/.test(p) && priFields
-      && before31(m, MEM_CAS31, MEM_MEMBERS31) && before31(m, MEM_MEMBERS31, MEM_SET31)
+    return before31(p, SAME_ID31, "pc()") && p.includes("return pc().$transaction(async (tx) => {") && count31(p, "pc()") === 1
+      && (p.split("tx.")[1] ?? "").startsWith("$queryRaw<")
+      && inOrder31(p, [PRI_LOCK31, PRI_LOST31, PRI_MEMBERS31, PRI_COUNT31, PRI_DROP31, PRI_CREATE31]) && p.includes(PRI_CACHES31) && priFields
+      && !p.includes("updateMany") && !p.includes("smsCampaignRecipient.delete") && !p.includes("smsCampaignRecipient.update")
+      && !p.includes('"SmsCampaignRecipient"') && !p.includes("consentState: r.consentState") && !p.includes("suppressedAt: r.suppressedAt")
+      && before31(m, SAME_ID31, MEM_CAS31) && inOrder31(m, [MEM_CAS31, MEM_TAKEN31, MEM_MEMBERS31, MEM_UNLINK31, MEM_DROP31, MEM_SET31])
       && m.includes("consentState: tomb.consentState,") && m.includes("suppressedAt: tomb.suppressedAt,")
-      && m.includes("id: tomb.id,") && m.includes("msisdn: tomb.msisdn,") && memFields && !m.includes("...r,") && !m.includes("...revival");
+      && m.includes("id: r.id,") && !m.includes("id: tomb.id,") && m.includes("msisdn: tomb.msisdn,") && memFields
+      && !m.includes("...r,") && !m.includes("...revival") && !m.includes("smsCampaignRecipients.delete(");
   };
-  ok("31.revive · ⭐ C8b (B1) · THE REVIVAL IS A COMPARE-AND-SET, AND ONE STEP — Prisma ONE transaction (its only pc()) whose FIRST statement is the conditional updateMany where this id, this number, the erasure's mark and NO link, answering null when it lost BEFORE anything else, then the tombstone's memberships deleted on the transaction's own client; memory the same check BEFORE its membership loop and its one set; both write EVERY field of the sign-up's row by name (no spread) but the id, the number and the two caches — the caches stay the tombstone's",
-    reviveOk31(memRevive, priRevive), `${priRevive.slice(0, 120)} | ${memRevive.slice(0, 120)}`);
+  ok("31.revive · ⭐ C8b (B1 · the review's MINOR 8) · THE REVIVAL IS A COMPARE-AND-SET, ONE STEP, AND A FRESH ROW — both twins refuse a row under the tombstone's own id before anything is read; Prisma ONE transaction (its only pc()) whose FIRST statement locks the tombstone where this id, this number, the erasure's mark and NO link, answering null when it lost BEFORE anything else, then on the transaction's own client the memberships deleted, the campaign recipient rows counted, the tombstone deleted — the foreign key's own SET NULL unlinks those rows, never deleted, no stamp moved, the key held SetNull in the schema and its one migration — and the sign-up's row created under its OWN id; memory the same check and a taken id refused, then the same moves in the same order (the SET NULL emulated); both write EVERY field of the sign-up's row by name (no spread) but the number and the two caches — the caches the tombstone's",
+    reviveOk31(memRevive, priRevive) && setNullOk31(recipientSchema31, fkSql31),
+    `${priRevive.slice(0, 120)} | ${memRevive.slice(0, 120)} | the key: ${recipientSchema31.includes(FK_SCHEMA31) ? "SetNull" : "NOT SetNull"}, ${fkSql31.length} migration line(s)`);
 
   // ── 31.split · B5 — coveredCount's bound and exclusion, the members split by the link ──
   const PRI_BOUND31 = "const splitBound = newestSplit !== null && newestSplit.revokedAt === null ? newestSplit.recordedAt.toISOString() : null;";
@@ -4740,10 +4772,25 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   // ── CONTROLS — the REAL bodies, ONE defect planted in each, must FAIL their predicate ──
   const planted31 = (body: string, from: string, to: string): string => body.split(from).join(to);
   const controls31: Array<[string, boolean]> = [
-    ["a Prisma revival that does not ask the mark", reviveOk31(memRevive, priRevive) && !reviveOk31(memRevive, planted31(priRevive, " sourceRef: ERASURE_EVIDENCE, userId: null },", " },"))],
+    ["a Prisma revival that does not ask the mark", reviveOk31(memRevive, priRevive)
+      && !reviveOk31(memRevive, planted31(priRevive, ' and "sourceRef" = ${ERASURE_EVIDENCE} and "userId" is null for update', " for update"))],
     ["a Prisma revival that deletes the memberships outside its transaction", !reviveOk31(memRevive, planted31(priRevive, "(await tx.contactListMember.deleteMany(", "(await pc().contactListMember.deleteMany("))],
     ["a memory revival that keeps the memberships", !reviveOk31(planted31(memRevive, MEM_MEMBERS31, ""), priRevive)],
     ["a memory revival that writes the sign-up's caches over the number's", !reviveOk31(planted31(memRevive, "consentState: tomb.consentState,", "consentState: r.consentState,"), priRevive)],
+    ["a Prisma revival that writes the sign-up's caches over the number's", !reviveOk31(memRevive, planted31(priRevive, "consentState: tomb.consentState as never,", "consentState: r.consentState as never,"))],
+    ["a Prisma revival that keeps the tombstone's id — the in-place rewrite of before the review", !reviveOk31(memRevive, planted31(priRevive, "id: r.id, msisdn: revival.msisdn,", "id: revival.id, msisdn: revival.msisdn,"))],
+    ["a memory revival that keeps the tombstone's id", !reviveOk31(planted31(memRevive, "id: r.id,", "id: tomb.id,"), priRevive)],
+    ["a Prisma revival that DELETES the erased person's campaign records", !reviveOk31(memRevive, planted31(priRevive, PRI_COUNT31,
+      "const recipientsUnlinked = (await tx.smsCampaignRecipient.deleteMany({ where: { contactId: revival.id } })).count;"))],
+    ["a Prisma revival that unlinks through updateMany — the revival's instant stamped onto the erased person's records", !reviveOk31(memRevive, planted31(priRevive, PRI_COUNT31,
+      "const recipientsUnlinked = (await tx.smsCampaignRecipient.updateMany({ where: { contactId: revival.id }, data: { contactId: null } })).count;"))],
+    ["a Prisma revival that counts the records outside its transaction", !reviveOk31(memRevive, planted31(priRevive, "await tx.smsCampaignRecipient.count(", "await pc().smsCampaignRecipient.count("))],
+    ["a schema whose recipient link cascades — the tombstone's delete would DELETE the erased person's records", setNullOk31(recipientSchema31, fkSql31)
+      && !setNullOk31(planted31(recipientSchema31, FK_SCHEMA31, FK_SCHEMA31.split("SetNull").join("Cascade")), fkSql31)
+      && !setNullOk31(recipientSchema31, fkSql31.map((l) => planted31(l, "ON DELETE SET NULL", "ON DELETE CASCADE")))],
+    ["a memory revival that leaves the campaign records pointing at the deleted row", !reviveOk31(planted31(memRevive, MEM_UNLINK31, "if (rec.contactId !== tomb.id) continue;"), priRevive)],
+    ["a revival that takes a row under the tombstone's own id", !reviveOk31(memRevive, planted31(priRevive, SAME_ID31, "")) && !reviveOk31(planted31(memRevive, SAME_ID31, ""), priRevive)],
+    ["a memory revival that writes over a row already holding the fresh id", !reviveOk31(planted31(memRevive, MEM_TAKEN31, "if (false) throw new Error("), priRevive)],
     ["a Prisma split that drops the linked members", splitOk31(memSplit, priSplit) && !splitOk31(memSplit, planted31(priSplit, PRI_TOMB31, `${PRI_TOMB31} and c."userId" is null`))],
     ["a memory split that counts the tombstone", !splitOk31(planted31(memSplit, MEM_TOMB31, "if (c === undefined) continue;"), priSplit)],
     ["a Prisma re-dating without its compare", redateOk31(memRedate, priRedate, model31) && !redateOk31(memRedate, planted31(priRedate, ' and "createdAt" = ${r.expectedCreatedAt}::timestamptz', ""), model31)],
@@ -4759,7 +4806,7 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     ["a memory join count that ignores created-only — a masked run's kept rows counted", !joinedOk31(planted31(memJoined, MEM_ONLY31, "if (true) {"), priJoined)],
   ];
   const deaf31 = controls31.filter(([, held]) => !held).map(([name]) => name);
-  ok("31.c1 · CONTROL · every §31 matcher can fail: the REAL bodies pass, and ONE defect planted in each — a revival that does not ask the mark, deletes the memberships outside its transaction, keeps them, or writes the caches; a split that drops the linked members or counts the tombstone; a re-dating without its compare or writing before every row is checked; a shape rule that lets one contact be named twice; a second caller of the re-dating or the revival; a join count without its window, counting the tombstone, or blind to created-only — FAILS its predicate",
+  ok("31.c1 · CONTROL · every §31 matcher can fail: the REAL bodies pass, and ONE defect planted in each — a revival that does not ask the mark, deletes the memberships outside its transaction, keeps them, writes the caches (either twin), keeps the tombstone's id (either twin), deletes the erased person's campaign records, stamps them through updateMany, counts them outside its transaction, leaves them pointing at the deleted row, takes a row under the tombstone's own id, or writes over a taken id; a recipient link that cascades (the schema or its migration); a split that drops the linked members or counts the tombstone; a re-dating without its compare or writing before every row is checked; a shape rule that lets one contact be named twice; a second caller of the re-dating or the revival; a join count without its window, counting the tombstone, or blind to created-only — FAILS its predicate",
     deaf31.length === 0, deaf31.join(" | ") || `${controls31.length} controls held`);
 }
 

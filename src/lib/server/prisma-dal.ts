@@ -557,7 +557,8 @@ const CONTACT_IMPORT_OPEN_RUNS_MAX = 20;
 const CONTACT_IMPORT_COMMIT_TX_TIMEOUT_MS = 30_000;
 /** §29 · the start's freeze: one conditional update, and — for a new list — one insert and one update more. */
 const CONTACT_IMPORT_FREEZE_TX_TIMEOUT_MS = 10_000;
-/** C8b (B1) · a tombstone's revival: one conditional update, one delete of its memberships, one read back. */
+/** C8b (B1) · a tombstone's replacement by a new client's fresh row: one locking read, one delete of its memberships, one
+ *  count of its campaign recipient rows, one delete (which unlinks them), one create. */
 const CONTACT_REVIVE_TX_TIMEOUT_MS = 10_000;
 /** C8b (B8) · the "Added" re-dating: one conditional update per row, at most `ADDED_REDATE_MAX` rows (the 54 of 2026-10-03
  *  take milliseconds); the timeout is a ceiling, never a budget. */
@@ -4410,31 +4411,47 @@ export const prismaDb = {
         return { ok: false, reason: still ? "stale" : "not_found" };
       }
     },
-    /** C8b (B1) · ⭐ THE TOMBSTONE REVIVED AS A NEW CLIENT'S ROW — ONE interactive transaction whose FIRST statement is the
-     *  compare-and-set: ONE conditional update, written only where the row is still the tombstone — this id AND this
-     *  number, the erasure's mark, no link (Postgres re-checks the where after a racing commit, so of two sign-ups one
-     *  revives it and the loser counts 0, answered null with nothing written) — writing every field of the sign-up's row
-     *  but the id, the number and the two caches, which stay the tombstone's. Then its list memberships are DELETED in the
-     *  same transaction (a revived row inherits no old list, and no old list's coverage), and the row is read back inside
-     *  it. ⛔ `updatedAt` is written EXPLICITLY (decision C25), never left to `@updatedAt`. The memory twin mirrors it;
-     *  `test:dal-parity` §31 holds the pair, and `scripts/live/contacts-import-pg-probe.mts` section 8 runs it here. */
+    /** C8b (B1) · ⭐ THE TOMBSTONE REPLACED BY A NEW CLIENT'S OWN FRESH ROW — ONE interactive transaction. ⛔ A `row` under
+     *  the tombstone's own id is refused before any statement (C8b review, MINOR 8 · iii: never the tombstone's id). The
+     *  transaction's FIRST statement is the compare: the tombstone LOCKED (`for update`) only where it is still the
+     *  tombstone — this id AND this number, the erasure's mark, no link — reading its two caches (Postgres re-checks the
+     *  where after a racing commit, so of two sign-ups one replaces it and the loser reads no row, answered null with
+     *  nothing written). Then, on the transaction's own client, in this order: its list memberships DELETED and counted
+     *  (the new row inherits no old list, and no old list's coverage); the campaign recipient rows linked to it COUNTED;
+     *  the tombstone DELETED — which UNLINKS those rows through the foreign key's own `SetNull`
+     *  (`SmsCampaignRecipient.contactId`, migration 20261002120000): `contactId` to null and nothing else, no
+     *  `updatedAt` moved (a Prisma `updateMany` would stamp the revival's instant onto the erased person's records, and
+     *  `test:dal-parity` §26 keeps raw SQL on that table out of this file); the rows are KEPT, the record that we messaged
+     *  the number, and the lock holds any new link off the row until the transaction ends, so the count is exact; and the
+     *  sign-up's row CREATED under its own id — every field of it but the number (the tombstone's) and the two caches (the
+     *  tombstone's, read by the compare: the number's mirrored truth, which the caller mirrors again). A fresh id another
+     *  row holds fails the create, and the whole transaction rolls back. ⛔ `updatedAt` is written EXPLICITLY (decision
+     *  C25), never left to `@updatedAt`. The memory twin mirrors it; `test:dal-parity` §31 holds the pair, and
+     *  `scripts/live/contacts-import-pg-probe.mts` section 8 runs it here. */
     reviveTombstone: async (revival: ContactTombstoneRevival): Promise<ContactTombstoneRevived | null> => {
+      if (revival.row.id === revival.id) throw new Error("marketingContact.reviveTombstone: the new row must be FRESH, never under the tombstone id — nothing was done.");
       const r = revival.row;
       return pc().$transaction(async (tx) => {
-        const won = await tx.marketingContact.updateMany({
-          where: { id: revival.id, msisdn: revival.msisdn, sourceRef: ERASURE_EVIDENCE, userId: null },
+        const held = await tx.$queryRaw<Array<{ consentState: string; suppressedAt: Date | null }>>`
+          select "consentState"::text as "consentState", "suppressedAt" from "MarketingContact"
+           where "id" = ${revival.id} and "msisdn" = ${revival.msisdn} and "sourceRef" = ${ERASURE_EVIDENCE} and "userId" is null
+           for update`;
+        const tomb = held[0];
+        if (held.length !== 1 || tomb === undefined) return null;
+        const membershipsDeleted = (await tx.contactListMember.deleteMany({ where: { contactId: revival.id } })).count;
+        const recipientsUnlinked = await tx.smsCampaignRecipient.count({ where: { contactId: revival.id } });
+        await tx.marketingContact.delete({ where: { id: revival.id } });
+        const row = await tx.marketingContact.create({
           data: {
+            id: r.id, msisdn: revival.msisdn,
             rawInput: r.rawInput, displayName: r.displayName, email: r.email, ndc: r.ndc, operator: r.operator,
-            source: r.source as never, sourceRef: r.sourceRef, userId: r.userId, tags: r.tags, notes: r.notes,
-            importId: r.importId, createdAt: new Date(r.createdAt), createdBy: r.createdBy,
+            source: r.source as never, sourceRef: r.sourceRef, userId: r.userId,
+            consentState: tomb.consentState as never, suppressedAt: tomb.suppressedAt,
+            tags: r.tags, notes: r.notes, importId: r.importId, createdAt: new Date(r.createdAt), createdBy: r.createdBy,
             updatedAt: new Date(r.updatedAt), updatedBy: r.updatedBy,
           },
         });
-        if (won.count !== 1) return null;
-        const membershipsDeleted = (await tx.contactListMember.deleteMany({ where: { contactId: revival.id } })).count;
-        const row = await tx.marketingContact.findUnique({ where: { id: revival.id } });
-        if (row === null) throw new Error("reviveTombstone: the revived row is not there inside its own transaction");
-        return { row: toStoredMarketingContact(row), membershipsDeleted };
+        return { row: toStoredMarketingContact(row), membershipsDeleted, recipientsUnlinked };
       }, { timeout: CONTACT_REVIVE_TX_TIMEOUT_MS, maxWait: 5_000 });
     },
     /** C8b (B8) · ⭐ "ADDED" PUT RIGHT, ALL OR NOTHING — ONE interactive transaction, the ONE shape rule first

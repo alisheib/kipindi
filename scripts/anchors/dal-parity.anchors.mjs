@@ -2399,13 +2399,13 @@ export const MUTATIONS = [
   },
   /* ═══ §31 · C8b (S14, 2026-10-09) — the revival, the list figures by viewer, "Added" put right: ONE defect in ONE twin each ═══ */
   {
-    // ⭐ A revival that no longer asks whether the row IS the tombstone: a sign-up racing another overwrites the first
-    // comer's row — another account's name and link handed over — on Postgres alone.
+    // ⭐ A revival that no longer asks whether the row IS the tombstone: a sign-up racing another DELETES the first
+    // comer's row — another account's own row — and writes its own over the number, on Postgres alone.
     name: "prisma-dal.ts — reviveTombstone forgets the erasure's mark and the link in its compare",
     file: "src/lib/server/prisma-dal.ts",
-    from: `          where: { id: revival.id, msisdn: revival.msisdn, sourceRef: ERASURE_EVIDENCE, userId: null },`,
-    to: `          where: { id: revival.id, msisdn: revival.msisdn },`,
-    expect: "31.revive · ⭐ C8b (B1) · THE REVIVAL IS A COMPARE-AND-SET, AND ONE STEP — Prisma ONE transaction (its only pc()) whose FIRST statement is the conditional updateMany where this id, this number, the erasure's mark and NO link, answering null when it lost BEFORE anything else, then the tombstone's memberships deleted on the transaction's own client; memory the same check BEFORE its membership loop and its one set; both write EVERY field of the sign-up's row by name (no spread) but the id, the number and the two caches — the caches stay the tombstone's",
+    from: '           where "id" = ${revival.id} and "msisdn" = ${revival.msisdn} and "sourceRef" = ${ERASURE_EVIDENCE} and "userId" is null',
+    to: '           where "id" = ${revival.id} and "msisdn" = ${revival.msisdn}',
+    expect: "31.revive · ⭐ C8b (B1 · the review's MINOR 8) · THE REVIVAL IS A COMPARE-AND-SET, ONE STEP, AND A FRESH ROW — both twins refuse a row under the tombstone's own id before anything is read; Prisma ONE transaction (its only pc()) whose FIRST statement locks the tombstone where this id, this number, the erasure's mark and NO link, answering null when it lost BEFORE anything else, then on the transaction's own client the memberships deleted, the campaign recipient rows counted, the tombstone deleted — the foreign key's own SET NULL unlinks those rows, never deleted, no stamp moved, the key held SetNull in the schema and its one migration — and the sign-up's row created under its OWN id; memory the same check and a taken id refused, then the same moves in the same order (the SET NULL emulated); both write EVERY field of the sign-up's row by name (no spread) but the number and the two caches — the caches the tombstone's",
   },
   {
     // The memberships deleted on the pooled client, outside the revival's transaction: a revival that rolls back still
@@ -2414,7 +2414,7 @@ export const MUTATIONS = [
     file: "src/lib/server/prisma-dal.ts",
     from: `        const membershipsDeleted = (await tx.contactListMember.deleteMany({ where: { contactId: revival.id } })).count;`,
     to: `        const membershipsDeleted = (await pc().contactListMember.deleteMany({ where: { contactId: revival.id } })).count;`,
-    expect: "31.revive · ⭐ C8b (B1) · THE REVIVAL IS A COMPARE-AND-SET, AND ONE STEP — Prisma ONE transaction (its only pc()) whose FIRST statement is the conditional updateMany where this id, this number, the erasure's mark and NO link, answering null when it lost BEFORE anything else, then the tombstone's memberships deleted on the transaction's own client; memory the same check BEFORE its membership loop and its one set; both write EVERY field of the sign-up's row by name (no spread) but the id, the number and the two caches — the caches stay the tombstone's",
+    expect: "31.revive · ⭐ C8b (B1 · the review's MINOR 8) · THE REVIVAL IS A COMPARE-AND-SET, ONE STEP, AND A FRESH ROW — both twins refuse a row under the tombstone's own id before anything is read; Prisma ONE transaction (its only pc()) whose FIRST statement locks the tombstone where this id, this number, the erasure's mark and NO link, answering null when it lost BEFORE anything else, then on the transaction's own client the memberships deleted, the campaign recipient rows counted, the tombstone deleted — the foreign key's own SET NULL unlinks those rows, never deleted, no stamp moved, the key held SetNull in the schema and its one migration — and the sign-up's row created under its OWN id; memory the same check and a taken id refused, then the same moves in the same order (the SET NULL emulated); both write EVERY field of the sign-up's row by name (no spread) but the number and the two caches — the caches the tombstone's",
   },
   {
     // The new client inherits the erased person's lists, and their coverage, in the twin every suite runs on.
@@ -2423,7 +2423,7 @@ export const MUTATIONS = [
     from: `        store.contactListMembers.delete(k);
         membershipsDeleted++;`,
     to: `        membershipsDeleted++;`,
-    expect: "31.revive · ⭐ C8b (B1) · THE REVIVAL IS A COMPARE-AND-SET, AND ONE STEP — Prisma ONE transaction (its only pc()) whose FIRST statement is the conditional updateMany where this id, this number, the erasure's mark and NO link, answering null when it lost BEFORE anything else, then the tombstone's memberships deleted on the transaction's own client; memory the same check BEFORE its membership loop and its one set; both write EVERY field of the sign-up's row by name (no spread) but the id, the number and the two caches — the caches stay the tombstone's",
+    expect: "31.revive · ⭐ C8b (B1 · the review's MINOR 8) · THE REVIVAL IS A COMPARE-AND-SET, ONE STEP, AND A FRESH ROW — both twins refuse a row under the tombstone's own id before anything is read; Prisma ONE transaction (its only pc()) whose FIRST statement locks the tombstone where this id, this number, the erasure's mark and NO link, answering null when it lost BEFORE anything else, then on the transaction's own client the memberships deleted, the campaign recipient rows counted, the tombstone deleted — the foreign key's own SET NULL unlinks those rows, never deleted, no stamp moved, the key held SetNull in the schema and its one migration — and the sign-up's row created under its OWN id; memory the same check and a taken id refused, then the same moves in the same order (the SET NULL emulated); both write EVERY field of the sign-up's row by name (no spread) but the number and the two caches — the caches the tombstone's",
   },
   {
     // The sign-up row's empty cache (UNKNOWN) written over the number's mirrored truth (the erasure's WITHDRAWN).
@@ -2431,7 +2431,52 @@ export const MUTATIONS = [
     file: "src/lib/server/store.ts",
     from: `        consentState: tomb.consentState,`,
     to: `        consentState: r.consentState,`,
-    expect: "31.revive · ⭐ C8b (B1) · THE REVIVAL IS A COMPARE-AND-SET, AND ONE STEP — Prisma ONE transaction (its only pc()) whose FIRST statement is the conditional updateMany where this id, this number, the erasure's mark and NO link, answering null when it lost BEFORE anything else, then the tombstone's memberships deleted on the transaction's own client; memory the same check BEFORE its membership loop and its one set; both write EVERY field of the sign-up's row by name (no spread) but the id, the number and the two caches — the caches stay the tombstone's",
+    expect: "31.revive · ⭐ C8b (B1 · the review's MINOR 8) · THE REVIVAL IS A COMPARE-AND-SET, ONE STEP, AND A FRESH ROW — both twins refuse a row under the tombstone's own id before anything is read; Prisma ONE transaction (its only pc()) whose FIRST statement locks the tombstone where this id, this number, the erasure's mark and NO link, answering null when it lost BEFORE anything else, then on the transaction's own client the memberships deleted, the campaign recipient rows counted, the tombstone deleted — the foreign key's own SET NULL unlinks those rows, never deleted, no stamp moved, the key held SetNull in the schema and its one migration — and the sign-up's row created under its OWN id; memory the same check and a taken id refused, then the same moves in the same order (the SET NULL emulated); both write EVERY field of the sign-up's row by name (no spread) but the number and the two caches — the caches the tombstone's",
+  },
+  {
+    // ⭐ C8b review (MINOR 8 · iii) · the pre-review revival back on Postgres alone: the new client's row under the
+    // tombstone's own id — an id a masked officer once saw in an edit link, back on a sign-up row.
+    name: "prisma-dal.ts — reviveTombstone creates the new client's row under the tombstone's id",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `            id: r.id, msisdn: revival.msisdn,`,
+    to: `            id: revival.id, msisdn: revival.msisdn,`,
+    expect: "31.revive · ⭐ C8b (B1 · the review's MINOR 8) · THE REVIVAL IS A COMPARE-AND-SET, ONE STEP, AND A FRESH ROW — both twins refuse a row under the tombstone's own id before anything is read; Prisma ONE transaction (its only pc()) whose FIRST statement locks the tombstone where this id, this number, the erasure's mark and NO link, answering null when it lost BEFORE anything else, then on the transaction's own client the memberships deleted, the campaign recipient rows counted, the tombstone deleted — the foreign key's own SET NULL unlinks those rows, never deleted, no stamp moved, the key held SetNull in the schema and its one migration — and the sign-up's row created under its OWN id; memory the same check and a taken id refused, then the same moves in the same order (the SET NULL emulated); both write EVERY field of the sign-up's row by name (no spread) but the number and the two caches — the caches the tombstone's",
+  },
+  {
+    // The same in the twin every suite runs on: the tombstone's id kept for the new client's row.
+    name: "store.ts — the memory reviveTombstone keeps the tombstone's id",
+    file: "src/lib/server/store.ts",
+    from: `        id: r.id,
+        msisdn: tomb.msisdn,`,
+    to: `        id: tomb.id,
+        msisdn: tomb.msisdn,`,
+    expect: "31.revive · ⭐ C8b (B1 · the review's MINOR 8) · THE REVIVAL IS A COMPARE-AND-SET, ONE STEP, AND A FRESH ROW — both twins refuse a row under the tombstone's own id before anything is read; Prisma ONE transaction (its only pc()) whose FIRST statement locks the tombstone where this id, this number, the erasure's mark and NO link, answering null when it lost BEFORE anything else, then on the transaction's own client the memberships deleted, the campaign recipient rows counted, the tombstone deleted — the foreign key's own SET NULL unlinks those rows, never deleted, no stamp moved, the key held SetNull in the schema and its one migration — and the sign-up's row created under its OWN id; memory the same check and a taken id refused, then the same moves in the same order (the SET NULL emulated); both write EVERY field of the sign-up's row by name (no spread) but the number and the two caches — the caches the tombstone's",
+  },
+  {
+    // ⛔ The erased person's campaign records DELETED with the tombstone — the 7-year record that we messaged the number gone.
+    name: "prisma-dal.ts — reviveTombstone deletes the erased person's campaign recipient rows",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        const recipientsUnlinked = await tx.smsCampaignRecipient.count({ where: { contactId: revival.id } });`,
+    to: `        const recipientsUnlinked = (await tx.smsCampaignRecipient.deleteMany({ where: { contactId: revival.id } })).count;`,
+    expect: "31.revive · ⭐ C8b (B1 · the review's MINOR 8) · THE REVIVAL IS A COMPARE-AND-SET, ONE STEP, AND A FRESH ROW — both twins refuse a row under the tombstone's own id before anything is read; Prisma ONE transaction (its only pc()) whose FIRST statement locks the tombstone where this id, this number, the erasure's mark and NO link, answering null when it lost BEFORE anything else, then on the transaction's own client the memberships deleted, the campaign recipient rows counted, the tombstone deleted — the foreign key's own SET NULL unlinks those rows, never deleted, no stamp moved, the key held SetNull in the schema and its one migration — and the sign-up's row created under its OWN id; memory the same check and a taken id refused, then the same moves in the same order (the SET NULL emulated); both write EVERY field of the sign-up's row by name (no spread) but the number and the two caches — the caches the tombstone's",
+  },
+  {
+    // The memory twin no longer emulates the foreign key's SET NULL: every suite keeps the erased person's records
+    // pointing at a row production deleted.
+    name: "store.ts — the memory reviveTombstone leaves the campaign records pointing at the deleted tombstone",
+    file: "src/lib/server/store.ts",
+    from: `        rec.contactId = null;
+        recipientsUnlinked++;`,
+    to: `        recipientsUnlinked++;`,
+    expect: "31.revive · ⭐ C8b (B1 · the review's MINOR 8) · THE REVIVAL IS A COMPARE-AND-SET, ONE STEP, AND A FRESH ROW — both twins refuse a row under the tombstone's own id before anything is read; Prisma ONE transaction (its only pc()) whose FIRST statement locks the tombstone where this id, this number, the erasure's mark and NO link, answering null when it lost BEFORE anything else, then on the transaction's own client the memberships deleted, the campaign recipient rows counted, the tombstone deleted — the foreign key's own SET NULL unlinks those rows, never deleted, no stamp moved, the key held SetNull in the schema and its one migration — and the sign-up's row created under its OWN id; memory the same check and a taken id refused, then the same moves in the same order (the SET NULL emulated); both write EVERY field of the sign-up's row by name (no spread) but the number and the two caches — the caches the tombstone's",
+  },
+  {
+    // A caller handing the tombstone's own id is no longer refused: the in-place revival is one bad caller away.
+    name: "store.ts — the memory reviveTombstone takes a row under the tombstone's own id",
+    file: "src/lib/server/store.ts",
+    from: `      if (revival.row.id === revival.id) throw new Error("marketingContact.reviveTombstone: the new row must be FRESH, never under the tombstone id — nothing was done.");`,
+    to: `      void 0;`,
+    expect: "31.revive · ⭐ C8b (B1 · the review's MINOR 8) · THE REVIVAL IS A COMPARE-AND-SET, ONE STEP, AND A FRESH ROW — both twins refuse a row under the tombstone's own id before anything is read; Prisma ONE transaction (its only pc()) whose FIRST statement locks the tombstone where this id, this number, the erasure's mark and NO link, answering null when it lost BEFORE anything else, then on the transaction's own client the memberships deleted, the campaign recipient rows counted, the tombstone deleted — the foreign key's own SET NULL unlinks those rows, never deleted, no stamp moved, the key held SetNull in the schema and its one migration — and the sign-up's row created under its OWN id; memory the same check and a taken id refused, then the same moves in the same order (the SET NULL emulated); both write EVERY field of the sign-up's row by name (no spread) but the number and the two caches — the caches the tombstone's",
   },
   {
     // ⭐ B5's defect back on Postgres alone: the linked members never counted, so a masked viewer's figure leaves the
@@ -2475,5 +2520,22 @@ export const MUTATIONS = [
     from: `    if (seen.has(row.id)) refuse("one contact is named twice");`,
     to: `    void seen;`,
     expect: "31.redate · ⭐ C8b (B8) · ADDED PUT RIGHT, ALL OR NOTHING — both twins ask the ONE shape rule first (added-redate-model.ts: at most ADDED_REDATE_MAX rows, each id once, every instant readable, never earlier than the one it replaces); Prisma ONE transaction (its only pc()) of conditional raw updates — createdAt set, updatedAt the greatest of its own and the new instant, where the id AND the expected createdAt — a row that counts 0 throwing inside it and answered changed; memory EVERY row compared before the first write, the later stamp kept; neither touches updatedBy",
+  },
+  {
+    // ⭐ C8b review (MINOR 2) · the join count without its window, on Postgres alone: every member the run's numbers ever
+    // had on the list reads as joined by this import — "N contacts joined" over a list it put nobody on.
+    name: "prisma-dal.ts — joinedFromImport counts without the run's window",
+    file: "src/lib/server/prisma-dal.ts",
+    from: '           and m."addedAt" >= ${q.sinceIso}::timestamptz and m."addedAt" <= ${q.untilIso}::timestamptz',
+    to: '           and true',
+    expect: "31.joined · ⭐ C8b review (MINOR 2) · HOW MANY CONTACTS AN IMPORT PUT ON ITS LIST, ALIKE IN BOTH TWINS — the memberships added between the run's two instants, the tombstone left out NULL-SAFELY, whose contact the run created (its importId) or — only when the run is not created-only — whose number one of the run's own rows updated or kept; Prisma ONE statement (its only pc()), memory one pass",
+  },
+  {
+    // The created-only rule forgotten in the twin every suite runs on: a masked run's kept rows counted as joined (B4).
+    name: "store.ts — the memory joinedFromImport ignores created-only",
+    file: "src/lib/server/store.ts",
+    from: `      if (!q.createdOnly) {`,
+    to: `      if (true) {`,
+    expect: "31.joined · ⭐ C8b review (MINOR 2) · HOW MANY CONTACTS AN IMPORT PUT ON ITS LIST, ALIKE IN BOTH TWINS — the memberships added between the run's two instants, the tombstone left out NULL-SAFELY, whose contact the run created (its importId) or — only when the run is not created-only — whose number one of the run's own rows updated or kept; Prisma ONE statement (its only pc()), memory one pass",
   },
 ];

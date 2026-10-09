@@ -66,7 +66,7 @@ delete process.env.DATABASE_URL;
 const { db } = await import("../src/lib/server/store.ts");
 const { anonymizeClosedAccount } = await import("../src/lib/server/erasure.ts");
 const { eraseMarketingFor, ERASURE_EVIDENCE, ERASURE_LEDGER_WORDING } = await import("../src/lib/server/marketing/erase.ts");
-// C8b (B1) · P12 · the ONE sign-up writer of the book, which revives an erased number's emptied row for its new client.
+// C8b (B1) · P12 · the ONE sign-up writer of the book, which replaces an erased number's emptied row with its new client's own.
 const { ensureRegistrationContact } = await import("../src/lib/server/marketing/registration-contact.ts");
 // P11 · the ONE gate, asked exactly as a typed test asks it (the outreach record handed in, an attestation in the context).
 const { mayReceiveMarketingSms, DB_GATE_READS } = await import("../src/lib/server/marketing/consent.ts");
@@ -165,7 +165,7 @@ const L = {
   p11c: "P11c · a second pass appends nothing: a re-run of the erasure counts 0 and leaves the one row, and eraseMarketingFor called twice on a never-consented account writes 1 then 0",
   p11d: "P11d · an account whose latest row is GIVEN still gets exactly ONE WITHDRAWN — the erasure's, above the consent it withdraws",
   p11e: "P11e · the marker is a LEDGER row, never a stop: no stop-list row is written for the erased number, and once its next holder says yes the gate answers on that consent (U18's ruling — no unliftable stop on erasure)",
-  p12: "P12 · ⭐ C8b (B1) · A RECYCLED NUMBER'S NEW CLIENT — whose sign-up REVIVED the erased person's emptied row — finds in their own file ONLY their own: one book row, the revived one, carrying their own name and none of the erased person's (its old lists gone with the erasure), and NO campaign record of the previous holder — though that holder's SENT row still points at the revived row's id, the export bounds the account's own number by the account's creation",
+  p12: "P12 · ⭐ C8b (B1 · the review's MINOR 8) · A RECYCLED NUMBER'S NEW CLIENT — whose sign-up REPLACED the erased person's emptied row with a FRESH row of their own (a new id; the emptied row gone) — finds in their own file ONLY their own: one book row carrying their own name and none of the erased person's (no old list), and NO campaign record of the previous holder — whose SENT row is KEPT, status and reference untouched, pointing at no book row and no account",
   p11f: "P11f · ⭐ C8a (N2) · an account that OPTED OUT before it was erased — its own number's latest row the opt-out's WITHDRAWN — still gets the erasure marker: ONE, above the opt-out, which stays beneath it untouched; erased again it appends nothing, and the step itself called twice on another such account writes 1 then 0; and an erasure now STANDS on the number (messagingConsent.erasureStandsAmong), which a later opt-out tap does not lift",
   s1: "S1 · ⛔ smsCampaignRecipient.unlinkUser is named in src only where it must be — the two twins' members, the rule set's refusal and ONE caller, marketing/erase.ts (erasure's helper) — in ANY spelling: a dotted call, a bracket call or a destructured name",
   s2: "S2 · ⛔ the DAL refuses a missing or empty account id, an unreadable stamp, a number that is not the bare key and a bound in another spelling BEFORE it reads or writes — Prisma's NO-CONDITION trap — and nothing changes",
@@ -847,7 +847,7 @@ async function run(w: World, tag: string): Promise<void> {
         && JSON.stringify(standing) === JSON.stringify([NOO]) && JSON.stringify(underTap) === JSON.stringify([NOO]),
       `erased ${f1.ok ? f1.counts.marketingConsentWithdrawn : "refused"} then ${f2.ok ? f2.counts.marketingConsentWithdrawn : "refused"} · ledger ${shape(rowsOO)} · the step twice ${s1.marketingConsentWithdrawn} then ${s2.marketingConsentWithdrawn} (${shape(rowsOO2)}) · an erasure stands: ${standing.includes(NOO) ? "yes" : "NO"}, under a later tap: ${underTap.includes(NOO) ? "yes" : "NO"}`]);
 
-    // ── P12 · C8b (B1) · a recycled number's NEW client, after their sign-up revived the erased person's emptied row ──
+    // ── P12 · C8b (B1) · a recycled number's NEW client, after their sign-up replaced the erased person's emptied row ──
     const E12 = `usr_${K}_E12`, B12 = `usr_${K}_B12`;
     const N12 = keyOf(n, 18);
     const nameE12 = named("Rehema", "Mwakyusa", n);
@@ -876,17 +876,21 @@ async function run(w: World, tag: string): Promise<void> {
     const reg12 = b12 !== null ? await w.register(b12) : null;
     const view12 = await w.view({ id: B12, phoneE164: `+${N12}`, createdAt: created12 });
     await check(p(L.p12), async () => {
-      const row = await db.marketingContact.find(book12);
-      const lists = (await db.contactListMember.listMemberships(book12)).length;
+      const gone = await db.marketingContact.find(book12);
+      const row = await db.marketingContact.findByMsisdn(N12);
+      const lists = row === null ? -1 : (await db.contactListMember.listMemberships(row.id)).length;
       const file = JSON.stringify(view12);
       const own = view12.contacts.length === 1 && view12.contacts[0]?.displayName === nameB12.displayName;
       const nothingOld = !file.includes(nameE12.firstName) && !file.includes("vip") && view12.campaignMessages.length === 0 && view12.notSent.length === 0;
-      // CONTROL: the previous holder's sent row still points at the revived row — the export's bound is what keeps it out.
-      const linkKept = mem().smsCampaignRecipients.get(r12)?.contactId === book12;
-      return [e12.ok && reg12 !== null && reg12.outcome === "revived" && "contactId" in reg12 && reg12.contactId === book12
-        && row !== null && row.userId === B12 && row.displayName === nameB12.displayName && row.notes === null && row.tags.length === 0
-        && lists === 0 && own && nothingOld && linkKept,
-        `erased ${e12.ok} · sign-up ${reg12 === null ? "no account" : reg12.outcome} · the row ${row ? `linked to ${row.userId === B12 ? "the new client" : row.userId}, named ${row.displayName === nameB12.displayName ? "theirs" : row.displayName}` : "GONE"} · lists ${lists} · file: ${view12.contacts.length} contact(s), ${view12.campaignMessages.length} message(s), ${view12.notSent.length} not sent, old name ${file.includes(nameE12.firstName) ? "PRESENT" : "absent"} · the old row's contact link ${linkKept ? "kept" : "GONE"}`];
+      // ⭐ The review's MINOR 8 · the previous holder's SENT row is KEPT (the record that we messaged the number) and points
+      // at NOTHING — neither the emptied row (deleted) nor the new client's fresh row, and no account since the erasure.
+      const old = mem().smsCampaignRecipients.get(r12);
+      const recordKept = old !== undefined && old.status === "SENT" && old.smsReference === `REF-${K}-p12` && old.msisdn === N12;
+      const pointsNowhere = old !== undefined && old.contactId === null && old.userId === null;
+      return [e12.ok && reg12 !== null && reg12.outcome === "revived" && "contactId" in reg12 && row !== null && reg12.contactId === row.id
+        && row.id !== book12 && gone === null && row.userId === B12 && row.displayName === nameB12.displayName && row.notes === null
+        && row.tags.length === 0 && lists === 0 && own && nothingOld && recordKept && pointsNowhere,
+        `erased ${e12.ok} · sign-up ${reg12 === null ? "no account" : reg12.outcome} · the emptied row ${gone === null ? "gone" : "STILL THERE"} · the number's row ${row ? `${row.id === book12 ? "the OLD id" : "a fresh id"}, linked to ${row.userId === B12 ? "the new client" : row.userId}, named ${row.displayName === nameB12.displayName ? "theirs" : row.displayName}` : "GONE"} · lists ${lists} · file: ${view12.contacts.length} contact(s), ${view12.campaignMessages.length} message(s), ${view12.notSent.length} not sent, old name ${file.includes(nameE12.firstName) ? "PRESENT" : "absent"} · the old SENT row ${old === undefined ? "DELETED" : `kept, pointing at ${old.contactId === null ? "no book row" : old.contactId === row?.id ? "the NEW row" : "the old row"} and ${old.userId === null ? "no account" : "an ACCOUNT"}`}`];
     });
 
     // ── P10 · the strict sweep: after the erasures above, no row anywhere names an erased person ──────────────────
@@ -1662,6 +1666,39 @@ const CASES: Array<{ name: string; expect: string; also?: string[]; build: () =>
           return { outcome: "linked", contactId: row.id, cache: "none" };
         }
         return ensureRegistrationContact(user, deps);
+      },
+    }),
+  },
+  {
+    name: "R-P12c · C8b review (MINOR 8 · iii) · the revival as it stood before the review — the emptied row rewritten IN PLACE as the new client's, its id kept, so the previous holder's SENT row points at the new client's row",
+    expect: L.p12,
+    build: () => ({
+      ...REAL,
+      register: async (user, deps) => {
+        const key = user.phoneE164.slice(1);
+        const row = await db.marketingContact.findByMsisdn(key);
+        if (row !== null && row.sourceRef === ERASURE_EVIDENCE) {
+          const fresh = await db.marketingContact.update(row.id, {
+            userId: user.id, displayName: user.displayName, source: "REGISTRATION", sourceRef: user.id,
+          }, row.updatedAt);
+          return fresh === null ? { outcome: "failed", stage: "revive" } : { outcome: "revived", contactId: row.id, cache: "none" };
+        }
+        return ensureRegistrationContact(user, deps);
+      },
+    }),
+  },
+  {
+    name: "R-P12d · C8b review (MINOR 8) · the revival DELETES the previous holder's campaign records with the emptied row — the record that we messaged the number gone",
+    expect: L.p12,
+    build: () => ({
+      ...REAL,
+      register: async (user, deps) => {
+        const key = user.phoneE164.slice(1);
+        const row = await db.marketingContact.findByMsisdn(key);
+        const theirs = row === null ? [] : [...mem().smsCampaignRecipients.values()].filter((r) => r.contactId === row.id).map((r) => r.id);
+        const out = await ensureRegistrationContact(user, deps);
+        for (const id of theirs) mem().smsCampaignRecipients.delete(id);
+        return out;
       },
     }),
   },

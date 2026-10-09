@@ -32,9 +32,12 @@
  *         millisecond breaks on the id) — eleven hand-written histories, each number equal to the rule over its own single
  *         read, §25's bound, and the importer's facts loader and the Add form's lookup reading it from this Postgres (C8b · B2:
  *         a blocked number answers "already in the book", no id);
- *      8  C8b (B1) · marketingContact.reviveTombstone — the compare refuses another number and a live row with nothing
- *         written; the revival writes the sign-up's row over the tombstone (its id, number and caches kept) and deletes
- *         its list memberships in ONE transaction; a second revival racing the first answers null;
+ *      8  C8b (B1 · the review's MINOR 8) · marketingContact.reviveTombstone — the compare refuses another number and a
+ *         live row, and a row under the tombstone's own id is thrown before any statement, nothing written; the revival
+ *         DELETES the tombstone and CREATES the sign-up's row under its own fresh id (the number and the caches the
+ *         tombstone's), deleting its list memberships and — through the foreign key's SET NULL — unlinking its campaign
+ *         records (kept, no stamp moved), in ONE transaction; a second revival answers null, and two at once on two
+ *         connections leave exactly one winner;
  *      9  C8b review (MINOR 2) · contactListMember.joinedFromImport — the memberships a run put on its list, in ONE
  *         statement: inside its window, its created contacts and (unless created-only) the numbers its rows updated or
  *         kept, never the tombstone, the edges inclusive;
@@ -59,7 +62,7 @@ import pg from "pg";
 import type { Prisma } from "@prisma/client";
 import type {
   ContactImportCommitBatch, ContactImportCommitCreate, ContactImportCommitOutcome, ContactImportCommitResult,
-  ContactImportCommitUpdate, ContactImportFailSentence, MarketingContactSnapshot, StoredContactImport,
+  ContactImportCommitUpdate, ContactImportFailSentence, ContactTombstoneRevived, MarketingContactSnapshot, StoredContactImport,
   StoredContactImportRow, StoredContactList, StoredMarketingContact, StoredUser,
 } from "../../src/lib/server/store.ts";
 import { ERASURE_EVIDENCE, erasureStandsOn } from "../../src/lib/marketing/erasure-mark.ts";
@@ -922,17 +925,17 @@ async function phaseC(): Promise<void> {
       const liftedLookup = await lookupContactNumber(`0${E.lifted.slice(3)}`);
       // ⭐ C8b (B1 · B2) · the book BLOCKS the marker under an opt-out tap: "already in the book" — never an erased sentence
       // (an erasure is never disclosed, X22) — and no id, for there is no row to open.
-      ok("7.4 · ⭐ the importer's facts loader (loadImportFacts) carries the standing erasure of every number from this Postgres, and the Add form's lookup (C8b · B2, the ONE test bookBlocks) answers the marker under an opt-out tap \"already in the book\" with no id while the marker under a GIVEN is free",
+      ok(`7.4 · ⭐ the importer's facts loader (loadImportFacts) carries the standing erasure of every number from this Postgres, and the Add form's lookup (C8b · B2, the ONE test bookBlocks) answers the marker under an opt-out tap "already in the book" with no id while the marker under a GIVEN is free`,
         factsOff.length === 0 && tapLookup.state === "duplicate" && tapLookup.sentence === CONTACT_DUPLICATE && tapLookup.existingId === null
           && liftedLookup.state === "free",
         `facts off on [${factsOff.join(", ")}] · tap ${tapLookup.state} (${tapLookup.existingId === null ? "no id" : "AN ID"}) · lifted ${liftedLookup.state}`);
     });
 
-    /* ── 8 · C8b (B1) · marketingContact.reviveTombstone — the tombstone becomes a sign-up's row in ONE transaction ── */
+    /* ── 8 · C8b (B1 · the review's MINOR 8) · marketingContact.reviveTombstone — the tombstone REPLACED by a sign-up's fresh row in ONE transaction ── */
     await section("8", async () => {
-      const V = { tomb: num("561", 1), live: num("561", 2) };
+      const V = { tomb: num("561", 1), live: num("561", 2), race: num("561", 3) };
       const LV = { a: "cl_probe_revive_a", b: "cl_probe_revive_b" };
-      // The accounts the revived row is linked to — the foreign key wants them.
+      // The accounts the new rows are linked to — the foreign key wants them.
       const accountOf = (id: string, phoneE164: string): StoredUser => ({
         id, phoneE164, email: null, emailVerifiedAt: null, passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
         role: "PLAYER", status: "ACTIVE", locale: "SW", displayName: null, dob: "1990-01-01", region: null,
@@ -941,9 +944,12 @@ async function phaseC(): Promise<void> {
       } as StoredUser);
       await db.user.create(accountOf("probe_rv_holder", `+${V.tomb}`));
       await db.user.create(accountOf("probe_rv_second", "+255756100009"));
+      await db.user.create(accountOf("probe_rv_race_a", "+255756100010"));
+      await db.user.create(accountOf("probe_rv_race_b", "+255756100011"));
       for (const id of Object.values(LV)) await K.mustList(id);
       // The erased person's row, as erasure left it before C8b — emptied, marked, its caches the ledger's — still on two lists,
-      // beside an officer's contact on one of them.
+      // beside an officer's contact on one of them; and messaged twice through it (two campaigns), the bystander once — the
+      // records erasure's account unlink leaves pointing at the rows (U16a clears the account, never the book row).
       const tomb = contactOf("mc_probe_rv_tomb", V.tomb, {
         source: "IMPORT", sourceRef: ERASURE_EVIDENCE, rawInput: V.tomb, consentState: "WITHDRAWN", suppressedAt: at(-40),
         createdBy: OFFICER, updatedAt: at(-40), updatedBy: "probe_dpo",
@@ -953,37 +959,113 @@ async function phaseC(): Promise<void> {
       await K.mustContact(live);
       for (const listId of Object.values(LV)) await db.contactListMember.add({ listId, contactId: tomb.id, addedAt: at(-30), addedBy: OFFICER });
       await db.contactListMember.add({ listId: LV.a, contactId: live.id, addedAt: at(-30), addedBy: OFFICER });
-      /** The sign-up's row as `registrationRow` builds it — the id and the number the store keeps are the tombstone's. */
-      const signup = (userId: string, name: string): StoredMarketingContact => contactOf("mc_probe_rv_ignored", V.tomb, {
-        rawInput: `+${V.tomb}`, displayName: name, email: `${userId}@example.tz`, source: "REGISTRATION", sourceRef: userId, userId,
+      const SENT_AT = at(-45);
+      for (const c of ["cmp_probe_rv_1", "cmp_probe_rv_2"]) {
+        await exec(`insert into "SmsCampaign" (id, name, status, "bodySw", "codingSw", "segmentsSw", "audienceFilter", "createdBy", "createdAt", "updatedAt")
+                    values ($1, $1, 'DONE', '50pick: probe.', 'GSM7', 1, '{}', $2, $3::timestamptz, $3::timestamptz)`, c, OFFICER, at(-50));
+      }
+      const RCP: ReadonlyArray<readonly [string, string, string, string]> = [
+        ["rcp_probe_rv_1", "cmp_probe_rv_1", V.tomb, tomb.id], ["rcp_probe_rv_2", "cmp_probe_rv_2", V.tomb, tomb.id],
+        ["rcp_probe_rv_by", "cmp_probe_rv_1", V.live, live.id],
+      ];
+      for (const [id, campaignId, msisdn, contactId] of RCP) {
+        await exec(`insert into "SmsCampaignRecipient" (id, "campaignId", msisdn, "contactId", status, "smsReference", "createdAt", "updatedAt", "sentAt")
+                    values ($1, $2, $3, $4, 'SENT', $5, $6::timestamptz, $6::timestamptz, $6::timestamptz)`, id, campaignId, msisdn, contactId, `REF-${id}`, SENT_AT);
+      }
+      type Rec = { id: string; contactId: string | null; status: string; smsReference: string | null; updatedAt: Date };
+      /** The probe's campaign records, as Postgres holds them. */
+      const records = (): Promise<Rec[]> => sql<Rec>(
+        `select id, "contactId", status::text as status, "smsReference", "updatedAt" from "SmsCampaignRecipient" where id like 'rcp_probe_rv%' order by id`);
+      /** The sign-up's row as `registrationRow` builds it — under its OWN fresh id; the store keeps the tombstone's number. */
+      const signup = (id: string, userId: string, name: string, msisdn = V.tomb): StoredMarketingContact => contactOf(id, msisdn, {
+        rawInput: `+${msisdn}`, displayName: name, email: `${userId}@example.tz`, source: "REGISTRATION", sourceRef: userId, userId,
         consentState: "UNKNOWN", suppressedAt: null, tags: [], notes: null, importId: null,
         createdAt: at(30), createdBy: null, updatedAt: at(30), updatedBy: null,
       });
-      // ⛔ The compare refuses first: the id with another number, and a LIVE row named as a tombstone — nothing written.
+      // ⛔ The compare refuses first: the id with another number, and a LIVE row named as a tombstone — nothing written. And
+      // BEFORE any statement, a row under the tombstone's own id (the review's MINOR 8) is thrown.
       const before = await fingerprint();
-      const wrongNumber = await db.marketingContact.reviveTombstone({ id: tomb.id, msisdn: V.live, row: signup("probe_rv_holder", "New Holder") });
-      const notTomb = await db.marketingContact.reviveTombstone({ id: live.id, msisdn: V.live, row: signup("probe_rv_holder", "New Holder") });
+      const recordsBefore = json(await records());
+      const wrongNumber = await db.marketingContact.reviveTombstone({ id: tomb.id, msisdn: V.live, row: signup("mc_probe_rv_fresh", "probe_rv_holder", "New Holder") });
+      const notTomb = await db.marketingContact.reviveTombstone({ id: live.id, msisdn: V.live, row: signup("mc_probe_rv_fresh", "probe_rv_holder", "New Holder") });
+      const sameId = await counted(() => thrown(() =>
+        db.marketingContact.reviveTombstone({ id: tomb.id, msisdn: V.tomb, row: signup(tomb.id, "probe_rv_holder", "New Holder") })));
       const afterRefusals = await fingerprint();
-      ok("8.1 · ⛔ C8b (B1) ON POSTGRES · the revival is a COMPARE-AND-SET — the tombstone's id named with another number, and a LIVE row named as a tombstone, each answer null and NOTHING is written (the five tables byte-identical, the memberships kept)",
-        wrongNumber === null && notTomb === null && same(before, afterRefusals), `${json(wrongNumber)} · ${json(notTomb)} · ${json(afterRefusals?.n)}`);
-      const revived = await db.marketingContact.reviveTombstone({ id: tomb.id, msisdn: V.tomb, row: signup("probe_rv_holder", "New Holder") });
-      const row = await db.marketingContact.find(tomb.id);
-      const tombLists = await sql<{ n: number }>(`select count(*)::int as n from "ContactListMember" where "contactId" = $1`, tomb.id);
-      const liveLists = await sql<{ n: number }>(`select count(*)::int as n from "ContactListMember" where "contactId" = $1`, live.id);
-      const listsLeft = await sql<{ n: number }>(`select count(*)::int as n from "ContactList" where id in ($1, $2)`, LV.a, LV.b);
-      ok("8.2 · ⭐ THE REVIVAL ON POSTGRES · the SAME row (its id and number kept) becomes exactly the sign-up's row — linked by the foreign key, source REGISTRATION, the account as sourceRef, the account's name and email, no notes, tags, import or officer, the sign-up's own Added — its caches the tombstone's (the ledger's word, mirrored after); BOTH its list memberships deleted in the same transaction and counted, the lists and the bystander's membership kept",
-        revived !== null && revived.membershipsDeleted === 2 && row !== null && row.id === tomb.id && row.msisdn === V.tomb
+      ok("8.1 · ⛔ C8b (B1) ON POSTGRES · the revival is a COMPARE-AND-SET — the tombstone's id named with another number, and a LIVE row named as a tombstone, each answer null; a row under the tombstone's OWN id is THROWN before any statement (the review's MINOR 8); and NOTHING is written (the five tables and the campaign records byte-identical, the memberships kept)",
+        wrongNumber === null && notTomb === null && sameId.value.threw && sameId.queries.length === 0 && same(before, afterRefusals)
+          && json(await records()) === recordsBefore,
+        `${json(wrongNumber)} · ${json(notTomb)} · the tombstone's own id ${sameId.value.threw ? "thrown" : "TAKEN"} after ${sameId.queries.length} statement(s) · ${json(afterRefusals?.n)}`);
+      const revived = await db.marketingContact.reviveTombstone({ id: tomb.id, msisdn: V.tomb, row: signup("mc_probe_rv_fresh", "probe_rv_holder", "New Holder") });
+      const gone = await db.marketingContact.find(tomb.id);
+      const row = await db.marketingContact.find("mc_probe_rv_fresh");
+      const byNumber = await db.marketingContact.findByMsisdn(V.tomb);
+      const n = async (text: string, ...params: unknown[]): Promise<number> => (await sql<{ n: number }>(text, ...params))[0]?.n ?? -1;
+      const tombLists = await n(`select count(*)::int as n from "ContactListMember" where "contactId" = $1`, tomb.id);
+      const freshLists = await n(`select count(*)::int as n from "ContactListMember" where "contactId" = $1`, "mc_probe_rv_fresh");
+      const liveLists = await n(`select count(*)::int as n from "ContactListMember" where "contactId" = $1`, live.id);
+      const listsLeft = await n(`select count(*)::int as n from "ContactList" where id in ($1, $2)`, LV.a, LV.b);
+      const recs = await records();
+      const theirs = recs.filter((r) => r.id !== "rcp_probe_rv_by");
+      const by = recs.find((r) => r.id === "rcp_probe_rv_by");
+      const recordsKept = recs.length === 3 && theirs.length === 2 && by?.contactId === live.id && theirs.every((r) =>
+        r.contactId === null && r.status === "SENT" && r.smsReference === `REF-${r.id}` && r.updatedAt instanceof Date && r.updatedAt.toISOString() === SENT_AT);
+      ok("8.2 · ⭐ THE REVIVAL ON POSTGRES (the review's MINOR 8) · the tombstone is DELETED and the sign-up's row CREATED under its OWN fresh id — the number's one row now — exactly the sign-up's: linked by the foreign key, source REGISTRATION, the account as sourceRef, the account's name and email, no notes, tags, import or officer, the sign-up's own Added, its caches the tombstone's (the ledger's word, mirrored after); BOTH old list memberships deleted and counted, none on the new row, the lists and the bystander's membership kept; the erased person's TWO campaign records KEPT and unlinked by the foreign key's SET NULL — status, reference and updatedAt untouched, counted — the bystander's still linked",
+        revived !== null && revived.membershipsDeleted === 2 && revived.recipientsUnlinked === 2 && gone === null && row !== null
+          && byNumber?.id === row.id && row.msisdn === V.tomb
           && row.userId === "probe_rv_holder" && row.source === "REGISTRATION" && row.sourceRef === "probe_rv_holder" && row.displayName === "New Holder"
           && row.email === "probe_rv_holder@example.tz" && row.notes === null && row.tags.length === 0 && row.importId === null && row.createdBy === null
           && row.createdAt === at(30) && row.updatedAt === at(30) && row.rawInput === `+${V.tomb}` && row.consentState === "WITHDRAWN"
           && row.suppressedAt === at(-40) && eq(revived.row, row)
-          && tombLists[0]?.n === 0 && liveLists[0]?.n === 1 && listsLeft[0]?.n === 2,
-        `${revived === null ? "REFUSED" : `deleted ${revived.membershipsDeleted}`} · ${row ? `${row.source} ${row.userId} "${row.displayName}" ${row.createdAt} ${row.consentState}` : "NO ROW"} · memberships ${tombLists[0]?.n}/${liveLists[0]?.n} · lists ${listsLeft[0]?.n}`);
-      // ⛔ A second sign-up racing the first finds the row no longer the tombstone: null, the first comer's row untouched.
-      const firstText = await textOf("MarketingContact", tomb.id);
-      const second = await db.marketingContact.reviveTombstone({ id: tomb.id, msisdn: V.tomb, row: signup("probe_rv_second", "Second Comer") });
-      ok("8.3 · ⛔ THE RACE ON POSTGRES · a second revival of the same tombstone — another account's sign-up, a moment later — answers null and the first comer's row is byte-identical",
-        second === null && firstText !== null && (await textOf("MarketingContact", tomb.id)) === firstText, `${json(second)}`);
+          && tombLists === 0 && freshLists === 0 && liveLists === 1 && listsLeft === 2 && recordsKept,
+        `${revived === null ? "REFUSED" : `deleted ${revived.membershipsDeleted}, unlinked ${revived.recipientsUnlinked}`} · the tombstone ${gone === null ? "gone" : "STILL THERE"} · ${row ? `${row.source} ${row.userId} "${row.displayName}" ${row.createdAt} ${row.consentState}` : "NO FRESH ROW"} · memberships ${tombLists}/${freshLists}/${liveLists} · lists ${listsLeft} · records ${recs.map((r) => `${r.id.slice(13)}:${r.contactId ?? "-"}:${r.status}:${r.updatedAt instanceof Date ? r.updatedAt.toISOString() : r.updatedAt}`).join(" ")}`);
+      // ⛔ A second sign-up a moment later finds no tombstone: null, no second row, the first comer's row untouched.
+      const firstText = await textOf("MarketingContact", "mc_probe_rv_fresh");
+      const second = await db.marketingContact.reviveTombstone({ id: tomb.id, msisdn: V.tomb, row: signup("mc_probe_rv_second", "probe_rv_second", "Second Comer") });
+      ok("8.3 · ⛔ A SECOND REVIVAL ON POSTGRES · the same tombstone revived again a moment later — another account's sign-up — answers null: no second row, and the first comer's row is byte-identical",
+        second === null && firstText !== null && (await textOf("MarketingContact", "mc_probe_rv_fresh")) === firstText
+          && (await db.marketingContact.find("mc_probe_rv_second")) === null,
+        `${json(second)}`);
+
+      // ── 8.4 · TWO revivals of ONE tombstone, really at once ──
+      // ⭐ A third connection takes the tombstone's row lock FIRST, both revivals are sent, and the lock is released only once
+      // Postgres shows two backends waiting on it — so both locking reads are in flight at once on two pooled connections,
+      // and the loser's is decided by Postgres re-checking its where after the winner's delete commits.
+      const raceTomb = contactOf("mc_probe_rv_rtomb", V.race, {
+        source: "IMPORT", sourceRef: ERASURE_EVIDENCE, rawInput: V.race, consentState: "WITHDRAWN", updatedAt: at(-40), updatedBy: "probe_dpo",
+      });
+      await K.mustContact(raceTomb);
+      const holder = new pg.Client({ connectionString: raw });
+      await holder.connect();
+      let waiting = 0;
+      let racing: Promise<Array<ContactTombstoneRevived | null>> | null = null;
+      try {
+        await holder.query("begin");
+        await holder.query(`select 1 from "MarketingContact" where id = $1 for update`, [raceTomb.id]);
+        const pid = (await holder.query<{ pid: number }>("select pg_backend_pid() as pid")).rows[0]?.pid ?? -1;
+        racing = Promise.all([
+          db.marketingContact.reviveTombstone({ id: raceTomb.id, msisdn: V.race, row: signup("mc_probe_rv_race_a", "probe_rv_race_a", "Racer A", V.race) }),
+          db.marketingContact.reviveTombstone({ id: raceTomb.id, msisdn: V.race, row: signup("mc_probe_rv_race_b", "probe_rv_race_b", "Racer B", V.race) }),
+        ]);
+        racing.catch(() => { /* awaited below — this only keeps a rejection during the wait from going unhandled */ });
+        for (let i = 0; i < 200 && waiting < 2; i++) {
+          await sleep(50);
+          waiting = (await sql<{ n: number }>(
+            `select count(*)::int as n from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock' and pid <> $1::int`,
+            pid))[0]?.n ?? 0;
+        }
+      } finally {
+        await holder.query("commit").catch(() => {});
+        await holder.end().catch(() => {});
+      }
+      const results: Array<ContactTombstoneRevived | null> = racing === null ? [] : await racing;
+      const winners = results.filter((r): r is ContactTombstoneRevived => r !== null);
+      const holders = await sql<{ id: string }>(`select id from "MarketingContact" where msisdn = $1`, V.race);
+      ok("8.4.0 · CONTROL · the race was REAL — two backends were blocked on the tombstone's row lock at the same time before it was released",
+        waiting >= 2, `${waiting} backend(s) waiting`);
+      ok("8.4 · ⭐ TWO revivals of ONE tombstone at once, on two connections: exactly ONE replaces it and the other answers null — the number held by ONE row, the winner's fresh one, and the tombstone gone",
+        results.length === 2 && winners.length === 1 && holders.length === 1 && holders[0]?.id === winners[0]?.row.id
+          && (await db.marketingContact.find(raceTomb.id)) === null,
+        `${results.map((r) => (r === null ? "null" : r.row.id)).join(" + ")} · ${holders.length} row(s) for the number`);
     });
 
     /* ── 9 · C8b review (MINOR 2) · contactListMember.joinedFromImport — how many contacts a run put on its list ── */

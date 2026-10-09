@@ -14,11 +14,12 @@
  * 🔴 C8b (B6, 2026-10-09) · AND THE CONTACT BOOK'S SIGN-UP ROWS. `registration-contact.ts` writes a SYSTEM row each time a
  * sign-up's number joins the book — `contacts.contact.registered · MarketingContact#…` (a new row),
  * `contacts.contact.linked · MarketingContact#…` (an officer's or an import's row, now a client's) and, since B1,
- * `contacts.contact.revived · MarketingContact#…` (an erased number's emptied row, now a new client's). The contact id is
- * the very id each row's edit link carries on /admin/contacts, so every staff role watching the feed read off it which book
- * rows are players, live and free — the D19 fact a masked officer is never given anywhere else (the survey's surface 10,
- * docs/CONTACTS-SCREEN-PLAN.md §4.7). Those three actions are compliance-only rows too (`COMPLIANCE_ONLY_ACTIONS`), under
- * the SAME rule as every other: whoever may view the compliance domain sees them, nobody else does.
+ * `contacts.contact.revived · MarketingContact#…` (an erased number's emptied row, replaced by a new client's own). The
+ * contact id is the very id each row's edit link carries on /admin/contacts, so every staff role watching the feed read
+ * off it which book rows are players, live and free — the D19 fact a masked officer is never given anywhere else (the
+ * survey's surface 10, docs/CONTACTS-SCREEN-PLAN.md §4.7). Those three actions are compliance-only rows too
+ * (`COMPLIANCE_ONLY_ACTIONS`), under the SAME rule as every other: whoever may view the compliance domain sees them,
+ * nobody else does.
  *
  * ⭐ THE RULE. A viewer whose STORED role may view the compliance domain — `canView(role, "compliance")`: the Owner, and by
  * default COMPLIANCE and AUDITOR, or any role the Owner grants it on /admin/roles — sees the feed as it always was. Every
@@ -55,7 +56,7 @@ export const COMPLIANCE_ONLY_CATEGORIES: readonly string[] = Object.freeze(["COM
 export const COMPLIANCE_ONLY_ACTION_PREFIX = "kyc.";
 
 /** ⛔ C8b (B6) · …and the contact book's sign-up rows, by their exact actions — the SYSTEM rows `registration-contact.ts`
- *  writes when a sign-up's number joins the book (created, linked, or an erased number's emptied row revived). Each names
+ *  writes when a sign-up's number joins the book (created, linked, or an erased number's emptied row replaced). Each names
  *  the book row a client holds; `test:admin-overview-feed` holds this list to the writer's own actions. */
 export const COMPLIANCE_ONLY_ACTIONS: readonly string[] = Object.freeze([
   "contacts.contact.registered", "contacts.contact.linked", "contacts.contact.revived",
