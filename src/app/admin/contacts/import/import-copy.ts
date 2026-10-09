@@ -14,7 +14,8 @@
 import { formatNumber } from "@/lib/utils";
 import type { ImportChoice, ShownKeepReason } from "@/lib/contacts/import-decide";
 import {
-  IMPORT_REFUSAL_SENTENCES, STEP_CONFLICT_SENTENCE, tagsNotAddedSentence, type ImportRefusalReason, type PreflightBucket,
+  IMPORT_REFUSAL_SENTENCES, STEP_CONFLICT_SENTENCE, tagsNotAddedSentence, type ImportRefusalReason, type ImportRunView,
+  type PreflightBucket,
 } from "@/lib/contacts/import-flow";
 import { IMPORT_MAX_ROWS } from "@/lib/contacts/import-limits";
 import { SHEET_SAMPLE_ROWS } from "@/lib/contacts/sheet-choice";
@@ -198,6 +199,8 @@ export const ADOPT = {
   ],
   committing: (done: number, total: number): Part[] => [fig(done), " of ", fig(total), ` ${plural(total, "row", "rows")} done.`],
   paused: (who: string, when: string): string => (who === "you" ? `Paused by you ${when}.` : `Paused by ${who} ${when}.`),
+  /** ⭐ C8c · m2 · the re-review's MINOR-2 · a run the DATABASE paused (paused by nobody): said, never left unexplained. */
+  pausedByDatabase: (when: string): string => `Paused ${when} — the database was busy.`,
   resume: "Resume",
   discard: "Discard",
   cancelRest: "Cancel the rest",
@@ -331,9 +334,11 @@ export const DECIDE = {
   /** ⭐ R8 · a page can come back empty while the list goes on (each request is bounded by the work behind it). */
   noneYet: "No differences in the rows read so far — Show more reads further into the file.",
   failed: "The changes couldn't be loaded. The choice above still applies to every row.",
-  /** ⭐ R7 · after a re-check, the rows set apart that no longer differ from the book were let go — said, never silent. */
+  /** ⭐ R7 · after a re-check, the rows set apart that NO CHOICE CHANGES any more were let go — said, never silent: gone
+   *  from the pages, or (C8c · m3) on them only for tags a full contact cannot take, which still DIFFERS from the book —
+   *  so the line never says "no longer differ" (the re-review's MINOR-1). */
   dropped: (n: number): Part[] => [
-    fig(n), ` ${plural(n, "row", "rows")} you had set apart no longer ${plural(n, "differs", "differ")} from the book, so ${plural(n, "it follows", "they follow")} the choice above.`,
+    fig(n), ` ${plural(n, "row", "rows")} you had set apart no longer ${plural(n, "changes", "change")} under any choice, so ${plural(n, "it follows", "they follow")} the choice above.`,
   ],
   name: (from: string, to: string): string => `Name: ${from} → ${to}`,
   nameNew: (to: string): string => `Name: ${to}`,
@@ -448,6 +453,10 @@ export const COMMIT = {
   askUploadCancel: "Keep uploading",
   guardBody: "An import is running. Leaving this page stops it after the rows being written now — you can resume it later from Import contacts.",
   pausedBy: (who: string, when: string): string => (who === "you" ? `Paused by you ${when}.` : `Paused by ${who} ${when}.`),
+  /** ⭐ C8c · m2 · the re-review's MINOR-2 · a run the DATABASE paused (a fault that would not clear — paused by nobody):
+   *  never "Stopped." under the title "Import paused". */
+  pausedByDatabase: (when: string): string => `Paused ${when} — the database was busy. Resume to carry on.`,
+  /** A run nothing is driving that was never paused (a refusal, a dropped connection). */
   stoppedHere: "Stopped. Resume to carry on from where it stopped.",
   progress: (done: number, total: number): Part[] => [fig(done), " of ", fig(total), ` ${plural(total, "row", "rows")} done.`],
   resume: "Resume",
@@ -463,6 +472,26 @@ export const COMMIT = {
   cancelKeep: "Keep the import",
   finishing: "Counting the result…",
 } as const;
+
+/** The parts of a run its paused line reads. */
+type PausedRun = Pick<ImportRunView, "status" | "pausedBy">;
+
+/**
+ * ⭐ THE ONE RULE for the importing panel's first line under a stopped or paused run (the re-review's MINOR-2): who paused
+ * it and when; that the DATABASE paused it (C8c · m2 — paused by nobody); or, for a run nothing is driving that was never
+ * paused, that it stopped. `when` is `whenText` of the pause's instant. The panel asks it (`test:contacts-import` flow N9).
+ */
+export function pausedLine(run: PausedRun, when: string): string {
+  if (run.status !== "PAUSED") return COMMIT.stoppedHere;
+  return run.pausedBy === null ? COMMIT.pausedByDatabase(when) : COMMIT.pausedBy(run.pausedBy, when);
+}
+
+/** ⭐ The same rule on the adopt panel and the open-runs list: a PAUSED run's line — who paused it, or the database — or
+ *  null for a run that is not paused. */
+export function adoptPausedLine(run: PausedRun, when: string): string | null {
+  if (run.status !== "PAUSED") return null;
+  return run.pausedBy === null ? ADOPT.pausedByDatabase(when) : ADOPT.paused(run.pausedBy, when);
+}
 
 /* ══ WHERE AN OPEN COMES BACK REFUSED — the ways on ═══════════════════════════════════════════════ */
 

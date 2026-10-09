@@ -51,7 +51,9 @@ import {
   type ReadOutcome,
 } from "../../src/lib/contacts/import-read.ts";
 import { SEVERAL_MOBILES_SENTENCE, firstMobileIn, mobilesIn, phoneCellParts, phoneCellRefusal } from "../../src/lib/contacts/phone-cell.ts";
-import { CHECK, DECIDE, DONE, partsText, refusalTone, sumCutOf } from "../../src/app/admin/contacts/import/import-copy.ts";
+import {
+  CHECK, COMMIT, DECIDE, DONE, adoptPausedLine, partsText, pausedLine, refusalTone, sumCutOf,
+} from "../../src/app/admin/contacts/import/import-copy.ts";
 import { parseTzNumber } from "../../src/lib/tz-msisdn.ts";
 import {
   BUSY_BACKOFF_SEC,
@@ -104,12 +106,20 @@ export type FlowImpl = {
   readonly runCommit: typeof runCommit;
   readonly runUpload: typeof runUpload;
   readonly isSkew: typeof isDeploySkewError;
-  /** The reader, the loop and (C3b-fix · D3) the dialog that opens a run with S15-4's count — decommented. */
-  readonly sources: { readonly read: string; readonly loop: string; readonly dialog: string };
+  /** The reader, the loop and (C3b-fix · D3) the dialog that opens a run with S15-4's count — decommented; ⭐ and (the
+   *  re-review's MINOR-2) the three panels that show a paused run. */
+  readonly sources: {
+    readonly read: string; readonly loop: string; readonly dialog: string;
+    readonly commitPanel: string; readonly adoptPanel: string; readonly openRuns: string;
+  };
   /** C3b-fix · D5d · the check's and the result's sum lines, and the ONE rule for how they end. */
   readonly sums: { readonly check: typeof CHECK.sum; readonly done: typeof DONE.sum; readonly cutOf: typeof sumCutOf };
-  /** ⭐ C8c · n8 · the copy table's refusal tone, its changes list's words and the result's tags lead. */
-  readonly copy: { readonly refusalTone: typeof refusalTone; readonly decide: typeof DECIDE; readonly tagsLead: typeof DONE.tagsLead };
+  /** ⭐ C8c · n8 · the copy table's refusal tone, its changes list's words and the result's tags lead; ⭐ MINOR-2 · the ONE
+   *  rule for a paused run's line on the importing panel, and on the adopt panel and the open-runs list. */
+  readonly copy: {
+    readonly refusalTone: typeof refusalTone; readonly decide: typeof DECIDE; readonly tagsLead: typeof DONE.tagsLead;
+    readonly pausedLine: typeof pausedLine; readonly adoptPausedLine: typeof adoptPausedLine;
+  };
 };
 
 const read = (rel: string): string => decomment(readFileSync(join(REPO_ROOT, rel), "utf8")).split(CRLF).join(LF);
@@ -129,9 +139,12 @@ function real(): FlowImpl {
       read: read("src/lib/contacts/import-read.ts"),
       loop: read("src/lib/contacts/import-loop.ts"),
       dialog: read("src/app/admin/contacts/import/contacts-import-dialog.tsx"),
+      commitPanel: read("src/app/admin/contacts/import/import-commit-panel.tsx"),
+      adoptPanel: read("src/app/admin/contacts/import/import-adopt-panel.tsx"),
+      openRuns: read("src/app/admin/contacts/import/import-open-runs.tsx"),
     },
     sums: { check: CHECK.sum, done: DONE.sum, cutOf: sumCutOf },
-    copy: { refusalTone, decide: DECIDE, tagsLead: DONE.tagsLead },
+    copy: { refusalTone, decide: DECIDE, tagsLead: DONE.tagsLead, pausedLine, adoptPausedLine },
   };
   return cached;
 }
@@ -146,7 +159,8 @@ export const L = {
   P1d: "P1d · ⛔ C8c · D4 IN THE LIST PASTE — a pasted line's number is read in the CELL it was written in, by the ONE rule: 'Asha +254, 712 345 678' (the line the fix builder found), '254/712345678 Juma', 'Baraka 00254; 712345678' and 'Neema +254 or 712 345 678' stage their whole cell — and (the review's MAJOR-2) a number never starts inside a run right after its own code: 'Otieno +254 0712 345 678', 'Otieno +254 (0) 712 345 678', 'Otieno 254 0712345678', 'Otieno +254-0712-345-678', 'Otieno 00254 0712345678', 'Okello +256 (0) 772 123 456' and 'Okello +256 0772 123456' stage the run whole, ONE foreign number — the server's own rule reads NO mobile in any of them and never a stranger's +255 number, its sentence the foreign or the too-long one — each name without the code; CONTROLS: 'Asha 712 345 678' and '712345678' (a whole cell of nine digits, Excel's dropped 0) still read 255712345678, '12. 0712 345 678 Asha', '255, 0712 345 678 Asha', '0712 345 678 / 0754 111 222 Asha', '+254 712 345 678 0712 345 678' (a whole number before it), '12.03.2026 0712345678', '123. 0712345678' (an enumeration's digits never count) and '1 0712345678' their first mobile, and '0712 345 678 0754 111 222' and '+255 712 345 678 0754 111 222' still hold two numbers, as before; ⭐ M1 · a word between two separators is no cut — '1, Asha, 0712 345 678' reads 255712345678 with the name '1, Asha', and '1,Asha,0712345678,Arusha' keeps both names",
   P1e: "P1e · ⛔ C8c · m1 · D4 FOR A NUMBER STANDING ALONE — a bare nine digits after a run WRITTEN AS A CODE ('+' or '00') is judged a PART, never a whole cell: 'Asha +254 (Kenya) 712 345 678', '+254: 712345678', 'Tel +254 / Mob 712 345 678', 'Okello +256: 772123456' and '00254: 712345678' stage the stretch from the code, which the server's one rule refuses in the foreign number's own words — never a stranger's +255 number — each name the line less that stretch; ⭐ the review's MAJOR-1 · CONTROLS: ANY other run before it is the row number, the date or the label live main reads — '1, Asha, 712345678', '1,Asha,712345678', '1;Asha;712345678', '12,Asha Juma,712345678', '1001,Asha,712345678', '12/03/2026,Asha,712345678', '1 Asha 712345678', '#1 Asha 712345678', '1.Asha 712345678', 'Asha Tel 1: 712345678', the 12-hour chat line '12/03/2026, 10:15 pm - Juma: 712345678' and a long name before it read 255712345678, the number its own cell and the name the line less it — with 'Asha 712 345 678', a chat stamp's and an enumeration's digits ('[12/03/2026, 10:15] Juma: …', '12. Asha …'), Tanzania's own code before it ('+255 (TZ) 712 345 678') and a complete number ('1, Asha, 0712 345 678'); ⚠️ the accepted leftover is pinned: a code written bare ('254: 712345678') reads as the bare nine digits",
   P1f: "P1f · ⭐ C8c · the review's MAJOR-1 · A LINE'S NAME — a 12-hour phone's chat stamp is a stamp like any ('12/03/2026, 10:15 pm - Juma:', '… 10:15 PM …' after a narrow no-break space, '… 10:15:32 p.m. …', '… 10:15am …' → 'Juma'), and a round bracket a number's removal leaves stray is never part of a name ('Otieno (+254) 712 345 678' → 'Otieno', 'Asha (0712 345 678)' and 'Asha (+255 712 345 678)' → 'Asha'); CONTROLS: a bracketed word stays ('Asha (Mama Neema) 0712 345 678'), a fully bracketed name is unwrapped ('(Asha) 0712345678'), and letters that are no clock's mark keep the line's words ('12 Pam - 0712 345 678' → '12 Pam')",
-  N8: "N8 · ⭐ C8c · the review's n8 · the words around #13's rows and a conflicted step's tone: refusalTone paints server_error with STEP_CONFLICT_SENTENCE as a WARNING (nothing lost, Resume in a minute) while a plain server_error stays danger, bets_busy and db_paused warnings, forbidden danger; the changes list's heading and table never say 'would change' of every row (a tags-only row changes under no choice) and its lead names both kinds; the result's tags lead says neither 'already' nor 'import again' — the way that works is the contact in the book",
+  N9: "N9 · ⭐ C8c · the re-review's MINOR-2 · A RUN THE DATABASE PAUSED SAYS SO — the importing panel's line is 'Paused on … — the database was busy. Resume to carry on.' (never 'Stopped.' under 'Import paused'), the adopt panel's and the open-runs list's 'Paused on … — the database was busy.' (never nothing); a run paused by you or another officer says who and when; a run nothing is driving that was never paused says it stopped (the panels) or nothing (the lists); and the three panels each ask the copy table's ONE rule (pausedLine, adoptPausedLine) — none decides on its own",
+  N8: "N8 · ⭐ C8c · the review's n8 · the words around #13's rows and a conflicted step's tone: refusalTone paints server_error with STEP_CONFLICT_SENTENCE as a WARNING (nothing lost, Resume in a minute) while a plain server_error stays danger, bets_busy and db_paused warnings, forbidden danger; the changes list's heading and table never say 'would change' of every row (a tags-only row changes under no choice) and its lead names both kinds; the result's tags lead says neither 'already' nor 'import again' — the way that works is the contact in the book; and (the re-review's MINOR-1) the re-check's line for the rows it let go says they no longer CHANGE under any choice — never 'no longer differ from the book', which a tags-only row still does",
   P2: "P2 · a TAB paste is an Excel copy: cells split on the tab with Excel's quoting, a blank line counted, its first row header-matched (Phone, Name; one header row)",
   P2b: "P2b · ⭐ C3b · a TAB paste whose quotation mark never closes is split by hand — every line kept, its quotation marks as typed, nothing unreadable — never cut by the CSV reader's one unreadable record (G1)",
   P3: "P3 · a list paste maps Phone and Name with no header row, named as the field list names them — never \"Column A…\", never read as a headerless file — and U28's validateMapping passes it",
@@ -716,12 +730,40 @@ async function run(ctx: SectionContext<FlowImpl>): Promise<void> {
     const d = impl.copy.decide;
     const lead = partsText(impl.copy.tagsLead(2));
     const leadOne = partsText(impl.copy.tagsLead(1));
+    const letGoOne = partsText(d.dropped(1));
+    const letGoMany = partsText(d.dropped(3));
     ok(L.N8, tones.conflict === "warning" && tones.fault === "danger" && tones.bets === "warning" && tones.dbPaused === "warning" && tones.forbidden === "danger"
       && !d.listHeading.includes("would change") && !d.tableLabel.includes("would change")
       && d.listLead.includes("a choice would change it") && d.listLead.includes("too full of tags")
       && [lead, leadOne].every((l) => !l.includes("already") && !l.includes("import again"))
-      && lead.includes("open each contact in the book") && leadOne.includes("open the contact in the book"),
-      `tones ${json(tones)} · list "${d.listHeading}" / "${d.tableLabel}" · tags lead "${lead.slice(0, 120)}"`);
+      && lead.includes("open each contact in the book") && leadOne.includes("open the contact in the book")
+      && letGoOne === "1 row you had set apart no longer changes under any choice, so it follows the choice above."
+      && letGoMany === "3 rows you had set apart no longer change under any choice, so they follow the choice above.",
+      `tones ${json(tones)} · list "${d.listHeading}" / "${d.tableLabel}" · tags lead "${lead.slice(0, 120)}" · let go "${letGoMany}"`);
+  }
+
+  // ── N9 · C8c · the re-review's MINOR-2 · a run the database paused says so, on every panel that shows it ──
+  {
+    const WHEN = "on 9 Oct 2026, 14:02";
+    const line = impl.copy.pausedLine;
+    const listLine = impl.copy.adoptPausedLine;
+    const byDatabase = { status: "PAUSED", pausedBy: null } as const;
+    const byYou = { status: "PAUSED", pausedBy: "you" } as const;
+    const byAmina = { status: "PAUSED", pausedBy: "Amina" } as const;
+    const stopped = { status: "COMMITTING", pausedBy: null } as const;
+    const said = {
+      database: line(byDatabase, WHEN), you: line(byYou, WHEN), other: line(byAmina, WHEN), stopped: line(stopped, WHEN),
+      listDatabase: listLine(byDatabase, WHEN), listOther: listLine(byAmina, WHEN), listStopped: listLine(stopped, WHEN),
+    };
+    const src = impl.sources;
+    const asksTheRule = src.commitPanel.includes("pausedLine(view, whenText(when(view.pausedAt)))") && !src.commitPanel.includes("COMMIT.stoppedHere")
+      && src.adoptPanel.includes("adoptPausedLine(view, whenText(when(view.pausedAt)))") && !src.adoptPanel.includes("ADOPT.paused(")
+      && src.openRuns.includes("adoptPausedLine(run, whenText(when(run.pausedAt)))") && !src.openRuns.includes("ADOPT.paused(");
+    ok(L.N9, said.database === "Paused on 9 Oct 2026, 14:02 — the database was busy. Resume to carry on."
+      && said.you === `Paused by you ${WHEN}.` && said.other === `Paused by Amina ${WHEN}.` && said.stopped === COMMIT.stoppedHere
+      && said.listDatabase === "Paused on 9 Oct 2026, 14:02 — the database was busy." && said.listOther === `Paused by Amina ${WHEN}.`
+      && said.listStopped === null && asksTheRule,
+      `${json(said)} · the panels ask the one rule: ${asksTheRule}`);
   }
 
   const table = impl.parsePaste(TAB_PASTE);
@@ -1216,6 +1258,54 @@ const PLANTS: readonly RedPlant<FlowImpl>[] = [
     impl: () => ({
       ...real(),
       copy: { ...real().copy, refusalTone: (r) => (r.reason === "server_error" ? "danger" : refusalTone(r)) },
+    }),
+  },
+  {
+    // 🔴 the re-review's MINOR-1 · the re-check's line as it shipped: the rows let go "no longer differ from the book" —
+    // untrue of a row on the pages only for the tags a full contact cannot take (it still differs).
+    name: "MINOR-1 · the rows a re-check lets go are said to no longer differ from the book",
+    expect: L.N8,
+    impl: () => ({
+      ...real(),
+      copy: {
+        ...real().copy,
+        decide: {
+          ...DECIDE,
+          dropped: (n: number) => [{ n }, ` ${n === 1 ? "row" : "rows"} you had set apart no longer ${n === 1 ? "differs" : "differ"} from the book, so ${n === 1 ? "it follows" : "they follow"} the choice above.`],
+        },
+      },
+    }),
+  },
+  {
+    // 🔴 the re-review's MINOR-2 · the importing panel's line as it shipped: a run paused by nobody (the database) reads
+    // "Stopped." under the title "Import paused".
+    name: "MINOR-2 · a run the database paused reads 'Stopped.' on the importing panel",
+    expect: L.N9,
+    impl: () => ({
+      ...real(),
+      copy: {
+        ...real().copy,
+        pausedLine: (run, when) => (run.status === "PAUSED" && run.pausedBy !== null ? COMMIT.pausedBy(run.pausedBy, when) : COMMIT.stoppedHere),
+      },
+    }),
+  },
+  {
+    // 🔴 MINOR-2 · the adopt panel and the open-runs list as they shipped: a run paused by nobody says nothing of it.
+    name: "MINOR-2 · a run the database paused carries no line on the adopt panel or the open-runs list",
+    expect: L.N9,
+    impl: () => ({ ...real(), copy: { ...real().copy, adoptPausedLine: (run, when) => (run.pausedBy === null ? null : adoptPausedLine(run, when)) } }),
+  },
+  {
+    // 🔴 MINOR-2 · the importing panel deciding on its own again, as it shipped — the one rule bypassed.
+    name: "MINOR-2 · the importing panel picks its paused line itself — the copy table's rule is not asked",
+    expect: L.N9,
+    impl: () => ({
+      ...real(),
+      sources: {
+        ...real().sources,
+        commitPanel: real().sources.commitPanel.split("pausedLine(view, whenText(when(view.pausedAt)))")
+          .join("view.pausedBy !== null ? COMMIT.pausedBy(view.pausedBy, whenText(when(view.pausedAt))) : COMMIT.stoppedHere"),
+      },
     }),
   },
   {

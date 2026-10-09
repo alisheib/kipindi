@@ -16,7 +16,7 @@ import { ConfirmModal } from "@/components/ui/modal";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { useActDisabledReason, useMayAct } from "@/components/admin/act-gate";
 import type { ImportRunView } from "@/lib/contacts/import-flow";
-import { ADOPT, CHECK, COMMIT, partsText, whenText, type Part } from "./import-copy";
+import { ADOPT, CHECK, COMMIT, adoptPausedLine, partsText, whenText, type Part } from "./import-copy";
 import { ActionsRow, ImportAlert, Parts, type ImportAlertState } from "./import-parts";
 
 export function ImportAdoptPanel({
@@ -53,8 +53,8 @@ export function ImportAdoptPanel({
       <div className="space-y-1 rounded-md border border-border-subtle p-3">
         <p className="text-body font-semibold text-text break-words" data-import-file-name>{ADOPT.file(view.format === "paste", view.fileName)}</p>
         <p className="text-body-sm text-text-secondary">{startedLine}</p>
-        {view.status === "PAUSED" && view.pausedBy !== null && (
-          <p className="text-body-sm text-text-secondary">{ADOPT.paused(view.pausedBy, whenText(when(view.pausedAt)))}</p>
+        {view.status === "PAUSED" && (
+          <p className="text-body-sm text-text-secondary">{adoptPausedLine(view, whenText(when(view.pausedAt)))}</p>
         )}
         <p className="text-body-sm text-text" data-import-adopt-status>
           <Parts parts={status} />
