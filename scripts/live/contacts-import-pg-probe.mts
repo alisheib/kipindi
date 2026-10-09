@@ -1,5 +1,6 @@
 /**
- * S15 · THE CONTACTS IMPORTER'S SIX NEW DAL MEMBERS ON A REAL POSTGRES — the Prisma twin no suite on this laptop executes.
+ * S15 · THE CONTACTS IMPORTER'S DAL MEMBERS ON A REAL POSTGRES — the Prisma twin no suite on this laptop executes (the six
+ * of S15, and C8c's tags-left read and its case-insensitive list name).
  *
  * ⭐ WHY THIS EXISTS. `test:contacts-import` drives the check and the commit on the MEMORY twin, and `test:dal-parity` §29
  * holds the Prisma twin to its shape by reading it as TEXT — neither sends one statement to Postgres. Yet each rule that
@@ -31,6 +32,13 @@
  *         later opt-out tap or lapse never lifts it, a GIVEN does, a marker after a GIVEN stands again, a tie inside one
  *         millisecond breaks on the id) — eleven hand-written histories, each number equal to the rule over its own single
  *         read, §25's bound, and the importer's facts loader and the Add form's lookup reading it from this Postgres;
+ *      8  C8c · #5 · the start's NEW-LIST branch: the list inserted only after the run is won (the census hears the run's
+ *         compare-and-set, then the insert, then the target); a name another list holds — exactly (8.2) or, N3, in another
+ *         case (8.3, the lower(name) index) — is a P2002 that rolls the whole freeze back, the run byte-identical; a start
+ *         that loses the run makes no list; listOpenByOthers (S15-12) newest first, clamped, open runs of OTHER officers
+ *         only; and N3 end to end — the REAL start meeting another officer's list in another case in its own words;
+ *      9  C8c · #13 · the tags a full contact could not take kept on the settled row after the blanking, and
+ *         tagsLeftPage — kept and updated rows only, by file line, clamped, its true total;
  *   S  a second FRESH process stages 20,000 rows and settles them in 500-row steps — p50/p95 per call printed, every
  *      row settled exactly once asserted.
  * Every expectation is written HERE BY HAND — an oracle independent of either twin.
@@ -140,10 +148,14 @@ const R = {
   main: "ci_probe_main", race: "ci_probe_race", d: "ci_probe_conflict_create", e: "ci_probe_conflict_guard", f: "ci_probe_null_arm",
   i: "ci_probe_list_gone", fails: "ci_probe_fails", failsOther: "ci_probe_fails_other", failsNone: "ci_probe_fails_none",
   scale: "ci_probe_scale",
+  // C8c · #5 · #13
+  newOk: "ci_probe_new_list", newTaken: "ci_probe_new_list_taken", newCase: "ci_probe_new_list_case", startRace: "ci_probe_start_race",
+  tags: "ci_probe_tags_left",
 } as const;
 const L = {
   gone: "cl_probe_gone", freezeA: "cl_probe_freeze_a", freezeB: "cl_probe_freeze_b", main: "cl_probe_main", race: "cl_probe_race",
   d: "cl_probe_conflict", i: "cl_probe_deleted", scale: "cl_probe_scale",
+  newOk: "cl_probe_new_list",
 } as const;
 
 type Db = typeof import("../../src/lib/server/store.ts").db;
@@ -917,6 +929,149 @@ async function phaseC(): Promise<void> {
         factsOff.length === 0 && tapLookup.state === "refused" && tapLookup.sentence === CONTACT_ERASED && tapLookup.existingId === null
           && liftedLookup.state === "free",
         `facts off on [${factsOff.join(", ")}] · tap ${tapLookup.state} · lifted ${liftedLookup.state}`);
+    });
+
+    /* ── 8 · C8c · #5 · the start's NEW-LIST branch, N3's case-insensitive name, and listOpenByOthers ── */
+    await section("8", async () => {
+      const newList = (id: string, name: string): StoredContactList => ({
+        id, name, description: null, createdAt: at(200), createdBy: OFFICER, updatedAt: at(200), updatedBy: OFFICER,
+      });
+      const listsNamed = async (name: string): Promise<number> =>
+        Number((await sql<{ n: bigint | number }>(`select count(*) as n from "ContactList" where lower(name) = lower($1)`, name))[0]?.n ?? -1);
+      // 8.1 · the list is inserted only AFTER the run is won, in the freeze's own transaction.
+      await K.stagedRun(R.newOk, [{ line: 2, msisdn: num("556", 1) }]);
+      const won = await counted(() => db.contactImport.freezeDecision({
+        importId: R.newOk, choice: "KEEP", overrides: {}, targetListId: L.newOk, newList: newList(L.newOk, "Probe New List"), by: OFFICER, at: at(201),
+      }));
+      const writes = won.queries.filter((q) => /^(UPDATE|INSERT|DELETE)/i.test(q.trim()));
+      const made = await db.contactList.find(L.newOk);
+      ok("8.1 · ⭐ the start's NEW list on Postgres: the freeze answers the run COMMITTING with the new list as its target, the list exists, and the census heard the run's compare-and-set FIRST, then the list's insert, then the run's target — the list is inserted only after the run was won (R12)",
+        won.value !== null && won.value.status === "COMMITTING" && won.value.targetListId === L.newOk && made !== null && made.name === "Probe New List"
+          && writes.length === 3 && /^UPDATE/i.test((writes[0] ?? "").trim()) && (writes[0] ?? "").includes('"ContactImport"')
+          && /^INSERT/i.test((writes[1] ?? "").trim()) && (writes[1] ?? "").includes('"ContactList"')
+          && /^UPDATE/i.test((writes[2] ?? "").trim()) && (writes[2] ?? "").includes('"ContactImport"'),
+        `${won.value?.status ?? "null"} → ${won.value?.targetListId ?? "-"} · writes ${writes.map((q) => q.trim().split(" ").slice(0, 3).join(" ")).join(" | ")}`);
+      // 8.2 · a name already held (exactly): P2002 inside the freeze — the WHOLE freeze rolled back, the run as it was.
+      if ((await db.contactList.create(newList("cl_probe_taken", "Probe Taken"))) === null) throw new Error("§8 could not seed the taken list");
+      await K.stagedRun(R.newTaken, [{ line: 2, msisdn: num("556", 2) }]);
+      const takenBefore = await textOf("ContactImport", R.newTaken);
+      const taken = await thrown(() => db.contactImport.freezeDecision({
+        importId: R.newTaken, choice: "KEEP", overrides: {}, targetListId: "cl_probe_taken_2", newList: newList("cl_probe_taken_2", "Probe Taken"), by: OFFICER, at: at(202),
+      }));
+      const takenAfter = await textOf("ContactImport", R.newTaken);
+      ok("8.2 · ⭐ a new list whose name another list HOLDS is a P2002 thrown from the freeze, and the freeze is ROLLED BACK whole — the run row byte-identical (still STAGED, no decision, no target) and no second list of the name",
+        taken.threw && taken.code === "P2002" && takenBefore !== null && takenBefore === takenAfter
+          && (await db.contactImport.find(R.newTaken))?.status === "STAGED" && (await listsNamed("Probe Taken")) === 1 && (await db.contactList.find("cl_probe_taken_2")) === null,
+        `${taken.threw ? taken.code : "FROZE"} · run ${takenBefore === takenAfter ? "unchanged" : "CHANGED"} · lists of the name ${await listsNamed("Probe Taken")}`);
+      // 8.3 · ⭐ N3 · the same name in ANOTHER CASE: the lower(name) index refuses it inside the freeze just the same.
+      if ((await db.contactList.create(newList("cl_probe_case", "Probe Case List"))) === null) throw new Error("§8 could not seed the case list");
+      await K.stagedRun(R.newCase, [{ line: 2, msisdn: num("556", 3) }]);
+      const caseBefore = await textOf("ContactImport", R.newCase);
+      const cased = await thrown(() => db.contactImport.freezeDecision({
+        importId: R.newCase, choice: "KEEP", overrides: {}, targetListId: "cl_probe_case_2", newList: newList("cl_probe_case_2", "PROBE CASE LIST"), by: OFFICER, at: at(203),
+      }));
+      ok("8.3 · ⭐ C8c · N3 · a new list named in ANOTHER CASE than a held one is a P2002 from the freeze too — the lower(name) unique index — the freeze rolled back, the run byte-identical, ONE list of that name in any case",
+        cased.threw && cased.code === "P2002" && caseBefore !== null && caseBefore === (await textOf("ContactImport", R.newCase))
+          && (await listsNamed("probe case list")) === 1 && (await db.contactList.find("cl_probe_case_2")) === null,
+        `${cased.threw ? cased.code : "FROZE"} · lists of the name ${await listsNamed("probe case list")}`);
+      // 8.4 · a freeze that LOSES the run (already committing) creates no list.
+      const lost = await db.contactImport.freezeDecision({
+        importId: R.newOk, choice: "TAKE_FILE", overrides: {}, targetListId: "cl_probe_lost", newList: newList("cl_probe_lost", "Probe Lost List"), by: "probe_admin", at: at(204),
+      });
+      ok("8.4 · ⭐ R12 · a start that LOSES the run (it is committing already) answers null and leaves NO list behind — the name stays free",
+        lost === null && (await db.contactList.find("cl_probe_lost")) === null && (await listsNamed("Probe Lost List")) === 0,
+        lost === null ? "null" : "FROZE A COMMITTING RUN");
+      // 8.5 · listOpenByOthers — an ADMIN's read of other officers' unfinished runs: 22 open runs by others (newest of the
+      // whole database, so other sections' runs sit below them), two finished, two of the viewer's own.
+      const VIEWER = "probe_viewer_s15";
+      const OPEN: StoredContactImport["status"][] = ["STAGING", "STAGED", "COMMITTING", "PAUSED"];
+      const seeded = async (id: string, by: string, status: StoredContactImport["status"], minute: number): Promise<void> => {
+        const made2 = await db.contactImport.create({
+          ...runOf(id, 1, 0), status, createdBy: by, createdAt: at(minute), updatedAt: at(minute),
+          finishedAt: status === "DONE" || status === "CANCELLED" ? at(minute) : null,
+        });
+        if (made2 === null) throw new Error(`§8 could not seed ${id}`);
+      };
+      for (let k = 0; k < 22; k++) await seeded(`ci_probe_open_${String(k).padStart(2, "0")}`, `probe_far_${k}`, OPEN[k % 4], 10_000 + k);
+      await seeded("ci_probe_open_done", "probe_far_done", "DONE", 20_000);
+      await seeded("ci_probe_open_cancelled", "probe_far_cancelled", "CANCELLED", 20_001);
+      await seeded("ci_probe_open_mine_a", VIEWER, "PAUSED", 20_002);
+      await seeded("ci_probe_open_mine_b", VIEWER, "STAGED", 20_003);
+      const open = await db.contactImport.listOpenByOthers({ excludeCreatedBy: VIEWER, limit: 50 });
+      const three = await db.contactImport.listOpenByOthers({ excludeCreatedBy: VIEWER, limit: 3 });
+      const WANT_OPEN = Array.from({ length: 20 }, (_, i) => `ci_probe_open_${String(21 - i).padStart(2, "0")}`);
+      ok("8.5 · ⭐ S15-12 · listOpenByOthers on Postgres: the OPEN runs (STAGING, STAGED, COMMITTING, PAUSED) of OTHER officers, NEWEST first, clamped to 20 — never a finished or cancelled run, never the viewer's own — and a limit of 3 answers the newest 3",
+        json(open.map((r) => r.id)) === json(WANT_OPEN) && open.every((r) => OPEN.includes(r.status) && r.createdBy !== VIEWER)
+          && json(three.map((r) => r.id)) === json(WANT_OPEN.slice(0, 3)),
+        `${open.length} run(s): ${open.slice(0, 3).map((r) => r.id.slice(-2)).join(",")}… · three ${three.map((r) => r.id.slice(-2)).join(",")}`);
+      // 8.6 · ⭐ N3 end to end on Postgres: the REAL start, another officer naming the list in another case before its freeze.
+      const { IMPORT_COMMIT_DEPS, startContactImport } = await import("../../src/lib/server/contacts/import-commit.ts");
+      const { checkContactImport } = await import("../../src/lib/server/contacts/import-check.ts");
+      const { LIST_MADE_MEANWHILE_SENTENCE } = await import("../../src/lib/contacts/import-flow.ts");
+      await K.stagedRun(R.startRace, [{ line: 2, msisdn: num("556", 11) }, { line: 3, msisdn: num("556", 12) }]);
+      const checked = await checkContactImport(OFFICER, R.startRace);
+      if (!checked.ok) throw new Error(`§8.6's check was refused: ${checked.reason}`);
+      const label = { create: checked.preflight.byChoice.KEEP.create, update: checked.preflight.byChoice.KEEP.update, keep: checked.preflight.byChoice.KEEP.keep };
+      const body = (list: Record<string, unknown>) => ({ runId: R.startRace, choice: "KEEP", exceptions: {}, list, expected: label, checkedAt: checked.preflight.checkedAt });
+      const raced = await startContactImport(OFFICER, body({ kind: "new", name: "Probe October" }), {
+        ...IMPORT_COMMIT_DEPS,
+        freeze: async (f) => {
+          await db.contactList.create(newList("cl_probe_other_officer", "PROBE OCTOBER"));
+          return IMPORT_COMMIT_DEPS.freeze(f);
+        },
+      });
+      const afterRace = await db.contactImport.find(R.startRace);
+      const onto = await startContactImport(OFFICER, body({ kind: "existing", listId: "cl_probe_other_officer" }));
+      const frozen = await db.contactImport.find(R.startRace);
+      ok("8.6 · ⭐ C8c · N3 · the REAL start on Postgres meets the case-insensitive refusal in its own words: another officer's 'PROBE OCTOBER' made between its check and its freeze → list_name_taken with the start's race sentence, the run still STAGED with no decision, ONE list of that name; then a start naming that list freezes onto it",
+        !raced.ok && raced.reason === "list_name_taken" && raced.message === LIST_MADE_MEANWHILE_SENTENCE
+          && afterRace?.status === "STAGED" && afterRace.decisionChoice === null && (await listsNamed("probe october")) === 1
+          && onto.ok && frozen?.status === "COMMITTING" && frozen.targetListId === "cl_probe_other_officer",
+        `raced ${raced.ok ? "FROZE" : raced.reason} · run ${afterRace?.status ?? "?"} · lists of the name ${await listsNamed("probe october")} · onto ${onto.ok ? frozen?.targetListId ?? "?" : onto.reason}`);
+    });
+
+    /* ── 9 · C8c · #13 · the tags a full contact could not take — kept on the settled row, read back by tagsLeftPage ── */
+    await section("9", async () => {
+      const FULL20 = Array.from({ length: 20 }, (_, i) => `t${String(i + 1).padStart(2, "0")}`);
+      const T = { a: num("557", 1), b: num("557", 2), d: num("557", 4) };
+      await K.mustContact(contactOf("mc_probe_tags_a", T.a, { displayName: "Full One", tags: FULL20 }));
+      await K.mustContact(contactOf("mc_probe_tags_b", T.b, { displayName: "Full Two", tags: FULL20 }));
+      await K.frozenRun(R.tags, [
+        { line: 2, msisdn: T.a, name: "Full One", tags: ["new one", "new two"] },
+        { line: 3, msisdn: T.b, name: "Full Two Renamed", tags: ["vip"] },
+        { line: 4, msisdn: null, rawPhone: "+254 712 345 678", tags: ["kenya"] },
+        { line: 5, msisdn: T.d, name: "Fresh" },
+      ], null);
+      const bornD = bornOf("mc_probe_tags_d", T.d, R.tags, at(300), { displayName: "Fresh" });
+      // ⚠️ The FAILED row is handed tags on purpose (the commit never does): the page's outcome filter, not the write, keeps it out.
+      const step = await db.contactImport.commitBatch({
+        importId: R.tags, fromCursor: 0, toCursor: 4, at: at(300), by: OFFICER,
+        creates: [{ ordinal: 4, row: bornD }],
+        updates: [{ ordinal: 2, contactId: "mc_probe_tags_b", guard: at(-50), at: at(300), by: OFFICER, patch: { displayName: "Full Two Renamed" } }],
+        outcomes: [
+          { ordinal: 1, outcome: "keep", reason: "no_change" }, { ordinal: 2, outcome: "update", reason: null },
+          { ordinal: 3, outcome: "fail", reason: "invalid" }, { ordinal: 4, outcome: "create", reason: null },
+        ],
+        sentences: [{ ordinal: 3, sentence: S_KENYA }], listId: null, members: [],
+        tagsLeft: [{ ordinal: 1, tags: ["new one", "new two"] }, { ordinal: 2, tags: ["vip"] }, { ordinal: 3, tags: ["kenya"] }],
+      });
+      const rows = await sql<{ ordinal: number; outcome: string | null; tags: string[] }>(
+        `select ordinal, outcome::text as outcome, tags from "ContactImportRow" where "importId" = $1 order by ordinal`, R.tags);
+      const bookB = await db.marketingContact.find("mc_probe_tags_b");
+      ok("9.1 · ⭐ C8c · #13 · on Postgres a settled row whose file tags were not all added KEEPS exactly those tags after the blanking (the kept row two, the updated row one), a created row is blanked, and the update wrote the name and never the tags (the contact still 20)",
+        step.kind === "advanced" && step.run.status === "DONE"
+          && eq(rows.map((r) => [r.ordinal, r.outcome, r.tags]), [[1, "keep", ["new one", "new two"]], [2, "update", ["vip"]], [3, "fail", ["kenya"]], [4, "create", []]])
+          && bookB !== null && bookB.displayName === "Full Two Renamed" && bookB.tags.length === 20,
+        `${step.kind} · ${json(rows.map((r) => [r.ordinal, r.outcome, r.tags]))} · book ${bookB?.tags.length ?? "?"} tags`);
+      const p1 = await db.contactImportRow.tagsLeftPage({ importId: R.tags, afterLine: 0, limit: 50 });
+      const p2 = await db.contactImportRow.tagsLeftPage({ importId: R.tags, afterLine: 2, limit: 50 });
+      const one = await db.contactImportRow.tagsLeftPage({ importId: R.tags, afterLine: 0, limit: 1 });
+      const otherRun = await db.contactImportRow.tagsLeftPage({ importId: R.main, afterLine: 0, limit: 50 });
+      ok("9.2 · ⭐ C8c · #13 · tagsLeftPage on Postgres lists the KEPT and UPDATED rows still holding tags by FILE LINE — lines 2 and 3, never the failed row's (its outcome filters it) — after a line, clamped by the limit, with the TRUE total 2 on every page; another run holds none",
+        json(p1.rows.map((r) => r.line)) === "[2,3]" && p1.total === 2 && json(p1.rows.map((r) => r.tags)) === json([["new one", "new two"], ["vip"]])
+          && json(p2.rows.map((r) => r.line)) === "[3]" && p2.total === 2 && one.rows.length === 1 && one.total === 2
+          && otherRun.rows.length === 0 && otherRun.total === 0,
+        `${json(p1.rows.map((r) => r.line))}/${p1.total} · after 2 ${json(p2.rows.map((r) => r.line))} · limit 1 ${one.rows.length}/${one.total} · other run ${otherRun.total}`);
     });
   } catch (e) {
     ok("C · the phase ran to its end", false, errText(e));
