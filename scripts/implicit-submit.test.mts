@@ -1595,9 +1595,10 @@ if (!PROVE_RED) {
     { name: "the guard listens on the document — it would refuse every form's submit on the page", expect: /^3[.]4 /,
       world: () => one(CD, "const form = defaultRef.current?.form;", "const form = document;") },
     { name: "the withdraw confirm loses submitsForm — Enter in the amount box sends the money again", expect: /^4[.]1 /,
-      world: () => one(WITHDRAW, L("      submitsForm", "      trigger={"), "      trigger={") },
+      // Anchored on the prop's own line (R5-C put a note between it and `trigger={`, 2026-10-09).
+      world: () => one(WITHDRAW, L("      submitsForm", ""), "") },
     { name: "the deposit confirm loses submitsForm", expect: /^4[.]1 /,
-      world: () => one(DEPOSIT, L("      submitsForm", "      trigger={"), "      trigger={") },
+      world: () => one(DEPOSIT, L("      submitsForm", ""), "") },
     { name: "the close-account confirm loses submitsForm — Enter in the phrase box closes the account again", expect: /^4[.]1 /,
       world: () => one(CLOSE, L("        submitsForm", "        trigger={"), "        trigger={") },
     { name: "the RG confirm loses submitsForm", expect: /^4[.]1 /,

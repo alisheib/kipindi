@@ -113,4 +113,19 @@ export const MUTATIONS = [
     from: ".kp-fsheet-grab {",
     to: "/* a note mentioning var(--kp-red-probe-in-prose) which is not real code */\n.kp-fsheet-grab {",
   },
+  {
+    /* ⭐ THE STANDALONE-SCOPE POSITIVE CONTROL (round 5 of the visual pass, 2026-10-09). The /offline document
+       (`src/lib/offline-document.ts`, R4-G) loads no app stylesheet: every token it reads must be defined in its own
+       map. Counted with the app's definitions, its `"--gilt"` key had certified the app's --gilt (the E-286 control
+       above stayed green); counted alone, a token deleted from its map must be reported even though globals.css
+       defines the same name for the app. */
+    name: "a-standalone-document-defines-its-own-tokens",
+    why: "🔴 POSITIVE CONTROL · the offline page's own --gilt is deleted from its token map. That page loads no app stylesheet, so its `var(--gilt)` would compute to nothing on the phone — while globals.css still defines --gilt for the app. The gate must judge a standalone document against its own definitions, never the app's",
+    file: "src/lib/offline-document.ts",
+    suite: "css-vars-defined",
+    outcome: "red",
+    expect: "--gilt is referenced but never defined in the standalone src/lib/offline-document.ts",
+    from: "  \"--gilt\": \"var(--gold-300)\",",
+    to: "  /* --gilt deleted by red:css-vars-defined */",
+  },
 ];

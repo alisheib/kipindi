@@ -70,7 +70,8 @@ for (const [i, c] of CASES.entries()) {
   mkdirSync(work, { recursive: true });
   cpSync(join(REAL, "src"), join(work, "src"), { recursive: true });
 
-  const p = join(work, CSS);
+  // Each plant names its own file (round 5, 2026-10-09: the standalone /offline document's plant is not in the sheet).
+  const p = join(work, c.file ?? CSS);
   const original = readFileSync(p, "utf8");
   if (!original.includes(c.from)) {
     problems.push(`${c.name}: ANCHOR did not resolve`);
