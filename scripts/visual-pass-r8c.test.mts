@@ -326,7 +326,9 @@ const BREAK_PROPS = { proposalsState: "DISABLED", inviteVisible: false, agentDoo
 const OPEN_PROPS = { proposalsState: "ACTIVE", inviteVisible: true, agentDoorVisible: true };
 {
   const { PublicFooter } = req("../src/components/layout/public-footer.tsx") as { PublicFooter: unknown };
-  const BASE = { supportEmail: "msaada@50pick.tz", supportPhone: "0769777877", supportPhoneTel: "+255769777877" };
+  // The support contacts come from their one owner (test:support-contact §8: no literal outside support-config.ts).
+  const { SUPPORT_DEFAULTS } = req("../src/lib/support-config.ts") as typeof import("../src/lib/support-config.ts");
+  const BASE = { supportEmail: SUPPORT_DEFAULTS.email, supportPhone: SUPPORT_DEFAULTS.phone, supportPhoneTel: SUPPORT_DEFAULTS.phoneTel };
   const foot = (l: L, props: Record<string, unknown>, journey: boolean) =>
     render(l, h(PublicFooter as never, { ...BASE, ...props, ...(journey ? { journeyShown: true, invitePaid: false, inviteAgent: false } : {}) } as never));
   const playSafe = (m: string) => { const a = m.indexOf(T.sw.footer.playSafe); return a; };
@@ -340,7 +342,7 @@ const OPEN_PROPS = { proposalsState: "ACTIVE", inviteVisible: true, agentDoorVis
     // The play-safe column and every other door are the same on and off a break.
     const rest = (m: string) => hrefsOf(m).filter((x) => familyOf(x) === null).join(" ");
     if (rest(on) !== rest(off)) bad.push(`${tag}: another door moved (${rest(on)} vs ${rest(off)})`);
-    for (const x of ["/profile/responsible-gambling", "/legal/responsible-gambling", "tel:+255769777877", "mailto:msaada@50pick.tz"]) if (!hrefsOf(on).includes(x)) bad.push(`${tag}: ${x} missing on a break`);
+    for (const x of ["/profile/responsible-gambling", "/legal/responsible-gambling", `tel:${SUPPORT_DEFAULTS.phoneTel}`, `mailto:${SUPPORT_DEFAULTS.email}`]) if (!hrefsOf(on).includes(x)) bad.push(`${tag}: ${x} missing on a break`);
     if (!textOf(on).includes(T[l].footer.stopGambling) || !textOf(on).includes(T[l].footer.takeABreak)) bad.push(`${tag}: an RG line missing on a break`);
   }
   ok("5.1 · RENDERED · the footer (both shells): on a break no Pendekeza, Alika or Kuwa wakala link; every other door, the play-safe column, the desk line and the RG sentence unchanged; off a break the three in today's words",
