@@ -8,8 +8,8 @@ on main in three parts (R7-A text wrapping and names, R7-B inks and signs, R7-C 
 `briefs/r5-common.md` for this laptop), then §4 steps 2–4 on the new main; the tools are this file's appendices and
 `origin/vodacom-visual-tools`, unpacked on ALI-BLADE15 into its session scratchpad.
 
-**⭐ 2026-10-10 ~21:25 — ROUND 8 IS LIVE TOO** (VODACOM-PLAN §0's round-8 ✅ paragraph); R8-D (the break's other
-channels) is being built; then §4 steps 2–4 for rounds 7 and 8 in one lock turn.
+**⭐ 2026-10-10 ~21:25 — ROUND 8 IS LIVE TOO** (VODACOM-PLAN §0's round-8 ✅ paragraph), and R8-D (the break's other
+channels) since ~22:25; next §4 steps 2–4 for rounds 7 and 8 in one lock turn.
 
 **⭐ 2026-10-10 evening — ROUND 7 IS LIVE; ROUND 8 IS BEING BUILT.** §4 step 1's "Still OPEN" list is fixed (R7-A text,
 R7-B inks, R7-C edges; the record and its proof are VODACOM-PLAN §0's round-7 ✅ paragraph). Round 8 carries the owner's
@@ -169,7 +169,7 @@ Nothing. **Named, not yet done** (R5-L's report names them for the integrator; e
 
 ## 5 · Questions for Ali (none blocks the pass; each has a default in place)
 79 so far: the plain list is appendix F; the full record (with the S12 word list and the S8 notes) is appendix G.
-Rounds 7 and 8 (2026-10-10) added appendix K (K1–K27, each with its default); the same day Ali answered items 16, 28,
+Rounds 7 and 8 (2026-10-10) added appendix K (K1–K33, each with its default; K32 is a money gap to fix next); the same day Ali answered items 16, 28,
 56 and 58 and the void's ink.
 
 ---
@@ -1008,3 +1008,20 @@ K23–K26. During a break: share links without the invite code; the letters' "ke
     a new proposal refused by the server with the programme's own sentence. (Decided under the ruling: R8-D builds them.)
 K27. Voting on proposals, the agent dashboard's "How you earn" terms and /profile's generic badges hint stay during a
     break. (Decided: they stay.)
+
+#### Responsible gambling — the break's other channels (R8-D)
+K28. An officer's agent invitation can still be sent to a person on a cooling-off (`issueInvitation` refuses only a
+    self-exclusion on record), and its letter is an offer; accepting it is refused and the page answers calmly. Hold
+    issuing during a cooling-off? (Default: not yet — an officer's act.)
+K29. An agent's own approval and rate-change letters keep their "Open your agent dashboard" button during the agent's
+    break (their own records). Hide it too? (Default: keep.)
+K30. The proposal-is-live letter and notice still say "share it" — sharing a market, not one of the three programmes.
+    (Default: keep.)
+K31. During a break the chat still explains betting and deposits (its starter chip "How do I deposit?"); closing that
+    needs an answer filter or a client signal, because the model must not be told about the break (the privacy notice).
+    (Default: as now.)
+K32. ⚠ A MONEY GAP THAT PRE-DATES TONIGHT: an agent fee paid from the wallet into a draft that later EXPIRES
+    (`expireStaleAgentApplications`) stays COLLECTED and is never refunded — only `rejectApplication` sets REFUND_DUE;
+    a break longer than the draft's remaining days strands a paid fee. (Default: fix it next — refund on expiry.)
+K33. During a break the "friend joined" bell row is not written at all (the alternative: write it without its link).
+    (Default: not written.)

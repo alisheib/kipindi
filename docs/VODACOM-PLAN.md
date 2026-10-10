@@ -18,7 +18,7 @@
 
 **State (2026-10-10):** S6 (the flagged shell) is in progress (§0i): WP0–WP12 are live behind the flag, the S6 visual
 pass (rounds 1–6), its round 7 and round 8 (the owner's four rulings of 2026-10-10) are live from ALI-BLADE15 (the ✅
-paragraphs below), and R8-D — the break's other channels — is being built there. As of 2026-10-07: WP0–WP11 are live behind the flag — the shell
+paragraphs below), R8-D — the break's other channels — with them. As of 2026-10-07: WP0–WP11 are live behind the flag — the shell
 swap, the overlay rules, Tiketi zangu (WP9), the journey sell look (WP10), `--rail-h` (WP11) and the first-download fix
 (WP6c), each verified locally before its push — and classic viewers are served what they were
 (`qa:classic-shell-parity`, 224 cells, no unexpected difference; v2 also compares the Sell region). ⭐ Ali, 2026-10-02: nothing is turned on — no staff preview, no journey — until
@@ -38,6 +38,21 @@ the s4-5 low-minimum and s4-6 code frames on the S4 canvas, `shortfall.ts`'s `em
 `qa:classic-shell-parity` 2.9 once ▶ 0e's Phase B removes the email bar — all three done in WP12's batch (§0i WP12):
 the short-of-the-minimum board offers TZS 1,000 and S9's six code boards are marked superseded; `shortfallPlan` asks no
 email step; 2.9 reads which tree it runs on (the bar's component gone → no viewer may see a bar).
+
+**✅ R8-D IS LIVE (2026-10-10 ~22:25 EAT) — the break's other channels closed (ruling (4) completed).** Built on R8-C's
+one rule and merged as `ad505be8` (r8-d `d8bfd7d8`): during a cooling-off or exclusion the server refuses the agent fee
+from the wallet (`agentRgHold` inside the `agentapp:` lock, after the settled-fee answer and before any debit; a failed
+read throws and rolls back) and a new proposal (with the break's end; the draft kept); the market page's and
+/positions' share links carry no invite code; the decline letter's "Propose another" and the reward letters'
+"keep inviting" lines are left out and the "friend joined" notice is not written (decided at send time); the chat
+answers a question touching the three programmes with the break sentence (the prompt untouched — the privacy notice).
+**Proof:** `test:visual-pass-r8d` 74/0; `test:visual-pass-r8d-stores` **25/25 on the memory store and 25/25 on a scratch
+PostgreSQL 18.3** (M.1–M.7 the fee: refused, nothing moved, the control pays, idempotency unchanged); mutation 38/38 (and
+R8-C's 39/39 again on the merged tree); 42 related suites green but `test:orphans` (main's); typecheck 0; `next build`
+0; local `qa:live` 334/334. Found on the way and fixed on main first (`3b7bac0d`): round 8 had turned
+`test:support-contact` §8 red (R8-C's test wrote the support contacts as literals). Owner questions K28–K33
+(S6-VISUAL-PASS-STATE.md appendix K) — ⚠ K32 is a money gap that pre-dates tonight: a wallet-paid agent fee in a draft
+that later expires is never refunded.
 
 **✅ ROUND 8 OF THE VISUAL PASS IS LIVE (2026-10-10 ~21:25 EAT, ALI-BLADE15) — the owner's four rulings of the day.**
 Asked before he left, Ali chose: (1) warnings amber, not gold; (2) every link blue; (3) section headings in one ink;
@@ -248,8 +263,7 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S6 — R8-D on ALI-BLADE15 (the break's other channels, the ✅ round-8 paragraph above), then ONE lock turn
-for rounds 7 and 8 — `test:all`,
+**Next:** (1) S6 — ONE lock turn for rounds 7 and 8 (R8-D included) — `test:all`,
 all 333 tiles re-tiled and read, classic parity at the new base with every intended difference named, the header fit
 and the seals — and the read repeats until it finds nothing; S6 closes then (§0i;
 [S6-VISUAL-PASS-STATE.md](design-system/v5-2026-09-29-simplified-journey/S6-VISUAL-PASS-STATE.md) §3/§4 hold the owed
