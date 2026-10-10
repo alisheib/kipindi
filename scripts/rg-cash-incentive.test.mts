@@ -243,12 +243,15 @@ const HOUR = 3_600_000;
   };
 
   await mkUser("prop_locked");
-  await rg("prop_locked", { coolingOffUntil: new Date(Date.now() + HOUR).toISOString() });
   await mkUser("prop_clear");
   await mkUser("prop_officer");
 
   // §6a · the locked proposer — approved, but paid nothing
+  // ⭐ R8-D (2026-10-10, the owner's ruling (4) completed) · the proposal is SUBMITTED BEFORE THE BREAK BEGINS — the order
+  // this case is about (a proposal under review, then a break taken). Since R8-D `createProposal` refuses a proposer whose
+  // break is running (`RG_LOCKED`), so the fixture no longer files one during it; what §6 asserts is unchanged.
   const lockedId = await mkProposal("prop_locked");
+  await rg("prop_locked", { coolingOffUntil: new Date(Date.now() + HOUR).toISOString() });
   const a1 = await approveProposal(lockedId, "prop_officer");
   ok("§6a the approval SUCCEEDS for a cooling-off proposer", a1.ok === true, JSON.stringify(a1));
   ok("§6a …and it reports the prize was suppressed", a1.ok === true && a1.prizeSuppressedByRg === true, JSON.stringify(a1));

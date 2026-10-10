@@ -40,6 +40,8 @@ import type { FailureReason } from "@/lib/failure-reasons";
 import { creditBonus } from "./bonus-service";
 import { creditInternal } from "./wallet-service";
 import { isLockedOut } from "./responsible-gambling";
+// R8-D (2026-10-10) · R8-C's one break: `isLockedOut` through `breakStateOf` (the end travels, so a refusal can say it).
+import { breakStateOf, type BreakState } from "@/lib/break-end";
 import { displayLabel } from "@/lib/display-label";
 import { wallClockToUtcIso } from "@/lib/zoned-time";
 import { getPlatformTimezone } from "./platform-config";
@@ -190,12 +192,21 @@ export function proposalsBlockedReason(state: ProposalsState): string {
 }
 
 export async function createProposal(userId: string, input: CreateProposalInput):
-  Promise<{ ok: true; proposal: StoredProposal } | { ok: false; error: string; code: "PAUSED" | "RATE_LIMITED" | "INVALID" }> {
+  Promise<{ ok: true; proposal: StoredProposal } | { ok: false; error: string; code: "PAUSED" | "RATE_LIMITED" | "INVALID" | "RG_LOCKED"; breakEnd?: BreakState }> {
   const cfg = getProposalsConfig();
   // Server-enforced feature gate — the "get paid to propose" reward is a
   // regulated inducement, so a submission is refused unless the feature is fully
   // ACTIVE, regardless of what the client sent (COMPLIANCE-DECISIONS.md).
   if (!isProposalsActive(cfg)) return { ok: false, error: proposalsBlockedReason(cfg.state), code: "PAUSED" };
+  /* ⭐ R8-D (2026-10-10, the owner's ruling (4) completed) · NOT DURING A BREAK. "Propose & earn" pays for a listed market, and
+     a reader whose break or self-exclusion is running is offered no way to earn: R8-C closed every door to the composer and
+     answers /proposals/new with the break's notice. A form left open from before the break is refused HERE — the service
+     every caller passes through — before anything is validated or written, and the refusal carries the break's end so the
+     composer can say the break's own sentence with it (the words its page says on a break). The read is R8-C's one break
+     (`isLockedOut` → `breakStateOf`). ⛔ A refusal's read: a failure throws and nothing is written — never "no break".
+     A closed programme answers first (its own state, as above). Voting is untouched (kept by decision). */
+  const breakEnd = breakStateOf(await isLockedOut(userId));
+  if (breakEnd) return { ok: false, error: "Proposals are not available while a responsible-gambling break is active.", code: "RG_LOCKED", breakEnd };
 
   const titleEn = (input.titleEn ?? "").trim();
   const criterion = (input.resolutionCriterion ?? "").trim();
@@ -802,12 +813,14 @@ export async function declineProposal(proposalId: string, officerId: string, rea
   const p = res.proposal;
   audit({ category: "ADMIN", action: "proposal.declined", actorId: officerId, targetType: "Proposal", targetId: proposalId, payload: { reason, note: trimmed } });
   notifyProposalDeclined(p.proposerId, { titleEn: p.titleEn, reason }).catch(() => {});
-  sendEmailToUser(p.proposerId, (email) => ({
+  // ⭐ R8-D (2026-10-10, the owner's ruling (4) completed) · `breakAware`: an officer may decline while the proposer's break
+  // runs, so the letter asks the break at send time and leaves its "propose another" out on one (the decision stays).
+  sendEmailToUser(p.proposerId, (email, reader) => ({
     to: email,
     subject: "Update on your market proposal",
-    html: proposalDeclinedHtml({ titleEn: p.titleEn, reason, note: trimmed }),
+    html: proposalDeclinedHtml({ titleEn: p.titleEn, reason, note: trimmed, onBreak: reader.onBreak }),
     tag: "proposal-declined",
-  }));
+  }), { breakAware: true });
   return { ok: true };
 }
 

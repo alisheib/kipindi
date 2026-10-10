@@ -23,7 +23,9 @@ import { ChatBubble } from "./ChatBubble";
 import { ChatPanel } from "./ChatPanel";
 import type { Message } from "./types";
 import { atRiskReply, buildUserMessage, sendMessage } from "@/lib/chat/send-message";
-import { chatWithClaude } from "@/app/_actions/chat";
+// ⭐ R8-D (2026-10-10) · the live backend as THIS reader may be answered: `chatForReader` makes chat.ts's own call, unchanged,
+// for everybody, and during the reader's break shows no door to the three programmes (its header has why it is not the prompt).
+import { chatForReader as chatWithClaude } from "@/app/_actions/chat-reader";
 import { useT } from "@/lib/i18n";
 import { isJourneySurface } from "@/lib/surfaces";
 import { useJourneyOn } from "@/lib/journey/journey-on";

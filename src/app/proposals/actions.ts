@@ -32,12 +32,14 @@ export async function createProposalAction(input: CreateProposalInput) {
   // regulated inducement — the client cannot be trusted to have blocked itself.
   const cfg = getProposalsConfig();
   if (!isProposalsActive(cfg)) {
-    return { ok: false as const, error: proposalsBlockedReason(cfg.state), code: "PAUSED" as const };
+    return { ok: false as const, error: proposalsBlockedReason(cfg.state), code: "PAUSED" as const, breakEnd: null };
   }
   const r = await createProposal(s.userId, input);
   if (r.ok) {
     revalidatePath("/proposals");
     return { ok: true as const, proposalId: r.proposal.id };
   }
-  return { ok: false as const, error: r.error, code: r.code };
+  // ⭐ R8-D (2026-10-10) · a refusal on a break (`RG_LOCKED`) carries the break's end, so the composer says the break's own
+  // sentence with it; every other refusal carries none (null — one shape for every refusal this action returns).
+  return { ok: false as const, error: r.error, code: r.code, breakEnd: r.breakEnd ?? null };
 }

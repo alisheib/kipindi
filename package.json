@@ -688,6 +688,8 @@
     "test:visual-pass-r7b": "tsx scripts/visual-pass-r7b.test.mts",
     "test:visual-pass-r7c": "tsx scripts/visual-pass-r7c.test.mts",
     "test:visual-pass-r8c": "tsx scripts/visual-pass-r8c.test.mts",
+    "test:visual-pass-r8d": "tsx scripts/visual-pass-r8d.test.mts",
+    "test:visual-pass-r8d-stores": "tsx scripts/db-scratch.mts --run npx tsx scripts/visual-pass-r8d-stores.test.mts",
     "red:journey-tickets": "tsx scripts/journey-tickets.test.mts --prove-red",
     "test:signoff": "tsx scripts/signoff.test.mts",
     "test:proposal-evidence-age": "tsx scripts/proposal-evidence-age.test.mts",

@@ -37,6 +37,8 @@
  * cool-down, KYC — bites at `startApplication` and on the /agent page's CTA, BEFORE the
  * applicant is asked to pay the fee from their wallet. A refusal that first appears at review
  * routes through the refund path as a rejection, never a silent block.
+ * ⭐ R8-D (2026-10-10) · and the responsible-gambling hold bites at the fee itself as well (`payFeeFromWallet`), because a
+ * form opened before a break can still reach the payment after the break began: one hold (`agentRgHold`), every door.
  */
 import { createHash } from "node:crypto";
 import { db, type StoredAgentApplication, type StoredAgentApplicationDocument, type StoredAgentInvitation, type AgentDocType, type AgentRejectReason, type StoredUser } from "./store";
@@ -217,10 +219,9 @@ export async function applicantEligibility(userId: string, opts: { forInvitation
   // ⭐ Responsible gambling: a person on a break, or with a serving self-exclusion, is not
   // offered a financial stake in recruiting gamblers. Checked here — at the offer — so the
   // refusal never first appears after the fee was paid.
-  const lock = await isLockedOut(userId);
-  if (lock.locked) return { ok: false, refusal: "rg_locked", until: lock.until };
-  const se = await selfExclusionStanding(userId);
-  if (se.state !== "none") return { ok: false, refusal: "rg_locked", until: null };
+  // ⭐ R8-D (2026-10-10) · the condition is `agentRgHold`'s, the ONE spelling the fee payment asks too.
+  const rg = await agentRgHold(userId);
+  if (rg) return { ok: false, refusal: "rg_locked", until: rg.until };
   // KYC — self-service needs the platform's ordinary identity verification APPROVED first.
   // An invitee uploads their own ID + selfie through the same flow and it is decided at
   // approval, so for them the door opens without it.
@@ -243,6 +244,26 @@ export async function applicantEligibility(userId: string, opts: { forInvitation
   }
   return { ok: true };
 }
+
+/**
+ * ⭐ THE PROGRAMME'S RESPONSIBLE-GAMBLING HOLD — one spelling, asked by every door that takes an application further: the
+ * start and the submit (`applicantEligibility`), an invitation's acceptance, and — R8-D (2026-10-10, the owner's ruling (4)
+ * completed) — the registration fee paid from the wallet (`payFeeFromWallet`), the one door that moves money.
+ * Held while a break or a self-exclusion runs (`isLockedOut`, the canonical predicate), and — the programme's own rule
+ * since it was built — once a self-exclusion has been recorded at all (`selfExclusionStanding`): the submit refuses that
+ * reader, so the fee must too, or somebody could pay for an application the programme will not take.
+ * ⛔ A refusal's read, never an offer's: a failed read THROWS — the caller's lock rolls back and nothing is paid or written.
+ */
+async function agentRgHold(userId: string): Promise<{ until: string | null } | null> {
+  const lock = await isLockedOut(userId);
+  if (lock.locked) return { until: lock.until };
+  const se = await selfExclusionStanding(userId);
+  if (se.state !== "none") return { until: null };
+  return null;
+}
+
+/** The programme's refusal while `agentRgHold` holds — `agent.stateRgLocked` in the reader's language (the token says it). */
+const RG_LOCKED_SENTENCE = "Applications are not available while a responsible-gambling break is active.";
 
 /** Any application of this user still owed a refund — the second-fee gate. */
 async function refundOwedTo(userId: string): Promise<StoredAgentApplication | null> {
@@ -335,12 +356,14 @@ function refusalResult(elig: Extract<ApplicantEligibility, { ok: false }>): Serv
     staff: "Staff accounts cannot apply to be agents.",
     already_agent: "You are already an approved agent.",
     account_not_active: "Your account is not active.",
-    rg_locked: "Applications are not available while a responsible-gambling break is active.",
+    rg_locked: RG_LOCKED_SENTENCE,
     terminal_rejection: "A previous decision on your application is final.",
     cooldown: "You can apply again after the cool-down period.",
     invitation_pending: "Accept your invitation first.",
   };
-  return { ok: false, error: messages[elig.refusal], code: "INVALID", reason: undefined } as ServiceResult<never>;
+  // ⭐ R8-D · the refusal's machine token rides with it (`refusal`), so a surface says the programme's own sentence in the
+  // reader's language (the submit's `rg_locked` → `agent.stateRgLocked`) instead of this English record.
+  return { ok: false, error: messages[elig.refusal], code: "INVALID", reason: undefined, refusal: elig.refusal } as ServiceResult<never>;
 }
 
 /** The one live application for the applicant, in an editable state, or a refusal. */
@@ -591,10 +614,13 @@ export async function setReferees(
  *  · `insufficient_balance` — the commonest refusal of all, and the one that must carry the
  *                         SHORTFALL so the surface can offer a deposit for the right amount.
  *  · `wallet_unavailable` — one honest token for the rest, rather than leaking an internal code.
+ * ⭐ R8-D (2026-10-10, the owner's ruling (4) completed) · `rg_locked` — the programme's responsible-gambling hold
+ *                         (`agentRgHold`): a break or a self-exclusion. The same token, and the same condition, as the
+ *                         start and the submit (`ApplyRefusal`); the form says `agent.stateRgLocked`.
  */
 export type FeeRefusal =
   | "reference_format" | "reference_taken" | "receipt_missing" | "refund_owed" | "not_editable"
-  | "kyc_required" | "email_unverified" | "insufficient_balance" | "wallet_unavailable";
+  | "kyc_required" | "email_unverified" | "insufficient_balance" | "wallet_unavailable" | "rg_locked";
 
 export type FeeResult =
   | { ok: true; data: { status: StoredAgentApplication["status"] } }
@@ -688,6 +714,23 @@ export async function payFeeFromWallet(userId: string): Promise<FeeResult & { sh
     if (app.feeDisposition === "WAIVED" || app.feeDisposition === "COLLECTED") {
       const status = await recomputeDraftStatus(app);
       return { ok: true as const, data: { status } };
+    }
+
+    /**
+     * ⛔ R8-D (2026-10-10, the owner's ruling (4) completed) · NOT DURING A BREAK — REFUSED BEFORE ANY MONEY MOVES.
+     * A form left open from before a cooling-off could still pay the registration fee from the wallet: the page stopped
+     * offering the wizard on a break (R8-C) and the submit has always refused one, but this — the programme's one door that
+     * moves money — asked nothing. It now asks the programme's own hold (`agentRgHold`, the condition the submit refuses on),
+     * so nobody pays for an application the submit will not take, and is told the programme's own sentence (`rg_locked`).
+     * ⭐ WHERE IT STANDS, and why: AFTER the settled return (a fee already paid answers exactly as before — a second tap moves
+     * nothing and is not a failure); BEFORE every other refusal (a person on a break is told the break, never sent to clear
+     * an identity or an address and then refused anyway); and like every precondition here, read inside this lock and
+     * before `payAgentRegistrationFee` takes the wallet lock — so the wallet lock is never held across it. A returned
+     * refusal before any write commits nothing; a failed read throws out of the lock and rolls back. Amounts, the ledger
+     * group and the idempotency key are untouched.
+     */
+    if (await agentRgHold(userId)) {
+      return { ok: false as const, error: RG_LOCKED_SENTENCE, code: "INVALID" as const, refusal: "rg_locked" as const };
     }
 
     // ⛔ RETAINED: we still hold money of theirs from a previous application.

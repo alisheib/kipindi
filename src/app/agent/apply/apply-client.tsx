@@ -180,6 +180,9 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
       fd.set("acceptTerms", "true");
       let r: Awaited<ReturnType<typeof submitAgentApplicationAction>>;
       try { r = await submitAgentApplicationAction(fd); } catch { r = { ok: false, error: t.error.somethingDidntWork }; }
+      // ⭐ R8-D (2026-10-10) · a break that began after this form was opened: the programme's own sentence, in the reader's
+      // language, under "Couldn't submit" (a refusal, never "something didn't work" — a break is the tool working).
+      if (!r.ok && r.refusal === "rg_locked") { setResult({ open: true, variant: "danger", title: t.toast.couldntSubmit, subtitle: t.agent.stateRgLocked }); return; }
       if (!r.ok) { setResult({ open: true, variant: "danger", title: t.error.somethingDidntWork, subtitle: r.error }); return; }
       setResult({ open: true, variant: "success", title: t.agent.submittedTitle, subtitle: fill(t.agent.submittedBody, { days: String(limits.reviewSlaDays) }) });
     });
@@ -408,7 +411,9 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
                       /* TRANSLATED COPY FROM A TOKEN, not a regex over English prose -- the defect
                          this form already shipped once (/refund/i.test(r.error)), which put raw
                          English into a Swahili UI for every unhandled refusal. */
-                      const copy = r.refusal === "refund_owed" ? t.agent.payRefundOwed
+                      // R8-D (2026-10-10) · `rg_locked`: a break or a self-exclusion — the programme's own sentence.
+                      const copy = r.refusal === "rg_locked" ? t.agent.stateRgLocked
+                        : r.refusal === "refund_owed" ? t.agent.payRefundOwed
                         : r.refusal === "kyc_required" ? t.agent.payKycFirst
                         : r.refusal === "email_unverified" ? t.agent.payEmailFirst
                         : r.refusal === "insufficient_balance" ? fill(t.agent.payShortfall, { amount: formatTzs(r.shortfallTzs ?? 0) })
@@ -420,7 +425,8 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
                         setBalanceTzs(Math.max(0, fee.totalTzs - r.shortfallTzs));
                       }
                       // §F2/§F3 (R5-I): still sticky (money), at the registry's rank for each refusal — a short balance and an
-                      // unconfirmed address the applicant can fix (`factual`); a refund owed, an identity check, a wallet fault `danger`.
+                      // unconfirmed address the applicant can fix (`factual`); a refund owed, an identity check, a wallet fault `danger`
+                      // — and a break (R8-D), which they cannot lift, at the registry's rank for one (`cooling_off`: `danger`).
                       toast({ title: t.toast.couldntSubmit, description: copy, variant: r.refusal === "insufficient_balance" ? refusalVariant("balance_insufficient") : r.refusal === "email_unverified" ? refusalVariant("email_unverified") : "danger", durationMs: 0 });
                       return;
                     }

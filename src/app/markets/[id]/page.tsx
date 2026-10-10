@@ -276,7 +276,10 @@ export default async function MarketDetail({
    */
   // ⭐ Standing, not role: a deactivated agent's code leaves the share link in the same instant
   // it leaves the bind (`inviteViewerFor` reads the same predicate the bind gate does).
-  const myRefCode = session && inviteIsLiveFor(await inviteViewerFor(session.userId))
+  // ⭐ R8-D (2026-10-10, the owner's ruling (4) completed) · …AND NOT DURING A BREAK: a reader whose break or self-exclusion is
+  // running shares the plain link — no code, nothing minted — from the break this page already read (R4-I's `breakEnd`,
+  // failing open as an offer does). Off a break the link is today's.
+  const myRefCode = session && !breakEnd && inviteIsLiveFor(await inviteViewerFor(session.userId))
     ? await ensureAffiliateAccount(session.userId).then((a) => a.code).catch(() => undefined)
     : undefined;
   // F3 — is this market on the signed-in player's watchlist?

@@ -159,6 +159,7 @@ erasure can never reach.
 | **How** | ⭐ **PAID FROM THE APPLICANT'S WALLET** (Ali, 2026-09-10). They deposit on the ordinary rails, then pay the fee from that balance — no receipt, no typed reference, no officer attestation. ⛔ **Reason: a Lipa/QR payment carries no reference on any network and a bank receipt is only as good as the human reading it; a wallet debit carries the payer's identity by construction.** ⚠️ Supersedes the out-of-band rail of 2026-09-07. `COMPLIANCE-DECISIONS.md` § 2026-09-10 |
 | **Waiver** | ⭐ An officer may waive it or record it as collected in cash — **with a typed reason, audited** (Ali, 2026-09-06) |
 | **On rejection** | **Refunded in full** — we did not provide the service |
+| **During a break** | ⛔ **Refused, before any money moves** (R8-D, 2026-10-10 — the owner's ruling (4) of that day). `payFeeFromWallet` asks the programme's own responsible-gambling hold (`agentRgHold`: a break or a self-exclusion — the condition the start and the submit refuse on), so a form opened before a cooling-off cannot pay the fee during it, and nobody pays for an application the submit will not take. The applicant reads `agent.stateRgLocked`. A fee already paid answers exactly as before (idempotent). `DESIGN_AUTHORITY.md` §C rule 8 · `npm run test:visual-pass-r8d` |
 
 ⭐ **The fee ENTERS the player ledger** (Ali, 2026-09-10) — it is debited from the applicant's
 wallet, so it carries a `Transaction` and a balanced `LedgerEntry` group whose money-in leg is

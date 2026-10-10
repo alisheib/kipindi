@@ -33,6 +33,9 @@ import { creditInternal, debitInternal } from "./wallet-service";
 import { creditBonus } from "./bonus-service";
 import { getBonusConfig } from "./bonus-config";
 import { sendEmailToUser, referralRewardHtml, referralEarningHtml, agentCommissionReversedHtml, agentCommissionEarnedHtml } from "./email";
+// R8-D (2026-10-10, the owner's ruling (4) completed): the friend-joined notice asks its recipient's break — R8-C's one break.
+import { isLockedOut } from "./responsible-gambling";
+import { breakStateOf } from "@/lib/break-end";
 import { appUrl } from "@/lib/app-url";
 import { withLock } from "./locks";
 import { formatTzs } from "@/lib/utils";
@@ -1071,7 +1074,13 @@ export async function bindRecruit(opts: { recruitUserId: string; code: string; i
   });
 
   // Notify the referrer that their friend joined.
-  notifyReferralJoined(referrerUserId, { recruitMasked: maskName(recruit.displayName, recruit.phoneE164) });
+  /* ⭐ R8-D (2026-10-10, the owner's ruling (4) completed) · …EXCEPT DURING THE REFERRER'S BREAK. The notice is only the
+     recruiting programme's news and its door (/profile/invite), and a reader whose break or self-exclusion is running is
+     offered no way to recruit — so it is not written. The bind above stands as before (an attribution, not an offer), and
+     the recruit is in the referrer's list when the break ends. Read as every offer reads the break: `isLockedOut` through
+     `breakStateOf`, failing open (a failed read sends the notice, as before). */
+  const referrerBreak = await Promise.resolve().then(() => isLockedOut(referrerUserId)).then(breakStateOf).catch(() => null);
+  if (!referrerBreak) notifyReferralJoined(referrerUserId, { recruitMasked: maskName(recruit.displayName, recruit.phoneE164) });
 
   // Sign-up-triggered bonus (if configured).
   // ⛔ PLAYER PROGRAMME ONLY, AND BY CONSTRUCTION RATHER THAN BY AN EARLY RETURN INSIDE
@@ -1191,12 +1200,13 @@ async function payBonus(opts: { referrerUserId: string; recruitUserId: string; h
       });
       if (finalStatus === "PAID") {
         notifyReferralReward(userId, { type: "BONUS", amountTzs: amount });
-        sendEmailToUser(userId, (email) => ({
+        // R8-D · `breakAware`: the letter learns its recipient's break at send time and leaves its solicitation out on one.
+        sendEmailToUser(userId, (email, reader) => ({
           to: email,
           subject: `Referral bonus · ${formatTzs(amount)}`,
-          html: referralEarningHtml({ type: "BONUS", amountTzs: amount }),
+          html: referralEarningHtml({ type: "BONUS", amountTzs: amount, onBreak: reader.onBreak }),
           tag: "referral",
-        }), { confirmedOnly: true }).catch(() => {});
+        }), { confirmedOnly: true, breakAware: true }).catch(() => {});
       }
     };
 
@@ -1272,16 +1282,18 @@ async function payPrize(opts: { referrerUserId: string; recruitUserId: string; m
     // Email the referrer their reward (best-effort, fire-and-forget).
     const recruit = await db.user.findById(opts.recruitUserId);
     const acct = await db.affiliate.findByUserId(opts.referrerUserId);
-    sendEmailToUser(opts.referrerUserId, (email) => ({
+    // R8-D · `breakAware`: the letter learns its recipient's break at send time and leaves its solicitation out on one.
+    sendEmailToUser(opts.referrerUserId, (email, reader) => ({
       to: email,
       subject: `Referral reward · ${formatTzs(cfg.prize.amountTzs)}`,
       html: referralRewardHtml({
         amount: cfg.prize.amountTzs,
         referredName: maskName(recruit?.displayName ?? null, recruit?.phoneE164 ?? ""),
         totalEarned: acct?.totalEarnedTzs ?? cfg.prize.amountTzs,
+        onBreak: reader.onBreak,
       }),
       tag: "referral-reward",
-    }), { confirmedOnly: true });
+    }), { confirmedOnly: true, breakAware: true });
   }
 }
 
@@ -1595,12 +1607,13 @@ export async function onRecruitSettlement(
       sendEmailToUser(referrerUserId, (email) => ({ to: email, subject: `Agent commission · ${formatTzs(paid.cut)}`, html: agentCommissionEarnedHtml({ amountTzs: paid.cut }), tag: "agent-commission" }), { confirmedOnly: true }).catch(() => {});
     } else {
       notifyReferralReward(referrerUserId, { type: "COMMISSION", amountTzs: paid.cut });
-      sendEmailToUser(referrerUserId, (email) => ({
+      // R8-D · `breakAware`: the letter learns its recipient's break at send time and leaves its solicitation out on one.
+      sendEmailToUser(referrerUserId, (email, reader) => ({
         to: email,
         subject: `Referral commission · ${formatTzs(paid.cut)}`,
-        html: referralEarningHtml({ type: "COMMISSION", amountTzs: paid.cut }),
+        html: referralEarningHtml({ type: "COMMISSION", amountTzs: paid.cut, onBreak: reader.onBreak }),
         tag: "referral",
-      }), { confirmedOnly: true }).catch(() => {});
+      }), { confirmedOnly: true, breakAware: true }).catch(() => {});
     }
   } else if (paid) {
     // A payable was created and no money moved. That is an officer's problem, not a silent
