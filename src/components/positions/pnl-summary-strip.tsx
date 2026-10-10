@@ -25,7 +25,8 @@ import { formatNumber, formatTzsAbs, formatTzsSigned } from "@/lib/utils";
  */
 export const PNL_STRIP = {
   head: "flex items-center justify-between gap-3",
-  live: "inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.08em] text-text-subtle",
+  // The live tag ends on the strip's edge, its trailing 0.08em taken back (round 7, R7-C, 2026-10-10); the ghost reads it here.
+  live: "inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.08em] text-text-subtle kp-track-end kp-track-end--08",
   cell: "pl-3.5 pt-0.5",
   label: "m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-subtle",
   value: "mt-[7px] font-mono text-[19px] font-bold tabular-nums leading-[1.1]",

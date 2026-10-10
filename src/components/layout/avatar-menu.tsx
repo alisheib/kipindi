@@ -486,7 +486,8 @@ function Item({ href, icon: Ico, en, sw, zh, accent, current, proposalsBadge, jo
             Sora 13px, inside the label's ~139px beside INAKUJA — visual-pass-r4h §6.6); one span, so the words stay one flex item. */}
         {journey ? <span>{keepLastWords(primary)}</span> : primary}
         {proposalsBadge && (
-          <ProposalsStateBadge state={proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-auto" />
+          // The journey's flag a whole 18px (`kp-flag-xs`, round 7, R7-C); the classic menu's is today's (frozen chrome).
+          <ProposalsStateBadge state={proposalsBadge} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className={journey ? "ml-auto kp-flag-xs" : "ml-auto"} />
         )}
         {/* ⛔ No generic coming-soon badge here. Invite was its only producer, and Invite is never
             badged: a viewer who may not hold a link has the row filtered out of `rows` above, and

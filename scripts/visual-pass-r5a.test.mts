@@ -389,12 +389,15 @@ section("6 · F18 · the Gaming Board's name is one name wherever its line can h
 /* ══ §7 · F19 · RIGHT-ALIGNED TRACKED LABELS ═══════════════════════════════════════════════════════════════════════ */
 section("7 · F19 · a right-aligned tracked label ends where its neighbours end (tile 327: NDIO x355, the rest x357–358)");
 {
-  const list = /((?:[^{}\n]+,\s*\n)*)\.kp-track-end::after \{ content: ""; display: inline-block; margin-inline-end: calc\(-1 \* var\(--track-end, 0\.14em\)\); \}/.exec(CSS);
+  // Re-pinned (round 7, R7-C, 2026-10-10): the take-back is the label's own end margin, not an empty box after its words —
+  // the box took the tracking out of a shrink-to-fit label's WIDTH and wrapped a two-word one (R5-1, 34245fd4). Same rule,
+  // the same four selectors, without `::after` (test:visual-pass-r7c §2.8 holds the technique).
+  const list = /((?:[^{}\n]+,\s*\n)*)\.kp-track-end \{ margin-inline-end: calc\(-1 \* var\(--track-end, 0\.14em\)\); \}/.exec(CSS);
   const sels = (list?.[1] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  const want = [".mcardp-pctcap::after", ".mcardp-moveline .mcardp-oneside::after", ".tipbar-labels .tb-no::after"];
+  const want = [".mcardp-pctcap", ".mcardp-moveline .mcardp-oneside", ".tipbar-labels .tb-no"];
   ok("7.1 · one take-back for the kind: the price caption, the card's one-sided label on its right-aligned move line, the bar's right side label, `kp-track-end`",
-    !!list && want.every((s) => sels.includes(s)), show(sels));
-  ok("7.1′ PLANT · the price caption left out is reported", !want.every((s) => sels.filter((x) => x !== ".mcardp-pctcap::after").includes(s)));
+    !!list && want.every((s) => sels.includes(s)) && !/::after/.test(list?.[0] ?? ""), show(sels));
+  ok("7.1′ PLANT · the price caption left out is reported", !want.every((s) => sels.filter((x) => x !== ".mcardp-pctcap").includes(s)));
   // Each take-back equals its label's own tracking.
   const eyebrowList = /((?:[^{}\n]+,\s*\n)+)\.mcardp-pctcap \{ letter-spacing: 0\.14em; \}/.exec(CSS)?.[1] ?? "";
   const res = read("src/app/results/page.tsx"), ud = read("src/app/updown/page.tsx");

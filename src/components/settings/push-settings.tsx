@@ -146,7 +146,8 @@ export function PushSettings() {
             aria-label={t.push.title}
           />
         ) : (
-          <span className="shrink-0 font-mono text-micro uppercase tracking-[0.12em] text-text-faint">
+          // Where the switch stands, "N/A" ends on the row's edge: its trailing 0.12em taken back (round 7, R7-C, 2026-10-10).
+          <span className="shrink-0 font-mono text-micro uppercase tracking-[0.12em] text-text-faint kp-track-end kp-track-end--12">
             {state === "loading" ? "…" : t.push.na}
           </span>
         )}

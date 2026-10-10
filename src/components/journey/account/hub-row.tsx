@@ -59,10 +59,12 @@ export function HubRowItem({ row, t, viewer, locale }: { row: HubRow; t: Dict; v
           {/* The programme's flag rides its label (WP12's tiles 124, 255, 297, 2026-10-08): beside it where both fit,
               under it where they do not — it no longer takes the label's width from the row and folds
               "Pendekeza na upate zawadi" in two at 390. `.kp-hub__head`. */}
+          {/* Round 7 (R7-C, 2026-10-10; tiles 255 297 331): the flag's box a whole 18px (`kp-flag-xs`), and stacked under the
+              label the pair centred in the row by its ink — the flag carries the label's air (`.kp-hub__head`, globals.css). */}
           {row.extra === "proposals" && viewer.signedIn ? (
             <span className="kp-hub__head">
               {label}
-              <ProposalsStateBadge state={viewer.proposalsState} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" />
+              <ProposalsStateBadge state={viewer.proposalsState} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="kp-flag-xs" />
             </span>
           ) : label}
           {row.sub && <HubSub text={hubWord(t, row.sub)} />}

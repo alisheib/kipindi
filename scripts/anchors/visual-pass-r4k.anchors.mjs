@@ -30,7 +30,9 @@ export const MUTATIONS = [
   { name: "the empty state's title not hung", file: "src/components/ui/empty-state.tsx", from: "{keepConnectives(title, [], hangCjkMarks)}", to: "{keepConnectives(title)}", expect: "4.10" },
   { name: "the wave's top and bottom hard again", file: "src/app/globals.css", from: "  mask-image: linear-gradient(to bottom, transparent, black var(--sp-16), black calc(100% - var(--sp-16)), transparent);\n", to: "", expect: "5.2" },
   { name: "the wave's sides fade on a phone too", file: "src/app/globals.css", from: "--kp-nf-side: clamp(0px, calc((100vw - var(--w-form)) * 1000), var(--sp-16));", to: "--kp-nf-side: var(--sp-16);", expect: "5.4" },
-  { name: "the question's column back under the watermark", file: "src/app/markets/[id]/page.tsx", from: " pr-[calc(2em+12px)] ", to: " ", expect: "7.1" },
+  // Re-anchored (round 7, R7-C, 2026-10-10): the padding is now the h1's last class — round 4's Tailwind indent that followed it
+  // moved into globals.css's one display-heading rule (`[data-stem]`) — so the anchor ends on the class's closing quote.
+  { name: "the question's column back under the watermark", file: "src/app/markets/[id]/page.tsx", from: " pr-[calc(2em+12px)]\"", to: "\"", expect: "7.1" },
   { name: "the clock's label back in --warning-fg (gold)", file: "src/components/markets/countdown.tsx", from: "uppercase eyebrow text-text-subtle\">{resolvedLabel}", to: "uppercase eyebrow text-warning-fg\">{resolvedLabel}", expect: "8.1" },
   { name: "the market panel's eyebrow back in gold", file: "src/app/markets/[id]/page.tsx", from: "eyebrow font-bold text-text-subtle\">\n                  {t.market.signInToPredict}", to: "eyebrow font-bold text-gold-300\">\n                  {t.market.signInToPredict}", expect: "8.2" },
   { name: "a missing round titled ‘Up & Down’ again", file: "src/app/updown/[roundId]/page.tsx", from: "if (!d) return notFoundMetadata();", to: "if (!d) return { title: \"Up & Down\" };", expect: "2.5" },

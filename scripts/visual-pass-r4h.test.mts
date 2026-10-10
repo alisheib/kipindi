@@ -174,7 +174,9 @@ section("2 · E24 E25 E26 a long name breaks inside its column, never one charac
   const resolved = (b: string) => b.replace(/className=\{`min-w-0 \$\{PROFILE_NAME_FACE\} ([^`]*)`\}/, (_, rest: string) => `className="min-w-0 ${face} ${rest}"`);
   const nameRule = (b0: string, b = resolved(b0)) => [
     !/className="mt-1\.5 inline-flex min-h-\[40px\] max-w-full items-center gap-2 group text-left"/.test(b) && "the button may outgrow its column",
-    !/<span className="min-w-0 font-display text-\[24px\] md:text-\[28px\] font-bold leading-tight tracking-\[-0\.02em\] text-text text-balance \[overflow-wrap:anywhere\]">/.test(b) && "the name has no anywhere-break, balance or min-w-0",
+    // Round 7 (R7-C, 2026-10-10) moved this pin: the name is a display heading and asks the one stem question first
+    // (`data-stem={stemOf(…)}`, test:visual-pass-r7c §3 holds it); this rule reads its class, as before.
+    !/<span (?:data-stem=\{stemOf\([^}]*\)\} )?className="min-w-0 font-display text-\[24px\] md:text-\[28px\] font-bold leading-tight tracking-\[-0\.02em\] text-text text-balance \[overflow-wrap:anywhere\]">/.test(b) && "the name has no anywhere-break, balance or min-w-0",
     // Review 6, B-4 (2026-10-09) moved this pin: the end is kept at the SERVER's cut (`nameWithEnd` + `currentNameEnd`).
     !/\? nameWithEnd\(currentName, currentNameEnd\) :/.test(b) && "the name's end is not kept (at the server's cut)",
   ].filter(Boolean) as string[];

@@ -275,7 +275,8 @@ export function PublicFooter({
           {proposalsState !== "DISABLED" && (
             <FooterLink href="/proposals" balance={journeyShown}>
               {journeyShown ? t.proposals.title : t.footer.proposeGetPaid}
-              <ProposalsStateBadge state={proposalsState} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-1.5" />
+              {/* The journey's flag a whole 18px (`kp-flag-xs`, round 7, R7-C); the classic footer's is today's (frozen chrome). */}
+              <ProposalsStateBadge state={proposalsState} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className={journeyShown ? "ml-1.5 kp-flag-xs" : "ml-1.5"} />
             </FooterLink>
           )}
           {/* ⭐ REPOINTED 2026-09-10, AND NO NEW FOOTER KEY WAS NEEDED. This link's own label is

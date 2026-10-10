@@ -79,7 +79,7 @@ export function PerformanceGhost({ journey }: { journey: boolean }) {
       <section className="glass-panel p-5 kp-shimmer-track" aria-hidden>
         <div className="mb-3 flex items-center justify-between gap-3">
           <span className="gilt-eyebrow"><GhostText>{t.performance.pnlOverTime}</GhostText></span>
-          <span className="font-mono text-micro uppercase tracking-[0.08em]"><GhostText>{t.performance.cumulativePerSettlement}</GhostText></span>
+          <span className="text-right font-mono text-micro uppercase tracking-[0.08em] kp-track-end kp-track-end--08"><GhostText>{t.performance.cumulativePerSettlement}</GhostText></span>
         </div>
         <div className="aspect-[3/1] w-full rounded bg-bg-overlay" />
         <p className="sm:hidden mt-1.5 mb-0 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-body-sm tabular-nums">
@@ -105,7 +105,7 @@ export function PerformanceGhost({ journey }: { journey: boolean }) {
         <div className="rounded-xl border border-border bg-bg-elevated p-5 kp-shimmer-track">
           <div className="flex items-baseline justify-between gap-2">
             <p className="gilt-eyebrow"><GhostText>{t.performance.currentStreak}</GhostText></p>
-            <p className="font-mono text-micro uppercase tracking-[0.12em] tabular-nums"><GhostText>{`${t.performance.longestStreak} 0`}</GhostText></p>
+            <p className="text-right font-mono text-micro uppercase tracking-[0.12em] tabular-nums kp-track-end kp-track-end--12"><GhostText>{`${t.performance.longestStreak} 0`}</GhostText></p>
           </div>
           <div className="mt-3 flex items-center gap-2">
             <LineBar height={30} width={20} />

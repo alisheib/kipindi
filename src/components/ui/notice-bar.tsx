@@ -90,7 +90,14 @@ export function NoticeBar({
           an offline state, the page appeared 200px wider some visits and not
           others — which is precisely the "sometimes the pages are too wide" in
           the original user report. */}
-      <div className="mx-auto flex max-w-board flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2 lg:px-6">
+      {/* ⭐ ITS WORDS ON THE PAGE'S EDGE (the visual pass, round 7, R7-C, 2026-10-10; round 6's read R8-4, tile 326). The
+          row was padded 20px below 1024 (`px-4` on the overridden scale), so on /results at sw 390 the session-ended
+          notice's glyph inked from x21 and its Ingia box ended at x369, 4–5px inside the 16px edge everything else on the
+          page keeps (x16 / x373). The row now takes the page's own house padding — PageContainer's `px-3 lg:px-6`, the
+          journey header's `--sp-4` / `--sp-8` — 16px below 1024 and 32px from it. One component, every bar: the
+          session-ended notice, the offline notice, the operator's announcement and maintenance bars, the away summary
+          and the preview marker all render through here, in both shells. */}
+      <div className="mx-auto flex max-w-board flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-2 lg:px-6">
         {Glyph
           ? <Glyph s={15} className="shrink-0" aria-hidden />
           : <span className="shrink-0 inline-block h-2 w-2 rounded-full" style={{ background: t.accent }} aria-hidden />}

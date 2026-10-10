@@ -60,6 +60,7 @@ import { playerStatusInk } from "@/lib/status-tone";
 import { renderFailure } from "@/lib/failure-reasons";
 import { getBonusSummary } from "@/lib/server/bonus-service";
 import { pickLocalized, pickCriterion, marketCategoryLabel } from "@/lib/localized";
+import { stemOf } from "@/lib/display-stem";
 import { PageContainer } from "@/components/layout/page-container";
 import { signoffOf } from "@/lib/markets/signoff";
 import { objectionRulings } from "@/lib/server/reversals";
@@ -145,8 +146,10 @@ export async function generateMetadata(
  * straight-stem capital below starts at 0.082em of the em (the rendered ink runs ~0.2px proud of the outline, as R3-A
  * found for the headline's 800), I at 0.084. Only the h1's FIRST line is set back (`text-indent`), and only when the
  * question starts on one of these — the letter decides, never the locale. ⛔ Measure a letter before adding it.
+ * ⭐ ONE RULE FOR EVERY DISPLAY HEADING SINCE ROUND 7 (R7-C, 2026-10-10): the letters and the test live in
+ * `lib/display-stem.ts` (`stemOf`, U measured and added), the set-back in globals.css (`[data-stem]`), and every page title,
+ * auth panel, landing head and display word asks the same question this h1 does.
  */
-const QUESTION_STEM = /^[BDEFHIKLMNPR]/u;
 
 export default async function MarketDetail({
   params,
@@ -642,8 +645,8 @@ export default async function MarketDetail({
               </span>
             );
           })()}
-          <h1 data-stem={QUESTION_STEM.test(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)) ? "" : undefined}
-            className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance pr-[calc(2em+12px)] data-[stem]:indent-[-0.075em]"
+          <h1 data-stem={stemOf(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}
+            className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance pr-[calc(2em+12px)]"
           >{/* `keepFigures` (round 4, edges 197 199 255): "2026-27" and "dakika 28:00" never break inside. */}{keepFigures(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}</h1>
         </div>
       </header>

@@ -13,6 +13,7 @@
  */
 import { Reveal } from "@/components/layout/reveal";
 import { fill } from "@/lib/utils";
+import { stemOf } from "@/lib/display-stem";
 import type { Dict } from "@/lib/i18n-dict";
 
 /**
@@ -38,7 +39,8 @@ export function HowItWorks({ t, feePct }: { t: Dict; feePct: number }) {
         </p>
         {/* The modal's own heading and lede, from the modal's own keys.
             `text-balance` (2026-09-13): at 360 the zh heading left a lone glyph on line two. */}
-        <h2 className="kp-shead__h text-balance">{t.primer.card1Title}</h2>
+        {/* Display headings on the band's edge in every language (round 7, R7-C; `lib/display-stem.ts`). */}
+        <h2 data-stem={stemOf(t.primer.card1Title)} className="kp-shead__h text-balance">{t.primer.card1Title}</h2>
         <p className="kp-lede">{t.primer.card1Body}</p>
 
         <div className="kp-steps">
@@ -46,7 +48,7 @@ export function HowItWorks({ t, feePct }: { t: Dict; feePct: number }) {
             <div key={s.n} className="kp-step">
               {/* The numeral sits ON the rule and knocks it out with the band's own surface. */}
               <span className="kp-step__n">{s.n}</span>
-              <h3 className="kp-step__h">{s.h}</h3>
+              <h3 data-stem={stemOf(s.h)} className="kp-step__h">{s.h}</h3>
               <p className="kp-step__b">{s.b}</p>
             </div>
           ))}

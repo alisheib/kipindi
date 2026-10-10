@@ -45,6 +45,7 @@ import { Chip } from "@/components/ui/chip";
 import { Reveal } from "@/components/layout/reveal";
 import { AssetMark } from "@/components/updown/asset-mark";
 import { fill, formatNumber } from "@/lib/utils";
+import { stemOf } from "@/lib/display-stem";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import type { UpdownBandRound } from "@/lib/updown-match";
 import { UpdownMatchState } from "./updown-match-state";
@@ -63,7 +64,7 @@ export function UpdownBand({ t, locale, liveCount, round }: {
       <p className="kp-hero__eyebrow text-balance" style={{ marginBottom: "var(--sp-1)" }}>
         <span className="live-dot" /> {t.home.updownEyebrow}
       </p>
-      <h2 className="kp-shead__h text-balance" style={{ marginTop: 0 }}>{t.market.udTitle}</h2>
+      <h2 data-stem={stemOf(t.market.udTitle)} className="kp-shead__h text-balance" style={{ marginTop: 0 }}>{t.market.udTitle}</h2>
       <p className="kp-trust__b" style={{ maxWidth: "52ch" }}>{t.market.udTagline}</p>
       {/* The live count only when no round is shown (I-12): beside a round it says nothing the round
           does not. The singular has its own key (the page printed "1 rounds live now" on 2026-09-26). */}

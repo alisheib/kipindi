@@ -304,9 +304,11 @@ export default async function PerformancePage({
           {/* ── P&L over time ─────────────────────────────────────── */}
           {pnlSeries.length > 1 && (
             <section aria-label={t.performance.pnlOverTime} className="glass-panel p-5">
+              {/* The caption ends on the panel's edge (round 7, R7-C, 2026-10-10): its trailing 0.08em taken back, and a
+                  caption squeezed onto two lines (a 320 phone) keeps each line on that edge. Its drawing follows. */}
               <div className="mb-3 flex items-center justify-between gap-3">
                 <span className="gilt-eyebrow">{t.performance.pnlOverTime}</span>
-                <span className="font-mono text-micro uppercase tracking-[0.08em] text-text-subtle">{t.performance.cumulativePerSettlement}</span>
+                <span className="text-right font-mono text-micro uppercase tracking-[0.08em] text-text-subtle kp-track-end kp-track-end--08">{t.performance.cumulativePerSettlement}</span>
               </div>
               <PnlChart data={pnlSeries} ariaLabel={t.performance.pnlOverTime} breakEvenLabel={t.performance.breakEven} />
             </section>
@@ -385,7 +387,8 @@ export default async function PerformancePage({
             <div className="rounded-xl border border-border bg-bg-elevated p-5">
               <div className="flex items-baseline justify-between gap-2">
                 <p className="gilt-eyebrow" style={{ color: "var(--text-subtle)" }}>{t.performance.currentStreak}</p>
-                <p className="font-mono text-micro uppercase tracking-[0.12em] text-text-subtle tabular-nums">{t.performance.longestStreak} {formatNumber(longestStreak)}</p>
+                {/* Ends on the card's edge, its trailing 0.12em taken back (round 7, R7-C, 2026-10-10). */}
+                <p className="text-right font-mono text-micro uppercase tracking-[0.12em] text-text-subtle tabular-nums kp-track-end kp-track-end--12">{t.performance.longestStreak} {formatNumber(longestStreak)}</p>
               </div>
               <div className="mt-3 flex items-center gap-2">
                 {/* §T5 — every numeral is JetBrains Mono, "no exceptions". This one was

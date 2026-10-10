@@ -18,6 +18,7 @@ import { I } from "@/components/ui/glyphs";
 import { FiftyMark, TippingBar } from "@/components/brand";
 import { sideWord } from "@/lib/side-label";
 import { useT } from "@/lib/i18n";
+import { stemOf } from "@/lib/display-stem";
 
 const STORAGE_KEY = "50pick-primer-seen";
 // ⛔ `s` = the marketing opt-out page (D6): somebody who came to STOP marketing is never shown a betting
@@ -166,7 +167,9 @@ function VisualDial({ dragLabel, yes, no, minLabel, maxLabel }: {
           {/* Side labels — anchored to the two ENDS of the track, not offset from them,
               so a longer locale grows inward instead of off the edge of the viewBox. */}
           <text x="6" y="50" fontFamily="JetBrains Mono, monospace" fontWeight="600" fontSize="8.5" fill="oklch(70% 0.12 152)" letterSpacing="0.08em">{yes}</text>
-          <text x="274" y="50" textAnchor="end" fontFamily="JetBrains Mono, monospace" fontWeight="600" fontSize="8.5" fill="oklch(70% 0.14 22)" letterSpacing="0.08em">{no}</text>
+          {/* The end-anchored label's advance carries its trailing 0.08em (0.68 of the viewBox at 8.5), so it is anchored that
+              much further out (round 7, R7-C, 2026-10-10): its last letter ends 6 in from the track's end, as YES starts 6 in. */}
+          <text x="274.68" y="50" textAnchor="end" fontFamily="JetBrains Mono, monospace" fontWeight="600" fontSize="8.5" fill="oklch(70% 0.14 22)" letterSpacing="0.08em">{no}</text>
         </svg>
       </div>
       {/* Annotation labels */}
@@ -178,7 +181,8 @@ function VisualDial({ dragLabel, yes, no, minLabel, maxLabel }: {
             ⭐ The instruction is the row's HIGHLIGHT, in the brand's ink — the product's one non-money accent (R5-C, the
             second gold audit, 2026-10-09): it was `--gilt`, money's ink, on a word that says "drag" (Q5). */}
         <span style={{ color: "var(--brand-300)" }}>{dragLabel}</span>
-        <span>{maxLabel}</span>
+        {/* The upper bound ends on the row's edge, its trailing 0.12em taken back (round 7, R7-C, 2026-10-10). */}
+        <span className="kp-track-end kp-track-end--12">{maxLabel}</span>
       </div>
     </div>
   );
@@ -494,8 +498,8 @@ export function FirstVisitPrimer() {
             {c.eyebrow}
           </p>
 
-          {/* Title */}
-          <h2 className="mt-1.5 font-display text-[22px] sm:text-[24px] font-bold text-text leading-tight tracking-[-0.02em]">
+          {/* Title — on the card's edge when it opens on a straight-stem capital (round 7, R7-C; `lib/display-stem.ts`). */}
+          <h2 data-stem={stemOf(c.title)} className="mt-1.5 font-display text-[22px] sm:text-[24px] font-bold text-text leading-tight tracking-[-0.02em]">
             {c.title}
           </h2>
 

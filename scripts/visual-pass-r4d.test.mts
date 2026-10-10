@@ -248,11 +248,14 @@ section("6 · the market page: the star midway between its neighbours' ink; the 
     `${before.toFixed(2)} − ${mr?.[1]} vs ${after.toFixed(2)}`);
   ok("6.1′ PLANT · without it the gaps differ by the bearing — the 27 | 25 the tiles measured", before - after > 1.9, `${(before - after).toFixed(2)}px`);
 
-  ok("6.2 · the question's stem letters are the ones measured: B D E F H I K L M N P R (Sora 700: 0.082em outline, 0.075em ink)",
-    page.includes("const QUESTION_STEM = /^[BDEFHIKLMNPR]/u;"));
+  // Re-pinned (round 7, R7-C, 2026-10-10): the rule is every display heading's now — the letters live in lib/display-stem.ts
+  // (round 4's twelve, and U, measured from Sora 700's outline: 0.068em), the set-back in globals.css (`[data-stem=""]`,
+  // 0.075em), and this h1 asks `stemOf` as every page title does. The letter still decides, never the locale.
+  ok("6.2 · the question's stem letters are the ones measured: B D E F H I K L M N P R (Sora 700: 0.082em outline, 0.075em ink), and U since round 7",
+    code("src/lib/display-stem.ts").includes("export const DISPLAY_STEM = /^[BDEFHIKLMNPRU]/u;"));
   ok("6.3 · the h1 is set back on its FIRST line only, by the letter it opens on — never by the locale",
-    page.includes("<h1 data-stem={QUESTION_STEM.test(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)) ? \"\" : undefined}")
-      && page.includes("data-[stem]:indent-[-0.075em]") && !/data-stem=\{[^}]*locale ===/.test(page));
+    page.includes("<h1 data-stem={stemOf(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}")
+      && /\[data-stem=""\]:where\(:not\(\.kp-hero__grp\)\) \{ text-indent: -0\.075em; \}/.test(css) && !/data-stem=\{[^}]*locale ===/.test(page));
   const STEM = /^[BDEFHIKLMNPR]/u;
   ok("6.4 CONTROL · \"Mvua Dar es Salaam…\" and \"NBC…\" are set back; \"Je, …\", \"Yanga…\" and 是否 are not",
     STEM.test("Mvua Dar es Salaam yazidi 200mm Julai") && STEM.test("NBC Premier League") && !STEM.test("Je, Simba SC")

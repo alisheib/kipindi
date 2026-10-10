@@ -8,6 +8,7 @@ import { DotSeq } from "@/components/ui/dot-seq";
 import { keepLastWords } from "@/components/ui/keep-words";
 import { ACHIEVEMENTS, type AchievementId } from "@/components/badges/icons";
 import { PROFILE_NAME_FACE, PROFILE_PHONE_LINE, PROFILE_ROW_TITLE, PROFILE_SIGN_OUT_TITLE } from "@/components/profile/profile-faces";
+import { stemOf } from "@/lib/display-stem";
 import type { Dict } from "@/lib/i18n-dict";
 
 /** Each language in its own name — the page's `LANGUAGE_NAME` (the header's language menu's endonyms). */
@@ -66,7 +67,7 @@ export default function ProfileLoading() {
             <p className="font-mono text-caption uppercase eyebrow font-bold"><GhostText>{t.profile.predictor}</GhostText></p>
             {/* The name's button (`ProfileNameEditor`): 40px at least, the name's face, the 13px edit glyph. */}
             <span className="mt-1.5 inline-flex min-h-[40px] max-w-full items-center gap-2">
-              <span className={`min-w-0 ${PROFILE_NAME_FACE} text-balance [overflow-wrap:anywhere]`}><GhostText className="italic">{t.profile.setYourName}</GhostText></span>
+              <span data-stem={stemOf(t.profile.setYourName)} className={`min-w-0 ${PROFILE_NAME_FACE} text-balance [overflow-wrap:anywhere]`}><GhostText className="italic">{t.profile.setYourName}</GhostText></span>
               <span className="h-[13px] w-[13px] shrink-0" />
             </span>
             <p className={PROFILE_PHONE_LINE}><GhostText>{`+255••••00 · ${t.profile.tanzania}`}</GhostText></p>
