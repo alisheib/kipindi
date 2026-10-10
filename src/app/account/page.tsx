@@ -29,6 +29,7 @@ import { loadHubViewer } from "@/lib/server/hub-viewer";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { getServerT } from "@/lib/i18n-server";
 import { keepNameEnd } from "@/components/ui/keep-words";
+import { stemOf } from "@/lib/display-stem";
 
 export const dynamic = "force-dynamic";
 
@@ -66,7 +67,8 @@ export default async function AccountHubPage() {
   return (
     <PageContainer tier="reading">
       <div className="kp-hub" data-testid="journey-account-hub">
-        <h1 className="font-display text-title-lg font-bold leading-tight text-text">{t.journey.tabAccount}</h1>
+        {/* A display heading asks the one stem question every display heading asks (round 7, R7-C; `lib/display-stem.ts`). */}
+        <h1 data-stem={stemOf(t.journey.tabAccount)} className="font-display text-title-lg font-bold leading-tight text-text">{t.journey.tabAccount}</h1>
         {viewer.signedIn ? (
           <div className="kp-hub__id">
             <span className="kp-hub__initials" aria-hidden>{viewer.initials}</span>

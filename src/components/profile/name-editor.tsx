@@ -16,6 +16,7 @@ import { errorCopy } from "@/lib/error-copy";
 import { refusalReason, refusalVariant } from "@/lib/failure-reasons";
 import { nameWithEnd } from "@/components/ui/keep-words";
 import { PROFILE_NAME_FACE } from "@/components/profile/profile-faces";
+import { stemOf } from "@/lib/display-stem";
 
 export function ProfileNameEditor({
   currentName,
@@ -198,7 +199,9 @@ export function ProfileNameEditor({
       className="mt-1.5 inline-flex min-h-[40px] max-w-full items-center gap-2 group text-left"
       aria-label={t.common.editDisplayName}
     >
-      <span className={`min-w-0 ${PROFILE_NAME_FACE} text-text text-balance [overflow-wrap:anywhere]`}>
+      {/* The name is a display heading (24px, 28 from md): on the hero's edge when it opens on a straight-stem capital
+          (round 7, R7-C, 2026-10-10; `lib/display-stem.ts` — the letter decides, a player's name as any other words). */}
+      <span data-stem={stemOf(currentName && currentName.trim() !== "" ? currentName : fallbackPlaceholder)} className={`min-w-0 ${PROFILE_NAME_FACE} text-text text-balance [overflow-wrap:anywhere]`}>
         {currentName && currentName.trim() !== "" ? nameWithEnd(currentName, currentNameEnd) : (
           <span className="text-text-subtle italic">{fallbackPlaceholder}</span>
         )}

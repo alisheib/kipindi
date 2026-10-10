@@ -120,7 +120,7 @@ export function PositionsGhost() {
         <div className="mb-1.5 flex items-center justify-between gap-2 font-mono text-micro uppercase tracking-[0.12em] tabular-nums">
           <span className="font-bold"><GhostText>{`${t.common.yes} · TZS 00K`}</GhostText></span>
           <span><GhostText>{t.positions.atRisk}</GhostText></span>
-          <span className="font-bold"><GhostText>{`${t.common.no} · TZS 00K`}</GhostText></span>
+          <span className="text-right font-bold kp-track-end kp-track-end--12"><GhostText>{`${t.common.no} · TZS 00K`}</GhostText></span>
         </div>
         <div className="h-2.5 w-full rounded-pill bg-bg-overlay" />
       </div>

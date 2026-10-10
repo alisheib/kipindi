@@ -59,6 +59,7 @@ import { usd } from "@/lib/usd-price";
 import { heroPrice, roundIsSettled } from "@/lib/updown-card-phase";
 import { isLockedOut } from "@/lib/server/responsible-gambling";
 import { breakSentence, breakStateOf } from "@/lib/break-end";
+import { stemOf } from "@/lib/display-stem";
 
 export const dynamic = "force-dynamic";
 
@@ -426,8 +427,9 @@ export default async function UpDownRoundPage({
                 {outcomeWord(t, fromRound.outcome ?? "VOID", "UPDOWN")}
               </span>
             </span>
+            {/* Ends on the row's edge, its trailing 0.08em taken back (round 7, R7-C, 2026-10-10). */}
             <Link href={`/updown/${fromRound.roundId}`}
-                  className="inline-flex items-center gap-0.5 font-mono text-micro font-semibold uppercase tracking-[0.08em]"
+                  className="inline-flex items-center gap-0.5 font-mono text-micro font-semibold uppercase tracking-[0.08em] kp-track-end kp-track-end--08"
                   style={{ color: "var(--brand-300)" }}>
               {t.market.udLastRoundView}
             </Link>
@@ -443,7 +445,9 @@ export default async function UpDownRoundPage({
                 {/* Wraps, balanced — never an ellipsis: at 360 in Swahili the one-line title printed "Bitcoin Juu na
                     Ch…", the game's own name cut, on the page the landing band's picks land on (M4a; seen in the band's
                     click-through frame, 2026-09-27). */}
-                <span className="font-display text-title-lg font-bold leading-tight text-text text-balance">
+                {/* On the column's edge when the asset's name opens on a straight stem — "Bitcoin", "Ethereum" (round 7, R7-C,
+                    `lib/display-stem.ts`): this span is the heading's block (a flex item of the h1), so its first line is set back. */}
+                <span data-stem={stemOf(name)} className="font-display text-title-lg font-bold leading-tight text-text text-balance">
                   {/* The game's name never splits ("Bitcoin Juu / na Chini" at 360): the break falls after the asset. */}
                   {name}{" "}<span className="whitespace-nowrap">{t.market.udTitle}</span>
                 </span>
@@ -778,7 +782,8 @@ export default async function UpDownRoundPage({
                 {upPct !== null && downPct !== null ? (
                   <div className="flex items-baseline justify-between gap-2 font-mono text-[9.5px] font-bold tracking-[0.06em]">
                     <span style={{ color: "var(--yes-300)" }}>{t.market.udUp} {upPct}%</span>
-                    <span style={{ color: "var(--no-300)" }}>{downPct}% {t.market.udDown}</span>
+                    {/* On the bar's end, its trailing 0.06em taken back (round 7, R7-C) — the market bar's `.tb-no` does the same. */}
+                    <span className="kp-track-end kp-track-end--06" style={{ color: "var(--no-300)" }}>{downPct}% {t.market.udDown}</span>
                   </div>
                 ) : price.kind === "oneSided" ? (
                   <div className="flex"><span className="mcardp-oneside">{t.market.oneSideOnly}</span></div>
@@ -805,7 +810,8 @@ export default async function UpDownRoundPage({
           <section aria-label={t.market.udSettlementProof} style={{ ...card, padding: "16px 18px 18px" }}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="gilt-eyebrow">{t.market.udSettlementProof}</span>
-              <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.market.udRoundLabel} {round.roundId} · {t.market.udAuditableRecord}</span>
+              {/* On the card's edge where it shares the heading's line, its trailing 0.14em taken back (round 7, R7-C). */}
+              <span className="font-mono text-micro uppercase eyebrow text-text-subtle kp-track-end">{t.market.udRoundLabel} {round.roundId} · {t.market.udAuditableRecord}</span>
             </div>
             <div className="gilt-rule" style={{ margin: "10px 0 14px" }} />
 

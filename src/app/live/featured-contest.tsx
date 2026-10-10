@@ -18,6 +18,7 @@ import { TippingBar } from "@/components/brand";
 import { I } from "@/components/ui/glyphs";
 // 2026-10-08 · G1: a Chinese "200毫米" in a slide's question never breaks between the number and its unit.
 import { keepFigures } from "@/components/ui/keep-words";
+import { stemOf } from "@/lib/display-stem";
 import { useT } from "@/lib/i18n";
 
 // ⛔ `productLine` is REQUIRED, not optional. /live carries both products (see `pulse-grid`),
@@ -166,6 +167,9 @@ export function FeaturedContest({
               <h2
                 key={mm.id}
                 data-slide-active={i === idx ? "" : undefined}
+                /* A display title from 1024 (24px, Sora 600): on the card's edge when it opens on a straight-stem capital,
+                   by 600's own bearing (round 7, R7-C, 2026-10-10; `lib/display-stem.ts`). */
+                data-stem={stemOf(mm.title, 600)}
                 className="font-display text-[19px] lg:text-[24px] font-semibold leading-tight text-text text-balance group-hover:text-aqua-100"
               >
                 {keepFigures(mm.title)}

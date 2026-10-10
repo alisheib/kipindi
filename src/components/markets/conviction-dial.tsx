@@ -1229,8 +1229,9 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
             {t.market.sideYesWord.toUpperCase()}
           </span>
           <span className="shrink text-center" style={{ color: "var(--text-subtle)", letterSpacing: "0.18em" }}>· {t.market.slideToCommit} ·</span>
+          {/* The NO pole ends on the track's end, its trailing 0.14em taken back (round 7, R7-C, 2026-10-10). */}
           <span
-            className="min-w-[3.5rem] text-right transition-colors duration-200"
+            className="min-w-[3.5rem] text-right transition-colors duration-200 kp-track-end"
             style={{ color: effectiveSide === "NO" ? "oklch(75% 0.16 22)" : "var(--text-subtle)", fontWeight: effectiveSide === "NO" ? 700 : 400 }}
           >
             {t.market.sideNoWord.toUpperCase()}

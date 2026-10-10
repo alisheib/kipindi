@@ -341,8 +341,10 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
   // /account: the page's own column, h1, identity card, prompt and column cut.
   const page = read(ACCOUNT), ghost = read(GHOST);
   const acct = ghost.slice(ghost.indexOf("function AccountGhost"), ghost.indexOf("function AnyPageGhost"));
-  const h1 = /<h1 className="([^"]+)">\{t\.journey\.tabAccount\}<\/h1>/.exec(page)?.[1];
-  const sameShape = (g: string) => !!h1 && g.includes(`<h1 className="${h1}">{t.journey.tabAccount}</h1>`)
+  // Round 7 (R7-C, 2026-10-10) moved this pin: the h1 is a display heading and asks the one stem question
+  // (`data-stem={stemOf(t.journey.tabAccount)}`) — on the page and in its drawing, attribute for attribute.
+  const h1 = /<h1 data-stem=\{stemOf\(t\.journey\.tabAccount\)\} className="([^"]+)">\{t\.journey\.tabAccount\}<\/h1>/.exec(page)?.[1];
+  const sameShape = (g: string) => !!h1 && g.includes(`<h1 data-stem={stemOf(t.journey.tabAccount)} className="${h1}">{t.journey.tabAccount}</h1>`)
     && page.includes('<PageContainer tier="reading">') && g.includes('<PageContainer tier="reading">')
     && g.includes('<div className="kp-hub">') && page.includes('<div className="kp-hub" data-testid="journey-account-hub">')
     && g.includes("const cut = hubColumnCut(groups.map((g) => wideRowCount(g.rows)));") && page.includes("const weights = groups.map((g) => wideRowCount(g.rows));")

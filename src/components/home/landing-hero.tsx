@@ -70,6 +70,7 @@ import { FiftyMark, TippingBar } from "@/components/brand";
 import { Ask, Claim, TrustLines } from "./hero-intro";
 import { fill, formatNumber, formatTzs, formatTzsCompact } from "@/lib/utils";
 import { pickLocalized } from "@/lib/localized";
+import { stemOf } from "@/lib/display-stem";
 import { timeLeftLabel } from "@/lib/markets/time-left";
 import { formatEatDate } from "@/lib/eat-day";
 import type { Dict, Locale } from "@/lib/i18n-dict";
@@ -687,7 +688,7 @@ export function QuestionBoard({ figures, t, locale, nowMs }: {
             )}
             {/* `text-balance` for the reason every `.kp-shead__h` carries it: without it "Chagua
                 upande / sasa" drops its last word onto line two at 360 sw (measured on production). */}
-            <h2 className="kp-shead__h text-balance">{t.home.pickASideNow}</h2>
+            <h2 data-stem={stemOf(t.home.pickASideNow)} className="kp-shead__h text-balance">{t.home.pickASideNow}</h2>
           </div>
           {/* The board's ordering travels to /markets, so "all of them" arrives sorted as here. */}
           <Link href={`/markets?sort=${figures.lens}` as never} className="kp-shead__link">

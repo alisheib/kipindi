@@ -74,7 +74,8 @@ export function CommissionWaterfall({
         <p className="font-display text-title-sm font-bold leading-tight">{t.agent.wfTitle}</p>
         {/* ⭐ The illustration is LABELLED as one, in the eyebrow role, so nobody reads the
             bottom row as a forecast of their own earnings. */}
-        <p className="font-mono text-micro uppercase eyebrow text-text-faint">{t.agent.wfEyebrow}</p>
+        {/* On the panel's edge where it shares the title's line, its trailing 0.14em taken back (round 7, R7-C). */}
+        <p className="font-mono text-micro uppercase eyebrow text-text-faint kp-track-end">{t.agent.wfEyebrow}</p>
       </div>
       {/* ⚠️ THE FIGURE KEEPS THE MONEY LADDER even inside a sentence (§T5 · §M4): the prose
           keeps its voice, the number keeps mono + tabular figures. `test:type-scale` §1 fails
@@ -100,7 +101,8 @@ export function CommissionWaterfall({
       <dl className="mt-3">
         <div className="flex items-baseline justify-between gap-4 border-b border-border pb-1.5">
           <span className="font-mono text-micro uppercase eyebrow text-text-faint">{t.agent.wfColParam}</span>
-          <span className="font-mono text-micro uppercase eyebrow text-text-faint">{t.agent.wfColAmount}</span>
+          {/* The amounts' head ends where the amounts end (R3-C's table-head rule, round 7, R7-C). */}
+          <span className="font-mono text-micro uppercase eyebrow text-text-faint kp-track-end">{t.agent.wfColAmount}</span>
         </div>
         {steps.map((s) => {
           const label = s.ratePct === null

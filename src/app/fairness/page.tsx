@@ -200,9 +200,13 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
       {/* How it works — on the hero's padding, `p-5 lg:p-6` (2026-10-09, the visual pass's round 3, tile 188): at 1280
           its heading stood at x158 under the hero's words at x165 (24px against 32px). One column, one content edge. */}
       <section className="glass-panel p-5 lg:p-6 space-y-4">
+        {/* The reference ends on the panel's edge where it shares the heading's line (round 7, R7-C, 2026-10-10; round 6's
+            read R5-9, tile 188): tracked 0.14em, it ended 2.24px short at 1280 (x1113 against x1115) — the trailing 1.54px of
+            tracking and the 6's own 0.70px bearing. `kp-track-end` takes the tracking back (globals.css); under the heading,
+            on a phone, it starts at the line's start as before. */}
         <div className="flex items-baseline justify-between flex-wrap gap-2">
           <h2 className="font-display text-[20px] font-semibold text-text">{t.common.fairnessHowItWorks}</h2>
-          <span className="font-mono text-caption eyebrow uppercase text-text-subtle">FATF R.10 · POCA Cap 423 §16</span>
+          <span className="font-mono text-caption eyebrow uppercase text-text-subtle kp-track-end">FATF R.10 · POCA Cap 423 §16</span>
         </div>
         {/* C1d — 5-step provably-fair chain (glyph idiom, the two-officer attestation
             seal highlighted in brand). Labels live in HTML, not the SVG.

@@ -2,6 +2,7 @@ import * as React from "react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { keepText } from "@/components/ui/keep-run";
+import { stemOf } from "@/lib/display-stem";
 
 /**
  * AuthPanel + AuthHeader — THE one glass card and THE one header stack for the
@@ -113,7 +114,9 @@ export function AuthHeader({
           360/390, en 360) left the brand alone on its line, and "…on your / account." the subtitle's last word. A string
           heading and subtitle keep their last two words together (`keepText`: "kwenye 50pick", "your account."); the words
           are unchanged, and a heading of two words or fewer is drawn as given. */}
-      <h1 className="mt-1.5 font-display text-title-lg font-bold leading-tight text-text tracking-[-0.02em]">
+      {/* On the panel's edge in every language: a title that opens on a straight-stem capital is set back by the stem's
+          bearing (round 7, R7-C, 2026-10-10; `lib/display-stem.ts`), as every display heading is. */}
+      <h1 data-stem={stemOf(title)} className="mt-1.5 font-display text-title-lg font-bold leading-tight text-text tracking-[-0.02em]">
         {typeof title === "string" ? keepText(title) : title}
       </h1>
       {subtitle != null && (

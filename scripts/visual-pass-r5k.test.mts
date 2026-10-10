@@ -404,7 +404,9 @@ section("5 · /profile — the hero column and strip, the achievements, the twel
   const ghostCol = inOrder(ghost, ['<section className="relative overflow-hidden overflow-clip rounded-xl border border-border bg-bg-elevated kp-shimmer-track">', '<div className="relative z-10 p-5 lg:p-6 flex items-start gap-4 lg:gap-5" aria-hidden>', `<div className="h-[${avatar}px] w-[${avatar}px] shrink-0 rounded-full bg-bg-overlay/20" />`, '<div className="flex-1 min-w-0 pt-1">',
     '<p className="font-mono text-caption uppercase eyebrow font-bold"><GhostText>{t.profile.predictor}</GhostText></p>', "${PROFILE_NAME_FACE}", "<p className={PROFILE_PHONE_LINE}>", '<div className="mt-3 flex flex-wrap items-center gap-1.5">', '<div className="relative z-10 grid grid-cols-2 sm:grid-cols-3 border-t border-border" aria-hidden>']);
   const editor = squash(code(FILES.editor));
-  const faceOne = editor.includes("<span className={`min-w-0 ${PROFILE_NAME_FACE} text-text text-balance [overflow-wrap:anywhere]`}>") && editor.includes("className={`${PROFILE_NAME_FACE} text-text bg-transparent")
+  // Round 7 (R7-C, 2026-10-10) moved this pin: the name, a display heading, asks the one stem question first
+  // (`data-stem={stemOf(…)}`; test:visual-pass-r7c §3) — its face is the one string, as before.
+  const faceOne = /<span data-stem=\{stemOf\([^}]*\)\} className=\{`min-w-0 \$\{PROFILE_NAME_FACE\} text-text text-balance \[overflow-wrap:anywhere\]`\}>/.test(editor) && editor.includes("className={`${PROFILE_NAME_FACE} text-text bg-transparent")
     && faces.PROFILE_NAME_FACE === "font-display text-[24px] md:text-[28px] font-bold leading-tight tracking-[-0.02em]" && ghost.includes('<span className="mt-1.5 inline-flex min-h-[40px] max-w-full items-center gap-2">')
     && editor.includes('className="mt-1.5 inline-flex min-h-[40px] max-w-full items-center gap-2 group text-left"');
   ok(`5.1 · the hero column is the page's: the ${avatar}px avatar (the ghost drew 64), the eyebrow, the name's 40px button in the name's own face (\`profile-faces.ts\`, read by the editor and the ghost — 24px on a 30px line, 28 from md), the number line (\`PROFILE_PHONE_LINE\`), the pills' row`,
@@ -501,7 +503,10 @@ const { parsePortfolioParams } = req("../src/lib/positions/portfolio.ts") as { p
   // The exposure keys: the page's 14px line of words (it wraps at 320 in Swahili, as the page's does), not 10px bars.
   const keys = /<div className="(mb-1\.5 flex items-center justify-between gap-2 font-mono text-micro uppercase tracking-\[0\.12em\] tabular-nums)">/;
   const pk = keys.exec(code(FILES.positionsPage))?.[1], gk = keys.exec(code(FILES.positions))?.[1];
-  const words = squash(code(FILES.positions)).includes('<span className="font-bold"><GhostText>{`${t.common.yes} · TZS 00K`}</GhostText></span> <span><GhostText>{t.positions.atRisk}</GhostText></span> <span className="font-bold"><GhostText>{`${t.common.no} · TZS 00K`}</GhostText></span>');
+  // Round 7 (R7-C, 2026-10-10) moved this pin: the NO key ends on the bar's end on the page (its trailing 0.12em taken
+  // back, `text-right` for a wrapped line), and its drawing follows with the same classes.
+  const words = squash(code(FILES.positions)).includes('<span className="font-bold"><GhostText>{`${t.common.yes} · TZS 00K`}</GhostText></span> <span><GhostText>{t.positions.atRisk}</GhostText></span> <span className="text-right font-bold kp-track-end kp-track-end--12"><GhostText>{`${t.common.no} · TZS 00K`}</GhostText></span>')
+    && squash(code(FILES.positionsPage)).includes('<span className="text-right font-bold text-no-300 kp-track-end kp-track-end--12">{t.common.no} · {formatTzsCompact(openNoStake)}</span>');
   ok("6.3 · the exposure keys are the page's line — its classes (`text-micro`: a 14px line, where the ghost's 10px bars made 10) and its three keys' words, the stakes as compact shapes",
     !!pk && pk === gk && words, j({ pk, gk, words }));
 }

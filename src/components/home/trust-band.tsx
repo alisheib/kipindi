@@ -21,6 +21,7 @@ import type { PaymentMethodSpec } from "@/lib/payment-providers";
 import { Chip } from "@/components/ui/chip";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { pickLocalized } from "@/lib/localized";
+import { stemOf } from "@/lib/display-stem";
 import { outcomeWord } from "@/lib/side-label";
 import { fill, formatTzs } from "@/lib/utils";
 import { formatEatDate } from "@/lib/eat-day";
@@ -45,9 +46,10 @@ import type { SettlementRow } from "@/lib/server/platform-stats";
    the fast game. The claim IS this section's heading; it now says so. */
 function Claim({ text, accent }: { text: string; accent: string }) {
   const i = accent ? text.indexOf(accent) : -1;
-  if (i < 0) return <h2 className="kp-claim">{text}</h2>;
+  // A display heading: on the band's edge when the claim opens on a straight-stem capital (round 7, R7-C; display-stem.ts).
+  if (i < 0) return <h2 data-stem={stemOf(text)} className="kp-claim">{text}</h2>;
   return (
-    <h2 className="kp-claim">
+    <h2 data-stem={stemOf(text)} className="kp-claim">
       {text.slice(0, i)}
       <em>{accent}</em>
       {text.slice(i + accent.length)}
@@ -141,7 +143,7 @@ export function TrustBand({
                 </p>
                 {/* `text-balance` on every .kp-shead__h, not some of them — it was on 3 of 5, which is the
                     kind of inconsistency that reads as a bug on whichever heading happens to wrap. */}
-                <h3 className="kp-shead__h text-balance">{t.home.settledHead}</h3>
+                <h3 data-stem={stemOf(t.home.settledHead)} className="kp-shead__h text-balance">{t.home.settledHead}</h3>
               </div>
               <Link href={"/results" as never} className="kp-shead__link">
                 {t.home.settledSeeAll}

@@ -243,7 +243,9 @@ export function PriceHero({
           {upY && (
             <g>
               <line x1="0" y1={upY} x2="606" y2={upY} stroke="var(--yes-400)" strokeWidth="1" strokeDasharray="2 5" opacity="0.6" />
-              <text className="ud-svg-label" x="606" y={(parseFloat(upY) - 4).toFixed(1)} textAnchor="end" fill="var(--yes-300)" fontFamily="var(--font-mono)" fontSize="8.5" fontWeight="600" letterSpacing="0.10em" opacity="0.9">
+              {/* End-anchored at the line's end, its advance carrying its trailing 0.10em (0.85 at 8.5): anchored that much
+                  further out, so the last letter ends where the dashed line ends (round 7, R7-C, 2026-10-10). */}
+              <text className="ud-svg-label" x="606.85" y={(parseFloat(upY) - 4).toFixed(1)} textAnchor="end" fill="var(--yes-300)" fontFamily="var(--font-mono)" fontSize="8.5" fontWeight="600" letterSpacing="0.10em" opacity="0.9">
                 {(copy.upLabel ?? "UP").toUpperCase()} {usd(upTarget!)}
               </text>
             </g>
@@ -251,7 +253,7 @@ export function PriceHero({
           {downY && (
             <g>
               <line x1="0" y1={downY} x2="606" y2={downY} stroke="var(--no-400)" strokeWidth="1" strokeDasharray="2 5" opacity="0.6" />
-              <text className="ud-svg-label" x="606" y={(parseFloat(downY) + 11).toFixed(1)} textAnchor="end" fill="var(--no-300)" fontFamily="var(--font-mono)" fontSize="8.5" fontWeight="600" letterSpacing="0.10em" opacity="0.9">
+              <text className="ud-svg-label" x="606.85" y={(parseFloat(downY) + 11).toFixed(1)} textAnchor="end" fill="var(--no-300)" fontFamily="var(--font-mono)" fontSize="8.5" fontWeight="600" letterSpacing="0.10em" opacity="0.9">
                 {(copy.downLabel ?? "DOWN").toUpperCase()} {usd(downTarget!)}
               </text>
             </g>

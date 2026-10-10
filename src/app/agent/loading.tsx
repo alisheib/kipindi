@@ -158,7 +158,7 @@ export default function AgentLoading() {
       <section className="rounded-xl glass-panel p-4 text-transparent" aria-hidden>
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <p className="font-display text-title-sm font-bold leading-tight"><GhostText>{t.agent.wfTitle}</GhostText></p>
-          <p className="font-mono text-micro uppercase eyebrow"><GhostText>{t.agent.wfEyebrow}</GhostText></p>
+          <p className="font-mono text-micro uppercase eyebrow kp-track-end"><GhostText>{t.agent.wfEyebrow}</GhostText></p>
         </div>
         <p className="mt-1 text-body-sm leading-relaxed">
           <GhostText>{fillNodes(t.agent.wfBasis, { amount: <span className="font-mono tabular-nums">{formatTzs(1_000_000)}</span> })}</GhostText>
@@ -166,7 +166,7 @@ export default function AgentLoading() {
         <dl className="mt-3">
           <div className="flex items-baseline justify-between gap-4 border-b border-border pb-1.5">
             <span className="font-mono text-micro uppercase eyebrow"><GhostText>{t.agent.wfColParam}</GhostText></span>
-            <span className="font-mono text-micro uppercase eyebrow"><GhostText>{t.agent.wfColAmount}</GhostText></span>
+            <span className="font-mono text-micro uppercase eyebrow kp-track-end"><GhostText>{t.agent.wfColAmount}</GhostText></span>
           </div>
           {WATERFALL.steps.map((s) => (
             <div key={s.id} className={`flex items-start justify-between gap-4 ${s.id === "netPayout" ? "pt-2 pb-1 border-t border-border-strong" : "py-1.5"}`}>

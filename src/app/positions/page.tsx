@@ -358,10 +358,13 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
           (a11y §6b — never colour-only). Part of the standing, so it stays above the rail. */}
       {positions.length > 0 && openStake > 0 && (
         <div className="rounded-lg border border-border bg-bg-elevated/60 p-3">
+          {/* The NO end of the bar's labels ends on the bar's end (round 7, R7-C, 2026-10-10): tracked 0.12em at the row's
+              end, it stood 1.2px short of the bar under it; `kp-track-end--12` takes it back, `text-right` keeps a wrapped
+              label's lines on that end too. The YES end keeps its tracking (it starts the row). */}
           <div className="mb-1.5 flex items-center justify-between gap-2 font-mono text-micro uppercase tracking-[0.12em] tabular-nums">
             <span className="font-bold text-yes-300">{t.common.yes} · {formatTzsCompact(openYesStake)}</span>
             <span className="text-text-subtle">{t.positions.atRisk}</span>
-            <span className="font-bold text-no-300">{t.common.no} · {formatTzsCompact(openNoStake)}</span>
+            <span className="text-right font-bold text-no-300 kp-track-end kp-track-end--12">{t.common.no} · {formatTzsCompact(openNoStake)}</span>
           </div>
           <div className="flex h-2.5 w-full overflow-hidden rounded-pill bg-bg-overlay" role="img" aria-label={`${t.common.yes} ${formatTzsCompact(openYesStake)}, ${t.common.no} ${formatTzsCompact(openNoStake)}`}>
             {openYesStake > 0 && <div style={{ width: `${(openYesStake / openStake) * 100}%`, background: "var(--yes-500)" }} />}

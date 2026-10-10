@@ -337,7 +337,9 @@ section("7 · the market question's column ends before the watermark (E49; tile 
     const h1Right = contentRight - (2 * px + Number(pr?.[1]));
     ok(`7.1 · at ${w} (${px}px): the question's column ends at x${h1Right}, ${markLeft - h1Right}px before the mark's box at x${markLeft}`, markLeft - h1Right === 8 && air === 8);
   }
-  ok("7.2 · R4-D's first-line indent is kept", h1.includes("data-[stem]:indent-[-0.075em]") && h1.includes("text-balance"));
+  // Re-pinned (round 7, R7-C, 2026-10-10): R4-D's set-back is one rule for every display heading now — the h1 asks the shared
+  // module (`stemOf`), and globals.css sets the first line back (0.075em at 700) where its Tailwind utility did.
+  ok("7.2 · R4-D's first-line indent is kept", /<h1 data-stem=\{stemOf\(/.test(page) && /\[data-stem=""\]:where\(:not\(\.kp-hero__grp\)\) \{ text-indent: -0\.075em; \}/.test(css) && h1.includes("text-balance"));
   ok("7.1′ PLANT · without the padding the column runs under the mark (tile 433: ink to x701 > the mark's box at x676)", 701 > 752 - right - 2 * rung("display-3"));
 }
 

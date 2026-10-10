@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { stemOf } from "@/lib/display-stem";
 
 /**
  * PageHeader — the eyebrow + H1 pair used at the top of form-hero pages
@@ -74,7 +75,12 @@ export function PageHeader({
           the served sheet. So the computed style is byte-for-byte what it was. */}
       {/* 2026-09-13: balanced, so a wrapping title never leaves one word or one CJK glyph alone
           on its last line (the Chinese AML title did). */}
-      <h1 className="font-display text-title-lg font-bold text-text leading-tight tracking-[-0.02em] text-balance">
+      {/* ⭐ ON THE COLUMN'S EDGE IN EVERY LANGUAGE (round 7, R7-C, 2026-10-10; round 6's read R6-3): a title that opens on a
+          straight-stem capital ("My tickets", and every title that opens on B D E F H I K L M N P R U) is set back by the
+          stem's bearing — the letter decides,
+          never the locale (`lib/display-stem.ts`, the rule in globals.css). A loading drawing's title is read through its
+          `GhostText`, so the drawing lands where its page does. */}
+      <h1 data-stem={stemOf(title)} className="font-display text-title-lg font-bold text-text leading-tight tracking-[-0.02em] text-balance">
         {title}
       </h1>
     </>

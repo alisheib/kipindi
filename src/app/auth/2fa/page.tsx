@@ -86,9 +86,12 @@ export default async function TwoFactorChallengePage({ searchParams }: { searchP
           >
             ← {t.common.back}
           </Link>
+          {/* The other way in ends on the panel's edge (round 7, R7-C, 2026-10-10): tracked 0.14em at the row's end, its
+              last letter stood 1.68px short; `kp-track-end` takes the tracking back. Its words may need two lines
+              ("Tumia programu ya uthibitishaji" at 320), and each line ends on the edge (`text-right`). */}
           <Link
             href={`/auth/2fa?${backup ? "" : "mode=backup"}${nextQuery}`.replace(/[?&]$/, "") as never}
-            className="font-mono text-label uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors"
+            className="text-right font-mono text-label uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors kp-track-end"
           >
             {backup ? t.security.useAuthenticator : t.security.useBackupCode}
           </Link>

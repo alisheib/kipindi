@@ -1802,6 +1802,13 @@ html.kp-reduce-motion .ticker-pause,
   background: var(--bg-inset);
   border-color: var(--border);
 }
+/* ⭐ THE SMALL FLAG'S BOX IS A WHOLE NUMBER OF PIXELS (round 7, R7-C, 2026-10-10; round 6's read R7-3, tile 255). The xs
+   flag (`StatusFlag`: 8.5px words beside a 9.5px glyph, 3px 8px of padding, a 1px edge) is 17.5px tall, so the screen
+   draws it 17 or 18 rows tall by where its top falls: stacked under "Mapendekezo ya Masoko" at sw 390 it was 17
+   (capitals 4 | 5), beside its label everywhere else 18 (5 | 5). At 18px its box always lands on whole rows, its words
+   centred in it (5.86 | 5.94). The journey's flags wear it — the hub's row, the account menu's and the footer's — and
+   the classic header's, rail's, menu's and footer's flags keep 17.5 with that chrome (frozen until the flip). */
+.kp-flag-xs { height: 18px; }
 
 /* 🔴 THE `.pbar*` PROBABILITY BAR WAS DELETED HERE 2026-09-07 — 9 rules and a keyframe,
    ZERO renderers, and `DESIGN_AUTHORITY.md` B6 had it recorded as "0 usages — dead CSS" since
@@ -4642,6 +4649,15 @@ html[data-sheet-open] .route-enter { animation: none; }
    exactly what it was, and only a group that opens a line moves. Measure a letter before adding it to `STEM_START`. */
 .kp-hero__grp[data-stem] { margin-inline-start: calc(-1 * var(--hero-stem)); }
 .kp-hero__grp[data-stem-next] { margin-inline-end: var(--hero-stem); }
+/* ⭐ …AND EVERY OTHER DISPLAY HEADING OPENS ON ITS COLUMN'S EDGE THE SAME WAY (round 7, R7-C, 2026-10-10; round 6's read
+   R6-3: "My tickets" inked from x18.17 where "Tiketi zangu" and 我的注单 sat on x16). One rule, where round 4 had given it to
+   the market question alone (its Tailwind `data-stem` utility, retired here): a display heading — the display face at 24px
+   or more, left-aligned — carries `data-stem` when its words open on a straight-stem capital (`src/lib/display-stem.ts`
+   decides it from the letter, never the locale), and its first line is set back by that stem's bearing: 0.075em at 700
+   (Sora's 0.082em of outline, 0.0775em of ink on the tiles), 0.085em at 600 (0.090em of outline). The hero keeps its
+   own, two lines above: its groups are inline and each can open a line. */
+[data-stem=""]:where(:not(.kp-hero__grp)) { text-indent: -0.075em; }
+[data-stem="600"] { text-indent: -0.085em; }
 .kp-hero__side[data-side="yes"] { color: var(--hero-yes-accent); }
 .kp-hero__side[data-side="no"] { color: var(--hero-no-accent); }
 .kp-hero__conn { font-weight: 400; color: var(--text-muted); }
@@ -5199,12 +5215,23 @@ html[data-sheet-open] .route-enter { animation: none; }
    the one-sided label on the card's right-aligned move line (centred or left-aligned everywhere else, where it keeps its
    tracking), the bar's right-hand side label (tracked 0.05em) and, through `kp-track-end` on the label's own text, the
    /results spotlight's flag (0.16em) and Up & Down's live note (0.10em). Left-aligned and centred labels are untouched.
-   ⚠️ The pseudo-element must sit inside the text's own box: on an inline-flex label it would be a flex item of its own,
-   and the label's `gap` would open in front of it — hence the text span on those two. */
-.mcardp-pctcap::after,
-.mcardp-moveline .mcardp-oneside::after,
-.tipbar-labels .tb-no::after,
-.kp-track-end::after { content: ""; display: inline-block; margin-inline-end: calc(-1 * var(--track-end, 0.14em)); }
+   ⭐ ROUND 7 (R7-C, 2026-10-10): THE LABEL'S OWN END MARGIN TAKES IT BACK, NOT AN EMPTY BOX AFTER ITS WORDS. The empty
+   inline-block (rounds 5 and 6) took the tracking out of the label's WIDTH, so a label that sizes itself to its words — a
+   flex item, a pushed tag — came out 1–2px narrower than its words and broke its last word onto a line of its own: the
+   /results flag "MATOKEO / MASHUHURI", 61px short of its edge (R5-1, held since by `whitespace-nowrap`, 34245fd4) — and
+   a label that must be free to wrap cannot be held so (the 2-step sign-in's "Tumia programu ya uthibitishaji" needs two
+   lines at 320). A negative end margin on the label's own box leaves the box its words' width — nothing wraps that did
+   not — and moves only where the box ENDS: its last letter's advance meets the edge on every line of a right-aligned
+   block (the empty box reached only the last line), and a label that drops to a line of its own in a wrapping row still
+   starts at the line's start. The class goes on the label's own box — a block, or a flex or grid item — never on a bare inline inside a
+   box that sizes itself to it, where an end margin would wrap its words as the empty box did, and never beside a
+   margin-right utility (this sets the end margin). `test:visual-pass-r7c` §2 holds both, and its census holds every label.
+   The one take-back that keeps the empty box: a right-aligned table HEAD (R3-C's `.admin-tbl thead th.text-right::after`,
+   with the admin table's rules), because a table cell takes no margin, and those heads never wrap (`white-space: nowrap`). */
+.mcardp-pctcap,
+.mcardp-moveline .mcardp-oneside,
+.tipbar-labels .tb-no,
+.kp-track-end { margin-inline-end: calc(-1 * var(--track-end, 0.14em)); }
 .tipbar-labels .tb-no { --track-end: 0.05em; }
 .kp-track-end--16 { --track-end: 0.16em; }
 .kp-track-end--10 { --track-end: 0.10em; }
@@ -5214,6 +5241,16 @@ html[data-sheet-open] .route-enter { animation: none; }
    figures' edge the same way. A label that ends on a glyph (the dial's stake hint, the Up & Down card's DOWN target)
    ends on the glyph's edge already, and keeps its tracking. */
 .kp-track-end--08 { --track-end: 0.08em; }
+/* Round 7 (R7-C, 2026-10-10, round 6's read R5-9): the census C11 ran read only `text-right` on a label or its parent, so
+   a label pushed to its row's end by flex (`justify-between`, `ml-auto`), a grid, a position or a stylesheet class kept
+   its trailing tracking — /fairness' "FATF R.10 · POCA CAP 423 §16" ended 2.24px short of its panel's edge at 1280
+   (x1113 against x1115 on the tile). `test:visual-pass-r7c` §2 now reads every way a label can end on an edge; three more
+   steps carry the tracking those labels wear: 0.12em (the exposure bar's NO, the dial's change-side door, the streak
+   and N/A labels, the primer's bound), 0.06em (Up & Down's split-bar side labels) and 0.05em (the round clock's digits,
+   under their label). */
+.kp-track-end--12 { --track-end: 0.12em; }
+.kp-track-end--06 { --track-end: 0.06em; }
+.kp-track-end--05 { --track-end: 0.05em; }
 .mcardp-spark { line-height: 0; margin-top: 2px; }
 .mcardp-traders { display:flex; align-items:center; gap:7px; }
 .av-stack { display:flex; }
@@ -5905,10 +5942,14 @@ textarea::-webkit-resizer {
    override has to be compared AGAINST THE UNTARGETED STATE; "it has a shadow" is true of
    almost everything. The elevation is restated below so a targeted card keeps its depth
    rather than trading it for the ring.                                                      */
+/* ⭐ THE RING INSIDE THE CARD (round 7, R7-C, 2026-10-10; round 6's read R2-D5, the selected payment tile's ring 1px past
+   its column). Its hard 1px was drawn OUTSIDE the card's border, so a targeted ticket's brand edge stood 1px past the
+   column every other card keeps; it is drawn inward now (`inset`), on the border, so the edge is the card's own 2px of
+   brand and the column holds. The 18% halo stays outside, as a selected pill's halo does: a wash, not an edge. */
 .ticket-target:target,
 .ticket-scope:has(.ticket-anchor:target) {
   border-color: var(--brand-400) !important;
-  box-shadow: 0 0 0 1px var(--brand-400),
+  box-shadow: inset 0 0 0 1px var(--brand-400),
               0 0 0 5px color-mix(in oklab, var(--brand-400) 18%, transparent),
               var(--shadow-2) !important;
 }
@@ -6665,6 +6706,19 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-hub__head { display: flex; align-items: center; gap: 2px var(--sp-3); min-width: 0; }
 .kp-hub__head > .kp-hub__label { flex: 1 1 auto; min-width: 0; }
 .kp-hub__head > :not(.kp-hub__label) { flex-shrink: 0; }
+/* ⭐ …AND UNDER IT, THE FLAG AND ITS LABEL CENTRE IN THE ROW BY THEIR INK (round 7, R7-C, 2026-10-10; round 6's read R7-3 /
+   R8-5, tiles 255 297 331 at sw 390). Stacked, the two-line block sat 12px above its ink and 8.5px below it in the 56px
+   row — 2px low — where every other two-line row centres within 1.5px: the block was centred by its BOXES, and the label's
+   line keeps 4.29px of air over its capitals ((19.5 − 15 × 0.7275) / 2: Inter's capitals are centred in their line) while
+   the flag's box ends on its own border. The flag now carries the label's air above and below it: beside the label the
+   air is the same on both sides and moves nothing (the label stays at 18.25px; the flag's 18px box centres at 19px, where
+   its 17.5px box stood at 19.25); stacked, it is the room
+   under the flag that the label's line has over its capitals, so the block's ink stands 8.25px from the row's top and
+   8.25px from its bottom. The head gives the air back as a negative margin, so the row keeps its 56px rung — only when the
+   head is its text's one line (`:only-child`), so no line under it is pulled up. */
+.kp-hub__head { --hub-flag-air: calc((var(--type-body) * 1.3 - var(--type-body) * 0.7275) / 2); }
+.kp-hub__head:only-child { margin-block: calc(-1 * var(--hub-flag-air)); }
+.kp-hub__head:only-child > .kp-flag-xs { margin-block: var(--hub-flag-air); }
 .kp-hub__value { flex-shrink: 0; font-size: var(--type-small); white-space: nowrap; color: var(--text-subtle); }
 /* A balance in a list of doors is neutral ink: gold marks money that was earned (§M3). */
 .kp-hub__money { flex-shrink: 0; font-family: var(--font-mono); font-weight: 600; font-size: var(--type-body); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text); }

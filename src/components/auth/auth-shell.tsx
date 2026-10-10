@@ -2,6 +2,7 @@ import Link from "next/link";
 import { FiftyLockup, TippingBar } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { getServerT } from "@/lib/i18n-server";
+import { stemOf } from "@/lib/display-stem";
 
 /**
  * Shared shell for the six /auth/* routes (login, register, otp,
@@ -45,13 +46,15 @@ export async function AuthShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="relative max-w-sm">
-            <p className="font-display text-[30px] font-bold leading-[1.15] tracking-[-0.02em] text-text text-balance">
+            {/* A display line: on the rail's edge when it opens on a straight-stem capital (round 7, R7-C; `lib/display-stem.ts`). */}
+            <p data-stem={stemOf(t.auth.railTagline)} className="font-display text-[30px] font-bold leading-[1.15] tracking-[-0.02em] text-text text-balance">
               {t.auth.railTagline}
             </p>
             <div className="mt-7 rounded-xl border border-border/60 bg-bg-elevated/40 p-4 backdrop-blur-sm">
               <div className="mb-2 flex items-center justify-between font-mono text-micro uppercase tracking-[0.14em]">
                 <span className="text-yes-300">{t.common.yes} 64%</span>
-                <span className="text-no-300">36% {t.common.no}</span>
+                {/* On the specimen bar's end, its trailing 0.14em taken back (round 7, R7-C), as every bar's right label. */}
+                <span className="text-no-300 kp-track-end">36% {t.common.no}</span>
               </div>
               {/* 🔴 `aria-hidden`, NOT a translated `probabilityLabel` — and the distinction
                   matters. This bar is a DECORATIVE SPECIMEN: 64/36 is not a market, it is

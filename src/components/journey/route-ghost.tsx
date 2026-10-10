@@ -85,6 +85,7 @@ import DepositReturnLoading from "@/app/wallet/deposit/return/loading";
 import { Ask, Claim, TrustLines } from "@/components/home/hero-intro";
 import { hubColumnCut, hubRowsFor, wideRowCount, type HubGroup, type HubMember, type HubRow } from "@/components/journey/account/hub-rows";
 import { useT } from "@/lib/i18n";
+import { stemOf } from "@/lib/display-stem";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 
 /** The pages whose own loading file hands a journey reader this ghost, pinned (`at`) — see "A SEGMENT MAY PIN ITS PAGE". */
@@ -160,7 +161,7 @@ function AccountGhost({ t }: { t: Dict }) {
   return (
     <PageContainer tier="reading">
       <div className="kp-hub">
-        <h1 className="font-display text-title-lg font-bold leading-tight text-text">{t.journey.tabAccount}</h1>
+        <h1 data-stem={stemOf(t.journey.tabAccount)} className="font-display text-title-lg font-bold leading-tight text-text">{t.journey.tabAccount}</h1>
         <div className="kp-hub__id kp-hubghost--member" aria-hidden="true">
           <span className="kp-hub__initials kp-shimmer-track" />
           <span className="kp-hub__who">

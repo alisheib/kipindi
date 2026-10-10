@@ -25,6 +25,7 @@ import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { categoryLabel } from "@/lib/markets/category-label";
 import { fill, formatNumber, formatTzsCompact } from "@/lib/utils";
+import { stemOf } from "@/lib/display-stem";
 import type { MarketCategory } from "@/lib/server/market-service";
 import type { Dict } from "@/lib/i18n-dict";
 import type { TopicAggregate } from "@/lib/markets/landing";
@@ -58,7 +59,7 @@ export function TopicTiles({ topics, t }: { topics: TopicAggregate[]; t: Dict })
           {/* `text-balance`: without it "Vinjari kwa mada" drops "mada" alone onto a second line
               under browser zoom (measured at 130% and 200%). An h2 — it heads its own block, like
               "Pick a side now" above it. */}
-          <h2 className="kp-shead__h text-balance">{t.common.browseByTopic}</h2>
+          <h2 data-stem={stemOf(t.common.browseByTopic)} className="kp-shead__h text-balance">{t.common.browseByTopic}</h2>
         </div>
         <Link href={"/markets" as never} className="kp-shead__link">
           {t.home.topicAll}

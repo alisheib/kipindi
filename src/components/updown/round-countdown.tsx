@@ -453,8 +453,10 @@ export function RoundCountdown({ closesAtMs, label, lockAtMs, lockLabel, serverN
     <div className="text-right">
       {/* Ends on the clock's edge, its trailing tracking taken back (F19, round 6 · C11). */}
       <div className="font-mono text-micro uppercase eyebrow text-text-faint kp-track-end">{shownLabel}</div>
+      {/* The digits end on that edge too (round 7, R7-C, 2026-10-10): tracked 0.05em, the clock's last digit stood 1.2px
+          short of the label above it; `kp-track-end--05` takes the tracking back. */}
       <div
-        className={urgent ? "ud-count-pulse" : undefined}
+        className={urgent ? "kp-track-end kp-track-end--05 ud-count-pulse" : "kp-track-end kp-track-end--05"}
         style={{
           fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700,
           fontVariantNumeric: "tabular-nums", letterSpacing: "0.05em", lineHeight: 1.1,

@@ -80,10 +80,17 @@ export function ProviderRadioGrid({
               defaultChecked={!p.unavailable && checked}
               className="sr-only peer"
             />
-            {/* Royal selection ring — scales in 120ms; instant under reduced-motion. */}
+            {/* Royal selection ring — scales in 120ms; instant under reduced-motion.
+                ⭐ DRAWN INSIDE THE TILE (round 7, R7-C, 2026-10-10; round 6's read R2-D5, tiles 067 069). It was an outer
+                2px ring on a box laid on the tile's padding edge, so it ran from 1px inside the tile's border to 1px OUTSIDE
+                it: the selected tile stood 1px past the column (tile 067: x40 against the column's x41; tile 069: x384
+                against x385) and 11px from its neighbour across the grid's 12px gap. The box now covers the tile's border box
+                (`-inset-px`, the 1px border) and the ring is drawn inward (`ring-inset`): its outer edge IS the tile's edge,
+                on the column, 12px from the next tile; it covers the 1px border and 1px of the padding. The check pip stays
+                4px into the padding's corner, now 3px clear of the ring's inner edge. */}
             <span
               aria-hidden
-              className="pointer-events-none absolute inset-0 rounded-md ring-2 ring-brand-500 opacity-0 scale-95 transition duration-[var(--t-flick)] ease-out motion-reduce:transition-none group-has-[:checked]/tile:opacity-100 group-has-[:checked]/tile:scale-100"
+              className="pointer-events-none absolute -inset-px rounded-md ring-2 ring-inset ring-brand-500 opacity-0 scale-95 transition duration-[var(--t-flick)] ease-out motion-reduce:transition-none group-has-[:checked]/tile:opacity-100 group-has-[:checked]/tile:scale-100"
             />
             {/* Check pip — top-right, 4px into the corner (`right-1 top-1`; round 5 of the visual pass, R5-B, 2026-10-09, tile
                 067). At 8px in (`1.5` is 8 on this scale) the 20px pip stood 3px from the 48px logo plate in a 113px tile at

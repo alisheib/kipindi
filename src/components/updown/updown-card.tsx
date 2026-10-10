@@ -795,7 +795,8 @@ export function UpDownCard(props: UpDownCardProps) {
           {livePrice == null ? (
             <span className="ml-auto inline-flex items-baseline gap-2 whitespace-nowrap">
               <span className="font-mono text-[15.5px] font-bold tabular-nums" style={{ color: "var(--text-faint)" }}>—</span>
-              <span className="font-mono text-micro uppercase tracking-[0.10em] text-text-faint">{t.market.udAwaitingRead}</span>
+              {/* Ends on the card's edge, its trailing 0.10em taken back (round 7, R7-C, 2026-10-10). */}
+              <span className="font-mono text-micro uppercase tracking-[0.10em] text-text-faint kp-track-end kp-track-end--10">{t.market.udAwaitingRead}</span>
             </span>
           ) : (
             <span className="ml-auto inline-flex items-baseline gap-2 whitespace-nowrap" style={{ color: priceColor }}>
@@ -895,7 +896,8 @@ export function UpDownCard(props: UpDownCardProps) {
         {upPct !== null && downPct !== null ? (
           <div className="flex items-center justify-between font-mono text-[9.5px] font-bold tracking-[0.06em]">
             <span style={{ color: "var(--yes-300)" }}>{t.market.udUp} {upPct}%</span>
-            <span style={{ color: "var(--no-300)" }}>{downPct}% {t.market.udDown}</span>
+            {/* On the bar's end, its trailing 0.06em taken back (round 7, R7-C) — the round page's bar does the same. */}
+            <span className="kp-track-end kp-track-end--06" style={{ color: "var(--no-300)" }}>{downPct}% {t.market.udDown}</span>
           </div>
         ) : price.kind === "oneSided" ? (
           <div className="flex"><span className="mcardp-oneside">{t.market.oneSideOnly}</span></div>
@@ -949,7 +951,8 @@ export function UpDownCard(props: UpDownCardProps) {
               {t.market.udWinTarget}
               {openPrice != null && <>{" "}<span className="whitespace-nowrap tabular-nums">{priceText.open}</span></>}
             </span>
-            {openPrice != null && <span className="ml-auto whitespace-nowrap tabular-nums">± {priceText.margin}</span>}
+            {/* The band's ± ends on the card's edge, its trailing 0.14em taken back (round 7, R7-C, 2026-10-10). */}
+            {openPrice != null && <span className="ml-auto whitespace-nowrap tabular-nums kp-track-end">± {priceText.margin}</span>}
           </div>
           {/* ⚠️ STAGE 9b — these two tiles were examined for the <Stat> consolidation and
               KEPT. They are label-over-value pairs, but not one of them lands on a rung:

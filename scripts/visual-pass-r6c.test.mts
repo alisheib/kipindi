@@ -621,8 +621,12 @@ section("13 · C11 every right-aligned tracked label ends on its column's edge (
   const SITES = [BET, SELL, "src/app/wallet/withdraw/page.tsx", "src/app/wallet/wallet-client.tsx", "src/app/updown/history/page.tsx", "src/app/updown/[roundId]/page.tsx",
     "src/components/updown/price-hero.tsx", "src/components/updown/round-countdown.tsx", "src/app/positions/performance/page.tsx"];
   const taken = SITES.reduce((n, f) => n + [...code(f).matchAll(/\bkp-track-end(?!-)/g)].length, 0);
-  ok(`13.1 · no right-aligned tracked label keeps its trailing tracking: ${taken} labels in ${SITES.length} files take it back (the review's 8 and two more the census found — the round's players, the Wallet history's status); two end on a glyph`,
-    loose.length === 0 && taken === 10, j(loose));
+  // Re-pinned 10 → 17 (round 7, R7-C, 2026-10-10): R7-C's wider census (test:visual-pass-r7c §2, every way a label can end
+  // on an edge) took back seven more in these files — the round page's last-round door, its split bar's DOWN label and its
+  // proof's reference, the round clock's digits (the class in both arms of its pulse), and /positions/performance's caption
+  // and streak label. This section's own reading (`text-right`) still finds none loose.
+  ok(`13.1 · no right-aligned tracked label keeps its trailing tracking: ${taken} labels in ${SITES.length} files take it back (the review's 8 and two more the census found — the round's players, the Wallet history's status — and round 7's seven); two end on a glyph`,
+    loose.length === 0 && taken === 17, j(loose));
   ok("13.2 · the 0.08em label takes back 0.08em (a `--track-end` step of its own, beside F19's 0.16 and 0.10)",
     /\.kp-track-end--08 \{ --track-end: 0\.08em; \}/.test(decommentCss(raw("src/app/globals.css"))) && has("src/app/positions/performance/page.tsx", "tracking-[0.08em] text-text-muted kp-track-end kp-track-end--08"));
   const planted = scan(BET, code(BET).replace("text-text-subtle mb-1 kp-track-end", "text-text-subtle mb-1"));

@@ -34,6 +34,7 @@ import { DEFAULT_CASHOUT_FEE_RATE, DEFAULT_FREE_EXIT_GRACE_MINUTES, DEFAULT_PAID
 import { formatTzs, formatNumber } from "@/lib/utils";
 import { keepText } from "@/components/ui/keep-run";
 import { figureRuns } from "@/components/ui/keep-words";
+import { stemOf } from "@/lib/display-stem";
 
 const QUOTE_HOLD_MS = 10_000;
 /** How long a bet may wait before we explain the wait. Short enough that the
@@ -316,7 +317,9 @@ export function BetConfirmModal({
                   "是" — one fact, two answers, one screen. Both now come out of §L's one map,
                   so they cannot disagree again. This modal is poll-only (its sole caller is
                   `conviction-dial.tsx`; Up & Down confirms through `UpDownBetReceiptModal`). */}
-              <p className="pr-3 font-display font-bold text-[26px] leading-none" style={{ color: sideTone.fg, letterSpacing: "-0.025em" }}>
+              {/* A display word on the dialog's edge: "NDIO", "HAPANA" and "NO" open on a straight stem and are set back by its
+                  bearing, as "YES" and 是 need not be (round 7, R7-C, 2026-10-10; `lib/display-stem.ts`). */}
+              <p className="pr-3 font-display font-bold text-[26px] leading-none" data-stem={stemOf(sideWord(t, side, "MARKET"))} style={{ color: sideTone.fg, letterSpacing: "-0.025em" }}>
                 {sideWord(t, side, "MARKET")}
               </p>
             </div>

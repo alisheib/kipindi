@@ -229,7 +229,9 @@ export const NOT_EYEBROW = new Map([
   ["app/api/og/market/[id]/route.tsx :: <span style={{ color: C.tipLabel, opacity: 0.6, fontStyle: \"italic\", textTransform: \"uppercase\", fontSize: 14 }}> ↵ {settled ? settled.poolCaption : price.lean}", "STATUS_CHIP"],
   ["app/api/og/market/[id]/route.tsx :: letterSpacing: \"0.18em\", textTransform: \"uppercase\", color: C.gilt, ↵ }}>", "CELEBRATION"],
   ["app/api/og/page/route.tsx :: <div style={{ position: \"absolute\", bottom: 46, fontSize: 15, letterSpacing: \"0.16em\", textTransform: \"uppercase\", opacity: 0.5 }}> ↵ The wisdom of YES &amp; NO", "CELEBRATION"],
-  ["app/auth/2fa/page.tsx :: className=\"font-mono text-label uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors\" ↵ >", "CONTROL_LABEL"],
+  // Round 7 (R7-C, 2026-10-10): re-signed — the label ends on its edge, its trailing tracking taken back (`kp-track-end`;
+  // test:visual-pass-r7c §2's census), and a wrapped line ends there too (`text-right`); same role. So below, where marked.
+  ["app/auth/2fa/page.tsx :: className=\"text-right font-mono text-label uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors kp-track-end\" ↵ >", "CONTROL_LABEL"],
   ["app/auth/2fa/page.tsx :: className=\"font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text transition-colors\" ↵ >", "CONTROL_LABEL"],
   ["app/auth/admin/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.18em] font-bold text-brand-300 whitespace-nowrap\"> ↵ Staff · Confidential", "STATUS_CHIP"],
   ["app/auth/forgot-password/page.tsx :: className=\"inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.16em] text-text-subtle hover:text-text\" ↵ >", "CONTROL_LABEL"],
@@ -250,12 +252,14 @@ export const NOT_EYEBROW = new Map([
   // Round 5's follow-up (R5-K, 2026-10-09): three of the page lines here, drawn by their pages' loading ghosts in the
   // page's own classes with the words set and not shown (`ghost-text.tsx`) — each the role of the line it stands for.
   ["app/positions/positions-ghost.tsx :: <div className=\"mb-1.5 flex items-center justify-between gap-2 font-mono text-micro uppercase tracking-[0.12em] tabular-nums\"> ↵ <span className=\"font-bold\"><GhostText>{`", "OTHER"],
-  ["app/positions/performance/performance-ghost.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.12em] tabular-nums\"><GhostText>{`${t.performance.longestStreak} 0`}</GhostText></p> ↵ </div>", "OTHER"],
-  ["app/positions/performance/performance-ghost.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.08em]\"><GhostText>{t.performance.cumulativePerSettlement}</GhostText></span> ↵ </div>", "OTHER"],
-  ["app/positions/performance/page.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.12em] text-text-subtle tabular-nums\">{t.performance.longestStreak} {formatNumber(longestStreak)}</p> ↵ </div>", "OTHER"],
+  // Round 7 (R7-C): re-signed — the drawing's two and the page's streak here, the page's caption two entries on; the drawing
+  // follows its page. Same roles.
+  ["app/positions/performance/performance-ghost.tsx :: <p className=\"text-right font-mono text-micro uppercase tracking-[0.12em] tabular-nums kp-track-end kp-track-end--12\"><GhostText>{`${t.performance.longestStreak} 0`}</Gho", "OTHER"],
+  ["app/positions/performance/performance-ghost.tsx :: <span className=\"text-right font-mono text-micro uppercase tracking-[0.08em] kp-track-end kp-track-end--08\"><GhostText>{t.performance.cumulativePerSettlement}</GhostText>", "OTHER"],
+  ["app/positions/performance/page.tsx :: <p className=\"text-right font-mono text-micro uppercase tracking-[0.12em] text-text-subtle tabular-nums kp-track-end kp-track-end--12\">{t.performance.longestStreak} {form", "OTHER"],
   // Round 6 (review C11): re-signed — the right-aligned status word takes back its trailing 0.08em (`kp-track-end`); same role.
   ["app/positions/performance/page.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.08em] text-text-muted kp-track-end kp-track-end--08\">{r.statusLabel}</p> ↵ </div>", "STATUS_CHIP"],
-  ["app/positions/performance/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.08em] text-text-subtle\">{t.performance.cumulativePerSettlement}</span> ↵ </div>", "OTHER"],
+  ["app/positions/performance/page.tsx :: <span className=\"text-right font-mono text-micro uppercase tracking-[0.08em] text-text-subtle kp-track-end kp-track-end--08\">{t.performance.cumulativePerSettlement}</span", "OTHER"],
   ["app/profile/kyc/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.1em] text-text-subtle\">{idLabel}</span> ↵ </div>", "OTHER"],
   ["app/profile/kyc/page.tsx :: <span className=\"inline-flex items-center gap-1 rounded-pill border border-success-border bg-success-bg px-2.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0", "STATUS_CHIP"],
   ["app/profile/kyc/page.tsx :: className=\"font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text\" ↵ >", "CONTROL_LABEL"],
@@ -268,7 +272,8 @@ export const NOT_EYEBROW = new Map([
   // page's does on a phone (the flag's 0.16em is part of its width). The same role as the page's.
   ["app/results/loading.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-micro uppercase tracking-[0.16em] font-bold\"> ↵ <span className=\"h-[13px] w-[13", "STATUS_CHIP"],
   ["app/updown/[roundId]/page.tsx :: <p className=\"mt-1 flex items-center gap-1.5 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle\"> ↵ {isOpen && <span className=\"live-dot\" />}", "STATUS_CHIP"],
-  ["app/updown/[roundId]/page.tsx :: className=\"inline-flex items-center gap-0.5 font-mono text-micro font-semibold uppercase tracking-[0.08em]\" ↵ style={{ color: \"var(--brand-300)\" }}>", "CONTROL_LABEL"],
+  // Round 7 (R7-C): re-signed — the last-round door ends on its row's edge (`kp-track-end--08`); same role.
+  ["app/updown/[roundId]/page.tsx :: className=\"inline-flex items-center gap-0.5 font-mono text-micro font-semibold uppercase tracking-[0.08em] kp-track-end kp-track-end--08\" ↵ style={{ color: \"var(--brand-3", "CONTROL_LABEL"],
   ["app/updown/history/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.10em] text-text-faint\"> ↵ {formatNumber(g.bets.length)} {t.market.udBets}", "OTHER"],
   // Round 5 (R5-A, F19): the note's words sit in a span of their own (`kp-track-end`, its trailing tracking taken back).
   ["app/updown/page.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.10em] text-text-faint\"> ↵ <span className=\"live-dot\" /> <span classNa", "STATUS_CHIP"],
@@ -328,10 +333,12 @@ export const NOT_EYEBROW = new Map([
   ["components/onboarding/first-visit-primer.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.14em]\" style={{ color: \"var(--brand-300)\" }}>{share}</span> ↵ <span className=\"inline-block h-[2px] w-5 rounde", "OTHER"],
   // RE-KEYED (R5-K, 2026-10-09): the strip's live key moved into `PNL_STRIP.live`, the class the strip and its loading ghost
   // both read — the same element in the same role; its class string now stands on the constant's line.
-  ["components/positions/pnl-summary-strip.tsx :: live: \"inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.08em] text-text-subtle\", ↵ cell: \"pl-3.5 pt-0.5\",", "STATUS_CHIP"],
+  // Round 7 (R7-C): re-signed — this one, push-settings' N/A and the Up & Down card's awaiting-read note below: each ends on
+  // its edge (`kp-track-end`); same roles.
+  ["components/positions/pnl-summary-strip.tsx :: live: \"inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.08em] text-text-subtle kp-track-end kp-track-end--08\", ↵ cell: \"pl-3.5 pt-0.5\",", "STATUS_CHIP"],
   ["components/profile/email-editor.tsx :: <span className=\"inline-flex items-center gap-1 rounded-pill border border-border bg-bg-inset px-2 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.1em] text-t", "STATUS_CHIP"],
   ["components/profile/email-editor.tsx :: <span className=\"inline-flex items-center gap-1 rounded-pill border border-success-border bg-success-bg px-2 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.1", "STATUS_CHIP"],
-  ["components/settings/push-settings.tsx :: <span className=\"shrink-0 font-mono text-micro uppercase tracking-[0.12em] text-text-faint\"> ↵ {state === \"loading\" ? \"…\" : t.push.na}", "STATUS_CHIP"],
+  ["components/settings/push-settings.tsx :: <span className=\"shrink-0 font-mono text-micro uppercase tracking-[0.12em] text-text-faint kp-track-end kp-track-end--12\"> ↵ {state === \"loading\" ? \"…\" : t.push.na}", "STATUS_CHIP"],
   ["components/ui/back-link.tsx :: className=\"min-h-[44px] inline-flex items-center gap-1.5 text-label font-mono uppercase tracking-[0.16em] text-text-subtle hover:text-text transition-all hover:-translate", "CONTROL_LABEL"],
   ["components/ui/callout.tsx :: ? <p className=\"mt-1.5 font-mono text-micro uppercase tracking-[0.12em] text-text-subtle\">{meta}</p> ↵ : null;", "OTHER"],
   ["components/ui/cashback-promo.tsx :: <span className=\"ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-micro uppercase tracking-[0.12em] font-bold bg-bg-inset text-text-subtle\">", "STATUS_CHIP"],
@@ -366,7 +373,7 @@ export const NOT_EYEBROW = new Map([
   ["components/updown/price-hero.tsx :: <span className=\"font-mono font-semibold uppercase tracking-[0.10em]\" style={{ fontSize: 9, color: \"var(--text-faint)\" }}>{copy.awaitingRead}</span> ↵ </>", "STATUS_CHIP"],
   // ⚠️ RE-KEYED 2026-09-27 (landing v3 F1). Same "Awaiting price" status word, same role: it moved out of the card's
   // header into the named confirmed-price row, and its `<div>` became a `<span>` inside the figure's group.
-  ["components/updown/updown-card.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.10em] text-text-faint\">{t.market.udAwaitingRead}</span> ↵ </span>", "OTHER"],
+  ["components/updown/updown-card.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.10em] text-text-faint kp-track-end kp-track-end--10\">{t.market.udAwaitingRead}</span> ↵ </span>", "OTHER"],
   ["components/updown/updown-card.tsx :: <div className=\"mt-1 flex items-center gap-1.5 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle\"> ↵ {/* Stage 9b — kit <Dot pulse>. It IS `", "OTHER"],
   ["components/updown/updown-card.tsx :: className=\"font-mono uppercase tracking-[0.08em]\" ↵ style={{ color: \"var(--brand-300)\", fontSize: 10.5 }}", "CONTROL_LABEL"],
   ["components/updown/updown-handover.tsx :: className=\"btn btn-ghost btn-sm inline-flex items-center gap-1 font-mono uppercase tracking-[0.08em]\" ↵ style={{ color: \"var(--brand-300)\", fontSize: 10.5 }}", "CONTROL_LABEL"],
