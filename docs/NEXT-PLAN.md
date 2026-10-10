@@ -108,6 +108,22 @@ sconsisently 1000 not 500"*. Owner answers the same day: publish the 2026-10-06 
 | **Other lanes** | ⛔ Vodacom: R2 / S9's "email code before the first deposit" is SUPERSEDED by this ruling — do not build it; the shortfall test's TZS 500 example moves to 1,000 in Phase B. Marketing: Phase B adds one paged deposit/withdrawal read to both data-layer twins (the transaction block only) |
 | **Open (owner)** | ① Was the Board letter `BOARD-DISCLOSURE-KYC-AT-WITHDRAWAL.md` sent? It says the first deposit needs a confirmed email — no longer true. ② Posters/SMS outside the app that say a TZS 500 minimum. ③ Selcom: card orders now carry the address on file (confirmed or not) — does Selcom email receipts to it? **Open (money lane, older than this release):** an officer's Reject of a held deposit posts no ledger entry releasing `HOUSE:RG_SUSPENSE`, and the "returned" notice goes out before the money does. FLOWS E5 (no-email password recovery) stays open. |
 
+## ▶ 0f · KYC BY TYPED DETAILS — `KYC-TYPED-ONLY` · 🔨 **IN FLIGHT since 2026-10-10 15:00 EAT on ALI-BLADE15** · nothing live yet · ⛔ another lane must not edit the files under **Other lanes** until this row says LIVE
+
+Ali, 2026-10-10, relaying the Gaming Board: *"no need for KYC uploads for NIDA or identities — we can stick to the input
+fields … the Gaming Board wants the simplest way to implement the KYC for users; they are saying it is taking much time
+to upload"*.
+
+| | |
+|---|---|
+| **What** | Players verify identity with **typed details only** (document type, number, expiry for a passport or licence, full name; the date of birth is the account's) and are **approved at once** when the automatic checks pass. Narrow cases go to an officer first: the NIDA number's birth digits say under 18 · an officer has already ruled on the identity · risk score 70 or more · a wallet hold, a rejected source-of-funds declaration or an open AML escalation · a possible same person on a restricted account. Officers post-check every automatic approval and may ask for **corrections only** (no extra-document requests), reject, or refuse. **Agents keep photo ID + selfie reviewed by an officer, and the agent application stays as it is.** The player upload path leaves the code (no admin switch). |
+| **Rulings** | Ali, 2026-10-10, in session: instant approval for all four documents · today's fields · corrections only · agents as before · the typed identity is held 7 years when a closed account is erased, with no 14-day notice (*"we have our licence to do this, it's ok"*) · one live test verification on the QA player `mobile01`. Recorded in `COMPLIANCE-DECISIONS.md` with the release. |
+| **Where** | Worktree `C:\kipindi-kyc-typed`, branch `kyc-typed-only` (from `b79f0d72`), on ALI-BLADE15. Push 1 (schema only) from a clean worktree `C:\kipindi-kyc-schema`. |
+| **Order** | Push 1 — schema only: six nullable `KycSubmission` columns + a `photoVerifiedAt` backfill, no behaviour. Push 2 — Part A: player, officer and agent halves together, with every doc. Push 3 — Part C: the 7-year identity hold on erasure. |
+| **Other lanes** | ⚠️ This change rewrites, coordinate before touching: `src/app/profile/kyc/**` · `src/lib/server/kyc-service.ts` · `src/lib/kyc-attestations.ts` · `src/lib/id-documents.ts` · `src/app/admin/kyc/**` · the KYC parts of `src/lib/server/store.ts` and `src/lib/server/prisma-dal.ts` · the KYC keys of `src/lib/i18n-dict.ts` · the legal pages (Terms, AML, Privacy) · the identity gates in `src/lib/server/agent-application-service.ts`. Vodacom: the Akaunti hub's identity row keeps its key `profile.verifyIdSub` (new words). |
+| **Status** | Building. Production, measured read-only 2026-10-10 15:05 EAT: 13 approved identities (officer + photos), 23 in progress (4 with typed details), 0 pending, 0 corrections asked, 0 refused, 0 agent applications, 0 erasure requests. |
+| **Open (owner)** | The new Board letter (a draft for Ali to send, lands with Push 2). Officers to start clearing the post-check list once Push 2 is live. |
+
 ## 00 · PRE-LAUNCH DATA RESET — `PRELAUNCH-RESET` · 🏁 **DONE 2026-09-11, EXECUTED ON PRODUCTION**
 
 Ali's go-live instruction, 2026-09-11. **▶ Record and runbook:
