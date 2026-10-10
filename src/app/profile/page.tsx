@@ -21,6 +21,8 @@ import { inviteIsLiveFor } from "@/lib/feature-state";
 import { isFinalRefusal, kycDoorOffered } from "@/lib/kyc-refusal";
 import { inviteLine, inviteName } from "@/lib/journey/invite-name";
 import { invitePaysPlayersNow } from "@/lib/server/invite-rewards-switch";
+import { isLockedOut } from "@/lib/server/responsible-gambling";
+import { breakStateOf } from "@/lib/break-end";
 // ⭐ THE SHARED MASK (`+255••••21`), so this page and the opt-out page show one person's number the
 // same way (D6). The local star copy here was one of the hand-written masks `phone-normalize.ts` retired.
 import { maskPhone } from "@/lib/phone-normalize";
@@ -67,9 +69,13 @@ export default async function ProfilePage() {
   // ⭐ …AND WHETHER INVITES PAY, beside it (round 6, review C1): the row says the page's own name, and a paid player's page
   // is "Invite & Earn" (`invite-name.ts`). The switch's screen read (≤ 10 s snapshot, never rejects; a failed read is "not
   // paid", so the row never promises money the page does not).
-  const [inviteViewer, invitePayable] = await Promise.all([
+  // ⭐ R8-C (2026-10-10, the owner's ruling (4)) · …AND WHETHER THE READER IS ON A BREAK, in the same batch: during a break or
+  // a self-exclusion no row offers the invite (or an agent's dashboard, the same door). Failing OPEN — a failed read is no
+  // break, and the row is today's (it gates an offer, never a refusal).
+  const [inviteViewer, invitePayable, breakEnd] = await Promise.all([
     inviteViewerFor(user.id),
     invitePaysPlayersNow().catch(() => false),
+    Promise.resolve().then(() => isLockedOut(user.id)).then(breakStateOf).catch(() => null),
   ]);
 
   let wallet: Awaited<ReturnType<typeof db.wallet.findByUserId>> | null = null;
@@ -362,9 +368,12 @@ export default async function ProfilePage() {
               ⭐ …AND A PLAYER'S ROW SAYS THE PAGE'S NAME FOR THAT PLAYER (round 6, 2026-10-09, review C1): while invites pay,
               the page is "Alika na upate zawadi / Invite & Earn" (its tab and h1), and this row said "Alika marafiki" —
               now the one name `invite-name.ts` gives every door, its line the page's own call under it. Both shells (a
-              page body); unchanged while invites pay nothing, as today. */}
+              page body); unchanged while invites pay nothing, as today.
+              ⭐ R8-C (2026-10-10, the owner's ruling (4)) · AND NONE DURING A BREAK (`breakEnd`, read above): a reader whose break
+              or self-exclusion is running is offered no invite, the agent's dashboard door included (the dashboard still
+              opens at its address, with its statement). Both shells (a page body). */}
           {inviteIsLiveFor(inviteViewer) && (
-            inviteViewer.agentInGoodStanding ? (
+            breakEnd ? null : inviteViewer.agentInGoodStanding ? (
               <SettingRow icon={I.shieldcheck} title={t.agent.dashTitle} subtitle={t.agent.dashSubtitle} href="/profile/invite" accent
                 badge={t.common.newBadge} />
             ) : (

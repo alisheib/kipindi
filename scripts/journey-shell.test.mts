@@ -674,7 +674,7 @@ const viewer = (role: string | null, inStanding: boolean, eligible: boolean): In
 const doors = (inviteVisible: boolean, invitePaid: boolean, agentDoorVisible: boolean, proposalsVisible: boolean, staffConsole: boolean): DO =>
   ({ inviteVisible, invitePaid, agentDoorVisible, proposalsVisible, staffConsole });
 const PLAYER = viewer("PLAYER", false, true);
-const OPEN: Omit<DI, "inviteViewer" | "role"> = { invitePayable: false, agentEnabled: true, proposalsState: "COMING_SOON" };
+const OPEN: Omit<DI, "inviteViewer" | "role"> = { invitePayable: false, agentEnabled: true, proposalsState: "COMING_SOON", onBreak: false };
 /** Typed out, never imported: dropping a role from the module's list must not shrink this table with it. */
 const STAFF = ["ADMIN", "COMPLIANCE", "MODERATOR", "FINANCE", "GROWTH", "AUDITOR", "SUPPORT"];
 /** [name, input, expected, FEATURE_INVITE for the row (unset = the shipped constant)]. */
@@ -693,12 +693,21 @@ const DOOR_ROWS: Array<[string, DI, DO, string?]> = [
   ...STAFF.map((role): [string, DI, DO] => [`staff.${role}`, { ...OPEN, inviteViewer: viewer(role, false, false), role }, doors(false, false, true, true, true)]),
   ["invite.withdrawn.player", { ...OPEN, inviteViewer: PLAYER, role: "PLAYER" }, doors(false, false, true, true, false), "WITHDRAWN"],
   ["invite.withdrawn.agent", { ...OPEN, inviteViewer: viewer("AGENT", true, false), role: "AGENT" }, doors(true, true, true, true, false), "WITHDRAWN"],
+  // R8-C (2026-10-10, the owner's ruling (4)): during a break no door offers to earn or recruit — invite, agent and proposals
+  // close for a player and an agent alike; "paid" (a word, not a door) and the console stand as they were.
+  ["break.player", { ...OPEN, onBreak: true, inviteViewer: PLAYER, role: "PLAYER" }, doors(false, false, false, false, false)],
+  ["break.player.paid", { ...OPEN, onBreak: true, invitePayable: true, proposalsState: "ACTIVE", inviteViewer: PLAYER, role: "PLAYER" }, doors(false, true, false, false, false)],
+  ["break.agent.standing", { ...OPEN, onBreak: true, agentEnabled: false, inviteViewer: viewer("AGENT", true, false), role: "AGENT" }, doors(false, true, false, false, false)],
+  ["break.staff.SUPPORT", { ...OPEN, onBreak: true, inviteViewer: viewer("SUPPORT", false, false), role: "SUPPORT" }, doors(false, false, false, false, true)],
 ];
-/** The three formulas AppShell writes today, exactly as written — the doors above must say the same thing. */
+/** The three formulas AppShell writes today, exactly as written — the doors above must say the same thing.
+ *  R8-C (2026-10-10): the invite and the agent door carry the break (`!promoSuppressed`), as `viewerDoorsFor`'s `onBreak`
+ *  does, and the proposals state the chrome is handed is DISABLED for a reader on a break — the fourth line. */
 const SHELL_FORMULAS: Array<[string, string]> = [
-  ["invite", "const inviteVisible = inviteIsLiveFor(inviteViewer);"],
+  ["invite", "const inviteVisible = !promoSuppressed && inviteIsLiveFor(inviteViewer);"],
   ["paid", "const invitePaid = (await invitePayableRead) || inviteViewer.agentInGoodStanding;"],
-  ["agent", "const agentDoorVisible = getAgentConfig().enabled || inviteViewer.agentInGoodStanding;"],
+  ["agent", "const agentDoorVisible = !promoSuppressed && (getAgentConfig().enabled || inviteViewer.agentInGoodStanding);"],
+  ["proposals.break", `const proposalsState = promoSuppressed ? "DISABLED" : getProposalsConfig().state;`],
 ];
 /** The fourth: the classic chrome hides every proposals door only when DISABLED, and so must the hub. */
 const PROPOSALS_RULE = `proposalsState !== "DISABLED"`;

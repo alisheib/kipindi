@@ -161,6 +161,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
    * True = this player is on a self-imposed break, so nothing promotional may be shown to them.
    * ⛔ Defaults FALSE, including for a signed-out visitor and for a failed RG read — it gates an
    * OFFER, never a refusal (`feature-state.ts` LAW 1), so failing open is the correct direction.
+   * ⭐ R8-C (2026-10-10, the owner's ruling (4)) · it also closes the three offers' doors the shell hands its chrome — the
+   * proposals state, the invite and the agent door below — so a reader on a break is offered nothing to earn or recruit.
    */
   let promoSuppressed = false;
   /** R4-I · the journey Wallet's one consumer of the break's END (see the note at `promoSuppressed` below). */
@@ -319,7 +321,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
   // Proposals feature-state — drives the entry-point badges (top bar, avatar
   // menu, footer). Sync cache read; safe default (COMING_SOON) if unhydrated.
-  const proposalsState = getProposalsConfig().state;
+  /* ⭐ R8-C (2026-10-10, the owner's ruling (4); owner items 16 and 56) · DURING A BREAK, NO OFFER TO EARN OR RECRUIT. A
+     reader whose break or self-exclusion is running (`promoSuppressed`, from the settings row already in hand) is handed
+     DISABLED: every chrome door to the proposals hides on that answer and on no other (`proposalsState !== "DISABLED"` in
+     the bar's More, the avatar menu, the rail's More and the footer), and the badge it carries rides a door that is then
+     not drawn. Every other reader is handed the programme's own state, the same value as before — their props unchanged.
+     The invite and the agent door below take the same term; `viewerDoorsFor` (`onBreak`) spells all three for the hub. */
+  const proposalsState = promoSuppressed ? "DISABLED" : getProposalsConfig().state;
 
   /* ⭐ INVITE IS RESOLVED HERE, ONCE, BECAUSE THIS IS THE ONLY PLACE THAT KNOWS THE ROLE.
      The shell's surfaces that offer Invite — the bottom rail, the top bar, the avatar menu and
@@ -331,8 +339,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
      ⚠️ `u` is null only when the user fetch above FAILED. Defaulting to hidden is the safe
      direction — a failed read must never open a withdrawn programme.
      🔴 AND IT IS STANDING, NOT ROLE (2026-09-07). `inviteIsLiveFor(viewerRole)` kept every
-     entry point open for a DEACTIVATED agent, because deactivation leaves the role in place. */
-  const inviteVisible = inviteIsLiveFor(inviteViewer);
+     entry point open for a DEACTIVATED agent, because deactivation leaves the role in place.
+     ⭐ R8-C (2026-10-10, ruling (4)) · AND NOT DURING A BREAK: `promoSuppressed` closes it for every reader on a break, a
+     player's "Alika" and an agent's dashboard door alike (the dashboard still opens at its address — the statement stays). */
+  const inviteVisible = !promoSuppressed && inviteIsLiveFor(inviteViewer);
   /* ⭐ THE SECOND HALF OF THE PAIR, RESOLVED IN THE SAME PLACE AND FOR THE SAME REASON: the menu
      row's WORDS depend on whether the viewer's invite destination pays, and a client component may
      not read the product state to find out.
@@ -364,8 +374,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
    * strip an approved agent — or a paid applicant awaiting a decision — of their only
    * navigational route to it. Gating on `enabled` alone made the footer a dead end for exactly
    * the people who had paid TZS 118,000.
+   * ⭐ R8-C (2026-10-10, ruling (4)) · …EXCEPT DURING A BREAK: "Kuwa wakala" is an offer to earn, and a reader on a break is
+   * offered none (`promoSuppressed`). /agent itself still answers a direct visit — calmly (the programme's own RG sentence).
    */
-  const agentDoorVisible = getAgentConfig().enabled || inviteViewer.agentInGoodStanding;
+  const agentDoorVisible = !promoSuppressed && (getAgentConfig().enabled || inviteViewer.agentInGoodStanding);
 
   /** True only for a request whose preview pass counts (`simpleJourneyFor`). Everybody else gets no marker. */
   const journeyPreview = (await journeyRead).preview;

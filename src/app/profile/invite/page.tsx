@@ -26,6 +26,9 @@ import { inviteIsLiveFor } from "@/lib/feature-state";
 import { invitePaysPlayersNow } from "@/lib/server/invite-rewards-switch";
 import { inviteLine, inviteName } from "@/lib/journey/invite-name";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+import { isLockedOut } from "@/lib/server/responsible-gambling";
+import { breakSentence, breakStateOf } from "@/lib/break-end";
+import { BetBreakNotice } from "@/components/rg/bet-break-notice";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Invite & Earn", which a Swahili player saw in their browser tab and history.
@@ -113,6 +116,23 @@ function EarningsRing({ value, label, tone = "gold" }: { value: number; label: s
   );
 }
 
+/**
+ * The page's title row: its own name, set solid, and the paid programme's chip beside it when there is one. ONE drawing for
+ * the live page and a reader on a break's (R8-C, 2026-10-10) — the same box the loading ghost draws.
+ */
+function TitleRow({ name, chip }: { name: string; chip?: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="font-display text-[19px] font-bold leading-none">
+          {name}
+        </p>
+      </div>
+      {chip}
+    </div>
+  );
+}
+
 function Cap({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <p className={`font-mono text-micro uppercase eyebrow font-bold text-text-subtle ${className}`}>
@@ -188,6 +208,11 @@ export default async function InvitePage({
    * 404 is ever required, the gate has to move ahead of the render — `proxy.ts` — not be
    * bought by removing a loading state.
    */
+  /* ⭐ R8-C (2026-10-10, the owner's ruling (4); owner items 16 and 56) · DURING A BREAK, NO OFFER TO EARN OR RECRUIT. Every
+     door to this page closes for a reader on a break (the chrome, the hub, /profile's row); a direct visit is answered here,
+     calmly, where the offer stood — the break's own approved sentence with its end (`BetBreakNotice`, R6-A's form and
+     words). Started beside the reads below, and failing OPEN: a failed read is no break, and the page is today's. */
+  const breakRead = Promise.resolve().then(() => isLockedOut(session.userId)).then(breakStateOf).catch(() => null);
   const inviteViewer = await inviteViewerFor(session.userId);
   /**
    * ⭐ AN APPROVED AGENT GETS THEIR OWN PAGE — a distinct read model (`agent-dashboard.tsx`),
@@ -212,8 +237,27 @@ export default async function InvitePage({
   // history, went to /profile. A journey reader's link names the hub ("‹ AKAUNTI") and falls back to it; everybody else's
   // is today's. The shell's own cached answer (`resolveSimpleJourney`), asked once for both bodies.
   const { journey } = await resolveSimpleJourney();
-  if (agentDash) return <AgentDashboard dash={agentDash} sp={sp} journey={journey} />;
+  const breakEnd = await breakRead;
+  const breakBody = breakEnd
+    ? breakSentence(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, Date.now(), t.common.monthsShort, locale)
+    : null;
+  // R8-C · an agent's statement stays theirs during a break (the DEACTIVATED rule: never take a partner's statement away);
+  // its share surfaces — the code, the link, the QR — give way to the break's notice (`agent-dashboard.tsx`).
+  if (agentDash) return <AgentDashboard dash={agentDash} sp={sp} journey={journey} breakBody={breakBody} />;
   if (!inviteIsLiveFor(inviteViewer)) notFound();
+  /* R8-C · a player on a break: the page's own name and the break's notice, nothing else — and ABOVE the summary read, so
+     nothing is minted (no code, no link built from the host, no QR) for a reader who may not be offered one now. */
+  if (breakBody) {
+    const breakName = inviteName(t, { agent: false, paid: await invitePaysPlayersNow().catch(() => false) });
+    return (
+      <PageContainer tier="form" className="space-y-5">
+        <BackLink fallbackHref={journey ? "/account" : "/profile"} label={journey ? t.journey.tabAccount : t.common.profile} />
+        <h1 className="sr-only">{breakName}</h1>
+        <TitleRow name={breakName} />
+        <BetBreakNotice body={breakBody} testId="invite-break" />
+      </PageContainer>
+    );
+  }
   // B-1 — no swallow: the fallback fabricated "0 recruits · TZS 0 earned ·
   // program off" to a player with real referral earnings. Throw to
   // profile/error.tsx instead.
@@ -286,22 +330,13 @@ export default async function InvitePage({
       <BackLink fallbackHref={journey ? "/account" : "/profile"} label={journey ? t.journey.tabAccount : t.common.profile} />
       <h1 className="sr-only">{name}</h1>
 
-      {/* Title row */}
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="font-display text-[19px] font-bold leading-none">
-            {name}
-          </p>
-        </div>
-        {/* ⛔ THE CHIP IS THE PAID PROGRAMME'S STATUS AND IT IS HIDDEN WHEN THERE IS NO PROGRAMME.
-            "Active" beside a share link reads as "you are earning", so under the unpaid invite it does
-            not render at all. ⭐ Since 2026-09-26 (review P8) `paid` already means the service-level
-            pause is OFF — a paused programme is not paid to a player — so the chip has one state, and
-            its old Paused arm (with the "rewards resume" banner that sat below) is gone. */}
-        {paid && (
-          <Chip variant="active">{t.common.active}</Chip>
-        )}
-      </div>
+      {/* Title row (`TitleRow`, above the page — the one drawing of it, a reader on a break's page included).
+          ⛔ THE CHIP IS THE PAID PROGRAMME'S STATUS AND IT IS HIDDEN WHEN THERE IS NO PROGRAMME.
+          "Active" beside a share link reads as "you are earning", so under the unpaid invite it does
+          not render at all. ⭐ Since 2026-09-26 (review P8) `paid` already means the service-level
+          pause is OFF — a paused programme is not paid to a player — so the chip has one state, and
+          its old Paused arm (with the "rewards resume" banner that sat below) is gone. */}
+      <TitleRow name={name} chip={paid && <Chip variant="active">{t.common.active}</Chip>} />
 
       {/* Hero — the dial (gold: money earned · royal: friends joined) + adaptive promises */}
       <section

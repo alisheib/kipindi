@@ -9,6 +9,9 @@ import { db } from "@/lib/server/store";
 import { invitationPreview } from "@/lib/server/agent-application-service";
 import { fill } from "@/lib/utils";
 import { formatEatDate } from "@/lib/eat-day";
+import { Callout } from "@/components/ui/callout";
+import { isLockedOut } from "@/lib/server/responsible-gambling";
+import { breakStateOf } from "@/lib/break-end";
 import { InviteClient } from "./invite-client";
 
 export async function generateMetadata() {
@@ -31,14 +34,23 @@ export default async function AgentInvitePage({ params }: { params: Promise<{ to
   const session = await currentSession();
   const viewer = session ? await db.user.findById(session.userId) : null;
   const preview = await invitationPreview(token, viewer);
+  /* ⭐ R8-C (2026-10-10, the owner's ruling (4); owner items 16 and 56) · DURING A BREAK, NO OFFER TO BECOME AN AGENT — not
+     even a personal one. A signed-in reader whose break or self-exclusion is running keeps the invitation's facts (who it was
+     sent to, when it lapses) and is answered with the programme's own RG sentence (`agent.stateRgLocked`, the refusal
+     `acceptInvitation` already gives on a break) where the code, the acceptance and the programme's door stood; a lapsed
+     invitation states itself with the same sentence in place of the programme's pitch. A guest is read nothing (no break is
+     known). Failing OPEN: a failed read is no break (and the service still refuses an acceptance on a break). */
+  const breakEnd = session
+    ? await Promise.resolve().then(() => isLockedOut(session.userId)).then(breakStateOf).catch(() => null)
+    : null;
 
   if (!preview.ok) {
     const why = preview.reason === "expired" ? t.agent.inviteExpired : preview.reason === "revoked" ? t.agent.inviteRevoked : preview.reason === "used" ? t.agent.inviteUsed : preview.reason === "declined" ? t.agent.inviteDeclined : t.agent.inviteInvalid;
     return (
       <PageContainer tier="reading" className="space-y-5">
         <PageHeader eyebrow={t.agent.eyebrow} title={t.agent.inviteTitle} />
-        <EmptyState kind="default" title={why} body={t.agent.heroSub}
-          action={<Link href={"/agent" as never}><Button variant="primary" size="md">{t.agent.title}</Button></Link>} />
+        <EmptyState kind="default" title={why} body={breakEnd ? t.agent.stateRgLocked : t.agent.heroSub}
+          action={breakEnd ? null : <Link href={"/agent" as never}><Button variant="primary" size="md">{t.agent.title}</Button></Link>} />
       </PageContainer>
     );
   }
@@ -55,13 +67,17 @@ export default async function AgentInvitePage({ params }: { params: Promise<{ to
         <p className="text-body-sm text-text-muted">{fill(t.agent.inviteExpires, { date: formatEatDate(Date.parse(preview.expiresAt), Date.now(), t.common.monthsShort, locale) })}</p>
       </section>
       <p className="text-body-sm leading-relaxed text-text-muted">{t.agent.inviteKycNote}</p>
-      <InviteClient
-        token={token}
-        signedIn={!!session}
-        viewerMatches={preview.viewerMatches}
-        addressMasked={preview.addressMasked}
-        channel={preview.channel}
-      />
+      {breakEnd ? (
+        <Callout tone="neutral" size="md">{t.agent.stateRgLocked}</Callout>
+      ) : (
+        <InviteClient
+          token={token}
+          signedIn={!!session}
+          viewerMatches={preview.viewerMatches}
+          addressMasked={preview.addressMasked}
+          channel={preview.channel}
+        />
+      )}
     </PageContainer>
   );
 }

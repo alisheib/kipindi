@@ -12,6 +12,9 @@ import { db } from "@/lib/server/store";
 import { kycGateState } from "@/lib/kyc-gate-state";
 import { MAX_DOC_BYTES } from "@/lib/id-documents";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+import { Callout } from "@/components/ui/callout";
+import { isLockedOut } from "@/lib/server/responsible-gambling";
+import { breakStateOf } from "@/lib/break-end";
 import { ApplyClient } from "./apply-client";
 
 export async function generateMetadata() {
@@ -34,6 +37,22 @@ export default async function AgentApplyPage() {
     redirect(view.state === "under_review" || view.state === "rejected" ? "/agent/status" : "/agent");
   }
   const { t } = await getServerT();
+  /* ⭐ R8-C (2026-10-10, the owner's ruling (4); owner items 16 and 56) · DURING A BREAK, NO OFFER TO BECOME AN AGENT. The
+     wizard — its documents, its referees and its registration fee paid FROM THE WALLET — is not offered to a reader whose
+     break or self-exclusion is running: the page keeps its back link and its title and says the programme's own RG sentence
+     (`agent.stateRgLocked`, the refusal `submitForReview` already gives on a break), so nothing is uploaded or paid toward
+     an application the service would refuse to take. Failing OPEN: a failed read is no break (the service still refuses). */
+  const breakEnd = await Promise.resolve().then(() => isLockedOut(session.userId)).then(breakStateOf).catch(() => null);
+  if (breakEnd) {
+    return (
+      <PageContainer tier="form" className="space-y-5">
+        <BackLink fallbackHref="/agent" label={t.agent.title} />
+        <h1 className="sr-only">{t.agent.applyTitle}</h1>
+        <p className="font-display text-title-md font-bold leading-none">{t.agent.applyTitle}</p>
+        <Callout tone="neutral" size="md">{t.agent.stateRgLocked}</Callout>
+      </PageContainer>
+    );
+  }
   const cfg = getAgentConfig();
   const fee = feeBreakdown(cfg);
   /**
