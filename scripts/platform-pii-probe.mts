@@ -162,7 +162,11 @@ try {
   const bought = await w.svc.buyPosition(victim, { marketId: market.id, side: "YES", stake: PII.stakeTzs, idempotencyKey: `pii_probe_${Date.now()}` });
   ok("1.stake · the victim's stake is placed through the real bet service", !!bought?.ok, JSON.stringify(bought).slice(0, 180));
 
-  // the victim's KYC case, so the identity submission exists to be leaked
+  // the victim's KYC case, so the identity submission exists to be leaked.
+  // ⭐ A PHOTO CASE, ON PURPOSE (2026-10-10). Players verify with typed details since that day, but the agent photo track is
+  // still a real server path and it is the population whose IMAGES officers can still open (agent applicants, and every
+  // case filed before 2026-10-10) — so `/api/admin/kyc-doc?…&type=NIDA_FRONT` below has a real image to (not) leak, and the
+  // typed details (name, number) are on the same row either way.
   const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
   await KYC.startKyc(victim);
   await KYC.submitIdentityStep(victim, { idType: "NIDA", idNumber: PII.idNumber, fullName: PII.kycFullName, dob: "1990-01-01" });

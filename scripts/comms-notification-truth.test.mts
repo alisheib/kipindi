@@ -89,6 +89,13 @@ const EMITTED: { fn: string; row: StoredNotification | null }[] = [
   { fn: "notifyReferralJoined",      row: await N.notifyReferralJoined(U, { recruitMasked: "+2557••••5678" }) },
   { fn: "notifyReferralReward",      row: await N.notifyReferralReward(U, { type: "COMMISSION", amountTzs: 2_000 }) },
   { fn: "notifyKyc",                 row: await N.notifyKyc(U, "APPROVED") },
+  // 2026-10-10 (typed-only identity): the PENDING_REVIEW notice has two wordings — typed details the automatic checks
+  // routed to an officer (the default), and an agent applicant's photo send. Both are driven, so each is held to §2.
+  { fn: "notifyKyc",                 row: await N.notifyKyc(U, "PENDING_REVIEW") },
+  { fn: "notifyKyc",                 row: await N.notifyKyc(U, "PENDING_REVIEW", { evidence: "photos" }) },
+  // 2026-10-10 (review R5.10): an officer corrected the account's date of birth — its own notice ("details received" was
+  // false: the player sent nothing). Driven, so it is held to §2 in all three languages.
+  { fn: "notifyKyc",                 row: await N.notifyKyc(U, "DOB_CORRECTED") },
   // S1 (2026-09-13) — an officer's decision on a finally-refused player's balance, one row per outcome shape.
   { fn: "notifyRefusedFundsDecision", row: await N.notifyRefusedFundsDecision(U, { outcome: "RETURN_DEPOSITS", returnedTzs: 20_000, forfeitedTzs: 5_000, balanceTzs: 25_000 }) },
   { fn: "notifyRefusedFundsDecision", row: await N.notifyRefusedFundsDecision(U, { outcome: "HOLD_PENDING_APPEAL", returnedTzs: 0, forfeitedTzs: 0, balanceTzs: 25_000 }) },
@@ -130,6 +137,8 @@ const EMITTED: { fn: string; row: StoredNotification | null }[] = [
   { fn: "notifyVerdictRecorded",     row: await N.notifyVerdictRecorded(U, { marketTitle: { en: "Sealed poll", sw: "Kura iliyofungwa", zh: "已封存的投票" }, marketId: "mkt_12", outcome: "YES", paysAt: "2026-09-05T11:32:00.000Z" }) },
   { fn: "notifyVerdictRecorded",     row: await N.notifyVerdictRecorded(U, { marketTitle: { en: "Sealed poll", sw: "Kura iliyofungwa", zh: "已封存的投票" }, marketId: "mkt_12", outcome: "NO", paysAt: "2026-09-05T12:47:00.000Z", reversed: true }) },
   { fn: "notifyAdminKycReview",      row: await N.notifyAdminKycReview("c3_officer", { playerLabel: "Asha M.", userId: U }) },
+  // 2026-10-10 · the URGENT shape: the NIDA number's own birth digits say under 18, so the case must not wait its turn.
+  { fn: "notifyAdminKycReview",      row: await N.notifyAdminKycReview("c3_officer", { playerLabel: "Asha M.", userId: U, urgent: true }) },
   // ── Agent affiliate programme ─────────────────────────────────────────────
   { fn: "notifyAgentApplicationSubmitted", row: await N.notifyAgentApplicationSubmitted(U, { applicationId: "agp_c3" }) },
   { fn: "notifyAgentApproved",       row: await N.notifyAgentApproved(U, { agentCode: "50PICK-AG-ABC234", commissionPct: 20 }) },
@@ -160,6 +169,8 @@ ok("every registered emitter exists", registeredFns.every((f) => exportedFns.inc
 ok("every registered kind is a real kind", NOTIFICATION_EMITTERS.every((e) => NOTIFICATION_KINDS.includes(e.kind)));
 // The fan-out emitters return void, so they are exercised in §5 instead.
 const FANOUT = ["notifyAdminObjectionFiled", "notifyAdminsAmlReview", "notifyAdminsSentinelDown", "notifyAdminsAiCreditLimit", "notifyAdminsBackupUnhealthy", "notifyAdminsSmsCreditLow", "notifyAdminsKycReviewOverdue", "notifyAdminsHouseBotErasureBlocked",
+  // 2026-10-10 · an automatic identity approval waiting for an officer's check — driven in §5 (both shapes) and §7e.
+  "notifyAdminsKycPostCheckDue",
   // House bots (build commit 4, step 9): eight admin fan-outs, each driven in §5.
   "notifyAdminsHouseBotBet", "notifyAdminsHouseBotStaffChosen", "notifyAdminsHouseBotHourSummary", "notifyAdminsHouseBotPaused",
   "notifyAdminsHouseBotSwitch", "notifyAdminsHouseBotMoneyEvent", "notifyAdminsHouseBotAlert", "notifyAdminsHouseBotRoster"];
@@ -257,6 +268,11 @@ section("5 · fan-out — officer alerts reach officers, complete in 3 locales")
   await N.notifyAdminObjectionFiled("obj_1", "A disputed poll");
   // 2026-09-13 · an identity review past its target — driven with the shape the SLA chore passes.
   await N.notifyAdminsKycReviewOverdue({ kycId: "kyc_c3", userId: U, playerLabel: "Asha M.", submittedAt: "2026-09-12T08:00:00.000Z", hoursWaiting: 26 });
+  // 2026-10-10 · an automatic identity approval no officer has checked — FLAGGED (at once) and unflagged (after the
+  // grace), the two wordings the post-check chore sends. Each returns how many officers' bells it reached.
+  const postFlagged = await N.notifyAdminsKycPostCheckDue({ userId: U, playerLabel: "Asha M.", hoursSince: 2, flags: ["NO_PUBLISHED_FORMAT", "SAME_PERSON"] });
+  const postPlain = await N.notifyAdminsKycPostCheckDue({ userId: U, playerLabel: "Asha M.", hoursSince: 30, flags: [] });
+  ok("the post-check alert reaches at least one officer, in both shapes", postFlagged >= 1 && postPlain >= 1, `flagged=${postFlagged} plain=${postPlain}`);
   // House bots (build commit 3) — an erasure refused while the account is still a house bot (04 R6).
   await N.notifyAdminsHouseBotErasureBlocked({ botId: "hb_c3erasure01", holderUserId: U });
   // House bots (build commit 4, step 9): the engine's eight admin fan-outs, driven in §5.
@@ -269,7 +285,16 @@ section("5 · fan-out — officer alerts reach officers, complete in 3 locales")
   await N.notifyAdminsHouseBotAlert({ code: "SETTLE_BLOCKED", botId: "hb_c3bot01", label: "Bot A", holder: "Player #A3F2K8", detail: { openStakeTzs: 240_000 }, at: "14:07:45" });
   await N.notifyAdminsHouseBotRoster({ botId: "hb_c3bot01", label: "Bot A", event: "RULES_SAVED", eventId: "hbe_c3roster01", at: "14:08:11", detail: { byName: "Juma M.", field: "daily loss cap", from: "TZS 50,000", to: "TZS 200,000" } });
   const rows = await db.notification.findByUser("c3_officer", 500);
-  ok("officer received the fan-out alerts", rows.length >= before + 17, `before=${before} after=${rows.length}`);
+  // 17 → 19 on 2026-10-10: the two post-check alerts above.
+  ok("officer received the fan-out alerts", rows.length >= before + 19, `before=${before} after=${rows.length}`);
+  // ⭐ The post-check alert names its flags in the officer's words (the case page's FLAG_LABEL) and links the case —
+  // never the document number or a date of birth (the kycSubmittedAdminHtml rule).
+  const flaggedRow = rows.find((r) => r.titleEn.startsWith("Flagged automatic approval") && r.href === `/admin/kyc/${U}`);
+  ok("the flagged post-check alert names both flags in English and links the case",
+    !!flaggedRow && flaggedRow.bodyEn.includes("2 flags") && flaggedRow.bodyEn.includes("No published number format")
+      && flaggedRow.bodyEn.includes("Possible same person"), flaggedRow?.bodyEn ?? "no row");
+  const plainRow = rows.find((r) => r.titleEn.startsWith("Automatic approval unchecked") && r.href === `/admin/kyc/${U}`);
+  ok("the unflagged post-check alert says how long it has waited", !!plainRow && plainRow.titleEn.includes("30h"), plainRow?.titleEn ?? "no row");
   const fresh = rows.slice(0, rows.length - before);
   for (const r of fresh) {
     ok(`fan-out "${r.titleEn.slice(0, 34)}": has Chinese`, !!r.titleZh && !!r.bodyZh && /[一-鿿]/.test(r.titleZh));
@@ -512,6 +537,62 @@ section("7 · identity, quietly — no receipt sentence, no reminder, no blocked
   const marks = await getAuditForTargetDurable("Kyc", "kyc_c3_sla_old", { limit: 20 });
   ok("7d each breach is ONE COMPLIANCE fact on the submission itself",
     marks.entries.filter((e) => e.action === "kyc.review_sla_breached" && e.category === "COMPLIANCE").length === 2);
+
+  // ── 7e · automatic approvals, checked afterwards (2026-10-10) — one OFFICER alert per approval ──
+  // Players verify with typed details and most are approved at once; an officer checks each one afterwards. The chore
+  // alerts at once for a FLAGGED approval, after `KYC_POST_CHECK_GRACE_HOURS` for an unflagged one, never for one an
+  // officer has checked — and once: the dedupe key is the submission AND its autoApprovedAt, as 7d's is the submission
+  // and its submittedAt. (Kept: an officer alert, not a player message, so the quiet rule above does not apply.)
+  const GRACE = N.KYC_POST_CHECK_GRACE_HOURS;
+  const ago = (hours: number) => new Date(Date.now() - hours * H).toISOString();
+  await mkUser("c3_auto_flag");    await mkKyc("c3_auto_flag", "APPROVED", { approvedAt: ago(1), reviewedAt: ago(1), autoApprovedAt: ago(1), autoFlags: ["NO_PUBLISHED_FORMAT"] });
+  await mkUser("c3_auto_old");     await mkKyc("c3_auto_old", "APPROVED", { approvedAt: ago(GRACE + 2), reviewedAt: ago(GRACE + 2), autoApprovedAt: ago(GRACE + 2), autoFlags: [] });
+  await mkUser("c3_auto_new");     await mkKyc("c3_auto_new", "APPROVED", { approvedAt: ago(1), reviewedAt: ago(1), autoApprovedAt: ago(1), autoFlags: [] });
+  await mkUser("c3_auto_checked"); await mkKyc("c3_auto_checked", "APPROVED", { approvedAt: ago(GRACE + 5), reviewedAt: ago(GRACE + 5), autoApprovedAt: ago(GRACE + 5), autoFlags: ["SAME_PERSON"], postCheckedAt: ago(GRACE + 1), postCheckedById: "c3_officer" });
+  const postCheck = async (uid: string) =>
+    (await db.notification.findByUser("c3_officer", 500)).filter((n) => n.href === `/admin/kyc/${uid}`
+      && (n.titleEn.startsWith("Flagged automatic approval") || n.titleEn.startsWith("Automatic approval unchecked")));
+  const p1 = await N.runKycPostCheckAlerts();
+  ok("7e a FLAGGED automatic approval alerts the officers at once", (await postCheck("c3_auto_flag")).length === 1, JSON.stringify(p1));
+  ok("7e an unflagged one alerts once it is past the grace", (await postCheck("c3_auto_old")).length === 1, JSON.stringify(p1));
+  ok("7e ⛔ an unflagged one inside the grace does not", (await postCheck("c3_auto_new")).length === 0);
+  ok("7e ⛔ an approval an officer has already checked never alerts", (await postCheck("c3_auto_checked")).length === 0);
+  const p2 = await N.runKycPostCheckAlerts();
+  ok("7e ⛔ ONCE PER APPROVAL — the next tick raises nothing new",
+    (await postCheck("c3_auto_flag")).length === 1 && (await postCheck("c3_auto_old")).length === 1 && p2.alerted === 0 && p2.alreadyAlerted >= 2,
+    JSON.stringify(p2));
+  const postMarks = await getAuditForTargetDurable("Kyc", "kyc_c3_auto_flag", { limit: 20 });
+  ok("7e each alert is ONE COMPLIANCE fact on the submission itself",
+    postMarks.entries.filter((e) => e.action === "kyc.post_check_due" && e.category === "COMPLIANCE").length === 1);
+
+  // ── 7f · review R5.9 — the dedupe reads the chore's OWN markers, never a window the PLAYER can fill ──
+  // The player writes Kyc-targeted rows at will (a locked press, a photo attached). The dedupe read the newest 200 of
+  // them and WITHHELD the alert when that window was full — so a player could keep their own unchecked automatic
+  // approval out of the officers' bells. It reads the marker's action alone now.
+  const { audit, auditFlush } = await import("../src/lib/server/audit.ts");
+  const flood = async (n: number) => {
+    for (let i = 0; i < n; i++) {
+      await audit({ category: "SECURITY", action: "kyc.identity_locked_blocked", actorId: "c3_auto_flood", targetType: "Kyc", targetId: "kyc_c3_auto_flood", payload: { status: "APPROVED", approvedOnce: true, i } });
+    }
+    await auditFlush();
+  };
+  await mkUser("c3_auto_flood"); await mkKyc("c3_auto_flood", "APPROVED", { approvedAt: ago(1), reviewedAt: ago(1), autoApprovedAt: ago(1), autoFlags: ["NO_PUBLISHED_FORMAT"] });
+  await flood(250);
+  const probe = await getAuditForTargetDurable("Kyc", "kyc_c3_auto_flood", { limit: 200 });
+  ok("7f control: the player's own rows overflow the newest-200 window the dedupe used to read", probe.truncated && probe.total >= 250, `total=${probe.total}`);
+  const p3 = await N.runKycPostCheckAlerts();
+  ok("7f ⛔ R5.9 · a FLAGGED approval whose case the player flooded is still alerted", (await postCheck("c3_auto_flood")).length === 1, JSON.stringify(p3));
+  await flood(60);
+  const p4 = await N.runKycPostCheckAlerts();
+  ok("7f ⛔ R5.9 · …and still ONCE: under a deeper flood the next tick finds its own marker",
+    (await postCheck("c3_auto_flood")).length === 1 && p4.alerted === 0 && p4.alreadyAlerted >= 1, JSON.stringify(p4));
+  // ⭐ R5.1 · the post-check list also holds an unchecked automatic approval while it is WITH AN OFFICER; the bell asks for
+  // a post-check, which only an APPROVED row can take, and a case with an officer has its own bells (new case, review target).
+  await mkUser("c3_auto_pending"); await mkKyc("c3_auto_pending", "PENDING_REVIEW", { approvedAt: ago(GRACE + 3), reviewedAt: ago(GRACE + 3), submittedAt: ago(1), autoApprovedAt: ago(GRACE + 3), autoFlags: ["SAME_PERSON"] });
+  const p5 = await N.runKycPostCheckAlerts();
+  ok("7f ⛔ an unchecked automatic approval now WITH AN OFFICER rings no post-check bell (its case's own bells do)",
+    (await postCheck("c3_auto_pending")).length === 0 && p5.unchecked >= 1, JSON.stringify(p5));
+  ok("7f control: …while the APPROVED one beside it, flagged, did ring", (await postCheck("c3_auto_flag")).length === 1);
 }
 
 console.log(`\ncert-c3 (notification truth): ${pass} passed, ${fail} failed`);

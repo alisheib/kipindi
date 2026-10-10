@@ -6,7 +6,8 @@ import { Stat } from "@/components/ui/stat";
 import { FiftyMark } from "@/components/brand";
 import { AvatarUploader } from "@/components/profile/avatar-uploader";
 import { ProfileNameEditor } from "@/components/profile/name-editor";
-import { nameEndAt } from "@/components/ui/keep-words";
+import { nameEndAt, keepLastWords } from "@/components/ui/keep-words";
+import { DotSeq } from "@/components/ui/dot-seq";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
 import { inviteViewerFor } from "@/lib/server/affiliate-service";
@@ -112,7 +113,8 @@ export default async function ProfilePage() {
    * ⛔ `IN_PROGRESS` IS NOT "IN REVIEW" (fixed 2026-09-13). It was, and the banner beside it said
    * "continue verification", which hid the contradiction. With the banner gone the pill alone would
    * tell somebody whose photos were never sent that our team has them. Nothing is with us until
-   * `PENDING_REVIEW`; before that the pill reads "Verify ID".
+   * `PENDING_REVIEW`; before that the pill reads "Verify ID". (From 2026-10-10 most typed verifications go straight
+   * to APPROVED on the press; `PENDING_REVIEW` is a case an officer decides, or an agent applicant's photos.)
    * ⚠️ Not started is an ordinary condition, not a warning — neutral, like the withdraw panel's own
    * not-started tone. Amber is kept for "more information needed", which really is their move.
    */
@@ -125,7 +127,9 @@ export default async function ProfilePage() {
         ? { tone: "info", label: t.profile.inReview, glyph: I.clock }
         : kycLevel === "ADDITIONAL_INFO_REQUIRED"
           // 2026-09-14 — the pill takes its own short label: the full heading wrapped to two lines beside the avatar at 360.
-          ? { tone: "warning", label: t.profile.kycMoreInfoPill, glyph: I.upload }
+          // 2026-10-10 — the info glyph, not an upload arrow: an officer asks for CORRECTIONS of typed details now, and
+          // there is nothing to upload (the withdraw panel's `more_info` reads the same glyph).
+          ? { tone: "warning", label: t.profile.kycMoreInfoPill, glyph: I.info }
           : kycLevel === "REJECTED"
             // 2026-09-14 — a FINAL refusal reads "Refused", never the retryable "Rejected" (the roster's own ruling, kyc-stage.ts).
             ? { tone: "danger", label: isFinalRefusal(kyc?.rejectReason) ? t.profile.refusedFinal : t.profile.rejected, glyph: I.alertCircle }
@@ -218,10 +222,14 @@ export default async function ProfilePage() {
                 <Pill tone="neutral">{t.profile.playerRole}</Pill>
               )}
               {/* Until verified the pill is also the quiet way in — a plain link, the shape the
-                  unconfirmed-email pill beside it already has. Verified, it only states. */}
+                  unconfirmed-email pill beside it already has. Verified, it only states.
+                  ⭐ 2026-10-10 · THE TAP FLOOR WITHOUT THE LAYOUT: the link keeps a 44px target (11px of padding over and
+                  under the pill) but cancels it with an equal negative margin, so its row is the pill's height. With
+                  `min-h` the two linked pills made their rows 44px against the others' 28 — uneven gaps around them, and a
+                  hero that changed height when the account was verified (the screenshot pass, every width). */}
               {kycLevel === "APPROVED"
                 ? kycPillNode
-                : <Link href="/profile/kyc" data-testid="profile-kyc-pill" className="no-underline inline-flex items-center min-h-[var(--tap-min)]">{kycPillNode}</Link>}
+                : <Link href="/profile/kyc" data-testid="profile-kyc-pill" className="no-underline inline-flex items-center py-[11px] -my-[11px]">{kycPillNode}</Link>}
               {/* 2026-09-13 — the language this page is IN (the kp-locale cookie, what the header menu shows), in its
                   own name. It read the stored `user.locale` with no ZH case, and the language menu never writes that
                   column, so a zh page said "English". */}
@@ -233,7 +241,7 @@ export default async function ProfilePage() {
               {user.emailVerifiedAt && user.email
                 ? <Pill tone="success"><I.check s={10} className="inline -mt-px" /> {t.profile.emailConfirmed}</Pill>
                 : (
-                  <Link href="/profile/account" data-testid="profile-email-pill" className="no-underline inline-flex items-center min-h-[var(--tap-min)]">
+                  <Link href="/profile/account" data-testid="profile-email-pill" className="no-underline inline-flex items-center py-[11px] -my-[11px]">
                     <Pill tone="neutral"><I.mail s={10} className="inline -mt-px" /> {user.email ? t.profile.emailUnconfirmed : t.profile.addEmailPill}</Pill>
                   </Link>
                 )}
@@ -485,14 +493,20 @@ function SettingRow({ icon: Icon, title, subtitle, href, accent, badge }: { icon
       </span>
       <div className="flex-1 min-w-0">
         <p className={PROFILE_ROW_TITLE}>
-          {title}
+          {/* ⛔ ONE flex item (2026-10-10, the v4 screenshot pass): the title row is a flex row (`gap-2`, for the badge), and
+              `keepLastWords` returns the head and a nowrap tail — bare, they were TWO flex items: a 12px gap where a space
+              belongs ("Source   of funds") and a title that no longer wrapped. Inside one span they are one line of text. */}
+          <span>{keepLastWords(title)}</span>
           {badge && (
             <span className="inline-flex items-center rounded-pill border border-brand-600/50 bg-brand-500/15 px-1.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.08em] text-brand-300">
               {badge}
             </span>
           )}
         </p>
-        <p className="mt-0.5 text-body-sm text-text-subtle leading-snug">{subtitle}</p>
+        {/* ⭐ 2026-10-10 · the hub's line rules on these rows too (the screenshot pass, sw/zh at 320–390): a "·" list breaks
+            only between its things (`DotSeq`), a line never ends on one word alone (`keepLastWords`), and Chinese breaks
+            at punctuation, never inside a word — `.kp-hub__sub:lang(zh)`'s rule, applied by language. */}
+        <p className="mt-0.5 text-body-sm text-text-subtle leading-snug [&:lang(zh)]:break-keep [&:lang(zh)]:[overflow-wrap:anywhere]"><DotSeq text={subtitle} renderPart={keepLastWords} /></p>
       </div>
       <I.chevronRight s={16} />
     </Link>

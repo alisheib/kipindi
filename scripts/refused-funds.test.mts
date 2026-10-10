@@ -18,7 +18,12 @@
  *   §D  the report an inspector is handed
  *   §E  `withdraw()`'s refused-funds option can only ever pay a FINALLY refused account; a normal withdrawal from a
  *       frozen wallet stays refused even for an account that was approved once
- *   §F  re-opening a final refusal lifts only the identity hold and releases the document number
+ *   §F  re-opening a final refusal lifts only the identity hold and releases the document number — and, since
+ *       2026-10-10, keeps the released identity as history and the re-opening officer as the row's provenance
+ *
+ * ⭐ 2026-10-10 (typed-only KYC): every officer decision posts the row version it was shown (`kycRowVersion`), and
+ * `BLURRY_DOC` is refused for a NEW decision (players send no photo) — §A's recoverable control uses DETAILS_MISMATCH;
+ * rows decided before that day keep BLURRY_DOC, and §B / §F still carry one as the legacy recoverable code it is.
  *
  * ⛔ NOT HERE, BECAUSE IT IS HELD ELSEWHERE: the compare-and-swap race, a payout that throws, and the no-lock rule
  * live in `scripts/refused-funds-race.test.mts`. The Prisma mapping of `freezeReasons` lives in `test:dal-parity` §5.
@@ -33,7 +38,7 @@ import { readFileSync } from "node:fs";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { withdraw } from "../src/lib/server/wallet-service.ts";
 import { decideRefusedFunds, refusedFundsPosition, refusedFundsReport } from "../src/lib/server/refused-funds.ts";
-import { reviewKyc, reopenFinalRefusal, REOPEN_FINAL_REFUSAL_REASON_MIN } from "../src/lib/server/kyc-service.ts";
+import { reviewKyc, reopenFinalRefusal, kycRowVersion, REOPEN_FINAL_REFUSAL_REASON_MIN } from "../src/lib/server/kyc-service.ts";
 import { addWalletFreeze } from "../src/lib/server/wallet-freeze.ts";
 import { assertIdentityForPayout } from "../src/lib/server/kyc-gate.ts";
 import { setPayoutStatus } from "../src/lib/server/payout-status.ts";
@@ -101,13 +106,17 @@ async function player(id: string, o: {
     await db.kyc.upsert({
       id: `kyc_${id}`, userId: id, status: o.kyc.status, rejectReason: o.kyc.rejectReason ?? null, rejectNote: null,
       idType: "NIDA", idNumber, idExpiry: null, idVerifiedAt: now(), fullName: "Refused Fixture", dob: "1990-01-01",
-      documents: [], reviewerId: OFFICER, reviewedAt: now(), submittedAt: now(),
+      documents: [], extraRequests: [], reviewerId: OFFICER, reviewedAt: now(), submittedAt: now(),
       approvedAt: o.kyc.approvedAt !== undefined ? o.kyc.approvedAt : o.kyc.status === "APPROVED" ? now() : null,
+      // ⛔ Every column named (2026-10-10) — a BUILT row; none of these is an automatic approval.
+      photoVerifiedAt: null, autoApprovedAt: null, autoFlags: [], postCheckedAt: null, postCheckedById: null, priorIdentities: [],
       createdAt: now(), updatedAt: now(),
     } as never);
   }
   return id;
 }
+/** The row version an officer's decision posts (`kycRowVersion`, 2026-10-10) — read fresh before every decision. */
+const versionOf = async (id: string) => kycRowVersion((await db.kyc.findByUserId(id))!);
 /** A finally refused account as `reviewKyc` leaves it: REJECTED on a final code, wallet held for IDENTITY_REFUSED. */
 const refused = (id: string, balance: number, deposits: number[], extra: { paidOut?: number[]; approvedAt?: string | null } = {}) =>
   player(id, {
@@ -139,10 +148,11 @@ section("§A · a final refusal freezes before it is written; a recoverable one 
   (db.wallet as { update: unknown }).update = (id: string, patch: Partial<StoredWallet>) =>
     id === `wal_${u}` ? null : realUpdate.call(db.wallet, id, patch);
   let r: Awaited<ReturnType<typeof reviewKyc>>;
+  const v0 = await versionOf(u);
   try {
     const probe = await addWalletFreeze(u, "OFFICER", { actorId: OFFICER, note: "probe" });
     ok("A.0 control - the simulated failure really makes a freeze fail", !probe.ok, J(probe));
-    r = await reviewKyc({ officerId: OFFICER, userId: u, decision: "REJECT", rejectCode: "UNDERAGE" });
+    r = await reviewKyc({ officerId: OFFICER, userId: u, decision: "REJECT", rejectCode: "UNDERAGE", version: v0 });
   } finally {
     (db.wallet as { update: unknown }).update = realUpdate;
   }
@@ -152,7 +162,7 @@ section("§A · a final refusal freezes before it is written; a recoverable one 
     String((await db.kyc.findByUserId(u))?.status));
   ok("A.3 ...and records no kyc.refused_final fact", auditOf(u, "kyc.refused_final").length === 0);
 
-  const retry = await reviewKyc({ officerId: OFFICER, userId: u, decision: "REJECT", rejectCode: "UNDERAGE" });
+  const retry = await reviewKyc({ officerId: OFFICER, userId: u, decision: "REJECT", rejectCode: "UNDERAGE", version: await versionOf(u) });
   await settle();
   const w = await walletOf(u);
   ok("A.4 control - the retry with a working freeze refuses AND freezes",
@@ -162,7 +172,9 @@ section("§A · a final refusal freezes before it is written; a recoverable one 
   ok("A.5 ...and writes the COMPLIANCE fact carrying what was at stake", fact?.category === "COMPLIANCE" && fact?.payload?.balance === 10_000, J(fact?.payload ?? null));
 
   const rec = await player("usr_rf_recoverable_review", { balance: 10_000, deposits: [10_000], kyc: { status: "PENDING_REVIEW" } });
-  const rr = await reviewKyc({ officerId: OFFICER, userId: rec, decision: "REJECT", rejectCode: "BLURRY_DOC" });
+  // ⭐ DETAILS_MISMATCH, not BLURRY_DOC (2026-10-10): "the photo was too blurry" is refused for a new decision now that
+  // players send no photo; the legacy code survives only on rows decided before (§B's fixture carries one).
+  const rr = await reviewKyc({ officerId: OFFICER, userId: rec, decision: "REJECT", rejectCode: "DETAILS_MISMATCH", version: await versionOf(rec) });
   await settle();
   const rw = await walletOf(rec);
   ok("A.6 a recoverable refusal is written ...", rr.ok && (await db.kyc.findByUserId(rec))?.status === "REJECTED", J(rr));
@@ -413,6 +425,13 @@ section("§F · re-opening a final refusal lifts only the identity hold and rele
   ok("F.5 the document number is RELEASED", db.kyc.findActiveByIdNumber("NIDA", num, "usr_rf_someone_else") === null);
   ok("F.6 the re-open is a COMPLIANCE fact carrying the officer's reason",
     auditOf(u, "kyc.refusal_reopened").some((e) => e.category === "COMPLIANCE" && e.payload?.reason === reason));
+  // ⭐ 2026-10-10 (typed-only KYC): the released identity is KEPT as history (with no images, the typed details are the
+  // only record of what this account presented), and the re-opening officer stays on the row — so the player's next
+  // typed send goes to an officer, never straight to an automatic approval.
+  const prior = Array.isArray(k?.priorIdentities) ? k!.priorIdentities : [];
+  ok("F.6b the released identity is kept in priorIdentities (cause reopen, the final code it carried)",
+    prior.length === 1 && prior[0].idNumber === num && prior[0].cause === "reopen" && prior[0].status === "REJECTED", J(prior));
+  ok("F.6c …and the re-opening officer is the row's provenance", k?.reviewerId === OFFICER, String(k?.reviewerId));
   const only = await refused("usr_rf_reopen_only", 5_000, [5_000]);
   await reopenFinalRefusal(OFFICER, only, reason);
   ok("F.7 control - with no other hold, the same re-open makes the wallet ACTIVE", (await walletOf(only)).status === "ACTIVE", (await walletOf(only)).status);

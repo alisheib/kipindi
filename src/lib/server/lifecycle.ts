@@ -13,7 +13,9 @@
  *   • reconcile stuck payments + notify still-pending deposits (~5-min);
  *   • run the nightly wallet↔ledger trial balance (daily);
  *   • watch the identity review target (2026-09-13): ONE officer alert per identity review past
- *     `KYC_REVIEW_SLA_HOURS` (~15-min).
+ *     `KYC_REVIEW_SLA_HOURS` (~15-min);
+ *   • watch the automatic identity approvals (2026-10-10): ONE officer alert per approval no officer has
+ *     checked — at once when it carries a flag, after `KYC_POST_CHECK_GRACE_HOURS` otherwise (~15-min).
  * A separate, faster timer fast-credits in-flight deposits every 15s.
  *
  * Started once from instrumentation.register() on the Node runtime.
@@ -494,6 +496,37 @@ async function maybeWatchKycReviewSla(): Promise<void> {
   }
 }
 
+// ── Automatic identity approvals, checked afterwards — the chore the 2026-10-10 ruling added ──
+//
+// Owner ruling 2026-10-10 (docs/COMPLIANCE-DECISIONS.md): a player verifies with typed details and, when the
+// automatic checks pass, is approved at once; officers check those approvals AFTERWARDS, from the list on
+// `/admin/kyc`. A list nobody is told about is a backlog, so this tells them: ONE officer alert per approval —
+// at once (the next run) when it carries a flag, after `KYC_POST_CHECK_GRACE_HOURS` when it carries none —
+// deduped per (submission, `autoApprovedAt`) by a COMPLIANCE fact on the submission, as the review target is.
+//
+// ⛔ OFFICERS ONLY, BELL ONLY. Nothing here writes to a player (the quiet rule above holds for this chore too).
+// ⛔ THE REVIEW TARGET'S CADENCE, BOOT GRACE AND POSITION, deliberately: it reads one scalar list and writes only
+// when an approval is due, and nothing that moves or books money waits behind it. Leader-leased like everything
+// here, so exactly one container speaks. Its own catch in the pass.
+const KYC_POST_CHECK_WATCH_EVERY_MS = 15 * 60 * 1000;
+const KYC_POST_CHECK_WATCH_BOOT_GRACE_MS = 5 * 60 * 1000; // let boot settle, as the review target does
+let lastKycPostCheckWatchAt = 0;
+
+async function maybeWatchKycPostChecks(): Promise<void> {
+  const now = Date.now();
+  if (now - tickerStartedAt < KYC_POST_CHECK_WATCH_BOOT_GRACE_MS) return;
+  if (now - lastKycPostCheckWatchAt < KYC_POST_CHECK_WATCH_EVERY_MS) return;
+  lastKycPostCheckWatchAt = now;
+  const { runKycPostCheckAlerts } = await import("./notification-service");
+  const r = await runKycPostCheckAlerts({ nowMs: now });
+  if (r.due > 0) {
+    console.log(
+      `[lifecycle] automatic identity approvals — ${r.due} of ${r.unchecked} unchecked due a check ` +
+        `(${r.flagged} flagged, ${r.graceHours}h for the rest), ${r.alerted} newly alerted, ${r.alreadyAlerted} already alerted`,
+    );
+  }
+}
+
 /** Run one lifecycle pass. Each chore is self-contained and best-effort; one
  *  failing must never stop the others or throw out of the tick.
  *
@@ -617,6 +650,9 @@ export async function runLifecyclePass(): Promise<void> {
     // The identity review target (2026-09-13) — LAST, with its own catch. See the block above
     // `runLifecyclePass`: it sends mail, and nothing that moves or books money waits behind it.
     await maybeWatchKycReviewSla().catch((e) => console.error("[lifecycle] identity review target:", e));
+    // The automatic approvals' officer check (2026-10-10), beside the review target and on the same contract: officer
+    // bells only, its own catch, and before the holder sweep, which stays the LAST chore (ruling 129).
+    await maybeWatchKycPostChecks().catch((e) => console.error("[lifecycle] automatic identity approvals:", e));
     await maybeRunHolderSweep().catch((e) => console.error("[lifecycle] house-bot holder sweep:", e));
   } finally {
     // A completed pass ends the overrun: clear the consecutive count and re-arm the

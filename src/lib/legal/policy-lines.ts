@@ -138,10 +138,14 @@ export type PolicyPageSpec = {
 };
 
 /* Typed before it is frozen, so each `versionKey` is checked as the literal key it is (a frozen inline literal would
-   widen it to a string). */
+   widen it to a string).
+   Privacy 2026-10-10: §2's Identity bullet (players verify with typed details; photographs only from people applying to
+   become agents and from before that day). Had an admin saved new privacy words on 2026-10-10 before this version
+   deployed, the page prints that stamp's next suffix (2026-10-10.2 after one such save): `printedPolicyVersion` never reuses a label over a
+   different text. */
 const PAGES: Record<PolicyPage, PolicyPageSpec> = {
   rg: { path: "/legal/responsible-gambling", title: "Responsible Gambling Policy", codeVersion: "2026-10-06", versionKey: "version.rg" },
-  privacy: { path: "/legal/privacy", title: "Privacy Policy", codeVersion: "2026-10-09", versionKey: "version.privacy" },
+  privacy: { path: "/legal/privacy", title: "Privacy Policy", codeVersion: "2026-10-10", versionKey: "version.privacy" },
 };
 
 export const POLICY_PAGES: Readonly<Record<PolicyPage, PolicyPageSpec>> = Object.freeze(PAGES);

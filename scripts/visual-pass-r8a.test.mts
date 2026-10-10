@@ -317,7 +317,9 @@ const WARN_REGISTRY: Record<string, [number, string]> = {
   "src/app/agent/page.tsx": [2, "'an officer has asked for one more thing' — the applicant acts (every other notice is neutral)"],
   "src/app/auth/login/page.tsx": [8, "sign-in refusals the player clears — wait, sign in again, use the password, create the account, ask us about a closed one (F3 severity warning) · their box's frame and wash; the break's panel is neutral"],
   "src/app/auth/register/register-form.tsx": [5, "sign-up refusals the player can fix"],
-  "src/app/profile/kyc/page.tsx": [7, "'more information needed' — ADDITIONAL_INFO_REQUIRED, player amber (§B11)"],
+  // 7 → 5 on 2026-10-10 (typed-only identity): the extra-document card's amber disc — a wash and an ink — went with player
+  // uploads; what is left is the corrections box (frame, wash, ink ×3), now "Check your details".
+  "src/app/profile/kyc/page.tsx": [5, "'check your details' — ADDITIONAL_INFO_REQUIRED, an officer's request to correct the typed details, player amber (§B11)"],
   "src/app/profile/page.tsx": [5, "the KYC 'more info' pill and a declaration to resubmit (§B11 player amber)"],
   "src/app/profile/security/security-client.tsx": [4, "backup codes: two or fewer left; save them now"],
   "src/app/profile/source-of-funds/page.tsx": [3, "the declaration's legal-attestation caution"],

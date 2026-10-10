@@ -329,7 +329,11 @@ section("§11 · no surface teaches that a deposit needs an email (the claim, in
       seq: /邮箱[^]*?然后[^]*?充值/ },
   };
   const flat = (t: string) => t.replace(/\s+/g, " ");
-  const sentences = (t: string, loc: L) => (loc === "zh" ? flat(t).split(/[。！？；]/) : flat(t).split(/(?<=[.!?])\s+/)).map((x) => x.trim()).filter(Boolean);
+  // ⭐ 2026-10-10 · zh ALSO ends a sentence at the block boundary the legal-page reader writes (". " for a list item or
+  // paragraph, below). It split on 。！？； only, so three unpunctuated zh list items ran together — the KYC identity
+  // item's "之前" (before 10 Oct 2026), the contact item's 邮箱 and the money item's 存款 — and read as one sentence
+  // requiring an email to deposit. en and sw already honoured that boundary; this is the same rule for zh.
+  const sentences = (t: string, loc: L) => (loc === "zh" ? flat(t).split(/[。！？；]|(?<=\.)\s+/) : flat(t).split(/(?<=[.!?])\s+/)).map((x) => x.trim()).filter(Boolean);
   /**
    * ⛔ EXEMPT BY NAME, WITH THE REASON — never by loosening the rule. The Privacy notice's Selcom line DISCLOSES what a
    * card deposit shares with the gateway ("for a card deposit, also your email address…"): a statement of data flow, not

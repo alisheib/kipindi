@@ -244,6 +244,7 @@ const REVIEWED: readonly string[] = [
   "src/app/admin/journey/preview-links.tsx",   // reviewed 2026-09-30
   "src/app/admin/journey/rollout-control.tsx",   // reviewed 2026-09-30
   "src/app/admin/kyc/[id]/kyc-decision-rail.tsx",
+  "src/app/admin/kyc/[id]/kyc-dob-correction.tsx",   // reviewed 2026-10-10 (typed-only identity) — no max-h, no overflow-hidden, no nowrap, no clip; Modal scrolls, every line wraps
   "src/app/admin/kyc/[id]/refused-funds-panel.tsx",   // reviewed 2026-09-21
   "src/app/admin/kyc/[id]/reopen-refusal-control.tsx",   // reviewed 2026-09-21
   "src/app/admin/markets/emergency-void-control.tsx",
@@ -251,7 +252,6 @@ const REVIEWED: readonly string[] = [
   "src/app/admin/payments/reconcile-controls.tsx",
   "src/app/admin/payments/stuck-payout-controls.tsx",
   "src/app/admin/players/[id]/balance-adjust-controls.tsx",
-  "src/app/admin/players/[id]/force-reverify-controls.tsx",
   "src/app/admin/players/[id]/reset-password-button.tsx",
   "src/app/admin/players/[id]/set-email-form.tsx",
   "src/app/admin/players/[id]/suspend-controls.tsx",
@@ -274,7 +274,6 @@ const REVIEWED: readonly string[] = [
   "src/app/wallet/withdraw/withdraw-confirm.tsx",
   "src/components/admin/action-overlay.tsx",
   "src/components/admin/admin-mobile-nav.tsx",
-  "src/components/admin/kyc-review-controls.tsx",
   "src/components/chat/ChatPanel.tsx",
   "src/components/journey/account/sign-out-row.tsx",   // reviewed 2026-10-01 (Vodacom S6 WP5)
   "src/components/journey/tickets-guest-sheet.tsx",   // reviewed 2026-10-01 (S6 WP6a)

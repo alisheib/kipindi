@@ -68,11 +68,14 @@ const ok = (label: string, cond: boolean, why = "", evidence = "") => {
 const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 /* ── The pinned facts. Moving any of these is a legal act: a dated COMPLIANCE-DECISIONS entry comes with it. ── */
-const PRIVACY_VERSION = "2026-10-09";
+// 2026-10-10 · typed-only identity (COMPLIANCE-DECISIONS "Privacy v2026-10-10"): §2's Identity bullet — photographs and
+// a selfie only from people applying to become agents, and from players who sent them before 10 October 2026.
+// PRIVACY_EN_SHA re-pinned 2026-10-10 from the measured English block (test:privacy-notice §1a / test:policy-lines L1).
+const PRIVACY_VERSION = "2026-10-10";
 /** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one.
  *  (Re-pinned 2026-10-09 within v2026-10-09: §4's SMS gateway bullet names no company — COMPLIANCE-DECISIONS "Privacy
  *  v2026-10-09", item 5.) */
-const PRIVACY_EN_SHA = "c07fb05a02d9";
+const PRIVACY_EN_SHA = "99219bf5625a";
 /** Every cookie name the code writes, as of v2026-09-30. A new one must be described in §7 first. */
 const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-density", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_preview", "kp_revoked", "kp_session"];
 // ⭐ `_ga` / `_ga_W66WRL67MQ` joined the census 2026-09-15.2: gtag.js SETS them, and our code EXPIRES them when consent is

@@ -2606,4 +2606,49 @@ export const MUTATIONS = [
     to: `      if (true) {`,
     expect: "31.joined · ⭐ C8b review (MINOR 2) · HOW MANY CONTACTS AN IMPORT PUT ON ITS LIST, ALIKE IN BOTH TWINS — the memberships added between the run's two instants, the tombstone left out NULL-SAFELY, whose contact the run created (its importId) or — only when the run is not created-only — whose number one of the run's own rows updated or kept; Prisma ONE statement (its only pc()), memory one pass",
   },
+  /* ── §5k · typed-only KYC (2026-10-10) — the six columns, the builder and the two new readers ───────────────
+   * ⭐ FIVE MUTATIONS, one per way the typed-identity columns can be lost on Postgres alone while every memory suite
+   * stays green: the read mapper drops one, the upsert forgets one, the builder forgets one, a reader exists in one
+   * twin only, a reader drags the documents along. */
+  {
+    // 🔴 THE AGENT GATE'S COLUMN, read back as null: an officer's photo approval is written and the next write erases it.
+    name: "prisma-dal.ts — toStoredKyc stops mapping photoVerifiedAt (the agent gate un-verifies itself)",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    photoVerifiedAt: iso(row.photoVerifiedAt),`,
+    to: `    photoVerifiedAt: null,`,
+    expect: `5k.read · toStoredKyc maps "photoVerifiedAt" from the row`,
+  },
+  {
+    // The only record of a replaced identity, never reaching Postgres.
+    name: "prisma-dal.ts — kyc.upsert forgets priorIdentities",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        priorIdentities: (k.priorIdentities ?? []) as any,`,
+    to: `        // (priorIdentities dropped)`,
+    expect: `5k.upsert · kyc.upsert writes "priorIdentities" from the input`,
+  },
+  {
+    // The writer that BUILDS a row forgets a field: the DAL writes it empty on every restart and re-open.
+    name: "kyc-service.ts — restartedSubmission forgets priorIdentities",
+    file: "src/lib/server/kyc-service.ts",
+    from: `    postCheckedById: null,
+    priorIdentities: existing ? withPriorIdentity(existing, cause, now) : [],`,
+    to: `    postCheckedById: null,`,
+    expect: "5k.builder · restartedSubmission — the writer that BUILDS a row — names every StoredKyc field",
+  },
+  {
+    // The post-check list exists only on Postgres: every memory suite and every local drive reads a store without it.
+    name: "store.ts — the memory twin loses listUncheckedAutoApprovals",
+    file: "src/lib/server/store.ts",
+    from: `    listUncheckedAutoApprovals: (): KycUncheckedAutoApproval[] => {`,
+    to: `    listUncheckedAutoApprovalsX: (): KycUncheckedAutoApproval[] => {`,
+    expect: "5k.readers · listUncheckedAutoApprovals exists in BOTH halves",
+  },
+  {
+    // A population read that drags image bytes: the same-person read runs on every typed press.
+    name: "prisma-dal.ts — findSamePersonCandidates includes the documents instead of selecting scalars",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        select: { userId: true, fullName: true, status: true, rejectReason: true },`,
+    to: `        include: { documents: true },`,
+    expect: "5k.readers.scalar · findSamePersonCandidates reads scalars only",
+  },
 ];

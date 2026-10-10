@@ -4,6 +4,16 @@
 
 ---
 
+> ⚪ **SPENT — do not run it again.** This audit ran as session 95 (2026-09-13 → 2026-09-14); its findings and fixes are
+> recorded in `docs/LIVE-QA-CAMPAIGN.md` §6b (the E-39x / E-40x rows) and in the code comments that cite "audit session
+> 95". ⚠️ **And the release it audits changed on 2026-10-10:** players now verify with typed details only and are
+> approved at once when the automatic checks pass (no document photos, no selfie, no officer review before the first
+> withdrawal); agent applicants keep the photos and the selfie. Read the identity flow below as the 2026-09-13 release,
+> not as today's — the authority is [`IDENTITY-POLICY.md`](IDENTITY-POLICY.md) and `COMPLIANCE-DECISIONS.md` §
+> "2026-10-10 · Players verify identity with typed details and are approved at once; agents keep photo identity —
+> Privacy v2026-10-10, Terms v2026-10-10, AML v2026-10-10 (Gaming Board request, relayed by the owner)". Kept as the
+> record of how that release was audited.
+>
 > ⚠️ **PARTLY SUPERSEDED 2026-10-07 (owner ruling):** the confirmed email moved from the first deposit to withdrawal —
 > a deposit asks no email; a withdrawal needs identity AND a confirmed email. Read the ladder below as the 2026-09-13
 > release this prompt audits, not as today's. `COMPLIANCE-DECISIONS.md` § "2026-10-07 · A deposit asks no email; a confirmed email is required to withdraw; receipts in the app (owner ruling)".
@@ -125,8 +135,15 @@ population is the right one. A guard that is green because it inspects nothing i
 ## 4 · How to run locally
 - Dev server (in-memory store, admin renders): `SESSION_SECRET=<32+ chars> OTP_PEPPER=<16+ chars>
   DISABLE_ADMIN_TOTP=true npx next dev -p 3009` with no `DATABASE_URL`. Seed: `POST /api/dev-test/seed-markets`,
-  `POST /api/dev-test/updown-seed`. Player states: `/auth/demo?kyc=none|uploaded|pending|more_info|rejected|refused_final|approved&deposit=0|1`
-  (+ `&email=unverified`; + `&hold=officer` for an officer's freeze). `deposit=0` fails the demo deposit row AND empties
+  `POST /api/dev-test/updown-seed`. Player states: `/auth/demo?kyc=none|auto|uploaded|photo_pending|pending|more_info|rejected|refused_final|approved&deposit=0|1`
+  (+ `&email=unverified`; + `&hold=officer` for an officer's freeze). ⭐ **Since 2026-10-10** (`src/app/auth/demo/route.ts`
+  documents each): `none` writes no row at all (a real new account) · `auto` an automatic approval from typed details,
+  not yet checked by an officer, carrying a flag (withdrawals open; the agent gate shut) · `uploaded` the AGENT photo
+  track's photos and selfie attached, never sent · `photo_pending` that photo case SENT (⚠️ every visit sends it for
+  real — the notice, every officer's bell and the admin email) · `pending` typed details routed to an officer (an
+  officer already on the row) · `more_info` an officer asked for corrections (a note, no extra documents) · `rejected`
+  an officer's recoverable refusal with the officer on the row, so Try again goes back to an officer · `approved` an
+  officer's approval with `photoVerifiedAt`. `deposit=0` fails the demo deposit row AND empties
   the wallet to TZS 0 (since 2026-09-14). Admin: `POST /api/dev-test/seed-admin`.
 - Capture VIEWPORT TILES, never full-page screenshots (full-page fakes overlays). Hide the Next dev badge.
 - Suites the release relies on (not all are in `predeploy` — run them explicitly): `test:kyc-gate`,

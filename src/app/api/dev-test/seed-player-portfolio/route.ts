@@ -39,7 +39,7 @@ import {
   settleMarket,
   type Side,
 } from "@/lib/server/market-service";
-import { randomId } from "@/lib/server/crypto";
+import { randomId, identityFingerprint } from "@/lib/server/crypto";
 
 /** An officer who holds no position, so the conflict block passes. */
 async function makeOfficer(tag: string, seq: number): Promise<string> {
@@ -117,12 +117,24 @@ export async function POST(req: Request) {
     await db.user.update(foil, { role: "PLAYER" });
     const fw = await db.wallet.findByUserId(foil);
     if (fw) await db.wallet.update(fw.id, { balance: stake * 4 });
+    // ⛔ ONE ROW AND ONE NUMBER PER FOIL (2026-10-10). Every foil wrote the SAME NIDA — the demo player's own, as it
+    // happens — under a fresh row id on every run. The memory store never noticed; Postgres refuses the first foil (the
+    // demo's row already held the number) and every re-run (the foil's previous row does). The number now comes from the
+    // foil's phone, the one thing already unique per foil — digits 1-8 the date of birth, ending in `7`, the scheme every
+    // KYC seeder shares — and a re-run rewrites the foil's newest row in place.
+    // ⭐ An officer's kind of approval, as `seed-admin` writes one (the 2026-10-10 backfill's shape), never an automatic
+    // one — so the foils stay off the officers' post-check list. Every column named: the DAL writes an omitted one null.
+    const foilKyc = await db.kyc.findByUserId(foil);
+    const foilPhone = (await db.user.findById(foil))?.phoneE164 ?? "";
+    const foilNida = `19900101${foilPhone.replace(/\D/g, "").padStart(11, "0").slice(-11)}7`;
+    const foilAt = new Date().toISOString();
     await db.kyc.upsert({
-      id: `kyc_${randomId(10)}`, userId: foil, status: "APPROVED", rejectReason: null, rejectNote: null,
-      idType: "NIDA", idNumber: "19900101700000000000", idExpiry: null, idVerifiedAt: new Date().toISOString(),
-      fullName: "Foil Bettor", dob: "1990-01-01", documents: [], reviewerId: null,
-      reviewedAt: new Date().toISOString(), submittedAt: new Date().toISOString(),
-      approvedAt: new Date().toISOString(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      id: foilKyc?.id ?? `kyc_${randomId(10)}`, userId: foil, status: "APPROVED", rejectReason: null, rejectNote: null,
+      idType: "NIDA", idNumber: foilNida, idExpiry: null, idVerifiedAt: foilAt, idFingerprint: identityFingerprint("NIDA", foilNida),
+      fullName: "Foil Bettor", dob: "1990-01-01", documents: [], extraRequests: [], reviewerId: "system",
+      reviewedAt: foilAt, submittedAt: foilAt, approvedAt: foilKyc?.approvedAt ?? foilAt,
+      photoVerifiedAt: foilKyc?.approvedAt ?? foilAt, autoApprovedAt: null, autoFlags: [], postCheckedAt: null, postCheckedById: null,
+      priorIdentities: [], createdAt: foilKyc?.createdAt ?? foilAt, updatedAt: foilAt,
     });
     await buyPosition(foil, { marketId: m.id, side: side === "YES" ? "NO" : "YES", stake: stake * 2 });
 

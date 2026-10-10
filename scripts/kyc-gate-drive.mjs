@@ -27,6 +27,13 @@
  *   §3 THE POSITIVE CONTROL: an approved account sees every form, no panel, no notice
  *   §4 the copy in en/sw/zh: "Before you withdraw", no "balance is safe" line, the notice's sentence
  *
+ * ⭐ 2026-10-10 · TYPED-ONLY IDENTITY (owner ruling, Ali — players type their document's details and are approved AT
+ * ONCE when the automatic checks pass; agent applicants keep photos and an officer). Two fixtures joined the drive:
+ * `auto` — an AUTOMATIC approval no officer has checked yet — is a second POSITIVE control (§2, §3): it opens the
+ * withdrawal exactly as an officer's approval does, and earns no notice. `photo_pending` — an agent applicant's photo
+ * case with our team — is a never-approved state (§1, §2). `uploaded` is now that agent track's "photos attached, not
+ * sent"; the withdraw panel and the notice treat it as before ("nothing sent yet").
+ *
  * Fixtures come from `/auth/demo?kyc=…&deposit=0|1` (dev-only route, 404 in production): a real
  * KycSubmission row, and ONE confirmed deposit row added (`1`) or failed (`0`, which also empties the wallet to TZS 0).
  * ⚠️ THE DEMO ACCOUNT IS SHARED and every sign-in re-applies its state, so this drive opens one browser
@@ -177,9 +184,13 @@ const NEVER_APPROVED = [
   ["none",          "not_started",    "verify id",               true,  "/profile/kyc"],
   ["uploaded",      "uploaded",       "verify id",               true,  "/profile/kyc"],
   ["pending",       "pending_review", "in review",               false, null],
+  // 2026-10-10 — an agent applicant's PHOTO case with our team: the same panel state as typed details with an officer.
+  // ⚠️ `photo_pending` SENDS the case for real on every sign-in (the player's notice, the officers' bells).
+  ["photo_pending", "pending_review", "in review",               false, null],
   // 2026-09-14 — the pill has its own short labels: "More info needed", and "Refused" for a FINAL refusal (it read
-  // "Rejected", the same word as a refusal the player can retry).
-  ["more_info",     "more_info",      "more info needed",        false, "/profile/kyc"],
+  // "Rejected", the same word as a refusal the player can retry). 2026-10-10 — "Check details": an officer now asks only
+  // for corrections of typed details, and the pill says what the panel's title and the page's heading say.
+  ["more_info",     "more_info",      "check details",           false, "/profile/kyc"],
   ["rejected",      "rejected",       "rejected",                false, "/profile/kyc"],
   ["refused_final", "refused_final",  "refused",                 false, "/help"],
 ];
@@ -316,6 +327,8 @@ for (const [label, kyc, deposit, due] of [
   ["a confirmed deposit, nothing sent",              "none",          1, true],
   ["a confirmed deposit, photos uploaded, not sent", "uploaded",      1, true],
   ["a confirmed deposit, documents with our team",   "pending",       1, false],
+  ["a confirmed deposit, a photo case with our team", "photo_pending", 1, false],
+  ["a confirmed deposit, verified automatically",    "auto",          1, false],
   ["a confirmed deposit, more information asked",    "more_info",     1, false],
   ["a confirmed deposit, rejected",                  "rejected",      1, false],
   ["a confirmed deposit, refused for good",          "refused_final", 1, false],
@@ -379,10 +392,13 @@ skipped.push("the first-deposit notice on the card-deposit return page — needs
 console.log("SKIP 2.return · the card-deposit return page's confirmed state cannot be reached locally — SKIPPED, not passed");
 
 // ── §3 · THE POSITIVE CONTROL — approved sees every control, no panel, no notice ─
-for (const width of WIDTHS) {
+// ⭐ BOTH KINDS OF APPROVAL (2026-10-10): an officer's (`approved`) and an AUTOMATIC one from typed details (`auto`).
+// The withdrawal gate asks "approved, ever?" and nothing else — an automatic approval no officer has checked yet opens
+// it exactly as an officer's does (the officer's check comes afterwards, on the post-check list).
+for (const [fixture, width] of [["approved", WIDTHS[0]], ["approved", WIDTHS[1]], ["auto", WIDTHS[0]], ["auto", WIDTHS[1]]]) {
   const page = await browser.newPage({ viewport: { width, height: 900 } });
-  await demo(page, "approved", 1);
-  const L = `3.${width}`;
+  await demo(page, fixture, 1);
+  const L = fixture === "approved" ? `3.${width}` : `3.auto.${width}`;
   for (const [name, href, formSel] of [
     ["withdraw", "/wallet/withdraw", sel.withdrawForm],
     ["deposit", "/wallet/deposit", sel.depositForm],

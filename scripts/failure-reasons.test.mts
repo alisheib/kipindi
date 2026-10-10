@@ -506,10 +506,15 @@ console.log("\n§8b · the reasons that replaced the deleted phrase tests");
       ["id_number_format", "errIdNumberFormat"],
       ["id_expired", "errIdExpired"],
       ["id_expiry_required", "errIdExpiryRequired"],
+      // 2026-10-10 · typed-only identity: an approved-once correction may not change the document number.
+      ["identity_number_locked", "errIdentityNumberLocked"],
       ["doc_image_type", "errDocImage"],
       ["doc_too_large", "errDocTooLarge"],
       ["docs_locked", "errDocsLocked"],
       ["docs_required", "errDocsRequired"],
+      // ⚠️ EXPAND/CONTRACT · these two lost their emitters on 2026-10-10 (§9d's EXPAND_CONTRACT). Their rows and copy
+      // stay for one release because the previous container may still send them during the deploy overlap — and a row
+      // that is kept must still RENDER, so they stay here until the contract release deletes row, keys and these lines.
       ["extra_docs_required", "errExtraDocsRequired"],
       ["no_extra_request", "errNoExtraRequest"],
     ] as const) {
@@ -569,10 +574,14 @@ console.log("\n§8c · the services still emit the reasons that replaced the phr
     // member, the registry row, the dictionary key and this pin moved together.
     // `id_number_format` / `id_expired` / `id_expiry_required` are the three new
     // refusals that come with a document that has a rule and a document that expires.
+    // ⭐ 2026-10-10 (typed-only identity): `identity_number_locked` joined — an approved-once account asked to
+    // correct its details may change the name and expiry, never the number. `extra_docs_required` and
+    // `no_extra_request` LEFT this list the same day: their emitters (`attachExtraDocument`, the extra-request gate
+    // in `submitForReview`) were deleted, and 8c.retired-extra below asserts they stay gone.
     { file: "src/lib/server/kyc-service.ts", reasons: [
       "id_taken", "id_not_verified", "id_number_format", "id_expired", "id_expiry_required",
-      "docs_required", "extra_docs_required",
-      "docs_locked", "no_extra_request", "doc_image_type", "doc_too_large",
+      "identity_number_locked", "docs_required",
+      "docs_locked", "doc_image_type", "doc_too_large",
     ] },
     // ⛔ `kyc_required` IS DELIBERATELY ABSENT FROM THIS LIST, and its absence is
     // asserted separately below rather than left implicit. It was retired on 2026-08-20
@@ -610,6 +619,24 @@ console.log("\n§8c · the services still emit the reasons that replaced the phr
   const kyc = readFileSync("src/lib/server/kyc-service.ts", "utf8");
   ok("8c.control · the pin can fail — an unemitted reason reads as absent",
      !/reason:\s*"stake_below_min"/.test(kyc));
+
+  // ── 8c.retired-extra · the extra-document requests are GONE (2026-10-10), and that is asserted ──────────────
+  // ⛔ Officers may only ask a player to CORRECT typed details now; nothing may ask for another document. The two
+  // reasons that request family emitted must therefore have NO emitter in the service — a returning
+  // `reason: "no_extra_request"` means an extra-document upload path is back. Comments are stripped first, because
+  // the service's own retirement notes name both reasons on purpose.
+  {
+    const kycCode = kyc.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/.*$/gm, "$1");
+    for (const r of ["extra_docs_required", "no_extra_request"]) {
+      ok(`8c.retired-extra · kyc-service no longer emits ${r}`,
+         !new RegExp(`reason:\\s*"${r}"`).test(kycCode),
+         "an extra-document request path is back — typed-only identity has no extra-document requests");
+    }
+    ok("8c.retired-extra · …and the deleted service entry point stays deleted",
+       !/export\s+async\s+function\s+attachExtraDocument\s*\(/.test(kycCode));
+    ok("8c.retired-extra.control · the same detector fires on a restored emitter",
+       new RegExp(`reason:\\s*"no_extra_request"`).test('return { ok: false, error: "x", code: "INVALID", reason: "no_extra_request" };'));
+  }
 
   // ── 8c.retired · `kyc_required` IS GONE, AND THAT IS ASSERTED, NOT ASSUMED ──────
   // ⛔ INVERTED, NOT DELETED (2026-08-20). Three assertions used to prove this reason was
@@ -881,6 +908,9 @@ console.log("\n§9c · loudness is pinned on the reason route, not only the code
     // Nothing is wrong; a state the player cannot change and need not act on.
     ["docs_locked", "info", "inline"],
     ["no_extra_request", "info", "inline"],
+    // ⭐ 2026-10-10 · nothing the player typed is wrong either: the number an officer approved stays reserved to this
+    // account while its name or expiry is corrected. Info, inline under the locked field — never an error.
+    ["identity_number_locked", "info", "inline"],
     // ⭐ The row a service reached for the first time today — and the sentence is the point:
     // "Nothing has been charged", on a refusal that happens mid-stake.
     ["maintenance", "error", "toast"],
@@ -993,6 +1023,20 @@ console.log("\n§9d · every reason in the registry is emitted by something");
   };
 
   /**
+   * ⚠️ EXPAND/CONTRACT, NOT DEBT — AND KEPT APART FROM THE RATCHET ABOVE ON PURPOSE (2026-10-10).
+   * Typed-only identity deleted the extra-document request family: `attachExtraDocument` and the extra-request gate
+   * in `submitForReview`. Their two reasons therefore have no emitter in THIS build — but the PREVIOUS container,
+   * still serving for the deploy overlap, can send either one, and the new client must render it. So the rows and
+   * their copy stay for exactly one release. ⛔ Every entry names its retirement date and is deleted, with the row,
+   * the union member and the three dictionary keys, in the next release — the same shape as `kyc_required`'s
+   * retirement in §8c. It is a separate list so the DEBT ratchet above never grows to make room for it.
+   */
+  const EXPAND_CONTRACT: Record<string, string> = {
+    extra_docs_required: "legacy emitter retired 2026-10-10; remove the next release",
+    no_extra_request: "legacy emitter retired 2026-10-10; remove the next release",
+  };
+
+  /**
    * ⛔ THERE ARE TWO LEGITIMATE ROUTES TO A REASON, AND THE FIRST DRAFT OF THIS SECTION KNEW
    * ONLY ONE — so it reported NINETEEN failures, most of them against rows that work perfectly.
    * A guard that fails without the defect gets deleted, and this one nearly earned it.
@@ -1010,6 +1054,14 @@ console.log("\n§9d · every reason in the registry is emitted by something");
     if (UNEMITTED_BY_DESIGN[reason]) {
       ok(`9d.${reason} · declared unreachable BY DESIGN, with a reason`, !direct && viaCode.length === 0,
          `it is reachable now — delete its UNEMITTED_BY_DESIGN entry: ${UNEMITTED_BY_DESIGN[reason]}`);
+      continue;
+    }
+    if (EXPAND_CONTRACT[reason]) {
+      // Its emitter is GONE in this build (a returning one would mean the retired path is back), and the entry says
+      // when it was retired, so the contract release can find it.
+      ok(`9d.${reason} · expand/contract — no emitter in this build, row kept one release (${EXPAND_CONTRACT[reason]})`,
+         !direct && viaCode.length === 0 && /retired [0-9]{4}-[0-9]{2}-[0-9]{2}/.test(EXPAND_CONTRACT[reason]),
+         direct || viaCode.length > 0 ? "it is emitted again — the retired request path is back" : EXPAND_CONTRACT[reason]);
       continue;
     }
     ok(`9d.${reason} · a player can actually reach this row`, direct || viaCode.length > 0,

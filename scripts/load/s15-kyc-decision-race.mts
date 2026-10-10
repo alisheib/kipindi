@@ -12,11 +12,22 @@
  *       officer's decision.
  *
  *   B · A PLAYER RESUBMITS while an officer is deciding. `reviewKyc` holds
- *       `kyc:<userId>`; `submitForReview` takes NO lock and does a
+ *       `kyc:<userId>`; `submitForReview` once took NO lock and did a
  *       read-modify-write of the WHOLE record (`{...k, status: "PENDING_REVIEW"}`).
- *       If its stale read lands last it can drag an APPROVED submission back to
- *       PENDING_REVIEW and null the reviewerId/reviewedAt the officer just wrote —
+ *       If its stale read landed last it dragged an APPROVED submission back to
+ *       PENDING_REVIEW and nulled the reviewerId/reviewedAt the officer just wrote —
  *       losing the decision, exactly like the Source-of-Funds overwrite in D3.
+ *       (It is a compare-and-swap under the same lock since 2026-09-13; this proves
+ *       it on a real advisory lock.)
+ *
+ * ⭐ SINCE 2026-10-10 EVERY OFFICER DECISION POSTS THE VERSION IT SHOWED
+ * (`kycRowVersion`, the row's `updatedAt`) and the service refuses a decision on a
+ * row that changed since — so the loser of A is now refused as STALE, and C adds the
+ * case the version exists for: an approval of the version the officer saw BEFORE the
+ * player's corrected resubmit is refused, and the current version approves. The
+ * officer's one ask is CORRECTIONS (`askForCorrections`; REQUEST_INFO is removed).
+ * These are PHOTO cases (three documents on file) — the agent track, the one where
+ * `submitForReview` is still the player's send.
  *
  * Usage:
  *   $env:DATABASE_URL='postgresql://postgres:pw@localhost:5433/kipindi_load?schema=public'
@@ -39,7 +50,9 @@ const client = new PrismaClient({ datasources: { db: { url: BASE } } });
   }
 }
 
-const { reviewKyc, submitForReview } = await import("../../src/lib/server/kyc-service.ts");
+const { reviewKyc, submitForReview, askForCorrections, getKycStatus, kycRowVersion } = await import("../../src/lib/server/kyc-service.ts");
+/** The version an officer's form would post — read through the service, exactly as the workstation renders it. */
+const versionOf = async (userId: string) => kycRowVersion((await getKycStatus(userId))!);
 
 let pass = 0, fail = 0;
 const ok = (label: string, cond: boolean, extra?: string) => {
@@ -90,9 +103,11 @@ console.log("  A · two officers decide the same submission at once");
   await mkUser(o2, `+2557${String(Date.now() + 2).slice(-8)}`, "ADMIN");
   await mkPending(p, `kyc_${rid()}`);
 
+  // Both officers opened the case at the same version — the realistic shape of a collision.
+  const v = await versionOf(p);
   const [a, b] = await Promise.all([
-    reviewKyc({ officerId: o1, userId: p, decision: "APPROVE" }),
-    reviewKyc({ officerId: o2, userId: p, decision: "REJECT", reason: "Documents unreadable" }),
+    reviewKyc({ officerId: o1, userId: p, decision: "APPROVE", mode: "photo", version: v }),
+    reviewKyc({ officerId: o2, userId: p, decision: "REJECT", rejectCode: "OTHER", reason: "Documents unreadable", version: v }),
   ]);
 
   const winners = [a, b].filter((r) => r.ok).length;
@@ -103,8 +118,9 @@ console.log("  A · two officers decide the same submission at once");
     `status=${after.status}`);
   ok("a reviewer is recorded", !!after.reviewerId);
   const loser = a.ok ? b : a;
-  ok("the loser is told it was already decided, not given a generic error",
-    !loser.ok && /already|only a submission awaiting review/i.test(loser.error ?? ""),
+  // Since 2026-10-10 the loser meets the version check first ("This case changed since you opened it").
+  ok("the loser is told the case was already decided or changed, not given a generic error",
+    !loser.ok && /already|only a submission awaiting review|changed since you opened it/i.test(loser.error ?? ""),
     `loser said: ${JSON.stringify(loser)}`);
 }
 
@@ -116,10 +132,11 @@ console.log("\n  B · a player resubmits mid-approval");
   await mkUser(o, `+2557${String(Date.now() + 4).slice(-8)}`, "ADMIN");
   await mkPending(p, `kyc_${rid()}`);
 
-  // Fire both at the same instant. submitForReview takes no lock, so if it is
-  // able to write it will do so from whatever it read.
+  // Fire both at the same instant. If submitForReview could write from a stale
+  // read, it would do so from whatever it read.
+  const vb = await versionOf(p);
   const [rev, sub] = await Promise.all([
-    reviewKyc({ officerId: o, userId: p, decision: "APPROVE" }),
+    reviewKyc({ officerId: o, userId: p, decision: "APPROVE", mode: "photo", version: vb }),
     submitForReview(p),
   ]);
 
@@ -148,13 +165,15 @@ console.log("\n  C · resubmit-from-ADDITIONAL_INFO races an approval (the write
   await mkUser(o, `+2557${String(Date.now() + 6).slice(-8)}`, "ADMIN");
   const kycId = `kyc_${rid()}`;
   await mkPending(p, kycId);
-  // Officer asks for more info first, so the submission sits in the state where
-  // the player is expected — and permitted — to resubmit.
-  const info = await reviewKyc({ officerId: o, userId: p, decision: "REQUEST_INFO", reason: "Please reupload a clearer ID back." });
+  // Officer asks for corrections first (the one ask an officer has since 2026-10-10), so the submission sits in
+  // the state where the player is expected — and permitted — to resubmit.
+  const info = await askForCorrections(o, p, { note: "Please check the name on your ID and send it again.", version: await versionOf(p) });
   ok("submission moved to ADDITIONAL_INFO_REQUIRED", info.ok && (await row(p)).status === "ADDITIONAL_INFO_REQUIRED");
 
+  // The officer's open form shows the ADDITIONAL_INFO version; the player resubmits in the same instant.
+  const seen = await versionOf(p);
   const [rev, sub] = await Promise.all([
-    reviewKyc({ officerId: o, userId: p, decision: "APPROVE" }),
+    reviewKyc({ officerId: o, userId: p, decision: "APPROVE", mode: "photo", version: seen }),
     submitForReview(p),
   ]);
 
@@ -170,6 +189,17 @@ console.log("\n  C · resubmit-from-ADDITIONAL_INFO races an approval (the write
   ok("the final state is one the state machine defines",
     ["APPROVED", "PENDING_REVIEW", "ADDITIONAL_INFO_REQUIRED"].includes(after.status),
     `status=${after.status}`);
+  // ⭐ THE VERSION BINDING (2026-10-10). Whichever writer went first, an approval of the version the officer saw
+  // before the resubmit can never land: ADDITIONAL_INFO_REQUIRED is the player's move, and once they resubmit the
+  // version has moved. The resubmit keeps the officer's provenance (the corrections ask's reviewer).
+  ok("⭐ an approval of the version seen BEFORE the player's resubmit is refused, and the case is with the officer again",
+    !rev.ok && after.status === "PENDING_REVIEW" && after.reviewerId === o,
+    `review=${JSON.stringify(rev)} final status=${after.status} reviewerId=${after.reviewerId}`);
+  const current = await reviewKyc({ officerId: o, userId: p, decision: "APPROVE", mode: "photo", version: await versionOf(p) });
+  const decided = await row(p);
+  ok("CONTROL · …and the current version approves (the binding refuses stale versions, not approvals)",
+    current.ok && decided.status === "APPROVED" && decided.reviewerId === o,
+    `review=${JSON.stringify(current)} final status=${decided.status}`);
 }
 
 console.log("");

@@ -170,6 +170,12 @@ export type OtpVerifyInput = z.infer<typeof OtpVerifySchema>;
  * birth inside it, so an age check derived from the NUMBER would be silently
  * NIDA-only — a control that passes because the feature is absent. `dateOfBirth`
  * refuses anyone under 18 whatever document they chose.
+ *
+ * ⭐ SINCE 2026-10-10 THE DATE OF BIRTH IS THE ACCOUNT'S. The player gave it at sign-up
+ * (with the 18+ attestation), so `kyc-service` puts `User.dob` — normalised to
+ * `YYYY-MM-DD`, because Prisma returns a full timestamp — into this schema's `dob`
+ * BEFORE parsing; only an account with no date of birth types one. The schema still
+ * requires `dob`, so the age gate can never be skipped by leaving the field out.
  */
 export const KycIdentitySchema = z.object({
   idType: z.enum(["NIDA", "PASSPORT", "DRIVER_LICENSE", "VOTER_CARD"], {
@@ -188,7 +194,12 @@ export const KycIdentitySchema = z.object({
   fullName,
   dob: dateOfBirth,
 });
-export type KycIdentityInput = z.infer<typeof KycIdentitySchema>;
+/**
+ * What a caller POSTS to the identity step: the schema's input with `dob` OPTIONAL — the account's date of
+ * birth is used when there is one, and a typed one only when there is not (see above). ⛔ Not the parsed
+ * shape: the service fills `dob` and then parses, so nothing downstream ever sees a missing date.
+ */
+export type KycIdentityInput = Omit<z.input<typeof KycIdentitySchema>, "dob"> & { dob?: string | null };
 
 export const DepositSchema = z.object({
   provider: z.enum(["MPESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX", "CARD"]),

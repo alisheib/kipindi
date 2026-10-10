@@ -60,6 +60,20 @@ const TITLE: Record<Locale, string> = {
  * it unless the annex is published under /legal first. Translation and typography only: zh §4 永不被动 is now
  * 分文不动 and YES/NO is now 是/否, zh §7 says 负责任博彩, zh §3/§3a/§4 lost stray spaces after their dashes, and
  * the §5 cap stays on one line in every language.
+ *
+ * ⛔ BUMPED 2026-10-10 (owner ruling, Ali — docs/COMPLIANCE-DECISIONS.md 2026-10-10; player-favourable, so no §10
+ * notice and no re-acceptance, the 2026-09-13/14 precedent). A player verifies with the DETAILS of one document — its
+ * number, its expiry date where it has one, the full name as printed, with the account's date of birth — and is
+ * verified at once when the checks pass, so §3 lost "photographic evidence", a later request is a correction of those
+ * details, and §3a lost "an unclear photo". An agent applicant still verifies with photographs and a selfie reviewed by
+ * an officer: §3's last paragraph says so and names the Agent Terms, which did not change. §3's third paragraph asks
+ * for a source-of-funds declaration only — no screen asks for the "proof of address" it named. Do not restore any of it.
+ * ⛔ §3's FIRST sentence is byte for byte what it was: `red:kyc-copy-truth` case 2 resolves its anchor on it
+ * (scripts/anchors/kyc-copy-truth.anchors.mjs), and the anchor must match exactly once in this file.
+ * ⛔ The Agent Terms are NAMED, never linked, from here: `test:journey-shell` §9 (A9) proves /legal/agent-terms keeps
+ * its own doors by removing them, and a door from the Terms would hide that loss.
+ * ⭐ Every identity sentence stays in a paragraph that names no deposit, bet or play, and the review sentence names no
+ * withdrawal (`test:kyc-copy-truth` rules 2 and 4).
  */
 // ⭐ The version is `TERMS_VERSION`, the SAME constant registration stamps on the account
 // (`src/lib/terms-version.ts`, `test:terms-binding`) — so what a player read and what was recorded
@@ -115,25 +129,36 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
       <LegalSection n="3" title="Identity verification (KYC)">
         <p>
           Identity verification is <strong>required</strong>{" "}before your first withdrawal. You
-          verify once, with any one of four documents — a National ID (NIDA) number, a passport, a
-          driving licence or a voter&apos;s card — with photographic evidence reviewed by our
-          compliance team. One document may only be used on one account.
+          verify once, with the details of any one of four documents — a National ID (NIDA), a
+          passport, a driving licence or a voter&apos;s card: its number, its expiry date where it
+          has one, and your full name as it is printed on it, together with the date of birth on
+          your account. One document may only be used on one account.
+        </p>
+        <p>
+          We check those details when you send them, and our compliance team may also review
+          them — before your identity is verified, or afterwards. If any of them needs
+          correcting, we will ask you to correct it and tell you why.
         </p>
         <p>
           An account that has been verified once keeps the right to withdraw the money it holds
-          even if we later ask it to verify again.
+          even if we later ask it to correct its details or to verify again.
         </p>
         <p>
-          We may request additional documents (proof of address, source-of-funds declaration) if
-          your activity triggers anti-money-laundering thresholds.
+          If your activity reaches our anti-money-laundering thresholds, we may ask you for a
+          source-of-funds declaration.
+        </p>
+        <p>
+          If you apply to become a 50pick agent, you verify your identity with photographs of your
+          document and a selfie, which our compliance team reviews; the Agent Terms set out the
+          rest of the application.
         </p>
       </LegalSection>
 
       <LegalSection n="3a" title="If we cannot verify you">
         <p>
           If we cannot verify your identity, we will not send money out of your account. We will
-          tell you why. Where the reason is one you can fix — an unclear photo, an expired document
-          or details that do not match — you may submit again.
+          tell you why. Where the reason is one you can fix — an expired document or details that
+          do not match — you may submit again.
         </p>
         <p>
           Where we refuse an account permanently — because the holder is under 18, because of a
@@ -270,26 +295,37 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
       <LegalSection n="3" title="Uthibitisho wa utambulisho (KYC)">
         <p>
           Uthibitisho wa utambulisho <strong>unahitajika</strong> kabla ya kutoa fedha kwa mara ya
-          kwanza. Unathibitisha mara moja, kwa kutumia mojawapo ya nyaraka nne — namba ya NIDA,
-          pasipoti, leseni ya udereva au kadi ya mpiga kura — pamoja na ushahidi wa picha
-          unaokaguliwa na timu yetu ya uzingatiaji. Nyaraka moja inaweza kutumika kwenye akaunti
-          moja pekee.
+          kwanza. Unathibitisha mara moja, kwa taarifa za mojawapo ya nyaraka nne — Kitambulisho
+          cha Taifa (NIDA), pasipoti, leseni ya udereva au kadi ya mpiga kura: namba yake, tarehe
+          yake ya kuisha muda pale inapokuwa nayo, na jina lako kamili kama lilivyoandikwa kwenye
+          nyaraka hiyo, pamoja na tarehe ya kuzaliwa iliyo kwenye akaunti yako. Nyaraka moja
+          inaweza kutumika kwenye akaunti moja pekee.
+        </p>
+        <p>
+          Tunakagua taarifa hizo unapozituma, na timu yetu ya uzingatiaji inaweza pia kuzipitia —
+          kabla utambulisho wako haujathibitishwa, au baada ya hapo. Taarifa yoyote ikihitaji
+          kusahihishwa, tutakuomba uisahihishe na tutakueleza sababu.
         </p>
         <p>
           Akaunti iliyothibitishwa mara moja inabaki na haki ya kutoa fedha ilizonazo hata tukiomba
-          baadaye ithibitishwe upya.
+          baadaye isahihishe taarifa zake au ithibitishwe upya.
         </p>
         <p>
-          Tunaweza kuomba nyaraka za ziada (uthibitisho wa anwani, tamko la chanzo cha fedha) iwapo
-          shughuli zako zitavuka viwango vya kuzuia uoshaji wa fedha.
+          Iwapo shughuli zako zitafikia viwango vyetu vya kuzuia uoshaji wa fedha, tunaweza
+          kukuomba tamko la chanzo cha fedha.
+        </p>
+        <p>
+          Ukiomba kuwa wakala wa 50pick, unathibitisha utambulisho wako kwa picha za nyaraka yako na
+          selfie, ambazo timu yetu ya uzingatiaji huzikagua; Masharti ya Wakala yanaeleza sehemu
+          iliyobaki ya maombi.
         </p>
       </LegalSection>
 
       <LegalSection n="3a" title="Tusipoweza kukuthibitisha">
         <p>
           Tusipoweza kuthibitisha utambulisho wako, hatutatuma pesa kutoka kwenye akaunti yako.
-          Tutakueleza sababu. Pale sababu ni jambo unaloweza kurekebisha — picha isiyo wazi, nyaraka
-          iliyoisha muda wake au taarifa zisizolingana — unaweza kuwasilisha tena.
+          Tutakueleza sababu. Pale sababu ni jambo unaloweza kurekebisha — nyaraka iliyoisha muda
+          wake au taarifa zisizolingana — unaweza kuwasilisha tena.
         </p>
         <p>
           Tukikataa akaunti kabisa — kwa sababu mwenye akaunti yuko chini ya miaka 18, kwa sababu ya
@@ -422,19 +458,25 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="3" title="身份验证（KYC）">
         <p>
-          首次提现之前，<strong>必须</strong>完成身份验证。您只需验证一次，可使用四种证件之一——国民身份证（NIDA）号码、护照、驾驶证或选民证——并提交由我们的合规团队审核的照片证据。一份证件仅可用于一个账户。
+          首次提现之前，<strong>必须</strong>完成身份验证。您只需验证一次，可使用四种证件之一——国民身份证（NIDA）、护照、驾驶证或选民证。您需提供该证件的号码、证件载明的有效期（如有）以及证件上所印的您的全名；出生日期以您账户中登记的为准。一份证件仅可用于一个账户。
         </p>
         <p>
-          已完成一次验证的账户，即使我们此后要求重新验证，仍保留提取其账户内资金的权利。
+          我们会在您提交这些信息时进行核对；我们的合规团队也可能对其进行审核，时间可能在您的身份完成验证之前，也可能在之后。如有任何信息需要更正，我们会请您更正并告知原因。
         </p>
         <p>
-          如果您的活动触发反洗钱阈值，我们可能会要求提供额外文件（地址证明、资金来源声明）。
+          已完成一次验证的账户，即使我们此后要求其更正信息或重新验证，仍保留提取其账户内资金的权利。
+        </p>
+        <p>
+          如果您的活动触发反洗钱阈值，我们可能会要求您提交资金来源声明。
+        </p>
+        <p>
+          如您申请成为 50pick 代理，需以证件照片和一张自拍照验证身份，并由我们的合规团队审核；代理申请的其余事项载于代理条款。
         </p>
       </LegalSection>
 
       <LegalSection n="3a" title="如果我们无法验证您的身份">
         <p>
-          如果我们无法验证您的身份，我们不会从您的账户中汇出任何资金。我们会告知您原因。若原因属于您可以纠正的情况——照片不清晰、证件已过期或信息不符——您可以重新提交。
+          如果我们无法验证您的身份，我们不会从您的账户中汇出任何资金。我们会告知您原因。若原因属于您可以纠正的情况——证件已过期或信息不符——您可以重新提交。
         </p>
         <p>
           若我们永久拒绝某一账户——因为持有人未满 18 周岁、存在制裁疑虑，或该身份已被其他账户使用——自那一刻起，该账户不能再充值、投注或提现，且该证件仍与其绑定。已下的注单仍会照常结算，由此产生的任何派彩或退款均记入该账户。

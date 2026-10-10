@@ -26,6 +26,9 @@
  *    an invitee can fund a wallet and still cannot pay with it, and was told nothing. ⚠️ And
  *    `agentInvitationHtml({ feeWaivable: true })` is hard-coded, so the invitation says the fee
  *    *may* be waived while the waiver is a separate officer action.
+ *    ⭐ Since 2026-10-10 "identity APPROVED" here means an OFFICER'S PHOTO APPROVAL (`photoIdentityVerified`):
+ *    players verify with typed details and are approved automatically, and that approval opens withdrawals only
+ *    (§2.6c reads the question, §7.2b drives it).
  *
  * ⛔ 3. AN UNVERIFIED EMAIL. Paying requires it, exactly as depositing does; `applicantEligibility`
  *    never checks it.
@@ -160,8 +163,13 @@ console.log("\n§2 the preconditions the fee payment imposes are surfaced BEFORE
     const depFn = wallet.slice(wallet.indexOf("export async function deposit("), wallet.indexOf("async function settleDepositConfirmed("));
     ok("2.6b ⛔ deposit() asks no identity question — the fee's identity refusal is not an inherited one",
       depFn.length > 2_000 && !/assertIdentityForPayout\s*\(|reason:\s*"kyc_|\bdb\.kyc\b/.test(depFn), `len=${depFn.length}`);
-    ok("2.6c ⭐ …while payFeeFromWallet asks it itself — the CURRENT status, before any money moves",
-      /kyc\.status\s*!==\s*"APPROVED"[\s\S]{0,240}refusal:\s*"kyc_required"/.test(decomment(payBody)));
+    // ⭐ 2026-10-10 — THE QUESTION IS NOW `photoIdentityVerified` (an officer's photo approval, the CURRENT status, the
+    // photos still on file), never a bare APPROVED: a player's typed details are approved automatically, and a fee taken
+    // on that approval is a fee `approveAgent` must then refuse — the stranded fee this door exists to prevent.
+    ok("2.6c ⭐ …while payFeeFromWallet asks it itself — an officer's PHOTO approval, before any money moves",
+      /!photoIdentityVerified\(kyc\)[\s\S]{0,240}refusal:\s*"kyc_required"/.test(decomment(payBody)));
+    ok("2.6d ⛔ …and never a bare APPROVED, which an automatic typed approval also satisfies",
+      !/kyc\??\.status\s*[!=]==\s*"APPROVED"/.test(decomment(payBody.slice(0, payBody.indexOf("payAgentRegistrationFee(")))));
   }
   ok("2.8 ⛔ …and it still refuses while a previous refund is owed", /refund_owed/.test(payBody));
   ok("2.9 ⭐ the amount comes from feeBreakdown, never a config field or a literal",
@@ -377,6 +385,19 @@ console.log("\n§7 🔴 a wallet-paid applicant can SUBMIT — the door, not the
       nonFeeBefore.length === 0, `still missing: ${nonFeeBefore.join(", ")}`);
     ok("7.2 CONTROL · …and the fee IS outstanding before payment (else 7.3 proves nothing)",
       beforePay.some((m) => /^FEE/.test(m)), JSON.stringify(beforePay));
+
+    // ⭐ 2026-10-10 · THE IDENTITY QUESTION, DRIVEN, NOT ONLY READ (2.6c). The same applicant, the same funded wallet —
+    // with the identity swapped for a player's AUTOMATIC typed approval (APPROVED, no officer, no photos). The fee must
+    // be refused before any money moves; then the officer's photo approval the fixture carries is put back, so 7.3 below
+    // pays on exactly the applicant it always did.
+    const officerRow = (await db.kyc.findByUserId(UID))!;
+    const autoAt = new Date().toISOString();
+    await db.kyc.upsert({ ...officerRow, autoApprovedAt: autoAt, photoVerifiedAt: null, reviewerId: null, documents: [] });
+    const typedPay = await payFeeFromWallet(UID) as { ok: boolean; refusal?: string };
+    ok("7.2b ⛔ an applicant whose identity is an AUTOMATIC typed approval is refused kyc_required — and nothing is debited",
+      typedPay.ok === false && typedPay.refusal === "kyc_required" && (await db.wallet.findByUserId(UID))?.balance === FEE * 2,
+      JSON.stringify({ typedPay, balance: (await db.wallet.findByUserId(UID))?.balance }));
+    await db.kyc.upsert(officerRow);
 
     const paid = await payFeeFromWallet(UID);
     ok("7.3 ⭐ a funded, verified applicant's payment is ACCEPTED",

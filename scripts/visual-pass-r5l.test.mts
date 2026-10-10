@@ -152,7 +152,7 @@ const LOADER = "src/components/ui/page-loader.tsx";
  *  opening band depends on its data (a title by state, a flag by programme state). */
 const GENERIC = walk("src/app").filter((f) => f.endsWith("/loading.tsx") && !f.startsWith("src/app/admin/") && /<PageLoader\b/.test(code(f))).sort();
 const CASES: Record<string, Array<[string, string]>> = {
-  "src/app/profile/kyc/loading.tsx": [['title={kyc?.status === "APPROVED" ? t.profile.verifyTitleApproved : finalRefusal ? t.kycGate.titleRejected : t.profile.verifyIdentity}', "title={<GhostText>{t.profile.verifyIdentity}</GhostText>}"]], // set and not shown since 2026-10-09 (1.4)
+  "src/app/profile/kyc/loading.tsx": [['title={kyc?.status === "APPROVED" ? t.profile.verifyTitleApproved : finalRefusal ? t.kycGate.titleRejected : pending ? (photoCase ? t.kycGate.titlePendingAgent : t.profile.kycCheckingTitle) : t.profile.verifyIdentity}', "title={<GhostText>{t.profile.verifyIdentity}</GhostText>}"]], // set and not shown since 2026-10-09 (1.4); 2026-10-10: a case with our team is titled by its status
 };
 /** The one route whose first band IS its data: the proposal's own head card, its h1 the proposal's title. */
 const DATA_FIRST: Record<string, string> = { "src/app/proposals/[id]/loading.tsx": '<section className="rounded-xl glass-panel p-4"> <div className="mb-2.5 flex flex-wrap items-center gap-2"> <StatusBadge' };

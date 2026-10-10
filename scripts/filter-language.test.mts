@@ -448,7 +448,9 @@ const NON_FILTER_PILL_RAILS: Array<{ file: string; why: string }> = [
       "The IDENTITY-DOCUMENT chooser. It is a rail of the four ID_DOC_TYPES a player may prove " +
       "identity with, and it selects WHICH FORM TO FILL IN, not which rows to see: the value is " +
       "copied into the submitted form as a hidden input so what is VALIDATED is what was on " +
-      "screen, and the whole rail is removed once `idDone`. The page has no list, no orderBy and " +
+      "screen, and the rail is absent wherever the record decides the document (a locked " +
+      "correction, a saved agent case — `recordDecides`, 2026-10-10) and goes with the form once " +
+      "the identity is verified. The page has no list, no orderBy and " +
       "nothing to filter. ⛔ Do not give it the hook — a live query probe addressing a form input " +
       "would report a filter that does not exist. ⚠️ And do not 'keep the geometry' by moving it " +
       "to `filterPillClass`: that helper exists for controls that CANNOT be links, and this one " +

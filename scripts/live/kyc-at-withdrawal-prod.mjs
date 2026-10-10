@@ -9,6 +9,11 @@
  * in ONE dismissible notice once a first deposit is confirmed — nowhere else. No app-wide bar, no
  * amber banner on /profile, no "your balance is safe" line.
  *
+ * ⭐ 2026-10-10 · TYPED-ONLY IDENTITY (owner ruling, Ali, relaying the Gaming Board): the "verify identity" step is
+ * now ONE typed form and one press, approved at once when the automatic checks pass, with no upload; officers check
+ * automatic approvals afterwards (the post-check list on /admin/kyc). The Terms, the AML policy and the Privacy notice
+ * were re-versioned that day — their versions are read from the deployed source below, never pinned.
+ *
  * WHAT IT MEASURES, and in what order:
  *   P · the published documents, signed OUT, in en/sw/zh: Terms v2026-09-14 (v2026-09-13 plus the audit's §2/§3a
  *       amendment) with §3 "before your first withdrawal" and §3a; AML v2026-09-14 without the three false §2
@@ -58,6 +63,23 @@ const PRIVACY = (() => {
   if (!out.en || !out.sw || !out.zh) throw new Error("could not read the privacy notice's version from its source META");
   return out;
 })();
+/* ⭐ AND THE TERMS AND THE AML POLICY THE SAME WAY (2026-10-10). Both were pinned to 2026-09-14 and both moved to
+   2026-10-10 with typed-only identity — the pin would have gone red on a correct page for the same reason the privacy
+   pin did. The Terms carry ONE version, `TERMS_VERSION` (the constant registration stamps on the account); the AML
+   policy carries its own, in its page's META like the privacy notice. */
+const TERMS = (() => {
+  const src = readFileSync(new URL("../../src/lib/terms-version.ts", import.meta.url), "utf8");
+  const v = (src.match(/export const TERMS_VERSION = "([0-9][0-9.-]*)"/) ?? [])[1];
+  if (!v) throw new Error("could not read TERMS_VERSION from src/lib/terms-version.ts");
+  return v;
+})();
+const AML = (() => {
+  const src = readFileSync(new URL("../../src/app/legal/aml/page.tsx", import.meta.url), "utf8");
+  const v = (loc, word) => (src.match(new RegExp(`${loc}: "${word} ([0-9][0-9.-]*) ·`)) ?? [])[1];
+  const out = { en: v("en", "Version"), sw: v("sw", "Toleo"), zh: v("zh", "版本") };
+  if (!out.en || !out.sw || !out.zh) throw new Error("could not read the AML policy's version from its source META");
+  return out;
+})();
 
 const R = recorder(`kyc-at-withdrawal-prod — ${BASE}`);
 const REGISTER = process.env.REGISTER === "1";
@@ -96,13 +118,13 @@ try {
     // names what a refusal stops instead of "no money in or out". The two superseded English sentences below existed on
     // c6ab54c8 (served 2026-09-13) — copied, not invented. The AML policy moved to v2026-09-14 the same day: its Swahili and
     // Chinese FIU names changed under a version dated 2026-09-13 (COMPLIANCE-DECISIONS.md 2026-09-14, second).
-    en: { terms: ["version 2026-09-14", "before your first withdrawal", "if we cannot verify you", "any money we return is sent only to the mobile-money number"], aml: ["version 2026-09-14", "before their first withdrawal"], rules: ["verified before your first withdrawal"], old: ["required before you can deposit, place a", "required of every player before they", "behavioural anomalies are detected", "duplicate accounts will be closed and balances forfeited", "no money can be paid into or out of the account"],
+    en: { terms: [`version ${TERMS}`, "before your first withdrawal", "if we cannot verify you", "any money we return is sent only to the mobile-money number"], aml: [`version ${AML.en}`, "before their first withdrawal"], rules: ["verified before your first withdrawal"], old: ["required before you can deposit, place a", "required of every player before they", "behavioural anomalies are detected", "duplicate accounts will be closed and balances forfeited", "no money can be paid into or out of the account"],
       privacy: [`version ${PRIVACY.en}`, "selcom, our payment gateway", "profile → notifications", "at least 7 years", "cloudflare's network", "postmark, in the united states", "anthropic, which writes the answers in the 50pick help chat", "sentry, in the european union", "encrypted in transit with tls (https)"],
       privacyOld: ["tls 1.2+", "database tier", "theme preference", "sp 800-132"] },
-    sw: { terms: ["toleo 2026-09-14", "kabla ya kutoa fedha kwa mara ya kwanza", "tusipoweza kukuthibitisha"], aml: ["toleo 2026-09-14", "kabla ya kutoa fedha kwa mara ya kwanza"], rules: ["kabla ya kutoa pesa kwa mara ya kwanza"], old: ["unahitajika kabla ya kuweka fedha, kuweka", "unahitajika kwa kila mchezaji kabla ya"],
+    sw: { terms: [`toleo ${TERMS}`, "kabla ya kutoa fedha kwa mara ya kwanza", "tusipoweza kukuthibitisha"], aml: [`toleo ${AML.sw}`, "kabla ya kutoa fedha kwa mara ya kwanza"], rules: ["kabla ya kutoa pesa kwa mara ya kwanza"], old: ["unahitajika kabla ya kuweka fedha, kuweka", "unahitajika kwa kila mchezaji kabla ya"],
       privacy: [`toleo ${PRIVACY.sw}`, "selcom, lango letu la malipo", "wasifu → arifa", "angalau miaka 7", "mtandao wa cloudflare", "postmark, nchini marekani", "gumzo la msaada wa 50pick", "sentry, katika umoja wa ulaya", "kwa tls (https)"],
       privacyOld: ["tls 1.2+", "tabaka la hifadhidata", "mapendeleo ya mandhari", "sp 800-132"] },
-    zh: { terms: ["版本 2026-09-14", "首次提现之前", "如果我们无法验证您的身份"], aml: ["版本 2026-09-14", "首次提现之前"], rules: ["首次提现前完成验证"], old: ["在充值、投注或提现之前", "检测到行为异常"],
+    zh: { terms: [`版本 ${TERMS}`, "首次提现之前", "如果我们无法验证您的身份"], aml: [`版本 ${AML.zh}`, "首次提现之前"], rules: ["首次提现前完成验证"], old: ["在充值、投注或提现之前", "检测到行为异常"],
       privacy: [`版本 ${PRIVACY.zh}`, "selcom，我们的支付网关", "个人资料 → 通知", "至少 7 年", "cloudflare 网络", "postmark（美国）", "“50pick 帮助”聊天", "sentry（欧盟）", "tls（https）加密"],
       privacyOld: ["tls 1.2+", "数据库层", "主题偏好", "sp 800-132"]},
   };
@@ -189,7 +211,9 @@ try {
       R.check(`A.withdraw${W} …and no longer says "before you cash out" or that the balance is safe`,
         pt.length > 20 && !pt.includes("before you cash out") && !pt.includes("your balance is safe") && (await count(page, '[data-kyc-payout-line="safe"]')) === 0,
         pt.slice(0, 140));
-      R.check(`A.withdraw${W} states the review wait as a number`, /usually reviews documents within \d+ hours/.test(pt), pt.slice(0, 140));
+      // 2026-10-10 · most typed checks finish at once, so the caption says that first and the clock second.
+      R.check(`A.withdraw${W} says most checks are instant, and states the review wait as a number`,
+        /most checks are instant/.test(pt) && /usually reply within \d+ hours/.test(pt), pt.slice(0, 160));
       await noBar(page, `A.withdraw${W}`);
       R.check(`A.withdraw${W} no horizontal overflow`, await noOverflow(page));
       await shot(page, `A-withdraw-panel-en-${width}`);
@@ -224,6 +248,9 @@ try {
       await page.goto(`${BASE}/profile/kyc`, { waitUntil: "domcontentloaded" }); await settle(page);
       const kt = await bodyText(page);
       R.check(`A.profile-kyc${W} no welcome block telling a new player verification opens play`, !kt.includes("browse every market for free") && !kt.includes("is what opens adding money"));
+      // ⭐ 2026-10-10 — the typed form: the number field and its one press, and nothing asks for a file.
+      R.check(`A.profile-kyc${W} the typed identity form, one press`, (await count(page, "#idNumber")) === 1 && (await count(page, 'form:has(#idNumber) button[type="submit"]')) === 1);
+      R.check(`A.profile-kyc${W} ⛔ no file input — players no longer upload`, (await count(page, 'input[type="file"]')) === 0);
       await noBar(page, `A.profile-kyc${W}`);
       R.check(`A.profile-kyc${W} no horizontal overflow`, await noOverflow(page));
       await shot(page, `A-profile-kyc-en-${width}`);
@@ -263,7 +290,8 @@ try {
     const page = await ctx.newPage();
     await login(page, "admin");
     for (const [path, want] of [
-      ["/admin/kyc", /kyc/],
+      // 2026-10-10 — the queue now carries the officers' post-check list of automatic approvals.
+      ["/admin/kyc", /verified automatically/],
       ["/admin/kyc/refused", /refused players' balances/],
       ["/admin/approvals", /approvals/],
       ["/admin/finance", /held for unverified/],

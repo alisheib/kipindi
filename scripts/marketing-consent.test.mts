@@ -27,7 +27,7 @@ import { db } from "../src/lib/server/store.ts";
 import type { StoredUser, StoredResponsibleGambling, StoredKyc, MessagingLocale, SuppressionReason, StoredSuppression } from "../src/lib/server/store.ts";
 import { toMsisdn255 } from "../src/lib/phone-normalize.ts";
 import { parseTzNumber } from "../src/lib/tz-msisdn.ts";
-import { ageOn, MIN_AGE_YEARS } from "../src/lib/id-documents.ts";
+import { ageOn, MIN_AGE_YEARS, nidaDateOfBirth } from "../src/lib/id-documents.ts";
 import { isFinalRefusal } from "../src/lib/kyc-refusal.ts";
 import { SMS_CONSENT_WORDINGS, isSmsConsentWording } from "../src/lib/marketing/consent-wording.ts";
 import { dict } from "../src/lib/i18n-dict.ts";
@@ -248,6 +248,20 @@ async function seed(run: number): Promise<Fixtures> {
   // AE · CONTROL — the account says 17 and an OLDER document never rescues it
   const kycDocOlderId = await mk(p(31), { marketingOptIn: true, dob: bornYearsAgo(17) });
   await kycRow(kycDocOlderId, { status: "APPROVED", dob: "1980-01-01" });
+  // ⭐ 2026-10-10 — TYPED identities: the row's `dob` is now the ACCOUNT's, so the one independent date a typed identity
+  // carries is the birth date inside a NIDA number (digits 1–8). A NIDA saying under 18 goes to an officer rather than
+  // being refused, and until that officer decides only the gate's reading of the number keeps its holder unmarketed.
+  const nidaFor = (dob: string) => `${dob.replace(/-/g, "")}456712345678`;
+  // AI · the account says 36 (and so does the row), the NIDA number says 17 — the YOUNGEST governs
+  const kycNidaMinorId = await mk(p(34), { marketingOptIn: true, dob: "1990-01-01" });
+  await kycRow(kycNidaMinorId, { status: "PENDING_REVIEW", idType: "NIDA", idNumber: nidaFor(bornYearsAgo(17)), dob: "1990-01-01" });
+  // AJ · CONTROL — the same shape with an ADULT NIDA (the digits agree with the account): ALLOWED
+  const kycNidaAdultId = await mk(p(35), { marketingOptIn: true, dob: "1990-01-01" });
+  await kycRow(kycNidaAdultId, { status: "APPROVED", idType: "NIDA", idNumber: nidaFor("1990-01-01"), dob: "1990-01-01" });
+  // AK · the account says 30, the NIDA says 20, a break on record — the under-25 promise reads the number too
+  const kycNidaYoungId = await mk(p(36), { marketingOptIn: true, status: "COOLED_OFF", dob: bornYearsAgo(30) }, null, { coolingOffUntil: daysFromNow(-30) });
+  await consent(p(36), "GIVEN", daysFromNow(-10));
+  await kycRow(kycNidaYoungId, { status: "APPROVED", idType: "NIDA", idNumber: nidaFor(bornYearsAgo(20)), dob: bornYearsAgo(30) });
 
   // ── EAT-midnight boundaries, driven through the gate with a fixed clock ─────────────────────
   // AF · turns 18 on 2026-03-15 — in Dar es Salaam that is 2026-03-14T21:00:00Z
@@ -270,6 +284,7 @@ async function seed(run: number): Promise<Fixtures> {
     oldWording: p(21), noLedger: p(22), ledgerWithdrawn: p(23),
     kycUnderage: p(24), kycSanctioned: p(25), kycDuplicate: p(26), kycBlurry: p(27), kycReopened: p(28),
     kycDocMinor: p(29), kycDocYoung: p(30), kycDocOlder: p(31),
+    kycNidaMinor: p(34), kycNidaAdult: p(35), kycNidaYoung: p(36),
     turns18: p(32), turns25: p(33), ndc64,
     consentingId, maturedId,
   };
@@ -367,6 +382,10 @@ async function runAssertions(gate: Gate, f: Fixtures, tag: string): Promise<void
   await expect("34 · ⭐ D5 · the account says 36, the identity document says 17 — the YOUNGER age governs: age_minor", f.kycDocMinor, "age_minor");
   await expect("35 · D5 · the under-25 promise reads the document too — account 30, document 20, a break on record", f.kycDocYoung, "rg_under25_history");
   await expect("36 · ⚠️ CONTROL — an OLDER document never rescues a minor account: age_minor", f.kycDocOlder, "age_minor");
+  // ── 2026-10-10 · typed identities: the birth date inside a NIDA number ─────────────────────────
+  await expect("36b · 🔴 2026-10-10 · the account and the row say 36, the NIDA number's digits say 17 — the YOUNGEST governs: age_minor", f.kycNidaMinor, "age_minor");
+  await expect("36c · ⚠️ CONTROL — an ADULT NIDA that agrees with the account changes nothing: ALLOWED", f.kycNidaAdult, "ALLOWED");
+  await expect("36d · the under-25 promise reads the NIDA's date too — account 30, NIDA 20, a break on record", f.kycNidaYoung, "rg_under25_history");
 
   // ── the EAT-midnight boundaries, through the gate, with a fixed clock ──────────────────────
   const T2059 = new Date("2026-03-14T20:59:00.000Z"); // 23:59 in Dar es Salaam, the day BEFORE the birthday
@@ -419,6 +438,7 @@ type Defect = {
   kycIgnored?: boolean;             // pre-D5: the identity check's final refusals are never read
   sanctionedPasses?: boolean;       // D5 half-done: UNDERAGE read, SANCTIONED / DUPLICATE_IDENTITY not
   kycDobIgnored?: boolean;          // D5 half-done: the document's date of birth never compared
+  nidaDobIgnored?: boolean;         // 2026-10-10 half-done: the birth date inside a NIDA number never read
   ageOffByOne?: boolean;            // `years + 1 >= 18` — a 17-year-old admitted
   utcAge?: boolean;                 // age on the UTC date, not Tanzania's — the birthday arrives 3 hours late
   under25OffByOne?: boolean;        // the under-25 line drawn at 24
@@ -507,7 +527,14 @@ function gateWithDefect(d: Defect): Gate {
         const age = d.nullDobIsAdult && !user.dob ? { band: "adult" as const, years: 30 } : ageOf(user.dob);
         if (age.band === "unknown") return { ok: false, skipReason: "age_unknown", detail: "no dob" };
         const doc = d.kycDobIgnored ? { band: "unknown" as const, years: null } : ageOf(kyc?.dob ?? null);
-        const years = doc.band === "unknown" ? (age.years as number) : Math.min(age.years as number, doc.years as number);
+        // ⭐ 2026-10-10 — the birth date inside a NIDA number, the one independent date a TYPED identity carries (the
+        // row's own `dob` is the account's since that release). The youngest of the three ages governs.
+        const nidaDob = !d.nidaDobIgnored && kyc?.idType === "NIDA" && kyc.idNumber ? nidaDateOfBirth(kyc.idNumber) : null;
+        const nida = ageOf(nidaDob);
+        const known = [age.years as number];
+        if (doc.band !== "unknown") known.push(doc.years as number);
+        if (nida.band !== "unknown") known.push(nida.years as number);
+        const years = Math.min(...known);
         const minor = d.ageOffByOne ? years + 1 < MIN_AGE_YEARS : years < MIN_AGE_YEARS;
         if (minor) return { ok: false, skipReason: "age_minor", detail: "minor" };
         const line = d.under25OffByOne ? MARKETING_YOUNG_ADULT_AGE - 1 : MARKETING_YOUNG_ADULT_AGE;
@@ -2016,6 +2043,11 @@ if (!PROVE_RED) {
       name: "D5 half-done — the document's date of birth is never compared",
       defect: { kycDobIgnored: true },
       expect: "34 · ⭐ D5 · the account says 36, the identity document says 17 — the YOUNGER age governs: age_minor",
+    },
+    {
+      name: "2026-10-10 half-done — the birth date inside a NIDA number is never read, so a NIDA-established minor is marketed",
+      defect: { nidaDobIgnored: true },
+      expect: "36b · 🔴 2026-10-10 · the account and the row say 36, the NIDA number's digits say 17 — the YOUNGEST governs: age_minor",
     },
     {
       name: "the 18 line off by one — `years + 1 >= 18` admits a 17-year-old",

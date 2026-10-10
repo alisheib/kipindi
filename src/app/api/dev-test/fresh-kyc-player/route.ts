@@ -1,20 +1,23 @@
 /**
  * /api/dev-test/fresh-kyc-player — dev-only. Creates a BRAND-NEW player with a
  * fresh session cookie, at a chosen KYC state, so an E2E can drive the real
- * player-side KYC flow (document upload → submit → resubmit) end to end.
+ * player-side KYC flow end to end.
  *
  * Returns 404 in production — never reachable on a live deployment.
  *
  *   POST { state?: "nida_verified" | "none" } → { ok, userId, phone }
- *   - "nida_verified" (default): NIDA already verified, 0 documents → the
- *     browser can upload docs + submit (skips the segmented DOB widget).
- *   - "none": no KYC record yet (lands on the NIDA step).
+ *   - "nida_verified" (default): NIDA details saved (IN_PROGRESS), 0 documents.
+ *     ⭐ Since 2026-10-10 (typed-only KYC) that row is two real states at once: the LEGACY mid-flow row —
+ *     production held four on the day, details saved before the change and photos never added — on which
+ *     /profile/kyc shows the typed form prefilled and ONE press verifies; and an agent applicant's photo track
+ *     after its first step (`/profile/kyc?for=agent`: the document's photos and a selfie come next).
+ *   - "none": no KYC record yet (lands on the typed details form).
  */
 import { NextResponse } from "next/server";
 import { db } from "@/lib/server/store";
 import type { StoredUser, StoredWallet, StoredKyc } from "@/lib/server/store";
 import { createSession } from "@/lib/server/session";
-import { randomId } from "@/lib/server/crypto";
+import { randomId, identityFingerprint } from "@/lib/server/crypto";
 
 export async function POST(req: Request) {
   if (process.env.NODE_ENV === "production") {
@@ -44,22 +47,37 @@ export async function POST(req: Request) {
   await db.wallet.create(w);
 
   if (state === "nida_verified") {
+    // ⛔ A NIDA UNIQUE TO THIS PLAYER, from the phone's last eleven digits ("5573" + its seven — unique per call, as the
+    // phone itself must be). It was "1990010100000000" + four digits from 9,000 values until 2026-10-10: over a long dev
+    // session two players shared one, and the second one's press met "already linked to another account" — and a
+    // value ending `9999` met the dev NIDA mock's MISMATCH hook. Digits 1-8 are the account's date of birth; it ends
+    // in `7`, never `0000` (the mock's SANCTIONED hook) or `9999`.
+    const idNumber = `19900101${phone.slice(-11)}7`;
     const kyc: StoredKyc = {
       id: `kyc_${randomId(10)}`, userId: id, status: "IN_PROGRESS", rejectReason: null, rejectNote: null,
-      // Unique NIDA so the one-document-one-account rule never collides across runs.
-      // ⚠️ The deprecated `nida*` mirror was written here until 2026-08-20. This
-      // fixture must match exactly what `submitIdentityStep` writes for a NIDA, and
-      // what it writes is the tuple and nothing else.
+      // ⚠️ The deprecated `nida*` mirror was written here until 2026-08-20. This fixture must match exactly what the
+      // identity step writes for a NIDA (`submitIdentityStep`): the tuple, its keyed fingerprint, the name and the
+      // date — and nothing else.
       idType: "NIDA",
-      idNumber: "1990010100000000" + String((parseInt(id.slice(-4), 36) % 9000) + 1000),
+      idNumber,
       idExpiry: null,
       idVerifiedAt: now,
-      fullName: "Asha Mwamba Juma", dob: "1990-01-01",
-      documents: [], extraRequests: [], reviewerId: null, reviewedAt: null, submittedAt: null, createdAt: now, updatedAt: now,
+      idFingerprint: identityFingerprint("NIDA", idNumber),
+      // ⛔ ONE NAME PER PLAYER (2026-10-10). The automatic checks now look for the same person — the same name and date
+      // of birth — on other accounts, so a name every fixture shared made each new player a "possible same person" of
+      // all the earlier ones: flagged, or routed to an officer once any one of them had been refused or frozen.
+      fullName: `Asha Mwamba Juma ${phone.slice(-7)}`, dob: "1990-01-01",
+      documents: [], extraRequests: [], reviewerId: null, reviewedAt: null, submittedAt: null,
+      // ⭐ Every column named: nothing approved, nothing checked, no earlier identity (a row this fixture BUILDS is
+      // written whole — the DAL writes an omitted field as null).
+      approvedAt: null, photoVerifiedAt: null, autoApprovedAt: null, autoFlags: [], postCheckedAt: null, postCheckedById: null,
+      priorIdentities: [],
+      createdAt: now, updatedAt: now,
     };
     await db.kyc.upsert(kyc);
   }
 
-  await createSession({ userId: id, phoneE164: phone, role: "PLAYER", kycStatus: "IN_PROGRESS" });
+  // The cookie stamp mirrors the row, as `/auth/demo`'s does: no row is NOT_STARTED. Nothing gates on it.
+  await createSession({ userId: id, phoneE164: phone, role: "PLAYER", kycStatus: state === "none" ? "NOT_STARTED" : "IN_PROGRESS" });
   return NextResponse.json({ ok: true, userId: id, phone });
 }

@@ -100,6 +100,9 @@ export type KycGateFacts = {
 export function kycGateState(facts: KycGateFacts): KycGateState | null {
   if (facts?.status === "REJECTED" && isFinalRefusal(facts?.rejectReason)) return "refused_final";
   if (approvedEver(facts)) return null;
+  // ⭐ From 2026-10-10 (typed-only identity) a player's verification carries no documents, so `uploaded` is an agent
+  // applicant's photos not yet sent, or a case left from before that day. The rule is unchanged — documents > 0 — and
+  // a typed IN_PROGRESS row (details saved, nothing decided) is `not_started`: its next step is the same one form.
   const documentCount = facts?.documentCount ?? facts?.documents?.length ?? 0;
   switch (facts?.status) {
     case "PENDING_REVIEW": return "pending_review";

@@ -362,6 +362,9 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   // 2026-09-13 · an identity review past `KYC_REVIEW_SLA_HOURS`. KYC, like `notifyAdminKycReview`: it is
   // the same queue, and the kind is what routes an officer's bell tint to it.
   { fn: "notifyAdminsKycReviewOverdue", kind: "KYC",              audience: "officer" },
+  // 2026-10-10 · an AUTOMATIC identity approval (typed details, no officer) still unchecked — at once when it carries
+  // a flag, after 24 h otherwise (`runKycPostCheckAlerts`). KYC: the same post-check list the bell links to.
+  { fn: "notifyAdminsKycPostCheckDue", kind: "KYC",               audience: "officer" },
   // ── House bots (build commit 3) ─────────────────────────────────────────
   // ⛔ No holder notices: every HOUSE_BOT row is an officer's (D19c, C4 ruling 149).
   // An erasure refused while the account is still a house bot (04 R6) — to `houseBotAlertRecipients()`.

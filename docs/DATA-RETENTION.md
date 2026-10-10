@@ -52,6 +52,38 @@
 | Backup artifacts | **90 days** rolling | Snapshot date | DR/BCP | 📋 Policy — operator action | R2 `50pick-backups` |
 | Session records | — | — | — | ⛔ **N/A** — the `Session` model has never been written to; the platform uses a signed cookie plus `ActiveSession`. A prune here would be a permanent no-op dressed as a control. | — |
 
+### 1a. Identity photos from 2026-10-10 — players send none; what is on file is kept as before
+
+Owner ruling, 2026-10-10 ([`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) § "2026-10-10 · Players verify identity
+with typed details and are approved at once; agents keep photo identity — Privacy v2026-10-10, Terms v2026-10-10, AML
+v2026-10-10 (Gaming Board request, relayed by the owner)"). For the "Identity documents + KYC decisions" row above:
+
+- **Players' identity photos are no longer collected from 2026-10-10.** A player verifies with the typed details of one
+  document; no player screen takes an image, and an officer can no longer ask for an extra document.
+- **Photos players sent before 2026-10-10 are held exactly as before** — 7 years from account closure, never deleted
+  by an automated path, destroyed by an officer-initiated erasure only once the hold has run (§2b, tier ②). Officers
+  still open them, read-only, through `/api/admin/kyc-doc`, whose accept-list is a frozen list of every slot ever
+  written (`LEGACY_KYC_DOC_SLOTS`, `src/lib/id-documents.ts`), so a later change to what is asked can never lock an
+  image on file out of reach.
+- **Agent applicants' identity photos and selfie are collected and held as before** — the same row, the same bucket,
+  the same 7-year hold; the agent application's own documents keep their rows above.
+- Privacy §2 says so from v2026-10-10 — photographs of the document and a selfie *"from people applying to become
+  agents, and from players who sent them before 10 October 2026 (kept as §5 states)"* (sw *"kutoka kwa watu wanaoomba
+  kuwa mawakala"*, zh *"收集自申请成为代理的人士"*); §4 (Cloudflare R2 still holds the photographs) and §5 are unchanged.
+- ⚠️ **Not changed in this release, and not to be read into this row:** what erasure keeps of the TYPED identity. The
+  owner's 7-year hold on it ships in a later release (Part C), which will rewrite §2b and Privacy §5 together. Until
+  then §2b holds as written — for the submission's own fields, and, by the SAME rule, for every entry of its new
+  `priorIdentities` history (the typed identities a restart, a re-open or a correction replaced): the number becomes
+  its keyed fingerprint, the name "Erased <fp12>", the date of birth is removed (`erasePriorIdentity`,
+  `src/lib/server/erasure.ts`). A change to the row's rule — Part C's among them — is made to both together.
+- **The KYC record in an access request.** The player's own "Export my data" and the officer's DSAR bundle carry the
+  submission through ONE allowlist, `dsarKycView` (`src/lib/server/privacy.ts`): the details the person gave, the status
+  and its dates, the reason they were given, their documents by reference and their own prior identities. Left out on
+  purpose — staff identities and internal checks, not the subject's data: the automatic approval's flags (`autoFlags`;
+  a `SAME_PERSON` flag would tell the subject they were matched to another account), `postCheckedAt` /
+  `postCheckedById`, the row's `reviewerId` and `idFingerprint`, and each prior identity's `reviewerId` and
+  `idFingerprint`.
+
 ---
 
 ## 2. The four open questions — ANSWERED 2026-08-21
@@ -104,7 +136,7 @@ months and break on the day somebody "tightened" it.
 
 | | When | What |
 |---|---|---|
-| ① Immediate | on fulfilment | **`User`** — email, verified-at, password hash + salt, display name, dob, region, avatar, last-login → NULL; `phoneE164` → `erased:<userId>` tombstone; `marketingOptIn` → false. **`KycSubmission`, every submission and not just the newest** — number → its keyed HMAC, full name → `Erased <fp12>`, dob → NULL, officer request descriptions → `[erased]`. **`Comment`** — author mask overwritten, body redacted, row soft-deleted. **`Notification`** — the account's own deleted, *and the frozen mask redacted out of other people's rows*. **Gone** — `Otp`, `PushSubscription`, `Watchlist`, `TotpSecret`, `TotpBackupCode`, `ActiveSession`. **`HouseBot`** — label → `Erased <botId tail>` with `labelKey` recomputed from it; note, `removedReason`, `HouseBotEvent.reason` and `HouseBotPress.reason` → `[erased]`; the quoted label is redacted in admin HOUSE_BOT notifications. **Marketing** (2026-10-01, U18b) — a WITHDRAWN ledger row appended for every number the person is known by whose latest row was GIVEN, and (U16a, the erasure marker) on the account's own number whatever came before — an opt-out included (C8a, 2026-10-09) — unless its latest row is already the marker (recorded by the officer, evidence the bare word `erasure`; no stop-list row, so a recycled number's next owner can consent), every contact-book row for the person emptied and (C8b, 2026-10-09) taken off every list it was on. **Campaign records** (2026-10-04, U16a) — every `SmsCampaignRecipient` row linked to the account loses the link (`userId` → NULL) and keeps its number, status, stamps and trail, the 7-year record that we messaged that number; opt-out links are kept; a re-run unlinks any row linked to the account since. ✅ **built** (`erasure.ts` + `marketing/erase.ts`, both stores) |
+| ① Immediate | on fulfilment | **`User`** — email, verified-at, password hash + salt, display name, dob, region, avatar, last-login → NULL; `phoneE164` → `erased:<userId>` tombstone; `marketingOptIn` → false. **`KycSubmission`, every submission and not just the newest** — number → its keyed HMAC, full name → `Erased <fp12>`, dob → NULL, officer request descriptions → `[erased]`; and (2026-10-10) every entry of its `priorIdentities` history by the same rule. **`Comment`** — author mask overwritten, body redacted, row soft-deleted. **`Notification`** — the account's own deleted, *and the frozen mask redacted out of other people's rows*. **Gone** — `Otp`, `PushSubscription`, `Watchlist`, `TotpSecret`, `TotpBackupCode`, `ActiveSession`. **`HouseBot`** — label → `Erased <botId tail>` with `labelKey` recomputed from it; note, `removedReason`, `HouseBotEvent.reason` and `HouseBotPress.reason` → `[erased]`; the quoted label is redacted in admin HOUSE_BOT notifications. **Marketing** (2026-10-01, U18b) — a WITHDRAWN ledger row appended for every number the person is known by whose latest row was GIVEN, and (U16a, the erasure marker) on the account's own number whatever came before — an opt-out included (C8a, 2026-10-09) — unless its latest row is already the marker (recorded by the officer, evidence the bare word `erasure`; no stop-list row, so a recycled number's next owner can consent), every contact-book row for the person emptied and (C8b, 2026-10-09) taken off every list it was on. **Campaign records** (2026-10-04, U16a) — every `SmsCampaignRecipient` row linked to the account loses the link (`userId` → NULL) and keeps its number, status, stamps and trail, the 7-year record that we messaged that number; opt-out links are kept; a re-run unlinks any row linked to the account since. ✅ **built** (`erasure.ts` + `marketing/erase.ts`, both stores) |
 | ② Held 7 years from closure | `KYC_DOCUMENT_HOLD_YEARS` | Identity **images** and officer-requested extra documents — the R2 objects *and* the rows — plus the source-of-funds declaration. |
 | ⛔ Never | — | `Wallet`, `Transaction`, `LedgerEntry`, `Position`, `AuditLog`; `HouseBotIntent`, `HouseBotTarget` and the `houseBotId` markers (✅ built). The module names what it writes and cannot reach these; `test:erasure` §11.12 asserts it mentions none of them. |
 

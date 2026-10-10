@@ -9,7 +9,7 @@
  */
 import { db } from "./store";
 import type { StoredTxn, StoredUser } from "./store";
-import { tallyHeldForUnverified, type UnverifiedHeld } from "../kyc-stage";
+import { tallyHeldForUnverified, tallyHeldByUncheckedAuto, type UnverifiedHeld, type HeldTally } from "../kyc-stage";
 import { tallyWalletLiability, type WalletLiability } from "../wallet-liability";
 import { readKycMoneySnapshot } from "./kyc-money";
 import { moneyForWindow, EAT_OFFSET_MS } from "./report-money";
@@ -243,9 +243,11 @@ export async function walletLiabilityByStatus(): Promise<WalletLiability> {
   return tallyWalletLiability(await db.wallet.listAll());
 }
 
-/** A failed read is its OWN arm — never `{ ok: true, tzs: 0 }`. */
+/** A failed read is its OWN arm — never `{ ok: true, tzs: 0 }`.
+ *  ⭐ `uncheckedAuto` (2026-10-10) — held by accounts approved AUTOMATICALLY and not yet checked by an officer, on the
+ *  same ACTIVE basis. `null` when the post-check list could not be read: said, never drawn as zero. */
 export type UnverifiedLiability =
-  | ({ ok: true } & UnverifiedHeld)
+  | ({ ok: true; uncheckedAuto: HeldTally | null } & UnverifiedHeld)
   | { ok: false; failed: "kyc" | "wallets" };
 
 /**
@@ -269,16 +271,27 @@ export type UnverifiedLiability =
  * a database blip would be a false compliance all-clear.
  * ⚠️ Includes staff wallets, as `walletLiabilityTotal` does. The withdrawal gate asks staff the same
  * question, so an unapproved staff balance is genuinely unverified money.
+ * ⭐ 2026-10-10 — a FINAL refusal now counts as unverified even on an account approved once (`tallyHeldForUnverified`),
+ * and `uncheckedAuto` reports, beside the figure, what sits on automatic approvals no officer has checked yet.
  */
 export async function unverifiedLiability(): Promise<UnverifiedLiability> {
   const read = await readKycMoneySnapshot();
   if (!read.ok) return { ok: false, failed: read.failed };
-  return { ok: true, ...tallyHeldForUnverified(read.facts, read.wallets) };
+  // ⛔ A failed post-check read is `null`, never an empty set — "TZS 0 on unchecked approvals" after a blip would be a
+  // false all-clear. It does not fail the main figure, which does not depend on it.
+  const unchecked = await (async () => db.kyc.listUncheckedAutoApprovals())().catch(() => null);
+  const uncheckedAuto = unchecked ? tallyHeldByUncheckedAuto(new Set(unchecked.map((r) => r.userId)), read.wallets) : null;
+  return { ok: true, ...tallyHeldForUnverified(read.facts, read.wallets), uncheckedAuto };
 }
 
 /**
  * KYC funnel — count of users at each step.
  * registered → started → pending → approved.
+ *
+ * ⭐ APPROVED SPLITS IN TWO (2026-10-10). Players now verify with typed details and are approved AUTOMATICALLY when the
+ * checks pass; an officer checks those approvals afterwards. So `approved` (unchanged, every APPROVED row) is reported
+ * beside its two halves: `approvedAutoUnchecked` — automatic, not yet checked by an officer — and `approvedChecked` —
+ * approved by an officer, or automatic and since checked. ⛔ The halves always sum to `approved`.
  */
 export async function kycFunnel() {
   const users = await db.user.list();
@@ -286,14 +299,18 @@ export async function kycFunnel() {
   let started = 0;
   let pending = 0;
   let approved = 0;
+  let approvedAutoUnchecked = 0;
   for (const u of users) {
     const k = await db.kyc.findByUserId(u.id);
     if (!k || k.status === "NOT_STARTED") continue;
     started++;
     if (k.status === "PENDING_REVIEW") pending++;
-    else if (k.status === "APPROVED") approved++;
+    else if (k.status === "APPROVED") {
+      approved++;
+      if (k.autoApprovedAt && !k.postCheckedAt) approvedAutoUnchecked++;
+    }
   }
-  return { registered, started, pending, approved };
+  return { registered, started, pending, approved, approvedAutoUnchecked, approvedChecked: approved - approvedAutoUnchecked };
 }
 
 /** Self-exclusion + cooling-off counts (currently active). */

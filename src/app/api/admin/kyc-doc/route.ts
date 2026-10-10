@@ -1,9 +1,14 @@
 /**
- * /api/admin/kyc-doc?user=<userId>&type=<one of ALL_DOC_SLOTS>
+ * /api/admin/kyc-doc?user=<userId>&type=<one of LEGACY_KYC_DOC_SLOTS>   (or &req=<extra request id>)
  *
  * Streams a player's KYC document image to a compliance officer for review.
- * Same gate as every /admin/* surface: ADMIN/COMPLIANCE/MODERATOR only (role
- * re-checked here — middleware can't see roles). Sensitive ID imagery, so:
+ *
+ * ⭐ FROM 2026-10-10 PLAYERS NO LONGER UPLOAD (owner ruling — typed details only); agent applicants
+ * still do (photos + selfie, reviewed by an officer). So this route now serves two populations: an
+ * agent's photo case, and every image already on file from before that date, which stays readable
+ * for officers under the 7-year hold. Both are READ here, never written.
+ * Gate: ADMIN, or a role whose live grants can act on the `compliance` domain (`canAct`; COMPLIANCE by default) —
+ * re-checked here, middleware can't see roles. Sensitive ID imagery, so:
  *   - never cached (private, no-store)
  *   - the document is fetched by (userId, docType) — no client-supplied path,
  *     so there's no traversal / IDOR beyond what an officer may already see
@@ -20,15 +25,21 @@ import { audit } from "@/lib/server/audit";
 import { canAct } from "@/lib/server/rbac";
 import { checkAdminTotp } from "@/lib/server/admin-guard";
 import { readKycDocument } from "@/lib/server/storage";
-import { ALL_DOC_SLOTS } from "@/lib/id-documents";
+import { LEGACY_KYC_DOC_SLOTS } from "@/lib/id-documents";
 
 // RBAC: raw identity-document access = compliance (see canAct). Owner/ADMIN bypasses.
 //
-// ⛔ DERIVED FROM THE CATALOGUE, NEVER HAND-WRITTEN. A literal set here would have
-// gone stale the moment a fifth document type shipped — and the previous literal is
-// exactly why an officer could not open a passport bio page: the slot existed in
-// the database enum and this route refused it with "Bad request".
-const DOC_TYPES = new Set<string>(ALL_DOC_SLOTS);
+// ⛔ A FROZEN LIST, NEVER DERIVED FROM WHAT THE PRODUCT ASKS FOR TODAY (2026-10-10). It used to be
+// `ALL_DOC_SLOTS` — the slots the catalogue REQUIRES — which was right while every player uploaded:
+// a literal set had once refused a passport bio page with "Bad request". From 2026-10-10 the
+// catalogue describes only the agent photo track, and a set derived from it would shrink the day
+// that track changes, silently locking officers out of images already on file (including the
+// enum-only `NIDA` slot that predates the front/back split). `LEGACY_KYC_DOC_SLOTS` is every slot
+// that has ever been written, frozen in `id-documents.ts`: a slot is added there, never removed.
+const DOC_TYPES = new Set<string>(LEGACY_KYC_DOC_SLOTS);
+
+/** An extra-request id as the service mints them — anything else is refused before the row is read. */
+const REQ_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 export async function GET(req: Request) {
   const session = await currentSession();
@@ -51,8 +62,10 @@ export async function GET(req: Request) {
   const userId = (url.searchParams.get("user") ?? "").trim();
   const docType = (url.searchParams.get("type") ?? "").trim();
   const reqId = (url.searchParams.get("req") ?? "").trim();
-  // Either a fixed doc slot (?type=) or an officer-requested extra doc (?req=).
-  if (!userId || (!reqId && !DOC_TYPES.has(docType))) {
+  // Either a fixed doc slot (?type=) or an officer-requested extra doc (?req=). ⭐ `?req=` images are LEGACY too:
+  // officers can no longer ask for extra documents (2026-10-10), but the ones already uploaded stay readable, and
+  // the id is matched against THIS player's own row below — never a path, never another player's request.
+  if (!userId || (reqId ? !REQ_ID.test(reqId) : !DOC_TYPES.has(docType))) {
     return NextResponse.json({ ok: false, error: "Bad request" }, { status: 400 });
   }
 

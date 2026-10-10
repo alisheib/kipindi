@@ -18,6 +18,14 @@
  * state. §11 (2026-09-14) proves every count of files "with us" is one rule; §12 that the
  * liability tile names its basis and the frozen and closed money that basis leaves out.
  *
+ * ⭐ AND FROM 2026-10-10, TYPED IDENTITIES (owner ruling: players verify with typed details and are approved
+ * AUTOMATICALLY; agents keep photos — docs/COMPLIANCE-DECISIONS.md, "2026-10-10 · Players verify identity with typed
+ * details"). The eight keys and their arms are unchanged; three WORDS follow what the arms now hold, and §2o pins
+ * that no word claims an upload a typed case never made. An APPROVED row now carries HOW it was approved (§2p:
+ * automatic and unchecked, automatic and checked, or by an officer). "Held for unverified" asks a FINAL refusal
+ * first — an account approved once and then finally refused is unverified money again (§9m) — and a second, separate
+ * figure says what sits on automatic approvals no officer has checked yet (§9n–§9o).
+ *
  * ⛔ NO DATABASE, BY DESIGN. `scripts/dal-parity.test.mts` states the rule this file
  * obeys: *"a guard that talks to Postgres SKIPS when `DATABASE_URL` is absent — which is
  * every predeploy run — and a skipped guard prints green."* Everything here reads source
@@ -40,7 +48,7 @@ import { fileURLToPath } from "node:url";
 import {
   kycStage, kycFileEverArrived, isKycStage, KYC_STAGES,
   MONEY_NOT_APPLIED, MONEY_ONLY_STAGES, MONEY_SPLIT_STAGES, stageTurnsOnMoney,
-  walletHeldTzs, FUNDED_AXIS, isFundedAxis, fundedAxisOf, tallyHeldForUnverified,
+  walletHeldTzs, FUNDED_AXIS, isFundedAxis, fundedAxisOf, tallyHeldForUnverified, tallyHeldByUncheckedAuto,
   kycStageOfFile, isFileWithUs,
   type KycStage, type KycStatusToken, type KycStageFacts, type KycMoney,
 } from "../src/lib/kyc-stage.ts";
@@ -50,6 +58,7 @@ import { formatTzsCompact } from "../src/lib/utils.ts";
 import {
   kycStageLabel, kycStageVariant, fundedAxisLabel,
   accountStatusLabel, playerStatusVariant, presentedAccountStatus,
+  kycApprovalKind, kycApprovalKindLabel,
 } from "../src/components/admin/status-badge.tsx";
 import { decomment } from "./lib/decomment.mts";
 
@@ -205,6 +214,30 @@ ok("§2m the failed-read cell has its own word and is NOT a stage",
 ok("§2n the funded stage's word says 'Funded', never 'Unverified'",
   /funded/i.test(kycStageLabel("funded_nothing_yet")) && !/unverif/i.test(kycStageLabel("funded_nothing_yet")),
   kycStageLabel("funded_nothing_yet"));
+// ⭐ 2026-10-10 — PLAYERS NO LONGER UPLOAD. A routed typed case reaches an officer with no upload, and a typed refusal
+// is a refusal of details the player DID send. So the refusal words may not claim an upload, nor "nothing sent"; the
+// one word that still names a file names what only an agent applicant now sends — photos.
+ok("§2o the refusal words claim neither an upload nor 'nothing sent' — a typed case uploads nothing and sends its details",
+  // ⚠️ `\s+`, not a space: the lexicon writes these words with NO-BREAK spaces, and a plain-space pattern would pass
+  // over the very word it forbids.
+  !/upload/i.test(kycStageLabel("rejected_after_upload")) && !/upload|nothing\s+sent/i.test(kycStageLabel("rejected_no_docs")),
+  `${kycStageLabel("rejected_after_upload")} · ${kycStageLabel("rejected_no_docs")}`);
+ok("§2o2 …and the one file word names the PHOTOS (an agent applicant's, or a file from before that day)",
+  /photo/i.test(kycStageLabel("uploaded")) && !/submitted/i.test(kycStageLabel("uploaded")), kycStageLabel("uploaded"));
+// ⭐ HOW AN APPROVAL WAS MADE (2026-10-10) — one rule, three kinds, and NOT a stage (the stage stays 'approved').
+ok("§2p an APPROVED row says how it was approved — automatic and unchecked, automatic and checked, or by an officer",
+  kycApprovalKind({ status: "APPROVED", autoApprovedAt: "2026-10-10T08:00:00.000Z", postCheckedAt: null }) === "automatic_unchecked"
+  && kycApprovalKind({ status: "APPROVED", autoApprovedAt: "2026-10-10T08:00:00.000Z", postCheckedAt: "2026-10-10T09:00:00.000Z" }) === "automatic_checked"
+  && kycApprovalKind({ status: "APPROVED", autoApprovedAt: null, postCheckedAt: null }) === "officer"
+  && kycApprovalKind({ status: "APPROVED" }) === "officer");
+ok("§2p2 ⛔ …and a row that is not APPROVED has no approval kind, whatever stamps it carries",
+  ["PENDING_REVIEW", "REJECTED", "ADDITIONAL_INFO_REQUIRED", "IN_PROGRESS"].every((s) => kycApprovalKind({ status: s, autoApprovedAt: "2026-10-10T08:00:00.000Z" }) === null)
+  && kycApprovalKind(null) === null);
+const KINDS = ["automatic_unchecked", "automatic_checked", "officer"] as const;
+ok("§2p3 the three kinds have three distinct words, none says 'verif', and the unchecked one says it is not yet checked",
+  new Set(KINDS.map(kycApprovalKindLabel)).size === 3 && KINDS.every((k) => kycApprovalKindLabel(k).trim().length > 0 && !/verif/i.test(kycApprovalKindLabel(k)))
+  && /not\s+yet\s+checked/i.test(kycApprovalKindLabel("automatic_unchecked")),
+  JSON.stringify(KINDS.map(kycApprovalKindLabel)));
 
 /* ════════════════════════════════════════════════════════════════════════════
  * §3 · THE DERIVATION MAY NOT READ A MAGNITUDE.
@@ -441,6 +474,42 @@ ok("§9e ⛔ an account approved EVER (stamp) or NOW (status) is never counted �
 const empty = tallyHeldForUnverified([], []);
 ok("§9f a genuine zero is representable as a number (the FAILED read is a different arm — §9h)",
   empty.accounts === 0 && empty.tzs === 0 && empty.basisTotalTzs === 0 && empty.frozen.tzs === 0 && empty.closed.tzs === 0);
+// 🔴 2026-10-10 — A FINAL REFUSAL IS ASKED FIRST. `approvedAt` is never cleared, and an officer may now refuse an
+// APPROVED identity outright: an account approved once and then FINALLY refused (sanctions, a duplicate, under 18)
+// answered `approvedEver` and vanished from this figure, while its wallet sat frozen on money we hold no standing
+// identity for. A RECOVERABLE refusal of an approved-once account is still "approved ever" — its withdrawal stays open.
+{
+  const F = [
+    { userId: "u_final_after", status: "REJECTED", approvedAt: "2026-08-01T00:00:00.000Z", rejectReason: "SANCTIONED" },
+    { userId: "u_recov_after", status: "REJECTED", approvedAt: "2026-08-01T00:00:00.000Z", rejectReason: "DETAILS_MISMATCH" },
+  ];
+  const W = [
+    { userId: "u_final_after", status: "FROZEN" as const, balance: 600, hold: 0 },
+    { userId: "u_recov_after", status: "ACTIVE" as const, balance: 300, hold: 0 },
+  ];
+  const t = tallyHeldForUnverified(F, W);
+  ok("§9m 🔴 approved once, then FINALLY refused: unverified money again (reported in the frozen arm)",
+    t.frozen.accounts === 1 && t.frozen.tzs === 600, "", JSON.stringify({ frozen: t.frozen, active: { accounts: t.accounts, tzs: t.tzs } }));
+  ok("§9m2 control · approved once, then RECOVERABLY refused: still approved ever — not counted",
+    t.accounts === 0 && t.tzs === 0, "", JSON.stringify({ accounts: t.accounts, tzs: t.tzs }));
+  ok("§9m3 control · without the code (a caller that does not read it) the old answer stands — approved ever wins",
+    tallyHeldForUnverified(F.map(({ rejectReason: _r, ...rest }) => rest), W).frozen.accounts === 0);
+}
+// ⭐ 2026-10-10 — HELD BY UNCHECKED AUTOMATIC APPROVALS: on the same ACTIVE basis, for the users on the post-check list.
+{
+  const W = [
+    { userId: "a_unchecked", status: "ACTIVE" as const, balance: 700, hold: 50 },
+    { userId: "a_unchecked_empty", status: "ACTIVE" as const, balance: 0, hold: 0 },   // holds nothing → not counted
+    { userId: "a_unchecked_frozen", status: "FROZEN" as const, balance: 900, hold: 0 }, // an officer's matter already
+    { userId: "a_checked", status: "ACTIVE" as const, balance: 400, hold: 0 },          // not on the list
+  ];
+  const listed = new Set(["a_unchecked", "a_unchecked_empty", "a_unchecked_frozen", "a_listed_no_wallet"]);
+  const u = tallyHeldByUncheckedAuto(listed, W);
+  ok("§9n held by unchecked automatic approvals: ACTIVE wallets of LISTED users holding money (balance + hold)",
+    u.accounts === 1 && u.tzs === 750, "", JSON.stringify(u));
+  ok("§9n2 …a subset of the liability basis, and an empty list is a real zero",
+    u.tzs <= tallyWalletLiability(W).activeTzs && tallyHeldByUncheckedAuto(new Set(), W).tzs === 0);
+}
 
 const analyticsCode = code(analyticsSrc);
 // ⚠️ 2026-09-14 (E-400 ⑦e): the ACTIVE sum moved into `tallyWalletLiability` (one read, the frozen and closed money
@@ -460,6 +529,9 @@ ok("§9i the snapshot reads facts BEFORE wallets (the skew can only over-state u
   && !/Promise\.all/.test(kycMoneyCode), "", `facts@${iFacts} wallets@${iWallets}`);
 ok("§9j ⛔ neither analytics nor the snapshot reads `db.kyc.list()`",
   !/db\.kyc\.list\(/.test(analyticsCode) && !/db\.kyc\.list\(/.test(kycMoneyCode));
+ok("§9o ⭐ the unchecked-automatic figure rides beside the main one: a failed post-check read is NULL (said), never zero",
+  /const unchecked = await \(async \(\) => db\.kyc\.listUncheckedAutoApprovals\(\)\)\(\)\.catch\(\(\) => null\);/.test(analyticsCode)
+  && /const uncheckedAuto = unchecked \? tallyHeldByUncheckedAuto\(new Set\(unchecked\.map\(\(r\) => r\.userId\)\), read\.wallets\) : null;/.test(analyticsCode));
 const financeGrids = financeSrc.match(/<KpiGrid[^>]*>[\s\S]*?<\/KpiGrid>/g) ?? [];
 ok("§9k /admin/finance shows 'Held for unverified' in the SAME KPI row as 'Wallet liability'",
   financeGrids.some((g) => /label="Wallet liability"/.test(g) && /label="Held for unverified"/.test(g)),
@@ -595,6 +667,15 @@ ok("§11k control · an Approvals badge adding every listPendingKyc row is repor
   "", shellDefects(plantedBadge).join("; "));
 ok("§11l control · a workstation filter that is not the rule is reported", workstationDefects(plantedStation).length > 0,
   "", workstationDefects(plantedStation).join("; "));
+// ⭐ 2026-10-10 (review R5.1c): the post-check list also holds an unchecked automatic approval while it is WITH AN OFFICER
+// (already counted as a file with us) or WITH THE PLAYER (their move, never a badge) — so the KYC badge's post-check share
+// is the APPROVED rows alone, the ones an officer clears with Mark checked.
+const BADGE_APPROVED_ONLY = '(await db.kyc.listUncheckedAutoApprovals()).filter((r) => r.status === "APPROVED").length';
+const badgeCountsApprovedOnly = (src: string) => code(src).includes(BADGE_APPROVED_ONLY);
+ok("§11m the KYC badge's post-check share counts APPROVED rows only — never a file already counted with us, never the player's move",
+  badgeCountsApprovedOnly(shellSrc));
+ok("§11n control · the whole list's length (the double count) is reported", shellSrc.includes(BADGE_APPROVED_ONLY)
+  && !badgeCountsApprovedOnly(shellSrc.replace(BADGE_APPROVED_ONLY, "(await db.kyc.listUncheckedAutoApprovals()).length")));
 
 /* ════════════════════════════════════════════════════════════════════════════
  * §12 · "WALLET LIABILITY" SAYS ITS BASIS (2026-09-14, register E-400 ⑦e).

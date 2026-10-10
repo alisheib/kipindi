@@ -2224,6 +2224,9 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
      added the reader and 0.260.1 went red on the release branch at once — the guard doing its job. */
   "src/lib/server/invite-rewards-switch.ts": "the invite Payable switch's own COMPLIANCE trail (affiliate.payable.on / .off), read by action and reduced to ONE number — the highest confirmed record seq — so /admin/affiliate can flag an older restored record; no row is handed on",
   "src/lib/server/kyc-risk.ts": "the KYC withdrawal refusals and the aml approvals, read by action and folded into counts and a recommendation",
+  /* Classified 2026-10-10, read from the source (`readSideFacts`): typed-only identity added the reader — the instant
+     decision must route an identity an officer escalated to AML, and that fact lives only in the durable trail. */
+  "src/lib/server/kyc-service.ts": "the typed identity decision's AML fact: ONE player's own durable rows (target User), searched for a kyc.escalated_to_aml newer than the last decision on the identity and reduced to ONE yes/no (amlEscalationOpen) inside the module — no row, payload or house action is handed on",
   /* Classified 2026-10-08, read from the source (`actsOn` → `actorOfAct`): the marketing lane's STEP 52 (the engine,
      U47b-1) added the reader and 0.260.1 went red on `main` — caught by STEP 53's lock turn, the guard doing its job. */
   "src/lib/server/marketing/campaign-live.ts": "the live campaign page's \"Paused by … / Stopped by …\": ONE campaign's own rows (target SmsCampaign), the officer's act found by action at or after the act's instant and reduced to that officer's display name — no row, payload or house action is handed on",
@@ -2232,7 +2235,9 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
   /* Classified 2026-09-26, read from the source (`readExclusionRecord`): the marketing lane's `f1ad4417` added the
      reader and 0.260.1 went red on `main` at once, which is the guard doing its job. */
   "src/lib/server/marketing/rg.ts": "the marketing RG standing: one player's two self-exclusion actions (rg.self_exclusion.activated / reopened), read by action and reduced to two instants; no row is handed on",
-  "src/lib/server/notification-service.ts": "a KYC case's own history, read to word that case's KYC notice",
+  // 2026-10-10: a second reader in the same module, the same shape — `runKycPostCheckAlerts` reads one submission's own
+  // history to dedupe the officers' post-check bell, as `runKycReviewSlaAlerts` does for the review target.
+  "src/lib/server/notification-service.ts": "a KYC case's own history, read to word that case's KYC notice and to send each officer alert (review target, post-check) once",
   /* ⛔ RULING 434, AND THE OLD REASONING WAS MEASURED FALSE. It read "the refused-funds decisions only, read by
      their actions" — true of the ACTION, false of the PAYLOAD. `/admin/kyc/refused` rendered an officer's refused-
      funds JUSTIFICATION verbatim, in a `<td>`, status 200, to a signed-in PLAYER, the holder and a trigger player
@@ -2269,6 +2274,7 @@ export const AUDIT_ROW_PAYLOAD: Readonly<Record<string, "handedOn" | "folded" | 
   "src/lib/server/house-bot/oversight.ts": "folded",
   "src/lib/server/invite-rewards-switch.ts": "folded",
   "src/lib/server/kyc-risk.ts": "handedOn",
+  "src/lib/server/kyc-service.ts": "folded",
   "src/lib/server/marketing/campaign-live.ts": "handedOn",
   "src/lib/server/marketing/referee-exclusion.ts": "folded",
   "src/lib/server/marketing/rg.ts": "folded",
@@ -2867,8 +2873,14 @@ if (STORE === "memory") {
    */
   const KYC_STRUCK_197 = ["houseBetCount", "houseStakedTzs"] as const;
   const struck197In = (code: string) => KYC_STRUCK_197.filter((n) => new RegExp(`\\b${n}\\b`).test(code));
-  /** The six judgement props the client decision rail takes today — pinned BY VALUE, so a renamed prop is a decision. */
-  const KYC_RAIL_PROPS = ["userId", "autoChecks", "makerCheckerRequired", "hasRecommendation", "isRecommender", "recommenderName"];
+  /** The judgement props the client decision rail takes today — pinned BY VALUE, so a renamed prop is a decision.
+   *  ⭐ SIX → TWELVE on 2026-10-10 (typed-only identity), read from the page: `autoChecks` became the case's `checks` and
+   *  whether they could be read (`checksReadable`, never drawn as passed when they could not), and the rail now carries
+   *  the row `version` every officer form posts, the case `stage`, the attestation `mode` (photo or typed), whether the
+   *  identity was approved once (`approvedOnce`, which decides whether a recoverable reject must freeze the wallet) and
+   *  that freeze requirement itself (`freezeRequired`). Each is a string, a boolean or the pure checklist rows — still
+   *  nothing a money object could ride in on. */
+  const KYC_RAIL_PROPS = ["userId", "version", "stage", "mode", "approvedOnce", "freezeRequired", "checks", "checksReadable", "makerCheckerRequired", "hasRecommendation", "isRecommender", "recommenderName"];
   /** Every attribute a `<tag …>` carries, in source order; a spread is reported as `...` (a money object's own door). */
   const jsxAttrNames = (file: string, code: string, tag: string): string[][] => {
     const out: string[][] = [];
@@ -2897,7 +2909,7 @@ if (STORE === "memory") {
 
     const pageCode = decomment(read(KYC_CASE_PAGE));
     const railSites = jsxAttrNames(KYC_CASE_PAGE, pageCode, "KycDecisionRail");
-    ok("0.197.3 · ⛔ OWNER RULING D20 · the KYC case page hands its CLIENT decision rail exactly the six judgement props it takes today and nothing a money object could ride in on — no spread, and no seventh attribute; moneyFacts stays on the server, where canSeeMoney decides figure by figure what is painted, and a whole object handed to a \"use client\" rail is serialised into the flight payload regardless",
+    ok("0.197.3 · ⛔ OWNER RULING D20 · the KYC case page hands its CLIENT decision rail exactly the twelve judgement props it takes today and nothing a money object could ride in on — no spread, and no thirteenth attribute; moneyFacts stays on the server, where canSeeMoney decides figure by figure what is painted, and a whole object handed to a \"use client\" rail is serialised into the flight payload regardless",
       railSites.length === 1 && j(railSites[0]) === j(KYC_RAIL_PROPS),
       j({ sites: railSites }));
 
@@ -2927,7 +2939,7 @@ if (STORE === "memory") {
       prop: jsxAttrNames(KYC_CASE_PAGE, plant(pageCode, "<KycDecisionRail", "<KycDecisionRail moneyFacts={moneyFacts}"), "KycDecisionRail"),
       spread: jsxAttrNames(KYC_CASE_PAGE, plant(pageCode, "<KycDecisionRail", "<KycDecisionRail {...kycMoneyFacts(txns)}"), "KycDecisionRail"),
     };
-    ok("0.197.c3 · CONTROL · the rail pin reports the register's two shapes over the REAL page — the facts object handed as a named prop, and the facts SPREAD into the tag — and reports the six real props clean",
+    ok("0.197.c3 · CONTROL · the rail pin reports the register's two shapes over the REAL page — the facts object handed as a named prop, and the facts SPREAD into the tag — and reports the twelve real props clean",
       j(plantedRail.prop[0]) !== j(KYC_RAIL_PROPS) && plantedRail.spread[0]?.includes("...") === true && j(railSites[0]) === j(KYC_RAIL_PROPS),
       j(plantedRail));
   });
@@ -3310,7 +3322,7 @@ if (STORE === "memory") {
      * could prove the whole class shut. The list is NAMED and DATED and it may only SHRINK: a fourth page joining it
      * goes red here on the day it lands. */
     const W25_OWED: Readonly<Record<string, string>> = {
-      "src/app/admin/kyc/[id]/page.tsx": "2026-09-18 · W25 · `getApprovalRecommendation(id)` with no audience check resolves an officer's identity and passes `recommenderName` into a client component, so it is SERIALISED into the flight payload",
+      "src/app/admin/kyc/[id]/page.tsx": "2026-09-18 · W25 · `getApprovalRecommendation(id, version)` (the row version since 2026-10-10) with no audience check resolves an officer's identity and passes `recommenderName` into a client component, so it is SERIALISED into the flight payload",
       "src/app/admin/kyc/page.tsx": "2026-09-18 · W25 · `readBlockedCashOuts()` read with no gate",
       "src/app/admin/approvals/page.tsx": "2026-09-18 · W25 · gates its RING read and then reads audit rows ungated eight lines later, and renders a KYC applicant's legal name in a `<td>`",
     };

@@ -177,5 +177,38 @@ ok("attachDocument still records the decoded byte count", /sizeBytes: valid\.byt
 ok("toStoredKyc is exported so this round trip is testable at all",
   /export function toStoredKyc/.test(DAL));
 
+// ── 6 · The six columns of 2026-10-10 come OUT of a Prisma row — the read half of the E-3 rule ───────────
+// ⭐ Typed-only KYC (2026-10-10) added `photoVerifiedAt`, `autoApprovedAt`, `autoFlags`, `postCheckedAt`,
+// `postCheckedById` and `priorIdentities`. `kyc.upsert` writes back the whole row its caller read, so a column this
+// mapper DROPS is nulled on the next write — the same shape §1 proved for mimeType/sizeBytes. The Postgres round trip
+// lives in `kyc-restart-clears-documents` §6; this is the pure half, with no database, so predeploy sees it.
+section("6 · the 2026-10-10 columns survive the read mapper");
+{
+  const PRIOR = { idType: "PASSPORT", idNumber: "AB1234567", idExpiry: "2030-01-01", fullName: "Before", dob: "1990-02-02", idFingerprint: "fp", status: "APPROVED", approvedAt: "2026-09-01T00:00:00.000Z", reviewerId: "usr_off", cause: "correction", supersededAt: "2026-10-10T08:00:00.000Z" };
+  const full = toStoredKyc({
+    ...prismaRow([]),
+    photoVerifiedAt: new Date("2026-10-10T08:05:00.000Z"), autoApprovedAt: new Date("2026-10-10T08:00:00.000Z"),
+    autoFlags: ["PASSPORT_SHAPE", 7, null, "SAME_PERSON"], postCheckedAt: new Date("2026-10-10T08:10:00.000Z"),
+    postCheckedById: "usr_off", priorIdentities: [PRIOR],
+  });
+  ok("the three timestamps come out as ISO strings",
+    full.photoVerifiedAt === "2026-10-10T08:05:00.000Z" && full.autoApprovedAt === "2026-10-10T08:00:00.000Z" && full.postCheckedAt === "2026-10-10T08:10:00.000Z",
+    JSON.stringify({ p: full.photoVerifiedAt, a: full.autoApprovedAt, c: full.postCheckedAt }));
+  ok("the officer who checked it, and the identity history, come out intact",
+    full.postCheckedById === "usr_off" && Array.isArray(full.priorIdentities) && JSON.stringify(full.priorIdentities) === JSON.stringify([PRIOR]));
+  ok("autoFlags comes out as strings only — a stray value in the JSON is dropped, never displayed raw",
+    JSON.stringify(full.autoFlags) === JSON.stringify(["PASSPORT_SHAPE", "SAME_PERSON"]), JSON.stringify(full.autoFlags));
+  // A row written before the release carries none of them: they read as absent, never as a throw.
+  const legacy = toStoredKyc(prismaRow([]));
+  ok("a pre-release row reads null / [] for every one of the six",
+    legacy.photoVerifiedAt === null && legacy.autoApprovedAt === null && legacy.postCheckedAt === null && legacy.postCheckedById === null
+      && Array.isArray(legacy.autoFlags) && legacy.autoFlags.length === 0 && Array.isArray(legacy.priorIdentities) && legacy.priorIdentities.length === 0,
+    JSON.stringify({ p: legacy.photoVerifiedAt, a: legacy.autoApprovedAt, f: legacy.autoFlags, h: legacy.priorIdentities }));
+  // The WRITE half: the upsert names every one of the six (a field it omits is written null on every save).
+  ok("…and the upsert writes every one of the six back",
+    ["photoVerifiedAt:", "autoApprovedAt:", "autoFlags:", "postCheckedAt:", "postCheckedById:", "priorIdentities:"].every((f) => upsert.includes(f)),
+    ["photoVerifiedAt:", "autoApprovedAt:", "autoFlags:", "postCheckedAt:", "postCheckedById:", "priorIdentities:"].filter((f) => !upsert.includes(f)).join(", "));
+}
+
 console.log(`\n${fail === 0 ? "ALL PASSED" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

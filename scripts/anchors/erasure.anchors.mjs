@@ -46,8 +46,14 @@ export const MUTATIONS = [
     name: "fingerprint-not-written-at-the-identity-step (nothing for the erased row to collide with)",
     file: KYC,
     suite: "erasure",
-    from: `      idFingerprint: fingerprint,`,
-    to: `      idFingerprint: null,`,
+    // ⚠️ RE-ANCHORED 2026-10-10 (typed-only identity): the identity step became two writers — the typed press
+    // (`verifyIdentity`) and the agent track's step 1 (`submitIdentityStep`) — and both write `avail.fingerprint`. The
+    // plant nulls the agent step's write, the one `test:erasure` §5 drives; the two lines pin it apart from the typed
+    // press's write, which carries a comment between the same two fields.
+    from: `        idVerifiedAt: now,
+        idFingerprint: avail.fingerprint,`,
+    to: `        idVerifiedAt: now,
+        idFingerprint: null,`,
   },
   {
     // 🔴 THE OBVIOUS IMPLEMENTATION, AND THE ONE THE DECISION EXISTS TO FORBID: null the

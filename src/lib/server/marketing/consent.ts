@@ -12,7 +12,7 @@ import { toMsisdn255 } from "@/lib/phone-normalize";
 import { parseTzNumber } from "@/lib/tz-msisdn";
 import { marketingRgStanding, MARKETING_RG_DEPS } from "@/lib/server/marketing/rg";
 import type { MarketingRgStanding } from "@/lib/server/marketing/rg";
-import { ageOnPlatformDate, MIN_AGE_YEARS } from "@/lib/id-documents";
+import { ageOnPlatformDate, MIN_AGE_YEARS, nidaDateOfBirth } from "@/lib/id-documents";
 import { isFinalRefusal } from "@/lib/kyc-refusal";
 import { isSmsConsentWording } from "@/lib/marketing/consent-wording";
 // U33w · an import attestation is recognised against the SAVED wording history (S14), never against today's code
@@ -47,7 +47,8 @@ import { withLock } from "@/lib/server/locks";
  * ⭐ AGE IS THE DATE OF BIRTH THE PLAYER GAVE AT SIGN-UP (with the 18+ attestation), CROSS-CHECKED
  * AGAINST THE IDENTITY CHECK WHEN ONE EXISTS (D5, 2026-09-26): a FINAL KYC refusal refuses (UNDERAGE →
  * `age_minor`; SANCTIONED / DUPLICATE_IDENTITY → `account_status`), and a document date of birth on the
- * KYC row makes the gate use the YOUNGER of the two ages. A re-opened case is marketable again.
+ * KYC row — and, since 2026-10-10, the birth date inside a NIDA number — makes the gate use the YOUNGEST
+ * of the ages. A re-opened case is marketable again.
  * ⚠️ WHAT THIS GATE DOES **NOT** YET DECIDE, so nobody reads a false completeness into it: the frequency
  * cap (U14), the send window (U13) and the officer authorisation (U41) are separate steps. (There is no
  * Gaming Board approval step: Ali ruled 2026-09-26 that marketing SMS is not part of its approval — OQ1.)
@@ -431,8 +432,19 @@ export async function mayReceiveMarketingSms(
     if (age.band === "unknown") return refuse("age_unknown", "the account has no readable date of birth", user.id);
     // The document's date of birth, when the identity step recorded one: the YOUNGER age governs.
     const docAge = marketingAge(kyc?.dob ?? null, now);
-    const years = docAge.band === "unknown" ? (age.years as number) : Math.min(age.years as number, docAge.years as number);
+    // ⭐ AND THE DATE INSIDE A NIDA NUMBER (2026-10-10). From that release the identity step takes the ACCOUNT's
+    // date of birth, so the row's `dob` repeats the sign-up date and can no longer disagree with it; the one
+    // independent date a typed identity carries is the NIDA's birth digits (1–8). A NIDA saying under 18 is
+    // routed to an officer rather than refused, so until that officer decides, only this read keeps the
+    // number's holder out of a marketing send. The younger of the three ages governs.
+    const nidaDob = kyc?.idType === "NIDA" && kyc.idNumber ? nidaDateOfBirth(kyc.idNumber) : null;
+    const nidaAge = marketingAge(nidaDob, now);
+    const known = [age.years as number];
+    if (docAge.band !== "unknown") known.push(docAge.years as number);
+    if (nidaAge.band !== "unknown") known.push(nidaAge.years as number);
+    const years = Math.min(...known);
     if (age.band === "minor") return refuse("age_minor", "the account holder is under 18", user.id);
+    if (nidaAge.band === "minor") return refuse("age_minor", "the NIDA number's date of birth is under 18", user.id);
     if (years < MIN_AGE_YEARS) return refuse("age_minor", "the identity document's date of birth is under 18", user.id);
     // ── 2d · UNDER 25 WITH AN RG HISTORY (U12) — the promise /legal/responsible-gambling §4 publishes.
     if (years < MARKETING_YOUNG_ADULT_AGE && rg.rgHistory) {

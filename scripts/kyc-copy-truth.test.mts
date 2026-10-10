@@ -24,6 +24,12 @@
  *   rule 2 · §3 · identity bound to the ENTRANCE    identity ∧ entrance ∧ requirement        (2026-09-13)
  *   rule 3 · §4 · the gaming regulator as its REASON identity ∧ Gaming Board / Act / GBT     (2026-09-13)
  *   rule 4 · §6 · a NEW withdrawal held or reviewed withdrawal ∧ hold / review / 24h claim   (2026-09-14)
+ *   §7 · the PLAYER track names no photograph        Terms §3/§3a, AML §1 (agent paragraph excepted),
+ *                                                     Privacy §2 (only the agent / pre-ruling clause)   (2026-10-10)
+ *
+ * ⭐ 2026-10-10 (typed-only identity): rules 1 and 2 also count the compound terms of the typed form as identity —
+ * "identity / ID / document details", "taarifa za utambulisho / kitambulisho / hati", "身份信息", "证件信息" — each
+ * with a control in §1 and §3.
  *
  * ── ⛔ RULE 4, AND THE FOUR POPULATIONS IT ADDED (audit session 95, 2026-09-14) ────────────────────────
  *
@@ -115,7 +121,7 @@ const R1: Record<Loc, { deny: RegExp; money: RegExp; identity: RegExp }> = {
     //   inside "better", which is why the AML page had to say "account holder" to get past it. Inflections are
     //   listed, not left to a prefix.
     money: /\b(withdraw(?:s|n|al|als|ing)?|cash(?:ing|ed)?[- ]?outs?|deposit(?:s|ed|ing)?|add(?:s|ed|ing)? money|bet(?:s|ting)?|play(?:s|ed|ing)?|stak(?:e|es|ed|ing))\b/i,
-    identity: /\b(identity|verif|KYC|ID\b|NIDA)/i,
+    identity: /\b(identity details|ID details|document details|identity|verif|KYC|ID\b|NIDA)/i,
   },
   sw: {
     // ⭐ 2026-09-13: `si lazima` ("not necessary") and `huhitaji` ("you do not need") — the two ordinary ways
@@ -125,13 +131,13 @@ const R1: Record<Loc, { deny: RegExp; money: RegExp; identity: RegExp }> = {
     // ⭐ 2026-09-07: `kutoa fedha` — /legal/terms §3 (sw) said "hauhitajiki ili kutoa fedha" and the money
     //   alternation only knew `pesa`. Same defect, other synonym.
     money: /\b(kutoa pesa|kuweka pesa|kutoa fedha|kuweka fedha|kucheza|kuweka dau|dau)/i,
-    identity: /\b(utambulisho|kitambulisho|uthibitisho|thibitisha)/i,
+    identity: /\b(taarifa za utambulisho|taarifa za kitambulisho|taarifa za hati|utambulisho|kitambulisho|uthibitisho|thibitisha)/i,
   },
   zh: {
     // ⭐ 2026-09-13: `无须` (formal "need not") and `不用` (spoken "no need").
     deny: /(无需|无须|不需要|不必|不用)/,
     money: /(提现|充值|投注|下注|游戏)/,
-    identity: /(身份|验证|认证)/,
+    identity: /(身份信息|证件信息|身份|验证|认证)/,
   },
 };
 const rule1 = (loc: Loc, t: string) => R1[loc].deny.test(t) && R1[loc].money.test(t) && R1[loc].identity.test(t);
@@ -151,18 +157,18 @@ const rule1 = (loc: Loc, t: string) => R1[loc].deny.test(t) && R1[loc].money.tes
 const EMAIL = /\b(e-?mail|inbox|barua pepe)\b|邮箱|电子邮件|邮件/i;
 const R2: Record<Loc, { identity: RegExp; verifiedYou?: RegExp; entrance: RegExp; binds: RegExp; beforeEntrance?: RegExp }> = {
   en: {
-    identity: /\b(?:[Ii]dentit(?:y|ies)|KYC|IDs?|NIDA)\b/,
+    identity: /\b(?:[Ii]dentity\s+details|ID\s+details|[Dd]ocument\s+details|[Ii]dentit(?:y|ies)|KYC|IDs?|NIDA)\b/,
     verifiedYou: /\bverif(?:y|ies|ied|ying)\s+you\b(?!r)|\byou(?:'re|’re|\s+are)\s+verified\b/i,
     entrance: /\b(?:deposit(?:s|ed|ing)?|add(?:s|ed|ing)?\s+money|top(?:s|ped|ping)?\s+up|bet(?:s|ting)?|play(?:s|ed|ing)?|stak(?:e|es|ed|ing)|wager(?:s|ed|ing)?)\b/i,
     binds: /\b(?:require[sd]?|requirement|must|needs?\s+to|first|until|unlock(?:s|ed)?|opens?|open\s+up|before\s+(?:you|they)\s+(?:can\s+)?(?:deposit|add\s+money|bet|play|stake)|to\s+(?:deposit|add\s+money|bet|play|stake))\b/i,
   },
   sw: {
-    identity: /\b(?:utambulisho|kitambulisho|vitambulisho|uthibitisho wa utambulisho|KYC)\b/i,
+    identity: /\b(?:taarifa\s+za\s+utambulisho|taarifa\s+za\s+kitambulisho|taarifa\s+za\s+hati|utambulisho|kitambulisho|vitambulisho|uthibitisho wa utambulisho|KYC)\b/i,
     entrance: /\b(?:kuweka\s+(?:pesa|fedha|dau|amana)|kuongeza\s+pesa|kucheza)\b/i,
     binds: /\b(?:inahitajika|unahitajika|zinahitajika|lazima|kwanza|hufunguka|kufungua|kufunguliwa|ili\s+(?:kuweka|kucheza|kuongeza)|kabla\s+ya\s+(?:kuweka|kucheza|kuongeza))\b/i,
   },
   zh: {
-    identity: /身份|KYC|实名/,
+    identity: /身份信息|证件信息|身份|KYC|实名/,
     entrance: /充值|存款|投注|下注/,
     binds: /必须|须先|先完成|才能|方可|后即可|之后即可|解锁/,
     // ⚠️ 之前 / 前 ("before") binds only in the SAME sentence as an entrance word — alone it is in half the
@@ -593,6 +599,20 @@ for (const loc of LOCALES) {
     // ⛔ A REQUIREMENT IS NOT A DENIAL. This was the "corrected" sentence of 2026-09-07; it is false since
     //   2026-09-13, and rule 1 is blind to it by construction — §3's rule 2 is what rejects it.
     ["en", "Identity verification is required before you can deposit, place a bet or withdraw.", false],
+    // ⭐ 2026-10-10 (typed-only identity) — THE COMPOUND TERMS. A player now types the DETAILS of a document, and the
+    //   copy calls them that: "identity details", "ID details", "document details"; "taarifa za utambulisho /
+    //   kitambulisho / hati"; "身份信息", "证件信息". Each is listed in the identity alternation and each is shown here.
+    //   "document details", "taarifa za hati" and "证件信息" were NOT identity words before today — the others were
+    //   already caught through "identity", "ID", "utambulisho", "kitambulisho" and "身份", and stay pinned so a
+    //   narrowed pattern cannot quietly drop them.
+    ["en", "You can withdraw without entering your identity details.", true],
+    ["en", "No need for your ID details to withdraw.", true],
+    ["en", "You can cash out without your document details.", true],
+    ["sw", "Huhitaji taarifa za utambulisho ili kutoa pesa.", true],
+    ["sw", "Huhitaji taarifa za kitambulisho ili kutoa pesa.", true],
+    ["sw", "Huhitaji taarifa za hati ili kutoa pesa.", true],
+    ["zh", "提现无需填写身份信息。", true],
+    ["zh", "提现无需填写证件信息。", true],
   ];
   for (const [loc, s, shouldFlag] of cases) {
     ok(`§1 control.${loc} · rule 1 ${shouldFlag ? "REJECTS" : "accepts"} "${clip(s, 44)}"`, rule1(loc, s) === shouldFlag);
@@ -913,6 +933,15 @@ for (const loc of LOCALES) {
     ["zh", "在充值、投注或提现之前，必须先完成身份验证。"],
     // The neighbour tier: the requirement in one sentence, the entrance in the next.
     ["en", "Verify your identity first. Then you can deposit and play."],
+    // ⭐ 2026-10-10 — the compound terms of the typed form, each bound to the entrance (see §1's note on which are new).
+    ["en", "Enter your identity details before you deposit."],
+    ["en", "Enter your ID details to add money."],
+    ["en", "Your document details are required to deposit."],
+    ["sw", "Jaza taarifa za utambulisho kwanza ili kuweka pesa."],
+    ["sw", "Jaza taarifa za kitambulisho kwanza ili kuweka pesa."],
+    ["sw", "Jaza taarifa za hati kwanza ili kuweka pesa."],
+    ["zh", "必须先填写身份信息才能充值。"],
+    ["zh", "必须先填写证件信息才能充值。"],
   ];
   for (const [loc, t] of rejected) ok(`§3 control.${loc} · REJECTED: "${clip(t, 48)}"`, rule2(loc, t) !== null);
 
@@ -935,6 +964,10 @@ for (const loc of LOCALES) {
     ["zh", "验证邮箱后即可充值和投注。"],
     // ⛔ "player" is not "play".
     ["en", "Every player verifies their identity once, before their first withdrawal."],
+    // ⭐ 2026-10-10 — the compound terms attached FORWARD to the exit are the correct sentence, in every language.
+    ["en", "Enter your document details before your first withdrawal."],
+    ["sw", "Jaza taarifa za hati kabla ya kutoa pesa kwa mara ya kwanza."],
+    ["zh", "首次提现前请填写证件信息。"],
   ];
   for (const [loc, t] of accepted) {
     const h = hitsOf(loc, t);
@@ -1247,6 +1280,197 @@ for (const s of R4_SURFACES) {
   // The hint's REAL key — `common.pendingHoldHint`, a sibling of both surface keys in the same namespace.
   const planted = scan("dict · zh", ["zh"], [{ key: "common.pendingHoldHint", text: plantedHint }], [4]);
   ok("§6 control · the planted zh hint is reported through scan — 尚未 opens the unit and does not excuse the claim", planted[4].length === 1, planted[4].join(" | "));
+}
+
+// ═══ §7 · THE PLAYER TRACK NAMES NO PHOTOGRAPH (typed-only identity, 2026-10-10) ════════════════════════════════
+//
+// ⭐ Owner ruling 2026-10-10: a player verifies with the typed DETAILS of one document and uploads nothing; only an agent
+// applicant still verifies with photographs of the document and a selfie, reviewed by an officer. The binding texts were
+// re-versioned that day, and these are the sentences a reader of an older version is most likely to put back: Terms §3
+// "with photographic evidence reviewed by our compliance team", Terms §3a "an unclear photo", AML §1 "reviews the
+// photographic evidence together with a selfie".
+// ⛔ SCOPED, NOT BLANKET — and that is what makes it honest. The agent paragraph of Terms §3 and of AML §1 names
+// photographs and a selfie BECAUSE it is true for agents, so a whole-section ban would fail on true text. The assertion
+// reads every OTHER paragraph of those sections, and a control proves the agent paragraph is found and does name them:
+// a scope that matched nothing would pass for free. Privacy §2 lists what is collected, so it may name the photographs —
+// but only in the clause that limits them to agent applicants and to players who sent them before 10 October 2026.
+console.log("");
+console.log("§7 · the player track names no photograph — Terms §3/§3a, AML §1, Privacy §2");
+{
+  const PHOTO: Record<Loc, RegExp> = { en: /photo|selfie|upload/i, sw: /picha|selfie|pakia/i, zh: /照片|自拍|上传/ };
+  const PHOTOGRAPH: Record<Loc, RegExp> = { en: /photograph/i, sw: /picha/i, zh: /照片/ };
+  const SELFIE: Record<Loc, RegExp> = { en: /selfie/i, sw: /selfie/i, zh: /自拍/ };
+  /** The agent applicant, in each language ("uwakala" contains "wakala"). */
+  const AGENT: Record<Loc, RegExp> = { en: /agent/i, sw: /wakala/i, zh: /代理/ };
+  const BEFORE_RULING: Record<Loc, RegExp> = { en: /before 10 October 2026/, sw: /kabla ya tarehe 10 Oktoba 2026/, zh: /2026\s*年\s*10\s*月\s*10\s*日之前/ };
+  /** Every `<LegalSection n="…">` body with that number inside one locale block — `n="3"` never matches `n="3a"`. */
+  const sectionsOf = (block: string, n: string): string[] => {
+    const open = `<LegalSection n="${n}"`;
+    const out: string[] = [];
+    let at = block.indexOf(open);
+    while (at >= 0) {
+      const end = block.indexOf("</LegalSection>", at);
+      if (end < 0) break;
+      out.push(block.slice(at, end));
+      at = block.indexOf(open, end);
+    }
+    return out;
+  };
+  /** The decoded `<p>`/`<li>` paragraphs of those sections, per locale — the same block reader and decoder §2 uses. */
+  const paragraphsOf = (rel: string, ns: readonly string[]): Record<Loc, string[]> => {
+    const src = decomment(readFileSync(join(ROOT, rel), "utf8"));
+    const out: Record<Loc, string[]> = { en: [], sw: [], zh: [] };
+    for (const b of findBlocks(src, (i) => i).blocks) {
+      if (b.kind !== "jsx") continue;
+      const body = src.slice(b.start, b.end);
+      for (const n of ns) {
+        for (const s of sectionsOf(body, n)) {
+          for (const m of s.matchAll(PARA)) { const t = decodeJsx(m[2]); if (t) out[b.loc].push(t); }
+        }
+      }
+    }
+    return out;
+  };
+  /** A PLAYER paragraph (one that names no agent) that names a photograph, a selfie or an upload. */
+  const playerPhotoHits = (loc: Loc, paras: readonly string[]) => paras.filter((p) => !AGENT[loc].test(p) && PHOTO[loc].test(p));
+  /** A clause of a collection list that names photographs outside the agent-applicant / before-the-ruling limit. */
+  const unlimitedPhotoClauses = (loc: Loc, units: readonly string[]) =>
+    units.flatMap((u) => u.split(/[;；]/)).filter((c) => PHOTO[loc].test(c) && !(AGENT[loc].test(c) && BEFORE_RULING[loc].test(c)));
+
+  // Floors measured 2026-10-10 by reading the files: Terms §3 has five paragraphs (one the agent's) and §3a four;
+  // AML §1 has three (one the agent's). Below today's counts, far above zero.
+  for (const [label, rel, ns, floor] of [
+    ["terms §3/§3a", "src/app/legal/terms/page.tsx", ["3", "3a"], 6],
+    ["aml §1", "src/app/legal/aml/page.tsx", ["1"], 2],
+  ] as const) {
+    const byLoc = paragraphsOf(rel, ns);
+    for (const loc of LOCALES) {
+      const paras = byLoc[loc];
+      const agentParas = paras.filter((p) => AGENT[loc].test(p));
+      const players = paras.filter((p) => !AGENT[loc].test(p));
+      ok(`§7 · ${label} · ${loc} · the sections are read (${players.length} player paragraph(s), floor ${floor})`, players.length >= floor, `${paras.length} paragraph(s)`);
+      const hits = playerPhotoHits(loc, paras);
+      ok(`§7 · ${label} · ${loc} · the player paragraphs name no photograph, selfie or upload`, hits.length === 0,
+        hits.map((h) => `"${clip(h, 90)}"`).join(" | "));
+      ok(`§7 · ${label} · ${loc} · control · the ONE agent paragraph is found, and it does name the photographs and a selfie`,
+        agentParas.length === 1 && PHOTOGRAPH[loc].test(agentParas[0]) && SELFIE[loc].test(agentParas[0]),
+        agentParas.map((p) => `"${clip(p, 90)}"`).join(" | ") || "no agent paragraph — the scope reads nothing");
+    }
+  }
+  {
+    const byLoc = paragraphsOf("src/app/legal/privacy/page.tsx", ["2"]);
+    for (const loc of LOCALES) {
+      const units = byLoc[loc];
+      const photoClauses = units.flatMap((u) => u.split(/[;；]/)).filter((c) => PHOTO[loc].test(c));
+      const bad = unlimitedPhotoClauses(loc, units);
+      ok(`§7 · privacy §2 · ${loc} · photographs are named only in the agent-applicant / before-10-October clause`,
+        units.length >= 5 && photoClauses.length >= 1 && bad.length === 0,
+        bad.length ? bad.map((c) => `"${clip(c.trim(), 90)}"`).join(" | ") : `${photoClauses.length} photo clause(s) in ${units.length} item(s)`);
+    }
+  }
+  // ⭐ CONTROLS — the sentences the 2026-10-10 versions replaced, verbatim from the 2026-09-14 / 2026-10-09 texts, must
+  // each be caught by the SAME predicates the live assertions use.
+  const retiredPlayer: [Loc, string][] = [
+    ["en", "You verify once, with any one of four documents — a National ID (NIDA) number, a passport, a driving licence or a voter's card — with photographic evidence reviewed by our compliance team. One document may only be used on one account."],
+    ["en", "If we cannot verify your identity, we will not send money out of your account. We will tell you why. Where the reason is one you can fix — an unclear photo, an expired document or details that do not match — you may submit again."],
+    ["en", "We check the number against that document's format rule, enforce that the document is unique to a single account, and our compliance team reviews the photographic evidence together with a selfie."],
+    ["sw", "Unathibitisha mara moja, kwa kutumia mojawapo ya nyaraka nne — namba ya NIDA, pasipoti, leseni ya udereva au kadi ya mpiga kura — pamoja na ushahidi wa picha unaokaguliwa na timu yetu ya uzingatiaji."],
+    ["sw", "Pale sababu ni jambo unaloweza kurekebisha — picha isiyo wazi, nyaraka iliyoisha muda wake au taarifa zisizolingana — unaweza kuwasilisha tena."],
+    ["zh", "您只需验证一次，可使用四种证件之一——国民身份证（NIDA）号码、护照、驾驶证或选民证——并提交由我们的合规团队审核的照片证据。一份证件仅可用于一个账户。"],
+    ["zh", "若原因属于您可以纠正的情况——照片不清晰、证件已过期或信息不符——您可以重新提交。"],
+    ["zh", "我们按该证件的格式规则核对号码，确保一份证件仅绑定一个账户，并由我们的合规团队审核照片证据及自拍照。"],
+  ];
+  for (const [loc, t] of retiredPlayer) {
+    ok(`§7 control.${loc} · the retired player sentence is caught: "${clip(t, 48)}"`, playerPhotoHits(loc, [t]).length === 1);
+  }
+  const retiredPrivacy: [Loc, string][] = [
+    ["en", "Identity: full name and date of birth; the type and number of one of four documents — a National ID (NIDA), a passport, a driving licence or a voter's card — and its expiry date where the document has one; photographs of that document; and a selfie"],
+    ["sw", "Utambulisho: jina kamili na tarehe ya kuzaliwa; aina na namba ya mojawapo ya nyaraka nne — Kitambulisho cha Taifa (NIDA), pasipoti, leseni ya udereva au kadi ya mpiga kura — pamoja na tarehe ya kuisha muda wake pale nyaraka inapokuwa nayo; picha za nyaraka hiyo; na selfie"],
+    ["zh", "身份：全名与出生日期；所提交证件的类型与号码（国民身份证（NIDA）、护照、驾驶证或选民证四者之一），以及证件载明的有效期（如有）；该证件的照片；以及一张自拍照"],
+  ];
+  for (const [loc, t] of retiredPrivacy) {
+    ok(`§7 control.${loc} · the 2026-10-09 privacy bullet (photographs from everyone) is caught`, unlimitedPhotoClauses(loc, [t]).length >= 1);
+  }
+  // …and the limit is what excuses a clause, not the mere presence of the word "agent": an agent clause with no date
+  // limit, naming photographs from players too, is still caught.
+  ok("§7 control.en · a photographs clause naming agents but no before-10-October limit is caught",
+    unlimitedPhotoClauses("en", ["photographs of that document and a selfie from agent applicants and from players"]).length === 1);
+}
+
+// ═══ §8 · THE 2026-10-10 REVIEW'S WORDS (R5.4 · R5.6 · R5.10 and the screenshot pass) ═════════════════════════════
+//
+// ⭐ Every key the review wrote or reworded, held to the rules its words were written under: Chinese in the formal 您 and
+// never 你 — across the WHOLE zh dictionary, where three were left on the invite page until this pass; Swahili "jaza" for
+// entering details and never a "weka" verb (kuweka is a deposit); no sentence that advertises an absence ("no photo
+// needed"); the pending body's dash and Swahili "papo hapo" held together by a no-break space; and a figure set tight
+// against its Chinese unit ("18岁", "24小时"). Rules 1–4 above already read every one of these strings; this section holds
+// the rest, each with a control that proves its matcher can see.
+console.log("");
+console.log("§8 · the review's words — formal Chinese, Swahili 'jaza', no absence advertised, the dash held, tight figures");
+{
+  const word = (loc: Loc, path: string): string =>
+    String(path.split(".").reduce<unknown>((o, k) => (o as Record<string, unknown> | undefined)?.[k], dict[loc]) ?? "");
+  const KEYS = [
+    "kycGate.titlePhotoUpgrade", "kycGate.bodyPhotoUpgrade", "kycGate.ctaPhotoUpgrade", "kycGate.bodyNotStarted", "kycGate.bodyUploadedTyped",
+    "kycGate.bodyPending", "kycGate.payoutWait", "kycGate.bodyMoreInfo", "kycGate.bodyRejected", "kycGate.bodyRejectedAgent",
+    "kycGate.bodyRefusedFinal", "kycGate.ctaSupport", "kycGate.eyebrowPending", "kycGate.titlePendingAgent",
+    "profile.agentPhotosExpiredTitle", "profile.agentPhotosExpiredBody", "profile.kycMoreInfo", "profile.kycMoreInfoPill", "profile.idVerified",
+    "profile.stepVerified", "profile.kycApprovedBody", "profile.kycRejectNoteLabel", "profile.kycResubmitOrEmail", "profile.verifyBody",
+    "profile.verifyIdentity", "profile.chooseIdTypeBody", "profile.whyWeAskBody", "profile.dobFromSignUp", "profile.dobWrongDate",
+    "profile.verifyBodyAgent", "profile.agentPhotosUpgradeBody", "profile.kycReviewingBody", "profile.review", "profile.kycIdAccepted",
+    "profile.kycSubmitted", "profile.tapToAttach", "profile.rejectUnderage", "profile.docsAttachedCount", "profile.passportValidation",
+    "profile.openIdValidation", "profile.kycRequestedDocsBody",
+    "agent.stateKycPhotos", "agent.ctaKycPhotos",
+  ];
+  const missing = KEYS.flatMap((k) => LOCALES.filter((loc) => word(loc, k).trim().length === 0).map((loc) => `${loc}.${k}`));
+  ok(`§8 · the review's ${KEYS.length} keys exist in en, sw and zh`, missing.length === 0, missing.join(", "));
+  const untranslated = KEYS.filter((k) => word("sw", k) === word("en", k) || word("zh", k) === word("en", k));
+  ok("§8 · …and sw and zh are written in their own words, never the English copied", untranslated.length === 0, untranslated.join(", "));
+
+  /** What none of them may say, per language: an absence advertised. */
+  const ABSENCE: Record<Loc, RegExp> = {
+    en: /no (?:photos?|uploads?|selfies?)(?: (?:is|are))? (?:needed|required)|without (?:a )?(?:photo|upload|selfie)/i,
+    sw: /bila picha|hakuna picha|hakuna haja ya picha|hupakii/i,
+    zh: /无需(?:上传|照片|自拍)|不需要(?:上传|照片|自拍)|不用(?:上传|照片|自拍)/,
+  };
+  /** A Swahili "weka" verb — kuweka is a deposit, so details are entered with "jaza". */
+  const WEKA = /(?:^|[^a-z])(?:ku|u|tu|mu|wa)?wek[ae](?![a-z])/i;
+  const slips = KEYS.flatMap((k) => [
+    ...LOCALES.filter((loc) => ABSENCE[loc].test(word(loc, k))).map((loc) => `${loc}.${k} advertises an absence`),
+    ...(WEKA.test(word("sw", k)) ? [`sw.${k} says weka`] : []),
+  ]);
+  ok(`§8 · none advertises an absence ("no photo needed"), and no Swahili one enters details with a weka verb (jaza)`, slips.length === 0, slips.join(" | "));
+  ok("§8 control · the matchers see each slip they forbid, and pass the words that replaced it",
+    ABSENCE.en.test("No photos needed — just type your details.") && ABSENCE.sw.test("Bila picha: jaza taarifa zako tu.") && ABSENCE.zh.test("无需上传照片，填写信息即可。")
+      && WEKA.test("Weka taarifa za hati yako.") && WEKA.test("ili kuweka pesa") && !WEKA.test("Jaza taarifa za hati yako.") && !WEKA.test("Wasiliana na msaada."));
+
+  // ⛔ FORMAL CHINESE, THE WHOLE DICTIONARY: 您, never 你.
+  const NI = String.fromCharCode(0x4f60);
+  const zhAll = flat(dict.zh).out;
+  const informal = zhAll.filter(([, v]) => v.includes(NI)).map(([k]) => k);
+  ok(`§8 · zh is formal everywhere — no ${NI} in any of the ${zhAll.length} zh strings`, zhAll.length >= DICT_FLOOR && informal.length === 0, informal.join(", "));
+  ok(`§8 control · the matcher sees the retired invite line (分享${NI}的链接)`, `分享${NI}的链接 · 查看谁加入`.includes(NI) && !"分享您的链接 · 查看谁加入".includes(NI));
+
+  // ⭐ THE DASH AND "PAPO HAPO" HELD BY A NO-BREAK SPACE (the screenshot pass: at sw 320 a line began with the dash, and
+  // "papo" / "hapo" split across a break). Built from their code points: this file types no escape.
+  const NB = String.fromCharCode(0xa0), DASH = String.fromCharCode(0x2014);
+  const loose = (["en", "sw"] as const).flatMap((loc) =>
+    flat((dict[loc] as unknown as Record<string, unknown>).kycGate).out.filter(([, v]) => v.includes(` ${DASH}`)).map(([k]) => `${loc}.kycGate.${k}`));
+  ok("§8 · no en or sw identity-panel line can begin with a dash: each is held to the word before it", loose.length === 0, loose.join(", "));
+  ok(`§8 · …the pending bodies hold theirs, and the Swahili "papo hapo" is one unit`,
+    word("en", "kycGate.bodyPending").includes(`do${NB}${DASH}`) && word("sw", "kycGate.bodyPending").includes(`kufanya${NB}${DASH}`)
+      && word("sw", "kycGate.payoutWait").includes(`papo${NB}hapo`));
+  ok("§8 control · the dash matcher sees a plain space before a dash, and not a held one",
+    `Nothing more to do ${DASH} we'll`.includes(` ${DASH}`) && !`Nothing more to do${NB}${DASH} we'll`.includes(` ${DASH}`));
+
+  // ⭐ A FIGURE SET TIGHT AGAINST ITS CHINESE UNIT ("18岁", "24小时"): no ASCII space between a digit (or a placeholder) and a
+  // Chinese character in the review's zh strings.
+  const CJK = `[${String.fromCharCode(0x4e00)}-${String.fromCharCode(0x9fff)}]`;
+  const SPACED = new RegExp(`[0-9}] ${CJK}|${CJK} [0-9{]`);
+  const spaced = KEYS.filter((k) => SPACED.test(word("zh", k)));
+  ok("§8 · zh figures sit tight against their units in the review's strings", spaced.length === 0, spaced.map((k) => `${k}: ${word("zh", k)}`).join(" | "));
+  ok("§8 control · the matcher sees the retired spacing (未满 18 岁, 4 至 20 位) and passes the tight form",
+    SPACED.test("出生日期显示未满 18 岁") && SPACED.test("仅限字母和数字，4 至 20 位") && !SPACED.test("出生日期显示未满18岁"));
 }
 
 console.log(`\nkyc-copy-truth: ${pass} passed, ${fail} failed`);

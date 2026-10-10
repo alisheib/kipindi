@@ -112,6 +112,19 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
    */
   const unverified = await unverifiedLiability().catch(() => null);
   const held = unverified && unverified.ok ? unverified : null;
+  /**
+   * ⭐ HELD BY UNCHECKED AUTOMATIC APPROVALS (2026-10-10) — beside "Held for unverified", never inside it. From that day a
+   * player's typed details are approved automatically and an officer checks the approval afterwards, so the regulator's
+   * next question is "how much sits on identities no officer has looked at?". Those accounts ARE verified for the
+   * withdrawal gate, so they are rightly absent from the figure; this sentence under it says what they hold, on the same
+   * basis (ACTIVE wallets, balance + hold — `tallyHeldByUncheckedAuto`). It was computed on every load and drawn nowhere.
+   * ⛔ `uncheckedAuto: null` = the post-check list could not be read — said, never drawn as TZS 0.
+   */
+  const uncheckedAutoNote = held
+    ? held.uncheckedAuto
+      ? `Unchecked automatic approvals hold ${formatTzsCompact(held.uncheckedAuto.tzs)} · ${adminCount(held.uncheckedAuto.accounts, "account")} — verified, so not in this figure.`
+      : "Unchecked automatic approvals could not be read — not zero."
+    : undefined;
   const heldCaption = held
     ? [
         adminCount(held.accounts, "account"),
@@ -351,13 +364,16 @@ async function AdminFinanceContent({ searchParams }: { searchParams: Promise<Fin
               is the account count, plus any frozen or closed never-approved money that the
               basis leaves out (a final identity refusal freezes the wallet).
               ⛔ `unavailable` on a failed read — never TZS 0. ⛔ No `sw`: there is no shipped
-              Swahili for this label and the lexicon forbids inventing one. */}
+              Swahili for this label and the lexicon forbids inventing one.
+              ⭐ 2026-10-10 — the tile's `note` says what automatic approvals no officer has checked yet hold: beside
+              the figure, not in it (they are verified), in prose because the 10px caption truncates. */}
           <AdminKpi
             label="Held for unverified"
             value={held === null ? "" : formatTzsCompact(held.tzs)}
             unavailable={held === null}
             delta={heldCaption}
             deltaDir="flat"
+            note={uncheckedAutoNote}
           />
         </KpiGrid>
 

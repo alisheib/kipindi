@@ -52,7 +52,10 @@ export type RailState = {
   defaultRatePct: number;
   maxRatePct: number;
   docSlots: { value: AgentDocType; label: string }[];
-  kycStatus: string | null;
+  /** An invitee's identity PHOTO case is sent and not yet decided, so Approve decides it in the same step
+   *  (`approveAgent`). ⭐ Computed on the server from the agent programme's own questions (2026-10-10) — it was
+   *  `kycStatus === "PENDING_REVIEW"`, which a typed case with an officer also answers. */
+  identityDecidedHere: boolean;
   /** ⛔ THE REAL UNION, not `string`. The loose type is why this panel reached for
    *  `status.toLowerCase()` instead of the lexicon: a widened enum cannot index the label
    *  map, so the display fell back to printing the raw value. */
@@ -253,7 +256,7 @@ export function DecisionRail({ state }: { state: RailState }) {
               {state.approveBlocks.map((b, i) => <li key={i}>{b}</li>)}
             </ul>
           )}
-          <ConfirmDialog tone="claret" title="Approve this agent?" body={`Grants agent status, mints a 50PICK-AG code and sets the rate to ${rate}% of the net fee.${state.source === "OFFICER_INVITED" && state.kycStatus === "PENDING_REVIEW" ? " The invitee's identity verification is approved in the same step." : ""} Single officer, audited.`}
+          <ConfirmDialog tone="claret" title="Approve this agent?" body={`Grants agent status, mints a 50PICK-AG code and sets the rate to ${rate}% of the net fee.${state.identityDecidedHere ? " The invitee's identity photos are approved in the same step." : ""} Single officer, audited.`}
             confirmLabel="Approve" cancelLabel="Not yet" onConfirm={() => run("Approving…", () => approveAgentAction(fd({ commissionPct: rate })), "Agent approved — code minted, rate set, applicant notified.")}
             trigger={<Button variant="primary" size="lg" fullWidth disabled={approveDisabled} leading={<I.check s={16} />}>Approve</Button>} />
 

@@ -27,8 +27,9 @@ export const KYC_NOTICE_MAX_AGE_S = 60 * 60 * 24 * 400;
 
 /**
  * The identity states the notice is for: nothing has been SENT yet. Every later state has its own
- * voice (documents with our team, more information, a refusal — each an event notice), and an account
- * approved once is never asked again (`kycGateState` answers null).
+ * voice (details with our team, a correction asked for, a refusal — each an event notice), and an account
+ * approved once is never asked again (`kycGateState` answers null). From 2026-10-10 most typed verifications
+ * are approved on the press, so most accounts leave these two states in one step.
  */
 export function kycNoticeStateDue(state: KycGateState | null): boolean {
   return state === "not_started" || state === "uploaded";

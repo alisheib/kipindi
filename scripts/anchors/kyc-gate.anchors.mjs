@@ -64,9 +64,10 @@ export const MUTATIONS = [
   {
     name: "first-approval-stamp-cleared-on-restart",
     why: "The write half of the same trap. `restartedSubmission` rebuilds a submission from scratch "
-       + "rather than spreading `...k`, and it is reachable as APPROVED → forceReverify → REJECTED → "
-       + "\"start again\" (and from an officer's reopening of a final refusal). Dropping the column "
-       + "there locks a previously-verified account out of its own balance.",
+       + "rather than spreading `...k`, and it is reachable as APPROVED → an officer's recoverable REJECT "
+       + "(allowed straight from APPROVED since 2026-10-10, when force re-verify was retired) → \"start "
+       + "again\" (and from an officer's reopening of a final refusal). Dropping the column there locks a "
+       + "previously-verified account out of its own balance.",
     file: KYC,
     from: `    approvedAt: existing?.approvedAt ?? null,`,
     to: `    approvedAt: null,`,

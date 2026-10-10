@@ -203,7 +203,7 @@ edited wrongly. If a fifth is ever proposed, it must displace one of these.
 |---|---|---|
 | `money.figures` | wallet balance, bonus balance, lifetime deposits/withdrawals, any TZS total attributable to one named player — and the SMS campaign cost estimate and credit (a platform aggregate, §3.5) | The Final Audit remediation blocks `MODERATOR` from money; this is that rule, expressed once |
 | `identity.contact` | email address, unmasked phone | The account-recovery set. `AWARKEH`'s `RA7` is the same lesson one product over: an email on a row is a takeover vector |
-| `identity.personal` | date of birth, region, full document number, document images | The KYC set. Already partly masked; this makes the masking a *rule* rather than a `slice()` |
+| `identity.personal` | date of birth, region, full document number, any identity photos on file | The KYC set. Already partly masked; this makes the masking a *rule* rather than a `slice()` |
 | `history.activity` | positions, bets, notification and login history | ⭐ **The one a support agent genuinely needs** — *"which round was this?"* — and the one nothing currently withholds from anyone |
 
 ### 3.2 The proposed default grid

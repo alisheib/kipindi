@@ -447,8 +447,10 @@ section("4 · the KYC gate panel — a state word keeps its tone's ink; a headin
   const verify = (src: string) => readCopy(src).map((c) => ({ state: c.state, want: expected(c.eyebrow, c.sf), got: c.stateWord })).filter((r) => r.want !== r.got);
   const SRC = raw(F);
   const states = readCopy(SRC).map((c) => c.state);
-  ok(`4.1 · each of the ${states.length} states says which its eyebrow is: a state word (pending review, more info, rejected, a hold, the agent's upload) keeps the tone, a heading (not started, the payout's upload, the final refusal, the e-mail) does not`,
-    states.length === 8 && verify(SRC).length === 0, j(verify(SRC)));
+  ok(`4.1 · each of the ${states.length} states says which its eyebrow is: a state word (pending review, more info, rejected, a hold, the agent's upload) keeps the tone, a heading (not started, the payout's upload, the final refusal, the e-mail, the agent's photo upgrade) does not`,
+    // 8 → 9 on 2026-10-10 (typed-only identity): `photo_upgrade` — an applicant verified from typed details, asked for the
+    // photos — opens "One step first", a heading.
+    states.length === 9 && verify(SRC).length === 0, j(verify(SRC)));
   ok("4.2 · the eyebrow draws the tone's ink only for a state word: `${copy.stateWord ? tone.ink : \"text-text-subtle\"}`",
     has(F, '<p className={`mt-3 font-mono text-micro uppercase eyebrow font-bold ${copy.stateWord ? tone.ink : "text-text-subtle"}`}>{copy.eyebrow}</p>'));
   ok("4.2′ PLANT · the round-7 line (every eyebrow in the tone's ink) is reported",

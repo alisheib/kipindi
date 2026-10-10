@@ -116,10 +116,20 @@ section("2 · the check is wired into the write path");
 const svc = stripComments(read("src/lib/server/kyc-service.ts"));
 ok("validateDocImage sniffs rather than trusting the label",
   /sniffBase64ImageMime\(/.test(svc));
-ok("both document write paths validate before storing",
-  (svc.match(/validateDocImage\(/g) ?? []).length >= 2,
-  "attachDocument AND attachExtraDocument — an officer-requested extra document is\n" +
-  "       the same class of file and reaches the same bucket.");
+// ⭐ 2026-10-10 — ONE document write path is left. `attachExtraDocument` (an officer's extra-document request) was
+// deleted with REQUEST_INFO, and `attachDocument` is the agent photo track's. It used to read ">= 2 calls", which the
+// function's own DEFINITION plus one call would now satisfy — so the call is pinned inside the writer, before the store.
+{
+  const iAttach = svc.indexOf("export async function attachDocument(");
+  const attachBody = iAttach < 0 ? "" : svc.slice(iAttach, svc.indexOf("export async function submitForReview(", iAttach));
+  const iValid = attachBody.indexOf("validateDocImage(");
+  const iPutDoc = attachBody.indexOf("putKycDocument(");
+  ok("the document write path validates before storing",
+    iValid > 0 && iPutDoc > iValid,
+    `validate@${iValid} store@${iPutDoc} — the bytes reach the bucket unchecked if the order flips`);
+  ok("⛔ …and it is the only one: the extra-document writer is gone",
+    !/function attachExtraDocument\s*\(/.test(svc) && (svc.match(/putKycDocument\(/g) ?? []).length === 1);
+}
 ok("🔴 the verified mime + size are persisted, not re-guessed from the key",
   /mimeType: valid\.mimeType/.test(svc) && /sizeBytes: valid\.bytes/.test(svc),
   "An `r2:<key>` cannot be measured. The DAL used to regex it as a data URL and\n" +

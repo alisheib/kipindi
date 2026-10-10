@@ -159,8 +159,8 @@ export const LIFECYCLE = {
  * "ADDITIONAL_INFO_REQUIRED" (underscores and all), and the DSAR chip printed
  * "FULFILLED". Rendered through `<KycStatusBadge>` / `<DsarStatusBadge>`
  * (src/components/admin/status-badge.tsx), which own the enum→variant mapping.
- * EN-only (officer console). "additional-info" reuses the player dict wording
- * ("More information needed", i18n-dict `kycMoreInfo`).
+ * EN-only (officer console). "additional-info" names what an officer now asks for — CORRECTIONS of typed details
+ * (2026-10-10, typed-only identity; the player reads "Check your details", i18n-dict `kycMoreInfo`).
  *
  * Proposal review states are NOT here — they already flow through the trilingual
  * dict via `<StatusBadge>` (src/components/proposals/status-badge.tsx).
@@ -177,7 +177,7 @@ export const REVIEW = {
    *  read as retryable, while a final refusal freezes the wallet and the player cannot resubmit. The word is
    *  /admin/kyc/refused's own ("Finally refused accounts"). Chosen by `kycStatusLabel(status, rejectReason)`. */
   kycRefusedFinal:    { en: "Finally refused" },
-  kycAdditionalInfo:  { en: "More information needed" },
+  kycAdditionalInfo:  { en: "Corrections asked" },
   // DSAR / privacy request status
   dsarPending:        { en: "Pending" },
   // ⭐ Named for what an officer must DO about it, not for a fraction. A partially fulfilled
@@ -237,9 +237,14 @@ export const REVIEW = {
  * reading "Nothing yet" beside the dormant majority. ⛔ "Funded", never "Unverified": the
  * first reads a balance, the second reads like an officer's finding about a person.
  *
+ * ⭐ 2026-10-10 — THREE WORDS FOLLOWED THE TYPED-DETAILS RULING (players no longer upload; agents do): `uploaded`
+ * names the photos ("Photos · not sent"), `rejected_after_upload` became "Rejected · after review" (a routed typed case
+ * reaches an officer with no upload) and `rejected_no_docs` "Rejected · at the details step" (the player did send their
+ * details). The eight keys and their arms are unchanged — only the words follow what each arm now holds.
+ *
  * ⛔ "SUBMITTED" APPEARS ON EXACTLY ONE ENTRY, and it is the one where `submittedAt` is
- * non-null by construction (kyc-service.ts:533 writes the status and the timestamp
- * together). `uploaded` is a player who attached every required photo and never pressed
+ * non-null by construction (kyc-service.ts writes the status and the timestamp
+ * together). `uploaded` is an applicant who attached photos and never pressed
  * the button; calling that "Submitted" would be the same lie in a new colour — and
  * NOTHING in the suite would catch it, because `test:kyc-copy-truth` matches three phrase
  * rules (deny∧money∧identity, identity bound to the entrance, a Gaming Board attribution)
@@ -280,15 +285,36 @@ export const KYC_STAGE = {
    *  balance fact, and SUPPORT reads `money.figures` masked. To that viewer the same person
    *  reads "Nothing yet", which claims only what it always claimed — nothing sent. */
   fundedNothingYet:    { en: "Funded\u00a0·\u00a0nothing\u00a0sent" },
-  uploaded:            { en: "Uploaded\u00a0·\u00a0not\u00a0sent" },
+  /** ⭐ 2026-10-10 — only AGENT applicants upload now (players verify with typed details), so the word names the photos:
+   *  an agent applicant's photos are on file and have not been sent. A legacy player row reads the same, truthfully. */
+  uploaded:            { en: "Photos\u00a0·\u00a0not\u00a0sent" },
   withUs:              { en: "Submitted\u00a0·\u00a0with\u00a0us" },
   moreNeeded:          { en: "More\u00a0needed\u00a0·\u00a0player" },
-  rejectedAfterUpload: { en: "Rejected\u00a0·\u00a0after\u00a0upload" },
-  rejectedNoDocs:      { en: "Rejected\u00a0·\u00a0nothing\u00a0sent" },
+  /** ⭐ 2026-10-10 — "after upload" stopped being true: a routed typed case has no upload, and an officer refused it
+   *  after reviewing it. The arm is unchanged (`kycFileEverArrived`: a file reached us); only the word follows it. */
+  rejectedAfterUpload: { en: "Rejected\u00a0·\u00a0after\u00a0review" },
+  /** ⭐ 2026-10-10 — refused at the details step, before any file reached an officer (an under-18 date, a number
+   *  the checks refused). "Nothing sent" was false for a typed refusal: the player sent their details. */
+  rejectedNoDocs:      { en: "Rejected\u00a0·\u00a0at\u00a0the\u00a0details\u00a0step" },
   /** A failed READ is its own labelled state, never a fabricated fact — the same line
    *  the roster already draws for a failed wallet read. The in-file precedent for
    *  wording an absence is `UPDOWN.readingNone`. */
   unreadable:          { en: "Not\u00a0available" },
+} satisfies Record<string, AdminLabel>;
+
+/**
+ * HOW AN APPROVED IDENTITY WAS APPROVED (2026-10-10) — owner ruling: players verify with typed details and are
+ * approved AUTOMATICALLY when the checks pass; an officer checks those approvals afterwards. An approval is one of:
+ *   · automatic, not yet checked — `autoApprovedAt` set, `postCheckedAt` empty (the post-check list's population);
+ *   · automatic, checked — an officer has since marked it checked;
+ *   · by an officer — `reviewerId` set by an officer's decision (every approval before 2026-10-10, every agent photo case).
+ * ⛔ NOT A STAGE AND NOT A STATUS. `KYC_STAGE.approved` / `REVIEW.kycApproved` stay the word for "approved"; this is the
+ * sentence beside it, read by `kycApprovalKind` (status-badge.tsx). "Verified" is avoided for the same reason as above.
+ */
+export const KYC_APPROVAL = {
+  automaticUnchecked: { en: "Automatic · not yet checked" },
+  automaticChecked:   { en: "Automatic · checked by an officer" },
+  officer:            { en: "By an officer" },
 } satisfies Record<string, AdminLabel>;
 
 /**
@@ -497,6 +523,9 @@ export const AGENT_AUDIT_ACTION: Record<string, string> = {
    *  number. */
   "marketing.referee_contact_reviewed": "Referee contact checked by hand — no mobile number in it",
   "marketing.referee_key_added": "Referee's number kept out of marketing by hand",
+  /** 2026-10-10 · an officer revealed a referee's contact on the case (the reveal reads the REFEREE's own stored
+   *  contact, keyed by the application — it used to re-read the applicant's phone). Audited on the application. */
+  "pii.revealed": "Referee contact revealed",
 };
 
 /** The action in words, or the raw action when it has no entry — never nothing. */

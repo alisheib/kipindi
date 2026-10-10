@@ -117,7 +117,8 @@ try {
   await pf.close();
 
   // === STEP 9: All major routes return 200 ===
-  const ROUTES = ["/", "/live", "/mapigo", "/bets", "/wallet", "/profile", "/profile/account", "/profile/responsible-gambling", "/profile/source-of-funds", "/profile/kyc", "/profile/sessions", "/help", "/admin", "/admin/players", "/admin/aml", "/admin/audit", "/admin/system", "/legal/terms", "/legal/privacy", "/legal/responsible-gambling", "/legal/aml"];
+  // 2026-10-10 · /profile/kyc has two tracks (players type their details; agent applicants send photos), so both are routes.
+  const ROUTES = ["/", "/live", "/mapigo", "/bets", "/wallet", "/profile", "/profile/account", "/profile/responsible-gambling", "/profile/source-of-funds", "/profile/kyc", "/profile/kyc?for=agent", "/profile/sessions", "/help", "/admin", "/admin/players", "/admin/aml", "/admin/audit", "/admin/system", "/legal/terms", "/legal/privacy", "/legal/responsible-gambling", "/legal/aml"];
   let routeOk = 0, routeFail = 0;
   for (const path of ROUTES) {
     const r = await ctx.request.get(`${BASE}${path}`, { maxRedirects: 0 });

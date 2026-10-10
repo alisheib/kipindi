@@ -6,7 +6,7 @@ import { AdminBody, KpiGrid } from "@/components/admin/admin-body";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, SortTh, type SortDir } from "@/components/admin/admin-sort";
-import { KycStageBadge } from "@/components/admin/status-badge";
+import { KycStageBadge, kycStageLabel } from "@/components/admin/status-badge";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
@@ -29,6 +29,10 @@ import {
 import { kycStage, walletHeldTzs, MONEY_NOT_APPLIED, type KycStage } from "@/lib/kyc-stage";
 import { KYC_REVIEW_SLA_HOURS } from "@/lib/kyc-sla";
 import { formatTzs, formatTzsCompact, formatDateTime, adminCount } from "@/lib/utils";
+import { db } from "@/lib/server/store";
+import { isErasedPhone } from "@/lib/server/erasure";
+import { asKycFlags, FLAG_LABEL, type KycFlag } from "@/lib/kyc-auto-checks";
+import { isIdDocType } from "@/lib/id-documents";
 
 export const metadata = { title: "Admin · KYC queue" };
 export const dynamic = "force-dynamic";
@@ -42,14 +46,24 @@ export const dynamic = "force-dynamic";
  * WITHDRAWAL and before nothing else (docs/COMPLIANCE-DECISIONS.md 2026-09-13), so everyone on this page
  * may already hold a balance, and a file with us can be a withdrawal waiting on our review (S14).
  *
- * THREE TABLES, ONE DERIVATION. Every row's word comes from `kycStage` (src/lib/kyc-stage.ts) — the
- * roster's own derivation — so this page cannot disagree with /admin/players about one person:
- *   · WITH US          — `with_us` (a submitted, complete file), with its age against KYC_REVIEW_SLA_HOURS.
- *   · WITH THE PLAYER  — `uploaded` (photos in, never sent) and `more_needed` (we asked for more). ⚠️ An
- *     ADDITIONAL_INFO_REQUIRED file is the PLAYER's move: `attachExtraDocument` never changes status and the
- *     player's resubmit is what returns it to us. `listPendingKyc` still returns it, so every reader of that list
- *     that counts work "with us" — /admin/approvals, the sidebar badges, the workstation's queue position — filters
- *     through `isFileWithUs` (src/lib/kyc-stage.ts), this table's own arm.
+ * ⭐ 2026-10-10 — PLAYERS VERIFY WITH TYPED DETAILS, APPROVED AUTOMATICALLY WHEN THE CHECKS PASS (owner ruling;
+ * docs/COMPLIANCE-DECISIONS.md "2026-10-10 · Players verify identity with typed details"). So the work on this page
+ * changed shape: a file WITH US is a case the checks ROUTED to an officer, an agent applicant's photo case, or one
+ * sent before that date — and the automatic approvals are checked by an officer AFTERWARDS, in their own table.
+ *
+ * FOUR TABLES. The three file tables take every row's word from `kycStage` (src/lib/kyc-stage.ts) — the roster's
+ * own derivation — so this page cannot disagree with /admin/players about one person:
+ *   · WITH US          — `with_us` (a submitted file), with its age against KYC_REVIEW_SLA_HOURS.
+ *   · VERIFIED AUTOMATICALLY · NOT YET CHECKED — `db.kyc.listUncheckedAutoApprovals()` (newest submission per user,
+ *     `autoApprovedAt` set, `postCheckedAt` empty; APPROVED, or — review R5.1 — with an officer or with the player, each
+ *     such row marked with its stage). Flagged first, then — for a viewer with money rights —
+ *     by what has been withdrawn since the approval, because that is money that left on an identity no officer has
+ *     looked at. A closed or erased account is BADGED, never hidden: its approval still needs its check.
+ *   · WITH THE PLAYER  — `uploaded` (an agent applicant's photos in, never sent) and `more_needed` (we asked the player
+ *     to correct their details). ⚠️ An ADDITIONAL_INFO_REQUIRED file is the PLAYER's move: their corrected send is
+ *     what returns it to us. `listPendingKyc` still returns it, so every reader of that list that counts work "with
+ *     us" — /admin/approvals, the sidebar badges, the workstation's queue position — filters through `isFileWithUs`
+ *     (src/lib/kyc-stage.ts), this table's own arm.
  *   · FUNDED, NOTHING SUBMITTED — `funded_nothing_yet`, sorted by what the account holds. Money rights only.
  *
  * ⛔ NEVER `db.kyc.list()` — it joins every document image. `listStageFacts` is the narrow feed (newest
@@ -90,6 +104,73 @@ type FileRow = {
   lastAttemptAt: string | null;
 };
 
+/** One automatic approval waiting for its officer check. */
+type PostCheckRow = {
+  userId: string;
+  /** Where the approval stands now — APPROVED, or (review R5.1) with an officer or with the player, still unchecked. */
+  status: StoredKycStageRow["status"];
+  idType: string | null;
+  autoApprovedAt: string;
+  flags: KycFlag[];
+  /** CONFIRMED + in-flight withdrawals since the approval, or null when money is not applied / the read failed. */
+  withdrawnTzs: number | null;
+  /** "closed" / "erased" are badged — never hidden; null for an open account. ⛔ A user read that FAILED is
+   *  "unreadable" and one that found no row is "missing" — neither is evidence of an erasure (erasure pseudonymises the
+   *  row, it never deletes it), so neither may print "Erased". */
+  account: "closed" | "erased" | "unreadable" | "missing" | null;
+};
+
+/** The account badge's words. */
+const ACCOUNT_BADGE: Record<NonNullable<PostCheckRow["account"]>, string> = {
+  closed: "Closed",
+  erased: "Erased",
+  unreadable: "Account unreadable",
+  missing: "No account found",
+};
+
+/**
+ * Where an unchecked automatic approval stands when it is NOT simply approved (review R5.1) — the roster's own words for
+ * those two stages (`kycStageLabel`, status-badge.tsx), so this table and /admin/players name a file the same way.
+ * ⛔ Only an APPROVED row can be marked checked (the workstation's post-check rail); a row with an officer is checked by
+ * the officer's approval on the workstation, and one with the player waits for their corrected send.
+ */
+const POST_CHECK_STAGE: Partial<Record<PostCheckRow["status"], string>> = {
+  PENDING_REVIEW: kycStageLabel("with_us"),
+  ADDITIONAL_INFO_REQUIRED: kycStageLabel("more_needed"),
+};
+
+/** Officer names for the four documents — the queue's own copy (a page file cannot export one). */
+const ID_TYPE_SHORT: Record<string, string> = { NIDA: "NIDA", PASSPORT: "Passport", DRIVER_LICENSE: "Driving licence", VOTER_CARD: "Voter's card" };
+
+/** A flag in a table cell — short, one unbreakable phrase; the full sentence (`FLAG_LABEL`) is the chip's title. */
+const FLAG_SHORT: Record<KycFlag, string> = {
+  NIDA_DOB_MISMATCH: "NIDA date differs",
+  PASSPORT_SHAPE: "Passport shape",
+  NO_PUBLISHED_FORMAT: "No published format",
+  SAME_PERSON: "Same name + DOB",
+};
+
+/** A bound on the post-check reads: each row costs a user read and, for a money viewer, a transaction read.
+ *  ⛔ APPLIED AFTER THE WHOLE LIST IS ORDERED (2026-10-10), on what the list read already holds — flagged first, then the
+ *  OLDEST approval (it has had longest to move money unchecked), then the submission id — so the rows kept are the same in
+ *  both stores whatever order each returns, and a flagged approval is never cut while an unflagged one is kept. The
+ *  money order is applied inside the cap: it needs the very per-row reads the cap bounds. */
+const POST_CHECK_READ_CAP = 500;
+
+/**
+ * Σ what left the account since the automatic approval — CONFIRMED withdrawals and those still leaving (PROCESSING,
+ * AML_REVIEW), as magnitudes. ⛔ A FAILED or DECLINED withdrawal did not leave, and is not counted.
+ */
+async function withdrawnSince(userId: string, sinceIso: string): Promise<number> {
+  const txns = await (async () => db.txn.listForUser(userId))();
+  let sum = 0;
+  for (const t of txns) {
+    if (t.type !== "WITHDRAWAL" || t.createdAt < sinceIso) continue;
+    if (t.status === "CONFIRMED" || t.status === "PROCESSING" || t.status === "AML_REVIEW") sum += Math.abs(t.amount);
+  }
+  return sum;
+}
+
 type UsField = "priority" | "waiting" | "held" | "attempts";
 type PlField = "held" | "opened" | "attempts";
 type FdField = "held" | "attempts";
@@ -99,6 +180,7 @@ type KycQueueProps = {
     ussort?: string; usdir?: string; uspage?: string;
     plsort?: string; pldir?: string; plpage?: string;
     fdsort?: string; fddir?: string; fdpage?: string;
+    pcpage?: string;
   }>;
 };
 
@@ -213,6 +295,58 @@ async function KycQueueContent({ searchParams }: KycQueueProps) {
   const fdRows = fdSorted.slice((fdPage - 1) * PER_PAGE, fdPage * PER_PAGE);
   const fdBase = buildBaseHref("/admin/kyc", sp, "fdpage");
 
+  // ── VERIFIED AUTOMATICALLY · NOT YET CHECKED (2026-10-10) ──────────────────
+  // ⛔ A FAILED READ IS SAID (`null`), never an empty list — "nothing to check" after a database blip would be a false
+  // all-clear on approvals nobody has looked at. The async wrapper catches a SYNC throw from the in-memory store.
+  const uncheckedRead = await (async () => db.kyc.listUncheckedAutoApprovals())().catch(() => null);
+  const isFlagged = (r: { autoFlags: string[] }) => asKycFlags(r.autoFlags).length > 0;
+  // ⛔ ORDERED, THEN CAPPED (2026-10-10). It was capped first, on whatever order the store returned — so past the cap a
+  // flagged approval could fall off a list that says flagged come first, and the two stores kept different rows. The
+  // order is total (the submission id breaks a tie), and the money order below is a stable re-sort inside it.
+  const uncheckedRanked = uncheckedRead
+    ? [...uncheckedRead].sort((a, b) =>
+        (isFlagged(b) ? 1 : 0) - (isFlagged(a) ? 1 : 0)
+        || a.autoApprovedAt.localeCompare(b.autoApprovedAt)
+        || a.id.localeCompare(b.id),
+      )
+    : [];
+  const uncheckedCapped = uncheckedRanked.slice(0, POST_CHECK_READ_CAP);
+  // 🔴 MONEY IS READ ONLY FOR A VIEWER WITH MONEY RIGHTS — and so is the money ORDER: a balance-weighted rank shown to a
+  // role without them would leak which approvals moved the most money.
+  let postCheckMoneyFailed = false as boolean;
+  const postCheckAll: PostCheckRow[] = await Promise.all(
+    uncheckedCapped.map(async (r): Promise<PostCheckRow> => {
+      // ⛔ A FAILED READ IS ITS OWN ARM — it used to `.catch(() => null)` and so print "Erased" on a database blip.
+      const u = await (async () => db.user.findById(r.userId))().catch(() => "failed" as const);
+      const withdrawn = canSeeMoney
+        ? await withdrawnSince(r.userId, r.autoApprovedAt).catch(() => { postCheckMoneyFailed = true; return null; })
+        : null;
+      return {
+        userId: r.userId,
+        status: r.status,
+        idType: r.idType,
+        autoApprovedAt: r.autoApprovedAt,
+        flags: asKycFlags(r.autoFlags),
+        withdrawnTzs: withdrawn,
+        account: u === "failed" ? "unreadable" : !u ? "missing" : isErasedPhone(u.phoneE164) ? "erased" : u.status === "CLOSED" ? "closed" : null,
+      };
+    }),
+  );
+  const postCheckMoney = canSeeMoney && !postCheckMoneyFailed;
+  // Flagged first; then (money viewers) the most withdrawn since the approval; then the oldest approval first (and, the
+  // sort being stable, the submission-id order the cap was taken in).
+  const postCheckSorted = [...postCheckAll].sort((a, b) =>
+    (b.flags.length > 0 ? 1 : 0) - (a.flags.length > 0 ? 1 : 0)
+    || (postCheckMoney ? (b.withdrawnTzs ?? 0) - (a.withdrawnTzs ?? 0) : 0)
+    || a.autoApprovedAt.localeCompare(b.autoApprovedAt),
+  );
+  const pcPage = parsePage(sp.pcpage, postCheckSorted.length);
+  const pcRows = postCheckSorted.slice((pcPage - 1) * PER_PAGE, pcPage * PER_PAGE);
+  const pcBase = buildBaseHref("/admin/kyc", sp, "pcpage");
+  // Over the WHOLE list, like the count beside it — never only the rows inside the cap.
+  const pcFlagged = uncheckedRead ? uncheckedRead.filter(isFlagged).length : 0;
+  const pcCols = 5 + (postCheckMoney ? 1 : 0);
+
   // ── KPIs ───────────────────────────────────────────────────────────────────
   const week = blocked ? tallyBlockedCashOuts(blocked, now - 7 * 24 * H) : null;
   const emailWeek = emailBlocked ? tallyBlockedCashOuts(emailBlocked, now - 7 * 24 * H) : null;
@@ -259,6 +393,11 @@ async function KycQueueContent({ searchParams }: KycQueueProps) {
             Identity is checked before a withdrawal and at no earlier step (owner ruling, 2026-09-13), so a person on this page
             may already hold a balance, and a file <strong className="text-text">with us</strong> can be a withdrawal waiting on
             our review. Review target: <strong className="text-text">{KYC_REVIEW_SLA_HOURS} hours</strong> from submission.
+          </p>
+          <p className="mt-2 text-body-sm text-text-muted max-w-[72ch]">
+            From 2026-10-10 players verify with typed details and most are approved automatically. A file with us is a case the
+            checks sent to an officer, an agent applicant&apos;s photos, or one sent before that date; every automatic approval is
+            then <strong className="text-text">checked by an officer afterwards</strong>, in its own list below.
           </p>
         </AdminCard>
 
@@ -432,7 +571,7 @@ async function KycQueueContent({ searchParams }: KycQueueProps) {
                       );
                     })}
                     {usSorted.length === 0 && (
-                      <AdminTableEmpty colSpan={usCols} kind="admin" title="Nothing waiting on us" body="No submitted identity file is waiting for an officer. A file appears here the moment a player sends it." />
+                      <AdminTableEmpty colSpan={usCols} kind="admin" title="Nothing waiting on us" body="No identity file is waiting for an officer. A file appears here the moment the checks send one to an officer, or an agent applicant sends their photos." />
                     )}
                   </tbody>
                 </table>
@@ -442,8 +581,78 @@ async function KycQueueContent({ searchParams }: KycQueueProps) {
           )}
         </AdminCard>
 
+        {/* ── VERIFIED AUTOMATICALLY · NOT YET CHECKED (2026-10-10) ────────────── */}
+        <AdminCard title="Verified automatically · not yet checked" sw="Zimethibitishwa kiotomatiki · hazijakaguliwa">
+          {!uncheckedRead ? (
+            <AdminLoadError what="the automatic approvals" />
+          ) : (
+            <>
+              <p className="mb-3 text-body-sm text-text-muted max-w-[80ch]">
+                {adminCount(uncheckedRead.length, "approval")} made automatically from typed details and not yet checked by an officer
+                {pcFlagged > 0 ? <> · <strong className="text-warning-fg">{pcFlagged} flagged</strong></> : null}. Flagged first
+                {postCheckMoney ? ", then by what has been withdrawn since the approval" : ""}, oldest first inside each group. A closed or
+                erased account stays on the list, badged — and so does an approval now with us or with the player, marked with
+                its stage: an officer&apos;s approval on the workstation checks it.
+              </p>
+              {canSeeMoney && postCheckMoneyFailed && (
+                <p className="mb-3 text-body-sm text-warning-fg">Withdrawals since approval could not be read, so this list is not ordered by money.</p>
+              )}
+              {uncheckedRead.length > POST_CHECK_READ_CAP && (
+                <p className="mb-3 text-body-sm text-warning-fg">
+                  Only {POST_CHECK_READ_CAP} of {uncheckedRead.length} are read and ranked here — the flagged ones first, then the oldest approvals; check these first and the rest appear as the list shortens.
+                </p>
+              )}
+              <ScrollX label="Automatic approvals not yet checked">
+                <table className="admin-tbl min-w-[720px]">
+                  <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle">
+                    <tr>
+                      <th className="py-2 pr-3 text-left">Flags</th>
+                      <th className="py-2 pr-3 text-left">Approved</th>
+                      <th className="py-2 pr-3 text-left">Player</th>
+                      <th className="py-2 pr-3 text-left">Document</th>
+                      {postCheckMoney && <th className="py-2 pr-3 text-right">Withdrawn since</th>}
+                      <th className="py-2 pl-3 text-right">Check</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pcRows.map((r) => (
+                      <tr key={r.userId} className="border-b border-border-subtle/50 last:border-b-0" data-kyc-queue="post-check">
+                        <td className="py-2 pr-3">
+                          <div className="flex flex-wrap gap-1">
+                            {r.flags.length > 0
+                              ? r.flags.map((f) => <Chip key={f} size="sm" variant="warning" style={{ whiteSpace: "nowrap" }} title={FLAG_LABEL[f]}>{FLAG_SHORT[f]}</Chip>)
+                              : <span className="text-text-tertiary">—</span>}
+                          </div>
+                        </td>
+                        <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatDateTime(r.autoApprovedAt)}</td>
+                        <td className="py-2 pr-3">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Link href={`/admin/players/${r.userId}?tab=kyc` as Route} className="font-mono text-royal-300 hover:underline">{r.userId.slice(0, 14)}…</Link>
+                            {r.account && <Chip size="sm" variant="neutral" style={{ whiteSpace: "nowrap" }}>{ACCOUNT_BADGE[r.account]}</Chip>}
+                            {/* ⭐ Not simply approved any more (R5.1): with an officer, or with the player — said, never hidden. */}
+                            {POST_CHECK_STAGE[r.status] && <Chip size="sm" variant="neutral" style={{ whiteSpace: "nowrap" }} data-post-check-status={r.status}>{POST_CHECK_STAGE[r.status]}</Chip>}
+                          </div>
+                        </td>
+                        <td className="py-2 pr-3 text-body-sm">{r.idType && isIdDocType(r.idType) ? ID_TYPE_SHORT[r.idType] : "—"}</td>
+                        {postCheckMoney && <td className="py-2 pr-3 text-right font-mono tabular-nums text-text">{formatTzs(r.withdrawnTzs ?? 0)}</td>}
+                        <td className="py-2 pl-3 text-right">
+                          <Link href={`/admin/kyc/${r.userId}` as Route} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">workstation →</Link>
+                        </td>
+                      </tr>
+                    ))}
+                    {postCheckSorted.length === 0 && (
+                      <AdminTableEmpty colSpan={pcCols} kind="admin" title="Every automatic approval is checked" body="An identity approved automatically appears here until an officer marks it checked." />
+                    )}
+                  </tbody>
+                </table>
+              </ScrollX>
+              <AdminPagination total={postCheckSorted.length} page={pcPage} baseHref={pcBase} param="pcpage" />
+            </>
+          )}
+        </AdminCard>
+
         {/* ── WITH THE PLAYER ─────────────────────────────────────────────────── */}
-        <AdminCard title="With the player · not sent, or more asked" sw="Kwa mchezaji · hazijatumwa, au zaidi zimeombwa">
+        <AdminCard title="With the player · photos not sent, or corrections asked" sw="Kwa mchezaji · picha hazijatumwa, au marekebisho yameombwa">
           {factsFailed ? (
             <AdminLoadError what="the identity files" />
           ) : (
@@ -471,8 +680,9 @@ async function KycQueueContent({ searchParams }: KycQueueProps) {
                         {moneyKnown && <td className="py-2 pr-3 text-right font-mono tabular-nums text-text">{formatTzs(r.heldTzs ?? 0)}</td>}
                         <td className="py-2 pr-3 text-right font-mono tabular-nums">{attemptsCell(r)}</td>
                         <td className="py-2 pl-3 text-right">
-                          {/* A file we asked more of is a CASE — its workstation holds the request. Photos never
-                              sent are not a case yet: the workstation's decision rail would refuse them. */}
+                          {/* A file we asked corrections of is a CASE — its workstation holds the note, and its rail can
+                              still reject, refuse or escalate it (2026-10-10). Photos never sent are not a case yet: the
+                              workstation draws no rail for them. */}
                           {r.stage === "more_needed" ? (
                             <Link href={`/admin/kyc/${r.userId}` as Route} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">workstation →</Link>
                           ) : (
@@ -482,7 +692,7 @@ async function KycQueueContent({ searchParams }: KycQueueProps) {
                       </tr>
                     ))}
                     {plSorted.length === 0 && (
-                      <AdminTableEmpty colSpan={plCols} kind="admin" title="No file is with a player" body="No player has unsent photos, and no officer request is waiting on a player." />
+                      <AdminTableEmpty colSpan={plCols} kind="admin" title="No file is with a player" body="No agent applicant has unsent photos, and no request for corrections is waiting on a player." />
                     )}
                   </tbody>
                 </table>

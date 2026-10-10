@@ -30,8 +30,7 @@ import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
-import { KycGatePanel } from "@/components/kyc/kyc-gate-panel";
-import type { KycGateState } from "@/lib/kyc-gate-state";
+import { KycGatePanel, type KycGatePanelState } from "@/components/kyc/kyc-gate-panel";
 import { useT } from "@/lib/i18n";
 import { fill, formatNumber, formatTzs } from "@/lib/utils";
 import { refusalVariant } from "@/lib/failure-reasons";
@@ -54,9 +53,14 @@ type Props = {
     referees: { oneName: string; oneContact: string; twoName: string; twoContact: string; consented: boolean };
   };
   documents: DocView[];
+  /** The server's own list (`missingForSubmit`). ⭐ Its `IDENTITY` entry is what holds an INVITEE'S
+   *  submit shut on identity — read, never re-derived here (2026-10-10). */
   missing: string[];
-  /** Only for an OFFICER_INVITED applicant: their own identity gate, null once submitted/approved. */
-  kycGate: KycGateState | null;
+  /** The applicant's own identity for the AGENT programme, in the panel's vocabulary — null once an
+   *  officer has approved the document photos and selfie (`agentIdentityPanel`, `identity-panel.ts`). ⛔ Not the
+   *  withdrawal gate's state: a player's automatic typed approval is not the agent programme's — it is
+   *  `photo_upgrade`, "verified; add your ID photos" (review R5.6). */
+  kycGate: KycGatePanelState | null;
   /** ⛔ `destinationName` was removed 2026-09-11 — nothing consumed it, so it was pure payload
    *  crossing the server→client boundary. `destinationAccount` now arrives EMPTY while the QR
    *  is withheld: the SERVER gates it, because a gate that only stops the render still sends. */
@@ -65,8 +69,9 @@ type Props = {
    *  the SAME account as `fee.destinationAccount` — see `shouldShowLipaQr`. */
   lipa: LipaDisplay | null;
   /** The wallet rail three facts, so the step renders a GATE with the action that clears it
-   *  rather than a button the server is about to refuse. */
-  walletPay: { balanceTzs: number; kycApproved: boolean; emailVerified: boolean };
+   *  rather than a button the server is about to refuse. `photoIdentityVerified` is the fee's
+   *  identity question, asked as the service asks it: an officer approved the photos (2026-10-10). */
+  walletPay: { balanceTzs: number; photoIdentityVerified: boolean; emailVerified: boolean };
   limits: { maxMb: number; refereeHoldDays: number; reviewSlaDays: number };
   /**
    * The shell's own answer for this request (`resolveSimpleJourney`, `page.tsx`). ⭐ ONE ACTION, ONE NAME (R5-G, 2026-10-09,
@@ -127,8 +132,9 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
   // then email -- so a person cannot clear the one it names and then be refused for the other.
   // 2026-09-13: these were "the two doors DEPOSIT holds shut"; since 2026-10-07 a deposit asks neither.
   // Both doors here are the agent programme's own requirements, kept by those rulings (payFeeFromWallet).
-  const kycBlocks = !app.feeWaived && !feeSettled && !walletPay.kycApproved;
-  const emailBlocks = !app.feeWaived && !feeSettled && walletPay.kycApproved && !walletPay.emailVerified;
+  // 2026-10-10: the identity door is an officer's approval of the photos -- the service's own question.
+  const kycBlocks = !app.feeWaived && !feeSettled && !walletPay.photoIdentityVerified;
+  const emailBlocks = !app.feeWaived && !feeSettled && walletPay.photoIdentityVerified && !walletPay.emailVerified;
   const canAfford = balanceTzs >= fee.totalTzs;
 
   /**
@@ -150,12 +156,17 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
   const [result, setResult] = useState<{ open: boolean; variant: "success" | "danger"; title: string; subtitle?: string } | null>(null);
 
   // What is still missing, recomputed locally so the list tracks uploads without a refresh.
-  const identityBlocks = app.source === "OFFICER_INVITED" && kycGate !== null && kycGate !== "pending_review";
+  // ⭐ EXCEPT THE INVITEE'S OWN IDENTITY, which this page cannot change and so takes from the server's
+  // list (`missing`, `missingForSubmit`): a PHOTO case sent is enough -- it is decided with the
+  // application at approval -- and typed details are not (2026-10-10). This read `kycGate !==
+  // "pending_review"`, which a typed case with an officer also answers, so the button would have opened
+  // on a submit the server then refuses.
+  const identityBlocks = app.source === "OFFICER_INVITED" && missing.includes("IDENTITY");
   const missingNow = useMemo(() => {
     const m: string[] = [];
     for (const s of REQUIRED) if (!docs[s] || docs[s]!.rejected) m.push(docLabel[s]);
     if (!refSaved) m.push(t.agent.missingReferees);
-    // The invitee's own identity: PENDING_REVIEW is enough (decided with the application at approval).
+    // The invitee's own identity: a photo case SENT is enough (decided with the application at approval).
     if (identityBlocks) m.push(t.agent.missingIdentity);
     /**
      * ONE ENTRY, NOT TWO -- and dropping the other two was only safe alongside the pay button.
@@ -366,6 +377,9 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
               and -- before this -- was told nothing. (2026-09-13: identity is no longer a deposit
               precondition. The fee payment keeps it as the agent programme's own requirement, so
               an invitee may hold a funded wallet and still meet this panel.)
+              (2026-10-10: "identity APPROVED" here means an officer approved the document photos and
+              selfie. A player's typed details are approved automatically now, and that approval does
+              not open this door -- the panel says which step is left, from the agent programme's view.)
 
               So each door renders the GATE and the ACTION THAT CLEARS IT, in the SAME ORDER the
               server asks them, so a person cannot fix the thing they were told about and then be

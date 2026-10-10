@@ -25,7 +25,7 @@ import { formatDate } from "@/lib/utils";
 // ⛔ FROM THE PURE MODULE, NEVER DEFINED HERE. Client components mask phones too
 // (`app-shell.tsx`, `auth/otp`), and this file imports the store — so a `maskPhone` living here
 // would drag Prisma into a browser chunk the first time one of them reached for it.
-import { maskPhone } from "@/lib/phone-normalize";
+import { maskPhone, toMsisdn255, isGatewayMsisdn } from "@/lib/phone-normalize";
 
 export type SensitiveField = {
   /** Which class governs it — the ONLY place this mapping lives. */
@@ -40,8 +40,9 @@ export type SensitiveField = {
    * masked `transaction.msisdn` and then revealed `user.phoneE164` would state, on a money row,
    * that the money went somewhere it did not. So the money surfaces address a TRANSACTION, and
    * the audit row must say so or it points a regulator at the wrong record.
+   * ⭐ `AgentApplication` (2026-10-10): a referee's contact lives on the application that named them.
    */
-  targetType?: "User" | "Transaction" | "MarketingContact";
+  targetType?: "User" | "Transaction" | "MarketingContact" | "AgentApplication";
   /** Human label, used by the audit payload and the reveal control's accessible name. */
   label: string;
   /**
@@ -87,6 +88,21 @@ export function maskRegion(): string {
 export function maskDob(raw: string): string {
   const y = /^(\d{4})-\d{2}-\d{2}/.exec(raw)?.[1] ?? (/(\d{4})/.exec(raw)?.[1] ?? null);
   return y ? `${y}-••-••` : "••••";
+}
+
+/**
+ * A REFEREE'S CONTACT (2026-10-10) — a phone number OR an email address, because the application form
+ * accepts either (`isReachableContact`). ⭐ Each masks to the shape its kind already has on this console:
+ * an address as `maskEmail` does; a Tanzanian mobile in its international spelling first, so it reads
+ * `+255••••NN` like every other phone here whether the applicant typed `0712 …` or `+255 712 …`. Anything
+ * else — a landline, a foreign number — is masked as typed, by the one phone mask, which never echoes a
+ * short value.
+ */
+export function maskRefereeContact(raw: string): string {
+  const value = (raw ?? "").trim();
+  if (value.includes("@")) return maskEmail(value);
+  const msisdn = toMsisdn255(value);
+  return maskPhone(isGatewayMsisdn(msisdn) ? msisdn : value);
 }
 
 export const SENSITIVE_FIELDS = {
@@ -173,6 +189,35 @@ export const SENSITIVE_FIELDS = {
     label: "Contact email",
     mask: maskEmail,
     read: async (subjectId) => (await db.marketingContact.find(subjectId))?.email ?? null,
+  },
+  /**
+   * ⭐ A REFEREE'S CONTACT ON AN AGENT APPLICATION (2026-10-10) — two more SEPARATE fields, `subjectId` an
+   * APPLICATION id, for `msisdn`'s reason a third time: the subject is a different row.
+   *
+   * 🔴 THE CASE PAGE MASKED THE REFEREE'S NUMBER AND REVEALED THE APPLICANT'S. `/admin/agents/[id]` drew each
+   * referee contact as the `phone` field on the APPLICANT's id: the mask was computed from the referee's
+   * contact, the eye re-read `user.phoneE164` by the applicant — so an officer pressing it to call a referee
+   * dialled the applicant, the audit row said the applicant's phone was read, and a referee's real contact
+   * could not be revealed at all. Nothing on the screen looked wrong.
+   *
+   * `identity.contact`, the class the page already used, so no role sees more or less than it did; the reveal
+   * is the same audited action, and its row names the application the value was read from (`targetType`).
+   * ⛔ A referee is not a 50pick account: nothing here may read `db.user`. Erasure empties these contacts
+   * (`pseudonymiseAgentApplications`), and an emptied one reveals "Nothing recorded".
+   */
+  refereeOneContact: {
+    readClass: "identity.contact",
+    targetType: "AgentApplication",
+    label: "Referee 1 contact",
+    mask: maskRefereeContact,
+    read: async (subjectId) => (await db.agentApplication.findById(subjectId))?.refereeOneContact ?? null,
+  },
+  refereeTwoContact: {
+    readClass: "identity.contact",
+    targetType: "AgentApplication",
+    label: "Referee 2 contact",
+    mask: maskRefereeContact,
+    read: async (subjectId) => (await db.agentApplication.findById(subjectId))?.refereeTwoContact ?? null,
   },
   region: {
     readClass: "identity.personal",

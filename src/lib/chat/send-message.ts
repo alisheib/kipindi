@@ -331,14 +331,36 @@ function stubReply(userText: string, lang: Lang): Reply {
        * cannot deposit, bet or withdraw until approved" from 2026-09-05 to 2026-09-13 —
        * a stub answer is served verbatim, so a superseded rule in it is a false statement
        * to every player who asks, in the one channel built to help them.
+       *
+       * ⛔ AND IT WAS SUPERSEDED AGAIN ON 2026-10-10 (owner ruling): players verify with TYPED
+       * details — the type of one document, its number, its expiry when it has one, and the full
+       * name as printed — and most are verified straight away. Step 2 asked every player for
+       * document images, and step 4 promised an officer's look at them within 24 hours.
+       * The answer describes what IS asked and never what is not (the copy rule, IDENTITY-POLICY);
+       * the 24 hours belongs to the cases our team looks at, in a line that names no withdrawal.
+       * ⭐ The last line is for agent applicants, who keep photo KYC under the same ruling. This
+       * matcher cannot tell who is asking, so the answer has to be true for both readers.
+       * ⭐ Swahili too: `uthibitisho` is one of the two words that open this branch, and a Swahili
+       * question was answered in English.
        */
-      paragraphs: [
-        "Here's how identity verification works on 50pick:",
-        "1. Go to **Profile → Verify identity** to start[1]",
-        "2. Upload any ONE of four documents — NIDA, passport, driving licence or voter's card — plus a selfie",
-        "3. You verify once, before your first withdrawal",
-        "4. Our team usually reviews documents within 24 hours; while it is pending there is nothing else for you to do",
-      ],
+      paragraphs:
+        lang === "sw"
+          ? [
+              "Hivi ndivyo uthibitisho wa utambulisho unavyofanya kazi kwenye 50pick:",
+              "1. Nenda **Wasifu → Thibitisha utambulisho** kuanza[1]",
+              "2. Chagua kitambulisho kimoja — NIDA, pasipoti, leseni ya udereva au kadi ya mpiga kura — kisha ujaze nambari yake, tarehe yake ya mwisho kama inayo, na jina lako kamili kama lilivyoandikwa juu yake",
+              "3. Unathibitisha mara moja tu, kabla ya kutoa pesa kwa mara ya kwanza — wachezaji wengi huthibitishwa papo hapo",
+              "4. Taarifa zako zikihitaji kuangaliwa na timu yetu, kwa kawaida hilo huchukua hadi saa 24; wakati huo hakuna kingine unachohitaji kufanya",
+              "Unaomba kuwa Wakala wa 50pick? Mpango wa mawakala huwaomba waombaji pia picha ya kitambulisho chao na selfie.",
+            ]
+          : [
+              "Here's how identity verification works on 50pick:",
+              "1. Go to **Profile → Verify identity** to start[1]",
+              "2. Choose one document — NIDA, passport, driving licence or voter's card — and enter its number, its expiry date if it has one, and your full name exactly as printed on it",
+              "3. You verify once, before your first withdrawal — most players are verified straight away",
+              "4. If our team needs to look at your details, that usually takes up to 24 hours; there is nothing else for you to do meanwhile",
+              "Applying to become a 50pick Agent? The agent programme also asks its applicants for a photo of their identity document and a selfie.",
+            ],
       citations: [
         { n: 1, href: "/profile/kyc", label: "/profile/kyc" },
       ],

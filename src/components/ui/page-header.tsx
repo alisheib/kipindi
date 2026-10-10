@@ -38,6 +38,7 @@ export function PageHeader({
   tone = "subtle",
   className,
   actions,
+  eyebrowTight = false,
 }: {
   /**
    * The small line over the heading, with `icon` inside it. ⭐ Optional since the Vodacom plan S6 (WP9): Tiketi zangu's
@@ -62,12 +63,19 @@ export function PageHeader({
    * subtitle runs the column's full width under it. Without `actions` the markup is exactly what it was.
    */
   actions?: ReactNode;
+  /**
+   * ⭐ 2026-10-10 · The eyebrow at the body's own letter-spacing instead of the eyebrow's wide tracking — for a language
+   * whose eyebrow would otherwise wrap on the narrowest phone (sw "UTHIBITISHO WA KITAMBULISHO" at 320, the KYC
+   * screenshot pass), as the KYC rail does for its labels (`tightLabels`). Off by default: every other call site renders
+   * exactly what it did. A page and its loading ghost pass the same value, so the two never differ.
+   */
+  eyebrowTight?: boolean;
 }) {
   const head = (
     <>
       {eyebrow != null && (
         <p
-          className={`flex items-center gap-2 mb-1 font-mono text-caption uppercase eyebrow font-bold ${EYEBROW_TONE[tone]}`}
+          className={`flex items-center gap-2 mb-1 font-mono text-caption uppercase ${eyebrowTight ? "tracking-normal" : "eyebrow"} font-bold ${EYEBROW_TONE[tone]}`}
         >
           {icon}
           {eyebrow}

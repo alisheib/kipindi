@@ -300,8 +300,9 @@ const PAGE_HEADINGS = {
   '/profile/responsible-gambling': H('eq', 'Vikomo', 'Responsible gambling', '负责任博彩'),
   /** profile/invite/page.tsx, its sr-only h1: profile.inviteEarn when paid, else profile.inviteFriends */
   '/profile/invite': H('eq', ['Alika na upate zawadi', 'Alika marafiki'], ['Invite & Earn', 'Invite friends'], ['邀请赚钱', '邀请朋友']),
-  /** profile/kyc/page.tsx, its PageHeader before approval: profile.verifyIdentity */
-  '/profile/kyc': H('eq', 'Thibitisha kitambulisho', 'Verify your identity', '验证您的身份'),
+  /** profile/kyc/page.tsx, its PageHeader before approval: profile.verifyIdentity (sw says the verify button's words since
+   *  2026-10-10: "Thibitisha utambulisho wako") */
+  '/profile/kyc': H('eq', 'Thibitisha utambulisho wako', 'Verify your identity', '验证您的身份'),
   /** proposals/page.tsx, its PageHeader while the programme is not DISABLED: proposals.voteForMarkets */
   '/proposals': H('eq', 'Pigia kura soko unayotaka', 'Vote for the markets you want to see', '为您想看到的市场投票'),
   /** agent/page.tsx, its PageHeader: agent.title */

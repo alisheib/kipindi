@@ -70,6 +70,12 @@ ok("DOB on the applicant card is wired through the registry, not rendered raw",
 ok("…and the auto-check detail line masks at source, because it is a plain string on a CLIENT component",
   /DOB \$\{maskDob\(kyc\.dob\)\}/.test(P),
   "<Sensitive> is server-only and cannot travel into kyc-decision-rail.tsx");
+// ⭐ 2026-10-10 — THE SECOND DATE OF BIRTH ON THE CHECKLIST. The automatic checks compare the account's date with the
+// birth date inside a NIDA number, and the workstation says what the number says when they differ. It is a date of
+// birth like any other: masked at source, never rendered raw (same AUDITOR ceiling, same client component).
+ok("…and the NIDA number's own birth date on the checklist is masked the same way (2026-10-10)",
+  /the number says \$\{maskDob\(nidaDob\)\}/.test(P) && !/\$\{nidaDob\}/.test(P),
+  "an unmasked NIDA birth date would put a date of birth past the AUDITOR ceiling");
 // ⭐ AND THE REVEAL ITSELF MUST NOT HAND BACK AN INSTANT. The registry's `read` is what an
 // officer actually sees after clicking reveal; `toStoredKyc` stores `dob` as a full instant, so
 // an unformatted read puts "1995-04-12T00:00:00.000Z" on the card — E-2, one layer further in.

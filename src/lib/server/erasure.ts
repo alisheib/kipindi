@@ -73,7 +73,7 @@ import { maskName } from "./affiliate-service";
 import { removeTotp } from "./totp";
 import { clearBackupCodes } from "./backup-codes";
 import { revokeUserSessions } from "./session-registry";
-import type { KycExtraRequest } from "./store";
+import type { KycExtraRequest, KycPriorIdentity } from "./store";
 import { pseudonymiseAgentApplications, purgeAgentDocumentsForUser } from "./agent-application-service";
 import { houseBotAlertOnceStore, houseBotStore } from "./house-bot-dal";
 import { withLock } from "./locks";
@@ -115,6 +115,34 @@ export function erasedPhoneTombstone(userId: string): string {
 /** True for a value this module has already written. Makes the routine re-runnable. */
 export function isErasedPhone(phoneE164: string): boolean {
   return phoneE164.startsWith("erased:");
+}
+
+/**
+ * ONE PRIOR IDENTITY (`KycSubmission.priorIdentities`), erased by EXACTLY the rule tier ① applies to the row's own
+ * identity columns (2026-10-10, reviews R2.3/R4.1): the number becomes its keyed fingerprint (never null — the same
+ * decision as the row's, see the header), the full name becomes "Erased <fingerprint prefix>", the date of birth is
+ * removed. Everything else on the entry — type, expiry, status, first approval, the deciding officer, the cause and
+ * when it was replaced — is what the row itself keeps. Idempotent: an entry already erased comes back untouched.
+ * ⚠️ Defensive about shape: the column is JSON, so a field may be missing rather than null.
+ */
+function erasePriorIdentity(e: KycPriorIdentity): { entry: KycPriorIdentity; touched: boolean; hashed: boolean } {
+  if (!e || typeof e !== "object") return { entry: e, touched: false, hashed: false };
+  const entry: KycPriorIdentity = { ...e };
+  let touched = false;
+  let hashed = false;
+  if (e.idType && e.idNumber && !/^[0-9a-f]{64}$/.test(e.idNumber)) {
+    const fp = e.idFingerprint || identityFingerprint(e.idType, e.idNumber);
+    entry.idFingerprint = fp;
+    entry.idNumber = fp;
+    touched = true;
+    hashed = true;
+  }
+  if (e.fullName != null && !String(e.fullName).startsWith("Erased")) {
+    entry.fullName = entry.idFingerprint ? `Erased ${String(entry.idFingerprint).slice(0, 12)}` : "Erased";
+    touched = true;
+  }
+  if (e.dob != null) { entry.dob = null; touched = true; }
+  return { entry, touched, hashed };
 }
 
 export type AnonymizeOutcome =
@@ -314,6 +342,27 @@ export async function anonymizeClosedAccount(
       touched = true;
     }
     if (k.dob !== null) { patch.dob = null; touched = true; }
+
+    /**
+     * ⭐ AND EVERY IDENTITY THE ROW USED TO HOLD (2026-10-10, reviews R2.3/R4.1). `priorIdentities` keeps the typed
+     * identities a restart, a correction or a re-open replaced — each with its RAW number, full name and date of birth.
+     * The row's own three columns are pseudonymised just above, and this patch is a spread of the row, so without this
+     * block the history was written straight back: every replaced identity outlived the erasure that Privacy §5 promises
+     * ("the name and number on your identity record are removed at once"). ⛔ THE SAME RULE AS THE ROW, NOT A NEW ONE
+     * (`erasePriorIdentity` restates the three steps above, field for field) — ⚠️ so a change to the row's rule (Part C's
+     * 7-year hold among them) is made to both, in the same commit.
+     */
+    const priors: KycPriorIdentity[] = Array.isArray(k.priorIdentities) ? k.priorIdentities : [];
+    if (priors.length > 0) {
+      let priorsTouched = false;
+      const erasedPriors = priors.map((e) => {
+        const r = erasePriorIdentity(e);
+        if (r.touched) priorsTouched = true;
+        if (r.hashed) counts.idNumbersHashed++;
+        return r.entry;
+      });
+      if (priorsTouched) { patch.priorIdentities = erasedPriors; touched = true; }
+    }
 
     /**
      * ⭐ THE OFFICER'S OWN WORDS, WHICH THE SWEEP FOUND AND NO CHECKLIST HAD.

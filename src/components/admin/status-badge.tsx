@@ -27,7 +27,7 @@
  * import (erased at build) so no server code is pulled into the bundle.
  */
 import { Chip } from "@/components/ui/chip";
-import { LIFECYCLE, REVIEW, OBJECTION, ACCOUNT, MONEY, PIPELINE, UPDOWN, AUDIT, SURVEILLANCE, KYC_STAGE, FUNDED } from "@/lib/admin-status-lexicon";
+import { LIFECYCLE, REVIEW, OBJECTION, ACCOUNT, MONEY, PIPELINE, UPDOWN, AUDIT, SURVEILLANCE, KYC_STAGE, KYC_APPROVAL, FUNDED } from "@/lib/admin-status-lexicon";
 import { isFinalRefusal } from "@/lib/kyc-refusal";
 import { STATUS_TONE, TONE_CHIP, type StatusChipVariant } from "@/lib/status-tone";
 import { refundReasonFor, type RefundReason } from "@/lib/updown-refund-reason";
@@ -196,6 +196,31 @@ export function kycStageLabel(cell: KycCell): string {
 
 export function KycStageBadge({ cell, size = "sm" }: { cell: KycCell; size?: "sm" | "md" | "lg" }) {
   return <Chip size={size} variant={kycStageVariant(cell)}>{kycStageLabel(cell)}</Chip>;
+}
+
+/* ── How an APPROVED identity was approved (2026-10-10) ───────────────────── */
+
+export type KycApprovalKind = "automatic_unchecked" | "automatic_checked" | "officer";
+
+/**
+ * ⭐ ONE RULE FOR "AN AUTOMATIC APPROVAL NOBODY HAS CHECKED" — `autoApprovedAt` set and `postCheckedAt` empty, on an
+ * APPROVED row — the population of the post-check list, the sidebar badge and the risk display. Null for a row that is
+ * not APPROVED. ⛔ Structural input, so a client component can ask it without importing the store.
+ */
+export function kycApprovalKind(k: { status: string; autoApprovedAt?: string | null; postCheckedAt?: string | null } | null | undefined): KycApprovalKind | null {
+  if (!k || k.status !== "APPROVED") return null;
+  if (k.autoApprovedAt) return k.postCheckedAt ? "automatic_checked" : "automatic_unchecked";
+  return "officer";
+}
+
+/** The kind in officer English — `Record<KycApprovalKind, …>`, so a new kind cannot ship wordless. */
+export function kycApprovalKindLabel(kind: KycApprovalKind): string {
+  const L: Record<KycApprovalKind, string> = {
+    automatic_unchecked: KYC_APPROVAL.automaticUnchecked.en,
+    automatic_checked: KYC_APPROVAL.automaticChecked.en,
+    officer: KYC_APPROVAL.officer.en,
+  };
+  return L[kind];
 }
 
 /** The roster's `?funded=` axis in words (2026-09-13). ⭐ `Record<FundedAxis | "unreadable", …>`,

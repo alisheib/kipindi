@@ -12,7 +12,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/server/store";
 import type { StoredUser, StoredWallet, StoredKyc } from "@/lib/server/store";
 import { createSession } from "@/lib/server/session";
-import { randomId } from "@/lib/server/crypto";
+import { randomId, identityFingerprint } from "@/lib/server/crypto";
 import { hashPassword } from "@/lib/server/crypto";
 import { audit } from "@/lib/server/audit";
 
@@ -93,18 +93,24 @@ export async function POST(req: Request) {
   };
   await db.wallet.create(w);
 
+  /* ⚠️ UNIQUE PER PHONE, NOT A CONSTANT (2026-09-22). `KycSubmission` carries a unique index on
+     (`idType`, `idNumber`), and every user this route seeded got the SAME number — which the memory store never
+     noticed and Postgres refuses on the second user: the `qa:desk-rules-flow` recipe on a migrated scratch
+     database died at its first holder with P2002. The phone's digits are the one thing already unique per
+     seeded user, so the number is derived from them, twenty digits like `fresh-kyc-player`'s.
+     ⭐ AND A NUMBER THE PRODUCT COULD HAVE ACCEPTED (2026-10-10). "1990" + sixteen phone digits put "0000" where a NIDA
+     carries its holder's birth month and day, which `validateIdNumber` refuses (`nida_date`) — and the officer's
+     checklist reads the date from those digits. Digits 1-8 are now the account's date of birth, the phone's last eleven
+     digits follow, and it ends in `7` (never the dev NIDA mock's `0000` / `9999` hooks): the scheme every KYC seeder
+     shares, so the seeded phones keep every seeder's numbers apart. */
+  const idNumber = `19900101${phone.replace(/\D/g, "").padStart(11, "0").slice(-11)}7`;
   const kyc: StoredKyc = {
     id: `kyc_${randomId(10)}`,
     userId: id,
     status: "APPROVED",
     rejectReason: null,
     rejectNote: null,
-    /* ⚠️ UNIQUE PER PHONE, NOT A CONSTANT (2026-09-22). `KycSubmission` carries a unique index on
-       (`idType`, `idNumber`), and every user this route seeded got the SAME number — which the memory store never
-       noticed and Postgres refuses on the second user: the `qa:desk-rules-flow` recipe on a migrated scratch
-       database died at its first holder with P2002. The phone's digits are the one thing already unique per
-       seeded user, so the number is derived from them, twenty digits like `fresh-kyc-player`'s. */
-    idType: "NIDA", idNumber: `1990${phone.replace(/\D/g, "").padStart(16, "0").slice(-16)}`, idExpiry: null, idVerifiedAt: now,
+    idType: "NIDA", idNumber, idExpiry: null, idVerifiedAt: now, idFingerprint: identityFingerprint("NIDA", idNumber),
     fullName: name,
     dob: "1990-01-01",
     documents: [],
@@ -115,6 +121,15 @@ export async function POST(req: Request) {
     // The column the WITHDRAW gate reads (2026-09-05). An APPROVED fixture without it is a
     // player who can bet and cannot be paid — a state the product never produces.
     approvedAt: now,
+    // ⭐ 2026-10-10 · AN OFFICER'S KIND OF APPROVAL, as every approval before typed-only KYC was (the migration backfills
+    // `photoVerifiedAt` from `approvedAt`) — never an automatic one, so no seeded staff identity joins the officers'
+    // post-check list. Every column named: the DAL writes an omitted field as null.
+    photoVerifiedAt: now,
+    autoApprovedAt: null,
+    autoFlags: [],
+    postCheckedAt: null,
+    postCheckedById: null,
+    priorIdentities: [],
     createdAt: now,
     updatedAt: now,
   };

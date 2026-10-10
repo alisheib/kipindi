@@ -4,11 +4,19 @@
  * ── WHY THIS FILE EXISTS ─────────────────────────────────────────────────────
  * Until 2026-08-20 a 50pick player could prove identity with a **NIDA number** and
  * nothing else. Owner decision (Ali, 2026-08-19): **any ONE** of four Tanzanian
- * documents is enough — NIDA, passport, driving licence or voter's card. The two
- * controls that actually do the work are unchanged and must stay unchanged
- * (`docs/IDENTITY-POLICY.md`): **uniqueness — one document, one account** and
- * **document review by a human**. Widening *which* document is accepted must not
- * widen *how many accounts one human can hold*, and must not remove the human.
+ * documents is enough — NIDA, passport, driving licence or voter's card. The
+ * control that does the work everywhere is **uniqueness — one document, one
+ * account** (`docs/IDENTITY-POLICY.md`). Widening *which* document is accepted must
+ * not widen *how many accounts one human can hold*.
+ *
+ * ⭐ TYPED DETAILS FOR PLAYERS, PHOTOS FOR AGENTS (owner ruling, Ali, 2026-10-10 —
+ * the Gaming Board asked that players no longer upload identity documents). A
+ * PLAYER types the document's details and is approved automatically when the
+ * checks in `kyc-auto-checks.ts` pass; an officer checks those approvals afterwards.
+ * An AGENT applicant still photographs the document and takes a selfie, and an
+ * officer reviews them first — so `requiredSlots` below now describes the AGENT
+ * photo track, and `LEGACY_KYC_DOC_SLOTS` is the frozen list of images already on
+ * file from before 2026-10-10.
  *
  * ⛔ SO THE RULE IS: **one entry per type, and every surface reads this entry.**
  * The chooser, the field's own validation message, the required attachment slots,
@@ -22,8 +30,8 @@
  * ── 🔴 THE PART THIS FILE REFUSES TO GUESS ───────────────────────────────────
  * **A REGEX ON A NATIONAL ID IS A COMPLIANCE CONTROL, AND A WRONG ONE LOCKS A REAL
  * CITIZEN OUT OF THEIR OWN MONEY.** That failure is worse than a permissive field,
- * because human review is the real control and a format-rejected submission never
- * reaches a human at all. Researched 2026-08-19; two of the four are documented and
+ * because a format-rejected submission never reaches the automatic checks or an
+ * officer at all. Researched 2026-08-19; two of the four are documented and
  * two are not, and this file says which is which rather than shipping four
  * confident regexes, three of them fiction:
  *
@@ -145,7 +153,11 @@ export interface IdDocSpec {
   htmlPattern: string | null;
   /** `numeric` only where the document really is digits-only. */
   inputMode: "numeric" | "text";
-  /** Attachment slots that MUST be present before the player may submit. */
+  /**
+   * Attachment slots that MUST be present before an AGENT applicant's photo case may
+   * be sent to an officer (`submitForReview`). ⛔ Since 2026-10-10 a PLAYER uploads
+   * nothing — this list is the agent photo track's, never a player requirement.
+   */
   requiredSlots: readonly KycDocSlot[];
   /** Does this document carry an expiry date we capture and check? */
   expires: boolean;
@@ -189,8 +201,9 @@ export const ID_DOC_SPECS: Readonly<Record<IdDocType, IdDocSpec>> = {
    * 9-character alphanumeric number with a leading letter; older booklets remain
    * valid until they expire and are not guaranteed to match. No TRA / Immigration
    * specification was found. ⛔ So a value outside the shape is ACCEPTED and
-   * flagged for the officer, never refused — the bio-page image and the human are
-   * the control here. Find a government source and this arm becomes `published`.
+   * flagged (`PASSPORT_SHAPE` in `kyc-auto-checks.ts`), never refused — the officer
+   * who checks the approval reads the flag, and on an agent's photo case the
+   * bio-page image too. Find a government source and this arm becomes `published`.
    */
   PASSPORT: {
     type: "PASSPORT",
@@ -229,7 +242,7 @@ export const ID_DOC_SPECS: Readonly<Record<IdDocType, IdDocSpec>> = {
     format: {
       kind: "unpublished",
       absenceNote:
-        "No authoritative TRA format for a driving-licence number was found, and the owner has instructed that this field stay open for now. Only a sanity band applies. The licence image and this officer's reading of it are the control.",
+        "No authoritative TRA format for a driving-licence number was found, and the owner has instructed that this field stay open for now. Only a sanity band applies, so the number is checked for uniqueness and nothing more; an officer checks the details after an automatic approval, and reads the licence image on an agent's photo case.",
     },
   },
 
@@ -251,7 +264,7 @@ export const ID_DOC_SPECS: Readonly<Record<IdDocType, IdDocSpec>> = {
     format: {
       kind: "unpublished",
       absenceNote:
-        "No authoritative NEC/INEC format for a voter's-card number was found, and the owner has instructed that this field stay open for now. Only a sanity band applies. The card image and this officer's reading of it are the control.",
+        "No authoritative NEC/INEC format for a voter's-card number was found, and the owner has instructed that this field stay open for now. Only a sanity band applies, so the number is checked for uniqueness and nothing more; an officer checks the details after an automatic approval, and reads the card image on an agent's photo case.",
     },
   },
 };
@@ -424,7 +437,7 @@ export function isExpired(expiryIso: string | null | undefined, now: Date): bool
   return Number.isFinite(t) && t < now.getTime();
 }
 
-/** Does this submission still need an attachment before it can be reviewed? */
+/** Does this AGENT photo case still need an attachment before it can be sent to an officer? */
 export function missingSlots(
   type: IdDocType,
   present: readonly string[],
@@ -433,10 +446,66 @@ export function missingSlots(
   return ID_DOC_SPECS[type].requiredSlots.filter((s) => !have.has(s));
 }
 
-/** Every slot any of the four types can ask for — the API's accept-list. */
+/** Every slot any of the four types can ask for — the agent photo track's UPLOAD accept-list. */
 export const ALL_DOC_SLOTS: readonly KycDocSlot[] = Array.from(
   new Set(ID_DOC_TYPES.flatMap((t) => ID_DOC_SPECS[t].requiredSlots)),
 ) as readonly KycDocSlot[];
+
+/**
+ * ⛔ THE IMAGES ALREADY ON FILE — a FROZEN list, never derived (2026-10-10).
+ *
+ * Every image a player uploaded before 2026-10-10 (and every agent applicant's since) is identity
+ * evidence an officer must still be able to open, under the retention hold. `ALL_DOC_SLOTS` is
+ * DERIVED from today's `requiredSlots`, so a later change to the agent track would silently stop
+ * the officer's viewer serving a legacy image. This list is written out, and it includes `NIDA` — a
+ * member of the `KycDocType` database enum that no form has written since the front/back split,
+ * but that rows from the first KYC release may still carry.
+ */
+export const LEGACY_KYC_DOC_SLOTS = ["NIDA", "NIDA_FRONT", "NIDA_BACK", "PASSPORT", "DRIVER_LICENSE", "VOTER_CARD", "SELFIE"] as const;
+
+/**
+ * Is the FULL photo set for this document on file (the document's own slots, selfie included)?
+ * ⭐ The one question that says "this is a photo case": the officer's workstation shows photo mode
+ * and the photo attestations on it, and only an officer's approval of a photo case stamps
+ * `photoVerifiedAt` — the agent programme's identity gate. An unknown type is never complete.
+ */
+export function photoSetComplete(idType: string | null | undefined, docTypes: readonly string[]): boolean {
+  if (!isIdDocType(idType)) return false;
+  return missingSlots(idType, docTypes).length === 0;
+}
+
+/**
+ * ⛔ THE STAMP AND THE PHOTOS IT APPROVED, TOGETHER (2026-10-10, review R5.2) — does an officer's photo stamp
+ * (`photoVerifiedAt`) stand over the photos on file? The document's FULL photo set must be on file (`photoSetComplete`)
+ * AND every image in a required slot must have been uploaded NO LATER than the stamp.
+ *
+ * WHY THE TIME. A stamp alone proves nothing about the photos beside it: a stray stamp (the column's backfill run a
+ * second time, a hand-edited row) written over an automatic typed approval would be satisfied by the first photos the
+ * player uploaded AFTER it — no officer ever seeing them — and the agent programme's gate would open on it. Photos an
+ * officer approved were on file when they approved them, so each one predates the stamp: the 13 approvals backfilled at
+ * the release (`photoVerifiedAt = approvedAt`, every photo uploaded before the officer's approval) and every photo-mode
+ * approval since (`approveIdentity` stamps `now`, after the uploads it decides on).
+ * ⛔ Compared as INSTANTS (`Date.parse`), never as strings: an ISO string and a Postgres-shaped one order differently.
+ * ⛔ An image with no readable upload time cannot be shown to predate the stamp, so it does not count. An unknown
+ * document type is never complete. The ONE predicate behind the agent gate (`photoIdentityVerified`), the service's
+ * documents lock (`photoStampStands`) and the workstation's "verified by an officer" line.
+ */
+export function photoSetStampedBy(
+  idType: string | null | undefined,
+  documents: ReadonlyArray<{ docType: string; uploadedAt?: string | null }> | null | undefined,
+  photoVerifiedAt: string | null | undefined,
+): boolean {
+  const stampMs = photoVerifiedAt ? Date.parse(photoVerifiedAt) : NaN;
+  if (!Number.isFinite(stampMs)) return false;
+  const docs = documents ?? [];
+  if (!isIdDocType(idType) || !photoSetComplete(idType, docs.map((d) => d.docType))) return false;
+  const required = new Set<string>(ID_DOC_SPECS[idType].requiredSlots);
+  return docs.every((d) => {
+    if (!required.has(d.docType)) return true;
+    const uploadedMs = d.uploadedAt ? Date.parse(d.uploadedAt) : NaN;
+    return Number.isFinite(uploadedMs) && uploadedMs <= stampMs;
+  });
+}
 
 /** `t.profile.*` key naming an attachment slot, for the uploader and the reviewer. */
 export const DOC_SLOT_LABEL_KEY: Readonly<Record<KycDocSlot, string>> = {

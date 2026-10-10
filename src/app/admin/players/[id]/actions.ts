@@ -47,10 +47,8 @@ const ACTION_DOMAIN: Record<string, AdminDomain> = {
   adminResetPasswordAction: "support",
   setPlayerEmailAction: "support",
   adjustBalanceAction: "accounting",
-  forceReverifyKycAction: "compliance",
-  approveKycAction: "compliance",
-  rejectKycAction: "compliance",
-  requestKycInfoAction: "compliance",
+  // ⛔ forceReverifyKycAction / approveKycAction / rejectKycAction / requestKycInfoAction WERE HERE until 2026-10-10.
+  // Every identity decision is taken on the workstation (`/admin/kyc/[id]/kyc-actions.ts`), beside the checks it rests on.
   // 2026-09-13 — the officer's wallet freeze and the door back from a final identity refusal.
   // Compliance decisions, never support: a freeze stops a player's money in both directions.
   freezeWalletAction: "compliance",
@@ -356,122 +354,15 @@ export async function adjustBalanceAction(formData: FormData) {
   }
 }
 
-// ─── Force re-verify KYC (audit §9.3 #4) ────────────────────────────────────
-// Moves an APPROVED player to ADDITIONAL_INFO_REQUIRED → reopens the resubmit flow.
-// Audited in kyc-service.
-// 🔴 IT DOES NOT RE-LOCK WITHDRAWALS — that is what this comment claimed until
-// 2026-08-20, and it was the whole reason an officer reached for this control. The
-// withdrawal gate asks whether the account was EVER approved (`kyc-gate.ts`, 2026-09-13),
-// and re-verifying never clears that. To stop money leaving, the stops are: freeze the
-// wallet, or pause payouts. ⛔ Do NOT rely on an AML hold — the TZS 1,000,000 two-officer
-// hold this comment used to name was switched off by the owner ruling of 2026-09-13
-// (`WITHDRAWAL_AML_HOLD` in payments.ts); a large withdrawal is sent without review.
-// See docs/BOARD-DISCLOSURE-B-E.md §6.1.
-export async function forceReverifyKycAction(formData: FormData) {
-  const officerId = await requireAdmin("forceReverifyKycAction");
-  const userId = String(formData.get("userId") ?? "");
-  const reason = String(formData.get("reason") ?? "").trim().slice(0, 300);
-  if (!userId) return { ok: false as const, error: "Missing user id." };
-  if (reason.length < 5) return fieldError("reason", "Reason is required (≥ 5 chars).");
-  try {
-    const { forceReverifyKyc } = await import("@/lib/server/kyc-service");
-    const r = await forceReverifyKyc(officerId, userId, reason);
-    if (!r.ok) return { ok: false as const, error: r.error };
-    // ⭐ "ALSO FREEZE THE WALLET" (2026-09-13). Re-verification stops no money any more, so the
-    // dialog offers the lever that does, with the same written reason. It needs the SAME compliance
-    // grant this action already demanded above, so nothing is widened by offering it here.
-    // ⚠️ If the freeze fails the re-verification has still happened — the officer is told plainly
-    // rather than shown a success that only half-happened.
-    if (String(formData.get("alsoFreeze") ?? "") === "1") {
-      const { freezeWalletByOfficer } = await import("@/lib/server/wallet-freeze");
-      const f = await freezeWalletByOfficer(officerId, userId, reason);
-      revalidatePath(`/admin/players/${userId}`);
-      if (!f.ok) return { ok: false as const, error: `Re-verification was required, but the wallet was NOT frozen: ${f.error}` };
-    }
-    revalidatePath(`/admin/players/${userId}`);
-    return { ok: true as const };
-  } catch (err) {
-    return { ok: false as const, error: safeError(err, "Force re-verify failed") };
-  }
-}
-
-// ─── KYC review (officer decision on a pending submission) ──────────────────
-
-export async function approveKycAction(formData: FormData) {
-  const officerId = await requireAdmin("approveKycAction");
-  const userId = String(formData.get("userId") ?? "");
-  try {
-    // Maker-checker parity (audit 2026-07-21): a HIGH-RISK approval must go
-    // through the KYC workstation's recommend→seal two-officer flow
-    // (kyc/[id]/kyc-actions.ts). This one-click player-page approve has no
-    // second-officer step, so it must NOT become a way to single-officer-approve
-    // a high-risk applicant the workstation would force two officers on. Low/
-    // medium-risk approvals continue to flow through here unchanged.
-    const { kycRiskScore, KYC_MAKER_CHECKER_THRESHOLD } = await import("@/lib/server/kyc-risk");
-    const risk = await kycRiskScore(userId);
-    if (risk.score >= KYC_MAKER_CHECKER_THRESHOLD) {
-      audit({
-        category: "COMPLIANCE",
-        action: "kyc.approve.maker_checker_required",
-        actorId: officerId,
-        targetType: "User",
-        targetId: userId,
-        payload: { riskScore: risk.score, from: "player-detail", route: "use-workstation" },
-      });
-      return {
-        ok: false as const,
-        error: `High-risk submission (score ${risk.score}) — approve it from the KYC workstation, where a second officer must recommend and seal it. Open it from Approvals → the pending KYC review.`,
-      };
-    }
-    const { reviewKyc } = await import("@/lib/server/kyc-service");
-    const r = await reviewKyc({ officerId, userId, decision: "APPROVE" });
-    if (r.ok) {
-      revalidatePath(`/admin/players/${userId}`);
-      revalidatePath("/admin/approvals");
-    }
-    return r.ok ? { ok: true as const } : { ok: false as const, error: r.error };
-  } catch (err) {
-    return { ok: false as const, error: safeError(err, "Approve KYC failed") };
-  }
-}
-
-export async function rejectKycAction(formData: FormData) {
-  const officerId = await requireAdmin("rejectKycAction");
-  const userId = String(formData.get("userId") ?? "");
-  const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
-  try {
-    const { reviewKyc } = await import("@/lib/server/kyc-service");
-    const r = await reviewKyc({ officerId, userId, decision: "REJECT", reason });
-    if (r.ok) {
-      revalidatePath(`/admin/players/${userId}`);
-      revalidatePath("/admin/approvals");
-    }
-    return r.ok ? { ok: true as const } : { ok: false as const, error: r.error };
-  } catch (err) {
-    return { ok: false as const, error: safeError(err, "Reject KYC failed") };
-  }
-}
-
-/** Ask the player for more / clearer documents or extra info. Keeps the
- *  submission open (ADDITIONAL_INFO_REQUIRED) so they can update + resubmit. */
-export async function requestKycInfoAction(formData: FormData) {
-  const officerId = await requireAdmin("requestKycInfoAction");
-  const userId = String(formData.get("userId") ?? "");
-  const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
-  // Optional extra-document requests: a JSON array of non-empty descriptions.
-  let requestedDocs: string[] = [];
-  try {
-    const raw = JSON.parse(String(formData.get("requestedDocs") ?? "[]"));
-    if (Array.isArray(raw)) requestedDocs = raw.map((d) => String(d).trim()).filter((d) => d.length > 0).slice(0, 10);
-  } catch { /* ignore malformed — treated as none */ }
-  const { reviewKyc } = await import("@/lib/server/kyc-service");
-  const r = await reviewKyc({ officerId, userId, decision: "REQUEST_INFO", reason, requestedDocs });
-  if (r.ok) {
-    revalidatePath(`/admin/players/${userId}`);
-    revalidatePath("/admin/approvals");
-  }
-  return r.ok ? { ok: true as const } : { ok: false as const, error: r.error };
-}
+// ─── KYC decisions — NOT HERE (2026-10-10) ──────────────────────────────────
+// ⛔ `forceReverifyKycAction`, `approveKycAction`, `rejectKycAction` and `requestKycInfoAction` were deleted on
+// 2026-10-10 with their controls (`force-reverify-controls.tsx`, `src/components/admin/kyc-review-controls.tsx`).
+// Players now verify with typed details and are approved automatically when the checks pass; every officer decision —
+// approve (maker-checker bound to the case version), mark an automatic approval checked, ask for corrections (the
+// replacement for both "request more info" and "force re-verify", with "also freeze the wallet" in the same form),
+// reject, refuse, correct the date of birth — lives on the identity workstation (`/admin/kyc/[id]/kyc-actions.ts`),
+// beside the checks it rests on. A second door here decided identities on a screen that showed none of them, and an
+// uncalled server action is still a reachable endpoint (`test:orphan-actions`), so they are gone rather than hidden.
 
 // ─── Wallet freeze (officer) — 2026-09-13 ─────────────────────────────────────
 //

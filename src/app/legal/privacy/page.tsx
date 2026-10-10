@@ -87,10 +87,20 @@ const TITLE: Record<Locale, string> = {
 // default equal to it), and production prints its saved line, his approved words
 // (`docs/marketing-approvals/2026-10-09/approval-G10.json`). `test:privacy-notice` §2e refuses the name in every language;
 // COMPLIANCE-DECISIONS.md "Privacy v2026-10-09", item 5, records his words and the line.
+// 2026-10-10 (owner ruling, Ali: a player verifies with typed details, an agent applicant keeps photographs and a selfie —
+// COMPLIANCE-DECISIONS.md "Privacy v2026-10-10"): §2's Identity bullet says what is collected now — for withdrawals and
+// agent applications, the type, number and expiry of one document (agent mode types them too, before its photographs);
+// photographs of it and a selfie only from people applying to become agents, and from players who sent them before
+// 10 October 2026, kept as §5 states. ⚠️ "People applying to become agents", not "agent applicants": the photo step opens
+// for anyone who starts an agent application (`/profile/kyc?for=agent`), before any application exists to apply WITH —
+// so the narrower word would have promised less collection than the code does. §4 is unchanged on purpose: Cloudflare R2
+// still holds those photographs. ⛔ §5, §6 and the data-rights text are NOT this version's words — the later change to
+// what erasure keeps is its own version (a second one the same day is 2026-10-10.2). `POLICY_PAGES.privacy.codeVersion`
+// moved with META (`test:policy-lines` L0).
 const META: Record<Locale, string> = {
-  en: "Version 2026-10-09 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
-  sw: "Toleo 2026-10-09 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
-  zh: "版本 2026-10-09 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
+  en: "Version 2026-10-10 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
+  sw: "Toleo 2026-10-10 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
+  zh: "版本 2026-10-10 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
 };
 
 /**
@@ -118,7 +128,7 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="2" title="What we collect">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">Identity</strong>: full name and date of birth; the type and number of one of four documents — a National ID (NIDA), a passport, a driving licence or a voter&apos;s card — and its expiry date where the document has one; photographs of that document; and a selfie</li>
+          <li><strong className="text-text">Identity</strong>: full name and date of birth; for withdrawals and agent applications, the type and number of one of four documents — a National ID (NIDA), a passport, a driving licence or a voter&apos;s card — and its expiry date where the document has one; and photographs of that document and a selfie from people applying to become agents, and from players who sent them before 10 October 2026 (kept as §5 states)</li>
           <li><strong className="text-text">Contact</strong>: phone number (E.164), email address, region</li>
           <li><strong className="text-text">Financial</strong>: deposit and withdrawal records, mobile-money MSISDN, prediction activity; for a card deposit, the billing name and address you enter; and the name registered to a mobile-money number you withdraw to</li>
           <li><strong className="text-text">Technical</strong>: IP address and browser user-agent string, recorded on sign-in and security events; session issue and expiry times; and, if you allow analytics, through Google Analytics, the pages you open, your device and browser type, and your approximate location</li>
@@ -240,7 +250,7 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="2" title="Tunachokusanya">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">Utambulisho</strong>: jina kamili na tarehe ya kuzaliwa; aina na namba ya mojawapo ya nyaraka nne — Kitambulisho cha Taifa (NIDA), pasipoti, leseni ya udereva au kadi ya mpiga kura — pamoja na tarehe ya kuisha muda wake pale nyaraka inapokuwa nayo; picha za nyaraka hiyo; na selfie</li>
+          <li><strong className="text-text">Utambulisho</strong>: jina kamili na tarehe ya kuzaliwa; kwa ajili ya kutoa fedha na maombi ya uwakala, aina na namba ya mojawapo ya nyaraka nne — Kitambulisho cha Taifa (NIDA), pasipoti, leseni ya udereva au kadi ya mpiga kura — pamoja na tarehe ya kuisha muda wake pale nyaraka inapokuwa nayo; na picha za nyaraka hiyo pamoja na selfie, kutoka kwa watu wanaoomba kuwa mawakala, na kutoka kwa wachezaji walioziwasilisha kabla ya tarehe 10 Oktoba 2026 (zinahifadhiwa kama §5 inavyoeleza)</li>
           <li><strong className="text-text">Mawasiliano</strong>: namba ya simu (E.164), anwani ya barua pepe, mkoa</li>
           <li><strong className="text-text">Fedha</strong>: kumbukumbu za kuweka na kutoa fedha, MSISDN ya pesa za simu, shughuli za utabiri; kwa kuweka fedha kwa kadi, jina na anwani ya bili unayoandika; na jina lililosajiliwa kwa namba ya pesa za simu unayotolea fedha</li>
           <li><strong className="text-text">Kiufundi</strong>: anwani ya IP na maandishi ya user-agent ya kivinjari, huhifadhiwa unapoingia na kwenye matukio ya usalama; muda wa kuanza na wa kuisha wa kipindi; na, ukiruhusu takwimu, kupitia Google Analytics, kurasa unazofungua, aina ya kifaa na kivinjari chako, na eneo lako la takriban</li>
@@ -364,7 +374,7 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="2" title="我们收集的信息">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">身份</strong>：全名与出生日期；所提交证件的类型与号码（国民身份证（NIDA）、护照、驾驶证或选民证四者之一），以及证件载明的有效期（如有）；该证件的照片；以及一张自拍照</li>
+          <li><strong className="text-text">身份</strong>：全名与出生日期；为办理提现及代理申请而提供的一份证件的类型与号码（国民身份证（NIDA）、护照、驾驶证或选民证四者之一），以及证件载明的有效期（如有）；以及该证件的照片和一张自拍照——收集自申请成为代理的人士，以及在 2026 年 10 月 10 日之前提交过这些照片的玩家（按第 5 条所述保留）</li>
           <li><strong className="text-text">联系方式</strong>：电话号码（E.164）、电子邮箱地址、地区</li>
           <li><strong className="text-text">财务</strong>：存款与提现记录、移动货币 MSISDN、预测活动；银行卡充值时您填写的账单姓名与地址；以及您提现至的移动货币号码的注册姓名</li>
           <li><strong className="text-text">技术</strong>：IP 地址与浏览器 user-agent 字符串（在登录及安全事件时记录）；会话签发与到期时间；以及在您允许分析时，通过 Google Analytics 收集的您打开的页面、设备与浏览器类型和大致位置</li>

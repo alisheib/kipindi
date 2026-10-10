@@ -27,12 +27,19 @@
  * and a crash prints no FAIL line at all — so an uncaught throw would turn a caught defect into
  * "went red on the wrong assertion".
  *
+ * ⭐ 2026-10-10 (owner ruling: players verify identity with TYPED details and are approved at once — docs/COMPLIANCE-
+ * DECISIONS.md, "2026-10-10 · Players verify identity with typed details"). The gate's question does not change: it asks
+ * "ever approved?", and an AUTOMATIC approval answers it exactly as an officer's does (§2.9). An officer's re-check is
+ * now "ask for corrections" (`askForCorrections`, which replaced force re-verify), and an officer may refuse an
+ * identity only while it is with them or approved — never while the player is correcting it (§4).
+ *
  * SECTIONS
  *   §1  every never-approved state: deposit goes through with or without a confirmed email (no identity door,
  *       and no email door since 2026-10-07), bet accepted,
  *       withdrawal REFUSED with that state's own reason
- *   §2  the positive controls — APPROVED withdraws; APPROVED with no stamp: gate, panel and predicate agree
- *   §3  🔴 RE-VERIFICATION: approved once, re-verifying now — the withdrawal STAYS OPEN
+ *   §2  the positive controls — APPROVED withdraws; APPROVED with no stamp: gate, panel and predicate agree;
+ *       a typed press approved at once withdraws
+ *   §3  🔴 CORRECTIONS ASKED: approved once, correcting now — the withdrawal STAYS OPEN
  *   §4  `approvedAt` survives the paths that would quietly clear it
  *   §5  a missing KYC row is NOT_STARTED, not "fine"
  *   §6  a failed read: the gate refuses, the record says UNREADABLE, money in and stakes are never stopped
@@ -49,7 +56,7 @@ import { db } from "../src/lib/server/store.ts";
 import { deposit, withdraw } from "../src/lib/server/wallet-service.ts";
 import { createMarket, buyPosition } from "../src/lib/server/market-service.ts";
 import { assertIdentityForPayout, readIdentityStanding } from "../src/lib/server/kyc-gate.ts";
-import { startKyc, reviewKyc, forceReverifyKyc } from "../src/lib/server/kyc-service.ts";
+import { startKyc, verifyIdentity, reviewKyc, askForCorrections, kycRowVersion } from "../src/lib/server/kyc-service.ts";
 import { getAuditPage, auditFlush } from "../src/lib/server/audit.ts";
 import { emailOutbox } from "../src/lib/server/email.ts";
 import { kycGateState } from "../src/lib/kyc-gate-state.ts";
@@ -125,12 +132,17 @@ async function account(id: string, kyc: KycState, opts: { emailConfirmed?: boole
   await db.kyc.upsert({
     id: `kyc_${id}`, userId: id, status: kyc, rejectReason: null, rejectNote: null,
     idType: "NIDA", idNumber: `199001011${String(seq).padStart(11, "0")}`, idExpiry: null,
-    idVerifiedAt: now(), fullName: "Gate Tester", dob: "1990-01-01", documents: [],
+    idVerifiedAt: now(), fullName: "Gate Tester", dob: "1990-01-01", documents: [], extraRequests: [],
     reviewerId: null, reviewedAt: now(), submittedAt: now(),
     approvedAt: opts.approvedAt !== undefined ? opts.approvedAt : kyc === "APPROVED" ? now() : null,
+    // ⛔ Every column named (2026-10-10) — a BUILT row. The withdrawal gate asks `approvedAt`/status only; which KIND
+    // of approval a row holds (officer's photo approval, automatic typed one) is the agent gate's question, not this one's.
+    photoVerifiedAt: null, autoApprovedAt: null, autoFlags: [], postCheckedAt: null, postCheckedById: null, priorIdentities: [],
     createdAt: now(), updatedAt: now(),
   });
 }
+/** The row version an officer's form posts (`kycRowVersion`, 2026-10-10). */
+const versionOf = async (id: string) => kycRowVersion((await db.kyc.findByUserId(id))!);
 
 const market = await createMarket({
   titleEn: "Identity gate market", titleSw: "Soko la kitambulisho", category: "macro",
@@ -223,20 +235,38 @@ section("§2 · ★ an approved account withdraws — the gate is not a blanket 
   await doDeposit("kg_unstamped");
   const w2 = await doWithdraw("kg_unstamped");
   ok("2.8 · ★ …and the withdrawal itself goes through", w2.ok, why(w2));
+
+  // ⭐ THE TYPED PRESS (2026-10-10). A player with no submission types their details, is approved AT ONCE — no officer —
+  // and that approval opens the withdrawal exactly as an officer's does: the gate asks "ever approved?", nothing more.
+  // ⚠️ A name no other fixture here carries: every row above is "Gate Tester" (1990-01-01), and the same-person check
+  // must not be what this case measures.
+  await account("kg_typed", "NOT_STARTED");
+  await doDeposit("kg_typed");
+  const before = await doWithdraw("kg_typed");
+  ok("2.9a · fixture · before the press, the withdrawal is refused for identity", !before.ok && before.reason === "kyc_not_verified", why(before));
+  const v = await run(() => verifyIdentity("kg_typed", { idType: "VOTER_CARD", idNumber: "KG7700112", fullName: "Typed Gate Player" }));
+  const typedRow = await db.kyc.findByUserId("kg_typed");
+  ok("2.9b · fixture · the typed press approved at once, automatically",
+    v.ok && (v.data as { outcome?: string } | undefined)?.outcome === "approved" && typedRow?.status === "APPROVED" && !!typedRow?.autoApprovedAt && typedRow?.reviewerId === null && !!typedRow?.approvedAt,
+    `${why(v)} · ${String(typedRow?.status)}`);
+  const w3 = await doWithdraw("kg_typed");
+  ok("2.9 · ★ an AUTOMATIC typed approval opens the withdrawal — the gate, the panel and the predicate agree",
+    w3.ok && kycGateState(typedRow) === null && approvedEver(typedRow) === true, `${why(w3)} · panel ${String(kycGateState(typedRow))}`);
 }
 
 // ── §3 · RE-VERIFICATION — THE ONE ASYMMETRY, AND THE POINT OF THE COLUMN ────
-section("§3 · 🔴 approved once, re-verifying now — the money already earned stays reachable");
+section("§3 · 🔴 approved once, correcting now — the money already earned stays reachable");
 {
-  // 🔴 THIS IS THE SECTION THE WHOLE `approvedAt` DESIGN EXISTS FOR. `forceReverifyKyc` moves an
-  // APPROVED account to ADDITIONAL_INFO_REQUIRED, and that player HOLDS REAL MONEY earned under an
-  // identity we accepted. Gate the payout on CURRENT status and it freezes. An officer who must stop
-  // money leaving freezes the wallet — a money control, not an identity status.
+  // 🔴 THIS IS THE SECTION THE WHOLE `approvedAt` DESIGN EXISTS FOR. An officer's request for corrections
+  // (`askForCorrections`, which replaced `forceReverifyKyc` on 2026-10-10) moves an APPROVED account to
+  // ADDITIONAL_INFO_REQUIRED, and that player HOLDS REAL MONEY earned under an identity we accepted. Gate the
+  // payout on CURRENT status and it freezes. An officer who must stop money leaving freezes the wallet — a money
+  // control, not an identity status ("Also freeze the wallet" is offered on the same action).
   await account("kg_reverify", "APPROVED");
   await doDeposit("kg_reverify");
 
-  const rv = await run(() => forceReverifyKyc(officer, "kg_reverify", "Document expired — please resubmit."));
-  ok("3.0 · fixture · the officer really forced a re-verification", rv.ok, why(rv));
+  const rv = await run(async () => askForCorrections(officer, "kg_reverify", { note: "Your document has expired — please check your details.", version: await versionOf("kg_reverify") }));
+  ok("3.0 · fixture · the officer really asked for corrections", rv.ok, why(rv));
   const row = await db.kyc.findByUserId("kg_reverify");
   ok("3.1 · status moved off APPROVED", row?.status === "ADDITIONAL_INFO_REQUIRED", String(row?.status));
   ok("3.2 · ⛔ …but the first-approval stamp SURVIVED", !!row?.approvedAt,
@@ -258,10 +288,12 @@ section("§3 · 🔴 approved once, re-verifying now — the money already earne
 // ── §4 · `approvedAt` survives the paths that would quietly clear it ────────
 section("§4 · the stamp is written once and never cleared");
 {
-  // 4a — the REJECT-then-RESTART path. APPROVED → force-reverify → REJECTED → the player taps "start
-  // again". `restartedSubmission` rebuilds the submission from scratch instead of spreading `...k`; if
-  // it drops the column, a player who was verified, re-checked, turned down and re-applied can no
-  // longer reach their own balance — and nothing else would go red.
+  // 4a — the REJECT-then-RESTART path. APPROVED → corrections asked → REJECTED (the player never answered)
+  // → the player taps "start again". `restartedSubmission` rebuilds the
+  // submission from scratch instead of spreading `...k`; if it drops the column, a player who was verified,
+  // re-checked, turned down and re-applied can no longer reach their own balance — and nothing else would go red.
+  // ⭐ 2026-10-10: corrections are now asked of APPROVED identities, and an officer may refuse the file while the
+  // player still holds it (review R1.1) — a player who never answers must not keep a refusal off the record.
   // ⚠️ A FIXED DATE IN THE PAST, not `now()`. 4.5 compares the stamp before and after a re-approval;
   // stamped "now" at creation, a re-stamp landing in the same millisecond would read as unchanged and
   // `re-approval-restamps-the-first-approval-date` could slip through on timing alone.
@@ -270,11 +302,12 @@ section("§4 · the stamp is written once and never cleared");
   const before = (await db.kyc.findByUserId("kg_restart"))!.approvedAt;
   ok("4.0 · fixture · the stamp was set to begin with", before === FIRST_APPROVAL, String(before));
 
-  await forceReverifyKyc(officer, "kg_restart", "Please resubmit your document.");
-  await reviewKyc({ officerId: officer, userId: "kg_restart", decision: "REJECT", reason: "Illegible document." } as never);
+  const asked = await run(async () => askForCorrections(officer, "kg_restart", { note: "Please check your details.", version: await versionOf("kg_restart") }));
+  ok("4.0b · fixture · corrections asked", asked.ok && (await db.kyc.findByUserId("kg_restart"))?.status === "ADDITIONAL_INFO_REQUIRED", why(asked));
+  const refused = await run(async () => reviewKyc({ officerId: officer, userId: "kg_restart", decision: "REJECT", rejectCode: "DETAILS_MISMATCH", version: await versionOf("kg_restart") }));
   ok("4.1 · fixture · the submission really is REJECTED (a recoverable code)",
-    (await db.kyc.findByUserId("kg_restart"))?.status === "REJECTED",
-    String((await db.kyc.findByUserId("kg_restart"))?.status));
+    refused.ok && (await db.kyc.findByUserId("kg_restart"))?.status === "REJECTED",
+    `${why(refused)} · ${String((await db.kyc.findByUserId("kg_restart"))?.status)}`);
 
   const restarted = await run(() => startKyc("kg_restart"));
   ok("4.1b · fixture · the restart was accepted", restarted.ok, why(restarted));
@@ -290,9 +323,12 @@ section("§4 · the stamp is written once and never cleared");
   // It approved a submission `startKyc` had just reset to IN_PROGRESS — a state `reviewKyc` refuses —
   // and swallowed the refusal, so `approvedAt` was trivially unchanged. ⛔ The submission is moved to
   // PENDING_REVIEW first, and the approval's own return value is asserted before the stamp is read.
-  const k2 = (await db.kyc.findByUserId("kg_restart"))!;
-  await db.kyc.upsert({ ...k2, status: "PENDING_REVIEW", submittedAt: now(), updatedAt: now() });
-  const reapproval = await run(() => reviewKyc({ officerId: officer, userId: "kg_restart", decision: "APPROVE" } as never));
+  // ⭐ 2026-10-10: the move is the player's own typed send after the restart — it goes to an officer, because the
+  // refusing officer is carried through the restart — and the approval posts the version it decides on.
+  const sent = await run(() => verifyIdentity("kg_restart", { idType: "NIDA", idNumber: "19900101770000000417", fullName: "Restart Gate Player" }));
+  ok("4.4a · fixture · the re-sent identity went to an officer, not straight to an automatic approval",
+    sent.ok && (sent.data as { outcome?: string } | undefined)?.outcome === "routed" && (await db.kyc.findByUserId("kg_restart"))?.status === "PENDING_REVIEW", why(sent));
+  const reapproval = await run(async () => reviewKyc({ officerId: officer, userId: "kg_restart", decision: "APPROVE", version: await versionOf("kg_restart") }));
   ok("4.4b · fixture · the re-approval actually happened", reapproval.ok, why(reapproval));
   const reapproved = await db.kyc.findByUserId("kg_restart");
   ok("4.4c · fixture · …and the account really is APPROVED again", reapproved?.status === "APPROVED", String(reapproved?.status));

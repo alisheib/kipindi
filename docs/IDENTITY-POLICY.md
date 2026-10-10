@@ -1,13 +1,95 @@
 # Identity policy — what we actually check, and what we tell people
 
-**Owner decision, Ali, 2026-07-19, widened 2026-08-19.** This is the authoritative
-statement. If any surface, doc or comment contradicts it, that surface is wrong.
+**Owner decision, Ali, 2026-07-19, widened 2026-08-19; players verify with TYPED details since 2026-10-10.** This is
+the authoritative statement. If any surface, doc or comment contradicts it, that surface is wrong.
 
 > ⚠️ **This file was `NIDA-POLICY.md` until 2026-08-20.** It was renamed because it
 > stopped being about one document: a player now proves identity with **any ONE of
 > four**. The rename is not cosmetic — a file called `NIDA-POLICY.md` is the document a
 > future session reaches for when it wants to know what happens to a *passport*, and
 > finds nothing.
+
+## ⭐ How identity is verified — TYPED details for players, photos for agents (owner ruling, 2026-10-10)
+
+The Gaming Board asked, relayed by Ali on 2026-10-10, that players no longer upload identity documents. Ali ruled:
+players upload nothing at any step and are **approved at once** when the automatic checks pass; officers act
+**afterwards**; an officer may ask a player only to **correct** their typed details; **agents keep everything as
+before** (document photos and a selfie, reviewed by an officer). The record — the rulings, what each costs, and what
+did not change — is [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) § "2026-10-10 · Players verify identity with
+typed details and are approved at once; agents keep photo identity — Privacy v2026-10-10, Terms v2026-10-10, AML
+v2026-10-10 (Gaming Board request, relayed by the owner)". The Board letter is
+[`BOARD-DISCLOSURE-KYC-TYPED-ONLY.md`](BOARD-DISCLOSURE-KYC-TYPED-ONLY.md) (a draft for Ali to send).
+
+**Two tracks, one service** (`src/lib/server/kyc-service.ts`):
+
+| Track | Who | What they give | Who decides, and when |
+|---|---|---|---|
+| **Typed** | every player | one document's type, number, expiry (passport and licence) and the full name as printed; the date of birth is the ACCOUNT's (`User.dob`), typed only by an account with none | `verifyIdentity` — ONE press. The automatic checks (`decideKyc`, `src/lib/kyc-auto-checks.ts`) approve it at once, or route it to an officer. An officer checks every automatic approval afterwards |
+| **Agent** | agent applicants only | the same details, then the document's photos and a selfie (`requiredSlots` in `src/lib/id-documents.ts`) | `submitIdentityStep` → `attachDocument` → `submitForReview` → an officer approves on the photos, which stamps `photoVerifiedAt` — the agent programme's identity gate (`photoIdentityVerified`, `src/lib/server/agent-identity.ts`), which counts the stamp only over the photos it approved: the full set on file, each uploaded no later than the stamp (`photoSetStampedBy`) |
+
+`/profile/kyc` draws the agent track when the link says `?for=agent` (the `/agent` button), when the account holds an
+agent application or a live invitation bound to its email (`agentIdentityIntent`), or when a photo case is with an
+officer or sent back for corrections. Everyone else gets the typed form.
+
+**Each automatic check answers block, route or flag** — and nothing else:
+
+- **Block** (never approved by anyone, and refused before the decision runs): the account's date of birth says under
+  18 (a FINAL refusal, the wallet frozen first — a date typed by an account with none is refused as a form error and
+  audited `kyc.identity.underage_attempt`, and routes the next press); an expired passport or licence. Every officer
+  approval and Mark checked asks the blocks again on the server.
+- **Route** — the identity goes to an officer (PENDING_REVIEW, audited `kyc.routed` with its reasons), never refused:
+  the NIDA number's birth digits say under 18 (the officers' bell says urgent) · the player typed an under-18 date of
+  birth earlier (`UNDERAGE_ATTEMPT`, urgent too) · an officer has already ruled on this
+  identity (`reviewerId` on the row — carried through the player's restart — or corrections asked; and the DURABLE
+  audit trail, so a row the pre-2026-10-10 build restarted with no reviewer still counts: an officer's refusal-type act —
+  `kyc.rejected`, `kyc.more_info_requested`, `kyc.force_reverify`, `kyc.corrections_asked`, `kyc.refusal_reopened`,
+  `kyc.dob_corrected` — with no officer approval after it) · risk score ≥ 70 (`KYC_MAKER_CHECKER_THRESHOLD`, the
+  two-officer rule) · an OFFICER or IDENTITY_REFUSED wallet hold · a rejected source-of-funds declaration · an open AML
+  escalation (a filtered durable read of `kyc.escalated_to_aml` since the last decision) · a possible same person (same
+  normalised name and date of birth) on an account that is self-excluded, cooled off, suspended, closed, frozen or
+  finally refused · the agent photo track. ⛔ **Every one of these reads fails closed**: a failed read refuses the press
+  with "try again", and a truncated trail routes the identity to an officer — a fact we could not read is never "nothing
+  to see".
+- **Flag** — approved, and shown first on the officers' post-check list: the NIDA birth date differs from the account's
+  (both adult) · a passport outside the usual shape · a licence or voter's card (no published format) · any other
+  possible same person. ⛔ **A flag never blocks an officer.**
+
+⛔ **The automatic path never lifts a wallet hold** — a hold routes the identity instead; only an officer's decision
+(an approval, a request for corrections, a recoverable rejection) lifts a stale identity hold — and on an automatic
+approval no officer has checked, only an officer's APPROVAL does. That is why re-opening a final refusal of such an
+approval KEEPS the identity hold (`holdKept` on the audit row): its `approvedAt` would otherwise reopen withdrawals on an
+identity no officer accepted, so the next press routes to an officer and that officer's approval lifts the hold.
+
+**Officers act on ONE door, the identity workstation `/admin/kyc/[id]`** (the player page's one-click decisions were
+deleted the same day). Every form posts the row version it showed — `updatedAt` plus a keyed digest of the identity
+(`kycRowVersion`): Approve, a two-officer recommendation and Mark checked need the row exactly as shown; a rejection,
+corrections and a date-of-birth correction need only the identity unchanged, so a player attaching photos cannot void
+an officer's refusal. The actions: Approve (two officers at risk ≥ 70, the recommendation bound to the version; on
+the workstation with the attestation set it is also the post-check of an automatic approval — an approval through the
+agent programme's `approveAgent` is not) · **Mark checked** on an automatic approval · **Ask for corrections** (a note;
+never an extra document) · a recoverable rejection · a final refusal (also on an approved identity; it freezes the
+wallet itself) · Escalate to AML · a date-of-birth correction (the only fix for a wrong sign-up date; the player gets its
+own notice). While the player holds the move (corrections asked) an officer can still reject — recoverably or finally —
+and escalate to AML; nothing is approved there. "Also freeze the wallet" is offered with every ask and every
+rejection, because none of them stops money on its own — and ⛔ it is REQUIRED for a recoverable rejection of an
+automatic approval no officer has checked, in any status (`uncheckedAutomaticApproval`, `src/lib/kyc-approval.ts`; the
+service refuses it without the freeze, the rail ticks and locks the box). The **post-check list** on `/admin/kyc` holds
+every automatic approval nobody has checked yet — approved, back with an officer, or with the player, a chip saying
+which — flagged first, and a lifecycle chore bells the officers who can act (`kycOfficerRoles()`) for the approved ones
+— at its next run for a flagged approval, after 24 hours otherwise.
+
+**An approved-once account asked for corrections may change its name and expiry, never its document type or number**
+(`identity_number_locked`): a document that changed goes through an officer's recoverable rejection and a restart, and
+the next send goes back to an officer.
+
+**What players sent before 2026-10-10 stays.** Their photos are kept, readable only through the officers' image route
+(a frozen accept-list, `LEGACY_KYC_DOC_SLOTS`), and held 7 years from closure as before
+([`DATA-RETENTION.md`](DATA-RETENTION.md)). With no images, the typed details are the only identification record, so
+the submission keeps a history, `priorIdentities`: the identity it held is appended when any fact of it (type, number,
+expiry, name, date of birth) changes after it was decided — approved, refused, sent or routed to an officer, or asked
+to be corrected — and on every restart, re-open and date-of-birth correction; an undecided edit is not. At most 20
+entries, always keeping the first approved one. Erasure pseudonymises every entry by the row's own rule, and an access
+request shows the subject their own entries without the officer or fingerprint on them (`dsarKycView`).
 
 ## ⭐ When identity is asked — before WITHDRAWAL only (owner ruling, 2026-09-13)
 
@@ -20,10 +102,13 @@ accepted consequences (declared age only until withdrawal; sanctions/PEP screeni
 review, after the money) and the date history are in
 [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md), 2026-09-13. The seam is
 `src/lib/server/kyc-gate.ts`; the one predicate the page and the server share is
-`approvedEver` in `src/lib/kyc-approval.ts`.
+`approvedEver` in `src/lib/kyc-approval.ts`. ⚠️ **Since 2026-10-10 "the review" is, for most players, an officer's
+post-check of an identity already approved** — so the sanctions/PEP assessment can come after a withdrawal, not only
+after deposits and bets (AML §4 says so).
 
 ⛔ **Read the dates before "restoring" anything.** 2026-08-20: identity stopped gating withdrawal.
-2026-09-05: identity gated deposit, play and withdrawal. 2026-09-13: withdrawal only.
+2026-09-05: identity gated deposit, play and withdrawal. 2026-09-13: withdrawal only. 2026-10-10: still withdrawal only —
+what a player gives changed (typed details, no uploads), and most are approved at once.
 
 **Final and recoverable refusals (2026-09-13).** Because money is now played before identity is
 checked, a refusal can land on an account holding a balance, and the reason code decides what
@@ -31,8 +116,8 @@ follows (`src/lib/kyc-refusal.ts`):
 
 | Code | Kind | What follows |
 |---|---|---|
-| `BLURRY_DOC` · `EXPIRED_ID` · `DETAILS_MISMATCH` · `OTHER` | recoverable | The player may submit again; the document number is freed. |
-| `UNDERAGE` · `SANCTIONED` · `DUPLICATE_IDENTITY` | **final** | The wallet is frozen first; the document number stays **reserved**; the player cannot restart; an officer decides the balance (`refused-funds.ts`) and may re-open a wrong refusal. |
+| `EXPIRED_ID` · `DETAILS_MISMATCH` · `OTHER` (and legacy `BLURRY_DOC`) | recoverable | The player may submit again; the document number is freed. ⭐ Since 2026-10-10 an officer's recoverable refusal keeps the officer on the row through the restart, so the next send goes back to an officer, never to an automatic approval. ⚠️ A recoverable refusal of an identity approved once keeps `approvedAt`, so withdrawals stay open unless the officer also freezes the wallet — which is REQUIRED (the service refuses otherwise) when the identity is an automatic approval no officer has checked, whatever its status. `BLURRY_DOC` is refused for a new decision (no player sends an image) and kept for the rows that carry it. |
+| `UNDERAGE` · `SANCTIONED` · `DUPLICATE_IDENTITY` | **final** | The wallet is frozen first; the document number stays **reserved**; the player cannot restart; an officer decides the balance (`refused-funds.ts`) and may re-open a wrong refusal — which lifts the identity hold, except when the refused identity was an automatic approval no officer had checked: then the hold stays until an officer approves the identity the player sends next (2026-10-10). |
 
 ## The policy
 
@@ -40,34 +125,55 @@ follows (`src/lib/kyc-refusal.ts`):
 > and **unique — one document, one account**. That is the whole machine-side control.
 > There is **no authority check**, for any of the four, and none is required.
 
-Identity assurance comes from the **documents** (the identity document's image, plus a
-selfie) reviewed by a human compliance officer, not from a government API.
+**Since 2026-10-10, a player's identity rests on the typed details, the automatic checks above and an officer's check
+afterwards; an agent applicant's still rests on the document images and a selfie, reviewed by an officer before
+approval.** Neither comes from a government API.
+
+> ~~Identity assurance comes from the **documents** (the identity document's image, plus a selfie) reviewed by a human
+> compliance officer, not from a government API.~~ — ⚪ superseded for players on 2026-10-10; still true of agent
+> applicants and of every identity approved before that date.
 
 ## The four documents — owner decision, Ali 2026-08-19
 
 *"We have to give options for KYC, not just NIDA. One of them: mandatory NIDA, or
 passport number and attach passport front page, or driving licence number and attach
 driving licence front, or voting card and attach it. One of them works for us, not just
-NIDA."*
+NIDA."* ⚪ *The "attach" half of this quote is superseded for players by the 2026-10-10 ruling (no uploads); it still
+describes what an agent applicant sends.*
 
-| Document | Number rule | Source | Images required | Expires |
+| Document | Number rule | Source | Images required — players: **none** since 2026-10-10 · agent applicants: | Expires |
 |---|---|---|---|---|
 | **NIDA** | exactly 20 digits, first 8 a real `YYYYMMDD` date | 🟢 **Published** — example `19950101-12345-67890-12` decomposes 8-5-5-2 | NIDA front · NIDA back · selfie | no |
-| **Passport** | 9 alphanumeric, letters leading — **advisory, never a refusal** | 🟡 **Secondary sources only.** EAC/ICAO booklet issued since Jan 2018; no TRA/Immigration spec found | bio page · selfie | **yes** |
-| **Driving licence** | none — a sanity band only (4–20 alphanumeric) | 🔴 **Not published.** TRA's own guide describes the card and not the number | licence front · selfie | **yes** |
-| **Voter's card** | none — a sanity band only (4–20 alphanumeric) | 🔴 **Not published.** NEC/INEC confirm a number exists; its format is not published | card image · selfie | no |
+| **Passport** | 9 alphanumeric, letters leading — **advisory, never a refusal** (outside it: the `PASSPORT_SHAPE` flag) | 🟡 **Secondary sources only.** EAC/ICAO booklet issued since Jan 2018; no TRA/Immigration spec found | bio page · selfie | **yes** |
+| **Driving licence** | none — a sanity band only (4–20 alphanumeric; the `NO_PUBLISHED_FORMAT` flag) | 🔴 **Not published.** TRA's own guide describes the card and not the number | licence front · selfie | **yes** |
+| **Voter's card** | none — a sanity band only (4–20 alphanumeric; the `NO_PUBLISHED_FORMAT` flag) | 🔴 **Not published.** NEC/INEC confirm a number exists; its format is not published | card image · selfie | no |
+
+The image column is the agent photo track's `requiredSlots`. A player's typed form has no file input at any step, and
+an officer can no longer ask anyone for an extra document.
 
 ⛔ **THE TWO OPEN FIELDS ARE INSTRUCTED, NOT LAZY.** Ali, 2026-08-19: *"for now driving
 and voting, keep them open — later we change."* A wrong regex on a national ID locks a
 real citizen out of their own money, and a format-rejected submission never reaches the
-human who is the actual control. A later session does **not** get to tighten either on a
+automatic checks or an officer at all. A later session does **not** get to tighten either on a
 guess. Adding a real rule is a one-line change to that document's entry in
-`src/lib/id-documents.ts`, **with its citation beside it**.
+`src/lib/id-documents.ts`, **with its citation beside it**. ⚠️ Since 2026-10-10 the cost of keeping them open is
+higher: with no image, a licence or voter's-card number is checked for uniqueness and nothing more before an automatic
+approval — which is why both carry a flag that puts them first on the officers' post-check list.
 
-⭐ **THE SELFIE SURVIVES ON ALL FOUR ON PURPOSE.** *"Selfie matches the ID photo"* is one
-of the officer's four attestations (`src/lib/kyc-attestations.ts`). Dropping it for three
-of the types would have removed the human control in the same change that widened the
-document list — which is exactly what this policy forbids.
+## The selfie — agent applicants only since 2026-10-10
+
+*"Selfie matches the ID photo"* is one of the four attestations of the **photo** set (`photo-2026-09`,
+`src/lib/kyc-attestations.ts`), which an officer uses on a photo case: an agent applicant's, or a case whose full photo
+set is on file from before 2026-10-10. A typed case uses the **typed** set (`typed-2026-10`): name and date of birth
+look genuine and complete · document number and its flags reviewed · no other account found for this person ·
+sanctions/PEP clear. The workstation chooses the set from the row (`photoSetComplete`), never from the form.
+
+> ~~⭐ **THE SELFIE SURVIVES ON ALL FOUR ON PURPOSE.** Dropping it for three of the types would have removed the human
+> control in the same change that widened the document list — which is exactly what this policy forbids.~~ — ⚪
+> superseded for players on 2026-10-10 by the owner's ruling (the Gaming Board's request). The control it protected —
+> a person matched to the document — no longer exists for players, and that is stated as a cost, not hidden:
+> [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) 2026-10-10, "What this costs". It still holds for agents: all
+> four documents keep the selfie on the agent photo track.
 
 ## What the code actually does
 
@@ -75,10 +181,13 @@ document list — which is exactly what this policy forbids.
 |---|---|---|
 | Format check, per document | `validateIdNumber` in [`src/lib/id-documents.ts`](../src/lib/id-documents.ts) — ONE catalogue, one entry per type | ✅ enforced |
 | **Uniqueness — one document, one account** | `db.kyc.findActiveByIdNumber(type, number, userId)` is the fast path; the **partial unique index** is the enforcement. A **recoverable** refusal frees the number; a **final** refusal (`UNDERAGE`, `SANCTIONED`, `DUPLICATE_IDENTITY`) keeps it reserved — both indexes and both fast paths ask the same question (2026-09-13, `20260913120000_kyc_at_withdrawal`) | ✅ enforced, audited as `kyc.id.duplicate_blocked` |
-| Age ≥ 18 | `validators.dateOfBirth` at parse time **and** `kyc-service` above the per-document branch — both on the DECLARED date of birth, and both through ONE predicate, `isOfAge` (`src/lib/id-documents.ts`): **whole calendar years on the Africa/Dar_es_Salaam date** (2026-09-13, audit session 95 — the schema used 365.25-day years and the service calendar years on UTC, and their ~12-hour disagreement let the service issue an automatic FINAL UNDERAGE refusal to a player already 18; `nida.ts` and `/admin/kyc/[id]` ask the same predicate). ⚠️ **From 2026-09-13 the declared date is the only age control before a player's first withdrawal** (Ali's ruling, consequence recorded in `COMPLIANCE-DECISIONS.md`): a player plays on the date they typed, and the officer's "18 or older" checklist row at review is the first comparison against a document | ✅ enforced for **all four** (declared); see the note below |
-| Expiry | captured and refused at submit **and** re-checked at submit-for-review, for the two documents that carry one | ✅ enforced |
+| Age ≥ 18 | `validators.dateOfBirth` at parse time **and** `kyc-service` above the per-document branch, both through ONE predicate, `isOfAge` (`src/lib/id-documents.ts`): **whole calendar years on the Africa/Dar_es_Salaam date** (2026-09-13, audit session 95 — the schema used 365.25-day years and the service calendar years on UTC, and their ~12-hour disagreement let the service issue an automatic FINAL UNDERAGE refusal to a player already 18; `nida.ts` and `/admin/kyc/[id]` ask the same predicate). ⭐ **Since 2026-10-10 the date is the ACCOUNT's** (`User.dob`, normalised to `YYYY-MM-DD` before the schema, because Prisma returns a timestamp): an under-18 account date is the FINAL refusal; only an account with no date types one, which is then written to the account; a wrong sign-up date is corrected only by an officer (`correctDateOfBirth`). ⚠️ **From 2026-09-13 the declared date is the only age control before a player's first withdrawal** (Ali's ruling, consequence recorded in `COMPLIANCE-DECISIONS.md`), and since 2026-10-10 it is the only age control at approval too: no officer compares it with a document before an automatic approval | ✅ enforced for **all four** (declared); see the note below |
+| Expiry | captured and refused on the typed press; on the agent track refused at the details step **and** re-checked at the photo send; asked again as a block by every officer approval and Mark checked — for the two documents that carry one | ✅ enforced |
+| The automatic checks | `decideKyc` in `src/lib/kyc-auto-checks.ts` — pure, shared by the instant path, the workstation's checklist and every officer approval; its facts (risk score, holds, source of funds, AML escalation, same-person matches) are read by `kyc-service.ts` before the lock, and a failed read refuses the press with "try again" rather than deciding without it | ✅ route / flag / block, never a refusal of its own |
+| Same person on another account | `findSamePersonCandidates` (both stores) + `samePersonNameKey` — the same normalised name (tokens sorted) and date of birth | ✅ routes when the other account is restricted, flags otherwise. ⚠️ It **narrows** the two-document gap; it closes nothing |
 | Authority check (NIDA API, or any other) | `src/lib/server/nida.ts` | ❌ **deliberately absent.** That file is a deterministic mock; no request has ever reached the National Identification Authority, and there is no equivalent endpoint for a passport, a licence or a voter's card. `idVerifiedAt` therefore means "format accepted", NOT "government confirmed". ⛔ Its two QA hooks (`…0000` → SANCTIONED, `…9999` → MISMATCH) answer only when `NODE_ENV !== "production"` (`nidaQaHooksEnabled`, 2026-09-13 audit session 95) — before that they answered production players, and SANCTIONED is a FINAL code. |
-| Document review by a human | `/admin/kyc/[id]` | ✅ this is the real identity control |
+| An officer's check of a player's identity | `/admin/kyc` (the post-check list) and `/admin/kyc/[id]` | ✅ exists, **after** an automatic approval — so possibly after money has left. Before approval only for a routed case |
+| Document review by a human | `/admin/kyc/[id]`, photo mode | ✅ for agent applicants (before approval) and for photo cases on file from before 2026-10-10. ❌ **For players since 2026-10-10** — ~~"this is the real identity control"~~ |
 
 ### ⚠️ The age gate belongs to the PLAYER, not to the NIDA number
 
@@ -88,17 +197,19 @@ other three *because the feature is absent*. So the gate is on the **declared** 
 birth, above the per-document branch, and `test:id-documents` §6 asserts it per type on
 four separate accounts, each beside an adult acceptance.
 
-The NIDA number's embedded date is used for two things and no others: it must be a real
-calendar date (so `19993101…` and 30 February are refused), and where it **disagrees**
-with the declared date of birth the officer is shown both. ⛔ The disagreement is a
-reviewer flag, never a refusal — a declared date can be a sign-up typo, and refusing
-would lock a real citizen out over one.
+The NIDA number's embedded date is used for three things and no others: it must be a real
+calendar date (so `19993101…` and 30 February are refused); where it says the holder is **under 18** the identity
+goes to an officer at once (`NIDA_UNDER_18`, never an automatic approval); and where it **disagrees**
+with the declared date of birth (both adult) the approval carries the `NIDA_DOB_MISMATCH` flag and the officer is
+shown both. ⛔ The disagreement is a flag, never a refusal — a declared date can be a sign-up typo, and refusing
+would lock a real citizen out over one. The marketing age gate also reads the NIDA-derived date (the youngest of the
+ages governs — `src/lib/server/marketing/consent.ts`).
 
 ## ✅ The uniqueness gap — PROVEN, then CLOSED (2026-07-31), then WIDENED (2026-08-20)
 
 The duplicate check was **application-level read-then-write with no lock**:
 `findActiveByNida` ran, and only then was the row written. `withLock` guards
-`reviewKyc`/`forceReverifyKyc` but not this path, and it is keyed `kyc:${userId}` —
+`reviewKyc`/`forceReverifyKyc` (the latter deleted 2026-10-10) but not this path, and it is keyed `kyc:${userId}` —
 which serialises one user against themselves, never two users against each other.
 
 **This was not left as a theory.** `npm run load:nida-race` spawns two OS processes
@@ -256,11 +367,32 @@ Board in [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md), dated 2026-08-20.
 
 What still bites, and is worth knowing:
 
-- The **human reviewer** sees the name, the date of birth, the document image and the
-  selfie. A second account by the same person on a different document is the case the
-  officer is positioned to catch, and it is the only place it can be caught.
+- ⭐ **Since 2026-10-10: the same-person check.** A typed identity whose normalised name and date of birth match another
+  account's is routed to an officer when that account is self-excluded, cooled off, suspended, closed, frozen or finally
+  refused, and flagged for the post-check otherwise. It **narrows** the gap; it does not close it — a different name
+  spelling, or a different date on the second account, passes it.
+- The **officer's post-check** sees the name, the date of birth, the document number, the flags and the same-person
+  matches (linked by case, never by name) — but, for a player, **no image and no selfie** since 2026-10-10, and only
+  after the approval.
+- ~~The **human reviewer** sees the name, the date of birth, the document image and the selfie. A second account by the
+  same person on a different document is the case the officer is positioned to catch, and it is the only place it can
+  be caught.~~ — ⚪ true of agent applicants (and of photo cases from before 2026-10-10) only.
 - A `DUPLICATE_IDENTITY` rejection on one document therefore **does not** block that
   person from submitting a different one. Do not describe it as if it does.
+
+### 🔴 A second gap, opened 2026-10-10 by ruling — stated, not closed
+
+**Nothing ties a typed document number to the person typing it.** With no image and no selfie, anyone who knows a real
+document number can verify with it, and the real holder is then refused as "already linked to another account". That is
+resolved by compliance, never by support: an officer satisfies themselves out of band, rejects the impostor's identity
+recoverably (freeing the number) **and freezes that wallet** — a recoverable rejection keeps `approvedAt`, so without the
+freeze the impostor could still withdraw; on an automatic approval no officer has checked yet, the service refuses the
+rejection without the freeze. The owner accepted this cost in writing
+([`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) 2026-10-10, "What this costs"). The controls that remain in front
+of money leaving: payout only to the account's registered number (⚠️ not OTP-proven at sign-up), the TZS 5,000,000
+per-withdrawal cap, the source-of-funds gate, the confirmed-email step, uniqueness, the routing rules, the post-check
+list, and the final-refusal freeze. ⛔ `lookupPayeeName` (display only, unavailable on M-Pesa) and `nida.ts` (a mock) are
+**not** controls.
 
 ## What we say to people — INTERNAL vs PLAYER-FACING
 
@@ -269,14 +401,27 @@ surfaces state them plainly; player surfaces say nothing about them either way.*
 
 - **Player surfaces must never CLAIM a check we don't do.** Fixed 2026-07-19:
   `securedBody` said *"Withdrawals are released only to a NIDA-verified account"*.
-  It now says withdrawals are released after our compliance team has reviewed your
-  ID documents — true, and it narrates no internals.
+  It then said withdrawals are released after our compliance team has reviewed your
+  ID documents — true until 2026-10-10. ⭐ Since 2026-10-10 it says the identity is verified **from the details of
+  the ID document** and that a withdrawal goes only to the registered number — true, and it narrates no internals
+  (it must still carry an identity word: `test:kyc-at-withdrawal` B8).
 - **Player surfaces must also not ADVERTISE the absence.** We do not tell players
   "we don't check with NIDA". They are told what they must provide and what happens
   next. Nothing more. (This is the standing "player surfaces never narrate internal
-  ops" rule.)
+  ops" rule.) ⛔ **Since 2026-10-10 that includes "no photo needed" / "no upload needed"**: the typed track says what
+  to enter — the *details* of a document (*taarifa*, 信息) — and never what is no longer asked. In Swahili a player
+  *anajaza taarifa*; ⛔ never *kuweka* (that word is a deposit).
+- ⛔ **Never name the Gaming Board (or the Gaming Act) as the reason for an identity step** on any player or legal
+  surface — not even for this change, which the Board asked for. The reason recorded internally is internal
+  (`test:kyc-copy-truth` rule 3).
+- ⭐ **Typed track and agent track speak differently, and each truthfully.** A player's screens, notices and emails
+  speak of *details* ("Details received", "We're checking your details", "Check your details" when an officer asks for
+  corrections, "The document number you entered is now linked to your account"); only the agent track, an officer's
+  photo case, speaks of photos and a selfie — and a player already verified from typed details who applies to be an
+  agent is told "Add your ID photos", never "Verify your identity" again. A routed player is
+  told we are checking their details; the wait it states sits in a sentence that names no withdrawal.
 - ⛔ **And a player surface must never name one document as though it were the only
-  one.** Added 2026-08-20. The chooser, the progress rail, the upload slots and the
+  one.** Added 2026-08-20. The chooser, the progress rail, the agent track's upload slots and the
   refusal copy all resolve from the document the player actually picked — a passport
   journey that says "NIDA" anywhere is telling somebody the wrong thing about their
   own application.
@@ -296,7 +441,12 @@ surfaces state them plainly; player surfaces say nothing about them either way.*
   invited them to release a withdrawal on evidence that does not exist. It now reads
   *"<document> number — format valid · unique to this account (no authority check by
   design)"*, and **where no format is published it says so in those words**, so the
-  weight of the decision sits visibly on the document image.
+  weight of the decision sits visibly on the document image. ⭐ Since 2026-10-10 the checklist's rows are the
+  automatic checks themselves (`decideKyc`: pass · flag · route · block, each with its English detail), the number row
+  still says "unique to this account (no authority check by design)", and on a typed case there is no image for the
+  weight to sit on — so the officer is told which checks routed or flagged the case, and that only a block stops them.
+  The date of birth on the workstation goes through `<Sensitive>` (and `maskDob` inside a checklist row), and a
+  same-person match is shown as a link to the other account's case, never by its name.
 
 ## If a real integration is ever added
 

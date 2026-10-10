@@ -38,6 +38,8 @@ const DROP_MIG = "prisma/migrations/20260821090000_kyc_drop_nida_legacy/migratio
 
 export const GATE_ID = ["tsx", "scripts/id-documents.test.mts"];
 export const GATE_D1 = ["tsx", "scripts/kyc-cert-d1.test.mts"];
+/** 2026-10-10 · the typed-only guard: the one suite that drives the typed press end to end with no documents. */
+export const GATE_TYPED = ["tsx", "scripts/kyc-typed-only.test.mts"];
 
 /**
  * Each case: a defect that this unit really closed (or really could reintroduce),
@@ -166,8 +168,11 @@ export const CASES = [
   },
 
   // ── 🔴 THE HUMAN CONTROL ──────────────────────────────────────────────────
+  // ⭐ 2026-10-10 (typed-only identity): `requiredSlots` and `missingSlots` describe the AGENT photo track now — players
+  // type their details and upload nothing; an agent applicant still sends the document's photos and a selfie for an
+  // officer. The two cases below therefore guard the agent track, which is where the officer's face match still lives.
   {
-    name: "the selfie is dropped for a passport — the officer's face-match attestation loses its evidence",
+    name: "the selfie is dropped for a passport on the AGENT photo track — the officer's face-match attestation loses its evidence",
     gate: GATE_ID,
     expect: "PASSPORT · requires at least one document image and a selfie",
     edits: [{
@@ -177,7 +182,22 @@ export const CASES = [
     }],
   },
   {
-    name: "the submit gate goes back to a COUNT, so a complete two-slot passport can never be submitted",
+    // ⛔ THE OLD BEHAVIOUR, PUT BACK (2026-10-10). Until that day `requiredSlots` gated every player: no photo set, no
+    // review. Typed-only identity removed the gate from the player's press — a player types the details and is
+    // verified at once with nothing uploaded — and kept it on the agent track. The plant is the old player gate
+    // restored in `verifyIdentity`; the typed-only guard's §2 is what must refuse it.
+    name: "the photo set is required on the TYPED press again (the player gate typed-only identity removed)",
+    gate: GATE_TYPED,
+    expect: "· verified at once with zero documents",
+    edits: [{
+      file: SVC,
+      from: `      out.kycId = fresh.id;`,
+      to: `      out.kycId = fresh.id;
+      if (missingSlots(p.idType, (base.documents ?? []).map((d) => d.docType)).length > 0) return { ok: false, error: "Add your document photos and a selfie first.", code: "INVALID", reason: "docs_required" };`,
+    }],
+  },
+  {
+    name: "the AGENT photo send's gate goes back to a COUNT, so a complete two-slot passport set can never be sent",
     gate: GATE_ID,
     expect: "control · card + selfie · reaches review",
     edits: [{
@@ -197,6 +217,9 @@ export const CASES = [
     }],
   },
   {
+    // ⚠️ 2026-10-10: a THIRD lock exists now — the account's own date (`User.dob`), asked first and refused FINALLY. It
+    // applies only to an account that HAS a date; the suite's under-18 case is an account with none, which types its
+    // date, so the two locks below are still the whole defect there. The account-date lock has its own case below.
     name: "🔴 the age gate becomes NIDA-only — BOTH locks, because either alone still holds it",
     gate: GATE_ID,
     expect: "PASSPORT · an under-18 applicant is refused",
@@ -218,13 +241,31 @@ export const CASES = [
 
   // ── 🔴 THE SURFACES ───────────────────────────────────────────────────────
   {
-    name: "the officer's document route goes back to a hand-written slot list (the passport bio page becomes unopenable)",
+    // ⛔ RETIRED AND REPLACED 2026-10-10 — the old case planted "a hand-written slot list" against a route that read the
+    // DERIVED list (`ALL_DOC_SLOTS`). From typed-only identity the derived list is itself the defect: the catalogue's
+    // slots are the AGENT track's and would shrink the day that track changes, locking officers out of images already
+    // on file (and the enum-only `NIDA` slot was never in it). The route reads the FROZEN `LEGACY_KYC_DOC_SLOTS`, so the
+    // case now puts the OLD derived list back.
+    name: "the officer's document route goes back to the DERIVED catalogue list (a legacy NIDA image becomes unopenable)",
     gate: GATE_ID,
-    expect: "the document route's accept-list is DERIVED from the catalogue",
+    expect: "the document route's accept-list is the FROZEN legacy list, never derived from the catalogue",
     edits: [{
       file: ROUTE,
-      from: `const DOC_TYPES = new Set<string>(ALL_DOC_SLOTS);`,
-      to: `const DOC_TYPES = new Set<string>(["NIDA_FRONT", "NIDA_BACK", "SELFIE"]);`,
+      from: `const DOC_TYPES = new Set<string>(LEGACY_KYC_DOC_SLOTS);`,
+      to: `const DOC_TYPES = new Set<string>(ALL_DOC_SLOTS);`,
+    }],
+  },
+  {
+    // ⭐ 2026-10-10 — THE THIRD AGE LOCK. The date the gate reads is the ACCOUNT's (`User.dob`), and an account dated
+    // under 18 is a FINAL refusal that freezes the wallet. Cut it and the schema still refuses the date — as a plain
+    // form error the player can retry, with nothing recorded and a minor's money left on an open account.
+    name: "an ACCOUNT dated under 18 falls to a retryable form error instead of the FINAL refusal",
+    gate: GATE_ID,
+    expect: "an ACCOUNT dated under 18 is refused FINALLY (UNDERAGE)",
+    edits: [{
+      file: SVC,
+      from: `    if (Number.isFinite(accountAge) && accountAge < MIN_AGE_YEARS) {`,
+      to: `    if (false && Number.isFinite(accountAge) && accountAge < MIN_AGE_YEARS) {`,
     }],
   },
   {

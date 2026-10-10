@@ -8,7 +8,8 @@
  * shows, so the step-up gate on `/admin/agents` is crossed the way an officer crosses it.
  *
  *   1 · Officer   — seed → /admin/agents → 2FA enrolment → step-up → console renders (3 tabs)
- *   2 · Applicant — demo player (KYC approved) → /agent → wizard: 7 documents, referees, fee,
+ *   2 · Applicant — demo player (an OFFICER's photo approval — `/auth/demo?kyc=approved`, the agent programme's
+ *                   identity gate since 2026-10-10) → /agent → wizard: 7 documents, referees, fee,
  *                   terms → submit → /agent/status
  *   3 · Officer   — queue → workstation → every document through the gated route → reconcile →
  *                   approve at the default rate → roster
@@ -19,7 +20,9 @@
  *                   "Email me a code" → the code is read from the server outbox → accept →
  *                   application opens; officer's Approve names why it cannot fire yet
  *   6 · Player    — an ordinary signed-in player gets the UNPAID invite share surface (a link, no money
- *                   word, no agent dashboard) and no bonus / earnings solicitation
+ *                   word, no agent dashboard) and no bonus / earnings solicitation; then (6b, 2026-10-10)
+ *                   verifies from TYPED details in one press and is STILL asked for identity on /agent,
+ *                   whose door opens the photo track (`/profile/kyc?for=agent`) — photos and a selfie
  *
  * ⛔ Every assertion is against RENDERED TEXT OR GEOMETRY, never against a status code alone.
  * A page that 200s with an empty body fails the CONTROL assertions.
@@ -527,6 +530,34 @@ const applicant = await applicantCtx.newPage();
   await goto(player, "/agent");
   const a = await text(player);
   ok("6.agent · /agent explains without soliciting: the CTA asks the player to verify identity first", /Verify your identity first/.test(a) && !/Apply now/.test(a), a.slice(0, 200));
+
+  /**
+   * ⭐ 6b · 2026-10-10 — A PLAYER VERIFIED FROM TYPED DETAILS IS NOT VERIFIED FOR THE AGENT PROGRAMME (owner ruling, Ali:
+   * players type their document's details and are approved at once; agents keep photos and an officer). The same player
+   * verifies through the real typed form — one press, no upload — and is approved for WITHDRAWALS. /agent must still ask
+   * for identity first, and its door must open the PHOTO track (`/profile/kyc?for=agent`), where the uploader asks for
+   * the document's photo and a selfie on top of the typed approval.
+   */
+  await goto(player, "/profile/kyc?idType=VOTER_CARD");
+  await player.locator("#idNumber").fill(`VC${String(Date.now()).slice(-8)}`);
+  await player.locator("#fullName").fill("Ordinary Drive Player");
+  await Promise.all([
+    player.waitForURL((u) => u.searchParams.has("verified") || u.searchParams.has("sent") || u.searchParams.has("reason"), { timeout: 120_000 }).catch(() => {}),
+    player.locator('form:has(#idNumber) button[type="submit"]').first().click(),
+  ]);
+  ok("6b.typed · one press verifies the player at once from typed details — no file input on that form",
+    new URL(player.url()).searchParams.get("verified") === "1" && (await player.locator('input[type="file"]').count()) === 0, player.url());
+  await goto(player, "/agent");
+  const a2 = await text(player);
+  ok("6b.agent · ⛔ /agent still asks for identity first — an automatic typed approval is not the agent programme's identity",
+    /Verify your identity first/.test(a2) && !/Apply now/.test(a2), a2.slice(0, 200));
+  ok("6b.door · …and its door opens the PHOTO track, returning to /agent",
+    (await player.locator('a[href="/profile/kyc?for=agent&next=/agent"]').count()) > 0);
+  await goto(player, "/profile/kyc?for=agent&next=/agent");
+  const files = await player.locator('input[type="file"]').count();
+  ok("6b.photos · the agent track asks for the document's photo and a selfie on top of the typed approval (2 slots for a voter's card)",
+    files === 2, `${files} file input(s)`);
+  await shot(player, "6b_agent-photo-track-390");
   await playerCtx.close();
 }
 

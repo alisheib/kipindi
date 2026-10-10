@@ -547,8 +547,10 @@ export const READ_CLASS_SUMMARY: Record<ReadClass, string> = {
   "money.figures":
     "wallet balance, bonus balance, lifetime deposits and withdrawals — any TZS total attributable to one named player — and the SMS campaign cost estimate and credit",
   "identity.contact": "email address and unmasked phone number — the account-recovery set",
+  // 2026-10-10 · players verify with typed details and send no photos (docs/IDENTITY-POLICY.md), so the sentence no
+  // longer says every player has "document images": photos exist for agent applicants and from before that date.
   "identity.personal":
-    "date of birth, region, full document number and document images — the KYC set",
+    "date of birth, region, full document number and any identity photos on file — the KYC set",
   "history.activity": "positions, bets, notification and login history",
 };
 

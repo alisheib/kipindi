@@ -6,21 +6,24 @@
  * either records a measurement or fails, and step 6 (a SECOND account submitting the SAME
  * document and being refused) is the most important artefact in the unit.
  *
- *   1. register a fresh player          5. good value + the required attachments
+ * ⭐ THE 2026-10-10 JOURNEY (owner ruling, Ali, relaying the Gaming Board's request that players
+ * no longer upload identity documents — docs/COMPLIANCE-DECISIONS.md). A player types the
+ * document's details and ONE press verifies them at once when the automatic checks pass; an
+ * officer checks the approval afterwards (`live-kyc-id-review.mjs`, the post-check). Until that
+ * day steps 4–5 here uploaded photos and a selfie, and an oversize image probed the uploader.
+ *
+ *   1. register a fresh player          5. a good value → ONE press → verified at once
  *   2. choose the document              6. 🔴 a second account, same document → refused
- *   3. a deliberately BAD value         7. an officer opens it and approves
- *   4. a deliberately OVERSIZE image    8. the player's own screen reflects approval
+ *   3. a deliberately BAD value         7. an officer checks it afterwards (live-kyc-id-review.mjs)
+ *   4. ⛔ no attachment asked, before or after the press
  *
  * ⚠️ WHY IT REGISTERS RATHER THAN SEEDING. `/api/dev-test/*` is double-gated OUT of
  * production, so there is no fixture route here — the journey starts at the real sign-up
  * form, which is also the only way to prove a brand-new player can complete it.
  *
- * ⚠️ TIMESTAMPS AND SHOTS. Screens land in `SHOT_DIR`; the storage-key SHAPE (step 5) is
- * read from the DATABASE, never from the page, because the page renders an <img> either
- * way and cannot tell `data:` from `r2:`.
- *
  * ⛔ IT NEVER MOVES MONEY. No deposit, no stake, no withdrawal, no grant. The only writes
- * are the accounts it registers and the KYC submissions it makes.
+ * are the accounts it registers and the identities it verifies — each one lands on the
+ * officers' post-check list, which is where they are cleared.
  *
  *   BASE=https://www.50pick.tz node scripts/live-kyc-id-seal.mjs
  *   ONLY=PASSPORT ...            # one type
@@ -42,38 +45,18 @@ const ok = (l, c, x = "") => {
   return c;
 };
 const note = (l) => { notes.push(l); console.log(`  · ${l}`); };
-
-// A real 1×1 JPEG. ⛔ `validateDocImage` sniffs MAGIC BYTES, so an invented base64 string
-// is refused and every upload assertion would pass for the wrong reason.
-const JPEG_1x1 = Buffer.from(
-  "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==",
-  "base64",
-);
-const GOOD_FILE = { name: "doc.jpg", mimeType: "image/jpeg", buffer: JPEG_1x1 };
-
-/**
- * ⛔ AN OVERSIZE IMAGE THAT IS STILL A REAL IMAGE. The client downscales a photo before
- * upload, so a huge JPEG would simply be resized and never reach the cap — which would
- * prove nothing. A wide-but-1px PNG survives the canvas step at a size that still trips
- * the 3 MB decoded cap, so the error the player sees is the SERVER's real limit.
- */
-function oversizePng() {
-  // 20000×1 RGBA ≈ 80 KB compressed but ~2.4 MB of pixels; repeated noise defeats deflate.
-  const W = 12000, H = 60;
-  const raw = Buffer.alloc(W * H * 3);
-  for (let i = 0; i < raw.length; i++) raw[i] = (i * 2654435761) & 0xff;
-  return { W, H, raw };
-}
+const flat = (s) => String(s).replace(/\s+/g, " ");
 
 const TYPES = {
   NIDA: {
     label: "NIDA",
+    // Digits 1-8 are the registered date of birth (1990-01-01): the NIDA's own date agrees with the account.
     good: () => "19900101" + String(Date.now()).slice(-9) + "123",
     // 🔴 TWENTY DIGITS, AND STILL NOT A NIDA — month 31 does not exist.
     //
     // ⛔ The first run used "12345", and all three server-side assertions failed for a
     // reason that was the PRODUCT BEING RIGHT: NIDA is the one document with a PUBLISHED
-    // rule, so its field carries `pattern="d{20}"` and the BROWSER refuses a five-digit
+    // rule, so its field carries a 20-digit `pattern` and the BROWSER refuses a five-digit
     // value before the form ever posts. There is then no server refusal to read and no URL
     // to round-trip. (That is also exactly why the licence and voter card carry NO pattern:
     // a browser-enforced rule nobody published would be a lockout wearing a tooltip.)
@@ -83,7 +66,6 @@ const TYPES = {
     bad: "19993101456712345678",
     badWhy: "twenty digits, but month 31 — the first eight are a date",
     expiry: null,
-    slots: 3,
   },
   PASSPORT: {
     label: "Passport",
@@ -91,7 +73,6 @@ const TYPES = {
     bad: "!!",
     badWhy: "punctuation, and below the sanity floor",
     expiry: "2032-06-30",
-    slots: 2,
   },
   DRIVER_LICENSE: {
     label: "Driving licence",
@@ -99,7 +80,6 @@ const TYPES = {
     bad: "A",
     badWhy: "one character — below the sanity floor",
     expiry: "2031-06-30",
-    slots: 2,
   },
   VOTER_CARD: {
     label: "Voter's card",
@@ -107,7 +87,6 @@ const TYPES = {
     bad: "#",
     badWhy: "a symbol — no document number is punctuation",
     expiry: null,
-    slots: 2,
   },
 };
 
@@ -161,7 +140,7 @@ async function register(page, tag) {
   if (mirrored !== phone) throw new Error(`PhoneInput did not sync (${mirrored} vs ${phone}) — filled before hydration`);
   await page.fill("#email", email);
   // The segmented DOB field: DD / MM / YYYY. See fillDate for why this is not a
-  // 'div:has(#dob)' — that reached the phone field.
+  // 'div:has(#dob)' — that reached the phone field. ⭐ From 2026-10-10 this IS the identity's date of birth.
   await fillDate(page, "dob", "1990-01-01");
   await page.fill("#password", password);
   await page.fill("#passwordConfirm", password);
@@ -174,10 +153,14 @@ async function register(page, tag) {
   return { phone, email, password };
 }
 
-/** Fill the identity form for `type` and submit. Returns the page body text after. */
-async function submitIdentity(page, type, number, { withExpiry = true } = {}) {
+/**
+ * Fill the typed identity form for `type` and press it ONCE. Returns the outcome the action states in the URL
+ * (`verified` · `sent` · the refusal `reason`) and the page body after.
+ * ⚠️ WAIT FOR THE OUTCOME IN THE URL, never a fixed delay: a wait names what it waits FOR.
+ */
+async function verifyIdentity(page, type, number, { withExpiry = true } = {}) {
   const spec = TYPES[type];
-  if (type !== "NIDA") {
+  if (type !== "NIDA" && new URL(page.url()).searchParams.get("idType") !== type) {
     await page.locator(`[data-chip="idType:${type}"]`).click();
     await page.waitForFunction((t) => new URL(location.href).searchParams.get("idType") === t, type, { timeout: 12000 });
   }
@@ -189,10 +172,14 @@ async function submitIdentity(page, type, number, { withExpiry = true } = {}) {
   if (await name.count()) await name.fill("Asha Mwamba Juma");
   const email = page.locator("#email");
   if (await email.count() && !(await email.inputValue())) await email.fill(`seal.${uniq()}@50pick-qa.tz`);
-  await page.locator('form button[type="submit"]').first().click();
+  await Promise.all([
+    page.waitForURL((u) => u.searchParams.has("verified") || u.searchParams.has("sent") || u.searchParams.has("reason"), { timeout: 30000 }).catch(() => {}),
+    page.locator('form:has(#idNumber) button[type="submit"]').first().click(),
+  ]);
   await page.waitForLoadState("domcontentloaded");
-  await page.waitForTimeout(2500);
-  return page.locator("body").innerText();
+  await page.waitForTimeout(1200);
+  const q = new URL(page.url()).searchParams;
+  return { verified: q.get("verified") === "1", sent: q.get("sent") === "1", reason: q.get("reason"), body: await page.locator("body").innerText() };
 }
 
 const browser = await chromium.launch();
@@ -201,7 +188,8 @@ try {
   for (const type of Object.keys(TYPES)) {
     if (ONLY && ONLY !== type) continue;
     const spec = TYPES[type];
-    console.log(`\n═══ ${type} ═══════════════════════════════════════════`);
+    console.log("");
+    console.log(`═══ ${type} ═══════════════════════════════════════════`);
     const ctx = await browser.newContext({ ...devices["Pixel 7"] });
     await ctx.addInitScript(() => { try { localStorage.setItem("50pick-primer-seen", "1"); } catch {} });
     const page = await ctx.newPage();
@@ -219,10 +207,9 @@ try {
     await page.screenshot({ path: `${SHOT}/${type}-01-chooser-393.png`, fullPage: true });
 
     // ── 3 · a deliberately BAD value ──────────────────────────────────────
-    const badBody = await submitIdentity(page, type, spec.bad);
-    const refused = !/Upload documents|Document details saved/i.test(badBody);
-    ok(`3 · a bad ${type} value (${spec.badWhy}) is REFUSED`, refused,
-       refused ? "" : badBody.slice(0, 140).replace(/\s+/g, " "));
+    const bad = await verifyIdentity(page, type, spec.bad);
+    ok(`3 · a bad ${type} value (${spec.badWhy}) is REFUSED`, !bad.verified && !bad.sent && !!bad.reason,
+       flat(bad.body).slice(0, 140));
     // ⛔ READ THE REFUSAL, NOT THE PAGE. The first version of this check tested the whole
     // `body` innerText for "20 digits" — which the FIELD HINT also contains, so it would
     // have passed with the refusal saying nothing at all. Scope to the live regions.
@@ -235,90 +222,28 @@ try {
       DRIVER_LICENSE: /exactly as printed on the card/i,
       VOTER_CARD: /exactly as printed on the card/i,
     }[type];
-    const namesRule = alerts.some((t) => RULE.test(t));
-    ok(`3 · …and it NAMES ${type}'s OWN rule rather than saying "invalid"`, namesRule,
+    ok(`3 · …and it NAMES ${type}'s OWN rule rather than saying "invalid"`, alerts.some((t) => RULE.test(t)),
        JSON.stringify(alerts).slice(0, 300));
     // ⭐ And the URL carried the type back, so the form round-tripped to the SAME document.
     ok("3 · …and the refusal round-trips the chosen document in the URL",
        new URL(page.url()).searchParams.get("idType") === type, page.url().slice(0, 120));
     await page.screenshot({ path: `${SHOT}/${type}-02-bad-value-393.png`, fullPage: true });
 
-    // ── 5a · the good value ───────────────────────────────────────────────
+    // ── 4 · ⛔ no attachment is asked for (2026-10-10) ─────────────────────
+    ok(`4 · ⛔ the ${type} form asks for NO attachment — no file input on the page`, (await page.locator('input[type="file"]').count()) === 0);
+
+    // ── 5 · the good value, ONE press, verified at once ───────────────────
     const number = spec.good();
     await page.goto(`${BASE}/profile/kyc?idType=${type}`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(1000);
-    const goodBody = await submitIdentity(page, type, number);
-    const accepted = /Upload documents|Document details saved/i.test(goodBody);
-    ok(`5a · a good ${type} value is ACCEPTED`, accepted, accepted ? number : goodBody.replace(/\s+/g, " ").slice(0, 200));
-    if (!accepted) { await ctx.close(); results.push({ type, number, ok: false }); continue; }
-
-    // ── 4 · an OVERSIZE image, at the upload step where it belongs ─────────
-    const slotCount = await page.locator('input[type="file"]').count();
-    ok(`4 · ${type} asks for exactly ${spec.slots} attachments`, slotCount === spec.slots, `${slotCount}`);
-    /**
-     * 🔴 THE OVERSIZE STEP, AND WHY IT MEASURES SOMETHING ELSE THAN THE COMMISSION EXPECTED.
-     *
-     * §7 step 4 asks for an oversize image and the error naming the limit. Driven on the real
-     * page, **an oversize image cannot reach the server at all**: `fileToDataUrl` downscales
-     * every pick to 1400px on its longest side and steps JPEG quality down before posting, so
-     * a 12000×60 monster arrives as 1400×7 and lands comfortably under the 3 MB cap. That is
-     * the design working (`§3 ⑥`: "client-side downscale before upload, so a real phone photo
-     * does not bounce off the cap"), not a hole — and a driver that asserted a refusal here
-     * would be asserting the product is BROKEN.
-     *
-     * ⛔ So this step measures the two things that are actually true and actually reachable:
-     *   (a) a NON-IMAGE file IS refused at the uploader, by name, before any upload; and
-     *   (b) an enormous image is ACCEPTED, having been downscaled — which is the proof the
-     *       resize really runs on production rather than being a local-only nicety.
-     * The server's own 3 MB cap is the last line and is proven headlessly by
-     * `npm run test:kyc` ("validate: oversized rejected"), where an oversize payload CAN be
-     * constructed — a browser cannot hand the action one through this form.
-     */
-    await page.locator('input[type="file"]').first().setInputFiles({
-      name: "not-an-image.txt", mimeType: "text/plain", buffer: Buffer.from("this is not a photograph"),
-    });
-    await page.waitForTimeout(3000);
-    const nonImage = await page.locator("body").innerText();
-    const refusedNonImage = /not an image|isn't an image|si picha|不是图片|pick a jpg|JPG/i.test(nonImage);
-    ok("4a · a NON-IMAGE file is refused at the uploader, by name", refusedNonImage,
-       nonImage.replace(/\s+/g, " ").slice(0, 160));
-    await page.screenshot({ path: `${SHOT}/${type}-03-non-image-393.png`, fullPage: true });
-
-    const big = oversizePng();
-    const { deflateSync } = await import("node:zlib");
-    const crcTable = [...Array(256)].map((_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
-    const crc = (b) => { let c = 0xffffffff; for (const x of b) c = crcTable[(c ^ x) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
-    const chunk = (t, d) => { const len = Buffer.alloc(4); len.writeUInt32BE(d.length); const td = Buffer.concat([Buffer.from(t), d]); const cr = Buffer.alloc(4); cr.writeUInt32BE(crc(td)); return Buffer.concat([len, td, cr]); };
-    const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(big.W, 0); ihdr.writeUInt32BE(big.H, 4); ihdr[8] = 8; ihdr[9] = 2;
-    const rows = Buffer.alloc(big.H * (1 + big.W * 3));
-    for (let y = 0; y < big.H; y++) big.raw.copy(rows, y * (1 + big.W * 3) + 1, y * big.W * 3, (y + 1) * big.W * 3);
-    const png = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", ihdr), chunk("IDAT", deflateSync(rows, { level: 0 })), chunk("IEND", Buffer.alloc(0))]);
-    note(`4b · handing the uploader a ${big.W}×${big.H} PNG (${(png.length / 1024 / 1024).toFixed(1)} MB on the wire)`);
-    await page.locator('input[type="file"]').first().setInputFiles({ name: "huge.png", mimeType: "image/png", buffer: png });
-    await page.waitForTimeout(6000);
-    const overBody = await page.locator("body").innerText();
-    const downscaledOk = /Attached|Imeambatanishwa|已附加/i.test(overBody);
-    ok("4b · …and it is ACCEPTED, downscaled — the client resize runs on production", downscaledOk,
-       overBody.replace(/\s+/g, " ").slice(0, 160));
-    await page.screenshot({ path: `${SHOT}/${type}-03-downscaled-393.png`, fullPage: true });
-
-    // ── 5b · the real attachments ─────────────────────────────────────────
-    await page.reload({ waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(1200);
-    const slots = page.locator('input[type="file"]');
-    for (let i = 0; i < spec.slots; i++) {
-      await slots.nth(i).setInputFiles(GOOD_FILE);
-      await page.waitForTimeout(2500);
-    }
-    const attachedBody = await page.locator("body").innerText();
-    const attachedCount = (attachedBody.match(/Attached|Imeambatanishwa|已附加/g) || []).length;
-    ok(`5b · all ${spec.slots} attachments landed`, attachedCount >= spec.slots, `${attachedCount}`);
-    await page.locator('form button[type="submit"]').last().click();
-    await page.waitForTimeout(3500);
-    const submittedBody = await page.locator("body").innerText();
-    ok("5c · the submission reached review", /review|ukaguzi|审核/i.test(submittedBody),
-       submittedBody.replace(/\s+/g, " ").slice(0, 160));
-    await page.screenshot({ path: `${SHOT}/${type}-04-submitted-393.png`, fullPage: true });
+    const good = await verifyIdentity(page, type, number);
+    ok(`5 · a good ${type} value is VERIFIED AT ONCE by one press`, good.verified,
+       good.verified ? number : good.sent ? "sent to an officer (sent=1) — something on this fresh account routes" : `${good.reason ?? ""} ${flat(good.body).slice(0, 200)}`);
+    ok("5 · …the page says the identity is verified", /identity is verified|ID verified|umethibitishwa|已验证/i.test(good.body), flat(good.body).slice(0, 160));
+    ok("5 · ⛔ …and still no file input after the press", (await page.locator('input[type="file"]').count()) === 0);
+    await page.screenshot({ path: `${SHOT}/${type}-03-verified-393.png`, fullPage: true });
+    if (!good.verified) { await ctx.close(); results.push({ type, number, ok: false }); continue; }
+    note(`${type} · verified automatically — on the officers' post-check list until an officer marks it checked`);
 
     // ── 6 · 🔴 A SECOND ACCOUNT, THE SAME DOCUMENT ────────────────────────
     const ctx2 = await browser.newContext({ ...devices["Pixel 7"] });
@@ -327,10 +252,10 @@ try {
     const who2 = await register(page2, `${type.toLowerCase()}dup`);
     await page2.goto(`${BASE}/profile/kyc?idType=${type}`, { waitUntil: "domcontentloaded" });
     await page2.waitForTimeout(1200);
-    const dupBody = await submitIdentity(page2, type, number);
-    const dupRefused = /already linked to another account|tayari imeunganishwa|已与其他账户绑定/i.test(dupBody);
-    ok("6 · 🔴 a SECOND account submitting the SAME document is REFUSED", dupRefused,
-       dupBody.replace(/\s+/g, " ").slice(0, 220));
+    const dup = await verifyIdentity(page2, type, number);
+    const dupRefused = !dup.verified && /already linked to another account|tayari imeunganishwa|已与其他账户绑定/i.test(dup.body);
+    ok("6 · 🔴 a SECOND account submitting the SAME document is REFUSED (never verified)", dupRefused,
+       flat(dup.body).slice(0, 220));
     await page2.screenshot({ path: `${SHOT}/${type}-05-duplicate-refused-393.png`, fullPage: true });
     await ctx2.close();
 
@@ -342,9 +267,10 @@ try {
 }
 
 writeFileSync(`${SHOT}/seal-results.json`, JSON.stringify({ base: BASE, at: new Date().toISOString(), results, notes }, null, 2));
-console.log(`\n${"─".repeat(64)}`);
+console.log("");
+console.log("─".repeat(64));
 console.log(`  SEAL: ${pass} passed, ${failures.length} failed · shots in ${SHOT}`);
 console.log(`  identities: ${results.map((r) => `${r.type}=${r.number}`).join(" · ")}`);
-console.log(`${"─".repeat(64)}`);
-if (failures.length) { console.log("\nFAILURES:"); failures.forEach((f) => console.log("  ✗ " + f)); }
+console.log("─".repeat(64));
+if (failures.length) { console.log(""); console.log("FAILURES:"); failures.forEach((f) => console.log("  ✗ " + f)); }
 process.exit(failures.length ? 1 : 0);

@@ -495,12 +495,33 @@ resubmit unchanged after rejection and get auto-approved · read another player'
 approve without the required documents · PII in logs, Sentry, audit rows and exports.
 **Exit** Product text truthful about NIDA, no cross-player read, zero PII in any sink.
 
+> ⚠️ **2026-10-10 — the module this certificate covers changed shape (owner ruling, the Gaming Board's request;
+> `COMPLIANCE-DECISIONS.md` § "2026-10-10 · Players verify identity with typed details and are approved at once; agents
+> keep photo identity — Privacy v2026-10-10, Terms v2026-10-10, AML v2026-10-10 (Gaming Board request, relayed by the
+> owner)").** A player now verifies with typed details in one press (`verifyIdentity`) and is approved AUTOMATICALLY
+> when the checks in `src/lib/kyc-auto-checks.ts` pass; officers post-check those approvals on `/admin/kyc`; agent
+> applicants keep the photo track. So two of this dossier's attack lines now read differently: *"resubmit unchanged
+> after rejection and get auto-approved"* is a designed path for a refusal no officer made (the NIDA check's), and is
+> refused for an officer's — the officer is carried through the restart and the send goes back to an officer; and
+> *"approve without the required documents"* applies to the agent photo track only (a typed case has none). The
+> certificate's suites were re-pointed to the new flows in the same change — `test:cert-d1`, `test:cert-d2`,
+> `test:cert-d4`, `qa:cert-d1` (now the typed journey: one press, verified at once, then the officer's post-check on the
+> workstation — no upload), and `load:kyc-race` / `load:nida-race` — and the new `test:kyc-typed-only` (in
+> `predeploy`) with `red:kyc-typed-only` holds the typed track's controls; ⛔ **re-certify D1 against the new shape** —
+> the 2026-07-31 assertion and mutation counts describe the old one.
+
 ### D2 · KYC documents — `test:cert-d2` + `qa:cert-d2` 🟩 **CERTIFIED 2026-07-31**
 **Owns** `KycDocument`, `DocType` · **Attack** 🔴 **Documents are base64-in-DB** per the known
 architecture gaps — bloats every row and every backup · magic-byte validation: upload a `.exe`
 renamed `.jpg`, a 100 MB file, a zip bomb, an SVG carrying script · fetch a document
 unauthenticated · does a document survive account deletion (K4 conflict)?
 **Exit** Magic-byte + size validation, no unauthenticated fetch, deletion policy consistent with K4.
+
+> ⚠️ **2026-10-10 — players no longer upload identity documents** (same ruling as D1's note). `KycDocument` is now
+> written only by the agent photo track (`attachDocument`, slots from `requiredSlots`) and holds every image players
+> sent before that date, read-only for officers through a frozen accept-list (`LEGACY_KYC_DOC_SLOTS`). The magic-byte,
+> size and no-public-fetch exits still bind every image that is written or read; the officers' extra-document request
+> (`?req=` images) is gone as a writer and kept as a reader. ⛔ **Re-certify D2 against the agent-only writer.**
 
 **📏 MEASURED ON PRODUCTION 2026-07-31 — "base64-in-DB" understates it.** `storageKey` is a
 seam (inline `data:image/…;base64` **or** `r2:<key>`), and `KYC_STORAGE=r2` **is** set — yet:
@@ -612,6 +633,13 @@ unbounded size · is any object reachable by unauthenticated URL? · 🔴 **the 
 key that also reaches the backup bucket** — one leaked credential reaches both.
 **Exit** First gate for this module, validation + limits enforced, no public object, credential
 narrowed to a bucket-scoped token.
+
+> ⚠️ **2026-10-10 — the upload surface narrowed** (same ruling as D1's note). No player uploads an identity image any
+> more; the KYC writers into `50pick-kyc` are the agent photo track and the agent application's documents. The
+> officers' image route `api/admin/kyc-doc` now accepts the frozen `LEGACY_KYC_DOC_SLOTS` for `?type=` (never a list
+> derived from what is asked today, so images on file stay reachable) and validates a `?req=` id's shape before it reads
+> the row. Every gate on that route and its `kyc_doc.viewed` audit are unchanged. The credential finding above is
+> untouched by this change.
 
 ## E · Money In 💰
 

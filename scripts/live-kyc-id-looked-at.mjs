@@ -14,6 +14,9 @@
  * (`elementFromPoint`, not `getBoundingClientRect`: a closed <details> still has layout
  * boxes and is neither painted nor hit-tested, which cost ~200 false failures at E-172).
  *
+ * ⭐ 2026-10-10 · the form is the TYPED one (owner ruling, Ali — players type the document's details and one press
+ * verifies them; no uploads): each cell also measures that press as a 44px target and asserts no file input.
+ *
  *   PLAYERS_FILE=... BASE=https://www.50pick.tz node scripts/live-kyc-id-looked-at.mjs
  */
 import { chromium } from "playwright";
@@ -119,6 +122,13 @@ try {
         ok(`${cell} every chooser pill clears the 44px tap floor`, probe.minPill >= 44, `${probe.minPill}px`);
         ok(`${cell} every chooser pill is hit-testable`, probe.pillReachable);
         ok(`${cell} the number field is reachable`, probe.numberReachable);
+        // ⭐ 2026-10-10 · THE TYPED FORM IS ONE PRESS — so that one button must be reachable and a real tap target in every
+        // cell, and nothing on the page may ask for a file (players no longer upload; owner ruling, Ali).
+        const press = p.locator('form:has(#idNumber) button[type="submit"]').first();
+        await press.scrollIntoViewIfNeeded().catch(() => {});
+        const pressBox = await press.boundingBox().catch(() => null);
+        ok(`${cell} the one "verify" button clears the 44px tap floor`, !!pressBox && pressBox.height >= 43.5, `${pressBox ? Math.round(pressBox.height) : "no box"}px`);
+        ok(`${cell} ⛔ no file input on the typed form`, (await p.locator('input[type="file"]').count()) === 0);
 
         if (w === 393 || w === 1440) {
           await p.screenshot({ path: `${SHOT}/kyc-${type}-${loc}-${w}.png`, fullPage: true });

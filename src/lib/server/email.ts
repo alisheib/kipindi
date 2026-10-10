@@ -1322,6 +1322,10 @@ export function passwordResetHtml({ resetLink }: { resetLink: string }): string 
  * one step short. Only then does the letter add the second step — never "first" (the step returns whenever the address
  * changes), and never when the address is confirmed. ⛔ The bell row is NOT changed: `notifyKyc` rows are stored verbatim
  * for ever, and an approval written on a confirmed account must not later read as an instruction.
+ *
+ * ⭐ 2026-10-10 (owner ruling: players verify with TYPED details). "This document is now linked to your account" named a
+ * document the player never sent — most approvals are now automatic, from the details they typed — so the letter names
+ * what the uniqueness rule actually binds: the document NUMBER they entered. The bell row says the same (`notifyKyc`).
  */
 export function kycApprovedHtml({ name, reference, emailUnconfirmed = false }: { name: string; reference?: string; emailUnconfirmed?: boolean }): string {
   return wrapGold(`
@@ -1339,8 +1343,8 @@ export function kycApprovedHtml({ name, reference, emailUnconfirmed = false }: {
           ⭐ The button goes to the WALLET, not the board: somebody verified at cash-out time came
           here for their money, and an approval email that points them back into play is the wrong
           door on a money moment. */""}
-    ${subtitle("Your identity is confirmed, and it covers your withdrawals from now on. This document is now linked to your account.")}
-    ${subtitleSw("Utambulisho wako umethibitishwa, na uthibitisho huu unatumika kwa kila utoaji wa pesa kuanzia sasa. Kitambulisho hiki sasa kimeunganishwa na akaunti yako.")}
+    ${subtitle("Your identity is confirmed, and it covers your withdrawals from now on. The document number you entered is now linked to your account.")}
+    ${subtitleSw("Utambulisho wako umethibitishwa, na uthibitisho huu unatumika kwa kila utoaji wa pesa kuanzia sasa. Nambari ya kitambulisho uliyojaza sasa imeunganishwa na akaunti yako.")}
     ${emailUnconfirmed ? subtitle("Before you withdraw, confirm your email address too: open the link we sent to this address, or send a new one from your account.") : ""}
     ${emailUnconfirmed ? subtitleSw("Kabla ya kutoa pesa, thibitisha pia anwani yako ya barua pepe: fungua kiungo tulichotuma kwa anwani hii, au tuma kipya kutoka kwenye akaunti yako.") : ""}
     ${reference ? detailRows([{ label: "Reference", value: reference }]) : ""}
@@ -1358,6 +1362,10 @@ export function kycApprovedHtml({ name, reference, emailUnconfirmed = false }: {
  * and never said WHY — the reason reached a Swahili reader in English only. When the caller passes the same
  * player-safe reason in Swahili, it leads that line. Final refusals only: the recoverable line already tells
  * the reader what to do, and a reason in front of it would say it twice. Without it nothing changes.
+ *
+ * ⭐ 2026-10-10 (owner ruling: players verify with TYPED details). The recoverable Swahili line asked the reader to look
+ * again at their "nyaraka" (documents) — a player who typed their details sent none, so it asks for their details
+ * ("taarifa"), which is true of a typed case and of an agent applicant's photo case alike.
  */
 export function kycRejectedHtml({ reason, reasonSw, reference, finalRefusal = false }: { reason: string; reasonSw?: string; reference?: string; finalRefusal?: boolean }): string {
   const swReason = finalRefusal && reasonSw?.trim() ? `${reasonSw.trim()} ` : "";
@@ -1368,7 +1376,7 @@ export function kycRejectedHtml({ reason, reasonSw, reference, finalRefusal = fa
     ${finalRefusal ? subtitle("This verification can't be restarted from your account. Contact support and our team will explain what happens to your balance.") : ""}
     ${subtitleSw(finalRefusal
       ? `${swReason}Uthibitisho huu ulikataliwa na hauwezi kuanzishwa upya kutoka kwenye akaunti yako. Wasiliana na huduma kwa wateja na timu yetu itakueleza kitakachofanyika kwa salio lako.`
-      : "Tafadhali angalia tena nyaraka zako na uwasilishe upya.")}
+      : "Tafadhali angalia tena taarifa zako kisha uziwasilishe upya.")}
     ${reference ? detailRows([{ label: "Reference", value: reference }]) : ""}
     ${finalRefusal ? ctaButton("/help", "Contact support · Wasiliana nasi") : ctaButton("/profile/kyc", "Resubmit · Wasilisha tena")}
   `);
@@ -1461,68 +1469,102 @@ export function refusedFundsReturnFailedHtml({ amountTzs, forfeitedTzs, referenc
 }
 
 /**
- * Sent to the player the moment their KYC enters PENDING_REVIEW. Confirms the
- * documents landed, carries the reference, and sets expectations on timing.
+ * Sent to the player the moment their identity goes to an officer (PENDING_REVIEW). Confirms what landed,
+ * carries the reference, and sets expectations on timing.
  * Honest about the locked-during-review behaviour (Decision #1: reply-to-reopen).
+ *
+ * ⭐ `evidence` (2026-10-10, owner ruling: players verify with TYPED details, agents keep photo KYC). Most players are now
+ * approved at once and get the approval letter instead; this one reaches the few whose typed details the automatic
+ * checks passed to an officer ("typed"), and agent applicants who sent their document photos and a selfie ("photos").
+ * Each is told what it actually sent. ⛔ The old "Documents" row listed raw slot codes and de-underscored the ones it
+ * did not know (`test:labels` §11a) — it is gone, not kept for the photo case: "photos and selfie" says it.
  */
-export function kycSubmittedHtml({ name, reference, submittedAt, docTypes, viewUrl }: {
-  name?: string; reference: string; submittedAt: string; docTypes: string[]; viewUrl?: string;
+export function kycSubmittedHtml({ name, reference, submittedAt, evidence, viewUrl }: {
+  name?: string; reference: string; submittedAt: string; evidence: "typed" | "photos"; viewUrl?: string;
 }): string {
-  // Map raw docType codes to a friendly, bilingual-safe label list.
-  const friendly: Record<string, string> = { NIDA_FRONT: "ID front", NIDA_BACK: "ID back", SELFIE: "selfie" };
-  const docList = docTypes.map((d) => friendly[d] ?? d.replace(/_/g, " ").toLowerCase()).join(", ") || "—";
+  const copy = evidence === "photos"
+    ? {
+      eyebrow: "Photos received · Picha zimepokelewa",
+      heading: "We're checking your photos",
+      received: "We received your document photos and selfie",
+      receivedSw: "Tumepokea picha za kitambulisho chako na selfie yako",
+      row: "Document photos and selfie",
+      change: "Need to change a photo? Reply to this email and we'll reopen your submission. Your photos are locked while our team checks them.",
+      changeSw: "Unahitaji kubadilisha picha? Jibu barua pepe hii.",
+    }
+    : {
+      eyebrow: "Details received · Taarifa zimepokelewa",
+      heading: "We're checking your details",
+      received: "We received your identity details",
+      receivedSw: "Tumepokea taarifa zako za utambulisho",
+      row: "Identity details",
+      change: "Need to correct something? Reply to this email and we'll reopen your details. They're locked while our team checks them.",
+      changeSw: "Unahitaji kurekebisha kitu? Jibu barua pepe hii.",
+    };
   return wrap(`
-    ${eyebrow("Documents received · Nyaraka zimepokelewa")}
-    ${heading("We're reviewing your documents")}
-    ${subtitle(`Thanks${name ? `, ${name}` : ""}. Your ID documents are in and our team is verifying them. You'll get an email the moment it's decided — usually within ${KYC_REVIEW_SLA_HOURS} hours.`)}
-    ${subtitleSw(`Asante. Nyaraka zako zimepokelewa na timu yetu inazithibitisha. Utapata barua pepe mara tu uamuzi utakapotolewa — kwa kawaida ndani ya saa ${KYC_REVIEW_SLA_HOURS}.`)}
+    ${eyebrow(copy.eyebrow)}
+    ${heading(copy.heading)}
+    ${subtitle(`Thanks${name ? `, ${name}` : ""}. ${copy.received}, and our team is checking them. You'll get an email the moment it's decided — usually within ${KYC_REVIEW_SLA_HOURS} hours.`)}
+    ${subtitleSw(`Asante. ${copy.receivedSw}, na timu yetu inazikagua. Utapata barua pepe mara tu uamuzi utakapotolewa — kwa kawaida ndani ya saa ${KYC_REVIEW_SLA_HOURS}.`)}
     ${detailRows([
       { label: "Reference", value: reference },
       { label: "Submitted", value: fmtDateTime(submittedAt) },
-      { label: "Documents", value: docList },
+      { label: "Received", value: copy.row },
       { label: "Status", value: "Pending verification" },
     ])}
-    <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE};line-height:1.55">Need to change a document? Reply to this email and we'll reopen your submission. Your documents are locked while under review.<br><span style="font-style:italic;color:${TEXT_FAINT}">Unahitaji kubadilisha nyaraka? Jibu barua pepe hii.</span></p>
+    <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE};line-height:1.55">${esc(copy.change)}<br><span style="font-style:italic;color:${TEXT_FAINT}">${esc(copy.changeSw)}</span></p>
     ${refNote()}
     ${ctaButton(viewUrl ?? "/profile/kyc", "View your submission · Tazama")}
   `, { promo: true });
 }
 
 /**
- * Sent to the player when an officer needs more / clearer documents or extra
- * information before they can decide (status → ADDITIONAL_INFO_REQUIRED). The
- * `reason` is the officer's free-text note. Their documents are unlocked so
- * they can update and resubmit.
+ * Sent to the player when an officer asks them to check and correct their identity details (status →
+ * ADDITIONAL_INFO_REQUIRED). The `reason` is the officer's note, quoted word for word.
+ *
+ * ⭐ REWRITTEN 2026-10-10 (owner ruling: players verify with TYPED details, and an officer may ask only for a correction
+ * of them — the service's `askForCorrections`). It asked for more or clearer documents to be replaced or added, and no
+ * officer can ask for a document any more. ⛔ "Nothing else changes on your account" went with it: the same request can
+ * come with a wallet freeze, so the letter speaks about the identity and nothing else.
  */
 export function kycMoreInfoHtml({ reason, reference }: { reason: string; reference?: string }): string {
   return wrap(`
-    ${eyebrow("More information needed", "Tunahitaji maelezo zaidi")}
-    ${heading("We need a little more to verify you")}
+    ${eyebrow("Correction needed", "Marekebisho yanahitajika")}
+    ${heading("Please check and correct your details")}
+    ${subtitle("Our team checked your identity details and asked you to correct something. Their note, word for word:")}
     ${subtitle(reason)}
-    ${subtitleSw("Tafadhali rekebisha au ongeza nyaraka zilizoombwa, kisha uwasilishe tena. Hii si kukataliwa — tunahitaji tu kitu kimoja zaidi.")}
-    ${reference ? detailRows([{ label: "Reference", value: reference }, { label: "Status", value: "Awaiting your update" }]) : ""}
-    <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE};line-height:1.55">Your documents are unlocked — open the link below, replace or add what's asked, and submit again. Nothing else changes on your account.</p>
-    ${ctaButton("/profile/kyc", "Update & resubmit · Sasisha")}
+    ${subtitleSw("Timu yetu imekagua taarifa zako za utambulisho na imekuomba urekebishe jambo fulani — ujumbe wao uko hapo juu. Rekebisha kile ambacho ujumbe unaomba, kisha utume taarifa zako tena. Hii si kukataliwa.")}
+    ${reference ? detailRows([{ label: "Reference", value: reference }, { label: "Status", value: "Awaiting your correction" }]) : ""}
+    <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE};line-height:1.55">Open the link below, correct what the note asks, and send your details again. This is not a refusal.</p>
+    ${ctaButton("/profile/kyc", "Check your details · Kagua taarifa")}
   `);
 }
 
 /**
- * Sent to compliance / ops when a new submission needs review. Deliberately
- * carries NO images, NO full NIDA, NO DOB — the reviewer opens the secured
- * admin drill-in to see the evidence. NIDA is masked to the last 4 digits.
+ * Sent to compliance / ops when an identity needs an officer's decision. Deliberately
+ * carries NO images, NO full document number, NO DOB — the reviewer opens the secured
+ * identity workstation to see the case. The number is masked to its last 4 characters.
+ *
+ * ⭐ 2026-10-10 (owner ruling: players verify with TYPED details). `idMasked` replaced `nidaMasked` — the row was
+ * labelled "NIDA" over any of four documents since 2026-08-20 — and `reasons` lists, in the officer's English
+ * (`ROUTE_REASON_LABEL`), why this identity came to an officer rather than being approved automatically.
+ * Omitted or empty, the letter renders as a plain new case.
  */
-export function kycSubmittedAdminHtml({ reference, phoneMasked, name, nidaMasked, submittedAt, reviewUrl }: {
-  reference: string; phoneMasked: string; name: string; nidaMasked: string; submittedAt: string; reviewUrl: string;
+export function kycSubmittedAdminHtml({ reference, name, phoneMasked, idMasked, submittedAt, reviewUrl, reasons }: {
+  reference: string; name: string; phoneMasked: string; idMasked: string; submittedAt: string; reviewUrl: string;
+  reasons?: string[];
 }): string {
+  const why = (reasons ?? []).map((r) => String(r ?? "").trim()).filter((r) => r.length > 0);
   return wrap(`
     ${eyebrow("KYC · awaiting review")}
     ${heading("New identity submission to verify")}
-    ${subtitle("A player has submitted their identity documents and is waiting on a compliance decision.")}
+    ${subtitle("A player's identity is waiting on a compliance decision.")}
     ${detailRows([
       { label: "Reference", value: reference },
       { label: "Player", value: `${name} · ${phoneMasked}` },
-      { label: "NIDA", value: nidaMasked },
+      { label: "Document", value: idMasked || "—" },
       { label: "Submitted", value: fmtDateTime(submittedAt) },
+      ...(why.length > 0 ? [{ label: why.length === 1 ? "Reason" : "Reasons", value: why.join(" · ") }] : []),
     ])}
     ${ctaButton(reviewUrl, "Review now")}
   `);

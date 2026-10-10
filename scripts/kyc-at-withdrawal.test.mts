@@ -14,9 +14,14 @@
  * from the first confirmed deposit. Everything else is a place they went to look, or a response to something that
  * happened in their verification.
  *
+ * ⭐ THE "VERIFY IDENTITY" RUNG IS ONE PRESS SINCE 2026-10-10 (owner ruling: players verify with TYPED details and are
+ * approved at once — docs/COMPLIANCE-DECISIONS.md, "2026-10-10 · Players verify identity with typed details"). §A
+ * climbs it the way a player now does: the typed press, approved automatically, no officer and no documents. An
+ * officer's later request for corrections (it replaced force re-verify) still leaves the withdrawal open (A.17).
+ *
  * SECTIONS
- *   §A  the ladder through the real services, one account from registration to a withdrawal under re-verification,
- *       plus the audit stamps and where sign-up sends a new player
+ *   §A  the ladder through the real services, one account from registration to a withdrawal while corrections are
+ *       asked, plus the audit stamps and where sign-up sends a new player
  *   §B  the quiet rule, discovered from `src/` and printed:
  *        1 the withdraw panel is mounted only on /wallet/withdraw and in the agent application
  *        2 the first-deposit notice is mounted only on /wallet and the deposit return page
@@ -45,7 +50,7 @@ import { registerWithPassword } from "../src/lib/server/auth-service.ts";
 import { confirmEmailWithProof } from "../src/lib/server/email-verification.ts";
 import { deposit, withdraw } from "../src/lib/server/wallet-service.ts";
 import { createMarket, buyPosition, resolveMarket, settleMarket, cashOutPosition } from "../src/lib/server/market-service.ts";
-import { startKyc, submitIdentityStep, attachDocument, submitForReview, reviewKyc, forceReverifyKyc } from "../src/lib/server/kyc-service.ts";
+import { startKyc, verifyIdentity, askForCorrections, kycRowVersion } from "../src/lib/server/kyc-service.ts";
 import { notifyKyc } from "../src/lib/server/notification-service.ts";
 import { firstDepositNotice, firstDepositNoticeDue, kycNoticeDismissValue } from "../src/lib/server/kyc-notice.ts";
 import { kycGateState } from "../src/lib/kyc-gate-state.ts";
@@ -150,21 +155,21 @@ section("§A · register → deposit and play → verify identity → confirm em
     !!blocked && /2026-09-13/.test(String(blocked.payload?.instruction)) && blocked.payload?.everApproved === false, J(blocked?.payload ?? null));
   ok("A.13 …and nothing moved", after0.balance === before.balance && after0.hold === before.hold, `${before.balance}→${after0.balance} · hold ${after0.hold}`);
 
-  const s = await startKyc(id);
-  const idStep = await submitIdentityStep(id, { idType: "NIDA", idNumber: "19900101123451234512", fullName: "Asha Ladder Mwakalinga", dob: "1990-01-01" });
-  const docs = [];
-  for (const slot of ["NIDA_FRONT", "NIDA_BACK", "SELFIE"] as const) docs.push(await attachDocument(id, slot, PNG));
-  const sub = await submitForReview(id);
-  ok("A.14 the player verifies through the real steps: start, identity, three documents, submit",
-    s.ok && idStep.ok && (idStep as { data?: { verified?: boolean } }).data?.verified === true && docs.every((x) => x.ok) && sub.ok
-      && (await db.kyc.findByUserId(id))?.status === "PENDING_REVIEW", `${J(s)} · ${J(idStep)} · ${J(docs)} · ${J(sub)}`);
-
+  // ⭐ 2026-10-10: the rung is ONE typed press — the document's details, the ACCOUNT's date of birth (none is posted),
+  // no document images — and it is approved at once when the automatic checks pass.
   await db.user.update(id, { displayName: "LadderFox" });
-  const appr = await reviewKyc({ officerId: OFFICER, userId: id, decision: "APPROVE" });
+  const s = await startKyc(id);
+  const idStep = await verifyIdentity(id, { idType: "NIDA", idNumber: "19900101123451234512", fullName: "Asha Ladder Mwakalinga" });
+  const verifiedRow = await db.kyc.findByUserId(id);
+  ok("A.14 the player verifies through the real steps: start, then ONE typed press — approved at once, no documents, no officer",
+    s.ok && idStep.ok && (idStep as { data?: { outcome?: string } }).data?.outcome === "approved"
+      && verifiedRow?.status === "APPROVED" && (verifiedRow?.documents?.length ?? 0) === 0 && verifiedRow?.reviewerId === null && !!verifiedRow?.autoApprovedAt,
+    `${J(s)} · ${J(idStep)} · ${String(verifiedRow?.status)}`);
+
   const approvedUser = await db.user.findById(id);
-  ok("A.15 the officer approves — and the player's chosen handle is NOT replaced by the legal name",
-    appr.ok && (await db.kyc.findByUserId(id))?.status === "APPROVED" && approvedUser?.displayName === "LadderFox"
-      && (await db.kyc.findByUserId(id))?.fullName === "Asha Ladder Mwakalinga", `${J(appr)} · ${String(approvedUser?.displayName)}`);
+  ok("A.15 the approval stamps the first approval — and the player's chosen handle is NOT replaced by the legal name",
+    !!verifiedRow?.approvedAt && approvedUser?.displayName === "LadderFox" && verifiedRow?.fullName === "Asha Ladder Mwakalinga",
+    `${String(verifiedRow?.approvedAt)} · ${String(approvedUser?.displayName)}`);
 
   // ⭐ THE SECOND HALF OF THE WITHDRAWAL GATE (owner ruling 2026-10-07). Identity is answered; the address is still
   // unconfirmed, so the same withdrawal is refused — on the EMAIL now, with nothing moved, and on record. A.11 proved
@@ -185,9 +190,11 @@ section("§A · register → deposit and play → verify identity → confirm em
   const w1 = await withdraw(id, { provider: "MPESA", amount: 20_000, msisdn: LOCAL } as never);
   ok("A.16 ★ the same withdrawal now goes through", w1.ok && (await db.wallet.findByUserId(id))!.balance === before.balance - 20_000, J(w1));
 
-  const rv = await forceReverifyKyc(OFFICER, id, "Document photo unclear — please resubmit.");
+  // ⭐ The officer's check afterwards asks for a correction (`askForCorrections`, which replaced force re-verify on
+  // 2026-10-10). It moves no money: an account approved once keeps its withdrawal.
+  const rv = await askForCorrections(OFFICER, id, { note: "Please check the spelling of your name.", version: kycRowVersion((await db.kyc.findByUserId(id))!) });
   const w2 = await withdraw(id, { provider: "MPESA", amount: 5_000, msisdn: LOCAL } as never);
-  ok("A.17 ★ a force-reverified account that was approved still withdraws",
+  ok("A.17 ★ an account asked for corrections after its approval still withdraws",
     rv.ok && (await db.kyc.findByUserId(id))?.status === "ADDITIONAL_INFO_REQUIRED" && w2.ok, `${J(rv)} · ${J(w2)}`);
 
   // ⭐ ONE LANDING RULE (route audit 2026-10-06). Every sign-in and sign-up door lands through `landingAfterAuth`
@@ -323,6 +330,67 @@ section("§B1 · the withdraw panel appears only where money leaves (and in the 
   const plantedCode = new Map([...planted].map(([f, s]) => [f, decomment(s)]));
   ok("B1.4 control · a planted mount is found, and a mention inside a JSX comment is not",
     J(mountsOf("KycGatePanel", plantedCode)) === J(["src/app/markets/page.tsx"]));
+  // ⭐ 2026-10-10 (typed-only identity; agents keep photos): two TRACKS. The payout panel opens the player's one typed
+  // form; the agent application's opens the AGENT photo track by name (`for=agent`), so an applicant never depends on the
+  // page finding an application that may not exist yet. ⭐ Review R5.6: the link follows the TRACK, which the purpose
+  // only defaults — the withdraw screen passes `track="photo"` for an agent applicant, whose next screen is the photo
+  // track whatever door they came through, so the panel's words and its link describe that screen.
+  const PANEL_SRC = code.get("src/components/kyc/kyc-gate-panel.tsx") ?? "";
+  const linkByTrack = (src: string) =>
+    src.includes('const photoTrack = (track ?? (payout ? "typed" : "photo")) === "photo";')
+    && src.includes('const verifyBase = photoTrack ? "/profile/kyc?for=agent" : "/profile/kyc";');
+  ok("B1.5 the typed track opens /profile/kyc, the photo track /profile/kyc?for=agent — the purpose decides only when no track is passed (payout → typed, agent → photo)",
+    linkByTrack(PANEL_SRC), "the verify link's base is no longer chosen by the track");
+  ok("B1.5c control · the shipped purpose-only link (an agent applicant's withdrawal door opening the typed form) fails B1.5",
+    !linkByTrack(PANEL_SRC.replace('const verifyBase = photoTrack ? "/profile/kyc?for=agent" : "/profile/kyc";', 'const verifyBase = payout ? "/profile/kyc" : "/profile/kyc?for=agent";')));
+  /**
+   * ⭐ B1.6 · THE PHOTO TRACK'S WORDS ON THE WITHDRAWAL SCREEN (review R5.6, 2026-10-10). An agent applicant who opened
+   * /wallet/withdraw unverified was promised the typed one-minute check and "Most checks are instant", then shown the
+   * photo track and an officer's review. The withdraw page now passes the track; on it the payout eyebrow stays, the
+   * bodies and the waiting title are the photo track's, and the "most checks are instant" caption is not drawn.
+   */
+  const photoWords = (src: string) =>
+    src.includes("body: photoTrack ? t.kycGate.bodyNotStartedAgent : t.kycGate.bodyNotStarted")
+    && src.includes("body: photoTrack ? t.kycGate.bodyUploaded : t.kycGate.bodyUploadedTyped")
+    && src.includes("title: photoTrack ? t.kycGate.titlePendingAgent : t.kycGate.titlePending")
+    && src.includes("body: photoTrack ? t.kycGate.bodyRejectedAgent : t.kycGate.bodyRejected")
+    && src.includes("eyebrow: payout ? t.kycGate.eyebrowPayout : t.kycGate.eyebrowVerify");
+  const waitOnTypedOnly = (src: string) =>
+    src.includes('const showWait = payout && !photoTrack && (state === "not_started" || state === "uploaded");')
+    && (src.match(/t[.]kycGate[.]payoutWait/g) ?? []).length === 1
+    && /\{showWait && \([^]*?data-kyc-payout-line="wait"[^]*?t[.]kycGate[.]payoutWait/.test(src);
+  ok("B1.6 the photo track's bodies and waiting title are chosen by the TRACK, under the purpose's eyebrow", photoWords(PANEL_SRC));
+  ok("B1.6b ⛔ \"Most checks are instant\" is drawn on the typed track only — once, and only behind `showWait`", waitOnTypedOnly(PANEL_SRC));
+  ok("B1.6c control · a caption that ignores the track (the shipped `payout && (…)`) fails B1.6b",
+    !waitOnTypedOnly(PANEL_SRC.replace("const showWait = payout && !photoTrack && (", "const showWait = payout && (")));
+  ok("B1.6d control · words chosen by the purpose again (the shipped `payout ? …`) fail B1.6",
+    !photoWords(PANEL_SRC.replace("body: photoTrack ? t.kycGate.bodyNotStartedAgent : t.kycGate.bodyNotStarted", "body: payout ? t.kycGate.bodyNotStarted : t.kycGate.bodyNotStartedAgent")));
+  {
+    const { dict } = await import("../src/lib/i18n-dict.ts");
+    const kg = (loc: "en" | "sw" | "zh", k: string) => String((dict[loc] as unknown as { kycGate: Record<string, unknown> }).kycGate[k] ?? "");
+    const INSTANT: Record<"en" | "sw" | "zh", RegExp> = { en: /instant|a minute/i, sw: /papo|dakika moja/i, zh: /即时|一分钟/ };
+    const claims = (["en", "sw", "zh"] as const).flatMap((loc) =>
+      ["bodyNotStartedAgent", "bodyUploaded", "titlePendingAgent", "bodyRejectedAgent"].filter((k) => INSTANT[loc].test(kg(loc, k))).map((k) => `${loc}.${k}`));
+    ok("B1.6e ⛔ no photo-track word promises an instant or one-minute check, in any language", claims.length === 0, claims.join(", "));
+    ok("B1.6f control · the typed words the photo track replaced DO promise it, in every language (the matcher can see)",
+      (["en", "sw", "zh"] as const).every((loc) => INSTANT[loc].test(kg(loc, "payoutWait")) && INSTANT[loc].test(kg(loc, "bodyNotStarted"))));
+  }
+  /**
+   * ⭐ B1.7 · THE WITHDRAW PAGE ASKS THE AGENT PROGRAMME'S QUESTION AND PASSES THE TRACK — and nothing else changed. The
+   * intent read is the KYC page's own (`agentIdentityIntent`), in a try/catch that degrades to the typed words; a case
+   * with our team is named for what it holds (a full photo set); and the application's panels pass no track (agent →
+   * photo by default), so they draw exactly what they drew before.
+   */
+  const WD = code.get("src/app/wallet/withdraw/page.tsx") ?? "";
+  const passesTrack = (src: string) =>
+    /<KycGatePanel[^>]*?[ ]track=[{]panelTrack[}]/.test(src)
+    && /try [{] agentIntent = await agentIdentityIntent[(]session[.]userId[)]; [}] catch/.test(src)
+    && src.includes('const panelTrack: "typed" | "photo" = (withdrawPanel === "pending_review" ? photoCase : agentIntent) ? "photo" : "typed";');
+  ok("B1.7 the withdraw page reads the agent intent (a failed read keeps the typed words) and passes the panel its track", passesTrack(WD));
+  ok("B1.7c control · a page that passes no track fails B1.7", !passesTrack(WD.replace(" track={panelTrack}", "")));
+  const tracked = [...code.keys()].filter((f) => /<KycGatePanel[^>]*?[ ]track=/.test(code.get(f)!));
+  ok("B1.7b every other mount passes no track — the agent application keeps its photo words by default, the payout default stays typed",
+    J(tracked) === J(["src/app/wallet/withdraw/page.tsx"]), J(tracked));
 }
 
 section("§B2 · the first-deposit notice appears only on /wallet and the deposit return page");
@@ -518,7 +586,10 @@ section("§B7 · who sees the first-deposit notice — the one server predicate,
         id: `kyc_${id}`, userId: id, status: kyc.status, rejectReason: kyc.rejectReason ?? null, rejectNote: null,
         idType: "NIDA", idNumber: null, idExpiry: null, idVerifiedAt: null, fullName: null, dob: null,
         documents: SLOTS.slice(0, kyc.documents ?? 0).map((docType) => ({ docType, storageKey: PNG, uploadedAt: now() })),
-        reviewerId: null, reviewedAt: null, submittedAt: null, approvedAt: kyc.approvedAt ?? null, createdAt: now(), updatedAt: now(),
+        reviewerId: null, reviewedAt: null, submittedAt: null, approvedAt: kyc.approvedAt ?? null,
+        // Every column named (2026-10-10); the notice asks the status and the documents only.
+        extraRequests: [], photoVerifiedAt: null, autoApprovedAt: null, autoFlags: [], postCheckedAt: null, postCheckedById: null, priorIdentities: [],
+        createdAt: now(), updatedAt: now(),
       } as never);
     }
     return id;

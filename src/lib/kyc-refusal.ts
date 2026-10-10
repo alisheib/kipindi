@@ -29,6 +29,20 @@ export function isFinalRefusal(code: string | null | undefined): code is FinalRe
 }
 
 /**
+ * The RECOVERABLE codes an officer may choose for a NEW decision (2026-10-10, typed-only KYC). ⛔ `BLURRY_DOC`
+ * ("the photo was too blurry") is not among them: a player no longer uploads a photo, so it can describe no new
+ * refusal — it stays in the database enum and on every screen that DISPLAYS a refusal, because rows decided before
+ * 2026-10-10 carry it. `reviewKyc` refuses it for a new decision; the officer's picker offers these three.
+ */
+export const NEW_RECOVERABLE_REFUSAL_CODES = ["DETAILS_MISMATCH", "EXPIRED_ID", "OTHER"] as const;
+export type NewRecoverableRefusalCode = (typeof NEW_RECOVERABLE_REFUSAL_CODES)[number];
+
+/** True when an officer may choose this code for a new decision — the three recoverable codes above or a FINAL one. */
+export function isDecidableRefusalCode(code: string | null | undefined): code is NewRecoverableRefusalCode | FinalRefusalCode {
+  return !!code && ((NEW_RECOVERABLE_REFUSAL_CODES as readonly string[]).includes(code) || isFinalRefusal(code));
+}
+
+/**
  * Does this submission still HOLD its document number against other accounts?
  * Exactly the partial-index predicate: not refused, or refused on a final code.
  */

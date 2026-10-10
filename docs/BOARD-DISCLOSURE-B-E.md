@@ -1,5 +1,14 @@
 # Disclosure to the Gaming Board — the joint effect of comment #1 and comment #8
 
+> ⚠️ **SUPERSEDED IN PART ON 2026-10-10 (owner ruling, the Gaming Board's request).** Players no longer upload a
+> document image or a selfie: they verify with the typed details of one document and are approved at once when the
+> automatic checks pass, and an officer checks the approval afterwards. So §3's "three or four attached images" and §4's
+> "human document review (the selfie against the document)" no longer describe a player's verification — that review
+> remains only for agent applicants. Read [`BOARD-DISCLOSURE-KYC-TYPED-ONLY.md`](BOARD-DISCLOSURE-KYC-TYPED-ONLY.md) for
+> the position now, and `COMPLIANCE-DECISIONS.md` § "2026-10-10 · Players verify identity with typed details and are
+> approved at once; agents keep photo identity — Privacy v2026-10-10, Terms v2026-10-10, AML v2026-10-10 (Gaming Board
+> request, relayed by the owner)" for the ruling. This letter is kept as written.
+>
 > **Status:** DRAFT FOR ALI, written 2026-08-20, **before** any code was changed.
 > **Register row:** `E-175` · **Commission:** `SESSION-PROMPT-JAY-COMMENTS.md` §B and its `B × E`
 > row in §6, which requires this shape to be **stated in writing, not quietly mitigated**.

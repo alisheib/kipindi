@@ -244,10 +244,10 @@ export function isFinalRefusalCell(cell: KycCell, rejectReason: string | null | 
  * `startKyc` clears `documents` and `submittedAt` but EXPLICITLY PRESERVES
  * `approvedAt`. So on the IN_PROGRESS / NOT_STARTED arm `approvedAt` is a fact
  * about the PAST, not about this attempt: applying this helper there would paint
- * "Uploaded · not sent" over a once-approved player who has uploaded nothing
- * since restarting. That path is entirely shipped code — APPROVED →
- * `forceReverifyKyc` → officer REJECT → the player taps "start again", which
- * `startKyc` permits because the status is REJECTED.
+ * "Photos · not sent" over a once-approved player who has uploaded nothing
+ * since restarting. That path is entirely shipped code — APPROVED → officer
+ * REJECT (allowed straight from APPROVED since 2026-10-10) → the player taps
+ * "start again", which `startKyc` permits because the status is REJECTED.
  *
  * ⭐ On the REJECTED arm all three witnesses are honest AND the extra two are
  * load-bearing: erasure destroys document rows from ANY status, so
@@ -302,18 +302,19 @@ export function kycStage(facts: KycStageFacts | null, money: KycMoney): KycStage
       return "approved";
 
     // ⭐ THE ONLY STAGE WHERE THE BALL IS IN OUR COURT — which is the question an
-    // officer actually opens this page to answer. It is also the only status that
-    // GUARANTEES a complete document set: `submitForReview` refuses unless
-    // identity is accepted, `missingSlots` is empty, the document is unexpired
-    // and every officer-requested extra is filled. ⛔ Money never changes it: a
-    // submitted file is ours to review at any balance.
+    // officer actually opens this page to answer. ⭐ From 2026-10-10 three writers
+    // reach it: a typed send the automatic checks ROUTED to an officer (`verifyIdentity`),
+    // an agent applicant's photo send (`submitForReview`, which still refuses an
+    // incomplete photo set) and an officer's date-of-birth correction. Each writes
+    // `submittedAt` with the status. ⛔ Money never changes it: a submitted file is
+    // ours to review at any balance.
     case "PENDING_REVIEW":
       return "with_us";
 
-    // Two writers, one word: `reviewKyc` REQUEST_INFO and `forceReverifyKyc`.
-    // All three sub-states mean the same thing to a roster scanner — waiting on
-    // the PLAYER (`attachExtraDocument` never changes status, so "extras in, not
-    // resubmitted" is still this).
+    // One writer since 2026-10-10: `askForCorrections` (it replaced REQUEST_INFO and
+    // force re-verify). Waiting on the PLAYER, who corrects their details and sends
+    // again. ⚠️ A legacy row may still carry officer-requested extras from before that
+    // date; they are read-only now and never block the player's send.
     case "ADDITIONAL_INFO_REQUIRED":
       return "more_needed";
 
@@ -386,8 +387,8 @@ export function kycStageOfFile(row: {
  * IS THIS FILE WAITING ON AN OFFICER? — the `with_us` arm, and the ONE rule every "waiting on us" count uses.
  *
  * 🔴 WHY IT EXISTS (audit session 95, register E-400 ⑦d). `listPendingKyc` returns PENDING_REVIEW AND
- * ADDITIONAL_INFO_REQUIRED, and an ADDITIONAL_INFO_REQUIRED file is the PLAYER's move (`attachExtraDocument`
- * never changes status; the player's resubmit returns it to us). /admin/approvals counted both as "KYC pending"
+ * ADDITIONAL_INFO_REQUIRED, and an ADDITIONAL_INFO_REQUIRED file is the PLAYER's move (we asked them to correct
+ * their details; their corrected send returns it to us). /admin/approvals counted both as "KYC pending"
  * (4) while /admin/kyc said "2 with us", and its Approvals sidebar badge added the same two files that no
  * officer could clear. The workstation's "#1 of 2" had the same defect (E-399) and was fixed with its own
  * status test; all three now ask this.
@@ -478,12 +479,19 @@ export type UnverifiedHeld = HeldTally & {
  * genuinely unverified money.
  * ⚠️ If `facts` carries more than one row per user, the FIRST wins — the DAL's
  * newest-first order.
+ *
+ * 🔴 A FINAL REFUSAL IS ASKED FIRST (2026-10-10). `approvedAt` is never cleared, so an account approved once and
+ * then FINALLY refused (under 18, sanctions, a duplicate identity — now possible straight from APPROVED) still
+ * answered `approvedEver` and vanished from this figure, while its wallet sat frozen holding money we hold no
+ * standing identity for. A newest row REJECTED on a final code is unverified money whatever it once was: it
+ * lands in `frozen` (the refusal froze the wallet) or wherever its wallet now stands. `rejectReason` is optional
+ * so a caller without it keeps the old answer rather than failing to compile.
  */
 export function tallyHeldForUnverified(
-  facts: ReadonlyArray<{ userId: string; status: string; approvedAt: string | null }>,
+  facts: ReadonlyArray<{ userId: string; status: string; approvedAt: string | null; rejectReason?: string | null }>,
   wallets: ReadonlyArray<{ userId: string; status: "ACTIVE" | "FROZEN" | "CLOSED"; balance: number; hold?: number | null }>,
 ): UnverifiedHeld {
-  const factsByUser = new Map<string, { status: string; approvedAt: string | null }>();
+  const factsByUser = new Map<string, { status: string; approvedAt: string | null; rejectReason?: string | null }>();
   for (const f of facts) if (!factsByUser.has(f.userId)) factsByUser.set(f.userId, f);
 
   const out: UnverifiedHeld = {
@@ -497,7 +505,9 @@ export function tallyHeldForUnverified(
     const held = walletHeldTzs(w);
     if (w.status === "ACTIVE") out.basisTotalTzs += held;
     if (held <= 0) continue;
-    if (approvedEver(factsByUser.get(w.userId))) continue;
+    const f = factsByUser.get(w.userId);
+    const finallyRefused = f?.status === "REJECTED" && isFinalRefusal(f.rejectReason);
+    if (!finallyRefused && approvedEver(f)) continue;
     if (w.status === "ACTIVE") {
       out.accounts += 1;
       out.tzs += held;
@@ -508,6 +518,39 @@ export function tallyHeldForUnverified(
       out.closed.accounts += 1;
       out.closed.tzs += held;
     }
+  }
+  return out;
+}
+
+/**
+ * ⭐ HELD BY UNCHECKED AUTOMATIC APPROVALS (2026-10-10) — what accounts hold whose identity was approved AUTOMATICALLY
+ * from typed details and has not yet been checked by an officer.
+ *
+ * WHY A SEPARATE LINE. From 2026-10-10 most identities are approved by the automatic checks and an officer looks
+ * afterwards (the post-check list). Those accounts are VERIFIED for the withdrawal gate — so they are correctly absent
+ * from "held for unverified" — but the regulator's next question about the ruling is "how much sits on identities no
+ * officer has seen?", and this answers it on the same basis.
+ *
+ * ⛔ THE SAME BASIS AS `tallyHeldForUnverified`: ACTIVE wallets, `balance + hold` (`walletHeldTzs`), so the figure is a
+ * subset of the wallet liability and reconciles against it; frozen and closed wallets are excluded here (a frozen
+ * one is already an officer's matter). ⛔ PURE: the caller passes the users on the post-check list
+ * (`listUncheckedAutoApprovals`, newest submission per user) — a failed read of that list is the caller's to say,
+ * never an empty set here. A user listed with no wallet holds nothing, and is not counted.
+ * ⭐ Whatever stage the approval is in now (review R5.1): the list also holds an unchecked automatic approval while it is
+ * with an officer or with the player, and its `approvedAt` keeps withdrawal open in every one of them — so its money is
+ * on identities no officer has seen, and it is counted here.
+ */
+export function tallyHeldByUncheckedAuto(
+  uncheckedUserIds: ReadonlySet<string>,
+  wallets: ReadonlyArray<{ userId: string; status: "ACTIVE" | "FROZEN" | "CLOSED"; balance: number; hold?: number | null }>,
+): HeldTally {
+  const out: HeldTally = { accounts: 0, tzs: 0 };
+  for (const w of wallets) {
+    if (w.status !== "ACTIVE" || !uncheckedUserIds.has(w.userId)) continue;
+    const held = walletHeldTzs(w);
+    if (held <= 0) continue;
+    out.accounts += 1;
+    out.tzs += held;
   }
   return out;
 }

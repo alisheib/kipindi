@@ -1624,7 +1624,7 @@ export async function withdraw(
   // three entries, in order. ⛔ Do not "restore" any of them from an older document.
   //
   // 🔴 IT ASKS WHETHER THE ACCOUNT WAS *EVER* APPROVED, NOT ITS CURRENT STATUS, AND THAT IS THE
-  // WHOLE MONEY-SAFETY STORY. `forceReverifyKyc` moves an APPROVED player to
+  // WHOLE MONEY-SAFETY STORY. An officer's `askForCorrections` moves an APPROVED player to
   // ADDITIONAL_INFO_REQUIRED, and that player HOLDS REAL MONEY earned under an identity we
   // accepted; asking current status would freeze it. An officer who must stop money leaving
   // freezes the wallet (`wallet.status !== "ACTIVE"` below). Rationale: `src/lib/kyc-approval.ts`.
@@ -1893,7 +1893,7 @@ export async function withdraw(
   // with no approval at all is refused above, before any money moves. So the only way to
   // reach this line with a non-APPROVED status is the one population the gate
   // deliberately lets through: a player who WAS approved (`approvedAt` is set) and is
-  // CURRENTLY under re-verification — `forceReverifyKyc` moved them to
+  // CURRENTLY under re-verification — an officer's `askForCorrections` moved them to
   // ADDITIONAL_INFO_REQUIRED, or a later review rejected them, while they still hold money
   // earned under the identity we accepted.
   //

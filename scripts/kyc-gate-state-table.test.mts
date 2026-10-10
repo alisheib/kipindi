@@ -25,10 +25,19 @@
  * `isFinalRefusal`: if either drifted, a table that only asked them would agree with itself forever.
  * ⛔ IT CANNOT PASS VACUOUSLY: the row count is pinned, each assertion prints how many rows it judged, and §3
  * re-implements the wrong variants inline and requires the SAME checker to fail every one of them.
+ *
+ * ⭐ §4 (2026-10-10, review R5.6) — THE SAME ROWS, THE AGENT PROGRAMME'S QUESTION. The agent application draws this
+ * panel from `agentIdentityPanel` (`app/agent/apply/identity-panel.ts`), which asks for an officer's photo approval,
+ * not "approved ever". An identity APPROVED from typed details with no photos yet was answered `not_started`, so a
+ * verified player read "Verify your identity"; it is `photo_upgrade` now, on exactly those rows — held against an
+ * oracle written here, with the shipped mapping and two other wrong ones as controls.
  */
+import { readFileSync } from "node:fs";
 import { kycGateState, type KycGateFacts } from "../src/lib/kyc-gate-state.ts";
 import { approvedEver } from "../src/lib/kyc-approval.ts";
 import { isFinalRefusal, FINAL_REFUSAL_CODES } from "../src/lib/kyc-refusal.ts";
+import { agentIdentityPanel } from "../src/app/agent/apply/identity-panel.ts";
+import { decomment } from "./lib/decomment.mts";
 
 let pass = 0, fail = 0;
 const ok = (label: string, cond: boolean, extra = "") => {
@@ -166,6 +175,106 @@ section("§3 · CONTROLS: every wrong variant is caught by the same table");
   }
   const real = check(kycGateState as Gate);
   ok("3 CONTROL · …and passes the real function (the variants differ from it, not the checker from itself)", violations(real) === 0, `${violations(real)} violation(s)`);
+}
+
+// ═══ §4 · THE AGENT APPLICATION'S PANEL — the agent programme's own question over the same rows (review R5.6) ════════
+section("§4 · agentIdentityPanel — an officer's photo approval, asked over the same rows");
+{
+  /**
+   * ⭐ The agent application asks for an officer's approval of the document photos and a selfie (`photoIdentityVerified`,
+   * which the page asks and passes in), never "approved ever". 🔴 The defect held here (review R5.6, 2026-10-10): an
+   * identity APPROVED from typed details with no photos yet fell in with IN_PROGRESS and answered `not_started`, so a
+   * VERIFIED player read "Verify your identity". It answers `photo_upgrade` — and only an APPROVED row may, because that
+   * state's words say the identity IS verified.
+   * ⚠️ The mapper reads the row's `documents` ARRAY (every StoredKyc carries one), so the array-shaped rows are asked.
+   */
+  type AgentPanel = (f: KycGateFacts, photoVerified: boolean) => string | null;
+  const AGENT_VOCAB = new Set([...VOCAB, "photo_upgrade"]);
+  const agentRows = rows.filter((r) => !r.facts || Array.isArray(r.facts.documents));
+  /** The oracle, written out here — never the mapper under test. */
+  const agentOracle: AgentPanel = (f, photoVerified) => {
+    if (photoVerified) return null;
+    if (f?.status === "REJECTED" && finalOracle(f?.rejectReason)) return "refused_final";
+    const docs = f?.documents?.length ?? 0;
+    if (f?.status === "PENDING_REVIEW") return "pending_review";
+    if (f?.status === "ADDITIONAL_INFO_REQUIRED") return "more_info";
+    if (f?.status === "REJECTED") return "rejected";
+    if (f?.status === "APPROVED") return docs > 0 ? "uploaded" : "photo_upgrade";
+    if (f?.status === "IN_PROGRESS") return docs > 0 ? "uploaded" : "not_started";
+    return "not_started";
+  };
+  type AgentReport = { wrong: string[]; vocab: string[]; shownToVerified: string[]; hiddenFromUnverified: string[]; upgrade: number; upgradeElsewhere: string[] };
+  /** ONE checker, run on the real mapper and on every wrong variant below. */
+  const checkAgent = (panel: AgentPanel): AgentReport => {
+    const out: AgentReport = { wrong: [], vocab: [], shownToVerified: [], hiddenFromUnverified: [], upgrade: 0, upgradeElsewhere: [] };
+    for (const r of agentRows) for (const photoVerified of [false, true]) {
+      let got: string | null;
+      try { got = panel(r.facts, photoVerified); } catch (err) { got = `THREW ${(err as Error).message}`; }
+      const label = `${r.label} · photo-approved ${photoVerified}`;
+      if (got !== null && !AGENT_VOCAB.has(got)) out.vocab.push(`${label} → ${got}`);
+      if (photoVerified && got !== null) out.shownToVerified.push(`${label} → ${got}`);
+      if (!photoVerified && got === null) out.hiddenFromUnverified.push(label);
+      if (got === "photo_upgrade") {
+        if (r.facts?.status === "APPROVED") out.upgrade++;
+        else out.upgradeElsewhere.push(label);
+      }
+      const want = agentOracle(r.facts, photoVerified);
+      if (got !== want) out.wrong.push(`${label} → ${JSON.stringify(got)} (oracle ${JSON.stringify(want)})`);
+    }
+    return out;
+  };
+  const real = checkAgent(agentIdentityPanel as AgentPanel);
+  // 2 missing rows + 7 statuses × 2 stamps × 8 reasons × 2 document counts, array-shaped — each asked twice.
+  ok("4.0 the rows asked are the 224 array-shaped rows and the 2 missing rows, each with and without the photo approval",
+    agentRows.length === 226, `${agentRows.length} rows`);
+  ok("4.1 ⛔ an officer's photo approval → no panel, on every row", real.shownToVerified.length === 0, real.shownToVerified.slice(0, 3).join(" | "));
+  ok("4.2 ⛔ without it → always a panel: a typed approval never waves an agent applicant through", real.hiddenFromUnverified.length === 0,
+    real.hiddenFromUnverified.slice(0, 3).join(" | "));
+  // 1 status × 2 stamps × 8 reasons × no documents.
+  ok("4.3 🔴 R5.6 · APPROVED from typed details with no photos → photo_upgrade, on all 16 such rows (never \"Verify your identity\")",
+    real.upgrade === 16, `${real.upgrade} row(s)`);
+  ok("4.4 ⛔ …and on no other row: photo_upgrade says the identity IS verified, so only an APPROVED row may draw it",
+    real.upgradeElsewhere.length === 0, real.upgradeElsewhere.slice(0, 3).join(" | "));
+  ok("4.5 every answer is in the panel's vocabulary (the six identity states and photo_upgrade)", real.vocab.length === 0, real.vocab.slice(0, 3).join(" | "));
+  ok("4.6 ⛔ every row, both ways, equals the oracle written here", real.wrong.length === 0, real.wrong.slice(0, 3).join(" | "));
+
+  // ⭐ CONTROLS — each wrong mapping differs from the real one in ONE decision, and the SAME checker must fail it.
+  const shipped: AgentPanel = (f, photoVerified) => {
+    // The mapping as it stood before R5.6: APPROVED fell in with IN_PROGRESS.
+    if (photoVerified) return null;
+    if (f?.status === "REJECTED" && isFinalRefusal(f?.rejectReason)) return "refused_final";
+    const docs = f?.documents?.length ?? 0;
+    switch (f?.status) {
+      case "PENDING_REVIEW": return "pending_review";
+      case "ADDITIONAL_INFO_REQUIRED": return "more_info";
+      case "REJECTED": return "rejected";
+      case "APPROVED":
+      case "IN_PROGRESS": return docs > 0 ? "uploaded" : "not_started";
+      default: return "not_started";
+    }
+  };
+  const variants: [string, AgentPanel, (r: AgentReport) => boolean][] = [
+    ["the shipped mapping (an APPROVED identity with no photos told to verify)", shipped, (r) => r.upgrade === 0 && r.wrong.length === 16],
+    ["photo_upgrade for every row with no photos (an unverified player told they are verified)",
+      (f, photoVerified) => (!photoVerified && (f?.documents?.length ?? 0) === 0 && f?.status !== "REJECTED" ? "photo_upgrade" : agentIdentityPanel(f, photoVerified)),
+      (r) => r.upgradeElsewhere.length > 0],
+    ["the photo approval ignored (an approved agent applicant still shown a panel)", (f) => agentIdentityPanel(f, false), (r) => r.shownToVerified.length > 0],
+  ];
+  for (const [name, panel, caughtWhere] of variants) {
+    const r = checkAgent(panel);
+    ok(`4.c ⭐ CONTROL · the checker FAILS "${name}"`, caughtWhere(r),
+      `wrong ${r.wrong.length} · photo_upgrade elsewhere ${r.upgradeElsewhere.length} · shown to the photo-approved ${r.shownToVerified.length}`);
+  }
+
+  // ⭐ AND THE TWO ENDS OF IT, IN THE SOURCE: the page hands the mapper the gate's own predicate (no second, local mapping),
+  // and the panel can draw the state — a brand step with one verify door, in its own three words.
+  const page = decomment(readFileSync(new URL("../src/app/agent/apply/page.tsx", import.meta.url), "utf8"));
+  ok("4.7 /agent/apply asks `photoIdentityVerified` and hands it to this mapper — and keeps no local copy of the mapping",
+    page.includes("agentIdentityPanel(kyc, photoIdentityVerified(kyc))") && !page.includes("function agentIdentityPanel"));
+  const panel = decomment(readFileSync(new URL("../src/components/kyc/kyc-gate-panel.tsx", import.meta.url), "utf8"));
+  ok("4.8 the panel draws photo_upgrade: brand, the camera, one verify door, and its own title, body and CTA",
+    /photo_upgrade:\s*\{\s*tone:\s*"neutral",\s*glyph:\s*"camera",\s*cta:\s*"verify"\s*\}/.test(panel)
+      && ["titlePhotoUpgrade", "bodyPhotoUpgrade", "ctaPhotoUpgrade"].every((k) => panel.includes(`t.kycGate.${k}`)));
 }
 
 console.log(`\nkyc-gate-state-table: ${pass} passed, ${fail} failed`);

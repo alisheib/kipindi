@@ -136,6 +136,10 @@ export const NOT_EYEBROW = new Map([
   ["app/admin/finance/page.tsx :: className={`inline-block rounded px-1.5 py-0.5 font-mono text-micro uppercase tracking-[0.08em] ${ ↵ r.feeModel === \"loser-share\" ? \"bg-brand-500/15 text-brand-300\" : \"bg", "STATUS_CHIP"],
   ["app/admin/kyc/[id]/kyc-decision-rail.tsx :: <span className=\"font-mono text-caption uppercase tracking-[0.16em] text-text-muted\">Recording decision…</span> ↵ </div>", "OTHER"],
   ["app/admin/kyc/[id]/kyc-decision-rail.tsx :: <span className=\"ml-auto font-mono text-micro uppercase tracking-[0.12em] text-text-subtle\"> ↵ {judg[c.key] === \"pending\" ? \"tap to verify\" : judg[c.key]}", "CONTROL_LABEL"],
+  // 2026-10-10 (typed-only identity): the checklist row's OUTCOME word — "Flag" · "To an officer" · "Blocks approval" —
+  // set before the check's detail. Non-interactive, it states the row's status: a status word, not the label over a block.
+  // ⛔ The one-click controls of `components/admin/kyc-review-controls.tsx` went with that file (deleted the same day), and so did their read here.
+  ["app/admin/kyc/[id]/kyc-decision-rail.tsx :: {OUTCOME_WORD[c.outcome] && <span className={`uppercase tracking-[0.08em] ${c.outcome === \"block\" ? \"text-danger-fg\" : c.outcome === \"flag\" ? \"text-warning-fg\" : \"text-ro", "STATUS_CHIP"],
   ["app/admin/kyc/[id]/kyc-doc-viewer.tsx :: <p className=\"font-mono text-caption uppercase tracking-[0.14em] text-text-muted\">Document failed to load</p> ↵ <p className=\"text-body-sm leading-snug text-text-subtle\">", "CELEBRATION"],
   ["app/admin/kyc/[id]/kyc-doc-viewer.tsx :: <span className=\"font-mono text-caption uppercase tracking-[0.14em]\">Not uploaded</span> ↵ </div>", "OTHER"],
   ["app/admin/kyc/[id]/kyc-doc-viewer.tsx :: className=\"inline-flex items-center gap-1.5 rounded-md border px-2.5 h-[40px] font-mono text-caption uppercase tracking-[0.08em] transition-colors\" ↵ style={on", "CONTROL_LABEL"],
@@ -311,7 +315,6 @@ export const NOT_EYEBROW = new Map([
   ["components/admin/ai-toolkit.tsx :: className={`font-mono text-micro tracking-[0.12em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border transition-colors ${ ↵ !hasKey", "CONTROL_LABEL"],
   ["components/admin/ai-toolkit.tsx :: className={`shrink-0 rounded-md border px-1.5 py-0.5 font-mono text-micro uppercase tracking-[0.12em] ${ ↵ on ? \"border-border-strong bg-bg-elevated text-text-secondary\" ", "STATUS_CHIP"],
   ["components/admin/control-locked.tsx :: className={`inline-flex items-center gap-1.5 rounded-md border border-border bg-bg-inset px-2.5 font-mono text-micro uppercase tracking-[0.10em] text-text-subtle ${ ↵ // ", "STATUS_CHIP"],
-  ["components/admin/kyc-review-controls.tsx :: No action needed — this submission is <span className=\"font-mono uppercase\">{status}</span>. ↵ </p>", "STATUS_CHIP"],
   ["components/auth/auth-shell.tsx :: <div className=\"mb-2 flex items-center justify-between font-mono text-micro uppercase tracking-[0.14em]\"> ↵ <span className=\"text-yes-300\">{t.common.yes} 64%</span>", "OTHER"],
   ["components/auth/auth-shell.tsx :: <div className=\"relative font-mono text-micro uppercase tracking-[0.16em] text-text-subtle\"> ↵ {t.auth.licensedByGbt}","OTHER"],
   ["components/auth/auth-shell.tsx :: <p className=\"mt-6 text-center font-mono text-micro uppercase tracking-[0.16em] text-text-subtle lg:hidden\"> ↵ {t.auth.licensedByGbt}","OTHER"],

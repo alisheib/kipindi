@@ -98,6 +98,8 @@ export const RATE_RULES: Record<string, RateRule> = {
   "journey.link":  { capacity: 10, refillPerMin: 1 },
   "chat.send":     { capacity: 10, refillPerMin: 2 },     // 10 messages burst, 2/min steady
   "kyc.submit":    { capacity: 5,  refillPerMin: 0.5 },
+  // Per account, keyed `<userId>:attach` (`kycAttachRateKey`): the agent photo track's attaches — a set and a few retakes at once, then 3 a minute (2026-10-10, R5.5).
+  "kyc.attach":    { capacity: 12, refillPerMin: 3 },
   "wallet.deposit":{ capacity: 20, refillPerMin: 4 },
   "wallet.withdraw":{ capacity: 6, refillPerMin: 0.5 },
   "wallet.payee_lookup":{ capacity: 20, refillPerMin: 6 }, // payee name-lookup on the withdraw confirm — bounded to deter name enumeration

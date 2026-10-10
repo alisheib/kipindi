@@ -78,8 +78,8 @@ export type PayoutIdentity =
  * Why a refusal happened, as a machine token — never as prose.
  *
  * ⭐ FOUR REASONS, NOT ONE, because "you cannot withdraw yet" is four different sentences with four
- * different next actions: start the form / wait for us / upload what the officer asked for / read
- * why you were turned down. docs/RULES.md §2.3 requires a refusal to name what the player must do.
+ * different next actions: start the form / wait for us / correct the details the officer asked
+ * about / read why you were turned down. docs/RULES.md §2.3 requires a refusal to name what the player must do.
  *
  * ⛔ `kyc_required` IS NOT ONE OF THEM, AND MUST NOT BE. That name was retired on 2026-08-20 with
  * a reason tied to Board comment #1 (`failure-reasons.ts`); reviving a retired token for a

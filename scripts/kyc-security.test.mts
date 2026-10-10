@@ -9,12 +9,17 @@
  * `npm run test:id-documents`; this suite keeps the NIDA path it has always
  * guarded and proves the API it now goes through.
  *
+ * ⭐ FROM 2026-10-10 THE PLAYER'S PATH IS THE TYPED ONE-PRESS STEP (`verifyIdentity`), approved at once with no
+ * officer in front of it. §2–§2e still drive `submitIdentityStep` (now the agent photo track's step 1, the same
+ * checks); §2f drives the typed press through the same rule — a held number refused, an automatic approval's
+ * number held.
+ *
  *   npx tsx scripts/kyc-security.test.mts
  */
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 process.env.OTP_PEPPER ??= "test-only-pepper";
 
-import { startKyc, submitIdentityStep, getKycStatus } from "../src/lib/server/kyc-service.ts";
+import { startKyc, submitIdentityStep, verifyIdentity, getKycStatus } from "../src/lib/server/kyc-service.ts";
 import { setUserEmail } from "../src/lib/server/email-verification.ts";
 import { db } from "../src/lib/server/store.ts";
 
@@ -191,6 +196,38 @@ ok("own NIDA re-submit ok", r.ok && (r as { data?: { verified: boolean } }).data
   }
   ok("2e · holdsDocumentNumber holds for every submission that is not refused",
     ["IN_PROGRESS", "PENDING_REVIEW", "ADDITIONAL_INFO_REQUIRED", "APPROVED"].every((s) => holdsDocumentNumber({ status: s, rejectReason: null })));
+}
+
+// ─── 2f. ⭐ THE TYPED ONE-PRESS PATH ENFORCES THE SAME RULE (2026-10-10) ───
+// From 2026-10-10 a player verifies with typed details and is APPROVED AT ONCE when the checks pass (owner ruling —
+// docs/COMPLIANCE-DECISIONS.md, "2026-10-10 · Players verify identity with typed details"). With no officer in front
+// of the approval, uniqueness is the control that stands between one document and a second account — so the typed
+// press is driven here through the same three questions: a held number is refused, a number it approves is held,
+// and a control proves the press approves at all.
+{
+  await mkUser("usr_t_a", "+255710000251");
+  const dupOfHeld = await verifyIdentity("usr_t_a", { idType: "NIDA", idNumber: NIDA, fullName: "Typed Alpha" });
+  ok("2f · 🔴 the typed press refuses a number another account holds (id_taken) — no automatic approval of a duplicate",
+    !dupOfHeld.ok && (dupOfHeld as { reason?: string }).reason === "id_taken" && (await getKycStatus("usr_t_a"))?.status !== "APPROVED",
+    JSON.stringify(dupOfHeld).slice(0, 160));
+
+  const TYPED_DOC = "19900101456712345673";
+  await mkUser("usr_t_b", "+255710000252");
+  const first = await verifyIdentity("usr_t_b", { idType: "NIDA", idNumber: TYPED_DOC, fullName: "Typed Beta" });
+  const kb = await getKycStatus("usr_t_b");
+  ok("2f · CONTROL — a free number is approved at once, on the typed press",
+    first.ok && (first as { data?: { outcome?: string } }).data?.outcome === "approved" && kb?.status === "APPROVED" && kb?.idNumber === TYPED_DOC,
+    JSON.stringify(first).slice(0, 160));
+
+  await mkUser("usr_t_c", "+255710000253");
+  const second = await verifyIdentity("usr_t_c", { idType: "NIDA", idNumber: TYPED_DOC, fullName: "Typed Cee" });
+  ok("2f · 🔴 …and the number an AUTOMATIC approval holds is refused to a second account",
+    !second.ok && (second as { reason?: string }).reason === "id_taken" && !(await getKycStatus("usr_t_c"))?.idVerifiedAt,
+    JSON.stringify(second).slice(0, 160));
+  // A type-blind read would refuse this too: the same digits as a passport are a different document.
+  const asPassport = await verifyIdentity("usr_t_c", { idType: "PASSPORT", idNumber: TYPED_DOC, idExpiry: "2030-01-01", fullName: "Typed Cee" });
+  ok("2f · control — the same digits presented as a PASSPORT are a different document, approved on the typed press",
+    asPassport.ok && (asPassport as { data?: { outcome?: string } }).data?.outcome === "approved", JSON.stringify(asPassport).slice(0, 160));
 }
 
 // ─── 3. PHONE uniqueness (the lookup the registration guard relies on) ───

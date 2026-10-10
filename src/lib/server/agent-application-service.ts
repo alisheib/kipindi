@@ -31,6 +31,11 @@
  *    invariants: the debit must be all-or-nothing, locked and idempotent, and it can race a
  *    bet for the same balance. `COMPLIANCE-DECISIONS.md` § 2026-09-10.
  *  ⛔ NO NUMBER IS A LITERAL. Every amount, window and day count is read from `agent-config`.
+ *  ⭐ AN AGENT'S IDENTITY IS AN OFFICER'S APPROVAL OF PHOTOS (Ali, 2026-10-10). Players now verify
+ *    with typed details and are approved AUTOMATICALLY; agents keep the photo check exactly as
+ *    before — document photos and a selfie, approved by an officer, which stamps `photoVerifiedAt`.
+ *    Every identity gate in this file asks `agent-identity.ts`. ⛔ An APPROVED status alone is never
+ *    enough here: an automatic typed approval is APPROVED too, and no officer has seen it.
  *
  * ── GATE THE OFFER, NEVER THE REFUSAL ───────────────────────────────────────────────────
  * Every refusal that would strand the registration fee — staff, self-excluded, terminal rejection,
@@ -48,7 +53,9 @@ import { randomId, generateOtp, hashOtp, verifyOtp } from "./crypto";
 import { runOutsideLock, withLock } from "./locks";
 import { getAgentConfig, type AgentConfig, type FeeVatTreatment } from "./agent-config";
 import { ensureAffiliateAccount, isApprovedAgent, agentStandingFor, AGENT_CODE_PREFIX } from "./affiliate-service";
-import { getKycStatus, reviewKyc, validateDocImage } from "./kyc-service";
+import { getKycStatus, reviewKyc, kycRowVersion, validateDocImage, readKycCaseChecks } from "./kyc-service";
+// ⭐ The agent programme's identity questions (2026-10-10): an officer's approval ON PHOTOS, never a bare APPROVED.
+import { photoIdentityVerified, photoCaseSent } from "./agent-identity";
 // ⭐ The all-or-nothing fee debit (Ali, 2026-09-10). ⛔ NOT `debitInternal`, which debits
 // partially by design. ⚠️ `wallet-service` does not import this module, so no cycle.
 import { payAgentRegistrationFee, refundAgentRegistrationFeeToWallet } from "./wallet-service";
@@ -222,12 +229,16 @@ export async function applicantEligibility(userId: string, opts: { forInvitation
   // ⭐ R8-D (2026-10-10) · the condition is `agentRgHold`'s, the ONE spelling the fee payment asks too.
   const rg = await agentRgHold(userId);
   if (rg) return { ok: false, refusal: "rg_locked", until: rg.until };
-  // KYC — self-service needs the platform's ordinary identity verification APPROVED first.
-  // An invitee uploads their own ID + selfie through the same flow and it is decided at
-  // approval, so for them the door opens without it.
+  // KYC — self-service needs the agent programme's identity FIRST: the applicant's document photos
+  // and selfie, APPROVED BY AN OFFICER (`photoIdentityVerified`). An invitee sends their own ID +
+  // selfie through the same photo track and it is decided at approval, so for them the door opens
+  // without it.
+  // ⛔ NOT a bare `status === "APPROVED"` since 2026-10-10: a player's typed details are approved
+  // automatically, with no officer and no photos, and that approval opens withdrawals — never this
+  // door. The /agent CTA sends them to the photo track (`/profile/kyc?for=agent`).
   if (!opts.forInvitation) {
     const kyc = await getKycStatus(userId);
-    if (!kyc || kyc.status !== "APPROVED") return { ok: false, refusal: "kyc_required" };
+    if (!photoIdentityVerified(kyc)) return { ok: false, refusal: "kyc_required" };
   }
   // Prior refusals: terminal reasons never re-open; others re-open after the cool-down.
   // ⭐ REVOKED joins REJECTED here (four-lens review, 2026-09-07): the authority promises a
@@ -607,6 +618,8 @@ export async function setReferees(
  *                         `applicantEligibility` enforces it for self-service but exempts an
  *                         OFFICER-INVITED applicant on purpose, so an invitee can reach the payment
  *                         step unverified — possibly with a funded wallet — and is refused here.
+ *                         ⭐ Since 2026-10-10 "verified" here means an officer approved the photos
+ *                         (`photoIdentityVerified`): a player's automatic typed approval is not it.
  *  · `email_unverified` — inherited from depositing, which needed a verified email until the owner
  *                         ruling of 2026-10-07 (a deposit asks none now). Since then it is the AGENT
  *                         PROGRAMME'S OWN requirement, kept deliberately: the fee buys a role that
@@ -682,6 +695,7 @@ export async function recordFeePayment(userId: string, input: { feeReference: st
  *    check below is that requirement, not a copy of a deposit gate. ⛔ Do not delete it as stale.
  *    ⚠️ And the invitation email hard-codes `feeWaivable: true`, so it says the fee *may* be waived
  *    while the waiver is a separate officer action — an unwaived invitee must verify to pay.
+ *    ⭐ "Verify" means an officer's approval of the photos since 2026-10-10 (`photoIdentityVerified`).
  *  · A VERIFIED EMAIL — required by deposit until 2026-10-07; since then the agent programme's own
  *    requirement (see `email_unverified` above), checked nowhere upstream.
  *
@@ -746,8 +760,13 @@ export async function payFeeFromWallet(userId: string): Promise<FeeResult & { sh
     // since 2026-09-13, email since 2026-10-07): both are the AGENT PROGRAMME'S requirements, kept
     // by those rulings, and identity here still asks the CURRENT status — the withdrawal gate's
     // approved-ever question is a different rule for a different door.
+    // ⭐ AND SINCE 2026-10-10 IT ASKS FOR AN OFFICER'S APPROVAL OF THE PHOTOS (`photoIdentityVerified`:
+    // status APPROVED *and* `photoVerifiedAt`). A player's typed details are approved automatically now,
+    // and a bare APPROVED would take the fee from somebody `approveAgent` must then refuse — the
+    // stranded fee this door exists to prevent. For an invitee too: a waived fee lets their photo case
+    // be decided at approval, but a fee they PAY waits for an officer to approve the photos first.
     const kyc = await getKycStatus(userId);
-    if (!kyc || kyc.status !== "APPROVED") {
+    if (!photoIdentityVerified(kyc)) {
       return { ok: false as const, error: "Verify your identity before paying the registration fee.", code: "INVALID" as const, refusal: "kyc_required" as const };
     }
     const payer = await db.user.findById(userId);
@@ -842,9 +861,11 @@ export async function submitForReview(userId: string, input: { acceptedTermsVers
     if (missing.length > 0) return { ok: false as const, error: "Your application is not complete.", code: "INVALID" as const, data: { missing } } as ServiceResult<{ missing: string[] }>;
     if (!(input.acceptedTermsVersion ?? "").trim()) return { ok: false as const, error: "Accept the agent terms to continue.", code: "INVALID" as const };
     // An invitee's own identity must at least be SUBMITTED for review — it is decided at approval.
+    // ⭐ As a PHOTO case (2026-10-10): the photos and selfie sent, or already approved by an officer.
+    // A typed case — approved automatically, or with an officer on typed details — is neither.
     if (app.source === "OFFICER_INVITED") {
       const kyc = await getKycStatus(userId);
-      if (!kyc || !["PENDING_REVIEW", "APPROVED"].includes(kyc.status)) {
+      if (!photoCaseSent(kyc) && !photoIdentityVerified(kyc)) {
         return { ok: false as const, error: "Submit your identity documents first.", code: "INVALID" as const };
       }
     }
@@ -919,11 +940,14 @@ export async function missingForSubmit(app: StoredAgentApplication): Promise<str
   }
   // ⭐ An INVITED applicant's own identity is part of what is missing — it used to be enforced
   // only as a late refusal at submit ("Submit your identity documents first"), after the seven
-  // uploads and the fee (four-lens review, 2026-09-07). PENDING_REVIEW is enough here: the officer
+  // uploads and the fee (four-lens review, 2026-09-07). A photo case SENT is enough here: the officer
   // decides identity and agent status together at approval.
+  // ⛔ "Sent" and "approved" are asked of the PHOTO case since 2026-10-10 (`agent-identity.ts`). The
+  // old reading — PENDING_REVIEW or APPROVED — is also true of a player's typed details, approved
+  // automatically or routed to an officer, and neither can ever stamp the agent programme's gate.
   if (app.source === "OFFICER_INVITED") {
     const kyc = await getKycStatus(app.userId);
-    if (!kyc || !["PENDING_REVIEW", "APPROVED"].includes(kyc.status)) missing.push("IDENTITY");
+    if (!photoCaseSent(kyc) && !photoIdentityVerified(kyc)) missing.push("IDENTITY");
   }
   return missing;
 }
@@ -1311,9 +1335,11 @@ async function purgeThirdPartyDocuments(applicationId: string): Promise<number> 
  *   · on an OFFICER_INVITED application, the invitation is ACCEPTED — the second party;
  *   · the applicant is not staff (approving would strip their admin access);
  *   · not already an agent;
- *   · KYC: self-service → APPROVED already; invited → PENDING_REVIEW or APPROVED, and a
- *     PENDING_REVIEW one is decided HERE through the ordinary KYC service — one review, two
- *     records — ⛔ never flagged approved without real identity documents;
+ *   · KYC — the agent programme's identity, an OFFICER'S APPROVAL OF THE PHOTOS (2026-10-10,
+ *     `agent-identity.ts`): self-service → photo-approved already; invited → photo-approved, or a
+ *     photo case SENT, which is decided HERE through the ordinary KYC service in photo mode — one
+ *     review, two records — ⛔ never flagged approved without real identity documents. ⛔ A typed
+ *     identity (approved automatically, or with an officer on typed details) never satisfies it;
  *   · the fee is RESOLVED: COLLECTED or WAIVED, never NONE;
  *   · the rate is within (0, cfg.maxCommissionPct].
  * Then, atomically under the agent lock: mint the `50PICK-AG-` code, UPDATE the affiliate row
@@ -1349,14 +1375,51 @@ export async function approveAgent(officerId: string, applicationId: string, inp
     if (isApprovedAgent(acct)) return refuse("already_agent", "This person is already an approved agent.");
     if (applicant.status !== "ACTIVE") return refuse(`account_${applicant.status}`, "The applicant's account is not active.");
     if (app.feeDisposition !== "COLLECTED" && app.feeDisposition !== "WAIVED") return refuse("fee_unresolved", "Reconcile the fee, or waive it with a reason, before approving.");
-    // KYC — the platform's ordinary identity verification, decided by the ordinary service.
+    // KYC — the agent programme's identity: an officer's approval of the applicant's document photos
+    // and selfie (`photoIdentityVerified`), decided by the ordinary KYC service.
+    // ⛔ NEVER A BARE APPROVED (2026-10-10). A player's typed details are approved automatically, with
+    // no officer and no photos; that approval opens withdrawals, and it must never mint an agent.
     const kyc = await getKycStatus(app.userId);
     if (!kyc) return refuse("kyc_missing", "The applicant has not verified their identity.");
-    if (kyc.status === "PENDING_REVIEW" && app.source === "OFFICER_INVITED") {
-      const r = await reviewKyc({ officerId, userId: app.userId, decision: "APPROVE" });
-      if (!r.ok) return refuse("kyc_review_failed", `Identity could not be approved: ${r.error}`);
-    } else if (kyc.status !== "APPROVED") {
-      return refuse(`kyc_${kyc.status}`, "The applicant's identity verification is not approved.");
+    if (!photoIdentityVerified(kyc)) {
+      if (app.source === "OFFICER_INVITED" && photoCaseSent(kyc)) {
+        // ⛔ ONLY A PLAIN PHOTO CASE IS DECIDED HERE (2026-10-10, reviews R1.5/R4.2). This rail is ONE officer and no
+        // checklist: it shows no route reason, collects no attestation and runs no two-officer rule. So a case the
+        // automatic checks would send to an officer for any reason besides its photos — a risk score at or above the
+        // two-officer threshold (HIGH_RISK, `KYC_MAKER_CHECKER_THRESHOLD`), a wallet hold, an AML escalation, a restricted
+        // same-person match, an officer's earlier ruling, a NIDA number saying under 18 — is decided on the identity
+        // workstation first, where those reasons, the attestations and the maker-checker live. ⛔ A failed read of the
+        // checks refuses too: a fact we could not read is never read as "nothing to see".
+        let checks: Awaited<ReturnType<typeof readKycCaseChecks>> = null;
+        try {
+          checks = await readKycCaseChecks(app.userId);
+        } catch {
+          return refuse("kyc_checks_unreadable", "The identity checks could not be read just now. Decide this identity on the identity workstation first.");
+        }
+        const otherRoutes = (checks?.decision.routes ?? []).filter((route) => route !== "AGENT_PHOTOS");
+        if (!checks || checks.mode !== "photo" || otherRoutes.length > 0) {
+          return refuse(`kyc_workstation_required${otherRoutes.length ? `_${otherRoutes.join("_")}` : ""}`, "Decide this identity on the identity workstation first — its checks send it to an officer for more than its photos.");
+        }
+        // ⭐ The invitee's photo case is decided HERE, as before — through the ordinary service, in PHOTO
+        // mode, on the row version just read: a case that changed since is refused by the service, and a
+        // set that is no longer complete is refused as a typed case, never approved as a photo one.
+        // ⛔ No attestations are posted from this rail, so the approval records NO attestation set (`approveIdentity`) —
+        // and checks no automatic approval behind the case (review R5.3): that stays on the officers' post-check list.
+        const r = await reviewKyc({ officerId, userId: app.userId, decision: "APPROVE", version: kycRowVersion(kyc), mode: "photo", via: "agent_approval" });
+        if (!r.ok) return refuse("kyc_review_failed", `Identity could not be approved: ${r.error}`);
+        // ⛔ THE GATE IS THE STAMP, NOT THE CALL'S SUCCESS. Re-read, and mint nothing unless the officer's
+        // approval actually recorded the photos — whatever the KYC service decides to stamp in future.
+        if (!photoIdentityVerified(await getKycStatus(app.userId))) {
+          return refuse("kyc_photo_unverified", "The identity was approved, but not on its photos, so the agent was not approved. Open the identity workstation.");
+        }
+      } else if (photoCaseSent(kyc)) {
+        // A self-service applicant's photos are decided on the identity workstation before they apply.
+        return refuse("kyc_photos_pending", "The applicant's identity photos are awaiting review — decide them on the identity workstation first.");
+      } else if (kyc.status === "APPROVED" || kyc.status === "PENDING_REVIEW") {
+        return refuse("kyc_photos_required", "No officer has approved this applicant's document photos and selfie — typed details verify a withdrawal, not an agent.");
+      } else {
+        return refuse(`kyc_${kyc.status}`, "The applicant's identity verification is not approved.");
+      }
     }
 
     // Mint the code — unique, retried.

@@ -12,7 +12,7 @@ import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { db, type StoredTxn, type StoredSourceOfFunds, type StoredKycStageRow } from "@/lib/server/store";
-import { ID_DOC_SPECS, type IdDocType } from "@/lib/id-documents";
+import { ID_DOC_SPECS, photoSetComplete, type IdDocType } from "@/lib/id-documents";
 import { getAuditPage } from "@/lib/server/audit";
 import { houseAuditForConsole } from "@/lib/server/house-console-read";
 import { listPendingKyc } from "@/lib/server/kyc-service";
@@ -220,7 +220,7 @@ async function AdminApprovalsContent({
             <div className="flex items-center gap-3 py-4">
               {/* shrink-0 (2026-09-13): at 390 the flex row squeezed this 18px glyph to about 8px beside the sentence. */}
               <I.shieldcheck s={18} className="shrink-0" />
-              <p className="text-caption text-text-secondary">No identity file is waiting on an officer. A file appears here the moment a player sends it.</p>
+              <p className="text-caption text-text-secondary">No identity file is waiting on an officer. A file appears here the moment the checks send one to an officer, or an agent applicant sends their photos.</p>
             </div>
           ) : (
             <>
@@ -275,6 +275,10 @@ async function AdminApprovalsContent({
                     // catalogue's own answer, so a fifth document needs no edit here.
                     // Where the type is missing we print the count alone rather than assert a
                     // requirement we cannot name (§C — no invented figure).
+                    // ⭐ 2026-10-10 — "n/m" ONLY ON A PHOTO CASE (the full photo set and a selfie on file: an agent
+                    // applicant's, or a player's from before that date). A typed case has no photos to count, and
+                    // "0/3" over it would read as a submission three images short of a requirement that no longer applies.
+                    const photoCase = photoSetComplete(k.idType, k.documents.map((d: { docType: string }) => d.docType));
                     const slots = k.idType ? ID_DOC_SPECS[k.idType as IdDocType]?.requiredSlots.length : undefined;
                     const attempts = attemptsByUser?.get(k.userId);
                     const bucket = kycHeldBucket(heldOf(k));
@@ -296,7 +300,7 @@ async function AdminApprovalsContent({
                       </td>
                       <td className="py-2 pr-3"><a href={`/admin/players/${k.userId}?tab=kyc`} className="font-mono text-royal-300 hover:underline">{k.userId.slice(0, 14)}…</a></td>
                       <td className="py-2 pr-3 font-medium text-text">{k.fullName ?? "—"}</td>
-                      <td className="py-2 pr-3 font-mono tabular">{slots ? `${k.documents.length}/${slots}` : k.documents.length}</td>
+                      <td className="py-2 pr-3 font-mono tabular">{photoCase ? (slots ? `${k.documents.length}/${slots}` : k.documents.length) : <span className="font-sans text-text-tertiary">Typed</span>}</td>
                       {moneyKnown && <td className="py-2 pr-3 font-mono tabular-nums text-right text-text">{formatTzs(heldOf(k))}</td>}
                       <td className="py-2 pl-3 text-right"><a href={`/admin/kyc/${k.userId}`} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">workstation →</a></td>
                     </tr>

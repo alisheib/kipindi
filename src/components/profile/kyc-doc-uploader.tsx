@@ -5,6 +5,11 @@
  * but bounded JPEG (max 1400px, stepped quality to stay under the 3 MB cap) →
  * post as a base64 data URL to attachDocumentAction. Shows a live thumbnail +
  * "attached" state. One slot per document type (front / back / selfie).
+ *
+ * ⭐ THE AGENT PHOTO TRACK ONLY, FROM 2026-10-10 (owner ruling: players verify with typed details; agent
+ * applicants keep photo identity reviewed by an officer). /profile/kyc mounts it in agent mode alone.
+ * ⛔ `KycExtraDocUploader` (an officer's extra-document request) is DELETED with `attachExtraDocument`: officers
+ * ask only for corrections of typed details now, and requests already on file render as text on the page.
  */
 
 import { useRef, useState, useTransition } from "react";
@@ -13,7 +18,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
-import { attachDocumentAction, attachExtraDocumentAction } from "@/app/profile/kyc/actions";
+import { attachDocumentAction } from "@/app/profile/kyc/actions";
 import { fileToDataUrl, MAX_DOC_BYTES as MAX_BYTES } from "@/lib/client/kyc-image";
 import type { KycDocSlot } from "@/lib/id-documents";
 import { errorCopy } from "@/lib/error-copy";
@@ -139,102 +144,6 @@ export function KycDocUploader({
             .map((part, i) => <span key={i} className="whitespace-nowrap">{i > 0 ? "· " : ""}{part}</span>)}
         </span>
       </button>
-    </div>
-  );
-}
-
-/**
- * Uploader for an officer-requested extra document. Same pick → resize →
- * upload → done UX as KycDocUploader, but keyed by request id and labelled
- * with the officer's written description so the player knows exactly what to
- * provide. Renders the description as a full-width row (it can be long).
- */
-export function KycExtraDocUploader({
-  requestId, description, attached,
-}: {
-  requestId: string;
-  description: string;
-  attached: boolean;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [done, setDone] = useState(attached);
-  const [busy, setBusy] = useState(false);
-  const [pending, start] = useTransition();
-  const router = useRouter();
-  const { toast } = useToast();
-  const { t } = useT();
-  const working = busy || pending;
-
-  const onFile = async (f: File | null) => {
-    if (!f) return;
-    // §F2/§F3 (R5-I): the three checks of the picked file are slips the player can fix — the calm `factual` toast.
-    if (!f.type.startsWith("image/")) { toast({ title: t.toast.notAnImage, description: t.toast.pickJpgPng, variant: "factual" }); return; }
-    setBusy(true);
-    let dataUrl: string;
-    try { dataUrl = await fileToDataUrl(f); }
-    catch { setBusy(false); toast({ title: t.toast.couldntReadImage, description: t.toast.pickJpgPng, variant: "factual" }); return; }
-    if (dataUrl.length * 0.75 > MAX_BYTES) { setBusy(false); toast({ title: t.toast.imageTooLarge, description: t.toast.trySmallerPhoto, variant: "factual" }); return; }
-    setPreview(dataUrl);
-    start(async () => {
-      const fd = new FormData();
-      fd.set("requestId", requestId);
-      fd.set("image", dataUrl);
-      // B-12 — guarded like the main uploader above.
-      let r: Awaited<ReturnType<typeof attachExtraDocumentAction>>;
-      try {
-        r = await attachExtraDocumentAction(fd);
-      } catch {
-        r = { ok: false, error: t.error.somethingDidntWork };
-      }
-      if (!r.ok) { setPreview(null); setBusy(false); toast({ title: t.toast.uploadFailed, description: errorCopy(t, r), variant: refusalVariant(refusalReason(r)), durationMs: 0 }); return; } // DS-26 — an identity-document failure stays until read; §F2/§F3 (R5-I) at the registry's rank
-      setDone(true);
-      setBusy(false);
-      toast({ title: t.toast.documentAttached, variant: "success" });
-      router.refresh();
-    });
-  };
-
-  return (
-    /* The row is the idle upload tile's own neutral box (R5-C, 2026-10-09): it was a gold edge and wash — the money ramp
-       on an officer's request (Q5). The request is stated once, by the section's amber heading on /profile/kyc. */
-    <div className="rounded-md border border-border bg-bg-overlay/40 p-3">
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        capture="environment"
-        className="hidden"
-        aria-label={description}
-        title={description}
-        onChange={(e) => { onFile(e.target.files?.[0] ?? null); e.target.value = ""; }}
-      />
-      <div className="flex items-center gap-3">
-        {/* ⛔ LITERALS, NOT `h-9 w-9` / `h-12 w-12` — the spacing scale is overridden
-            (tailwind.config.ts:200-215): those render 64×64 and 128×128. 40px badge disc,
-            48px ID thumbnail, against a two-line 12.5px/10.5px text block. */}
-        <span className={`shrink-0 h-[40px] w-[40px] inline-flex items-center justify-center rounded-pill ${
-          done ? "border border-success-border bg-success-bg text-success-fg" : "bg-bg-overlay text-text-subtle border border-border"
-        }`}>
-          {working ? <Spinner size={14} /> : done ? <I.check s={14} className="g-settle" /> : <I.plus s={14} />}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-body-sm text-text leading-snug">{description}</p>
-          <p className="mt-0.5 font-mono text-[10.5px] text-text-subtle">
-            {pending ? t.common.uploading : busy ? t.common.preparing : done ? t.profile.docTapReplace : t.profile.docTapAttachPhoto}
-          </p>
-        </div>
-        {preview && <img src={preview} alt={description} className="h-[48px] w-[48px] shrink-0 rounded object-cover border border-border" />}
-        <button
-          type="button"
-          onClick={() => !working && inputRef.current?.click()}
-          disabled={working}
-          aria-busy={working ? "true" : "false"}
-          className={`btn btn-sm btn-pill shrink-0 ${done ? "btn-ghost" : "btn-primary"}`}
-        >
-          {done ? t.common.replace : t.common.upload}
-        </button>
-      </div>
     </div>
   );
 }

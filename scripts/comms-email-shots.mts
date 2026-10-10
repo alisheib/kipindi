@@ -66,10 +66,14 @@ const PAGES: { name: string; html: string }[] = [
   { name: "referralRewardHtml", html: E.referralRewardHtml({ amount: 2_000, referredName: "Asha Mwakalinga", totalEarned: 12_000 }) },
   { name: "referralEarningHtml", html: E.referralEarningHtml({ type: "COMMISSION", amountTzs: 2_000 }) },
   { name: "inviteHtml", html: E.inviteHtml({ campaignName: "Launch week", bonusAmountTzs: 5_000, code: "ABC123", message: "Join me on 50pick — you get a bonus when you sign up." }) },
-  { name: "kycSubmittedHtml", html: E.kycSubmittedHtml({ name: "Asha", reference: "kyc_41ab77cd", submittedAt: "2026-07-31T09:00:00.000Z", docTypes: ["NIDA_FRONT", "NIDA_BACK", "SELFIE"], viewUrl: "/profile/kyc" }) },
+  // 2026-10-10 (typed-only identity): the receipt in both of its shapes — typed details routed to an officer, and an
+  // agent applicant's document photos and selfie — and an officer's note as it reads now: a CORRECTION of typed
+  // details, never a request for another document.
+  { name: "kycSubmittedHtml", html: E.kycSubmittedHtml({ name: "Asha", reference: "kyc_41ab77cd", submittedAt: "2026-07-31T09:00:00.000Z", evidence: "typed", viewUrl: "/profile/kyc" }) },
+  { name: "kycSubmittedHtml.photos", html: E.kycSubmittedHtml({ name: "Asha", reference: "kyc_41ab77cd", submittedAt: "2026-07-31T09:00:00.000Z", evidence: "photos", viewUrl: "/profile/kyc?for=agent" }) },
   { name: "kycApprovedHtml", html: E.kycApprovedHtml({ name: "Asha", reference: "kyc_41ab77cd" }) },
-  { name: "kycRejectedHtml", html: E.kycRejectedHtml({ reason: "The photograph of the back of your ID was too blurred for our officer to read the document number.", reference: "kyc_41ab77cd" }) },
-  { name: "kycMoreInfoHtml", html: E.kycMoreInfoHtml({ reason: "Please add a photograph of the back of your ID card.", reference: "kyc_41ab77cd" }) },
+  { name: "kycRejectedHtml", html: E.kycRejectedHtml({ reason: "The name you entered does not match the name on the document whose number you gave. Please check your details and try again.", reference: "kyc_41ab77cd" }) },
+  { name: "kycMoreInfoHtml", html: E.kycMoreInfoHtml({ reason: "Please check the spelling of your full name — it should read exactly as it is printed on your document.", reference: "kyc_41ab77cd" }) },
   // 2026-09-13 · the officer's written decision on a finally-refused player's balance (S1), on two
   // outcomes, and the officer's overdue-review alert.
   { name: "refusedFundsDecisionHtml", html: E.refusedFundsDecisionHtml({ outcome: "RETURN_DEPOSITS", returnedTzs: 20_000, forfeitedTzs: 5_000, balanceTzs: 25_000, reason: "You must be 18 or older to use 50pick.", reference: "rfd_a1b2c3d4e5" }) },
@@ -108,7 +112,8 @@ const PAGES: { name: string; html: string }[] = [
     rows: [{ label: "Bot", value: "Dar liquidity A" }, { label: "Code", value: "SETTLE_BLOCKED" }],
     cta: { href: "https://www.50pick.tz/admin/desk/hb_a1b2c3d4e5f6a7b8c9d0e1f2", label: "Open in the console" },
   }) },
-  { name: "kycSubmittedAdminHtml", html: E.kycSubmittedAdminHtml({ reference: "kyc_41ab77cd", phoneMasked: "+2557••••5678", name: "Asha Mwakalinga", nidaMasked: "•••• 1234", submittedAt: "2026-07-31T09:00:00.000Z", reviewUrl: "/admin/players/u1?tab=kyc" }) },
+  // 2026-10-10 · `idMasked` (any of the four documents), the routing reasons in the officer's words, the workstation link.
+  { name: "kycSubmittedAdminHtml", html: E.kycSubmittedAdminHtml({ reference: "kyc_41ab77cd", phoneMasked: "+2557••••5678", name: "Asha Mwakalinga", idMasked: "•••• 1234", submittedAt: "2026-07-31T09:00:00.000Z", reviewUrl: "https://www.50pick.tz/admin/kyc/u1", reasons: ["Risk score at or above the two-officer threshold", "Possible same person as a restricted account"] }) },
   { name: "sofSubmittedHtml", html: E.sofSubmittedHtml() },
   { name: "sofDecisionHtml", html: E.sofDecisionHtml({ status: "ACCEPTED", note: "Payslips accepted" }) },
   { name: "amlReviewAdminHtml", html: E.amlReviewAdminHtml({ amount: 2_500_000, kind: "WITHDRAWAL", reference: "wdr_95e5cddab0fb" }) },

@@ -331,6 +331,117 @@ const setDiff = (want: readonly string[], got: readonly string[]) => {
     !SELECTS_REJECT.test("select: {\n  id: true, userId: true, status: true,\n},"));
 }
 
+/* ═══ §5k · StoredKyc — the six typed-identity columns and the two new readers (2026-10-10) ═══ */
+/**
+ * ⭐ TYPED-ONLY KYC (owner ruling, Ali, 2026-10-10; migration `20261010150000_kyc_typed_identity`). Six nullable
+ * KycSubmission columns carry what one `status` cannot — WHICH kind of approval a row holds: `photoVerifiedAt` is the
+ * agent programme's identity gate, `autoApprovedAt` / `autoFlags` mark an approval no officer made, `postCheckedAt` /
+ * `postCheckedById` the officer's later check, and `priorIdentities` every typed identity a restart, a correction or a
+ * re-open replaced (with no images, the only record of what an account presented).
+ * 🔴 THE E-3 SHAPE: `db.kyc.upsert` writes back the whole row its caller read, so a column `toStoredKyc` drops reads
+ * `undefined` and is NULLED on the next write — an agent quietly un-verified, a replaced identity erased — on Postgres
+ * only, because the memory store keeps the object and every behavioural suite runs on it. So: the Prisma READ mapper
+ * takes each from the row, the Prisma upsert writes each from the input, the memory upsert stores the object whole, the
+ * one writer that BUILDS a row instead of spreading it (`restartedSubmission`) names every StoredKyc field, and the two
+ * new readers exist in BOTH halves, carry every field of their row type and select scalars only.
+ * KP_SRC: `kyc-service.ts` is read through it, so `red-dal-parity.mjs` lists it among the files it copies.
+ */
+{
+  const NL = String.fromCharCode(10);
+  const kycSvcSrc = decomment(readFileSync(join(SRC, "lib/server/kyc-service.ts"), "utf8"));
+  const SIX = ["photoVerifiedAt", "autoApprovedAt", "autoFlags", "postCheckedAt", "postCheckedById", "priorIdentities"] as const;
+  const kKeys = storedKeys("StoredKyc");
+  const kRead = region(dalSrc, "function toStoredKyc(");
+  const kUpsert = delegateMethod("kyc", "upsert");
+  const memKyc = region(storeSrc, `${NL}  kyc: {`);
+  const prismaKyc = region(dalSrc, `${NL}  kyc: {`);
+  const memUpsert = region(memKyc, "upsert: (");
+  ok("5k.0 · the parser sees StoredKyc's fields, the six typed-identity columns among them",
+    kKeys.length >= 20 && SIX.every((k) => kKeys.includes(k)), `saw ${kKeys.length}: ${kKeys.join(",")}`);
+  ok("5k.0b · toStoredKyc, the Prisma kyc.upsert and both kyc delegates resolve",
+    kRead.length > 300 && kUpsert.length > 300 && memKyc.length > 500 && prismaKyc.length > 500,
+    `read ${kRead.length} · upsert ${kUpsert.length} · memory ${memKyc.length} · prisma ${prismaKyc.length}`);
+  for (const k of SIX) {
+    ok(`5k.read · toStoredKyc maps "${k}" from the row`, readsFrom(kRead, k, "row"));
+    ok(`5k.upsert · kyc.upsert writes "${k}" from the input`, readsFrom(kUpsert, k, "k"));
+  }
+  ok("5k.memory · the memory kyc.upsert stores the row whole — every column, by construction, and no allow-list",
+    /store\.kyc\.set\(k\.id, k\)/.test(memUpsert), memUpsert.slice(0, 120));
+
+  // The writer that BUILDS a row. ⚠️ Its signature carries a `{ officerId; at }` type, so the body is found from its
+  // return-type brace, not the first brace after the name.
+  const rsAt = kycSvcSrc.indexOf("function restartedSubmission(");
+  const rsBody = rsAt < 0 ? -1 : kycSvcSrc.indexOf("): StoredKyc {", rsAt);
+  const restarted = rsBody < 0 ? "" : region(kycSvcSrc.slice(rsBody), "): StoredKyc {");
+  /** A field NAMED in an object literal — `key: …` or the shorthand `key,` — at the start of a line. */
+  const namesField = (body: string, key: string) => new RegExp(`^\\s*${key}\\s*[:,]`, "m").test(body);
+  const unnamed = kKeys.filter((k) => !namesField(restarted, k));
+  ok("5k.builder · restartedSubmission — the writer that BUILDS a row — names every StoredKyc field",
+    restarted.length > 300 && kKeys.length >= 20 && unnamed.length === 0, unnamed.join(", ") || `${kKeys.length} fields named`);
+
+  // The two readers the typed path added. Row types are parsed from store.ts (one-line or multi-line).
+  const typeKeys = (name: string): string[] => {
+    const start = storeSrc.indexOf(`export type ${name} = {`);
+    if (start < 0) return [];
+    const open = storeSrc.indexOf("{", start);
+    const close = storeSrc.indexOf("}", open);
+    return [...storeSrc.slice(open + 1, close).matchAll(/([A-Za-z_]\w*)\??\s*:/g)].map((m) => m[1]);
+  };
+  /** The property is WRITTEN (`key:` after a non-identifier character, inline or not) and the row's own field READ. */
+  const carries = (body: string, key: string, row: string) =>
+    new RegExp(`(?:^|[^A-Za-z0-9_$.])${key}\\s*:`).test(body) && new RegExp(`(?:^|[^A-Za-z0-9_$])${row}\\.${key}(?![A-Za-z0-9_$])`).test(body);
+  const selects = (body: string, key: string) => new RegExp(`select:\\s*\\{[^}]*(?:^|[^A-Za-z0-9_])${key}:\\s*true`).test(body);
+  const DRAGS = /documents|extraRequests|include\s*:/;
+  const READERS = [
+    { name: "findSamePersonCandidates", type: "KycSamePersonCandidate", prismaRow: "r" },
+    { name: "listUncheckedAutoApprovals", type: "KycUncheckedAutoApproval", prismaRow: "c" },
+  ] as const;
+  for (const rd of READERS) {
+    const mem = region(memKyc, `${rd.name}: (`);
+    const pri = region(prismaKyc, `${rd.name}: async (`);
+    const keys = typeKeys(rd.type);
+    ok(`5k.readers · ${rd.name} exists in BOTH halves`, mem.length > 100 && pri.length > 100, `memory ${mem.length} · prisma ${pri.length}`);
+    ok(`5k.readers · ${rd.name}'s row type ${rd.type} is parsed`, keys.length >= 4, keys.join(","));
+    for (const k of keys) {
+      ok(`5k.readers.memory · ${rd.name} (memory) carries "${k}" from the row`, carries(mem, k, "k"));
+      ok(`5k.readers.prisma · ${rd.name} (Prisma) carries "${k}" from the row`, carries(pri, k, rd.prismaRow));
+      ok(`5k.readers.select · ${rd.name} (Prisma) SELECTS "${k}"`, selects(pri, k));
+    }
+    ok(`5k.readers.scalar · ${rd.name} reads scalars only — no documents, no extraRequests, no include — in either half`,
+      !DRAGS.test(mem) && !DRAGS.test(pri));
+  }
+  // ⭐ 2026-10-10 (review R5.1c): the post-check list's statuses are ONE list both halves read (`POST_CHECK_LIST_STATUSES`,
+  // `kyc-approval.ts`) — an unchecked automatic approval stays on it with an officer and with the player, not APPROVED
+  // alone — and both halves ask `approvedAt` too. A half that kept its own status literal would drift from the other.
+  const memUnchecked = region(memKyc, "listUncheckedAutoApprovals: (");
+  const priUnchecked = region(prismaKyc, "listUncheckedAutoApprovals: async (");
+  const readsOneStatusList = (mem: string, pri: string) =>
+    /POST_CHECK_LIST_STATUSES/.test(mem) && /POST_CHECK_LIST_STATUSES/.test(pri)
+    && !/status:\s*"APPROVED"/.test(pri) && !/k\.status !== "APPROVED"/.test(mem)
+    && /uncheckedAutomaticApproval\(k\)/.test(mem) && /approvedAt:\s*\{\s*not:\s*null\s*\}/.test(pri);
+  ok("5k.statuses · listUncheckedAutoApprovals reads ONE status list (POST_CHECK_LIST_STATUSES) and asks approvedAt, in BOTH halves",
+    readsOneStatusList(memUnchecked, priUnchecked), `memory ${memUnchecked.length} · prisma ${priUnchecked.length}`);
+  ok("5k.statuses · CONTROL · a half filtering on APPROVED alone is reported",
+    !readsOneStatusList(memUnchecked, priUnchecked.replace(/status:\s*\{\s*in:\s*\[\.\.\.POST_CHECK_LIST_STATUSES\]\s*as never\s*\}/, 'status: "APPROVED"')));
+
+  const kModelAt = prismaSchemaSrc.indexOf("model KycSubmission {");
+  const kModel = kModelAt < 0 ? "" : prismaSchemaSrc.slice(kModelAt, prismaSchemaSrc.indexOf(`${NL}}`, kModelAt));
+  for (const k of SIX) {
+    ok(`5k.schema · KycSubmission declares "${k}" as a nullable column`, new RegExp(`^\\s*${k}\\s+(?:DateTime|String|Json)\\?`, "m").test(kModel));
+  }
+
+  // ⛔ CONTROLS — each check above can fail.
+  ok("5k.c1 · CONTROL · `photoVerifiedAt: null,` in a read mapper does NOT count as reading it from the row",
+    !readsFrom(["    approvedAt: iso(row.approvedAt),", "    photoVerifiedAt: null,"].join(NL), "photoVerifiedAt", "row"));
+  ok("5k.c2 · CONTROL · a builder that omits a field is reported, and the shorthand form counts as naming one",
+    !namesField(["  return {", "    id: existing?.id,", "    userId,", "  };"].join(NL), "photoVerifiedAt") && namesField(["    userId,"].join(NL), "userId"));
+  ok("5k.c3 · CONTROL · a reader that drags the documents along is caught", DRAGS.test("findMany({ where: {}, include: { documents: true } })"));
+  ok("5k.c4 · CONTROL · a select without the key is caught, and a property that is not read from the row is not carried",
+    !selects("select: { id: true, userId: true },", "autoFlags") && !carries("out.push({ userId: null });", "userId", "k"));
+  ok("5k.c5 · CONTROL · a memory upsert with an allow-list is not the whole-row store",
+    !/store\.kyc\.set\(k\.id, k\)/.test("upsert: (k: StoredKyc) => { store.kyc.set(k.id, { id: k.id, status: k.status }); return k; },"));
+}
+
 /* ═══ §6 · the eight house tables (house bots, build commit 1) ═══════════════════════════ */
 /**
  * ⭐ THE SAME DEFECT, A NEW SHAPE. Every house statement is raw SQL built from a typed column map, read

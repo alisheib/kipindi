@@ -220,10 +220,17 @@ export type FailureReason =
   | "id_expired"
   /** A passport / driving licence submitted with no expiry date at all. */
   | "id_expiry_required"
+  /** An account APPROVED ONCE that an officer asked to correct its details tried to change the document type or
+   *  number (2026-10-10, `kyc-service.ts` `closedToPlayer`): the name and expiry may be corrected there, the
+   *  approved number may not — a document that genuinely changed goes through an officer. */
+  | "identity_number_locked"
   | "doc_image_type"
   | "doc_too_large"
   | "docs_locked"
   | "docs_required"
+  // ⚠️ EXPAND/CONTRACT (2026-10-10): typed-only identity deleted both emitters (`attachExtraDocument`, the extra-requests
+  // gate in `submitForReview`). The rows and their copy stay for THIS release — the previous container may still emit
+  // them during the deploy overlap — and go in the next one.
   | "extra_docs_required"
   | "no_extra_request"
   | "withdraw_below_min"
@@ -443,6 +450,10 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   id_number_format:     { severity: "warning", channel: "inline", key: "errIdNumberFormat" },
   id_expired:           { severity: "warning", channel: "inline", key: "errIdExpired" },
   id_expiry_required:   { severity: "warning", channel: "inline", key: "errIdExpiryRequired" },
+  // ⭐ INFO, NOT AN ERROR: nothing is wrong with what the player typed, and nothing they do on this form changes it —
+  // the number an officer approved stays reserved to this account while its name or expiry is corrected. The copy
+  // names the one route that exists for a changed document (contact us). Inline, under the locked field.
+  identity_number_locked: { severity: "info",  channel: "inline", key: "errIdentityNumberLocked" },
   // ⛔ A BREAK THE PLAYER SET THEMSELVES IS NOT A FAULT — it is the tool working. Error
   // severity, because they cannot lift it, but never phrased or coloured as a malfunction.
   account_suspended:    { severity: "error",   channel: "modal",  key: "errSuspended" },

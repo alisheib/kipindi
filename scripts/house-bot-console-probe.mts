@@ -321,7 +321,13 @@ try {
     JSON.stringify({ day: canaryDay, before: canaryDayBefore.size, after: canaryDayAfter.map((b) => ({ bets: b.bets, open: b.openStakeTzs, settled: b.settledStakeTzs, loss: b.realisedLossTzs })) }));
 
   // ── the holder's KYC case (the KYC page's durable audit read) ──
+  /* ⭐ A PHOTO CASE, ON PURPOSE (2026-10-10). Players verify with typed details since that day, but the agent photo track
+     (`submitIdentityStep` → `attachDocument` → `submitForReview`) is still a real server path, and it is the population
+     whose images `/api/admin/kyc-doc` still serves (agent applicants, and every case filed before 2026-10-10) — so the
+     probe's `?type=NIDA_FRONT` read below has a real image behind it. Every officer decision now posts the case VERSION
+     it rendered (`kycRowVersion`); a decision without one is refused as stale. */
   const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+  const versionOf = async (userId: string) => KYC.kycRowVersion(await KYC.getKycStatus(userId)) as string;
   const kycOf = async (userId: string, idNumber: string, fullName: string) => {
     await KYC.startKyc(userId);
     await KYC.submitIdentityStep(userId, { idType: "NIDA", idNumber, fullName, dob: "1990-01-01" });
@@ -341,14 +347,16 @@ try {
    * ⚠️ AFTER every house stake is placed, and the engine is off in this pass, so the account's stored status does
    * not move: the roster still renders it.
    */
-  const kycRefused = await KYC.reviewKyc({ officerId: A, userId: holder, decision: "REJECT", reason: "The identity submitted matches a sanctions listing; this is a final refusal.", rejectCode: "SANCTIONED" }).catch((e: unknown) => ({ ok: false, error: String(e) }));
+  const kycRefused = await KYC.reviewKyc({ officerId: A, userId: holder, decision: "REJECT", reason: "The identity submitted matches a sanctions listing; this is a final refusal.", rejectCode: "SANCTIONED", version: await versionOf(holder) }).catch((e: unknown) => ({ ok: false, error: String(e) }));
   ok("1.kyc · 530 · …and FINALLY refused, so the case page builds its prior-decision list and the ADMIN control can fire there",
     !!(kycRefused as Any)?.ok, JSON.stringify(kycRefused).slice(0, 200));
 
-  // ── an agent application, so the agent page's own audit read runs over a real record (self-service needs approved KYC) ──
+  // ── an agent application, so the agent page's own audit read runs over a real record ──
+  // ⭐ Self-service needs an OFFICER'S PHOTO APPROVAL since 2026-10-10 (`photoIdentityVerified`) — an automatic typed approval
+  // never opens the agent door — so the applicant's photo case is approved in PHOTO mode, which stamps `photoVerifiedAt`.
   const applicant = await w.user({ balance: 50_000 });
   const applicantKyc = await kycOf(applicant, "19900101000000009200", "Probe Applicant");
-  const approvedKyc = applicantKyc?.ok ? await KYC.reviewKyc({ officerId: A, userId: applicant, decision: "APPROVE" }) : applicantKyc;
+  const approvedKyc = applicantKyc?.ok ? await KYC.reviewKyc({ officerId: A, userId: applicant, decision: "APPROVE", mode: "photo", version: await versionOf(applicant) }) : applicantKyc;
   const app = await AGENT.startApplication(applicant).catch((e: unknown) => ({ ok: false, error: String(e), approvedKyc }));
   const appId = app?.ok ? (app.data.applicationId as string) : null;
   if (!appId) notMeasured("1.agent · a real agent application", `startApplication refused: ${JSON.stringify(app).slice(0, 160)}`);

@@ -2032,7 +2032,8 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
   | Welcome toast | `?welcome=new` / `?welcome=back` |
   | Session-ended | `/auth/login?revoked=1`, `?ended=idle` |
   | Email-verify bar | `/auth/demo?email=unverified` / `none` |
-  | KYC gate / rejected | `/auth/demo?kyc=rejected` → `/wallet/withdraw` |
+  | KYC gate / rejected | `/auth/demo?kyc=rejected` → `/wallet/withdraw` (since 2026-10-10 an officer's recoverable refusal with the officer on the row) |
+  | KYC states since 2026-10-10 (typed details for players, photos for agents) | `/auth/demo?kyc=none` (no row at all) · `auto` (approved automatically from typed details, not yet checked, one flag) · `uploaded` (an agent applicant's photos attached, not sent) · `photo_pending` (that photo case sent — ⚠️ every visit sends real notices and officer bells) · `more_info` (an officer asked for corrections) → `/profile/kyc`, `/wallet/withdraw`, `/profile` |
   | KYC first-deposit notice | `/auth/demo?deposit=0` / `1` → `/wallet` |
   | Payout-status notice | `/wallet/withdraw`, `/wallet/deposit` |
   | Win celebration | `window.dispatchEvent(new CustomEvent("50pick:celebrate",{detail:{kind:"WIN",…}}))`, shot at 1–6s |

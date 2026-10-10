@@ -285,9 +285,9 @@ function menuRows(o: { journey: boolean; inviteVisible?: boolean; invitePaid?: b
   ok(`4.6 · the hub's row, the journey menu and /profile's row say the page's tab and eyebrow ("${pageName("sw")}" / "${pageName("en")}" / "${pageName("zh")}") in every language`,
     doorsSay.every((d) => d.hub === d.page && d.menu === d.page) && has(PROFILE, "title={t.profile.kycIdentityVerification}")
       && has("src/app/profile/kyc/page.tsx", "return { title: t.profile.kycIdentityVerification };") && has("src/app/profile/kyc/page.tsx", "eyebrow={t.profile.kycIdentityVerification}"), j(doorsSay));
-  ok("4.6′ CONTROL · the page's h1 is a headline that changes with the state — \"Verify your identity\", \"Your identity is verified\", \"We couldn't verify you\" — so no door could name it in every state",
-    has("src/app/profile/kyc/page.tsx", 'title={kyc?.status === "APPROVED" ? t.profile.verifyTitleApproved : finalRefusal ? t.kycGate.titleRejected : t.profile.verifyIdentity}')
-      && new Set(["profile.verifyTitleApproved", "kycGate.titleRejected", "profile.verifyIdentity"].map((k) => word("en", k))).size === 3);
+  ok("4.6′ CONTROL · the page's h1 is a headline that changes with the state — \"Verify your identity\", \"Your identity is verified\", \"We couldn't verify you\", \"We're checking your details\" (or documents) — so no door could name it in every state",
+    has("src/app/profile/kyc/page.tsx", 'title={kyc?.status === "APPROVED" ? t.profile.verifyTitleApproved : finalRefusal ? t.kycGate.titleRejected : pending ? (photoCase ? t.kycGate.titlePendingAgent : t.profile.kycCheckingTitle) : t.profile.verifyIdentity}')
+      && new Set(["profile.verifyTitleApproved", "kycGate.titleRejected", "profile.verifyIdentity", "profile.kycCheckingTitle", "kycGate.titlePendingAgent"].map((k) => word("en", k))).size === 5);
   // Plants: the filter gone, the old words back.
   const noFilter = code(MENU).replace(' && !(journey && r.href === "/profile/kyc" && !kycOffered)', "");
   const oldWords = code(MENU).replace('"/profile/kyc": t.profile.kycIdentityVerification,', '"/profile/kyc": t.profile.verifyIdentity,');
@@ -582,8 +582,9 @@ section("11 · C3 the warning census counts the family in every spelling, and ev
   // R8-A (2026-10-10): 61 when the review counted; the amber re-hue moved the tree by +6 (the chip's `warning`/`paused`
   // read the stop now — four `var(--warning-500)` mixes — and the toast's bar and rail are `bg-warning`) and −4 (four
   // words and glyphs left the stop for the ink: the maintenance flag's label, MAINTENANCE_AMBER.fg, the apply slot's
-  // word, the result crest's glyph) = 63.
-  ok(`11.2 PLANT · the census as it stood (\`--warning-fg\` alone) misses ${old.length} of them — the review's 61, 63 since R8-A's amber`, old.length === 63, String(old.length));
+  // word, the result crest's glyph) = 63. Typed-only identity (2026-10-10) took one more: the KYC page's extra-document
+  // card and its amber disc (a `bg-warning-bg` wash) went with player uploads = 62.
+  ok(`11.2 PLANT · the census as it stood (\`--warning-fg\` alone) misses ${old.length} of them — the review's 61, 63 since R8-A's amber, 62 since typed-only identity`, old.length === 62, String(old.length));
   const NEW = ["src/app/auth/forgot-password/page.tsx", "src/app/profile/account/privacy-request-form.tsx", "src/components/rg/limit-usage.tsx"];
   // R8-A (2026-10-10): the fourth, the maintenance flag, paints no spelling of its own any more — its label took the
   // family's ink through the Callout's `MAINTENANCE_AMBER` (as its wash and edge already did), counted where that lives.

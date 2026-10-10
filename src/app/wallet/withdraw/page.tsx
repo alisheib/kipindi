@@ -32,6 +32,8 @@ import { PayoutStatusNotice } from "@/components/wallet/payout-status-notice";
 import { KycGatePanel } from "@/components/kyc/kyc-gate-panel";
 import { kycGateState, type KycPanelState } from "@/lib/kyc-gate-state";
 import { getKycStatus } from "@/lib/server/kyc-service";
+import { agentIdentityIntent } from "@/lib/server/agent-identity";
+import { photoSetComplete } from "@/lib/id-documents";
 import { PageContainer } from "@/components/layout/page-container";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { withdrawNames } from "@/lib/journey/money-names";
@@ -111,8 +113,11 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
   // under an identity we accepted, and their withdrawal stays open.
   // ⚠️ A failed read leaves the panel showing — the safe direction on a money screen.
   let withdrawGateState: ReturnType<typeof kycGateState> = "not_started";
+  // The row itself is kept for one more question below — which identity TRACK the panel speaks for.
+  let kycRow: Awaited<ReturnType<typeof getKycStatus>> = null;
   try {
-    withdrawGateState = kycGateState(await getKycStatus(session.userId));
+    kycRow = await getKycStatus(session.userId);
+    withdrawGateState = kycGateState(kycRow);
   } catch { /* graceful — the gate stays shut, which is the safe direction */ }
 
   const wallet = await db.wallet.findByUserId(session.userId);
@@ -143,6 +148,24 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
   // the screen showed and is then refused for one it did not (E-5).
   const withdrawPanel: KycPanelState | null =
     walletHeld && withdrawGateState !== "refused_final" ? "frozen" : withdrawGateState ?? (emailOwed ? "email" : null);
+
+  /**
+   * ⭐ WHICH IDENTITY TRACK THE PANEL SPEAKS FOR (review R5.6, 2026-10-10) — the one `/profile/kyc` draws next.
+   * An agent applicant (`agentIdentityIntent`: an application in flight or a bound invitation) verifies with document
+   * photos and a selfie that an officer checks, so the typed one-minute promise and "most checks are instant" sent them
+   * to a screen asking for photos. They read the photo track's words instead, under the same "Before you withdraw".
+   * A case already WITH OUR TEAM is named for what our team holds — a full photo set on file is "your documents",
+   * anything else "your details" — as `/profile/kyc`'s own waiting card names it.
+   * Asked only while an identity panel stands that the track changes (a frozen wallet, the email step and a final
+   * refusal read the same either way). ⚠️ B-1 — a failed intent read is a DELIBERATE degrade to the typed words, as on
+   * `/profile/kyc`: the panel still opens the identity door, and that page asks the same question again.
+   */
+  let agentIntent = false;
+  if (withdrawPanel === "not_started" || withdrawPanel === "uploaded" || withdrawPanel === "more_info" || withdrawPanel === "rejected") {
+    try { agentIntent = await agentIdentityIntent(session.userId); } catch { /* B-1 — deliberate degrade, see above */ }
+  }
+  const photoCase = photoSetComplete(kycRow?.idType, (kycRow?.documents ?? []).map((d: { docType: string }) => d.docType));
+  const panelTrack: "typed" | "photo" = (withdrawPanel === "pending_review" ? photoCase : agentIntent) ? "photo" : "typed";
 
   // Can we actually pay a withdrawal right now? Since 2026-07-29 the honest answer has been no,
   // and until this landed the form said nothing at all. `unavailable` disables the form — taking
@@ -244,13 +267,16 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
           ⭐ AND THE CONFIRMED EMAIL IS ITS SECOND STEP (owner ruling 2026-10-07): `email` is passed only while the
           address is owed. On an identity state it adds the email under a hairline; with identity settled the panel IS
           the email step (`"email"`). Coming back from the mail app re-reads this page, so the form appears with the
-          `?amount=` still set. */}
+          `?amount=` still set.
+          ⭐ AND THE TRACK (review R5.6, 2026-10-10): `track` makes an agent applicant's panel speak of the photo track
+          their verification really is (`panelTrack`, above), never of a one-minute typed check. */}
       {withdrawPanel ? (
         <KycGatePanel
           state={withdrawPanel}
           purpose="payout"
           returnTo={/^\d{1,9}$/.test(prevAmount) ? `/wallet/withdraw?amount=${prevAmount}` : "/wallet/withdraw"}
           email={emailStanding}
+          track={panelTrack}
         />
       ) : (
       <form

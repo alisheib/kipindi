@@ -1025,18 +1025,19 @@ check("§5j private-map matcher ACCEPTS a tone ternary (a colour is not a word)"
 
   /**
    * ⛔ THE BACKLOG, MEASURED 2026-08-21. THIS MAP MAY ONLY EVER SHRINK.
-   * Both are real: an officer and a player respectively read database spelling today.
+   * The one left is real: an officer reads database spelling today.
    *   · `admin/page.tsx` — the Provider-mix bar labels its segments `provider.split("_")[0]`,
    *     so the 28-day deposit share reads TIGO / HALO / TTCL / BANK instead of the brand
    *     spellings the lexicon already holds (`MONEY.providerTigoPesa`, …).
-   *   · `email.ts` — `kycSubmittedHtml` maps three doc codes by hand and de-underscores the
-   *     rest. IDENTITY-POLICY widened identity to FOUR documents on 2026-08-20, so every
-   *     passport / driving-licence / voter's-card code now falls through to the fallback and
-   *     reaches the player's inbox as de-underscored database spelling.
+   * ✅ `email.ts` LEFT THE MAP 2026-10-10 (typed-only identity). Its one site was
+   *   `kycSubmittedHtml`'s doc-code fallback — the receipt listed the uploaded document codes and
+   *   de-underscored every one it had no word for. The receipt now names what was sent as ONE
+   *   word (`evidence: "typed" | "photos"`), the doc-code list and its fallback are deleted, and
+   *   the entry went with them: a ratchet entry for a site that no longer exists is the stale
+   *   entry the check below refuses.
    */
   const DEUNDER_RATCHET = new Map<string, number>([
     ["src/app/admin/page.tsx", 1],
-    ["src/lib/server/email.ts", 1],
   ]);
 
   const over: string[] = [];

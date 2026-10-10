@@ -162,7 +162,10 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
       },
       {
         title: "KYC funnel",
-        description: "Player progression through identity verification. Approved players may withdraw.",
+        /* ⭐ 2026-10-10 — players verify with typed details and are approved automatically when the checks pass; an
+           officer checks each automatic approval afterwards. The approved step is split so the figure says how many
+           approvals an officer has actually looked at. The two rows sum to every approved identity. */
+        description: "Player progression through identity verification. Approved players may withdraw. From 10 October 2026 most identities are approved automatically from typed details and checked by an officer afterwards; the approved step is split accordingly.",
         columns: [
           { header: "Step", key: "step", width: 50 },
           { header: "Count", key: "count", format: "integer", align: "right", width: 20 },
@@ -172,7 +175,8 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
           { step: "Registered", count: kyc.registered, rate: 1 },
           { step: "Started", count: kyc.started, rate: kyc.registered ? kyc.started / kyc.registered : 0 },
           { step: "Pending review", count: kyc.pending, rate: kyc.registered ? kyc.pending / kyc.registered : 0 },
-          { step: "Approved", count: kyc.approved, rate: kyc.registered ? kyc.approved / kyc.registered : 0 },
+          { step: "Approved · checked", count: kyc.approvedChecked, rate: kyc.registered ? kyc.approvedChecked / kyc.registered : 0 },
+          { step: "Approved · automatic, not yet checked", count: kyc.approvedAutoUnchecked, rate: kyc.registered ? kyc.approvedAutoUnchecked / kyc.registered : 0 },
         ],
       },
       {
@@ -957,7 +961,11 @@ export async function buildKycReverify(generatorId: string): Promise<Report> {
 
   let dueNow = 0, dueSoon = 0;
   const rows: Row[] = approved.map((k) => {
-    const anchor = k.reviewedAt ?? k.idVerifiedAt ?? k.submittedAt ?? k.updatedAt;
+    // ⭐ FROM `approvedAt` (2026-10-10). `reviewedAt` is touched by more than an approval now — an officer's request for
+    // corrections, a date-of-birth correction — so it stopped meaning "when this identity was verified". `approvedAt`
+    // is stamped once, at the identity's first approval, and never re-stamped: the date the roster is about. The older
+    // fields remain only as fallbacks for a row whose stamp is missing.
+    const anchor = k.approvedAt ?? k.reviewedAt ?? k.idVerifiedAt ?? k.submittedAt ?? k.updatedAt;
     const anchorMs = anchor ? new Date(anchor).getTime() : now;
     const dueAt = addMonths(anchorMs, REVERIFY_MONTHS);
     const daysToDue = Math.round((dueAt - now) / (24 * 3600_000));
@@ -988,7 +996,7 @@ export async function buildKycReverify(generatorId: string): Promise<Report> {
     sections: [{
       title: "Re-verification roster",
       titleSw: "Orodha ya uthibitisho upya",
-      description: `Soonest-due first. Re-verification is triggered every ${REVERIFY_MONTHS} months from the last approval, or on a phone/region change.`,
+      description: `Soonest-due first. Re-verification is due every ${REVERIFY_MONTHS} months from the date the identity was first approved, or on a phone/region change.`,
       columns: [
         { header: "Player", key: "player", width: 18 },
         { header: "Document", key: "idDoc", width: 22 },
@@ -1000,7 +1008,7 @@ export async function buildKycReverify(generatorId: string): Promise<Report> {
       rows,
     }],
     notes: [
-      `Re-verification interval: ${REVERIFY_MONTHS} months from last approval (or on phone/region change).`,
+      `Re-verification interval: ${REVERIFY_MONTHS} months from the identity's first approval (or on phone/region change).`,
       "Identity number shown masked (last 4), beside the document type it came from — the full number lives only in the verification record.",
       "Drives the customer-comms outreach queue; not a regulator filing.",
     ],

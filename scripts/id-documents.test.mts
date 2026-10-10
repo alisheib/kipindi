@@ -21,6 +21,18 @@
  * number, so an age check derived from the NUMBER passes vacuously for the other
  * three. It is asserted per type, on four separate accounts.
  *
+ * ⭐ 2026-10-10 — TYPED DETAILS FOR PLAYERS, PHOTOS FOR AGENTS (owner ruling; docs/COMPLIANCE-DECISIONS.md, "2026-10-10 ·
+ * Players verify identity with typed details"). A player now types the document's details and is approved at once
+ * when the automatic checks pass; an agent applicant still sends the document's photos and a selfie to an officer.
+ * So in this file:
+ *   · `requiredSlots` (§4, §8) describes the AGENT photo track — the selfie still survives on all four, because an
+ *     officer's photo attestation still names it — and `photoSetComplete` is the one "is this a photo case?" question;
+ *   · uniqueness (§5) is asked of the typed press as well as the agent's step 1;
+ *   · the age gate (§6) is on the ACCOUNT's date of birth: an account with none types one and is refused under 18 on
+ *     every type; an account that has one has its own date used, whatever is posted;
+ *   · the officer's image route (§11) accepts the FROZEN `LEGACY_KYC_DOC_SLOTS`, never a list derived from today's
+ *     `requiredSlots` — a later change to the agent track must not lock officers out of images already on file.
+ *
  * Proved red by `npm run red:id-documents`.
  */
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
@@ -31,6 +43,8 @@ import {
   ID_DOC_TYPES,
   ID_DOC_SPECS,
   ALL_DOC_SLOTS,
+  LEGACY_KYC_DOC_SLOTS,
+  photoSetComplete,
   DOC_SLOT_LABEL_KEY,
   ID_NUMBER_MIN_LEN,
   ID_NUMBER_MAX_LEN,
@@ -45,7 +59,7 @@ import {
   type IdDocType,
 } from "../src/lib/id-documents.ts";
 import { dict } from "../src/lib/i18n-dict.ts";
-import { startKyc, submitIdentityStep, attachDocument, submitForReview, getKycStatus } from "../src/lib/server/kyc-service.ts";
+import { startKyc, submitIdentityStep, verifyIdentity, attachDocument, submitForReview, getKycStatus } from "../src/lib/server/kyc-service.ts";
 import { db } from "../src/lib/server/store.ts";
 /** Comments describe the trap; they are not the control. Strip before asserting. */
 import { decomment as stripComments } from "./lib/decomment.mts";
@@ -73,12 +87,13 @@ const read = (p: string) => readFileSync(p, "utf8");
 const now = new Date().toISOString();
 const origLog = console.log;
 let seq = 0;
-async function mkPlayer(id: string) {
+/** `dob` is the ACCOUNT's date of birth — since 2026-10-10 the one the identity step uses (null: an account with none). */
+async function mkPlayer(id: string, dob: string | null = "1990-01-01") {
   seq++;
   await db.user.create({
     id, phoneE164: `+2557950${String(seq).padStart(5, "0")}`, passwordHash: null, passwordSalt: null,
     failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "PENDING_KYC", locale: "EN",
-    displayName: null, dob: "1990-01-01", region: "TZ", acceptedTermsVersion: "v1", acceptedTermsAt: now,
+    displayName: null, dob, region: "TZ", acceptedTermsVersion: "v1", acceptedTermsAt: now,
     marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, email: null, emailVerifiedAt: null,
     createdAt: now, updatedAt: now, lastLoginAt: now, closedAt: null,
   });
@@ -247,6 +262,24 @@ ok("🔴 isExpired · a MISSING date is not 'expired'", !isExpired(null, new Dat
 ok("missingSlots names what is missing, not how many",
   missingSlots("PASSPORT", ["SELFIE"]).join(",") === "PASSPORT" &&
   missingSlots("PASSPORT", ["PASSPORT", "SELFIE"]).length === 0);
+// ⭐ 2026-10-10 — `photoSetComplete` is the one "is this a PHOTO case?" question: the officer's workstation picks its
+// attestation set by it, and only an officer's approval of a complete set stamps the agent programme's gate.
+ok("photoSetComplete · the FULL set for the document, selfie included, and nothing less",
+  photoSetComplete("NIDA", ["NIDA_FRONT", "NIDA_BACK", "SELFIE"]) && photoSetComplete("PASSPORT", ["PASSPORT", "SELFIE"])
+  && !photoSetComplete("NIDA", ["NIDA_FRONT", "NIDA_BACK"]) && !photoSetComplete("PASSPORT", ["PASSPORT"]));
+ok("🔴 photoSetComplete · a typed case (no images) is never a photo case, whatever its type",
+  ID_DOC_TYPES.every((t) => !photoSetComplete(t, [])));
+ok("🔴 photoSetComplete · another document's set does not count, and an unknown type is never complete",
+  !photoSetComplete("PASSPORT", ["NIDA_FRONT", "NIDA_BACK", "SELFIE"]) && !photoSetComplete("NIDA_FRONT", ["NIDA_FRONT", "SELFIE"]) && !photoSetComplete(null, ["SELFIE"]));
+ok("control · photoSetComplete is the SLOT question, not a count — three selfies are no NIDA set",
+  !photoSetComplete("NIDA", ["SELFIE", "SELFIE", "SELFIE"]));
+// ⛔ THE FROZEN LIST OF IMAGES ON FILE. Written out, never derived: it must cover every slot the agent track can ask for
+// today AND the enum-only `NIDA` slot the first KYC release wrote, so no image already held becomes unopenable.
+ok("🔴 LEGACY_KYC_DOC_SLOTS is exactly the seven slots ever written (the DocType enum)",
+  JSON.stringify([...LEGACY_KYC_DOC_SLOTS].sort()) === JSON.stringify(["DRIVER_LICENSE", "NIDA", "NIDA_BACK", "NIDA_FRONT", "PASSPORT", "SELFIE", "VOTER_CARD"]),
+  JSON.stringify(LEGACY_KYC_DOC_SLOTS));
+ok("…and it covers every slot the agent track asks for today (a superset of ALL_DOC_SLOTS)",
+  ALL_DOC_SLOTS.every((s) => (LEGACY_KYC_DOC_SLOTS as readonly string[]).includes(s)) && (LEGACY_KYC_DOC_SLOTS as readonly string[]).includes("NIDA"));
 ok("🔴 missingSlots is not satisfiable by a COUNT",
   missingSlots("NIDA", ["SELFIE", "SELFIE", "SELFIE"]).length === 2,
   "`documents.length >= 3` was true of three copies of one slot, and false of a\n" +
@@ -280,6 +313,15 @@ for (const [i, idType] of ID_DOC_TYPES.entries()) {
     !spaced.ok && (spaced as { reason?: string }).reason === "id_taken",
     "Normalisation is what makes this true. Without it `AB 123456` opens a second\n" +
     "       account on the same passport.");
+
+  // ⭐ 2026-10-10 — AND ON THE TYPED PRESS, which approves with no officer in front of it: a held document is refused
+  // there too, for every type, before anything is approved.
+  const c = `usr_dup_c_${i}`;
+  await mkPlayer(c);
+  const typed = await verifyIdentity(c, { idType, idNumber: num, fullName: "Holder Three", ...(expiry ? { idExpiry: expiry } : {}) });
+  ok(`🔴 ${idType} · the typed press refuses the SAME document for a third account (id_taken), approving nothing`,
+    !typed.ok && (typed as { reason?: string }).reason === "id_taken" && (await getKycStatus(c))?.status !== "APPROVED",
+    JSON.stringify(typed).slice(0, 140));
 }
 console.log = origLog;
 
@@ -318,7 +360,9 @@ for (const [i, idType] of ID_DOC_TYPES.entries()) {
   const expiry = ID_DOC_SPECS[idType].expires ? "2030-06-30" : undefined;
   const num = idType === "NIDA" ? nida(`4567123499${String(10 + i)}`) : `AGE${idType.slice(0, 3)}${i}`;
   const young = `usr_age_y_${i}`, adult = `usr_age_a_${i}`;
-  await mkPlayer(young); await mkPlayer(adult);
+  // ⭐ 2026-10-10: the date the gate reads is the ACCOUNT's, and only an account with NONE types one — so the typed
+  // under-18 case (and its adult control) are accounts with no date of birth on file.
+  await mkPlayer(young, null); await mkPlayer(adult, null);
   await startKyc(young); await startKyc(adult);
   const ry = await submitIdentityStep(young, { idType, idNumber: num, fullName: "Too Young", dob: "2015-01-01", ...(expiry ? { idExpiry: expiry } : {}) });
   const ra = await submitIdentityStep(adult, { idType, idNumber: num, fullName: "Grown Up", dob: "1990-01-01", ...(expiry ? { idExpiry: expiry } : {}) });
@@ -326,6 +370,22 @@ for (const [i, idType] of ID_DOC_TYPES.entries()) {
   ok(`🔴 ${idType} · an under-18 applicant is refused`, !ry.ok && ry.code === "INVALID", String(ry.code));
   ok(`control · ${idType} · an adult with the SAME number is accepted`,
     ra.ok && (ra as { data?: { verified: boolean } }).data?.verified === true, JSON.stringify(ra).slice(0, 120));
+  // ⭐ THE ACCOUNT'S DATE WINS (2026-10-10): an adult account posting an under-18 date is checked on its OWN date —
+  // a posted date can neither lock an adult out nor, the other way round, let a minor account through.
+  console.log = () => {};
+  const posted = `usr_age_p_${i}`, minorAcct = `usr_age_m_${i}`;
+  await mkPlayer(posted, "1991-02-03"); await mkPlayer(minorAcct, "2015-01-01");
+  const numP = idType === "NIDA" ? nida(`4567123498${String(10 + i)}`) : `AGP${idType.slice(0, 3)}${i}`;
+  const numM = idType === "NIDA" ? nida(`4567123497${String(10 + i)}`) : `AGM${idType.slice(0, 3)}${i}`;
+  const rp = await submitIdentityStep(posted, { idType, idNumber: numP, fullName: "Posted Date", dob: "2015-01-01", ...(expiry ? { idExpiry: expiry } : {}) });
+  const rm = await submitIdentityStep(minorAcct, { idType, idNumber: numM, fullName: "Minor Account", dob: "1990-01-01", ...(expiry ? { idExpiry: expiry } : {}) });
+  const kp = await getKycStatus(posted), km = await getKycStatus(minorAcct);
+  console.log = origLog;
+  ok(`${idType} · an adult ACCOUNT posting an under-18 date is checked on its own date — accepted, and its own date recorded`,
+    rp.ok && (rp as { data?: { verified: boolean } }).data?.verified === true && String(kp?.dob).slice(0, 10) === "1991-02-03", `${JSON.stringify(rp).slice(0, 100)} dob=${kp?.dob}`);
+  ok(`🔴 ${idType} · an ACCOUNT dated under 18 is refused FINALLY (UNDERAGE), whatever adult date is posted`,
+    rm.ok && (rm as { data?: { verified: boolean } }).data?.verified === false && km?.status === "REJECTED" && km?.rejectReason === "UNDERAGE",
+    `${JSON.stringify(rm).slice(0, 100)} ${km?.status}/${km?.rejectReason}`);
   console.log = () => {};
 }
 console.log = origLog;
@@ -513,8 +573,10 @@ section("11 · the surfaces read the catalogue rather than re-writing it");
   ok("the chooser uses the kit's ONE filter control, not a hand-rolled one",
     /<FilterPill/.test(PAGE),
     "DESIGN_AUTHORITY: hand-rolling a second control language is a documented refusal.");
+  // ⭐ 2026-10-10: the link also carries the page's own context (`carry` — the safe `next`, and `for=agent` on the agent
+  // track), so choosing a document never drops the player off the track or away from where they were going.
   ok("🔴 the chooser puts the type in the URL, so a refused submit round-trips",
-    /href=\{`\/profile\/kyc\?idType=\$\{ty\}`\}/.test(PAGE));
+    /href=\{`\/profile\/kyc\?idType=\$\{ty\}\$\{carry\}`\}/.test(PAGE));
   // 2026-10-09, the visual pass's round 3 (tiles 332, 333): a FilterGroupKey reading "What to attach" sat between the
   // help line and the pills — a second label for a group its legend names (and its aria-label repeats), and a wrong one:
   // these pills choose the document held; nothing is attached until step 2.
@@ -548,8 +610,12 @@ section("11 · the surfaces read the catalogue rather than re-writing it");
     /\{spec\.expires && \(/.test(PAGE));
 
   const ADMIN = stripComments(read("src/app/admin/kyc/[id]/page.tsx"));
-  ok("the reviewer's tabs are this document's slots",
-    /required\.length \? required : ALL_DOC_SLOTS/.test(ADMIN),
+  // ⭐ 2026-10-10: a PHOTO case's tabs are this document's slots; a TYPED case shows only the images actually ON FILE
+  // (from before that day, or an agent's unfinished set), drawn from the frozen legacy list so none is unreachable.
+  ok("the reviewer's tabs are this document's slots (photo case), and a typed case's images on file come from the frozen list",
+    /const required = spec\?\.requiredSlots \?\? \[\];/.test(ADMIN)
+    && /const photoSlots = mode === "photo" \? required\.map\(slotOf\) : \[\];/.test(ADMIN)
+    && /const onFileSlots = mode === "typed" \? LEGACY_KYC_DOC_SLOTS\.filter\(\(s\) => present\.has\(s\)\)\.map\(slotOf\) : \[\];/.test(ADMIN),
     "Three hard-written tabs meant the passport bio page — the only image that\n" +
     "       matters — had no tab at all.");
   ok("the reviewer is told when NO published format was applied",
@@ -557,8 +623,12 @@ section("11 · the surfaces read the catalogue rather than re-writing it");
     "An open field that does not announce itself as open reads as a checked field.");
 
   const ROUTE = stripComments(read("src/app/api/admin/kyc-doc/route.ts"));
-  ok("🔴 the document route's accept-list is DERIVED from the catalogue",
-    /new Set<string>\(ALL_DOC_SLOTS\)/.test(ROUTE),
+  // ⛔ RE-POINTED 2026-10-10 — THE OPPOSITE OF WHAT THIS ASSERTED. It required the list DERIVED from the catalogue
+  // (`ALL_DOC_SLOTS`), which was right while every player uploaded. From that day the catalogue's slots are the AGENT
+  // track's, and a derived list would shrink the day that track changes, locking officers out of images on file.
+  // The route must read the FROZEN list (§4 pins its seven slots), and must NOT go back to the derived one.
+  ok("🔴 the document route's accept-list is the FROZEN legacy list, never derived from the catalogue",
+    /new Set<string>\(LEGACY_KYC_DOC_SLOTS\)/.test(ROUTE) && !/ALL_DOC_SLOTS/.test(ROUTE),
     "A literal set is why PASSPORT / DRIVER_LICENSE / VOTER_CARD existed in the database\n" +
     "       enum and were unreachable from the product.");
 }

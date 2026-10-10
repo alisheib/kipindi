@@ -28,7 +28,7 @@
  * is the real route for a money concern.
  */
 import { db, type StoredTxn, type StoredKycStageRow, type StoredWallet } from "./store";
-import { getAuditPage, getAuditByActionsDurable, type AuditEntry } from "./audit";
+import { getAuditByActionsDurable, getAuditForTargetsDurable, type AuditEntry } from "./audit";
 import { readKycMoneySnapshot } from "./kyc-money";
 import { formatTzs } from "@/lib/utils";
 
@@ -350,15 +350,45 @@ export async function readKycQueueIdentity(canSeeMoney: boolean): Promise<KycQue
   return { facts: null, wallets, walletsFailed: wallets === null };
 }
 
-/** Audit-derived approval recommendation (maker) for the high-risk two-officer
- *  path. Returns the recommender + when, if a live recommendation exists that
- *  is newer than the last decision reset. */
-export async function getApprovalRecommendation(userId: string): Promise<{ officerId: string; officerName: string | null; at: string } | null> {
-  const events = getAuditPage({ category: "COMPLIANCE", limit: 10000 }).filter(
-    (e) => e.targetId === userId && (e.action === "kyc.approve.recommended" || e.action === "kyc.approve.recommendation_cleared"),
-  );
-  const latest = events[0]; // newest-first
-  if (!latest || latest.action !== "kyc.approve.recommended" || !latest.actorId) return null;
-  const u = await db.user.findById(latest.actorId);
-  return { officerId: latest.actorId, officerName: u?.displayName?.trim() || latest.actorId, at: latest.createdAt };
+/**
+ * Audit-derived approval recommendation (maker) for the high-risk two-officer path — the recommender
+ * and when, for THIS version of the submission.
+ *
+ * ⭐ BOUND TO THE ROW VERSION (2026-10-10, typed-only KYC). A recommendation is a maker's judgment about
+ * the identity they saw. It used to be "the newest recommendation for this user", read from the
+ * per-container RING — so it vanished on every deploy (a second officer found nothing to seal), and,
+ * worse, it SURVIVED any change to the case: a player who corrected their details after the maker looked
+ * had them approved on a recommendation about different details. Now the recommendation carries the
+ * submission's version (`kycRowVersion` — its `updatedAt` and an identity digest) in its payload and only
+ * the one whose `payload.version` equals the version being approved counts; ANY write to the submission
+ * changes `updatedAt`, so any change voids it. ⛔ DURABLE, never the ring — and FILTERED (this player, this
+ * action: `getAuditForTargetsDurable`), never a window of the player's newest rows, which every NIDA press and
+ * wallet act pushes along.
+ * ⛔ 2026-10-10: the `kyc.approve.recommendation_cleared` branch is GONE. Nothing in the code ever emitted that
+ * action, and a version-bound recommendation needs no clearing — the next write voids it.
+ */
+export async function getApprovalRecommendation(userId: string, version: string): Promise<{ officerId: string; officerName: string | null; at: string } | null> {
+  if (!userId || !version) return null;
+  let entries: AuditEntry[];
+  try {
+    entries = (await getAuditForTargetsDurable({
+      targetType: "User",
+      targetIds: [userId],
+      actions: ["kyc.approve.recommended"],
+      sinceIso: "1970-01-01T00:00:00.000Z",
+      limit: 200,
+    })).entries; // newest first
+  } catch {
+    // A failed read is "no recommendation": the second officer is asked for one again, never handed a seal.
+    return null;
+  }
+  let match: AuditEntry | null = null;
+  for (const e of entries) {
+    if (e.action !== "kyc.approve.recommended" || !e.actorId) continue;
+    const p = (e.payload ?? {}) as Record<string, unknown>;
+    if (p.version === version) { match = e; break; }
+  }
+  if (!match || !match.actorId) return null;
+  const u = await db.user.findById(match.actorId);
+  return { officerId: match.actorId, officerName: u?.displayName?.trim() || match.actorId, at: match.createdAt };
 }

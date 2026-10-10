@@ -1,5 +1,14 @@
 # To the Gaming Board — identity verification is now enforced at withdrawal only
 
+> ⚠️ **SUPERSEDED IN PART ON 2026-10-10 (owner ruling, the Gaming Board's request).** Identity is still asked before the
+> first withdrawal and before nothing else, but a player no longer sends a document image or a selfie, and most players
+> are no longer "approved by a compliance officer" first: they type the details of one document and are approved at
+> once when the automatic checks pass, and an officer checks the approval afterwards — so sanctions/PEP screening can
+> now come after a withdrawal. §1's withdrawal row and its description of the withdrawal screen no longer hold for
+> players; agent applicants keep the photographs and the selfie. Read
+> [`BOARD-DISCLOSURE-KYC-TYPED-ONLY.md`](BOARD-DISCLOSURE-KYC-TYPED-ONLY.md) for the position now. If this letter is
+> still unsent, send that one instead of it, or beside it. This letter is kept as written.
+>
 > ⚠️ **ONE ROW HERE STOPPED BEING TRUE ON 2026-10-07 (owner ruling).** "First deposit — a confirmed email address" no
 > longer holds: a deposit asks for no email, and a confirmed email is required at WITHDRAWAL, beside identity. If this
 > letter is still unsent, that row and the sentence "registers, confirms their email address, and may then deposit"

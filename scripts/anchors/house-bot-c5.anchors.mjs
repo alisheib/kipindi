@@ -962,17 +962,21 @@ export const MUTATIONS = [
   {
     name: "c5-s4:S4-M57 · 🔴 UNGUARDED UNTIL NOW · RE-ANCHORED · the case page hands `moneyFacts` WHOLE to a client rail, serialising it into the flight payload. ⚠️ the register anchored `                <KycDecisionRail`, byte-identical to S4-M75's; the anchor is extended by the line below it so the two resolve separately rather than riding one combineInto",
     file: ID_PAGE_2,
-    from: "                <KycDecisionRail\n                  userId={id}",
-    to: "                <KycDecisionRail\n                  moneyFacts={moneyFacts}\n                  userId={id}",
-    expect: "0.197.3 · ⛔ OWNER RULING D20 · the KYC case page hands its CLIENT decision rail exactly the six judgement props it takes today and nothing a money object could ride in on",
+    // ⚠️ RE-ANCHORED 2026-10-10 (typed-only identity): the rail moved two spaces deeper on the rebuilt case page and takes
+    // twelve props, not six (0.197.3 re-pinned by value). Same plant, same first line, the new indentation.
+    from: "                  <KycDecisionRail\n                    userId={id}",
+    to: "                  <KycDecisionRail\n                    moneyFacts={moneyFacts}\n                    userId={id}",
+    expect: "0.197.3 · ⛔ OWNER RULING D20 · the KYC case page hands its CLIENT decision rail exactly the twelve judgement props it takes today and nothing a money object could ride in on",
     suite: "reports-mem",
   },
   {
     name: "c5-s4:S4-M75 · 🔴 UNGUARDED UNTIL NOW · RE-ANCHORED · the same facts SPREAD into the tag. ⚠️ re-anchored to the first two props for the reason above; 0.434's W25_OWED already reports this page, so the reported set is unchanged and that case stays green",
     file: ID_PAGE_2,
-    from: "                  userId={id}\n                  autoChecks={autoChecks}",
-    to: "                  {...kycMoneyFacts(txns)}\n                  userId={id}\n                  autoChecks={autoChecks}",
-    expect: "0.197.3 · ⛔ OWNER RULING D20 · the KYC case page hands its CLIENT decision rail exactly the six judgement props it takes today and nothing a money object could ride in on",
+    // ⚠️ RE-ANCHORED 2026-10-10 (typed-only identity): `autoChecks` became `checks` and `version` now follows `userId`,
+    // two spaces deeper on the rebuilt case page — the first two props again, so S4-M57 and this one resolve apart.
+    from: "                    userId={id}\n                    version={version}",
+    to: "                    {...kycMoneyFacts(txns)}\n                    userId={id}\n                    version={version}",
+    expect: "0.197.3 · ⛔ OWNER RULING D20 · the KYC case page hands its CLIENT decision rail exactly the twelve judgement props it takes today and nothing a money object could ride in on",
     suite: "reports-mem",
   },
   {

@@ -13,7 +13,7 @@
  *   - The suite FAILS only when a (rule,file) exceeds its baseline count, or a new
  *     (rule,file) appears — i.e. NEW drift. Pre-existing drift is tracked, not fatal.
  *   - As each remediation phase lands, regenerate the baseline; the counts shrink.
- *   - DONE = the baseline is empty (see docs/UI-CONSISTENCY-AUDIT.md).
+ *   - DONE = the baseline is empty (accepted rises are recorded in docs/DESIGN-BASELINE.md §4; the old audit doc was deleted).
  *
  * Run:     npm run test:ui-consistency
  * Rebase:  npm run test:ui-consistency -- --update-baseline   (after a remediation)
@@ -670,7 +670,7 @@ if (UPDATE) {
     _note:
       "UI-consistency baseline: known drift counts per rule::file. Regenerate after a remediation " +
       "phase with `npm run test:ui-consistency -- --update-baseline`. DONE when this is empty. " +
-      "See docs/UI-CONSISTENCY-AUDIT.md.",
+      "See docs/DESIGN-BASELINE.md §4.",
     _generated: "run with --update-baseline",
     _total: findings.length,
     counts: obj,

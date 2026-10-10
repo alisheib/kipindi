@@ -4,10 +4,14 @@
  * ⭐ WHY THIS EXISTS BESIDE `qa:kyc-gate`. That drive uses `/auth/demo?kyc=…`, which WRITES
  * a KycSubmission directly. It proves the screens react to a state; it cannot prove the
  * state is reachable. This one registers through the real sign-up form, confirms the email
- * through the real link, deposits through the real form, fills the real identity step,
- * uploads real images through the real uploader, submits for review, signs in as a real
- * officer, approves through the real workstation, and then checks that the withdrawal opened.
+ * through the real link, deposits through the real form, fills the real typed identity form
+ * and presses it ONCE, checks that the withdrawal opened at that moment, then signs in as a
+ * real officer and checks the automatic approval afterwards on the real workstation.
  * If any step of the product is broken, this stops at it.
+ * ⭐ THE IDENTITY STEP IS THE 2026-10-10 ONE (owner ruling, Ali, relaying the Gaming Board):
+ * players type the document's details — no upload anywhere — and are verified AT ONCE when the
+ * automatic checks pass; officers check those approvals afterwards (the post-check list).
+ * Agent applicants keep photos and an officer: `qa:agent-drive` drives that track.
  *
  * ⭐ THE LADDER IS THE 2026-09-13 ONE (docs/COMPLIANCE-DECISIONS.md) — register → confirm email →
  * deposit and play → verify identity → withdraw — and Ali's quiet rule of the same day decides what
@@ -21,10 +25,11 @@
  *      prompt anywhere else
  *   ③ confirm the email through the real link → the withdraw card drops its email step; the deposit form as before
  *   ④ a REAL deposit → the one quiet notice on /wallet; dismissed, it stays gone in this browser
- *   ⑤ identity + documents → ⑥ submit (the withdraw panel says it is with us; the notice is not due)
- *   ⑦ an officer approves → ⑧ the withdrawal form opens, and nothing asks again
+ *   ⑤ the typed identity, one press — no file input, the account's date of birth read-only → verified at once
+ *   ⑥ the withdrawal form opens at that moment (the notice is not due) → ⑦ an officer marks the automatic
+ *      approval checked on the post-check list → ⑧ the withdrawal stays open, and nothing asks again
  *
- * ⛔ THE POINT OF ⑧ IS THAT A GATE WHICH NEVER OPENS IS ALSO "SECURE". Refusals are cheap to get right
+ * ⛔ THE POINT OF ⑥ AND ⑧ IS THAT A GATE WHICH NEVER OPENS IS ALSO "SECURE". Refusals are cheap to get right
  * by accident; the expensive failure is a player who verifies and still cannot withdraw.
  * ⚠️ ④ NEEDS THE LOCAL MOCK RAIL — the default, which confirms a mobile-money deposit synchronously.
  * With demo-async on (`PAYMENTS_DEMO_ASYNC` or the control-plane toggle) it answers PENDING, nothing is
@@ -81,12 +86,7 @@ const sel = {
 /** The amber /profile banner deleted 2026-09-13 — its heading, a phrase of its body and its button (en, ac411357). */
 const OLD_PROFILE_BANNER = ["verify your identity", "verify before you cash out", "continue verification"];
 
-/** A real 1×1 JPEG — magic bytes and all, because the uploader sniffs them. */
-const JPEG_1PX = Buffer.from(
-  "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0a" +
-  "HBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAA" +
-  "AAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==", "base64");
-
+// ⛔ No image fixture any more: the typed track has no uploader to feed (2026-10-10).
 const suffix = String(Date.now()).slice(-7);
 const PHONE_LOCAL = `7${suffix.slice(0, 8).padEnd(8, "0")}`;   // 9 digits, leading 7
 const EMAIL = `kycdrive.${suffix}@50pick.test`;
@@ -315,149 +315,108 @@ if (deposited) {
   await other.context().close();
 }
 
-// ── ⑤ THE REAL IDENTITY STEP AND THE REAL UPLOADER ──────────────────────────
-step("⑤ identity + documents — the real form, the real uploader");
+// ── ⑤ THE TYPED IDENTITY — THE REAL FORM, ONE PRESS ─────────────────────────
+step("⑤ identity — the real typed form, one press (owner ruling 2026-10-10: no uploads, verified at once)");
 {
   await go(player, `${BASE}/profile/kyc`);
+  // ⛔ THE TYPED TRACK UPLOADS NOTHING (2026-10-10). Asserted on the page the player actually gets, before and after
+  // the press — a file input anywhere here is the ruling undone.
+  ok("5.0 · ⛔ the identity form draws no file input — players verify with typed details only",
+    await player.locator('input[type="file"]').count() === 0);
+  // ⭐ The date of birth is the ACCOUNT's (typed once at ①), shown read-only and never posted by this form.
+  ok("5.0b · ⭐ the date of birth is the account's, shown read-only — there is no date field to fill",
+    await player.locator("#idNumber").count() > 0 && await player.locator('form:has(#idNumber) input[name="dob"]').count() === 0);
   await player.locator("#idNumber").fill(NIDA);
   await player.locator("#fullName").fill("Kyc Drive Tester");
-  // ⚠️ THE EMAIL FIELD IS PART OF THIS FORM AND IS REQUIRED. Leaving it empty makes the
-  // browser block submit with NATIVE validation — no server round-trip, no error text on the
-  // page, nothing in the log. The drive read that as "the identity step was refused" and
-  // spent a debugging pass looking for a server defect that did not exist.
+  // ⚠️ IF AN EMAIL FIELD IS EVER PART OF THIS FORM AGAIN IT IS REQUIRED: an empty one makes the browser block the
+  // submit with NATIVE validation — no server round-trip, nothing on the page, nothing in the log.
   const emailField = player.locator("#email");
   if (await emailField.count() > 0 && !(await emailField.inputValue())) await emailField.fill(EMAIL);
 
-  // ⚠️ WAIT FOR THE OUTCOME IN THE URL. `waitForLoadState("domcontentloaded")` resolves
-  // IMMEDIATELY when the current document is already loaded, so the drive read the page
-  // BEFORE the server action's redirect landed and counted zero file inputs on a form that
-  // had in fact been accepted. The lesson is that a wait must name the thing being waited FOR.
+  // ⚠️ WAIT FOR THE OUTCOME IN THE URL. `waitForLoadState("domcontentloaded")` resolves IMMEDIATELY on an already
+  // loaded document, so a drive once read the page BEFORE the action's redirect landed. A wait names what it waits FOR:
+  // the typed press lands on `?verified=1` (approved), `?sent=1` (with an officer) or `?reason=` (refused).
   await Promise.all([
-    player.waitForURL((u) => u.searchParams.has("id") || u.searchParams.has("reason"), { timeout: 60_000 }).catch(() => {}),
-    player.locator('button[type="submit"]').first().click(),
+    player.waitForURL((u) => u.searchParams.has("verified") || u.searchParams.has("sent") || u.searchParams.has("reason"), { timeout: 60_000 }).catch(() => {}),
+    player.locator('form:has(#idNumber) button[type="submit"]').first().click(),
   ]);
   await settle(player);
-  ok("5.0 · the identity step was ACCEPTED by the server", new URL(player.url()).searchParams.get("id") === "accepted",
-    new URL(player.url()).search || "(no outcome in the URL)");
-
-  // ⛔ ASSERT THE STATE, NOT THE PROSE. The file inputs only exist once the identity step is
-  // accepted, so their presence IS the acceptance.
-  const inputs = player.locator('input[type="file"]');
-  const n = await inputs.count();
-  ok("5.1 · ★ the identity step is accepted — the document slots now exist", n >= 3,
-    `${n} file inputs · ${(await player.locator("body").innerText()).slice(0, 80).replace(/\n/g, " ")}`);
-  for (let i = 0; i < n; i++) {
-    await inputs.nth(i).setInputFiles({ name: `doc${i}.jpg`, mimeType: "image/jpeg", buffer: JPEG_1PX });
-    await player.waitForTimeout(1200); // the uploader downscales on a canvas before posting
-  }
-  // ⛔ COUNT THE ATTACHMENTS THEMSELVES. The submit control renders as soon as the identity
-  // step is done — BEFORE any document is attached — so its presence proves nothing about
-  // the uploads. Each uploader tile reports "Attached" when it holds a file; that is the fact.
-  await go(player, `${BASE}/profile/kyc`);
-  const attached = player.locator("button").filter({ hasText: /Attached|Imeambatanishwa|已附加/ });
-  ok("5.2 · ★ every required slot is ATTACHED", await attached.count() >= 3, `${await attached.count()} of 3 attached`);
+  const q = new URL(player.url()).searchParams;
+  ok("5.1 · ★ ONE press verified the identity AT ONCE — no officer, no upload, no wait",
+    q.get("verified") === "1",
+    q.has("sent") ? "sent to an officer (sent=1) — something on this fresh account routes" : q.has("reason") ? `refused: ${q.get("reason")}` : player.url());
+  const main = await textOf(player.locator("main"));
+  ok("5.2 · …and the page says so — the verified card", main.includes("your identity is verified"), main.slice(0, 120));
+  ok("5.3 · ⛔ …and still no file input anywhere on the page", await player.locator('input[type="file"]').count() === 0);
 }
 
-// ── ⑥ SUBMIT FOR REVIEW ─────────────────────────────────────────────────────
-step("⑥ submit for review");
+// ── ⑥ THE WITHDRAWAL OPENS AT ONCE ──────────────────────────────────────────
+step("⑥ ★ the withdrawal opens at once — the automatic approval IS the approval");
 {
-  // ⚠️ THE CONTROL IS LABELLED "Confirm", NOT "Submit" — it renders `t.common.confirm`.
-  const submit = player.locator('form button[type="submit"]').filter({ hasText: /^(Confirm|Thibitisha|确认)$/ });
-  ok("6.0 · the submit-for-review control is present", await submit.count() > 0);
-  if (await submit.count() > 0) {
-    await Promise.all([
-      player.waitForURL((u) => u.searchParams.has("submitted") || u.searchParams.has("reason"), { timeout: 60_000 }).catch(() => {}),
-      submit.first().click(),
-    ]);
-    await settle(player);
-    // The server states the outcome in the URL: `?submitted=1`, or `?reason=<why not>`.
-    const q = new URL(player.url()).searchParams;
-    ok("6.0b · the server ACCEPTED the submission", q.get("submitted") !== null && !q.has("reason"),
-      q.has("reason") ? `refused: ${q.get("reason")}` : (q.toString() || "(no outcome in the URL)"));
-  }
-  // ⛔ READ THE STATE THE PRODUCT PUBLISHES, NOT THE WORDS ON THE PAGE — and since 2026-09-13 the one
-  // money screen that publishes it to the player is the WITHDRAW screen (the deposit screen reads no
-  // identity row at all).
+  // ⛔ ASSERT THE STATE, NOT A WORD ON THE PAGE (see ⑧): no identity panel, and the real withdrawal form.
   await go(player, `${BASE}/wallet/withdraw`);
-  const st = await player.locator(sel.payoutGate).first().getAttribute("data-kyc-state").catch(() => null);
-  ok("6.1 · ★ the submission really is PENDING REVIEW — the withdraw panel says it is with our team", st === "pending_review", String(st));
-  ok("6.2 · …and offers NO button, because there is nothing for them to do",
-    st !== null && await player.locator(`${sel.payoutGate} a.btn`).count() === 0);
-  ok("6.3 · ⛔ …while the withdrawal form stays absent", await player.locator(sel.withdrawForm).count() === 0);
+  const gates = await player.locator(sel.gate).count();
+  ok("6.1 · ★ no identity panel on the withdraw screen any more", gates === 0,
+    gates > 0 ? String(await player.locator(sel.gate).first().getAttribute("data-kyc-state")) : "");
+  ok("6.2 · ★★ …and the real withdrawal form is present — no officer stood in the way", await player.locator(sel.withdrawForm).count() > 0);
   if (deposited) {
     const other = await cleanBrowserAs(player);
     await go(other, `${BASE}/wallet`);
     ok("6.4 · control · /wallet rendered in a browser that never dismissed the notice", await other.locator(sel.walletBalance).count() > 0);
-    ok("6.5 · ★ the notice is NOT due once the documents are with our team", await other.locator(sel.notice).count() === 0);
+    ok("6.5 · ★ the notice is NOT due once the identity is verified", await other.locator(sel.notice).count() === 0);
     await other.context().close();
   }
 }
 
-// ── ⑦ A REAL OFFICER APPROVES, THROUGH THE REAL WORKSTATION ─────────────────
-step("⑦ the officer approves — the real queue, the real confirm dialog");
+// ── ⑦ AN OFFICER CHECKS THE AUTOMATIC APPROVAL AFTERWARDS ───────────────────
+step("⑦ the officer checks the automatic approval afterwards — the post-check list, the real workstation");
 {
-  // ⚠️ NOT `db:seed-admin-local` — that seeder writes to POSTGRES and refuses without
-  // `DATABASE_URL`, while this drive runs against the in-memory store. The dev-test route
-  // creates the officer in the SAME store the app is serving from, and mints their session.
+  // The post-check list names no player (the officer opens the case); the run finds ITS row by the account id.
+  const who = await player.request.get(`${BASE}/api/dev-test/whoami`).then((r) => r.json()).catch(() => null);
+  const uid = who?.session?.userId ?? null;
+  ok("7.0 · the player's account id is known (dev whoami)", !!uid, JSON.stringify(who ?? null).slice(0, 80));
+  // ⚠️ NOT `db:seed-admin-local` — that seeder writes to POSTGRES and refuses without `DATABASE_URL`, while this drive
+  // runs against the in-memory store. The dev-test route creates the officer in the SAME store and mints the session.
   const admin = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   await admin.context().addCookies([{ name: "kp-locale", value: "en", url: BASE }]);
   const seeded = await admin.request.post(`${BASE}/api/dev-test/seed-admin`);
-  ok("7.0 · an officer account exists", seeded.ok(), `${seeded.status()}`);
-  await go(admin, `${BASE}/admin/approvals`);
-  // ⛔ THE PLAYER'S OWN NAME, NOT THE WORD "KYC". `/KYC/i` matches the queue's HEADING, so
-  // this passed on an empty queue — reporting that a submission had arrived when none had.
-  const queue = await admin.locator("body").innerText();
-  ok("7.1 · ★ THIS player's submission is in the officer's queue", queue.includes("Kyc Drive Tester"),
-    queue.includes("Kyc Drive Tester") ? "" : "the queue does not name this player");
-
-  // ⚠️ THE ROW'S OWN LINK. The page also links the KYC queue and its sub-pages, so the first
-  // `/admin/kyc/` anchor on the page is not necessarily this player's workstation.
-  const link = admin.locator("tr", { hasText: "Kyc Drive Tester" }).first().locator('a[href*="/admin/kyc/"]').first();
-  ok("7.2 · the queue row links to this player's review workstation", await link.count() > 0);
-  if (await link.count() > 0) {
-    await Promise.all([
-      admin.waitForURL((u) => u.pathname.startsWith("/admin/kyc/"), { timeout: 60_000 }).catch(() => {}),
-      link.click(),
-    ]);
-    await settle(admin);
-    ok("7.3 · the review workstation opens", /approve|idhinisha|批准/i.test(await admin.locator("body").innerText()), admin.url());
-
-    // ⚠️ THE ATTESTATIONS ARE TAP-TO-CYCLE CHECKLIST ROWS (pending → pass → fail), NOT CHECKBOXES —
-    // `kyc-decision-rail.tsx`. Approve stays disabled until every row reads "pass", so a driver that
-    // ticked `input[type=checkbox]` pressed a disabled button for 30s (measured 2026-09-13). Tap each
-    // pending row exactly once.
+  ok("7.0b · an officer account exists", seeded.ok(), `${seeded.status()}`);
+  const postCheckRow = () => admin.locator(`tr[data-kyc-queue="post-check"]:has(a[href="/admin/kyc/${uid}"])`);
+  await go(admin, `${BASE}/admin/kyc`);
+  ok("7.1 · ★ THIS player's automatic approval is on the officers' post-check list", !!uid && await postCheckRow().count() === 1, `${await postCheckRow().count()} row(s)`);
+  if (uid) {
+    await go(admin, `${BASE}/admin/kyc/${uid}`);
+    ok("7.2 · the workstation opens on the automatic approval — a Mark checked control, not Approve",
+      /mark checked/i.test(await admin.locator("body").innerText()), admin.url());
+    // ⚠️ THE ATTESTATIONS ARE TAP-TO-CYCLE CHECKLIST ROWS (pending → pass → fail), NOT CHECKBOXES — `kyc-decision-rail.tsx`.
+    // The button stays disabled until every row reads "pass". Tap each pending row exactly once.
     const pendingRows = admin.locator('button:has-text("tap to verify")');
     for (let guard = 0; guard < 12 && (await pendingRows.count()) > 0; guard++) await pendingRows.first().click();
-    const approve = admin.locator('button:has-text("Approve"), button:has-text("Idhinisha")').first();
-    if (await approve.count() > 0) {
-      await approve.click();
-      await admin.waitForTimeout(800);
-      // ⛔ APPROVE IS A ConfirmDialog TRIGGER, as CLAUDE.md requires for a consequential
-      // action — a driver that clicks once and reads the page will report "not approved"
-      // against a product that simply asked the officer to confirm. Confirm it. ⑧ is the proof
-      // that it took: this step only proves the control was there to press.
-      const confirm = admin.locator('[role="dialog"] button:has-text("Approve"), [role="dialog"] button:has-text("Confirm"), [role="alertdialog"] button:has-text("Approve")').first();
-      // ⚠️ WAIT FOR THE OUTCOME, NOT A FIXED 1.5s (measured 2026-09-13). On a dev server the approve action
-      // compiles on first use; ⑧ read the player's standing before it had committed and reported the account
-      // still `pending_review`, while a probe that waited saw "Identity approved". The toast is the outcome.
-      let outcome = "(no confirm dialog)";
+    const mark = admin.locator('button:has-text("Mark checked")').first();
+    let outcome = "(no Mark checked control)";
+    if (await mark.count() > 0) {
+      await mark.click();
+      // ⛔ A ConfirmDialog, as every consequential officer action is. ⚠️ WAIT FOR THE OUTCOME (the toast), not a fixed
+      // delay: on a dev server the action compiles on first use.
+      const confirm = admin.locator('[role="dialog"] button:has-text("Yes, mark checked"), [role="alertdialog"] button:has-text("Yes, mark checked")').first();
+      await confirm.waitFor({ state: "visible", timeout: 10_000 }).catch(() => {});
       if (await confirm.count() > 0) {
         await confirm.click();
-        outcome = await admin.waitForSelector("text=/Identity approved|Blocked/", { timeout: 30_000 })
-          .then((h) => h.innerText(), () => "(no outcome within 30s)");
+        outcome = await admin.waitForSelector("text=/Marked checked|Blocked/", { timeout: 30_000 }).then((h) => h.innerText(), () => "(no outcome within 30s)");
         await admin.waitForTimeout(1_000);
+      } else {
+        outcome = "(no confirm dialog)";
       }
-      ok("7.4 · ★ the officer pressed Approve and confirmed — and the workstation said it was approved",
-        /Identity approved/.test(outcome), outcome);
-    } else {
-      ok("7.4 · ★ the officer pressed Approve and confirmed", false, "no Approve control found");
     }
+    ok("7.3 · ★ the officer marked it checked through the real confirm dialog", /Marked checked/.test(outcome), outcome);
+    await go(admin, `${BASE}/admin/kyc`);
+    ok("7.4 · …and it left the post-check list", await postCheckRow().count() === 0);
   }
   await admin.close();
 }
 
-// ── ⑧ THE WITHDRAWAL OPENS ──────────────────────────────────────────────────
-step("⑧ ★ the withdrawal opens — the half a refusal-only suite can never prove");
+// ── ⑧ THE WITHDRAWAL STAYS OPEN ─────────────────────────────────────────────
+step("⑧ ★ after the officer's check the withdrawal is still open — and nothing asks again");
 {
   // ⛔ ASSERT THE STATE, NOT A WORD ON THE PAGE. `/verified/i` matches "Verify your
   // identity" — the copy shown to an UNVERIFIED player — so a word check once passed for four

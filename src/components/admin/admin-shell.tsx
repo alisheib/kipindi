@@ -97,13 +97,19 @@ export async function ConfidentialBand({ session }: { session: AdminSession }) {
 // console-wide crash recorded above), and the key is ABSENT unless there is a count, so no other viewer's payload even
 // names it. Booleans only: `reactCache` memoises per argument, and an options object would re-run every read.
 export const getSidebarBadges = reactCache(async (canSeeMoney: boolean, canSeeGrowth: boolean) => {
-  const [aml, sof, pendingKyc, refused, { isFileWithUs }, campaigns] = await Promise.all([
+  const [aml, sof, pendingKyc, refused, { isFileWithUs }, campaigns, uncheckedAuto] = await Promise.all([
     Promise.resolve(db.txn.listByStatus("AML_REVIEW")).then((r) => r.length).catch(() => 0),
     Promise.resolve(db.sourceOfFunds.listPending()).then((r) => r.length).catch(() => 0),
     import("@/lib/server/kyc-service").then(({ listPendingKyc }) => listPendingKyc()).catch(() => []),
     openRefusedFundsCases(canSeeMoney).catch(() => 0),
     import("@/lib/kyc-stage"),
     campaignAttentionBadge(canSeeGrowth).catch(() => undefined),
+    // ⭐ 2026-10-10 — AUTOMATIC APPROVALS NOT YET CHECKED: officer work on /admin/kyc's post-check list. A scalar read
+    // (newest submission per user, no documents); inside an async function so a SYNC throw from the in-memory store is
+    // "no count", never the console-wide crash recorded above. ⭐ APPROVED rows only (review R5.1): the list also holds
+    // such an approval while it is with an officer — already counted below as a file with us — or with the player — the
+    // player's move, which this badge never counts — and only an APPROVED one can be marked checked.
+    (async () => (await db.kyc.listUncheckedAutoApprovals()).filter((r) => r.status === "APPROVED").length)().catch(() => 0),
   ]);
   // ⭐ ONE RULE FOR "WAITING ON US" — `isFileWithUs` (src/lib/kyc-stage.ts), the `with_us` arm of the roster's
   // derivation. ⛔ It counts only what an officer can clear: not ADDITIONAL_INFO_REQUIRED (the player's move —
@@ -119,10 +125,14 @@ export const getSidebarBadges = reactCache(async (canSeeMoney: boolean, canSeeGr
   // balance (S14), and a finally-refused account holding money waits on an officer's recorded decision (S1).
   // ⛔ Open refused cases are NOT added to "approvals": that page does not list them, and a badge points at
   // the page holding the work.
+  // ⭐ 2026-10-10 — the automatic approvals waiting for their officer check join the KYC badge: /admin/kyc lists them,
+  // and an officer clears each one ("Mark checked"), so the badge counts work that can be finished. ⛔ Not added to
+  // "approvals" either — that page does not list them.
+  const kycWork = withUs + refused + uncheckedAuto;
   return {
     aml: aml > 0 ? String(aml) : undefined,
     compliance: aml + sof > 0 ? String(aml + sof) : undefined,
-    kyc: withUs + refused > 0 ? String(withUs + refused) : undefined,
+    kyc: kycWork > 0 ? String(kycWork) : undefined,
     approvals: approvals > 0 ? String(approvals) : undefined,
     // ⛔ U36 · ABSENT, never `campaigns: undefined`, unless there is a count: an undefined value still carries its KEY into
     // the client payload, and this key must not appear for a viewer who may not see growth.

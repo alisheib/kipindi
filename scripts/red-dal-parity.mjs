@@ -52,6 +52,9 @@ const FILES = [
   "src/lib/marketing/erasure-mark.ts",
   // §31 · C8b (S14, 2026-10-09) reads the "Added" re-dating's ONE shape rule through KP_SRC, and one case plants in it.
   "src/lib/server/contacts/added-redate-model.ts",
+  // §5k · typed-only KYC (2026-10-10): the gate reads `restartedSubmission` — the writer that BUILDS a KYC row — through
+  // KP_SRC, and one case plants in it. Listed in the same commit as the read, so no run reaches §5k on a missing file.
+  "src/lib/server/kyc-service.ts",
 ];
 
 const runGate = (srcDir) => {

@@ -8,6 +8,7 @@ import { I } from "@/components/ui/glyphs";
 import { db } from "@/lib/server/store";
 import { currentSession } from "@/lib/server/auth-service";
 import { getKycStatus } from "@/lib/server/kyc-service";
+import { photoIdentityVerified, photoCaseSent } from "@/lib/server/agent-identity";
 import { getAgentConfig } from "@/lib/server/agent-config";
 import { feeBreakdown, missingForSubmit, ALL_DOC_SLOTS, AGENT_REFEREE_DOC_HOLD_DAYS } from "@/lib/server/agent-application-service";
 import { isApprovedAgent } from "@/lib/server/affiliate-service";
@@ -123,14 +124,41 @@ async function AgentApplicationContent({ params }: AgentApplicationProps) {
   const accountWord = applicant ? accountStatusLabel(applicant.status).toLowerCase() : "";
   if (applicant && applicant.status !== "ACTIVE") blocks.push(`The account is ${accountWord}.`);
   if (app.feeDisposition !== "COLLECTED" && app.feeDisposition !== "WAIVED") blocks.push("The fee is neither reconciled nor waived.");
+  // ⭐ THE AGENT PROGRAMME'S IDENTITY, ASKED AS `approveAgent` ASKS IT (2026-10-10, `agent-identity.ts`): an officer's
+  // approval of the applicant's document photos and selfie — or, for an invitee, a photo case SENT, which Approve
+  // decides in the same step. ⛔ An APPROVED status alone is not it: a player's typed details are approved
+  // automatically, with no officer and no photos, and this read used to wave that straight through.
+  const identityDecidedHere = !!kyc && app.source === "OFFICER_INVITED" && !photoIdentityVerified(kyc) && photoCaseSent(kyc);
   if (!kyc) blocks.push("No identity verification on file.");
-  else if (kyc.status !== "APPROVED" && !(app.source === "OFFICER_INVITED" && kyc.status === "PENDING_REVIEW")) { const kycWord = kycStatusLabel(kyc.status).toLowerCase(); blocks.push(`Identity verification is ${kycWord}.`); }
+  else if (!photoIdentityVerified(kyc) && !identityDecidedHere) {
+    const kycWord = kycStatusLabel(kyc.status).toLowerCase();
+    blocks.push(
+      photoCaseSent(kyc) ? "The applicant's identity photos are awaiting review — decide them on the identity workstation first."
+      // ⚠️ A photo approval that does not stand over the photos on file (`photoIdentityVerified` refuses it — 2026-10-10,
+      // review R5.2): the photos are missing, or were uploaded AFTER the stamp, so they are not the ones it approved. The
+      // column's backfill (`20261010150000_kyc_typed_identity`) stamped every row APPROVED when it ran, from `approvedAt`,
+      // and a stamp outlives photos removed after it. ⛔ Such a stamp locks NOTHING (`photoStampStands` in kyc-service.ts
+      // asks the same question): the applicant adds their photos at the identity step and sends them, and an officer
+      // decides them on the workstation — whose photo approval stamps anew.
+      : kyc.status === "APPROVED" && kyc.photoVerifiedAt ? "The photo approval on file does not cover the photos on file (missing, or added after it) — the applicant adds their document photos and selfie at the identity step and sends them; then decide them on the identity workstation."
+      : kyc.status === "APPROVED" ? "Identity was verified from typed details only — an agent needs an officer's approval of their document photos and selfie, which the applicant adds at the identity step."
+      : kyc.status === "PENDING_REVIEW" ? "Identity is with an officer on typed details only — decide it on the identity workstation; an agent then needs their document photos and selfie approved."
+      : `Identity verification is ${kycWord}.`,
+    );
+  }
+  // Which approval the identity holds — the word "Approved" alone no longer says (2026-10-10).
+  const identityBasis = !kyc ? null
+    : photoIdentityVerified(kyc) ? "Photos approved by an officer"
+    : photoCaseSent(kyc) ? "Photos sent · awaiting review"
+    : kyc.status === "APPROVED" && kyc.photoVerifiedAt ? "Photo approval on file · not over these photos"
+    : kyc.status === "APPROVED" ? "Typed details only · no photo check"
+    : null;
   // In words, never slot enums (labels §11): the officer reads "Referee 1 · letter", not REFEREE_ONE_LETTER.
   // ⭐ `FEE_PAYMENT` replaces the old FEE_RECEIPT / FEE_REFERENCE pair. On the live rail the fee
   // is debited from the applicant's own wallet, so there is no receipt that can be MISSING —
   // only a fee that is unpaid. ⚠️ `FEE_RECEIPT` is deliberately not listed: `DOC_LABEL` already
   // names that slot and is consulted first, so an entry here was only ever dead.
-  const MISSING_WORD: Record<string, string> = { REFEREES: "both referees and the consent", FEE_PAYMENT: "the registration fee", IDENTITY: "the applicant's own identity verification" };
+  const MISSING_WORD: Record<string, string> = { REFEREES: "both referees and the consent", FEE_PAYMENT: "the registration fee", IDENTITY: "the applicant's own identity photos and selfie, sent for review" };
   const missingWords = missing.map((m) => (DOC_LABEL as Record<string, string>)[m] ?? MISSING_WORD[m] ?? m);
   if (missing.length > 0 && app.status === "UNDER_REVIEW") blocks.push(`Missing: ${missingWords.join(", ")}.`);
 
@@ -154,7 +182,7 @@ async function AgentApplicationContent({ params }: AgentApplicationProps) {
     },
     defaultRatePct: cfg.defaultCommissionPct, maxRatePct: cfg.maxCommissionPct,
     docSlots: ALL_DOC_SLOTS.map((s) => ({ value: s, label: DOC_LABEL[s] })),
-    kycStatus: kyc?.status ?? null,
+    identityDecidedHere,
     invitation: inv ? { id: inv.id, status: inv.status, expiresAt: inv.expiresAt } : null,
     agent: acct && isApprovedAgent(acct) ? { code: acct.code, commissionPct: acct.commissionPct, active: acct.active } : null,
   };
@@ -197,17 +225,29 @@ async function AgentApplicationContent({ params }: AgentApplicationProps) {
                 <div><dt className="font-mono text-micro uppercase eyebrow text-text-faint">Role</dt><dd className="text-text">{applicant ? roleLabel(applicant.role) : "—"}</dd></div>
                 {/* ⭐ THE KYC STATUS IS A LINK NOW. `approveAgent` decides identity in the same
                     step for an invitee, and the officer could read the WORD "Approved" here but
-                    not the documents behind it without hunting for the player. */}
+                    not the documents behind it without hunting for the player.
+                    🔴 IT LINKED THE SUBMISSION'S OWN ID, AND THE WORKSTATION IS KEYED BY THE PLAYER
+                    (`/admin/kyc/[id]` reads the submission by user id), so the link opened an empty case
+                    on every application. It names the applicant now (2026-10-10).
+                    ⭐ AND IT SAYS WHICH APPROVAL IT IS. Since 2026-10-10 a player's typed details are
+                    approved automatically; only an officer's approval of the photos is the agent's. */}
                 <div><dt className="font-mono text-micro uppercase eyebrow text-text-faint">Identity (KYC)</dt>
                   <dd className="text-text">
                     {kyc
-                      ? <Link href={`/admin/kyc/${kyc.id}` as Route} className="text-brand-300 underline-offset-2 hover:underline">{kycStatusLabel(kyc.status)}</Link>
+                      ? <Link href={`/admin/kyc/${app.userId}` as Route} className="text-brand-300 underline-offset-2 hover:underline">{kycStatusLabel(kyc.status)}</Link>
                       : "None"}
+                    {identityBasis && <span className="block text-body-sm text-text-subtle">{identityBasis}</span>}
                   </dd>
                 </div>
                 <div><dt className="font-mono text-micro uppercase eyebrow text-text-faint">Submitted</dt><dd className="font-mono text-text">{app.submittedAt ? formatDateTime(app.submittedAt) : "—"}</dd></div>
-                <div><dt className="font-mono text-micro uppercase eyebrow text-text-faint">Referee 1</dt><dd className="text-text">{app.refereeOneName ?? "—"}{app.refereeOneContact ? <> · <Sensitive field="phone" subjectId={app.userId} value={app.refereeOneContact} /></> : null}</dd></div>
-                <div><dt className="font-mono text-micro uppercase eyebrow text-text-faint">Referee 2</dt><dd className="text-text">{app.refereeTwoName ?? "—"}{app.refereeTwoContact ? <> · <Sensitive field="phone" subjectId={app.userId} value={app.refereeTwoContact} /></> : null}</dd></div>
+                {/* 🔴 THE REVEAL READ THE APPLICANT'S PHONE (fixed 2026-10-10). These were the `phone` field
+                    on the APPLICANT's id: the mask was drawn from the referee's contact, and the eye re-read
+                    the applicant's own number, so an officer calling a referee dialled the applicant, and the
+                    audit row recorded the wrong person's read. Each referee is its own registry field now,
+                    addressed by this APPLICATION (`sensitive-fields.ts`), revealing the contact the applicant
+                    typed for that referee. */}
+                <div><dt className="font-mono text-micro uppercase eyebrow text-text-faint">Referee 1</dt><dd className="text-text">{app.refereeOneName ?? "—"}{app.refereeOneContact ? <> · <Sensitive field="refereeOneContact" subjectId={app.id} value={app.refereeOneContact} /></> : null}</dd></div>
+                <div><dt className="font-mono text-micro uppercase eyebrow text-text-faint">Referee 2</dt><dd className="text-text">{app.refereeTwoName ?? "—"}{app.refereeTwoContact ? <> · <Sensitive field="refereeTwoContact" subjectId={app.id} value={app.refereeTwoContact} /></> : null}</dd></div>
                 <div><dt className="font-mono text-micro uppercase eyebrow text-text-faint">Referee consent</dt><dd className="text-text">{app.refereeConsentAt ? formatDateTime(app.refereeConsentAt) : "not attested"}</dd></div>
                 <div><dt className="font-mono text-micro uppercase eyebrow text-text-faint">Terms</dt><dd className="font-mono text-text">{app.acceptedTermsVersion ?? "—"}</dd></div>
               </dl>

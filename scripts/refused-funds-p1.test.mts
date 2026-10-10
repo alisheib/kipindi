@@ -21,7 +21,7 @@
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { withdraw, forfeitRefusedBalance, settleWithdrawalFailed } from "../src/lib/server/wallet-service.ts";
 import { decideRefusedFunds, refusedFundsPosition, refusedFundsReport } from "../src/lib/server/refused-funds.ts";
-import { reviewKyc, reopenFinalRefusal } from "../src/lib/server/kyc-service.ts";
+import { reviewKyc, reopenFinalRefusal, verifyIdentity, kycRowVersion } from "../src/lib/server/kyc-service.ts";
 import { addWalletFreeze, freezeWalletByOfficer, unfreezeWalletByOfficer, staleIdentityHold, liftStaleIdentityHold } from "../src/lib/server/wallet-freeze.ts";
 import { closeAccount } from "../src/lib/server/user-service.ts";
 import { setKillSwitch } from "../src/lib/server/payment-ops.ts";
@@ -80,8 +80,10 @@ async function player(id: string, o: { balance: number; hold?: number; deposits?
       id: `kyc_${id}`, userId: id, status: o.kyc.status, rejectReason: o.kyc.rejectReason ?? null, rejectNote: null,
       idType: "NIDA", idNumber: `199001016${String(seq).padStart(11, "0")}`, idExpiry: null, idVerifiedAt: now(),
       idFingerprint: `fp_${id}`, fullName: "Refused Fixture", dob: "1990-01-01", documents: o.kyc.documents ?? [],
-      reviewerId: OFFICER, reviewedAt: now(), submittedAt: now(),
+      extraRequests: [], reviewerId: OFFICER, reviewedAt: now(), submittedAt: now(),
       approvedAt: o.kyc.approvedAt !== undefined ? o.kyc.approvedAt : o.kyc.status === "APPROVED" ? now() : null,
+      // ⛔ Every column named (2026-10-10) — a BUILT row.
+      photoVerifiedAt: null, autoApprovedAt: null, autoFlags: [], postCheckedAt: null, postCheckedById: null, priorIdentities: [],
       createdAt: now(), updatedAt: now(),
     } as never);
   }
@@ -288,8 +290,19 @@ section("§11 · a stale identity hold: detected, lifted only when stale, lifted
   ok("11.4 ⛔ …and cannot be lifted as one", !refusedLift.ok && (await walletOf(standing)).status === "FROZEN", J(refusedLift));
 
   const approve = await player("usr_rfp_approve_lifts", { balance: 5_000, kyc: { status: "PENDING_REVIEW" }, wallet: { status: "FROZEN", freezeReasons: ["IDENTITY_REFUSED"] } });
-  const a = await reviewKyc({ officerId: OFFICER, userId: approve, decision: "APPROVE" });
+  const a = await reviewKyc({ officerId: OFFICER, userId: approve, decision: "APPROVE", version: kycRowVersion((await db.kyc.findByUserId(approve))!) });
   ok("11.5 ⛔ an APPROVE lifts a stale identity hold: the approved player is not left frozen", a.ok && (await walletOf(approve)).status === "ACTIVE", J({ a, w: await walletOf(approve) }));
+
+  // ⛔ ONLY AN OFFICER'S DECISION LIFTS ONE (2026-10-10). A typed press on a wallet carrying an identity hold is never
+  // approved by the machine and lifts nothing: the hold ROUTES the identity to an officer (WALLET_HOLD).
+  const auto = await player("usr_rfp_auto_never_lifts", { balance: 5_000, kyc: { status: "IN_PROGRESS" }, wallet: { status: "FROZEN", freezeReasons: ["IDENTITY_REFUSED"] } });
+  const t = await verifyIdentity(auto, { idType: "NIDA", idNumber: "19900101661100000011", fullName: "Auto Never Lifts" });
+  const tw = await walletOf(auto);
+  ok("11.6 ⛔ the AUTOMATIC path never lifts a hold — the typed press is routed (WALLET_HOLD) and the wallet stays held",
+    t.ok && (t.data as { outcome?: string; routes?: string[] } | undefined)?.outcome === "routed"
+      && ((t.data as { routes?: string[] } | undefined)?.routes ?? []).includes("WALLET_HOLD")
+      && tw.status === "FROZEN" && currentFreezeReasons(tw).includes("IDENTITY_REFUSED") && !(await db.kyc.findByUserId(auto))?.autoApprovedAt,
+    J({ t, w: tw.freezeReasons }));
 }
 
 // ── §12 · an ACTIVE wallet holds nothing ─────────────────────────────────────────────────────────────────────

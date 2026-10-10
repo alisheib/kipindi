@@ -73,9 +73,9 @@ export default function ProfileLoading() {
             <p className={PROFILE_PHONE_LINE}><GhostText>{`+255••••00 · ${t.profile.tanzania}`}</GhostText></p>
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
               <ChipGhost>{t.profile.playerRole}</ChipGhost>
-              <span className="inline-flex items-center min-h-[var(--tap-min)]"><ChipGhost glyph={10}>{t.profile.kycPillStart}</ChipGhost></span>
+              <span className="inline-flex items-center py-[11px] -my-[11px]"><ChipGhost glyph={10}>{t.profile.kycPillStart}</ChipGhost></span>
               <ChipGhost>{LANGUAGE_NAME[locale]}</ChipGhost>
-              <span className="inline-flex items-center min-h-[var(--tap-min)]"><ChipGhost glyph={10}>{t.profile.addEmailPill}</ChipGhost></span>
+              <span className="inline-flex items-center py-[11px] -my-[11px]"><ChipGhost glyph={10}>{t.profile.addEmailPill}</ChipGhost></span>
             </div>
           </div>
         </div>

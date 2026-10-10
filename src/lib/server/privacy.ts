@@ -15,7 +15,7 @@
 import { runOutsideLock } from "./locks";
 import { audit } from "./audit";
 import { db } from "./store";
-import type { StoredTxn, StoredUser } from "./store";
+import type { StoredKyc, StoredTxn, StoredUser } from "./store";
 import { loadConfig, loadConfigResult, saveConfig } from "./config-store";
 import { anonymizeClosedAccount, type AnonymizeOutcome } from "./erasure";
 // 🔴 THE DSAR BUNDLE INVENTED A THIRD ADDRESS. `privacy@50pick.tz` appeared nowhere else in
@@ -341,6 +341,62 @@ export function dsarTxnView(t: StoredTxn) {
 }
 
 /**
+ * ⭐ ONE KYC PROJECTION FOR BOTH RELEASABLE DOORS (2026-10-10, reviews R2.4/R4.3) — the player's own download
+ * (`exportUserData`) and the officer's DSAR bundle (below), as `dsarUserView` and `dsarTxnView` already are.
+ *
+ * 🔴 THE DEFECT IT CLOSES. Both doors returned `db.kyc.findByUserId` WHOLE, and from 2026-10-10 the row carries the
+ * automatic approval's internals: `autoFlags` (a `SAME_PERSON` flag in a file the player downloads tells them their
+ * identity was matched to another account — AML tipping-off), the post-checking officer, and inside each prior identity
+ * the officer who decided it.
+ *
+ * ⛔ AN ALLOWLIST, for the reason `dsarUserView` is one: a column added to `KycSubmission` tomorrow must not reach a
+ * subject's file by default. What the subject IS entitled to stays: the details they submitted, the status and its
+ * dates, the reason they were given (code and note), the documents they sent (by reference), the requests made of them,
+ * that an approval happened and when (`autoApprovedAt`, `photoVerifiedAt`), and their own prior identities' details.
+ * Left out on purpose: `autoFlags`, `postCheckedAt` / `postCheckedById`, `reviewerId`, and the `reviewerId` inside every
+ * prior identity — staff identities and internal checks, not the subject's data.
+ * ⚠️ VALUES ARE COPIED VERBATIM (the `dsarTxnView` rule), so the file is otherwise what the row was.
+ */
+export function dsarKycView(k: StoredKyc | null | undefined) {
+  if (!k) return null;
+  return {
+    id: k.id,
+    userId: k.userId,
+    status: k.status,
+    rejectReason: k.rejectReason,
+    rejectNote: k.rejectNote,
+    idType: k.idType,
+    idNumber: k.idNumber,
+    idExpiry: k.idExpiry,
+    idVerifiedAt: k.idVerifiedAt,
+    fullName: k.fullName,
+    dob: k.dob,
+    documents: k.documents,
+    extraRequests: k.extraRequests,
+    reviewedAt: k.reviewedAt,
+    submittedAt: k.submittedAt,
+    approvedAt: k.approvedAt,
+    photoVerifiedAt: k.photoVerifiedAt,
+    autoApprovedAt: k.autoApprovedAt,
+    priorIdentities: Array.isArray(k.priorIdentities)
+      ? k.priorIdentities.map((p) => ({
+          idType: p.idType,
+          idNumber: p.idNumber,
+          idExpiry: p.idExpiry,
+          fullName: p.fullName,
+          dob: p.dob,
+          status: p.status,
+          approvedAt: p.approvedAt,
+          cause: p.cause,
+          supersededAt: p.supersededAt,
+        }))
+      : k.priorIdentities,
+    createdAt: k.createdAt,
+    updatedAt: k.updatedAt,
+  };
+}
+
+/**
  * Build a full DSAR access bundle for a user. Returns a serialisable object
  * containing every piece of data the platform holds about that user. The
  * output is deliberately verbose — we choose oversharing over undersharing
@@ -365,7 +421,8 @@ export async function buildDsarBundle(userId: string) {
     wallet,
     // ⛔ D19, ruling 169: through the one allowlist, never the raw rows (which carry `houseBotId` on Postgres).
     transactions: txns.map(dsarTxnView),
-    kyc,
+    // ⛔ 2026-10-10: through the one KYC allowlist both doors share, never the raw row (it carries `autoFlags`).
+    kyc: dsarKycView(kyc),
     responsibleGambling: responsible,
     notificationsCount: notifications.length,
     // U18b · the consent ledger, the stop list and the contact book, through ONE allowlist both doors share.

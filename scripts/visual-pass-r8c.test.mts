@@ -917,6 +917,8 @@ const CENSUS: Record<string, [number, Kind, string]> = {
   "src/app/agent/error.tsx": [1, "programme", "the error boundary's way back to an applicant's status (a record)"],
   "src/app/agent/invite/[token]/page.tsx": [1, "programme", "a lapsed invitation's door to /agent — withheld on a break (§10.4)"],
   "src/app/agent/invite/[token]/invite-client.tsx": [4, "programme", "the acceptance's pushes and the mismatch door — drawn only off a break (§10.4)"],
+  // 2026-10-10 (typed-only identity): the identity page's agent track returns to the programme once an officer approves the photos.
+  "src/app/profile/kyc/page.tsx": [1, "programme", "the agent photo track's Continue to /agent after an officer's photo approval — /agent answers a break itself (§10.1)"],
   "src/lib/affiliate/recruits.ts": [1, "not-a-door", "the recruit book's query links, on the dashboard itself"],
   "src/lib/proposals/board.ts": [1, "not-a-door", "the board's query links, on the board itself"],
   "src/lib/nav/active-tab.ts": [2, "not-a-door", "which journey tab lights on these routes"],

@@ -34,7 +34,7 @@ All surfaces below are E2E-tested. Total: **9 suites · 246 tests passing**.
 |---|---|---|
 | Public pages | ✅ | `/`, `/markets`, `/markets/[id]`, `/live`, `/leaderboard`, `/help`, `/legal/*` |
 | Auth flow | ✅ | `/auth/login`, `/auth/register`, `/auth/forgot-password`, `/auth/otp`, `/auth/admin`, `/auth/logout` |
-| KYC flow | ✅ | `/profile/kyc` — NIDA + document submission (real upload deferred to object-storage sprint) |
+| KYC flow | ✅ | `/profile/kyc` — since 2026-10-10 a player types one document's details (NIDA, passport, driving licence or voter's card) and is approved at once when the automatic checks pass, an officer checking afterwards; agent applicants add the document's photos and a selfie for an officer (`docs/IDENTITY-POLICY.md`) |
 | Wallet | ✅ | `/wallet`, `/wallet/deposit`, `/wallet/withdraw` — SOF threshold, AML hold, withholding tax, six mobile-money providers (mock dispatcher) |
 | Bet placement + resolution | ✅ 26 | Conviction dial → place → settle → wallet credit/debit (multi-player-resolution-e2e) |
 | Notifications inbox | ✅ 13 | Bell dropdown, EN+SW per row, deep-link redirects, mark read / dismiss / mark all |
@@ -52,7 +52,7 @@ All surfaces below are E2E-tested. Total: **9 suites · 246 tests passing**.
 - DB persistence — PostgreSQL via Prisma ORM (all entities in dedicated tables)
 - SMS dispatch — **live** on the Blackball Gateway (`console` provider in dev)
 - NIDA verify — deterministic mock (production swaps to real mTLS endpoint)
-- Document upload — storage-key stub (production swaps to S3-compatible bucket)
+- Identity photos (agent applicants only since 2026-10-10; players' from before that date) — inline in dev, Cloudflare R2 `50pick-kyc` when `KYC_STORAGE=r2` and the R2 bucket are set (live in production)
 - Payment dispatch — instant approve (production swaps to Selcom or Azampay aggregator)
 - AI market generation — pipeline + state machine ready; Claude API call site is stubbed (catalogue + fixtures wired)
 - Sportradar match-integrity — stub adapter labeled in `/admin` + `/admin/compliance`
@@ -144,7 +144,8 @@ These are contract-pending — the platform code is ready to receive each adapte
    `src/lib/server/sms-blackball.ts`. See `docs/BLACKBALL-SMS.md`.
 3. **Claude API** for AI market generation → wires the L1–L4 pipeline + cost tracking
 4. **NIDA** mTLS endpoint → wires `src/lib/server/nida.ts`
-5. **S3-compatible object storage** for KYC documents → wires the upload stub in `/profile/kyc`
+5. ~~**S3-compatible object storage** for KYC documents~~ — **done**: Cloudflare R2 (`50pick-kyc`) behind the storage
+   seam in `src/lib/server/storage.ts`. Since 2026-10-10 players upload no identity document; agent applicants do.
 6. **Sportradar Integrity Services** match-integrity feed → replaces the stub adapter
 7. **GBT pre-application meeting** — pool model classification in writing
 8. **ISO 27001 Stage 1 audit** booking
@@ -158,7 +159,7 @@ These are contract-pending — the platform code is ready to receive each adapte
 - Two-officer rule on AML approvals ≥ TZS 5M
 - Self-exclusion + cooling-off + deposit-limit gates wired into every code path that bets / deposits / withdraws
 - Source-of-Funds threshold gate on deposits ≥ TZS 1M (single) or ≥ TZS 5M (rolling 30d)
-- KYC required for withdrawal (TZ Gaming Board model — bets allowed pre-KYC)
+- Identity verified before the first withdrawal only (owner ruling 2026-09-13 — deposits and bets need none): players by typed details, approved at once when the automatic checks pass and checked by an officer afterwards; agent applicants by document photos and a selfie reviewed by an officer (2026-10-10)
 - Withholding-tax computation at withdrawal time
 - Trilingual EN+SW+ZH player-facing copy across every flow
 

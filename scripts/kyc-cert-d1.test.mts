@@ -6,6 +6,11 @@
  * reached the National Identification Authority. Per docs/IDENTITY-POLICY.md (Ali,
  * 2026-07-19) that is deliberate and sufficient: the control is FORMAT + UNIQUENESS,
  * and identity assurance comes from a human officer reading the documents.
+ * ⚠️ SINCE 2026-10-10 THAT LAST CLAUSE IS TRUE FOR AGENTS ONLY (owner ruling — docs/COMPLIANCE-DECISIONS.md,
+ * "2026-10-10 · Players verify identity with typed details"). A player types the details and is approved
+ * automatically when the checks pass (`kyc-auto-checks.ts`); an officer checks those approvals AFTERWARDS. So
+ * the "no authority check" truth below matters more, not less, and §5 pins the new transitions: the routed
+ * typed press, the corrections ask, the post-check and the date-of-birth correction.
  *
  * Two things follow, and this suite enforces both.
  *
@@ -527,6 +532,18 @@ ok("🔴 a FAILED identity check does not redirect to the success banner",
   "submitNidaStep returns ok:true even when it REJECTS — `ok` reports that the step\n" +
   "       ran, not that the player passed. Redirecting on `ok` alone greeted a rejected\n" +
   "       player with 'NIDA number accepted', contradicting the email just sent to them.");
+// ⭐ 2026-10-10 — the TYPED one-press action. The same trap, one step later: `verifyIdentity` answers ok:true with
+// outcome "refused" when the NIDA seam refuses, and "routed" when an officer must look — neither may land on the
+// verified banner. (The `verified === false` check above now guards the AGENT track's step 1.)
+{
+  const typedAction = actions.slice(actions.indexOf("export async function verifyIdentityAction"), actions.indexOf("export async function saveAgentIdentityAction"));
+  const iRefused = typedAction.indexOf('outcome === "refused"');
+  const iRouted = typedAction.indexOf('outcome === "routed"');
+  const iBanner = typedAction.indexOf('"/profile/kyc?verified=1"');
+  ok("🔴 a REFUSED or ROUTED typed press does not redirect to the verified banner",
+    typedAction.length > 200 && iRefused > 0 && iRouted > 0 && iBanner > iRefused && iBanner > iRouted,
+    `refused@${iRefused} routed@${iRouted} banner@${iBanner}`);
+}
 ok("restartKycAction is defined and clears through the service, not by hand",
   /export async function restartKycAction/.test(actions) && /startKyc\(/.test(actions));
 
@@ -562,19 +579,35 @@ const branch = (from: string, to: string): string => {
   return j < 0 ? body.slice(i) : body.slice(i, j);
 };
 
+/**
+ * ⭐ ANY top-level function's body, exported or not (2026-10-10). Typed-only KYC moved the messages into shared
+ * helpers — the NIDA seam (`checkIdentityAvailable`), the underage refusal (`refuseUnderage`), the officers'
+ * announcement (`announceCaseToOfficers`) and the ONE approval core (`approveIdentity`) — so a transition is now
+ * pinned as "this function sends it" AND "the steps that need it call this function".
+ */
+const helperBody = (name: string): string => {
+  const m = new RegExp(`^(?:export )?(?:async )?function ${name}\\s*[<(]`, "m").exec(svcCode);
+  if (!m) return "";
+  const rest = svcCode.slice(m.index + 1);
+  const next = rest.search(/^(?:export\s+)?(?:async\s+)?function\s/m);
+  return next < 0 ? svcCode.slice(m.index) : svcCode.slice(m.index, m.index + 1 + next);
+};
+// ⭐ 2026-10-10: the transitions that still send from inside an EXPORTED function. The identity step's refusal and
+// the "submitted" letter moved into helpers (pinned just below); `forceReverifyKyc` was replaced by `askForCorrections`.
 for (const [label, fn, template] of [
-  ["identity check fails → REJECTED", "submitIdentityStep", "kycRejectedHtml"],
-  ["player submits → PENDING_REVIEW", "submitForReview", "kycSubmittedHtml"],
-  ["officer forces re-verify", "forceReverifyKyc", "kycMoreInfoHtml"],
+  ["officer asks for corrections", "askForCorrections", "kycMoreInfoHtml"],
+  ["officer refuses → REJECTED", "reviewKyc", "kycRejectedHtml"],
+  ["an officer's date-of-birth correction that finds a minor → REJECTED", "correctDateOfBirth", "kycRejectedHtml"],
 ] as const) {
   const body = fnBody(fn);
   ok(`${label} sends ${template} (from inside ${fn})`,
     body.length > 0 && body.includes(template),
     "The transition or its message has been renamed, removed, or swapped.");
 }
+// ⭐ 2026-10-10: the APPROVE branch writes through the ONE approval core with an OFFICER actor (the core sends the
+// letter — pinned below); the REQUEST_INFO branch is gone (an officer asks for corrections instead).
 for (const [label, from, to, template] of [
-  ["officer approves → APPROVED", 'decision === "APPROVE"', 'decision === "REQUEST_INFO"', "kycApprovedHtml"],
-  ["officer asks for more info", 'decision === "REQUEST_INFO"', "// REJECT", "kycMoreInfoHtml"],
+  ["officer approves → APPROVED, through the approval core,", 'if (decision === "APPROVE") {', 'if (k.status !== "PENDING_REVIEW" && k.status !== "APPROVED")', 'approveIdentity(k, userId, { kind: "officer"'],
 ] as const) {
   const b = branch(from, to);
   ok(`${label} sends ${template} (from inside its own branch)`,
@@ -586,25 +619,79 @@ ok("the REJECT branch sends kycRejectedHtml",
   branch("// REJECT", "\n}").includes("kycRejectedHtml") ||
   fnBody("reviewKyc").slice(fnBody("reviewKyc").lastIndexOf('status: "REJECTED"')).includes("kycRejectedHtml"));
 
+// ── the helpers that now carry the messages (2026-10-10) ──
+const NIDA_SEAM = helperBody("checkIdentityAvailable");
+const UNDERAGE = helperBody("refuseUnderage");
+const ANNOUNCE = helperBody("announceCaseToOfficers");
+const CORE = helperBody("approveIdentity");
+ok("control · the four message helpers were found and sliced",
+  [NIDA_SEAM, UNDERAGE, ANNOUNCE, CORE].every((b) => b.length > 300),
+  `seam ${NIDA_SEAM.length} · underage ${UNDERAGE.length} · announce ${ANNOUNCE.length} · core ${CORE.length}`);
+ok("identity check fails → REJECTED sends kycRejectedHtml (the NIDA seam, and the underage refusal)",
+  NIDA_SEAM.includes("kycRejectedHtml") && UNDERAGE.includes("kycRejectedHtml"));
+ok("…and BOTH identity steps go through that seam (the typed press and the agent's step 1)",
+  ["verifyIdentity", "submitIdentityStep"].every((fn) => /checkIdentityAvailable\(userId, p\)/.test(fnBody(fn))));
+ok("a case sent to an officer → PENDING_REVIEW sends kycSubmittedHtml, and says WHAT was sent",
+  ANNOUNCE.includes("kycSubmittedHtml") && /evidence: opts\.evidence/.test(ANNOUNCE));
+ok("…and both doors into the queue announce it: the agent's photo send, and a ROUTED typed press — never an instant one",
+  /announceCaseToOfficers\(userId, k, \{\s*evidence: "photos"/.test(fnBody("submitForReview"))
+  && /else if \(written\.data\?\.outcome === "routed"\) \{\s*await announceCaseToOfficers\([\s\S]{0,200}evidence: "typed"/.test(fnBody("verifyIdentity")),
+  "an announcement on the instant path would bell every officer for every player");
+ok("an approval sends kycApprovedHtml from the ONE approval core — the officer's and the automatic alike",
+  CORE.includes("kycApprovedHtml") && /approveIdentity\(withTuple, userId, \{ kind: "system"/.test(fnBody("verifyIdentity")));
+ok("⛔ the REQUEST_INFO decision is gone from the service — reviewKyc refuses anything but APPROVE or REJECT",
+  !/"REQUEST_INFO"/.test(svcCode) && /if \(decision !== "APPROVE" && decision !== "REJECT"\)/.test(fnBody("reviewKyc")));
+ok("⛔ …and so are forceReverifyKyc and attachExtraDocument",
+  !/function (?:forceReverifyKyc|attachExtraDocument)\s*\(/.test(svcCode));
+
 ok("officers are alerted when a submission arrives for review",
-  fnBody("submitForReview").includes("notifyAdminKycReview("));
+  ANNOUNCE.includes("notifyAdminKycReview(") && ANNOUNCE.includes("kycSubmittedAdminHtml("));
 ok("🔴 a double-submit does NOT re-notify",
-  /if \(k\.status === "PENDING_REVIEW" \|\| k\.status === "APPROVED"\) \{[\s\S]{0,60}return \{ ok: true \}/
-    .test(fnBody("submitForReview")),
+  /if \(k\.status === "PENDING_REVIEW" \|\| photoStampStands\(k\)\) \{[\s\S]{0,60}return \{ ok: true \}/
+    .test(fnBody("submitForReview"))
+  // ⭐ 2026-10-10 (review R5.2): the stamp stands only over the photos it approved — `photoSetStampedBy`, the agent gate's
+  // own helper (the full set, each uploaded no later than the stamp), never the bare set beside a bare stamp.
+  && /function photoStampStands\([^)]*\)[^{]*\{\s*return k\.status === "APPROVED" && photoSetStampedBy\(k\.idType, k\.documents, k\.photoVerifiedAt\);/.test(svcCode)
+  && /if \(!transitioned\) return \{ ok: true \};[\s\S]{0,400}announceCaseToOfficers\(/.test(fnBody("submitForReview")),
   "Re-emailing the player and every officer on a retry trains officers to ignore the\n" +
   "       queue. The guard must sit inside submitForReview, BEFORE the transition.");
+// ⭐ 2026-10-10: `kyc.approved` is written by the approval core (an officer's AND the automatic one), the corrections
+// ask by `askForCorrections`, and the new acts each write their own; `kyc.more_info_requested` is no longer WRITTEN —
+// it went with REQUEST_INFO. ⚠️ It is still READ, on purpose: the officer-provenance reader (`readOfficerHistory`)
+// lists the old build's act names, so an identity an officer refused or questioned before the release still routes to
+// an officer. So the check is "never written as an action", not "never named".
 ok("every decision is audited",
-  ["kyc.approved", "kyc.rejected", "kyc.more_info_requested"].every((a) => fnBody("reviewKyc").includes(a)) &&
-  fnBody("submitForReview").includes("kyc.submitted"));
+  CORE.includes('action: "kyc.approved"') && fnBody("reviewKyc").includes("kyc.rejected")
+  && fnBody("askForCorrections").includes("kyc.corrections_asked") && fnBody("markPostChecked").includes("kyc.post_checked")
+  && fnBody("correctDateOfBirth").includes("kyc.dob_corrected") && fnBody("verifyIdentity").includes("kyc.routed")
+  && fnBody("submitForReview").includes("kyc.submitted") && !/action:\s*"kyc\.more_info_requested"/.test(svcCode));
+ok("…and the officer-provenance reader still knows the OLD build's act names (an earlier officer ruling keeps routing)",
+  /OFFICER_IDENTITY_ACTS\s*=\s*\[[^\]]*"kyc\.more_info_requested"[^\]]*"kyc\.force_reverify"/.test(svcCode));
 ok("🔴 an officer cannot decide their own submission",
   /officerId === userId/.test(fnBody("reviewKyc")) && fnBody("reviewKyc").includes("kyc.review.self_blocked"));
+ok("🔴 …nor ask themselves for corrections, mark their own approval checked, or correct their own date of birth",
+  fnBody("askForCorrections").includes("kyc.corrections.self_blocked") && fnBody("markPostChecked").includes("kyc.post_check.self_blocked")
+  && fnBody("correctDateOfBirth").includes("kyc.dob_correction.self_blocked"));
 ok("🔴 the officer decision is serialised per subject",
   fnBody("reviewKyc").includes("withLock(`kyc:${userId}`"),
   "Proven under real Postgres by `npm run load:kyc-race`: two officers deciding the\n" +
   "       same submission at the same instant, exactly one decision lands and the loser is\n" +
   "       told it was already decided.");
-ok("…and so is a forced re-verify",
-  fnBody("forceReverifyKyc").includes("withLock(`kyc:${userId}`"));
+ok("…and so is every other officer act on the identity (corrections, the post-check, a date-of-birth correction)",
+  ["askForCorrections", "markPostChecked", "correctDateOfBirth"].every((fn) => fnBody(fn).includes("withLock(`kyc:${userId}`")));
+// ⭐ TWO HALVES OF ONE VERSION (review R1.6): a POSITIVE act (APPROVE, Mark checked) needs the row EXACTLY as seen; a
+// REFUSAL-type act (REJECT, corrections, a date-of-birth correction) needs the IDENTITY as seen — a photo attached since
+// must never void a refusal. Each act is pinned to its own half, so neither can drift to the other.
+{
+  const rk = fnBody("reviewKyc");
+  const approveArm = rk.slice(rk.indexOf('if (decision === "APPROVE") {'), rk.indexOf('if (k.status !== "PENDING_REVIEW" && k.status !== "APPROVED" && k.status !== "ADDITIONAL_INFO_REQUIRED")'));
+  ok("…and every one of them refuses a version the officer did not see — positive acts on the row, refusals on the identity",
+    approveArm.length > 200 && /if \(!sameRowVersion\(k, opts\.version\)\)/.test(approveArm)
+    && /if \(!sameIdentityVersion\(k, opts\.version\)\)/.test(rk.slice(rk.indexOf('if (k.status !== "PENDING_REVIEW" && k.status !== "APPROVED" && k.status !== "ADDITIONAL_INFO_REQUIRED")')))
+    && /if \(!sameRowVersion\(k, opts\.version\)\)/.test(fnBody("markPostChecked"))
+    && ["askForCorrections", "correctDateOfBirth"].every((fn) => /if \(!sameIdentityVersion\(k, opts\.version\)\)/.test(fnBody(fn))),
+    `approve arm ${approveArm.length} chars`);
+}
 
 console.log("");
 console.log("─".repeat(64));

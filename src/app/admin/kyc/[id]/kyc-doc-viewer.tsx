@@ -9,15 +9,17 @@
 import { useState } from "react";
 import { I } from "@/components/ui/glyphs";
 import { formatDateTime } from "@/lib/utils";
-import type { KycDocSlot } from "@/lib/id-documents";
+import type { LEGACY_KYC_DOC_SLOTS } from "@/lib/id-documents";
 
-// ⛔ THE SLOT UNION IS THE CATALOGUE'S. A literal here meant a passport bio page
-// had no tab to be opened from — see the note beside `slots` in page.tsx.
-type Slot = { type: KycDocSlot; label: string; uploadedAt: string | null };
+// ⛔ THE SLOT UNION IS THE FROZEN LEGACY LIST (2026-10-10), not the catalogue's required slots. The
+// catalogue now describes only the agent photo track; an image already on file from before that date —
+// including the enum-only `NIDA` slot — must keep a tab, and the image route accepts exactly this list.
+type ViewerSlot = (typeof LEGACY_KYC_DOC_SLOTS)[number];
+type Slot = { type: ViewerSlot; label: string; uploadedAt: string | null };
 
 export function KycDocViewer({ userId, slots }: { userId: string; slots: Slot[] }) {
   const firstPresent = slots.find((s) => s.uploadedAt) ?? slots[0];
-  const [active, setActive] = useState<KycDocSlot>(firstPresent?.type ?? "NIDA_FRONT");
+  const [active, setActive] = useState<ViewerSlot>(firstPresent?.type ?? "NIDA_FRONT");
   const [zoom, setZoom] = useState<"fit" | "100" | "200">("fit");
   const [rot, setRot] = useState(0);
   // B-28 / V-4 — the img used to render bare: while fetching there was nothing,

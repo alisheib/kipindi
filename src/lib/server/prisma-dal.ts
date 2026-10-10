@@ -62,6 +62,8 @@ import {
 } from "@/lib/notification-filters";
 import { parseQuery, queryToWhere, fieldNames, NOTIFICATION_SEARCH, CONTACT_SEARCH } from "@/lib/search";
 import { FINAL_REFUSAL_CODES } from "@/lib/kyc-refusal";
+// 2026-10-10 (review R5.1) · the post-check list's statuses — the memory half (store.ts) reads the same list.
+import { POST_CHECK_LIST_STATUSES } from "@/lib/kyc-approval";
 import type {
   StoredUser,
   StoredKyc,
@@ -113,6 +115,7 @@ import type {
   StoredAgentInvitation,
   AgentApplicationStatus,
   AgentDocType, StoredKycStageRow, NotificationRedactScope,
+  KycPriorIdentity, KycSamePersonCandidate, KycUncheckedAutoApproval,
   StoredMessagingConsent, StoredSuppression, MessagingKey,
   MessagingKeyBatch,
   MarketingContactPresenceQuery,
@@ -1011,6 +1014,15 @@ export function toStoredKyc(row: any): StoredKyc {
     // player's first-approval date and lock them out of their own money.
     approvedAt: iso(row.approvedAt),
     extraRequests: Array.isArray(row.extraRequests) ? row.extraRequests : [],
+    // ⭐ TYPED-ONLY KYC (2026-10-10) — the READ half of the six columns. 🔴 Same rule as `approvedAt` above:
+    // dropped here, nulled on the next write. `photoVerifiedAt` is the agent programme's identity gate, so
+    // losing it would quietly un-verify an agent; `priorIdentities` is the only record of a replaced identity.
+    photoVerifiedAt: iso(row.photoVerifiedAt),
+    autoApprovedAt: iso(row.autoApprovedAt),
+    autoFlags: Array.isArray(row.autoFlags) ? row.autoFlags.filter((f: unknown): f is string => typeof f === "string") : [],
+    postCheckedAt: iso(row.postCheckedAt),
+    postCheckedById: row.postCheckedById ?? null,
+    priorIdentities: Array.isArray(row.priorIdentities) ? (row.priorIdentities as KycPriorIdentity[]) : [],
     createdAt: iso(row.createdAt)!,
     updatedAt: iso(row.updatedAt)!,
   };
@@ -1864,6 +1876,17 @@ export const prismaDb = {
         approvedAt: k.approvedAt ? new Date(k.approvedAt) : null,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         extraRequests: (k.extraRequests ?? []) as any,
+        // ⭐ TYPED-ONLY KYC (2026-10-10) — the WRITE half of `toStoredKyc`'s six. A caller that omits one
+        // writes null/[] — which is why every writer spreads the row it read, and the two that BUILD a row
+        // (`restartedSubmission`, the fixtures) name each field deliberately.
+        photoVerifiedAt: k.photoVerifiedAt ? new Date(k.photoVerifiedAt) : null,
+        autoApprovedAt: k.autoApprovedAt ? new Date(k.autoApprovedAt) : null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        autoFlags: (k.autoFlags ?? []) as any,
+        postCheckedAt: k.postCheckedAt ? new Date(k.postCheckedAt) : null,
+        postCheckedById: k.postCheckedById ?? null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        priorIdentities: (k.priorIdentities ?? []) as any,
       };
       const row = await pc().kycSubmission.upsert({
         where: { id: k.id },
@@ -1883,7 +1906,7 @@ export const prismaDb = {
       //                falsy on `.length`, so the delete never ran.
       //   [..> 0]    → replace.
       //
-      // ⛔ WHY THE MISSING BRANCH MATTERED. `startKyc` (kyc-service.ts:107-137)
+      // ⛔ WHY THE MISSING BRANCH MATTERED. `startKyc` (kyc-service.ts, via `restartedSubmission`)
       // restarts a REJECTED / NOT_STARTED submission by rebuilding it with
       // `documents: []` — and it REUSES THE EXISTING ROW ID (`existing?.id ?? …`),
       // so the previous attempt's `KycDocument` rows stayed attached in Postgres.
@@ -1894,14 +1917,14 @@ export const prismaDb = {
       // was wrong — which is why nothing ever went red.
       //
       // ⛔ IT WAS NOT COSMETIC. `submitForReview`'s `missingSlots` check
-      // (kyc-service.ts:507-510) reads `k.documents`, so once the player re-entered
+      // (kyc-service.ts) reads `k.documents`, so once the player re-entered
       // their identity the OLD, already-refused images satisfied the required slots
       // and the submission passed straight back to an officer as complete.
-      // Reachable entirely from shipped code: APPROVED → `forceReverifyKyc` (:672)
-      // → officer REJECT (:838) → the player taps "start again", which `startKyc`
-      // permits because the status is REJECTED (:104).
+      // Reachable entirely from shipped code (2026-09-11): APPROVED → force re-verify
+      // (since 2026-10-10 `askForCorrections`) → officer REJECT (`reviewKyc`) → the
+      // player taps "start again", which `startKyc` permits because the status is REJECTED.
       //
-      // ⚠️ Erasure is unaffected: erasure.ts:303 calls `db.kyc.deleteDocuments`
+      // ⚠️ Erasure is unaffected: erasure.ts (tier ②) calls `db.kyc.deleteDocuments`
       // explicitly before its own upsert, and this delete is idempotent over that.
       if (k.documents !== undefined) {
         // Atomic delete + re-create so a mid-sync failure can't leave the
@@ -2125,6 +2148,76 @@ export const prismaDb = {
         });
       }
       return out;
+    },
+    /**
+     * ⭐ POSSIBLE SAME PERSON (2026-10-10, typed-only KYC) — every submission on ANOTHER account whose `dob`
+     * falls on this calendar day (stored at UTC midnight, so the window is that midnight to the next).
+     * Scalars only — ⛔ never `documents` or `extraRequests` (a population read must not drag image bytes).
+     * ⛔ The NAME is compared in JS by the service (`samePersonNameKey`), never here, so the two stores cannot
+     * normalise a name two ways. A pseudonymised row ("Erased …") never matches. Mirror: store.ts.
+     */
+    findSamePersonCandidates: async (dob: string, excludeUserId: string): Promise<KycSamePersonCandidate[]> => {
+      const day = String(dob ?? "").slice(0, 10);
+      if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(day)) return [];
+      const from = new Date(`${day}T00:00:00.000Z`);
+      if (Number.isNaN(from.getTime())) return [];
+      const to = new Date(from.getTime() + 24 * 3600_000);
+      const rows = await pc().kycSubmission.findMany({
+        where: {
+          dob: { gte: from, lt: to },
+          userId: { not: excludeUserId },
+          // ⛔ No name is never a candidate: `<> ''` drops "" AND null (NULL <> '' is not true) — explicit since
+          // 2026-10-10 (review R2.9), where null was dropped only by accident of the LIKE below. Mirror: store.ts.
+          fullName: { not: "" },
+          NOT: { fullName: { startsWith: "Erased " } },
+        },
+        select: { userId: true, fullName: true, status: true, rejectReason: true },
+      });
+      return rows.map((r) => ({
+        userId: r.userId,
+        fullName: r.fullName ?? null,
+        status: String(r.status),
+        rejectReason: r.rejectReason ? String(r.rejectReason) : null,
+      }));
+    },
+    /**
+     * ⭐ THE OFFICERS' POST-CHECK LIST (2026-10-10) — automatic approvals no officer has checked: the NEWEST
+     * submission per user (`createdAt` desc, `id` desc — `listStageFacts`'s rule, so the roster and this list
+     * agree on which row is a person's) holding one — `approvedAt` and `autoApprovedAt` set, `postCheckedAt` null
+     * (`uncheckedAutomaticApproval`, in SQL) — in a status of `POST_CHECK_LIST_STATUSES` (APPROVED, PENDING_REVIEW,
+     * ADDITIONAL_INFO_REQUIRED; review R5.1), each row carrying its status. Scalars only. Mirror: store.ts.
+     * ⛔ TWO SEQUENTIAL READS: the candidates, then the newest row of each candidate's user — a candidate
+     * that is no longer its user's newest submission (a later restart) is not on the list.
+     * ⛔ IN A DEFINED ORDER — newest approval first (`autoApprovedAt` desc, then `id` desc; review R2.8). The filter
+     * below keeps it. A caller that caps the list cuts the same rows here as in the memory half (store.ts).
+     */
+    listUncheckedAutoApprovals: async (): Promise<KycUncheckedAutoApproval[]> => {
+      const candidates = await pc().kycSubmission.findMany({
+        where: { status: { in: [...POST_CHECK_LIST_STATUSES] as never }, approvedAt: { not: null }, autoApprovedAt: { not: null }, postCheckedAt: null },
+        select: { id: true, userId: true, status: true, idType: true, autoApprovedAt: true, autoFlags: true, approvedAt: true, updatedAt: true },
+        orderBy: [{ autoApprovedAt: "desc" }, { id: "desc" }],
+      });
+      if (candidates.length === 0) return [];
+      const userIds = Array.from(new Set(candidates.map((c) => c.userId)));
+      const heads = await pc().kycSubmission.findMany({
+        where: { userId: { in: userIds } },
+        select: { id: true, userId: true },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      });
+      const newest = new Map<string, string>();
+      for (const h of heads) if (!newest.has(h.userId)) newest.set(h.userId, h.id);
+      return candidates
+        .filter((c) => newest.get(c.userId) === c.id && c.autoApprovedAt)
+        .map((c) => ({
+          id: c.id,
+          userId: c.userId,
+          status: String(c.status) as StoredKyc["status"],
+          idType: c.idType ? String(c.idType) : null,
+          autoApprovedAt: iso(c.autoApprovedAt as Date),
+          autoFlags: Array.isArray(c.autoFlags) ? (c.autoFlags as unknown[]).filter((f): f is string => typeof f === "string") : [],
+          approvedAt: iso(c.approvedAt),
+          updatedAt: iso(c.updatedAt),
+        }));
     },
   },
 

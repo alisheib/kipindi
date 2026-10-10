@@ -28,6 +28,10 @@
  * This test pins the join between the three: the schema enum, the officer's
  * reason codes, and the player's dictionary. Adding an enum member without a
  * translation, or renaming one without updating the map, fails here.
+ *
+ * ⭐ 2026-10-10 (typed-only KYC): `BLURRY_DOC` stays an enum member with its words (rows decided before keep it)
+ * but left the officer's picker and is refused for a new decision; and the rejection's audit row records the
+ * category and the note's LENGTH, never the note (§5).
  */
 import { readFileSync } from "node:fs";
 import { dict } from "../src/lib/i18n-dict.ts";
@@ -111,9 +115,31 @@ ok(
   "the workstation reject action passes rejectCode through",
   /decision: "REJECT"[\s\S]{0,80}rejectCode:/.test(ACTIONS),
 );
+// ⭐ RE-POINTED 2026-10-10: the payload still records the stored category — and it no longer copies the officer's
+// note. The note is shown to the player VERBATIM from the row; the tamper-evident chain records only its length (an
+// officer's free text in an append-only, 7-year record was personal data nobody could correct).
 ok(
   "the audit payload records the category that was stored",
-  /payload: \{ kycId: k\.id, reason: officerNote, rejectCode \}/.test(SERVICE),
+  /action: "kyc\.rejected"[\s\S]{0,200}payload: \{ kycId: k\.id, rejectCode, priorStatus: k\.status, noteLength: officerNote\?\.length \?\? 0/.test(SERVICE),
+);
+{
+  const iRej = SERVICE.indexOf('action: "kyc.rejected"');
+  const rejectedAudit = iRej < 0 ? "" : SERVICE.slice(iRej, SERVICE.indexOf("});", iRej));
+  ok(
+    "⛔ …and never the officer's note itself (the row carries it; the audit chain carries its length)",
+    rejectedAudit.length > 40 && /noteLength:/.test(rejectedAudit) && !/(?:reason|note|rejectNote):\s*officerNote/.test(rejectedAudit),
+    rejectedAudit.replace(/\s+/g, " ").slice(0, 200),
+  );
+}
+// ⭐ 2026-10-10 — "Document unreadable" (BLURRY_DOC) left the officer's picker: a player sends no photo now. The code
+// stays a real enum member (rows decided before keep it, and §2/§7 keep its words), but no new decision may use it.
+ok(
+  "⛔ no officer reason code maps to BLURRY_DOC any more",
+  !/code: "BLURRY_DOC"/.test(ACTIONS),
+);
+ok(
+  "⛔ …and the service refuses it for a new decision (only the decidable codes pass)",
+  /if \(!isDecidableRefusalCode\(rejectCode\)\)/.test(SERVICE),
 );
 
 // ── 6. Every officer reason code maps to a REAL enum member ───────────────
@@ -151,9 +177,10 @@ function section7() {
       e.text === "",
       `would print "${e.text}" under the translated label`);
   }
+  // ⭐ 2026-10-10: the rule reads the same, written as the REJECT branch's own guard (after the code is checked decidable).
   ok("a categorised rejection no longer demands free text",
-    /const categorised = \(opts\.rejectCode \?\? "OTHER"\) !== "OTHER"/.test(SERVICE) &&
-    /decision === "REJECT" && !categorised && reason\.length < 5/.test(SERVICE),
+    /const rejectCode = opts\.rejectCode \?\? "OTHER";/.test(SERVICE) &&
+    /const categorised = rejectCode !== "OTHER";\s*if \(!categorised && reason\.length < 5\)/.test(SERVICE),
     "the 5-char rule pre-dates categorised rejections; leaving it forces an English sentence back in");
   ok("an UNCATEGORISED rejection still has to carry words",
     /picked\.code === "OTHER" && reason\.length < 5/.test(ACTIONS),

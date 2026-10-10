@@ -17,6 +17,12 @@
  * DECISION state machine is covered headlessly by `npm run test:kyc` and the journey
  * by `npm run qa:cert-d1`. Widths per the 50pick standard: 360 / 768 / 1280 / 1920.
  *
+ * ⭐ TWO KINDS OF CASE SINCE 2026-10-10 (owner ruling — players verify with typed details and are approved at
+ * once; agent applicants keep photos and an officer). §1 drives both on the phone: a PHOTO case (an agent's, or
+ * one sent before that day — Approve, the viewer tabs) and a TYPED automatic approval waiting for its officer's
+ * post-check (Mark checked, Ask for corrections — and no viewer at all). The player surface is the typed form,
+ * which draws no file input at any width.
+ *
  * Needs a running server (NODE_ENV != production):
  *   BASE=http://localhost:3009 npm run qa:cert-d2
  */
@@ -46,7 +52,8 @@ try {
   await page.goto(`${BASE}/auth/demo`, { waitUntil: "domcontentloaded" });
   const promote = await page.request.post(`${BASE}/api/dev-test/promote-admin`, { data: { phone: "+255700000000" } });
   ok("promote-admin ok", promote.ok());
-  const seedRes = await page.request.post(`${BASE}/api/dev-test/seed-kyc`, { data: { status: "PENDING_REVIEW" } });
+  // A PHOTO case awaiting review — the full photo set and a selfie, so the viewer and Approve render.
+  const seedRes = await page.request.post(`${BASE}/api/dev-test/seed-kyc`, { data: { status: "PENDING_REVIEW", evidence: "photos" } });
   const seed = await seedRes.json();
   ok("seed-kyc ok", seedRes.ok() && !!seed.userId, JSON.stringify(seed));
 
@@ -76,6 +83,23 @@ try {
       !!box && box.height >= 44, box ? `(${Math.round(box.height)}px)` : "(no box)");
   }
   await page.screenshot({ path: `${SHOTS}/workstation-phone.png`, fullPage: true });
+
+  // ── 1b · a TYPED case on the phone (2026-10-10): an automatic approval waiting for its officer's post-check ──
+  const typedRes = await page.request.post(`${BASE}/api/dev-test/seed-kyc`, { data: { status: "APPROVED" } });
+  const typed = await typedRes.json();
+  ok("seed-kyc (an automatic approval from typed details) ok", typedRes.ok() && !!typed.userId, JSON.stringify(typed));
+  await page.goto(`${BASE}/admin/kyc/${typed.userId}`, { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1500);
+  for (const name of [/Mark checked/i, /Ask for corrections/i, /^Reject$/i, /Escalate AML/i]) {
+    const btn = page.getByRole("button", { name }).first();
+    if (!(await btn.count())) { ok(`typed-case control ${name} present`, false); continue; }
+    const box = await btn.boundingBox();
+    ok(`typed-case control ${String(name)} is ≥44px tall`,
+      !!box && box.height >= 44, box ? `(${Math.round(box.height)}px)` : "(no box)");
+  }
+  ok("⛔ a typed case draws no document viewer — there is no image to inspect",
+    (await page.getByRole("button", { name: /ID FRONT|ID BACK|SELFIE/i }).count()) === 0);
+  await page.screenshot({ path: `${SHOTS}/workstation-typed-phone.png`, fullPage: true });
   await ctx.close();
 
   // ── 2 · The 50pick width standard, on both KYC surfaces ──
@@ -100,10 +124,13 @@ try {
     await wp.goto(`${BASE}/profile/kyc`, { waitUntil: "domcontentloaded" });
     await wp.waitForTimeout(900);
     ok(`player KYC (no documents) @${width}px: no horizontal overflow`, (await overflowOf(wp)) <= 1);
+    ok(`⛔ player KYC @${width}px: the typed form draws no file input`, (await wp.locator('input[type="file"]').count()) === 0);
     await wp.screenshot({ path: `${SHOTS}/player-empty-${width}.png`, fullPage: true });
 
     // A REJECTING NIDA (ends 9999 → MISMATCH) so the rejection panel renders — the
-    // panel that was unreachable dead code until 2026-07-31.
+    // panel that was unreachable dead code until 2026-07-31. ⭐ Pressed through the typed form's ONE button
+    // (2026-10-10, "Verify identity" — it was "Continue verification" while a photo step followed); the form's own
+    // submit, by structure, so a rename cannot rot it.
     // ⚠️ The field is `#idNumber` from 2026-08-20 (it was `#nida` while NIDA was the
     // only accepted document). The MISMATCH hook lives in the NIDA mock, so this
     // shot deliberately stays on the NIDA journey — it is proving the REJECTION
@@ -113,7 +140,7 @@ try {
     // Filled only where it exists: the identity step renders no `#email` field since route audit 2026-10-06 (A1).
     const emailField = wp.locator("#email");
     if (await emailField.count() > 0 && !(await emailField.inputValue())) await emailField.fill(`rej${String(Date.now()).slice(-6)}@example.com`);
-    await wp.getByRole("button", { name: /Continue verification/ }).click();
+    await wp.locator('form:has(#idNumber) button[type="submit"]').first().click();
     await wp.waitForTimeout(2500);
     const rejBody = await wp.locator("body").innerText();
     ok(`🔴 rejected player is TOLD they were rejected @${width}px`,

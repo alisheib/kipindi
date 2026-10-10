@@ -150,6 +150,10 @@ export function errorCopy(t: Dict, r: ActionFailure, when?: WhenFormat): string 
       // extra_docs_required — joined 2026-08-20 by id_number_format · id_expired ·
       // id_expiry_required, when identity stopped meaning "a NIDA" and started meaning
       // "any one of four documents". (The first two were named nida_* until then.)
+      // Joined 2026-10-10 by identity_number_locked (typed-only identity: an approved-once
+      // correction may not change the number); no_extra_request and extra_docs_required lost
+      // their emitters that day and keep their rows for one release (expand/contract).
+      // ⛔ No arm here for any of them — the registry answers above, before this switch.
       //
       // 🔴 THOSE EIGHT WERE THE LAST ROUTE. `REASON_BY_CODE` maps DOC_IMAGE, DOC_TOO_LARGE,
       // DOCS_LOCKED, NIDA_TAKEN and NO_EXTRA_REQUEST — and measuring it 2026-08-15 found that

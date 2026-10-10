@@ -22,7 +22,11 @@
  *   5–7. rule 4 (2026-09-14) — the retired withdrawal hold ("held for compliance review, up to 24 hours") back
  *      in the wallet's pending hint, once per locale, each caught on `§6 dict · <locale> · rule 4`. The hint is
  *      NOT one of rule 4's proven surfaces (`common.withdrawalUnderReview` / `common.amlReviewBody`), so these
- *      also prove the surface allow-list excuses by key and never by wording.
+ *      also prove the surface allow-list excuses by key and never by wording;
+ *   8–10. typed-only identity (2026-10-10) — a COMPOUND identity term bound to the entrance ("document details",
+ *      which no rule counted as identity before that day), the retired "photographic evidence" back in the
+ *      player's Terms §3, and Privacy §2 collecting photographs from everyone again. The last two are caught by
+ *      §7, the scoped assertion that leaves the agent paragraph and the agent / pre-ruling clause alone.
  *
  * ⚠️ `to` STRINGS STAY VALID SOURCE. A syntax error in the dictionary would crash the suite on import,
  * and a crash prints no FAIL line — the harness would call that red on the wrong assertion.
@@ -31,6 +35,7 @@ const YES_NO = "src/app/legal/rules/_content-yes-no.tsx";
 const TERMS = "src/app/legal/terms/page.tsx";
 const AML = "src/app/legal/aml/page.tsx";
 const DICT = "src/lib/i18n-dict.ts";
+const PRIVACY = "src/app/legal/privacy/page.tsx";
 
 export const MUTATIONS = [
   {
@@ -110,5 +115,39 @@ export const MUTATIONS = [
     from: `pendingHoldHint: "尚未到账的提现",`,
     to: `pendingHoldHint: "尚未到账的提现 — 100 万先令及以上的提现须经合规团队审核，最长需要 24 小时",`,
     check: "§6 dict · zh · rule 4",
+  },
+  // ── typed-only identity (2026-10-10) ──────────────────────────────────────────────────────────────────────
+  {
+    name: "document-details-bound-to-the-entrance",
+    why: "Players now type the DETAILS of a document, and the copy calls them that — a word no rule counted as "
+       + "identity before 2026-10-10. The typed form's saved line made to say those details are required to "
+       + "deposit: \"Document details\" is the only identity word in it, so only the compound-term extension of "
+       + "rule 2 can see it.",
+    file: DICT,
+    from: `idSaved: "Document details saved",`,
+    to: `idSaved: "Document details saved — they are required before you deposit.",`,
+    check: "§3 dict · en · rule 2",
+  },
+  {
+    name: "photographic-evidence-back-in-terms-3",
+    why: "🔴 The 2026-09-14 wording a reader of the older Terms is most likely to restore: the PLAYER's identity "
+       + "paragraph gains \"with photographic evidence reviewed by our compliance team\". The agent paragraph two "
+       + "paragraphs down names photographs truthfully, so a section-wide ban could not be the guard — only §7's "
+       + "scoped assertion, which reads every paragraph that is not the agent's, can see this.",
+    file: TERMS,
+    from: `your account. One document may only be used on one account.`,
+    to: `your account, with photographic evidence reviewed by our compliance team. One document may only be used on one account.`,
+    check: "§7 · terms §3/§3a · en · the player paragraphs name no photograph, selfie or upload",
+  },
+  {
+    name: "privacy-collects-photographs-from-everyone",
+    why: "Privacy §2's Identity bullet put back to its 2026-10-09 list — photographs of the document and a selfie, "
+       + "from everyone. The clause that limits them to people applying to become agents and to players who sent them before "
+       + "10 October 2026 is what the 2026-10-10 version promises; §7 reads every clause that names a photograph "
+       + "and requires that limit in it.",
+    file: PRIVACY,
+    from: `and photographs of that document and a selfie from people applying to become agents, and from players who sent them before 10 October 2026 (kept as §5 states)`,
+    to: `photographs of that document; and a selfie`,
+    check: "§7 · privacy §2 · en · photographs are named only in the agent-applicant / before-10-October clause",
   },
 ];

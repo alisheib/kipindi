@@ -414,12 +414,14 @@ section("5 · /profile — the hero column and strip, the achievements, the twel
     && editor.includes('className="mt-1.5 inline-flex min-h-[40px] max-w-full items-center gap-2 group text-left"');
   ok(`5.1 · the hero column is the page's: the ${avatar}px avatar (the ghost drew 64), the eyebrow, the name's 40px button in the name's own face (\`profile-faces.ts\`, read by the editor and the ghost — 24px on a 30px line, 28 from md), the number line (\`PROFILE_PHONE_LINE\`), the pills' row`,
     avatar === 80 && pageCol === "" && ghostCol === "" && faceOne, j({ pageCol, ghostCol, faceOne }));
-  // The pills: a player's role, the identity pill and the email pill as links (the tap floor's 40px), the language.
+  // The pills: a player's role, the identity pill and the email pill as links (a 44px tap target held OUT of layout —
+  // 11px of padding cancelled by an equal negative margin, 2026-10-10: `min-h` made their rows taller than the others'),
+  // the language.
   const pills = ghost.slice(ghost.indexOf('<div className="mt-3 flex flex-wrap items-center gap-1.5">'), ghost.indexOf('<div className="relative z-10 grid'));
-  const links = count(pills, '<span className="inline-flex items-center min-h-[var(--tap-min)]"><ChipGhost glyph={10}>'), chips = count(pills, "<ChipGhost");
-  const pageLinks = count(page, 'className="no-underline inline-flex items-center min-h-[var(--tap-min)]"');
+  const links = count(pills, '<span className="inline-flex items-center py-[11px] -my-[11px]"><ChipGhost glyph={10}>'), chips = count(pills, "<ChipGhost");
+  const pageLinks = count(page, 'className="no-underline inline-flex items-center py-[11px] -my-[11px]"');
   const lang = ghost.includes('const LANGUAGE_NAME = { en: "English", sw: "Kiswahili", zh: "中文" } as const;') && page.includes('const LANGUAGE_NAME = { en: "English", sw: "Kiswahili", zh: "中文" } as const;');
-  ok(`5.2 · the pills are the page's for the case drawn — ${chips} kit Chips (md), the identity and email pills in the page's own tap-floor links (${links} of the page's ${pageLinks}: a 40px line), the language in its own name`,
+  ok(`5.2 · the pills are the page's for the case drawn — ${chips} kit Chips (md), the identity and email pills in the page's own tap-target links (${links} of the page's ${pageLinks}: 44px to the finger, the pill's height to the line), the language in its own name`,
     chips === 4 && links === 2 && pageLinks === 2 && lang, j({ chips, links, pageLinks, lang }));
   // The strip: three kit Stats in the page's props, label and value set and not shown.
   const stats = (s: string) => jsxTags(s, "Stat").map((p) => [p.size, p.labelStyle, p.boxed, p.font, p.className, p.labelClassName].join("|"));
@@ -452,7 +454,7 @@ section("5 · /profile — the hero column and strip, the achievements, the twel
     && norm("relative flex items-center gap-3 overflow-hidden rounded-xl border p-3.5") === norm("relative flex items-center gap-3 overflow-hidden rounded-xl border p-[14px]")
     && ghost.includes('<div key={title} className="relative flex items-center gap-3 overflow-hidden rounded-xl border border-border bg-bg-elevated p-[14px] kp-shimmer-track">')
     && ghost.includes("<p className={PROFILE_ROW_TITLE}><GhostText>{title}</GhostText></p>") && page.includes("<p className={PROFILE_ROW_TITLE}>")
-    && ghost.includes('<p className="mt-0.5 text-body-sm leading-snug"><GhostText>{sub}</GhostText></p>') && page.includes('<p className="mt-0.5 text-body-sm text-text-subtle leading-snug">{subtitle}</p>');
+    && ghost.includes('<p className="mt-0.5 text-body-sm leading-snug"><GhostText>{sub}</GhostText></p>') && page.includes('<p className="mt-0.5 text-body-sm text-text-subtle leading-snug [&:lang(zh)]:break-keep [&:lang(zh)]:[overflow-wrap:anywhere]"><DotSeq text={subtitle} renderPart={keepLastWords} /></p>');
   ok(`5.5 · twelve rows, as the page shows a player (the invite row, the identity row, the rest — the ghost drew six), each the page's row: \`p-3.5\` ≡ \`p-[14px]\`, the 40px plate, the title in the row's own face (\`PROFILE_ROW_TITLE\`), the line in the line's classes`,
     pageRows.length === 12 && j(pageRows) === j(ghostRows) && rowOk && code(FILES.profilePage).includes(INVITE_ROW)
       && raw("src/lib/journey/invite-name.ts").includes("return r.agent ? t.agent.dashTitle : r.paid ? t.profile.inviteEarn : t.profile.inviteFriends;")

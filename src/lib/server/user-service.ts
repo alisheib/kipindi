@@ -13,7 +13,7 @@
 import { runOutsideLock } from "./locks";
 import { audit, getAuditForActorDurable, type AuditEntry } from "./audit";
 import { db } from "./store";
-import { dsarTxnView, dsarUserView } from "./privacy";
+import { dsarKycView, dsarTxnView, dsarUserView } from "./privacy";
 import { marketingDsarView } from "./marketing/dsar";
 import { destroySession } from "./session";
 import { revokeUserSessions } from "./session-registry";
@@ -89,7 +89,10 @@ export async function exportUserData(userId: string, opts: { marketing?: boolean
   return {
     generatedAt: new Date().toISOString(),
     user: user ? dsarUserView(user) : null,
-    kyc: await db.kyc.findByUserId(userId),
+    // ⛔ 2026-10-10 (reviews R2.4/R4.3): the KYC row through the ONE allowlist the officer's bundle uses too — never raw.
+    // The raw row now carries the automatic approval's `autoFlags` (a SAME_PERSON flag here would tell the player their
+    // identity was matched to another account), the post-checking officer, and each prior identity's deciding officer.
+    kyc: dsarKycView(await db.kyc.findByUserId(userId)),
     wallet: await db.wallet.findByUserId(userId),
     responsibleGambling: await db.responsible.get(userId),
     // ⛔ D19c, C5-SPEC rulings 168–169 (W2's default, waiting on Ali and a lawyer): the holder's own money rows stay, a

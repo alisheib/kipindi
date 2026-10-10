@@ -32,6 +32,18 @@
  *     是/否, zh §7 names the policy 负责任博彩, stray spaces after dashes in zh §3/§3a/§4, and the §5 cap is held on
  *     one line in all three languages.
  *
+ * ⛔ **MOVED TO 2026-10-10 (owner ruling, Ali, 2026-10-10: a player verifies with typed details and no photographs;
+ * an agent applicant keeps photographs and a selfie) — the change is player-favourable.**
+ *   · §3 says what a player gives: the details of one document — its number, its expiry date where it has one, the
+ *     full name as printed — with the date of birth on the account. "Photographic evidence" is gone; a request after
+ *     that is a correction of those details; an agent applicant verifies with photographs and a selfie, and the Agent
+ *     Terms (unchanged) carry the rest of the application. §3's anti-money-laundering paragraph asks for a
+ *     source-of-funds declaration only: no screen asks for the "proof of address" it named.
+ *   · §3a no longer lists "an unclear photo" among the reasons a player can fix (no new refusal uses it).
+ *   · Nothing more is asked of anyone, so NO 14-day §10 notice (the 2026-09-13 and 2026-09-14 precedent) and no
+ *     re-acceptance (below). `docs/COMPLIANCE-DECISIONS.md` 2026-10-10 records it.
+ *   · §3's FIRST sentence is byte for byte what it was: `red:kyc-copy-truth` plants its regression there.
+ *
  * ⭐ `TERMS_TEXT_SHA` pins a hash of the binding bodies (`content()` in `/legal/terms/page.tsx`, all
  * three locales): the text cannot move without the hash moving, and the hash cannot be updated
  * without the editor being in THIS file, with the version in front of them. `npm run
@@ -42,7 +54,7 @@
  *
  * ⛔ PURE AND IMPORT-FREE: a server component (the page) and a server service (auth) both read it.
  */
-export const TERMS_VERSION = "2026-09-14";
+export const TERMS_VERSION = "2026-10-10";
 
 /**
  * The first 12 hex of `sha256` over the whitespace-normalised `content()` bodies of `/legal/terms` — all three
@@ -56,4 +68,6 @@ export const TERMS_VERSION = "2026-09-14";
  * record. Change both in one commit — or, for a same-day player-favourable amendment inside a version
  * published that day, record it in `COMPLIANCE-DECISIONS.md` and move only the hash.
  */
-export const TERMS_TEXT_SHA = "777f9e348125";
+// 2026-10-10 · re-pinned WITH `TERMS_VERSION` 2026-10-10 (typed-only identity: §3/§3a — COMPLIANCE-DECISIONS, the
+// 2026-10-10 entry), measured by `test:terms-binding` §2 over the new binding text.
+export const TERMS_TEXT_SHA = "06208a18691e";

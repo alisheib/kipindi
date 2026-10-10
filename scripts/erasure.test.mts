@@ -991,8 +991,17 @@ section("11 · the DATABASE half — what a unit run cannot execute, it can stil
 
   const svc = stripTs(readFileSync("src/lib/server/kyc-service.ts", "utf8"));
   ok("11.8 CONTROL · the service was read", svc.includes("submitIdentityStep"));
+  // ⭐ 2026-10-10 · TWO identity writers now — the typed one-press `verifyIdentity` and the agent track's
+  // `submitIdentityStep` — and EACH must write the fingerprint (a file-wide match passed with one of them dropped).
+  const svcBody = (name: string): string => {
+    const at = svc.indexOf(`export async function ${name}(`);
+    if (at < 0) return "";
+    const end = svc.indexOf("\nexport ", at + 1);
+    return svc.slice(at, end < 0 ? undefined : end);
+  };
+  const FP_WRITE = /idFingerprint:\s*avail\.fingerprint/;
   ok("11.9 🔴 the identity step WRITES a fingerprint on every submission",
-    /idFingerprint:\s*fingerprint/.test(svc),
+    FP_WRITE.test(svcBody("verifyIdentity")) && FP_WRITE.test(svcBody("submitIdentityStep")),
     "The index only collides if BOTH rows carry one. Write it only at erasure and the\n" +
     "       second account sails through with a NULL fingerprint and nothing to collide with.");
   ok("11.10 …and the index name is pinned in code so a 23505 reads as `id_taken`, not a 500",

@@ -24,14 +24,12 @@ import { houseAuditForConsole } from "@/lib/server/house-console-read";
 import { I } from "@/components/ui/glyphs";
 import { formatTzs, formatTzsCompact, formatDate, formatDateTime, formatDateTimeSafe, formatDateShort } from "@/lib/utils";
 import { displayLabel, displayInitials } from "@/lib/display-label";
-import { KycStatusBadge, kycStatusLabel, kycStatusVariant, AccountStatusBadge, txnTypeLabel, txnStatusLabel, txnProviderLabel } from "@/components/admin/status-badge";
-import { KycReviewControls } from "@/components/admin/kyc-review-controls";
-import { ID_DOC_SPECS, ALL_DOC_SLOTS, type IdDocType, type KycDocSlot } from "@/lib/id-documents";
+import { KycStatusBadge, kycStatusLabel, kycStatusVariant, kycApprovalKind, kycApprovalKindLabel, AccountStatusBadge, txnTypeLabel, txnStatusLabel, txnProviderLabel } from "@/components/admin/status-badge";
+import type { IdDocType } from "@/lib/id-documents";
 import { SuspendControls } from "./suspend-controls";
 import { SetEmailForm } from "./set-email-form";
 import { ResetPasswordButton } from "./reset-password-button";
 import { BalanceAdjustControls } from "./balance-adjust-controls";
-import { ForceReverifyControls } from "./force-reverify-controls";
 import { WalletFreezeControls } from "./wallet-freeze-controls";
 import { staleIdentityHold } from "@/lib/server/wallet-freeze";
 import { currentFreezeReasons, FREEZE_REASON_LABEL } from "@/lib/wallet-freeze-reasons";
@@ -42,17 +40,15 @@ import { KpiGrid } from "@/components/admin/admin-body";
 export const dynamic = "force-dynamic";
 
 /**
- * Officer-facing names for the four documents and their image slots.
+ * Officer-facing names for the four documents.
  * ⚠️ ENGLISH LITERALS ON PURPOSE — /admin is a staff surface and is English-only by
  * design (test:failure-reasons §10 excludes it from the trilingual ratchet for that
  * reason). The PLAYER’s names for the same things are dictionary keys.
+ * ⛔ The image-slot names left this page on 2026-10-10 with the image previews: the identity
+ * workstation (/admin/kyc/[id]) is the one door to a player's identity images and decisions.
  */
 const ADMIN_ID_TYPE_LABEL: Record<IdDocType, string> = {
   NIDA: "NIDA", PASSPORT: "Passport", DRIVER_LICENSE: "Driving licence", VOTER_CARD: "Voter’s card",
-};
-const ADMIN_SLOT_LABEL: Record<KycDocSlot, string> = {
-  NIDA_FRONT: "NIDA front", NIDA_BACK: "NIDA back", PASSPORT: "Passport bio page",
-  DRIVER_LICENSE: "Licence front", VOTER_CARD: "Voter’s card", SELFIE: "Selfie",
 };
 
 /**
@@ -196,26 +192,20 @@ async function AdminPlayerDetailContent({ params, searchParams }: PlayerDetailPr
   const txBase = buildBaseHref(playerHref, sp, "txpage");
 
   // Risk score — simple proxy: deposit cycling rate, AML hits, late-night sessions, declined cards
-  const riskScore = computeRiskScore(txns.length, lifetimeWithdrawals, kyc?.status === "APPROVED");
+  // ⭐ KYC-OK MEANS AN OFFICER HAS SEEN IT (2026-10-10). An identity approved automatically from typed details and not
+  // yet checked by an officer (`autoApprovedAt` && !`postCheckedAt`) withdraws like any approved one, but nobody has
+  // looked at it yet — so this gauge does not give it the "KYC approved" discount until an officer marks it checked.
+  const kycKind = kycApprovalKind(kyc);
+  const kycOk = kycKind !== null && kycKind !== "automatic_unchecked";
+  const riskScore = computeRiskScore(txns.length, lifetimeWithdrawals, kycOk);
   // 2026-09-14 (visual pass 2) — a finally refused or frozen account is not "low · review monthly", whatever its
   // activity proxy says: the gauge read "low" beside a Frozen chip. The number stays; the band and caption follow.
   const accountStopped = (kyc?.status === "REJECTED" && isFinalRefusal(kyc.rejectReason ? String(kyc.rejectReason) : null)) || wallet?.status === "FROZEN";
   const riskBand = accountStopped ? "high" : riskScore >= 70 ? "high" : riskScore >= 40 ? "medium" : "low";
 
-  // Maker-checker parity (audit 2026-07-21): a HIGH-RISK KYC approval must go
-  // through the workstation's recommend→seal two-officer flow. Compute the same
-  // kycRiskScore the server guard (players/[id]/actions.approveKycAction) uses so
-  // the UI can hide the one-click Approve for high-risk rather than show a button
-  // that only errors. Note: this is the KYC-specific score, distinct from the
-  // account risk gauge (computeRiskScore) above. Only computed when reviewable.
-  let kycMakerCheckerRequired = false;
-  if (kyc && (kyc.status === "PENDING_REVIEW" || kyc.status === "ADDITIONAL_INFO_REQUIRED")) {
-    try {
-      const { kycRiskScore, KYC_MAKER_CHECKER_THRESHOLD } = await import("@/lib/server/kyc-risk");
-      const kr = await kycRiskScore(id);
-      kycMakerCheckerRequired = kr.score >= KYC_MAKER_CHECKER_THRESHOLD;
-    } catch { /* if risk can't be computed, the server guard still enforces it */ }
-  }
+  // ⛔ NO KYC DECISION IS TAKEN ON THIS PAGE ANY MORE (2026-10-10). The one-click approve (with its own copy of the
+  // maker-checker score), reject, request-info and force re-verify were deleted with `kyc-review-controls.tsx` and
+  // `force-reverify-controls.tsx`: every identity decision is made on the workstation, beside the checks it rests on.
 
   const initials = displayInitials(user);
   const headerLabel = displayLabel(user);
@@ -466,7 +456,7 @@ async function AdminPlayerDetailContent({ params, searchParams }: PlayerDetailPr
               )
             )}
             {tab === "kyc" && canSeePII && (
-              <KycTab kyc={kyc} userEmail={user.email} userId={id} makerCheckerRequired={kycMakerCheckerRequired} canActSupport={capSupport} canActCompliance={capCompliance} />
+              <KycTab kyc={kyc} userEmail={user.email} userId={id} canActSupport={capSupport} />
             )}
             {tab === "limits" && (
               <LimitsTab rg={rg} />
@@ -522,9 +512,10 @@ async function AdminPlayerDetailContent({ params, searchParams }: PlayerDetailPr
                   the door, not the permission. */}
               {capSupport ? <SetEmailForm userId={data.user!.id} /> : <ControlLocked what="Set player email" need="support" />}
               {capMoney ? <BalanceAdjustControls userId={data.user!.id} currentBalance={wallet?.balance ?? 0} /> : <ControlLocked what="Adjust balance" need="accounting" />}
-              {/* ⭐ `canAct={capCompliance}` (audit session 95, 2026-09-14): both controls act on the COMPLIANCE domain
-                  while this route is support, so the shell's route answer showed a compliance officer read-only. */}
-              {kyc?.status === "APPROVED" && (capCompliance ? <ForceReverifyControls userId={data.user!.id} walletFrozen={wallet?.status === "FROZEN"} canAct={capCompliance} /> : <ControlLocked what="Force re-verification" need="compliance" />)}
+              {/* ⭐ `canAct={capCompliance}` (audit session 95, 2026-09-14): the freeze acts on the COMPLIANCE domain
+                  while this route is support, so the shell's route answer showed a compliance officer read-only.
+                  ⛔ "Force re-verify KYC" WAS HERE until 2026-10-10. Its replacement — ask the player for corrections,
+                  with the freeze offered in the same form — is on the identity workstation, the one door to identity. */}
               {/* ⭐ THE OFFICER'S FREEZE (2026-09-13, ruling 6) — the lever that stops money now that
                   re-verification does not. It names every standing hold, not only its own. */}
               {wallet && (capCompliance
@@ -542,9 +533,22 @@ async function AdminPlayerDetailContent({ params, searchParams }: PlayerDetailPr
   );
 }
 
-function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, canActCompliance }: { kyc: Awaited<ReturnType<typeof db.kyc.findByUserId>>; userEmail?: string | null; userId: string; makerCheckerRequired?: boolean; canActSupport: boolean; canActCompliance: boolean }) {
+/**
+ * THE KYC TAB — A SUMMARY AND A DOOR (2026-10-10).
+ *
+ * ⛔ NO DECISION IS TAKEN HERE. This tab used to carry a second set of identity controls — one-click approve, reject,
+ * request more info — and the page a "Force re-verify" button, none of which showed the checks a decision rests on.
+ * From 2026-10-10 an identity is approved automatically when the checks pass and every officer decision (approve,
+ * mark checked, ask for corrections, reject, refuse, correct the date of birth) is taken on the identity workstation,
+ * where the checks, the routing reasons and the flags are on screen. This tab states where the identity stands and
+ * links there. The document images left with the controls: the workstation is the one door to them too.
+ */
+function KycTab({ kyc, userEmail, userId, canActSupport }: { kyc: Awaited<ReturnType<typeof db.kyc.findByUserId>>; userEmail?: string | null; userId: string; canActSupport: boolean }) {
   if (!kyc) return <p className="text-caption text-text-tertiary py-4 text-center">No KYC record yet.</p>;
   const decided = kyc.status === "APPROVED" || kyc.status === "REJECTED";
+  const approvalKind = kycApprovalKind(kyc);
+  const autoUnchecked = approvalKind === "automatic_unchecked";
+  const workstation = `/admin/kyc/${userId}` as Route;
   return (
     <div className="space-y-4">
       {/* Status banner — most important signal, shown first so officers see it immediately */}
@@ -555,7 +559,7 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
           <I.shieldAlert s={16} className="text-warning-fg shrink-0 mt-0.5 g-ring" />
           <div>
             <p className="font-display font-semibold text-warning-fg text-[13px]">Action required · Inahitaji ukaguzi</p>
-            <p className="mt-0.5 text-caption text-text-muted">This identity submission is awaiting officer review. Check the documents below and make a decision.</p>
+            <p className="mt-0.5 text-caption text-text-muted">This identity is waiting for an officer. Review it on the identity workstation.</p>
           </div>
         </div>
       )}
@@ -564,7 +568,7 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
           <I.alertCircle s={16} className="text-warning-fg shrink-0 mt-0.5" />
           <div>
             <p className="font-display font-semibold text-warning-fg text-[13px]">Awaiting player response</p>
-            <p className="mt-0.5 text-caption text-text-muted">Additional information was requested. Waiting for the player to upload the requested documents and resubmit.</p>
+            <p className="mt-0.5 text-caption text-text-muted">An officer asked the player to correct their details. Waiting for the player to send them again.</p>
           </div>
         </div>
       )}
@@ -580,16 +584,24 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
             {isFinalRefusal(kyc.rejectReason) && (
               <p className="mt-1 text-body-sm text-text-muted">
                 Final: the player cannot resubmit. The balance is decided on the{" "}
-                <Link href={`/admin/kyc/${userId}` as Route} className="text-brand-300 hover:underline">KYC case page</Link>.
+                <Link href={workstation} className="text-brand-300 hover:underline">KYC case page</Link>.
               </p>
             )}
           </div>
         </div>
       )}
       {kyc.status === "APPROVED" && (
-        <div className="rounded-lg border border-success-border bg-success-bg px-4 py-3 flex items-center gap-3">
-          <I.shieldcheck s={16} className="text-success-fg shrink-0" />
-          <p className="font-display font-semibold text-success-fg text-[13px]">Identity verified · Utambulisho umethibitishwa</p>
+        <div className="rounded-lg border border-success-border bg-success-bg px-4 py-3 flex items-start gap-3">
+          <I.shieldcheck s={16} className="text-success-fg shrink-0 mt-0.5" />
+          <div>
+            <p className="font-display font-semibold text-success-fg text-[13px]">Identity verified · Utambulisho umethibitishwa</p>
+            {/* ⭐ An automatic approval says so, and whether an officer has checked it since (2026-10-10). */}
+            {approvalKind && (
+              <p className="mt-0.5 text-caption text-text-muted" data-kyc-approval={approvalKind}>
+                Approved · {kycApprovalKindLabel(approvalKind).toLowerCase()}
+              </p>
+            )}
+          </div>
         </div>
       )}
       {/* Email status — critical for KYC notifications. Warn if missing. */}
@@ -628,92 +640,37 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
             renders in the SERVER's zone — UTC on Railway — so a document submitted at
             01:00 EAT showed as the previous day to the officer deciding on it. */}
         <Item label="Number format accepted at" value={formatDateTimeSafe(kyc.idVerifiedAt)} />
-        <Item label="Documents" value={kyc.documents.length > 0 ? kyc.documents.map((d: { docType: string }) => d.docType).join(", ") : "none"} />
+        {/* Photos on file — an agent applicant's, or a player's from before 2026-10-10. Counted here, shown on the workstation. */}
+        <Item label="Photos on file" value={kyc.documents.length > 0 ? `${kyc.documents.length} · open on the workstation` : "none"} />
         <Item label="Submitted" value={formatDateTimeSafe(kyc.submittedAt)} />
-        {decided && <Item label="Reviewed by" value={<span className="font-mono">{kyc.reviewerId ? `${kyc.reviewerId.slice(0, 14)}…` : "—"}{kyc.reviewedAt ? ` · ${formatDateTime(kyc.reviewedAt)}` : ""}</span>} />}
+        {decided && (
+          <Item
+            label="Reviewed by"
+            value={
+              <span className="font-mono">
+                {kyc.status === "APPROVED" && kyc.autoApprovedAt && !kyc.reviewerId
+                  ? `automatic · ${formatDateTime(kyc.autoApprovedAt)}`
+                  : `${kyc.reviewerId ? `${kyc.reviewerId.slice(0, 14)}…` : "—"}${kyc.reviewedAt ? ` · ${formatDateTime(kyc.reviewedAt)}` : ""}`}
+              </span>
+            }
+          />
+        )}
         {kyc.status === "REJECTED" && kyc.rejectReason && <Item label="Reject reason" value={<span className="text-danger-fg">{kyc.rejectReason}</span>} />}
       </dl>
 
-      {/* Document previews — fetched per-image through the admin-gated route
-          (never inlined here). Click to open the full-size photo. */}
-      {(() => {
-        // ⛔ THE SLOTS THIS DOCUMENT ACTUALLY HAS. Three hard-written tiles rendered
-        // two permanent "missing" boxes on every passport submission — which, on an
-        // identity panel, reads as absent evidence rather than as a slot that does
-        // not apply. Falls back to every known slot when no type is recorded, so a
-        // pre-2026-08-20 row shows everything on file rather than hiding it.
-        const SLOTS = (kyc.idType && ID_DOC_SPECS[kyc.idType as IdDocType]
-          ? ID_DOC_SPECS[kyc.idType as IdDocType].requiredSlots
-          : ALL_DOC_SLOTS
-        ).map((type) => ({ type, label: ADMIN_SLOT_LABEL[type] }));
-        const present = new Set(kyc.documents.map((d: { docType: string }) => d.docType));
-        return (
-          <div>
-            <p className="font-mono text-micro eyebrow uppercase text-text-tertiary mb-2.5">Documents</p>
-            <div className={`grid gap-2.5 ${SLOTS.length >= 3 ? "grid-cols-3" : "grid-cols-2"}`}>
-              {SLOTS.map((s) => {
-                const has = present.has(s.type);
-                const src = `/api/admin/kyc-doc?user=${encodeURIComponent(kyc.userId)}&type=${s.type}`;
-                return (
-                  <div key={s.type} className="space-y-1">
-                    {has ? (
-                      <a href={src} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-md border border-border bg-bg-inset hover:border-brand-500 transition-colors" title={`Open ${s.label} full size`}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={src} alt={s.label} loading="lazy" className="h-28 w-full object-cover" />
-                      </a>
-                    ) : (
-                      <div className="flex h-28 w-full items-center justify-center rounded-md border border-dashed border-border bg-bg-inset/40 text-text-tertiary">
-                        <I.x s={16} />
-                      </div>
-                    )}
-                    <p className={`text-center font-mono text-micro ${has ? "text-text-secondary" : "text-text-tertiary"}`}>{s.label}{has ? "" : " · missing"}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Officer-requested extra documents — description + uploaded content (or
-          "awaiting"). Empty in the normal case; only shown when docs were asked. */}
-      {(kyc.extraRequests ?? []).length > 0 && (
-        <div>
-          <p className="font-mono text-micro eyebrow uppercase text-text-tertiary mb-2.5">Requested documents</p>
-          <div className="space-y-2.5">
-            {(kyc.extraRequests ?? []).map((rq: { id: string; description: string; storageKey: string | null; uploadedAt: string | null }) => {
-              const src = `/api/admin/kyc-doc?user=${encodeURIComponent(kyc.userId)}&req=${encodeURIComponent(rq.id)}`;
-              return (
-                <div key={rq.id} className="flex items-start gap-3 rounded-md border border-border bg-bg-inset/40 p-2.5">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-caption text-text leading-snug">{rq.description}</p>
-                    <p className="mt-0.5 font-mono text-micro text-text-tertiary">
-                      {rq.uploadedAt ? `Uploaded · ${formatDateTime(rq.uploadedAt)}` : "Awaiting upload"}
-                    </p>
-                  </div>
-                  {rq.storageKey ? (
-                    <a href={src} target="_blank" rel="noopener noreferrer" className="block shrink-0 overflow-hidden rounded-md border border-border hover:border-brand-500 transition-colors" title="Open full size">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={src} alt="requested document" loading="lazy" className="h-16 w-16 object-cover" />
-                    </a>
-                  ) : (
-                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-bg-inset/40 text-text-tertiary">
-                      <I.x s={16} />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {canActCompliance && (
-        <div className="rounded-lg border border-border-subtle bg-bg-inset/30 p-3.5">
-          <p className="font-mono text-micro eyebrow uppercase text-text-tertiary mb-2.5">Officer decision</p>
-          <KycReviewControls userId={kyc.userId} status={kyc.status} makerCheckerRequired={makerCheckerRequired} />
-        </div>
-      )}
+      {/* ⭐ THE ONE DOOR. Every identity decision and every identity image is on the workstation. */}
+      <div className="rounded-lg border border-border-subtle bg-bg-inset/30 p-3.5 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-body-sm text-text-muted max-w-[60ch]">
+          {kyc.status === "PENDING_REVIEW"
+            ? "Decide this identity on the workstation, where the automatic checks and any images are shown."
+            : autoUnchecked
+              ? "Check this automatic approval on the workstation, or ask the player for corrections there."
+              : "Identity decisions, corrections and images are on the workstation."}
+        </p>
+        <Link href={workstation} className="btn btn-primary btn-sm inline-flex items-center gap-1.5" data-kyc-workstation-link="1">
+          Open the identity workstation <I.chevronRight s={12} />
+        </Link>
+      </div>
     </div>
   );
 }

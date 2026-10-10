@@ -64,7 +64,7 @@ function safeWrite(file, body) {
  * invented. Its §4 ratchet counts the harnesses that do NOT declare; adding this one to that
  * gap instead of to the audit is the one edit that file forbids.
  */
-import { CASES, GATE_ID, GATE_D1 } from "./anchors/id-documents.anchors.mjs";
+import { CASES, GATE_ID, GATE_D1, GATE_TYPED } from "./anchors/id-documents.anchors.mjs";
 
 const runGate = (gate) => {
   try {
@@ -77,7 +77,8 @@ const runGate = (gate) => {
 
 // ⭐ THE PRECONDITION. If a gate is not green on the untouched tree, every "it went
 // red" below is meaningless — it was already red. Refuse rather than report.
-for (const [label, gate] of [["test:id-documents", GATE_ID], ["test:cert-d1", GATE_D1]]) {
+// ⭐ 2026-10-10 · and the typed-only guard, which one case is gated on (the player photo gate put back).
+for (const [label, gate] of [["test:id-documents", GATE_ID], ["test:cert-d1", GATE_D1], ["test:kyc-typed-only", GATE_TYPED]]) {
   const base = runGate(gate);
   if (base.code !== 0) {
     console.error(`REFUSING TO RUN: ${label} is already RED on the untouched tree.`);
@@ -85,7 +86,7 @@ for (const [label, gate] of [["test:id-documents", GATE_ID], ["test:cert-d1", GA
     process.exit(1);
   }
 }
-console.log("precondition: both gates are GREEN on the untouched tree\n");
+console.log("precondition: all three gates are GREEN on the untouched tree\n");
 
 const FILES = new Set(CASES.flatMap((c) => c.edits.map((e) => e.file)));
 const originals = new Map();
@@ -148,10 +149,11 @@ for (const [f, original] of originals) {
 
 const afterId = runGate(GATE_ID);
 const afterD1 = runGate(GATE_D1);
-if (afterId.code !== 0 || afterD1.code !== 0) problems.push("a gate is RED after restore — the tree was not put back");
+const afterTyped = runGate(GATE_TYPED);
+if (afterId.code !== 0 || afterD1.code !== 0 || afterTyped.code !== 0) problems.push("a gate is RED after restore — the tree was not put back");
 
 console.log(`\n${caught}/${CASES.length} real defects caught, each on its own assertion`);
-console.log(`tree restored byte-identically · gates green after restore: ${afterId.code === 0 && afterD1.code === 0}`);
+console.log(`tree restored byte-identically · gates green after restore: ${afterId.code === 0 && afterD1.code === 0 && afterTyped.code === 0}`);
 if (problems.length) {
   console.error("\nPROBLEMS:");
   problems.forEach((p) => console.error("  ✗ " + p));

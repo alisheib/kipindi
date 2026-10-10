@@ -130,16 +130,34 @@ corrected.
 > 📋 Remaining: deploy 3 (transient retry) · deploy 4 (narrow market stamps + atomic pool
 > deltas incl. cash-out) · deploy 5 (drop the market lock from the bet path — **only after
 > a ≥1 week soak of deploy 4**). Plan: `docs/LOAD_DAY1_FINDINGS.md`.
-> 🪪 **IDENTITY POLICY (Ali, 2026-07-19; widened 2026-08-19) — read
+> 🪪 **IDENTITY POLICY (Ali, 2026-07-19; widened 2026-08-19; TYPED for players 2026-10-10) — read
 > [`docs/IDENTITY-POLICY.md`](docs/IDENTITY-POLICY.md).** ⚠️ That file was
 > `NIDA-POLICY.md` until 2026-08-20 and was renamed because it stopped being about one
 > document. **A player proves identity with ANY ONE of four: NIDA · passport · driving
 > licence · voter's card.** The control is **format + uniqueness only (one DOCUMENT, one
 > account)**. There is **no authority check and none is wanted** — `nida.ts` is a mock,
 > and there is no endpoint at all for the other three — so `idVerifiedAt` means "format
-> accepted", never "government confirmed". Identity assurance comes from the DOCUMENTS a
-> human officer reviews, and the selfie is required on all four so that control is never
-> weakened by widening the list. Two surfaces once claimed otherwise and are fixed:
+> accepted", never "government confirmed".
+> ⭐ **SINCE 2026-10-10 (Ali's ruling, the Gaming Board's request) PLAYERS TYPE, AGENTS PHOTOGRAPH.** A PLAYER
+> uploads nothing at any step: one form (document type, number, expiry for a passport or licence, full name as printed;
+> the date of birth is the ACCOUNT's `User.dob`), one press (`verifyIdentity`), and an **instant approval** when the
+> automatic checks pass (`decideKyc`, `src/lib/kyc-auto-checks.ts` — each check is block · route · flag; ⛔ a flag
+> never blocks an officer). Narrow cases ROUTE to an officer instead, never a refusal: NIDA birth digits under 18 · an
+> under-18 date of birth typed earlier · an officer already ruled (carried through a restart) · risk ≥ 70 · an officer or identity-refusal hold · rejected source
+> of funds · open AML escalation · the same name + date of birth on a restricted account · the agent track. Officers act
+> AFTERWARDS on one door, `/admin/kyc/[id]`: the post-check list (Mark checked), Ask for corrections (typed details
+> only — never an extra document), recoverable or final rejection, date-of-birth correction; every form posts the row
+> version. ⛔ The automatic path never lifts a wallet hold. An approved-once account may correct its name and expiry,
+> never its number (`identity_number_locked`). **AGENT applicants keep everything as before** — document photos and a
+> selfie reviewed by an officer, which stamps `photoVerifiedAt`; every agent gate asks `photoIdentityVerified`
+> (`src/lib/server/agent-identity.ts`), so an automatic typed approval never makes an agent. ⛔ The migration's
+> `photoVerifiedAt = approvedAt` backfill ran ONCE at the release and must NEVER be re-run: it would stamp automatic
+> typed approvals as officer photo approvals. ⛔ No admin switch brings
+> player uploads back; do not restore them, or an officer review before every first withdrawal, without a new ruling
+> (`docs/COMPLIANCE-DECISIONS.md` 2026-10-10, which also states what this costs: nothing ties a typed number to the
+> person typing it). ~~Identity assurance comes from the DOCUMENTS a human officer reviews, and the selfie is required
+> on all four so that control is never weakened by widening the list~~ — true now of agent applicants only.
+> Two surfaces once claimed otherwise and are fixed:
 > the admin KYC checklist said **"NIDA verified — government match"** (it told an officer
 > a government had confirmed an identity, inviting a withdrawal release on evidence that
 > does not exist), and player copy said withdrawals go only to a *"NIDA-verified account"*.

@@ -16,6 +16,7 @@ import { lipaDisplay } from "@/lib/server/lipa-config";
 import { LIPA_QR_RELEASED } from "@/lib/lipa";
 import { LipaQrPanel } from "@/components/pay/lipa-qr-panel";
 import { applicantView, feeBreakdown } from "@/lib/server/agent-application-service";
+import { getKycStatus } from "@/lib/server/kyc-service";
 import { inviteViewerFor } from "@/lib/server/affiliate-service";
 import { inviteIsLiveFor } from "@/lib/feature-state";
 import { fill, formatTzs } from "@/lib/utils";
@@ -23,6 +24,8 @@ import { formatEatDate } from "@/lib/eat-day";
 import { MAX_DOC_BYTES } from "@/lib/id-documents";
 import { startApplicationAction } from "./apply/actions";
 import { fillNodes } from "@/lib/fill-nodes";
+import { durationHours } from "@/lib/duration-phrase";
+import { KYC_REVIEW_SLA_HOURS } from "@/lib/kyc-sla";
 import { isLockedOut } from "@/lib/server/responsible-gambling";
 import { breakStateOf } from "@/lib/break-end";
 
@@ -125,7 +128,7 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
   const fmtDate = (iso: string) => formatEatDate(Date.parse(iso), Date.now(), t.common.monthsShort, locale);
 
   // ── The one CTA, decided by state ─────────────────────────────────────────
-  type Cta = { kind: "signin" } | { kind: "kyc" } | { kind: "apply" } | { kind: "continue" } | { kind: "status" } | { kind: "dashboard" } | { kind: "none" };
+  type Cta = { kind: "signin" } | { kind: "kyc"; variant: "start" | "photos" | "view" | "fix" } | { kind: "apply" } | { kind: "continue" } | { kind: "status" } | { kind: "dashboard" } | { kind: "none" };
   let cta: Cta = { kind: "none" };
   /**
    * ⭐ AMBER ONLY WHERE SOMEBODY MUST ACT (R5-C, the second gold audit, 2026-10-09). Seven states wore `warning`, whose
@@ -168,7 +171,31 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
   } else if (view?.state === "none") {
     const e = view.eligibility;
     if (e.ok) cta = { kind: "apply" };
-    else if (e.refusal === "kyc_required") { cta = { kind: "kyc" }; notice = { tone: "info", text: t.agent.stateKyc }; }
+    else if (e.refusal === "kyc_required") {
+      /**
+       * ⭐ VERIFIED FROM TYPED DETAILS, THE PHOTOS STILL OWED (review R5.6, 2026-10-10). The programme asks for an
+       * officer's approval of the document photos and a selfie (`photoIdentityVerified`); a player whose typed details
+       * were approved has the identity and not the photos, so "identity verification comes first" was false to them —
+       * they are told what IS left. An APPROVED status here is exactly that player: eligibility has already said the
+       * photo approval is missing. ⚠️ B-1 — a deliberate degrade: a failed read keeps the general line, which opens the
+       * same door (`/profile/kyc?for=agent` asks an approved identity for the photos alone).
+       */
+      // ⭐ …AND THE FILE'S OWN STATE (2026-10-10, the v4 screenshot pass): photos already with our team are named as
+      // waiting, with the way to look at them — never "verify first" to someone who just did — and a refused or
+      // corrections-asked file says it needs their attention.
+      let status: string | null = null;
+      try { status = (await getKycStatus(session.userId))?.status ?? null; } catch { /* B-1 — see above */ }
+      const variant = status === "APPROVED" ? "photos" : status === "PENDING_REVIEW" ? "view"
+        : status === "REJECTED" || status === "ADDITIONAL_INFO_REQUIRED" ? "fix" : "start";
+      cta = { kind: "kyc", variant };
+      notice = {
+        tone: "info",
+        text: variant === "photos" ? t.agent.stateKycPhotos
+          : variant === "view" ? fill(t.agent.stateKycPending, { hours: durationHours(locale, KYC_REVIEW_SLA_HOURS) })
+          : variant === "fix" ? t.agent.stateKycFix
+          : t.agent.stateKyc,
+      };
+    }
     else if (e.refusal === "staff") { cta = { kind: "none" }; notice = { tone: "info", text: t.agent.stateStaff }; }
     else if (e.refusal === "cooldown") { cta = { kind: "none" }; notice = { tone: "neutral", text: fill(t.agent.stateCooldown, { date: e.until ? fmtDate(e.until) : "" }) }; }
     else if (e.refusal === "terminal_rejection") { cta = { kind: "none" }; notice = { tone: "neutral", text: t.agent.stateTerminal }; }
@@ -180,6 +207,10 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
   // R8-C · on a break the CTA that offers the programme — apply, continue, verify to apply — is withheld, and the
   // programme's own RG sentence stands under the state's notice (a reader with no application already reads it as the notice).
   const rgHeld = breakEnd !== null && (cta.kind === "apply" || cta.kind === "continue" || cta.kind === "kyc");
+  // ⛔ …AND THE PHOTO INVITATION GOES WITH IT (2026-10-10, typed-only identity × R8-C): "add them, then come back to apply"
+  // is an offer to join the programme as surely as the button it sits over, so on a break the state says nothing more —
+  // the programme's own RG sentence below is the page's only word to this reader.
+  if (rgHeld && cta.kind === "kyc" && cta.variant !== "start") notice = null;
   if (rgHeld) cta = { kind: "none" };
 
   return (
@@ -187,7 +218,8 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
       <PageHeader eyebrow={t.agent.eyebrow} title={t.agent.title} subtitle={t.agent.heroSub} />
 
       {sp.refused && <Callout tone="neutral" size="md">{t.agent.applyRefused}</Callout>}
-      {notice && <Callout tone={notice.tone} size="md">{notice.text}</Callout>}
+      {/* zh keeps its words whole (the hub's rule): a notice set by the browser broke inside 照片, 补充 and 申请. */}
+      {notice && <Callout tone={notice.tone} size="md"><span className={locale === "zh" ? "break-keep [overflow-wrap:anywhere]" : undefined}>{notice.text}</span></Callout>}
       {rgHeld && <Callout tone="neutral" size="md">{t.agent.stateRgLocked}</Callout>}
 
       {/* ⭐ THE THREE FACTS A PARTNER DECIDES ON, above the fold, from config — ONE treatment (R5-C, the second gold audit,
@@ -227,8 +259,13 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
             <Link href={"/auth/register?next=/agent" as never}><Button variant="secondary" size="lg">{t.common.createAccount}</Button></Link>
           </>
         )}
+        {/* ⭐ THE PHOTO TRACK, BY NAME (2026-10-10). A player's own identity step is typed details now, approved
+            automatically, and that approval never opens this door: the agent programme keeps an officer's check of
+            the document photos and a selfie (agent-identity.ts). Somebody with no application yet is not known to
+            be an applicant, so the link says which track it wants, and next brings them back here. An identity
+            already verified from typed details is asked for the photos by name (review R5.6). */}
         {cta.kind === "kyc" && (
-          <Link href={"/profile/kyc?next=/agent" as never}><Button variant="primary" size="lg" leading={<I.shieldcheck s={16} />}>{t.agent.ctaKyc}</Button></Link>
+          <Link href={"/profile/kyc?for=agent&next=/agent" as never}><Button variant="primary" size="lg" leading={<I.shieldcheck s={16} />}>{cta.variant === "photos" ? t.agent.ctaKycPhotos : cta.variant === "view" ? t.agent.ctaKycView : cta.variant === "fix" ? t.agent.ctaKycFix : t.agent.ctaKyc}</Button></Link>
         )}
         {cta.kind === "apply" && (
           <form action={startApplicationAction}>

@@ -8,14 +8,15 @@ import { lipaDisplay } from "@/lib/server/lipa-config";
 import { LIPA_QR_RELEASED } from "@/lib/lipa";
 import { applicantView, feeBreakdown, AGENT_REFEREE_DOC_HOLD_DAYS } from "@/lib/server/agent-application-service";
 import { getKycStatus } from "@/lib/server/kyc-service";
+import { photoIdentityVerified } from "@/lib/server/agent-identity";
 import { db } from "@/lib/server/store";
-import { kycGateState } from "@/lib/kyc-gate-state";
 import { MAX_DOC_BYTES } from "@/lib/id-documents";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { Callout } from "@/components/ui/callout";
 import { isLockedOut } from "@/lib/server/responsible-gambling";
 import { breakStateOf } from "@/lib/break-end";
 import { ApplyClient } from "./apply-client";
+import { agentIdentityPanel } from "./identity-panel";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -68,9 +69,14 @@ export default async function AgentApplyPage() {
    * people's money (docs/COMPLIANCE-DECISIONS.md 2026-09-13). Nobody "finishes the job" here.
    * A self-service applicant is already approved (`applicantEligibility` gates the door), so for
    * them this is a confirmation; for an invitee it is the gate that stops a dead end.
+   * ⭐ "APPROVED" MEANS THE AGENT PROGRAMME'S APPROVAL SINCE 2026-10-10 — an officer's, of the photos
+   * (`agent-identity.ts`) — and the panel is drawn from that question (`agentIdentityPanel`, `identity-panel.ts`),
+   * for every applicant: whether it also holds the INVITEE'S submit shut is the server's own list
+   * (`missing` → "IDENTITY", `missingForSubmit`), so the form and the service cannot disagree.
    */
   const kyc = await getKycStatus(session.userId);
-  const kycGate = view.app.source === "OFFICER_INVITED" ? kycGateState(kyc) : null;
+  // The gate's own predicate decides "approved on photos"; the panel module maps the rest (`identity-panel.ts`).
+  const kycGate = agentIdentityPanel(kyc, photoIdentityVerified(kyc));
   // The two preconditions DEPOSIT imposes, which the fee now inherits. Read here so the step can
   // render the gate AND the action that clears it, rather than refusing after a click.
   const payer = await db.user.findById(session.userId);
@@ -121,7 +127,9 @@ export default async function AgentApplyPage() {
            `wallet/deposit/page.tsx` applies to its own two doors. */
         walletPay={{
           balanceTzs: wallet?.balance ?? 0,
-          kycApproved: kyc?.status === "APPROVED",
+          /* ⛔ The SERVICE'S question, asked the service's way: an officer approved the photos. It was
+             `status === "APPROVED"`, which a player's automatic typed approval answers too (2026-10-10). */
+          photoIdentityVerified: photoIdentityVerified(kyc),
           emailVerified: !!payer?.emailVerifiedAt,
         }}
         /* The merchant identity behind the QR. `lipaDisplay()` drops the pinned payload —

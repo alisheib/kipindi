@@ -27,6 +27,9 @@
  *     depositing or playing, and the services must have exactly that shape.
  *   · 2026-10-07 — the confirmed email moved from the first deposit to withdrawal: `deposit()` asks no email
  *     question, `withdraw()` asks it after identity, and the officer is told approval answers the identity HALF.
+ *   · 2026-10-10 — players verify with TYPED details and are approved AUTOMATICALLY (agents keep photo ID + an
+ *     officer). The ladder and every sentence here are unchanged; the approval letter is now built in ONE place for
+ *     both kinds of approval (§8.4), and agent mode has its own burst that names no money (§1).
  * Anyone reading only one of those entries will "fix" this file back to it.
  *
  * The rules this pins: the burst states only what approval ACTUALLY unlocks (§1–§3), it ASKS the live
@@ -119,6 +122,13 @@ const MONEY_IN_SHAPE: Record<Loc, string> = {
 for (const loc of LOCALES) {
   ok(`control · ${loc}: the checker catches a burst that names money going in`, MONEY_IN_OR_PLAY[loc].test(MONEY_IN_SHAPE[loc]));
 }
+// ⭐ 2026-10-10 — the AGENT photo track's own burst ("verified for the agent programme"). It is about the agent
+// application, so it names no withdrawal — and it must not credit an identity check with money going in either.
+for (const loc of LOCALES) {
+  const agent = (dict[loc].profile as Record<string, string>).agentVerifiedBody;
+  ok(`${loc}: the agent burst exists and names no depositing or playing`,
+    typeof agent === "string" && agent.length > 10 && !MONEY_IN_OR_PLAY[loc].test(agent), String(agent));
+}
 
 // "freely" was the second half of the E-5 lie — nothing about this is free of gates.
 const FREELY_WORDS: Record<Loc, RegExp> = { en: /freely/i, sw: /uhuru/i, zh: /自由/ };
@@ -177,6 +187,9 @@ ok("🔴 a held wallet never gets the withdrawal promise — the page reads the 
   && /walletHeld \? t\.profile\.kycApprovedWalletHeld : payoutsAccepting \? t\.profile\.kycApprovedBody : t\.profile\.kycApprovedPayoutsPaused/.test(KYC_PAGE));
 ok("…and a failed wallet read keeps today's copy, not a claimed hold",
   /let walletHeld = false;/.test(KYC_PAGE));
+// ⭐ 2026-10-10 — agent mode (photos for an officer) has its own sentence; the player's three stay behind it, unchanged.
+ok("the agent photo track's burst is its own sentence, ahead of the player's three",
+  /agentMode \? t\.profile\.agentVerifiedBody : walletHeld \? t\.profile\.kycApprovedWalletHeld/.test(KYC_PAGE));
 // An unreachable DB is not evidence that payouts are down — claiming a pause we cannot substantiate
 // is the same class of defect, pointing the other way.
 ok("an unreadable gate defaults to accepting, not to a claimed pause",
@@ -363,8 +376,16 @@ section("8 · the approval letter and the email half of the gate");
   const sentenceOf = (html: string, start: string) => { const i = html.indexOf(start); return i < 0 ? "" : html.slice(i, html.indexOf("<", i)); };
   ok("8.3 ⛔ …and the step never says \"first\" (it returns whenever the address changes)",
     !/\bfirst\b/i.test(sentenceOf(owed, EN)) && !/\bkwanza\b/i.test(sentenceOf(owed, SW)), sentenceOf(owed, EN));
+  // ⭐ 2026-10-10 — the letter is sent from the ONE approval core (`approveIdentity`) for an officer's approval and the
+  // automatic one alike, and the standing is read into a named local first.
+  const CORE = bodyOf(KYC_SERVICE_CODE, "async function approveIdentity(");
   ok("8.4 the trigger hands the letter the account's standing (an address on file, never confirmed)",
-    /kycApprovedHtml\(\{\s*name:\s*greetName,\s*reference:\s*k\.id,\s*emailUnconfirmed:\s*!!u\?\.email\s*&&\s*!u\.emailVerifiedAt\s*\}\)/.test(KYC_SERVICE_CODE));
+    CORE.length > 500
+    && /const emailUnconfirmed = !!u\?\.email && !u\.emailVerifiedAt;/.test(CORE)
+    && /kycApprovedHtml\(\{\s*name:\s*greetName,\s*reference:\s*k\.id,\s*emailUnconfirmed\s*\}\)/.test(CORE),
+    `core len=${CORE.length}`);
+  ok("8.4b …and it is the ONLY place the approval letter is built in the service",
+    (KYC_SERVICE_CODE.match(/kycApprovedHtml\(/g) ?? []).length === 1);
   const NOTIFY = stripComments(read("../src/lib/server/notification-service.ts"));
   const iA = NOTIFY.indexOf('if (status === "APPROVED")');
   const approvedBell = iA < 0 ? "" : NOTIFY.slice(iA, NOTIFY.indexOf("}", NOTIFY.indexOf("bodyZh", iA)));

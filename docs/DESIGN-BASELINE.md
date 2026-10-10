@@ -359,6 +359,15 @@ an unexercisable assertion as a pass would be worse; it reports NOT MEASURED ins
   lowercase pills nearly shipped as "8 PREDICTORS".
 - **`design-brief/design-gate-2026-08-28/`** — an OUTBOUND commission that was **never sent**
   (Ali, 2026-08-31). It is the only copy of the request. ⛔ Do not delete it.
+- **`test:ui-consistency`'s `raw-button-btn-class` count for `src/app/admin/kyc/[id]/kyc-decision-rail.tsx` rose 1 → 4
+  (2026-10-10, KYC typed-only; the baseline total 120 → 121, after the deleted `kyc-review-controls.tsx` took its 2
+  with it).** The identity workstation's rail gained three raw `<button className="btn …">` controls — the Reject
+  offered while a case waits on the player's corrections, the reject confirm under the locked "Also freeze the wallet",
+  and a Cancel — written in the idiom the rest of that file already uses rather than half-migrating one component to the
+  kit `<Button>`. A known, accepted rise, re-baselined in `scripts/ui-consistency-baseline.json` (which cannot carry a
+  reason). ⛔ It comes back down when the rail moves onto the kit `<Button>` as a whole — not one control at a time.
+  ⚠️ The baseline's `_note` points at `docs/UI-CONSISTENCY-AUDIT.md`, which was deleted in `73e03048`; this list is
+  where such a reason lives now.
 
 ---
 

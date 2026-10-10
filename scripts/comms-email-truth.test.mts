@@ -151,9 +151,13 @@ const RENDERS: Rendered[] = [
   { template: "inviteHtml",
     benign:  E.inviteHtml({ campaignName: "Launch week", bonusAmountTzs: 5_000, code: "ABC123", message: "Join me on 50pick" }),
     hostile: E.inviteHtml({ campaignName: HOSTILE, bonusAmountTzs: 1, code: HOSTILE, message: HOSTILE }) },
+  // 2026-10-10 (typed-only identity): the receipt names what was sent — `evidence: "typed"` for a player whose typed
+  // details the automatic checks passed to an officer, `"photos"` for an agent applicant's photo send. The benign render
+  // takes the typed branch and the hostile render the photo branch, so both are rendered and both are escaped (§5d
+  // reads each branch's words).
   { template: "kycSubmittedHtml",
-    benign:  E.kycSubmittedHtml({ name: "Asha", reference: "kyc_a1", submittedAt: "2026-07-31T09:00:00.000Z", docTypes: ["NIDA_FRONT", "SELFIE"], viewUrl: "/profile/kyc" }),
-    hostile: E.kycSubmittedHtml({ name: HOSTILE, reference: HOSTILE, submittedAt: HOSTILE, docTypes: [HOSTILE], viewUrl: "/profile/kyc" }) },
+    benign:  E.kycSubmittedHtml({ name: "Asha", reference: "kyc_a1", submittedAt: "2026-07-31T09:00:00.000Z", evidence: "typed", viewUrl: "/profile/kyc" }),
+    hostile: E.kycSubmittedHtml({ name: HOSTILE, reference: HOSTILE, submittedAt: HOSTILE, evidence: "photos", viewUrl: "/profile/kyc" }) },
   { template: "kycApprovedHtml",
     benign:  E.kycApprovedHtml({ name: "Asha", reference: "kyc_a1" }),
     hostile: E.kycApprovedHtml({ name: HOSTILE, reference: HOSTILE }) },
@@ -162,7 +166,9 @@ const RENDERS: Rendered[] = [
     // The hostile render takes the FINAL branch, the only one that prints `reasonSw` (2026-09-14).
     hostile: E.kycRejectedHtml({ reason: HOSTILE, reasonSw: HOSTILE, reference: HOSTILE, finalRefusal: true }) },
   { template: "kycMoreInfoHtml",
-    benign:  E.kycMoreInfoHtml({ reason: "Please add the back of your ID", reference: "kyc_a1" }),
+    // 2026-10-10: an officer can ask only for a CORRECTION of typed details now, never for another document — so the
+    // benign note is one an officer can actually write.
+    benign:  E.kycMoreInfoHtml({ reason: "Please check the spelling of your name — it should match your document", reference: "kyc_a1" }),
     hostile: E.kycMoreInfoHtml({ reason: HOSTILE, reference: HOSTILE }) },
   // S1 (2026-09-13) — the officer's decision on a finally-refused player's balance.
   { template: "refusedFundsDecisionHtml",
@@ -214,9 +220,12 @@ const RENDERS: Rendered[] = [
   { template: "agentCommissionReversedHtml",
     benign:  E.agentCommissionReversedHtml({ amountTzs: 2_000, recoveredTzs: 2_000, marketId: "mkt_a1" }),
     hostile: E.agentCommissionReversedHtml({ amountTzs: 2_000, recoveredTzs: 500, marketId: HOSTILE }) },
+  // 2026-10-10: `idMasked` replaced `nidaMasked` (any of the four documents), `reasons` lists why the identity came to an
+  // officer (ROUTE_REASON_LABEL), and the link is the identity workstation — the player page's KYC tab decides nothing now.
+  // HOSTILE in every free-text field, the reasons included.
   { template: "kycSubmittedAdminHtml",
-    benign:  E.kycSubmittedAdminHtml({ reference: "kyc_a1", phoneMasked: "+2557••••5678", name: "Asha M.", nidaMasked: "••••1234", submittedAt: "2026-07-31T09:00:00.000Z", reviewUrl: "/admin/players/u1?tab=kyc" }),
-    hostile: E.kycSubmittedAdminHtml({ reference: HOSTILE, phoneMasked: HOSTILE, name: HOSTILE, nidaMasked: HOSTILE, submittedAt: HOSTILE, reviewUrl: "/admin/players/u1?tab=kyc" }) },
+    benign:  E.kycSubmittedAdminHtml({ reference: "kyc_a1", phoneMasked: "+2557••••5678", name: "Asha M.", idMasked: "••••1234", submittedAt: "2026-07-31T09:00:00.000Z", reviewUrl: "https://www.50pick.tz/admin/kyc/u1", reasons: ["Risk score at or above the two-officer threshold"] }),
+    hostile: E.kycSubmittedAdminHtml({ reference: HOSTILE, phoneMasked: HOSTILE, name: HOSTILE, idMasked: HOSTILE, submittedAt: HOSTILE, reviewUrl: "https://www.50pick.tz/admin/kyc/u1", reasons: [HOSTILE, HOSTILE] }) },
   { template: "sofSubmittedHtml",
     benign:  E.sofSubmittedHtml(),
     hostile: E.sofSubmittedHtml() },
@@ -670,6 +679,33 @@ section("5c · refused funds, source of funds, the break — the letter says wha
   ok("5c ⛔ the break email does not promise a withdrawal at any time", !/at any time|withdraw your money/i.test(cool), cool.slice(0, 200));
   ok("5c …it says the break does not block sign-in or withdrawals", /Your break does not block sign-in or withdrawals\./.test(cool), cool.slice(0, 200));
   ok("5c ⛔ …and carries no identity sentence (the quiet rule)", !QUIET.test(cool), cool.slice(0, 200));
+}
+
+// ── 5d · The identity receipt names what was SENT (typed-only identity, 2026-10-10) ──
+// Players verify with typed details; only agent applicants send document photos and a selfie. The receipt each one
+// gets must say which — a player who typed a number must not be told their "photos" or "documents" arrived, and the
+// old receipt's list of raw slot codes (NIDA_FRONT, SELFIE…) is gone with its de-underscore fallback.
+section("5d · identity receipts — typed details vs agent photos, and the officer's letter");
+{
+  const typed = plain(byName.kycSubmittedHtml);
+  const photos = plain(E.kycSubmittedHtml({ name: "Asha", reference: "kyc_a1", submittedAt: "2026-07-31T09:00:00.000Z", evidence: "photos", viewUrl: "/profile/kyc" }));
+  ok("5d the typed receipt says identity details were received, in both languages",
+    /We received your identity details/.test(typed) && /Tumepokea taarifa zako za utambulisho/.test(typed), typed.slice(0, 260));
+  ok("5d ⛔ …and names no photo, selfie or document upload", !/photo|selfie|picha|upload/i.test(typed), typed.slice(0, 260));
+  ok("5d the agent receipt says the document photos and selfie were received",
+    /document photos and selfie/.test(photos) && /picha za kitambulisho chako na selfie/.test(photos), photos.slice(0, 260));
+  ok("5d control · the two receipts differ — the evidence switch is live", typed !== photos);
+  ok("5d ⛔ neither receipt prints a raw slot code",
+    ![typed, photos].some((t) => /NIDA_FRONT|NIDA_BACK|DRIVER_LICENSE|VOTER_CARD|SELFIE/.test(t)));
+  // The officer's letter: the masked number of whichever document, why it came to an officer, the workstation link.
+  const admin = byName.kycSubmittedAdminHtml;
+  const adminText = plain(admin);
+  ok("5d the officer's letter shows the masked number under 'Document', never a NIDA label",
+    /Document/.test(adminText) && adminText.includes("••••1234") && !/NIDA/.test(adminText), adminText.slice(0, 260));
+  ok("5d …says why the identity came to an officer", /Reason/.test(adminText) && adminText.includes("Risk score at or above the two-officer threshold"), adminText.slice(0, 300));
+  ok("5d …and links the identity workstation", admin.includes("/admin/kyc/u1") && !admin.includes("tab=kyc"));
+  const plainCase = plain(E.kycSubmittedAdminHtml({ reference: "kyc_a1", phoneMasked: "+2557••••5678", name: "Asha M.", idMasked: "••••1234", submittedAt: "2026-07-31T09:00:00.000Z", reviewUrl: "https://www.50pick.tz/admin/kyc/u1" }));
+  ok("5d control · with no reasons the letter renders as a plain new case — no empty Reason row", !/Reason/.test(plainCase), plainCase.slice(0, 260));
 }
 
 // ── 6 · Send-path contract ─────────────────────────────────────────────────────

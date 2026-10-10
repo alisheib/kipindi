@@ -1,7 +1,7 @@
 {
-  "_note": "UI-consistency baseline: known drift counts per rule::file. Regenerate after a remediation phase with `npm run test:ui-consistency -- --update-baseline`. DONE when this is empty. See docs/UI-CONSISTENCY-AUDIT.md.",
+  "_note": "UI-consistency baseline: known drift counts per rule::file. Regenerate after a remediation phase with `npm run test:ui-consistency -- --update-baseline`. DONE when this is empty. See docs/DESIGN-BASELINE.md §4 (DELIBERATELY LEFT) — the audit doc was deleted in 73e03048.",
   "_generated": "run with --update-baseline",
-  "_total": 120,
+  "_total": 121,
   "counts": {
     "adhoc-portal::src/components/ui/unsaved-changes.tsx": 1,
     "bare-text-button::src/components/auth/resend-otp-button.tsx": 1,
@@ -42,7 +42,7 @@
     "numeric-size-utility::src/components/ui/toast.tsx": 4,
     "raw-button-btn-class::src/app/admin/ai-polls/poll-actions.tsx": 14,
     "raw-button-btn-class::src/app/admin/candidates/candidate-actions.tsx": 3,
-    "raw-button-btn-class::src/app/admin/kyc/[id]/kyc-decision-rail.tsx": 1,
+    "raw-button-btn-class::src/app/admin/kyc/[id]/kyc-decision-rail.tsx": 4,
     "raw-button-btn-class::src/app/admin/markets/[id]/page.tsx": 1,
     "raw-button-btn-class::src/app/admin/markets/emergency-void-control.tsx": 2,
     "raw-button-btn-class::src/app/admin/markets/page.tsx": 1,
@@ -56,7 +56,6 @@
     "raw-button-btn-class::src/app/profile/kyc/page.tsx": 1,
     "raw-button-btn-class::src/app/wallet/deposit/deposit-confirm.tsx": 1,
     "raw-button-btn-class::src/app/wallet/withdraw/withdraw-confirm.tsx": 1,
-    "raw-button-btn-class::src/components/admin/kyc-review-controls.tsx": 2,
     "raw-button-btn-class::src/components/markets/bet-confirm-modal.tsx": 1,
     "raw-button-btn-class::src/components/markets/comments-thread.tsx": 1,
     "raw-button-btn-class::src/components/markets/market-card.tsx": 2,

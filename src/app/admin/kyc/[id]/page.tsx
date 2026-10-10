@@ -8,7 +8,7 @@ import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { db, type StoredWallet, type StoredTxn } from "@/lib/server/store";
 import { txnStatusLabel, KycStageBadge } from "@/components/admin/status-badge";
-import { listPendingKyc } from "@/lib/server/kyc-service";
+import { listPendingKyc, readKycCaseChecks, kycRowVersion } from "@/lib/server/kyc-service";
 import { kycCaseRead, kycMoneyFacts, toBlockedCashOut, getApprovalRecommendation, KYC_MAKER_CHECKER_THRESHOLD, type BlockedCashOut } from "@/lib/server/kyc-risk";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
@@ -17,14 +17,17 @@ import { formatDateTime } from "@/lib/utils";
 import { KycDocViewer } from "./kyc-doc-viewer";
 import { Sensitive } from "@/components/ui/sensitive";
 import { maskDob } from "@/lib/server/sensitive-fields";
-import { KycDecisionRail } from "./kyc-decision-rail";
+import { KycDecisionRail, type RailCheck, type RailStage } from "./kyc-decision-rail";
+import { KycDobCorrection } from "./kyc-dob-correction";
 import { RefusedFundsPanel } from "./refused-funds-panel";
 import { ReopenRefusalControl } from "./reopen-refusal-control";
 import { isFinalRefusal, type FinalRefusalCode } from "@/lib/kyc-refusal";
-import { approvedEver } from "@/lib/kyc-approval";
+import { approvedEver, uncheckedAutomaticApproval } from "@/lib/kyc-approval";
+import { photoIdentityVerified } from "@/lib/server/agent-identity";
 import { walletHeldTzs, isFileWithUs } from "@/lib/kyc-stage";
 import { KYC_REVIEW_SLA_HOURS } from "@/lib/kyc-sla";
-import { isOfAge } from "@/lib/id-documents";
+import { ROUTE_REASON_LABEL, FLAG_LABEL, asKycFlags, asKycRouteReasons, type KycCheckKey, type KycCheckRow, type KycRouteReason } from "@/lib/kyc-auto-checks";
+import type { KycAttestationMode } from "@/lib/kyc-attestations";
 import { refusedFundsPosition, toDecisionRow, withPayoutNow } from "@/lib/server/refused-funds";
 import { getAuditForTargetDurable } from "@/lib/server/audit";
 import { REFUSED_FUNDS_ACTION, REFUSED_FUNDS_OUTCOME_COPY } from "@/lib/refused-funds-outcomes";
@@ -45,14 +48,19 @@ const FINAL_CODE_LABEL: Record<FinalRefusalCode, string> = {
 const WALLET_STATUS_LABEL: Record<"ACTIVE" | "FROZEN" | "CLOSED", string> = { ACTIVE: "Active", FROZEN: "Frozen", CLOSED: "Closed" };
 import {
   ID_DOC_SPECS,
-  ALL_DOC_SLOTS,
+  LEGACY_KYC_DOC_SLOTS,
   isIdDocType,
   isExpired,
   nidaDateOfBirth,
-  validateIdNumber,
+  photoSetComplete,
   type IdDocType,
-  type KycDocSlot,
 } from "@/lib/id-documents";
+
+/** Every image slot ever written — the frozen list the image route accepts (`LEGACY_KYC_DOC_SLOTS`). */
+type ViewerSlot = (typeof LEGACY_KYC_DOC_SLOTS)[number];
+
+/** The day players stopped uploading (owner ruling, 2026-10-10). An image older than this is a legacy one. */
+const TYPED_ONLY_FROM = "2026-10-10";
 
 export const metadata = { title: "Admin · KYC workstation" };
 export const dynamic = "force-dynamic";
@@ -75,13 +83,33 @@ const ID_TYPE_LABEL: Record<IdDocType, string> = {
   DRIVER_LICENSE: "Driving licence",
   VOTER_CARD: "Voter's card",
 };
-const ADMIN_SLOT_LABEL: Record<KycDocSlot, string> = {
+const ADMIN_SLOT_LABEL: Record<ViewerSlot, string> = {
+  // The enum-only slot from before the NIDA front/back split — still readable, never asked for.
+  NIDA: "NIDA (single image)",
   NIDA_FRONT: "NIDA front",
   NIDA_BACK: "NIDA back",
   PASSPORT: "Passport bio page",
   DRIVER_LICENSE: "Licence front",
   VOTER_CARD: "Voter's card",
   SELFIE: "Selfie",
+};
+
+/**
+ * ⭐ THE CHECKLIST'S NAMES (2026-10-10). Each row is one `decideKyc` row (`kyc-auto-checks.ts`) — the SAME decision
+ * the instant path took — so the officer reads the machine's reasoning, not a second copy of it. Officer English.
+ */
+const CHECK_LABEL: Record<KycCheckKey, string> = {
+  number_format: "Identity number",
+  age: "18 or older",
+  nida_dob: "NIDA date of birth",
+  expiry: "Document in date",
+  same_person: "Other accounts",
+  risk: "Risk score",
+  holds: "Wallet holds",
+  sof: "Source of funds",
+  aml: "AML escalation",
+  provenance: "Officer history",
+  track: "Case type",
 };
 
 function ageLabel(iso: string | null): string {
@@ -118,13 +146,18 @@ async function KycWorkstationContent({ params }: KycWorkstationProps) {
   const canSeeMoney = session ? await canView(session.role, "accounting") : false;
 
   const decided = kyc.status === "APPROVED" || kyc.status === "REJECTED";
+  // ⭐ THE VERSION EVERY FORM ON THIS PAGE POSTS (2026-10-10) — the row as rendered. The service refuses a decision on a
+  // row that changed since, and a maker's recommendation only ever seals the version it was made on.
+  const version = kycRowVersion(kyc);
   // ⭐ ONE TRANSACTION SCAN (2026-09-13). The risk score and the "Money at stake" card read the same rows:
   // `kycCaseRead` returns them beside the score, so the card costs no second `listForUser` (kyc-risk.ts header).
   const { risk, txns } = await kycCaseRead(id);
   const moneyFacts = kycMoneyFacts(txns);
   const makerCheckerRequired = risk.score >= KYC_MAKER_CHECKER_THRESHOLD;
-  const recommendation = await getApprovalRecommendation(id);
-  const sof = await Promise.resolve(db.sourceOfFunds.get(id)).catch(() => null);
+  // ⭐ BOUND TO THIS VERSION (2026-10-10): a recommendation made before the case last changed is not found, so the rail
+  // asks for a new one rather than offering a seal on details the maker never saw. (Source of funds is a checklist row
+  // now — `decideKyc`'s `sof` — read with the other facts.)
+  const recommendation = await getApprovalRecommendation(id, version);
   // The wallet, for a money viewer only. `undefined` = never asked; "failed" = the read failed, which is NOT
   // a zero balance; `null` = no wallet, which genuinely holds nothing. The async wrapper also catches a
   // SYNC throw from the in-memory store.
@@ -171,70 +204,103 @@ async function KycWorkstationContent({ params }: KycWorkstationProps) {
   const idType = isIdDocType(kyc.idType) ? (kyc.idType as IdDocType) : null;
   const spec = idType ? ID_DOC_SPECS[idType] : null;
 
-  // Auto-derived checklist (real signals only).
+  // ── THE CASE'S MODE (2026-10-10) ────────────────────────────────────────────
+  // ⭐ PHOTO when the document's full photo set and a selfie are on file (an agent applicant's case, or a player's from
+  // before 2026-10-10); TYPED otherwise. The mode decides which images are shown, which attestations the officer makes
+  // and whether an approval stamps `photoVerifiedAt` — and it is the SAME test the service applies (`photoSetComplete`),
+  // so the page and the decision cannot disagree about which kind of case this is.
   const present = new Set(kyc.documents.map((d) => d.docType));
-  // ⛔ The one age gate (`isOfAge`, whole years on the Tanzanian date) — the same answer registration gave.
-  const age18 = kyc.dob ? isOfAge(kyc.dob, new Date()) : null;
+  const mode: KycAttestationMode = photoSetComplete(kyc.idType, Array.from(present)) ? "photo" : "typed";
   const required = spec?.requiredSlots ?? [];
-  const allDocs = required.length > 0 && required.every((t) => present.has(t));
 
-  // What the format check ACTUALLY established for THIS document, and what it
-  // deliberately did not. `flags` is recomputed here rather than stored, so the
-  // officer always reads the current rule rather than one frozen at submit time.
-  const verdict = idType && kyc.idNumber ? validateIdNumber(idType, kyc.idNumber) : null;
-  const formatDetail = !spec
-    ? "no document type recorded"
-    : spec.format.kind === "published"
-      ? `format valid · unique to this account (no authority check by design) · ${spec.format.sourceNote}`
-      : spec.format.kind === "secondary"
-        ? `unique to this account (no authority check by design) · ${spec.format.sourceNote}${verdict?.ok && verdict.flags.includes("unofficial_shape") ? " ⚠ THIS NUMBER IS OUTSIDE THAT SHAPE — accepted deliberately, read the image" : ""}`
-        : `unique to this account (no authority check by design) · ${spec.format.absenceNote}`;
+  // ── THE AUTOMATIC CHECKS ───────────────────────────────────────────────────
+  // ⭐ ONE DECISION, READ AGAIN FOR THE OFFICER (`readKycCaseChecks`): the same facts and the same pure `decideKyc` the
+  // instant path ran, so this checklist is the machine's own reasoning, not a second copy of it. ⛔ A failed fact read is
+  // SAID — the rail arms nothing on facts nobody can see — never drawn as a row of passes.
+  let caseChecks: Awaited<ReturnType<typeof readKycCaseChecks>> = null;
+  let checksFailed = false;
+  try {
+    caseChecks = await readKycCaseChecks(id);
+  } catch {
+    checksFailed = true;
+  }
 
-  // 🔴 NIDA ONLY, AND SAID SO. Digits 1-8 of a NIDA are the holder's date of
-  // birth; no other document carries one. Where they disagree with the DOB on the
-  // account this is a REVIEWER FLAG, not a refusal — a stated DOB can be a
-  // sign-up typo, and refusing would lock a real citizen out over it.
+  // 🔴 NIDA ONLY, AND SAID SO. Digits 1-8 of a NIDA are the holder's date of birth; no other document carries one.
+  // Where they disagree with the account's date this is a FLAG (or, under 18, a route to an officer) — never a refusal:
+  // a sign-up date can be a typo, and refusing would lock a real citizen out over it.
   const nidaDob = idType === "NIDA" && kyc.idNumber ? nidaDateOfBirth(kyc.idNumber) : null;
-  const statedDob = kyc.dob ? kyc.dob.slice(0, 10) : null;
-  const dobAgrees = nidaDob && statedDob ? nidaDob === statedDob : null;
-
   const expired = isExpired(kyc.idExpiry ?? null, new Date());
+
+  // What the format check ACTUALLY established for THIS document, and what it deliberately did not.
+  // POLICY (Ali, 2026-07-19, extended 2026-08-19): the control is FORMAT + UNIQUENESS only — one document, one
+  // account. There is deliberately no authority check for any of the four; `nida.ts` is a deterministic mock and no
+  // request has ever reached the National Identification Authority, and no equivalent endpoint exists for a passport,
+  // a licence or a voter's card. So the number row must never read "verified / government match": it states exactly
+  // what was checked and — where no format is published — says so in the officer's own words.
+  const formatNote = !spec
+    ? "no document type recorded"
+    : spec.format.kind === "published" || spec.format.kind === "secondary"
+      ? spec.format.sourceNote
+      : spec.format.absenceNote;
+
   // ⛔ THE CHECKLIST MASKS ITS DATES UNCONDITIONALLY, AND THAT IS DELIBERATE.
-  // `AutoCheck.detail` is a plain STRING on a CLIENT component (kyc-decision-rail.tsx), so
+  // `RailCheck.detail` is a plain STRING on a CLIENT component (kyc-decision-rail.tsx), so
   // <Sensitive> cannot go here — it is a server component. Masking at the source is the honest
   // alternative: the checklist's job is the VERDICT ("18 or older: pass"), which the masked year
   // still supports, and the revealable copy lives in the DOB Field above for a role permitted to
   // reveal it. ⚠️ `maskDob` is the registry's own mask, imported as a pure function — §6 keeps the
   // ANSWER (canRead/mayReveal) out of pages, not the masking itself.
-  const autoChecks = [
-    // POLICY (Ali, 2026-07-19, extended 2026-08-19): the control is FORMAT +
-    // UNIQUENESS only — one document, one account. There is deliberately no
-    // authority check for any of the four; `nida.ts` is a deterministic mock and
-    // no request has ever reached the National Identification Authority, and no
-    // equivalent endpoint exists for a passport, a licence or a voter's card.
-    //
-    // So this row must NOT read "verified / government match", as it used to.
-    // That told a compliance officer a government confirmed this identity, which
-    // would invite them to approve a withdrawal on evidence that does not exist.
-    // It now states exactly what was checked and — where no format is published —
-    // says so in the officer's own words, so the weight of the decision sits
-    // visibly on the DOCUMENT IMAGE, which is where it has always actually been.
-    { label: idType ? `${ID_TYPE_LABEL[idType]} number` : "Identity number", state: (kyc.idNumber ? "pass" : "pending") as "pass" | "fail" | "pending", detail: kyc.idNumber ? formatDetail : "not recorded" },
-    // ⭐ THE PLATFORM'S ONLY AGE CHECK AGAINST A DOCUMENT, FROM 2026-09-13. Until then this review came
-    // before any money; now a player deposits and plays on the date of birth they TYPED, and this row is
-    // the first and last time a human compares age to a document. The detail says so, because "declared,
-    // and gated" read as though something upstream had already verified it — nothing had.
-    // A document that shows the player is under 18 is refused FINAL · Under 18, which freezes the wallet.
-    { label: "18 or older", state: (age18 === null ? "pending" : age18 ? "pass" : "fail") as "pass" | "fail" | "pending", detail: kyc.dob ? `DOB ${maskDob(kyc.dob)} — typed by the player; check it against the document` : "no DOB" },
-    ...(idType === "NIDA"
-      ? [{ label: "NIDA date of birth agrees", state: (dobAgrees === null ? "pending" : dobAgrees ? "pass" : "fail") as "pass" | "fail" | "pending", detail: dobAgrees === null ? "not derivable" : `number says ${maskDob(String(nidaDob))}, account says ${maskDob(String(statedDob))}` }]
-      : []),
-    ...(spec?.expires
-      ? [{ label: "Document in date", state: (!kyc.idExpiry ? "pending" : expired ? "fail" : "pass") as "pass" | "fail" | "pending", detail: kyc.idExpiry ? `expires ${kyc.idExpiry}${expired ? " — EXPIRED" : ""}` : "no expiry recorded" }]
-      : []),
-    { label: "All documents present", state: (allDocs ? "pass" : "fail") as "pass" | "fail" | "pending", detail: required.length ? `${required.filter((r) => present.has(r)).length}/${required.length} uploaded` : "no document type recorded" },
-    { label: "Source-of-funds on file", state: (sof ? "pass" : "pending") as "pass" | "fail" | "pending", detail: sof ? sof.reviewStatus : "not required / absent" },
-  ];
+  const detailOf = (r: KycCheckRow): string => {
+    if (r.key === "number_format") return `${r.detail} · unique to this account (no authority check by design) · ${formatNote}`;
+    // ⭐ The ACCOUNT's date of birth is the one the age gate uses (2026-10-10); the identity record carries a copy of it.
+    if (r.key === "age") return kyc.dob ? `${r.detail} · DOB ${maskDob(kyc.dob)}` : r.detail;
+    if (r.key === "nida_dob" && nidaDob && r.outcome !== "pass") return `${r.detail} · the number says ${maskDob(nidaDob)}`;
+    return r.detail;
+  };
+  const railChecks: RailCheck[] = caseChecks
+    ? caseChecks.decision.rows.map((r) => ({
+        key: r.key,
+        label: r.key === "number_format" && idType ? `${ID_TYPE_LABEL[idType]} number` : CHECK_LABEL[r.key],
+        outcome: r.outcome,
+        detail: detailOf(r),
+      }))
+    : checksFailed
+      ? []
+      : [{ key: "number_format", label: "Identity number", outcome: "pending", detail: "no identity details recorded yet" }];
+  // A photo case keeps "All documents present" — by construction it is (that is what makes it a photo case), and the
+  // officer reads the count beside the images they are about to attest to.
+  if (mode === "photo") {
+    railChecks.push({ key: "documents", label: "All documents present", outcome: "pass", detail: `${required.length}/${required.length} on file · the document's photos and a selfie` });
+  }
+
+  // ── WHY THIS CASE IS WITH AN OFFICER ────────────────────────────────────────
+  // ⭐ The reasons recorded WHEN it was routed (`kyc.routed`, durable audit) — the newest one at or after this send.
+  // Without one (an agent's photo send, or a case sent before 2026-10-10) the page says what the checks read NOW.
+  const routedEntry = targetAudit
+    ? targetAudit.entries.find((e) => e.action === "kyc.routed" && (!kyc.submittedAt || e.createdAt >= kyc.submittedAt.slice(0, 19)))
+    : undefined;
+  const routedAtSend: KycRouteReason[] = routedEntry ? asKycRouteReasons((routedEntry.payload as Record<string, unknown> | null)?.reasons) : [];
+  const routedNow: KycRouteReason[] = caseChecks ? caseChecks.decision.routes : [];
+  const flags = asKycFlags(kyc.autoFlags);
+  const autoUnchecked = kyc.status === "APPROVED" && !!kyc.autoApprovedAt && !kyc.postCheckedAt;
+  // ⭐ A REJECT OF AN AUTOMATIC APPROVAL NO OFFICER HAS CHECKED HOLDS THE WALLET (2026-10-10) — WHATEVER STATUS IT IS IN
+  // NOW (review R5.1): approved, asked for corrections, or back with an officer (an agent photo send, a corrected send
+  // routed on provenance, a corrected date of birth — each keeps `autoApprovedAt` and `approvedAt`). That `approvedAt`
+  // was stamped by the machine and keeps withdrawal open for good, so the rail's freeze is ticked and locked, and the
+  // service refuses such a reject without it. ⛔ THE SERVICE'S OWN PREDICATE (`kyc-approval.ts`), no status test here.
+  const freezeOnReject = uncheckedAutomaticApproval(kyc);
+  // The rail's stage: a case with us is decided; an automatic approval is post-checked; any other approval can still be
+  // asked for corrections or rejected (from 2026-10-10 a rejection may follow an approval). ⭐ CORRECTIONS ASKED is the
+  // player's move, but not a dead end for the officer (2026-10-10): `with_player` offers reject (recoverable or final)
+  // and Escalate AML — never Approve or Mark checked. ⛔ Until then it drew no rail, so a holder found to be under 18,
+  // sanctioned or a duplicate could not be refused for as long as they chose not to answer. ⛔ No rail while nothing
+  // has been sent.
+  const railStage: RailStage | null =
+    kyc.status === "PENDING_REVIEW" ? "review"
+    : kyc.status === "APPROVED" ? (autoUnchecked ? "post_check" : "approved")
+    : kyc.status === "ADDITIONAL_INFO_REQUIRED" ? "with_player"
+    : null;
+  const samePerson = caseChecks?.samePerson ?? [];
 
   // ⭐ A DECIDED CASE HAS NO CLOCK (2026-09-13). The countdown ran from `submittedAt` whatever the status, so an
   // approved or refused case kept reading "3h left" — or "40h overdue" — as though it still waited on an officer.
@@ -242,19 +308,20 @@ async function KycWorkstationContent({ params }: KycWorkstationProps) {
   const slaLabel = decided ? "Decided" : slaMs === null ? "—" : slaMs <= 0 ? `${Math.floor(-slaMs / 3600_000)}h overdue` : `${Math.floor(slaMs / 3600_000)}h ${Math.floor((slaMs % 3600_000) / 60_000)}m left`;
   const slaTone = slaMs === null ? "neutral" : slaMs <= 0 ? "danger" : slaMs < 2 * 3600_000 ? "warning" : "brand";
 
-  // ⛔ THE VIEWER'S TABS ARE THIS DOCUMENT'S SLOTS. Three hard-written tabs meant
+  // ⛔ THE VIEWER'S TABS ARE THIS DOCUMENT'S SLOTS on a photo case. Three hard-written tabs meant
   // a passport submission offered "ID front / ID back / Selfie", two of which can
   // never hold anything — and the bio page, the only image that matters, had no
   // tab at all. An officer approving a document they cannot open is the human
   // control failing silently.
-  //
-  // ⚠️ Falls back to every known slot when the type is missing (a pre-2026-08-20
-  // record mid-backfill), so nothing on file becomes unreachable.
-  const slots = (required.length ? required : ALL_DOC_SLOTS).map((s) => ({
-    type: s,
-    label: ADMIN_SLOT_LABEL[s],
-    uploadedAt: kyc.documents.find((d) => d.docType === s)?.uploadedAt ?? null,
-  }));
+  // ⭐ ON A TYPED CASE (2026-10-10) there is no image to review, so no image card — except the images already ON FILE
+  // (a player's from before 2026-10-10, or an agent's unfinished set), shown read-only under their own heading, one tab
+  // per image actually held, from the frozen legacy list so nothing on file becomes unreachable.
+  const slotOf = (s: ViewerSlot) => ({ type: s, label: ADMIN_SLOT_LABEL[s], uploadedAt: kyc.documents.find((d) => d.docType === s)?.uploadedAt ?? null });
+  const photoSlots = mode === "photo" ? required.map(slotOf) : [];
+  const onFileSlots = mode === "typed" ? LEGACY_KYC_DOC_SLOTS.filter((s) => present.has(s)).map(slotOf) : [];
+  const onFileLegacy = onFileSlots.every((s) => !s.uploadedAt || s.uploadedAt.slice(0, 10) < TYPED_ONLY_FROM);
+  // Officer-requested extra images (a request type retired on 2026-10-10) — read-only, through `?req=`.
+  const legacyExtras = (kyc.extraRequests ?? []).filter((rq: { storageKey: string | null }) => !!rq.storageKey) as Array<{ id: string; description: string; storageKey: string | null; uploadedAt: string | null }>;
 
   return (
     <>
@@ -270,8 +337,8 @@ async function KycWorkstationContent({ params }: KycWorkstationProps) {
                 #{queuePos + 1} of {pending.length} by submission · oldest {ageLabel(oldest)}
               </span>
             )}
-            {/* A file we asked more of is the PLAYER's move, so it holds no place in the queue above (2026-09-14). The header
-                says whose move it is, in /admin/kyc's own word, rather than going quiet. */}
+            {/* A file we asked corrections of is the PLAYER's move, so it holds no place in the queue above (2026-09-14). The
+                header says whose move it is, in /admin/kyc's own word, rather than going quiet. */}
             {kyc.status === "ADDITIONAL_INFO_REQUIRED" && <KycStageBadge cell="more_needed" />}
             {/* ⚠️ LITERAL, not `h-8` — spacing is overridden (tailwind.config.ts:200-215) so
                 `h-8` was 48px. 40px = --tap-min, the admin header-chip height.
@@ -286,15 +353,55 @@ async function KycWorkstationContent({ params }: KycWorkstationProps) {
 
       <div className="px-4 lg:px-6 py-5">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)] items-start">
-          {/* Document viewer (left) */}
+          {/* Document viewer (left) — a PHOTO case only; a typed case shows images only if some are already on file. */}
           <div className="space-y-4">
-            <AdminCard title="Documents · Nyaraka" sw={slots.map((s) => s.label).join(" · ")}>
-              <KycDocViewer userId={id} slots={slots} />
-            </AdminCard>
+            {mode === "photo" && (
+              <AdminCard title="Documents · Nyaraka" sw={photoSlots.map((s) => s.label).join(" · ")}>
+                <KycDocViewer userId={id} slots={photoSlots} />
+              </AdminCard>
+            )}
+            {onFileSlots.length > 0 && (
+              <AdminCard
+                title={onFileLegacy ? `On file · before ${TYPED_ONLY_FROM} · read-only` : "On file · photo set not complete · read-only"}
+                sw={onFileSlots.map((s) => s.label).join(" · ")}
+              >
+                <p className="mb-2.5 text-body-sm text-text-muted max-w-[72ch]">
+                  {onFileLegacy
+                    ? "This identity is decided on its typed details. These images were uploaded before players stopped sending photos; they are kept on file and shown for reference only."
+                    : "Some photos are on file, but not the document's full set and a selfie, so this is decided as a typed case. The images are shown for reference only."}
+                </p>
+                <KycDocViewer userId={id} slots={onFileSlots} />
+              </AdminCard>
+            )}
+            {legacyExtras.length > 0 && (
+              <AdminCard title={`Requested documents · before ${TYPED_ONLY_FROM} · read-only`} sw="Nyaraka za ziada">
+                {/* ⛔ Officers can no longer ask for extra documents (2026-10-10). Those already uploaded stay readable,
+                    through the same audited image route, matched against this player's own row (`?req=`). */}
+                <div className="space-y-2.5">
+                  {legacyExtras.map((rq) => {
+                    const src = `/api/admin/kyc-doc?user=${encodeURIComponent(id)}&req=${encodeURIComponent(rq.id)}`;
+                    return (
+                      <div key={rq.id} className="flex items-start gap-3 rounded-md border border-border bg-bg-inset/40 p-2.5">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-body-sm text-text leading-snug">{rq.description}</p>
+                          <p className="mt-0.5 font-mono text-micro text-text-tertiary">{rq.uploadedAt ? `Uploaded · ${formatDateTime(rq.uploadedAt)}` : "Uploaded"}</p>
+                        </div>
+                        <a href={src} target="_blank" rel="noopener noreferrer" className="block shrink-0 overflow-hidden rounded-md border border-border hover:border-brand-500 transition-colors" title="Open full size">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={src} alt="requested document" loading="lazy" className="h-16 w-16 object-cover" />
+                        </a>
+                      </div>
+                    );
+                  })}
+                </div>
+              </AdminCard>
+            )}
 
             <AdminCard title="Applicant · Mwombaji">
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-[12.5px]">
                 <Field label="Full name" value={kyc.fullName ?? "—"} />
+                {/* ⭐ WHAT KIND OF CASE (2026-10-10) — it decides the images, the attestations and the agent gate. */}
+                <Field label="Case" value={mode === "photo" ? "Photo case · document photos and selfie" : "Typed details"} />
                 {/* ⛔ WHICH DOCUMENT, THEN THE NUMBER. A masked tail alone stopped
                     being a complete statement the day four documents were accepted —
                     "•••• 5678" does not tell an officer what they are about to
@@ -326,10 +433,35 @@ async function KycWorkstationContent({ params }: KycWorkstationProps) {
                     Found by the drift ratchet (test:read-tiers §7), not by looking. */}
                 <Field label="DOB" value={<span className="font-mono">{kyc.dob ? <Sensitive field="dob" subjectId={id} value={kyc.dob} /> : "—"}</span>} />
                 <Field label="Region" value={user?.region ? <Sensitive field="region" subjectId={id} value={user.region} /> : "—"} />
-                <Field label="Submitted" value={<span className="font-mono">{kyc.submittedAt ? formatDateTime(kyc.submittedAt) : "—"}</span>} />
+                {/* ⭐ An automatic approval was never SENT (no `submittedAt`): its details were submitted and verified in the
+                    same instant, `autoApprovedAt` — "—" only when neither exists (2026-10-10). */}
+                <Field label="Submitted" value={<span className="font-mono">{kyc.submittedAt ? formatDateTime(kyc.submittedAt) : kyc.autoApprovedAt ? formatDateTime(kyc.autoApprovedAt) : "—"}</span>} />
                 <Field label="Phone" value={<span className="font-mono">{user ? <Sensitive field="phone" subjectId={user.id} value={user.phoneE164} /> : "—"}</span>} />
               </dl>
             </AdminCard>
+
+            {/* ⭐ POSSIBLE SAME PERSON (2026-10-10) — other accounts whose identity carries the same normalised name and
+                date of birth. ⛔ EACH IS NAMED BY A LINK TO ITS OWN CASE, NEVER BY ITS NAME: this page is about one
+                person, and printing another account's name here would hand it to every viewer of this case. */}
+            {samePerson.length > 0 && (
+              <AdminCard title="Possible same person" sw="Huenda ni mtu yule yule">
+                <p className="mb-2 text-body-sm text-text-muted max-w-[72ch]">
+                  {samePerson.length === 1 ? "Another account has" : `${samePerson.length} other accounts have`} the same name and date of birth on their identity. Open each case to compare; a match is a reason to look, not a finding.
+                </p>
+                <ul className="space-y-1.5" data-kyc-same-person={samePerson.length}>
+                  {samePerson.map((m) => (
+                    <li key={m.userId} className="flex flex-wrap items-center gap-2 text-body-sm">
+                      <Link href={`/admin/kyc/${m.userId}` as Route} className="font-mono text-royal-300 hover:underline">{m.userId.slice(0, 14)}…</Link>
+                      {m.restricted ? (
+                        <Chip size="sm" variant="danger" style={{ whiteSpace: "nowrap" }}>Restricted account</Chip>
+                      ) : (
+                        <Chip size="sm" variant="neutral" style={{ whiteSpace: "nowrap" }}>Open account</Chip>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </AdminCard>
+            )}
 
             {/* ⭐ MONEY AT STAKE (2026-09-13). From that date identity is asked before a withdrawal and at no
                 earlier step, so this review decides whether money the platform already holds may leave. Every
@@ -354,8 +486,13 @@ async function KycWorkstationContent({ params }: KycWorkstationProps) {
                     ) : !approvedEver(kyc)
                       ? "Not passed · withdrawals wait on approval"
                       : kyc.status === "APPROVED"
-                        ? "Passed"
-                        : "Passed before · approved once"
+                        ? autoUnchecked
+                          ? "Passed · automatically, not yet checked by an officer"
+                          : "Passed"
+                        // ⭐ R5.1 — an approval only the machine made says so in every status, not only while APPROVED.
+                        : uncheckedAutomaticApproval(kyc)
+                          ? "Passed before · automatically, never checked by an officer"
+                          : "Passed before · approved once"
                   }
                 />
                 <Field
@@ -485,31 +622,126 @@ async function KycWorkstationContent({ params }: KycWorkstationProps) {
             </AdminCard>
 
             <AdminCard title={decided ? "Decision" : "Officer decision"} sw={decided ? undefined : "Uamuzi wa afisa"}>
-              {decided ? (
+              {decided && (
                 <div className="flex items-start gap-2.5">
                   <I.shieldcheck s={18} className={kyc.status === "APPROVED" ? "text-success-fg mt-0.5 shrink-0" : "text-danger-fg mt-0.5 shrink-0"} />
                   <div>
                     <p className={`font-display text-[15px] font-bold ${kyc.status === "APPROVED" ? "text-success-fg" : "text-danger-fg"}`}>
                       {kyc.status === "APPROVED" ? "Identity approved" : isFinalRefusal(kyc.rejectReason) ? `Refused · FINAL · ${FINAL_CODE_LABEL[kyc.rejectReason]}` : "Submission rejected"}
                     </p>
-                    {/* The separator only between two parts (2026-09-13) — with no reviewer it printed a lone " · " before the date. */}
-                    <p className="mt-0.5 text-body-sm text-text-muted">
-                      {[kyc.reviewerId ? `by ${kyc.reviewerId.slice(0, 14)}…` : "", kyc.reviewedAt ? formatDateTime(kyc.reviewedAt) : ""].filter(Boolean).join(" · ")}
-                    </p>
-                    {kyc.rejectNote && <p className="mt-1 text-body-sm text-text-muted italic">“{kyc.rejectNote}”</p>}
+                    {/* ⭐ WHO APPROVED IT (2026-10-10). An automatic approval has no reviewer — it is never attributed to an
+                        officer — so it says it was automatic, and whether an officer has checked it since. */}
+                    {kyc.status === "APPROVED" && kyc.autoApprovedAt ? (
+                      <p className="mt-0.5 text-body-sm text-text-muted" data-kyc-approval="automatic">
+                        {[
+                          `Automatically · ${formatDateTime(kyc.autoApprovedAt)}`,
+                          kyc.postCheckedAt
+                            ? `checked${kyc.postCheckedById ? ` by ${kyc.postCheckedById.slice(0, 14)}…` : ""} · ${formatDateTime(kyc.postCheckedAt)}`
+                            : "not yet checked by an officer",
+                        ].join(" · ")}
+                      </p>
+                    ) : (
+                      /* The separator only between two parts (2026-09-13) — with no reviewer it printed a lone " · " before the date. */
+                      <p className="mt-0.5 text-body-sm text-text-muted">
+                        {[kyc.reviewerId ? `by ${kyc.reviewerId.slice(0, 14)}…` : "", kyc.reviewedAt ? formatDateTime(kyc.reviewedAt) : ""].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
+                    {/* ⭐ THE AGENT GATE'S OWN PREDICATE (`photoIdentityVerified`, review R5.2): the stamp counts only over the
+                        full photo set uploaded no later than it — a bare stamp is never printed as an officer's photo check. */}
+                    {photoIdentityVerified(kyc) && kyc.photoVerifiedAt ? (
+                      <p className="mt-0.5 text-body-sm text-text-muted">Photos and selfie verified by an officer · {formatDateTime(kyc.photoVerifiedAt)}</p>
+                    ) : kyc.status === "APPROVED" && kyc.photoVerifiedAt ? (
+                      <p className="mt-0.5 text-body-sm text-warning-fg" data-kyc-photo-stamp="unbacked">A photo approval is on file, but not over the photos on file now (missing, or added after it) — it does not count for the agent programme.</p>
+                    ) : null}
+                    {kyc.status === "APPROVED" && flags.length > 0 && (
+                      <ul className="mt-1.5 space-y-0.5" data-kyc-flags={flags.length}>
+                        {flags.map((f) => (
+                          <li key={f} className="flex items-start gap-1.5 text-body-sm text-warning-fg">
+                            <I.alertCircle s={13} className="mt-0.5 shrink-0" /> {FLAG_LABEL[f]}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {kyc.status === "REJECTED" && kyc.rejectNote && <p className="mt-1 text-body-sm text-text-muted italic">“{kyc.rejectNote}”</p>}
                   </div>
                 </div>
-              ) : (
-                <KycDecisionRail
-                  userId={id}
-                  autoChecks={autoChecks}
-                  makerCheckerRequired={makerCheckerRequired}
-                  hasRecommendation={!!recommendation}
-                  isRecommender={!!recommendation && recommendation.officerId === currentOfficerId}
-                  recommenderName={recommendation?.officerName ?? null}
-                />
+              )}
+
+              {/* ⭐ WHY IT IS WITH AN OFFICER (2026-10-10) — the reasons recorded when the case was routed, or, without that
+                  record (an agent's photo send, a case sent before that date), what the checks read now. */}
+              {kyc.status === "PENDING_REVIEW" && (
+                <div className="mb-4 rounded-md border border-border bg-bg-inset/40 px-3 py-2.5" data-kyc-routed={routedAtSend.length > 0 ? "recorded" : "now"}>
+                  <p className="font-mono text-micro uppercase eyebrow text-text-subtle">
+                    {routedAtSend.length > 0 ? "Sent to an officer because" : mode === "photo" ? "Photo case" : "With an officer · as the checks read now"}
+                  </p>
+                  {(routedAtSend.length > 0 ? routedAtSend : routedNow).length > 0 ? (
+                    <ul className="mt-1 space-y-0.5">
+                      {(routedAtSend.length > 0 ? routedAtSend : routedNow).map((r) => (
+                        <li key={r} className="text-body-sm text-text">{ROUTE_REASON_LABEL[r]}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-1 text-body-sm text-text-muted">
+                      {checksFailed ? "The checks could not be read." : "No routing reason is recorded for this send — it reached the queue before automatic checks, or from the agent photo track."}
+                    </p>
+                  )}
+                  {!targetAudit && <p className="mt-1 text-body-sm text-warning-fg">The routing record could not be read.</p>}
+                </div>
+              )}
+
+              {/* ⭐ CORRECTIONS ASKED — THE PLAYER'S MOVE. Nothing approves it: the player corrects and sends, and the case
+                  comes back to an officer. ⭐ But the rail below still refuses or escalates it (2026-10-10) — see `railStage`. */}
+              {kyc.status === "ADDITIONAL_INFO_REQUIRED" && (
+                <div className="space-y-1" data-kyc-with-player="1">
+                  <p className="font-display text-[15px] font-bold text-warning-fg">Corrections asked · with the player</p>
+                  <p className="text-body-sm text-text-muted">
+                    {[kyc.reviewerId ? `by ${kyc.reviewerId.slice(0, 14)}…` : "", kyc.reviewedAt ? formatDateTime(kyc.reviewedAt) : ""].filter(Boolean).join(" · ")}
+                  </p>
+                  {kyc.rejectNote && <p className="text-body-sm text-text-muted italic">“{kyc.rejectNote}”</p>}
+                  <p className="text-body-sm text-text-tertiary">Nothing is approved until the player sends their corrected details. You can still reject or refuse this identity, or escalate it to AML.</p>
+                </div>
+              )}
+              {(kyc.status === "IN_PROGRESS" || kyc.status === "NOT_STARTED") && (
+                <p className="text-body-sm text-text-muted" data-kyc-with-player="1">
+                  Nothing to decide yet: the player has not sent their details{mode === "typed" && present.size > 0 ? " (some photos are on file from the agent photo track or before 2026-10-10)" : ""}.
+                </p>
+              )}
+
+              {railStage && (
+                <div className={decided || railStage === "with_player" ? "mt-4 border-t border-border-subtle pt-4" : ""}>
+                  {railStage === "post_check" && (
+                    <p className="mb-3 text-body-sm text-text-muted">
+                      Approved automatically from typed details. Check the details, the number&apos;s flags and other accounts, then mark it checked — or ask for corrections, or reject.
+                    </p>
+                  )}
+                  <KycDecisionRail
+                    userId={id}
+                    version={version}
+                    stage={railStage}
+                    mode={mode}
+                    approvedOnce={approvedEver(kyc)}
+                    freezeRequired={freezeOnReject}
+                    checks={railStage === "approved" || railStage === "with_player" ? [] : railChecks}
+                    checksReadable={!checksFailed}
+                    makerCheckerRequired={makerCheckerRequired}
+                    hasRecommendation={!!recommendation}
+                    isRecommender={!!recommendation && recommendation.officerId === currentOfficerId}
+                    recommenderName={recommendation?.officerName ?? null}
+                  />
+                </div>
               )}
             </AdminCard>
+
+            {/* ⭐ THE ACCOUNT'S DATE OF BIRTH (2026-10-10) — the age gate's input, now typed once at sign-up and never asked
+                again. An officer corrects it here on evidence; a final refusal must be re-opened first. */}
+            {!finalRefused && (
+              <AdminCard title="Date of birth" sw="Tarehe ya kuzaliwa">
+                <p className="mb-2.5 text-body-sm text-text-muted">
+                  The identity check uses the date of birth on the account. If it was mistyped at sign-up, correct it here — the age check runs again and the identity goes to an officer.
+                </p>
+                <KycDobCorrection userId={id} version={version} />
+              </AdminCard>
+            )}
 
             {/* ⭐ S1 — A FINAL REFUSAL LEAVES A BALANCE TO DECIDE (owner ruling, 2026-09-13). The wallet was
                 frozen by the refusal; this card is where an officer chooses one of the four recorded outcomes,

@@ -43,6 +43,8 @@ import {
 import { parseQuery, matchesQuery, queryToWhere, fieldNames, NOTIFICATION_SEARCH, CONTACT_SEARCH } from "@/lib/search";
 import type { ParsedQuery } from "@/lib/search";
 import { holdsDocumentNumber } from "@/lib/kyc-refusal";
+// 2026-10-10 (review R5.1) · the post-check list's one predicate and status list — the Prisma half reads the same pair.
+import { uncheckedAutomaticApproval, POST_CHECK_LIST_STATUSES } from "@/lib/kyc-approval";
 // U29 · a staged run carries U28's mapping and drafted problems, the parsed file's format, and U31's choice and outcome
 // union — TYPES only, so loading the store loads no contacts module.
 import type { ColumnMapping, FieldProblem } from "@/lib/contacts/contact-fields";
@@ -182,9 +184,10 @@ export type StoredKyc = {
    *  JPEGs). Optional so older/partial records still load. */
   documents: { docType: string; storageKey: string; uploadedAt: string; mimeType?: string; sizeBytes?: number }[];
   /** Extra documents an officer asked for during review (each with a written
-   *  description the player and reviewer both see). Empty in the normal case;
-   *  populated by a REQUEST_INFO decision. `storageKey` is null until the
-   *  player uploads the requested file. */
+   *  description the player and reviewer both see). Empty in the normal case.
+   *  ⛔ LEGACY ONLY since 2026-10-10: the REQUEST_INFO decision that populated it is
+   *  removed (officers ask for CORRECTIONS of typed details instead), so nothing writes
+   *  a new request; rows from before keep theirs, read-only, and never block a send. */
   extraRequests?: KycExtraRequest[];
   reviewerId: string | null;
   reviewedAt: string | null;
@@ -194,11 +197,64 @@ export type StoredKyc = {
    *  arm is `status === "APPROVED"`). Since 2026-09-13 that is the ONLY identity question on
    *  any money path: deposit and betting ask none (from 2026-09-05 to 2026-09-13 they asked
    *  `status`, through the deleted `assertKycForMoney`). Never clearing it is what stops
-   *  `forceReverifyKyc` freezing money a player earned under an identity we already
+   *  `askForCorrections` (formerly `forceReverifyKyc`) freezing money a player earned under an identity we already
    *  accepted — see the column note in `prisma/schema.prisma`. Optional so rows written
    *  before 2026-09-05 still load. */
   approvedAt?: string | null;
+  // ── ⭐ TYPED-ONLY KYC (owner ruling, Ali, 2026-10-10 — migration 20261010150000_kyc_typed_identity). One
+  // `status` cannot say WHICH kind of approval a row holds, and two gates now ask different questions: the
+  // withdrawal gate asks "ever approved?" (`approvedAt`), the agent programme asks "approved by an officer
+  // on photos?" (`photoVerifiedAt`). 🔴 BOTH DAL HALVES MAP EVERY ONE BOTH WAYS — `db.kyc.upsert` writes back
+  // the whole row its caller read, so a field dropped on the way out is NULLED on the next write (the E-3
+  // shape). Optional so rows written before 2026-10-10 still load.
+  /** An officer approved this identity WITH the full photo set + selfie on file — the agent gate. */
+  photoVerifiedAt?: string | null;
+  /** Approved automatically from typed details (no officer). */
+  autoApprovedAt?: string | null;
+  /** The automatic checks' FLAG codes at that approval (`KycFlag` in `kyc-auto-checks.ts`). */
+  autoFlags?: string[];
+  /** An officer checked the automatic approval afterwards (`markPostChecked`). */
+  postCheckedAt?: string | null;
+  postCheckedById?: string | null;
+  /** APPEND-ONLY: the typed identities a restart, a correction or a re-open replaced. Oldest first. */
+  priorIdentities?: KycPriorIdentity[];
   createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * One typed identity a submission used to hold, kept when a restart, a player's correction or an officer's
+ * re-open replaced it (2026-10-10). ⭐ With no images, the typed details are the only identification record
+ * a player leaves, so a reset must never simply drop them — and the officer's decision on them (status,
+ * reviewer, first approval) travels with them. ⛔ The fingerprint is the keyed HMAC, never the number.
+ */
+export type KycPriorIdentity = {
+  idType: string | null;
+  idNumber: string | null;
+  idExpiry: string | null;
+  fullName: string | null;
+  dob: string | null;
+  idFingerprint: string | null;
+  status: string;
+  approvedAt: string | null;
+  reviewerId: string | null;
+  cause: "restart" | "correction" | "reopen";
+  supersededAt: string;
+};
+
+/** A same-person candidate (`findSamePersonCandidates`) — scalars only; the NAME is compared in JS. */
+export type KycSamePersonCandidate = { userId: string; fullName: string | null; status: string; rejectReason: string | null };
+
+/** One automatic approval not yet checked by an officer (`listUncheckedAutoApprovals`) — scalars only. ⭐ `status` since
+ *  review R5.1: the list holds such an approval with an officer or with the player too, and the screens say which. */
+export type KycUncheckedAutoApproval = {
+  id: string;
+  userId: string;
+  status: StoredKyc["status"];
+  idType: string | null;
+  autoApprovedAt: string;
+  autoFlags: string[];
+  approvedAt: string | null;
   updatedAt: string;
 };
 
@@ -2624,6 +2680,72 @@ const memoryDb = {
         rejectReason: k.rejectReason ?? null,
         createdAt: k.createdAt,
       }));
+    },
+    /**
+     * ⭐ POSSIBLE SAME PERSON (2026-10-10, typed-only KYC) — every submission on ANOTHER account whose date of
+     * birth is this calendar day. Mirror of the Prisma half; scalars only (never documents or extraRequests).
+     * ⛔ The NAME is not compared here: both halves return the day's rows and the service compares
+     * `samePersonNameKey` in JS, so the two stores cannot normalise a name two ways. A pseudonymised row
+     * ("Erased …", `anonymizeClosedAccount`) never matches — erasure is not a person.
+     */
+    findSamePersonCandidates: (dob: string, excludeUserId: string): KycSamePersonCandidate[] => {
+      const day = String(dob ?? "").slice(0, 10);
+      if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(day)) return [];
+      const out: KycSamePersonCandidate[] = [];
+      for (const k of store.kyc.values()) {
+        if (k.userId === excludeUserId) continue;
+        if (String(k.dob ?? "").slice(0, 10) !== day) continue;
+        // ⛔ No name (null or "") is never a candidate — the Postgres half's `fullName <> ''` drops both (2026-10-10,
+        // review R2.9), so the two halves return the same rows.
+        if (!k.fullName) continue;
+        if (k.fullName.startsWith("Erased ")) continue;
+        out.push({ userId: k.userId, fullName: k.fullName ?? null, status: k.status, rejectReason: k.rejectReason ?? null });
+      }
+      return out;
+    },
+    /**
+     * ⭐ THE OFFICERS' POST-CHECK LIST (2026-10-10) — automatic approvals no officer has checked yet: the NEWEST
+     * submission per user (`createdAt` desc, `id` desc — the `listStageFacts` rule, so the two reads agree on
+     * which row is a person's) holding one (`uncheckedAutomaticApproval`: `approvedAt` and `autoApprovedAt` set,
+     * `postCheckedAt` null), in a status of `POST_CHECK_LIST_STATUSES` — APPROVED, PENDING_REVIEW or
+     * ADDITIONAL_INFO_REQUIRED, and the row says which. Scalars only.
+     * ⭐ NOT APPROVED ONLY (review R5.1): an agent photo send, a corrected send routed to an officer and a date-of-birth
+     * correction each move such an approval to PENDING_REVIEW, and corrections asked to ADDITIONAL_INFO_REQUIRED — with
+     * its `approvedAt`, and so withdrawal, still open. It dropped off this list, the sidebar badge and the finance figure.
+     * ⛔ IN A DEFINED ORDER — newest approval first (`autoApprovedAt` desc, then `id` desc), the Prisma half's
+     * `orderBy` (review R2.8): a caller that caps the list must cut the same rows from both stores, and "the newest N"
+     * must be true. Map insertion order was no order at all.
+     */
+    listUncheckedAutoApprovals: (): KycUncheckedAutoApproval[] => {
+      const newest = new Map<string, StoredKyc>();
+      for (const k of store.kyc.values()) {
+        const cur = newest.get(k.userId);
+        const wins = !cur
+          || k.createdAt > cur.createdAt
+          || (k.createdAt === cur.createdAt && k.id > cur.id);
+        if (wins) newest.set(k.userId, k);
+      }
+      const out: KycUncheckedAutoApproval[] = [];
+      const listed = new Set<string>(POST_CHECK_LIST_STATUSES);
+      for (const k of newest.values()) {
+        if (!listed.has(k.status) || !uncheckedAutomaticApproval(k) || !k.autoApprovedAt) continue;
+        out.push({
+          id: k.id,
+          userId: k.userId,
+          status: k.status,
+          idType: k.idType ?? null,
+          autoApprovedAt: k.autoApprovedAt,
+          autoFlags: Array.isArray(k.autoFlags) ? [...k.autoFlags] : [],
+          approvedAt: k.approvedAt ?? null,
+          updatedAt: k.updatedAt,
+        });
+      }
+      // ISO instants compare as strings; plain `<` / `>`, never `localeCompare`, so the order is the code-point order
+      // the Postgres half's `id desc` gives these ASCII ids.
+      return out.sort((a, b) =>
+        a.autoApprovedAt !== b.autoApprovedAt
+          ? (a.autoApprovedAt < b.autoApprovedAt ? 1 : -1)
+          : a.id === b.id ? 0 : (a.id < b.id ? 1 : -1));
     },
   },
   otp: {

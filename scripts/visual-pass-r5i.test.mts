@@ -411,7 +411,9 @@ section("3 · I-2 · a refusal the player can fix is the calm `factual` toast an
     ["src/app/proposals/new/create-form.tsx", 1], ["src/components/markets/comments-thread.tsx", 2],
     ["src/components/markets/objection-dialog.tsx", 1], ["src/components/profile/name-editor.tsx", 1],
     ["src/components/profile/avatar-uploader.tsx", 2], ["src/components/proposals/vote-control.tsx", 1],
-    ["src/components/profile/kyc-doc-uploader.tsx", 2],
+    // 2 → 1 on 2026-10-10 (typed-only identity): `KycExtraDocUploader` was deleted with the extra-document requests, and
+    // its server refusal with it — what is left is the agent photo track's one uploader.
+    ["src/components/profile/kyc-doc-uploader.tsx", 1],
   ];
   for (const [f, n] of RANKED) {
     const got = (read(f).match(/variant: refusalVariant\(refusalReason\((?:r|result)\)\)/g) ?? []).length;
@@ -425,7 +427,9 @@ section("3 · I-2 · a refusal the player can fix is the calm `factual` toast an
   });
   const playerFiles = walk(join(ROOT, "src")).filter((f) => !OUT_OF_SCOPE.test(f));
   const slipCount = playerFiles.reduce((s, f) => s + ((read(f).match(/toast\(\{[^;]*?\}\)/g) ?? []).filter((c) => SLIP_TITLES.test(c) && /variant: "factual"/.test(c)).length), 0);
-  ok("3.5 · the player's own slips are `factual` toasts — 13: the two KYC uploaders' 6, the photo's 2, the agent's unreadable photo, the empty name, the three refused copies", slipCount === 13, String(slipCount));
+  // 13 → 10 on 2026-10-10 (typed-only identity), measured: `KycExtraDocUploader` went with the extra-document requests,
+  // and its three slips (not an image · too large · unreadable) with it. The agent photo track keeps the one uploader's three.
+  ok("3.5 · the player's own slips are `factual` toasts — 10: the KYC uploader's 3 (the agent photo track), the photo's 2, the agent's unreadable photo, the empty name, the three refused copies", slipCount === 10, String(slipCount));
   const AGENT = read("src/app/agent/apply/apply-client.tsx");
   ok("3.7 · the agent application: a referee field, a short balance, an unconfirmed address and a file's own slip are `factual`; the rest `danger`",
     /variant: r\.field \? "factual" : "danger"/.test(AGENT) && /r\.refusal === "insufficient_balance" \? refusalVariant\("balance_insufficient"\) : r\.refusal === "email_unverified" \? refusalVariant\("email_unverified"\) : "danger", durationMs: 0/.test(AGENT)

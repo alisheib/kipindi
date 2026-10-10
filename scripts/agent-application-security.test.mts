@@ -89,10 +89,41 @@ async function fullDraft(uid: string, feeRef: string) {
   await mkFixtureUser("sec_nokyc");
   await db.kyc.upsert({ ...(await db.kyc.findByUserId("sec_nokyc"))!, status: "PENDING_REVIEW", approvedAt: null });
   const nokyc = await startApplication("sec_nokyc");
-  ok("1.kyc · self-service needs an APPROVED identity first", !nokyc.ok, JSON.stringify(nokyc));
+  ok("1.kyc · self-service needs an officer's PHOTO approval of the identity first", !nokyc.ok, JSON.stringify(nokyc));
+  /**
+   * ⭐ TWO KINDS OF "APPROVED" SINCE 2026-10-10 (owner ruling — players verify with typed details, approved
+   * automatically; agents keep photos and an officer). The agent door asks `photoIdentityVerified`: APPROVED, an
+   * officer's photo stamp, and the photo set still on file. Both shapes below are APPROVED and both must be refused —
+   * a player's automatic typed approval, and the migration's backfill shape (a stamp whose photos a restart removed).
+   * The CONTROL is `1.control` below: `verified-fixtures` writes an officer's photo approval with the full photo set.
+   */
+  await mkFixtureUser("sec_typedkyc");
+  const typedRow = (await db.kyc.findByUserId("sec_typedkyc"))!;
+  const at = new Date().toISOString();
+  await db.kyc.upsert({ ...typedRow, status: "APPROVED", approvedAt: at, autoApprovedAt: at, autoFlags: [], photoVerifiedAt: null, postCheckedAt: null, postCheckedById: null, reviewerId: null, documents: [] });
+  const typedElig = await applicantEligibility("sec_typedkyc");
+  const typedStart = await startApplication("sec_typedkyc");
+  ok("1.kycauto · ⛔ an AUTOMATIC typed approval (no officer, no photos) does not open the agent door",
+    !typedElig.ok && typedElig.refusal === "kyc_required" && !typedStart.ok, JSON.stringify({ typedElig, typedStart }));
+  await mkFixtureUser("sec_stampkyc");
+  await db.kyc.upsert({ ...(await db.kyc.findByUserId("sec_stampkyc"))!, status: "APPROVED", approvedAt: at, photoVerifiedAt: at, documents: [] });
+  const stampElig = await applicantEligibility("sec_stampkyc");
+  ok("1.kycstamp · ⛔ a photo stamp with no photos on file (the backfill shape) does not open it either",
+    !stampElig.ok && stampElig.refusal === "kyc_required", JSON.stringify(stampElig));
+  // ⭐ 2026-10-10 (review R5.2): nor a stamp whose photos were uploaded AFTER it — a stray stamp (the backfill run again
+  // over an automatic approval) met by the player's own photos, which no officer ever saw. The CONTROL is `1.control`
+  // below: `verified-fixtures` writes the photos at the stamp's own instant, as an officer's approval of real photos has them.
+  await mkFixtureUser("sec_latekyc");
+  const lateRow = (await db.kyc.findByUserId("sec_latekyc"))!;
+  const stampedAt = new Date(Date.now() - 60_000).toISOString();
+  await db.kyc.upsert({ ...lateRow, status: "APPROVED", approvedAt: stampedAt, photoVerifiedAt: stampedAt,
+    documents: lateRow.documents.map((d) => ({ ...d, uploadedAt: new Date().toISOString() })) });
+  const lateElig = await applicantEligibility("sec_latekyc");
+  ok("1.kyclate · ⛔ a photo stamp over photos uploaded AFTER it does not open the agent door",
+    lateRow.documents.length >= 3 && !lateElig.ok && lateElig.refusal === "kyc_required", JSON.stringify(lateElig));
 
   const s1 = await startApplication("sec_app1");
-  ok("1.control · CONTROL — an ordinary verified player starts a draft", s1.ok && s1.data?.resumed === false, JSON.stringify(s1));
+  ok("1.control · CONTROL — a player whose identity an officer approved on photos (the verified-fixtures shape) starts a draft", s1.ok && s1.data?.resumed === false, JSON.stringify(s1));
   const s2 = await startApplication("sec_app1");
   ok("1.one · a second start RESUMES the same draft — never two applications", s2.ok && s2.data?.resumed === true && s2.data.applicationId === s1.data?.applicationId, JSON.stringify(s2));
   const v = await applicantView("sec_app1");
@@ -421,8 +452,16 @@ async function fullDraft(uid: string, feeRef: string) {
   // file (targetType AgentApplication) from referee-exclusion.ts, under named constants — so they are read from there too.
   const refereeSrc = readFileSync(new URL("../src/lib/server/marketing/referee-exclusion.ts", import.meta.url), "utf8");
   const handActions = [...refereeSrc.matchAll(/export const REFEREE_[A-Z_]+_ACTION = "(marketing[.][a-z_.]+)";/g)].map((m) => m[1]);
-  const audited = [...new Set([...[...svc.matchAll(/action: "(agent[.][a-z_.]+)"/g)].map((m) => m[1]), ...handActions])].sort();
+  // ⭐ 2026-10-10 · A THIRD WRITER TO THE CASE FILE: the console's audited reveal (`src/app/admin/players/actions.ts`) files
+  // `pii.revealed` under the field's registry `targetType` — and a referee's contact is registered against the APPLICATION
+  // (`sensitive-fields.ts`, `refereeOneContact` / `refereeTwoContact`), so an officer's reveal lands on this case's
+  // timeline and needs its words. Read from both files: the registry entry AND the writer, or it is not on the file.
+  const sensitiveSrc = readFileSync(new URL("../src/lib/server/sensitive-fields.ts", import.meta.url), "utf8");
+  const revealSrc = readFileSync(new URL("../src/app/admin/players/actions.ts", import.meta.url), "utf8");
+  const revealActions = /targetType: "AgentApplication"/.test(sensitiveSrc) && /action: "pii[.]revealed"/.test(revealSrc) ? ["pii.revealed"] : [];
+  const audited = [...new Set([...[...svc.matchAll(/action: "(agent[.][a-z_.]+)"/g)].map((m) => m[1]), ...handActions, ...revealActions])].sort();
   ok("8.hand · …and the referee hand steps written to the same case file (two, from referee-exclusion.ts)", handActions.length === 2, handActions.join(", "));
+  ok("8.reveal · …and the console's reveal of a referee's contact, filed on the application (sensitive-fields.ts → players/actions.ts)", revealActions.length === 1);
   ok("8.population · the scan reaches the service's audited actions (a vacuous pass is not a pass)", audited.length >= 25, String(audited.length));
   ok("8.sources · …and it reaches the WALLET rail too, not just the application service", audited.includes("agent.fee.paid_from_wallet"), audited.join(", "));
 

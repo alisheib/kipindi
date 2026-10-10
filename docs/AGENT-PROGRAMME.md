@@ -139,8 +139,56 @@ Seven: **CV** · **formal request letter** · **Serikali ya Mtaa letter** · **r
 identification documents"*).
 
 ⭐ The framework's fifth item, *"Government-Issued Identification"*, **is the platform's existing
-KYC** — live and certified (D1–D4, the only 4 of 52 certified modules). An applicant may not
-submit until their own `KycSubmission` is `APPROVED`. ⛔ Do not build a second identity flow.
+KYC** — live and certified (D1–D4, the only 4 of 52 certified modules). ~~An applicant may not
+submit until their own `KycSubmission` is `APPROVED`.~~ ⛔ Do not build a second identity flow.
+
+⭐ **AGENTS ARE UNCHANGED BY THE 2026-10-10 RULING — and that is why "APPROVED" stopped being the question.** From
+2026-10-10 a PLAYER verifies with typed details only and is approved AUTOMATICALLY when the checks pass, with no officer
+and no photo ([`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) § "2026-10-10 · Players verify identity with typed
+details and are approved at once; agents keep photo identity — Privacy v2026-10-10, Terms v2026-10-10, AML v2026-10-10
+(Gaming Board request, relayed by the owner)", ruling 5: *"for agents keep as before regarding KYC"*). An agent
+applicant still verifies with **the document's photos and a selfie, approved by an officer**, exactly as before; the
+seven documents above, the fee and the Agent Terms did not change. So an APPROVED status alone no longer says that,
+and every agent gate asks `src/lib/server/agent-identity.ts` instead:
+
+- **`photoIdentityVerified(kyc)`** — APPROVED, `photoVerifiedAt` stamped (an officer's approval in photo mode), and the
+  photos that stamp approved: the full photo set for the document on file, every required photo uploaded no later than
+  the stamp (`photoSetStampedBy`, `src/lib/id-documents.ts` — photos added after a stamp are not the ones it approved).
+  Measured on production read-only, 2026-10-10: 13 stamped rows, 0 with a photo uploaded after its stamp.
+  Self-service eligibility, the fee payment and `approveAgent` ask it.
+  ⛔ An automatic typed approval never satisfies it: it opens withdrawals, never this programme.
+- **`photoCaseSent(kyc)`** — the full photo set on file and the case with an officer (PENDING_REVIEW). An invitee may
+  submit on it (or on `photoIdentityVerified`); `approveAgent` decides the invitee's photo case in the same step,
+  through `reviewKyc` in photo mode on the version it just read, and mints nothing unless the stamp then reads true.
+  ⛔ **Only a PLAIN photo case is decided there**: one whose checks route it for its photos alone (`AGENT_PHOTOS`), with
+  the risk score under the two-officer threshold. This rail is one officer with no checklist, no attestations and no
+  two-officer rule, so any other route — a high risk score, a wallet hold, an AML escalation, a restricted same-person
+  match, an officer's earlier ruling, a NIDA number saying under 18 — or a failed read of the checks is refused with
+  "decide this identity on the identity workstation first". When it does approve, it records no attestation set — and
+  so it is NOT the post-check of an automatic approval: such a row stays on the officers' post-check list.
+- **The `/agent` button** sends an applicant to `/profile/kyc?for=agent&next=/agent` — the photo track. The page also
+  draws that track for an account holding an agent application or a live invitation bound to its email
+  (`agentIdentityIntent`). A player already verified from typed details is told "Add your ID photos" (the application's
+  `photo_upgrade` panel and `/agent`), never "Verify your identity", and is asked only for the photos and a selfie; their
+  withdrawals stay open while an officer reviews them, and `/wallet/withdraw` speaks the photo track's words to a player
+  with an agent application in flight. Photo attaches have their own rate rule, `kyc.attach` (12 at once, then 3 a
+  minute; a failed upload gives its token back).
+- **Photos belong to the document they show.** Saving a DIFFERENT document on the agent track — another type, or the
+  same type with a new number — drops the old document's photos. An agent case whose saved document has expired gets
+  the details form back; an APPROVED identity whose document has expired is shown a "<document> has expired" card that
+  sends the player to support (an officer re-opens the verification) instead of photo uploaders the send would refuse.
+- Every agent approved before 2026-10-10 is covered: the migration `20261010150000_kyc_typed_identity` stamped
+  `photoVerifiedAt` on every identity APPROVED at the release, each an officer's approval on photos. ⛔ **That backfill
+  ran ONCE, at the release, and must NEVER be run again** — once automatic approvals exist, a re-run would stamp them as
+  officer photo approvals and open every agent gate to an identity no officer has seen.
+
+**Two fixes made on the way (2026-10-10), on `/admin/agents/[id]`:** the identity link opened the submission's own id on
+a workstation keyed by the player, so it opened an empty case on every application — it now links
+`/admin/kyc/<applicant's user id>`, and says which approval the identity holds (photos approved by an officer, photos
+sent, or typed details only). And the referee contact "reveal" re-read the **applicant's** phone (the mask was drawn
+from the referee's contact, the eye showed the applicant's number, and the audit recorded the wrong person's read): each
+referee is now its own registry field, addressed by the application, revealing the contact the applicant typed for that
+referee (`sensitive-fields.ts`; audited on the application as "Referee contact revealed").
 
 🔴 **Referee national IDs are third-party personal data.** The referee never used 50pick and never
 consented in-app. They need a lawful basis, a retention row, an erasure path and a DSAR route —
@@ -333,7 +381,11 @@ index and four attestations. ✅ The invitation collects the **standard KYC docu
 and the officer's single approval writes an `APPROVED` `KycSubmission` **through the ordinary KYC
 service**: one review, two records, no second trip. ⛔ Never flag an agent KYC-approved without the
 identity documents actually being checked. **The invitee uploads their own ID and selfie** — an
-officer cannot take a selfie for someone else.
+officer cannot take a selfie for someone else. ⭐ **Still true after 2026-10-10** (agents unchanged): the invitee's
+own ID photos and selfie travel on the agent photo track, and `approveAgent` decides them in PHOTO mode, which stamps
+`photoVerifiedAt` — when it is a plain photo case; any other route sends the officer to the identity workstation first
+(§3). A player's typed identity — approved automatically, or by an officer on typed details only — is
+neither a photo case sent nor a photo approval, so it never lets an invitee submit or an agent be approved (§3).
 
 **Token:** single-use · expiring · bound to the officer-entered phone with OTP proof · revocable ·
 audited on issue, accept, decline, expiry and revoke.

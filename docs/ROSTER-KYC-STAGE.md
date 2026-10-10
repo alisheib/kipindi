@@ -2,6 +2,8 @@
 
 > **Status** 🟢 Shipped 2026-09-11 · ⚠️ **EIGHT stages since 2026-09-13** (§2a — identity moved to
 > withdrawal, so an unverified player can hold money, and the roster now says which). **Authority for this feature.**
+> ⚠️ **THREE WORDS RE-WORDED 2026-10-10 (§2b)** — players verify with typed details and upload nothing; only agent
+> applicants send photos. The eight keys and their arms did not change; the words follow what each arm now holds.
 > **Surface** `/admin/players` (the console calls it **Roster**).
 > **Guards** `npm run test:kyc-stage` (in `predeploy`) · `npm run qa:kyc-roster` (localhost) ·
 > `npm run test:kyc-restart-docs` (needs a real Postgres).
@@ -47,11 +49,11 @@ decision an officer scanning 500 rows actually makes. Exactly **one** of the eig
 |---|---|---|---|
 | `nothing_yet` | **Nothing yet** | slate | player |
 | `funded_nothing_yet` | **Funded · nothing sent** | slate | player — ⚠️ money-rights viewers only (§2a, §5) |
-| `uploaded` | **Uploaded · not sent** | amber | player ⭐ |
+| `uploaded` | **Photos · not sent** (until 2026-10-10: *Uploaded · not sent*) | amber | player ⭐ |
 | `with_us` | **Submitted · with us** | royal | **US** |
 | `more_needed` | **More needed · player** | amber | player |
-| `rejected_after_upload` | **Rejected · after upload** | rose | terminal |
-| `rejected_no_docs` | **Rejected · nothing sent** | rose | terminal |
+| `rejected_after_upload` | **Rejected · after review** (until 2026-10-10: *Rejected · after upload*) | rose | terminal |
+| `rejected_no_docs` | **Rejected · at the details step** (until 2026-10-10: *Rejected · nothing sent*) | rose | terminal |
 | `approved` | **Approved** | green | done |
 | *(render state)* | **Not available** | slate | the read failed |
 
@@ -59,17 +61,20 @@ decision an officer scanning 500 rows actually makes. Exactly **one** of the eig
 
 - ⛔ **A FINAL refusal reads "Finally refused", and it is not a ninth stage** (2026-09-13). A player
   refused on UNDERAGE, SANCTIONED or DUPLICATE_IDENTITY cannot resubmit and their wallet is frozen, so
-  "Rejected · after upload" read as a retryable file. `isFinalRefusalCell(stage, rejectReason)` swaps
+  "Rejected · after upload" (since 2026-10-10 "Rejected · after review") read as a retryable file.
+  `isFinalRefusalCell(stage, rejectReason)` swaps
   only the WORD on the roster (`REVIEW.kycRefusedFinal`, the word `/admin/kyc/refused` uses). `/admin/kyc`
-  needs no swap: its tables list only `with_us`, `uploaded`, `more_needed` and `funded_nothing_yet`, never a
-  rejected stage. The stage, its tone, the filter and the tally are unchanged, because a
+  needs no swap: its stage tables list only `with_us`, `uploaded`, `more_needed` and `funded_nothing_yet`, never a
+  rejected stage (its post-check table, added 2026-10-10, lists unchecked automatic approvals that are approved, with
+  us or with the player — never a refused row). The stage, its tone, the filter and
+  the tally are unchanged, because a
   new stage would break the closed set `test:kyc-stage` §4f pins. ⚠️ So the filter option
-  "Rejected · after upload" still lists final refusals. The eight words are written with
+  "Rejected · after review" still lists final refusals. The eight words are written with
   non-breaking spaces, so a stage chip never wraps inside its capsule.
 
 - ⛔ **"Submitted" appears on exactly ONE stage**, and it is the one where `submittedAt` is
-  non-null by construction. `uploaded` is a player who attached every required photo and
-  never pressed the button; calling that "Submitted" would be the same lie in a new colour.
+  non-null by construction. `uploaded` is an applicant who attached photos and never pressed
+  the button (§2b); calling that "Submitted" would be the same lie in a new colour.
   `test:kyc-stage` §2a–§2d is written specifically to close that hole, because **nothing else
   in the suite compares a word to a state**.
 - ⛔ **No word contains "verified".** `idVerifiedAt` means *format accepted and unique*, never
@@ -90,7 +95,8 @@ decision an officer scanning 500 rows actually makes. Exactly **one** of the eig
 
 Today four of the six raw KYC values wear amber, which is why it says nothing — the substance
 of the complaint. Here it is spent on exactly **two** stages where a human must move: a player
-sitting on a complete upload they never sent, and an officer's outstanding request. The
+sitting on a complete upload they never sent (since 2026-10-10: an agent applicant sitting on photos they never sent),
+and an officer's outstanding request. The
 resulting scan is the direct answer to *"it says pending kyc always"*: a sea of **slate**,
 **amber** where somebody must act, **royal** for our own queue, **green** done, **rose** refused.
 
@@ -114,6 +120,35 @@ is the population a compliance officer most needs to see, and "Nothing yet" hid 
   unverified"** tile beside "Wallet liability" (same basis, so it is a subset of it; frozen and
   closed never-approved money rides its caption). A failed read shows **Not available**, never
   TZS 0.
+- ⭐ **2026-10-10:** `tallyHeldForUnverified` asks a FINAL refusal first — an account approved once and then finally
+  refused (now possible straight from APPROVED) is unverified money again, where `approvedEver` alone had hidden it.
+  `tallyHeldByUncheckedAuto` is the new figure beside it — what ACTIVE wallets hold on automatic approvals no officer
+  has checked yet, on the same basis, counting every status the post-check list holds them in (approved, with an
+  officer, or with the player — `POST_CHECK_LIST_STATUSES`, `src/lib/kyc-approval.ts`; the sidebar badge, by contrast,
+  counts only the approved ones); `unverifiedLiability()` returns it as `uncheckedAuto`, and `/admin/finance` draws
+  it as the "Held for unverified" tile's note — *"Unchecked automatic approvals hold TZS x · n accounts — verified, so
+  not in this figure"*; a failed read of the list says so, never TZS 0.
+
+### 2b · What the words mean since 2026-10-10 — players type, agents upload
+
+Owner ruling 2026-10-10 ([`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) § "2026-10-10 · Players verify identity
+with typed details and are approved at once; agents keep photo identity — Privacy v2026-10-10, Terms v2026-10-10, AML
+v2026-10-10 (Gaming Board request, relayed by the owner)"): a player types one document's details and is approved at
+once when the automatic checks pass; only an agent applicant sends photos and a selfie. The derivation is untouched —
+the same eight keys, the same arms — but what reaches each arm changed, so three words changed with it
+(`KYC_STAGE` in `src/lib/admin-status-lexicon.ts`):
+
+| Stage | Who is in it now |
+|---|---|
+| `uploaded` — **Photos · not sent** | `IN_PROGRESS` with at least one document: an **agent applicant** whose photos are attached and not yet sent, or a player whose photos from before 2026-10-10 are still on an unfinished row. ⛔ **"Uploaded" no longer describes a player's journey** — a player's typed form has no file input, so an ordinary player reaches this arm only through a legacy row. |
+| `with_us` — **Submitted · with us** | Three writers, each stamping `submittedAt` with the status: a typed send the automatic checks **routed** to an officer, an agent applicant's **photo send**, and an officer's **date-of-birth correction** of an identity that holds details |
+| `more_needed` — **More needed · player** | One writer: `askForCorrections` — the officer asked the player to correct their typed details (it replaced the request for extra documents and force re-verify). The KYC status chip for that state (`kycStatusLabel`, on the player page) reads *Corrections asked*; the player reads *Check your details*. A legacy row may still carry extra-document requests; they are read-only and never block the send |
+| `rejected_after_upload` — **Rejected · after review** | A file reached an officer (`kycFileEverArrived`: documents, `submittedAt` or `approvedAt`) — a routed typed case, an agent photo case, or an automatic approval an officer later refused. "After upload" stopped being true: a routed typed case has no upload |
+| `rejected_no_docs` — **Rejected · at the details step** | Refused before anything reached an officer — an under-18 account date, or the NIDA check's refusal at the press. "Nothing sent" was false: the player sent their details |
+| `approved` — **Approved** | Approved by an officer (every approval before 2026-10-10, every agent photo case) **or automatically**. The roster word is the same for both; the player page says which beside it (`KYC_APPROVAL`: *Automatic · not yet checked* · *Automatic · checked by an officer* · *By an officer*), and `/admin/kyc` lists the automatic approvals still unchecked — also after they move on to `with_us` or `more_needed`, with a chip saying which |
+
+⛔ **An automatic approval is "Approved", not a ninth stage.** The closed set `test:kyc-stage` §4f pins is unchanged;
+whether an officer has checked the approval is a fact beside the stage, never a stage.
 
 ---
 
@@ -132,9 +167,10 @@ is the population a compliance officer most needs to see, and "Nothing yet" hid 
 ### Two derivation arms that look wrong and are not
 
 - **`IN_PROGRESS` reads `documentCount` ALONE**, never the three-witness rule. `startKyc`
-  preserves `approvedAt` through a restart, so the wider rule would paint "Uploaded · not
+  preserves `approvedAt` through a restart, so the wider rule would paint "Photos · not
   sent" over a once-approved player who has uploaded nothing since. Reachable entirely from
-  shipped code: APPROVED → force-reverify → officer REJECT → "start again".
+  shipped code: APPROVED → officer REJECT (straight from APPROVED since 2026-10-10; until then
+  through force-reverify, deleted that day) → "start again".
 - **`REJECTED` needs all three witnesses.** Erasure destroys document rows from any status, so
   a count alone would call an officer-refused complete file "nothing sent" once retention
   released its images.

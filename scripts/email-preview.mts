@@ -16,11 +16,13 @@ const samples: Record<string, string> = {
   cashout: cashOutReceiptHtml({ reference: "pos_9f3k2qm1a8", value: 38200, stake: 25000, marketTitle: "Will Simba SC win the Mainland derby?", soldAt: PLACED }),
   withdrawal: withdrawalSentHtml({ amount: 1000000, destination: "M-Pesa · 0744 *** 219", reference: "WD-2026-0613-0098" }),
   kyc: kycApprovedHtml({ name: "Asha", reference: "kyc_9f3k2qm1a8" }),
-  kycRejected: kycRejectedHtml({ reason: "The name on your NIDA card didn't match the details entered. Please re-check and resubmit.", reference: "kyc_9f3k2qm1a8" }),
-  kycSubmitted: kycSubmittedHtml({ name: "Asha", reference: "kyc_9f3k2qm1a8", submittedAt: PLACED, docTypes: ["NIDA_FRONT", "NIDA_BACK", "SELFIE"], viewUrl: "/profile/kyc" }),
-  kycAdmin: kycSubmittedAdminHtml({ reference: "kyc_9f3k2qm1a8", name: "Asha Mwamba", phoneMasked: "+25570*****19", nidaMasked: "•••• 4821", submittedAt: PLACED, reviewUrl: "https://50pick.tz/admin/players/usr_9f3k2qm1a8?tab=kyc" }),
+  kycRejected: kycRejectedHtml({ reason: "The name you entered didn't match the document whose number you gave. Please check your details and try again.", reference: "kyc_9f3k2qm1a8" }),
+  // 2026-10-10 (typed-only identity): typed details routed to an officer, and an agent applicant's photo send.
+  kycSubmitted: kycSubmittedHtml({ name: "Asha", reference: "kyc_9f3k2qm1a8", submittedAt: PLACED, evidence: "typed", viewUrl: "/profile/kyc" }),
+  kycSubmittedPhotos: kycSubmittedHtml({ name: "Asha", reference: "kyc_9f3k2qm1a8", submittedAt: PLACED, evidence: "photos", viewUrl: "/profile/kyc?for=agent" }),
+  kycAdmin: kycSubmittedAdminHtml({ reference: "kyc_9f3k2qm1a8", name: "Asha Mwamba", phoneMasked: "+25570*****19", idMasked: "•••• 4821", submittedAt: PLACED, reviewUrl: "https://50pick.tz/admin/kyc/usr_9f3k2qm1a8", reasons: ["Risk score at or above the two-officer threshold"] }),
   emailVerify: emailVerifyHtml({ name: "Asha", verifyUrl: "https://50pick.tz/auth/verify-email?token=eyJ...sig" }),
-  kycMoreInfo: kycMoreInfoHtml({ reason: "The back of your ID card is blurry — please re-upload a clearer photo with all four corners visible.", reference: "kyc_9f3k2qm1a8" }),
+  kycMoreInfo: kycMoreInfoHtml({ reason: "Please check the spelling of your full name — it should read exactly as it is printed on your document.", reference: "kyc_9f3k2qm1a8" }),
 };
 
 const b = await chromium.launch();

@@ -23,6 +23,17 @@
  * ⛔ THE FORM IT REPLACES IS NOT RENDERED AT ALL — not disabled. A disabled payout form on a money screen
  * reads as an outage and still invites the tap. The server enforces the rule either way.
  *
+ * ⭐ TYPED DETAILS FROM 2026-10-10 (owner ruling): the verify CTA opens one form, and most players are verified on the
+ * press. The copy names a document's details, never a photo or a selfie — those belong to the agent track alone.
+ * ⭐ AND THE TRACK IS THE NEXT SCREEN'S, NOT THE PURPOSE'S (`track`, review R5.6, 2026-10-10). `/profile/kyc` puts an
+ * agent applicant on the PHOTO track wherever they come from (`agentIdentityIntent`), so the withdrawal screen passes
+ * `track="photo"` for them: the payout eyebrow stays, the body is the photo track's (`…Agent`, `bodyUploaded`), the
+ * "most checks are instant" caption is not drawn, and the link opens the photo track by name. Omitted, the purpose
+ * decides — payout → typed, agent → photo — so every other caller draws exactly what it drew before.
+ * ⭐ `photo_upgrade` IS THE AGENT APPLICATION'S ALONE: an identity already verified from typed details, with the
+ * programme's photos still to add. "Verify your identity" to a verified player was false (review R5.6); it is a panel
+ * state, never a `kycGateState` answer — the withdrawal gate has nothing to ask of a verified player.
+ *
  * ⭐ SIX IDENTITY STATES (`kyc-gate-state.ts`), plus `frozen` and `email` below. One — `pending_review` — asks the
  * player to do NOTHING, because we are the ones who are late; rendering it in the "action needed" skin tells a player
  * who did everything right that they failed. And `refused_final` offers no retry — the server refuses one — only
@@ -92,7 +103,15 @@ const TONE = {
   held:    { ring: "border-warning-border", ink: "text-warning-fg", wash: "bg-warning-bg" },
 } as const;
 
-const BY_STATE: Record<KycPanelState, {
+/**
+ * Every state this panel draws: the shared ones (`KycPanelState` — the six identity states, `frozen`, `email`), plus
+ * `photo_upgrade`, which only the agent application chooses (`agentIdentityPanel`, `app/agent/apply/identity-panel.ts`).
+ * ⛔ Kept OUT of `KycGateState` on purpose: that vocabulary is the withdrawal gate's (null ⟺ approved ever), and an
+ * identity verified from typed details is exactly the one the withdrawal gate never walls off.
+ */
+export type KycGatePanelState = KycPanelState | "photo_upgrade";
+
+const BY_STATE: Record<KycGatePanelState, {
   tone: keyof typeof TONE;
   glyph: keyof typeof I;
   /** Where the CTA goes, or `null` for none. ⛔ `null` for PENDING_REVIEW — opening the form shows a
@@ -101,15 +120,21 @@ const BY_STATE: Record<KycPanelState, {
   cta: "verify" | "support" | "email" | null;
 }> = {
   not_started:    { tone: "neutral", glyph: "shieldcheck", cta: "verify" },
-  uploaded:       { tone: "action",  glyph: "upload",      cta: "verify" },
+  // ⛔ NO UPLOAD GLYPH (2026-10-10, typed-only identity): a player verifies with typed details, so an arrow-into-a-tray
+  // on the withdraw screen would ask for a file nobody wants. `uploaded` is an unfinished case (an agent applicant's
+  // photos, or one left from before 2026-10-10) — the document; `more_info` is an officer's note to read — info.
+  uploaded:       { tone: "action",  glyph: "idCard",      cta: "verify" },
   pending_review: { tone: "waiting", glyph: "clock",       cta: null },
-  more_info:      { tone: "action",  glyph: "upload",      cta: "verify" },
+  more_info:      { tone: "action",  glyph: "info",        cta: "verify" },
   rejected:       { tone: "refused", glyph: "alertCircle", cta: "verify" },
   refused_final:  { tone: "refused", glyph: "alertCircle", cta: "support" },
   /** A wallet hold, not an identity state: support is the only step there is. */
   frozen:         { tone: "held",    glyph: "lock",        cta: "support" },
   /** An address to confirm (2026-10-07): nothing has gone wrong, there is one step — brand, like `not_started`. */
   email:          { tone: "neutral", glyph: "mail",        cta: "email" },
+  /** Verified from typed details; the agent programme's photos still to add (review R5.6). Nothing has gone wrong and
+   *  there is one step — brand, like `not_started`; the camera the photo step itself wears on /profile/kyc. */
+  photo_upgrade:  { tone: "neutral", glyph: "camera",      cta: "verify" },
 };
 
 /** The outcome line of the resend, in app-state ink: sent → success, a wait → muted, a failure → danger. */
@@ -121,9 +146,11 @@ export function KycGatePanel({
   /** Where to come back to once they are verified — round-tripped as `?next=`. */
   returnTo,
   email,
+  track,
 }: {
-  /** An identity state from `kycGateState`, or `frozen` / `email` — chosen by the withdraw page. */
-  state: KycPanelState;
+  /** An identity state from `kycGateState`, or `frozen` / `email` — chosen by the withdraw page — or, on the agent
+   *  application, `photo_upgrade` (`agentIdentityPanel`). */
+  state: KycGatePanelState;
   /** `payout` on the withdrawal form; `agent` on the agent application. */
   purpose: "payout" | "agent";
   returnTo?: string;
@@ -131,12 +158,16 @@ export function KycGatePanel({
    *  none. Read by the `email` state, and on an identity state it adds the email as the card's second step. Omit it when
    *  the address is confirmed. */
   email?: { address: string | null } | null;
+  /** Which identity track `/profile/kyc` will draw for this player: `photo` (an agent applicant — document photos and a
+   *  selfie, for an officer) or `typed` (one form). Omitted, the purpose decides: payout → typed, agent → photo. */
+  track?: "typed" | "photo";
 }) {
   const { t, locale } = useT();
   const spec = BY_STATE[state];
   const tone = TONE[spec.tone];
   const Glyph = I[spec.glyph];
   const payout = purpose === "payout";
+  const photoTrack = (track ?? (payout ? "typed" : "photo")) === "photo";
   const zhKeep = locale === "zh" ? "break-keep [overflow-wrap:anywhere]" : "";
 
   const emailOnly = state === "email";
@@ -146,16 +177,20 @@ export function KycGatePanel({
   const { pending, result, resend } = useResendEmailLink();
   useRefreshOnReturn(emailOnly || emailStep);
 
+  // ⭐ TWO TRACKS, TWO VOICES (2026-10-10). The typed track speaks of typed details; the photo track keeps the agent
+  // words exactly as they were (agents keep photo identity — owner ruling), so an applicant is never promised a
+  // one-minute check of typed details and then asked for document photos and a selfie on the next screen. The EYEBROW
+  // follows the purpose (the withdrawal screen always opens "Before you withdraw"); the words follow the TRACK.
   // ⭐ `stateWord` — THE EYEBROW SAYS A STATE, OR IT NAMES THE STEP (2026-10-10, Ali's ruling (3): every small heading
   // inside a page wears the one section ink, `--text-subtle`; a status word keeps its own; DESIGN_AUTHORITY §T3). "Your
   // move", "With our team" and "Withdrawals paused" are the panel's state, said in its tone's ink as its glyph says it;
   // "Before you withdraw", "One step first" and "Identity check" name the step and take the one ink (test:visual-pass-r8b).
   const copy = {
-    not_started:    { eyebrow: payout ? t.kycGate.eyebrowPayout : t.kycGate.eyebrowVerify, stateWord: false, title: t.kycGate.titleNotStarted, body: t.kycGate.bodyNotStarted,  cta: t.kycGate.ctaStart },
-    uploaded:       { eyebrow: payout ? t.kycGate.eyebrowPayout : t.kycGate.eyebrowAction, stateWord: !payout, title: t.kycGate.titleUploaded,   body: t.kycGate.bodyUploaded,    cta: t.kycGate.ctaFinish },
-    pending_review: { eyebrow: t.kycGate.eyebrowPending, stateWord: true, title: t.kycGate.titlePending,  body: fill(emailStep ? t.kycGate.bodyPendingEmail : t.kycGate.bodyPending, { hours: durationHours(locale, KYC_REVIEW_SLA_HOURS) }), cta: "" },
+    not_started:    { eyebrow: payout ? t.kycGate.eyebrowPayout : t.kycGate.eyebrowVerify, stateWord: false, title: t.kycGate.titleNotStarted, body: photoTrack ? t.kycGate.bodyNotStartedAgent : t.kycGate.bodyNotStarted, cta: t.kycGate.ctaStart },
+    uploaded:       { eyebrow: payout ? t.kycGate.eyebrowPayout : t.kycGate.eyebrowAction, stateWord: !payout, title: t.kycGate.titleUploaded,   body: photoTrack ? t.kycGate.bodyUploaded : t.kycGate.bodyUploadedTyped, cta: t.kycGate.ctaFinish },
+    pending_review: { eyebrow: t.kycGate.eyebrowPending, stateWord: true, title: photoTrack ? t.kycGate.titlePendingAgent : t.kycGate.titlePending, body: fill(emailStep ? t.kycGate.bodyPendingEmail : t.kycGate.bodyPending, { hours: durationHours(locale, KYC_REVIEW_SLA_HOURS) }), cta: "" },
     more_info:      { eyebrow: t.kycGate.eyebrowAction,  stateWord: true, title: t.kycGate.titleMoreInfo, body: t.kycGate.bodyMoreInfo,     cta: t.kycGate.ctaUpload },
-    rejected:       { eyebrow: t.kycGate.eyebrowAction,  stateWord: true, title: t.kycGate.titleRejected, body: t.kycGate.bodyRejected,     cta: t.kycGate.ctaRetry },
+    rejected:       { eyebrow: t.kycGate.eyebrowAction,  stateWord: true, title: t.kycGate.titleRejected, body: photoTrack ? t.kycGate.bodyRejectedAgent : t.kycGate.bodyRejected, cta: t.kycGate.ctaRetry },
     // ⛔ NOT "Your move" (2026-09-13, found on a screenshot): a FINAL refusal cannot be restarted by the player,
     // so its label names the subject and calls for nothing — the only step is support, and the CTA says so.
     refused_final:  { eyebrow: t.kycGate.eyebrowIdentity, stateWord: false, title: t.kycGate.titleRejected, body: t.kycGate.bodyRefusedFinal, cta: t.kycGate.ctaSupport },
@@ -163,19 +198,29 @@ export function KycGatePanel({
     frozen:         { eyebrow: t.kycGate.frozenEyebrow,   stateWord: true, title: t.kycGate.frozenTitle,   body: t.kycGate.frozenBody,       cta: t.kycGate.frozenCta },
     // The confirmed email (2026-10-07). "We sent a link" only when an address exists — nothing was sent to none.
     email:          { eyebrow: t.kycGate.eyebrowPayout,   stateWord: false, title: t.kycGate.emailTitle,    body: address ? t.kycGate.emailBody : t.kycGate.emailBodyNone, cta: "" },
+    // The agent application's verified-from-typed-details applicant (review R5.6): verified, and told the one thing the
+    // programme still asks — photos of the document and a selfie, which our team checks. "One step first" names the step.
+    photo_upgrade:  { eyebrow: t.kycGate.eyebrowVerify,  stateWord: false, title: t.kycGate.titlePhotoUpgrade, body: t.kycGate.bodyPhotoUpgrade, cta: t.kycGate.ctaPhotoUpgrade },
   }[state];
 
   // ⭐ THE WAIT IS A NUMBER (`KYC_REVIEW_SLA_HOURS`, the officer's own clock), shown on the withdrawal
   // screen only while the next move is still the player's. ONE quiet caption under the body — not a
   // list, not a glyph row — because it is a single fact and must not compete with the button.
-  const showWait = payout && (state === "not_started" || state === "uploaded");
+  // 2026-10-10 · most typed checks finish at once, so the caption says that first and the clock second.
+  // ⛔ NOT ON THE PHOTO TRACK (review R5.6): every photo case waits for an officer, so "most checks are instant" would be
+  // false for exactly the player reading it — the photo track's body already says how long sending them takes.
+  const showWait = payout && !photoTrack && (state === "not_started" || state === "uploaded");
 
   // ⛔ Only a same-site absolute path may round-trip, and it is re-checked HERE as well as on the KYC
   // page. A `next` that leaves the site is an open redirect, and this panel is rendered on a money
   // surface where the URL is the most attacker-visible thing there is. The one shared rule — this private copy let
   // "/\evil.example" and control characters through until 2026-10-06.
   const safeNext = isSafePath(returnTo) ? returnTo : null;
-  const verifyHref = safeNext ? `/profile/kyc?next=${encodeURIComponent(safeNext)}` : "/profile/kyc";
+  // ⭐ The photo track's door opens the AGENT photo track explicitly (`for=agent`, 2026-10-10: agents keep photo
+  // identity), so it never depends on `agentIdentityIntent` finding an application that may not exist yet — and the
+  // screen it opens is the one the copy above described, from either purpose (review R5.6).
+  const verifyBase = photoTrack ? "/profile/kyc?for=agent" : "/profile/kyc";
+  const verifyHref = safeNext ? `${verifyBase}${verifyBase.includes("?") ? "&" : "?"}next=${encodeURIComponent(safeNext)}` : verifyBase;
   const href = spec.cta === "support" ? "/help" : verifyHref;
   // The account page changes or adds the address; `next` brings the player back to this screen, amount and all.
   const accountHref = safeNext ? `/profile/account?next=${encodeURIComponent(safeNext)}` : "/profile/account";
@@ -198,6 +243,7 @@ export function KycGatePanel({
       data-testid="kyc-gate-panel"
       data-kyc-state={state}
       data-kyc-purpose={purpose}
+      data-kyc-track={photoTrack ? "photo" : "typed"}
       data-kyc-email={emailOnly || emailStep ? "owed" : undefined}
       className={`rounded-xl border ${tone.ring} bg-bg-elevated text-center p-6`}
     >
@@ -212,8 +258,9 @@ export function KycGatePanel({
       <p className={`mt-3 font-mono text-micro uppercase eyebrow font-bold ${copy.stateWord ? tone.ink : "text-text-subtle"}`}>{copy.eyebrow}</p>
       {/* 2026-09-14 — the title is balanced like the lines under it: "We're checking your / documents" left one word
           alone at 360. In zh the body and caption break only at punctuation (keep-all), because a balanced 42ch
-          measure split a two-character word across the break; overflow-wrap still lets an over-long run wrap. */}
-      <h3 className="mt-1.5 font-display text-[18px] font-bold text-text leading-tight text-balance">{copy.title}</h3>
+          measure split a two-character word across the break; overflow-wrap still lets an over-long run wrap.
+          2026-10-10 — and the title too (the screenshot pass): it was the one zh line here still free to split a word. */}
+      <h3 className={`mt-1.5 font-display text-[18px] font-bold text-text leading-tight text-balance ${zhKeep}`}>{copy.title}</h3>
       <p className={`mt-1.5 text-body-sm text-text-muted leading-snug max-w-[42ch] mx-auto text-balance ${zhKeep}`}>{copy.body}</p>
       {emailOnly && address && (
         // The address the link went to — mono, wrapped anywhere, never truncated: a player checks it character by character.

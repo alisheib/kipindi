@@ -18,7 +18,7 @@
  *  · `db.notification.create` is the only writer and it writes `channel: IN_APP`.
  *    This table is the inbox, not a unified delivery log — see the registry.
  */
-import { audit, getAuditForTargetDurable } from "./audit";
+import { audit, getAuditForTargetsDurable } from "./audit";
 import { db } from "./store";
 import { randomId } from "./crypto";
 import { emit } from "./event-bus";
@@ -28,6 +28,9 @@ import { formatTzs } from "@/lib/utils";
 // overdue-review alert), and the label that alert names a player by.
 import { KYC_REVIEW_SLA_HOURS } from "@/lib/kyc-sla";
 import { displayLabel } from "@/lib/display-label";
+// 2026-10-10 · the officer's English name for each flag an automatic approval carries — the labels the case page shows,
+// so the post-check alert and the workstation call a flag the same thing.
+import { FLAG_LABEL, type KycFlag } from "@/lib/kyc-auto-checks";
 import {
   CONSOLE_ROUTE, consoleActivityHref, consoleBotHref, consoleBotTabHref, consoleDeskEventHref, consoleEventHref, consoleReverifyHref, consoleTabHref,
 } from "@/lib/house-bot/console-routes";
@@ -1346,22 +1349,68 @@ export function notifyOneSidedRefund(userId: string, opts: { stake: number; mark
 }
 
 /**
- * In-app alert to an officer that a player's KYC is waiting for review. Lands
+ * In-app alert to an officer that a player's identity is waiting for review. Lands
  * in the platform's main notification bell (admins use the same bell as players)
- * and deep-links straight to the player's KYC review tab.
+ * and deep-links straight to the identity workstation, the one door an officer decides a case from.
+ *
+ * ⭐ REWORDED 2026-10-10 (owner ruling: players verify with TYPED details, agents keep photo KYC). It said
+ * "submitted identity documents", and from today most identities reach an officer as typed details the automatic
+ * checks routed here, so it names what every case has: identity details. The case page says which kind it is.
+ * ⭐ `urgent` — the caller sets it when the NIDA number's own birth digits say the player is under 18: that case
+ * must not sit in the queue behind the others, so the bell says so in its title and body.
+ * ⛔ The audience is the caller's loop, and it is `kycOfficerRoles()` (below): the roles that can act on the case.
+ * The link was the player page's KYC tab, which no longer decides anything (2026-10-10).
  */
-export function notifyAdminKycReview(adminUserId: string, opts: { playerLabel: string; userId: string }) {
+export function notifyAdminKycReview(adminUserId: string, opts: { playerLabel: string; userId: string; urgent?: boolean }) {
+  const label = clipQuote(opts.playerLabel, 60);
+  if (opts.urgent) {
+    return notify({
+      userId: adminUserId,
+      kind: "KYC",
+      titleEn: "Urgent KYC to review",
+      titleSw: "KYC ya dharura ya kukagua",
+      titleZh: "紧急身份审核",
+      bodyEn: `${label} sent identity details for review — needs a look now.`,
+      bodySw: `${label} ametuma taarifa za utambulisho zikaguliwe — zinahitaji kuangaliwa sasa.`,
+      bodyZh: `${label} 已提交身份信息待审核 — 需要立即查看。`,
+      href: `/admin/kyc/${opts.userId}`,
+    });
+  }
   return notify({
     userId: adminUserId,
     kind: "KYC",
     titleEn: "New KYC to review",
     titleSw: "KYC mpya ya kukagua",
     titleZh: "有新的身份审核",
-    bodyEn: `${opts.playerLabel} submitted identity documents — tap to review.`,
-    bodySw: `${opts.playerLabel} amewasilisha nyaraka — bonyeza kukagua.`,
-    bodyZh: `${opts.playerLabel} 已提交身份证件 — 点击审核。`,
-    href: `/admin/players/${opts.userId}?tab=kyc`,
+    bodyEn: `${label} sent identity details for review.`,
+    bodySw: `${label} ametuma taarifa za utambulisho zikaguliwe.`,
+    bodyZh: `${label} 已提交身份信息待审核。`,
+    href: `/admin/kyc/${opts.userId}`,
   });
+}
+
+/**
+ * ⭐ THE ROLES AN IDENTITY ALERT GOES TO — the ones that can ACT on the case (owner ruling 2026-10-10, plan A1).
+ * Every officer KYC bell links to `/admin/kyc/<userId>`, which sits in the compliance domain; the default grants give the
+ * Trading role (MODERATOR) no view of it, so a bell sent there was a door that refused the officer it called, and the
+ * Auditor may look but not decide. So: the Owner always, and any other staff role while the LIVE grants (`/admin/roles`,
+ * else the defaults) let it both view and act in that domain — by default exactly COMPLIANCE, the plan's "ADMIN and
+ * COMPLIANCE". The `rolesThatCanOpen` rule below (2026-09-27), asked of acting rather than of looking.
+ * ⛔ If the grants cannot be read, the defaults' answer — never a wider one.
+ * One reader for the new-case alert's caller (`kyc-service.ts`), the overdue alert and the post-check alert below.
+ */
+export async function kycOfficerRoles(): Promise<string[]> {
+  try {
+    const { canView, canAct } = await import("./rbac");
+    const domain = domainForPath("/admin/kyc");
+    const roles: string[] = ["ADMIN"];
+    for (const role of EDITABLE_ROLES) {
+      if ((await canView(role, domain)) && (await canAct(role, domain))) roles.push(role);
+    }
+    return roles;
+  } catch {
+    return ["ADMIN", "COMPLIANCE"];
+  }
 }
 
 /**
@@ -1385,14 +1434,21 @@ export function notifyAdminMarketResolution(adminUserId: string, opts: { title: 
 
 export function notifyKyc(
   userId: string,
-  status: "APPROVED" | "REJECTED" | "PENDING_REVIEW" | "ADDITIONAL_INFO",
+  /** `REOPENED` (2026-10-10): an officer re-opened a FINAL refusal (`reopenFinalRefusal`) — see its branch below.
+   *  `DOB_CORRECTED` (2026-10-10, review R5.10): an officer corrected the account's date of birth and the identity is
+   *  with an officer again (`correctDateOfBirth`) — see its branch below. */
+  status: "APPROVED" | "REJECTED" | "PENDING_REVIEW" | "ADDITIONAL_INFO" | "REOPENED" | "DOB_CORRECTED",
   /**
    * ⭐ `finalRefusal` (2026-09-13, S1). A FINAL refusal (`UNDERAGE`, `SANCTIONED`, `DUPLICATE_IDENTITY`)
    * cannot be restarted by the player and freezes the wallet while an officer decides the balance, so the
    * ordinary REJECTED notice — "Please re-submit" — is false on it. The caller knows the code; this
    * notice only has to say the true thing. Opt-in, so every existing caller renders exactly as before.
+   *
+   * ⭐ `evidence` (2026-10-10, owner ruling: players verify with TYPED details, agents keep photo KYC). Read by the
+   * PENDING_REVIEW notice only. A routed typed send is "details"; an agent applicant's photo send is "photos" — the
+   * caller knows which it sent. Omitted, the notice says "details", which is true of both.
    */
-  opts: { finalRefusal?: boolean } = {},
+  opts: { finalRefusal?: boolean; evidence?: "typed" | "photos" } = {},
 ) {
   if (status === "REJECTED" && opts.finalRefusal) {
     return notify({
@@ -1404,21 +1460,60 @@ export function notifyKyc(
       // The identity panel's own `kycGate.bodyRefusedFinal`, in all three languages, so the bell and the
       // screen it links towards cannot tell this player two different things.
       bodyEn: "This verification was refused and can't be restarted from your account. Contact support and our team will explain what happens to your balance.",
-      bodySw: "Uthibitisho huu ulikataliwa na hauwezi kuanzishwa upya kutoka kwenye akaunti yako. Wasiliana na huduma kwa wateja na timu yetu itakueleza kitakachofanyika kwa salio lako.",
-      bodyZh: "此身份验证已被拒绝，无法从您的账户重新发起。请联系客服，我们的团队会说明您余额的处理方式。",
+      bodySw: "Uthibitisho huu ulikataliwa na hauwezi kuanzishwa upya kutoka kwenye akaunti yako. Wasiliana na msaada na timu yetu itakueleza kitakachofanyika kwa salio lako.",
+      bodyZh: "此身份验证已被拒绝，无法从您的账户重新发起。请联系客服，我们的团队会向您说明，余额将如何处理。",
       href: "/help",
     });
   }
   if (status === "ADDITIONAL_INFO") {
+    // ⭐ REWORDED 2026-10-10 — AN OFFICER NOW ASKS FOR ONE THING ONLY: A CORRECTION OF THE DETAILS (owner ruling; the
+    // service's `askForCorrections`). This said "update your documents and resubmit", and no officer can ask for a
+    // document any more. ⛔ It names no upload and no document, and says nothing about the account beyond the
+    // identity: the same request can come with a wallet freeze, so "nothing else changes" would not be true.
     return notify({
       userId,
       kind: "KYC",
-      titleEn: "More information needed",
-      titleSw: "Tunahitaji maelezo zaidi",
-      titleZh: "需要更多信息",
-      bodyEn: "Open verification to update your documents and resubmit.",
-      bodySw: "Fungua uthibitishaji urekebishe nyaraka zako.",
-      bodyZh: "请打开身份验证页面，更新证件后重新提交。",
+      titleEn: "Please check your details",
+      titleSw: "Tafadhali kagua taarifa zako",
+      titleZh: "请核对您的信息",
+      bodyEn: "Our team asked you to check and correct your identity details. Open Verify identity to read the note and send them again.",
+      bodySw: "Timu yetu imekuomba ukague na urekebishe taarifa zako za utambulisho. Fungua Thibitisha utambulisho usome ujumbe, kisha uzitume tena.",
+      bodyZh: "我们的团队请您核对并更正您的身份信息。请打开「身份验证」查看说明，然后重新提交。",
+      href: "/profile/kyc",
+    });
+  }
+  if (status === "REOPENED") {
+    // ⭐ ITS OWN NOTICE (2026-10-10, review R4.4). An officer re-opened a FINAL refusal: the submission was reset (the
+    // details and the note cleared), so the corrections notice above — "read the note and send them again" — pointed at
+    // a note that is not there. This says the one true thing: the player may verify again, from the start.
+    // ⛔ Nothing about money: what happens to the balance is the officer's separate, recorded decision. Swahili
+    // "kujaza taarifa" (entering details), never "kuweka" (which reads as depositing).
+    return notify({
+      userId,
+      kind: "KYC",
+      titleEn: "You can verify your identity again",
+      titleSw: "Unaweza kuthibitisha utambulisho wako tena",
+      titleZh: "您可以重新验证身份",
+      bodyEn: "Our team re-opened your identity verification. Open Verify identity and enter your details to verify again.",
+      bodySw: "Timu yetu imefungua upya uthibitisho wa utambulisho wako. Fungua Thibitisha utambulisho, kisha ujaze taarifa zako ili uthibitishe tena.",
+      bodyZh: "我们的团队已重新开启您的身份验证。请打开「身份验证」，填写您的信息后重新验证。",
+      href: "/profile/kyc",
+    });
+  }
+  if (status === "DOB_CORRECTED") {
+    // ⭐ ITS OWN NOTICE (2026-10-10, review R5.10). An officer corrected the date of birth on the account
+    // (`correctDateOfBirth`) and the identity went back to an officer. The PENDING_REVIEW notice this sent said "Identity
+    // details received" — to a player who had sent nothing. This says what happened and what happens next.
+    // ⛔ Nothing about money, and no promise of a time: the check is an officer's, and its own notice follows it.
+    return notify({
+      userId,
+      kind: "KYC",
+      titleEn: "Your date of birth was updated",
+      titleSw: "Tarehe yako ya kuzaliwa imesasishwa",
+      titleZh: "您的出生日期已更新",
+      bodyEn: "Our team updated the date of birth on your account and is checking your identity details again. We'll let you know when it's done.",
+      bodySw: "Timu yetu imesasisha tarehe ya kuzaliwa kwenye akaunti yako na inakagua tena taarifa zako za utambulisho. Tutakujulisha ukaguzi ukikamilika.",
+      bodyZh: "我们的团队已更新您账户上的出生日期，并正在重新核对您的身份信息。完成后我们会通知您。",
       href: "/profile/kyc",
     });
   }
@@ -1427,7 +1522,9 @@ export function notifyKyc(
       userId,
       kind: "KYC",
       titleEn: "Identity verified",
-      titleSw: "Kitambulisho kimethibitishwa",
+      // 2026-10-10 · "Utambulisho" (identity), as the approval letter's eyebrow says: "Kitambulisho" named the ID
+      // document, and most approvals now come from typed details with no document sent.
+      titleSw: "Utambulisho umethibitishwa",
       titleZh: "身份已验证",
       // ⭐ REWRITTEN 2026-09-13 — THE APPROVAL NOTICE MAY NAME WITHDRAWAL AGAIN, BECAUSE IT IS TRUE AGAIN.
       // Until today this carried "⛔ NOT 'You can now withdraw winnings'", and it was right to: from
@@ -1439,9 +1536,11 @@ export function notifyKyc(
       // are separate controls, and a stored notification is rendered verbatim long after it is sent — so
       // the sentence claims exactly what approval guarantees and nothing more. ⛔ Never names depositing
       // or playing beside identity. The link goes to the wallet: that is where this player was going.
-      bodyEn: "Your identity is verified, and it covers your withdrawals from now on. This document is now linked to your account.",
-      bodySw: "Utambulisho wako umethibitishwa, na uthibitisho huu unatumika kwa kila utoaji wa pesa kuanzia sasa. Kitambulisho hiki sasa kimeunganishwa na akaunti yako.",
-      bodyZh: "您的身份已验证，此验证适用于您今后的每一次提现。此证件现已与您的账户绑定。",
+      // ⭐ 2026-10-10 — "This document is now linked" named a document the player never sent: most approvals are
+      // now automatic, from the details they typed. What the uniqueness rule binds is the NUMBER they entered.
+      bodyEn: "Your identity is verified, and it covers your withdrawals from now on. The document number you entered is now linked to your account.",
+      bodySw: "Utambulisho wako umethibitishwa, na uthibitisho huu unatumika kwa kila utoaji wa pesa kuanzia sasa. Nambari ya kitambulisho uliyojaza sasa imeunganishwa na akaunti yako.",
+      bodyZh: "您的身份已验证，此验证适用于您今后的每一次提现。您填写的证件号码现已与您的账户绑定。",
       href: "/wallet",
     });
   }
@@ -1450,7 +1549,9 @@ export function notifyKyc(
       userId,
       kind: "KYC",
       titleEn: "Identity needs review",
-      titleSw: "Kitambulisho kinahitaji ukaguzi",
+      // 2026-10-10 · "Utambulisho" (identity), as the English says — "Kitambulisho" named the ID document, which a
+      // player who typed their details never sent. The body names no document in any language.
+      titleSw: "Utambulisho unahitaji ukaguzi",
       titleZh: "身份需要复核",
       bodyEn: "Please re-submit. Support can help.",
       bodySw: "Tafadhali tuma tena. Huduma kwa wateja wanaweza kusaidia.",
@@ -1458,19 +1559,37 @@ export function notifyKyc(
       href: "/profile/kyc",
     });
   }
+  // ── PENDING_REVIEW — the identity is with an officer ──
+  // ⭐ 2026-09-13 — THE WAIT IS THE SHARED NUMBER, STATED AS "USUALLY". This said "Compliance review
+  // takes 24h" — a flat promise, in a literal nothing tied to the officer's clock. From 2026-09-13 the
+  // review stands between a player and their withdrawal, so the figure is `KYC_REVIEW_SLA_HOURS`, the
+  // one the withdrawal screen and the overdue-review alert use, and it is a target, not a guarantee.
+  // ⭐ 2026-10-10 — "WE'RE CHECKING YOUR DETAILS". Players verify with typed details and most are approved at once,
+  // so this notice now reaches the few the automatic checks pass to an officer, and they sent details, not documents
+  // ("reviews documents" / "hukagua hati" / "审核证件" said otherwise). An agent applicant's photo send names its photos.
+  // ⛔ No sentence here names a withdrawal: the wait it states is the identity check's own (the copy rule).
+  if (opts.evidence === "photos") {
+    return notify({
+      userId,
+      kind: "KYC",
+      titleEn: "Identity photos received",
+      titleSw: "Picha za utambulisho zimepokelewa",
+      titleZh: "身份照片已收到",
+      bodyEn: `We're checking your document photos and selfie. Our team usually finishes within ${KYC_REVIEW_SLA_HOURS} hours, and we'll tell you here.`,
+      bodySw: `Tunakagua picha za kitambulisho chako na selfie yako. Kwa kawaida timu yetu humaliza ndani ya saa ${KYC_REVIEW_SLA_HOURS}, na tutakujulisha hapa.`,
+      bodyZh: `我们正在审核您的证件照片和自拍。团队通常会在 ${KYC_REVIEW_SLA_HOURS} 小时内完成，届时会在此通知您。`,
+      href: "/profile/kyc",
+    });
+  }
   return notify({
     userId,
     kind: "KYC",
-    titleEn: "Identity submitted",
-    titleSw: "Kitambulisho kimewasilishwa",
-    titleZh: "身份信息已提交",
-    // ⭐ 2026-09-13 — THE WAIT IS THE SHARED NUMBER, STATED AS "USUALLY". This said "Compliance review
-    // takes 24h" — a flat promise, in a literal nothing tied to the officer's clock. From 2026-09-13 the
-    // review stands between a player and their withdrawal, so the figure is `KYC_REVIEW_SLA_HOURS`, the
-    // one the withdrawal screen and the overdue-review alert use, and it is a target, not a guarantee.
-    bodyEn: `Our team usually reviews documents within ${KYC_REVIEW_SLA_HOURS} hours.`,
-    bodySw: `Kwa kawaida timu yetu hukagua hati ndani ya saa ${KYC_REVIEW_SLA_HOURS}.`,
-    bodyZh: `我们的团队通常会在 ${KYC_REVIEW_SLA_HOURS} 小时内审核证件。`,
+    titleEn: "Identity details received",
+    titleSw: "Taarifa za utambulisho zimepokelewa",
+    titleZh: "身份信息已收到",
+    bodyEn: `We're checking your details. Our team usually finishes within ${KYC_REVIEW_SLA_HOURS} hours, and we'll tell you here.`,
+    bodySw: `Tunakagua taarifa zako. Kwa kawaida timu yetu humaliza ndani ya saa ${KYC_REVIEW_SLA_HOURS}, na tutakujulisha hapa.`,
+    bodyZh: `我们正在核对您的信息。团队通常会在 ${KYC_REVIEW_SLA_HOURS} 小时内完成，届时会在此通知您。`,
     href: "/profile/kyc",
   });
 }
@@ -2178,16 +2297,18 @@ const KYC_SLA_BREACH_ACTION = "kyc.review_sla_breached";
  * Officer alert: an identity review has waited past `KYC_REVIEW_SLA_HOURS`. Bell + best-effort email,
  * the `notifyAdminsAmlReview` / `notifyAdminsBackupUnhealthy` shape.
  *
- * ⚠️ THE AUDIENCE IS THE ONE A NEW SUBMISSION ALERTS — ADMIN, COMPLIANCE and MODERATOR in the bell
- * (`submitKyc`), and `kycNotifyEmails()` for mail, which honours the `KYC_NOTIFY_EMAILS` override. An
+ * ⚠️ THE AUDIENCE IS THE ONE A NEW SUBMISSION ALERTS — `kycOfficerRoles()` in the bell (the new-case alert's
+ * caller in `kyc-service.ts`), and `kycNotifyEmails()` for mail, which honours the `KYC_NOTIFY_EMAILS` override. An
  * overdue alert that reached fewer officers than the original notice would be the quieter of the two.
+ * ⚠️ 2026-10-10: MODERATOR left this list with the new-case alert's (plan A1: identity bells go to the roles that can
+ * act). The Trading role has no view of `/admin/kyc` by default, so the link it was sent opened a refusal.
  * ⛔ Staff copy is English by design; the Swahili and Chinese fields exist because every bell row carries
  * three (`test:cert-c3` §5), not because an officer reads them.
  */
 export async function notifyAdminsKycReviewOverdue(opts: {
   kycId: string; userId: string; playerLabel: string; submittedAt: string; hoursWaiting: number;
 }): Promise<void> {
-  const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE", "MODERATOR"]);
+  const officers = await db.user.listByRoles(await kycOfficerRoles());
   const label = clipQuote(opts.playerLabel, 60);
   for (const o of officers) {
     await notify({
@@ -2222,6 +2343,18 @@ export async function notifyAdminsKycReviewOverdue(opts: {
       }).catch(() => {});
     }
   } catch { /* officer email is best-effort */ }
+}
+
+/**
+ * The once-per-event markers a KYC officer alert has already written on ONE submission — ONE FILTERED DURABLE READ: this
+ * submission, this marker's action, from the beginning (2026-10-10, review R5.9). ⛔ Never the submission's newest-N rows:
+ * the PLAYER writes Kyc-targeted rows at will (a locked press, a photo attached, an identity accepted), and a window they
+ * can fill past its limit read as "truncated" and WITHHELD the alert — so a player could keep their own unchecked
+ * automatic approval out of the officers' bells. Filtered on the action, only the chore's own markers count, and
+ * `truncated` (still a withhold, never a repeat) needs more alerts on one submission than ever fire.
+ */
+function kycAlertMarkers(kycId: string, action: string) {
+  return getAuditForTargetsDurable({ targetType: "Kyc", targetIds: [kycId], actions: [action], sinceIso: "1970-01-01T00:00:00.000Z", limit: 200 });
 }
 
 export type KycSlaRun = {
@@ -2261,7 +2394,8 @@ export async function runKycReviewSlaAlerts(opts: { nowMs?: number; maxAlerts?: 
     run.breached++;
     if (run.alerted >= maxAlerts) continue;
     try {
-      const history = await getAuditForTargetDurable("Kyc", k.id, { limit: 200 });
+      // ⭐ Filtered on this alert's own marker (R5.9, `kycAlertMarkers`) — the same defect as the post-check alert's.
+      const history = await kycAlertMarkers(k.id, KYC_SLA_BREACH_ACTION);
       const seen = history.entries.some((e) => e.action === KYC_SLA_BREACH_ACTION && e.payload?.submittedAt === k.submittedAt);
       if (seen) { run.alreadyAlerted++; continue; }
       // ⛔ A history we could not read to the end is not "never alerted" — withhold rather than repeat.
@@ -2285,6 +2419,167 @@ export async function runKycReviewSlaAlerts(opts: { nowMs?: number; maxAlerts?: 
       run.alerted++;
     } catch (err) {
       console.error("[kyc-sla] breach alert failed:", (err as Error)?.message ?? err);
+    }
+  }
+  return run;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════════
+ * AUTOMATIC APPROVALS, CHECKED AFTERWARDS — one OFFICER alert per approval (owner ruling 2026-10-10)
+ *
+ * From 2026-10-10 a player verifies with typed details and, when the automatic checks pass, is approved at once;
+ * officers act AFTERWARDS (docs/COMPLIANCE-DECISIONS.md, the 2026-10-10 entry). `/admin/kyc` lists every automatic
+ * approval no officer has checked yet (`db.kyc.listUncheckedAutoApprovals`); `runKycPostCheckAlerts` is how the
+ * officers learn one is waiting, and `notifyAdminsKycPostCheckDue` is what they receive:
+ *   · AT ONCE (the next tick) when the approval carries a flag — the NIDA birth date differs from the account's, a
+ *     passport outside the usual shape, a licence or voter's card (no published format), a possible same person;
+ *   · after `KYC_POST_CHECK_GRACE_HOURS` when it carries none and is still unchecked.
+ * ONE alert per approval, whichever comes first. The marker is the review target's kind of fact — COMPLIANCE, on the
+ * submission itself — keyed on its `autoApprovedAt`, so a LATER automatic approval of the same submission (a restart
+ * clears the stamp) is a new approval and alerts again, exactly as a resubmission that breaches again does above.
+ * ⚠️ One audit row per alerted approval is affordable for the review target's reason: an approval happens about once
+ * per player, never per bet or per deposit, and the officers' own check ends the alerting for good.
+ *
+ * ⛔ NO PLAYER MESSAGE LIVES HERE EITHER (the quiet rule above). The player was told the truth when they were approved
+ * (`notifyKyc` APPROVED); an officer's check becomes their news only when it changes something — a correction asked, a
+ * refusal — and each of those sends its own notice.
+ * ⛔ BELL ONLY. The new-case and overdue alerts mail too because a player is waiting on them; nobody waits on this one.
+ * ═══════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/** The once-per-approval marker — a COMPLIANCE audit fact written on the submission itself. */
+const KYC_POST_CHECK_ALERT_ACTION = "kyc.post_check_due";
+
+/** How long an UNFLAGGED automatic approval may wait for an officer's check before the officers are told (plan A3). */
+export const KYC_POST_CHECK_GRACE_HOURS = 24;
+
+/**
+ * Officer alert: an automatic identity approval is waiting for an officer's check (2026-10-10). Bell only, to
+ * `kycOfficerRoles()`, the roles that can mark it checked, ask for a correction or refuse it.
+ *
+ * ⭐ A FLAGGED approval says so in its title and names its flags in English (`FLAG_LABEL`, the labels the case page
+ * shows), because the flags are what an officer opens it for. An unflagged one says how long it has waited.
+ * ⛔ It names the player by label and the case by its link: never the document number, the date of birth or the
+ * values behind a flag (the rule `kycSubmittedAdminHtml` keeps).
+ * ⛔ Staff copy is English by design; the Swahili and Chinese fields exist because every bell row carries
+ * three (`test:cert-c3` §5), not because an officer reads them.
+ * Returns how many officers' bells received it.
+ */
+export async function notifyAdminsKycPostCheckDue(opts: {
+  userId: string; playerLabel: string; hoursSince: number; flags: readonly string[];
+}): Promise<number> {
+  const officers = await db.user.listByRoles(await kycOfficerRoles());
+  const label = clipQuote(opts.playerLabel, 60);
+  const n = opts.flags.length;
+  const named = opts.flags.map((f) => FLAG_LABEL[f as KycFlag] ?? f).join(" · ");
+  const h = opts.hoursSince;
+  let delivered = 0;
+  for (const o of officers) {
+    const landed = n > 0
+      ? await notify({
+        userId: o.id,
+        kind: "KYC",
+        titleEn: "Flagged automatic approval · check it now",
+        titleSw: "Idhini ya kiotomatiki yenye alama · ikague sasa",
+        titleZh: "自动通过的身份有标记 · 请立即核查",
+        bodyEn: `${label} was verified automatically with ${n === 1 ? "1 flag" : `${n} flags`}: ${named}. Open the case to check it.`,
+        bodySw: `${label} amethibitishwa kiotomatiki, lakini kuna alama ${n} za kuangalia. Fungua kesi uikague.`,
+        bodyZh: `${label} 的身份已自动通过，有 ${n} 项标记需要查看。请打开案件进行核查。`,
+        href: `/admin/kyc/${opts.userId}`,
+      }).catch(() => null)
+      : await notify({
+        userId: o.id,
+        kind: "KYC",
+        titleEn: `Automatic approval unchecked · ${h}h`,
+        titleSw: `Idhini ya kiotomatiki haijakaguliwa · saa ${h}`,
+        titleZh: `自动通过尚未核查 · 已 ${h} 小时`,
+        bodyEn: `${label} was verified automatically ${h} hours ago and no officer has checked it yet. Open the case to check it.`,
+        bodySw: `${label} alithibitishwa kiotomatiki saa ${h} zilizopita na bado hakuna afisa aliyeikagua. Fungua kesi uikague.`,
+        bodyZh: `${label} 的身份已于 ${h} 小时前自动通过，至今尚无合规官核查。请打开案件进行核查。`,
+        href: `/admin/kyc/${opts.userId}`,
+      }).catch(() => null);
+    if (landed) delivered++;
+  }
+  return delivered;
+}
+
+export type KycPostCheckRun = {
+  /** Automatic approvals no officer has checked yet, right now. */
+  unchecked: number;
+  /** Of those, due an alert: flagged, or unflagged and older than the grace. */
+  due: number;
+  /** Of the due, how many were due because they carry a flag. */
+  flagged: number;
+  /** Alerts raised this run. */
+  alerted: number;
+  /** Due approvals already alerted on an earlier run — the dedupe path. */
+  alreadyAlerted: number;
+  graceHours: number;
+};
+
+/**
+ * AUTOMATIC APPROVALS, CHECKED AFTERWARDS — the lifecycle chore (leader-leased, ~15-min; see `lifecycle.ts`).
+ *
+ * One officer alert per unchecked automatic approval: at once when it carries a flag, otherwise once it is older than
+ * `KYC_POST_CHECK_GRACE_HOURS`. Deduped the way `runKycReviewSlaAlerts` dedupes: a COMPLIANCE audit fact on the
+ * submission, keyed here on (submission, `autoApprovedAt`), read from the DURABLE history, written before the send,
+ * and withheld when that history cannot be read to its end.
+ *
+ * ⭐ ONE ORDERING DIFFERS, AND ONLY TOWARDS THE SAFE SIDE: the player's label is read BEFORE the marker is written. The
+ * review target writes its marker first and reads the label after, so a failed read there costs the alert; here only a
+ * crash between the marker and the send can, which is the one window a marker-first design must accept.
+ * ⚠️ The population is `listUncheckedAutoApprovals`: the NEWEST row per account, approved automatically and not yet
+ * checked — a scalar read with no documents joined, bounded by the very backlog it reports on. ⭐ Since review R5.1 that
+ * list also carries such an approval while it is with an officer (PENDING_REVIEW) or with the player (corrections
+ * asked); the bell asks for a post-check, which only an APPROVED row can take (Mark checked), so it rings for those.
+ * A case with an officer has its own bells (the new-case alert, the review target's) and its approval on the
+ * workstation records the check (`approveIdentity`); corrections asked is an officer who has already looked.
+ * ⛔ The dedupe reads this chore's OWN markers only (`kycAlertMarkers`, review R5.9) — never a window the player can fill.
+ * ⚠️ BOUNDED at `maxAlerts` per run, so a long outage does not turn into one burst of a hundred alerts.
+ */
+export async function runKycPostCheckAlerts(opts: { nowMs?: number; maxAlerts?: number } = {}): Promise<KycPostCheckRun> {
+  const nowMs = opts.nowMs ?? Date.now();
+  const maxAlerts = opts.maxAlerts ?? 20;
+  const graceMs = KYC_POST_CHECK_GRACE_HOURS * 60 * 60 * 1000;
+  const unchecked = await db.kyc.listUncheckedAutoApprovals();
+  const run: KycPostCheckRun = {
+    unchecked: unchecked.length, due: 0, flagged: 0, alerted: 0, alreadyAlerted: 0, graceHours: KYC_POST_CHECK_GRACE_HOURS,
+  };
+  for (const k of unchecked) {
+    if (!k.autoApprovedAt || k.status !== "APPROVED") continue;
+    const flags: string[] = Array.isArray(k.autoFlags) ? [...k.autoFlags] : [];
+    const sinceMs = nowMs - Date.parse(k.autoApprovedAt);
+    const flagged = flags.length > 0;
+    if (!flagged && !(sinceMs > graceMs)) continue;
+    run.due++;
+    if (flagged) run.flagged++;
+    if (run.alerted >= maxAlerts) continue;
+    try {
+      // ⛔ ONE FILTERED READ of this chore's own markers on this submission (R5.9) — see `kycAlertMarkers`.
+      const history = await kycAlertMarkers(k.id, KYC_POST_CHECK_ALERT_ACTION);
+      const seen = history.entries.some((e) => e.action === KYC_POST_CHECK_ALERT_ACTION && e.payload?.autoApprovedAt === k.autoApprovedAt);
+      if (seen) { run.alreadyAlerted++; continue; }
+      // ⛔ A history we could not read to the end is not "never alerted" — withhold rather than repeat.
+      // The approval still waits in the officers' list on /admin/kyc.
+      if (history.truncated) {
+        console.error("[kyc-post-check] a submission's audit history exceeds the probe limit — alert withheld rather than risk repeating it");
+        continue;
+      }
+      const hoursSince = Number.isFinite(sinceMs) ? Math.max(0, Math.floor(sinceMs / 3_600_000)) : 0;
+      const u = await db.user.findById(k.userId);
+      const row = await db.kyc.findByUserId(k.userId);
+      const legalName = row && row.id === k.id ? row.fullName : null;
+      const playerLabel = displayLabel({ id: k.userId, displayName: legalName ?? u?.displayName ?? null });
+      // The marker before the send: a crash between them costs one missed alert, never a repeated one. A missed alert is
+      // recoverable from the list on /admin/kyc; an alert that fires every fifteen minutes teaches officers to ignore it.
+      await audit({
+        category: "COMPLIANCE", action: KYC_POST_CHECK_ALERT_ACTION, actorId: null,
+        targetType: "Kyc", targetId: k.id,
+        payload: { userId: k.userId, autoApprovedAt: k.autoApprovedAt, flags, hoursSince, graceHours: KYC_POST_CHECK_GRACE_HOURS },
+      });
+      await notifyAdminsKycPostCheckDue({ userId: k.userId, playerLabel, hoursSince, flags });
+      run.alerted++;
+    } catch (err) {
+      console.error("[kyc-post-check] alert failed:", (err as Error)?.message ?? err);
     }
   }
   return run;

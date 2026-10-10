@@ -169,6 +169,18 @@ const posId = (() => { let n = 0; return () => `pos_pol_${++n}`; })();
     setAgentConfig({ enabled: snap.enabled }, "test-officer");
   }
   ok("4.restore · the door is open again", getAgentConfig().enabled === snap.enabled);
+  /**
+   * ⭐ 2026-10-10 · AND THE REFUSAL ABOVE WAS THE DOOR, NOT IDENTITY. Since players verify with typed details and are
+   * approved automatically, the agent door also asks for an OFFICER'S PHOTO APPROVAL (`photoIdentityVerified`), and a
+   * fixture without one is refused `kyc_required` — one check later than `programme_disabled`, so 4.door alone cannot
+   * tell the two apart. With the door open the same applicant must be eligible: `verified-fixtures` writes an officer's
+   * photo approval with the full photo set, the shape every account carried before 2026-10-10.
+   */
+  if (snap.enabled) {
+    const reopened = await applicantEligibility("pol_door_applicant");
+    ok("4.reopened · CONTROL — with the door open the same applicant IS eligible (an officer's photo approval, never an automatic one)",
+      reopened.ok, JSON.stringify(reopened));
+  }
 }
 
 // ── §5 · CONTROL — the player promo on the identical hook pays BONUS, so the split is real ──

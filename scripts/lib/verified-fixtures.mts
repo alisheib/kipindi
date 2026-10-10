@@ -37,10 +37,58 @@
  * It wraps `db.user.create` once, at import time, so a suite needs a single line and no
  * edit to its fixture bodies. ⚠️ The wrap is IDEMPOTENT: two imports in one process (a
  * suite importing another suite's helper) must not double-wrap and write the row twice.
+ *
+ * ── WHICH KIND OF APPROVAL (2026-10-10, typed-only KYC) ────────────────────────────────
+ * From that day there are two: a player's AUTOMATIC approval from typed details (`autoApprovedAt`,
+ * no officer), and an officer's approval on the document's photos (`photoVerifiedAt` — the agent
+ * programme's identity gate, `photoIdentityVerified`). Every fixture here is the SECOND kind, the one
+ * every account had before that day (the migration backfills `photoVerifiedAt` from `approvedAt`):
+ *   · an AGENT fixture must still pass the agent gates it passed before — ruling 4 of 2026-10-10 is
+ *     that agents keep everything as before — and an automatic approval never passes them;
+ *   · an automatic approval would put every fixture of every suite on the officers' post-check list
+ *     (`listUncheckedAutoApprovals`), a population nobody asked to change.
+ * ⚠️ `reviewerId` STAYS NULL, deliberately: any reviewer on a row is OFFICER PROVENANCE, which sends a
+ * typed send to an officer instead of approving it. A suite that spreads this row into a restart to
+ * test the instant path would inherit it and measure the routing rule instead of its own.
+ * ⭐ AND THE PHOTOS BEHIND THE STAMP ARE ON FILE. The agent gate (`photoIdentityVerified`,
+ * `src/lib/server/agent-identity.ts`) asks three facts, not one: APPROVED now, `photoVerifiedAt`, AND the full
+ * photo set for the document still on the row (`photoSetComplete`) — because a stamp with no photos behind it is
+ * exactly the shape the migration's backfill can leave on a row restarted before the release, and the product
+ * refuses to count it. So every fixture carries the NIDA set — front, back and a selfie — as tiny real PNGs with
+ * their sniffed mime and byte count, exactly as `attachDocument` records them. A fixture with the stamp and no
+ * photos would be a row the product cannot produce, and an agent suite would measure the backfill rule instead of
+ * its own. ⛔ AND UPLOADED NO LATER THAN THE STAMP (2026-10-10, review R5.2): a stamp counts only over photos uploaded
+ * at or before it (`photoSetStampedBy`, `src/lib/id-documents.ts`) — an officer approves the photos already on file —
+ * so `fixturePhotoSet` takes the stamp's own instant, never a later one.
+ * ⛔ Every column is named. These rows are BUILT, not spread, and the DAL writes an omitted field as null.
  */
 import { db } from "../../src/lib/server/store.ts";
 
 type UserLike = { id: string; role?: string };
+
+/** A real 1×1 PNG (magic bytes and all) — what `validateDocImage` accepts; 70 bytes decoded (96 base64 characters,
+ *  two of them padding — `validateDocImage`'s own arithmetic). */
+const FIXTURE_PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+/** The full NIDA photo set — front, back and the selfie (`ID_DOC_SPECS.NIDA.requiredSlots`) — uploaded at `stampedAt`,
+ *  the officer's photo stamp (`photoVerifiedAt`): never after it, or the stamp would not stand over them (`photoSetStampedBy`). */
+function fixturePhotoSet(stampedAt: string) {
+  return (["NIDA_FRONT", "NIDA_BACK", "SELFIE"] as const).map((docType) => ({
+    docType, storageKey: FIXTURE_PNG, uploadedAt: stampedAt, mimeType: "image/png", sizeBytes: 70,
+  }));
+}
+
+/** The approval columns every fixture here carries — an officer's kind of approval at `now` (see the header). */
+function officerApprovalStamps(now: string) {
+  return {
+    photoVerifiedAt: now,
+    autoApprovedAt: null,
+    autoFlags: [] as string[],
+    postCheckedAt: null,
+    postCheckedById: null,
+    priorIdentities: [],
+  };
+}
 
 /**
  * Approve one account explicitly — for the staff accounts the automatic wrap skips.
@@ -60,8 +108,9 @@ export async function approveFixtureIdentity(userId: string): Promise<void> {
   await db.kyc.upsert({
     id: `kyc_${userId}`, userId, status: "APPROVED", rejectReason: null, rejectNote: null,
     idType: "NIDA", idNumber: `199001018${String(Date.now()).slice(-11)}`, idExpiry: null,
-    idVerifiedAt: now, fullName: "Fixture Officer", dob: "1990-01-01", documents: [],
+    idVerifiedAt: now, fullName: "Fixture Officer", dob: "1990-01-01", documents: fixturePhotoSet(now), extraRequests: [],
     reviewerId: null, reviewedAt: now, submittedAt: now, approvedAt: now,
+    ...officerApprovalStamps(now),
     createdAt: now, updatedAt: now,
   });
 }
@@ -121,13 +170,17 @@ if (!g[MARK]) {
         idVerifiedAt: now,
         fullName: "Fixture Player",
         dob: "1990-01-01",
-        documents: [],
+        // ⭐ The photo set behind the officer's stamp (2026-10-10) — see the header and `fixturePhotoSet`.
+        documents: fixturePhotoSet(now),
+        extraRequests: [],
         reviewerId: null,
         reviewedAt: now,
         submittedAt: now,
         // The first-approval stamp — the half of `approvedEver` the withdrawal gate is built around.
         // The product writes it with every first approval, so an APPROVED fixture carries it too.
         approvedAt: now,
+        // ⭐ An officer's kind of approval, the agent gate's stamp included — see the header (2026-10-10).
+        ...officerApprovalStamps(now),
         createdAt: now,
         updatedAt: now,
       });
