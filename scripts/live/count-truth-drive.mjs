@@ -159,7 +159,10 @@ async function walk(url) {
     await page.goto(u.toString(), { waitUntil: "domcontentloaded", timeout: 40_000 });
     await page.waitForTimeout(220);
     if (promised === null) {
-      const t = await page.getAttribute("[data-result-count]", "data-result-count").catch(() => null);
+      // ⚠️ NOT THE LOADING DRAWING'S EMPTY HOOK (2026-10-10, R5-L's note): /markets' bar drawing carries an empty
+      // `data-result-count` (the phone grid's hook, globals.css) — on a document load too, while the board streams in — so
+      // the first match 220ms in can be "" (Number("") = 0, a promise of nothing). Only a count with a value is the page's.
+      const t = await page.getAttribute('[data-result-count]:not([data-result-count=""])', "data-result-count").catch(() => null);
       promised = t === null ? null : Number(t);
     }
     /**
