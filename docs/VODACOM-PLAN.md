@@ -39,6 +39,32 @@ the s4-5 low-minimum and s4-6 code frames on the S4 canvas, `shortfall.ts`'s `em
 the short-of-the-minimum board offers TZS 1,000 and S9's six code boards are marked superseded; `shortfallPlan` asks no
 email step; 2.9 reads which tree it runs on (the bar's component gone → no viewer may see a bar).
 
+**✅ THE S6 VISUAL PASS IS LIVE FROM ALI-BLADE15 (2026-10-10 ~14:55 EAT).** OMEGA-COMPILE01, which ran rounds 1–6, is
+no longer reachable — Ali, 2026-10-10: *"push everything to live and let's continue fresh with all on live"*; *"we need
+to proceed here on this machine with the plan"*. `origin/vodacom-visual` (`5c13a9a2`: 61 commits, 426 files over main)
+was merged with main twice before the push — `046c26e6` (the lane's records, docs only) and `275daa4a` (`37ba13a1`,
+short titles 100 / 100 / 50, Ali's ruling of the same day; the one shared file is this one, in other sections) — and
+proved here. On `046c26e6`: local `qa:live` **334/334** on an in-memory server; `test:all` **498/509**, every failure
+explained — `test:responsive`, `test:motion`, `test:revoked-deadend`, `test:admin-section-gate` and `test:needle-rest`
+need a running server (they fail on main the same way), `test:orphans` and `test:house-bot-console` are main's own,
+`test:house-bot-disclosure` is D19a's legal-tree pin (green once this is main), and `test:audit-drain` (42/0),
+`test:house-bot-money` (Postgres 151/151) and `test:house-bot-designation` (Postgres 161/161) pass ALONE — the battery's
+parallel load on this laptop, as recorded before. On the final tree: `next build` exit 0 (`275daa4a`; the first attempt
+lost Turbopack's Google-font fetch, the known transient); the 23 suites that read the short-title code or these docs green
+after one fix — R4-H's `test:visual-pass-r4h` 5.2 pinned SJ-8's two-line budget 56 / 28 and now pins the ruling (`5e9d5566`,
+81/0); `test:dal-parity`, `test:sell-price-guard` and `test:journey-shell` alone green. **What every player sees change**
+is the pass's shared page bodies (S6-VISUAL-PASS-STATE.md §2): dates in the reader's language, empty states, notices, one
+ink per state (gold only where money was earned), loading drawings shaped like their pages, an offline page that holds
+no person's details (the service worker's cache `50pick-v6` drops every older copy; production served v4), break and
+exclusion ends with their time, the classic Sell confirm's ✕ on its title. The journey itself stays behind the flag:
+nothing is turned on (Ali, 2026-10-02). Known and explained, not yet registered: classic parity 37/39 on OMEGA (R4-K's
+not-found robots tag, 32 cells; the Sell confirm's ✕ and panel outline, 2) — named EXPECTED_DIFFS in round 7's lock turn.
+Owed after the push: the red twins left to a locked turn (`red:house-bot-c5`, `red:house-bot-money`,
+`red:house-bot-engine`, `red:campaign-visuals`, `red:contacts-import`). **Round 7** — the round-6 read's open list
+(`tools/visual/triage-r6.md` on `origin/vodacom-visual-tools`) — is fixed forward here in three parts (R7-A text wrapping
+and names, R7-B inks and signs, R7-C edges; branches `r7-a`, `r7-b`, `r7-c`), then a lock turn re-tiles all 333 tiles and
+the read repeats until it finds nothing; S6 closes then. The production read-back is its own record after the deploy.
+
 **✅ A8j LIVE `88fb1f41` (2026-10-07) — Enter in a form never skips its confirm.** Enter, or a phone's Go key, in the
 withdraw amount box sent the withdrawal with no "Confirm withdrawal" (no fee, no "You receive", no recipient), and in the
 close-account phrase box it closed the account: on live main the drive's control run withdrew TZS 20,000 three times
