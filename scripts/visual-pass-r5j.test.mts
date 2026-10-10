@@ -184,6 +184,7 @@ const LEFT: Record<string, string> = {
   "src/app/wallet/receipts/loading.tsx :: slot {n} :: \"00\"": "the loading ghost's two placeholder digits, not a count — R5-K/L's ghosts",
   "src/app/wallet/wallet-ghost.tsx :: slot {n} :: \"00\"": "the loading ghost's two placeholder digits, not a count — R5-K/L's ghosts",
   "src/app/positions/positions-ghost.tsx :: slot {n} :: \"00\"": "the loading ghost's two placeholder digits, not a count — R5-K's ghosts (merged 2026-10-09)",
+  "src/app/updown/history/history-ghost.tsx :: slot {n} :: \"00\"": "the loading ghost's two placeholder digits in the count's phrase, not a count — the history bar on the kit (2026-10-10)",
   "src/components/charts/terminal-chart.tsx :: toLocaleString :: v.toLocaleString(locale, { minimumFractionDigits: decimalsRef.current, maximumFractionDigits: decimalsRef.current })": "a PRICE with its own decimals in the reader's language (explicit locale, never the runtime's) — `formatNumber` has no decimals",
   "src/components/ui/progress-bar.tsx :: toLocaleString :: value.toLocaleString()": "the operator console's progress bar (no player file imports it — 1.4), English-only by the admin convention",
   "src/components/ui/progress-bar.tsx :: toLocaleString :: safeMax.toLocaleString()": "the operator console's progress bar (no player file imports it — 1.4), English-only by the admin convention",

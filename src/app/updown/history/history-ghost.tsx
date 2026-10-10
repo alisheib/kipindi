@@ -3,7 +3,8 @@
 import type { ReactNode } from "react";
 import { useT } from "@/lib/i18n";
 import { BackLinkGhost } from "@/components/ui/back-link";
-import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW2_CLASS, QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
+import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW2_CLASS, QUERY_SEARCH_BAND_CLASS, QUERY_STRIP_CLASS, QueryGroupDivider } from "@/components/ui/query-bar";
+import { CountGhost, FiltersGhost, GroupGhost, PillGhost, SortGhost } from "@/components/ui/query-bar-ghost";
 import { PageHeader } from "@/components/ui/page-header";
 
 /**
@@ -23,15 +24,27 @@ import { PageHeader } from "@/components/ui/page-header";
  * wrapper, same props — a 20px bar and a 40px block stood there, the page landing some 60px lower than promised.
  */
 export function UpDownHistoryGhost({ journeyHead }: { journeyHead?: ReactNode }) {
-  const { t } = useT();
+  const { t, locale } = useT();
+  // ⭐ THE BAR'S OWN WORDS, IN ITS ORDER (2026-10-10, R5-L's note for the integrator): the six lenses (`UD_LENSES`,
+  // `lensLabel` in `history-bar.tsx`) and the five windows (`UD_WHEN_IDS`, `whenLabel`). The asset and duration groups are
+  // the player's own rounds, so the case drawn is the smallest a player with rounds has (R5-L's model,
+  // S/r5l/measure-history.cts): "All" and one asset — the product's first, Bitcoin, in each language's name
+  // (`updown-symbols.ts`) — and "All" and one duration; every real player's row is at least this tall.
+  const lenses = [t.common.all, t.market.udInPlay, t.market.udUpWins, t.market.udDownWins, t.market.udVoided, t.market.udConfirmingPrice];
+  const windows = [t.common.rangeToday, t.common.rangeYesterday, t.common.range7d, t.common.range30d, t.common.rangeAll];
+  const asset = locale === "zh" ? "比特币" : "Bitcoin";
   return (
     <div className="mx-auto w-full max-w-reading px-3 lg:px-6 py-6" aria-busy="true">
       {journeyHead ? journeyHead : <BackLinkGhost />}
       {journeyHead ? null : <div className="mt-3"><PageHeader eyebrow={t.market.udTitle} title={t.market.udHistoryTitle} subtitle={t.market.udHistoryBody} /></div>}
       {/* ⭐ THE SEARCH BAND AND THE BAR, AS THE PAGE DRAWS THEM for a player with rounds (R5-H · G-2b: neither was drawn,
           so the strip landed about 300px lower than this ghost promised): the band on the page's own classes (`mt-5 pb-5`,
-          its echo row inside the gap to the bar), then the bar's two rows — the lenses with the count's 17.25px line, then
-          sort and the phone's Filters (from lg the asset, duration and day groups, which wrap by their words). */}
+          its echo row inside the gap to the bar), then the bar's two rows in the bar kit's parts (`query-bar-ghost.tsx`,
+          the page's own boxes with its words set and not shown — 2026-10-10): the lens strip in the strip's own class
+          (scrolling below lg, wrapping from it) beside the count's phrase, then the sort and the phone's Filters, and from lg
+          the asset, duration and day groups behind the page's dividers. Measured from the served fonts (S/r7/measure-
+          history2.cts): from lg that row is two lines in sw, en and zh where the typed 180px box drew one — the list
+          landed 56px lower than promised — and the lenses one line, now each pill the page's own width. */}
       <div className={`${QUERY_SEARCH_BAND_CLASS} mt-5 pb-5`} aria-hidden>
         <div className="search-box-wrap">
           <div className="h-[calc(var(--h-input)+2px)] w-full rounded-lg border border-border bg-bg-inset kp-shimmer-track" />
@@ -40,14 +53,20 @@ export function UpDownHistoryGhost({ journeyHead }: { journeyHead?: ReactNode })
       </div>
       <div className={QUERY_BAR_CLASS} aria-hidden>
         <div className={QUERY_BAR_ROW1_CLASS}>
-          <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
-            {[56, 76, 76, 76].map((w, i) => <div key={i} className="h-[44px] shrink-0 rounded-pill bg-bg-elevated kp-shimmer-track" style={{ width: w }} />)}
+          <div className={QUERY_STRIP_CLASS}>
+            {lenses.map((label) => <PillGhost key={label} label={label} />)}
           </div>
-          <div className="flex h-[17.25px] shrink-0 items-center"><div className="h-3 w-[80px] rounded bg-bg-elevated" /></div>
+          <CountGhost count={t.market.udNRounds.replace("{n}", "00")} />
         </div>
         <div className={QUERY_BAR_ROW2_CLASS}>
-          <div className="h-[44px] w-[180px] rounded-pill bg-bg-elevated kp-shimmer-track" />
-          <div className="h-[44px] w-[104px] rounded-pill bg-bg-elevated kp-shimmer-track lg:hidden" />
+          <SortGhost label={t.common.sort} value={t.positions.sortRecent} />
+          <FiltersGhost label={t.market.filtersOpen} />
+          <QueryGroupDivider />
+          <GroupGhost label={t.market.udAssets}><PillGhost label={t.common.all} /><PillGhost label={asset} /></GroupGhost>
+          <QueryGroupDivider />
+          <GroupGhost label={t.market.udDurations}><PillGhost label={t.common.all} /><PillGhost label={`5 ${t.market.udMin}`} /></GroupGhost>
+          <QueryGroupDivider />
+          <GroupGhost label={t.common.when}>{windows.map((label) => <PillGhost key={label} label={label} />)}</GroupGhost>
         </div>
       </div>
       {/* The P&L strip: each tile the page's (14px padding, a 1px border, the 14px label, 2px, the 19px figure's 28.5px
