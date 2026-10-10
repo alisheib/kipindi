@@ -201,6 +201,10 @@ WHERE THE PROGRAMME STANDS (the board, §1, is the authority): 19/52 units ✅ �
      test:marketing-consent G22, G23, R8 and test:privacy-notice §5ap, §5ar on a set cutoff, then set it.
   3. The whole `red:house-bot-console` and `red:house-bot-c5`, each alone in a quiet lock turn (owed since STEPS 49–53;
      the STEP log says why each run was cut short or refused).
+     2026-10-10 (the Vodacom lane, OMEGA): `red:house-bot-c5` ran whole on main `e7a979c6` — 99 caught, 0 missed, 0 wrong
+     assertion, 0 stale, 0 files left dirty (its baseline had refused: the RG hotfix 2cd2239e moved six of 0.232's
+     line-pinned writes, re-pinned in e7a979c6). `red:house-bot-console` fails its plant 1.548 ("the fix is in the crumb
+     builder's own home, keyed by the SECTION KEY") on main at 9aa4eec2 and before that day's hotfixes (9cb95938~1).
   4. A FULL `red:campaign-visuals` run on the merged tree, in a quiet lock turn: the guide-polish builder's run was
      stopped by its 50-minute timeout after 135 of 221 plants, every one of them held (V16 7/7); the plants that never
      ran are R-R*, R-V12o–t, R-V14i–l, R-V15p–ag, R-V17* and R-P4, and their anchors exist (`test:red-anchors` 5019/0 on
