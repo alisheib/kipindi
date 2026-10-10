@@ -337,10 +337,13 @@ section("5 · E30 the card's two-line title slot is the contract (tiles 251 252)
   const colW = (vw: number) => vw - 32 - 2 - 30 - dash - 14;
   const avg = (CAPSIZE.sora.variants["600"].xWidthAvg / CAPSIZE.sora.unitsPerEm) * 15;
   const cap = (vw: number) => 2 * Math.floor(colW(vw) / avg);
-  ok("5.2 · S2's budget (SJ-8: 56 code points in en/sw, 28 in zh) is what two lines hold on the narrowest card: ~58 at 320, ~68 at 360",
-    SHORT_TITLE_MAX.en === 56 && SHORT_TITLE_MAX.sw === 56 && SHORT_TITLE_MAX.zh === 28 && cap(320) >= 56 && cap(360) >= 56, show({ c320: cap(320), c360: cap(360), avg: avg.toFixed(2) }));
+  // ⭐ 2026-10-10, Ali's ruling ("make it 100", main 37ba13a1): the budget is 100 code points in en/sw and 50 in zh, so a
+  // short title may take more than two lines (VODACOM-PLAN §0d, §5 S2). SJ-8's 56 / 28 was what two lines hold on the
+  // narrowest card — the measured caps below stay pinned as that old budget's reason, no longer as the budget.
+  ok("5.2 · S2's budget is the owner's ruling of 2026-10-10 — 100 code points in en/sw, 50 in zh (SJ-8's 56 / 28 was what two lines hold on the narrowest card: ~58 at 320, ~68 at 360)",
+    SHORT_TITLE_MAX.en === 100 && SHORT_TITLE_MAX.sw === 100 && SHORT_TITLE_MAX.zh === 50 && cap(320) >= 56 && cap(360) >= 56, show({ en: SHORT_TITLE_MAX.en, zh: SHORT_TITLE_MAX.zh, c320: cap(320), c360: cap(360), avg: avg.toFixed(2) }));
   const long = "Je, mkimbiaji wa Tanzania atavunja dakika 28:00 kwenye 10K ya World Athletics ijayo?";
-  ok("5.3 · the tiled title is 84 code points, 150% of the budget: it needs three lines below ~640 and is clamped by design; S2's short title is its home (report: MarketCard does not read `cardTitle` yet)",
+  ok("5.3 · the tiled title is 84 code points (150% of SJ-8's old 56, inside 2026-10-10's 100): it needs three lines below ~640 and is clamped by design; S2's short title is its home (report: MarketCard does not read `cardTitle` yet)",
     Array.from(long).length === 84 && Array.from(long).length > cap(390), show({ len: Array.from(long).length, c390: cap(390) }));
 }
 
