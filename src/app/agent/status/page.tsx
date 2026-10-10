@@ -18,6 +18,9 @@ import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import type { AgentApplicationStatus, AgentRejectReason } from "@/lib/server/store";
 import { startApplicationAction } from "../apply/actions";
 import { fillNodes } from "@/lib/fill-nodes";
+import { Callout } from "@/components/ui/callout";
+import { isLockedOut } from "@/lib/server/responsible-gambling";
+import { breakStateOf } from "@/lib/break-end";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -40,8 +43,17 @@ export default async function AgentStatusPage() {
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/agent/status");
   const { t, locale } = await getServerT();
-  const view = await applicantView(session.userId);
+  /* ⭐ R8-C (2026-10-10, the owner's ruling (4); owner items 16 and 56) · DURING A BREAK, NO OFFER TO BECOME AN AGENT. The
+     status itself is the applicant's own record and stays whole — the reference, the decision, a refund owed. What it
+     offers — continue the application, start a new one, the programme's door — gives way to the programme's own RG
+     sentence (`agent.stateRgLocked`). Read beside the view, failing OPEN: a failed read is no break (and the service still
+     refuses a start or a submit on a break). */
+  const [view, breakEnd] = await Promise.all([
+    applicantView(session.userId),
+    Promise.resolve().then(() => isLockedOut(session.userId)).then(breakStateOf).catch(() => null),
+  ]);
   const d = (iso: string) => formatEatDate(Date.parse(iso), Date.now(), t.common.monthsShort, locale);
+  const rgLocked = <Callout tone="neutral" size="md">{t.agent.stateRgLocked}</Callout>;
 
   // An approved agent's home is the dashboard — through the ONE gate every /profile/invite link
   // sits beside (`test:withdrawn-features` §7). A paused agent goes back to /agent, which says so.
@@ -70,8 +82,8 @@ export default async function AgentStatusPage() {
       <PageHeader eyebrow={t.agent.eyebrow} title={t.agent.statusTitle} />
 
       {view.state === "none" ? (
-        <EmptyState kind="default" title={t.agent.noApplication} body={t.agent.noApplicationBody}
-          action={<Link href={"/agent" as never}><Button variant="primary" size="md">{t.agent.title}</Button></Link>} />
+        <EmptyState kind="default" title={t.agent.noApplication} body={breakEnd ? t.agent.stateRgLocked : t.agent.noApplicationBody}
+          action={breakEnd ? null : <Link href={"/agent" as never}><Button variant="primary" size="md">{t.agent.title}</Button></Link>} />
       ) : (
         <>
           {/* Where you are */}
@@ -98,7 +110,8 @@ export default async function AgentStatusPage() {
                 <li>{t.agent.nextDecision}</li>
               </ul>
               {(view.state === "info_required" || view.state === "in_progress") && (
-                <Link href={"/agent/apply" as never}><Button variant="primary" size="md" leading={<I.arrowRight s={14} />}>{t.agent.ctaContinue}</Button></Link>
+                breakEnd ? rgLocked
+                : <Link href={"/agent/apply" as never}><Button variant="primary" size="md" leading={<I.arrowRight s={14} />}>{t.agent.ctaContinue}</Button></Link>
               )}
             </section>
           )}
@@ -131,7 +144,8 @@ export default async function AgentStatusPage() {
               )}
               <p className="text-body-sm text-text-muted">{view.reapplyAt ? fill(t.agent.reapplyOn, { date: d(view.reapplyAt) }) : t.agent.finalDecision}</p>
               {view.reapplyAt && new Date(view.reapplyAt).getTime() <= Date.now() && (
-                <form action={startApplicationAction}><Button type="submit" variant="primary" size="md">{t.agent.startOver}</Button></form>
+                breakEnd ? rgLocked
+                : <form action={startApplicationAction}><Button type="submit" variant="primary" size="md">{t.agent.startOver}</Button></form>
               )}
             </section>
           )}
@@ -146,14 +160,15 @@ export default async function AgentStatusPage() {
               )}
               {/* The door opens on the date the authority promises — not the same afternoon. */}
               {view.reapplyAt && new Date(view.reapplyAt).getTime() <= Date.now() && (
-                <form action={startApplicationAction}><Button type="submit" variant="primary" size="md">{t.agent.startOver}</Button></form>
+                breakEnd ? rgLocked
+                : <form action={startApplicationAction}><Button type="submit" variant="primary" size="md">{t.agent.startOver}</Button></form>
               )}
             </section>
           )}
           {(view.state === "expired" || view.state === "declined") && (
             <section className="rounded-xl glass-panel p-4 space-y-3">
               <p className="text-body-sm text-text-muted">{statusWord[view.app.status]}</p>
-              <form action={startApplicationAction}><Button type="submit" variant="primary" size="md">{t.agent.startOver}</Button></form>
+              {breakEnd ? rgLocked : <form action={startApplicationAction}><Button type="submit" variant="primary" size="md">{t.agent.startOver}</Button></form>}
             </section>
           )}
         </>

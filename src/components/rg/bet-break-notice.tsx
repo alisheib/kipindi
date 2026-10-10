@@ -18,6 +18,9 @@
  *    read is "not on a break", `feature-state.ts` LAW 1, and the server still refuses the bet) and hands the sentence here.
  * A plain module (no "use client"): the market page draws it on the server, the board card and the round panel on the
  * client.
+ * ⭐ R8-C (2026-10-10, the owner's ruling (4)) · …AND WHERE AN OFFER TO EARN OR RECRUIT WOULD BE: the same notice, the same
+ *    words, on /profile/invite (`invite-break`), an agent's dashboard (`agent-dashboard-break`), /proposals
+ *    (`proposals-break`) and its composer (`proposal-new-break`) — each page reading its own reader's break, as above.
  */
 import { Callout } from "@/components/ui/callout";
 import { keepText } from "@/components/ui/keep-run";

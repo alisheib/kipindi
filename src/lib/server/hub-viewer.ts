@@ -9,6 +9,9 @@
  * proposals by state, the staff console for every staff role (SJ-23). Nothing here re-spells one
  * (`test:journey-account` §1).
  * ⭐ "Verify ID" follows `/profile`'s own predicate: offered unless the identity is approved or finally refused.
+ * ⭐ R8-C (2026-10-10, the owner's ruling (4)) · THE BREAK READ IN THE BATCH CLOSES THE THREE OFFERS: a reader whose break or
+ * self-exclusion is running is handed no invite, proposals or agent door (`viewerDoorsFor`'s `onBreak`), and Pumzika says
+ * until when (R4-I). A failed break read is no break — it closes none of the three and opens nothing the standing closes.
  * ⛔ EVERY FAILED READ CLOSES A DOOR, NEVER OPENS ONE: no user row → no role, so no console; no invite viewer → the closed
  * viewer (no invite, no standing); no wallet → no figure, and not called held; a KYC row that was not read → "Verify ID"
  * is not offered (a verified player is never told to verify again on the strength of a failed query); a failed switch
@@ -75,7 +78,8 @@ export async function loadHubViewer(userId: string | null, deps: HubViewerDeps =
     attempt(() => deps.kyc(userId)),
     attempt(() => deps.inviteViewer(userId)),
     attempt(() => deps.invitePayable()),
-    // R4-I · in the same batch. It feeds a STATUS line, never a door: a failed read (or no reader) shows none.
+    // R4-I · in the same batch: Pumzika's status line — and since R8-C the break term of the three offers' doors. A failed
+    // read (or no reader) is no break: no status, and the doors stand as the standing gives them (it gates an offer only).
     attempt(() => (deps.lockout ? deps.lockout(userId) : Promise.resolve(null))),
   ]);
   const user = u.status === "fulfilled" ? u.value : null;
@@ -88,6 +92,7 @@ export async function loadHubViewer(userId: string | null, deps: HubViewerDeps =
   // `/profile`'s own predicate, the one function every KYC door asks (`kycDoorOffered`; round 6, review C13). ⛔ Only a row
   // that was READ can offer it: a failed read is not "not started".
   const kycOffered = k.status === "fulfilled" && kycDoorOffered(k.value?.status, k.value?.rejectReason);
+  const breakEnd = lock.status === "fulfilled" && lock.value ? breakStateOf(lock.value) : null;
   const who = user ?? { id: userId, displayName: null };
   return {
     signedIn: true,
@@ -97,7 +102,7 @@ export async function loadHubViewer(userId: string | null, deps: HubViewerDeps =
     phone: maskPhone(user?.phoneE164),
     balance: wallet ? wallet.balance : null,
     walletHeld: !!wallet && wallet.status !== "ACTIVE",
-    breakEnd: lock.status === "fulfilled" && lock.value ? breakStateOf(lock.value) : null,
+    breakEnd,
     kycOffered,
     agentInStanding: inviteViewer.agentInGoodStanding === true,
     proposalsState,
@@ -107,6 +112,7 @@ export async function loadHubViewer(userId: string | null, deps: HubViewerDeps =
       agentEnabled,
       proposalsState,
       role: user?.role ?? null,
+      onBreak: breakEnd !== null,
     }),
   };
 }

@@ -27,6 +27,8 @@ import { getServerT } from "@/lib/i18n-server";
 import { fillNodes } from "@/lib/fill-nodes";
 import { fill, formatNumber, formatTzs, formatDateShort as fmtDate } from "@/lib/utils";
 import type { AgentDashboard as AgentDashboardModel } from "@/lib/server/affiliate-service";
+import { BetBreakNotice } from "@/components/rg/bet-break-notice";
+import type { KeptBody } from "@/components/ui/empty-state-text";
 
 /**
  * THE AGENT'S OWN PAGE — a DISTINCT read model, not the player promo page with fields swapped.
@@ -41,6 +43,9 @@ import type { AgentDashboard as AgentDashboardModel } from "@/lib/server/affilia
  * DEACTIVATED: the page still renders (200) with the history read-only — earnings, recruits —
  * and LOSES every share surface: the code, the link, the QR, the CTA. ⛔ Never `notFound()` a
  * still-owed partner out of their own statement. ⛔ Never the officer's reason.
+ * ⭐ ON A BREAK (R8-C, 2026-10-10, the owner's ruling (4)): the same rule for the same reason — the statement stays (the
+ * rate, the money, the recruit book), and every share surface gives way to the break's own notice (`breakBody`, the page's
+ * read; R6-A's `BetBreakNotice`): during a break nobody is offered a way to recruit. No QR is drawn, nothing is shared.
  *
  * Gold + mono on money only (§M3). ⛔ No emoji. Kit atoms throughout.
  */
@@ -48,12 +53,15 @@ export async function AgentDashboard({
   dash,
   sp,
   journey = false,
+  breakBody = null,
 }: {
   dash: AgentDashboardModel;
   /** ⛔ The raw params, narrowed HERE by the contract — never read directly below. */
   sp: Record<string, string | string[] | undefined>;
   /** The page's journey answer (`page.tsx` asks it): in the journey the back link names the Akaunti hub (round 6). */
   journey?: boolean;
+  /** R8-C · the reader's running break, as `breakSentence` says it (`page.tsx` reads it; failing open, null = no break). */
+  breakBody?: KeptBody | null;
 }) {
   const { t, locale } = await getServerT();
 
@@ -94,7 +102,7 @@ export async function AgentDashboard({
   const proto = hdrs.get("x-forwarded-proto") ?? "https";
   const shareLink = host ? `${proto}://${host}/auth/register?ref=${encodeURIComponent(dash.code)}` : dash.link;
   let qrDataUrl = "";
-  if (dash.active && shareLink) {
+  if (dash.active && shareLink && !breakBody) {
     try { qrDataUrl = await QRCode.toDataURL(shareLink, { margin: 1, width: 240, color: { dark: "#0A0E4A", light: "#FFFFFF" } }); } catch { /* card renders without the QR */ }
   }
 
@@ -143,8 +151,11 @@ export async function AgentDashboard({
         {dash.reversedTzs > 0 && <Stat size="xl" labelStyle="strong" boxed="glass" tone="muted" money label={t.agent.dashReversed} value={formatNumber(dash.reversedTzs)} hint={t.agent.dashReversedHint} />}
       </div>
 
-      {/* The share card + link — ONLY while active. A paused agent has no code to share. */}
-      {dash.active && (
+      {/* The share card + link — ONLY while active. A paused agent has no code to share.
+          ⭐ R8-C (2026-10-10) · and NOT DURING A BREAK: an active agent on a break is shown the break's own notice where the card
+          and the link stood (a paused agent has neither, so nothing stands in for them). */}
+      {dash.active && breakBody && <BetBreakNotice body={breakBody} testId="agent-dashboard-break" />}
+      {dash.active && !breakBody && (
         <>
           {/* ⭐ THE SHARE CARD IS THE ROYAL CARD (R5-C, the second gold audit, 2026-10-09). It is the visual an agent SENDS:
               a gilt frame and gilt corners round a code tell its receiver "there is money in this", on a card that is
@@ -252,7 +263,9 @@ export async function AgentDashboard({
           title={cause === "lens-empty" ? t.agent.dashLensEmpty : t.agent.dashEmpty}
           body={
             cause === "lens-empty" ? t.agent.dashLensEmptyBody
-            : dash.active ? t.agent.dashEmptyBody
+            /* R8-C · "Share your code to start earning." is an offer to recruit, and a reader on a break is offered none: the
+               empty book states itself, under the break's notice above. */
+            : dash.active ? (breakBody ? undefined : t.agent.dashEmptyBody)
             : t.agent.dashPausedBody
           }
         />

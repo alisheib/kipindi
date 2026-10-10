@@ -28,6 +28,9 @@ import { SearchBox } from "@/components/ui/search-box";
 import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
 import { parseQuery, matchesQuery, fieldNames, BOARD_PROPOSAL_SEARCH } from "@/lib/search";
 import { ProposalsBar, type BoardCounts } from "./proposals-bar";
+import { isLockedOut } from "@/lib/server/responsible-gambling";
+import { breakSentence, breakStateOf } from "@/lib/break-end";
+import { BetBreakNotice } from "@/components/rg/bet-break-notice";
 import {
   boardCounts,
   boardEmptyCause,
@@ -112,9 +115,22 @@ export default async function ProposalsPage({
     redirect(`/auth/login?next=${encodeURIComponent(buildBoardHref(qs))}`);
   }
 
+  /* ⭐ R8-C (2026-10-10, the owner's ruling (4); owner items 16 and 56) · DURING A BREAK, NO OFFER TO PROPOSE AND EARN. Every
+     door to this board closes for a reader on a break (the chrome, the hub); a direct visit is answered here, calmly: the
+     board itself stays (it is public, and a proposer's own record is on it), and its offers — "Pendekeza", the reward promo,
+     the empty states' call to be the first — give way to the break's own approved sentence with its end (`BetBreakNotice`,
+     R6-A's form and words). Read only for a signed-in reader while the programme is open (otherwise this page offers
+     nothing), beside the board's own read, and failing OPEN: a failed read is no break, and the board is today's. */
+  const breakRead = session && active
+    ? Promise.resolve().then(() => isLockedOut(session.userId)).then(breakStateOf).catch(() => null)
+    : Promise.resolve(null);
   const pageNum = Math.max(1, parseInt(String(sp.page ?? "1"), 10) || 1);
   const { views, totalProposals, totalVotes } = await listAllProposals(session?.userId ?? null)
     .catch(() => ({ views: [] as ProposalView[], totalProposals: 0, totalVotes: 0 }));
+  const breakEnd = await breakRead;
+  const breakBody = breakEnd
+    ? breakSentence(breakEnd.exclusion ? t.rg.exclusionActive : t.rg.breakActive, breakEnd.until, Date.now(), t.common.monthsShort, locale)
+    : null;
 
   /**
    * The rows the contract reasons about. ⚠️ `resolutionAtMs` is `null` rather than 0 when the date
@@ -208,7 +224,7 @@ export default async function ProposalsPage({
           {/* A quiet neutral "coming soon" here, amber "maintenance" here, nothing when active. */}
           <ProposalsStateBadge state={state} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} />
         </div>
-        {active && (
+        {active && !breakBody && (
           <Link href={"/proposals/new" as never} className="shrink-0">
             <Button variant="primary" size="md" leading={<I.plus s={15} />}>{t.proposals.create}</Button>
           </Link>
@@ -216,8 +232,9 @@ export default async function ProposalsPage({
       </PageHero>
 
       {/* Reward promo — shown only when the feature is live (the state banner
-          carries the message otherwise, so this CTA isn't redundant). */}
-      {active && <ProposePromo href="/proposals/new" />}
+          carries the message otherwise, so this CTA isn't redundant).
+          R8-C · during a break, the break's own notice stands where the promo stood (and "Pendekeza" above is withheld). */}
+      {active && (breakBody ? <BetBreakNotice body={breakBody} testId="proposals-break" /> : <ProposePromo href="/proposals/new" />)}
 
       {/* Guided state banner — gilt (coming soon) / amber (maintenance). */}
       <ProposalsStateBanner
@@ -301,12 +318,14 @@ export default async function ProposalsPage({
            blocked (and, for the reward, advertise a gated inducement). */
         null
       ) : cause === "no-rows" ? (
+        /* R8-C · during a break the empty board states itself, under the break's notice above — no call to be the first to
+           propose, no reward, no "Pendekeza". */
         <EmptyState
           kind="proposals"
           title={t.proposals.noProposalsYet}
-          body={`${t.proposals.noProposalsBody} ${t.proposals.noProposalsReward} ${formatTzs(cfg.prizeTzs)}.`}
+          body={breakBody ? undefined : `${t.proposals.noProposalsBody} ${t.proposals.noProposalsReward} ${formatTzs(cfg.prizeTzs)}.`}
           action={
-            <Link href={"/proposals/new" as never}><Button variant="primary" size="sm" leading={<I.plus s={12} />}>{t.proposals.create}</Button></Link>
+            breakBody ? null : <Link href={"/proposals/new" as never}><Button variant="primary" size="sm" leading={<I.plus s={12} />}>{t.proposals.create}</Button></Link>
           }
         />
       ) : (
@@ -322,11 +341,13 @@ export default async function ProposalsPage({
           }
           body={
             cause === "search-miss" ? t.results.tryDifferentKeywords
-            : cause === "lens-empty" ? t.proposals.noProposalsInFilterBody
+            /* R8-C · "…or be the first to propose a market here" is the offer, so a reader on a break is not told it: the
+               lens states itself, and the exits above are the way out. */
+            : cause === "lens-empty" ? (breakBody ? undefined : t.proposals.noProposalsInFilterBody)
             : t.market.filterMissBody
           }
           action={
-            <Link href={"/proposals/new" as never}><Button variant="primary" size="sm" leading={<I.plus s={12} />}>{t.proposals.create}</Button></Link>
+            breakBody ? null : <Link href={"/proposals/new" as never}><Button variant="primary" size="sm" leading={<I.plus s={12} />}>{t.proposals.create}</Button></Link>
           }
         />
       )}

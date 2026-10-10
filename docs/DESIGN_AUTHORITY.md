@@ -1547,6 +1547,22 @@ The platform's hardest-won rules. Most were bought with an incident.
    (⚠️ said 1.5px until 2026-08-21; the shipped line-arts come from `glyphs.tsx`'s `GL`
    64-grid wrapper, which strokes 1.9 — same weight as the icon family, by design.)
    ⛔ No mascots. ⛔ **No baked-in text in reusable art** — it cannot be translated.
+8. **During a break, nothing a break pauses is offered — and no offer to earn or recruit.** While a player's
+   cooling-off or self-exclusion is running, the interface offers neither what the break stops (R4-I and R6-A,
+   2026-10-09: no bet panel or one-tap stake, no first-bet invitation, no deposit door) nor, by the owner's ruling (4)
+   of 2026-10-10 (owner items 16 and 56), any door to the three programmes that pay for activity: **Alika**
+   (`/profile/invite` — a player's invite and an agent's dashboard alike), **Mapendekezo / Propose & earn**
+   (`/proposals`) and **Kuwa wakala / Become an agent** (`/agent`). Their doors are not drawn in either shell — the
+   journey's hub, avatar menu and footer; the classic bar's More, avatar menu, rail More and footer; `/profile`'s row.
+   A direct visit is answered calmly, where the offer stood: the invite page, the proposals board and its composer say
+   the break's own approved sentence with its end (`BetBreakNotice`), the agent pages the programme's own
+   (`agent.stateRgLocked`); a reader's own records stay (an agent's statement, an application's status, the board).
+   ⛔ Nothing else moves: the RG notices, the limits page and its doors, the desk line, withdrawals and every money
+   door, the console — and a reader NOT on a break is served exactly today's doors. ⭐ Decided on the SERVER, per
+   request, from the break read each surface already makes (the shell's `promoSuppressed` from the settings row in
+   hand; `isLockedOut` in the hub and the pages), failing open: it gates an offer, never a refusal. One definition for
+   every door: `viewerDoorsFor`'s `onBreak`, which the shell spells beside it (`test:journey-shell` §4). Guard:
+   `test:visual-pass-r8c` (both arms rendered in sw, en and zh; a census of every path to the three programmes).
 
 ---
 

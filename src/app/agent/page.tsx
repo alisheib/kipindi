@@ -23,6 +23,8 @@ import { formatEatDate } from "@/lib/eat-day";
 import { MAX_DOC_BYTES } from "@/lib/id-documents";
 import { startApplicationAction } from "./apply/actions";
 import { fillNodes } from "@/lib/fill-nodes";
+import { isLockedOut } from "@/lib/server/responsible-gambling";
+import { breakStateOf } from "@/lib/break-end";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -51,7 +53,16 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
   const cfg = getAgentConfig();
   const { t, locale } = await getServerT();
   const session = await currentSession();
-  const view = session ? await applicantView(session.userId) : null;
+  /* ⭐ R8-C (2026-10-10, the owner's ruling (4); owner items 16 and 56) · DURING A BREAK, NO OFFER TO BECOME AN AGENT. Every
+     door here closes for a reader on a break (the footer's "Kuwa wakala", the hub's row); a direct visit is answered below,
+     calmly — the CTA that would start or continue an application gives way to the programme's own RG sentence
+     (`agent.stateRgLocked`, the one the service refuses with and this page already shows a reader with no application). A
+     reader's own records stay: the status of an application, an agent's dashboard. Read beside the applicant's view, and
+     failing OPEN: a failed read is no break (the service still refuses a start or a submit on a break — `rg_locked`). */
+  const [view, breakEnd] = await Promise.all([
+    session ? applicantView(session.userId) : Promise.resolve(null),
+    session ? Promise.resolve().then(() => isLockedOut(session.userId)).then(breakStateOf).catch(() => null) : Promise.resolve(null),
+  ]);
   /**
    * 🔴 THE DOOR CLOSES ON NEW APPLICANTS, NEVER ON PEOPLE ALREADY INSIDE (four-lens review,
    * 2026-09-07). This was `if (!cfg.enabled) notFound()` above the read: switching the
@@ -165,6 +176,10 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
     else if (e.refusal === "programme_disabled") { cta = { kind: "none" }; notice = { tone: "info", text: t.agent.stateDisabled }; }
     else { cta = { kind: "none" }; notice = { tone: "neutral", text: t.agent.stateNotActive }; }
   }
+  // R8-C · on a break the CTA that offers the programme — apply, continue, verify to apply — is withheld, and the
+  // programme's own RG sentence stands under the state's notice (a reader with no application already reads it as the notice).
+  const rgHeld = breakEnd !== null && (cta.kind === "apply" || cta.kind === "continue" || cta.kind === "kyc");
+  if (rgHeld) cta = { kind: "none" };
 
   return (
     <PageContainer tier="reading" className="space-y-6">
@@ -172,6 +187,7 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
 
       {sp.refused && <Callout tone="neutral" size="md">{t.agent.applyRefused}</Callout>}
       {notice && <Callout tone={notice.tone} size="md">{notice.text}</Callout>}
+      {rgHeld && <Callout tone="neutral" size="md">{t.agent.stateRgLocked}</Callout>}
 
       {/* ⭐ THE THREE FACTS A PARTNER DECIDES ON, above the fold, from config — ONE treatment (R5-C, the second gold audit,
           2026-10-09; tiles r5-4). They were three: a gold mono sentence ("10% ya ada halisi"), a gold mono amount

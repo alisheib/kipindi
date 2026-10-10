@@ -16,6 +16,11 @@
  *   · proposalsVisible — every proposals door is gone when DISABLED (`proposals-config.ts`), as in the classic chrome.
  *   · staffConsole     — EVERY staff role, SUPPORT included (SJ-23; VODACOM-PLAN §0h point 8). `isStaffRole`, never
  *                        `ADMIN_CONSOLE_ROLES`, which is the classic avatar menu's narrower rule.
+ *   · onBreak          — ⭐ R8-C (2026-10-10, the owner's ruling (4); owner items 16 and 56): DURING A BREAK, NO OFFER TO EARN
+ *                        OR RECRUIT. A reader whose cooling-off or self-exclusion is running is offered no invite, no
+ *                        proposals and no agent door — a player and an agent alike — and nothing else moves: "paid" (a
+ *                        word, not a door) and the console stand as they were. AppShell spells the same term into its three
+ *                        answers (`promoSuppressed`), and `test:journey-shell` §4 holds both spellings to this table.
  *
  * ⛔ SERVER ONLY. It does no I/O, but it is not free of the environment: `inviteIsLiveFor` reads `FEATURE_INVITE`, and
  * `feature-state.ts` forbids a "use client" importer for exactly that reason. In a browser bundle the variable is
@@ -40,6 +45,13 @@ export type ViewerDoorsInput = {
   proposalsState: ProposalsState;
   /** The STORED role, or null for a guest or a failed user read. */
   role: string | null | undefined;
+  /**
+   * R8-C · the reader's break or self-exclusion is running — AppShell's `promoSuppressed` (the settings row it already
+   * holds), the hub's `breakEnd` (`isLockedOut` in its batch). ⛔ A failed read arrives as `false`: it gates an OFFER, never
+   * a refusal (`feature-state.ts`, "gate the offer, never the refusal"), so a failure leaves the doors the standing gives —
+   * it never opens one the standing closes. Required, so no caller can forget to answer it.
+   */
+  onBreak: boolean;
 };
 
 export type ViewerDoors = {
@@ -52,11 +64,13 @@ export type ViewerDoors = {
 
 export function viewerDoorsFor(i: ViewerDoorsInput): ViewerDoors {
   const inStanding = !!i.inviteViewer?.agentInGoodStanding;
+  /** R8-C · the three offers close together during a break, and only they do. */
+  const offers = !i.onBreak;
   return {
-    inviteVisible: inviteIsLiveFor(i.inviteViewer),
+    inviteVisible: offers && inviteIsLiveFor(i.inviteViewer),
     invitePaid: i.invitePayable || inStanding,
-    agentDoorVisible: i.agentEnabled || inStanding,
-    proposalsVisible: i.proposalsState !== "DISABLED",
+    agentDoorVisible: offers && (i.agentEnabled || inStanding),
+    proposalsVisible: offers && i.proposalsState !== "DISABLED",
     staffConsole: isStaffRole(i.role),
   };
 }
