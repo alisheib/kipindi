@@ -62,7 +62,11 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
         <div className="flex items-center gap-2.5 min-w-0">
           <I.keyRound s={14} className="text-text-subtle shrink-0" />
           <div className="min-w-0">
-            <p className="font-mono text-micro uppercase eyebrow text-text-muted">{t.common.passwordLabel}</p>
+            {/* The setting's name is a FIELD LABEL, as the contact e-mail's beside it on /profile/account (`FieldLegend`,
+                the Field atom's label — the form label's own ink, `--text-muted`, and its weight). It was the same recipe
+                copied by hand without the bold, so the two rows of one card named their fields in two weights
+                (2026-10-10, the census of Ali's ruling (3); test:visual-pass-r8b). */}
+            <FieldLegend as="p">{t.common.passwordLabel}</FieldLegend>
             <p className="text-[13px] text-text-muted text-balance break-keep [overflow-wrap:anywhere]">
               {hasPassword ? t.common.passwordSetHint : t.common.passwordNotSetHint}
             </p>

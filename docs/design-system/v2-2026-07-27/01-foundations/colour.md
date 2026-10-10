@@ -29,7 +29,7 @@ Source of truth: `tokens.css` (values below are verbatim). Grouped by role. "NEV
 | --text | oklch(98% 0.012 268) | primary ink |
 | --text-muted | oklch(86% 0.040 268) | secondary |
 | --text-subtle | oklch(70% 0.080 268) | labels, captions |
-| --text-faint | ⚠️ STALE — live is 62%, an AA FLOOR (60% measured 4.50, under the 4.5 minimum) | micro-labels, footers |
+| --text-faint | ⚠️ STALE — live is 62%, an AA FLOOR (60% measured 4.50, under the 4.5 minimum) | micro-labels, footers — ⚠️ SUPERSEDED 2026-10-10 for labels (Ali's ruling (3), DESIGN_AUTHORITY §T3): a section head or a data label wears --text-subtle; faint stays the meta, hint and footer ink |
 | --text-link / --text-link-hover | var(--aqua-300) / var(--aqua-200) | links — the ONLY default link colour |
 
 ## YES — emerald, hue 152. Semantic, untouchable.

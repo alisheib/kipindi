@@ -63,7 +63,7 @@ export function BoardViz({
   return (
     <div className="mt-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="font-mono text-micro font-semibold uppercase eyebrow text-text-faint">
+        <span className="font-mono text-micro font-semibold uppercase eyebrow text-text-subtle">
           {showChart ? labels.chartEyebrow : labels.cubesEyebrow}
         </span>
         {both && (

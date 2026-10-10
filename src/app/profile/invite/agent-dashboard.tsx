@@ -160,13 +160,15 @@ export async function AgentDashboard({
           {/* ⭐ THE SHARE CARD IS THE ROYAL CARD (R5-C, the second gold audit, 2026-10-09). It is the visual an agent SENDS:
               a gilt frame and gilt corners round a code tell its receiver "there is money in this", on a card that is
               an invitation, never a payout — §M3a D5: "on an inducement, a house colour becomes a marketing claim".
-              Exactly the frame /profile/invite already draws for the unpaid invite: the royal edge, eyebrow and code. */}
+              Exactly the frame /profile/invite already draws for the unpaid invite: the royal edge and code. Its label over
+              the code wears the one section ink, `--text-subtle` (Ali's ruling (3) of 2026-10-10, DESIGN_AUTHORITY §T3: it
+              was royal-300 at 80%; 7.51:1 on the card's --royal-950, was 6.12). */}
           <section className="relative overflow-hidden rounded-xl border p-5" style={{ background: "var(--royal-950)", borderColor: "var(--royal-700)" }}>
             <div className="relative flex items-center gap-4">
               <div className="min-w-0 flex-1">
                 <FiftyMark size={38} />
                 <p className="mt-3 font-display text-title-md font-bold leading-tight text-text">{t.common.youveBeenInvited}</p>
-                <p className="mt-3 font-mono text-micro uppercase eyebrow font-bold text-royal-300/80">{t.agent.verifiedBadge}</p>
+                <p className="mt-3 font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{t.agent.verifiedBadge}</p>
                 {/* The code WRAPS: `50PICK-AG-XXXXXX` is 16 mono characters at 22px, wider than a
                     360 card's inner width. `break-all` keeps it readable instead of clipped. */}
                 <div className="mt-1 inline-block max-w-full rounded-md border border-royal-700 px-3 py-1.5" style={{ background: "color-mix(in oklab, var(--royal-500) 10%, transparent)" }}>

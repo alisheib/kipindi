@@ -243,10 +243,12 @@ export default async function LivePage({
                 {/* D2 (2026-08-21): was `text-yes-300` — the ink that means a player's
                     money is on YES, spent on a SECTION EYEBROW reading "Price
                     Competition · pool model". §B2 forbids reusing the betting pair for
-                    a non-money meaning. It joins this page's own eyebrow ink instead
-                    (the same `--aqua-300` featured-contest.tsx uses), so /live now
-                    states its identity consistently rather than in two vocabularies. */}
-                <p className="font-mono text-caption uppercase eyebrow font-bold text-aqua-300">{t.market.priceCompetition}</p>
+                    a non-money meaning. It joined this page's own eyebrow ink instead
+                    (the `--aqua-300` featured-contest.tsx used).
+                    2026-10-10 · and now the one section ink, `--text-subtle`, as every section heading and page head
+                    (Ali's ruling (3) of 2026-10-10, DESIGN_AUTHORITY §T3; test:visual-pass-r8b): aqua named /live's
+                    identity, and a section heading names its block, not its page. */}
+                <p className="font-mono text-caption uppercase eyebrow font-bold text-text-subtle">{t.market.priceCompetition}</p>
               </div>
               <p className="text-[14px] leading-relaxed text-text-muted max-w-[78ch]">
                 {t.market.liveExplainer}

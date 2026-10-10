@@ -110,13 +110,19 @@ const SIZE: Record<StatSize, { text: string; face: "mono" | "display"; lead: str
 /* ── The LABEL dictionary ──────────────────────────────────────────────────
  * Independent of `size` on purpose: the dialects mixed and matched (a 9.5px
  * label sat over values of 14, 18, 21 and 24 in four different weights). Named
- * for the metrics, not for the page, so a new caller picks by look. */
-export type StatLabel = "micro" | "tiny" | "faint" | "quiet" | "caps" | "strong" | "wide" | "widest";
+ * for the metrics, not for the page, so a new caller picks by look.
+ * ⭐ ONE INK, `--text-subtle` (2026-10-10, Ali's ruling (3): every small heading inside a page takes the one ink the page
+ * heads wear, DESIGN_AUTHORITY §T3). A label here names the figure under it — a data label, which the system rules no role
+ * of its own (`eyebrow-roles` has none; data labels wore subtle, faint and muted alike) — so it wears the section heads'
+ * ink. `micro` (the kit's default) and the wallet's dialect were `--text-faint`; the wallet's key was named `faint` for
+ * that ink and is `plain` now (9.5px, regular, 0.10em), so a name never promises an ink the label does not draw. The
+ * sizes, weights and tracking are unchanged. test:visual-pass-r8b §3. */
+export type StatLabel = "micro" | "tiny" | "plain" | "quiet" | "caps" | "strong" | "wide" | "widest";
 
 const LABEL: Record<StatLabel, string> = {
-  micro:  "text-[9px] tracking-[0.10em] text-text-faint",                   // the kit's own
+  micro:  "text-[9px] tracking-[0.10em] text-text-subtle",                  // the kit's own
   tiny:   "text-[9px] tracking-[0.12em] text-text-subtle",                  // admin/payments Metric
-  faint:  "text-[9.5px] tracking-[0.10em] text-text-faint",                 // wallet SubStat
+  plain:  "text-[9.5px] tracking-[0.10em] text-text-subtle",                // wallet SubStat
   quiet:  "text-[9.5px] tracking-[0.12em] text-text-subtle",                // admin/payments Stat
   caps:   "text-[9.5px] font-semibold tracking-[0.10em] text-text-subtle",  // performance Kpi + Stat
   strong: "text-[9.5px] font-bold tracking-[0.1em] text-text-subtle",       // invite Cap

@@ -112,15 +112,17 @@ function BalanceCard({
           </Link>
         )}
         {/* ⭐ Stage 9b — the local `SubStat` is DELETED; this is the kit `<Stat>`.
-            `size="sm"` + `labelStyle="faint"` + `boxed="inset"` are that dialect's own
-            metrics, catalogued in stat.tsx by name, so the box, the 9.5px/0.10em faint
-            label and the 14px mono value are unchanged to the pixel. `money` is what the
+            `size="sm"` + `labelStyle="plain"` + `boxed="inset"` are that dialect's own
+            metrics, catalogued in stat.tsx by name, so the box, the 9.5px/0.10em label
+            and the 14px mono value are unchanged to the pixel (the label's ink is the one
+            label ink, `--text-subtle`, since 2026-10-10 — the style was named `faint` for
+            the ink it then drew; Ali's ruling (3), DESIGN_AUTHORITY §T3). `money` is what the
             fork was missing a route to: it puts the figure through <Cash> (balance
             privacy) AND clamps it to mono/tabular/no-tracking per §M4, so no future
             caller can reach a tracked or display-face money numeral here. */}
         <div className="mt-5 grid grid-cols-2 gap-3">
-          <Stat size="sm" labelStyle="faint" boxed="inset" money label={t.common.pending} value={formatTzs(pending)} />
-          <Stat size="sm" labelStyle="faint" boxed="inset" money label={t.common.onHold} value={formatTzs(hold)} hint={hold > 0 ? t.common.pendingHoldHint : undefined} />
+          <Stat size="sm" labelStyle="plain" boxed="inset" money label={t.common.pending} value={formatTzs(pending)} />
+          <Stat size="sm" labelStyle="plain" boxed="inset" money label={t.common.onHold} value={formatTzs(hold)} hint={hold > 0 ? t.common.pendingHoldHint : undefined} />
         </div>
       </div>
     </section>
@@ -563,7 +565,7 @@ function TxnRow({ tx }: { tx: Transaction }) {
       {expanded && (
         <div className="px-3 pb-3 pt-0 grid grid-cols-2 gap-2 text-[11px]">
           <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
-            <p className="font-mono text-micro uppercase eyebrow text-text-faint">{t.common.txnType}</p>
+            <p className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.common.txnType}</p>
             {/* THIS PRINTED THE RAW TOKEN — `deposit`, `payout`, `commission` — in English, at
                 every locale, on a money row. L3: no enum ever reaches a sentence, and L4: a
                 translated string carries no English enum token. A Swahili player read "payout"
@@ -571,7 +573,7 @@ function TxnRow({ tx }: { tx: Transaction }) {
             <p className="font-semibold text-text">{TOKEN_LABEL(t)[tx.type] ?? tx.type}</p>
           </div>
           <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
-            <p className="font-mono text-micro uppercase eyebrow text-text-faint">{t.wallet.amount}</p>
+            <p className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.wallet.amount}</p>
             <p className="font-mono font-bold tabular-nums text-text">{formatTzs(Math.abs(tx.amount))}</p>
           </div>
           {/* Both references, in FULL. This used to print `tx.id.slice(0, 16)`
@@ -580,12 +582,12 @@ function TxnRow({ tx }: { tx: Transaction }) {
               actually look up) wasn't here at all. Same two labels as the
               receipt page, the return page and the deposit emails. */}
           <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
-            <p className="font-mono text-micro uppercase eyebrow text-text-faint">{t.wallet.transactionId}</p>
+            <p className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.wallet.transactionId}</p>
             <p className="font-mono text-text-muted break-all">{tx.id}</p>
           </div>
           {tx.providerRef && (
             <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
-              <p className="font-mono text-micro uppercase eyebrow text-text-faint">{t.wallet.gatewayReference}</p>
+              <p className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.wallet.gatewayReference}</p>
               <p className="font-mono text-text-muted break-all">{tx.providerRef}</p>
             </div>
           )}
@@ -597,7 +599,7 @@ function TxnRow({ tx }: { tx: Transaction }) {
               href={`/wallet/receipt/${tx.id}`}
               className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5 hover:border-brand-400 transition-colors block"
             >
-              <p className="font-mono text-micro uppercase eyebrow text-text-faint">{t.wallet.receiptEyebrow}</p>
+              <p className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.wallet.receiptEyebrow}</p>
               <p className="font-mono text-[11px] text-brand-300 underline-offset-2 hover:underline">{t.wallet.viewReceipt}</p>
             </Link>
           )}
@@ -615,7 +617,7 @@ function TxnRow({ tx }: { tx: Transaction }) {
               href={positionPermalinkHref(tx.positionId)}
               className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5 hover:border-brand-400 transition-colors block"
             >
-              <p className="font-mono text-micro uppercase eyebrow text-text-faint">{t.common.ticket}</p>
+              <p className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.common.ticket}</p>
               {/* 🔴 E-100 · `break-all`, like the two reference boxes above it. Found by Ali on a
                   real phone: `pos_e290a28e8e906b6255…` ran straight out of its box while
                   TRANSACTION ID beside it wrapped correctly — the two sit in the SAME grid and

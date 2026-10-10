@@ -55,6 +55,9 @@ export const dynamic = "force-dynamic";
 // earned/verified exception", which the rulebook never grants: §M3 gives struck gold to money EARNED — a payout, a
 // celebration, a market's resolved seal — and Q5 says gold is money and nothing else. A step of an explainer diagram is
 // none of those. It is drawn as the KYC rail's current step is: the 2px brand ring and the brand label.
+// ⭐ The other steps' names wear the one section ink, `--text-subtle` — the KYC rail's ink for a step that is not the
+// current one (2026-10-10, Ali's ruling (3), DESIGN_AUTHORITY §T3: every small heading inside a page in one ink; they were
+// `--text-muted`). The highlight keeps the brand: it marks "this one", as a stepper's current step (test:visual-pass-r8b).
 // 2026-09-14 — below the sm breakpoint the five steps STACK (each circle beside its label,
 // joined by a short vertical rule), so a phone shows every step whole: the fixed-width row
 // cut the third step to "OF" at 360 with no sign it scrolled. From sm up it is the row.
@@ -82,7 +85,7 @@ function FairnessChain({ steps }: { steps: { glyph: keyof typeof I; label: strin
                   <Glyph s={19} />
                 </span>
                 {/* text-balance: "OFFICER SIGN-OFF" broke at its hyphen, leaving "OFF" alone in the 104px column. */}
-                <span className={`sm:mt-2 text-balance font-mono text-micro font-semibold uppercase leading-tight eyebrow ${s.highlight ? "text-brand-300" : "text-text-muted"}`}>
+                <span className={`sm:mt-2 text-balance font-mono text-micro font-semibold uppercase leading-tight eyebrow ${s.highlight ? "text-brand-300" : "text-text-subtle"}`}>
                   {s.label}
                 </span>
               </div>

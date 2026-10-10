@@ -78,7 +78,7 @@ export function LipaQrPanel({
        /wallet/deposit — so the attribute is load-bearing for both halves of that proof,
        not a styling hook. ⛔ Do not rename it without updating the drive. */
     <section data-lipa-qr className={`rounded-xl glass-panel p-4 ${className}`.trim()}>
-      <p className="flex items-center gap-1.5 font-mono text-micro uppercase eyebrow font-bold text-text-tertiary">
+      <p className="flex items-center gap-1.5 font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
         <I.qr s={12} /> {t.lipa.title}
       </p>
       <p className="mt-2 text-body-sm leading-relaxed text-text-muted">{t.lipa.lead}</p>
@@ -126,7 +126,7 @@ export function LipaQrPanel({
 
         <div className="min-w-0 flex-1 space-y-3">
           <div>
-            <p className="font-mono text-micro uppercase eyebrow font-bold text-text-tertiary">{t.lipa.payingLabel}</p>
+            <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{t.lipa.payingLabel}</p>
             <p className="mt-1 text-body-sm font-bold leading-snug text-text">{l.merchantName}</p>
           </div>
 
@@ -134,7 +134,7 @@ export function LipaQrPanel({
               amount is the fee the applicant PAYS — "moving your own money … earns nothing, so gold overstates it"
               (DESIGN_AUTHORITY §M3a D1; Q5). Both take the text's own ink, as /agent's fee box above this panel does. */}
           <div>
-            <p className="font-mono text-micro uppercase eyebrow font-bold text-text-tertiary">{t.lipa.numberLabel}</p>
+            <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{t.lipa.numberLabel}</p>
             <div className="mt-1 flex flex-wrap items-center gap-2">
               <span className="amount font-mono text-title-lg font-bold tracking-wide text-text">{pretty}</span>
               {/* `md` (44px), not `sm` (40px). Both clear `test:tap-target`, but 40 is the
@@ -148,7 +148,7 @@ export function LipaQrPanel({
 
           {amountTzs != null && (
             <div>
-              <p className="font-mono text-micro uppercase eyebrow font-bold text-text-tertiary">{t.lipa.amountLabel}</p>
+              <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{t.lipa.amountLabel}</p>
               <p className="amount mt-1 text-body-sm font-bold text-text">{formatTzs(amountTzs)}</p>
             </div>
           )}

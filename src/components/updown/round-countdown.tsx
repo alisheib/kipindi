@@ -377,7 +377,7 @@ export function RoundCountdownPod({
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 14px", background: "var(--bg-inset)", border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)", borderRadius: "var(--r-md)" }}>
       <span key={`c-${podPhase}`}
-            className="m-tick font-mono text-micro font-semibold uppercase eyebrow text-text-faint"
+            className="m-tick font-mono text-micro font-semibold uppercase eyebrow text-text-subtle"
             /* ⛔ ONE LINE IN EVERY LOCALE — SW and ZH run ~35% longer and this pod sits inline
                beside 28px digits in a wrapping header. A wrapped caption grows the pod and
                shifts the whole header row, which is the layout shift §6 forbids. */
@@ -452,7 +452,7 @@ export function RoundCountdown({ closesAtMs, label, lockAtMs, lockLabel, serverN
   return (
     <div className="text-right">
       {/* Ends on the clock's edge, its trailing tracking taken back (F19, round 6 · C11). */}
-      <div className="font-mono text-micro uppercase eyebrow text-text-faint kp-track-end">{shownLabel}</div>
+      <div className="font-mono text-micro uppercase eyebrow text-text-subtle kp-track-end">{shownLabel}</div>
       {/* The digits end on that edge too (round 7, R7-C, 2026-10-10): tracked 0.05em, the clock's last digit stood 1.2px
           short of the label above it; `kp-track-end--05` takes the tracking back. */}
       <div

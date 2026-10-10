@@ -145,19 +145,23 @@ export function KycGatePanel({
   const { pending, result, resend } = useResendEmailLink();
   useRefreshOnReturn(emailOnly || emailStep);
 
+  // ⭐ `stateWord` — THE EYEBROW SAYS A STATE, OR IT NAMES THE STEP (2026-10-10, Ali's ruling (3): every small heading
+  // inside a page wears the one section ink, `--text-subtle`; a status word keeps its own; DESIGN_AUTHORITY §T3). "Your
+  // move", "With our team" and "Withdrawals paused" are the panel's state, said in its tone's ink as its glyph says it;
+  // "Before you withdraw", "One step first" and "Identity check" name the step and take the one ink (test:visual-pass-r8b).
   const copy = {
-    not_started:    { eyebrow: payout ? t.kycGate.eyebrowPayout : t.kycGate.eyebrowVerify, title: t.kycGate.titleNotStarted, body: t.kycGate.bodyNotStarted,  cta: t.kycGate.ctaStart },
-    uploaded:       { eyebrow: payout ? t.kycGate.eyebrowPayout : t.kycGate.eyebrowAction, title: t.kycGate.titleUploaded,   body: t.kycGate.bodyUploaded,    cta: t.kycGate.ctaFinish },
-    pending_review: { eyebrow: t.kycGate.eyebrowPending, title: t.kycGate.titlePending,  body: fill(emailStep ? t.kycGate.bodyPendingEmail : t.kycGate.bodyPending, { hours: durationHours(locale, KYC_REVIEW_SLA_HOURS) }), cta: "" },
-    more_info:      { eyebrow: t.kycGate.eyebrowAction,  title: t.kycGate.titleMoreInfo, body: t.kycGate.bodyMoreInfo,     cta: t.kycGate.ctaUpload },
-    rejected:       { eyebrow: t.kycGate.eyebrowAction,  title: t.kycGate.titleRejected, body: t.kycGate.bodyRejected,     cta: t.kycGate.ctaRetry },
+    not_started:    { eyebrow: payout ? t.kycGate.eyebrowPayout : t.kycGate.eyebrowVerify, stateWord: false, title: t.kycGate.titleNotStarted, body: t.kycGate.bodyNotStarted,  cta: t.kycGate.ctaStart },
+    uploaded:       { eyebrow: payout ? t.kycGate.eyebrowPayout : t.kycGate.eyebrowAction, stateWord: !payout, title: t.kycGate.titleUploaded,   body: t.kycGate.bodyUploaded,    cta: t.kycGate.ctaFinish },
+    pending_review: { eyebrow: t.kycGate.eyebrowPending, stateWord: true, title: t.kycGate.titlePending,  body: fill(emailStep ? t.kycGate.bodyPendingEmail : t.kycGate.bodyPending, { hours: durationHours(locale, KYC_REVIEW_SLA_HOURS) }), cta: "" },
+    more_info:      { eyebrow: t.kycGate.eyebrowAction,  stateWord: true, title: t.kycGate.titleMoreInfo, body: t.kycGate.bodyMoreInfo,     cta: t.kycGate.ctaUpload },
+    rejected:       { eyebrow: t.kycGate.eyebrowAction,  stateWord: true, title: t.kycGate.titleRejected, body: t.kycGate.bodyRejected,     cta: t.kycGate.ctaRetry },
     // ⛔ NOT "Your move" (2026-09-13, found on a screenshot): a FINAL refusal cannot be restarted by the player,
     // so its label names the subject and calls for nothing — the only step is support, and the CTA says so.
-    refused_final:  { eyebrow: t.kycGate.eyebrowIdentity, title: t.kycGate.titleRejected, body: t.kycGate.bodyRefusedFinal, cta: t.kycGate.ctaSupport },
+    refused_final:  { eyebrow: t.kycGate.eyebrowIdentity, stateWord: false, title: t.kycGate.titleRejected, body: t.kycGate.bodyRefusedFinal, cta: t.kycGate.ctaSupport },
     // A wallet hold (2026-09-14): its own words, which ask for nothing but the route to support.
-    frozen:         { eyebrow: t.kycGate.frozenEyebrow,   title: t.kycGate.frozenTitle,   body: t.kycGate.frozenBody,       cta: t.kycGate.frozenCta },
+    frozen:         { eyebrow: t.kycGate.frozenEyebrow,   stateWord: true, title: t.kycGate.frozenTitle,   body: t.kycGate.frozenBody,       cta: t.kycGate.frozenCta },
     // The confirmed email (2026-10-07). "We sent a link" only when an address exists — nothing was sent to none.
-    email:          { eyebrow: t.kycGate.eyebrowPayout,   title: t.kycGate.emailTitle,    body: address ? t.kycGate.emailBody : t.kycGate.emailBodyNone, cta: "" },
+    email:          { eyebrow: t.kycGate.eyebrowPayout,   stateWord: false, title: t.kycGate.emailTitle,    body: address ? t.kycGate.emailBody : t.kycGate.emailBodyNone, cta: "" },
   }[state];
 
   // ⭐ THE WAIT IS A NUMBER (`KYC_REVIEW_SLA_HOURS`, the officer's own clock), shown on the withdrawal
@@ -204,7 +208,7 @@ export function KycGatePanel({
       >
         <Glyph s={18} />
       </span>
-      <p className={`mt-3 font-mono text-micro uppercase eyebrow font-bold ${tone.ink}`}>{copy.eyebrow}</p>
+      <p className={`mt-3 font-mono text-micro uppercase eyebrow font-bold ${copy.stateWord ? tone.ink : "text-text-subtle"}`}>{copy.eyebrow}</p>
       {/* 2026-09-14 — the title is balanced like the lines under it: "We're checking your / documents" left one word
           alone at 360. In zh the body and caption break only at punctuation (keep-all), because a balanced 42ch
           measure split a two-character word across the break; overflow-wrap still lets an over-long run wrap. */}

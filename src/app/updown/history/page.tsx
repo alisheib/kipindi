@@ -423,7 +423,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
           {/* ── P&L strip (settled rounds) ─────────────────────────────────── */}
           <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div className="rounded-xl border border-border bg-bg-elevated p-3.5">
-              <div className="font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udNetReturn}</div>
+              <div className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.market.udNetReturn}</div>
               {/* ⭐ A NET READS AS EVERY NET ON THE PLATFORM (R5-I, 2026-10-09): money earned is gilt, a loss the betting rose
                   (Ali's LOSS ruling: "a lost bet is betting semantics"), zero the text's ink — /positions/performance's and the
                   P&L strip's own rule (R5-C). A positive net was the YES side's green here: an Up & Down round's return is not
@@ -448,14 +448,14 @@ export default async function UpDownHistoryPage({ searchParams }: {
               </div>
             </div>
             <div className="rounded-xl border border-border bg-bg-elevated p-3.5">
-              <div className="font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udRoundsPlayed}</div>
+              <div className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.market.udRoundsPlayed}</div>
               {/* ⛔ THE VIEW, not the page — this tile printed a PAGED round count directly above
                   an UNPAGED bet count, so it read "Rounds 12 · 87 bets" on one card (D37). */}
               <div className="mt-0.5 font-mono text-[19px] font-bold tabular-nums text-text">{formatNumber(viewRounds.length)}</div>
               <div className="font-mono text-[10px] text-text-subtle">{formatNumber(rows.length)} {t.market.udBets}</div>
             </div>
             <div className="rounded-xl border border-border bg-bg-elevated p-3.5 col-span-2 sm:col-span-1">
-              <div className="font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udWinRate}</div>
+              <div className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.market.udWinRate}</div>
               <div className="mt-0.5 font-mono text-[19px] font-bold tabular-nums text-text">{winRate == null ? "—" : `${winRate}%`}</div>
               <div className="font-mono text-[10px] text-text-subtle">{formatNumber(wins)}/{formatNumber(decided)} decided</div>
             </div>
@@ -562,7 +562,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
                     </div>
                     <div className="text-right">
                       {/* Ends on its figure's edge, its trailing tracking taken back (F19, round 6 · C11). */}
-                      <div className="font-mono text-micro uppercase eyebrow text-text-faint kp-track-end">{t.market.udNetReturn}</div>
+                      <div className="font-mono text-micro uppercase eyebrow text-text-subtle kp-track-end">{t.market.udNetReturn}</div>
                       <div className="font-mono text-[15px] font-bold tabular-nums"
                            style={{ color: g.anyOpen ? "var(--text-subtle)" : net > 0 ? "var(--gilt)" : net < 0 ? "var(--no-300)" : "var(--text)" }}>
                         {g.anyOpen ? "—" : net === 0 ? formatTzs(0) : formatTzsSigned(net)}

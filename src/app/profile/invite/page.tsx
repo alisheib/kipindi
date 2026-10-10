@@ -410,7 +410,8 @@ export default async function InvitePage({
           an invitation, not a payout: on an inducement "a house colour becomes a marketing claim" (§M3a D5), and gold is
           money earned and nothing else (Q5). The referrer's earnings are gold where they are earned — the dial above. The
           agent's share card is the same royal card. ⛔ This is the one surface on the page designed to be SCREENSHOTTED
-          and sent, which is why it must not say "there is money in this". */}
+          and sent, which is why it must not say "there is money in this". Its label over the code wears the one section
+          ink, `--text-subtle` (Ali's ruling (3) of 2026-10-10, DESIGN_AUTHORITY §T3; it was royal-300 at 80%). */}
       <section
         className="relative overflow-hidden rounded-xl border p-5"
         style={{ background: "var(--royal-950)", borderColor: "var(--royal-700)" }}
@@ -419,7 +420,7 @@ export default async function InvitePage({
           <div className="min-w-0 flex-1">
             <FiftyMark size={38} />
             <p className="mt-3 font-display text-[20px] font-bold leading-tight text-text">{t.common.youveBeenInvited}</p>
-            <p className="mt-3 font-mono text-micro uppercase eyebrow font-bold text-royal-300/80">{t.common.invite}</p>
+            <p className="mt-3 font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{t.common.invite}</p>
             <div
               className="mt-1 inline-block rounded-md border border-royal-700 px-3 py-1.5"
               style={{ background: "color-mix(in oklab, var(--royal-500) 10%, transparent)" }}

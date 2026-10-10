@@ -1134,6 +1134,11 @@ Values: the `--type-*` ladder in `globals.css`. Laws:
    no tone but the subtle one, AuthHeader's page names take it by default, and every hand-drawn head is registered —
    `test:visual-pass-r7b` §1. ⛔ A STATE line keeps its state's ink ("Link expired", "Email confirmed", "Something went
    wrong"): a status word, said as its medallion says it (§B11's word rule).
+   ⭐ **AND EVERY SECTION HEAD (2026-10-10, Ali's ruling (3): "small section headings inside pages … one colour, like the
+   page headings; status words keep their own"):** every eyebrow that names the block below it — or the figure beside it,
+   since the system rules a data label no role of its own (so the `<Stat>` kit's labels too) — wears `--text-subtle` in
+   both shells and every language, while a status word, a form field's label (`FieldLegend`, `--text-muted`), a bet's
+   side (YES/NO, UP/DOWN) and a stepper's current or done step keep their own inks; `test:visual-pass-r8b` §1 is the census.
 
    ⭐ **THE EYEBROW'S TRACKING IS 0.14em — AND "THE EYEBROW" IS ONE OF FOUR ROLES, NOT ALL
    UPPERCASE MONO TYPE.** Ruled 2026-08-30, DESIGN-GATE-2026-08-28 step 2 (DG-A-11 / DG-P-06),
