@@ -508,6 +508,31 @@ model KycSubmission {
   /// `startKyc`'s reset of a REJECTED submission. A cleared value re-opens the
   /// trap silently, and nothing would go red. `test:kyc-gate` drives it.
   approvedAt    DateTime?
+  /// ⭐ TYPED-ONLY KYC (Gaming Board request, owner ruling 2026-10-10 — docs/COMPLIANCE-DECISIONS.md).
+  /// From that release a PLAYER verifies with typed details and is approved automatically; an AGENT
+  /// applicant still verifies with a photo of the document and a selfie, reviewed by an officer.
+  /// The six columns below record which kind of approval a row holds. All are nullable and were
+  /// added EXPAND-ONLY by 20261010150000_kyc_typed_identity (the previous container never selects them).
+  ///
+  /// When an officer approved this identity WITH the document photos and the selfie on file — the
+  /// agent programme's identity gate. Backfilled from `approvedAt` for every row APPROVED at the release
+  /// (every approval before 2026-10-10 was an officer's, on photos — but a row approved once and later
+  /// refused and restarted lost its photos, so it is NOT stamped). ⛔ An automatic, typed approval never
+  /// sets it, and a restart clears it.
+  photoVerifiedAt DateTime?
+  /// When the identity was approved AUTOMATICALLY from typed details (no officer). Null for an
+  /// officer's approval. The officers' post-check list is `autoApprovedAt` set and `postCheckedAt` null.
+  autoApprovedAt  DateTime?
+  /// The automatic checks' non-blocking FLAGS at that approval — fixed codes only (never a name, a
+  /// date or another account's id), so the officer sees why to look first.
+  autoFlags       Json?
+  /// When an officer checked an automatic approval afterwards (attestations in `kyc.post_checked`).
+  postCheckedAt   DateTime?
+  postCheckedById String?
+  /// APPEND-ONLY history of typed identities this row held before a restart or a correction replaced
+  /// them — with no images, the typed details are the only identification record, so they are kept
+  /// (and erased) with the row, never dropped by a reset. JSON array, oldest first.
+  priorIdentities Json?
   /**
    * Officer-requested extra documents (each with a description). JSON array of
    * { id, description, requestedAt, storageKey, uploadedAt }. Empty normally.
