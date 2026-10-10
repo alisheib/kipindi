@@ -6680,9 +6680,14 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-hub__tick { flex-shrink: 0; display: inline-flex; width: 16px; color: var(--brand-300); }
 /* The Needle's row is the hub's own row (`NeedleControlsDrawer variant="hub-row"`, round 3, 2026-10-09): it wore the
    account menu's row inside a padded item, sized up here, and stood 2px off every column of the card. No rule of its own. */
-/* Sign-out stands alone under the cards, as the canvas draws it: an act, not a door. */
-.kp-hub__exit { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--h-control-xl); padding: 0 var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
-.kp-hub__exit:hover { background: var(--bg-overlay); }
+/* Sign-out stands alone under the cards, as the canvas draws it: an act, not a door.
+   ⭐ IN THE DANGER INK (2026-10-10, round 6's read): R5-I put Sign out in the danger family wherever it stands — the avatar
+   menu's row (its label and glyph `text-danger-fg`, its hover the danger tint), /profile's plate, /profile/sessions — and
+   this row was missed, its label and glyph in the hub rows' inks. Now the menu's: label and glyph --danger-fg, the hover
+   the danger tint at 10%. */
+.kp-hub__exit { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--h-control-xl); padding: 0 var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: transparent; color: var(--danger-fg); font: inherit; text-align: left; cursor: pointer; }
+.kp-hub__exit .kp-hub__glyph { color: inherit; }
+.kp-hub__exit:hover { background: color-mix(in oklab, var(--danger-500) 10%, transparent); }
 @media (min-width: 360px) { .kp-hub__head { flex-wrap: wrap; } }
 @media (min-width: 1024px) { .kp-hub__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 

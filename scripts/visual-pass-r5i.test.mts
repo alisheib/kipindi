@@ -268,6 +268,8 @@ section("2 · I-1 · an app state wears the app-state family — the crests, the
     ["/profile's Sign out row and plate", "src/app/profile/page.tsx", /hover:border-danger-border transition-colors[\s\S]{0,700}bg-danger-500\/10 text-danger-fg group-hover:bg-danger-500\/20/],
     ["the sessions page's Sign out", "src/app/profile/sessions/page.tsx", /style=\{\{ color: "var\(--danger-fg\)" \}\}/],
     ["CONTROL · the avatar menu's Sign out (the convention)", "src/components/layout/avatar-menu.tsx", /text-danger-fg hover:bg-danger-500\/10/],
+    // 2026-10-10 (round 6's read): the journey hub's Sign out row, missed by the first sweep — the menu's inks.
+    ["the journey hub's Sign out row (label and glyph, and its hover)", "src/app/globals.css", /\.kp-hub__exit \{[^}]*color: var\(--danger-fg\);[^}]*\}\s*\.kp-hub__exit \.kp-hub__glyph \{ color: inherit; \}\s*\.kp-hub__exit:hover \{ background: color-mix\(in oklab, var\(--danger-500\) 10%, transparent\); \}/],
     ["CONTROL · a comment's Delete (the convention)", "src/components/markets/comments-thread.tsx", /text-text-subtle hover:text-danger-fg/],
   ];
   for (const [what, f, re] of DESTRUCTIVE) ok(`2.3 · ${what} — the danger ink`, re.test(read(f)), f);
