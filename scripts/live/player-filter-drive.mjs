@@ -296,7 +296,8 @@ async function readView(page, path) {
     await page.waitForTimeout(250);
     const snap = await page.evaluate(() => ({
       rows: [...document.querySelectorAll("[data-row-id]")].map((n) => n.getAttribute("data-row-id")),
-      promised: document.querySelector("[data-result-count]")?.getAttribute("data-result-count") ?? null,
+      // Not a loading drawing's empty hook (2026-10-10, as `count-truth-drive.mjs`): only a count with a value is the page's.
+      promised: document.querySelector('[data-result-count]:not([data-result-count=""])')?.getAttribute("data-result-count") ?? null,
       chips: Object.fromEntries(
         [...document.querySelectorAll("[data-chip][data-count]")].map((n) => [n.getAttribute("data-chip"), Number(n.getAttribute("data-count"))]),
       ),
