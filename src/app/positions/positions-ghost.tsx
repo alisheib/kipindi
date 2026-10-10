@@ -7,7 +7,7 @@ import { FilterGroupKey } from "@/components/ui/filter-pill";
 import { GhostText, AMOUNT_SHAPE } from "@/components/ui/ghost-text";
 import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW2_CLASS, QUERY_GROUP_CLASS, QUERY_SEARCH_BAND_CLASS, QueryGroupDivider } from "@/components/ui/query-bar";
 import { PNL_STRIP } from "@/components/positions/pnl-summary-strip";
-import { CountGhost, PillGhost } from "@/components/ui/query-bar-ghost";
+import { CountGhost, FiltersGhost, PillGhost, SortGhost } from "@/components/ui/query-bar-ghost";
 import { categoryLabel } from "@/lib/markets/category-label";
 import { MARKET_CATEGORIES } from "@/lib/markets/categories";
 import { useT } from "@/lib/i18n";
@@ -147,18 +147,12 @@ export function PositionsGhost() {
           <CountGhost count={t.positions.nResults.replace("{n}", "00")} />
         </div>
         <div className={QUERY_BAR_ROW2_CLASS}>
-          {/* Sort + direction, fused (`QuerySort`): the key from lg, the value, the caret; the 44px direction button.
-              A phone's row grows it (flex-1) beside the Filters button; from lg it is its own width. */}
-          <div className="flex min-w-0 flex-1 items-center lg:flex-none">
-            <div className="flex min-h-[44px] min-w-[var(--tap-min)] shrink items-center gap-1.5 overflow-hidden rounded-l-pill border border-r-0 border-transparent bg-bg-overlay px-1.5 lg:gap-2 lg:px-3 kp-shimmer-track">
-              <span className="hidden shrink-0 font-mono text-micro font-bold uppercase eyebrow text-transparent lg:inline">{t.common.sort}</span>
-              <span className="min-w-0 truncate text-body-sm tracking-normal font-semibold text-transparent">{t.positions.sortRecent}</span>
-              <span className="h-[14px] w-[14px] shrink-0" />
-            </div>
-            <div className="h-[44px] w-[44px] shrink-0 rounded-r-pill bg-bg-overlay kp-shimmer-track" />
-          </div>
-          {/* The phone's Filters button (the money books' ghost draws the same box). */}
-          <div className="h-[44px] w-[104px] rounded-pill bg-bg-overlay kp-shimmer-track lg:hidden" />
+          {/* Sort + direction (`QuerySort`) and the phone's Filters (`FilterSheet`'s trigger): the bar kit's parts, the page's
+              own boxes (2026-10-10, R5-L's note): the sort's summary fills a phone's cell (`w-full`) and its value is the
+              menu's own type (`kp-menu-value`, 13px), and the Filters button is the trigger's own geometry with its word —
+              where a hand-drawn sort sat at its content's width and a typed 104px box stood for the trigger. */}
+          <SortGhost label={t.common.sort} value={t.positions.sortRecent} />
+          <FiltersGhost label={t.market.filtersOpen} />
           {/* From lg the three groups along the row, each after the page's divider (the row's 29px gap is keyed on it). */}
           {groups.map(([key, labels]) => (
             <Fragment key={key}>

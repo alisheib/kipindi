@@ -572,7 +572,8 @@ function ghostPills(html: string): string[] {
   // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-L): the pill is `query-bar-ghost.tsx`'s `PillGhost` now — /results', /markets' and
   // /leaderboard's ghosts draw the same pill — so its box is read there, and the money books' ghost must import it.
   const ghost = code("src/components/ui/query-bar-ghost.tsx");
-  const imported = /import \{ (?:CountGhost, )?PillGhost \} from "@\/components\/ui\/query-bar-ghost";/.test(code(BAR_GHOST)) && !/function PillGhost/.test(code(BAR_GHOST));
+  // (2026-10-10: the money books' ghost also draws the kit's `FiltersGhost`.)
+  const imported = /import \{ (?:CountGhost, )?(?:FiltersGhost, )?PillGhost \} from "@\/components\/ui\/query-bar-ghost";/.test(code(BAR_GHOST)) && !/function PillGhost/.test(code(BAR_GHOST));
   const pill = (s: string) => /function PillGhost[\s\S]*?<span className="([^"]+)">/.exec(s)?.[1].split(/\s+/) ?? [];
   const has = (s: string) => want.length >= 11 && want.every((c) => pill(s).includes(c)) && pill(s).includes("text-transparent") && pill(s).includes("border-transparent");
   const countOk = (s: string) => s.includes('<span className="font-mono text-[11px] font-bold tabular-nums">00</span>') && code("src/components/ui/filter-pill.tsx").includes('"font-mono text-[11px] font-bold tabular-nums"');
@@ -584,7 +585,9 @@ function ghostPills(html: string): string[] {
   ok("4.5 · the bar ghost promises a shape and nothing else: no link, no live region, no `data-result-count` (`qa:count-truth` reads that one), hidden from a screen reader", bar.length > 0 && !/<a\b|aria-live|data-result-count/.test(bar) && bar.includes('aria-hidden="true"'));
   // Row 2 wraps where the page's does only if its groups stand in the page's wrappers with the page's divider: the row's
   // 29px column gap is keyed on `.kp-qdiv` (`.kp-qbar-row:has(.kp-qdiv)`), and the bars write the same two wrappers.
-  const rows = (s: string) => ({ wrappers: count(s, '<div class="hidden min-w-0 items-center gap-2 lg:flex"><span aria-hidden="true" class="kp-qdiv"></span><div class="hidden min-w-0 flex-wrap items-center gap-1 lg:flex">'), keys: count(s, "shrink-0 pr-0.5 font-mono text-micro font-bold uppercase eyebrow text-transparent"), phone: count(s, "h-[44px] w-[104px] rounded-pill bg-bg-overlay kp-shimmer-track lg:hidden") });
+  // ⚠️ MOVED 2026-10-10: the phone's Filters is the kit's `FiltersGhost` — the trigger's own root (`kp-fsheet lg:hidden`)
+  // and geometry with its word — where a typed 104px box stood; counted by that root.
+  const rows = (s: string) => ({ wrappers: count(s, '<div class="hidden min-w-0 items-center gap-2 lg:flex"><span aria-hidden="true" class="kp-qdiv"></span><div class="hidden min-w-0 flex-wrap items-center gap-1 lg:flex">'), keys: count(s, "shrink-0 pr-0.5 font-mono text-micro font-bold uppercase eyebrow text-transparent"), phone: count(s, '<div class="kp-fsheet lg:hidden"><span class="kp-fsheet-trigger') });
   const barSrc = squash(code("src/app/wallet/wallet-bar.tsx"));
   const pageWrappers = count(barSrc, '<div className="hidden min-w-0 items-center gap-2 lg:flex"> <QueryGroupDivider /> <nav aria-label=');
   ok(`4.7 · row 2 is the page's: one Filters button for a phone, and from lg the two groups each in the bar's own wrapper with its divider (the row's 29px gap is keyed on it) and its key — ${j(rows(bar))}, the page's bar writing ${pageWrappers} such wrappers`,

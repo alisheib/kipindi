@@ -678,8 +678,18 @@ function kitChecks(src: Src): Record<string, boolean> {
   ok(`9.1′ PLANT · each kit part broken in memory (${plants.map(([k]) => k).join(", ")}) is reported by its own check`, missed.length === 0, missed.join(", "));
   const moneyBar = code("src/app/wallet/money-bar-ghost.tsx");
   ok("9.2 · ONE pill and ONE count: the money books' bar ghost draws the kit's `PillGhost` and `CountGhost` (moved from it), and no other file defines either",
-    moneyBar.includes('import { CountGhost, PillGhost } from "@/components/ui/query-bar-ghost";')
+    // (2026-10-10: and the kit's `FiltersGhost`, the phone's Filters button.)
+    moneyBar.includes('import { CountGhost, FiltersGhost, PillGhost } from "@/components/ui/query-bar-ghost";')
       && walk("src").filter((p) => /\.tsx$/.test(p) && /function (?:PillGhost|CountGhost)\b/.test(code(p))).join() === QBG);
+  // ⭐ (2026-10-10) THE SORT AND THE PHONE'S FILTERS ARE THE KIT'S IN EVERY PLAYER DRAWING: a hand-drawn sort
+  // (`rounded-l-pill`) sat at its content's width where the page's fills a phone's cell, and a typed 104px box stood for
+  // the Filters trigger in /positions', /updown/history's and the money books' drawings.
+  const drawings = walk("src").filter((p) => /\.tsx$/.test(p) && !/\/admin\//.test(p) && (/\/loading\.tsx$/.test(p) || /-ghost\.tsx$/.test(p)) && p !== QBG);
+  const hand = (src: (p: string) => string) => drawings.filter((p) => /rounded-l-pill|h-\[44px\] w-\[104px\] rounded-pill/.test(src(p)));
+  ok(`9.3 · every player drawing's sort and phone Filters are the kit's (\`SortGhost\`, \`FiltersGhost\`) — ${drawings.length} drawings, none hand-drawing either`,
+    hand(code).length === 0 && drawings.length > 30, j(hand(code)));
+  ok("9.3′ PLANT · the money books' typed 104px Filters box back is reported",
+    j(hand((p) => (p.endsWith("money-bar-ghost.tsx") ? code(p).replace("<FiltersGhost label={t.market.filtersOpen} />", '<div className="h-[44px] w-[104px] rounded-pill bg-bg-overlay kp-shimmer-track lg:hidden" />') : code(p)))) === j(["src/app/wallet/money-bar-ghost.tsx"]));
 }
 
 /* ══ §10 · THE MEASURE ═════════════════════════════════════════════════════════════════════════════════════════════ */

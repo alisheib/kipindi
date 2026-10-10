@@ -1,6 +1,6 @@
 import { FilterGroupKey } from "@/components/ui/filter-pill";
 import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_WRAP_CLASS, QUERY_BAR_ROW2_CLASS, QUERY_GROUP_CLASS, QueryGroupDivider } from "@/components/ui/query-bar";
-import { CountGhost, PillGhost } from "@/components/ui/query-bar-ghost";
+import { CountGhost, FiltersGhost, PillGhost } from "@/components/ui/query-bar-ghost";
 import type { Dict } from "@/lib/i18n-dict";
 
 /**
@@ -36,9 +36,11 @@ export function MoneyBarGhost({ t, lenses, count }: { t: Dict; lenses: readonly 
         <CountGhost count={count} />
       </div>
       {/* Row 2 — one Filters button on a phone; from lg the two groups, each in the page's own wrapper with its divider
-          (`QueryGroupDivider`: the row's 29px column gap is keyed on it) and its key, so the row wraps as the page's. */}
+          (`QueryGroupDivider`: the row's 29px column gap is keyed on it) and its key, so the row wraps as the page's.
+          The Filters button is the kit's (`FiltersGhost`, 2026-10-10): the trigger's own geometry with its word, where a
+          typed 104px box stood. */}
       <div className={QUERY_BAR_ROW2_CLASS}>
-        <div className="h-[44px] w-[104px] rounded-pill bg-bg-overlay kp-shimmer-track lg:hidden" />
+        <FiltersGhost label={t.market.filtersOpen} />
         {groups.map(([key, chips]) => (
           <div key={key} className="hidden min-w-0 items-center gap-2 lg:flex">
             <QueryGroupDivider />
