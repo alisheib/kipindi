@@ -1,0 +1,5 @@
+docs(vodacom): S6 handover ~06:55 EAT - turn B done on the merged tip (seals, needle-rest, bar geometry, header fit, preview green; 333 tiles); qa:live found /profile/invite broken on in-memory servers, fixed on the visual branch (3d2beb17); turn C and round 6's read running
+
+Docs only.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

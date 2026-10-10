@@ -1,0 +1,60 @@
+03:26:46 lock not taken here (KP_NO_LOCK=1: the chain that runs this holds it)
+03:26:47 free memory: 15 GB
+03:26:51 start: kipindi-a8i2-ctl at 4b754b898 on :3074
+03:27:08 server up after 2s
+03:27:14 routes warmed; running: env KP_SHOTS=C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/preview-m16b2 npm run qa:journey-preview
+
+> fiftypick@0.1.0 qa:journey-preview
+> node scripts/qa-journey-preview.mjs
+
+qa:journey-preview — http://localhost:3074
+
+  PASS 0.health the rollout is STAFF_PREVIEW under the shipped ceiling, with no record — {"ceiling":"STAFF_PREVIEW","state":"STAFF_PREVIEW"}
+
+§1 · a guest sees nothing
+  PASS 1.1 no marker on / for a guest
+  PASS 1.2 no pass cookie in a guest's jar
+  PASS 1.3 the guest's HTML carries no trace of the preview or the journey shell (the marker, the pass, the header's and tabs' test ids)
+
+§2 · a SUPPORT officer turns the preview on, sees the marker, exits
+  PASS 2.0 a SUPPORT officer is seeded and signed in — 200
+  PASS 2.1 /admin/journey opens for SUPPORT (every staff role may view it)
+  PASS 2.2 SUPPORT sees no Owner control (no Stop, no Create link)
+  PASS 2.3 the page says this browser holds no pass
+  PASS 2.4 the officer lands on / wearing the marker
+  PASS 2.5 the pass cookie is HttpOnly, SameSite=Lax, path /, and ends within 24 h — {"httpOnly":true,"sameSite":"Lax","path":"/","inH":"24.00"}
+  PASS 2.5b at 1280 the pass holder is drawn the journey header, and no classic bar or coin — {"journeyHeader":1,"railShown":false,"tabs":4,"classicHeader":0,"classicCoin":0}
+  PASS 2.5c control · the pass holder's HTML carries EACH of the journey shell's test ids — so 1.3 and 3.3 can fail on them — {"journey-top-bar":true,"journey-tabs":true}
+  PASS 2.5d at 390 the pass holder is drawn the journey header and its rail of four tabs, and no classic bar or coin — {"journeyHeader":1,"railShown":true,"tabs":4,"classicHeader":0,"classicCoin":0}
+  PASS 2.6 a document load of /markets still wears the marker
+  PASS 2.7 'Exit preview' lands on / and the marker is gone
+  PASS 2.8 …and the pass is out of the jar
+  PASS 2.9 turned on again (for §4)
+
+§3 · a signed-in player sees nothing
+  PASS 3.1 the demo player is signed in
+  PASS 3.2 no marker on / for a player
+  PASS 3.3 the player's HTML carries no trace of the preview or the journey shell (the marker, the pass, the header's and tabs' test ids)
+
+§4 · the Owner stops the rollout, then resumes it
+  PASS 4.0 the Owner is seeded and signed in — 200
+  PASS 4.1 the Owner sees Stop
+  PASS 4.2 health says WITHDRAWN after Stop
+  PASS 4.3 the Rollout card says Off
+  PASS 4.4 the officer's pass is ignored while stopped — no marker
+  PASS 4.5 health says STAFF_PREVIEW after Resume
+  PASS 4.6 the same pass counts again — the marker is back
+
+§5 · the Owner issues a preview link; a stranger opens it; the Owner revokes it
+  PASS 5.1 the new link's address is shown to the Owner — https://www.50pick.tz/preview?t=eyJwIjoiam91cm5leS5wcmV2aWV3
+  PASS 5.2 a stranger opening the link lands on / wearing the marker — http://localhost:3074/
+  PASS 5.3 after the revoke the stranger's pass counts for nothing — no marker
+  PASS 5.4 the link is listed as Revoked
+  PASS 5.5 the revoked link opens nothing
+
+§6 · no page error anywhere
+  PASS 6.1 no page errors or console errors in any context
+
+33/33 passed — tiles in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/preview-m16b2
+03:28:00 command exit=0
+03:28:02 server stopped (left: 0)

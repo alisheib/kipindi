@@ -1,4 +1,4 @@
-mutation-r5j · 2026-10-10T01:58:23.085Z · 26 plants over 24 files
+mutation-r5j · 2026-10-10T04:40:36.312Z · 26 plants over 24 files
 CAUGHT  the filter pill prints its count bare again ("Zote 12479")  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 2.1 ✗]  restored byte-identical
 CAUGHT  /results' bar fills its phrase with String(resultCount)  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 1.3 ✗ · visual-pass-r5j 2.3 ✗]  restored byte-identical
 CAUGHT  the pager's total back on the runtime's locale  [visual-pass-r5j 1.1 ✗ · visual-pass-r5j 2.2 ✗]  restored byte-identical
@@ -46,7 +46,7 @@ CAUGHT  the round-5 sweep excuses a slot again  [visual-pass-r5j 5.7 ✗]  resto
   c011f6753ddf9b59  src/components/markets/sell-result.tsx
   7e1890793f4cf894  src/lib/fill-nodes.tsx
   b4cb071a1763b69c  src/app/api/og/market/[id]/route.tsx
-  66eb1e45091fc99d  src/app/globals.css
+  0db23945fbf2fd31  src/app/globals.css
   3b02b673478762f7  src/components/analytics/analytics-choice.tsx
   9ca825efafee92ef  src/components/home/trust-band.tsx
   8cc83f8d182e2f15  src/components/ui/time-select.tsx

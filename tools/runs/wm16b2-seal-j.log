@@ -1,0 +1,15 @@
+02:58:35 lock not taken here (KP_NO_LOCK=1: the chain that runs this holds it)
+02:58:36 free memory: 15 GB
+02:58:37 start: kipindi-a8i2-ctl at 4b754b898 on :3074
+02:58:54 server up after 2s
+02:58:59 routes warmed; running: env LIVE_BASE=http://localhost:3074 npm run qa:landmark-seal -- --journey
+
+> fiftypick@0.1.0 qa:landmark-seal
+> node scripts/landmark-seal.mjs --journey
+
+  · live harness target: http://localhost:3074  (set LIVE_BASE to point elsewhere)
+LOCAL REHEARSAL · --journey, through a preview pass — http://localhost:3074
+  14 public + 10 gated routes × 7 widths × 3 locales
+  504 cells measured · 0 problem(s)
+03:08:56 command exit=0
+03:08:58 server stopped (left: 0)

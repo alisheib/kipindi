@@ -1,0 +1,419 @@
+03:28:02 lock not taken here (KP_NO_LOCK=1: the chain that runs this holds it)
+03:28:03 free memory: 15 GB
+03:28:04 start: kipindi-a8i2-ctl at 4b754b898 on :3074
+03:28:21 server up after 2s
+03:28:27 routes warmed; running: npm run qa:live
+
+> fiftypick@0.1.0 qa:live
+> node scripts/pre-deploy-live-check.mjs
+
+
+[A] Public route health (render + no console/page/5xx errors + no error overlay)
+  ✓ control · the fused-word matcher catches the shipped defect
+  ✓ control · …and accepts the explicit-space form React renders
+  ✓ control · …and catches a fused </span> (2026-09-14)
+  ✓ control · …and two text nodes fused at an expression seam ("hour<!-- -->of")
+  ✓ control · …but not a span CSS spaces: the legal section number, an icon span, a span whose text ends in a space
+  ✓ control · ⛔ an EMPTY or unreadable page FAILS the verdict
+  ✓ control · …and a clean page passes the same verdict
+  ✓ / renders content
+  ✓ / no error overlay
+  ✓ / no console/page errors
+  ✓ / no words run together after an inline tag
+  ✓ /markets renders content
+  ✓ /markets no error overlay
+  ✓ /markets no console/page errors
+  ✓ /markets no words run together after an inline tag
+  ✓ /markets?when=new renders content
+  ✓ /markets?when=new no error overlay
+  ✓ /markets?when=new no console/page errors
+  ✓ /markets?when=new no words run together after an inline tag
+  ✓ /markets?when=soon renders content
+  ✓ /markets?when=soon no error overlay
+  ✓ /markets?when=soon no console/page errors
+  ✓ /markets?when=soon no words run together after an inline tag
+  ✓ /markets?when=week renders content
+  ✓ /markets?when=week no error overlay
+  ✓ /markets?when=week no console/page errors
+  ✓ /markets?when=week no words run together after an inline tag
+  ✓ /live renders content
+  ✓ /live no error overlay
+  ✓ /live no console/page errors
+  ✓ /live no words run together after an inline tag
+  ✓ /leaderboard renders content
+  ✓ /leaderboard no error overlay
+  ✓ /leaderboard no console/page errors
+  ✓ /leaderboard no words run together after an inline tag
+  ✓ /fairness renders content
+  ✓ /fairness no error overlay
+  ✓ /fairness no console/page errors
+  ✓ /fairness no words run together after an inline tag
+  ✓ /proposals renders content
+  ✓ /proposals no error overlay
+  ✓ /proposals no console/page errors
+  ✓ /proposals no words run together after an inline tag
+  ✓ /help renders content
+  ✓ /help no error overlay
+  ✓ /help no console/page errors
+  ✓ /help no words run together after an inline tag
+  ✓ /legal/terms renders content
+  ✓ /legal/terms no error overlay
+  ✓ /legal/terms no console/page errors
+  ✓ /legal/terms no words run together after an inline tag
+  ✓ /legal/privacy renders content
+  ✓ /legal/privacy no error overlay
+  ✓ /legal/privacy no console/page errors
+  ✓ /legal/privacy no words run together after an inline tag
+  ✓ /legal/aml renders content
+  ✓ /legal/aml no error overlay
+  ✓ /legal/aml no console/page errors
+  ✓ /legal/aml no words run together after an inline tag
+  ✓ /legal/responsible-gambling renders content
+  ✓ /legal/responsible-gambling no error overlay
+  ✓ /legal/responsible-gambling no console/page errors
+  ✓ /legal/responsible-gambling no words run together after an inline tag
+  ✓ /legal/agent-terms renders content
+  ✓ /legal/agent-terms no error overlay
+  ✓ /legal/agent-terms no console/page errors
+  ✓ /legal/agent-terms no words run together after an inline tag
+  ✓ /legal/rules renders content
+  ✓ /legal/rules no error overlay
+  ✓ /legal/rules no console/page errors
+  ✓ /legal/rules no words run together after an inline tag
+  ✓ /legal/rules/yes-no renders content
+  ✓ /legal/rules/yes-no no error overlay
+  ✓ /legal/rules/yes-no no console/page errors
+  ✓ /legal/rules/yes-no no words run together after an inline tag
+  ✓ /legal/rules/up-down renders content
+  ✓ /legal/rules/up-down no error overlay
+  ✓ /legal/rules/up-down no console/page errors
+  ✓ /legal/rules/up-down no words run together after an inline tag
+  ✓ /auth/login renders content
+  ✓ /auth/login no error overlay
+  ✓ /auth/login no console/page errors
+  ✓ /auth/login no words run together after an inline tag
+  ✓ /auth/register renders content
+  ✓ /auth/register no error overlay
+  ✓ /auth/register no console/page errors
+  ✓ /auth/register no words run together after an inline tag
+  ✓ /auth/forgot-password renders content
+  ✓ /auth/forgot-password no error overlay
+  ✓ /auth/forgot-password no console/page errors
+  ✓ /auth/forgot-password no words run together after an inline tag
+  ✓ [sw] / renders content
+  ✓ [sw] / no error overlay
+  ✓ [sw] / no console/page errors
+  ✓ [sw] / rendered in sw (html lang)
+  ✓ [sw] / no words run together after an inline tag
+  ✓ [sw] /markets renders content
+  ✓ [sw] /markets no error overlay
+  ✓ [sw] /markets no console/page errors
+  ✓ [sw] /markets rendered in sw (html lang)
+  ✓ [sw] /markets no words run together after an inline tag
+  ✓ [sw] /markets?when=new renders content
+  ✓ [sw] /markets?when=new no error overlay
+  ✓ [sw] /markets?when=new no console/page errors
+  ✓ [sw] /markets?when=new rendered in sw (html lang)
+  ✓ [sw] /markets?when=new no words run together after an inline tag
+  ✓ [sw] /markets?when=soon renders content
+  ✓ [sw] /markets?when=soon no error overlay
+  ✓ [sw] /markets?when=soon no console/page errors
+  ✓ [sw] /markets?when=soon rendered in sw (html lang)
+  ✓ [sw] /markets?when=soon no words run together after an inline tag
+  ✓ [sw] /markets?when=week renders content
+  ✓ [sw] /markets?when=week no error overlay
+  ✓ [sw] /markets?when=week no console/page errors
+  ✓ [sw] /markets?when=week rendered in sw (html lang)
+  ✓ [sw] /markets?when=week no words run together after an inline tag
+  ✓ [sw] /live renders content
+  ✓ [sw] /live no error overlay
+  ✓ [sw] /live no console/page errors
+  ✓ [sw] /live rendered in sw (html lang)
+  ✓ [sw] /live no words run together after an inline tag
+  ✓ [sw] /leaderboard renders content
+  ✓ [sw] /leaderboard no error overlay
+  ✓ [sw] /leaderboard no console/page errors
+  ✓ [sw] /leaderboard rendered in sw (html lang)
+  ✓ [sw] /leaderboard no words run together after an inline tag
+  ✓ [sw] /fairness renders content
+  ✓ [sw] /fairness no error overlay
+  ✓ [sw] /fairness no console/page errors
+  ✓ [sw] /fairness rendered in sw (html lang)
+  ✓ [sw] /fairness no words run together after an inline tag
+  ✓ [sw] /proposals renders content
+  ✓ [sw] /proposals no error overlay
+  ✓ [sw] /proposals no console/page errors
+  ✓ [sw] /proposals rendered in sw (html lang)
+  ✓ [sw] /proposals no words run together after an inline tag
+  ✓ [sw] /help renders content
+  ✓ [sw] /help no error overlay
+  ✓ [sw] /help no console/page errors
+  ✓ [sw] /help rendered in sw (html lang)
+  ✓ [sw] /help no words run together after an inline tag
+  ✓ [sw] /legal/terms renders content
+  ✓ [sw] /legal/terms no error overlay
+  ✓ [sw] /legal/terms no console/page errors
+  ✓ [sw] /legal/terms rendered in sw (html lang)
+  ✓ [sw] /legal/terms no words run together after an inline tag
+  ✓ [sw] /legal/privacy renders content
+  ✓ [sw] /legal/privacy no error overlay
+  ✓ [sw] /legal/privacy no console/page errors
+  ✓ [sw] /legal/privacy rendered in sw (html lang)
+  ✓ [sw] /legal/privacy no words run together after an inline tag
+  ✓ [sw] /legal/aml renders content
+  ✓ [sw] /legal/aml no error overlay
+  ✓ [sw] /legal/aml no console/page errors
+  ✓ [sw] /legal/aml rendered in sw (html lang)
+  ✓ [sw] /legal/aml no words run together after an inline tag
+  ✓ [sw] /legal/responsible-gambling renders content
+  ✓ [sw] /legal/responsible-gambling no error overlay
+  ✓ [sw] /legal/responsible-gambling no console/page errors
+  ✓ [sw] /legal/responsible-gambling rendered in sw (html lang)
+  ✓ [sw] /legal/responsible-gambling no words run together after an inline tag
+  ✓ [sw] /legal/agent-terms renders content
+  ✓ [sw] /legal/agent-terms no error overlay
+  ✓ [sw] /legal/agent-terms no console/page errors
+  ✓ [sw] /legal/agent-terms rendered in sw (html lang)
+  ✓ [sw] /legal/agent-terms no words run together after an inline tag
+  ✓ [sw] /legal/rules renders content
+  ✓ [sw] /legal/rules no error overlay
+  ✓ [sw] /legal/rules no console/page errors
+  ✓ [sw] /legal/rules rendered in sw (html lang)
+  ✓ [sw] /legal/rules no words run together after an inline tag
+  ✓ [sw] /legal/rules/yes-no renders content
+  ✓ [sw] /legal/rules/yes-no no error overlay
+  ✓ [sw] /legal/rules/yes-no no console/page errors
+  ✓ [sw] /legal/rules/yes-no rendered in sw (html lang)
+  ✓ [sw] /legal/rules/yes-no no words run together after an inline tag
+  ✓ [sw] /legal/rules/up-down renders content
+  ✓ [sw] /legal/rules/up-down no error overlay
+  ✓ [sw] /legal/rules/up-down no console/page errors
+  ✓ [sw] /legal/rules/up-down rendered in sw (html lang)
+  ✓ [sw] /legal/rules/up-down no words run together after an inline tag
+  ✓ [sw] /auth/login renders content
+  ✓ [sw] /auth/login no error overlay
+  ✓ [sw] /auth/login no console/page errors
+  ✓ [sw] /auth/login rendered in sw (html lang)
+  ✓ [sw] /auth/login no words run together after an inline tag
+  ✓ [sw] /auth/register renders content
+  ✓ [sw] /auth/register no error overlay
+  ✓ [sw] /auth/register no console/page errors
+  ✓ [sw] /auth/register rendered in sw (html lang)
+  ✓ [sw] /auth/register no words run together after an inline tag
+  ✓ [sw] /auth/forgot-password renders content
+  ✓ [sw] /auth/forgot-password no error overlay
+  ✓ [sw] /auth/forgot-password no console/page errors
+  ✓ [sw] /auth/forgot-password rendered in sw (html lang)
+  ✓ [sw] /auth/forgot-password no words run together after an inline tag
+  ✓ ⛔ RATCHET · the fused-word check read every public route in every pass
+
+[B] Date field — clipping, typing order, validation, junk
+  ✓ [w=360] Day not clipped (v="31")
+  ✓ [w=360] Month not clipped (v="12")
+  ✓ [w=360] Year not clipped (v="1999")
+  ✓ [w=768] Day not clipped (v="31")
+  ✓ [w=768] Month not clipped (v="12")
+  ✓ [w=768] Year not clipped (v="1999")
+  ✓ [w=1280] Day not clipped (v="31")
+  ✓ [w=1280] Month not clipped (v="12")
+  ✓ [w=1280] Year not clipped (v="1999")
+  ✓ valid "10051990" -> hidden dob=1990-05-10
+  ✓ type "1" -> "1"
+  ✓ type "10" -> "10" (never "01")
+  ✓ 31/02/2000 -> hidden dob empty
+  ✓ 31/02/2000 -> "Invalid date" shown
+  ✓ 01/01/2025 (under 18) -> hidden dob empty
+  ✓ letters ignored in Day
+  ✓ date page no console errors
+
+[C] Responsive — no horizontal overflow at 360px
+  ✓ / no horizontal overflow
+  ✓ /markets no horizontal overflow
+  ✓ /auth/register no horizontal overflow
+  ✓ /leaderboard no horizontal overflow
+  ✓ /proposals no horizontal overflow
+  ✓ /help no horizontal overflow
+
+[D] Dead-link crawl (internal links must not 404/5xx)
+  ✓ link / -> 200
+  ✓ link /markets -> 200
+  ✓ link /updown -> 200
+  ✓ link /live -> 200
+  ✓ link /results -> 200
+  ✓ link /leaderboard -> 200
+  ✓ link /auth/login -> 200
+  ✓ link /auth/register -> 200
+  ✓ link /profile/responsible-gambling -> 200
+  ✓ link /legal/responsible-gambling -> 200
+  ✓ link /fairness -> 200
+  ✓ link /proposals -> 200
+  ✓ link /legal/rules -> 200
+  ✓ link /agent -> 200
+  ✓ link /help -> 200
+  ✓ link /legal/privacy -> 200
+  ✓ link /legal/aml -> 200
+  ✓ link /legal/terms -> 200
+  ✓ link /profile/account -> 200
+  ✓ link /wallet/deposit -> 200
+  ✓ link /auth/login?next=%2Fmarkets -> 200
+  ✓ link /auth/register?next=%2Fmarkets -> 200
+  ✓ link /markets?status=today -> 200
+  ✓ link /markets?status=new -> 200
+  ✓ link /markets?status=progress -> 200
+  ✓ link /markets?status=all -> 200
+  ✓ link /markets?sort=closing -> 200
+  ✓ link /markets?sort=people -> 200
+  ✓ link /markets?sort=close -> 200
+  ✓ link /markets?sort=move -> 200
+  ✓ link /markets?sort=new -> 200
+  ✓ link /markets?dir=asc -> 200
+  ✓ link /markets?odds=call -> 200
+  ✓ link /markets?odds=cont -> 200
+  ✓ link /markets?odds=long -> 200
+  ✓ link /markets?pool=10k -> 200
+  ✓ link /markets?pool=50k -> 200
+  ✓ link /markets?topic=sports -> 200
+  ✓ link /markets?topic=macro -> 200
+  ✓ link /markets?topic=weather -> 200
+  ✓ link /markets?topic=crypto -> 200
+  ✓ link /markets?topic=culture -> 200
+  ✓ link /markets?topic=tech -> 200
+  ✓ link /markets?topic=other -> 200
+  ✓ link /auth/login?next=%2Fhelp -> 200
+  ✓ link /auth/register?next=%2Fhelp -> 200
+  ✓ link /wallet -> 200
+  ✓ link /positions -> 200
+  ✓ link /auth/login?next=%2Fproposals -> 200
+  ✓ link /auth/register?next=%2Fproposals -> 200
+
+[E] Tester changes — demos hidden, New tab, footer email
+  ✓ no demo polls on /markets
+  ✓ New tab present
+  ✓ footer publishes a support address on the licensed domain
+  ✓ …and it is not the no-reply sender
+
+[E2] New journey rollout — /api/health contract + no preview marker and no journey shell on signed-out pages, /account not found
+  ✓ /api/health states the new journey's rollout (simpleJourney.ceiling, .state; state never above its ceiling)
+  ✓ control · the preview-marker matcher catches the marker and its exit (element and RSC payload)
+  ✓ control · …and passes a page without them
+  ✓ control · the journey-shell matcher catches every trace the shell leaves — its test ids, the shell mark, the flag and a "new" funnel scope, as HTML and as RSC JSON
+  ✓ control · …and passes the classic shell's own marks
+  ✓ control · the readers SEE the journey shell when it is served — / with a staff preview pass, through [E2]'s fetch and through the page reader [E3] and /account use
+  ✓ signed out: / carries no preview marker (rollout STAFF_PREVIEW)
+  ✓ signed out: / carries no trace of the journey shell (rollout STAFF_PREVIEW)
+  ✓ signed out: /markets carries no preview marker (rollout STAFF_PREVIEW)
+  ✓ signed out: /markets carries no trace of the journey shell (rollout STAFF_PREVIEW)
+  ✓ signed out: control · /kp-qa-live-no-such-page is a true 404 with a not-found body and title
+  ✓ signed out: /account renders the not-found body (its main text is the control's)
+  ✓ signed out: …under the not-found title
+  ✓ signed out: …marked noindex in the bytes the server sent
+  ✓ signed out: …and no trace of the journey, in the page or in those bytes
+  ✓ signed out: …and no uncaught page error on either
+  · signed out: /account answered HTTP 200 (A3 expects 200: the root loader streams first), the control HTTP 404 — printed, never judged
+
+[E3] New journey shell — absent for the signed-in QA player (production: mobile01 through the real form)
+  ✓ signed in (demo PLAYER): the sign-in held (a kp_session cookie)
+  ✓ signed in (demo PLAYER): / carries no trace of the journey shell, in the page or in the bytes sent (rollout STAFF_PREVIEW)
+  ✓ signed in (demo PLAYER): / no uncaught page error
+  ✓ signed in (demo PLAYER): /markets carries no trace of the journey shell, in the page or in the bytes sent (rollout STAFF_PREVIEW)
+  ✓ signed in (demo PLAYER): /markets no uncaught page error
+  ✓ signed in (demo PLAYER): control · /kp-qa-live-no-such-page is a true 404 with a not-found body and title
+  ✓ signed in (demo PLAYER): /account renders the not-found body (its main text is the control's)
+  ✓ signed in (demo PLAYER): …under the not-found title
+  ✓ signed in (demo PLAYER): …marked noindex in the bytes the server sent
+  ✓ signed in (demo PLAYER): …and no trace of the journey, in the page or in those bytes
+  ✓ signed in (demo PLAYER): …read as the signed-in player both times (the balance capsule there, no session-ended notice)
+  ✓ signed in (demo PLAYER): …and no uncaught page error on either
+  · signed in (demo PLAYER): /account answered HTTP 200 (A3 expects 200: the root loader streams first), the control HTTP 404 — printed, never judged
+
+[F] Authed surfaces (local /auth/demo)
+  ✓ /positions names itself once
+  ✓ /positions drops the two retired names
+  ✓ /positions no error overlay
+  ✓ /wallet renders
+  ✓ /wallet no error overlay
+  ✓ /wallet/receipts renders for the signed-in player, on its own address
+  ✓ /wallet/receipts no error overlay
+  ✓ signed in (demo PLAYER): / carries no preview marker (rollout STAFF_PREVIEW)
+  ✓ /api/health states whether a player invite is paid (inviteRewards.paying, .payable, .ceiling)
+  ✗ invite renders the unpaid SHARE body for a PLAYER — a copyable referral link {"value":"","href":""}
+  ✗ invite gives the player a code, and exactly one {"value":"","href":""}
+  ✓ invite shows NO earned figure
+  ✓ invite has NO prize amount or milestone line
+  ✓ invite has NO commission line
+  ✓ invite has NO deposit-bonus line
+  ✗ invite says plainly that it pays nothing 
+FAIRNESS
+
+Resolution attestation
+Propose markets & get paid
+COMING SOON
+Game RTP & rules
+Invite friends
+Become an agent
+Help & support
+
+PRIVACY
+
+Privacy notice
+AML / KYC policy
+Terms of service
+Export / close my account
+  ✓ invite no error overlay
+  ✓ live card body click -> details, NO side
+  ✓ YES button opens locked dial (?side=YES)
+  ✓ ?side=YES -> Place YES
+  ✓ ?side=YES -> cannot place NO (locked)
+  ✓ "Your pick" indicator shown
+  ✓ no in-dial switch control (display-only)
+  ✓ dial defaults to LOCKED (drag disabled)
+  ✓ locked dial: exact stake still typeable (3,000)
+  ✓ typing did not arm the dial (still locked)
+  ✓ lock toggle arms the dial (drag enabled)
+  ✓ YES locked: knob can't cross centre
+  ✓ ?side=NO -> Place NO
+  ✓ ?side=NO -> cannot place YES (locked)
+  ✓ no-side detail shows pick-side gate, not a dial
+  ✗ authed flow no console errors %o
+
+%s TypeError: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$server$2f$store$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__.db.affiliate.findByUserId(...).then is not a function
+    at Module.generateMetadata (about://React/Server/F:%5Ckipindi-a8i2-ctl%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0dx8ii_._.js?0:10998:190)
+    at resolveErrorDev (http://localhost:3074/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_0p3wegg._.js:1919:105)
+    at processFullStringRow (http://localhost:3074/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_0p3wegg._.js:2434:29)
+    at processFullBinaryRow (http://localhost:3074/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_0p3wegg._.js:2393:9)
+    at processBinaryChunk (http://localhost:3074/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_0p3wegg._.js:2502:221)
+    at progress (http://localhost:3074/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_0p3wegg._.js:2689:13) The above error occurred in the <Suspense> component. It was handled by the <ErrorBoundaryHandler> error boundary.
+
+❌ FAILURES — 330 passed, 4 failed
+
+FAILED:
+  - invite renders the unpaid SHARE body for a PLAYER — a copyable referral link {"value":"","href":""}
+  - invite gives the player a code, and exactly one {"value":"","href":""}
+  - invite says plainly that it pays nothing 
+FAIRNESS
+
+Resolution attestation
+Propose markets & get paid
+COMING SOON
+Game RTP & rules
+Invite friends
+Become an agent
+Help & support
+
+PRIVACY
+
+Privacy notice
+AML / KYC policy
+Terms of service
+Export / close my account
+  - authed flow no console errors %o
+
+%s TypeError: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$server$2f$store$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__.db.affiliate.findByUserId(...).then is not a function
+    at Module.generateMetadata (about://React/Server/F:%5Ckipindi-a8i2-ctl%5C.next%5Cdev%5Cserver%5Cchunks%5Cssr%5C%5Broot-of-the-server%5D__0dx8ii_._.js?0:10998:190)
+    at resolveErrorDev (http://localhost:3074/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_0p3wegg._.js:1919:105)
+    at processFullStringRow (http://localhost:3074/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_0p3wegg._.js:2434:29)
+    at processFullBinaryRow (http://localhost:3074/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_0p3wegg._.js:2393:9)
+    at processBinaryChunk (http://localhost:3074/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_0p3wegg._.js:2502:221)
+    at progress (http://localhost:3074/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_0p3wegg._.js:2689:13) The above error occurred in the <Suspense> component. It was handled by the <ErrorBoundaryHandler> error boundary.
+03:31:09 command exit=1
+03:31:17 server stopped (left: 0)

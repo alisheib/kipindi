@@ -1,0 +1,33 @@
+03:26:04 lock not taken here (KP_NO_LOCK=1: the chain that runs this holds it)
+03:26:05 free memory: 15 GB
+03:26:06 start: kipindi-a8i2-ctl at 4b754b898 on :3074
+03:26:23 server up after 2s
+03:26:29 routes warmed; running: node C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/r4k/e45-run.mjs http://localhost:3074
+  · live harness target: http://localhost:3074  (set LIVE_BASE to point elsewhere)
+e45-run: player cookies kp_session + kp_preview
+not-found card label · font-display 600 13px
+  "首页"  weight 600  size 13px
+  family: Sora, system-ui, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", sans-serif, Sora, Inter, system-ui, "Helvetica Neue", Arial, sans-serif
+  platform: Microsoft YaHei (MicrosoftYaHei-Bold) ×2
+not-found h1 · font-display 700 28px
+  "我们找不到该页面"  weight 700  size 28px
+  family: Sora, system-ui, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", sans-serif, Sora, Inter, system-ui, "Helvetica Neue", Arial, sans-serif
+  platform: Microsoft YaHei (MicrosoftYaHei-Bold) ×8
+tickets empty title · font-display 600 15.5px (E45)
+  "您还没有进行中的注单"  weight 600  size 15.5px
+  family: Sora, system-ui, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", sans-serif, Sora, Inter, system-ui, "Helvetica Neue", Arial, sans-serif
+  platform: Microsoft YaHei (MicrosoftYaHei-Bold) ×10
+tickets empty button · .btn 600 14px (E45)
+  "查看问题"  weight 600  size 14px
+  family: Inter, system-ui, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", sans-serif
+  platform: Microsoft YaHei (MicrosoftYaHei-Bold) ×4
+deposit pill · .btn 600 14px
+  "充值"  weight 600  size 14px
+  family: Inter, system-ui, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", sans-serif
+  platform: Microsoft YaHei (MicrosoftYaHei-Bold) ×2
+PageHeader h1 · font-display 700 28px
+  "我的注单"  weight 700  size 28px
+  family: Sora, system-ui, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", sans-serif, Sora, Inter, system-ui, "Helvetica Neue", Arial, sans-serif
+  platform: Microsoft YaHei (MicrosoftYaHei-Bold) ×4
+03:26:44 command exit=0
+03:26:46 server stopped (left: 0)

@@ -1,0 +1,20 @@
+Fix (found by the final proof's local qa:live): /profile/invite lost its body on every in-memory server — its tab's agent read chained `.then` on an answer that is not a promise there
+
+`qa:live` on the merged tip (turn B, 2026-10-10): 330 passed, 4 failed — "invite renders the unpaid SHARE body", "gives the
+player a code", "says plainly that it pays nothing" and "authed flow no console errors": `generateMetadata` threw
+"db.affiliate.findByUserId(...).then is not a function", so the error boundary took the page and only the footer drew.
+R5-G (89893725) asked `db.affiliate.findByUserId(id).then(isApprovedAgent, () => false)`: `db` is typed as the Prisma
+layer's, whose reads answer with a promise, but the in-memory store (every dev and QA server) answers with the row itself.
+Production (Prisma) was never affected; every in-memory server was.
+- invite/page.tsx: the read starts from `Promise.resolve().then(() => db.affiliate.findByUserId(...))`, so a row, a promise
+  of one and a throw all answer through `isApprovedAgent` or "not an agent" — the fallback the comment already promised.
+- visual-pass-r5g 3.5: three cases on the in-memory store's shape (the row, not a promise; a player; a throw, not a
+  rejection), each case answering for itself (a throwing generateMetadata is that case's failure, not the suite's crash);
+  3.5″ a census — no `db.<table>.<read>(…).then(` anywhere in src (one found: this one) — and 3.5‴ its plant. The old line
+  planted by hand fails 3.5 and 3.5″.
+Why no suite caught it: r5g 3.5 and r6c's C1 run the real generateMetadata with the reads stubbed — as `async` functions.
+Proofs: R5-G 30/30, R6-C 40/40; r5g 63/63, r6c 87/87. Owed: `qa:live` again on an in-memory server (a lock turn).
+
+Classic viewers: the same page (both shells), on an in-memory server only.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -551,4 +551,7 @@ The RG page:
   drawing (/wallet, /wallet/receipts): the same typed 104px Filters box. Now the kit's sort (filling a phone's cell)
   and Filters.
 - The count-truth and player-filter drives' count selector (not visible).
+- /profile/invite on an in-memory server (the tiles' server): the page lost its body to an error page ("Ukurasa huu umekumbana na
+  tatizo") — its tab's agent read threw (fixed on vodacom-visual `3d2beb17`); tiles 181 and 182 (`--WRONG-PAGE`) show it.
+  Note them here; the page itself is read again on the next tiles.
 If a tile shows one of these, list it under "seen, already fixed after r6".

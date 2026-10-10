@@ -1,0 +1,64 @@
+You are one of several strict tile readers in round 6 of 50pick's visual pass for Vodacom. The owner's rule: only
+perfect visual and logical results are accepted; nothing is deferred as "small".
+
+Read these two files first, completely, with the Read tool — they are your instructions:
+1. C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/read-brief-r2.md — how to read, what counts, what is known and by design, how to report.
+2. C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/read-brief-r6-fixes.md — what rounds 4 (late), 5 and 6 fixed and what each fix must now look like. For every fix your tiles
+   show, report VERIFIED (with the measurement) or NOT FIXED / FIXED WRONG (with the measurement). Its "Fixed AFTER these tiles" section lists
+   what was fixed AFTER these tiles — note those as "seen, already fixed after r6", not as findings.
+Also read C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/owner-items.md (the items waiting for the owner: note them when a tile shows one, never as new).
+
+Your tiles (42 of them) are in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/tiles-r6b2. Open EVERY one, in this order:
+001--classic--root--nopass-guest--no-pass--sw--390.png
+002--classic--root--nopass-guest--no-pass--sw--1280.png
+003--classic--root--nopass-guest--no-pass--en--390.png
+004--classic--root--nopass-guest--no-pass--en--1280.png
+005--classic--root--nopass-guest--no-pass--zh--390.png
+006--classic--root--nopass-guest--no-pass--zh--1280.png
+007--classic--root--nopass-player--no-pass--sw--390.png
+008--classic--root--nopass-player--no-pass--sw--1280.png
+009--classic--root--nopass-player--no-pass--en--390.png
+010--classic--root--nopass-player--no-pass--en--1280.png
+011--classic--root--nopass-player--no-pass--zh--390.png
+012--classic--root--nopass-player--no-pass--zh--1280.png
+013--header--root--guest--pass--sw--320.png
+014--header--root--guest--pass--sw--360.png
+015--header--root--guest--pass--sw--390.png
+016--header--root--guest--pass--sw--412.png
+017--header--root--guest--pass--sw--768.png
+018--header--root--guest--pass--sw--1024.png
+019--header--root--guest--pass--sw--1150.png
+020--header--root--guest--pass--sw--1280.png
+021--header--root--guest--pass--en--320.png
+022--header--root--guest--pass--en--360.png
+023--header--root--guest--pass--en--390.png
+024--header--root--guest--pass--en--412.png
+025--header--root--guest--pass--en--768.png
+026--header--root--guest--pass--en--1024.png
+027--header--root--guest--pass--en--1150.png
+028--header--root--guest--pass--en--1280.png
+029--header--root--guest--pass--zh--320.png
+030--header--root--guest--pass--zh--360.png
+031--header--root--guest--pass--zh--390.png
+032--header--root--guest--pass--zh--412.png
+033--header--root--guest--pass--zh--768.png
+034--header--root--guest--pass--zh--1024.png
+035--header--root--guest--pass--zh--1150.png
+036--header--root--guest--pass--zh--1280.png
+037--header--root--player--100000--sw--390.png
+038--header--root--player--100000--sw--1280.png
+039--header--root--player--100000--en--390.png
+040--header--root--player--100000--en--1280.png
+041--header--root--player--100000--zh--390.png
+042--header--root--player--100000--zh--1280.png
+
+Each tile also has a diff overlay against round 5's capture of the same cell (tiles-r5), in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/diff-r6, named <tile>--diff.png: the new
+tile dimmed, every changed pixel red. Use it to find what moved, then judge the TILE itself — live market data, prices
+and times change between runs (that red is expected), so a red region is a pointer, never a finding by itself, and an
+unchanged region can still hold a defect earlier rounds missed. The overlay list with each tile's changed regions is
+C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/diff-r6/diff.json.
+
+Measure with PowerShell System.Drawing as the brief says (no Python on this PC). Do not edit any file; do not run npm,
+servers or browsers. Your final message is the report the brief asks for — (1) tiles opened (must be 42), (2) FINDINGS
+(most visible first: tile · what · where · how measured · which rule), (3) the VERIFIED / NOT FIXED list for the brief's
+fixes, (4) "seen, already fixed after r6", (5) DOUBTS. Nothing else.

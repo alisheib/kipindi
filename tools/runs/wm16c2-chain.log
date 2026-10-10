@@ -1,0 +1,9 @@
+03:48:51 queued: wait note written
+03:48:51 lock taken
+03:48:52 kipindi-a8i2-ctl at 3d2beb170; every merge since the baseline brings only the baseline's own history
+03:49:13 prisma generate exit=0
+04:13:10 wm16c2-par-cmp: exit=1 · tree same —   PASS 4.6 each measured Sell difference is seen in all of its cells whenever the served change that causes it is seen   this run's capture, for reading beside the baseline: C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/parity-main-e7a979c6.json.current.json 37/39 passed — compare · tree 3d2beb17 · ⚠ BASE OVERRIDDEN (--allow-base) · 1274s 
+04:15:55 wm16c2-live: exit=0 · tree same —   ✓ no-side detail shows pick-side gate, not a dial   ✓ authed flow no console errors ✅ ALL PASS — 334 passed, 0 failed 
+04:15:56 tree after: 
+04:15:56 chain end
+04:15:56 lock released

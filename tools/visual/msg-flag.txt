@@ -1,0 +1,14 @@
+Round 6's read (R5-1, a regression since R5-A): /results' spotlight flag is one unbreakable unit again — "MATOKEO MASHUHURI" no longer breaks short of its edge
+
+Found by the round-6 tile read (tiles 169, 170, 201, 326; two readers): the notable card's flag broke onto two lines,
+"MATOKEO" / "MASHUHURI", 61px short of the card's edge (r5: one line ending on it), and the card grew 8px (1280) to 14px
+(390). R5-A (F19) took the flag's trailing 0.16em back with `kp-track-end` — a negative end margin — so this shrink-to-fit
+flag sized itself 1.6px narrower than its words and broke them.
+- results/page.tsx (and its loading drawing): the flag is `whitespace-nowrap` — the words hold, the trailing tracking
+  overhangs the box as intended, and a row too narrow for the flag takes it whole to the next line (`flex-wrap`).
+- Re-signed: r5l 6.1's held class strings, eyebrow-roles' two entries (the sweep's 170-character signature, its tail cut
+  18 characters earlier).
+Proofs: R5-A 41/41, R5-C 59/59; r5a 93, r5l 49, eyebrow-roles 658, journey-shell 434 green. Owed: a tile of /results at
+390 and 1280. The general hazard (a multi-word kp-track-end label in a shrink-to-fit box) is listed in the read's triage.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

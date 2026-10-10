@@ -1,0 +1,131 @@
+03:21:03 lock not taken here (KP_NO_LOCK=1: the chain that runs this holds it)
+03:21:04 free memory: 15 GB
+03:21:05 start: kipindi-a8i2-ctl at 4b754b898 on :3074
+03:21:23 Turbopack's Google-font import failed at start-up
+03:21:30 server stopped (left: 0)
+03:21:34 start: kipindi-a8i2-ctl at 4b754b898 on :3074 (retry after the font import failed)
+03:21:51 server up after 2s
+03:21:56 routes warmed; running: npm run test:needle-rest
+
+> fiftypick@0.1.0 test:needle-rest
+> node scripts/needle-rest.test.mjs
+
+
+[needle-rest] §1 the glide, frame by frame (360×740)
+  ✓ precondition · the Needle is mounted
+  ✓ precondition · a control reaches the rail's strip {"top":123.75,"bottom":167.75,"label":""}
+  ✓ §1 precondition · placed, the footprint covers a control {"covered":["Tafuta soko"],"y":117.75,"vib":0}
+  ✓ §1 a glide starts within 400 ms of the scroll going idle start=199
+  ✓ §1 it settles back to parked in under 1.5 s dur=800
+  ✓ §1 it stays on the rail (x never changes) dx max=0.00
+  ✓ §1 no frame jumps (per-frame step ≤ 24 px) max=7.11
+  ✓ §1 no teleport (change of step between frames ≤ 6 px) max=3.61 (steps 3.61 → 0.00 px over frames of 16.7 → 16.7 ms)
+  ✓ §1 overshoot past the rest position ≤ 3 px overshoot=0.00
+  ✓ §1 it travels at most a third of the viewport moved=168.0
+  ✓ §1 at rest nothing interactive is under the footprint []
+  ✓ §1 …and no control within 4px of it (every tier keeps 4px off a control — R3-B) []
+  ✓ §1 the glide vibrates nothing (the player did nothing) 0 → 0
+  ✓ §1 frames were really recorded (≥ 60 across the glide window) 134 frames, 48 moving
+  ✓ §1 the next scroll-idle does not move it again (no chained glide)
+
+[needle-rest] §2 a rest clear of everything is left alone (clean room, 360×740)
+  ✓ §2 already clear: a scroll-idle does not move it
+
+[needle-rest] §3 reduced motion: a snap, not a glide
+  ✓ §3 the move happens in ONE frame, with no parking frames changes=1
+  ✓ §3 …and ends clear
+
+[needle-rest] §4 the session-96 sweep: pages × scroll positions, after scroll-idle
+  ✓ §4 360px · no sample rests on a control (was 6 of 40 across 360 and 768) 0/20 · 
+  ✓ §4 768px · no sample rests on a control (was 6 of 40 across 360 and 768) 0/20 · 
+
+[needle-rest] §5 the clearance: what touches the disc moves it clear of the glow (clean room)
+  · 390×780: the glow reaches 11.4px past the disc; the clearance is 15.4px
+  ✓ §5 390 · a control 2px from the disc (257: the preview pill) moves it, to a rest whose gap is ≥ 15.4px {"planted":{"x":198,"y":380,"width":160,"height":40,"top":380,"right":358,"bottom":420,"left":198},"y":304,"parked":true,"gap":16}
+  ✓ §5 390 · CONTROL · a control just past the clearance leaves it where it is {"planted":{"x":183.59375,"y":380,"width":160,"height":40,"top":380,"right":343.59375,"bottom":420,"left":183.59375},"y":370,"parked":true,"gap":16.40625}
+  ✓ §5 390 · a line of text 1px from the disc (194: the stat line) moves it, to a rest whose gap is ≥ 15.4px {"planted":{"x":174.25,"y":380,"width":184.75,"height":15,"top":380,"right":359,"bottom":395,"left":174.25},"y":412,"parked":true,"gap":17}
+  ✓ §5 390 · precondition · the roundel's glyphs sit outside the clearance (only its ring reaches in)
+  ✓ §5 390 · a painted roundel whose ring is inside the clearance moves it (its ring is its ink) 370 → 424
+  ✓ §5 390 · precondition · the roundel's glyphs sit outside the clearance (only its box reaches in)
+  ✓ §5 390 · CONTROL · the same text in an unpainted box leaves it where it is 370 → 370
+  ✓ §5 390 · a 16px icon 2px from the disc (small media are content) moves it, to a rest whose gap is ≥ 15.4px {"planted":{"x":342,"y":390,"width":16,"height":16,"top":390,"right":358,"bottom":406,"left":342},"y":422,"parked":true,"gap":16}
+  · 1024×900: the glow reaches 25.0px past the disc; the clearance is 29.0px
+  ✓ §5 1024 · a control 2px from the disc (257: the preview pill) moves it, to a rest whose gap is ≥ 29.0px {"planted":{"x":830,"y":380,"width":160,"height":40,"top":380,"right":990,"bottom":420,"left":830},"y":286,"parked":true,"gap":30}
+  ✓ §5 1024 · CONTROL · a control just past the clearance leaves it where it is {"planted":{"x":802,"y":380,"width":160,"height":40,"top":380,"right":962,"bottom":420,"left":802},"y":368,"parked":true,"gap":30}
+  ✓ §5 1024 · a line of text 1px from the disc (194: the stat line) moves it, to a rest whose gap is ≥ 29.0px {"planted":{"x":806.25,"y":380,"width":184.75,"height":15,"top":380,"right":991,"bottom":395,"left":806.25},"y":424,"parked":true,"gap":29}
+  ✓ §5 1024 · precondition · the roundel's glyphs sit outside the clearance (only its ring reaches in)
+  ✓ §5 1024 · a painted roundel whose ring is inside the clearance moves it (its ring is its ink) 368 → 438
+  ✓ §5 1024 · precondition · the roundel's glyphs sit outside the clearance (only its box reaches in)
+  ✓ §5 1024 · CONTROL · the same text in an unpainted box leaves it where it is 368 → 368
+  ✓ §5 1024 · a 16px icon 2px from the disc (small media are content) moves it, to a rest whose gap is ≥ 29.0px {"planted":{"x":974,"y":388,"width":16,"height":16,"top":388,"right":990,"bottom":404,"left":974},"y":434,"parked":true,"gap":30}
+
+[needle-rest] §6 an open surface over the parked disc moves it, with no scroll at all (clean room, 390×780)
+  ✓ §6 321 · a panel opening over the disc moves it off the panel's whole box, gap ≥ 15.4px — no scroll was dispatched {"y0":370,"y":506,"gap":16}
+  ✓ §6 CONTROL · a panel on the far half of the viewport leaves it where it is {"y0":370,"y":370,"gap":165}
+
+[needle-rest] §7 a resize mid-glide re-seats the disc on its own edge, every frame (clean room)
+  ✓ §7 right 390 → 1024 · precondition · a glide is in flight when the viewport changes
+  ✓ §7 right 390 → 1024 · from the resize on, every frame is tucked half off the RIGHT edge (295 296 299 304 307) 147 frames; first off: null
+  ✓ §7 right 390 → 1024 · it rests there, and the stored edge is right (no later page opens it on the other side) {"parked":true,"edge":"right","stored":"right"}
+  ✓ §7 right 1024 → 390 · precondition · a glide is in flight when the viewport changes
+  ✓ §7 right 1024 → 390 · from the resize on, every frame is tucked half off the RIGHT edge (295 296 299 304 307) 147 frames; first off: null
+  ✓ §7 right 1024 → 390 · it rests there, and the stored edge is right (no later page opens it on the other side) {"parked":true,"edge":"right","stored":"right"}
+  ✓ §7 left 390 → 1024 · precondition · a glide is in flight when the viewport changes
+  ✓ §7 left 390 → 1024 · from the resize on, every frame is tucked half off the LEFT edge (295 296 299 304 307) 147 frames; first off: null
+  ✓ §7 left 390 → 1024 · it rests there, and the stored edge is left (no later page opens it on the other side) {"parked":true,"edge":"left","stored":"left"}
+
+[needle-rest] §8 the page moves under a glide: the landing re-checks (clean room, 390×780)
+  ✓ §8 precondition · a glide is in flight, and `resting()` says so {"parking":true,"resting":false,"target":{"x":360,"y":304}}
+  ✓ §8 257 · it does not stay where the old page sent it: at rest it clears the control by ≥ 15.4px, and resting() is true {"target":304,"y":238,"gap":16,"resting":true}
+  ✓ §8 …and the next scroll-idle does not move it again (no chain)
+
+[needle-rest] §9 the chat bubble is cleared by the glow's 4px, shown or faded (clean room, the bubble let back in)
+  ✓ §9 320 · precondition · D75's fade came on its own after 3s untouched, so its timer is spent
+  · 320×780: ChatRoot's bubble at x260–304 y656–700, its ink from y651.0; the clearance is 14.0px
+  ✓ §9 320 · precondition · with no bubble to see, the disc stays where it was put, 17px above the ink's top edge {"placed":634,"y0":634}
+  ✓ §9 320 · a bubble ARRIVING over the parked disc moves it — no scroll dispatched — clear of its ink by ≥ 14.0px {"y0":634,"y":574,"gap":21}
+  ✓ §9 320 · precondition · the bubble is SHOWN {"opacity":"1","pointerEvents":"auto"}
+  ✓ §9 320 · SHOWN · a disc 17px above the bubble's ink edge, overlapping it (313), moves to a rest clear of the ink where it stands shown by ≥ 14.0px {"placed":634,"y0":634,"y":580,"parked":true,"gap":15}
+  ✓ §9 320 · SHOWN · …and the next scroll-idle does not move it again (no chain)
+  ✓ §9 320 · precondition · the bubble is FADED AT REST (D75, data-fab-idle) {"opacity":"0","pointerEvents":"none"}
+  ✓ §9 320 · FADED AT REST (D75, data-fab-idle) · a disc 17px above the bubble's ink edge, overlapping it (313), moves to a rest clear of the ink where it stands shown by ≥ 14.0px {"placed":634,"y0":634,"y":580,"parked":true,"gap":15}
+  ✓ §9 320 · FADED AT REST (D75, data-fab-idle) · …and the next scroll-idle does not move it again (no chain)
+  ✓ §9 320 · precondition · the bubble is FADED MID-SCROLL (D3, data-scrolling) {"opacity":"0","pointerEvents":"none"}
+  ✓ §9 320 · FADED MID-SCROLL (D3, data-scrolling) · a disc 17px above the bubble's ink edge, overlapping it (313), moves to a rest clear of the ink where it stands shown by ≥ 14.0px {"placed":634,"y0":634,"y":580,"parked":true,"gap":15}
+  ✓ §9 320 · FADED MID-SCROLL (D3, data-scrolling) · …and the next scroll-idle does not move it again (no chain)
+  ✓ §9 320 · CONTROL · a disc clear of the bubble's ink by 16.0px stays where it is {"placed":579.0096,"y0":579.0096,"y":579.0096,"gap":15.990400000000022}
+  ✓ §9 320 · CONTROL · on the LEFT rail at the same height the bubble is nothing to the disc: it stays 634 → 634
+  ✓ §9 390 · precondition · D75's fade came on its own after 3s untouched, so its timer is spent
+  · 390×780: ChatRoot's bubble at x330–374 y656–700, its ink from y651.0; the clearance is 15.4px
+  ✓ §9 390 · precondition · with no bubble to see, the disc stays where it was put, 17px above the ink's top edge {"placed":634,"y0":634}
+  ✓ §9 390 · a bubble ARRIVING over the parked disc moves it — no scroll dispatched — clear of its ink by ≥ 15.4px {"y0":634,"y":570,"gap":21}
+  ✓ §9 390 · precondition · the bubble is SHOWN {"opacity":"1","pointerEvents":"auto"}
+  ✓ §9 390 · SHOWN · a disc 17px above the bubble's ink edge, overlapping it (313), moves to a rest clear of the ink where it stands shown by ≥ 15.4px {"placed":634,"y0":634,"y":574,"parked":true,"gap":17}
+  ✓ §9 390 · SHOWN · …and the next scroll-idle does not move it again (no chain)
+  ✓ §9 390 · precondition · the bubble is FADED AT REST (D75, data-fab-idle) {"opacity":"0","pointerEvents":"none"}
+  ✓ §9 390 · FADED AT REST (D75, data-fab-idle) · a disc 17px above the bubble's ink edge, overlapping it (313), moves to a rest clear of the ink where it stands shown by ≥ 15.4px {"placed":634,"y0":634,"y":574,"parked":true,"gap":17}
+  ✓ §9 390 · FADED AT REST (D75, data-fab-idle) · …and the next scroll-idle does not move it again (no chain)
+  ✓ §9 390 · precondition · the bubble is FADED MID-SCROLL (D3, data-scrolling) {"opacity":"0","pointerEvents":"none"}
+  ✓ §9 390 · FADED MID-SCROLL (D3, data-scrolling) · a disc 17px above the bubble's ink edge, overlapping it (313), moves to a rest clear of the ink where it stands shown by ≥ 15.4px {"placed":634,"y0":634,"y":574,"parked":true,"gap":17}
+  ✓ §9 390 · FADED MID-SCROLL (D3, data-scrolling) · …and the next scroll-idle does not move it again (no chain)
+  ✓ §9 390 · CONTROL · a disc clear of the bubble's ink by 17.4px stays where it is {"placed":573.5964,"y0":573.5964,"y":573.5964,"gap":17.403599999999983}
+  ✓ §9 390 · CONTROL · on the LEFT rail at the same height the bubble is nothing to the disc: it stays 634 → 634
+  ✓ §9 1024 · precondition · D75's fade came on its own after 3s untouched, so its timer is spent
+  · 1024×900: ChatRoot's bubble at x952–1008 y828–884, its ink from y822.5; the clearance is 29.0px
+  ✓ §9 1024 · precondition · with no bubble to see, the disc stays where it was put, 17px above the ink's top edge {"placed":805.52,"y0":805.52}
+  ✓ §9 1024 · a bubble ARRIVING over the parked disc moves it — no scroll dispatched — clear of its ink by ≥ 29.0px {"y0":805.52,"y":723.52,"gap":35}
+  ✓ §9 1024 · precondition · the bubble is SHOWN {"opacity":"1","pointerEvents":"auto"}
+  ✓ §9 1024 · SHOWN · a disc 17px above the bubble's ink edge, overlapping it (313), moves to a rest clear of the ink where it stands shown by ≥ 29.0px {"placed":805.52,"y0":805.52,"y":729.52,"parked":true,"gap":29}
+  ✓ §9 1024 · SHOWN · …and the next scroll-idle does not move it again (no chain)
+  ✓ §9 1024 · precondition · the bubble is FADED AT REST (D75, data-fab-idle) {"opacity":"0","pointerEvents":"none"}
+  ✓ §9 1024 · FADED AT REST (D75, data-fab-idle) · a disc 17px above the bubble's ink edge, overlapping it (313), moves to a rest clear of the ink where it stands shown by ≥ 29.0px {"placed":805.52,"y0":805.52,"y":729.52,"parked":true,"gap":29}
+  ✓ §9 1024 · FADED AT REST (D75, data-fab-idle) · …and the next scroll-idle does not move it again (no chain)
+  ✓ §9 1024 · precondition · the bubble is FADED MID-SCROLL (D3, data-scrolling) {"opacity":"0","pointerEvents":"none"}
+  ✓ §9 1024 · FADED MID-SCROLL (D3, data-scrolling) · a disc 17px above the bubble's ink edge, overlapping it (313), moves to a rest clear of the ink where it stands shown by ≥ 29.0px {"placed":805.52,"y0":805.52,"y":729.52,"parked":true,"gap":29}
+  ✓ §9 1024 · FADED MID-SCROLL (D3, data-scrolling) · …and the next scroll-idle does not move it again (no chain)
+  ✓ §9 1024 · CONTROL · a disc clear of the bubble's ink by 31.0px stays where it is {"placed":727.5344,"y0":727.5344,"y":727.5344,"gap":30.985599999999977}
+  ✓ §9 1024 · CONTROL · on the LEFT rail at the same height the bubble is nothing to the disc: it stays 805.52 → 805.52
+
+[needle-rest] 92 passed, 0 failed
+03:26:02 command exit=0
+03:26:04 server stopped (left: 0)

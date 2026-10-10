@@ -1,0 +1,12 @@
+Round 6's read (R7-1): the journey hub's Sign out row in the danger ink, as every other Sign out since R5-I
+
+Found by the round-6 tile read (tiles 256/259/264/267/272/275/294, and readers 3 and 4 beside it): "Toka" / "Sign out" /
+退出登录 under the hub's cards wore the hub rows' inks (label 245,248,255, glyph 198,209,236), where R5-I had put Sign out
+in the danger family everywhere else — the avatar menu's row (label and glyph text-danger-fg, the danger hover), /profile's
+plate, /profile/sessions. Unchanged since round 5.
+- globals.css: `.kp-hub__exit` takes --danger-fg for its label and glyph (the glyph inherits), its hover the danger tint at
+  10%, the avatar menu's own treatment. Journey only (the hub is the journey's).
+- visual-pass-r5i 2.3 lists the row beside the others (the old ink planted by hand fails it).
+Green: r5i 113, css-vars-defined, dead-css, contrast, journey-account, journey-shell, design-frozen, gold-is-money, red-anchors.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

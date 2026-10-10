@@ -1,0 +1,34 @@
+5c13a9a29 test(qa): the count-truth and 
+test:visual-pass-r5l exit=0 — visual-pass-r5l: 55 passed, 0 failed
+test:visual-pass-r5h exit=0 — visual-pass-r5h: 56 passed, 0 failed
+test:visual-pass-r5j exit=0 — visual-pass-r5j: 54 passed, 0 failed
+test:visual-pass-r5k exit=0 — visual-pass-r5k: 55 passed, 0 failed
+test:visual-pass-r5i exit=0 — visual-pass-r5i: 113 passed, 0 failed
+test:visual-pass-r5b exit=0 — 75 passed, 0 failed
+test:visual-pass-r5a exit=0 — visual-pass-r5a: 93 passed, 0 failed
+test:visual-pass-r5g exit=0 — visual-pass-r5g: 63 passed, 0 failed
+test:visual-pass-r6c exit=0 — 87 passed, 0 failed
+test:visual-pass-r5d exit=0 — visual-pass-r5d: 44 passed, 0 failed
+test:visual-pass-r4j exit=0 — visual-pass-r4j: 79 passed, 0 failed
+test:eyebrow-roles exit=0 — ✅ 657 sites, every one accounted for.
+test:ui-consistency exit=0 —   ALL PASS — no new UI-consistency drift beyond the tracked baseline.
+test:red-anchors exit=0 — red-anchors: 5118 passed, 0 failed
+test:journey-shell exit=0 — JOURNEY SHELL — all 434 checks passed
+test:journey-tickets exit=0 — JOURNEY TICKETS — all 51 checks passed
+test:filter-language exit=0 — all green
+test:visual-pass-r5f exit=0 — 81 passed · 0 failed
+test:spacing-scale exit=0 — spacing-scale: 10 passed, 0 failed · 418 inverted usages in 158 files
+test:type-scale exit=0 — ALL PASS — 1456 source files, 189 money elements.
+test:hooks-order exit=0 — all green
+test:decomment exit=0 — ALL PASS — 22 passed, 0 failed
+test:measure exit=0 — ALL PASS — 740 tsx files
+test:css-vars-defined exit=0 — css-vars-defined: 299 references checked, 0 undefined.
+test:wallet-receipts exit=0 — wallet-receipts: 57 passed, 0 failed
+test:wallet-reach exit=0 — wallet-reach: 84 passed, 0 failed
+R5L=0 — mutation-r5l: 38 planted, 38 caught on the named check; 16 files restored byte-identical: yes
+R5H=0 — 41/41 caught on the named check · 41/41 restored byte-identical · 31/31 files match their sha-256 from before · the s
+R5J=0 — 26/26 caught on their named checks; every file restored byte-identical: yes
+R5K=0 — mutation-r5k: 29 planted, 29 caught on the named check; every file restored byte-identical at the end: yes
+R5B=0 — mutations: 36 planted · 36 caught on the named check · 0 missed · restored byte-identical: 36/36
+status: 
+DONE

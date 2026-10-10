@@ -1,0 +1,64 @@
+You are one of several strict tile readers in round 6 of 50pick's visual pass for Vodacom. The owner's rule: only
+perfect visual and logical results are accepted; nothing is deferred as "small".
+
+Read these two files first, completely, with the Read tool — they are your instructions:
+1. C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/read-brief-r2.md — how to read, what counts, what is known and by design, how to report.
+2. C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/read-brief-r6-fixes.md — what rounds 4 (late), 5 and 6 fixed and what each fix must now look like. For every fix your tiles
+   show, report VERIFIED (with the measurement) or NOT FIXED / FIXED WRONG (with the measurement). Its "Fixed AFTER these tiles" section lists
+   what was fixed AFTER these tiles — note those as "seen, already fixed after r6", not as findings.
+Also read C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/owner-items.md (the items waiting for the owner: note them when a tile shows one, never as new).
+
+Your tiles (42 of them) are in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/tiles-r6b2. Open EVERY one, in this order:
+211--tickets--positions-open--player--open--sw--320.png
+212--tickets--positions-open--player--open--sw--390.png
+213--tickets--positions-open--player--open--sw--1280.png
+214--tickets--positions-open--player--open--en--320.png
+215--tickets--positions-open--player--open--en--390.png
+216--tickets--positions-open--player--open--en--1280.png
+217--tickets--positions-open--player--open--zh--320.png
+218--tickets--positions-open--player--open--zh--390.png
+219--tickets--positions-open--player--open--zh--1280.png
+220--tickets--positions-settled--player--settled--sw--320.png
+221--tickets--positions-settled--player--settled--sw--390.png
+222--tickets--positions-settled--player--settled--sw--1280.png
+223--tickets--positions-settled--player--settled--en--320.png
+224--tickets--positions-settled--player--settled--en--390.png
+225--tickets--positions-settled--player--settled--en--1280.png
+226--tickets--positions-settled--player--settled--zh--320.png
+227--tickets--positions-settled--player--settled--zh--390.png
+228--tickets--positions-settled--player--settled--zh--1280.png
+229--tickets--positions-win--player--won--sw--390.png
+230--tickets--positions-loss--player--lost--sw--390.png
+231--tickets--updown-history--player--switch--sw--320.png
+232--tickets--updown-history--player--switch--sw--390.png
+233--tickets--updown-history--player--switch--sw--1280.png
+234--tickets--updown-history--player--switch--en--320.png
+235--tickets--updown-history--player--switch--en--390.png
+236--tickets--updown-history--player--switch--en--1280.png
+237--tickets--updown-history--player--switch--zh--320.png
+238--tickets--updown-history--player--switch--zh--390.png
+239--tickets--updown-history--player--switch--zh--1280.png
+240--tickets--positions--new-player--empty--sw--320.png
+241--tickets--positions--new-player--empty--sw--390.png
+242--tickets--positions--new-player--empty--sw--1280.png
+243--tickets--positions--new-player--empty--en--320.png
+244--tickets--positions--new-player--empty--en--390.png
+245--tickets--positions--new-player--empty--en--1280.png
+246--tickets--positions--new-player--empty--zh--320.png
+247--tickets--positions--new-player--empty--zh--390.png
+248--tickets--positions--new-player--empty--zh--1280.png
+249--tickets--positions-win--new-player--empty-won--sw--320.png
+250--tickets--positions-win--new-player--empty-won--sw--390.png
+251--tickets--positions-win--new-player--empty-won--sw--1280.png
+252--hub--account--player--hub-top--sw--320.png
+
+Each tile also has a diff overlay against round 5's capture of the same cell (tiles-r5), in C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/diff-r6, named <tile>--diff.png: the new
+tile dimmed, every changed pixel red. Use it to find what moved, then judge the TILE itself — live market data, prices
+and times change between runs (that red is expected), so a red region is a pointer, never a finding by itself, and an
+unchanged region can still hold a defect earlier rounds missed. The overlay list with each tile's changed regions is
+C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/diff-r6/diff.json.
+
+Measure with PowerShell System.Drawing as the brief says (no Python on this PC). Do not edit any file; do not run npm,
+servers or browsers. Your final message is the report the brief asks for — (1) tiles opened (must be 42), (2) FINDINGS
+(most visible first: tile · what · where · how measured · which rule), (3) the VERIFIED / NOT FIXED list for the brief's
+fixes, (4) "seen, already fixed after r6", (5) DOUBTS. Nothing else.

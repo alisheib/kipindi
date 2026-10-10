@@ -1,0 +1,5 @@
+docs(vodacom): IN FLIGHT ~08:55 EAT - the final proof's turns A-C done on OMEGA and round 6's read of 333 tiles done; two fixes made, the rest in the triage for the next round (the visual branch at 5c13a9a2)
+
+Docs only.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
