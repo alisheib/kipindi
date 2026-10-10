@@ -668,7 +668,8 @@ section("5 · R7-3 / R8-5 the stacked flag: a whole-pixel box (17 vs 18 rows), a
     agentInStanding: false, proposalsState: "COMING_SOON", doors: {}, breakEnd: null };
   const rowSw = renderToStaticMarkup(h(HubRowItem as never, { row: { id: "proposals", kind: "link", href: "/proposals", label: "proposals.title", glyph: "sparkle", extra: "proposals" }, t: dict.sw, viewer, locale: "sw" } as never));
   ok("5.10 · RENDERED: the row's text holds the head alone, and the head holds the label and the 18px flag",
-    /<span class="kp-hub__text"><span class="kp-hub__head"><span class="kp-hub__label">[^<]*<\/span><span class="[^"]*cs-badge kp-flag-xs"/.test(rowSw), rowSw.slice(0, 400));
+    // The label may hold R7-A's kept connective ("Mapendekezo <span class=…>ya </span>Masoko", lib/connectives.ts).
+    /<span class="kp-hub__text"><span class="kp-hub__head"><span class="kp-hub__label">(?:[^<]|<span[^>]*>[^<]*<\/span>)*<\/span><span class="[^"]*cs-badge kp-flag-xs"/.test(rowSw), rowSw.slice(0, 400));
   const noAir = CSS.replace(/\.kp-hub__head:only-child > \.kp-flag-xs \{ margin-block: var\(--hub-flag-air\); \}/, "");
   ok("5.7′ PLANT · without the flag's air the ink is 2px low again", !/\.kp-hub__head:only-child > \.kp-flag-xs/.test(noAir) && (beforeTop - beforeBottom) / 2 > 2);
   ok("5.2′ PLANT · without the whole-pixel box the flag is 17.5px again", natural % 1 !== 0 && !/\.kp-flag-xs \{ height: 18px; \}/.test(CSS.replace(".kp-flag-xs { height: 18px; }", "")));

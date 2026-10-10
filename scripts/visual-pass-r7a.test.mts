@@ -474,12 +474,21 @@ section("4 · R6-2 a market title's proper name: no rule over capitals (refused 
 section("5 · a label that takes its tracking back is one line, and fits its site");
 {
   const rules = css();
-  const decl = (sel: string) => [...rules.matchAll(/(^|})\s*([^{}]+)\{([^}]*)\}/g)].filter((m) => m[2].split(",").map((s) => s.trim()).includes(sel)).map((m) => m[3]).join(";");
-  ok("5.1 · `.kp-track-end` and `.mcardp-pctcap` are `white-space: nowrap`, as `.mcardp-oneside` and the bar's `.tb-no` already were",
-    /white-space:\s*nowrap/.test(decl(".kp-track-end")) && /white-space:\s*nowrap/.test(decl(".mcardp-pctcap")) && /white-space:\s*nowrap/.test(decl(".mcardp-oneside")) && /white-space:\s*nowrap/.test(decl(".tipbar-labels .tb-no")),
+  // The rule boundary is a LOOKBEHIND: a consumed "}" would hide every rule that follows another directly (the merge
+  // put R7-C's take-back rule right after one, and the reader saw nothing).
+  const decl = (sel: string) => [...rules.matchAll(/(?<=^|})\s*([^{}]+)\{([^}]*)\}/g)].filter((m) => m[1].split(",").map((s) => s.trim()).includes(sel)).map((m) => m[2]).join(";");
+  // ⭐ INTEGRATION (round 7, 2026-10-10): R7-C removed the hazard at its root — the take-back is now the label's OWN end
+  // margin, not an empty ::after box, so a shrink-to-fit box keeps the words' width and nothing wraps that did not
+  // (globals.css, `test:visual-pass-r7c` §2). This section's first draft held the labels with `white-space: nowrap`
+  // instead; that was dropped at the merge, because a take-back label that must wrap (the 2-step sign-in's "Tumia
+  // programu ya uthibitishaji" at 320) cannot be held so. The checks below pin the root fix and keep the width audit.
+  const own = /margin-inline-end:\s*calc\(-1 \* var\(--track-end/;
+  ok("5.1 · a take-back label keeps its words' width: `.kp-track-end` and `.mcardp-pctcap` take their tracking back by their own end margin, and neither is held to one line (a label may wrap where its site needs it)",
+    own.test(decl(".kp-track-end")) && own.test(decl(".mcardp-pctcap")) && !/white-space:\s*nowrap/.test(decl(".kp-track-end")) && !/white-space:\s*nowrap/.test(decl(".mcardp-pctcap")),
     j({ kte: decl(".kp-track-end"), pct: decl(".mcardp-pctcap") }));
-  const takeBack = /\.(?:mcardp-pctcap|kp-track-end)::after|\.mcardp-moveline \.mcardp-oneside::after|\.tipbar-labels \.tb-no::after/;
-  ok("5.1′ · the take-back's own selectors are still the four it was", takeBack.test(rules));
+  const emptyBox = /\.(?:mcardp-pctcap|kp-track-end)::after|\.mcardp-moveline \.mcardp-oneside::after|\.tipbar-labels \.tb-no::after/;
+  ok("5.1′ · the four take-back selectors each carry the end margin, and none draws the old empty ::after box",
+    [".mcardp-pctcap", ".mcardp-moveline .mcardp-oneside", ".tipbar-labels .tb-no", ".kp-track-end"].every((s) => own.test(decl(s))) && !emptyBox.test(rules));
   // Every site, every language: the words at 10px JetBrains Mono (0.6em a glyph, an ideograph 1em) with the site's tracking.
   const SITE: Array<[string, string[], number]> = [
     ["src/app/updown/history/page.tsx", ["market.udNetReturn"], 0.14], ["src/app/updown/[roundId]/page.tsx", ["market.udYourPick", "market.udStake", "market.udPlayers"], 0.14],
@@ -491,7 +500,8 @@ section("5 · a label that takes its tracking back is one line, and fits its sit
   ];
   const sitesWithClass = walk("src", /\.tsx$/).filter((f) => /\bkp-track-end\b/.test(code(f)));
   const listed = new Set(SITE.map(([f]) => f).concat("src/app/results/loading.tsx"));
-  ok(`5.2 · the census holds every file that draws a take-back label (${sitesWithClass.length})`, sitesWithClass.every((f) => listed.has(f)), sitesWithClass.filter((f) => !listed.has(f)).join(", "));
+  ok(`5.2 · every site the hazard's audit named still takes its tracking back (${listed.size} files of the ${sitesWithClass.length} that draw a take-back label; the full census is \`test:visual-pass-r7c\` §2's)`,
+    [...listed].every((f) => sitesWithClass.includes(f)), [...listed].filter((f) => !sitesWithClass.includes(f)).join(", "));
   const mono = (s: string, tr: number) => Array.from(s.toUpperCase()).reduce((w, ch) => w + (WIDE.test(ch) ? 10 : 6) + tr * 10, 0);
   const widest = SITE.flatMap(([f, keys, tr]) => keys.flatMap((k) => LOCALES.map((l) => ({ f, k, l, w: mono(k === "market.udYourPick" ? `${word(l, k)} · ${word(l, "market.udStake")}` : word(l, k), tr) }))));
   const max = widest.reduce((a, b2) => (b2.w > a.w ? b2 : a));
