@@ -1592,6 +1592,20 @@ The platform's hardest-won rules. Most were bought with an incident.
    hand; `isLockedOut` in the hub and the pages), failing open: it gates an offer, never a refusal. One definition for
    every door: `viewerDoorsFor`'s `onBreak`, which the shell spells beside it (`test:journey-shell` §4). Guard:
    `test:visual-pass-r8c` (both arms rendered in sw, en and zh; a census of every path to the three programmes).
+   ⭐ **Completed on every other channel (R8-D, 2026-10-10) — the same rule, the same break.** The SERVICES refuse during a
+   break, before anything is written: the agent registration fee paid from the wallet (`payFeeFromWallet` asks the
+   programme's own hold, `agentRgHold` — the condition its start and submit refuse on — after a settled fee's idempotent
+   answer and before any other refusal or any money moves; `rg_locked` → `agent.stateRgLocked`), and a proposal
+   (`createProposal` → `RG_LOCKED` with the break's end; the composer says `rg.breakActive` / `rg.exclusionActive` and keeps
+   the draft). A SHARE LINK carries no invite code (the market page's and `/positions`' shares are the plain link, nothing
+   minted). A LETTER that solicits asks its recipient's break at send time (`sendEmailToUser`'s `breakAware`) and leaves
+   out only its soliciting lines — "Keep inviting friends to earn more", "Invite more", "Propose another" — every other
+   line stays word for word; the "friend joined" NOTICE is not written during the referrer's break. The HELP CHAT shows no
+   door to the three programmes (`chat-reader.ts`) — ⛔ never by telling the model: `/legal/privacy` §4 promises Anthropic
+   "not your account details", so the model is asked exactly what everybody's is, and an answer that touches a programme
+   gives way to the break's sentence (during a break no offline answers, which teach them). Kept by decision: voting, the
+   agent dashboard's "How you earn", `/profile`'s badges hint. Guard: `test:visual-pass-r8d` (both stores:
+   `test:visual-pass-r8d-stores`).
 
 ---
 

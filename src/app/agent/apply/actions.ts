@@ -117,6 +117,9 @@ export async function submitAgentApplicationAction(formData: FormData): Promise<
   const accepted = formData.get("acceptTerms") === "on" || formData.get("acceptTerms") === "true";
   if (!accepted) return { ok: false, error: "Accept the agent terms to continue." };
   const r = await submitForReview(userId, { acceptedTermsVersion: AGENT_TERMS_VERSION });
-  if (!r.ok) return { ok: false, error: r.error, missing: (r as { data?: { missing?: string[] } }).data?.missing };
+  // ⭐ R8-D (2026-10-10) · the programme's responsible-gambling refusal travels as its TOKEN, so the form says
+  // `agent.stateRgLocked` in the reader's language — the fee payment's own token for the same hold.
+  const rgLocked = (r as { refusal?: string }).refusal === "rg_locked";
+  if (!r.ok) return { ok: false, error: r.error, missing: (r as { data?: { missing?: string[] } }).data?.missing, ...(rgLocked ? { refusal: "rg_locked" as const } : {}) };
   return { ok: true, data: { missing: [] } };
 }

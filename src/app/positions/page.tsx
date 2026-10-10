@@ -78,24 +78,6 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
   const positions = await listPositionsForUser(session.userId, 5_000, "MARKET");
 
   /**
-   * 🔴 A SHARE LINK USED TO CARRY A LIVE REFERRAL CODE FOR EVERY PLAYER, AND THE BIND IS
-   * PERMANENT. `ensureAffiliateAccount` mints a code for whoever asks, so this line attached one
-   * to every shared position — and anyone registering through it was bound by `bindRecruit`,
-   * which sets `recruitedBy` ONCE and never re-attributes. It paid nothing, so nothing showed; it
-   * was a standing liability that would begin paying the moment the programme was re-enabled,
-   * against attributions nobody chose.
-   *
-   * ⭐ Now a code is minted and attached ONLY for someone the programme actually belongs to.
-   * ⚠️ 2026-09-25 — that is now every player in good standing (`invite` ACTIVE, unpaid): their
-   * position shares carry `?ref=` again and bind on purpose (`docs/PLAYER-INVITE-UNPAID.md` §2). The
-   * liability above now sits behind the Owner's Payable / Not payable switch on `/admin/affiliate` (under the
-   * `inviteRewards` ceiling, 2026-09-26) — making invites payable makes these binds pay (§12).
-   */
-  const myRefCode = inviteIsLiveFor(await inviteViewerFor(session.userId))
-    ? await ensureAffiliateAccount(session.userId).then((a) => a.code).catch(() => undefined)
-    : undefined;
-
-  /**
    * ⛔ EVERY POSITION'S MARKET, IN ONE QUERY — AND OVER THE WHOLE PORTFOLIO, NOT THE PAGE.
    *
    * This replaced `for (const mid of marketIds) marketMap.set(mid, await getMarket(mid))`, which
@@ -281,6 +263,27 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
     : cause === "search-miss" ? t.positions.emptySearchBody
     : cause === "window-miss" ? t.positions.emptyWindowBody
     : t.positions.emptyFilterBody;
+
+  /**
+   * 🔴 A SHARE LINK USED TO CARRY A LIVE REFERRAL CODE FOR EVERY PLAYER, AND THE BIND IS
+   * PERMANENT. `ensureAffiliateAccount` mints a code for whoever asks, so this line attached one
+   * to every shared position — and anyone registering through it was bound by `bindRecruit`,
+   * which sets `recruitedBy` ONCE and never re-attributes. It paid nothing, so nothing showed; it
+   * was a standing liability that would begin paying the moment the programme was re-enabled,
+   * against attributions nobody chose.
+   *
+   * ⭐ Now a code is minted and attached ONLY for someone the programme actually belongs to.
+   * ⚠️ 2026-09-25 — that is now every player in good standing (`invite` ACTIVE, unpaid): their
+   * position shares carry `?ref=` again and bind on purpose (`docs/PLAYER-INVITE-UNPAID.md` §2). The
+   * liability above now sits behind the Owner's Payable / Not payable switch on `/admin/affiliate` (under the
+   * `inviteRewards` ceiling, 2026-09-26) — making invites payable makes these binds pay (§12).
+   * ⭐ R8-D (2026-10-10, the owner's ruling (4) completed) · …AND NOT DURING A BREAK: a reader whose break or self-exclusion is
+   * running shares the plain link — no code, nothing minted — from the break read just above (R4-I's, failing open as an
+   * offer does; moved below it from the top of the page for that reason). Off a break the link is today's.
+   */
+  const myRefCode = !breakEnd && inviteIsLiveFor(await inviteViewerFor(session.userId))
+    ? await ensureAffiliateAccount(session.userId).then((a) => a.code).catch(() => undefined)
+    : undefined;
 
   /**
    * ⭐ TIKETI ZANGU, FOR A JOURNEY REQUEST (the Vodacom plan S6, SJ-16 and SJ-19; S6-PLAN WP9 as amended by A7, A8 and

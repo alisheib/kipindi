@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/toast";
 // English audit prose reaching a Swahili or Chinese player at the moment something failed.
 import { errorCopy } from "@/lib/error-copy";
 import { refusalReason, refusalVariant } from "@/lib/failure-reasons";
+import { breakSentence } from "@/lib/break-end";
 import { CategoryIcon, categoryLabel } from "@/components/proposals/category-icon";
 import { createProposalAction } from "../actions";
 import { useT } from "@/lib/i18n";
@@ -37,7 +38,7 @@ function isValidHttpUrl(raw: string): boolean {
 
 export function CreateProposalForm({ rateLimit, openCount, platformTz }: { rateLimit: number; openCount: number; platformTz: string }) {
   const router = useRouter();
-  const { t } = useT();
+  const { t, locale } = useT();
   const { toast } = useToast();
   const [pending, start] = useTransition();
   const [titleEn, setTitleEn] = useState("");
@@ -79,6 +80,18 @@ export function CreateProposalForm({ rateLimit, openCount, platformTz }: { rateL
         return;
       }
       if (r.ok) setDone(true);
+      /* ⭐ R8-D (2026-10-10, the owner's ruling (4) completed) · A BREAK THAT BEGAN AFTER THIS FORM WAS OPENED. The service
+         refuses (`RG_LOCKED`) and hands the break's end; the toast says the break's own approved sentence with it — the words
+         this page says on a break (R8-C's notice) — at the registry's rank for a break the player cannot lift. The draft stays
+         on screen (B-12): nothing typed is lost to a refusal. */
+      else if (r.code === "RG_LOCKED" && r.breakEnd) {
+        const end = r.breakEnd;
+        toast({
+          title: t.toast.couldntSubmit,
+          description: breakSentence(end.exclusion ? t.rg.exclusionActive : t.rg.breakActive, end.until, Date.now(), t.common.monthsShort, locale).text,
+          variant: refusalVariant(end.exclusion ? "self_excluded" : "cooling_off"),
+        });
+      }
       // §F2/§F3 (R5-I): at the registry's rank — a refusal the player can fix is the calm `factual` toast, a fault `danger`.
       else toast({ title: t.toast.couldntSubmit, description: errorCopy(t, r), variant: refusalVariant(refusalReason(r)) });
     });

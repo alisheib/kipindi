@@ -26,6 +26,8 @@ import { formatTzs } from "@/lib/utils";
 // R5-B (2026-10-09, F9): a day a letter states, in each of its lines' own words (`agentRevokedHtml`) — the notice's rule.
 // R6-A (2026-10-09, A1): and the end of a break or an exclusion, with its time (`rgEndIn`) — the bell's rule.
 import { formatEatDate, formatEatDateTime } from "@/lib/eat-day";
+// R8-D (2026-10-10): a letter that solicits asks its recipient's break at send time — R8-C's one break (`sendEmailToUser`).
+import { breakStateOf } from "@/lib/break-end";
 import { dict } from "@/lib/i18n-dict";
 import { AGENT_REJECT_REASON } from "@/lib/admin-status-lexicon";
 // E-101 · an email that quotes a Reference must link to THAT reference, not to a list.
@@ -772,10 +774,32 @@ function refNote(): string {
 /** The statuses `assertSignInAllowed` refuses (auth-service) — a player there cannot reach the bell or the receipts. */
 export const CANNOT_SIGN_IN: ReadonlySet<string> = new Set(["SELF_EXCLUDED", "CLOSED", "SUSPENDED"]);
 
+/**
+ * What a letter's builder may know about its recipient at the moment it is built. ⭐ R8-D (2026-10-10, the owner's ruling (4)
+ * completed): `onBreak` — the recipient's break or self-exclusion is running, so a letter that SOLICITS (asks them to invite,
+ * to propose, to apply) leaves that line out; every other line of it stays. Read only for a send that asks (`breakAware`).
+ */
+export type LetterReader = { onBreak: boolean };
+
+/**
+ * ⭐ R8-D · THE RECIPIENT'S BREAK, AT SEND TIME — read as every OFFER reads it: `isLockedOut` (the canonical predicate) through
+ * `breakStateOf`, R8-C's one break; a failed read is no break (it gates a solicitation, never a refusal). Nothing is queued:
+ * this runs inside the send, after the address is found and just before the letter is built, so the answer is the one in
+ * force when the mail leaves. (Imported when asked: `responsible-gambling.ts` imports this module.)
+ */
+async function recipientOnBreak(userId: string): Promise<boolean> {
+  try {
+    const { isLockedOut } = await import("./responsible-gambling");
+    return breakStateOf(await isLockedOut(userId)) !== null;
+  } catch {
+    return false;
+  }
+}
+
 export async function sendEmailToUser(
   userId: string,
-  build: (email: string) => SendInput,
-  opts: { confirmedOnly?: boolean } = {},
+  build: (email: string, reader: LetterReader) => SendInput,
+  opts: { confirmedOnly?: boolean; breakAware?: boolean } = {},
 ): Promise<SendResult> {
   try {
     const { db } = await import("./store");
@@ -792,7 +816,9 @@ export async function sendEmailToUser(
       console.warn(`[email] sendEmailToUser skipped — no email for user ${userId.slice(0, 14)}… (user.email=${user?.email ? maskEmail(user.email) : "null"}, phone=${user?.phoneE164?.slice(0, 6) ?? "?"}…)`);
       return { ok: false, reason: "no-address" };
     }
-    const input = build(email);
+    // ⭐ R8-D · a letter that solicits learns its recipient's break here, at send time (`breakAware`); every other send reads
+    // nothing more than it did.
+    const input = build(email, { onBreak: opts.breakAware ? await recipientOnBreak(userId) : false });
     console.log(`[email] sending "${input.subject}" → ${maskEmail(email)} (tag=${input.tag ?? "none"})`);
     const result = await sendEmail(input);
     if (!result.ok) console.warn(`[email] sendEmailToUser delivery failed for ${maskEmail(email)} (reason=${result.reason}, subject="${input.subject}")`);
@@ -1673,8 +1699,14 @@ export function amlRejectRefundHtml({ amount, reason, reference, gatewayRef, rai
   `);
 }
 
-export function referralRewardHtml({ amount, referredName, totalEarned }: {
-  amount: number; referredName: string; totalEarned: number;
+/**
+ * ⭐ R8-D (2026-10-10, the owner's ruling (4) completed) · `onBreak` — the recipient's break or self-exclusion is running
+ * (`LetterReader`, read at send time): the letter leaves out its solicitation — here the "Invite more" button — and says the
+ * rest exactly as it always does. (A reward is credited only off a break today — `creditInternal` and `creditBonus` refuse a
+ * locked-out player — so the letter rarely meets one; it decides for itself all the same.)
+ */
+export function referralRewardHtml({ amount, referredName, totalEarned, onBreak = false }: {
+  amount: number; referredName: string; totalEarned: number; onBreak?: boolean;
 }): string {
   return wrapGold(`
     ${eyebrow("Referral reward", "Umepata tuzo", true)}
@@ -1685,14 +1717,16 @@ export function referralRewardHtml({ amount, referredName, totalEarned }: {
       { label: "Reward", value: formatTzs(amount), tone: "good" },
       { label: "Total earned", value: formatTzs(totalEarned) },
     ])}
-    ${ctaButton("/profile/invite", "Invite more · Alika zaidi")}
+    ${onBreak ? "" : ctaButton("/profile/invite", "Invite more · Alika zaidi")}
   `);
 }
 
 /** Referral earning (commission / bonus / prize) landed in the wallet. Unified
- *  so every referral money event emails the player consistently. */
-export function referralEarningHtml({ type, amountTzs }: {
-  type: "COMMISSION" | "BONUS" | "PRIZE"; amountTzs: number;
+ *  so every referral money event emails the player consistently.
+ *  ⭐ R8-D · `onBreak` (see `referralRewardHtml`): the line's second sentence — the solicitation — and the "Invite more" button
+ *  are left out; its first sentence, cut at its own full stop and never reworded, stays. */
+export function referralEarningHtml({ type, amountTzs, onBreak = false }: {
+  type: "COMMISSION" | "BONUS" | "PRIZE"; amountTzs: number; onBreak?: boolean;
 }): string {
   const en = type === "COMMISSION" ? "Referral commission earned"
     : type === "BONUS" ? "Referral bonus added"
@@ -1700,13 +1734,16 @@ export function referralEarningHtml({ type, amountTzs }: {
   const sw = type === "COMMISSION" ? "Umepata kamisheni ya rafiki"
     : type === "BONUS" ? "Bonasi ya rafiki imeongezwa"
     : "Zawadi ya hatua";
+  // R8-D · the one line is two sentences: where the money is, and the solicitation. On a break only the first is said.
+  const landed = { en: "It's in your wallet.", sw: "Ipo kwenye pochi yako." };
+  const keepInviting = { en: "Keep inviting friends to earn more.", sw: "Endelea kualika marafiki kupata zaidi." };
   return wrapGold(`
     ${eyebrow("Referral reward", sw, true)}
     ${heading(`${en} · ${formatTzs(amountTzs)}`)}
-    ${subtitle("It's in your wallet. Keep inviting friends to earn more.")}
-    ${subtitleSw("Ipo kwenye pochi yako. Endelea kualika marafiki kupata zaidi.")}
+    ${subtitle(onBreak ? landed.en : `${landed.en} ${keepInviting.en}`)}
+    ${subtitleSw(onBreak ? landed.sw : `${landed.sw} ${keepInviting.sw}`)}
     ${detailRows([{ label: "Reward", value: formatTzs(amountTzs), tone: "good" }])}
-    ${ctaButton("/profile/invite", "Invite more · Alika zaidi")}
+    ${onBreak ? "" : ctaButton("/profile/invite", "Invite more · Alika zaidi")}
   `);
 }
 
@@ -1833,8 +1870,11 @@ export function proposalChangesHtml({ titleEn, note }: { titleEn: string; note: 
   `);
 }
 
-/** Player: proposal declined, with reason. No bonus. */
-export function proposalDeclinedHtml({ titleEn, reason, note }: { titleEn: string; reason: string; note: string | null }): string {
+/** Player: proposal declined, with reason. No bonus.
+ *  ⭐ R8-D (2026-10-10, the owner's ruling (4) completed) · `onBreak` — the proposer's break or self-exclusion is running
+ *  (read at send time, `LetterReader`): the encouragement to propose again and its "Propose another" button are left out;
+ *  the decision, its reason and the officer's note stay, word for word. */
+export function proposalDeclinedHtml({ titleEn, reason, note, onBreak = false }: { titleEn: string; reason: string; note: string | null; onBreak?: boolean }): string {
   return wrap(`
     ${eyebrow("Proposal update", "Taarifa ya pendekezo")}
     ${heading("We couldn't list this proposal")}
@@ -1843,9 +1883,9 @@ export function proposalDeclinedHtml({ titleEn, reason, note }: { titleEn: strin
       { label: "Reason", value: reason },
       ...(note ? [{ label: "Note", value: note }] : []),
     ])}
-    ${subtitle("Don't let this stop you — propose another market anytime.")}
-    ${subtitleSw("Usikate tamaa — pendekeza soko lingine wakati wowote.")}
-    ${ctaButton("/proposals/new", "Propose another · Pendekeza")}
+    ${onBreak ? "" : subtitle("Don't let this stop you — propose another market anytime.")}
+    ${onBreak ? "" : subtitleSw("Usikate tamaa — pendekeza soko lingine wakati wowote.")}
+    ${onBreak ? "" : ctaButton("/proposals/new", "Propose another · Pendekeza")}
   `);
 }
 
