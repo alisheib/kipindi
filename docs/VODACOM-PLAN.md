@@ -16,7 +16,9 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-07):** S6 (the flagged shell) is in progress (§0i): WP0–WP11 are live behind the flag — the shell
+**State (2026-10-10):** S6 (the flagged shell) is in progress (§0i): WP0–WP12 are live behind the flag, the S6 visual
+pass (rounds 1–6) goes live from ALI-BLADE15 today, and its round 7 is being fixed forward there (the ✅ paragraph
+below). As of 2026-10-07: WP0–WP11 are live behind the flag — the shell
 swap, the overlay rules, Tiketi zangu (WP9), the journey sell look (WP10), `--rail-h` (WP11) and the first-download fix
 (WP6c), each verified locally before its push — and classic viewers are served what they were
 (`qa:classic-shell-parity`, 224 cells, no unexpected difference; v2 also compares the Sell region). ⭐ Ali, 2026-10-02: nothing is turned on — no staff preview, no journey — until
@@ -114,7 +116,8 @@ confirmed, 1 refuted: the "Confirm disabled on reopening" race), and the tools t
 `7d4b0ad5` (§0i "S6 STOPPED HERE"); three of its items are still owed: the `lost` result drive, the crash control
 re-run with its three-language crash titles, and the production build's first-load reading.
 
-**⏳ IN FLIGHT (updated 2026-10-10 ~08:55 EAT) — OMEGA-COMPILE01 holds the whole Vodacom lane** ▶ **EVERYTHING IS PUSHED — resume from [S6-VISUAL-PASS-STATE.md](design-system/v5-2026-09-29-simplified-journey/S6-VISUAL-PASS-STATE.md)** (Ali, 2026-10-09: anything not pushed today is lost — we may continue on another machine). **Live tonight from the independent round-6 review:** `731e58f0` (every response carries the static security headers) and `2cd2239e` (RESPONSIBLE GAMBLING: the break and self-exclusion emails state the end in EAT with its time; a permanent exclusion no date), both read back on production. The S6 visual pass is on `origin/vodacom-visual` (`5c13a9a2`, NOT live): every round merged, main merged in up to `e7a979c6`. The final proof's turns A–C ran on OMEGA: typecheck 0, test:all 500/507 (the one branch-only red the known D19a legal-chrome pin), seals 504 + 276 cells clean, needle-rest, bar geometry, header fit, preview green, local qa:live 334/334 after one real defect it found was fixed (/profile/invite on in-memory servers), classic parity 37/39 with two intended difference families still to register. Round 6's read of 333 tiles is done — its record is the handover's triage file (`tools/visual/triage-r6.md` on origin/vodacom-visual-tools): two fixes made (the hub's Sign out ink; /results' spotlight flag, a regression), the rest OPEN for the next round, then re-tile and re-read; live only when a read finds nothing. The questions for Ali (79, plus the S12 word list) are in the handover file's appendices; the working tools on `origin/vodacom-visual-tools`.  (the other sessions on
+**⏹ WAS IN FLIGHT ON OMEGA-COMPILE01 — its last record (2026-10-10 ~08:55 EAT), superseded the same day: that PC is no
+longer reachable and the lane moved to ALI-BLADE15 (the ✅ paragraph above)** ▶ **EVERYTHING IS PUSHED — resume from [S6-VISUAL-PASS-STATE.md](design-system/v5-2026-09-29-simplified-journey/S6-VISUAL-PASS-STATE.md)** (Ali, 2026-10-09: anything not pushed today is lost — we may continue on another machine). **Live tonight from the independent round-6 review:** `731e58f0` (every response carries the static security headers) and `2cd2239e` (RESPONSIBLE GAMBLING: the break and self-exclusion emails state the end in EAT with its time; a permanent exclusion no date), both read back on production. The S6 visual pass is on `origin/vodacom-visual` (`5c13a9a2`, NOT live): every round merged, main merged in up to `e7a979c6`. The final proof's turns A–C ran on OMEGA: typecheck 0, test:all 500/507 (the one branch-only red the known D19a legal-chrome pin), seals 504 + 276 cells clean, needle-rest, bar geometry, header fit, preview green, local qa:live 334/334 after one real defect it found was fixed (/profile/invite on in-memory servers), classic parity 37/39 with two intended difference families still to register. Round 6's read of 333 tiles is done — its record is the handover's triage file (`tools/visual/triage-r6.md` on origin/vodacom-visual-tools): two fixes made (the hub's Sign out ink; /results' spotlight flag, a regression), the rest OPEN for the next round, then re-tile and re-read; live only when a read finds nothing. The questions for Ali (79, plus the S12 word list) are in the handover file's appendices; the working tools on `origin/vodacom-visual-tools`.  (the other sessions on
 that PC hold marketing S14 and ▶ 0e MONEY DOORS, by agreement; this session signs the shared lock `asheib-c5`). Ali
 (2026-10-07/08): *"keep going … keep pushing live"*, *"we don't want to be idle"* — each piece goes live once its core is
 proven, the rest runs after it, anything found is fixed forward, and lock-free work fills every wait. Done: A8i-2 and
@@ -174,13 +177,10 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S6 — WP12 is LIVE (`17693fdc`, §0i); its remaining runs (§0 IN FLIGHT) close S6, then resume at §0i "⏸ S6 STOPPED HERE": the classic Sell button's live fixes found while proving WP9
-and WP10 — A8b, A8c, A8e and A8f live (`c6373d4b`); A8d and A8g (the question page's Sell button stacks on a phone,
-`/positions`' big rows put their note under the figure, the free strip never breaks a phrase — §0h points 45, 51 and
-52) and A8h (a sale's result stays on screen; no popup for a refusal one tap fixes — points 53 to 56) PUSHED to main
-2026-10-04 at Ali's request (`315a3ae5`, `2e3ea161`) with their proof part-run — §0i "S6 STOPPED HERE" lists what is
-proven and what is owed; then WP12
-(proof, records, merge); the build plan is
+**Next:** (1) S6 — round 7 on ALI-BLADE15 (the ✅ paragraph above): the round-6 read's open list fixed forward on main,
+then a lock turn re-tiles all 333 tiles and registers classic parity's two named differences, and the read repeats until
+it finds nothing; S6 closes then (§0i; [S6-VISUAL-PASS-STATE.md](design-system/v5-2026-09-29-simplified-journey/S6-VISUAL-PASS-STATE.md)
+§3/§4 hold the owed runs). The build plan is
 `docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md`, whose closing Amendments override its body. S7's plan is filed ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), 2026-10-07, §0h point 58); it starts only when S6 has closed, as its Amendments' start line says. (2) When
 Ali says so, and not before (nothing turns on until the plan is done): an officer approves the S2 short titles, and
 Ali presses S1's preview switch.

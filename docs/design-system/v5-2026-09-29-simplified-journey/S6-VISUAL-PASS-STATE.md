@@ -1,4 +1,12 @@
-# S6 visual pass — the state, for resuming on any machine (updated 2026-10-10 ~08:55 EAT)
+# S6 visual pass — the state, for resuming on any machine (updated 2026-10-10 ~14:50 EAT, ALI-BLADE15)
+
+**⭐ 2026-10-10 — THE PASS GOES LIVE FROM ALI-BLADE15; ROUND 7 RUNS THERE.** OMEGA-COMPILE01 is no longer reachable
+(Ali: *"we need to proceed here on this machine with the plan"*, *"push everything to live and let's continue fresh with
+all on live"*). Everything below §1 is OMEGA's record as it stood at ~08:55 EAT; what changed since, and the proof run on
+ALI-BLADE15 before the push, are in VODACOM-PLAN §0's ✅ paragraph. Round 7 = §4 step 1's "Still OPEN" list, fixed forward
+on main in three parts (R7-A text wrapping and names, R7-B inks and signs, R7-C edges; briefs adapted from
+`briefs/r5-common.md` for this laptop), then §4 steps 2–4 on the new main; the tools are this file's appendices and
+`origin/vodacom-visual-tools`, unpacked on ALI-BLADE15 into its session scratchpad.
 
 **Why this file exists.** Ali, 2026-10-09: *"push live everything you have in case later we proceed on another machine
 … not to keep anything locked on this machine and the next machine repeats it by accident"* and *"anything not done
@@ -9,7 +17,7 @@ them; on OMEGA they live in the session scratchpad, written `S` in briefs).
 
 ## 1 · The branches (all on GitHub)
 - **`origin/vodacom-visual`** at `5c13a9a2` (`4b754b89`, the proven merged tip, + `3d2beb17` the invite page's in-memory fix,
-  `11e8e628` the hub's Sign out ink, `34245fd4` /results' spotlight flag, and the history-bar branch's three commits) — the S6 visual pass (journey shell + shared page bodies), NOT live. Every
+  `11e8e628` the hub's Sign out ink, `34245fd4` /results' spotlight flag, and the history-bar branch's three commits) — the S6 visual pass (journey shell + shared page bodies); merged with main as `046c26e6` and pushed LIVE from ALI-BLADE15 on 2026-10-10 (VODACOM-PLAN §0). Every
   round's work is merged on it (§2), and main is merged in up to `e7a979c6` (S14's STEP 57/58, both round-6 hotfixes,
   the docs). Nothing finished waits on a WIP branch.
 - `origin/vodacom-visual-tools` — the working tools (lock-turn chains, merge checks, briefs, triage notes, owner lists,
