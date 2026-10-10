@@ -4,7 +4,7 @@
  * CARD SHORT TITLES AND THE COMPETITION — the Vodacom plan S2 (`docs/VODACOM-PLAN.md` §0c and §5 S2; ruling SJ-8;
  * COMPLIANCE-DECISIONS §6 "Short titles and competition labels").
  *
- * A market's short title is the question a card will show, at most two lines at 360 px, in the reader's language. It
+ * A market's short title is the question a card will show, within `SHORT_TITLE_MAX`, in the reader's language. It
  * is an AID to reading the market, never the market: the full question, the resolution criterion and the source stay
  * on the market's page unchanged. So the rule sits ABOVE the fields, where it is read before anything is typed — in the
  * SAME words the wizard and the drafts tab use (`SHORT_TITLE_RULE_TITLE` / `_BODY`), as an info note: it explains, it

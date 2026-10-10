@@ -193,7 +193,9 @@ const MSVC = await import("../src/lib/server/market-service.ts");
 const { marketStore } = await import("../src/lib/server/market-dal.ts");
 const { audit, auditFlush, getAuditPage } = await import("../src/lib/server/audit.ts");
 const { inLock, withLock, runOutsideLock } = await import("../src/lib/server/locks.ts");
-const { normaliseShortTitleSet, cleanShortTitle, codePoints, shortTitleIssues } = await import("../src/lib/markets/short-title.ts");
+const { normaliseShortTitleSet, cleanShortTitle, codePoints, shortTitleIssues, SHORT_TITLE_MAX } = await import("../src/lib/markets/short-title.ts");
+/** The budget's own numbers as typed digits — what a surface that READS SHORT_TITLE_MAX must never hold. */
+const BUDGET_TYPED = new RegExp(`(?<![0-9A-Za-z_])(?:${[...new Set(Object.values(SHORT_TITLE_MAX))].join("|")})(?![0-9A-Za-z_])`);
 const { isCompetition, normaliseCompetition } = await import("../src/lib/markets/competitions.ts");
 const { offendingChars } = await import("../src/lib/sms-compose.ts");
 const { decomment } = await import("./lib/decomment.mts");
@@ -352,9 +354,9 @@ const RDQ = String.fromCharCode(0x201d);
 
 async function g1Hard(I: Impl, tag: string) {
   const cases: Array<{ issue: Issue; loc: Locale; field: TitleKey; raw: string; extra?: Opts["input"] }> = [
-    { issue: "too_long", loc: "en", field: "shortTitleEn", raw: "Will Simba SC beat Young Africans at Benjamin Mkapa Stadium on 12 October?" },
-    { issue: "too_long", loc: "sw", field: "shortTitleSw", raw: "Je, Simba SC itaifunga Young Africans katika Uwanja wa Benjamin Mkapa tarehe 12?" },
-    { issue: "too_long", loc: "zh", field: "shortTitleZh", raw: `${"辛巴".repeat(14)}吗？` },
+    { issue: "too_long", loc: "en", field: "shortTitleEn", raw: "Will Simba SC beat Young Africans at the Benjamin Mkapa Stadium in Dar es Salaam on 12 October, in front of a full house?" },
+    { issue: "too_long", loc: "sw", field: "shortTitleSw", raw: "Je, Simba SC itaifunga Young Africans katika Uwanja wa Benjamin Mkapa jijini Dar es Salaam tarehe 12 Oktoba, mbele ya mashabiki wengi?" },
+    { issue: "too_long", loc: "zh", field: "shortTitleZh", raw: `${"辛巴".repeat(Math.ceil(SHORT_TITLE_MAX.zh / 2))}吗？` },
     { issue: "not_gsm7", loc: "en", field: "shortTitleEn", raw: `Will Simba beat Yanga ${EMOJI}?` },
     { issue: "not_gsm7", loc: "sw", field: "shortTitleSw", raw: `Je, Simba itashinda ${EMOJI}?` },
     { issue: "form", loc: "en", field: "shortTitleEn", raw: "Will Simba beat Yanga on 12 October" },
@@ -634,7 +636,7 @@ async function g15Contract(I: Impl, tag: string) {
 
   // An untouched stored value is kept VERBATIM, and never blocks an edit to another field.
   const lg = `mkt_ste_${tag}_legacy`;
-  const LONG_EN = "Will Simba SC beat Young Africans at the Benjamin Mkapa Stadium on 12 October?"; // over the budget
+  const LONG_EN = "Will Simba SC beat Young Africans at the Benjamin Mkapa Stadium in Dar es Salaam on 12 October, with a full house watching?"; // over the budget
   const CURLY_SW = `Je, Simba itashinda ${LDQ}derby${RDQ} tarehe 12?`; // stored before the fold existed
   await seed(lg, { shortTitleEn: LONG_EN, shortTitleSw: CURLY_SW });
   const l = await run(I, edit(lg, { shortTitleZh: GOOD4.shortTitleZh }));
@@ -802,7 +804,7 @@ async function g17Races(I: Impl, tag: string) {
 // ── §18 · THE WORDS, PURE ────────────────────────────────────────────────────────────────────────────────────
 function g18Words() {
   const ZW = String.fromCharCode(0x200b);
-  const rawLong = `  Will ${LDQ}Simba${RDQ}${ZW}   SC beat Young Africans at the Benjamin Mkapa on Sunday?${ZW}  `;
+  const rawLong = `  Will ${LDQ}Simba${RDQ}${ZW}   SC beat Young Africans at the Benjamin Mkapa Stadium in Dar es Salaam on Sunday, with a full house watching?${ZW}  `;
   const cleaned = cleanShortTitle("en", rawLong);
   const s1 = SVC.shortTitleIssueSentence("en", "too_long", rawLong);
   ok("18.sentence.too_long · \"it has N\" counts the value the rule judged (trimmed, zero-width dropped, folded) — not the raw text",
@@ -923,7 +925,7 @@ function g13Wiring(W: World) {
   ok("13.control.gate · the control consults the act gate, disables Save for a read-only role, and guards its exits",
     /\buseMayAct\s*\(\)/.test(c) && /disabled=\{!dirty \|\| !mayAct\}/.test(c) && /<UnsavedChangesGuard\b/.test(c) && /setMarketShortTitlesAction/.test(c));
   ok("13.control.budget · the counters read SHORT_TITLE_MAX and codePoints — no budget typed by hand",
-    /SHORT_TITLE_MAX\[locale\]/.test(c) && /codePoints\(cleanShortTitle\(/.test(c) && !/\b(?:56|28)\b/.test(c));
+    /SHORT_TITLE_MAX\[locale\]/.test(c) && /codePoints\(cleanShortTitle\(/.test(c) && !BUDGET_TYPED.test(c));
   const iWarn = c.indexOf("<Callout tone=\"info\" title={SHORT_TITLE_RULE_TITLE}>{SHORT_TITLE_RULE_BODY}</Callout>");
   // The rule's words live in the rule module (one wording for every surface) — read there, as text, so a plant can move them.
   const ruleBody = /export const SHORT_TITLE_RULE_BODY =\s*"([^"]*)"/.exec(W.rules)?.[1] ?? "";
@@ -1127,7 +1129,7 @@ const MEMORY_PLANTS: Plant[] = [
   { name: "the control skips the act gate", expect: /^13\.control\.gate/,
     world: (w) => swap(w, "control", "useMayAct()", "true") },
   { name: "the control types the budget by hand", expect: /^13\.control\.budget/,
-    world: (w) => swap(w, "control", "SHORT_TITLE_MAX[locale]", '(locale === "zh" ? 28 : 56)') },
+    world: (w) => swap(w, "control", "SHORT_TITLE_MAX[locale]", `(locale === "zh" ? ${SHORT_TITLE_MAX.zh} : ${SHORT_TITLE_MAX.en})`) },
   { name: "the rule note loses \"the short title must say exactly the same thing\"", expect: /^13\.control\.warning/,
     world: (w) => swap(w, "rules", "the short title must say exactly the same thing.", "") },
   { name: "the control no longer shows the rule note", expect: /^13\.control\.warning/,

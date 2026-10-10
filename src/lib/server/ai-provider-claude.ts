@@ -166,7 +166,7 @@ function shortTitleToolProperties() {
  * `test:ai-polls` to name no time later than the earliest resolution.
  */
 export function shortTitleRule(): string {
-  return `SHORT TITLES — the question a phone card shows in two lines. Write one per language when you can do it faithfully:
+  return `SHORT TITLES — the shorter question a card shows instead of the full one. Write one per language when you can do it faithfully:
 - English: a question ending in "?", at most ${SHORT_TITLE_MAX.en} characters.
 - Kiswahili: the form "Je, …?", at most ${SHORT_TITLE_MAX.sw} characters.
 - Chinese (简体中文): a question ending in "？", at most ${SHORT_TITLE_MAX.zh} characters.

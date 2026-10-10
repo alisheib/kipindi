@@ -1157,7 +1157,8 @@ Every drive's red control plants in the page only, never in a repo file. That is
        plus the session-ended notice for a guest or the away summary for a signed-in reader).
    - **The book:**
      - card 1 with a full title in one variant, because S2's backfill is not approved on production (:2041);
-     - card 1 with a 56-code-point short title (short-title.ts:36) in another.
+     - card 1 with a short title at the full budget (`SHORT_TITLE_MAX` in short-title.ts — 100 code points since Ali's
+       ruling of 2026-10-10, 56 before) in another.
    - **The wait:** wait for `[data-testid=journey-tabs]` to be visible. The rail hydrates one chunk late (:446-451). A
      cell with no rail is INVALID, never a PASS.
    - **The rules:**

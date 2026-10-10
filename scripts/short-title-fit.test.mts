@@ -4,13 +4,14 @@
  *   npm run test:short-title-fit       # the gate
  *   npm run red:short-title-fit        # its in-process red twin (--prove-red)
  *
- * The plan's Done-when is "every open market renders within 2 lines in 3 languages". ⛔ THAT CANNOT BE MEASURED ON A
+ * The plan's Done-when was "every open market renders within 2 lines in 3 languages". ⛔ THAT CANNOT BE MEASURED ON A
  * CARD: `.mcardp-q` clamps to two lines AND has a two-line min-height, so every box measures exactly two lines and a
- * browser check could never fail (VODACOM-PLAN §0c). So the fit is a BUDGET in code points — sw/en ≤ 56, zh ≤ 28 —
- * held here, PURE: no browser, no database, and CI runs it through `test:all`. Production's open markets get a
- * separate read-only read (`qa:short-title-fit`), because this gate must never need a connection string.
+ * browser check could never fail (VODACOM-PLAN §0c). So the fit is a BUDGET in code points — sw/en ≤ 100, zh ≤ 50
+ * since the owner's ruling of 2026-10-10 (56 and 28 before) — held here, PURE: no browser, no database, and CI runs it
+ * through `test:all`. Production's open markets get a separate read-only read (`qa:short-title-fit`), because this gate
+ * must never need a connection string.
  *
- *   (a) THE ONE BUDGET — `SHORT_TITLE_MAX` is declared once in src/ and equals { en 56, sw 56, zh 28 }; no other src
+ *   (a) THE ONE BUDGET — `SHORT_TITLE_MAX` is declared once in src/ and equals { en 100, sw 100, zh 50 }; no other src
  *       file carries a literal budget near short-title code.
  *   (b) THE NORMALISER — each language's form (Chinese: the full-width mark ONLY, a typed "?" cleaned into it when
  *       the value is Chinese), code points not UTF-16, the fold onto GSM-7, the copied-English refusal on a KEY (case,
@@ -27,7 +28,7 @@
  *       mark; the Swahili pattern is held on one line by a no-break space) — and the wizard speaks it, with no words
  *       of its own.
  *
- * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY — a budget of 60, a second budget literal
+ * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY — a budget off the pin, a second budget literal
  * in src, a card that falls back through `pickLocalized` over the SHORT titles, a fold that leaves an em dash, a
  * normaliser that stores a hard issue, createMarket without its UPDOWN guard, a byte-exact copy check, a Chinese
  * rule that lets a value with no Chinese through, the copy issue reported last, a set that compares only the STORED
@@ -61,9 +62,12 @@ const HOME = "lib/markets/short-title.ts";
 const LOCALES: readonly Locale[] = ["en", "sw", "zh"];
 /**
  * ⛔ THE PIN. The budget lives in `short-title.ts`; this is the one other place its numbers are written, and it is
- * here on purpose: changing the budget must be a decision somebody makes twice, never a drift nobody saw.
+ * here on purpose: changing the budget must be a decision somebody makes twice, never a drift nobody saw. Every
+ * boundary and plant below is built from it. ⚖️ The owner's ruling of 2026-10-10: 100 / 100 / 50 (it was 56 / 56 / 28).
  */
-const EXPECTED_MAX: Record<Locale, number> = { en: 56, sw: 56, zh: 28 };
+const EXPECTED_MAX: Record<Locale, number> = { en: 100, sw: 100, zh: 50 };
+/** The pin's numbers as one alternation — what the census refuses to find written outside the budget's home. */
+const BUDGET_NUMBERS = [...new Set(Object.values(EXPECTED_MAX))].join("|");
 const S2_COLUMNS = ["shortTitleEn", "shortTitleSw", "shortTitleZh", "competition"];
 
 /* ══ CHARACTERS — built, never pasted ═══════════════════════════════════════ */
@@ -128,20 +132,30 @@ const ALL_ISSUES: readonly ShortTitleIssue[] = ["copied_english", "too_long", "n
 
 /**
  * (a)'s census. `declaredIn` — every src file that DECLARES `SHORT_TITLE_MAX`. `strays` — outside its home, the
- * budget's own shape (`en: 56`, `zh: 28`) anywhere, or a bare 56 / 28 within two lines of short-title code. The
- * generator's prompt, the admin counter and every writer must READ the constant, never restate it.
+ * budget's own shape (`en: 100`, `zh: 50`) anywhere, or a budget number WRITTEN AS A LIMIT within two lines of
+ * short-title code: compared (`> 100`), bounding (`max: 100`, `maxLength={100}`, `LIMIT = 100`, `slice(0, 100)`,
+ * `zh ? 50 : 100`) or said (`at most 100`, `100 characters`). The generator's prompt, the admin counter and every
+ * writer must READ the constant, never restate it.
+ * ⭐ WHY THE SHAPE AND NOT THE BARE NUMBER: 56 and 28 were rare, so any bare one near short-title code was a budget.
+ * Since the ruling of 2026-10-10 the numbers are common ones — a quality score of 50 and a percentage `* 100` sit
+ * beside the short-title chips in `ai-poll-generation.ts` — so the census asks how the number is written.
  */
 const NEAR_SHORT = /shortTitle|SHORT_TITLE|short-title|short title/i;
+const BUDGET_SHAPE = new RegExp(`\\b(?:en|sw|zh)\\s*:\\s*(?:${BUDGET_NUMBERS})\\b`);
+const BUDGET_LIMIT = new RegExp([
+  `(?:[<>]=?|\\b(?:max|limit|budget|cap)\\w*\\s*[:=]\\s*\\{?|\\bmaxLength\\s*=\\s*\\{?|\\b(?:slice|substring|substr)\\(\\s*0\\s*,|\\bat most|\\?)\\s*(?:${BUDGET_NUMBERS})\\b`,
+  `\\b(?:${BUDGET_NUMBERS})\\s*(?:characters|chars|code points)\\b`,
+].join("|"), "i");
 function budgetCensus(files: readonly SrcFile[]): { declaredIn: string[]; strays: string[] } {
   const declaredIn = files.filter((f) => /\b(?:const|let|var)\s+SHORT_TITLE_MAX\b/.test(f.text)).map((f) => f.rel);
   const strays: string[] = [];
   for (const f of files) {
     if (f.rel === HOME) continue;
-    const shape = /\b(?:en|sw|zh)\s*:\s*(?:56|28)\b/.exec(f.text);
+    const shape = BUDGET_SHAPE.exec(f.text);
     if (shape) strays.push(`${f.rel}: "${shape[0]}" (the budget's own shape)`);
     const lines = f.text.split(/\r?\n/);
     lines.forEach((line, i) => {
-      if (!/\b(?:56|28)\b/.test(line)) return;
+      if (!BUDGET_LIMIT.test(line)) return;
       if (NEAR_SHORT.test(lines.slice(Math.max(0, i - 2), i + 3).join("\n"))) strays.push(`${f.rel}:${i + 1}: ${line.trim().slice(0, 90)}`);
     });
   }
@@ -258,7 +272,7 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   /* ── (a) ─────────────────────────────────────────────────────────────── */
   log("\n(a) THE ONE BUDGET");
   {
-    ok("a.budget · SHORT_TITLE_MAX is exactly { en: 56, sw: 56, zh: 28 }, counted in code points",
+    ok(`a.budget · SHORT_TITLE_MAX is exactly { en: ${EXPECTED_MAX.en}, sw: ${EXPECTED_MAX.sw}, zh: ${EXPECTED_MAX.zh} }, counted in code points`,
       Object.keys(impl.MAX).length === 3 && LOCALES.every((l) => impl.MAX[l] === EXPECTED_MAX[l]), show(impl.MAX));
     ok("a.locales · SHORT_TITLE_LOCALES is en, sw, zh — every language a card speaks has a budget",
       SHORT_TITLE_LOCALES.length === 3 && LOCALES.every((l) => SHORT_TITLE_LOCALES.includes(l)), show(SHORT_TITLE_LOCALES));
@@ -266,9 +280,18 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     ok(`a.census · SHORT_TITLE_MAX is declared once (in ${HOME}) and no other src file writes a budget near short-title code`,
       c.declaredIn.length === 1 && c.declaredIn[0] === HOME && c.strays.length === 0,
       `declared in [${c.declaredIn.join(", ")}] · strays: ${c.strays.slice(0, 4).join(" | ") || "none"}`);
-    const probe = budgetCensus([{ rel: "lib/probe.ts", text: 'export const COUNTER = { field: "shortTitleSw",\n  max: 56 };' }]);
+    const probe = budgetCensus([{ rel: "lib/probe.ts", text: `export const COUNTER = { field: "shortTitleSw",\n  max: ${EXPECTED_MAX.sw} };` }]);
     ok(`a.census.c · CONTROL · the census walked src/ (${impl.srcFiles.length} files) and its detector flags a planted literal`,
       impl.srcFiles.length > 200 && probe.strays.length > 0, `${impl.srcFiles.length} files · probe flagged ${probe.strays.length}`);
+    // Every way a limit is written is caught beside short-title code; a score or a percentage with the same number is not.
+    const { en: E, zh: Z } = EXPECTED_MAX;
+    const flags = (line: string) => budgetCensus([{ rel: "lib/probe.ts", text: `const field = "shortTitleSw";\n${line}` }]).strays.length > 0;
+    const limits = [`if (codePoints(v) > ${E}) refuse();`, `<Input maxLength={${E}} />`, `const LIMIT = ${Z};`, `v.slice(0, ${E})`,
+      `const max = locale === "zh" ? ${Z} : ${E};`, `"at most ${E} characters"`];
+    const notLimits = [`score: ${Z},`, `score: Math.round((stored / 3) * ${E}),`];
+    const missed = limits.filter((l) => !flags(l)), wrong = notLimits.filter(flags);
+    ok("a.census.shapes · CONTROL · the census catches a budget compared, bounding, in a ternary or in words — and not a score or a percentage with the same number",
+      missed.length === 0 && wrong.length === 0, show({ missed, wrong }));
   }
 
   /* ── (b) ─────────────────────────────────────────────────────────────── */
@@ -311,27 +334,28 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     ok("b.zh-close.clean · the clean closes a CHINESE value with one full-width mark (from \"?\", a doubled mark, a space before it) — and touches no mark mid-text, no value without Chinese in it, and no English or Swahili \"?\"",
       closeBad.length === 0, closeBad.join(" | "));
 
-    // CODE POINTS, NOT UTF-16
-    const zh28 = HAN.repeat(27) + FWQ, zh29 = HAN.repeat(28) + FWQ;
-    const r28 = n("zh", zh28, CTX.zh), r29 = n("zh", zh29, CTX.zh);
-    ok("b.codepoints.zh · a Chinese short title of 28 code points passes and one of 29 is refused as too_long",
-      codePoints(zh28) === 28 && stored(r28, zh28) && r29.value === null && r29.issues.includes("too_long"),
-      show({ at28: r28.issues, at29: r29.issues }));
-    const astral = ASTRAL.repeat(27) + FWQ;
+    // CODE POINTS, NOT UTF-16 — every boundary built from the pin, so a ruling moves them all at once
+    const ZH = EXPECTED_MAX.zh, EN = EXPECTED_MAX.en, SW = EXPECTED_MAX.sw;
+    const zhAt = HAN.repeat(ZH - 1) + FWQ, zhOver = HAN.repeat(ZH) + FWQ;
+    const rAt = n("zh", zhAt, CTX.zh), rOver = n("zh", zhOver, CTX.zh);
+    ok(`b.codepoints.zh · a Chinese short title of ${ZH} code points passes and one of ${ZH + 1} is refused as too_long`,
+      codePoints(zhAt) === ZH && stored(rAt, zhAt) && rOver.value === null && rOver.issues.includes("too_long"),
+      show({ [`at${ZH}`]: rAt.issues, [`at${ZH + 1}`]: rOver.issues }));
+    const astral = ASTRAL.repeat(ZH - 1) + FWQ;
     const ra = n("zh", astral, CTX.zh);
-    ok("b.codepoints.utf16 · 28 code points that are 55 UTF-16 units still pass — the budget counts what a reader counts, not String.length",
-      astral.length === 55 && codePoints(astral) === 28 && stored(ra, astral), `length ${astral.length} · ${show(ra.issues)}`);
-    const withEmoji = EMOJI + HAN.repeat(26) + FWQ;
+    ok(`b.codepoints.utf16 · ${ZH} code points that are ${2 * ZH - 1} UTF-16 units still pass — the budget counts what a reader counts, not String.length`,
+      astral.length === 2 * ZH - 1 && codePoints(astral) === ZH && stored(ra, astral), `length ${astral.length} · ${show(ra.issues)}`);
+    const withEmoji = EMOJI + HAN.repeat(ZH - 2) + FWQ;
     const re = n("zh", withEmoji, CTX.zh);
-    ok("b.codepoints.emoji · an emoji counts ONCE: 28 code points with an emoji among them pass",
-      codePoints(EMOJI) === 1 && EMOJI.length === 2 && codePoints(withEmoji) === 28 && stored(re, withEmoji), show(re.issues));
-    const en56 = "Will " + "a".repeat(50) + "?", en57 = "Will " + "a".repeat(51) + "?";
-    const sw56 = "Je, " + "a".repeat(51) + "?", sw57 = "Je, " + "a".repeat(52) + "?";
-    const [e56, e57, s56, s57] = [n("en", en56, CTX.en), n("en", en57, CTX.en), n("sw", sw56, CTX.sw), n("sw", sw57, CTX.sw)];
-    ok("b.budget.en-sw · English and Swahili: 56 code points pass, 57 are refused as too_long",
-      en56.length === 56 && sw56.length === 56 && stored(e56, en56) && stored(s56, sw56)
-        && e57.value === null && e57.issues.includes("too_long") && s57.value === null && s57.issues.includes("too_long"),
-      show([e56.issues, e57.issues, s56.issues, s57.issues]));
+    ok(`b.codepoints.emoji · an emoji counts ONCE: ${ZH} code points with an emoji among them pass`,
+      codePoints(EMOJI) === 1 && EMOJI.length === 2 && codePoints(withEmoji) === ZH && stored(re, withEmoji), show(re.issues));
+    const enAt = "Will " + "a".repeat(EN - 6) + "?", enOver = "Will " + "a".repeat(EN - 5) + "?";
+    const swAt = "Je, " + "a".repeat(SW - 5) + "?", swOver = "Je, " + "a".repeat(SW - 4) + "?";
+    const [eAt, eOver, sAt, sOver] = [n("en", enAt, CTX.en), n("en", enOver, CTX.en), n("sw", swAt, CTX.sw), n("sw", swOver, CTX.sw)];
+    ok(`b.budget.en-sw · English (${EN}) and Swahili (${SW}): a short title at the budget passes, one code point over is refused as too_long`,
+      enAt.length === EN && swAt.length === SW && stored(eAt, enAt) && stored(sAt, swAt)
+        && eOver.value === null && eOver.issues.includes("too_long") && sOver.value === null && sOver.issues.includes("too_long"),
+      show([eAt.issues, eOver.issues, sAt.issues, sOver.issues]));
 
     // THE FOLD
     const raw = `A${LSQ}b${RSQ}c${LDQ}d${RDQ}e${EN_DASH}f${EM_DASH}g${ELLIPSIS}h${NBSP}i`;
@@ -384,9 +408,12 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     const rm = n("zh", mixed, CTX.zh);
     ok("b.copied-english.not-chinese.c · CONTROL · Chinese with a Latin name in it is Chinese and is stored; the detector sees a BMP and an astral ideograph, and no full-width Latin letter or mark",
       stored(rm, mixed) && hasHan(HAN) && hasHan(ASTRAL) && !hasHan(FW_SIMBA) && !hasHan(FWQ), show(rm));
-    const zhEnglish = impl.issues("zh", DERBY.titleEn, CTX.zh);
+    // An English question longer than the Chinese budget, so the copy, the length and the mark are all wrong at once.
+    const pastedEnglish = `${DERBY.titleEn.replace(/\?$/, "")} at the Benjamin Mkapa Stadium in Dar es Salaam?`;
+    const zhEnglish = impl.issues("zh", pastedEnglish, CTX.zh);
     ok("b.copied-english.first · copied_english is reported FIRST (every caller shows the first hard issue): English in the Chinese field is told to be Chinese, not to be shorter or to change its mark",
-      zhEnglish[0] === "copied_english" && zhEnglish.includes("too_long") && zhEnglish.includes("form"), show(zhEnglish));
+      codePoints(pastedEnglish) > EXPECTED_MAX.zh
+        && zhEnglish[0] === "copied_english" && zhEnglish.includes("too_long") && zhEnglish.includes("form"), show(zhEnglish));
     const typed = impl.normaliseSet({ ...DERBY, shortTitleEn: "Will Simba win the derby", shortTitleSw: "Je, Will Simba win the derby?" });
     ok("b.copied-english.typed · the copy rule compares with the English short title as TYPED: a Swahili copy of an English one that was itself refused (no \"?\") is still refused",
       typed.shortTitleEn === null && typed.issues.en.includes("form") && typed.shortTitleSw === null && typed.issues.sw.includes("copied_english"),
@@ -430,7 +457,7 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     // …and strict keeps a drift measured against the ENGLISH title standing in for a missing one: a warning, not a refusal.
     const fb = impl.normalise("zh", ZH_BTC, { full: BTC150, englishFull: BTC150, fullIsFallback: true }, { strict: true });
     const own = impl.normalise("zh", ZH_BTC, { full: `比特币价格能否大涨${FWQ}`, englishFull: BTC150 }, { strict: true });
-    const fbHard = impl.normalise("zh", HAN.repeat(29) + FWQ, { full: BTC150, englishFull: BTC150, fullIsFallback: true }, { strict: true });
+    const fbHard = impl.normalise("zh", HAN.repeat(EXPECTED_MAX.zh + 1) + FWQ, { full: BTC150, englishFull: BTC150, fullIsFallback: true }, { strict: true });
     ok("b.number-drift.fallback · strict keeps a drift against an English title STANDING IN (fullIsFallback) — stored, number_drift still reported — refuses it against the language's own full title, and a hard issue stays hard",
       fb.value === ZH_BTC && fb.hard === false && fb.issues.includes("number_drift")
         && own.value === null && own.hard === true && own.issues.includes("number_drift")
@@ -451,7 +478,7 @@ function run(impl: Impl, log: (l: string) => void): string[] {
 
     // A HARD ISSUE IS NEVER STORED
     const hard = [
-      n("en", en57, CTX.en),
+      n("en", enOver, CTX.en),
       n("en", `Will Simba win ${EMOJI}?`, CTX.en),
       n("sw", "Simba watashinda derby?", CTX.sw),
       n("zh", EN_SHORT, { ...CTX.zh, englishShort: EN_SHORT }),
@@ -674,7 +701,7 @@ if (!PROVE_RED) {
   /** createMarket with its UPDOWN ternaries removed: a round would get short titles and a competition. */
   const UNGUARDED = SERVICE_SRC.replace(/\b\w+\s*\?\s*null\s*:\s*(normaliseShortTitleSet|normaliseCompetition)\(/g, "$1(");
   /** A second budget, written beside an admin counter instead of read from SHORT_TITLE_MAX. */
-  const SECOND_BUDGET: SrcFile = { rel: "app/admin/markets/short-title-counter.tsx", text: 'export const COUNTER = { field: "shortTitleSw", max: 56 };' };
+  const SECOND_BUDGET: SrcFile = { rel: "app/admin/markets/short-title-counter.tsx", text: `export const COUNTER = { field: "shortTitleSw", max: ${EXPECTED_MAX.sw} };` };
 
   /* The S2 review's rule defects (ST-1, ST-2, ST-5, ST-6), each planted as ONE layer around the real rule. */
   const exactKey = (x: string) => x.replace(/\s+/g, " ").trim();
@@ -725,22 +752,23 @@ if (!PROVE_RED) {
   const OWN_WORDS = `${WIZARD_SRC}
 function shortIssueText(locale, issue) { switch (issue) { case "form": return "Write it as a question."; } }`;
 
-  const tooLong = "Will " + "a".repeat(60) + "?";
+  const tooLong = "Will " + "a".repeat(EXPECTED_MAX.en) + "?";
+  const offPin = EXPECTED_MAX.en + 4;
   type Plant = { name: string; expect: RegExp; impl: Impl; landed: boolean; landedAs: string };
   const plants: Plant[] = [
     {
-      name: "a budget of 60 — the constant edited without the pin",
+      name: `a budget of ${offPin} — the constant edited without the pin`,
       expect: /^a\.budget · /,
-      impl: { ...REAL, MAX: { en: 60, sw: 60, zh: 28 } },
+      impl: { ...REAL, MAX: { en: offPin, sw: offPin, zh: EXPECTED_MAX.zh } },
       landed: true,
-      landedAs: "MAX.en = MAX.sw = 60",
+      landedAs: `MAX.en = MAX.sw = ${offPin}`,
     },
     {
       name: "a second budget written beside an admin counter",
       expect: /^a\.census · /,
       impl: { ...REAL, srcFiles: [...SRC_FILES, SECOND_BUDGET] },
       landed: budgetCensus([SECOND_BUDGET]).strays.length > 0,
-      landedAs: "the planted file carries a literal 56 on the line that names shortTitleSw",
+      landedAs: `the planted file carries a literal ${EXPECTED_MAX.sw} on the line that names shortTitleSw`,
     },
     {
       name: "cardTitle falls back through pickLocalized over the SHORT titles",
@@ -761,7 +789,7 @@ function shortIssueText(locale, issue) { switch (issue) { case "form": return "W
       expect: /^b\.hard-null · /,
       impl: { ...REAL, normalise: plantedNormalise },
       landed: plantedNormalise("en", tooLong, CTX.en).value === tooLong,
-      landedAs: "a 66-code-point English short title is stored",
+      landedAs: `a ${codePoints(tooLong)}-code-point English short title is stored`,
     },
     {
       name: "createMarket without its UPDOWN guard",

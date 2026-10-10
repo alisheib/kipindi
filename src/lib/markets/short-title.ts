@@ -2,12 +2,15 @@
  * THE SHORT TITLE — its rules, in ONE pure module (the Vodacom plan S2, 2026-09-30; ruling SJ-8; COMPLIANCE
  * 2026-09-29 §6 "Short titles and competition labels").
  *
- * A market's short title is the question a card shows: at most two lines at 360 px, in the reader's language. It
+ * A market's short title is the question a card shows, in the reader's language, in place of the full one. It
  * is an AID to reading the market, never the market: the full question, the resolution criterion and the source
  * stay on the market's page unchanged, and resolution is judged against the English criterion as before.
  *
  * The rules, and every writer reads them from here (the AI generator, the admin edit, the backfill, the fit test):
- *   · LENGTH — `SHORT_TITLE_MAX`, counted in CODE POINTS (`Array.from`), not UTF-16 units: sw/en ≤ 56, zh ≤ 28.
+ *   · LENGTH — `SHORT_TITLE_MAX`, counted in CODE POINTS (`Array.from`), not UTF-16 units: sw/en ≤ 100, zh ≤ 50.
+ *     ⚖️ The owner's ruling of 2026-10-10 (Ali: "make it 100"); it was 56 and 28, two lines on a 360 px card. Chinese
+ *     keeps half, as before: one Chinese character takes the room of about two Latin letters. A card never clamps a
+ *     short title (`cardTitle` → `short`), so a longer one takes another line rather than losing its end.
  *   · FORM — Swahili "Je, …?" (the deck's own form); English ends in "?"; Chinese ends in the full-width "？" only
  *     (`cleanShortTitle` turns a Chinese value's trailing ASCII "?" into it, so a typed "?" is never a refusal).
  *   · GSM-7 — sw and en only, after `foldToGsm7`: the short title travels in SMS and push as well as on cards.
@@ -33,7 +36,7 @@ import { pickLocalized } from "@/lib/localized";
 import { encodingFor, foldToGsm7, offendingChars } from "@/lib/sms-compose";
 
 /** The ONE budget. ⛔ Written nowhere else — the generator's prompt, the admin counter and the fit test read it. */
-export const SHORT_TITLE_MAX: Readonly<Record<Locale, number>> = { en: 56, sw: 56, zh: 28 };
+export const SHORT_TITLE_MAX: Readonly<Record<Locale, number>> = { en: 100, sw: 100, zh: 50 };
 
 export const SHORT_TITLE_LOCALES: readonly Locale[] = ["en", "sw", "zh"] as const;
 

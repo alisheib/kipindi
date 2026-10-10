@@ -21,7 +21,7 @@
 - Source "Linatatuliwa kwa {source}". "Onyesha zaidi" NO STRING (plan journey.showMore).
 - Engine: emptyPool → both "Kuwa wa kwanza"; oneSidedRefund (other side empty) → "Upande mmoja tu"; fillsEmptySide → "Kuwa wa kwanza";
   hidden (legacy capped) → no figure (describeFeeModel is an ENGLISH admin string "capped 13%/33.33%" — not player copy); overCap → "Shinda zaidi ya 100× dau".
-- Short title max: sw/en 56 code points, zh 28.
+- Short title max: sw/en 56 code points, zh 28. ⟶ 2026-10-10 (Ali): sw/en 100, zh 50 (`SHORT_TITLE_MAX`).
 
 ## Home
 - Chips order today: Zote, Michezo, Uchumi, Hali ya hewa, Kripto, Utamaduni, Teknolojia, Nyingine (SJ-7 wants Michezo · Hali ya hewa · Uchumi first).

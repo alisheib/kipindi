@@ -2431,7 +2431,8 @@ hand: YES 20,000 / NO 2,000 at 13% reads ≈1.1× / ≈9.7×, YES "thin" under t
 **Where it is.** On main (merged 2026-09-30 as `473807b1`); `simple-journey` stays the lane's branch for S3 onward.
 
 **What exists**
-- The rules — `src/lib/markets/short-title.ts` (the ONE budget `SHORT_TITLE_MAX` en/sw 56, zh 28 code points; the forms
+- The rules — `src/lib/markets/short-title.ts` (the ONE budget `SHORT_TITLE_MAX` en/sw 100, zh 50 code points — Ali's
+  ruling of 2026-10-10, "make it 100"; it was 56 and 28, two lines on a 360 px card; the forms
   "Je, …?" / "?" / "？"; GSM-7 for sw/en via the new `foldToGsm7` in `sms-compose.ts`; `cardTitle` falls back to the
   reader's OWN full title), `competitions.ts` (14 keys, Ligi Kuu first) + `competition-label.ts` (labels in
   `journey.comp*`, en/sw/zh).
@@ -2520,7 +2521,7 @@ S2 is ✅. S2 changes NOTHING players see — the journey card (S7) is where sho
 - A short title stays NULL until approved; never a copy of the full or English title (the F8 rule). The fallback is
   the reader's OWN full title — `pickLocalized` falls back to English, so it is the wrong helper here.
 - "Fits in 2 lines" cannot be measured on `.mcardp-q`: its clamp and `min-height` make every box exactly 2 lines.
-  `test:short-title-fit` is a PURE budget check (code points: sw/en ≤ 56, zh ≤ 28; GSM-7 for sw/en only, via
+  `test:short-title-fit` is a PURE budget check (code points: sw/en ≤ 100, zh ≤ 50 since 2026-10-10; GSM-7 for sw/en only, via
   `sms-compose.ts`), and production's open markets get a separate read-only `qa:` read.
 - A short-title problem must never become an AI `FilterReason` (`approveAIPoll` refuses any): store null plus a
   warning. `publishApprovedPoll` hand-copies fields, so new ones must be added there or they are dropped.
@@ -2550,7 +2551,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 |---|---|---|---|
 | S0 | File, rule, get ready | ✅ | Filed `2ac17c36` on main, 2026-09-29. Deck, frames, rulings, reply, tracker, SHELVED.md and compliance records are filed. `test:docs` + `test:landing-ten-plan` are green. The worktree installs. |
 | S1 | The switch and preview | 🔨 | Built and verified locally 2026-09-30 (§0b). Done when staff see a "preview" marker on production and nobody else sees anything. The preview cookie is in Privacy §7 in the same commit. |
-| S2 | Short titles + competition | 🔨 | LIVE `473807b1` 2026-09-30 (§0d); the backfill waits on an officer's approval. Done when every open market renders within 2 lines in sw/en/zh (`test:short-title-fit`) and the backfill is approved in /admin. |
+| S2 | Short titles + competition | 🔨 | LIVE `473807b1` 2026-09-30 (§0d); the backfill waits on an officer's approval. Done when every open market's short titles are within the budget in sw/en/zh (`test:short-title-fit`; 100 / 100 / 50 since Ali's ruling of 2026-10-10, two lines before) and the backfill is approved in /admin. |
 | S3 | The engine (no UI) | ✅ | `6e7ee63b` 2026-10-01 (§0e). Golden fixtures pass: Dodoma ≈2.8×/≈1.4×, 1,000 → TZS 2,700 ≈2.7×, 5,000 → TZS 12,360 ≈2.5×; Yanga ≈2.9×/≈1.4×. Client/server parity is proven. |
 | S3b | Measures baseline | ✅ | LIVE `64a63b7c` 2026-10-01 (§0f); counts appear daily (second read 2026-10-03: both full days, every client and bet step; no deposit was confirmed on either day, checked) and the 14-day baseline runs to 2026-10-15. |
 | S4 | Claude Design pass | ✅ | `52afb7c8` 2026-10-01 (§0g): all eleven brief items on the Design canvas, 102 boards; the four-expert panel's findings applied (v16); BRIEF.md filed; choices 1B/2A/3A (§0h point 1). Done when frames for every new composition and undrawn state are filed and scored by the panel, and Ali has reviewed the 5 re-drawn frames. |
@@ -2960,7 +2961,7 @@ The reply also includes:
 | How-to card | **NEW** full-width card on the 50pick card surface; `IconPlate` play glyph in brand/neutral ink (never gilt); Sora title, Inter meta |
 | Headline | `.kp-hero__headline` family, with a measured rung that keeps exactly 2 lines at 360 in sw/en/zh. Side words in neutral headline ink |
 | Chips | `FilterPill` / `.kp-fchip` with its own selected style |
-| Card | `MarketCard` **journey variant**: meta row + short title (≤2 lines) + `.btn-yes/.btn-no` with the side word and a "Shinda ≈{mult}× dau" line (figure in JetBrains Mono). **Settled variant** for `/results`/`/watchlist` (outcome row, same height). Own height tokens `--jcard-*`; density does not apply |
+| Card | `MarketCard` **journey variant**: meta row + short title (within `SHORT_TITLE_MAX`, never clamped; ≤2 lines while the budget was 56 / 28) + `.btn-yes/.btn-no` with the side word and a "Shinda ≈{mult}× dau" line (figure in JetBrains Mono). **Settled variant** for `/results`/`/watchlist` (outcome row, same height). Own height tokens `--jcard-*`; density does not apply |
 | Tabs | `BottomNav` visual language, 4 equal tabs, `--rail-h` variable replacing every literal 88px, `data-needle-keepout` |
 | Sheets | `Modal sheet sheetUntil="lg"` (`.kp-wsheet`). **NEW** `dragToDismiss` on Modal. Desktop = centred dialog, maxWidth ≈440 (no `anchorRef`) |
 | "Umechagua NDIO" | `Chip variant="yes"` / `"no"`, side word from `sideWord()` |
@@ -3531,7 +3532,8 @@ hardening. Everything else is behind `simpleJourneyFor`.
   checks agreement with the full question.
 - **Backfill:** AI drafts for every open market, approved by an admin. Cards fall back to the full title clamped to 2
   lines.
-- **Done when:** every open market renders within 2 lines in 3 languages (`test:short-title-fit`).
+- **Done when:** every open market renders within 2 lines in 3 languages (`test:short-title-fit`). ⟶ 2026-10-10 (Ali):
+  the budget is 100 code points in English and Swahili and 50 in Chinese, so "within the budget" — no longer 2 lines.
 
 **S3 — The engine (no UI):** §3.1 in full, with its tests and red twins.
 - **Done when:** the golden fixtures pass and parity is proven.

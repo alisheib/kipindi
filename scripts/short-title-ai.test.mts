@@ -498,7 +498,7 @@ async function g3Edit(I: Impl, ctx: Ctx) {
   const id = ctx.editId!;
   const before = await GEN.getAIPoll(id);
   const b = before ? { titleEn: before.titleEn, sw: before.shortTitleSw, zh: before.shortTitleZh, en: before.shortTitleEn, c: before.competition, state: before.state } : null;
-  const e1 = await refusalOf(() => I.edit(id, { officerId: OFFICER, titleEn: `Something else entirely? (${ctx.tag})`, shortTitleSw: `${"A".repeat(70)}?` }));
+  const e1 = await refusalOf(() => I.edit(id, { officerId: OFFICER, titleEn: `Something else entirely? (${ctx.tag})`, shortTitleSw: `${"A".repeat(ST.SHORT_TITLE_MAX.sw + 14)}?` }));
   ok("3.hard.refused · a short title over the budget is refused, naming its field",
     e1 instanceof GEN.AIPollShortTitleRefused && e1.field === "shortTitleSw" && /characters/.test(e1.message), String(e1));
   const after1 = await GEN.getAIPoll(id);
@@ -681,7 +681,7 @@ async function g5Decide(I: Impl, M: Record<string, StoredMarket>) {
     (await auditRows("market.short_title_checked", A.id)).length === 0 && ra.ok && ra.agreement === null);
 
   // Edit, then approve: a hard issue is refused by field and the draft keeps waiting; a valid edit lands.
-  const bad = await I.approve({ officerId: OFFICER, marketId: F.id, edited: { shortTitleSw: `${"A".repeat(90)}?` } });
+  const bad = await I.approve({ officerId: OFFICER, marketId: F.id, edited: { shortTitleSw: `${"A".repeat(ST.SHORT_TITLE_MAX.sw + 34)}?` } });
   ok("5.edit.refused · an edited value the rules refuse is refused, naming its field, and the draft keeps waiting",
     !bad.ok && bad.field === "shortTitleSw" && indexIds().includes(F.id), j(bad));
   const sw = "Je, Simba SC itafunga zaidi ya magoli 6?";
@@ -1018,9 +1018,11 @@ function g7Wiring(W: World) {
   ok("7.filter · no short-title reason exists in FilterReason (approveAIPoll refuses any)", filter.length > 100 && !/short|competition/i.test(filter), filter.slice(0, 80));
 
   const rule = slice(W.claude, "export function shortTitleRule(", TOP);
+  /** The budget's own numbers as typed digits — what the prompt's source must never hold (it reads SHORT_TITLE_MAX). */
+  const BUDGET_TYPED = new RegExp(`(?<![0-9A-Za-z_])(?:${[...new Set(Object.values(ST.SHORT_TITLE_MAX))].join("|")})(?![0-9A-Za-z_])`);
   const props = slice(W.claude, "function shortTitleToolProperties(", TOP);
   ok("7.prompt.literal · the budgets in the prompt and the tool are READ from SHORT_TITLE_MAX, never typed",
-    rule.length > 100 && props.length > 100 && !/\b(56|28)\b/.test(rule) && !/\b(56|28)\b/.test(props) && /SHORT_TITLE_MAX\.en/.test(rule) && /SHORT_TITLE_MAX\.zh/.test(rule));
+    rule.length > 100 && props.length > 100 && !BUDGET_TYPED.test(rule) && !BUDGET_TYPED.test(props) && /SHORT_TITLE_MAX\.en/.test(rule) && /SHORT_TITLE_MAX\.zh/.test(rule));
   const nowIso = new Date().toISOString();
   const system = CLAUDE.buildSystemPrompt({ nowIso, category: "sports", minLeadHours: 24, webSearch: true });
   const ruleText = CLAUDE.shortTitleRule();
@@ -1294,7 +1296,7 @@ const PLANTS: Plant[] = [
   { name: "a FilterReason is added for short titles", expect: /^7\.filter/,
     world: (w) => ({ ...w, gen: w.gen.replace('| "missing_translation";', '| "missing_translation"\n  | "short_title_too_long";') }) },
   { name: "the prompt types the English budget as a literal", expect: /^7\.prompt\.literal/,
-    world: (w) => ({ ...w, claude: w.claude.replace("at most ${SHORT_TITLE_MAX.en} characters.\n- Kiswahili", "at most 56 characters.\n- Kiswahili") }) },
+    world: (w) => ({ ...w, claude: w.claude.replace("at most ${SHORT_TITLE_MAX.en} characters.\n- Kiswahili", `at most ${ST.SHORT_TITLE_MAX.en} characters.\n- Kiswahili`) }) },
   { name: "the backfill's model call meters itself too (a double count)", expect: /^7\.claude\.draft/,
     world: (w) => ({ ...w, claude: w.claude.replace("async draftShortTitles(req: ShortTitleDraftRequest): Promise<ShortTitleDraftResponse> {", "async draftShortTitles(req: ShortTitleDraftRequest): Promise<ShortTitleDraftResponse> {\n    await recordAiUsage({} as never);") }) },
   { name: "the backfill's kill switch is dropped", expect: /^7\.order/,

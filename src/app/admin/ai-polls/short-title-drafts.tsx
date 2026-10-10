@@ -153,7 +153,7 @@ export function ShortTitleDraftsPanel({
         <div>
           <p className="font-display font-semibold text-body-sm text-text">Short titles for open markets</p>
           <p className="mt-1 text-body-sm text-text-secondary leading-relaxed">
-            A short title is the question a phone card shows in two lines, instead of the full question. The AI drafts
+            A short title is the shorter question a card shows instead of the full question. The AI drafts
             them for open markets that have none; nothing reaches a market until you approve it here — approve one only
             if it says exactly the same thing as the full question. Budgets: English and Swahili{" "}
             {SHORT_TITLE_MAX.en} characters, Chinese {SHORT_TITLE_MAX.zh}. The full question, the resolution criterion
