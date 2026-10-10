@@ -1,0 +1,23 @@
+
+[admin-section-gate] §0 every console page sits under AdminSectionGate
+  ✓ §0 ratchet · 63 console pages found
+  ✓ §0 every page is gated where a navigation re-runs the gate
+  ✓ §0b W25 · every page carries its OWN gate, because a flight can skip every layout above it
+  ✓ §0b′ W25 · the gate is the page's whole returned body, not a word in the file
+  ✓ §0b′ CONTROL · every inert-gate spelling is REFUSED, and the canonical one is ACCEPTED
+  ✓ §0b CONTROL · §0b actually inspected pages (it is not vacuous)
+  ✓ §0c W25 · no admin page reads a record inside generateMetadata (it runs outside every gate)
+  ✓ §0 the root admin layout no longer decides view/act (it is frozen across soft navigations)
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3009/auth/demo?kyc=pending
+Call log:
+  - navigating to "http://localhost:3009/auth/demo?kyc=pending", waiting until "domcontentloaded"
+
+    at F:\kipindi-a8i2\scripts\admin-section-gate.test.mjs:164:10 {
+  name: 'Error'
+}
+
+Node.js v24.19.0

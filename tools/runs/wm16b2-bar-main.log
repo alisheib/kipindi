@@ -1,0 +1,62 @@
+02:43:48 lock not taken here (KP_NO_LOCK=1: the chain that runs this holds it)
+02:43:49 free memory: 15 GB
+02:43:52 start: kipindi-a8i2 at e7a979c61 on :3071
+02:45:01 server up after 4s
+02:45:07 routes warmed; running: bash -c npm run -s fixture:player -- "$BASE"; echo "fixture:player exit=$?"; npm run -s qa:bar-geometry -- "$BASE"; d=$?; echo "qa:bar-geometry exit=$d"; npm run -s red:bar-geometry -- "$BASE"; r=$?; echo "red:bar-geometry exit=$r"; [ $d -eq 0 ] && [ $r -eq 0 ]
+server healthy at http://localhost:3071
+
+markets
+  · seed-real-markets — created 6
+  · seed-markets — 30 LIVE non-demo markets in the pool
+
+player
+  · /auth/demo — signed in as usr_df3709ce58c52d7441d8fcb6
+
+up & down
+  · updown-seed + updown-advance — 1 advance(s) · 4 of 4 chains · round udr_136c46f9fd619ee07df3 open until 2026-10-10T02:51:11.090Z
+
+positions
+  · seed-player-portfolio — placed 14 · updown 2 · {"VOID":3,"LOSS":2,"WIN":3,"CASHED_OUT":2,"OPEN":4}
+
+watchlist
+  · seed-watchlist — watching 11 · {"all":11,"open":3,"progress":2,"done":3,"void":3}
+
+proposals
+  · proposals-set-config — state ACTIVE · hotThreshold 200
+  · proposals-seed — created 6, attributed to the demo player
+
+results archive
+  · resolve-seed-markets — resolved 6
+
+✅ fixture ready, and every arm the player gates need is populated.
+   next:  npm run qa:player-filters · qa:count-truth · qa:bar-geometry · qa:filter-scan
+fixture:player exit=0
+  🔶 /positions/performance sw 360: BAR NOT MEASURED — no bar and no row: the page draws its product lens only when the player has settled positions in two products (positions/performance/page.tsx:191), and this store settles no Up & Down round
+  🔶 /positions/performance sw 768: BAR NOT MEASURED — no bar and no row: the page draws its product lens only when the player has settled positions in two products (positions/performance/page.tsx:191), and this store settles no Up & Down round
+  🔶 /positions/performance sw 1280: BAR NOT MEASURED — no bar and no row: the page draws its product lens only when the player has settled positions in two products (positions/performance/page.tsx:191), and this store settles no Up & Down round
+  🔶 /positions/performance en 360: BAR NOT MEASURED — no bar and no row: the page draws its product lens only when the player has settled positions in two products (positions/performance/page.tsx:191), and this store settles no Up & Down round
+  🔶 /positions/performance en 768: BAR NOT MEASURED — no bar and no row: the page draws its product lens only when the player has settled positions in two products (positions/performance/page.tsx:191), and this store settles no Up & Down round
+  🔶 /positions/performance en 1280: BAR NOT MEASURED — no bar and no row: the page draws its product lens only when the player has settled positions in two products (positions/performance/page.tsx:191), and this store settles no Up & Down round
+  🔶 /positions/performance zh 360: BAR NOT MEASURED — no bar and no row: the page draws its product lens only when the player has settled positions in two products (positions/performance/page.tsx:191), and this store settles no Up & Down round
+  🔶 /positions/performance zh 768: BAR NOT MEASURED — no bar and no row: the page draws its product lens only when the player has settled positions in two products (positions/performance/page.tsx:191), and this store settles no Up & Down round
+
+1113 control boxes measured across 13 surface(s) × 3 width(s) × 3 locale(s) → .50pick-shots/bar-geometry
+
+🔶 8 assertion(s) NOT MEASURED — the fixture could not pose them, and green does not cover them:
+   /positions/performance sw 360: BAR NOT MEASURED — no bar and no row: the page draws its product lens only when the player has settled positions in two products (positions/performance/page.tsx:191), and this store settles no Up & Down round
+   /positions/performance sw 768: BAR NOT MEASURED — no bar and no row: the page draws its product lens only when the player has settled positions in two products (positions/performance/page.tsx:191), and this store settles no Up & Down round
+   /positions/performance sw 1280: BAR NOT MEASURED — no bar and no row: the page draws its product lens only when the player has settled positions in two products (positions/performance/page.tsx:191), and this store settles no Up & Down round
+   /positions/performance en 360: BAR NOT MEASURED — no bar and no row: the page draws its product lens only when the player has settled positions in two products (positions/performance/page.tsx:191), and this store settles no Up & Down round
+   /positions/performance en 768: BAR NOT MEASURED — no bar and no row: the page draws its product lens only when the player has settled positions in two products (positions/performance/page.tsx:191), and this store settles no Up & Down round
+   /positions/performance en 1280: BAR NOT MEASURED — no bar and no row: the page draws its product lens only when the player has settled positions in two products (positions/performance/page.tsx:191), and this store settles no Up & Down round
+   /positions/performance zh 360: BAR NOT MEASURED — no bar and no row: the page draws its product lens only when the player has settled positions in two products (positions/performance/page.tsx:191), and this store settles no Up & Down round
+   /positions/performance zh 768: BAR NOT MEASURED — no bar and no row: the page draws its product lens only when the player has settled positions in two products (positions/performance/page.tsx:191), and this store settles no Up & Down round
+✅ where measured: no two controls overlap, nothing is clipped, nothing is under 44px, every bar sticks — 🔶 the lines above were not measured.
+qa:bar-geometry exit=0
+precondition: the driver is GREEN, with nothing unmeasured, on every route × shape under proof (/proposals @ 1280/sw · /markets @ 1280/sw · /watchlist @ 360/sw)
+
+  1. caught       desktop-group-does-not-wrap  →  CLIPPED
+  2. caught       bar-is-not-sticky  →  THE BAR DID NOT STICK
+  3. caught       control-below-the-tap-floor  →  SHORT
+  4. caught       sort-summary-unbound  →  OVERLAP
+  5. caught       search-band-shares-the-bar-offset  →  ANOTHER STICKY SURFACE IS DRAWN THROUGH THE BAR

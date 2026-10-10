@@ -1,0 +1,19 @@
+Visual pass (after round 6): every player drawing's sort and phone Filters are the bar kit's — /positions' hand-drawn sort and the money books' and /positions' typed 104px Filters boxes replaced; a census holds it
+
+R5-L's note for the integrator. /positions' drawing (R5-K) drew the sort by hand — its summary without `w-full`, so on a
+phone it sat at its content's width where the page's `QuerySort` fills the cell beside the Filters button, and its value in
+`text-body-sm tracking-normal` where the menu's is `kp-menu-value` at 13px — and it, like the money books' bar drawing
+(/wallet, /wallet/receipts), stood a typed 104px box for the Filters trigger.
+- positions-ghost.tsx: `SortGhost` (the default "most recent") and `FiltersGhost` (the trigger's own geometry, `kp-fsheet
+  lg:hidden`, with its word) — the page's own boxes, as /markets', /results' and now /updown/history's drawings draw them.
+- money-bar-ghost.tsx: `FiltersGhost` for the phone's Filters.
+- visual-pass-r5l 9.3: a census — no player loading drawing (51) hand-draws a sort (`rounded-l-pill`) or a typed Filters box
+  outside the kit — and its plant (9.3′). Re-pins, each with its reason: r5h 4.4's and r5l 9.2's import line (the money
+  books' ghost imports `FiltersGhost` too), r5h 4.7 counts the phone's Filters by the trigger's root.
+Proofs: R5-H 41/41, R5-K 29/29, R5-L 38/38 (its 9.2 plant re-aimed at the new import line), R5-B 36/36; r5k 6.4 (the bar
+rendered against the page in three languages, row 2's arrangement read by class) and the census suites green.
+Owed: tiles of /positions, /wallet and /wallet/receipts loading at 320 and 390 beside their pages.
+
+Classic viewers: the same drawings (both shells).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

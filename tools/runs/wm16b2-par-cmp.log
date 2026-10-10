@@ -1,0 +1,17 @@
+02:31:00 lock not taken here (KP_NO_LOCK=1: the chain that runs this holds it)
+02:31:01 free memory: 14 GB
+02:31:03 start: kipindi-a8i2-ctl at 4b754b898 on :3074
+02:31:57 server up after 4s
+02:32:03 routes warmed; running: npm run qa:classic-shell-parity -- --compare C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/parity-main-e7a979c6.json
+
+> fiftypick@0.1.0 qa:classic-shell-parity
+> node scripts/qa-classic-shell-parity.mjs --compare C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/***/scratchpad/visual/parity-main-e7a979c6.json
+
+qa:classic-shell-parity — compare — http://localhost:3074
+  tree F:\kipindi-a8i2-ctl\ @ 4b754b89 (clean) · forks from origin/main at e7a979c6 · rollout STAFF_PREVIEW
+
+§0 · the base (S6-PLAN A18)
+REFUSED — the baseline was captured at e7a979c6, and this tree cannot be compared with it: 1 merge(s) since the baseline carried served files in from elsewhere — 1e4586e5 brought 78 served file(s): package.json, src/app/admin/campaigns/[id]/live-client.tsx, src/app/admin/campaigns/[id]/live-copy.ts ….
+  Re-capture from the pre-S6 parent into a NEW file (A18), or pass --allow-base to compare anyway.
+02:32:06 command exit=2
+02:32:07 server stopped (left: 0)

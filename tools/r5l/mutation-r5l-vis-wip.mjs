@@ -47,7 +47,7 @@ const PLANTS = [
   ["8.3", "src/app/live/loading.tsx", '${locale === "sw" ? "min-h-[4.125em]" : "min-h-[2.75em]"}', "min-h-[4.125em]", "every language's card at Swahili's height"],
   ["9.1", "src/components/ui/query-bar-ghost.tsx", "px-1.5 text-transparent lg:gap-2 lg:px-3", "px-3 text-transparent lg:gap-2 lg:px-3", "the sort ghost's phone padding off QuerySort's"],
   ["9.1", "src/components/ui/ghost-text.tsx", /* one helper since the merge (R5-K's) */ 'text-transparent box-decoration-clone";', 'text-transparent";', "the helper's word bar on the first line only (no box-decoration-clone)"],
-  ["9.2", "src/app/wallet/money-bar-ghost.tsx", 'import { CountGhost, PillGhost } from "@/components/ui/query-bar-ghost";\n', 'import { CountGhost, PillGhost as KitPill } from "@/components/ui/query-bar-ghost";\nvoid KitPill;\nfunction PillGhost({ label }: { label: string }) { return <span className="inline-flex min-h-[44px] px-3">{label}</span>; }\n', "a second pill ghost"],
+  ["9.2", "src/app/wallet/money-bar-ghost.tsx", /* 2026-10-10: FiltersGhost too */ 'import { CountGhost, FiltersGhost, PillGhost } from "@/components/ui/query-bar-ghost";\n', 'import { CountGhost, FiltersGhost, PillGhost as KitPill } from "@/components/ui/query-bar-ghost";\nvoid KitPill;\nfunction PillGhost({ label }: { label: string }) { return <span className="inline-flex min-h-[44px] px-3">{label}</span>; }\n', "a second pill ghost"],
 ];
 
 const files = [...new Set(PLANTS.map((p) => p[1]))];

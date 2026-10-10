@@ -1,0 +1,15 @@
+
+[revoked-deadend] §1 a displaced session must still see a page
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3009/auth/demo
+Call log:
+  - navigating to "http://localhost:3009/auth/demo", waiting until "domcontentloaded"
+
+    at F:\kipindi-a8i2-ctl\scripts\revoked-deadend.test.mjs:95:9 {
+  name: 'Error'
+}
+
+Node.js v24.19.0

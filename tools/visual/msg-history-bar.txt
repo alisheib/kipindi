@@ -1,0 +1,24 @@
+Visual pass (after round 6): /updown/history's loading drawing draws its bar on the bar kit — the page's six lenses and count phrase, its sort, Filters and three groups — no longer 56px short from lg
+
+R5-L's note for the integrator. The drawing drew the bar from typed boxes: row 1 four fixed pills (56/76/76/76) where the
+page has six lenses with counts and the count's phrase, row 2 a 180px sort box and a 104px Filters box where from `lg` the
+page lays its sort and the asset, duration and day groups (`history-bar.tsx`) on a row that wraps. Measured from the served
+fonts (S/r7/measure-history2.cts, R5-L's model extended to row 1): from lg row 2 is two lines in sw, en and zh against the
+drawing's one — the list landed 56px lower than promised — and row 1 one line, its pills now each the page's own width.
+
+- history-ghost.tsx: the bar kit (`query-bar-ghost.tsx`): the lens strip in `QUERY_STRIP_CLASS` (scrolling below lg,
+  wrapping from it) with the six lenses in `UD_LENSES`' order and `CountGhost`'s phrase (two digits' room); then
+  `SortGhost` (the default "most recent"), `FiltersGhost`, and the asset, duration and day groups behind the page's
+  `QueryGroupDivider`s, every word the page's, set and not shown. The groups hold the smallest player with rounds (R5-L's
+  model): "All" and one asset (the product's first, Bitcoin, in each language's name), "All" and one duration, the five
+  windows. Below lg the sort is the page's flexible cell, so a 320 phone's row stays one line.
+- visual-pass-r5l §7b: the lenses and windows read from `lensLabel`/`whenLabel` in their lists' order; the bar's parts in
+  `HistoryBar`'s order with three dividers and no typed box; rendered in sw, en and zh; a plant. Proof (S/r7/plant7b.cjs):
+  6 planted, 6 caught, restored byte-identical. r5j's count census classifies the phrase's "00" (a ghost shape).
+- R5-H 41/41, R5-J 26/26, R5-L 38/38 proofs; r5h, r5d, r4j, r5k, journey-tickets, journey-shell, measure and the census
+  suites green.
+Owed: a tile at 1024 and 1280 (and 320) of /updown/history's loading state beside its page.
+
+Classic viewers: the same drawing (both shells).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

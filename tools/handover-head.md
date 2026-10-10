@@ -1,4 +1,4 @@
-# S6 visual pass — the state, for resuming on any machine (updated 2026-10-10 ~03:55 EAT)
+# S6 visual pass — the state, for resuming on any machine (updated 2026-10-10 ~05:35 EAT)
 
 **Why this file exists.** Ali, 2026-10-09: *"push live everything you have in case later we proceed on another machine
 … not to keep anything locked on this machine and the next machine repeats it by accident"* and *"anything not done
@@ -64,12 +64,55 @@ Rounds 1–4 of the visual pass and the edge read, then round 5 and round 6:
   since main came in.)
 
 ## 3 · Waiting to merge
-Nothing.
+Nothing. **Named, not yet done** (R5-L's report names them for the integrator; each needs its own measurement and tile):
+1. **Done on `origin/vodacom-visual-history-bar` (`16ca3bed`, on `4b754b89`; proved statically — r5l §7b with 6/6 plants,
+   R5-H/R5-J/R5-L proofs; owed: a tile at 320, 1024 and 1280 beside the page, then merge it with the round-6 read's
+   fixes).** It was: `/updown/history`'s loading drawing drew its bar from typed boxes: row 1 four fixed pills where the page has six
+   lenses with counts and the count's phrase, and row 2 a 180px sort box (+ the phone's Filters) where from `lg` the page
+   lays its sort, the asset, duration and day groups (`history-bar.tsx` 190–215) on a row that takes two lines at `lg` in
+   every language even for a player with one asset — the ghost is 56px short there. Fix: the bar kit
+   (`components/ui/query-bar-ghost.tsx`: PillGhost, CountGhost, SortGhost, FiltersGhost, GroupGhost behind
+   `QueryGroupDivider`), as R5-L did for /markets and /results; the assets are admin rows, so the drawing needs a case
+   (one asset, measured from the served fonts — `S/r5l/measure-routes.cts`) and a tile at 1024 and 1280.
+2. **Done on the same branch (`6123d45c`; owed: tiles of /positions, /wallet and /wallet/receipts loading at 320 and 390), with
+   the money books' typed Filters box too and a census (r5l 9.3: no player drawing hand-draws a sort or a Filters box).**
+   It was: `/positions`' ghost (R5-K) drew row 2's sort inline (`text-body-sm tracking-normal`, no `w-full`, where MenuShell's
+   value is `kp-menu-value … text-[13px]`) and a typed 104px Filters box — fold them onto the kit's SortGhost,
+   FiltersGhost and GroupGhost (phone rows stay one line either way).
+3. **Done on the same branch (`2e58013d`; owed: `qa:count-truth`, `red:count-truth` and the player-filter drive in a lock
+   turn).** It was: `qa:count-truth` read the first `[data-result-count]` 220ms after load; /markets' bar ghost carries an empty one (the
+   phone grid's hook, globals.css ~7844), now also during document loads — the drive should select
+   `[data-result-count]:not([data-result-count=""])`.
+4. The root-level spinners (the journey's AnyPageGhost in route-ghost.tsx and the classic SectionLoader in
+   src/app/loading.tsx) still draw a 360px spinner block — R5-D's call whether a root ghost should draw a page.
+5. `/profile/invite`'s drawing is the player's page; an approved agent's page is the commission dashboard, a different
+   layout (its title is set and not shown since `422832b1`, so no false word — the bands still differ for agents).
+6. Admin console skeletons (FilterToolbarSkeleton in admin/ai-polls and admin/candidates, AudienceCountFallback in the
+   campaign audience card) — staff pages, lowest priority.
 
 ## 4 · How it goes live
 1. Done 2026-10-10 ~03:50 (§2). Owed to a long turn: `red:campaign-visuals` and `red:contacts-import` in full, and the
    database-backed red twins (`red:house-bot-engine`, `red:house-bot-money` on the branch, `red:house-bot-c5` once the
    branch is main).
+   **Turn A done on `4b754b89`** (2026-10-10 03:55–04:45 EAT, the lock held; `S/wm16a2-chain.sh`, results
+   `S/runs/wm16a2-*`): `prisma generate` 0; **typecheck 0 errors**; **test:all 500/507 green with every database suite**
+   (2,219 s). The seven, each re-run alone here and on main `e7a979c6`: `test:audit-drain` passes alone on both (one
+   timing assertion lost under the battery's parallel load); `test:revoked-deadend`, `test:admin-section-gate`,
+   `test:needle-rest` fail on both (they need a running dev server — the browser turns run them); `test:house-bot-console`
+   fails on both (main's own Postgres half, as `red:house-bot-console`); `test:orphans` fails on both;
+   `test:house-bot-disclosure` is the ONLY branch-only failure — its D19a pin (5.1, 5.1.c3) holds the legal chrome
+   (`legal/_components.tsx`, `legal-nav.tsx`) to main's bytes, and the pass changed that chrome's layout, not a published
+   word; it turns green when the branch becomes main. The red twins are not in this turn (see the line above).
+   **Turn B was running from 04:46 EAT** (`S/wm16b2-chain.sh`, the lock held, ~3 h: classic-shell parity — its baseline at
+   main `e7a979c6` captured 05:09 — then bar geometry with main as control, header fit, both seals, needle-rest, the font
+   probe, the preview drive, local `qa:live`, round 6's tiles into `S/visual/tiles-r6b2`). If this file still says
+   running, rerun it. ⚠️ Its parity compare REFUSED at 05:32 (A18: the merge `1e4586e5` brought 78 served files "from
+   elsewhere"). Verified: both merges' main sides (`9aa4eec2`, `e7a979c6`) are ancestors of the baseline commit
+   `e7a979c6`, so the baseline holds every file they brought and the tree differs from it only by the branch's own 317
+   served files — the case `--allow-base` exists for. Run `npm run qa:classic-shell-parity -- --compare
+   S/visual/parity-main-e7a979c6.json --allow-base` on a fresh in-memory server (a lock turn), then attribute every
+   difference to a named EXPECTED_DIFFS entry (never a re-baseline). Round 6's read then uses `S/visual/read-brief-r6-fixes.md` (being drafted) with diffs against
+   `tiles-r5` (`S/visual/tile-diff.cjs`).
 2. The final proof, in lock turns (`wm16a`–`wm16d` in the tools): typecheck + the whole battery with the database
    suites + every red twin the pass touches (the database-backed ones included); classic-shell parity against a
    baseline at the new base (named EXPECTED_DIFFS only, never a re-baseline — the sell confirm's free-window box and its

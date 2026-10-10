@@ -1,0 +1,99 @@
+02:09:34 lock not taken here (KP_NO_LOCK=1: the chain that runs this holds it)
+02:09:35 free memory: 14 GB
+02:09:36 start: kipindi-a8i2 at e7a979c61 on :3071
+02:09:53 server up after 2s
+02:09:59 routes warmed; running: env KP_TREE=F:/kipindi-a8i2 node F:/kipindi-a8i2-ctl/scripts/qa-classic-shell-parity.mjs --compare C:/Users/asheib/AppData/Local/Temp/claude/C--Users-asheib/0e745525-51fe-4451-ace7-c9987576fc15/scratchpad/visual/parity-main-e7a979c6.json
+qa:classic-shell-parity — compare — http://localhost:3071
+  tree F:/kipindi-a8i2 @ e7a979c6 (clean) · forks from origin/main at e7a979c6 · rollout STAFF_PREVIEW
+
+§0 · the base (S6-PLAN A18)
+  PASS 0.1 the baseline's e7a979c6 is an ancestor of HEAD e7a979c6, and no merge since it carried served files in
+  0 commit(s) since the baseline change a served file — each should be an S6 package; any other is another lane's change inside this compare:
+  Chromium 147.0.7727.15
+
+§1 · a guest
+  guest · en · 28 cells · 134s
+  guest · sw · 28 cells · 138s
+
+§1 · the demo player
+  PASS 1.player the demo player is signed in (a kp_session cookie in the jar)
+  player · en · 28 cells · 145s
+  player · sw · 28 cells · 145s
+
+§1 · the demo player under an officer's hold
+  PASS 1.held the demo player under an officer's hold is signed in (a kp_session cookie in the jar)
+  held · en · 28 cells · 145s
+  held · sw · 28 cells · 145s
+
+§1 · the demo player with an unconfirmed email
+  PASS 1.unverified the demo player with an unconfirmed email is signed in (a kp_session cookie in the jar)
+  unverified · en · 28 cells · 145s
+  unverified · sw · 28 cells · 145s
+
+§1s · the Sell button a classic holder is served (WP10): the demo player's open ticket, at 360/1280 × en/sw, and the classic confirm at 360 in the holder block
+  PASS 1.player the demo player is signed in (a kp_session cookie in the jar)
+  8 Sell cells · the last captured 45s after the seed (a default poll's free window is 5:00; §S.2 fails a cell that missed it)
+
+§2 · the population is what it claims
+  PASS 2.0 every cell was captured (224)
+  PASS 2.1 every cell rendered the shell — one header, one rail, one footer
+  PASS 2.2 every cell settled — two snapshots 700 ms apart agreed
+  PASS 2.3 no viewer carries a preview pass
+  PASS 2.4 no journey test id, flag or class anywhere in the page
+  PASS 2.5 the raw HTML was read, is the shell's, and carries no journey trace
+  PASS 2.6 the guest is a guest — /positions, /wallet and /profile land on the sign-in page
+  PASS 2.7 the signed-in viewers are signed in — none of those three lands anywhere else
+  PASS 2.8 the held viewer is held — no header deposit control at 1280, where the player has one
+  PASS 2.9 no viewer sees an email bar, in any cell — the bar is deleted (the owner's ruling of 2026-10-07), the unconfirmed email included
+  PASS 2.10 below 1024 the rail is among the fixed overlays — the census sees what is there
+  PASS 2.11 the signed-in viewers' /positions captured its page body
+  PASS 2.13 only React's DEV performance-track sentence is ever filed as DEV-only — every other page error is compared
+  PASS 2.12 the served files held still for the whole capture (checked after every viewer and language)
+
+§3 · /account, for a viewer the journey is not shown to, is the not-found page (A3 — every run)
+  PASS 3.0 the control path is a true 404 with a not-found body (32 of 32 pairs)
+  PASS 3.1 /account shows the not-found body (its main text is the control's)
+  PASS 3.2 …under the not-found title
+  PASS 3.3 …marked noindex
+  PASS 3.4 …with no journey test id, flag or class in the page
+  PASS 3.5 …and none in the bytes the server sent, where a streamed fallback would still be (G3)
+  PASS 3.6 no loading file of /account's own in the tree the server runs — the root loader is generic (A3)
+
+§S · the Sell button a classic holder is served (WP10 — every run that captures)
+  PASS S.0 the demo player was given an open ticket through the real money paths, and every Sell cell was captured (8)
+  PASS S.1 every Sell cell settled, answered 200 and stayed where it was sent: the holder is signed in
+  PASS S.2 every Sell cell was captured INSIDE the free window — one strip, its countdown read as m:ss, and one button — and each confirm cell holds one classic confirm, captured inside its quote hold (and no other cell holds one)
+  PASS S.3 no journey test id, flag or class in a Sell cell, in the page or in the bytes the server sent
+  PASS S.4 every Sell cell's first paint was captured in a page whose scripts were all held — nothing hydrated — and it holds the page's Sell button (S6 A8e)
+
+§4 · parity with the baseline (e7a979c6, captured 2026-10-10T02:09:31.488Z)
+  PASS 4.0 the same cells as the baseline — 224 vs 224
+  PASS 4.1 ⭐ no unexpected difference in 224 cells
+  PASS 4.2 each named difference is seen in all of its cells or in none
+  PASS 4.2b each measured difference is seen in all of its cells whenever the served change that causes it is seen
+  EXPECTED account-streams-200 — seen in 0 of 32 cell(s). S6 WP5 adds the /account hub, which calls notFound() for every request the journey is not shown to. The root loading.tsx has streamed by then, so Next answers the not-found BODY at HTTP 200 where an unmatched path is a true 404 (pre-deploy-live-check.mjs: a 200 is not a render). The body, the title, noindex and the absence of any journey trace are asserted on every run (§3); beside the status only the robots meta moves, and that is its own entry (account-robots-noindex).
+  EXPECTED account-robots-noindex — seen in 0 of 32 cell(s). S6 WP5 (A2): /account's own generateMetadata answers every request the journey is not shown to with the not-found page's title and robots noindex, nofollow. On a matched route that page metadata REPLACES the root layout's 'index, follow', and Next adds a noindex of its own only to a 404, so at HTTP 200 the bytes carry Next's not-found noindex plus the page's own noindex, nofollow (measured on the first compare after WP5: every /account cell) where an unmatched path sends the pair above. Still noindex for a crawler (§3.3 holds it on every run); the title is the same string (§3.2).
+  EXPECTED footer-rail-h — seen in 0 of 224 cell(s). S6 WP11: the footer's rail reserve names the token --rail-h (88px, globals.css) instead of the literal, so its class string moves in every cell while what it computes does not — footerPaddingBottom and scrollPaddingBottom are their own fields, compared in every cell, and must still be equal (88px below 1024; the footer 0px from 1024).
+  EXPECTED positions-empty-state — seen in 0 of 24 cell(s). The visual pass, in the shared EmptyState, for every player — and so in the signed-in viewers' classic /positions body, the one page body this harness captures. Three strings move and no word does: the briefcase drawing's frame starts at its ink (R3-C b8277778, INK_TOP in empty-state.tsx: viewBox 0 14 56 42 at 56x42 where it was 0 0 56 56 at 56x56, one unit to one pixel as before; React now writes the frame's three attributes first), so the ink opens 48px inside the dashed box, as the call to action closes 48px inside it (at 360 the handle's top stroke stood 62.25px under the box's inner top, and stands 48.25px under it now); the title takes G3's whole-word classes ([word-break:keep-all] [overflow-wrap:break-word]: Chinese breaks between words, never inside one); and the body takes them too, balanced (G3 95a8e2a5: text-balance, so a centred body never leaves one word under a full line). In all 24 signed-in /positions cells, en and sw alike. Served but captured by no field: where the body's two lines at 360 break, which balancing may move while its box stays 230x42.5 (measured), and the same frame and classes on every other EmptyState a classic player meets.
+  EXPECTED positions-empty-state-layout-en — seen in 0 of 12 cell(s). The boxes the drawing's new frame draws in the 12 English /positions cells (the 3 signed-in viewers at 4 widths), measured (above): the drawing's wrapper and its svg 14px shorter (56x56 to 56x42); the five shapes inside 14px higher, since the frame now starts 14 units down; the title, the body, the call to action's row and its link 14px higher; and the empty state's dashed box, the page container and the wrapper above it 14px shorter (that wrapper, main>div0, 504.5 to 490.5 at 360 and 464 to 450 from 768; <main> itself, which fills the window, keeps its box). No x, no width and no computed style moves — the harness records no text-wrap, word-break or overflow-wrap, so G3's classes draw no signature, and the title and body keep their boxes (one line each from 768; at 360 the body's two). The call to action's link is the one line that differs by language — 142.5px wide here, 143 in Swahili — so Swahili has its own entry.
+  EXPECTED positions-empty-state-layout-sw — seen in 0 of 12 cell(s). The boxes the drawing's new frame draws in the 12 Swahili /positions cells (the 3 signed-in viewers at 4 widths), measured (above): the same 13 lines at each width as in English — the drawing 14px shorter, its shapes and everything under it 14px higher, the dashed box, the page container and the wrapper above it 14px shorter — and the call to action's link, 143px wide in Swahili (142.5 in English), 14px higher. No x, no width and no computed style moves.
+  PASS 4.3 the same Sell cells as the baseline — 8 vs 8
+  PASS 4.4 ⭐ no unexpected difference in the 8 Sell cells: a classic holder is sold to by today's Sell button and confirm
+  PASS 4.4f ⭐ every Sell cell's first paint (every script held, nothing hydrated) is the baseline's own first paint or — in all of its cells or none — sell-first-paint, the baseline's Sell button as the browser drew it — 8 of 8 compared · same 8
+  NAMED sell-first-paint — seen in 0 of 8 Sell cell(s). S6 A8e: the Sell button's countdown starts at the time its instant had left at the server's own render, so the server paints the arm the browser then draws. Inside the free window that is the strip (its countdown the server's m:ss) and the free button, 'Toka bila gharama · TZS {stake} · pesa yote', where the server painted 'Uza sasa · TZS {stake} −0 ada' with no strip until the page had started on the phone (the A8b drive saw that picture on a Back restore; on a slow phone it lasts seconds, and the strip then pushed the button down). Every Sell cell captures its first paint with the page's scripts held (S.4). Against a baseline captured before first paints were (the v2 file), each first paint must be the baseline's Sell button as the browser drew it; against a baseline with first paints of its own, the same first paint is the same, and A8e's change is this transition. The first paint before A8e, and a strip whose note the server writes as two texts, differ (P.5f).
+  EXPECTED sell-positions-wrap — seen in 0 of 4 Sell cell(s). S6 A8g, carrying S6 A8b's two pairs (named sell-narrow-phone until A8d and A8g split them by place): every host that does not ask for the stack is drawn the wrap class, so /positions' Sell button carries kp-sell-wrap at every width beside A8b's free-note classes (below 360 the free note is left out — the strip above already says there is no fee — so the free row fits a 320 phone; each entry is matched alone against the baseline, so this one carries those pairs too). The rule is phone-only (globals.css, below 640): at 1280 every box and computed style is as before (regions.button.layout, compared there); at 360 the figure becomes a wrapping row whose note sits the same 8px from the figure while the row fits — its styles move, which sell-positions-wrap-layout-en and -sw name, measured — and goes under the figure where one line cannot hold both (the Swahili free row for TZS 1,000,000 from 360px — to 376px with the label as this baseline measured it, to 383px by the static model, whose label is an upper bound and which also runs a six-figure stake over to 366px — and a Chinese legacy paid row with a six-figure fee at 320 to 324px; the seeded TZS 1,500 row fits, so no captured cell wraps). Served but captured by no field: the stylesheet's second phone block (two rules, matching only .kp-sell-wrap), and on a phone, for those big rows, the note under the figure (VODACOM-PLAN §0i A8g).
+  EXPECTED sell-holder-stack — seen in 0 of 4 Sell cell(s). S6 A8d: the question page's holder block asks for the stacked phone row (stackOnPhone), so its Sell button carries the class kp-sell-stack at every width, beside A8b's two free-note pairs (each entry is matched alone against the baseline, so this one carries them too). The rule is phone-only (globals.css, below 640): at 1280 every box and computed style is as before (regions.button.layout, compared there), and at 360 the layout change is named and measured in sell-holder-stack-layout-en and -sw. Served but captured by no field: stackOnPhone in the holder block's RSC props, the stylesheet's phone block (four rules, matching only .kp-sell-stack) and, below 640, each open ticket's row 12px taller, so what sits below it moves down by that (VODACOM-PLAN §0i A8d).
+  EXPECTED sell-holder-stack-layout-en — seen in 0 of 1 Sell cell(s). S6 A8d: below 640 the holder block's Sell button stacks — the --h-control-xl rung (244x44 becomes 244x56), the label on one centred line, the figure and its note centred on the next. The v2 baseline measured this one-line row 14px past the button's content in English (the Swahili cell has its own entry). The `to` is this cell's layout as the first compare after A8d measured it, copied from that compare's .current.json and named exactly (A3), never re-baselined.
+  EXPECTED sell-holder-stack-layout-sw — seen in 0 of 1 Sell cell(s). S6 A8d: below 640 the holder block's Sell button stacks — the --h-control-xl rung (244x44 becomes 244x56), the label on one centred line, the figure and its note centred on the next. The v2 baseline measured this one-line row 67px past the button's content and 50px past its edge in Swahili (the English cell has its own entry). The `to` is this cell's layout as the first compare after A8d measured it, copied from that compare's .current.json and named exactly (A3), never re-baselined.
+  EXPECTED sell-positions-wrap-layout-en — seen in 0 of 1 Sell cell(s). S6 A8g: below 640 the /positions Sell button's figure is a wrapping flex row — display flex, wrap, its lines at the right end on one baseline, an 8px column gap where the note's own 8px margin was — so the figure's and the note's computed styles move, and the note's box becomes a flex item's (its line's 16.5px height, where it was an inline box), while every glyph stays where it was: the seeded TZS 1,500 row fits on one line, so nothing wraps in this cell (the Swahili cell has its own entry). The `to` is this cell's layout as the first compare after A8g measured it, copied from that compare's .current.json and named exactly (A3), never re-baselined.
+  EXPECTED sell-positions-wrap-layout-sw — seen in 0 of 1 Sell cell(s). S6 A8g: below 640 the /positions Sell button's figure is a wrapping flex row — display flex, wrap, its lines at the right end on one baseline, an 8px column gap where the note's own 8px margin was — so the figure's and the note's computed styles move, and the note's box becomes a flex item's (its line's 16.5px height, where it was an inline box), while every glyph stays where it was: the seeded TZS 1,500 row fits on one line in Swahili too, so nothing wraps in this cell (the English cell has its own entry). The `to` is this cell's layout as the first compare after A8g measured it, copied from that compare's .current.json and named exactly (A3), never re-baselined.
+  EXPECTED sell-strip-whole — seen in 0 of 8 Sell cell(s). S6 A8g: the free strip above the Sell button keeps each of its three parts whole and wraps only between them — it becomes a wrapping row (flex-wrap: a part that cannot share a line moves to the next one whole), its one gap split into 8px between parts and 2px between lines — on both hosts, in every Sell cell. Its words, figures and look are as before; in the holder block at 360 in Swahili, where its parts broke inside (TOKA BILA over GHARAMA, · Hakuna over ada), they now read TOKA BILA GHARAMA m:ss over · Hakuna ada, each whole (sell-strip-whole-layout). Served but captured by no field: in the holder block in Swahili the strip takes those two whole lines from 320 to 376px, and to 382px while its countdown reads ten minutes or more — 42px tall, where the squeezed strip it replaces measured 40 at 360 — so its ticket row there is 2px taller (VODACOM-PLAN §0i A8g).
+  EXPECTED sell-strip-whole-layout — seen in 0 of 8 Sell cell(s). S6 A8g: the boxes and computed styles the strip's classes draw, predicted from the v2 baseline's own capture: in every Sell cell the strip's signature moves by flex-wrap (wrap) and gap (2px 8px), its parts' not at all — the new id re-derived as the harness writes one, the first 12 hex digits of the sha1 of the signature text, the method checked against every id the baseline holds; and in the one cell whose Swahili parts no longer share a line (the holder block at 360) the strip grows 2px (40 to 42), the free word and the countdown sit whole on its first line and the note whole on its second, 2px below. Any other box or style is still a failure, read from its capture and never re-baselined (A3).
+  EXPECTED sell-confirm-whole-figure — seen in 0 of 2 Sell cell(s). S6 A8f: the classic confirm's money figure is one object and its receive row reflows (test:sell-grace-truth §6). The figure under 'Utapokea' is an amount, so it can no longer break between 'TZS' and '1,500' (a browser drew that in Swahili at 360 and 390); the row wraps when the fee column cannot share its line; alone on its line the fee column grows to the box's width, its words at the right edge; and the fee keeps a 16px clear space before it, so two figures never run together. Four class strings in each of the 2 confirm cells; no word moves.
+  EXPECTED sell-confirm-receive-boxes — seen in 0 of 2 Sell cell(s). S6 A8f: the boxes and computed styles the classes above draw in the 2 confirm cells, predicted from the v2 baseline's capture and §6's model. English, a free TZS 1,500 at 360, keeps its one line (2.8px to spare): every box stays where it was but the fee column, which now grows over the free space (191.5 wide 106.5, was 194.5 wide 103.5; its words right-aligned exactly as before), and the styles move by the row's flex-wrap and row gap, the figure's amount face and nowrap, the column's flex-grow and the fee's 16px padding. Swahili, whose figure split, now wraps: the figure whole on its line (129.5 wide, 24 high), the fee column below it at the row's width, the box 40px taller, so the centred dialog grows 40px — its top 20px higher, its auto margins 20px smaller — and everything after the box moves 20px down.
+  PASS 4.5 each named Sell difference is seen in all of its cells or in none
+  PASS 4.6 each measured Sell difference is seen in all of its cells whenever the served change that causes it is seen
+
+40/40 passed — compare · tree e7a979c6 · 1257s
+02:30:58 command exit=0
+02:31:00 server stopped (left: 0)

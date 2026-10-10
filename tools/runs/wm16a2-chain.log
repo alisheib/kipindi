@@ -1,0 +1,18 @@
+00:55:10 queued: wait note written
+00:55:10 lock taken
+00:55:11 kipindi-a8i2-ctl at 4b754b8983f63bc1b9d8fba6b1d30faa662491ec (the merged tip, on main e7a979c61)
+00:55:17 prisma generate exit=0
+00:55:54 typecheck exit=0 — 0 error(s)
+01:32:57 battery exit=1 —   500/507 green · 2219.4s total   FAILED: test:audit-drain, test:revoked-deadend, test:admin-section-gate, test:needle-rest, test:house-bot-console, test:house-bot-disclosure, test:orphans 
+01:32:57   'gave no reason': 0 · fingerprint after: 8c0fa0db9851
+01:33:25 the battery's control: 7 suite(s), alone here and on main e7a979c61 (ready: 1)
+01:33:35   test:audit-drain alone: visual exit=0 · main exit=0
+01:35:23   test:revoked-deadend alone: visual exit=1 · main exit=1
+01:37:01   test:admin-section-gate alone: visual exit=1 · main exit=1
+01:38:39   test:needle-rest alone: visual exit=1 · main exit=1
+01:43:31   test:house-bot-console alone: visual exit=1 · main exit=1
+01:44:49   test:house-bot-disclosure alone: visual exit=4 · main exit=0   ⛔ THE BRANCH ONLY
+01:45:12   test:orphans alone: visual exit=1 · main exit=1
+01:45:12 tree after: 
+01:45:12 chain end
+01:45:12 lock released

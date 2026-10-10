@@ -1,0 +1,10 @@
+test(qa): the count-truth and player-filter drives read a count with a value, never a loading drawing's empty data-result-count hook
+
+R5-L's note for the integrator. /markets' bar drawing carries an empty `data-result-count` (the phone grid's hook,
+globals.css), now also during document loads while the board streams in, and both drives read the FIRST match a moment
+after load — so `qa:count-truth` could read "" (Number("") = 0) and the player-filter drive "" as the page's promise. Both
+select `[data-result-count]:not([data-result-count=""])`; `red:count-truth` already required digits.
+Static readers green (red-anchors, filter-language, visual-pass-r5f). Owed: `qa:count-truth`, `red:count-truth` and the
+player-filter drive in a lock turn with a dev server.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
