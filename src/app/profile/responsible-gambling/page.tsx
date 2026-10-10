@@ -134,8 +134,9 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           the 12.5px reading floor (`test:type-scale` §3). It takes the kit's `md` rung, the standing page-level notice:
           `text-body-sm`, 13px, in the same box family. The end is said by the one formatter (`formatBreakEnd`) and kept one
           run, and the Chinese sentence no longer leaves "现。" alone on its last line (`keepText`).
-          ⭐ NEUTRAL, NOT WARNING (R4-K's gold audit, the same day): the warning tone is struck in gilt (`--warning-fg` IS
-          `--gilt`, DESIGN_AUTHORITY F3) and a running break has earned nothing — the neutral box, each with its own
+          ⭐ NEUTRAL, NOT WARNING (R4-K's gold audit, the same day): the warning tone was struck in gilt (`--warning-fg`
+          WAS `--gilt`, DESIGN_AUTHORITY F3, until Ali's ruling (1) of 2026-10-10 made it amber) and a running break has
+          earned nothing — nor asks anyone to act, which is what amber means (§B11) — the neutral box, each with its own
           section's glyph (the break's pause, the exclusion's lock). */}
       {rg.selfExclusionUntil && Date.parse(rg.selfExclusionUntil) > Date.now() ? (
         <Callout tone="neutral" size="md" glyph="lock">{endSentence(t.rg.exclusionActive, rg.selfExclusionUntil)}</Callout>
@@ -176,9 +177,11 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           {/* text-balance (round 3, 2026-10-09, tile 179): the link stood alone on line 2, "Msaada wa kimataifa kupitia" /
               "begambleaware.org.". Balanced it reads "Msaada wa kimataifa" / "kupitia begambleaware.org." (en
               "International support" / "at begambleaware.org."). Only the wrap changes; the words and the link do not. */}
+          {/* The link in the link blue, hover included (Ali's ruling (2) of 2026-10-10, §B4c): it took the box's success ink,
+              a state's colour on a link; the words, the address and the box are unchanged. */}
           <p className="mt-1 text-body-sm text-text-muted leading-snug text-balance">
             {/* ⛔ No helpline line since the owner's ruling of 2026-10-06 (docs/COMPLIANCE-DECISIONS.md). */}
-            {t.rg.intlSupport}{" "}<a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-success-fg underline underline-offset-2">begambleaware.org</a>.
+            {t.rg.intlSupport}{" "}<a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-brand-300 hover:text-brand-200 underline underline-offset-2">begambleaware.org</a>.
           </p>
         </div>
       </section>
@@ -196,8 +199,9 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
         </p>
         {/* ⭐ THE NEUTRAL NOTICE, AT READING SIZE (R5-C, the second gold audit, 2026-10-09). The last RG notice on this page
             still wore the warning box — `--warning-*` fill and edge, a warning triangle — at 12px, under the 12.5px floor.
-            A limit change waiting out its cooling-off asks nothing of anyone and has earned nothing: the warning tone is
-            struck in gilt (`--warning-fg` IS `--gilt`, DESIGN_AUTHORITY F3; Q5), and §B11 keeps amber for "somebody must
+            A limit change waiting out its cooling-off asks nothing of anyone and has earned nothing: the warning tone was
+            struck in gilt (`--warning-fg` WAS `--gilt`, DESIGN_AUTHORITY F3; Q5 — amber since Ali's ruling (1) of
+            2026-10-10), and §B11 keeps amber for "somebody must
             act". It is R4-I's RG notice now, as the break and the exclusion above: the kit `Callout`, `neutral`, `md`
             (13px), with the clock that says it is waiting. The words, the date and their order are unchanged. */}
         {hasPendingIncrease && (

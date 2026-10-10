@@ -79,20 +79,24 @@ export const MUTATIONS = [
   },
   {
     name: "share-hover-is-details-colour",
-    why: "\U0001f534 THE DEFECT ALI FOUND, RESTORED EXACTLY: share's hover goes back to `var(--accent-400)`, which is what `.mcardp-details` RESTS at — so on hover the glyph becomes precisely the colour of the link beside it in the same 17px row and the two controls read as one. Nothing about geometry, naming or hit area changes, so every other section of this suite stays green",
+    // R8-A (2026-10-10): Details RESTS at the link blue now (Ali's ruling (2), every link is blue), so the defect restored
+    // exactly is share's hover in `var(--brand-300)` — it was `var(--accent-400)` while Details rested in aqua.
+    why: "\U0001f534 THE DEFECT ALI FOUND, RESTORED EXACTLY: share's hover goes to `var(--brand-300)`, which is what `.mcardp-details` RESTS at (since 2026-10-10 — it was `var(--accent-400)` while Details was aqua) — so on hover the glyph becomes precisely the colour of the link beside it in the same 17px row and the two controls read as one. Nothing about geometry, naming or hit area changes, so every other section of this suite stays green",
     file: CSS,
     suite: "card-share",
     from: `  color: var(--text);\n  filter: drop-shadow(0 0 5px color-mix(in oklab, var(--royal-300) 55%, transparent));`,
-    to: `  color: var(--accent-400);`,
+    to: `  color: var(--brand-300);`,
     expect: "6: \u{1F534} share's HOVER colour is not Details' colour",
   },
   {
     name: "share-hover-aqua-fake-fix",
-    why: "\u2b50 THE PLAUSIBLE WRONG FIX, and the reason §6 resolves VALUES instead of comparing token names. `--aqua-400` and `--accent-400` are both `oklch(72% 0.110 195)` — the identical colour under two names — so this renames the defect and changes nothing a player can see. A name comparison would print PASS over a card that has not moved one pixel",
+    // R8-A (2026-10-10): the same colour under another name is `--text-link` now — it names `--brand-300`, Details' rest ink
+    // since Ali's ruling (2) (it was `--aqua-400` beside `--accent-400`, both `oklch(72% 0.110 195)`, while Details was aqua).
+    why: "\u2b50 THE PLAUSIBLE WRONG FIX, and the reason §6 resolves VALUES instead of comparing token names. `--text-link` IS `--brand-300` (globals.css, since 2026-10-10) — the identical colour under two names — so this renames the defect and changes nothing a player can see. A name comparison would print PASS over a card that has not moved one pixel",
     file: CSS,
     suite: "card-share",
     from: `  color: var(--text);\n  filter: drop-shadow(0 0 5px color-mix(in oklab, var(--royal-300) 55%, transparent));`,
-    to: `  color: var(--aqua-400);`,
+    to: `  color: var(--text-link);`,
     expect: "6: \u{1F534} share's HOVER colour is not Details' colour",
   },
   {

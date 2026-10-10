@@ -160,7 +160,8 @@ export default async function LoginPage({
     // same break — the limits page's Callout, /wallet/deposit's paused notice, the home's held box, the Wallet sheet (R4-I:
     // "every RG notice the neutral treatment"). It was this panel's amber `warning`, which the gold census rules "a
     // refusal the player can fix" — and nothing here is refused (sign-in goes on) or can be fixed (a break cannot be
-    // shortened); the amber is struck in gilt besides (F3). The words are unchanged. The exclusion panels above stay
+    // shortened); the amber was struck in gilt besides (F3, until Ali's ruling (1) of 2026-10-10 made it amber). The words
+    // are unchanged. The exclusion panels above stay
     // `danger`: each refuses the sign-in itself, a hard block the player cannot clear (R5-I's ranking).
     if (sp.cooled === "1") return {
       tone: "neutral" as const,
@@ -309,18 +310,20 @@ export default async function LoginPage({
                     ⚠️ `SUPPORT_PHONE()` is what a player READS and `SUPPORT_PHONE_TEL()`
                     is what the tap DIALS — two facts, deliberately, so the same row works
                     from a Tanzanian handset and from abroad. */}
+                {/* The two in the link blue, hover included, the ink of the panel's own CTA below (Ali's ruling (2) of
+                    2026-10-10, §B4c) — they wore the sentence's muted ink with an underline, a third link ink. */}
                 {errorPanel.contact && (
                   <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-text-muted">
                     <a
                       href={`tel:${SUPPORT_PHONE_TEL()}`}
-                      className="inline-flex items-center gap-1.5 underline underline-offset-2 hover:text-text"
+                      className="inline-flex items-center gap-1.5 text-brand-300 underline underline-offset-2 hover:text-brand-200"
                     >
                       <I.phone s={13} aria-hidden />
                       {SUPPORT_PHONE()}
                     </a>
                     <a
                       href={`mailto:${SUPPORT_EMAIL()}`}
-                      className="inline-flex items-center gap-1.5 underline underline-offset-2 hover:text-text break-all"
+                      className="inline-flex items-center gap-1.5 text-brand-300 underline underline-offset-2 hover:text-brand-200 break-all"
                     >
                       <I.mail s={13} aria-hidden />
                       {SUPPORT_EMAIL()}

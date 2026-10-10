@@ -682,20 +682,36 @@ section("6 · composition only: the dictionary is the tip's, byte for byte; the 
   try { head = execFileSync("git", ["show", "HEAD:src/lib/i18n-dict.ts"], { encoding: "utf8", maxBuffer: 64 << 20 }).replace(/\r\n/g, "\n"); } catch { head = "‹git unavailable›"; }
   ok("6.1 · src/lib/i18n-dict.ts is the commit's own (every word above is an existing key)", head === raw("src/lib/i18n-dict.ts"));
   const frozen = ["src/components/layout/top-app-bar.tsx", "src/components/layout/bottom-nav.tsx", "src/components/layout/live-ticker.tsx", "src/components/layout/nav-more.tsx", "src/components/layout/notifications-panel.tsx", "src/components/layout/wallet-balance-pill.tsx"];
-  // RE-PINNED 2026-10-10 (round 8, R8-B): Ali's ruling (3) — every small heading inside a page in the one section ink —
-  // reaches the classic bell's panel: its title ("NOTIFICATIONS", a section head) takes `--text-subtle`, where it was the
-  // text's white. That ONE named swap is the difference accepted here (the integrator registers it as a classic-parity
-  // EXPECTED_DIFF): HEAD's text with the swap applied must equal the tree's, so any other edit to the bell still fails, and
-  // once the round is committed the swap finds nothing and the check is byte for byte again.
+  // RE-PINNED 2026-10-10 (round 8): two of Ali's rulings of the day reach the classic bell's panel, each a NAMED swap,
+  // never a re-baseline. R8-B, ruling (3): the panel's title ("NOTIFICATIONS", a section head) takes `--text-subtle`
+  // where it was the text's white. R8-A, ruling (2): its See all link leaves the retired aqua for the link blue (one
+  // panel serves both bells). HEAD's text with the swaps applied must equal the tree's, so any other edit to the bell
+  // still fails (6.2'); once the round is committed the swaps find nothing and the check is byte for byte again. The
+  // integrator registers the title as the classic-parity EXPECTED_DIFF bell-panel-title-ink (the panel is portaled only
+  // while open, so a closed-header capture sees neither).
   const EXPECTED_SWAPS: Record<string, Array<[string, string]>> = {
-    "src/components/layout/notifications-panel.tsx": [["uppercase eyebrow text-text min-w-0 truncate", "uppercase eyebrow text-text-subtle min-w-0 truncate"]],
+    "src/components/layout/notifications-panel.tsx": [
+      ["uppercase eyebrow text-text min-w-0 truncate", "uppercase eyebrow text-text-subtle min-w-0 truncate"],
+      ["font-mono text-micro font-bold uppercase text-accent-400 hover:text-text hover:bg-bg-overlay transition-colors whitespace-nowrap", "font-mono text-micro font-bold uppercase text-brand-300 hover:text-brand-200 hover:bg-bg-overlay transition-colors whitespace-nowrap"],
+    ],
   };
+  const named = (f: string, was: string) => (EXPECTED_SWAPS[f] ?? []).reduce((s, [a, b]) => s.replace(a, b), was);
   const changed = frozen.filter((f) => {
     let was = "";
     try { was = execFileSync("git", ["show", `HEAD:${f}`], { encoding: "utf8", maxBuffer: 64 << 20 }).replace(/\r\n/g, "\n"); } catch { was = "‹git unavailable›"; }
-    return (EXPECTED_SWAPS[f] ?? []).reduce((s, [a, b]) => s.replace(a, b), was) !== raw(f);
+    return named(f, was) !== raw(f);
   });
-  ok("6.2 · the classic header, rail, ticker, More menu, bell and capsule are the commit's own, byte for byte (the bell's one named round-8 swap aside: its title in the one section ink)", changed.length === 0, j(changed));
+  ok("6.2 · the classic header, rail, ticker, More menu, bell and capsule are the commit's own, byte for byte (round 8's two named swaps in the bell aside: its title in the one section ink, its See all in the link blue)", changed.length === 0, j(changed));
+  {
+    const BELL = "src/components/layout/notifications-panel.tsx";
+    let bellWas = "";
+    try { bellWas = execFileSync("git", ["show", `HEAD:${BELL}`], { encoding: "utf8", maxBuffer: 64 << 20 }).replace(/\r\n/g, "\n"); } catch { bellWas = "‹git unavailable›"; }
+    const bellNow = raw(BELL);
+    // A change ELSEWHERE in the classic bell: the classic row title's leading (r6c 12.3's own byte-pinned string).
+    const elsewhere = bellNow.replace('"font-display text-body-sm font-semibold text-text truncate leading-tight"', '"font-display text-body-sm font-semibold text-text truncate leading-snug"');
+    ok("6.2′ PLANT · the swaps are hunk-exact: the bell equals the commit with them applied, and one change ELSEWHERE in it still fails",
+      named(BELL, bellWas) === bellNow && elsewhere !== bellNow && named(BELL, bellWas) !== elsewhere);
+  }
   // The two shared files this round touched carry the journey's class in the journey arm only.
   const { PublicFooter } = req("../src/components/layout/public-footer.tsx") as { PublicFooter: unknown };
   const props = { proposalsState: "COMING_SOON", agentDoorVisible: true, inviteVisible: true, supportEmail: "d@x.t", supportPhone: "0", supportPhoneTel: "+0" };

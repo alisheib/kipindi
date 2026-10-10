@@ -116,7 +116,8 @@ export async function AgentDashboard({
         <p className="font-display text-title-md font-bold leading-none">{t.agent.dashTitle}</p>
         {/* ⭐ A PAUSED AGENT READS THE DICTIONARY (R5-C, the second gold audit, 2026-10-09): `DEACTIVATED` is slate to the
             agent — "inert, nothing to do" (§B11) — and it was the gilt-family `warning` chip and callout, whose
-            `--warning-fg` IS `--gilt` (F3). The callout is the neutral box for the same reason. */}
+            `--warning-fg` was then `--gilt` (F3; amber since Ali's ruling (1) of 2026-10-10). The callout is the neutral
+            box for the same reason. */}
         {dash.active ? <VerifiedAgentBadge label={t.agent.verifiedBadge} /> : <Chip variant={playerStatusChip("DEACTIVATED") ?? "neutral"}>{t.agent.dashPaused}</Chip>}
       </div>
 

@@ -102,9 +102,15 @@ const variantStyle: Record<Variant, React.CSSProperties> = {
   live:      { background: "oklch(55% 0.20 25 / 0.30)",                    color: "oklch(96% 0.04 25)", borderColor: "oklch(62% 0.20 25 / 0.6)" },
   resolved:  { background: "linear-gradient(180deg, var(--gold-300), var(--gold-500))", color: "oklch(24% 0.06 80)", borderColor: "oklch(60% 0.10 78)" },
   pending:   { background: "oklch(54% 0.165 262 / 0.26)",                  color: "var(--brand-300)",   borderColor: "oklch(63% 0.18 262 / 0.55)" },
-  paused:    { background: "oklch(72% 0.13 80 / 0.18)",                    color: "oklch(82% 0.16 80)", borderColor: "oklch(80% 0.13 80 / 0.4)" },
+  /* ⭐ THE AMBER PAIR READS ITS FAMILY — Ali's ruling (1) of 2026-10-10, "warnings are amber, not gold". `paused` and
+   * `warning` hand-typed their own ink at hue 80, the gold ramp's neighbour (`oklch(82% 0.16 80)` on a hue-80 fill), so
+   * an amber word on a chip was a gold word. Both now mix the warning stop and take the family's ink, as `success` reads
+   * its trio — and so a word reads one amber whether it is this chip or `TONE_INK.amber` (`text-warning-fg`) printed as
+   * text (status-tone.ts), which the hand-typed ink did not. Each keeps its own weight: `warning` the 22% fill and 50%
+   * edge, `paused` the quieter 18% and 40%. */
+  paused:    { background: "color-mix(in oklab, var(--warning-500) 18%, transparent)", color: "var(--warning-fg)", borderColor: "color-mix(in oklab, var(--warning-500) 40%, transparent)" },
   claret:    { background: "var(--claret-soft)",                            color: "var(--claret-200)",  borderColor: "var(--claret-edge)" },
-  warning:   { background: "oklch(72% 0.13 80 / 0.22)",                    color: "oklch(82% 0.16 80)", borderColor: "oklch(80% 0.13 80 / 0.5)" },
+  warning:   { background: "color-mix(in oklab, var(--warning-500) 22%, transparent)", color: "var(--warning-fg)", borderColor: "color-mix(in oklab, var(--warning-500) 50%, transparent)" },
   danger:    { background: "oklch(55% 0.20 25 / 0.22)",                    color: "oklch(80% 0.18 25)", borderColor: "oklch(62% 0.20 25 / 0.5)" },
   info:      { background: "oklch(54% 0.165 262 / 0.22)",                  color: "oklch(78% 0.13 240)",borderColor: "oklch(63% 0.18 262 / 0.5)" },
   /* Ported from `.chip-signal` — the tipping-point flag. Base metrics: the CSS

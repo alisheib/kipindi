@@ -279,7 +279,9 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                       <I.mail s={14} />
                       {t.kycGate.ctaSupport}
                     </a>
-                    <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-body-sm text-text-muted underline underline-offset-2 select-all">{SUPPORT_EMAIL()}</a>
+                    {/* The link blue, hover included, as this page's other address is (Ali's ruling (2) of 2026-10-10,
+                        §B4c) — it was the muted ink. */}
+                    <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-body-sm text-brand-300 hover:text-brand-200 underline underline-offset-2 select-all">{SUPPORT_EMAIL()}</a>
                   </div>
                 </div>
               ) : (
@@ -295,7 +297,8 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       {/* ⭐ "MORE INFORMATION NEEDED" IS THE AMBER FAMILY, NOT THE MONEY RAMP (R5-C, the second gold audit, 2026-10-09).
           §B11 decides this word once — `ADDITIONAL_INFO_REQUIRED` is player amber: the applicant must act — and amber is
           the `--warning-*` family. This box was `--gold-700`/`--gold-500`/`--gold-300`, the tokens money owns (Q5). It
-          still reads warm while `--warning-fg` IS `--gilt`; that token is the owner's to re-hue (F3). */}
+          still read warm while `--warning-fg` was `--gilt`; the owner re-hued the family on 2026-10-10 (Ali's ruling (1):
+          warnings are amber, not gold), so the box is amber now. */}
       {needsInfo && (
         <section role="status" className="rounded-xl border border-warning-border bg-warning-bg p-4 lg:p-5">
           <div className="flex items-start gap-3">

@@ -556,9 +556,13 @@ section("10 · C9 every player dialog's ✕ is ruled — on its title, in its he
 }
 
 /* ══ §11 · C3 · THE GOLD CENSUS COUNTS THE WARNING FAMILY ═════════════════════════════════════════════════════════════ */
-section("11 · C3 the gold census (R5-C's) counts the warning family in every spelling, and every file that paints it is ruled");
+section("11 · C3 the warning census counts the family in every spelling, and every file that paints it is ruled");
 {
-  const r5c = raw("scripts/visual-pass-r5c.test.mts");
+  // ⭐ R8-A (2026-10-10): re-pointed. Ali's ruling (1) made the warning family AMBER (hue 64), so it LEFT R5-C's gold census
+  // (its own hue rule, 70–100, no longer calls it gold) and moved, whole and with its rulings, to the WARNING census of
+  // `test:visual-pass-r8a` §3. C3's question is unchanged — does the census see every spelling, and is every file ruled? —
+  // so it reads that census's patterns and registry now, the same way it read R5-C's.
+  const r5c = raw("scripts/visual-pass-r8a.test.mts");
   const lit = (kind: string) => {
     const m = new RegExp(`push\\("${kind}", /(.+)/g\\);`).exec(r5c);
     return m ? new RegExp(m[1], "g") : /$^/g;
@@ -572,12 +576,20 @@ section("11 · C3 the gold census (R5-C's) counts the warning family in every sp
     return src.split("\n").flatMap((ln, i) => [...ln.matchAll(WARN)].filter((m) => ![...ln.matchAll(V), ...ln.matchAll(T)].some((c) => (c.index ?? 0) <= (m.index ?? 0) && (m.index ?? 0) < (c.index ?? 0) + c[0].length)).map((m) => `${f}:${i + 1}:${m[0]}`));
   });
   const missed = missedBy(VAR, TWR);
-  ok(`11.1 · the census's two patterns (read from R5-C's suite) cover every warning-family paint in player code — \`--warning\`, \`-500\`, \`-bg\`, \`-border\`, as variables and as utilities`, missed.length === 0, missed.slice(0, 6).join(" | "));
+  ok(`11.1 · the census's two patterns (read from R8-A's warning census, R5-C's until 2026-10-10) cover every warning-family paint in player code — \`--warning\`, \`-500\`, \`-bg\`, \`-border\`, as variables and as utilities`,
+    VAR.source.includes("warning") && missed.length === 0, missed.slice(0, 6).join(" | "));
   const old = missedBy(/var\(\s*--warning-fg\s*[,)]/g, /(?<![\w-])(?:[a-z0-9-]+:)*(?:text|bg|border(?:-[tblrxyse])?|ring|fill|stroke|from|via|to|shadow|outline|decoration|accent|caret|divide|placeholder)-warning-fg(?:\/[\w.[\]]+)?(?![\w-])/g);
-  ok(`11.2 PLANT · the census as it stood (\`--warning-fg\` alone) misses ${old.length} of them — the review's 61`, old.length === 61, String(old.length));
-  const NEW = ["src/app/auth/forgot-password/page.tsx", "src/app/profile/account/privacy-request-form.tsx", "src/components/rg/limit-usage.tsx", "src/components/ui/maintenance-badge.tsx"];
-  ok("11.3 · the four files the census now sees are registered, each with its ruling (a rate-limit wait, an erasure's caution, the one limit ramp's caution step, the maintenance flag)",
-    NEW.every((f) => new RegExp(`"${f.replace(/[.[\]]/g, "\\$&")}": \\[\\d+, "[^"]{20,}"\\]`).test(r5c)));
+  // R8-A (2026-10-10): 61 when the review counted; the amber re-hue moved the tree by +6 (the chip's `warning`/`paused`
+  // read the stop now — four `var(--warning-500)` mixes — and the toast's bar and rail are `bg-warning`) and −4 (four
+  // words and glyphs left the stop for the ink: the maintenance flag's label, MAINTENANCE_AMBER.fg, the apply slot's
+  // word, the result crest's glyph) = 63.
+  ok(`11.2 PLANT · the census as it stood (\`--warning-fg\` alone) misses ${old.length} of them — the review's 61, 63 since R8-A's amber`, old.length === 63, String(old.length));
+  const NEW = ["src/app/auth/forgot-password/page.tsx", "src/app/profile/account/privacy-request-form.tsx", "src/components/rg/limit-usage.tsx"];
+  // R8-A (2026-10-10): the fourth, the maintenance flag, paints no spelling of its own any more — its label took the
+  // family's ink through the Callout's `MAINTENANCE_AMBER` (as its wash and edge already did), counted where that lives.
+  ok("11.3 · the files the census saw first are registered, each with its ruling (a rate-limit wait, an erasure's caution, the one limit ramp's caution step) — and the maintenance flag reads MAINTENANCE_AMBER whole",
+    NEW.every((f) => new RegExp(`"${f.replace(/[.[\]]/g, "\\$&")}": \\[\\d+, "[^"]{20,}"\\]`).test(r5c))
+      && /color: MAINTENANCE_AMBER\.fg,\s*background: MAINTENANCE_AMBER\.bg,\s*border: `1px solid \$\{MAINTENANCE_AMBER\.border\}`/.test(code("src/components/ui/maintenance-badge.tsx")));
 }
 
 /* ══ §12 · C10 · THE JOURNEY BELL DRAWS A NOTICE AS /notifications DOES ════════════════════════════════════════════════ */

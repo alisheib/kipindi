@@ -159,8 +159,9 @@ export function NoticeBar({
  * another tone must key this off the tone the way `TONE` above does — do NOT reach back for
  * `current/NN`, which cannot ever render."* `AwaySummaryBar` is that future bar: it is
  * `tone="info"`, and on a real-money product an info-tone summary must not wear a GOLD
- * outline — `--warning-fg` IS `--gilt`, and gold means money EARNED (§M3). A calm account of
- * what settled while you were away is not an earning.
+ * outline — `--warning-fg` WAS `--gilt` (amber since Ali's ruling (1) of 2026-10-10), and gold
+ * means money EARNED (§M3). A calm account of what settled while you were away is not an
+ * earning — nor something the player must act on, which is what amber says now.
  *
  * ⛔ Each row is the accent from `TONE` above, at the same 40% outline / 10% hover wash the
  * author matched to `--warning-fg`. All four are `alpha()`-bridged in tailwind.config.ts, so

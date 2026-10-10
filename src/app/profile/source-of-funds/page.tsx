@@ -56,7 +56,8 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
   const prevEmp = sp.emp ?? existing?.declaredEmployer ?? "";
   const prevOther = sp.other ?? existing?.declaredOther ?? "";
   // "Under review" is WAITING, and §B11 decides waiting once: royal (PENDING · In review) — the `pending` chip. It was
-  // `warning`, the gilt-struck family (F3), on a declaration nobody has to act on (R5-C, the second gold audit, 2026-10-09).
+  // `warning`, then the gilt-struck family (F3; amber since Ali's ruling (1) of 2026-10-10), on a declaration nobody has to
+  // act on (R5-C, the second gold audit, 2026-10-09).
   const statusTone =
     existing?.reviewStatus === "ACCEPTED" ? "success"
     : existing?.reviewStatus === "REJECTED" ? "danger"

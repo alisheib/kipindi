@@ -80,7 +80,8 @@ const TONE = {
   /** Their move, and a specific one. Amber says "your turn" without claiming a fault.
    *  ⛔ AMBER IS THE WARNING FAMILY, NOT THE MONEY RAMP (R5-C, the second gold audit, 2026-10-09): this read `--gold-700`
    *  / `--gold-300` / `--gold-500`, the tokens money owns (Q5). It is `held`'s family below and the Callout's warning —
-   *  §B11's amber, "somebody must act". (Its `--warning-fg` IS `--gilt` until the owner re-hues the family, F3.) */
+   *  §B11's amber, "somebody must act". (Its `--warning-fg` was `--gilt` until the owner re-hued the family on
+   *  2026-10-10 — Ali's ruling (1): warnings are amber, not gold.) */
   action:  { ring: "border-warning-border", ink: "text-warning-fg", wash: "bg-warning-bg" },
   /** A decision went against them. Honest in red — the CTA names the next step.
    *  ⛔ The APP-STATE danger family (the kit Callout's danger tone, verbatim), never the betting NO

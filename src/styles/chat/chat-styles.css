@@ -397,6 +397,10 @@
 
 /* ---------- Inline citations ----------------------------------------- */
 
+/* ⭐ A CITATION IS A LINK, AND EVERY LINK IS BLUE — Ali's ruling (2) of 2026-10-10 (DESIGN_AUTHORITY §B4c). The two
+   link rules here (`.cm-cite`, `.cm-source-row a`) wore the chat's pearl emphasis; they take the platform's link ink,
+   `--brand-300` at rest and `--brand-200` on hover, and their underlines the same blue at pearl's own weights (42% at
+   rest, 62% on hover). The number pip `.cm-source-n` is not a link and keeps pearl. */
 .cm-cite {
   display: inline-flex;
   align-items: baseline;
@@ -405,9 +409,9 @@
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 600;
-  color: var(--pearl);
+  color: var(--brand-300);
   text-decoration: none;
-  border-bottom: 1px dotted var(--pearl-edge);
+  border-bottom: 1px dotted color-mix(in oklab, var(--brand-300) 42%, transparent);
   padding: 0 3px;
   margin: 0 1px;
   border-radius: 2px;
@@ -415,7 +419,7 @@
   position: relative;
   top: -1px;
 }
-.cm-cite:hover { color: var(--pearl-strong); border-bottom-color: var(--pearl-edge-hover); }
+.cm-cite:hover { color: var(--brand-200); border-bottom-color: color-mix(in oklab, var(--brand-300) 62%, transparent); }
 .cm-cite::before { content: "["; opacity: 0.6; }
 .cm-cite::after  { content: "]"; opacity: 0.6; }
 
@@ -442,11 +446,11 @@
   color: var(--pearl);
 }
 .cm-source-row a {
-  color: var(--chat-text-muted);
-  border-bottom: 1px solid var(--pearl-edge);
+  color: var(--brand-300);
+  border-bottom: 1px solid color-mix(in oklab, var(--brand-300) 42%, transparent);
   text-decoration: none;
 }
-.cm-source-row a:hover { color: var(--chat-text); border-bottom-color: var(--pearl-edge-hover); }
+.cm-source-row a:hover { color: var(--brand-200); border-bottom-color: color-mix(in oklab, var(--brand-300) 62%, transparent); }
 
 /* ---------- Composer -------------------------------------------------- */
 

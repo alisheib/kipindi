@@ -129,23 +129,29 @@ for (const f of SCAN_FILES) {
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
-console.log("\n§2 · The premise the severity rule rests on: warning is GOLD, factual is not");
+console.log("\n§2 · The premise the severity rule rests on: warning is AMBER (somebody must act), factual is calm");
 // ───────────────────────────────────────────────────────────────────────────────
 //
-// §F routes a WARNING-severity refusal to the `factual` toast and never to `warning`. The
-// reason is a paint fact, not a preference: `warning` is struck in gold, and gold on this
-// platform means money that was EARNED (§M3). Pin the premise — if someone re-inks the
-// warning variant, the law's rationale has changed and this must be re-decided, not drift.
+// §F routes a WARNING-severity refusal to the `factual` toast and never to `warning`. Until
+// 2026-10-10 the reason was a paint fact: `warning` was struck in gold, and gold on this
+// platform means money that was EARNED (§M3). ⭐ RE-DECIDED, NOT DRIFTED (R8-A, 2026-10-10):
+// Ali's ruling (1) made warnings AMBER — the variant reads the warning family now, as
+// `success` and `danger` read theirs. The routing stands on its remaining ground (DESIGN_AUTHORITY
+// F3's note): F2's table puts a fixable refusal on `factual`, the calm untinted rung with no
+// haptic, and amber is §B11's "somebody must act", which a slip fixed in the same breath is not.
+// Pin the NEW premise — if someone strikes the warning variant in gold again, or re-inks it into
+// another family, this fails and the law is re-decided again.
 const warnStyle = sliceBraces(TOAST, "  warning: {");
 const factualStyle = sliceBraces(TOAST, "  factual: {");
 if (ok("2.0 · the toast variant table is readable", !!warnStyle && !!factualStyle)) {
   // ⛔ BOTH SLOTS, NAMED. `/bg-gold-500/` over the whole block was too loose to be a test:
   // the red proof re-inked `bar` to brand and the check stayed green off the `rail` alone.
   // Assert the VALUE at each slot, which is the §5b rule the looser form was breaking.
-  ok("2.1a · `warning`'s BAR is still gold (why a refusal may not wear it)",
-    /bar:\s*"bg-gold-500"/.test(warnStyle!), "warning is no longer gold — §F's channel rule needs re-deciding");
-  ok("2.1b · …and so is its RAIL",
-    /rail:\s*"bg-gold-500"/.test(warnStyle!), "warning is no longer gold — §F's channel rule needs re-deciding");
+  ok("2.1a · `warning`'s BAR is the AMBER warning family, never gold (Ali's ruling (1), 2026-10-10)",
+    /bar:\s*"bg-warning"/.test(warnStyle!) && !/gold|gilt/.test(warnStyle!), "warning is not the amber family — §F's channel rule needs re-deciding");
+  ok("2.1b · …and so is its RAIL, and its glyph the amber ink",
+    /rail:\s*"bg-warning"/.test(warnStyle!) && /<span className="text-warning-fg"><I\.warning s=\{18\} \/><\/span>/.test(warnStyle!),
+    "warning is not the amber family — §F's channel rule needs re-deciding");
   ok("2.2 · `factual` carries NO tint — the plain rung is the distinction",
     /surface:\s*""/.test(factualStyle!));
   ok("2.3 · `factual` uses the INFO glyph, never a tick",
@@ -696,7 +702,7 @@ console.log("\n§11 · A refusal the player can fix is never a popup, and never 
     const at = code.indexOf("const errorToToast = (");
     const map = at < 0 ? "" : code.slice(at, code.indexOf("const retrySubmit", at));
     if (!map) { d.push("errorToToast not found"); return d; }
-    if (/"warning"/.test(map)) d.push("an arm toasts the gold-struck `warning`");
+    if (/"warning"/.test(map)) d.push("an arm toasts `warning` (amber since 2026-10-10, and never a refusal's — F3)");
     const arms = (map.match(/variant: [^,}\n]+/g) ?? []).filter((a) => !a.includes("|"));
     if (arms.length < 9) d.push(`only ${arms.length} arms read`);
     for (const a of arms) if (!/^variant: (?:refusalVariant\([^)]*\)?\)|"danger")$/.test(a.trim())) d.push(`an arm the registry does not rank: ${a}`);

@@ -241,7 +241,8 @@ export const STATUS_TONE = {
    * ⭐ GRANT-SCOPED KEYS, for the reason the KYC keys below give: the namespace is FLAT, and `QUEUED`, `FULFILLED` and
    * `PENDING_KYC` are words another family reads with another meaning (the account page shows a PENDING_KYC account as
    * ACTIVE). Every grant word but the running one (ACTIVE draws its progress, not a chip) wore the WARNING chip — amber,
-   * struck in gilt (F3) — and amber means SOMEBODY MUST ACT (§B11). Nobody must:
+   * then struck in gilt (F3; amber, not gilt, since Ali's ruling (1) of 2026-10-10) — and amber means SOMEBODY MUST ACT
+   * (§B11). Nobody must:
    *   · QUEUED — waiting its turn: royal, as PENDING is royal everywhere (correction 2).
    *   · PENDING_KYC — historic since 2026-09-13 (nothing mints one; `wallet/page.tsx`): a wait, royal — the account page
    *     ruled the same straggler "not a warning".

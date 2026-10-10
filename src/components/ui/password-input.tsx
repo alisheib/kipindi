@@ -132,7 +132,8 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, Props>(function 
  * / danger tones. Heuristic: length + character class diversity.
  * ⛔ The middle step is the WARNING family, not the gold ramp (R5-C, the second gold audit, 2026-10-09): "OK, could be
  * stronger" is a caution, and a password is never money (DESIGN_AUTHORITY Q5). It read `bg-gold-500` / `text-gold-300`,
- * the money tokens. What it paints still leans gold while `--warning-fg` IS `--gilt` — that token is the owner's (F3).
+ * the money tokens. What it painted still leaned gold while `--warning-fg` was `--gilt`; the owner re-hued the family on
+ * 2026-10-10 (Ali's ruling (1): warnings are amber, not gold), so the middle step is amber.
  */
 function PasswordStrength({ value }: { value: string }) {
   const { t } = useT();

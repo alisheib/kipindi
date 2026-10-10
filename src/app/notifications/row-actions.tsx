@@ -55,8 +55,9 @@ export function NotificationRowActions({
         onClick={() => run(() => restoreNotifAction(id))}
         /* ≥44px tap target on a player surface (`test:tap-target`). The label is text, not a
            bare glyph, because "what does this arrow do" is not a question to ask someone
-           about their own money history. */
-        className="-mt-1 shrink-0 inline-flex items-center gap-1 min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-accent-400 hover:text-text hover:bg-bg-overlay transition-colors disabled:opacity-50"
+           about their own money history. In the link blue, hover included (Ali's ruling (2) of
+           2026-10-10, §B4c): it was aqua `--accent-400`, hovering to white. */
+        className="-mt-1 shrink-0 inline-flex items-center gap-1 min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-brand-300 hover:text-brand-200 hover:bg-bg-overlay transition-colors disabled:opacity-50"
       >
         <I.rotateCcw s={12} />
         {restoreLabel}

@@ -92,7 +92,8 @@ export function WalletResultModal({
           : t.common.balanceToppedUp);
 
   /* ⭐ THE SEVEN PAYMENT WORDS, IN THE DICTIONARY'S TONES (R5-C, the second gold audit, 2026-10-09). A moving payment and a
-     withdrawal under review were the `warning` result — the `--warning-*` crest, whose ink IS `--gilt` (F3) — and §B11
+     withdrawal under review were the `warning` result — the `--warning-*` crest, whose ink was then `--gilt` (F3; amber
+     since Ali's ruling (1) of 2026-10-10) — and §B11
      item 5 says of exactly these: "waiting is royal (Pending, Processing, In review) … Never gilt: moving your own money
      in or out earns nothing" (`info`). Completed is success; Failed is the failure colour (`danger`); Reversed and
      Cancelled — and a deposit held for return, which reads "Reversed" — are slate (`neutral`): §C4, "refunded is

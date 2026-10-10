@@ -101,11 +101,15 @@ function BalanceCard({
         >
           <Cash>{formatTzs(balance)}</Cash>
         </p>
-        {/* No Add funds during a break or over a hold (2026-10-06): the deposit screen would refuse it. */}
+        {/* No Add funds during a break or over a hold (2026-10-06): the deposit screen would refuse it.
+            ⭐ A TEXT LINK, SO THE LINK BLUE (Ali's ruling (2) of 2026-10-10, §B4c: every link is blue). It was gold, ruled a
+            deposit door by R5-C — but §M3a's door wears gilt-METAL as a button (the header pill, the Wallet sheet, the
+            journey's low-balance entry), this page's own other deposit doors are primary buttons, and gold is money EARNED
+            (§M3), which an invitation to pay in is not. The card's warm edge stays: it frames the balance, which is money. */}
         {balance === 0 && pending === 0 && hold === 0 && canDeposit && (
           <Link
             href="/wallet/deposit"
-            className="mt-3 inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200 transition-colors"
+            className="mt-3 inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors"
           >
             <I.plus s={12} />
             {journey ? t.journey.depositAction : t.common.addFunds}

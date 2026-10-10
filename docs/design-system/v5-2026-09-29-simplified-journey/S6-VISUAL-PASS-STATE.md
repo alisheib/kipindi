@@ -195,6 +195,9 @@ re-measured first (CONFIRMED / REFUTED with numbers), every "after" is computed 
 - Gold is money (DESIGN_AUTHORITY Q5 "GOLD IS MONEY, AND NOTHING ELSE"; M3 "struck gold appears only where money was
   earned (payout, celebration, resolved seal)"; F3 "--warning-fg IS --gilt … a refusal has earned nothing"). The
   `--warning-fg: var(--gilt)` token itself is an owner ruling — do not change it.
+  ⭐ SUPERSEDED 2026-10-10 by Ali's ruling (1), "warnings are amber, not gold" (owner item 28): round 8 (R8-A) re-hued
+  the warning family to its own amber (`--warning-500` oklch(74% 0.15 64), `--warning-fg` oklch(82% 0.13 64);
+  DESIGN_AUTHORITY F3's note). Gold stays money only; every link is the link blue `--brand-300` (ruling (2), §B4c).
 - Other R5 helpers work at the same time in their own worktrees (R5-A home/cards/markets/results/legal/footer/hub/
   channels/capture; R5-B wallet/sheets/notifications/tickets/bell; R5-C the gold audit; R5-D offline/service worker/
   not-found mark/route ghosts/market metadata; R5-E text wrapping and the keep-words helpers). Stay in your area; if a

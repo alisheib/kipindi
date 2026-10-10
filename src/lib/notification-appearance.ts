@@ -72,7 +72,8 @@ export const tintFor = (k: Kind) => {
     case "DEPOSIT":      return "border-success-border bg-success-bg/30 text-success-fg";
     /* ⛔ NOT AMBER (R5-C, the second gold audit, 2026-10-09). A withdrawal is the player's own money moving (§M3a D1:
        "earns nothing"), and nobody must act on it — amber's one meaning (§B11) — so the warning family, whose
-       `--warning-fg` IS `--gilt`, claimed both alarm and gold. It reads the informational tone its account-side
+       `--warning-fg` was then `--gilt` (amber since Ali's ruling (1) of 2026-10-10), claimed both alarm and gold. It
+       reads the informational tone its account-side
        neighbours read (KYC, RG); the payment's own status keeps the §B11 words on the row it opens. */
     case "WITHDRAW":     return "border-info-border bg-info-bg/30 text-info-fg";
     case "KYC":          return "border-info-border bg-info-bg/30 text-info-fg";

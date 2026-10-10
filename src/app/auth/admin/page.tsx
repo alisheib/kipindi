@@ -132,8 +132,9 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
           <I.chevronRight s={16} className="text-text-subtle group-hover:text-text transition-colors" />
         </Link>
 
+        {/* The address in the link blue, hover included (Ali's ruling (2) of 2026-10-10, §B4c) — it was the muted ink. */}
         <p className="text-center font-mono text-[11px] text-text-subtle">
-          Lost device or codes? Contact <a href={`mailto:${SUPPORT_EMAIL()}`} className="text-text-muted underline underline-offset-2">{SUPPORT_EMAIL()}</a> with your AML lead in copy.
+          Lost device or codes? Contact <a href={`mailto:${SUPPORT_EMAIL()}`} className="text-brand-300 hover:text-brand-200 underline underline-offset-2">{SUPPORT_EMAIL()}</a> with your AML lead in copy.
         </p>
       </div>
     </div>

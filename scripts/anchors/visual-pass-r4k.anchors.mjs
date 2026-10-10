@@ -33,7 +33,7 @@ export const MUTATIONS = [
   // Re-anchored (round 7, R7-C, 2026-10-10): the padding is now the h1's last class — round 4's Tailwind indent that followed it
   // moved into globals.css's one display-heading rule (`[data-stem]`) — so the anchor ends on the class's closing quote.
   { name: "the question's column back under the watermark", file: "src/app/markets/[id]/page.tsx", from: " pr-[calc(2em+12px)]\"", to: "\"", expect: "7.1" },
-  { name: "the clock's label back in --warning-fg (gold)", file: "src/components/markets/countdown.tsx", from: "uppercase eyebrow text-text-subtle\">{resolvedLabel}", to: "uppercase eyebrow text-warning-fg\">{resolvedLabel}", expect: "8.1" },
+  { name: "the clock's label back in --warning-fg (gold then; amber since 2026-10-10 — a label is no warning)", file: "src/components/markets/countdown.tsx", from: "uppercase eyebrow text-text-subtle\">{resolvedLabel}", to: "uppercase eyebrow text-warning-fg\">{resolvedLabel}", expect: "8.1" },
   { name: "the market panel's eyebrow back in gold", file: "src/app/markets/[id]/page.tsx", from: "eyebrow font-bold text-text-subtle\">\n                  {t.market.signInToPredict}", to: "eyebrow font-bold text-gold-300\">\n                  {t.market.signInToPredict}", expect: "8.2" },
   { name: "a missing round titled ‘Up & Down’ again", file: "src/app/updown/[roundId]/page.tsx", from: "if (!d) return notFoundMetadata();", to: "if (!d) return { title: \"Up & Down\" };", expect: "2.5" },
   { name: "a missing proposal titled ‘Proposal’ again", file: "src/app/proposals/[id]/page.tsx", from: ": notFoundMetadata();", to: ": { title: \"Proposal\" };", expect: "2.6" },

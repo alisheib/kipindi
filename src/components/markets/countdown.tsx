@@ -71,8 +71,9 @@ export function Countdown({ to, label, serverNow, at }: { to: string; label?: st
           takes the ladder's own spacing and so adds no `tracking-` utility either (§6). */}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2">
         {/* ⭐ THE LABEL IS A LABEL, NOT A WARNING, AND NOT GOLD (2026-10-09, the visual pass's round 4, gold audit; tiles
-            041 042 433). "Uchaguzi unafungwa baada ya" / "Matokeo baada ya" wore `--warning-fg`, which IS `--gilt`
-            (DESIGN_AUTHORITY F3) — the capsule's gold, on a clock that pays nothing: §M3 "struck gold appears only where
+            041 042 433). "Uchaguzi unafungwa baada ya" / "Matokeo baada ya" wore `--warning-fg`, which was then `--gilt`
+            (DESIGN_AUTHORITY F3; amber since Ali's ruling (1) of 2026-10-10 — and a label is no warning either) — the
+            capsule's gold, on a clock that pays nothing: §M3 "struck gold appears only where
             money was earned", Q5 "gold is money, and nothing else". Nothing is wrong while a question is open, and a
             closing one says so in its own pill beside the category chip. The ink is the page's label ink — the KPI tiles'
             labels above it and this clock's own unit labels below are `text-text-subtle`. */}

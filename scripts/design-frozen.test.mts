@@ -123,7 +123,7 @@ const FROZEN_RATCHET = new Map<string, number>([
   ["src/app/global-error.tsx", 23],                          // ships without app CSS. −1, 2026-10-09 (R5-C's gold audit): the gold "Try again" (a gold stop and a dark-gold ink) became the flat primary royal and the RG link the link ink — two literals in, three out
   ["src/components/onboarding/first-visit-primer.tsx", 19],
   ["src/components/markets/conviction-dial.tsx", 15],
-  ["src/components/ui/chip.tsx", 13],                       // −1, PV-13c 2026-09-03: the `signal` variant stopped hand-typing its aqua oklch and now reads the brand ramp through `color-mix()` — see the drift note in chip.tsx
+  ["src/components/ui/chip.tsx", 11],                       // −1, PV-13c 2026-09-03: the `signal` variant stopped hand-typing its aqua oklch and now reads the brand ramp through `color-mix()` — see the drift note in chip.tsx. −2, R8-A 2026-10-10 (Ali's ruling (1), warnings are amber, not gold): `paused` and `warning` stopped hand-typing their hue-80 ink and fills and read the warning family (`--warning-500` mixes, `--warning-fg`)
   // ⚠️ 15, not the 13 the first pass of the rebuild measured. Two of them sit on lines
   // carrying a `${…}` binding — `fill="oklch(50% 0.14 152)"` beside a computed SVG path —
   // and every previous rule skipped a line the moment it saw a binding anywhere on it.

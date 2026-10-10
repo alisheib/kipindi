@@ -221,8 +221,10 @@ section("2 · F1 F4 + H1's siblings: every market title is balanced and keeps it
       balanced: (s) => /<h1 data-stem=[\s\S]{0,200}?className="[^"]*\btext-balance\b[^"]*"\s*>(?:\{\})?\{keepFigures\(pickLocalized/.test(s) },
     { name: "the journey's ticket card", file: "src/components/journey/tickets/ticket-card.tsx", draws: [`{keepFigures(title.text)}</Link>`],
       balanced: (s) => cls(s, `<h2 className="mt-3 font-display text-body-lg font-semibold leading-tight text-text text-balance">`) },
+    // R8-A (2026-10-10) moved this pin: the title's hover is the link blue's step (`group-hover:text-brand-200`, as
+    // /results' card title) — it lit aqua, which Ali's ruling (2) of the day retired as a link ink. The balance is untouched.
     { name: "/live's featured carousel", file: "src/app/live/featured-contest.tsx", draws: [`{keepFigures(mm.title)}`],
-      balanced: (s) => cls(s, `className="font-display text-[19px] lg:text-[24px] font-semibold leading-tight text-text text-balance group-hover:text-aqua-100"`) },
+      balanced: (s) => cls(s, `className="font-display text-[19px] lg:text-[24px] font-semibold leading-tight text-text text-balance group-hover:text-brand-200"`) },
     // Round 7 (R7-A) moved this pin: the white space after a hyphen token is its own text node (`afterRun`), the words `rest`.
     { name: "/live's wall", file: "src/app/live/pulse-grid.tsx", draws: [`<>{lead}{keepFigures(rest)}</>`, `<KeepHyphenated text={title} />`],
       balanced: (s) => /font-display text-\[13\.5px\] font-semibold leading-snug text-text text-balance/.test(s) },
@@ -255,7 +257,8 @@ section("2 · F1 F4 + H1's siblings: every market title is balanced and keeps it
   ok("2.2′ PLANT · the featured question back on `pretty` is reported",
     PRETTY_ON_TITLE(CSS.replace(".mcardp--featured .mcardp-q { -webkit-line-clamp: 3;", ".mcardp--featured .mcardp-q { text-wrap: pretty; -webkit-line-clamp: 3;")));
   ok("2.2″ PLANT · a surface that loses its balance or its keepFigures is reported",
-    surfaceFault(SURFACES[4], code(SURFACES[4].file).replace("text-text text-balance group-hover:text-aqua-100", "text-text group-hover:text-aqua-100")).length > 0
+    // R8-A (2026-10-10): the plant follows the pin above — the title hovers in the link blue's step now (ruling (2)).
+    surfaceFault(SURFACES[4], code(SURFACES[4].file).replace("text-text text-balance group-hover:text-brand-200", "text-text group-hover:text-brand-200")).length > 0
       && surfaceFault(SURFACES[6], code(SURFACES[6].file).replace("{keepFigures(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}", "{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}")).length > 0);
   // The bet dialog draws its title with keepText (its last two words, R4-I) AND the cards' figure runs.
   const dialog = keptRanges("Je, mkimbiaji wa Tanzania atavunja dakika 28:00 kwenye 10K ya World Athletics ijayo?", figureRuns("Je, mkimbiaji wa Tanzania atavunja dakika 28:00 kwenye 10K ya World Athletics ijayo?"))

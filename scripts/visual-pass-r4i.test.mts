@@ -851,9 +851,12 @@ section("14 · gold is money and nothing else — the auth pages, the paused dep
     golds.length === 2 && (REG.match(/<span className="amount text-gold-300">\{formatTzs\((referral\.newPlayerBonusTzs|invite\.bonusAmountTzs)\)\}<\/span>/g) ?? []).length === 2
       && !/var\(--gold-500\)/.test(REG), golds.join(" · "));
   const DEP = read("src/app/wallet/deposit/page.tsx");
-  ok("14.4 · the deposit-paused tiles (a break, a held wallet) are neutral, the lock kept — the warning tone is struck in gilt",
+  // R8-A (2026-10-10): re-pinned. The premise clause was "the warning tone is struck in gilt" (`--warning-fg: var(--gilt)`);
+  // Ali's ruling (1) made the family amber, and the tiles stay neutral on §B11's own ground — a paused deposit asks the
+  // player to do nothing, and amber means "somebody must act". `test:visual-pass-r8a` §1 holds the amber.
+  ok("14.4 · the deposit-paused tiles (a break, a held wallet) are neutral, the lock kept — nobody must act (§B11), and the warning tone is amber, never gilt",
     (DEP.match(/<Callout\s+tone="neutral"\s+layout="stack"\s+glyph="lock"/g) ?? []).length === 2 && !/<Callout\s+tone="warning"\s+layout="stack"\s+glyph="lock"/.test(DEP)
-      && /--warning-fg:\s*var\(--gilt\)/.test(CSS));
+      && !/--warning-fg:\s*var\(--gilt\)/.test(CSS));
   ok("14.5 · the code page masks the phone with the platform's one mask (\"+255••••84\", as the hub and the hero)",
     /const masked = phone \? maskPhone\(phone\) : "\+255••••";/.test(read("src/app/auth/otp/page.tsx")));
   const plant = REG.replace('<div className="overflow-hidden rounded-xl border border-border bg-bg-elevated">', '<div className="overflow-hidden rounded-xl border border-gold-500/40 bg-gold-500/10">');

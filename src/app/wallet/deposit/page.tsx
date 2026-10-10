@@ -219,8 +219,9 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           end one run, no line opens on a dash ("——您仍可登录" in Chinese), and no last word stands alone (`keepText`). */}
       {breakUntil ? (
         <div data-testid="deposit-break">
-          {/* R4-I (2026-10-09, R4-K's gold audit): `neutral`, not `warning` — the warning tone is struck in gilt
-              (`--warning-fg` IS `--gilt`, DESIGN_AUTHORITY F3), and a paused deposit has earned nothing. The lock stays. */}
+          {/* R4-I (2026-10-09, R4-K's gold audit): `neutral`, not `warning` — the warning tone was struck in gilt
+              (`--warning-fg` WAS `--gilt`, DESIGN_AUTHORITY F3, until Ali's ruling (1) of 2026-10-10 made it amber), and a
+              paused deposit has earned nothing nor asks the player to act (§B11). The lock stays. */}
           <Callout
             tone="neutral"
             layout="stack"
