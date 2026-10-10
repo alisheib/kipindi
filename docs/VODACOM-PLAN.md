@@ -17,8 +17,8 @@
 ## §0 · RESUME AT
 
 **State (2026-10-10):** S6 (the flagged shell) is in progress (§0i): WP0–WP12 are live behind the flag, the S6 visual
-pass (rounds 1–6) goes live from ALI-BLADE15 today, and its round 7 is being fixed forward there (the ✅ paragraph
-below). As of 2026-10-07: WP0–WP11 are live behind the flag — the shell
+pass (rounds 1–6) and its round 7 are live from ALI-BLADE15 (the ✅ paragraphs below), and round 8 — the owner's four
+rulings of 2026-10-10 — is being built there. As of 2026-10-07: WP0–WP11 are live behind the flag — the shell
 swap, the overlay rules, Tiketi zangu (WP9), the journey sell look (WP10), `--rail-h` (WP11) and the first-download fix
 (WP6c), each verified locally before its push — and classic viewers are served what they were
 (`qa:classic-shell-parity`, 224 cells, no unexpected difference; v2 also compares the Sell region). ⭐ Ali, 2026-10-02: nothing is turned on — no staff preview, no journey — until
@@ -38,6 +38,31 @@ the s4-5 low-minimum and s4-6 code frames on the S4 canvas, `shortfall.ts`'s `em
 `qa:classic-shell-parity` 2.9 once ▶ 0e's Phase B removes the email bar — all three done in WP12's batch (§0i WP12):
 the short-of-the-minimum board offers TZS 1,000 and S9's six code boards are marked superseded; `shortfallPlan` asks no
 email step; 2.9 reads which tree it runs on (the bar's component gone → no viewer may see a bar).
+
+**✅ ROUND 7 OF THE VISUAL PASS IS LIVE (2026-10-10 ~20:25 EAT, ALI-BLADE15).** Round 6's read left fifteen open items
+(S6-VISUAL-PASS-STATE.md §4, `tools/visual/triage-r6.md`); three helpers fixed them on branches from `046c26e6`, merged
+as `r7-int` on live main (`c70d9aa6`, integration fixes `3884bce3`, main's KYC schema `872114b7`). **R7-A** (`57f866b3`,
+text): the regression R6-1 — `text-wrap: balance` lost the break after a nowrap span (Chromium's candidate pass reads a
+leading space with the previous span's wrap state), so the space after every held run is now its own text node (0 of
+3,552 modelled empty-state lines differ from round 5); a settlement source's name and its connective are one unit; no
+line ends on ya / za / wa / la / cha / vya / kwa / na / of / and / & in legal titles, page and empty-state titles, hub
+labels, the regulator's name, the offline and error pages (`lib/connectives.ts`; market titles are data — an owner
+question); holding proper names in titles refused by measurement; a badge's count is a chip on its coin. **R7-B**
+(`651bcc3f`, inks): one page-head eyebrow ink (`--text-subtle`); **a void is slate everywhere — Ali's ruling of
+2026-10-10** ("Grey everywhere", superseding 2026-09-07's royal; DESIGN_AUTHORITY §B11 item 6); the podium coin's lost
+fill (its gradient ids collided with the journey header's hidden crest — one `useId()` per crest); one return-rate
+formatter with its sign; the error view's waves fade. **R7-C** (`08c02348`, edges): notice bands on the page edge; every
+tracked end label taken back by its own end margin (census: 49 taken, 0 loose — R7-A's global nowrap was dropped at the
+merge, so a label may still wrap where its site needs it); display headings set back on their stem
+(`lib/display-stem.ts`: en "My tickets" on x16 like sw and zh); payment rings inside the column; the hub's stacked flag
+18px and ink-centred. **Proof:** `test:visual-pass-r7a/b/c` 43/0, 50/0, 64/0 on the merged tree; mutation 84/84
+(23 + 27 + 34 — R7-A's three plants against the dropped nowrap re-aimed at the merged rule); typecheck 0; `next build`
+exit 0 and local `qa:live` **334/334** on `872114b7` — built and served from `C:\kipindi-journey`, because Turbopack
+refuses a junctioned `node_modules` ("Symlink [project]/node_modules is invalid") in the helpers' worktrees. **Owed with
+round 8's lock turn:** `test:all`, the 333 tiles re-read (R7-A's 25 computed line predictions among the checks), classic
+parity at the new base with round 7's named differences (the /positions labels' end margins and stems, the sell
+confirm's fee label), the header fit and the seals. A crash at 16:10 (bugcheck 0x7A) killed the owed red twins'
+run mid-way; its planted `if (false)` in `scripts/lib/house-bot-reports-cases.mts` was restored before any commit.
 
 **✅ THE S6 VISUAL PASS IS LIVE FROM ALI-BLADE15 (2026-10-10 ~14:55 EAT).** OMEGA-COMPILE01, which ran rounds 1–6, is
 no longer reachable — Ali, 2026-10-10: *"push everything to live and let's continue fresh with all on live"*; *"we need
@@ -203,10 +228,13 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S6 — round 7 on ALI-BLADE15 (the ✅ paragraph above): the round-6 read's open list fixed forward on main,
-then a lock turn re-tiles all 333 tiles and registers classic parity's two named differences, and the read repeats until
-it finds nothing; S6 closes then (§0i; [S6-VISUAL-PASS-STATE.md](design-system/v5-2026-09-29-simplified-journey/S6-VISUAL-PASS-STATE.md)
-§3/§4 hold the owed runs). The build plan is
+**Next:** (1) S6 — round 8 on ALI-BLADE15 (the owner's four rulings of 2026-10-10: warnings amber, links blue, section
+eyebrows one ink, a break hides the invite / propose / agent doors), then ONE lock turn for rounds 7 and 8 — `test:all`,
+all 333 tiles re-tiled and read, classic parity at the new base with every intended difference named, the header fit
+and the seals — and the read repeats until it finds nothing; S6 closes then (§0i;
+[S6-VISUAL-PASS-STATE.md](design-system/v5-2026-09-29-simplified-journey/S6-VISUAL-PASS-STATE.md) §3/§4 hold the owed
+runs). Then the red twins left owed by the 2026-10-10 crash (`red:house-bot-c5`, `-money`, `-engine`,
+`red:campaign-visuals`, `red:contacts-import`), each alone with nothing else running. The build plan is
 `docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md`, whose closing Amendments override its body. S7's plan is filed ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), 2026-10-07, §0h point 58); it starts only when S6 has closed, as its Amendments' start line says. (2) When
 Ali says so, and not before (nothing turns on until the plan is done): an officer approves the S2 short titles, and
 Ali presses S1's preview switch.

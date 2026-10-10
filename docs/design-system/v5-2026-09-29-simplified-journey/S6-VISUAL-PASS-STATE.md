@@ -8,6 +8,13 @@ on main in three parts (R7-A text wrapping and names, R7-B inks and signs, R7-C 
 `briefs/r5-common.md` for this laptop), then §4 steps 2–4 on the new main; the tools are this file's appendices and
 `origin/vodacom-visual-tools`, unpacked on ALI-BLADE15 into its session scratchpad.
 
+**⭐ 2026-10-10 evening — ROUND 7 IS LIVE; ROUND 8 IS BEING BUILT.** §4 step 1's "Still OPEN" list is fixed (R7-A text,
+R7-B inks, R7-C edges; the record and its proof are VODACOM-PLAN §0's round-7 ✅ paragraph). Round 8 carries the owner's
+four rulings of 2026-10-10 (appendix F's items 28, 58, the section-eyebrow census, 16 + 56): warnings amber, every link
+blue, section eyebrows one ink, a break hides the invite / propose / agent doors. Then §4 steps 2–4 for both rounds in
+one lock turn. Answered the same day and no longer open: item 28 (amber), 58 (blue), 16 and 56 (hidden during a break),
+and the void's ink (slate everywhere — DESIGN_AUTHORITY §B11 item 6).
+
 **Why this file exists.** Ali, 2026-10-09: *"push live everything you have in case later we proceed on another machine
 … not to keep anything locked on this machine and the next machine repeats it by accident"* and *"anything not done
 here and pushed live is lost"*. Everything the visual pass has merged is on GitHub; this file says what is merged, what
