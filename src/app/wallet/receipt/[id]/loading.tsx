@@ -43,8 +43,7 @@ export default function ReceiptLoading() {
       <div aria-hidden>
         <PageHero>
           <PageHeader
-            tone="subtle"
-            icon={<I.receipt s={14} className="text-text-muted" />}
+            icon={<I.receipt s={14} />}
             eyebrow={t.wallet.receiptEyebrow}
             title={<GhostText className="amount">{AMOUNT_SHAPE}</GhostText>}
             subtitle={<GhostText>{`${t.wallet.receiptTypeDeposit} · M-Pesa`}</GhostText>}

@@ -159,7 +159,11 @@ export default async function LivePage({
   return (
     <div className="relative min-h-[calc(100vh-44px)]">
       <RefreshPoller intervalMs={15_000} />
-      <BrandTopo opacity={0.09} />
+      {/* The page's wave fades in under the header and out above the footer, as every frameless wave (R7-B, round 7,
+          2026-10-10; R5-10's sibling) — its sides are the screen's, so the outer layer alone. */}
+      <div aria-hidden className="kp-nf-topo">
+        <BrandTopo opacity={0.09} />
+      </div>
 
       <PageContainer tier="board" className="relative space-y-5">
         {/* 🔴 DG-P-04 · §S1 — THE `sr-only` h1 IS WRAPPED WITH THE BAND IT NAMES, AND THE
@@ -187,8 +191,10 @@ export default async function LivePage({
                   <span className="block w-2 h-2 rounded-full" style={{ background: "var(--aqua-400)" }} />
                 </PulseRing>
                 {/* Round 5 (F17, one page, one name): the page's own name — its <title>, its h1, the nav's and the hub's
-                    "Mubashara" (`common.live`) — where this eyebrow said "HAI" (`home.liveSection`) in Swahili. */}
-                <p className="font-mono text-label uppercase eyebrow font-bold text-text">{t.common.live}</p>
+                    "Mubashara" (`common.live`) — where this eyebrow said "HAI" (`home.liveSection`) in Swahili.
+                    ⭐ In the page heads' one eyebrow ink, `--text-subtle` (R7-B, round 7, 2026-10-10): it was the text's
+                    white, a third ink beside the subtle name /markets and /results draw over their boards. */}
+                <p className="font-mono text-label uppercase eyebrow font-bold text-text-subtle">{t.common.live}</p>
               </div>
               {/* ⛔ `data-result-count` — §3 rule 5. The promise is published so an instrument can
                   check it against the delivery; it is the attribute `qa:count-truth` reads. And

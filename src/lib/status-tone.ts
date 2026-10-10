@@ -120,14 +120,19 @@ export const STATUS_TONE = {
    *  soft gilt, because an operator reading a hundred rows is not being congratulated. */
   RESOLVED: { player: "giltStruck", admin: "gilt", proposals: "giltStruck" },
   /** ⭐ ADDED 2026-08-30 (DG-P-10). The market or round settled to NOTHING and every
-   *  stake came back. MEASURED, not chosen — §B11's Player column records the shipped
-   *  state, and five player surfaces already paint this word royal (`market-card`,
-   *  `home/trust-band`, `updown/history`, `markets/resolution-panel`, `results`): a
-   *  refund is not a fault, which is the same reason CLOSED and PENDING are royal. The
-   *  console's market table paints it SLATE — terminal and inert, sitting beside DRAFT.
-   *  ⛔ There is a THIRD tone and it is a decision, not a drift — see
-   *  `STATUS_TONE_EXCEPTIONS.VOID`. */
-  VOID:     { player: "royal", admin: "slate" },
+   *  stake came back. It was recorded royal as MEASURED (five player surfaces painted it so), and the owner's
+   *  2026-09-07 ruling kept the ticket card on that measured royal (PLAYER QUERY §5.3, "the card is the odd one out").
+   *  ⭐ SLATE TO A PLAYER SINCE 2026-10-10 (R7-B, the visual pass's round 7; round 6's read R8-3, readers 4, 5 and 6 —
+   *  OWNER TO CONFIRM, the revert is this one value): a refund is TERMINAL and inert — slate's own definition above, the
+   *  tone CASHED_OUT took by the owner's 2026-09-09 ruling and REVERSED and CANCELLED took on 2026-10-07 for "the money
+   *  is back, or never left". Royal is "in flight, nothing is wrong": it told a finished refund it was still moving, and
+   *  it put two inks on one event — the ticket's royal "IMEBATILISHWA" beside /results' slate "Batili n" and its slate
+   *  arc (§B12's chart ink), /fairness's slate VOID chip, and Up & Down's slate "Stake returned" one branch from its royal
+   *  "Batili". One state, one ink: every reader of this entry — the ticket and position cards, the board cards, the
+   *  home's settled rows, Up & Down's card, round page and history, the market's resolution panel, /results' notable
+   *  card — now paints the console's slate. ⛔ Never rose: a refund is not a fault (§C4).
+   *  ⛔ There is a SECOND tone and it is a decision, not a drift — see `STATUS_TONE_EXCEPTIONS.VOID`. */
+  VOID:     { player: "slate", admin: "slate" },
   /** A decision went the applicant's way. NEVER gold: an approval is not earned money. */
   APPROVED: { admin: "green", proposals: "green" },
   /** A decision went against them. See `STATUS_TONE_EXCEPTIONS.REJECTED`. */
@@ -391,13 +396,13 @@ export const STATUS_TONE_EXCEPTIONS = {
   /**
    * ⭐ ADDED 2026-08-30 (DG-P-10). VOID is the SECOND word with more than one tone, and
    * unlike LIVE nobody had written it down — which is exactly how it acquired THREE:
-   *   · a PLAYER sees royal — a refund is not a fault, and their stake is back;
+   *   · a PLAYER saw royal — a refund is not a fault, and their stake is back;
    *   · the console's market table sees SLATE — terminal and inert, beside DRAFT;
    *   · the RESOLVER's settlement ceremony sees CLARET, because voiding a market is an
    *     irreversible operator act and §B4a gives that class of act its own colour.
-   * The first two are in the table above because they are the ordinary reading of the
-   * word; the claret is the exception, and it is the SAME reason claret already carries
-   * everywhere else in the console.
+   * ⭐ Since 2026-10-10 (R7-B; owner to confirm) the player reads the console's SLATE too — the entry above says why —
+   * so two of the three are one ordinary reading, in the table; the claret is the exception, and it is the SAME reason
+   * claret already carries everywhere else in the console.
    *
    * ⚠️ `components/admin/status-badge.tsx` hard-types `VOIDED: "neutral"` under a comment
    * saying slate "is not in the dictionary because no other surface disagrees about it".
@@ -408,7 +413,7 @@ export const STATUS_TONE_EXCEPTIONS = {
    * which owns that file. Both arms above are what those surfaces already paint, so nothing
    * repaints when it lands.
    */
-  VOID: "Royal to a player (a refund is not a fault) · slate in the console market table (terminal, inert) · claret in the resolver's settlement ceremony (§B4a, an irreversible operator act).",
+  VOID: "Slate to a player and in the console market table (terminal, inert — the player's was royal until 2026-10-10, R7-B, owner to confirm) · claret in the resolver's settlement ceremony (§B4a, an irreversible operator act).",
   /**
    * ⭐ ADDED 2026-09-08 (PLAYER QUERY, stage 5.2) — ALI'S RULING, recorded as a decision so it
    * stops looking like a drift: *"`LOSS` keeps the betting rose, recorded in

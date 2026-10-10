@@ -3,8 +3,18 @@
  * royal axis with the gilt soloist. Ported from Claude Design's Identity Sprint.
  * Four directions, all circular + legible 20→80px (initials fallback < 30px),
  * with tier-ring integration + uploaded-photo fallback. Pure dependency-free
- * SVG and no hooks → renders on the server (leaderboard, admin) and client alike.
+ * SVG and one hook, `useId`, which both renderers implement → renders on the server (leaderboard, admin) and client alike.
+ *
+ * 🔴 EVERY CREST'S SVG IDS ARE ITS OWN (R7-B, the visual pass's round 7, 2026-10-10; round 6's read R5-2, tile 177). The
+ * gradient, clip and their `url(#…)` were named from the SEED alone, so one player's crests on one page shared every id —
+ * and an id resolves to the FIRST element that carries it. In the journey below 1024 that first copy is the header's own
+ * (its AvatarMenu sits in a `hidden lg:inline-flex` box, display:none), and a paint server inside a display:none subtree
+ * is never built: the visible crest's disc lost its fill. On /leaderboard at 390 the signed-in player's #1 coin showed the
+ * metal ring THROUGH a blank disc — white initials on metal, 2.05:1 — while at 1280 (header shown) the same coin was the
+ * violet disc, ~14:1. One `useId` per avatar, appended to every id, makes each SVG self-contained at every width (same
+ * hues, same seed: nothing else changes). `test:visual-pass-r7b` §3 renders two crests of one player and holds it.
  */
+import { useId } from "react";
 
 export type CrestKind = "tipping" | "monogram" | "guilloche" | "constellation";
 export type Tier = "bronze" | "silver" | "gold" | "diamond" | "sovereign";
@@ -68,12 +78,13 @@ function crestParams(seed: string) {
  */
 const su = (cssPx: number, size: number) => (cssPx * 100) / size;
 
-type CrestProps = { seed: string; size?: number; initials: string };
+/** `uid` — this avatar's own `useId`, so its SVG ids are unique in the page (see the header). */
+type CrestProps = { seed: string; size?: number; initials: string; uid: string };
 
 /* ── Direction 1 · Tipping Sigil ── split YES/NO field + generative charge ── */
-function CrestTipping({ seed, size = 80, initials }: CrestProps) {
+function CrestTipping({ seed, size = 80, initials, uid }: CrestProps) {
   const p = crestParams(seed);
-  const id = "ct" + hashSeed(seed).toString(36);
+  const id = "ct" + hashSeed(seed).toString(36) + uid;
   const r = 50, cx = 50, cy = 50;
   const rad = (p.tilt * Math.PI) / 180, dx = Math.sin(rad) * 80, dy = Math.cos(rad) * 80;
   const top = { x: cx + dx, y: cy - dy }, bot = { x: cx - dx, y: cy + dy };
@@ -103,9 +114,9 @@ function CrestTipping({ seed, size = 80, initials }: CrestProps) {
 }
 
 /* ── Direction 2 · Royal Monogram ── initials-forward, gilt chief w/ pips ── */
-function CrestMonogram({ seed, size = 80, initials }: CrestProps) {
+function CrestMonogram({ seed, size = 80, initials, uid }: CrestProps) {
   const p = crestParams(seed);
-  const id = "cm" + hashSeed(seed).toString(36);
+  const id = "cm" + hashSeed(seed).toString(36) + uid;
   const small = size < 30;
   const chiefPips = 3 + (hashSeed(seed) % 3);
   return (
@@ -133,9 +144,9 @@ function CrestMonogram({ seed, size = 80, initials }: CrestProps) {
 }
 
 /* ── Direction 3 · Guilloché Crest ── deterministic banknote rosette ── */
-function CrestGuilloche({ seed, size = 80, initials }: CrestProps) {
+function CrestGuilloche({ seed, size = 80, initials, uid }: CrestProps) {
   const p = crestParams(seed);
-  const id = "cg" + hashSeed(seed).toString(36);
+  const id = "cg" + hashSeed(seed).toString(36) + uid;
   const small = size < 30;
   const R = 34, r = R * p.rr, d = R * (p.dd + 0.4);
   const k = (R - r) / r;
@@ -168,9 +179,9 @@ function CrestGuilloche({ seed, size = 80, initials }: CrestProps) {
 }
 
 /* ── Direction 4 · Constellation Sigil ── deterministic star-chart ── */
-function CrestConstellation({ seed, size = 80, initials }: CrestProps) {
+function CrestConstellation({ seed, size = 80, initials, uid }: CrestProps) {
   const p = crestParams(seed);
-  const id = "cc" + hashSeed(seed).toString(36);
+  const id = "cc" + hashSeed(seed).toString(36) + uid;
   const small = size < 30;
   const n = p.stars;
   const nodes: [number, number][] = [];
@@ -259,6 +270,9 @@ export function IdentityAvatar({
 }) {
   const ini = (initials || initialsFrom(name || seed)).toUpperCase().slice(0, 2) || "?";
   const Crest = CREST[kind] || CREST.monogram;
+  // This avatar's own id stem (see the header): React's `useId` is stable from the server render through hydration and
+  // unique in the page; anything that is not a letter, a digit, `_` or `-` is dropped so it reads cleanly inside `url(#…)`.
+  const uid = useId().replace(/[^A-Za-z0-9_-]/g, "");
   const ringStyle: React.CSSProperties | undefined =
     ring && tier
       // 🔴 THE SOVEREIGN INSET WAS THE HALF Q5 MISSED, found by auditing the close-out. The
@@ -277,7 +291,7 @@ export function IdentityAvatar({
       <span style={{ width: size, height: size, borderRadius: "50%", overflow: "hidden", display: "inline-grid", placeItems: "center", flexShrink: 0, ...ringStyle }}>
         {src
           ? <img src={src} alt={name || "User avatar"} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-          : <Crest seed={seed} size={size} initials={ini} />}
+          : <Crest seed={seed} size={size} initials={ini} uid={uid} />}
       </span>
     </span>
   );

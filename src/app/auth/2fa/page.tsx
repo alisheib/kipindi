@@ -32,7 +32,6 @@ export default async function TwoFactorChallengePage({ searchParams }: { searchP
     <AuthShell>
       <AuthPanel>
         <AuthHeader
-          tone="brand"
           icon={<I.shieldcheck s={13} />}
           eyebrow={t.security.eyebrow}
           title={t.security.challengeTitle}

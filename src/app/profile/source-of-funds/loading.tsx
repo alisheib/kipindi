@@ -25,7 +25,7 @@ export default function Loading() {
         <>
           <BackLinkGhost />
           <PageHero glow="info">
-            <PageHeader tone="info" icon={<I.fileSignature s={14} className="text-info-fg" />} eyebrow="AML" title={t.profile.sourceOfFunds} />
+            <PageHeader icon={<I.fileSignature s={14} />} eyebrow="AML" title={t.profile.sourceOfFunds} />
             <p className="mt-2 text-[13px] leading-snug max-w-prose" aria-hidden>
               <GhostText>{t.profile.sofDescription}</GhostText>
             </p>

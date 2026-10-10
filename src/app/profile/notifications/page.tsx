@@ -60,7 +60,7 @@ export default async function NotificationSettingsPage({
   return (
     <PageContainer tier="form" className="space-y-5">
       <BackLink fallbackHref="/profile" label={t.profile.title} />
-      <PageHeader tone="info" icon={<I.bellRing s={22} />} eyebrow={t.push.eyebrow} title={t.push.pageTitle} />
+      <PageHeader icon={<I.bellRing s={22} />} eyebrow={t.push.eyebrow} title={t.push.pageTitle} />
 
       <PushSettings />
 

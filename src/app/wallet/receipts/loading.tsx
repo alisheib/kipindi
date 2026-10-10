@@ -27,7 +27,7 @@ export default function ReceiptsLoading() {
       {/* The back link: `BackLinkGhost`, the one every ghost draws for the BackLink (R5-H · G-2b) — this was the only
           ghost with its 44px, as a filled block; now the same box and bar as the others. */}
       <BackLinkGhost />
-      <PageHeader tone="info" icon={<I.receipt s={22} />} eyebrow={t.wallet.title} title={t.receipts.title} subtitle={t.receipts.subtitle} />
+      <PageHeader icon={<I.receipt s={22} />} eyebrow={t.wallet.title} title={t.receipts.title} subtitle={t.receipts.subtitle} />
       <MoneyBarGhost t={t} lenses={[t.common.all, t.receipts.lensDeposits, t.receipts.lensWithdrawals]} count={t.receipts.nResults.replace("{n}", "00")} />
       <div className="rounded-xl glass-panel overflow-hidden" aria-hidden>
         {Array.from({ length: 6 }, (_, i) => (

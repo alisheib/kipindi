@@ -70,7 +70,7 @@ export default function LiveLoading() {
             <div className="flex items-center gap-2">
               <span className="kp-shimmer-track block h-[18px] w-[18px] rounded-full bg-bg-overlay" aria-hidden />
               {/* The page's own eyebrow word since round 5 (`common.live`, F17), so the ghost's row is the page's. */}
-              <p className="font-mono text-label uppercase eyebrow font-bold text-text">{t.common.live}</p>
+              <p className="font-mono text-label uppercase eyebrow font-bold text-text-subtle">{t.common.live}</p>
             </div>
             <div className="kp-shimmer-track h-[13px] w-[112px] rounded bg-bg-overlay" aria-hidden />
           </div>

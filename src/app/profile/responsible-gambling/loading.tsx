@@ -26,7 +26,7 @@ export default function Loading() {
         <>
           <BackLinkGhost />
           <PageHero glow="info">
-            <PageHeader tone="info" icon={<I.shieldcheck s={14} />} eyebrow={t.rg.playerProtection} title={t.profile.responsibleGambling} />
+            <PageHeader icon={<I.shieldcheck s={14} />} eyebrow={t.rg.playerProtection} title={t.profile.responsibleGambling} />
             <p className="mt-2 text-[13px] leading-snug max-w-prose text-balance" aria-hidden>
               <GhostText>{t.rg.pageDescription}</GhostText>
             </p>

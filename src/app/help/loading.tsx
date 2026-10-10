@@ -18,7 +18,7 @@ export default function HelpLoading() {
       rhythm="space-y-5"
       lead={
         <PageHero glow="info">
-          <PageHeader tone="info" eyebrow={t.help.pageTitle} title={t.help.heading} />
+          <PageHeader eyebrow={t.help.pageTitle} title={t.help.heading} />
         </PageHero>
       }
     />

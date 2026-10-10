@@ -84,8 +84,7 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
 
       <PageHero glow="info">
         <PageHeader
-          tone="info"
-          icon={<I.fileSignature s={14} className="text-info-fg" />}
+          icon={<I.fileSignature s={14} />}
           eyebrow="AML"
           title={t.profile.sourceOfFunds}
         />

@@ -1706,6 +1706,21 @@ html[data-fab-idle] .cm-fab:not(.cm-fab--open):not(:focus-within) {
   -webkit-mask-image: linear-gradient(to right, transparent, black var(--kp-nf-side), black calc(100% - var(--kp-nf-side)), transparent);
   mask-image: linear-gradient(to right, transparent, black var(--kp-nf-side), black calc(100% - var(--kp-nf-side)), transparent);
 }
+/* ⭐ ONE WAVE FOR EVERY FRAMELESS BACKDROP (R7-B, the visual pass's round 7, 2026-10-10; round 6's read R5-10, tile 182).
+   The name is the not-found view's history; the two masks are now every wave's that no frame ends: the error view
+   (`route-error.tsx`, a hard-edged 560px box at 1280 until now), the auth pages' form column and /live's page. Only the
+   point where the SIDES start to fade differs, because it is where each column stops being the screen:
+     · the error view's column is 560px (`--w-receipt`), so its sides fade a pixel past a 560px viewport;
+     · the auth form column is the whole screen below lg and a column beside the rail from lg (32px inside the screen's
+       edge at 1024 and 1280), so its sides fade from 1024;
+     · /live's wave spans the page, so it takes the outer layer alone (its sides are always the screen's).
+   A wave inside a drawn frame — the auth rail's own panel, the close-account card — ends where the frame does and is not
+   masked. `test:visual-pass-r7b` §5 holds the census. */
+.kp-nf-topo--receipt > .kp-nf-topo__x { --kp-nf-side: clamp(0px, calc((100vw - var(--w-receipt)) * 1000), var(--sp-16)); }
+.kp-nf-topo--split > .kp-nf-topo__x { --kp-nf-side: 0px; }
+@media (min-width: 1024px) {
+  .kp-nf-topo--split > .kp-nf-topo__x { --kp-nf-side: var(--sp-16); }
+}
 
 /* ⭐ A CHINESE MARK THAT ENDS A CENTRED LINE HANGS ITS EMPTY PART (2026-10-09, round 4, E50; `src/lib/cjk-marks.tsx`
    says why and how it was measured). The mark is set back by its trim; the gap after it — a collapsible space, removed

@@ -34,7 +34,7 @@ export default function FairnessLoading() {
         <div className="lg:pt-3">
           <header className="space-y-3">
             <PageHero glow="info">
-              <PageHeader eyebrow={t.common.resolutionAttestation} title={t.common.howAMarketResolves} tone="info" icon={<I.shieldcheck s={18} />} />
+              <PageHeader eyebrow={t.common.resolutionAttestation} title={t.common.howAMarketResolves} icon={<I.shieldcheck s={18} />} />
             </PageHero>
             <p className="text-[15px] leading-relaxed max-w-[68ch]" aria-hidden>
               <GhostText>{keepLastWords(fill(t.common.fairnessIntro, { hours: durationHours(locale, OBJECTION_WINDOW_HOURS) }))}</GhostText>

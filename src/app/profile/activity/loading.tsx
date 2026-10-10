@@ -22,7 +22,7 @@ export default function Loading() {
       lead={
         <>
           <BackLinkGhost />
-          <PageHeader tone="info" icon={<I.chart s={22} />} eyebrow={t.activity.eyebrow} title={t.activity.title} />
+          <PageHeader icon={<I.chart s={22} />} eyebrow={t.activity.eyebrow} title={t.activity.title} />
         </>
       }
     />

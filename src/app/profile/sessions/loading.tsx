@@ -25,7 +25,7 @@ export default function Loading() {
         <>
           <BackLinkGhost />
           <PageHero glow="info">
-            <PageHeader tone="info" icon={<I.device s={14} className="text-info-fg" />} eyebrow={t.profile.activeSessions} title={t.profile.activeSessions} />
+            <PageHeader icon={<I.device s={14} />} eyebrow={t.profile.activeSessions} title={t.profile.activeSessions} />
             <p className="mt-1 text-[13px]" aria-hidden>
               <GhostText>{t.profile.sessionsDescription}</GhostText>
             </p>

@@ -45,7 +45,6 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams?:
             </span>
 
             <AuthHeader
-              tone="brand"
               eyebrow={t.common.confirmEmailTitle}
               title={t.common.confirmEmailPasswordTitle}
               subtitle={t.common.confirmEmailPasswordBody}

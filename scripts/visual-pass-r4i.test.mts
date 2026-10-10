@@ -837,8 +837,10 @@ section("14 · gold is money and nothing else — the auth pages, the paused dep
 {
   const PANEL = read("src/components/auth/auth-panel.tsx");
   const head = renderToStaticMarkup(h(AuthHeader, { eyebrow: "INGIA", title: "Karibu tena" } as never));
-  ok("14.1 · EXECUTED · the auth eyebrow is the brand's ink by default, and gold is out of its map",
-    /<p class="font-mono text-caption uppercase eyebrow font-bold text-brand-300">INGIA<\/p>/.test(head) && !/gold/.test(PANEL.slice(PANEL.indexOf("export type AuthEyebrowTone"))), head);
+  // Re-pinned by R7-B (round 7, 2026-10-10; round 6's read R5-6): a page's name takes the page heads' ONE eyebrow ink,
+  // `--text-subtle` — R4-I's move off gold stands; the brand ink it moved to was a third page-head ink.
+  ok("14.1 · EXECUTED · the auth eyebrow is the page heads' one ink by default (`--text-subtle`, R7-B), and gold is out of its map",
+    /<p class="font-mono text-caption uppercase eyebrow font-bold text-text-subtle">INGIA<\/p>/.test(head) && !/gold/.test(PANEL.slice(PANEL.indexOf("export type AuthEyebrowTone"))), head);
   const AUTH = ["src/app/auth/login/page.tsx", "src/app/auth/register/register-form.tsx", "src/app/auth/forgot-password/page.tsx", "src/app/auth/reset-password/page.tsx"].map((f) => [f, read(f)] as const);
   const goldAt = AUTH.filter(([, s]) => /gold-\d{3}/.test(s)).map(([f]) => f);
   ok("14.2 · the sign-in, sign-up, recovery and reset pages carry no gold: the warning glyph muted, the call to action in the brand's ink, the link's lifetime muted", goldAt.length === 0, goldAt.join(" · "));

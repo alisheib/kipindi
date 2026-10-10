@@ -24,6 +24,7 @@
  */
 import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
+import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { cn, formatTzs } from "@/lib/utils";
 // Every date here is in the reader's month words on the East Africa clock (§L4; `formatDateTime` printed English months),
 // with the year rule read off `serverNow` — the page's instant, so the browser's first render is the server's.
@@ -144,9 +145,12 @@ export function ResolutionPanel({
           {t.market.resTitle}
         </h2>
         {/* PV-13c (2026-09-03) — was `<span className={cn("chip", ...)}>`, the legacy CSS
-            family <Chip> replaces. Both tones are "status" variants (23px), matching the
-            raw classes' own height override exactly. */}
-        <Chip variant={isVoid ? "pending" : "resolved"}>
+            family <Chip> replaces. Both arms take the "status" metrics (23px), matching the
+            raw classes' own height override exactly.
+            ⭐ The void arm reads the dictionary (R7-B, round 7, 2026-10-10; round 6's read R8-3): it was a hand-typed royal
+            `pending` — a void is the dictionary's slate on every surface (`status-tone.ts` VOID). `metrics="status"` keeps
+            the slot one size whichever arm shows: the size no longer follows the colour (chip.tsx, G1). */}
+        <Chip variant={isVoid ? TONE_CHIP[STATUS_TONE.VOID.player] : "resolved"} metrics="status">
           {isVoid ? t.market.resVoided : `${t.market.resolvedOutcome} · ${outcomeWord(t, outcome, "MARKET")}`}
         </Chip>
       </div>

@@ -29,7 +29,7 @@ export default async function SecurityPage() {
   return (
     <PageContainer tier="form" className="space-y-5">
       <BackLink fallbackHref="/profile" label={t.profile.title} />
-      <PageHeader tone="info" icon={<I.keyRound s={22} />} eyebrow={t.security.eyebrow} title={t.security.title} />
+      <PageHeader icon={<I.keyRound s={22} />} eyebrow={t.security.eyebrow} title={t.security.title} />
       <SecurityClient enabled={status.enabled} backupRemaining={status.backupRemaining} hasPassword={!!user?.passwordHash} />
     </PageContainer>
   );

@@ -37,6 +37,7 @@ import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
 import { keepFigures } from "@/components/ui/keep-words";
 import { getServerT } from "@/lib/i18n-server";
 import { outcomeWord, sideWord, type LabelProductLine } from "@/lib/side-label";
+import { STATUS_TONE, TONE_CHIP, playerStatusInk } from "@/lib/status-tone";
 import { PageContainer } from "@/components/layout/page-container";
 import { ROOT_OPEN_GRAPH } from "../layout";
 
@@ -392,9 +393,13 @@ async function ResultsContent({
                     wider. A new row costs ~12px of height against the donut's 38px.
                     ⛔ The word comes from the lexicon (`statusVoid`, already in all three
                     languages), never a literal — and it is NOT a side, so it is not run through
-                    `sideWord`: a refund has no direction (§C4). It carries the arc's own ink. */}
+                    `sideWord`: a refund has no direction (§C4).
+                    ⭐ Its WORD wears the void's word ink, `playerStatusInk("VOID")` — the slate chip's own text, the grid
+                    card's "Batili" on this very page (`.mcardp-pct--void`) — as the YES and NO words wear their families'
+                    300 step over their arcs' 400 (R7-B, round 7, 2026-10-10; round 6's read R8-3). The ARC keeps §B12's
+                    neutral chart ink, `--text-subtle`, below. */}
                 {voidCount > 0 && (
-                  <span className="whitespace-nowrap text-text-subtle">{t.market.statusVoid} {formatNumber(voidCount)}</span>
+                  <span className={`whitespace-nowrap ${playerStatusInk("VOID") ?? "text-text-muted"}`}>{t.market.statusVoid} {formatNumber(voidCount)}</span>
                 )}
               </div>
             </div>
@@ -633,8 +638,10 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
         <Chip variant="cat" size="sm">{marketCategoryLabel(t, m.category)}</Chip>
         {/* §L3 — the featured card is a SECOND code path from the grid above, and it kept
             the raw enum: "Imetatuliwa · NO" / "已结算 · NO" on production. */}
+        {/* The void arm is the dictionary's (R7-B, round 7, 2026-10-10): it was a hand-typed royal `pending` beside this
+            page's own slate legend and arc. `metrics="status"` keeps the slot the resolved seal's size. */}
         {isVoid
-          ? <Chip variant="pending" size="sm">{t.common.voided}</Chip>
+          ? <Chip variant={TONE_CHIP[STATUS_TONE.VOID.player]} size="sm" metrics="status">{t.common.voided}</Chip>
           : <Chip variant="resolved" size="sm">{t.market.resolvedOutcome} · {outcomeWord(t, m.resolvedOutcome ?? "VOID", m.productLine)}</Chip>}
         {/* Round 5 (F19): the flag ends on the card's edge — its trailing 0.16em taken back (`kp-track-end`, globals.css).
             ⚠️ ONE UNBREAKABLE UNIT (2026-10-10, round 6's read: tiles 169, 170, 201, 326): the take-back is a negative end

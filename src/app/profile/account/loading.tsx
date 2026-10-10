@@ -23,7 +23,7 @@ export default function Loading() {
         <>
           <BackLinkGhost />
           <PageHero glow="info">
-            <PageHeader tone="info" icon={<I.user s={14} className="text-info-fg" />} eyebrow={t.profile.myAccount} title={t.profile.myAccount} />
+            <PageHeader icon={<I.user s={14} />} eyebrow={t.profile.myAccount} title={t.profile.myAccount} />
           </PageHero>
         </>
       }

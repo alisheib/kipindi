@@ -837,7 +837,9 @@ from disagreeing about what refunded looks like.**
 
 - **`VOID` → royal.** The dictionary already says the player surface is royal and five other
   player surfaces paint it royal. The card is the odd one out, and §B11 says drift gets
-  fixed.
+  fixed. ⟶ **Superseded by Ali's ruling of 2026-10-10: a voided bet is grey (slate)
+  everywhere** — by then `/results`, `/fairness` and Up & Down drew it slate beside the royal
+  ticket chip; DESIGN_AUTHORITY §B11 item 6 (the S6 visual pass, round 7).
 - **`LOSS` keeps the betting rose**, recorded in `STATUS_TONE_EXCEPTIONS` **with its
   reason** — a lost bet is betting semantics. That is what turns a divergence into a
   decision instead of leaving it a drift.

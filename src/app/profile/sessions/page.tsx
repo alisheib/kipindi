@@ -75,8 +75,7 @@ export default async function SessionsPage() {
 
       <PageHero glow="info">
         <PageHeader
-          tone="info"
-          icon={<I.device s={14} className="text-info-fg" />}
+          icon={<I.device s={14} />}
           eyebrow={t.profile.activeSessions}
           title={t.profile.activeSessions}
         />

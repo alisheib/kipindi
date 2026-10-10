@@ -17,7 +17,7 @@ export default function Loading() {
       tier="board"
       rows={4}
       rhythm="space-y-5"
-      lead={<PageHeader tone="info" icon={<I.star s={22} />} eyebrow={t.watchlist.eyebrow} title={t.watchlist.title} />}
+      lead={<PageHeader icon={<I.star s={22} />} eyebrow={t.watchlist.eyebrow} title={t.watchlist.title} />}
     />
   );
 }

@@ -126,7 +126,6 @@ export default async function ReceiptsPage({ searchParams }: { searchParams: Pro
       <BackLink fallbackHref="/profile" label={t.common.back} />
 
       <PageHeader
-        tone="info"
         icon={<I.receipt s={22} />}
         eyebrow={t.wallet.title}
         title={t.receipts.title}

@@ -56,6 +56,7 @@ import { isLockedOut } from "@/lib/server/responsible-gambling";
 import { appUrl } from "@/lib/app-url";
 import { getServerT } from "@/lib/i18n-server";
 import { sideWord, outcomeWord } from "@/lib/side-label";
+import { playerStatusInk } from "@/lib/status-tone";
 import { renderFailure } from "@/lib/failure-reasons";
 import { getBonusSummary } from "@/lib/server/bonus-service";
 import { pickLocalized, pickCriterion, marketCategoryLabel } from "@/lib/localized";
@@ -1011,8 +1012,13 @@ export default async function MarketDetail({
                             fully localised. A Swahili player reading "NDIO" on the card
                             they arrived from met "YES" here. */}
                         <span className={`font-bold ${p.side === "YES" ? "text-yes-300" : "text-no-300"}`}>{sideWord(t, p.side, "MARKET")}</span>
+                        {/* ⭐ THE STATE'S INK IS THE DICTIONARY'S (R7-B, round 7, 2026-10-10; round 6's read R8-3): the words the
+                            ticket card's chip says, in its chip's own text colour (`playerStatusInk`, §B11's word rule) — OPEN
+                            royal (it was `--info-fg`, the drift §B11 named on the classic card), a sale or a refund slate (they
+                            were `--text-subtle`, a step off the slate chip's ink). WIN keeps the gold of its `gold` chip and LOSS
+                            the betting rose of its `no` chip (`STATUS_TONE_EXCEPTIONS.LOSS`). */}
                         <span className={`text-micro uppercase tracking-[0.10em] font-semibold ${
-                          p.status === "OPEN" ? "text-info-fg" : p.status === "WIN" ? "text-gold-300" : p.status === "LOSS" ? "text-no-300" : "text-text-subtle"
+                          p.status === "WIN" ? "text-gold-300" : p.status === "LOSS" ? "text-no-300" : (playerStatusInk(p.status) ?? "text-text-muted")
                         }`}>{
                           p.status === "OPEN" ? t.market.posOpen
                           : p.status === "WIN" ? t.market.posWin

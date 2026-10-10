@@ -115,7 +115,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
   return (
     <PageContainer tier="reading" className="space-y-5">
       <BackLink fallbackHref="/profile" label={t.profile.title} />
-      <PageHeader tone="info" icon={<I.chart s={22} />} eyebrow={t.activity.eyebrow} title={t.activity.title} />
+      <PageHeader icon={<I.chart s={22} />} eyebrow={t.activity.eyebrow} title={t.activity.title} />
 
       {/* Period tabs. ⚠️ The comment here used to read "positions idiom" and it was exactly
           right — this rail carried the same class string as /positions, /proposals, /results
