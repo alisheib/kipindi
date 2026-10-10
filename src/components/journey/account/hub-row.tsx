@@ -15,7 +15,7 @@ import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { NeedleControlsDrawer } from "@/components/layout/needle-drawer";
 import { formatTzs, fill } from "@/lib/utils";
 import { firstDateSentence, formatBreakEnd } from "@/lib/break-end";
-import { keepText } from "@/components/ui/keep-run";
+import { keepConnectives, keepText } from "@/components/ui/keep-run";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 import { hubWord, type HubRow, type HubViewer } from "@/components/journey/account/hub-rows";
 import { UnreadRow } from "@/components/journey/account/unread-row";
@@ -37,7 +37,9 @@ export function HubRowItem({ row, t, viewer, locale }: { row: HubRow; t: Dict; v
     return <UnreadRow userId={viewer.signedIn ? viewer.userId : null} href={row.href} label={hubWord(t, row.label)} />;
   }
   const Glyph = I[row.glyph];
-  const label = <span className="kp-hub__label">{hubWord(t, row.label)}</span>;
+  // Round 7 (2026-10-10, the owner's item 37): a label never ends a line on a connective — "Mapendekezo" / "ya Masoko",
+  // never "Mapendekezo ya" / "Masoko" (`keepConnectives`; the words unchanged).
+  const label = <span className="kp-hub__label">{keepConnectives(hubWord(t, row.label))}</span>;
   /* ⭐ R4-I (2026-10-09; edges E58, tile 092 · 026 059) · A RUNNING BREAK IS STATED ON ITS OWN ROW. "Pumzika" was offered
      during an active break with no word that one was running, or until when. Its second line is now the first sentence of
      the break's own approved paragraph, `rg.breakActive` — "Mapumziko yanaendelea hadi 9 Okt, 06:02." — its end said by

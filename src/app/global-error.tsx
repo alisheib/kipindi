@@ -33,7 +33,7 @@
  * `PageContainer` is not reachable from here by design.
  */
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, type ReactNode } from "react";
 
 const MINI_DICT = {
   en: {
@@ -85,10 +85,42 @@ const MINI_DICT = {
  */
 const REGULATOR_NAME = /Gaming Board of Tanzania|Bodi ya Michezo ya Kubahatisha Tanzania|\u5766\u6851\u5c3c\u4e9a\p{Cf}?\u535a\u5f69\u59d4\u5458\u4f1a/u;
 
+/**
+ * ⭐ ROUND 7 (2026-10-10, the owner's item 37 — a line never ends on a connective): "18+ · Imepewa leseni na" / "Bodi ya
+ * Michezo ya Kubahatisha Tanzania" ended its first line on "na". The connective that introduces the name is inside its
+ * block now ("…Imepewa leseni" / "na Bodi ya Michezo ya Kubahatisha Tanzania"), and inside the block each connective
+ * keeps the space after it, so a line too narrow for the block never ends on "ya" either. The words are
+ * `lib/connectives.ts`'s, copied (this boundary may import nothing but React); `test:visual-pass-r7a` §3 holds the copy.
+ */
+const CONNECTIVE_WORDS = "ya|za|wa|la|cha|vya|kwa|na|of|and|&";
+const CONNECTIVE = new RegExp(`^(?:${CONNECTIVE_WORDS})$`, "i");
+
+function holdConnectives(s: string) {
+  const out: ReactNode[] = [];
+  let from = 0;
+  let word = 0;
+  for (const g of s.matchAll(/[\t\n\f\r ]+/g)) {
+    const at = g.index ?? 0;
+    const end = at + g[0].length;
+    if (at > word && end < s.length && CONNECTIVE.test(s.slice(word, at))) {
+      if (word > from) out.push(s.slice(from, word));
+      out.push(<span key={word} style={{ whiteSpace: "nowrap" }}>{s.slice(word, end)}</span>);
+      from = end;
+    }
+    word = end;
+  }
+  if (from < s.length) out.push(s.slice(from));
+  return out;
+}
+
 function keepRegulatorName(text: string) {
   const m = REGULATOR_NAME.exec(text);
   if (!m) return text;
-  return <>{text.slice(0, m.index)}<span style={{ display: "inline-block" }}>{m[0]}</span>{text.slice(m.index + m[0].length)}</>;
+  let start = m.index;
+  const lead = /(?:^|[\t\n\f\r ])([^\s]+[\t\n\f\r ]+)$/.exec(text.slice(0, start));
+  if (lead && CONNECTIVE.test(lead[1].trim())) start -= lead[1].length;
+  const name = text.slice(start, m.index + m[0].length);
+  return <>{text.slice(0, start)}<span style={{ display: "inline-block" }}>{holdConnectives(name)}</span>{text.slice(m.index + m[0].length)}</>;
 }
 
 /**

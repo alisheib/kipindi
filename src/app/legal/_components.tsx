@@ -11,7 +11,8 @@ import { I } from "@/components/ui/glyphs";
 import { GiltCorner } from "@/components/brand";
 import { PageHeader } from "@/components/ui/page-header";
 import { DotSeq } from "@/components/ui/dot-seq";
-import { keepLastWords, keepYears } from "@/components/ui/keep-words";
+import { keepYears } from "@/components/ui/keep-words";
+import { keepConnectives } from "@/components/ui/keep-run";
 import { type Locale } from "@/lib/i18n-server";
 
 /**
@@ -27,14 +28,18 @@ import { type Locale } from "@/lib/i18n-server";
  * ⚠️ The pair cannot break, so it is bound only while it is short: at most 10 characters, and every current pair is
  * measured under the narrowest title line there is (184px at 320 — "ya Huduma" is the widest, 155.6px in Sora 700 at
  * 28px); `test:visual-pass-r5a` §3 holds both. "ya NDIO/HAPANA" (251.6px) is 14 characters and is left to wrap.
+ * ⭐ ROUND 7 (2026-10-10, R5-3 and R5-4 — the owner's item 37 made whole): the pair was held only where the connective
+ * was the second-to-last word, so round 6 read "Sera ya / Mchezo Salama" (responsible gambling, sw 390) and "Sera ya
+ * Kuzuia / Uoshaji wa / Fedha na KYC" (AML). Now EVERY connective keeps the white space after it (`keepConnectives`,
+ * keep-run.tsx): no line of any legal title ends on one, and nothing can overflow (the run is a connective and a space,
+ * so "ya NDIO/HAPANA" still breaks after its slash where it must). Measured in Chromium's balance, Sora 700 at 28px, at
+ * the header's 184 / 224 / 254 / 276px (320–412): "Sera ya Mchezo / Salama" (360–412; "Sera / ya Mchezo / Salama" at
+ * 320), "Sera ya Kuzuia / Uoshaji / wa Fedha na KYC" (390–412), "Kanuni za Juu / na Chini" (360–412), "Kanuni / za Masoko
+ * / ya NDIO/ / HAPANA" (320–360), "AML & KYC / Policy" and "Up & Down / Rules" (320–360); every other title as before
+ * (`test:visual-pass-r7a` §3). Titles without a connective come back as they came.
  */
-const CONNECTIVE = /^(?:ya|za|wa|la|cha|vya|kwa|na|of|and|&)$/i;
-const KEEP_PAIR_MAX = 10;
 export function legalTitle(title: string): ReactNode {
-  const words = title.split(" ");
-  if (words.length < 3 || !CONNECTIVE.test(words[words.length - 2])) return title;
-  if (words.slice(-2).join(" ").length > KEEP_PAIR_MAX) return title;
-  return keepLastWords(title);
+  return keepConnectives(title);
 }
 
 /**
@@ -139,7 +144,8 @@ export function LegalSection({
     <section className="space-y-2 pt-2">
       <h2 className="font-display text-[17px] font-semibold text-text leading-tight text-balance">
         <span className="font-mono text-body-sm text-text-subtle mr-2 tabular-nums">{n}.</span>
-        {title}
+        {/* Round 7: a section heading never ends a line on a connective either (`keepConnectives`). */}
+        {keepConnectives(title)}
       </h2>
       {/* 2026-09-14: text-pretty, inherited by every paragraph and list item, so a zh paragraph does not end
           on one stranded character. Not text-balance: these are long paragraphs. */}

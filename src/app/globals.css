@@ -3121,13 +3121,15 @@ textarea::placeholder { color: var(--text-subtle); }
   filter: drop-shadow(0 0 3px color-mix(in oklab, var(--brand-500) 45%, transparent));
 }
 
-/* Progress / tier count chip shared by badges + streaks. */
-.badge-count {
-  font-family: var(--font-mono);
+/* The progress count ("5/20") — the tier pip below, in the progress inks (round 7, 2026-10-10, R5-8): it was a bare 10px
+   line hung 16px under the coin, inside the 12px gap above the name (2px under the coin, 3px over the name). On the
+   coin's lower edge, as the tier numeral sits, the name keeps the 15px every badge has. Brand, as every progress fill
+   (R5-C): the ring's own --brand-500 for its edge, --brand-300 for the figure, the panel's surface behind it. */
+.badge-tier-pip.badge-count {
   font-variant-numeric: tabular-nums;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  white-space: nowrap;
+  background: var(--bg-elevated);
+  border-color: var(--brand-500);
   color: var(--brand-300);
 }
 
@@ -4550,12 +4552,17 @@ html[data-sheet-open] .route-enter { animation: none; }
    12px gap. The classic footer is frozen chrome and wears neither. */
 .kp-gbt { container: kp-gbt / inline-size; }
 @container kp-gbt (min-width: 168px) { .kp-gbt-name:lang(en) { white-space: nowrap; } }
-@container kp-gbt (min-width: 263px) { .kp-gbt-name:lang(sw) { white-space: nowrap; } }
+@container kp-gbt (min-width: 281px) { .kp-gbt-name:lang(sw) { white-space: nowrap; } }
 @container kp-gbt (min-width: 120px) { .kp-gbt-name:lang(zh) { white-space: nowrap; } }
 .kp-hero__trust > li.kp-gbt-row { container: kp-gbt-row / inline-size; }
 @container kp-gbt-row (min-width: 208px) { .kp-gbt-name:lang(en) { white-space: nowrap; } }
-@container kp-gbt-row (min-width: 303px) { .kp-gbt-name:lang(sw) { white-space: nowrap; } }
+@container kp-gbt-row (min-width: 321px) { .kp-gbt-name:lang(sw) { white-space: nowrap; } }
 @container kp-gbt-row (min-width: 160px) { .kp-gbt-name:lang(zh) { white-space: nowrap; } }
+/* ⭐ ROUND 7 (2026-10-10, the owner's item 37 — a line never ends on a connective): the sw name now carries the "ya" that
+   introduces it ("Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania.", `keepRegulator`), so its condition is that
+   run's width — 277.4px in Inter 13px, plus 3px: 281 (the row: + its 40px roundel and gap, 321). en and zh are as they
+   were. A narrower line wraps the sentence with its connectives held ("Leseni ya Bodi ya Michezo" / "ya Kubahatisha
+   Tanzania."), never after "ya". */
 /* ⛔ `.kp-hero__tel` (the helpline link in row 1) was DELETED 2026-10-06 with the helpline itself —
    the owner's ruling took it off every player surface (docs/COMPLIANCE-DECISIONS.md). */
 
@@ -4979,6 +4986,7 @@ html[data-sheet-open] .route-enter { animation: none; }
 .kp-qrow__close, .kp-qrow__pool, .kp-qrow__depth { white-space: nowrap; }
 .kp-qrow__pool, .kp-qrow__depth { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .kp-qrow__srcname { color: var(--text-muted); }
+.kp-qrow__srcrun { display: inline-block; }
 .kp-qrow__read { grid-area: read; display: grid; gap: var(--sp-2); min-width: 0; }
 .kp-qrow__line { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--sp-3); row-gap: var(--sp-1); }
 .kp-qrow__price {
@@ -5220,6 +5228,19 @@ html[data-sheet-open] .route-enter { animation: none; }
 .mcardp-moveline .mcardp-oneside::after,
 .tipbar-labels .tb-no::after,
 .kp-track-end::after { content: ""; display: inline-block; margin-inline-end: calc(-1 * var(--track-end, 0.14em)); }
+/* ⭐ A LABEL THAT TAKES ITS TRACKING BACK IS ONE LINE (round 7, 2026-10-10 — the hazard round 6's read named after R5-1).
+   The take-back is a negative end margin, so a SHRINK-TO-FIT box (a flex item, an inline-flex label, a column aligned to
+   its end) sizes itself that much narrower than the words, and any label with a break inside it wraps: /results' flag
+   broke "MATOKEO" / "MASHUHURI" (fixed one site at a time in 34245fd4). The audit, every label of the kind in all three
+   languages: "Net return" / "Faida halisi" / 净收益 (Up & Down history), "Your pick · Stake" (a round), "Balance · frozen"
+   (withdraw), "In review" and every 3-character Chinese status (Wallet history), "Cashed out" (performance), "Early-exit
+   fee" (sell confirm), "Closes in" / "Inafunga baada ya" (the round clock), and the 2-character Chinese 实时 (the live
+   note), 玩家, 开盘, 可用余额, 投注额 and the card's 结果 caption — each could wrap the moment its figure was narrower than
+   it (a held round's "—", a "TZS 0" balance). So the class holds its words, as `.mcardp-oneside` and the bar's labels
+   always did: the trailing tracking overhangs the box as intended and the last letter ends on the figure's edge. Every
+   such label measures under 160px (10px mono, 0.14em) and every site holds it — `test:visual-pass-r7a` §5. */
+.kp-track-end,
+.mcardp-pctcap { white-space: nowrap; }
 .tipbar-labels .tb-no { --track-end: 0.05em; }
 .kp-track-end--16 { --track-end: 0.16em; }
 .kp-track-end--10 { --track-end: 0.10em; }
@@ -5519,7 +5540,19 @@ html[data-sheet-open] .route-enter { animation: none; }
   overflow-wrap: anywhere;
   text-wrap: pretty;
 }
+/* ⭐ A SOURCE'S NAME IS ONE NAME WHERE ITS LINE CAN HOLD IT (round 7, 2026-10-10 — R1-1 / R2-2 / R3-1, three readers, tiles
+   029 059 074 084 097 109): at zh 320 the featured card's line read "结算来源：Tanzania" / "Meteorological Authority" — the
+   part's `text-wrap: pretty` saw "Authority" alone on the greedy last line and pulled "Meteorological" down to it — where
+   "结算来源：" / "Tanzania Meteorological Authority" (210px in a 255px line) keeps the name whole. The name is DATA (the
+   source registry's label, else the host), so no width can be written down for it: it is an inline block, which a line
+   takes whole when it fits and moves to the next line whole when it does not, and which wraps inside itself only when no
+   line could hold it (its width is never more than its line's, so it cannot overflow). The block is the name WITH the
+   connective that introduces it (sw "Linatatuliwa kwa {source}": "Linatatuliwa" / "kwa Tanzania Meteorological
+   Authority", never a line ending on "kwa" — the owner's item 37; `splitLeadConnective`), the connective held to the
+   name inside it. The board row's name (`.kp-qrow__srcrun`) is the same name in the same sentence and takes the same
+   rule; neither carries a link or an underline, which an inline block would not inherit. */
 .mcardp-srcname { color: var(--text-muted); }
+.mcardp-srcrun { display: inline-block; }
 /* Its two parts — the close and the source — are the line's only break (`.mcardp-src__seq`, beside `.kp-hub__seq`), and a
    part that must wrap inside itself in Chinese breaks at its spaces and after its colon, never inside 结算来源 or 截止
    (keep-all; `overflow-wrap: anywhere` above stays the floor for a run longer than the line). */

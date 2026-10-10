@@ -16,6 +16,7 @@ import { useId, useSyncExternalStore } from "react";
 import { I } from "@/components/ui/glyphs";
 import { Toggle } from "@/components/ui/toggle";
 import { keepSentences } from "@/components/ui/keep-words";
+import { keepConnectives } from "@/components/ui/keep-run";
 import { useT } from "@/lib/i18n";
 import { applyCardSpacing, currentCardSpacing, subscribeCardSpacing } from "@/lib/card-spacing";
 
@@ -53,7 +54,7 @@ export function CardSizeRow() {
         <span className="kp-hub__glyph" aria-hidden><I.layoutGrid s={20} /></span>
         <span className="kp-hub__text">
           <span className="kp-hub__pair">
-            <span className="kp-hub__label">{t.journey.hubCardSize}</span>
+            <span className="kp-hub__label">{keepConnectives(t.journey.hubCardSize)}</span>
             <span className="kp-hub__value">{compact ? t.nav.densityCompact : t.nav.densityComfortable}</span>
           </span>
           <span id={hintId} className="kp-hub__sub">{keepSentences(t.nav.cardSpacingHint)}</span>

@@ -26,7 +26,8 @@ export const MUTATIONS = [
   { name: "the Chinese hint free to break inside a word again", file: VIEW, from: "text-balance [word-break:keep-all] [overflow-wrap:break-word]\">", to: "text-balance\">", expect: "3.2" },
   { name: "the gap with no word-spacing", file: "src/app/globals.css", from: "letter-spacing: 0; word-spacing: 0.05em;", to: "letter-spacing: 0; word-spacing: 0;", expect: "4.6" },
   { name: "the helper drops the gap", file: "src/lib/cjk-marks.tsx", from: "    if (next !== undefined) {\n", to: "    if (next === \"never\") {\n", expect: "4.3" },
-  { name: "the empty state's title not hung", file: "src/components/ui/empty-state.tsx", from: "{hangCjkMarks(title)}", to: "{title}", expect: "4.10" },
+  // Round 7 (R7-A): the title hangs its marks through `keepConnectives` — the plant drops the hang from it.
+  { name: "the empty state's title not hung", file: "src/components/ui/empty-state.tsx", from: "{keepConnectives(title, [], hangCjkMarks)}", to: "{keepConnectives(title)}", expect: "4.10" },
   { name: "the wave's top and bottom hard again", file: "src/app/globals.css", from: "  mask-image: linear-gradient(to bottom, transparent, black var(--sp-16), black calc(100% - var(--sp-16)), transparent);\n", to: "", expect: "5.2" },
   { name: "the wave's sides fade on a phone too", file: "src/app/globals.css", from: "--kp-nf-side: clamp(0px, calc((100vw - var(--w-form)) * 1000), var(--sp-16));", to: "--kp-nf-side: var(--sp-16);", expect: "5.4" },
   { name: "the question's column back under the watermark", file: "src/app/markets/[id]/page.tsx", from: " pr-[calc(2em+12px)] ", to: " ", expect: "7.1" },

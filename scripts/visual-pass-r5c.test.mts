@@ -342,7 +342,7 @@ section("2 · the items — notifications, the agent page, proposals, /results, 
 
   // 2.6 · the badge rings and "5/20": progress in the brand family, the coin in identity metal.
   ok("2.6 · the progress ring is `--brand-500` and its count `--brand-300`; the coin is `--metal-gold` (gold-is-money §2b holds the coin)",
-    /stroke:\s*var\(--brand-500\)/.test(rule(CSS, ".badge-ring-arc")) && /color:\s*var\(--brand-300\)/.test(rule(CSS, ".badge-count"))
+    /stroke:\s*var\(--brand-500\)/.test(rule(CSS, ".badge-ring-arc")) && /color:\s*var\(--brand-300\)/.test(rule(CSS, ".badge-tier-pip.badge-count")) /* round 7 (R7-A, R5-8): the count is the tier pip's chip now */
       && /const gold = "var\(--metal-gold\)";/.test(read("src/components/badges/icons.tsx")));
 
   // 2.7 · the KYC stepper's active step ("NIDA" in capsule gold).

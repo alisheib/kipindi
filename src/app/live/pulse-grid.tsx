@@ -8,7 +8,7 @@ import { marketCategoryLabel, pickLocalized } from "@/lib/localized";
 import { useT } from "@/lib/i18n";
 import { SearchBox } from "@/components/ui/search-box";
 import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
-import { keepFigures } from "@/components/ui/keep-words";
+import { afterRun, keepFigures } from "@/components/ui/keep-words";
 import { fieldNames, MARKET_SEARCH } from "@/lib/search";
 import { sideWord } from "@/lib/side-label";
 import { priceState } from "@/lib/markets/price-state";
@@ -161,10 +161,16 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
  * range of two numbers ("2026-27") is a figure, and `keepFigures` (keep-words.tsx, the cards' and the market page's own
  * rule) shapes the text between the tokens, so "2026-27赛季" and "dakika 28:00" never break inside. A part with no
  * figure renders as the plain text it was (a keyed fragment, no element).
+ * ⭐ ROUND 7 (2026-10-10, R6-1's cause): the white space after a token is a text node of its own (`afterRun`,
+ * keep-words.tsx), so the balanced title is offered the break after it ("Man-City" + " " + "win…").
  */
 export function KeepHyphenated({ text }: { text: string }) {
   const parts = hyphenParts(text);
-  return <>{parts.map((part, i) => (i % 2 === 1 ? <span key={i} className="whitespace-nowrap">{part}</span> : <Fragment key={i}>{keepFigures(part)}</Fragment>))}</>;
+  return <>{parts.map((part, i) => {
+    if (i % 2 === 1) return <span key={i} className="whitespace-nowrap">{part}</span>;
+    const [lead, rest] = i > 0 ? afterRun(part) : [part];
+    return <Fragment key={i}>{rest === undefined ? keepFigures(lead) : <>{lead}{keepFigures(rest)}</>}</Fragment>;
+  })}</>;
 }
 
 /* ⭐ THE SPLIT, IN ONE PASS (review 6, B-3 · 2026-10-09). It was one pattern —

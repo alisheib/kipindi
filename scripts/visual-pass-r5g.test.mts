@@ -615,6 +615,13 @@ const CSS = raw("src/app/globals.css");
 const gbtFrom = (container: string, l: Loc) => Number(new RegExp(`@container ${container} \\(min-width: ([0-9.]+)px\\) \\{ \\.kp-gbt-name:lang\\(${l}\\) \\{ white-space: nowrap; \\} \\}`).exec(CSS)?.[1]);
 const { REGULATOR_NAME, regulatorSplit } = req("../src/lib/regulator-name.ts") as { REGULATOR_NAME: RegExp; regulatorSplit: (s: string) => [string, string, string] | null };
 const NAME: Record<Loc, string> = Object.fromEntries(LOCALES.map((l) => [l, regulatorSplit(word(l, "footer.licensedByGbt"))?.[1] ?? "‹none›"])) as Record<Loc, string>;
+// ⚠️ ROUND 7 (R7-A, 2026-10-10, the owner's item 37 — a line never ends on a connective): the keep span holds the name WITH
+// the connective that introduces it (sw "ya "; en and zh none), and inside it each connective keeps its space (a nowrap
+// run), so "Leseni ya" / "Bodi…" became "Leseni" / "ya Bodi…". KEPT is what the span's text is; `unrun` takes the runs'
+// tags out of a span's markup.
+const KEPT: Record<Loc, string> = { en: NAME.en, sw: `ya ${NAME.sw}`, zh: NAME.zh };
+const unrun = (s: string) => s.replace(/<span class="(?:whitespace-nowrap|kp-nw)">([^<]*)<\/span>/g, "$1").replace(/<span style="white-space:nowrap">([^<]*)<\/span>/g, "$1");
+const keptIn = (mk: string, open: string) => { const m = new RegExp(`${open}((?:[^<]|<span [^>]*>[^<]*</span>)*)</span>`).exec(mk); return m ? unrun(m[1]) : null; };
 {
   ok(`4.1 · one pattern finds the name in each language's licence sentence (${LOCALES.map((l) => `${l} "${NAME[l].replace(/\p{Cf}/gu, "")}"`).join(", ")}), and cuts it without changing a character`,
     LOCALES.every((l) => { const c = regulatorSplit(word(l, "footer.licensedByGbt")); return !!c && c.join("") === word(l, "footer.licensedByGbt"); })
@@ -645,7 +652,7 @@ const NAME: Record<Loc, string> = Object.fromEntries(LOCALES.map((l) => [l, regu
   const line = (mk: string) => /<p class="([^"]*)">([^]*?)<\/p>/.exec(mk.slice(mk.indexOf('data-testid="optout-footer"')))!;
   const shellOk = footers.every(({ l, mk }) => {
     const m = line(mk);
-    return /\bkp-gbt\b/.test(m[1]) && /\bflex-1\b/.test(m[1]) && m[2].includes(`<span class="kp-gbt-name">${NAME[l]}</span>`) && unesc(text(m[2])) === word(l, "footer.licensedByGbt");
+    return /\bkp-gbt\b/.test(m[1]) && /\bflex-1\b/.test(m[1]) && keptIn(m[2], '<span class="kp-gbt-name">') === KEPT[l] && unesc(text(m[2])) === word(l, "footer.licensedByGbt");
   });
   ok("4.4 · RENDERED: the opt-out shell's licence line is a `.kp-gbt` line taking the row's remainder (`flex-1`), its words the dictionary's with the name in its keep span, in every language",
     shellOk, j(footers.map(({ l, mk }) => [l, line(mk)[1], line(mk)[2].slice(0, 120)])));
@@ -653,16 +660,18 @@ const NAME: Record<Loc, string> = Object.fromEntries(LOCALES.map((l) => [l, regu
   const roundel = Number(/\.kp-rg__18 \{[^}]*?width: ([0-9]+)px;/.exec(CSS)?.[1]);
   const gap = Number(/<div className="flex items-center gap-\[([0-9]+)px\]">\s*\{\/\*[^]*?\*\/\}\s*<span className="kp-rg__18">/.exec(shell)?.[1]);
   const lineAt = (vw: number) => Math.min(vw, 1280) - (vw >= 1024 ? 64 : 32) - roundel - gap;
-  const need = (l: Loc) => widthOf(l === "zh" ? NAME.zh : `${NAME[l]}.`);
+  const need = (l: Loc) => widthOf(l === "zh" ? KEPT.zh : `${KEPT[l]}.`);
   const from = (l: Loc) => gbtFrom("kp-gbt", l);
   ok(`4.5 · the line is the row less the roundel (${roundel}px) and its gap (${gap}px) — vw − 70 under 1024 — and the name is kept from globals.css's own widths (en ${from("en")}, sw ${from("sw")}, zh ${from("zh")}: the name and its full stop, ${LOCALES.map((l) => `${l} ${need(l).toFixed(1)}`).join(", ")}px, plus 3)`,
     roundel === 28 && gap === 10 && lineAt(320) === 250 && LOCALES.every((l) => from(l) >= need(l) + 2 && from(l) <= need(l) + 6));
   // Where the name was torn and where it is now whole: a 2-line balanced split of the sentence, with and without the name kept.
   const sentence = (l: Loc) => word(l, "footer.licensedByGbt");
   const splitsName = (l: Loc, vw: number) => widthOf(sentence(l)) > lineAt(vw) && l !== "zh";
-  const torn = { en: [320, 334].every((vw) => splitsName("en", vw)) && !splitsName("en", 335), sw: [333, 390].every((vw) => splitsName("sw", vw) && lineAt(vw) >= from("sw")) && !splitsName("sw", 391) };
-  ok(`4.6 · the widths the rule changes: en 320–334 ("Licensed by the Gaming" / "Board of Tanzania." → "Licensed by the" / "Gaming Board of Tanzania.") and sw 333–390 (→ "Leseni ya" / "Bodi ya Michezo ya Kubahatisha Tanzania."); under 333 no Swahili line can hold the name and it wraps as before; zh is one line from 320`,
-    torn.en && torn.sw && lineAt(332) < from("sw") && widthOf(sentence("zh")) <= lineAt(320), j({ torn, en: widthOf(sentence("en")).toFixed(1), sw: widthOf(sentence("sw")).toFixed(1), zh: widthOf(sentence("zh")).toFixed(1) }));
+  // Round 7 (R7-A): the sw run is "ya " + the name (277.4px), held from a 281px line — vw 351 — and under it the sentence
+  // wraps with each connective held ("Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania."), never after "ya".
+  const torn = { en: [320, 334].every((vw) => splitsName("en", vw)) && !splitsName("en", 335), sw: [351, 390].every((vw) => splitsName("sw", vw) && lineAt(vw) >= from("sw")) && !splitsName("sw", 391) };
+  ok(`4.6 · the widths the rule changes: en 320–334 ("Licensed by the Gaming" / "Board of Tanzania." → "Licensed by the" / "Gaming Board of Tanzania.") and sw 351–390 (→ "Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania."); under 351 no Swahili line can hold the run and the sentence wraps with its connectives held; zh is one line from 320`,
+    torn.en && torn.sw && lineAt(350) < from("sw") && widthOf(sentence("zh")) <= lineAt(320), j({ torn, en: widthOf(sentence("en")).toFixed(1), sw: widthOf(sentence("sw")).toFixed(1), zh: widthOf(sentence("zh")).toFixed(1) }));
   const collapsed = squash(code("src/components/layout/app-shell.tsx")).replace('className="kp-gbt flex-1 text-text-muted', 'className="kp-gbt text-text-muted');
   ok("4.4′ PLANT · the line made a size container without `flex-1` (a contained line has no width of its own to give its flex row: it would collapse) is reported",
     !/className="kp-gbt flex-1 /.test(collapsed));
@@ -673,16 +682,16 @@ const NAME: Record<Loc, string> = Object.fromEntries(LOCALES.map((l) => [l, regu
   const doc = OD.offlineDocument({ licenceNumber: "LIC-0001" });
   const css = /<style>([\s\S]*?)<\/style>/.exec(doc)?.[1] ?? "";
   const spans = LOCALES.map((l) => {
-    const m = new RegExp(`<span class="l" lang="${l}">([^<]*)<span class="kp-gbt-name">([^<]*)</span>([^<]*)</span>`).exec(doc);
-    return { l, ok: !!m && m[2] === NAME[l] && m[1] + m[2] + m[3] === word(l, "footer.licensedByGbt").replace(/&/g, "&amp;") };
+    const m = new RegExp(`<span class="l" lang="${l}">([^<]*)<span class="kp-gbt-name">((?:[^<]|<span class="kp-nw">[^<]*</span>)*)</span>([^<]*)</span>`).exec(doc);
+    return { l, ok: !!m && unrun(m[2]) === KEPT[l] && m[1] + unrun(m[2]) + m[3] === word(l, "footer.licensedByGbt").replace(/&/g, "&amp;") };
   });
   ok("4.7 · RUN: the offline document's licence line holds each language's name in a `.kp-gbt-name` span, the sentence's characters unchanged", spans.every((s) => s.ok), j(spans));
   const rules = LOCALES.map((l) => ({ l, doc: Number(new RegExp(`@container kp-gbt \\(min-width:([0-9.]+)px\\)\\{\\.kp-gbt-name:lang\\(${l}\\)\\{white-space:nowrap\\}\\}`).exec(css)?.[1]), app: gbtFrom("kp-gbt", l) }));
   ok(`4.8 · its line is the row's remainder and a size container (\`.kp-off__gbt\`), and the name is nowrap from globals.css's own widths (${rules.map((r) => `${r.l} ${r.doc}`).join(", ")}) — CSS only, no new script`,
     /\.kp-off__rg \.kp-off__gbt\{[^}]*flex:1 1 0%;min-width:0;container:kp-gbt\/inline-size\}/.test(css) && rules.every((r) => r.doc === r.app && r.doc === OD.OFFLINE_GBT_FROM[r.l])
       && count(doc, "<script>") === 2 && /\.kp-off__rg-row\{display:flex;align-items:center;gap:10px\}/.test(css) && /\.kp-off__18\{flex:none;[^}]*width:28px/.test(css), j(rules));
-  const driftedDoc = css.replace("@container kp-gbt (min-width:263px)", "@container kp-gbt (min-width:240px)");
-  ok("4.8′ PLANT · a Swahili threshold drifted from globals.css (240px: under the name's 259.3px, it would overflow) is reported",
+  const driftedDoc = css.replace("@container kp-gbt (min-width:281px)", "@container kp-gbt (min-width:240px)");
+  ok("4.8′ PLANT · a Swahili threshold drifted from globals.css (240px: under the run's 277.4px, it would overflow) is reported",
     Number(/@container kp-gbt \(min-width:([0-9.]+)px\)\{\.kp-gbt-name:lang\(sw\)/.exec(driftedDoc)?.[1]) !== gbtFrom("kp-gbt", "sw"));
   // The document's face: Inter first, then the system's. Next's capsize table: every platform face sets Latin narrower than Inter.
   const CAPSIZE = JSON.parse(readFileSync("node_modules/next/dist/server/capsize-font-metrics.json", "utf8")) as Record<string, { xWidthAvg: number; unitsPerEm: number }>;
@@ -701,7 +710,9 @@ const NAME: Record<Loc, string> = Object.fromEntries(LOCALES.map((l) => [l, regu
     finally { delete g.document; }
   };
   const GE_NAME = { en: "Gaming Board of Tanzania", sw: "Bodi ya Michezo ya Kubahatisha Tanzania", zh: "坦桑尼亚博彩委员会" };
-  const kept = LOCALES.map((l) => ({ l, ok: geRender(l).includes(`<span style="display:inline-block">${GE_NAME[l]}</span>`) }));
+  // Round 7 (R7-A): the block holds the connective that introduces the name (sw "na "), its own connectives held.
+  const GE_KEPT = { en: GE_NAME.en, sw: `na ${GE_NAME.sw}`, zh: GE_NAME.zh };
+  const kept = LOCALES.map((l) => ({ l, ok: keptIn(geRender(l), '<span style="display:inline-block">') === GE_KEPT[l] }));
   ok("4.10 · RENDERED: global-error's licence line keeps the name as an inline-block in every language (its own face and no stylesheet: the browser measures whether the line can hold it)",
     kept.every((k) => k.ok), j(kept));
   // The widths: 11px in a column of min(420, vw − 48). Measured in Inter; the device face is narrower (4.9).
@@ -761,7 +772,9 @@ const NAME: Record<Loc, string> = Object.fromEntries(LOCALES.map((l) => [l, regu
   const legalFiles = walk("src/app/legal");
   const legalKept = legalFiles.filter((f) => /keepRegulator|kp-gbt/.test(code(f)));
   let legalTouched: string[] = [];
-  try { legalTouched = execFileSync("git", ["diff", "--name-only", "HEAD"], { encoding: "utf8" }).split("\n").filter((p) => p.startsWith("src/app/legal/")); } catch { legalTouched = ["‹git unavailable›"]; }
+  // Round 7 (R7-A): `_components.tsx` is the legal tree's shared CHROME (the header, where a title breaks — the owner's item
+  // 37 — and the section head), not prose; the prose files stay untouched.
+  try { legalTouched = execFileSync("git", ["diff", "--name-only", "HEAD"], { encoding: "utf8" }).split("\n").filter((p) => p.startsWith("src/app/legal/") && p !== "src/app/legal/_components.tsx"); } catch { legalTouched = ["‹git unavailable›"]; }
   ok(`4.14 · legal prose is left as published: none of the ${legalFiles.length} legal files wraps the name, and this item's diff touches none (D19a's pin; a policy version ships any change there)`,
     legalFiles.length >= 14 && legalKept.length === 0 && legalTouched.length === 0, j({ legalKept, legalTouched }));
 }

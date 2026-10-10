@@ -183,7 +183,9 @@ const card = decomment(read("src/components/markets/market-card.tsx"));
   check("2.14 the meta line breaks only BETWEEN its two parts, its dot hangs in the gap (no line ends or starts on '·'), and Chinese keeps 来源 whole",
     /<span className="mcardp-src__seq">/.test(meta)
       && (meta.match(/<span className="mcardp-src__part">/g) ?? []).length === 2
-      && /\{closesOn && <span className="mcardp-src__dot">\{" · "\}<\/span>\}\s*\{settlesPre\}/.test(meta)
+      // Round 7 (R7-A, 2026-10-10) moved this pin: the words before the source's name are `settlesLead` — a connective that
+      // ends them (sw "kwa") travels into the name's inline block (`splitLeadConnective`, `.mcardp-srcrun`), so no line ends on it.
+      && /\{closesOn && <span className="mcardp-src__dot">\{" · "\}<\/span>\}\s*\{settlesLead\}/.test(meta)
       && !/\{closesOn && sourceName \? " · " : null\}/.test(meta)
       && css.includes("\n.kp-seq, .mcardp-src__seq { display: flex; flex-wrap: wrap; column-gap: var(--seq-gap, var(--sp-3)); clip-path: inset(-100vmax -100vmax -100vmax 0); }")
       && css.includes("\n.kp-seq__dot, .mcardp-src__dot { position: absolute; top: 0; right: 100%; width: var(--seq-gap, var(--sp-3)); text-align: center; }")

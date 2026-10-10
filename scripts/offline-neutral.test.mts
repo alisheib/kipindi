@@ -258,8 +258,10 @@ async function run(W: World, log: (l: string) => void): Promise<string[]> {
     // ⚠️ MOVED IN ROUND 5 (R5-G, G-5, 2026-10-09): the document keeps the Gaming Board's name whole in its licence line, so
     // it reads the name's one pattern (`regulator-name.ts`, pure, the one `keepRegulator` reads) — a pattern, nothing about
     // whoever asks; the route is unchanged.
-    ok("3.imports · the route imports only the document and the public licence number; the document only the dictionary, the mark and the regulator's name pattern",
-      j(importsOf(route).sort()) === j(["@/lib/offline-document", "@/lib/server/support-config"]) && j(importsOf(mod).sort()) === j(["@/lib/brand-mark", "@/lib/i18n-dict", "@/lib/regulator-name"]),
+    // ⚠️ MOVED IN ROUND 7 (R7-A, 2026-10-10, the owner's item 37): the licence line never ends on a connective, so the
+    // document reads the connective rule's one pure home (`connectives.ts` — words, nothing about whoever asks) too.
+    ok("3.imports · the route imports only the document and the public licence number; the document only the dictionary, the mark, the regulator's name pattern and the connectives",
+      j(importsOf(route).sort()) === j(["@/lib/offline-document", "@/lib/server/support-config"]) && j(importsOf(mod).sort()) === j(["@/lib/brand-mark", "@/lib/connectives", "@/lib/i18n-dict", "@/lib/regulator-name"]),
       j({ route: importsOf(route), doc: importsOf(mod) }));
     ok("3.reads · neither file reads a cookie, a header or a session", !READS.test(route) && !READS.test(mod),
       (route.match(READS) ?? mod.match(READS) ?? [""])[0]);
@@ -314,9 +316,15 @@ async function run(W: World, log: (l: string) => void): Promise<string[]> {
     // so in each language its span holds the dictionary's own words with the name — the name alone — in a `.kp-gbt-name`
     // span. Still nothing typed: the three parts put together are the dictionary's sentence, character for character.
     const NAME = /^(?:Gaming Board of Tanzania|Bodi ya Michezo ya Kubahatisha Tanzania|坦桑尼亚\p{Cf}?博彩委员会)$/u;
+    // ⚠️ MOVED IN ROUND 7 (R7-A, 2026-10-10, the owner's item 37): the connective that introduces the name ("ya") is inside
+    // the keep span, and each connective in it keeps its space (`.kp-nw` runs) — still nothing typed: the parts put
+    // together, the runs' tags taken out, are the dictionary's sentence, character for character.
     const licence = LOCALES.every((l) => {
-      const m = new RegExp(`<span class="l" lang="${l}">([^<]*)<span class="kp-gbt-name">([^<]*)</span>([^<]*)</span>`).exec(W.doc);
-      return !!m && NAME.test(m[2]) && m[1] + m[2] + m[3] === htmlEsc(T(l).footer.licensedByGbt);
+      const m = new RegExp(`<span class="l" lang="${l}">([^<]*)<span class="kp-gbt-name">((?:[^<]|<span class="kp-nw">[^<]*</span>)*)</span>([^<]*)</span>`).exec(W.doc);
+      if (!m) return false;
+      const inner = m[2].replace(/<span class="kp-nw">([^<]*)<\/span>/g, "$1");
+      const name = inner.replace(/^(?:ya|za|wa|la|cha|vya|kwa|na|of|and) /i, "");
+      return NAME.test(name) && m[1] + inner + m[3] === htmlEsc(T(l).footer.licensedByGbt);
     });
     ok("4.footer · the regulator lines (licensed by the Gaming Board, the licence, the stop line) are the footer's own words in every language — the Board's name in its keep span", plain && licence,
       j({ plain, licence }));

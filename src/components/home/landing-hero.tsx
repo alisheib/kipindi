@@ -79,7 +79,7 @@ import { sideWord } from "@/lib/side-label";
 import { priceState } from "@/lib/markets/price-state";
 import { Cash } from "@/components/ui/cash";
 import { DotSeq } from "@/components/ui/dot-seq";
-import { keepFigures } from "@/components/ui/keep-words";
+import { keepFigures, splitLeadConnective } from "@/components/ui/keep-words";
 import type { LandingPicks } from "@/lib/server/landing-picks";
 
 /**
@@ -184,6 +184,9 @@ function QuestionRow({ row, t, locale, nowMs }: { row: HeroRow; t: Dict; locale:
   // The instant the countdown counts to, as a day (the Gaming Board's "a timer names its instant").
   const closes = fill(t.market.closesOn, { date: formatEatDate(row.bettableUntilMs, nowMs, t.common.monthsShort, locale) });
   const [settlesPre = "", settlesPost = ""] = t.market.settlesOn.split("{source}");
+  // Round 7: the source's name and the connective that introduces it are one inline block (`.kp-qrow__srcrun`), as on
+  // the featured card: kept whole where the line can hold it, and no line ends on "kwa".
+  const [settlesLead, settlesConn] = splitLeadConnective(settlesPre);
   const emptyLabel = price.kind === "oneSided" ? t.market.oneSideOnly : row.predictors === 0 ? t.market.noBetsYet : t.market.noPoolYet;
   const oneSidedNote = price.kind === "oneSided" ? t.market.oneSidedNote.replace("{side}", sideWord(t, price.emptySide, "MARKET")) : null;
   // The card's own names for the pair, so one control has one vocabulary: no figure without a price.
@@ -201,8 +204,11 @@ function QuestionRow({ row, t, locale, nowMs }: { row: HeroRow; t: Dict; locale:
     part === closes ? <span className="kp-qrow__close">{closes}</span>
     : part === settles ? (
       <span className="kp-qrow__src">
-        {settlesPre}
-        <span className="kp-qrow__srcname" data-market-part="source">{row.sourceName}</span>
+        {settlesLead}
+        <span className="kp-qrow__srcrun">
+          {settlesConn && <span className="whitespace-nowrap">{settlesConn}</span>}
+          <span className="kp-qrow__srcname" data-market-part="source">{row.sourceName}</span>
+        </span>
         {settlesPost}
       </span>
     )

@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { EMPTY_STATE_BOX, EMPTY_STATE_TITLE, EMPTY_STATE_BODY } from "./empty-state-classes";
 import { emptyStateBody, type EmptyStateBody } from "./empty-state-text";
+import { keepConnectives } from "./keep-run";
 import { hangCjkMarks } from "@/lib/cjk-marks";
 
 type Kind =
@@ -83,8 +84,9 @@ export function EmptyState({
       {/* ⭐ Both lines are centred, so a Chinese mark that ends one hangs its empty half (`hangCjkMarks`, 2026-10-09,
           round 4, E50: "…显示在这里。" stood 4.5px left of the box's centre on tiles 427 428). Latin text is untouched.
           The body's held runs (its dash, its YES/NO pair, a caller's date) are nowrap spans and its marks hang inside
-          `emptyStateBody` — round 5 (H4): nothing is inserted into the words. */}
-      <p className={cn(EMPTY_STATE_TITLE, "text-text")}>{hangCjkMarks(title)}</p>
+          `emptyStateBody` — round 5 (H4): nothing is inserted into the words. Round 7 (the owner's item 37): the balanced
+          title never ends a line on a connective — each one keeps the space after it (`keepConnectives`, keep-run.tsx). */}
+      <p className={cn(EMPTY_STATE_TITLE, "text-text")}>{keepConnectives(title, [], hangCjkMarks)}</p>
       {body && <p className={cn(EMPTY_STATE_BODY, "text-text-subtle")}>{emptyStateBody(body)}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>

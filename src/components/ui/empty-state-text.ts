@@ -29,8 +29,15 @@ import { keepRanges, mergeRanges, runAndDashRanges } from "./keep-run";
  * copy, a find-in-page and the accessible text ("…是或否 + U+2060 + ——您…"), the very reason keep-words.tsx and keep-run.tsx keep
  * their runs with `white-space: nowrap` spans instead. The body now does the same: each held run is one nowrap span
  * (`keepRanges`), the text between them plain, and every part's Chinese marks hang as before (`hangCjkMarks`, told what
- * follows the part, so a mark at a part's end behaves as it does mid-text). The breaks are exactly the old ones: a run
- * holds what a no-break space or a word joiner held, and nothing else.
+ * follows the part, so a mark at a part's end behaves as it does mid-text). A run holds what a no-break space or a word
+ * joiner held, and nothing else.
+ * 🔴 ROUND 7 (2026-10-10, R6-1 — a REGRESSION, tile 244): "the breaks are exactly the old ones" was true of the break
+ * opportunities, not of the lines Chromium drew. Its balanced wrap never offered the break after the white space that
+ * follows a nowrap run (keep-words.tsx `afterRun` has the source), so en 390 read "Pick a question, tap YES or NO — your" /
+ * "ticket shows up here." where round 5 read "…YES or NO —" / "your ticket shows up here.". That white space is a text
+ * node of its own now (`keepRanges`), and every body breaks where round 5 broke it — `test:visual-pass-r7a` §1 models
+ * Chromium's score line breaker over every dictionary sentence at every empty-state measure: 0 of 3,552 lines differ
+ * from round 5's (the regression changed 345, ten of them on real empty-state bodies).
  */
 const PAIR = /\b[A-Z]{2,}[ \t]+(?:au|or)[ \t]+(?=([A-Z]{2,})\b)/g;
 
