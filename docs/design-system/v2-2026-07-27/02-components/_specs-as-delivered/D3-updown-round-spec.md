@@ -19,6 +19,7 @@ Order per §5.4: visual → redlines → contract → notes.
 - status line: `.live-dot` (open only) + mono 9.5px/600, ls 0.10em, uppercase, `--text-subtle` — "LIVE · GOLD" / "SETTLED · GOLD"
 - countdown pod, right: bg `--bg-inset`, border 1px `color-mix(--border 70%, transparent)`, radius `--r-md`, padding 9px 14px
   - label mono 8.5px/600 ls 0.12em uppercase `--text-faint` — "CLOSES IN" / "ROUND SETTLED"
+    ⚠️ SUPERSEDED 2026-10-10 (Ali's ruling (3), DESIGN_AUTHORITY §T3): every uppercase LABEL this spec draws in `--text-faint` — this pod's label, "LIVE PRICE" / "CLOSE PRICE", the open price's label, the volume and players labels, "YOUR PICK" and the proof card's labels — wears `--text-subtle`, the one section ink (`test:visual-pass-r8b`). The "—" mark, "AWAITING READ" (a status word), the footer row, the qualifier and the closing note (meta) keep `--text-faint`. This frozen redline is kept as delivered.
   - digits mono **28px**/700 tabular, ls 0.05em, lh 1 — same 28px display size as D1, `--text` open / `--text-subtle` settled
   - final 30 s: `--no-300` + `ud-count-pulse` 1s infinite (D1's keyframe, reduced-motion gated)
     ⚠️ SUPERSEDED 2026-09-14 (register E-406, DESIGN_AUTHORITY §B2a): the final-30 s digits keep their running ink (`--text`) and `ud-count-pulse` alone carries the urgency — rose digits beside an Up/Down round read as "price going down". This frozen redline is kept as delivered.

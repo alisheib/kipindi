@@ -11,8 +11,10 @@
  * so two accounts on the same device/tab never share an elapsed timer; the
  * modal does not fire for unauthed visitors. Respects prefers-reduced-motion.
  *
- * Direct port of the kit's player-protection prompt — gilt eyebrow, royal
- * card, kit btn-primary / btn-ghost / btn-claret.
+ * Direct port of the kit's player-protection prompt, as R4-I and R5-C left it: a clock badge beside the title (no
+ * eyebrow and no gilt — the kit's gilt eyebrow left with R5-C's gold audit), the sheet's own edge, and four doors of one
+ * size — the kit's ghost buttons and the claret self-exclusion (2026-10-10: this note said "gilt eyebrow, royal card,
+ * btn-primary", none of which the prompt draws).
  */
 import * as React from "react";
 import Link from "next/link";

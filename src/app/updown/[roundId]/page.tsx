@@ -83,7 +83,7 @@ function POSITION_STATUS_LABEL(
 
 const card = { background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: "var(--r-lg)", boxShadow: "var(--shadow-card)" } as const;
 const inset = { background: "var(--bg-inset)", border: "1px solid color-mix(in oklab, var(--border) 70%, transparent)", borderRadius: "var(--r-md)" } as const;
-const eyebrow = "m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-faint";
+const eyebrow = "m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-subtle";
 
 // usd() → the ONE spelling in @/lib/usd-price (session 80 — six private copies unified).
 
@@ -621,12 +621,12 @@ export default async function UpDownRoundPage({
                 </div>
                 <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <p className="m-0 font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udPaidOut}</p>
+                    <p className="m-0 font-mono text-micro uppercase eyebrow text-text-subtle">{t.market.udPaidOut}</p>
                     <p className={`mt-1 m-0 text-title-md font-bold leading-none amount${payoutStruck ? " gilt-ink" : " text-text"}`}>{formatTzs(myPosition.payout ?? 0)}</p>
                   </div>
                   <div className="text-right">
                     {/* Ends on its figure's edge, its trailing tracking taken back (F19, round 6 · C11). */}
-                    <p className="m-0 font-mono text-micro uppercase eyebrow text-text-faint kp-track-end">{t.market.udYourPick} · {t.market.udStake}</p>
+                    <p className="m-0 font-mono text-micro uppercase eyebrow text-text-subtle kp-track-end">{t.market.udYourPick} · {t.market.udStake}</p>
                     {/* ⛔ A HEDGED HOLDER IS NOT QUOTED ONE SIDE. `myPositionFor` derives its
                         single `side` with `up >= down`, which is a tie-break, not a fact about
                         the bet — so a player who backed BOTH ways was shown the larger leg as
@@ -649,7 +649,7 @@ export default async function UpDownRoundPage({
                 {myPosition.items.length > 1 && (
                   <div className="mt-3.5 border-t border-border-subtle/60 pt-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="m-0 font-mono text-micro uppercase eyebrow text-text-faint">
+                      <p className="m-0 font-mono text-micro uppercase eyebrow text-text-subtle">
                         {t.market.udPositionsOnRound} · {formatNumber(myPosition.items.length)}
                       </p>
                       {myPosition.hedged && <Chip>{t.market.udBothSides}</Chip>}
@@ -760,7 +760,7 @@ export default async function UpDownRoundPage({
                       take `.amount` (§M4 governs amounts only). `leading-[1.1]` stays on both:
                       the rung would otherwise impose 24px and open the pair up. */}
                   <p className="m-0 amount text-title-sm font-bold leading-[1.1] text-text">{formatTzs(round.volumeTzs)}</p>
-                  <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-faint">{t.market.udVolume}</p>
+                  <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-subtle">{t.market.udVolume}</p>
                 </div>
                 <div className="text-right">
                   <p className="m-0 flex items-center justify-end gap-1.5 font-mono text-title-sm font-bold leading-[1.1] tabular-nums text-text">
@@ -768,7 +768,7 @@ export default async function UpDownRoundPage({
                     {formatNumber(round.players)}
                   </p>
                   {/* Under its right-aligned count it ends on the count's edge (F19, round 6 · C11). */}
-                  <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-faint kp-track-end">{t.market.udPlayers}</p>
+                  <p className="mt-1 font-mono text-micro uppercase eyebrow text-text-subtle kp-track-end">{t.market.udPlayers}</p>
                 </div>
               </div>
               {/* 🔴 PV-06 · THE THIRD HAND-ROLLED SPLIT BAR, and the third different drawing of

@@ -110,8 +110,10 @@ export function FeaturedContest({
             balanced line ("LILILO NA" / "SHAKA ZAIDI") inside the arrows' 44px row, which is taller than
             two lines of this type (2 × 14px), so the row — and the hero under it — does not move.
             ⚠️ The gap is 12px (`gap-2`, this repo's scale), was 16: at 320 the longer half, "SHAKA ZAIDI"
-            (≈81px with its tracking), had 80px and would have taken a third line; with 84 it keeps two. */}
-        <p className="min-w-0 text-balance break-words font-mono text-micro uppercase eyebrow font-bold text-aqua-300">{eyebrow}</p>
+            (≈81px with its tracking), had 80px and would have taken a third line; with 84 it keeps two.
+            2026-10-10 · the caption is a section heading, so it wears the one section ink, `--text-subtle` — it was aqua,
+            /live's own eyebrow ink (Ali's ruling (3) of 2026-10-10, DESIGN_AUTHORITY §T3; test:visual-pass-r8b). */}
+        <p className="min-w-0 text-balance break-words font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{eyebrow}</p>
         {multi && (
           <div className="flex shrink-0 items-center gap-2">
             <Arrow dir="prev" onClick={() => go(-1)} />

@@ -789,7 +789,7 @@ export function UpDownCard(props: UpDownCardProps) {
           the frame drive. */}
       <div className="ud-read" data-tone={tone ?? "none"}>
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-          <span className="font-mono text-micro font-semibold uppercase eyebrow text-text-faint">
+          <span className="font-mono text-micro font-semibold uppercase eyebrow text-text-subtle">
             {settledNow ? t.market.udClosePrice : t.market.udConfirmedPrice}
           </span>
           {livePrice == null ? (
@@ -822,7 +822,7 @@ export function UpDownCard(props: UpDownCardProps) {
             "Result in" after. Without it the player reads a live-looking clock over dead
             buttons and concludes the app cheated them. */}
         <div key={`c-${podPhase}`}
-             className="m-tick font-mono text-micro font-semibold uppercase eyebrow text-text-faint"
+             className="m-tick font-mono text-micro font-semibold uppercase eyebrow text-text-subtle"
              style={{
                // ⛔ ONE LINE, ALWAYS, IN EVERY LOCALE. The handover caption replaces the
                // countdown caption inside a pod whose height must not change (no layout shift),
@@ -867,7 +867,7 @@ export function UpDownCard(props: UpDownCardProps) {
       {/* ── Stats (mandatory: VOLUME · PLAYERS) ────────────────────────── */}
       <div className="ud-stats flex items-center justify-between gap-2">
         <span className="font-mono text-[11.5px] font-semibold tabular-nums text-text-muted">
-          <span className="text-micro uppercase eyebrow text-text-faint">{t.market.udVolume} </span>
+          <span className="text-micro uppercase eyebrow text-text-subtle">{t.market.udVolume} </span>
           {formatTzs(volumeTzs)}
         </span>
         <span className="inline-flex items-center gap-1 font-mono text-[11.5px] font-semibold tabular-nums text-text-muted">
@@ -946,7 +946,7 @@ export function UpDownCard(props: UpDownCardProps) {
               run, so at 360 in Swahili "JUU AU CHINI YA $63,572.10" could end "$63,57…" — a clipped number is a wrong
               number (M4a). Now the words wrap between themselves, the open price is held whole, and the margin keeps
               the right edge on whichever line it lands. */}
-          <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 font-mono text-micro font-semibold uppercase eyebrow text-text-subtle">
             <span className="min-w-0">
               {t.market.udWinTarget}
               {openPrice != null && <>{" "}<span className="whitespace-nowrap tabular-nums">{priceText.open}</span></>}

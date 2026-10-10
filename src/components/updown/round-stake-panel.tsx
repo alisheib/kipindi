@@ -77,7 +77,7 @@ export function RoundStakePanel(props: {
       <>
         {tapped ? (
           <div className="flex items-center justify-between gap-[10px]">
-            <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">{t.market.udYourPick}</p>
+            <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-subtle">{t.market.udYourPick}</p>
             <Chip variant={lockedSide === "UP" ? "yes" : "no"} style={{ gap: 5 }}>
               {lockedSide === "UP" ? <I.arrowUp s={12} strokeWidth={2.5} /> : <I.arrowDown s={12} strokeWidth={2.5} />}
               {tapped}
@@ -137,7 +137,7 @@ export function RoundStakePanel(props: {
   return (
     <div data-testid="updown-stake-panel" className={cn(pulse && "ud-place-pulse")}>
       <div className="flex items-center justify-between gap-[10px]">
-        <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-faint">{t.market.udYourPick}</p>
+        <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-subtle">{t.market.udYourPick}</p>
         <Chip variant={isUp ? "yes" : "no"} style={{ gap: 5 }}>
           {isUp ? <I.arrowUp s={12} strokeWidth={2.5} /> : <I.arrowDown s={12} strokeWidth={2.5} />}
           {pickWord}

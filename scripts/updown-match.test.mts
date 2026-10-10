@@ -473,7 +473,9 @@ console.log("\n§11b · F1 — the card's figure and the terminal's live line we
       const fig = row.match(/<span class="ml-auto inline-flex[^"]*"(?: style="color:var\((--[\w-]+)\)")?>([\s\S]*?)<\/span><\/div>/);
       return {
         tone: row.match(/data-tone="(\w+)"/)?.[1] ?? "?",
-        label: row.match(/<span class="font-mono text-micro font-semibold uppercase eyebrow text-text-faint">([^<]*)<\/span>/)?.[1] ?? "?",
+        // RE-PINNED 2026-10-10 (round 8, R8-B): the row's label wears the one section ink, `--text-subtle` (Ali's ruling
+        // (3) — every small heading inside a page in the page heads' ink; it was `--text-faint`); same element, same words.
+        label: row.match(/<span class="font-mono text-micro font-semibold uppercase eyebrow text-text-subtle">([^<]*)<\/span>/)?.[1] ?? "?",
         ink: fig?.[1] ?? null,
         arrow: /<svg/.test(fig?.[2] ?? ""),
         words: row.match(/<p class="mt-1 mb-0 text-body-sm[^"]*">([\s\S]*?)<\/p>/)?.[1]?.replace(/<[^>]+>/g, "") ?? null,

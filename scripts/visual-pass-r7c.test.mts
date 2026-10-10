@@ -682,12 +682,20 @@ section("6 · composition only: the dictionary is the tip's, byte for byte; the 
   try { head = execFileSync("git", ["show", "HEAD:src/lib/i18n-dict.ts"], { encoding: "utf8", maxBuffer: 64 << 20 }).replace(/\r\n/g, "\n"); } catch { head = "‹git unavailable›"; }
   ok("6.1 · src/lib/i18n-dict.ts is the commit's own (every word above is an existing key)", head === raw("src/lib/i18n-dict.ts"));
   const frozen = ["src/components/layout/top-app-bar.tsx", "src/components/layout/bottom-nav.tsx", "src/components/layout/live-ticker.tsx", "src/components/layout/nav-more.tsx", "src/components/layout/notifications-panel.tsx", "src/components/layout/wallet-balance-pill.tsx"];
+  // RE-PINNED 2026-10-10 (round 8, R8-B): Ali's ruling (3) — every small heading inside a page in the one section ink —
+  // reaches the classic bell's panel: its title ("NOTIFICATIONS", a section head) takes `--text-subtle`, where it was the
+  // text's white. That ONE named swap is the difference accepted here (the integrator registers it as a classic-parity
+  // EXPECTED_DIFF): HEAD's text with the swap applied must equal the tree's, so any other edit to the bell still fails, and
+  // once the round is committed the swap finds nothing and the check is byte for byte again.
+  const EXPECTED_SWAPS: Record<string, Array<[string, string]>> = {
+    "src/components/layout/notifications-panel.tsx": [["uppercase eyebrow text-text min-w-0 truncate", "uppercase eyebrow text-text-subtle min-w-0 truncate"]],
+  };
   const changed = frozen.filter((f) => {
     let was = "";
     try { was = execFileSync("git", ["show", `HEAD:${f}`], { encoding: "utf8", maxBuffer: 64 << 20 }).replace(/\r\n/g, "\n"); } catch { was = "‹git unavailable›"; }
-    return was !== raw(f);
+    return (EXPECTED_SWAPS[f] ?? []).reduce((s, [a, b]) => s.replace(a, b), was) !== raw(f);
   });
-  ok("6.2 · the classic header, rail, ticker, More menu, bell and capsule are the commit's own, byte for byte", changed.length === 0, j(changed));
+  ok("6.2 · the classic header, rail, ticker, More menu, bell and capsule are the commit's own, byte for byte (the bell's one named round-8 swap aside: its title in the one section ink)", changed.length === 0, j(changed));
   // The two shared files this round touched carry the journey's class in the journey arm only.
   const { PublicFooter } = req("../src/components/layout/public-footer.tsx") as { PublicFooter: unknown };
   const props = { proposalsState: "COMING_SOON", agentDoorVisible: true, inviteVisible: true, supportEmail: "d@x.t", supportPhone: "0", supportPhoneTel: "+0" };

@@ -33,6 +33,7 @@ Duration tabs (secondary)
 
 Recent results strip (heartbeat)
 - label "LAST ROUNDS" mono 9.5px/600 ls 0.10em `--text-faint`; trailing "oldest → newest" mono 9px
+  ⚠️ SUPERSEDED 2026-10-10 (Ali's ruling (3), DESIGN_AUTHORITY §T3): the "LAST ROUNDS" label wears `--text-subtle`, the one section ink (`board-viz.tsx`, `test:visual-pass-r8b`); "STREAMING" (a status word) and the VOID pip keep `--text-faint`. This frozen redline is kept as delivered.
 - 12 pips, 18×18, radius `--r-xs`, gap 4px, 9px arrow (3.2px stroke)
 - UP pip: bg `oklch(52% 0.15 150 / 0.22)`, edge `oklch(61% 0.16 150 / 0.5)`, ink `--yes-300` (kit `.chip-yes` recipe)
 - DOWN pip: `.chip-no` recipe, ink `--no-300`
