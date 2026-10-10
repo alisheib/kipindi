@@ -57,9 +57,11 @@
      typecheck, `next build`, 52 suites + reds, the big drive and the round trip (int4/int5, 2026-10-09 ~05:40 EAT); the fix
      round on its own branch (its builder, through the lock) — typecheck 0, contacts-import 328/0 + red 384/384,
      contacts-staging 36/0 + red 17/17, contacts-boundary 35/0 + red 28/28, client-graph-safe 5/0, source-bytes 7/0, docs.
-     ⛔ NEVER RUN on the merged state (C3b + fix + C8a): `next build` (Railway's build is the first), `qa:contacts-import`,
-     `qa:contacts-import-big`, `qa:contacts-import-roundtrip`, `test:contacts-import-db`, the admin gates. ▶ THE NEXT
-     SESSION RUNS THESE FIRST, on main, before anything else in this lane — and reads `?dpl=` for `e8111962` or later.
+     ✅ BUILT AND SERVING: Railway built the merged state — `953fc5b4` (2026-10-10, 313 commits after `6e82ee52`, every
+     one of those deploys green) carries `e8111962` and served health ok / migrated at 10:29 UTC 2026-10-10.
+     ⛔ STILL NEVER RUN on the merged state (C3b + fix + C8a): `qa:contacts-import`, `qa:contacts-import-big`,
+     `qa:contacts-import-roundtrip`, `test:contacts-import-db`, the admin gates. ▶ THE NEXT SESSION RUNS THESE FIRST, on
+     main, before anything else in this lane.
      The fix builder's NOT DONE: the four new generator files (a CSV broken mid-file, an Outlook export with mobiles in
      Assistant's / Company Main Phone, a workbook with a title row and a staff sheet, a CSV with a title row) and the
      drive's D5/D7 checks over them. Its FOUND, NOT FIXED: the LIST PASTE has D4's hole ("Asha +254, 712 345 678" stages a
