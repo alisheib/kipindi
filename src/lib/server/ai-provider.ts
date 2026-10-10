@@ -365,7 +365,7 @@ const MOCK_POLLS: Record<string, AIPollGeneration[]> = {
       // ⛔ THE FAILING FIXTURE, on purpose: the Swahili short title runs past SHORT_TITLE_MAX.sw, so generation must
       // store it as NULL with a WARNING naming Swahili — never a filter reason (`test:short-title-ai` §1).
       shortTitleEn: "Will Bitcoin top $150,000 by end of August 2026?",
-      shortTitleSw: "Je, bei ya Bitcoin itazidi dola 150,000 za Marekani ifikapo mwisho wa mwezi Agosti 2026?",
+      shortTitleSw: "Je, bei ya sarafu ya kidijitali Bitcoin itapanda na kuzidi dola 150,000 za Marekani kabla au ifikapo mwisho wa mwezi Agosti 2026?",
       shortTitleZh: "比特币8月底前能否破15万美元？",
     },
   ],

@@ -17,7 +17,7 @@
  * ⛔ Refuses anything but `http://localhost:PORT` on an IN-MEMORY dev server (`DISABLE_ADMIN_TOTP=true`).
  */
 import { chromium } from "playwright";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 
 const BASE = process.env.KP_BASE ?? "http://localhost:3000";
 if (!/^http:\/\/localhost(:\d+)?$/.test(BASE)) {
@@ -31,6 +31,20 @@ if (!/^http:\/\/localhost(:\d+)?$/.test(BASE)) {
     process.exit(2);
   }
 }
+/**
+ * THE ONE BUDGET, read from its home — never typed here (plain node cannot import the TypeScript module, so the
+ * drive reads its declaration). A budget it cannot find refuses the run rather than guessing one.
+ */
+const MAX = (() => {
+  const src = readFileSync(new URL("../src/lib/markets/short-title.ts", import.meta.url), "utf8");
+  const at = src.indexOf("export const SHORT_TITLE_MAX");
+  const m = at < 0 ? null : /en: *([0-9]+), *sw: *([0-9]+), *zh: *([0-9]+)/.exec(src.slice(at, src.indexOf(";", at)));
+  if (!m) {
+    console.error("REFUSED — SHORT_TITLE_MAX was not found in src/lib/markets/short-title.ts.");
+    process.exit(2);
+  }
+  return { en: Number(m[1]), sw: Number(m[2]), zh: Number(m[3]) };
+})();
 const SHOTS = process.env.KP_SHOTS ?? ".qa-short-titles";
 mkdirSync(SHOTS, { recursive: true });
 const results = [];
@@ -141,11 +155,15 @@ await at(page, wizEn);
 await tile("5a-wizard-fields-1280");
 const wizInput = page.locator('[data-field="shortTitleEn"] input').first();
 if ((await wizInput.count()) > 0) {
-  await wizInput.fill("Will the shilling strengthen against the dollar before the end of the month?");
+  // Longer than the English budget, so the counter turns red and the server's own sentence shows.
+  const over = "Will the shilling strengthen against the dollar before the end of the month, and stay there until the budget speech?";
+  await wizInput.fill(over);
   await page.waitForTimeout(500);
   await tile("5b-wizard-over-budget-1280");
   const wizText = await fieldText(page, "shortTitleEn");
-  ok("5.2 a short title over budget shows its counter and the server's own sentence before Continue", /\/ 56/.test(wizText) && /Keep the English short title to 56 characters/.test(wizText) && !/optional/.test(wizText), wizText.slice(0, 200));
+  ok(`5.2 a short title over budget (${[...over].length} of ${MAX.en}) shows its counter and the server's own sentence before Continue`,
+    [...over].length > MAX.en && wizText.includes(`/ ${MAX.en}`) && wizText.includes(`Keep the English short title to ${MAX.en} characters`)
+      && !/optional/.test(wizText), wizText.slice(0, 200));
 } else skip("5.2 the over-budget counter", "the wizard's English short-title input was not found by its data-field");
 await page.setViewportSize(PHONE); await at(page, wizEn);
 await tile("5c-wizard-390");
