@@ -223,7 +223,8 @@ section("2 · F1 F4 + H1's siblings: every market title is balanced and keeps it
       balanced: (s) => cls(s, `<h2 className="mt-3 font-display text-body-lg font-semibold leading-tight text-text text-balance">`) },
     { name: "/live's featured carousel", file: "src/app/live/featured-contest.tsx", draws: [`{keepFigures(mm.title)}`],
       balanced: (s) => cls(s, `className="font-display text-[19px] lg:text-[24px] font-semibold leading-tight text-text text-balance group-hover:text-aqua-100"`) },
-    { name: "/live's wall", file: "src/app/live/pulse-grid.tsx", draws: [`<Fragment key={i}>{keepFigures(part)}</Fragment>`, `<KeepHyphenated text={title} />`],
+    // Round 7 (R7-A) moved this pin: the white space after a hyphen token is its own text node (`afterRun`), the words `rest`.
+    { name: "/live's wall", file: "src/app/live/pulse-grid.tsx", draws: [`<>{lead}{keepFigures(rest)}</>`, `<KeepHyphenated text={title} />`],
       balanced: (s) => /font-display text-\[13\.5px\] font-semibold leading-snug text-text text-balance/.test(s) },
     { name: "/results' notable result", file: "src/app/results/page.tsx", draws: [`{keepFigures(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}`],
       // The hover ink is R5-C's (the second gold audit moved it gold-100 → brand-200 on this title; merged 2026-10-09).

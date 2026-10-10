@@ -29,7 +29,7 @@
  * is the whole clause; and an unspaced em dash ("否——", "word—") to the unit before it, as that body always did.
  */
 import { Fragment, type ReactNode } from "react";
-import { KEPT_SPACE, lastTwo } from "./keep-words";
+import { KEPT_SPACE, afterRun, connectiveRanges, lastTwo } from "./keep-words";
 
 const IDEO = "㐀-䶿一-鿿豈-﫿";
 const IDEOGRAPH = new RegExp(`[${IDEO}]`);
@@ -107,6 +107,9 @@ export function keptRanges(text: string, runs: readonly string[] = []): Array<[n
  * plain. `piece` draws the words of each part — it is handed the part and the text that follows it, so a rule that looks
  * one character ahead (`hangCjkMarks`) reads the paragraph, not the part. The words are never changed: no character is
  * added, none is removed.
+ * ⭐ ROUND 7 (2026-10-10, R6-1): the white space right after a run is a text node of its own (`afterRun`, keep-words.tsx
+ * says why — Chromium's balanced and pretty wraps otherwise never offer the break after it: "…YES or NO — your" /
+ * "ticket shows up here." at en 390 where round 5 read "…YES or NO —" / "your ticket shows up here.").
  */
 export function keepRanges(
   text: string,
@@ -116,6 +119,11 @@ export function keepRanges(
   if (ranges.length === 0) return piece(text, "");
   const out: ReactNode[] = [];
   const plain = (a: number, b: number) => {
+    // A part that follows a run (a > 0: every part but the first does) opens with that run's white space, split off.
+    if (a > 0) {
+      const [lead, rest] = afterRun(text.slice(a, b));
+      if (rest !== undefined) { out.push(lead); a += lead.length; }
+    }
     const p = piece(text.slice(a, b), text.slice(b));
     out.push(typeof p === "string" ? p : <Fragment key={`t${a}`}>{p}</Fragment>);
   };
@@ -140,4 +148,18 @@ export function digitChoice(text: string): string[] {
 /** `text` with its kept spans drawn unbreakable (see the header). The words are untouched. */
 export function keepText(text: string, runs: readonly string[] = []): ReactNode {
   return keepRanges(text, keptRanges(text, runs));
+}
+
+/**
+ * A TITLE OR A LABEL WHOSE LINES NEVER END ON A CONNECTIVE (round 7, 2026-10-10 — the owner's item 37; `connectiveRanges`,
+ * keep-words.tsx, says how). `runs` are the caller's own [start, end) ranges held too (a market title's figures); `piece`
+ * draws the plain parts as the surface always did (`hangCjkMarks` for a centred title). Text without a connective or a
+ * run comes back through `piece` alone — exactly what the surface drew before.
+ */
+export function keepConnectives(
+  text: string,
+  runs: ReadonlyArray<readonly [number, number]> = [],
+  piece?: (part: string, following: string) => ReactNode,
+): ReactNode {
+  return keepRanges(text, mergeRanges([...connectiveRanges(text), ...runs]), piece);
 }

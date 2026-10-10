@@ -302,7 +302,9 @@ const CATALOGUE = [
     ["src/app/markets/[id]/page.tsx", `{keepFigures(pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh))}</h1>`],
     ["src/components/journey/tickets/ticket-card.tsx", `className="-my-2 block py-2 hover:underline">{keepFigures(title.text)}</Link>`],
     ["src/app/live/featured-contest.tsx", `{keepFigures(mm.title)}`],
-    ["src/app/live/pulse-grid.tsx", `<Fragment key={i}>{keepFigures(part)}</Fragment>`],
+    // Round 7 (R7-A, 2026-10-10) moved this pin: the white space after a hyphen token is its own text node (`afterRun`,
+    // keep-words.tsx — Chromium's balance never offered the break after it), so the part's words are `rest`.
+    ["src/app/live/pulse-grid.tsx", `<>{lead}{keepFigures(rest)}</>`],
   ];
   const missing = SITES.filter(([f, s]) => !read(f).includes(s) || /keepUnits\(/.test(read(f))).map(([f]) => f);
   ok("4.5 · cards (grid and featured), the board's rows, the market page h1, the journey's ticket card, /live's carousel and wall: keepFigures, no keepUnits left",

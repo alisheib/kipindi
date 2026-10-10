@@ -9,7 +9,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Modal } from "@/components/ui/modal";
 import { ShareButton } from "@/components/markets/share-button";
 import { Chip } from "@/components/ui/chip";
-import { keepFigures } from "@/components/ui/keep-words";
+import { keepFigures, splitLeadConnective } from "@/components/ui/keep-words";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { cn, fill, formatNumber, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
@@ -397,14 +397,20 @@ export function MarketCard({
      line ends on "·" or starts with one. The dot keeps the sentence's own " · ", so a screen reader hears the line as
      before. */
   const [settlesPre = "", settlesPost = ""] = t.market.settlesOn.split("{source}");
+  // ⭐ Round 7 (2026-10-10, R1-1 / R2-2 / R3-1): the source's name is one name where its line can hold it, and it carries
+  // the connective that introduces it, so no line ends on "kwa" (`.mcardp-srcrun`, globals.css; `splitLeadConnective`).
+  const [settlesLead, settlesConn] = splitLeadConnective(settlesPre);
   const metaLine = closesOn || sourceName ? (
     <span className="mcardp-src__seq">
       {closesOn && <span className="mcardp-src__part">{closesOn}</span>}
       {sourceName && (
         <span className="mcardp-src__part">
           {closesOn && <span className="mcardp-src__dot">{" · "}</span>}
-          {settlesPre}
-          <span className="mcardp-srcname" data-market-part="source">{sourceName}</span>
+          {settlesLead}
+          <span className="mcardp-srcrun">
+            {settlesConn && <span className="whitespace-nowrap">{settlesConn}</span>}
+            <span className="mcardp-srcname" data-market-part="source">{sourceName}</span>
+          </span>
           {settlesPost}
         </span>
       )}

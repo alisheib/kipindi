@@ -418,7 +418,10 @@ const subPairs: Pair[] = [
     const a = render(APG, l, "/agent/apply"), s = render(STG, l, "/agent/status"), v = render(IVG, l, "/agent/invite/tok");
     const miss = [...wordsIn(a, [t.stepWhere, t.stepReferees, t.stepPayment, t.docPhotoHint, t.docIdNote, t.slotEmpty]), ...wordsIn(s, [t.statusReference, t.nextTitle, t.nextDecision]), ...wordsIn(v, [t.inviteSentTo, t.inviteKycNote])];
     if (miss.length) wrong.push(`${l}: ${miss.slice(0, 3).join(" / ")}`);
-    if (!a.includes(esc(t.applyTitle)) || !s.includes(esc(t.statusTitle)) || !v.includes(esc(t.inviteBody))) wrong.push(`${l}: a header`);
+    // Round 7 (R7-A): PageHeader draws a title's connectives as held runs (`keepConnectives`), so its words are read
+    // with the tags taken out.
+    const words = (m: string) => m.replace(/<[^>]+>/g, "");
+    if (!words(a).includes(esc(t.applyTitle)) || !words(s).includes(esc(t.statusTitle)) || !words(v).includes(esc(t.inviteBody))) wrong.push(`${l}: a header`);
   }
   ok("4.4 · RUN in sw, en and zh: the step labels, notes and terms are the page's words set and not shown; the titles printed", wrong.length === 0, wrong.join(" | "));
 }

@@ -241,16 +241,23 @@ section("3 · F16 · a legal title never leaves its last word alone behind a con
   // of tiles 206–210). The narrowest title line: 320 − 32 (the page) − 2 (border) − 48 (px-5) − 40 (sigil) − 14 = 184px.
   const WIDTH: Record<string, number> = { "za Michezo": 153.2, "ya Huduma": 155.6, "ya Faragha": 147.0, "of Service": 139.1, "ya wakala": 135.5, "na KYC": 98.1, "na Chini": 113.9 };
   const narrow = 320 - 2 * twStep("3") - 2 - 2 * twStep("5") - 40 - twStep("3.5");
-  const bound = titles.map(([p, l, s]) => [`${p}.${l}`, pairOf(legalTitle(s))] as const);
+  // ⚠️ PINS MOVED 2026-10-10 (round 7, R7-A — R5-3 / R5-4, the owner's item 37 made whole): `legalTitle` holds EVERY
+  // connective with the white space after it (`keepConnectives`), where it held a second-to-last connective with the word
+  // after it — round 6 read "Sera ya / Mchezo Salama" and "Sera ya Kuzuia / Uoshaji wa / Fedha na KYC" at sw 390. A run is
+  // a connective and its space, never a word, so nothing needs measuring and nothing can overflow (`test:visual-pass-r7a`
+  // §3 models every title at 320–412). `pairOf` stays for the controls below.
+  const runsOf = (node: unknown) => [...html(h("h1", null, node as never)).matchAll(/<span class="whitespace-nowrap">([^<]*)<\/span>/g)].map((m) => m[1]);
+  const bound = titles.map(([p, l, s]) => [`${p}.${l}`, runsOf(legalTitle(s)).join("|") || null] as const);
   const EXPECT: Record<string, string> = {
-    "rules.sw": "za Michezo", "terms.en": "of Service", "terms.sw": "ya Huduma", "privacy.sw": "ya Faragha",
-    "agent-terms.sw": "ya wakala", "aml.sw": "na KYC", "rules/up-down.sw": "na Chini",
+    "rules.sw": "za ", "terms.en": "of ", "terms.sw": "ya ", "privacy.sw": "ya ", "agent-terms.sw": "ya ",
+    "aml.sw": "ya |wa |na ", "aml.en": "&amp; ", "rules/up-down.sw": "za |na ", "rules/up-down.en": "&amp; ",
+    "responsible-gambling.sw": "ya ", "rules/yes-no.sw": "za |ya ",
   };
-  const wrong = bound.filter(([k, pair]) => (EXPECT[k] ?? null) !== pair);
-  ok("3.3 · exactly the connective endings are bound — \"Kanuni / za Michezo\", \"Terms / of Service\", \"Sera / ya Faragha\" … — and no name is split (Up & Down, Mchezo Salama, NDIO/HAPANA stay free)",
+  const wrong = bound.filter(([k, runs]) => (EXPECT[k] ?? null) !== runs);
+  ok("3.3 · every connective of every legal title is held with its space — \"Kanuni [za ]Michezo\", \"Sera [ya ]Kuzuia Uoshaji [wa ]Fedha [na ]KYC\", \"AML [& ]KYC Policy\" — and nothing else",
     wrong.length === 0 && narrow === 184, show({ wrong, narrow }));
-  const tooWide = bound.filter(([, pair]) => pair !== null && !(pair in WIDTH && WIDTH[pair] <= narrow));
-  ok(`3.4 · every bound pair is measured and fits the narrowest title line (${narrow}px): the widest, "ya Huduma", 155.6px`, tooWide.length === 0, show(tooWide));
+  const tooWide = bound.flatMap(([, runs]) => (runs ?? "").split("|").filter((r) => r !== "" && !/^(?:ya|za|wa|la|cha|vya|kwa|na|of|and|&amp;) $/i.test(r)));
+  ok(`3.4 · every held run is a connective and its space, so the narrowest title line (${narrow}px) holds any of them`, tooWide.length === 0 && WIDTH["ya Huduma"] < narrow, show(tooWide));
   const column390 = 390 - 2 * twStep("3") - 2 - 2 * twStep("5") - 40 - twStep("3.5");
   ok(`3.5 CONTROL · "Kanuni za Michezo" (256.7px) is ${(256.7 - column390).toFixed(1)}px wider than its ${column390}px line at 390 — the wrap the tile shows — and fits at 412 (${column390 + 22}px)`,
     column390 === 254 && 256.7 > column390 && 256.7 <= column390 + 22);
@@ -343,13 +350,18 @@ section("5 · F17 · one page, one name — the hub's rows and the journey's doo
 section("6 · F18 · the Gaming Board's name is one name wherever its line can hold it (tile 307: \"…the Gaming / Board of Tanzania.\")");
 {
   const NAME: Record<Loc, string> = { en: "Gaming Board of Tanzania", sw: "Bodi ya Michezo ya Kubahatisha Tanzania", zh: "坦桑尼亚​博彩委员会" };
+  // ⚠️ PINS MOVED 2026-10-10 (round 7, R7-A — the owner's item 37, a line never ends on a connective): the span holds the
+  // name WITH the connective that introduces it (sw "ya "; en and zh none), each connective inside it a held run, so
+  // "Leseni ya" / "Bodi…" became "Leseni" / "ya Bodi…". KEPT is the span's text; its width is the condition (6.2).
+  const KEPT: Record<Loc, string> = { en: NAME.en, sw: `ya ${NAME.sw}`, zh: NAME.zh };
+  const spanText = (mk: string) => /<span class="kp-gbt-name">((?:[^<]|<span class="whitespace-nowrap">[^<]*<\/span>)*)<\/span>/.exec(mk)?.[1]?.replace(/<span class="whitespace-nowrap">([^<]*)<\/span>/g, "$1") ?? null;
   const kept = LOCALES.map((l) => {
     const s = word(l, "footer.licensedByGbt"), mk = html(h("p", null, keepRegulator(s)));
-    return { l, span: new RegExp(`<span class="kp-gbt-name">${esc(NAME[l])}</span>`).test(mk), same: text(mk) === s };
+    return { l, span: spanText(mk) === esc(KEPT[l]), same: text(mk) === s };
   });
   ok("6.1 · `keepRegulator` finds the name in each language's sentence and changes not a character of it", kept.every((k) => k.span && k.same), show(kept));
   // The thresholds: the name and its full stop (no line may start with it) in Inter 13px, plus 3px.
-  const need: Record<Loc, number> = { en: interW(`${NAME.en}.`), sw: interW(`${NAME.sw}.`), zh: interW(NAME.zh) };
+  const need: Record<Loc, number> = { en: interW(`${KEPT.en}.`), sw: interW(`${KEPT.sw}.`), zh: interW(KEPT.zh) };
   const at_ = (name: string, l: Loc) => Number(new RegExp(`@container ${name} \\(min-width: ([0-9.]+)px\\) \\{ \\.kp-gbt-name:lang\\(${l}\\) \\{ white-space: nowrap; \\} \\}`).exec(CSS)?.[1]);
   const trust = rule(CSS, ".kp-hero__trust > li");
   const marker = Number(/grid-template-columns:\s*([0-9]+)px/.exec(trust)?.[1]) + px("--sp-3");

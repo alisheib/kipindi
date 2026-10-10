@@ -62,7 +62,9 @@ const TIER_RULES = [".tier-bronze", ".tier-silver", ".tier-gold", ".tier-diamond
 /** CSS rules that paint an ACHIEVEMENT coin — the tier ladder's sibling (R5-C, 2026-10-09). The coin, its edge ring, the
  *  unlocked state and the tier ribbon are identity METAL (`--metal-gold`); the progress ring and its count are PROGRESS
  *  (the brand family). None of them may wear the money ink. */
-const BADGE_RULES = [".badge", ".badge::after", ".badge--unlocked", ".badge-ring-arc", ".badge-count", ".badge-tier-pip"];
+// Round 7 (R7-A, 2026-10-10, R5-8) moved one entry: the progress count is the tier pip's chip in the progress inks now, so
+// its rule is `.badge-tier-pip.badge-count` (the count no longer hangs in the gap above the name).
+const BADGE_RULES = [".badge", ".badge::after", ".badge--unlocked", ".badge-ring-arc", ".badge-tier-pip.badge-count", ".badge-tier-pip"];
 
 let pass = 0;
 const fails: string[] = [];

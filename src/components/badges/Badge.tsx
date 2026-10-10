@@ -52,8 +52,12 @@ export function Badge({
 
       {BADGE_ICONS[achievement] ?? BADGE_ICONS.default}
 
+      {/* ⭐ ROUND 7 (2026-10-10, R5-8 — tile 186): the count hung 16px under the coin, inside the 12px gap above the name, so
+          "5/20" sat 2px under the coin and 3px over "Sharp / Mahiri" where every other name is 15px from its coin. It is
+          a chip on the coin's lower edge now — the tier pip's own geometry (`.badge-tier-pip`), in the progress inks
+          (`.badge-count`) — one way to put a number on a badge; the name keeps its 15px and nothing below the coin moves. */}
       {state === "progress" && progress && !progress.tier && (
-        <span className="badge-count" style={{ position: "absolute", bottom: -16 }}>
+        <span className="badge-tier-pip badge-count">
           {formatNumber(progress.value)}/{formatNumber(progress.max)}
         </span>
       )}

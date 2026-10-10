@@ -52,6 +52,7 @@
 import { dict, DEFAULT_LOCALE, type Dict, type Locale } from "@/lib/i18n-dict";
 import { markInnerSvg } from "@/lib/brand-mark";
 import { regulatorSplit } from "@/lib/regulator-name";
+import { connectiveRanges, splitLeadConnective } from "@/lib/connectives";
 
 /** The path the document is served at — the service worker's `OFFLINE_URL` names the same. */
 export const OFFLINE_PATH = "/offline";
@@ -133,8 +134,12 @@ export const OFFLINE_GLYPHS = {
  * scripts are untouched. The document names Inter first and falls back to the system face; Roboto, Segoe UI, Helvetica
  * and Noto Sans all set Latin narrower than Inter (Next's capsize table: average widths 0.445, 0.443, 0.450, 0.474 of an
  * em against Inter's 0.478), so a width that holds the name in Inter holds it in each of them.
+ * ⭐ ROUND 7 (2026-10-10, the owner's item 37 — a line never ends on a connective): the sw name carries the "ya" that
+ * introduces it ("Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania.", as `keepRegulator` draws it), so its width is
+ * that run's, 277.4px in Inter 13px: 281 with the 3px; and inside the name each connective keeps the space after it
+ * (`.kp-nw`), so a line too narrow for the name never ends on "ya" either.
  */
-export const OFFLINE_GBT_FROM: Readonly<Record<Locale, number>> = { en: 168, sw: 263, zh: 120 };
+export const OFFLINE_GBT_FROM: Readonly<Record<Locale, number>> = { en: 168, sw: 281, zh: 120 };
 
 const esc =(s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 /** A value for an inline script: JSON, with every `<` escaped so no string can close the element it sits in. */
@@ -142,11 +147,19 @@ const js = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c").replace(/\
 const tFor = (l: Locale) => dict[l] as Dict;
 /** One phrase in every language, each in a span the stylesheet shows only under its own `<html lang>`. */
 const say = (pick: (t: Dict) => string) => OFFLINE_LOCALES.map((l) => `<span class="l" lang="${l}">${esc(pick(tFor(l)))}</span>`).join("");
-/** …and the licence sentence, its words the same, with the regulator's name in a `.kp-gbt-name` span in each language. */
+/** …and the licence sentence, its words the same, with the regulator's name in a `.kp-gbt-name` span in each language —
+ *  the connective before it inside the span, and each connective inside it held to the word after it (`.kp-nw`). */
+const heldConnectives = (s: string) => {
+  let out = "", from = 0;
+  for (const [a, b] of connectiveRanges(s)) { out += `${esc(s.slice(from, a))}<span class="kp-nw">${esc(s.slice(a, b))}</span>`; from = b; }
+  return out + esc(s.slice(from));
+};
 const sayLicence = (pick: (t: Dict) => string) => OFFLINE_LOCALES.map((l) => {
   const s = pick(tFor(l));
   const cut = regulatorSplit(s);
-  return `<span class="l" lang="${l}">${cut ? `${esc(cut[0])}<span class="kp-gbt-name">${esc(cut[1])}</span>${esc(cut[2])}` : esc(s)}</span>`;
+  if (!cut) return `<span class="l" lang="${l}">${esc(s)}</span>`;
+  const [before, lead] = splitLeadConnective(cut[0]);
+  return `<span class="l" lang="${l}">${esc(before)}<span class="kp-gbt-name">${heldConnectives(lead + cut[1])}</span>${esc(cut[2])}</span>`;
 }).join("");
 /** A 24-grid line glyph, drawn as `glyphs.tsx`'s `G` draws it. */
 const glyph = (inner: string, s: number) =>
@@ -201,6 +214,7 @@ function stylesheet(): string {
     // The licence line takes the row's remainder (a size container has no width of its own to give a flex row).
     `.kp-off__rg .kp-off__gbt{color:var(--text-muted);line-height:1.625;flex:1 1 0%;min-width:0;container:kp-gbt/inline-size}`,
     ...OFFLINE_LOCALES.map((l) => `@container kp-gbt (min-width:${OFFLINE_GBT_FROM[l]}px){.kp-gbt-name:lang(${l}){white-space:nowrap}}`),
+    `.kp-nw{white-space:nowrap}`,
     `.kp-off__lic{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--text-subtle)}`,
     `.kp-off__stop{font-style:italic;color:var(--text-subtle)}`,
     `@media (min-width:1024px){.kp-off__rg-in{padding-left:32px;padding-right:32px}}`,

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { keepConnectives } from "./keep-run";
 
 /**
  * PageHeader — the eyebrow + H1 pair used at the top of form-hero pages
@@ -73,9 +74,12 @@ export function PageHeader({
           `tracking-[-0.02em]` (−0.56px at 28px), which are emitted after the fontSize rungs in
           the served sheet. So the computed style is byte-for-byte what it was. */}
       {/* 2026-09-13: balanced, so a wrapping title never leaves one word or one CJK glyph alone
-          on its last line (the Chinese AML title did). */}
+          on its last line (the Chinese AML title did). Round 7 (2026-10-10, the owner's item 37): and never ends a
+          line on a connective — each one keeps the space after it, so no break can follow it (`keepConnectives`; the
+          legal titles read "Sera ya / Mchezo Salama" before it). A title handed in as nodes (a legal title, a ghost's)
+          is drawn as given. */}
       <h1 className="font-display text-title-lg font-bold text-text leading-tight tracking-[-0.02em] text-balance">
-        {title}
+        {typeof title === "string" ? keepConnectives(title) : title}
       </h1>
     </>
   );

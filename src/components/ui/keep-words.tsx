@@ -19,6 +19,9 @@
  */
 import type { ReactNode } from "react";
 import { regulatorSplit } from "@/lib/regulator-name";
+import { connectiveRanges, splitLeadConnective } from "@/lib/connectives";
+// The connective rule has one pure home (the offline document reads it too); keep-run.tsx and the titles take it from here.
+export { connectiveRanges, splitLeadConnective };
 
 const IDEOGRAPH = /[㐀-䶿一-鿿豈-﫿]/;
 /**
@@ -32,6 +35,35 @@ export const KEPT_GAP = "[\\t\\n\\f\\r ]*(?:[^\\S\\t\\n\\f\\r ][\\t\\n\\f\\r ]*)
 export const KEPT_SPACE = `(?=\\s)${KEPT_GAP}`;
 const SPACE_KEPT = new RegExp(`^${KEPT_SPACE}$`);
 const WHITE = /\s/;
+
+/**
+ * ⭐ THE WHITE SPACE AFTER A KEPT RUN IS A TEXT NODE OF ITS OWN (round 7 of the visual pass, 2026-10-10, R6-1 — a
+ * regression since round 5's H4, tile 244). "Pick a question, tap YES or NO — your ticket shows up here." broke "…YES or
+ * NO — your" / "ticket shows up here." (128 / 234px) at en 390, where round 5 broke "…YES or NO —" / "your ticket shows up
+ * here." (159 / 202px): the line after the dash, which a balanced paragraph should take, was never offered.
+ * 🔴 THE CAUSE IS IN CHROMIUM, read in its source (third_party/blink/renderer/core/layout/inline, main, 2026-10-10):
+ * `text-wrap: balance` (and `pretty`) is the score line breaker, which first collects every break opportunity —
+ * `LineBreaker::AppendCandidates` (line_breaker.cc). For a text item, that function handles the item's LEADING white
+ * space before it sets the item's own style (`SetCurrentStyle`), so it judges the break after that space with the
+ * `auto_wrap_` the PREVIOUS text item left — and when that item was a `white-space: nowrap` run, the break after the
+ * space is recorded mid-word: the candidate is lost. The greedy pass does break there (`HandleTrailingSpaces`: "Make the
+ * last item breakable after, even if it was nowrap"), so only a balanced (or pretty) paragraph loses it, and only where
+ * the greedy layout keeps the run mid-line — which is why every other empty-state tile kept round 5's lines.
+ * ⭐ THE ANSWER: the white space that follows a kept run is drawn as its own text node (React keeps adjacent strings
+ * apart). Chromium then meets an item that is ONLY white space, takes the branch that reads the item's own
+ * `can_break_after` (true: a break after a space before a word), and the candidate is there again — the very
+ * opportunity the inserted no-break characters of round 3 left. Nothing is inserted, the text and every engine's break
+ * opportunities are unchanged, and WebKit and Gecko, which judge a space by its own box, draw the same lines.
+ * One rule for every helper that draws a kept run before more text: `keepRanges` (keep-run.tsx: the empty states and
+ * every `keepText` sentence), `keepFigures` (every market title), `keepYears`, `keepRegulator`, /live's `KeepHyphenated`.
+ * `test:visual-pass-r7a` §1 renders each and fails on a kept run followed by a text node that opens with white space.
+ */
+const LEADING_WHITE = /^[\t\n\f\r ]+/;
+/** The text after a kept run, its leading white space (if any, and if more follows) split off as its own string. */
+export function afterRun(rest: string): string[] {
+  const lead = LEADING_WHITE.exec(rest)?.[0].length ?? 0;
+  return lead > 0 && lead < rest.length ? [rest.slice(0, lead), rest.slice(lead)] : [rest];
+}
 
 /**
  * The last two whitespace-separated words of `text` — the space between them a kept one (`KEPT_SPACE`) — as [where the
@@ -108,11 +140,12 @@ export function keepYears(text: string): ReactNode {
     let at = space;
     while (at > from && !WHITE.test(text[at - 1])) at--;
     if (at === space) continue;
-    out.push(text.slice(from, at), <span key={`y${out.length}`} className="whitespace-nowrap">{text.slice(at, space + m[1].length)}</span>);
+    // After a run, its white space is a text node of its own (`afterRun`, round 7).
+    out.push(...(from > 0 ? afterRun(text.slice(from, at)) : [text.slice(from, at)]), <span key={`y${out.length}`} className="whitespace-nowrap">{text.slice(at, space + m[1].length)}</span>);
     from = space + m[1].length;
   }
   if (out.length === 0) return text;
-  out.push(text.slice(from));
+  out.push(...afterRun(text.slice(from)));
   return out;
 }
 
@@ -205,10 +238,11 @@ export function keepFigures(text: string): ReactNode {
   const out: ReactNode[] = [];
   let from = 0;
   for (const [a, b] of ranges) {
-    out.push(text.slice(from, a), <span key={`f${out.length}`} className="whitespace-nowrap">{text.slice(a, b)}</span>);
+    // After a run, its white space is a text node of its own (`afterRun`, round 7): "TZS 1 bilioni" + " " + "msimu huu?".
+    out.push(...(from > 0 ? afterRun(text.slice(from, a)) : [text.slice(from, a)]), <span key={`f${out.length}`} className="whitespace-nowrap">{text.slice(a, b)}</span>);
     from = b;
   }
-  out.push(text.slice(from));
+  out.push(...afterRun(text.slice(from)));
   return out;
 }
 
@@ -337,5 +371,27 @@ export function keepIdRuns(id: string): ReactNode {
 export function keepRegulator(text: string): ReactNode {
   const cut = regulatorSplit(text);
   if (!cut) return text;
-  return [cut[0], <span key="gbt" className="kp-gbt-name">{cut[1]}</span>, cut[2]];
+  // ⭐ ROUND 7 (2026-10-10, the owner's item 37 — a line never ends on a connective): "Leseni ya" / "Bodi ya Michezo ya
+  // Kubahatisha Tanzania." kept the name whole by ending the line above it on "ya". The connective that introduces the
+  // name now travels with it — "Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania." where the line holds the run
+  // (277.4px in Inter 13px, so the sw container condition is 281px, globals.css) — and a line narrower than that wraps
+  // the sentence with each connective held to the word after it ("Leseni ya Bodi ya Michezo" / "ya Kubahatisha
+  // Tanzania."), never splitting after "ya". en ("Licensed by the") and zh have no connective before the name.
+  const [before, lead] = splitLeadConnective(cut[0]);
+  const name = lead + cut[1];
+  return [before, <span key="gbt" className="kp-gbt-name">{drawRuns(name, connectiveRanges(name), "c")}</span>, ...afterRun(cut[2])];
+}
+
+/** `text` with each [start, end) range (sorted, disjoint) one nowrap run, the white space after a run its own text node
+ *  (`afterRun`) — `keepRanges` (keep-run.tsx) without its `piece` hook, for a helper here, which keep-run.tsx imports. */
+function drawRuns(text: string, ranges: ReadonlyArray<readonly [number, number]>, key: string): ReactNode[] {
+  const out: ReactNode[] = [];
+  let from = 0;
+  for (const [a, b] of ranges) {
+    if (a > from) out.push(...(from > 0 ? afterRun(text.slice(from, a)) : [text.slice(from, a)]));
+    out.push(<span key={`${key}${a}`} className="whitespace-nowrap">{text.slice(a, b)}</span>);
+    from = b;
+  }
+  if (from < text.length) out.push(...(from > 0 ? afterRun(text.slice(from)) : [text.slice(from)]));
+  return out;
 }

@@ -29,6 +29,7 @@ import { loadHubViewer } from "@/lib/server/hub-viewer";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { getServerT } from "@/lib/i18n-server";
 import { keepNameEnd } from "@/components/ui/keep-words";
+import { keepConnectives } from "@/components/ui/keep-run";
 
 export const dynamic = "force-dynamic";
 
@@ -89,7 +90,7 @@ export default async function AccountHubPage() {
                   <a href="/admin" className="kp-hub__row">
                     <span className="kp-hub__glyph" aria-hidden><I.server s={20} /></span>
                     <span className="kp-hub__text">
-                      <span className="kp-hub__label">{t.common.staffConsole}</span>
+                      <span className="kp-hub__label">{keepConnectives(t.common.staffConsole)}</span>
                       <span className="kp-hub__sub">{t.journey.hubStaffSub}</span>
                     </span>
                     <I.externalLink s={18} className="kp-hub__chev" aria-hidden />

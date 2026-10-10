@@ -278,7 +278,9 @@ section("4 · a Chinese mark that ends a centred line hangs its empty part (E50;
   ok("4.10 · applied where the lines are centred: the empty state's title and body, the side picker's question and sub-line, the not-found hint",
     // ⚠️ Pin moved 2026-10-09 (round 5, R5-E, H4): the body's marks hang inside `emptyStateBody`, which draws its held runs
     // as spans (no character inserted), so the call is `{emptyStateBody(body)}` and the rendered body is checked here.
-    code("src/components/ui/empty-state.tsx").includes("{hangCjkMarks(title)}") && code("src/components/ui/empty-state.tsx").includes("{emptyStateBody(body)}")
+    // Pin moved 2026-10-10 (round 7, R7-A, the owner's item 37): the title hangs its marks through `keepConnectives`, which
+    // draws its plain parts with `hangCjkMarks` (a Chinese title has no connective, so it is exactly `hangCjkMarks(title)`).
+    code("src/components/ui/empty-state.tsx").includes("{keepConnectives(title, [], hangCjkMarks)}") && code("src/components/ui/empty-state.tsx").includes("{emptyStateBody(body)}")
       && html(h("p", null, emptyStateBody("选择一个问题，点击“是”或“否”——您的注单会显示在这里。"))).endsWith(`显示在这里<span class="kp-cjk-mark">。</span></p>`)
       && code("src/components/markets/side-picker.tsx").includes("{hangCjkMarks(t.market.whichWay)}") && code("src/components/markets/side-picker.tsx").includes("{hangCjkMarks(t.market.chooseSideHelp)}")
       && viewMarkup.includes("{hangCjkMarks(words.notFoundHint)}"));
