@@ -263,10 +263,10 @@ export const NOT_EYEBROW = new Map([
   ["app/proposals/[id]/page.tsx :: <p className=\"mb-3 font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300\">{t.common.yourProposalApproved}</p> ↵ <RewardBurst", "CELEBRATION"],
   // Round 5 (R5-A, F19): the flag's words sit in a span of their own (`kp-track-end`, its trailing tracking taken back);
   // its ink is R5-C's brand-300 (the second gold audit).
-  ["app/results/page.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold text-brand-300\"> ↵ <I.crown s={13} /> <span className", "STATUS_CHIP"],
+  ["app/results/page.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-micro uppercase tracking-[0.16em] font-bold text-brand-300\"> ↵ <I.crown s={13} ", "STATUS_CHIP"],
   // R5-L (2026-10-09): the notable card's GHOST sets the same flag, its words not shown, so the chip row wraps where the
   // page's does on a phone (the flag's 0.16em is part of its width). The same role as the page's.
-  ["app/results/loading.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold\"> ↵ <span className=\"h-[13px] w-[13px] shrink-0\" /> <", "STATUS_CHIP"],
+  ["app/results/loading.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-micro uppercase tracking-[0.16em] font-bold\"> ↵ <span className=\"h-[13px] w-[13", "STATUS_CHIP"],
   ["app/updown/[roundId]/page.tsx :: <p className=\"mt-1 flex items-center gap-1.5 font-mono text-micro font-semibold uppercase tracking-[0.10em] text-text-subtle\"> ↵ {isOpen && <span className=\"live-dot\" />}", "STATUS_CHIP"],
   ["app/updown/[roundId]/page.tsx :: className=\"inline-flex items-center gap-0.5 font-mono text-micro font-semibold uppercase tracking-[0.08em]\" ↵ style={{ color: \"var(--brand-300)\" }}>", "CONTROL_LABEL"],
   ["app/updown/history/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.10em] text-text-faint\"> ↵ {formatNumber(g.bets.length)} {t.market.udBets}", "OTHER"],

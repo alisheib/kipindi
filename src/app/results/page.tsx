@@ -636,8 +636,12 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
         {isVoid
           ? <Chip variant="pending" size="sm">{t.common.voided}</Chip>
           : <Chip variant="resolved" size="sm">{t.market.resolvedOutcome} · {outcomeWord(t, m.resolvedOutcome ?? "VOID", m.productLine)}</Chip>}
-        {/* Round 5 (F19): the flag ends on the card's edge — its trailing 0.16em taken back (`kp-track-end`, globals.css). */}
-        <span className="ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold text-brand-300">
+        {/* Round 5 (F19): the flag ends on the card's edge — its trailing 0.16em taken back (`kp-track-end`, globals.css).
+            ⚠️ ONE UNBREAKABLE UNIT (2026-10-10, round 6's read: tiles 169, 170, 201, 326): the take-back is a negative end
+            margin, so this shrink-to-fit flag sized itself 1.6px narrower than its words and broke them — "MATOKEO" /
+            "MASHUHURI", 61px short of the edge, the card 8–14px taller. `whitespace-nowrap`: the words hold, the trailing
+            tracking overhangs the box as intended, and a row too narrow for the flag takes it whole to the next line. */}
+        <span className="ml-auto inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-micro uppercase tracking-[0.16em] font-bold text-brand-300">
           <I.crown s={13} /> <span className="kp-track-end kp-track-end--16">{t.results.notableResult}</span>
         </span>
       </div>

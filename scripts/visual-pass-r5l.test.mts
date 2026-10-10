@@ -490,7 +490,8 @@ const rsPairs: Pair[] = [
   { band: "a dot's target", page: "grid h-[40px] w-[24px] place-items-center rounded-md", pageFile: NC, ghost: "grid h-[40px] w-[24px] place-items-center", ghostFile: RSG },
   { band: "the notable card", page: "group relative block overflow-hidden rounded-xl border bg-bg-elevated p-5 lg:p-6", pageFile: RS, ghost: "relative block overflow-hidden rounded-xl border border-border bg-bg-elevated p-5 lg:p-6 kp-shimmer-track text-transparent", ghostFile: RSG },
   { band: "its chip row", page: "mb-3 flex flex-wrap items-center gap-2", pageFile: RS, ghost: "mb-3 flex flex-wrap items-center gap-2", ghostFile: RSG },
-  { band: "its flag", page: "ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold text-brand-300", pageFile: RS, ghost: "ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.16em] font-bold", ghostFile: RSG },
+  // 2026-10-10: the flag is one unbreakable unit on the page and in the drawing (`whitespace-nowrap`, round 6's read).
+  { band: "its flag", page: "ml-auto inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-micro uppercase tracking-[0.16em] font-bold text-brand-300", pageFile: RS, ghost: "ml-auto inline-flex items-center gap-1.5 whitespace-nowrap font-mono text-micro uppercase tracking-[0.16em] font-bold", ghostFile: RSG },
 ];
 {
   const now = held(rsPairs);
