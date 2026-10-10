@@ -1,0 +1,3 @@
+Tools refresh (2026-10-10 ~00:20 EAT): the R5-L and R6 merges — merge-check-range.sh, every proof as *-vis and *-wip scripts with the re-aimed plants, the merges' fix and re-pin scripts, the merged-tree results, the commit messages
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

@@ -1,0 +1,10 @@
+docs(vodacom): IN FLIGHT ~03:55 EAT - the S6 visual pass fully merged and proved on origin/vodacom-visual (4b754b89, main merged in): 340 suites, 26/28 red twins, 511/511 planted defects; the marketing tracker's owed item 3 gets its c5 and console results
+
+- VODACOM-PLAN §0 IN FLIGHT and the S6 handover (S6-VISUAL-PASS-STATE.md): every round merged, main merged in up to
+  e7a979c6, how each step was proved, what is owed to the locked final proof.
+- MARKETING-CAMPAIGN-AND-CONTACTS-SETUP §0 ◐ HALF-DONE 3 (asked by the marketing session): one dated note — red:house-bot-c5
+  ran whole on main e7a979c6 (99 caught, 0 missed, 0 left dirty); red:house-bot-console's plant 1.548 fails on main before
+  the day's hotfixes too. Nothing else in that file.
+Docs only.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

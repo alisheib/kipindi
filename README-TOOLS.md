@@ -27,3 +27,7 @@ written `S` in every brief and script). Scripts that name that path must have it
   (ROOT `F:/kipindi-wip`, an identical checkout so the proofs run beside the suites), `reaim-*.cjs` (each plant moved to
   the code a later round changed, with the reason), `fix-*.cjs` and `r5l/fix-r5l-census.cjs` (the merges' re-pins and
   ghost fixes), `runs/merge-r5l*.txt`, `runs/merge-r6*.txt`, `runs/wip-proofs-r6*.log` (the merged-tree results).
+- Added 2026-10-10 ~04:00 EAT (main merged in): `merge-check-range2.sh` (as `merge-check-range.sh`; a red twin whose
+  `test:` twin needs a database is left to the locked final proof — two were run unlocked before this and one, stopped
+  by the cap, left its plant on disk), `resolve-0232-vis.cjs` (house-bots' line pin on the branch, measured from the
+  tree), `runs/merge-mainmerge*.txt` and `runs/vis-proofs-main.log` (the merged branch's results).

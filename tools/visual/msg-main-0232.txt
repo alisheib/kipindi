@@ -1,0 +1,15 @@
+test(house-bots): 0.232's seven money writes re-pinned after 2cd2239e moved the last six one line — test:house-bot-reports green on main again
+
+Found red on main by the Vodacom lane, whose hotfix moved them: 2cd2239e (the break and exclusion emails' end in EAT) is
+ONE hunk in market-service.ts, `@@ -1837,7 +1837,8 @@`, a comment line above the bet letter's `resolvesAt` — below the stake
+form, above the other six positioned writes. 0.232.2 is line-pinned on purpose (a site that moves is reported), so the
+memory child read 246/5 where 2cd2239e~1 read 251/0.
+
+Re-derived from the tree, not the delta: the seven `db.txn.create(` lines read 1619, 2888, 3359, 3828, 3960, 4101 and
+4694, each the same write in the same order — so the controls' `:2887` moves to `:2888` (`:1619` stays). The pin's own
+history note carries the step. No product code changes.
+
+Proof (OMEGA, the shared lock held): test:house-bot-reports exit 0 (memory 251/0 — the floor — and the Postgres child);
+red:house-bot-money 63 caught, 0 missed (it refused to run while reports-mem was red); red:house-bot-c5 after this commit.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

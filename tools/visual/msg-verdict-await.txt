@@ -1,0 +1,19 @@
+Visual pass (after round 6): the verdict fan-out awaits its notices — test:settlement-gate §15's refusal controls can fail again (red:officer-hold 13/13, 10/13 since R5-B)
+
+Found by the R6 merge's red twins and bisected to R5-B (3215ddfc). R5-B's F9 put each verdict notice's payout time in the
+reader's words (`notifyVerdictRecorded` now writes its row after `instantIn`, an await), while
+`notifyVerdictRecordedForMarket` fired each notice and returned at once. Every production caller fires that function and
+forgets it, so no player was affected — but `test:settlement-gate` §15 awaits it and then reads the bell: the three
+refusal controls (no payout deadline, no recorded verdict, money already moved) read before any row could exist and
+passed with their guards deleted. `red:officer-hold` caught it: cases 4, 5 and 7 not caught on the branch, 13/13 on main.
+
+- market-service.ts: the fan-out awaits each notice (`Promise.allSettled`; a failed notice still fails alone, as `.catch`
+  let it). Callers unchanged (`void ….catch(() => {})` at the seal, the officer remedy and the objection reversal), so
+  nothing waits on it; not a word of any notice moved.
+- house-bot-reports' ruling-198 pin re-measured for this one function, with its reason (the same measure reproduces the
+  old 84c86d46… on the function before the change); the memory child's §0 ruling-198 pins pass.
+Guards: red:officer-hold 13/13; test:settlement-gate 166/166; test:visual-pass-r5b 75/75.
+
+Classic viewers: nothing changes (server timing only).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

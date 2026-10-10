@@ -1,4 +1,4 @@
-# R6-B mutation proof · 2026-10-09T20:30:22.091Z · 28 plants
+# R6-B mutation proof · 2026-10-10T00:22:23.569Z · 28 plants
 CAUGHT  A4a · the favicons back to an unescaped, unanchored prefix (/favicon.icon, /favicon.ico/x skip the proxy) — proxy-scope.test.mts 1.2: FAIL ✓ · proxy-scope.test.mts 3.5: FAIL ✓ · restored 2e7fe73df841 ✓
 CAUGHT  A4b · next.config's /:path* security rule taken out (a page the proxy skips is frameable again) — static-cache-scope.test.mts 5.1: FAIL ✓ · static-cache-scope.test.mts 5.3: FAIL ✓ · restored b76fec5f718e ✓
 CAUGHT  A4c · a CSP put into the every-response rule (it must stay the proxy's, per request) — static-cache-scope.test.mts 5.2: FAIL ✓ · restored b76fec5f718e ✓
