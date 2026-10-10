@@ -17,8 +17,8 @@
 ## §0 · RESUME AT
 
 **State (2026-10-10):** S6 (the flagged shell) is in progress (§0i): WP0–WP12 are live behind the flag, the S6 visual
-pass (rounds 1–6) and its round 7 are live from ALI-BLADE15 (the ✅ paragraphs below), and round 8 — the owner's four
-rulings of 2026-10-10 — is being built there. As of 2026-10-07: WP0–WP11 are live behind the flag — the shell
+pass (rounds 1–6), its round 7 and round 8 (the owner's four rulings of 2026-10-10) are live from ALI-BLADE15 (the ✅
+paragraphs below), and R8-D — the break's other channels — is being built there. As of 2026-10-07: WP0–WP11 are live behind the flag — the shell
 swap, the overlay rules, Tiketi zangu (WP9), the journey sell look (WP10), `--rail-h` (WP11) and the first-download fix
 (WP6c), each verified locally before its push — and classic viewers are served what they were
 (`qa:classic-shell-parity`, 224 cells, no unexpected difference; v2 also compares the Sell region). ⭐ Ali, 2026-10-02: nothing is turned on — no staff preview, no journey — until
@@ -38,6 +38,26 @@ the s4-5 low-minimum and s4-6 code frames on the S4 canvas, `shortfall.ts`'s `em
 `qa:classic-shell-parity` 2.9 once ▶ 0e's Phase B removes the email bar — all three done in WP12's batch (§0i WP12):
 the short-of-the-minimum board offers TZS 1,000 and S9's six code boards are marked superseded; `shortfallPlan` asks no
 email step; 2.9 reads which tree it runs on (the bar's component gone → no viewer may see a bar).
+
+**✅ ROUND 8 OF THE VISUAL PASS IS LIVE (2026-10-10 ~21:25 EAT, ALI-BLADE15) — the owner's four rulings of the day.**
+Asked before he left, Ali chose: (1) warnings amber, not gold; (2) every link blue; (3) section headings in one ink;
+(4) during a break, no offer to earn or recruit. Three helpers built them on `3884bce3`, merged on live main as
+`bc525936` (r8-c `75f2fae3`, r8-b `3f6d29d1`, r8-a `6a88c8ba`; r7c 6.2's two bell exceptions joined into one map of
+named swaps that holds before and after a commit). **R8-A**: one warning family at hue 64 (`--warning-500`
+oklch(74% 0.15 64), `--warning-fg` oklch(82% 0.13 64)), 20° off gold, AA on every surface — DESIGN_AUTHORITY F3
+superseded; every text link `--brand-300` with `--brand-200` on hover (§B4c), the 15 links inside hashed legal texts
+moving with each text's next version. **R8-B**: the 162 eyebrow elements' census — section heads and data labels take
+`--text-subtle` with the page heads (37 faint, the aqua, royal and white ones, the KYC panel's headings), state words,
+steppers, sides and form labels keep theirs (§T3). **R8-C**: one rule (`viewer-doors.ts` `onBreak`, decided on the server,
+failing open for an offer) closes the invite / propose / agent doors in both shells' bars, menus, footers, the rail, the
+hub and /profile, and the pages answer a direct visit with the break notice or `agent.stateRgLocked` (DESIGN_AUTHORITY
+§C rule 8). **Proof:** guards r8a 89, r8b 38, r8c 66, r7c 65 (and r7a/r7b) green on the merged tree; mutation 116/116
+(42 + 35 + 39); 42 shared suites green but `test:orphans` (main's two landing-v3 panels); typecheck 0; `next build` 0;
+local `qa:live` **334/334** on `bc525936`. Classic chrome the rulings reach: the bell panel's title ink and its See all
+link (the parity difference `bell-panel-title-ink`; the panel is portaled only while open). **R8-D**, building the same
+evening: the break's other channels — share links without the invite code, the letters' and notices' soliciting lines,
+the chat's doors, and the server refusing the agent fee and a new proposal during a break. New owner questions:
+S6-VISUAL-PASS-STATE.md appendix K.
 
 **✅ ROUND 7 OF THE VISUAL PASS IS LIVE (2026-10-10 ~20:25 EAT, ALI-BLADE15).** Round 6's read left fifteen open items
 (S6-VISUAL-PASS-STATE.md §4, `tools/visual/triage-r6.md`); three helpers fixed them on branches from `046c26e6`, merged
@@ -228,8 +248,8 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S6 — round 8 on ALI-BLADE15 (the owner's four rulings of 2026-10-10: warnings amber, links blue, section
-eyebrows one ink, a break hides the invite / propose / agent doors), then ONE lock turn for rounds 7 and 8 — `test:all`,
+**Next:** (1) S6 — R8-D on ALI-BLADE15 (the break's other channels, the ✅ round-8 paragraph above), then ONE lock turn
+for rounds 7 and 8 — `test:all`,
 all 333 tiles re-tiled and read, classic parity at the new base with every intended difference named, the header fit
 and the seals — and the read repeats until it finds nothing; S6 closes then (§0i;
 [S6-VISUAL-PASS-STATE.md](design-system/v5-2026-09-29-simplified-journey/S6-VISUAL-PASS-STATE.md) §3/§4 hold the owed

@@ -8,6 +8,9 @@ on main in three parts (R7-A text wrapping and names, R7-B inks and signs, R7-C 
 `briefs/r5-common.md` for this laptop), then §4 steps 2–4 on the new main; the tools are this file's appendices and
 `origin/vodacom-visual-tools`, unpacked on ALI-BLADE15 into its session scratchpad.
 
+**⭐ 2026-10-10 ~21:25 — ROUND 8 IS LIVE TOO** (VODACOM-PLAN §0's round-8 ✅ paragraph); R8-D (the break's other
+channels) is being built; then §4 steps 2–4 for rounds 7 and 8 in one lock turn.
+
 **⭐ 2026-10-10 evening — ROUND 7 IS LIVE; ROUND 8 IS BEING BUILT.** §4 step 1's "Still OPEN" list is fixed (R7-A text,
 R7-B inks, R7-C edges; the record and its proof are VODACOM-PLAN §0's round-7 ✅ paragraph). Round 8 carries the owner's
 four rulings of 2026-10-10 (appendix F's items 28, 58, the section-eyebrow census, 16 + 56): warnings amber, every link
@@ -166,6 +169,8 @@ Nothing. **Named, not yet done** (R5-L's report names them for the integrator; e
 
 ## 5 · Questions for Ali (none blocks the pass; each has a default in place)
 79 so far: the plain list is appendix F; the full record (with the S12 word list and the S8 notes) is appendix G.
+Rounds 7 and 8 (2026-10-10) added appendix K (K1–K27, each with its default); the same day Ali answered items 16, 28,
+56 and 58 and the void's ink.
 
 ---
 
@@ -949,3 +954,57 @@ LOW
 
 PROOF as r5-common.md says (suite with controls/plants, a mutation proof under S\r6c\, every suite reading a touched
 file). Keep a running log in S\r6c\log.txt. REPORT exactly as r5-common.md says, with what a lock turn must re-tile.
+
+---
+
+## Appendix K · the questions for Ali from rounds 7 and 8 (2026-10-10, ALI-BLADE15) — each has a default in place
+
+Answered the same day (no longer open): the void's ink (slate everywhere), warnings amber (item 28), every link blue
+(item 58), one ink for section heads, a break hides the invite / propose / agent doors (items 16 and 56).
+
+#### Words and line breaks (R7-A)
+K1. Swahili MARKET titles still end a line on "ya / la / kwa…" in about 1 in 11 card cells; holding the connective
+    would cost an extra line in 47 cells (cutting words on the 2-line cards). Apply the rule to market titles? (Default:
+    no — titles are data.)
+K2. Proper names in market titles ("NBC / Premier League"): let the market editor mark a name to keep whole? (Default:
+    no rule.)
+K3. The responsible-gambling title in Swahili at 360–412 now reads "Sera ya Mchezo / Salama" (no line ends on "ya", but
+    "Salama" stands alone). Accept? (Default: yes.)
+K4. The YES/NO rules title in Swahili at 360 takes 4 lines ("Kanuni / za Masoko / ya NDIO/ / HAPANA"). Accept, or a
+    smaller title below 390? (Default: accept.)
+K5. The regulator's Swahili name now splits on 263–280px lines ("Leseni ya Bodi ya Michezo" / "ya Kubahatisha
+    Tanzania.") where the old rule kept it whole and ended a line on "ya". Accept? (Default: yes.)
+K6. English articles ("the", "by") are not in the connective list. Add them? (Default: no.)
+
+#### Inks (R7-B, R8-A, R8-B)
+K7. Refund notices use the DEPOSIT green plate, and a one-sided refund the WIN gold trophy; re-filing them moves 1,673
+    stored rows (a data decision). (Default: unchanged.)
+K8. The admin console's eyebrows (275 sites, about 12 inks) and links (65 in royal) — follow the player site? (Default:
+    the console is out of the visual pass.)
+K9. A rate of exactly zero reads "+0.0%". OK? (Default: yes.)
+K10. The 15 links inside the hashed legal texts (Terms ×6 gold, RG policy ×3 gold, agent terms ×6 muted) turn blue with
+    each text's next version. (Default: yes, at the next version.)
+K11. The wallet's zero-balance "Add funds" text link moved from gold to blue (the gold door buttons keep gold). OK?
+K12. Only text links are blue; navigation (back links, footer, contact rows, menus, cards) keeps its quiet inks. OK?
+K13. A fixable refusal stays the calm "factual" toast; the amber warning means "somebody must act". OK?
+K14. The classic bell's "See all" and its panel title changed now (your rulings reach classic chrome) rather than at the
+    launch. OK? (Default: now.)
+K15. Form field labels (84 player sites, muted and bold) keep their own ink. (Default: yes — they name a control.)
+K16. The chat's "RESPONSIBLE GAMBLING" label and its hand-off divider keep the chat's own inks. (Default: yes.)
+K17. The landing's white uppercase brand claim stays a claim, not a heading. (Default: yes.)
+
+#### Edges (R7-C)
+K18. "U" joins the letters whose headings are set back (0.3px past the edge instead of 1.8px inside). OK?
+K19. "Display heading" means Sora at 24px or more; smaller section and card titles keep up to 1.8px of bearing. OK?
+K20. The stacked "INAKUJA" tag is ink-centred, which widens the label-to-tag gap from 6.3 to 10.6px. OK?
+K21. The /s opt-out page's header sits 24px from the edge where its page and footer use 32px (the marketing lane's
+    page). Align? (Default: name it to that lane.)
+
+#### Responsible gambling (R8-C) — being completed by R8-D the same evening
+K22. An approved agent on their own break: their dashboard door is hidden with the other offers (the statement stays
+    reachable from /agent). (Decided: hidden.)
+K23–K26. During a break: share links without the invite code; the letters' "keep inviting / invite more / propose
+    another" lines and the "friend joined" notice left out; the chat's invite / proposal doors closed; the agent fee and
+    a new proposal refused by the server with the programme's own sentence. (Decided under the ruling: R8-D builds them.)
+K27. Voting on proposals, the agent dashboard's "How you earn" terms and /profile's generic badges hint stay during a
+    break. (Decided: they stay.)
