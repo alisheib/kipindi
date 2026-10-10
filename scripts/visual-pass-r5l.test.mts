@@ -551,6 +551,44 @@ section("7 · /markets: row 2 from lg in the page's words; the bar and the grid 
   ok("7.3 · row 1 keeps its six per-status widths (`test:board-discovery` §7 counts them) — row 1 never wraps: a scrolling strip below lg, and one line from it", STATUS_PILL_W.length === 6 && g.includes("{STATUS_PILL_W.map("));
 }
 
+/* ══ §7b · /updown/history (added 2026-10-10, R5-L's note for the integrator) ══════════════════════════════════════ */
+section("7b · /updown/history: the bar on the kit — the lenses and the windows in the page's own words and order, row 2's sort, Filters and groups behind the page's dividers");
+{
+  const G = "src/app/updown/history/history-ghost.tsx", B = "src/app/updown/history/history-bar.tsx";
+  const b = code(B);
+  const { UD_LENSES, UD_WHEN_IDS } = req("../src/lib/updown/history-query.ts") as { UD_LENSES: readonly string[]; UD_WHEN_IDS: readonly string[] };
+  // The page's own label functions, read as data: each `case "<id>": return t.<path>;`, taken in the order of the ids' lists.
+  const cases = (fn: string) => {
+    const body = new RegExp(`function ${fn}\\(t: Dict, \\w+: \\w+\\): string \\{([\\s\\S]*?)\\n\\}`).exec(b)?.[1] ?? "";
+    return new Map([...body.matchAll(/case "(\w+)": return (t\.[\w.]+);/g)].map((m) => [m[1], m[2]] as const));
+  };
+  const lensPaths = UD_LENSES.map((id) => cases("lensLabel").get(id) ?? "?"), whenPaths = UD_WHEN_IDS.map((id) => cases("whenLabel").get(id) ?? "?");
+  const list = (src: string, name: string) => new RegExp(`const ${name} = \\[([^\\]]+)\\];`).exec(src)?.[1].split(",").map((s) => s.trim()) ?? [];
+  ok(`7b.1 · the drawing's lenses are the page's six, in \`UD_LENSES\`' order (${lensPaths.join(", ")}), and its windows the page's five (\`UD_WHEN_IDS\`) — read from \`lensLabel\` and \`whenLabel\` themselves`,
+    UD_LENSES.length === 6 && UD_WHEN_IDS.length === 5 && j(list(code(G), "lenses")) === j(lensPaths) && j(list(code(G), "windows")) === j(whenPaths), j({ lensPaths, ghost: list(code(G), "lenses") }));
+  const order = (src: string, parts: string[]) => { const at = parts.map((p) => src.indexOf(p)); return at.every((x, i) => x > 0 && (i === 0 || x > at[i - 1])) ? "" : j(at); };
+  const GHOST2 = ["<div className={QUERY_STRIP_CLASS}>", '<CountGhost count={t.market.udNRounds.replace("{n}", "00")} />', "<SortGhost label={t.common.sort} value={t.positions.sortRecent} />",
+    "<FiltersGhost label={t.market.filtersOpen} />", "<GroupGhost label={t.market.udAssets}>", "<GroupGhost label={t.market.udDurations}>", "<GroupGhost label={t.common.when}>"];
+  const PAGE2 = ["<QueryStrip ariaLabel={t.market.udHistoryTitle}>", "<QueryResultCount count={resultCount} phrase={resultPhrase} />", "<QuerySort label={t.common.sort}", "<FilterSheet label={t.market.filtersOpen}",
+    "<FilterGroupKey>{t.market.udAssets}</FilterGroupKey>", "<FilterGroupKey>{t.market.udDurations}</FilterGroupKey>", "<FilterGroupKey>{t.common.when}</FilterGroupKey>"];
+  const g2 = order(REAL(G), GHOST2), p2 = order(squash(b), PAGE2);
+  ok("7b.2 · the bar is the page's: the lens strip in the strip's own class beside the count's phrase, then the sort (its default \"most recent\", `sortLabel`'s), the phone's Filters, and the asset, duration and day groups each behind the page's divider — in `HistoryBar`'s order, with no typed box left",
+    g2 === "" && p2 === "" && count(REAL(G), "<QueryGroupDivider />") === 3 && count(squash(b), "<QueryGroupDivider />") === 3 && cases("sortLabel").get("recent") === "t.positions.sortRecent"
+      && !/\[56, 76, 76, 76\]|w-\[180px\]|w-\[104px\]/.test(REAL(G)), j({ g2, p2 }));
+  const wrong: string[] = [];
+  for (const l of LOCALES) {
+    const t = dict[l], html = inApp("/updown/history", l, h((req(`../${G}`) as { UpDownHistoryGhost: unknown }).UpDownHistoryGhost as never));
+    const words = [t.common.all, t.market.udInPlay, t.market.udUpWins, t.market.udDownWins, t.market.udVoided, t.market.udConfirmingPrice,
+      t.common.rangeToday, t.common.rangeYesterday, t.common.range7d, t.common.range30d, t.common.rangeAll, t.market.udAssets, t.market.udDurations, t.common.when];
+    const missing = words.filter((w) => !html.includes(esc(w)));
+    if (missing.length || !html.includes(esc(t.market.udNRounds.replace("{n}", "00")))) wrong.push(`${l}: ${missing.slice(0, 3).join(" / ") || "the count's phrase"}`);
+  }
+  ok("7b.3 · RUN in sw, en and zh: every lens, window and group key is drawn in the page's words (set and not shown, so each pill is the page's width), and the count's phrase holds two digits' room",
+    wrong.length === 0, wrong.join(" | "));
+  const planted = order(squash(decomment(raw(G).replace("<SortGhost label={t.common.sort} value={t.positions.sortRecent} />", '<div className="h-[44px] w-[180px] rounded-pill bg-bg-elevated kp-shimmer-track" />'))), GHOST2);
+  ok("7b.2′ PLANT · the old typed 180px sort box back in place of the page's sort is reported", planted !== "");
+}
+
 /* ══ §8 · /live ════════════════════════════════════════════════════════════════════════════════════════════════════ */
 section("8 · /live: the hero IS PageHero; the CTA row the page's button and six dots; each card the PulseCard's box per language");
 const LV = "src/app/live/page.tsx", LVG = "src/app/live/loading.tsx", FC = "src/app/live/featured-contest.tsx", PG = "src/app/live/pulse-grid.tsx";
