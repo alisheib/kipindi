@@ -1,4 +1,4 @@
-# S6 visual pass — the state, for resuming on any machine (updated 2026-10-10 ~05:35 EAT)
+# S6 visual pass — the state, for resuming on any machine (updated 2026-10-10 ~06:55 EAT)
 
 **Why this file exists.** Ali, 2026-10-09: *"push live everything you have in case later we proceed on another machine
 … not to keep anything locked on this machine and the next machine repeats it by accident"* and *"anything not done
@@ -8,7 +8,7 @@ every question for Ali. The session's working tools and notes are on `origin/vod
 them; on OMEGA they live in the session scratchpad, written `S` in briefs).
 
 ## 1 · The branches (all on GitHub)
-- **`origin/vodacom-visual`** at `4b754b89` — the S6 visual pass (journey shell + shared page bodies), NOT live. Every
+- **`origin/vodacom-visual`** at `3d2beb17` (`4b754b89`, the proven merged tip, + the invite page's in-memory fix) — the S6 visual pass (journey shell + shared page bodies), NOT live. Every
   round's work is merged on it (§2), and main is merged in up to `e7a979c6` (S14's STEP 57/58, both round-6 hotfixes,
   the docs). Nothing finished waits on a WIP branch.
 - `origin/vodacom-visual-tools` — the working tools (lock-turn chains, merge checks, briefs, triage notes, owner lists,
@@ -103,11 +103,25 @@ Nothing. **Named, not yet done** (R5-L's report names them for the integrator; e
    `test:house-bot-disclosure` is the ONLY branch-only failure — its D19a pin (5.1, 5.1.c3) holds the legal chrome
    (`legal/_components.tsx`, `legal-nav.tsx`) to main's bytes, and the pass changed that chrome's layout, not a published
    word; it turns green when the branch becomes main. The red twins are not in this turn (see the line above).
-   **Turn B was running from 04:46 EAT** (`S/wm16b2-chain.sh`, the lock held, ~3 h: classic-shell parity — its baseline at
-   main `e7a979c6` captured 05:09 — then bar geometry with main as control, header fit, both seals, needle-rest, the font
-   probe, the preview drive, local `qa:live`, round 6's tiles into `S/visual/tiles-r6b2`). If this file still says
-   running, rerun it. Round 6's read then uses `S/visual/read-brief-r6-fixes.md` (being drafted) with diffs against
-   `tiles-r5` (`S/visual/tile-diff.cjs`).
+   **Turn B done on `4b754b89`** (04:46–06:47 EAT, the lock held; `S/wm16b2-chain.sh`, results `S/runs/wm16b2-*`):
+   classic-shell parity's baseline at main `e7a979c6` captured (224 cells) and its null compare 40/40 and `--prove-red`
+   green — but the tip's compare REFUSED (A18: the merge `1e4586e5` brought 78 served files "from elsewhere"; both
+   merges' main sides, `9aa4eec2` and `e7a979c6`, are ancestors of the baseline commit, so the baseline holds every file
+   they brought — verified — which is the case `--allow-base` exists for; turn C runs it); `qa:bar-geometry` and its red
+   5/5 on the tip and on main's control; header fit green (least slack 10.7px at sw 320) and its red 10/10; the landmark
+   seals 504 journey cells and 276 classic cells, 0 problems; needle-rest twice green; the font probe; the preview drive
+   33/33 with no page error; **local `qa:live` 330/334 — the 4 all /profile/invite on an in-memory server: its tab's agent
+   read chained `.then` on the in-memory store's row (not a promise), so the page lost its body — a real defect since
+   R5-G, production (Prisma) unaffected, FIXED on the branch `3d2beb17`** (r5g 3.5 now runs the in-memory store's shape;
+   3.5″ a census: no `db.x.y(…).then(` in src; R5-G 30/30 and R6-C 40/40 proofs); **333 tiles** in
+   `S/visual/tiles-r6b2` (`qa:journey-shell` 1642 passed, 3 failed — the same invite page — and 2 blocked: Up & Down
+   round pages with no local price feed).
+   **Then (06:50 EAT):** turn C on `3d2beb17` (`S/wm16c2-chain.sh`: parity `--allow-base`, `qa:live`) and **round 6's
+   read**: eight readers on the 333 tiles with `S/visual/read-brief-r6-fixes.md` (what every fix since round 5 must look
+   like), the diff overlays against round 5 (`S/visual/diff-r6`, 323 changed · 8 equal · 2 new) and
+   `S/visual/reader-r6-1..8.txt`. If this file still says they were running, rerun them: `node S/visual/prep-r6.cjs 8`,
+   then one reader agent per prompt file; the parity compare's differences are each attributed to a named EXPECTED_DIFFS
+   entry (never a re-baseline).
 2. The final proof, in lock turns (`wm16a`–`wm16d` in the tools): typecheck + the whole battery with the database
    suites + every red twin the pass touches (the database-backed ones included); classic-shell parity against a
    baseline at the new base (named EXPECTED_DIFFS only, never a re-baseline — the sell confirm's free-window box and its
