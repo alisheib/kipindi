@@ -57,7 +57,11 @@ export async function generateMetadata() {
   const session = await currentSession();
   const [payable, dashboard] = await Promise.all([
     invitePaysPlayersNow(),
-    session ? db.affiliate.findByUserId(session.userId).then(isApprovedAgent, () => false) : Promise.resolve(false),
+    // ⚠️ STARTED FROM A RESOLVED PROMISE (2026-10-10): `db` is typed as the Prisma layer's, which answers with a promise,
+    // but the in-memory store answers `affiliate.findByUserId` with the row itself — `.then` on that threw "is not a
+    // function" inside this function, and the page lost its body on every in-memory server (`qa:live`'s invite checks).
+    // From `Promise.resolve()`, a row, a promise of one and a throw all answer through `isApprovedAgent` or "not an agent".
+    session ? Promise.resolve().then(() => db.affiliate.findByUserId(session.userId)).then(isApprovedAgent, () => false) : Promise.resolve(false),
   ]);
   return { title: inviteName(t, { agent: dashboard, paid: payable }) };
 }

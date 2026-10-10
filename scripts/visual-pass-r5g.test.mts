@@ -555,16 +555,24 @@ section("3 · G-1's sweep fixes · the history page's tab and its pill, /profile
       && applyPage.includes("const { journey } = await resolveSimpleJourney();") && applyPage.includes("journey={journey} />"));
   // An agent's invite tab: RUN with the readers stubbed.
   const INVITE = "src/app/profile/invite/page.tsx";
-  const inviteDeps = (l: Loc, o: { session: boolean; payable: boolean; approved: boolean | "throws" }) => ({
-    getServerT: async () => ({ t: dict[l], locale: l }),
-    currentSession: async () => (o.session ? { userId: "u1" } : null),
-    invitePaysPlayersNow: async () => o.payable,
-    db: { affiliate: { findByUserId: async () => { if (o.approved === "throws") throw new Error("read failed"); return o.approved ? { approvedAt: "2026-09-01T00:00:00Z" } : null; } } },
-    isApprovedAgent: (a: { approvedAt?: string | null } | null) => !!a?.approvedAt,
-    // Round 6 (review C1): the tab asks the one name rule every door asks — the real function, from its own module.
-    inviteName: (req("../src/lib/journey/invite-name.ts") as { inviteName: unknown }).inviteName,
-  });
+  // `sync` (2026-10-10): the in-memory store's shape — it answers with the row itself, or throws, never a promise; `db` is
+  // typed as the Prisma layer's, so a `.then` on the read type-checks and throws on every in-memory server (`qa:live`).
+  const inviteDeps = (l: Loc, o: { session: boolean; payable: boolean; approved: boolean | "throws"; sync?: boolean }) => {
+    const read = () => { if (o.approved === "throws") throw new Error("read failed"); return o.approved ? { approvedAt: "2026-09-01T00:00:00Z" } : null; };
+    return {
+      getServerT: async () => ({ t: dict[l], locale: l }),
+      currentSession: async () => (o.session ? { userId: "u1" } : null),
+      invitePaysPlayersNow: async () => o.payable,
+      db: { affiliate: { findByUserId: o.sync ? read : async () => read() } },
+      isApprovedAgent: (a: { approvedAt?: string | null } | null) => !!a?.approvedAt,
+      // Round 6 (review C1): the tab asks the one name rule every door asks — the real function, from its own module.
+      inviteName: (req("../src/lib/journey/invite-name.ts") as { inviteName: unknown }).inviteName,
+    };
+  };
   const cases = [
+    { name: "an approved agent, the in-memory store (the row, not a promise)", o: { session: true, payable: false, approved: true as const, sync: true }, want: "agent.dashTitle" },
+    { name: "a player, the in-memory store", o: { session: true, payable: false, approved: false as const, sync: true }, want: "profile.inviteFriends" },
+    { name: "a failed read, the in-memory store (a throw, not a rejection)", o: { session: true, payable: false, approved: "throws" as const, sync: true }, want: "profile.inviteFriends" },
     { name: "an approved agent", o: { session: true, payable: false, approved: true as const }, want: "agent.dashTitle" },
     { name: "an approved agent, players paid", o: { session: true, payable: true, approved: true as const }, want: "agent.dashTitle" },
     { name: "a player, unpaid", o: { session: true, payable: false, approved: false as const }, want: "profile.inviteFriends" },
@@ -572,11 +580,19 @@ section("3 · G-1's sweep fixes · the history page's tab and its pill, /profile
     { name: "a failed read", o: { session: true, payable: false, approved: "throws" as const }, want: "profile.inviteFriends" },
     { name: "no session", o: { session: false, payable: false, approved: true as const }, want: "profile.inviteFriends" },
   ];
-  const inv = await Promise.all(cases.map(async (c) => ({ name: c.name, got: titleOf(await runMeta(INVITE, inviteDeps("sw", c.o))), want: word("sw", c.want) })));
+  // Each case answers for itself: a generateMetadata that throws is that case's failure, never the suite's crash.
+  const inv = await Promise.all(cases.map(async (c) => ({ name: c.name, got: await runMeta(INVITE, inviteDeps("sw", c.o)).then(titleOf, (e: unknown) => `threw: ${(e as Error)?.message ?? String(e)}`), want: word("sw", c.want) })));
   ok(`3.5 · RUN: an agent's invite tab is the dashboard's own name ("${word("sw", "agent.dashTitle")}", its h1 and its hub row), asked as the body asks it; a player's tab is unchanged; a failed read is "not an agent"`,
     inv.every((c) => c.got === c.want) && has("src/lib/server/affiliate-service.ts", "if (!isApprovedAgent(acct) || !acct) return null;")
       && has("src/app/profile/invite/agent-dashboard.tsx", '<h1 className="sr-only">{t.agent.dashTitle}</h1>'), j(inv));
   ok(`3.5′ CONTROL · the agent's tab said "${word("sw", "profile.inviteEarn")}" over a body headed "${word("sw", "agent.dashTitle")}"`, word("sw", "profile.inviteEarn") !== word("sw", "agent.dashTitle"));
+  // ⭐ (2026-10-10) NO DATABASE READ IS CHAINED WITH `.then`: the in-memory store answers synchronously, so `db.x.y(…).then`
+  // throws there while the Prisma type says it cannot — `await` it, or start from `Promise.resolve().then(() => db…)`.
+  const srcFiles = (dir: string): string[] => readdirSync(dir).flatMap((n) => { const p = join(dir, n); return statSync(p).isDirectory() ? srcFiles(p) : [p.replace(/\\/g, "/")]; });
+  const thenOnDb = (src: (p: string) => string) => srcFiles("src").filter((p) => /\.tsx?$/.test(p) && /\bdb\.\w+\.\w+\([^()]*\)\.then\(/.test(src(p)));
+  ok("3.5″ · no `db.<table>.<read>(…).then(` anywhere in src — the in-memory store's answer is not a promise", thenOnDb(code).length === 0, j(thenOnDb(code)));
+  ok("3.5‴ PLANT · the invite tab's read chained with `.then` again is reported",
+    j(thenOnDb((p) => (p === INVITE ? code(p).replace("Promise.resolve().then(() => db.affiliate.findByUserId(session.userId))", "db.affiliate.findByUserId(session.userId)") : code(p)))) === j([INVITE]));
 }
 
 /* ══ §4 · G-5 · THE REGULATOR'S NAME ═══════════════════════════════════════════════════════════════════════════════ */
