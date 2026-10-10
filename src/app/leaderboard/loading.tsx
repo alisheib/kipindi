@@ -55,7 +55,7 @@ export default function LeaderboardLoading() {
       <div className="rounded-xl border border-border bg-bg-elevated/60 px-4 py-3 flex flex-wrap items-baseline gap-x-6 gap-y-2 text-transparent" aria-hidden>
         {[
           [t.leaderboard.topTier, t.leaderboard.tierSilver.split(" ")[0]],
-          [t.leaderboard.bestRoi, "00.0%"],
+          [t.leaderboard.bestRoi, "+00.0%"],
           [t.leaderboard.predictorsCount, "00"],
         ].map(([label, value], i) => (
           <div key={i} className="flex items-baseline gap-2 min-w-0">

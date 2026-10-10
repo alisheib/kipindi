@@ -185,9 +185,12 @@ section("0 · words set and not shown; data as shapes; the drawings client code 
 
 /* ══ §1 · /wallet/receipt/[id] ═════════════════════════════════════════════════════════════════════════════════════════ */
 section("1 · /wallet/receipt/[id] — the hero, the chip band, the 51px rows, the buttons, the footnote");
-const RECEIPT_GHOST_BANDS = ["<BackLinkGhost />", "<PageHero>", "<PageHeader", 'tone="subtle"', "icon={<I.receipt s={14} className=\"text-text-muted\" />}", "eyebrow={t.wallet.receiptEyebrow}",
+// Re-pinned by R7-B (round 7, 2026-10-10; round 6's read R5-6): the page and its ghost no longer pass `tone="subtle"` (the
+// one tone PageHeader has) and the receipt glyph rides in the eyebrow's ink instead of a muted ink of its own — both bands
+// moved together, so the order this check holds is unchanged.
+const RECEIPT_GHOST_BANDS = ["<BackLinkGhost />", "<PageHero>", "<PageHeader", "icon={<I.receipt s={14} />}", "eyebrow={t.wallet.receiptEyebrow}",
   '<div className="flex justify-center" aria-hidden>', "<ChipGhost glyph={12} nowrap>", "<DetailsGhost>", '<div className="flex flex-col sm:flex-row gap-2" aria-hidden>', '<p className="text-body-sm leading-relaxed" aria-hidden><GhostText>{t.wallet.receiptFootnote}</GhostText></p>'];
-const RECEIPT_PAGE_BANDS = ["<BackLink ", "<PageHero>", "<PageHeader", 'tone="subtle"', "icon={<I.receipt s={14} className=\"text-text-muted\" />}", "eyebrow={t.wallet.receiptEyebrow}",
+const RECEIPT_PAGE_BANDS = ["<BackLink ", "<PageHero>", "<PageHeader", "icon={<I.receipt s={14} />}", "eyebrow={t.wallet.receiptEyebrow}",
   '<div className="flex justify-center">', '<Chip variant={playerStatusChip(status) ?? "neutral"} size="md" style={{ whiteSpace: "nowrap" }}>', '<dl className="rounded-xl glass-panel divide-y divide-border"', '<div className="flex flex-col sm:flex-row gap-2">', '<p className="text-body-sm leading-relaxed text-text-subtle">{t.wallet.receiptFootnote}</p>'];
 const receiptBands = (g: string) => inOrder(squash(g), RECEIPT_GHOST_BANDS);
 {

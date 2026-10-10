@@ -321,9 +321,11 @@ section("5 · F17 · one page, one name — the hub's rows and the journey's doo
       && read("src/components/layout/public-footer.tsx").includes("{journeyShown ? t.common.help : t.footer.helpSupport}"));
   ok("5.4′ CONTROL · the classic footer keeps its words (frozen chrome)",
     classic.includes(W("footer.proposeGetPaid")) && classic.includes(W("footer.privacyNotice")) && classic.includes(W("footer.helpSupport")) && !classic.includes(W("proposals.title")));
+  // Re-pinned by R7-B (round 7, 2026-10-10; round 6's read R5-6): the eyebrow's WORD is this check's subject and stands;
+  // its ink moved from the text's white to the page heads' one eyebrow ink, `--text-subtle`.
   ok("5.5 · the profile page's KYC row and /live's eyebrow (page and ghost) use the page's own word",
     read("src/app/profile/page.tsx").includes("title={t.profile.kycIdentityVerification}") && !read("src/app/profile/page.tsx").includes("t.common.verifyId")
-      && ["src/app/live/page.tsx", "src/app/live/loading.tsx"].every((f) => read(f).includes('eyebrow font-bold text-text">{t.common.live}</p>') && !read(f).includes("t.home.liveSection")));
+      && ["src/app/live/page.tsx", "src/app/live/loading.tsx"].every((f) => read(f).includes('eyebrow font-bold text-text-subtle">{t.common.live}</p>') && !read(f).includes("t.home.liveSection")));
   ok("5.5′ CONTROL · /live named itself \"Mubashara\" in its <title> and h1 and \"Hai\" in its eyebrow",
     read("src/app/live/page.tsx").includes("return { title: t.common.live };") && word("sw", "common.live") === "Mubashara" && word("sw", "home.liveSection") === "Hai");
   const harness = raw("scripts/qa-journey-shell.mjs");

@@ -7,7 +7,7 @@
  * sample data is generated for the empty demo store in non-production only.
  */
 import { ROOT_OPEN_GRAPH } from "../layout";
-import { cn, fill, formatNumber } from "@/lib/utils";
+import { cn, fill, formatNumber, formatReturnRate } from "@/lib/utils";
 import { db } from "@/lib/server/store";
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
@@ -347,7 +347,9 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
              disagreed, and gold marks money that was earned and nothing else (DESIGN_AUTHORITY Q5, `test:gold-is-money`,
              which now holds `page-ribbon.tsx` among the identity surfaces). A rank is identity; the metal is the badge's. */
           { label: t.leaderboard.topTier, value: tierDisplayName(rows[0]?.tier ?? "bronze") },
-          { label: t.leaderboard.bestRoi, value: `${rows[0]?.roi.toFixed(1) ?? "0"}%` },
+          /* ⭐ WITH ITS SIGN (R7-B, round 7, 2026-10-10; round 6's read R5-7): "ROI BORA 54.1%" stood over a podium and a
+             table saying "+54.1%". One formatter for every rate of return (`formatReturnRate`, owner item 51). */
+          { label: t.leaderboard.bestRoi, value: formatReturnRate(rows[0]?.roi ?? 0) },
           /**
            * 🔴 THIS PRINTED THE BOARD SIZE UNDER THE LABEL "PREDICTORS". `rows` is the ranking,
            * capped at BOARD_SIZE, so a platform with a thousand ranked players advertised **50** —
@@ -502,7 +504,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
                     gold that "money earned" would ask for is the IDENTITY page's to refuse (Q5: `test:gold-is-money`
                     holds this page). The podium's rate below, the same. */}
                 <td className="p-3 text-right font-mono tabular-nums font-bold text-text">
-                  {r.roi >= 0 ? "+" : ""}{r.roi.toFixed(1)}%
+                  {formatReturnRate(r.roi)}
                 </td>
                 <td className="p-3 hidden md:table-cell">
                   {r.spark.length > 0
@@ -645,7 +647,7 @@ function Podium({ top, t }: { top: Row[]; t: Dict }) {
                 <TierBadge tier={r.tier} t={t} />
               </div>
               <span className="mt-0.5 font-mono text-[13px] font-bold tabular-nums text-text">
-                {r.roi >= 0 ? "+" : ""}{r.roi.toFixed(1)}%
+                {formatReturnRate(r.roi)}
               </span>
               {r.streak > 0 && <span className="mt-1"><HotChip streak={r.streak} t={t} /></span>}
               {/* Round 5 (F12): a count's word is the dictionary's sentence word (`results.resolved`, "5 imetatuliwa" — the

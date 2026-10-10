@@ -21,7 +21,7 @@ export default function Loading() {
       lead={
         <>
           <BackLinkGhost />
-          <PageHeader tone="info" icon={<I.keyRound s={22} />} eyebrow={t.security.eyebrow} title={t.security.title} />
+          <PageHeader icon={<I.keyRound s={22} />} eyebrow={t.security.eyebrow} title={t.security.title} />
         </>
       }
     />

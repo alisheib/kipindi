@@ -243,7 +243,7 @@ export const NOT_EYEBROW = new Map([
   ["app/live/pulse-grid.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.16em] text-text-subtle\"> ↵ {t.common.loadingMore}", "OTHER"],
   ["app/markets/[id]/page.tsx :: <span className=\"closing-pill inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-caption font-bold uppercase tracking-[0.10em] tabular-nu", "STATUS_CHIP"],
   ["app/markets/[id]/page.tsx :: <span className=\"inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-caption font-bold uppercase tracking-[0.10em] border-brand-500/[0.55]", "STATUS_CHIP"],
-  ["app/markets/[id]/page.tsx :: <span className={`text-micro uppercase tracking-[0.10em] font-semibold ${ ↵ p.status === \"OPEN\" ? \"text-info-fg\" : p.status === \"WIN\" ? \"text-gold-300\" : p.status === \"LO", "STATUS_CHIP"],
+  ["app/markets/[id]/page.tsx :: <span className={`text-micro uppercase tracking-[0.10em] font-semibold ${ ↵ p.status === \"WIN\" ? \"text-gold-300\" : p.status === \"LOSS\" ? \"text-no-300\" : (playerStatusInk(", "STATUS_CHIP"],
   ["app/notifications/bulk-bar.tsx :: <span className=\"font-mono text-micro font-bold uppercase text-text-subtle truncate\"> ↵ {countLabel}", "STATUS_CHIP"],
   ["app/notifications/row-actions.tsx :: className=\"-mt-1 shrink-0 inline-flex items-center gap-1 min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-accent-400 hover:text-text hover:bg-bg", "CONTROL_LABEL"],
   ["app/positions/page.tsx :: <div className=\"mb-1.5 flex items-center justify-between gap-2 font-mono text-micro uppercase tracking-[0.12em] tabular-nums\"> ↵ <span className=\"font-bold text-yes-300\">", "OTHER"],

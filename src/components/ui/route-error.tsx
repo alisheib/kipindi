@@ -143,7 +143,15 @@ export function RouteError({
 
   return (
     <div className="kp-shortpage relative mx-auto flex min-h-[60svh] w-full max-w-[560px] flex-col items-center justify-center overflow-hidden px-5 py-12 text-center">
-      <BrandTopo id="route-error-topo" opacity={0.09} />
+      {/* ⭐ THE NOT-FOUND VIEW'S WAVE, ONE BACKDROP FOR BOTH (R7-B, round 7, 2026-10-10; round 6's read R5-10, tile 182): the
+          wave sat straight in this 560px column, a hard-edged box at 1280, where the not-found view fades it over 64px
+          (E46). It takes the same two masks; its sides fade from its own column's width (`kp-nf-topo--receipt`,
+          `--w-receipt` = this 560px), so on a phone, where the column is the screen, they stay the screen's edges. */}
+      <div aria-hidden className="kp-nf-topo kp-nf-topo--receipt">
+        <div className="kp-nf-topo__x">
+          <BrandTopo id="route-error-topo" opacity={0.09} />
+        </div>
+      </div>
       <div className="relative flex flex-col items-center">
         <FiftyMark size={64} />
         <div

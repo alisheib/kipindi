@@ -187,7 +187,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
     <div className="mx-auto max-w-[1080px] px-3 lg:px-6 py-6 lg:py-8 space-y-6">
       <header className="space-y-3">
         <PageHero glow="info">
-          <PageHeader eyebrow={t.common.resolutionAttestation} title={t.common.howAMarketResolves} tone="info" icon={<I.shieldcheck s={18} />} />
+          <PageHeader eyebrow={t.common.resolutionAttestation} title={t.common.howAMarketResolves} icon={<I.shieldcheck s={18} />} />
         </PageHero>
         {/* Its last two words break together (round 3, 2026-10-09, tiles 187 204): at 390 the lead's eighth line was
             "lifungwe." alone. Measured with the repo's Inter at 15px in its 358px measure, it now ends "…inayohamishwa" /

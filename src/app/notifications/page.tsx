@@ -180,7 +180,6 @@ export default async function NotificationsPage({
     <PageContainer tier="reading" className="space-y-5">
       <BackLink fallbackHref={journey ? "/account" : "/profile"} label={journey ? t.journey.tabAccount : t.profile.title} />
       <PageHeader
-        tone="info"
         icon={<I.bellRing s={22} />}
         eyebrow={t.notif.eyebrow}
         title={t.notif.title}

@@ -215,8 +215,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
 
       <PageHero glow="info">
         <PageHeader
-          tone="info"
-          icon={<I.user s={14} className="text-info-fg" />}
+          icon={<I.user s={14} />}
           eyebrow={t.profile.myAccount}
           title={t.profile.myAccount}
         />

@@ -6,20 +6,26 @@ import type { ReactNode } from "react";
  *   - eyebrow: font-mono text-[11px] tracking-[0.16em] (was 10px on ~8 pages)
  *   - title:   font-display text-[28px] tracking-[-0.02em]
  *
- * `tone` colors the eyebrow to the page's accent (info = account/security/protection). Longer descriptive
- * paragraphs stay in the page as a sibling; `subtitle` is only for the short italic tagline.
+ * Longer descriptive paragraphs stay in the page as a sibling; `subtitle` is only for the short italic tagline.
+ * ⭐ ONE EYEBROW INK, `--text-subtle` (R7-B, the visual pass's round 7, 2026-10-10; round 6's read R5-6). Page heads
+ * named their page in two inks: 181,207,255 (`info`) on thirteen account, help and notice pages — the RG page, /fairness,
+ * /help, /notifications… — and 137,157,209 (this default) on /proposals, /wallet, withdraw, /profile, /leaderboard,
+ * /agent, /markets, /results and Up & Down. The default is R5-C's ruled eyebrow ink ("the ink 191 player eyebrows wear",
+ * `.gilt-eyebrow`), the quiet label over a block (§T3); `info` is the feedback family of a notice (§F), so a page's NAME
+ * wore a notice's colour. `info` left the map as `gold` and `yes` did, so no call site can ask for a second ink again
+ * (`test:visual-pass-r7b` §1 holds every call site, AuthHeader's page names and the hand-drawn heads to it). A glyph in
+ * the eyebrow rides in its ink (currentColor); the one state glyph (the deposit return's outcome) is registered there.
  * ⛔ NO `yes` (R5-I, 2026-10-09; DESIGN_AUTHORITY §B2a): its one caller was the responsible-gambling page — "protection"
- * in the YES side's green. It takes `info` with the other account pages, and the option is gone, as `gold` went below.
+ * in the YES side's green.
  * ⛔ NO `gold` (R5-C, the second gold audit, 2026-10-09; DESIGN_AUTHORITY Q5 "gold is money, and nothing else"): an
  * eyebrow names a page and is never money. Its only callers were /proposals and /proposals/new ("MAPENDEKEZO" in gold
  * with a trophy); they take the default, the ink 191 player eyebrows already wear. It is out of the map, as R4-I took it
  * out of AuthHeader's, so no call site can ask for it again.
  */
-type Tone = "subtle" | "info";
+type Tone = "subtle";
 
 const EYEBROW_TONE: Record<Tone, string> = {
   subtle: "text-text-subtle",
-  info: "text-info-fg",
 };
 
 export function PageHeader({

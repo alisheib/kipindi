@@ -426,8 +426,8 @@ dictionary had an opinion about the word. Stage 5.3 recorded that amber *as meas
 mismatch rather than repainting a live money chip on its own authority. A cashed-out position is
 **terminal** — settled, paid, asking nothing of anyone — and amber says the opposite in the one
 voice this dictionary gives it. ⭐ It is the only terminal state in the table that was toned amber;
-`DECLINED`, `EXPIRED` and `REVOKED` were already slate, and `VOID` is royal to the player by a
-separate decision.
+`DECLINED`, `EXPIRED` and `REVOKED` were already slate, and `VOID` was royal to the player by a
+separate decision — slate too since 2026-10-10 (item 6 below; owner to confirm).
 
 ⚠️ **THE CONSOLE STILL PAINTS THIS WORD AMBER, AND THE SPLIT IS RECORDED RATHER THAN RESOLVED.**
 `src/app/admin/markets/[id]/page.tsx` carries a **file-local** `STATUS_VARIANT` with
@@ -448,6 +448,20 @@ so one payment reads one colour everywhere: **waiting is royal** (Pending, Proce
 success green**, **Failed is the failure colour**, and **Reversed and Cancelled are slate** — terminal and inert, the
 money is back or never left. ⛔ Never gilt: moving your own money in or out earns nothing (§M3a D1). A deposit held for
 return is SHOWN as Reversed (`presentedStatus`, `lib/wallet/receipts.ts`), as its notice and email say.
+
+**6. VOID IS SLATE TO THE PLAYER TOO (2026-10-10, the S6 visual pass's round 7, R7-B; round 6's read R8-3, readers 4, 5
+and 6 — ✅ THE OWNER'S RULING OF 2026-10-10: asked "which colour should a voided bet be everywhere?", Ali chose "Grey
+everywhere", superseding his 2026-09-07 "`VOID` → royal").** One event wore two inks: the ticket's "IMEBATILISHWA" chip royal, while `/results` drew
+the same void slate ("Batili n" and its donut arc, §B12's neutral chart ink), `/fairness` drew its VOID chip slate, and
+Up & Down's settled panel showed a slate "Stake returned" one branch away from a royal "Batili". A stake that came back is
+**terminal and inert** — slate's own definition, the tone CASHED_OUT took by the owner's 2026-09-09 ruling (item 4) and
+REVERSED and CANCELLED took on 2026-10-07 for "the money is back, or never left" (item 5); royal says *in flight, nothing
+is wrong*, and told a finished refund it was still moving. ⛔ This reverses the measured royal and the owner's 2026-09-07
+ruling "`VOID` → royal" (PLAYER-QUERY-CAMPAIGN.md stage 5.3), made because five surfaces then painted it royal and the
+card was the odd one out — recorded, not erased; the revert is one value (`status-tone.ts`, `VOID.player`). Every reader
+follows the dictionary: the ticket and position cards, the board cards, the home's settled rows, Up & Down's card, round
+page and history, the market's resolution panel and `/results`' notable card (both hand-typed royal until this change);
+a void printed as a word takes the slate chip's own text (`playerStatusInk`, `--text-muted`).
 
 **⛔ THE ONE KEPT SPLIT — LIVE — AND IT IS A DECISION, NOT A LEFTOVER.** LIVE is two facts
 wearing one word. To a **player** it is a broadcast — *this is open, money is moving, act
@@ -476,7 +490,7 @@ Player column now has readers too**: `markets/market-card.tsx`, `home/trust-band
 `STATUS_TONE[word].player`. **VOID joined the table** in the same pass — measured, not chosen:
 five player surfaces already painted it royal and the console's market table already painted it
 slate, and its third tone (the resolver's claret, §B4a) is now recorded in
-`STATUS_TONE_EXCEPTIONS`.
+`STATUS_TONE_EXCEPTIONS`. (Since 2026-10-10 the player reads slate as the console does — item 6 above.)
 
 ⚠️ **Two corrections to what this paragraph used to say.** It named three files; two were
 right and the third was not. `results/page.tsx` has never hard-typed a chip **class** — it
@@ -1111,6 +1125,15 @@ Values: the `--type-*` ladder in `globals.css`. Laws:
 3. **`--type-label` and `--type-nano` are the blessed sub-`micro` tier** — UPPERCASE mono
    tracking microlabels only. They sit below the reading floor deliberately.
    ⛔ **Never reading copy.**
+
+   ⭐ **A PAGE HEAD'S EYEBROW HAS ONE INK, `--text-subtle` (2026-10-10, the S6 visual pass's round 7, R7-B; round 6's
+   read R5-6).** Page heads named their page in four inks: `--text-subtle` (PageHeader's default — R5-C's ruled eyebrow
+   ink, "the ink 191 player eyebrows wear"), `--info-fg` on thirteen account, help and notice pages, `--brand-300` on the
+   auth pages' names, and the text's white on `/live`'s masthead. The eyebrow is the quiet label over a block; `info` is a
+   notice's family (§F) and brand the link's and the selected thing's (R5-C), so neither names a page. PageHeader offers
+   no tone but the subtle one, AuthHeader's page names take it by default, and every hand-drawn head is registered —
+   `test:visual-pass-r7b` §1. ⛔ A STATE line keeps its state's ink ("Link expired", "Email confirmed", "Something went
+   wrong"): a status word, said as its medallion says it (§B11's word rule).
 
    ⭐ **THE EYEBROW'S TRACKING IS 0.14em — AND "THE EYEBROW" IS ONE OF FOUR ROLES, NOT ALL
    UPPERCASE MONO TYPE.** Ruled 2026-08-30, DESIGN-GATE-2026-08-28 step 2 (DG-A-11 / DG-P-06),

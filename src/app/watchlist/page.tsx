@@ -170,7 +170,7 @@ export default async function WatchlistPage({
           Same cadence as wallet/positions (pauses when the tab is hidden).
           ⭐ It is no longer expensive: the read behind it is now scoped to the starred ids. */}
       <RefreshPoller intervalMs={20_000} />
-      <PageHeader tone="info" icon={<I.star s={22} />} eyebrow={t.watchlist.eyebrow} title={t.watchlist.title} />
+      <PageHeader icon={<I.star s={22} />} eyebrow={t.watchlist.eyebrow} title={t.watchlist.title} />
 
       {/* ⛔ THE CONTROLS ARE WITHHELD ON A GENUINELY EMPTY WATCHLIST, and only then. A bar of five
           pills all reading 0 above "you're not following any markets" is five controls that cannot

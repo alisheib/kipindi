@@ -215,6 +215,20 @@ export function formatTzsSigned(value: number): string {
 }
 
 /**
+ * ⭐ THE RATE OF RETURN, ONE WAY (R7-B, the visual pass's round 7, 2026-10-10; round 6's read R5-7; owner item 51 — "plain
+ * text with its sign"). A percentage given as a number of percent (54.1 → "+54.1%", −5.06 → "−5.1%"): one decimal, its
+ * sign always printed — "+" from zero up, as `formatTzsSigned` does — and the real minus (U+2212), never the hyphen.
+ * Four places printed a rate three ways: /leaderboard's ribbon with NO sign ("ROI BORA 54.1%" over a podium and a table
+ * saying "+54.1%"), its table and podium with a hyphen for a loss, /positions/performance with the real minus.
+ * ⛔ The sign is decided on the ROUNDED figure, so a rate that rounds to zero never reads "−0.0%". No figure → "—".
+ */
+export function formatReturnRate(pct: number): string {
+  if (!Number.isFinite(pct)) return "—";
+  const digits = Math.abs(pct).toFixed(1);
+  return `${pct < 0 && Number(digits) !== 0 ? "−" : "+"}${digits}%`;
+}
+
+/**
  * ⭐ THE ONE COUNT GROUPING — every count a player reads goes through this (round 5 of the visual pass, R5-A and R5-J,
  * 2026-10-09): a count line, a pill's count, a bar's "masoko 12", a pager's range, a stat tile, a toast's "{n}" — "12,479",
  * never "12479" and never a grouping the runtime picks. A count is followed by the dictionary's lower-case word for what

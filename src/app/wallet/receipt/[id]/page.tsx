@@ -94,8 +94,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
 
       <PageHero>
         <PageHeader
-          tone="subtle"
-          icon={<I.receipt s={14} className="text-text-muted" />}
+          icon={<I.receipt s={14} />}
           eyebrow={t.wallet.receiptEyebrow}
           title={<span className="amount"><Cash>{formatTzs(Math.abs(txn.amount))}</Cash></span>}
           subtitle={`${typeWord} · ${method}`}

@@ -4,7 +4,7 @@ import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { I } from "@/components/ui/glyphs";
 import { GiltCorner } from "@/components/brand";
-import { formatNumber, formatTzsAbs, formatTzsSigned } from "@/lib/utils";
+import { formatNumber, formatReturnRate, formatTzsAbs, formatTzsSigned } from "@/lib/utils";
 import { formatEatDate } from "@/lib/eat-day";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Stat } from "@/components/ui/stat";
@@ -296,7 +296,7 @@ export default async function PerformancePage({
                     semibold 0.10em) — a pixel-for-pixel mapping, nothing repainted. */}
                 <Stat size="2xl" labelStyle="caps" label={t.performance.winRate} value={`${winRate}%`} />
                 <Stat size="2xl" labelStyle="caps" label={t.performance.marketsSettled} value={formatNumber(totalBets)} />
-                <Stat size="2xl" labelStyle="caps" label={t.performance.roi} value={`${roi >= 0 ? "+" : "−"}${Math.abs(roi).toFixed(1)}%`} />
+                <Stat size="2xl" labelStyle="caps" label={t.performance.roi} value={formatReturnRate(roi)} />
               </div>
             </div>
           </section>

@@ -38,18 +38,26 @@ import { keepText } from "@/components/ui/keep-run";
  * Colour discipline is inherited from <AuthShell>: NO gold — nothing is earned on the auth surface.
  * ⭐ R4-I (2026-10-09), on R4-K's gold audit (DESIGN_AUTHORITY Q5 "gold is money, and nothing else", §M3 "struck
  * gold appears only where money was earned"): the eyebrow (INGIA / SIGN IN / FUNGUA AKAUNTI) was gold by DEFAULT, the
- * one gold on a screen where nothing is earned. Its default is now `brand`, the tone /auth/2fa and /auth/verify-email
- * already pass, and `gold` is out of the map, so no call site can ask for it again.
+ * one gold on a screen where nothing is earned. Its default became `brand`, the tone /auth/2fa and /auth/verify-email
+ * already passed, and `gold` is out of the map, so no call site can ask for it again. (Since R7-B, 2026-10-10, the
+ * default is the page heads' one eyebrow ink, `subtle` — see the map below.)
  */
 
 /** Eyebrow colours actually in use across /auth/*. Add to the map, not at a call site.
  *  ⭐ R5-I (2026-10-09; DESIGN_AUTHORITY §B2a): a confirmed address and an expired link are APP STATES — the success and
  *  danger family their medallions already wear (verify-email, reset-password) — so the eyebrow says them in the same ink.
- *  It was `yes` / `no`: the betting pair, the two sides of a stake, on a page where nothing is staked. */
-export type AuthEyebrowTone = "brand" | "danger" | "success";
+ *  It was `yes` / `no`: the betting pair, the two sides of a stake, on a page where nothing is staked.
+ *  ⭐ A PAGE'S NAME IS THE ONE EYEBROW INK (R7-B, the visual pass's round 7, 2026-10-10; round 6's read R5-6). The default
+ *  was `brand` (153,196,255) since R4-I took the eyebrow off gold — a third page-head ink beside PageHeader's subtle and its
+ *  old `info`. "Ingia", "Fungua akaunti", "Umesahau nenosiri?", "Uthibitisho", "Badilisha nenosiri", the two-step and the
+ *  confirm-email names now wear `--text-subtle`, the ink every page head wears (`page-header.tsx`). The brand ink is the
+ *  link's and the selected thing's (R5-C), never a page's name. ⛔ The two STATE lines keep their state's ink — "Kiungo
+ *  kimeisha", "Barua pepe imethibitishwa" are status words, said as their medallions say them (§B11's word rule) — and
+ *  `test:visual-pass-r7b` §1 registers exactly those two. */
+export type AuthEyebrowTone = "subtle" | "danger" | "success";
 
 const EYEBROW_TONE: Record<AuthEyebrowTone, string> = {
-  brand: "text-brand-300",
+  subtle: "text-text-subtle",
   danger: "text-danger-fg",
   success: "text-success-fg",
 };
@@ -69,7 +77,7 @@ export function AuthPanel({
 
 export function AuthHeader({
   eyebrow,
-  tone = "brand",
+  tone = "subtle",
   icon,
   title,
   subtitle,

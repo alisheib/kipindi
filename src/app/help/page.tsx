@@ -52,7 +52,7 @@ export default async function HelpPage() {
   return (
     <PageContainer tier="reading" className="space-y-5">
       <PageHero glow="info">
-        <PageHeader tone="info" eyebrow={t.help.pageTitle} title={t.help.heading} />
+        <PageHeader eyebrow={t.help.pageTitle} title={t.help.heading} />
       </PageHero>
 
       {/* 🔴 E-123 — THE LIVE-CHAT CARD FOLLOWS THE SWITCH THAT MOUNTS THE WIDGET.

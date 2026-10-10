@@ -303,19 +303,23 @@ section("2 · I-1 · an app state wears the app-state family — the crests, the
 
   // 2.6 · the auth eyebrow: success and danger, as its medallion.
   const AP = read("src/components/auth/auth-panel.tsx");
-  ok("2.6 · the auth eyebrow's tones are brand · danger · success — no YES/NO to ask for", /export type AuthEyebrowTone = "brand" \| "danger" \| "success";/.test(AP) && !/yes-300|no-300/.test(AP));
+  // Re-pinned by R7-B (round 7, 2026-10-10; round 6's read R5-6): the page-name default is the page heads' one eyebrow ink,
+  // `subtle`, where it was `brand`; the two state tones this check is about stand.
+  ok("2.6 · the auth eyebrow's tones are subtle · danger · success — no YES/NO to ask for", /export type AuthEyebrowTone = "subtle" \| "danger" \| "success";/.test(AP) && !/yes-300|no-300/.test(AP));
   ok("2.6′ · reset-password's expired link says danger; verify-email says success or danger", /tone="danger"/.test(read("src/app/auth/reset-password/page.tsx")) && /tone=\{good \? "success" : "danger"\}/.test(read("src/app/auth/verify-email/page.tsx")));
   const eyebrow = (tone: "danger" | "success") => html(h(AuthHeader, { eyebrow: "E", title: "T", tone } as never));
   ok("2.6″ EXECUTED · the eyebrow renders `text-danger-fg` / `text-success-fg`", /text-danger-fg/.test(eyebrow("danger")) && /text-success-fg/.test(eyebrow("success")));
 
   // 2.7 · the RG page's hero — §B2a's own example, and its last trace.
   const RGP = read("src/app/profile/responsible-gambling/page.tsx");
-  ok("2.7 · the RG page's hero is the account pages' `info` (glow and eyebrow), its glyph and words unchanged",
-    /<PageHero glow="info">\s*<PageHeader\s*tone="info"\s*icon=\{<I\.shieldcheck s=\{14\} \/>\}\s*eyebrow=\{t\.rg\.playerProtection\}\s*title=\{t\.profile\.responsibleGambling\}/.test(RGP) && !/"yes"/.test(RGP));
+  // Re-pinned by R7-B (round 7, 2026-10-10; round 6's read R5-6): the hero keeps the account pages' `info` glow; its eyebrow
+  // takes the page heads' one ink (PageHeader's `info` tone is gone), as every account page's now does.
+  ok("2.7 · the RG page's hero is the account pages' `info` glow and the page heads' one eyebrow ink, its glyph and words unchanged",
+    /<PageHero glow="info">\s*<PageHeader\s*icon=\{<I\.shieldcheck s=\{14\} \/>\}\s*eyebrow=\{t\.rg\.playerProtection\}\s*title=\{t\.profile\.responsibleGambling\}/.test(RGP) && !/"yes"/.test(RGP));
   ok("2.7′ · PageHeader and PageHero offer no betting tone to ask for (`yes`, `rose` out of their maps)",
     !/"yes"|yes-300|"rose"|\b152\b|\b22 \//.test(read("src/components/ui/page-header.tsx") + read("src/components/ui/page-hero.tsx")));
-  ok("2.7″ EXECUTED · the hero's info glow is hue 240 and the eyebrow `text-info-fg`",
-    /oklch\(45% 0\.10 240 \/ 0\.18\)/.test(html(h(PageHero, { glow: "info" } as never, "x"))) && /text-info-fg/.test(html(h(PageHeader, { tone: "info", eyebrow: "E", title: "T" }))));
+  ok("2.7″ EXECUTED · the hero's info glow is hue 240 and the eyebrow `text-text-subtle` (R7-B: the page heads' one ink)",
+    /oklch\(45% 0\.10 240 \/ 0\.18\)/.test(html(h(PageHero, { glow: "info" } as never, "x"))) && /text-text-subtle/.test(html(h(PageHeader, { eyebrow: "E", title: "T" }))));
   ok("2.7‴ · the support panel's art takes the panel's own ink (`currentColor`), the panel the success family",
     /fill="currentColor" stroke="none"/.test(read("src/components/rg/self-care-art.tsx")) && !/yes-300/.test(read("src/components/rg/self-care-art.tsx"))
       && /<RgSunriseArt size=\{44\} className="-ml-1 shrink-0 text-success-fg" \/>/.test(RGP)

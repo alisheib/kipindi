@@ -208,7 +208,6 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
 
       <PageHero glow="info">
         <PageHeader
-          tone="info"
           icon={<I.shieldcheck s={14} />}
           eyebrow={t.profile.kycIdentityVerification}
           title={kyc?.status === "APPROVED" ? t.profile.verifyTitleApproved : finalRefusal ? t.kycGate.titleRejected : t.profile.verifyIdentity}

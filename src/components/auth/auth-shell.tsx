@@ -80,7 +80,14 @@ export async function AuthShell({ children }: { children: React.ReactNode }) {
             heading) and, with `overflow:clip` on this wrapper, silently clips the form
             off a 320px phone. Flex sizes the child to the column width instead. */}
         <div className="relative flex items-center justify-center px-3 py-8">
-          <BrandTopo id="auth-form-topo" opacity={0.09} />
+          {/* The frameless wave fades as the not-found view's (R7-B, round 7, 2026-10-10; R5-10's sibling): from 1024 this
+              column ends 32px inside the screen's edge with nothing drawn there, and on every width its top began as a
+              line under the header. The rail's wave (above) fills the rail's own panel and is left whole. */}
+          <div aria-hidden className="kp-nf-topo kp-nf-topo--split">
+            <div className="kp-nf-topo__x">
+              <BrandTopo id="auth-form-topo" opacity={0.09} />
+            </div>
+          </div>
           <div className="relative w-full min-w-0 max-w-md">
             {/* Mobile lockup — the rail carries it on lg. */}
             <Link href="/" aria-label={t.auth.brandHomeAria} className="mb-6 inline-block transition-opacity hover:opacity-90 lg:hidden">
