@@ -274,8 +274,10 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
           so every card in the wall keeps one height.
           ⚠️ The minimum is an EXACT multiple of `leading-snug` (1.375): it was 2.6em, a hair under two lines, so a
           one-line title sat 2px shorter than a two-line one (measured 35 vs 37px) and the bars below them did not line up. */}
+      {/* The card is a link, and its title's hover is the link blue's (Ali's ruling (2) of 2026-10-10, §B4c), as /results'
+          card title hovers — it lit aqua. */}
       <h3
-        className={`font-display text-[13.5px] font-semibold leading-snug text-text text-balance group-hover:text-aqua-200 ${
+        className={`font-display text-[13.5px] font-semibold leading-snug text-text text-balance group-hover:text-brand-200 ${
           locale === "sw" ? "min-h-[4.125em] line-clamp-3" : "min-h-[2.75em] line-clamp-2"
         }`}
         data-title-lines={locale === "sw" ? 3 : 2}

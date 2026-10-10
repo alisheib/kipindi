@@ -47,13 +47,18 @@ import { cn } from "@/lib/utils";
  * composite over whatever is behind them; `panelBg`/`panelBorder` are OPAQUE,
  * mixed against `--bg-elevated`, which is what a full-width banner on the page
  * ground needs — swapping one for the other is a visible change, not a tidy-up.
+ *
+ * ⭐ `fg` IS THE FAMILY'S INK, `--warning-fg` (Ali's ruling (1) of 2026-10-10). It was `--warning-500` because the ink
+ * was then `--gilt` and "a flat tag needs the amber itself, not the gilt" (MaintenanceBadge's old note). The ruling made
+ * `--warning-fg` the amber, so the reason is gone and one amber word ink remains: this plate's glyph, the badge's label
+ * and the `warning` tone's glyph are the same ink.
  */
 export const MAINTENANCE_AMBER = {
   bg: "var(--warning-bg)",
   border: "var(--warning-border)",
   panelBg: "color-mix(in oklab, var(--warning-500) 18%, var(--bg-elevated))",
   panelBorder: "color-mix(in oklab, var(--warning-500) 36%, var(--border))",
-  fg: "var(--warning-500)",
+  fg: "var(--warning-fg)",
 } as const;
 
 export type CalloutTone =

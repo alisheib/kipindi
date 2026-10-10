@@ -290,9 +290,11 @@ export function RoundStakePanel(props: {
       {bet.insufficient && !bet.locallyLocked && (
         <p className="mt-2 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint">
           <I.info s={11} className="mt-[2px] shrink-0" />
+          {/* The deposit route in the link blue, hover included (Ali's ruling (2) of 2026-10-10, §B4c): it wore the
+              sentence's faint ink under a border-coloured line, a third link ink. The sentence stays the factual register. */}
           <span>
             {t.market.udInsufficientBalance}{" "}
-            <Link href="/wallet/deposit?from=low-balance" className="underline decoration-[color:var(--border-strong)] underline-offset-2 hover:text-text-muted">
+            <Link href="/wallet/deposit?from=low-balance" className="text-brand-300 underline underline-offset-2 hover:text-brand-200">
               {t.market.udDepositCta}
             </Link>
           </span>

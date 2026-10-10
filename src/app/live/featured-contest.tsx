@@ -170,7 +170,9 @@ export function FeaturedContest({
                 /* A display title from 1024 (24px, Sora 600): on the card's edge when it opens on a straight-stem capital,
                    by 600's own bearing (round 7, R7-C, 2026-10-10; `lib/display-stem.ts`). */
                 data-stem={stemOf(mm.title, 600)}
-                className="font-display text-[19px] lg:text-[24px] font-semibold leading-tight text-text text-balance group-hover:text-aqua-100"
+                /* The link's hover is the link blue's (Ali's ruling (2) of 2026-10-10, §B4c), as /results' card title
+                   hovers — it lit aqua. */
+                className="font-display text-[19px] lg:text-[24px] font-semibold leading-tight text-text text-balance group-hover:text-brand-200"
               >
                 {keepFigures(mm.title)}
               </h2>

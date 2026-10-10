@@ -181,11 +181,13 @@ export function ResolutionPanel({
               {formatEatDateTime(Date.parse(resolvedAt), serverNow, t.common.monthsShort, locale)}
             </span>
           )}
+          {/* The link blue, as /fairness's "Source ↗" is (Ali's ruling (2) of 2026-10-10, §B4c) — it was the muted ink
+              with an underline, a third link ink. */}
           <a
             href={sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-text-muted hover:text-text underline"
+            className="inline-flex items-center gap-1 text-brand-300 hover:text-brand-200 underline"
           >
             {t.common.source}
             <I.ext s={11} />
@@ -327,9 +329,10 @@ export function ResolutionPanel({
           <p className="text-body-sm leading-relaxed text-text-subtle">{t.market.objSettledContact}</p>
         ) : null}
 
+        {/* The link blue, hover included (Ali's ruling (2) of 2026-10-10, §B4c) — it was aqua, hovering to white. */}
         <p className="text-body-sm leading-relaxed text-text-subtle">
           {t.market.resDispute}{" "}
-          <a href="/help" className="text-accent-400 hover:text-text underline">{t.market.resContact}</a>
+          <a href="/help" className="text-brand-300 hover:text-brand-200 underline">{t.market.resContact}</a>
         </p>
       </div>
     </section>

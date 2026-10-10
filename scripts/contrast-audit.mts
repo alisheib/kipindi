@@ -601,6 +601,12 @@ const T = {
   giltStrong: token("gilt-strong"),
   gold500: token("gold-500"),
   gold300: token("gold-300"),
+  // ── The AMBER warning family (2026-10-10, Ali's ruling (1): warnings are amber, not gold; R8-A) ────────────
+  // Until today `--warning-fg` WAS `--gilt`, so the gilt rows below scored it by proxy. It is its own ink now (hue 64),
+  // and nothing scored it: a refused sign-in, "more information needed" and a withdrawal hold are READ, so 4.5; the stop
+  // paints bars, dots and frames, so 3.0 as a mark. (Its 18% wash is scored by `test:visual-pass-r8a` §1.)
+  warningFg: token("warning-fg"),
+  warning500: token("warning-500"),
   /* ⚠️ PV-13c (2026-09-03) — was `ruleValue(".chip-resolved", …)`. The `.chip-*` CSS family is
      DELETED; `<Chip variant="resolved">` (chip.tsx's `variantStyle`) is the settled pill's one
      definition now. See `tsxVariantValue` above for why this could not simply be dropped. */
@@ -849,6 +855,14 @@ const CHECKS: Check[] = [
   { name: "--gilt money ink on --panel", fg: T.gilt, bg: T.panel, min: 4.5 },
   { name: "--gilt-strong on --bg", fg: T.giltStrong, bg: T.bg, min: 4.5 },
   { name: "--gilt-strong on --bg-elevated", fg: T.giltStrong, bg: T.bgElevated, min: 4.5 },
+  // ── The amber warning ink and stop (Ali's ruling (1) of 2026-10-10; R8-A) — see `T.warningFg` ────────────────
+  { name: "--warning-fg amber ink on --bg", fg: T.warningFg, bg: T.bg, min: 4.5 },
+  { name: "--warning-fg amber ink on --bg-elevated", fg: T.warningFg, bg: T.bgElevated, min: 4.5 },
+  { name: "--warning-fg amber ink on --panel", fg: T.warningFg, bg: T.panel, min: 4.5 },
+  { name: "--warning-fg amber ink on --wash-raised (worst stop)", fg: T.warningFg, bg: worstStop(T.warningFg, T.washRaisedStops), min: 4.5 },
+  { name: "--warning-fg amber ink on --wash-float (worst stop — the toast fill)", fg: T.warningFg, bg: worstStop(T.warningFg, T.washFloatStops), min: 4.5 },
+  { name: "--warning-500 amber mark on --bg (bar, dot, frame)", fg: T.warning500, bg: T.bg, min: 3.0 },
+  { name: "--warning-500 amber mark on --bg-elevated (bar, dot, frame)", fg: T.warning500, bg: T.bgElevated, min: 3.0 },
   // .chip-resolved paints its label over `linear-gradient(--gold-300 → --gold-500)`.
   // Dark ink on a light ramp is worst at the DARK stop — but the stop is now
   // CHOSEN by worstStop() off the rule itself rather than named here, so ATOM

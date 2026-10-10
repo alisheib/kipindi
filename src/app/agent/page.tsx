@@ -118,7 +118,8 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
   let cta: Cta = { kind: "none" };
   /**
    * ⭐ AMBER ONLY WHERE SOMEBODY MUST ACT (R5-C, the second gold audit, 2026-10-09). Seven states wore `warning`, whose
-   * `--warning-fg` IS `--gilt` (DESIGN_AUTHORITY F3) — gold on a page where nothing is earned. §B11 gives amber one
+   * `--warning-fg` was then `--gilt` (DESIGN_AUTHORITY F3; amber since Ali's ruling (1) of 2026-10-10) — gold on a page
+   * where nothing is earned. §B11 gives amber one
    * meaning, "somebody must act", and decides these words once: a paused agent is DEACTIVATED, slate to the agent;
    * a final decision and a cooling-off date are terminal or inert; an RG lock is the neutral box R4-I gave every RG
    * notice; a refusal says "not available" — the Callout's `neutral` ("honest 'not available', guided elsewhere").

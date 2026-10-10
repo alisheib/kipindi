@@ -794,7 +794,7 @@ export function NotificationsPanel({ journey = false }: { journey?: boolean } = 
                   <Link
                     href={"/notifications" as never}
                     onClick={() => setOpen(false)}
-                    className="inline-flex items-center gap-0.5 min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-accent-400 hover:text-text hover:bg-bg-overlay transition-colors whitespace-nowrap"
+                    className="inline-flex items-center gap-0.5 min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-brand-300 hover:text-brand-200 hover:bg-bg-overlay transition-colors whitespace-nowrap"
                   >
                     {t.notif.seeAll}
                     <I.chevronRight s={11} />

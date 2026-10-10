@@ -314,9 +314,10 @@ export function UpDownStakeControls({
           <I.info s={11} className="mt-[2px] shrink-0" />
           <span>
             {t.market.udInsufficientBalance}{" "}
+            {/* The link blue, hover included (Ali's ruling (2) of 2026-10-10, §B4c), as round-stake-panel's twin. */}
             <Link
               href="/wallet/deposit?from=low-balance"
-              className="underline decoration-[color:var(--border-strong)] underline-offset-2 hover:text-text-muted"
+              className="text-brand-300 underline underline-offset-2 hover:text-brand-200"
               onClick={(e) => { if (stopPropagation) e.stopPropagation(); }}
             >
               {t.market.udDepositCta}

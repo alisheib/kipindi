@@ -525,11 +525,16 @@ const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; 
     surface: "mat-tint-success",
     rail: "bg-success",
   },
+  /* ⭐ AMBER, NOT GOLD — Ali's ruling (1) of 2026-10-10. This variant was struck in the GOLD ramp (`bg-gold-500` bar and
+     rail, a `text-gold-300` glyph) while its tint already read the warning family, so the toast that says "act on this"
+     wore the ink that means money EARNED (§M3). It reads its own family now, as `success` and `danger` do: the amber
+     stop for the bar and rail, the amber ink for the glyph, `.mat-tint-warn` for the ring. ⛔ It is still not a refusal's
+     variant: a slip the player can fix is the `factual` toast (DESIGN_AUTHORITY F2, F3). */
   warning: {
-    bar: "bg-gold-500",
-    icon: <span className="text-gold-300"><I.warning s={18} /></span>,
+    bar: "bg-warning",
+    icon: <span className="text-warning-fg"><I.warning s={18} /></span>,
     surface: "mat-tint-warn",
-    rail: "bg-gold-500",
+    rail: "bg-warning",
   },
   /* D2 — see the note on `success` above. `--danger` is hue 25 against `--no-500`'s
      22: near-identical to the eye, and that is the point. The rose ALARM reading is
@@ -555,7 +560,8 @@ const variantStyles: Record<ToastVariant, { bar: string; icon: React.ReactNode; 
    * `default` and `success` both paint **`checkCircle`**, so a toast reading *"Round lost ·
    * TZS 2,000"* carried a **tick** — a confirmation glyph over the news that a player's money
    * is gone, which is precisely the euphemism the RG wording rules exist to prevent. `warning`
-   * is **gold**, the celebration ink on this platform. `danger` is red `alertCircle` and reads
+   * was **gold**, the celebration ink on this platform (amber since Ali's ruling (1) of 2026-10-10 — and amber says
+   * "somebody must act", which a settled outcome does not either). `danger` is red `alertCircle` and reads
    * as *something went wrong* — but losing a round is not an error, it is the game working.
    *
    * So: muted ink, an `info` glyph, no colour that congratulates or alarms. Use it for a

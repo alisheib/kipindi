@@ -18,8 +18,10 @@ import { MAINTENANCE_AMBER } from "@/components/ui/callout";
  *    proposals-state-views at 14%/38%, and Callout's `--warning-bg`/`-border`
  *    at 18%/36%). ⚠️ This badge now paints the 18%/36% token pair — a small,
  *    deliberate shift, and the ONLY rendered change in the amber consolidation.
- *    Its FOREGROUND is unchanged: `--warning-500`, not `--warning-fg`, because a
- *    flat tag needs the amber itself, not the gilt the Callout icon uses.
+ *    Its FOREGROUND was `--warning-500`, not `--warning-fg`, because a flat tag
+ *    needed the amber itself, not the gilt the Callout icon then used.
+ * ⭐ Since Ali's ruling (1) of 2026-10-10 (warnings are amber, not gold) `--warning-fg` IS the amber, so the badge takes
+ *    `MAINTENANCE_AMBER.fg` — the family's one word ink — like the Callout's plate and glyph.
  */
 export function MaintenanceBadge({
   label,
@@ -37,7 +39,7 @@ export function MaintenanceBadge({
       size={size}
       className={className}
       style={{
-        color: "var(--warning-500)",
+        color: MAINTENANCE_AMBER.fg,
         background: MAINTENANCE_AMBER.bg,
         border: `1px solid ${MAINTENANCE_AMBER.border}`,
       }}

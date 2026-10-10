@@ -353,6 +353,30 @@ operations console carrying live telemetry, no player ever reaches it, and it is
 **by name** — ⛔ no other surface inherits it, and citing this line to justify aqua anywhere
 else is a misreading of it.
 
+### B4c — Every link is blue (Ali's ruling (2) of 2026-10-10)
+
+Owner item 58 — *"Links use two colours (blue in most places, aqua in five). Which one should every link be?"* —
+answered **blue**. The rule, as built by R8-A:
+
+- **The link ink is `--brand-300`**, the ink the platform's links already wore (48 player sites when the ruling was
+  taken), and on hover or focus **`--brand-200`** or an underline on the same ink. `--text-link` and
+  `--text-link-hover` name exactly these two (`globals.css`; they named aqua, with no consumer). Visited is the same
+  ink: nothing styles `:visited`, and the preflight's `color: inherit` keeps the browser's purple off.
+- **A text link** is any link that says it is one by its ink or an underline: a word or an address in a sentence,
+  a "see all", a "Source ↗", a "Manage limits ›", a chat citation, a button drawn as a link (the notifications row
+  action). Every one takes the link ink, in both shells, hover included.
+- **Not text links, so not held to it:** navigation — menus, tabs, the footer's lists and its contact rows, back
+  links, the header's and rail's items, and a card, row or title that is wholly a link — draws the text inks of its
+  surface; a **button** drawn on a link (`btn-*`, a pill, a chip) keeps the button's paint; a **state action** keeps
+  its state's ink (Sign out's danger, a NoticeBar action's tone).
+- ⛔ **Never aqua** (§B4: aqua is never semantic, and a link's ink is), **never gold** (Q5), never a state's ink.
+- ⚠️ **One held exception, by name:** the links inside the HASHED binding legal texts — the Terms (6, gold;
+  `TERMS_TEXT_SHA`), the RG policy (3, gold; `RG_EN_SHA`) and the agent terms (6, the muted ink; `AGENT_TERMS_TEXT_SHA`)
+  — keep their ink until each text's next version, because the hash is over those bytes, classes included, and moving
+  it is a new published version (owner item 31: *"ships with the next policy version"*).
+- **Enforced by `npm run test:visual-pass-r8a` §5** — an AST census of every `<Link>`, `<a>` and link-drawn `<button>`
+  in player code: a text link in any other ink fails, and so does a new exception.
+
 
 ---
 
@@ -505,8 +529,8 @@ named `home/trust-band.tsx` or `updown/[roundId]/page.tsx`, which held the same 
   `updown/round-action-panel.tsx` (CLOSED) · `markets/[id]/page.tsx:403,420` and
   `results/page.tsx:567,568` (kit variants beside LIVE · RESOLVED · VOID).
 - 🔴 *DISAGREES with the dictionary — each is a REPAINT and needs a screenshot, not a sweep.*
-  `markets/[id]/page.tsx:411-418` paints **CLOSED in the gilt family** (`--warning-fg` resolves
-  to `--gilt`) on the player's own market page, while that market's card renders CLOSED royal —
+  `markets/[id]/page.tsx:411-418` paints **CLOSED in the gilt family** (`--warning-fg` resolved
+  to `--gilt` until Ali's ruling (1) of 2026-10-10 made it amber, F3) on the player's own market page, while that market's card renders CLOSED royal —
   correction #3 running backwards on the surface it was written to protect.
   `markets/position-card.tsx:68` paints **OPEN as `info`**, not the royal the table gives it.
   `profile/account/page.tsx:70-73` paints **PENDING_KYC amber** (the console was corrected off
@@ -1712,6 +1736,16 @@ their money did not move) · **error** (a hard block or a genuine fault).
 - **warning → the `factual` toast.** ⛔ **NOT toast `warning`, which is struck in GOLD**
   (`--warning-500` is hue 86, `--gold-500` hue 84, and `--warning-fg` *is* `--gilt`) — and gold
   means money that was **earned** (§M3). A refusal has earned nothing.
+  > ⭐ **SUPERSEDED IN ITS PREMISE — Ali's ruling (1) of 2026-10-10: WARNINGS ARE AMBER, NOT GOLD** (owner item 28).
+  > The parenthesis above is history: the warning family is its own amber now, one hue for every stop —
+  > `--warning-500` `oklch(74% 0.15 64)` and `--warning-fg` `oklch(82% 0.13 64)`, against gilt's `oklch(86% 0.110 84)`
+  > and `--gold-500`'s `oklch(72% 0.114 84)`: twenty degrees toward orange, saturated where gold is satin, and
+  > thirty-nine degrees clear of `--danger` (25). The toast's `warning` variant, the chip's `warning`/`paused`, the
+  > Callout, NoticeBar, Dot and the result crest all read that family (R8-A; `test:visual-pass-r8a` §1–§2).
+  > ⭐ **The routing does not move.** A refusal the player can fix stays the `factual` toast: F2's table puts it
+  > there in its own right, `factual` is the calm untinted register with no haptic, and amber is §B11's
+  > *somebody must act* — which a slip fixed in the same breath is not. The `warning` toast is amber and still not
+  > a refusal's variant (`test:feedback-law` §2 pins the new premise; re-decided, not drifted).
 - ⛔ **And not toast `default` either**, which paints `checkCircle`: a confirmation tick over
   a failure is the same euphemism `factual` was added to remove when "Round lost · TZS 2,000"
   shipped wearing a tick.
@@ -1732,6 +1766,8 @@ their money did not move) · **error** (a hard block or a genuine fault).
 Added 2026-10-03 (the validation batch vb6). F3 is written for the player, and the console follows it word for word:
 a refusal the **officer can fix** is the `factual` toast, and a **fault** — a hard block, a failed write, a timeout — is
 `danger`. ⛔ Never `warning`, which is struck in gold (§M3), and never `default`, which paints a tick over a failure.
+(⭐ Since Ali's ruling (1) of 2026-10-10 the `warning` toast is AMBER, not gold — F3's note; the console's routing is
+unchanged by it: a fixable refusal is `factual`, and amber stays "an officer must do something", §B11.)
 ⭐ A refusal that names a field belongs AT the field first — `fieldError` → `<Field error>` (§A7) and
 `focusFirstInvalid` — and a toast, when there is one, is the secondary signal (F1). The console is English-only by
 design, so F4's three-language clause does not bind its toasts; its reason-and-next-step clause does.
@@ -2762,6 +2798,9 @@ the thing a session is told to trust. Found by auditing the close-out, not by re
    *"accept it, artwork replaces the tint anyway"* answer ceased to exist. **Enforced by
    `npm run test:gold-is-money`**, which exists because this law shipped as prose and was
    already broken in its own file (E-141).
+   ⭐ **And not the warning ink either — Ali's ruling (1) of 2026-10-10.** `--warning-fg` *was* `--gilt` (F3), so every
+   warning on the platform wore money's gold; the warning family is its own amber now (F3's note), so gold-is-money's
+   money-ink list no longer names it — an amber warning is not money, and money's gold is not a warning.
 2. ✅ **Q7 — the `Au` / `Ag` LETTERMARK CHIPS ARE FINAL.** No artwork is coming. ⚠️ They are
    ELEMENT symbols, not `ticker.slice(0,2)`: XAU and XAG both start "XA" and once rendered
    identical chips.

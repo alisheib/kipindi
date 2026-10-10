@@ -356,7 +356,9 @@ function ProposalCard({ p, disabled, t, locale, ageStr }: { p: ProposalView; dis
         {p.description && <p className="mt-1.5 text-body-sm leading-relaxed text-text-muted line-clamp-2">{p.description}</p>}
         <div className="mt-2.5 flex items-center gap-3.5 font-mono text-[11px] text-text-subtle">
           <span>{t.proposals.byProposer} {p.proposerMasked}</span>
-          {(p.status === "LISTED" || p.status === "RESOLVED") && <span className="flex items-center gap-1 text-royal-200">{t.proposals.viewMarket} <I.arrowRight s={12} /></span>}
+          {/* The row link's "view the market" cue in the link blue (Ali's ruling (2) of 2026-10-10, §B4c) — it was
+              `--royal-200`, a link ink of its own, as the proposal page's "View source" was. */}
+          {(p.status === "LISTED" || p.status === "RESOLVED") && <span className="flex items-center gap-1 text-brand-300">{t.proposals.viewMarket} <I.arrowRight s={12} /></span>}
           {p.isMine && p.bonusGrantedTzs > 0 && <span className="flex items-center gap-1 text-gold-300"><I.coins s={12} /> +{formatNumber(p.bonusGrantedTzs)} {t.proposals.earned}</span>}
           <I.chevronRight s={14} />
         </div>

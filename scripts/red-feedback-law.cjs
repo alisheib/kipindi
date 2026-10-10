@@ -118,12 +118,14 @@ const MUTATIONS = [
     with: `description: t.watchlist.toggleFailedBody, variant: "danger" });`,
   },
   {
-    name: "the premise moves — `warning` is re-inked off gold and nobody re-decides §F",
+    // R8-A (2026-10-10): the premise WAS re-decided — Ali's ruling (1) made the warning variant AMBER (§2 pins it). The
+    // defect this plant now proves is its inverse: the warning toast struck in money's GOLD again.
+    name: "the premise moves — `warning` is struck in GOLD again and nobody re-decides §F",
     file: TOAST,
     find: `  warning: {
-    bar: "bg-gold-500",`,
+    bar: "bg-warning",`,
     with: `  warning: {
-    bar: "bg-brand-300",`,
+    bar: "bg-gold-500",`,
   },
   {
     name: "`factual` grows a TICK — a confirmation glyph over news that is not good",

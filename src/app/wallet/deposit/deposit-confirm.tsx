@@ -89,7 +89,8 @@ export function DepositConfirm({ journey }: { journey: boolean }) {
     if (!form) return false;
     const err = validate(form);
     if (err) {
-      // F3 — a slip the player can fix is the `factual` toast; `warning` is struck in gold (R5-C, 2026-10-09).
+      // F3 — a slip the player can fix is the `factual` toast; `warning` was struck in gold (R5-C, 2026-10-09) and is amber,
+      // "somebody must act", since Ali's ruling (1) of 2026-10-10 — still not a slip's.
       toast({ title: err, variant: "factual" });
       return false;
     }

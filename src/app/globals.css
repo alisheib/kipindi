@@ -200,7 +200,18 @@
   --success-500: oklch(62% 0.12 166);
   --danger-500:  oklch(57% 0.22 25); /* audit H10: white label → 4.85:1 (was 60% = 4.28, fail) */
   --info-500:    oklch(64% 0.17 268);
-  --warning-500: oklch(78% 0.13 86);
+  /* ⭐ WARNINGS ARE AMBER, NOT GOLD — Ali's ruling (1) of 2026-10-10 (owner item 28), which supersedes DESIGN_AUTHORITY
+     F3's "`--warning-fg` IS `--gilt`". This stop was `oklch(78% 0.13 86)` — hue 86 against the gold ramp's 84 — and the
+     family's ink WAS `--gilt`, so a refused sign-in, "more information needed" and a withdrawal hold were painted in the
+     ink that means money EARNED (§M3, Q5). The family is its own amber now, ONE hue for every stop: 64, twenty degrees
+     off gilt's 84 toward orange and thirty-nine off `--danger`'s 25, so it reads neither as money nor as a failure.
+     Chroma 0.15 is past the gold ramp's 0.114 (an amber is saturated where gold is satin), and L 74 sits where an amber
+     still reads amber rather than brown. `--warning-fg` below is the same hue at L 82 — the most saturated sRGB holds at
+     that lightness (0.130 is the edge, so it renders exactly, as #FFB164; this stop renders #EB9431).
+     Measured by `test:visual-pass-r8a` §1 against every surface it lands on (it prints each pair; the lightest surface,
+     `--bg-royal-soft`, is the worst case): the ink ≥ 8:1 on every surface and ≥ 6:1 on its own 18% wash and the chip's
+     22% fill, this stop ≥ 6:1 as a mark — against AA's 4.5 and 3. */
+  --warning-500: oklch(74% 0.15 64);
 
   /* ---------- Typography ----------
      The Latin display/body/mono faces (Sora/Inter/JetBrains Mono) carry no
@@ -535,13 +546,17 @@
   --text-tertiary:  var(--text-muted);
   --text-disabled:  var(--text-subtle);
   --text-inverse:   oklch(15% 0.06 268);
-  --text-link:      var(--aqua-300);
-  --text-link-hover: var(--aqua-200);
+  /* ⭐ EVERY LINK IS BLUE — Ali's ruling (2) of 2026-10-10 (owner item 58). The link ink is the one the platform's links
+     already wore, `--brand-300` at rest and `--brand-200` on hover (DESIGN_AUTHORITY §B4c). These two names said AQUA
+     (`--aqua-300` / `--aqua-200`) with no consumer, so the kit's own word for "link" named the ink the ruling retires;
+     they name the link ink now, so a future `text-text-link` cannot paint aqua. */
+  --text-link:      var(--brand-300);
+  --text-link-hover: var(--brand-200);
   --text-on-brand:  oklch(15% 0.06 268);
 
-  /* Aqua chrome accent (kit `--accent-*`, hue 195) — VIEW ALL, section links,
-     active bottom-nav, auth links. Previously referenced but undefined → these
-     surfaces rendered with the wrong color. Defined here + mapped in tailwind. */
+  /* Aqua chrome accent (kit `--accent-*`, hue 195). It was the kit's ink for "VIEW ALL, section links, active
+     bottom-nav, auth links"; ⛔ since Ali's ruling (2) of 2026-10-10 it is no LINK's ink — every link is the brand blue
+     (§B4c) — and aqua stays a finishing pass, never semantic (§B4). Defined here + mapped in tailwind. */
   --accent-600: oklch(52% 0.100 195);
   --accent-500: oklch(62% 0.110 195);
   --accent-400: oklch(72% 0.110 195);
@@ -573,7 +588,9 @@
   --warning:        var(--warning-500);
   --warning-bg:     color-mix(in oklab, var(--warning-500) 18%, transparent);
   --warning-border: color-mix(in oklab, var(--warning-500) 36%, transparent);
-  --warning-fg:     var(--gilt);
+  /* The amber's own ink (ruling (1) of 2026-10-10; see `--warning-500`). It was `var(--gilt)`. A literal for the reason
+     `--success-fg` and `--danger-fg` are: the step is one the base stop does not carry, and this file is its home. */
+  --warning-fg:     oklch(82% 0.13 64);
   --danger:         var(--danger-500);
   --danger-bg:      color-mix(in oklab, var(--danger-500) 18%, transparent);
   --danger-border:  color-mix(in oklab, var(--danger-500) 36%, transparent);
@@ -5381,8 +5398,11 @@ html[data-sheet-open] .route-enter { animation: none; }
    flex child of a footer row, so the context became the ROW and `left:0; right:0` spanned
    the whole of it — putting this element's invisible overlay on top of the share trigger
    beside it. Measured on production by hit-testing: the share button's own centre returned
-   `a.mcardp-details`. It reached NOTHING a player could click while looking perfectly fine. */
-.mcardp-details { position:relative; display:inline-flex; align-items:center; justify-content:flex-end; gap:4px; font-family: var(--font-display); font-weight:600; font-size:11.5px; text-decoration:none; color: var(--accent-400); }
+   `a.mcardp-details`. It reached NOTHING a player could click while looking perfectly fine.
+   ⭐ Its ink is the link blue (Ali's ruling (2) of 2026-10-10, §B4c): it was `--accent-400`, the aqua the ruling
+   retired — one of the five aqua links. Its hover stays the underline the `(hover: hover)` rule below gives it, the
+   hover most of the platform's blue links use (`hover:underline`). */
+.mcardp-details { position:relative; display:inline-flex; align-items:center; justify-content:flex-end; gap:4px; font-family: var(--font-display); font-weight:600; font-size:11.5px; text-decoration:none; color: var(--brand-300); }
 /* ⭐ THE TAP FLOOR, REACHED WITHOUT MOVING LAYOUT — batch 4, §4e. Deferred twice because the row
    PAINTS 17px and must keep painting 17px: `MARKET_CARD_H` (347, card-geometry.ts — was 349
    until PV-13b, 2026-09-03, shrank `.mcardp-info` below by 2px) is derived from it and BOTH
@@ -6529,7 +6549,9 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-wsheet__held-b { font-size: var(--type-small); line-height: 1.45; color: var(--text-muted); }
 .kp-wsheet__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-1) var(--sp-4); border-top: 1px solid var(--border); padding-top: var(--sp-2); }
 .kp-wsheet__links { display: flex; flex-wrap: wrap; column-gap: var(--sp-4); }
-.kp-wsheet__link { display: inline-flex; align-items: center; min-height: var(--h-control-md); font-weight: 600; font-size: var(--type-small); color: var(--text); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 4px; }
+/* ⭐ The Wallet sheet's two links in the link blue (Ali's ruling (2) of 2026-10-10, §B4c), as the home's `.kp-mine__limits`:
+   the text ink under a dim line was a third link ink. The line brightens to the link's own ink on hover (below). */
+.kp-wsheet__link { display: inline-flex; align-items: center; min-height: var(--h-control-md); font-weight: 600; font-size: var(--type-small); color: var(--brand-300); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 4px; }
 .kp-wsheet__link:hover { text-decoration-color: currentColor; }
 /* ⭐ In the journey's Wallet the links take the house focus ring, as the buttons beside them do (round 4, 2026-10-09,
    tile 154): §A3's 2px --brand-500 outline at offset 2 PLUS its 4px 25% halo (`.btn:focus-visible`), on a rounded box.
@@ -6820,7 +6842,10 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-mine__held { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg-inset); max-width: var(--mine-measure); }
 .kp-mine__held-t { font-family: var(--font-display); font-weight: 700; font-size: var(--type-h4); line-height: 1.25; color: var(--text); }
 .kp-mine__held-b { font-size: var(--type-small); line-height: 1.45; color: var(--text-muted); }
-.kp-mine__limits { display: inline-flex; align-items: center; gap: var(--sp-1); align-self: flex-start; min-height: var(--h-control-md); font-weight: 600; font-size: var(--type-small); color: var(--text); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 4px; }
+/* ⭐ In the link blue (Ali's ruling (2) of 2026-10-10, §B4c: every link is blue) — it was the text ink under a dim line, a
+   third link ink. The line stays dim at rest and takes the link's own ink on hover (the rule below): a hover on the
+   same ink. Its twin, the Wallet sheet's `.kp-wsheet__link`, moved with it. */
+.kp-mine__limits { display: inline-flex; align-items: center; gap: var(--sp-1); align-self: flex-start; min-height: var(--h-control-md); font-weight: 600; font-size: var(--type-small); color: var(--brand-300); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 4px; }
 .kp-mine__limits:hover { text-decoration-color: currentColor; }
 
 @media (min-width: 1024px) {
@@ -6926,7 +6951,9 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   font-size: var(--type-small);
   color: var(--text-subtle);
 }
-/* The source: a link of its own, above the row's stretched link, at the tap floor (§A2). */
+/* The source: a link of its own, above the row's stretched link, at the tap floor (§A2).
+   ⭐ In the link blue (Ali's ruling (2) of 2026-10-10, §B4c), as every source link is — /fairness's "Source ↗" already
+   was; this one, the market page's and the resolution panel's were the muted ink with an underline. */
 .kp-settled__src {
   grid-area: s;
   position: relative;
@@ -6939,12 +6966,12 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   font-size: var(--type-micro);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--text-muted);
+  color: var(--brand-300);
   text-decoration: underline;
   text-underline-offset: 3px;
   white-space: nowrap;
 }
-.kp-settled__src:hover { color: var(--text); }
+.kp-settled__src:hover { color: var(--brand-200); }
 .kp-settled__ext { display: inline-flex; flex: none; }
 /* From 640 to 767 the source shares its line with the amount: the host gives way (an ellipsis) so the
    money never moves — §M4. From 768 the row is one line and both keep their width.

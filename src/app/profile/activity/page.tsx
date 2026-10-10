@@ -204,7 +204,8 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
       <section className="rounded-xl glass-panel p-5 space-y-4">
         <div className="flex items-center justify-between gap-3">
           <p className="gilt-eyebrow">{t.activity.limitsEyebrow}</p>
-          <Link href="/profile/responsible-gambling" className="inline-flex items-center gap-1 font-mono text-[11px] text-accent-400 hover:text-text underline">
+          {/* The link blue, hover included (Ali's ruling (2) of 2026-10-10, §B4c) — it was aqua, hovering to white. */}
+          <Link href="/profile/responsible-gambling" className="inline-flex items-center gap-1 font-mono text-[11px] text-brand-300 hover:text-brand-200 underline">
             {t.activity.manageLimits}<I.chevronRight s={12} />
           </Link>
         </div>
@@ -226,7 +227,8 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
  * hint (encourages setting one, RG-positive) and no bar. Over-cap → clamped bar
  * in the danger tone. Personal money wrapped in <Cash>.
  * ⭐ ONE METER FOR EVERY LIMIT (R5-C, the second gold audit, 2026-10-09). The loss meter took a `tone="no"` that painted
- * its fill `--warning-fg`, which IS `--gilt` — a player's LOSSES drawn in the ink of money earned (Q5; §M7: a loss is
+ * its fill `--warning-fg`, which was then `--gilt` (amber since Ali's ruling (1) of 2026-10-10) — a player's LOSSES drawn
+ * in the ink of money earned (Q5; §M7: a loss is
  * bookkeeping, never gilt) — and the reached state was the betting NO rose (`--no-500`), which §B2a keeps for a stake's
  * side. Now the RG kit's own reading, LITERALLY: `limitUsageFill` from `rg/limit-usage.tsx`, the one ramp the limits page's
  * meters draw — royal, the warning step from 75%, the APP-STATE danger from 90% or at the cap. (It first read "brand, then

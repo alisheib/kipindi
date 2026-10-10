@@ -43,16 +43,19 @@ const IDENTITY_SURFACES = [
  * The tokens the money surfaces own. Matching `--gold-N` covers the aliases' TARGETS — but an identity surface can name
  * an ALIAS instead, and the alias is the money ink by another name: `--border-gold`, `--glow-gold`, `--glow-jackpot`,
  * `--g-gold`, `--gold`, `--bet-jackpot`… (R5-C, 2026-10-09: the achievement coin wore `--border-gold` and `--glow-gold`
- * and this list could not see either). And `--warning-fg` IS `--gilt` (DESIGN_AUTHORITY F3), so it is here too.
+ * and this list could not see either).
+ * ⭐ `--warning-fg` LEFT THIS LIST ON 2026-10-10 (R8-A). It was here because it WAS `--gilt` (DESIGN_AUTHORITY F3); Ali's
+ * ruling (1) of that day made the warning family its own amber (hue 64, `globals.css`), so it is no longer money's ink —
+ * and §1c's control now proves the list does NOT see it, so a warning on an identity surface is §B11's question, not Q5's.
  */
-const MONEY_INK = /var\(\s*--(gilt|gilt-metal|gilt-ink|gilt-strong|gilt-reeding|gilt-metal-edge|gilt-sheen|gold-(300|400|500)|gold|gold-(?:hover|active|fg|subtle|subtle-hover)|border-gold|glow-gold|glow-jackpot|g-gold|g-jackpot|bet-jackpot|bet-streak|warning-fg)\s*\)/g;
+const MONEY_INK = /var\(\s*--(gilt|gilt-metal|gilt-ink|gilt-strong|gilt-reeding|gilt-metal-edge|gilt-sheen|gold-(300|400|500)|gold|gold-(?:hover|active|fg|subtle|subtle-hover)|border-gold|glow-gold|glow-jackpot|g-gold|g-jackpot|bet-jackpot|bet-streak)\s*\)/g;
 
 /**
  * 🔴 THE SAME TOKENS AS TAILWIND CLASSES (2026-09-14, session 97). `MONEY_INK` matches `var(--gold-300)` and nothing
  * else, so `className="text-gold-300"` on an identity surface — the way this codebase writes colour 244 times — passed
  * untouched. Found while asking why the suite was green over /live's gold "selection closed" time. (That one is not a
- * Q5 breach: Q5 polices IDENTITY surfaces, and flat `--gold-300` is also the warning ink — `--warning-fg` IS `--gilt`,
- * DESIGN_AUTHORITY F3 — which the market page uses for the same state three times.) The class form is policed now.
+ * Q5 breach: Q5 polices IDENTITY surfaces, and flat `--gold-300` was then also the warning ink — `--warning-fg` WAS
+ * `--gilt`, DESIGN_AUTHORITY F3, until Ali's ruling (1) of 2026-10-10 made it amber.) The class form is policed now.
  */
 const MONEY_CLASS = /\b(?:text|bg|border|ring|fill|stroke|from|via|to|shadow|outline|decoration|accent|caret|divide|placeholder)-(?:gold(?:-(?:300|400|500))?|gilt(?:-strong)?)(?![\w-])/g;
 
@@ -100,8 +103,11 @@ for (const f of IDENTITY_SURFACES) {
 // ⭐ CONTROLS for the aliases (R5-C) — an alias of the money ink is caught; the identity metal is not money ink.
 {
   const hit = (src: string) => [...strip(src).matchAll(MONEY_INK)].map((m) => m[0]);
-  ok("1c.control · a planted `var(--border-gold)` / `var(--glow-gold)` / `var(--warning-fg)` is caught",
-    hit('<i style={{ border: "1px solid var(--border-gold)", boxShadow: "var(--glow-gold)", color: "var(--warning-fg)" }} />').length === 3);
+  ok("1c.control · a planted `var(--border-gold)` / `var(--glow-gold)` is caught",
+    hit('<i style={{ border: "1px solid var(--border-gold)", boxShadow: "var(--glow-gold)" }} />').length === 2);
+  // R8-A (2026-10-10): Ali's ruling (1) — warnings are amber, not gold. The warning ink is not money's ink any more.
+  ok("1c.control · the AMBER warning ink `var(--warning-fg)` / `var(--warning-500)` is not money ink (ruling (1), 2026-10-10)",
+    hit('<i style={{ color: "var(--warning-fg)", background: "var(--warning-500)" }} />').length === 0);
   ok("1c.control · the identity metal `var(--metal-gold)` and `var(--gold-950)` are not money ink",
     hit('<i style={{ color: "var(--metal-gold)", background: "var(--gold-950)" }} />').length === 0);
 }

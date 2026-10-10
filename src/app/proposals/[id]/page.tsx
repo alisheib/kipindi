@@ -88,7 +88,8 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
         {p.sourceUrl && (
           <p className="mt-3 flex items-center gap-1.5 text-body-sm">
             <I.link s={13} className="shrink-0 text-text-subtle" />
-            <a href={p.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" className="truncate text-royal-200 hover:underline">{t.proposals.viewSource}</a>
+            {/* The link blue (Ali's ruling (2) of 2026-10-10, §B4c) — `--royal-200` was a link ink of its own. */}
+            <a href={p.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" className="truncate text-brand-300 hover:underline">{t.proposals.viewSource}</a>
           </p>
         )}
       </section>

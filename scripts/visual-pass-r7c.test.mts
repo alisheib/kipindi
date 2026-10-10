@@ -682,12 +682,34 @@ section("6 · composition only: the dictionary is the tip's, byte for byte; the 
   try { head = execFileSync("git", ["show", "HEAD:src/lib/i18n-dict.ts"], { encoding: "utf8", maxBuffer: 64 << 20 }).replace(/\r\n/g, "\n"); } catch { head = "‹git unavailable›"; }
   ok("6.1 · src/lib/i18n-dict.ts is the commit's own (every word above is an existing key)", head === raw("src/lib/i18n-dict.ts"));
   const frozen = ["src/components/layout/top-app-bar.tsx", "src/components/layout/bottom-nav.tsx", "src/components/layout/live-ticker.tsx", "src/components/layout/nav-more.tsx", "src/components/layout/notifications-panel.tsx", "src/components/layout/wallet-balance-pill.tsx"];
+  // ⭐ R8-A (2026-10-10) — ONE NAMED, HUNK-EXACT EXCEPTION, never a re-baseline. Ali's ruling (2) of the day, "every link
+  // is blue", reaches the frozen classic chrome (round 8's rule: a ruling applies platform-wide, classic chrome included,
+  // and its difference is named): the bell panel's See all link left the retired aqua for the link blue, in BOTH bells.
+  // That one class string is put back in memory before the byte comparison, so any OTHER change to these six files still
+  // fails here — and so does the exception itself the day its string is not found exactly once.
+  const NAMED: Record<string, Array<[string, string]>> = {
+    "src/components/layout/notifications-panel.tsx": [[
+      "font-mono text-micro font-bold uppercase text-brand-300 hover:text-brand-200 hover:bg-bg-overlay transition-colors whitespace-nowrap",
+      "font-mono text-micro font-bold uppercase text-accent-400 hover:text-text hover:bg-bg-overlay transition-colors whitespace-nowrap",
+    ]],
+  };
+  const unnamed = (f: string, now: string) => (NAMED[f] ?? []).reduce((s, [r8a, was]) => (s.split(r8a).length === 2 ? s.replace(r8a, was) : `‹${f}: the named R8-A hunk is not there exactly once›`), now);
   const changed = frozen.filter((f) => {
     let was = "";
     try { was = execFileSync("git", ["show", `HEAD:${f}`], { encoding: "utf8", maxBuffer: 64 << 20 }).replace(/\r\n/g, "\n"); } catch { was = "‹git unavailable›"; }
-    return was !== raw(f);
+    return was !== unnamed(f, raw(f));
   });
-  ok("6.2 · the classic header, rail, ticker, More menu, bell and capsule are the commit's own, byte for byte", changed.length === 0, j(changed));
+  ok("6.2 · the classic header, rail, ticker, More menu, bell and capsule are the commit's own, byte for byte — but for R8-A's one named hunk (the bell's See all in the link blue, ruling (2))", changed.length === 0, j(changed));
+  {
+    const BELL = "src/components/layout/notifications-panel.tsx";
+    let bellWas = "";
+    try { bellWas = execFileSync("git", ["show", `HEAD:${BELL}`], { encoding: "utf8", maxBuffer: 64 << 20 }).replace(/\r\n/g, "\n"); } catch { bellWas = "‹git unavailable›"; }
+    const bellNow = raw(BELL);
+    // A change ELSEWHERE in the classic bell: the classic row title's leading (r6c 12.3's own byte-pinned string).
+    const elsewhere = bellNow.replace('"font-display text-body-sm font-semibold text-text truncate leading-tight"', '"font-display text-body-sm font-semibold text-text truncate leading-snug"');
+    ok("6.2′ PLANT · the exception is hunk-exact: the bell compares equal to the commit once the named hunk is put back, and one change ELSEWHERE in it still fails",
+      bellWas === unnamed(BELL, bellNow) && elsewhere !== bellNow && bellWas !== unnamed(BELL, elsewhere));
+  }
   // The two shared files this round touched carry the journey's class in the journey arm only.
   const { PublicFooter } = req("../src/components/layout/public-footer.tsx") as { PublicFooter: unknown };
   const props = { proposalsState: "COMING_SOON", agentDoorVisible: true, inviteVisible: true, supportEmail: "d@x.t", supportPhone: "0", supportPhoneTel: "+0" };

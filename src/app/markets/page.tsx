@@ -426,9 +426,11 @@ lastLabel={t.common.lastPage}
             <h2 className="font-display text-[20px] font-semibold text-text">
               {searching ? t.market.marketsMatch : t.market.recentlyResolved}
             </h2>
+            {/* "See all" hovers in the link blue's own step, as the home's see-all links do (`.kp-shead__link`; Ali's
+                ruling (2) of 2026-10-10, §B4c: hover included) — it hovered to white. */}
             <Link
               href={"/results" as never}
-              className="whitespace-nowrap font-mono text-[11.5px] font-semibold text-brand-300 transition-colors hover:text-text"
+              className="whitespace-nowrap font-mono text-[11.5px] font-semibold text-brand-300 transition-colors hover:text-brand-200"
             >
               {t.market.allResults}
             </Link>

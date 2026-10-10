@@ -551,7 +551,9 @@ function Slot({ docType, label, doc, infoRequired, onDone, maxMb }: {
           </span>
         )}
         <span className="block font-display text-body-sm font-semibold text-text">{label}</span>
-        <span className={`mt-0.5 block font-mono text-body-sm ${rejected ? "text-warning-500" : done ? "text-success-fg" : "text-text-subtle"}`}>{stateLabel}</span>
+        {/* The word in its family's INK, as `done`'s is (`text-success-fg`): `text-warning-500` was the amber stop, worn
+            while the ink was gilt (Ali's ruling (1) of 2026-10-10 made the family amber; R8-A). */}
+        <span className={`mt-0.5 block font-mono text-body-sm ${rejected ? "text-warning-fg" : done ? "text-success-fg" : "text-text-subtle"}`}>{stateLabel}</span>
         {rejected && doc?.rejectReason && <span className="mt-1 block text-body-sm leading-snug text-text-muted">{doc.rejectReason}</span>}
         {!locked && !working && (done || rejected) && <span className="mt-1 block text-body-sm text-text-subtle">{t.agent.replace}</span>}
       </button>

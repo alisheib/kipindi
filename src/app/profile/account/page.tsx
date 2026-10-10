@@ -196,8 +196,9 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
     : presentedStatus === "SUSPENDED" ? t.profile.accountStatusSuspended
     : presentedStatus === "CLOSED" ? t.profile.accountStatusClosed
     : "—";
-  // A running break (COOLED_OFF) is the NEUTRAL chip (R5-C, the second gold audit, 2026-10-09): it was `warning`, the
-  // gilt-struck family (F3), and R4-I gave every running-break and exclusion notice the neutral box for that reason — a
+  // A running break (COOLED_OFF) is the NEUTRAL chip (R5-C, the second gold audit, 2026-10-09): it was `warning`, then the
+  // gilt-struck family (F3; amber since Ali's ruling (1) of 2026-10-10), and R4-I gave every running-break and exclusion
+  // notice the neutral box for that reason — a
   // break has earned nothing and asks nothing of anyone (§B11's amber means "somebody must act").
   const statusVariant: "success" | "danger" | "neutral" =
     presentedStatus === "ACTIVE" ? "success"
@@ -468,7 +469,8 @@ lastLabel={t.common.lastPage}
         </p>
         <FormColumn measure="field"><CloseAccountForm /></FormColumn>
         <p className="font-mono text-[11px] text-text-subtle">
-          {t.common.help}? {t.common.email} <a href={`mailto:${SUPPORT_EMAIL()}`} className="text-text-muted underline underline-offset-2">{SUPPORT_EMAIL()}</a>{" "}
+          {/* The address in the link blue, hover included (Ali's ruling (2) of 2026-10-10, §B4c) — it was the muted ink. */}
+          {t.common.help}? {t.common.email} <a href={`mailto:${SUPPORT_EMAIL()}`} className="text-brand-300 hover:text-brand-200 underline underline-offset-2">{SUPPORT_EMAIL()}</a>{" "}
           {t.common.or} <span className="text-text-muted">{SUPPORT_PHONE()}</span>.
         </p>
         </div>

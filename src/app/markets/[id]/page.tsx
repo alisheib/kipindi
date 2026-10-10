@@ -591,11 +591,13 @@ export default async function MarketDetail({
               ink that read 27 | 25 (x964→992, x1005→1031 at 1280). `-mr-[2px]` gives the link's box back that bearing:
               25 | 25. The tap box is unchanged; only the gap after it closes. */}
           <div className="ml-auto flex items-center gap-2">
+            {/* "Source ↗" in the link blue, hover included, as every source link is (Ali's ruling (2) of 2026-10-10,
+                §B4c; /fairness's already was) — it was the muted ink. Only the ink moves: its box and bearing stay. */}
             <a
               href={m.sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 -mr-[2px] min-h-[var(--tap-min)] -my-[11px] py-[11px] text-[12px] font-mono text-text-muted hover:text-text"
+              className="inline-flex items-center gap-1 -mr-[2px] min-h-[var(--tap-min)] -my-[11px] py-[11px] text-[12px] font-mono text-brand-300 hover:text-brand-200"
             >
               {t.common.source}
               <I.ext s={12} />
@@ -1139,7 +1141,8 @@ export default async function MarketDetail({
                 `-my-` absorbs the growth, so the criterion block does not get taller. */}
             <p className="mt-3 pt-3 border-t border-border/50 font-mono text-[11px] text-text-subtle flex items-center gap-1.5">
               <I.ext s={11} />
-              <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[var(--tap-min)] -my-[4px] py-[4px] items-center text-text-muted hover:text-text underline break-all">{m.sourceUrl}</a>
+              {/* The address in the link blue, hover included (Ali's ruling (2) of 2026-10-10, §B4c) — it was the muted ink. */}
+              <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[var(--tap-min)] -my-[4px] py-[4px] items-center text-brand-300 hover:text-brand-200 underline break-all">{m.sourceUrl}</a>
             </p>
           </section>
 

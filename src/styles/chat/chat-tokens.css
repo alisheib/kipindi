@@ -25,15 +25,18 @@
   /* ---------- Pearl — the chat's emphasis color ------------------------
      Pearl replaces gilt EVERYWHERE that isn't the player-bubble edge or
      the escalate-to-human pill. Used for AI-bubble accents, primary CTAs
-     inside the panel, focus rings, source-citation chrome. */
+     inside the panel, focus rings, the source numbers. ⛔ Not the citation
+     LINKS: since Ali's ruling (2) of 2026-10-10 every link is the platform's
+     link blue (DESIGN_AUTHORITY §B4c; `.cm-cite`, `.cm-source-row a`). */
   --pearl:          oklch(86% 0.040 268); /* invariant from brief */
   --pearl-soft:     oklch(86% 0.040 268 / 0.18);
   --pearl-strong:   oklch(92% 0.045 268);
-  /* Pearl edge — the player-bubble border + citation/source underlines.
+  /* Pearl edge — the player-bubble border (the citation and source
+     underlines took the link blue on 2026-10-10, Ali's ruling (2), and with
+     them went `--pearl-edge-hover`, whose only two readers they were).
      Replaces the former gilt edge (gold-discipline: the chat is support,
      not earned money — so no gilt anywhere; pearl is the emphasis axis). */
   --pearl-edge:      color-mix(in oklab, var(--pearl) 42%, transparent);
-  --pearl-edge-hover: color-mix(in oklab, var(--pearl) 62%, transparent);
 
   /* ---------- Gilt — RETIRED on the chat surface (gold = earned-money only).
      Kept defined so any stray reference degrades to a valid colour; nothing

@@ -353,21 +353,25 @@ section("8 · gold is money, and nothing else — the clock's labels, the market
   const src = /const MONEY_CLASS = (\/.+\/g);/.exec(gim)?.[1] ?? "";
   const body = src.slice(1, src.lastIndexOf("/"));
   const MONEY_CLASS = new RegExp(body, "g");
-  // `--warning-fg` IS `--gilt` (globals.css; DESIGN_AUTHORITY F3), so its class is money ink too.
-  const MONEY_VAR = /var\(\s*--(gilt|gilt-metal|gilt-ink|gilt-strong|gilt-reeding|gold-(300|400|500))\s*\)|text-warning-fg/g;
-  ok("8.locate · gold-is-money's MONEY_CLASS was read, and --warning-fg is --gilt", src.length > 40 && new RegExp(body).test("text-gold-300") && /--warning-fg:\s*var\(--gilt\);/.test(css));
+  // `--warning-fg` WAS `--gilt` (DESIGN_AUTHORITY F3), so its class was money ink here too. ⭐ R8-A (2026-10-10): Ali's
+  // ruling (1) made the warning family amber, so `text-warning-fg` left this money-ink list; a label in it is still a
+  // defect — a label is not a warning (§B11) — and 8.1's `text-text-subtle` clause still rejects that shape (8.1′).
+  const MONEY_VAR = /var\(\s*--(gilt|gilt-metal|gilt-ink|gilt-strong|gilt-reeding|gold-(300|400|500))\s*\)/g;
+  ok("8.locate · gold-is-money's MONEY_CLASS was read, and --warning-fg is no longer --gilt (amber, ruling (1) of 2026-10-10)", src.length > 40 && new RegExp(body).test("text-gold-300") && !/--warning-fg:\s*var\(--gilt\);/.test(css));
   const hits = (s: string) => [...s.matchAll(MONEY_CLASS)].map((m) => m[0]).concat([...s.matchAll(MONEY_VAR)].map((m) => m[0]));
   const cd = code("src/components/markets/countdown.tsx");
   const label = /<span className="([^"]+)">\{resolvedLabel\}<\/span>/.exec(cd)?.[1] ?? "";
-  ok("8.1 · the clock's label (‘Uchaguzi unafungwa baada ya’ / ‘Matokeo baada ya’) is the page's label ink, not --warning-fg (= --gilt)",
+  ok("8.1 · the clock's label (‘Uchaguzi unafungwa baada ya’ / ‘Matokeo baada ya’) is the page's label ink, not --warning-fg (then = --gilt; amber since 2026-10-10, and a label is no warning)",
     label.includes("text-text-subtle") && hits(label).length === 0, label);
   const page = code("src/app/markets/[id]/page.tsx");
   const eyebrow = /<p className="([^"]+)">\s*\{t\.market\.signInToPredict\}/.exec(page)?.[1] ?? "";
   ok("8.2 · the market panel's ‘Ingia ili kutabiri’ / 登录以预测 eyebrow is the eyebrow ink the side picker uses in the same slot",
     eyebrow.includes("text-text-subtle") && hits(eyebrow).length === 0 && code("src/components/markets/side-picker.tsx").includes(`<p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle text-center">`), eyebrow);
   ok("8.3 · the not-found view and its three routes carry no money ink", hits(view).length === 0 && Object.values(ROUTES).every((p) => hits(code(p)).length === 0), hits(view).join());
-  ok("8.1′ PLANT · the shipped label (text-warning-fg) and the shipped not-found link (text-gold-300) are caught",
-    hits(`<span className="font-mono text-micro uppercase eyebrow text-warning-fg">`).length === 1 && hits(`className="... text-gold-300 hover:text-gold-200"`).length === 1);
+  // R8-A (2026-10-10): the shipped label's ink is no longer MONEY ink (ruling (1)); 8.1 rejects it by its other clause.
+  const shippedLabel = "font-mono text-micro uppercase eyebrow text-warning-fg";
+  ok("8.1′ PLANT · the shipped label (text-warning-fg — not the label ink) and the shipped not-found link (text-gold-300 — money ink) are caught",
+    !(shippedLabel.includes("text-text-subtle") && hits(shippedLabel).length === 0) && hits(`className="... text-gold-300 hover:text-gold-200"`).length === 1);
 }
 
 /* ══ §9 · E48 ═════════════════════════════════════════════════════════════════════════════════════════════════════════ */

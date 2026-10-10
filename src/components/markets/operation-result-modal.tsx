@@ -142,11 +142,14 @@ const TONE: Record<OperationVariant, { fg: string; bg: string; brd: string; shad
     primaryBtn: "btn-primary",
   },
   warning: {
-    ...crest("var(--warning-500)", "var(--warning-500)"),
+    // ⭐ The glyph takes the family's INK, as every other crest does (`success-fg`, `danger-fg`): it took the ramp stop
+    // while `--warning-fg` was `--gilt`. Ali's ruling (1) of 2026-10-10 made the whole family amber, so the ink is the
+    // amber's own (R8-A).
+    ...crest("var(--warning-500)", "var(--warning-fg)"),
     // ⛔ NOT btn-gold either (R5-C, the second gold audit, 2026-10-09). The warning result is a REFUSAL the player can
     // retry ("busy", "slow down", "market closed") — DESIGN_AUTHORITY F3: "a refusal has earned nothing", and gold
     // means only earned money (§M3, Q5). Its way on is the primary action, as `info`'s is. (The crest's amber is the
-    // `--warning-*` family, whose `--warning-fg: var(--gilt)` is the owner's to re-hue.)
+    // `--warning-*` family — amber, not gold, since the owner's ruling of 2026-10-10.)
     primaryBtn: "btn-primary",
   },
   info: {
