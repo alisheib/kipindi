@@ -57,9 +57,10 @@ const TRUE_COUNT_HOMES = (f: string) => isAdmin(f) || f.startsWith("src/lib/serv
   "src/lib/server/updown-config.ts", "src/lib/server/updown-service.ts",
 ].includes(f);
 const PLAYER_FILES = SRC_FILES.filter((f) => !TRUE_COUNT_HOMES(f));
-/** The rows each player surface is built in — each must build its count through the helper. */
+/** The rows each player surface is built in — each must build its count through the helper. The landing's rows are built
+ *  in its body, which S7 WP2 moved verbatim out of the route file (`src/app/page.tsx` keeps only the metadata). */
 const ROW_SITES = [
-  "src/app/page.tsx", "src/app/markets/page.tsx", "src/app/markets/[id]/page.tsx", "src/app/results/page.tsx",
+  "src/components/home/legacy-landing.tsx", "src/app/markets/page.tsx", "src/app/markets/[id]/page.tsx", "src/app/results/page.tsx",
   "src/app/watchlist/page.tsx", "src/app/live/page.tsx", "src/lib/server/updown-board.ts",
   "src/app/api/og/market/[id]/route.tsx", "src/app/api/dev-test/seed-watchlist/route.ts",
 ];

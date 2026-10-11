@@ -76,7 +76,10 @@ const { tallyPicks, eatWeekStartMs, paidOutBehind } = await import("../src/lib/s
 // ── 3 · the hero's contract ─────────────────────────────────────────────────────
 {
   const hero = decomment(readFileSync(join(ROOT, "src/components/home/landing-hero.tsx"), "utf8"));
-  const page = decomment(readFileSync(join(ROOT, "src/app/page.tsx"), "utf8"));
+  // The landing's body, since S7 WP2 moved it verbatim out of the route file (`src/app/page.tsx` keeps the metadata).
+  const page = decomment(readFileSync(join(ROOT, "src/components/home/legacy-landing.tsx"), "utf8"));
+  ok("3-control: the page checks below read the landing's body — legacy-landing.tsx holds `export async function LegacyLanding(`",
+     page.includes("export async function LegacyLanding("));
   const act = hero.slice(hero.indexOf("function SignedInAct"), hero.indexOf("function", hero.indexOf("function SignedInAct") + 10));
   // ⚠️ `journey={journey}` since round 4 of the visual pass (2026-10-09, edges E4): in the journey the block's link to
   // /positions takes the tab's own name; the rest of the block is the same for both (visual-pass-r4h §8 holds the switch).

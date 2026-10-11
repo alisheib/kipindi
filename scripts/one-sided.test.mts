@@ -301,7 +301,8 @@ log("\n── 6 · the refund the note promises is the one settlement pays");
 log("\n── 7 · one rule for every row and the page the card links to");
 {
   const board = decomment(read("src/app/markets/page.tsx"));
-  const landing = decomment(read("src/app/page.tsx"));
+  // The landing's body, since S7 WP2 moved it verbatim out of the route file (`src/app/page.tsx` keeps the metadata).
+  const landing = decomment(read("src/components/home/legacy-landing.tsx"));
   const detail = decomment(read("src/app/markets/[id]/page.tsx"));
   check("7.1 the /markets row's price is the printable one (`shownYesPct`), not the raw share",
     /yesPct: shownYesPct\(m\.yesPool, m\.noPool\)/.test(board) && !/yesPct: pricedYesPct\(/.test(board));
