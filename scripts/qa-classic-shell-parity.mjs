@@ -412,6 +412,14 @@ EXPECTED_DIFFS.push(
     alongside: "positions-empty-state",
     reason: "The boxes the drawing's new frame draws in the 12 Swahili /positions cells (the 3 signed-in viewers at 4 widths), measured (above): the same 13 lines at each width as in English — the drawing 14px shorter, its shapes and everything under it 14px higher, the dashed box, the page container and the wrapper above it 14px shorter — and the call to action's link, 143px wide in Swahili (142.5 in English), 14px higher. No x, no width and no computed style moves.",
   },
+  {
+    id: "positions-h1-stem-sw",
+    field: "regions.main.html",
+    routes: [BODY_ROUTE],
+    replace: [['<h1 class="font-display text-title-lg', '<h1 data-stem="" class="font-display text-title-lg']],
+    cells: VIEWERS.filter((v) => v.door).length * WIDTHS.length,
+    reason: "The visual pass's round 7 (R7-C, 2026-10-10; VODACOM-PLAN §0): a display heading that opens on a straight-stem capital (B D E F H I K L M N P R U) is set back by the stem's bearing so its ink starts on the column's edge in every language (lib/display-stem.ts; the rule is a text-indent in globals.css keyed on data-stem). The classic /positions title is a PageHeader title; in Swahili it opens on \"U\" (\"Utabiri wako\"), so its <h1> gains data-stem=\"\" in the 12 Swahili cells (the 3 signed-in viewers at 4 widths). Measured by the first compare at the live main before round 7 (b79f0d72 → c706c7c6, 2026-10-10): this attribute is the ONLY difference in all 224 cells, and every layout line is equal (the set-back moves the ink, not the box). English opens on a letter outside the list and is unchanged.",
+  },
 );
 /**
  * ⭐ S6 A8e · THE SELL BUTTON'S FIRST PAINT, NAMED. Not a field of the Sell cells: each cell captures its first paint beside

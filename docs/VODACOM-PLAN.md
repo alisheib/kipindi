@@ -39,6 +39,18 @@ the s4-5 low-minimum and s4-6 code frames on the S4 canvas, `shortfall.ts`'s `em
 the short-of-the-minimum board offers TZS 1,000 and S9's six code boards are marked superseded; `shortfallPlan` asks no
 email step; 2.9 reads which tree it runs on (the bar's component gone → no viewer may see a bar).
 
+**⏳ S6 CLOSE-OUT (rounds 7 and 8's lock turn, ran 2026-10-10 23:12 → 00:20 on `c706c7c6`; trimmed to what can still fail
+by Ali's efficiency ruling of 2026-10-10 — see the session law below).** `test:all` **509/517**: `test:responsive`,
+`test:motion`, `test:revoked-deadend`, `test:admin-section-gate` and `test:needle-rest` need a running server,
+`test:orphans` and `test:house-bot-console` (1.548) are main's own, and `test:house-bot-holder-lifecycle` 2.2 was R8-D's
+— its cases file joined the script population; read and admitted 35 → 36 with the reason (`7ada855e`, live). Classic
+parity, baseline at the live main before round 7 (`b79f0d72`) and the tip compared with `--allow-base`: **ONE difference
+in all 224 cells** — the Swahili /positions title's `<h1>` gains `data-stem=""` (R7-C's stem rule; "Utabiri wako" opens
+on U), 12 cells, every layout line equal — now the named `positions-h1-stem-sw` in EXPECTED_DIFFS (proved offline on the
+capture: 12 of 12 explained, the 12 English cells unchanged). Tiles: `qa:journey-shell` **1645 passed · 0 failed · 2
+blocked** (the Up & Down round pages: no local price feed), 333 tiles — read one by one by eight readers next; S6 closes
+when a read finds nothing.
+
 **✅ R8-D IS LIVE (2026-10-10 ~22:25 EAT) — the break's other channels closed (ruling (4) completed).** Built on R8-C's
 one rule and merged as `ad505be8` (r8-d `d8bfd7d8`): during a cooling-off or exclusion the server refuses the agent fee
 from the wallet (`agentRgHold` inside the `agentapp:` lock, after the settled-fee answer and before any debit; a failed
@@ -263,23 +275,32 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S6 — ONE lock turn for rounds 7 and 8 (R8-D included) — `test:all`,
-all 333 tiles re-tiled and read, classic parity at the new base with every intended difference named, the header fit
-and the seals — and the read repeats until it finds nothing; S6 closes then (§0i;
-[S6-VISUAL-PASS-STATE.md](design-system/v5-2026-09-29-simplified-journey/S6-VISUAL-PASS-STATE.md) §3/§4 hold the owed
-runs). Then the red twins left owed by the 2026-10-10 crash (`red:house-bot-c5`, `-money`, `-engine`,
-`red:campaign-visuals`, `red:contacts-import`), each alone with nothing else running. The build plan is
+**Next:** (1) S6 — the S6 close-out's tiles (the ⏳ paragraph above) read one by one; anything a reader finds is fixed
+and only its tiles re-taken and re-read; S6 closes when a read finds nothing (§0i;
+[S6-VISUAL-PASS-STATE.md](design-system/v5-2026-09-29-simplified-journey/S6-VISUAL-PASS-STATE.md) §3/§4). Then K32 (a
+wallet-paid agent fee in an expired draft is never refunded — appendix K). The red twins the 2026-10-10 crash left owed
+(`red:house-bot-c5`, `-money`, `-engine`, `red:campaign-visuals`, `red:contacts-import`) are DROPPED from this plan by
+the efficiency ruling: they prove other lanes' guards, which rounds 7 and 8 never touched. The build plan is
 `docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md`, whose closing Amendments override its body. S7's plan is filed ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), 2026-10-07, §0h point 58); it starts only when S6 has closed, as its Amendments' start line says. (2) When
 Ali says so, and not before (nothing turns on until the plan is done): an officer approves the S2 short titles, and
 Ali presses S1's preview switch.
 
-Session law, the same for every session:
-- Code, two-store tests, and `red:*` twins reachable from `red:all`, with declared anchors.
-- `test:red-anchors` after any refactor.
-- `test:all` before each push.
-- Heavy Node only through `~/heavy-node-lock.sh`; red harnesses run detached, never piped.
-- Real-browser viewport tiles, read one by one.
-- Merge, push, verify the deploy commit.
+Session law, the same for every session — ⭐ Ali, 2026-10-10: *"eliminate any checks that are never expected to be wrong,
+or that are very repetitive … maximum efficiency of our time through this plan"*:
+- **Each change:** its own guard and its mutation proof, run ONCE where it is built (re-run after a merge only for files
+  the merge changed); the suites that read a changed file; two-store tests (memory + Postgres) for any money or data
+  path; `test:red-anchors` after a refactor.
+- **Each push:** typecheck, `next build`, and local `qa:live` (the render check — a build is not a render), then the
+  production read-back: `?dpl=` on both hosts, health, the first-load chunks check, production `qa:live`. No `test:all`
+  per push.
+- **Each session close:** `test:all` with the database suites; classic parity as a baseline at the last live main plus
+  one compare (no null compare or `--prove-red` while the harness is unchanged), every intended difference named; real
+  browser viewport tiles of everything, read one by one. Between closes, tiles only of what changed.
+- **Not run:** a check on code the change never touched (the header fit, the landmark seals, needle-rest, the preview
+  drive), another lane's red twins, a repeat of a proof that already passed on the same files.
+- Heavy Node only through `~/heavy-node-lock.sh`, one heavy job at a time and no helper running suites beside it (this
+  laptop's RAM fails); builds and dev servers in `C:\kipindi-journey` (real `node_modules` — Turbopack refuses a
+  junction).
 - This file, `SHELVED.md` and memory updated in the same pass.
 
 A gate is named as an `npm run` command only once its key exists in `package.json`.
