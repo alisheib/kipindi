@@ -1255,7 +1255,10 @@ function endOfButtonOpenTag(s: string, from: number): number {
   // lexer regression (or a future refactor away from raw <button>) fails LOUDLY here rather
   // than printing a quiet, meaningless PASS.
   console.log(`   (checked ${calls} call-site opacity utilit${calls === 1 ? "y" : "ies"} across ${buttons} btn-yes/no/danger/gold buttons, ${runaways} unreadable open tag(s))`);
-  if (buttons < 20 || runaways > 0) {
+  // The floor is the population as measured: 17 since 16e0be5e (KYC typed-only, 2026-10-11) deleted
+  // components/admin/kyc-review-controls.tsx and the three solid buttons of the photo review (btn-no, btn-yes, btn-no);
+  // it was 20. Found red on main by round 9 of the visual pass; re-derive it whenever a solid button is removed.
+  if (buttons < 17 || runaways > 0) {
     console.log(`FAIL  §P-u2 CONTROL — the population collapsed (${buttons} buttons, ${runaways} runaway) — this is 0 reach, not 0 defects`);
     process.exitCode = 1;
   }
