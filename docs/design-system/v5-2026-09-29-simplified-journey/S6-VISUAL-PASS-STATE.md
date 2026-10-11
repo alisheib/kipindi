@@ -1,4 +1,13 @@
-# S6 visual pass — the state, for resuming on any machine (updated 2026-10-10 ~14:50 EAT, ALI-BLADE15)
+# S6 visual pass — the state, for resuming on any machine (updated 2026-10-11, ALI-BLADE15)
+
+**⭐ 2026-10-11 — THE CLOSE-OUT READ IS DONE; ROUND 9 FIXES WHAT IT FOUND.** Eight readers read the 333 close-out
+tiles (rounds 7 and 8 live, `c706c7c6`) one by one: 19 items to fix → round 9 in four parts (R9-A edges and glyphs: the
+podium glyph, sign-out drawn as sign-IN, the Toka box, one edge-icon rule, the featured YES/NO 12px, the dashed track;
+R9-B line breaks: "your ticket" held, the -enye relatives and "kwenye" as connectives, the /live caption, the footer's
+proposals link, a stale comment; R9-C components: the leaderboard's #1 raised again, the /live pager, the invite
+caption's ink, the 320 tab bar, the stacked INAKUJA, the guest sheet's Ingia, the empty Bonus lens; R9-D: /results never
+behind the strip and the tickets), owner questions K34–K38 (appendix K) and S12 additions (appendix G). Then only round
+9's tiles are re-taken and re-read; S6 closes when a read finds nothing. K32 (appendix K) is LIVE (`06924050`, 14:11 EAT).
 
 **⭐ 2026-10-10 — THE PASS GOES LIVE FROM ALI-BLADE15; ROUND 7 RUNS THERE.** OMEGA-COMPILE01 is no longer reachable
 (Ali: *"we need to proceed here on this machine with the plan"*, *"push everything to live and let's continue fresh with
@@ -785,6 +794,17 @@ C · CROSS-SURFACE CONSISTENCY (visual and verbal, statically). The pass's rule:
 - (R6-C) "Nafasi zako" / "Your positions" on the market and round pages, "{n} positions" on the performance bar, and zh
   help.openSettledCashOut need journey words ("Tiketi zako / Your tickets / 您的注单").
 
+- (close read 2026-10-11) zh names the Needle 指针玩具 ("pointer toy").
+- (close read) en "Market Proposals" in Title Case beside sentence-case rows (the hub, the footer).
+- (close read) zh LIVE is 直播 in the strip and 实时 on the card's chip.
+- (close read) sw chart spans read "15M 30M 1H 6H 12H 24H 7D" (English abbreviations).
+- (close read) zh footer: "许可证:" with a half-width colon; "© 2026 50pick · Tanzania" not localised; slash styles mixed
+  ("休息一下 / 自我排除" against "反洗钱/KYC政策"); the trust line's Latin–CJK spacing around "HaloPesa或Mixx".
+- (close read) sw "INAELEKEA NDIYO" beside "NDIO 67%" on /live — S12's NDIYO → NDIO sweep (VODACOM-PLAN's S12 table).
+- (K32) The refunds-owed worklist's caption says only that a REJECTED fee goes back — an expired application's fee does
+  too; and the applicant's /agent/status "expired" section does not show the refund-owed line (`t.agent.refundDue`
+  exists in en/sw/zh; reusing it there is a UI change with a visual pass).
+
 #### S8 (the journey bet sheet)
 - A player on a break (or self-excluded but signed in) can open the old dial, pick a side and a stake, and is refused
   only at confirm ("Could not place" + the break's date). The S3 engine's `shortfallPlan` already refuses FIRST
@@ -1023,5 +1043,23 @@ K31. During a break the chat still explains betting and deposits (its starter ch
 K32. ⚠ A MONEY GAP THAT PRE-DATES TONIGHT: an agent fee paid from the wallet into a draft that later EXPIRES
     (`expireStaleAgentApplications`) stays COLLECTED and is never refunded — only `rejectApplication` sets REFUND_DUE;
     a break longer than the draft's remaining days strands a paid fee. (Default: fix it next — refund on expiry.)
+    ✅ FIXED — LIVE `06924050` (2026-10-11 14:11 EAT): an expiring application with a collected fee becomes REFUND_DUE
+    like a rejection, decided inside the fee locks (VODACOM-PLAN §0's K32 paragraph). Applications that expired before
+    the fix keep COLLECTED — an officer's call (MONEY-GATE-REMEDIATION §8.1's read-only query).
 K33. During a break the "friend joined" bell row is not written at all (the alternative: write it without its link).
     (Default: not written.)
+
+#### The close-out read (2026-10-11, eight readers, 333 tiles)
+K34. In Swahili at 360–390 the regulator line reads "Leseni" alone above the whole name ("ya Bodi ya Michezo ya
+    Kubahatisha Tanzania.") — five readers saw it. Keep (the name whole), balance the lines with the name split ("Leseni ya
+    Bodi ya Michezo" / "ya Kubahatisha Tanzania."), or give the trust row's text the roundel's width so it fits one line?
+    (Default: keep.)
+K35. A HELD (frozen) wallet's capsule keeps its gold ring while its figure turns plain — gold on money that cannot be
+    used? (Default: keep the ring.)
+K36. Blue on things that are not links: the leaderboard table's rank numbers, the notable result's flag and crown on
+    /results, the fairness chain's current step. Move them off the link blue (K12: only text links are blue)? (Default:
+    unchanged.)
+K37. "Hakuna ada" / "No fee" on the market page's free-exit chip is in the quiet ink; round 6's state rule would make it
+    success green (round 6 sent it to the owner; it was never filed). (Default: unchanged.)
+K38. /live at 1280: the masthead card keeps its content in its left half; about 540×230px beside it holds only the pager
+    and the faint watermark. (Default: as designed.)

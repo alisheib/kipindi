@@ -16,9 +16,10 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-10):** S6 (the flagged shell) is in progress (§0i): WP0–WP12 are live behind the flag, the S6 visual
+**State (2026-10-11):** S6 (the flagged shell) is in progress (§0i): WP0–WP12 are live behind the flag, the S6 visual
 pass (rounds 1–6), its round 7 and round 8 (the owner's four rulings of 2026-10-10) are live from ALI-BLADE15 (the ✅
-paragraphs below), R8-D — the break's other channels — with them. As of 2026-10-07: WP0–WP11 are live behind the flag — the shell
+paragraphs below), R8-D — the break's other channels — with them. The close-out read (333 tiles, eight readers, 2026-10-11) found 19
+items: round 9 fixes them. K32 (an agent fee paid into a draft that expired was never owed back) is live. As of 2026-10-07: WP0–WP11 are live behind the flag — the shell
 swap, the overlay rules, Tiketi zangu (WP9), the journey sell look (WP10), `--rail-h` (WP11) and the first-download fix
 (WP6c), each verified locally before its push — and classic viewers are served what they were
 (`qa:classic-shell-parity`, 224 cells, no unexpected difference; v2 also compares the Sell region). ⭐ Ali, 2026-10-02: nothing is turned on — no staff preview, no journey — until
@@ -39,6 +40,26 @@ the s4-5 low-minimum and s4-6 code frames on the S4 canvas, `shortfall.ts`'s `em
 the short-of-the-minimum board offers TZS 1,000 and S9's six code boards are marked superseded; `shortfallPlan` asks no
 email step; 2.9 reads which tree it runs on (the bar's component gone → no viewer may see a bar).
 
+**✅ K32 IS LIVE (2026-10-11 14:11 EAT, `06924050`) — a fee paid into an agent application that EXPIRES is owed back.**
+Found by R8-D (appendix K's K32): `expireStaleAgentApplications` set a lapsed draft EXPIRED and left a COLLECTED fee
+collected — from the wallet since 2026-09-10, or a bank payment an officer reconciled — with nothing owing it; only a
+rejection made a fee REFUND_DUE. Now the expiry owes it back exactly as the rejection does (`feeOwedBack`, one spelling
+for both exits), its audit names `refundDue` and the amount, and the officer's `recordFeeRefund` stays the one payer (a
+wallet fee back to the wallet, an EXTERNAL one recorded as wired back; nothing minted, nothing new said to the
+applicant). The race closed: each lapsed row is decided inside `agentapp:<user>` (the wallet payment's lock) then
+`agent:<id>` (the officer's reconcile / waive / refund lock), one transaction, on the row read again there — a payment
+that wins the lock is seen, one that comes after is refused `not_editable` before any money moves, and a row submitted,
+reconciled or re-clocked meanwhile is left alone. Proof: the defect reproduced first (the probe: EXPIRED + COLLECTED,
+nothing on the refunds worklist, the officer refused "No refund is owed"); `test:agent-fee-expiry` on both stores —
+memory 34/34, PostgreSQL 18.3 36/36 (with the refund's ledger groups summing to zero, no player leg for EXTERNAL);
+mutation 6/6 (no REFUND_DUE, the read outside the lock, the stale snapshot, a lock dropped, no lock); the suites that
+read the service all green; typecheck 0, `next build` 0, local `qa:live` 334/334; production read back at 14:19
+(both hosts on `06924050`, health, the service worker, the first-load chunks; production `qa:live` 329/330 — its one
+failure the QA player's sign-in, which this machine has no password for, as on every push). The laptop bluescreened at
+14:11:43, 30 seconds after the push (the failing memory again); the push and its record were safe. Drafts that expired BEFORE the fix keep COLLECTED: an
+officer's call, with the read-only query in MONEY-GATE-REMEDIATION §8.1. Same class, not changed (cannot strand money):
+`expireInvitation`'s unlocked write on an INVITED row.
+
 **⏳ S6 CLOSE-OUT (rounds 7 and 8's lock turn, ran 2026-10-10 23:12 → 00:20 on `c706c7c6`; trimmed to what can still fail
 by Ali's efficiency ruling of 2026-10-10 — see the session law below).** `test:all` **509/517**: `test:responsive`,
 `test:motion`, `test:revoked-deadend`, `test:admin-section-gate` and `test:needle-rest` need a running server,
@@ -48,8 +69,10 @@ parity, baseline at the live main before round 7 (`b79f0d72`) and the tip compar
 in all 224 cells** — the Swahili /positions title's `<h1>` gains `data-stem=""` (R7-C's stem rule; "Utabiri wako" opens
 on U), 12 cells, every layout line equal — now the named `positions-h1-stem-sw` in EXPECTED_DIFFS (proved offline on the
 capture: 12 of 12 explained, the 12 English cells unchanged). Tiles: `qa:journey-shell` **1645 passed · 0 failed · 2
-blocked** (the Up & Down round pages: no local price feed), 333 tiles — read one by one by eight readers next; S6 closes
-when a read finds nothing.
+blocked** (the Up & Down round pages: no local price feed), 333 tiles — read one by one by eight readers on 2026-10-11: 19 items to fix (round 9: R9-A edges and
+glyphs, R9-B line breaks, R9-C components, R9-D /results freshness), owner questions K34–K38 and S12 additions
+(S6-VISUAL-PASS-STATE appendices K and G); then only round 9's tiles are re-taken and re-read; S6 closes when a read
+finds nothing.
 
 **✅ R8-D IS LIVE (2026-10-10 ~22:25 EAT) — the break's other channels closed (ruling (4) completed).** Built on R8-C's
 one rule and merged as `ad505be8` (r8-d `d8bfd7d8`): during a cooling-off or exclusion the server refuses the agent fee
@@ -275,10 +298,9 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S6 — the S6 close-out's tiles (the ⏳ paragraph above) read one by one; anything a reader finds is fixed
-and only its tiles re-taken and re-read; S6 closes when a read finds nothing (§0i;
-[S6-VISUAL-PASS-STATE.md](design-system/v5-2026-09-29-simplified-journey/S6-VISUAL-PASS-STATE.md) §3/§4). Then K32 (a
-wallet-paid agent fee in an expired draft is never refunded — appendix K). The red twins the 2026-10-10 crash left owed
+**Next:** (1) S6 — round 9 fixes the close-out read's 19 items (the ⏳ paragraph above); only its tiles are re-taken
+and re-read; S6 closes when a read finds nothing (§0i;
+[S6-VISUAL-PASS-STATE.md](design-system/v5-2026-09-29-simplified-journey/S6-VISUAL-PASS-STATE.md) §3/§4). The red twins the 2026-10-10 crash left owed
 (`red:house-bot-c5`, `-money`, `-engine`, `red:campaign-visuals`, `red:contacts-import`) are DROPPED from this plan by
 the efficiency ruling: they prove other lanes' guards, which rounds 7 and 8 never touched. The build plan is
 `docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md`, whose closing Amendments override its body. S7's plan is filed ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), 2026-10-07, §0h point 58); it starts only when S6 has closed, as its Amendments' start line says. (2) When
