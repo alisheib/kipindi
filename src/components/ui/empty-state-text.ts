@@ -6,7 +6,7 @@
  */
 import type { ReactNode } from "react";
 import { hangCjkMarks } from "@/lib/cjk-marks";
-import { keepRanges, mergeRanges, possessiveRanges, runAndDashRanges } from "./keep-run";
+import { keepRanges, keptRanges, mergeRanges, possessiveRanges, runAndDashRanges } from "./keep-run";
 
 /**
  * ⭐ A DASH NEVER OPENS A LINE (2026-10-08, the visual pass, tiles 241 and 243). "Chagua swali, bonyeza NDIO au HAPANA
@@ -67,4 +67,28 @@ export function emptyStateRanges(text: string, keep: readonly string[] = []): Ar
 export function emptyStateBody(body: EmptyStateBody): ReactNode {
   const { text, keep } = typeof body === "string" ? { text: body, keep: [] as readonly string[] } : body;
   return keepRanges(text, emptyStateRanges(text, keep), hangCjkMarks);
+}
+
+/**
+ * ⭐ ROUND 10 (2026-10-11, R10-B — tile 185) · A BANNER'S OR A NOTICE'S BODY HOLDS ITS PHRASES AS AN EMPTY STATE'S DOES. The
+ * coming-soon banner on /proposals read "Hivi karibuni utaweza kupendekeza masoko" / "yako mwenyewe na kupata zawadi" at sw
+ * 390 — "masoko yako" torn, the tear round 9 closed in every empty-state body — because the banner drew its body raw. Every
+ * banner and notice body the dictionary writes is drawn through the empty state's own ranges (`emptyStateRanges`: each
+ * possessive phrase with the connective that introduces it, each dash with its unit, each YES/NO pair, each run the caller
+ * names), so it reads "…kupendekeza" / "masoko yako mwenyewe na kupata zawadi".
+ * ⭐ …AND ITS LAST TWO WORDS BREAK TOGETHER, as every R4-I notice sentence's do (`keepText`, keep-run.tsx). The empty states'
+ * bodies are balanced, so a held phrase cannot leave their last word alone; a notice wraps greedily, and the phrase alone
+ * would have: en 360 "…when they're approved. Check back" / "shortly." (computed, `test:visual-pass-r10` §9). So a notice
+ * holds the empty state's ranges AND its tail. A text of one or two words comes back as the same string.
+ * ⚠️ LEFT-SET BY DEFAULT: a notice's lines start on its column, so its Chinese marks are NOT hung — `hangCjkMarks` centres a
+ * line by its ink, a centred body's device, and on a left-set line it would only let a mark overhang the measure. A
+ * centred notice (the Callout's `stack`, the KYC panel, the unavailable board) passes `centred` and hangs them, as the
+ * empty state does. ⛔ Data — an officer's note, an operator's announcement, a server's message — is drawn as given, as a
+ * market title is (`phrases: false`, keep-run.tsx).
+ * `test:visual-pass-r10` §9 lays out every routed body at every measure from 150 to 1000px in each language.
+ */
+export function noticeBody(body: EmptyStateBody, opts: { centred?: boolean } = {}): ReactNode {
+  const { text, keep } = typeof body === "string" ? { text: body, keep: [] as readonly string[] } : body;
+  const ranges = mergeRanges([...emptyStateRanges(text, keep), ...keptRanges(text, keep)]);
+  return opts.centred ? keepRanges(text, ranges, hangCjkMarks) : keepRanges(text, ranges);
 }

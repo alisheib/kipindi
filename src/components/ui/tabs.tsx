@@ -106,6 +106,7 @@ import { cn } from "@/lib/utils";
 import { centredScrollLeft } from "@/lib/strip-scroll";
 import { CountBadge } from "@/components/ui/count-badge";
 import { LinkPending } from "@/components/ui/link-pending";
+import { edgeGlyph, hasWords } from "@/components/ui/glyphs";
 
 export type TabItem = {
   value: string;
@@ -205,8 +206,10 @@ function TabControl({
       {/* ⛔ RENDERED BARE, with no wrapper — `filter-pill.tsx:199` is the kit's shipped glyph
           slot and renders `{glyph}` exactly like this. A wrapping `<span aria-hidden>` would
           restate what `glyphs.tsx:27` / `:42` already set on the `<svg>` itself, and would
-          also take the flex gap, putting 8px between the glyph and its own label. */}
-      {item.glyph}
+          also take the flex gap, putting 8px between the glyph and its own label.
+          ⭐ Its ink on the tab's start padding (round 10, R10-A6 — glyphs.tsx, "A CENTRED CONTROL FRAMES ITS INK"); a glyph
+          with no label beside it is alone and keeps its box. */}
+      {hasWords(item.labelEn) ? edgeGlyph(item.glyph, "start") : item.glyph}
       {item.labelEn}
       {item.count !== undefined && <CountBadge count={item.count} tone="brand" size="sm" />}
       {trailing}

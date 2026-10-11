@@ -125,7 +125,10 @@ export function WalletSheet({
           {/* Its last two words break together (round 3, 2026-10-09, tile 092): "…itakueleza" / "kinachofuata." left the
               last word alone at 390. The notice's line is 248px at 320 and the pair at most 150 ("itakueleza
               kinachofuata."), so it always fits. */}
-          <p className="kp-wsheet__held-b">{keepLastWords(t.kycGate.frozenBody)}</p>
+          {/* Round 10 (R10-B): in the journey's Wallet its phrases are held too ("timu yetu", "our team") — `keepText`, the
+              last-two-words keep with R9-B's possessive rule in it. ⚠️ Journey-only: the classic capsule's Wallet is frozen
+              chrome and keeps round 3's last-two-words keep. */}
+          <p className="kp-wsheet__held-b">{journey ? keepText(t.kycGate.frozenBody) : keepLastWords(t.kycGate.frozenBody)}</p>
         </div>
       ) : (
         <div className={onBreak ? "kp-wsheet__pair kp-wsheet__pair--one" : "kp-wsheet__pair"}>
@@ -138,7 +141,11 @@ export function WalletSheet({
                 className="btn gilt-metal btn-lg kp-wsheet__act"
                 data-testid="wallet-sheet-deposit"
               >
-                <I.plus s={16} />
+                {/* ⭐ Round 10 (R10-A6, tiles 132–137): each door's glyph puts its ink on the door's start padding, so its
+                    content centres by what the eye sees — the Withdraw door's ↑ drew 10.6px of ink in its 16px box and its
+                    content sat 0.86 (sw), 1.47 (en), 1.36 (zh) px right of centre. ⚠️ Journey-only: the classic capsule opens
+                    this same sheet, and classic chrome is frozen until the flip (its doors keep their boxes). */}
+                <I.plus s={16} edge={journey ? "start" : undefined} />
                 {journey ? t.journey.depositAction : t.common.deposit}
               </Link>
               {/* ⭐ The journey's captions keep their last two words together (round 4 of the visual pass, 2026-10-09,
@@ -156,7 +163,7 @@ export function WalletSheet({
               className="btn btn-ghost btn-lg kp-wsheet__act"
               data-testid="wallet-sheet-withdraw"
             >
-              <I.arrowUpFromLine s={16} />
+              <I.arrowUpFromLine s={16} edge={journey ? "start" : undefined} />
               {journey ? t.journey.withdrawAction : t.common.withdraw}
             </Link>
             <span id={wdVia} className="kp-wsheet__via">{journey ? keepLastWords(t.wallet.mobileMoneyOnly) : t.wallet.mobileMoneyOnly}</span>

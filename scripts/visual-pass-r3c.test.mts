@@ -82,7 +82,9 @@ section("1 · a short sentence never ends on one word alone");
   ok("1.3 · the hub's card-size hint (tiles 124 127 256 264 294 295 298 302 306 331) never leaves a word alone: its sentences are kept whole",
     cardRow.includes("{keepSentences(t.nav.cardSpacingHint)}") && /<span id=\{hintId\} className="kp-hub__sub">/.test(cardRow)
       && /className="kp-hub__row"/.test(cardRow));
-  ok("1.4 · the held Wallet's notice (tile 092) keeps its last two words together", wallet.includes("{keepLastWords(t.kycGate.frozenBody)}"));
+  // Round 10 (R10-B): the journey's sheet holds the notice's phrases as well (`keepText`); the classic sheet — frozen chrome —
+  // keeps round 3's keep, byte for byte.
+  ok("1.4 · the held Wallet's notice (tile 092) keeps its last two words together — classic as round 3 had it, the journey's with its phrases held (R10-B)", wallet.includes("{journey ? keepText(t.kycGate.frozenBody) : keepLastWords(t.kycGate.frozenBody)}"));
   ok("1.5 · the fairness lead (tiles 187 204) keeps its last two words together", /\{keepLastWords\(fill\(t\.common\.fairnessIntro/.test(fair));
 
   // The round-3 grid is gone (round 4): no rule hangs the hint under the switch's column any more.
@@ -253,19 +255,21 @@ section("3 · a filter strip has room for the selected pill's halo (tile 319)");
   ok("3.2′ PLANT · a halo grown to 16px of blur would outreach the room and is reported", 16 + Number(glow?.[2] ?? 0) > room);
   ok("3.3 · the trailing side keeps its own room: the strip's pr-2 (12px), and no margin is taken back there",
     /\bpr-2\b/.test(read("src/components/ui/query-bar.tsx")) && !/margin-right/.test(block));
-  const start = /\.kp-strip-fade\[data-edges="start"\]\s*\{[^}]*mask-image:\s*linear-gradient\(to right, transparent 12px, #000 44px\)/.test(css);
-  const both = /\.kp-strip-fade\[data-edges="both"\]\s*\{[^}]*mask-image:\s*linear-gradient\(to right, transparent 12px, #000 44px,/.test(css);
+  // Round 10 (R10-D): each mask's end moves in by the cut StripAutoScroll publishes (`--strip-cut-start` / `--strip-cut-end`, 0
+  // unless a word must be cut there), and the keyboard's scroll padding with it; at 0 the geometry is exactly round 3's.
+  const start = /\.kp-strip-fade\[data-edges="start"\]\s*\{[^}]*mask-image:\s*linear-gradient\(to right, transparent calc\(12px \+ var\(--strip-cut-start, 0px\)\), #000 calc\(44px \+ var\(--strip-cut-start, 0px\)\)\)/.test(css);
+  const both = /\.kp-strip-fade\[data-edges="both"\]\s*\{[^}]*mask-image:\s*linear-gradient\(to right, transparent calc\(12px \+ var\(--strip-cut-start, 0px\)\), #000 calc\(44px \+ var\(--strip-cut-start, 0px\)\),/.test(css);
   ok("3.4 · the leading fade moved in by the same 12px (transparent to 12, opaque from 44): a chip scrolled off the start fades from the content edge, as before",
-    start && both && /scroll-padding-inline:\s*44px 72px/.test(css));
+    start && both && /scroll-padding-inline:\s*calc\(44px \+ var\(--strip-cut-start, 0px\)\) calc\(72px \+ var\(--strip-cut-end, 0px\)\)/.test(css));
   // The trailing ramp (round 3, tile 326): at least 64px, ending 8px inside, in the "end" and "both" masks alike, and the
   // keyboard's end padding covers it. Measured from the mask strings the stylesheet ships.
-  const ramps = (src: string) => [...src.matchAll(/#000 calc\(100% - (\d+)px\), transparent calc\(100% - (\d+)px\)/g)]
+  const ramps = (src: string) => [...src.matchAll(/#000 calc\(100% - (\d+)px - var\(--strip-cut-end, 0px\)\), transparent calc\(100% - (\d+)px - var\(--strip-cut-end, 0px\)\)/g)]
     .map((m) => ({ ramp: Number(m[1]) - Number(m[2]), inset: Number(m[2]) }));
   const real = ramps(css);
-  const endPad = Number(/scroll-padding-inline:\s*44px (\d+)px/.exec(css)?.[1] ?? NaN);
+  const endPad = Number(/scroll-padding-inline:\s*calc\(44px \+ var\(--strip-cut-start, 0px\)\) calc\((\d+)px \+ var\(--strip-cut-end, 0px\)\)/.exec(css)?.[1] ?? NaN);
   ok("3.5 · the trailing ramp is at least 64px and ends 8px inside the strip, in every mask that has one (4: end and both, -webkit- and plain), and the keyboard's end padding reaches past it",
     real.length === 4 && real.every((r) => r.ramp >= 64 && r.inset === 8) && endPad >= Math.max(...real.map((r) => r.ramp + r.inset)), JSON.stringify({ real, endPad }));
-  const old = ramps(css.split("calc(100% - 72px)").join("calc(100% - 40px)"));
+  const old = ramps(css.split("calc(100% - 72px - var(--strip-cut-end, 0px))").join("calc(100% - 40px - var(--strip-cut-end, 0px))"));
   ok("3.5′ PLANT · G1's 32px ramp put back is reported (it fell wholly on a hidden chip's padding at sw 390, tile 326)",
     old.length === 4 && old.some((r) => r.ramp < 64));
 }

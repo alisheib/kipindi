@@ -685,8 +685,11 @@ export function MarketCard({
         // Single-column actions wrapper so the resolved status pill occupies the
         // exact same vertical rhythm as the live YES/NO row (card-height parity).
         <div className="mcardp-actions mcardp-actions--single">
+          {/* The status stands where the pair stood, centred as a button is: its glyph's ink on the start padding (round 10,
+              R10-A6: a centred control frames its ink — `resolved`'s rays reach 0.25 units past its box, so its margin is +0.16px,
+              set in rather than pulled out, measured from the drawing like every other). */}
           <div className="btn btn-ghost btn-md justify-center pointer-events-none opacity-85">
-            <I.resolved s={15} /> {isResolved ? [t.market.statusResolved, outcomeLabel].filter(Boolean).join(" ") : t.market.statusClosed}
+            <I.resolved s={15} edge="start" /> {isResolved ? [t.market.statusResolved, outcomeLabel].filter(Boolean).join(" ") : t.market.statusClosed}
           </div>
         </div>
       )}

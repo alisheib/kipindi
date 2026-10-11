@@ -560,7 +560,12 @@ section("10 · untouched — the dictionary, R8-C's one rule, the voting door");
   // ⚠️ Round 9 (R9-B — B5) corrected a COMMENT in app-shell.tsx (the opt-out footer's record of the Board's lines); R8-C's
   // rule is the code, so that file is compared with its comments stripped and its white space squashed (decomment keeps a
   // comment's line breaks).
-  const sameCode = (p: string) => { try { return squash(decomment(git("show", `HEAD:${p}`).split(CR + LF).join(LF))) === squash(decomment(raw(p))); } catch { return false; } };
+  // ⚠️ Round 10 (R10-B) routed the signed-out bar's sentence through `noticeBody` (its phrases held): that call, its import and
+  // its note are undone before comparing — R8-C's rule is the rest of the file, still HEAD's.
+  const r10b = (s: string) => s.replace('import { noticeBody } from "@/components/ui/empty-state-text";', "")
+    .replace('{/* Round 10 (R10-B): its phrases held as an empty state' + "'" + 's body holds them ("Kikao chako", "Your session"). */}', "")
+    .replace("{noticeBody(endedNotice.reason", "{endedNotice.reason").replace(": t.auth.sessionIdleBody)}", ": t.auth.sessionIdleBody}");
+  const sameCode = (p: string) => { try { return squash(decomment(git("show", `HEAD:${p}`).split(CR + LF).join(LF))) === squash(decomment(r10b(raw(p)))); } catch { return false; } };
   ok("10.1 · no dictionary string changed (src/lib/i18n-dict.ts is HEAD's)", clean("src/lib/i18n-dict.ts"));
   ok("10.2 · R8-C's one rule is unchanged (viewer-doors.ts, hub-viewer.ts, app-shell.tsx are HEAD's)", clean("src/lib/journey/viewer-doors.ts") && clean("src/lib/server/hub-viewer.ts") && sameCode("src/components/layout/app-shell.tsx"));
   const PS = code("src/lib/server/proposals-service.ts");

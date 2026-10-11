@@ -320,11 +320,13 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
             `positions.title` ("History"), a third name for a page whose primary content is LIVE,
             at-risk money.
             §L4 — and the headline used to read "Polls you've played". "Poll" is the poll product's
-            own word, so it cannot serve as the name of a portfolio page. */}
+            own word, so it cannot serve as the name of a portfolio page.
+            Round 10 (R10-A6): the View performance button's chart stands on the button's start padding (`edge` — a centred
+            control frames its ink); its ghost (positions-ghost.tsx) draws the same glyph, unpainted. */}
         <PageHeader eyebrow={t.common.positions} title={t.positions.headline} subtitle={t.positions.headlineBody} />
         {positions.length > 0 && (
           <Link href={"/positions/performance" as never} className="btn btn-ghost btn-sm inline-flex items-center gap-1.5 shrink-0 mt-1">
-            <I.chart s={13} />
+            <I.chart s={13} edge="start" />
             {t.performance.viewPerformance}
           </Link>
         )}

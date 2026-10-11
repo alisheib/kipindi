@@ -26,6 +26,7 @@ import { useEffect, useRef, useState } from "react";
 import { CloseX, Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
 import { Callout } from "@/components/ui/callout";
+import { noticeBody } from "@/components/ui/empty-state-text";
 import { haptics } from "@/lib/haptics";
 import { useT } from "@/lib/i18n";
 import { formatTzs, formatNumber } from "@/lib/utils";
@@ -165,7 +166,8 @@ export function SellConfirmModal({ open, pending, stake, value, positionId, onCo
       {/* DS-6 — the kit Callout (this is the exact box callout.tsx absorbed
           from this file), not a hand-rolled warning panel. */}
       <Callout tone="warning" className="mt-3">
-        {isFree ? t.dialog.freeExitExplain : t.dialog.earlyExitExplain}
+        {/* Its phrases held as an empty state's body holds them (round 10, R10-B): "dau lako", "of your stake". */}
+        {noticeBody(isFree ? t.dialog.freeExitExplain : t.dialog.earlyExitExplain)}
         <span className="block italic text-text-subtle text-[11px] mt-0.5">
           {t.dialog.stakeWillLeavePool}
         </span>

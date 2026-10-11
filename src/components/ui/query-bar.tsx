@@ -473,7 +473,8 @@ export function QueryClear({
         className,
       )}
     >
-      <I.x s={14} aria-hidden />
+      {/* Its ink on the pill's start padding (round 10, R10-A6: a centred control frames its ink). */}
+      <I.x s={14} edge="start" aria-hidden />
       {label}
     </Link>
   );

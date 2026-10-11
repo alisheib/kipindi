@@ -86,8 +86,11 @@ export function ChartToggle({
               it does it would end on "kwa". Held, it can only break "…wa NDIYO" / "kwa muda". One flex item. */}
           {keepConnectivesItem(t.market.probOverTime)}
         </h2>
+        {/* Round 10 (R10-A3): the caret ends the toggle's row, so its ink stands on the row's end edge (`edge`); it turns
+            about its own box, and its drawing is symmetric about it, so it holds open. */}
         <I.chevronDown
           s={14}
+          edge="end"
           className={[
             "text-text-muted shrink-0 transition-transform duration-200",
             open ? "rotate-180" : "",

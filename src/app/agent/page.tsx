@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Stat } from "@/components/ui/stat";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
+import { noticeBody } from "@/components/ui/empty-state-text";
 import { I } from "@/components/ui/glyphs";
 import { VerifiedAgentBadge } from "@/components/agent/verified-agent-badge";
 import { CommissionWaterfall } from "@/components/agent/commission-waterfall";
@@ -217,10 +218,12 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
     <PageContainer tier="reading" className="space-y-6">
       <PageHeader eyebrow={t.agent.eyebrow} title={t.agent.title} subtitle={t.agent.heroSub} />
 
-      {sp.refused && <Callout tone="neutral" size="md">{t.agent.applyRefused}</Callout>}
+      {/* The notices hold their phrases as an empty state's body does (round 10, R10-B — `noticeBody`): "Maombi yako",
+          "Your application" never part across a line. */}
+      {sp.refused && <Callout tone="neutral" size="md">{noticeBody(t.agent.applyRefused)}</Callout>}
       {/* zh keeps its words whole (the hub's rule): a notice set by the browser broke inside 照片, 补充 and 申请. */}
-      {notice && <Callout tone={notice.tone} size="md"><span className={locale === "zh" ? "break-keep [overflow-wrap:anywhere]" : undefined}>{notice.text}</span></Callout>}
-      {rgHeld && <Callout tone="neutral" size="md">{t.agent.stateRgLocked}</Callout>}
+      {notice && <Callout tone={notice.tone} size="md"><span className={locale === "zh" ? "break-keep [overflow-wrap:anywhere]" : undefined}>{noticeBody(notice.text)}</span></Callout>}
+      {rgHeld && <Callout tone="neutral" size="md">{noticeBody(t.agent.stateRgLocked)}</Callout>}
 
       {/* ⭐ THE THREE FACTS A PARTNER DECIDES ON, above the fold, from config — ONE treatment (R5-C, the second gold audit,
           2026-10-09; tiles r5-4). They were three: a gold mono sentence ("10% ya ada halisi"), a gold mono amount

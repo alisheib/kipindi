@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Chip } from "@/components/ui/chip";
+import { edgeGlyph } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
 
 /**
@@ -60,8 +61,13 @@ export function ChipGhost({
   );
 }
 
-/** The glyph's room a button keeps beside its label (the page passes a 14–16px glyph as `leading` / `trailing`). */
-const glyphRoom = (s: number) => <span className="shrink-0" style={{ width: s, height: s }} />;
+/** The glyph's room a button keeps beside its label (the page passes a 14–16px glyph as `leading` / `trailing`).
+ *  ⭐ Round 10 (R10-A6): a button's slot pulls its glyph's ink onto the content edge (button.tsx), by a gap that is the
+ *  drawing's own, so a bare box of the glyph's size no longer lands where the page's glyph does. The ghost takes the
+ *  page's own glyph element and draws it unpainted (the ghost's ink is transparent), pulled as the page's slot pulls it —
+ *  box for box. A number is still a bare box (a slot whose mark is not a family glyph). */
+const glyphRoom = (g: number | ReactNode, edge: "start" | "end") =>
+  typeof g === "number" ? <span className="shrink-0" style={{ width: g, height: g }} /> : edgeGlyph(g, edge);
 
 /**
  * THE KIT BUTTON WHILE ITS PAGE LOADS (R5-L) — the button's own box: `.btn` and its size rung (height, padding, gap,
@@ -72,16 +78,17 @@ const glyphRoom = (s: number) => <span className="shrink-0" style={{ width: s, h
 export function ButtonGhost({ size, children, leading, trailing, className }: {
   size: "md" | "lg";
   children: ReactNode;
-  /** The px size of the glyph the page's button leads with (`leading={<I.x s={16} />}`), if any. */
-  leading?: number;
-  trailing?: number;
+  /** The glyph the page's button leads with — the page's own element (`leading={<I.user s={16} />}`), drawn unpainted and
+   *  pulled as the page's slot pulls it; or a px size for a bare box. */
+  leading?: number | ReactNode;
+  trailing?: number | ReactNode;
   className?: string;
 }) {
   return (
     <span className={cn("btn", size === "lg" ? "btn-lg" : "btn-md", "pointer-events-none select-none bg-bg-overlay text-transparent kp-shimmer-track", className)} aria-hidden>
-      {leading ? glyphRoom(leading) : null}
+      {leading ? glyphRoom(leading, "start") : null}
       {children}
-      {trailing ? glyphRoom(trailing) : null}
+      {trailing ? glyphRoom(trailing, "end") : null}
     </span>
   );
 }

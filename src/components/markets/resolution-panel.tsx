@@ -31,6 +31,7 @@ import { cn, formatTzs } from "@/lib/utils";
 // with the year rule read off `serverNow` — the page's instant, so the browser's first render is the server's.
 import { formatEatDateTime } from "@/lib/eat-day";
 import { Callout } from "@/components/ui/callout";
+import { noticeBody } from "@/components/ui/empty-state-text";
 import { useT } from "@/lib/i18n";
 import { outcomeWord } from "@/lib/side-label";
 import { priceState } from "@/lib/markets/price-state";
@@ -142,7 +143,7 @@ export function ResolutionPanel({
             gilt too; a mark is not the seal and not money (Q5). They take the subtle ink of the market page's own section
             glyphs and the border of its own quoted criterion (R5-C, the second gold audit, 2026-10-09). */}
         <h2 className="font-display text-[16px] font-semibold text-text flex items-center gap-2">
-          <I.shieldcheck s={16} className="text-text-subtle" />
+          <I.shieldcheck s={16} edge="start" className="text-text-subtle" />
           {t.market.resTitle}
         </h2>
         {/* PV-13c (2026-09-03) — was `<span className={cn("chip", ...)}>`, the legacy CSS
@@ -300,13 +301,18 @@ export function ResolutionPanel({
       )}
 
       {/* Why the fee was capped — the promise, stated where it was kept. */}
+      {/* Round 10 (R10-B): its phrases held as an empty state's are ("our commission", "kamisheni yetu"), and its two figures
+          kept whole (`noticeBody`'s caller runs: "TZS 1,250" never parts from its digits). */}
       {!refundedAll && fee.capped && (
         <Callout tone="brand">
-          {t.market.resFeeCappedNote
-            .replace(/\{ceiling\}/g, fmtPct(rates.feeCeilingRate))
-            .replace(/\{commission\}/g, fmtPct(rates.commissionRate))
-            .replace(/\{uncapped\}/g, formatTzs(Math.round(fee.commission)))
-            .replace(/\{charged\}/g, formatTzs(Math.round(fee.fee)))}
+          {noticeBody({
+            text: t.market.resFeeCappedNote
+              .replace(/\{ceiling\}/g, fmtPct(rates.feeCeilingRate))
+              .replace(/\{commission\}/g, fmtPct(rates.commissionRate))
+              .replace(/\{uncapped\}/g, formatTzs(Math.round(fee.commission)))
+              .replace(/\{charged\}/g, formatTzs(Math.round(fee.fee))),
+            keep: [formatTzs(Math.round(fee.commission)), formatTzs(Math.round(fee.fee))],
+          })}
         </Callout>
       )}
 

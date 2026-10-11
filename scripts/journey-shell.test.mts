@@ -1470,13 +1470,17 @@ function g7Header(W: World, ok: Ok) {
   ok("7.eighteen · the 18+ roundel is the kit's, with its text as its name (no aria-label on a plain span)",
     bar.includes(`<span className="kp-rg__18">{t.footer.eighteenPlus}</span>`));
   const plus = baseRule(css, ".kp-jhdr__plus");
+  // Round 10 (R10-A6, a centred control frames its ink) moved this pin: the plus stands on the pill's padding (`edge`).
   ok(`7.plus · the "+" is hidden below 360 and shown from 360 (A5), in a span of its own — never a width utility on the kit button`,
     plus.includes("display: none") && minWidthRule(css, 360, ".kp-jhdr__plus").includes("display: inline-flex")
-      && bar.includes(`<span aria-hidden className="kp-jhdr__plus"><I.plus s={14} /></span>`),
+      && bar.includes(`<span aria-hidden className="kp-jhdr__plus"><I.plus s={14} edge="start" /></span>`),
     show({ plus, from360: minWidthRule(css, 360, ".kp-jhdr__plus") }));
   const pillRule = baseRule(css, ".kp-jhdr__pill");
-  ok("7.pill · + Weka pesa is the kit's gilt pill at the 44px rung, padded 12px below 360 and 12/10 from 360, named by its words",
-    pillRule.includes("padding: 0 12px;") && minWidthRule(css, 360, ".kp-jhdr__pill").includes("padding: 0 12px 0 10px")
+  // Round 10 (R10-A6) moved this pin: from 360 the plus stands on its padding, which frees its 2.55-unit box gap (1.49px at
+  // 14px); A5's 22px of padding plus that gap is shared evenly, so the pill keeps the width the fit rule measured
+  // (test:visual-pass-r10 derives it) and its ink is centred.
+  ok("7.pill · + Weka pesa is the kit's gilt pill at the 44px rung, padded 12px below 360 and from 360 A5's 22px plus the plus's freed 1.49px shared evenly, named by its words",
+    pillRule.includes("padding: 0 12px;") && minWidthRule(css, 360, ".kp-jhdr__pill").includes("padding: 0 calc(11px + 2.55 * 14px / 48)")
       && bar.includes(`className="btn gilt-metal btn-md btn-pill kp-jhdr__pill"`) && bar.includes(`href="/wallet/deposit"`)
       && bar.includes("aria-label={t.journey.depositAction}") && bar.includes(`data-testid="journey-deposit"`),
     show({ pillRule, from360: minWidthRule(css, 360, ".kp-jhdr__pill") }));

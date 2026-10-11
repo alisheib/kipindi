@@ -75,10 +75,11 @@ export default function AgentApplyLoading() {
           <p className="text-body-sm leading-relaxed"><GhostText>{t.agent.docIdNote}</GhostText></p>
         </section>
 
-        {/* Step navigation — the two 44px buttons, their words and glyphs' room. */}
+        {/* Step navigation — the two 44px buttons, their words and the page's own glyphs, unpainted and pulled onto the
+            buttons' padding as the page's are (round 10, R10-A6). */}
         <div className="flex items-center justify-between" aria-hidden>
-          <ButtonGhost size="md" leading={14}>{t.common.back}</ButtonGhost>
-          <ButtonGhost size="md" trailing={14}>{t.common.next}</ButtonGhost>
+          <ButtonGhost size="md" leading={<I.chevronLeft s={14} text="body-600" />}>{t.common.back}</ButtonGhost>
+          <ButtonGhost size="md" trailing={<I.arrowRight s={14} text="body-600" />}>{t.common.next}</ButtonGhost>
         </div>
       </div>
     </PageContainer>

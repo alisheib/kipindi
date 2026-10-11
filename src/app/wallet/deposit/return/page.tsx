@@ -34,6 +34,7 @@ import { I } from "@/components/ui/glyphs";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
 import { Callout } from "@/components/ui/callout";
+import { noticeBody } from "@/components/ui/empty-state-text";
 import { currentSession } from "@/lib/server/auth-service";
 import { getServerT } from "@/lib/i18n-server";
 import { formatTzs } from "@/lib/utils";
@@ -147,7 +148,7 @@ export default async function DepositReturnPage({
           quiet part loudly: do NOT deposit again. */}
       {outcome.state === "PENDING" && (
         <Callout tone="info" title={t.wallet.returnPendingWarnTitle}>
-          {t.wallet.returnPendingWarnBody}
+          {noticeBody(t.wallet.returnPendingWarnBody)}
         </Callout>
       )}
 
@@ -191,13 +192,15 @@ export default async function DepositReturnPage({
           navigation actions); <Button> is reserved for real form/submit buttons. */}
       {/* ⭐ ONE GAP FOR A PAIR OF LARGE BUTTONS (round 6, 2026-10-09): 12px, the override scale's `gap-2` — the receipt's
           own pair (the page this one opens), the agent pages' pairs and Up & Down's UP/DOWN. This pair stood 10px apart on
-          the stock `gap-2.5`, a key outside the product's spacing scale; stacked on a phone the second button sits 2px lower. */}
+          the stock `gap-2.5`, a key outside the product's spacing scale; stacked on a phone the second button sits 2px lower.
+          Each door's glyph puts its ink on the door's start padding, so its content centres by what the eye sees (round 10,
+          R10-A6: a centred control frames its ink). */}
       <div className="flex flex-col sm:flex-row gap-2">
         <Link
           href="/wallet"
           className={`btn ${outcome.state === "PAID" ? "btn-primary" : "btn-ghost"} btn-lg btn-pill w-full inline-flex items-center justify-center gap-1.5`}
         >
-          <I.wallet s={14} />
+          <I.wallet s={14} edge="start" />
           {t.error.backToWallet}
         </Link>
         {/* The receipt is offered on PENDING too, not just PAID. A player left
@@ -212,7 +215,7 @@ export default async function DepositReturnPage({
             href={`/wallet/receipt/${outcome.txn.id}` as never}
             className="btn btn-ghost btn-lg btn-pill w-full inline-flex items-center justify-center gap-1.5"
           >
-            <I.receipt s={14} />
+            <I.receipt s={14} edge="start" />
             {t.wallet.viewReceipt}
           </Link>
         )}
@@ -221,7 +224,7 @@ export default async function DepositReturnPage({
             href="/wallet/deposit"
             className="btn btn-primary btn-lg btn-pill w-full inline-flex items-center justify-center gap-1.5"
           >
-            <I.arrowDownToLine s={14} />
+            <I.arrowDownToLine s={14} edge="start" />
             {t.error.tryAgain}
           </Link>
         )}

@@ -992,8 +992,10 @@ export default async function MarketDetail({
           {/* 4. Your open positions — relevant context before reading the criterion */}
           {session && (
             <section className="rounded-xl border border-border bg-bg-elevated p-5 space-y-3">
+              {/* The heading's glyph on the section's content edge (round 10, R10-A5 — tile 162: its ink stood at x158.12 on
+                  the 157.0 edge its positions start on), as every page head's and eyebrow's is (R9-A4). */}
               <h2 className="font-display text-[15px] font-semibold text-text flex items-center gap-2">
-                <I.portfolio s={15} />
+                <I.portfolio s={15} edge="start" />
                 {t.market.yourPositions}
               </h2>
               {/* R4-I · during a break the empty list says the break, with its end (the sentence /wallet/deposit and the
@@ -1096,7 +1098,7 @@ export default async function MarketDetail({
           {/* 5. Resolution criterion — the rules of the bet */}
           <section className="glass-panel p-5">
             <h2 className="font-display text-[15px] font-semibold text-text mb-2 flex items-center gap-2">
-              <I.fileCheck s={15} className="text-text-subtle" />
+              <I.fileCheck s={15} edge="start" className="text-text-subtle" />
               {t.market.resolutionCriterion}
             </h2>
             {/* `lang` names the language the text is ACTUALLY in, which on a fallback

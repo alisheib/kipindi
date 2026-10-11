@@ -34,14 +34,34 @@
  * would silently freeze every pending button in the product.
  */
 
-export function Spinner({ size = 14 }: { size?: number }) {
+/** How far the ring's ink stands inside its 24-unit box: the r9 ring at a 3-unit stroke inks x1.5–22.5, the same on every
+ *  side, whatever the arc's angle (round 10, R10-A6). Button's own copy of this drawing reads the same number. */
+export const SPINNER_INK_GAP = 1.5;
+
+/** The spinner as the leading mark of a control's content takes the glyph's slot, so it puts its ink on the content edge
+ *  the way the glyph it replaces does (`edge`, glyphs.tsx): pulled by its ink gap. It turns about its own box, so the pull
+ *  holds at every angle. `slotPull` — the pull of the glyph whose slot it takes (`glyphInkGaps`) — gives the rest of that
+ *  pull back at its other side, so it stands exactly as wide as that glyph and the words beside it never move (the search
+ *  box's words, while a search runs). Without `edge` the markup is what it always was. */
+const px3 = (v: number) => `${Math.round(v * 1000) / 1000}px`;
+export function spinnerPull(size: number, edge?: "start" | "end", slotPull?: number): React.CSSProperties | undefined {
+  if (!edge) return undefined;
+  const own = SPINNER_INK_GAP * size / 24;
+  const near = px3(-own);
+  const far = slotPull != null ? px3(-(slotPull - own)) : undefined;
+  return edge === "start"
+    ? { marginInlineStart: near, ...(far ? { marginInlineEnd: far } : null) }
+    : { marginInlineEnd: near, ...(far ? { marginInlineStart: far } : null) };
+}
+
+export function Spinner({ size = 14, edge, slotPull }: { size?: number; edge?: "start" | "end"; slotPull?: number }) {
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
       aria-hidden
-      style={{ animation: "spin 0.7s linear infinite" }}
+      style={{ animation: "spin 0.7s linear infinite", ...spinnerPull(size, edge, slotPull) }}
     >
       <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
       <path d="M21 12a9 9 0 0 0-9-9" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />

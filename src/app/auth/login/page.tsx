@@ -338,9 +338,12 @@ export default async function LoginPage({
                        Twin of auth/register/register-form.tsx — keep the two in step.
                        ⭐ R4-I (2026-10-09, R4-K's gold audit): the brand's ink, not gold — "Create one", "Reset password"
                        earn nothing (Q5, §M3); the warning glyph above is the muted ink for the same reason (F3). */
-                    className="mt-2 inline-flex h-[40px] items-center px-3.5 rounded-pill border border-brand-500/60 bg-brand-500/10 font-display font-bold text-[12.5px] text-brand-300 hover:bg-brand-500/20 transition-colors"
+                    className="mt-2 inline-flex h-[40px] items-center gap-1.5 px-3.5 rounded-pill border border-brand-500/60 bg-brand-500/10 font-display font-bold text-[12.5px] text-brand-300 hover:bg-brand-500/20 transition-colors"
                   >
-                    {errorPanel.cta.label} →
+                    {/* Round 10 (R10-A6): the typed "→" was the face's arrow, a weight under the Sora 700 words; the family's
+                        arrow strokes at their stem, its ink on the pill's end padding (a centred control frames its ink). */}
+                    {errorPanel.cta.label}
+                    <I.arrowRight s={13} edge="end" text="display-700" />
                   </Link>
                 )}
               </div>

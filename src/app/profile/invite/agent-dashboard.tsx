@@ -29,7 +29,7 @@ import { keepConnectives } from "@/components/ui/keep-run";
 import { fill, formatNumber, formatTzs, formatDateShort as fmtDate } from "@/lib/utils";
 import type { AgentDashboard as AgentDashboardModel } from "@/lib/server/affiliate-service";
 import { BetBreakNotice } from "@/components/rg/bet-break-notice";
-import type { KeptBody } from "@/components/ui/empty-state-text";
+import { noticeBody, type KeptBody } from "@/components/ui/empty-state-text";
 
 /**
  * THE AGENT'S OWN PAGE — a DISTINCT read model, not the player promo page with fields swapped.
@@ -123,7 +123,7 @@ export async function AgentDashboard({
       </div>
 
       {!dash.active && (
-        <Callout tone="neutral" size="md">{t.agent.dashPausedBody}</Callout>
+        <Callout tone="neutral" size="md">{noticeBody(t.agent.dashPausedBody)}</Callout>
       )}
 
       {/* The terms — THEIR rate, from THEIR programme. ⛔ Not gold (R5-C, 2026-10-09): a commission RATE is a promise,

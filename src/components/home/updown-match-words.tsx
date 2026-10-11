@@ -83,8 +83,11 @@ export function matchWords(t: Dict, locale: Locale, round: UpdownBandRound): Mat
   if (lead === "up" || lead === "down") {
     const Arrow = lead === "up" ? I.arrowUp : I.arrowDown;
     verdict = [
-      // 2.5 on the 24 grid: the kit's 1.9 read as a hairline beside Sora 700 at 20–24px (frame panel, 2026-09-27).
-      <Arrow key="a" s={16} strokeWidth={2.5} className="kp-udbug__arrow" />,
+      // The kit's 1.9 read as a hairline beside Sora 700 at 20–24px (frame panel, 2026-09-27), and the typed 2.5 that answered
+      // it stroked 0.083em against the words' 0.164em (round 10, R10-A6: one weight for every arrow among words). It strokes at
+      // its words' own stem now (`text`); its box is the verdict's 0.8em (`.kp-udbug__arrow`), so its pull onto the line's
+      // start is written there, in em, from the same drawing.
+      <Arrow key="a" s={16} text="display-700" className="kp-udbug__arrow" />,
       <span key="n" className="kp-udbug__now">{lead === "up" ? t.home.udMatchUpLeads : t.home.udMatchDownLeads}</span>,
       <span key="w" className="kp-udbug__was">{lead === "up" ? t.home.udMatchUpLed : t.home.udMatchDownLed}</span>,
     ];

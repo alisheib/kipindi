@@ -186,13 +186,14 @@ export function RouteError({
             onClick={() => reset()}
             className="btn btn-primary btn-md inline-flex items-center justify-center gap-2"
           >
-            <I.bolt s={14} />
+            {/* Both buttons' marks stand on their padding (round 10, R10-A6: a centred control frames its ink). */}
+            <I.bolt s={14} edge="start" />
             {t.error.tryAgain}
           </button>
           {backs.map((b) => (
             <Link key={b.href} href={b.href as never} className="btn btn-ghost btn-md inline-flex items-center justify-center gap-2">
               {b.label}
-              <I.arrowRight s={14} text="body-600" />
+              <I.arrowRight s={14} edge="end" text="body-600" />
             </Link>
           ))}
         </div>

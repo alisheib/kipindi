@@ -1038,12 +1038,13 @@ export function UpDownCard(props: UpDownCardProps) {
                     (8 real sites, not 4). Dropped for the same reason — see market-card.tsx. */}
                 <button type="button" onClick={go("UP")} className="btn btn-yes btn-lg"
                         aria-label={`${t.market.udUp} — ${assetName}`}>
-                  <I.trendingUp s={14} className={GLYPH_NO_SHRINK} /> {t.market.udUp}
+                  {/* The trend pictogram leads the centred pick, so its ink stands on the start padding (round 10, R10-A6). */}
+                  <I.trendingUp s={14} edge="start" className={GLYPH_NO_SHRINK} /> {t.market.udUp}
                   {outMultUp != null && <span className="font-mono text-[12.5px]">× {formatMultiplier(outMultUp)}</span>}
                 </button>
                 <button type="button" onClick={go("DOWN")} className="btn btn-no btn-lg"
                         aria-label={`${t.market.udDown} — ${assetName}`}>
-                  <I.trendingDown s={14} className={GLYPH_NO_SHRINK} /> {t.market.udDown}
+                  <I.trendingDown s={14} edge="start" className={GLYPH_NO_SHRINK} /> {t.market.udDown}
                   {outMultDown != null && <span className="font-mono text-[12.5px]">× {formatMultiplier(outMultDown)}</span>}
                 </button>
               </div>

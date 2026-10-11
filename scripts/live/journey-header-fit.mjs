@@ -75,8 +75,12 @@ export const RULES = [
   { id: "brand-lockup", sel: ".kp-jhdr__home > span:last-child", props: ["display"], want: (w) => (w < 1280 ? "none" : "flex"), when: "all" },
   // the "+" is a flex item of the pill (a .btn), so it blockifies too: shown, it computes "flex"
   { id: "plus", sel: ".kp-jhdr__plus", props: ["display"], want: (w) => (w < 360 ? "none" : "flex"), when: "pill" },
-  { id: "pill-left", sel: ".kp-jhdr__pill", props: ["padding-left"], want: (w) => (w < 360 ? "12px" : "10px"), when: "pill" },
-  { id: "pill-right", sel: ".kp-jhdr__pill", props: ["padding-right"], want: () => "12px", when: "pill" },
+  // Round 10 (R10-A6, a centred control frames its ink): from 360 the "+" stands on the pill's padding and gives back its
+  // 2.55-unit box gap (1.49px at 14px), so A5's 12/10 becomes the same 23.49px of padding shared evenly — the pill's width
+  // is unchanged — `calc(11px + 2.55 * 14px / 48)` = 11.74375px a side. A computed calc length serialises rounded, so
+  // these two compare as numbers (`tol`).
+  { id: "pill-left", sel: ".kp-jhdr__pill", props: ["padding-left"], want: (w) => (w < 360 ? "12px" : "11.74375px"), tol: 0.01, when: "pill" },
+  { id: "pill-right", sel: ".kp-jhdr__pill", props: ["padding-right"], want: (w) => (w < 360 ? "12px" : "11.74375px"), tol: 0.01, when: "pill" },
   { id: "figure", sel: ".kp-jbal__fig", props: ["font-size"], want: (w) => (w < 360 ? "12px" : "14px"), when: "capsule" },
   { id: "auth-pad", sel: ".kp-jhdr__auth", props: ["padding-left", "padding-right"], want: () => "14px", when: "guest" },
   { id: "auth-type", sel: ".kp-jhdr__auth", props: ["font-size"], want: () => "13px", when: "guest" },
@@ -128,7 +132,8 @@ export function ruleViolations(width, state, answers, route = "/") {
       return;
     }
     got.values.forEach((values) => values.forEach((v, j) => {
-      if (v !== want) out.push({ rule: rule.id, text: `${rule.id}: ${rule.props[j]} ${v}, not ${want}` });
+      const same = rule.tol != null ? Math.abs(Number.parseFloat(v) - Number.parseFloat(want)) <= rule.tol : v === want;
+      if (!same) out.push({ rule: rule.id, text: `${rule.id}: ${rule.props[j]} ${v}, not ${want}` });
     }));
   });
   return out;

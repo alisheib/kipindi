@@ -15,6 +15,7 @@ import { useState, useMemo, useEffect, useRef, useId } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/ui/glyphs";
 import { joinIds, useFieldWiring } from "@/components/ui/input";
+import { FIELD_CARET_PULL } from "@/components/ui/select";
 import { useModalLock } from "@/lib/use-modal-lock";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
@@ -421,7 +422,9 @@ export function DateSelect({ name, id, required, min, max, defaultValue, value, 
                   className="font-display text-[15px] font-semibold text-text hover:text-brand-300 transition-colors"
                   aria-label={t.common.pickYear}>
                   {MONTH_NAMES[viewMonth - 1]} {viewYear}
-                  <svg viewBox="0 0 12 12" width={10} height={10} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="inline-block ml-1.5 -mt-0.5" aria-hidden><path d="M3 4.5l3 3 3-3" /></svg>
+                  {/* The caret ends the centred title control, so its ink stands on the control's end (round 10, R10-A3/A6: a
+                      centred control frames its ink) — the Select's field caret, the same drawing and the same pull. */}
+                  <svg viewBox="0 0 12 12" width={10} height={10} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="inline-block ml-1.5 -mt-0.5" style={{ marginInlineEnd: FIELD_CARET_PULL }} aria-hidden><path d="M3 4.5l3 3 3-3" /></svg>
                 </button>
                 <button type="button" onClick={nextMonth} disabled={!canNext}
                   className="inline-flex h-8 w-8 items-center justify-center rounded-md text-text-subtle hover:bg-bg-overlay hover:text-text transition-colors disabled:opacity-30"

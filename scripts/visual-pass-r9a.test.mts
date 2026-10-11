@@ -406,7 +406,11 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
 {
   /** Every chevron, arrow and external mark drawn on a player surface: edge (its ink on its run's edge), text (its words'
    *  stroke), or the reason it keeps its box. A new site fails until it is added here with its class. */
-  const B = "a glyph inside a button: the button's even padding frames glyph and label as one group, and a pending spinner takes the glyph's slot";
+  // Round 10 (R10-A6) moved this pin: a centred control frames its INK, so a Button slot's mark is pulled onto the button's
+  // padding by the slot itself at render (`edgeGlyph`, button.tsx) and its SOURCE carries the stroke alone; a hand-built
+  // control's mark carries `edge` in its source (kind `text`). R9-A's reason — the spinner's swap — did not hold: Button's
+  // spinner was already 2px narrower than its glyph at lg (test:visual-pass-r10 §A6).
+  const B = "a Button slot's mark: the slot pulls its ink onto the button's padding at render (edgeGlyph, R10-A6), so its source carries the stroke alone";
   /** Each site's kind says what it must carry: `row` and `ghost` an edge (a row's end mark keeps the family's stroke),
    *  `text` an edge and its words' stroke, `button` and `float-text` the stroke alone (no edge to land on), `float-row`,
    *  `alone` and `frozen` neither. */
@@ -414,17 +418,23 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
   const SITES: Array<[string, string, number, Kind, string]> = [
     ['src/app/account/page.tsx', '<I.externalLink s={18} edge="end" className="kp-hub__chev" aria-hidden />', 1, "row", "the hub's staff row end"],
     ['src/app/agent/apply/apply-client.tsx', '<I.arrowRight s={14} text="body-600" />', 1, "button", B],
+    ['src/app/agent/apply/loading.tsx', '<I.arrowRight s={14} text="body-600" />', 1, "button", "its ghost's (ButtonGhost): the page's own mark, unpainted, pulled at render as Button pulls it (R10-A6)"],
+    ['src/app/agent/apply/loading.tsx', '<I.chevronLeft s={14} text="body-600" />', 1, "button", "its ghost's (ButtonGhost): the page's own mark, unpainted, pulled at render as Button pulls it (R10-A6)"],
     ['src/app/agent/apply/apply-client.tsx', '<I.chevronLeft s={14} text="body-600" />', 1, "button", B],
+    ['src/app/agent/loading.tsx', '<I.arrowRight s={16} text="body-600" />', 1, "button", "its ghost's (ButtonGhost): the page's own mark, unpainted, pulled at render as Button pulls it (R10-A6)"],
     ['src/app/agent/page.tsx', '<I.arrowRight s={16} text="body-600" />', 2, "button", B],
     ['src/app/agent/status/page.tsx', '<I.arrowRight s={14} text="body-600" />', 1, "button", B],
     ['src/app/auth/admin/page.tsx', '<I.chevronRight s={16} edge="end" className="text-text-subtle group-hover:text-text transition-colors" />', 1, "row", "the player row's end on the staff sign-in"],
     ['src/app/auth/forgot-password/page.tsx', '<I.chevronLeft s={14} edge="start" text="mono-400" />', 1, "text", "a back link's start"],
+    ['src/app/auth/login/page.tsx', '<I.arrowRight s={13} edge="end" text="display-700" />', 1, "text", "the error panel's way-on pill's end — round 10 (R10-A6) drew its typed → as the family's arrow at its Sora 700 stem"],
+    ['src/app/auth/register/register-form.tsx', '<I.arrowRight s={13} edge="end" text="display-700" />', 1, "text", "the error panel's way-on pill's end — the login page's twin (R10-A6)"],
     ['src/app/auth/reset-password/page.tsx', '<I.chevronLeft s={14} edge="start" text="mono-400" />', 1, "text", "a back link's start"],
     ['src/app/fairness/page.tsx', '<I.ext s={11} edge="end" text="mono-400" />', 1, "text", "a source link's end"],
     ['src/app/legal/rules/page.tsx', '<I.chevronRight s={14} className="shrink-0 text-text-subtle" />', 1, "frozen", "a rules card's row end — the file is in the published-words population D19a pins byte for byte (test:house-bot-disclosure 5.1) — named for the integrator"],
     ['src/app/markets/[id]/page.tsx', '<I.ext s={11} edge="start" text="mono-400" />', 1, "text", "the source address line's start"],
     ['src/app/markets/[id]/page.tsx', '<I.ext s={12} edge="end" text="mono-400" />', 1, "text", "the source link's end"],
     ['src/app/profile/activity/page.tsx', '<I.chevronRight s={12} edge="end" text="mono-400" />', 1, "text", "a text link's end"],
+    ['src/app/profile/kyc/page.tsx', '<I.arrowRight s={13} edge="end" text="display-600" />', 1, "text", "the footer's wallet link's end — round 10 (R10-A6): its typed arrow became the family's"],
     ['src/app/profile/loading.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-transparent" />', 2, "ghost", "the ghost of /profile's row ends, pulled as the page's are"],
     ['src/app/profile/notifications/page.tsx', '<I.chevronRight s={12} edge="end" text="mono-400" />', 1, "text", "a row cue's end, after its count"],
     ['src/app/profile/page.tsx', '<I.chevronRight s={16} edge="end" />', 2, "row", "the setting rows' and the sign-out row's end"],
@@ -437,14 +447,13 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/app/wallet/wallet-client.tsx', '<I.chevronRight s={16} edge="end" className="text-text-subtle" />', 1, "row", "the limits row's end"],
     ['src/components/charts/outcome-cubes.tsx', '<I.arrowRight s={9} />', 1, "alone", "alone in a cube: centred by its box"],
     ['src/components/home/landing-hero.tsx', '<I.arrowRight s={14} edge="end" text="body-600" />', 2, "text", "the home block's two text links"],
-    ['src/components/home/landing-hero.tsx', '<I.arrowRight s={16} text="body-600" />', 1, "button", B],
+    ['src/components/home/landing-hero.tsx', '<I.arrowRight s={16} edge="end" text="body-600" />', 1, "text", "the hero CTA's end: a centred control frames its ink (R10-A6)"],
     ['src/components/home/landing-hero.tsx', '<I.chevronRight s={14} edge="end" text="mono-700" />', 1, "text", "a section's see-all"],
     ['src/components/home/topic-tiles.tsx', '<I.chevronRight s={14} edge="end" text="mono-700" />', 1, "text", "a section's see-all"],
     ['src/components/home/trust-band.tsx', '<I.chevronRight s={14} edge="end" text="mono-700" />', 1, "text", "a section's see-all"],
     ['src/components/home/trust-band.tsx', '<I.externalLink s={11} edge="end" text="mono-400" />', 1, "text", "a source link's end"],
-    ['src/components/home/updown-band.tsx', '<I.chevronRight s={14} edge="end" text="body-600" />', 1, "text", "the Watch link's end"],
     ['src/components/home/updown-band.tsx', '<I.chevronRight s={14} edge="end" text="mono-700" />', 1, "text", "a section's see-all"],
-    ['src/components/home/updown-band.tsx', '<I.chevronRight s={14} text="body-600" />', 2, "button", B],
+    ['src/components/home/updown-band.tsx', '<I.chevronRight s={14} edge="end" text="body-600" />', 3, "text", "the Watch link's end, and the band's two buttons' ends: a centred control frames its ink (R10-A6)"],
     ['src/components/journey/account/hub-row.tsx', '<I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />', 1, "row", "the hub's row end"],
     ['src/components/journey/account/language-row.tsx', '<I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />', 1, "row", "the hub's row end (and its turn, 4.8)"],
     ['src/components/journey/account/unread-row.tsx', '<I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />', 1, "row", "the hub's row end"],
@@ -455,7 +464,7 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/components/markets/market-card.tsx', '<I.chevronRight s={12} edge="end" text="body-400" />', 1, "text", "the rules link's end"],
     ['src/components/markets/resolution-panel.tsx', '<I.ext s={11} edge="end" text="mono-400" />', 1, "text", "a source link's end"],
     ['src/components/markets/side-picker.tsx', '<I.chevronLeft s={10} text="mono-400" />', 1, "float-text", "it leads a right-aligned change-side link: no edge to land on, its words' stroke"],
-    ['src/components/onboarding/first-visit-primer.tsx', '<I.chevronRight s={14} text="body-600" />', 1, "button", B],
+    ['src/components/onboarding/first-visit-primer.tsx', '<I.chevronRight s={14} edge="end" text="body-600" />', 1, "text", "the primer's Next: a centred control frames its ink (R10-A6)"],
     ['src/components/proposals/proposals-state-views.tsx', '<I.arrowRight s={15} text="body-600" />', 1, "button", B],
     ['src/components/proposals/proposals-state-views.tsx', '<I.chevronLeft s={15} text="body-600" />', 1, "button", B],
     ['src/components/ui/back-link.tsx', '<I.chevronLeft s={11} edge="start" text="mono-400" />', 1, "text", "the back link's start"],
@@ -468,7 +477,7 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/components/ui/pagination.tsx', '<I.chevronsLeft s={14} />', 1, "alone", "alone in a control"],
     ['src/components/ui/pagination.tsx', '<I.chevronsRight s={14} />', 1, "alone", "alone in a control"],
     ['src/components/ui/propose-promo.tsx', '<I.arrowRight s={18} edge="end" />', 1, "row", "the promo card's row end"],
-    ['src/components/ui/route-error.tsx', '<I.arrowRight s={14} text="body-600" />', 1, "button", B],
+    ['src/components/ui/route-error.tsx', '<I.arrowRight s={14} edge="end" text="body-600" />', 1, "text", "the error view's way-back button's end: a centred control frames its ink (R10-A6)"],
     ['src/components/updown/updown-card.tsx', '<I.chevronRight s={10} text="mono-600" />', 1, "button", B],
     ['src/components/wallet/receipt-list-row.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle transition-colors duration-quick group-hover:text-text" aria-hidden />', 1, "row", "the receipt row's end"],
   ];

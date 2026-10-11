@@ -94,9 +94,10 @@ export function UpdownBand({ t, locale, liveCount, round }: {
                 className="btn btn-primary btn-lg max-w-full kp-updown__all"
                 style={{ whiteSpace: "normal" }}
               >
-                <I.trendingUp s={16} />
+                {/* Both marks on the button's padding (round 10, R10-A6: a centred control frames its ink). */}
+                <I.trendingUp s={16} edge="start" />
                 {t.home.updownCta}
-                <I.chevronRight s={14} text="body-600" />
+                <I.chevronRight s={14} edge="end" text="body-600" />
               </Link>
             </div>
           </div>
@@ -148,16 +149,20 @@ export function UpdownBand({ t, locale, liveCount, round }: {
             <UpdownMatchScore>
               {/* #stake: a pick lands on the round page's stake panel with the side locked — the bet slip — not
                   two screens above it (frame panel round 2). */}
+              {/* Round 10 (R10-A6): an arrow among words strokes at the label's Inter 600 stem, and leads a centred control,
+                  so its ink stands on the pick's start padding. */}
               <Link href={`${roundHref}?side=UP#stake` as never} className="btn btn-yes btn-lg kp-udbug__pick kp-udbug__pick--up">
-                <I.arrowUp s={16} />
+                <I.arrowUp s={16} edge="start" text="body-600" />
                 {w.up}
               </Link>
               <Link href={`${roundHref}?side=DOWN#stake` as never} className="btn btn-no btn-lg kp-udbug__pick kp-udbug__pick--down">
-                <I.arrowDown s={16} />
+                <I.arrowDown s={16} edge="start" text="body-600" />
                 {w.down}
               </Link>
-              <span className="kp-udbug__side kp-udbug__side--up" aria-hidden><I.lock s={14} />{w.up}</span>
-              <span className="kp-udbug__side kp-udbug__side--down" aria-hidden><I.lock s={14} />{w.down}</span>
+              {/* The picks' stand-ins at close (their exact box): the lock leads the centred words as the arrow did, so its
+                  ink stands on the start of the centred group too (round 10, R10-A6). */}
+              <span className="kp-udbug__side kp-udbug__side--up" aria-hidden><I.lock s={14} edge="start" />{w.up}</span>
+              <span className="kp-udbug__side kp-udbug__side--down" aria-hidden><I.lock s={14} edge="start" />{w.down}</span>
             </UpdownMatchScore>
 
             {/* G3 — the timeline (components/charts) */}
@@ -179,7 +184,7 @@ export function UpdownBand({ t, locale, liveCount, round }: {
             </Link>
             <Link href={"/updown" as never} className="btn btn-primary btn-lg kp-updown__next">
               {t.home.udMatchNextRound}
-              <I.chevronRight s={14} text="body-600" />
+              <I.chevronRight s={14} edge="end" text="body-600" />
             </Link>
           </div>
         </UpdownMatchState>

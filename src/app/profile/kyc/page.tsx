@@ -358,7 +358,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             </p>
             <EmailResendInline className="mt-2">
               <Link href="/profile/account" className="btn btn-ghost btn-sm btn-pill inline-flex items-center gap-1.5">
-                <I.user s={14} />
+                <I.user s={14} edge="start" />
                 {t.wallet.verifyChangeEmailCta}
               </Link>
             </EmailResendInline>
@@ -453,7 +453,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                       href={`mailto:${SUPPORT_EMAIL()}?subject=KYC%20review`}
                       className="btn btn-primary btn-md btn-pill inline-flex items-center gap-1.5"
                     >
-                      <I.mail s={14} />
+                      <I.mail s={14} edge="start" />
                       {t.kycGate.ctaSupport}
                     </a>
                     {/* The link blue, hover included, as this page's other address is (Ali's ruling (2) of 2026-10-10,
@@ -777,7 +777,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             </form>
             <details className="border-t border-border pt-3 text-[12.5px] text-text-muted">
               <summary className="font-display font-semibold text-text cursor-pointer flex items-center gap-2">
-                <I.shieldQuestion s={14} className="text-text-subtle shrink-0" />
+                <I.shieldQuestion s={14} edge="start" className="text-text-subtle shrink-0" />
                 {t.profile.whyWeAsk}
               </summary>
               <p className={`mt-1.5 leading-snug ${zhKeep}`}>
@@ -812,7 +812,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                     </p>
                     <div className="mt-3">
                       <Link href="/help" className="btn btn-primary btn-md btn-pill inline-flex items-center gap-1.5">
-                        <I.mail s={14} />
+                        <I.mail s={14} edge="start" />
                         {t.error.contactSupport}
                       </Link>
                     </div>
@@ -919,7 +919,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               withdraw panel's frozen state and the deposit notice use (support → /help). */}
           {walletHeld && !agentMode && (
             <Link href="/help" className="btn btn-ghost btn-md btn-pill mt-4 inline-flex items-center gap-1.5">
-              <I.mail s={14} />
+              <I.mail s={14} edge="start" />
               {t.kycGate.frozenCta}
             </Link>
           )}
@@ -955,18 +955,23 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       <div className="flex items-center justify-between pt-1 pr-[68px] md:pr-0">
         {/* The way back names the same hub as the back link at the top (2026-10-10, the v4 pass): the Akaunti hub under
             the journey, /profile otherwise — the two said different places under the journey. */}
+        {/* Round 10 (R10-A6): the two arrows were typed characters, drawn by each face a weight under its words (Inter's
+            arrow 0.105em at 600 against its 0.127em stem; JetBrains Mono's 0.080em against 0.090em at 400). They are the
+            family's arrows now, at their words' stem, their ink on the row's two edges. */}
         <Link
           href={journey ? "/account" : "/profile"}
-          className="font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text"
+          className="inline-flex items-center gap-1.5 font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text"
         >
-          ← {journey ? t.journey.tabAccount : t.common.profile}
+          <I.arrowLeft s={12} edge="start" text="mono-400" />
+          {journey ? t.journey.tabAccount : t.common.profile}
         </Link>
         <Link
           href="/wallet"
           /* A link is a control, never money: the product's link ink (brand-300, as R4-K's not-found link), not gold (R5-C). */
-          className="font-display text-[13px] font-semibold text-brand-300 hover:text-brand-200 transition-colors"
+          className="inline-flex items-center gap-1.5 font-display text-[13px] font-semibold text-brand-300 hover:text-brand-200 transition-colors"
         >
-          {t.common.wallet} →
+          {t.common.wallet}
+          <I.arrowRight s={13} edge="end" text="display-600" />
         </Link>
       </div>
     </PageContainer>

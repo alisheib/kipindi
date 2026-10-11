@@ -34,6 +34,7 @@
 import Link from "next/link";
 import { cn, formatNumber } from "@/lib/utils";
 import { LinkPending } from "@/components/ui/link-pending";
+import { edgeGlyph, hasWords } from "@/components/ui/glyphs";
 
 /**
  * A pill states its selection in one of two ways, and they are NOT interchangeable:
@@ -241,7 +242,9 @@ export function FilterPill({
          `<Link>` still cannot end up a different size from the pill beside it. */
       className={cn(filterPillClass({ rank, on }), className)}
     >
-      {glyph}
+      {/* Its ink on the pill's start padding (round 10, R10-A6 — glyphs.tsx, "A CENTRED CONTROL FRAMES ITS INK"); a glyph
+          with no label beside it is alone and keeps its box. */}
+      {hasWords(label) ? edgeGlyph(glyph, "start") : glyph}
       {label}
       {count != null && (
         <span

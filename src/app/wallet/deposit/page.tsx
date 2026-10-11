@@ -22,6 +22,7 @@ import { IdempotencyKeyField } from "@/components/wallet/idempotency-key-field";
 import { ProviderRadioGrid } from "@/components/wallet/provider-radio-grid";
 import { CardBillingFields } from "@/components/wallet/card-billing-fields";
 import { Callout } from "@/components/ui/callout";
+import { noticeBody } from "@/components/ui/empty-state-text";
 import { getPayoutStatus } from "@/lib/server/payout-status";
 import { PayoutStatusNotice } from "@/components/wallet/payout-status-notice";
 import { PageContainer } from "@/components/layout/page-container";
@@ -257,7 +258,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
               </Link>
             }
           >
-            <p className="text-balance break-keep [overflow-wrap:anywhere]">{t.wallet.depositPausedBody}</p>
+            <p className="text-balance break-keep [overflow-wrap:anywhere]">{noticeBody(t.wallet.depositPausedBody, { centred: true })}</p>
           </Callout>
         </div>
       ) : (

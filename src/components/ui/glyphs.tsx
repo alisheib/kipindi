@@ -86,13 +86,28 @@ export function plateGlyph(plateEdge: 36 | 40 | 44 | 48): number {
    stroke paints 0.87px, and on tile 194 the card's chevron read 0.6px across its arm against 2.0px for "Maelezo"'s Sora
    600 stems. A chevron, an arrow or an external-link mark that ends or starts a run of words is typography, so it takes
    the run's weight: its stroke is the stem of the run's face and weight (`GLYPH_STEM`, in em of the run's own type size,
-   never scaled by the glyph's box: `.kp-gtext` in globals.css) — in a button too, where the mark keeps its box but not a
-   lighter stroke. A pictogram beside words (the receipt, the wallet, a trend arrow) keeps the family's stroke.
-   ⛔ WHAT KEEPS ITS BOX, AND WHY: a glyph inside a button (the button's even padding frames glyph and label as one group,
-   and a pending spinner takes the glyph's slot — SubmitButton swaps them — so a pulled glyph would make the label jump), a
-   glyph alone in a control or a plate (its box centres it, and its drawing is centred in the box — the census below), a
-   column of row glyphs (the hub's, a menu's: they align on one axis, whatever each draws), and a glyph between words.
-   `test:visual-pass-r9a` holds every site to one of these. */
+   never scaled by the glyph's box: `.kp-gtext` in globals.css) — in a button too. ONE WEIGHT FOR EVERY ARROW AMONG WORDS
+   (round 10, R10-A6): the wallet's "↓ Weka pesa" / "↑ Toa pesa" drew the family's 1.11px shaft beside "→ Omba sasa"'s
+   2.07px (tiles 174 198). A pictogram beside words (the receipt, the wallet, a trend arrow, an arrow off a line — deposit,
+   withdraw) keeps the family's stroke.
+   ⭐ A CENTRED CONTROL FRAMES ITS INK (round 10, R10-A6, 2026-10-11 — tiles 132–137): a glyph that starts or ends the content
+   of a button, a door, a pill, a tab or a menu summary puts its ink on the control's content edge, as one at a run's edge
+   does, so the control's even padding frames what the eye sees. The wallet sheet's Withdraw door drew its ↑ 10.6px of ink
+   in a 16px box and its content sat 0.86 (sw), 1.47 (en) and 1.36 (zh) px right of centre; pulled by its 2.7px gap it
+   centres within the label's own side bearing (under 0.5px), as the held capsule's lock already did (R9-A4). The slots do
+   it (`Button` leading/trailing, `SubmitButton`, `RgConfirmSubmit`, `FilterPill`, `Tabs`), hand-built controls by `edge`.
+   A pending spinner that takes the glyph's slot is pulled by its own ink gap (`SPINNER_INK_GAP`, spinner.tsx), so the
+   label moves LESS than it did when the spinner arrives (/agent's 16px `user` stands 12.97px wide pulled, the lg spinner
+   13.13 — where the two boxes were 16 and 14). ⛔ R9-A's reason for keeping a button's glyph boxed did not hold: Button's
+   spinner was already 2px narrower than its glyph at lg, and SubmitButton swaps its label as well.
+   ⛔ WHAT KEEPS ITS BOX, AND WHY: a glyph alone in a control or a plate (its box centres it, and its drawing is centred in
+   the box — the census below), a column of row glyphs (the hub's, a menu's: they align on one axis, whatever each draws),
+   a glyph between words, and a TAG's glyph (a chip, a status flag, a status pill — a label that states, not a control):
+   its uppercase words are tracked (0.04–0.11em), and the tracking a browser adds after the last letter stands opposite the
+   glyph's box gap, so drawn by its box a tag stands within 0.6px of centre by its ink (computed for each, `test:visual-
+   pass-r10` §6.10), where a glyph pull alone would leave it as far the other way. Centring a tag exactly also takes that
+   trailing tracking back, which R7-C kept off centred labels — an owner question (K42); until it is ruled, tags keep their
+   box. `test:visual-pass-r9a` and `test:visual-pass-r10` hold every site to one of these. */
 
 /** A stem as a fraction of its type size, for each face and weight a mark is set among — read from the faces themselves:
  *  `body` is Inter (its `l`: 400 0.0879 · 500 0.1074 · 700 0.1465, the repo's own TTFs; 600 between 500 and 700), `display`
@@ -267,6 +282,30 @@ export function edgeGlyph(node: ReactNode, edge: GlyphEdge): ReactNode {
   return cloneElement(node as ReactElement<GlyphProps>, { edge });
 }
 
+/** A family glyph's gap between its box and its ink on each side, in px at its size: exactly what `edge` pulls it by, from
+ *  the same reading of its drawing. For a mark that strokes at its words' stem (`text`) the answer is in em, so null — as
+ *  for anything that is not a family glyph on the 24 grid (round 10: the search box's spinner takes the magnifier's slot
+ *  at the magnifier's own width, so the words beside it never move). */
+export function glyphInkGaps(node: ReactNode): { start: number; end: number } | null {
+  if (!isValidElement(node) || !GLYPH_SET.has(node.type)) return null;
+  const p = node.props as GlyphProps;
+  if (p.text) return null;
+  const drawn = (node.type as (q: GlyphProps) => ReactElement<{ children?: ReactNode }>)(p);
+  if (!isValidElement(drawn) || drawn.type !== G) return null;
+  const parts = partsOf(drawn.props.children, p.strokeWidth != null ? Number(p.strokeWidth) : 1.9);
+  const k = (p.s ?? 24) / 24;
+  return {
+    start: fix(Math.min(...parts.map((q) => q.x0 - q.w / 2)) * k),
+    end: fix((24 - Math.max(...parts.map((q) => q.x1 + q.w / 2))) * k),
+  };
+}
+
+/** Does a control's content hold anything but white space — words, a figure, an element? A slot's glyph with nothing
+ *  beside it is alone in its control and keeps its box (round 10, R10-A6). */
+export function hasWords(content: ReactNode): boolean {
+  return Children.toArray(content).some((c) => typeof c !== "string" || c.trim() !== "");
+}
+
 /* The ONE 64-grid wrapper — every empty-state line-art uses it.
  *
  * ⚠️ There used to be two (`GL` at 1.9 and `G64` at 2.2), so neighbouring empty
@@ -365,6 +404,10 @@ const Ibase = {
   arrowDown: (p: GlyphProps) => <G {...p}><path d="M12 5v14M6 13l6 6 6-6" /></G>,
   arrowUp: (p: GlyphProps) => <G {...p}><path d="M12 19V5M6 11l6-6 6 6" /></G>,
   arrowRight: (p: GlyphProps) => <G {...p}><path d="M5 12h14M13 6l6 6-6 6" /></G>,
+  /* `arrowRight` mirrored (round 10, R10-A6): the back links that typed "←" as a character drew their face's own arrow, a
+     weight under their words (JetBrains Mono's shaft 0.080em at 400 against its 0.090em stem; Inter's 0.105em at 600
+     against 0.127em), so they draw this, at their words' stem. */
+  arrowLeft: (p: GlyphProps) => <G {...p}><path d="M19 12H5M11 6l-6 6 6 6" /></G>,
   play: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="9" /><path d="M10 8.5l5.5 3.5L10 15.5z" fill="currentColor" stroke="none" /></G>,
   download: (p: GlyphProps) => <G {...p}><path d="M12 5v10M7 12l5 5 5-5M5 19h14" /></G>,
   upload: (p: GlyphProps) => <G {...p}><path d="M12 15V5M7 8l5-5 5 5M5 19h14" /></G>,

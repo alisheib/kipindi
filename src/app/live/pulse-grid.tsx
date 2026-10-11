@@ -255,8 +255,10 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
             </span>
           ) : (
             // The translated category, never the stored id (that printed CRYPTO / SPORTS on sw and zh pages).
+            // Its glyph leads the card's eyebrow line, so its ink stands on the card's content edge (R9-A4's eyebrow rule,
+            // carried here by round 10: a category glyph is a variable component, which R9-A's census could not read).
             <span className={`inline-flex items-center gap-1.5 ${TAG_BOX_Y} border-transparent`}>
-              <Cat s={13} />{marketCategoryLabel(t, market.category)}
+              <Cat s={13} edge="start" />{marketCategoryLabel(t, market.category)}
             </span>
           )}
         </span>

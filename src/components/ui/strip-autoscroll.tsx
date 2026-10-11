@@ -26,7 +26,7 @@
  * discovery contract into the browser bundle.
  */
 import { useEffect, useLayoutEffect, useRef } from "react";
-import { centredScrollLeft } from "@/lib/strip-scroll";
+import { centredScrollLeft, stripPeekCut, STRIP_PEEK_REST_MS, type StripItem } from "@/lib/strip-scroll";
 
 /**
  * ⭐ WHICH EDGES HAVE MORE CHIPS BEYOND THEM — 2026-10-08 · G1 [220 221 223 224 226 227 249 250 · 193 191].
@@ -41,12 +41,70 @@ import { centredScrollLeft } from "@/lib/strip-scroll";
  * ⚠️ 1px of slack each way: `scrollLeft` is fractional on a high-density screen and a strip scrolled to its
  * end can stop half a pixel short of `scrollWidth - clientWidth`.
  */
-function markEdges(rail: HTMLElement) {
+function markEdges(rail: HTMLElement, scrolling = false) {
   const max = rail.scrollWidth - rail.clientWidth;
   const before = max > 1 && rail.scrollLeft > 1;
   const after = max > 1 && rail.scrollLeft < max - 1;
   const edges = before && after ? "both" : before ? "start" : after ? "end" : "none";
   if (rail.getAttribute("data-edges") !== edges) rail.setAttribute("data-edges", edges);
+  markPeek(rail, scrolling);
+}
+
+/** Where each strip's cut was last read (its scrollLeft), and the timer that reads it again once a scroll rests. */
+const peekReadAt = new WeakMap<HTMLElement, number>();
+const peekRest = new WeakMap<HTMLElement, number>();
+
+/**
+ * ⭐ ROUND 10 (R10-D, tiles 171 204) · …AND THE FADE NEVER ENDS ON A GAP. Where a strip's items stop is decided by its width
+ * alone, so its edge can fall between two pills (/results at sw 390: the fourth lens began exactly on the clip and the
+ * ramp dimmed only HAPANA's grey "2" — the row read as finished). `stripPeekCut` (lib/strip-scroll.ts) says how far each
+ * fade's end must move in so that a word is visibly cut there, and the strip publishes it (`--strip-cut-end`,
+ * `--strip-cut-start`), which the mask in globals.css reads. Nothing in the strip moves, only where its fade lies.
+ * ⭐ …AND THE CUT NEVER JUMPS UNDER THE READER'S FINGER. Read on every scroll, its end would ride on the pill before the
+ * hidden one and then jump — back by half a pill as a pill's end crossed the edge, forward by half a pill and a peek as the
+ * next one showed 32px (`test:visual-pass-r10` §10.5 counts them on tile 171's strip). So the cut is read where the strip
+ * RESTS — on load, after its own frame, a resize, the fonts landing, keyboard focus moving — and LIFTED while the reader
+ * scrolls (the fades back on their edges), read again STRIP_PEEK_REST_MS after the last scroll. The two lengths are
+ * registered (globals.css), so each change slides; `data-peek-live`, which switches the slide on, is set at the reader's
+ * first scroll, so no first paint animates. ⛔ A lens keyboard focus is on is never the one cut (`:focus-within`).
+ */
+function markPeek(rail: HTMLElement, scrolling = false) {
+  if (scrolling) {
+    // StripAutoScroll's own frame scrolls the strip and reads it in the same task: the scroll event that follows is not
+    // the reader's.
+    if (peekReadAt.get(rail) === rail.scrollLeft) return;
+    if (!rail.hasAttribute("data-peek-live")) rail.setAttribute("data-peek-live", "");
+    publishCut(rail, 0, 0);
+    window.clearTimeout(peekRest.get(rail));
+    peekRest.set(rail, window.setTimeout(() => { peekRest.delete(rail); markPeek(rail); }, STRIP_PEEK_REST_MS));
+    return;
+  }
+  // A read while the reader is still scrolling waits for the strip to rest: the timer reads it then.
+  if (peekRest.has(rail)) return;
+  const box = rail.getBoundingClientRect();
+  const origin = box.left + rail.clientLeft - rail.scrollLeft;
+  const items: StripItem[] = [];
+  for (const el of Array.from(rail.children) as HTMLElement[]) {
+    if (el.offsetWidth === 0) continue;
+    const r = el.getBoundingClientRect();
+    items.push({
+      left: r.left - origin, right: r.right - origin,
+      pressed: el.getAttribute("aria-pressed") === "true" || el.getAttribute("aria-current") === "page" || el.matches(":focus-within"),
+    });
+  }
+  const cut = stripPeekCut({ items, scrollLeft: rail.scrollLeft, clientWidth: rail.clientWidth, scrollWidth: rail.scrollWidth });
+  publishCut(rail, cut.end, cut.start);
+  peekReadAt.set(rail, rail.scrollLeft);
+}
+
+function publishCut(rail: HTMLElement, end: number, start: number) {
+  for (const [name, v] of [["--strip-cut-end", end], ["--strip-cut-start", start]] as const) {
+    const want = v > 0 ? `${v}px` : "";
+    if (rail.style.getPropertyValue(name) !== want) {
+      if (want) rail.style.setProperty(name, want);
+      else rail.style.removeProperty(name);
+    }
+  }
 }
 
 /** Rails that already carry a scroll listener — a fact about the ELEMENT, so it lives and dies with it. ⛔ Not
@@ -91,7 +149,10 @@ export function StripAutoScroll() {
       // and are set now, so a strip that needs no framing is right on this render too.
       if (!watched.has(rail)) {
         watched.add(rail);
-        rail.addEventListener("scroll", () => markEdges(rail), { passive: true });
+        rail.addEventListener("scroll", () => markEdges(rail, true), { passive: true });
+        // A lens keyboard focus reaches is never the one cut, so focus moving in or out reads the cut again.
+        rail.addEventListener("focusin", () => markPeek(rail));
+        rail.addEventListener("focusout", () => markPeek(rail));
       }
       markEdges(rail);
       // Nothing to correct when everything already fits — and this is also what makes the

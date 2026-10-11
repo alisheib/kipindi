@@ -75,6 +75,7 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
+import { noticeBody } from "@/components/ui/empty-state-text";
 import { useT } from "@/lib/i18n";
 import { fill } from "@/lib/utils";
 import type { KycPanelState } from "@/lib/kyc-gate-state";
@@ -261,7 +262,9 @@ export function KycGatePanel({
           measure split a two-character word across the break; overflow-wrap still lets an over-long run wrap.
           2026-10-10 — and the title too (the screenshot pass): it was the one zh line here still free to split a word. */}
       <h3 className={`mt-1.5 font-display text-[18px] font-bold text-text leading-tight text-balance ${zhKeep}`}>{copy.title}</h3>
-      <p className={`mt-1.5 text-body-sm text-text-muted leading-snug max-w-[42ch] mx-auto text-balance ${zhKeep}`}>{copy.body}</p>
+      {/* Round 10 (R10-B): the panel's sentence is a centred notice body: its phrases and its last two words held
+          ("utambulisho wako", "your identity"), its Chinese marks hung (`noticeBody`, `centred`). */}
+      <p className={`mt-1.5 text-body-sm text-text-muted leading-snug max-w-[42ch] mx-auto text-balance ${zhKeep}`}>{noticeBody(copy.body, { centred: true })}</p>
       {emailOnly && address && (
         // The address the link went to — mono, wrapped anywhere, never truncated: a player checks it character by character.
         <p data-kyc-email-address className="mt-3 mx-auto max-w-[42ch] rounded-control border border-border bg-bg-inset px-3 py-2 font-mono text-body-sm text-text break-all">
@@ -276,13 +279,15 @@ export function KycGatePanel({
       {(spec.cta === "verify" || spec.cta === "support") && (
         <div>
           <Link href={href as never} className="btn btn-primary btn-md btn-pill mt-4 inline-flex items-center gap-1.5">
-            {spec.cta === "support" ? <I.mail s={14} /> : <I.shieldcheck s={14} />}
+            {spec.cta === "support" ? <I.mail s={14} edge="start" /> : <I.shieldcheck s={14} edge="start" />}
             {copy.cta}
           </Link>
         </div>
       )}
       {emailOnly && (
         <>
+          {/* Every door here puts its glyph's ink on its start padding — the Buttons by their slot, the links by `edge`
+              (round 10, R10-A6: a centred control frames its ink). */}
           <div className="mt-4 flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:items-center">
             {address ? (
               <>
@@ -290,13 +295,13 @@ export function KycGatePanel({
                   {t.wallet.verifyResendCta}
                 </Button>
                 <Link href={accountHref as never} className="btn btn-ghost btn-md btn-pill inline-flex items-center justify-center gap-1.5">
-                  <I.user s={14} />
+                  <I.user s={14} edge="start" />
                   {t.wallet.verifyChangeEmailCta}
                 </Link>
               </>
             ) : (
               <Link href={accountHref as never} className="btn btn-primary btn-md btn-pill inline-flex items-center justify-center gap-1.5">
-                <I.mail s={14} />
+                <I.mail s={14} edge="start" />
                 {t.wallet.verifyAddEmailCta}
               </Link>
             )}
@@ -318,13 +323,13 @@ export function KycGatePanel({
                 </Button>
                 {/* A mistyped address is fixed from here too — the same door as the email-only card. */}
                 <Link href={accountHref as never} className="btn btn-ghost btn-sm btn-pill inline-flex items-center gap-1.5">
-                  <I.user s={14} />
+                  <I.user s={14} edge="start" />
                   {t.wallet.verifyChangeEmailCta}
                 </Link>
               </>
             ) : (
               <Link href={accountHref as never} className="btn btn-ghost btn-sm btn-pill inline-flex items-center gap-1.5">
-                <I.mail s={14} />
+                <I.mail s={14} edge="start" />
                 {t.wallet.verifyAddEmailCta}
               </Link>
             )}

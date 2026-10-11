@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
 import { Callout } from "@/components/ui/callout";
+import { noticeBody } from "@/components/ui/empty-state-text";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
@@ -112,7 +113,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
       {/* DS-26 — the kit Callout, not a bespoke box, for the outcome of a
           protection-limit change (consequential; `live` announces promptly). */}
       {banner && (
-        <Callout tone={banner.tone} live>{banner.body}</Callout>
+        <Callout tone={banner.tone} live>{noticeBody(banner.body)}</Callout>
       )}
       {sp.saved && !banner && (
         <Callout tone="success" live>{t.rg.limitsSaved}</Callout>

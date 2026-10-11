@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { I, edgeGlyph } from "@/components/ui/glyphs";
 import { FilterGroupKey } from "@/components/ui/filter-pill";
 import { QUERY_GROUP_CLASS } from "@/components/ui/query-bar";
 
@@ -20,12 +21,14 @@ import { QUERY_GROUP_CLASS } from "@/components/ui/query-bar";
  *    region, no `data-result-count` (`qa:count-truth` reads that one). The drawing is hidden from a screen reader.
  */
 
-/** A pill while it loads: `filterPillClass`'s box (its geometry, not its ink) with the label set and not shown. A glyph
- *  takes its 14px place before the label; `amount` sets the label as money (`.amount`, as the pool floors are set). */
-export function PillGhost({ label, glyph = false, amount = false }: { label: ReactNode; glyph?: boolean; amount?: boolean }) {
+/** A pill while it loads: `filterPillClass`'s box (its geometry, not its ink) with the label set and not shown. A glyph is
+ *  the page's own, before the label, unpainted (the pill's ink is transparent) and pulled onto the padding as FilterPill
+ *  pulls it (round 10, R10-A6: each category glyph's gap is its own, so a box could not stand in); `amount` sets the label
+ *  as money (`.amount`, as the pool floors are set). */
+export function PillGhost({ label, glyph, amount = false }: { label: ReactNode; glyph?: ReactNode; amount?: boolean }) {
   return (
     <span className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-pill border border-transparent bg-bg-overlay px-3 text-[13px] font-semibold text-transparent kp-shimmer-track">
-      {glyph && <span className="h-[14px] w-[14px] shrink-0" />}
+      {glyph ? edgeGlyph(glyph, "start") : null}
       {amount ? <span className="amount">{label}</span> : label}
       <span className="font-mono text-[11px] font-bold tabular-nums">00</span>
     </span>
@@ -59,7 +62,8 @@ export function SortGhost({ label, value }: { label: string; value: string }) {
       <span className="kp-shimmer-track inline-flex min-h-[44px] w-full min-w-[var(--tap-min)] items-center justify-center gap-1.5 rounded-l-pill border border-r-0 border-transparent bg-bg-elevated px-1.5 text-transparent lg:gap-2 lg:px-3">
         <span className="hidden shrink-0 font-mono text-micro font-bold uppercase eyebrow lg:inline">{label}</span>
         <span className="kp-menu-value min-w-0 truncate text-[13px] font-semibold">{value}</span>
-        <span className="h-[14px] w-[14px] shrink-0" />
+        {/* The page's own caret, unpainted, its ink on the end padding as the page's is (round 10, R10-A6). */}
+        <I.chevronDown s={14} edge="end" aria-hidden className="shrink-0" />
       </span>
       <span className="h-[44px] w-[44px] shrink-0 rounded-r-pill border border-transparent bg-bg-elevated kp-shimmer-track" />
     </div>
@@ -74,9 +78,11 @@ export function FiltersGhost({ label }: { label: string }) {
   return (
     <div className="kp-fsheet lg:hidden">
       <span className="kp-fsheet-trigger kp-shimmer-track items-center border border-transparent bg-bg-elevated font-semibold text-transparent" data-shape="pill">
-        <span className="h-[15px] w-[15px] shrink-0" />
+        {/* The page's own sliders and caret, unpainted and pulled onto the padding as the page's are (round 10, R10-A6) —
+            and alone in the compact bar the sliders' pull is undone by the same rule (`.kp-fsheet-glyph`). */}
+        <I.sliders s={15} edge="start" aria-hidden className="kp-fsheet-glyph shrink-0" />
         <span className="kp-fsheet-trigger-label">{label}</span>
-        <span className="kp-fsheet-caret h-[14px] w-[14px] shrink-0" />
+        <I.chevronDown s={14} edge="end" aria-hidden className="kp-fsheet-caret shrink-0" />
       </span>
     </div>
   );
@@ -92,7 +98,8 @@ export function MenuGhost({ label, value }: { label: string; value: string }) {
         <span className="min-w-0 truncate text-[13px] font-semibold">{value}</span>
         {/* The count's two-digit room: two mono digits at 11px (2 × 0.6em). */}
         <span className="h-[14px] w-[13.2px] shrink-0" />
-        <span className="h-[14px] w-[14px] shrink-0" />
+        {/* The page's own caret, unpainted, its ink on the end padding as the page's is (round 10, R10-A6). */}
+        <I.chevronDown s={14} edge="end" aria-hidden className="shrink-0" />
       </span>
     </div>
   );

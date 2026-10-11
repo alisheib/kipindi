@@ -6,6 +6,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { OtpInput } from "@/components/ui/otp-input";
 import { FieldLegend } from "@/components/ui/field-legend";
 import { CountdownPill } from "@/components/ui/countdown-pill";
+import { I } from "@/components/ui/glyphs";
 import { verifyLoginOtpAction, resendOtpAction } from "../login/actions";
 import { ResendOtpButton } from "@/components/auth/resend-otp-button";
 import { OtpExpiryCountdown } from "@/components/auth/otp-expiry-countdown";
@@ -95,11 +96,17 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
           </form>
 
           <div className="flex items-center justify-between border-t border-border pt-3">
+            {/* Round 10 (R10-A6): the family's arrow at its words' stem, its ink on the row's start (the typed "←" was the
+                mono face's own arrow, 0.080em against its 0.090em stem). Squeezed beside the resend link (a 224px row at
+                320), the words wrap — "BADILISHA" / "NAMBARI" at sw 320–390, "CHANGE" / "NUMBER" at en 320 — and the arrow
+                stays on the FIRST line, as the typed one did: `items-start`, the 12px glyph centred on the label's 16px line
+                by `mt-0.5` (2px). */}
             <Link
               href={`/auth/login${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : ""}` as never}
-              className="font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text transition-colors"
+              className="inline-flex items-start gap-1.5 font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text transition-colors"
             >
-              ← {t.common.changeNumber}
+              <I.arrowLeft s={12} edge="start" text="mono-400" className="mt-0.5" />
+              {t.common.changeNumber}
             </Link>
             <form action={resendOtpAction}>
               <input type="hidden" name="phone" value={phone} />

@@ -358,7 +358,8 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, 
               <div className="kp-hero__ctas">
                 <Link href={"/auth/register" as never} className="btn btn-primary btn-xl rounded-pill kp-hero__cta">
                   {t.home.heroStart}
-                  <I.arrowRight s={16} text="body-600" />
+                  {/* Its ink on the button's end padding (round 10, R10-A6: a centred control frames its ink). */}
+                  <I.arrowRight s={16} edge="end" text="body-600" />
                 </Link>
                 <Link href={"/markets" as never} className="btn btn-ghost btn-xl rounded-pill kp-hero__cta">
                   {fill(t.home.heroBrowseAll, { n: formatNumber(figures.openCount) })}
@@ -475,7 +476,8 @@ function SignedInAct({ t, mine, journey }: { t: Dict; mine: LandingMine | null; 
       {held ? (
         <div className="kp-mine__held" role="status">
           <p className="kp-mine__held-t">{t.kycGate.frozenTitle}</p>
-          <p className="kp-mine__held-b">{t.kycGate.frozenBody}</p>
+          {/* Held as its sibling break notice is (`keepText`: its last two words, and — round 10, R10-B — its phrases). */}
+          <p className="kp-mine__held-b">{keepText(t.kycGate.frozenBody)}</p>
         </div>
       ) : breakEnd ? (
         <div className="kp-mine__held" role="status" data-testid="landing-mine-break">

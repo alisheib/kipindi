@@ -39,12 +39,16 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { I } from "@/components/ui/glyphs";
+import { I, glyphInkGaps } from "@/components/ui/glyphs";
 import { Spinner } from "@/components/ui/spinner";
 import { SearchHelp } from "@/components/ui/search-help";
 import { parseQuery, describeQuery, MAX_QUERY_LEN } from "@/lib/search";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+
+/** The magnifier's box-to-ink gaps at its 16px, read from its drawing (2.7px at its start) — the width its slot keeps when
+ *  the spinner takes it (round 10, R10-A7). */
+const GLASS_GAPS = glyphInkGaps(<I.search s={16} />);
 
 type Props = {
   /** URL param. Defaults to `q`. */
@@ -151,8 +155,14 @@ export function SearchBox({
   return (
     <div className={cn("search-box-wrap", className)}>
       <div className="input-group search-box">
+        {/* ⭐ Round 10 (R10-A7, tiles 172 194): the magnifier leads the field, so its ink stands on the prefix's 14px padding
+            (`edge`), as a field's leading glyph does (the filter field's sliders) — it stood 16.76px in, the ⓘ at the far
+            end 13.34. The ⓘ is a glyph ALONE in its 40px tap target and keeps its box (glyphs.tsx): centred, its ink stands
+            12.5 + 1.28 = 13.78px from the border (13.34 drawn: its 15px box is snapped from a half pixel). So the two insets
+            are 14.0 and 13.78 by construction. The spinner that takes the magnifier's slot while a search runs stands on
+            the same edge by its own ink and takes the magnifier's exact width (`slotPull`), so the words never move. */}
         <span className="prefix" aria-hidden>
-          {searching ? <Spinner size={16} /> : <I.search s={16} />}
+          {searching ? <Spinner size={16} edge="start" slotPull={GLASS_GAPS?.start} /> : <I.search s={16} edge="start" />}
         </span>
         <input
           ref={inputRef}

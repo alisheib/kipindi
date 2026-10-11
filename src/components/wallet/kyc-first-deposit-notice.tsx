@@ -48,6 +48,7 @@
 import Link from "next/link";
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { Callout } from "@/components/ui/callout";
+import { noticeBody } from "@/components/ui/empty-state-text";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { KYC_NOTICE_COOKIE, KYC_NOTICE_MAX_AGE_S, type FirstDepositNotice } from "@/lib/kyc-notice";
@@ -115,7 +116,7 @@ export function KycFirstDepositNotice({
       {/* The right padding keeps the sentence clear of the dismiss target laid over the box's edge. */}
       <Callout tone="info" glyph={v.glyph} size="sm" className="pr-[48px]">
         <p className="text-body-sm leading-snug text-text-secondary">
-          {body}{" "}
+          {noticeBody(body)}{" "}
           {/* ⚠️ Plain /profile/kyc, NOT `?next=/wallet/withdraw`. The KYC page honours a safe `next`,
               but only as a "Continue" on the approved state, and none of its form actions carry it
               forward — and this line answers no refused action, so there is nothing to return to. */}

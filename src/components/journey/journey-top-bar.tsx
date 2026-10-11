@@ -195,7 +195,8 @@ export function JourneyTopBar({
               data-testid="journey-deposit"
               className="btn gilt-metal btn-md btn-pill kp-jhdr__pill"
             >
-              <span aria-hidden className="kp-jhdr__plus"><I.plus s={14} /></span>
+              {/* Its ink on the pill's start padding (round 10, R10-A6: a centred control frames its ink). */}
+              <span aria-hidden className="kp-jhdr__plus"><I.plus s={14} edge="start" /></span>
               <span>{t.journey.depositAction}</span>
             </Link>
           )}

@@ -154,7 +154,8 @@ export function TicketsView({ rows, positions, markets, prices, lens, page, serv
       {hasTickets && (
         <div>
           <Link href={"/positions/performance" as never} className="btn btn-ghost btn-sm inline-flex items-center gap-1.5">
-            <I.chart s={13} />
+            {/* Its ink on the button's start padding (round 10, R10-A6: a centred control frames its ink). */}
+            <I.chart s={13} edge="start" />
             {t.performance.viewPerformance}
           </Link>
         </div>

@@ -25,6 +25,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CloseX, Modal } from "@/components/ui/modal";
 import { Callout } from "@/components/ui/callout";
+import { noticeBody } from "@/components/ui/empty-state-text";
 import { I } from "@/components/ui/glyphs";
 import { haptics } from "@/lib/haptics";
 import { HouseLeanWarning } from "./house-lean-warning";
@@ -412,7 +413,7 @@ export function BetConfirmModal({
         {showBusy && (
           <div className="mt-4">
             <Callout tone="info" glyph="clock" live>
-              {t.dialog.busyHolding}
+              {noticeBody(t.dialog.busyHolding)}
             </Callout>
           </div>
         )}

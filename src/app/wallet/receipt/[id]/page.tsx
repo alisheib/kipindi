@@ -144,13 +144,14 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
         )}
       </dl>
 
+      {/* Each door's glyph puts its ink on the door's start padding (round 10, R10-A6: a centred control frames its ink). */}
       <div className="flex flex-col sm:flex-row gap-2">
         <Link href="/wallet/receipts" className="btn btn-ghost btn-lg btn-pill w-full inline-flex items-center justify-center gap-1.5">
-          <I.receipt s={14} />
+          <I.receipt s={14} edge="start" />
           {t.receipts.allReceipts}
         </Link>
         <Link href="/wallet" className="btn btn-ghost btn-lg btn-pill w-full inline-flex items-center justify-center gap-1.5">
-          <I.wallet s={14} />
+          <I.wallet s={14} edge="start" />
           {t.error.backToWallet}
         </Link>
       </div>

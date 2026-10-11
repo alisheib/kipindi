@@ -21,6 +21,11 @@ import { useFieldWiring } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 
+/** The field caret's pull onto its end padding (round 10, R10-A3): its 12-unit drawing ("M3 4.5l3 3 3-3", stroke 2, round
+ *  caps) inks x2–10, so at its 10px its ink stands 2/12 × 10 = 1.667px inside each side. DateSelect's month-title caret is
+ *  the same drawing at the same size and takes the same pull. */
+export const FIELD_CARET_PULL = `${-Math.round((2 / 12) * 10 * 1000) / 1000}px`;
+
 type Option = {
   value: string;
   label: string;
@@ -452,7 +457,11 @@ export function Select({
         <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
           {selectedOption?.label ?? placeholder ?? t.common.selectPlaceholder}
         </span>
-        <svg viewBox="0 0 12 12" width={10} height={10} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="shrink-0 text-text-subtle" aria-hidden>
+        {/* ⭐ Round 10 (R10-A3): the caret ends the field, so its ink stands on the field's end padding, as the filter
+            field's and every row end's does (glyphs.tsx's edge rule). This caret is the field's own 12-unit drawing, not
+            the family's: its path spans x3–9 and its round caps reach 1 unit beyond, so its ink stands 2 units — 1/6 of its
+            10px box, 1.667px — inside each side, and it is pulled by exactly that (`FIELD_CARET_PULL`). */}
+        <svg viewBox="0 0 12 12" width={10} height={10} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="shrink-0 text-text-subtle" style={{ marginInlineEnd: FIELD_CARET_PULL }} aria-hidden>
           <path d="M3 4.5l3 3 3-3" />
         </svg>
       </button>

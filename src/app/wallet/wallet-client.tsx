@@ -768,14 +768,17 @@ export function WalletPageClient({
                 invited to make one; Withdraw stays, because its screen explains the freeze.
                 2026-10-06 — nor is a player on a break (`depositOpen`, decided on the server); Withdraw stays here too,
                 because a break does not stop withdrawals. */}
+            {/* Round 10 (R10-A6, tiles 173 174): each arrow is an arrow among words, so it strokes at the label's Inter 600
+                stem (it drew the family's 1.11px shaft beside "→ Omba sasa"'s 2.07), and it leads a centred control, so its
+                ink stands on the button's start padding. */}
             {depositOpen && (
             <Link href="/wallet/deposit" className="btn btn-primary btn-md btn-pill inline-flex">
-              <I.arrowDown s={14} />
+              <I.arrowDown s={14} edge="start" text="body-600" />
               {journey ? t.journey.depositAction : t.common.deposit}
             </Link>
             )}
             <Link href="/wallet/withdraw" className="btn btn-ghost btn-md btn-pill inline-flex">
-              <I.arrowUp s={14} />
+              <I.arrowUp s={14} edge="start" text="body-600" />
               {journey ? t.journey.withdrawAction : t.common.withdraw}
             </Link>
           </div>

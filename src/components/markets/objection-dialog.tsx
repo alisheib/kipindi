@@ -22,6 +22,7 @@ import { formatNumber } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { Callout } from "@/components/ui/callout";
+import { noticeBody } from "@/components/ui/empty-state-text";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { errorCopy } from "@/lib/error-copy";
@@ -96,7 +97,8 @@ export function ObjectionDialog({ marketId, onFiled }: { marketId: string; onFil
            hit is a dispute that does not get raised. */
         className="inline-flex min-h-[44px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-[12px] font-semibold text-warning-fg transition-colors hover:bg-warning-border brand-focus"
       >
-        <I.alertCircle s={13} className="shrink-0" />
+        {/* Its ink on the button's start padding (round 10, R10-A6: a centred control frames its ink). */}
+        <I.alertCircle s={13} edge="start" className="shrink-0" />
         {t.market.objFlag}
       </button>
 
@@ -118,7 +120,7 @@ export function ObjectionDialog({ marketId, onFiled }: { marketId: string; onFil
 
           {/* The promise we can now actually keep. DS-8 — the kit Callout, not a
               hand-rolled warning box. */}
-          <Callout tone="warning">{t.market.objIntro}</Callout>
+          <Callout tone="warning">{noticeBody(t.market.objIntro)}</Callout>
 
           <div className="space-y-1.5">
             {/* DG-A-14 · §T3 + §T4 — "What is wrong?" is a question, not an identifier, so it

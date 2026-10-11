@@ -311,7 +311,12 @@ export function FilterSheet({
         }}
         className="kp-fsheet-trigger cursor-pointer list-none items-center border border-border-control bg-bg-inset font-semibold text-text-muted hover:text-text"
       >
-        <I.sliders s={15} aria-hidden className="shrink-0 opacity-80" />
+        {/* ⭐ Round 10 (R10-A1/A6, tile 163): the control frames its ink. The sliders' ink stood 1.74px inside the field's
+            content column (x34.74 on x33) and the caret's ended 3.01px short of it (x353.99 on 357): each now stands on
+            its edge (`edge`), in both shapes — the field's start and end, the pill's padding. ⚠️ In /markets' compact
+            phone bar the label and caret fold away, and with no count the sliders stands ALONE in the pill — then it keeps
+            its box (globals.css, `.kp-fsheet-glyph` under the compact bar), as every glyph alone in a control does. */}
+        <I.sliders s={15} edge="start" aria-hidden className="kp-fsheet-glyph shrink-0 opacity-80" />
         {/* In the FIELD shape this is the quiet key over on the left; in the PILL shape it is
             the control's whole visible word. One element, because it is one thing: the name of
             what the control does. */}
@@ -334,7 +339,7 @@ export function FilterSheet({
             `kp-menu` never appears in this file, so that the desktop row's two menus stay
             countable by `qa:discovery-board`. The two carets share ONE pair of declarations in
             globals.css (a selector list), so there is no second definition to drift. */}
-        <I.chevronDown s={14} aria-hidden className="kp-fsheet-caret shrink-0 opacity-70" />
+        <I.chevronDown s={14} edge="end" aria-hidden className="kp-fsheet-caret shrink-0 opacity-70" />
       </summary>
 
       {/* The scrim — byte-for-byte the shared `<Modal>`'s: an inert click target that is never

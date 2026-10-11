@@ -135,8 +135,13 @@ export default async function HelpPage() {
                     <span className="mt-0.5 shrink-0 text-brand-300"><Glyph s={15} /></span>
                     <span>{t.help[`${key}q` as keyof typeof t.help]}</span>
                   </span>
-                  <span className="mt-1 shrink-0 text-text-subtle transition-transform group-open:rotate-180">
-                    <I.chevronDown s={13} />
+                  {/* ⭐ Round 10 (R10-A2, tile 192): every "⌄" ended at x1112.10 against the row's edge, 1115.0 — the caret's
+                      box padding. Its ink stands on the edge now (`edge`), and it turns about ITS OWN box (the turn moved
+                      here from the span): pulled, the svg overhangs the span, so the span's centre is no longer the
+                      drawing's, and a turned span would carry the open caret 2.7px left. The chevron is symmetric about its
+                      box, so turned it ends on the same edge. */}
+                  <span className="mt-1 shrink-0 text-text-subtle">
+                    <I.chevronDown s={13} edge="end" className="transition-transform group-open:rotate-180" />
                   </span>
                 </summary>
                 {/* pb-3 is the summary's own 16px: an open answer stands as clear of the next row's divider as a

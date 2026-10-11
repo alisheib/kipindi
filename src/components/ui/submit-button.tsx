@@ -22,6 +22,7 @@
 
 import { useFormStatus } from "react-dom";
 import { useT } from "@/lib/i18n";
+import { edgeGlyph } from "./glyphs";
 import { Spinner } from "./spinner";
 
 type Props = {
@@ -35,7 +36,9 @@ type Props = {
    *  non-submittable form had to leave a live button beside a disabled fieldset. */
   disabled?: boolean;
   /** B-20 — leading glyph slot (the sessions sign-out wears `I.logOut`). The
-   *  spinner REPLACES the icon while pending, so the row never grows. */
+   *  spinner REPLACES the icon while pending, so the row never grows.
+   *  ⭐ Round 10 (R10-A6): a family glyph here puts its ink on the button's start padding (`edgeGlyph`, glyphs.tsx — "A
+   *  CENTRED CONTROL FRAMES ITS INK"), and the spinner that replaces it is pulled by its own ink gap. */
   icon?: React.ReactNode;
   /** Default true (the historical shape). Inline placements (e.g. a row-end
    *  destructive button) opt out. */
@@ -72,7 +75,7 @@ export function SubmitButton({
       style={style}
       className={`btn btn-${variant} btn-${size} ${fullWidth ? "w-full " : ""}inline-flex items-center justify-center gap-2 ${className}`}
     >
-      {pending ? <Spinner size={14} /> : icon}
+      {pending ? <Spinner size={14} edge="start" /> : edgeGlyph(icon, "start")}
       <span>{pending ? (pendingLabel ?? t.common.working) : label}</span>
     </button>
   );

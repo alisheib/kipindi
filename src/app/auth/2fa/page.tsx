@@ -80,11 +80,16 @@ export default async function TwoFactorChallengePage({ searchParams }: { searchP
         </form>
 
         <div className="flex items-center justify-between border-t border-border pt-3">
+          {/* Round 10 (R10-A6): the family's arrow at its words' stem, its ink on the row's start (the typed "←" was the
+              mono face's own arrow, 0.080em against its 0.090em stem). It stays on the FIRST line where the words wrap, as
+              the typed one did (`items-start`; the 12px glyph centred on the label's 16px line by `mt-0.5`, 2px): "RUDI"
+              never wraps, its twin on /auth/otp does ("BADILISHA" / "NAMBARI" at sw 320–390). */}
           <Link
             href={`/auth/login${nextSafe ? `?next=${encodeURIComponent(nextSafe)}` : ""}` as never}
-            className="font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text transition-colors"
+            className="inline-flex items-start gap-1.5 font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text transition-colors"
           >
-            ← {t.common.back}
+            <I.arrowLeft s={12} edge="start" text="mono-400" className="mt-0.5" />
+            {t.common.back}
           </Link>
           {/* The other way in ends on the panel's edge (round 7, R7-C, 2026-10-10): tracked 0.14em at the row's end, its
               last letter stood 1.68px short; `kp-track-end` takes the tracking back. Its words may need two lines

@@ -59,7 +59,8 @@ export function NotificationRowActions({
            2026-10-10, §B4c): it was aqua `--accent-400`, hovering to white. */
         className="-mt-1 shrink-0 inline-flex items-center gap-1 min-h-[44px] px-2 rounded-md font-mono text-micro font-bold uppercase text-brand-300 hover:text-brand-200 hover:bg-bg-overlay transition-colors disabled:opacity-50"
       >
-        <I.rotateCcw s={12} />
+        {/* Its ink on the button's start padding (round 10, R10-A6: a centred control frames its ink). */}
+        <I.rotateCcw s={12} edge="start" />
         {restoreLabel}
       </button>
     );

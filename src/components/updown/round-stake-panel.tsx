@@ -79,7 +79,10 @@ export function RoundStakePanel(props: {
           <div className="flex items-center justify-between gap-[10px]">
             <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-subtle">{t.market.udYourPick}</p>
             <Chip variant={lockedSide === "UP" ? "yes" : "no"} style={{ gap: 5 }}>
-              {lockedSide === "UP" ? <I.arrowUp s={12} strokeWidth={2.5} /> : <I.arrowDown s={12} strokeWidth={2.5} />}
+              {/* An arrow among the chip's Inter 700 words strokes at their stem (round 10, R10-A6: one weight for every
+                  arrow among words) — the typed 2.5 drew 1.25px against the word's 1.5–1.6px stem. A chip is a tag: it keeps its
+                  box (glyphs.tsx). */}
+              {lockedSide === "UP" ? <I.arrowUp s={12} text="body-700" /> : <I.arrowDown s={12} text="body-700" />}
               {tapped}
             </Chip>
           </div>
@@ -139,7 +142,7 @@ export function RoundStakePanel(props: {
       <div className="flex items-center justify-between gap-[10px]">
         <p className="m-0 font-mono text-micro font-semibold uppercase eyebrow text-text-subtle">{t.market.udYourPick}</p>
         <Chip variant={isUp ? "yes" : "no"} style={{ gap: 5 }}>
-          {isUp ? <I.arrowUp s={12} strokeWidth={2.5} /> : <I.arrowDown s={12} strokeWidth={2.5} />}
+          {isUp ? <I.arrowUp s={12} text="body-700" /> : <I.arrowDown s={12} text="body-700" />}
           {pickWord}
         </Chip>
       </div>

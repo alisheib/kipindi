@@ -149,7 +149,10 @@ export function LanguageMenu({ journey = false }: { journey?: boolean } = {}) {
             would if they yielded instead.
             ⛔ NOT A NEW BREAKPOINT — `sm` is the boundary `.kp-auth-cta` and the balance pill
             are already judged against, and this file documents exactly five rungs. */}
-        <I.chevronDown s={12} aria-hidden className="kp-menu-caret hidden opacity-70 sm:inline" />
+        {/* ⭐ Round 10 (R10-A3/A6): the caret ends a centred control, so its ink stands on the box's end padding (it turns
+            about its own box, and its drawing is symmetric, so it holds open). ⚠️ Journey-only: the classic header mounts
+            this same menu, and classic chrome is frozen until the flip (its caret keeps its box). */}
+        <I.chevronDown s={12} edge={journey ? "end" : undefined} aria-hidden className="kp-menu-caret hidden opacity-70 sm:inline" />
       </summary>
 
       <div

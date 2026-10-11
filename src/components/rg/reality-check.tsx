@@ -181,15 +181,15 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
             {t.rg.continuePlaying}
           </button>
           <Link href="/profile/responsible-gambling" onClick={dismiss} className="btn btn-ghost btn-lg w-full inline-flex">
-            <I.clock s={14} />
+            <I.clock s={14} edge="start" />
             {t.rg.setLimits}
           </Link>
           <Link href="/profile/responsible-gambling#break" onClick={dismiss} className="btn btn-ghost btn-lg w-full inline-flex">
-            <I.pause s={14} />
+            <I.pause s={14} edge="start" />
             {t.rg.takeABreak}
           </Link>
           <Link href="/profile/responsible-gambling#exclude" onClick={dismiss} className="btn btn-claret btn-lg w-full inline-flex">
-            <I.lock s={14} />
+            <I.lock s={14} edge="start" />
             {t.rg.selfExclude}
           </Link>
         </div>

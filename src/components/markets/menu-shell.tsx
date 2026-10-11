@@ -122,7 +122,9 @@ export function MenuShell({
         {count != null && (
           <span className="shrink-0 font-mono text-[11px] font-bold tabular-nums text-text-faint">{formatNumber(count)}</span>
         )}
-        <I.chevronDown s={14} aria-hidden className="kp-menu-caret shrink-0 opacity-70" />
+        {/* ⭐ Round 10 (R10-A3/A6): the caret ends the control's content, so its ink stands on the end padding (a centred
+            control frames its ink); it turns about its own box and its drawing is symmetric, so it holds when open. */}
+        <I.chevronDown s={14} edge="end" aria-hidden className="kp-menu-caret shrink-0 opacity-70" />
       </summary>
       <div
         role="listbox"

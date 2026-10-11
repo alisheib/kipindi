@@ -102,9 +102,10 @@ export default function AgentLoading() {
           hint={<GhostText>{t.agent.statTimeHint}</GhostText>} icon={<I.clock s={14} className="text-transparent" />} iconAlign="end" />
       </div>
 
-      {/* The CTA — the eligible player's one 48px button, its words and glyph's room. */}
+      {/* The CTA — the eligible player's one 48px button, its words and the page's own glyph, unpainted and pulled onto its
+          padding as the page's slot pulls it (round 10, R10-A6). */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center" aria-hidden>
-        <div><ButtonGhost size="lg" leading={16}>{t.agent.ctaApply}</ButtonGhost></div>
+        <div><ButtonGhost size="lg" leading={<I.arrowRight s={16} text="body-600" />}>{t.agent.ctaApply}</ButtonGhost></div>
       </div>
 
       {/* How it works — the title, then five steps beside their 30px numerals. */}

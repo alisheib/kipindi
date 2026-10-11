@@ -17,9 +17,16 @@
  *
  * Adds: leading + trailing icon slots, loading state (spinner replaces
  * leading), fullWidth.
+ *
+ * ⭐ THE SLOTS PUT THEIR GLYPH'S INK ON THE CONTENT EDGE (round 10, R10-A6 — glyphs.tsx, "A CENTRED CONTROL FRAMES ITS
+ * INK"): a family glyph in `leading` is pulled onto the button's start padding, one in `trailing` onto its end padding, and
+ * the spinner that takes the leading slot is pulled by its own ink gap. A slot glyph with no words beside it (an icon-only
+ * button) is alone, and keeps its box. Anything that is not a family glyph is drawn as given.
  */
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { edgeGlyph, hasWords } from "@/components/ui/glyphs";
+import { SPINNER_INK_GAP } from "@/components/ui/spinner";
 
 type Variant =
   | "primary"
@@ -66,6 +73,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
   { variant = "primary", size = "md", leading, trailing, fullWidth, loading, className, children, disabled, ...rest },
   ref,
 ) {
+  // Words beside the slots: a slot glyph with none is alone in the button and keeps its box (round 10, R10-A6).
+  const worded = hasWords(children);
   return (
     <button
       ref={ref}
@@ -81,17 +90,19 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
       )}
       {...rest}
     >
-      {loading ? <Spinner size={size} /> : leading}
+      {loading ? <Spinner size={size} edge={worded} /> : worded ? edgeGlyph(leading, "start") : leading}
       {children}
-      {!loading && trailing}
+      {!loading && (worded ? edgeGlyph(trailing, "end") : trailing)}
     </button>
   );
 });
 
-function Spinner({ size }: { size: Size }) {
+function Spinner({ size, edge }: { size: Size; edge: boolean }) {
   const dim = size === "xl" ? 16 : size === "lg" ? 14 : size === "md" ? 13 : 12;
+  // In the leading slot beside words it is pulled by its ink gap, as the glyph it replaces is (ui/spinner.tsx).
+  const pull = edge ? { marginInlineStart: `${Math.round(-SPINNER_INK_GAP * dim / 24 * 1000) / 1000}px` } : null;
   return (
-    <svg width={dim} height={dim} viewBox="0 0 24 24" className="animate-spin" style={{ animationDuration: "0.7s" }} aria-hidden>
+    <svg width={dim} height={dim} viewBox="0 0 24 24" className="animate-spin" style={{ animationDuration: "0.7s", ...pull }} aria-hidden>
       <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
       <path d="M21 12a9 9 0 0 0-9-9" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
     </svg>

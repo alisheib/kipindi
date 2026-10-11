@@ -404,7 +404,7 @@ const subPairs: Pair[] = [
     order(ap, ["<BackLinkGhost />", "font-display text-title-md", 'className="mt-2 grid grid-cols-4 gap-1"', "glass-panel p-4 space-y-3", '<div className="flex items-center justify-between" aria-hidden>'])
       && count(ap, "glass-panel") === 1
       && order(st, ["<BackLinkGhost />", "<PageHeader eyebrow={t.agent.eyebrow} title={t.agent.statusTitle} />", "glass-panel p-4 space-y-3", "glass-panel p-4 space-y-2"])
-      && !iv.includes("BackLinkGhost") && order(iv, ["<PageHeader eyebrow={t.agent.eyebrow} title={t.agent.inviteTitle} subtitle={t.agent.inviteBody} />", "glass-panel p-4 space-y-1", "t.agent.inviteKycNote", '<ButtonGhost size="lg" leading={16}>{t.agent.inviteOtpSend}</ButtonGhost>']));
+      && !iv.includes("BackLinkGhost") && order(iv, ["<PageHeader eyebrow={t.agent.eyebrow} title={t.agent.inviteTitle} subtitle={t.agent.inviteBody} />", "glass-panel p-4 space-y-1", "t.agent.inviteKycNote", '<ButtonGhost size="lg" leading={<I.mail s={16} />}>{t.agent.inviteOtpSend}</ButtonGhost>'])); // R10-A6: the page's glyph, pulled as Button pulls it
   const both = (page: string, ghost: string, el: string) => REAL(page).includes(el) && REAL(ghost).includes(el);
   const headers = { status: both(ST, STG, "<PageHeader eyebrow={t.agent.eyebrow} title={t.agent.statusTitle} />"), invite: both(IV, IVG, "<PageHeader eyebrow={t.agent.eyebrow} title={t.agent.inviteTitle} subtitle={t.agent.inviteBody} />") };
   ok("4.3 · the status and invitation headers are the pages' own `PageHeader`, same props (the old ghost's 32px bar stood 22px short of the 54px header)", headers.status && headers.invite, j(headers));
@@ -672,7 +672,7 @@ function kitChecks(src: Src): Record<string, boolean> {
       && q.includes('<div className="hidden max-w-full shrink-0 lg:block">') && q.includes("inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-pill border border-transparent bg-bg-elevated px-3 text-transparent"),
     filters: fs.includes('className="kp-fsheet lg:hidden"') && fs.includes('className="kp-fsheet-trigger cursor-pointer list-none items-center border border-border-control bg-bg-inset font-semibold text-text-muted hover:text-text"')
       && q.includes('<div className="kp-fsheet lg:hidden">') && q.includes('<span className="kp-fsheet-trigger kp-shimmer-track items-center border border-transparent bg-bg-elevated font-semibold text-transparent" data-shape="pill">')
-      && q.includes('<span className="kp-fsheet-trigger-label">{label}</span>') && q.includes('<span className="kp-fsheet-caret h-[14px] w-[14px] shrink-0" />'),
+      && q.includes('<span className="kp-fsheet-trigger-label">{label}</span>') && q.includes('<I.chevronDown s={14} edge="end" aria-hidden className="kp-fsheet-caret shrink-0" />'), // R10-A1: the page's caret, pulled
     group: q.includes("<div className={QUERY_GROUP_CLASS}>") && q.includes('<FilterGroupKey className="text-transparent">{label}</FilterGroupKey>'),
   };
 }

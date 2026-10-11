@@ -150,7 +150,7 @@ export function ReferralShare({ link, shareText }: { link: string; shareText: st
           onClick={copy}
           className="btn btn-ghost btn-md shrink-0 inline-flex items-center gap-1.5"
         >
-          {copied ? <I.check s={14} /> : <I.copy s={14} />}
+          {copied ? <I.check s={14} edge="start" /> : <I.copy s={14} edge="start" />}
           {copied ? t.common.copied : t.common.copy}
         </button>
       </div>

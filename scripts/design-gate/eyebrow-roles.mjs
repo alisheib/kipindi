@@ -236,12 +236,12 @@ export const NOT_EYEBROW = new Map([
   // Round 7 (R7-C, 2026-10-10): re-signed — the label ends on its edge, its trailing tracking taken back (`kp-track-end`;
   // test:visual-pass-r7c §2's census), and a wrapped line ends there too (`text-right`); same role. So below, where marked.
   ["app/auth/2fa/page.tsx :: className=\"text-right font-mono text-label uppercase tracking-[0.14em] text-brand-300 hover:text-brand-200 transition-colors kp-track-end\" ↵ >", "CONTROL_LABEL"],
-  ["app/auth/2fa/page.tsx :: className=\"font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text transition-colors\" ↵ >", "CONTROL_LABEL"],
+  ["app/auth/2fa/page.tsx :: className=\"inline-flex items-start gap-1.5 font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text transition-colors\" ↵ >", "CONTROL_LABEL"], // R10-A6: its typed ← became the family's arrow (the link a flex row) — the same element, the same role
   ["app/auth/admin/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.18em] font-bold text-brand-300 whitespace-nowrap\"> ↵ Staff · Confidential", "STATUS_CHIP"],
   ["app/auth/forgot-password/page.tsx :: className=\"inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.16em] text-text-subtle hover:text-text\" ↵ >", "CONTROL_LABEL"],
   // R4-I (2026-10-09): the sign-in page's "Forgot password?" is no longer an uppercase tracked microlabel — it reads as a link,
   // 13px in the brand ink (edges E12: caps 8px under the reading floor on the one recovery control) — so its row is gone.
-  ["app/auth/otp/page.tsx :: className=\"font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text transition-colors\" ↵ >", "CONTROL_LABEL"],
+  ["app/auth/otp/page.tsx :: className=\"inline-flex items-start gap-1.5 font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text transition-colors\" ↵ >", "CONTROL_LABEL"], // R10-A6: its typed ← became the family's arrow (the link a flex row) — the same element, the same role
   ["app/auth/reset-password/page.tsx :: className=\"inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.16em] text-text-subtle hover:text-text\" ↵ >", "CONTROL_LABEL"],
   ["app/global-error.tsx :: textTransform: \"uppercase\", ↵ letterSpacing: \"0.20em\",", "CELEBRATION"],
   // (R5-L, 2026-10-09: `app/leaderboard/loading.tsx`'s spinner caption left with the spinner box — the page has no such band.)
@@ -267,7 +267,7 @@ export const NOT_EYEBROW = new Map([
   ["app/positions/performance/page.tsx :: <span className=\"text-right font-mono text-micro uppercase tracking-[0.08em] text-text-subtle kp-track-end kp-track-end--08\">{keepConnectives(t.performance.cumulativePerS", "OTHER"],
   ["app/profile/kyc/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.1em] text-text-subtle\">{idLabel}</span> ↵ </div>", "OTHER"],
   ["app/profile/kyc/page.tsx :: <span className=\"inline-flex items-center gap-1 rounded-pill border border-success-border bg-success-bg px-2.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0", "STATUS_CHIP"],
-  ["app/profile/kyc/page.tsx :: className=\"font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text\" ↵ >", "CONTROL_LABEL"],
+  ["app/profile/kyc/page.tsx :: className=\"inline-flex items-center gap-1.5 font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text\" ↵ >", "CONTROL_LABEL"], // R10-A6: its typed ← became the family's arrow (the link a flex row) — the same element, the same role
   ["app/profile/page.tsx :: <span className=\"inline-flex items-center rounded-pill border border-brand-600/50 bg-brand-500/15 px-1.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.08em]", "STATUS_CHIP"],
   ["app/proposals/[id]/page.tsx :: <p className=\"mb-3 font-mono text-micro uppercase tracking-[0.16em] font-bold text-gold-300\">{t.common.yourProposalApproved}</p> ↵ <RewardBurst", "CELEBRATION"],
   // Round 5 (R5-A, F19): the flag's words sit in a span of their own (`kp-track-end`, its trailing tracking taken back);

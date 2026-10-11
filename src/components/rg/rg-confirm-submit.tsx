@@ -37,6 +37,7 @@ import { useFormStatus } from "react-dom";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { keepText } from "@/components/ui/keep-run";
 import { FieldLegend } from "@/components/ui/field-legend";
+import { edgeGlyph } from "@/components/ui/glyphs";
 
 export function RgConfirmSubmit({
   label,
@@ -57,6 +58,10 @@ export function RgConfirmSubmit({
   widthOf?: string;
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
+  /* Round 10 (R10-A6): the trigger's glyph puts its ink on the button's start padding, as every control's does (`edgeGlyph`,
+     glyphs.tsx — "A CENTRED CONTROL FRAMES ITS INK"); the invisible reserve below draws the same pulled glyph, so the
+     cell stays the wider of the two labels exactly. */
+  const mark = edgeGlyph(icon, "start");
   const submitForm = () => buttonRef.current?.closest("form")?.requestSubmit();
   // B-20 — this component always renders INSIDE the server-action <form> it
   // submits (that is its whole mechanism), so useFormStatus sees that form's
@@ -104,12 +109,12 @@ export function RgConfirmSubmit({
                icon beside the sibling's label. The sibling's words are CSS generated content (`data-reserve`), never a
                text node, so no text search and no accessible name ever meets them; the cell is the wider of the two. */
             <span className="grid justify-items-center">
-              <span className="col-start-1 row-start-1 inline-flex items-center gap-1.5">{icon}{label}</span>
-              <span aria-hidden data-reserve={widthOf} className="invisible col-start-1 row-start-1 inline-flex items-center gap-1.5 after:content-[attr(data-reserve)]">{icon}</span>
+              <span className="col-start-1 row-start-1 inline-flex items-center gap-1.5">{mark}{label}</span>
+              <span aria-hidden data-reserve={widthOf} className="invisible col-start-1 row-start-1 inline-flex items-center gap-1.5 after:content-[attr(data-reserve)]">{mark}</span>
             </span>
           ) : (
             <>
-              {icon}
+              {mark}
               {label}
             </>
           )}

@@ -5,6 +5,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
 import { FilterGroupKey } from "@/components/ui/filter-pill";
 import { GhostText, AMOUNT_SHAPE } from "@/components/ui/ghost-text";
+import { I } from "@/components/ui/glyphs";
 import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW2_CLASS, QUERY_GROUP_CLASS, QUERY_SEARCH_BAND_CLASS, QueryGroupDivider } from "@/components/ui/query-bar";
 import { PNL_STRIP } from "@/components/positions/pnl-summary-strip";
 import { CountGhost, FiltersGhost, PillGhost, SortGhost } from "@/components/ui/query-bar-ghost";
@@ -73,11 +74,13 @@ export function PositionsGhost() {
           page renders `<PageHeader>` with these exact three strings, so the skeleton renders the
           same component with the same props and the two cannot drift.
           ⚠️ The `<header>` wrapper takes the real page's own class — and since R5-K what the page puts beside the head:
-          the "View performance" button's box (`btn btn-ghost btn-sm`, 4px down; its 13px words set and not shown). */}
+          the "View performance" button's box (`btn btn-ghost btn-sm`, 4px down; its 13px words set and not shown).
+          Round 10 (R10-A6): its glyph is the page's chart, unpainted and pulled onto the padding as the page's is (a bare
+          13px box would put the words 1.6px right of the page's). */}
       <header className="flex items-start justify-between gap-3">
         <PageHeader eyebrow={t.common.positions} title={t.positions.headline} subtitle={t.positions.headlineBody} />
         <div className="mt-1 inline-flex h-[var(--h-control-sm)] shrink-0 items-center gap-1.5 rounded-control border border-transparent bg-bg-overlay px-2 kp-shimmer-track" aria-hidden>
-          <span className="h-[13px] w-[13px] shrink-0" />
+          <I.chart s={13} edge="start" className="shrink-0 text-transparent" />
           <span className="text-body-sm tracking-normal font-semibold text-transparent">{t.performance.viewPerformance}</span>
         </div>
       </header>

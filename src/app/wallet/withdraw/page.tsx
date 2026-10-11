@@ -30,6 +30,7 @@ import { ProviderRadioGrid } from "@/components/wallet/provider-radio-grid";
 import { getPayoutStatus, payoutsAcceptingRequests } from "@/lib/server/payout-status";
 import { PayoutStatusNotice } from "@/components/wallet/payout-status-notice";
 import { KycGatePanel } from "@/components/kyc/kyc-gate-panel";
+import { noticeBody } from "@/components/ui/empty-state-text";
 import { kycGateState, type KycPanelState } from "@/lib/kyc-gate-state";
 import { getKycStatus } from "@/lib/server/kyc-service";
 import { agentIdentityIntent } from "@/lib/server/agent-identity";
@@ -373,12 +374,13 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
 
 /** One iconized row inside the merged withdraw notices panel (C2e). */
 function NoticeRow({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
+  // Its body's phrases are held as an empty state's body holds them (round 10, R10-B): "Utambulisho wako", "your money".
   return (
     <div className="flex items-start gap-2.5 px-3.5 py-3 text-body-sm leading-snug">
       <span className="mt-0.5 shrink-0">{icon}</span>
       <div>
         <p className="font-display font-semibold text-text">{title}</p>
-        <p className="mt-0.5 text-text-muted text-balance">{body}</p>
+        <p className="mt-0.5 text-text-muted text-balance">{noticeBody(body)}</p>
       </div>
     </div>
   );

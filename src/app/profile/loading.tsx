@@ -80,16 +80,18 @@ export default function ProfileLoading() {
             </div>
           </div>
         </div>
-        {/* The strip — the kit Stat in the page's own props: the balance a row of its own on a phone, three across from sm. */}
+        {/* The strip — the kit Stat in the page's own props: the balance a row of its own on a phone, three across from sm.
+            Its glyphs are the page's own, unpainted: the slot pulls each onto the column's edge by its own drawing's gap
+            (round 10, R10-A4), so a bare 14px box would set the ghost's labels 1.2–2.4px right of the page's. */}
         <div className="relative z-10 grid grid-cols-2 sm:grid-cols-3 border-t border-border" aria-hidden>
           <Stat size="xl" labelStyle="widest" boxed="pad" font="mono" label={<GhostText>{t.profile.balance}</GhostText>} value={<GhostText>{AMOUNT_SHAPE}</GhostText>}
-            icon={<span className="block h-[14px] w-[14px]" />}
+            icon={<I.wallet s={14} className="text-transparent" />}
             className="col-span-2 min-w-0 whitespace-nowrap border-b border-border px-5 sm:col-span-1 sm:border-b-0 lg:px-6" labelClassName="min-w-0 whitespace-normal break-words" />
           <Stat size="xl" labelStyle="widest" boxed="pad" font="mono" label={<GhostText>{t.profile.openCount}</GhostText>} value={<GhostText>0</GhostText>}
-            icon={<span className="block h-[14px] w-[14px]" />}
+            icon={<I.sparkle s={14} className="text-transparent" />}
             className="min-w-0 whitespace-nowrap border-border px-5 sm:border-l lg:px-6" labelClassName="min-w-0 whitespace-normal break-words" />
           <Stat size="xl" labelStyle="widest" boxed="pad" font="mono" label={<GhostText>{t.profile.settledCount}</GhostText>} value={<GhostText>0</GhostText>}
-            icon={<span className="block h-[14px] w-[14px]" />}
+            icon={<I.check s={14} className="text-transparent" />}
             className="min-w-0 whitespace-nowrap border-l border-border px-5 lg:px-6" labelClassName="min-w-0 whitespace-normal break-words" />
         </div>
       </section>

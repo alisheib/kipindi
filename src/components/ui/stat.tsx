@@ -46,6 +46,7 @@
  */
 
 import { Cash } from "@/components/ui/cash";
+import { edgeGlyph } from "@/components/ui/glyphs";
 import { cn } from "@/lib/utils";
 
 export type StatTone = "default" | "gold" | "yes" | "no" | "muted";
@@ -199,7 +200,12 @@ export function Stat({
   boxed?: StatBox;
   /** Override the rung's default face. ⛔ Ignored when `money` — M4 outranks it. */
   font?: "mono" | "display";
-  /** Small glyph beside the label (or opposite it — see `iconAlign`). */
+  /** Small glyph beside the label (or opposite it — see `iconAlign`).
+   *  ⭐ ON THE COLUMN'S EDGE (round 10, R10-A4 — tiles 162 187 188): the slot drew its glyph as given, so its ink stood inside
+   *  the column its label and value start on — the market page's KIASI / WATABIRI / INATATULIWA glyphs 1.76 / 1.84 / 1.07px,
+   *  /profile's SALIO / HAI / IMEKAMILIKA 1.08 / 2.18 / 2.48px. A family glyph leading the label row is pulled onto the
+   *  start edge, one at the row's far end (`iconAlign="end"`) onto the end edge (`edgeGlyph`, the way PageHeader's slot
+   *  does); anything else is drawn as given. */
   icon?: React.ReactNode;
   /** `label` (default) puts the icon before the label; `end` pushes it to the far edge. */
   iconAlign?: "label" | "end";
@@ -239,7 +245,7 @@ export function Stat({
             "text-text-subtle",
           )}
         >
-          {iconAlign === "end" ? <>{labelRow}<span className="shrink-0">{icon}</span></> : <>{icon}{labelRow}</>}
+          {iconAlign === "end" ? <>{labelRow}<span className="shrink-0">{edgeGlyph(icon, "end")}</span></> : <>{edgeGlyph(icon, "start")}{labelRow}</>}
         </div>
       ) : labelRow}
 

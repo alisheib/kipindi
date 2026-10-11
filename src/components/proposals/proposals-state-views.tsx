@@ -3,6 +3,7 @@ import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { ComingSoonBanner, FeatureStateBanner } from "@/components/ui/coming-soon-banner";
+import { noticeBody } from "@/components/ui/empty-state-text";
 import { IconPlate } from "@/components/ui/icon-plate";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import type { ProposalsState } from "@/lib/server/proposals-config";
@@ -108,7 +109,9 @@ export function ProposalsBlockedComposer({
         </Link>
       }
     >
-      {body}
+      {/* Round 10 (R10-B): the stack is centred, so its body is drawn as a centred notice — its phrases and its last two words
+          held, its Chinese marks hung (`noticeBody`, `centred`). */}
+      {noticeBody(body, { centred: true })}
     </Callout>
   );
 }
@@ -162,7 +165,8 @@ export function ProposalsUnavailable({
           renders `<p className="font-display …">` for exactly this shape — so this adopts a
           precedent rather than inventing one. The class list is untouched; nothing moves. */}
       <p className="mt-4 font-display text-[19px] font-bold leading-snug text-text">{title}</p>
-      <p className="mx-auto mt-2 max-w-[38ch] text-[13px] leading-relaxed text-text-muted">{body}</p>
+      {/* Centred, so drawn as a centred notice (round 10, R10-B: every notice body holds its phrases). */}
+      <p className="mx-auto mt-2 max-w-[38ch] text-[13px] leading-relaxed text-text-muted">{noticeBody(body, { centred: true })}</p>
       <Link href={browseHref as never} className="mt-5">
         <Button variant="primary" size="md" trailing={<I.arrowRight s={15} text="body-600" />}>{browseLabel}</Button>
       </Link>

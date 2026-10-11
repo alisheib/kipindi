@@ -2,6 +2,7 @@
 
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
+import { I } from "@/components/ui/glyphs";
 import { ButtonGhost, GhostText } from "@/components/ui/ghost-text";
 import { formatEatDay } from "@/lib/eat-day";
 import { fill } from "@/lib/utils";
@@ -42,7 +43,8 @@ export default function AgentInviteLoading() {
 
       {/* The action column (`invite-client.tsx`): send the code, then decline — inline buttons, 16px apart. */}
       <div className="space-y-3" aria-hidden>
-        <ButtonGhost size="lg" leading={16}>{t.agent.inviteOtpSend}</ButtonGhost>
+        {/* The page's own glyph, unpainted and pulled as its slot pulls it (round 10, R10-A6). */}
+        <ButtonGhost size="lg" leading={<I.mail s={16} />}>{t.agent.inviteOtpSend}</ButtonGhost>
         <ButtonGhost size="md">{t.agent.inviteDecline}</ButtonGhost>
       </div>
     </PageContainer>

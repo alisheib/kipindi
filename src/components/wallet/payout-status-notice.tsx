@@ -1,4 +1,5 @@
 import { Callout } from "@/components/ui/callout";
+import { noticeBody } from "@/components/ui/empty-state-text";
 import type { PayoutStatus } from "@/lib/server/payout-status";
 import { payoutNoticeCopy } from "@/lib/payout-notice-copy";
 
@@ -88,7 +89,9 @@ export function PayoutStatusNotice({
       title={title}
       meta={since}
     >
-      {body}
+      {/* The dictionary's body holds its phrases as an empty state's does (round 10, R10-B: "salio lako", "your money"); an
+          officer's note is data, shown verbatim as it always was. */}
+      {note ? body : noticeBody(body)}
     </Callout>
   );
 }

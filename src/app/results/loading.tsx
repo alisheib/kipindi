@@ -2,7 +2,7 @@
 
 import { PageContainer } from "@/components/layout/page-container";
 import { MARKET_CARD_H_CLOSED } from "@/components/markets/card-geometry";
-import { I } from "@/components/ui/glyphs";
+import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { ChipGhost, GhostText } from "@/components/ui/ghost-text";
 import { FiltersGhost, GroupGhost, PillGhost, SortGhost } from "@/components/ui/query-bar-ghost";
 import { PLAYER_PER_PAGE } from "@/components/ui/pagination";
@@ -107,7 +107,11 @@ export function ResultsGhostBands({ notable = true, searching = false }: { notab
   const lenses = [t.common.all, outcomeWord(t, "YES", "MARKET"), outcomeWord(t, "NO", "MARKET"), t.common.voided];
   const product = [t.market.catAll, `${sideWord(t, "YES", "MARKET")} / ${sideWord(t, "NO", "MARKET")}`, `${sideWord(t, "YES", "UPDOWN")} / ${sideWord(t, "NO", "UPDOWN")}`];
   const when = [t.common.rangeToday, t.common.rangeYesterday, t.common.range7d, t.common.range30d, t.common.rangeAll];
-  const topics = [t.market.catAll, ...MARKET_CATEGORIES.map((c) => categoryLabel(t, c))];
+  // Each topic pill with the page's glyph (results-bar.tsx: the grid for "all", the category's own otherwise).
+  const topics = [
+    { key: "all", label: t.market.catAll, Glyph: I.layoutGrid },
+    ...MARKET_CATEGORIES.map((c) => ({ key: c as string, label: categoryLabel(t, c), Glyph: I[categoryGlyph(c)] ?? I.layoutGrid })),
+  ];
   return (
     <>
       {/* Header row — the page's eyebrow (its glyph and its word, printed: the page's name), and the 38px donut beside
@@ -164,7 +168,7 @@ export function ResultsGhostBands({ notable = true, searching = false }: { notab
           <QueryGroupDivider />
           <GroupGhost label={t.common.when}>{when.map((w) => <PillGhost key={w} label={w} />)}</GroupGhost>
           <QueryGroupDivider />
-          <GroupGhost label={t.common.topic}>{topics.map((c) => <PillGhost key={c} label={c} glyph />)}</GroupGhost>
+          <GroupGhost label={t.common.topic}>{topics.map(({ key, label, Glyph }) => <PillGhost key={key} label={label} glyph={<Glyph s={14} />} />)}</GroupGhost>
         </div>
       </div>
 

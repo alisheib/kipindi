@@ -33,6 +33,7 @@ import { KeyGuard } from "@/components/ui/key-guard";
 import { RouteTransition } from "@/components/ui/route-transition";
 import { getSession, sessionEndedThisRequest, type SessionEndReason } from "@/lib/server/session";
 import { NoticeBar, NoticeBarAction } from "@/components/ui/notice-bar";
+import { noticeBody } from "@/components/ui/empty-state-text";
 import { SessionPresence } from "./session-presence";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/server/store";
@@ -493,11 +494,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           action={<NoticeBarAction href={endedNotice.href} tone="warning">{t.common.signIn}</NoticeBarAction>}
         >
           <span className="font-semibold">{t.auth.signedOut}.</span>{" "}
-          {endedNotice.reason === "displaced"
+          {/* Round 10 (R10-B): its phrases held as an empty state's body holds them ("Kikao chako", "Your session"). */}
+          {noticeBody(endedNotice.reason === "displaced"
             ? t.auth.signedOutBody
             : endedNotice.reason === "no_record"
               ? t.auth.sessionEndedBody
-              : t.auth.sessionIdleBody}
+              : t.auth.sessionIdleBody)}
         </NoticeBar>
       )}
       {/* ⛔ NO APP-WIDE BAR — NEITHER FOR IDENTITY (2026-09-13) NOR FOR EMAIL (2026-10-07). Both are asked before a

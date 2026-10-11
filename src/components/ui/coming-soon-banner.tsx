@@ -1,4 +1,5 @@
 import { Callout } from "@/components/ui/callout";
+import { noticeBody } from "@/components/ui/empty-state-text";
 
 /**
  * FeatureStateBanner — THE inline banner for a feature that is not currently usable.
@@ -49,7 +50,9 @@ export function FeatureStateBanner({
   return (
     <Callout role="status" size="md" surface="panel" tone={tone} glyph={glyph} className="px-5 py-3.5 lg:px-6">
       <p className="text-[13px] font-bold leading-normal text-text">{title}</p>
-      <p className="mt-1 text-body-sm leading-relaxed text-text-muted">{body}</p>
+      {/* Round 10 (R10-B, tile 185): its phrases held as an empty state's are (`noticeBody`) — sw 390 tore "masoko" /
+          "yako". */}
+      <p className="mt-1 text-body-sm leading-relaxed text-text-muted">{noticeBody(body)}</p>
     </Callout>
   );
 }

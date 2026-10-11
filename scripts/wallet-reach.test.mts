@@ -470,7 +470,8 @@ const { dict } = await import("../src/lib/i18n-dict.ts");
      && pillBlock.includes('className="btn gilt-metal btn-md btn-pill kp-jhdr__pill"'),
      pillBlock === "" ? "the pill's guard was not found as written" : pillBlock.slice(0, 160));
   ok("8c.3 its + is the one part that yields, below 360 — a span the stylesheet hides, never the button; the words and the name stay",
-     pillBlock.includes('<span aria-hidden className="kp-jhdr__plus"><I.plus s={14} /></span>')
+     // Round 10 (R10-A6): the + stands on the pill's padding (`edge`); the padding shares the freed gap (globals.css).
+     pillBlock.includes('<span aria-hidden className="kp-jhdr__plus"><I.plus s={14} edge="start" /></span>')
      && pillBlock.includes("<span>{t.journey.depositAction}</span>") && pillBlock.includes("aria-label={t.journey.depositAction}")
      && css.includes(".kp-jhdr__plus { display: none; }")
      && css.includes("@media (min-width: 360px) { .kp-jhdr__plus { display: inline-flex; } }"));

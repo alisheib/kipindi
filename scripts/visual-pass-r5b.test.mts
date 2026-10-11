@@ -317,8 +317,9 @@ section("7 · F11 the journey's money doors say the journey's words (tiles 171 1
 {
   const wc = read("src/app/wallet/wallet-client.tsx");
   const doors = (s: string) => [
-    !/<I\.arrowDown s=\{14\} \/>\s*\{journey \? t\.journey\.depositAction : t\.common\.deposit\}/.test(s) && "the header's Deposit",
-    !/<I\.arrowUp s=\{14\} \/>\s*\{journey \? t\.journey\.withdrawAction : t\.common\.withdraw\}/.test(s) && "the header's Withdraw",
+    // Round 10 (R10-A6): each door's arrow strokes at its words' Inter 600 stem and stands on the button's padding.
+    !/<I\.arrowDown s=\{14\} edge="start" text="body-600" \/>\s*\{journey \? t\.journey\.depositAction : t\.common\.deposit\}/.test(s) && "the header's Deposit",
+    !/<I\.arrowUp s=\{14\} edge="start" text="body-600" \/>\s*\{journey \? t\.journey\.withdrawAction : t\.common\.withdraw\}/.test(s) && "the header's Withdraw",
     !/<I\.plus s=\{12\} \/>\s*\{journey \? t\.journey\.depositAction : t\.common\.addFunds\}/.test(s) && "the balance card's Add funds",
     !/\{journey \? t\.journey\.depositAction : t\.common\.depositCta\}/.test(s) && "the empty account's Deposit",
     !/<BalanceCard [^>]*journey=\{journey\} \/>/.test(s) && "the card is not told",

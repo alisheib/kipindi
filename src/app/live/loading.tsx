@@ -4,6 +4,7 @@ import { useT } from "@/lib/i18n";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHero } from "@/components/ui/page-hero";
 import { ButtonGhost, GhostText } from "@/components/ui/ghost-text";
+import { I } from "@/components/ui/glyphs";
 import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 
@@ -138,7 +139,8 @@ export default function LiveLoading() {
 }
 
 /** A PulseCard (`pulse-grid.tsx`) while it loads: its own box (`rounded-xl border p-4`, a column), the tag row — the
- *  topic tag's 13px glyph and word in its 2px-padded, 1px-bordered box beside the time left — the title's box at the
+ *  topic tag's 13px glyph and word in its 2px-padded, 1px-bordered box beside the time left (the sports glyph its word names,
+ *  unpainted, its ink on the card's edge as the page's is — round 10, R10-A5) — the title's box at the
  *  page's own minimum for the language, the 9px bar 16px under it, and the 18px price line 10px under that. */
 function PulseCardGhost({ t, locale }: { t: Dict; locale: Locale }) {
   return (
@@ -146,7 +148,7 @@ function PulseCardGhost({ t, locale }: { t: Dict; locale: Locale }) {
       <div className="mb-2 flex items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1.5 font-mono text-micro uppercase eyebrow">
           <span className="inline-flex items-center gap-1.5 py-0.5 border-y border-transparent">
-            <span className="h-[13px] w-[13px] shrink-0" /><GhostText>{t.market.catSports}</GhostText>
+            <I.football s={13} edge="start" /><GhostText>{t.market.catSports}</GhostText>
           </span>
         </span>
         <span className="h-[8px] w-[64px] rounded-sm bg-bg-overlay/40" />
