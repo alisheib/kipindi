@@ -373,6 +373,20 @@ npm run test:backup-watchdog                # the alert-that-arrives proof, 24/2
 un-leadered 15 s payment poll (⚠️ its payout lane's idempotency-under-N is UNARGUED —
 resolve before ever scaling out).
 
+**The market memos are fresh within ONE container (R9-D, 2026-10-11).** `/results` and `/fairness` read the
+settled archive through a 5-minute memo (`listTerminalMarkets`), the LIVE strip and the landing's trust band
+through a 60-second one (`getPlatformStats`), and every sign-off through a 60-second rulings memo
+(`objectionRulings`). Tile 170 showed what a TTL alone allows: "0 imetatuliwa" beside a strip naming a settlement.
+Now every market write goes through `marketStore`, whose two twins note the row in an in-process change log
+(`src/lib/server/market-change-log.ts`) once it is COMMITTED (a write on a lock's transaction when that lock
+commits, `afterCommit` in `locks.ts`; the chain purge's direct batch after its own commit), and each memo re-reads
+exactly the rows noted since its read — the strip for polls only, the rulings on every objection write. That is
+enough at `numReplicas` **1** (item 6). ⛔ It does not reach another process: an ops script writing the database,
+the old container during a deploy's 60-second overlap, or a second replica — those writes surface within each
+memo's TTL (5 min / 60 s), as before. Before a second container exists, the notes must travel the way
+`wallet:balance` already does: the event bus's Redis fan-out (`event-bus.ts`, channel `50pick:sse`, armed — §6) —
+publish each note, apply remote ones to the local log. Guard: `test:results-freshness` (both stores).
+
 ---
 
 *Measured 2026-09-03, re-derived and corrected 2026-09-04 (LAUNCH-1K validation session).

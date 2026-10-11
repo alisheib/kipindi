@@ -191,6 +191,7 @@
     "test:maintenance": "tsx scripts/maintenance-mode.test.mts",
     "test:emergency": "tsx scripts/emergency-void.test.mts",
     "test:product-line": "tsx scripts/product-line.test.mts",
+    "test:results-freshness": "tsx scripts/db-scratch.mts --run npx tsx scripts/results-freshness.test.mts",
     "test:updown-config": "tsx scripts/updown-config.test.mts",
     "test:admin-nav": "tsx scripts/admin-nav.test.mts",
     "test:admin-clip": "tsx scripts/admin-clip.test.mts",

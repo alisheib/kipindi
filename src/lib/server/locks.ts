@@ -41,8 +41,11 @@ export { hashKey64 };
  *
  * `tx` is null in the in-memory dev store — currentLockTx() then returns null and
  * every caller falls back to its existing no-database path unchanged.
+ *
+ * `committed` is what `afterCommit` queued on this transaction: run once it has COMMITTED,
+ * by the outermost lock — the one that opened it — and dropped if it rolls back.
  */
-type LockCtx = { tx: Prisma.TransactionClient | null; held: Set<string> };
+type LockCtx = { tx: Prisma.TransactionClient | null; held: Set<string>; committed: Array<() => void> };
 const lockStore = new AsyncLocalStorage<LockCtx>();
 
 /**
@@ -75,6 +78,36 @@ export function runOutsideLock<T>(fn: () => T): T {
   return lockStore.exit(fn);
 }
 
+/**
+ * Run `fn` once the work written on `tx` is COMMITTED — at once when there is nothing to wait for.
+ *
+ * ⭐ WHY (R9-D, 2026-10-11). A memo over the market table (`market-change-log.ts`) must hear about a write only when
+ * every other connection can read it. A write on a lock's transaction is invisible to them until the outermost lock
+ * commits, and settlement, the emergency void and a re-categorisation all write that way; noted at the write, a page
+ * rendered in that gap re-reads the row as it was and keeps it as current.
+ *
+ * `tx` null or absent: the write auto-committed (or the in-memory store, which has no transaction) — `fn` runs now.
+ * `tx` the enclosing lock's transaction: queued, and run by that lock after its `$transaction` resolves; a rollback
+ * drops it, which is right, because nothing it describes happened. ⚠️ A transaction this module did not open cannot be
+ * waited for, so `fn` runs now; no market write in src passes one (`test:results-freshness` holds that census).
+ * ⛔ `fn` must not throw and must not take a lock: it runs after the money committed, and a failure here may not undo it.
+ */
+export function afterCommit(tx: Prisma.TransactionClient | null | undefined, fn: () => void): void {
+  const ctx = lockStore.getStore();
+  if (tx && ctx && ctx.tx === tx) {
+    ctx.committed.push(fn);
+    return;
+  }
+  runCommitted([fn]);
+}
+
+/** Each queued callback once, none able to stop the rest — they describe a write that has already committed. */
+function runCommitted(fns: ReadonlyArray<() => void>): void {
+  for (const fn of fns) {
+    try { fn(); } catch { /* a notice about a committed write must never surface as that write failing */ }
+  }
+}
+
 /* ── In-memory fallback (dev without Postgres) ──────────────────────── */
 
 const memLocks = new Map<string, Promise<unknown>>();
@@ -92,7 +125,7 @@ async function withMemoryLock<T>(key: string, fn: (tx: null) => Promise<T>): Pro
     try { return await withMemoryLockInner(key, fn); }
     finally { parent.held.delete(key); }
   }
-  return lockStore.run({ tx: null, held: new Set([key]) }, () => withMemoryLockInner(key, fn));
+  return lockStore.run({ tx: null, held: new Set([key]), committed: [] }, () => withMemoryLockInner(key, fn));
 }
 
 async function withMemoryLockInner<T>(key: string, fn: (tx: null) => Promise<T>): Promise<T> {
@@ -139,7 +172,11 @@ async function withAdvisoryLock<T>(key: string, fn: (tx: Prisma.TransactionClien
 
   // $transaction pins to one connection. pg_advisory_xact_lock blocks until
   // the lock is free, then holds it until the transaction ends (commit/rollback).
-  return db.$transaction(async (tx) => {
+  // `committed` gathers what `afterCommit` queues inside, nested locks included (they
+  // join this transaction); it runs only once the `$transaction` below has resolved,
+  // i.e. COMMITTED — a throw rolls back and skips it.
+  const committed: Array<() => void> = [];
+  const out = await db.$transaction(async (tx) => {
     // Two Postgres gotchas, both of which only surface against real PG
     // (dev uses the in-memory mutex, so neither is caught by local tests):
     //  1. Use the single-arg pg_advisory_xact_lock(bigint) with our 64-bit key
@@ -153,11 +190,13 @@ async function withAdvisoryLock<T>(key: string, fn: (tx: Prisma.TransactionClien
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lockId}::bigint)`;
     // Publish the tx so nested withLock() calls and withMoneyTx() join THIS
     // transaction instead of each opening their own.
-    return await lockStore.run({ tx, held: new Set([key]) }, () => fn(tx));
+    return await lockStore.run({ tx, held: new Set([key]), committed }, () => fn(tx));
   }, {
     timeout: 30000,  // 30s — covers worst-case resolution payouts
     maxWait: 10000,  // 10s — queue time waiting for a pool connection
   });
+  runCommitted(committed);
+  return out;
 }
 
 /* ── The bounded drain (04 A9 step 2) ───────────────────────────────── */

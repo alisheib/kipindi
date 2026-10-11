@@ -9,6 +9,9 @@ import { prisma } from "./prisma";
 import { hasDatabase } from "./prisma";
 import type { Prisma } from "@prisma/client";
 import type { StoredMarket, StoredPosition, MarketStatus, MarketCategory, Side, ProductLine, ProductLineFilter } from "./market-service";
+// R9-D: every market write tells the memos over this table which row it changed, once that row is committed.
+import { afterCommit } from "./locks";
+import { isTerminalStatus, noteMarketsChanged } from "./market-change-log";
 
 /**
  * The four market columns a MONEY ATTRIBUTION read actually uses — see
@@ -119,6 +122,10 @@ function num(d: unknown): number {
   if (d == null) return 0;
   return Number(d);
 }
+/** A stored `productLine`, coerced as `toStoredMarket` coerces it: anything but UPDOWN is a long-form poll. */
+function storedLine(v: unknown): ProductLine {
+  return v === "UPDOWN" ? "UPDOWN" : "MARKET";
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function toStoredMarket(r: any): StoredMarket {
@@ -219,6 +226,14 @@ export type MarketShortTitleFields = {
   competition: string | null;
 };
 
+/**
+ * ⭐ EVERY WRITE HERE NOTES THE ROW IT CHANGED (R9-D, 2026-10-11): `set` and `delete` always, `stamp` when it writes a
+ * status or leaves the row RESOLVED/VOIDED, `setShortTitles` on a RESOLVED/VOIDED row — in BOTH twins — so the memos over
+ * this table (`listTerminalMarkets`, `getPlatformStats`) re-read exactly that row (`market-change-log.ts`). The Prisma twin
+ * notes once the write is COMMITTED (`afterCommit`, locks.ts): a write on a lock's transaction, when that lock commits.
+ * ⛔ `addToPool` is the one write that does not: it moves the pools of a LIVE market only (both callers stop at
+ * `isSelectionClosed`, which is true for every RESOLVED or VOIDED row), and the archive holds no LIVE market.
+ */
 export interface MarketStore {
   // tx: read THROUGH the enclosing lock's transaction. The bet path holds one
   // transaction for the whole bet (see locks.ts); reading on a separate pool
@@ -652,10 +667,14 @@ export type DailySettledTotals = {
 
 const memoryMarkets: MarketStore = {
   async get(id, _tx) { return markets.get(id) ?? null; },
-  async set(m, _tx) { markets.set(m.id, m); },
+  // R9-D: there is no transaction here — a write is visible the instant it is made, so it is noted at once.
+  async set(m, _tx) { markets.set(m.id, m); noteMarketsChanged([m.id], m.productLine ?? "MARKET"); },
   async stamp(id, fields, _tx) {
     const cur = markets.get(id);
-    if (cur) markets.set(id, { ...cur, ...fields });
+    if (!cur) return;
+    const next = { ...cur, ...fields };
+    markets.set(id, next);
+    if ("status" in fields || isTerminalStatus(next.status)) noteMarketsChanged([id], next.productLine ?? "MARKET");
   },
   async setShortTitles(id, fields, _tx) {
     const cur = markets.get(id);
@@ -668,6 +687,7 @@ const memoryMarkets: MarketStore = {
       competition: fields.competition,
       updatedAt: new Date().toISOString(),
     });
+    if (isTerminalStatus(cur.status)) noteMarketsChanged([id], cur.productLine ?? "MARKET");
   },
   async addToPool(id, deltas, _tx) {
     const cur = markets.get(id);
@@ -680,7 +700,7 @@ const memoryMarkets: MarketStore = {
     cur.updatedAt = new Date().toISOString();
     return { yesPool: cur.yesPool, noPool: cur.noPool };
   },
-  async delete(id) { markets.delete(id); },
+  async delete(id) { markets.delete(id); noteMarketsChanged([id], null); },
   async has(id) { return markets.has(id); },
   async values() { return Array.from(markets.values()); },
   async attribution(ids) {
@@ -1051,10 +1071,12 @@ const prismaMarkets: MarketStore = {
     }
     if (Object.keys(data).length === 0) return;
     if (!("updatedAt" in data)) data.updatedAt = new Date();
-    await (tx ?? pc()).predictionMarket.update({ where: { id }, data });
+    // R9-D: RETURNING the two columns the change log needs — narrower than the whole row an `update` returns unasked.
+    const row = await (tx ?? pc()).predictionMarket.update({ where: { id }, data, select: { status: true, productLine: true } });
+    if ("status" in data || isTerminalStatus(row.status)) afterCommit(tx, () => noteMarketsChanged([id], storedLine(row.productLine)));
   },
   async setShortTitles(id, fields, tx) {
-    await (tx ?? pc()).predictionMarket.update({
+    const row = await (tx ?? pc()).predictionMarket.update({
       where: { id },
       data: {
         shortTitleEn: fields.shortTitleEn,
@@ -1063,7 +1085,9 @@ const prismaMarkets: MarketStore = {
         competition: fields.competition,
         updatedAt: new Date(),
       },
+      select: { status: true, productLine: true },
     });
+    if (isTerminalStatus(row.status)) afterCommit(tx, () => noteMarketsChanged([id], storedLine(row.productLine)));
   },
   async addToPool(id, deltas, tx) {
     const data: Record<string, unknown> = { updatedAt: new Date() };
@@ -1078,7 +1102,7 @@ const prismaMarkets: MarketStore = {
     return { yesPool: num(row.yesPool), noPool: num(row.noPool) };
   },
   async set(m, tx) {
-    await (tx ?? pc()).predictionMarket.upsert({
+    const row = await (tx ?? pc()).predictionMarket.upsert({
       where: { id: m.id },
       create: {
         id: m.id,
@@ -1176,10 +1200,14 @@ const prismaMarkets: MarketStore = {
         // silently reclassify a settled Up & Down round as a long-form poll, moving
         // its money between product lines in every report after the fact.
       },
+      // R9-D: the STORED product line comes back (the caller's copy may not be the row's), for the change log.
+      select: { productLine: true },
     });
+    afterCommit(tx, () => noteMarketsChanged([m.id], storedLine(row.productLine)));
   },
   async delete(id) {
     await pc().predictionMarket.delete({ where: { id } }).catch(() => {});
+    noteMarketsChanged([id], null);
   },
   async has(id) {
     const r = await pc().predictionMarket.findUnique({ where: { id }, select: { id: true } });
