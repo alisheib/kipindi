@@ -111,7 +111,12 @@ export function TerminalChart({
 }) {
   const [feed, setFeed] = useState<Feed | null>(null);
   const [status, setStatus] = useState<"loading" | "ok" | "empty" | "error">("loading");
-  const [engineReady, setEngineReady] = useState(false);
+  // ⭐ A GENERATION, NOT A FLAG (S6 round 10, R10-C, 2026-10-12). The chart is rebuilt when `height` changes — the board
+  // widened past 1024px turns 300 into 380 — and a flag set false by the old chart's cleanup and true by the new build in
+  // the same commit batched to "unchanged": the draw effect never ran for the new chart, which kept only its watermark
+  // (round 9's and round 10's tiles 164; reproduced: drawn at 390, blank the moment the same page is widened, drawn on a
+  // fresh 1280 load). Each build counts up, so every new chart is drawn; 0 = no engine yet.
+  const [engineGen, setEngineGen] = useState(0);
   const [legend, setLegend] = useState<{ o: number; h: number; l: number; c: number; t: number } | null>(null);
   const legendModeRef = useRef<"candles" | "line" | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -323,7 +328,7 @@ export function TerminalChart({
       chartRef.current = chart;
       ro = new ResizeObserver(() => chart.applyOptions({ width: el.clientWidth }));
       ro.observe(el);
-      setEngineReady(true);
+      setEngineGen((g) => g + 1);
     })();
     return () => {
       disposed = true;
@@ -333,7 +338,6 @@ export function TerminalChart({
       seriesListRef.current = [];
       priceLineRef.current = null;
       fitKeyRef.current = "";
-      setEngineReady(false);
     };
   }, [height]);
 
@@ -508,7 +512,7 @@ export function TerminalChart({
   // The engine (async library chunk) and the first feed race freely; the draw
   // effect keys on BOTH, so whichever arrives second triggers the paint — a
   // state dependency, not a polling shim.
-  useEffect(() => { if (feed && engineReady) draw(feed); }, [feed, engineReady, draw]);
+  useEffect(() => { if (feed && engineGen > 0) draw(feed); }, [feed, engineGen, draw]);
 
   // ⭐ R5(c) · F1 · the ONE token the live line and its named figure below both wear. A new round (the board polls every
   // 20 s) or a read crossing a target recolours the drawn line in place — never a rebuild, never a viewport yank (F2).

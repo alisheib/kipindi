@@ -923,6 +923,24 @@ section("11 · composition only: the dictionary is the commit's, byte for byte")
   ok("11.1 · src/lib/i18n-dict.ts is the commit's own", head === raw("src/lib/i18n-dict.ts"));
 }
 
+section("12 · R10-C /updown's chart is drawn again after its rebuild — the board widened past 1024px (tiles 164)");
+{
+  const TC = "src/components/charts/terminal-chart.tsx";
+  // The rule as a predicate over a source, so a planted regression is judged by the very check.
+  const drawsEveryBuild = (src: string) => {
+    const s = squash(decomment(src));
+    const keyed = s.includes("useEffect(() => { if (feed && engineGen > 0) draw(feed); }, [feed, engineGen, draw]);");
+    const counts = s.includes("setEngineGen((g) => g + 1);");
+    const noReset = !/setEngineGen\(\s*0\s*\)|setEngineReady\(\s*false\s*\)/.test(s);
+    const rebuildsOnHeight = /\}, \[height\]\);/.test(s);
+    return keyed && counts && noReset && rebuildsOnHeight;
+  };
+  const src = raw(TC);
+  ok("12.1 · the draw effect keys on the chart's BUILD GENERATION and every build counts it up — a rebuild (300 → 380 when the board widens) is always drawn, never batched to \"unchanged\"", drawsEveryBuild(src));
+  const flag = src.replace("const [engineGen, setEngineGen] = useState(0);", "const [engineReady, setEngineReady] = useState(false);").replace("setEngineGen((g) => g + 1);", "setEngineReady(true);").replace("useEffect(() => { if (feed && engineGen > 0) draw(feed); }, [feed, engineGen, draw]);", "useEffect(() => { if (feed && engineReady) draw(feed); }, [feed, engineReady, draw]);");
+  ok("12.1′ PLANT · the old true/false flag (cleared by the cleanup, set by the build, batched to unchanged) is reported by 12.1", flag !== src && !drawsEveryBuild(flag));
+}
+
 console.log(`${NL}visual-pass-r10: ${pass} passed, ${fails.length} failed`);
 if (fails.length) {
   console.log(`${NL}FAILURES:`);
