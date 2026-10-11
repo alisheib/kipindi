@@ -2714,6 +2714,10 @@ above 0 read "Must be 0 or more" while 0 was refused too — it now reads the fi
   EAT: the password here is stale), so the signed-in sections after it did not run. Read SELECT-only on production: the
   migration finished, the column is `integer NOT NULL DEFAULT 0`, all 14,248 markets carry extra 0 and all 4 desk
   accounts read Counts as 1 — the deploy changed no count a player sees.
+- ⚠️ **Found at the session close, and this lane's:** `test:decomment` §2.1 counted the new guard as a 21st private
+  comment-stripper (ceiling 20) — §6 matched the `// SEAM:shownCount` marker with a regex whose leading escaped slashes
+  have a line-stripper's shape. It is now a plain comparison of the same two lines: the population is back to 20,
+  `test:decomment` 22/0, the guard 27/0, `red:predictor-shown` still 14/14 (the bet-path plant caught by §6).
 - ⚠️ Found on the way, not this lane's: console pin 1.548 had been red on `main` since 2026-10-08 (marketing `a001261d`
   added `cmp` to the crumb builder's id list); the pin now types the list as it stands and keeps its point (`hb_` never).
 

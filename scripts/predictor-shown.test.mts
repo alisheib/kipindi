@@ -123,7 +123,7 @@ function checks(read: (rel: string) => string): Check[] {
   const svcRaw = read("src/lib/server/market-service.ts");
   const svc = decomment(svcRaw);
   ok("6 · the bet path names the extra only through the seam's read, inside the one pool increment, and never for a player",
-    /\/\/ SEAM:shownCount\n\s*const shownExtra = ctx\.kind === "house" \? await houseShownExtra\(\{ tx: lockTx, botId: ctx\.botId, mine \}\) : 0;/.test(svcRaw.replace(/\r\n/g, "\n"))
+    svcRaw.split(String.fromCharCode(13)).join("").includes(["    // SEAM:shownCount", '    const shownExtra = ctx.kind === "house" ? await houseShownExtra({ tx: lockTx, botId: ctx.botId, mine }) : 0;'].join(String.fromCharCode(10)))
       && /const shown = shownExtra > 0 \? \{ predictorExtra: shownExtra \} : \{\};/.test(svc)
       && (svc.match(/predictorCount: firstForThisPlayer, \.\.\.shown \}/g) ?? []).length === 2
       && (svc.match(/\bpredictorExtra\b/g) ?? []).length === 3,
