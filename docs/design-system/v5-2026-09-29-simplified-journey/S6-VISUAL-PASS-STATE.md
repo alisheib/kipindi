@@ -3,7 +3,7 @@
 **⭐ 2026-10-11 19:24 — ROUND 9 IS LIVE (`35efb6a9`); ROUND 10 IS THE LAST STEP — ▶ appendix L.** Round 9's own read (336
 tiles of `9a740922`, eight readers) found no regression and one real item, fixed in `35efb6a9`. What remains of S6:
 round 10 (appendix L — the places round 9's two rules did not reach, and /updown's chart at 1280), its re-tile and read,
-then S6's close record (classic parity at the live main, test:all). Production read back at 19:28 EAT: both hosts on `35efb6a9` (184 s after the push), health, the service worker, and the first-load chunks (no classic page loads journey code); production qa:live was still owed when the session ended (ALI-BLADE15's node_modules was being restored) — run it first on the next machine: `BASE=https://50pick.tz node scripts/pre-deploy-live-check.mjs` (its one sign-in check needs a QA password; every other check must pass). The reads' records (rounds 7–8 and
+then S6's close record (classic parity at the live main, test:all). Production read back at 19:28 EAT: both hosts on `35efb6a9` (184 s after the push), health, the service worker, and the first-load chunks (no classic page loads journey code); production qa:live 329/330 at 19:36 EAT — its one failure the QA player's sign-in, which this machine has no password for, as on every push. The reads' records (rounds 7–8 and
 round 9, with every KNOWN and accepted item) are `S6-READ-TRIAGE.md` beside this file — a reader starts from it.
 
 **⭐ 2026-10-11 — THE CLOSE-OUT READ IS DONE; ROUND 9 FIXES WHAT IT FOUND.** Eight readers read the 333 close-out

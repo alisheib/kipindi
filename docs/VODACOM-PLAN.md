@@ -62,7 +62,7 @@ plant that read git HEAD. Proof: typecheck 0 (9a740922 and 35efb6a9); test:all 5
 cashout-price-guard 62 + 65; next build 0 and local qa:live 334/334 (9a740922); tiles `qa:journey-shell` 1659 passed ·
 0 failed · 0 blocked, 336 tiles, read by eight readers — NO regression, one real item (the journey footer tore the
 proposals page's name at sw 1024) fixed in `35efb6a9` (the name held whole; guard 51/51, the old rendering planted and
-caught). Production read back at 19:28 EAT: both hosts on `35efb6a9` (184 s after the push), health, the service worker, and the first-load chunks (no classic page loads journey code); production qa:live was still owed when the session ended (ALI-BLADE15's node_modules was being restored) — run it first on the next machine: `BASE=https://50pick.tz node scripts/pre-deploy-live-check.mjs` (its one sign-in check needs a QA password; every other check must pass). Lessons: the first lock turn served yesterday's tree (a chain's `at` helper was lost when cut from
+caught). Production read back at 19:28 EAT: both hosts on `35efb6a9` (184 s after the push), health, the service worker, and the first-load chunks (no classic page loads journey code); production qa:live 329/330 at 19:36 EAT — its one failure the QA player's sign-in, which this machine has no password for, as on every push. Lessons: the first lock turn served yesterday's tree (a chain's `at` helper was lost when cut from
 another script and Windows' AT.EXE swallowed the call) — caught by opening three tiles before the readers; a crash at
 ~17:20 → the light profile below. NOT run for round 9 (owed to S6's close, with round 10): classic parity (stopped
 mid-run when Ali ended the session) and the hub-only re-tile of the footer fix.
