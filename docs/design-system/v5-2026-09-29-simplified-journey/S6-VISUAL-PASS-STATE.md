@@ -1,5 +1,11 @@
 # S6 visual pass — the state, for resuming on any machine (updated 2026-10-11, ALI-BLADE15)
 
+**⭐ 2026-10-11 19:24 — ROUND 9 IS LIVE (`35efb6a9`); ROUND 10 IS THE LAST STEP — ▶ appendix L.** Round 9's own read (336
+tiles of `9a740922`, eight readers) found no regression and one real item, fixed in `35efb6a9`. What remains of S6:
+round 10 (appendix L — the places round 9's two rules did not reach, and /updown's chart at 1280), its re-tile and read,
+then S6's close record (classic parity at the live main, test:all). Production read back at 19:28 EAT: both hosts on `35efb6a9` (184 s after the push), health, the service worker, and the first-load chunks (no classic page loads journey code); production qa:live was still owed when the session ended (ALI-BLADE15's node_modules was being restored) — run it first on the next machine: `BASE=https://50pick.tz node scripts/pre-deploy-live-check.mjs` (its one sign-in check needs a QA password; every other check must pass). The reads' records (rounds 7–8 and
+round 9, with every KNOWN and accepted item) are `S6-READ-TRIAGE.md` beside this file — a reader starts from it.
+
 **⭐ 2026-10-11 — THE CLOSE-OUT READ IS DONE; ROUND 9 FIXES WHAT IT FOUND.** Eight readers read the 333 close-out
 tiles (rounds 7 and 8 live, `c706c7c6`) one by one: 19 items to fix → round 9 in four parts (R9-A edges and glyphs: the
 podium glyph, sign-out drawn as sign-IN, the Toka box, one edge-icon rule, the featured YES/NO 12px, the dashed track;
@@ -805,6 +811,10 @@ C · CROSS-SURFACE CONSISTENCY (visual and verbal, statically). The pass's rule:
   too; and the applicant's /agent/status "expired" section does not show the refund-owed line (`t.agent.refundDue`
   exists in en/sw/zh; reusing it there is a UI change with a visual pass).
 
+- (round 9's read) sw `udEstimateNote` / `howItWorksFine` say "odds" in a Swahili sentence (a translator's call).
+- (round 9's read) /results names the void state two ways: the lens "Imebatilishwa", the legend, chip and verdict "Batili".
+- (round 9's read) "Fungua soko →" carries its arrow as a dictionary character — a third arrow weight beside the glyphs.
+
 #### S8 (the journey bet sheet)
 - A player on a break (or self-excluded but signed in) can open the old dial, pick a side and a stake, and is refused
   only at confirm ("Could not place" + the break's date). The S3 engine's `shortfallPlan` already refuses FIRST
@@ -1063,3 +1073,93 @@ K37. "Hakuna ada" / "No fee" on the market page's free-exit chip is in the quiet
     success green (round 6 sent it to the owner; it was never filed). (Default: unchanged.)
 K38. /live at 1280: the masthead card keeps its content in its left half; about 540×230px beside it holds only the pager
     and the faint watermark. (Default: as designed.)
+K39. SENTENCES (ledes, hints, banners' prose) may end a line on a connective — "Chagua upande kwenye" / "soko ili…" on
+    the home lede at sw 1024–1280 (three readers), "…msimamo wako na" / "kuweka dau lako." on the bet hint. The line rule
+    covers titles, labels, eyebrows and captions; extend it to sentences? (Default: no — sentences break as prose.)
+K40. The Up & Down round chart's strike label ("UFUNGUZI $2,896.00") is drawn in a muted gold on a figure that is not
+    money. Move it to a neutral ink? (Default: unchanged.)
+K41. The leaderboard podium hangs its columns from the top (round 9: #1 raised 16px again), so its base is ragged — a 42px
+    hole under #1 when the runners-up carry a streak chip. Accept, or square the base? (Default: accept.)
+
+## Appendix L · ROUND 10 — the last S6 step (filed 2026-10-11, ALI-BLADE15), and how to re-tile and read on any machine
+
+Round 9's read (336 tiles of `9a740922`, eight readers; the record is `S6-READ-TRIAGE.md`) found NO regression. Round 10
+is the places round 9's own two rules never reached — R9-A's edge/stroke rule (`src/components/ui/glyphs.tsx`: the
+`edge` and `text` props, `edgeGlyph`, `GLYPH_STEM`; read commit `9f369528`) and R9-B's possessive hold
+(`possessiveRanges` in `src/components/ui/keep-run.tsx`; commit `c4f65f6e`) — plus one chart to check. Tile numbers are
+that run's (`qa:journey-shell` at 9a740922, 336 tiles). Every finding is re-checked first (CONFIRMED / REFUTED with
+numbers) and fixed with its siblings — R9-A's census regex never classified `chevronDown` and saw only eyebrow glyphs
+written inline, which is why these were missed.
+
+### R10-A · the edge and stroke rules' remaining glyphs
+1. /updown's filter field (tile 163, sw 390): `filter-sheet.tsx` ~314 `<I.sliders s={15}>` ink starts 1.74px inside
+   the content column (x33 → 34.74); ~337 `<I.chevronDown s={14}>` ink ends 3.01px short (353.99 against 357).
+2. /help's FAQ accordion (tile 192, sw 1280): every "⌄" ends at x1112.10 against the row edge 1115.0
+   (`help/page.tsx` ~139 `<I.chevronDown s={13} />`); the leading FAQ glyphs are a centred icon column (keep).
+3. Extend R9-A's census (`scripts/visual-pass-r9a.test.mts` §4.10) to chevronDown / chevronUp and every trailing caret or
+   disclosure glyph; classify every site and fix each that ends or starts a run.
+4. `Stat`'s icon slot (`src/components/ui/stat.tsx` ~242 draws `{icon}{labelRow}` as given): the market page's stat
+   tiles (tile 162: KIASI / WATABIRI / INATATULIWA glyph ink 1.07–1.84px inside x149 / 412 / 576) and /profile's stat
+   cells (187 / 188: SALIO +1.08, HAI +2.18, IMEKAMILIKA +2.48px) — pull the slot's glyph the way PageHeader does
+   (`edgeGlyph`) for all 11 call sites and /profile/activity's.
+5. A section heading's leading glyph: the market page's "Nafasi zako" h2 (`<I.portfolio s={15}>` ink at 158.12 on a
+   157 edge) and every sibling h2 / h3 that leads with a glyph.
+6. One weight for every arrow among words: the wallet's "↓ Weka pesa" / "↑ Toa pesa" (`wallet-client.tsx` ~773 / 778)
+   keep the thin stroke (≈1.2px) while round 9 stroked other button arrows at their label's stem ("→ Omba sasa" ≈2.16px,
+   `agent/page.tsx` ~272 `text="body-600"`). And decide one rule for a leading glyph inside a centred control: the
+   Withdraw ghost's content sits 0.9–1.7px right of centre (its ↑ ink is 10px in a 16px box; tiles 132–137) while the
+   held capsule was centred by its ink.
+7. The search box (tiles 172 / 194): the magnifier 16.76px from the left border, the ⓘ 13.34px from the right — equal by
+   ink, or say why not.
+8. "Fungua soko →" draws its arrow as a dictionary character (`i18n-dict.ts` ~3729) — no dictionary change; S12 (listed
+   in appendix G).
+
+### R10-B · the possessive hold in banner bodies
+The coming-soon banner on /proposals (tile 185, sw 390) reads "…kupendekeza masoko" / "yako mwenyewe na kupata
+zawadi". `src/components/ui/coming-soon-banner.tsx` ~52 draws `{body}` raw; so do FeatureStateBanner (maintenance) and
+the invite page's coming-soon state. Route every banner / notice body that can hold a possessive through the keep the
+empty-state bodies use; predict the lines at 320 / 360 / 390 / 412 / 1280 in each locale; prove nothing overflows.
+(Sentences ending on a plain connective are owner question K39 — not this round.)
+
+### R10-C · /updown's chart at 1280
+Tile 164 (sw 1280): the live chart pane drew NOTHING (the "BTC" watermark only — no grid, no scale, no state line) where
+390 (tile 163) drew its grid and prices — the first run with a live price feed (rounds 7–8 drew the empty sentence).
+Check production /updown at 1280 first. `src/components/charts/terminal-chart.tsx` draws when `feed && engineReady` and
+creates the chart with `width: el.clientWidth` (a ResizeObserver applies later widths); its overlay shows only while
+`feed` is null — so a pane that has a feed but no drawing has no state line either. Find the cause (capture timing vs
+a real desktop draw gap); fix it, and give a feed-but-no-bars pane a state line.
+
+### R10-D · a lens strip that hides a lens with no hint
+/results at sw 390 (tiles 171 / 204): Zote 6 / NDIO 3 / HAPANA 2, then ~50px of nothing before "masoko 6"; the fourth
+lens "Imebatilishwa 1" starts exactly at the strip's clip edge, so not one letter shows and nothing says the strip
+scrolls (`.kp-strip-fade`). A scrolling strip must always show that more follows, at every width and locale — find the
+rule that decides where its items stop and fix every such strip (wallet lenses, /markets chips, /updown…), or prove
+this is the only case.
+
+### How round 10 runs (the recipe that worked on ALI-BLADE15, the LIGHT profile)
+1. **One helper** in its own worktree from main (node_modules a junction to the real tree's), the rules of
+   `briefs/r5-common.md` (on `origin/vodacom-visual-tools`) as adapted for round 9: no commit, no tsc / build / browser,
+   ONE Node process at a time; guard `scripts/visual-pass-r10.test.mts` (`test:visual-pass-r10`) with plants and an
+   on-disk mutation proof (N/N, files restored byte-identical by sha-256); every suite that reads a changed file run
+   before and after (derive from the diff; R9's guards' pins move with reasons).
+2. **Integrate** (merge, re-run the guards for any file the merge changed), then **one lock job** (`~/heavy-node-lock.sh
+   run <who> bash <script>`, launched detached as a SCRIPT FILE): typecheck; `next build` in the worktree with REAL
+   node_modules (Turbopack refuses a junction); then ONE in-memory dev server (`env -u DATABASE_URL SESSION_SECRET=<32+>
+   OTP_PEPPER=<16+> DISABLE_ADMIN_TOTP=true npx next dev -p <port>`, no heap cap, 30 s cool-down, routes warmed one at a
+   time), local qa:live (`BASE=… node scripts/pre-deploy-live-check.mjs`), then the tiles on that same server
+   (`KP_BASE=… KP_BUDGET_MIN=40 npm run qa:journey-shell -- <dir>`; `KP_ONLY=<sections>` for part of the run — the
+   sections: classic header sheet unread wallet focus tabs tickets hub overlays viewer emailbar kyc). ⛔ Verify the
+   worktree is on the commit by HEAD before the server starts; ⛔ stop if the server log says "restarting".
+3. **Open 2–3 tiles yourself** that a fix should have changed, THEN start the readers: eight, each a batch of ~42 tiles,
+   each told to read `tools/visual/read-brief-r2.md` (on `origin/vodacom-visual-tools`), a fixes brief for the round
+   (what each item must now look like, with numbers), this file's appendices F and K, and `S6-READ-TRIAGE.md` (what is
+   KNOWN); every tile opened in order, every claim measured (System.Drawing or Python), the report = tiles opened ·
+   findings · verified / not fixed · owner items · doubts. Triage every report; fix what is real; re-tile only what
+   the fix touches.
+4. **S6's close record:** classic parity — a NEW baseline at the live main (`node scripts/qa-classic-shell-parity.mjs
+   --baseline <file>` with the tree at main), then the tip compared (`npm run qa:classic-shell-parity -- --compare <file>
+   --allow-base`), every intended difference named in EXPECTED_DIFFS (never a re-baseline); and `test:all`
+   (`node scripts/test-all.mjs --jobs 4`), every red explained. Round 9's parity was stopped mid-run (2026-10-11) — it
+   is owed here, with round 10.
+5. Push, read production back (`?dpl=` on both hosts, health, the first-load chunks, production qa:live), tick S6 ✅ in
+   VODACOM-PLAN §1 and NEXT-PLAN's count, and start S7 (`S7-PLAN.md`).
