@@ -1821,3 +1821,38 @@ nothing has diverged in 8,479 markets since 1 September. Nobody has identified t
 cause, and this programme did not go looking for it: the instrument was the deliverable. If a
 divergence appears on a September-or-later market, that is a live defect and the cause hunt
 starts there.
+
+---
+
+## §8 · AFTER THE AUDIT — money defects found outside its lanes
+
+### 8.1 · ✅ FIXED (K32, 2026-10-11) — a fee paid into an agent draft that EXPIRED was kept, with nothing owing it
+
+**Found by R8-D (2026-10-10).** `expireStaleAgentApplications` — the retention chore's expiry of untouched agent drafts —
+set an editable or INVITED application past its `expiresAt` to `EXPIRED` and left `feeDisposition` alone. A draft whose
+registration fee was `COLLECTED` (paid from the wallet since 2026-09-10, or a bank payment an officer reconciled)
+therefore expired with the money kept and nothing owing it: only `rejectApplication` turned a collected fee into
+`REFUND_DUE`, the one state the refunds-owed worklist and `recordFeeRefund` read. Confirmed on the unmodified service
+before any change: a wallet-paid draft expired `EXPIRED` / `COLLECTED`, off the worklist, the officer's refund refused
+("No refund is owed on this application."), the applicant down the whole fee.
+
+🔴 **And the expiry raced the money.** It decided on a list snapshot under no lock, while the wallet payment debits under
+`agentapp:<userId>` and an officer's reconciliation, waiver, rejection and refund hold `agent:<applicationId>`. Each
+interleaving forced on the old code: a payment in flight landed `COLLECTED` on a row the expiry had just closed; an
+officer's reconciliation did the same; a second run overlapping the first re-expired the row; and an application
+SUBMITTED while a run stood between its list and its write was expired under review.
+
+⭐ **Fixed.** A collected fee on an expiring application becomes `REFUND_DUE`, due `refundDeadlineDays` from the expiry —
+`feeOwedBack`, one spelling now shared with the rejection — and the `agent.application.expired` audit names `refundDue`
+and the amount. The expiry pays nothing (the officer's `recordFeeRefund` stays the one payer: a wallet fee back to the
+wallet, an EXTERNAL one recorded as wired back) and tells the applicant nothing new. Each candidate is decided by
+`expireLapsedDraft` inside `agentapp:<userId>` (outer) and `agent:<applicationId>` (inner), on the row re-read there, so
+a payment that lands first is owed back and one that comes after is refused `not_editable` before any money moves.
+Guard: `npm run test:agent-fee-expiry`, on both stores — every money case fails on the unmodified service while the
+controls pass, and each planted defect (no REFUND_DUE · the decision outside the lock · the stale snapshot · the
+officer's lock dropped · no lock at all) is caught on its named case.
+
+⚠️ **Not done here, deliberately: rows that ALREADY expired with a collected fee.** The expiry never revisits an
+`EXPIRED` row, and rewriting money history is not this change's to do. A read-only production query finds any —
+`SELECT id, "userId", "feeAmountTzs", "feeFundingSource", "updatedAt" FROM "AgentApplication" WHERE status = 'EXPIRED' AND "feeDisposition" = 'COLLECTED';`
+— and what happens to each one found is an officer's decision, with the evidence in front of them.

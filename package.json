@@ -255,6 +255,7 @@
     "test:agent-fee-copy": "tsx scripts/agent-fee-copy.test.mts",
     "test:agent-fee-wallet": "tsx scripts/agent-fee-wallet.test.mts",
     "test:agent-fee-wallet-path": "tsx scripts/agent-fee-wallet-path.test.mts",
+    "test:agent-fee-expiry": "tsx scripts/db-scratch.mts --run npx tsx scripts/agent-fee-expiry.test.mts",
     "test:agent-fee-officer-panel": "tsx scripts/agent-fee-officer-panel.test.mts",
     "test:agent-terms-binding": "tsx scripts/agent-terms-binding.test.mts",
     "test:terms-binding": "tsx scripts/terms-binding.test.mts",

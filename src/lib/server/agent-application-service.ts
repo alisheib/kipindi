@@ -1280,6 +1280,19 @@ export async function requestMoreInfo(officerId: string, applicationId: string, 
 }
 
 /**
+ * ⭐ A COLLECTED FEE ON AN APPLICATION THAT CLOSES WITHOUT AN AGENT IS OWED BACK — one spelling, for every exit that keeps
+ * none of the money: an officer's rejection (`rejectApplication`) and a draft whose clock ran out (`expireLapsedDraft`,
+ * K32 2026-10-11). It answers the columns that put the row on the ONE refunds-owed worklist — `REFUND_DUE`, due
+ * `refundDeadlineDays` from now — or null when nothing was collected (NONE, WAIVED).
+ * ⛔ It pays nothing. The officer's `recordFeeRefund` stays the one payer, and it mirrors the collection's rail: a wallet
+ * fee goes back to the wallet as money, an EXTERNAL one is recorded as wired back.
+ */
+function feeOwedBack(app: Pick<StoredAgentApplication, "feeDisposition">, cfg: AgentConfig): Pick<StoredAgentApplication, "feeDisposition" | "feeRefundDueAt"> | null {
+  if (app.feeDisposition !== "COLLECTED") return null;
+  return { feeDisposition: "REFUND_DUE", feeRefundDueAt: new Date(Date.now() + cfg.refundDeadlineDays * DAY_MS).toISOString() };
+}
+
+/**
  * Reject. If a fee was collected it becomes REFUND_DUE with a deadline, and the same row lands
  * on the refunds-owed worklist — reject and refund share ONE worklist, or TZS 100,000 sits
  * owed with nothing tracking it. Referee ID scans are destroyed immediately: we never had a
@@ -1295,10 +1308,11 @@ export async function rejectApplication(officerId: string, applicationId: string
     if (!DECIDABLE.includes(app.status)) { const word = AGENT_STATUS[app.status].en; return { ok: false as const, error: `An application marked "${word}" cannot be rejected.`, code: "INVALID" as const }; }
     const cfg = getAgentConfig();
     const now = iso();
-    const refundDue = app.feeDisposition === "COLLECTED";
+    const owed = feeOwedBack(app, cfg);
+    const refundDue = owed !== null;
     await db.agentApplication.update(app.id, {
       status: "REJECTED", reviewerId: officerId, reviewedAt: now, rejectReason: input.reason, rejectNote: note || null,
-      ...(refundDue ? { feeDisposition: "REFUND_DUE" as const, feeRefundDueAt: new Date(Date.now() + cfg.refundDeadlineDays * DAY_MS).toISOString() } : {}),
+      ...(owed ?? {}),
     });
     const purged = await purgeThirdPartyDocuments(app.id);
     audit({ category: "COMPLIANCE", action: "agent.application.rejected", actorId: officerId, targetType: "AgentApplication", targetId: app.id, payload: { reason: input.reason, note, refundDue, refereeDocsPurged: purged, terminal: TERMINAL_REJECT_REASONS.includes(input.reason) } });
@@ -1925,18 +1939,35 @@ export async function declineInvitation(token: string): Promise<ServiceResult> {
 //  HOUSEKEEPING — called from the retention chore
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Expire untouched drafts and lapsed invitations; destroy the documents of the expired. */
+/** A row the expiry may close: an editable draft, or an invitation not yet accepted, whose clock ran out by `now`. */
+function lapsedBy(app: StoredAgentApplication, now: number): boolean {
+  if (!EDITABLE.includes(app.status) && app.status !== "INVITED") return false;
+  return !!app.expiresAt && new Date(app.expiresAt).getTime() <= now;
+}
+
+/**
+ * Expire untouched drafts and lapsed invitations; destroy the documents of the expired.
+ *
+ * ⭐ K32 (2026-10-11, found by R8-D) · A FEE PAID INTO A DRAFT THAT LAPSES IS OWED BACK. This used to set the row EXPIRED and
+ * leave `feeDisposition` alone, so a draft whose fee was COLLECTED (from the wallet, or a bank payment an officer reconciled)
+ * expired with the money kept and nothing owing it — only a rejection turned a collected fee into REFUND_DUE. Now the
+ * expiry owes it back exactly as the rejection does (`feeOwedBack`), its audit says so (`refundDue`, the amount), and the
+ * applicant is told nothing new: the refund's own notice and letter reach them when an officer pays it.
+ * ⛔ The list below is only the CANDIDATES. Each one is decided by `expireLapsedDraft`, inside the fee's locks, on the row as
+ * it is THEN — the snapshot alone once let a payment, a reconciliation or a submit land between this read and the write.
+ */
 export async function expireStaleAgentApplications(now = Date.now()): Promise<{ drafts: number; invitations: number; documents: number }> {
   let drafts = 0, invitations = 0, documents = 0;
-  for (const a of await db.agentApplication.list()) {
-    if (!EDITABLE.includes(a.status) && a.status !== "INVITED") continue;
-    if (!a.expiresAt || new Date(a.expiresAt).getTime() > now) continue;
-    await db.agentApplication.update(a.id, { status: "EXPIRED" });
-    for (const d of await db.agentApplicationDoc.listByApplication(a.id)) {
+  for (const listed of await db.agentApplication.list()) {
+    if (!lapsedBy(listed, now)) continue;
+    const expired = await expireLapsedDraft(listed, now);
+    if (!expired) continue;
+    // ⭐ After the locks are released: an EXPIRED row can no longer be edited, so nothing races the purge.
+    for (const d of await db.agentApplicationDoc.listByApplication(listed.id)) {
       if (d.purgedAt) continue;
       if (await deleteKycDocument(d.storageKey)) { await db.agentApplicationDoc.update(d.id, { purgedAt: iso() }); documents++; }
     }
-    audit({ category: "SYSTEM", action: "agent.application.expired", actorId: null, targetType: "AgentApplication", targetId: a.id });
+    audit({ category: "SYSTEM", action: "agent.application.expired", actorId: null, targetType: "AgentApplication", targetId: listed.id, payload: expired });
     drafts++;
   }
   for (const i of await db.agentInvitation.list()) {
@@ -1945,6 +1976,32 @@ export async function expireStaleAgentApplications(now = Date.now()): Promise<{ 
     invitations++;
   }
   return { drafts, invitations, documents };
+}
+
+/**
+ * ⭐ K32 · ONE LAPSED DRAFT, DECIDED INSIDE THE LOCKS EVERY FEE WRITER TAKES, ON THE ROW READ THERE.
+ *
+ * A fee reaches a draft under one of two locks: the applicant's wallet payment under `agentapp:<userId>` (`payFeeFromWallet`,
+ * its wallet debit nested inside), and an officer's reconciliation of a bank-paid fee under `agent:<applicationId>`
+ * (`reconcileFee`; the waiver, the rejection and the refund hold it too). Both are taken here, `agentapp:` OUTER and `agent:`
+ * INNER — a pair nothing takes the other way round, and nothing else is locked or moved inside it — and the row is READ AGAIN
+ * inside them: still editable or INVITED, still past its clock, and its CURRENT disposition decides what is owed.
+ *  · A payment that won the lock is seen: the draft expires REFUND_DUE, never a COLLECTED fee stranded on an EXPIRED row.
+ *  · A payment that comes after finds no live application (EXPIRED is not one) and is refused `not_editable` before any
+ *    money moves — no debit can land on a draft this has closed.
+ *  · A draft submitted, reconciled or re-clocked meanwhile is left alone.
+ * ⛔ Nothing is paid here. A write that did not land (`update` answered null) is no expiry: nothing is purged or audited, and
+ * the next run decides again.
+ */
+async function expireLapsedDraft(listed: StoredAgentApplication, now: number): Promise<{ refundDue: boolean; amountTzs: number | null } | null> {
+  return withLock(`agentapp:${listed.userId}`, () => withLock(`agent:${listed.id}`, async () => {
+    const app = await db.agentApplication.findById(listed.id);
+    if (!app || !lapsedBy(app, now)) return null;
+    const owed = feeOwedBack(app, getAgentConfig());
+    const written = await db.agentApplication.update(app.id, { status: "EXPIRED", ...(owed ?? {}) });
+    if (written?.status !== "EXPIRED") return null;
+    return { refundDue: owed !== null, amountTzs: owed ? app.feeAmountTzs : null };
+  }));
 }
 
 /**
