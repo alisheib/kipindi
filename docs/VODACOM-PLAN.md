@@ -42,6 +42,21 @@ the s4-5 low-minimum and s4-6 code frames on the S4 canvas, `shortfall.ts`'s `em
 the short-of-the-minimum board offers TZS 1,000 and S9's six code boards are marked superseded; `shortfallPlan` asks no
 email step; 2.9 reads which tree it runs on (the bar's component gone → no viewer may see a bar).
 
+**✅ ROUND 10 IS LIVE (2026-10-12 01:37 EAT, `ca72fe15` — Railway's first build failed on the Google-font fetch (the known transient), rebuilt from source) — the last S6 visual round: round 9's rules carried everywhere, and the read's
+follow-ups.** One helper (`177981c1`): the edge and stroke rules' remaining glyphs (carets by a census, `Stat`'s icon
+slot, headings that lead with a glyph, typed arrows on auth links) and "a centred control frames its ink" (Button and every
+glyph-led control: content centred by ink, 1–3px narrower — the Withdraw door within 0.5px of centre); one arrow weight
+among words; `noticeBody` (possessives held in notice bodies); a scrolling strip always shows that more follows. Then
+from round 10's own read (eight readers, 336 tiles of `177981c1`): **/updown's live chart drew only its watermark after
+the board widened past 1024px** (a height-keyed rebuild batched its ready flag to "unchanged" — reproduced in a browser:
+drawn at 390, blank once widened, drawn on a fresh 1280 load; fixed `efbeddae` with a build generation, proven drawn
+after the widen); the strip's cut made short lenses a ≤20% smudge — now it bites the item's END under a shorter ramp
+(every lens keeps its first letter at ≥ 63%, `ca72fe15`); the Up & Down stake note tore "dau / lako" (now held). Proof:
+`test:visual-pass-r10` 80/80 with every plant caught; the suites reading each changed file green; typecheck 0, `next
+build` 0, local qa:live 334/334; tiles (full run 1659 passed · 0 failed · 0 blocked; the follow-ups re-tiled on tabs,
+tickets and wallet); production read back. The read's sub-pixel residues (Chrome paints inline svg on whole pixels) are
+recorded, not chased; K42–K43 added.
+
 **✅ ROUND 9 IS LIVE (2026-10-11 19:24 EAT, `35efb6a9`) — the S6 close-out read's 19 items fixed; ROUND 10 LEFT, then S6 ✅.**
 Four helpers, each with its guard and mutation proof: **R9-A** edges and glyphs (`9f369528`: the hub's podium glyph and
 four more centred; every sign-out draws a log-OUT; the Toka box 58px; THE EDGE RULE — a glyph's `edge` prop puts its INK
@@ -325,9 +340,8 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S6 — ▶ RESUME HERE ON ANY MACHINE: ROUND 10 (S6-VISUAL-PASS-STATE **appendix L**: its brief, the
-re-tile and read recipes), then S6's close record (classic parity at the live main, test:all), then S6 ✅ (tick §1 and
-NEXT-PLAN's count); S6 closes when a read finds nothing (§0i;
+**Next:** (1) S6 — round 10 is LIVE; S6's close record runs now (classic parity — baseline at `c2d9e156`, the main
+before round 9, so it covers rounds 9 and 10 — and test:all), then S6 ✅ (tick §1 and NEXT-PLAN's count); S6 closes when a read finds nothing (§0i;
 [S6-VISUAL-PASS-STATE.md](design-system/v5-2026-09-29-simplified-journey/S6-VISUAL-PASS-STATE.md) §3/§4). The red twins the 2026-10-10 crash left owed
 (`red:house-bot-c5`, `-money`, `-engine`, `red:campaign-visuals`, `red:contacts-import`) are DROPPED from this plan by
 the efficiency ruling: they prove other lanes' guards, which rounds 7 and 8 never touched. The build plan is

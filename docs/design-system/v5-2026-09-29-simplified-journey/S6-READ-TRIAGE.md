@@ -298,3 +298,117 @@ Status: REAL (to fix before the push) · KNOWN (owner/by design/accepted) · OWN
 - OWNER (appendix K): K39 the line rule for SENTENCES (ledes, hints, banners' prose) — default no; K40 the Up & Down
   strike label in a muted gold; K41 the podium's ragged base (the hole under #1).
 - S12: "odds" in sw; "Imebatilishwa" vs "Batili"; the copy's "→" character.
+
+---
+
+# S6 round 10 read (177981c1, 336 tiles, eight readers, 2026-10-12) — triage
+
+Status: REAL (fix before the push) · KNOWN (owner / by design / accepted) · OWNER (a K question) · REFUTED.
+Known before the read: /updown's chart at 1280 blank after the drive widens the page — R10-C, FIXED `efbeddae` (the
+build generation), proven in a browser (r10c4).
+
+## Reader 7 (253–294: hub, footer, the empty states, /positions performance) — 42/42 · NO FINDINGS
+- VERIFIED: A6e the journey header pill (box unchanged; content by ink 0.20–0.45px left of centre, was 0.32–0.58; at
+  320 unchanged), A3c the language caret at 1280 (caps on 1117.0/1123.0, box 58 → 56, cluster gaps 12px, nothing wraps),
+  A6j "Angalia utendaji" (148 → 146px, glyph −2.000px, content 0.30px left of centre), R10-D 253 (the 4th lens shows
+  35px ≥ 32 — no cut due), round 9's hub items unchanged (A1, A3, C5 inline, B1, C4), the empty states centred.
+- Doubts: D1 the language box by ink 0.67–0.89px right of centre (the mono code's bearing; inside the 1px precedent) →
+  KNOWN; D2 the browser-check text misread round 9's padding shorthand (record only — the drive's 11.74375px pin is
+  right) → noted; D3 the language caret keeps the pictogram stroke beside a code (carets are pictograms by R10's rule;
+  unchanged since round 9) → KNOWN.
+
+## R10-C PROVEN FIXED (efbeddae, browser, 2026-10-12 00:46)
+- Before (r10c2, 177981c1): /updown drawn at 390 (pane 17,990 inked px + the price scale); the SAME page widened to 1280
+  → watermark only (157 px), no price scale, never recovering; a fresh 1280 load drawn (107,231 px).
+- After (r10c4, efbeddae): drawn at 390 (17,990); widened → drawn at +500 ms (107,231 px + the price scale 4,854) —
+  identical to the fresh 1280 load. Screenshot `scratchpad/r10/chart4-A-1280-widened.png`: grid, $2,895.95–$2,896.05
+  scale, the confirmed-price line, the time label. Cause: the height-keyed rebuild (300 → 380) batched the ready flag to
+  "unchanged"; now a build generation.
+
+## Reader 8 (295–336: hub, overlays, viewer, emailbar, KYC) — 42/42 · NO FINDINGS
+- VERIFIED: A6e the header pill (box unchanged, ink group −0.53…+0.32px of centre), A3c the language caret (ring 58 → 56,
+  ink on the end padding edge ±0.5px snap, cluster gaps 12/12; classic header unchanged), /results' sort trigger and
+  filter pill (content within 0.12px of centre), A7c the search box (magnifier 13.76px in), R10-D on /results (fade end
+  ≈234.3 inside "HAPANA 2") and /positions (inside "Umeshinda"), the journey footer at sw 1024 ("Mapendekezo ya Masoko"
+  whole on line 1 — round 9's 35efb6a9 fix), the signed-out notice body's holds; no narrower control wraps or clips.
+- Doubts: D1 whole-pixel SVG placement leaves <1px residues (a DOM check would meet ±0.15) → KNOWN; D2 = reader 7's D2
+  (A6e's note mirrored) → record; D3 the desktop capsule's contents 0.79–0.94px right after the language ring's
+  fractional pull (inside the 1px capsule tolerance) → KNOWN; D4 the strip rule's look — the peeking lens fades to ≤50%
+  ink with ~84px of fade beside it (by R10-D's rule: it says "more follows", it is not meant to be read) → KNOWN; D5 =
+  reader 7's D3 (carets keep the pictogram stroke) → KNOWN.
+
+## Reader 3 (085–126: header zero/held/masked, the guest Tiketi sheet, the unread hub) — 42/42
+- VERIFIED: A6e the pill (box unchanged, ink within ±0.6px of centre), A3c on all 16 desktop tiles (trigger 2px
+  narrower, caret on its edge, gaps 12.13/12.02), R10-B notice bodies ("timu yetu" whole, the last two words together),
+  round 9's A1/A3/A5/A6/C4/C6, "Maelezo ›" on the edge, the held capsule on phones, no line on "LENYE".
+- F1 (low, data) → K34: zh 320, the featured card's source line leaves "结算来源：" alone above "Tanzania Meteorological
+  Authority" (a 33-character name kept whole, R7-A's rule — the same choice as the sw regulator line's "Leseni"); the
+  sw "Linatatuliwa kwa …" twin at 320/360. Recorded beside K34, no code change.
+- Seen, as recorded: the held capsule at desktop now −0.51 / +0.08 (was −0.61 / −0.71); the masked figure; the wrapped
+  category glyph (now also at sw 390 with a longer category word: its ink in line with the title's).
+- Doubts: D1 = the A6e record (sides swapped in the check text); D2 Chrome paints inline svg at whole pixels → sub-pixel
+  pulls show as 0/±1px (KNOWN, rendering); D3 a calibration note for the arrow-weight instrument; D4 the staff strip's
+  "Toka kwenye onyesho" (staff chrome, centred anyway) → KNOWN.
+
+## Reader 1 (001–042: classic root, journey header root) — 42/42
+- VERIFIED: the hero CTAs frame their ink (sw 181 → 178px, content −1.10 → +0.40px of centre; en −0.95 → +0.05; zh
+  −1.17 → −0.17; gaps 12px, nothing wraps), the full-width phone CTA centred (−0.15, was −1.37), A6e as coded, one arrow
+  weight (CTA → 2.00 / links 1.49 / "Maelezo ›" 1.52 — each within 0.1–0.16px of its words' nominal stem), the classic
+  header and rail byte-identical (frozen chrome), round 9's A4/A5/A6/B2/C4/item 13 unchanged, the ⓘ centred.
+- F1 (low, sub-pixel) → KNOWN (rendering): the language trigger's caret ends 0.74px PAST its 12px padding edge on 12
+  desktop tiles and the trigger's ink group sits 0.81–1.02px right of centre (round 9: ~0.85 left) — Chrome paints an
+  inline svg on a whole pixel, so the 2.525px pull painted as 3.0px. Readers 3, 7 and 8 measured the same family (D1s).
+  Under 1px, inside the platform's 1px tolerance, invisible; a remedy (integral box widths / whole-pixel pulls) moves the
+  residue, it does not remove it.
+- K34's zh twin (029, the weather card's source line) → K34, as reader 3's F1.
+- Doubts: D1 = the whole-pixel family; D2 = the A6e record; D3 arrows at the NOMINAL stem read ~20–25% lighter than
+  Chrome's rendered letters (unchanged since round 9) → KNOWN; D4 the weather card's head one line taller at sw 390/412
+  (data; the designed wrap) → KNOWN; D5 the 1150 YES/NO half-pixel split (unchanged) → KNOWN.
+
+## Reader 2 (043–084: header root 999999, deposit, compact, zero) — 42/42
+- VERIFIED: A6e the gold pill on 30 tiles (box edges pixel-identical, ink −0.58…+0.27px of centre — every locale closer
+  than round 9), A3c pulled (bell still 29|29), round 9's A4 (card chevron, deposit eyebrow and "‹ POCHI" unchanged), A5,
+  A6, B2, C4; every capsule centred (figure ±0.31, caption ±0.44); chips within ±0.35 (zh 实时 +0.6, item 26).
+- F1 (low, <1px) = reader 1's F1 → KNOWN: the desktop language box leans +0.81/+1.02/+0.97px right by the instrument
+  (+0.67/+0.89/+0.83 by the drawing) — the mono code keeps its left side bearing (12.87–13.31px in, R9/R10 never pull a
+  word's bearing) while the caret is pulled onto its edge and painted on a whole pixel; round 9 leaned the same amount
+  left. Same class as round 9's held-capsule lean, accepted under the 1px rule.
+- D1 zh 320 "结算来源：" / the weather resolver's whole name → K34 (readers 1, 3); D2 the wrapped topic glyph at sw 320–412
+  (data: "HALI YA HEWA" wraps the meta row) → KNOWN (R1-F2/R2-F1); D3 the plus's whole-pixel snap → KNOWN; D4 capture
+  re-rasterisation; D5 data moves card heights → noise.
+
+## Reader 5 (169–210: /positions, /results, wallet, /live, leaderboard, invite, profile, help, markets, legal) — 42/42
+- VERIFIED: A6e, the 1280 language trigger (2px narrower, gaps kept), A7a–c the search box, R10-D Da/Db (+ /positions,
+  /markets; 1280 strips hide nothing; pressed lenses whole), R10-B Ba exactly as predicted (+ the notice's "Dau lako",
+  "pochi yako"), A2a the FAQ carets on 1115, A4c/A4d the stat glyphs on their columns (values unmoved), A4f trailing card
+  glyphs, A5b /live's category glyph, A1a/A1b/A1c the filter field (lone sliders boxed), the sort controls, A6a/A6b the
+  wallet doors (shafts 1.76–1.79px, centred), A6f "→ Omba sasa", A6j the invite buttons (−0.36…+0.16), "Vichujio", MADA;
+  no row wraps or clips; A8 unchanged.
+- F1 (low, 0.63px) → KNOWN (remedy recorded): the market page's "SHIRIKI" share pill (share-button.tsx ~101, a hand-built
+  button outside census 6.6/6.7) keeps its glyph boxed — ink group 0.63px left of centre, inside the 1px tolerance. The
+  remedy is an `edge` pull AND the label's trailing 0.14em tracking taken back (a pull alone would lean 1.36px).
+- OWNER K43 (readers 5 and 8): R10-D's peek fades the last visible lens so a strip says "more follows" — at rest that
+  lens's name cannot be read ("Umes…", "HAPA…"); accept? (Default: accept.)
+- Doubts: D1 the whole-pixel residues (IMEKAMILIKA +0.47, sliders −0.26, magnifier −0.24…) → KNOWN (rendering); D2 the
+  language lean → KNOWN; D3 the WhatsApp brand glyph keeps its box (+0.53) → KNOWN; D4 "Dhibiti Sindano" centred within
+  0.19 → fine; D6 the AKAUNTI glyph 1.29px low against its caps (F26 family, unchanged) → KNOWN. Item 22 has an
+  exception: /updown's round page prints "EAT".
+
+## Reader 4 (127–168: wallet sheet, focus, tabs, the market and round pages, /updown, /updown/history) — 42/42
+- VERIFIED: R10-A1 (caret on 357.0, sliders 32.74), R10-A4 (KIASI/WATABIRI within 0.24px; values unmoved), R10-A5
+  ("Nafasi zako" glyph 157.12), R10-A6 the Withdraw door centred (sw −0.19 / en +0.15 / zh +0.31 at 390; was +0.86…+1.36)
+  and the Deposit door, A6e, the QuerySort caret exact, R10-D on /updown/history (fade into "Juu imes…", pressed lens
+  whole), R10-B elsewhere ("dau lako", "malipo yako", "dau zako" held), focus rings whole, nothing wraps or clips.
+- F2 REAL → FIX: the Up & Down stake panel's empty-side note tears "dau / lako" at sw 1280 (166) — `emptyCopy`
+  (udNobodyBacked) drawn raw in updown-stake-controls.tsx ~353, round-stake-panel.tsx ~308 and updown-card.tsx ~1057;
+  R10-B's census missed them. Route all three through `noticeBody`.
+- F1 → S12 (already listed, R5-J): /updown/history's "{wins}/{decided} decided" in English in every locale.
+- F3 → S12 (dates): /updown/history's numeric "12/10, 00:10 EAT" (its own en-GB `month: "2-digit"` formatter) where every
+  other date names its month.
+- F4 → KNOWN (rendering): the INATATULIWA stat glyph 0.93px past its column after a whole-pixel paint (moved 2.00 for a
+  1.20 pull); the same family as the other residues.
+- Doubts: the A6e record (again); the ⓘ's 13.78 (layout) vs 13.34 (drawn) — the code's own note; /updown/history's side
+  chips draw TEXT arrows (Inter 700's ↑/↓) beside the round page's svg arrow — a census gap of R10-A6 for text arrows →
+  S12/round-11 polish, recorded; FAIDA HALISI counts settled rounds only (with "decided" its only word) → S12; the
+  390 sort caret 1.0px short or snap (unsettled, sub-pixel) → KNOWN; SHIRIKI = reader 5's F1. Round 9's D4 (the live
+  price label 10px left of JUU/CHINI's) still open → recorded for the next polish.

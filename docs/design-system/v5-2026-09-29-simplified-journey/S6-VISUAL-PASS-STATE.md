@@ -1,5 +1,9 @@
 # S6 visual pass — the state, for resuming on any machine (updated 2026-10-11, ALI-BLADE15)
 
+**⭐ ROUND 10 IS LIVE (2026-10-12 01:37 EAT, `ca72fe15` — Railway's first build failed on the Google-font fetch (the known transient), rebuilt from source).** Appendix L is done (its items, the /updown chart's rebuild bug, the read's
+follow-ups); the reads' record is `S6-READ-TRIAGE.md`. Left for S6: its close record (classic parity at `c2d9e156` + the
+tip, test:all), then S6 ✅.
+
 **⭐ 2026-10-11 19:24 — ROUND 9 IS LIVE (`35efb6a9`); ROUND 10 IS THE LAST STEP — ▶ appendix L.** Round 9's own read (336
 tiles of `9a740922`, eight readers) found no regression and one real item, fixed in `35efb6a9`. What remains of S6:
 round 10 (appendix L — the places round 9's two rules did not reach, and /updown's chart at 1280), its re-tile and read,
@@ -815,6 +819,10 @@ C · CROSS-SURFACE CONSISTENCY (visual and verbal, statically). The pass's rule:
 - (round 9's read) /results names the void state two ways: the lens "Imebatilishwa", the legend, chip and verdict "Batili".
 - (round 9's read) "Fungua soko →" carries its arrow as a dictionary character — a third arrow weight beside the glyphs.
 
+- (round 10's read) /updown/history's round cards print "1 BETS" (a count with the plural noun) and a numeric date
+  "12/10, 00:10 EAT" (its own en-GB formatter) where every other date names its month; sw "2 dau" may want "madau".
+- (round 10's read) zh spaces numbers and units two ways in one bar ("7天" against "5 分钟", "2 注").
+
 #### S8 (the journey bet sheet)
 - A player on a break (or self-excluded but signed in) can open the old dial, pick a side and a stake, and is refused
   only at confirm ("Could not place" + the break's date). The S3 engine's `shortfallPlan` already refuses FIRST
@@ -1081,7 +1089,7 @@ K40. The Up & Down round chart's strike label ("UFUNGUZI $2,896.00") is drawn in
 K41. The leaderboard podium hangs its columns from the top (round 9: #1 raised 16px again), so its base is ragged — a 42px
     hole under #1 when the runners-up carry a streak chip. Accept, or square the base? (Default: accept.)
 
-## Appendix L · ROUND 10 — the last S6 step (filed 2026-10-11, ALI-BLADE15), and how to re-tile and read on any machine
+## Appendix L · ROUND 10 — the last S6 step (filed 2026-10-11, ALI-BLADE15; ✅ LIVE — see the top), and how to re-tile and read on any machine
 
 Round 9's read (336 tiles of `9a740922`, eight readers; the record is `S6-READ-TRIAGE.md`) found NO regression. Round 10
 is the places round 9's own two rules never reached — R9-A's edge/stroke rule (`src/components/ui/glyphs.tsx`: the
@@ -1163,3 +1171,8 @@ this is the only case.
    is owed here, with round 10.
 5. Push, read production back (`?dpl=` on both hosts, health, the first-load chunks, production qa:live), tick S6 ✅ in
    VODACOM-PLAN §1 and NEXT-PLAN's count, and start S7 (`S7-PLAN.md`).
+K42. Tags (chips, status flags) keep their box around a glyph (round 10's rule: a glyph ALONE or in a tag keeps its
+    box; glyphs at the start or end of a control's words are pulled onto its edge). Exact centring would also take back
+    each tag's trailing tracking. (Default: as built.)
+K43. A scrolling strip that hides a lens now fades the last visible lens so the strip reads "more follows" — its first
+    letters stay at ≥ 63% ink and its end is cut ("Wo…", "HAPA…"). Accept the look? (Default: accept.)
