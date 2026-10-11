@@ -65,6 +65,7 @@ import { clipQuote } from "@/lib/notification-text";
 import { postLedgerEntries, stakeEntries, settlementPayoutEntries, refundEntries, cashoutEntries, withMoneyTx } from "./ledger";
 import type { ServiceResult } from "./auth-service";
 import { marketStore, positionStore } from "./market-dal";
+import { isTerminalStatus, marketChangeMark, marketsChangedSince } from "./market-change-log";
 // E-94 · a void refund names the reason the player was already given everywhere else.
 import { roundStore } from "./updown-dal";
 import { formatTzs, formatDateTime } from "@/lib/utils";
@@ -459,7 +460,8 @@ export async function listMarkets(filter?: {
 }
 
 /**
- * The whole terminal archive for one product-line filter, memoised.
+ * The whole terminal archive for one product-line filter, memoised — and never behind a write this process has
+ * committed (R9-D, see the last section).
  *
  * 🔴 WHY (audit F-08, corrected). The audit named `/api/fairness/recent` as the unbounded
  * read on the hot path. Measured on production, that route is not the problem: it inherits
@@ -507,18 +509,46 @@ export async function listMarkets(filter?: {
  * minutes moves the ordinary visit into the warm band.
  *
  * ⛔ THE CEILING IS THE OBJECTION WINDOW, AND IT IS NOT A FREE CHOICE. Settlement carries a
- * objection-window CEILING, so staleness on an archive of already-paid markets is not a fact
- * anyone can act on differently — but that argument stops holding somewhere, and this constant
- * must stay far below it. `test:product-line` asserts the bound so nobody "optimises" it to a
- * day. (`platform-stats.ts` memoises its own ALL read on the same table for the same reason;
- * the two no longer share a number, and that is fine — it serves a dashboard, not an archive.)
+ * objection-window CEILING, and this constant must stay far below it. `test:product-line` asserts
+ * the bound so nobody "optimises" it to a day. (`platform-stats.ts` memoises its own ALL read on
+ * the same table for the same reason; the two no longer share a number, and that is fine — it
+ * serves a dashboard, not an archive.)
+ *
+ * ── 🔴 A TTL ALONE LET THE ARCHIVE CONTRADICT THE SCREEN AROUND IT (R9-D, 2026-10-11) ───────
+ * This note used to say that staleness on an archive of already-paid markets "is not a fact
+ * anyone can act on differently". The visual pass's round 9 refuted it on tiles 168–170: a read
+ * taken before a drive's markets settled — an EMPTY one — was still being served after they had,
+ * so `/results` said "0 imetatuliwa" over "Bado hakuna soko lililotatuliwa" beside a LIVE strip
+ * naming a settlement, to a player whose own tickets held six settled bets. Nothing cleared the
+ * memo when a market resolved, voided or settled.
+ *
+ * ⭐ NOW EVERY HIT ASKS THE CHANGE LOG FIRST (`market-change-log.ts`). An entry keeps the log's
+ * mark from BEFORE the read that produced it; every row a committed write has changed since —
+ * whichever path wrote it: the officer, the bulk bar, the Sentinel, an Up & Down round, the
+ * emergency void, settlement, an upheld objection, a re-categorisation, the purge — is re-read BY
+ * ID and put back in, or left out, exactly as the full read would have it. A change never clears
+ * the entry whole: the full read stays at most one per TTL per key (the bound this memo exists
+ * for) and the warm band holds. Up & Down settles one round per RUNNING chain per span (360 a day
+ * on a 3-minute chain — `roundSpanMinutes`), two or three notes each (the verdict, the settlement,
+ * the next round's row), so the "ALL" key pays one indexed read of a handful of ids at the next
+ * render after them — never the full archive.
+ *
+ * ⛔ SO THE TTL NOW BOUNDS ONLY WHAT THIS PROCESS CANNOT SEE: a write from another process — an
+ * ops script against the database, the other container during a deploy's 60-second overlap
+ * (docs/RAILWAY-LIVE.md §13). Its two bounds above are unchanged and still asserted.
  *
  * ⚠️ Cache the READ, never the filtered output: the callers filter by URL parameters, and
  * keying on those would multiply the entries without reducing a single query.
+ * ⚠️ The ORDER is not a contract: a re-read row joins the end. Both readers sort with `sortBy`,
+ * whose last tie-break is the id (`lib/query/sort.ts`), so they render the same either way.
  */
+type TerminalRows = Awaited<ReturnType<typeof listMarkets>>;
+/** One key's memo: the rows, the instant of the FULL read the TTL runs from, and the change log's
+ *  mark from BEFORE the read that produced these rows. */
+type TerminalEntry = { at: number; mark: number; value: TerminalRows };
 declare global {
   // eslint-disable-next-line no-var
-  var __50PICK_TERMINAL_MARKETS: Map<string, { at: number; value: Awaited<ReturnType<typeof listMarkets>> }> | undefined;
+  var __50PICK_TERMINAL_MARKETS: Map<string, TerminalEntry> | undefined;
 }
 /** 5 minutes. ⛔ Bounded from ABOVE by the objection-window CEILING — see the note above and
  *  `TERMINAL_TTL_CEILING_MS`. Exported so the bound can be asserted rather than remembered. */
@@ -533,21 +563,44 @@ export const TERMINAL_TTL_CEILING_MS = 24 * 60 * 60 * 1000;
 
 export async function listTerminalMarkets(
   productLine: ProductLineFilter = DEFAULT_PRODUCT_LINE,
-): Promise<Awaited<ReturnType<typeof listMarkets>>> {
+): Promise<TerminalRows> {
   const key = String(productLine);
-  const now = Date.now();
-  const store = (globalThis.__50PICK_TERMINAL_MARKETS ??= new Map());
+  const store = (globalThis.__50PICK_TERMINAL_MARKETS ??= new Map<string, TerminalEntry>());
   const hit = store.get(key);
-  if (hit && now - hit.at < TERMINAL_TTL_MS) return hit.value;
+  // `null` = re-read in full: no entry, its TTL ran out, or the change log no longer reaches back to its mark.
+  const changed = hit && typeof hit.mark === "number" && Date.now() - hit.at < TERMINAL_TTL_MS
+    ? marketsChangedSince(hit.mark, productLine)
+    : null;
 
-  // One pass per terminal status, then concatenated — `listMarkets` takes a single status,
-  // and widening it to an array would change an indexed board query used everywhere else.
-  const [resolved, voided] = await Promise.all([
-    listMarkets({ status: "RESOLVED", productLine }),
-    listMarkets({ status: "VOIDED", productLine }),
-  ]);
-  const value = [...resolved, ...voided];
-  store.set(key, { at: now, value });
+  if (!hit || changed === null) {
+    const at = Date.now();
+    // ⛔ The mark is taken BEFORE the read: a write committed while it runs is re-read by the next hit.
+    const mark = marketChangeMark();
+    // One pass per terminal status, then concatenated — `listMarkets` takes a single status,
+    // and widening it to an array would change an indexed board query used everywhere else.
+    const [resolved, voided] = await Promise.all([
+      listMarkets({ status: "RESOLVED", productLine }),
+      listMarkets({ status: "VOIDED", productLine }),
+    ]);
+    const entry: TerminalEntry = { at, mark, value: [...resolved, ...voided] };
+    store.set(key, entry);
+    return entry.value;
+  }
+  if (changed.size === 0) return hit.value;
+
+  // ⭐ ONLY THE ROWS A COMMITTED WRITE CHANGED, by id, each kept or dropped by the full read's own
+  // rule — RESOLVED or VOIDED, this key's product line, no `Demo · ` fixture (`listMarkets`).
+  const mark = marketChangeMark(); // ⛔ before the read, as above
+  const fresh = await marketStore.marketsByIds([...changed]);
+  const value = hit.value.filter((m) => !changed.has(m.id));
+  for (const id of changed) {
+    const m = fresh.get(id);
+    if (!m || !isTerminalStatus(m.status) || isDemoMarket(m)) continue;
+    if (productLine !== "ALL" && (m.productLine ?? DEFAULT_PRODUCT_LINE) !== productLine) continue;
+    value.push(m);
+  }
+  // `at` stays the FULL read's: the TTL still forces one per key, for what this process cannot see.
+  if (store.get(key) === hit) store.set(key, { at: hit.at, mark, value });
   return value;
 }
 

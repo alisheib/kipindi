@@ -9,6 +9,9 @@
  */
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+// A limit meter's label never ends a line on a connective (round 9, R9-B): it shares its row with the figures, which
+// squeeze it ("Amana za" / "kila siku" where they run long).
+import { keepConnectives } from "@/components/ui/keep-run";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -206,7 +209,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
           <p className="gilt-eyebrow">{t.activity.limitsEyebrow}</p>
           {/* The link blue, hover included (Ali's ruling (2) of 2026-10-10, §B4c) — it was aqua, hovering to white. */}
           <Link href="/profile/responsible-gambling" className="inline-flex items-center gap-1 font-mono text-[11px] text-brand-300 hover:text-brand-200 underline">
-            {t.activity.manageLimits}<I.chevronRight s={12} />
+            {t.activity.manageLimits}<I.chevronRight s={12} edge="end" text="mono-400" />
           </Link>
         </div>
         <LimitMeter label={t.activity.depositDaily}   used={rg.dailyDeposit.used}   limit={rg.dailyDeposit.limit}   t={t} />
@@ -241,7 +244,7 @@ function LimitMeter({ label, used, limit, t }: { label: string; used: number; li
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between gap-3 text-[12px]">
-        <span className="text-text-muted">{label}</span>
+        <span className="text-text-muted">{keepConnectives(label)}</span>
         <span className="font-mono tabular-nums text-text-subtle">
           <Cash>{formatTzs(used)}</Cash>
           {hasLimit ? <> / <Cash>{formatTzs(limit!)}</Cash></> : <span className="ml-1 text-text-faint">· {t.activity.noLimitSet}</span>}

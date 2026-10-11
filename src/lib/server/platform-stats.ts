@@ -21,6 +21,7 @@
  * this scan again — but as a live consumer, not as a query kept warm for nobody.
  */
 import { listMarkets, ratesFor, type StoredMarket } from "./market-service";
+import { marketChangeMark, marketsChangedSince } from "./market-change-log";
 import { signoffOf, type Signoff, type Ruling } from "@/lib/markets/signoff";
 import { objectionRulings } from "./reversals";
 import { db } from "./store";
@@ -77,9 +78,19 @@ const TTL_MS = 60_000;
 /** Enough for the ticker (12) and the landing strip (5) out of one slice. */
 const RECENT_LIMIT = 16;
 
+/**
+ * ⭐ AND NEVER BEHIND A POLL THIS PROCESS HAS CHANGED (R9-D, 2026-10-11 — the archive's twin, `listTerminalMarkets`).
+ * `mark` is the market change log's position from BEFORE the read (`market-change-log.ts`); a hit is served only while
+ * no long-form poll has been written since, so the LIVE strip on every page names a settlement as soon as `/results`
+ * lists it — the round-9 finding was those two disagreeing on one screen. ⛔ ONLY THE POLL LINE: every row this memo
+ * renders is a poll (the strip and the landing's trust band filter to `MARKET` below; `settledCount` is rendered
+ * nowhere), so an Up & Down round — one per running chain per span — does not re-read it. Its `paidOutTzs` share moves
+ * within the TTL, as before, and `paidOutBehind` (landing-picks.ts) still guards the one screen that sets it beside a
+ * player's own payouts. A write from another process is bounded by `TTL_MS`.
+ */
 declare global {
   // eslint-disable-next-line no-var
-  var __50PICK_PLATFORM_STATS: { at: number; value: PlatformStats } | undefined;
+  var __50PICK_PLATFORM_STATS: { at: number; value: PlatformStats; mark: number } | undefined;
 }
 
 /**
@@ -138,7 +149,10 @@ function toSettlementRow(m: StoredMarket, rulings: ReadonlyMap<string, Ruling[]>
 export async function getPlatformStats(): Promise<PlatformStats> {
   const now = Date.now();
   const cached = globalThis.__50PICK_PLATFORM_STATS;
-  if (cached && now - cached.at < TTL_MS) return cached.value;
+  if (cached && now - cached.at < TTL_MS && typeof cached.mark === "number" && marketsChangedSince(cached.mark, "MARKET")?.size === 0) {
+    return cached.value;
+  }
+  const mark = marketChangeMark(); // ⛔ BEFORE the read: a poll written while it runs re-reads the next hit
 
   // productLine "ALL" — `settledCount` is a whole-platform figure and must stay one. Counting
   // only long-form polls would understate what the platform has settled, and the narrative
@@ -185,7 +199,7 @@ export async function getPlatformStats(): Promise<PlatformStats> {
   // out nothing yet should say so.
   const paidOutTzs = await readPaidOutTzs();
   const value: PlatformStats = { settledCount: resolved.length, recentSettlements: settlements, paidOutTzs };
-  globalThis.__50PICK_PLATFORM_STATS = { at: now, value };
+  globalThis.__50PICK_PLATFORM_STATS = { at: now, value, mark };
   return value;
 }
 

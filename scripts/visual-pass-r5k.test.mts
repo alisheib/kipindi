@@ -339,7 +339,10 @@ section("3 · /wallet/deposit/return — a hero, not a card; six rows; two butto
   // for a journey reader, which this drawing is not told), and the glyph is an empty box.
   const retSrc = code(FILES.ret), head = retSrc.slice(retSrc.indexOf("<PageHeader"), retSrc.indexOf("</PageHero>"));
   const hidden = ["eyebrow={<GhostText>{t.common.deposit}</GhostText>}", "title={<GhostText>{t.wallet.returnPaidTitle}</GhostText>}", "subtitle={<GhostText>{t.wallet.returnPaidBody}</GhostText>}"].every((x) => squash(head).includes(x))
-    && /icon=\{<span className="inline-block h-\[14px\] w-\[14px\] shrink-0" \/>\}/.test(head);
+    // Re-pinned (round 9, R9-A4, 2026-10-11): the glyph is the page's own, unpainted (`text-transparent`): nothing shows,
+    // as law 5 asks, and PageHeader pulls it onto the column's edge as it pulls the page's, so the eyebrow lands where
+    // the page's does (the four outcome glyphs share one ink start; `test:visual-pass-r9a` §4.6).
+    && head.includes('icon={<I.clock s={14} className="shrink-0 text-transparent" />}');
   const html = ghostHtml("ret", "sw");
   const shown = html.replace(new RegExp(`<span aria-hidden="true" class="${GHOST_TEXT_CLASS}[^"]*">[\\s\\S]*?</span>`, "g"), "");
   const leak = [dict.sw.wallet.returnPaidTitle, dict.sw.wallet.returnPaidBody, dict.sw.common.deposit].filter((w) => shown.includes(w));
@@ -440,7 +443,7 @@ section("5 · /profile — the hero column and strip, the achievements, the twel
     .map((m) => unesc(m[1].replace(/<span class="kp-seq__dot"[^>]*>·<\/span>/g, "·").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim()));
   const want = titles;
   const badgeMd = /\.badge-md \{ width: 64px; height: 64px; \}/.test(raw("src/app/globals.css"));
-  const section5 = page.includes('<section> <h2 className="mb-3 flex items-center gap-1.5 font-mono text-micro uppercase eyebrow font-bold text-text-subtle"> <I.trophy s={13} /> {t.profile.achievements} </h2> <div className="rounded-xl glass-panel p-5"> <BadgeShelf items={badges} /> <p className="mt-4 text-center text-body-sm text-text-subtle"> {t.profile.badgesHint} </p>')
+  const section5 = page.includes('<section> <h2 className="mb-3 flex items-center gap-1.5 font-mono text-micro uppercase eyebrow font-bold text-text-subtle"> <I.trophy s={13} edge="start" /> {t.profile.achievements} </h2> <div className="rounded-xl glass-panel p-5"> <BadgeShelf items={badges} /> <p className="mt-4 text-center text-body-sm text-text-subtle"> {t.profile.badgesHint} </p>')
     && ghost.includes('<div className="rounded-xl glass-panel p-5 kp-shimmer-track"> <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(96px, 1fr))" }}>') && ghost.includes('<p className="mt-4 text-center text-body-sm"><GhostText>{t.profile.badgesHint}</GhostText></p>');
   ok(`5.4 · the achievements the ghost never drew: the section's key, the panel, the shelf's own grid (${shelfStyle}, 24px apart), a 64px coin (\`.badge-md\`) over each of the shelf's six names in its order — set and not shown, stacked in two parts with their last words kept (\`DotSeq stack\`, \`keepLastWords\`) — and the hint`,
     shelfStyle === "repeat(auto-fit, minmax(96px, 1fr))" && titles.length === 6 && j(figures) === j(want) && badgeMd && section5, j({ figures, want, section5 }));
@@ -575,8 +578,10 @@ section("7 · /positions/performance — the page's bands in the page's order");
   const page = squash(code(FILES.performancePage)), ghost = squash(code(FILES.performance));
   const PAGE = ["<BackLink ", "<PageHeader eyebrow={section} title={t.performance.title} />", '<section aria-label={t.performance.netPnl} className="glass-panel p-5">', '<section aria-label={t.performance.pnlOverTime} className="glass-panel p-5">',
     '<section className="grid grid-cols-1 gap-3 md:grid-cols-2">', '<section className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(158px, 1fr))" }}>', '<h2 className="mb-3 flex items-baseline gap-2">', '<div className="rounded-xl border border-border bg-bg-elevated overflow-hidden divide-y divide-border/50">'];
-  const GHOST = ["<BackLinkGhost />", "<PageHeader eyebrow={journey ? t.journey.tabTickets : t.common.positions} title={t.performance.title} />", "{`${t.performance.netPnl} · ${t.common.settled}`}", "{t.performance.pnlOverTime}",
+  const GHOST = ["<BackLinkGhost />", "<PageHeader eyebrow={journey ? t.journey.tabTickets : t.common.positions} title={t.performance.title} />", "{`${t.performance.netPnl} · ${t.common.settled}`}", "{keepConnectives(t.performance.pnlOverTime)}",
     '<section className="grid grid-cols-1 gap-3 md:grid-cols-2" aria-hidden>', '<section className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(158px, 1fr))" }} aria-hidden>', '<h2 className="mb-3 flex items-baseline gap-2">', '<div className="rounded-xl border border-border bg-bg-elevated overflow-hidden divide-y divide-border/50">'];
+  // ⚠️ Pin moved 2026-10-11 (round 9, R9-B): the chart's caption never ends a line on a connective, on the page and in this
+  // ghost alike (`keepConnectives`), so the ghost's band reads the kept call.
   const p = inOrder(page, PAGE), g = inOrder(ghost, GHOST);
   ok("7.1 · the ghost's bands are the page's, in the page's order — the back link, the head, the net P&L panel, the chart, the best-win and streak cards, the two stake tiles, the recent rows (it drew a stat card, four boxes, a streak bar, a chart and three rows: an older page)",
     p === "" && g === "" && count(ghost, '<section className="glass-panel p-5 kp-shimmer-track" aria-hidden>') === 2

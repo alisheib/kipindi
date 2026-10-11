@@ -178,7 +178,9 @@ export function RouteError({
           </p>
         )}
 
-        <div className="mt-6 flex flex-col items-stretch gap-2.5 sm:flex-row sm:items-center">
+        {/* ⭐ 12px between the pair, stacked or side by side (R9-A5, 2026-10-11): every pair of buttons stands 12px apart
+            (R6-C's rule, the card's since round 9) — this one stood on the stock 10px step, off the override scale. */}
+        <div className="mt-6 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
           <button
             type="button"
             onClick={() => reset()}
@@ -190,7 +192,7 @@ export function RouteError({
           {backs.map((b) => (
             <Link key={b.href} href={b.href as never} className="btn btn-ghost btn-md inline-flex items-center justify-center gap-2">
               {b.label}
-              <I.arrowRight s={14} />
+              <I.arrowRight s={14} text="body-600" />
             </Link>
           ))}
         </div>

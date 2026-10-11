@@ -863,8 +863,14 @@
   --bar-shimmer:          linear-gradient(90deg, transparent 0%, oklch(75% 0.110 84 / 0.5) 50%, transparent 100%);
   --bar-sweep:            linear-gradient(90deg, transparent 0%, oklch(78% 0.115 84 / 0) 20%, oklch(78% 0.115 84 / 0.90) 50%, oklch(78% 0.115 84 / 0) 80%, transparent 100%);
   /* Cold-start (Step 2): the neutral "awaiting first bet" track. A dashed rail,
-     no split, no needle — an empty market is not a balanced contest. */
-  --bar-empty-track:      repeating-linear-gradient(90deg, var(--border-strong) 0 8px, transparent 8px 15px);
+     no split, no needle — an empty market is not a balanced contest.
+     ⭐ ONE DASH, LAID WHOLE FROM END TO END (R9-A6, round 9 of the visual pass, 2026-10-11; round 6's read, tile 194). This
+     was a repeating gradient started at the rail's left end, so the rail ended wherever its width cut the pattern: on the
+     board's one-sided card, 24 dashes and a 2px stub over its 362px (x819–820). The token is now the dash's TILE — 8px of
+     --border-strong in its 15px pitch — and `.kp-dashfit` lays whole tiles so the rail starts and ends on a whole dash. */
+  --bar-empty-track:      linear-gradient(90deg, var(--border-strong) 0 8px, transparent 8px);
+  --bar-empty-dash:       8px;
+  --bar-empty-pitch:      15px;
   --bar-label-yes:        oklch(94% 0.10 152);
   --bar-label-yes-strong: var(--yes-200);
   --bar-label-no:         oklch(94% 0.08 22);
@@ -1403,14 +1409,11 @@ body {
 }
 .btn-claret:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)) saturate(1.04) drop-shadow(0 6px 16px color-mix(in oklab, var(--claret-500) 32%, transparent)); }
 
-.btn-outline {
-  background: transparent;
-  color: var(--brand-300);
-  border: 1px solid var(--brand-500);
-}
-.btn-outline:hover:not(:disabled) {
-  background: oklch(40% 0.07 264 / 0.25);
-}
+/* ⛔ `.btn-outline` RETIRED (round 9 of the visual pass, R9-C, 2026-10-11; R4-F2, tile 156). Its one consumer, the guest
+   Tiketi sheet's Ingia, is `btn-ghost` now, as every other secondary action. The kit listed it with no role, and its
+   face was a trap: a link-blue label on a 1px `--brand-500` edge — the focus ring's own colour — so it read as a
+   focused control, and beside a focused Jisajili two rings of one blue stood 12px apart. `test:dead-css` would never
+   have called it dead (`submit-button.tsx` builds `btn-${variant}`), so it goes here, with its last use. */
 
 /* 🔴 D6 (2026-08-21, owner ruling) — THE LABEL IS NORMAL TEXT NOW.
    §B4 forbids aqua as "a chip, a button label, or anything semantic", and this
@@ -1972,13 +1975,30 @@ html.kp-reduce-motion .ticker-pause,
 }
 /* Cold-start: a neutral dashed rail. No split, no needle, no labels — an empty
    market has no crowd price, and a centred 50/50 would be a fabricated one (A-5). */
+/* ⭐ A DASHED TRACK STARTS AND ENDS ON A WHOLE DASH — ONE RULE (R9-A6, round 9 of the visual pass, 2026-10-11). A dash
+   pattern started at one end runs out wherever the track's width cuts it, so every width drew a different last dash: a 2px
+   stub on the board's one-sided rail (tile 194, x819–820). `.kp-dashfit` lays its host's dash TILE (`--dash-tile`: one
+   dash of `--dash-len` in a tile of `--dash-pitch`) with `background-repeat: space` — as many whole tiles as fit, the first
+   on the start edge, the last on the end edge, the spare width shared between them — on a layer that runs one gap past
+   the host's end (`--dash-len` − `--dash-pitch`), so the last tile's own trailing gap falls outside and its DASH ends on
+   the edge. The host clips the overhang (`overflow: hidden`, to its own radius) and is positioned. At 362px the rail is
+   24 whole dashes 7.39px apart; a gap never falls under the pitch's own 7px.
+   Its hosts: the empty and one-sided TippingBar rail (below) and Up & Down's locked stretch (`updown-match-track.tsx`). A
+   dashed line of fixed length in a viewBox (the P&L chart's, the price hero's) is fitted by its numbers, and a dashed
+   circle by `pathLength` (the dial's empty ring, `clockPending`) — `test:visual-pass-r9a` holds all of them. */
+.kp-dashfit { overflow: hidden; }
+.kp-dashfit::before { content: ""; position: absolute; inset-block: 0; inset-inline-start: 0; inset-inline-end: calc(var(--dash-len) - var(--dash-pitch)); background: var(--dash-tile) 0 0 / var(--dash-pitch) 100% space no-repeat; pointer-events: none; }
 .tipbar-empty {
+  position: relative;
   height: var(--tb-h);
   border-radius: calc(var(--tb-h) / 2);
-  background: var(--bar-empty-track);
-  box-shadow: inset 0 0 0 1px var(--border);
   opacity: 0.55;
+  --dash-tile: var(--bar-empty-track);
+  --dash-len: var(--bar-empty-dash);
+  --dash-pitch: var(--bar-empty-pitch);
 }
+/* The rail's 1px edge rides over its dashes, as its inset shadow did when the dashes were the rail's own background. */
+.tipbar-empty::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px var(--border); pointer-events: none; }
 /* ⭐ THE CAPTION CENTRES ON THE BAR, NOT BETWEEN ITS NEIGHBOURS (2026-10-09, the visual pass's round 4, tiles 162, 177,
    178). `space-between` put the lean word midway between the two side labels, and those are never one width
    ("NDIO 33%" against "67% HAPANA"), so it sat 7–7.5px left of the bar's centre (162: caption centre x436, bar x443.5).
@@ -2792,12 +2812,16 @@ textarea::placeholder { color: var(--text-subtle); }
 /* 240ms → `--t-base` (220), the nearest rung down. The ring expands and is gone —
    a one-shot arrival — so `--m-settle`, not the legacy `--ease-sink`. */
 .ud-place-pulse { animation: ud-place-pulse var(--t-base) var(--m-settle); }
+/* ⭐ ON `scale`, NOT `transform` (round 9 of the visual pass, R9-C, 2026-10-11 — the leaderboard podium's sibling). The
+   flash plays on the UP / DOWN `.btn`, whose hover lift and press are `transform`s, and an animation outranks them while
+   it runs: for the flash's 220ms a hovered button dropped its 2px lift and jumped back when the flash ended. The
+   independent `scale` property composes with the button's own `transform`, so the flash swells where the button stands. */
 @keyframes ud-side-flash {
-  0%   { transform: scale(1); filter: brightness(1); }
-  30%  { transform: scale(1.035); filter: brightness(1.28); }
-  100% { transform: scale(1); filter: brightness(1); }
+  0%   { scale: 1; filter: brightness(1); }
+  30%  { scale: 1.035; filter: brightness(1.28); }
+  100% { scale: 1; filter: brightness(1); }
 }
-/* 220ms IS `--t-base` exactly. The keyframe leaves at scale(1) and returns to it,
+/* 220ms IS `--t-base` exactly. The keyframe leaves at scale 1 and returns to it,
    so the curve is `--m-breathe` — symmetric shape, symmetric curve. */
 .ud-side-flash { animation: ud-side-flash var(--t-base) var(--m-breathe); }
 @media (prefers-reduced-motion: reduce) {
@@ -3005,11 +3029,14 @@ textarea::placeholder { color: var(--text-subtle); }
 
 /* 1.1 — Button / chip press pop. Layers on the kit's existing
    `.btn:active { translateY(1px) }`. The scale gives the crisp tactile
-   "give" that pairs with the `tap` haptic. transform-only. */
+   "give" that pairs with the `tap` haptic. transform-only.
+   ⭐ NOW IT DOES LAYER (round 9 of the visual pass, R9-C, 2026-10-11 — the podium's sibling): written on `transform`, the
+   pop REPLACED the button's own `transform` while it ran (its hover lift dropped 2px under the pointer for the pop's
+   length). On the independent `scale` property it composes with the lift and the press, as this note always said. */
 @keyframes press-pop {
-  0%   { transform: scale(1); }
-  40%  { transform: scale(0.955); }
-  100% { transform: scale(1); }
+  0%   { scale: 1; }
+  40%  { scale: 0.955; }
+  100% { scale: 1; }
 }
 .press-pop { animation: press-pop var(--dur-flick) var(--ease-micro); }
 
@@ -3225,8 +3252,9 @@ textarea::placeholder { color: var(--text-subtle); }
    "lands" calmly — no jank, no disappearing affordances.
    --------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
-  /* presses / votes / streaks: no transform, just the resting state */
-  @keyframes press-pop   { from, to { transform: none; } }
+  /* presses / votes / streaks: no transform, just the resting state (the press pop's is its `scale`, R9-C — a
+     `transform: none` here would take the button's own lift and press away for the pop's length) */
+  @keyframes press-pop   { from, to { scale: none; } }
   @keyframes vote-pop    { from, to { transform: none; } }
 
   /* stagger: everything arrives at once. ⛔ The two per-class `animation-delay: 0ms`
@@ -4570,7 +4598,7 @@ html[data-sheet-open] .route-enter { animation: none; }
    container and the condition is the name's own width in Inter 13px (`text-body-sm` and the trust row's
    `--type-small`), from the font — en "Gaming Board of Tanzania." 164.7px, sw "Bodi ya Michezo ya Kubahatisha Tanzania."
    259.3px, zh 坦桑尼亚博彩委员会 117px — plus 3px. A narrower line wraps the sentence as before (the footer's 160px column
-   at 768 holds no English name; from 768 to 1199 no footer column holds the Swahili one). The journey's footer sentence is
+   at 768 holds no English name; from 768 on, no footer column holds the Swahili one). The journey's footer sentence is
    `.kp-gbt`; the hero's trust row is `.kp-gbt-row`, the ROW being the container because the loading ghost draws the
    words' own span `fit-content`, which size containment would empty — so its widths add the row's 28px roundel and
    12px gap. The classic footer is frozen chrome and wears neither. */
@@ -4586,7 +4614,13 @@ html[data-sheet-open] .route-enter { animation: none; }
    introduces it ("Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania.", `keepRegulator`), so its condition is that
    run's width — 277.4px in Inter 13px, plus 3px: 281 (the row: + its 40px roundel and gap, 321). en and zh are as they
    were. A narrower line wraps the sentence with its connectives held ("Leseni ya Bodi ya Michezo" / "ya Kubahatisha
-   Tanzania."), never after "ya". */
+   Tanzania."), never after "ya".
+   ⭐ ROUND 9 (R9-B, 2026-10-11; this record corrected, nothing it draws changed): from 768 on, no journey-footer column
+   reaches 281. Its four columns are (W - 128) / 4 to 1023 and (W - 160) / 4 from 1024 (16px, then 32px, of padding a
+   side and 32px gaps), and the board's 1280 caps them at 280px, so the footer's sw sentence wraps at every width from
+   768: "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." (round 8's tiles 299 at 1024 and 301 at 1280). At 1280
+   the 277.4px run is 2.6px inside the column and 281 keeps it out by 1px: the owner's question beside K34 (held, that
+   line would read "Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania."). */
 /* ⛔ `.kp-hero__tel` (the helpline link in row 1) was DELETED 2026-10-06 with the helpline itself —
    the owner's ruling took it off every player surface (docs/COMPLIANCE-DECISIONS.md). */
 
@@ -5048,8 +5082,9 @@ html[data-sheet-open] .route-enter { animation: none; }
   white-space: nowrap;
   color: var(--text);
 }
-.kp-qrow__act { grid-area: act; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
-.kp-qrow__btn { padding-inline: var(--sp-2); }   /* sw "HAPANA @ 29%" fits a 140px half at 320 */
+/* ⭐ The pair stands 12px apart (R9-A5, 2026-10-11): the card's rule, `.mcardp-actions` — it was 8px (`--sp-2`). */
+.kp-qrow__act { grid-area: act; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+.kp-qrow__btn { padding-inline: var(--sp-2); }   /* sw "HAPANA @ 99%" (~118.4px, Inter 700 14px tracked) fits a 138px half at 320 */
 .kp-qrow__at { font-family: var(--font-mono); font-size: var(--type-small); }
 @media (hover: hover) {
   .kp-qrow__head:hover .kp-qrow__q { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
@@ -5142,7 +5177,7 @@ html[data-sheet-open] .route-enter { animation: none; }
   overflow: hidden; isolation: isolate;
   height: 100%; /* fill the stretched grid cell so every card is the same height */
   /* §D's migration map, applied: `.mcardp transition .2s ease-out` → the ladder. */
-  transition: transform var(--t-base) var(--m-glide), border-color var(--t-base) var(--m-glide), box-shadow var(--t-base) var(--m-glide);
+  transition: translate var(--t-base) var(--m-glide), border-color var(--t-base) var(--m-glide), box-shadow var(--t-base) var(--m-glide);
   cursor: pointer; }
 @media (hover: hover) {
   /* Restraint: lift + a crisp border ring + the rung's own hover cast. The ambient
@@ -5154,8 +5189,13 @@ html[data-sheet-open] .route-enter { animation: none; }
      is a state accent rather than an elevation — the rung says how high the card
      is, the ring says the pointer is on it.
      ⚠️ The lift is `--m-lift` (-2px) where it was -3px: one hover displacement in
-     the product, and this was the last surface not using it. */
-  .mcardp:hover { transform: translateY(var(--m-lift)); border-color: var(--brand-500); box-shadow: 0 0 0 1px var(--brand-500), var(--elev-raised-hover); }
+     the product, and this was the last surface not using it.
+     ⭐ ON `translate`, NOT `transform` (round 9 of the visual pass, R9-C, 2026-10-11 — the podium's sibling). A board
+     card is a `.market-grid > *`, whose `kp-rise` fills `both` and ends on `transform: none`: an animation outranks a
+     hover rule, so the `translateY` lift never once drew on /markets, /results' grid or a market's similar cards.
+     The independent `translate` property composes with the entrance instead of fighting it (the struck seal's
+     recoil does the same, `seal-recoil`), so the lift lands wherever the card stands. */
+  .mcardp:hover { translate: 0 var(--m-lift); border-color: var(--brand-500); box-shadow: 0 0 0 1px var(--brand-500), var(--elev-raised-hover); }
 }
 /* Category glyph watermark — bottom-right bleed, brightens on hover.
    🔴 THE `transform: scale(1.06)` ON HOVER IS DELETED — §M5, 2026-08-21. This is a
@@ -5291,6 +5331,16 @@ html[data-sheet-open] .route-enter { animation: none; }
 .kp-track-end--12 { --track-end: 0.12em; }
 .kp-track-end--06 { --track-end: 0.06em; }
 .kp-track-end--05 { --track-end: 0.05em; }
+/* ⭐ A MARK INSIDE A LINE OF WORDS STROKES AT THE WORDS' STEM (R9-A4, round 9 of the visual pass, 2026-10-11). A glyph given
+   `text` (glyphs.tsx: a chevron, an arrow or an external-link mark that ends or starts a run of words) carries the stem of
+   its words' face and weight (`GLYPH_STEM`) as `--g-stem`, in em of the run's own type size, and strokes exactly that on
+   the screen — `non-scaling-stroke`, so the glyph's box never scales it. The card's 11px chevron after "Maelezo" (Sora 600,
+   11.5px) strokes 1.63px, where the family's 1.9 units painted 0.87px and read a third of the word's stems (tile 194: 0.6px
+   across the arm against 2.0px).
+   Its `edge` margin already counts the half of this stroke that lies beyond its geometry. Without `text`, a glyph keeps
+   the family's 1.9-unit stroke. */
+.kp-gtext { stroke-width: var(--g-stem); }
+.kp-gtext * { vector-effect: non-scaling-stroke; }
 .mcardp-spark { line-height: 0; margin-top: 2px; }
 .mcardp-traders { display:flex; align-items:center; gap:7px; }
 .av-stack { display:flex; }
@@ -5310,8 +5360,12 @@ html[data-sheet-open] .route-enter { animation: none; }
   .mcardp-spark-line { animation:none; stroke-dasharray:none; stroke-dashoffset:0; }
 }
 /* margin 13/11 → 11/9 absorbs the 36→40px button bump below, so card height is
-   unchanged and the live vs resolved branches stay in parity. */
-.mcardp-actions { display:grid; grid-template-columns:1fr 1fr; gap: 8px; margin: var(--mcard-act-mt) 0 var(--mcard-act-mb); }
+   unchanged and the live vs resolved branches stay in parity.
+   ⭐ ONE GAP FOR A PAIR OF BUTTONS, 12px (R9-A5, round 9 of the visual pass, 2026-10-11; three readers, tiles 159 160 194):
+   the card's YES and NO stood 8px apart (159: x191–198) where every other pair stands 12 — the market page's two sides,
+   the sheets', the Wallet's, Up & Down's (R6-C's rule, `gap-2` on the override scale). `--sp-3` is that 12px. At 320 the
+   card's content box is 256px, so each button is 122px (124 before). */
+.mcardp-actions { display:grid; grid-template-columns:1fr 1fr; gap: var(--sp-3); margin: var(--mcard-act-mt) 0 var(--mcard-act-mb); }
 /* Resolved/closed cards run one full-width pill in the SAME vertical rhythm as
    the live YES/NO row, so card heights match across a mixed grid. */
 .mcardp-actions--single { grid-template-columns: 1fr; }
@@ -5335,7 +5389,13 @@ html[data-sheet-open] .route-enter { animation: none; }
    rung, so what looked like two tuned speeds was one. The `filter` leg had a
    duration and NO easing at all (B5 rule 3 wants the pair stated); neither it nor
    the shadow travels, so both take `linear`. */
-.mcardp-actions .btn { height: var(--tap-min); font-size: 13px; font-weight: 600; min-width: 0; padding: 0 10px; letter-spacing: 0.04em; border-radius: var(--r-md); transition: transform var(--t-quick) var(--m-glide), box-shadow var(--t-quick) linear, filter var(--t-quick) linear; }
+/* The label's room (R9-A5): the widest label at 320 is Swahili's priced NO, "HAPANA @ 99%" — Inter 600 13px with the
+   0.52px tracking, the price in JetBrains Mono 11.5px, which inherits that tracking — about 104px (Inter's Medium and Bold
+   advances averaged, no kerning: an upper bound). In a 122px button 10px of padding a side left it 100px, so the label
+   ran 2px into the padding each side (it ran 1px into it at the old 8px gap too); 8px a side — the home question rows'
+   own (`.kp-qrow__btn`) — leaves it 104px, and the label keeps 8px from each border as before. The label is centred, so
+   wherever it fits nothing moves. */
+.mcardp-actions .btn { height: var(--tap-min); font-size: 13px; font-weight: 600; min-width: 0; padding: 0 var(--sp-2); letter-spacing: 0.04em; border-radius: var(--r-md); transition: transform var(--t-quick) var(--m-glide), box-shadow var(--t-quick) linear, filter var(--t-quick) linear; }
 .mcardp-actions .btn:active:not(:disabled) { transform: translateY(1px) scale(0.96); }
 /* Stats row — single line (no wrap), time + info pinned right. Kept on one line
    so the footer height is identical on every card (a previous double margin-auto
@@ -6466,7 +6526,12 @@ textarea::-webkit-resizer {
 .kp-udtrack__plot { grid-area: 2 / 2; position: relative; }
 .kp-udtrack__svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .kp-udtrack__rail { stroke: var(--text-faint); stroke-width: 2; stroke-linecap: round; }
-.kp-udtrack__locked { stroke: var(--text-subtle); stroke-width: 1; stroke-dasharray: 2 5; opacity: 0.55; }
+/* The locked stretch, the quiet dialect (B12.2: 1px, dashed, 0.55) from the lock post to the flag post. ⭐ FITTED (R9-A6,
+   2026-10-11): it was an svg line dashed `2 5` from the lock post, so it met the flag post on whatever its width left — a
+   cut dash or a gap. It is laid as the rail's dashes are (`.kp-dashfit`, above): whole 2px dashes on a 7px pitch, the
+   first against the lock post and the last against the flag post, clear of each post's 1px stroke (0.5px in from both). */
+.kp-udtrack__locked { position: absolute; top: calc(50% - 0.5px); left: calc(var(--x) + 0.5px); right: 0.5px; height: 1px; color: var(--text-subtle); opacity: 0.55;
+  --dash-tile: linear-gradient(90deg, currentColor 0 2px, transparent 2px); --dash-len: 2px; --dash-pitch: 7px; }
 .kp-udtrack__post { stroke: var(--text-faint); stroke-width: 1; }
 .kp-udtrack__void { fill: color-mix(in oklab, var(--text-subtle) 22%, transparent); }
 .kp-udtrack__kick { fill: var(--text-subtle); }
@@ -6638,7 +6703,15 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    class names and not stylesheet rules. Moving the size here is not what made it legal; the ruling is. */
 .kp-jbal { display: inline-flex; flex-shrink: 0; align-items: center; gap: var(--sp-2); height: var(--h-control-md); padding: 0 10px; border-radius: var(--r-pill); background: var(--bg-inset); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--gold-300) 35%, transparent); color: var(--text); cursor: pointer; transition: box-shadow var(--t-base) var(--m-glide); }
 .kp-jbal[data-flash] { box-shadow: 0 0 0 3px color-mix(in oklab, var(--gold-300) 22%, transparent), inset 0 0 0 1px var(--gold-300); }
-.kp-jbal__lock { flex-shrink: 0; color: var(--text-muted); }
+/* ⭐ THE HELD CAPSULE CENTRES ITS CONTENTS BY THEIR INK (R9-A4, the edge-icon rule; round 7–8's read R2-F1, tiles 088 089).
+   The 16px lock draws its body from x5 of its 24-unit box, its stroke 0.95 beyond — ink from x4.05 — so its ink stood
+   2.7px inside the capsule's 10px padding while the caption's last letter ended on the other padding: the contents sat
+   1px right of centre (the readers measured ~2px between the rings), where every live capsule centres within 1px. The
+   lock is pulled by exactly that gap, so its ink starts on the padding. The rule's own number, written as its derivation:
+   the glyph prop (`edge="start"`, glyphs.tsx) cannot reach this lock, whose file holds the frozen classic capsule too
+   (`test:visual-pass-r7c` §6.2 keeps it byte for byte); `test:visual-pass-r9a` §4.7 recomputes 4.05 and 16 from the
+   lock's drawing and its call, so the number cannot go stale. Journey-only: only the captioned balance wears the class. */
+.kp-jbal__lock { flex-shrink: 0; color: var(--text-muted); margin-inline-start: calc(-4.05 * 16px / 24); }
 /* ⭐ CAPTION AND FIGURE ARE CENTRED IN THE RESERVED BOX (round 4, 2026-10-09, tiles 072 074 076). Rule 8a / D31 decides
    the box — the wider of figure and mask, so masking moves nothing — and says nothing of where the words sit in it. The
    S4 frame drew them flush right in a capsule that hugged its figure, 10px each side; once the box was reserved, flush
@@ -6776,6 +6849,19 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-hub__head { --hub-flag-air: calc((var(--type-body) * 1.3 - var(--type-body) * 0.7275) / 2); }
 .kp-hub__head:only-child { margin-block: calc(-1 * var(--hub-flag-air)); }
 .kp-hub__head:only-child > .kp-flag-xs { margin-block: var(--hub-flag-air); }
+/* ⭐ …AND STACKED, THE FLAG LANDS ON A WHOLE PIXEL (round 9 of the visual pass, R9-C, 2026-10-11; R7-F2 = R3 = R8-F3, three
+   readers, tiles 255 297 331 at sw 390). Stacked, the flag's top is the row's padding, half the room the block leaves,
+   then the label's line and the gap: 8 + (40 − (19.5 + 2 + 18)) / 2 + 19.5 + 2 = 29.75px. The screen paints a box on the
+   nearest row and sets words on the row their baseline falls in, so the box landed on row 30 and its words a row higher
+   (tile 297: the box y344–361, the caps' baseline on 355 where 343.75 + 12.06 = 355.81 put it): 4.85 | 7.0 where the
+   same flag beside its label, its box on a whole 19.0, reads 5.85 | 6.0. R7-C's 5.86 | 5.94 was right for a box on a
+   whole pixel; this one was not on one. The fractional quarter is the label's 19.5px line (1.3 × 15): the flag stands at
+   20 + L / 2, a whole pixel only for an even L. Inside the head the label's line is 20px — 1.3 rounded up to the next
+   even pixel — so the stacked flag lands on 30.0 and draws as the beside-its-label flag draws. The line grows 0.25px over
+   and under the label's words, so they do not move (their line keeps its centre), the block's ink stays 8.25 | 8.0 (it
+   was 8.25 | 8.25: the flag moves a quarter pixel down, and its box was already painted on row 30), K20's gap is the 11
+   rows it painted, and beside the label nothing moves (the head's line is the flag's 26.59px). `test:visual-pass-r9c` §5. */
+.kp-hub__head > .kp-hub__label { line-height: 20px; }
 .kp-hub__value { flex-shrink: 0; font-size: var(--type-small); white-space: nowrap; color: var(--text-subtle); }
 /* A balance in a list of doors is neutral ink: gold marks money that was earned (§M3). */
 .kp-hub__money { flex-shrink: 0; font-family: var(--font-mono); font-weight: 600; font-size: var(--type-body); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text); }
@@ -6783,7 +6869,10 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 /* The language row is a disclosure: its summary is the row, and the three languages open beneath it, in the flow. */
 .kp-hub__lang > summary { list-style: none; }
 .kp-hub__lang > summary::-webkit-details-marker { display: none; }
-.kp-hub__lang[open] > summary .kp-hub__chev { transform: rotate(90deg); }
+/* The row's chevron ends on the row's end edge (R9-A4, `edge="end"`), turned or not: closed, its ink ends at x15.95 of 24;
+   turned a quarter about its box's centre it reaches x18.95, so the turn steps back those 3 units — 2.25px at the hub's
+   18px — and the open chevron's ink ends on the same edge. */
+.kp-hub__lang[open] > summary .kp-hub__chev { transform: translateX(-2.25px) rotate(90deg); }
 .kp-hub__opts { display: flex; flex-direction: column; gap: var(--sp-1); padding: 0 var(--sp-2) var(--sp-2); }
 .kp-hub__opt { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--h-control-md); padding: 0 var(--sp-3); border: 0; border-radius: var(--r-md); background: transparent; color: var(--text-muted); font: inherit; font-size: var(--type-body); text-align: left; cursor: pointer; }
 .kp-hub__opt:hover { background: var(--bg-overlay); }
@@ -6796,7 +6885,11 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    menu's row (its label and glyph `text-danger-fg`, its hover the danger tint), /profile's plate, /profile/sessions — and
    this row was missed, its label and glyph in the hub rows' inks. Now the menu's: label and glyph --danger-fg, the hover
    the danger tint at 10%. */
-.kp-hub__exit { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--h-control-xl); padding: 0 var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: transparent; color: var(--danger-fg); font: inherit; text-align: left; cursor: pointer; }
+/* ⭐ A CARD'S HEIGHT (R9-A3, round 9 of the visual pass, 2026-10-11; round 8's reader D3, tiles 294 299 307): a card holds
+   its 56px rung INSIDE its 1px border — 58px — while this box's 56px min-height counted its own border (every box here is
+   border-box), so Toka stood 2px short of the one-row cards above it (294: y391–446 against "Kuwa wakala" y243–300; 1024
+   and 1280 the same). The rung inside its border, as a card holds one: 58px, the glyph and label centred in 56. */
+.kp-hub__exit { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: calc(var(--h-control-xl) + 2px); padding: 0 var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: transparent; color: var(--danger-fg); font: inherit; text-align: left; cursor: pointer; }
 .kp-hub__exit .kp-hub__glyph { color: inherit; }
 .kp-hub__exit:hover { background: color-mix(in oklab, var(--danger-500) 10%, transparent); }
 @media (min-width: 360px) { .kp-hub__head { flex-wrap: wrap; } }
@@ -7296,11 +7389,23 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-jtab__label { white-space: normal; text-overflow: clip; text-align: center; line-height: 1.15; }
 @media (min-width: 360px) { .kp-jtab__label { white-space: nowrap; text-overflow: ellipsis; line-height: 1; } }
 /* ⚠️ …AND A TWO-LINE LABEL MUST NOT LIFT ITS PIP. The classic slot centres its content, and the grid stretches every
-   slot to the tallest one, so below 360 the Tiketi slot (26 + 4 + 2 × 12.65 = 55.3px of content) would set the rail's
-   height and the three one-line slots would centre their pips about 6px below its pip. So below 360 the journey's
-   slots stack from the top and every pip sits on the slot's padding; from 360 nothing wraps and the classic centring
-   returns. `.kp-rail__item` itself is not edited. */
+   slot to the tallest one, so where the Tiketi slot wraps (26 + 4 + 2 × 12.65 = 55.3px of content) it sets the rail's
+   height and the three one-line slots would centre their pips about 6px below its pip. So there the journey's slots
+   stack from the top and every pip sits on the slot's padding. `.kp-rail__item` itself is not edited.
+   ⭐ …ONLY WHERE A LABEL WRAPS (round 9 of the visual pass, R9-C, 2026-10-11; R3-D1 and R6-D1, two readers, tiles 243
+   246 302). Below 360 every language stacked from the top, though only Swahili wraps: in English and Chinese at 320 the
+   items stood 6px under the rail's edge and 15 over its foot, where at 390 they centre 11.5 | 11.5. A label wraps where
+   it needs more than its quarter of the phone: its words in the rail's 11px mono (0.6em a letter, 1em a Chinese
+   character — `test:journey-shell` §8's measure) and the label's 2 × 2px of padding. Each language's longest label sets
+   the width from which its slots centre: Swahili "Tiketi zangu" 79.2 + 4 = 83.2px × 4 = 332.8, English "My tickets"
+   66 + 4 = 70px × 4 = 280, Chinese 我的注单 44 + 4 = 48px × 4 = 192. `:lang()` reads the `lang` the server writes on
+   <html> (the client's language switch rewrites it), so the first frame is already right; mobile-first, as the shell's
+   every rule (`test:journey-shell` §7.first). `test:visual-pass-r9c` §4 derives the three widths from the dictionary
+   and holds these rules to them, so a copy change that moves a label moves its width or fails. */
 .kp-rail--journey .kp-rail__item { justify-content: flex-start; }
+@media (min-width: 192px) { .kp-rail--journey:lang(zh) .kp-rail__item { justify-content: center; } }
+@media (min-width: 280px) { .kp-rail--journey:lang(en) .kp-rail__item { justify-content: center; } }
+@media (min-width: 332.8px) { .kp-rail--journey:lang(sw) .kp-rail__item { justify-content: center; } }
 @media (min-width: 360px) { .kp-rail--journey .kp-rail__item { justify-content: center; } }
 /* ⭐ ONE TAB IS LIT IN EVERY FRAME (2026-10-09, the visual pass round 4, R4-J; E37/E41, tiles 301 306 333). The classic
    slot fades its ink and its pip over --t-quick (`.kp-rail__item`, `.kp-rail__pip`), so for 140ms after the router

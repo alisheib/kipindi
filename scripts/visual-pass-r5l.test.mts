@@ -139,11 +139,14 @@ const KIT = "src/components/ui/ghost-text.tsx";
 const { GHOST_TEXT_CLASS } = req(`../${KIT}`) as { GHOST_TEXT_CLASS: string };
 /** Every one of the page's sentences is in the ghost, set and not shown (inside a transparent word bar, `GhostText`). */
 const BAR = `class="${GHOST_TEXT_CLASS}`;
-const wordsIn = (html: string, words: string[]) => words.filter((w) => {
+// ⚠️ Round 9 (R9-B): a label drawn through the keep (`keepConnectives` — the waterfall's head) carries its held runs as
+// nowrap spans, on the page and in its ghost alike, so the words are read with those spans unwrapped.
+const KEPT_RUN = /<span class="whitespace-nowrap">([^<]*)<\/span>/g;
+const wordsIn = (kept: string, words: string[]) => { const html = kept.replace(KEPT_RUN, "$1"); return words.filter((w) => {
   const at = html.indexOf(esc(w));
   if (at < 0) return true;
   return html.lastIndexOf(BAR, at) < 0 || html.lastIndexOf(BAR, at) < html.lastIndexOf("</span>", at);
-});
+}); };
 
 /* ══ §1 · THE ONE RULE: A GENERIC LOADER OPENS ON ITS PAGE'S OPENING BANDS ══════════════════════════════════════════ */
 section("1 · every generic loader opens on its page's own opening bands, in the page's rhythm; its spinner where data begins");
@@ -436,7 +439,10 @@ const lbPairs: Pair[] = [
   { band: "a ribbon figure", page: "font-mono text-body-lg font-bold tabular-nums whitespace-nowrap leading-none text-text", pageFile: RIB, ghost: "font-mono text-body-lg font-bold tabular-nums whitespace-nowrap leading-none", ghostFile: LBG },
   { band: "the lens", page: "flex flex-wrap items-center gap-1.5 -mx-1 px-1", pageFile: LB, ghost: "flex flex-wrap items-center gap-1.5 -mx-1 px-1", ghostFile: LBG },
   { band: "the podium", page: "rounded-xl glass-panel px-4 pt-6 pb-4", pageFile: LB, ghost: "rounded-xl glass-panel px-4 pt-6 pb-4 text-transparent", ghostFile: LBG },
-  { band: "the podium's grid", page: "grid grid-cols-3 items-end gap-2 sm:gap-4", pageFile: LB, ghost: "grid grid-cols-3 items-end gap-2 sm:gap-4", ghostFile: LBG },
+  // RE-PINNED 2026-10-11 (round 9 of the visual pass, R9-C; R5-F1): the podium hangs its columns from the top, #1 raised by a
+  // margin — `-translate-y-3` was held at `transform: none` by the page's `kp-rise`, and the bottoms' alignment sank the
+  // winner under a neighbour's streak line. The drawing stands as the page does.
+  { band: "the podium's grid", page: "grid grid-cols-3 items-start gap-2 sm:gap-4", pageFile: LB, ghost: "grid grid-cols-3 items-start gap-2 sm:gap-4", ghostFile: LBG },
   { band: "a podium column's spacer", page: "mb-1 block h-[22px]", pageFile: LB, ghost: "mb-1 block h-[22px]", ghostFile: LBG },
   { band: "a podium handle row", page: "mt-2 flex max-w-full flex-col items-center gap-1 sm:flex-row sm:gap-1.5", pageFile: LB, ghost: "mt-2 flex max-w-full flex-col items-center gap-1 sm:flex-row sm:gap-1.5", ghostFile: LBG },
   { band: "a podium rate", page: "mt-0.5 font-mono text-[13px] font-bold tabular-nums text-text", pageFile: LB, ghost: "mt-0.5 font-mono text-[13px] font-bold tabular-nums", ghostFile: LBG },
@@ -469,7 +475,7 @@ const lbPairs: Pair[] = [
   ok(`5.4 · RUN: the lens draws ${pills} pills — the page's ${lens.length} (\`LEADER_PRODUCTS\`), their words set and not shown`, pills === lens.length && html.includes(esc(dict.sw.common.markets)));
   // The podium's case (the ghost's note): the measured board's — the two beside the leader on a hot streak, the leader not;
   // the columns stand #2, #1, #3. The page draws the streak's line only for a player on one.
-  const podium = html.slice(html.indexOf("grid grid-cols-3 items-end"), html.indexOf("admin-tbl"));
+  const podium = html.slice(html.indexOf("grid grid-cols-3 items-start"), html.indexOf("admin-tbl"));
   const streakIn = podium.split("flex min-w-0 flex-col items-center text-center").slice(1).map((c) => c.includes("h-[21px] w-[72px]"));
   ok(`5.5 · RUN: the podium drawn is the measured board's (tiles 177, 178, 203) — a hot streak's line beside the leader and none in its column (#2, #1, #3: ${streakIn.join(", ")}), so the band is a neighbour's column, as the page's was (235.5px at 1280); the page draws the line only for a player on a streak`,
     streakIn.length === 3 && streakIn[0] && !streakIn[1] && streakIn[2] && pg.includes('{r.streak > 0 && <span className="mt-1"><HotChip streak={r.streak} t={t} /></span>}'), j({ streakIn }));
@@ -490,7 +496,9 @@ const rsPairs: Pair[] = [
   { band: "the carousel", page: "mb-5", pageFile: NC, ghost: "mb-5", ghostFile: RSG },
   { band: "the arrows' row", page: "mb-2 flex items-center justify-end gap-2", pageFile: NC, ghost: "mb-2 flex items-center justify-end gap-2", ghostFile: RSG },
   { band: "the dots' row", page: "mt-2.5 flex items-center justify-center", pageFile: NC, ghost: "mt-[10px] flex items-center justify-center", ghostFile: RSG },
-  { band: "a dot's target", page: "grid h-[40px] w-[24px] place-items-center rounded-md", pageFile: NC, ghost: "grid h-[40px] w-[24px] place-items-center", ghostFile: RSG },
+  // RE-PINNED 2026-10-11 (round 9 of the visual pass, R9-C; R5-F5): a dot's target is its drawing and 9px either side —
+  // the fixed 24px put 12px beside the 18px pill and 18 between dots. The ghost draws the page's target.
+  { band: "a dot's target", page: "grid h-[40px] place-items-center rounded-md px-[9px]", pageFile: NC, ghost: "grid h-[40px] place-items-center px-[9px]", ghostFile: RSG },
   { band: "the notable card", page: "group relative block overflow-hidden rounded-xl border bg-bg-elevated p-5 lg:p-6", pageFile: RS, ghost: "relative block overflow-hidden rounded-xl border border-border bg-bg-elevated p-5 lg:p-6 kp-shimmer-track text-transparent", ghostFile: RSG },
   { band: "its chip row", page: "mb-3 flex flex-wrap items-center gap-2", pageFile: RS, ghost: "mb-3 flex flex-wrap items-center gap-2", ghostFile: RSG },
   // 2026-10-10: the flag is one unbreakable unit on the page and in the drawing (`whitespace-nowrap`, round 6's read).
@@ -597,7 +605,10 @@ section("8 · /live: the hero IS PageHero; the CTA row the page's button and six
 const LV = "src/app/live/page.tsx", LVG = "src/app/live/loading.tsx", FC = "src/app/live/featured-contest.tsx", PG = "src/app/live/pulse-grid.tsx";
 const lvPairs: Pair[] = [
   { band: "the CTA row", page: "mt-4 flex flex-wrap items-center gap-3", pageFile: FC, ghost: "mt-4 flex flex-wrap items-center gap-3", ghostFile: LVG },
-  { band: "a dot's target", page: "grid h-[40px] w-[24px] place-items-center rounded-md", pageFile: FC, ghost: "grid h-[40px] w-[24px] place-items-center", ghostFile: LVG },
+  // RE-PINNED 2026-10-11 (R9-C): the target is its drawing and 9px either side, and the rail takes its first 9px back into
+  // the row's gap (`-ml-[9px]`) — the ghost's rail too, so the row breaks where the page's does.
+  { band: "the dots' rail", page: "-ml-[9px] flex items-center", pageFile: FC, ghost: "-ml-[9px] flex items-center", ghostFile: LVG },
+  { band: "a dot's target", page: "grid h-[40px] place-items-center rounded-md px-[9px]", pageFile: FC, ghost: "grid h-[40px] place-items-center px-[9px]", ghostFile: LVG },
   { band: "a card", page: "kp-rise group flex flex-col rounded-xl border border-border bg-bg-elevated p-4 transition-colors hover:border-border-strong", pageFile: PG, ghost: "kp-shimmer-track flex flex-col rounded-xl border border-border bg-bg-elevated p-4 text-transparent", ghostFile: LVG },
   { band: "a card's tag row", page: "mb-2 flex items-center justify-between gap-2", pageFile: PG, ghost: "mb-2 flex items-center justify-between gap-2", ghostFile: LVG },
   { band: "a card's tag", page: "inline-flex items-center gap-1.5 font-mono text-micro uppercase eyebrow text-text-subtle", pageFile: PG, ghost: "inline-flex items-center gap-1.5 font-mono text-micro uppercase eyebrow", ghostFile: LVG },
@@ -740,8 +751,11 @@ section("10 · the measure: the wraps the old ghosts missed, re-derived from the
   ok(`10.1 · measured from the repo's fonts, row 2 from lg takes two lines or more on /results and /markets in Swahili and English at 1024 and 1280 (${out.join(" · ")}) — the ghosts' rows are built of the same words, so they wrap there too`,
     verdicts.length === 4 && verdicts.every(Boolean), out.join(" · "));
   ok(`10.1′ CONTROL · the old ghosts' typed boxes took ${oldResults} and ${oldMarkets} line at 1024 — the 56px (and more) the grid landed below their promise`, oldResults === 1 && oldMarkets === 1);
-  // /live — the CTA row: the page's button (16px each side, the 14px semibold label, its 1px border) + 16 + six 24px dots.
-  const thresholds = LOCALES.map((l) => Math.ceil(2 + 32 + sans(dict[l].market.openMarket, 14) + 16 + 144 + 82));
+  // /live — the CTA row: the page's button (16px each side, the 14px semibold label, its 1px border) + 16 + the six dots.
+  // RE-PINNED 2026-10-11 (round 9 of the visual pass, R9-C): the rail was six 24px targets (144); each target is now its
+  // drawing and 9px either side (five dots 24, the pill 36: 156) with its first 9px in the row's gap, so it lays out 147.
+  const RAIL = 5 * (6 + 18) + (18 + 18) - 9;
+  const thresholds = LOCALES.map((l) => Math.ceil(2 + 32 + sans(dict[l].market.openMarket, 14) + 16 + RAIL + 82));
   ok(`10.2 · /live: the page's CTA row takes one line from ${thresholds.join(" / ")}px (sw / en / zh, the hero's 82px of frame and padding counted) where the old 150px box took one only from 392 — so at 390 the old ghost's hero stood 56px taller than the page's`,
     thresholds.every((x) => x <= 392 && x >= 330) && thresholds[0] < 390 && thresholds[1] < 390 && 150 + 16 + 144 + 82 === 392, j(thresholds));
   // The PulseCard's height from its classes: border, p-4, the 20px tag row, 12, the title's minimum, 16, 9, 10, 18.

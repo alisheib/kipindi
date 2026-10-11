@@ -26,7 +26,7 @@ import { dict as DICTS } from "../src/lib/i18n-dict.ts";
 import {
   keepFigures, figureRanges, figureRuns, keepNameEnd, characterSpans, keepLastWords, keepYears, KEPT_GAP, KEPT_SPACE,
 } from "../src/components/ui/keep-words.tsx";
-import { keepText, keptRanges, digitChoice } from "../src/components/ui/keep-run.tsx";
+import { keepText, keptRanges, digitChoice, possessiveRanges } from "../src/components/ui/keep-run.tsx";
 import { emptyStateBody, emptyStateRanges } from "../src/components/ui/empty-state-text.ts";
 import { hangCjkMarks } from "../src/lib/cjk-marks.tsx";
 import { moneyRuns } from "../src/lib/fill-nodes.tsx";
@@ -240,7 +240,9 @@ section("2 · F1 F4 + H1's siblings: every market title is balanced and keeps it
       balanced: (s) => cls(s, `tracking-[-0.005em] text-text text-balance">`) },
     { name: "/fairness' resolved table", file: "src/app/fairness/page.tsx", draws: [`{keepFigures(titleOf(m))}</Link>`],
       balanced: (s) => cls(s, `line-clamp-2 text-balance">{keepFigures(titleOf(m))}</Link>`) },
-    { name: "the bet dialog's title", file: "src/components/markets/bet-confirm-modal.tsx", draws: [`{keepText(marketTitle, figureRuns(marketTitle))}`],
+    // Round 9 (R9-B): a market's title is DATA, so the dialog passes `{ phrases: false }` — no possessive phrase held;
+    // its figures, dash and last two words as before.
+    { name: "the bet dialog's title", file: "src/components/markets/bet-confirm-modal.tsx", draws: [`{keepText(marketTitle, figureRuns(marketTitle), { phrases: false })}`],
       balanced: (s) => cls(s, `<p className="mt-1 font-display text-[15px] font-semibold text-text leading-snug text-balance">`) },
   ];
   const surfaceFault = (s: Surface, src: string) => [
@@ -638,7 +640,11 @@ section("6 · H4 nothing is inserted into the words — the empty state, the dat
     return new Set([...breaks(o)].map((p) => map[p]));
   };
   const newBreaks = (s: string) => { const spans = emptyStateRanges(s); return new Set([...breaks(s)].filter((p) => !spans.some(([a, b]) => a < p && p < b))); };
-  const differ = bodies.filter((s) => { const a = oldBreaks(s), b = newBreaks(s); return a.size !== b.size || [...a].some((p) => !b.has(p)); });
+  // ⚠️ Pin moved 2026-10-11 (round 9, R9-B — B1, tiles 240 241 243): the body also holds each possessive phrase with its
+  // noun ("your ticket", "tiketi yako"; keep-run.tsx `possessiveRanges`), so its breaks are round 3's LESS those inside a
+  // possessive phrase — every other one exactly as before. `test:visual-pass-r9b` §1 lays out what that changes.
+  const roundNine = (s: string, at: Set<number>) => { const ps = possessiveRanges(s); return new Set([...at].filter((p) => !ps.some(([x, y]) => x < p && p < y))); };
+  const differ = bodies.filter((s) => { const a = roundNine(s, oldBreaks(s)), b = newBreaks(s); return a.size !== b.size || [...a].some((p) => !b.has(p)); });
   ok("6.2 · and it breaks exactly where the round-3 rule let it: the same UAX #14 break opportunities in every dictionary sentence, no-break spaces and word joiner replaced by nowrap spans",
     differ.length === 0, show(differ.slice(0, 2)));
   ok("6.2′ CONTROL · the round-3 rule did insert them: \"NDIO au HAPANA —\" with three U+00A0, \"否——\" with a U+2060",

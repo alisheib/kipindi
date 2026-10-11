@@ -258,7 +258,7 @@ function HowItWorks() {
           className="mt-2 inline-flex min-h-[--tap-min] items-center gap-1 text-body-sm text-brand-300 underline-offset-2 hover:text-brand-200 hover:underline"
         >
           {t.common.readFullRules}
-          <I.chevronRight s={12} />
+          <I.chevronRight s={12} edge="end" text="body-400" />
         </Link>
       </Modal>
     </>
@@ -743,7 +743,9 @@ export function MarketCard({
           className="mcardp-details"
         >
           {t.market.details}
-          <I.chevronRight s={11} />
+          {/* R9-A4 (2026-10-11; tiles 133–160): its ink on the card's content edge, where the card's other rows end (it stopped
+              3.7px short), stroked at "Maelezo"'s own Sora 600 stem — the family's 0.87px read a third of the word. */}
+          <I.chevronRight s={11} edge="end" text="display-600" />
         </Link>
       </div>
     </>

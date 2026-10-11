@@ -25,6 +25,7 @@ import {
 } from "@/lib/affiliate/recruits";
 import { getServerT } from "@/lib/i18n-server";
 import { fillNodes } from "@/lib/fill-nodes";
+import { keepConnectives } from "@/components/ui/keep-run";
 import { fill, formatNumber, formatTzs, formatDateShort as fmtDate } from "@/lib/utils";
 import type { AgentDashboard as AgentDashboardModel } from "@/lib/server/affiliate-service";
 import { BetBreakNotice } from "@/components/rg/bet-break-notice";
@@ -169,7 +170,9 @@ export async function AgentDashboard({
               <div className="min-w-0 flex-1">
                 <FiftyMark size={38} />
                 <p className="mt-3 font-display text-title-md font-bold leading-tight text-text">{t.common.youveBeenInvited}</p>
-                <p className="mt-3 font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{t.agent.verifiedBadge}</p>
+                {/* No line ends on a connective (round 9, R9-B — the label family's sweep; `keepConnectives`): beside the 120px QR the column is ~100px at 320 and ~170 at 390, where "Wakala
+                    Aliyethibitishwa wa 50pick" breaks "…Aliyethibitishwa wa" / "50pick"; the "wa" now stays with "50pick". */}
+                <p className="mt-3 font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{keepConnectives(t.agent.verifiedBadge)}</p>
                 {/* The code WRAPS: `50PICK-AG-XXXXXX` is 16 mono characters at 22px, wider than a
                     360 card's inner width. `break-all` keeps it readable instead of clipped. */}
                 <div className="mt-1 inline-block max-w-full rounded-md border border-royal-700 px-3 py-1.5" style={{ background: "color-mix(in oklab, var(--royal-500) 10%, transparent)" }}>

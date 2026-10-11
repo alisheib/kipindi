@@ -96,7 +96,7 @@ export function UpdownBand({ t, locale, liveCount, round }: {
               >
                 <I.trendingUp s={16} />
                 {t.home.updownCta}
-                <I.chevronRight s={14} />
+                <I.chevronRight s={14} text="body-600" />
               </Link>
             </div>
           </div>
@@ -137,7 +137,7 @@ export function UpdownBand({ t, locale, liveCount, round }: {
                       (WCAG 4.1.2). Past the deciding instant "Awaiting result" is the verdict's, not this row's. */}
                   <span className="kp-udclock__cap" id="kp-udclock-state">{t.market.udLockedTitle}</span>
                   <Link href={roundHref as never} className="kp-udclock__watch" aria-describedby="kp-udclock-state">
-                    <span className="kp-udclock__watch-label">{t.market.udRcWatchRound}<I.chevronRight s={14} /></span>
+                    <span className="kp-udclock__watch-label">{t.market.udRcWatchRound}<I.chevronRight s={14} edge="end" text="body-600" /></span>
                   </Link>
                 </p>
               </div>
@@ -175,11 +175,11 @@ export function UpdownBand({ t, locale, liveCount, round }: {
           <div className="kp-updown__acts">
             <Link href={"/updown" as never} className="kp-shead__link kp-updown__all">
               {t.home.udMatchAllRounds}
-              <I.chevronRight s={14} />
+              <I.chevronRight s={14} edge="end" text="mono-700" />
             </Link>
             <Link href={"/updown" as never} className="btn btn-primary btn-lg kp-updown__next">
               {t.home.udMatchNextRound}
-              <I.chevronRight s={14} />
+              <I.chevronRight s={14} text="body-600" />
             </Link>
           </div>
         </UpdownMatchState>

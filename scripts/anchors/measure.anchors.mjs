@@ -146,11 +146,11 @@ export const MUTATIONS = [
   },
   {
     name: "back-link-chevron-inset",
-    why: "the back link's chevron keeps its glyph's 3px side bearing, so its tip stands 3px inside the edge of the card it heads (x19 against 16)",
+    why: "the back link's chevron keeps its box (no `edge`), so its tip stands 3.6px inside the edge of the card it heads (x19.6 against 16) — round 9 (R9-A4) moved the hand-back from a typed margin to the glyph's own edge",
     file: "src/components/ui/back-link.tsx",
     suite: "measure",
     check: "8. the back link's chevron hands back its side bearing",
-    from: `      <I.chevronLeft s={11} className="-ml-[3px]" />`,
-    to: `      <I.chevronLeft s={11} />`,
+    from: `      <I.chevronLeft s={11} edge="start" text="mono-400" />`,
+    to: `      <I.chevronLeft s={11} text="mono-400" />`,
   },
 ];

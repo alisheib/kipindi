@@ -98,7 +98,7 @@ export function ReceiptListRow({
             </Chip>
           </div>
         </div>
-        <I.chevronRight s={16} className="shrink-0 text-text-subtle transition-colors duration-quick group-hover:text-text" aria-hidden />
+        <I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle transition-colors duration-quick group-hover:text-text" aria-hidden />
       </Link>
     </li>
   );

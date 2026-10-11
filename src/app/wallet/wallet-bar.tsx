@@ -96,7 +96,7 @@ export function WalletBar({
   t,
 }: {
   state: LedgerQueryState;
-  /** ⛔ From `visibleLedgerLenses` — `commission` only for an account that has any. */
+  /** ⛔ From `visibleLedgerLenses` — `bonus`, `commission` and `agentfee` only for an account that has any (or when on). */
   lenses: readonly LedgerLens[];
   counts: LedgerCounts;
   /** The SAME variable the pager reads. */

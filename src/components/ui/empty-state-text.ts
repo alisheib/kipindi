@@ -6,7 +6,7 @@
  */
 import type { ReactNode } from "react";
 import { hangCjkMarks } from "@/lib/cjk-marks";
-import { keepRanges, mergeRanges, runAndDashRanges } from "./keep-run";
+import { keepRanges, mergeRanges, possessiveRanges, runAndDashRanges } from "./keep-run";
 
 /**
  * ⭐ A DASH NEVER OPENS A LINE (2026-10-08, the visual pass, tiles 241 and 243). "Chagua swali, bonyeza NDIO au HAPANA
@@ -38,6 +38,15 @@ import { keepRanges, mergeRanges, runAndDashRanges } from "./keep-run";
  * node of its own now (`keepRanges`), and every body breaks where round 5 broke it — `test:visual-pass-r7a` §1 models
  * Chromium's score line breaker over every dictionary sentence at every empty-state measure: 0 of 3,552 lines differ
  * from round 5's (the regression changed 345, ten of them on real empty-state bodies).
+ *
+ * ⭐ ROUND 9 (2026-10-11, R9-B — tiles 240 241 243) · A POSSESSIVE STAYS WITH ITS NOUN. Round 5's breaks, which round 7
+ * restored, tore the possessive from its noun outside en 390–412: "Pick a question, tap" / "YES or NO — your" / "ticket
+ * shows up here." (en 320), "Chagua swali, bonyeza" / "NDIO au HAPANA — tiketi" / "yako itaonekana hapa." (sw 320–390).
+ * Each possessive phrase is held as the pair is (`possessiveRanges`, keep-run.tsx: "your ticket", "tiketi yako", and a
+ * connective that introduces one travels with it — "wa fedha zako"), so the body reads "Pick a question, tap" / "YES or
+ * NO — your ticket" / "shows up here." (en 320) and "Chagua swali, bonyeza" / "NDIO au HAPANA —" / "tiketi yako
+ * itaonekana hapa." (sw 320–390; the Questions box is `fill`, 282px at 412, where it already read so); en 360–412 and zh
+ * keep their lines. `test:visual-pass-r9b` §1 lays out every body.
  */
 const PAIR = /\b[A-Z]{2,}[ \t]+(?:au|or)[ \t]+(?=([A-Z]{2,})\b)/g;
 
@@ -45,9 +54,10 @@ const PAIR = /\b[A-Z]{2,}[ \t]+(?:au|or)[ \t]+(?=([A-Z]{2,})\b)/g;
 export type KeptBody = { text: string; keep: readonly string[] };
 export type EmptyStateBody = string | KeptBody;
 
-/** The spans of the body that must not break: each YES/NO pair, each dash with its unit, each run the caller names. */
+/** The spans of the body that must not break: each YES/NO pair, each possessive phrase, each dash with its unit, each run
+ *  the caller names. */
 export function emptyStateRanges(text: string, keep: readonly string[] = []): Array<[number, number]> {
-  const ranges = runAndDashRanges(text, keep);
+  const ranges = [...runAndDashRanges(text, keep), ...possessiveRanges(text)];
   // The second word is read by the lookahead, so "A or B or C" holds both pairs (and they merge into one run).
   for (const m of text.matchAll(PAIR)) ranges.push([m.index ?? 0, (m.index ?? 0) + m[0].length + m[1].length]);
   return mergeRanges(ranges);

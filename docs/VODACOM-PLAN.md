@@ -19,7 +19,9 @@
 **State (2026-10-11):** S6 (the flagged shell) is in progress (§0i): WP0–WP12 are live behind the flag, the S6 visual
 pass (rounds 1–6), its round 7 and round 8 (the owner's four rulings of 2026-10-10) are live from ALI-BLADE15 (the ✅
 paragraphs below), R8-D — the break's other channels — with them. The close-out read (333 tiles, eight readers, 2026-10-11) found 19
-items: round 9 fixes them. K32 (an agent fee paid into a draft that expired was never owed back) is live. As of 2026-10-07: WP0–WP11 are live behind the flag — the shell
+items: round 9 fixes them. K32 (an agent fee paid into a draft that expired was never owed back) is live. Round 9 (the read's 19
+items) is LIVE (`35efb6a9`, 2026-10-11 19:24 EAT) and its own read found no regression; ROUND 10 (S6-VISUAL-PASS-STATE
+appendix L) is the last S6 step. As of 2026-10-07: WP0–WP11 are live behind the flag — the shell
 swap, the overlay rules, Tiketi zangu (WP9), the journey sell look (WP10), `--rail-h` (WP11) and the first-download fix
 (WP6c), each verified locally before its push — and classic viewers are served what they were
 (`qa:classic-shell-parity`, 224 cells, no unexpected difference; v2 also compares the Sell region). ⭐ Ali, 2026-10-02: nothing is turned on — no staff preview, no journey — until
@@ -39,6 +41,31 @@ the s4-5 low-minimum and s4-6 code frames on the S4 canvas, `shortfall.ts`'s `em
 `qa:classic-shell-parity` 2.9 once ▶ 0e's Phase B removes the email bar — all three done in WP12's batch (§0i WP12):
 the short-of-the-minimum board offers TZS 1,000 and S9's six code boards are marked superseded; `shortfallPlan` asks no
 email step; 2.9 reads which tree it runs on (the bar's component gone → no viewer may see a bar).
+
+**✅ ROUND 9 IS LIVE (2026-10-11 19:24 EAT, `35efb6a9`) — the S6 close-out read's 19 items fixed; ROUND 10 LEFT, then S6 ✅.**
+Four helpers, each with its guard and mutation proof: **R9-A** edges and glyphs (`9f369528`: the hub's podium glyph and
+four more centred; every sign-out draws a log-OUT; the Toka box 58px; THE EDGE RULE — a glyph's `edge` prop puts its INK
+on its run's edge, `text` strokes a mark among words at their stem — card "Maelezo ›", "Risiti zote ›", every page head's
+eyebrow glyph, row ends, back links, the held capsule; YES/NO 12px on every card; dashed tracks fitted) 52/52 + 33/33;
+**R9-B** line breaks (`c4f65f6e`: "your ticket" / "tiketi yako" held in every empty-state body and keepText sentence;
+the -enye relatives and "kwenye" are connectives; /live's caption and 28 labels through the keep; the journey footer's
+links) 49/49 + 23/23; **R9-C** components (`44c5a8c8`: the leaderboard's #1 raised again — `.kp-rise`'s fill had undone
+it since A10 — and five more transform clashes; /live's pager even; the invite caption's ink; the 320 tab bar centred
+unless a label wraps; the stacked INAKUJA on a whole pixel; the guest sheet's Ingia a ghost; the empty Bonus lens hidden)
+60/60 + 22/22; **R9-D** (`77df47ec`: /results and /fairness never behind a committed market write — a change log noted
+at the store after the commit, the memo re-reading only the changed rows) 58/58 memory + 58/58 PostgreSQL + 13/13.
+Main's own reds fixed on the way: test:contrast's P-u2 floor 20 → 17 (KYC typed-only deleted three solid buttons),
+test:spacing-scale's ceiling 418 → 412, ruling 232's line pin +53 lines (all seven writes the same nine lines), a guard
+plant that read git HEAD. Proof: typecheck 0 (9a740922 and 35efb6a9); test:all 513/523 on 134e3675, every red explained
+(five need a server; house-bot-console 1.548 and orphans are main's own; house-bot-reports, typecheck and backup fixed in
+9a740922 — house-bot-reports 251 memory + 80 PostgreSQL, 0 failed); two stores: house-bot-money 133 + 151,
+cashout-price-guard 62 + 65; next build 0 and local qa:live 334/334 (9a740922); tiles `qa:journey-shell` 1659 passed ·
+0 failed · 0 blocked, 336 tiles, read by eight readers — NO regression, one real item (the journey footer tore the
+proposals page's name at sw 1024) fixed in `35efb6a9` (the name held whole; guard 51/51, the old rendering planted and
+caught). Production read back at 19:28 EAT: both hosts on `35efb6a9` (184 s after the push), health, the service worker, and the first-load chunks (no classic page loads journey code); production qa:live 329/330 at 19:36 EAT — its one failure the QA player's sign-in, which this machine has no password for, as on every push. Lessons: the first lock turn served yesterday's tree (a chain's `at` helper was lost when cut from
+another script and Windows' AT.EXE swallowed the call) — caught by opening three tiles before the readers; a crash at
+~17:20 → the light profile below. NOT run for round 9 (owed to S6's close, with round 10): classic parity (stopped
+mid-run when Ali ended the session) and the hub-only re-tile of the footer fix.
 
 **✅ K32 IS LIVE (2026-10-11 14:11 EAT, `06924050`) — a fee paid into an agent application that EXPIRES is owed back.**
 Found by R8-D (appendix K's K32): `expireStaleAgentApplications` set a lapsed draft EXPIRED and left a COLLECTED fee
@@ -298,8 +325,9 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S6 — round 9 fixes the close-out read's 19 items (the ⏳ paragraph above); only its tiles are re-taken
-and re-read; S6 closes when a read finds nothing (§0i;
+**Next:** (1) S6 — ▶ RESUME HERE ON ANY MACHINE: ROUND 10 (S6-VISUAL-PASS-STATE **appendix L**: its brief, the
+re-tile and read recipes), then S6's close record (classic parity at the live main, test:all), then S6 ✅ (tick §1 and
+NEXT-PLAN's count); S6 closes when a read finds nothing (§0i;
 [S6-VISUAL-PASS-STATE.md](design-system/v5-2026-09-29-simplified-journey/S6-VISUAL-PASS-STATE.md) §3/§4). The red twins the 2026-10-10 crash left owed
 (`red:house-bot-c5`, `-money`, `-engine`, `red:campaign-visuals`, `red:contacts-import`) are DROPPED from this plan by
 the efficiency ruling: they prove other lanes' guards, which rounds 7 and 8 never touched. The build plan is
@@ -321,7 +349,10 @@ or that are very repetitive … maximum efficiency of our time through this plan
 - **Not run:** a check on code the change never touched (the header fit, the landmark seals, needle-rest, the preview
   drive), another lane's red twins, a repeat of a proof that already passed on the same files.
 - Heavy Node only through `~/heavy-node-lock.sh`, one heavy job at a time and no helper running suites beside it (this
-  laptop's RAM fails); builds and dev servers in `C:\kipindi-journey` (real `node_modules` — Turbopack refuses a
+  laptop's RAM fails); ⭐ the LIGHT profile (Ali, 2026-10-11, after the fifth crash): one in-memory dev server per lock
+  job and no heap cap (a cap makes `next dev` restart and wipe its store), a 30 s cool-down, routes warmed one at a time,
+  qa:live and the tile drive on that one server, every worktree checkout VERIFIED by HEAD, 2–3 tiles opened before any
+  reader starts; builds and dev servers in `C:\kipindi-journey` (real `node_modules` — Turbopack refuses a
   junction).
 - This file, `SHELVED.md` and memory updated in the same pass.
 

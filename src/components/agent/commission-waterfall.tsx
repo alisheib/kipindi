@@ -1,6 +1,7 @@
 import { commissionWaterfall, type WaterfallRates, type WaterfallStepId } from "@/lib/agent-commission";
 import { fill, formatTzs } from "@/lib/utils";
 import { fillNodes } from "@/lib/fill-nodes";
+import { keepConnectives } from "@/components/ui/keep-run";
 import type { Dict } from "@/lib/i18n-dict";
 
 /**
@@ -100,7 +101,9 @@ export function CommissionWaterfall({
         */}
       <dl className="mt-3">
         <div className="flex items-baseline justify-between gap-4 border-b border-border pb-1.5">
-          <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.agent.wfColParam}</span>
+          {/* No line ends on a connective (round 9, R9-B — the label family's sweep; `keepConnectives`): the head shares its row with the amounts' head, so at 360–390 "Kipengele cha fedha /
+              hatua ya makato" (274px) breaks "…hatua ya" / "makato"; now "…hatua" / "ya makato". The ghost draws the same. */}
+          <span className="font-mono text-micro uppercase eyebrow text-text-subtle">{keepConnectives(t.agent.wfColParam)}</span>
           {/* The amounts' head ends where the amounts end (R3-C's table-head rule, round 7, R7-C). */}
           <span className="font-mono text-micro uppercase eyebrow text-text-subtle kp-track-end">{t.agent.wfColAmount}</span>
         </div>

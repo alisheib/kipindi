@@ -42,8 +42,9 @@ export const MUTATIONS = [
     // reader in the journey (`invite-name.ts`), so the line carries that arm. Same mutation, same meaning — the gate dropped.
     name: "public-footer.tsx — the footer links to Invite for everyone",
     file: "src/components/layout/public-footer.tsx",
-    from: `          {inviteVisible && <FooterLink href="/profile/invite">{journeyShown ? inviteName(t, { agent: inviteAgent, paid: invitePaid }) : t.profile.inviteFriends}</FooterLink>}`,
-    to: `          {<FooterLink href="/profile/invite">{journeyShown ? inviteName(t, { agent: inviteAgent, paid: invitePaid }) : t.profile.inviteFriends}</FooterLink>}`,
+    // Round 9 (R9-B): every FooterLink carries keep={journeyShown} (the journey's connective hold); the plant is the same.
+    from: `          {inviteVisible && <FooterLink href="/profile/invite" keep={journeyShown}>{journeyShown ? inviteName(t, { agent: inviteAgent, paid: invitePaid }) : t.profile.inviteFriends}</FooterLink>}`,
+    to: `          {<FooterLink href="/profile/invite" keep={journeyShown}>{journeyShown ? inviteName(t, { agent: inviteAgent, paid: invitePaid }) : t.profile.inviteFriends}</FooterLink>}`,
     expect: "§7",
   },
   {

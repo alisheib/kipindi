@@ -2,6 +2,7 @@ import * as React from "react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { keepText } from "@/components/ui/keep-run";
+import { edgeGlyph } from "@/components/ui/glyphs";
 import { stemOf } from "@/lib/display-stem";
 
 /**
@@ -115,7 +116,8 @@ export function AuthHeader({
       <p
         className={`${icon ? "flex items-center gap-2 " : ""}font-mono text-caption uppercase eyebrow font-bold ${EYEBROW_TONE[tone]}`}
       >
-        {icon}
+        {/* The eyebrow's glyph on the panel's edge, as PageHeader's (R9-A4, 2026-10-11; `edgeGlyph`, glyphs.tsx). */}
+        {edgeGlyph(icon, "start")}
         {eyebrow}
       </p>
       {/* ⭐ NEVER ONE WORD ALONE (R4-I, 2026-10-09; edges E11): "Karibu kwenye / 50pick" and "Welcome to / 50pick" (sw

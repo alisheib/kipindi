@@ -361,8 +361,12 @@ export default async function InvitePage({
           <EarningsRing value={ringValue} label={ringLabel} tone={earnedGold ? "gold" : "royal"} />
           <div className="contents sm:block sm:min-w-0 sm:flex-1">
             {/* The caption NAMES the dial; the money is on the dial (R5-C, the second gold audit, 2026-10-09: a label is
-                never money, Q5 — one royal caption for both product states). */}
-            <Cap className="sm:mb-1.5 !text-royal-300">
+                never money, Q5). ⭐ IN THE ONE SECTION INK (round 9 of the visual pass, R9-C, 2026-10-11; R5-F4, tiles 181
+                182): Ali's ruling (3) of 2026-10-10 gives every section heading `--text-subtle`, and this one stayed royal-300
+                (142,173,255 against 137,157,209) because `!text-royal-300` reached the `.eyebrow` through this page's own `Cap`
+                — a wrapper R8-B's census could not see into. `Cap` paints the one ink; a caller passes layout only
+                (`test:visual-pass-r9c` §3 reads every wrapper's call sites). */}
+            <Cap className="sm:mb-1.5">
               {paid ? t.profile.inviteEarn : t.profile.friendsJoined}
             </Cap>
             <p className="col-span-2 font-display text-[19px] font-bold leading-tight text-balance">
@@ -531,7 +535,7 @@ export default async function InvitePage({
       {paid && (
       <section className="rounded-xl border border-border bg-bg-elevated/60 p-4 space-y-2">
         <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle flex items-center gap-1.5">
-          <I.shieldcheck s={11} />
+          <I.shieldcheck s={11} edge="start" />
           {t.profile.bonusRequirements}
         </p>
         <ul className="space-y-1.5 text-body-sm text-text-muted leading-snug list-disc pl-4">

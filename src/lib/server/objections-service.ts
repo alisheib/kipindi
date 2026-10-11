@@ -29,6 +29,8 @@ import { withLock } from "./locks";
 import { getMarket, listPositionsForMarket, type StoredMarket } from "./market-service";
 import { getEffectiveConfig } from "./market-config";
 import { notifyAdminObjectionFiled, notifyObjectionDecided } from "./notification-service";
+// R9-D: every objection write below moves the rulings memo's generation once it has landed (reversals.ts).
+import { noteObjectionWrite } from "./reversals";
 import { MONEY_ROLES, type Role } from "./roles";
 import type { ServiceResult } from "./auth-service";
 
@@ -181,6 +183,7 @@ export async function fileObjection(
       outcomeAtFiling: m.resolvedOutcome,
     };
     await db.objection.create(objection);
+    noteObjectionWrite();
 
     audit({
       category: "COMPLIANCE",
@@ -231,6 +234,7 @@ export async function closeObjectionsForVoidedMarket(
       reviewedAt: now,
       reviewNote: `Market emergency-voided; every stake refunded in full. Reason: ${reason}`.slice(0, 1000),
     });
+    noteObjectionWrite();
     audit({
       category: "COMPLIANCE",
       action: "objection.closed_by_void",
@@ -351,6 +355,7 @@ export async function holdSettlementAsOfficer(
       outcomeAtFiling: m.resolvedOutcome,
     };
     await db.objection.create(objection);
+    noteObjectionWrite();
 
     audit({
       category: "COMPLIANCE",
@@ -424,6 +429,7 @@ export async function rejectObjection(
     reviewedAt: new Date().toISOString(),
     reviewNote,
   });
+  noteObjectionWrite();
   audit({
     category: "COMPLIANCE",
     action: "objection.rejected",
@@ -546,6 +552,7 @@ export async function upholdObjection(
       reviewNote,
       remedy: input.remedy,
     });
+    noteObjectionWrite();
 
     audit({
       category: "COMPLIANCE",

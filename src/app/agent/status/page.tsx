@@ -18,6 +18,8 @@ import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import type { AgentApplicationStatus, AgentRejectReason } from "@/lib/server/store";
 import { startApplicationAction } from "../apply/actions";
 import { fillNodes } from "@/lib/fill-nodes";
+// No line ends on a connective (round 9, R9-B — the label family's sweep; `keepConnectives`): "Ujumbe kutoka kwa afisa wa uzingatiaji" is 281px in a 248px panel at 320.
+import { keepConnectives } from "@/components/ui/keep-run";
 import { Callout } from "@/components/ui/callout";
 import { isLockedOut } from "@/lib/server/responsible-gambling";
 import { breakStateOf } from "@/lib/break-end";
@@ -111,7 +113,7 @@ export default async function AgentStatusPage() {
               </ul>
               {(view.state === "info_required" || view.state === "in_progress") && (
                 breakEnd ? rgLocked
-                : <Link href={"/agent/apply" as never}><Button variant="primary" size="md" leading={<I.arrowRight s={14} />}>{t.agent.ctaContinue}</Button></Link>
+                : <Link href={"/agent/apply" as never}><Button variant="primary" size="md" leading={<I.arrowRight s={14} text="body-600" />}>{t.agent.ctaContinue}</Button></Link>
               )}
             </section>
           )}
@@ -126,7 +128,7 @@ export default async function AgentStatusPage() {
               {/* ⭐ The officer's note reaches the applicant HERE as well as by email — a phone-only applicant never read it otherwise. */}
               {view.app.rejectNote && (
                 <div>
-                  <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{t.agent.officerNote}</p>
+                  <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{keepConnectives(t.agent.officerNote)}</p>
                   <p className="mt-1 text-body-sm leading-relaxed text-text">{view.app.rejectNote}</p>
                 </div>
               )}
@@ -154,7 +156,7 @@ export default async function AgentStatusPage() {
               <p className="text-body-sm leading-relaxed text-text">{fill(t.agent.revokedBody, { date: view.reapplyAt ? d(view.reapplyAt) : "—" })}</p>
               {view.app.rejectNote && (
                 <div>
-                  <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{t.agent.officerNote}</p>
+                  <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{keepConnectives(t.agent.officerNote)}</p>
                   <p className="mt-1 text-body-sm leading-relaxed text-text">{view.app.rejectNote}</p>
                 </div>
               )}

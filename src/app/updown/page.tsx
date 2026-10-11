@@ -150,7 +150,10 @@ export default async function UpDownPage({
           >
             {journey ? <I.ticket s={13} /> : <I.portfolio s={13} />}
             <span className="hidden sm:inline">{historyName}</span>
-            <I.chevronRight s={11} />
+            {/* R9-A4 (2026-10-11): the chevron's ink on the pill's padding edge — its box padding made the right side 3.1px
+                wider than the left. The leading glyphs keep their boxes (0.57px of padding, and on a phone the rules pill's
+                glyph stands alone, centred by its box). */}
+            <I.chevronRight s={11} edge="end" text="mono-400" />
           </Link>
         </div>
         }

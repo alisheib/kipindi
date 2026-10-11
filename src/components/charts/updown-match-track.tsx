@@ -10,8 +10,9 @@
  * and the playhead (`UpdownMatchNow`). Real points only, no line between them (§B12.3); nothing about a
  * price animates (L12, A-5).
  *
- * ⭐ THREE LAYERS, IN PAINT ORDER: neutral time (void band, rail, locked stretch, posts, opening dot) → the
- * playhead and played stretch (`UpdownMatchNow`) → the data marks (tie ticks, stems, bead). A read lands at
+ * ⭐ THREE LAYERS, IN PAINT ORDER: neutral time (void band, rail, posts, opening dot, then the locked stretch — an html
+ * line since R9-A6, so its dashes are whole from post to post) → the playhead and played stretch (`UpdownMatchNow`) →
+ * the data marks (tie ticks, stems, bead). A read lands at
  * most a couple of minutes before "now", so the playhead often sits a few px from the newest stem: side ink
  * must always paint OVER neutral time, never under it (frame panel, 2026-09-27 — the playhead hid the stem).
  *
@@ -70,11 +71,14 @@ export function UpdownMatchTrack({ round, label, openLabel, anchorMs }: {
         <svg className="kp-udtrack__svg" width="100%" height="100%" focusable="false">
           {showVoid && g.void && <rect className="kp-udtrack__void" x="0" width="100%" y={pct(g.void.y)} height={pct(g.void.h)} />}
           <line className="kp-udtrack__rail" x1="0" y1="50%" x2={gate} y2="50%" />
-          <line className="kp-udtrack__locked" x1={gate} y1="50%" x2="100%" y2="50%" />
           <line className="kp-udtrack__post" x1={gate} y1="0" x2={gate} y2="100%" />
           <line className="kp-udtrack__post" x1="100%" y1="0" x2="100%" y2="100%" />
           {g.kick && <circle className="kp-udtrack__kick" cx="0" cy="50%" r={MATCH.kick} />}
         </svg>
+        {/* The locked stretch, still neutral time — over the posts, under the playhead and the marks. ⭐ R9-A6 (2026-10-11):
+            whole dashes from the lock post to the flag post at every width (`.kp-dashfit`), where an svg dash pattern started
+            at the lock post ran out at the flag post on whatever the width left. */}
+        <span className="kp-udtrack__locked kp-dashfit" style={at(g.gatePct)} />
         <UpdownMatchNow opensAtMs={round.opensAtMs} closesAtMs={round.closesAtMs} anchorMs={anchorMs}
           markX={mark?.x ?? null} markKind={mark?.kind ?? null} gatePct={g.gatePct} />
         <svg className="kp-udtrack__svg" width="100%" height="100%" focusable="false">

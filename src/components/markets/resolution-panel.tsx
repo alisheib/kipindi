@@ -23,6 +23,7 @@
  *    the money was already paid, and disputes were routed to support truthfully.
  */
 import { I } from "@/components/ui/glyphs";
+import { keepConnectivesItem } from "@/components/ui/keep-run";
 import { Chip } from "@/components/ui/chip";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { cn, formatTzs } from "@/lib/utils";
@@ -190,7 +191,7 @@ export function ResolutionPanel({
             className="inline-flex items-center gap-1 text-brand-300 hover:text-brand-200 underline"
           >
             {t.common.source}
-            <I.ext s={11} />
+            <I.ext s={11} edge="end" text="mono-400" />
           </a>
         </div>
       </div>
@@ -201,8 +202,11 @@ export function ResolutionPanel({
       {evidenceText && (
         <div className="space-y-1.5">
           <p className="flex items-center gap-1.5 font-mono text-micro font-bold uppercase eyebrow text-text-subtle">
-            <I.fileCheck s={12} />
-            {t.market.resEvidence}
+            <I.fileCheck s={12} edge="start" />
+            {/* No line ends on a connective (round 9, R9-B): sw "Ushahidi uliorekodiwa na afisa" is 222px and the panel
+                leaves it 220 at 320 (288 − its 2 × 24px padding − the 12px glyph and its 8px gap), so it wrapped
+                "…uliorekodiwa na" / "afisa"; now "…uliorekodiwa" / "na afisa". A flex row with its glyph: one item. */}
+            {keepConnectivesItem(t.market.resEvidence)}
           </p>
           <blockquote className="border-l-2 border-border/60 bg-bg-overlay/30 rounded-r-md px-3 py-2 text-body-sm leading-relaxed text-text-muted italic whitespace-pre-wrap break-words">
             {evidenceText}

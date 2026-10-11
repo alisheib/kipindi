@@ -2,6 +2,8 @@
 
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
+// The stakes head breaks where the page's does (round 9, R9-B).
+import { keepConnectives } from "@/components/ui/keep-run";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
 import { PLAYER_PER_PAGE } from "@/components/ui/pagination";
@@ -26,9 +28,10 @@ import { GhostText } from "@/components/ui/ghost-text";
  * ⚠️ WHERE THE DATA DECIDES A HEIGHT, THE CASE DRAWN:
  *   · the podium is the measured board's (tiles 177, 178 and 203, the one board this round read): the leader WITHOUT a
  *     hot streak and the two beside it on one each, short handles on one line, a silver leader. A streak is the data's
- *     (the player's latest settled prediction won), and the tallest column sets the band (`items-end`): a leader on a
- *     streak makes the page's podium 8px taller than this one, a podium with no streak at all 18.5px shorter; a longer
- *     handle wraps on a phone.
+ *     (the player's latest settled prediction won). Since R9-C the columns hang from the top, #1 16px up and its
+ *     neighbours 8px down, so the band is the taller of the leader's column less 16 and a neighbour's plus 8: a leader on
+ *     a streak too leaves the band as drawn, a podium with no streak at all is 26.5px shorter; a longer handle wraps
+ *     on a phone, downward.
  *   · the rows are a full page, twelve (`PLAYER_PER_PAGE`): they are the last band, so a shorter board (the measured one
  *     ranks seven) moves nothing but the footer below them. The cap sentence (a board of fifty) and the pager are not
  *     drawn — how many pages there are is the data's.
@@ -89,7 +92,7 @@ export default function LeaderboardLoading() {
               <th className="text-left p-3 w-[56px]"><GhostText>#</GhostText></th>
               <th className="text-left p-3"><GhostText>{t.leaderboard.tablePredictor}</GhostText></th>
               <th className="text-right p-3"><GhostText>{t.leaderboard.tableRoi}</GhostText></th>
-              <th className="text-left p-3 hidden md:table-cell"><GhostText>{t.leaderboard.tableStakes}</GhostText></th>
+              <th className="text-left p-3 hidden md:table-cell"><GhostText>{keepConnectives(t.leaderboard.tableStakes)}</GhostText></th>
               <th className="text-right p-3 hidden md:table-cell"><GhostText>{t.leaderboard.tableStreak}</GhostText></th>
               <th className="text-right p-3"><GhostText>{t.leaderboard.tableResolved}</GhostText></th>
             </tr>
@@ -120,21 +123,25 @@ export default function LeaderboardLoading() {
   );
 }
 
-/** The podium — the page's own section, grid and columns: #2, #1 (its crown, the 56px crest; 12px raised, which moves
- *  no box) and #3 (48px crests), each its handle and 22px tier badge (stacked below 640), the rate, a hot streak (the two
- *  beside the leader: the measured board's — the file's note) and the resolved count. The bottoms align (`items-end`), so
- *  the tallest column sets the band: here a neighbour's, 18.5px taller than the leader's without its streak line. */
+/** The podium — the page's own section, grid and columns: #2, #1 (its crown, the 56px crest) and #3 (48px crests), each
+ *  its handle and 22px tier badge (stacked below 640), the rate, a hot streak (the two beside the leader: the measured
+ *  board's — the file's note) and the resolved count. ⭐ As the page stands since R9-C (2026-10-11): the columns hang from
+ *  the top (`items-start`), #1 raised 16px by a margin (`-mt-3`) and the flanks 8px down (`mt-1.5`, the 56px crest's
+ *  difference from their 48), so #1's crest and name stand 16px above theirs. This drawing wore `-translate-y-3` too —
+ *  which, with no entrance here to hold `transform`, DID raise #1 (11px below its neighbours, where the page's stood 27),
+ *  so the page's arrival dropped the winner 16px. The band is the taller of the leader's column less 16 and a
+ *  neighbour's plus 8: here a neighbour's, with its streak line. */
 function PodiumGhost() {
   return (
     <section className="rounded-xl glass-panel px-4 pt-6 pb-4 text-transparent" aria-hidden>
-      <div className="grid grid-cols-3 items-end gap-2 sm:gap-4">
+      <div className="grid grid-cols-3 items-start gap-2 sm:gap-4">
         {[2, 1, 3].map((rank) => {
           const first = rank === 1;
           // The crest's own box (`.crest-holder`: inline-flex, middle-aligned, its line 0) — 56px for the leader, 48
           // beside it.
           const crest = first ? "h-[56px] w-[56px]" : "h-[48px] w-[48px]";
           return (
-            <div key={rank} className={`flex min-w-0 flex-col items-center text-center ${first ? "-translate-y-3" : ""}`}>
+            <div key={rank} className={`flex min-w-0 flex-col items-center text-center ${first ? "-mt-3" : "mt-1.5"}`}>
               <span className="mb-1 block h-[22px]" />
               <div className="relative rounded-full" style={{ padding: 3 }}>
                 <span className={`crest-holder ${crest} rounded-full bg-bg-overlay kp-shimmer-track`} />

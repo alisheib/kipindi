@@ -378,8 +378,11 @@ check("…and the admin shell carries its own skip-to-content link",
   const tipX = chevron ? Number(chevron[1]) + Number(chevron[3]) : NaN;
   const bearing = Math.floor(((tipX - 1.9 / 2) / 24) * 11);
   const back = src("components/ui/back-link.tsx");
+  // Re-pinned (round 9, R9-A4, 2026-10-11): the bearing is no longer typed — the glyph's own `edge` hands it back, measured
+  // from its drawing and its text stroke (3.59px at 11px under a 12px mono label, so the tip's ink stands ON the edge, not
+  // 0.6px inside it); `test:visual-pass-r9a` §4.1 holds the number against this file's derivation.
   check("8. the back link's chevron hands back its side bearing, so its tip sits on the edge the link heads",
-    back.includes(`<I.chevronLeft s={11} className="-ml-[${bearing}px]" />`), `bearing ${bearing}px (tip x${tipX} of 24 at 11px)`);
+    back.includes(`<I.chevronLeft s={11} edge="start" text="mono-400" />`) && !back.includes("-ml-["), `bearing ${bearing}px (tip x${tipX} of 24 at 11px), handed back by the glyph's own edge`);
   check("8. ⭐ CONTROL — the bearing derivation reads the glyph (a 3px bearing for the point at x9)", bearing === 3 && tipX === 9,
     `tip x${tipX}, bearing ${bearing}`);
 }

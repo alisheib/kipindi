@@ -18,6 +18,7 @@ import { TippingBar } from "@/components/brand";
 import { I } from "@/components/ui/glyphs";
 // 2026-10-08 · G1: a Chinese "200毫米" in a slide's question never breaks between the number and its unit.
 import { keepFigures } from "@/components/ui/keep-words";
+import { keepConnectives } from "@/components/ui/keep-run";
 import { stemOf } from "@/lib/display-stem";
 import { useT } from "@/lib/i18n";
 
@@ -112,8 +113,12 @@ export function FeaturedContest({
             ⚠️ The gap is 12px (`gap-2`, this repo's scale), was 16: at 320 the longer half, "SHAKA ZAIDI"
             (≈81px with its tracking), had 80px and would have taken a third line; with 84 it keeps two.
             2026-10-10 · the caption is a section heading, so it wears the one section ink, `--text-subtle` — it was aqua,
-            /live's own eyebrow ink (Ali's ruling (3) of 2026-10-10, DESIGN_AUTHORITY §T3; test:visual-pass-r8b). */}
-        <p className="min-w-0 text-balance break-words font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{eyebrow}</p>
+            /live's own eyebrow ink (Ali's ruling (3) of 2026-10-10, DESIGN_AUTHORITY §T3; test:visual-pass-r8b).
+            2026-10-11 · round 9 (R9-B, tiles 175 202): no line ends on a connective — the balanced caption read "LILILO NA" /
+            "SHAKA ZAIDI" at sw 390; "na" keeps the space after it (`keepConnectives`), so it reads "LILILO" / "NA SHAKA
+            ZAIDI" at 360–390, and at 320 (84px) "LILILO" / "NA SHAKA" / "ZAIDI" — three lines of 14px, still inside the
+            arrows' 44px row, so nothing under it moves; from 412 it is one line, en and zh as before. */}
+        <p className="min-w-0 text-balance break-words font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{keepConnectives(eyebrow)}</p>
         {multi && (
           <div className="flex shrink-0 items-center gap-2">
             <Arrow dir="prev" onClick={() => go(-1)} />
@@ -196,7 +201,8 @@ export function FeaturedContest({
             at 360 — where this panel has ~296px of content width — it can no longer be certain
             of sharing a line with the CTA. Wrapping is the correct yield: §A6 forbids
             horizontal overflow, and a squeezed rail would re-create the tiny targets the
-            padding just removed. */}
+            padding just removed. (Since R9-C the six-slide rail is 6 × 24 + 12 = 156px, of which the row lays out 147:
+            the first target's 9px stand in the row's gap — see the rail below.) */}
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <Link href={href as Route} className="btn btn-primary btn-md inline-flex">
             {openLabel}
@@ -214,8 +220,8 @@ export function FeaturedContest({
 
               ⭐ THE HIT AREA IS PADDING, NOT A BIGGER DOT (§A2). The dot keeps its drawn size —
               6px wide, 18px when active — because a 40px dot is a different design. The BUTTON
-              around it is 40px tall and 24px wide, which is the floor this repo actually
-              instruments (`responsive-audit.mjs`: `height < 40 || width < 24`). The row's `gap`
+              around it is 40px tall and at least 24px wide (a dot's 24, the pill's 36 since R9-C, below), the floor
+              this repo actually instruments (`responsive-audit.mjs`: `height < 40 || width < 24`). The row's `gap`
               is dropped because the padding now provides the separation; ⛔ do not re-add one,
               it would stack on top of the padding and widen the rail a second time.
               ✅ `results/notable-carousel.tsx` — this component's declared twin — GOT THE SAME
@@ -229,14 +235,25 @@ export function FeaturedContest({
               `tabIndex={-1}`. Two carousels must not disagree about that — but it is a
               semantics ruling that has to be applied to BOTH files in one pass, not smuggled
               in by whichever was touched last. */}
+          {/* ⭐ EQUAL GAPS, THE PILL GROWING IN PLACE (round 9 of the visual pass, R9-C, 2026-10-11; R5-F5, tiles 175 176 202).
+              Each target was a fixed 24px with its drawing centred in it, so the 18px pill ate 6px of its neighbours' room:
+              12px beside the pill, 18px between two dots (390: x197–214 · 227–232 · 251–256 · 275–280). Now a target is
+              its drawing and 9px either side (`px-[9px]`): a dot's target is 24px (the floor `responsive-audit` holds), the
+              pill's 36, and every two drawings stand 9 + 9 = 18px apart, whichever slide is current. The pill and the dot
+              it trades with change width together on one curve, so the rail's length holds (6 × 24 + 12) and only the dots
+              between the two glide — the pill grows where it stands. The dot is 6px round: `h-1.5` is 8px on this
+              repo's scale, so it was a 6 × 8 capsule. The rail takes its first target's 9px back into the row's gap
+              (`-ml-[9px]`): the first drawing stands the row's 16px after the button (it stood 19 or 25 by which slide was
+              current), on the content's edge when the row wraps, and the six-slide rail still shares a 390 line with
+              "Fungua soko" in Swahili (`test:visual-pass-r9c` §2). */}
           {multi && (
-            <div className="flex items-center">
+            <div className="-ml-[9px] flex items-center">
               {markets.map((mm, i) => (
                 <button
                   key={mm.id}
                   type="button"
                   onClick={() => setIdx(i)}
-                  className="grid h-[40px] w-[24px] place-items-center rounded-md"
+                  className="grid h-[40px] place-items-center rounded-md px-[9px]"
                   aria-current={i === idx ? "true" : undefined}
                   aria-label={t.market.showMarketN.replace("{n}", String(i + 1))}
                 >
@@ -244,7 +261,7 @@ export function FeaturedContest({
                       this one aqua — two carousels, two answers. "This one" is the brand accent; aqua is "never …
                       anything semantic" (DESIGN_AUTHORITY §B4) and gold is money and nothing else (Q5). */}
                   <span
-                    className="block h-1.5 rounded-full transition-all"
+                    className="block h-[6px] rounded-full transition-[width,background-color] duration-quick ease-glide"
                     style={{
                       width: i === idx ? 18 : 6,
                       background: i === idx ? "var(--brand-400)" : "var(--border-strong)",

@@ -102,6 +102,7 @@ import { chainStore, roundStore, assetStore } from "./updown-dal";
 import { loadConfig, saveConfig } from "./config-store";
 import { guardProtectedModels } from "./purge-protected";
 import { houseBotIntentStore } from "./house-bot-dal";
+import { noteMarketsChanged } from "./market-change-log";
 import { LIVE_INTENT_STATUSES } from "@/lib/house-bot/constants";
 import { createHash } from "node:crypto";
 
@@ -528,6 +529,9 @@ export async function advance(chainId: string): Promise<PurgeJob> {
             },
           }),
         ]);
+        // R9-D · the one market write outside `marketStore`: the archive memo re-reads these rounds by id
+        // (a tombstone keeps no title), now that the batch above has committed (market-change-log.ts).
+        noteMarketsChanged(marketIds, "UPDOWN");
       }
 
       const done = Math.min(job.total, job.done + slice.length);

@@ -11,6 +11,7 @@
  * this page.
  */
 import Link from "next/link";
+import { keepConnectives } from "@/components/ui/keep-run";
 import { fill, formatNumber } from "@/lib/utils";
 import { timeLeftLabel } from "@/lib/markets/time-left";
 import { shownPredictors } from "@/lib/markets/predictors";
@@ -250,7 +251,9 @@ export default async function LivePage({
                     2026-10-10 · and now the one section ink, `--text-subtle`, as every section heading and page head
                     (Ali's ruling (3) of 2026-10-10, DESIGN_AUTHORITY §T3; test:visual-pass-r8b): aqua named /live's
                     identity, and a section heading names its block, not its page. */}
-                <p className="font-mono text-caption uppercase eyebrow font-bold text-text-subtle">{t.market.priceCompetition}</p>
+                {/* No line ends on a connective (round 9, R9-B — the label family's sweep; `keepConnectives`): sw "Mashindano ya Bei · mfumo wa bwawa" (277px) gets 240 at 320, where it breaks "…mfumo wa" /
+                    "bwawa"; now "…mfumo" / "wa bwawa". One line from 360. */}
+                <p className="font-mono text-caption uppercase eyebrow font-bold text-text-subtle">{keepConnectives(t.market.priceCompetition)}</p>
               </div>
               <p className="text-[14px] leading-relaxed text-text-muted max-w-[78ch]">
                 {t.market.liveExplainer}

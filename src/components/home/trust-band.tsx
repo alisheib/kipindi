@@ -22,6 +22,7 @@ import { Chip } from "@/components/ui/chip";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { pickLocalized } from "@/lib/localized";
 import { stemOf } from "@/lib/display-stem";
+import { keepConnectivesItem } from "@/components/ui/keep-run";
 import { outcomeWord } from "@/lib/side-label";
 import { fill, formatTzs } from "@/lib/utils";
 import { formatEatDate } from "@/lib/eat-day";
@@ -80,7 +81,10 @@ export function TrustBand({
       <div className="kp-band__inner">
         <p className="kp-hero__eyebrow text-balance">
           <span className="kp-hero__tick" aria-hidden />
-          {t.home.trustEyebrow}
+          {/* No line ends on a connective (round 9, R9-B: the label family's sweep). The eyebrow is a flex row with its tick,
+              so the kept words are one item (`keepConnectivesItem`). sw "Kwa nini matokeo yanaweza kuaminiwa" (285px) wraps
+              at 320 on its own words; "Kwa" opens it, so its lines are as before. */}
+          {keepConnectivesItem(t.home.trustEyebrow)}
         </p>
         <Claim text={t.home.trustClaim} accent={t.home.trustClaimAccent} />
 
@@ -147,7 +151,7 @@ export function TrustBand({
               </div>
               <Link href={"/results" as never} className="kp-shead__link">
                 {t.home.settledSeeAll}
-                <I.chevronRight s={14} />
+                <I.chevronRight s={14} edge="end" text="mono-700" />
               </Link>
             </div>
 
@@ -285,7 +289,7 @@ function SettledRow({ row, t, locale, nowMs }: { row: SettlementRow; t: Dict; lo
       {host ? (
         <a className="kp-settled__src" href={row.sourceUrl} target="_blank" rel="noopener noreferrer" aria-label={`${host} · ${t.home.settledSourceNewTab}`}>
           <span className="kp-settled__host">{host}</span>
-          <span aria-hidden className="kp-settled__ext"><I.externalLink s={11} /></span>
+          <span aria-hidden className="kp-settled__ext"><I.externalLink s={11} edge="end" text="mono-400" /></span>
         </a>
       ) : <span className="kp-settled__src" aria-hidden />}
       {/* 🔴 THIS SAID "REFUNDED" OVER MARKETS THAT WERE NEVER REFUNDED. The condition folded THREE

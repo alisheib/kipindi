@@ -313,7 +313,7 @@ export function TippingBar({
     return (
       <div className={cn("w-full", className)} style={railVars}>
         <div
-          className="tipbar-empty"
+          className="tipbar-empty kp-dashfit"
           role={as}
           {...(as === "progressbar" ? { "aria-valuemin": 0, "aria-valuemax": 100 } : {})}
           aria-label={emptyLabel}

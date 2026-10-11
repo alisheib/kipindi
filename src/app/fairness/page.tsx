@@ -38,6 +38,9 @@ import { getGlobalConfig } from "@/lib/server/market-config";
 import { durationHours } from "@/lib/duration-phrase";
 import { EmptyState } from "@/components/ui/empty-state";
 import { keepFigures, keepLastWords } from "@/components/ui/keep-words";
+// The chain's stage labels never end a line on a connective (round 9, R9-B): from 640 each stands in a 104px column,
+// balanced — "Saini ya afisa" is 103.6px, "Uthibitisho wa pili (ikiwashwa)" 229.
+import { keepConnectives } from "@/components/ui/keep-run";
 import { getServerT } from "@/lib/i18n-server";
 import { outcomeWord } from "@/lib/side-label";
 import { pickLocalized } from "@/lib/localized";
@@ -86,7 +89,7 @@ function FairnessChain({ steps }: { steps: { glyph: keyof typeof I; label: strin
                 </span>
                 {/* text-balance: "OFFICER SIGN-OFF" broke at its hyphen, leaving "OFF" alone in the 104px column. */}
                 <span className={`sm:mt-2 text-balance font-mono text-micro font-semibold uppercase leading-tight eyebrow ${s.highlight ? "text-brand-300" : "text-text-subtle"}`}>
-                  {s.label}
+                  {keepConnectives(s.label)}
                 </span>
               </div>
               {i < steps.length - 1 && (
@@ -404,7 +407,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
                     <td role="cell" data-th={t.common.thSource} className="p-3">
                       <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-brand-300 hover:text-brand-200 underline">
                         {t.common.thSource}
-                        <I.ext s={11} />
+                        <I.ext s={11} edge="end" text="mono-400" />
                       </a>
                     </td>
                   </tr>

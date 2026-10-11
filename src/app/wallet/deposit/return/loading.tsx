@@ -4,6 +4,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PageHero } from "@/components/ui/page-hero";
 import { PageHeader } from "@/components/ui/page-header";
 import { GhostText } from "@/components/ui/ghost-text";
+import { I } from "@/components/ui/glyphs";
 import { AmountGhost, DateGhost, DetailsGhost, IdGhost, RowGhost, WordGhost, TXN_ID_SHAPE, DEPOSIT_REF_SHAPE, dateShape } from "@/app/wallet/receipt-ghost";
 import { useT } from "@/lib/i18n";
 
@@ -50,7 +51,10 @@ export function DepositReturnGhost() {
       <div aria-hidden>
         <PageHero>
           <PageHeader
-            icon={<span className="inline-block h-[14px] w-[14px] shrink-0" />}
+            /* The page's outcome glyph is not known here; its four (checkCircle, alertCircle, rotateCcw, clock) share one ink
+               box at 14px, so an unpainted clock stands where any of them stands — PageHeader pulls it onto the column's edge
+               as it pulls the page's (R9-A4). */
+            icon={<I.clock s={14} className="shrink-0 text-transparent" />}
             eyebrow={<GhostText>{t.common.deposit}</GhostText>}
             title={<GhostText>{t.wallet.returnPaidTitle}</GhostText>}
             subtitle={<GhostText>{t.wallet.returnPaidBody}</GhostText>}

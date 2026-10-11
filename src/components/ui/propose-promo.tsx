@@ -53,7 +53,7 @@ export async function ProposePromo({ href }: { href: string }) {
           {active && cfg.prizeTzs > 0 ? ` · ${formatTzs(cfg.prizeTzs)}` : ""}
         </p>
       </div>
-      <I.arrowRight s={18} />
+      <I.arrowRight s={18} edge="end" />
     </Link>
   );
 }

@@ -418,7 +418,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
         activityBar={
           <WalletBar
             state={state}
-            lenses={visibleLedgerLenses(bookRows)}
+            lenses={visibleLedgerLenses(bookRows, state.type)}
             counts={counts}
             resultCount={matched.length}
             t={t}

@@ -40,10 +40,12 @@ export const MUTATIONS = [
     // §1.1, and the specific reason a per-LINE check must keep reading past the first `var(`:
     // this raw pair shipped at the END of a four-property transition whose other three were
     // correctly tokenised. A check that stopped at "this line mentions a token" would pass it.
-    name: "chat-styles.css — restore `transform 120ms ease-out` hiding at the end of a tokenised line",
+    // RE-ANCHORED 2026-10-11 (round 9 of the visual pass, R9-C): the starter's last transition names `scale` now (its press
+    // moved off `transform`, which its `both`-filled entrance held) — the same raw-pair-at-the-end probe, one word on.
+    name: "chat-styles.css — restore `scale 120ms ease-out` hiding at the end of a tokenised line",
     file: "src/styles/chat/chat-styles.css",
-    from: `, transform var(--cm-dur-glide) var(--cm-ease-glide);`,
-    to: `, transform 120ms ease-out;`,
+    from: `, scale var(--cm-dur-glide) var(--cm-ease-glide);`,
+    to: `, scale 120ms ease-out;`,
     expect: "1.1",
   },
   {

@@ -129,7 +129,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
             <p className="font-display text-[13.5px] font-semibold text-text">I&apos;m a player, not staff</p>
             <p className="mt-0.5 text-body-sm text-text-subtle">Sign in to your player account instead</p>
           </div>
-          <I.chevronRight s={16} className="text-text-subtle group-hover:text-text transition-colors" />
+          <I.chevronRight s={16} edge="end" className="text-text-subtle group-hover:text-text transition-colors" />
         </Link>
 
         {/* The address in the link blue, hover included (Ali's ruling (2) of 2026-10-10, §B4c) — it was the muted ink. */}

@@ -108,7 +108,7 @@ export default async function NotificationSettingsPage({
           {/* The row's link cue in the link blue, hover included (Ali's ruling (2) of 2026-10-10, §B4c) — it was aqua. */}
           <span className="inline-flex items-center gap-1 shrink-0 font-mono text-body-sm tabular-nums text-brand-300 group-hover:text-brand-200">
             {formatNumber(watched.length)}
-            <I.chevronRight s={12} />
+            <I.chevronRight s={12} edge="end" text="mono-400" />
           </span>
         </div>
       </Link>
