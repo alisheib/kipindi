@@ -257,19 +257,20 @@ section("3 · a filter strip has room for the selected pill's halo (tile 319)");
     /\bpr-2\b/.test(read("src/components/ui/query-bar.tsx")) && !/margin-right/.test(block));
   // Round 10 (R10-D): each mask's end moves in by the cut StripAutoScroll publishes (`--strip-cut-start` / `--strip-cut-end`, 0
   // unless a word must be cut there), and the keyboard's scroll padding with it; at 0 the geometry is exactly round 3's.
-  const start = /\.kp-strip-fade\[data-edges="start"\]\s*\{[^}]*mask-image:\s*linear-gradient\(to right, transparent calc\(12px \+ var\(--strip-cut-start, 0px\)\), #000 calc\(44px \+ var\(--strip-cut-start, 0px\)\)\)/.test(css);
-  const both = /\.kp-strip-fade\[data-edges="both"\]\s*\{[^}]*mask-image:\s*linear-gradient\(to right, transparent calc\(12px \+ var\(--strip-cut-start, 0px\)\), #000 calc\(44px \+ var\(--strip-cut-start, 0px\)\),/.test(css);
+  const start = /\.kp-strip-fade\[data-edges="start"\]\s*\{[^}]*mask-image:\s*linear-gradient\(to right, transparent calc\(12px \+ var\(--strip-cut-start, 0px\)\), #000 calc\(12px \+ var\(--strip-ramp-start, 32px\) \+ var\(--strip-cut-start, 0px\)\)\)/.test(css);
+  const both = /\.kp-strip-fade\[data-edges="both"\]\s*\{[^}]*mask-image:\s*linear-gradient\(to right, transparent calc\(12px \+ var\(--strip-cut-start, 0px\)\), #000 calc\(12px \+ var\(--strip-ramp-start, 32px\) \+ var\(--strip-cut-start, 0px\)\),/.test(css);
   ok("3.4 · the leading fade moved in by the same 12px (transparent to 12, opaque from 44): a chip scrolled off the start fades from the content edge, as before",
-    start && both && /scroll-padding-inline:\s*calc\(44px \+ var\(--strip-cut-start, 0px\)\) calc\(72px \+ var\(--strip-cut-end, 0px\)\)/.test(css));
+    start && both && /scroll-padding-inline:\s*calc\(12px \+ var\(--strip-ramp-start, 32px\) \+ var\(--strip-cut-start, 0px\)\) calc\(8px \+ var\(--strip-ramp-end, 64px\) \+ var\(--strip-cut-end, 0px\)\)/.test(css) && /@property --strip-ramp-end \{ syntax: "<length>"; inherits: false; initial-value: 64px; \}/.test(css) && /@property --strip-ramp-start \{ syntax: "<length>"; inherits: false; initial-value: 32px; \}/.test(css));
   // The trailing ramp (round 3, tile 326): at least 64px, ending 8px inside, in the "end" and "both" masks alike, and the
   // keyboard's end padding covers it. Measured from the mask strings the stylesheet ships.
-  const ramps = (src: string) => [...src.matchAll(/#000 calc\(100% - (\d+)px - var\(--strip-cut-end, 0px\)\), transparent calc\(100% - (\d+)px - var\(--strip-cut-end, 0px\)\)/g)]
-    .map((m) => ({ ramp: Number(m[1]) - Number(m[2]), inset: Number(m[2]) }));
+  const ramps = (src: string) => [...src.matchAll(/#000 calc\(100% - (\d+)px - var\(--strip-ramp-end, (\d+)px\) - var\(--strip-cut-end, 0px\)\), transparent calc\(100% - (\d+)px - var\(--strip-cut-end, 0px\)\)/g)]
+    .map((m) => ({ ramp: Number(m[2]), inset: Number(m[3]), opaqueInset: Number(m[1]) }));
   const real = ramps(css);
-  const endPad = Number(/scroll-padding-inline:\s*calc\(44px \+ var\(--strip-cut-start, 0px\)\) calc\((\d+)px \+ var\(--strip-cut-end, 0px\)\)/.exec(css)?.[1] ?? NaN);
+  const endPadM = /scroll-padding-inline:\s*calc\(12px \+ var\(--strip-ramp-start, 32px\) \+ var\(--strip-cut-start, 0px\)\) calc\((\d+)px \+ var\(--strip-ramp-end, (\d+)px\) \+ var\(--strip-cut-end, 0px\)\)/.exec(css);
+  const endPad = endPadM ? Number(endPadM[1]) + Number(endPadM[2]) : NaN;
   ok("3.5 · the trailing ramp is at least 64px and ends 8px inside the strip, in every mask that has one (4: end and both, -webkit- and plain), and the keyboard's end padding reaches past it",
-    real.length === 4 && real.every((r) => r.ramp >= 64 && r.inset === 8) && endPad >= Math.max(...real.map((r) => r.ramp + r.inset)), JSON.stringify({ real, endPad }));
-  const old = ramps(css.split("calc(100% - 72px - var(--strip-cut-end, 0px))").join("calc(100% - 40px - var(--strip-cut-end, 0px))"));
+    real.length === 4 && real.every((r) => r.ramp >= 64 && r.inset === 8 && r.opaqueInset === r.inset) && endPad >= Math.max(...real.map((r) => r.ramp + r.inset)), JSON.stringify({ real, endPad }));
+  const old = ramps(css.split("var(--strip-ramp-end, 64px)").join("var(--strip-ramp-end, 32px)"));
   ok("3.5′ PLANT · G1's 32px ramp put back is reported (it fell wholly on a hidden chip's padding at sw 390, tile 326)",
     old.length === 4 && old.some((r) => r.ramp < 64));
 }

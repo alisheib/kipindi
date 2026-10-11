@@ -35,6 +35,7 @@ import { UpDownBetBlockedModal } from "./updown-bet-blocked-modal";
 import { UpDownBetReceiptModal } from "./updown-bet-receipt-modal";
 import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
 import { stakeChipLabel } from "./stake-math";
+import { noticeBody } from "@/components/ui/empty-state-text";
 // ⭐ D2 · ONE RULE for "what would I be paid", shared with the card, the round page and the
 // server's own `myExactPayout`. Never re-derived here — see `@/lib/updown-pricing`.
 import { impliedMultiplier, emptySideOf, formatMultiplier, type UpDownPricing } from "@/lib/updown-pricing";
@@ -353,7 +354,8 @@ export function UpDownStakeControls({
       {emptyCopy && (
         <p className="mt-1.5 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]">
           <I.info s={11} className="mt-[2px] shrink-0" />
-          <span>{emptyCopy}</span>
+          {/* R10-B (round 10's read, tile 166): the note holds "dau lako" / "your stake" like every notice body. */}
+          <span>{noticeBody(emptyCopy)}</span>
         </p>
       )}
       {/* ⛔ THE NOTE NOW RENDERS ON THE CARD TOO. It used to be `!compact`, so the board card —

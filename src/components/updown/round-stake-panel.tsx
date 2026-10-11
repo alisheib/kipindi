@@ -24,6 +24,7 @@ import { UpDownStakeControls, EstimateNote } from "./updown-stake-controls";
 import { UpDownBetBlockedModal } from "./updown-bet-blocked-modal";
 import { stakeChipLabel } from "./stake-math";
 import { I } from "@/components/ui/glyphs";
+import { noticeBody } from "@/components/ui/empty-state-text";
 import { Chip } from "@/components/ui/chip";
 // ⛔ ONE RULE for "what would I be paid" (D2). This panel must agree with the board card to the
 // shilling, so it calls the same function rather than multiplying by a rate of its own.
@@ -308,7 +309,8 @@ export function RoundStakePanel(props: {
       {warnCopy && (
         <p className="mt-2 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint">
           <I.info s={11} className="mt-[2px] shrink-0" />
-          <span>{warnCopy}</span>
+          {/* R10-B (round 10's read, tile 166): the note holds "dau lako" / "your stake" like every notice body. */}
+          <span>{noticeBody(warnCopy)}</span>
         </p>
       )}
       {/* The × note at the ⓘ notes' size and indent (round 4): it was 10px here, under §T4's 12.5px reading floor,

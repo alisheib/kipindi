@@ -3792,7 +3792,8 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
    HAPANA 2" and then nothing, the fourth lens starting exactly on the clip and the ramp dimming only HAPANA's grey count
    — the row read as finished. StripAutoScroll publishes how far each fade's end must move in so that a WORD is cut under
    it (`--strip-cut-end` / `--strip-cut-start`, from `stripPeekCut` in lib/strip-scroll.ts: when the first hidden item
-   shows under 32px of itself, the transparent end lands in the middle of the item before it). Unset — no script yet, a
+   shows under 32px of itself, the transparent end lands 20px before the end of the item before it, under a ramp shortened
+   to 24px — the word keeps its first letters and is visibly cut; round 10's read, reader 6). Unset — no script yet, a
    skeleton, a strip with nothing cut — they are 0 and the masks are exactly round 3's. The keyboard's scroll padding
    follows the moved ramps, so a focused pill still stops clear of them.
    ⭐ …AND THE CUT NEVER JUMPS UNDER THE READER'S FINGER. Read on every scroll, its end would ride on the pill before the
@@ -3803,6 +3804,10 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
    gates (motion.css) clamp the slide to nothing. */
 @property --strip-cut-end { syntax: "<length>"; inherits: false; initial-value: 0px; }
 @property --strip-cut-start { syntax: "<length>"; inherits: false; initial-value: 0px; }
+/* Round 10's read (reader 6): a standing cut shortens its ramp (STRIP_CUT in lib/strip-scroll.ts — 24px trailing, 16px
+   leading) so the cut word keeps its first letters; unset they are round 3's 64px / 32px. */
+@property --strip-ramp-end { syntax: "<length>"; inherits: false; initial-value: 64px; }
+@property --strip-ramp-start { syntax: "<length>"; inherits: false; initial-value: 32px; }
 @media (max-width: 1023.98px) {
   .kp-strip-fade {
     padding-block: var(--sp-3);
@@ -3812,24 +3817,24 @@ th .link-pending { --lp-inset: 0px; --lp-bottom: 8px; }
   }
   .kp-strip-fade,
   .kp-strip-fade[data-edges="end"] {
-    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 72px - var(--strip-cut-end, 0px)), transparent calc(100% - 8px - var(--strip-cut-end, 0px)));
-    mask-image: linear-gradient(to right, #000 calc(100% - 72px - var(--strip-cut-end, 0px)), transparent calc(100% - 8px - var(--strip-cut-end, 0px)));
-    scroll-padding-inline: calc(44px + var(--strip-cut-start, 0px)) calc(72px + var(--strip-cut-end, 0px));
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 8px - var(--strip-ramp-end, 64px) - var(--strip-cut-end, 0px)), transparent calc(100% - 8px - var(--strip-cut-end, 0px)));
+    mask-image: linear-gradient(to right, #000 calc(100% - 8px - var(--strip-ramp-end, 64px) - var(--strip-cut-end, 0px)), transparent calc(100% - 8px - var(--strip-cut-end, 0px)));
+    scroll-padding-inline: calc(12px + var(--strip-ramp-start, 32px) + var(--strip-cut-start, 0px)) calc(8px + var(--strip-ramp-end, 64px) + var(--strip-cut-end, 0px));
   }
   .kp-strip-fade[data-edges="start"] {
-    -webkit-mask-image: linear-gradient(to right, transparent calc(12px + var(--strip-cut-start, 0px)), #000 calc(44px + var(--strip-cut-start, 0px)));
-    mask-image: linear-gradient(to right, transparent calc(12px + var(--strip-cut-start, 0px)), #000 calc(44px + var(--strip-cut-start, 0px)));
+    -webkit-mask-image: linear-gradient(to right, transparent calc(12px + var(--strip-cut-start, 0px)), #000 calc(12px + var(--strip-ramp-start, 32px) + var(--strip-cut-start, 0px)));
+    mask-image: linear-gradient(to right, transparent calc(12px + var(--strip-cut-start, 0px)), #000 calc(12px + var(--strip-ramp-start, 32px) + var(--strip-cut-start, 0px)));
   }
   .kp-strip-fade[data-edges="both"] {
-    -webkit-mask-image: linear-gradient(to right, transparent calc(12px + var(--strip-cut-start, 0px)), #000 calc(44px + var(--strip-cut-start, 0px)), #000 calc(100% - 72px - var(--strip-cut-end, 0px)), transparent calc(100% - 8px - var(--strip-cut-end, 0px)));
-    mask-image: linear-gradient(to right, transparent calc(12px + var(--strip-cut-start, 0px)), #000 calc(44px + var(--strip-cut-start, 0px)), #000 calc(100% - 72px - var(--strip-cut-end, 0px)), transparent calc(100% - 8px - var(--strip-cut-end, 0px)));
+    -webkit-mask-image: linear-gradient(to right, transparent calc(12px + var(--strip-cut-start, 0px)), #000 calc(12px + var(--strip-ramp-start, 32px) + var(--strip-cut-start, 0px)), #000 calc(100% - 8px - var(--strip-ramp-end, 64px) - var(--strip-cut-end, 0px)), transparent calc(100% - 8px - var(--strip-cut-end, 0px)));
+    mask-image: linear-gradient(to right, transparent calc(12px + var(--strip-cut-start, 0px)), #000 calc(12px + var(--strip-ramp-start, 32px) + var(--strip-cut-start, 0px)), #000 calc(100% - 8px - var(--strip-ramp-end, 64px) - var(--strip-cut-end, 0px)), transparent calc(100% - 8px - var(--strip-cut-end, 0px)));
   }
   .kp-strip-fade[data-edges="none"] {
     -webkit-mask-image: none;
     mask-image: none;
   }
   .kp-strip-fade[data-peek-live] {
-    transition: --strip-cut-end var(--t-base) var(--m-glide), --strip-cut-start var(--t-base) var(--m-glide);
+    transition: --strip-cut-end var(--t-base) var(--m-glide), --strip-cut-start var(--t-base) var(--m-glide), --strip-ramp-end var(--t-base) var(--m-glide), --strip-ramp-start var(--t-base) var(--m-glide);
   }
 }
 /* 🔴 D63 · THE CHIPS' FOCUS RING WAS BEING EATEN BY THE STRIP THAT HOLDS THEM.

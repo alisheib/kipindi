@@ -816,15 +816,16 @@ section("10 · R10-D a scrolling strip always shows a word being cut where it hi
   const ss = (await import("../src/lib/strip-scroll.ts")) as {
     STRIP_FADE: { endInset: number; endRamp: number; startInset: number; startRamp: number }; STRIP_PEEK: number; STRIP_PEEK_REST_MS: number;
     stripPeekCut: (o: { items: Array<{ left: number; right: number; pressed?: boolean }>; scrollLeft: number; clientWidth: number; scrollWidth: number }) => { end: number; start: number };
+    STRIP_CUT: { bite: number; endRamp: number; startRamp: number };
   };
   // The fade's numbers are the stylesheet's.
   const twice = (decl: string) => CSS.split(`-webkit-${decl}`).length === 2 && CSS.split(decl).length === 3;
   ok(`10.1 · the fade's geometry is the stylesheet's: transparent ${ss.STRIP_FADE.endInset}px inside the trailing edge after a ${ss.STRIP_FADE.endRamp}px ramp, transparent ${ss.STRIP_FADE.startInset}px inside the leading edge before a ${ss.STRIP_FADE.startRamp}px ramp — each end moved in by its published cut`,
     // Each gradient twice: the prefixed property and the standard one.
-    twice("mask-image: linear-gradient(to right, #000 calc(100% - 72px - var(--strip-cut-end, 0px)), transparent calc(100% - 8px - var(--strip-cut-end, 0px)));")
-      && twice("mask-image: linear-gradient(to right, transparent calc(12px + var(--strip-cut-start, 0px)), #000 calc(44px + var(--strip-cut-start, 0px)));")
-      && twice("mask-image: linear-gradient(to right, transparent calc(12px + var(--strip-cut-start, 0px)), #000 calc(44px + var(--strip-cut-start, 0px)), #000 calc(100% - 72px - var(--strip-cut-end, 0px)), transparent calc(100% - 8px - var(--strip-cut-end, 0px)));")
-      && CSS.includes("scroll-padding-inline: calc(44px + var(--strip-cut-start, 0px)) calc(72px + var(--strip-cut-end, 0px));")
+    twice("mask-image: linear-gradient(to right, #000 calc(100% - 8px - var(--strip-ramp-end, 64px) - var(--strip-cut-end, 0px)), transparent calc(100% - 8px - var(--strip-cut-end, 0px)));")
+      && twice("mask-image: linear-gradient(to right, transparent calc(12px + var(--strip-cut-start, 0px)), #000 calc(12px + var(--strip-ramp-start, 32px) + var(--strip-cut-start, 0px)));")
+      && twice("mask-image: linear-gradient(to right, transparent calc(12px + var(--strip-cut-start, 0px)), #000 calc(12px + var(--strip-ramp-start, 32px) + var(--strip-cut-start, 0px)), #000 calc(100% - 8px - var(--strip-ramp-end, 64px) - var(--strip-cut-end, 0px)), transparent calc(100% - 8px - var(--strip-cut-end, 0px)));")
+      && CSS.includes("scroll-padding-inline: calc(12px + var(--strip-ramp-start, 32px) + var(--strip-cut-start, 0px)) calc(8px + var(--strip-ramp-end, 64px) + var(--strip-cut-end, 0px));") && CSS.includes('@property --strip-ramp-end { syntax: "<length>"; inherits: false; initial-value: 64px; }') && CSS.includes('@property --strip-ramp-start { syntax: "<length>"; inherits: false; initial-value: 32px; }')
       && ss.STRIP_FADE.endInset === 8 && ss.STRIP_FADE.endRamp === 64 && ss.STRIP_FADE.startInset === 12 && ss.STRIP_FADE.startRamp === 32);
   // Tile 171 (sw 390): the /results lenses, laid out by their own metrics — a pill is 16 + its word (Inter 600 13px) + 8 +
   // its count (JetBrains Mono 11px, 0.6em a digit) + 16, inside a 1px border; 4px apart; the strip's first pill at 12.
@@ -842,7 +843,7 @@ section("10 · R10-D a scrolling strip always shows a word being cut where it hi
   const fadeEnd = W - ss.STRIP_FADE.endInset - cut.end;
   ok(`10.2 · tile 171 reproduced: the lenses' words fall where the tile has them (NDIO from x${(items[1].left + 4 + 17).toFixed(1)}, measured 115; HAPANA from x${(items[2].left + 4 + 17).toFixed(1)}, measured 200), and the fourth lens's word would start at x${(items[3].left + 4 + 17).toFixed(1)}, past the clip at x${clip.toFixed(1)}; the fade's end now moves in ${cut.end.toFixed(1)}px to x${(fadeEnd + 4).toFixed(1)}, the middle of “HAPANA 2” (x${(items[2].left + 4).toFixed(0)}–${(items[2].right + 4).toFixed(0)}), so that word is cut under the ramp`,
     Math.abs(items[1].left + 4 + 17 - 115) < 2 && Math.abs(items[2].left + 4 + 17 - 200) < 2 && items[3].left + 17 > W && cut.end > 0
-      && near(fadeEnd, (items[2].left + items[2].right) / 2, 0.01) && cut.start === 0, j({ items, W, cut }));
+      && near(fadeEnd, items[2].right - ss.STRIP_CUT.bite, 0.01) && cut.start === 0, j({ items, W, cut }));
   ok("10.2′ CONTROL · as round 9 drew it (no cut) the transparent end fell on the hidden lens's border and padding, before its first letter, and the ramp lay over HAPANA's count — no word cut",
     items[3].left + 17 > W - ss.STRIP_FADE.endInset && items[2].right < W - ss.STRIP_FADE.endInset && items[2].right > W - ss.STRIP_FADE.endInset - ss.STRIP_FADE.endRamp);
   // Every geometry: random strips (pills 40–160px, gaps 4–16px, widths 160–700px, every scroll position): after the cut the
@@ -878,11 +879,26 @@ section("10 · R10-D a scrolling strip always shows a word being cut where it hi
   }
   ok(`10.3 · ${trials} strips of every shape: the trailing fade never ends on a gap (${gapsLeft}), never cuts the pressed lens (${pressedCut}), never moves where nothing is hidden (${idleCut}); a leading cut always lands in a word (${startBad} misses)`,
     gapsLeft === 0 && pressedCut === 0 && idleCut === 0 && startBad === 0);
+  // ⭐ Round 10's read (reader 6): the first draft cut at the item's MIDDLE under the 64px ramp — "Won" kept ≤20% of its
+  // ink. Now the cut bites the item's END under a shorter ramp: a pill's word (16px of padding in) keeps its first letter
+  // at ≥ 55% ink, for every pill from 52px wide (the shortest lens: a 2–3-letter word, 16px of padding each side).
+  const inkAt = (x: number, transparentAt: number, ramp: number) => Math.max(0, Math.min(1, (transparentAt - x) / ramp));
+  let unreadable = 0, worst = 1;
+  for (let w = 52; w <= 160; w += 2) {
+    const right = 300, left = right - w, transparentAt = right - ss.STRIP_CUT.bite;
+    const first = inkAt(left + 17, transparentAt, ss.STRIP_CUT.endRamp), tenth = inkAt(left + 27, transparentAt, ss.STRIP_CUT.endRamp);
+    worst = Math.min(worst, first);
+    if (first < 0.55) unreadable++; void tenth;
+  }
+  const draft = (w: number) => inkAt(300 - w + 17, 300 - w / 2, ss.STRIP_FADE.endRamp);
+  ok(`10.6 · a cut word keeps its first letters: on every pill 52–160px wide the first letter keeps ≥ 55% ink (worst ${(worst * 100).toFixed(0)}%) — the first draft (middle, 64px ramp) kept ${(draft(52) * 100).toFixed(0)}% on a 52px pill`,
+    unreadable === 0 && draft(52) < 0.25 && ss.STRIP_CUT.endRamp < ss.STRIP_FADE.endRamp && ss.STRIP_CUT.startRamp < ss.STRIP_FADE.startRamp);
+
   const SA = "src/components/ui/strip-autoscroll.tsx";
   ok("10.4 · StripAutoScroll publishes the cut wherever the strip rests — the layout phase, its own frame, a resize, the fonts landing, focus moving — from the strip's own items (the lens the reader is on by aria-pressed / aria-current / :focus-within), and clears it when there is none",
     has(SA, "markPeek(rail, scrolling);") && has(SA, "const cut = stripPeekCut({ items, scrollLeft: rail.scrollLeft, clientWidth: rail.clientWidth, scrollWidth: rail.scrollWidth });")
       && has(SA, 'pressed: el.getAttribute("aria-pressed") === "true" || el.getAttribute("aria-current") === "page" || el.matches(":focus-within"),') && has(SA, "else rail.style.removeProperty(name);")
-      && has(SA, 'for (const [name, v] of [["--strip-cut-end", end], ["--strip-cut-start", start]] as const) {')
+      && has(SA, 'for (const [name, v] of [["--strip-cut-end", end], ["--strip-cut-start", start], ["--strip-ramp-end", end > 0 ? STRIP_CUT.endRamp : 0], ["--strip-ramp-start", start > 0 ? STRIP_CUT.startRamp : 0]] as const) {')
       && has(SA, 'rail.addEventListener("focusin", () => markPeek(rail));') && has(SA, 'rail.addEventListener("focusout", () => markPeek(rail));'));
   // 10.5 · the cut never jumps under the reader's finger. Read on every scroll position of tile 171's strip (1px steps), the
   // fade's transparent end (in the strip's own box) jumps each time the rule switches — so the cut is lifted while the strip
@@ -904,7 +920,7 @@ section("10 · R10-D a scrolling strip always shows a word being cut where it hi
       && has(SA, "if (peekRest.has(rail)) return;")
       && flat.includes('@property --strip-cut-end { syntax: "<length>"; inherits: false; initial-value: 0px; }')
       && flat.includes('@property --strip-cut-start { syntax: "<length>"; inherits: false; initial-value: 0px; }')
-      && flat.includes(".kp-strip-fade[data-peek-live] { transition: --strip-cut-end var(--t-base) var(--m-glide), --strip-cut-start var(--t-base) var(--m-glide); }"),
+      && flat.includes(".kp-strip-fade[data-peek-live] { transition: --strip-cut-end var(--t-base) var(--m-glide), --strip-cut-start var(--t-base) var(--m-glide), --strip-ramp-end var(--t-base) var(--m-glide), --strip-ramp-start var(--t-base) var(--m-glide); }"),
     j({ jumps, maxJump }));
   ok("10.5′ PLANT · the listener as first drafted (every scroll read at once) is reported",
     !squash(code(SA).replace("() => markEdges(rail, true)", "() => markEdges(rail)")).includes("() => markEdges(rail, true)"));
@@ -921,6 +937,23 @@ section("11 · composition only: the dictionary is the commit's, byte for byte")
   let head = "";
   try { head = execFileSync("git", ["show", "HEAD:src/lib/i18n-dict.ts"], { encoding: "utf8", maxBuffer: 64 << 20 }).split(CR).join(""); } catch { head = "‹git unavailable›"; }
   ok("11.1 · src/lib/i18n-dict.ts is the commit's own", head === raw("src/lib/i18n-dict.ts"));
+}
+
+section("9b · R10-B the Up & Down empty-side note holds \"dau lako\" / \"your stake\" (round 10's read, tile 166) — all three panels");
+{
+  const SITES: Array<[string, string]> = [
+    ["src/components/updown/updown-stake-controls.tsx", "<span>{noticeBody(emptyCopy)}</span>"],
+    ["src/components/updown/round-stake-panel.tsx", "<span>{noticeBody(warnCopy)}</span>"],
+    ["src/components/updown/updown-card.tsx", "<span>{noticeBody(outEmptyCopy)}</span>"],
+  ];
+  const raw9b = SITES.filter(([f, s]) => !has(f, s));
+  ok("9b.1 · the note is drawn through noticeBody in the stake controls, the round panel and the board card — never raw", raw9b.length === 0, raw9b.map(([f]) => f).join(" | "));
+  const mk = (l: Loc) => String(((DICT[l] as Record<string, Record<string, string>>).market.udNobodyBacked) ?? "").replace("{side}", String((DICT[l] as Record<string, Record<string, string>>).market.udDown));
+  const sw = render(h("p", null, est.noticeBody(mk("sw")) as never));
+  const en = render(h("p", null, est.noticeBody(mk("en")) as never));
+  ok("9b.2 · rendered, sw holds \"dau lako\" (with its last-words tail: \"dau lako litarudi.\") and en \"your stake\" inside one unbreakable run each", /<span class="whitespace-nowrap">[^<]*dau lako[^<]*<\/span>/.test(sw) && /<span class="whitespace-nowrap">[^<]*your stake[^<]*<\/span>/.test(en), JSON.stringify([sw.slice(0, 260), en.slice(0, 200)]));
+  const plant = raw("src/components/updown/updown-card.tsx").replace("<span>{noticeBody(outEmptyCopy)}</span>", "<span>{outEmptyCopy}</span>");
+  ok("9b.1′ PLANT · the board card drawing its note raw is reported by 9b.1", !squash(decomment(plant)).includes(squash("<span>{noticeBody(outEmptyCopy)}</span>")));
 }
 
 section("12 · R10-C /updown's chart is drawn again after its rebuild — the board widened past 1024px (tiles 164)");

@@ -51,8 +51,8 @@ export function centredScrollLeft(opts: {
  * pills — /results at sw 390 read "Zote 6 · NDIO 3 · HAPANA 2" and then nothing, its fourth lens ("Imebatilishwa 1")
  * starting exactly on the clip, the ramp dimming only HAPANA's grey count; the row read as finished. No width, gap or
  * padding can prevent that for every label in every language (the words decide), so the fade answers it: when the first
- * item past the trailing edge shows less than `STRIP_PEEK` of itself, the fade's end moves in to the middle of the item
- * before it, and that word is visibly cut under the ramp — the strip never ends on a gap. The leading edge, once scrolled,
+ * item past the trailing edge shows less than `STRIP_PEEK` of itself, the fade's end moves in to `STRIP_CUT.bite` before
+ * the end of the item before it (under a shorter ramp), and that word is visibly cut under the ramp — the strip never ends on a gap. The leading edge, once scrolled,
  * the same way round. ⛔ The pressed lens is never the one cut: it is the answer to "which lens am I in" (StripAutoScroll
  * frames it centred, so it reaches an edge only at either end of the strip, where nothing beyond it is hidden).
  * `test:visual-pass-r10` §10 drives this against the /results strip of tile 171 and against every geometry it can build.
@@ -66,6 +66,14 @@ export const STRIP_PEEK = 32;
  *  every scroll, its end would ride on one pill and then jump to the next (StripAutoScroll) — and a touch fling fires a scroll
  *  event every frame until it stops, so a strip that has not moved for this long has come to rest. */
 export const STRIP_PEEK_REST_MS = 150;
+
+/** ⭐ HOW A CUT READS (round 10's read, reader 6, 2026-10-12). The first draft moved the transparent end to the MIDDLE of
+ *  the item before the hidden one, under the full 64px ramp, so a short lens kept ≤20% of its ink ("Won" read "W", "已赢"
+ *  read "已" — a smudge, weaker than round 9's readable fading word). Now the cut bites the item's END: `bite` past its
+ *  edge (a pill's 16px padding and 4px of its word), under a SHORTER ramp while a cut stands (`endRamp`, `startRamp`), so
+ *  the word keeps its first letters and is visibly cut at its end — a 3-letter lens's first letter at ≥ 62%. Unset, the ramps are
+ *  `STRIP_FADE`'s and the masks are exactly round 3's. */
+export const STRIP_CUT = { bite: 20, endRamp: 24, startRamp: 16 } as const;
 
 /** An item of the strip, in its content coordinates. `pressed`: the lens the reader is on — pressed, current, or holding
  *  keyboard focus — which a cut never fades. */
@@ -83,7 +91,7 @@ export function stripPeekCut(opts: { items: readonly StripItem[]; scrollLeft: nu
     const r = scrollLeft + clientWidth - STRIP_FADE.endInset;
     const k = items.findIndex((it) => it.right > r);
     if (k > 0 && items[k].left > r - STRIP_PEEK && !items[k - 1].pressed) {
-      end = Math.max(0, r - (items[k - 1].left + items[k - 1].right) / 2);
+      end = Math.max(0, r - (items[k - 1].right - STRIP_CUT.bite));
     }
   }
   // Leading: once scrolled, something hidden past the left edge?
@@ -92,7 +100,7 @@ export function stripPeekCut(opts: { items: readonly StripItem[]; scrollLeft: nu
     let j = -1;
     for (let i = 0; i < items.length; i++) if (items[i].left < l) j = i;
     if (j >= 0 && j < items.length - 1 && items[j].right < l + STRIP_PEEK && !items[j + 1].pressed) {
-      start = Math.max(0, (items[j + 1].left + items[j + 1].right) / 2 - l);
+      start = Math.max(0, items[j + 1].left + STRIP_CUT.bite - l);
     }
   }
   return { end: Math.round(end * 100) / 100, start: Math.round(start * 100) / 100 };

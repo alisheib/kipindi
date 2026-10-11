@@ -26,7 +26,7 @@
  * discovery contract into the browser bundle.
  */
 import { useEffect, useLayoutEffect, useRef } from "react";
-import { centredScrollLeft, stripPeekCut, STRIP_PEEK_REST_MS, type StripItem } from "@/lib/strip-scroll";
+import { centredScrollLeft, stripPeekCut, STRIP_CUT, STRIP_PEEK_REST_MS, type StripItem } from "@/lib/strip-scroll";
 
 /**
  * ⭐ WHICH EDGES HAVE MORE CHIPS BEYOND THEM — 2026-10-08 · G1 [220 221 223 224 226 227 249 250 · 193 191].
@@ -98,7 +98,8 @@ function markPeek(rail: HTMLElement, scrolling = false) {
 }
 
 function publishCut(rail: HTMLElement, end: number, start: number) {
-  for (const [name, v] of [["--strip-cut-end", end], ["--strip-cut-start", start]] as const) {
+  // A standing cut also shortens its ramp (STRIP_CUT): the cut word keeps its first letters (round 10's read, reader 6).
+  for (const [name, v] of [["--strip-cut-end", end], ["--strip-cut-start", start], ["--strip-ramp-end", end > 0 ? STRIP_CUT.endRamp : 0], ["--strip-ramp-start", start > 0 ? STRIP_CUT.startRamp : 0]] as const) {
     const want = v > 0 ? `${v}px` : "";
     if (rail.style.getPropertyValue(name) !== want) {
       if (want) rail.style.setProperty(name, want);

@@ -63,7 +63,7 @@ import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { impliedMultiplier, emptySideOf, formatMultiplier, type UpDownPricing } from "@/lib/updown-pricing";
 import type { PublicSourceClass } from "@/lib/server/updown-symbols";
 import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
-import type { KeptBody } from "@/components/ui/empty-state-text";
+import { noticeBody, type KeptBody } from "@/components/ui/empty-state-text";
 import { BetBreakNotice } from "@/components/rg/bet-break-notice";
 
 export type UpDownCardState = "open" | "locked" | "closing" | "confirming" | "resolved" | "void";
@@ -1057,7 +1057,8 @@ export function UpDownCard(props: UpDownCardProps) {
               {outEmptyCopy && (
                 <p className="mt-1.5 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]">
                   <I.info s={11} className="mt-[2px] shrink-0" />
-                  <span>{outEmptyCopy}</span>
+                  {/* R10-B (round 10's read, tile 166): the note holds "dau lako" / "your stake" like every notice body. */}
+                  <span>{noticeBody(outEmptyCopy)}</span>
                 </p>
               )}
               {/* The × note hangs like the ⓘ note above it — `EstimateNote` (round 4, tile 166). */}
