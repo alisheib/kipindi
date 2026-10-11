@@ -2707,6 +2707,13 @@ above 0 read "Must be 0 or more" while 0 was refused too — it now reads the fi
   the number); the census missed destructuring, bracket reads and whole rows handed to a client (it now bans the name,
   and the drive reads the served HTML); three "CONTROL" checks that could not fail are now population checks; two
   sentences overstated (the reopen lock, the save's lock); the shift's row lock is `FOR NO KEY UPDATE`.
+- **LIVE `b1d0bbf8`, 2026-10-11 20:33 EAT, read back:** `?dpl=` on 50pick.tz and the Railway host; `/api/health` ok and
+  migrated on both; every first-load file of `/`, `/markets`, `/updown`, `/results` and `/live` answers 200 (158 per
+  host); their served HTML names neither column; production `qa:live` 329/330 — the one failure is the QA player's
+  sign-in, stopped after one attempt as designed (the same failure the Vodacom lane recorded on this machine at 19:36
+  EAT: the password here is stale), so the signed-in sections after it did not run. Read SELECT-only on production: the
+  migration finished, the column is `integer NOT NULL DEFAULT 0`, all 14,248 markets carry extra 0 and all 4 desk
+  accounts read Counts as 1 — the deploy changed no count a player sees.
 - ⚠️ Found on the way, not this lane's: console pin 1.548 had been red on `main` since 2026-10-08 (marketing `a001261d`
   added `cmp` to the crumb builder's id list); the pin now types the list as it stands and keeps its point (`hb_` never).
 

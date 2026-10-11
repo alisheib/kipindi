@@ -112,7 +112,7 @@ Nothing here blocks betting. §0c's build order is DONE; **the one build in deve
 (§0d, approved 2026-09-28)**. What was found and fixed on
 2026-09-26 is `docs/HOUSE-BOTS.md` §12.5; (a)–(e) of the old list are done or decided (§0c, §5).
 
-- **✅ 2026-10-11 · "Counts as" — built and pushed with its docs (Ali's ruling, the Gaming Board's verbal view).** Each desk
+- **✅ 2026-10-11 · "Counts as" — LIVE `b1d0bbf8` (20:33 EAT, read back on both hosts, §12.18) with its docs (Ali's ruling, the Gaming Board's verbal view).** Each desk
   account's Rules tab has **Counts as** (1–10,000, default 1): the account's first stake on a market makes the count
   PLAYERS see count it as that many predictors; a change moves the count on its open markets at once; no money moves.
   `predictorCount` stays the TRUE count for every admin page and report (D20a). Ruling: `docs/COMPLIANCE-DECISIONS.md`
