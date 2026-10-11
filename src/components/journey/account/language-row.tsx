@@ -24,7 +24,7 @@ export function LanguageRow() {
           <span className="kp-hub__glyph" aria-hidden><I.globe s={20} /></span>
           <span className="kp-hub__text"><span className="kp-hub__label">{t.common.language}</span></span>
           <span className="kp-hub__value">{NAMES[locale]}</span>
-          <I.chevronRight s={18} className="kp-hub__chev" aria-hidden />
+          <I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />
         </summary>
         <div role="listbox" aria-label={t.common.language} className="kp-hub__opts">
           {LANGS.map((code) => {

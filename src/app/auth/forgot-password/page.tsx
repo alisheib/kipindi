@@ -57,7 +57,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
             href={loginHref as never}
             className="inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.16em] text-text-subtle hover:text-text"
           >
-            <I.chevronLeft s={14} />
+            <I.chevronLeft s={14} edge="start" text="mono-400" />
             {t.common.backToSignIn}
           </Link>
 

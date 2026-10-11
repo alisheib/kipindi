@@ -8,7 +8,7 @@
  * empty-state line-arts, and both stroke at 1.9. (The 56-grid badge medallions
  * in `src/components/badges/icons.tsx` are a separate documented tier at 2.2.)
  */
-import type { SVGProps } from "react";
+import { Children, cloneElement, isValidElement, type CSSProperties, type ReactElement, type ReactNode, type SVGProps } from "react";
 
 /* ⭐ DG-A-19 — `s` IS THE SIZE PROP. THE `size` ALIAS IS GONE, AND ITS REASON WAS SPENT.
    It read: *"`size` is accepted as a lucide-compatible alias so icons swap from lucide → I.*
@@ -21,7 +21,11 @@ import type { SVGProps } from "react";
    either way) and it needs NO new guard: deleting `size?: number` from this type makes a
    reintroduction a COMPILE ERROR, and `tsc --noEmit` already runs in the pipeline. A guard you
    get for free by deleting something is better than one you have to write. */
-type GlyphProps = { s?: number } & Omit<SVGProps<SVGSVGElement>, "ref">;
+/** The side of its run a glyph stands on: its ink, not its box, lands on that edge (R9-A4, `edge` below). */
+export type GlyphEdge = "start" | "end";
+/** The face and weight of the words a mark stands among: it strokes at their stem (R9-A4, `text` and `GLYPH_STEM` below). */
+export type GlyphText = keyof typeof GLYPH_STEM;
+type GlyphProps = { s?: number; edge?: GlyphEdge; text?: GlyphText } & Omit<SVGProps<SVGSVGElement>, "ref">;
 
 /* ⭐ DG-A-19, THE OTHER HALF — THE SIZE SPREAD, AND WHY IT SURVIVED A CONSOLIDATION.
    The prop half above closed. The size half did not: admin carries SIXTEEN distinct glyph
@@ -67,9 +71,201 @@ export function plateGlyph(plateEdge: 36 | 40 | 44 | 48): number {
   return { 36: 19, 40: 20, 44: 23, 48: 24 }[plateEdge];
 }
 
-const G = ({ children, s, ...p }: GlyphProps & { children: React.ReactNode }) => (
-  <svg viewBox="0 0 24 24" width={s ?? 24} height={s ?? 24} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...p}>{children}</svg>
+/* ⭐ R9-A4 (round 9 of the visual pass, 2026-10-11) · THE EDGE-ICON RULE — A GLYPH AT A RUN'S START OR END PUTS ITS INK ON
+   THAT EDGE. Every drawing here pads itself inside its 24-unit box (a chevron's point stands at x15 of 24, its stroke 0.95
+   beyond), so a glyph that ended a link or a row stopped 3–6px short of the edge its neighbours end on: the card's
+   "Maelezo ›" 3.7px short of the card's content edge (tiles 133–160), the Wallet's "Risiti zote ›" 5px (172), the hub's
+   chevrons 6px inside the card-size switch's edge (264), the deposit head's glyph 2.4px inside its title (round 7's D5),
+   and the held capsule's lock 2.7px inside its padding, which set its contents 1px right of centre (088, 089). Rounds 3
+   and 4 answered two of these with typed numbers (a 3px negative start margin on the back link's chevron, 2px at the
+   source link's end).
+   `edge` replaces every such number with one rule: the glyph is pulled past its run's edge by exactly the gap between its
+   box and its ink, measured from the drawing itself (its paths, circles, rects and lines, and their stroke), so the ink
+   lands on the edge at any size and a redrawn glyph cannot leave a stale number behind.
+   ⭐ `text` IS THE OTHER HALF — A MARK INSIDE A LINE OF WORDS STROKES AT THE WORDS' OWN STEM. At 11px the family's 1.9-unit
+   stroke paints 0.87px, and on tile 194 the card's chevron read 0.6px across its arm against 2.0px for "Maelezo"'s Sora
+   600 stems. A chevron, an arrow or an external-link mark that ends or starts a run of words is typography, so it takes
+   the run's weight: its stroke is the stem of the run's face and weight (`GLYPH_STEM`, in em of the run's own type size,
+   never scaled by the glyph's box: `.kp-gtext` in globals.css) — in a button too, where the mark keeps its box but not a
+   lighter stroke. A pictogram beside words (the receipt, the wallet, a trend arrow) keeps the family's stroke.
+   ⛔ WHAT KEEPS ITS BOX, AND WHY: a glyph inside a button (the button's even padding frames glyph and label as one group,
+   and a pending spinner takes the glyph's slot — SubmitButton swaps them — so a pulled glyph would make the label jump), a
+   glyph alone in a control or a plate (its box centres it, and its drawing is centred in the box — the census below), a
+   column of row glyphs (the hub's, a menu's: they align on one axis, whatever each draws), and a glyph between words.
+   `test:visual-pass-r9a` holds every site to one of these. */
+
+/** A stem as a fraction of its type size, for each face and weight a mark is set among — read from the faces themselves:
+ *  `body` is Inter (its `l`: 400 0.0879 · 500 0.1074 · 700 0.1465, the repo's own TTFs; 600 between 500 and 700), `display`
+ *  Sora (its `I`: 600 0.142 · 700 0.164, Sora v17 as fonts.gstatic.com serves it), `mono` JetBrains Mono (its `H`: 400
+ *  0.090 · 700 0.125, the repo's TTFs; 600 between). A weight alone could not say it: at 700 JetBrains Mono's stem is 15%
+ *  under Inter's and 24% under Sora's. `test:visual-pass-r9a` §4 reads the Inter and JetBrains Mono values from the files. */
+export const GLYPH_STEM = {
+  "body-400": 0.088, "body-500": 0.107, "body-600": 0.127, "body-700": 0.147,
+  "display-600": 0.142, "display-700": 0.164,
+  "mono-400": 0.09, "mono-600": 0.108, "mono-700": 0.125,
+} as const;
+
+const NUMBER = /[-+]?(?:[0-9]+[.]?[0-9]*|[.][0-9]+)(?:[eE][-+]?[0-9]+)?/y;
+
+/** How far a path's geometry reaches left and right, in grid units, stroke left out: exact for lines, arcs and curves. */
+function pathReachX(d: string): [number, number] {
+  let lo = Infinity, hi = -Infinity;
+  const at = (x: number) => { if (x < lo) lo = x; if (x > hi) hi = x; };
+  let i = 0, cmd = "", last = "", x = 0, y = 0, sx = 0, sy = 0, kx = 0, ky = 0;
+  // Separators: space, comma, tab, line feed, carriage return (by code, so this file holds no escape sequence).
+  const skip = () => { while (i < d.length && [32, 44, 9, 10, 13].includes(d.charCodeAt(i))) i++; };
+  const num = () => {
+    skip();
+    NUMBER.lastIndex = i;
+    const m = NUMBER.exec(d);
+    if (!m) throw new Error(`glyph path: no number at ${i} in "${d}"`);
+    i = NUMBER.lastIndex;
+    return Number(m[0]);
+  };
+  const flag = () => { skip(); return d[i++] === "1"; };
+  /** A cubic's turning points between its ends: the roots of its derivative inside (0, 1). */
+  const cubic = (p0: number, p1: number, p2: number, p3: number) => {
+    const a = -p0 + 3 * p1 - 3 * p2 + p3, b = 2 * (p0 - 2 * p1 + p2), c = p1 - p0;
+    const ts: number[] = [];
+    if (Math.abs(a) < 1e-12) { if (Math.abs(b) > 1e-12) ts.push(-c / b); }
+    else { const q = b * b - 4 * a * c; if (q >= 0) { const r = Math.sqrt(q); ts.push((-b + r) / (2 * a), (-b - r) / (2 * a)); } }
+    for (const t of ts) if (t > 0 && t < 1) { const u = 1 - t; at(u * u * u * p0 + 3 * u * u * t * p1 + 3 * u * t * t * p2 + t * t * t * p3); }
+  };
+  const quad = (p0: number, p1: number, p2: number) => {
+    const den = p0 - 2 * p1 + p2;
+    if (Math.abs(den) > 1e-12) { const t = (p0 - p1) / den; if (t > 0 && t < 1) { const u = 1 - t; at(u * u * p0 + 2 * u * t * p1 + t * t * p2); } }
+  };
+  /** An arc's turning points: its centre (SVG's endpoint-to-centre conversion), then the two angles where x turns, if swept. */
+  const arc = (x1: number, y1: number, rx: number, ry: number, deg: number, large: boolean, sweep: boolean, x2: number, y2: number) => {
+    if (!rx || !ry || (x1 === x2 && y1 === y2)) return;
+    rx = Math.abs(rx); ry = Math.abs(ry);
+    const phi = (deg * Math.PI) / 180, cp = Math.cos(phi), sp = Math.sin(phi);
+    const dx = (x1 - x2) / 2, dy = (y1 - y2) / 2;
+    const xp = cp * dx + sp * dy, yp = -sp * dx + cp * dy;
+    const lam = (xp * xp) / (rx * rx) + (yp * yp) / (ry * ry);
+    if (lam > 1) { rx *= Math.sqrt(lam); ry *= Math.sqrt(lam); }
+    const top = rx * rx * ry * ry - rx * rx * yp * yp - ry * ry * xp * xp;
+    const bottom = rx * rx * yp * yp + ry * ry * xp * xp;
+    let co = bottom ? Math.sqrt(Math.max(0, top / bottom)) : 0;
+    if (large === sweep) co = -co;
+    const cxp = (co * rx * yp) / ry, cyp = (-co * ry * xp) / rx;
+    const cx = cp * cxp - sp * cyp + (x1 + x2) / 2;
+    const ang = (ux: number, uy: number, vx: number, vy: number) => Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy);
+    const t1 = ang(1, 0, (xp - cxp) / rx, (yp - cyp) / ry);
+    let dt = ang((xp - cxp) / rx, (yp - cyp) / ry, (-xp - cxp) / rx, (-yp - cyp) / ry);
+    if (!sweep && dt > 0) dt -= 2 * Math.PI;
+    else if (sweep && dt < 0) dt += 2 * Math.PI;
+    // x(θ) = cx + rx·cosφ·cosθ − ry·sinφ·sinθ turns where tanθ = −(ry·sinφ)/(rx·cosφ): at θ* and θ* + π.
+    const turn = Math.atan2(-ry * sp, rx * cp), full = 2 * Math.PI;
+    for (const c of [turn, turn + Math.PI]) {
+      const into = sweep ? (((c - t1) % full) + full) % full : (((t1 - c) % full) + full) % full;
+      if (into <= Math.abs(dt)) at(cx + rx * cp * Math.cos(c) - ry * sp * Math.sin(c));
+    }
+  };
+  for (;;) {
+    skip();
+    if (i >= d.length) break;
+    const ch = d[i];
+    if ((ch >= "a" && ch <= "z") || (ch >= "A" && ch <= "Z")) { cmd = ch; i++; }
+    else if (cmd === "M") cmd = "L";
+    else if (cmd === "m") cmd = "l";
+    const rel = cmd >= "a" && cmd <= "z";
+    const ox = rel ? x : 0, oy = rel ? y : 0;
+    switch (cmd.toUpperCase()) {
+      case "Z": x = sx; y = sy; break;
+      case "M": x = ox + num(); y = oy + num(); sx = x; sy = y; at(x); break;
+      case "L": x = ox + num(); y = oy + num(); at(x); break;
+      case "H": x = ox + num(); at(x); break;
+      case "V": y = oy + num(); break;
+      case "C": {
+        const x1 = ox + num(), y1 = oy + num(), x2 = ox + num(), y2 = oy + num(), ex = ox + num(), ey = oy + num();
+        void y1; cubic(x, x1, x2, ex); kx = x2; ky = y2; x = ex; y = ey; at(x); break;
+      }
+      case "S": {
+        const x1 = last === "C" || last === "S" ? 2 * x - kx : x;
+        const x2 = ox + num(), y2 = oy + num(), ex = ox + num(), ey = oy + num();
+        cubic(x, x1, x2, ex); kx = x2; ky = y2; x = ex; y = ey; at(x); break;
+      }
+      case "Q": {
+        const x1 = ox + num(), y1 = oy + num(), ex = ox + num(), ey = oy + num();
+        quad(x, x1, ex); kx = x1; ky = y1; x = ex; y = ey; at(x); break;
+      }
+      case "T": {
+        const reflect = last === "Q" || last === "T";
+        const x1 = reflect ? 2 * x - kx : x, y1 = reflect ? 2 * y - ky : y;
+        const ex = ox + num(), ey = oy + num();
+        quad(x, x1, ex); kx = x1; ky = y1; x = ex; y = ey; at(x); break;
+      }
+      case "A": {
+        const rx = num(), ry = num(), deg = num(), large = flag(), sweep = flag(), ex = ox + num(), ey = oy + num();
+        arc(x, y, rx, ry, deg, large, sweep, ex, ey); x = ex; y = ey; at(x); break;
+      }
+      default: throw new Error(`glyph path: command "${cmd}" in "${d}"`);
+    }
+    last = cmd.toUpperCase();
+  }
+  return [lo, hi];
+}
+
+/** Each part of a drawing: how far its geometry reaches across the row, and how it is stroked — at its own width, at the
+ *  wrapper's (`own: false`), or not at all (a filled part). */
+type Part = { x0: number; x1: number; w: number; own: boolean };
+function partsOf(children: ReactNode, base: number): Part[] {
+  const out: Part[] = [];
+  Children.forEach(children, (c) => {
+    if (!isValidElement(c)) return;
+    const p = c.props as Record<string, unknown>;
+    const n = (k: string) => Number(p[k] ?? 0);
+    let x0: number, x1: number;
+    if (c.type === "path") [x0, x1] = pathReachX(String(p.d));
+    else if (c.type === "circle") { x0 = n("cx") - n("r"); x1 = n("cx") + n("r"); }
+    else if (c.type === "ellipse") { x0 = n("cx") - n("rx"); x1 = n("cx") + n("rx"); }
+    else if (c.type === "rect") { x0 = n("x"); x1 = n("x") + n("width"); }
+    else if (c.type === "line") { x0 = Math.min(n("x1"), n("x2")); x1 = Math.max(n("x1"), n("x2")); }
+    else return;
+    const stroked = p.stroke !== "none";
+    out.push({ x0, x1, w: stroked ? (p.strokeWidth != null ? Number(p.strokeWidth) : base) : 0, own: p.strokeWidth != null || !stroked });
+  });
+  return out;
+}
+
+const fix = (v: number) => Math.round(v * 1000) / 1000;
+
+/** What an edge glyph or a text mark adds to its svg: the pull past its run's edge (a negative inline margin, the gap
+ *  between its box and its ink) and the text stroke. A text mark's stroke is its words' stem in em, so the half of it
+ *  that sits beyond the geometry joins the margin in em too. */
+function glyphFit(children: ReactNode, size: number, edge: GlyphEdge | undefined, text: GlyphText | undefined, p: GlyphProps): { className?: string; style: CSSProperties } {
+  // `--g-stem` is defined here, as a key (where `test:css-vars-defined` reads a definition); `.kp-gtext` strokes with it.
+  const style: Record<string, string | number> = { ...(p.style as Record<string, string | number> | undefined), ...(text ? { "--g-stem": `${GLYPH_STEM[text]}em` } : {}) };
+  const k = size / 24;
+  if (edge) {
+    const parts = partsOf(children, p.strokeWidth != null ? Number(p.strokeWidth) : 1.9);
+    const runParts = text ? parts.filter((q) => !q.own) : [];
+    const ownParts = text ? parts.filter((q) => q.own) : parts;
+    const halfStem = text ? GLYPH_STEM[text] / 2 : 0;
+    if (edge === "end") {
+      const reach = Math.max(...ownParts.map((q) => q.x1 + q.w / 2), ...runParts.map((q) => q.x1));
+      style.marginInlineEnd = runParts.length ? `calc(${fix(-(24 - reach) * k)}px + ${halfStem}em)` : `${fix(-(24 - reach) * k)}px`;
+    } else {
+      const reach = Math.min(...ownParts.map((q) => q.x0 - q.w / 2), ...runParts.map((q) => q.x0));
+      style.marginInlineStart = runParts.length ? `calc(${fix(-reach * k)}px + ${halfStem}em)` : `${fix(-reach * k)}px`;
+    }
+  }
+  return { className: text ? (p.className ? `kp-gtext ${p.className}` : "kp-gtext") : p.className, style: style as CSSProperties };
+}
+
+/* ⛔ A glyph without `edge` or `text` renders exactly the markup it always did (the same attributes, in the same order):
+   the classic chrome's glyphs are captured by `qa:classic-shell-parity`, and none of them asks for either. */
+const G = ({ children, s, edge, text, ...p }: GlyphProps & { children: React.ReactNode }) => (
+  <svg viewBox="0 0 24 24" width={s ?? 24} height={s ?? 24} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...p} {...(edge || text ? glyphFit(children, s ?? 24, edge, text, p) : {})}>{children}</svg>
 );
+
+/** Is this node one of the family's glyphs? A slot that leads or ends a run (PageHeader's and AuthHeader's eyebrow) pulls
+ *  a glyph to its edge, and leaves anything else as given. */
+export function edgeGlyph(node: ReactNode, edge: GlyphEdge): ReactNode {
+  if (!isValidElement(node) || !GLYPH_SET.has(node.type)) return node;
+  return cloneElement(node as ReactElement<GlyphProps>, { edge });
+}
 
 /* The ONE 64-grid wrapper — every empty-state line-art uses it.
  *
@@ -82,7 +278,8 @@ const G = ({ children, s, ...p }: GlyphProps & { children: React.ReactNode }) =>
  * The 56-grid BADGE set (`src/components/badges/icons.tsx`) is a DIFFERENT,
  * deliberate tier at 2.2: those are filled medallions read at ~32–56px, not
  * line-arts, and they are not neighbours of anything drawn here. */
-const GL = ({ children, s, ...p }: GlyphProps & { children: React.ReactNode }) => (
+// A 64-grid line-art is never an edge glyph or a text mark: the two props are dropped here, never passed to the DOM.
+const GL = ({ children, s, edge: _edge, text: _text, ...p }: GlyphProps & { children: React.ReactNode }) => (
   <svg viewBox="0 0 64 64" width={s ?? 64} height={s ?? 64} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...p}>{children}</svg>
 );
 
@@ -113,7 +310,8 @@ const Ibase = {
   profile: (p: GlyphProps) => <G {...p}><circle cx="12" cy="8.5" r="3.5" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0z" /></G>,
   /* status */
   live: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="5.4" /><circle cx="12" cy="12" r="9" /></G>,
-  tipping: (p: GlyphProps) => <G {...p}><line x1="4" y1="13.8" x2="20" y2="9.2" /><path d="M10.3 14.6L13.7 14.6L12 11.6Z" /><line x1="4.6" y1="14.2" x2="4.6" y2="17" /><path d="M2.2 17A2.5 2.5 0 0 0 7 17" /><line x1="19.4" y1="9.6" x2="19.4" y2="12.4" /><path d="M17 12.4A2.5 2.5 0 0 0 21.8 12.4" /><line x1="8.5" y1="18.5" x2="15.5" y2="18.5" /></G>,
+  /* Centred (R9-A1's census; no call site draws it today): 2 units low (ink y8.25–19.75). Raised 2: y6.25–17.75. */
+  tipping: (p: GlyphProps) => <G {...p}><line x1="4" y1="11.8" x2="20" y2="7.2" /><path d="M10.3 12.6L13.7 12.6L12 9.6Z" /><line x1="4.6" y1="12.2" x2="4.6" y2="15" /><path d="M2.2 15A2.5 2.5 0 0 0 7 15" /><line x1="19.4" y1="7.6" x2="19.4" y2="10.4" /><path d="M17 10.4A2.5 2.5 0 0 0 21.8 10.4" /><line x1="8.5" y1="16.5" x2="15.5" y2="16.5" /></G>,
   hot: (p: GlyphProps) => <G {...p}><path d="M12 2.8C14.6 6 18 8.8 18 13.2A6 6 0 0 1 6 13.2C6 8.8 9.4 6 12 2.8Z" /><path d="M12 10.5C13.3 12.2 14.6 13.3 14.6 15.2A2.6 2.6 0 0 1 9.4 15.2C9.4 13.3 10.7 12.2 12 10.5Z" /></G>,
   soon: (p: GlyphProps) => <G {...p}><path d="M7 3h10M7 21h10" /><path d="M8 3c0 4 8 4.5 8 9s-8 5-8 9M16 3c0 4-8 4.5-8 9s8 5 8 9" /></G>,
   resolved: (p: GlyphProps) => <G {...p}><path d="M7.5 12.3l3.2 3.7L16.8 8.2" /><line x1="21.3" y1="12" x2="23.3" y2="12" /><line x1="18.6" y1="5.4" x2="20" y2="4" /><line x1="12" y1="2.7" x2="12" y2="0.7" /><line x1="5.4" y1="5.4" x2="4" y2="4" /><line x1="2.7" y1="12" x2="0.7" y2="12" /><line x1="5.4" y1="18.6" x2="4" y2="20" /><line x1="12" y1="21.3" x2="12" y2="23.3" /><line x1="18.6" y1="18.6" x2="20" y2="20" /></G>,
@@ -127,7 +325,9 @@ const Ibase = {
   shield: (p: GlyphProps) => <G {...p}><path d="M12 2.8L20 5.8V11.5C20 16.8 16.7 20 12 21.6C7.3 20 4 16.8 4 11.5V5.8Z" /><path d="M12 5.6L17.4 7.7V11.5C17.4 15.3 15.2 17.6 12 18.9C8.8 17.6 6.6 15.3 6.6 11.5V7.7Z" /></G>,
   sparkle: (p: GlyphProps) => <G {...p}><path d="M12 3.5Q13.1 9.9 19.5 11Q13.1 12.1 12 18.5Q10.9 12.1 4.5 11Q10.9 9.9 12 3.5Z" /><circle cx="18.5" cy="5" r="1.2" fill="currentColor" stroke="none" /></G>,
   star: (p: GlyphProps) => <G {...p}><path d="M12 3L14.3 9.3L21 9.6L15.7 13.7L17.6 20.2L12 16.4L6.4 20.2L8.3 13.7L3 9.6L9.7 9.3Z" /></G>,
-  flame2: (p: GlyphProps) => <G {...p}><path d="M12 3c1 3 3 4.5 3 8a3 3 0 1 1-6 0c0-1 .3-1.8.8-2.4C9 11 10 12.5 11 12c-.5-2 .5-7 1-9z" /></G>,
+  /* Centred (R9-A1's census): the flame filled only the box's top half (ink y2.05–14.95), so the proposals board's HOT flag
+     drew it 3.5 units high in its pill. Lowered 3.5: ink y5.55–18.45. */
+  flame2: (p: GlyphProps) => <G {...p}><path d="M12 6.5c1 3 3 4.5 3 8a3 3 0 1 1-6 0c0-1 .3-1.8.8-2.4C9 14.5 10 16 11 15.5c-.5-2 .5-7 1-9z" /></G>,
   /* ---- kit50.jsx extended set — replaces lucide-react for consistency ---- */
   check: (p: GlyphProps) => <G {...p}><path d="M5 12.5l4.5 4.5L19 7" /></G>,
   x: (p: GlyphProps) => <G {...p}><path d="M6 6l12 12M18 6L6 18" /></G>,
@@ -174,11 +374,19 @@ const Ibase = {
   user: (p: GlyphProps) => <G {...p}><circle cx="12" cy="8.5" r="3.5" /><path d="M5.5 20a6.5 6.5 0 0 1 13 0z" /></G>,
   users: (p: GlyphProps) => <G {...p}><circle cx="9" cy="8" r="3" /><path d="M4 19a5 5 0 0 1 10 0" /><circle cx="17" cy="9" r="2.5" /><path d="M20.5 19a4 4 0 0 0-5-3.6" /></G>,
   settings: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="3" /><path d="M12 1.5v3M12 19.5v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M1.5 12h3M19.5 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" /></G>,
-  logOut: (p: GlyphProps) => <G {...p}><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" /></G>,
+  /* ⭐ A SIGN-OUT LEAVES (R9-A2, round 9 of the visual pass, 2026-10-11; tile 294 and every hub tile with Toka / Sign out /
+     退出登录): this drew `logIn`'s geometry — the door's bracket on the RIGHT and the arrow running INTO it — so every
+     sign-out on the platform (the hub's Toka, the avatar menu, /profile, /profile/sessions) showed a sign-in. Now the
+     standard log-out: the bracket on the LEFT (x3–9) and the arrow leaving it, its head at x21 pointing away. The same
+     grid, stroke, caps and reach as `logIn` (ink x2.05–21.95, y2.05–21.95), so it stands where it stood. */
+  logOut: (p: GlyphProps) => <G {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></G>,
   logIn: (p: GlyphProps) => <G {...p}><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M3 12h12M10 7l5 5-5 5" /></G>,
   gift: (p: GlyphProps) => <G {...p}><rect x="3" y="8" width="18" height="4" rx="1" /><path d="M12 8v13M3 12h18v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7" /><path d="M7.5 8C7.5 6 9 4.5 10.5 4.5S12 6 12 8M16.5 8c0-2-1.5-3.5-3-3.5S12 6 12 8" /></G>,
   receipt: (p: GlyphProps) => <G {...p}><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2V2l-3 2-3-2-3 2-3-2z" /><path d="M8 10h8M8 14h5" /></G>,
-  coins: (p: GlyphProps) => <G {...p}><circle cx="10" cy="10" r="6" /><path d="M14.5 13.5a6 6 0 1 0 0-7" /><path d="M10 8v4M8.5 10.5h3" /></G>,
+  /* ⭐ INSIDE ITS BOX, AND CENTRED (R9-A1's census): the back coin's arc swept out to x25.37 (ink x26.32), past the box's
+     x24, so every coins glyph lost the right edge of its back coin to the svg's clip (1.35px at 14px); and the pair stood
+     high (ink y3.05–16.95). The same two coins, moved 2.5 left and 2 down: ink x0.55–23.82, y5.05–18.95, nothing cut. */
+  coins: (p: GlyphProps) => <G {...p}><circle cx="7.5" cy="12" r="6" /><path d="M12 15.5a6 6 0 1 0 0-7" /><path d="M7.5 10v4M6 12.5h3" /></G>,
   ticket: (p: GlyphProps) => <G {...p}><path d="M2 9a3 3 0 0 1 0 6v4h20v-4a3 3 0 0 1 0-6V5H2z" /><path d="M13 5v2M13 17v2M13 11v2" /></G>,
   /* aliases — map lucide naming to kit naming */
   listChecks: (p: GlyphProps) => <G {...p}><path d="M3 6h2.5M3 12h2.5M3 18h2.5M8 6h13M8 12h13M8 18h13" /><path d="M1 5.5l1 1 2-2M1 11.5l1 1 2-2M1 17.5l1 1 2-2" /></G>,
@@ -309,7 +517,8 @@ const Ibase = {
 
   
 /* markets — nothing live in this category */
-  emptyMarkets: (p: GlyphProps) => <GL {...p}><path d="M32 6v20" /><path d="M16 11h32" /><path d="M16 11l-6.5 15a6.5 6.5 0 0 0 13 0z" /><path d="M48 11l-6.5 15a6.5 6.5 0 0 0 13 0z" /><path d="M22 52h20" /><path d="M32 26v26" /><circle cx="50" cy="50" r="2" fill="currentColor" stroke="none" /></GL>,
+  /* Centred (R9-A1's census, 64-grid; no call site draws it today): 3 units high. Lowered 3. */
+  emptyMarkets: (p: GlyphProps) => <GL {...p}><path d="M32 9v20" /><path d="M16 14h32" /><path d="M16 14l-6.5 15a6.5 6.5 0 0 0 13 0z" /><path d="M48 14l-6.5 15a6.5 6.5 0 0 0 13 0z" /><path d="M22 55h20" /><path d="M32 29v26" /><circle cx="50" cy="53" r="2" fill="currentColor" stroke="none" /></GL>,
 
   /* positions — you haven't staked anything */
   emptyPositions: (p: GlyphProps) => <GL {...p}><rect x="8" y="18" width="48" height="34" rx="4" /><path d="M22 18v-3a4 4 0 0 1 4-4h12a4 4 0 0 1 4 4v3" /><path d="M8 32h48" /><path d="M37 32v6h-10v-6" /><path d="M24 45h7" /></GL>,
@@ -345,7 +554,8 @@ const Iplus = {
   bank: (p: GlyphProps) => <G {...p}><path d="M12 3 3.5 8.5h17z"/><path d="M5.5 12v6.5M10 12v6.5M14 12v6.5M18.5 12v6.5"/><path d="M3.5 21h17"/></G>,
   mobileMoney: (p: GlyphProps) => <G {...p}><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><circle cx="12" cy="12" r="3.1"/><path d="M12 10.6v2.8M10.5 5.5h3"/></G>,
   cashOut: (p: GlyphProps) => <G {...p}><rect x="2.5" y="7" width="12.5" height="10" rx="2"/><circle cx="8.75" cy="12" r="2.2"/><path d="M17 12h4.5M19.4 9.7l2.3 2.3-2.3 2.3"/></G>,
-  cashback: (p: GlyphProps) => <G {...p}><circle cx="13" cy="13.5" r="5.2"/><path d="M13 11.6v3.8"/><path d="M3.5 4.5V9H8"/><path d="M3.8 8.8A9.2 9.2 0 0 1 12.6 4.4"/></G>,
+  /* Centred (R9-A1's census; no call site draws it today): 1.15 left, 0.48 high. Moved 1 right and 0.5 down. */
+  cashback: (p: GlyphProps) => <G {...p}><circle cx="14" cy="14" r="5.2"/><path d="M14 12.1v3.8"/><path d="M4.5 5V9.5H9"/><path d="M4.8 9.3A9.2 9.2 0 0 1 13.6 4.9"/></G>,
   percent: (p: GlyphProps) => <G {...p}><path d="M18.5 5.5l-13 13"/><circle cx="7.3" cy="7.3" r="2.7"/><circle cx="16.7" cy="16.7" r="2.7"/></G>,
 
   // ── Source of funds ──
@@ -353,7 +563,8 @@ const Iplus = {
   sofBusiness: (p: GlyphProps) => <G {...p}><path d="M5 9 6 4.5h12L19 9M4 9h16"/><path d="M5.5 9v10.5h13V9"/><path d="M10.3 19.5V14h3.4v5.5"/></G>,
   sofSavings: (p: GlyphProps) => <G {...p}><path d="M6.5 6.5h11"/><path d="M8.5 6.5V4.5h7v2"/><path d="M6.5 6.5v9.8a4.2 4.2 0 0 0 4.2 4.2h2.6a4.2 4.2 0 0 0 4.2-4.2V6.5"/><circle cx="12" cy="13.8" r="1.3" fill="currentColor" stroke="none"/></G>,
   sofInvestment: (p: GlyphProps) => <G {...p}><path d="M3.5 4v16.5H21"/><path d="M6.5 15.5l4-4.5 3 2.6 5.5-6.6"/><path d="M15.7 7h3.4v3.4"/></G>,
-  sofGift: (p: GlyphProps) => <G {...p}><rect x="4.5" y="11.5" width="15" height="10" rx="1.5"/><rect x="3.5" y="8" width="17" height="3.5" rx="1"/><path d="M12 8v13.5"/><path d="M12 8c-1.6-3.4-5.9-3.3-5.9-1.1S10 9.4 12 8zM12 8c1.6-3.4 5.9-3.3 5.9-1.1S14 9.4 12 8z"/></G>,
+  /* Centred (R9-A1's census): 1.42 units low (ink y4.38–22.45). Raised 1.5: ink y2.88–20.95. */
+  sofGift: (p: GlyphProps) => <G {...p}><rect x="4.5" y="10" width="15" height="10" rx="1.5"/><rect x="3.5" y="6.5" width="17" height="3.5" rx="1"/><path d="M12 6.5v13.5"/><path d="M12 6.5c-1.6-3.4-5.9-3.3-5.9-1.1S10 7.9 12 6.5zM12 6.5c1.6-3.4 5.9-3.3 5.9-1.1S14 7.9 12 6.5z"/></G>,
 
   // ── Devices & sessions ──
   devicePhone: (p: GlyphProps) => <G {...p}><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M10.8 18.5h2.4"/></G>,
@@ -363,18 +574,27 @@ const Iplus = {
   // ── Help & support ──
   compass: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="8.6"/><path d="M15 9l-1.8 4.2L9 15l1.8-4.2z"/></G>,
   idCard: (p: GlyphProps) => <G {...p}><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><circle cx="8" cy="10.3" r="1.9"/><path d="M5.2 15.6a2.9 2.9 0 0 1 5.6 0"/><path d="M13.8 9.5h5M13.8 12.5h5M13.8 15.5h3"/></G>,
-  headset: (p: GlyphProps) => <G {...p}><path d="M4.5 14v-2a7.5 7.5 0 0 1 15 0v2"/><rect x="3" y="13" width="3.8" height="6" rx="1.7"/><rect x="17.2" y="13" width="3.8" height="6" rx="1.7"/><path d="M19.1 19v.6a2.4 2.4 0 0 1-2.4 2.4h-3.2"/></G>,
+  /* Centred (R9-A1's census): the boom hung the drawing 1.25 units low (ink y3.55–22.95), 1.0px under the hub's Msaada row
+     centre at 20px. Raised 1.25: ink y2.3–21.7. */
+  headset: (p: GlyphProps) => <G {...p}><path d="M4.5 12.75v-2a7.5 7.5 0 0 1 15 0v2"/><rect x="3" y="11.75" width="3.8" height="6" rx="1.7"/><rect x="17.2" y="11.75" width="3.8" height="6" rx="1.7"/><path d="M19.1 17.75v.6a2.4 2.4 0 0 1-2.4 2.4h-3.2"/></G>,
   questionCircle: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="8.6"/><path d="M9.5 9.3a2.6 2.6 0 0 1 5.1.6c0 1.7-2.6 2.1-2.6 3.6"/><circle cx="12" cy="16.8" r=".9" fill="currentColor" stroke="none"/></G>,
 
   // ── Status & tags ──
   sealCheck: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="8.6"/><path d="M8 12.4l2.7 2.7 5.3-6"/></G>,
   voidX: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="8.6"/><path d="M8.8 8.8l6.4 6.4M15.2 8.8l-6.4 6.4"/></G>,
-  clockPending: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="8.6" strokeDasharray="3.4 3"/><path d="M12 7.5V12l3 2"/></G>,
+  /* The dashed ring closes on whole dashes (R9-A6, the fitted-track rule): 3.4 + 3 on the ring's 54.04 units was 8.44
+     periods, so the last 2.8-unit dash ran into the first at three o'clock. `pathLength` makes the ring 8 whole periods. */
+  clockPending: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="8.6" pathLength="51.2" strokeDasharray="3.4 3"/><path d="M12 7.5V12l3 2"/></G>,
   lockSide: (p: GlyphProps) => <G {...p}><rect x="5" y="10.5" width="14" height="10" rx="2.2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/><circle cx="12" cy="15.5" r="1.2" fill="currentColor" stroke="none"/></G>,
-  sparkleNew: (p: GlyphProps) => <G {...p}><path d="M12 4l1.7 4.3L18 10l-4.3 1.7L12 16l-1.7-4.3L6 10l4.3-1.7z"/><path d="M18.5 15.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" strokeWidth="1.4"/></G>,
+  /* Centred (R9-A1's census; no call site draws it today): 1.62 right, 0.62 low. Moved 1.5 left and 0.5 up. */
+  sparkleNew: (p: GlyphProps) => <G {...p}><path d="M10.5 3.5l1.7 4.3L16.5 9.5l-4.3 1.7L10.5 15.5l-1.7-4.3L4.5 9.5l4.3-1.7z"/><path d="M17 15l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" strokeWidth="1.4"/></G>,
   flame: (p: GlyphProps) => <G {...p}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></G>,
   tippingScales: (p: GlyphProps) => <G {...p}><path d="M12 3.5v17M8 20.5h8"/><path d="M5 8.5l14-2.4"/><path d="M5 8.5l-2.2 4.3a2.6 2.6 0 0 0 4.4 0zM19 6.1l-2.2 4.3a2.6 2.6 0 0 0 4.4 0z" strokeWidth="1.6"/></G>,
-  podium: (p: GlyphProps) => <G {...p}><path d="M3.5 20.5h17"/><path d="M9 20.5V9h6v11.5"/><path d="M3.5 20.5v-6H9M20.5 20.5v-4.5H15"/></G>,
+  /* ⭐ CENTRED IN ITS BOX (R9-A1, round 9 of the visual pass, 2026-10-11; tiles 262 266 and every hub tile): the podium
+     stood on the box's floor — ink y8.05–21.45, its centre 2.75 units under the box's — so the Bingwa / Leaderboard / 排行榜
+     row's glyph sat 2.0px below the row's centre at 20px (262: ink y624–635 in the row y600–655) where every other hub
+     glyph centres. The same drawing, raised 2.75: ink y5.3–18.7. Its one use is that hub row. */
+  podium: (p: GlyphProps) => <G {...p}><path d="M3.5 17.75h17"/><path d="M9 17.75V6.25h6v11.5"/><path d="M3.5 17.75v-6H9M20.5 17.75v-4.5H15"/></G>,
 
   // ── System ──
   qr: (p: GlyphProps) => <G {...p}><rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="3.5" y="14" width="6.5" height="6.5" rx="1"/><path d="M14 14h3v3h-3zM20.5 14v3.2M14 20.5h3.2M20 20.3l.01.01"/></G>,
@@ -401,8 +621,10 @@ const Iplus = {
 
   // ── Categories (reference) ──
   catSports: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="8.6"/><path d="M12 8.8L15.04 11.01L13.88 14.59L10.12 14.59L8.96 11.01Z"/><path d="M12 8.8V3.4M15.04 11.01L20.18 9.34M13.88 14.59L17.06 18.96M10.12 14.59L6.94 18.96M8.96 11.01L3.82 9.34"/></G>,
-  catMacro: (p: GlyphProps) => <G {...p}><path d="M3.5 20.5h17"/><path d="M4.5 16.5l4.5-5 3 2.7 6.5-7.7"/><path d="M15.3 6h3.5v3.5"/></G>,
-  catWeather: (p: GlyphProps) => <G {...p}><path d="M17 16.5H8a4 4 0 0 1-.6-7.95A5.5 5.5 0 0 1 18 7.6a4.2 4.2 0 0 1-1 8.9z"/><path d="M8.8 19.5v1.6M12.2 19.5v1.6M15.6 19.5v1.6"/></G>,
+  /* Centred (R9-A1's census; no call site draws it today): 1.25 units low. Raised 1.25. */
+  catMacro: (p: GlyphProps) => <G {...p}><path d="M3.5 19.25h17"/><path d="M4.5 15.25l4.5-5 3 2.7 6.5-7.7"/><path d="M15.3 4.75h3.5v3.5"/></G>,
+  /* Centred (R9-A1's census; no call site draws it today): 1.0 right, 0.53 low. Moved 1 left and 0.5 up. */
+  catWeather: (p: GlyphProps) => <G {...p}><path d="M16 16H7a4 4 0 0 1-.6-7.95A5.5 5.5 0 0 1 17 7.1a4.2 4.2 0 0 1-1 8.9z"/><path d="M7.8 19v1.6M11.2 19v1.6M14.6 19v1.6"/></G>,
   catCrypto: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="8.6"/><path d="M9.8 8h3.4a2 2 0 0 1 0 4H9.8m0 0h4a2 2 0 0 1 0 4H9.8M9.8 8v8"/><path d="M11.5 6.3V8M13.5 16v1.7"/></G>,
   catCulture: (p: GlyphProps) => <G {...p}><path d="M12 4l2.3 5 5.2.6-3.9 3.5 1.1 5.1L12 15.6 7.3 18.2l1.1-5.1L4.5 9.6 9.7 9z"/></G>,
   catTech: (p: GlyphProps) => <G {...p}><rect x="6.5" y="6.5" width="11" height="11" rx="2"/><rect x="10" y="10" width="4" height="4" rx="1"/><path d="M9 6.5v-3M15 6.5v-3M9 17.5v3M15 17.5v3M6.5 9h-3M6.5 15h-3M17.5 9h3M17.5 15h3"/></G>,
@@ -411,13 +633,18 @@ const Iplus = {
 
   // ── Empty-state illustrations (64-grid) ──
   emptyProposals: (p: GlyphProps) => <GL {...p}><path d="M10 32l4-6h36l4 6"/><rect x="10" y="32" width="44" height="20" rx="4"/><path d="M26 29h12"/><path d="M26 23v-9a3 3 0 0 1 3-3h8l7 7v5"/><path d="M37 11v6h7"/><path d="M29.5 17.5l2.7 2.7 4.3-5"/></GL>,
-  kycRail: (p: GlyphProps) => <GL {...p}><rect x="18" y="8" width="28" height="18" rx="3"/><circle cx="26" cy="15" r="2.6"/><path d="M22.5 21.5a3.6 3.6 0 0 1 7 0"/><path d="M36 13h7M36 18h5"/><path d="M8 46h48"/><circle cx="14" cy="46" r="4" fill="currentColor" stroke="none"/><circle cx="28" cy="46" r="4" fill="currentColor" stroke="none"/><circle cx="42" cy="46" r="4"/><circle cx="56" cy="46" r="4"/></GL>,
+  /* Centred (R9-A1's census, 64-grid; no call site draws it today): 2 right, 3 high. Moved 2 left and 3 down. */
+  kycRail: (p: GlyphProps) => <GL {...p}><rect x="16" y="11" width="28" height="18" rx="3"/><circle cx="24" cy="18" r="2.6"/><path d="M20.5 24.5a3.6 3.6 0 0 1 7 0"/><path d="M34 16h7M34 21h5"/><path d="M6 49h48"/><circle cx="12" cy="49" r="4" fill="currentColor" stroke="none"/><circle cx="26" cy="49" r="4" fill="currentColor" stroke="none"/><circle cx="40" cy="49" r="4"/><circle cx="54" cy="49" r="4"/></GL>,
   fairnessChain: (p: GlyphProps) => <GL {...p}><circle cx="13" cy="34" r="8"/><circle cx="32" cy="34" r="8"/><circle cx="51" cy="34" r="8"/><path d="M21 34h3M40 34h3"/><path d="M28.5 34l2.5 2.5 4.5-5"/><path d="M32 23v-4"/></GL>,
   rgSelfCare: (p: GlyphProps) => <GL {...p}><path d="M8 46h48"/><path d="M20 46a12 12 0 0 1 24 0"/><path d="M32 24v-7M17.5 29.5l-5-5M46.5 29.5l5-5M12 38H5M59 38h-7"/></GL>,
-  adminGeneric: (p: GlyphProps) => <GL {...p}><rect x="16" y="9" width="28" height="44" rx="4"/><rect x="24" y="5" width="12" height="7" rx="2.5"/><path d="M22 22h16M22 30h16M22 38h9"/><circle cx="43" cy="43" r="7.5"/><path d="M48.5 48.5l6.5 6.5"/></GL>,
+  /* Centred (R9-A1's census, 64-grid; no call site draws it today): 3.5 right, 2 high. Moved 3.5 left and 2 down. */
+  adminGeneric: (p: GlyphProps) => <GL {...p}><rect x="12.5" y="11" width="28" height="44" rx="4"/><rect x="20.5" y="7" width="12" height="7" rx="2.5"/><path d="M18.5 24h16M18.5 32h16M18.5 40h9"/><circle cx="39.5" cy="45" r="7.5"/><path d="M45 50.5l6.5 6.5"/></GL>,
 };
 
 export const I = { ...Ibase, ...Iplus } as const;
+
+/** Every glyph component of the family — how `edgeGlyph` knows a slot was handed a glyph and not something else. */
+const GLYPH_SET: ReadonlySet<unknown> = new Set<unknown>(Object.values(I));
 
 export type GlyphKey = keyof typeof I;
 

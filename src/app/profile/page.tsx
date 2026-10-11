@@ -339,7 +339,7 @@ export default async function ProfilePage() {
       {/* ── Achievements shelf */}
       <section>
         <h2 className="mb-3 flex items-center gap-1.5 font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
-          <I.trophy s={13} />
+          <I.trophy s={13} edge="start" />
           {t.profile.achievements}
         </h2>
         <div className="rounded-xl glass-panel p-5">
@@ -353,7 +353,7 @@ export default async function ProfilePage() {
       {/* ── Settings grid */}
       <section>
         <h2 className="mb-3 flex items-center gap-1.5 font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
-          <I.settings s={13} />
+          <I.settings s={13} edge="start" />
           {t.profile.account}
         </h2>
         {/* 16px between the cards (gap-3 on the overridden scale; round 4, 2026-10-09, tile 188): the Akaunti hub's own
@@ -443,7 +443,7 @@ export default async function ProfilePage() {
               <p className="mt-0.5 text-body-sm text-text-subtle">{t.profile.seeYouSoon}</p>
             </span>
           </span>
-          <I.chevronRight s={16} />
+          <I.chevronRight s={16} edge="end" />
         </button>
       </form>
     </PageContainer>
@@ -508,7 +508,9 @@ function SettingRow({ icon: Icon, title, subtitle, href, accent, badge }: { icon
             at punctuation, never inside a word — `.kp-hub__sub:lang(zh)`'s rule, applied by language. */}
         <p className="mt-0.5 text-body-sm text-text-subtle leading-snug [&:lang(zh)]:break-keep [&:lang(zh)]:[overflow-wrap:anywhere]"><DotSeq text={subtitle} renderPart={keepLastWords} /></p>
       </div>
-      <I.chevronRight s={16} />
+      {/* R9-A4 (2026-10-11): the row's chevron ends its ink on the row's end edge, 14px from the border as the plate starts
+          14px from the other (`edge`, glyphs.tsx). */}
+      <I.chevronRight s={16} edge="end" />
     </Link>
   );
 }

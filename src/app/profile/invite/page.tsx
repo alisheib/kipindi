@@ -531,7 +531,7 @@ export default async function InvitePage({
       {paid && (
       <section className="rounded-xl border border-border bg-bg-elevated/60 p-4 space-y-2">
         <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle flex items-center gap-1.5">
-          <I.shieldcheck s={11} />
+          <I.shieldcheck s={11} edge="start" />
           {t.profile.bonusRequirements}
         </p>
         <ul className="space-y-1.5 text-body-sm text-text-muted leading-snug list-disc pl-4">

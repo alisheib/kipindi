@@ -540,7 +540,7 @@ export function FirstVisitPrimer() {
               {step === CARDS.length - 1
                 ? t.common.gotIt
                 : t.common.next}
-              {step < CARDS.length - 1 && <I.chevronRight s={14} />}
+              {step < CARDS.length - 1 && <I.chevronRight s={14} text="body-600" />}
             </button>
           </div>
         </div>

@@ -71,7 +71,7 @@ export function CashbackPromo({
 
       <div className={cn("relative z-10", compact ? "p-4" : "p-5 lg:p-6")}>
         <div className="flex items-center gap-1.5 text-text-subtle">
-          <I.coins s={13} />
+          <I.coins s={13} edge="start" />
           <p className="font-mono text-micro uppercase eyebrow font-bold">{t.common.cashback}</p>
           <span className="ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-micro uppercase tracking-[0.12em] font-bold bg-bg-inset text-text-subtle">
             {isRequest ? t.common.onRequest : t.common.everyDeposit}

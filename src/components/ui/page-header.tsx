@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { keepConnectives } from "./keep-run";
+import { edgeGlyph } from "./glyphs";
 import { stemOf } from "@/lib/display-stem";
 
 /**
@@ -77,7 +78,10 @@ export function PageHeader({
         <p
           className={`flex items-center gap-2 mb-1 font-mono text-caption uppercase ${eyebrowTight ? "tracking-normal" : "eyebrow"} font-bold ${EYEBROW_TONE[tone]}`}
         >
-          {icon}
+          {/* ⭐ The eyebrow's glyph puts its ink on the column's edge, where the title's ink stands (R9-A4, round 9 of the
+              visual pass, 2026-10-11; round 7's reader D5: the deposit head's glyph stood 1.3px inside its title). The slot
+              pulls a family glyph past its box's padding (`edgeGlyph`, glyphs.tsx); anything else is drawn as given. */}
+          {edgeGlyph(icon, "start")}
           {eyebrow}
         </p>
       )}

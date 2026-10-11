@@ -454,7 +454,8 @@ section("4 · money that was not EARNED is not gold — D1 commits, D5 inducemen
   ok("4.6′ EXECUTED · the badge renders the success chip; the success crest's ring is `--success` (no gold in either)",
     /var\(--success-fg\)/.test(badge) && !/gold/.test(badge) && /border:2px solid var\(--success\)/.test(crest) && !/gold/.test(crest));
   ok("4.7 · a link to a market is a control, not its seal: the proposal page's market button is ghost in both states",
-    /<Button variant="ghost" size="md" fullWidth className="mt-3" trailing=\{<I\.arrowRight s=\{15\} \/>\}>/.test(read("src/app/proposals/[id]/page.tsx")) && !/variant=\{p\.status === "RESOLVED" \? "gold"/.test(read("src/app/proposals/[id]/page.tsx")));
+    // Re-pinned (round 9, R9-A4, 2026-10-11): the arrow strokes at its label's stem (`text="body-600"`); still ghost.
+    read("src/app/proposals/[id]/page.tsx").includes('<Button variant="ghost" size="md" fullWidth className="mt-3" trailing={<I.arrowRight s={15} text="body-600" />}>') && !/variant=\{p\.status === "RESOLVED" \? "gold"/.test(read("src/app/proposals/[id]/page.tsx")));
   ok("4.8 · SubmitButton, Toggle, PageHeader, PageHero and the Callout offer no `gold` to ask for (zero money callers)",
     !/"gold"/.test(read("src/components/ui/submit-button.tsx")) && !/gold:/.test(read("src/components/ui/toggle.tsx")));
 }

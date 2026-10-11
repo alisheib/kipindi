@@ -240,12 +240,16 @@ section("6 · the market page: the star midway between its neighbours' ink; the 
     ext.max === 19 && star.min === 3 && star.max === 21 && STROKE === 1.9, `ext ${ext.min}–${ext.max} · star ${star.min}–${star.max}`);
   const page = code("src/app/markets/[id]/page.tsx");
   const link = /<a\s+href=\{m\.sourceUrl\}[\s\S]*?className="([^"]+)"/.exec(page)?.[1] ?? "";
-  const mr = /-mr-\[(\d+)px\]/.exec(link);
+  // Re-pinned (round 9, R9-A4, 2026-10-11): the bearing is no longer typed on the link — its glyph hands it back itself
+  // (`edge="end"`, measured from the drawing and its mono 400 text stroke: 2.5 − 0.54 = 1.96px at 12px), so its ink ends on
+  // the link's end and Chanzo's side reads the group's gap plus the star's bearing, as SHIRIKI's does.
+  // `test:visual-pass-r9a` §4.1 holds the engine's number against the drawing.
   const GAP = tw("2"); // the group's gap-2
   const before = extRight + GAP + starSide, after = starSide + GAP;
+  const pulled = page.includes('<I.ext s={12} edge="end" text="mono-400" />') && !link.includes("-mr-[");
   ok("6.1 · the source link gives its glyph's 2px bearing back, so star ↔ Chanzo and star ↔ SHIRIKI are one ink gap",
-    !!mr && Math.abs(before - Number(mr[1]) - after) < 0.1 && /<div className="ml-auto flex items-center gap-2">/.test(page),
-    `${before.toFixed(2)} − ${mr?.[1]} vs ${after.toFixed(2)}`);
+    pulled && /<div className="ml-auto flex items-center gap-2">/.test(page),
+    `${before.toFixed(2)} → ${after.toFixed(2)}, handed back by the glyph's own edge: ${pulled}`);
   ok("6.1′ PLANT · without it the gaps differ by the bearing — the 27 | 25 the tiles measured", before - after > 1.9, `${(before - after).toFixed(2)}px`);
 
   // Re-pinned (round 7, R7-C, 2026-10-10): the rule is every display heading's now — the letters live in lib/display-stem.ts

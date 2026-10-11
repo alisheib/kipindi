@@ -182,7 +182,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
         <span className="kp-hub__glyph" aria-hidden><I.needle s={20} /></span>
         <span className="kp-hub__text"><span className="kp-hub__label">{t("The Needle", "Sindano", "指针玩具")}</span></span>
         <span className="kp-hub__value">{shownLabel}</span>
-        <I.chevronRight s={18} className="kp-hub__chev" aria-hidden />
+        <I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />
       </button>
     ) : (
       <button

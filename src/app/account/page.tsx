@@ -95,7 +95,7 @@ export default async function AccountHubPage() {
                       <span className="kp-hub__label">{keepConnectives(t.common.staffConsole)}</span>
                       <span className="kp-hub__sub">{t.journey.hubStaffSub}</span>
                     </span>
-                    <I.externalLink s={18} className="kp-hub__chev" aria-hidden />
+                    <I.externalLink s={18} edge="end" className="kp-hub__chev" aria-hidden />
                   </a>
                 </li>
               </ul>

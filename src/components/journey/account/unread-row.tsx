@@ -33,7 +33,7 @@ export function UnreadRow({ userId, href, label }: { userId: string | null; href
           </span>
         </span>
         <CountBadge count={n} tone="brand" size="lg" aria-hidden />
-        <I.chevronRight s={18} className="kp-hub__chev" aria-hidden />
+        <I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />
       </Link>
     </li>
   );

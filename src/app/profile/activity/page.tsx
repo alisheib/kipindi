@@ -206,7 +206,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
           <p className="gilt-eyebrow">{t.activity.limitsEyebrow}</p>
           {/* The link blue, hover included (Ali's ruling (2) of 2026-10-10, §B4c) — it was aqua, hovering to white. */}
           <Link href="/profile/responsible-gambling" className="inline-flex items-center gap-1 font-mono text-[11px] text-brand-300 hover:text-brand-200 underline">
-            {t.activity.manageLimits}<I.chevronRight s={12} />
+            {t.activity.manageLimits}<I.chevronRight s={12} edge="end" text="mono-400" />
           </Link>
         </div>
         <LimitMeter label={t.activity.depositDaily}   used={rg.dailyDeposit.used}   limit={rg.dailyDeposit.limit}   t={t} />

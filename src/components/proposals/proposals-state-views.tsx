@@ -104,7 +104,7 @@ export function ProposalsBlockedComposer({
       badge={<ProposalsStateBadge state={state} comingSoonLabel={comingSoonLabel} maintenanceLabel={maintenanceLabel} />}
       action={
         <Link href={backHref as never}>
-          <Button variant="ghost" size="md" leading={<I.chevronLeft s={15} />}>{backLabel}</Button>
+          <Button variant="ghost" size="md" leading={<I.chevronLeft s={15} text="body-600" />}>{backLabel}</Button>
         </Link>
       }
     >
@@ -164,7 +164,7 @@ export function ProposalsUnavailable({
       <p className="mt-4 font-display text-[19px] font-bold leading-snug text-text">{title}</p>
       <p className="mx-auto mt-2 max-w-[38ch] text-[13px] leading-relaxed text-text-muted">{body}</p>
       <Link href={browseHref as never} className="mt-5">
-        <Button variant="primary" size="md" trailing={<I.arrowRight s={15} />}>{browseLabel}</Button>
+        <Button variant="primary" size="md" trailing={<I.arrowRight s={15} text="body-600" />}>{browseLabel}</Button>
       </Link>
     </div>
   );

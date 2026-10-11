@@ -966,7 +966,7 @@ export function UpDownCard(props: UpDownCardProps) {
             <div className="min-w-0 rounded-lg px-2.5 py-1.5"
                  style={{ background: "color-mix(in oklab, var(--yes-500) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--yes-500) 24%, transparent)" }}>
               <div className="flex items-center gap-1 font-mono text-micro font-bold uppercase eyebrow" style={{ color: "var(--yes-300)" }}>
-                <I.trendingUp s={10} />{t.market.udUp}
+                <I.trendingUp s={10} edge="start" />{t.market.udUp}
               </div>
               <div className="mt-0.5 font-mono text-[12.5px] font-bold tabular-nums leading-tight" style={{ color: "var(--yes-300)" }}>
                 ≥ {priceText.up}
@@ -975,7 +975,7 @@ export function UpDownCard(props: UpDownCardProps) {
             <div className="min-w-0 rounded-lg px-2.5 py-1.5 text-right"
                  style={{ background: "color-mix(in oklab, var(--no-500) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--no-500) 24%, transparent)" }}>
               <div className="flex items-center justify-end gap-1 font-mono text-micro font-bold uppercase eyebrow" style={{ color: "var(--no-300)" }}>
-                {t.market.udDown}<I.trendingDown s={10} />
+                {t.market.udDown}<I.trendingDown s={10} edge="end" />
               </div>
               <div className="mt-0.5 font-mono text-[12.5px] font-bold tabular-nums leading-tight" style={{ color: "var(--no-300)" }}>
                 ≤ {priceText.down}
@@ -1210,7 +1210,7 @@ export function UpDownCard(props: UpDownCardProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                trailing={<I.chevronRight s={10} />}
+                trailing={<I.chevronRight s={10} text="mono-600" />}
                 className="font-mono uppercase tracking-[0.08em]"
                 style={{ color: "var(--brand-300)", fontSize: 10.5 }}
                 onClick={(e) => {
