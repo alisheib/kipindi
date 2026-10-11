@@ -549,7 +549,23 @@ function method(obj: string, name: string): string {
   ok("C.1 · the market table is written directly in exactly two files: the store (market-dal.ts) and the chain purge's redaction",
     sameSet(direct, ["src/lib/server/market-dal.ts", "src/lib/server/chain-purge.ts"]), direct.join(", "));
   const raw = SRC.filter(({ s }) => /(UPDATE|INSERT\s+INTO|DELETE\s+FROM)\s+("public"\.)?"PredictionMarket"/i.test(s)).map(({ f }) => f);
-  ok("C.1b · and no raw SQL writes it", raw.length === 0, raw.join(", "));
+  /* ⭐ ONE RAW WRITER, CLASSIFIED BY WHAT IT WRITES, never admitted by its file name (2026-10-11, merging "Counts as" over
+     R9-D). The desk's Counts-as shift (owner ruling 2026-10-11; house-bot-dal.ts `shiftShownExtra`) sets ONLY
+     `predictorExtra`, ONLY on rows its predicate holds LIVE or CLOSED — re-checked on each row it locks — and every memo
+     this rule serves holds finished rows alone: exempt for `addToPool`'s reason (C.3). A second raw writer, a second
+     column in its SET, or a predicate that admits a finished row is red here. */
+  const hb = decomment(read("src/lib/server/house-bot-dal.ts"));
+  const rawWrites = [...hb.matchAll(/(UPDATE|INSERT\s+INTO|DELETE\s+FROM)\s+("public"\.)?"PredictionMarket"[^`]*/gi)].map((m) => m[0]);
+  const setCols = rawWrites.length === 1 ? (/\sSET\s([\s\S]*?)\sFROM\s/.exec(rawWrites[0])?.[1] ?? "").match(/"\w+"\s*=/g) ?? [] : [];
+  const whereAt = hb.indexOf("function shownMarketsWhere(");
+  const where = whereAt < 0 ? "" : hb.slice(whereAt, hb.indexOf("}", whereAt));
+  const shiftAt = hb.indexOf("async shiftShownExtra(input, tx) {");
+  const shift = shiftAt < 0 ? "" : hb.slice(shiftAt, hb.indexOf("async countShownMarkets(", shiftAt));
+  const exempt = rawWrites.length === 1 && /^UPDATE\s/i.test(rawWrites[0]) && setCols.length === 1 && setCols[0].startsWith('"predictorExtra"')
+    && /m\."status" IN \('LIVE', 'CLOSED'\)/.test(where) && !/RESOLVED|VOIDED/.test(where)
+    && shift.includes("WHERE ${shownMarketsWhere(account)}") && shift.includes('FROM target WHERE m."id" = target."id"');
+  ok("C.1b · and no raw SQL writes it — but the desk's Counts-as shift, which sets only the shown extra and only on open rows (exempt for addToPool's reason)",
+    sameSet(raw, ["src/lib/server/house-bot-dal.ts"]) && exempt, `${raw.join(", ")} · ${j({ writes: rawWrites.length, setCols, exempt })}`);
 }
 {
   const purge = decomment(read("src/lib/server/chain-purge.ts"));
