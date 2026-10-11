@@ -553,6 +553,15 @@ function HotChip({ streak, t }: { streak: number; t: Dict }) {
 
 /** A10 top-3 podium. Order [#2, #1, #3] so #1 sits center-raised; a metal ring +
  *  crown on #1, muted-ink rings on #2/#3. Avatars rise in staggered (kp-rise).
+ *  ⭐ THE RAISE IS LAYOUT, NOT A TRANSFORM (round 9 of the visual pass, R9-C, 2026-10-11; R5-F1, tiles 177 178 203). #1
+ *  wore `-translate-y-3` from A10 on and never once stood raised: `.kp-rise` fills `both` and its last frame writes
+ *  `transform: none`, which outranks a static transform for as long as the page is open. With `items-end` and the
+ *  streak chip only under #2/#3, the winner sank BELOW them — 27px at 1280 (its name y631 against their y604). Now the
+ *  columns hang from the top (`items-start`), so a chip or a wrapped handle grows its own column downward and moves no
+ *  crest; the flanks start 8px down (`mt-1.5`: #1's xl crest is 56px against their lg 48), so the three crests would
+ *  end on one row; and #1 rises by `-mt-3`, the same 16px step the translate named, as a margin no keyframe writes. At
+ *  every width #1's crest and name stand 16px above #2's and #3's and its crown 24px above their spacer; the rise
+ *  still plays on top (`test:visual-pass-r9c` §1).
  *  ⛔ The #1 honours ring, its crown and its rank disc are the tier ladder's METAL (`--metal-gold`, which is
  *  `TIER_RING.gold`), not `--gold-400`/`--gold-300` — a place on a leaderboard is identity, not money (Q5; R5-C, the
  *  second gold audit, 2026-10-09). The disc's figure is the dark navy ink the light fills take (`--text-on-brand`). */
@@ -564,14 +573,14 @@ function Podium({ top, t }: { top: Row[]; t: Dict }) {
   ];
   return (
     <section className="rounded-xl glass-panel px-4 pt-6 pb-4">
-      <div className="grid grid-cols-3 items-end gap-2 sm:gap-4">
+      <div className="grid grid-cols-3 items-start gap-2 sm:gap-4">
         {slots.map(({ r, rank }, i) => {
           const first = rank === 1;
           const ring = first ? "var(--metal-gold)" : "var(--text-muted)";
           return (
             <div
               key={r.userId}
-              className={`kp-rise flex min-w-0 flex-col items-center text-center ${first ? "-translate-y-3" : ""}`}
+              className={`kp-rise flex min-w-0 flex-col items-center text-center ${first ? "-mt-3" : "mt-1.5"}`}
               style={{ animationDelay: `${i * 60}ms` }}
             >
               {first ? (
@@ -613,9 +622,11 @@ function Podium({ top, t }: { top: Row[]; t: Dict }) {
                   `(displayName ?? …).split(" ")[0]` (:142) at the inherited 15px (`--type-body`,
                   globals.css:213 — NOT the Tailwind `text-body` 14, §T7), so it runs out at
                   about eight characters. At 1440 the same box is 99.5px and nothing clips.
-                  §A5 offers WRAP or ellipsise, and here wrap is free: `items-end` bottom-aligns
-                  the three columns, so a second line grows this one upward and the podium's base
-                  stays flat. The file already says this string should be read whole — the table
+                  §A5 offers WRAP or ellipsise, and here wrap is free: the columns hang from the
+                  top (`items-start`, R9-C), so a second line grows its own column downward and
+                  moves no crest. (It used to read "`items-end` … the podium's base stays flat" —
+                  and a wrapped handle under #2 then lifted #2's crest a line above the winner's.)
+                  The file already says this string should be read whole — the table
                   at :267 renders the same handles with no truncate at all.
                   ⚠️ That table was also the only thing making the clip survivable, and it is an
                   ACCIDENT: the podium is always rows[0..2] while the table paginates, so the

@@ -85,7 +85,8 @@ export type LedgerRow = {
  *
  * ⚠️ `commission` IS OFFERED ONLY TO AN ACCOUNT THAT HAS ANY — see `visibleLedgerLenses`. A rail
  * that offers a lens which can only ever be empty is a dead end, not a filter, and this one would
- * be permanently empty for every player who is not an agent.
+ * be permanently empty for every player who is not an agent. `agentfee` and (since R9-C, the bonus
+ * programme being withdrawn) `bonus` are offered the same way: `CONDITIONAL_LENSES`.
  */
 export const LEDGER_LENSES = ["all", "in", "out", "bet", "payout", "refund", "bonus", "adjust", "commission", "agentfee"] as const;
 export type LedgerLens = (typeof LEDGER_LENSES)[number];
@@ -207,16 +208,27 @@ export function clearedLedgerState(state: LedgerQueryState): LedgerQueryState {
  * every player who is not an agent, so it appears only once the account has such a row — and it
  * is decided from the ROWS, never from a role, so a former agent keeps the way into their own
  * history.
+ *
+ * ⭐ `bonus` IS THE THIRD (round 9 of the visual pass, R9-C, 2026-10-11; R4-D8, tile 172: "Bonasi 0" on a
+ * 19-row book). The bonus programme is withdrawn, so for nearly every account the lens can only be
+ * empty — yet a `BONUS_CREDIT` row is still written for a payable invitation's reward and an
+ * approved proposal's prize (`creditInternal`'s default type), and an account with one keeps the
+ * way into it. Decided from the rows, as the agent lenses are: shown when the book holds a row of
+ * it, hidden when it holds none.
+ *
+ * ⭐ AND THE LENS BEING SHOWN IS ALWAYS OFFERED (`current`). The rows are the page's read — its
+ * window — so a link to `?type=bonus` on a window holding none would draw the lens's empty state
+ * with no pill lit above it; its own pill stays, at 0, so the rail says which lens is on.
  */
-export function visibleLedgerLenses(rows: readonly LedgerRow[]): readonly LedgerLens[] {
+export const CONDITIONAL_LENSES = ["bonus", "commission", "agentfee"] as const satisfies readonly LedgerLens[];
+
+export function visibleLedgerLenses(rows: readonly LedgerRow[], current?: LedgerLens): readonly LedgerLens[] {
   // ⚠️ BOTH agent lenses are conditional, for the same reason: each is permanently empty for
   // every account that is not in the agent programme, and a lens that can only ever be empty
   // is a dead end rather than a filter. An applicant who paid the fee but has earned nothing
   // yet sees `agentfee` and NOT `commission` — which is the true state of their money.
-  const has = (lens: "commission" | "agentfee") => rows.some((r) => LENS_TYPES[lens].includes(r.type));
-  const hide = new Set<LedgerLens>();
-  if (!has("commission")) hide.add("commission");
-  if (!has("agentfee")) hide.add("agentfee");
+  const has = (lens: (typeof CONDITIONAL_LENSES)[number]) => rows.some((r) => LENS_TYPES[lens].includes(r.type));
+  const hide = new Set<LedgerLens>(CONDITIONAL_LENSES.filter((lens) => lens !== current && !has(lens)));
   return hide.size === 0 ? LEDGER_LENSES : LEDGER_LENSES.filter((l) => !hide.has(l));
 }
 

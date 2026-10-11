@@ -12,7 +12,8 @@ import type { Dict } from "@/lib/i18n-dict";
  * border, `px-3`, its 13px semibold label, `gap-1.5`, the 11px mono bold count) with the words set and not shown — the
  * home ghost's way (R4-J) — so a row wraps where the page's does. Measured from the repo's fonts (S/r5h/measure-bars.cts):
  * at 1024 and 1280 the page's state and window groups are two lines in Swahili and English (1269 and 1173px in 960 and
- * 1016), and /wallet's eight lenses two lines in Swahili; the receipts ghost drew twelve fixed boxes in ONE line (790px),
+ * 1016), and /wallet's eight lenses two lines in Swahili (seven lenses since R9-C, 2026-10-11: "Bonus" is offered only
+ * to an account that has a bonus row, `visibleLedgerLenses`); the receipts ghost drew twelve fixed boxes in ONE line (790px),
  * so its list landed 56px lower than it promised on a desktop, and /wallet's ghost drew no bar at all — the bar, 141px
  * on a phone, appeared from nothing over the list (R5-B named it). The counts hold two digits' room (the page prints the
  * real numbers); the result count is the phrase's own width, in `QueryResultCount`'s type, so its line is 17.25px.

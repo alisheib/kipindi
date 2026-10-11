@@ -888,14 +888,18 @@
      It is the same glide as its three siblings; there was never a reason for it to be a
      fourth timing. `cm-starter-in`'s 360ms takes `--t-move` (340), and the curve it
      hand-typed IS this file's own `--cm-ease-arrive` value → `--m-settle`. */
-  transition: background var(--cm-dur-glide) var(--cm-ease-glide), border-color var(--cm-dur-glide) var(--cm-ease-glide), color var(--cm-dur-glide) var(--cm-ease-glide), transform var(--cm-dur-glide) var(--cm-ease-glide);
+  transition: background var(--cm-dur-glide) var(--cm-ease-glide), border-color var(--cm-dur-glide) var(--cm-ease-glide), color var(--cm-dur-glide) var(--cm-ease-glide), scale var(--cm-dur-glide) var(--cm-ease-glide);
   animation: cm-starter-in var(--t-move) var(--m-settle) both;
 }
 .cm-empty-starter:nth-child(1) { animation-delay: 100ms; }
 .cm-empty-starter:nth-child(2) { animation-delay: 180ms; }
 .cm-empty-starter:nth-child(3) { animation-delay: 260ms; }
 .cm-empty-starter:nth-child(4) { animation-delay: 340ms; }
-.cm-empty-starter:active { transform: scale(0.97); }
+/* ⭐ THE PRESS IS `scale`, NOT `transform` (round 9 of the visual pass, R9-C, 2026-10-11 — the leaderboard podium's
+   sibling). `cm-starter-in` fills `both` and ends on `transform: translateY(0)`, and an animation outranks a state
+   rule: the `transform: scale(0.97)` press never drew on a starter once its entrance had played. The independent
+   `scale` property composes with the entrance's `transform` instead (`seal-recoil`'s `translate` is the kit's model). */
+.cm-empty-starter:active { scale: 0.97; }
 @keyframes cm-starter-in {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }

@@ -1403,14 +1403,11 @@ body {
 }
 .btn-claret:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)) saturate(1.04) drop-shadow(0 6px 16px color-mix(in oklab, var(--claret-500) 32%, transparent)); }
 
-.btn-outline {
-  background: transparent;
-  color: var(--brand-300);
-  border: 1px solid var(--brand-500);
-}
-.btn-outline:hover:not(:disabled) {
-  background: oklch(40% 0.07 264 / 0.25);
-}
+/* ⛔ `.btn-outline` RETIRED (round 9 of the visual pass, R9-C, 2026-10-11; R4-F2, tile 156). Its one consumer, the guest
+   Tiketi sheet's Ingia, is `btn-ghost` now, as every other secondary action. The kit listed it with no role, and its
+   face was a trap: a link-blue label on a 1px `--brand-500` edge — the focus ring's own colour — so it read as a
+   focused control, and beside a focused Jisajili two rings of one blue stood 12px apart. `test:dead-css` would never
+   have called it dead (`submit-button.tsx` builds `btn-${variant}`), so it goes here, with its last use. */
 
 /* 🔴 D6 (2026-08-21, owner ruling) — THE LABEL IS NORMAL TEXT NOW.
    §B4 forbids aqua as "a chip, a button label, or anything semantic", and this
@@ -2792,12 +2789,16 @@ textarea::placeholder { color: var(--text-subtle); }
 /* 240ms → `--t-base` (220), the nearest rung down. The ring expands and is gone —
    a one-shot arrival — so `--m-settle`, not the legacy `--ease-sink`. */
 .ud-place-pulse { animation: ud-place-pulse var(--t-base) var(--m-settle); }
+/* ⭐ ON `scale`, NOT `transform` (round 9 of the visual pass, R9-C, 2026-10-11 — the leaderboard podium's sibling). The
+   flash plays on the UP / DOWN `.btn`, whose hover lift and press are `transform`s, and an animation outranks them while
+   it runs: for the flash's 220ms a hovered button dropped its 2px lift and jumped back when the flash ended. The
+   independent `scale` property composes with the button's own `transform`, so the flash swells where the button stands. */
 @keyframes ud-side-flash {
-  0%   { transform: scale(1); filter: brightness(1); }
-  30%  { transform: scale(1.035); filter: brightness(1.28); }
-  100% { transform: scale(1); filter: brightness(1); }
+  0%   { scale: 1; filter: brightness(1); }
+  30%  { scale: 1.035; filter: brightness(1.28); }
+  100% { scale: 1; filter: brightness(1); }
 }
-/* 220ms IS `--t-base` exactly. The keyframe leaves at scale(1) and returns to it,
+/* 220ms IS `--t-base` exactly. The keyframe leaves at scale 1 and returns to it,
    so the curve is `--m-breathe` — symmetric shape, symmetric curve. */
 .ud-side-flash { animation: ud-side-flash var(--t-base) var(--m-breathe); }
 @media (prefers-reduced-motion: reduce) {
@@ -3005,11 +3006,14 @@ textarea::placeholder { color: var(--text-subtle); }
 
 /* 1.1 — Button / chip press pop. Layers on the kit's existing
    `.btn:active { translateY(1px) }`. The scale gives the crisp tactile
-   "give" that pairs with the `tap` haptic. transform-only. */
+   "give" that pairs with the `tap` haptic. transform-only.
+   ⭐ NOW IT DOES LAYER (round 9 of the visual pass, R9-C, 2026-10-11 — the podium's sibling): written on `transform`, the
+   pop REPLACED the button's own `transform` while it ran (its hover lift dropped 2px under the pointer for the pop's
+   length). On the independent `scale` property it composes with the lift and the press, as this note always said. */
 @keyframes press-pop {
-  0%   { transform: scale(1); }
-  40%  { transform: scale(0.955); }
-  100% { transform: scale(1); }
+  0%   { scale: 1; }
+  40%  { scale: 0.955; }
+  100% { scale: 1; }
 }
 .press-pop { animation: press-pop var(--dur-flick) var(--ease-micro); }
 
@@ -3225,8 +3229,9 @@ textarea::placeholder { color: var(--text-subtle); }
    "lands" calmly — no jank, no disappearing affordances.
    --------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
-  /* presses / votes / streaks: no transform, just the resting state */
-  @keyframes press-pop   { from, to { transform: none; } }
+  /* presses / votes / streaks: no transform, just the resting state (the press pop's is its `scale`, R9-C — a
+     `transform: none` here would take the button's own lift and press away for the pop's length) */
+  @keyframes press-pop   { from, to { scale: none; } }
   @keyframes vote-pop    { from, to { transform: none; } }
 
   /* stagger: everything arrives at once. ⛔ The two per-class `animation-delay: 0ms`
@@ -5142,7 +5147,7 @@ html[data-sheet-open] .route-enter { animation: none; }
   overflow: hidden; isolation: isolate;
   height: 100%; /* fill the stretched grid cell so every card is the same height */
   /* §D's migration map, applied: `.mcardp transition .2s ease-out` → the ladder. */
-  transition: transform var(--t-base) var(--m-glide), border-color var(--t-base) var(--m-glide), box-shadow var(--t-base) var(--m-glide);
+  transition: translate var(--t-base) var(--m-glide), border-color var(--t-base) var(--m-glide), box-shadow var(--t-base) var(--m-glide);
   cursor: pointer; }
 @media (hover: hover) {
   /* Restraint: lift + a crisp border ring + the rung's own hover cast. The ambient
@@ -5154,8 +5159,13 @@ html[data-sheet-open] .route-enter { animation: none; }
      is a state accent rather than an elevation — the rung says how high the card
      is, the ring says the pointer is on it.
      ⚠️ The lift is `--m-lift` (-2px) where it was -3px: one hover displacement in
-     the product, and this was the last surface not using it. */
-  .mcardp:hover { transform: translateY(var(--m-lift)); border-color: var(--brand-500); box-shadow: 0 0 0 1px var(--brand-500), var(--elev-raised-hover); }
+     the product, and this was the last surface not using it.
+     ⭐ ON `translate`, NOT `transform` (round 9 of the visual pass, R9-C, 2026-10-11 — the podium's sibling). A board
+     card is a `.market-grid > *`, whose `kp-rise` fills `both` and ends on `transform: none`: an animation outranks a
+     hover rule, so the `translateY` lift never once drew on /markets, /results' grid or a market's similar cards.
+     The independent `translate` property composes with the entrance instead of fighting it (the struck seal's
+     recoil does the same, `seal-recoil`), so the lift lands wherever the card stands. */
+  .mcardp:hover { translate: 0 var(--m-lift); border-color: var(--brand-500); box-shadow: 0 0 0 1px var(--brand-500), var(--elev-raised-hover); }
 }
 /* Category glyph watermark — bottom-right bleed, brightens on hover.
    🔴 THE `transform: scale(1.06)` ON HOVER IS DELETED — §M5, 2026-08-21. This is a
@@ -6776,6 +6786,19 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-hub__head { --hub-flag-air: calc((var(--type-body) * 1.3 - var(--type-body) * 0.7275) / 2); }
 .kp-hub__head:only-child { margin-block: calc(-1 * var(--hub-flag-air)); }
 .kp-hub__head:only-child > .kp-flag-xs { margin-block: var(--hub-flag-air); }
+/* ⭐ …AND STACKED, THE FLAG LANDS ON A WHOLE PIXEL (round 9 of the visual pass, R9-C, 2026-10-11; R7-F2 = R3 = R8-F3, three
+   readers, tiles 255 297 331 at sw 390). Stacked, the flag's top is the row's padding, half the room the block leaves,
+   then the label's line and the gap: 8 + (40 − (19.5 + 2 + 18)) / 2 + 19.5 + 2 = 29.75px. The screen paints a box on the
+   nearest row and sets words on the row their baseline falls in, so the box landed on row 30 and its words a row higher
+   (tile 297: the box y344–361, the caps' baseline on 355 where 343.75 + 12.06 = 355.81 put it): 4.85 | 7.0 where the
+   same flag beside its label, its box on a whole 19.0, reads 5.85 | 6.0. R7-C's 5.86 | 5.94 was right for a box on a
+   whole pixel; this one was not on one. The fractional quarter is the label's 19.5px line (1.3 × 15): the flag stands at
+   20 + L / 2, a whole pixel only for an even L. Inside the head the label's line is 20px — 1.3 rounded up to the next
+   even pixel — so the stacked flag lands on 30.0 and draws as the beside-its-label flag draws. The line grows 0.25px over
+   and under the label's words, so they do not move (their line keeps its centre), the block's ink stays 8.25 | 8.0 (it
+   was 8.25 | 8.25: the flag moves a quarter pixel down, and its box was already painted on row 30), K20's gap is the 11
+   rows it painted, and beside the label nothing moves (the head's line is the flag's 26.59px). `test:visual-pass-r9c` §5. */
+.kp-hub__head > .kp-hub__label { line-height: 20px; }
 .kp-hub__value { flex-shrink: 0; font-size: var(--type-small); white-space: nowrap; color: var(--text-subtle); }
 /* A balance in a list of doors is neutral ink: gold marks money that was earned (§M3). */
 .kp-hub__money { flex-shrink: 0; font-family: var(--font-mono); font-weight: 600; font-size: var(--type-body); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text); }
@@ -7296,11 +7319,23 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-jtab__label { white-space: normal; text-overflow: clip; text-align: center; line-height: 1.15; }
 @media (min-width: 360px) { .kp-jtab__label { white-space: nowrap; text-overflow: ellipsis; line-height: 1; } }
 /* ⚠️ …AND A TWO-LINE LABEL MUST NOT LIFT ITS PIP. The classic slot centres its content, and the grid stretches every
-   slot to the tallest one, so below 360 the Tiketi slot (26 + 4 + 2 × 12.65 = 55.3px of content) would set the rail's
-   height and the three one-line slots would centre their pips about 6px below its pip. So below 360 the journey's
-   slots stack from the top and every pip sits on the slot's padding; from 360 nothing wraps and the classic centring
-   returns. `.kp-rail__item` itself is not edited. */
+   slot to the tallest one, so where the Tiketi slot wraps (26 + 4 + 2 × 12.65 = 55.3px of content) it sets the rail's
+   height and the three one-line slots would centre their pips about 6px below its pip. So there the journey's slots
+   stack from the top and every pip sits on the slot's padding. `.kp-rail__item` itself is not edited.
+   ⭐ …ONLY WHERE A LABEL WRAPS (round 9 of the visual pass, R9-C, 2026-10-11; R3-D1 and R6-D1, two readers, tiles 243
+   246 302). Below 360 every language stacked from the top, though only Swahili wraps: in English and Chinese at 320 the
+   items stood 6px under the rail's edge and 15 over its foot, where at 390 they centre 11.5 | 11.5. A label wraps where
+   it needs more than its quarter of the phone: its words in the rail's 11px mono (0.6em a letter, 1em a Chinese
+   character — `test:journey-shell` §8's measure) and the label's 2 × 2px of padding. Each language's longest label sets
+   the width from which its slots centre: Swahili "Tiketi zangu" 79.2 + 4 = 83.2px × 4 = 332.8, English "My tickets"
+   66 + 4 = 70px × 4 = 280, Chinese 我的注单 44 + 4 = 48px × 4 = 192. `:lang()` reads the `lang` the server writes on
+   <html> (the client's language switch rewrites it), so the first frame is already right; mobile-first, as the shell's
+   every rule (`test:journey-shell` §7.first). `test:visual-pass-r9c` §4 derives the three widths from the dictionary
+   and holds these rules to them, so a copy change that moves a label moves its width or fails. */
 .kp-rail--journey .kp-rail__item { justify-content: flex-start; }
+@media (min-width: 192px) { .kp-rail--journey:lang(zh) .kp-rail__item { justify-content: center; } }
+@media (min-width: 280px) { .kp-rail--journey:lang(en) .kp-rail__item { justify-content: center; } }
+@media (min-width: 332.8px) { .kp-rail--journey:lang(sw) .kp-rail__item { justify-content: center; } }
 @media (min-width: 360px) { .kp-rail--journey .kp-rail__item { justify-content: center; } }
 /* ⭐ ONE TAB IS LIT IN EVERY FRAME (2026-10-09, the visual pass round 4, R4-J; E37/E41, tiles 301 306 333). The classic
    slot fades its ink and its pip over --t-quick (`.kp-rail__item`, `.kp-rail__pip`), so for 140ms after the router

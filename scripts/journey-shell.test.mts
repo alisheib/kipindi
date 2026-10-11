@@ -1658,10 +1658,17 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
       && rail.includes(`<span className="kp-rail__label kp-jtab__label">`),
     baseRule(css, ".kp-jtab__label"));
   // The grid stretches every slot to the tallest, and the classic slot centres: a two-line label would lift its pip.
+  // ⭐ RE-PINNED 2026-10-11 (round 9 of the visual pass, R9-C; R3-D1 and R6-D1): below 360 EVERY language stacked from the
+  // top, though only Swahili wraps — 6px over and 15 under the items in English and Chinese at 320. The top-stacking now
+  // holds only where a label wraps: each language centres its slots from the width at which its longest label fits its
+  // quarter of the phone (`oneLine` above × 4: Swahili 332.8, English 280, Chinese 192), keyed by `:lang()`.
   const wraps = baseRule(css, ".kp-jtab__label").includes("white-space: normal");
-  const align = { below360: baseRule(css, ".kp-rail--journey .kp-rail__item"), from360: minWidthRule(css, 360, ".kp-rail--journey .kp-rail__item") };
-  ok("8.align · while a label may wrap below 360, the journey's slots stack from the top there, so every pip shares one line; from 360 the classic centring returns",
-    !wraps || (align.below360.includes("justify-content: flex-start") && align.from360.includes("justify-content: center")),
+  const fitsFrom = Object.fromEntries((["en", "sw", "zh"] as const).map((loc) => [loc, Number((4 * Math.max(...labels.filter((l) => l.loc === loc).map((l) => oneLine(l.s)))).toFixed(1))]));
+  const perLang = Object.fromEntries(Object.entries(fitsFrom).map(([loc, w]) => [loc, minWidthRule(css, w, `.kp-rail--journey:lang(${loc}) .kp-rail__item`)]));
+  const align = { below: baseRule(css, ".kp-rail--journey .kp-rail__item"), from360: minWidthRule(css, 360, ".kp-rail--journey .kp-rail__item"), fitsFrom, perLang };
+  ok("8.align · where a label wraps the journey's slots stack from the top, so every pip shares one line; each language centres them from the width its longest label fits its quarter of the phone (R9-C), and from 360 the classic centring holds",
+    !wraps || (align.below.includes("justify-content: flex-start") && align.from360.includes("justify-content: center")
+      && Object.values(perLang).every((r) => r.includes("justify-content: center")) && fitsFrom.sw > 320 && fitsFrom.en <= 320 && fitsFrom.zh <= 320),
     show(align));
 
   // ⛔ ONE UNREAD POLLER PER WIDTH (the WP3 review's cost, VODACOM-PLAN §0h point 16).
@@ -1709,12 +1716,14 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
       && tabsRung.z !== null && hdrRung.z !== null && tabsRung.z > hdrRung.z,
     show({ tabs: { hits: tabsRung.hits, z: tabsRung.z }, header: hdrRung.z }));
 
-  ok("8.sheet · the guest sheet: the kit's bottom sheet below 1024 (440 wide from there), titled by its H2, Jisajili first and Ingia, each returning to Tiketi zangu and closing the sheet",
+  // RE-PINNED 2026-10-11 (round 9 of the visual pass, R9-C; R4-F2, tile 156): Ingia is `btn-ghost`, as the Wallet sheet's
+  // second action and the header's Ingia — `btn-outline` drew it a third way, its edge the focus ring's own blue.
+  ok("8.sheet · the guest sheet: the kit's bottom sheet below 1024 (440 wide from there), titled by its H2, Jisajili first and Ingia (the ghost secondary, as the Wallet sheet's), each returning to Tiketi zangu and closing the sheet",
     isClient(sheet) && count(sheet, "<Modal") === 1 && sheet.includes("labelledBy={titleId}") && sheet.includes(`sheetUntil="lg"`)
       && sheet.includes("maxWidth={440}") && sheet.includes(`panelClassName="kp-wsheet"`) && !sheet.includes("showClose={false}")
       && sheet.includes(`<h2 id={titleId} className="kp-jsheet__title">{t.journey.ticketsGuestTitle}</h2>`)
       && sheet.indexOf(`"/auth/register?next=%2Fpositions"`) > 0 && sheet.indexOf(`"/auth/register?next=%2Fpositions"`) < sheet.indexOf(`"/auth/login?next=%2Fpositions"`)
-      && sheet.includes(`className="btn btn-primary btn-lg kp-wsheet__act"`) && sheet.includes(`className="btn btn-outline btn-lg kp-wsheet__act"`)
+      && sheet.includes(`className="btn btn-primary btn-lg kp-wsheet__act"`) && sheet.includes(`className="btn btn-ghost btn-lg kp-wsheet__act"`)
       && count(sheet, "onClick={onClose}") === 2);
   ok("8.sheet.portal · the sheet opens through the kit Modal, which portals to the document body — so it sits on the dialog rung, not sealed in the bar or the rail (A13)",
     rendersSymbol(sheet, "Modal") && portalsOut(text(W, MODAL)) && !portalsOut(sheet) && !sheet.includes("fixed"));

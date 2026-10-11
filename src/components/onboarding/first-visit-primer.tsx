@@ -519,14 +519,20 @@ export function FirstVisitPrimer() {
             >
               {t.common.back}
             </button>
+            {/* ⭐ THE CAROUSELS' DOTS, DRAWN ONE WAY (round 9 of the visual pass, R9-C, 2026-10-11 — the /live pager's
+                sibling). The current step was a 5px dot scaled 1.4 by a transform, which draws 7px in a 5px box: it stood
+                7px from its neighbours where they stood 8 from each other, on a 300ms curve off the ladder. Now the step
+                rail is the pager's: a 6px round dot, the current step an 18px pill that grows in its own box (width, on
+                the ladder), the dot's ink `--border-strong`, every two drawings 8px apart (this rail's own gap — its dots
+                are not targets, so it has no 9px of target either side). */}
             <div className="flex items-center gap-1.5">
               {CARDS.map((_, i) => (
                 <span
                   key={i}
-                  className="inline-block h-[5px] w-[5px] rounded-full transition-all duration-300"
+                  className="inline-block h-[6px] rounded-full transition-[width,background-color] duration-quick ease-glide"
                   style={{
-                    background: i === step ? "var(--brand-400)" : "var(--royal-700)", /* DS-13 · the brand "this one" dot (R5-C) */
-                    transform: i === step ? "scale(1.4)" : "scale(1)",
+                    width: i === step ? 18 : 6,
+                    background: i === step ? "var(--brand-400)" : "var(--border-strong)", /* DS-13 · the brand "this one" dot (R5-C) */
                   }}
                 />
               ))}

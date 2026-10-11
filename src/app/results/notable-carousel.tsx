@@ -134,6 +134,11 @@ export function NotableCarousel({
           is in the a11y tree with `aria-current`. Two carousels must not disagree about that —
           but that is a semantics ruling, not the tap floor, and it needs one decision applied
           to BOTH files in one pass. */}
+      {/* ⭐ EQUAL GAPS, THE PILL GROWING IN PLACE (round 9 of the visual pass, R9-C, 2026-10-11) — the /live twin's rail,
+          drawn one way: a target is its drawing and 9px either side, so every two drawings stand 18px apart (a fixed 24px
+          target put 12px beside the 18px pill and 18 between dots), the dot is 6px round (`h-1.5` is 8px here), and the
+          pill and the dot it trades with change width together on the ladder, so the centred rail's length holds and
+          nothing re-centres. The twin also takes its first 9px back into its row's gap; this rail is centred alone. */}
       {multi && (
         <div className="mt-2.5 flex items-center justify-center" aria-hidden>
           {slides.map((_, i) => (
@@ -143,13 +148,13 @@ export function NotableCarousel({
               onClick={() => setIdx(i)}
               tabIndex={-1}
               aria-label={t.market.showResultN.replace("{n}", String(i + 1))} /* V-7 */
-              className="grid h-[40px] w-[24px] place-items-center rounded-md"
+              className="grid h-[40px] place-items-center rounded-md px-[9px]"
             >
               {/* The current slide is "this one": the brand family's pip (`--brand-400`, the journey rail's dot), never gold
                   — a carousel's place is not money (Q5; R5-C, the second gold audit, 2026-10-09). The /live twin
                   (`featured-contest.tsx`) reads the same ink, so two carousels agree. */}
               <span
-                className="block h-1.5 rounded-full transition-all"
+                className="block h-[6px] rounded-full transition-[width,background-color] duration-quick ease-glide"
                 style={{
                   width: i === current ? 18 : 6,
                   background: i === current ? "var(--brand-400)" : "var(--border-strong)",
