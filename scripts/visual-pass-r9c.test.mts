@@ -841,7 +841,10 @@ section("7 · C7 the wallet's Bonus lens: offered when the book holds a bonus ro
     return new Function(`${js}\nreturn visibleLedgerLenses;`)() as Rule;
   };
   ok("7.0 · CONTROL · the rule read from the source and run on its own agrees with the module", hidesEmpty(ruleOf(LEDGER)) && keepsCurrent(ruleOf(LEDGER)));
-  ok("7.1′ PLANT · the commit's rule (the agent lenses only) offers \"bonus\" to the empty book — reported by 7.1", !hidesEmpty(ruleOf(HEAD("src/lib/wallet/ledger.ts"))));
+  // The rule before R9-C (the agent lenses only; `bonus` always offered), built from the source as the plants below are — never
+  // read from git HEAD, which holds the old rule only until this change is committed.
+  const agentOnly = LEDGER.replace("CONDITIONAL_LENSES.filter((lens) => lens !== current && !has(lens))", "CONDITIONAL_LENSES.filter((lens) => lens !== \"bonus\" && lens !== current && !has(lens))");
+  ok("7.1′ PLANT · the rule before R9-C (the agent lenses only) offers \"bonus\" to the empty book — reported by 7.1", agentOnly !== LEDGER && !hidesEmpty(ruleOf(agentOnly)));
   const always = LEDGER.replace("CONDITIONAL_LENSES.filter((lens) => lens !== current && !has(lens))", "CONDITIONAL_LENSES.filter((lens) => lens === \"bonus\" || (lens !== current && !has(lens)))");
   ok("7.2′ PLANT · a rule that hides \"bonus\" whatever the rows is reported by 7.1 — a player with a prize or an invitation reward must still find it", always !== LEDGER && !hidesEmpty(ruleOf(always)));
   const deaf = LEDGER.replace("CONDITIONAL_LENSES.filter((lens) => lens !== current && !has(lens))", "CONDITIONAL_LENSES.filter((lens) => !has(lens))");
