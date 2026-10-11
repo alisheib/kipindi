@@ -147,7 +147,7 @@ export function TrustBand({
               </div>
               <Link href={"/results" as never} className="kp-shead__link">
                 {t.home.settledSeeAll}
-                <I.chevronRight s={14} />
+                <I.chevronRight s={14} edge="end" text="mono-700" />
               </Link>
             </div>
 
@@ -285,7 +285,7 @@ function SettledRow({ row, t, locale, nowMs }: { row: SettlementRow; t: Dict; lo
       {host ? (
         <a className="kp-settled__src" href={row.sourceUrl} target="_blank" rel="noopener noreferrer" aria-label={`${host} · ${t.home.settledSourceNewTab}`}>
           <span className="kp-settled__host">{host}</span>
-          <span aria-hidden className="kp-settled__ext"><I.externalLink s={11} /></span>
+          <span aria-hidden className="kp-settled__ext"><I.externalLink s={11} edge="end" text="mono-400" /></span>
         </a>
       ) : <span className="kp-settled__src" aria-hidden />}
       {/* 🔴 THIS SAID "REFUNDED" OVER MARKETS THAT WERE NEVER REFUNDED. The condition folded THREE

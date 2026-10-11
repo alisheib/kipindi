@@ -79,7 +79,7 @@ export function LipaQrPanel({
        not a styling hook. ⛔ Do not rename it without updating the drive. */
     <section data-lipa-qr className={`rounded-xl glass-panel p-4 ${className}`.trim()}>
       <p className="flex items-center gap-1.5 font-mono text-micro uppercase eyebrow font-bold text-text-subtle">
-        <I.qr s={12} /> {t.lipa.title}
+        <I.qr s={12} edge="start" /> {t.lipa.title}
       </p>
       <p className="mt-2 text-body-sm leading-relaxed text-text-muted">{t.lipa.lead}</p>
 

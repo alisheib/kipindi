@@ -269,11 +269,11 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
         )}
         {cta.kind === "apply" && (
           <form action={startApplicationAction}>
-            <Button type="submit" variant="primary" size="lg" leading={<I.arrowRight s={16} />}>{t.agent.ctaApply}</Button>
+            <Button type="submit" variant="primary" size="lg" leading={<I.arrowRight s={16} text="body-600" />}>{t.agent.ctaApply}</Button>
           </form>
         )}
         {cta.kind === "continue" && (
-          <Link href={"/agent/apply" as never}><Button variant="primary" size="lg" leading={<I.arrowRight s={16} />}>{t.agent.ctaContinue}</Button></Link>
+          <Link href={"/agent/apply" as never}><Button variant="primary" size="lg" leading={<I.arrowRight s={16} text="body-600" />}>{t.agent.ctaContinue}</Button></Link>
         )}
         {cta.kind === "status" && (
           <Link href={"/agent/status" as never}><Button variant="primary" size="lg" leading={<I.clock s={16} />}>{t.agent.ctaStatus}</Button></Link>

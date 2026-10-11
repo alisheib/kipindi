@@ -306,7 +306,9 @@ section("5 · the hub's Needle row is one of the hub's rows (tiles 122–130 158
     row: /className="kp-hub__row"/.test(s) || /className="kp-hub__row">/.test(s),
     glyph: /className="kp-hub__glyph" aria-hidden><[A-Za-z.]+ (?:s|size)=\{20\}/.test(s),
     label: /className="kp-hub__label"/.test(s),
-    chev: /<I\.chevronRight s=\{18\} className="kp-hub__chev"/.test(s),
+    // Re-pinned (round 9, R9-A4, 2026-10-11): every hub row's chevron ends its ink on the row's edge (`edge="end"`) —
+    // the Needle's row and the ordinary row still wear the one same chevron, which is this check's point.
+    chev: s.includes('<I.chevronRight s={18} edge="end" className="kp-hub__chev"'),
   });
   const a = parts(branch), b = parts(`className="kp-hub__row">${ordinary}`);
   ok("5.2 · its row, its 20px glyph slot, its label and its 18px chevron are the ordinary row's", a.row && a.glyph && a.label && a.chev && b.glyph && b.chev, JSON.stringify({ needle: a, ordinary: b }));

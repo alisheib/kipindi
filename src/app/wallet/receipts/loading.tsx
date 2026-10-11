@@ -46,7 +46,9 @@ export default function ReceiptsLoading() {
                 <div className="h-[18px] w-[88px] rounded-pill bg-bg-overlay/60 kp-shimmer-track" />
               </div>
             </div>
-            <div className="h-[16px] w-[16px] shrink-0 rounded bg-bg-overlay/60" />
+            {/* The row's chevron box, as the row draws it (R9-A4: pulled so its ink ends on the row's edge) — a block, not a
+                mark, so the bars beside it keep the page's widths. */}
+            <I.chevronRight s={16} edge="end" className="shrink-0 rounded bg-bg-overlay/60 text-transparent" />
           </div>
         ))}
       </div>

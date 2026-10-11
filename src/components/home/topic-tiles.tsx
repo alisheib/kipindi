@@ -63,7 +63,7 @@ export function TopicTiles({ topics, t }: { topics: TopicAggregate[]; t: Dict })
         </div>
         <Link href={"/markets" as never} className="kp-shead__link">
           {t.home.topicAll}
-          <I.chevronRight s={14} />
+          <I.chevronRight s={14} edge="end" text="mono-700" />
         </Link>
       </div>
 

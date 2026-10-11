@@ -190,7 +190,7 @@ export function ResolutionPanel({
             className="inline-flex items-center gap-1 text-brand-300 hover:text-brand-200 underline"
           >
             {t.common.source}
-            <I.ext s={11} />
+            <I.ext s={11} edge="end" text="mono-400" />
           </a>
         </div>
       </div>
@@ -201,7 +201,7 @@ export function ResolutionPanel({
       {evidenceText && (
         <div className="space-y-1.5">
           <p className="flex items-center gap-1.5 font-mono text-micro font-bold uppercase eyebrow text-text-subtle">
-            <I.fileCheck s={12} />
+            <I.fileCheck s={12} edge="start" />
             {t.market.resEvidence}
           </p>
           <blockquote className="border-l-2 border-border/60 bg-bg-overlay/30 rounded-r-md px-3 py-2 text-body-sm leading-relaxed text-text-muted italic whitespace-pre-wrap break-words">

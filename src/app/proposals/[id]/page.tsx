@@ -160,7 +160,7 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
               §M3), and the proposer's money is the crest above (Q5). */}
           {p.publishedMarketId && (
             <Link href={`/markets/${p.publishedMarketId}` as never}>
-              <Button variant="ghost" size="md" fullWidth className="mt-3" trailing={<I.arrowRight s={15} />}>
+              <Button variant="ghost" size="md" fullWidth className="mt-3" trailing={<I.arrowRight s={15} text="body-600" />}>
                 {p.status === "RESOLVED" ? t.common.viewResolvedMarket : t.common.viewLiveMarket}
               </Button>
             </Link>

@@ -477,8 +477,8 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
 
       {/* Step navigation — 44px taps */}
       <div className="flex items-center justify-between">
-        <Button type="button" variant="ghost" size="md" disabled={step === 0} onClick={() => setStep((s) => Math.max(0, s - 1))} leading={<I.chevronLeft s={14} />}>{t.common.back}</Button>
-        {step < 3 && <Button type="button" variant="primary" size="md" onClick={() => setStep((s) => Math.min(3, s + 1))} trailing={<I.arrowRight s={14} />}>{t.common.next}</Button>}
+        <Button type="button" variant="ghost" size="md" disabled={step === 0} onClick={() => setStep((s) => Math.max(0, s - 1))} leading={<I.chevronLeft s={14} text="body-600" />}>{t.common.back}</Button>
+        {step < 3 && <Button type="button" variant="primary" size="md" onClick={() => setStep((s) => Math.min(3, s + 1))} trailing={<I.arrowRight s={14} text="body-600" />}>{t.common.next}</Button>}
       </div>
 
       {result && (

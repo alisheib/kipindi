@@ -358,7 +358,7 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, 
               <div className="kp-hero__ctas">
                 <Link href={"/auth/register" as never} className="btn btn-primary btn-xl rounded-pill kp-hero__cta">
                   {t.home.heroStart}
-                  <I.arrowRight s={16} />
+                  <I.arrowRight s={16} text="body-600" />
                 </Link>
                 <Link href={"/markets" as never} className="btn btn-ghost btn-xl rounded-pill kp-hero__cta">
                   {fill(t.home.heroBrowseAll, { n: formatNumber(figures.openCount) })}
@@ -500,11 +500,11 @@ function SignedInAct({ t, mine, journey }: { t: Dict; mine: LandingMine | null; 
             the page "Nafasi", and its home link "Nafasi zangu"). No new words. */}
         <Link href={"/positions" as never} className="kp-mine__limits">
           {journey ? t.journey.tabTickets : t.home.myPositions}
-          <I.arrowRight s={14} />
+          <I.arrowRight s={14} edge="end" text="body-600" />
         </Link>
         <Link href="/profile/responsible-gambling" className="kp-mine__limits">
           {t.footer.setLimits}
-          <I.arrowRight s={14} />
+          <I.arrowRight s={14} edge="end" text="body-600" />
         </Link>
       </div>
     </div>
@@ -699,7 +699,8 @@ export function QuestionBoard({ figures, t, locale, nowMs }: {
           {/* The board's ordering travels to /markets, so "all of them" arrives sorted as here. */}
           <Link href={`/markets?sort=${figures.lens}` as never} className="kp-shead__link">
             {fill(t.home.gridSeeAll, { n: formatNumber(figures.openCount) })}
-            <I.chevronRight s={14} />
+            {/* R9-A4 (2026-10-11): a section's "see all" ends its ink on the column's edge, stroked at its words' 700 stem. */}
+            <I.chevronRight s={14} edge="end" text="mono-700" />
           </Link>
         </div>
 

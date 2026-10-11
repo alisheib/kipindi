@@ -79,7 +79,7 @@ export function ChartToggle({
         aria-expanded={open}
       >
         <h2 id={HEADING_ID} className="flex items-center gap-1.5 font-mono text-micro uppercase eyebrow text-text-subtle">
-          <I.chart s={11} />
+          <I.chart s={11} edge="start" />
           {t.market.probOverTime}
         </h2>
         <I.chevronDown

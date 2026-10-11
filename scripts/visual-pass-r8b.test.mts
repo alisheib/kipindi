@@ -208,7 +208,7 @@ const REGISTRY: Array<{ file: string; key: string; role: Role; inks: string[]; w
     why: "\"Selection closed\" — the market's state, in the CLOSED word's own ink (`playerStatusInk(\"CLOSED\")`, royal)" },
   { file: "src/app/markets/[id]/page.tsx", key: "{t.market.closedAwaitingSettlement}", role: "STATUS", inks: [CLOSED_INK],
     why: "\"Closed · awaiting settlement\" — the market's state, in the CLOSED word's ink" },
-  { file: "src/components/auth/auth-panel.tsx", key: "{icon}{eyebrow}", role: "STATUS", inks: ["text-danger-fg", "text-success-fg", ONE_INK],
+  { file: "src/components/auth/auth-panel.tsx", key: "{edgeGlyph(icon, \"start\")}{eyebrow}", role: "STATUS", inks: ["text-danger-fg", "text-success-fg", ONE_INK],
     why: "AuthHeader: a page's name in the one ink by default; \"Link expired\" / \"Email confirmed\" in their state's (R7-B)" },
   { file: "src/components/kyc/kyc-gate-panel.tsx", key: "{copy.eyebrow}", role: "STATUS", inks: [ONE_INK, "‹tone.ink›"],
     why: "a state word (\"Your move\", \"With our team\", \"Withdrawals paused\") in its tone's ink; a heading in the one ink (§4)" },

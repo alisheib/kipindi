@@ -73,7 +73,9 @@ export function HubRowItem({ row, t, viewer, locale }: { row: HubRow; t: Dict; v
         {row.extra === "balance" && viewer.signedIn && viewer.balance !== null && (
           <Cash className="kp-hub__money">{formatTzs(viewer.balance)}</Cash>
         )}
-        <I.chevronRight s={18} className="kp-hub__chev" aria-hidden />
+        {/* R9-A4 (2026-10-11; tile 264): the chevron's ink ends on the row's end edge, where the card-size switch ends — it
+            stood 6px inside it. Every row end of the hub does the same (`edge`, glyphs.tsx). */}
+        <I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />
       </Link>
     </li>
   );

@@ -1065,7 +1065,8 @@ CHECKS.push(
   onPanel("played stretch", matchInk(".kp-udtrack__elapsed", "background"), 3.0),
   // The locked stretch is the quiet dialect (B12.2: 1px, dashed, 0.55) and never the sole sign of the
   // lock — the lock post and its glyph are. Measured and printed, not gated.
-  { ...onPanel("locked stretch (quiet dialect, decorative — exempt)", matchInk(".kp-udtrack__locked", "stroke"), 3.0, ruleOpacity(".kp-udtrack__locked")), decorative: true },
+  // R9-A6 (2026-10-11): the stretch is an html line of whole dashes since round 9 (`.kp-dashfit`), drawn in its `color`.
+  { ...onPanel("locked stretch (quiet dialect, decorative — exempt)", matchInk(".kp-udtrack__locked", "color"), 3.0, ruleOpacity(".kp-udtrack__locked")), decorative: true },
   onPanel(`aged/closed newest Up stem (${agedStemUp.alpha * 100}% alpha)`, agedStemUp.ink, 3.0, agedStemUp.alpha),
   onPanel(`aged/closed newest Down stem (${agedStemDown.alpha * 100}% alpha)`, agedStemDown.ink, 3.0, agedStemDown.alpha),
   onPanel(`aged/closed Up bead (${agedBeadUp.alpha * 100}% alpha)`, agedBeadUp.ink, 3.0, agedBeadUp.alpha),

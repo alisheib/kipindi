@@ -111,7 +111,7 @@ export default async function AgentStatusPage() {
               </ul>
               {(view.state === "info_required" || view.state === "in_progress") && (
                 breakEnd ? rgLocked
-                : <Link href={"/agent/apply" as never}><Button variant="primary" size="md" leading={<I.arrowRight s={14} />}>{t.agent.ctaContinue}</Button></Link>
+                : <Link href={"/agent/apply" as never}><Button variant="primary" size="md" leading={<I.arrowRight s={14} text="body-600" />}>{t.agent.ctaContinue}</Button></Link>
               )}
             </section>
           )}

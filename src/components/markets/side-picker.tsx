@@ -99,7 +99,7 @@ export function SidePicker({
                the 24px pull-back genuinely covers it. ⛔ Never a scale token here. */
             className="inline-flex items-center gap-1 min-h-[44px] px-2 -mx-2 -my-2 font-mono text-micro uppercase tracking-[0.12em] text-text-subtle hover:text-text transition-colors"
           >
-            <I.chevronLeft s={10} />
+            <I.chevronLeft s={10} text="mono-400" />
             {/* Its words end on the row's edge, their trailing 0.12em taken back (round 7, R7-C, 2026-10-10). The take-back
                 rides the words' own box: the button's `-mx-2` is its tap target's hanging margin, and stays. */}
             <span className="kp-track-end kp-track-end--12">{t.market.changeSide}</span>

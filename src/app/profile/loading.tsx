@@ -5,6 +5,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { ChipGhost, GhostText, AMOUNT_SHAPE } from "@/components/ui/ghost-text";
 import { Stat } from "@/components/ui/stat";
 import { DotSeq } from "@/components/ui/dot-seq";
+import { I } from "@/components/ui/glyphs";
 import { keepLastWords } from "@/components/ui/keep-words";
 import { ACHIEVEMENTS, type AchievementId } from "@/components/badges/icons";
 import { PROFILE_NAME_FACE, PROFILE_PHONE_LINE, PROFILE_ROW_TITLE, PROFILE_SIGN_OUT_TITLE } from "@/components/profile/profile-faces";
@@ -96,8 +97,10 @@ export default function ProfileLoading() {
       {/* The achievements: the section's key, then the shelf's own grid (auto-fit, 96px tracks, 24px apart) — a 64px coin
           over each name's two parts, stacked (`DotSeq stack`, the last two words kept) — and the hint under it. */}
       <section aria-hidden>
+        {/* The page's own glyph, unpainted, so the eyebrow's words land where the page's do: the page pulls its glyph's ink
+            onto the column's edge (R9-A4, `edge`), and the same glyph pulled the same way leaves no difference to type. */}
         <h2 className="mb-3 flex items-center gap-1.5 font-mono text-micro uppercase eyebrow font-bold">
-          <span className="h-[13px] w-[13px] shrink-0" />
+          <I.trophy s={13} edge="start" className="shrink-0 text-transparent" />
           <GhostText>{t.profile.achievements}</GhostText>
         </h2>
         <div className="rounded-xl glass-panel p-5 kp-shimmer-track">
@@ -118,7 +121,7 @@ export default function ProfileLoading() {
       {/* Settings grid skeleton */}
       <section aria-hidden>
         <h2 className="mb-3 flex items-center gap-1.5 font-mono text-micro uppercase eyebrow font-bold">
-          <span className="h-[13px] w-[13px] shrink-0" />
+          <I.settings s={13} edge="start" className="shrink-0 text-transparent" />
           <GhostText>{t.profile.account}</GhostText>
         </h2>
         {/* The page's own grid gap, `gap-3` (profile/page.tsx) — R5-H · G-2b: `gap-2` drew 12px between rows where the
@@ -133,7 +136,7 @@ export default function ProfileLoading() {
                 <p className={PROFILE_ROW_TITLE}><GhostText>{title}</GhostText></p>
                 <p className="mt-0.5 text-body-sm leading-snug"><GhostText>{sub}</GhostText></p>
               </div>
-              <span className="h-[16px] w-[16px] shrink-0" />
+              <I.chevronRight s={16} edge="end" className="shrink-0 text-transparent" />
             </div>
           ))}
         </div>
@@ -149,7 +152,7 @@ export default function ProfileLoading() {
               <p className="mt-0.5 text-body-sm"><GhostText>{t.profile.seeYouSoon}</GhostText></p>
             </span>
           </span>
-          <span className="h-[16px] w-[16px] shrink-0" />
+          <I.chevronRight s={16} edge="end" className="shrink-0 text-transparent" />
         </div>
       </div>
     </PageContainer>

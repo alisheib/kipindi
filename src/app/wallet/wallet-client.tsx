@@ -86,7 +86,7 @@ function BalanceCard({
             was gold — over a FROZEN balance too — and an eyebrow names the money, it is not the money (Q5; R4-K and R4-I
             moved the market's, the guest panel's and the auth eyebrows the same way). The card's edge stays warm. */}
         <div className="flex items-center gap-1.5 text-text-subtle">
-          <I.wallet s={13} />
+          <I.wallet s={13} edge="start" />
           {/* A held wallet can neither spend nor withdraw, so its money is never called "Available". */}
           <p className="font-mono text-micro uppercase eyebrow font-bold">{held ? t.common.balanceFrozen : t.common.available2}</p>
         </div>
@@ -304,7 +304,7 @@ function BonusWalletCard({
             wears, the unlock bars are PROGRESS (the brand family, as every progress fill), the notes the subtle ink and the
             toggle the link ink. (The panel renders only while the bonus feature is live — `bonus: WITHDRAWN` today.) */}
         <div className="flex items-center gap-1.5 text-text-subtle">
-          <I.gift s={13} />
+          <I.gift s={13} edge="start" />
           <p className="font-mono text-micro uppercase eyebrow font-bold">{t.common.bonus}</p>
           <span className="ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-micro uppercase tracking-[0.12em] font-bold bg-bg-inset text-text-subtle">
             {t.common.playToUnlock}
@@ -840,7 +840,9 @@ export function WalletPageClient({
               >
                 <I.receipt s={14} aria-hidden />
                 {t.receipts.allReceipts}
-                <I.chevronRight s={14} aria-hidden />
+                {/* R9-A4 (2026-10-11; tile 172): its ink on the column's end edge (it stopped 5px short, x1142 against x1147),
+                    stroked at its words' 600 stem. */}
+                <I.chevronRight s={14} edge="end" text="body-600" aria-hidden />
               </Link>
             </div>
           )}
@@ -955,7 +957,7 @@ export function WalletPageClient({
               <p className="font-display text-[13.5px] font-semibold text-text leading-tight">{t.common.setPersonalLimits}</p>
               <p className="mt-0.5 text-body-sm text-text-subtle">{t.common.dailyWeeklyLimits}</p>
             </div>
-            <I.chevronRight s={16} className="text-text-subtle" />
+            <I.chevronRight s={16} edge="end" className="text-text-subtle" />
           </Link>
           <div className="rounded-xl glass-panel p-4 space-y-2">
             <p className="font-display text-[13.5px] font-semibold text-text">

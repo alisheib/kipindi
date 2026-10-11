@@ -404,7 +404,7 @@ export default async function FairnessPage({ searchParams }: { searchParams: Pro
                     <td role="cell" data-th={t.common.thSource} className="p-3">
                       <a href={m.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono text-[11px] text-brand-300 hover:text-brand-200 underline">
                         {t.common.thSource}
-                        <I.ext s={11} />
+                        <I.ext s={11} edge="end" text="mono-400" />
                       </a>
                     </td>
                   </tr>
