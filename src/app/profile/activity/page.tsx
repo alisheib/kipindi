@@ -9,6 +9,9 @@
  */
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
+// A limit meter's label never ends a line on a connective (round 9, R9-B): it shares its row with the figures, which
+// squeeze it ("Amana za" / "kila siku" where they run long).
+import { keepConnectives } from "@/components/ui/keep-run";
 import { BackLink } from "@/components/ui/back-link";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -241,7 +244,7 @@ function LimitMeter({ label, used, limit, t }: { label: string; used: number; li
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between gap-3 text-[12px]">
-        <span className="text-text-muted">{label}</span>
+        <span className="text-text-muted">{keepConnectives(label)}</span>
         <span className="font-mono tabular-nums text-text-subtle">
           <Cash>{formatTzs(used)}</Cash>
           {hasLimit ? <> / <Cash>{formatTzs(limit!)}</Cash></> : <span className="ml-1 text-text-faint">· {t.activity.noLimitSet}</span>}

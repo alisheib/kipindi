@@ -39,6 +39,7 @@ import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import type { AgentDocType } from "@/lib/server/store";
 import { attachAgentDocumentAction, setRefereesAction, payFeeFromWalletAction, submitAgentApplicationAction, type UploadFailure } from "./actions";
 import { fillNodes } from "@/lib/fill-nodes";
+import { keepConnectives } from "@/components/ui/keep-run";
 import { LipaQrPanel } from "@/components/pay/lipa-qr-panel";
 import { LIPA_QR_RELEASED, type LipaDisplay } from "@/lib/lipa";
 
@@ -459,7 +460,9 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
           <div className="rounded-xl glass-panel p-4 space-y-3">
             {missingNow.length > 0 && (
               <div>
-                <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{t.agent.missingTitle}</p>
+                {/* No line ends on a connective (round 9, R9-B — the label family's sweep; `keepConnectives`): sw "Bado yanahitajika kabla ya kuwasilisha" is 281px in the panel's 248 at 320,
+                    so it breaks "…kabla ya" / "kuwasilisha"; now "…kabla" / "ya kuwasilisha". */}
+                <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{keepConnectives(t.agent.missingTitle)}</p>
                 <ul className="mt-1.5 space-y-1 text-body-sm text-text-muted list-disc pl-4">
                   {missingNow.map((m, i) => <li key={i}>{m}</li>)}
                 </ul>

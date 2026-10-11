@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { keepConnectives } from "./keep-run";
+import { keepConnectives, keepConnectivesItem } from "./keep-run";
 import { stemOf } from "@/lib/display-stem";
 
 /**
@@ -78,7 +78,11 @@ export function PageHeader({
           className={`flex items-center gap-2 mb-1 font-mono text-caption uppercase ${eyebrowTight ? "tracking-normal" : "eyebrow"} font-bold ${EYEBROW_TONE[tone]}`}
         >
           {icon}
-          {eyebrow}
+          {/* Round 9 (R9-B, the label family): the eyebrow never ends a line on a connective either — it can wrap (the KYC
+              head's "Uthibitisho wa kitambulisho" did at 320 before `eyebrowTight`). It is a flex row with its glyph, so
+              the kept words are one item (`keepConnectivesItem`); an eyebrow without a connective, or handed in as nodes
+              (a ghost's), is drawn exactly as before. */}
+          {typeof eyebrow === "string" ? keepConnectivesItem(eyebrow) : eyebrow}
         </p>
       )}
       {/* ⭐ DG-P-03 · §T1/§T7 — ONE LINE, 31 CALL SITES, AND NOT ONE PIXEL MOVES.

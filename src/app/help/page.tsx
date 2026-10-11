@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
+// A card's eyebrow never ends a line on a connective (round 9, R9-B): beside its glyph box it gets ~188px at 320, and
+// "Mazungumzo ya moja kwa moja" (200px) breaks "…moja kwa" / "moja" — now "…moja" / "kwa moja".
+import { keepConnectives } from "@/components/ui/keep-run";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
 import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/server/support-config";
@@ -215,7 +218,7 @@ function ContactCard({
           {icon}
         </span>
         <span className="font-mono text-micro uppercase eyebrow font-semibold text-text-subtle">
-          {title}
+          {keepConnectives(title)}
         </span>
       </div>
       <p className="font-display font-bold text-[15px] text-text break-all">{value}</p>

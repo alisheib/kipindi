@@ -1,6 +1,9 @@
 import * as React from "react";
 import { Cash } from "@/components/ui/cash";
 import { cn } from "@/lib/utils";
+// A receipt's label never ends a line on a connective (round 9, R9-B): it shares its row with the value, which can
+// squeeze it ("Ada ya" / "kutoa pesa"); a label handed in as nodes is drawn as given.
+import { keepConnectives } from "@/components/ui/keep-run";
 
 /**
  * ReceiptRow / ReceiptBox — the label-left / figure-right line inside a money
@@ -98,7 +101,7 @@ export function ReceiptRow({
     >
       {/* When the row carries a tone, the label must NOT re-assert `text-text-subtle`
           or it fights the row colour and only half the line reads as one thing. */}
-      <span className={toneCls ? "font-mono text-micro uppercase eyebrow" : LABEL}>{label}</span>
+      <span className={toneCls ? "font-mono text-micro uppercase eyebrow" : LABEL}>{typeof label === "string" ? keepConnectives(label) : label}</span>
       <span className={cn(VALUE[emphasis], alignEnd && "text-right")}>
         {money ? <Cash>{value}</Cash> : value}
       </span>

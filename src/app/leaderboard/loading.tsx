@@ -2,6 +2,8 @@
 
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
+// The stakes head breaks where the page's does (round 9, R9-B).
+import { keepConnectives } from "@/components/ui/keep-run";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
 import { PLAYER_PER_PAGE } from "@/components/ui/pagination";
@@ -89,7 +91,7 @@ export default function LeaderboardLoading() {
               <th className="text-left p-3 w-[56px]"><GhostText>#</GhostText></th>
               <th className="text-left p-3"><GhostText>{t.leaderboard.tablePredictor}</GhostText></th>
               <th className="text-right p-3"><GhostText>{t.leaderboard.tableRoi}</GhostText></th>
-              <th className="text-left p-3 hidden md:table-cell"><GhostText>{t.leaderboard.tableStakes}</GhostText></th>
+              <th className="text-left p-3 hidden md:table-cell"><GhostText>{keepConnectives(t.leaderboard.tableStakes)}</GhostText></th>
               <th className="text-right p-3 hidden md:table-cell"><GhostText>{t.leaderboard.tableStreak}</GhostText></th>
               <th className="text-right p-3"><GhostText>{t.leaderboard.tableResolved}</GhostText></th>
             </tr>

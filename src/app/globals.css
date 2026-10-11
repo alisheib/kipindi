@@ -4570,7 +4570,7 @@ html[data-sheet-open] .route-enter { animation: none; }
    container and the condition is the name's own width in Inter 13px (`text-body-sm` and the trust row's
    `--type-small`), from the font — en "Gaming Board of Tanzania." 164.7px, sw "Bodi ya Michezo ya Kubahatisha Tanzania."
    259.3px, zh 坦桑尼亚博彩委员会 117px — plus 3px. A narrower line wraps the sentence as before (the footer's 160px column
-   at 768 holds no English name; from 768 to 1199 no footer column holds the Swahili one). The journey's footer sentence is
+   at 768 holds no English name; from 768 on, no footer column holds the Swahili one). The journey's footer sentence is
    `.kp-gbt`; the hero's trust row is `.kp-gbt-row`, the ROW being the container because the loading ghost draws the
    words' own span `fit-content`, which size containment would empty — so its widths add the row's 28px roundel and
    12px gap. The classic footer is frozen chrome and wears neither. */
@@ -4586,7 +4586,13 @@ html[data-sheet-open] .route-enter { animation: none; }
    introduces it ("Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania.", `keepRegulator`), so its condition is that
    run's width — 277.4px in Inter 13px, plus 3px: 281 (the row: + its 40px roundel and gap, 321). en and zh are as they
    were. A narrower line wraps the sentence with its connectives held ("Leseni ya Bodi ya Michezo" / "ya Kubahatisha
-   Tanzania."), never after "ya". */
+   Tanzania."), never after "ya".
+   ⭐ ROUND 9 (R9-B, 2026-10-11; this record corrected, nothing it draws changed): from 768 on, no journey-footer column
+   reaches 281. Its four columns are (W - 128) / 4 to 1023 and (W - 160) / 4 from 1024 (16px, then 32px, of padding a
+   side and 32px gaps), and the board's 1280 caps them at 280px, so the footer's sw sentence wraps at every width from
+   768: "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." (round 8's tiles 299 at 1024 and 301 at 1280). At 1280
+   the 277.4px run is 2.6px inside the column and 281 keeps it out by 1px: the owner's question beside K34 (held, that
+   line would read "Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania."). */
 /* ⛔ `.kp-hero__tel` (the helpline link in row 1) was DELETED 2026-10-06 with the helpline itself —
    the owner's ruling took it off every player surface (docs/COMPLIANCE-DECISIONS.md). */
 

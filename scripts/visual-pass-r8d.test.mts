@@ -557,8 +557,12 @@ section("9 · the rulebook and the programme's own record");
 section("10 · untouched — the dictionary, R8-C's one rule, the voting door");
 {
   const clean = (p: string) => { try { git("diff", "--quiet", "HEAD", "--", p); return true; } catch { return false; } };
+  // ⚠️ Round 9 (R9-B — B5) corrected a COMMENT in app-shell.tsx (the opt-out footer's record of the Board's lines); R8-C's
+  // rule is the code, so that file is compared with its comments stripped and its white space squashed (decomment keeps a
+  // comment's line breaks).
+  const sameCode = (p: string) => { try { return squash(decomment(git("show", `HEAD:${p}`).split(CR + LF).join(LF))) === squash(decomment(raw(p))); } catch { return false; } };
   ok("10.1 · no dictionary string changed (src/lib/i18n-dict.ts is HEAD's)", clean("src/lib/i18n-dict.ts"));
-  ok("10.2 · R8-C's one rule is unchanged (viewer-doors.ts, hub-viewer.ts, app-shell.tsx are HEAD's)", clean("src/lib/journey/viewer-doors.ts") && clean("src/lib/server/hub-viewer.ts") && clean("src/components/layout/app-shell.tsx"));
+  ok("10.2 · R8-C's one rule is unchanged (viewer-doors.ts, hub-viewer.ts, app-shell.tsx are HEAD's)", clean("src/lib/journey/viewer-doors.ts") && clean("src/lib/server/hub-viewer.ts") && sameCode("src/components/layout/app-shell.tsx"));
   const PS = code("src/lib/server/proposals-service.ts");
   ok("10.3 · voting is kept by decision: castVote reads no break", !/isLockedOut|breakStateOf/.test(decl(PS, "export async function castVote(")));
 }

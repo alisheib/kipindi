@@ -58,7 +58,7 @@
  */
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
-import { keepText } from "@/components/ui/keep-run";
+import { keepConnectives, keepText } from "@/components/ui/keep-run";
 import { MarketCard } from "@/components/markets/market-card";
 // ⭐ THE ONE FILTER CONTROL LANGUAGE (WP9 · R16). The board's ordering rail is `FilterPill`, not a
 // bespoke toggle, and this file is declared to `test:filter-language` because of it — §3.1/§3.2 assert
@@ -556,7 +556,9 @@ export function LandingProof({ figures, t, paidOutTzs }: {
               {formatNumber(figures.openCount)}
               <span className="kp-proof__pip" aria-hidden />
             </span>
-            <span className="kp-proof__cap">{t.home.heroProofOpen}</span>
+            {/* No line ends on a connective (round 9, R9-B — the label family's sweep; `keepConnectives`): the three captions hold theirs — "Yaliyolipwa kwa wachezaji" (204px) gets 172px beside its
+                figure at 360 and ~176px in a third of the band from 640, where it breaks "Yaliyolipwa kwa" / "wachezaji". */}
+            <span className="kp-proof__cap">{keepConnectives(t.home.heroProofOpen)}</span>
           </div>
           {/* Gilt is correct on a pool: it is real money on the platform right now. Compact form so the
               figure fits in all three locales without a second DOM copy. */}
@@ -564,7 +566,7 @@ export function LandingProof({ figures, t, paidOutTzs }: {
             <span className="kp-proof__num" style={{ color: "var(--gilt)" }}>
               {formatTzsCompact(figures.poolTzs)}
             </span>
-            <span className="kp-proof__cap">{t.home.heroProofPool}</span>
+            <span className="kp-proof__cap">{keepConnectives(t.home.heroProofPool)}</span>
           </div>
           {/* ⭐ Money already paid out only grows, and it is the number a bettor wants. It replaced an
               "Open predictions" count that read, beside the open-markets count, as an invitation to
@@ -577,7 +579,7 @@ export function LandingProof({ figures, t, paidOutTzs }: {
               <span className="kp-proof__num" style={{ color: "var(--gilt)" }}>
                 {formatTzsCompact(paidOutTzs)}
               </span>
-              <span className="kp-proof__cap">{t.home.heroProofPaid}</span>
+              <span className="kp-proof__cap">{keepConnectives(t.home.heroProofPaid)}</span>
             </div>
           )}
         </div>

@@ -697,8 +697,11 @@ function OptOutShell({ t, children }: { t: Dict; children: React.ReactNode }) {
                 `.kp-gbt` size container, as the journey's footer wears them). This line is the row's width less the 18+
                 roundel and its gap (vw − 70 below 1024): "Licensed by the Gaming" / "Board of Tanzania." at en 320–334 and
                 "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." at sw 333–390 now read "Licensed by the" / "Gaming
-                Board of Tanzania." and "Leseni ya" / "Bodi ya Michezo ya Kubahatisha Tanzania."; a line narrower than the
-                name (sw under 333) wraps as before. `flex-1`: a size container has no width of its own to give a flex row,
+                Board of Tanzania." and, since round 7 (the name carries its "ya": a 277.4px run, held from a 281px line),
+                "Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania." at sw 351–390 (the one-word first line is the owner's
+                question K34), one line from 391 (the sentence is 320.9px); a line narrower than the name (sw under 351)
+                wraps with each connective held: "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." (round 9, R9-B:
+                this record corrected; nothing it draws changed). `flex-1`: a size container has no width of its own to give a flex row,
                 so the line takes the row's remainder — the width it wrapped in before; left-aligned, no glyph moves. */}
             <p className="kp-gbt flex-1 text-text-muted leading-relaxed text-body-sm text-balance break-keep">{keepRegulator(t.footer.licensedByGbt)}</p>
           </div>

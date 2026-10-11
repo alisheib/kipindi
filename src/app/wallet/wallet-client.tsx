@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+// The transaction details' labels never end a line on a connective (round 9, R9-B): two columns at every width leave
+// each ~98px at 320, where "Kumbukumbu ya lango" breaks "Kumbukumbu ya" / "lango" — now "Kumbukumbu" / "ya lango".
+import { keepConnectives } from "@/components/ui/keep-run";
 import { useState } from "react";
 import { I } from "@/components/ui/glyphs";
 import { PageHeader } from "@/components/ui/page-header";
@@ -586,12 +589,12 @@ function TxnRow({ tx }: { tx: Transaction }) {
               actually look up) wasn't here at all. Same two labels as the
               receipt page, the return page and the deposit emails. */}
           <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
-            <p className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.wallet.transactionId}</p>
+            <p className="font-mono text-micro uppercase eyebrow text-text-subtle">{keepConnectives(t.wallet.transactionId)}</p>
             <p className="font-mono text-text-muted break-all">{tx.id}</p>
           </div>
           {tx.providerRef && (
             <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
-              <p className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.wallet.gatewayReference}</p>
+              <p className="font-mono text-micro uppercase eyebrow text-text-subtle">{keepConnectives(t.wallet.gatewayReference)}</p>
               <p className="font-mono text-text-muted break-all">{tx.providerRef}</p>
             </div>
           )}

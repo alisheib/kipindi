@@ -15,6 +15,7 @@ import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 import { roundName, storedRound } from "@/lib/updown-round-name";
 import { keepFigures } from "@/components/ui/keep-words";
+import { keepConnectives } from "@/components/ui/keep-run";
 import { sideWord } from "@/lib/side-label";
 import { PageContainer } from "@/components/layout/page-container";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
@@ -307,8 +308,10 @@ export default async function PerformancePage({
               {/* The caption ends on the panel's edge (round 7, R7-C, 2026-10-10): its trailing 0.08em taken back, and a
                   caption squeezed onto two lines (a 320 phone) keeps each line on that edge. Its drawing follows. */}
               <div className="mb-3 flex items-center justify-between gap-3">
-                <span className="gilt-eyebrow">{t.performance.pnlOverTime}</span>
-                <span className="text-right font-mono text-micro uppercase tracking-[0.08em] text-text-subtle kp-track-end kp-track-end--08">{t.performance.cumulativePerSettlement}</span>
+                {/* No line ends on a connective (round 9, R9-B — the label family's sweep; `keepConnectives`): at 320 the pair shrinks together, leaving "Faida kwa wakati" ~91px, which breaks "Faida kwa" /
+                    "wakati"; now "Faida" / "kwa wakati". Its caption keeps its "kwa" too ("Jumlisho · kwa kila utatuzi"). */}
+                <span className="gilt-eyebrow">{keepConnectives(t.performance.pnlOverTime)}</span>
+                <span className="text-right font-mono text-micro uppercase tracking-[0.08em] text-text-subtle kp-track-end kp-track-end--08">{keepConnectives(t.performance.cumulativePerSettlement)}</span>
               </div>
               <PnlChart data={pnlSeries} ariaLabel={t.performance.pnlOverTime} breakEvenLabel={t.performance.breakEven} />
             </section>

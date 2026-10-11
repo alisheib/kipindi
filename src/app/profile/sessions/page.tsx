@@ -1,5 +1,8 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+// The IP label never ends a line on a connective (round 9, R9-B): it shares its row with the address (masked or shown),
+// which squeezes it — where the address leaves it 67–88px, "Anwani ya IP" breaks "Anwani ya" / "IP"; now "Anwani" / "ya IP".
+import { keepConnectives } from "@/components/ui/keep-run";
 import { I } from "@/components/ui/glyphs";
 import { Chip } from "@/components/ui/chip";
 import { BackLink } from "@/components/ui/back-link";
@@ -124,7 +127,7 @@ export default async function SessionsPage() {
         </div>
         <div className="mt-4 flex items-center justify-between gap-3 border-t border-border/60 pt-3">
           <p className="font-mono text-micro uppercase eyebrow font-semibold text-text-subtle">
-            {t.profile.ipAddress}
+            {keepConnectives(t.profile.ipAddress)}
           </p>
           <IpReveal ip={ip} />
         </div>

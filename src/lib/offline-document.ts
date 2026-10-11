@@ -130,14 +130,18 @@ export const OFFLINE_GLYPHS = {
  * the pattern `keepRegulator` reads), the line is a size container, and the name is `nowrap` only from these widths —
  * globals.css's own for `.kp-gbt` (the name and its full stop in Inter 13px, plus 3px; `test:visual-pass-r5g` §4 holds
  * the two equal).
- * A line narrower than the name (sw under 333) wraps as before, so it never overflows. CSS only: the document's two
+ * A line narrower than the name (sw under 333 then; under 351 since round 7, below) wraps as before, so it never
+ * overflows. CSS only: the document's two
  * scripts are untouched. The document names Inter first and falls back to the system face; Roboto, Segoe UI, Helvetica
  * and Noto Sans all set Latin narrower than Inter (Next's capsize table: average widths 0.445, 0.443, 0.450, 0.474 of an
  * em against Inter's 0.478), so a width that holds the name in Inter holds it in each of them.
  * ⭐ ROUND 7 (2026-10-10, the owner's item 37 — a line never ends on a connective): the sw name carries the "ya" that
  * introduces it ("Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania.", as `keepRegulator` draws it), so its width is
  * that run's, 277.4px in Inter 13px: 281 with the 3px; and inside the name each connective keeps the space after it
- * (`.kp-nw`), so a line too narrow for the name never ends on "ya" either.
+ * (`.kp-nw`), so a line too narrow for the name never ends on "ya" either. On this line (vw − 70) the sw sentence reads
+ * "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." under 351, "Leseni" / "ya Bodi ya Michezo ya Kubahatisha
+ * Tanzania." from 351 until the line holds the whole sentence (321–323px in Inter 13px, so from about 391; the one-word
+ * first line is the owner's question K34), then one line (round 9, R9-B: this record corrected, nothing it draws changed).
  */
 export const OFFLINE_GBT_FROM: Readonly<Record<Locale, number>> = { en: 168, sw: 281, zh: 120 };
 

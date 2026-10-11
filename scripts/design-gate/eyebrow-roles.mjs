@@ -259,11 +259,12 @@ export const NOT_EYEBROW = new Map([
   // Round 7 (R7-C): re-signed — the drawing's two and the page's streak here, the page's caption two entries on; the drawing
   // follows its page. Same roles.
   ["app/positions/performance/performance-ghost.tsx :: <p className=\"text-right font-mono text-micro uppercase tracking-[0.12em] tabular-nums kp-track-end kp-track-end--12\"><GhostText>{`${t.performance.longestStreak} 0`}</Gho", "OTHER"],
-  ["app/positions/performance/performance-ghost.tsx :: <span className=\"text-right font-mono text-micro uppercase tracking-[0.08em] kp-track-end kp-track-end--08\"><GhostText>{t.performance.cumulativePerSettlement}</GhostText>", "OTHER"],
+  // Round 9 (R9-B): re-signed — the caption draws through the keep (`keepConnectives`), here and on its page; same role.
+  ["app/positions/performance/performance-ghost.tsx :: <span className=\"text-right font-mono text-micro uppercase tracking-[0.08em] kp-track-end kp-track-end--08\"><GhostText>{keepConnectives(t.performance.cumulativePerSettlem", "OTHER"],
   ["app/positions/performance/page.tsx :: <p className=\"text-right font-mono text-micro uppercase tracking-[0.12em] text-text-subtle tabular-nums kp-track-end kp-track-end--12\">{t.performance.longestStreak} {form", "OTHER"],
   // Round 6 (review C11): re-signed — the right-aligned status word takes back its trailing 0.08em (`kp-track-end`); same role.
   ["app/positions/performance/page.tsx :: <p className=\"font-mono text-micro uppercase tracking-[0.08em] text-text-muted kp-track-end kp-track-end--08\">{r.statusLabel}</p> ↵ </div>", "STATUS_CHIP"],
-  ["app/positions/performance/page.tsx :: <span className=\"text-right font-mono text-micro uppercase tracking-[0.08em] text-text-subtle kp-track-end kp-track-end--08\">{t.performance.cumulativePerSettlement}</span", "OTHER"],
+  ["app/positions/performance/page.tsx :: <span className=\"text-right font-mono text-micro uppercase tracking-[0.08em] text-text-subtle kp-track-end kp-track-end--08\">{keepConnectives(t.performance.cumulativePerS", "OTHER"],
   ["app/profile/kyc/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.1em] text-text-subtle\">{idLabel}</span> ↵ </div>", "OTHER"],
   ["app/profile/kyc/page.tsx :: <span className=\"inline-flex items-center gap-1 rounded-pill border border-success-border bg-success-bg px-2.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0", "STATUS_CHIP"],
   ["app/profile/kyc/page.tsx :: className=\"font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text\" ↵ >", "CONTROL_LABEL"],

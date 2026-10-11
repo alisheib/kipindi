@@ -15,7 +15,9 @@
  *   · each `run` the caller names (a date it put into the sentence) is one span;
  *   · a spaced dash is held to the word before it ("kufupishwa —"), so a line can end after it but never begin with it;
  *     a Chinese "——" is held to the character before it the same way;
- *   · the last two words — in Chinese the last two ideographs and their closing mark — break together.
+ *   · the last two words — in Chinese the last two ideographs and their closing mark — break together;
+ *   · a possessive and its noun ("your balance", "salio lako") are one run (round 9, `possessiveRanges` below) — except in
+ *     a text that is data (`phrases: false`: the bet dialog's market title).
  * Spans that touch or overlap become one ("hadi" … "9 Okt, 06:02." is one run when the date is the last two words).
  * ⚠️ ONLY FOR SENTENCES WHOSE KEPT RUNS ARE NARROWER THAN THEIR NARROWEST LINE — a kept run cannot break, so a wider one
  * would overflow. `test:visual-pass-r4i` measures every call site's widest run against its narrowest line, per language.
@@ -29,7 +31,8 @@
  * is the whole clause; and an unspaced em dash ("否——", "word—") to the unit before it, as that body always did.
  */
 import { Fragment, type ReactNode } from "react";
-import { KEPT_SPACE, afterRun, connectiveRanges, lastTwo } from "./keep-words";
+import { KEPT_GAP, KEPT_SPACE, afterRun, connectiveRanges, lastTwo } from "./keep-words";
+import { isConnective } from "@/lib/connectives";
 
 const IDEO = "㐀-䶿一-鿿豈-﫿";
 const IDEOGRAPH = new RegExp(`[${IDEO}]`);
@@ -61,6 +64,48 @@ export function dashRanges(text: string): Array<[number, number]> {
   }
   return out;
 }
+/**
+ * ⭐ A POSSESSIVE STAYS WITH ITS NOUN (round 9 of the visual pass, 2026-10-11, R9-B — tiles 240 241 243). The Questions
+ * empty state read "Pick a question, tap" / "YES or NO — your" / "ticket shows up here." at en 320 and "Chagua swali,
+ * bonyeza" / "NDIO au HAPANA — tiketi" / "yako itaonekana hapa." at sw 320–390: "your" torn from "ticket", "yako" from
+ * "tiketi". A possessive phrase is one run, as the YES/NO pair is (empty-state-text.ts):
+ *   · en — a possessive determiner (your · my · our · their · its, any case) and the word after it, "your ticket": a line
+ *     that ends on "your" leads into the next exactly as a connective does;
+ *   · sw — a word and the possessive after it (-angu -ako -ake -etu -enu -ao on the concords w- y- z- l- ch- vy-, the noun
+ *     classes 1–11 and 14): "tiketi yako", "salio lako", "Kiasi chako". Swahili writes the possessive AFTER its noun, so
+ *     the tear is a line that OPENS on "yako". ⛔ Not the locative and infinitive concords kw- p- mw- ("kwako", "pako"):
+ *     they follow a verb as often as a noun ("tumetuma kwako"), and a held verb is no phrase;
+ *   · zh writes 您的注单 with no space: `keep-all` already breaks it only at its punctuation.
+ * ⭐ THE CONNECTIVE THAT INTRODUCES THE PHRASE TRAVELS WITH IT — R7-A's rule for a name kept whole (`splitLeadConnective`,
+ * lib/connectives.ts): "muhtasari wa fedha zako" holds "wa fedha zako", so the line above never ends on "wa" in its place
+ * (/profile/activity's empty state at sw 320 would read "…muhtasari wa" / "fedha zako…").
+ * A run is two words, three with its connective: `test:visual-pass-r9b` §1 lays out every empty-state body and every
+ * keepText sentence that holds one at its measures (none over its line), and `test:visual-pass-r4i` §2.8 measures every
+ * keepText surface's runs. A determiner or a noun that ends on a mark ("hapa, yako") starts no phrase.
+ * ⛔ Linear and without lookbehind (Safari before 16.4 cannot parse one): the words are read once, left to right.
+ */
+const POSSESSIVE_BEFORE = /^(?:your|my|our|their|its)$/i;
+const POSSESSIVE_AFTER = /^(?:w|y|z|l|ch|vy)(?:angu|ako|ake|etu|enu|ao)$/i;
+const PHRASE_GAP = new RegExp(`^${KEPT_GAP}$`);
+const TRAILING_MARKS = /[^\p{L}\p{M}\p{N}]+$/u;
+const ENDS_ON_LETTER = /[\p{L}\p{M}]$/u;
+export function possessiveRanges(text: string): Array<[number, number]> {
+  const words: Array<[number, number]> = [];
+  for (const m of text.matchAll(/\S+/g)) words.push([m.index ?? 0, (m.index ?? 0) + m[0].length]);
+  const word = (i: number) => text.slice(words[i][0], words[i][1]);
+  const gap = (i: number) => PHRASE_GAP.test(text.slice(words[i][1], words[i + 1][0]));
+  // The phrase opens on words[i]; the connective right before it, if any, opens it instead.
+  const lead = (i: number) => (i > 0 && isConnective(word(i - 1)) && gap(i - 1) ? words[i - 1][0] : words[i][0]);
+  const out: Array<[number, number]> = [];
+  for (let i = 0; i < words.length; i++) {
+    if (i + 1 < words.length && POSSESSIVE_BEFORE.test(word(i)) && gap(i)) out.push([lead(i), words[i + 1][1]]);
+    if (i > 0 && POSSESSIVE_AFTER.test(word(i).replace(TRAILING_MARKS, "")) && ENDS_ON_LETTER.test(word(i - 1)) && gap(i - 1)) {
+      out.push([lead(i - 1), words[i][1]]);
+    }
+  }
+  return out;
+}
+
 /** The last two ideographs and whatever closes them ("提现。", "申请。"). */
 const LAST_TWO_IDEO = new RegExp(`[${IDEO}]{2}[^${IDEO}\\s]*\\s*$`);
 
@@ -87,9 +132,18 @@ export function mergeRanges(ranges: ReadonlyArray<readonly [number, number]>): A
   return merged;
 }
 
+/**
+ * keepText's options. `phrases: false` for a text that is DATA — a market's title (the bet dialog's): no phrase of it is
+ * held (the possessive above), as no connective of a data title is (the owner's question since round 7); its figures,
+ * its dash and its last two words are held as before.
+ */
+export type KeepOptions = { phrases?: boolean };
+
 /** The [start, end) spans of `text` that must not break, merged where they touch or overlap. */
-export function keptRanges(text: string, runs: readonly string[] = []): Array<[number, number]> {
+export function keptRanges(text: string, runs: readonly string[] = [], opts: KeepOptions = {}): Array<[number, number]> {
   const ranges = runAndDashRanges(text, runs);
+  // Round 9 (R9-B): each possessive phrase, with the connective that introduces it (`possessiveRanges`).
+  if (opts.phrases !== false) ranges.push(...possessiveRanges(text));
   // The last two words (`lastTwo`, keep-words.tsx: read from the end, the space between them a kept one) — in Chinese the
   // last two ideographs and what closes them — the white space after them left out of the span.
   let tail: [number, number] | null;
@@ -146,8 +200,8 @@ export function digitChoice(text: string): string[] {
 }
 
 /** `text` with its kept spans drawn unbreakable (see the header). The words are untouched. */
-export function keepText(text: string, runs: readonly string[] = []): ReactNode {
-  return keepRanges(text, keptRanges(text, runs));
+export function keepText(text: string, runs: readonly string[] = [], opts: KeepOptions = {}): ReactNode {
+  return keepRanges(text, keptRanges(text, runs, opts));
 }
 
 /**
@@ -162,4 +216,15 @@ export function keepConnectives(
   piece?: (part: string, following: string) => ReactNode,
 ): ReactNode {
   return keepRanges(text, mergeRanges([...connectiveRanges(text), ...runs]), piece);
+}
+
+/**
+ * `keepConnectives` for words that are a FLEX ITEM of their own — a glyph and the words in one `flex gap-*` row (the page
+ * head's eyebrow, the trust band's, the market's evidence head…; round 9, R9-B). A flex row lays out every text run and
+ * every span as an item of its own, with the row's gap between them ("MPANGO [12px] WA [12px] MAWAKALA"), so the kept
+ * words go in ONE span; words that hold no connective come back as they came, their markup unchanged.
+ */
+export function keepConnectivesItem(text: string): ReactNode {
+  const kept = keepConnectives(text);
+  return typeof kept === "string" ? kept : <span>{kept}</span>;
 }

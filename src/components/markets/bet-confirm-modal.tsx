@@ -276,8 +276,10 @@ export function BetConfirmModal({
               <p className="mt-1 font-display text-[15px] font-semibold text-text leading-snug text-balance">
                 {/* R4-I · never one word alone on its last line ("2026-27" stood alone at 1280, tile 076). Round 5 (R5-E,
                     F1 F4 and review 3 H1): set as every market title is — balanced, and its figures whole (`figureRuns`:
-                    "dakika 28:00", "2026-27", "200毫米" never break inside), the runs `keepFigures` keeps on every card. */}
-                {keepText(marketTitle, figureRuns(marketTitle))}
+                    "dakika 28:00", "2026-27", "200毫米" never break inside), the runs `keepFigures` keeps on every card.
+                    Round 9 (R9-B): a title is DATA, so no phrase of it is held (`phrases: false` — keepText's possessive
+                    rule stays off, as the connective rule stays off every data title until the owner rules on them). */}
+                {keepText(marketTitle, figureRuns(marketTitle), { phrases: false })}
               </p>
             )}
           </div>

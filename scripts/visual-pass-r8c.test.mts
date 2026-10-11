@@ -314,8 +314,9 @@ const breakSourceOk = (src: string) => /let promoSuppressed = false;/.test(src) 
     has(code(CHROME[0]), '...(proposalsState !== "DISABLED" ? [{ href: "/proposals"') && has(code(CHROME[0]), '...(inviteVisible ? [{ href: "/profile/invite"'),
     has(code(CHROME[1]), '.filter((r) => (!r.proposals || proposalsState !== "DISABLED") && (!r.invite || inviteVisible)'),
     has(code(CHROME[2]), 'proposalsState !== "DISABLED" ? [{ href: "/proposals"') && has(code(CHROME[2]), 'inviteVisible ? [{ href: "/profile/invite"'),
-    has(code(CHROME[3]), '{proposalsState !== "DISABLED" && ( <FooterLink href="/proposals"') && has(code(CHROME[3]), '{inviteVisible && <FooterLink href="/profile/invite">')
-      && has(code(CHROME[3]), '{agentDoorVisible && <FooterLink href="/agent">'),
+    // Round 9 (R9-B): every footer link passes keep={journeyShown} (the journey's connective hold); the gate is the same.
+    has(code(CHROME[3]), '{proposalsState !== "DISABLED" && ( <FooterLink href="/proposals"') && has(code(CHROME[3]), '{inviteVisible && <FooterLink href="/profile/invite" keep={journeyShown}>')
+      && has(code(CHROME[3]), '{agentDoorVisible && <FooterLink href="/agent" keep={journeyShown}>'),
   ];
   ok("4.6 · and each chrome door IS gated on that answer: the bar's More, the avatar menu, the rail's More, the footer", gates.every(Boolean), j(gates));
 }

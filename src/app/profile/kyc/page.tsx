@@ -3,6 +3,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { keepFigures, keepLastWords } from "@/components/ui/keep-words";
+// The rail's labels never end a line on a connective (round 9, R9-B): a node is ~93px at 320 (70 in agent mode), and
+// "Leseni ya udereva" breaks "Leseni ya" / "udereva", "Kadi ya mpiga kura" "Kadi ya" / "mpiga kura".
+import { keepConnectives } from "@/components/ui/keep-run";
 import { BackLink } from "@/components/ui/back-link";
 import { formatNumber } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
@@ -1025,7 +1028,7 @@ function ProgressRail({ nodes, tightLabels = false }: { nodes: { label: string; 
               {node.done ? <I.check s={16} /> : <Glyph s={16} />}
             </span>
             <span className={`mt-2 text-center text-balance font-mono text-micro font-semibold uppercase leading-tight ${tightLabels ? "tracking-normal" : "eyebrow"} ${labelCls}`}>
-              {node.label}
+              {keepConnectives(node.label)}
             </span>
           </div>
         );

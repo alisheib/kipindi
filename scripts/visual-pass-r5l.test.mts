@@ -139,11 +139,14 @@ const KIT = "src/components/ui/ghost-text.tsx";
 const { GHOST_TEXT_CLASS } = req(`../${KIT}`) as { GHOST_TEXT_CLASS: string };
 /** Every one of the page's sentences is in the ghost, set and not shown (inside a transparent word bar, `GhostText`). */
 const BAR = `class="${GHOST_TEXT_CLASS}`;
-const wordsIn = (html: string, words: string[]) => words.filter((w) => {
+// ⚠️ Round 9 (R9-B): a label drawn through the keep (`keepConnectives` — the waterfall's head) carries its held runs as
+// nowrap spans, on the page and in its ghost alike, so the words are read with those spans unwrapped.
+const KEPT_RUN = /<span class="whitespace-nowrap">([^<]*)<\/span>/g;
+const wordsIn = (kept: string, words: string[]) => { const html = kept.replace(KEPT_RUN, "$1"); return words.filter((w) => {
   const at = html.indexOf(esc(w));
   if (at < 0) return true;
   return html.lastIndexOf(BAR, at) < 0 || html.lastIndexOf(BAR, at) < html.lastIndexOf("</span>", at);
-});
+}); };
 
 /* ══ §1 · THE ONE RULE: A GENERIC LOADER OPENS ON ITS PAGE'S OPENING BANDS ══════════════════════════════════════════ */
 section("1 · every generic loader opens on its page's own opening bands, in the page's rhythm; its spinner where data begins");

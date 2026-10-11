@@ -371,8 +371,9 @@ console.log("\n§3 · the highest-stakes popup in the product");
   // official rates?" — and Swahili and Chinese are longer than English.
   // R4-I (2026-10-09): the title is drawn through `keepText` (its last two words kept together, so "2026-27" never stands
   // alone) — the same text, unclamped; the anchor reads either form. Round 5 (R5-E): its figure runs are kept too
-  // (`keepText(marketTitle, figureRuns(marketTitle))`), so the anchor reads that form as well.
-  const titleBlock = /\{marketTitle && \([\s\S]{0,400}?\{(?:keepText\()?marketTitle(?:, figureRuns\(marketTitle\))?\)?\}/.exec(bet)?.[0] ?? "";
+  // (`keepText(marketTitle, figureRuns(marketTitle))`), so the anchor reads that form as well. Round 9 (R9-B): a title is
+  // data, so keepText holds no phrase of it (`{ phrases: false }`) — the anchor reads that form too.
+  const titleBlock = /\{marketTitle && \([\s\S]{0,400}?\{(?:keepText\()?marketTitle(?:, figureRuns\(marketTitle\)(?:, \{ phrases: false \})?)?\)?\}/.exec(bet)?.[0] ?? "";
   ok("3.1 the confirm dialog still renders the market title (this check is not blind)",
      titleBlock.length > 0, "the title block moved — re-anchor before trusting 3.2");
   ok("3.2 ★★ and it is NOT clamped — a player must be able to read the whole thing before committing money",
