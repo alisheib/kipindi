@@ -269,17 +269,23 @@ export function PublicFooter({
               INAKUJA", where a greedy break had left the flag alone on the second line.
               ⛔ For the journey's footer ONLY (2026-10-09): the classic footer is frozen chrome and keeps main's
               greedy break, so its bytes and boxes stay main's (`journeyShown` above). Since round 5 the journey's label
-              is the page's own name (below), and the same balance shares its lines with the flag. Round 9 (R9-B): with
-              its "ya" held (`keep`, FooterLink below), the balanced break puts the flag under the whole sw name in the
-              160px column at 768 and the 216px one at 1024 ("Mapendekezo ya Masoko" / its flag), as en's "Market
-              Proposals" / its flag already breaks at 768; one line from 1280. */}
+              is the page's own name (below), and the same balance shares its lines with the flag. Round 9: the journey's
+              name is held WHOLE (below), so the balanced break puts the flag under it in the 160px column at 768 and the
+              216px one at 1024 ("Mapendekezo ya Masoko" / its flag), as en's "Market Proposals" / its flag breaks at 768; one
+              line from 1280. */}
           {/* ⭐ ONE PAGE, ONE NAME IN THE JOURNEY (round 5, F17): its footer names /proposals, /legal/privacy and /help as
               those pages name themselves — "Mapendekezo ya Masoko" (`proposals.title`), "Sera ya faragha / Privacy policy"
               (the privacy page's title, `common.consentMore`), "Msaada / Help" (`common.help`) — the words the journey's hub
               and avatar menu use since this round (`hub-rows.ts`). The classic footer keeps its words (frozen chrome). */}
           {proposalsState !== "DISABLED" && (
             <FooterLink href="/proposals" keep={journeyShown} balance={journeyShown}>
-              {journeyShown ? t.proposals.title : t.footer.proposeGetPaid}
+              {/* ⭐ Round 9's read (reader 8, tile 302, sw 1024): with only its "ya" held the balance still tore the name,
+                  "Mapendekezo" / "ya Masoko [INAKUJA]" — narrower than the name whole once the real flag (72px and its 8.4px
+                  gap) is counted. The journey's name is the page's own name and is now ONE unit (143.8px in sw at 12px; the
+                  narrowest column is 160px at 768 — `md:grid-cols-4 gap-6` inside `px-3` — and the phones' single column is
+                  288px+), so the balance's only break is before the flag: the whole name over its flag where the two cannot
+                  share a line, one line where they can. The classic footer keeps its words and bytes (frozen chrome). */}
+              {journeyShown ? <span className="whitespace-nowrap">{t.proposals.title}</span> : t.footer.proposeGetPaid}
               {/* The journey's flag a whole 18px (`kp-flag-xs`, round 7, R7-C); the classic footer's is today's (frozen chrome). */}
               <ProposalsStateBadge state={proposalsState} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className={journeyShown ? "ml-1.5 kp-flag-xs" : "ml-1.5"} />
             </FooterLink>

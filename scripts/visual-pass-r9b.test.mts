@@ -541,8 +541,8 @@ section("4 · B4 FooterLink holds connectives in the journey's footer; the class
   const classic = renderToStaticMarkup(h(PublicFooter as never, props as never));
   const linkSpans = (html: string) => [...html.matchAll(/<a [^>]*min-h-\[44px\] group[^>]*><span class="[^"]*">([\s\S]*?)<\/span><\/a>/g)].map((m) => m[1]);
   const jl = linkSpans(journey), cl = linkSpans(classic);
-  ok("4.2 · the journey's footer (sw): \"Mapendekezo <span…>ya </span>Masoko\" + its flag, \"Uthibitisho <span…>wa </span>utatuzi\", \"RTP <span…>ya </span>mchezo <span…>na </span>sheria\", \"Sera <span…>ya </span>faragha\"…",
-    jl.some((s) => s.startsWith('Mapendekezo <span class="whitespace-nowrap">ya </span>Masoko<')) && jl.includes('Uthibitisho <span class="whitespace-nowrap">wa </span>utatuzi')
+  ok("4.2 · the journey's footer (sw): \"<span…>Mapendekezo ya Masoko</span>\" (the name whole, round 9's read) + its flag, \"Uthibitisho <span…>wa </span>utatuzi\", \"RTP <span…>ya </span>mchezo <span…>na </span>sheria\", \"Sera <span…>ya </span>faragha\"…",
+    jl.some((s) => s.startsWith('<span class="whitespace-nowrap">Mapendekezo ya Masoko</span><')) && jl.includes('Uthibitisho <span class="whitespace-nowrap">wa </span>utatuzi')
       && jl.includes('RTP <span class="whitespace-nowrap">ya </span>mchezo <span class="whitespace-nowrap">na </span>sheria') && jl.includes('Sera <span class="whitespace-nowrap">ya </span>faragha'), j(jl));
   ok("4.3 · the classic footer is frozen chrome: none of its links holds a run, each label is its words as main drew them",
     cl.length >= 10 && cl.every((s) => !s.includes('<span class="whitespace-nowrap">')) && cl.includes("Uthibitisho wa utatuzi") && cl.includes("Notisi ya faragha"), j(cl));
@@ -559,13 +559,23 @@ section("4 · B4 FooterLink holds connectives in the journey's footer; the class
     link("sw", word("sw", "proposals.title"), 216, false, "balance") === "Mapendekezo ya / Masoko[flag]" && link("sw", word("sw", "proposals.title"), 160, false, "balance") === "Mapendekezo ya / Masoko[flag]"
       && link("en", word("en", "proposals.title"), 216, false, "balance") === "Market Proposals[flag]" && link("zh", word("zh", "proposals.title"), 216, false, "balance") === "市场提议[flag]",
     j([link("sw", word("sw", "proposals.title"), 216, false, "balance"), link("en", word("en", "proposals.title"), 216, false, "balance")]));
-  // With "ya" held the link has two break candidates — after "Mapendekezo", before the flag — so Chromium's balance takes its
-  // bisection (score_line_breaker.cc wants three), whose narrowest two-line fill is the whole name over its flag: the flag
-  // and its gap (~85px) are wider than "Mapendekezo " (~74px).
-  ok("4.5 · through the keep: \"Mapendekezo ya Masoko / [flag]\" at 768 and 1024 — the whole name, its flag under it (the hub's stacked tag; en draws \"Market Proposals / [flag]\" at 768 today), one line at 1280; no line on \"ya\"",
-    link("sw", word("sw", "proposals.title"), 216, true, "balance") === "Mapendekezo ya Masoko / [flag]" && link("sw", word("sw", "proposals.title"), 160, true, "balance") === "Mapendekezo ya Masoko / [flag]"
-      && link("sw", word("sw", "proposals.title"), 280, true, "balance") === "Mapendekezo ya Masoko[flag]" && link("en", word("en", "proposals.title"), 160, false, "balance") === "Market Proposals / [flag]",
-    j([216, 160, 280].map((W) => link("sw", word("sw", "proposals.title"), W, true, "balance"))));
+  // ⛔ ROUND 9'S READ REFUTED THIS MODEL'S BISECTION (reader 8, tile 302, sw 1024): with only "ya" held the browser drew
+  // "Mapendekezo" / "ya Masoko [INAKUJA]" — the flag here was modelled at 85.4px (COMING SOON's per-letter rate), the real
+  // one is 72px plus its 8.4px gap, and at that width the two-line fill after "Mapendekezo" is the narrower. So the
+  // journey's name is ONE unit now (public-footer.tsx): one break candidate, before the flag, whatever the flag measures.
+  const whole = (l: Loc, W: number, flagW: number, mode: Mode) =>
+    show(layout([h("span", { className: "whitespace-nowrap" }, word(l, "proposals.title")), BOX], { ...LINK, box: flagW }, W, mode).lines).split(BOX).join("[flag]");
+  const FLAGS = [60, 70, 80.4, 85.4, 95];
+  const okLines = (r: string) => r === "Mapendekezo ya Masoko[flag]" || r === "Mapendekezo ya Masoko / [flag]";
+  ok("4.5 · the name held whole: for EVERY flag width from 60 to 95px, at 768 (160px), 1024 (216px) and 1280 (280px), one line where the name and its flag fit, else \"Mapendekezo ya Masoko / [flag]\" — never \"Mapendekezo\" alone, never a line on \"ya\"; with tile 302's flag (80.4px) at 1024 the name over its flag",
+    FLAGS.every((f) => [160, 216, 280].every((W) => okLines(whole("sw", W, f, "balance")))) && whole("sw", 216, 80.4, "balance") === "Mapendekezo ya Masoko / [flag]"
+      && whole("sw", 280, 80.4, "balance") === "Mapendekezo ya Masoko[flag]",
+    j(FLAGS.map((f) => [f, whole("sw", 160, f, "balance"), whole("sw", 216, f, "balance"), whole("sw", 280, f, "balance")])));
+  ok("4.5′ · the whole name never overflows a footer column: its widest locale fits the narrowest column (160px at 768)",
+    LOCALES.every((l) => width(word(l, "proposals.title"), LINK) <= 160), j(LOCALES.map((l) => [l, Math.round(width(word(l, "proposals.title"), LINK) * 10) / 10])));
+  ok("4.5″ CONTROL · drawn with only \"ya\" held and the flag tile 302 measured (80.4px), the balance tears the name — the round-9 read's defect, reproduced",
+    link("sw", word("sw", "proposals.title"), 216, true, "balance").startsWith("Mapendekezo / ") || layout([kr.keepConnectives(word("sw", "proposals.title")), BOX], { ...LINK, box: 80.4 }, 216, "balance").lines[0] === "Mapendekezo",
+    j(layout([kr.keepConnectives(word("sw", "proposals.title")), BOX], { ...LINK, box: 80.4 }, 216, "balance").lines));
   // Every other link, in both footers: no line on a connective in any column — the phones' single column (288+), 160, 216, 280.
   const JOURNEY = ["footer.setLimits", "footer.resolutionAttestation", "footer.gameRtp", "profile.inviteFriends", "profile.inviteEarn", "agent.dashTitle", "agent.footerLink", "common.help", "common.consentMore", "footer.amlKyc", "footer.terms", "footer.exportClose"];
   const CLASSIC = ["footer.setLimits", "footer.resolutionAttestation", "footer.gameRtp", "profile.inviteFriends", "agent.footerLink", "footer.helpSupport", "footer.privacyNotice", "footer.amlKyc", "footer.terms", "footer.exportClose"];
