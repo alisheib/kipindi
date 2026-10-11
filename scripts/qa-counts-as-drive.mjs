@@ -48,9 +48,14 @@ const extras0 = await allExtras();
 console.log(`account ${BOT.slice(0, 6)}… · ${mine0.length} markets carry its positions, ${OPEN.length} open`);
 
 const browser = await chromium.launch();
-const tile = async (page, name, width) => {
+/* A resize reflows the page, so the thing a tile is FOR is brought back to the middle at EVERY width (measured on the
+   first tiles: the box scrolled into view at 1280 was off screen at 360, and those tiles showed other fields). Centring
+   also scrolls the roster's own horizontal scroller to the column, exactly as an officer would. */
+const tile = async (page, name, width, focus = null) => {
   await page.setViewportSize({ width, height: width === 360 ? 780 : 900 });
   await page.waitForTimeout(300);
+  if (focus) await focus.evaluate((el) => el.scrollIntoView({ block: "center", inline: "center" })).catch(() => null);
+  await page.waitForTimeout(150);
   await page.screenshot({ path: join(OUT, `${name}-${width}.png`) });
 };
 
@@ -63,9 +68,11 @@ try {
   await page.fill('input[type="password"]', PASSWORD);
   await Promise.all([page.waitForURL((u) => !/\/auth\//.test(u.toString()), { timeout: 60_000 }).catch(() => null), page.click('button[type="submit"]')]);
   ok("0 · the local admin signs in", !/\/auth\//.test(page.url()), page.url());
+  /* The desk polls, so the network never idles: wait for the page's own rail (the visual gate's recipe). */
+  const openDesk = async () => { await page.goto(`${BASE}/admin/desk`, { waitUntil: "load", timeout: 90_000 }); await page.waitForSelector("[data-section-rail]", { timeout: 60_000 }); await page.waitForTimeout(1000); };
 
   /* ── the roster ── */
-  await page.goto(`${BASE}/admin/desk`, { waitUntil: "networkidle", timeout: 90_000 });
+  await openDesk();
   const headers = await page.$$eval("table thead th", (ths) => ths.map((t) => (t.textContent ?? "").trim()));
   ok("1.1 · the roster has a Counts as column", headers.some((h) => /^Counts as/.test(h)), headers.join(" | "));
   const rowCell = async () => page.$eval(`a.row-link[href="/admin/desk/${BOT}"]`, (a) => {
@@ -73,23 +80,30 @@ try {
     const i = ths.findIndex((h) => /^Counts as/.test(h)); return i < 0 ? null : (tr.children[i]?.textContent ?? "").trim();
   }).catch(() => null);
   ok("1.2 · the account's roster cell reads 1 before any change", (await rowCell()) === "1", String(await rowCell()));
-  for (const w of [1280, 1024, 360]) await tile(page, "01-roster", w);
+  const countsCol = headers.findIndex((h) => /^Counts as/.test(h)) + 1;
+  const rosterCell = page.locator(`a.row-link[href="/admin/desk/${BOT}"]`).locator(`xpath=ancestor::tr[1]/*[${countsCol}]`);
+  for (const w of [1280, 1024, 360]) await tile(page, "01-roster", w, rosterCell);
   await page.setViewportSize({ width: 1280, height: 900 });
 
   /* ── the Rules box ── */
   const rulesUrl = `${BASE}/admin/desk/${BOT}?tab=rules`;
-  const openRules = async () => { await page.goto(rulesUrl, { waitUntil: "networkidle", timeout: 90_000 }); await page.waitForSelector('[data-field="counts-as"] input[name="counts-as"]', { timeout: 30_000 }); };
+  const openRules = async () => { await page.goto(rulesUrl, { waitUntil: "load", timeout: 90_000 }); await page.waitForSelector('[data-field="counts-as"] input[name="counts-as"]', { timeout: 60_000 }); await page.waitForTimeout(1500); };
   await openRules();
   const box = () => page.locator('[data-field="counts-as"] input[name="counts-as"]');
   const status = () => page.locator('[data-field="counts-as"] [role="status"][data-change]');
   const typeInto = async (text) => { await box().click(); await page.keyboard.press("Control+A"); await page.keyboard.press("Backspace"); if (text) await page.keyboard.type(text, { delay: 20 }); };
-  const save = async () => page.locator('form button[type="submit"]', { hasText: "Save · Hifadhi" }).click();
+  /* The form's Save enables only once React has hydrated and seen the change — so waiting for it IS the hydration proof. */
+  const save = async () => {
+    const button = page.locator('form button[type="submit"]:not([disabled])', { hasText: "Save · Hifadhi" });
+    await button.waitFor({ state: "visible", timeout: 30_000 });
+    await button.click();
+  };
   ok("2.1 · the box sits under Market cards and holds 1", (await box().inputValue()) === "1"
     && (await page.locator("text=Market cards").count()) > 0, await box().inputValue());
   ok("2.2 · its help sentence is the server's", (await page.locator('[data-field="counts-as"]').textContent()).includes("How many predictors this account adds to the count players see on a market it stakes on."));
   ok("2.3 · nothing is said before anything is typed", ((await status().textContent()) ?? "").trim() === "");
-  await box().scrollIntoViewIfNeeded();
-  for (const w of [1280, 1024, 360]) await tile(page, "02-rules-box", w);
+  const field = () => page.locator('[data-field="counts-as"]');
+  for (const w of [1280, 1024, 360]) await tile(page, "02-rules-box", w, field());
   await page.setViewportSize({ width: 1280, height: 900 });
 
   await typeInto("100");
@@ -97,8 +111,7 @@ try {
   const upLine = ((await status().textContent()) ?? "").trim();
   ok(`2.4 · typing 100 says, before Save, what it does to the ${OPEN.length} open markets`,
     upLine === `Saving raises the count players see on the ${OPEN.length} open market${OPEN.length === 1 ? "" : "s"} this account is on, at once. Finished markets keep their number.`, upLine);
-  await box().scrollIntoViewIfNeeded();
-  for (const w of [1280, 360]) await tile(page, "03-typed-100", w);
+  for (const w of [1280, 360]) await tile(page, "03-typed-100", w, field());
   await page.setViewportSize({ width: 1280, height: 900 });
 
   /* ── refusals, each on the box, nothing moved ── */
@@ -112,21 +125,37 @@ try {
     const said = ((await alert.textContent().catch(() => "")) ?? "").trim();
     ok(`3 · "${typed}" is refused ON the box with "${message}", and nothing is saved`, said === message && (await versionOf()) === v0
       && JSON.stringify(await allExtras()) === JSON.stringify(extras0), said);
-    await box().scrollIntoViewIfNeeded();
-    await tile(page, `04-refused-${name}`, 1280);
+    await tile(page, `04-refused-${name}`, 1280, field());
     await page.setViewportSize({ width: 1280, height: 900 });
   }
 
   /* ── 1 → 100 ── */
   await openRules();
+  /* ⚠️ The local seed sets this account's stake max to TZS 10,000,000, above the scratch platform's live maximum, so the
+     form refuses EVERY save on that box (measured on the first run of this drive: the refusals above still read their
+     own words on the Counts-as box, and the save of 100 never landed). An officer corrects it in the same save, as the
+     console suite's 2.ca fixture does — the live maximum is read off the box's own range sentence, never typed here. */
   await typeInto("100");
   await save();
+  const stakeMaxAlert = page.locator('[data-field="stake-max"] [role="alert"]');
+  await stakeMaxAlert.waitFor({ state: "visible", timeout: 15_000 }).catch(() => null);
+  const refusal = ((await stakeMaxAlert.textContent().catch(() => "")) ?? "").trim();
+  const liveMax = (/At most TZS ([0-9,]+)/.exec(refusal)?.[1] ?? "").replace(/,/g, "");
+  if (liveMax) {
+    ok("4.pre · the save was refused on the stake max box with the live maximum, and nothing moved", JSON.stringify(await allExtras()) === JSON.stringify(extras0), refusal);
+    await page.locator('[data-field="stake-max"] input').click();
+    await page.keyboard.press("Control+A");
+    await page.keyboard.press("Backspace");
+    await page.keyboard.type(liveMax, { delay: 10 });
+    await typeInto("100");
+    await save();
+  }
   const toast100 = page.getByText(`Counts as is now 100 — ${OPEN.length} open market${OPEN.length === 1 ? "" : "s"} updated.`);
   await toast100.waitFor({ state: "visible", timeout: 30_000 }).catch(() => null);
   ok("4.1 · the save says what it moved", await toast100.isVisible().catch(() => false));
   ok("4.0 · once the save lands, the before-Save sentence is gone — the box now holds the saved number",
     ((await status().textContent().catch(() => "x")) ?? "x").trim() === "", ((await status().textContent().catch(() => "")) ?? "").trim());
-  await tile(page, "05-saved-100", 1280);
+  await tile(page, "05-saved-100", 1280, field());
   const mine1 = await marketsOf();
   const moved = mine1.filter((m, i) => m.extra !== mine0[i].extra);
   ok("4.2 · the database: every OPEN market of the account moved by exactly 99, every finished one kept its number",
@@ -144,10 +173,13 @@ try {
     const pv = await visitor.newPage();
     const detailUrl = liveOne.line === "UPDOWN" ? null : `${BASE}/markets/${liveOne.id}`;
     if (detailUrl) {
-      await pv.goto(detailUrl, { waitUntil: "networkidle", timeout: 90_000 });
-      const text = (await pv.locator("main").textContent()) ?? "";
-      ok(`5.1 · the market page states the count players see: ${shown} (true ${liveOne.count} + ${liveOne.extra})`, text.includes(shown), shown);
-      for (const w of [1280, 360]) await tile(pv, "06-player-detail", w);
+      await pv.goto(detailUrl, { waitUntil: "load", timeout: 90_000 });
+      await pv.waitForSelector("main", { timeout: 60_000 });
+      await pv.waitForTimeout(1500);
+      /* An element whose WHOLE text is the number (the Predictors tile's value), never "the page contains 101". */
+      const exact = await pv.locator("main").getByText(shown, { exact: true }).count();
+      ok(`5.1 · the market page states the count players see: ${shown} (true ${liveOne.count} + ${liveOne.extra})`, exact > 0, `${exact} element(s) read exactly ${shown}`);
+      for (const w of [1280, 360]) await tile(pv, "06-player-detail", w, pv.locator("main").getByText(shown, { exact: true }).first());
       const html = await (await fetch(detailUrl)).text();
       ok("5.2 · the served HTML names neither column — only the built number crosses", !/predictorExtra|predictorCount/.test(html), `${html.length} bytes`);
       /* The same law on every player board a signed-out visitor can open: a whole market row handed to a client
@@ -157,23 +189,29 @@ try {
         ok(`5.2′ · ${path}: the served HTML names neither column`, body.length > 1_000 && !/predictorExtra|predictorCount/.test(body), `${body.length} bytes`);
       }
       await pv.setViewportSize({ width: 1280, height: 900 });
-      await pv.goto(`${BASE}/markets`, { waitUntil: "networkidle", timeout: 90_000 });
+      await pv.goto(`${BASE}/markets`, { waitUntil: "load", timeout: 90_000 });
+      await pv.waitForSelector('a[href^="/markets/"]', { timeout: 60_000 }).catch(() => null);
+      await pv.waitForTimeout(1500);
       const card = pv.locator(`a[href="/markets/${liveOne.id}"]`).first();
       if (await card.count()) {
         const host = card.locator("xpath=ancestor::*[.//*[@data-market-part='predictors']][1]");
         const cardCount = ((await host.locator("[data-market-part='predictors'] b").first().textContent().catch(() => "")) ?? "").trim();
         ok(`5.3 · the board's card for that market states ${shown}`, cardCount === shown, cardCount);
-        await card.scrollIntoViewIfNeeded();
-        for (const w of [1280, 360]) await tile(pv, "07-player-card", w);
+        for (const w of [1280, 360]) await tile(pv, "07-player-card", w, host);
       } else ok("5.3 · the board's card for that market is on /markets", false, "card not found on page 1");
     }
     /* ── what an ADMIN reads: the true count ── */
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto(`${BASE}/admin/markets/${liveOne.id}`, { waitUntil: "networkidle", timeout: 90_000 });
+    await page.goto(`${BASE}/admin/markets/${liveOne.id}`, { waitUntil: "load", timeout: 90_000 });
+    await page.waitForSelector("main", { timeout: 60_000 });
+    await page.waitForTimeout(1500);
+    /* The tile's OWN value, never "the page contains a 2" (the first version of this check passed on "2026"). */
+    const kpi = page.locator(".admin-kpi").filter({ has: page.locator('span[title="Predictors"]') }).locator("div.amount").first();
+    const adminCount = ((await kpi.textContent().catch(() => "")) ?? "").trim();
     const adminText = (await page.locator("main").textContent()) ?? "";
-    ok(`5.4 · the admin market page keeps the TRUE count (${liveOne.count}) and never the shown ${shown}`,
-      adminText.includes(fmt(liveOne.count)) && (liveOne.extra === 0 || !adminText.includes(shown)), fmt(liveOne.count));
-    await tile(page, "08-admin-market", 1280);
+    ok(`5.4 · the admin market page's Predictors tile reads the TRUE count (${liveOne.count}), and the shown ${shown} is nowhere on it`,
+      adminCount === String(liveOne.count) && (liveOne.extra === 0 || !adminText.includes(shown)), adminCount);
+    await tile(page, "08-admin-market", 1280, kpi);
     await visitor.close();
   } else ok("5 · a LIVE market of the account to look at", false, "none");
 
@@ -185,15 +223,14 @@ try {
   const downLine = ((await status().textContent()) ?? "").trim();
   const downInk = await status().evaluate((el) => el.className);
   ok("6.1 · lowering is warned before Save, in the warning ink", downLine.startsWith("Saving lowers the count players see on the") && /text-warning-fg/.test(downInk), downLine);
-  await box().scrollIntoViewIfNeeded();
-  await tile(page, "09-typed-50", 1280);
+  await tile(page, "09-typed-50", 1280, field());
   await save();
   await page.getByText(`Counts as is now 50 — ${OPEN.length} open market${OPEN.length === 1 ? "" : "s"} updated.`).waitFor({ state: "visible", timeout: 30_000 }).catch(() => null);
   const mine2 = await marketsOf();
   ok("6.2 · the database: the open markets fell by exactly 50 (99 → 49), the finished ones did not move",
     mine2.every((m, i) => (OPEN.some((o) => o.id === m.id) ? m.extra === mine0[i].extra + 49 : m.extra === mine0[i].extra)),
     JSON.stringify(mine2.map((m, i) => [m.status, mine0[i].extra, m.extra])));
-  await page.goto(`${BASE}/admin/desk`, { waitUntil: "networkidle", timeout: 90_000 });
+  await openDesk();
   ok("6.3 · the roster cell reads 50", (await rowCell()) === "50", String(await rowCell()));
 
   /* ── put it back ── */
