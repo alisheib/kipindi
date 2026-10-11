@@ -146,6 +146,8 @@ function toStoredMarket(r: any): StoredMarket {
     yesPool: num(r.yesPool),
     noPool: num(r.noPool),
     predictorCount: r.predictorCount,
+    // Players' extra over the true count (owner ruling 2026-10-11). `num` reads an absent column as 0.
+    predictorExtra: num(r.predictorExtra),
     // The poll's frozen rates. Settlement prices against this, never live config.
     feeSnapshot: (r.feeSnapshot as StoredMarket["feeSnapshot"]) ?? null,
     resolvedOutcome: r.resolvedOutcome as Side | "VOID" | null,
@@ -250,13 +252,15 @@ export interface MarketStore {
    */
   setShortTitles(id: string, fields: MarketShortTitleFields, tx?: Prisma.TransactionClient | null): Promise<void>;
   /**
-   * Atomic pool delta — `yesPool`/`noPool`/`predictorCount` by increment, never
+   * Atomic pool delta — `yesPool`/`noPool`/`predictorCount`/`predictorExtra` by increment, never
    * by read-modify-write. Mirrors db.wallet.adjust: the database computes the new
    * value, so concurrent writers cannot clobber each other.
+   * `predictorExtra` is sent only by a desk account's first stake on a market (owner ruling 2026-10-11);
+   * a player's bet never names it, so its UPDATE is the same statement it always was.
    */
   addToPool(
     id: string,
-    deltas: { yesPool?: number; noPool?: number; predictorCount?: number },
+    deltas: { yesPool?: number; noPool?: number; predictorCount?: number; predictorExtra?: number },
     tx?: Prisma.TransactionClient | null,
   ): Promise<{ yesPool: number; noPool: number } | null>;
   delete(id: string): Promise<void>;
@@ -652,7 +656,17 @@ export type DailySettledTotals = {
 
 const memoryMarkets: MarketStore = {
   async get(id, _tx) { return markets.get(id) ?? null; },
-  async set(m, _tx) { markets.set(m.id, m); },
+  async set(m, _tx) {
+    // ⛔ `predictorExtra` is written by increments alone. The Postgres twin leaves it out of the upsert's UPDATE arm,
+    // so a full-row write from a copy read before an increment cannot erase it — and this twin keeps the stored value
+    // for the same reason. The usual call passes the stored object itself, which is stored untouched.
+    const cur = markets.get(m.id);
+    if (cur && cur !== m && (m.predictorExtra ?? 0) !== (cur.predictorExtra ?? 0)) {
+      markets.set(m.id, { ...m, predictorExtra: cur.predictorExtra ?? 0 });
+      return;
+    }
+    markets.set(m.id, m);
+  },
   async stamp(id, fields, _tx) {
     const cur = markets.get(id);
     if (cur) markets.set(id, { ...cur, ...fields });
@@ -677,6 +691,9 @@ const memoryMarkets: MarketStore = {
     cur.yesPool += deltas.yesPool ?? 0;
     cur.noPool += deltas.noPool ?? 0;
     cur.predictorCount += deltas.predictorCount ?? 0;
+    // `?? 0` on BOTH sides: a row built before the column existed (or by a fixture) has no `predictorExtra`, and
+    // `undefined + n` would put NaN on a card.
+    if (deltas.predictorExtra !== undefined) cur.predictorExtra = (cur.predictorExtra ?? 0) + deltas.predictorExtra;
     cur.updatedAt = new Date().toISOString();
     return { yesPool: cur.yesPool, noPool: cur.noPool };
   },
@@ -1070,6 +1087,7 @@ const prismaMarkets: MarketStore = {
     if (deltas.yesPool !== undefined) data.yesPool = { increment: deltas.yesPool };
     if (deltas.noPool !== undefined) data.noPool = { increment: deltas.noPool };
     if (deltas.predictorCount !== undefined) data.predictorCount = { increment: deltas.predictorCount };
+    if (deltas.predictorExtra !== undefined) data.predictorExtra = { increment: deltas.predictorExtra };
     // RETURNING, not updateMany: recordSnapshot and the SSE odds push need the
     // TRUE committed pools, not the values this caller believed it was writing.
     const row = await (tx ?? pc()).predictionMarket.update({
@@ -1126,6 +1144,8 @@ const prismaMarkets: MarketStore = {
         reopenedAt: m.reopenedAt ? new Date(m.reopenedAt) : null,
         reopenCount: m.reopenCount ?? null,
         productLine: m.productLine ?? "MARKET",
+        // CREATE ONLY, like `productLine` — see the note in the update block.
+        predictorExtra: m.predictorExtra ?? 0,
         proposedBy: m.proposedBy,
         createdAt: new Date(m.createdAt),
       },
@@ -1175,6 +1195,10 @@ const prismaMarkets: MarketStore = {
         // is fixed at creation. Allowing an update would let a stale in-memory copy
         // silently reclassify a settled Up & Down round as a long-form poll, moving
         // its money between product lines in every report after the fact.
+        // `predictorExtra` is deliberately ABSENT too: increments alone write it (`addToPool`, the desk's shift),
+        // and a full-row write from a copy read before one would erase it — the desk's shift does not take the
+        // `market:<id>` lock a full-row writer such as `adminReopenMarket` holds. The memory twin keeps the stored
+        // value for the same reason.
       },
     });
   },

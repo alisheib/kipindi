@@ -12,7 +12,9 @@
  *
  * ⛔ FEATURED ONLY. Every grid card, board row and every other surface still states its count at any
  * size (K48): a player comparing markets needs it, and the grid is a claim about the whole book.
- * ⛔ NEVER A DIFFERENT NUMBER — the count is shown true or not at all.
+ * ⛔ NEVER A DIFFERENT NUMBER — the featured card states the count every other surface states for that market (the
+ *   count players see, `shownPredictors` — owner ruling 2026-10-11), or no count at all; it never rounds, inflates or
+ *   substitutes one of its own.
  * ⭐ "Be the first to predict" is an invitation, not a count, so a fresh featured card keeps it.
  * The gate reads the same rule: a featured card that withholds its count says so
  * (`data-market-predictors` below `data-market-depth-floor`), and V18 accepts that and nothing else.

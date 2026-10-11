@@ -5,6 +5,7 @@ import Link from "next/link";
 import { SignalPip } from "@/components/brand";
 import { MarketCard } from "@/components/markets/market-card";
 import { shownYesPct } from "@/lib/markets/price-state";
+import { shownPredictors } from "@/lib/markets/predictors";
 import {
   listMarkets,
   isClosedByTime,
@@ -117,7 +118,8 @@ function toRow(m: BoardMarket, watched: Set<string>, move24h: number | undefined
     id: m.id,
     category: m.category,
     pool,
-    predictors: m.predictorCount,
+    // The count players see (`predictors.ts`): the "Most predictors" sort and the "New" filter read this value.
+    predictors: shownPredictors(m),
     // ONE definition of "priced, or null because there is no price" — shared with the landing hero
     // and the market card (`price-state.ts`), so no two surfaces disagree about which markets have
     // a crowd price (B9 / law 81). ⭐ Null for a ONE-SIDED pool too (WP6, ruling 13): its card says
@@ -371,7 +373,7 @@ async function DiscoveryBoard({ searchParams }: { searchParams: Promise<SP> }) {
               category={m.category}
               yesPool={m.yesPool}
               noPool={m.noPool}
-              predictors={m.predictorCount}
+              predictors={shownPredictors(m)}
               timeLeft={
                 r.selectionClosed ? t.market.waitingForResults : timeLeftStr(m.selectionClosedAt ?? m.resolutionAt)
               }
@@ -447,7 +449,7 @@ lastLabel={t.common.lastPage}
                 category={m.category}
                 yesPool={m.yesPool}
                 noPool={m.noPool}
-                predictors={m.predictorCount}
+                predictors={shownPredictors(m)}
                 // §L3 — the THIRD copy of this shape, and the one actually on the board.
                 // It rendered "已结算 YES" live: a translated label closing around the stored
                 // token. `/results` and `/watchlist` carried the same line.

@@ -84,10 +84,12 @@ console.log("\n── 3 · the image and the description read the one rule");
 {
   const route = decomment(readFileSync(join(APP, "api/og/market/[id]/route.tsx"), "utf8"));
   const page = decomment(readFileSync(join(APP, "markets/[id]/page.tsx"), "utf8"));
-  check("3.1 the og image reads sharePreviewPrice", /sharePreviewPrice\(m\.yesPool, m\.noPool, m\.predictorCount\)/.test(route));
+  // The count is the one players see (owner ruling 2026-10-11, `predictors.ts`): 0 exactly when the true count is 0.
+  check("3.1 the og image reads sharePreviewPrice, on the count players see",
+    /const predictors = shownPredictors\(m\);/.test(route) && /sharePreviewPrice\(m\.yesPool, m\.noPool, predictors\)/.test(route));
   check("3.2 ⛔ …and no longer reads impliedYesPct", !/impliedYesPct/.test(route));
   check("3.3 og:description comes from the same rule (and the settled one, C1)", /sharePreviewDescription\(preview, settled\)/.test(page)
-    && /const preview = sharePreviewPrice\(m\.yesPool, m\.noPool, m\.predictorCount\);/.test(page));
+    && /const preview = sharePreviewPrice\(m\.yesPool, m\.noPool, shownPredictors\(m\)\);/.test(page));
   check("3.4 the image draws no split on a market without a price", /price\.kind === "priced" \?/.test(route));
   check("3.2-control the route scan is the real file (it renders an ImageResponse)", /new ImageResponse\(/.test(route));
 }

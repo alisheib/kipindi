@@ -8,6 +8,57 @@
 
 ---
 
+## 2026-10-11 · A desk account may count as more than one predictor in the count players see (owner ruling; the Gaming Board's view, relayed verbally)
+
+**Ali, 2026-10-11, in the session**, as typed: *"we disucssed a plan with gbt and we disucessed the bots hourse btos they
+said it sifne that way as logn s they are rel ccount sas i tit sof rus. However, we cna add a step for predictres
+account. onl for predicotrs comgin form hoise bots or desk we shoudl ahe for eahc bot in th e desk a count number this
+count number decides as how many oredcitorys this bot counts in the ui for number of predcitors for maretkcards. i cans
+e 1 bot count as 100 maybe or 1k or 2 or 3 but the amount of money is not alowed to change gbt approved this as log as
+the money is til same way please plan it well and let simplement this development"*. His answers to the session's three
+questions the same day: a change moves the count on markets still open, at once (finished markets keep theirs); polls
+and Up & Down alike; at most 10,000. And: *"the input should have perfect input validation and control"*.
+
+⚠️ **THE GAMING BOARD'S VIEW IS A VERBAL OWNER REPORT, NOT A REGULATOR DOCUMENT** — the same kind of record as D19a's
+and D21's. Ali reports that the Board approved this as long as the money is unchanged; no document is on file.
+
+**What changed** (the release carrying migration `20261011170000_market_predictor_extra`):
+1. Every desk account has a **Counts as** number — a whole number from 1 to 10,000, 1 by default — on its Rules tab
+   (section "Market cards") and in a sortable roster column.
+2. The FIRST stake the desk places from an account on a market (a poll or an Up & Down round) makes the count
+   **players** see on that market count the account as that many predictors instead of one. A later stake adds nothing.
+3. Changing the number moves the count on every market that account is on that is still open (LIVE or CLOSED), in the
+   save's own locked transaction; a finished market (RESOLVED, VOIDED) keeps the number it ended with. Lowering it
+   lowers what players see.
+4. **No money moves for it.** Stakes, pools, odds, payouts, fees, levies and every ledger row are exactly what they
+   would be without it. The added amount lives in its own column, `PredictionMarket.predictorExtra`, beside the true
+   count and never inside it; player surfaces show the sum through one helper (`src/lib/markets/predictors.ts`).
+
+**What did NOT change, by design:**
+- `PredictionMarket.predictorCount` stays the TRUE count of accounts. Every admin page, every report — the Gaming Board
+  match-integrity report among them —, every statutory figure and every audit row keeps reading it alone. D20a and
+  D20d are untouched: in everything 50pick reports, a desk account is an ordinary player, counted once.
+- D19 is untouched: no player surface, payload or bundle names the mechanism or a desk account; a player sees one
+  number and nothing that tells the two apart (`test:predictor-shown`, `test:house-bot-disclosure`,
+  `test:house-bot-surfaces`).
+
+**Amends:** D6 (§ "2026-09-14 (ninth) · House bots — accounts 50pick operates may stake to add liquidity") — "publicly
+the bot is exactly like a player: counts, avatars and the leaderboard" — for **counts** only. Avatars and the
+leaderboard are unchanged. D6's row is marked in place.
+
+**Accepted consequences** (in the plan Ali approved): a lowered number makes the count fall on open markets, a move no
+other event makes — the officer is warned in the form before saving; a holder can see the count jump when the desk
+stakes from their account (D19c otherwise stands); this repository is public, so this entry is too, like every
+house-bot record already in it.
+
+**Controls:** the box takes digits only, and the door and the validator refuse everything but a whole number from 1 to
+10,000 — every refused shape pinned (`test:house-bot-rules` §15); a save that moves the number is a compare-and-set under
+the account's wallet lock, with the open-market shift in the same transaction; every such save is audited
+(`house_bot.rules_saved` carries `display.countsAs` before → after) and alerts every admin, naming the officer. Build
+record: `docs/HOUSE-BOTS.md` §12.18.
+
+---
+
 ## 2026-10-11 · Privacy v2026-10-11 — on erasure the typed identity is held 7 years from closure, then erased but for a coded form of the number (owner ruling, no notice)
 
 **Ali, 2026-10-10 ~15:30 EAT, in the session** — ruling 6 of § "2026-10-10 · Players verify identity with typed details
@@ -2697,7 +2748,7 @@ moving the notice first.
 | D3b | **No payment feature.** The holder tops up through the normal deposit flow and is reimbursed out of band. While their bot is **ACTIVE**, every deposit or withdrawal on the account alerts admins. While inactive, nothing is watched. |
 | D4 | A **roster** of bots, each with its own rules. One master switch plus global limits. |
 | D5 | Consent = the owner types the account's **password** (only). |
-| D6 | Publicly the bot is **exactly like a player**: counts, avatars and the leaderboard. ~~Admin analytics still separate house from players.~~ ⛔ **REVERSED by D20a (2026-09-17); marked 2026-09-18, a line the D20 pass missed:** admin analytics do **not** separate house from players — every admin count, the finance and insights figures and the harm and AML detectors carry no house memo, column, split, exclusion or line. Statutory figures include everything (unchanged, D20d). |
+| D6 | Publicly the bot is **exactly like a player**: counts, avatars and the leaderboard. ~~Admin analytics still separate house from players.~~ ⛔ **REVERSED by D20a (2026-09-17); marked 2026-09-18, a line the D20 pass missed:** admin analytics do **not** separate house from players — every admin count, the finance and insights figures and the harm and AML detectors carry no house memo, column, split, exclusion or line. Statutory figures include everything (unchanged, D20d). ⚠️ **AMENDED 2026-10-11 (owner), for COUNTS only:** a desk account may count as more than one predictor in the count PLAYERS see — see the dated entry `2026-10-11 · A desk account may count as more than one predictor in the count players see` at the head of this log. Avatars and the leaderboard are unchanged, and every admin count and report still counts it once (D20a). |
 | D8 | **Live activity feed**, plus per-bet bell alerts **capped per hour** (then an hourly summary). Money events and auto-pauses always go to bell + email. |
 | D9 | Everything else was decided by Claude, following platform precedent (cited inline). |
 

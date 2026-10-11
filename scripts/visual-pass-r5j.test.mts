@@ -282,7 +282,8 @@ function asDevice<T>(locale: string, run: () => T): T {
       && code("src/app/updown/[roundId]/page.tsx").includes("{formatNumber(round.players)}"));
   const og = code("src/app/api/og/market/[id]/route.tsx");
   ok("2.5 · the share card's count reads as every count does — grouped, and the dictionary's one/many pair (\"1 predictor\", where it read \"1 predictors\")",
-    og.includes("{formatNumber(m.predictorCount)} {m.predictorCount === 1 ? dict.en.market.predictorsCountOne : dict.en.market.predictorsCount}")
+    og.includes("{formatNumber(predictors)} {predictors === 1 ? dict.en.market.predictorsCountOne : dict.en.market.predictorsCount}")
+      && og.includes("const predictors = shownPredictors(m);")
       && dict.en.market.predictorsCount === "predictors" && dict.en.market.predictorsCountOne === "predictor");
   const dep = code("src/app/wallet/deposit/actions.ts");
   ok("2.6 · the deposit refusal fills its bounds as the withdraw refusal does (`formatNumber`), one spelling for one grouping",
@@ -292,7 +293,7 @@ function asDevice<T>(locale: string, run: () => T): T {
   ok("2.7 · the siblings R5-A's count line left: the leaderboard table's resolved column and its hot streak (the podium already grouped), /proposals' tally, the market page's predictor tile, /results' donut legend",
     lb.includes(">{formatNumber(r.resolved)}</td>") && lb.includes("{formatNumber(streak)} {streak > 1 ? t.leaderboard.winsLabel : t.leaderboard.winLabel}")
       && code("src/app/proposals/page.tsx").includes("{formatNumber(totalProposals)} {t.proposals.proposalsCount} · {formatNumber(totalVotes)} {t.proposals.votesCount}")
-      && code("src/app/markets/[id]/page.tsx").includes("value={formatNumber(m.predictorCount)}")
+      && code("src/app/markets/[id]/page.tsx").includes("value={formatNumber(predictors)}")
       && code("src/app/results/page.tsx").includes(`{sideWord(t, "YES", line)} {formatNumber(winsIn(line, "YES"))}`));
 }
 

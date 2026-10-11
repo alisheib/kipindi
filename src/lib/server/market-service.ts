@@ -43,6 +43,7 @@ import { exitWindowFacts } from "@/lib/exit-window";
 // stores it writes through. ⛔ Nothing here runs for a player's bet — every call sits behind an
 // anchored `ctx.kind === "house"` site (`scripts/anchors/house-bot-seam.anchors.mjs`).
 import { houseH0, houseH1, houseH2, houseH3, houseH4, type Counterparty, type HouseBetContext, type HouseRefusal } from "./house-bot/seam";
+import { houseShownExtra } from "./house-bot/shown-count";
 import { houseBotIntentStore, houseSeamStore, type LockedPool, type StoredHouseBotIntent } from "./house-bot-dal";
 import { HOUSE_CONTROL_LOCK, HOUSE_BET_LOCK_TIMEOUT, HOUSE_BOT_ENGINE_ENV } from "@/lib/house-bot/constants";
 import { getRequireTwoOfficerResolution } from "./resolution-policy";
@@ -243,7 +244,14 @@ export type StoredMarket = {
   status: MarketStatus;
   yesPool: number;
   noPool: number;
+  /** The TRUE count of accounts that have bet here (+1 at an account's first bet, never decremented). Every admin
+   *  page, report and audit row reads THIS (D20a). Players see `shownPredictors(m)` instead. */
   predictorCount: number;
+  /** What players see ON TOP of `predictorCount`: a desk account's "Counts as" weight (owner ruling 2026-10-11,
+   *  docs/COMPLIANCE-DECISIONS.md). Only `shownPredictors` (`src/lib/markets/predictors.ts`) reads it, and only on
+   *  player surfaces. Written by increments alone — `addToPool` and the desk's shift — never by `set()` on an
+   *  existing row. Optional for rows built before the column existed: absent reads as 0. */
+  predictorExtra?: number;
   /** The fee rates FROZEN onto this poll at creation. Settlement, cash-out and
    *  every payout preview price against THIS, never live admin config — so
    *  retuning a rate can no longer reprice a bet that is already placed.
@@ -765,6 +773,7 @@ export async function createMarket(input: CreateMarketInput) {
     yesPool: 0,
     noPool: 0,
     predictorCount: 0,
+    predictorExtra: 0,
     feeSnapshot,
     resolvedOutcome: null,
     resolutionStage1By: null, resolutionStage1At: null,
@@ -1437,6 +1446,12 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext):
       if (h2) return h2;
     }
 
+    // ── "Counts as" (owner ruling 2026-10-11; sanctioned change (s)) — what a desk account's FIRST stake on this market
+    // adds to the count players see. No money: the pool increment below carries it, in this transaction, so an
+    // aborted bet adds nothing. A player's stake reads 0, and its UPDATE is the statement it always was.
+    // SEAM:shownCount
+    const shownExtra = ctx.kind === "house" ? await houseShownExtra({ tx: lockTx, botId: ctx.botId, mine }) : 0;
+
     // Real-first funding: spend the player's own (withdrawable) balance first,
     // then top up the remainder from the bonus wallet. Both debits run inside
     // THIS wallet lock so the affordability check and the two debits can't be
@@ -1597,12 +1612,16 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext):
           //
           // ⚠️ `mine` is the snapshot from BEFORE this bet was written, so "no prior position
           // on this market" is exactly "this is my first, count me once".
+          // ⭐ `predictorCount` STAYS THE TRUE COUNT (2026-10-11): the same regulator report, admin panel and audit
+          // row read it. What players see on top — a desk account's "Counts as" (`shownExtra`, read above) — goes
+          // to its own column in the same atomic delta; a player's stake never names it.
           const firstForThisPlayer = mine.length === 0 ? 1 : 0;
+          const shown = shownExtra > 0 ? { predictorExtra: shownExtra } : {};
           const pools = await marketStore.addToPool(
             opts.marketId,
             opts.side === "YES"
-              ? { yesPool: opts.stake, predictorCount: firstForThisPlayer }
-              : { noPool: opts.stake, predictorCount: firstForThisPlayer },
+              ? { yesPool: opts.stake, predictorCount: firstForThisPlayer, ...shown }
+              : { noPool: opts.stake, predictorCount: firstForThisPlayer, ...shown },
             tx,
           );
           // Use the TRUE committed pools for the snapshot/odds push below.

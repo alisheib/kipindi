@@ -602,6 +602,9 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                           `tabular`: it is a phrase, not a figure, and putting it on the money axis would read as a
                           third usage column. */}
                       <SortTh field={rosterView.rosterSort.columns.lastBet.field} label={rosterView.rosterSort.columns.lastBet.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} className="p-3" />
+                      {/* "Counts as" (owner ruling 2026-10-11) — a whole number, so it sits on the figure axis. Not a usage
+                          column: its short header never needs the three usage headers' wrap (432(o)). */}
+                      <SortTh field={rosterView.rosterSort.columns.countsAs.field} label={rosterView.rosterSort.columns.countsAs.label} current={rosterView.rosterSort.current} dir={rosterView.rosterSort.dir} sp={rosterView.rosterParams} baseHref={CONSOLE_ROUTE} prefix={rosterView.rosterSort.prefix} align="right" className="p-3" />
                       <th scope="col" className="text-left p-3">Products</th>
                       {/* ⭐ THE WAY OUT ARRIVED WITH THE PAGE IT OPENS (ruling 432(h)). Until `/admin/desk/[id]`
                           had a page every row's "open →" answered the app-root 404 — the first control an officer
@@ -617,7 +620,7 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                     {rosterEmpty ? (
                       /* 416 with 310's precedence — the state the table is in NAMES ITS CAUSE: the desk being off
                          beats "none designated yet", and a failed read beat both above. */
-                      <AdminTableEmpty colSpan={8} title={rosterEmpty.title} body={rosterEmpty.body} />
+                      <AdminTableEmpty colSpan={9} title={rosterEmpty.title} body={rosterEmpty.body} />
                     ) : (
                       rosterRows.map((r) => (
                         <tr key={r.id} className="border-b border-border-subtle">
@@ -657,6 +660,8 @@ async function AdminDeskContent({ searchParams }: DeskProps) {
                           {/* ⛔ AN ACCOUNT THAT HAS NEVER STAKED READS "—", never a fabricated date and never a zero
                               (§C2). The absolute EAT instant is in `title`, where the kit puts every exact time. */}
                           <td className="p-3 text-text-secondary" title={r.lastBet?.title}>{r.lastBet?.text ?? "—"}</td>
+                          {/* A COUNT, not money: the mono/tabular face on the FIGURE, never on the cell (409's rule). */}
+                          <td className="p-3 text-right text-text-secondary"><span className="font-mono tabular-nums">{r.countsAs}</span></td>
                           {/* ⛔ THE OPERATIVE SCOPE, ONE LINE PER TICKED PRODUCT, AS LABELS (prod finding 2026-09-22).
                               This cell printed "Up & Down · Polls" for an ACTIVE account whose two lists were
                               empty: true of the switches, false of the account, which had matched nothing since the

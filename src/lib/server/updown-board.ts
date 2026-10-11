@@ -32,6 +32,7 @@ import { MIN_SAMPLES_FOR_ADVICE } from "./updown-feed-advice";
 // ⭐ R5 (2026-09-27) · ONE stale rule for a confirmed quote, shared with the landing's Up & Down band,
 // so the band and the terminal cannot call one quote "live" and "stale" at the same minute.
 import { QUOTE_GAP_FACTOR, medianCadenceMs, isQuoteStale } from "@/lib/updown-quote-age";
+import { shownPredictors } from "@/lib/markets/predictors";
 
 /**
  * ⭐ E-99 · How many seconds after its boundary this asset's reading TYPICALLY arrives — or
@@ -432,7 +433,8 @@ async function toBoardRound(
     outcome: r.outcome,
     voidReason: r.voidReason,
     volumeTzs: m.yesPool + m.noPool,
-    players: m.predictorCount,
+    // The count players see (`predictors.ts`): the Up & Down card and the round page both read this value.
+    players: shownPredictors(m),
     // ⭐ D2 · the pool itself, so every player surface can price a bet through the SAME
     // `payoutFor` settlement pays with. See the field comment for what this replaced.
     pricing: {

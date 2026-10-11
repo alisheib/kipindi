@@ -24,7 +24,8 @@ export type SharePreviewPrice =
   | { kind: "oneSided"; label: string }
   | { kind: "none"; label: string };
 
-export function sharePreviewPrice(yesPool: number, noPool: number, predictorCount: number): SharePreviewPrice {
+/** `predictors` is the count players see (`shownPredictors`) — 0 exactly when nobody ever bet. */
+export function sharePreviewPrice(yesPool: number, noPool: number, predictors: number): SharePreviewPrice {
   const p = priceState(yesPool, noPool);
   if (p.kind === "priced") {
     const lean = isTipping(p.yesPct) ? "tipping" : p.yesPct > 50 ? "leans yes" : "leans no";
@@ -32,7 +33,7 @@ export function sharePreviewPrice(yesPool: number, noPool: number, predictorCoun
   }
   if (p.kind === "oneSided") return { kind: "oneSided", label: dict.en.market.oneSideOnly };
   // The card's `neverBet` rule: "No bets yet" only where nobody EVER bet; a cashed-out pool has no pool.
-  return { kind: "none", label: predictorCount === 0 ? dict.en.market.noBetsYet : dict.en.market.noPoolYet };
+  return { kind: "none", label: predictors === 0 ? dict.en.market.noBetsYet : dict.en.market.noPoolYet };
 }
 
 /**

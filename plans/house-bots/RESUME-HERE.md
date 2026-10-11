@@ -112,6 +112,16 @@ Nothing here blocks betting. §0c's build order is DONE; **the one build in deve
 (§0d, approved 2026-09-28)**. What was found and fixed on
 2026-09-26 is `docs/HOUSE-BOTS.md` §12.5; (a)–(e) of the old list are done or decided (§0c, §5).
 
+- **✅ 2026-10-11 · "Counts as" — built and pushed with its docs (Ali's ruling, the Gaming Board's verbal view).** Each desk
+  account's Rules tab has **Counts as** (1–10,000, default 1): the account's first stake on a market makes the count
+  PLAYERS see count it as that many predictors; a change moves the count on its open markets at once; no money moves.
+  `predictorCount` stays the TRUE count for every admin page and report (D20a). Ruling: `docs/COMPLIANCE-DECISIONS.md`
+  § "2026-10-11 · A desk account may count as more than one predictor in the count players see"; build record:
+  `docs/HOUSE-BOTS.md` §12.18; sanctioned change (s) in `PLAN.md` §3. ⛔ Every account reads 1 until an officer sets it —
+  nothing changes on production by the deploy itself. Guards: `test:predictor-shown` (+ `red:predictor-shown`),
+  `test:house-bot-rules` §15, `test:house-bot-seam` §6 (s), `test:house-bot-console` §2j 2.ca, `test:house-bot-money`
+  §13; declared mutations `ca-*` in the seam and console anchors.
+
 - **To drive the four fleets whole again:** `bash plans/house-bots/tools/fleet.sh <sha>` (`--dry` prints the slices and
   creates nothing). A dedicated detached worktree beside the checkout, slices of ~45 by name prefix, c5 FIRST (a c5
   slice holding a disclosure mutation baselines 5.1 against the LIVE `origin/main`), each slice under the lock with a
@@ -388,6 +398,18 @@ KP_BASE=http://localhost:3031 KP_WIDTHS=360,1280 npm run -s qa:house-bots-visual
   row whose own debit is not in view answers nothing). A width measurement must fill them with a 7-digit figure.
 
 ## 5 · Handover log
+
+- **2026-10-11 · Ali-Blade15 — "Counts as" built in worktree `C:\kipindi-shown-count` (branch `desk-counts-as`).**
+  - Ali's ask, his three answers (open markets update; polls and Up & Down; max 10,000) and "perfect input validation
+    and control" are in the compliance entry; the design, the files and the measured proofs in `docs/HOUSE-BOTS.md`
+    §12.18. Planned with a read-only map and one adversarial review of the plan (2 blockers, 16 must-fix — every one
+    folded in before a line was written).
+  - ⭐ Two traps worth carrying. (1) A rules LEAF needs its console key and help (`CONSOLE_RULE_KEY`,
+    `CONSOLE_RULE_HELP`) — without them every rules save is refused as stale — and a place in `HouseBotRulesV1` and all
+    three literals, or the validator checks the number and stores nothing. (2) The memory twin's `houseAtomic` does not
+    roll back the markets map: any write to market rows inside it must come LAST.
+  - Found red on `main`, not this lane's: console pin 1.548 (marketing `a001261d` added `cmp` to the crumb id list on
+    2026-10-08) — re-pinned to the list as it stands.
 
 - **2026-09-28 · asheib (F: machine) — the targeting screen: step 0 and S1 are LIVE on `main`; ▶ NEXT = S2.**
   - **Step 0** (`9e1b581c`): `plans/house-bots/TARGETS-SCREEN.md` — the spec, 80 numbered decisions with their reasons

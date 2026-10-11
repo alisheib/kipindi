@@ -8,6 +8,7 @@ import { TippingBar } from "@/components/brand";
 import { listMarkets, MARKET_CATEGORIES, listTerminalMarkets } from "@/lib/server/market-service";
 // ⭐ C1 · the card's price rule on the notable spotlight (see FeaturedResult).
 import { priceState } from "@/lib/markets/price-state";
+import { shownPredictors } from "@/lib/markets/predictors";
 import { categoryOptions } from "@/lib/markets/category-label";
 import { getCardCharts } from "@/lib/server/market-history";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -544,7 +545,7 @@ async function ResultsContent({
                     category={m.category}
                     yesPool={m.yesPool}
                     noPool={m.noPool}
-                    predictors={m.predictorCount}
+                    predictors={shownPredictors(m)}
                     // §L3 — was `${t.market.resolvedOutcome} ${m.resolvedOutcome}`, i.e. a
                     // translated label wrapped around the raw enum on the public results board.
                     timeLeft={m.resolvedOutcome === "VOID" ? t.common.voided : `${t.market.resolvedOutcome} ${outcomeWord(t, m.resolvedOutcome ?? "VOID", m.productLine)}`}
@@ -615,7 +616,9 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
   // "One side only" / "No bets yet". PV-06 (2026-09-03) stopped an invented 50; C1 stops the 100/0.
   const price = priceState(m.yesPool, m.noPool);
   const outcomeLabel = m.resolvedOutcome ? outcomeWord(t, m.resolvedOutcome, m.productLine) : null;
-  const railWords = price.kind === "oneSided" ? t.market.oneSideOnly : m.predictorCount === 0 ? t.market.noBetsYet : null;
+  // The count players see (`predictors.ts`) — 0 exactly when nobody ever bet, so the rail's words are unchanged.
+  const predictors = shownPredictors(m);
+  const railWords = price.kind === "oneSided" ? t.market.oneSideOnly : predictors === 0 ? t.market.noBetsYet : null;
   return (
     <Link
       /* ⚠️ THE NOTABLE CARD IS A SECOND CODE PATH FROM THE GRID and needs the row identity for
@@ -675,7 +678,7 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
             (`market.predictors`, the Stat's label on the market page) in the middle of a line, where every card under this
             one reads "2 watabiri". The count line now says it as the cards and the board's rows do — the sentence word, one
             for one predictor (`predictorsCount` / `predictorsCountOne`), the count grouped by `formatNumber`. */}
-        <span className="flex items-center gap-1"><I.users s={11} /> {formatNumber(m.predictorCount)} {m.predictorCount === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}</span>
+        <span className="flex items-center gap-1"><I.users s={11} /> {formatNumber(predictors)} {predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}</span>
       </div>
     </Link>
   );

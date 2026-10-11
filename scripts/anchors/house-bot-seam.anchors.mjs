@@ -22,7 +22,10 @@ export const SEAM_SITES = [
    * HOLDER'S OWN real-money stake, so their bonus wagering accrued nothing while the documented escape
    * (closing the opposite leg) is refused for a house leg. */
   "oppositeSide",
-  "H0", "H1", "session", "replay", "H2", "cash", "marker", "lockTimeout", "H3", "markPlaced", "revertNoFunds",
+  /* ⭐ `shownCount` ADDED 2026-10-11 WITH ITS SITE (sanctioned change (s), owner ruling "a desk account may count as
+   * more than one predictor"): straight after H2, the house context reads its "Counts as" for the pool increment's
+   * `predictorExtra`. It moves no money and refuses nothing; a player's stake reads 0. */
+  "H0", "H1", "session", "replay", "H2", "shownCount", "cash", "marker", "lockTimeout", "H3", "markPlaced", "revertNoFunds",
   "revertNoFundsBonus", "txnMarker", "H4", "wagering", "superseded", "audit", "receipts", "recruit",
   "reverseWageringOrphan", "markerOrphan", "cashOutValue", "cashOutReason", "cashOutPosition", "markerCashout", "markerOneSided",
   "markerVoid", "markerWin", "reverseWagering", "markerEmergency", "reverseWageringEmergency",
@@ -106,6 +109,32 @@ export const MUTATIONS = [
     from: `  const intent = await houseBotIntentStore.get(ctx.intentId);\n  if (!intent ||`,
     to: `  const loaded = await houseBotIntentStore.get(ctx.intentId);\n  const intent = loaded && loaded.status === "CLAIMED" ? loaded : null;\n  if (!intent ||`,
     expect: "5.4 · H0 never reads the intent's status",
+    suite: "seam",
+  },
+  /* ⭐ SANCTIONED CHANGE (s) — "Counts as" at the bet (owner ruling 2026-10-11). Three ways the stamp can lie, each
+     caught by §6's (s) on its OWN assertion. `npm run red:house-bot-money -- --only ca-`. */
+  {
+    name: "ca-every-stake · shown-count.ts adds the extra at EVERY stake, not at the account's first on the market",
+    file: "src/lib/server/house-bot/shown-count.ts",
+    from: `  if (input.mine.some((p) => p.houseBotId === input.botId)) return 0;`,
+    to: `  if (input.mine.some((p) => p.houseBotId === "never")) return 0;`,
+    expect: "6.s3 · its SECOND stake on the same market adds nothing to either count",
+    suite: "seam",
+  },
+  {
+    name: "ca-whole-weight · shown-count.ts adds the whole weight instead of the weight less the account itself",
+    file: "src/lib/server/house-bot/shown-count.ts",
+    from: `  return account ? countsAsOf(account.rules) - 1 : 0;`,
+    to: `  return account ? countsAsOf(account.rules) : 0;`,
+    expect: "6.s2 · a desk account counted as 100",
+    suite: "seam",
+  },
+  {
+    name: "ca-player-extra · market-service.ts gives a PLAYER's stake an extra",
+    file: SVC,
+    from: `    const shownExtra = ctx.kind === "house" ? await houseShownExtra({ tx: lockTx, botId: ctx.botId, mine }) : 0;`,
+    to: `    const shownExtra = ctx.kind === "house" ? await houseShownExtra({ tx: lockTx, botId: ctx.botId, mine }) : 1;`,
+    expect: "6.s1 · a player's stake",
     suite: "seam",
   },
 ];

@@ -680,8 +680,9 @@ async function execute(keep: { ids: string[]; rows: any[] }, unknownConfig: stri
       `UPDATE "User" SET "failedLoginCount"=0, "lockedUntil"=NULL, "closedAt"=NULL, "updatedAt"=now()`,
     ],
     [
-      "zero pools + predictorCount on the kept polls",
-      `UPDATE "PredictionMarket" SET "yesPool"=0, "noPool"=0, "predictorCount"=0, "updatedAt"=now()`,
+      // `predictorExtra` with them (2026-10-11): an extra left behind would print predictors on an empty poll.
+      "zero pools + predictorCount + predictorExtra on the kept polls",
+      `UPDATE "PredictionMarket" SET "yesPool"=0, "noPool"=0, "predictorCount"=0, "predictorExtra"=0, "updatedAt"=now()`,
     ],
 
     // 8 ── accounting that hides in the config table.
@@ -905,7 +906,7 @@ async function assertions(keepIds: string[], base: Baseline) {
 
   // Same reasoning as the wallet check: the WORST poll, not the sum across polls.
   const pollsWithPool = await g(
-    `SELECT count(*)::int n FROM "PredictionMarket" WHERE "yesPool" <> 0 OR "noPool" <> 0 OR "predictorCount" <> 0`
+    `SELECT count(*)::int n FROM "PredictionMarket" WHERE "yesPool" <> 0 OR "noPool" <> 0 OR "predictorCount" <> 0 OR "predictorExtra" <> 0`
   );
   const worstPool = await g(
     `SELECT coalesce(max(abs("yesPool") + abs("noPool")),0)::numeric n FROM "PredictionMarket"`

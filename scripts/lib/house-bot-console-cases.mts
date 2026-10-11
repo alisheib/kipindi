@@ -1359,7 +1359,10 @@ section("§2 · the strip, the band, the roster and every failure");
     const navSrc = decomment(read("src/components/admin/admin-nav-groups.ts"));
     ok("1.548 · the fix is in the crumb builder's own home, keyed by the SECTION KEY — not a prefix added to `looksLikeId`, which the next prefix would walk straight past",
       /const ID_CRUMB: Record<string, string> = \{/.test(navSrc)
-        && /^\s*if \(\/\^\(usr\|mkt\|udr\|txn\|kyc\)_\/i\.test\(p\)\) return true;$/m.test(navSrc)
+        /* ⚠️ `cmp` JOINED THE GENERIC LIST ON 2026-10-08 (marketing `a001261d`, campaign ids) and this pin, which typed
+           the list whole, went red on `main` that day — found 2026-10-11 by the Counts-as lane's run. The list is
+           pinned as it now stands; the point of the pin is unchanged and is the next clause: `hb_` is never on it. */
+        && /^\s*if \(\/\^\(usr\|mkt\|udr\|txn\|kyc\|cmp\)_\/i\.test\(p\)\) return true;$/m.test(navSrc)
         && !/hb_/.test(navSrc), j({ hasTable: /ID_CRUMB/.test(navSrc) }));
     ok("1.548 · CONTROL · a section that does NOT declare its ids maskable still paints them — so the zero above is a masked section and not a crumb builder that has stopped rendering ids at all",
       crumbsOf("/admin/players/usr_6e24abc123def456789012").includes("usr_6e24abc123def456789012")
@@ -8722,6 +8725,141 @@ try {
         j({ result: refused.r, fan: fanOf(refused.fan) }));
     }
 
+    /* ━━ 2.ca · "COUNTS AS" (owner ruling 2026-10-11) — the save MOVES the open markets the account is on, says so before
+       and after, records before → after in the COMPLIANCE row, and refuses every bad box ON ITS FIELD with nothing moved ━━
+       ⛔ The markets carry positions with the account's marker written as fixtures, so no global limit is moved for a
+       placement: two OPEN markets (LIVE, CLOSED) that must move, two FINISHED ones (RESOLVED, VOIDED) that must not, a
+       LIVE market the account is not on, and a LIVE market only ANOTHER account is on. */
+    {
+      /* The caps the live platform accepts on a SAVE (§2i's recipe, as 2.fs09.4 builds it): a min gap at the bet-place
+         floor and a stake max inside the live bounds — or every good save below is refused on a field it never moved. */
+      const acct = await fixtureJ({ freqMinGapSec: 20 });
+      const other = await fixtureJ();
+      const KEY = "counts-as";
+      const marketIn = async (status: string | null, by: { botId: string; userId: string } | null): Promise<string> => {
+        const m: Any = await w.poll();
+        if (by) {
+          await w.mdal.positionStore.set({
+            id: w.uid("pos"), userId: by.userId, marketId: m.id, side: "YES", stake: 1_000, bonusStakeTzs: 0,
+            potentialPayout: 2_000, status: "OPEN", finalPayout: null, placedAt: w.iso(), settledAt: null,
+            idempotencyKey: null, houseBotId: by.botId,
+          });
+        }
+        if (status) await w.mdal.marketStore.stamp(m.id, { status });
+        return m.id;
+      };
+      const MK = {
+        live: await marketIn(null, acct), closed: await marketIn("CLOSED", acct),
+        resolved: await marketIn("RESOLVED", acct), voided: await marketIn("VOIDED", acct),
+        notOn: await marketIn(null, null), othersOnly: await marketIn(null, other),
+      };
+      const extras = async (): Promise<Record<string, number>> => Object.fromEntries(await Promise.all(Object.entries(MK).map(
+        async ([k, id]) => [k, Number(((await w.svc.getMarket(id)) as Any)?.predictorExtra ?? 0)] as const)));
+      const formK = async (): Promise<Any> => (await GATEM.houseDetailForConsole(officerJ, ROUTE_J, acct.botId)).rulesForm;
+      const postK = async (countsAs: string | undefined): Promise<Any> => {
+        const f: Any = await formK();
+        const row: Any = await w.dal.houseBotStore.get(acct.botId);
+        const numbers: Record<string, string> = Object.fromEntries((f.rules as Any[]).map((r: Any) => [r.key, r.value]));
+        if (countsAs === undefined) delete numbers[KEY];
+        else numbers[KEY] = countsAs;
+        return {
+          accountId: acct.botId,
+          baseVersion: row.rulesVersion,
+          values: { ...Object.fromEntries((f.caps as Any[]).map((x: Any) => [x.key, x.value])), "stake-max": "1000000" },
+          flags: Object.fromEntries((f.flags as Any[]).map((x: Any) => [x.key, x.on])),
+          lists: {
+            categories: (f.lists as Any[]).find((l: Any) => l.field === "categories").entries.filter((e: Any) => e.on).map((e: Any) => e.value),
+            chains: (f.lists as Any[]).find((l: Any) => l.field === "chains").entries.filter((e: Any) => e.on).map((e: Any) => e.value),
+          },
+          numbers,
+          amountKind: f.amountKind.value,
+          schedule: {
+            days: (f.schedule.days as Any[]).filter((d: Any) => d.on).map((d: Any) => d.value),
+            allDay: f.schedule.allDay,
+            windows: (f.schedule.windows as Any[]).map((x: Any) => ({ start: x.start, end: x.end })),
+          },
+        };
+      };
+      const saveK = (body: Any): Promise<Any> => GATEM.houseRulesSaveForConsole(officerJ, ROUTE_J, body);
+      const versionK = async (): Promise<number> => ((await w.dal.houseBotStore.get(acct.botId)) as Any).rulesVersion;
+      const auditK = async (version: number): Promise<Any> => {
+        const { auditFlush, getAuditPage }: Any = await import("../../src/lib/server/audit.ts");
+        await auditFlush();
+        return (getAuditPage({ limit: 10_000 }) as Any[]).find((e) =>
+          e.action === "house_bot.rules_saved" && e.targetId === acct.botId && e.payload?.rulesVersion === version) ?? null;
+      };
+
+      /* the form, before anything moves */
+      const r0: Any = ((await formK()).rules as Any[]).find((r: Any) => r.key === KEY) ?? null;
+      ok("2.ca.1 · the Rules form draws Counts as under Market cards — value 1, its range, its help — and says what a change does to the 2 open markets the account is on",
+        r0 !== null && r0.section === "Market cards" && r0.label === "Counts as" && r0.value === "1" && r0.range === "Between 1 and 10,000."
+          && r0.help === "How many predictors this account adds to the count players see on a market it stakes on. 1 = counted like any player. Money and odds never change."
+          && r0.change?.up === "Saving raises the count players see on the 2 open markets this account is on, at once. Finished markets keep their number."
+          && r0.change?.down === "Saving lowers the count players see on the 2 open markets this account is on, at once — players can see that count go down. Finished markets keep their number.",
+        j({ row: r0 }));
+      ok("2.ca.1b · no other row carries a consequence line", ((await formK()).rules as Any[]).filter((r: Any) => r.key !== KEY).every((r: Any) => r.change === null));
+
+      /* bad boxes: each refused on its own field; no version, no market and no inbox moves */
+      for (const [raw, message] of [
+        ["abc", "Digits only, e.g. 10,000."], ["0", "Between 1 and 10,000."], ["10001", "Between 1 and 10,000."],
+        ["-5", "Between 1 and 10,000."], ["1.5", "Whole numbers only — no decimals."], ["", "Enter a whole number."],
+      ] as const) {
+        const before = j(await extras());
+        const v = await versionK();
+        const bad = await measure("RULES_SAVED", acct.userId, async () => saveK(await postK(raw)));
+        ok(`2.ca.2 · "${raw}" is refused on the Counts as box — "${message}" — and no version, market or inbox moves`,
+          bad.r?.ok === false && bad.r?.fields?.[KEY] === message && silent(bad.fan) && (await versionK()) === v && j(await extras()) === before,
+          j({ result: bad.r }));
+      }
+      const missing: Any = await saveK(await postK(undefined));
+      ok("2.ca.2b · a post WITHOUT the Counts as box is refused as an out-of-date form — the whole form or nothing",
+        missing?.ok === false && String(missing?.error ?? "").startsWith("This form is out of date."), j({ missing }));
+
+      /* 1 → 100 */
+      const up = await measure("RULES_SAVED", acct.userId, async () => saveK(await postK("100")));
+      const e1 = await extras();
+      const ev1 = await eventOfJ(acct.botId, "RULES_SAVED");
+      const a1: Any = await auditK(await versionK());
+      ok("2.ca.3 · 1 → 100: LIVE and CLOSED move by 99; RESOLVED and VOIDED keep theirs; a market the account is not on, or only another account is on, is untouched",
+        up.r?.ok === true && e1.live === 99 && e1.closed === 99 && e1.resolved === 0 && e1.voided === 0 && e1.notOn === 0 && e1.othersOnly === 0,
+        j({ result: up.r, extras: e1 }));
+      ok("2.ca.3b · …and the save says what it moved, in the server's own sentence",
+        up.r?.shownNotice === "Counts as is now 100 — 2 open markets updated.", j({ notice: up.r?.shownNotice ?? null }));
+      ok("2.ca.3c · …every admin is told once, naming the officer, with Counts as before → after in the sentence",
+        ev1 !== null && landedOnce(up.fan, `/admin/desk/${acct.botId}?tab=history&event=${ev1.id}`)
+          && String(up.fan.officer[0]?.bodyEn ?? "").includes("Counts as: 1 → 100"), j({ fan: fanOf(up.fan) }));
+      ok("2.ca.3d · …and the COMPLIANCE row carries {field: display.countsAs, before: 1, after: 100}",
+        a1 !== null && Array.isArray(a1.payload?.changes)
+          && a1.payload.changes.some((c: Any) => c.field === "display.countsAs" && c.before === 1 && c.after === 100),
+        j({ audit: a1?.payload ?? null }));
+      const rRow: Any = ((await rosterEvery(officerJ))?.rows as Any[] | undefined)?.find((x: Any) => x.id === acct.botId) ?? null;
+      ok("2.ca.3e · the roster paints the account's Counts as", rRow?.countsAs === "100", j({ countsAs: rRow?.countsAs ?? null }));
+
+      /* 100 → 40 */
+      const down: Any = await saveK(await postK("40"));
+      const e2 = await extras();
+      ok("2.ca.4 · 100 → 40: the two open markets move down by 60 (99 → 39) and nothing else moves",
+        down?.ok === true && e2.live === 39 && e2.closed === 39 && e2.resolved === 0 && e2.voided === 0 && e2.notOn === 0 && e2.othersOnly === 0
+          && down.shownNotice === "Counts as is now 40 — 2 open markets updated.", j({ result: down, extras: e2 }));
+
+      /* a save that leaves it at 40 */
+      const same: Any = await saveK(await postK("40"));
+      const a3: Any = await auditK(await versionK());
+      ok("2.ca.5 · CONTROL · a save that leaves Counts as alone moves no market, says nothing about it, and records no Counts as line",
+        same?.ok === true && same.shownNotice === "" && j(await extras()) === j(e2)
+          && a3 !== null && !(a3.payload?.changes ?? []).some((c: Any) => c.field === "display.countsAs"),
+        j({ result: same, audit: a3?.payload ?? null }));
+
+      /* a market that drifted below what the account holds is held at 0, never negative */
+      if (w.onPostgres) await w.prisma()!.$executeRawUnsafe(`UPDATE "PredictionMarket" SET "predictorExtra" = 5 WHERE "id" = $1`, MK.live);
+      else ((await w.mdal.marketStore.get(MK.live)) as Any).predictorExtra = 5;
+      const toOne: Any = await saveK(await postK("1"));
+      const e3 = await extras();
+      ok("2.ca.6 · 40 → 1 after the LIVE market drifted to 5: it is held at 0 — never negative — and the CLOSED one returns to 0",
+        toOne?.ok === true && e3.live === 0 && e3.closed === 0 && e3.resolved === 0 && e3.voided === 0, j({ result: toOne, extras: e3 }));
+      ok("2.ca.p · population · the extras really moved between saves, so 2.ca.3–2.ca.6 measured changes and not defaults", e1.live !== e2.live && e2.live !== e3.live);
+    }
+
     /* ━━ 2.fs09.5 · THE LIMITS SAVE — the DESK's change: no account, its own history row, its own link ━━ */
     {
       const LIMITS = R.LIMIT_FIELDS as readonly string[];
@@ -9326,6 +9464,13 @@ try {
     await w.dal.houseBotStore.setStatus(acD.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
     for (const stake of [1_000, 2_000]) await placeFor(acA, stake);
     await placeFor(acB, 6_000);
+    /* "Counts as" (owner ruling 2026-10-11): two accounts hold a number above 1, so the seventh column's walk orders
+       something real — every other account reads 1 and the ties fall to designation, then the id. */
+    for (const [b, n] of [[acB, 250], [acD, 40]] as const) {
+      const cur: Any = await w.dal.houseBotStore.get(b.botId);
+      const set = await w.dal.houseBotStore.saveRules(b.botId, cur.rulesVersion, { rules: { ...(cur.rules ?? {}), display: { countsAs: n } } });
+      if (!set.ok) throw new Error("1.s9 fixture: Counts as could not be set");
+    }
     for (let n = (await w.dal.houseBotStore.listNonRemoved()).length; n < 23; n++) await bot9({ label: `fill ${n} ${TAG9}` });
     const rosterNow = (await w.dal.houseBotStore.listNonRemoved()) as Any[];
     const stored = new Map(rosterNow.map((b: Any) => [b.id as string, b]));
@@ -9347,6 +9492,7 @@ try {
       status: (r) => STATUS_RANK[r.statusWord] ?? null,
       "bets-today": (r) => (r.betsCell?.halves?.length ? figureOf(r.betsCell.used) : null),
       "last-bet": (r) => { const at = Date.parse(lastAt.get(r.id) ?? ""); return r.lastBet === null || !Number.isFinite(at) ? null : at; },
+      "counts-as": (r) => Number(String(r.countsAs).replace(/[^0-9]/g, "")),
     };
     const rWalks: Record<string, { pages: Any[]; rows: Any[] }> = {};
     const rBad: Record<string, number[]> = {};
@@ -9357,7 +9503,7 @@ try {
       }
     }
     const rBare = await walkR({});
-    ok("1.s9 · roster · every one of its six sortable columns orders every page both ways by the figure its CELL paints — the label A to Z ignoring case, the two used amounts, the lifecycle, today's count, the last bet — with designation and then the id breaking every tie",
+    ok("1.s9 · roster · every one of its seven sortable columns orders every page both ways by the figure its CELL paints — the label A to Z ignoring case, the two used amounts, the lifecycle, today's count, the last bet, Counts as — with designation and then the id breaking every tie",
       Object.values(rBad).every((b) => b.length === 0) && Object.values(rWalks).every((x) => x.rows.length === rosterNow.length && new Set(x.rows.map((r: Any) => r.id)).size === rosterNow.length),
       j(Object.entries(rBad).filter(([, b]) => b.length > 0).map(([k, b]) => [k, b.slice(0, 2)])));
     const lastIs = (rows: Any[], id: string) => rows.length > 0 && rows[rows.length - 1].id === id;
@@ -9400,7 +9546,7 @@ try {
         && [rRef.sort, rRef.dirOnly].every((v: Any) => v.rows.length === 20 && pairsOut(v.rows, (r: Any) => Date.parse(stored.get(r.id)?.designatedAt), "asc", () => true).length === 0)
         && rRef.sort.rosterSort.current === "" && rRef.dirOnly.rosterSort.current === ""
         && rRef.clean.queryRefusal === null && rRef.clean.rosterParams.rsort === "status" && rRef.clean.rosterParams.rdir === "asc"
-        && rRef.clean.rosterSort.prefix === "r" && all(Object.keys(rRef.clean.rosterSort.columns)) === all(["account", "loss", "exposure", "status", "bets", "lastBet"]),
+        && rRef.clean.rosterSort.prefix === "r" && all(Object.keys(rRef.clean.rosterSort.columns)) === all(["account", "loss", "exposure", "status", "bets", "lastBet", "countsAs"]),
       j({ sort: rRef.sort.queryRefusal, dirOnly: rRef.dirOnly.queryRefusal, clean: rRef.clean.rosterParams }));
 
     /* ━━ THE DESK-WIDE LEDGER — the population is the whole desk, so the claim is a property of every adjacent pair ━━ */
@@ -10776,7 +10922,7 @@ export default function Ruling513Control() {
    * ruling 351's rate reader, so both arrive here — and the way-out column's header carries NO WORD, which is the
    * kit's own shape for a row-link column on `/admin/kyc` and `/admin/approvals`. */
   ok("1.310 / 1.373 · the roster's headers are the control facts, in order, with money second and third and the way out last",
-    j(headers) === j(["Account", "Loss today (projected)", "Open exposure", "Status", "Bets today", "Last bet", "Products", ""]), j(headers));
+    j(headers) === j(["Account", "Loss today (projected)", "Open exposure", "Status", "Bets today", "Last bet", "Counts as", "Products", ""]), j(headers));
   ok("1.373 · the basis is NAMED IN THE HEADER — a column headed 'Loss today' with no basis is the ambiguity 366 exists to prevent",
     headers[1] === "Loss today (projected)", headers[1]);
   /* ⛔ AND THE HEADER MAY WRAP, WHICH IS WHAT KEEPS THE FIGURE ON SCREEN (ruling 432(o)). `.admin-tbl th` is

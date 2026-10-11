@@ -481,7 +481,8 @@ log("\n── 10 · /results' notable result (C1)");
   check("10.4 the empty rail is named by the verdict first, then the pool's shape",
     featured.includes("empty emptyLabel={outcomeLabel ?? railWords ?? t.market.noPoolYet}"));
   check("10.5 a one-sided spotlight says 'One side only' under its rail",
-    /const railWords = price\.kind === "oneSided" \? t\.market\.oneSideOnly : m\.predictorCount === 0 \? t\.market\.noBetsYet : null;/.test(featured)
+    /const predictors = shownPredictors\(m\);/.test(featured)
+    && /const railWords = price\.kind === "oneSided" \? t\.market\.oneSideOnly : predictors === 0 \? t\.market\.noBetsYet : null;/.test(featured)
     && /className="mcardp-oneside"/.test(featured));
   check("10.6 no refund sentence on a SETTLED card (WP6's settled rule)", !/oneSidedNote/.test(featured));
   check("10.7 a settled split reads 'Final pool', never a lean", /leansYes: t\.market\.resFinalPool/.test(featured)

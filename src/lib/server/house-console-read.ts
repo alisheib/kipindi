@@ -50,7 +50,7 @@ import { EAT_LABEL, WEEKDAYS, WEEKDAY_LABEL, eatDayKey, eatDayWindow, eatWeekday
 import { BOT_STATUSES, INTENT_KINDS, INTENT_PRODUCT_LINES, INTENT_STATUSES, type EngineCode, type HouseBotEventKind, type IntentKind, type IntentStatus } from "@/lib/house-bot/constants";
 /* ⭐ The platform's ONE window resolver, so "today" means one span on this screen and on every other (ruling 410). */
 import { parseEatLocal, resolveRange } from "./date-range";
-import { CAP_FIELDS, ENTRY_MODES, ENTRY_MODE_WORDS, FIELD_META, LIMIT_FIELDS, DEFAULT_RULES_V1, MAX_SCHEDULE_WINDOWS, PRODUCT_WORDS, REQUIRED_FOR_MASTER_ON, REQUIRED_FOR_START, ROUND_TO_OPTIONS, RULE_NUMBER_FIELDS, SCOPE_PRODUCTS, describeWindow, fieldBounds, isClearExempt, leafUsedBy, migrateRules, parseHouseBotRules, recommendedRules, rulesInertReasons, rulesLiveBoundProblems, rulesReach, unitSuffix, type BoundsContext, type CapField, type FieldId, type HouseBotCaps, type HouseBotRulesV1, type InertReason, type LeafModeState, type LimitField, type LiveBoundProblem, type ParseContext, type ScopeProduct, type EntryMode } from "@/lib/house-bot/rules";
+import { CAP_FIELDS, countsAsOf, ENTRY_MODES, ENTRY_MODE_WORDS, FIELD_META, LIMIT_FIELDS, DEFAULT_RULES_V1, MAX_SCHEDULE_WINDOWS, PRODUCT_WORDS, REQUIRED_FOR_MASTER_ON, REQUIRED_FOR_START, ROUND_TO_OPTIONS, RULE_NUMBER_FIELDS, SCOPE_PRODUCTS, describeWindow, fieldBounds, isClearExempt, leafUsedBy, migrateRules, parseHouseBotRules, recommendedRules, rulesInertReasons, rulesLiveBoundProblems, rulesReach, unitSuffix, type BoundsContext, type CapField, type FieldId, type HouseBotCaps, type HouseBotRulesV1, type InertReason, type LeafModeState, type LimitField, type LiveBoundProblem, type ParseContext, type ScopeProduct, type EntryMode } from "@/lib/house-bot/rules";
 /* ⭐ THE SCOPE PICKER'S TWO LISTS (prod finding 2026-09-22): the platform's own category list and its own label
  * helper, so the form and the roster paint the words a player sees and never a raw key. `dict.en` because the
  * console is an English surface; the helper takes the dictionary rather than a locale. */
@@ -216,6 +216,11 @@ export type ConsoleRosterRow = {
    * instant, and the instant of a house stake is a gated value.
    */
   lastBet: { text: string; title: string } | null;
+  /**
+   * "Counts as" (owner ruling 2026-10-11): how many predictors this account adds to the count players see, as a grouped
+   * whole number ("1" = counted like any player). Read RAW (`countsAsOf`), exactly as the bet path stamps it.
+   */
+  countsAs: string;
   /**
    * ⛔ THE OPERATIVE SCOPE, ONE LINE PER TICKED PRODUCT — the product's word and the chains or categories it can
    * REACH, as LABELS (prod finding 2026-09-22). It printed the summary words "Up & Down · Polls" for an account
@@ -1257,6 +1262,7 @@ export async function houseRosterForConsole(
        * rate map has never staked and reads "—"; a FAILED rate read is `rates === null`, which reads the same way,
        * and the difference is one a roster row cannot honestly paint. */
       lastBet: relativeEat(rateById.get(bot.id)?.lastPlacedAt ?? null, nowMs),
+      countsAs: formatNumber(countsAsOf(bot.rules)),
       href: consoleBotHref(bot.id),
       products: parsed == null || !parsed.ok || !parseCtx ? ["Couldn't read"] : scopeLines(parsed.rules, parseCtx),
       /* ⛔ AN ACTIVE ACCOUNT THAT IS INERT NEVER RENDERS AS A PLAIN GREEN "Active" AND NOTHING ELSE (prod finding
@@ -1332,6 +1338,8 @@ function consoleRosterKey(
       const k = (BOT_STATUSES as readonly string[]).indexOf(bot.status);
       return k < 0 ? null : k;
     }
+    /* The number the cell paints, read the one raw way: never missing, so it never sorts last for want of a value. */
+    case "countsAs": return countsAsOf(bot.rules);
     default: return null;
   }
 }
@@ -2162,6 +2170,7 @@ const CONSOLE_RULE_KEY: Readonly<Record<string, string>> = {
   "guards.minTimeToCutoffPollsMin": "min-time-left-polls",
   "enterNow.thinStakeTzs": "enter-now-thin-stake",
   "enterNow.openerStakeTzs": "enter-now-first-stake",
+  "display.countsAs": "counts-as",
 };
 
 /** The one choice on the form that is not a number: how a counter-stake's amount is worked out. */
@@ -2227,6 +2236,8 @@ export const CONSOLE_RULE_HELP: Readonly<Record<string, string>> = {
   "guards.minTimeToCutoffPollsMin": "How much of a poll must still be left for this account to place anything at all.",
   "enterNow.thinStakeTzs": "The amount used when an officer acts by hand on a poll whose two sides are uneven.",
   "enterNow.openerStakeTzs": "The amount used when an officer acts by hand on a poll with no stakes on it yet.",
+  /* Owner ruling 2026-10-11 ("a desk account may count as more than one predictor"). Display only: no money moves. */
+  "display.countsAs": "How many predictors this account adds to the count players see on a market it stakes on. 1 = counted like any player. Money and odds never change.",
 };
 
 /**
@@ -2533,7 +2544,11 @@ export type ConsoleRulesSaveInput = {
 
 export type ConsoleRulesSaveResult =
   /** ⛔ `recorded: false` means the rules DID change and the compliance row did not — the page says both. */
-  | { ok: true; rulesVersion: number; changed: number; rulesChanged: boolean; recorded: boolean; warnings: string[] }
+  | {
+    ok: true; rulesVersion: number; changed: number; rulesChanged: boolean; recorded: boolean; warnings: string[];
+    /** "Counts as is now 100 — 12 open markets updated." when that number moved; "" otherwise. The server's sentence. */
+    shownNotice: string;
+  }
   /**
    * ⛔ `fields` IS EVERY FIELD THAT IS WRONG, BY THE FORM'S OWN NEUTRAL KEY, AND `field` IS THE FIRST OF THEM.
    *
@@ -2558,7 +2573,42 @@ const RULES_SAVE_COPY = {
   REMOVED: "This account was removed from the desk. Nothing on it can be changed.",
   CONFLICT: "Someone else changed this account while this page was open. Nothing was saved — reload the page and make the change again.",
   RULES_UNREADABLE: "This account's saved settings could not be read, so nothing was saved. Reload the page, and if it says this again, raise it before changing anything.",
+  WRITE_FAILED: "The change could not be written, so nothing was saved and no market changed. Try again in a moment.",
 } as const;
+
+/** The "Counts as" leaf (owner ruling 2026-10-11) — the one row that says what saving a new number does. */
+const COUNTS_AS_FIELD: FieldId = "display.countsAs";
+
+const marketsWord = (n: number): string => `${formatNumber(n)} open market${n === 1 ? "" : "s"}`;
+
+/**
+ * ⭐ WHAT A NEW "COUNTS AS" DOES, SAID BEFORE SAVE — both answers, the form picks one from the box against the saved
+ * value. ⛔ Neutral (453): "this account", never the feature's name; "players" is the platform's own word for them.
+ * ⛔ `null` = the count could not be read: the warning is still given, without a number — a lowered count is the one
+ * move players can see, and silence about it is not a safe default (review, 2026-10-11).
+ */
+function countsAsChangeCopy(open: number | null): { up: string; down: string } {
+  if (open === null) {
+    return {
+      up: "Saving raises the count players see on every open market this account is on, at once. Finished markets keep their number.",
+      down: "Saving lowers the count players see on every open market this account is on, at once — players can see that count go down. Finished markets keep their number.",
+    };
+  }
+  if (open === 0) {
+    const none = "No open market carries this account now: a new number applies from its next stake. Finished markets keep their number.";
+    return { up: none, down: none };
+  }
+  return {
+    up: `Saving raises the count players see on the ${marketsWord(open)} this account is on, at once. Finished markets keep their number.`,
+    down: `Saving lowers the count players see on the ${marketsWord(open)} this account is on, at once — players can see that count go down. Finished markets keep their number.`,
+  };
+}
+
+/** What a landed save says about "Counts as" when that number moved. */
+function countsAsSavedCopy(shown: { after: number; markets: number }): string {
+  const moved = shown.markets === 0 ? "no open market carried this account" : `${marketsWord(shown.markets)} updated`;
+  return `Counts as is now ${formatNumber(shown.after)} — ${moved}.`;
+}
 
 /**
  * THE ACCOUNT RULES SAVE, GATED (ruling 537's shape). One NAMED writer with its `CONSOLE_GATES` arity entry,
@@ -2711,6 +2761,7 @@ export async function houseRulesSaveForConsole(
       ok: true, rulesVersion: saved.rulesVersion, changed: saved.changes.length,
       rulesChanged: saved.rulesChanged, recorded: saved.recorded,
       warnings: saved.warnings.map((w) => w.message),
+      shownNotice: saved.shown ? countsAsSavedCopy(saved.shown) : "",
     };
   }
   if (saved.code !== "INVALID") return { ok: false, error: RULES_SAVE_COPY[saved.code] };
@@ -3135,6 +3186,14 @@ export type ConsoleRulesForm = {
     idle: boolean;
     /** A fixed set of values (`shaping.roundToTzs`) — drawn as a chooser, never a free box. */
     options: readonly { value: string; label: string }[] | null;
+    /**
+     * ⭐ WHAT SAVING A DIFFERENT NUMBER DOES, SAID BEFORE SAVE ("Counts as" only — owner ruling 2026-10-11; Ali:
+     * "perfect input validation and control"). The FORM shows `up` while the box holds more than the saved value and
+     * `down` while it holds less; this side counts the open markets the save would move and words both answers
+     * (ruling 388: the client composes no sentence). Null on every other row. When the count could not be read the two
+     * sentences are still sent, without a number — never a wrong number, and never silence about a fall.
+     */
+    change: { up: string; down: string } | null;
   }[];
   /**
    * ⭐ THE COUNTER AMOUNT'S ONE CHOICE, AND THE TWO BOXES IT SWITCHES BETWEEN (2026-09-23). The document holds
@@ -4044,6 +4103,7 @@ export const CONSOLE_SORT_LABEL = {
   status: "Status",
   bets: "Bets today",
   lastBet: "Last bet",
+  countsAs: "Counts as",
   stake: "Stake",
   when: "When (EAT)",
   outcome: "Outcome",
@@ -4066,7 +4126,7 @@ export const consoleSortToken = (key: ConsoleSortKey): string => consoleSlug(CON
  * column shows it); and the prefix its three address words wear (`sort`/`dir`/`page` with it in front).
  */
 export const CONSOLE_SORT_TABLES = {
-  roster: { prefix: "r", keys: ["account", "loss", "exposure", "status", "bets", "lastBet"], dflt: null },
+  roster: { prefix: "r", keys: ["account", "loss", "exposure", "status", "bets", "lastBet", "countsAs"], dflt: null },
   feedDesk: { prefix: "", keys: ["account", "stake", "when", "outcome"], dflt: "when" },
   feedAccount: { prefix: "", keys: ["when", "stake", "outcome"], dflt: "when" },
   historyDesk: { prefix: "h", keys: ["account", "when"], dflt: "when" },
@@ -5941,6 +6001,15 @@ export async function houseDetailForConsole(
     countRow("freqMaxPerDay", "", rate ? rate.placedLastDay : null, "bets"),
   ];
 
+  /* ⭐ HOW MANY OPEN MARKETS A "COUNTS AS" CHANGE WOULD MOVE NOW — the shift's own population (owner ruling 2026-10-11).
+     ⛔ A failed read keeps the warning and drops only the number: never a wrong figure, never silence about a fall. */
+  let countsAsChange: { up: string; down: string } = countsAsChangeCopy(null);
+  try {
+    countsAsChange = countsAsChangeCopy(await houseBotStore.countShownMarkets(bot.id));
+  } catch (err) {
+    console.error("[desk] the Counts-as open-market count could not be read:", err instanceof Error ? err.message : String(err));
+  }
+
   const parsed = parseCtx ? parseHouseBotRules(bot.rules, parseCtx) : null;
   /**
    * ⭐ THE SEED THE RULES FORM IS DRAWN FROM, AND THE DEAD END IT REMOVES (Ali ruled 2026-09-23).
@@ -6127,7 +6196,10 @@ export async function houseDetailForConsole(
      */
     rules: RULE_NUMBER_FIELDS.map((id) => {
       const meta = FIELD_META[id];
-      const raw = ruleLeaf(formSeed.rules, id);
+      /* ⛔ "Counts as" is seeded from the RAW stored weight (`countsAsOf`), never from a migrated or default seed: on a
+         document whose other leaves stopped parsing the seed reads 1 while the open markets carry the real weight, and
+         a repair-save would lower them with no sentence under the box (review, 2026-10-11). */
+      const raw = id === COUNTS_AS_FIELD ? countsAsOf(bot.rules) : ruleLeaf(formSeed.rules, id);
       const bounds = boundsCtx === null ? null : fieldBounds(id, boundsCtx);
       const rec = recommendedRuleDoc === null ? null : ruleLeaf(recommendedRuleDoc, id);
       const def = meta.default;
@@ -6173,6 +6245,7 @@ export async function houseDetailForConsole(
         options: meta.options == null
           ? null
           : meta.options.map((o) => ({ value: String(o), label: limitValue(id, o) })),
+        change: id === COUNTS_AS_FIELD ? countsAsChange : null,
       };
     }),
     /* ⭐ THE AMOUNT'S KIND, AND THE BOX EACH CHOICE REVEALS. ⛔ The document is a UNION, so the kind is posted

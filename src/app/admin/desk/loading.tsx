@@ -41,7 +41,7 @@ export default function AdminDeskLoading() {
             kit's own note names eight admin pages that pay for exactly this. First reading of the swap at 1280: the
             ghost card was 279px against the page's 361px; with 16 and the row count matching the fixture it closes to
             within a few px, and the residual is the account cell's second line, which no ghost can know about. */}
-        <SkTableCard cols={8} rows={5} minWidth={280} title={false} sw={false} cellPy={16} />
+        <SkTableCard cols={9} rows={5} minWidth={280} title={false} sw={false} cellPy={16} />
       </AdminBody>
     </>
   );

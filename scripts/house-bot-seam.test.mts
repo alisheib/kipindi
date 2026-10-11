@@ -377,6 +377,40 @@ section("§6 · sanctioned changes");
     ok("6.r3 · a second reopen counts 2 and never clears reopenedAt", (await w.svc.getMarket(market.id)).reopenCount === 2);
   }
 
+  /* (s) "Counts as" (owner ruling 2026-10-11 — a desk account may count as more than one predictor in the count players
+   * see). The PLAYER path is unchanged: a player's stake moves its pool and `predictorCount` exactly as before and never
+   * names `predictorExtra`. A desk account counted as 100 adds 99 there at its FIRST stake on a market, nothing at its
+   * second, and moves not one shilling its stake would not have moved. */
+  {
+    const market = await w.poll({ graceMin: 0 });
+    const player = await w.user({ balance: 100_000 });
+    const m0: Any = { ...(await w.svc.getMarket(market.id)) };
+    const r1: Any = await w.svc.buyPosition(player, { marketId: market.id, side: "NO", stake: 5_000, idempotencyKey: crypto.randomUUID() });
+    const m1: Any = { ...(await w.svc.getMarket(market.id)) };
+    ok("6.s1 · a player's stake: its pool +5,000 and predictorCount +1, exactly as before — predictorExtra stays 0",
+      r1.ok === true && m1.noPool === m0.noPool + 5_000 && m1.yesPool === m0.yesPool && m1.predictorCount === m0.predictorCount + 1
+        && (m1.predictorExtra ?? 0) === 0 && (m0.predictorExtra ?? 0) === 0,
+      canon({ ok: r1.ok, count: [m0.predictorCount, m1.predictorCount], extra: [m0.predictorExtra, m1.predictorExtra] }));
+    if (r1.ok) await w.backdate(r1.data.positionId, 10_000);
+    const desk = await w.bot();
+    await w.setCaps(desk.botId, { rules: { schemaVersion: 1, display: { countsAs: 100 } } });
+    await w.limits({ gStaffChosenMaxCounterpartyShare: 100 });
+    const walletBefore = Number((await w.bal(desk.userId)).balance);
+    const p1: Any = await w.place(desk, await w.intent(desk, market.id, { kind: "MANUAL", entryCondition: "THIN", side: "YES", stakeTzs: 1_000 }));
+    const m2: Any = { ...(await w.svc.getMarket(market.id)) };
+    const walletAfter = Number((await w.bal(desk.userId)).balance);
+    ok("6.s2 · a desk account counted as 100: its FIRST stake adds 1 to the true count and 99 on top, and moves only its own stake",
+      p1.ok === true && m2.predictorCount === m1.predictorCount + 1 && m2.predictorExtra === 99
+        && m2.yesPool === m1.yesPool + 1_000 && m2.noPool === m1.noPool && walletBefore - walletAfter === 1_000,
+      canon({ ok: p1.ok, reason: p1.reason, count: m2.predictorCount, extra: m2.predictorExtra, yes: m2.yesPool, debit: walletBefore - walletAfter }));
+    const p2: Any = await w.place(desk, await w.intent(desk, market.id, { kind: "MANUAL", entryCondition: "THIN", side: "YES", stakeTzs: 1_000 }));
+    const m3: Any = { ...(await w.svc.getMarket(market.id)) };
+    ok("6.s3 · its SECOND stake on the same market adds nothing to either count",
+      p2.ok === true && m3.predictorCount === m2.predictorCount && m3.predictorExtra === 99,
+      canon({ ok: p2.ok, reason: p2.reason, count: m3.predictorCount, extra: m3.predictorExtra }));
+    ok("6.s.p · population · the desk stake really moved the extra, so 6.s2's 99 is a measured change and not a default", (m2.predictorExtra ?? 0) !== (m1.predictorExtra ?? 0));
+  }
+
   // (n)/(f) objection standing.
   {
     const { objectionEligibility } = await import("../src/lib/server/objections-service.ts");

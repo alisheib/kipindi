@@ -1684,6 +1684,16 @@ model PredictionMarket {
   noPool                    Decimal                @default(0) @db.Decimal(18, 2)
   predictorCount            Int                    @default(0)
   /**
+   * What players see ON TOP of `predictorCount` (owner ruling, 2026-10-11 — docs/COMPLIANCE-DECISIONS.md, "A desk
+   * account may count as more than one predictor"). `predictorCount` stays the TRUE count of accounts: the Gaming
+   * Board match-integrity report, an Up & Down round's audit row and every admin page read it, unchanged (D20a).
+   * Player surfaces show `predictorCount + predictorExtra` through `shownPredictors` (src/lib/markets/predictors.ts).
+   * Written ONLY by increments — `addToPool` at a desk account's first stake, and the desk's shift when an officer
+   * changes that account's "Counts as" on a market still open. Never in `set()`'s update arm (a full-row write from a
+   * stale read would erase an increment), never stampable. Migration 20261011170000_market_predictor_extra.
+   */
+  predictorExtra            Int                    @default(0)
+  /**
    * The fee rates FROZEN onto this poll at creation — commissionRate,
    * feeCeilingRate, cashOutFeeRate, freeExitGraceMinutes, the TRA/GBT levy
    * rates and thinProfitRatio. See FeeSnapshot in src/lib/payout.ts.

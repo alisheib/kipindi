@@ -316,7 +316,9 @@ await runTwoStores({
    * 2.fs09.5z) and, on the memory child, the target law 2.fs09.8 with its interface pin and five planted controls:
    * `0.mem · exit 0 · 1093 passed` and `0.pg · exit 0 · 804 passed`, ALL PASS on both stores.
    * ⭐ → 1105/804 (2026-09-27), the counts the INTEGRATED tree printed — the phone sort rail's 1.s9p and the lead's
-   * tightened 2.fs09.8 controls (a spread, a .js specifier, an unfollowable binding, an unbound announcer) together. */
-  minPass: { memory: 1105, postgres: 804 },
+   * tightened 2.fs09.8 controls (a spread, a .js specifier, an unfollowable binding, an unbound announcer) together.
+   * ⭐ → 1123/822 (2026-10-11), what `test:house-bot-console` PRINTED with "Counts as" in it — §2j's eighteen 2.ca cases
+   * on both stores (`0.mem` 1123 passed, `0.pg` 822 passed, ALL PASS). */
+  minPass: { memory: 1123, postgres: 822 },
   dbPrefix: "hb_console",
 });

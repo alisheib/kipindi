@@ -92,6 +92,8 @@ export type RulesFormModel = {
     recommendedNote: string;
     nullable: boolean; help: string; hint: string; usedBy: string; idle: boolean;
     options: readonly { value: string; label: string }[] | null;
+    /** What saving a different number does ("Counts as" only): `up` above the saved value, `down` below. The server's. */
+    change: { up: string; down: string } | null;
   }[];
   /** The counter amount's kind, and which box each choice reveals. */
   amountKind: {
@@ -145,7 +147,7 @@ function PostedValue({ name, value }: { name: string; value: string }) {
 }
 
 type SaveAnswer =
-  | { ok: true; rulesVersion: number; changed: number; rulesChanged: boolean; recorded: boolean; warnings: string[] }
+  | { ok: true; rulesVersion: number; changed: number; rulesChanged: boolean; recorded: boolean; warnings: string[]; shownNotice: string }
   /** ⛔ `fields` is EVERY field that is wrong, by neutral key; `field` is the first of them (server-side note). */
   | { ok: false; error: string; field?: string; fields?: Readonly<Record<string, string>> };
 
@@ -244,6 +246,13 @@ export function DeskRulesForm({
     Object.fromEntries([...model.caps, ...model.rules].map((c) => [c.key, c.value === ""])));
 
   /**
+   * ⭐ WHICH WAY A ROW WITH A CONSEQUENCE ("Counts as") IS ABOUT TO MOVE — "up", "down", or null while the box holds
+   * the saved value (or nothing). Followed off the live box through the same input/change/reset path as `boxEmpty`,
+   * so the sentence under the field is true of what Save would store, never of the stored row alone.
+   */
+  const [changeDir, setChangeDir] = useState<Record<string, "up" | "down" | null>>({});
+
+  /**
    * ⭐ WHICH PRODUCT SWITCHES ARE ON RIGHT NOW — so a picker can say "applies once Polls is on" about the BOX in
    * front of the officer and not about the stored row (the same distinction the cap captions make). Seeded from
    * the server's saved state so the first paint is right before any event fires; followed off the live switch
@@ -286,6 +295,20 @@ export function DeskRulesForm({
       next[rule.key] = !(node instanceof HTMLInputElement) || node.value.trim() === "";
     }
     setBoxEmpty((cur) => ([...model.caps, ...model.rules].some((c) => cur[c.key] !== next[c.key]) ? next : cur));
+    /* The direction compares DIGITS ONLY, as the numeric box keeps them: a grouping comma the officer typed is not a
+       change, and an empty or unreadable box says nothing — the save's own validation answers it. */
+    const dir: Record<string, "up" | "down" | null> = {};
+    for (const rule of model.rules) {
+      if (rule.change === null) continue;
+      const node = form.elements.namedItem(rule.key);
+      const typed = node instanceof HTMLInputElement ? node.value.replace(/[^0-9]/g, "") : "";
+      const saved = rule.value.replace(/[^0-9]/g, "");
+      /* Outside the server's live bounds the save is refused, so saying what it would do would be false: the range
+         line under the box is the answer then. */
+      const outside = typed !== "" && ((rule.min !== "" && Number(typed) < Number(rule.min)) || (rule.max !== "" && Number(typed) > Number(rule.max)));
+      dir[rule.key] = typed === "" || saved === "" || outside || Number(typed) === Number(saved) ? null : Number(typed) > Number(saved) ? "up" : "down";
+    }
+    setChangeDir((cur) => (Object.keys(dir).some((k) => cur[k] !== dir[k]) ? dir : cur));
     const on: Record<string, boolean> = {};
     for (const list of model.lists) {
       const node = form.elements.namedItem(list.product);
@@ -486,6 +509,10 @@ export function DeskRulesForm({
       setErrors({});
       setWarnings(result.warnings);
       markSaved();
+      /* ⛔ THE BEFORE-SAVE SENTENCE ENDS WITH THE SAVE (review, 2026-10-11). It says what saving WOULD do; once it has
+         done it, the box holds the saved number and the sentence would be a promise about the past. The next keystroke
+         recomputes it against the refreshed saved value. */
+      setChangeDir({});
       /* ⛔ A SAVE ENDS ANY OLDER OFFER, SAID OUTRIGHT RATHER THAN INFERRED (owner's report,
          2026-09-22: *"I had pending changes, but clicked the save in bottom, I still had the popup
          that pending changes from before"*). The hook also clears it when the row version moves and
@@ -498,6 +525,8 @@ export function DeskRulesForm({
          the officer it was not saved is the most expensive sentence this console can print. */
       deferToast({
         title: result.recorded ? "Saved" : "Saved · not recorded",
+        /* A "Counts as" change says what it moved — the server's sentence ("" when that number did not move). */
+        ...(result.shownNotice !== "" ? { description: result.shownNotice } : {}),
         variant: result.recorded ? "success" : "warning",
       });
     });
@@ -696,6 +725,19 @@ export function DeskRulesForm({
                             {row.usedBy !== "" && (
                               <span className="block mt-0.5 text-text-tertiary">
                                 {row.usedBy}{row.idle ? ` ${model.copy.idleNote}` : ""}
+                              </span>
+                            )}
+                            {/* ⭐ WHAT SAVING THIS NUMBER DOES, BEFORE SAVE ("Counts as" — owner ruling 2026-10-11). A
+                                LIVE REGION MOUNTED WITH ITS ROW, so its words are heard as they arrive; empty while the box
+                                holds the saved value. The fall reads in the warning ink: a count going down is the one move
+                                players can see. Both sentences are the server's. */}
+                            {row.change !== null && (
+                              <span
+                                role="status"
+                                data-change={changeDir[row.key] ?? "none"}
+                                className={changeDir[row.key] === "down" ? "block mt-0.5 text-warning-fg" : "block mt-0.5 text-text-secondary"}
+                              >
+                                {changeDir[row.key] === "up" ? row.change.up : changeDir[row.key] === "down" ? row.change.down : ""}
                               </span>
                             )}
                             <span className="block mt-0.5">

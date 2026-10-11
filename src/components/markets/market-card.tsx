@@ -345,7 +345,10 @@ export function MarketCard({
      ⭐ Today every absence branch below is reachable only when this is true (a pool is zeroed
      only by voiding, and that stamps `resolvedOutcome`, which the outcome arm takes first). It
      is still asserted rather than assumed: if that ever stops holding, the card must fall silent
-     rather than tell a refunded player that nobody bet. */
+     rather than tell a refunded player that nobody bet.
+     ⚠️ `predictors` is the count players see (`shownPredictors`, owner ruling 2026-10-11): the true count plus a desk
+     account's extra, which an officer may LOWER on an open market. It still reads 0 exactly when the true count is 0
+     (the helper's own rule), so this test keeps meaning "nobody ever bet". */
   const neverBet = predictors === 0;
   /* A crowd price is stated only where both pools hold money. `noPrice` stays the pool-is-empty
      question above (the D29 gate, and `isNew` can still force it); `oneSided` is the second way a

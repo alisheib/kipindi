@@ -27,6 +27,7 @@ import { audit } from "../audit";
 import { HOUSE_AUDIT, isAllowedHouseAuditPayload } from "@/lib/house-bot/constants";
 import {
   CAP_FIELDS,
+  countsAsOf,
   DEFAULT_RULES_V1,
   FIELD_META,
   FIELD_ORDER,
@@ -40,12 +41,15 @@ import {
   type RulesWarning,
 } from "@/lib/house-bot/rules";
 import {
+  houseAtomic,
   houseBotEventStore,
   houseBotStore,
   HouseSchemaNotReady,
+  type CasResult,
   type HouseBotRulesPatch,
   type StoredHouseBot,
 } from "../house-bot-dal";
+import { withLock } from "../locks";
 import { loadRulesContext } from "./rules-context";
 import { announceRoster, type RosterChange } from "./emitters";
 
@@ -90,9 +94,17 @@ function setPath(target: Record<string, unknown>, path: string, value: unknown):
  * server-only; the console maps it to the form's neutral key before it reaches a browser (D19, ruling 453).
  */
 export type RulesSaveResult =
-  | { ok: true; rulesVersion: number; changes: CapChange[]; rulesChanged: boolean; recorded: boolean; warnings: RulesWarning[] }
-  /** ⛔ `RULES_UNREADABLE` is the stored document refusing to parse — a REFUSAL, never a silent rebuild. */
-  | { ok: false; code: "SCHEMA" | "UNREADABLE" | "NOT_FOUND" | "REMOVED" | "CONFLICT" | "RULES_UNREADABLE" }
+  | {
+    ok: true; rulesVersion: number; changes: CapChange[]; rulesChanged: boolean; recorded: boolean; warnings: RulesWarning[];
+    /** "Counts as" moved: the weight before and after, and how many open markets the shift moved. Null when it did not. */
+    shown: { before: number; after: number; markets: number } | null;
+  }
+  /**
+   * ⛔ `RULES_UNREADABLE` is the stored document refusing to parse — a REFUSAL, never a silent rebuild.
+   * ⛔ `WRITE_FAILED` is the locked write of a "Counts as" change failing as a whole (its one transaction rolled back):
+   * nothing was saved, and nothing on any market moved.
+   */
+  | { ok: false; code: "SCHEMA" | "UNREADABLE" | "NOT_FOUND" | "REMOVED" | "CONFLICT" | "RULES_UNREADABLE" | "WRITE_FAILED" }
   /**
    * ⛔ `errors` IS THE WHOLE LIST, AND `field`/`rule`/`message` ARE ITS FIRST ENTRY — measured on a running
    * build, 2026-09-21 (owner's report: "sometimes after they change several checkboxes and save, it says
@@ -220,7 +232,10 @@ export async function saveHouseBotRules(input: {
     ? parsed.rules
     : (() => {
       const migrated = migrateRules(bot.rules, ctx);
-      return migrated.ok ? migrated.rules : DEFAULT_RULES_V1(ctx);
+      const seed = migrated.ok ? migrated.rules : DEFAULT_RULES_V1(ctx);
+      /* ⛔ "Counts as" keeps the RAW stored weight even when the rest of the document is rebuilt (review, 2026-10-11):
+         the form shows it, the alert compares against it, and a repair-save that does not touch it moves no market. */
+      return { ...seed, display: { countsAs: countsAsOf(bot.rules) } };
     })();
 
   /**
@@ -362,8 +377,52 @@ export async function saveHouseBotRules(input: {
      of identical values is not reported as a change by key order alone. */
   const rulesChanged = JSON.stringify(bot.rules ?? null) !== JSON.stringify(patch.rules);
 
-  /* ⛔ THE CAS ROUND TRIP. A conflict REFUSES; it never merges and never overwrites. */
-  const cas = await houseBotStore.saveRules(input.botId, input.baseVersion, patch);
+  /**
+   * ⭐ "COUNTS AS" MOVED → THE OPEN MARKETS MOVE WITH IT, IN THE SAME LOCKED WRITE (owner ruling 2026-10-11; Ali chose
+   * "open polls update too" — RESOLVED and VOIDED markets keep the number they ended with).
+   * ⛔ UNDER `wallet:<holder>`, THE LOCK EVERY STAKE FROM THIS ACCOUNT HOLDS WHILE IT READS THE WEIGHT (`shown-count.ts`):
+   * a stake that lands first is shifted here, one that lands second reads the new weight, and either way every open
+   * market carries exactly `countsAs − 1` for this account. ONE transaction (`houseAtomic`), so the stored weight and
+   * the counts on open markets cannot disagree. The status is read AGAIN inside it: the CAS checks only the version,
+   * and a Remove can land between the read above and this lock.
+   * ⛔ READ RAW ON BOTH SIDES (`countsAsOf`), as the stamp reads it: a stored document whose OTHER leaves stopped
+   * parsing would make the parsed weight read 1 and shift the open markets by the wrong amount.
+   * ⚠️ THE SHIFT RUNS LAST: the memory twin's `houseAtomic` restores the house tables on a throw but not the markets
+   * map, so nothing that can throw follows it. A save whose weight did not move takes none of this — the same one
+   * conditional write as always. The lock's transaction carries the platform's 30 s ceiling (`withLock`).
+   */
+  let cas: CasResult<StoredHouseBot>;
+  let shown: { before: number; after: number; markets: number } | null = null;
+  const countsAfter = countsAsOf(checked.rules);
+  if (countsAfter === countsAsOf(bot.rules)) {
+    /* ⛔ THE CAS ROUND TRIP. A conflict REFUSES; it never merges and never overwrites. */
+    cas = await houseBotStore.saveRules(input.botId, input.baseVersion, patch);
+  } else {
+    type Written = "REMOVED" | { cas: CasResult<StoredHouseBot>; before: number; shift: { markets: number; floored: number } | null };
+    let written: Written;
+    try {
+      written = await withLock(`wallet:${bot.userId}`, (tx) => houseAtomic(tx, async (t): Promise<Written> => {
+        const current = await houseBotStore.get(input.botId, t);
+        if (!current || current.status === "REMOVED") return "REMOVED";
+        const before = countsAsOf(current.rules);
+        const res = await houseBotStore.saveRules(input.botId, input.baseVersion, patch, t);
+        if (!res.ok) return { cas: res, before, shift: null };
+        return { cas: res, before, shift: await houseBotStore.shiftShownExtra({ houseBotId: input.botId, delta: countsAfter - before }, t) };
+      }));
+    } catch (err) {
+      console.error("[house-bot] a Counts-as save could not be written (nothing changed):", err instanceof Error ? err.message : String(err));
+      return { ok: false, code: "WRITE_FAILED" };
+    }
+    if (written === "REMOVED") return { ok: false, code: "REMOVED" };
+    cas = written.cas;
+    if (written.shift) {
+      /* The floor is a guard, never a path: it can fire only if the counts and the stored weight had already drifted. */
+      if (written.shift.floored > 0) {
+        console.error(`[house-bot] the Counts-as shift held ${written.shift.floored} market(s) at 0 — the shown extra had drifted from the stored weight`);
+      }
+      shown = { before: written.before, after: countsAfter, markets: written.shift.markets };
+    }
+  }
   if (!cas.ok) return { ok: false, code: "CONFLICT" };
 
   /**
@@ -391,7 +450,10 @@ export async function saveHouseBotRules(input: {
       err instanceof Error ? err.message : String(err));
   }
 
-  const payload = { rulesVersion: cas.row.rulesVersion, changes };
+  /* ⭐ A "Counts as" change is in the compliance row too, as one more `{field, before, after}` of numbers (R7 accepts
+     the shape). Only HERE: the returned `changes` stay the fourteen caps, because the console counts them. */
+  const audited: CapChange[] = shown ? [...changes, { field: "display.countsAs", before: shown.before, after: shown.after }] : changes;
+  const payload = { rulesVersion: cas.row.rulesVersion, changes: audited };
   if (!isAllowedHouseAuditPayload(payload)) {
     throw new Error("house audit house_bot.rules_saved: payload keys outside the R7 allowlist");
   }
@@ -439,7 +501,7 @@ export async function saveHouseBotRules(input: {
     });
   }
 
-  return { ok: true, rulesVersion: cas.row.rulesVersion, changes, rulesChanged, recorded, warnings: checked.warnings };
+  return { ok: true, rulesVersion: cas.row.rulesVersion, changes, rulesChanged, recorded, warnings: checked.warnings, shown };
 }
 
 /** One dotted leaf of a rules document, or undefined where the path does not reach. */

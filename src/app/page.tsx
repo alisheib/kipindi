@@ -20,6 +20,7 @@ import { getRoundDetail } from "@/lib/server/updown-board";
 import { pickBandCandidates, walkBandCandidates, toUpdownBandRound } from "@/lib/server/updown-band-round";
 import { Reveal } from "@/components/layout/reveal";
 import { shownYesPct } from "@/lib/markets/price-state";
+import { shownPredictors } from "@/lib/markets/predictors";
 import { BOARD_LENSES, heroFigures, type BoardLens, type HeroRow } from "@/lib/markets/hero";
 import { landingComposition } from "@/lib/markets/landing";
 import { getServerT } from "@/lib/i18n-server";
@@ -185,7 +186,8 @@ export default async function LandingPage({ searchParams }: {
     id: m.id,
     category: m.category,
     pool: m.yesPool + m.noPool,
-    predictors: m.predictorCount,
+    // The count players see (`predictors.ts`) — built once here; the rows, the featured card and the lens read it.
+    predictors: shownPredictors(m),
     // The printable price, or null — the same rule as the card and `/markets` (`price-state.ts`, WP6).
     yesPct: shownYesPct(m.yesPool, m.noPool),
     // The hero's lens (price tier, then `close` / `closing`) never reads move24h — and we have no

@@ -1421,6 +1421,18 @@ export interface HouseBotStore {
   /** CAS on `rulesVersion` (+1). Only `rules` and `BOT_CAP_FIELDS`; engine code never calls it. */
   saveRules(id: string, baseVersion: number, patch: HouseBotRulesPatch, tx?: HouseTx): Promise<CasResult<StoredHouseBot>>;
   /**
+   * "Counts as" moved (owner ruling 2026-10-11): add `delta` to `predictorExtra` on every LIVE or CLOSED market where
+   * this account holds a position carrying its marker (any status), floored at 0. RESOLVED and VOIDED markets keep the
+   * number they ended with. Postgres locks the rows in id order. Never touches `updatedAt`: a change of weight is not
+   * market activity.
+   * ⛔ ONE CALLER: `saveHouseBotRules`, under `wallet:<holder>`, in the CAS's own transaction, after the CAS. A rules
+   * write that skips it (a test writing through `saveRules` directly) leaves the counts as they were.
+   * Returns how many markets moved, and how many the floor held (drift only — never a path).
+   */
+  shiftShownExtra(input: { houseBotId: string; delta: number }, tx?: HouseTx): Promise<{ markets: number; floored: number }>;
+  /** How many markets a "Counts as" change would move NOW — the shift's own population, counted, never locked. */
+  countShownMarkets(houseBotId: string, tx?: HouseTx): Promise<number>;
+  /**
    * Re-verify: new fingerprint, the credential change and `pausedFromStatus` cleared. Paused bots only.
    * ⛔ `verifiedAt` is the caller's CHECK time (taken before the password was checked), never the write
    * time: a void or a responsible-gambling episode that lands while the owner types is then later than it,
@@ -2333,6 +2345,28 @@ function designatedBot(bot: NewHouseBot, now: string): StoredHouseBot {
 }
 
 const PAUSED_ONLY: readonly HouseBotStatus[] = ["PAUSED", "AUTO_PAUSED"];
+
+/**
+ * ⭐ THE MARKETS A "COUNTS AS" CHANGE MOVES (owner ruling 2026-10-11) — ONE predicate per twin, shared by the shift and
+ * its count, so the number an officer is told before Save is the number the save moves: still open (LIVE or CLOSED;
+ * RESOLVED and VOIDED keep the number they ended with) and holding a position that carries this account's marker,
+ * whatever that position's status.
+ */
+function shownMarketsWhere(accountParam: string): string {
+  return `m."status" IN ('LIVE', 'CLOSED')
+          AND EXISTS (SELECT 1 FROM "Position" x WHERE x."marketId" = m."id" AND x."houseBotId" = ${accountParam})`;
+}
+type MemMarket = NonNullable<Awaited<ReturnType<typeof marketStore.get>>>;
+async function memShownMarkets(houseBotId: string): Promise<MemMarket[]> {
+  const ids = [...new Set((await positionStore.values()).filter((p) => p.houseBotId === houseBotId).map((p) => p.marketId))].sort();
+  const out: MemMarket[] = [];
+  for (const id of ids) {
+    const m = await marketStore.get(id);
+    if (m && (m.status === "LIVE" || m.status === "CLOSED")) out.push(m);
+  }
+  return out;
+}
+
 const ERASED = "[erased]";
 const erasedTail = (id: string): string => id.slice(-6).toUpperCase();
 
@@ -2390,6 +2424,22 @@ const memoryHouseBots: HouseBotStore = {
     if (!cur) return { ok: false, current: null };
     if (cur.rulesVersion !== baseVersion) return { ok: false, current: clone(cur) };
     return { ok: true, row: memUpdate("HouseBot", cur, { ...defined(patch), rulesVersion: cur.rulesVersion + 1 }) };
+  },
+  async shiftShownExtra(input) {
+    let markets = 0;
+    let floored = 0;
+    for (const m of await memShownMarkets(input.houseBotId)) {
+      /* The stored object itself (the memory market twin returns it by reference), changed IN PLACE as `addToPool`
+         changes it — a replaced object would lose an increment that landed on the original. */
+      const next = (m.predictorExtra ?? 0) + input.delta;
+      if (next < 0) floored++;
+      m.predictorExtra = Math.max(0, next);
+      markets++;
+    }
+    return { markets, floored };
+  },
+  async countShownMarkets(houseBotId) {
+    return (await memShownMarkets(houseBotId)).length;
   },
   async setVerified(id, input) {
     const cur = memBots.get(id);
@@ -3663,6 +3713,30 @@ const prismaHouseBots: HouseBotStore = {
     const rows = await sql(tx, text, p.values);
     if (rows[0]) return { ok: true, row: toHouseBot(rows[0]) };
     return { ok: false, current: await prismaHouseBots.get(id, tx) };
+  },
+  async shiftShownExtra(input, tx) {
+    const p = new Params();
+    const account = p.raw(input.houseBotId, "text");
+    const delta = p.raw(input.delta, "int");
+    /* ⛔ LOCKED IN ID ORDER (`ORDER BY … FOR NO KEY UPDATE OF m`), so two officers' shifts over overlapping markets
+       queue instead of deadlocking. One statement: the read of each row's extra and its write are the same lock.
+       NO KEY: the column is no key, so the lock never blocks a row that merely REFERENCES the market (a comment, a
+       watchlist entry, a snapshot) for the length of the shift (review, 2026-10-11). */
+    const rows = await sql(tx, `WITH target AS (
+        SELECT m."id", m."predictorExtra" AS "before" FROM "PredictionMarket" m
+        WHERE ${shownMarketsWhere(account)}
+        ORDER BY m."id"
+        FOR NO KEY UPDATE OF m
+      )
+      UPDATE "PredictionMarket" AS m SET "predictorExtra" = GREATEST(0, target."before" + ${delta})
+      FROM target WHERE m."id" = target."id"
+      RETURNING target."before" AS "before"`, p.values);
+    return { markets: rows.length, floored: rows.filter((r: RawRow) => Number(r.before) + input.delta < 0).length };
+  },
+  async countShownMarkets(houseBotId, tx) {
+    const p = new Params();
+    const rows = await sql(tx, `SELECT count(*)::int AS "n" FROM "PredictionMarket" m WHERE ${shownMarketsWhere(p.raw(houseBotId, "text"))}`, p.values);
+    return Number(rows[0]?.n ?? 0);
   },
   async setVerified(id, input, tx) {
     const p = new Params();

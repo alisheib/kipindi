@@ -209,7 +209,7 @@ A house stake is `placeHouseBet(botUserId, {marketId, side, stake, idempotencyKe
 | — | Funding | A house stake is cash only by construction: the whole stake is real money, the bonus part is 0. |
 | H3 | Inside `market:<id>`, after the closed re-check | The raw product line not in `HOUSE_PRODUCTS` → `house_product_not_allowed`. An Up & Down market whose round lock (open + duration, or the market close) has passed, or that has no round → `house_round_locked`. Staff-chosen rows on a blacked-out market → `house_info_blackout`. Another bot holds an OPEN position here → `OTHER_BOT`. All bots' open stake + this > `gCapPerMarketTzs` → GLOBAL_PER_MARKET. **Mode condition** (from the claimed row): COUNTER — trigger no longer OPEN → `house_trigger_gone`; trigger account on the bot's side → `TRIGGER_BOTH_SIDES`; `rawPool(botSide) + stake` > locked opposite money (`lockedA15` untargeted, `locked` targeted) → `house_condition_gone{COUNTER}`. FILL — against `locked`. OPENER and MANUAL OPENER — both pools must be 0. MANUAL THIN — against `locked`, then counterparty concentration: share limit not set, or the top account's share above it → `house_counterparty_concentration`. A share limit that is not set also refuses a MANUAL OPENER (`house_counterparty_concentration`): clearing it turns Enter now off for both entry conditions (MON-14). |
 | H4 | Inside `house:control`, the innermost lock, wrapping the money writes | Control re-read: switch off → `house_disabled`. GLOBAL_DAILY_STAKE, GLOBAL_LOSS_PROJECTED, GLOBAL_EXPOSURE, GLOBAL_BETS_PER_MINUTE, GLOBAL_BETS_PER_DAY. COUNTERPARTY_COUNT / COUNTERPARTY_TZS — a COUNTER is charged to its trigger account; a MANUAL THIN is attributed pro rata to every opposite account holding ≥ 25% of the locked money. GLOBAL_STAFF_CHOSEN_PER_DAY / _DAILY_STAKE. Then `staleAt` on the database clock (`clock_timestamp()`): a CLAIMED row past it → `house_intent_stale`. |
-| H5–H9 | The money writes | `markPlaced` is the first money statement: no CLAIMED row → the writes roll back → `house_intent_superseded`. The Position and the BET_PLACED transaction carry `houseBotId`. No wagering is recorded. The one `market.position.opened` audit row gains `houseBotId` and `intentId`. No bet receipt, push or email. No recruiter prize. Pools, odds, `predictorCount` and the live balance event are unchanged (D6). |
+| H5–H9 | The money writes | `markPlaced` is the first money statement: no CLAIMED row → the writes roll back → `house_intent_superseded`. The Position and the BET_PLACED transaction carry `houseBotId`. No wagering is recorded. The one `market.position.opened` audit row gains `houseBotId` and `intentId`. No bet receipt, push or email. No recruiter prize. Pools, odds, `predictorCount` (the TRUE count) and the live balance event are unchanged (D6). ⚠️ Since 2026-10-11 (sanctioned change (s), § "2026-10-11 · A desk account may count as more than one predictor in the count players see"): the account's FIRST stake on a market also adds its **Counts as − 1** to `predictorExtra`, in the same pool increment — read at `SEAM:shownCount`, straight after H2, inside `wallet:<botUser>` (§12.18). |
 
 Every cap that is **not set refuses** (§5.1). Every read in H2–H4 is a plain SELECT with no row lock a player's bet could queue behind (04 A9). All but two run on the lock's transaction: H2's **standing** group reads `isLockedOut(userId)` and `db.user.findById(userId)` on the pool, as the player path does, because neither takes a transaction today. Each is one indexed primary-key read; an exhausted pool would make that bet wait while it holds `wallet:<botUser>` (only the bot's own wallet), not `market:<id>`.
 
@@ -552,7 +552,8 @@ The rules document has 45 leaves. Until 2026-09-23 the Rules tab drew ten switch
 pickers, so the other 33 — every delay and band, every guard, the shaping, the whole schedule and both
 by-hand stakes — had no control anywhere in `src/`: every account that has ever existed on this desk ran them
 at `DEFAULT_RULES_V1`, and the desk could not say what they were. All 29 numeric leaves, the counter amount's
-kind and the schedule are editable from the desk now.
+kind and the schedule are editable from the desk now. (46 leaves and 30 numeric ones since 2026-10-11: "Counts as",
+`display.countsAs`, §12.18 — display only, read by no mode.)
 
 - The population the form draws is `RULE_NUMBER_FIELDS`, the validator's own list, exported for this. A leaf
   added to the document tomorrow lands on the form and in the save together, or the `Record` of keys, labels
@@ -1027,7 +1028,9 @@ This is the whole path from "put an account on the desk" to "Start will run it".
    `data-rules="numbers"`, and each query names the section it is about.
 2. **"How it decides"** holds the 29 numeric rules, in the document's own order, grouped under neutral section
    headings: *React to a player's stake* · *Fill a thin side* · *Open a quiet market* · *Up & Down* ·
-   *Amounts* · *Safety margins* · *By hand*. ⛔ The engine's own section words are kept off this screen: the
+   *Amounts* · *Safety margins* · *By hand* — and, since 2026-10-11, **Market cards** with its one row, **Counts as**
+   (whole numbers 1–10,000; under the box, before Save, what a change does to the open markets the account is on;
+   after Save, how many moved — §12.18). ⛔ The engine's own section words are kept off this screen: the
    switch above the group already carries the mode's console word, and a heading naming it again in house
    vocabulary is the same control named two ways on one page.
 3. **Each row carries what an officer needs in order to type into it:** the label, a one-sentence server-owned
@@ -2605,6 +2608,71 @@ product's own ADD path always writes the title (N2 §2), so no row it creates ca
 row written before the field existed could. Found because a first draft of the fixture wrote `titleEn: null` and every
 account route came back NOT MEASURED with "the route's own landmark never painted" — which reads exactly like a blind
 gate rather than a broken fixture.
+
+### 12.18 "Counts as" — a desk account may count as more than one predictor in the count players see — built 2026-10-11
+
+**The ruling.** Ali, 2026-10-11, relaying the Gaming Board's verbal approval "as long as the money is the same":
+`docs/COMPLIANCE-DECISIONS.md` § "2026-10-11 · A desk account may count as more than one predictor in the count players
+see". It amends D6 for counts only; D19 and D20a/d stand.
+
+**Two numbers, one display rule.**
+- `PredictionMarket.predictorCount` stays the TRUE count of accounts (+1 at an account's first bet). Every admin page,
+  every report — the match-integrity report among them —, the Up & Down audit row, insights and the ops scripts read it
+  and nothing else.
+- `PredictionMarket.predictorExtra` (migration `20261011170000_market_predictor_extra`, expand-only) holds what players
+  see on top. Written by increments alone: the CREATE arm of `set()` (like `productLine`), never its UPDATE arm (a
+  full-row write from a copy read before an increment would erase it — the desk's shift does not take the `market:<id>`
+  lock a full-row writer such as `adminReopenMarket` holds); never stampable.
+- Players see `shownPredictors(m)` (`src/lib/markets/predictors.ts`): the sum, and 0 exactly when the true count is 0, so
+  "No bets yet" stays true. It is applied where rows are built — `/`, `/markets`, the detail page, `/results`,
+  `/watchlist`, `/live`, the Up & Down board and the share image — and everything downstream (the HOT badge, the featured
+  floor, the sorts, the "New" filter) reads the built number. Only that number crosses to a browser.
+
+**The weight.** A rules leaf, `display.countsAs` (`rules.ts`): whole numbers 1–10,000, default 1, no `LEAF_USED_BY`
+entry (no mode reads it, so a stored document without it reads 1 with no schema bump). One raw reader, `countsAsOf`,
+serves the bet path, the shift and the roster: anything but a whole number in range reads 1, never more. The v0
+migration leaves the leaf out rather than clamping it (a clamp would RAISE a stray 1e20 to 10,000).
+
+**The stamp** (sanctioned change (s), `PLAN.md` §3). `SEAM:shownCount`, straight after H2 inside `wallet:<botUser>`:
+`houseShownExtra` (`house-bot/shown-count.ts` — its own module, because every export of `seam.ts` only adds a refusal)
+returns `countsAs − 1` when the account has no earlier position on the market, else 0, and the SAME `addToPool` call
+carries it. A player's stake reads 0, and its UPDATE is the statement it always was.
+
+**The shift.** `saveHouseBotRules`, when the leaf moved: under `withLock("wallet:<holder>") → houseAtomic` it re-reads
+the account (a Remove can land between the first read and the lock), runs the compare-and-set, then shifts
+`predictorExtra` by `new − old` (both read RAW) on every LIVE/CLOSED market holding a position with this account's
+marker — Postgres in one statement, rows locked in id order, floored at 0; memory in place on the stored objects, last,
+since `houseAtomic` does not roll the markets map back. The bet path holds the same lock, so on every open market each
+account contributes exactly `countsAs − 1`. Only this save keeps that invariant: a test writing rules through the store
+directly skips it.
+
+**The desk.** The Rules tab draws "Counts as" under **Market cards** with its help sentence (`CONSOLE_RULE_HELP`, key
+`counts-as`). Under the box, before Save, the server's two sentences — raise / lower, naming how many open markets the
+save moves (`houseBotStore.countShownMarkets`, the shift's own predicate) — and after Save, "Counts as is now N — M open
+markets updated." The roster has a sortable **Counts as** column. Every save that moves it carries
+`{field: "display.countsAs", before, after}` in its `house_bot.rules_saved` row and in the FS-09 alert to every admin. A
+failed locked write answers `WRITE_FAILED` — nothing saved, no market moved.
+
+**Input validation, platform-wide fixes found on the way.** A decimal in a field that is not money read "Whole shillings
+only" — it now reads "Whole numbers only — no decimals." (`WHOLE_NUMBER_COPY`); a negative in a field whose minimum is
+above 0 read "Must be 0 or more" while 0 was refused too — it now reads the field's own range (`parseCopyFor`).
+
+**Guards and proofs (measured on this build).**
+- `test:house-bot-rules` 639/0 — §15 pins every refused and accepted shape of the box, the raw reader and the stored
+  parse; 9.P1/9.P3 feed stray v0 values and demand 1 out.
+- `test:house-bot-seam` 102/0 — §6 (s): a player's stake leaves the extra 0; a desk account at 100 adds 99 at its first
+  stake, 0 at its second, and moves exactly its own 1,000.
+- `test:house-bot-console` memory 1123/0 — §2j 2.ca: the form row and its two sentences, six refused boxes (each on its
+  own field, nothing moved), a missing box refused as stale, 1 → 100 → 40 → 40 → 1 across LIVE, CLOSED, RESOLVED,
+  VOIDED, a market the account is not on and one only another account is on, the notice, the alert, the audit row, the
+  roster cell, and the floor.
+- `test:predictor-shown` (new) 37/0 with `--prove-red` — the player census (559 files), the admin/report census (419), the
+  browser census (368), the extra's four homes, the create-only write, and the bet-path site; all 12 declared plants
+  caught, each by its own check, on in-memory copies (no file written).
+- Declared mutations: 3 in `house-bot-seam.anchors.mjs` (`red:house-bot-money -- --only ca-`) and 8 in
+  `house-bot-console.anchors.mjs` (`red:house-bot-console -- --only ca-`).
+- ⚠️ Found on the way, not this lane's: console pin 1.548 had been red on `main` since 2026-10-08 (marketing `a001261d`
+  added `cmp` to the crumb builder's id list); the pin now types the list as it stands and keeps its point (`hb_` never).
 
 ---
 

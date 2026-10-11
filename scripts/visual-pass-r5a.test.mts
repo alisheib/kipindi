@@ -187,8 +187,9 @@ section("2 · F12 · a count line: the grouped count and the sentence word (tile
 {
   const res = read("src/app/results/page.tsx");
   ok("2.1 · the /results spotlight says \"2 watabiri\" as the cards do: `formatNumber`, `predictorsCount` / `predictorsCountOne`",
-    res.includes("{formatNumber(m.predictorCount)} {m.predictorCount === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}")
-      && !/\{m\.predictorCount\}\s*\{t\.market\.predictors\}/.test(res));
+    res.includes("const predictors = shownPredictors(m);")
+      && res.includes("{formatNumber(predictors)} {predictors === 1 ? t.market.predictorsCountOne : t.market.predictorsCount}")
+      && !/\{(?:m\.predictorCount|predictors)\}\s*\{t\.market\.predictors\}/.test(res));
   ok("2.2 · …and the page's tally groups its count: \"12,479 imetatuliwa\" (production's archive), `data-result-count` still the bare integer",
     res.includes("{formatNumber(totalCount)} {t.results.resolved}") && res.includes("data-result-count={totalCount}"));
   const card = read("src/components/markets/market-card.tsx");

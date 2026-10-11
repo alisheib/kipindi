@@ -1241,6 +1241,41 @@ section("§12 · the holder's own RG loss limit, and settlement into a CLOSED wa
   }
 }
 
+/* ═══ §13 · "COUNTS AS" AT THE BET, ON BOTH STORES (owner ruling 2026-10-11; sanctioned change (s)) ═══════════════════
+ * The seam suite proves the stamp on memory; this proves it where the money lives — the Postgres pool increment, in the
+ * stake's own transaction. A player's stake never names the extra; a desk account counted as 100 adds 99 at its FIRST
+ * stake on a market and nothing at its second; and not one shilling moves that the stake would not have moved. */
+section("§13 · Counts as at the bet, both stores");
+{
+  const market = await w.poll({ graceMin: 0 });
+  const player = await w.user({ balance: 100_000 });
+  /* ⛔ COPIES, NOT REFERENCES: the memory twin returns the STORED object, so a "before" read without a spread would
+     change under the very stake it is meant to stand before (measured: 13.1 failed on memory, green on Postgres). */
+  const m0: Any = { ...(await w.svc.getMarket(market.id)) };
+  const r1: Any = await w.svc.buyPosition(player, { marketId: market.id, side: "NO", stake: 5_000, idempotencyKey: crypto.randomUUID() });
+  const m1: Any = { ...(await w.svc.getMarket(market.id)) };
+  ok("13.1 · a player's stake: its pool +5,000 and predictorCount +1 — the extra stays 0",
+    r1.ok === true && m1.noPool === m0.noPool + 5_000 && m1.predictorCount === m0.predictorCount + 1 && Number(m1.predictorExtra ?? 0) === 0,
+    JSON.stringify({ ok: r1.ok, count: m1.predictorCount, extra: m1.predictorExtra }));
+  if (r1.ok) await w.backdate(r1.data.positionId, 10_000);
+  const desk = await w.bot();
+  await w.setCaps(desk.botId, { rules: { schemaVersion: 1, display: { countsAs: 100 } } });
+  await w.limits({ gStaffChosenMaxCounterpartyShare: 100 });
+  const before = Number(((await w.bal(desk.userId)) as Any).balance);
+  const p1: Any = await w.place(desk, await w.intent(desk, market.id, { kind: "MANUAL", entryCondition: "THIN", side: "YES", stakeTzs: 1_000 }));
+  const m2: Any = { ...(await w.svc.getMarket(market.id)) };
+  const after = Number(((await w.bal(desk.userId)) as Any).balance);
+  ok("13.2 · a desk account counted as 100: its FIRST stake adds 1 to the true count and 99 to the extra, and moves only its own 1,000",
+    p1.ok === true && m2.predictorCount === m1.predictorCount + 1 && Number(m2.predictorExtra) === 99
+      && m2.yesPool === m1.yesPool + 1_000 && m2.noPool === m1.noPool && before - after === 1_000,
+    JSON.stringify({ ok: p1.ok, reason: p1.reason, count: m2.predictorCount, extra: m2.predictorExtra, yes: m2.yesPool, debit: before - after }));
+  const p2: Any = await w.place(desk, await w.intent(desk, market.id, { kind: "MANUAL", entryCondition: "THIN", side: "YES", stakeTzs: 1_000 }));
+  const m3: Any = { ...(await w.svc.getMarket(market.id)) };
+  ok("13.3 · its SECOND stake on the same market adds nothing to either count",
+    p2.ok === true && m3.predictorCount === m2.predictorCount && Number(m3.predictorExtra) === 99,
+    JSON.stringify({ ok: p2.ok, reason: p2.reason, count: m3.predictorCount, extra: m3.predictorExtra }));
+}
+
 /* ⛔ RULING 505's ROLL-CALL OVER THE DECLARED MUTATIONS, AND IT MUST BE LAST — it reads the labels THIS run printed.
  * `red:house-bot-money` matches a run's FAIL lines with `fails.find((l) => l.includes(d.expect))`, so an `expect` that
  * is not a substring of any label this suite can print is classed WRONG-ASSERTION, `missed++`, and the drive exits 1 —

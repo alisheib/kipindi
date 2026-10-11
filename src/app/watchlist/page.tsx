@@ -27,6 +27,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterPill } from "@/components/ui/filter-pill";
 import { MarketCard } from "@/components/markets/market-card";
+import { shownPredictors } from "@/lib/markets/predictors";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { SearchBox } from "@/components/ui/search-box";
 import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
@@ -104,7 +105,8 @@ export default async function WatchlistPage({
       status: m.status,
       selectionClosed: !resolved && (isSelectionClosed(m) || isClosedByTime(m)),
       volume: m.yesPool + m.noPool,
-      predictors: m.predictorCount,
+      // The count players see (`predictors.ts`): the "people" sort reads this value.
+      predictors: shownPredictors(m),
       resolutionAtMs: Date.parse(m.resolutionAt) || 0,
       starRank: n - i,
       titleEn: m.titleEn,
@@ -260,7 +262,7 @@ export default async function WatchlistPage({
                   category={m.category}
                   yesPool={m.yesPool}
                   noPool={m.noPool}
-                  predictors={m.predictorCount}
+                  predictors={shownPredictors(m)}
                   timeLeft={timeLeft}
                   // SOON from the milliseconds of betting left (landing v3 WP3, L17). This page prints a DATE
                   // rather than a countdown, so the label never matched the old English test in any locale.

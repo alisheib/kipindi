@@ -13,6 +13,7 @@
 import Link from "next/link";
 import { fill, formatNumber } from "@/lib/utils";
 import { timeLeftLabel } from "@/lib/markets/time-left";
+import { shownPredictors } from "@/lib/markets/predictors";
 import { listMarkets, isClosedByTime, isSelectionClosed, traderSeedsByMarket } from "@/lib/server/market-service";
 import { PulseRing } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
@@ -139,7 +140,8 @@ export default async function LivePage({
     yesPool: m.yesPool,
     noPool: m.noPool,
     volume: m.yesPool + m.noPool,
-    predictors: m.predictorCount,
+    // The count players see (`predictors.ts`) — the only count this snapshot carries to the browser.
+    predictors: shownPredictors(m),
     timeLeft: isSelectionClosed(m) ? t.market.waitingForResults : timeLeftStr(m.selectionClosedAt ?? m.resolutionAt),
     selectionClosed: isSelectionClosed(m),
     traders: traderMap.get(m.id),

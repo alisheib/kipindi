@@ -68,6 +68,9 @@ const { renderToStaticMarkup } = req("react-dom/server") as typeof import("react
 const { dict } = req("../src/lib/i18n-dict.ts") as { dict: Record<Locale, Record<string, Record<string, string>>> };
 // Review 6, A6 (2026-10-09): a found round is titled in its h1's words — the real rule, handed to the run below.
 const { roundName } = req("../src/lib/updown-round-name.ts") as { roundName: (t: unknown, assetName: string, minutes: number) => string };
+/* The REAL count rule (2026-10-11, "Counts as"): `/markets/[id]`'s metadata builds its share line from the count players see.
+   It is pure and imports nothing, so the page's own function runs here rather than a stub that could agree with anything. */
+const { shownPredictors } = req("../src/lib/markets/predictors.ts") as { shownPredictors: (m: { predictorCount: number; predictorExtra?: number | null }) => number };
 
 /* ══ §1 · F1 · A RECORD PAGE'S METADATA NEVER DECIDES THE PAGE ═══════════════════════════════════════════════════════ */
 section("1 · F1 · a failed read is the board's title in the reader's language, a missing record the not-found's, nothing throws");
@@ -100,7 +103,7 @@ function runnable(fn: string, read: (id: string) => Promise<unknown>, calls: Cal
     pickLocalized: (l: Locale, en: string, sw?: string | null, zh?: string | null) => (l === "sw" ? sw : l === "zh" ? zh : en) || en,
     sharePreviewPrice: () => ({ kind: "none" }), sharePreviewSettled: () => null, sharePreviewDescription: () => "desc",
     resolveWinShareToken: async () => null, formatTzs: (n: number) => `TZS ${n}`, ROOT_OPEN_GRAPH: { siteName: "50pick" },
-    roundName,
+    roundName, shownPredictors,
   };
   return new Function(...Object.keys(deps), `${js}\nreturn generateMetadata;`)(...Object.values(deps)) as
     (a: { params: Promise<Record<string, string>>; searchParams?: Promise<Record<string, string>> }) => Promise<unknown>;

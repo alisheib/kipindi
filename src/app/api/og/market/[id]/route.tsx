@@ -20,6 +20,7 @@ import { getMarket } from "@/lib/server/market-service";
 // within 1–99. It used to read `impliedYesPct` directly — "YES 100% · 0% NO" on a one-sided market and
 // an invented "YES 50% · tipping" on one nobody had bet on, in every WhatsApp preview.
 import { sharePreviewPrice, sharePreviewSettled } from "@/lib/markets/share-preview";
+import { shownPredictors } from "@/lib/markets/predictors";
 import { resolveWinShareToken } from "@/lib/server/share-token";
 import { formatNumber, formatTzs } from "@/lib/utils";
 import { dict } from "@/lib/i18n-dict";
@@ -54,7 +55,9 @@ export async function GET(
   const { id } = await params;
   const m = await getMarket(id);
   if (!m) return new Response("Not found", { status: 404 });
-  const price = sharePreviewPrice(m.yesPool, m.noPool, m.predictorCount);
+  // The count players see (`predictors.ts`) — a pure read of the row `getMarket` already returned, no new await.
+  const predictors = shownPredictors(m);
+  const price = sharePreviewPrice(m.yesPool, m.noPool, predictors);
   // ⭐ C1 · a SETTLED market's card leads with its result, in its own side's ink (a void and an unrecorded
   // verdict take the neutral ink), and its split reads as the final pool, not a lean.
   const settled = sharePreviewSettled(m.status, m.resolvedOutcome, m.productLine);
@@ -238,7 +241,7 @@ export async function GET(
                 like a rendering fault. Caught 2026-09-24. */}
             {/* The count as every count reads (R5-J): grouped by `formatNumber`, its word the card's own English from the
                 dictionary's one/many pair ("1 predictor", "1,204 predictors") — it read "1 predictors". */}
-            <span>{tzs(m.yesPool + m.noPool)} volume · {formatNumber(m.predictorCount)} {m.predictorCount === 1 ? dict.en.market.predictorsCountOne : dict.en.market.predictorsCount}</span>
+            <span>{tzs(m.yesPool + m.noPool)} volume · {formatNumber(predictors)} {predictors === 1 ? dict.en.market.predictorsCountOne : dict.en.market.predictorsCount}</span>
           </div>
         </div>
       </div>

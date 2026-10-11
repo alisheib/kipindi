@@ -22,6 +22,7 @@ import { Chip } from "@/components/ui/chip";
 import { Stat } from "@/components/ui/stat";
 import { cashOutValue, freeExitEndsAt, getMarket, isClosedByTime, isSelectionClosed, listPositionsForUser, ratesFor } from "@/lib/server/market-service";
 import { priceState } from "@/lib/markets/price-state";
+import { shownPredictors } from "@/lib/markets/predictors";
 import { sharePreviewDescription, sharePreviewPrice, sharePreviewSettled } from "@/lib/markets/share-preview";
 import { ROOT_OPEN_GRAPH } from "../../layout";
 import { timeLeftLabel } from "@/lib/markets/time-left";
@@ -94,7 +95,7 @@ export async function generateMetadata(
   // ⭐ The share preview's words come from the SAME rule as its image (`share-preview.ts`, landing v3
   // WP14b): "YES 62% · NO 38%" only where both sides hold money; "One side only." / "No bets yet." where
   // there is no price. It used to print "YES 100% · NO 0%" and an invented "YES 50% · NO 50%".
-  const preview = sharePreviewPrice(m.yesPool, m.noPool, m.predictorCount);
+  const preview = sharePreviewPrice(m.yesPool, m.noPool, shownPredictors(m));
   // ⭐ C1 · a settled market's preview leads with its result ("Result: NO."), never a price or a lean.
   // "MARKET" is safe: an UPDOWN market is redirected by the page body, and its round page has its own metadata.
   const settled = sharePreviewSettled(m.status, m.resolvedOutcome, "MARKET");
@@ -198,9 +199,12 @@ export default async function MarketDetail({
   const price = priceState(m.yesPool, m.noPool);
   const yesPct = price.kind === "priced" ? price.yesPct : null;
   const emptySide = price.kind === "oneSided" ? price.emptySide : null;
-  const neverBet = m.predictorCount === 0;
+  // The count players see (`predictors.ts`), built once for this page: the tile, the empty rail and the share line.
+  // It is 0 exactly when nobody ever bet, so "No bets yet" reads the same answer the true count would give.
+  const predictors = shownPredictors(m);
+  const neverBet = predictors === 0;
   const outcomeLabel = m.resolvedOutcome ? outcomeWord(t, m.resolvedOutcome, "MARKET") : null;
-  const sharePrice = sharePreviewPrice(m.yesPool, m.noPool, m.predictorCount);
+  const sharePrice = sharePreviewPrice(m.yesPool, m.noPool, predictors);
 
   // The resolution criterion FOR THIS READER, and the fact of whether we had it.
   // ⛔ Not `pickLocalized`: that helper discards the fallback, which is right for a
@@ -356,7 +360,7 @@ export default async function MarketDetail({
   // disagree about whether a market has a crowd price. One rule, one meaning.
   const freshMarket =
     m.status === "LIVE" && !selectionClosed && !closedByTime && !isResolved &&
-    m.yesPool + m.noPool === 0 && m.predictorCount === 0;
+    m.yesPool + m.noPool === 0 && predictors === 0;
   // The empty rail's words (the card's caption rule): "No bets yet" only where nobody EVER bet (a pool
   // emptied by a cash-out has no pool, but somebody did bet); "Be the first" only while it is open.
   // ⛔ And only while UNSETTLED: "yet" is false of a finished market, whose rail already names its verdict —
@@ -938,7 +942,7 @@ export default async function MarketDetail({
                 `common.resolves` — "INATATULIWA" / "RESOLVES" / "结算于" (the Stat sets it in capitals). No new words.
                 R4-I · and "Hakuna bwawa bado" no longer leaves "bado" alone in its tile at 390 (tile 037): `keepText`. */}
             <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.volume} font={freshMarket ? undefined : "mono"} value={freshMarket ? keepText(t.market.noPoolYet) : <span className="amount">{formatTzsCompact(m.yesPool + m.noPool)}</span>} icon={<I.chart s={14} />} />
-            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.predictors} font="mono" value={formatNumber(m.predictorCount)} icon={<I.users s={14} />} />
+            <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.predictors} font="mono" value={formatNumber(predictors)} icon={<I.users s={14} />} />
             <Stat size="sm-plain" labelStyle="widest" boxed="card" label={t.common.resolves} value={formatEatDateTime(Date.parse(m.resolutionAt), Date.now(), t.common.monthsShort, locale)} icon={<I.calendarClock s={14} />} className="col-span-2 sm:col-span-1" />
           </div>
 
@@ -1225,7 +1229,7 @@ export default async function MarketDetail({
                   category={s.category}
                   yesPool={s.yesPool}
                   noPool={s.noPool}
-                  predictors={s.predictorCount}
+                  predictors={shownPredictors(s)}
                   // ⚠️ Counts down to BETTING CLOSE, not to resolution. This rail is a
                   // "place another prediction" invitation, so a countdown to the
                   // settlement instant promises betting time the market will not

@@ -159,6 +159,9 @@ export const PARSE_COPY = {
   NOT_A_NUMBER: "Digits only, e.g. 10,000.",
 } as const;
 
+/** A decimal typed into a field that is not money (a count, seconds, minutes, a share) — "shillings" would be false. */
+export const WHOLE_NUMBER_COPY = "Whole numbers only — no decimals.";
+
 /** A field that has no "not set" state, left empty. */
 export const REQUIRED_NUMBER_COPY = "Enter a whole number.";
 
@@ -292,7 +295,18 @@ export type HouseBotRulesV1 = {
   schedule: { days: Weekday[]; allDay: boolean; windows: ScheduleWindow[] };
   enterNow: { enabled: boolean; thinStakeTzs: number | null; openerStakeTzs: number | null };
   targeting: { enabled: boolean };
+  /**
+   * Market cards (owner ruling, 2026-10-11 — docs/COMPLIANCE-DECISIONS.md, "A desk account may count as more than
+   * one predictor in the count players see"). `countsAs` is how many predictors this account adds to the count
+   * players see on a market it stakes on: 1 = counted like any player. Display only — no mode reads it, money never
+   * moves for it, and the true count every admin page and report reads is untouched. Read RAW through `countsAsOf`.
+   */
+  display: { countsAs: number };
 };
+
+/** "Counts as" bounds: whole numbers only, 1 (an ordinary player) to 10,000 (Ali, 2026-10-11). */
+export const COUNTS_AS_MIN = 1;
+export const COUNTS_AS_MAX = 10_000;
 
 /** `HouseBot` cap columns, in form order. NULL = not set. */
 export const CAP_FIELDS = [
@@ -409,7 +423,23 @@ export function DEFAULT_RULES_V1(ctx: Pick<RulesContext, "stakeBounds">): HouseB
     schedule: { days: [...WEEKDAYS], allDay: true, windows: [] },
     enterNow: { enabled: false, thinStakeTzs: null, openerStakeTzs: null },
     targeting: { enabled: false },
+    display: { countsAs: 1 },
   };
+}
+
+/**
+ * ⭐ THE ONE RAW READER OF "COUNTS AS" (owner ruling 2026-10-11). The bet path's stamp, the open-market shift and the
+ * roster read the STORED document through this, never through `parseHouseBotRules`: a document that stops parsing
+ * for another leaf (a removed round length moving `fill.leadUdSec` out of bounds) would otherwise make a weight
+ * already counted on open markets read as 1, and the next change would shift them by the wrong amount.
+ * ⛔ Anything but a whole number in 1–10,000 reads as 1 — the true count, never more.
+ */
+export function countsAsOf(rules: unknown): number {
+  if (typeof rules !== "object" || rules === null || Array.isArray(rules)) return 1;
+  const display = (rules as Record<string, unknown>).display;
+  if (typeof display !== "object" || display === null || Array.isArray(display)) return 1;
+  const v = (display as Record<string, unknown>).countsAs;
+  return typeof v === "number" && Number.isSafeInteger(v) && v >= COUNTS_AS_MIN && v <= COUNTS_AS_MAX ? v : 1;
 }
 
 /** Is any automatic mode (COUNTER, FILL, OPENER on either product) on? */
@@ -720,6 +750,13 @@ const RAW_FIELDS = {
     "Targets",
     "Targets use the Counter amount and trigger range below, and the staff-chosen limits.",
   ),
+  // Rules · market cards (owner ruling 2026-10-11). Display only: no mode reads it, so it has no `LEAF_USED_BY` entry
+  // and a stored document without it reads as 1. Its sentence is the console's `CONSOLE_RULE_HELP` (no `hint` here:
+  // the console paints a hint as a second line under the help).
+  "display.countsAs": num("rules", "Market cards", "Counts as", "count", COUNTS_AS_MIN, COUNTS_AS_MAX, {
+    default: 1,
+    recommended: 1,
+  }),
   // Caps (typed HouseBot columns)
   stakeMinTzs: num("caps", "Caps", "Stake min", "TZS", "LIVE_MIN", "LIVE_MAX", { nullable: true, recommended: 1_000 }),
   stakeMaxTzs: num("caps", "Caps", "Stake max", "TZS", "LIVE_MIN", "LIVE_MAX", { nullable: true, recommended: 10_000 }),
@@ -1385,6 +1422,20 @@ function boundMessage(id: FieldId, which: "BELOW" | "ABOVE", b: { min: number; m
   return `${range}.`;
 }
 
+/**
+ * A parse refusal's sentence, true of THIS field (2026-10-11, found writing "Counts as": "1.5" there read "Whole
+ * shillings only", and "-5" read "Must be 0 or more" on a field that refuses 0 too). "Shillings" only on a money
+ * field; a negative in a field whose minimum is above 0 reads the field's own range, the sentence a 0 would get.
+ */
+function parseCopyFor(id: FieldId, kind: keyof typeof PARSE_COPY, ctx: BoundsContext): string {
+  if (kind === "DECIMAL" && FIELD_META[id].unit !== "TZS") return WHOLE_NUMBER_COPY;
+  if (kind === "NEGATIVE") {
+    const b = fieldBounds(id, ctx);
+    if (b && b.min > 0) return boundMessage(id, "BELOW", b);
+  }
+  return PARSE_COPY[kind];
+}
+
 type Checked = { value: number | null; error: FieldError | null };
 
 function checkNumber(id: FieldId, raw: unknown, ctx: BoundsContext): Checked {
@@ -1395,7 +1446,7 @@ function checkNumber(id: FieldId, raw: unknown, ctx: BoundsContext): Checked {
       ? { value: null, error: null }
       : { value: null, error: { field: id, code: "UNSET", message: REQUIRED_NUMBER_COPY } };
   }
-  if (parsed.kind !== "OK") return { value: null, error: { field: id, code: parsed.kind, message: PARSE_COPY[parsed.kind] } };
+  if (parsed.kind !== "OK") return { value: null, error: { field: id, code: parsed.kind, message: parseCopyFor(id, parsed.kind, ctx) } };
   if (meta.options && !meta.options.includes(parsed.value)) {
     return { value: null, error: { field: id, code: "INVALID", message: CHOOSE_OPTION_COPY } };
   }
@@ -2438,6 +2489,7 @@ export function validateHouseBotRules(
       openerStakeTzs: values.get("enterNow.openerStakeTzs") ?? null,
     },
     targeting: { enabled: targeting },
+    display: { countsAs: n("display.countsAs") },
   };
   const caps = {} as HouseBotCaps;
   for (const k of CAP_FIELDS) caps[k] = values.get(k) ?? null;
@@ -3191,6 +3243,7 @@ function readStoredRulesV1(
       schedule: { days, allDay: bool("schedule.allDay"), windows },
       enterNow: { enabled: enterNowEnabled, thinStakeTzs: thin, openerStakeTzs: opener },
       targeting: { enabled: targetingEnabled },
+      display: { countsAs: number("display.countsAs") },
     };
 
     // An inverted range an enabled mode would draw from is unusable (a random delay between 45 and 15).
@@ -3288,7 +3341,9 @@ function v0ToV1(json: Record<string, unknown>, ctx: ParseContext): Record<string
     }
   }
   for (const id of RULE_NUMBER_FIELDS) {
-    if (id.startsWith("counter.amount.") || id.startsWith("enterNow.")) continue;
+    // `display.*` did not exist in v0 and is left out, so it reads as its default (1). Clamping a stray value would
+    // move it UP to the bound, and "Counts as" may never be raised by anything but an officer's save.
+    if (id.startsWith("counter.amount.") || id.startsWith("enterNow.") || id.startsWith("display.")) continue;
     const fallback = getPath(defaults, id);
     setPath(out, id, clampStored(id, at(id), ctx.durations, typeof fallback === "number" ? fallback : null));
   }

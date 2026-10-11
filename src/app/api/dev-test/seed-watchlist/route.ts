@@ -40,6 +40,7 @@ import {
   playerMarketsByIds,
 } from "@/lib/server/market-service";
 import { isWatching, listWatchedMarketIds, toggleWatch } from "@/lib/server/watchlist-service";
+import { shownPredictors } from "@/lib/markets/predictors";
 import {
   FOLLOW_LENSES,
   matchesFollowLens,
@@ -61,7 +62,7 @@ function lensRow(m: Awaited<ReturnType<typeof playerMarketsByIds>> extends Map<s
     status: m.status,
     selectionClosed: !resolved && (isSelectionClosed(m) || isClosedByTime(m)),
     volume: m.yesPool + m.noPool,
-    predictors: m.predictorCount,
+    predictors: shownPredictors(m),
     resolutionAtMs: Date.parse(m.resolutionAt) || 0,
     starRank: 0,
     titleEn: m.titleEn,

@@ -114,6 +114,8 @@ import {
   CHOOSE_FROM_LIST_COPY,
   CLEAR_EXEMPT,
   COUNT_LIMIT_FIELDS,
+  COUNTS_AS_MAX,
+  COUNTS_AS_MIN,
   CROSS_FIELD_RULES,
   DEFAULT_RULES_V1,
   ENTRY_MODES,
@@ -134,6 +136,7 @@ import {
   TARGETS_LOWERING_PREVIEW,
   countChars,
   countInRollingWindow,
+  countsAsOf,
   describeWindow,
   effectiveTargetTiming,
   effectiveTiming,
@@ -167,6 +170,7 @@ import {
   validateNote,
   validateReason,
   validateTargetInput,
+  WHOLE_NUMBER_COPY,
   type EntryMode,
   type ExitRates,
   type FieldError,
@@ -1258,7 +1262,10 @@ section("§9 · C14 scope and F4 stored rules");
     const subset = (out: readonly unknown[], inp: readonly unknown[]) => out.every((x) => inp.includes(x));
 
     const NUMBER_LEAVES = FIELD_ORDER.filter(
-      (id) => FIELD_META[id].group === "rules" && FIELD_META[id].min !== null && !id.startsWith("enterNow.") && !id.startsWith("counter.amount."),
+      (id) => FIELD_META[id].group === "rules" && FIELD_META[id].min !== null && !id.startsWith("enterNow.") && !id.startsWith("counter.amount.")
+        /* "Counts as" (2026-10-11) is NOT kept-or-clamped: v0 never had it, so the migration leaves it out and it reads
+           as 1 whatever a stray v0 value says — checked on its own below, because a clamp would RAISE 1e20 to 10,000. */
+        && !id.startsWith("display."),
     );
     /** The static bounds a STORED rules JSON is held to: no live stake bounds (F5 is not parse's job). */
     const storedBound = (id: FieldId) => {
@@ -1297,6 +1304,7 @@ section("§9 · C14 scope and F4 stored rules");
       put(j, "scope.categories", pick<unknown>([[...MARKET_CATEGORIES, "astrology"].filter(() => rand() < 0.4), "all", MISSING]));
       for (const product of ["updown", "polls"]) for (const mode of ["counter", "fill", "opener"]) put(j, `modes.${product}.${mode}`, flag());
       for (const id of NUMBER_LEAVES) put(j, id, genNumber(id));
+      put(j, "display.countsAs", genNumber("display.countsAs"));
       const amount: Record<string, unknown> = { kind: pick(["PCT", "FIXED", "BOGUS"]) };
       put(amount, "pct", genNumber("counter.amount.pct"));
       put(amount, "fixedTzs", genNumber("counter.amount.fixedTzs"));
@@ -1338,7 +1346,7 @@ section("§9 · C14 scope and F4 stored rules");
       return typeof lo === "number" && typeof hi === "number" && lo > hi;
     };
 
-    let converted = 0, refused = 0, clamped = 0, staleSeen = 0;
+    let converted = 0, refused = 0, clamped = 0, staleSeen = 0, strayCountsAs = 0;
     const problems: string[] = [];
     for (let i = 0; i < 200; i++) {
       const input = genV0();
@@ -1375,6 +1383,10 @@ section("§9 · C14 scope and F4 stored rules");
         if (got !== want) problems.push(`#${i} ${id}: ${canon(inV)} → ${canon(got)}, want ${canon(want)}`);
         else if (typeof inV === "number" && got !== inV) clamped++;
       }
+      /* ⛔ "COUNTS AS" COMES OUT 1, WHATEVER THE v0 INPUT HELD — never carried, never clamped up (owner ruling 2026-10-11). */
+      const strayIn = read(input, "display.countsAs");
+      if (typeof strayIn === "number" && strayIn !== 1) strayCountsAs++;
+      if (r.display.countsAs !== 1) problems.push(`#${i} display.countsAs: ${canon(strayIn)} → ${canon(r.display.countsAs)}, want 1`);
       const a = read(input, "counter.amount");
       const am = a && typeof a === "object" && !Array.isArray(a) ? (a as Record<string, unknown>) : {};
       const wantAmount = am.kind === "FIXED" && typeof am.fixedTzs === "number"
@@ -1388,6 +1400,8 @@ section("§9 · C14 scope and F4 stored rules");
       problems.length === 0, `${problems.length} problem(s): ${problems.slice(0, 3).join(" | ")}`);
     ok("9.P2 · population: inputs really converted, numbers really were clamped, stale chains really were dropped",
       converted >= 40 && clamped > 0 && staleSeen > 0, `converted ${converted} · refused ${refused} · clamped ${clamped} · stale ${staleSeen}`);
+    ok("9.P3 · population: v0 inputs really carried a stray \"Counts as\" other than 1 (so 9.P1's \"comes out 1\" was tested, not assumed)",
+      strayCountsAs >= 10, `stray ${strayCountsAs}`);
 
     // ⛔ CONTROLS — the subset check sees a widening, and the snapshot sees a mutation.
     ok("9.c1 · CONTROL · a migrator that widened an empty chain list to every chain fails the subset check", !subset(CHAINS.map((c) => c.key), []));
@@ -2215,6 +2229,96 @@ section("§13 · clock");
     countInRollingWindow([now - 3_600_000], now, 3_600_000) === 0 && countInRollingWindow([now], now, 3_600_000) === 1);
   ok("13.c1 · CONTROL · a clock-hour window (since 14:00 EAT) counts none of the 20 and would admit the 21st",
     bets.filter((t) => t >= Date.UTC(2026, 8, 14, 11)).length === 0);
+}
+
+/* ═══ §15 · "Counts as" — the one display leaf (owner ruling 2026-10-11) ═══════════════════════ */
+/* ⭐ Ali, 2026-10-11: "the input should have perfect input validation and control". Every raw shape a box, a paste or a
+   crafted POST can carry, through the ONE validator the save uses, with the exact code and the exact sentence; then the
+   raw reader the bet path and the shift share; then the stored document's parse. */
+section("§15 · Counts as");
+{
+  const ctx = ctxWith();
+  const ID = "display.countsAs" as FieldId;
+  const meta = FIELD_META[ID];
+  ok("15.0 · the leaf: a rules number, whole 1–10,000, default 1, never empty, in the Market cards section",
+    meta.group === "rules" && meta.min === 1 && meta.max === 10_000 && COUNTS_AS_MIN === 1 && COUNTS_AS_MAX === 10_000
+      && meta.default === 1 && meta.nullable === false && meta.unit === "count" && meta.section === "Market cards",
+    JSON.stringify({ group: meta.group, min: meta.min, max: meta.max, default: meta.default, nullable: meta.nullable, unit: meta.unit, section: meta.section }));
+  ok("15.0b · a new account's rules count it as 1 — nothing changes until an officer sets it", DEFAULT_RULES_V1(ctx).display.countsAs === 1);
+
+  const RANGE = "Between 1 and 10,000.";
+  const DIGITS = "Digits only, e.g. 10,000.";
+  const REFUSED: [string, unknown, string, string][] = [
+    ["empty", "", "UNSET", "Enter a whole number."],
+    ["spaces", "   ", "UNSET", "Enter a whole number."],
+    ["null", null, "UNSET", "Enter a whole number."],
+    ["0", "0", "BELOW_MIN", RANGE],
+    ["-5 (a negative reads the field's own range: 0 is refused too)", "-5", "NEGATIVE", RANGE],
+    ["-1 as a number", -1, "NEGATIVE", RANGE],
+    ["1.5 (whole NUMBERS — never \"shillings\" on a count)", "1.5", "DECIMAL", WHOLE_NUMBER_COPY],
+    ["1.5 as a number", 1.5, "DECIMAL", WHOLE_NUMBER_COPY],
+    ["1e3", "1e3", "NOT_A_NUMBER", DIGITS],
+    ["0x10", "0x10", "NOT_A_NUMBER", DIGITS],
+    ["+5", "+5", "NOT_A_NUMBER", DIGITS],
+    ["Infinity", "Infinity", "NOT_A_NUMBER", DIGITS],
+    ["NaN", "NaN", "NOT_A_NUMBER", DIGITS],
+    ["Infinity as a number", Number.POSITIVE_INFINITY, "NOT_A_NUMBER", DIGITS],
+    ["NaN as a number", Number.NaN, "NOT_A_NUMBER", DIGITS],
+    ["abc", "abc", "NOT_A_NUMBER", DIGITS],
+    ["an object", {}, "NOT_A_NUMBER", DIGITS],
+    ["an array", [], "NOT_A_NUMBER", DIGITS],
+    ["10001", "10001", "ABOVE_MAX", RANGE],
+    ["10,001 (grouped)", "10,001", "ABOVE_MAX", RANGE],
+    ["twenty digits", "99999999999999999999", "ABOVE_MAX", RANGE],
+  ];
+  for (const [name, raw, code, message] of REFUSED) {
+    const got = validateField(ID, raw, ctx);
+    ok(`15.1 · refused: ${name} → ${code}, "${message}"`,
+      !got.ok && got.error.field === ID && got.error.code === code && got.error.message === message, canon(got));
+  }
+  const ACCEPTED: [string, unknown, number][] = [
+    ["1", "1", 1], ["the number 1", 1, 1], ["007", "007", 7], ["1,000 (a pasted grouping)", "1,000", 1_000],
+    ["10000", "10000", 10_000], ["the number 10000", 10_000, 10_000], [" 250 ", " 250 ", 250],
+    ["full-width digits (the box reads them the same way)", "１００", 100],
+    ["Arabic-Indic digits (the box reads them the same way)", "١٠٠", 100],
+  ];
+  for (const [name, raw, value] of ACCEPTED) {
+    const got = validateField(ID, raw, ctx);
+    ok(`15.2 · accepted: ${name} → ${value}`, got.ok && got.value === value, canon(got));
+  }
+
+  // The save itself: the validator's own output is what is stored, as a number.
+  const typed = saveRules({ rules: (r) => { (r.display as Record<string, unknown>).countsAs = "2,500"; } });
+  ok("15.3 · a whole save stores the typed \"2,500\" as the number 2500", typed.ok && typed.rules.display.countsAs === 2_500, canon(typed));
+  const zero = saveRules({ rules: (r) => { (r.display as Record<string, unknown>).countsAs = "0"; } });
+  ok("15.3b · …and a 0 refuses the whole save ON THIS FIELD, with the range", !zero.ok && errOn(zero, ID)?.code === "BELOW_MIN" && errOn(zero, ID)?.message === RANGE, canon(zero));
+  const over = saveRules({ rules: (r) => { (r.display as Record<string, unknown>).countsAs = 10_001; } });
+  ok("15.3c · …and 10,001 refuses it the same way", !over.ok && errOn(over, ID)?.code === "ABOVE_MAX", canon(over));
+
+  // ⛔ THE RAW READER: anything but a whole number in 1–10,000 is 1 — the true count, never more.
+  const RAW: [string, unknown, number][] = [
+    ["no document", undefined, 1], ["null", null, 1], ["an array", [], 1], ["a string", "x", 1],
+    ["no display", { schemaVersion: 1 }, 1], ["display null", { display: null }, 1], ["display an array", { display: [] }, 1],
+    ["a string weight", { display: { countsAs: "100" } }, 1], ["0", { display: { countsAs: 0 } }, 1],
+    ["negative", { display: { countsAs: -3 } }, 1], ["a fraction", { display: { countsAs: 2.5 } }, 1],
+    ["10,001", { display: { countsAs: 10_001 } }, 1], ["NaN", { display: { countsAs: Number.NaN } }, 1],
+    ["1e20", { display: { countsAs: 1e20 } }, 1],
+    ["1", { display: { countsAs: 1 } }, 1], ["100", { display: { countsAs: 100 } }, 100], ["10,000", { display: { countsAs: 10_000 } }, 10_000],
+  ];
+  for (const [name, doc, want] of RAW) ok(`15.4 · countsAsOf(${name}) = ${want}`, countsAsOf(doc) === want, String(countsAsOf(doc)));
+
+  // The stored document: a missing leaf reads 1 (no schema bump); a stored value outside the leaf is RULES_INVALID naming it.
+  const pctx: ParseContext = { chains: CHAINS, categories: MARKET_CATEGORIES, durations: ALLOWED_DURATIONS };
+  const bare = parseHouseBotRules({ schemaVersion: 1 }, pctx);
+  ok("15.5 · a stored document without the leaf parses, and reads 1", bare.ok && bare.rules.display.countsAs === 1, canon(bare));
+  const set = parseHouseBotRules({ schemaVersion: 1, display: { countsAs: 250 } }, pctx);
+  ok("15.5b · a stored 250 reads 250", set.ok && set.rules.display.countsAs === 250, canon(set));
+  for (const [name, v] of [["0", 0], ["10,001", 10_001], ["a string", "250"], ["a fraction", 2.5]] as const) {
+    const bad = parseHouseBotRules({ schemaVersion: 1, display: { countsAs: v } }, pctx);
+    ok(`15.5c · a stored ${name} is RULES_INVALID naming the leaf`, !bad.ok && bad.code === "RULES_INVALID" && bad.field === ID, canon(bad));
+  }
+  // ⛔ CONTROL: the table above can fail — a planted acceptance of 0 is seen by its own check.
+  ok("15.p · population · the validator itself refuses 0 here, so 15.1's \"0\" row is a live answer and not a stub", !(validateField(ID, "0", ctx).ok));
 }
 
 /* ═══ §14 · F1 — a product line with no policy row does not compile ════════════════════════ */
