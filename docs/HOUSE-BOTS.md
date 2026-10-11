@@ -2718,6 +2718,12 @@ above 0 read "Must be 0 or more" while 0 was refused too — it now reads the fi
   comment-stripper (ceiling 20) — §6 matched the `// SEAM:shownCount` marker with a regex whose leading escaped slashes
   have a line-stripper's shape. It is now a plain comparison of the same two lines: the population is back to 20,
   `test:decomment` 22/0, the guard 27/0, `red:predictor-shown` still 14/14 (the bet-path plant caught by §6).
+- **The session close — every other `test:*` suite on the live tree** (370, one at a time, 25 per lock turn; never
+  `test-all`'s parallel mode on this laptop): 366 green at once; `test:decomment` is the finding above; the three that
+  drive a dev server — `test:revoked-deadend` 46/0, `test:admin-section-gate` 21/0, `test:needle-rest` 92/0 — against one
+  fresh `next dev`. With the 151 already green on this tree, all 523 `test:*` suites have run on it except the two
+  live-server sweeps `test:responsive` and `test:motion` (NOT RUN: this change touches no motion, and the desk page's
+  widths were read off tiles at 1280, 1024 and 360).
 - ⚠️ Found on the way, not this lane's: console pin 1.548 had been red on `main` since 2026-10-08 (marketing `a001261d`
   added `cmp` to the crumb builder's id list); the pin now types the list as it stands and keeps its point (`hb_` never).
 
