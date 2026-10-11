@@ -557,7 +557,7 @@ export async function listTerminalMarkets(
   productLine: ProductLineFilter = DEFAULT_PRODUCT_LINE,
 ): Promise<TerminalRows> {
   const key = String(productLine);
-  const store = (globalThis.__50PICK_TERMINAL_MARKETS ??= new Map());
+  const store = (globalThis.__50PICK_TERMINAL_MARKETS ??= new Map<string, TerminalEntry>());
   const hit = store.get(key);
   // `null` = re-read in full: no entry, its TTL ran out, or the change log no longer reaches back to its mark.
   const changed = hit && typeof hit.mark === "number" && Date.now() - hit.at < TERMINAL_TTL_MS
