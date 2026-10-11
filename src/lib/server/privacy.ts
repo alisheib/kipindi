@@ -18,6 +18,10 @@ import { db } from "./store";
 import type { StoredKyc, StoredTxn, StoredUser } from "./store";
 import { loadConfig, loadConfigResult, saveConfig } from "./config-store";
 import { anonymizeClosedAccount, type AnonymizeOutcome } from "./erasure";
+// ⭐ `/admin/privacy` reads the held identities through THIS module (2026-10-11): the DSAR page already reaches the
+// erasure routine through `fulfillDsarRequest`, and `test:house-bot-surfaces` §3 holds every module an admin page
+// imports directly to that feature's word register — which the routine's owner-managed-account refusal is not on.
+export { listHeldIdentities, type HeldIdentity } from "./erasure";
 // 🔴 THE DSAR BUNDLE INVENTED A THIRD ADDRESS. `privacy@50pick.tz` appeared nowhere else in
 // the platform — no config, no admin field, and contradicting `/legal/privacy` §1 — on the two
 // sentences that tell a data subject HOW to exercise correction and erasure. Those are
@@ -33,14 +37,20 @@ export type DsarType = "ACCESS" | "ERASURE" | "CORRECTION" | "PORTABILITY";
  * ⭐ `PARTIAL` EXISTS BECAUSE "FULFILLED" WOULD HAVE BEEN A FALSE STATEMENT.
  *
  * An erasure request against an account closed less than seven years ago cannot be finished:
- * the identity IMAGES are held under POCA Cap 423 §16 / FATF R.11, which is exactly the
- * posture `/admin/retention` already publishes to the Gaming Board — *"we PARTIALLY fulfil"*.
+ * the identity record — since 2026-10-11 (Part C, the owner's ruling) the typed name, date of
+ * birth and document number as well as the IMAGES — is held under POCA Cap 423 §16 / FATF
+ * R.11, which is exactly the posture `/admin/retention` already publishes to the Gaming Board
+ * — *"we PARTIALLY fulfil"*.
  * Stamping such a request FULFILLED would put the platform's own queue in the same position
  * as the retention schedule that F-01 found: describing work it has not done.
  *
  * ⛔ It also has to STAY IN THE QUEUE. Nothing on this platform re-runs erasure at year
  * seven — there is no seven-year timer and building one nobody can test for seven years
  * would be worse than saying so. The open request IS the reminder, and it carries the date.
+ *
+ * ⭐ ITS SECOND CAUSE (2026-10-11, Part C review): a run AFTER the hold in which a deletion in the file storage
+ * failed (`erasureObjectsFailed` > 0, no held-until date). The identity record is erased by then, but files may remain
+ * — so the request stays PARTIAL, and open, until a re-run finishes them.
  */
 export type DsarStatus = "PENDING" | "PARTIAL" | "FULFILLED" | "REJECTED";
 
@@ -55,9 +65,14 @@ export type DsarRequest = {
   fulfilledBy: string | null;
   /** Filename of the export payload, if access type. */
   exportRef: string | null;
-  /** ERASURE only: the date the held identity documents may be destroyed (ISO `YYYY-MM-DD`),
-   *  or null once they have been. Set when the status becomes `PARTIAL`. */
+  /** ERASURE only: the date the held identity record — the typed details and the images — may
+   *  be erased (ISO `YYYY-MM-DD`), or null once it has been. Set when the status becomes
+   *  `PARTIAL`. `/admin/privacy` also derives the same dates from the accounts themselves
+   *  (`listHeldIdentities`), so the reminder does not live in this one blob alone. */
   erasureHeldUntil?: string | null;
+  /** ERASURE only: stored identity files the last run could NOT delete (storage unreachable, a refused object). While it
+   *  is above zero the request stays `PARTIAL` — re-run it once storage answers (2026-10-11, Part C review). */
+  erasureObjectsFailed?: number;
 };
 
 declare global {
@@ -154,12 +169,19 @@ export async function fulfillDsarRequest(opts: { id: string; officerId: string; 
   }
 
   // 🔴 PARTIAL, NOT FULFILLED, while a statutory hold is still running. See `DsarStatus`.
+  // ⭐ …AND WHILE ANY STORED FILE COULD NOT BE DELETED (2026-10-11, Part C review). After the release the routine keeps a
+  // row whose object refused to go ("the row only goes if the bytes went") and counts it — a FULFILLED there would say
+  // "we erased your data" over files that are still stored, and drop the request (and its button) from the queue.
   const held = erasure?.ok ? erasure.documentsHeldUntil : null;
-  r.status = held ? "PARTIAL" : "FULFILLED";
+  // …and the agent programme's files count too (2026-10-11, reviews PC-1/PC-2/PC-3): a referee's ID scan the storage
+  // refused is a stored file all the same, and nothing else re-runs this request once it reads FULFILLED.
+  const failedObjects = erasure?.ok ? erasure.counts.documentObjectsFailed + erasure.counts.agentDocumentObjectsFailed : 0;
+  r.status = held || failedObjects > 0 ? "PARTIAL" : "FULFILLED";
   r.fulfilledAt = new Date().toISOString();
   r.fulfilledBy = opts.officerId;
   r.exportRef = opts.exportRef ?? null;
   r.erasureHeldUntil = held;
+  r.erasureObjectsFailed = failedObjects;
   persistQueue();
   audit({
     category: "ADMIN",
@@ -189,7 +211,7 @@ export async function fulfillDsarRequest(opts: { id: string; officerId: string; 
  * and not the other is a cap somebody will find the way around.
  *
  * ⚠️ `PARTIAL` counts as OPEN. A partially fulfilled erasure is still live work — the identity
- * documents are held to a date and nothing but that request remembers it — so a second erasure
+ * record is held to a date, and the request is what an officer re-runs on it — so a second erasure
  * request for the same account would duplicate a job already in progress.
  */
 export function hasOpenRequest(userId: string, type: DsarType): boolean {
@@ -455,6 +477,12 @@ export async function buildDsarBundle(userId: string) {
       //    it — COMPLIANCE-DECISIONS "Privacy v2026-10-09"): "and the stop link it carried" is gone, since
       //    no marketing text message carries a stop link any more; the note under "Erase my data" says
       //    the same record in the same words.
+      //  · And on 2026-10-11 (Part C — the owner's ruling of 2026-10-10, "keep 7 years but no notice";
+      //    COMPLIANCE-DECISIONS "Privacy v2026-10-11"): "and the name and number on your identity
+      //    record" is no longer erased at once. The identity record — name, date of birth and document
+      //    number — is held with the images for 7 years from closure (`erasure.ts`, tier ②), compared
+      //    with new identity checks meanwhile, and then erased except a coded form of the number; the
+      //    sentence before the record of marketing choices is untouched, so "We also keep" still reads on.
       //
       // ⛔ IT DESCRIBES A PARTIAL FULFILMENT AND SAYS WHICH PART. That is the honest shape of
       // erasure for a licensed operator, and it is the posture `/admin/retention` already
@@ -462,10 +490,10 @@ export async function buildDsarBundle(userId: string) {
       // does — `test:erasure` §10 holds the period, the two tiers are named in
       // `docs/DATA-RETENTION.md` §2, and `test:privacy-notice` §4j pins these words and the record.
       erasure: `Request erasure by writing to ${SUPPORT_EMAIL()}, or from Account settings. `
-        + "On a closed account we erase your contact details (except as below), password, profile, in-app "
-        + "messages and the name and number on your identity record, and we replace any "
-        + "name shown beside your past comments. Your financial and audit records, and the "
-        + "images of your identity documents, are retained for 7 years from account closure "
+        + "On a closed account we erase your contact details (except as below), password, profile and "
+        + "in-app messages, and we replace any name shown beside your past comments. Your financial "
+        + "and audit records, your identity record (your name, date of birth and document number) and "
+        + "any images of your identity documents or selfie are retained for at least 7 years from account closure "
         + "under POCA Cap 423 §16 and cannot be erased before then. We also keep your phone "
         + "number in our record of your marketing choices, so that we never send you marketing "
         + "again, and in the records of the marketing text messages we sent to it: those records "
@@ -473,8 +501,12 @@ export async function buildDsarBundle(userId: string) {
         + "for at least 7 years, as the record GN 478T reg 51(1) requires; erasure removes which "
         + "account they belonged to and keeps the rest. The records of the security codes we "
         + "texted to your number, and your payment records, which the law requires us to keep, "
-        + "keep it too. Each request is handled by a compliance officer within the "
-        + "30-day statutory period (PDPA 2022 §31 / GDPR Art. 17).",
+        + "keep it too. While we hold your identity record, it is compared with new identity checks "
+        + "so that it cannot be used to open another account; once the 7 years have run, we complete "
+        + "your request and erase it and the images, except for a coded form of your document number "
+        + "(not the number itself), which we keep so that the same document cannot open another "
+        + "account. Each request is handled by a "
+        + "compliance officer within the 30-day statutory period (PDPA 2022 §31 / GDPR Art. 17).",
       portability: "This bundle is the portability format (machine-readable JSON).",
     },
   };

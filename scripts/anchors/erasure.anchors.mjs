@@ -14,11 +14,20 @@
  * the most important: it is the erasure routine the 2026-08-21 decision literally describes
  * — hash the number in place, trust the index — and it hands one human a second account on
  * one national ID. If `test:erasure` can be green over that, the whole item is decoration.
+ *
+ * ⭐ PART C (2026-10-11) · the owner's ruling HOLDS the typed identity seven years from closure,
+ * so the number stays raw until the release and cases 1, 3 and 19 now bite in `test:erasure`
+ * §7b (after the release), never in §5 (during the hold, where the tuple index still answers).
+ * Cases 3, 6 and 14 were re-anchored onto the moved code with their intent unchanged; the last
+ * six cases plant the hold's own defects: the identity erased at once, the fingerprint deferred,
+ * the refusal note kept, the folder swept in year one, a failed listing read as empty, and a
+ * listing that does not name the folder.
  */
 
 /** @typedef {{ name: string, file: string, suite: string, from: string, to: string }} RedMutation */
 
 const ERASURE = "src/lib/server/erasure.ts";
+const STORAGE = "src/lib/server/storage.ts";
 const KYC = "src/lib/server/kyc-service.ts";
 const COMMENTS = "src/lib/server/comments-store.ts";
 const STORE = "src/lib/server/store.ts";
@@ -32,7 +41,8 @@ export const MUTATIONS = [
     // the number becomes its keyed HMAC and the index is trusted to keep colliding. It does
     // not — the erased row holds a hash and the next applicant writes the raw number — and
     // with the fingerprint fast-path removed, the in-memory store shows exactly what a
-    // fingerprint-less database would: the second account is CREATED.
+    // fingerprint-less database would: the second account is CREATED. (Caught by 7b.5, after
+    // the 7-year release: during the hold the raw number still collides — Part C.)
     name: "hash-in-place-and-trust-the-index (a SECOND account on one national ID)",
     file: KYC,
     suite: "erasure",
@@ -58,11 +68,14 @@ export const MUTATIONS = [
   {
     // 🔴 THE OBVIOUS IMPLEMENTATION, AND THE ONE THE DECISION EXISTS TO FORBID: null the
     // number. Reads as the cleanest possible erasure and repeals a P0 AML control.
+    // ⚠️ RE-ANCHORED 2026-10-11 (Part C): the row and every prior identity are pseudonymised by ONE
+    // rule, `pseudonymiseIdentity`, under the 7-year gate — the plant nulls the number there, for
+    // both, and test:erasure 7b.2 / 7b.4 (after the release) must report it.
     name: "null-the-national-id (the trap the owner decision was written to forbid)",
     file: ERASURE,
     suite: "erasure",
-    from: `      patch.idNumber = fp;`,
-    to: `      patch.idNumber = null;`,
+    from: `    erased.idNumber = fp;`,
+    to: `    erased.idNumber = null;`,
   },
   {
     // Reading the NEWEST submission — which is what every other caller in the platform
@@ -85,11 +98,14 @@ export const MUTATIONS = [
   {
     // 🔴 The 7-year hold removed — a passport scan destroyed in year 1, against POCA Cap 423
     // §16 and against the platform's own published schedule. Irreversible.
+    // ⚠️ RE-ANCHORED 2026-10-11 (Part C): the gate was renamed `identityReleased` — it now releases the
+    // typed identity too — so the same plant also erases the number, name and date of birth in year one
+    // (test:erasure 5.2 / 5.3 / 7.4 catch it).
     name: "no-statutory-hold (a CDD document destroyed in year one)",
     file: ERASURE,
     suite: "erasure",
-    from: `  const documentsReleased = now >= Date.parse(releaseAt);`,
-    to: `  const documentsReleased = true;`,
+    from: `  const identityReleased = now >= Date.parse(releaseAt);`,
+    to: `  const identityReleased = true;`,
   },
   {
     // ⛔ THE FAILURE MODE storage.ts WAS WRITTEN TO PREVENT, in its own words: "the record
@@ -159,16 +175,19 @@ export const MUTATIONS = [
     // 🔴 THE ERASED NUMBER WRITTEN INTO THE ONE TABLE THAT CANNOT BE PRUNED. An audit
     // payload naming the phone makes the append-only chain the last place it survives — for
     // seven years, by design.
+    // ⚠️ RE-ANCHORED 2026-10-11 (Part C): the payload's keys are unchanged, their value is the renamed gate.
     name: "audit-payload-carries-the-erased-phone (the chain becomes the leak)",
     file: ERASURE,
     suite: "erasure",
     from: `      alreadyErased: wasErased,
-      documentsReleased,
-      documentsHeldUntil: documentsReleased ? null : releaseAt.slice(0, 10),
+      documentsReleased: identityReleased,
+      documentsHeldUntil: heldUntil,
+      nothingHeld: !identityReleased && !heldAnything,
       holdYears: KYC_DOCUMENT_HOLD_YEARS,`,
     to: `      alreadyErased: wasErased,
-      documentsReleased,
-      documentsHeldUntil: documentsReleased ? null : releaseAt.slice(0, 10),
+      documentsReleased: identityReleased,
+      documentsHeldUntil: heldUntil,
+      nothingHeld: !identityReleased && !heldAnything,
       holdYears: KYC_DOCUMENT_HOLD_YEARS,
       erasedPhone: user.phoneE164,`,
   },
@@ -225,7 +244,7 @@ export const MUTATIONS = [
   {
     // The in-memory twin of the fingerprint read, gutted. `tsc` cannot catch a missing
     // in-memory half, and a Prisma-only method throws in every unit test — so this is the
-    // shape of a DAL half that silently stops answering.
+    // shape of a DAL half that silently stops answering. (Caught by 7b.5, after the release.)
     name: "in-memory-fingerprint-read-always-misses (the DAL half tsc cannot check)",
     file: STORE,
     suite: "erasure",
@@ -363,5 +382,135 @@ export const MUTATIONS = [
     suite: "erasure",
     from: `      if (s.createdAt < since && !active) continue;`,
     to: `      if (s.createdAt < since) continue;`,
+  },
+  /* ── Part C · the typed identity held 7 years on erasure (2026-10-11) ─────────────────────── */
+  {
+    // 🔴 THE OWNER'S RULING UNDONE: the typed identity pseudonymised on the first run, as it was
+    // before the hold — what a "simplify the gate" tidy-up would quietly do. Ali, 2026-10-10: "keep
+    // 7 years but no notice". test:erasure 5.2 / 5.3 / 5.7 (during the hold) must report it.
+    name: "typed-identity-erased-at-once (the owner's 7-year hold on the number, name and date of birth ignored)",
+    file: ERASURE,
+    suite: "erasure",
+    from: `    if (identityReleased) {
+      const own = pseudonymiseIdentity(patch);`,
+    to: `    if (true) {
+      const own = pseudonymiseIdentity(patch);`,
+  },
+  {
+    // The fingerprint written only at the release — "why write it now, the number is still on the
+    // row?" — so an erased row carries none for seven years and the control hangs on a write that
+    // far away. test:erasure 5.1 / 5.4 report the rejected row left without one.
+    name: "fingerprint-deferred-to-the-release (an erased row carries no fingerprint through the hold)",
+    file: ERASURE,
+    suite: "erasure",
+    from: `      patch.idFingerprint = identityFingerprint(k.idType, k.idNumber);`,
+    to: `      void identityFingerprint;`,
+  },
+  {
+    // The officer's refusal note kept — "Name on the ID does not match the account: Asha Mwangi" —
+    // on a row the hold keeps for seven years, for a reason the sentence does not share.
+    // test:erasure 5.1 / 5.5 and §8's sweep report it.
+    name: "refusal-note-kept (the officer's sentence naming the player outlives the erasure)",
+    file: ERASURE,
+    suite: "erasure",
+    from: `      patch.rejectNote = ERASED_REQUEST_DESCRIPTION;`,
+    to: `      patch.rejectNote = k.rejectNote;`,
+  },
+  {
+    // 🔴 The account's KYC folder swept on the FIRST run — every photo in it destroyed in year one,
+    // against POCA Cap 423 §16 and the published schedule. Irreversible. test:erasure 7c.1 reports it.
+    name: "folder-swept-during-the-hold (a CDD photo destroyed in year one)",
+    file: ERASURE,
+    suite: "erasure",
+    from: `  if (identityReleased) {
+    const folder = kycUserKeyPrefix(userId);`,
+    to: `  if (true) {
+    const folder = kycUserKeyPrefix(userId);`,
+  },
+  {
+    // ⛔ A listing that failed read as an empty folder: the run reports a clean release over objects
+    // it never saw, and nothing says a re-run is owed. test:erasure 7c.9 reports it.
+    name: "failed-listing-read-as-empty (an unreachable bucket reported as a clean folder)",
+    file: ERASURE,
+    suite: "erasure",
+    from: `    if (!listed) counts.documentObjectsFailed++;`,
+    to: `    void listed;`,
+  },
+  {
+    // The listing without its folder: every erasure pages through every player's documents, and
+    // only the defensive filter stands between the sweep and everyone's photos. test:erasure 7c.5
+    // (every listing names exactly the account's folder) reports it.
+    name: "listing-not-scoped-to-the-folder (each erasure pages through the whole KYC tree)",
+    file: STORAGE,
+    suite: "erasure",
+    from: `      Prefix: prefix,`,
+    to: `      Prefix: "kyc/",`,
+  },
+  /* ── 2026-10-11 · the Part C reviews (PC-1 MAJOR-2, PC-3 F1/F3/F4/F9): what the hold holds, and when it ends ────────── */
+  {
+    // 🔴 A CDD record emptied in year one — the source-of-funds declaration off the identity's clock. 7.7b.
+    name: "sof-emptied-during-the-hold (a CDD record destroyed in year one)",
+    file: ERASURE,
+    suite: "erasure",
+    from: `  if (sof && sofDeclared && identityReleased) {`,
+    to: `  if (sof && sofDeclared) {`,
+  },
+  {
+    // 🔴 The agent programme's files destroyed in year one — irreversible, and before PC-3 no assertion noticed. 7d.1.
+    name: "agent-files-purged-during-the-hold (referees' ID scans destroyed in year one)",
+    file: ERASURE,
+    suite: "erasure",
+    from: `  if (identityReleased) {
+    const agentDocs = await purgeAgentDocumentsForUser(userId);`,
+    to: `  if (true) {
+    const agentDocs = await purgeAgentDocumentsForUser(userId);`,
+  },
+  {
+    // 🔴 A release date reported over nothing held — "identity held" for seven years on an account that never verified. 7d.4.
+    name: "nothing-held-still-dated (a 2033 date over an empty hold)",
+    file: ERASURE,
+    suite: "erasure",
+    from: `  const heldUntil = identityReleased || !heldAnything ? null : releaseAt.slice(0, 10);`,
+    to: `  const heldUntil = identityReleased ? null : releaseAt.slice(0, 10);`,
+  },
+  {
+    // 🔴 No closure date read as closed long ago — everything released in year one, irreversibly. 7d.5.
+    name: "no-closure-date-read-as-long-closed (released in year one)",
+    file: ERASURE,
+    suite: "erasure",
+    from: `  const closedAt = user.closedAt ?? new Date(now).toISOString();`,
+    to: `  const closedAt = user.closedAt ?? new Date(0).toISOString();`,
+  },
+  {
+    // 🔴 The assumed clock not written — every re-run restarts it and the identity is never released. 7d.6.
+    name: "clock-not-written (the release date moves seven years at every run)",
+    file: ERASURE,
+    suite: "erasure",
+    from: `      ...(user.closedAt ? {} : { closedAt }),`,
+    to: ``,
+  },
+  {
+    // 🔴 Released a millisecond late at the boundary — the hold made longer than the law by the gate's own comparison. 7d.9.
+    name: "released-after-the-instant (> where the law says at)",
+    file: ERASURE,
+    suite: "erasure",
+    from: `  const identityReleased = now >= Date.parse(releaseAt);`,
+    to: `  const identityReleased = now > Date.parse(releaseAt);`,
+  },
+  {
+    // 🔴 The held list reading every closed account, erased or not — a reminder for erasures nobody ran. 5.13.
+    name: "held-list-lists-the-unerased (a reminder for an erasure nobody ran)",
+    file: ERASURE,
+    suite: "erasure",
+    from: `    if (u.status !== "CLOSED" || !isErasedPhone(u.phoneE164)) continue;`,
+    to: `    if (u.status !== "CLOSED") continue;`,
+  },
+  {
+    // 🔴 The held list's date a year early — "Due" on every row a year before the release can run. 5.14.
+    name: "held-date-a-year-early (Due a year before the release)",
+    file: ERASURE,
+    suite: "erasure",
+    from: `  return addYears(closedAt, KYC_DOCUMENT_HOLD_YEARS).slice(0, 10);`,
+    to: `  return addYears(closedAt, KYC_DOCUMENT_HOLD_YEARS - 1).slice(0, 10);`,
   },
 ];

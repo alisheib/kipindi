@@ -88,8 +88,21 @@ the next send goes back to an officer.
 the submission keeps a history, `priorIdentities`: the identity it held is appended when any fact of it (type, number,
 expiry, name, date of birth) changes after it was decided — approved, refused, sent or routed to an officer, or asked
 to be corrected — and on every restart, re-open and date-of-birth correction; an undecided edit is not. At most 20
-entries, always keeping the first approved one. Erasure pseudonymises every entry by the row's own rule, and an access
-request shows the subject their own entries without the officer or fingerprint on them (`dsarKycView`).
+entries, always keeping the first approved one. An access request shows the subject their own entries without the
+officer or fingerprint on them (`dsarKycView`).
+
+**On erasure the typed identity is HELD 7 years from closure** (owner ruling, Ali, 2026-10-10: *"keep 7 years but no
+notice — we have our licence to do this, it's ok"*; live from Privacy v2026-10-11 — [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md)
+§ "2026-10-11 · Privacy v2026-10-11"). The document number, the full name and the date of birth — on every submission and
+every `priorIdentities` entry — stay exactly as they were until `KYC_DOCUMENT_HOLD_YEARS` have run from `closedAt`, with
+the images; the fingerprint is written at once for any row that lacks one, and an officer's refusal note and request
+descriptions are redacted at once. Meanwhile the document stays spent on its raw number, and the held name and date of
+birth still count for the same-person check (the erased account is CLOSED, so a match routes to an officer). At the
+release — an officer re-runs the erasure; nothing does it on its own — the row and every entry are pseudonymised by ONE
+rule (`pseudonymiseIdentity`, `src/lib/server/erasure.ts`): the number becomes its keyed fingerprint, the name
+"Erased <fp12>", the date of birth is removed. From then on only the document's type and expiry date and the coded form of
+the number are kept, and the coded form still stops the same document opening another account. An account the hold
+holds nothing for — most players never verify — is fulfilled at once (2026-10-11). [`DATA-RETENTION.md`](DATA-RETENTION.md) §2b is the authority.
 
 ## ⭐ When identity is asked — before WITHDRAWAL only (owner ruling, 2026-09-13)
 
@@ -180,7 +193,7 @@ sanctions/PEP clear. The workstation chooses the set from the row (`photoSetComp
 | Control | Where | Status |
 |---|---|---|
 | Format check, per document | `validateIdNumber` in [`src/lib/id-documents.ts`](../src/lib/id-documents.ts) — ONE catalogue, one entry per type | ✅ enforced |
-| **Uniqueness — one document, one account** | `db.kyc.findActiveByIdNumber(type, number, userId)` is the fast path; the **partial unique index** is the enforcement. A **recoverable** refusal frees the number; a **final** refusal (`UNDERAGE`, `SANCTIONED`, `DUPLICATE_IDENTITY`) keeps it reserved — both indexes and both fast paths ask the same question (2026-09-13, `20260913120000_kyc_at_withdrawal`) | ✅ enforced, audited as `kyc.id.duplicate_blocked` |
+| **Uniqueness — one document, one account** | `db.kyc.findActiveByIdNumber(type, number, userId)` is the fast path; the **partial unique index** is the enforcement. A **recoverable** refusal frees the number; a **final** refusal (`UNDERAGE`, `SANCTIONED`, `DUPLICATE_IDENTITY`) keeps it reserved — both indexes and both fast paths ask the same question (2026-09-13, `20260913120000_kyc_at_withdrawal`). An erased account's document stays spent: on its raw number through the 7-year hold, on `idFingerprint` (written at erasure for a row that lacks one) once the release has hashed the number (Part C, 2026-10-11) | ✅ enforced, audited as `kyc.id.duplicate_blocked` |
 | Age ≥ 18 | `validators.dateOfBirth` at parse time **and** `kyc-service` above the per-document branch, both through ONE predicate, `isOfAge` (`src/lib/id-documents.ts`): **whole calendar years on the Africa/Dar_es_Salaam date** (2026-09-13, audit session 95 — the schema used 365.25-day years and the service calendar years on UTC, and their ~12-hour disagreement let the service issue an automatic FINAL UNDERAGE refusal to a player already 18; `nida.ts` and `/admin/kyc/[id]` ask the same predicate). ⭐ **Since 2026-10-10 the date is the ACCOUNT's** (`User.dob`, normalised to `YYYY-MM-DD` before the schema, because Prisma returns a timestamp): an under-18 account date is the FINAL refusal; only an account with no date types one, which is then written to the account; a wrong sign-up date is corrected only by an officer (`correctDateOfBirth`). ⚠️ **From 2026-09-13 the declared date is the only age control before a player's first withdrawal** (Ali's ruling, consequence recorded in `COMPLIANCE-DECISIONS.md`), and since 2026-10-10 it is the only age control at approval too: no officer compares it with a document before an automatic approval | ✅ enforced for **all four** (declared); see the note below |
 | Expiry | captured and refused on the typed press; on the agent track refused at the details step **and** re-checked at the photo send; asked again as a block by every officer approval and Mark checked — for the two documents that carry one | ✅ enforced |
 | The automatic checks | `decideKyc` in `src/lib/kyc-auto-checks.ts` — pure, shared by the instant path, the workstation's checklist and every officer approval; its facts (risk score, holds, source of funds, AML escalation, same-person matches) are read by `kyc-service.ts` before the lock, and a failed read refuses the press with "try again" rather than deciding without it | ✅ route / flag / block, never a refusal of its own |
@@ -370,7 +383,9 @@ What still bites, and is worth knowing:
 - ⭐ **Since 2026-10-10: the same-person check.** A typed identity whose normalised name and date of birth match another
   account's is routed to an officer when that account is self-excluded, cooled off, suspended, closed, frozen or finally
   refused, and flagged for the post-check otherwise. It **narrows** the gap; it does not close it — a different name
-  spelling, or a different date on the second account, passes it.
+  spelling, or a different date on the second account, passes it. ⭐ Since Part C (2026-10-11) an ERASED account's
+  identity is held 7 years from closure, so it still counts here (the account is closed: a match routes); once the hold
+  has run and the identity is pseudonymised ("Erased …"), it never matches.
 - The **officer's post-check** sees the name, the date of birth, the document number, the flags and the same-person
   matches (linked by case, never by name) — but, for a player, **no image and no selfie** since 2026-10-10, and only
   after the approval.

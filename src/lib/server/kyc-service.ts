@@ -704,7 +704,8 @@ async function checkIdentityAvailable(userId: string, p: ParsedIdentity): Promis
   const conflict =
     (await db.kyc.findActiveByIdNumber(idType, idNumber, userId)) ??
     // 🔴 AND THE SAME QUESTION ASKED OF AN ERASED ROW. `anonymizeClosedAccount` destroys
-    // `idNumber` (it becomes this document's keyed HMAC), so from that moment the read
+    // `idNumber` at the release, seven years after closure (it becomes this document's keyed HMAC;
+    // during the hold the raw number stays — Part C, 2026-10-11), so from that moment the read
     // above cannot match it — the erased row holds a hash and this applicant is holding
     // the raw number. Without this second read a re-presented document would clear the
     // fast path and then lose to "KycSubmission_idFingerprint_active_key" in the DATABASE:
@@ -1261,8 +1262,8 @@ export async function verifyIdentity(
         idVerifiedAt: now,
         // 🔴 WRITTEN FOR EVERY SUBMISSION, not only for the ones that will one day be
         // erased — and that is the whole point. The fingerprint only collides if BOTH rows
-        // carry one: the erased row (which gets it at erasure time, computed from the raw
-        // number it is destroying) and the row of whoever presents that document next.
+        // carry one: the erased row (which gets it at the first erasure run, computed from the raw
+        // number the release will destroy) and the row of whoever presents that document next.
         idFingerprint: avail.fingerprint,
         fullName: p.fullName,
         dob: p.dob,
@@ -2276,6 +2277,13 @@ export async function correctDateOfBirth(officerId: string, userId: string, opts
     if (!sameIdentityVersion(k, opts.version)) return { ok: false as const, error: STALE_CASE, code: "INVALID" as const };
     if (k.status === "REJECTED" && isFinalRefusal(k.rejectReason)) {
       return { ok: false as const, error: "This identity was finally refused. Re-open the refusal first.", code: "INVALID" as const };
+    }
+    // ⛔ NOT ON A CLOSED ACCOUNT (2026-10-11, Part C review PC-1): its identity is a held record — erasure keeps it seven
+    // years exactly as it was — and a correction would write a date of birth back onto an emptied account that no re-run
+    // clears. A closed account has no withdrawal for a corrected date to unblock.
+    const owner = await db.user.findById(userId);
+    if (!owner || owner.status === "CLOSED") {
+      return { ok: false as const, error: "This account is closed — its identity record is held as it is and cannot be corrected.", code: "INVALID" as const };
     }
     const now = new Date().toISOString();
     // The identity as it stood goes into the history when the date actually changes (an officer's act: no decided-state

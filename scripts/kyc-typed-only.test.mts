@@ -63,7 +63,7 @@ const { AGENT_TERMS_VERSION } = await import("../src/lib/agent-terms-version.ts"
 const { emailOutbox, clearEmailOutbox } = await import("../src/lib/server/email.ts");
 const { exportUserData } = await import("../src/lib/server/user-service.ts");
 const { buildDsarBundle } = await import("../src/lib/server/privacy.ts");
-const { anonymizeClosedAccount } = await import("../src/lib/server/erasure.ts");
+const { anonymizeClosedAccount, KYC_DOCUMENT_HOLD_YEARS } = await import("../src/lib/server/erasure.ts");
 const { identityFingerprint } = await import("../src/lib/server/crypto.ts");
 
 let pass = 0, fail = 0;
@@ -901,8 +901,9 @@ await section("§12 · R2.4 · both DSAR doors release the same, subject-only KY
     own?.idNumber === raw.idNumber && own?.fullName === raw.fullName && priorsOf(own)[0]?.idNumber === priorNumber && priorsOf(own)[0]?.fullName === "Dsar Fixture Before");
 });
 
-await section("§12 · R2.3 · erasure reaches every prior identity", async () => {
-  const u = await account("usr_kto_r23_erase", { status: "CLOSED", closedAt: now() });
+await section("§12 · R2.3 · erasure reaches every prior identity — held 7 years from closure, then erased by the row's own rule", async () => {
+  const closedAt = now();
+  const u = await account("usr_kto_r23_erase", { status: "CLOSED", closedAt });
   const t = now();
   const n0 = voter(), n1 = voter(), n2 = voter();
   await kycRow(u, {
@@ -914,16 +915,28 @@ await section("§12 · R2.3 · erasure reaches every prior identity", async () =
   });
   const before = J(await kycOf(u));
   ok("12.16b CONTROL · before erasure the row holds all three raw numbers", [n0, n1, n2].every((n) => before.includes(n)));
-  const first = await anonymizeClosedAccount(u);
+  // ⭐ PART C (2026-10-11) · the owner's ruling of 2026-10-10 HOLDS the typed identity 7 years from closure ("keep 7 years
+  // but no notice"). This account closed just now, so the first run keeps every prior identity — and the row's own — exactly
+  // as they were; the run at the release finishes the job by the one rule (`pseudonymiseIdentity`). 12.16–12.18 measure
+  // the release, as they measured the first run before Part C; 12.16c is the hold, with 12.16b as its control.
+  const priorsBefore = J((await kycOf(u)).priorIdentities);
+  const held = await anonymizeClosedAccount(u);
+  const during = await kycOf(u);
+  ok("12.16c ⛔ Part C · DURING THE HOLD every prior identity is kept exactly as it was, and so are the row's own number, name and date of birth — three identities reported held, none hashed",
+    held.ok && J(during.priorIdentities) === priorsBefore && during.idNumber === n0 && during.fullName === "Erasure Fixture Now"
+      && during.dob === ACCOUNT_DOB && held.counts.identitiesHeld === 3 && held.counts.idNumbersHashed === 0,
+    J({ counts: held.ok ? held.counts : held, priors: during.priorIdentities }));
+  const released = Date.parse(closedAt) + (KYC_DOCUMENT_HOLD_YEARS + 1) * 366 * 24 * 60 * 60 * 1000;
+  const first = await anonymizeClosedAccount(u, { now: released });
   const after = await kycOf(u);
   const priors = after.priorIdentities ?? [];
-  ok('12.16 ⛔ R2.3 · every prior identity: number = its fingerprint (64 hex), name "Erased <fp12>", date of birth removed',
+  ok('12.16 ⛔ R2.3 · at the release, every prior identity: number = its fingerprint (64 hex), name "Erased <fp12>", date of birth removed',
     first.ok && priors.length === 2 && priors.every((pe) => /^[0-9a-f]{64}$/.test(String(pe.idNumber)) && pe.idNumber === pe.idFingerprint
       && pe.fullName === `Erased ${String(pe.idFingerprint).slice(0, 12)}` && pe.dob === null)
       && priors[0].idFingerprint === identityFingerprint("VOTER_CARD", n1),
     J({ first: first.ok, priors }));
   ok("12.17 ⛔ …and no raw number remains anywhere in the row", ![n0, n1, n2].some((n) => J(after).includes(n)), J(after).slice(0, 200));
-  const second = await anonymizeClosedAccount(u);
+  const second = await anonymizeClosedAccount(u, { now: released + 24 * 60 * 60 * 1000 });
   ok("12.18 a second run is a no-op on the history (same entries, nothing hashed again)",
     second.ok && J((await kycOf(u)).priorIdentities) === J(priors) && (second as { counts?: { idNumbersHashed?: number } }).counts?.idNumbersHashed === 0, J(second));
 });

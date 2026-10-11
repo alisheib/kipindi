@@ -97,10 +97,19 @@ const TITLE: Record<Locale, string> = {
 // still holds those photographs. ⛔ §5, §6 and the data-rights text are NOT this version's words — the later change to
 // what erasure keeps is its own version (a second one the same day is 2026-10-10.2). `POLICY_PAGES.privacy.codeVersion`
 // moved with META (`test:policy-lines` L0).
+// 2026-10-11 (Part C — the owner's ruling of 2026-10-10, in his words: "keep 7 years but no notice — we have our licence
+// to do this, it's ok"; COMPLIANCE-DECISIONS.md "Privacy v2026-10-11"): §5's first bullet. On erasure of a closed account
+// the identity record — name, date of birth, document number — is no longer removed at once: it is kept with the images
+// until at least 7 years after closure (AML law; `KYC_DOCUMENT_HOLD_YEARS`, `src/lib/server/erasure.ts`), compared with
+// new identity checks meanwhile, and then erased except a coded form of the document number, "not the number itself" (in
+// Swahili "wala si namba yenyewe" and in Chinese "而非号码本身" — different words from §9's, so §9's own checks still find
+// §9). Contact details and the password are still removed at once. No 14-day notice, by the same ruling. §2, §6 and §9 are
+// unchanged; the data-rights text (`privacy.ts`, rights.erasure) says the same; `test:privacy-notice` §4j pins the bullet
+// and §4l holds it to the code. `POLICY_PAGES.privacy.codeVersion` moved with META.
 const META: Record<Locale, string> = {
-  en: "Version 2026-10-10 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
-  sw: "Toleo 2026-10-10 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
-  zh: "版本 2026-10-10 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
+  en: "Version 2026-10-11 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
+  sw: "Toleo 2026-10-11 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
+  zh: "版本 2026-10-11 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
 };
 
 /**
@@ -167,7 +176,7 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="5" title="Retention">
         <ul className="list-disc pl-5 space-y-1">
-          <li>Account and identity (KYC) records: at least 7 years after the account is closed (AML statutory). If you ask us to erase a closed account, your contact details, password and the name and number on your identity record are removed at once, except as stated below for marketing text messages; the images of your identity documents are kept until at least 7 years after closure</li>
+          <li>Account and identity (KYC) records: at least 7 years after the account is closed (AML statutory). If you ask us to erase a closed account, your contact details and password are removed at once, except as stated below for marketing text messages; your identity record (your name, date of birth and document number) and any images of your identity documents or selfie are kept until at least 7 years after closure, as AML law requires, and while they are kept your identity record is compared with new identity checks so that it cannot be used to open another account. After that your identity record and those images are erased, except for a coded form of the document number, not the number itself, which is kept so that the same document cannot be used to open another account</li>
           <li>Prediction and transaction history: at least 7 years</li>
           <li>Audit log entries: at least 7 years</li>
           <li>Marketing consent: until you withdraw it, close your account, or 2 years pass without you signing in</li>
@@ -289,7 +298,7 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="5" title="Uhifadhi">
         <ul className="list-disc pl-5 space-y-1">
-          <li>Kumbukumbu za akaunti na utambulisho (KYC): angalau miaka 7 baada ya akaunti kufungwa (sharti la kisheria la AML). Ukituomba kufuta akaunti iliyofungwa, taarifa zako za mawasiliano, nenosiri, na jina na namba kwenye rekodi yako ya utambulisho huondolewa mara moja, isipokuwa kama ilivyoelezwa hapa chini kuhusu SMS za ofa na habari; picha za nyaraka zako za utambulisho huhifadhiwa hadi angalau miaka 7 baada ya kufungwa</li>
+          <li>Kumbukumbu za akaunti na utambulisho (KYC): angalau miaka 7 baada ya akaunti kufungwa (sharti la kisheria la AML). Ukituomba kufuta akaunti iliyofungwa, taarifa zako za mawasiliano na nenosiri huondolewa mara moja, isipokuwa kama ilivyoelezwa hapa chini kuhusu SMS za ofa na habari; rekodi yako ya utambulisho (jina lako, tarehe yako ya kuzaliwa na namba ya hati yako) na picha zozote za nyaraka zako za utambulisho au selfie huhifadhiwa hadi angalau miaka 7 baada ya kufungwa, kama sheria ya AML inavyotaka, na katika kipindi hicho rekodi hiyo hulinganishwa na uthibitisho mpya wa utambulisho ili isitumike kufungua akaunti nyingine. Baada ya hapo rekodi yako ya utambulisho na picha hizo hufutwa, isipokuwa namba ya hati ikiwa imegeuzwa kuwa msimbo (wala si namba yenyewe), ambayo huhifadhiwa ili hati hiyo hiyo isitumike kufungua akaunti nyingine</li>
           <li>Historia ya utabiri na miamala: angalau miaka 7</li>
           <li>Maingizo ya kumbukumbu za ukaguzi (audit log): angalau miaka 7</li>
           <li>Ridhaa ya matangazo: hadi utakapoiondoa, kufunga akaunti yako, au miaka 2 ipite bila kuingia</li>
@@ -413,7 +422,7 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="5" title="保留期限">
         <ul className="list-disc pl-5 space-y-1">
-          <li>账户与身份（KYC）记录：账户注销后至少 7 年（AML 法定要求）。如您要求删除已注销的账户，您的联系方式、密码以及身份记录上的姓名与证件号码将立即删除，但下文所述的短信优惠与资讯记录除外；身份证件图片保留至注销后至少 7 年</li>
+          <li>账户与身份（KYC）记录：账户注销后至少 7 年（AML 法定要求）。如您要求删除已注销的账户，您的联系方式和密码将立即删除，但下文所述的短信优惠与资讯记录除外；您的身份记录（姓名、出生日期和证件号码）及身份证件图片和自拍照（如有）将依照反洗钱法规保留至注销后至少 7 年，保留期间，您的身份记录会与新的身份验证进行比对，以防止其被用于开设其他账户。此后，您的身份记录及上述图片将被删除，但会保留证件号码的一种编码形式（而非号码本身），以防止同一证件被用于开设其他账户</li>
           <li>预测与交易历史：至少 7 年</li>
           <li>审计日志条目：至少 7 年</li>
           <li>营销同意：直至您撤回、注销账户，或连续 2 年未登录</li>

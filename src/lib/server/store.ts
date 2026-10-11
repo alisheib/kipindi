@@ -2581,7 +2581,9 @@ const memoryDb = {
      * 🔴 THE SAME CONTROL, ON THE VALUE THAT SURVIVES ERASURE.
      *
      * `findActiveByIdNumber` above matches the RAW number, and an erased submission no
-     * longer has one — `anonymizeClosedAccount` replaced it with its keyed HMAC. So a
+     * longer has one once its release has run — `anonymizeClosedAccount` replaces it with its
+     * keyed HMAC seven years after closure (during the hold the raw number stays, since Part C,
+     * 2026-10-11, and the read above still matches it). So a
      * document that was erased would read as free to the fast path while the DATABASE
      * still refuses it on "KycSubmission_idFingerprint_active_key", and the player would
      * meet an unexplained 500 instead of the `id_taken` refusal. Both questions get

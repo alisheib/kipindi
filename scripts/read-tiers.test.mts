@@ -441,7 +441,7 @@ const GOVERNED_REVIEWED = new Map<string, string>([
    "the SIGNED-IN OFFICER'S OWN number, taken from their session cookie and handed to AdminShell as a display-name fallback. §6 scopes this axis to a staff member reading a PLAYER's record; a person reading their own number is outside it, the same reason staff/[id] is exempt"],
   // ── typed-only identity, reviewed 2026-10-10 ───────────────────────────────────────────
   ["src/app/admin/kyc/page.tsx::isErasedPhone(u.phoneE164)",
-   "the post-check list's row object PASSES the phone to `isErasedPhone` (erasure.ts), a boolean predicate — has this account been erased, its phone pseudonymised? The row carries only the word erased / closed / nothing, and the list renders no phone at all"],
+   "the post-check list's row object PASSES the phone to `isErasedPhone` (erased-phone.ts, re-exported by erasure.ts), a boolean predicate — has this account been erased, its phone pseudonymised? The row carries only the word erased / closed / nothing, and the list renders no phone at all"],
 ]);
 
 // ⚠️ Deliberate structural exemptions (whole files), each with a reason. May only SHRINK.

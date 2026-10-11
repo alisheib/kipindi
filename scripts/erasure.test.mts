@@ -13,17 +13,27 @@
  * reasoning that *"the same document still hashes to the same value, so the index still
  * rejects the second account."*
  *
- * 🔴 §5 MEASURES THAT SENTENCE AND IT IS NOT TRUE ON ITS OWN. A unique index compares
- * STORED STRINGS: after erasure the row holds a hash, the next applicant writes the RAW
+ * 🔴 §7b MEASURES THAT SENTENCE AND IT IS NOT TRUE ON ITS OWN. A unique index compares
+ * STORED STRINGS: after the release the row holds a hash, the next applicant writes the RAW
  * number, and nothing collides. `red:erasure` case 1 puts exactly that implementation back
- * — hash into `idNumber`, no fingerprint — and §5 reports a SECOND ACCOUNT on one national
+ * — hash into `idNumber`, no fingerprint — and §7b reports a SECOND ACCOUNT on one national
  * ID. The fix is that the collision happens on `KycSubmission.idFingerprint`, a value BOTH
  * rows carry.
  *
- * ⛔ AND §5 IS DRIVEN THROUGH THE REAL SERVICE, NEVER THROUGH THE DAL. A test that asserts
- * "the fingerprints are equal" proves an HMAC is deterministic. The question is whether a
- * PERSON can open a second account, so §5 calls `submitIdentityStep` — the same function
- * `/profile/kyc` calls — and reads the refusal the player would get.
+ * ⭐ PART C (2026-10-11) SPLIT THE OLD §5 IN TWO, because the owner's ruling of 2026-10-10 —
+ * "keep 7 years but no notice — we have our licence to do this, it's ok" — HOLDS the typed
+ * identity (number, name, date of birth, on every submission and every prior identity) for
+ * seven years from closure. §5 is now DURING THE HOLD: the identity kept exactly as it was,
+ * the fingerprint written at once, the officers' free text redacted at once, the document
+ * still refused on its raw number, a re-run a no-op. §7b is AFTER YEAR 7: the identity
+ * pseudonymised by the one rule, the document still refused — on the fingerprint alone, which
+ * is where cases 1 and 19 bite. §7c proves the release also empties the account's own KYC
+ * folder in R2, and only that folder.
+ *
+ * ⛔ AND §5/§7b ARE DRIVEN THROUGH THE REAL SERVICE, NEVER THROUGH THE DAL. A test that
+ * asserts "the fingerprints are equal" proves an HMAC is deterministic. The question is
+ * whether a PERSON can open a second account, so they call `submitIdentityStep` — the same
+ * function `/profile/kyc` calls — and read the refusal the player would get.
  *
  * ⭐ §8 IS A SWEEP, NOT A CHECKLIST. Every other section names the fields it expects to be
  * cleared, which is only ever as complete as the person who wrote the list. §8 walks the
@@ -54,10 +64,12 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { decomment } from "./lib/decomment.mts";
 import { db } from "../src/lib/server/store.ts";
 import {
-  anonymizeClosedAccount, erasedPhoneTombstone, isErasedPhone,
+  anonymizeClosedAccount, erasedPhoneTombstone, isErasedPhone, identityHeldUntil, listHeldIdentities,
   ERASED_AUTHOR_NAME, ERASED_COMMENT_BODY, ERASED_REQUEST_DESCRIPTION, KYC_DOCUMENT_HOLD_YEARS,
 } from "../src/lib/server/erasure.ts";
 import { addComment, listComments } from "../src/lib/server/comments-store.ts";
+// ⭐ Part C · §7c drives the REAL folder lister and delete against a fake S3 client.
+import { __setKycS3ClientForTests, kycUserKeyPrefix, listKycDocumentKeys } from "../src/lib/server/storage.ts";
 import { submitIdentityStep, startKyc } from "../src/lib/server/kyc-service.ts";
 import { identityFingerprint } from "../src/lib/server/crypto.ts";
 import { maskName } from "../src/lib/server/affiliate-service.ts";
@@ -137,14 +149,29 @@ await db.user.create({
 // inline half proves destruction works; the r2 half proves a failed destruction does not
 // take the pointer with it.
 const INLINE_DOC = "data:image/jpeg;base64,AAAA";
-for (const [id, status, createdAt, docs, extraKey] of [
-  ["kyc_erase_old", "REJECTED", iso(NOW - 190 * DAY), [INLINE_DOC, INLINE_DOC], INLINE_DOC],
-  ["kyc_erase_new", "APPROVED", iso(NOW - 180 * DAY), ["r2:kyc/front.jpg", INLINE_DOC], "r2:kyc/extra.jpg"],
+// ⭐ PART C (2026-10-11) · THREE FACTS THE HOLD MUST TREAT APART, on the same two rows:
+//   · the rejected row carries NO fingerprint (it predates the column) — erasure must write it AT ONCE, while the number
+//     is raw, never at the release;
+//   · the rejected row carries the officer's refusal NOTE naming the player — free text, redacted at once like the
+//     request descriptions;
+//   · the approved row carries a PRIOR identity (a correction replaced it) with its own raw number and the player's
+//     name — HELD with the row, and erased by the row's own rule at the release.
+const NIDA_PRIOR = "19900101000000000416";
+const REJECT_NOTE = `Name on the ID does not match the account: ${NAME}`;
+const PRIOR_IDENTITY = {
+  idType: "NIDA", idNumber: NIDA_PRIOR, idExpiry: null, fullName: NAME, dob: "1990-01-01", idFingerprint: null,
+  status: "APPROVED", approvedAt: iso(NOW - 185 * DAY), reviewerId: "usr_officer", cause: "correction",
+  supersededAt: iso(NOW - 180 * DAY),
+};
+for (const [id, status, createdAt, docs, extraKey, fingerprint, rejectNote, priors] of [
+  ["kyc_erase_old", "REJECTED", iso(NOW - 190 * DAY), [INLINE_DOC, INLINE_DOC], INLINE_DOC, null, REJECT_NOTE, []],
+  ["kyc_erase_new", "APPROVED", iso(NOW - 180 * DAY), ["r2:kyc/front.jpg", INLINE_DOC], "r2:kyc/extra.jpg",
+    identityFingerprint("NIDA", NIDA), null, [PRIOR_IDENTITY]],
 ] as const) {
   await db.kyc.upsert({
-    id, userId: SUBJECT, status, rejectReason: null, rejectNote: null,
+    id, userId: SUBJECT, status, rejectReason: null, rejectNote,
     idType: "NIDA", idNumber: NIDA, idExpiry: null, idVerifiedAt: createdAt,
-    idFingerprint: identityFingerprint("NIDA", NIDA),
+    idFingerprint: fingerprint, priorIdentities: [...priors],
     fullName: NAME, dob: "1990-01-01",
     documents: [
       { docType: "NIDA_FRONT", storageKey: docs[0], uploadedAt: createdAt, mimeType: "image/jpeg", sizeBytes: 1000 },
@@ -317,6 +344,14 @@ section("1 · CONTROL — the fixtures are really there before anything is measu
   ok("1.6 the phone-form mask really does carry the number's last three digits — the " +
      "fragment this whole item exists for",
     phoneMask.endsWith(PHONE.slice(-3)) && phoneMask !== nameMask, `${phoneMask} / ${nameMask}`);
+  const oldRow = subs.find((k) => k.id === "kyc_erase_old");
+  const newRow = subs.find((k) => k.id === "kyc_erase_new");
+  ok("1.7 CONTROL · Part C's three facts are on the fixture before anything runs: the rejected row has NO fingerprint and " +
+     "an officer's note naming the player; the approved row has a prior identity with its own raw number and the name",
+    !!oldRow && !oldRow.idFingerprint && oldRow.rejectNote === REJECT_NOTE && REJECT_NOTE.includes(NAME)
+      && !!newRow && (newRow.priorIdentities ?? []).length === 1 && newRow.priorIdentities?.[0]?.idNumber === NIDA_PRIOR
+      && newRow.priorIdentities?.[0]?.fullName === NAME,
+    JSON.stringify({ oldFp: oldRow?.idFingerprint ?? null, note: oldRow?.rejectNote, priors: newRow?.priorIdentities }));
 }
 
 {
@@ -560,71 +595,109 @@ section("4 · money, positions and the audit chain are untouched");
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-section("5 · 🔴 THE ASSERTION THE WHOLE ITEM EXISTS FOR — the document still collides");
+section("5 · 🔴 DURING THE HOLD — the typed identity is KEPT, and the document still collides");
 // ═════════════════════════════════════════════════════════════════════════════
 {
+  /**
+   * ⭐ PART C (2026-10-11) · THE OWNER'S RULING, MEASURED. Ali, 2026-10-10: "keep 7 years but no notice — we have our
+   * licence to do this, it's ok". From the first run until the release, the typed identity — number, full name, date of
+   * birth, on every submission and every prior identity — is HELD exactly as it was. What goes at once is everything
+   * around it: the officers' free text, and (a write, not an erasure) the fingerprint a row lacked. §7b measures the
+   * release, and the assertion this whole item exists for, where only the fingerprint can answer.
+   */
+  const fp = identityFingerprint("NIDA", NIDA);
   const subs = await db.kyc.listByUser(SUBJECT);
-  ok("5.1 EVERY submission was reached, not just the newest",
-    subs.length === 2 && subs.every((k) => k.idNumber !== NIDA),
+  const oldSub = subs.find((k) => k.id === "kyc_erase_old");
+  const newSub = subs.find((k) => k.id === "kyc_erase_new");
+  ok("5.1 EVERY submission was reached, not just the newest — the rejected row's fingerprint and note were written too",
+    result.ok && result.counts.kycSubmissions === 2 && subs.length === 2
+      && oldSub?.idFingerprint === fp && oldSub?.rejectNote === ERASED_REQUEST_DESCRIPTION,
+    JSON.stringify({ n: result.ok ? result.counts.kycSubmissions : "-", oldFp: oldSub?.idFingerprint ?? null, note: oldSub?.rejectNote }));
+  ok("5.2 ⛔ the national ID is HELD, raw, on every submission — the owner's 7-year hold — and is NOT null",
+    subs.length === 2 && subs.every((k) => k.idNumber === NIDA),
     subs.map((k) => `${k.id}:${String(k.idNumber).slice(0, 8)}`).join(" "));
-  ok("5.2 the national ID is unreadable and is NOT null (owner decision, item 3)",
-    subs.every((k) => !!k.idNumber && k.idNumber === identityFingerprint("NIDA", NIDA)),
-    subs.map((k) => String(k.idNumber)).join(" "));
-  ok("5.3 the full name is pseudonymised, and the date of birth is gone",
-    subs.every((k) => !!k.fullName && !k.fullName.includes("Asha") && k.dob === null),
+  ok("5.3 …and so are the full name and the date of birth",
+    subs.length === 2 && subs.every((k) => k.fullName === NAME && k.dob === "1990-01-01"),
     subs.map((k) => `${k.fullName}/${k.dob}`).join(" "));
-  ok("5.4 the fingerprint survived the erasure intact",
-    subs.every((k) => k.idFingerprint === identityFingerprint("NIDA", NIDA)));
+  ok("5.4 ⭐ the fingerprint is written AT ONCE on the row that had none — the uniqueness control may not wait seven years",
+    subs.length === 2 && subs.every((k) => k.idFingerprint === fp),
+    subs.map((k) => `${k.id}:${String(k.idFingerprint).slice(0, 8)}`).join(" "));
+  ok("5.5 ⭐ the officer's refusal NOTE is redacted at once — it named the player, and no statute keeps the sentence",
+    oldSub?.rejectNote === ERASED_REQUEST_DESCRIPTION && !JSON.stringify(subs.map((k) => k.rejectNote)).includes("Asha"),
+    JSON.stringify(subs.map((k) => k.rejectNote)));
+  ok("5.6 …and so is every request description, on every row, while the documents they asked for are held",
+    subs.every((k) => (k.extraRequests ?? []).length === 1
+      && (k.extraRequests ?? []).every((e) => e.description === ERASED_REQUEST_DESCRIPTION)),
+    JSON.stringify(subs.map((k) => (k.extraRequests ?? []).map((e) => e.description))));
+  const heldPriors = newSub?.priorIdentities ?? [];
+  ok("5.7 ⛔ the PRIOR identity is held too — its own raw number, the name and the date of birth, exactly as they were",
+    heldPriors.length === 1 && heldPriors[0].idNumber === NIDA_PRIOR && heldPriors[0].fullName === NAME
+      && heldPriors[0].dob === "1990-01-01" && !heldPriors[0].idFingerprint,
+    JSON.stringify(heldPriors));
+  ok("5.8 ⭐ the run SAYS what it held back — three identities (two rows, one prior) — and hashed nothing",
+    result.ok && result.counts.identitiesHeld === 3 && result.counts.idNumbersHashed === 0,
+    result.ok ? JSON.stringify({ held: result.counts.identitiesHeld, hashed: result.counts.idNumbersHashed }) : "-");
 
-  // 🔴 THE REAL QUESTION, ASKED THE WAY A PERSON ASKS IT. Not "are the hashes equal" —
-  // whether somebody can walk up with the same national ID and get a second account.
-  // Driven through the same service `/profile/kyc` calls.
-  const IMPOSTOR = "usr_erase_second_account";
+  // 🔴 THE SAME QUESTION A PERSON ASKS, DURING THE HOLD. The row still holds the raw number, so the TUPLE index and its
+  // fast path answer; §7b asks it again after the release, when only the fingerprint can.
+  const HELD_IMPOSTOR = "usr_erase_second_account_held";
   await db.user.create({
-    id: IMPOSTOR, phoneE164: "+255712000888", email: null, emailVerifiedAt: null,
+    id: HELD_IMPOSTOR, phoneE164: "+255712000886", email: null, emailVerifiedAt: null,
     passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
     role: "PLAYER", status: "PENDING_KYC", locale: "EN", displayName: null, dob: null,
     region: null, acceptedTermsVersion: "v3", acceptedTermsAt: iso(NOW),
     marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
     createdAt: iso(NOW), updatedAt: iso(NOW), lastLoginAt: null, closedAt: null,
   } as never);
-  await startKyc(IMPOSTOR);
-  const quiet = console.log; console.log = () => {};
-  const retry = await submitIdentityStep(IMPOSTOR, {
+  await startKyc(HELD_IMPOSTOR);
+  const quietHeld = console.log; console.log = () => {};
+  const heldRetry = await submitIdentityStep(HELD_IMPOSTOR, {
     idType: "NIDA", idNumber: NIDA, fullName: "Someone Else", dob: "1990-01-01",
   } as never);
-  console.log = quiet;
-  ok("5.5 🔴🔴 THE SAME NATIONAL ID IS STILL REFUSED AFTER ERASURE — one document, one account",
-    retry.ok === false && (retry as { reason?: string }).reason === "id_taken",
-    "⛔ If this is green-through, erasure has repealed a P0 AML control. Hashing the\n" +
-    "       number IN PLACE is not enough: the index compares stored strings, so the\n" +
-    "       erased row's hash never meets this applicant's raw number. The collision has\n" +
-    "       to live on `idFingerprint`, which BOTH rows carry.\n" +
-    `       got: ${JSON.stringify(retry)}`);
-  const impostorKyc = await db.kyc.findByUserId(IMPOSTOR);
-  ok("5.6 …and no identity was written for the second account",
-    !impostorKyc?.idNumber, String(impostorKyc?.idNumber));
+  console.log = quietHeld;
+  ok("5.9 🔴 the same national ID is REFUSED DURING THE HOLD too — the held row keeps the document spent",
+    heldRetry.ok === false && (heldRetry as { reason?: string }).reason === "id_taken", `got: ${JSON.stringify(heldRetry)}`);
+  ok("5.10 …and no identity was written for that second account",
+    !(await db.kyc.findByUserId(HELD_IMPOSTOR))?.idNumber);
 
-  // ⭐ THE POSITIVE CONTROL. A refusal is also what a service that refuses EVERYTHING
-  // gives you, and §5.5 cannot tell the two apart on its own.
-  const HONEST = "usr_erase_unrelated";
+  // ⭐ IDEMPOTENT DURING THE HOLD — a second run writes nothing to the identity record, reports zeroes for the work it
+  // already did, and holds the same three identities back.
+  const beforeAgain = JSON.stringify(await db.kyc.listByUser(SUBJECT));
+  const again = await anonymizeClosedAccount(SUBJECT, { now: NOW + DAY });
+  ok("5.11 IDEMPOTENT DURING THE HOLD · a second run changes nothing and says so — no number hashed, no document destroyed, the same three held",
+    again.ok && again.alreadyErased === true && again.documentsReleased === false && again.documentsHeldUntil === "2033-07-22"
+      && again.counts.idNumbersHashed === 0 && again.counts.documentsDeleted === 0 && again.counts.identitiesHeld === 3
+      && JSON.stringify(await db.kyc.listByUser(SUBJECT)) === beforeAgain,
+    again.ok ? JSON.stringify(again.counts) : JSON.stringify(again));
+
+  // ⭐ THE HELD LIST (2026-10-11, review PC-3 F3) — `/admin/privacy`'s reminder, read from the accounts. The erased
+  // account is on it with the routine's own release date; a CLOSED account nobody erased is not (nothing is held for an
+  // erasure that never ran, and its row would offer the on-behalf door for no reason).
+  const UNERASED = "usr_erase_unerased";
   await db.user.create({
-    id: HONEST, phoneE164: "+255712000777", email: null, emailVerifiedAt: null,
-    passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
-    role: "PLAYER", status: "PENDING_KYC", locale: "EN", displayName: null, dob: null,
-    region: null, acceptedTermsVersion: "v3", acceptedTermsAt: iso(NOW),
-    marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
-    createdAt: iso(NOW), updatedAt: iso(NOW), lastLoginAt: null, closedAt: null,
+    id: UNERASED, phoneE164: "+255712000805", email: null, emailVerifiedAt: null, passwordHash: null, passwordSalt: null,
+    failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "CLOSED", locale: "EN", displayName: null,
+    dob: "1991-02-02", region: null, acceptedTermsVersion: "v3", acceptedTermsAt: iso(NOW - 90 * DAY),
+    marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, createdAt: iso(NOW - 90 * DAY),
+    updatedAt: iso(NOW - 20 * DAY), lastLoginAt: null, closedAt: iso(NOW - 20 * DAY),
   } as never);
-  await startKyc(HONEST);
-  const quiet2 = console.log; console.log = () => {};
-  const fresh = await submitIdentityStep(HONEST, {
-    idType: "NIDA", idNumber: "19900101000000000999", fullName: "Unrelated Person", dob: "1990-01-01",
+  await db.kyc.upsert({
+    id: "kyc_erase_unerased", userId: UNERASED, status: "APPROVED", rejectReason: null, rejectNote: null,
+    idType: "VOTER_CARD", idNumber: "QAERASE0805", idExpiry: null, idVerifiedAt: iso(NOW - 60 * DAY), idFingerprint: null,
+    fullName: "Unerased Player", dob: "1991-02-02", documents: [], extraRequests: [], priorIdentities: [],
+    reviewerId: null, reviewedAt: iso(NOW - 60 * DAY), submittedAt: iso(NOW - 60 * DAY), approvedAt: iso(NOW - 60 * DAY),
+    createdAt: iso(NOW - 60 * DAY), updatedAt: iso(NOW - 60 * DAY),
   } as never);
-  console.log = quiet2;
-  ok("5.7 ⭐ CONTROL — a DIFFERENT national ID is still ACCEPTED, so 5.5 is a real refusal " +
-     "and not a service that refuses everything",
-    fresh.ok === true, JSON.stringify(fresh));
+  const heldList = await listHeldIdentities(await db.user.list());
+  const mine = heldList.find((h) => h.userId === SUBJECT);
+  ok("5.12 the held list names the erased account, with the routine's own release date, its closure and the three identities it keeps",
+    !!mine && mine.heldUntil === "2033-07-22" && mine.closedAt === CLOSED_AT && mine.identities === 3,
+    JSON.stringify(mine));
+  ok("5.13 ⛔ …and NOT a closed account that was never erased — nothing is held for an erasure nobody ran",
+    !heldList.some((h) => h.userId === UNERASED), JSON.stringify(heldList.map((h) => h.userId)));
+  ok("5.14 the release date is the routine's — seven years from closure — and there is none without a readable closure date",
+    identityHeldUntil(CLOSED_AT) === "2033-07-22" && identityHeldUntil(null) === null && identityHeldUntil("not a date") === null,
+    String(identityHeldUntil(CLOSED_AT)));
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -710,9 +783,16 @@ section("7 · credentials, devices, and the 7-year hold on the images");
     held.every((k) => (k.documents ?? []).length === 2));
   ok("7.7 …and so are the officer-requested extras",
     held.every((k) => (k.extraRequests ?? []).length === 1));
+  const sofHeld = await db.sourceOfFunds.get(SUBJECT);
+  ok("7.7b 🔴 …and the source-of-funds declaration is HELD with them — a CDD record on the same clock, emptied only at the release (7.11)",
+    !!sofHeld?.declaredOccupation && !!sofHeld?.declaredEmployer, JSON.stringify(sofHeld));
+}
 
-  // Now move past the hold and finish the job — the SAME function, run again.
-  const late = await anonymizeClosedAccount(SUBJECT, { now: Date.parse("2033-08-01T00:00:00.000Z") });
+// Now move past the hold and finish the job — the SAME function, run again. ⭐ At the top level since Part C
+// (2026-10-11): §7b reads the identity this run released, and §7c's release runs on the same day.
+const RELEASE = Date.parse("2033-08-01T00:00:00.000Z");
+const late = await anonymizeClosedAccount(SUBJECT, { now: RELEASE });
+{
   ok("7.8 🔴 past the hold, every document whose BYTES were destroyed loses its row too",
     late.ok && late.documentsReleased === true && late.counts.documentsDeleted === 4,
     late.ok ? JSON.stringify(late.counts) : "-");
@@ -749,6 +829,332 @@ section("7 · credentials, devices, and the 7-year hold on the images");
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+section("7b · 🔴 AFTER YEAR 7 — the identity is pseudonymised, and the document STILL collides");
+// ═════════════════════════════════════════════════════════════════════════════
+{
+  /**
+   * 🔴 THE ASSERTION THE WHOLE ITEM EXISTS FOR, asked where it can bite (Part C moved it here from §5). Only after the
+   * release does the row hold its number's keyed HMAC instead of the number, and only then is the trap in erasure.ts's
+   * header live: the erased row's hash never meets the next applicant's raw number, so the refusal must come from the
+   * fingerprint. `red:erasure` case 1 (the decision as written: no fingerprint read) and case 19 (the in-memory
+   * fingerprint read gutted) each turn 7b.5 red; case 3 (the number nulled) turns 7b.2 red.
+   */
+  const fp = identityFingerprint("NIDA", NIDA);
+  const subs = await db.kyc.listByUser(SUBJECT);
+  ok("7b.1 EVERY submission was pseudonymised at the release, not just the newest",
+    late.ok && late.documentsReleased === true && late.documentsHeldUntil === null
+      && subs.length === 2 && subs.every((k) => k.idNumber !== NIDA),
+    subs.map((k) => `${k.id}:${String(k.idNumber).slice(0, 8)}`).join(" "));
+  ok("7b.2 🔴 the national ID is unreadable and is NOT null — its keyed HMAC, equal to the fingerprint (owner decision, item 3)",
+    subs.length === 2 && subs.every((k) => !!k.idNumber && k.idNumber === fp && k.idFingerprint === fp),
+    subs.map((k) => String(k.idNumber)).join(" "));
+  ok("7b.3 the full name is the fingerprint's tag, Erased and its first 12, and the date of birth is gone",
+    subs.length === 2 && subs.every((k) => k.fullName === `Erased ${fp.slice(0, 12)}` && k.dob === null),
+    subs.map((k) => `${k.fullName}/${k.dob}`).join(" "));
+  const fpPrior = identityFingerprint("NIDA", NIDA_PRIOR);
+  const priors = subs.find((k) => k.id === "kyc_erase_new")?.priorIdentities ?? [];
+  ok("7b.4 ⛔ the PRIOR identity, by the SAME rule — its own number's HMAC, its own Erased tag, no date of birth — and the rest of the entry kept",
+    priors.length === 1 && priors[0].idNumber === fpPrior && priors[0].idFingerprint === fpPrior
+      && priors[0].fullName === `Erased ${fpPrior.slice(0, 12)}` && priors[0].dob === null
+      && priors[0].status === "APPROVED" && priors[0].cause === "correction" && priors[0].reviewerId === "usr_officer",
+    JSON.stringify(priors));
+  ok("7b.4b the release counted it: three numbers hashed (two rows, one prior), nothing held back any more",
+    late.ok && late.counts.idNumbersHashed === 3 && late.counts.identitiesHeld === 0,
+    late.ok ? JSON.stringify({ hashed: late.counts.idNumbersHashed, held: late.counts.identitiesHeld }) : "-");
+  ok("7b.4c ⛔ the fingerprint survived the release intact — the value the next applicant's row collides with",
+    subs.every((k) => k.idFingerprint === fp));
+  // ⭐ Moved here from §5 by Part C (2026-10-11), word for word: until the release the row keeps the raw number
+  // and §5's own refusal answers on it; from here on, only the fingerprint can.
+  // 🔴 THE REAL QUESTION, ASKED THE WAY A PERSON ASKS IT. Not "are the hashes equal" —
+  // whether somebody can walk up with the same national ID and get a second account.
+  // Driven through the same service `/profile/kyc` calls.
+  const IMPOSTOR = "usr_erase_second_account";
+  await db.user.create({
+    id: IMPOSTOR, phoneE164: "+255712000888", email: null, emailVerifiedAt: null,
+    passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
+    role: "PLAYER", status: "PENDING_KYC", locale: "EN", displayName: null, dob: null,
+    region: null, acceptedTermsVersion: "v3", acceptedTermsAt: iso(NOW),
+    marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
+    createdAt: iso(NOW), updatedAt: iso(NOW), lastLoginAt: null, closedAt: null,
+  } as never);
+  await startKyc(IMPOSTOR);
+  const quiet = console.log; console.log = () => {};
+  const retry = await submitIdentityStep(IMPOSTOR, {
+    idType: "NIDA", idNumber: NIDA, fullName: "Someone Else", dob: "1990-01-01",
+  } as never);
+  console.log = quiet;
+  ok("7b.5 🔴🔴 THE SAME NATIONAL ID IS STILL REFUSED AFTER ERASURE — one document, one account",
+    retry.ok === false && (retry as { reason?: string }).reason === "id_taken",
+    "⛔ If this is green-through, erasure has repealed a P0 AML control. Hashing the\n" +
+    "       number IN PLACE is not enough: the index compares stored strings, so the\n" +
+    "       erased row's hash never meets this applicant's raw number. The collision has\n" +
+    "       to live on `idFingerprint`, which BOTH rows carry.\n" +
+    `       got: ${JSON.stringify(retry)}`);
+  const impostorKyc = await db.kyc.findByUserId(IMPOSTOR);
+  ok("7b.6 …and no identity was written for the second account",
+    !impostorKyc?.idNumber, String(impostorKyc?.idNumber));
+
+  // ⭐ THE POSITIVE CONTROL. A refusal is also what a service that refuses EVERYTHING
+  // gives you, and 7b.5 cannot tell the two apart on its own.
+  const HONEST = "usr_erase_unrelated";
+  await db.user.create({
+    id: HONEST, phoneE164: "+255712000777", email: null, emailVerifiedAt: null,
+    passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
+    role: "PLAYER", status: "PENDING_KYC", locale: "EN", displayName: null, dob: null,
+    region: null, acceptedTermsVersion: "v3", acceptedTermsAt: iso(NOW),
+    marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
+    createdAt: iso(NOW), updatedAt: iso(NOW), lastLoginAt: null, closedAt: null,
+  } as never);
+  await startKyc(HONEST);
+  const quiet2 = console.log; console.log = () => {};
+  const fresh = await submitIdentityStep(HONEST, {
+    idType: "NIDA", idNumber: "19900101000000000999", fullName: "Unrelated Person", dob: "1990-01-01",
+  } as never);
+  console.log = quiet2;
+  ok("7b.7 ⭐ CONTROL — a DIFFERENT national ID is still ACCEPTED, so 7b.5 is a real refusal " +
+     "and not a service that refuses everything",
+    fresh.ok === true, JSON.stringify(fresh));
+  ok("7b.8 the held list lets the account go at the release — the same predicate the release applies (review PC-3 F3)",
+    !(await listHeldIdentities(await db.user.list())).some((h) => h.userId === SUBJECT));
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+section("7c · ⭐ THE ACCOUNT'S OWN KYC FOLDER — at the release, what no row names goes too, and nothing else does");
+// ═════════════════════════════════════════════════════════════════════════════
+{
+  /**
+   * ⭐ PART C (2026-10-11). A restart used to drop a photo from its row without destroying the object, so the folder
+   * `kyc/<userId>/` can hold objects no row names, which the loop over the rows can never reach. The release lists the
+   * folder and destroys them too. Driven through the REAL `listKycDocumentKeys` and `deleteKycDocument` against a fake S3
+   * client (`__setKycS3ClientForTests`): the commands, the paging and the folder they name are the product's own.
+   * ⛔ THE CONTROLS ARE THE POINT: an account whose id begins with the same letters, and the agent programme's folder,
+   * sit in the same bucket and must come through untouched; a listing that fails must count as a failure.
+   */
+  const R2U = "usr_erase_r2";
+  const FOLDER = "kyc/usr_erase_r2/";
+  const ROW_KEY = `${FOLDER}NIDA_FRONT/rowdoc.jpg`;
+  const ORPHANS = [`${FOLDER}NIDA_FRONT/restart1.jpg`, `${FOLDER}SELFIE/restart2.jpg`];
+  const STUCK = `${FOLDER}NIDA_BACK/stuck.jpg`;
+  const NEIGHBOUR = "kyc/usr_erase_r2x/NIDA_FRONT/neighbour.jpg";
+  const AGENT_APP = "kyc/agentapp/app_erase_r2/CV/cv.jpg";
+  const bucket = new Set<string>([ROW_KEY, ...ORPHANS, STUCK, NEIGHBOUR, AGENT_APP]);
+  const refuse = new Set<string>([STUCK]);
+  let listFails = false;
+  const calls: Array<{ op: "list" | "delete"; arg: string }> = [];
+  /** A fake R2: lists by prefix, TWO keys a page (so the paging is driven), and refuses the objects in `refuse`. */
+  const fakeR2 = {
+    send: async (cmd: { input?: Record<string, unknown> }) => {
+      const input = cmd?.input ?? {};
+      if ("Prefix" in input) {
+        const prefix = String(input.Prefix ?? "");
+        calls.push({ op: "list", arg: prefix });
+        if (listFails) throw new Error("fixture: the bucket is unreachable");
+        const all = [...bucket].filter((k) => k.startsWith(prefix)).sort();
+        const from = Number(input.ContinuationToken ?? 0);
+        const next = from + 2 < all.length ? String(from + 2) : undefined;
+        return { Contents: all.slice(from, from + 2).map((Key) => ({ Key })), IsTruncated: next !== undefined, NextContinuationToken: next };
+      }
+      if ("Key" in input) {
+        const key = String(input.Key ?? "");
+        calls.push({ op: "delete", arg: key });
+        if (refuse.has(key)) throw new Error("fixture: R2 refused this object");
+        bucket.delete(key);
+        return {};
+      }
+      throw new Error("fixture: an S3 command this suite does not expect");
+    },
+  };
+  const R2_NIDA = "19910101000000000431";
+  await db.user.create({
+    id: R2U, phoneE164: "+255712000431", email: null, emailVerifiedAt: null, passwordHash: null, passwordSalt: null,
+    failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "CLOSED", locale: "EN", displayName: "Folder Fixture",
+    dob: "1991-01-01", region: null, acceptedTermsVersion: "v3", acceptedTermsAt: iso(NOW - 90 * DAY),
+    marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
+    createdAt: iso(NOW - 90 * DAY), updatedAt: iso(NOW - 30 * DAY), lastLoginAt: null, closedAt: CLOSED_AT,
+  } as never);
+  await db.kyc.upsert({
+    id: "kyc_erase_r2", userId: R2U, status: "APPROVED", rejectReason: null, rejectNote: null,
+    idType: "NIDA", idNumber: R2_NIDA, idExpiry: null, idVerifiedAt: iso(NOW - 80 * DAY),
+    idFingerprint: identityFingerprint("NIDA", R2_NIDA), fullName: "Folder Fixture", dob: "1991-01-01",
+    documents: [{ docType: "NIDA_FRONT", storageKey: `r2:${ROW_KEY}`, uploadedAt: iso(NOW - 80 * DAY), mimeType: "image/jpeg", sizeBytes: 1000 }],
+    extraRequests: [], priorIdentities: [], reviewerId: "usr_officer", reviewedAt: iso(NOW - 80 * DAY),
+    submittedAt: iso(NOW - 80 * DAY), approvedAt: iso(NOW - 80 * DAY),
+    createdAt: iso(NOW - 80 * DAY), updatedAt: iso(NOW - 80 * DAY),
+  } as never);
+
+  const savedEnv = { KYC_STORAGE: process.env.KYC_STORAGE, R2_BUCKET: process.env.R2_BUCKET };
+  process.env.KYC_STORAGE = "r2";
+  process.env.R2_BUCKET = "erasure-fixture-bucket";
+  __setKycS3ClientForTests(fakeR2);
+  try {
+    ok("7c.0 CONTROL · the folder is the account's own, and an id that could name another folder gets none",
+      kycUserKeyPrefix(R2U) === FOLDER && kycUserKeyPrefix("agentapp") === null && kycUserKeyPrefix("usr/x") === null
+        && kycUserKeyPrefix("usr.x") === null && kycUserKeyPrefix("") === null && bucket.size === 6,
+      `${kycUserKeyPrefix(R2U)} · ${bucket.size} objects`);
+    let refusedTree = false;
+    try { await listKycDocumentKeys("kyc/"); } catch { refusedTree = true; }
+    let refusedAgents = false;
+    try { await listKycDocumentKeys("kyc/agentapp/"); } catch { refusedAgents = true; }
+    ok("7c.0b ⛔ the lister refuses anything but one account's folder — the whole KYC tree and the agent programme's folder are never even read",
+      refusedTree && refusedAgents && calls.length === 0, JSON.stringify(calls));
+
+    const heldRun = await anonymizeClosedAccount(R2U, { now: NOW });
+    ok("7c.1 ⛔ DURING THE HOLD nothing in the folder is listed or destroyed — the photos are CDD records for seven years",
+      heldRun.ok && heldRun.documentsReleased === false && calls.length === 0 && bucket.size === 6
+        && heldRun.counts.orphanObjectsDeleted === 0 && heldRun.counts.identitiesHeld === 1,
+      JSON.stringify({ calls, size: bucket.size, counts: heldRun.ok ? heldRun.counts : heldRun }));
+
+    const releaseRun = await anonymizeClosedAccount(R2U, { now: RELEASE });
+    const row = (await db.kyc.listByUser(R2U))[0];
+    ok("7c.2 the row's own object goes with its row — the loop's rule, unchanged",
+      releaseRun.ok && releaseRun.counts.documentsDeleted === 1 && !bucket.has(ROW_KEY) && (row?.documents ?? []).length === 0,
+      releaseRun.ok ? JSON.stringify(releaseRun.counts) : JSON.stringify(releaseRun));
+    ok("7c.3 ⭐ the two objects no row named are destroyed too; the one R2 refused is COUNTED and stays for the re-run",
+      releaseRun.ok && releaseRun.counts.orphanObjectsDeleted === 2 && releaseRun.counts.documentObjectsFailed === 1
+        && ORPHANS.every((k) => !bucket.has(k)) && bucket.has(STUCK),
+      releaseRun.ok ? JSON.stringify({ orphans: releaseRun.counts.orphanObjectsDeleted, failed: releaseRun.counts.documentObjectsFailed, left: [...bucket] }) : "-");
+    ok("7c.4 ⛔ CONTROL · the other account's object and the agent programme's are untouched — the folder, never the bucket",
+      bucket.has(NEIGHBOUR) && bucket.has(AGENT_APP)
+        && !calls.some((c) => c.op === "delete" && (c.arg === NEIGHBOUR || c.arg === AGENT_APP)),
+      JSON.stringify([...bucket]));
+    const lists = calls.filter((c) => c.op === "list");
+    ok("7c.5 ⛔ every listing named exactly the account's own folder, trailing slash and all — and the paging was followed",
+      lists.length >= 2 && lists.every((c) => c.arg === FOLDER), JSON.stringify(lists));
+    ok("7c.6 …and every delete named a key inside that folder",
+      calls.some((c) => c.op === "delete") && calls.filter((c) => c.op === "delete").every((c) => c.arg.startsWith(FOLDER)),
+      JSON.stringify(calls.filter((c) => c.op === "delete")));
+
+    refuse.delete(STUCK);
+    const rerun = await anonymizeClosedAccount(R2U, { now: RELEASE + DAY });
+    ok("7c.7 a re-run once R2 takes it finishes the job — the refused object goes, and nothing else is counted",
+      rerun.ok && rerun.counts.orphanObjectsDeleted === 1 && rerun.counts.documentObjectsFailed === 0
+        && rerun.counts.documentsDeleted === 0 && !bucket.has(STUCK),
+      rerun.ok ? JSON.stringify(rerun.counts) : "-");
+    const third = await anonymizeClosedAccount(R2U, { now: RELEASE + 2 * DAY });
+    ok("7c.8 IDEMPOTENT · a third run finds nothing — every counter zero, the two controls still there",
+      third.ok && third.counts.orphanObjectsDeleted === 0 && third.counts.documentObjectsFailed === 0
+        && third.counts.documentsDeleted === 0 && third.counts.idNumbersHashed === 0
+        && bucket.size === 2 && bucket.has(NEIGHBOUR) && bucket.has(AGENT_APP),
+      third.ok ? JSON.stringify(third.counts) : "-");
+
+    // ⛔ A LISTING THAT FAILS IS A FAILURE, NEVER AN EMPTY FOLDER.
+    const LATE_ORPHAN = `${FOLDER}SELFIE/late.jpg`;
+    bucket.add(LATE_ORPHAN);
+    listFails = true;
+    const blind = await anonymizeClosedAccount(R2U, { now: RELEASE + 3 * DAY });
+    listFails = false;
+    ok("7c.9 ⛔ a listing that FAILS is counted as a failure owed a re-run — never read as an empty folder",
+      blind.ok && blind.counts.documentObjectsFailed === 1 && blind.counts.orphanObjectsDeleted === 0 && bucket.has(LATE_ORPHAN),
+      blind.ok ? JSON.stringify(blind.counts) : "-");
+  } finally {
+    __setKycS3ClientForTests(null);
+    if (savedEnv.KYC_STORAGE === undefined) delete process.env.KYC_STORAGE; else process.env.KYC_STORAGE = savedEnv.KYC_STORAGE;
+    if (savedEnv.R2_BUCKET === undefined) delete process.env.R2_BUCKET; else process.env.R2_BUCKET = savedEnv.R2_BUCKET;
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+section("7d · ⭐ WHAT THE HOLD HOLDS — agent files, nothing at all, no closure date, the exact instant");
+// ═════════════════════════════════════════════════════════════════════════════
+{
+  /**
+   * ⭐ 2026-10-11 · the Part C reviews (PC-1 MAJOR-2, PC-3 F1/F3/F4/F9). Four accounts the main subject cannot stand for:
+   * an agent applicant whose only held thing is the programme's files; a player who never verified (the most common
+   * erasure — the hold holds NOTHING, so no release date may be reported); a CLOSED account with no closure date (the
+   * clock is counted from the first run and WRITTEN, never treated as long closed); and the release instant itself.
+   */
+  const mkClosed = async (id: string, phone: string, closedAt: string | null) => db.user.create({
+    id, phoneE164: phone, email: null, emailVerifiedAt: null, passwordHash: null, passwordSalt: null,
+    failedLoginCount: 0, lockedUntil: null, role: "PLAYER", status: "CLOSED", locale: "EN", displayName: null,
+    dob: "1990-01-01", region: null, acceptedTermsVersion: "v3", acceptedTermsAt: iso(NOW - 400 * DAY),
+    marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, createdAt: iso(NOW - 400 * DAY),
+    updatedAt: iso(NOW - 30 * DAY), lastLoginAt: null, closedAt,
+  } as never);
+  const typed = (uid: string, number: string, at: string) => ({
+    id: `kyc_${uid}`, userId: uid, status: "APPROVED", rejectReason: null, rejectNote: null,
+    idType: "VOTER_CARD", idNumber: number, idExpiry: null, idVerifiedAt: at, idFingerprint: null,
+    fullName: `Qa ${uid.slice(-6)}`, dob: "1990-01-01", documents: [], extraRequests: [], priorIdentities: [],
+    reviewerId: null, reviewedAt: at, submittedAt: at, approvedAt: at, createdAt: at, updatedAt: at,
+  });
+
+  // ① AN AGENT APPLICANT'S FILES — on the identity's clock: held in year one, destroyed at the release (PC-3 F1).
+  const AGENT = "usr_erase_agent", APP = "aga_erase_agent";
+  await mkClosed(AGENT, "+255712000801", iso(NOW - 30 * DAY));
+  await db.agentApplication.create({
+    id: APP, userId: AGENT, status: "REJECTED", source: "SELF_SERVICE",
+    refereeOneName: null, refereeOneContact: null, refereeTwoName: null, refereeTwoContact: null, refereeConsentAt: null,
+    feeAmountTzs: null, feeAttestedTzs: null, feeFundingSource: null, feeReference: null, feeStatementRef: null,
+    feeReconciledAt: null, feeReconciledById: null, feeSourceAccount: null, feeWaivedAt: null, feeWaivedById: null,
+    feeWaiverReason: null, feeDisposition: "NONE", feeRefundDueAt: null, feeRefundedAt: null, feeRefundedById: null,
+    feeRefundReference: null, feeRefundAmountTzs: null, reviewerId: null, reviewedAt: iso(NOW - 60 * DAY), rejectReason: null,
+    rejectNote: null, infoRequestNote: null, infoRequestedAt: null, approvedRatePct: null, agentCode: null,
+    acceptedTermsVersion: null, acceptedTermsAt: null, submittedAt: iso(NOW - 70 * DAY), expiresAt: null,
+    createdAt: iso(NOW - 70 * DAY), updatedAt: iso(NOW - 60 * DAY),
+  } as never);
+  for (const [id, key] of [["agd_erase_inline", INLINE_DOC], ["agd_erase_r2", `r2:kyc/agentapp/${APP}/REFEREE_ONE_ID`]] as const) {
+    await db.agentApplicationDoc.create({
+      id, applicationId: APP, docType: "REFEREE_ONE_ID", storageKey: key, mimeType: "image/jpeg", sizeBytes: 4,
+      suppliedById: AGENT, uploadedAt: iso(NOW - 70 * DAY), rejected: false, rejectReason: null, thirdParty: true, purgedAt: null,
+    } as never);
+  }
+  const agentHeld = await anonymizeClosedAccount(AGENT, { now: NOW });
+  const docsHeld = await db.agentApplicationDoc.listByApplication(APP);
+  ok("7d.1 🔴 an agent applicant's files are HELD during the hold — not one purged in year one",
+    agentHeld.ok && agentHeld.documentsReleased === false && docsHeld.length === 2 && docsHeld.every((d) => d.purgedAt === null),
+    JSON.stringify(docsHeld.map((d) => d.purgedAt)));
+  ok("7d.2 …and they are what the hold holds: no typed identity on the account, yet the release date is reported",
+    agentHeld.ok && agentHeld.counts.identitiesHeld === 0 && agentHeld.documentsHeldUntil === "2033-07-22",
+    agentHeld.ok ? String(agentHeld.documentsHeldUntil) : JSON.stringify(agentHeld));
+  const agentLate = await anonymizeClosedAccount(AGENT, { now: RELEASE });
+  const docsLate = await db.agentApplicationDoc.listByApplication(APP);
+  ok("7d.3 at the release the file whose bytes went is purged, and the one the storage refused is COUNTED and kept for the re-run",
+    agentLate.ok && agentLate.counts.agentDocumentsDeleted === 1 && agentLate.counts.agentDocumentObjectsFailed === 1
+      && !!docsLate.find((d) => d.id === "agd_erase_inline")?.purgedAt && docsLate.find((d) => d.id === "agd_erase_r2")?.purgedAt === null,
+    agentLate.ok ? JSON.stringify(agentLate.counts) : JSON.stringify(agentLate));
+
+  // ② NOTHING HELD (PC-1 MAJOR-2) — a player who never verified: no identity, no file, no declaration.
+  const NEVER = "usr_erase_never";
+  await mkClosed(NEVER, "+255712000802", iso(NOW - 30 * DAY));
+  const never = await anonymizeClosedAccount(NEVER, { now: NOW });
+  ok("7d.4 🔴 an account the hold holds NOTHING for reports no release date — a 2033 date there would be a false \"identity held\"",
+    never.ok && never.documentsReleased === false && never.documentsHeldUntil === null && never.counts.identitiesHeld === 0,
+    JSON.stringify(never));
+
+  // ③ NO CLOSURE DATE (PC-1/PC-3 F4) — counted from the first run, and WRITTEN, so the clock never restarts.
+  const NOCLOSE = "usr_erase_noclose";
+  await mkClosed(NOCLOSE, "+255712000803", null);
+  await db.kyc.upsert(typed(NOCLOSE, "QAERASE0803", iso(NOW - 60 * DAY)) as never);
+  const ncDate = (() => { const d = new Date(NOW); d.setUTCFullYear(d.getUTCFullYear() + KYC_DOCUMENT_HOLD_YEARS); return d.toISOString().slice(0, 10); })();
+  const nc1 = await anonymizeClosedAccount(NOCLOSE, { now: NOW });
+  ok("7d.5 🔴 a CLOSED account with no closure date is HELD, counted from the first run — never read as long closed",
+    nc1.ok && nc1.documentsReleased === false && nc1.documentsHeldUntil === ncDate,
+    JSON.stringify(nc1.ok ? { held: nc1.documentsHeldUntil, released: nc1.documentsReleased } : nc1));
+  const nc2 = await anonymizeClosedAccount(NOCLOSE, { now: NOW + 90 * DAY });
+  const ncUser = await db.user.findById(NOCLOSE);
+  ok("7d.6 …and the first run's instant is WRITTEN as its closure, so a later run reports the SAME date — the clock never restarts",
+    ncUser?.closedAt === iso(NOW) && nc2.ok && nc2.documentsHeldUntil === ncDate,
+    JSON.stringify({ closedAt: ncUser?.closedAt, again: nc2.ok ? nc2.documentsHeldUntil : nc2 }));
+
+  // ④ THE INSTANT (PC-3 F9) — seven years to the millisecond: one before, held; at it, released.
+  const EDGE = "usr_erase_edge";
+  const EDGE_RELEASE = Date.parse("2033-03-15T10:20:30.000Z");
+  await mkClosed(EDGE, "+255712000804", "2026-03-15T10:20:30.000Z");
+  await db.kyc.upsert(typed(EDGE, "QAERASE0804", "2025-12-01T00:00:00.000Z") as never);
+  const before = await anonymizeClosedAccount(EDGE, { now: EDGE_RELEASE - 1 });
+  ok("7d.7 🔴 one millisecond before seven years the identity is still HELD",
+    before.ok && before.documentsReleased === false && before.documentsHeldUntil === "2033-03-15"
+      && (await db.kyc.findByUserId(EDGE))?.idNumber === "QAERASE0804",
+    JSON.stringify(before.ok ? { released: before.documentsReleased, held: before.documentsHeldUntil } : before));
+  // The held list, read while both are held: the soonest release first (PC-3 F3).
+  const order = (await listHeldIdentities(await db.user.list())).map((h) => h.userId).filter((u) => u === EDGE || u === NOCLOSE);
+  ok("7d.8 the held list puts the soonest release first", JSON.stringify(order) === JSON.stringify([EDGE, NOCLOSE]), JSON.stringify(order));
+  const at = await anonymizeClosedAccount(EDGE, { now: EDGE_RELEASE });
+  ok("7d.9 🔴 …and AT seven years exactly it is released — never a millisecond shorter than the law, nor longer",
+    at.ok && at.documentsReleased === true && (await db.kyc.findByUserId(EDGE))?.idNumber !== "QAERASE0804",
+    JSON.stringify(at.ok ? { released: at.documentsReleased, counts: at.counts.idNumbersHashed } : at));
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 section("8 · ⭐ THE SWEEP — nothing anywhere still holds an erased identifier");
 // ═════════════════════════════════════════════════════════════════════════════
 {
@@ -775,6 +1181,8 @@ section("8 · ⭐ THE SWEEP — nothing anywhere still holds an erased identifie
     // the `+` needle alone never matched a single marketing row, so the sweep could not have seen them.
     ["the phone number as the marketing key (bare 255…)", SUBJECT_KEY],
     ["the player's earlier number (a linked contact-book row)", SUBJECT_OLD],
+    // ⭐ Part C · the national ID a correction replaced, held in `priorIdentities` until the release — gone after it.
+    ["the national ID the player held before (a prior identity)", NIDA_PRIOR],
   ];
   // Statutory holders, each with the reason it may keep the value.
   const ALLOWED: Record<string, string> = {
@@ -905,8 +1313,15 @@ section("9 · idempotent — running it again changes nothing");
   ok("9.3 …and every counter that would mean new work is zero",
     second.ok && second.counts.idNumbersHashed === 0 && second.counts.documentsDeleted === 0
       && second.counts.notificationsDeleted === 0 && second.counts.otps === 0
-      && second.counts.marketingConsentWithdrawn === 0 && second.counts.marketingContactsEmptied === 0,
+      && second.counts.marketingConsentWithdrawn === 0 && second.counts.marketingContactsEmptied === 0
+      && second.counts.identitiesHeld === 0 && second.counts.orphanObjectsDeleted === 0,
     second.ok ? JSON.stringify(second.counts) : "-");
+  const kycSnapshot = JSON.stringify((await db.kyc.listByUser(SUBJECT)).map((k) => [k.idNumber, k.fullName, k.dob, k.priorIdentities]));
+  const third = await anonymizeClosedAccount(SUBJECT, { now: Date.parse("2033-08-03T00:00:00.000Z") });
+  ok("9.3b ⭐ Part C · after the release the identity record no longer moves: a further run rewrites no number, name, date of birth or prior identity",
+    third.ok && third.counts.idNumbersHashed === 0
+      && JSON.stringify((await db.kyc.listByUser(SUBJECT)).map((k) => [k.idNumber, k.fullName, k.dob, k.priorIdentities])) === kycSnapshot,
+    third.ok ? JSON.stringify(third.counts) : "-");
   ok("9.4 the user row is unchanged by the re-run",
     JSON.stringify(await db.user.findById(SUBJECT)) === snapshot);
   ok("9.5 the tombstone is recognised as one", isErasedPhone(erasedPhoneTombstone(SUBJECT))
@@ -932,9 +1347,9 @@ section("11 · the DATABASE half — what a unit run cannot execute, it can stil
 // ═════════════════════════════════════════════════════════════════════════════
 {
   /**
-   * ⛔ §5 PROVES THE SEQUENTIAL REFUSAL AND CANNOT PROVE THE RACE. There is no Postgres
+   * ⛔ §5 AND §7b PROVE THE SEQUENTIAL REFUSAL AND CANNOT PROVE THE RACE. There is no Postgres
    * here, so the partial unique index does not exist and the in-memory store enforces
-   * nothing — §5.5 is carried entirely by the service's fast-path read. That read is the
+   * nothing — 5.9 and 7b.5 are carried entirely by the service's fast-path reads. That read is the
    * right thing to have (a player gets `id_taken` instead of a 500) but it is NOT the
    * control: two applicants in the same instant both clear it, which
    * `scripts/load/s14-kyc-nida-race.mts` demonstrates for the tuple index.
@@ -1363,7 +1778,7 @@ section("12 · ⭐ MARKETING — the consent withdrawn, the book emptied (U18b)"
 LOG("");
 LOG("─".repeat(64));
 LOG(`  Erasure destroys what no statute protects, and nothing else.`);
-LOG(`  §5 is the one that matters: a document that was erased is still spent.`);
+LOG(`  §7b is the one that matters: a document that was erased is still spent.`);
 LOG("─".repeat(64));
 console.log(`\n${fails.length === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fails.length} failed`);
 for (const f of fails) LOG(`  · ${f}`);

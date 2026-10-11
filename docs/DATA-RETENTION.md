@@ -21,7 +21,7 @@
 | Double-entry ledger | **7 years** | Entry date | POCA Cap 423 §16 | **Never deleted** — trial-balanced nightly | `LedgerEntry` |
 | Positions / bet history | **7 years** | Settlement date | POCA Cap 423 §16 | **Never deleted** | `Position` (including `houseBotId` markers) |
 | Audit log (HMAC-chained) | **7 years** | Event date | ISO 27001 A.12.4; GLI-19 §11 | **Cannot be deleted** — see §3 | `AuditLog` |
-| Identity documents + KYC decisions | **7 years** | Account closure | POCA Cap 423 §16; FATF R.11 | **Never deleted** by any automated path. ⭐ Officer-initiated erasure destroys the **images** once the 7 years have run (`KYC_DOCUMENT_HOLD_YEARS`); the **number and name** are pseudonymised immediately — see §2b | `KycSubmission`, `KycDocument`, R2 `50pick-kyc` |
+| Identity documents + KYC decisions | **7 years** | Account closure | POCA Cap 423 §16; FATF R.11 | **Never deleted** by any automated path. ⭐ An officer-initiated erasure HOLDS the whole identity record until the 7 years have run (`KYC_DOCUMENT_HOLD_YEARS`): the **typed identity** — document number, full name, date of birth, on every submission and every `priorIdentities` entry (owner ruling 2026-10-10, live from Privacy v2026-10-11 — Part C) — and the **images**. Then the identity is pseudonymised and only the document's type and expiry date and a **coded form of the number** (its keyed HMAC) are kept, which still refuses the same document; the images and every object in the account's own R2 folder are destroyed. Immediate even during the hold: the fingerprint (written for a row that lacks one) and the redaction of an officer's free text — see §2b | `KycSubmission`, `KycDocument`, R2 `50pick-kyc` (`kyc/<userId>/`) |
 | Agent application — the decision record | **7 years** | Decision | POCA Cap 423 §16 (a vetted business partner is a CDD subject) | **Never deleted.** Referee names/contacts and officer free text are pseudonymised immediately on erasure (§2b) | `AgentApplication` |
 | Agent application — the APPLICANT's own documents (CV, letters, fee receipt) | **7 years** if approved (CDD) · **90 days** if refused/lapsed | Decision | POCA Cap 423 §16 (approved) · PDPA 2022 §15 (refused — no relationship to justify longer) | ✅ **Code** — `retention.purge.daily` destroys the bytes on the clock (`AGENT_APPROVED_DOC_HOLD_YEARS` / `AGENT_REJECTED_DOC_HOLD_DAYS`); erasure destroys them under the same 7-year gate as KYC images. Rows stay as tombstones (`purgedAt`) | `AgentApplicationDocument`, R2 `50pick-kyc` (prefix `kyc/agentapp/`) |
 | 🔴 Referee national-ID scans — **third-party data** | **90 days** | Decision (⛔ never `User.closedAt` — a referee has no account) | PDPA 2022 §15 — the referee is not our customer; lawful basis is the applicant's attestation of consent, recorded at submission | ✅ **Code** — `retention.purge.daily` (`AGENT_REFEREE_DOC_HOLD_DAYS`); destroyed **immediately** on rejection. ⭐ A referee has no login to invoke erasure: the DSAR route is the DPO contact on `/legal/privacy`, and an officer may destroy a named application's referee scans on request | `AgentApplicationDocument` (`thirdParty = true`) |
@@ -69,13 +69,15 @@ v2026-10-10 (Gaming Board request, relayed by the owner)"). For the "Identity do
   the same 7-year hold; the agent application's own documents keep their rows above.
 - Privacy §2 says so from v2026-10-10 — photographs of the document and a selfie *"from people applying to become
   agents, and from players who sent them before 10 October 2026 (kept as §5 states)"* (sw *"kutoka kwa watu wanaoomba
-  kuwa mawakala"*, zh *"收集自申请成为代理的人士"*); §4 (Cloudflare R2 still holds the photographs) and §5 are unchanged.
-- ⚠️ **Not changed in this release, and not to be read into this row:** what erasure keeps of the TYPED identity. The
-  owner's 7-year hold on it ships in a later release (Part C), which will rewrite §2b and Privacy §5 together. Until
-  then §2b holds as written — for the submission's own fields, and, by the SAME rule, for every entry of its new
-  `priorIdentities` history (the typed identities a restart, a re-open or a correction replaced): the number becomes
-  its keyed fingerprint, the name "Erased <fp12>", the date of birth is removed (`erasePriorIdentity`,
-  `src/lib/server/erasure.ts`). A change to the row's rule — Part C's among them — is made to both together.
+  kuwa mawakala"*, zh *"收集自申请成为代理的人士"*); §4 (Cloudflare R2 still holds the photographs) was unchanged by it,
+  and §5 moved with the typed identity's hold at v2026-10-11 (next bullet).
+- ⭐ **The TYPED identity is held 7 years on erasure too** (Part C, live from Privacy v2026-10-11 — the owner's ruling
+  of 2026-10-10, *"keep 7 years but no notice — we have our licence to do this, it's ok"*; [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md)
+  § "2026-10-11 · Privacy v2026-10-11"). With no image on file for a player, the typed details ARE the identification
+  record: the number, the name and the date of birth — on the submission and on every `priorIdentities` entry (the
+  typed identities a restart, a re-open or a correction replaced) — are kept as they were until the release, then
+  pseudonymised by ONE rule for the row and every entry (`pseudonymiseIdentity`, `src/lib/server/erasure.ts`): the
+  number becomes its keyed fingerprint, the name "Erased <fp12>", the date of birth is removed. §2b, tier ②.
 - **The KYC record in an access request.** The player's own "Export my data" and the officer's DSAR bundle carry the
   submission through ONE allowlist, `dsarKycView` (`src/lib/server/privacy.ts`): the details the person gave, the status
   and its dates, the reason they were given, their documents by reference and their own prior identities. Left out on
@@ -96,15 +98,17 @@ v2026-10-10 (Gaming Board request, relayed by the owner)"). For the "Identity do
 |---|---|---|---|
 | 1 | Marketing consent: 2 years or 3? | **2 years from last activity** — the number the player was told. You may not retain longer than you disclosed to the data subject, and correcting the admin row down requires notice to nobody while raising the player's would. | ✅ Implemented |
 | 2 | Who may file a DSAR? | **The player, from `/profile/account`, on their authenticated session** — already the accepted standard for handing over their whole data bundle via "Export my data", so a higher bar for *asking* than for *receiving* would be incoherent. Officers may also file on a player's behalf. ⭐ The ACCESS and PORTABILITY rights need no DSAR at all and are **refused by the intake**; the register is for **erasure and correction**. | ✅ **Wired 2026-08-21** (E-33 closed) |
-| 3 | How is a national ID erased? | **Keyed HMAC of the number — never NULL.** ⚠️ Nulling `idNumber` frees the partial unique index that is the **sole** enforcement of one-document-one-account, so the obvious implementation would repeal a P0 AML control. ⛔ **And hashing it IN PLACE does not preserve the collision either — see §2b before touching any of this.** Document **images** are held for the statutory 7 years, then destroyed. | ✅ **Built 2026-08-21** |
+| 3 | How is a national ID erased? | **Keyed HMAC of the number — never NULL.** ⚠️ Nulling `idNumber` frees the partial unique index that is the **sole** enforcement of one-document-one-account, so the obvious implementation would repeal a P0 AML control. ⛔ **And hashing it IN PLACE does not preserve the collision either — see §2b before touching any of this.** Document **images** are held for the statutory 7 years, then destroyed — and since 2026-10-11 (Part C, the owner's ruling of 2026-10-10) so is the typed identity: the HMAC is written when the hold ends, not at the request. | ✅ **Built 2026-08-21** · hold ✅ 2026-10-11 |
 | 4 | Support-ticket retention? | **N/A until a ticket store exists.** Publishing a period for data we do not hold is the same defect as the rest of F-01. Row kept and labelled so Unit K picks it up. | ✅ Implemented |
 
 ---
 
 ## 2b. Erasure, as built — 2026-08-21
 
-`src/lib/server/erasure.ts` · `anonymizeClosedAccount(userId)` · `npm run test:erasure`
-(155 assertions) · `npm run red:erasure` (16 defects put back, all 16 caught).
+`src/lib/server/erasure.ts` · `anonymizeClosedAccount(userId)` · `npm run test:erasure` ·
+`npm run red:erasure` (every defect declared in `scripts/anchors/erasure.anchors.mjs` put back; each must be caught —
+the counts are what the run prints, never a number copied here). ⭐ Rewritten for Part C (2026-10-11): the typed identity
+moved from tier ① to tier ② — see the table and §2b-ii.
 
 ### 🔴 The decision was right and its reasoning had a hole. Read this before touching any of it.
 
@@ -119,7 +123,8 @@ follow.** A unique index compares STORED STRINGS:
 
 So hashing in place repeals the AML control exactly as nulling does — it just looks safe while
 doing it. Measured, not argued: `red:erasure` case 1 implements the decision as literally
-written, and `test:erasure` §5.5 then reports **a second account on one national ID**.
+written, and `test:erasure` 7b.5 then reports **a second account on one national ID** — after the
+7-year release, the only time the row holds the hash (during the hold, 5.9 refuses on the raw number).
 
 The fix is `KycSubmission.idFingerprint` (migration `20260821140000_kyc_identity_fingerprint`):
 HMAC(`OTP_PEPPER`, `idfp:v1:<idType>:<number>`), written at the identity step for **every**
@@ -136,8 +141,8 @@ months and break on the day somebody "tightened" it.
 
 | | When | What |
 |---|---|---|
-| ① Immediate | on fulfilment | **`User`** — email, verified-at, password hash + salt, display name, dob, region, avatar, last-login → NULL; `phoneE164` → `erased:<userId>` tombstone; `marketingOptIn` → false. **`KycSubmission`, every submission and not just the newest** — number → its keyed HMAC, full name → `Erased <fp12>`, dob → NULL, officer request descriptions → `[erased]`; and (2026-10-10) every entry of its `priorIdentities` history by the same rule. **`Comment`** — author mask overwritten, body redacted, row soft-deleted. **`Notification`** — the account's own deleted, *and the frozen mask redacted out of other people's rows*. **Gone** — `Otp`, `PushSubscription`, `Watchlist`, `TotpSecret`, `TotpBackupCode`, `ActiveSession`. **`HouseBot`** — label → `Erased <botId tail>` with `labelKey` recomputed from it; note, `removedReason`, `HouseBotEvent.reason` and `HouseBotPress.reason` → `[erased]`; the quoted label is redacted in admin HOUSE_BOT notifications. **Marketing** (2026-10-01, U18b) — a WITHDRAWN ledger row appended for every number the person is known by whose latest row was GIVEN, and (U16a, the erasure marker) on the account's own number whatever came before — an opt-out included (C8a, 2026-10-09) — unless its latest row is already the marker (recorded by the officer, evidence the bare word `erasure`; no stop-list row, so a recycled number's next owner can consent), every contact-book row for the person emptied and (C8b, 2026-10-09) taken off every list it was on. **Campaign records** (2026-10-04, U16a) — every `SmsCampaignRecipient` row linked to the account loses the link (`userId` → NULL) and keeps its number, status, stamps and trail, the 7-year record that we messaged that number; opt-out links are kept; a re-run unlinks any row linked to the account since. ✅ **built** (`erasure.ts` + `marketing/erase.ts`, both stores) |
-| ② Held 7 years from closure | `KYC_DOCUMENT_HOLD_YEARS` | Identity **images** and officer-requested extra documents — the R2 objects *and* the rows — plus the source-of-funds declaration. |
+| ① Immediate | on fulfilment | **`User`** — email, verified-at, password hash + salt, display name, dob, region, avatar, last-login → NULL; `phoneE164` → `erased:<userId>` tombstone; `marketingOptIn` → false. **`KycSubmission`, every submission and not just the newest** — the officer's free text: `rejectNote` and request descriptions → `[erased]` (the refusal's code stays); and ONE write that is not an erasure: `idFingerprint`, computed from the raw number, for any row that lacks one — so the document stays spent through the hold and after it (⭐ since 2026-10-11 the number, the name and the date of birth themselves are tier ②). **`Comment`** — author mask overwritten, body redacted, row soft-deleted. **`Notification`** — the account's own deleted, *and the frozen mask redacted out of other people's rows*. **Gone** — `Otp`, `PushSubscription`, `Watchlist`, `TotpSecret`, `TotpBackupCode`, `ActiveSession`. **`HouseBot`** — label → `Erased <botId tail>` with `labelKey` recomputed from it; note, `removedReason`, `HouseBotEvent.reason` and `HouseBotPress.reason` → `[erased]`; the quoted label is redacted in admin HOUSE_BOT notifications. **Marketing** (2026-10-01, U18b) — a WITHDRAWN ledger row appended for every number the person is known by whose latest row was GIVEN, and (U16a, the erasure marker) on the account's own number whatever came before — an opt-out included (C8a, 2026-10-09) — unless its latest row is already the marker (recorded by the officer, evidence the bare word `erasure`; no stop-list row, so a recycled number's next owner can consent), every contact-book row for the person emptied and (C8b, 2026-10-09) taken off every list it was on. **Campaign records** (2026-10-04, U16a) — every `SmsCampaignRecipient` row linked to the account loses the link (`userId` → NULL) and keeps its number, status, stamps and trail, the 7-year record that we messaged that number; opt-out links are kept; a re-run unlinks any row linked to the account since. ✅ **built** (`erasure.ts` + `marketing/erase.ts`, both stores) |
+| ② Held 7 years from closure | `KYC_DOCUMENT_HOLD_YEARS` | ⭐ **The typed identity** (Part C, 2026-10-11 — the owner's ruling of 2026-10-10): on every submission and every `priorIdentities` entry, number → its keyed HMAC (= the fingerprint), full name → `Erased <fp12>`, dob → NULL, by ONE rule (`pseudonymiseIdentity`); until then they stay exactly as they were. Identity **images** and officer-requested extra documents — the R2 objects *and* the rows (a row only goes if its bytes went) — and, since Part C, every other object in the account's own R2 folder `kyc/<userId>/` (left by a restart; never the agent programme's `kyc/agentapp/…`), plus the source-of-funds declaration and whatever of the agent programme's documents their own schedule (§1, counted from the decision) has not already destroyed. |
 | ⛔ Never | — | `Wallet`, `Transaction`, `LedgerEntry`, `Position`, `AuditLog`; `HouseBotIntent`, `HouseBotTarget` and the `houseBotId` markers (✅ built). The module names what it writes and cannot reach these; `test:erasure` §11.12 asserts it mentions none of them. |
 
 ### ⚠️ One departure from the letter of answer 3, flagged rather than decided quietly
@@ -146,23 +151,56 @@ Answer 3 says the images are *"deleted outright"*. They are **held for the statu
 instead, because §1 of this file has said since 2026-08-20 that identity documents are kept
 7 years from account closure under POCA Cap 423 §16 / FATF R.11 — and destroying a passport
 scan in year 1 is irreversible, while holding it is a one-constant change
-(`KYC_DOCUMENT_HOLD_YEARS`). The number and the name are still pseudonymised immediately, which
-is exactly what `/admin/retention` has been publishing to the Board all along (*"we partially
-fulfil"*). **Ali's call if he wants the images gone sooner.**
+(`KYC_DOCUMENT_HOLD_YEARS`). Until 2026-10-11 the number and the name were still pseudonymised
+immediately; since Part C they are held with the images, by the owner's own ruling (§2b-ii) —
+`/admin/retention` still says what it always said to the Board (*"we partially fulfil"*), and now
+names the identity record among what is retained. **Ali's call if he wants the images gone sooner.**
 
 ### What an officer sees
 
-Pressing **Fulfil** on an ERASURE request now runs the routine. Three outcomes, kept distinct:
+Pressing **Fulfil** on an ERASURE request now runs the routine. Four outcomes, kept distinct:
 
 - the account is not CLOSED → refused, the request stays PENDING, the officer is told why;
-- the hold is still running → status **PARTIAL** (*"Partly done · docs held"*) carrying the
-  release date, and the request **stays in the queue**;
-- nothing is left to hold → FULFILLED.
+- the hold is still running → status **PARTIAL** (*"Partly done · identity held"* since
+  2026-10-11; *"Partly done · docs held"* before Part C) carrying the release date, and the
+  request **stays in the queue**;
+- the hold has ended but a deletion in the file storage failed (an image the storage refused, or the account's
+  folder could not be listed) → status **PARTIAL** (*"Partly done · run again"*, with *"1 deletion failed"* under
+  it, and the officer's result card says FAILED rather than done; since 2026-10-11) and no release date: the identity
+  record is erased, files may remain, and the request **stays in the queue** until a re-run, once the storage
+  answers, finishes them;
+- nothing is left to hold — the release has run, or the account never held anything (most players never verify their
+  identity, so most erasures; since 2026-10-11) — and every deletion completed → FULFILLED.
 
 ⚠️ **Nothing re-runs erasure at year seven.** There is no 7-year timer, and building one nobody
 can test for seven years would be worse than saying so. The open PARTIAL request is the
-reminder, `/admin/privacy` shows the next release date as a KPI, and the Fulfil button stays on
-a PARTIAL row so the job can be finished when the date arrives. **This is a known manual step.**
+reminder, `/admin/privacy` shows the next release date as a KPI, and the Fulfil button (*"Finish
+erasure"* on a PARTIAL row) stays so the job can be finished when the date arrives. ⭐ Since Part C
+the page also lists every held identity **from the accounts themselves** — every CLOSED account
+with the erased-phone tombstone whose identity is not yet pseudonymised, with its release date
+(`listHeldIdentities`) — because a seven-year reminder kept only in the queue's one SystemConfig
+blob is one bad write from gone; a held account with no open request offers the on-behalf filing
+door. **This is a known manual step.**
+
+### 2b-ii · Part C — the typed identity held 7 years on erasure (2026-10-11)
+
+**Owner ruling, Ali, 2026-10-10:** *"keep 7 years but no notice — we have our licence to do this, it's ok"*
+([`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) § "2026-10-11 · Privacy v2026-10-11"). Live from Privacy
+v2026-10-11, for every erasure from that release (production held 0 data-rights requests on 2026-10-10, so no
+request was filed under the old words and no effective-date switch exists).
+
+| During the hold (first run → release date) | At the release (a re-run once `KYC_DOCUMENT_HOLD_YEARS` have run from `closedAt`) |
+|---|---|
+| Number, full name and date of birth kept exactly as they were — on every submission and every `priorIdentities` entry. `idFingerprint` written at once for any row that lacks one. `rejectNote` and request descriptions → `[erased]`. The document stays spent on its **raw number** (the tuple index and its fast path); the held name and date of birth still count for the same-person check (the account is CLOSED, so a match routes to an officer). The result and the audit row say what was held back (`identitiesHeld`). | The row and every entry pseudonymised by ONE rule (`pseudonymiseIdentity`): number → its keyed HMAC (= the fingerprint), name → `Erased <fp12>`, dob → NULL — `idNumbersHashed` counts them. The images and extras go (a row only goes if its bytes went); every other object in `kyc/<userId>/` is listed and destroyed (`listKycDocumentKeys`, `orphanObjectsDeleted`), a refused object or a failed listing counted in `documentObjectsFailed` for the re-run. From then on the document stays spent on `idFingerprint` alone. |
+
+Re-runs are safe on both sides: during the hold a second run writes nothing to the identity record and reports
+the same `identitiesHeld`; after the release every work counter is 0. ⚠️ The outcome and audit keys keep their
+2026-08-21 names (`documentsReleased`, `documentsHeldUntil`) and now speak for the identity too.
+**Kept by** `test:erasure` §5 (the hold), §7b (the release, where `red:erasure` cases 1, 3 and 19 bite), §7c (the
+folder sweep) and §8 (the sweep, with the prior identity's number as a needle); `test:kyc-typed-only` 12.16c–12.18;
+`test:privacy-notice` §4j/§4l; `test:dsar-intake` 4.7b (nothing held → FULFILLED) and 4.11–4.15 (after the hold, a
+failed deletion — an agent file among them — keeps the request PARTIAL, never FULFILLED); `test:erasure` 5.12–5.14 (the
+held list), 7.7b and §7d (what the hold holds, a missing closure date, the instant) — each with its red case.
 
 ### 2b-i · The register can be populated at all — E-33, closed the same day
 
@@ -203,9 +241,10 @@ arming it. It never overwrites a value, so a re-run is a no-op, and it pre-fligh
 collision rather than letting the UNIQUE index abort it half way.
 
 ⛔ Not load-bearing, deliberately — while a row holds its raw number the tuple index does the
-work, and erasure computes the fingerprint itself from the number it is about to destroy. What
-the backfill buys is the invariant *every active submission carries one*, which turns a NULL
-fingerprint from the normal case into something worth investigating.
+work, and erasure writes the fingerprint itself, at once, for any row that lacks one (since Part C
+it then holds the number seven years before hashing it). What the backfill buys is the invariant
+*every active submission carries one*, which turns a NULL fingerprint from the normal case into
+something worth investigating.
 
 ---
 
@@ -344,26 +383,29 @@ tightening the period, so it cannot be lowered for disk without a failing build.
 ## 5. Verification
 
 ```sh
-npm run test:retention      # 20 assertions: aged rows go, money/ledger/chain untouched,
-                            # the digest coupling holds, and a second pass is a no-op
-npm run test:erasure        # 155 assertions. §5 is the one that matters — the erased
-                            # document is still SPENT, driven through the real service
-                            # rather than through the DAL. §8 sweeps the WHOLE store for
-                            # any surviving identifier and allowlists only statutory
+# Every suite prints its own count; none is written here — a written count goes stale (2026-10-11).
+npm run test:retention      # aged rows go, money/ledger/chain untouched, the digest
+                            # coupling holds, and a second pass is a no-op
+npm run test:erasure        # §5 (the hold) and §7b (the release) are the ones that matter —
+                            # the erased document is still SPENT, driven through the real
+                            # service rather than through the DAL. §8 sweeps the WHOLE store
+                            # for any surviving identifier and allowlists only statutory
                             # holders; it found two surfaces no checklist had.
-npm run red:erasure         # 16 plausible defects put back one at a time, each of which
-                            # must be caught. Case 1 is answer 3 implemented as literally
-                            # written, and it hands out a second account.
-npm run test:dsar-intake    # 36 assertions on the register: a request LANDS (E-33), only
-                            # ERASURE and CORRECTION may land, one open request per kind,
-                            # and fulfilment tells the truth about what it did.
-npm run red:dsar-intake     # 12 defects. Cases 10-11 UNMOUNT the form and the button —
-                            # E-33 coming straight back, which tsc cannot see at all.
-npm run red:retention       # 9 defects against the pass itself. Case 3 makes the payload
+npm run red:erasure         # every defect declared in scripts/anchors/erasure.anchors.mjs, put
+                            # back one at a time; each must be caught. Case 1 is answer 3
+                            # implemented as literally written, and it hands out a second account.
+npm run test:dsar-intake    # the register: a request LANDS (E-33), only ERASURE and CORRECTION
+                            # may land, one open request per kind, and fulfilment tells the
+                            # truth about what it did — PARTIAL while the identity is held, or
+                            # after the hold while a storage deletion has failed (§4).
+npm run red:dsar-intake     # every defect in scripts/anchors/dsar-intake.anchors.mjs. Cases 11-12
+                            # UNMOUNT the form and the button — E-33 coming straight back,
+                            # which tsc cannot see at all.
+npm run red:retention       # defects against the pass itself. Case 3 makes the payload
                             # prune DELETE rows instead of blanking columns; case 2 removes
                             # the tombstone; case 7 mislabels the audit field.
-npm run test:dead-schema    # 34 assertions on F-05's expand step, and the contract rules
-npm run red:dead-schema     # any future DROP migration must satisfy (7 defects).
+npm run test:dead-schema    # F-05's expand step, and the contract rules
+npm run red:dead-schema     # any future DROP migration must satisfy.
 npm run test:campaign-privacy     # U16a: erasure unlinks a person's campaign rows and deletes none,
                                   # the export carries their messages since the account began and
                                   # never a previous holder's, the erased number is refused at send,

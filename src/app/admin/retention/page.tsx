@@ -36,7 +36,10 @@ type Row = {
 };
 
 const SCHEDULE: Row[] = [
-  { category: "Account + KYC documents", swahili: "Akaunti na vitambulisho", retentionYears: 7, legalBasis: "POCA Cap 423 §16; FATF R.11", trigger: "From account closure", storage: "Encrypted S3 + Postgres" },
+  // ⭐ 2026-10-11 (Part C, the owner's ruling of 2026-10-10): the typed identity — name, date of birth, document number
+  // — is held for this row's 7 years through an erasure request too, then erased except a coded form of the number
+  // (`erasure.ts` tier ②). The trigger says so, because an officer reading this row is the one who runs the erasure.
+  { category: "Account + KYC documents", swahili: "Akaunti na vitambulisho", retentionYears: 7, legalBasis: "POCA Cap 423 §16; FATF R.11", trigger: "From account closure — an erasure request does not shorten it for the identity record (name, date of birth, document number, photos); once the 7 years have run, an officer completes the request and only the document type, its expiry and a coded form of the number are kept", storage: "Encrypted S3 + Postgres" },
   { category: "Transactions (deposit/withdraw/bet)", swahili: "Miamala", retentionYears: 7, legalBasis: "POCA Cap 423 §16; TRA Income Tax Act §80", trigger: "From transaction date", storage: "Postgres + signed daily snapshot" },
   { category: "Audit log (HMAC-chained)", swahili: "Kumbukumbu", retentionYears: 7, legalBasis: "ISO 27001 A.12.4; GLI-19 §11", trigger: "From event date", storage: "In-memory ring → Postgres → cold archive" },
   { category: "Self-exclusion register entries", swahili: "Kujizuia", retentionYears: 5, legalBasis: "LCCP SR Code 3.4.4", trigger: "From end of exclusion", storage: "Postgres + cross-operator SFTP daily" },
@@ -254,12 +257,16 @@ async function AdminRetentionContent({ searchParams }: RetentionProps) {
                   Where a player invokes erasure (PDPA §31 / GDPR Art. 17) and we hold AML records subject to
                   POCA Cap 423 §16 (7-year minimum), we <strong>partially fulfil</strong>, and pressing
                   <em> Fulfil</em> on an ERASURE request in the DSAR queue now runs it. Contact details, password,
-                  profile, in-app messages, push registrations and the name and number on the identity record are
-                  erased immediately — the identity number is replaced by a <strong>keyed HMAC of itself</strong>,
-                  never blanked, so one document still cannot open two accounts. The financial record and the
-                  identity <strong>images</strong> are retained for the statutory 7 years from closure; the request
-                  stays in the queue marked <em>Partly done · docs held</em> and carries the release date, because
-                  nothing else on the platform remembers it.
+                  profile, in-app messages and push registrations are erased immediately. The financial record, the
+                  identity <strong>record</strong> — name, date of birth and document number, by the owner&apos;s ruling
+                  of 2026-10-10 — and the identity <strong>images</strong> are retained for the statutory 7 years from
+                  closure, and meanwhile the document still cannot open a second account: on its raw number, and on the
+                  fingerprint erasure writes at once. When the hold ends, running the erasure again erases the identity —
+                  the number is replaced by a <strong>keyed HMAC of itself</strong>, never blanked — and destroys the
+                  images and every object in the account&apos;s own KYC folder. While anything is held, the request
+                  stays in the queue marked <em> Partly done · identity held</em> and carries the release date, and the
+                  DSAR page lists every held identity from the accounts themselves, because nothing re-runs erasure on
+                  its own. An account that never verified its identity holds nothing, and its request is fulfilled at once.
                 </p>
                 <p className="text-text-tertiary">
                   ⛔ The routine refuses an account that is not CLOSED, and it cannot reach a wallet, a transaction,

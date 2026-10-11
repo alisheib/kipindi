@@ -93,9 +93,14 @@ export function FulfillDsarButton({ id, type, status }: { id: string; type?: str
           router.refresh();
           // ⭐ The PARTIAL notice is the server's own sentence, carrying the release date.
           // A generic "done" here would hide the one fact that matters about a partial
-          // fulfilment — that it is not finished.
-          overlay.succeed(
-            r.notice ? "Partly done · documents held" : "DSAR fulfilled",
+          // fulfilment — that it is not finished. ⭐ The TITLE is the server's too (2026-10-11, Part C
+          // review): PARTIAL has two causes — the identity record still held, or (after the hold) a
+          // storage deletion that failed — and each names its own, as the queue's badge does.
+          // ⛔ A run whose storage deletions did not all complete is NOT DONE: the danger card, which waits to be read,
+          // never the green tick that closes itself ("DONE" over "deletion failed" — the 2026-10-11 screenshot pass).
+          if (r.incomplete) overlay.fail(r.noticeTitle ?? "Erasure incomplete", r.notice ?? "Run it again.");
+          else overlay.succeed(
+            r.noticeTitle ?? "DSAR fulfilled",
             r.notice ?? "Completion date recorded.",
           );
         }
@@ -110,22 +115,35 @@ export function FulfillDsarButton({ id, type, status }: { id: string; type?: str
         trigger={
           <Button type="button" size="sm" variant={isErasure ? "danger" : "primary"} loading={pending}
             disabled={!mayAct} title={disabledReason}>
-            {isErasure ? (isResume ? "Destroy held docs" : "Erase data") : "Mark fulfilled"}
+            {isErasure ? (isResume ? "Finish erasure" : "Erase data") : "Mark fulfilled"}
           </Button>
         }
         title={isErasure ? "Erase this player's personal data" : "Mark DSAR fulfilled"}
-        body={isErasure
-          ? "This RUNS the erasure routine: contact details, password, profile, in-app messages, "
-            + "push registrations, and the name and number on the identity record are destroyed. "
-            + "Identity document images are held until 7 years after account closure (POCA Cap 423 §16) "
-            + "and the request stays in the queue until then. Money, ledger, positions and the audit "
-            + "chain are NOT touched. The account must already be CLOSED. "
+        body={isErasure && isResume
+          // ⭐ A RE-RUN SAYS WHAT A RE-RUN DOES (2026-10-11). The first run's warning — answer the player first, this
+          // destroys the email and phone — is already spent on a PARTIAL row; the officer pressing "Finish erasure"
+          // needs the outcomes a re-run can have.
+          ? "This RUNS the erasure routine again. Before the release date it leaves the held identity record as it is "
+            + "and reports the same date back. On or after that date the identity record — name, date of birth and "
+            + "document number — is erased, except a coded form of the number (not the number), kept so the same "
+            + "document cannot open another account, and the identity photos are deleted; if the file storage refuses "
+            + "a deletion, the request stays in the queue to be run again. Money, ledger, positions and the audit chain "
+            + "are NOT touched. This cannot be undone."
+          : isErasure
+          ? "This RUNS the erasure routine: contact details, password, profile, in-app messages "
+            + "and push registrations are destroyed now. The identity record — name, date of birth "
+            + "and document number — and any identity photos are HELD until 7 years after account "
+            + "closure (AML law, POCA Cap 423 §16), and the request stays in the queue until then: "
+            + "run it again on that date and the identity is erased, except a coded form of the "
+            + "number (not the number), kept so the same document cannot open another account. "
+            + "Money, ledger, positions and the audit chain are NOT touched. The account must "
+            + "already be CLOSED. "
             + "⚠️ Answer the player FIRST — this destroys the email address and phone number you "
             + "would reply to. This cannot be undone."
           : "This records the completion date and closes this data subject access request. "
             + "It does not message the player — reply to them through the channel they used. "
             + "This action cannot be undone."}
-        confirmLabel={isErasure ? "Yes, erase the data" : "Yes, mark fulfilled"}
+        confirmLabel={isErasure ? (isResume ? "Yes, run it again" : "Yes, erase the data") : "Yes, mark fulfilled"}
         tone={isErasure ? "claret" : "warning"}
         onConfirm={onClick}
       />

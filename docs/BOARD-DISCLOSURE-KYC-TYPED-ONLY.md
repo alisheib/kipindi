@@ -10,9 +10,6 @@
 > against one person holding several accounts) and [`BOARD-DISCLOSURE-KYC-AT-WITHDRAWAL.md`](BOARD-DISCLOSURE-KYC-AT-WITHDRAWAL.md)
 > §1 (identity "approved by a compliance officer … plus a selfie, reviewed by a person").
 > **Every control named below was read out of the source on 2026-10-10**, not recalled.
-> ⚠️ **Before sending — §5's second paragraph** describes the 7-year hold on the typed identity at erasure, which the
-> owner ruled the same day and which ships in a LATER release than this change (Part C). Send this letter once that
-> release is live, or strike that paragraph.
 
 ---
 
@@ -86,8 +83,11 @@ tamper-evident audit log.
 ## 5 · Records
 
 Identity photographs — those players sent before 10 October 2026, and those agent applicants send — are kept, readable
-only by compliance officers, for 7 years from the closure of the account.
+only by compliance officers and administrators, for at least 7 years from the closure of the account.
 
-The typed identity details (name, date of birth, document number) are also kept for 7 years from closure, including
-when a closed account asks to be erased, and are then erased except for a coded fingerprint of the number that stops
-the same document opening another account.
+The typed identity details (name, date of birth, document number) are kept on the same terms, and a request to erase
+a closed account does not shorten them: while they are kept they are compared with new identity checks, so the same
+document cannot open another account. Once the 7 years have run, an officer completes the erasure request: the details
+and photographs are then erased, except for the document's type and expiry date and a coded fingerprint of the number,
+which stops the same document opening another account. Nothing deletes them automatically — without an erasure
+request they are kept beyond the 7 years.

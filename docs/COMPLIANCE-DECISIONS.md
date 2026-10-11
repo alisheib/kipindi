@@ -8,6 +8,99 @@
 
 ---
 
+## 2026-10-11 · Privacy v2026-10-11 — on erasure the typed identity is held 7 years from closure, then erased but for a coded form of the number (owner ruling, no notice)
+
+**Ali, 2026-10-10 ~15:30 EAT, in the session** — ruling 6 of § "2026-10-10 · Players verify identity with typed details
+and are approved at once; agents keep photo identity — Privacy v2026-10-10, Terms v2026-10-10, AML v2026-10-10 (Gaming
+Board request, relayed by the owner)", in his words: *"keep 7 years but no notice — we have our licence to do this, it's
+ok"*. That ruling ships here (Part C). Since 2026-10-10 a player sends no image, so the typed details are the
+identification record a customer-due-diligence file is kept for (POCA Cap 423 §16; FATF R.11).
+
+**What changed, for every erasure of a closed account from this release:**
+1. **The typed identity is HELD 7 years from closure** — the document number, the full name and the date of birth, on
+   every submission and on every `priorIdentities` entry — on the clock the identity images already used
+   (`KYC_DOCUMENT_HOLD_YEARS` from `closedAt`). At the release an officer re-runs the erasure (nothing does it on its
+   own) and they are pseudonymised exactly as they used to be at once: the number becomes its keyed HMAC (never null),
+   the name "Erased <fp12>", the date of birth is removed — one function now for the row and every prior identity
+   (`pseudonymiseIdentity`, `src/lib/server/erasure.ts`).
+2. **What still goes at once:** contact details, password, profile, in-app messages and the rest of tier ① as before,
+   and two sentences an officer typed on the identity record — the refusal note (`rejectNote`, new) and the request
+   descriptions — redacted to `[erased]`. The fingerprint is written at once for any row that lacks one, so the
+   document stays spent throughout: on its raw number during the hold, on the fingerprint after it.
+3. **At the release the account's own R2 folder is emptied** (`kyc/<userId>/`, listed by `listKycDocumentKeys` in
+   `src/lib/server/storage.ts`): objects no row names any more — left by restarts — are destroyed with the rest; an
+   object R2 refuses, or a listing that fails, is counted in `documentObjectsFailed` for the re-run; the agent
+   programme's folder is never this sweep's.
+4. **Officers see the hold:** each run reports `identitiesHeld` (the audit row carries it); the PARTIAL label reads
+   "Partly done · identity held"; `/admin/privacy` lists every held identity read from the accounts themselves
+   (`listHeldIdentities` — closed accounts with the erased-phone tombstone whose identity is not yet pseudonymised), not
+   only from the queue; the Fulfil dialog, the PARTIAL notice and `/admin/retention` say what is held and until when.
+   ⭐ A run AFTER the release in which a storage deletion failed is PARTIAL too, never FULFILLED
+   (`erasureObjectsFailed`): the label reads "Partly done · run again", the row says how many deletions failed, the
+   officer's result card says FAILED, and the request stays open until a re-run finishes them — a FULFILLED there
+   would say "erased" over files still stored.
+5. **Privacy v2026-10-11 — §5's first bullet, in English, Swahili and Chinese:** the identity record (name, date of
+   birth, document number) and any images of the documents or a selfie are kept until at least 7 years after closure, as
+   AML law requires;
+   meanwhile it is compared with new identity checks so that it cannot be used to open another account; then it is
+   erased except a coded form of the document number (not the number itself). Contact details and the password are
+   still removed at once. The data-rights file's sentence (`privacy.ts`, rights.erasure) says the same. §2, §6 and §9
+   are unchanged.
+
+**What did not change:** the 7-year clock and where it starts (closure); the images' hold; money, ledger, positions and
+the audit chain, which erasure cannot reach; the CLOSED-only guard and the live house-bot refusal; PARTIAL as open work;
+the rest of tier ①; the access-request projection (`dsarKycView`).
+
+**No notice — the owner's decision, recorded as his.** Data kept longer than the notice said would ordinarily carry the
+14-day notice; Ali ruled it out in the same sentence (*"no notice — we have our licence to do this, it's ok"*). No
+broadcast was sent and none is owed by this release.
+
+**No effective-date switch.** Measured on production read-only on 2026-10-10: the data-rights queue (SystemConfig
+`privacy.dsar_queue`) held **0** requests and no closed player held identity photos — no request was filed under the
+old words, so the new rule applies to every erasure from this release.
+
+**What this costs, stated plainly.** An erased person's name, date of birth and document number stay readable by
+compliance officers for seven years after closure, and a new verification with the same name and date of birth is
+routed to an officer (the erased account is closed). Nothing runs the release on its own: it is an officer's re-run of
+the request — which is why the held list is read from the data, so the date cannot be lost with the queue.
+
+**⛔ Supersedes, in part — those entries are not edited:** § "2026-08-21 (later) · Erasure, built — one hole in the
+reasoning, and three calls made in the code" §2 (*"The number and the name ARE pseudonymised immediately"*); the
+immediate timing in § "2026-08-21 · The four open retention / erasure questions — answered" item 3 (its mechanism — a
+keyed HMAC, never null — is unchanged); and ruling 6's interim clause in the 2026-10-10 entry below (updated there to
+point here).
+
+**Code / tests:** `src/lib/server/erasure.ts` · `src/lib/server/storage.ts` (`listKycDocumentKeys`, `kycUserKeyPrefix`)
+· `src/lib/server/privacy.ts` · `/admin/privacy` · `/admin/retention` · `src/lib/admin-status-lexicon.ts` ·
+`/legal/privacy` (META and §5) · `src/lib/legal/policy-lines.ts` (the privacy `codeVersion`). `test:erasure` §5 (during
+the hold), §7b (after the release, where `red:erasure` cases 1, 3 and 19 bite), §7c (the folder) and six new red cases;
+`test:kyc-typed-only` 12.16c; `test:dsar-intake` 4.7b (nothing held), 4.11–4.15 (a failed deletion, an agent file among
+them) and 5.5b/5.10/5.11 (the officer's words), each with its `red:dsar-intake` case; `test:erasure` 5.12–5.14 (the held
+list), 7.7b and §7d (what the hold holds, no closure date, the instant), with their `red:erasure` cases;
+`test:privacy-notice` §1 (this heading), §4j (the moved pins) and §4l (§5 held to
+`KYC_DOCUMENT_HOLD_YEARS`). Docs: [`DATA-RETENTION.md`](DATA-RETENTION.md) §1, §1a, §2b and §2b-ii;
+[`IDENTITY-POLICY.md`](IDENTITY-POLICY.md); [`FLOWS.md`](FLOWS.md); and the Board letter's "Before sending" warning is
+gone — [`BOARD-DISCLOSURE-KYC-TYPED-ONLY.md`](BOARD-DISCLOSURE-KYC-TYPED-ONLY.md) §5, reworded the same day after review (at
+least 7 years; erased only when an officer completes an erasure request once they have run; nothing deletes them
+automatically), is now true.
+
+**Corrected before release by three adversarial reviews (2026-10-11 — erasure logic, words against code, guard
+strength; no blocker):** ① an account the hold holds NOTHING for — a player who never verified, which is most of them
+— is FULFILLED at once instead of "Partly done · identity held" for seven years (the routine reports a release date
+only while tier ② still holds something, and asks the account's folder before it says "nothing"); ② a failed deletion
+of an AGENT-programme file after the hold keeps the request PARTIAL too; ③ a CLOSED account with no closure date has
+its first erasure run written as its closure, so the clock cannot restart at every run; ④ an officer cannot correct the
+date of birth of a closed account; ⑤ §5 names the selfie and erases the images with the record, and the data-rights
+sentence says "at least" and completes on the request, with no timer implied; ⑥ the officer's queue names the second
+PARTIAL "Partly done · run again" and reports it as FAILED, not done. Three guards that Part A had left red on main were
+repaired in the same release: `test:control-gates` §7 (a discovery floor of 10 actions, 9 since the KYC decisions moved to
+`/admin/kyc`), `test:house-bot-surfaces` 3.hop.2 (admin pages imported the erasure routine directly; they now reach it
+through `erased-phone.ts` and `privacy.ts`) and `test:visual-pass-r5a` 8.10 (the ✕ census). Left for later, recorded on
+the board (row 0g): the release instant shown as a UTC date, the KYC lock during erasure, and the data-rights queue's
+cold-start read.
+
+---
+
 ## 2026-10-10 · Players verify identity with typed details and are approved at once; agents keep photo identity — Privacy v2026-10-10, Terms v2026-10-10, AML v2026-10-10 (Gaming Board request, relayed by the owner)
 
 **Instruction.** The Gaming Board of Tanzania asked 50pick to stop requiring identity uploads, relayed by Ali on
@@ -26,13 +119,13 @@ reference was given. **This entry may name the Board; no player or legal surface
    their own identity with a photo of the document and a selfie, reviewed by an officer, and the agent application
    (CV, letters, Serikali ya Mtaa letter, referee letters, referee ID copies) is unchanged.
 6. **On erasure the typed identity is held 7 years, with no 14-day notice** — *"we have our licence to do this, it's
-   ok"* (Ali, ~15:30 EAT; in full: *"keep 7 years but no notice — we have our licence to do this, it's ok"*). ⚠️ **That
-   hold ships in a LATER push (Part C), not in this release.** Until it is live, erasure works as before
-   ([`DATA-RETENTION.md`](DATA-RETENTION.md) §2b: the number, name and date of birth on every submission are
-   pseudonymised at once — and, from this release, on every entry of the new `priorIdentities` history too, by the
-   same rule: number → its keyed fingerprint, name → "Erased <fp12>", date of birth removed, `erasure.ts`), and
-   Privacy §5 and the data-rights text are unchanged. Production's data-rights (DSAR) queue held **0** requests on
-   2026-10-10, so no erasure has been filed under the old wording.
+   ok"* (Ali, ~15:30 EAT; in full: *"keep 7 years but no notice — we have our licence to do this, it's ok"*). ✅ **Live
+   from Part C:** § "2026-10-11 · Privacy v2026-10-11 — on erasure the typed identity is held 7 years from closure, then
+   erased but for a coded form of the number (owner ruling, no notice)" records what it changed. (In the release
+   between, erasure worked as before — [`DATA-RETENTION.md`](DATA-RETENTION.md) §2b as it then stood: the number, name
+   and date of birth on every submission, and on every entry of the new `priorIdentities` history by the same rule,
+   were pseudonymised at once — and Privacy §5 and the data-rights text were unchanged.) Production's data-rights
+   (DSAR) queue held **0** requests on 2026-10-10, so no erasure has been filed under the old wording.
 7. No admin switch: the player upload path is removed from the code.
 
 **The ladder is unchanged:** register → deposit and play → verify identity + confirm email → withdraw. What "verify

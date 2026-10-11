@@ -130,7 +130,8 @@ Ali, 2026-09-27: *"if it notices that other things should change in the platform
 perfection, details, and a mobile-first system fully working"*. The KYC typed-only screenshot pass (2026-10-10, three inspectors,
 about 440 tiles at 320/360/390/1280 × en/sw/zh) found these OUTSIDE the identity change. Each is fixed platform-wide with its guard
 and frames, in one batch. (Two found the same night were already done by the Vodacom lane's round 8: warnings amber, not gold;
-a step-name eyebrow in the one section ink.)
+a step-name eyebrow in the one section ink.) Items 22–29 are different: the follow-ups the three Part C reviews deferred
+(2026-10-11) — none changes what Part C does before 2033, and each names its fix.
 
 | # | Where | What |
 |---|---|---|
@@ -155,6 +156,14 @@ a step-name eyebrow in the one section ink.)
 | 19 | officer workstation | a check that does not apply is drawn as a pass ("NIDA date of birth ✓ — Not a NIDA"; "Case type ✓"); the voter's-card flag detail is a 9–13-line policy paragraph (one line, policy behind a link; keep the NIDA pattern on one line); a case routed for an officer's earlier ruling does not show that ruling (decision, date, officer, reason) |
 | 20 | officer queue + rail | at 390 the queue tables show 2 of 6–7 columns with a timestamp cut (stacked cards on phones); "Ask for corrections" is wider than its half-width button (stack the two or shorten); "TAP TO VERIFY" wraps beside long labels; "flagged first" always ranks voter's cards and licences (NO_PUBLISHED_FORMAT is a document property, not an anomaly) and no KPI tile shows the unchecked backlog the sidebar counts; small wording (the auto case's rail titled "Decision" with no Swahili line; "then … afterwards") |
 | 21 | agent photo track polish | the send button says "Confirm" where every line says submit, and "0/2 documents attached" counts the selfie; sw mixes "ambatisha"/"ambatanisha"; "Attached / · tap to replace" breaks before its dot at 1280; the saved-details chip and the document name wrap at 320; one-word last lines on /agent's steps and the verified card's title |
+| 22 | `/admin/privacy` release date (Part C review) | the hold releases at the exact closure instant but shows only a UTC date, so "Due" and "run it again on that date" can come back held the same day — release at the first EAT midnight on or after seven years and show that date (reviews PC-1, PC-2; nothing releases before 2033) |
+| 23 | erasure × the KYC lock (Part C review) | erasure writes KYC rows without the `kyc:<userId>` lock every other KYC writer takes; an officer write racing an erasure run could put a redacted note back — take the lock and re-read each row (PC-1) |
+| 24 | data-rights queue, cold start (Part C review) | the queue is one SystemConfig blob hydrated after boot: a filing on a cold container before hydration can overwrite the stored requests, and the held list's "In the queue" reads memory — await hydration before any write and read `openErasureRequest` (PC-1; older than Part C) |
+| 25 | held list's re-queue door (Part C review) | the held list's "File request" reuses the walk-in dialog (CORRECTION by default, the player recorded as the asker, a new 30-day clock) — a dedicated "Put back in the queue": ERASURE, the officer as actor, no new deadline (PC-2) |
+| 26 | identity history and short numbers (Part C review) | uniqueness reads only a row's current identity (never `priorIdentities`), a recoverably refused number is outside both indexes, and the audit chain keeps `last4` — the whole number for a 4-character licence or voter number: mask `last4` below 8 characters, and decide what prior identities' coded numbers are kept for (PC-1, PC-2) |
+| 27 | `/admin/privacy` on-behalf list (screenshot pass) | an erased account shows its masked tombstone ("eras••••01") with a reveal eye — show "Erased" |
+| 28 | held list scope, inline storage (Part C review) | the held list reads typed identity only (an account holding only a declaration or agent files is not listed), and in inline storage mode the release lists no R2 folder even if objects remain from an earlier R2 period (PC-1) |
+| 29 | erasure §7c depth (Part C review) | `triedKeys` de-duplication, the refused-folder branch and the lister's out-of-folder filter are never executed by a test (PC-3 F10) |
 
 ## 00 · PRE-LAUNCH DATA RESET — `PRELAUNCH-RESET` · 🏁 **DONE 2026-09-11, EXECUTED ON PRODUCTION**
 

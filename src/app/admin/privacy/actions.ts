@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { fileDsarRequest, fulfillDsarRequest, buildDsarBundle, hasOpenRequest, asRequestableType } from "@/lib/server/privacy";
 import { audit } from "@/lib/server/audit";
 import { softRequireStaff } from "@/lib/server/rbac-guard";
+import { REVIEW } from "@/lib/admin-status-lexicon";
 
 // RBAC: authorization is data-driven and lives in ONE place — `softRequireStaff` checks
 // the role's grant for `compliance` (Owner/ADMIN bypasses inside canAct), AUDITS a refusal
@@ -127,12 +128,31 @@ export async function fulfillDsarAction(formData: FormData) {
     revalidatePath("/admin/privacy");
     // ⭐ An ERASURE that only PARTIALLY completed must say so to the officer who pressed the
     // button. A bare `{ ok: true }` reads as "done" on a compliance action whose whole point
-    // is that a statutory hold is still running.
+    // is that a statutory hold is still running. (Part C, 2026-10-11: what is held is the
+    // identity record itself — the typed name, date of birth and number — as well as the photos.)
+    // ⭐ A run AFTER the release whose storage deletions did not all complete says THAT, not "held" (2026-10-11).
+    // The title is returned with the notice so the overlay names the same cause as the queue's badge.
+    const failed = r.request.erasureObjectsFailed ?? 0;
+    if (r.request.status === "PARTIAL" && !r.request.erasureHeldUntil && failed > 0) {
+      return {
+        ok: true,
+        // ⛔ NOT DONE: the client shows the danger card that waits to be read, never the green tick that closes itself.
+        incomplete: true,
+        noticeTitle: REVIEW.dsarPartialDeleteFailed.en,
+        notice: `Contact details, credentials, profile and messages are erased, and the identity record too, except a `
+          + `coded form of the document number; but ${failed === 1 ? "1 deletion" : `${failed} deletions`} in the file `
+          + `storage failed (unreachable or refused), so stored files may remain. The request stays in the queue: run it `
+          + `again once the storage is reachable.`,
+      };
+    }
     if (r.request.status === "PARTIAL") {
       return {
         ok: true,
-        notice: `Personal data erased. Identity documents are held under POCA Cap 423 §16 `
-          + `until ${r.request.erasureHeldUntil}; the request stays in the queue until then.`,
+        noticeTitle: REVIEW.dsarPartial.en,
+        notice: `Contact details, credentials, profile and messages erased. The identity record (name, `
+          + `date of birth, document number) and any identity photos are held under POCA Cap 423 §16 `
+          + `until ${r.request.erasureHeldUntil}; the request stays in the queue until then. Run it `
+          + `again on that date to erase them — a coded form of the number is kept.`,
       };
     }
     return { ok: true };

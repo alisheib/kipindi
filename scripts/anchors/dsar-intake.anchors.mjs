@@ -11,16 +11,21 @@
  *
  * ── WHAT THESE MUTATIONS ARE ──────────────────────────────────────────────────
  * E-33 was a wired-to-nothing action, and the two failure modes on either side of fixing it
- * are opposite: the register goes back to being unpopulable (cases 8–10, the form or the
- * button silently unmounted — `tsc` is perfectly happy either way), or it becomes populable
- * with the two rights it must refuse (cases 1–2, which open a 30-day statutory obligation for
- * work the export has already done). Cases 5–7 are the third shape: a queue that says a job
- * is finished when it is not.
+ * are opposite: the register goes back to being unpopulable (the two `*-unmounted` cases, the
+ * form or the button silently unmounted — `tsc` is perfectly happy either way), or it becomes
+ * populable with the two rights it must refuse (the first two cases, which open a 30-day
+ * statutory obligation for work the export has already done). The third shape is a queue that
+ * says a job is finished when it is not — or not finished when there was nothing to do — and
+ * since 2026-10-11 (Part C) it includes the run after the hold whose storage deletions failed,
+ * an agent file among them, and the account with nothing held. Named, not numbered: a case
+ * added in the middle made every number in this paragraph wrong once already.
  */
 
 /** @typedef {{ name: string, file: string, suite: string, from: string, to: string }} RedMutation */
 
 const PRIVACY = "src/lib/server/privacy.ts";
+const ERASURE = "src/lib/server/erasure.ts";
+const OFFICER = "src/app/admin/privacy/actions.ts";
 const PLAYER = "src/app/profile/account/actions.ts";
 const PAGE = "src/app/profile/account/page.tsx";
 const ADMIN_PAGE = "src/app/admin/privacy/page.tsx";
@@ -83,8 +88,51 @@ export const MUTATIONS = [
     name: "held-documents-still-marked-FULFILLED (the queue lies about finished work)",
     file: PRIVACY,
     suite: "dsar-intake",
-    from: `  r.status = held ? "PARTIAL" : "FULFILLED";`,
+    from: `  r.status = held || failedObjects > 0 ? "PARTIAL" : "FULFILLED";`,
     to: `  r.status = "FULFILLED";`,
+  },
+  {
+    // 🔴 FULFILLED after the hold although a stored identity file could not be deleted (2026-10-11, Part C review) —
+    // "we erased your data" over files still stored, and the request (with its button) gone from the queue.
+    name: "failed-objects-ignored (FULFILLED over files still stored)",
+    file: PRIVACY,
+    suite: "dsar-intake",
+    from: `  const failedObjects = erasure?.ok ? erasure.counts.documentObjectsFailed + erasure.counts.agentDocumentObjectsFailed : 0;`,
+    to: `  const failedObjects = 0;`,
+  },
+  {
+    // 🔴 The agent programme's failures left out of the rule (2026-10-11, reviews PC-1/PC-2/PC-3) — a referee's ID scan the
+    // storage refused, under a FULFILLED request that nothing will ever run again.
+    name: "agent-failures-ignored (FULFILLED over a referee's ID scan still stored)",
+    file: PRIVACY,
+    suite: "dsar-intake",
+    from: `  const failedObjects = erasure?.ok ? erasure.counts.documentObjectsFailed + erasure.counts.agentDocumentObjectsFailed : 0;`,
+    to: `  const failedObjects = erasure?.ok ? erasure.counts.documentObjectsFailed : 0;`,
+  },
+  {
+    // 🔴 A release date reported whatever was held (2026-10-11, review PC-1 MAJOR-2) — the most common erasure, a player
+    // who never verified, read "identity held" in the compliance queue for seven years.
+    name: "nothing-held-still-held (\"identity held\" over an account that holds nothing)",
+    file: ERASURE,
+    suite: "dsar-intake",
+    from: `  const heldUntil = identityReleased || !heldAnything ? null : releaseAt.slice(0, 10);`,
+    to: `  const heldUntil = identityReleased ? null : releaseAt.slice(0, 10);`,
+  },
+  {
+    // 🔴 The green tick over a failed deletion, back (2026-10-11, the screenshot pass) — the officer reads DONE.
+    name: "failed-deletion-shown-as-done (the green tick over files still stored)",
+    file: OFFICER,
+    suite: "dsar-intake",
+    from: `        incomplete: true,`,
+    to: ``,
+  },
+  {
+    // 🔴 The badge not told the cause — "identity held" on a row whose identity was released (2026-10-11).
+    name: "badge-not-told-the-cause (\"identity held\" after the release)",
+    file: ADMIN_PAGE,
+    suite: "dsar-intake",
+    from: `                        deletionFailed={!r.erasureHeldUntil && (r.erasureObjectsFailed ?? 0) > 0} />`,
+    to: `                        />`,
   },
   {
     // The release date not recorded — so nothing on the platform knows when the held

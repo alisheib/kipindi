@@ -1,14 +1,14 @@
 /**
- * RED PROOF for the DSAR intake — every assertion in `test:erasure` broken on purpose.
+ * RED PROOF for the DSAR intake — every assertion in `test:dsar-intake` broken on purpose.
  *
  *   node scripts/dsar-intake-red.mjs        (npm run red:dsar-intake)
  *
  * ⛔ "THE FILE CHANGED" IS NOT A RED. Every mutation must make the suite EXIT NON-ZERO *and*
  * report at least one FAIL, and every mutation is a REVERT — restored byte-for-byte, verified.
  *
- * ⭐ THE TWO FAILURE MODES PULL OPPOSITE WAYS, and both are here. Cases 10 and 11 unmount the
+ * ⭐ THE TWO FAILURE MODES PULL OPPOSITE WAYS, and both are here. The two `*-unmounted` cases unmount the
  * form and the button — E-33 coming straight back, an action that is perfect and reachable
- * from nothing, which `tsc` is perfectly happy about. Cases 1 and 2 do the reverse: they open
+ * from nothing, which `tsc` is perfectly happy about. The first two cases do the reverse: they open
  * the register to ACCESS, a right the export already serves, so every filing becomes a 30-day
  * statutory obligation for work already done. A suite that cannot catch BOTH is guarding one
  * side of a door.

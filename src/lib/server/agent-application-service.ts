@@ -2023,4 +2023,16 @@ export async function purgeAgentDocumentsForUser(userId: string): Promise<{ dele
   return { deleted, failed };
 }
 
+/**
+ * Whether any of this person's agent-programme documents still has its bytes — erasure's question DURING the 7-year
+ * hold (2026-10-11, Part C review PC-1): a document waiting for the release is something the hold holds, so the request
+ * stays open for it. Read-only.
+ */
+export async function hasUnpurgedAgentDocuments(userId: string): Promise<boolean> {
+  for (const a of await db.agentApplication.listByUser(userId)) {
+    for (const d of await db.agentApplicationDoc.listByApplication(a.id)) if (!d.purgedAt) return true;
+  }
+  return false;
+}
+
 export type { StoredAgentApplication, StoredAgentApplicationDocument, StoredAgentInvitation };

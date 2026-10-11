@@ -134,10 +134,82 @@ export async function deleteKycDocument(storageKey: string): Promise<boolean> {
   }
 }
 
+/** One folder name: what `putKycDocument`'s key rule leaves unchanged, and nothing that could name two folders. */
+const SINGLE_SEGMENT = /^[A-Za-z0-9_-]+$/;
+/** The agent programme's own folder (`kyc/agentapp/<applicationId>/…`, `keyHintFor` in agent-application-service.ts). */
+const AGENT_APPLICATION_SEGMENT = "agentapp";
+/** A runaway listing stops here and THROWS — 20 pages is 20,000 objects, against a handful in a real folder. */
+const MAX_LIST_PAGES = 20;
+
+/**
+ * ⭐ THE ACCOUNT'S OWN KYC FOLDER (2026-10-11, Part C) — `kyc/<userId>/`, the folder `putKycDocument` writes this
+ * account's identity documents under (its key hint is `<userId>/<docType>`; the inline-to-R2 migration used
+ * `<userId>/extra_<requestId>`). Erasure's release destroys every object in it (`erasure.ts`, step 1b), so this answers
+ * ONE folder or nothing:
+ * ⛔ null for an id the key rule would rewrite (a character outside `[A-Za-z0-9_-]`: two ids could then share a folder,
+ * and one account's erasure would reach another's documents), and null for the agent programme's folder name, which
+ * holds OTHER people's documents (referees', applicants') under its own purge (`purgeAgentDocumentsForUser`). Every id
+ * the platform issues is `usr_` and random hex, so both refusals guard a case that should never arise — and the caller counts a refusal
+ * as a failure owed a re-run, never as an empty folder.
+ */
+export function kycUserKeyPrefix(userId: string): string | null {
+  if (!SINGLE_SEGMENT.test(userId) || userId === AGENT_APPLICATION_SEGMENT) return null;
+  return `kyc/${userId}/`;
+}
+
+/**
+ * Every object key in ONE account's KYC folder (`kycUserKeyPrefix`) — for erasure's release (2026-10-11, Part C), which
+ * destroys every key this returns. INLINE mode has no bucket and so no folder: `[]`. R2: `ListObjectsV2`, every page.
+ *
+ * ⛔ FAILS CLOSED, BECAUSE ITS CALLER DESTROYS WHAT IT RETURNS.
+ *   · A prefix that is not exactly one folder (`kyc/<one segment>/`), or is the agent programme's, is REFUSED before
+ *     anything is read: "" or "kyc/" would be every identity document on the platform.
+ *   · An intended-but-unconfigured R2 (`KYC_STORAGE=r2` with no bucket) THROWS, as `putKycDocument` does, instead of
+ *     answering "inline, nothing there" — the silent degrade `assertStorageModeIntended` exists to refuse.
+ *   · A key outside the folder in R2's answer is DROPPED, not trusted: the folder is the whole contract.
+ * ⚠️ AND IT THROWS ON ANY R2 FAILURE, unlike `deleteKycDocument`: a delete that failed leaves its pointer for a re-run,
+ * but a listing that failed has no partial answer worth acting on — the caller counts it and runs again later.
+ */
+export async function listKycDocumentKeys(prefix: string): Promise<string[]> {
+  const segment = prefix.startsWith("kyc/") && prefix.endsWith("/") ? prefix.slice(4, -1) : "";
+  if (!SINGLE_SEGMENT.test(segment) || segment === AGENT_APPLICATION_SEGMENT) {
+    throw new Error(`listKycDocumentKeys: "${prefix}" is not one account's KYC folder (kyc/<id>/) — refusing to list it.`);
+  }
+  assertStorageModeIntended();
+  if (kycStorageMode() === "inline") return [];
+  const { client, mod } = await getS3();
+  const keys: string[] = [];
+  let token: string | undefined;
+  for (let page = 0; page < MAX_LIST_PAGES; page++) {
+    const res = await client.send(new mod.ListObjectsV2Command({
+      Bucket: process.env.R2_BUCKET,
+      Prefix: prefix,
+      ContinuationToken: token,
+    }));
+    for (const o of res?.Contents ?? []) {
+      if (typeof o?.Key === "string" && o.Key.startsWith(prefix) && o.Key.length > prefix.length) keys.push(o.Key);
+    }
+    if (!res?.IsTruncated) return keys;
+    token = res.NextContinuationToken;
+    if (!token) throw new Error("listKycDocumentKeys: R2 said the listing continues but gave no continuation token.");
+  }
+  throw new Error(`listKycDocumentKeys: more than ${MAX_LIST_PAGES} pages under "${prefix}" — refusing to guess where it ends.`);
+}
+
 // ── R2 (S3-compatible) — optional dependency, loaded only when configured ─────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let s3Client: any;
+
+/**
+ * ⚠️ TEST SEAM ONLY — never call this from application code. Stands a fake S3 client in for R2, so `test:erasure` can
+ * drive the REAL `listKycDocumentKeys` and `deleteKycDocument` — the commands, the paging, the folder they name — with
+ * no bucket; `null` drops it, and the next R2 call builds the real client again. Refuses in production.
+ */
+export function __setKycS3ClientForTests(client: unknown): void {
+  if (process.env.NODE_ENV === "production") throw new Error("__setKycS3ClientForTests is a test seam and refuses to run in production.");
+  s3Client = client ?? undefined;
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getS3(): Promise<{ client: any; mod: any }> {

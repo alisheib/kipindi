@@ -25,6 +25,9 @@
  *   §4k · v2026-10-07 · §9: referees named before REFEREE_PROMISE_REWORDED_IN keep "we never contact you for
  *        marketing"; those named after it are told management's two sentences — the stop sentence only while every offer
  *        carries its link; and the coded referee number is never called irreversible ("not the number itself").
+ *   §4l · v2026-10-11 · §5: on erasure the identity record (name, date of birth, document number) is held for the period
+ *        `KYC_DOCUMENT_HOLD_YEARS` sets, compared with new identity checks meanwhile, then erased but for a coded form of
+ *        the number — in every language, with the retired "removed at once" gone (Part C, the owner's ruling).
  *        (§4i is the final-rule gate's own section; these two are named apart from it.)
  *
  * ⭐ U33p (2026-10-04) · THREE BULLETS ARE ADMIN-EDITED LINES NOW (`legal.policy_lines`): the §3 Consent bullet, a new §3
@@ -71,11 +74,14 @@ const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[
 // 2026-10-10 · typed-only identity (COMPLIANCE-DECISIONS "Privacy v2026-10-10"): §2's Identity bullet — photographs and
 // a selfie only from people applying to become agents, and from players who sent them before 10 October 2026.
 // PRIVACY_EN_SHA re-pinned 2026-10-10 from the measured English block (test:privacy-notice §1a / test:policy-lines L1).
-const PRIVACY_VERSION = "2026-10-10";
+// 2026-10-11 · Part C (COMPLIANCE-DECISIONS "Privacy v2026-10-11", the owner's ruling of 2026-10-10): §5's first bullet —
+// on erasure the identity record is held 7 years from closure, then erased except a coded form of the number (§4l holds
+// it to the code). PRIVACY_EN_SHA re-pinned 2026-10-11 from the measured English block (99219bf5625a -> 8c519b652ed0 -> 2009d2e3707b: the selfie named and the images erased with the record, reviews PC-2).
+const PRIVACY_VERSION = "2026-10-11";
 /** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one.
  *  (Re-pinned 2026-10-09 within v2026-10-09: §4's SMS gateway bullet names no company — COMPLIANCE-DECISIONS "Privacy
  *  v2026-10-09", item 5.) */
-const PRIVACY_EN_SHA = "99219bf5625a";
+const PRIVACY_EN_SHA = "2009d2e3707b";
 /** Every cookie name the code writes, as of v2026-09-30. A new one must be described in §7 first. */
 const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-density", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_preview", "kp_revoked", "kp_session"];
 // ⭐ `_ga` / `_ga_W66WRL67MQ` joined the census 2026-09-15.2: gtag.js SETS them, and our code EXPIRES them when consent is
@@ -976,16 +982,20 @@ console.log("\n§4j · what erasure keeps: §5, §6, §9, the erasure note and t
     out["en the data-rights erasure sentence"] = dsar;
     return out;
   };
-  /** ⛔ THE PINS — sha256 (12 hex) of each text, whitespace-collapsed. Moving one is a change of published words. */
+  /** ⛔ THE PINS — sha256 (12 hex) of each text, whitespace-collapsed. Moving one is a change of published words.
+   *  ⭐ v2026-10-11 (Part C): the three §5 first bullets and the data-rights sentence moved with the owner's ruling that the
+   *  identity record is held 7 years on erasure — §4l reads the same words and holds them to the code. */
   const TEXT_PINS: Record<string, string> = {
-    "en §5 first bullet": "d849b2d90cce", "sw §5 first bullet": "4e3f0109a8fb", "zh §5 first bullet": "0f83ff42c325",
+    // 2026-10-11 · re-pinned from this suite's measurement within the unreleased v2026-10-11: the selfie named and the images
+    // erased with the record (reviews PC-2 #6), and the data-rights sentence's "at least" and request-bound completion (#4).
+    "en §5 first bullet": "93f34b775dd1", "sw §5 first bullet": "ee46dd02bc5d", "zh §5 first bullet": "b34ce424bc0d",
     "en §5 record bullet": "5bfffd9a290b", "sw §5 record bullet": "0637ce779d4f", "zh §5 record bullet": "07d83e61d0fb",
     "en §5 referee numbers bullet": "759980721b5f", "sw §5 referee numbers bullet": "cd5575e2769c", "zh §5 referee numbers bullet": "724a23800660",
     "en §6 Erasure": "d92355281cf7", "sw §6 Erasure": "89c0ca55cb2b", "zh §6 Erasure": "ef70992f350e",
     "en §9 first paragraph": "85aa1bcc73a0", "sw §9 first paragraph": "3ec321fcfaf5", "zh §9 first paragraph": "877ece96400b",
     "en §9 second paragraph": "130847f5f7ea", "sw §9 second paragraph": "1c44564e0b3a", "zh §9 second paragraph": "0ec28565a93c",
     'en the note under "Erase my data"': "9ceccaaa37ba", 'sw the note under "Erase my data"': "0d3679b468dc", 'zh the note under "Erase my data"': "100e9ed7190a",
-    "en the data-rights erasure sentence": "b4408276a7a8",
+    "en the data-rights erasure sentence": "b793b53c19f9",
   };
   /** What the data-rights file (English only) must say, and must no longer say — read in words, beside its pin. */
   const DSAR_RECORD = [
@@ -994,8 +1004,14 @@ console.log("\n§4j · what erasure keeps: §5, §6, §9, the erasure note and t
     "are kept for at least 7 years",
     "erasure removes which account they belonged to and keeps the rest",
     "The records of the security codes we texted to your number, and your payment records, which the law requires us to keep, keep it too.",
+    // ⭐ v2026-10-11 (Part C) · the identity record is held with the images, then erased but for a coded form of the number.
+    "your identity record (your name, date of birth and document number) and any images of your identity documents or selfie are retained for at least 7 years from account closure",
+    // 2026-10-11 (reviews PC-2 #4/#6): "at least", the selfie named, and the completion is the request's — no timer.
+    "once the 7 years have run, we complete your request and erase it and the images",
+    "except for a coded form of your document number (not the number itself)",
   ];
-  const DSAR_RETIRED = ["they are erased when that period ends", "We keep your phone number only"];
+  // ⭐ v2026-10-11 · and the clause Part C retired: the name and number are no longer erased at once.
+  const DSAR_RETIRED = ["they are erased when that period ends", "We keep your phone number only", "and the name and number on your identity record", "when the 7 years end we erase it"];
   const RECIPIENT_DELETE = /\bsmsCampaignRecipient\.(?:delete|deleteMany|remove|purge)\w*\s*\(/;
   const campaignRecordDefects = (page: string, erase: string, dsar: string, notes: Record<Loc, string>, doc: string, files: Array<{ path: string; src: string }>): string[] => {
     const d: string[] = [];
@@ -1161,6 +1177,83 @@ console.log("\n§4k · §9: the referee promise kept for those named before the 
     refereeWordsDefects(pageSrc, offerWithLink, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.includes("while every offer carries its stop link")));
   ok("§4k control · the stop sentence put back while no offer carries a link is reported",
     refereeWordsDefects(plantStopBack, offer, REFEREE_PROMISE_REWORDED_IN, decisionsSrc).some((x) => x.includes("carries no stop link")));
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §4l · v2026-10-11 · ON ERASURE THE IDENTITY RECORD IS HELD 7 YEARS (Part C — COMPLIANCE-DECISIONS "Privacy v2026-10-11",
+ * the owner's ruling of 2026-10-10: "keep 7 years but no notice — we have our licence to do this, it's ok"). §4j pins §5's
+ * first bullet whole; this block reads what it must SAY, in every language, and ties the period to the code:
+ *   · the identity record — name, date of birth, document number — kept until at least N years after closure, N read from
+ *     `KYC_DOCUMENT_HOLD_YEARS` in erasure.ts (the routine's own clock), never retyped here;
+ *   · while held, compared with new identity checks (the uniqueness index on the raw number and the same-person check);
+ *   · after the hold, erased except a coded form of the document number — "not the number itself", in every language;
+ *   · and the sentence Part C retired ("the name and number on your identity record are removed at once") gone everywhere.
+ * ⛔ BLOCK-SCOPED, like §4j and §4k: nothing here is a module-level name another section could collide with.
+ * ══════════════════════════════════════════════════════════════════════════ */
+console.log(String.fromCharCode(10) + "§4l · v2026-10-11 · §5: on erasure the identity record is held 7 years, then erased but for a coded form of the number");
+{
+  const eraseSrc = read("src/lib/server/erasure.ts");
+  const holdYears = (src: string): number => Number(src.match(/export const KYC_DOCUMENT_HOLD_YEARS = ([0-9]+);/)?.[1] ?? Number.NaN);
+  const WS4L = new RegExp("[ " + String.fromCharCode(9, 10, 13) + "]+", "g");
+  /** What §5's first bullet must say in each language, with the code's own period. */
+  const HOLD_WORDS = (years: number): Record<Loc, readonly string[]> => ({
+    en: [
+      "your identity record (your name, date of birth and document number)",
+      `are kept until at least ${years} years after closure, as AML law requires`,
+      "your identity record is compared with new identity checks",
+      "your identity record and those images are erased, except for a coded form of the document number, not the number itself",
+      "any images of your identity documents or selfie",
+    ],
+    sw: [
+      "rekodi yako ya utambulisho (jina lako, tarehe yako ya kuzaliwa na namba ya hati yako)",
+      `huhifadhiwa hadi angalau miaka ${years} baada ya kufungwa, kama sheria ya AML inavyotaka`,
+      "hulinganishwa na uthibitisho mpya wa utambulisho",
+      "rekodi yako ya utambulisho na picha hizo hufutwa, isipokuwa namba ya hati ikiwa imegeuzwa kuwa msimbo (wala si namba yenyewe)",
+      "picha zozote za nyaraka zako za utambulisho au selfie",
+    ],
+    zh: [
+      "您的身份记录（姓名、出生日期和证件号码）",
+      `将依照反洗钱法规保留至注销后至少 ${years} 年`,
+      "您的身份记录会与新的身份验证进行比对",
+      "您的身份记录及上述图片将被删除，但会保留证件号码的一种编码形式（而非号码本身）",
+      "身份证件图片和自拍照（如有）",
+    ],
+  });
+  /** The clause Part C retired, as each language printed it until v2026-10-10. */
+  const RETIRED_AT_ONCE: Record<Loc, string> = {
+    en: "the name and number on your identity record are removed at once",
+    sw: "na jina na namba kwenye rekodi yako ya utambulisho huondolewa mara moja",
+    zh: "身份记录上的姓名与证件号码将立即删除",
+  };
+  const holdDefects = (page: string, erase: string): string[] => {
+    const d: string[] = [];
+    const years = holdYears(erase);
+    if (!Number.isInteger(years) || years < 1) return [`KYC_DOCUMENT_HOLD_YEARS could not be read from erasure.ts (${years})`];
+    const bl = blocks(page);
+    const words = HOLD_WORDS(years);
+    for (const l of LOCS) {
+      const s5 = section(bl[l], "5").replace(WS4L, " ");
+      for (const w of words[l]) {
+        if (!s5.includes(w)) d.push(`${l} §5 does not say "${w}" — the identity record's ${years}-year hold on erasure (KYC_DOCUMENT_HOLD_YEARS)`);
+      }
+      if (s5.includes(RETIRED_AT_ONCE[l])) d.push(`${l} §5 still says "${RETIRED_AT_ONCE[l]}" — false since v2026-10-11: the identity record is held ${years} years`);
+    }
+    return d;
+  };
+  ok("§4l en/sw/zh §5 say the identity record is held on erasure for the code's own period, compared with new checks meanwhile, then erased but for a coded form of the number — and the retired 'removed at once' is gone",
+    holdDefects(pageSrc, eraseSrc).length === 0, holdDefects(pageSrc, eraseSrc).join("; "), `${holdYears(eraseSrc)} years`);
+  // Plants: the retired clause back in ONE language (sw); the period moved in the code alone; the coded form dropped from zh.
+  const plantOldSw = pageSrc.replace("taarifa zako za mawasiliano na nenosiri huondolewa mara moja",
+    "taarifa zako za mawasiliano, nenosiri, na jina na namba kwenye rekodi yako ya utambulisho huondolewa mara moja");
+  const plantYears = eraseSrc.replace("export const KYC_DOCUMENT_HOLD_YEARS = 7;", "export const KYC_DOCUMENT_HOLD_YEARS = 5;");
+  const plantCodedZh = pageSrc.replace("，但会保留证件号码的一种编码形式（而非号码本身）", "");
+  ok("§4l control · planted §4l copies found their targets", plantOldSw !== pageSrc && plantYears !== eraseSrc && plantCodedZh !== pageSrc);
+  ok('§4l control · the retired "removed at once" put back into ONE language (sw) is reported',
+    holdDefects(plantOldSw, eraseSrc).some((x) => x.startsWith("sw §5 still says")));
+  ok("§4l control · the hold moved in the code alone (5 years) is reported in every language",
+    LOCS.every((l) => holdDefects(pageSrc, plantYears).some((x) => x.startsWith(`${l} §5 does not say`))));
+  ok("§4l control · the coded form dropped from ONE language (zh) is reported",
+    holdDefects(plantCodedZh, eraseSrc).some((x) => x.startsWith("zh §5 does not say")));
 }
 
 

@@ -285,7 +285,13 @@ export function playerStatusVariant(status: string): StatusChipVariant {
  *  correction as the KYC queue, for the same reason: a request waiting its turn is the
  *  normal state of a queue, not a warning. FULFILLED→green and REJECTED→rose come from
  *  the dictionary. */
-export function DsarStatusBadge({ status, size = "sm" }: { status: DsarStatus; size?: "sm" | "md" | "lg" }) {
+export function DsarStatusBadge({ status, size = "sm", deletionFailed = false }: {
+  status: DsarStatus;
+  size?: "sm" | "md" | "lg";
+  /** PARTIAL only — the hold has ended but a deletion in the file storage failed (`erasureObjectsFailed` with no
+   *  held-until date, 2026-10-11). Picks `REVIEW.dsarPartialDeleteFailed` over "identity held", which would be false. */
+  deletionFailed?: boolean;
+}) {
   // ⚠️ MERGE RESOLUTION 2026-08-22 — TWO LANES WERE BOTH RIGHT AND NEITHER WAS COMPLETE.
   //
   // The design-perfection lane moved this chain onto the status lexicon (D4: PENDING is
@@ -312,7 +318,7 @@ export function DsarStatusBadge({ status, size = "sm" }: { status: DsarStatus; s
     : TONE_CHIP[STATUS_TONE.REJECTED.admin];
   const label =
     status === "PENDING" ? REVIEW.dsarPending.en
-    : status === "PARTIAL" ? REVIEW.dsarPartial.en
+    : status === "PARTIAL" ? (deletionFailed ? REVIEW.dsarPartialDeleteFailed.en : REVIEW.dsarPartial.en)
     : status === "FULFILLED" ? REVIEW.dsarFulfilled.en
     : REVIEW.dsarRejected.en;
   return <Chip size={size} variant={variant}>{label}</Chip>;

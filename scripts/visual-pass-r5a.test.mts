@@ -550,16 +550,15 @@ section("8 · F20 · every close ✕ of a panel, a sheet or a dialog: on its tit
     "src/components/ui/query-bar.tsx": [C("row ✕", "a link that clears the query, worded beside its ✕")],
     "src/components/ui/date-select.tsx": [C("row ✕", "back to the calendar")],
     "src/app/admin/invites/invite-admin-client.tsx": [C("row ✕", "removes a staged row")],
-    "src/components/admin/kyc-review-controls.tsx": [C("row ✕", "removes a document request"), C("glyph", "the rejecting state of a button"), C("glyph", "Reject…")],
     "src/app/admin/approvals/sof-review-client.tsx": [C("glyph", "Reject")],
     "src/app/admin/ai-polls/poll-actions.tsx": [C("glyph", "a refused medallion"), C("glyph", "an error mark")],
     "src/app/admin/aml/aml-actions-client.tsx": [C("glyph", "Reject")],
     "src/app/admin/agents/[id]/doc-grid.tsx": [C("glyph", "a missing document")],
-    "src/app/admin/kyc/[id]/kyc-decision-rail.tsx": [C("glyph", "a failed check"), C("glyph", "Reject")],
+    // 2026-10-11: the automatic checks' BLOCK mark joined the rail with typed-only identity (2026-10-10) — it closes nothing.
+    "src/app/admin/kyc/[id]/kyc-decision-rail.tsx": [C("glyph", "a blocking automatic check"), C("glyph", "a failed check"), C("glyph", "Reject")],
     "src/app/admin/payments/reconcile-controls.tsx": [C("glyph", "Write off")],
     "src/app/admin/payments/retry-controls.tsx": [C("glyph", "Cancel the payout")],
     "src/app/admin/payments/stuck-payout-controls.tsx": [C("glyph", "Return to player")],
-    "src/app/admin/players/[id]/page.tsx": [C("glyph", "a missing document"), C("glyph", "a missing requested document")],
   };
   /**
    * ⭐ THE ✕ IN ANY SPELLING (round 6, 2026-10-09, review C2). The census looked only for the kit glyph (`<I.x`), so two

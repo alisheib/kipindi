@@ -11,8 +11,9 @@
  * still rejects the second account." The first half is right and the second does not follow:
  * a unique index compares STORED STRINGS, so the erased row's hash never meets the next
  * applicant's raw number. That mutation is what a careful person would build from the brief,
- * and `test:erasure` §5.5 must report a SECOND ACCOUNT on one national ID over it. If it does
- * not, the item shipped a hole with a suite blessing it.
+ * and `test:erasure` 7b.5 (after the 7-year release — Part C, 2026-10-11, holds the raw number
+ * until then, and 5.9 refuses on it) must report a SECOND ACCOUNT on one national ID over it.
+ * If it does not, the item shipped a hole with a suite blessing it.
  *
  * ⚠️ THE ANCHORS ARE THE FRAGILE PART. A missing anchor is reported as a FAILURE, never as a
  * skip: scoring out of the mutations that happened to apply is how a harness comes to certify

@@ -142,10 +142,13 @@ export type PolicyPageSpec = {
    Privacy 2026-10-10: §2's Identity bullet (players verify with typed details; photographs only from people applying to
    become agents and from before that day). Had an admin saved new privacy words on 2026-10-10 before this version
    deployed, the page prints that stamp's next suffix (2026-10-10.2 after one such save): `printedPolicyVersion` never reuses a label over a
-   different text. */
+   different text.
+   Privacy 2026-10-11 (Part C, the owner's ruling of 2026-10-10): §5's first bullet — on erasure the identity record (name,
+   date of birth, document number) is held 7 years from closure, then erased except a coded form of the number. The same
+   suffix rule holds for a save made on 2026-10-11 before it deploys. */
 const PAGES: Record<PolicyPage, PolicyPageSpec> = {
   rg: { path: "/legal/responsible-gambling", title: "Responsible Gambling Policy", codeVersion: "2026-10-06", versionKey: "version.rg" },
-  privacy: { path: "/legal/privacy", title: "Privacy Policy", codeVersion: "2026-10-10", versionKey: "version.privacy" },
+  privacy: { path: "/legal/privacy", title: "Privacy Policy", codeVersion: "2026-10-11", versionKey: "version.privacy" },
 };
 
 export const POLICY_PAGES: Readonly<Record<PolicyPage, PolicyPageSpec>> = Object.freeze(PAGES);

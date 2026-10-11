@@ -30,7 +30,7 @@ import { kycStage, walletHeldTzs, MONEY_NOT_APPLIED, type KycStage } from "@/lib
 import { KYC_REVIEW_SLA_HOURS } from "@/lib/kyc-sla";
 import { formatTzs, formatTzsCompact, formatDateTime, adminCount } from "@/lib/utils";
 import { db } from "@/lib/server/store";
-import { isErasedPhone } from "@/lib/server/erasure";
+import { isErasedPhone } from "@/lib/server/erased-phone";
 import { asKycFlags, FLAG_LABEL, type KycFlag } from "@/lib/kyc-auto-checks";
 import { isIdDocType } from "@/lib/id-documents";
 

@@ -485,8 +485,12 @@ __resetGrantsForTest();
   const mapBody = mapAt < 0 ? "" : actSrc.slice(actSrc.indexOf("= {", mapAt), actSrc.indexOf("};", mapAt));
   const map = new Map([...mapBody.matchAll(/^\s*(\w+Action)\s*:\s*"([a-z]+)"/gm)].map((m) => [m[1], m[2]] as [string, string]));
   const exported = [...actSrc.matchAll(/^export async function (\w+Action)\s*\(/gm)].map((m) => m[1]);
+  // ⚠️ A DISCOVERY floor, not a census (2026-10-11): it fails when the parser found (next to) nothing, never on a
+  // legitimate removal. 13 → 9 on 2026-10-10, when typed-only identity moved this page's four KYC decisions
+  // (approveKycAction, rejectKycAction, requestKycInfoAction, forceReverifyKycAction) to the one officer door,
+  // /admin/kyc/[id] — the floor of 10 then failed this control on main from Part A (`16e0be5e`) to here.
   ok(`7 · CONTROL — the map and the exports were discovered (${map.size} mapped · ${exported.length} exported)`,
-     map.size >= 10 && exported.length >= 10);
+     map.size >= 6 && exported.length >= 6);
 
   const unmapped = exported.filter((n) => !map.has(n));
   ok("7 · every exported action names its domain in ACTION_DOMAIN — the fallback is a net, not a declaration",

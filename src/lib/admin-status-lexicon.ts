@@ -181,9 +181,19 @@ export const REVIEW = {
   // DSAR / privacy request status
   dsarPending:        { en: "Pending" },
   // ⭐ Named for what an officer must DO about it, not for a fraction. A partially fulfilled
-  // erasure is still open work: the PII is gone and the statutory documents are held to a
-  // date, and the request stays in the queue because nothing else remembers that date.
-  dsarPartial:        { en: "Partly done · docs held" },
+  // erasure is still open work: the contact details and credentials are gone and the identity
+  // record is held to a date — since 2026-10-11 (Part C, the owner's ruling) the typed name, date
+  // of birth and document number as well as the photos, so the label names the identity, not
+  // "docs" — and the request stays in the queue as the reminder to finish it on that date.
+  dsarPartial:        { en: "Partly done · identity held" },
+  // ⭐ THE OTHER PARTLY-DONE (2026-10-11, Part C review). The hold has ENDED and the identity record is erased, but a
+  // deletion in the file storage failed (an object refused, or the account's folder could not be listed) — so the
+  // request stays open for a re-run. Named, like the family, for what the officer must DO — "identity held" would be
+  // false there, "files left" claims more than a failed listing knows, and the row's own line says why ("1 deletion
+  // failed"). First drafted "Partly done · deletion failed": three lines in the queue's status column, and the cause
+  // said twice in one cell (the 2026-10-11 screenshot pass). Chosen by `<DsarStatusBadge deletionFailed>`; the
+  // action's notice title is the same word.
+  dsarPartialDeleteFailed: { en: "Partly done · run again" },
   dsarFulfilled:      { en: "Fulfilled" },
   // Agent programme (StoredAgentApplication.status) — the officer's words. The applicant's
   // words live in `dict.agent.status*` in three languages; these are console English.
@@ -229,7 +239,7 @@ export const REVIEW = {
  * ⭐ THE FIRST WORD SAYS WHOSE MOVE IT IS, because that is the only decision an officer
  * scanning 500 rows actually makes. Exactly ONE of the eight is ours. The two-part
  * `X · Y` form is this family's existing idiom — `REVIEW.agentInvited` ("Invited ·
- * awaiting acceptance"), `REVIEW.dsarPartial` ("Partly done · docs held").
+ * awaiting acceptance"), `REVIEW.dsarPartial` ("Partly done · identity held").
  *
  * ⭐ THE EIGHTH (2026-09-13) IS "Funded · nothing sent" — the money dimension of
  * src/lib/kyc-stage.ts. From that date identity is asked before a withdrawal and before
