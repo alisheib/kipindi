@@ -12,6 +12,11 @@
  * 1024, a centred dialog from there) and it portals to the document body, so the sheet sits on the dialog rung and
  * not inside the stacking context of the bar or the rail that opened it. The grab handle and the two-up action row
  * are the Wallet's own classes, so the two sheets a journey reader meets are drawn one way.
+ * ⭐ …AND THE SECOND ACTION IS THE WALLET'S TOO (round 9 of the visual pass, R9-C, 2026-10-11; R4-F2, tile 156). Ingia was
+ * `btn-outline`: a link-blue label on a `--brand-500` edge — the focus ring's own colour, so with Jisajili focused its
+ * 2px ring stood 12px from Ingia's 1px edge in the identical blue, and the sheet drew a third kind of secondary action.
+ * It is `btn-ghost` now, as the Wallet sheet's Toa pesa and the header's Ingia are, and as the S4 frame draws it (a
+ * light label on a quiet edge, `s4-9-tiketi-guest`). `btn-outline` had no other consumer and is retired (globals.css).
  * ⚠️ Each action closes the sheet as it navigates: the bar and the rail outlive the page, so a sheet left open would
  * be waiting over the sign-in screen.
  */
@@ -48,7 +53,7 @@ export function TicketsGuestSheet({ open, onClose }: { open: boolean; onClose: (
         <Link
           href={"/auth/login?next=%2Fpositions" as never}
           onClick={onClose}
-          className="btn btn-outline btn-lg kp-wsheet__act"
+          className="btn btn-ghost btn-lg kp-wsheet__act"
           data-testid="tickets-guest-signin"
         >
           {t.common.signIn}

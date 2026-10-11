@@ -11,6 +11,7 @@ Contract (kit/atoms.jsx): Btn { variant: primary|yes|no|gold|ghost|danger|claret
 Sizes: sm 30px h / 12px pad / 13px text · md 38/16/14 · lg 46/20/15 · xl 56/24/16.5 + r-lg radius. Tap floor 40px means betting actions use lg/xl.
 Rules: yes/no only inside betting actions; gold only on the money-commit; hover translateY(-1px); active translateY(1px) scale(0.97); disabled opacity 0.45.
 INVENTED (2026-07, D1): the mono "× 1.4 est." payout marker inside the label — mono 12.5px/600 at 85% opacity.
+⚠️ RETIRED 2026-10-11 (round 9 of the visual pass, R9-C): the `outline` variant. Its one consumer (the guest Tiketi sheet's Ingia) is `ghost`, as every secondary action; its 1px `--brand-500` edge is the focus ring's own colour, so it read as a focused control. `globals.css` no longer defines `.btn-outline` (`test:visual-pass-r9c` §6). This frozen redline is kept as delivered.
 
 ## Authoritative CSS (verbatim from tokens.css)
 ```css

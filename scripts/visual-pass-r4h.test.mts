@@ -523,7 +523,9 @@ section("12 · E13 the card watermark is not lit behind the card's controls (til
   ok("12.1 · no hover rule reaches the watermark, and it keeps its resting ink (0.055, --border-strong)",
     !lit(CSS) && /opacity:\s*0\.055/.test(rule(CSS, ".mcardp-watermark")) && /color:\s*var\(--border-strong\)/.test(rule(CSS, ".mcardp-watermark")));
   ok("12.1′ PLANT · the round-3 lift put back is reported", lit(`${CSS}\n@media (hover: hover) { .mcardp:hover .mcardp-watermark { opacity: 0.22; color: var(--brand-400); } }`));
-  ok("12.2 · the card still answers the pointer itself (the ring and the lift)", /\.mcardp:hover \{ transform: translateY\(var\(--m-lift\)\); border-color: var\(--brand-500\);/.test(CSS));
+  // RE-PINNED 2026-10-11 (round 9 of the visual pass, R9-C): the lift rides `translate` — on `transform` it never drew on a
+  // board card, whose `.market-grid > *` entrance (`kp-rise`, filled `both`) held `transform: none` (`test:visual-pass-r9c` §1).
+  ok("12.2 · the card still answers the pointer itself (the ring and the lift)", /\.mcardp:hover \{ translate: 0 var\(--m-lift\); border-color: var\(--brand-500\);/.test(CSS));
 }
 
 /* ══ §13 · G20 · IDS ON THE RECEIPTS ═══════════════════════════════════════════════════════════════════════════ */

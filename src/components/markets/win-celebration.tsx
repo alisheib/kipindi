@@ -349,16 +349,22 @@ export function WinCelebrationHost() {
         )}
 
         {/* Struck gilt — the earned-money CTA (M3). Rows past the 4th land
-            together with the cascade cap; that is the stagger law. */}
-        <button
-          ref={continueRef}
-          type="button"
-          onClick={dismiss}
-          className="g-settle btn gilt-metal btn-md mt-5 w-full"
-          style={{ "--i": 5 } as CSSProperties}
-        >
-          {t.common.continue}
-        </button>
+            together with the cascade cap; that is the stagger law.
+            ⭐ THE ARRIVAL IS THE WRAPPER'S (round 9 of the visual pass, R9-C, 2026-10-11 — the podium's sibling). `.g-settle`
+            fills `both` and ends on `transform: none`, and an animation outranks a state rule: on the button itself it held
+            `transform` for as long as the seal was open, so the kit's hover lift and press (`.btn`, `.gilt-metal`) never drew
+            on the one button the moment is for. The wrapper arrives in the cascade (`--i`, `.seal-cascade > .g-settle`) and
+            the button keeps its own motion. */}
+        <div className="g-settle mt-5 w-full" style={{ "--i": 5 } as CSSProperties}>
+          <button
+            ref={continueRef}
+            type="button"
+            onClick={dismiss}
+            className="btn gilt-metal btn-md w-full"
+          >
+            {t.common.continue}
+          </button>
+        </div>
       </div>
     </Modal>
   );

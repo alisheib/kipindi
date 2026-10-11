@@ -100,14 +100,15 @@ export default function LiveLoading() {
               </div>
               {/* TippingBar with labels — 57px at 320, 360, 414 and 1280 alike. */}
               <div className="kp-shimmer-track h-[57px] w-full rounded bg-bg-overlay" />
-              {/* CTA + dot rail — the page's row: the button's own box with its words, then the rail's six 24px targets
-                  (`featured-contest.tsx`), `flex-wrap` and the same 16px gap, so it wraps where the page's row wraps. */}
+              {/* CTA + dot rail — the page's row: the button's own box with its words, then the rail's six targets
+                  (`featured-contest.tsx`: each its drawing and 9px either side, the first 9px taken back into the row's
+                  gap — R9-C), `flex-wrap` and the same 16px gap, so it wraps where the page's row wraps. */}
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <ButtonGhost size="md">{t.market.openMarket}</ButtonGhost>
-                <div className="flex items-center">
+                <div className="-ml-[9px] flex items-center">
                   {Array.from({ length: 6 }).map((_, i) => (
-                    <span key={i} className="grid h-[40px] w-[24px] place-items-center">
-                      <span className="block h-1.5 rounded-full bg-bg-overlay" style={{ width: i === 0 ? 18 : 6 }} />
+                    <span key={i} className="grid h-[40px] place-items-center px-[9px]">
+                      <span className="block h-[6px] rounded-full bg-bg-overlay" style={{ width: i === 0 ? 18 : 6 }} />
                     </span>
                   ))}
                 </div>

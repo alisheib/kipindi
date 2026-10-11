@@ -128,8 +128,10 @@ export function WalletGhost({ bonusLive }: { bonusLive: boolean }) {
       {/* ⭐ THE PAGE'S BAR (`wallet-bar.tsx`), drawn since round 5's follow-up (R5-H · G-2b): this ghost had none, so the
           bar — 141px on a phone (row 1 10 + 44 + 8 + 17.25 − 4, row 2 12 + 44 + 10), 120 to 224px from 1024 — appeared
           from nothing between the rail and the list when the data landed (R5-B named it). It is the money books' one bar
-          ghost (`money-bar-ghost.tsx`, /wallet/receipts' too), with a player's eight lenses in `lensLabel`'s words. */}
-      <MoneyBarGhost t={t} lenses={[t.common.all, t.wallet.typeIn, t.wallet.typeOut, t.wallet.typeBet, t.wallet.typePayout, t.wallet.typeRefund, t.wallet.typeBonus, t.wallet.typeAdjust]} count={t.wallet.nResults.replace("{n}", "00")} />
+          ghost (`money-bar-ghost.tsx`, /wallet/receipts' too), with a player's lenses in `lensLabel`'s words — seven since
+          round 9 (R9-C, 2026-10-11): "Bonus" is offered only to an account with a bonus row, as the agent lenses are
+          (`visibleLedgerLenses([])`, which `test:visual-pass-r5h` 4.3 holds this list to). */}
+      <MoneyBarGhost t={t} lenses={[t.common.all, t.wallet.typeIn, t.wallet.typeOut, t.wallet.typeBet, t.wallet.typePayout, t.wallet.typeRefund, t.wallet.typeAdjust]} count={t.wallet.nResults.replace("{n}", "00")} />
 
       {/* The "All receipts" door (2026-10-07): a 44px row, right-aligned, over the list — as the page draws it for an
           account that has rows, which is the account that opens /wallet. ⭐ In the bar's rhythm by the page's own class
