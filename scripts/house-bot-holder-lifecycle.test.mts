@@ -198,7 +198,16 @@ ok("2.1 · ⭐ every script that writes an account fact is a suite, or carries t
  *     accounts it makes itself, in the memory twin or the LOOPBACK `.pgscratch` Postgres the dry-fire refuses to leave; its
  *     world holds no house bot. It now carries the L2-sweep declaration (2.1), saying so.
  */
-const SCRIPT_CEILING = 35;
+/**
+ * ⚠️ 35 → 36 on 2026-10-11, by the same rule: the one new member was READ before it was admitted. It is
+ * `scripts/lib/visual-pass-r8d-cases.mts` (c706c7c6, the Vodacom plan's R8-D, 2026-10-10), the shared cases of
+ * `test:visual-pass-r8d` and its two-store child. It enters on `db.user.create` (its fixture applicants and officers:
+ * `passwordHash: null`), `db.user.update` (`emailVerifiedAt`, set and cleared) and `db.responsible.upsert` (the
+ * cooling-off and self-exclusion rows the break cases need). It writes only to the accounts it makes itself, in the memory
+ * twin or the LOOPBACK `.pgscratch` Postgres of its own test process; its world holds no house bot. It is declared by
+ * the `-cases.mts` rule (2.1). Its lane moved neither count; `test:all` on c706c7c6 found it (2026-10-10 23:28).
+ */
+const SCRIPT_CEILING = 36;
 ok(`2.2 · the script population is shrink-only (${scriptWriters.length} found, ceiling ${SCRIPT_CEILING})`, scriptWriters.length <= SCRIPT_CEILING,
   scriptWriters.map((s) => s.file).slice(0, 6).join(" · "));
 
