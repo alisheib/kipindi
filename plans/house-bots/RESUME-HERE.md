@@ -407,7 +407,11 @@ KP_BASE=http://localhost:3031 KP_WIDTHS=360,1280 npm run -s qa:house-bots-visual
   - ⭐ Two traps worth carrying. (1) A rules LEAF needs its console key and help (`CONSOLE_RULE_KEY`,
     `CONSOLE_RULE_HELP`) — without them every rules save is refused as stale — and a place in `HouseBotRulesV1` and all
     three literals, or the validator checks the number and stores nothing. (2) The memory twin's `houseAtomic` does not
-    roll back the markets map: any write to market rows inside it must come LAST.
+    roll back the markets map: any write to market rows inside it must come LAST. (3) Since main's R9-D (2026-10-11)
+    every write to the market table is noted for the `/results` memos (`market-change-log.ts`), and
+    `test:results-freshness` C.1/C.1b list who may write it: a new writer outside `marketStore` must either note its
+    rows after commit or be classified there by what it writes — the shift is, as the one raw-SQL writer (only
+    `predictorExtra`, only on LIVE/CLOSED rows), found when main's round 9 merged in.
   - Found red on `main`, not this lane's: console pin 1.548 (marketing `a001261d` added `cmp` to the crumb id list on
     2026-10-08) — re-pinned to the list as it stands.
 

@@ -379,8 +379,10 @@ through a 60-second one (`getPlatformStats`), and every sign-off through a 60-se
 (`objectionRulings`). Tile 170 showed what a TTL alone allows: "0 imetatuliwa" beside a strip naming a settlement.
 Now every market write goes through `marketStore`, whose two twins note the row in an in-process change log
 (`src/lib/server/market-change-log.ts`) once it is COMMITTED (a write on a lock's transaction when that lock
-commits, `afterCommit` in `locks.ts`; the chain purge's direct batch after its own commit), and each memo re-reads
-exactly the rows noted since its read — the strip for polls only, the rulings on every objection write. That is
+commits, `afterCommit` in `locks.ts`; the chain purge's direct batch after its own commit; the desk's "Counts as"
+shift writes past the store unnoted, by design — it moves only the shown extra on open rows, which no memo holds),
+and each memo re-reads exactly the rows noted since its read — the strip for polls only, the rulings on every
+objection write. That is
 enough at `numReplicas` **1** (item 6). ⛔ It does not reach another process: an ops script writing the database,
 the old container during a deploy's 60-second overlap, or a second replica — those writes surface within each
 memo's TTL (5 min / 60 s), as before. Before a second container exists, the notes must travel the way

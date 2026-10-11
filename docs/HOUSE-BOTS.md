@@ -2657,20 +2657,56 @@ failed locked write answers `WRITE_FAILED` — nothing saved, no market moved.
 only" — it now reads "Whole numbers only — no decimals." (`WHOLE_NUMBER_COPY`); a negative in a field whose minimum is
 above 0 read "Must be 0 or more" while 0 was refused too — it now reads the field's own range (`parseCopyFor`).
 
-**Guards and proofs (measured on this build).**
+**Guards and proofs (measured on this build, with `main` `d21fe335` — the Vodacom plan's round 9 — merged in).**
+- **The battery is derived, never chosen:** every suite under `scripts/` that reads a changed file, by its path or its
+  import alias. On the feature (`03ba7a8c`): 185 suites. After merging main: the 153 that read a file both sides
+  touched, on the merged tree — 151 green at once; the two others are below. Not green, and why:
+  `test:orphans` (two `scripts/qa/landing-v3/panels/*.js`, red on `main` already — the landing lane's) and
+  `verify:house-bot-migrations-old-build` (NOT MEASURED, exit 3: it replays September's house migrations on an older
+  build; this column is expand-only and old-build-safe by construction — the old build names no `predictorExtra`, and
+  the column's default covers its inserts).
+- `typecheck` 0 errors · `next build` exit 0 · `verify:house-bot-bundle` ALL PASS (D19 over the built client).
 - `test:house-bot-rules` 639/0 — §15 pins every refused and accepted shape of the box, the raw reader and the stored
   parse; 9.P1/9.P3 feed stray v0 values and demand 1 out.
 - `test:house-bot-seam` 102/0 — §6 (s): a player's stake leaves the extra 0; a desk account at 100 adds 99 at its first
   stake, 0 at its second, and moves exactly its own 1,000.
-- `test:house-bot-console` memory 1123/0 — §2j 2.ca: the form row and its two sentences, six refused boxes (each on its
-  own field, nothing moved), a missing box refused as stale, 1 → 100 → 40 → 40 → 1 across LIVE, CLOSED, RESOLVED,
-  VOIDED, a market the account is not on and one only another account is on, the notice, the alert, the audit row, the
-  roster cell, and the floor.
-- `test:predictor-shown` (new) 37/0 with `--prove-red` — the player census (559 files), the admin/report census (419), the
-  browser census (368), the extra's four homes, the create-only write, and the bet-path site; all 12 declared plants
-  caught, each by its own check, on in-memory copies (no file written).
-- Declared mutations: 3 in `house-bot-seam.anchors.mjs` (`red:house-bot-money -- --only ca-`) and 8 in
-  `house-bot-console.anchors.mjs` (`red:house-bot-console -- --only ca-`).
+- `test:house-bot-console` memory 1123/0 · Postgres 822/0 — §2j 2.ca: the form row and its two sentences, six refused
+  boxes (each on its own field, nothing moved), a missing box refused as stale, 1 → 100 → 40 → 40 → 1 across LIVE,
+  CLOSED, RESOLVED, VOIDED, a market the account is not on and one only another account is on, the notice, the alert,
+  the audit row, the roster cell, and the floor.
+- `test:house-bot-money` memory 136/0 · Postgres 154/0 (§13, the stamp: pools, wallet and ledger exact) ·
+  `test:house-bot-reports` 251/0 · 80/0 (ruling 232's seven marked writes re-pinned, each the same write: +19 here, over
+  R9-D's +53) · `test:dal-parity` 2320/0 · `test:house-bot-surfaces` 74/0 · `test:house-bot-disclosure` 118/0.
+- `test:predictor-shown` (new) 27/0, and `red:predictor-shown` caught all 14 declared plants, each by its own check, on
+  in-memory copies (no file written): the player census (outside the true count's homes no file names `predictorCount`
+  at all — 1,046 files), the admin/report census (419), the browser census (368), the extra's homes, the create-only
+  write, the memory `set()`, the bet-path site, and the form's up/down choice.
+- `test:results-freshness` memory 58/0 · Postgres 58/0. ⚠️ **Found by the merge:** main's R9-D (`/results` never behind a
+  committed market write) bans any raw-SQL write to the market table (C.1b), and the shift is one. It is now classified
+  by what it writes — only `predictorExtra`, only on LIVE/CLOSED rows, exempt for `addToPool`'s reason: the memos hold
+  finished rows alone — and three one-off plants were caught (a second column in its SET, a predicate admitting
+  RESOLVED, a second raw writer in another file), each restored byte for byte. `market-change-log.ts` and
+  `docs/RAILWAY-LIVE.md` §13 name it.
+- Declared mutations, detached and alone on the committed tree: `red:house-bot-money -- --only ca-` 3/3 caught (the
+  seam's three) and `red:house-bot-console -- --only ca-` 8/8 caught (memory and Postgres plants); 0 files left dirty.
+  Four one-off rules proofs (`countsAsOf(0)`, the v0 clamp, the decimal and the negative copy): 4/4 caught, restored.
+  The merge changed none of their files, so they were not re-run after it (`red:predictor-shown`'s were, above).
+- `test:red-anchors` 5274/0 on the merged tree — every declared anchor resolves exactly once.
+- The migration, by `prisma migrate deploy`, on PostgreSQL 18.3 (scratch).
+- The render check — `qa:live` on `next dev`, in memory — 334/0.
+- The drive — `npm run qa:counts-as`, `next dev` on a scratch PostgreSQL 18.3 seeded with real desk stakes through the
+  real seam — 28/0, on the feature and again on the merged tree. 1 → 100: the account's open market reads 2 → 101 on the
+  player's detail page and card, the admin's Predictors tile still reads 2, its finished markets and every other market
+  stay as they were, the save says what it moved, and the before-Save sentence is gone once it lands. 100 → 50: warned
+  before Save in the warning ink, then 99 → 49. Back to 1: every market exactly as before. The served HTML of the detail
+  page, `/`, `/markets`, `/results`, `/live` and `/updown` names neither column. Tiles at 1280, 1024 and 360, each read.
+- **One adversarial review of the whole diff:** no blocker — the money, locking and D19 claims held. Fixed from it:
+  nothing had run on Postgres (every leg above has now); the before-Save sentence stayed up after a save; a document that
+  stopped parsing showed 1 while the real weight was N, so a repair save would have lowered open counts unannounced (the
+  form and the save now read the raw weight); a failed count of open markets dropped the warning (it now warns without
+  the number); the census missed destructuring, bracket reads and whole rows handed to a client (it now bans the name,
+  and the drive reads the served HTML); three "CONTROL" checks that could not fail are now population checks; two
+  sentences overstated (the reopen lock, the save's lock); the shift's row lock is `FOR NO KEY UPDATE`.
 - ⚠️ Found on the way, not this lane's: console pin 1.548 had been red on `main` since 2026-10-08 (marketing `a001261d`
   added `cmp` to the crumb builder's id list); the pin now types the list as it stands and keeps its point (`hb_` never).
 
