@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { MarketCurve, type CurvePoint } from "./market-curve";
 import { I } from "@/components/ui/glyphs";
+import { keepConnectivesItem } from "@/components/ui/keep-run";
 import { useT } from "@/lib/i18n";
 
 /**
@@ -80,7 +81,10 @@ export function ChartToggle({
       >
         <h2 id={HEADING_ID} className="flex items-center gap-1.5 font-mono text-micro uppercase eyebrow text-text-subtle">
           <I.chart s={11} edge="start" />
-          {t.market.probOverTime}
+          {/* No line ends on a connective (round 9, R9-B): sw "Uwezekano wa NDIYO kwa muda" (≈200px) shares the toggle's
+              row with its glyph and the chevron — ≈199px left at 320 — so a sub-pixel decides whether it wraps, and where
+              it does it would end on "kwa". Held, it can only break "…wa NDIYO" / "kwa muda". One flex item. */}
+          {keepConnectivesItem(t.market.probOverTime)}
         </h2>
         <I.chevronDown
           s={14}

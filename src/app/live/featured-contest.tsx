@@ -18,6 +18,7 @@ import { TippingBar } from "@/components/brand";
 import { I } from "@/components/ui/glyphs";
 // 2026-10-08 · G1: a Chinese "200毫米" in a slide's question never breaks between the number and its unit.
 import { keepFigures } from "@/components/ui/keep-words";
+import { keepConnectives } from "@/components/ui/keep-run";
 import { stemOf } from "@/lib/display-stem";
 import { useT } from "@/lib/i18n";
 
@@ -112,8 +113,12 @@ export function FeaturedContest({
             ⚠️ The gap is 12px (`gap-2`, this repo's scale), was 16: at 320 the longer half, "SHAKA ZAIDI"
             (≈81px with its tracking), had 80px and would have taken a third line; with 84 it keeps two.
             2026-10-10 · the caption is a section heading, so it wears the one section ink, `--text-subtle` — it was aqua,
-            /live's own eyebrow ink (Ali's ruling (3) of 2026-10-10, DESIGN_AUTHORITY §T3; test:visual-pass-r8b). */}
-        <p className="min-w-0 text-balance break-words font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{eyebrow}</p>
+            /live's own eyebrow ink (Ali's ruling (3) of 2026-10-10, DESIGN_AUTHORITY §T3; test:visual-pass-r8b).
+            2026-10-11 · round 9 (R9-B, tiles 175 202): no line ends on a connective — the balanced caption read "LILILO NA" /
+            "SHAKA ZAIDI" at sw 390; "na" keeps the space after it (`keepConnectives`), so it reads "LILILO" / "NA SHAKA
+            ZAIDI" at 360–390, and at 320 (84px) "LILILO" / "NA SHAKA" / "ZAIDI" — three lines of 14px, still inside the
+            arrows' 44px row, so nothing under it moves; from 412 it is one line, en and zh as before. */}
+        <p className="min-w-0 text-balance break-words font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{keepConnectives(eyebrow)}</p>
         {multi && (
           <div className="flex shrink-0 items-center gap-2">
             <Arrow dir="prev" onClick={() => go(-1)} />

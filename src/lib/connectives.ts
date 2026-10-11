@@ -4,12 +4,22 @@
  * Kuzuia / Uoshaji wa / Fedha na KYC" (/legal/aml): R5-A's `legalTitle` held a connective only as a title's second-to-last
  * word. The rule is now every connective, in every title and label that wraps: the connective and the white space after
  * it are one nowrap run, so the one break after it is gone and every other break stays — "Sera ya Kuzuia / Uoshaji / wa
- * Fedha na KYC", "Kanuni za Juu / na Chini". A run is a short word and a space, so it can never overflow a line (a
- * connective held with the WORD after it could: "ya NDIO/HAPANA" is 251px against the legal title's 184px at 320).
+ * Fedha na KYC", "Kanuni za Juu / na Chini". The run is the connective and its space, never the word after it, so a
+ * break INSIDE that word survives ("ya NDIO/" / "HAPANA": held with the whole word, "ya NDIO/HAPANA" is 251px against the
+ * legal title's 184px at 320).
  * Why a run that ENDS on its space holds: Chromium never breaks after a breakable space that closes a nowrap box
  * (`LineBreaker::HandleCloseTag` computes no break there, the `<span>1 </span>2` rule of `AppendCandidates`), and WebKit
- * and Gecko judge a space by its own box, which is nowrap.
+ * and Gecko judge a space by its own box, which is nowrap. ⚠️ So what cannot break is the connective AND the word after
+ * it, up to that word's first break — a pair each guard measures against the narrowest line its surface gives it
+ * (`test:visual-pass-r7a` §3.4 the legal titles; `test:visual-pass-r9b` §2 the -enye words: "kwenye akaunti" 124px on
+ * the empty state's 190px title line, "LENYE LESENI" 115px on the hero claim's 218px at 320).
  * The connectives are R5-A's list: sw ya · za · wa · la · cha · vya · kwa · na, en of · and · & (any case). Chinese has none.
+ * ⭐ ROUND 9 (2026-10-11, R9-B — the hero claim at sw 320 read "SOKO LA KWANZA" / "LA UTABIRI LENYE" / "LESENI TANZANIA"):
+ * the -enye relatives ("which has") introduce the noun after them exactly as "ya" or "la" do, and so does "kwenye" ("on,
+ * at"), a preposition that always leads into its noun. Each is in the list: lenye (class 5, "soko lenye leseni"),
+ * yenye (4 6 9), wenye (1 2 3 11 14), zenye (10), chenye (7), vyenye (8), penye (16, "mahali penye…"), mwenye (1, and the
+ * noun "mwenye akaunti" — the owner OF an account, which leads into its noun the same way) and kwenye. ⛔ NOT "lwenye":
+ * standard Swahili writes class 11 with w- ("ukuta wenye"), and no string uses it.
  * A name that is kept whole carries the connective that introduces it (`splitLeadConnective`), so the line above the name
  * never ends on it either: "Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania.", "Linatatuliwa" / "kwa Tanzania
  * Meteorological Authority".
@@ -18,8 +28,14 @@
  * `test:visual-pass-r7a` §3 holds to this one. Linear: found from each white space, the word before it read back (a
  * pattern of "word, space" tried at every place backtracks over a long last word).
  */
-export const CONNECTIVE_WORDS = "ya|za|wa|la|cha|vya|kwa|na|of|and|&";
+export const CONNECTIVE_WORDS = "ya|za|wa|la|cha|vya|kwa|na|lenye|yenye|wenye|zenye|chenye|vyenye|penye|mwenye|kwenye|of|and|&";
 const CONNECTIVE = new RegExp(`^(?:${CONNECTIVE_WORDS})$`, "i");
+
+/** Whether `word` (one whitespace-free word, any case) is a connective — what a held phrase carries with it when the
+ *  connective introduces that phrase (`possessiveRanges`, keep-run.tsx; `splitLeadConnective` below for a name). */
+export function isConnective(word: string): boolean {
+  return CONNECTIVE.test(word);
+}
 const COLLAPSIBLE_GAP = /[\t\n\f\r ]+/g;
 const WHITE = /\s/;
 

@@ -9,6 +9,8 @@ import { commissionWaterfall, type WaterfallStepId } from "@/lib/agent-commissio
 import { DEFAULT_GBT_LEVY_ON_COMMISSION_RATE, DEFAULT_OPERATOR_FEE_RATE, DEFAULT_PLATFORM_FEE_RATE, DEFAULT_TRA_TAX_ON_COMMISSION_RATE } from "@/lib/payout";
 import { MAX_DOC_BYTES } from "@/lib/id-documents";
 import { fillNodes } from "@/lib/fill-nodes";
+// The waterfall's head breaks where the page's does (round 9, R9-B).
+import { keepConnectives } from "@/components/ui/keep-run";
 import { fill, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import type { Dict } from "@/lib/i18n-dict";
@@ -165,7 +167,7 @@ export default function AgentLoading() {
         </p>
         <dl className="mt-3">
           <div className="flex items-baseline justify-between gap-4 border-b border-border pb-1.5">
-            <span className="font-mono text-micro uppercase eyebrow"><GhostText>{t.agent.wfColParam}</GhostText></span>
+            <span className="font-mono text-micro uppercase eyebrow"><GhostText>{keepConnectives(t.agent.wfColParam)}</GhostText></span>
             <span className="font-mono text-micro uppercase eyebrow kp-track-end"><GhostText>{t.agent.wfColAmount}</GhostText></span>
           </div>
           {WATERFALL.steps.map((s) => (

@@ -21,6 +21,8 @@ import type { Dict, Locale } from "@/lib/i18n-dict";
 import { sideWord } from "@/lib/side-label";
 // A module with no directive and only React's types: it adds nothing to the root's first load (`test:visual-pass-r4j` §3.8).
 import { keepRegulator } from "@/components/ui/keep-words";
+// keep-words' sibling (no directive; React's Fragment, keep-words and lib/connectives): the claim's connectives (round 9).
+import { keepConnectives } from "@/components/ui/keep-run";
 
 /**
  * The claim — "50pick │ Tanzania's first licensed prediction market" (spec §4; R9).
@@ -34,13 +36,19 @@ import { keepRegulator } from "@/components/ui/keep-words";
  * ⛔ "FIRST" IS READ ONLY INSIDE THE EVIDENCE BRANCH BELOW. `test:hero-copy` §1 fails if
  * `heroClaimFirst` is read anywhere else, or if any other string claims a first.
  * The text is stored in sentence case; CSS does the capitals.
+ * ⭐ NO LINE ENDS ON A CONNECTIVE (round 9, R9-B, 2026-10-11 — the owner's item 37, a label like any other): at sw 320 the
+ * balanced claim read "SOKO LA KWANZA" / "LA UTABIRI LENYE" / "LESENI TANZANIA", its second line ending on "lenye" ("which
+ * has"), which leads into "leseni" as "la" leads into "utabiri". Each connective keeps the space after it
+ * (`keepConnectives`; "lenye" joined lib/connectives.ts's list this round), so it reads "SOKO LA KWANZA" / "LA UTABIRI" /
+ * "LENYE LESENI TANZANIA" at 320; 360–412 and 1024–1150 keep "SOKO LA KWANZA LA UTABIRI" / "LENYE LESENI TANZANIA", 768
+ * and 1280 one line (round 8's tiles 013–020). The text span is its flex row's item, so the held runs inside it stay one.
  */
 export function Claim({ t }: { t: Dict }) {
   return (
     <p className="kp-hero__claim">
       <span className="kp-hero__claim-mark"><FiftyWordmark size={15} tz={false} /></span>{" "}
       <span className="kp-hero__claim-rule" aria-hidden />{" "}
-      <span className="kp-hero__claim-text">{FIRST_LICENSED_EVIDENCE() ? t.home.heroClaimFirst : t.home.heroClaim}</span>
+      <span className="kp-hero__claim-text">{keepConnectives(FIRST_LICENSED_EVIDENCE() ? t.home.heroClaimFirst : t.home.heroClaim)}</span>
     </p>
   );
 }
@@ -127,7 +135,13 @@ export function TrustLines({ t, locale, rails }: { t: Dict; locale: Locale; rail
     <ul className="kp-hero__trust" role="list">
       {/* ⭐ The Board's name is one name wherever the row can hold it (round 5, F18's rule, as the journey's footer keeps it):
           at sw 360–390 the balanced row read "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania.", the name torn in
-          two; it now reads "Leseni ya" / "Bodi ya Michezo ya Kubahatisha Tanzania." (`keepRegulator`, `.kp-gbt-row`). */}
+          two. Since round 7 the name carries the "ya" that introduces it (`keepRegulator`, `.kp-gbt-row`: the run is
+          277.4px, held from a 321px row), so the row reads — measured on round 8's tiles 013–020 —
+            sw 320 (a 288px row, under 321): "Leseni ya Bodi ya Michezo" / "ya Kubahatisha Tanzania." (the name wraps,
+              each connective held to the word after it);
+            sw 360–390: "Leseni" / "ya Bodi ya Michezo ya Kubahatisha Tanzania." (the one-word first line is the owner's
+              question K34 — this comment records it, it does not change it);
+            sw 412 and wider: one line. */}
       <li className="kp-gbt-row">
         <span className="kp-rg__18">{t.footer.eighteenPlus}</span>
         <span>{keepRegulator(t.footer.licensedByGbt)}</span>

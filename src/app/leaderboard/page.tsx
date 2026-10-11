@@ -9,6 +9,8 @@
 import { ROOT_OPEN_GRAPH } from "../layout";
 import { cn, fill, formatNumber, formatReturnRate } from "@/lib/utils";
 import { db } from "@/lib/server/store";
+// The table's heads never end a line on a connective (round 9, R9-B): "Madau ya siku 14" sits in an auto-layout column.
+import { keepConnectives } from "@/components/ui/keep-run";
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { listPositionsForUser } from "@/lib/server/market-service";
@@ -473,7 +475,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
               <th className="text-left p-3 w-14">#</th>
               <th className="text-left p-3">{t.leaderboard.tablePredictor}</th>
               <th className="text-right p-3">{t.leaderboard.tableRoi}</th>
-              <th className="text-left p-3 hidden md:table-cell">{t.leaderboard.tableStakes}</th>
+              <th className="text-left p-3 hidden md:table-cell">{keepConnectives(t.leaderboard.tableStakes)}</th>
               <th className="text-right p-3 hidden md:table-cell">{t.leaderboard.tableStreak}</th>
               <th className="text-right p-3">{t.leaderboard.tableResolved}</th>
             </tr>

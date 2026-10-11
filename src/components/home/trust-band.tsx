@@ -22,6 +22,7 @@ import { Chip } from "@/components/ui/chip";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { pickLocalized } from "@/lib/localized";
 import { stemOf } from "@/lib/display-stem";
+import { keepConnectivesItem } from "@/components/ui/keep-run";
 import { outcomeWord } from "@/lib/side-label";
 import { fill, formatTzs } from "@/lib/utils";
 import { formatEatDate } from "@/lib/eat-day";
@@ -80,7 +81,10 @@ export function TrustBand({
       <div className="kp-band__inner">
         <p className="kp-hero__eyebrow text-balance">
           <span className="kp-hero__tick" aria-hidden />
-          {t.home.trustEyebrow}
+          {/* No line ends on a connective (round 9, R9-B: the label family's sweep). The eyebrow is a flex row with its tick,
+              so the kept words are one item (`keepConnectivesItem`). sw "Kwa nini matokeo yanaweza kuaminiwa" (285px) wraps
+              at 320 on its own words; "Kwa" opens it, so its lines are as before. */}
+          {keepConnectivesItem(t.home.trustEyebrow)}
         </p>
         <Claim text={t.home.trustClaim} accent={t.home.trustClaimAccent} />
 

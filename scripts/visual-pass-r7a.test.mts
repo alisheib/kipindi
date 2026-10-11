@@ -234,11 +234,18 @@ const fillSide = (l: Loc, t: string) => t.replace("{yes}", word(l, "common.yes")
 const TICKETS: Record<Loc, string> = { sw: fillSide("sw", word("sw", "journey.ticketsEmptyOpenBody")), en: fillSide("en", word("en", "journey.ticketsEmptyOpenBody")), zh: fillSide("zh", word("zh", "journey.ticketsEmptyOpenBody")) };
 /** The `fill` empty state's measure: viewport − 32 (gutters) − 96 (padding) − 2 (border); at 1280 the reading column, 1016. */
 const FILL: Record<number, number> = { 320: 190, 390: 260, 1280: 1016 - 98 };
+// ⚠️ Pins moved 2026-10-11 (round 9, R9-B — B1): the body now also holds each possessive phrase with its noun ("your
+// ticket", "tiketi yako"; keep-run.tsx `possessiveRanges`), so its LINES are round 9's, laid out by `test:visual-pass-r9b`
+// §1. This section proves round 7's MECHANISM — the white space after a run its own node gives round 5's breaks back —
+// on round 7's runs: the dash with its unit, the YES/NO pair, the caller's runs, no phrase (`bodyR7`).
+const R7_PAIR = /\b[A-Z]{2,}[ \t]+(?:au|or)[ \t]+(?=([A-Z]{2,})\b)/g;
+const rangesR7 = (text: string, keep: string[] = []) => kr.mergeRanges([...kr.runAndDashRanges(text, keep), ...[...text.matchAll(R7_PAIR)].map((m): [number, number] => [m.index ?? 0, (m.index ?? 0) + m[0].length + m[1].length])]);
+const bodyR7 = (text: string, keep: string[] = []) => kr.keepRanges(text, rangesR7(text, keep));
 {
   const cells = LOCALES.flatMap((l) => [320, 390, 1280].map((vw) => {
     const text = TICKETS[l];
     const r5 = { text: r3Insert(text), ops: opportunities(r3Insert(text)), ty: EMPTY_TY };
-    const now = leaves(est.emptyStateBody(text));
+    const now = leaves(bodyR7(text));
     const r7 = { ...paragraph(now), ty: EMPTY_TY };
     const r6 = { ...paragraph(preR7(now)), ty: EMPTY_TY };
     return { l, vw, r5: lines(r5, balance(r5, FILL[vw])), r6: lines(r6, balance(r6, FILL[vw])), r7: lines(r7, balance(r7, FILL[vw])) };
@@ -253,8 +260,8 @@ const FILL: Record<number, number> = { 320: 190, 390: 260, 1280: 1016 - 98 };
   ok("1.2 · with the white space its own node, all nine break where round 5 broke them", cells.every((c) => show(c.r7) === show(c.r5)),
     j(cells.filter((c) => show(c.r7) !== show(c.r5))));
   ok("1.3 · the markup: the dash's run, then a text node of white space alone, then the words — \"…YES or NO —\" + \" \" + \"your ticket…\"",
-    fragileJoins(leaves(est.emptyStateBody(TICKETS.en))).length === 0 && /YES or NO —<\/span> <!-- -->your/.test(renderToString(h("p", null, est.emptyStateBody(TICKETS.en)))),
-    renderToString(h("p", null, est.emptyStateBody(TICKETS.en))));
+    fragileJoins(leaves(bodyR7(TICKETS.en))).length === 0 && /YES or NO —<\/span> <!-- -->your/.test(renderToString(h("p", null, bodyR7(TICKETS.en)))),
+    renderToString(h("p", null, bodyR7(TICKETS.en))));
 }
 {
   // The census: every dictionary sentence (en sw zh, placeholders filled) that holds a run under the empty state's rules,
@@ -271,8 +278,8 @@ const FILL: Record<number, number> = { 320: 190, 390: 260, 1280: 1016 - 98 };
     const text = v.replace(/\{(\w+)\}/g, (_, k: string) => k === "yes" ? word(l, "common.yes") : k === "no" ? word(l, "common.no") : /date|until|end/i.test(k) ? (keep.push(DATE[l]), DATE[l]) : "5");
     if (seen.has(l + text)) continue;
     seen.add(l + text);
-    if (est.emptyStateRanges(text, keep).length === 0) continue;
-    const now = leaves(est.emptyStateBody(keep.length ? { text, keep } : text));
+    if (rangesR7(text, keep).length === 0) continue;
+    const now = leaves(bodyR7(text, keep));
     const r7 = { ...paragraph(now), ty: EMPTY_TY };
     const r6 = { ...paragraph(preR7(now)), ty: EMPTY_TY };
     // The intended lines: round 5's inserted characters, or — for a sentence with a caller's date, which round 5 held as
@@ -450,8 +457,10 @@ section("3 · R5-3 R5-4 no line ends on a connective — legal titles, page titl
   ok("3.12 · the offline document draws the same: the connective inside the name's span, the name's connectives held (`.kp-nw`)",
     /const \[before, lead\] = splitLeadConnective\(cut\[0\]\);/.test(offSrc) && /heldConnectives\(lead \+ cut\[1\]\)/.test(offSrc) && offSrc.includes("`.kp-nw{white-space:nowrap}`"));
   const ge = raw("src/app/global-error.tsx");
+  // ⚠️ Pin moved 2026-10-11 (round 9, R9-B — B2): the -enye relatives and "kwenye" joined the list, in both copies
+  // (`test:visual-pass-r9b` §2 holds the decision word by word).
   ok("3.13 · global-error's copy of the connectives is lib/connectives.ts's, and its licence block takes the \"na\" before the name",
-    /const CONNECTIVE_WORDS = "ya\|za\|wa\|la\|cha\|vya\|kwa\|na\|of\|and\|&";/.test(ge) && conn.CONNECTIVE_WORDS === "ya|za|wa|la|cha|vya|kwa|na|of|and|&"
+    /const CONNECTIVE_WORDS = "ya\|za\|wa\|la\|cha\|vya\|kwa\|na\|lenye\|yenye\|wenye\|zenye\|chenye\|vyenye\|penye\|mwenye\|kwenye\|of\|and\|&";/.test(ge) && conn.CONNECTIVE_WORDS === "ya|za|wa|la|cha|vya|kwa|na|lenye|yenye|wenye|zenye|chenye|vyenye|penye|mwenye|kwenye|of|and|&"
       && /if \(lead && CONNECTIVE\.test\(lead\[1\]\.trim\(\)\)\) start -= lead\[1\]\.length;/.test(decomment(ge)));
   ok("3.14 · the connective rule has one home: keep-words.tsx and the offline document import lib/connectives.ts; legal/_components.tsx keeps no list of its own",
     /from "@\/lib\/connectives"/.test(code("src/components/ui/keep-words.tsx")) && /from "@\/lib\/connectives"/.test(offSrc) && !/CONNECTIVE\s*=/.test(code("src/app/legal/_components.tsx")));

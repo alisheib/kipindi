@@ -9,6 +9,7 @@
  */
 "use client";
 
+import { Children, Fragment } from "react";
 import Link from "next/link";
 import { FiftyMark } from "@/components/brand";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
@@ -25,6 +26,7 @@ import { SOCIAL_LIVE } from "@/lib/social";
 import { SOCIAL_MARK } from "@/components/ui/social-marks";
 import { useT } from "@/lib/i18n";
 import { keepRegulator } from "@/components/ui/keep-words";
+import { keepConnectives } from "@/components/ui/keep-run";
 import { inviteName } from "@/lib/journey/invite-name";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
@@ -207,8 +209,8 @@ export function PublicFooter({
         </div>
 
         <FooterCol heading={t.footer.playSafe}>
-          <FooterLink href="/profile/responsible-gambling">{t.footer.setLimits}</FooterLink>
-          <FooterLink href="/legal/responsible-gambling">{t.footer.takeABreak} / {t.footer.selfExclude}</FooterLink>
+          <FooterLink href="/profile/responsible-gambling" keep={journeyShown}>{t.footer.setLimits}</FooterLink>
+          <FooterLink href="/legal/responsible-gambling" keep={journeyShown}>{t.footer.takeABreak} / {t.footer.selfExclude}</FooterLink>
           {/* ⭐ OUR OWN DESK, LABELLED AS OURS — Ali, 2026-09-11. The footer published our EMAIL
               and no phone at all: a player who wanted to CALL us had to find `/help` first. It is
               on every page now, named "Contact us".
@@ -259,7 +261,7 @@ export function PublicFooter({
         </FooterCol>
 
         <FooterCol heading={t.footer.fairness}>
-          <FooterLink href="/fairness">{t.footer.resolutionAttestation}</FooterLink>
+          <FooterLink href="/fairness" keep={journeyShown}>{t.footer.resolutionAttestation}</FooterLink>
           {/* Proposals: dropped from the footer entirely when DISABLED; otherwise
               the current state flag rides the link (gilt / amber / none).
               2026-10-08 (WP12's tiles 299, 307) — where the label and its flag cannot share a line (the 216px column
@@ -267,13 +269,16 @@ export function PublicFooter({
               INAKUJA", where a greedy break had left the flag alone on the second line.
               ⛔ For the journey's footer ONLY (2026-10-09): the classic footer is frozen chrome and keeps main's
               greedy break, so its bytes and boxes stay main's (`journeyShown` above). Since round 5 the journey's label
-              is the page's own name (below), and the same balance shares its lines with the flag. */}
+              is the page's own name (below), and the same balance shares its lines with the flag. Round 9 (R9-B): with
+              its "ya" held (`keep`, FooterLink below), the balanced break puts the flag under the whole sw name in the
+              160px column at 768 and the 216px one at 1024 ("Mapendekezo ya Masoko" / its flag), as en's "Market
+              Proposals" / its flag already breaks at 768; one line from 1280. */}
           {/* ⭐ ONE PAGE, ONE NAME IN THE JOURNEY (round 5, F17): its footer names /proposals, /legal/privacy and /help as
               those pages name themselves — "Mapendekezo ya Masoko" (`proposals.title`), "Sera ya faragha / Privacy policy"
               (the privacy page's title, `common.consentMore`), "Msaada / Help" (`common.help`) — the words the journey's hub
               and avatar menu use since this round (`hub-rows.ts`). The classic footer keeps its words (frozen chrome). */}
           {proposalsState !== "DISABLED" && (
-            <FooterLink href="/proposals" balance={journeyShown}>
+            <FooterLink href="/proposals" keep={journeyShown} balance={journeyShown}>
               {journeyShown ? t.proposals.title : t.footer.proposeGetPaid}
               {/* The journey's flag a whole 18px (`kp-flag-xs`, round 7, R7-C); the classic footer's is today's (frozen chrome). */}
               <ProposalsStateBadge state={proposalsState} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className={journeyShown ? "ml-1.5 kp-flag-xs" : "ml-1.5"} />
@@ -284,25 +289,25 @@ export function PublicFooter({
               `/legal/terms` — the Terms of Service, which is a different document and is already
               linked from the Privacy column below. Now that the two products have actual rules
               documents, the label finally reaches what it promises. */}
-          <FooterLink href="/legal/rules">{t.footer.gameRtp}</FooterLink>
+          <FooterLink href="/legal/rules" keep={journeyShown}>{t.footer.gameRtp}</FooterLink>
           {/* The unpaid player invite — the page's own name, no reward word, same gate as every
               other door to it (see the prop's note above). Round 6 (review C1): in the journey, the page's own name for
               THIS reader — an agent's dashboard, the paid page's "Alika na upate zawadi" while invites pay. */}
-          {inviteVisible && <FooterLink href="/profile/invite">{journeyShown ? inviteName(t, { agent: inviteAgent, paid: invitePaid }) : t.profile.inviteFriends}</FooterLink>}
+          {inviteVisible && <FooterLink href="/profile/invite" keep={journeyShown}>{journeyShown ? inviteName(t, { agent: inviteAgent, paid: invitePaid }) : t.profile.inviteFriends}</FooterLink>}
           {/* ⭐ THE AGENT PROGRAMME'S ONE DOOR. Site chrome, visible signed out, a plain directory
               line — no badge, no gilt, no number, no earnings verb. ⛔ Never in the account menu:
               the footer is not the account, and an ordinary player is not solicited. */}
           {/* The public door closes with the programme — a link to a 404 is not a door — but
               it stays open for anyone already inside it. Resolved in `app-shell.tsx`. */}
-          {agentDoorVisible && <FooterLink href="/agent">{t.agent.footerLink}</FooterLink>}
-          <FooterLink href="/help">{journeyShown ? t.common.help : t.footer.helpSupport}</FooterLink>
+          {agentDoorVisible && <FooterLink href="/agent" keep={journeyShown}>{t.agent.footerLink}</FooterLink>}
+          <FooterLink href="/help" keep={journeyShown}>{journeyShown ? t.common.help : t.footer.helpSupport}</FooterLink>
         </FooterCol>
 
         <FooterCol heading={t.footer.privacy}>
-          <FooterLink href="/legal/privacy">{journeyShown ? t.common.consentMore : t.footer.privacyNotice}</FooterLink>
-          <FooterLink href="/legal/aml">{t.footer.amlKyc}</FooterLink>
-          <FooterLink href="/legal/terms">{t.footer.terms}</FooterLink>
-          <FooterLink href="/profile/account">{t.footer.exportClose}</FooterLink>
+          <FooterLink href="/legal/privacy" keep={journeyShown}>{journeyShown ? t.common.consentMore : t.footer.privacyNotice}</FooterLink>
+          <FooterLink href="/legal/aml" keep={journeyShown}>{t.footer.amlKyc}</FooterLink>
+          <FooterLink href="/legal/terms" keep={journeyShown}>{t.footer.terms}</FooterLink>
+          <FooterLink href="/profile/account" keep={journeyShown}>{t.footer.exportClose}</FooterLink>
         </FooterCol>
       </div>
     </footer>
@@ -374,9 +379,25 @@ function SocialLink({
   );
 }
 
-/** `balance` evens a label that wraps, so a flag riding its end never takes a line of its own (the proposals link, in
- *  the journey's footer alone — without it the class is not written, and the link is the classic footer's own). */
-function FooterLink({ href, children, balance = false }: { href: string; children: React.ReactNode; balance?: boolean }) {
+/** `balance` evens a label that wraps (the proposals link, in the journey's footer alone — without it the class is not
+ *  written, and the link is the classic footer's own): its flag rides the end of a balanced last line where the column
+ *  leaves it room, and sits under the whole name where it does not (en's at 768; sw's at 768–1024 since `keep`, below).
+ *  `keep` — every link of the journey's footer never ends a line on a connective (round 9, R9-B, tile 299: sw 1024 read
+ *  "Mapendekezo ya" / "Masoko [INAKUJA]", where the hub's label of the same name is held — R7-A's 3g). Each string the
+ *  link draws keeps the space after its connectives (`keepConnectives`); the flag beside it is drawn as it came. With
+ *  "ya" held the proposals link has two break candidates, and Chromium's balance then takes its bisection: it reads
+ *  "Mapendekezo ya Masoko" with its flag under it in the 160px column at 768 and the 216px one at 1024 (the flag and
+ *  its gap, ~85px, are wider than "Mapendekezo ", ~74px) — the hub's stacked tag (R7-C), and what en already draws at
+ *  768 ("Market Proposals" / "COMING SOON"); one line from 1280 and in the phones' single column. No other link wraps
+ *  on a connective at any width (`test:visual-pass-r9b` §4). ⛔ The classic footer is frozen chrome and none of ITS links ends a line on a connective
+ *  in any column (the same section measures them), so it keeps main's bytes — `journeyShown` passes `keep`. */
+/** A link's label with its connectives held (`keep` above): each string child through `keepConnectives`, an element (the
+ *  proposals flag) as it came. `Children.toArray` keys the elements, so the list needs no key of its own. */
+function keptLabel(children: React.ReactNode): React.ReactNode {
+  return Children.toArray(children).map((c, i) => (typeof c === "string" ? <Fragment key={`k${i}`}>{keepConnectives(c)}</Fragment> : c));
+}
+
+function FooterLink({ href, children, balance = false, keep = false }: { href: string; children: React.ReactNode; balance?: boolean; keep?: boolean }) {
   return (
     <li>
       <Link
@@ -388,7 +409,7 @@ function FooterLink({ href, children, balance = false }: { href: string; childre
            exactly 44, because `SocialLink` was given the rung and this component was not. */
         className="text-text-muted hover:text-text transition-colors inline-flex items-center gap-1 min-h-[44px] group"
       >
-        <span className={`border-b border-transparent group-hover:border-text-subtle transition-colors${balance ? " text-balance" : ""}`}>{children}</span>
+        <span className={`border-b border-transparent group-hover:border-text-subtle transition-colors${balance ? " text-balance" : ""}`}>{keep ? keptLabel(children) : children}</span>
       </Link>
     </li>
   );

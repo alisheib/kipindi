@@ -316,8 +316,10 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
   // load while it was drawn on the server, into its own chunk since round 5 (G1) — so the intro stays lean either way.
   const importsOf = (s: string) => [...s.matchAll(/^import [^;]*? from "([^"]+)";/gm)].map((m) => m[1]);
   // Round 5 (R5-A, F18) added keep-words: the trust row keeps the Board's name whole (`keepRegulator`). It is a module with
-  // no directive that imports only React's types, so it puts no client code into the root's first load.
-  const ALLOWED = ["@/components/ui/glyphs", "@/components/brand", "@/lib/utils", "@/lib/support-config", "@/lib/rail-list", "@/lib/i18n-dict", "@/lib/side-label", "@/components/ui/keep-words"];
+  // no directive that imports only React's types, so it puts no client code into the root's first load. Round 9 (R9-B) added
+  // keep-run, its sibling: the claim never ends a line on a connective (`keepConnectives`). No directive either; it imports
+  // React's Fragment, keep-words and lib/connectives — text helpers, no card, pill or bar.
+  const ALLOWED = ["@/components/ui/glyphs", "@/components/brand", "@/lib/utils", "@/lib/support-config", "@/lib/rail-list", "@/lib/i18n-dict", "@/lib/side-label", "@/components/ui/keep-words", "@/components/ui/keep-run"];
   const lean = (s: string) => importsOf(s).every((m) => ALLOWED.includes(m)) && !hasDirective(s, "use client");
   ok("3.8 · hero-intro.tsx imports only what the three parts draw with (no market card, filter pill or tipping bar into the root's first load)", lean(intro), JSON.stringify(importsOf(intro)));
   ok("3.8′ PLANT · the market card imported there is reported", !lean(`import { MarketCard } from "@/components/markets/market-card";\n${intro}`));

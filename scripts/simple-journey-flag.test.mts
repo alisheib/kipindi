@@ -739,9 +739,11 @@ function g10Wiring(W: World) {
       writes: tallyFooter('${balance ? " text-balance" : ""}'),
       rendered: FOOTER_RENDERED,
     };
+    // Round 9 (R9-B): every FooterLink also passes keep={journeyShown} — the journey's connective hold rides the same arm as
+    // the balance, so the proposals link's tag reads both; the classic link's class string and bytes stay main's.
     ok("10.shell.chrome.footer · the footer's journey look rides the journeyShown arm alone: the else arm is today's PublicFooter with today's props, only the journey's footer balances the proposals link, and rendered, the classic link carries main's class string exactly and the journey's adds text-balance",
       footer.swap === 1 && footer.mounts === 2 && footer.unlessSaid === 1 && footer.writes === 1
-        && asksBalance.length === 1 && asksBalance[0] === '<FooterLink href="/proposals" balance={journeyShown}>'
+        && asksBalance.length === 1 && asksBalance[0] === '<FooterLink href="/proposals" keep={journeyShown} balance={journeyShown}>'
         && FOOTER_RENDERED.classic === FOOTER_PROPOSALS_CLASS && FOOTER_RENDERED.journey === `${FOOTER_PROPOSALS_CLASS} text-balance`,
       j(footer));
   }

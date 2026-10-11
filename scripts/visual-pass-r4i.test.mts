@@ -494,8 +494,10 @@ section("5 · the bet confirm fits the screen and keeps its answers on it; its a
   // ⚠️ Pin moved 2026-10-09 (round 5, R5-E, F1 F4 and review 3 H1): the title also keeps its figures whole — the runs
   // `keepFigures` keeps on every card (`figureRuns`) are its kept runs too — so the call is
   // `keepText(marketTitle, figureRuns(marketTitle))`; the last two words are kept as before.
+  // ⚠️ Pin moved 2026-10-11 (round 9, R9-B): keepText now holds a possessive and its noun (keep-run.tsx `possessiveRanges`),
+  // and a market's title is data, so the dialog passes `{ phrases: false }` — its figures and last two words held as before.
   ok("5.5 · the title, the exit terms (\"5 minutes\" one run), the disclosures and the footnote are kept whole",
-    /\{keepText\(marketTitle, figureRuns\(marketTitle\)\)\}/.test(BCM) && /keepText\(freeExitBody, exitMinsRun \? \[exitMinsRun\] : \[\]\)/.test(BCM)
+    /\{keepText\(marketTitle, figureRuns\(marketTitle\), \{ phrases: false \}\)\}/.test(BCM) && /keepText\(freeExitBody, exitMinsRun \? \[exitMinsRun\] : \[\]\)/.test(BCM)
       && /\{keepText\(t\.dialog\.poolSharePayout\)\}/.test(BCM) && /\{keepText\(t\.dialog\.estimateDisclaimer\)\}/.test(BCM));
   const run = new RegExp(`\\S+\\s+5\\s+\\S+`).exec(fill(T.en.dialog.freeExitBodyLocked, { mins: 5, lock: 5, pct: 9 }))?.[0];
   ok(`5.5′ · the exit run is "${run}" in English, "${new RegExp(`\\S+\\s+5\\s+\\S+`).exec(fill(T.sw.dialog.freeExitBodyLocked, { mins: 5, lock: 5, pct: 9 }))?.[0]}" in Swahili`, !!run && run.includes("5 minutes"));

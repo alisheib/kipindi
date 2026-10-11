@@ -91,8 +91,9 @@ const REGULATOR_NAME = /Gaming Board of Tanzania|Bodi ya Michezo ya Kubahatisha 
  * block now ("…Imepewa leseni" / "na Bodi ya Michezo ya Kubahatisha Tanzania"), and inside the block each connective
  * keeps the space after it, so a line too narrow for the block never ends on "ya" either. The words are
  * `lib/connectives.ts`'s, copied (this boundary may import nothing but React); `test:visual-pass-r7a` §3 holds the copy.
+ * Round 9 (R9-B, 2026-10-11): the -enye relatives and "kwenye" joined the list, here as there (`test:visual-pass-r9b` §2).
  */
-const CONNECTIVE_WORDS = "ya|za|wa|la|cha|vya|kwa|na|of|and|&";
+const CONNECTIVE_WORDS = "ya|za|wa|la|cha|vya|kwa|na|lenye|yenye|wenye|zenye|chenye|vyenye|penye|mwenye|kwenye|of|and|&";
 const CONNECTIVE = new RegExp(`^(?:${CONNECTIVE_WORDS})$`, "i");
 
 function holdConnectives(s: string) {

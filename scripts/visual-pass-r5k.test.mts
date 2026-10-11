@@ -578,8 +578,10 @@ section("7 · /positions/performance — the page's bands in the page's order");
   const page = squash(code(FILES.performancePage)), ghost = squash(code(FILES.performance));
   const PAGE = ["<BackLink ", "<PageHeader eyebrow={section} title={t.performance.title} />", '<section aria-label={t.performance.netPnl} className="glass-panel p-5">', '<section aria-label={t.performance.pnlOverTime} className="glass-panel p-5">',
     '<section className="grid grid-cols-1 gap-3 md:grid-cols-2">', '<section className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(158px, 1fr))" }}>', '<h2 className="mb-3 flex items-baseline gap-2">', '<div className="rounded-xl border border-border bg-bg-elevated overflow-hidden divide-y divide-border/50">'];
-  const GHOST = ["<BackLinkGhost />", "<PageHeader eyebrow={journey ? t.journey.tabTickets : t.common.positions} title={t.performance.title} />", "{`${t.performance.netPnl} · ${t.common.settled}`}", "{t.performance.pnlOverTime}",
+  const GHOST = ["<BackLinkGhost />", "<PageHeader eyebrow={journey ? t.journey.tabTickets : t.common.positions} title={t.performance.title} />", "{`${t.performance.netPnl} · ${t.common.settled}`}", "{keepConnectives(t.performance.pnlOverTime)}",
     '<section className="grid grid-cols-1 gap-3 md:grid-cols-2" aria-hidden>', '<section className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(158px, 1fr))" }} aria-hidden>', '<h2 className="mb-3 flex items-baseline gap-2">', '<div className="rounded-xl border border-border bg-bg-elevated overflow-hidden divide-y divide-border/50">'];
+  // ⚠️ Pin moved 2026-10-11 (round 9, R9-B): the chart's caption never ends a line on a connective, on the page and in this
+  // ghost alike (`keepConnectives`), so the ghost's band reads the kept call.
   const p = inOrder(page, PAGE), g = inOrder(ghost, GHOST);
   ok("7.1 · the ghost's bands are the page's, in the page's order — the back link, the head, the net P&L panel, the chart, the best-win and streak cards, the two stake tiles, the recent rows (it drew a stat card, four boxes, a streak bar, a chart and three rows: an older page)",
     p === "" && g === "" && count(ghost, '<section className="glass-panel p-5 kp-shimmer-track" aria-hidden>') === 2

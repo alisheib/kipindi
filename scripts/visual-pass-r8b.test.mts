@@ -216,9 +216,11 @@ const REGISTRY: Array<{ file: string; key: string; role: Role; inks: string[]; w
     why: "the result's outcome line (\"Bet placed\", a failure) — said in its crest's tone" },
   { file: "src/components/ui/unsaved-changes.tsx", key: "{savedNow?.text}", role: "STATUS", inks: ["text-success-fg"], why: "\"Saved\" — a success" },
   { file: "src/components/ui/unsaved-changes.tsx", key: "{shownLabel}", role: "STATUS", inks: ["text-warning-fg"], why: "\"Unsaved changes\" — somebody must act" },
-  { file: "src/app/profile/kyc/page.tsx", key: "{node.label}", role: "STEPPER", inks: ["text-brand-300", "text-text", ONE_INK],
+  // Round 9 (R9-B): the KYC rail's step labels and the fairness chain's draw through the keep (`keepConnectives`), so
+  // these two keys read the call; the site, the role and the inks are the same.
+  { file: "src/app/profile/kyc/page.tsx", key: "{keepConnectives(node.label)}", role: "STEPPER", inks: ["text-brand-300", "text-text", ONE_INK],
     why: "the KYC rail: a done step `--text`, the current step brand, a step to come the one ink — the step's state" },
-  { file: "src/app/fairness/page.tsx", key: "{s.label}", role: "STEPPER", inks: ["text-brand-300", ONE_INK],
+  { file: "src/app/fairness/page.tsx", key: "{keepConnectives(s.label)}", role: "STEPPER", inks: ["text-brand-300", ONE_INK],
     why: "the provably-fair chain: drawn as the KYC rail's current step (R5-C) — the seal brand, every other step the one ink" },
   { file: "src/components/markets/conviction-dial.tsx", key: "t.market.sideYesWord.toUpperCase()", role: "SIDE", inks: [],
     why: "the dial's poles: the side the stake leans to in its betting ink, the rest `var(--text-subtle)` (inline, per span)" },

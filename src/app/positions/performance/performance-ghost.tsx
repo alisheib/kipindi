@@ -1,6 +1,8 @@
 "use client";
 
 import { useT } from "@/lib/i18n";
+// The caption pair breaks where the page's does (round 9, R9-B).
+import { keepConnectives } from "@/components/ui/keep-run";
 import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
 import { BackLinkGhost } from "@/components/ui/back-link";
@@ -78,8 +80,8 @@ export function PerformanceGhost({ journey }: { journey: boolean }) {
           panel's width, so a third as tall — and under `sm` the svg's HTML twin line. */}
       <section className="glass-panel p-5 kp-shimmer-track" aria-hidden>
         <div className="mb-3 flex items-center justify-between gap-3">
-          <span className="gilt-eyebrow"><GhostText>{t.performance.pnlOverTime}</GhostText></span>
-          <span className="text-right font-mono text-micro uppercase tracking-[0.08em] kp-track-end kp-track-end--08"><GhostText>{t.performance.cumulativePerSettlement}</GhostText></span>
+          <span className="gilt-eyebrow"><GhostText>{keepConnectives(t.performance.pnlOverTime)}</GhostText></span>
+          <span className="text-right font-mono text-micro uppercase tracking-[0.08em] kp-track-end kp-track-end--08"><GhostText>{keepConnectives(t.performance.cumulativePerSettlement)}</GhostText></span>
         </div>
         <div className="aspect-[3/1] w-full rounded bg-bg-overlay" />
         <p className="sm:hidden mt-1.5 mb-0 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-body-sm tabular-nums">

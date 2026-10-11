@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { keepConnectives } from "./keep-run";
+import { keepConnectives, keepConnectivesItem } from "./keep-run";
 import { edgeGlyph } from "./glyphs";
 import { stemOf } from "@/lib/display-stem";
 
@@ -82,7 +82,11 @@ export function PageHeader({
               visual pass, 2026-10-11; round 7's reader D5: the deposit head's glyph stood 1.3px inside its title). The slot
               pulls a family glyph past its box's padding (`edgeGlyph`, glyphs.tsx); anything else is drawn as given. */}
           {edgeGlyph(icon, "start")}
-          {eyebrow}
+          {/* Round 9 (R9-B, the label family): the eyebrow never ends a line on a connective either — it can wrap (the KYC
+              head's "Uthibitisho wa kitambulisho" did at 320 before `eyebrowTight`). It is a flex row with its glyph, so
+              the kept words are one item (`keepConnectivesItem`); an eyebrow without a connective, or handed in as nodes
+              (a ghost's), is drawn exactly as before. */}
+          {typeof eyebrow === "string" ? keepConnectivesItem(eyebrow) : eyebrow}
         </p>
       )}
       {/* ⭐ DG-P-03 · §T1/§T7 — ONE LINE, 31 CALL SITES, AND NOT ONE PIXEL MOVES.
