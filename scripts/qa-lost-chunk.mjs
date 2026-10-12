@@ -5,7 +5,7 @@
  * WP6c's untracked lost-chunk drive (VODACOM-PLAN §0i, WP6c's verification 4).
  *
  *   BASE=http://localhost:3061 npm run qa:lost-chunk                       the drive
- *   BASE=http://localhost:3061 npm run qa:lost-chunk -- --expect-crash     the CONTROL reading, on L1's parent (below)
+ *   BASE=http://localhost:3061 npm run qa:lost-chunk -- --expect-crash     the CONTROL reading, L1's one file put back (below)
  *   npm run -s qa:lost-chunk -- --self-test                                the instrument's own controls: no server, no browser
  *
  * WHAT IT DRIVES. A classic page (`/help`: no journey pass is held, and the chat bubble, the primer and the consent
@@ -31,17 +31,21 @@
  * against every file under `src/` before anything is driven) — is aborted; every other script is handed on unchanged.
  * A marker held by no script a page asked for leaves .0 NOT MEASURED.
  *
- * ⭐ IT IS ITS OWN RED CONTROL (A13(b): "red on L1's parent"). On a server of the tree BEFORE L1, `lazy-overlays.tsx`'s
- * two loaders end in no guard, so the same aborted chunk reaches `global-error.tsx`'s critical-error screen: L.chat.1 and
+ * ⭐ IT IS ITS OWN RED CONTROL (A13(b): "red on L1's parent"). With `lazy-overlays.tsx` as it stood BEFORE L1, its two
+ * loaders end in no guard, so the same aborted chunk reaches `global-error.tsx`'s critical-error screen: L.chat.1 and
  * L.primer.1 FAIL, naming that screen, while L.consent still passes (the shell's parts were guarded already) — which
- * also shows the drive can tell a page that fell from one that stood. The procedure, ONE SERVER AT A TIME under the
- * machine's heavy-job lock (never two worktrees served at once):
- *   1. on L1's commit: `rm -rf .next`, start an in-memory dev server, run the drive (it must PASS), stop the server;
- *   2. `rm -rf .next`, check L1's PARENT out in the same worktree, start the server, run the drive again: it must FAIL
- *      L.chat.1 (and L.primer.1) on the critical-error screen — or run it with `--expect-crash`, which reads the same
- *      three cells as a control that must hold (the two overlays' pages fall, the consent prompt's stands) and exits 0
- *      only when they do; stop the server;
- *   3. `rm -rf .next` and check L1's commit out again.
+ * also shows the drive can tell a page that fell from one that stood.
+ * ⚠️ ONLY THAT ONE FILE GOES BACK, NEVER THE CHECKOUT: L1's parent holds neither this drive nor its package script, so the
+ * control keeps the drive (L1's tree) and puts `lazy-overlays.tsx` back as the parent had it. `<L1>` below is L1's
+ * commit on the branch being proven. The procedure, ONE SERVER AT A TIME under the machine's heavy-job lock (never two
+ * worktrees served at once):
+ *   1. on L1's tree: `rm -rf .next`, start an in-memory dev server, run the drive (it must PASS), stop the server;
+ *   2. `git checkout <L1>~1 -- src/components/layout/lazy-overlays.tsx`, `rm -rf .next`, start the server and run
+ *      `npm run qa:lost-chunk -- --expect-crash`: the tree reader says 0 of lazy-overlays.tsx's 2 loaders end in the
+ *      guard, and the run reads the three cells as a control that must hold (the two overlays' pages fall on the
+ *      critical-error screen, the consent prompt's stands), exiting 0 only when they do — without the flag, the same run
+ *      FAILS L.chat.1 and L.primer.1 on that screen; stop the server;
+ *   3. `git checkout <L1> -- src/components/layout/lazy-overlays.tsx`, `rm -rf .next`, and `git status` must be clean.
  * Both runs are recorded in VODACOM-PLAN §0j. The drive prints which of the two trees ITS OWN checkout is (it reads the
  * loaders in `lazy-overlays.tsx`), so a reading is never taken for the other tree's.
  *
@@ -238,7 +242,7 @@ async function drive() {
   console.log(`qa:lost-chunk — ${BASE}${PAGE}, as a guest and as the demo player${EXPECT_CRASH ? " — THE CONTROL READING (--expect-crash)" : ""}`);
   console.log(guarded === 2
     ? "  this checkout: both of lazy-overlays.tsx's loaders end in the guard (L1 or later) — every reading below should PASS on a server of this tree"
-    : `  this checkout: ${guarded} of lazy-overlays.tsx's 2 loaders end in the guard (L1's PARENT, or older) — on a server of this tree L.chat.1 and L.primer.1 are expected to FAIL on the critical-error screen (A13's control${EXPECT_CRASH ? "" : "; --expect-crash reads it as one"})`);
+    : `  this checkout: ${guarded} of lazy-overlays.tsx's 2 loaders end in the guard (lazy-overlays.tsx as L1's parent had it, or older) — on a server of this tree L.chat.1 and L.primer.1 are expected to FAIL on the critical-error screen (A13's control${EXPECT_CRASH ? "" : "; --expect-crash reads it as one"})`);
   if (EXPECT_CRASH && guarded === 2) console.log("  ⚠️ --expect-crash on a tree that carries the guard: the control is expected to FAIL here");
 
   const { chromium } = await import("playwright");
@@ -332,7 +336,7 @@ async function drive() {
   console.log(`\nqa:lost-chunk — ${count("PASS")} passed, ${count("FAIL")} failed, ${count("NOT MEASURED")} not measured${EXPECT_CRASH ? " (the control reading)" : ""}`);
   for (const r of bad) console.log(`  · ${r[1]} ${r[0]}${r[2] ? ` — ${r[2]}` : ""}`);
   if (!EXPECT_CRASH && bad.some((r) => r[1] === "FAIL" && / · L[.](?:chat|primer)[.]1 · /.test(r[0]) && r[2].includes("critical-error screen"))) {
-    console.log("  ↳ a lost overlay chunk reached the critical-error screen: this is the reading L1's PARENT gives (A13's control). On L1 or later it is a regression.");
+    console.log("  ↳ a lost overlay chunk reached the critical-error screen: this is the control's reading (lazy-overlays.tsx as L1's parent had it, A13). With L1's file it is a regression.");
   }
   return bad.length === 0 ? 0 : 1;
 }
