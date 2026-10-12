@@ -67,10 +67,38 @@
  * entries, in EXPECTED_DIFFS), with 4.2b holding each layout to the markup that draws it as 4.6 holds the Sell cells'
  * (P.5p and P.6p prove both). The footer's proposals link, which the pass balanced, is the journey's alone (AppShell's
  * footer arms), so the classic footer still compares equal and names nothing.
+ * ⭐ S7 WP1 (S7-PLAN WP1, amendments A8 and A2 item 3) — VERSION 3: A CLASSIC READER'S PAGE BODIES ON EVERY S7 ROUTE. S7's
+ * binding promise is that a classic visitor is served the same pages, and v2 captured only the shell's regions and the
+ * signed-in /positions body: it never visited /live, /results or /watchlist. After the matrix and the Sell capture (which
+ * keeps its { markets: 5 }), the BOOK phase seeds the demo player's book through dev-test doors that already exist, in
+ * A8's order, and judges each reply (bookVerdict): seed-markets must name at least 12 LIVE non-demo questions (the pool
+ * is recorded); seed-player-portfolio { markets: 12 } must place 12 with one VOID intended, the player must hold VOID, WIN
+ * and LOSS positions, and no refusal is allowed but an Up & Down one, which is recorded and never fails (A8 names the
+ * cashOut, stage1, settle and void ones; a refusal of any other kind is refused too, never read past); seed-watchlist must
+ * answer ok with void, done and progress rows. Then, before anything is recorded, A8 item
+ * 2's probe (probeVerdict): /results shows the voided question's card (marketIds[11]) drawn void and settled YES and NO
+ * cards, and /watchlist void, done and selection-closed cards. A refused book or probe makes the baseline INVALID: no
+ * book cell is captured and no baseline is written. Per book cell (guest and player × en and sw × 360 and 1280): the
+ * normalised <main> — markup, boxes and computed styles — of /, /markets, /live and /results, /watchlist for the player
+ * only (edge-protected), the similar rail of the book's first question (marketIds[0]), the LIVE strip on the four lobby
+ * routes — read in the product's own still state, the readable list at scroll 0 (the marquee's first frame), through a
+ * style in the document head outside every captured region, because a running marquee put two captures of one cell on
+ * one server 60 of its 73 element lines apart — and /'s head from the BYTES (the canonical link and every og:* meta, in
+ * order). Every classic card state S7 touches must be drawn somewhere in the book (B.7): live priced, one-sided, empty
+ * pool, selection closed, resolved YES and NO, void. The book's normalisers (BOOK_NORMALISERS: market ids, time-left
+ * labels, EAT dates, relative times, chart paths, the identity avatar's ids, chunk hashes) exist one by one and are OFF
+ * unless calibration proves two fresh servers of one tree disagree on them (WP1 step 4: never guessed); this file's
+ * switches turn them on, `--norm <ids>` (or KP_PARITY_NORMALISE) for one run. A baseline records its set
+ * (matrix.book.normalise), and a compare under another set is refused, as is any file that is not v3. The live trace
+ * sees S7's class names too (A8 item 3, JOURNEY_CLASS_PARTS). --prove-red is taught the bodies: each §B check goes red on
+ * its own plant (P.check B.*); the head reader, the normalisers, A8's two verdicts, the card classifier and the trace are
+ * tried on synthetic input (P.8*); and in the browser a card class changed in one route's body is reported in that body
+ * only, a dropped og:url in the head, and a journey-* id or a kp-jcard element in a classic page as a trace.
  *
  *   KP_BASE=http://localhost:3041 npm run qa:classic-shell-parity                  (the control: --prove-red is the default)
- *   KP_BASE=http://localhost:3041 npm run qa:classic-shell-parity -- --baseline <scratchpad>/parity-<sha8>.json
- *   KP_BASE=http://localhost:3041 npm run qa:classic-shell-parity -- --compare <scratchpad>/parity-<sha8>.json
+ *   KP_BASE=http://localhost:3041 npm run qa:classic-shell-parity -- --baseline <scratchpad>/parity-v3-<sha8>.json
+ *   KP_BASE=http://localhost:3041 npm run qa:classic-shell-parity -- --compare <scratchpad>/parity-v3-<sha8>.json
+ *   … any of the three with --norm <id>,<id> (or KP_PARITY_NORMALISE=<id>,<id>): the book's normalisers for this run only
  *
  * ⭐ THE INSTRUMENT IS CALIBRATED BEFORE IT IS TRUSTED: --prove-red green, then the baseline, then — on a FRESH server
  * at the same commit — a null --compare that must exit 0. Every server mints a new demo user, store and ids; what
@@ -119,7 +147,7 @@ const fileError = (pageErrors, devOnly) => (e) => { const m = norm(msg(e)).slice
 const short = (sha) => String(sha ?? "").slice(0, 8);
 const refuse = (text) => { console.error(`REFUSED — ${text}`); process.exit(2); };
 const argv = process.argv.slice(2);
-const FLAGS = new Set(["--baseline", "--compare", "--prove-red", "--allow-base", "--allow-dirty"]);
+const FLAGS = new Set(["--baseline", "--compare", "--prove-red", "--allow-base", "--allow-dirty", "--norm"]);
 const valueOf = (flag) => { const i = argv.indexOf(flag); return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith("--") ? argv[i + 1] : null; };
 const BASELINE = valueOf("--baseline");
 const COMPARE = valueOf("--compare");
@@ -133,13 +161,113 @@ const MODE = BASELINE ? "baseline" : COMPARE ? "compare" : "prove-red";
   const modes = [BASELINE, COMPARE, PROVE_RED || null].filter(Boolean).length;
   const bad = unknown.length || modes !== 1
     || (argv.includes("--baseline") && !BASELINE) || (argv.includes("--compare") && !COMPARE)
-    || (ALLOW_BASE && !COMPARE) || (ALLOW_DIRTY && !BASELINE);
+    || (ALLOW_BASE && !COMPARE) || (ALLOW_DIRTY && !BASELINE) || (argv.includes("--norm") && !valueOf("--norm"));
   if (bad) {
-    console.error("USAGE — exactly one of: --baseline <new file> [--allow-dirty] · --compare <baseline file> [--allow-base] · --prove-red (the default)"
+    console.error("USAGE — exactly one of: --baseline <new file> [--allow-dirty] · --compare <baseline file> [--allow-base] · --prove-red (the default); with any of them --norm <id>,<id> (or none)"
       + (unknown.length ? `  (unknown: ${unknown.join(" ")})` : ""));
     process.exit(2);
   }
 }
+
+// ── S7 WP1 · the book's normalisers, and the switch that turns them on (WP1 step 4) ──────────────────────────
+/**
+ * ⭐ NORMALISE ONLY WHAT CALIBRATION SHOWS TWO FRESH SERVERS OF ONE TREE DISAGREE ON; NEVER GUESS (S7-PLAN WP1 step 4).
+ * Each candidate the plan names exists here one by one, and each is OFF until a calibration null pair (two fresh servers
+ * at one commit) proves it necessary: then its id goes into BOOK_NORMALISE_ON — this file's switches — in the commit that
+ * records why (VODACOM-PLAN §0j). `--norm <id>,<id>` or KP_PARITY_NORMALISE switches a set on for one run (a calibration
+ * run), and the header says so. A baseline records its set (matrix.book.normalise), and --compare refuses a baseline
+ * captured under another set. They act on the BOOK's cells only (bookNorm), after `norm`, which every cell already passes
+ * through: the matrix and the Sell cells never see them.
+ *   · text  a rewrite of a book cell's recorded markup, signatures and head (`apply`); P.8n holds each to its own
+ *           sample, its control, idempotence, the work `norm` does not already do, and to acting exactly when it is on;
+ *   · page  a selector handed to the page (SNAPSHOT's `book.chart`) only when it is on.
+ */
+/** The page normaliser's charts: a card's 24h spark (micro-spark.tsx) and the Up & Down band's track (updown-match-track.tsx). */
+const CHART_SVGS = "svg.mcardp-spark, svg.kp-udtrack__svg";
+/** The geometry attributes of a chart's shapes, which read "~" in a book cell's markup while chart-paths is on. */
+const CHART_ATTRS = ["d", "points", "x", "y", "x1", "y1", "x2", "y2", "cx", "cy", "r", "width", "height"];
+const BOOK_NORMALISERS = [
+  {
+    id: "market-ids", kind: "text",
+    what: "a question's or a round's id (mkt_ and udr_ with 20 hex digits, market-service.ts and updown-service.ts): each server mints its own",
+    apply: (s) => s.replace(/\b(mkt|udr)_[A-Za-z0-9]{6,}/g, "$1_~"),
+    sample: '<a href="/markets/mkt_4f9c2a7b1e0d3c5a8b6e" data-row-id="mkt_4f9c2a7b1e0d3c5a8b6e"></a><b data-round="udr_17e07a91ecf526c2ae17"></b>',
+    expect: '<a href="/markets/mkt_~" data-row-id="mkt_~"></a><b data-round="udr_~"></b>',
+    control: '<i class="mkt_new udr_up kp-mkt_row"></i>',
+  },
+  {
+    id: "time-left", kind: "text",
+    what: "a card's betting countdown, which moves by the minute (time-left.ts with the dictionary's {n}d/{n}h/{n}m left and siku/masaa/dakika {n} zimebaki/yamebaki)",
+    apply: (s) => s
+      .replace(/\b\d+[dhm] left\b/g, "~ left")
+      .replace(/\b(?:siku|masaa|dakika) \d+ (?:zimebaki|yamebaki)\b/g, "~ zimebaki"),
+    sample: "3d left · 5h left · 12m left · siku 3 zimebaki · masaa 5 yamebaki · dakika 12 zimebaki",
+    expect: "~ left · ~ left · ~ left · ~ zimebaki · ~ zimebaki · ~ zimebaki",
+    control: "4 left · dakika 28:00 · siku zote · 5 days left",
+  },
+  {
+    id: "eat-dates", kind: "text",
+    what: "a day or a moment on the East Africa clock (eat-day.ts formatEatDate and formatEatDateTime: 27 Sep, 3 Ago 2027, 2 Aug, 14:05)",
+    apply: (s) => s.replace(/\b\d{1,2} (?:Jan|Feb|Mar|Mac|Apr|May|Mei|Jun|Jul|Aug|Ago|Sep|Oct|Okt|Nov|Dec|Des)(?: \d{4})?(?:, \d{2}:\d{2})?\b/g, "~date"),
+    sample: "Closes 27 Sep · Settled 3 Ago 2027 · 2 Aug, 14:05",
+    expect: "Closes ~date · Settled ~date · ~date",
+    control: "27 September · Sep 27 · 14:05 · 3 h ago",
+  },
+  {
+    id: "relative-times", kind: "text",
+    what: "how long ago, the number first (the dictionary's dAgo/hAgo/mAgo in Swahili; `norm` already reads 3 h ago and dakika 3 zilizopita)",
+    apply: (s) => s.replace(/\b\d+ (?:siku|masaa|saa|dakika|sekunde) (?:zilizopita|yaliyopita|iliyopita)\b/g, "~ zilizopita"),
+    sample: "3 masaa yaliyopita · 2 siku zilizopita · 5 dakika zilizopita",
+    expect: "~ zilizopita · ~ zilizopita · ~ zilizopita",
+    control: "Raundi iliyopita · siku 2 zimebaki · dakika 5 zilizopita",
+  },
+  {
+    id: "chart-paths", kind: "page",
+    what: "a chart's own geometry: inside CHART_SVGS every shape's box reads ~ and its d, points and coordinates ~",
+    selector: CHART_SVGS,
+  },
+  {
+    id: "avatar-ids", kind: "text",
+    what: "the identity avatar's svg ids, c[tmgc]<base36 of the user id> on a gradient or a clip path and in each url(#…) that names one (identity-avatar.tsx), as qa:served-skeleton reads them",
+    apply: (s) => s
+      .replace(/(<(?:radialGradient|linearGradient|clipPath)\b[^>]*?\bid=")c([tmgc])[0-9a-z]+/g, "$1c$2~")
+      .replace(/url\(#c([tmgc])[0-9a-z]+/g, "url(#c$1~"),
+    sample: '<radialGradient id="cm1x9k2_R_5_"></radialGradient><clipPath id="cm1x9k2_R_5_c"></clipPath><g clip-path="url(#cm1x9k2_R_5_c)" fill="url(#ct9z3q_R_7_)"></g>',
+    expect: '<radialGradient id="cm~_R_5_"></radialGradient><clipPath id="cm~_R_5_c"></clipPath><g clip-path="url(#cm~_R_5_c)" fill="url(#ct~_R_7_)"></g>',
+    control: '<div id="ctrl-1" class="cta"><clipPath id="kp-clip"></clipPath><g fill="url(#kp-glow)"></g></div>',
+  },
+  {
+    id: "chunk-hashes", kind: "text",
+    what: "a build's chunk names outside a /_next/static/ path, which `norm` already reads (qa:served-skeleton's chunk hashes): a next_static/ key's 8+ hex digits, Turbopack's 7-character dev hash before ._.js or ._.css, and next/font's hashed class names",
+    apply: (s) => s
+      .replace(/next_static\/[^"'\s)?#&]*/g, (m) => m.replace(/(^|[^0-9A-Za-z])[0-9a-f]{8,}(?![0-9A-Za-z])/g, "$1~"))
+      .replace(/_[0-9a-z._~-]{7}(\._\.(?:js|css))(?![0-9A-Za-z])/g, "_~$1")
+      .replace(/\b__(className|variable)_[0-9a-f]{6,}\b/g, "__$1_~"),
+    sample: '<link rel="stylesheet" data-precedence="next_static/chunks/0a1b2c3d4e5f.css"/><i data-chunk="src_app_page_tsx_1133eyd._.js" class="__className_9f8e7d"></i>',
+    expect: '<link rel="stylesheet" data-precedence="next_static/chunks/~.css"/><i data-chunk="src_app_page_tsx_~._.js" class="__className_~"></i>',
+    control: '<span class="kp-tag-0a1b2c3d">deadbeef12 · page_tsx._.css · __className</span>',
+  },
+];
+/** ⭐ THIS FILE'S SWITCHES: the normalisers a calibration null pair has proved necessary, by id. None yet — WP1 step 6's
+ *  calibration decides, and the commit that turns one on says which pair proved it (VODACOM-PLAN §0j). */
+const BOOK_NORMALISE_ON = [];
+/** The ids a switch names, in BOOK_NORMALISERS' order; a name that is not a candidate is refused. */
+function normaliseIds(text, from) {
+  const ids = BOOK_NORMALISERS.map((n) => n.id);
+  const asked = [...new Set(String(text).split(/[\s,]+/).filter(Boolean))];
+  if (asked.length === 1 && asked[0] === "none") return [];
+  const unknown = asked.filter((x) => !ids.includes(x));
+  if (unknown.length || !asked.length) refuse(`${from} names no candidate normaliser: ${unknown.join(", ") || "(nothing)"}. The candidates are ${ids.join(", ")} (or none).`);
+  return ids.filter((id) => asked.includes(id));
+}
+const NORM_SWITCHES = [["--norm", valueOf("--norm")], ["KP_PARITY_NORMALISE", process.env.KP_PARITY_NORMALISE || null]]
+  .filter(([, v]) => v !== null).map(([from, v]) => [from, normaliseIds(v, from)]);
+if (NORM_SWITCHES.length === 2 && NORM_SWITCHES[0][1].join() !== NORM_SWITCHES[1][1].join()) {
+  refuse(`--norm names [${NORM_SWITCHES[0][1].join(", ") || "none"}] and KP_PARITY_NORMALISE [${NORM_SWITCHES[1][1].join(", ") || "none"}]: one run has one set of normalisers.`);
+}
+/** Where this run's set came from: null for this file's switches, else the switch that overrode them for this run. */
+const NORM_SOURCE = NORM_SWITCHES.length ? NORM_SWITCHES.map(([from]) => from).join(" and ") : null;
+const BOOK_NORMALISE = NORM_SWITCHES.length ? NORM_SWITCHES[0][1] : normaliseIds(BOOK_NORMALISE_ON.join(",") || "none", "BOOK_NORMALISE_ON");
 
 const BASE = process.env.KP_BASE ?? "http://localhost:3041";
 if (!/^http:\/\/localhost(:\d+)?$/.test(BASE)) {
@@ -224,7 +352,7 @@ function baseRefusal(sha) {
 }
 
 const KIND = "kp-classic-shell-parity";
-const VERSION = 2;   // 2 · S6 WP10: the matrix gained the Sell capture, so a v1 baseline cannot be compared — capture a new one
+const VERSION = 3;   // 3 · S7 WP1: the matrix gained the book (A8), so a v2 baseline cannot be compared — capture a new one (2 · S6 WP10: the Sell capture)
 const VIEWERS = [
   { id: "guest", door: null, who: "a guest" },
   { id: "player", door: "/auth/demo", who: "the demo player" },
@@ -258,7 +386,43 @@ const routeOfPlace = (place, held) => (place === SELL_PLACES[1] ? `/markets/${he
 const confirmCell = (width, place) => width === SELL_CONFIRM.width && place === SELL_CONFIRM.place;
 /** The classic confirm, found by what it is: an open modal dialog holding the gold confirm button. */
 const CONFIRM_GOLD = '[role="dialog"][aria-modal="true"] button.btn-gold';
-const MATRIX = { viewers: VIEWERS.map((v) => v.id), locales: LOCALES, widths: WIDTHS, routes: ROUTES, body: BODY_ROUTE, height: HEIGHT, sell: SELL };
+/**
+ * ⭐ S7 WP1 · THE BOOK (S7-PLAN WP1 steps 2-3, A8): a classic reader's page bodies, over a book that reaches every classic
+ * card state S7 touches. Taken AFTER the matrix and the Sell capture, so the demo portfolio the matrix reads is still
+ * empty and the Sell capture still seeds { markets: 5 } on seed-real-markets' six questions. A cell is keyed
+ * `book-<viewer>|locale|width|route`, the question page as ":similar" — each server mints its own ids.
+ */
+const BOOK_ROUTES = ["/", "/markets", "/live", "/results", "/watchlist", "/markets/:similar"];
+const BOOK = {
+  viewers: ["guest", "player"],
+  locales: LOCALES,
+  widths: [360, 1280],
+  routes: BOOK_ROUTES,
+  /** The LIVE strip's routes (TICKER_ROUTES, lib/markets/ticker.ts): each lobby cell captures the strip beside <main>. */
+  lobby: ["/", "/markets", "/live", "/results"],
+  /** Edge-protected (proxy.ts PROTECTED_PREFIXES): the player's only. */
+  playerOnly: ["/watchlist"],
+  /** The question page of the book's first question (marketIds[0]): its cell captures the similar rail. */
+  similar: BOOK_ROUTES[5],
+  /** The route whose head is read from the bytes (WP2's metadata must survive). */
+  head: "/",
+  /** seed-player-portfolio's { markets }: twelve, so its plan reaches WIN, LOSS and VOID (A8). */
+  markets: 12,
+  /** The book's normalisers this run (BOOK_NORMALISERS): a baseline records them, and a compare must use the same. */
+  normalise: BOOK_NORMALISE,
+};
+/** The book's text normalisers switched on for this run, in BOOK_NORMALISERS' order. */
+const BOOK_TEXT = BOOK_NORMALISERS.filter((n) => n.kind === "text" && BOOK.normalise.includes(n.id));
+/** Every book cell in capture order, as [key, viewer, locale, width, route]: /watchlist for the player only. */
+function bookCellKeys() {
+  const out = [];
+  for (const v of BOOK.viewers) for (const l of BOOK.locales) for (const w of BOOK.widths) for (const r of BOOK.routes) {
+    if (BOOK.playerOnly.includes(r) && v !== "player") continue;
+    out.push([keyOf(`book-${v}`, l, w, r), v, l, w, r]);
+  }
+  return out;
+}
+const MATRIX = { viewers: VIEWERS.map((v) => v.id), locales: LOCALES, widths: WIDTHS, routes: ROUTES, body: BODY_ROUTE, height: HEIGHT, sell: SELL, book: BOOK };
 const HOST = new URL(BASE).hostname;
 const keyOf = (v, l, w, r) => `${v}|${l}|${w}|${r}`;
 const partsOf = (k) => { const [v, l, w, r] = k.split("|"); return { v, l, w: Number(w), r }; };
@@ -610,6 +774,15 @@ SELL_EXPECTED_DIFFS.push(
   },
 );
 
+/**
+ * ⭐ S7 WP1 · THE NAMED DIFFERENCES FOR THE BOOK'S CELLS — none. S7 changes nothing a classic reader is served (its
+ * binding promise), so a compare of the book with WP1's v3 baseline must find no difference at all. A change made on
+ * purpose for every player is named here as the matrix's are — its field, routes, `cells` and reason, matched by
+ * diffCells and held by §4.9 to all of its cells or none — and listed in VODACOM-PLAN §0j. ⛔ Never a wildcard and never
+ * a re-baseline (A3).
+ */
+const BOOK_EXPECTED_DIFFS = [];
+
 /** The computed properties recorded per element. Geometry is recorded separately, relative to the region's root. */
 const PROPS = [
   "display", "position", "z-index", "visibility", "opacity", "overflow-x", "overflow-y", "box-sizing",
@@ -633,10 +806,104 @@ const rawOf = (body) => (typeof body !== "string" ? null : {
   shell: body.includes("app-topbar"),
   trace: [...new Set((body.match(RAW_TRACE) ?? []).map((m) => (m.includes("journey-") ? `testid:${m.slice(m.indexOf("journey-"))}` : "data-journey")))].sort(),
 });
+/**
+ * ⭐ S7 WP1 · A8 item 3 — THE LIVE TRACE SEES S7'S CLASS NAMES. The trace in the page (SNAPSHOT's `journey`, in every cell
+ * of every capture) asks for S6's journey test ids, its flag and any class holding "journey" — and since S7 WP1 for S7's
+ * journey parts too: the card (kp-jcard), the home (kp-jhome), and the How-to card and sheet (kp-jhowto, kp-howto). Its
+ * class report names each class holding one of these parts, so such an element reads `class:kp-jcard`, never a bare
+ * `class:`. None of the four occurs in src/ before S7 builds it, so the trace stays empty on a classic page (2.4, 3.4, S.3,
+ * B.6). RAW_TRACE above already reads any journey-* test id in the bytes. P.8t holds the selector and the report to S7's
+ * names and to no classic class.
+ */
+const JOURNEY_CLASS_PARTS = ["journey", "kp-jcard", "kp-jhome", "kp-jhowto", "kp-howto"];
+const TRACE = {
+  selector: ['[data-testid^="journey-"]', "[data-journey]", ...JOURNEY_CLASS_PARTS.map((p) => `[class*="${p}"]`)].join(","),
+  parts: JOURNEY_CLASS_PARTS,
+};
+/**
+ * ⭐ S7 WP1 · /'s HEAD, READ FROM THE BYTES THE SERVER SENT (WP1 step 3: WP2's metadata must survive): the canonical link
+ * and every og:* meta, one line each in document order — "canonical <href>", "<property> <content>". Attributes may come
+ * in any order, and a tag Next streams into the body is read where it stands; twitter:* is not an og: tag, and neither a
+ * script (the RSC payload carries its own copy of the metadata) nor a comment is ever read. Null when the bytes were not.
+ */
+function headOf(body) {
+  if (typeof body !== "string") return null;
+  const markup = body.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, "").replace(/<!--[\s\S]*?-->/g, "");
+  const lines = [];
+  for (const m of markup.matchAll(/<(meta|link)\b([^>]*)>/gi)) {
+    const attrs = Object.fromEntries([...m[2].matchAll(/([^\s=/"'>]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/g)]
+      .map((a) => [a[1].toLowerCase(), a[2] ?? a[3] ?? a[4] ?? ""]));
+    if (m[1].toLowerCase() === "link") {
+      if (/(?:^|\s)canonical(?:\s|$)/i.test(attrs.rel ?? "")) lines.push(`canonical ${attrs.href ?? ""}`);
+      continue;
+    }
+    const key = attrs.property ?? attrs.name ?? "";
+    if (key.startsWith("og:")) lines.push(`${key} ${attrs.content ?? ""}`);
+  }
+  return lines.join(NL);
+}
+/**
+ * ⭐ S7 WP1 · THE CLASSIC CARD'S STATE, READ FROM ITS CLASSES (market-card.tsx). The page hands over each card's facts —
+ * its row id (`data-row-id`), the class of its price slot (`.mcardp-prob .mcardp-pct`) and which of CARD_MARKS it holds —
+ * and cardStateOf names the state: a result in the slot (`.mcardp-pctcap--result`) is void (`mcardp-pct--void`), resolved
+ * NO (`mcardp-pct--no`) or resolved YES (the slot's own ink); a card that is not live and states no result is selection
+ * closed (the single pill where the pair stood, `.mcardp-actions--single`); a live card with money on one side only says
+ * so (`.mcardp-oneside`); a live card with no pool shows the em-dash (`mcardp-pct--empty`); any other live card is priced.
+ * ⚠️ The classes cannot tell a selection-closed card from a CLOSED or DRAFT one (the same royal pill and single action);
+ * the book seeds selection-closed ones only (seed-watchlist's progress row). B.7 counts the states over the book's cells.
+ */
+const CARD_MARKS = ["mcardp-pctcap--result", "mcardp-actions--single", "mcardp-oneside"];
+const CARD_STATES = ["priced", "one-sided", "empty", "closed", "resolved-yes", "resolved-no", "void"];
+const CARD_LABELS = { priced: "live priced", "one-sided": "one-sided", empty: "empty pool", closed: "selection closed", "resolved-yes": "resolved YES", "resolved-no": "resolved NO", void: "void", other: "other" };
+function cardStateOf(card) {
+  const pct = String(card?.pct ?? "");
+  const marks = Array.isArray(card?.marks) ? card.marks : [];
+  if (!/(?:^|\s)mcardp-pct(?:\s|$)/.test(pct)) return "other";
+  if (marks.includes("mcardp-pctcap--result")) {
+    return pct.includes("mcardp-pct--void") ? "void"
+      : pct.includes("mcardp-pct--no") ? "resolved-no" : "resolved-yes";
+  }
+  if (marks.includes("mcardp-actions--single")) return "closed";
+  if (marks.includes("mcardp-oneside")) return "one-sided";
+  return pct.includes("mcardp-pct--empty") ? "empty" : "priced";
+}
+/**
+ * ⭐ S7 WP1 · THE LIVE STRIP, READ STILL (the first calibration's finding). Its run is a CSS marquee (`.ticker-track`, a
+ * 70 s loop): two captures of one book cell on one server disagreed in 60 of the strip's 73 element lines, its items a
+ * few px apart, and that noise sat outside every plant's own field. So every book cell reads the strip in the product's
+ * OWN still state — the readable list at scroll 0, which is the marquee's first frame and what the server paints before
+ * the client decides (live-ticker.tsx; globals.css `.ticker-strip[data-still]`) — by the same three rules, written for
+ * any strip: a style in the document head, outside every captured region, added once the page has hydrated.
+ */
+const STRIP_STILL = [
+  ".ticker-strip .ticker-track { animation: none !important; transform: none !important; }",
+  ".ticker-strip .ticker-viewport { overflow-x: auto !important; overscroll-behavior-x: contain !important; scrollbar-width: thin !important; }",
+  ".ticker-strip .ticker-copy-dup { display: none !important; }",
+].join(NL);
+/** The question page's similar rail (app/markets/[id]/page.tsx). */
+const SIMILAR_RAIL = 'section[aria-labelledby="similar-markets-heading"]';
+/** S7 WP1 · what SNAPSHOT is asked for a book cell: the route's regions and cards, and chart-paths' selector only when on. */
+const bookArgsOf = (route) => ({
+  crest: CREST, props: PROPS, animated: ANIMATED, notFound: false, pageBody: false, trace: TRACE,
+  book: {
+    regions: route === BOOK.similar ? { similar: SIMILAR_RAIL } : { main: "#main-content", ...(BOOK.lobby.includes(route) ? { ticker: "div.ticker-strip" } : {}) },
+    cards: route === BOOK.similar ? `${SIMILAR_RAIL} article.mcardp` : "#main-content article.mcardp",
+    marks: CARD_MARKS,
+    chart: BOOK.normalise.includes("chart-paths") ? CHART_SVGS : null,
+    chartAttrs: CHART_ATTRS,
+  },
+});
 
-/** Runs IN THE PAGE. Self-contained: Playwright serialises it, so it may close over nothing. */
-const SNAPSHOT = ({ crest, props, animated, notFound, pageBody, sell, confirm }) => {
+/**
+ * Runs IN THE PAGE. Self-contained: Playwright serialises it, so it may close over nothing. `trace` is TRACE (S7 WP1, A8
+ * item 3: every caller hands it in). `book` (S7 WP1) is set for a book cell only: the regions it names replace the
+ * shell's, the overlay census is skipped, its classic cards' facts are read (cardStateOf names their states), and
+ * `book.chart` — chart-paths' selector, null unless that normaliser is on — reads a chart's shapes as "~". Without
+ * `book`, every capture is as it was.
+ */
+const SNAPSHOT = ({ crest, props, animated, notFound, pageBody, sell, confirm, trace, book }) => {
   const r2 = (n) => Math.round(n * 2) / 2;
+  const chart = book ? book.chart : null;
   const sigOf = (el, moving) => {
     const cs = getComputedStyle(el);
     const parts = [];
@@ -660,7 +927,8 @@ const SNAPSHOT = ({ crest, props, animated, notFound, pageBody, sell, confirm })
       const r = el.getBoundingClientRect();
       // An unrendered element (an svg <defs> child, display:none) reports a 0x0 box at PAGE coordinates, so its offset from
       // the region moves whenever anything above the region grows — a position that means nothing. Record its size only.
-      const geo = moving ? "~" : r.width === 0 && r.height === 0 ? "0x0" : `${r2(r.left - box.left)},${r2(r.top - box.top)},${r2(r.width)}x${r2(r.height)}`;
+      // S7 WP1 · inside a chart's svg (chart-paths, when on) a shape's box is its data's.
+      const geo = moving || (chart && !el.matches(chart) && el.closest(chart)) ? "~" : r.width === 0 && r.height === 0 ? "0x0" : `${r2(r.left - box.left)},${r2(r.top - box.top)},${r2(r.width)}x${r2(r.height)}`;
       lines.push([path, geo, sigOf(el, moving)]);
       if (el.matches(crest)) return;
       let i = 0;
@@ -674,6 +942,7 @@ const SNAPSHOT = ({ crest, props, animated, notFound, pageBody, sell, confirm })
       stub.setAttribute("data-parity", "crest");
       s.replaceWith(stub);
     }
+    if (chart) for (const s of clone.querySelectorAll(chart)) for (const d of s.querySelectorAll("*")) for (const a of book.chartAttrs) if (d.hasAttribute(a)) d.setAttribute(a, "~");
     return { count: els.length, html: clone.outerHTML, lines };
   };
   const overlays = () => {
@@ -719,25 +988,34 @@ const SNAPSHOT = ({ crest, props, animated, notFound, pageBody, sell, confirm })
   const footers = [...document.querySelectorAll("#main-content + footer")];
   return {
     url: location.pathname + location.search,
-    regions: {
-      header: region([...document.querySelectorAll("header.app-topbar")]),
-      rail: region([...document.querySelectorAll("nav.kp-rail")]),
-      footer: region(footers),
-      emailBar: region([...document.querySelectorAll('[data-testid="email-verify-banner"]')]),
-      ...(pageBody ? { main: region([...document.querySelectorAll("#main-content")]) } : {}),
-    },
-    overlays: overlays(),
+    regions: book
+      ? Object.fromEntries(Object.entries(book.regions).map(([name, selector]) => [name, region([...document.querySelectorAll(selector)])]))
+      : {
+          header: region([...document.querySelectorAll("header.app-topbar")]),
+          rail: region([...document.querySelectorAll("nav.kp-rail")]),
+          footer: region(footers),
+          emailBar: region([...document.querySelectorAll('[data-testid="email-verify-banner"]')]),
+          ...(pageBody ? { main: region([...document.querySelectorAll("#main-content")]) } : {}),
+        },
+    overlays: book ? [] : overlays(),
     ...(sell ? { sell: sellOf(sell) } : {}),
     ...(confirm ? { confirm: confirmOf() } : {}),
     footerPaddingBottom: footers[0] ? getComputedStyle(footers[0]).paddingBottom : null,
     scrollPaddingBottom: getComputedStyle(document.documentElement).scrollPaddingBottom,
-    // The whole document, html included: a journey test id, the flag JourneyFlag sets, or a journey class.
-    journey: [...document.querySelectorAll('[data-testid^="journey-"],[data-journey],[class*="journey"]')].map((e) => {
+    // The whole document, html included: a journey test id, the flag JourneyFlag sets, or a journey class — S6's, and
+    // since S7 WP1 S7's (TRACE, A8 item 3), each class that holds one of their parts named in the report.
+    journey: [...document.querySelectorAll(trace.selector)].map((e) => {
       const id = e.getAttribute("data-testid") ?? "";
       if (id.startsWith("journey-")) return `testid:${id}`;
       if (e.hasAttribute("data-journey")) return `${e.tagName.toLowerCase()}[data-journey]`;
-      return `class:${[...e.classList].filter((c) => c.includes("journey")).join(".")}`;
+      return `class:${[...e.classList].filter((c) => trace.parts.some((p) => c.includes(p))).join(".")}`;
     }).sort(),
+    // S7 WP1 · a book cell's classic cards, each by its facts (cardStateOf reads them in Node).
+    ...(book ? { cards: [...document.querySelectorAll(book.cards)].map((a) => ({
+      id: a.getAttribute("data-row-id") ?? "",
+      pct: a.querySelector(".mcardp-prob .mcardp-pct")?.getAttribute("class") ?? "",
+      marks: book.marks.filter((m) => !!a.querySelector(`.${m}`)),
+    })) } : {}),
     notFound: notFound
       ? {
           title: document.title,
@@ -760,6 +1038,8 @@ const norm = (s) => String(s)
   .replace(/datetime="[^"]*"/g, 'datetime="~"')
   .replace(/\b\d+\s*(?:s|secs?|seconds?|m|mins?|minutes?|h|hrs?|hours?|d|days?)\s+ago\b/gi, "~ ago")
   .replace(/\b(?:sekunde|dakika|saa|siku)\s+\d+\s+(?:zilizopita|iliyopita)\b/gi, "~ zilizopita");
+/** S7 WP1 · a book cell's text: `norm`, then each book normaliser switched on (BOOK_TEXT), in BOOK_NORMALISERS' order. */
+const bookNorm = (s) => BOOK_TEXT.reduce((t, n) => n.apply(t), norm(s));
 
 const blobs = {};
 const put = (text) => { const id = createHash("sha1").update(text).digest("hex").slice(0, 12); blobs[id] = text; return id; };
@@ -782,6 +1062,18 @@ function toCell(snap, extra) {
     journey: snap.journey,
     ...(snap.notFound ? { notFound: { title: snap.notFound.title, robots: snap.notFound.robots, main: norm(snap.notFound.main) } } : {}),
   };
+}
+/** S7 WP1 · a book cell from its snapshot: each region as toCell records one, under bookNorm, and each card by its state. */
+function toBookCell(snap, extra) {
+  const regions = {};
+  for (const [name, r] of Object.entries(snap.regions)) {
+    regions[name] = r.count === 0 ? { count: 0, html: null, layout: null } : {
+      count: r.count,
+      html: put(bookNorm(r.html)),
+      layout: put(r.lines.map(([path, geo, sig]) => `${path} ${geo} ${put(bookNorm(sig))}`).join(NL)),
+    };
+  }
+  return { ...extra, landed: snap.url, regions, journey: snap.journey, cards: (snap.cards ?? []).map((c) => ({ id: c.id, state: cardStateOf(c) })) };
 }
 
 // ── the diff ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -806,6 +1098,8 @@ function fieldsOf(cell, store) {
     f["notFound.robots"] = cell.notFound.robots.join(NL);
     f["notFound.main"] = cell.notFound.main;
   }
+  // S7 WP1 · a book cell of / carries its head, read from the bytes (headOf); null when the bytes were not read.
+  if ("head" in cell) f.head = cell.head ? store[cell.head] ?? `(missing blob ${cell.head})` : "(unread)";
   return f;
 }
 const propsOf = (sig) => new Map(String(sig ?? "").split(NL).filter(Boolean).map((kv) => [kv.slice(0, kv.indexOf(":")), kv.slice(kv.indexOf(":") + 1)]));
@@ -1025,6 +1319,177 @@ function syntheticCapture() {
   return { cells, store };
 }
 
+// ── S7 WP1 · the book: A8's verdicts and §B, as pure functions so --prove-red can break each one ─────────────
+/** A "Demo · " question is a fixture the player boards never list (isDemoMarket, market-service.ts). */
+const DEMO_PREFIX = "Demo · ";
+/** The LIVE non-demo questions a seed-markets reply names. */
+const poolOf = (reply) => (Array.isArray(reply?.ids) ? reply.ids.filter((q) => typeof q?.titleEn === "string" && !q.titleEn.startsWith(DEMO_PREFIX)).length : 0);
+/**
+ * ⭐ A8 item 1 · THE BOOK'S THREE REPLIES, JUDGED. `problems` refuse the book (the baseline is INVALID); `recorded` are
+ * the Up & Down refusals a round whose window closed between listing and buying leaves (seed-player-portfolio's
+ * `updown …` lines), kept in the baseline and never failed; `pool` is what §0j records; the voided question is
+ * marketIds[11] and the similar rail's question marketIds[0]. A door that did not answer 200 with ok: true, or was not
+ * run, is one problem, and nothing in its reply is read.
+ */
+function bookVerdict(seed) {
+  const problems = [], recorded = [];
+  const out = (pool, ids) => ({ problems, recorded, pool, voidId: ids?.[11] ?? null, similarId: ids?.[0] ?? null });
+  if (!seed || seed.error) {
+    problems.push(seed?.error ?? "the book was not seeded");
+    return out(null, null);
+  }
+  const door = (name, d) => {
+    if (!d) { problems.push(`${name} was not run`); return null; }
+    if (d.status !== 200 || d.reply?.ok !== true) { problems.push(`${name} answered ${d.status}${d.reply ? `: ${JSON.stringify(d.reply).slice(0, 160)}` : ""}`); return null; }
+    return d.reply;
+  };
+  const m = door("seed-markets", seed.markets);
+  const pool = m ? poolOf(m) : null;
+  if (m && pool < BOOK.markets) problems.push(`seed-markets named ${pool} LIVE non-demo question(s); the book needs ${BOOK.markets} (A8 item 1(a))`);
+  const p = door(`seed-player-portfolio { markets: ${BOOK.markets} }`, seed.portfolio);
+  if (p) {
+    if (p.placed !== BOOK.markets) problems.push(`placed ${p.placed}, not ${BOOK.markets}`);
+    if (p.intended?.VOID !== 1) problems.push(`intended.VOID is ${p.intended?.VOID ?? 0}, not 1`);
+    for (const s of ["VOID", "WIN", "LOSS"]) if (!((p.byStatus?.[s] ?? 0) >= 1)) problems.push(`the player holds no ${s} position (byStatus.${s} ${p.byStatus?.[s] ?? 0})`);
+    for (const s of Array.isArray(p.refusals) ? p.refusals.map(String) : []) {
+      if (/^updown\b/.test(s)) recorded.push(s);
+      else problems.push(`refused: ${s}`);
+    }
+    const ids = Array.isArray(p.marketIds) ? p.marketIds : [];
+    if (ids.length !== BOOK.markets || !ids.every((x) => typeof x === "string" && x.length > 0)) {
+      problems.push(`marketIds holds ${ids.length} question(s), not ${BOOK.markets}: the void is marketIds[11] and the similar rail's question marketIds[0]`);
+    }
+  }
+  const w = door("seed-watchlist", seed.watchlist);
+  if (w) for (const lens of ["void", "done", "progress"]) if (!((w.byLens?.[lens] ?? 0) >= 1)) problems.push(`seed-watchlist starred no ${lens} row (byLens.${lens} ${w.byLens?.[lens] ?? 0})`);
+  return out(pool, Array.isArray(p?.marketIds) ? p.marketIds : null);
+}
+/** One line for the book's seed: what came back, and the verdict. */
+function bookSummary(seed) {
+  const v = bookVerdict(seed);
+  const p = seed?.portfolio?.reply ?? null, w = seed?.watchlist?.reply ?? null;
+  return `seed-markets named ${v.pool ?? 0} LIVE non-demo question(s) (of ${seed?.markets?.reply?.live ?? "?"} LIVE) · placed ${p?.placed ?? "?"} · byStatus ${JSON.stringify(p?.byStatus ?? null)} · byLens ${JSON.stringify(w?.byLens ?? null)}`
+    + `${v.recorded.length ? ` · ${v.recorded.length} Up & Down refusal(s) recorded, never failed: ${v.recorded.slice(0, 3).join(" · ")}${v.recorded.length > 3 ? " …" : ""}` : ""}`
+    + ` · ${v.problems.length ? `REFUSED: ${v.problems.join(" · ")}` : "accepted"}`;
+}
+/** Whether a page's cards hold one in this state. */
+const has = (cards, state) => (cards ?? []).some((c) => c.state === state);
+/**
+ * ⭐ A8 item 2 · THE PROBE, JUDGED, before any book cell is recorded: /results must show the voided question's card
+ * (marketIds[11]) drawn void, and settled YES and NO cards; /watchlist a void card, a done card (resolved, either way) and
+ * a selection-closed card. Each page's absences are its own.
+ */
+function probeVerdict(probe, voidId) {
+  const results = [], watchlist = [];
+  if (!Array.isArray(probe?.results)) results.push(`/results was not read${probe?.resultsError ? ` (${probe.resultsError})` : ""}`);
+  else {
+    const voided = probe.results.find((c) => c.id === voidId);
+    if (!voidId || !voided) results.push(`the voided question's card (marketIds[11], ${voidId ?? "unknown"}) is not on /results`);
+    else if (voided.state !== "void") results.push(`the voided question's card is drawn ${CARD_LABELS[voided.state] ?? voided.state}, not void`);
+    if (!has(probe.results, "resolved-yes")) results.push("no settled YES card on /results");
+    if (!has(probe.results, "resolved-no")) results.push("no settled NO card on /results");
+  }
+  if (!Array.isArray(probe?.watchlist)) watchlist.push(`/watchlist was not read${probe?.watchlistError ? ` (${probe.watchlistError})` : ""}`);
+  else {
+    if (!has(probe.watchlist, "void")) watchlist.push("no void card on /watchlist");
+    if (!has(probe.watchlist, "resolved-yes") && !has(probe.watchlist, "resolved-no")) watchlist.push("no done card on /watchlist");
+    if (!has(probe.watchlist, "closed")) watchlist.push("no selection-closed card on /watchlist");
+  }
+  return { results, watchlist };
+}
+/** How many cards of each state the book's captured cells drew (a card on two pages counts twice). */
+function cardTally(book) {
+  const tally = new Map();
+  for (const c of Object.values(book ?? {})) {
+    if (c.error) continue;
+    for (const card of c.cards ?? []) tally.set(card.state, (tally.get(card.state) ?? 0) + 1);
+  }
+  return tally;
+}
+
+/** §B — the book is what it claims (S7 WP1, A8). Each check returns the cells (or facts) that fail it. */
+function bookChecks(book, seed, store) {
+  const all = Object.entries(book ?? {});
+  const live = all.filter(([, c]) => !c.error);
+  const keys = bookCellKeys();
+  const size = keys.length;
+  const bad = (pred) => live.filter(([k, c]) => pred(partsOf(k).r, c, k)).map(([k]) => k);
+  const verdict = bookVerdict(seed);
+  const probe = probeVerdict(seed?.probe, verdict.voidId);
+  const tally = cardTally(book);
+  const head = (c) => (c.head ? store[c.head] ?? "" : null);
+  const headless = (c) => head(c) === null || !/^canonical \S/m.test(head(c)) || !/^og:url \S/m.test(head(c));
+  return [
+    { id: "B.0", name: `the book was seeded through dev-test doors that already exist — seed-markets, seed-player-portfolio { markets: ${BOOK.markets} }, seed-watchlist — and every reply holds what A8 item 1 asks; every book cell was captured (${size})`,
+      fails: [...verdict.problems, ...(all.length === size && keys.every(([k]) => k in (book ?? {})) ? [] : [`the book holds ${all.length} cells`]),
+        ...all.filter(([, c]) => c.error).map(([k, c]) => `${k} (${c.error})`)] },
+    { id: "B.1", name: "every book cell settled, answered 200 and stayed where it was sent: the player is signed in, and the question page is the book's first question",
+      fails: bad((r, c) => !c.stable || c.status !== 200 || c.landed !== r) },
+    { id: "B.2", name: "before any book cell, /results showed the voided question's card (marketIds[11]), drawn void, and settled YES and NO cards (A8 item 2)",
+      fails: probe.results },
+    { id: "B.3", name: "before any book cell, /watchlist showed a void card, a done card and a selection-closed card (A8 item 2)",
+      fails: probe.watchlist },
+    { id: "B.4", name: "every book cell captured its body — <main> on /, /markets, /live, /results, /watchlist and the similar rail on /markets/:similar — and every / cell its head from the bytes: the canonical link and og:url",
+      fails: bad((r, c) => (r === BOOK.similar ? c.regions?.similar?.count !== 1 : c.regions?.main?.count !== 1) || (r === BOOK.head && headless(c))) },
+    { id: "B.5", name: "every lobby cell (/, /markets, /live, /results) captured one LIVE strip — the book's settlements, waited for before the first cell",
+      fails: bad((r, c) => BOOK.lobby.includes(r) && c.regions?.ticker?.count !== 1) },
+    { id: "B.6", name: "no journey test id, flag or class (S7's kp-jcard, kp-jhome, kp-jhowto and kp-howto included) in a book cell, in the page or in the bytes the server sent",
+      fails: bad((r, c) => (c.journey ?? []).length > 0 || !c.raw || !c.raw.shell || c.raw.trace.length > 0) },
+    { id: "B.7", name: "the book drew every classic card state S7 touches — live priced, one-sided, empty pool, selection closed, resolved YES, resolved NO, void",
+      fails: CARD_STATES.filter((s) => !((tally.get(s) ?? 0) > 0)).map((s) => `no ${CARD_LABELS[s]} card in any book cell`) },
+    { id: "B.8", name: "only React's DEV performance-track sentence is ever filed as DEV-only in a book cell — every other page error is compared",
+      fails: live.filter(([, c]) => (c.devOnly ?? []).some((x) => !isDevMeasure(x))).map(([k, c]) => `${k} (filed DEV-only: ${c.devOnly.find((x) => !isDevMeasure(x))})`) },
+  ];
+}
+
+/** A book with every §B check met, built in memory: what --prove-red breaks one check at a time. */
+function syntheticBook() {
+  const ids = Array.from({ length: BOOK.markets }, (_, i) => `mkt_planted${String(i).padStart(2, "0")}000000000`);
+  const fresh = "mkt_plantedfresh00000000";
+  const store = {
+    main: '<main id="main-content"><article data-row-id="mkt_~" class="mcardp group"></article></main>',
+    ticker: '<div role="region" class="ticker-strip"></div>',
+    similar: '<section aria-labelledby="similar-markets-heading"></section>',
+    head: ["canonical http://localhost", "og:title 50pick — Predict events. Not chance.", "og:url http://localhost"].join(NL),
+  };
+  const region = (html) => ({ count: 1, html, layout: null });
+  const card = (i, state) => ({ id: typeof i === "number" ? ids[i] : i, state });
+  // Every state is drawn on more than one route, so a plant on one cell never empties a state (only B.7's own do).
+  const CARDS = {
+    "/": [card(0, "priced"), card(5, "one-sided"), card(fresh, "empty"), card(3, "closed")],
+    "/markets": [card(0, "priced"), card(1, "priced"), card(3, "closed"), card(5, "one-sided"), card(fresh, "empty")],
+    "/live": [card(1, "priced"), card(3, "closed")],
+    "/results": [card(6, "resolved-yes"), card(7, "resolved-no"), card(9, "resolved-yes"), card(10, "resolved-no"), card(11, "void")],
+    "/watchlist": [card(0, "priced"), card(3, "closed"), card(6, "resolved-yes"), card(7, "resolved-no"), card(11, "void")],
+    [BOOK.similar]: [card(1, "priced"), card(5, "one-sided")],
+  };
+  const book = {};
+  for (const [k, , , , r] of bookCellKeys()) {
+    book[k] = {
+      status: 200, stable: true, landed: r, pageErrors: [], devOnly: [], journey: [], raw: { shell: true, trace: [] },
+      regions: r === BOOK.similar ? { similar: region("similar") } : { main: region("main"), ...(BOOK.lobby.includes(r) ? { ticker: region("ticker") } : {}) },
+      cards: CARDS[r].map((c) => ({ ...c })),
+      ...(r === BOOK.head ? { head: "head" } : {}),
+    };
+  }
+  const seed = {
+    markets: { status: 200, reply: { ok: true, live: 30, ids: Array.from({ length: 30 }, (_, i) => ({ id: `mkt_pool${String(i).padStart(2, "0")}00000000000000`, category: "sports", titleEn: `Planted question ${i + 1}` })) } },
+    portfolio: { status: 200, reply: {
+      ok: true, placed: BOOK.markets, updownPlaced: 0,
+      intended: { OPEN: 4, CASHED_OUT: 2, WIN: 3, LOSS: 2, VOID: 1 },
+      byStatus: { OPEN: 8, CASHED_OUT: 3, WIN: 3, LOSS: 2, VOID: 1 },
+      refusals: ["updown udr_planted0000000000000: CLOSED the round's window closed between listing and buying"],
+      marketIds: ids,
+    } },
+    watchlist: { status: 200, reply: { ok: true, starred: 9, watching: 9, byLens: { all: 9, open: 3, progress: 2, done: 3, void: 1 }, forcedProgress: [ids[3], ids[4]], refusals: [] } },
+    probe: {
+      results: [card(6, "resolved-yes"), card(7, "resolved-no"), card(9, "resolved-yes"), card(10, "resolved-no"), card(11, "void")],
+      watchlist: [card(0, "priced"), card(3, "closed"), card(6, "resolved-yes"), card(11, "void")],
+    },
+  };
+  return { book, seed, store };
+}
+
 // ── the run ───────────────────────────────────────────────────────────────────────────────────────────────
 const results = [];
 const ok = (name, pass, detail = "") => { results.push(!!pass); console.log(`  ${pass ? "PASS" : "FAIL"} ${name}${detail ? ` — ${detail}` : ""}`); };
@@ -1034,6 +1499,7 @@ const pathOf = (u) => { const x = new URL(u); return x.pathname + x.search; };
 
 console.log(`qa:classic-shell-parity — ${MODE} — ${BASE}`);
 console.log(`  tree ${TREE} @ ${short(HEAD.out)}${DIRTY.length ? ` (${DIRTY.length} uncommitted change(s) the server serves)` : " (clean)"} · forks from ${MAIN} at ${FORK.code === 0 ? short(FORK.out) : "?"} · rollout ${rollout.state}`);
+console.log(`  the book's normalisers ON: ${BOOK.normalise.join(", ") || "none"}${NORM_SOURCE ? ` — ⚠ set by ${NORM_SOURCE} for this run, not by this file's switches` : " (this file's switches)"} · candidates: ${BOOK_NORMALISERS.map((n) => n.id).join(", ")}`);
 
 // Everything that can refuse is asked BEFORE the browser starts, so a bad path never costs a 20-minute capture.
 let baseline = null;
@@ -1047,9 +1513,21 @@ if (BASELINE) {
 }
 if (COMPARE) {
   try { baseline = JSON.parse(readFileSync(COMPARE, "utf8")); } catch (e) { refuse(`cannot read the baseline ${COMPARE}: ${msg(e)}`); }
-  if (baseline?.kind !== KIND || baseline.version !== VERSION || JSON.stringify(baseline.matrix) !== JSON.stringify(MATRIX)) {
-    refuse(`${COMPARE} is not a v${VERSION} ${KIND} capture of this matrix (kind=${baseline?.kind}, version=${baseline?.version}, captured at ${short(baseline?.base?.sha) || "an unnamed commit"}). Capture a v${VERSION} baseline into a NEW file at the base VODACOM-PLAN §0i names for it (A8, A18).`);
+  // ⭐ S7 WP1 · in this order: the kind and the version (a v2 file was captured before the book existed, so it holds none
+  // of the book's cells or fields, and can be no v3 baseline: WP1 step 1, A2 item 3); then the book's normalisers (WP1
+  // step 4: a baseline is only comparable under the set it was captured with); then the rest of the matrix.
+  const notThis = () => `${COMPARE} is not a v${VERSION} ${KIND} capture of this matrix (kind=${baseline?.kind}, version=${baseline?.version}, captured at ${short(baseline?.base?.sha) || "an unnamed commit"}).`;
+  const where = `Capture a v${VERSION} baseline into a NEW file at the base VODACOM-PLAN names for it (v3: §0j, S7-PLAN WP1 step 6; v2: §0i, S6 A8 and A18).`;
+  if (baseline?.kind !== KIND || baseline.version !== VERSION) {
+    const why = baseline?.kind === KIND && typeof baseline.version === "number"
+      ? ` A v${baseline.version} capture holds none of the book's cells or fields (VERSION ${VERSION} adds the book: S7 WP1, A8), so it cannot be compared with a v${VERSION} run.` : "";
+    refuse(`${notThis()}${why} ${where}`);
   }
+  const theirs = Array.isArray(baseline.matrix?.book?.normalise) ? baseline.matrix.book.normalise : null;
+  if (!theirs || [...theirs].sort().join() !== [...BOOK.normalise].sort().join()) {
+    refuse(`${COMPARE} was captured with the book normalisers [${theirs ? theirs.join(", ") || "none" : "unrecorded"}], and this run uses [${BOOK.normalise.join(", ") || "none"}]. A different set needs a NEW baseline captured under it (S7-PLAN WP1 step 4); --norm (or KP_PARITY_NORMALISE) can match the baseline's set for a calibration run.`);
+  }
+  if (JSON.stringify(baseline.matrix) !== JSON.stringify(MATRIX)) refuse(`${notThis()} ${where}`);
   if (baseline.role !== "baseline" || baseline.rejected !== false) {
     refuse(`${COMPARE} is not an accepted baseline (role=${baseline.role}, rejected=${baseline.rejected}): a .rejected.json failed a check when it was captured, and a .current.json is a later tree's capture.`);
   }
@@ -1121,7 +1599,7 @@ async function capture(jar, locale, width, route, plant = null) {
     const page = await ctx.newPage();
     page.on("pageerror", fileError(pageErrors, devOnly));
     const { status, body } = await open(page, route, plant);
-    const args = { crest: CREST, props: PROPS, animated: ANIMATED, notFound: route === "/account" || route === NOT_FOUND, pageBody: jar.length > 0 && route === BODY_ROUTE };
+    const args = { crest: CREST, props: PROPS, animated: ANIMATED, notFound: route === "/account" || route === NOT_FOUND, pageBody: jar.length > 0 && route === BODY_ROUTE, trace: TRACE };
     let snap = await page.evaluate(SNAPSHOT, args);
     let stable = false;
     for (let i = 0; i < 6 && !stable; i++) {
@@ -1205,7 +1683,7 @@ async function seedHolder(jar, beforeSeed = null) {
 }
 
 /** S6 A8e · what SNAPSHOT is asked for a Sell cell, and a Sell snapshot's regions as a cell records them (each a blob). */
-const sellArgsOf = (held, place) => ({ crest: CREST, props: PROPS, animated: ANIMATED, notFound: false, pageBody: false, sell: { held, place } });
+const sellArgsOf = (held, place) => ({ crest: CREST, props: PROPS, animated: ANIMATED, notFound: false, pageBody: false, sell: { held, place }, trace: TRACE });
 const sellRegionsOf = (sell) => Object.fromEntries(Object.entries(sell).map(([name, r]) => [name, r.count === 0 ? { count: 0, html: null, layout: null } : {
   count: r.count,
   html: put(norm(r.html)),
@@ -1341,6 +1819,175 @@ async function captureSell() {
   console.log(`  ${keys.length} Sell cells · the last captured ${secs(sellSeed.lastCellMs)} after the seed (a default poll's free window is 5:00; §S.2 fails a cell that missed it)`);
 }
 
+/**
+ * ⭐ S7 WP1 · A8 item 1 — THE BOOK, SEEDED AS THE DEMO PLAYER THROUGH DEV-TEST DOORS THAT ALREADY EXIST, IN A8'S ORDER:
+ * (a) seed-markets tops the canonical catalogue up while fewer than 25 questions are LIVE and names the LIVE ones (the
+ * matrix's store starts empty and the Sell capture brought seed-real-markets' six); (b) seed-player-portfolio
+ * { markets: 12 } plans the first twelve LIVE non-demo questions OPEN, CASHED_OUT, WIN, LOSS and VOID through the real
+ * money paths; (c) seed-watchlist stars every lens through toggleWatch, closing selection on two open questions for its
+ * progress row. A door that answers no ok, or a pool under twelve, stops the seed where it is, and bookVerdict judges
+ * what came back. ⛔ No new dev-test route and no admin-console drive (test:cert-devroutes).
+ */
+async function seedBook(jar) {
+  const ctx = await b.newContext();
+  const seed = {};
+  try {
+    await ctx.addCookies(jar);
+    // A dev server compiles a door on its first request, and the portfolio moves real money through twelve questions.
+    const post = async (door, data) => {
+      const res = await ctx.request.post(`${BASE}/api/dev-test/${door}`, { data, timeout: 300_000 });
+      return { status: res.status(), reply: await res.json().catch(() => null) };
+    };
+    const answered = (d) => d.status === 200 && d.reply?.ok === true;
+    seed.markets = await post("seed-markets", {});
+    if (!answered(seed.markets) || poolOf(seed.markets.reply) < BOOK.markets) return seed;
+    seed.portfolio = await post("seed-player-portfolio", { markets: BOOK.markets });
+    if (!answered(seed.portfolio)) return seed;
+    seed.watchlist = await post("seed-watchlist", {});
+    return seed;
+  } catch (e) {
+    return { ...seed, error: msg(e) };
+  } finally {
+    await ctx.close().catch(() => {});
+  }
+}
+
+/** ⭐ S7 WP1 · A8 item 2 — THE PROBE: the cards /results and /watchlist draw for the demo player (en, 1280), each by its
+ *  state, read before any book cell. A page that could not be read, or that sent the player elsewhere, is null. */
+async function probeBook(jar) {
+  const probe = {};
+  for (const [name, route] of [["results", "/results"], ["watchlist", "/watchlist"]]) {
+    const ctx = await b.newContext({ viewport: { width: 1280, height: HEIGHT } });
+    try {
+      await ctx.addCookies([...jar, localeCookie("en")]);
+      const page = await ctx.newPage();
+      await open(page, route, null);
+      const snap = await page.evaluate(SNAPSHOT, bookArgsOf(route));
+      if (snap.url.split("?")[0] !== route) {
+        probe[name] = null;
+        probe[`${name}Error`] = `it landed on ${snap.url}`;
+      } else {
+        probe[name] = (snap.cards ?? []).map((c) => ({ id: c.id, state: cardStateOf(c) }));
+      }
+    } catch (e) {
+      probe[name] = null;
+      probe[`${name}Error`] = msg(e);
+    } finally {
+      await ctx.close().catch(() => {});
+    }
+  }
+  return probe;
+}
+
+/** ⭐ S7 WP1 · B.5 — the LIVE strip names the book's settlements once the platform's stats have them (platform-stats.ts:
+ *  a memo that a poll written in this process refreshes, else 60 s old at most): waited for on / before the first book
+ *  cell, at most 16 reads 5 s apart. */
+async function waitForStrip(jar) {
+  const t = Date.now();
+  const ctx = await b.newContext({ viewport: { width: 1280, height: HEIGHT } });
+  try {
+    await ctx.addCookies([...jar, localeCookie("en")]);
+    const page = await ctx.newPage();
+    for (let i = 0; i < 16; i++) {
+      await page.goto(`${BASE}/`, { waitUntil: "load", timeout: 180_000 });
+      await page.locator("main").first().waitFor({ timeout: 120_000 });
+      if (await page.locator("div.ticker-strip").count()) return { seen: true, ms: Date.now() - t };
+      await page.waitForTimeout(5000);
+    }
+    return { seen: false, ms: Date.now() - t };
+  } catch (e) {
+    return { seen: false, ms: Date.now() - t, error: msg(e) };
+  } finally {
+    await ctx.close().catch(() => {});
+  }
+}
+
+/**
+ * ⭐ S7 WP1 · one book cell, in a FRESH context: the route's regions (<main> and, on a lobby route, the LIVE strip read
+ * still; or the question page's similar rail), its classic cards by state, the journey trace in the page and in the
+ * bytes, and on / the head from the bytes. --prove-red plants through `plant`: `css` and `js` in the page as the matrix's
+ * are, and `bytes` on the bytes the harness reads (the head and the raw trace) — never on what the browser renders.
+ */
+async function captureBookCell(jar, locale, width, route, similarId, plant = null) {
+  const ctx = await b.newContext({ viewport: { width, height: HEIGHT } });
+  const pageErrors = [], devOnly = [];
+  try {
+    await ctx.addCookies([...jar, localeCookie(locale)]);
+    const page = await ctx.newPage();
+    page.on("pageerror", fileError(pageErrors, devOnly));
+    const target = route === BOOK.similar ? `/markets/${similarId}` : route;
+    const { status, body: sent } = await open(page, target, { css: `${STRIP_STILL}${plant?.css ? `${NL}${plant.css}` : ""}`, js: plant?.js ?? null });
+    const body = plant?.bytes && typeof sent === "string" ? plant.bytes(sent) : sent;
+    const args = bookArgsOf(route);
+    const seen = (s) => JSON.stringify([s.url, s.regions, s.journey, s.cards]);
+    let snap = await page.evaluate(SNAPSHOT, args);
+    let stable = false;
+    for (let i = 0; i < 6 && !stable; i++) {
+      await page.waitForTimeout(700);
+      const next = await page.evaluate(SNAPSHOT, args);
+      stable = seen(next) === seen(snap);
+      snap = next;
+    }
+    const cell = toBookCell(snap, { status, stable, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort() });
+    if (route === BOOK.similar && similarId) cell.landed = cell.landed.split(similarId).join(":similar");
+    if (route === BOOK.head) cell.head = typeof body === "string" ? put(bookNorm(headOf(body))) : null;
+    return cell;
+  } catch (e) {
+    return { error: msg(e) };
+  } finally {
+    await ctx.close().catch(() => {});
+  }
+}
+
+/**
+ * ⭐ S7 WP1 · THE BOOK PHASE (A8): after the matrix and the Sell capture, the demo player's book is seeded and judged (item
+ * 1), then probed and judged (item 2), and only then is any book cell captured — after the LIVE strip has named the
+ * book's settlements. A refused book or probe captures nothing: every book cell says why, and B.0, B.2 or B.3 fail, so
+ * the baseline is INVALID and is not written.
+ */
+async function captureBook(still) {
+  console.log(`${NL}§1b · a classic reader's page bodies (S7 WP1, A8): the book, seeded through existing dev-test doors, then ${BOOK.routes.join(" · ")} at ${BOOK.widths.join("/")} × ${BOOK.locales.join("/")} for ${BOOK.viewers.join(" and ")} (${BOOK.playerOnly.join(", ")}: the player only)`);
+  const keys = bookCellKeys();
+  const skip = (why) => {
+    for (const [k] of keys) bookCells[k] = { error: `not captured: ${why}` };
+    console.log(`  ✗ not captured: ${why}`);
+  };
+  const jar = await signIn(VIEWERS.find((v) => v.id === "player"));
+  if (!jar.length) {
+    bookSeed = { error: "the demo player could not be signed in" };
+    return skip(bookSeed.error);
+  }
+  bookSeed = await seedBook(jar);
+  const verdict = bookVerdict(bookSeed);
+  // Recorded in the baseline as A8 asks: the pool (§0j names it) and the Up & Down refusals that never fail it.
+  bookSeed.pool = verdict.pool;
+  bookSeed.recorded = verdict.recorded;
+  console.log(`  the book: ${bookSummary(bookSeed)}`);
+  if (verdict.problems.length) return skip(`A8 item 1 refused the book (${verdict.problems.join(" · ")})`);
+  bookSeed.probe = await probeBook(jar);
+  const probe = probeVerdict(bookSeed.probe, verdict.voidId);
+  if (probe.results.length || probe.watchlist.length) return skip(`A8 item 2's probe found the book short (${[...probe.results, ...probe.watchlist].join(" · ")})`);
+  console.log(`  the probe: /results ${bookSeed.probe.results.length} card(s), /watchlist ${bookSeed.probe.watchlist.length} — A8 item 2's cards are there`);
+  bookSeed.strip = await waitForStrip(jar);
+  console.log(`  the LIVE strip ${bookSeed.strip.seen ? `named the book's settlements after ${secs(bookSeed.strip.ms)}` : `did not appear in ${secs(bookSeed.strip.ms)}${bookSeed.strip.error ? ` (${bookSeed.strip.error})` : ""}: B.5 names the cells`}`);
+  for (const v of BOOK.viewers) {
+    const vjar = v === "player" ? jar : [];
+    await warm(vjar, BOOK.routes.filter((r) => v === "player" || !BOOK.playerOnly.includes(r)).map((r) => (r === BOOK.similar ? `/markets/${verdict.similarId}` : r)));
+    for (const l of BOOK.locales) {
+      const t = Date.now();
+      let n = 0;
+      for (const [k, kv, kl, w, r] of keys) {
+        if (kv !== v || kl !== l) continue;
+        bookCells[k] = await captureBookCell(vjar, l, w, r, verdict.similarId);
+        n++;
+        if (bookCells[k].error) console.log(`  ✗ ${k} — ${bookCells[k].error}`);
+      }
+      console.log(`  book-${v} · ${l} · ${n} cells · ${secs(Date.now() - t)}`);
+      still(`by the end of book-${v} · ${l}`);
+    }
+  }
+}
+
 /** Report only (WP0 step 4): how far the classic signed-in header runs past a 320 viewport. Not S6's to fix. */
 async function header320(jar) {
   const out = {};
@@ -1375,6 +2022,9 @@ const cells = {};
 /** WP10 · the Sell capture's cells (keyed `sell|locale|width|place`) and the seed that made the open ticket. */
 const sellCells = {};
 let sellSeed = null;
+/** S7 WP1 · the book's cells (keyed `book-<viewer>|locale|width|route`), and its seed: the three replies, the probe, the strip's wait. */
+const bookCells = {};
+let bookSeed = null;
 let report320 = null;
 let treeMoved = null;
 try {
@@ -1408,8 +2058,10 @@ async function captureMatrix() {
     }
     if (BASELINE && v.id === "player") report320 = await header320(jar);
   }
-  // WP10 · the Sell capture comes last: it gives the demo player a portfolio, and every cell above read it empty.
+  // WP10 · the Sell capture comes after the matrix: it gives the demo player a portfolio, and every cell above read it empty.
   await captureSell();
+  // S7 WP1 · and the book comes last (A8): it seeds through the same player, after the Sell capture's { markets: 5 }.
+  await captureBook(still);
   still("by the end of the capture");
 }
 
@@ -1754,6 +2406,185 @@ async function proveRed() {
     ok(`P.check ${id} — ${what} turns ${id} red, and nothing else in §S`, got.join() === id, got.join(" ") || "nothing went red");
   }
 
+  // ②c S7 WP1 · the book's normalisers (WP1 step 4): each text normaliser maps its own sample to what it names, leaves its
+  // control as it is, is idempotent, does work `norm` does not (it runs after it), rewrites no other normaliser's sample,
+  // and acts exactly when it is switched on; the page normaliser is a selector handed to the page only when on.
+  {
+    const on = (n) => BOOK.normalise.includes(n.id);
+    const texts = BOOK_NORMALISERS.filter((n) => n.kind === "text");
+    const pages = BOOK_NORMALISERS.filter((n) => n.kind === "page");
+    const fails = [];
+    for (const n of texts) {
+      const mapped = n.apply(n.sample);
+      if (mapped !== n.expect) fails.push(`${n.id} maps its sample to ${JSON.stringify(mapped)}, not ${JSON.stringify(n.expect)}`);
+      if (n.apply(n.control) !== n.control) fails.push(`${n.id} moves its control to ${JSON.stringify(n.apply(n.control))}`);
+      if (n.apply(mapped) !== mapped) fails.push(`${n.id} is not idempotent`);
+      if (n.apply(norm(n.sample)) === norm(n.sample)) fails.push(`${n.id} does nothing \`norm\` has not done`);
+      for (const o of texts) if (o !== n && o.apply(norm(n.sample)) !== norm(n.sample)) fails.push(`${o.id} also rewrites ${n.id}'s sample`);
+      if ((bookNorm(n.sample) !== norm(n.sample)) !== on(n)) fails.push(`${n.id} ${on(n) ? "is on and does not act" : "acts while it is off"}`);
+    }
+    for (const n of pages) for (const r of BOOK.routes) {
+      const handed = bookArgsOf(r).book.chart;
+      if (handed !== (on(n) ? n.selector : null)) fails.push(`${n.id} hands the page ${JSON.stringify(handed)} on ${r} while it is ${on(n) ? "on" : "off"}`);
+    }
+    const ids = BOOK_NORMALISERS.map((n) => n.id);
+    if (new Set(ids).size !== ids.length || texts.length + pages.length !== ids.length) fails.push("each candidate is one id, of kind text or page");
+    ok(`P.8n each candidate text normaliser (${texts.map((n) => n.id).join(", ")}) maps its own sample, leaves its control as it is, is idempotent, does work \`norm\` does not, and acts exactly when it is switched on (this run: ${BOOK.normalise.join(", ") || "none"}); the page normaliser (${pages.map((n) => n.id).join(", ")}) is a selector handed to the page only when on`,
+      fails.length === 0, JSON.stringify(fails).slice(0, 400));
+  }
+  // ②d S7 WP1 · /'s head from the bytes (WP1 steps 3 and 5): the reader takes the canonical link and every og:* meta in
+  // order — attributes in any order, a tag streamed into the body — and never twitter:*, a comment or the RSC payload's
+  // copy; a dropped og:url is reported in a book cell's head field and nowhere else; unread bytes read as null.
+  {
+    const doc = [
+      '<!DOCTYPE html><html lang="sw"><head><meta charSet="utf-8"/><link rel="canonical" href="http://localhost:3041"/>',
+      '<meta property="og:title" content="50pick — Predict events. Not chance."/>',
+      '<meta content="http://localhost:3041" property="og:url"/>',
+      '<meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="50pick"/>',
+      '<!-- <meta property="og:url" content="http://comment.example"/> -->',
+      '<meta property="og:image" content="http://localhost:3041/og/og-1200x630.png"/></head><body><main id="main-content"></main>',
+      '<meta property="og:image:width" content="1200"/>',
+      `<script>self.__next_f.push([1,"<meta property='og:url' content='http://payload.example'/>"])</script>`,
+      '<meta property="og:locale" content="sw_TZ"/></body></html>',
+    ].join("");
+    const want = ["canonical http://localhost:3041", "og:title 50pick — Predict events. Not chance.", "og:url http://localhost:3041",
+      "og:image http://localhost:3041/og/og-1200x630.png", "og:image:width 1200", "og:locale sw_TZ"].join(NL);
+    const got = headOf(doc);
+    const headStore = {};
+    const keep = (text) => { const id = `h${Object.keys(headStore).length}`; headStore[id] = text; return id; };
+    const headCell = (body) => ({ status: 200, stable: true, landed: BOOK.head, pageErrors: [], journey: [], raw: rawOf(body),
+      regions: { main: { count: 1, html: keep('<main id="main-content"></main>'), layout: null } }, head: keep(bookNorm(headOf(body))) });
+    const dropped = doc.replace('<meta content="http://localhost:3041" property="og:url"/>', "");
+    const headRun = diffCells(BOOK.head, headCell(doc), headCell(dropped), headStore, headStore, BOOK_EXPECTED_DIFFS).unexpected.map((d) => d.field);
+    ok("P.8h the head reader reads /'s canonical link and every og:* meta from the bytes, in order — attributes in any order, a tag streamed into the body, never twitter:* or the RSC payload — and a dropped og:url is reported in the head field and nowhere else (unread bytes read as null)",
+      got === want && headRun.join() === "head" && headOf(null) === null && headOf(undefined) === null, JSON.stringify({ got, headRun }).slice(0, 400));
+  }
+  // ②e S7 WP1 · A8 item 1's verdict: a book whose replies hold what A8 asks passes — its Up & Down refusal recorded, never
+  // refused; the void marketIds[11] and the similar rail's question marketIds[0] — and each defect alone is refused, once.
+  {
+    const good = syntheticBook().seed;
+    const verdictOf = (mutate) => { const s = structuredClone(good); mutate?.(s); return bookVerdict(s); };
+    const g = verdictOf(null);
+    const DEFECTS = [
+      ["a pool of 11", (s) => { s.markets.reply.ids = s.markets.reply.ids.slice(0, 11); }],
+      ["a pool of 12 that holds a Demo · question", (s) => { s.markets.reply.ids = s.markets.reply.ids.slice(0, 12); s.markets.reply.ids[5].titleEn = `${DEMO_PREFIX}Planted`; }],
+      ["a door's 404", (s) => { s.watchlist.status = 404; }],
+      ["seed-player-portfolio not run", (s) => { delete s.portfolio; }],
+      ["11 placed", (s) => { s.portfolio.reply.placed = 11; }],
+      ["no VOID intended", (s) => { delete s.portfolio.reply.intended.VOID; }],
+      ["no VOID held", (s) => { delete s.portfolio.reply.byStatus.VOID; }],
+      ["no WIN held", (s) => { s.portfolio.reply.byStatus.WIN = 0; }],
+      ["no LOSS held", (s) => { delete s.portfolio.reply.byStatus.LOSS; }],
+      ["a settlement refused", (s) => { s.portfolio.reply.refusals.push("settle mkt_planted06000000000: INVALID the objection window is still open"); }],
+      ["a cash-out refused", (s) => { s.portfolio.reply.refusals.push("cashOut mkt_planted04000000000: CLOSED the exit window has closed"); }],
+      ["a stage-1 resolution refused", (s) => { s.portfolio.reply.refusals.push("stage1 mkt_planted07000000000: CONFLICT the officer holds a position"); }],
+      ["a void refused", (s) => { s.portfolio.reply.refusals.push("void mkt_planted11000000000: INVALID Market already resolved"); }],
+      ["11 ids", (s) => { s.portfolio.reply.marketIds = s.portfolio.reply.marketIds.slice(0, 11); }],
+      ["the watchlist not ok", (s) => { s.watchlist.reply.ok = false; }],
+      ["no progress row", (s) => { s.watchlist.reply.byLens.progress = 0; }],
+      ["no done row", (s) => { delete s.watchlist.reply.byLens.done; }],
+      ["no void row", (s) => { s.watchlist.reply.byLens.void = 0; }],
+      ["the player not signed in", (s) => { s.error = "the demo player is not signed in"; }],
+    ];
+    const bad = DEFECTS.filter(([, mutate]) => verdictOf(mutate).problems.length !== 1).map(([what, mutate]) => `${what}: ${JSON.stringify(verdictOf(mutate).problems)}`);
+    const ids = good.portfolio.reply.marketIds;
+    const goodOk = g.problems.length === 0 && g.recorded.length === 1 && g.pool === 30 && g.voidId === ids[11] && g.similarId === ids[0];
+    ok("P.8s A8 item 1's verdict passes a book whose replies hold what A8 asks (its Up & Down refusal recorded, never refused; the void is marketIds[11], the similar rail's question marketIds[0]), and refuses each defect alone — a pool of 11, a door's 404, 11 placed, no VOID intended, no WIN or LOSS held, a settlement or a cash-out refused, 11 ids, the watchlist not ok, no progress row",
+      goodOk && bad.length === 0, JSON.stringify({ good: goodOk ? [] : [...g.problems, `recorded ${g.recorded.length}`, `pool ${g.pool}`, `void ${g.voidId}`, `similar ${g.similarId}`], bad }).slice(0, 400));
+  }
+  // ②f S7 WP1 · A8 item 2's probe and the card classifier: a probe that found what A8 asks passes; each absence is reported
+  // on its own page and nowhere else; and every classic card state is read from the classes the card is drawn with.
+  {
+    const S0 = syntheticBook();
+    const voidId = bookVerdict(S0.seed).voidId;
+    const probeOf = (mutate) => { const p = structuredClone(S0.seed.probe); mutate?.(p); return probeVerdict(p, voidId); };
+    const clean = probeOf(null);
+    const PROBE_DEFECTS = [
+      ["results", "the voided question's card missing from /results", (p) => { p.results = p.results.filter((c) => c.id !== voidId); }],
+      ["results", "the voided question's card drawn resolved YES", (p) => { p.results.find((c) => c.id === voidId).state = "resolved-yes"; }],
+      ["results", "no settled YES card on /results", (p) => { p.results = p.results.filter((c) => c.state !== "resolved-yes"); }],
+      ["results", "no settled NO card on /results", (p) => { p.results = p.results.filter((c) => c.state !== "resolved-no"); }],
+      ["results", "/results not read", (p) => { p.results = null; }],
+      ["watchlist", "no void card on /watchlist", (p) => { p.watchlist = p.watchlist.filter((c) => c.state !== "void"); }],
+      ["watchlist", "no done card on /watchlist", (p) => { p.watchlist = p.watchlist.filter((c) => c.state !== "resolved-yes" && c.state !== "resolved-no"); }],
+      ["watchlist", "no selection-closed card on /watchlist", (p) => { p.watchlist = p.watchlist.filter((c) => c.state !== "closed"); }],
+      ["watchlist", "/watchlist not read", (p) => { p.watchlist = null; }],
+    ];
+    const probeRuns = [
+      ...(clean.results.length || clean.watchlist.length ? [`a probe holding A8's cards is refused: ${[...clean.results, ...clean.watchlist].join(" · ")}`] : []),
+      ...PROBE_DEFECTS.filter(([page, , mutate]) => {
+        const v = probeOf(mutate);
+        return v[page].length === 0 || v[page === "results" ? "watchlist" : "results"].length !== 0;
+      }).map(([, what]) => `${what}: not reported on its own page alone`),
+    ];
+    const result = "mcardp-pctcap--result", single = "mcardp-actions--single", oneside = "mcardp-oneside";
+    const CLASSIFIED = [
+      [{ pct: "mcardp-pct mcardp-pct--void", marks: [result, single] }, "void"],
+      [{ pct: "mcardp-pct mcardp-pct--no", marks: [result, single] }, "resolved-no"],
+      [{ pct: "mcardp-pct", marks: [result, single] }, "resolved-yes"],
+      [{ pct: "mcardp-pct", marks: [result, single, oneside] }, "resolved-yes"],
+      [{ pct: "mcardp-pct", marks: [single] }, "closed"],
+      [{ pct: "mcardp-pct mcardp-pct--empty", marks: [single, oneside] }, "closed"],
+      [{ pct: "mcardp-pct mcardp-pct--empty", marks: [oneside] }, "one-sided"],
+      [{ pct: "mcardp-pct mcardp-pct--empty", marks: [] }, "empty"],
+      [{ pct: "mcardp-pct", marks: [] }, "priced"],
+      [{ pct: "", marks: [] }, "other"],
+      [{ pct: "mcardp-pctcap", marks: [result] }, "other"],
+    ];
+    const misread = CLASSIFIED.filter(([facts, want]) => cardStateOf(facts) !== want).map(([facts, want]) => `${JSON.stringify(facts)} read ${cardStateOf(facts)}, not ${want}`);
+    ok("P.8p A8 item 2's probe passes /results with the void card drawn void and settled YES and NO cards, and /watchlist with void, done and selection-closed cards; each absence is reported on its own page alone; and the card classifier reads void, resolved NO and YES, selection closed, one-sided, empty pool and live priced from the classic card's classes",
+      probeRuns.length === 0 && misread.length === 0, JSON.stringify({ probeRuns, misread }).slice(0, 400));
+  }
+  // ②g S7 WP1 · A8 item 3: the live trace's selector asks for S7's class names beside S6's journey, and its class report
+  // names them; neither the selector nor the report takes a class a classic page draws.
+  {
+    const S7_CLASSES = ["kp-jcard", "kp-jcard__price", "kp-jhome", "kp-jhome__lead", "kp-jhowto", "kp-jhowto__step", "kp-howto", "kp-howto__sheet", "journey-tabs"];
+    const CLASSIC = ["mcardp", "mcardp-pct", "mcardp-pct--no", "mcardp-oneside", "mcardp-src__seq", "market-grid", "ticker-strip", "ticker-item", "kp-rail",
+      "app-topbar", "kp-sell-stack", "kp-sell-wrap", "kp-seq", "kp-modal-title", "kp-proof__cap", "kp-udtrack__svg", "crest-holder", "btn-gold"];
+    const selectorParts = [...TRACE.selector.matchAll(/\[class\*="([^"]+)"\]/g)].map((m) => m[1]);
+    const selected = (c) => selectorParts.some((p) => c.includes(p));
+    const reported = (c) => TRACE.parts.some((p) => c.includes(p));
+    const missed = S7_CLASSES.filter((c) => !selected(c) || !reported(c));
+    const caught = CLASSIC.filter((c) => selected(c) || reported(c));
+    ok("P.8t the live trace asks for S7's class names (kp-jcard, kp-jhome, kp-jhowto, kp-howto) beside S6's journey, and its class report names them — and no classic class",
+      TRACE.selector.split(",").includes('[data-testid^="journey-"]') && TRACE.selector.split(",").includes("[data-journey]") && missed.length === 0 && caught.length === 0,
+      JSON.stringify({ selector: TRACE.selector, missed, caught }).slice(0, 400));
+  }
+  // ②h S7 WP1 · the book's checks (§B): a clean synthetic book passes them all, and each plant turns exactly its own one red.
+  const SB = syntheticBook();
+  const bookRed = (m) => bookChecks(m.book, m.seed, m.store).filter((x) => x.fails.length).map((x) => x.id);
+  ok("P.7b a clean synthetic book passes every check in §B", bookRed(SB).length === 0, JSON.stringify(bookRed(SB)));
+  const atBook = (m, v, l, w, r) => m.book[keyOf(`book-${v}`, l, w, r)];
+  const bookVoid = (m) => m.seed.portfolio.reply.marketIds[11];
+  const BOOK_FLOOR_PLANTS = [
+    ["B.0", "a seed A8 item 1 refuses", (m) => { m.seed.portfolio.reply.placed = 11; }],
+    ["B.0", "a book cell missing from the capture", (m) => { delete m.book[keyOf("book-guest", "sw", 1280, "/live")]; }],
+    ["B.0", "a book cell that did not capture", (m) => { m.book[keyOf("book-player", "en", 1280, "/watchlist")] = { error: "planted" }; }],
+    ["B.1", "a book cell that never settled", (m) => { atBook(m, "guest", "en", 360, "/markets").stable = false; }],
+    ["B.1", "the player's /watchlist sent to sign-in", (m) => { atBook(m, "player", "sw", 360, "/watchlist").landed = "/auth/login?next=%2Fwatchlist"; }],
+    ["B.1", "a book cell answering 500", (m) => { atBook(m, "player", "en", 1280, BOOK.similar).status = 500; }],
+    ["B.2", "the voided question's card missing from /results", (m) => { m.seed.probe.results = m.seed.probe.results.filter((c) => c.id !== bookVoid(m)); }],
+    ["B.2", "no settled NO card on /results", (m) => { m.seed.probe.results = m.seed.probe.results.filter((c) => c.state !== "resolved-no"); }],
+    ["B.3", "no selection-closed card on /watchlist", (m) => { m.seed.probe.watchlist = m.seed.probe.watchlist.filter((c) => c.state !== "closed"); }],
+    ["B.3", "no done card on /watchlist", (m) => { m.seed.probe.watchlist = m.seed.probe.watchlist.filter((c) => c.state !== "resolved-yes" && c.state !== "resolved-no"); }],
+    ["B.4", "a /results cell without its <main>", (m) => { atBook(m, "guest", "en", 1280, "/results").regions.main = { count: 0, html: null, layout: null }; }],
+    ["B.4", "the question page without its similar rail", (m) => { atBook(m, "player", "sw", 360, BOOK.similar).regions.similar = { count: 0, html: null, layout: null }; }],
+    ["B.4", "/'s head without og:url", (m) => { m.store.headNoUrl = ["canonical http://localhost", "og:title 50pick — Predict events. Not chance."].join(NL); atBook(m, "guest", "sw", 1280, "/").head = "headNoUrl"; }],
+    ["B.4", "/'s head unread", (m) => { atBook(m, "player", "en", 360, "/").head = null; }],
+    ["B.5", "a lobby cell without the LIVE strip", (m) => { delete atBook(m, "guest", "sw", 360, "/live").regions.ticker; }],
+    ["B.6", "a kp-jcard element in a classic page", (m) => { atBook(m, "player", "en", 1280, "/").journey = ["class:kp-jcard"]; }],
+    ["B.6", "journey-home-ghost in a classic /markets raw body", (m) => { atBook(m, "guest", "en", 360, "/markets").raw.trace = ["testid:journey-home-ghost"]; }],
+    ["B.7", "no one-sided card anywhere in the book", (m) => { for (const c of Object.values(m.book)) c.cards = c.cards.filter((x) => x.state !== "one-sided"); }],
+    ["B.7", "no void card anywhere in the book", (m) => { for (const c of Object.values(m.book)) c.cards = c.cards.filter((x) => x.state !== "void"); }],
+    ["B.8", "a real page error filed as DEV-only (it would never be compared)", (m) => { atBook(m, "player", "sw", 1280, "/results").devOnly = ["TypeError: Cannot read properties of undefined (reading 'resolvedOutcome')"]; }],
+  ];
+  for (const [id, what, plant] of BOOK_FLOOR_PLANTS) {
+    const m = structuredClone(SB);
+    plant(m);
+    const got = bookRed(m);
+    ok(`P.check ${id} — ${what} turns ${id} red, and nothing else in §B`, got.join() === id, got.join(" ") || "nothing went red");
+  }
+
   // ③ The browser: the instrument agrees with itself, and sees each plant in its own field and nowhere else.
   const PLANTS = [
     { id: "height", css: "header.app-topbar { height: 64px !important; }", what: "the canvas's 64px bar in place of the kit's 56", need: "regions.header.layout", within: ["regions.header."] },
@@ -1859,6 +2690,78 @@ async function proveRed() {
       }
     }
   }
+
+  // ⑤ S7 WP1 · the book in the browser, after the Sell capture (its { markets: 5 } came first, as in a capture): the demo
+  // player's book is seeded through the existing doors and probed (A8 items 1 and 2); the LIVE strip is waited for; then
+  // two clean captures of each BOOK_PROVE cell agree — the strip read still — and each plant is reported in its own field
+  // and nowhere else: a class added to one card in one route's body (that body's field only), og:url dropped from /'s
+  // bytes (the head field), the strip re-inked, and S7's trace — a kp-jcard element in the classic page (the trace in the
+  // page) and data-testid="journey-home-ghost" in /markets' raw body (the raw trace), each in its own cell (A8 item 3).
+  const bookPR = holder.length ? await seedBook(holder) : { error: "the demo player is not signed in" };
+  const bookV = bookVerdict(bookPR);
+  if (!bookV.problems.length) bookPR.probe = await probeBook(holder);
+  const bookP = probeVerdict(bookPR.probe, bookV.voidId);
+  const bookRefused = [...bookV.problems, ...bookP.results, ...bookP.watchlist];
+  ok(`P.book the book is seeded through the existing dev-test doors (A8 item 1: ${bookSummary(bookPR)}), and the probe finds A8 item 2's cards on /results and /watchlist`,
+    bookRefused.length === 0, bookRefused.join(" · "));
+  if (!bookRefused.length) {
+    const strip = await waitForStrip(holder);
+    console.log(`  · the LIVE strip ${strip.seen ? `named the book's settlements after ${secs(strip.ms)}` : `did not appear in ${secs(strip.ms)}${strip.error ? ` (${strip.error})` : ""}`}`);
+    const cardIn = {
+      main: () => { const a = document.querySelector("#main-content article.mcardp"); if (a) a.classList.add("kp-parity-plant"); },
+      similar: () => { const a = document.querySelector('section[aria-labelledby="similar-markets-heading"] article.mcardp'); if (a) a.classList.add("kp-parity-plant"); },
+    };
+    const ghost = '<div data-testid="journey-home-ghost" hidden></div>';
+    const BOOK_PROVE = [
+      { v: "guest", l: "en", w: 360, r: "/", plants: [
+        { id: "book-card", js: cardIn.main, what: "a class added to one card in /'s body", need: "regions.main.html", within: ["regions.main."] },
+        { id: "book-og-url", bytes: (s) => s.replace(/<meta\b[^>]*\bproperty="og:url"[^>]*>/g, ""), what: "og:url dropped from /'s bytes", need: "head", within: ["head"] },
+        { id: "book-strip", css: ".ticker-strip .ticker-item { color: rgb(255, 0, 0) !important; }", what: "the LIVE strip's items re-inked", need: "regions.ticker.layout", within: ["regions.ticker."] },
+      ] },
+      { v: "player", l: "sw", w: 1280, r: "/markets", plants: [
+        { id: "book-card", js: cardIn.main, what: "a class added to one card in /markets' body", need: "regions.main.html", within: ["regions.main."] },
+        { id: "book-jcard", js: () => { const d = document.createElement("div"); d.className = "kp-jcard"; d.setAttribute("data-parity-plant", ""); document.body.append(d); },
+          what: "a kp-jcard element in the classic page (A8 item 3)", need: "journey", within: ["journey"] },
+        { id: "book-ghost", bytes: (s) => (s.includes("</body>") ? s.replace("</body>", `${ghost}</body>`) : `${s}${ghost}`),
+          what: 'data-testid="journey-home-ghost" in the classic /markets raw body (A8 item 3)', need: "raw", within: ["raw"] },
+      ] },
+      { v: "player", l: "en", w: 1280, r: "/results", plants: [
+        { id: "book-card", js: cardIn.main, what: "a class added to one card in /results' body", need: "regions.main.html", within: ["regions.main."] },
+      ] },
+      { v: "player", l: "sw", w: 360, r: "/watchlist", plants: [
+        { id: "book-card", js: cardIn.main, what: "a class added to one card in /watchlist's body", need: "regions.main.html", within: ["regions.main."] },
+      ] },
+      { v: "guest", l: "sw", w: 1280, r: "/live", plants: [] },
+      { v: "player", l: "en", w: 360, r: BOOK.similar, plants: [
+        { id: "book-card", js: cardIn.similar, what: "a class added to one card in the similar rail", need: "regions.similar.html", within: ["regions.similar."] },
+      ] },
+    ];
+    const routeOf = (r) => (r === BOOK.similar ? `/markets/${bookV.similarId}` : r);
+    await warm(holder, [...new Set(BOOK_PROVE.filter((c) => c.v === "player").map((c) => routeOf(c.r)))]);
+    await warm([], [...new Set(BOOK_PROVE.filter((c) => c.v === "guest").map((c) => routeOf(c.r)))]);
+    for (const { v, l, w, r, plants } of BOOK_PROVE) {
+      const k = keyOf(`book-${v}`, l, w, r);
+      const jar = v === "player" ? holder : [];
+      const clean = await captureBookCell(jar, l, w, r, bookV.similarId);
+      const again = await captureBookCell(jar, l, w, r, bookV.similarId);
+      if (clean.error || again.error) { ok(`P.${k} the book cell was captured`, false, clean.error ?? again.error); continue; }
+      const noise = diffCells(r, clean, again, blobs, blobs, BOOK_EXPECTED_DIFFS).unexpected;
+      const bodyCount = r === BOOK.similar ? clean.regions.similar?.count : clean.regions.main?.count;
+      const stripOk = !BOOK.lobby.includes(r) || clean.regions.ticker?.count === 1;
+      ok(`P.${k} two clean captures of a book cell agree — the instrument is deterministic on one server, the LIVE strip read still`,
+        noise.length === 0 && bodyCount === 1 && stripOk,
+        noise.length ? noise.slice(0, 3).map((d) => `${d.field}: ${d.detail}`).join(" | ").slice(0, 400)
+          : `body ${bodyCount ?? 0} · strip ${BOOK.lobby.includes(r) ? clean.regions.ticker?.count ?? 0 : "-"} · cards ${clean.cards.length}`);
+      for (const plant of plants) {
+        const planted = await captureBookCell(jar, l, w, r, bookV.similarId, plant);
+        if (planted.error) { ok(`P.${k} ${plant.id} was captured`, false, planted.error); continue; }
+        const seen = diffCells(r, clean, planted, blobs, blobs, BOOK_EXPECTED_DIFFS).unexpected;
+        ok(`P.${k} ⭐ ${plant.what} is reported in ${plant.need}, and nowhere outside ${plant.within.join(" / ")}`,
+          seen.some((d) => inside(d.field, [plant.need])) && seen.every((d) => inside(d.field, plant.within)),
+          seen.length ? seen.slice(0, 2).map((d) => `${d.field}: ${d.detail}`).join(" | ").slice(0, 400) : "NOT SEEN — a book compare with this harness proves nothing");
+      }
+    }
+  }
 }
 
 // ── what every capture must show, in every mode that captures the matrix ──────────────────────────────────
@@ -1872,6 +2775,12 @@ if (!PROVE_RED) {
 
   console.log(`${NL}§S · the Sell button a classic holder is served (WP10 — every run that captures)`);
   for (const c of sellChecks(sellCells, sellSeed, blobs)) ok(`${c.id} ${c.name}`, c.fails.length === 0, listOf(c.fails));
+
+  console.log(`${NL}§B · a classic reader's page bodies, the LIVE strip, the similar rail and /'s head, over the seeded book (S7 WP1, A8 — every run that captures)`);
+  console.log(`  the book: ${bookSummary(bookSeed)}`);
+  const drawn = cardTally(bookCells);
+  console.log(`  card states drawn across the book's cells: ${[...CARD_STATES, "other"].map((s) => `${CARD_LABELS[s]} ${drawn.get(s) ?? 0}`).join(" · ")}`);
+  for (const c of bookChecks(bookCells, bookSeed, blobs)) ok(`${c.id} ${c.name}`, c.fails.length === 0, listOf(c.fails));
 
   if (COMPARE) {
     console.log(`\n§4 · parity with the baseline (${short(baseline.base.sha)}, captured ${baseline.base.capturedAt})`);
@@ -1950,9 +2859,34 @@ if (!PROVE_RED) {
     const sellMissing = missingAlongside(sellHits, SELL_EXPECTED_DIFFS);
     ok("4.6 each measured Sell difference is seen in all of its cells whenever the served change that causes it is seen", sellMissing.length === 0,
       sellMissing.join(" · "));
-    if (differing || sellDiffering) {
+    // ⭐ S7 WP1 · the book's cells against the baseline's (A8): a classic reader's page bodies, the LIVE strip, the similar
+    // rail and /'s head. S7 promises them unchanged, so any difference is a failure unless BOOK_EXPECTED_DIFFS names it.
+    const bookBase = baseline.book ?? {};
+    const bookBaseKeys = Object.keys(bookBase).sort(), bookCurKeys = Object.keys(bookCells).sort();
+    ok("4.7 the same book cells as the baseline", bookCurKeys.length > 0 && JSON.stringify(bookBaseKeys) === JSON.stringify(bookCurKeys), `${bookBaseKeys.length} vs ${bookCurKeys.length}`);
+    const bookHits = new Map();
+    let bookDiffering = 0, bookCompared = 0, bookShown = 0;
+    for (const k of bookCurKeys) {
+      const was = bookBase[k], now = bookCells[k];
+      if (!was || was.error || now.error) continue;
+      bookCompared++;
+      const { unexpected, expected } = diffCells(partsOf(k).r, was, now, baseline.blobs, blobs, BOOK_EXPECTED_DIFFS);
+      for (const e of expected) bookHits.set(e.id, (bookHits.get(e.id) ?? 0) + 1);
+      if (!unexpected.length) continue;
+      bookDiffering++;
+      if (bookShown++ < 40) for (const d of unexpected.slice(0, 3)) console.log(`  ✗ ${k} — ${d.field}: ${d.detail}`.slice(0, 600));
+    }
+    if (bookShown > 40) console.log(`  … and ${bookShown - 40} more book cell(s)`);
+    ok(`4.8 ⭐ no unexpected difference in the ${bookCompared} book cells: a classic reader is served today's page bodies, LIVE strip, similar rail and head`,
+      bookCompared > 0 && bookCompared === bookCurKeys.length && bookDiffering === 0, bookDiffering ? `${bookDiffering} book cell(s) differ` : "");
+    const bookDevCells = bookCurKeys.filter((k) => (bookCells[k]?.devOnly ?? []).length);
+    if (bookDevCells.length) console.log(`  DEV-ONLY, filed and not compared, in ${bookDevCells.length} book cell(s): ${bookDevCells.slice(0, 8).join(", ")}${bookDevCells.length > 8 ? " …" : ""}`);
+    for (const e of BOOK_EXPECTED_DIFFS) console.log(`  EXPECTED ${e.id} — seen in ${bookHits.get(e.id) ?? 0} of ${e.cells} book cell(s). ${e.reason}`);
+    ok("4.9 each named book difference is seen in all of its cells or in none", partialExpected(bookHits, BOOK_EXPECTED_DIFFS).length === 0,
+      partialExpected(bookHits, BOOK_EXPECTED_DIFFS).join(" · "));
+    if (differing || sellDiffering || bookDiffering) {
       const side = `${COMPARE}.current.json`;
-      writeFileSync(side, `${JSON.stringify({ kind: KIND, version: VERSION, role: "compare-capture", base: { sha: HEAD.out, tree: TREE, dirty: DIRTY }, matrix: MATRIX, cells, sell: sellCells, blobs })}${NL}`, "utf8");
+      writeFileSync(side, `${JSON.stringify({ kind: KIND, version: VERSION, role: "compare-capture", base: { sha: HEAD.out, tree: TREE, dirty: DIRTY }, matrix: MATRIX, cells, sell: sellCells, book: bookCells, bookSeed, blobs })}${NL}`, "utf8");
       console.log(`  this run's capture, for reading beside the baseline: ${side}`);
     }
   }
@@ -1968,10 +2902,11 @@ if (!PROVE_RED) {
       kind: KIND, version: VERSION, role: "baseline", rejected: failedSoFar,
       base: { sha: HEAD.out, main: MAIN, fork: FORK.code === 0 ? FORK.out : null, tree: TREE, dirty: DIRTY, capturedAt: new Date().toISOString() },
       server: { base: BASE, rollout, store: health.store ?? null, browser: BROWSER },
-      matrix: MATRIX, expectedDiffs: EXPECTED_DIFFS.map((e) => e.id), report: { header320: report320 },
-      cells, sell: sellCells, seed: sellSeed, blobs,
+      matrix: MATRIX, expectedDiffs: EXPECTED_DIFFS.map((e) => e.id), bookExpectedDiffs: BOOK_EXPECTED_DIFFS.map((e) => e.id), report: { header320: report320 },
+      cells, sell: sellCells, seed: sellSeed, book: bookCells, bookSeed, blobs,
     };
     writeFileSync(target, `${JSON.stringify(doc)}${NL}`, "utf8");
+    console.log(`  the book: ${Object.keys(bookCells).length} cells over a pool of ${bookVerdict(bookSeed).pool ?? "?"} LIVE non-demo question(s) (§0j records it) · its normalisers ${BOOK.normalise.join(", ") || "none"}${NORM_SOURCE ? ` (set by ${NORM_SOURCE})` : ""}`);
     console.log(failedSoFar
       ? `\n⛔ baseline NOT written — a check above failed, and a baseline is only as good as its population. The capture is in ${target} for reading; --compare refuses it.`
       : `\nbaseline written: ${BASELINE} — base ${short(HEAD.out)}, ${Object.keys(cells).length} cells, ${Object.keys(blobs).length} blobs. Next: a null --compare on a FRESH server at this commit must exit 0.`);
