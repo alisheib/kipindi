@@ -146,10 +146,31 @@ const MUTATIONS = [
     // gradient parser were not reading `.btn-primary`'s ramp, restoring the 60%
     // light stop would move nothing — which is exactly the state the gate was in
     // before, when it had no way to score a gradient at all.
+    // ⚠️ RE-ANCHORED 2026-10-12 (the Vodacom plan S7, S7-PLAN A14): the ramp left the rule for its token, `--wash-primary`
+    // (`.btn-primary { background: var(--wash-primary) }`), so the plant edits the token's declaration line — the one
+    // place the ramp is written, and the token `test:contrast` follows from the button's own rule (`tokenNamed`).
     name: "restore .btn-primary's 60% light stop — E-119, the white label back to 4.0",
     kind: "fail",
-    from: `  background: linear-gradient(180deg, oklch(53% 0.20 268) 0%, oklch(48% 0.20 268) 100%);`,
-    to: `  background: linear-gradient(180deg, oklch(60% 0.20 268) 0%, oklch(48% 0.20 268) 100%);`,
+    from: `  --wash-primary: linear-gradient(180deg, oklch(53% 0.20 268) 0%, oklch(48% 0.20 268) 100%);`,
+    to: `  --wash-primary: linear-gradient(180deg, oklch(60% 0.20 268) 0%, oklch(48% 0.20 268) 100%);`,
+  },
+  {
+    // ⭐ THE BUTTON'S RULE IS READ, NOT THE TOKEN'S NAME (the review of 2026-10-12). Scored as `tokenGradient("wash-primary")`,
+    // the gate went on scoring the token while the rule painted a ramp typed back into it — E-119's 60% stop here, the
+    // white label at 4.0, unseen. Read off the rule (`tokenNamed`), a typed ramp is a second definition of the primary
+    // material (S7-PLAN A14), and the gate refuses it.
+    name: "type a lighter ramp back into .btn-primary's rule (E-119's 60% stop) — the button stops reading its token",
+    kind: "throw",
+    from: `.btn-primary {\n  background: var(--wash-primary);`,
+    to: `.btn-primary {\n  background: linear-gradient(180deg, oklch(60% 0.20 268) 0%, oklch(48% 0.20 268) 100%);`,
+  },
+  {
+    // …and the token the rule NAMES is the one scored: pointed at a ramp its pearl label cannot stand on, the button's
+    // pair must FAIL — a gate reading a fixed name would have gone on printing `--wash-primary`'s 5.40.
+    name: "point .btn-primary at the gold ramp (--g-gold) — the pearl label scored on the token the rule names",
+    kind: "fail",
+    from: `.btn-primary {\n  background: var(--wash-primary);`,
+    to: `.btn-primary {\n  background: var(--g-gold);`,
   },
   {
     // The hover half. A filter is a RASTER effect, so nothing that reads the
@@ -164,6 +185,8 @@ const MUTATIONS = [
     // A ramp whose stops cannot all be resolved must STOP the gate. Scoring the
     // two stops out of three that happen to be literals reports a number for a
     // surface only partly read — the shape of defect E-118 fixed next door.
+    // ⚠️ Since S7-PLAN A14 (2026-10-12) this anchor lands on `--wash-primary`'s declaration line, its one occurrence in
+    // globals.css (the rule reads the token), so the unscoreable stop is planted where the gate reads the ramp.
     name: "make one of .btn-primary's gradient stops an unscoreable color-mix()",
     kind: "throw",
     from: `oklch(53% 0.20 268) 0%, oklch(48% 0.20 268) 100%);`,
