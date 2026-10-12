@@ -265,6 +265,9 @@ section("2 · G1 · the root loading element is a reference and the rails; every
 const GHOST = "src/components/journey/route-ghost.tsx";
 const GHOST_LAZY = "src/components/journey/route-ghost-lazy.tsx";
 const SHELL_LAZY = "src/components/layout/shell-lazy.tsx";
+/** The app's one lost-chunk guard (the Vodacom plan S7, S7-PLAN A13(a)), which this binding and the shell's parts import. */
+const GUARD = "src/components/layout/lost-chunk.ts";
+const GUARD_SPEC = "@/components/layout/lost-chunk";
 const LOADING = "src/app/loading.tsx";
 const SRC_EXTS = [".ts", ".tsx", "/index.ts", "/index.tsx"];
 /** Every module a file loads at runtime (value imports, side-effect imports, dynamic imports), resolved in src. */
@@ -312,17 +315,35 @@ function serverOnly(entry: string, text: (p: string) => string = raw): { reached
   const statics = [...lazy.matchAll(/^\s*import\s+([^;]*?)\s+from\s+"([^"]+)";/gm)].map((m) => `${m[1].trim()} from ${m[2]}`);
   const LINE = 'export const LazyJourneyRouteGhost = dynamic(() => import("@/components/journey/route-ghost").then((m) => m.JourneyRouteGhost).catch(nothingIfLost));';
   const options = ["ssr", "loading", "suspense"].filter((w) => lazy.includes(w));
-  ok("2.3 · route-ghost-lazy.tsx is the shell's pattern: client code whose one static import is next/dynamic, one binding with no option object (the server render stays on, no boundary of its own), its loader ending in the lost-chunk guard",
-    hasDirective(lazy, "use client") && j(statics) === j(["dynamic from next/dynamic"]) && count(lazy, LINE) === 1 && count(lazy, "export ") === 1 && options.length === 0,
+  // ⚠️ RE-POINTED 2026-10-12 (the Vodacom plan S7, S7-PLAN WP6, amendments A13(a) and A24 item 5): the lost-chunk guard
+  // this file repeated is the app's one module now, `layout/lost-chunk.ts`, so its static imports are next/dynamic and,
+  // exactly one more, that guard — the shell's lazy module's own two.
+  ok("2.3 · route-ghost-lazy.tsx is the shell's pattern: client code whose static imports are next/dynamic and the app's one lost-chunk guard (S7-PLAN A13(a)), one binding with no option object (the server render stays on, no boundary of its own), its loader ending in that guard",
+    hasDirective(lazy, "use client") && j(statics) === j(["dynamic from next/dynamic", `{ nothingIfLost } from ${GUARD_SPEC}`]) && count(lazy, LINE) === 1
+      && count(lazy, "export ") === 1 && options.length === 0,
     j({ statics, options, line: count(lazy, LINE) }));
-  // The guard, character for character: the stand-in, the once-per-page flag and the guard itself.
+  // The guard: the stand-in, the once-per-page flag and the guard itself, read where they are written.
   const guardOf = (s: string) => {
     const a = s.indexOf("function Nothing(): null {"), b = s.indexOf("return Nothing;\n}", a);
     return a < 0 || b < 0 ? "" : squash(s.slice(a, b + "return Nothing;\n}".length));
   };
-  ok("2.4 · its lost-chunk guard is the shell's own, character for character (a ChunkLoadError leaves the ghost out and reports once; any other error is thrown on)",
-    guardOf(lazy) !== "" && guardOf(lazy) === guardOf(shell) && guardOf(lazy).includes('error.name !== "ChunkLoadError") throw error;'), guardOf(lazy).slice(0, 120));
-  ok("2.4′ PLANT · a guard that takes every error is reported", guardOf(lazy.replace('if (!(error instanceof Error) || error.name !== "ChunkLoadError") throw error;', "")) !== guardOf(shell));
+  // ⚠️ RE-POINTED 2026-10-12 (S7-PLAN A13(a), A24 item 5): 2.4 held this file's copy of the guard equal to the shell's,
+  // character for character. The copy is gone: both files import the one guard from `lost-chunk.ts`, so 2.4 holds that —
+  // the import, by name, in this file and in the shell's lazy module; no guard, stand-in or flag defined here; and the one
+  // guard taking a ChunkLoadError alone, throwing every other error on.
+  const IMPORT = `import { nothingIfLost } from "${GUARD_SPEC}";`;
+  const oneGuard = (ghostSrc: string, shellSrc: string, guardSrc: string) =>
+    count(ghostSrc, IMPORT) === 1 && count(shellSrc, IMPORT) === 1 && guardOf(ghostSrc) === ""
+      && !ghostSrc.includes("function nothingIfLost(") && !ghostSrc.includes("let reported")
+      && guardOf(guardSrc).includes('if (!(error instanceof Error) || error.name !== "ChunkLoadError") throw error;')
+      && guardSrc.includes("export function nothingIfLost(error: unknown): typeof Nothing {");
+  const guardSrc = code(GUARD);
+  ok("2.4 · its lost-chunk guard is the app's one (`layout/lost-chunk.ts`), imported by name here and by the shell's lazy module, and defined nowhere in this file (a ChunkLoadError leaves the ghost out and reports once; any other error is thrown on)",
+    oneGuard(lazy, shell, guardSrc), j({ imported: count(lazy, IMPORT), shellImports: count(shell, IMPORT), ownCopy: guardOf(lazy).slice(0, 80) }));
+  ok("2.4′ PLANT · a copy of the guard back in this file, in place of the import, is reported",
+    !oneGuard(lazy.replace(IMPORT, guardSrc.split("export ").join("")), shell, guardSrc));
+  ok("2.4″ PLANT · the one guard taking every error is reported",
+    !oneGuard(lazy, shell, guardSrc.replace('if (!(error instanceof Error) || error.name !== "ChunkLoadError") throw error;', "")));
 }
 {
   const loading = code(LOADING);
