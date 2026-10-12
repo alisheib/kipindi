@@ -50,6 +50,7 @@
 - Stake bounds: PLATFORM_MIN_STAKE 1,000, MAX 1,000,000 (per-market via config). ⚠️ PLATFORM_MIN_STAKE is 500 since the owner's ruling of 2026-10-12; the deposit minimum stays 1,000.
 
 ## Low balance variants (shortfallPlan states: pending, deposit_limit, sof_required, wallet_held, loss_limit, belowDepositMin, rails_paused) — NO sheet strings yet.
+⟶ S8 WP4 (2026-10-13): the sheet's low-balance strings are journey keys now — "S8 drafts" below.
 - Pending: depositStarted "Amana imeanza"; returnPendingWarnTitle "Tafadhali usilipe tena".
 - errDepositLimit "Amana hii ingepita kikomo cha amana ulichojiwekea. Unaweza kukagua vikomo vyako chini ya Uchezaji Salama."
 - errSofRequired "Amana hii inahitaji tamko la chanzo cha fedha lililokubaliwa na timu yetu. Jaza tamko kutoka kwenye wasifu wako; utaweza kuweka amana hii baada ya kukubaliwa."
@@ -126,7 +127,7 @@ rule as above: they ship with S12, never earlier.
   (responsible-gambling.ts, `Date.now() - 86_400 * 1000`), so "kesho" — at any hour — was untrue. Now: "Umefikia kikomo
   cha hasara cha siku ulichojiwekea. **Kinahesabu saa 24 zilizopita** — unaweza kukiangalia kwenye Uchezaji salama." (en
   "It counts the last 24 hours", zh "该上限按过去 24 小时计算"), the same clause S8's `journey.sheetLossBlock` uses; see
-  "Swahili review" 7.
+  "Swahili review" 7. ⟶ S8 WP4: the sheet reads this key itself; no `sheetLossBlock` was added (S8-PLAN A5).
 - `youAlreadyHold` · "Tayari unashikilia NDIO hapa" → "Tayari una dau la NDIO hapa"; `hedgeAddBody` "kwenye soko hili" → "kwenye swali hili".
 - `failSelectionClosed` / "Soko limefungwa" → "Swali hili limefungwa" / "Muda wa kuchagua umekwisha. Sasa tunasubiri matokeo."
 - Cash-out: "Toka bila gharama · Hakuna ada" → "Uza bila ada hadi {saa}"; "TZS {n} pesa yote" → "Rudishiwa TZS {n} kamili".
@@ -235,6 +236,53 @@ Correction 9) and `howHelplineLabel` (no player surface shows the helpline: the 
 - `journey.howStepsAria` · "Hatua" · the How-to sheet's scrolling steps region.
 - `journey.hubSearchPlaceholder` · "Tafuta swali" · Tafuta in the Akaunti hub (S7 WP9).
 
+## S8 drafts (2026-10-13) — for the native review
+
+Added by S8 WP4 (`S8-PLAN.md` WP4, as amended by A5, A10, A20 and A24) as keys of the `journey` namespace; only journey
+files will read them, so no classic word changed (§3.9). Each line: key · sw · where it comes from. The dictionary stays
+the truth; every figure is a placeholder (the minimum stake, TZS 500 since 2026-10-12, is read per market).
+
+**The deck's words, now keys** (VODACOM-PLAN §3, binding — read, never re-worded): `sheetChosen`, `stakeLabel`,
+`estimateLead`, `estimatePill`, `balanceRow`, `placeCta`, `placeCtaBare`, `estimateCompact`, `lowTitle`, `lowBody`,
+`lowChoose`, `lowDeposit`, `lowBetInstead`. Not added: `pendingBet` (S9's).
+
+**S4 canvas words, now keys** (approved in "Swahili review" 3 below; the drawn "TZS 3,000", "TZS 1,000", "TZS 800",
+"100", "10%" and "8 Okt" are `{amount}`, `{min}`, `{left}`, `{cap}`, `{pct}` and `{date}`): `estimatePillOver`,
+`estimateUpdated`, `sheetEmptyPoolBody`, `sheetRefundRule`, `sheetFirstOnSide`, `sheetLegacyFee`, `lowMinNote`,
+`lowPendingTitle`, `lowPendingTrack`, `lowSofCta`, `homeBreakTitle`, `homeBreakBody`, `cardBreak`. Not built as drawn:
+the loss room's "leo" (S8-PLAN A5: now a draft below, `lowLossRoom`).
+
+**Review 2's corrected live words, as journey copies** (approved in "Swahili review" 2; the classic keys keep their
+words until S12): `sheetClosedTitle`, `sheetClosedBody`, `sheetHolds`, `sheetHoldAddBody`, `sheetHedgeBody`,
+`sheetHedgeBothBody`, `sheetLegacyBody`, `sheetBusy`, `sheetBlocked`, `sheetFrozen`, `sheetSessionLimit`,
+`sheetRateLimited`, `sheetDepositLimit`, `sheetSofRequired`, `sheetBelowMin`, `sheetAboveMax`. `sheetHedgeBody` and
+`sheetHedgeBothBody` say "swali hili" where the corrected classic sentences say "soko hili" (SJ-19), as `hedgeAddBody`'s
+correction does — review 8 confirms it.
+
+**Reused by key, never copied:** the loss block is `error.failLossLimitDaily` as corrected live on 2026-10-12 (review 7;
+S8-PLAN A5 — there is no `sheetLossBlock`); the ✕ is `common.close` ("Funga"); the receipt's "Dau" is `common.stake`;
+the pending body under 10 minutes is `common.depositPendingBody`; and the rest of S8-PLAN's "Reused, never copied" list.
+⛔ No helpline key.
+
+**Drafted at S8** (no deck slide gives them; for review 8 below):
+- `journey.sheetPlacing` · "Inaweka dau…" · the placing frame (s4-4-sheet-placing): `dialog.placing`'s "Inaweka…" with its object.
+- `journey.sheetPlacingSlow` · "Bado tunaweka dau lako — inachukua muda kidogo." · the placing frame's wait line at 1.5 s (S8-PLAN A7); never the classic `dialog.busyHolding`, whose money claim nobody can check mid-request.
+- `journey.retryCta` · "Jaribu tena · {amount}" · the in-doubt frame's retry with its amount (A2, A20 item 1): "Jaribu tena" as `common.retryNow` says it, then the figure as `placeCta` carries it.
+- `journey.sheetNotTaking` · "Swali hili halipokei dau kwa sasa." · the closed frame's body for a question that is not LIVE (A8, A20 item 3): `error.failMarketNotLive` with "swali hili" for "soko hili".
+- `journey.sheetBonusWager` · "Dau hili halitahesabiwa kwenye bonasi yako. Tayari una fedha upande wa pili wa swali hili, na upande mmoja tu ndio unaohesabiwa kwenye {remaining} unayohitaji kuweka kabla ya bonasi yako kutolewa." · the sheet's SJ-22 bonus line (A20 item 2): `error.failBonusWageringOneSide` with "swali hili" for "soko hili", nothing else changed.
+- `journey.sheetRailsPaused` · "Kuweka pesa hakupatikani kwa sasa. Njia zote za malipo zimesimama kwa muda — jaribu tena baadaye." · every rail paused (s4-5-low-paused).
+- `journey.sheetDepositMax` · "Kiwango cha juu cha kuweka pesa mara moja ni {max}." · the `deposit_max` branch (none drawn), in `sheetAboveMax`'s shape.
+- `journey.estimateUpdatedLive` · "Makadirio yamesasishwa: ≈ {amount}, ≈{mult}× dau lako" · the polite region's estimate update (s4-4-sheet-updated), with the board's "≈ " (A20 item 8).
+- `journey.estimateNoteCompact` · "Makadirio · kamisheni ya {pct}% imeshatolewa." · the keyboard-up note (s4-4-sheet-keyboard-360), `estimateNote` shortened.
+- `journey.multOnly` · "≈{mult}×" · the bare multiple (pick-3; the keyboard frame): a figure with no words, the same in every language (test:i18n's IDENTICAL_OK names it).
+- `journey.lowBetInsteadEstimate` · "Ukishinda ≈ {amount} · ≈{mult}×" · bet-instead's estimate row (pick-3; the panel's A1).
+- `journey.lowLossTitle` · "Kikomo cha hasara" · the loss-room frame's title (s4-4-sheet-loss-room).
+- `journey.lowLossRoom` · "Kikomo chako cha hasara kinaruhusu dau la hadi {amount} kwa sasa." · the loss room without a calendar day (S8-PLAN A5 item 5): the approved "…hadi {amount} leo" with "dau la" and "kwa sasa", because the limit is a rolling 24 hours.
+- `journey.lowPendingWaitBody` · "Inaweza kuchukua hadi dakika 30 — usianzishe malipo mengine." · a deposit pending 10 to 30 minutes (A10; s4-6-wait-long's line, without its emailed receipt).
+- `journey.lowPendingLateTitle` · "Malipo bado hayajathibitishwa" · a deposit pending from 30 minutes (A10): the approved title (review 3), now a key.
+- `journey.lowPendingLateBody` · "Imepita dakika 30. Usianzishe malipo mengine — pesa zikikatwa, zitaingia kwenye salio lako zikithibitishwa." · its approved sentence (review 3; s4-6-wait-over30), now a key — shown only from 30 minutes, where "Imepita dakika 30" is true.
+- `journey.ticketsHere` · "Tiketi zako" · the question page's holder block (s4-10-market).
+
 ## Swahili review — signed off by Claude (Ali, 2026-10-02: "you will be the Swahili speaker")
 
 Reviewed 2026-10-02, string by string, for grammar (noun-class agreement, tense, object markers), meaning against the
@@ -332,3 +380,42 @@ is "the past 24 hours", *saa* in the plural (class 10) with *zilizopita*. It rep
 again tomorrow"), which was untrue at any hour: the gate sums the last 24 hours (responsible-gambling.ts). The page keeps
 its classic name, *Uchezaji salama*. English "It counts the last 24 hours"; Chinese "该上限按过去 24 小时计算" as its own
 sentence — the same clause S8's `journey.sheetLossBlock` will use, so the classic and journey refusals say one truth.
+⟶ S8 WP4 (2026-10-13, S8-PLAN A5 item 2): there is no `journey.sheetLossBlock` — the sheet's loss block reads
+`error.failLossLimitDaily` itself, so the classic and journey refusals are one sentence, not two copies of it.
+
+**8. S8 dictionary keys (2026-10-13, S8 WP4; journey.*, not shown to anyone until S15) — drafted by the build, for Ali's
+or a Swahili reviewer's sign-off.** No human has signed this review yet: each line below is the build's draft and its
+reason, to be approved, corrected or overruled. Until it is signed, the strings stay in the `journey` namespace that no
+player sees before the S15 flip.
+- The deck's words (VODACOM-PLAN §3) are binding and were read, not re-worded: *dau lako* (class 5) in `stakeLabel` and
+  `estimatePill`; *salio halitoshi* (class 5, negative of *-tosha*) in `lowTitle`; *Weka dau la {amount} badala yake*
+  (class 5 *la*) in `lowBetInstead`.
+- The canvas words keep review 3's approval; each drawn figure is now a placeholder (`{amount}`, `{min}`, `{left}`,
+  `{cap}`, `{pct}`, `{date}`). The loss room's "leo" is not built: see `lowLossRoom` below.
+- Review 2's corrections, as journey copies, keep its approval. To confirm: `sheetHedgeBody` and `sheetHedgeBothBody`
+  say "swali hili" (class 5 *hili*) where the corrected classic sentences say "soko hili" — SJ-19, "Maswali" replaces
+  "Masoko", as `hedgeAddBody`'s correction already does; `sheetNotTaking` and `sheetBonusWager` below follow the same
+  rule (S8-PLAN A20 items 2 and 3).
+- One name for the limits page (A20 item 7), to confirm: sentences name the page by its title, "Uchezaji salama", as
+  `error.failLossLimitDaily` (review 7) and `sheetDepositLimit` do; the button keeps its action, "Weka mipaka"
+  (`rg.setLimits`).
+- The S8 drafts, each with its three languages and a one-line reason:
+- `journey.sheetRailsPaused` · sw "Kuweka pesa hakupatikani kwa sasa. Njia zote za malipo zimesimama kwa muda — jaribu tena baadaye." · en "Deposits are unavailable right now. Every payment method is paused for a while — try again later." · zh "目前无法充值。所有支付方式暂停中——请稍后再试。" — *kuweka pesa* (class 15) takes *haku-* in *hakupatikani*; *njia zote* (class 10) takes *zimesimama*.
+- `journey.sheetDepositMax` · sw "Kiwango cha juu cha kuweka pesa mara moja ni {max}." · en "The most you can deposit at once is {max}." · zh "单笔充值上限为 {max}。" — *kiwango* (class 7) takes *cha* twice, in `sheetAboveMax`'s shape; *mara moja* "at once".
+- `journey.sheetPlacing` · sw "Inaweka dau…" · en "Placing your bet…" · zh "正在投注…" — *inaweka* (impersonal present) takes its object *dau*, so the frame says what is being placed.
+- `journey.sheetPlacingSlow` · sw "Bado tunaweka dau lako — inachukua muda kidogo." · en "Still placing your bet — this is taking a moment." · zh "仍在为您投注——需要一点时间。" — *bado tunaweka* ("we are still placing") with *dau lako* (class 5); *inachukua muda kidogo* ("it is taking a little time") makes no money claim.
+- `journey.retryCta` · sw "Jaribu tena · {amount}" · en "Try again · {amount}" · zh "重试 · {amount}" — the live imperative *Jaribu tena* with the same figure the CTA carries, so a retry names the same bet.
+- `journey.sheetNotTaking` · sw "Swali hili halipokei dau kwa sasa." · en "This question isn’t taking bets right now." · zh "此问题目前不接受投注。" — *swali hili* (class 5) takes the negative *ha-li-pokei*; the classic "Soko hili" follows SJ-19.
+- `journey.sheetBonusWager` · sw "Dau hili halitahesabiwa kwenye bonasi yako. Tayari una fedha upande wa pili wa swali hili, na upande mmoja tu ndio unaohesabiwa kwenye {remaining} unayohitaji kuweka kabla ya bonasi yako kutolewa." · en "This bet won’t count toward your bonus. You already have money on the other side of this question, and only one side counts toward the {remaining} you still need to bet before your bonus can be withdrawn." · zh "此注不计入您的奖金要求。您在此问题的另一方已有资金，仅一方计入您提取奖金前仍需投注的 {remaining}。" — the classic sentence word for word but *swali hili* for *soko hili*; *upande wa pili wa swali hili* (*upande*, class 11, takes *wa*).
+- `journey.estimateUpdatedLive` · sw "Makadirio yamesasishwa: ≈ {amount}, ≈{mult}× dau lako" · en "Estimate updated: ≈ {amount}, ≈{mult}× your bet" · zh "预估已更新：≈ {amount}，≈{mult}× 您的投注" — the approved "Makadirio yamesasishwa" (class 6 *ya-*) with the board's "≈ {amount}" and the pill's words.
+- `journey.estimateNoteCompact` · sw "Makadirio · kamisheni ya {pct}% imeshatolewa." · en "Estimate · our {pct}% commission is already deducted." · zh "预估 · 已扣除 {pct}% 佣金。" — `estimateNote`'s *kamisheni … imeshatolewa* (class 9, perfect passive), shortened for a raised keyboard.
+- `journey.multOnly` · sw "≈{mult}×" · en "≈{mult}×" · zh "≈{mult}×" — a figure with no words; nothing to translate.
+- `journey.lowBetInsteadEstimate` · sw "Ukishinda ≈ {amount} · ≈{mult}×" · en "If you win ≈ {amount} · ≈{mult}×" · zh "若赢 ≈ {amount} · ≈{mult}×" — `estimateCompact`'s words with the bare multiple after a middle dot.
+- `journey.lowLossTitle` · sw "Kikomo cha hasara" · en "Loss limit" · zh "亏损上限" — the noun phrase of the live title "Kikomo cha hasara cha siku kimefikiwa" (*kikomo*, class 7, *cha*).
+- `journey.lowLossRoom` · sw "Kikomo chako cha hasara kinaruhusu dau la hadi {amount} kwa sasa." · en "Your loss limit allows a bet of up to {amount} right now." · zh "您的亏损上限目前最多允许投注 {amount}。" — *kikomo chako* (class 7) takes *ki-* in *kinaruhusu*; *dau la hadi {amount}* (class 5) "a bet of up to"; *kwa sasa* replaces *leo*, because the window is a rolling 24 hours (A5).
+- `journey.lowPendingWaitBody` · sw "Inaweza kuchukua hadi dakika 30 — usianzishe malipo mengine." · en "It can take up to 30 minutes — don’t start another payment." · zh "最长可能需要 30 分钟——请勿发起另一笔付款。" — *inaweza kuchukua* impersonal; *usianzishe* the negative subjunctive "do not start"; *malipo mengine* (class 6).
+- `journey.lowPendingLateTitle` · sw "Malipo bado hayajathibitishwa" · en "Payment not confirmed yet" · zh "付款尚未确认" — review 3's approved title, unchanged; *malipo* (class 6) takes *ya-* in *hayajathibitishwa*.
+- `journey.lowPendingLateBody` · sw "Imepita dakika 30. Usianzishe malipo mengine — pesa zikikatwa, zitaingia kwenye salio lako zikithibitishwa." · en "It’s been 30 minutes. Don’t start another payment — if money was taken, it will reach your balance once confirmed." · zh "已超过 30 分钟。请勿发起另一笔付款——如已扣款，确认后将计入您的余额。" — review 3's approved sentence, unchanged; *pesa* (class 10) takes *zi-* in *zikikatwa*, *zitaingia*, *zikithibitishwa*.
+- `journey.ticketsHere` · sw "Tiketi zako" · en "Your tickets" · zh "您的注单" — *tiketi* (class 10) takes *zako*, as `journey.tabTickets` "Tiketi zangu" does.
+- Chinese: formal 您 wherever the player is addressed, 充值 for a deposit, 投注 for a bet, 注单 for a ticket (as S6's
+  Tiketi zangu), and full-width punctuation between Chinese clauses.
