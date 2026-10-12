@@ -737,11 +737,25 @@ body. Owner-level calls: §0h point 58, and 65 on.
     markets-redirect red 31/31; journey-account red 61/61; journey-shell 446 and red 208/208; simple-journey-flag 135
     and red 41/41; visual-pass-r10 81/0 and r9a 52/0; red-anchors 5286/0; 30 more suites green but test:orphans (main's
     own two landing-v3 panels).
-  - **Item 3, the landing proof, runs next on this VM:** no lock, one heavy job at a time. ⚠️ This VM's browsers: the
-    sandbox's network policy refuses Playwright's download host, so only the image's Chromium 141 runs (mapped onto
-    Playwright 1.59's expected path); Firefox and WebKit cannot run here. The parity v3 baseline is this VM's own,
-    captured at `52715180` with its null compare first. Then item 4 (the push live, rebased on main as it is then) and
-    item 5.
+  - **Item 3, the landing proof — IN PROGRESS on this VM** (no lock, one heavy job at a time; the chain is
+    `origin/vodacom-visual-tools` `tools/s7-cloud-2026-10-12/chain-cloud.sh`). The tip is now `4089c9c6` = `35f8be88` +
+    main's own red fixed: red:failure-reasons' RG banner plant re-anchored on the line round 10 (`177981c1`) wrapped in
+    `noticeBody` (it read "HARNESS ERROR: anchor not found", 19/20; now 20/20, scripts only). Done on the tip: typecheck
+    0; the 109 gates 108/109 exit 0 (test:orphans, main's own two landing-v3 panels); WP2's population plants 4/4; the
+    file-editing reds each alone, tree clean after each — featured-card 18/18, one-sided 31/31, ticker-honesty 31/31,
+    contrast 29/29, timer-date 19/19, filter-language 43/43, measure 8/8, chat-availability 3/3, failure-reasons 20/20.
+    Running: parity v3's calibration on this VM at `52715180` (`--prove-red`, this VM's own baseline, its null compare
+    on a second fresh server); then `qa:first-load --build --read`, local qa:live, parity `--compare --allow-base` at the
+    tip, the served-skeleton null pair at main and the tip, qa:lost-chunk with its control, WP9's four drives.
+    ⚠️ This VM's limits: only the image's Chromium 141 runs (the sandbox refuses Playwright's download host: no Firefox
+    or WebKit drives), and it cannot read production at all (the sandbox refuses `50pick.tz`, `www.50pick.tz` and the
+    Railway host — asked of Ali). A push's deploy IS read: GitHub's commit status carries Railway's verdict (this
+    record's previous push, `1e5283ef`: "Success - www.50pick.tz", 16:56 EAT).
+  - **Item 5 started beside the proof (drafts, unproven):** `origin/vodacom-s7-wp11` — qa:live's [E2] and [E3] read
+    `/live`, `/results`, one question page (the first `/markets` links) and, signed in, `/watchlist`, each free of S7's
+    ids (`scripts/live/journey-home-ids.mjs`, the one list qa:journey-home proves present), and `/markets` is held to the
+    board; qa:cls-budget gains `--journey` (a staff pass; guest and signed in; sw 360×780). Next there:
+    qa:journey-above-fold and qa:journey-home. Then item 4 (the push live, rebased on main as it is then).
 - **The handoff of 2026-10-12 ~08:55 EAT (ALI-BLADE15 → any machine) is done:** picked up on OMEGA-COMPILE01 at ~10:00
   EAT — WP1's void null compare re-run, WP2's last proofs, WP3's draft read and finished. What it said, kept for the
   record:
