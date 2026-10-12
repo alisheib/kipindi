@@ -3,6 +3,7 @@
 import { useState, useTransition, useMemo, useEffect, useRef, useCallback } from "react";
 import { useToast } from "@/components/ui/toast";
 import { buyPositionAction } from "@/app/markets/actions";
+import { isActionRedirect } from "@/lib/action-redirect";
 import { funnelBetFields, sendFunnel } from "@/lib/journey/funnel-beacon";
 import { formatTzs } from "@/lib/utils";
 import { haptics } from "@/lib/haptics";
@@ -343,12 +344,9 @@ export function useUpDownQuickBet(opts: {
       funnelBetFields(fd, "quick"); // the server counts the bet with its origin once it lands (S3b)
       try {
         const r = await buyPositionAction(fd);
-        // UD-7 · AUTH LOSS IS NOT A FAILED BET. A signed-out session makes the action
-        // `redirect("/auth/login")` — the router is already navigating when we get
-        // here and there is no verdict object at all. The old code fell into the
-        // generic failure branch, so the player saw "Bet not placed" (danger) WHILE
-        // being bounced to sign-in — two contradictory stories about one tap. Clear
-        // the optimistic entry silently and let the navigation speak.
+        // UD-7 · A verdict-less answer is not a failed bet: clear the optimistic entry silently. (This
+        // test was written for AUTH LOSS, on the belief that a redirecting action resolves to nothing;
+        // in Next 16 it rejects, and the catch below takes it — live fix L3, `isActionRedirect`.)
         if (r == null) {
           mutateInFlight((m) => { m.delete(key); });
           return;
@@ -433,8 +431,15 @@ export function useUpDownQuickBet(opts: {
             toast({ title: copy.failed, description: fail.description, variant: fail.variant, durationMs: 0 });
           }
         }
-      } catch {
+      } catch (e) {
         mutateInFlight((m) => { m.delete(key); });
+        // ⭐ L3 · UD-7's AUTH LOSS, WHERE IT REALLY ARRIVES. A signed-out session makes the action
+        // redirect to the sign-in door, and in Next 16 the call REJECTS with that redirect while the
+        // router is already navigating (`isActionRedirect`). It used to fall to the line below — a
+        // sticky "Bet not placed — the game is busy right now" over the sign-in page, two stories
+        // about one tap. Tested before any failure is said: the tap's entry is out, and the
+        // navigation speaks. Not rethrown — the router has it.
+        if (isActionRedirect(e)) return;
         // Transport-level failure — no server verdict at all. Sticky, like every
         // money-path failure: the player must be able to read why nothing happened.
         toast({ title: copy.failed, description: errCopy.udErrBusy, variant: "danger", durationMs: 0 });
