@@ -65,7 +65,7 @@ const row = (over: Partial<HeroRow> & { id: string }): HeroRow => ({
   ...over,
   // ⚠️ Derived AFTER the spread (WP6, 2026-09-27), as `hero-contract`'s fixture does: `pool` and
   // `yesPct` used to stay 0/null whatever the pools said, so the "pool" lens sorted on all zeros.
-  // `yesPct` is the printable price, as `app/page.tsx` builds the real rows (`shownYesPct`).
+  // `yesPct` is the printable price, as `components/home/legacy-landing.tsx` builds the real rows (`shownYesPct`).
   pool: (over.yesPool ?? 0) + (over.noPool ?? 0),
   yesPct: shownYesPct(over.yesPool ?? 0, over.noPool ?? 0),
 });

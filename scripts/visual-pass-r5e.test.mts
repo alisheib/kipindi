@@ -278,7 +278,7 @@ section("2 · F1 F4 + H1's siblings: every market title is balanced and keeps it
     "src/components/home/landing-hero.tsx": "surface", "src/components/markets/bet-confirm-modal.tsx": "surface",
     "src/components/markets/market-card.tsx": "surface", "src/components/markets/position-card.tsx": "surface",
     "src/app/live/page.tsx": "hands it to featured-contest.tsx and pulse-grid.tsx", "src/app/markets/page.tsx": "hands it to MarketCard",
-    "src/app/page.tsx": "hands it to the landing hero", "src/app/positions/page.tsx": "hands it to PositionCard and the tickets view",
+    "src/components/home/legacy-landing.tsx": "hands it to the landing hero", "src/app/positions/page.tsx": "hands it to PositionCard and the tickets view",
     "src/app/watchlist/page.tsx": "hands it to MarketCard", "src/components/markets/side-picker.tsx": "hands it to the dial and the notify prompt",
     "src/app/markets/actions.ts": "a server action: no drawing",
     "src/app/notifications/page.tsx": "a notice's own title, not a market's", "src/components/layout/notifications-panel.tsx": "a notice's own title, not a market's",

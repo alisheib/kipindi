@@ -445,7 +445,8 @@ section("7 · E32 one phone, one mask in the journey and on /profile/account (ti
 section("8 · E4 the home's signed-in link names /positions by the journey tab's key");
 {
   const hero = read(HERO);
-  const page = read("src/app/page.tsx");
+  // The landing's body, since S7 WP2 moved it verbatim out of the route file (§10 below still reads the route's metadata).
+  const page = read("src/components/home/legacy-landing.tsx");
   ok("8.1 · journey ? journey.tabTickets : home.myPositions, the flag from the one resolver, false for a visitor and by default",
     hero.includes("{journey ? t.journey.tabTickets : t.home.myPositions}") && hero.includes("export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards, mine, rails, journey = false }: Props) {")
       && hero.includes("<SignedInAct t={t} mine={mine ?? null} journey={journey} />")
