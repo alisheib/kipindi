@@ -2651,4 +2651,23 @@ export const MUTATIONS = [
     to: `        include: { documents: true },`,
     expect: "5k.readers.scalar · findSamePersonCandidates reads scalars only",
   },
+  // §32 (Vodacom plan S8 WP3) · the bet sheet's pending deposit, in both twins.
+  {
+    // A deposit that has CONFIRMED (or failed) still reads as "on its way" on Postgres only: the sheet withholds the deposit offer for ever.
+    name: "prisma-dal.ts — newestProcessingDeposit ignores the status",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `        where: { userId, type: "DEPOSIT", status: "PROCESSING" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],`,
+    to: `        where: { userId, type: "DEPOSIT" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],`,
+    expect: "32.prisma · the Prisma twin is ONE findFirst on { userId, type: DEPOSIT, status: PROCESSING }",
+  },
+  {
+    // The memory twin reads every player's rows: every memory suite and local drive shows another player's wait.
+    name: "store.ts — the memory newestProcessingDeposit reads every player's rows",
+    file: "src/lib/server/store.ts",
+    from: `        if (t.userId !== userId || t.type !== "DEPOSIT" || t.status !== "PROCESSING") continue;`,
+    to: `        if (t.type !== "DEPOSIT" || t.status !== "PROCESSING") continue;`,
+    expect: "32.memory · the memory twin takes this user's DEPOSIT rows in PROCESSING only",
+  },
 ];
