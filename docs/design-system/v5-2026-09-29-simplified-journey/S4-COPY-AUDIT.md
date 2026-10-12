@@ -278,6 +278,10 @@ in "Existing words the S4 panel found wrong" is correct Swahili and says what th
   yakichapishwa."; "Onyesha maswali yote"; the break notice and "Mapumziko hadi 8 Okt"; "Kamisheni ya hadi 10% ya bwawa
   lote hutolewa kabla washindi hawajalipwa."; "≈ zaidi ya 100× dau lako"; "Raundi hii imefungwa"; "Tuma msimbo";
   "Thibitisha barua pepe yako ili uweke pesa"; "Bado utapungukiwa na TZS 1,000 kwa dau lako."; "Salio lako · —".
+  ⚠️ S8-PLAN Correction 14 and A5/A10 (2026-10-12): three canvas sentences are not built as drawn — the pending board's
+  receipt "kwa barua pepe" (money mail goes only to a confirmed address since 2026-10-07; the receipt stays in the app),
+  the inline session-limit line's "hadi 15:40" (the refusal carries no clock time), and the loss room's "leo" (the limit
+  is a rolling 24 hours: "kwa sasa", for review 8 to sign).
 
 **4. S6 A8c (2026-10-03, revised 2026-10-04) — two live keys, approved as written:** `error.failPriceChanged` · "Bei
 imebadilika kuwa {value}. Dau lako halijauzwa — unaweza kuliuza kwa bei mpya." — *bei* (class 9) takes "imebadilika
