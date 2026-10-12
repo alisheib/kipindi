@@ -8,8 +8,9 @@
 >
 > **Base.** Line numbers are at `2322cf09` (branch `vodacom-s7-land3`: S7 WP1–WP4, eight commits on origin/main
 > `fdd662a9`). Two later S7 packages are read from their branches and cited with the branch named: WP5 (the journey card)
-> at `origin/vodacom-s7-wp5` `8fff5425`, and WP6 (the shared lost-chunk guard and the How-to sheet) at
-> `origin/vodacom-s7-wp6` `ba6faebb`. S7 WP7–WP12 have no commit yet (WP8's branch sits at the land3 tip). S7 still edits
+> at `origin/vodacom-s7-wp5` `8233347b`, and WP6 (the shared lost-chunk guard and the How-to sheet) at
+> `origin/vodacom-s7-wp6` `a33a9ced` (a rebase orphaned `ba6faebb`, where this draft first read it; the cited lines are
+> identical). S7 WP7–WP12 had no commit when this was drafted (A1 names the branches since). S7 still edits
 > `app-shell.tsx`, `markets/[id]/page.tsx`, `journey-card.tsx`, `card-face.ts`, `i18n-dict.ts` and `globals.css`, so WP0
 > re-reads every number here at S8's real base before any package starts (S7-PLAN A24's method).
 
@@ -119,7 +120,7 @@ No new EXPECTED_DIFFS entry is expected. Any difference is named or fixed, never
 ### Corrections to the maps, verified in the files
 
 1. **The plan's line numbers at the base** (`docs/VODACOM-PLAN.md`):
-   - §0 :17; §0j :495-618; §0i :620; §0h :1763 (its last point is 67, :2417; `origin/vodacom-s7-docs` `c0a9c826` runs
+   - §0 :17; §0j :495-618; §0i :620; §0h :1763 (its last point is 67, :2417; `origin/vodacom-s7-docs` `bb837fcb` runs
      to 76); §0g :2429; §0f :2656; §0e :2735;
    - §1 S8 row :2914; §3 table :2937 (S8's rows :2963-2977); SJ-10/SJ-11 :3200-3208; SJ-22 :3276-3282; §2 :3333-3365;
    - §3.1 :3371-3454; §3.2 :3456-3503; §3.3 :3505-3570; §3.4 :3572-3594; §3.5 :3596-3666; §3.7 :3704-3719; §3.10
@@ -133,7 +134,7 @@ No new EXPECTED_DIFFS entry is expected. Any difference is named or fixed, never
 4. **§3.2's card buttons (:3482-3484) name `market-card.tsx:430`'s `go()`.**
    - At the base the classic `go()` is market-card.tsx:447-454.
    - S7 built the journey card as its own server component (S7-PLAN Open point 3, :1380-1387). Its picks are real
-     `<Link>`s to `/markets/<id>?side=…` (journey-card.tsx:204-214 on `origin/vodacom-s7-wp5`).
+     `<Link>`s to `/markets/<id>?side=…` (journey-card.tsx:218-228 on `origin/vodacom-s7-wp5`).
    - So nothing in market-card.tsx changes. S8's host intercepts the journey card's anchors (WP7).
 5. **`html[data-bet-sheet]` (§3.3 :3560) is not needed** (S6-PLAN.md:604 left it to S8):
    - The kit Modal is `role=dialog aria-modal` only while open (modal.tsx:504-518), which is exactly what
@@ -174,14 +175,15 @@ No new EXPECTED_DIFFS entry is expected. Any difference is named or fixed, never
     `scripts/landing-ten-plan.test.mts`:48. Its definition is LANDING-TEN.md:313 ("sheets trap focus, close on Esc,
     respect the safe area") and HANDOVER-LANDING-10.md:238 (a 34px inset); the safe-area method was left open
     (LANDING-TEN.md:773-774). WP11 builds it.
-13. **`checkSessionTimeLimit` is not a read.** It writes the play clock on every call (responsible-gambling.ts:516-522).
-    `shortfall.ts`'s premise, "every input is a fact the server already reads" (:14-16), holds for the sheet only
-    through a write-free twin (WP3). Calling the gate from a sheet read every few seconds would keep a sitting alive with
-    no bet attempt.
+13. **`checkSessionTimeLimit` is not a read.** It writes the play clock on every call, at most once a minute
+    (responsible-gambling.ts:516-520). `shortfall.ts`'s premise, "every input is a fact the server already reads"
+    (:14-16), holds for the sheet only through a write-free twin (WP3). Calling the gate from a sheet read every few
+    seconds would keep a sitting alive with no bet attempt.
 14. **Three approved canvas sentences are no longer true; S8 does not build them as drawn:**
     - The loss block's "Kitaanza upya kesho saa 00:00" (s4-4-block-loss.dc.html:26; the S12 correction,
       S4-COPY-AUDIT.md:124) states a midnight reset. The gate is a rolling 24 hours (responsible-gambling.ts:586-588).
-      Open point 22.
+      The live refusal already tells the truth: Ali's ruling of 2026-10-12 fixed it live in its own commit, `e5b5c9da`
+      ("Kinahesabu saa 24 zilizopita"; §0h point 77), and the sheet reuses it (A5). Open point 22.
     - The pending board's receipt "kwa barua pepe" (s4-5-low-pending.dc.html:39). Since 2026-10-07 money mail goes only
       to a confirmed address (COMPLIANCE-DECISIONS.md:612-614), and the live sentence keeps the receipt in the app
       (`depositPendingBody`, i18n-dict.ts sw :3390). Open point 24.
@@ -257,7 +259,7 @@ can answer the sheet, and what the sheet shows. Rules for the whole table:
 | 13 | :1330 | `SELECTION_CLOSED` · none | `selection_closed`'s row: info, toast | the closed frame, by the code | — |
 | 14 | :1335-1349 | `INVALID` · `stake_not_whole`, `stake_below_min`, `stake_above_max` · `min`, `max` | warning, inline | the bounds line under the stake (`journey.sheetBelowMin`, `sheetAboveMax`, `error.failStakeNotWhole`) from `detail`'s bounds, a bound that moved since the open; the chips re-filtered; the CTA bare and disabled | new key |
 | 15 | :1350 | `INVALID` · `market_not_live` ("Invalid side.") | info, toast | unreachable: the sheet sends YES or NO only (WP2's request builder). If it arrives: re-read; closed if not bettable, else inline `error.failMarketNotLive` | new key |
-| 16 | :1374-1377; markets/actions.ts:98-100 | `INVALID` · `idempotency_key_conflict` | warning, toast | unreachable: a fresh UUID per intent, never an `hb:` key (house-bot/constants.ts:71). If it arrives: inline `error.failIdempotencyKeyConflict` | new key (the old one belongs to another bet) |
+| 16 | :1374-1377; markets/actions.ts:98-100 | `INVALID` · `idempotency_key_conflict` | warning, toast | unreachable: a fresh UUID per intent, never an `hb:` key (house-bot/constants.ts:72). If it arrives: inline `error.failIdempotencyKeyConflict` | new key (the old one belongs to another bet) |
 | 17 | :1405-1411 | `NOT_FOUND` · `wallet_frozen` | error, modal | block (s4-4-block-frozen): `journey.sheetFrozen`; "Wasiliana na msaada" and "Sawa" | — |
 | 18 | :1405-1411 | `NOT_FOUND` · `wallet_missing` | error, toast | inline `error.failWalletMissing` ("nothing has been charged") | new key |
 | 19 | :1488-1491 | `INVALID` · `loss_limit_daily` | error, modal | the plan decides from a re-read: room at least the minimum → the loss-room frame (s4-4-sheet-loss-room); less → block (s4-4-block-loss): `market.udErrRgLimitTitle`, `journey.sheetLossBlock`, "Weka mipaka" and "Sawa" | — |
@@ -304,7 +306,7 @@ reaches the sheet as its `min` through `stakeBoundsForMarket` (market-service.ts
 | `enough` | edit | pick-2-bet-sheet | deck frame 2 |
 | `pending` (`amount`, `txnId`) | pending | s4-5-low-pending | the compact row; `journey.lowPendingTitle`; the live `depositPendingBody` (Open point 24); "Fuatilia malipo" (Open point 12); the CTA disabled |
 | `short`, deposit and bet instead | low | pick-3-balance-too-low | the compact row; the info callout `lowTitle` + `lowBody`; the eyebrow `lowChoose`; the deposit row "Weka pesa {D}" over the open rails' names; "Weka dau la {amount} badala yake" over `lowBetInsteadEstimate`; the CTA disabled, described by the callout |
-| `short`, deposit only, `belowDepositMin` | low, no eyebrow | s4-5-low-min500, -zero | the deposit row and `lowMinNote` with the minimum and `leftAfter` |
+| `short`, deposit only, `belowDepositMin` | low, no eyebrow | s4-5-low-min500 | the deposit row and `lowMinNote` with the minimum and `leftAfter` |
 | `short`, deposit only | low, no eyebrow | s4-5-low-zero | the deposit row |
 | `short`, bet instead only, `rails_paused` | low, no eyebrow | s4-5-low-paused | `journey.sheetRailsPaused`, then bet instead |
 | `short`, bet instead only, `deposit_limit` | low, no eyebrow | s4-5-low-limit | `journey.sheetDepositLimit` with D, then bet instead |
@@ -382,8 +384,8 @@ corrected before anyone builds from it.
    - §5 S8 gains A7 item 2's line (the card patch) and Open point 2's done-when. Gate names that have no package key yet
      are written without the `npm run` prefix (docs-links.mjs reads every top-level docs file).
    - The annotations ("S8-PLAN Correction n") on the spec lines above.
-   - The §0h points: this plan's Open points, numbered after S7's last (76 on `origin/vodacom-s7-docs` `c0a9c826`;
-     re-read).
+   - The §0h points: this plan's Open points, numbered after S7's last (76 on `origin/vodacom-s7-docs` `bb837fcb`;
+     re-read; A1).
 
 **Gates.** test:docs; test:vodacom-plan (the S8 row 🔨, no ✅ before a commit).
 
@@ -529,7 +531,7 @@ the card the sheet's public half, so the sheet draws on the tap frame (§3.3 :35
   - `sheetForUser` (:119-136) gains `facts` (every `ShortfallInput` field but the stake, the market and its bounds) and
     `bonusWager`, and drops `bonusWarning` (Open point 21).
 - src/lib/server/responsible-gambling.ts (edited):
-  - `sessionStandingOf(row, playStartedAt, nowMs)`: pure, the arithmetic of `checkSessionTimeLimit` (:498-526), which
+  - `sessionStandingOf(row, playStartedAt, nowMs)`: pure, the arithmetic of `checkSessionTimeLimit` (:498-523), which
     then calls it before its own write, unchanged in output and in write;
   - `readSessionStanding(userId, playStartedAt)`: the same answer, and it never writes.
 - src/lib/server/store.ts and src/lib/server/prisma-dal.ts: `txn.newestProcessingDeposit(userId)` in both twins (Open
@@ -546,16 +548,16 @@ the card the sheet's public half, so the sheet draws on the tap frame (§3.3 :35
    - `maintenance`: `isMaintenanceMode()` (platform-config.ts:110), the bet path's own (market-service.ts:1167);
    - `lockout`: `isLockedOut(userId)` (responsible-gambling.ts:403-414), as `{ kind, until }`;
    - `session`: `readSessionStanding(userId, playStartedAt)`, the gate's arithmetic with no `touchPlayClock` (the write
-     at :516-522 is the gate's alone);
+     at :518-520 is the gate's alone);
    - `account`: the user's status and the cooling-off end (the bet path's own test, market-service.ts:1281-1284);
    - `wallet`: status, balance and bonus (`db.wallet.findByUserId`, as journey-sheet.ts:121-124 reads it);
-   - `loss`: `dailyLossLimit` from `getRgSettings` (:64) and `lossToday` from `getLimitUsage` (:617-631), the very sums
+   - `loss`: `dailyLossLimit` from `getRgSettings` (:64) and `lossToday` from `getLimitUsage` (:617-629), the very sums
      `checkLossLimit` computes (:579-597);
    - `pendingDeposit`: `db.txn.newestProcessingDeposit(userId)` → `{ amount, txnId }` or null;
    - `deposit.limits` and `deposit.usage`: the three windows from `getRgSettings` and `getLimitUsage`, counting
      PROCESSING deposits as the gate does (:608-616);
    - `deposit.sof`: `{ accepted, singleTxn: SOF_SINGLE_TXN_TZS, rolling30d: SOF_ROLLING_30D_TZS }` (wallet-service.ts:63-64;
-     the declaration's status read as the gate reads it, :210-213);
+     the declaration's status read as the gate reads it, :215-216);
    - `deposit.railsOpen` and `railNames`: the `MOBILE_MONEY_METHODS` (payment-providers.ts:109) that `getKillSwitches()`
      does not pause for deposits (payment-ops.ts:141-146), in chooser order (Open point 36).
 2. **`bonusWager`** is the market page's B2: when the viewer holds the side opposite the sheet's and `getBonusSummary`
@@ -599,8 +601,9 @@ existing value changes before S15 (§3.9 :3756-3757).
 **Files.**
 - src/lib/i18n-dict.ts: the journey namespace (en :2987-3144, sw :5467-5568, zh :7871-7972 at the base).
 - docs/VODACOM-PLAN.md §3: the S8 rows marked built; an "S8 keys" note with the drafts table (as S7's, :3011-3033).
-- docs/design-system/v5-2026-09-29-simplified-journey/S4-COPY-AUDIT.md: "S8 drafts", and "Swahili review" 7, signed;
-  the loss-limit correction's "saa 00:00" withdrawn (Correction 14).
+- docs/design-system/v5-2026-09-29-simplified-journey/S4-COPY-AUDIT.md: "S8 drafts", and S8's own "Swahili review" (8,
+  since `e5b5c9da` took 7; A20), signed. Nothing for the loss-limit sentence: `e5b5c9da` fixed it live and withdrew its
+  S12 line (A5).
 - docs/design-system/v5-2026-09-29-simplified-journey/INHERIT-MANIFEST.md: L6 annotated (Correction 16).
 
 **Steps.**
@@ -637,7 +640,7 @@ navy disabled gold (design call 4, :2459-2461), scoped to the sheet (Open points
   - the token `--input-attention: oklch(78% 0.06 268)` (§0g :2454), declared with its family;
   - `.kp-bsheet .btn-gold:disabled`: the navy fill `oklch(28% 0.12 268)`, `--text-subtle` words, a 1px `--border`
     edge (:2459-2461). Never a bare `.btn-gold:disabled` (`.btn:disabled`, globals.css:1214, stays as it is).
-- scripts/numeric.test.mts (grouped cases); scripts/contrast-audit.mts (two pairs) and red:contrast's plants.
+- scripts/numeric-input.test.mts (grouped cases); scripts/contrast-audit.mts (two pairs) and red:contrast's plants.
 
 **Steps.**
 1. `grouped` shows the value through `formatNumber` (already imported, input.tsx:43) and keeps the field's value as
@@ -841,7 +844,7 @@ land every outcome. Classic readers never fetch any of it.
      route-error.tsx:129-140), so the two can never reload one tab twice for one build. The reload reopens the sheet;
      nothing is placed;
    - it does not rethrow: the host sits in the root layout, outside every route's error boundary, so a thrown error
-     would reach global-error's critical screen (shell-lazy.tsx:27-30 records the same hazard), which does not reload;
+     would reach global-error's critical screen (shell-lazy.tsx:28-31 records the same hazard), which does not reload;
    - every other throw is `system_error` (matrix row 2).
 8. **The host's own error boundary.** The sheet renders inside a small boundary of the host's: a render error closes
    the sheet, sends one report to `/api/client-error` (the body the shell's guard sends, shell-lazy.tsx:57-79), and
@@ -1246,7 +1249,7 @@ The classic keys keep their words until S12 (§0h point 3); the sheet reads thes
 2. **A double bet.** One key per intent, reused only on a retry; the drive's aborted and dropped requests (WP11 step 5).
 3. **A skipped refusal.** The plan's blocks at open (Open point 8), the matrix, and its census of the source's literals:
    a new reason on the bet path without a row fails test:bet-sheet §2.
-4. **A read that writes.** `checkSessionTimeLimit` touches the play clock (responsible-gambling.ts:516-522), so the sheet
+4. **A read that writes.** `checkSessionTimeLimit` touches the play clock (responsible-gambling.ts:518-520), so the sheet
    reads a write-free twin (WP3). `getRgSettings` creates a default row when there is none (the note at
    responsible-gambling.ts:580-585 says why it stays outside the bet's transaction); that is every RG read's behaviour.
 5. **Classic regressions on the question page.** Same-slot ternaries without re-indenting; parity v4's QUESTION phase;
@@ -1365,9 +1368,9 @@ Each is a call taken under Ali's delegation, filed as a numbered §0h point by W
     Overrule: add the column in S8.
 32. **V20 is built as `qa:bet-sheet`,** not revived inside qa:landing-ten. Overrule: add V20 to qa:landing-ten.
 33. **SJ-22's check, done:** neither test:rg-doors (the sign-in doors and the session limit, rg-doors.test.mts:1-18) nor
-    the RG policy's §4 (responsible-gambling/page.tsx:102-108) asks for a limits link under the CTA, so none is added.
-    "Weka mipaka" appears where the canvas draws it: the loss room and the loss and cooling-off blocks. Overrule: a
-    standing link under every CTA.
+    the RG policy's §4 (src/app/legal/responsible-gambling/page.tsx:102-108) asks for a limits link under the CTA, so
+    none is added. "Weka mipaka" appears where the canvas draws it: the loss room and the loss and cooling-off blocks.
+    Overrule: a standing link under every CTA.
 34. **The receipt's "Tiketi zangu" opens the ticket itself** (its permalink), and the receipt closes at 5 s. Overrule:
     `/positions`.
 35. **A refusal the sheet cannot produce, or any unknown shape, is treated as `system_error`** (same key, "check your
@@ -1416,3 +1419,894 @@ Each is a call taken under Ali's delegation, filed as a numbered §0h point by W
     it now.
 16. [Point 37] The sheet uses the corrected Swahili the review approved (for example "Dau lako HALIJAWEKWA na hakuna pesa
     iliyokatwa"), while today's screens keep their words until S12. Overrule: the sheet keeps today's words until S12.
+
+---
+
+## ⭐ Amendments (the coordinator, 2026-10-12) — these override everything above
+
+Filed 2026-10-12 from the draft of the same day (262dc9f8; above, changed in place only where A1 and A5 say) after two
+independent critiques of it — the money lens (16 findings: 3 blockers, 8 should-fix, 5 notes) and the plan lens (16
+findings: 1 blocker, 12 should-fix, 3 notes) — and Ali's ruling of 2026-10-12 on the live loss-limit sentence. Every
+claim was re-read at 2322cf09, and where the base has moved since, at origin/main `e5b5c9da`. Every blocker and should-fix
+is taken. Where the re-read showed a claim wrong, the amendment carries the corrected version and its *From:* says why;
+"Critique findings not taken as proposed" lists each such part. Findings the two critics share are merged: money 2 and
+plan 1 (A3), money 6 and plan 6 (A8), money 8 and plan 12 (A5), money 11 with plans 9 and 12 (A12), and money 5 with plan
+15's skew line (A7). Where an amendment and the body disagree, the amendment wins. The calls taken under Ali's delegation
+are at the end ("Open points, added and changed"; "Points for Ali, amended").
+
+**What changes, in one paragraph.** A bet whose answer was lost now stays one bet until the server says what happened:
+the sheet keeps its key, reads whether that key placed a position, and never claims nothing was charged (A2). After a bet
+nothing reopens it, the sheet opens from the address only where picks are drawn, and the key rides in the marker through
+a reload (A3). A block shown before the tap records what a refused tap records, so the session limit and the Board's RG
+report lose nothing (A4). The loss block reuses the live sentence Ali had corrected today (A5). Then the corrections: a
+redirect rejects the call (A6), placing has a watchdog (A7), re-reads are fresh and decide (A8), the sheet computes no
+balance (A9), an old pending deposit is described by its age (A10), the Prisma reads run before production (A11), focus
+and announcements (A12), the ✕ (A13), the height cap (A14), WP5's proof (A15), the gate lists (A16), the packages (A17),
+the canvas as drawn (A18), the question page from 1024 (A19), the words (A20), the tap frame on a production build (A21),
+notes (A22) and the classic dial's two gaps (A23).
+
+### A1 · Base and citations: the S7 branches re-read, the base's later commits, and the citations corrected in place
+
+*Overrides:* the header's Base paragraph; Correction 1 (the §0h count), Correction 4 (the picks' lines) and Correction 13;
+the low-balance table's `belowDepositMin` row; matrix row 16; WP0 step 4 (the §0h numbering); WP3 Files and step 1; WP5
+Files; WP7 step 7; Risk 4; Open point 33.
+
+1. **Corrected in place in this commit** (the plan critique's finding 14), each re-read at 2322cf09:
+   - WP5 Files: `scripts/numeric.test.mts` does not exist; `test:numeric` runs `scripts/numeric-input.test.mts`
+     (package.json `test:numeric`).
+   - The `belowDepositMin` row cites s4-5-low-min500 only. s4-5-low-zero's shortfall is TZS 1,000 (a balance of 0 at a
+     stake of 1,000), so it is not below the minimum and draws no minimum note; it stays on the next row.
+   - WP3 step 1: the gate reads the declaration's status at wallet-service.ts:215-216 (`db.sourceOfFunds.get`,
+     `reviewStatus !== "ACCEPTED"`); :210-213 is the trigger's arithmetic.
+   - Open point 33: the RG policy is `src/app/legal/responsible-gambling/page.tsx:102-108` (§4). The other page of that
+     name is the player's limits form.
+   - Ranges: `checkSessionTimeLimit` is responsible-gambling.ts:498-523, its write :518-520 under the note at :516-517
+     (Correction 13, which now says "at most once a minute", WP3 and Risk 4); `getLimitUsage` is :617-629;
+     `HOUSE_INTENT_KEY_PREFIX` is house-bot/constants.ts:72; shell-lazy.tsx's lost-chunk note is :28-31.
+   - The Base paragraph, Correction 1 and Correction 4: `origin/vodacom-s7-wp5`'s tip is `8233347b`, where the picks are
+     journey-card.tsx:218-228; `origin/vodacom-s7-wp6`'s tip is `a33a9ced` (a rebase orphaned `ba6faebb`, and the lines
+     cited are identical); `origin/vodacom-s7-docs`'s tip is `bb837fcb`.
+2. **Since 2322cf09, origin/main has moved to `e5b5c9da`** (re-read 2026-10-12). It holds 2322cf09, then:
+   - `dcf305d5` and `5ce27db7`: S7 WP1-WP4 live (2026-10-12 13:59 EAT) and read back, with §0h points 68-76;
+   - `ceb54620` (S7's progress record), `c23d0756` (qa:served-skeleton's calibration 4) and `1da5e091`
+     (red:simple-journey-flag's anchor);
+   - `e5b5c9da`: Ali's loss-limit ruling, live (A5) — `error.failLossLimitDaily` corrected in en, sw and zh, three lines
+     changed in place; S4-COPY-AUDIT.md's S12 line for that key withdrawn and "Swahili review" 7 signed; §0h point 77.
+
+   S7's later branches exist too: `origin/vodacom-s7-land4` `25b0650c`, `-land5` `f8fcff7d`, `-land6` `112eb9f3`,
+   `-wp7` `fb319259`, `-wp8` `51aa7337` and `-wp10` `4d55f9c7`. None is read here: WP0 re-reads every number at S8's
+   real base, as planned.
+3. **A number read at 2322cf09 converts to origin/main `e5b5c9da` as follows:**
+   - VODACOM-PLAN.md: unchanged to :363; :364-367 rewritten as :364-366; −1 from :368 to :538; §0j :539-585 rewritten as
+     :538-686; +101 from :586 to :612; +102 from :613 to :2426; +170 from :2427. So §0h :1763 → :1865, §0g :2429 →
+     :2599, the §1 S8 row :2914 → :3084, §3.3 :3505 → :3675, §3.4 :3572 → :3742, §5 S8 :3952 → :4122 and S14 :3983 →
+     :4153.
+   - S4-COPY-AUDIT.md: :124 rewritten as :124-129; +5 from :125 to :256; :257 rewritten as :262-264; +7 from :258 (the
+     approved canvas words, :260-273, are :267-280); review 7 is :323-330.
+   - i18n-dict.ts and every src/ file this plan cites: no line has moved.
+4. **§0h runs to 77 on main**; point 77 is Ali's ruling. WP0 numbers this plan's points after the last one at S8's base.
+   "76 on origin/vodacom-s7-docs" (Correction 1; WP0 step 4) is now history.
+5. **"Swahili review" 7 is `e5b5c9da`'s.** S8's own review is the next at its base, 8 today, and every "review 7" in this
+   plan reads "review 8" (A20).
+
+*From:* Plan critique 14 (four wrong citations, five loose ranges, the stale SHAs), each re-read. The base's movement and
+the review and §0h numbering are the re-read's own (`git log 2322cf09..origin/main`; `git diff -U0`).
+
+### A2 · A lost answer stays one bet until the server says what happened
+
+*Overrides:* "Exactly once" items 2, 3 and 7; the refusal matrix's Retry column, its rows 1, 2, 6 and 23, and every row
+in doubt; WP2 step 1 (`sheetFrame`, `nextKey`, `requestFor`) and its §3 gate; WP3 (the route's `?me=1`, journey-sheet.ts);
+WP7 steps 5 and 6 (now WP7b, A17); WP11 step 5 (now WP11a); Open point 35; Risk 2.
+
+The hazard, re-read at 2322cf09. Every gate before the wallet lock runs before the key lookup (market-service.ts:1363,
+:1366-1395): admission's BUSY (:1078-1084), the rate limit (:1155), maintenance (:1167-1168), a break (:1185-1196), the
+session limit (:1212-1229), the account (:1236, :1281-1316), the market (:1327-1331), the bounds (:1334-1349) and the
+side (:1350). So a same-key retry of a bet that had already landed could be refused by any of them. The matrix then ended
+the intent, and the next tap minted a new key: a second bet. Rows 1 and 6 also told the player nothing had been taken
+(`journey.sheetBusy`; `error.failMaintenance`, "Nothing has been charged", en :2515, sw :5057). The bet's own
+`wallet:balance` (:1856) could turn the retry frame into a low frame over a bet that went through. And a replay answers by
+key alone, with no side or stake (:1045-1054, :1384-1393), so an edited stake sent under the old key would print a bet
+that does not exist.
+
+1. **In doubt.** After matrix row 2 or row 23, or the placing watchdog (A7), the intent is *in doubt*. The `inDoubt` frame
+   overrides every derived frame: neither the facts nor `wallet-balance` move it. The field, the chips and the side stay
+   locked to the frozen quote. Its only controls are "Jaribu tena · {amount}" (`journey.retryCta`, A20: the same key and
+   the same quote) and the ✕. Its line is `error.failSystemError` ("check your wallet before retrying").
+2. **The host settles the doubt itself.** `?me=1&key=<uuid>` adds `keyPosition` to `me`:
+   `positionStore.findByIdempotencyKey(key)` (market-dal.ts:609), answered as `{ positionId }` only when the row's
+   `userId` is the session's and its `houseBotId` is null, else null; a key that is not a UUID is null without a lookup.
+   - It is read at once, then every 5 s for a minute and every 30 s after, while in doubt and the document is visible,
+     and on `wallet-balance` and on focus, with the sheet open or closed.
+   - A position is that bet's receipt (row 24's view; A3 item 3). Found while the sheet is closed, it clears the doubt and
+     the marker and dispatches `50pick:refresh`, and the sheet's holder line names the bet at the next open.
+   - So the bet's own `wallet:balance` turns a lost answer into its receipt, with no retry. `Position.idempotencyKey` is
+     unique (schema.prisma:1897), so one key is one position even under a race.
+3. **What ends the doubt:**
+   - `ok` (new or replayed), or a position from the key read;
+   - a refusal from inside the wallet lock, after the lookup: `idempotency_key_conflict` (:1374-1377), `wallet_frozen` or
+     `wallet_missing` (:1405-1411), `loss_limit_daily` (:1488-1491), `balance_insufficient` (:1521-1530, or the abort at
+     :1833-1837), `selection_closed` (:1753-1762);
+   - or `keyPosition: null`, read at least `DOUBT_SETTLE_MS` after the last same-key attempt settled on this page (its
+     promise resolved or rejected), or after this page loaded when the doubt came through a reload (A3 item 5).
+
+   `DOUBT_SETTLE_MS` is 10 minutes. The server bounds a bet it has received only through its timeouts. Admission waits
+   15 s by default and at most 60 s (admission.ts:78; nothing in src/ but a dev-test route sets it). Then a bet may make
+   four attempts (retry.ts:54; P2024 and P2028, a pool or a transaction out of time, are retried, :48), and each attempt
+   is its reads before the lock, each allowed Prisma's 10 s pool timeout (prisma.ts:60-77), then the lock's transaction,
+   10 s for a connection and 30 s to run (locks.ts:195-196). With every wait at its ceiling on every attempt, that is
+   about nine minutes; in practice the key read or a same-key retry ends a doubt in seconds. The clock starts at the
+   settle, not the send: Next sends no second action while one is pending (app-router-instance.js:134-162), and a
+   request still on its way has not reached the server. test:bet-sheet §3 recomputes that ceiling from those constants
+   and the awaited reads `buyPositionInner` makes before `withLock`, and is red if `DOUBT_SETTLE_MS` falls below it.
+
+   Anything else leaves the doubt in place: admission's BUSY or any gate at :1151-1350, a throw, a redirect, a skew. The
+   key is kept, the key read goes on, and no sentence says nothing was placed or charged (never `sheetBusy`, never
+   `failMaintenance`). The line is `error.failSystemError`, beside the refusal's own line where that line makes no money
+   claim (rows 5 and 7-15). When the doubt ends without a bet, the intent ends as its last answer says, and the marker is
+   rewritten without its key (A3 item 4).
+4. **Closing does not forget it.** Closing while in doubt (the ✕, or a page move, A3 item 2) keeps the intent in the host
+   and in the marker (A3). Reopening that market and side shows the in-doubt frame until item 2 or 3 settles it. Another
+   market, or the other side, is another bet with its own key.
+5. **"Exactly once" item 3 reads:** "A retry reuses the key after `system_busy` and `system_error` (rows 1-2). In doubt,
+   only that key is ever sent for the intent until the server has said what happened (A2). An intent that was never in
+   doubt ends at any other refusal, and the next tap mints a new key." Open point 35's decision stands: an unknown shape
+   is `system_error`, so it is now in doubt.
+6. **The matrix's "If in doubt" column:**
+   - rows 1, 5-15 and 23: stay in doubt, key kept, the row's own line only where it makes no money claim (row 1's
+     `sheetBusy` and row 6's `failMaintenance` are never shown in doubt);
+   - row 2: in doubt. Row 3: the skew rule, the marker keeping its key (A7). Row 4: A6, the marker kept with its key;
+   - rows 16-22: the doubt ends, then the row as written. Rows 24-25: the receipt.
+7. **Proofs.**
+   - test:bet-sheet §3 gains the in-doubt table. Plants: a pre-replay refusal that mints a new key; `sheetBusy` or
+     `failMaintenance` shown in doubt; a derived frame replacing `inDoubt`; an edited stake sent under the old key; the
+     settle window counted from the send; `DOUBT_SETTLE_MS` below the pinned ceiling.
+   - test:journey-sheet §8: `keyPosition`. Plants: another user's key answered; a house bot's key answered; a malformed
+     key looked up.
+   - WP11a step 5 gains two cells. (a) The answer dropped with the balance just above the stake: the receipt arrives from
+     the key read, no low frame, one position. (b) The answer dropped and the key reads held (`route`), then maintenance
+     on, then a retry: the line is `failSystemError`, never "nothing has been charged", and the key is kept; then
+     maintenance off and a retry: `replayed`, one position and one BET_PLACED row.
+8. **Classic.** The classic dial has the same gap. S8 does not change it (A23).
+
+*From:* Money critique 1 (A-M1), taken, with its window corrected: "`keyPosition: null` read at least 30 s after the last
+attempt was sent (admission waits at most 15 s)" holds only for admission's default. The re-read found the clamp (60 s),
+four attempts each with its own pool and transaction timeouts, and Next's one-action-at-a-time queue, so the window is
+10 minutes and runs from the settle. In its cell (b) the key reads are held, or the key read would settle the doubt before the second retry
+and the cell would never reach it.
+
+### A3 · After a bet nothing reopens it: the address across pages, after a receipt and through a reload
+
+*Overrides:* WP7 steps 3, 4 and 11 (now WP7a and WP7b, A17); pending-bet.ts (in WP7b); the text Privacy §7 gains (WP7b;
+Open point 13); WP11 steps 2 and 5 (now WP11a); test:bet-sheet §10; Risk 7; Open points 11 and 13.
+
+The hazard, re-read at 2322cf09:
+- `pendingBetFrom` accepts `?bet=` on any path (pending-bet.ts:66-76).
+- The host mounts in the root layout, which a soft navigation does not re-run (journey-preview.ts:243-246), and the
+  deposit page reads no `bet` (wallet/deposit/page.tsx:62-80).
+- Nothing closed the sheet when one of its own links navigated, while the Sell result host closes on a page move
+  (app-shell.tsx:584-585).
+- Nothing removed the stake from the address, or the marker, after a success. The key lived only in the host's memory:
+  the marker has no key field (pending-bet.ts:86-94), and it matches for 24 hours (:150-154).
+
+So a reload during the receipt, Back from "Tiketi zangu", Forward after "Endelea kucheza", "Weka pesa" itself, and a
+reload or a Back-out while placing could each reopen a placed bet as unplaced, or re-key a bet still in flight.
+
+1. **Where the address opens the sheet.** On mount and on popstate, only on the pages that draw journey picks: `/`, a
+   question page (`/markets/<id>`), `/live` and `/watchlist`, as one exported `SHEET_PAGES` list in sheet-state.ts. Never
+   on `/wallet/*`, `/profile/*`, `/positions/*`, `/help` or `/auth/*`, whatever the address says.
+2. **A page move closes it.** Any pathname change closes the sheet, as the Sell result host closes. While nothing is
+   placed, the entry keeps `bet`, so Back from the deposit page returns to the sheet at its stake. An intent that is
+   placing or in doubt stays in the host and in the marker (A2 item 4).
+3. **After a receipt** (from the answer, a replay or the key read), before the receipt draws, the host replaces the current
+   entry's address with the address without `bet` (`replaceState`) and removes `kp-pending-bet`. A sheet opened from
+   `?side=` strips `side` on close and on a receipt.
+4. **The marker carries the key.** A commit tap (the CTA or "bet instead") writes `{ bet, at, k }` before the request, `k`
+   being the intent's UUID. The deposit row's tap writes `{ bet, at }`, because it sends no bet. `readMarker` keeps a
+   well-formed `k` and drops anything else. When an intent ends without a bet, the marker is rewritten without `k`.
+5. **A keyed reopen.** A sheet reopened from the address, whose marker names the same id, side and stake and carries `k`,
+   reads `keyPosition` first (A2 item 2). A position is that bet's receipt (item 3). None is the in-doubt frame, locked to
+   that stake, its retry reusing `k`, until a null is read `DOUBT_SETTLE_MS` after this page loaded: the old page's
+   request either died with it or had already reached the server.
+6. **Privacy §7** also names "a random request id for the bet, so a bet interrupted by a reload is never placed twice", in
+   en, sw and zh, in WP7b's commit with the marker.
+7. **Proofs.**
+   - test:bet-sheet §10 plants: `bet=` on `/wallet/deposit` opens a sheet; a pathname change leaves the sheet open; a
+     receipt leaves `bet` in the address or the marker in storage; the stake left in the current address; a keyed reopen
+     that mints a new key; `side` kept after a close.
+   - WP11a step 5 gains these cells, each counted on the player's positions: follow "Weka pesa" (the deposit form is
+     usable and no dialog is open); "Tiketi zangu", then Back (no sheet); a reload during the receipt (no sheet);
+     "Endelea kucheza", then Forward (no sheet); the request held, the page reloaded, the request released (one
+     position, and the reopened sheet shows its receipt); a page loaded with `?bet=`, Back while placing, then Forward
+     (one position).
+
+*From:* Money critique 2 (A-M2) and plan critique 1 (A-1): one hazard, merged, both taken whole. A-M2 item 2's "at least
+30 s after `at`" becomes A2's settle window, counted from the page's load (A2's *From:*).
+
+### A4 · A block shown before the tap records what a refused tap records
+
+*Overrides:* Correction 13; WP3's Goal, Files (route.ts, journey-sheet.ts), step 1 (`session`), step 5 and Gates
+(journey-sheet §6, rg-doors); Risk 4; Open point 8; Points for Ali 3.
+
+The hazard, re-read at 2322cf09:
+- The per-player sitting that stops a sign-out from restarting the session limit (E-408, responsible-gambling.ts:507-511)
+  is kept alive only by the gate's write at each bet attempt, "a refused one included, or the refusal itself would end
+  the sitting" (:516-520).
+- With the block shown at open and the CTA disabled, no attempt reaches the gate, and the read never writes. A player past
+  their limit who keeps opening the sheet, then signs out and in, is free 30 minutes after their last real attempt
+  (`PLAY_SESSION_GAP_MIN`, play-session.ts:36). Today they stay blocked until 30 minutes after they stop trying.
+- `rg.session_limit.enforced` is written only by a refused attempt (market-service.ts:1214-1221). It is one of the six
+  actions the Board-facing RG engagement report reads (reports/catalogue.ts:1037-1044, :1091), so from the flip,
+  enforcement would all but vanish from that report.
+
+1. **The open's own read.** The host sends `open=1` on the one `?me=1` read each open makes, never on a refresh, a focus,
+   a balance event or the key read. Every other read stays write-free.
+2. **The session limit.** When the open's read finds the viewer past the limit (`readSessionStanding`), it runs
+   `checkSessionTimeLimit` itself (responsible-gambling.ts:498-523, whose write at :518-520 holds the sitting) and writes
+   `rg.session_limit.enforced` with the bet path's payload plus `at: "sheet"` (market-service.ts:1214-1221). Within the
+   limit it writes nothing.
+3. **Other blocks.**
+   - An account block shown at open writes `bet.account_blocked` (the payload of :1285-1292, plus `at: "sheet"`).
+   - A loss block (headroom below the minimum) writes `bet.loss_limit_blocked` with `{ stake, reason, at: "sheet" }`, the
+     stake being the market's minimum and the reason the one `checkLossLimit` gives for it (:1490).
+   - A break, maintenance and a held wallet write nothing, because the bet path writes no row for them (:1167-1168,
+     :1185-1196, :1405-1411).
+   - No action name is new, so the RG census (test:house-bot-reports §0: `RG_AUDIT_ACTIONS` both ways) is unchanged.
+     catalogue.ts's "Writers, measured" note (:1033-1035) gains the sheet route.
+4. **The route says so.** route.ts's header ("⛔ GET only: nothing here writes", :11) becomes: the open's read of a blocked
+   viewer writes what a refused tap writes, and nothing else writes.
+5. **The words around it.** WP3's Goal reads "without the play-clock write, except the open's read of a blocked viewer
+   (A4)". `getRgSettings` creates a missing row and applies a deferred limit change that has come due
+   (responsible-gambling.ts:64-94 and its `effectivize`), as every RG read does (money note 13b). Correction 13 and Risk
+   4 read accordingly.
+6. **Proofs.**
+   - test:rg-doors gains the sign-out case through the sheet: past a 30-minute limit, the player opens the sheet
+     (blocked), signs out and in, keeps opening it, and is still blocked 31 minutes after the last bet. The plant (the
+     open read's gate call removed) frees them, and red:rg-doors carries it.
+   - test:journey-sheet §6 plants: an enforced open read with no audit row; a write within the limit; a write on a read
+     without `open=1`.
+   - db:probe-sheet-facts checks the same on Postgres (A11).
+   - §0k records that the RG report counts a sheet's enforcement.
+7. Open point 8 stands with this record (amended below). Its overrule, showing blocks only after the server refuses, would
+   also close the hazard.
+
+*From:* Money critique 3 (A-M3), taken, with two precisions from the re-read. A break has no bet-path row to write
+(market-service.ts:1185-1196 audits nothing), so "or a break" writes nothing. And "at most once per sheet open" needs the
+server to know which read is the open's, hence `open=1`.
+
+### A5 · The loss limit's words: the live refusal Ali ruled on, and the loss room without a calendar day
+
+*Overrides:* Correction 14's first bullet (changed in place); WP4 Files (changed in place) and Done-when; matrix row 19 and
+the branch table's loss rows (their sentence); "New dictionary keys" (`sheetLossBlock` in "S8 drafts", `lowLossRoom`,
+"Reused, never copied"); Risk 14; Open point 22; Points for Ali 6. It overtakes the plan critique's A-12 (its "fix it
+live now, or with S12" point).
+
+1. **Ali's ruling, recorded (2026-10-12, asked by question: "fix it now").** The live classic refusal
+   `error.failLossLimitDaily` said "It resets tomorrow" / "Kitaanza upya kesho" / "明天重置" (en :2509, sw :5053, zh :7458
+   at 2322cf09). That was untrue at any hour for a rolling-24-hour gate (responsible-gambling.ts:586-588). It was fixed
+   live in its own commit, `e5b5c9da` on origin/main (2026-10-12 15:26 EAT), not with S12:
+   - en "You've reached the daily loss limit you set. It counts the last 24 hours — you can review it under Responsible
+     gambling.";
+   - sw "Umefikia kikomo cha hasara cha siku ulichojiwekea. Kinahesabu saa 24 zilizopita — unaweza kukiangalia kwenye
+     Uchezaji salama.";
+   - zh "您已达到自己设定的每日亏损上限。该上限按过去 24 小时计算——可在“负责任博彩”中查看。".
+
+   The same commit withdrew S4-COPY-AUDIT.md's S12 line for the key (:124-129 on main), signed the sentence as "Swahili
+   review" 7, and filed §0h point 77. S8 plans none of this: it is done.
+2. **The sheet reuses it.** The loss block (matrix row 19; the branch table's "headroom below the minimum" row) says
+   `error.failLossLimitDaily` as `e5b5c9da` wrote it, under `market.udErrRgLimitTitle`. `journey.sheetLossBlock` leaves
+   "S8 drafts", and `error.failLossLimitDaily` joins "Reused, never copied": one sentence, classic and journey alike.
+   `e5b5c9da`'s records say S8's `sheetLossBlock` "will use" the clause; WP4 annotates S4-COPY-AUDIT.md's review 7 and
+   §0h point 77 to say the sheet reads the key itself.
+3. **Correction 14's first bullet** (changed in place) says the canvas's "Kitaanza upya kesho saa 00:00"
+   (s4-4-block-loss.dc.html:26) states a reset the gate never makes, that the live refusal already tells the truth since
+   `e5b5c9da`, and that the sheet reuses it.
+4. **WP4** (changed in place) no longer withdraws "saa 00:00" from S4-COPY-AUDIT.md: `e5b5c9da` did. WP0's precondition
+   (step 1) adds that `e5b5c9da` is on main (it is), and §0k names it.
+5. **The loss room names no calendar day either.** `lowLossRoom`'s approved "…hadi {amount} leo" / "…today"
+   (S4-COPY-AUDIT.md:269 at the base) states a day for the same rolling window (shortfall.ts:84-89). For review 8:
+   - sw "Kikomo chako cha hasara kinaruhusu dau la hadi {amount} kwa sasa.";
+   - en "Your loss limit allows a bet of up to {amount} right now.";
+   - zh "您的亏损上限目前最多允许投注 {amount}。".
+
+   Correction 14 names both sentences.
+6. Open point 22 is rewritten, Points for Ali 6 is withdrawn, and new Open point 41 records the ruling (below). Risk 14
+   names `e5b5c9da`.
+
+*From:* Ali's ruling of 2026-10-12 as the coordinator recorded it, read back from `e5b5c9da`; money critique 8 (A-M8) and
+the loss-room half of plan critique 12 (A-12), taken. Plan A-12's "WP4 replaces the whole :124 correction" and its "fix
+it live now, or with S12" Point for Ali are overtaken by the ruling. The sheet reuses the live key rather than keep a
+journey copy that would differ only in the page's name (A20 settles the name).
+
+### A6 · A redirect rejects the call: a session lost mid-bet (matrix row 4)
+
+*Overrides:* matrix row 4; WP2 step 2 (`refusalOutcome`'s order); the request's catch (WP7b); VODACOM-PLAN §3.3 :3537
+(annotated by WP0); test:bet-sheet §10; WP11a.
+
+Re-read: in Next 16.2.4 a Server Action that redirects rejects its promise with a handled `NEXT_REDIRECT` error and
+navigates by itself (server-action-reducer.js:215-238; `createRedirectErrorForAction`, :308-312). It never resolves to
+nothing. As written, a signed-out or revoked tap fell into row 2's catch: "check your wallet" and "Jaribu tena", for a
+bet the server never ran, while the sign-in page loads.
+
+1. Row 4 reads: "markets/actions.ts:87 · the call rejects with a `NEXT_REDIRECT` error."
+2. The host's catch tests for it first: the error's `digest` starts with `NEXT_REDIRECT` (the repo's own test,
+   contacts-import-dialog.tsx:159-161). It then:
+   - shows nothing, and is never row 2;
+   - keeps the marker, without its key unless the intent was already in doubt, because the redirect (markets/actions.ts:87)
+     comes before `buyPosition` runs;
+   - does not rethrow: the host sits outside every route boundary (Correction 26), and the reducer, under the app
+     router's own RedirectBoundary (app-router.js:379), has already navigated.
+3. After sign-in, the address (sign-in-path.ts:9-14 keeps the query) and the marker reopen the sheet at the stake, never
+   placed. A keyed marker reads `keyPosition` first (A3 item 5).
+4. WP0 annotates VODACOM-PLAN §3.3's "An auth-loss redirect (`r == null`) is treated as navigation, not failure" (:3537
+   at the base): in Next 16 the call rejects.
+5. Proofs: test:bet-sheet §10 plants the wrong order (the redirect test after the `system_error` mapping). WP11a: end the
+   session in a second context, then tap (no wallet line), sign in (the sheet at the stake), one tap (one position).
+6. The classic dial and the quick bet appear to show this rejection as a failure. WP0 measures it on a dev server (A23).
+
+*From:* Money critique 4 (A-M4), taken. Item 2's marker without its key is the re-read's own: a redirect proves the
+server ran nothing, and a keyed marker would lock the reopened sheet in doubt for no reason.
+
+### A7 · Placing has a watchdog; deploy skew once the reload is spent
+
+*Overrides:* "Exactly once" items 2 and 6; matrix row 3; WP7 step 7 (now WP7b); Risk 8; Open point 14; WP11a.
+
+Re-read: the action's fetch has no timeout (server-action-reducer.js:70-74). While placing, the plan refused the scrim,
+Escape, the ✕ and Back ("Exactly once" item 2), so on a stalled line the only exit was a reload (A3's hazard). Next
+queues a second action behind a pending one (app-router-instance.js:134-162), so a retry pressed during a hang only
+queues. And RouteError reloads once per build, and not at all without a build id (route-error.tsx:131-134), which the
+plan left undefined.
+
+1. **At 1.5 s** (the classic confirm's `BUSY_HINT_MS`, bet-confirm-modal.tsx:41-44, :153) the placing frame adds a wait
+   line, `journey.sheetPlacingSlow`, for review 8: sw "Bado tunaweka dau lako — inachukua muda kidogo."; en "Still
+   placing your bet — this is taking a moment."; zh "仍在为您投注——需要一点时间。". It is not the classic
+   `dialog.busyHolding`, whose "Your stake hasn't moved" (en :2642, sw :5146) nobody knows while a request is out.
+2. **At 20 s** (admission's default wait, 15 s, plus the bet's usual time) the intent goes in doubt (A2). The ✕ returns,
+   the key read starts, and "Jaribu tena" stays disabled until the first request settles, because Next would only queue
+   it behind the first.
+3. **Deploy skew.** `UnrecognizedActionError` proves the server ran nothing: Next raises it only on its not-found header
+   (server-action-reducer.js:76-83).
+   - Not in doubt: the marker is rewritten without its key, then the host reloads once per build under RouteError's
+     rule, unchanged. When that reload is already spent for this build, or the build has no id, the intent ends with
+     `common.temporarilyUnavailable` ("Haipatikani kwa sasa"), never "check your wallet".
+   - In doubt: the doubt holds and the marker keeps its key; a reload (or none) changes nothing about it (A2 item 3).
+4. WP11a: the request held for 60 s → in doubt at 20 s → the ✕ closes → the held request lands → reopening shows its
+   receipt; one position.
+
+*From:* Money critique 5 (A-M5), taken, with two corrections: the wait line's words (the classic line makes a money claim
+that nobody can check mid-request), and "admission's 15 s ceiling" is admission's default (A2). Plan critique 15's skew
+line ("say the sheet then shows row 2's line") is not taken: row 2's line tells the player to check their wallet for a
+request the server never ran.
+
+### A8 · Re-reads are fresh and decide; the refusals settle in one pure step
+
+*Overrides:* matrix rows 10, 12, 15, 19, 20 and 21 (their re-reads); WP2 step 2 and test:bet-sheet §2's goldens; WP7
+step 5's failed read (now WP7a); Risk 10; WP11a.
+
+Re-read at 2322cf09:
+- Rows 10 and 12 share one input. "Account not found." (market-service.ts:1236) and "Market not found." (:1328) are both
+  `{ code: "NOT_FOUND" }` with no reason, which `reasonForCode` maps to `not_found` (failure-reasons.ts:501, :540-543). So
+  a pure `result → outcome` cannot tell them apart, and rows 12, 15 and 19-21 decide only after a re-read.
+- The public URL is shared-cacheable (`public, s-maxage=5, stale-while-revalidate=5`, route.ts:24), so a re-read of it can
+  say `bettable: true` for up to 10 s. `sheet.ip` (rate-limit.ts:150) meters `?me=1` too (route.ts:28-31).
+- A 404 also means a voided, resolved or closed question: `sheetPublic` answers null for any market that is not LIVE
+  (journey-sheet.ts:95-97), where "Sasa tunasubiri matokeo" may be untrue.
+
+1. Every re-read the matrix asks for is a `?me=1` read (private, no-store; route.ts:25, :39-40).
+2. WP2 adds a pure `settleRefusal(outcome, reread)` after `refusalOutcome`. §2's goldens become (result, re-read) →
+   frame, with a plant that swaps rows 10 and 12.
+   - `NOT_FOUND` or `INVALID` with no reason (rows 10 and 12), and row 15's `market_not_live`: a fresh 404 or
+     `bettable: false` → the closed frame, whose body is `journey.sheetNotTaking` (A20) instead of `sheetClosedBody`
+     while the seed's `closesAt` has not passed. A fresh `bettable: true` → `NOT_FOUND` is row 10's block, and the other
+     two are the inline `journey.sheetNotTaking`, ending the intent. A failed read → the inline `journey.sheetNotTaking`,
+     ending the intent.
+   - `loss_limit_daily` (row 19): headroom at least the minimum → the loss room; less, or a failed read → the loss block,
+     never the loss room.
+   - `balance_insufficient` (rows 20-21): the plan from the re-read. A failed read → the low frame with `lowTitle` alone
+     and no option, until a read lands (on focus, on `wallet-balance`, every 10 s); never "enough".
+   - In doubt, none of these ends the doubt unless A2 item 3 says so.
+3. Risk 10 names `?me=1` under `sheet.ip`; WP11a drives one 429 on a re-read.
+
+*From:* Money critique 6 (A-M6) and plan critique 6 (A-6), merged and taken. "A voided question" is widened to every
+market that is not LIVE, as `sheetPublic` reads it; the not-live line is A20's journey copy.
+
+### A9 · The sheet computes no balance: the read is the figure, loading is not "unavailable", a hidden balance stays hidden
+
+*Overrides:* WP7 steps 5 and 6 ("spendable = it + `bonusBalance`"; `spentSinceTruth`); the branch table's `unknown` row;
+WP6 step 2.8 (the balance row) and step 4 (the low frame's figures); VODACOM-PLAN §3.3 :3551 (annotated by WP0).
+
+Re-read: the `wallet:balance` event carries cash only (event-bus.ts:36), so adding a remembered bonus overstates spendable
+after any bonus spend. The bet's own event is emitted before the action returns (market-service.ts:1856, :1997), so a
+deduction on top of an event-fed figure subtracts the stake twice, and then offers a deposit to a player who can afford
+the bet.
+
+1. Strike "spendable = it + `bonusBalance`" and `spentSinceTruth`. `wallet-balance` only triggers a `?me=1` read.
+2. After a success the host reads `?me=1` at once. The answer's `balance` is the cash left after the debit (:1620,
+   :1825), not spendable, so the sheet shows no figure from it. Until the read lands, a new sheet's balance row is
+   loading.
+3. **Loading is not unavailable.** Until the first `?me=1` answers, the balance row shows its label with the kit's
+   loading placeholder and no words, and the CTA is as in `unknown`. `unknown` (s4-4-sheet-unknown-balance's "—" with
+   `common.temporarilyUnavailable`) starts only after a failed read. `sheetPlan` takes facts that are loading, failed or
+   read.
+4. **A hidden balance stays hidden.** With the hide-balance preference on (cash.tsx), `lowBody`'s `{have}` and
+   `lowMinNote`'s `{left}` render through `<Cash>`. `{short}` and the deposit amount stay visible.
+5. WP0 annotates §3.3 :3551 ("the optimistic deduction until server truth"): superseded by the read (S8-PLAN A9).
+6. Proofs: test:bet-sheet §10 plants an event-fed spendable; a deduction applied after a later read; "unavailable" drawn
+   before the first read; `{have}` printed outside `<Cash>`.
+
+*From:* Money critiques 7, 14 and 15 (A-M7, A-M14, A-M15), taken. A-M7's "the host takes the answer's `balance`" is not:
+that figure is cash only.
+
+### A10 · An old pending deposit is described by its age
+
+*Overrides:* the branch table's `pending` row; WP2 step 3 (shortfall.ts) and test:bet-sheet §4; WP3 step 3
+(`newestProcessingDeposit`); WP6 step 5 (the pending frame); Open point 24; WP11 step 6 (now WP11a); new Open point 42.
+
+Re-read: in live money mode a deposit can stay PROCESSING indefinitely. It does so with no provider reference
+(wallet-service.ts:1326-1328), when the provider cannot be asked (:1356-1358), while the provider still says pending
+(:1364), or when a credit is refused for a mismatch (:1335-1347). `shortfallPlan` returns `pending` (shortfall.ts:191-192)
+before "bet instead" is computed (:195-196). So a deposit stuck for hours made every short stake say "Approve the prompt
+on your phone" (`common.depositPendingBody`, en :296, sw :3390), disabled the bet, and offered nothing.
+
+1. `newestProcessingDeposit` returns `{ amount, txnId, createdAt }`. The `pending` plan carries `createdAt`, and the
+   bet-instead option computed exactly as the `short` branch computes it (shortfall.ts:195-196), so no figure is
+   computed in a component (test:shortfall §5, with plants).
+2. **The body follows the deposit's age** on the sheet's server-offset clock (`closedAt`'s), as the canvas grades the
+   same wait (s4-6-wait-long; s4-6-wait-over30):
+   - under 10 minutes: `common.depositPendingBody`, the live sentence;
+   - 10 to 30 minutes: `journey.lowPendingWaitBody`, sw "Inaweza kuchukua hadi dakika 30 — usianzishe malipo mengine."
+     (s4-6-wait-long's line, without its emailed receipt, Open point 24); en "It can take up to 30 minutes — don't start
+     another payment."; zh "最长可能需要 30 分钟——请勿发起另一笔付款。";
+   - from 30 minutes: the approved "Malipo bado hayajathibitishwa" as the title (`journey.lowPendingLateTitle`) and its
+     sentence as the body (`journey.lowPendingLateBody`: "Imepita dakika 30. Usianzishe malipo mengine — pesa
+     zikikatwa, zitaingia kwenye salio lako zikithibitishwa."; S4-COPY-AUDIT.md:268 at the base; s4-6-wait-over30). en
+     "Payment not confirmed yet" / "It's been 30 minutes. Don't start another payment — if money was taken, it will reach
+     your balance once confirmed."; zh "付款尚未确认" / "已超过 30 分钟。请勿发起另一笔付款——如已扣款，确认后将计入您的余额。".
+
+   Review 8 signs all three.
+3. **From 30 minutes, "bet instead" shows beside the notice**, and the deposit offer stays withheld (Open point 42).
+4. Proofs: test:bet-sheet §4 crosses 10 and 30 minutes on a skewed phone clock. WP11a step 6 drives the fresh band
+   through the mock async rail (payments.ts:296-312) and lists the 10- and 30-minute bands NOT DRIVEN, each with its
+   in-process proof: no door ages a deposit, and S8 adds no dev-test route.
+
+*From:* Money critique 9 (A-M9), taken, with its bands corrected. "Malipo bado hayajathibitishwa" and its sentence say
+"Imepita dakika 30", which is untrue before 30 minutes, and the canvas draws them only past 30 (s4-6-wait-over30). The
+10-30 band is s4-6-wait-long's.
+
+### A11 · The Prisma reads run before production
+
+*Overrides:* WP3 step 3 ("`test:dal-parity` holds the twins equal": that suite compares source text and never runs a
+query, dal-parity.test.mts:1-3) and WP3 Gates; WP12 step 1; §0k.
+
+1. WP3 adds `db:probe-sheet-facts`: scripts/live/sheet-facts-pg-probe.mts, run by `pg-probe-run.mts` on a scratch
+   Postgres, the `db:probe-*` pattern (package.json:162-171), under the heavy-job lock. It checks:
+   - `newestProcessingDeposit` returns only the user's own newest PROCESSING deposit, with `createdAt`. Plants: a
+     PROCESSING withdrawal, a CONFIRMED deposit, another user's deposit, an older deposit;
+   - `keyPosition` (A2): the user's own key answers its position; another user's key and a house bot's answer null;
+   - the viewer's read within the session limit changes neither `playStartedAt` nor `playLastSeenAt`; past it, the open's
+     read (A4) writes what the gate writes and exactly one `rg.session_limit.enforced` row.
+2. It runs in WP3's gates and again in WP12's battery; §0k records both runs.
+
+*From:* Money critique 10 (A-M10), taken, and extended to the two reads A2 and A4 add.
+
+### A12 · Focus and announcements: the exception written where the rule lives, every frame re-armed, each message spoken once, the receipt held while read, forced colours
+
+*Overrides:* WP6 step 1 (first focus), step 6 (the receipt's close), step 7 (the live region) and Gates; Correction 10;
+Open point 5; WP11b (the tiles); the CLAUDE.md half of the plan critique's A-12.
+
+1. **The exception is written where the rule is.** WP6's commit annotates CLAUDE.md's keyboard rule ("Money dialogs open
+   with focus on their primary", :932): "…except the journey's bet sheet: a stake surface whose primary is the commit
+   opens on its heading (VODACOM-PLAN §3.3 :3510; S8-PLAN Open point 5), and its CTA's click is the act."
+   test:enter-where-pressed adds 2.2s as its own check, with a red plant (`initialFocus` moved to the CTA). 2.2's three
+   pins (:950-954) are untouched.
+2. **Every frame re-arms focus.** The dialog's `labelledBy` is the frame's own `<h2>`, as each board draws it: the
+   question in the edit, low, loss-room and pending frames; the block's or the closed frame's title, with the question
+   as a line above it (s4-4-block-*; s4-4-sheet-closed); the receipt's title (s4-4-sheet-receipt). Every frame change
+   re-arms focus onto that h2 through Modal's `refocusKey` (modal.tsx:274-281, :383-391), so the 400 ms beat swallows a
+   quick second Enter and a screen reader hears the new frame. test:bet-sheet §8 pins it (plant: a frame change with no
+   re-arm).
+3. **Each message is spoken once.**
+   - The closed frame and every block speak through their message's own `role="alert"`, as the boards draw them, and
+     that message is the dialog's `describedBy` (modal.tsx:219-221: "the bet refusal names its reason here").
+   - The inline refusal line is its own `role="status"` (s4-4-inline-refusals).
+   - The one polite region (§3.3 :3563) speaks the low, loss-room and pending frames, the estimate update and the
+     receipt, and repeats neither of the others.
+4. **The receipt holds while it is read.** Its 5 s close follows the classic receipt's rule
+   (operation-result-modal.tsx:228-320): a `:focus-visible` focus or real pointer movement inside the panel pauses it,
+   banking the time left, and leaving resumes it. It never pauses on a plain focus (item 2 focuses the receipt's h2 by
+   script, so it would never close) or on `pointerenter` (which fires under a resting cursor). The sheet does not
+   import the classic receipt, whose source test:sell-grace-truth (:1822) and test:visual-pass-r4i (:622) pin.
+   test:bet-sheet §8 holds the sheet to the same rule, with two plants: a plain `focusin` pause, and a `pointerenter`
+   pause. This replaces WP6 step 6's "unless it is being read (CLAUDE.md:694)".
+5. **Forced colours.** The chosen chip's ring is an `outline`, never a box-shadow alone: forced colours strip box-shadow
+   and keep outline (globals.css:2071-2078, E-129). `attention` adds a 2px border width, not colour alone. WP11b tiles
+   the low frame, the chips and the big buttons under `forced-colors: active`.
+
+*From:* Money critique 11 (A-M11) and plan critique 9 (A-9), with the CLAUDE.md half of plan critique 12 (A-12), merged.
+Two parts are corrected. A-9's "the live region also speaks the closed frame" would speak it twice, since the boards draw
+it as an alert. A-9's "pauses while focus or the pointer is in the panel" is the hold the classic receipt rejected, for
+the two reasons item 4 gives.
+
+### A13 · The ✕: the kit's CloseX in the chip row, with a ref, and ruled
+
+*Overrides:* WP6 step 1 (`safeFocus={closeRef}`; "the ✕ withheld (modal.tsx:225-237)"), step 2.1 ("the kit ✕") and
+Gates; WP5 Files; "What does change for a classic visitor" (a); new Open point 38.
+
+Re-read at 2322cf09:
+- Modal's own ✕ is pinned to the panel's corner, and `CloseX` takes no ref (modal.tsx:195).
+- The money confirms pass `showClose={false}`, draw `<CloseX withheld={pending}>` in their header row, and give
+  `safeFocus` a real `<button ref>` (bet-confirm-modal.tsx:230-232, :300, :435), which test:enter-where-pressed 5.10 reads
+  (:1085-1090).
+- test:visual-pass-r6c 10.1 fails any `<Modal>` host it has not ruled (visual-pass-r6c.test.mts:503-543), as S7 found
+  (a33a9ced :511).
+- The canvas draws the ✕ beside the chip, not the title (pick-2; s4-4-sheet-desktop): neither place F20 allows
+  (modal.tsx:177-185).
+
+1. The sheet passes `showClose={false}` and draws `<CloseX ref={closeRef} withheld={placing}>` in its chip row;
+   `safeFocus={closeRef}`.
+2. WP5 adds an optional `ref` prop to `CloseX` (React 19 passes `ref` to a function component as a prop). No call site
+   passes one today, so nothing changes. modal.tsx's chunk changes with its output unchanged, recorded in §0k's served
+   bytes.
+3. test:visual-pass-r6c's RULED list (:507-512) gains bet-sheet.tsx as "header-row", and modal.tsx's F20 note records a
+   third place: "a sheet whose header row is its chosen side" (the canvas). test:enter-where-pressed 5.10 gains the
+   sheet's line (its way out is the ✕). WP6's gates name test:visual-pass-r6c.
+4. Open point 38 (new).
+
+*From:* Plan critique 2 (A-2), taken whole.
+
+### A14 · A tall frame never runs off a phone: the panel is capped and its middle scrolls
+
+*Overrides:* WP6 step 1 (`panelClassName`) and step 3 (the keyboard); WP11 step 2 (V20; now WP11a).
+
+Re-read: below lg the Modal's wrapper is `flex items-end overflow-y-auto` (modal.tsx:529-531), so content above a docked
+panel taller than the screen can never be scrolled back to, and `.kp-wsheet` has no max-height (globals.css:6626). S7
+met exactly this and capped `.kp-howto` at `calc(100dvh - var(--sp-12))` with one scroll region (how-to-play-sheet.tsx:20-26
+and globals.css:7597 at a33a9ced). The hedge board is 390×769, and the low frames are about 600px tall at 390.
+
+1. WP6 step 3a: the panel is capped at `calc(100dvh - var(--sp-12))`. With the keyboard up, the cap is the visual
+   viewport's height, set by the listener that lifts the panel (step 3). One region between the chip row and the CTA
+   scrolls (`data-edges`, registered in test:visual-pass-r5h as S7's sheet was). The chip row with its ✕, and the CTA,
+   never scroll.
+2. WP11a step 2: at 320×640 and 360×640, in every frame, with the keyboard up and down, the ✕ and the CTA are on screen.
+
+*From:* Plan critique 3 (A-3), taken whole.
+
+### A15 · WP5's inertness is proven in process, not by parity
+
+*Overrides:* WP5 step 2, Gates and Done-when; the Summary's (b) proof.
+
+Re-read: parity captures `/`, `/markets`, `/positions`, `/wallet`, `/profile`, `/account` and the 404
+(qa-classic-shell-parity.mjs:454), and page bodies only for `/positions` (:459) and the BOOK (:483); WP1 adds the question
+page. No deposit, withdraw or limits form is captured, so "parity v4 `--compare` (the classic Inputs on the deposit and
+withdraw pages are in its cells)" proved nothing.
+
+1. test:numeric gains a census of every `<Input` call site in src/, and renders each configuration the classic pages use
+   through `renderToStaticMarkup` before and after WP5: the markup must be byte-equal. Plants: a stray `aria-invalid`
+   when `attention` is unset; the grouped path reached without the prop.
+2. Parity v4 leaves WP5's gates. Its Done-when reads "both props are proven inert when unset, by render equality, and
+   right when set", and the Summary's (b) proof reads "test:numeric's census and render equality, with plants".
+3. `attention` sets only the border and the caller's `aria-describedby` (A18), so WP5 step 2's `aria-invalid="false"` is
+   struck.
+4. Overrule: a FORMS phase in parity v4 (WP1), capturing the deposit, withdraw and limits forms.
+
+*From:* Plan critique 4 (A-4), taken; its file-name half is A1's correction in place.
+
+### A16 · The gates name the censuses a new part trips, and one red list runs at the start and at the end
+
+*Overrides:* WP0 step 2 and WP12 step 1 (the red lists); the Gates of WP2, WP6, WP7 and WP8.
+
+Re-read at 2322cf09:
+- test:journey-funnel 8.census reads a fixed list of three callers (journey-funnel.test.mts:42) and pins
+  `calls.length === 3` and `betFields.length === 2` (:223-225). The sheet's `funnelBetFields(fd, "sheet")` and its
+  `sendFunnel` calls would go unread.
+- r6c §10 rules every Modal host (A13); r5i §1 counts the betting pair per file (visual-pass-r5i.test.mts:19, :115, :136);
+  r8b §1 holds every `.eyebrow` to one ink or a registered exception; r9a counts end chevrons; r5h registers scroll
+  regions. S7's WP6 had to edit r5h, r6c and r9a (a33a9ced).
+- WP0 step 2 ran red:failure-reasons but not journey-tickets or sell-grace-truth, and WP12 step 1 ran the reverse.
+
+1. WP2 and WP7b name test:journey-funnel and red:journey-funnel. CALLERS gains sheet-state.ts and bet-sheet-host.tsx, and
+   the counts are re-pinned in the open. `requestFor` writes `funnelBetFields(fd, "sheet")` literally, and the host makes
+   one literal `sendFunnel("sheet_open", "<origin>")` call per origin (the census's literal-origin rule), never a
+   computed one.
+2. WP6 names test:visual-pass-r6c (A13), r8b (the receipt's "Dau lipo" eyebrow, a status green on s4-4-sheet-receipt), r9a
+   (the deposit row's "›"), r5h (A14's scroll region) and r5i (the chip's sides). WP8 names r5i (journey-bet-buttons.tsx's
+   `btn-yes` and `btn-no`). Every registry entry is added in the open, with its ruling.
+3. WP0 and WP12 run one list, kept in §0k:
+   - in process (`--prove-red`): bet-sheet (from WP2 on), journey-sheet, shortfall, pending-bet, journey-estimate,
+     deposit-ceiling, enter-where-pressed, implicit-submit, journey-shell, journey-home, journey-tickets,
+     sell-grace-truth, simple-journey-flag, journey-funnel, markets-redirect;
+   - harnesses that write source or copy it, each alone after committing, then `git diff --exit-code`: failure-reasons,
+     rg-doors (A4 changes its suite), dal-parity, contrast.
+
+*From:* Plan critique 5 (A-5), taken. The re-read sorts its list by how each twin runs (`red:failure-reasons` and
+`red:rg-doors` write into real source, failure-reasons-red.mjs:53 and red-rg-doors.mjs:81; `red:dal-parity` and
+`red:contrast` copy to a scratch tree) and adds rg-doors.
+
+### A17 · Packages: WP9 after WP7, WP7 and WP11 split, WP1's masks named first
+
+*Overrides:* the Summary's "Order"; WP7's and WP11's headings, Goals and Steps (split); WP8's, WP9's and WP10's
+dependencies; WP1 step 6.
+
+Re-read:
+- WP9 step 3 removes WP7's `data-sheet` and `data-bet-side` from a card on a break, and both packages edit
+  journey-card.tsx, journey-home.tsx and the open-card pages, yet WP9 depended on WP4 alone.
+- WP7 (M) bundled the money host, history, skew, an error boundary, the funnel, pull-to-refresh and Privacy §7 across
+  seven test files, and WP11's tiles came to about 35 frames × 4 widths × 3 languages.
+- The question page has live `[role=timer]` countdowns ([id]/page.tsx:978, :988), the Sell countdown, the chart's time
+  axis and "Imefunguliwa {date}" (:1072), where S7's parity needed calibrations (52715180; c23d0756).
+
+1. **WP7a — the host, opening and closing (M; depends on WP6):** the mount, the taps, open and close, the address without
+   a stake, A3 items 1-2, the refreshes (A9), the opens' funnel counts, pull-to-refresh.
+2. **WP7b — placing (L; depends on WP7a and WP3):** placing; in doubt and the key read (A2); the watchdog (A7); A6's
+   catch; the stake in the address and the keyed marker (A3 items 3-6), with Privacy §7 in the same commit; deploy skew;
+   the host's error boundary; the bet's funnel fields.
+3. **Dependencies.** WP8 depends on WP7b and WP1 (and S7 WP10); WP9 on WP7a and WP4 (and S7 WP7, WP10); WP10 on WP7a.
+4. **WP11a — the drives (L; depends on WP8, WP9 and WP10):** V20, the matrix, exactly once with every cell A2, A3, A6, A7
+   and A8 add, the doors, and the tap frame (A21).
+   **WP11b — the tiles (M; depends on WP11a):** every frame of the two tables, the receipt, placing, the keyboard frame,
+   the question page and its buttons, and the home on a break — in sw at 320×640, 360×640, 390×844 and 1280, and in en
+   and zh at 360×640 and 1280 — plus A12's forced-colours set and A19's 1280 question page. Each tile is read.
+5. **WP1 step 6** names its masks before the first null pair: the `[role=timer]` texts, the Sell countdown, the chart's
+   time axis and the server-rendered times on the question page. Anything else a null pair finds noisy is named and
+   measured, never masked in bulk.
+6. **Order (15 packages):** WP0, WP1, WP2, WP3, WP4, WP5, WP6, WP7a, WP7b, WP8, WP9, WP10, WP11a, WP11b, WP12.
+
+*From:* Plan critique 7 (A-7), taken. WP7b also depends on WP3, whose route serves A2's key read and A4's open read.
+
+### A18 · The canvas, as drawn: the holder note, the bounds line, `aria-invalid`, the stake box and the CTA
+
+*Overrides:* WP6 steps 2.3, 2.4, 2.5 and 4; WP5 step 2 and Files (the Input `xl` size); WP0's annotations (§3.3 :3524);
+new Open point 40.
+
+Re-read at 2322cf09:
+- The market page's hedge box is the amber warning ([id]/page.tsx:738, the `warning-*` tokens). The holder and hedge
+  boards draw a hue-268 note with `role="note"` (s4-4-sheet-holder; s4-4-sheet-hedge :24). Amber in a new file would also
+  trip test:visual-pass-r8a §3's warning census.
+- The bounds line is neutral ink with an info glyph and `role="status"` (s4-4-sheet-below-min :28-30), as §0g :2545 says
+  ("in the neutral family"); §3.3 :3524 says "the F3 warning severity".
+- Every low, loss-room, pending and below-minimum board marks the stake `aria-invalid="true"` (pick-3 :52; s4-5-low-zero;
+  s4-5-low-pending; s4-4-sheet-loss-room; s4-4-sheet-below-min; s4-5-low-min500).
+- The boards draw a 60px stake box with a 26px figure and a 54px CTA (pick-2 :50, :52, :76). `Input size="lg"` is 48px
+  with a 16px figure (input.tsx:488, :494). Field heights read the control ladder, 32/40/44/48/56, since DG-A-04 (Ali's
+  ruling of 2026-08-29, input.tsx:479-485), and the type scale has no 26px rung (globals.css:229-244).
+
+1. The holder and hedge lines use `Callout tone="info"` with `role="note"`, never the market page's amber box.
+2. The bounds line is neutral, with the info glyph and `role="status"`, and it describes the stake
+   (`aria-describedby`). WP0 annotates §3.3 :3524 with §0g :2545's family.
+3. `attention` sets only the border and the caller's `aria-describedby`. The sheet sets `aria-invalid="true"` itself in
+   the low, loss-room, pending and below-minimum frames.
+4. The stake box is an additive Input `xl` that reads `--h-control-xl` (56px, the ladder's top rung), its figure on
+   `--type-h2` (24px). The CTA is `Button size="xl"` (56px, globals.css:333). The canvas's 60px box, 26px figure and 54px
+   button are 4px, 2px and 2px off the ladder and the scale. The nearest rungs are taken, and the drifts are recorded for
+   Ali (Open point 40).
+
+*From:* Plan critique 8 (A-8), taken, with its size corrected: the "additive Input `xl` size (60px)" would be a field
+height on no rung, which DG-A-04 retired, so the box takes the ladder's 56px and the drift is recorded.
+
+### A19 · The question page from 1024: the buttons stand in the aside
+
+*Overrides:* WP8 steps 2 and 4, and Gates; WP11b; new Open point 39.
+
+Re-read: from lg the page is a `1fr 360px` grid whose bet aside sticks on the right ([id]/page.tsx:690, :713-714). WP8
+left a journey reader's aside holding only the D40 heading (and, on a one-sided question, its callout): an empty 360px
+column, and an `<aside aria-labelledby>` named for placing a stake with no stake control in it. No desktop market board
+exists (s4-10-market is 390×1340).
+
+1. From lg the two big buttons stand in the aside, under the D40 heading and the one-sided callout. Below lg they stand
+   after the holder block (WP8 step 4). They are two copies, a `hidden lg:grid` one in the aside and a `lg:hidden` one
+   after the holder block, so only one is ever in the accessibility tree. Each sits inside its own `data-sheet` element,
+   under its own copy of the D40 heading.
+2. Below lg, in that arm only, the aside's wrapper takes `hidden lg:block` (a same-slot ternary on its class, today's class
+   in every other arm), so no width has an empty landmark. The break and guest arms are untouched (WP8 step 2).
+3. Gates: test:journey-home §10 pins one copy per width (plants: both copies shown at one width; the aside shown below lg
+   in the journey arm); parity v4's QUESTION phase proves the classic wrapper unchanged; WP11b tiles the page at 1280.
+4. Open point 39 (new).
+
+*From:* Plan critique 10 (A-10), taken. Of its two layouts, the aside is the decision, because it is the column a desktop
+reader looks to for the bet; the single column is the overrule.
+
+### A20 · The words: the retry label, the bonus line, "swali hili" where the sheet reused "soko hili", the slow-placing and pending lines, the "Dau" label, one name for the limits page, the "≈", and review 8
+
+*Overrides:* "New dictionary keys" (all four tables, "Reused, never copied" and "Not added"); WP4 Steps and Done-when;
+matrix rows 1, 2, 12 and 15; WP6 steps 2.3 and 6.
+
+1. `journey.retryCta`: "Jaribu tena · {amount}" / "Try again · {amount}" / "重试 · {amount}", `sheetFrame`'s third label
+   (rows 1-2; A2's in-doubt frame). Only a bare "Jaribu tena" exists today (`common.retryNow`, sw :3447;
+   `error.tryAgain`, sw :5030).
+2. `journey.sheetBonusWager`, with "swali hili" and `{remaining}`, for review 8. It is the sheet's SJ-22 bonus line, which
+   the market page draws as `error.failBonusWageringOneSide` ([id]/page.tsx:506-511), whose sw says "soko hili" (sw
+   :5078) right under the sheet's "swali hili".
+3. `journey.sheetNotTaking`: "Swali hili halipokei dau kwa sasa." / "This question isn't taking bets right now." /
+   "此问题目前不接受投注。". It replaces `error.failMarketNotLive` wherever the sheet shows it (row 15 and A8's re-reads), whose
+   sw is "Soko hili halipokei dau kwa sasa." (sw :5051), under the same SJ-19 rule as `sheetHedgeBody`'s "swali hili".
+   The other reused `error.*` lines say no "soko" (re-read).
+4. A7's `journey.sheetPlacingSlow`, and A10's `journey.lowPendingWaitBody`, `lowPendingLateTitle` and
+   `lowPendingLateBody`, join "S8 drafts". A5 removes `sheetLossBlock` from it and rewrites `lowLossRoom`.
+5. The receipt's "Dau" label is `common.stake` (sw :3154).
+6. "Reused, never copied" names every namespace in full: `kycGate.frozenCta` (:4989, "Wasiliana na msaada";
+   `error.contactSupport`, :5044, says the same and is not used), `common.depositPendingBody` (:3390), `common.stake`, and
+   A5's `error.failLossLimitDaily`.
+7. **One name for the limits page.** The sentences name the page by its title, "Uchezaji salama", as
+   `error.failLossLimitDaily` (since `e5b5c9da`) and the approved `sheetDepositLimit` do. The button keeps its action,
+   "Weka mipaka" (`rg.setLimits`). Review 8 confirms.
+8. `estimateUpdatedLive` keeps the board's "≈ ": sw "Makadirio yamesasishwa: ≈ {amount}, ≈{mult}× dau lako"; en
+   "Estimate updated: ≈ {amount}, ≈{mult}× your bet"; zh "预估已更新：≈ {amount}，≈{mult}× 您的投注"
+   (s4-4-sheet-updated).
+9. S8's Swahili review is number 8 (A1 item 5): every "review 7" above reads "review 8".
+
+*From:* Plan critique 11 (A-11), taken. Its "Review 7 settles one name for the limits page" is decided now, by the live
+sentence `e5b5c9da` shipped. Items 3 and 4 are the re-read's own: `failMarketNotLive` is the one reused `error.*` line
+that says "soko", and the slow-placing and pending lines are A7's and A10's.
+
+### A21 · The tap-frame budget is measured on a production build
+
+*Overrides:* WP11 step 3 (now WP11a) and step 1's "one server" for that cell.
+
+1. WP11a's tap-frame cell runs against a local production build (`next build`, then `next start` on the in-memory store,
+   under the lock), its sha recorded in §0k. A dev-server reading is RECORDED, never PASS.
+
+*From:* Plan critique 13 (A-13), taken whole.
+
+### A22 · Notes taken
+
+*Overrides:* as each item names.
+
+1. **The low frame with no price** (money note 12). The compact row and `lowBetInsteadEstimate` print a figure only when
+   `estimateFor` gives one. Over the cap they print `estimatePillOver`; for one-sided, empty-pool or hidden estimates,
+   their state's own words, or nothing (estimate.ts:132-149). The branch table gains "`short`, deposit and bet instead,
+   `belowDepositMin`": reachable, since a stake of 1,500 on a balance of 1,200 gives a deposit of 1,000 (`leftAfter`
+   700) or a bet of 1,200 instead (shortfall.ts:195-196, :200-210). It is drawn with the eyebrow, the deposit row with
+   `lowMinNote`, then bet instead.
+2. **The census reads everything** (money note 13a). test:bet-sheet §2 also reads `buyPosition` itself, where the BUSY
+   literal lives (market-service.ts:1078-1084), and every literal inside a ternary `reason` (:1346, :1410).
+3. **S14's line names what it proves** (money note 16). WP0's docs commit adds to S14's production journey
+   (VODACOM-PLAN.md:3992 at the base), through the sheet: one position and one BET_PLACED row whose id is the receipt's
+   ticket; one refusal shown inside the sheet; the deposit link carrying the amount and `from=low-balance`; `?me=1`
+   answering on the production database.
+4. **WP10's cost** (plan note 15). Its patch is a full `router.refresh()` (refresh-poller.tsx:56-59), at most once in
+   10 s; §0k records its RSC cost per page.
+5. **`data-sheet`'s bytes** (plan note 15) are paid twice, in HTML and in RSC. WP7a sets a per-card byte budget,
+   recorded in §0k (Risk 12).
+6. **WP1's raw trace** (plan note 15) matches `\bdata-sheet(?![\w-])`, because the classic filter sheet sets
+   `data-sheet-open` (filter-sheet.tsx:253; globals.css:4106).
+7. **`bonusWarning`** (plan note 15). WP3 re-pins journey-sheet.test.mts:128 in the open when the boolean leaves the route
+   (Open point 21).
+8. **route-ghost's import** (plan note 15). WP8 points route-ghost.tsx:82's import of `[id]/loading` at
+   `MarketDetailGhost` (market-detail-ghost.tsx), because `[id]/loading.tsx` becomes a server file.
+9. **`aria-haspopup="dialog"`** (plan note 15) on the picks and the big buttons, exactly where the host is mounted (a
+   journey request with a session). A guest's pick navigates, and carries none.
+
+*From:* Money notes 12, 13 and 16 (A-M12, A-M13, A-M16) and plan note 15, taken. Money note 13b is in A4 item 5, and
+notes 14 and 15 are in A9.
+
+### A23 · The classic dial's two gaps are filed, not changed
+
+*Overrides:* §0k's filings; new Open point 43; Points for Ali.
+
+1. **A lost answer** (money 1's last bullet). The classic dial reuses its key only on Retry (conviction-dial.tsx:898),
+   and a terminal refusal wipes the dial (:1049-1055), so the next confirm mints a new key (:838). A same-key retry
+   refused before the replay (where maintenance says "Nothing has been charged") can therefore become a second bet.
+2. **A session lost mid-bet** (money 4). The dial's catch (:1006-1010) runs before its `r == null` test (:1027), and the
+   quick bet's (use-quick-bet.ts:433-438) before its own (:349), so both appear to show the redirect as a failed bet.
+   WP0 measures it on a dev server first.
+3. S8 changes neither. §0k files both for S12, with WP0's measurement (Open point 43). Ali may have them fixed live now,
+   each in its own commit, as he ruled for the loss-limit sentence.
+
+*From:* Money critiques 1 and 4 (their classic halves), taken as filed. The live-now overrule follows Ali's ruling of
+2026-10-12.
+
+### Open points, added and changed (→ §0h)
+
+WP0 files these with the rest, numbered after the last §0h point at S8's base (77 on origin/main `e5b5c9da`). Each is a
+call taken under Ali's delegation, with its overrule, except 41, which is Ali's own ruling.
+
+- **5 (stands).** The sheet opens on its heading. The exception is written into CLAUDE.md's keyboard rule in WP6's commit
+  and held by 2.2s (A12). Overrule unchanged.
+- **8 (amended).** The plan's blocks show at open, and the open's read records what a refused tap records: the session
+  limit's sitting and its `rg.session_limit.enforced` row, and the account and loss rows (A4). Overrule: show them only
+  after the server refuses.
+- **11 (stands, with A3).** The deposit page never opens the sheet; Back from it does.
+- **13 (amended).** The marker also carries the intent's random request id, and Privacy §7 names it (A3). Overrule: no
+  stake in the address until S9, so a reload reopens at the minimum; the marker still carries the key, so a bet in flight
+  through a reload is still settled by it. (The old overrule, no marker at all, would lose a bet in flight at a reload,
+  A3.)
+- **14 (amended).** On a deploy skew the host reloads once per build. When that is spent, or the build has no id, the line
+  is `common.temporarilyUnavailable`; in doubt, the doubt holds (A7). Overrule unchanged.
+- **22 (rewritten).** The loss block reuses the live refusal as Ali's ruling of 2026-10-12 corrected it (`e5b5c9da`: "It
+  counts the last 24 hours"), and the loss room says "kwa sasa", not "leo" (A5). The block's half is Ali's ruling and has
+  no overrule. Overrule for the loss room only: the approved "…leo".
+- **24 (amended).** The pending frame's body follows the deposit's age: the live `depositPendingBody` under 10 minutes,
+  "Inaweza kuchukua hadi dakika 30" to 30 minutes, and the approved "Malipo bado hayajathibitishwa" after (A10). None
+  promises an emailed receipt. Overrule: the live sentence at every age.
+- **34 (stands; listed for Ali).** "Tiketi zangu" opens the ticket itself. That departs from §3.3 :3567 ("opens
+  tickets"), so Ali sees it.
+- **35 (amended).** An unknown shape is `system_error`, and so in doubt (A2). The old overrule (a generic line and a fresh
+  key) is withdrawn: a fresh key after an unknown answer can place a second bet.
+- **38 (new): where the ✕ stands.** In the chip row, beside the chosen side, as the canvas draws it: the kit's `CloseX`
+  with a ref, ruled in r6c as a header row, with F20's third place recorded (A13). Overrule: a title row with the ✕
+  beside the title, one of F20's two places, the chip moving under it.
+- **39 (new): the question page from 1024.** The two big buttons stand in the aside from lg and after the holder block
+  below it, one copy in the accessibility tree at a time (A19). Overrule: one column for journey readers at every width.
+- **40 (new): the stake box and the CTA against the canvas.** A 56px box with its figure on the 24px rung, and the 56px
+  `xl` button: the nearest rungs to the canvas's 60px, 26px and 54px, each drift recorded (A18). Overrule: the canvas's
+  exact sizes, as new rungs on the control ladder and the type scale (a change to DG-A-04's ladder).
+- **41 (new): the live loss-limit sentence. Decided by Ali, 2026-10-12** (asked by question: "fix it now"). It was
+  corrected live in its own commit, `e5b5c9da`, not with S12 (§0h point 77), and the sheet reuses it (A5). No overrule.
+- **42 (new): a deposit pending for 30 minutes.** "Bet what you have instead" shows beside the pending notice, and the
+  deposit offer stays withheld (A10). Overrule: no "bet instead" while any deposit is pending, at any age.
+- **43 (new): the classic dial's two gaps.** Filed for S12 with WP0's measurement; S8 changes neither (A23). Overrule:
+  each is fixed live now, in its own commit, for every player.
+
+### Points for Ali, amended
+
+The list above ("Points for Ali") stands with these changes, in plain words.
+
+- **3 [Point 8], amended.** The sheet tells a player at once when they cannot bet, before they tap. When it does, it now
+  records that exactly as a refused bet is recorded today. So a player past their own time limit stays held even if they
+  sign out and back in, and the Board's responsible-gambling report keeps counting it. Overrule: only after the refused
+  tap.
+- **6 [Point 22], withdrawn: you decided it on 2026-10-12.** Today's loss-limit message was corrected live ("It counts
+  the last 24 hours"), and the sheet shows that same sentence. (The sheet's "your limit allows up to … today" also loses
+  "today": it says "right now", for the review to sign.)
+- **17 [Point 34], new.** After a bet, "Tiketi zangu" opens that ticket itself, not the list of tickets the written plan
+  names. Overrule: the list.
+- **18 [Point 38], new.** The sheet's close button sits beside the chosen side, as the design draws it: a third place for
+  a close button, beyond the two our visual review allowed. Overrule: beside the question's title.
+- **19 [Point 39], new.** On a computer screen the question page shows the two big NDIO / HAPANA buttons in the
+  right-hand column, where today's bet panel stands; no design board draws this width. Overrule: one single column.
+- **20 [Point 40], new.** The amount box and the bet button are slightly off the design (the box 56px instead of 60, the
+  figure 24px instead of 26, the button 56px instead of 54), because those are our nearest standard sizes. Overrule: add
+  the design's exact sizes as new standards.
+- **21 [Point 42], new.** If a player's deposit has been waiting more than 30 minutes, the sheet offers "bet what you
+  have instead" beside the waiting notice. Overrule: never while a deposit waits.
+- **22 [Point 43], new.** The review found two problems in today's bet screen, for every player. If a bet's answer is lost
+  and the retry is refused (for example during maintenance), the screen says nothing was charged, and a later tap can
+  place a second bet. And a player signed out in the middle of a bet is shown a failure. The plan files both for S12.
+  Overrule: fix them now, each on its own, as you did for the loss-limit message.
+
+### Critique findings not taken as proposed
+
+- No finding is rejected outright. All 32 are taken (A1-A23). Each part below was corrected by the re-read at 2322cf09,
+  with its reason.
+- Money 1, A-M1 item 3, and money 2, A-M2 item 2: the window "30 s after the last attempt was sent". Admission's wait is
+  15 s by default but up to 60 s (admission.ts:78). After admission a bet may make four attempts (retry.ts:54; P2024 and
+  P2028 are retried, :48), each made of its pre-lock reads, each allowed a 10 s pool wait (prisma.ts:60-77), and the
+  lock's transaction, 10 s for a connection and 30 s to run (locks.ts:195-196). And Next sends no second action while one
+  is pending (app-router-instance.js:134-162). So the window is 10 minutes, pinned against those constants, and it runs
+  from the attempt's settle, or from the page's load after a reload (A2; A3).
+- Money 1, A-M1 item 5, cell (b): the key reads are held in that cell, or the key read settles the doubt before the
+  second retry and the cell never sees it (A2).
+- Money 3, A-M3 item 2: "or a break" writes nothing, because the bet path writes no row for a break
+  (market-service.ts:1185-1196). And "once per sheet open" is the open's own read, `open=1` (A4).
+- Money 4, A-M4: the marker keeps the bet but drops its key on a redirect, unless the intent was already in doubt: the
+  redirect proves the server ran nothing (A6). A7 does the same on a skew.
+- Money 5, A-M5: the wait line is a new journey line, not the classic `dialog.busyHolding`, whose "Your stake hasn't
+  moved" nobody knows mid-request. And the 20 s is admission's default plus the bet, not a ceiling (A7).
+- Money 7, A-M7: "the host takes the answer's `balance`". That figure is the cash left after the debit
+  (market-service.ts:1620, :1825), not spendable, so the sheet shows only the `?me=1` read (A9).
+- Money 9, A-M9: the approved "Malipo bado hayajathibitishwa" sentence says "Imepita dakika 30", and the canvas draws it
+  only past 30 minutes (s4-6-wait-over30). From 10 minutes it would be untrue, so there are three bands (A10).
+- Money 6 and plan 6: "a voided question" is widened to every market that is not LIVE, as `sheetPublic` reads it
+  (journey-sheet.ts:95-97) (A8).
+- Plan 8, A-8: "an additive Input `xl` size (60px)" would be a field height on no rung. DG-A-04 (Ali's ruling of
+  2026-08-29, input.tsx:479-485) put every field height on the 32/40/44/48/56 ladder, so the box is 56px, and the canvas
+  drift is recorded for Ali (A18; Open point 40).
+- Plan 9, A-9: "the live region also speaks the closed frame" would speak it twice, since the boards draw it (and every
+  block) as `role="alert"`. And "the 5 s close pauses while focus or the pointer is in the panel" is the hold the classic
+  receipt rejected (operation-result-modal.tsx:228-320): a plain focus pause never closes after a scripted focus, and
+  `pointerenter` fires under a resting cursor (A12).
+- Plan 11, A-11: "Review 7 settles one name for the limits page" is decided now, by the sentence `e5b5c9da` shipped:
+  sentences say "Uchezaji salama", and the button says "Weka mipaka". S8's review is number 8, because `e5b5c9da` signed
+  review 7 (A20).
+- Plan 12, A-12: "WP0 files a §0h point plus a Point for Ali: fix it live now, or with S12" and "WP4 replaces the whole
+  :124 correction" are overtaken by Ali's ruling and `e5b5c9da` (A5). The sheet reuses the live key instead of a journey
+  copy that would differ only in the page's name.
+- Plan 15, the skew line ("say the sheet then shows row 2's line"): not taken. `UnrecognizedActionError` proves the
+  server ran nothing (server-action-reducer.js:76-83), so the line is money 5's `common.temporarilyUnavailable` (A7).
+- Plan 5, A-5: its red list is sorted by how each twin runs (`red:failure-reasons` and `red:rg-doors` write into real
+  source; `red:dal-parity` and `red:contrast` copy to a scratch tree; each runs alone after committing) and gains
+  rg-doors. red:bet-sheet runs from WP2 on, when it exists (A16).
+- Plan 16: Open point 41 is no longer for Ali to decide; he ruled on 2026-10-12 (A5).
+- Found by the re-read beyond both critiques: `error.failMarketNotLive` says "soko hili", and the sheet now says "swali
+  hili" (A20 item 3); the S7 base moved, and S8's review and §0h numbers moved with it (A1); Open point 13's old overrule
+  would lose a bet in flight at a reload, and Open point 35's would place a second one, so both are replaced or
+  withdrawn (above).
