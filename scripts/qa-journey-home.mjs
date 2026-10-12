@@ -150,7 +150,11 @@ let HIDDEN = null;
     const t = page.getByLabel(LABEL);
     for (let i = 0; i < 40 && (await t.getAttribute("aria-checked")) !== String(want); i++) { await t.click(); await page.waitForTimeout(250); }
     await page.getByRole("button", { name: "Save · Hifadhi" }).first().click();
-    await page.waitForTimeout(2500);
+    // The switch is a money-model change, so the form asks first ("Change the fee model?"): confirm it, as an officer does.
+    const confirm = page.getByRole("button", { name: "Save fee model" }).first();
+    if (await confirm.waitFor({ timeout: 15_000 }).then(() => true).catch(() => false)) await confirm.click();
+    await page.getByText("Global config updated").first().waitFor({ timeout: 30_000 }).catch(() => {});
+    await page.waitForTimeout(1000);
     if ((await state()) !== want) throw new Error(`the display switch did not save as ${want ? "on" : "off"}`);
   };
   try {
@@ -177,12 +181,26 @@ async function ctxFor({ w, h, locale = "sw", pass = true, session = null }) {
   await ctx.addInitScript(() => { try { window.localStorage.setItem("50pick-primer-seen", "1"); } catch { /* storage refused */ } });
   return ctx;
 }
+/**
+ * ⛔ The development server draws its own tools button (`nextjs-portal`) in the bottom-left corner, over the journey
+ * rail's first tab, and it takes the pointer: a page-only style lets clicks through it (production draws no such thing).
+ * An ERROR dialog of the dev overlay is never hidden by this: `devErrors` reads it, and every page it is up on is printed.
+ */
+const DEV_TOOLS_CSS = "nextjs-portal { pointer-events: none !important; }";
+const devErrorsSeen = new Set();
+async function devErrors(page, where) {
+  const up = await page.evaluate(() => !!document.querySelector("nextjs-portal")?.shadowRoot?.querySelector("[data-nextjs-dialog], [data-nextjs-dialog-overlay]")).catch(() => false);
+  if (up && !devErrorsSeen.has(where)) { devErrorsSeen.add(where); console.log(`  NOTE the dev server's error dialog is up on ${where}`); }
+  return up;
+}
 async function open(page, path, { wait = SEL.home } = {}) {
   const res = await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 240_000 });
+  await page.addStyleTag({ content: DEV_TOOLS_CSS }).catch(() => {});
   if (wait) await page.locator(wait).first().waitFor({ timeout: 120_000 }).catch(() => {});
   await page.locator(SEL.rail).first().waitFor({ state: "visible", timeout: 60_000 }).catch(() => {});
   await page.evaluate(() => document.fonts.ready).catch(() => {});
   await page.waitForTimeout(400);
+  await devErrors(page, path);
   return res;
 }
 
@@ -247,7 +265,17 @@ if (run("home")) {
       await tile(page, `home ${locale} 360 card ${name}`);
       if (name === "a full title clamped") {
         // The fallback (a full question) is clamped to two lines; a question that fits in two shows no clamp to read.
-        const t = await card.first().evaluate((el) => { const h = el.querySelector("h2, h3"); if (!h) return null; const lh = parseFloat(getComputedStyle(h).lineHeight); return { lines: Math.round(h.getBoundingClientRect().height / lh), cut: h.scrollHeight > h.clientHeight + 1 }; });
+        const clampOf = (el) => { const h = el.querySelector("h2, h3"); if (!h) return null; const lh = parseFloat(getComputedStyle(h).lineHeight); return { lines: Math.round(h.getBoundingClientRect().height / lh), cut: h.scrollHeight > h.clientHeight + 1 }; };
+        let t = await card.first().evaluate(clampOf);
+        if (t && !t.cut) {
+          // The longest ENGLISH question can fit in two lines in another language: read any full-title card on the page
+          // that the clamp actually cuts, in this language, and tile that one instead.
+          const cut = page.locator(`${SEL.card}:has(.kp-jcard__title--full)`);
+          for (let i = 0; i < (await cut.count()); i++) {
+            const ti = await cut.nth(i).evaluate(clampOf);
+            if (ti?.cut) { t = ti; await cut.nth(i).scrollIntoViewIfNeeded(); await page.waitForTimeout(200); await tile(page, `home ${locale} 360 card a full title clamped (the first cut on the page)`); break; }
+          }
+        }
         if (t && !t.cut) blockedLine(`home ${locale} · a full title clamped`, `this language's longest question fits in ${t.lines} line(s) at 360: nothing is clamped to read`);
         else ok(`home ${locale} · the full title is clamped to two lines`, !!t && t.lines === 2 && t.cut, JSON.stringify(t));
       }
@@ -312,18 +340,26 @@ if (run("sheet")) {
     const ctx = await ctxFor({ w, h, locale, session: SESSION });
     const page = await ctx.newPage();
     await open(page, "/");
-    await page.locator(SEL.howto).first().click();
+    // ⛔ The card is in the served HTML before its script hydrates it, and a press then does nothing: it is pressed until
+    // it says it opened (aria-expanded), up to ten times, before the sheet is looked for.
+    const card = page.locator(SEL.howto).first();
+    for (let i = 0; i < 10 && (await card.getAttribute("aria-expanded").catch(() => null)) !== "true"; i++) {
+      await card.click().catch(() => {});
+      await page.waitForTimeout(500);
+    }
     const sheet = page.locator(SEL.sheet).first();
-    if (!(await sheet.waitFor({ timeout: 30_000 }).then(() => true).catch(() => false))) { ok(`sheet ${locale} ${w}×${h} · the sheet opens`, false); await ctx.close(); continue; }
+    if (!(await sheet.waitFor({ timeout: 30_000 }).then(() => true).catch(() => false))) { ok(`sheet ${locale} ${w}×${h} · the sheet opens`, false, `the card's aria-expanded reads ${await card.getAttribute("aria-expanded").catch(() => "?")}`); await ctx.close(); continue; }
     await page.waitForTimeout(500);
     await tile(page, `sheet ${locale} ${w}x${h}`);
+    // The exits, each by its own mark: the kit ✕ is the dialog panel's (beside the sheet's body, not inside it: the scrim is
+    // the dialog's other labelled button, and it takes no focus), the CTA the sheet's act button, Weka mipaka its link.
     const exits = await sheet.evaluate((root, vh) => {
       const inView = (el) => { if (!el) return false; const b = el.getBoundingClientRect(); return b.top >= 0 && b.bottom <= vh && b.height > 0; };
-      const buttons = [...root.querySelectorAll("button, a")];
-      const close = root.querySelector('button[aria-label]');
-      const links = buttons.filter((b) => b.tagName === "A");
-      const cta = buttons.find((b) => b.tagName === "BUTTON" && b !== close && (b.className ?? "").includes("btn"));
-      return { close: inView(close), cta: inView(cta), limits: links.some(inView) };
+      const dialog = root.closest('[role="dialog"], [role="alertdialog"]') ?? root.parentElement;
+      const close = [...dialog.querySelectorAll("button[aria-label]")].find((b) => b.getAttribute("tabindex") !== "-1" && !root.contains(b));
+      const cta = root.querySelector("button.kp-wsheet__act");
+      const limits = root.querySelector("a.kp-wsheet__link");
+      return { close: inView(close), cta: inView(cta), limits: inView(limits), found: { close: !!close, cta: !!cta, limits: !!limits } };
     }, h);
     ok(`sheet ${locale} ${w}×${h} · its exits — the ✕, the CTA and Weka mipaka — are on screen without scrolling`, exits.close && exits.cta && exits.limits, JSON.stringify(exits));
     if (w === 320) {
@@ -454,7 +490,8 @@ async function ghostHop({ w, h, locale, red = null, pass = true }) {
   await page.evaluate(GHOST_PROBE, SEL);
   const link = w >= 1024 ? page.locator(`${SEL.header} a[href="/"]:not(.kp-jhdr__home)`).first() : page.locator(`${SEL.rail} a[href="/"]`).first();
   if (!(await link.count())) { await ctx.close(); return { error: "no visible journey link to /" }; }
-  await link.click();
+  try { await link.click({ timeout: 60_000 }); }
+  catch (e) { await ctx.close(); return { error: `the click on the journey link to / failed: ${String(e?.message ?? e).split("\n")[0].slice(0, 140)}` }; }
   await page.locator(SEL.home).first().waitFor({ timeout: 180_000 }).catch(() => {});
   await page.locator(SEL.rail).first().waitFor({ state: "visible", timeout: 60_000 }).catch(() => {});
   await page.waitForTimeout(800);
@@ -568,5 +605,6 @@ if (run("redirect")) {
 
 await browser.close();
 console.log(`\nqa:journey-home — ${pass} passed · ${fail} failed · ${blocked} blocked · ${notMeasured} not measured · ${tileNo} tiles in ${OUT}`);
+console.log(`dev error dialog: ${devErrorsSeen.size ? [...devErrorsSeen].join(", ") : "never up"}`);
 console.log(`journey-home-ghost in a pass holder's served /: ${ghostListed === null ? "not read (positive not run)" : ghostListed ? "found" : "not found"}`);
 process.exit(fail ? 1 : blocked || notMeasured ? 3 : 0);
