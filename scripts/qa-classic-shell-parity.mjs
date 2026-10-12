@@ -3821,7 +3821,15 @@ async function proveRed() {
         { v: "player", l: "en", w: 1280, s: "open-yes", plants: [
           { id: "q-panel", js: () => { const x = document.querySelector('#main-content aside[aria-labelledby="bet-panel-heading"] > div'); if (x) x.classList.add("kp-parity-plant"); },
             what: "a class added in the bet panel", need: "regions.panel.html", within: ["regions.panel."] },
-          { id: "q-sell-label", js: () => { const x = document.querySelector("#main-content section.order-2 > section.bg-bg-elevated .ticket-target > button span"); if (x) x.textContent = `${x.textContent}·`; },
+          // The holder's Sell button hydrates after the shell (open() waits for the header's fiber): a label changed before
+          // its own fiber exists is a hydration mismatch, which React redraws and files as a page error — so the plant waits.
+          { id: "q-sell-label", js: async () => {
+            const find = () => document.querySelector("#main-content section.order-2 > section.bg-bg-elevated .ticket-target > button > span");
+            const fiber = (el) => !!el && Object.keys(el).some((k) => k.startsWith("__reactFiber$"));
+            for (let i = 0; i < 200 && !fiber(find()); i++) await new Promise((go) => setTimeout(go, 50));
+            const x = find();
+            if (x) x.textContent = `${x.textContent}·`;
+          },
             what: "a holder row's Sell label changed", need: "regions.holder.html", within: ["regions.holder."] },
         ] },
         { v: "guest", l: "sw", w: 360, s: "open", plants: [
