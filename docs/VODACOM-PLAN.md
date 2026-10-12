@@ -544,8 +544,8 @@ body. Owner-level calls: §0h point 58, and 65 on.
   VERSION 3, the BOOK, the classic bodies, A8's trace — rebuilt from v2, the plan and OMEGA's surviving evidence
   (`9b18ea59`); the calibration (`203a150f`): the book reads question ids as noise (`market-ids` on — each server mints
   its own) and seed-watchlist stars 2 ms apart, so /watchlist's order is the stars' own (a dev-only route, 404 in
-  production). Landed as `cecb6181`, `d03a9d95`, `49b15398` — the same three commits, rebased — and `9a7bbb24`,
-  calibration 2 (below). The tools' proofs on
+  production). Landed as ⟦WP1SHAS⟧ — the same three commits, rebased — then calibrations 2 and 3 (below). The
+  tools' proofs on
   ALI-BLADE15: qa:served-skeleton self-test 78/78; qa:first-load 29 controls and its marker table; qa:chunks-prod 17/17
   and production 6/6 routes (`ca72fe15`, GETs only); parity v3 offline with a stubbed browser — its 83 rows that need
   no browser, OMEGA's 87 surviving rows byte for byte, OMEGA's 13 mutants and 20 more. **Calibrated on OMEGA-COMPILE01
@@ -562,14 +562,25 @@ body. Owner-level calls: §0h point 58, and 65 on.
   ids' order, because the board sorts by pool, then the close instant, then `byId` (discovery.ts `compareRows`,
   sort.ts), and each server mints its own ids; (2) 4 /watchlist cells: a seeded row's date-time is relative to its
   own seeding moment (the runs were 27 min apart); (3) 1 / cell: the four payment-rail logos below the fold are lazy
-  images, fetched on one run and not the other. **Calibration 2 (`9a7bbb24`):** `eat-dates` on; a new page
+  images, fetched on one run and not the other. **Calibration 2:** `eat-dates` on; a new page
   normaliser, `tied-cards`, puts adjacent cards that state exactly the same figures (every `data-market-part` but the
   source) in their own titles' order in place, so a card that states any figure differently never moves (§0h point
   72); lazy images settle before boxes are read (`matrix.book.settle`, and a compare refuses another procedure);
   `--prove-red` gains P.8o (tied cards in every order; unlike cards keep theirs) and a browser row planting a lazy
   logo. Offline, the three account for all 13 fields (13 → 9 with eat-dates → 1 with tied-cards; the last only the
-  settle answers). **Re-calibrated at `9a7bbb24`:** ⟦NULL⟧. Every later S7 package compares against this baseline
-  with `--allow-base`: main moves under it, and the harness names each served-file commit since.
+  settle answers). Its `--prove-red` then failed 128/129 on a determinism row: on one server, `/markets` (player, sw,
+  1280) drew the Needle's overlay (`#needle`, z 45) in one capture and not in the next — the Needle mounts after
+  hydration from two dynamic chunks, which on a busy dev server can land after the harness's fixed 3 s.
+  **Calibration 3:** every overlay or region read now waits, after hydration and any redirect's second document, until
+  a page that has `#needle-root` reports `window.needle.resting() === true` (needle.tsx's probe for drives; unlike
+  qa:journey-shell, an engine not yet mounted is not "resting" here, since every signed-in classic page mounts one),
+  bounded at 15 s and noted, never failed, if it does not settle (`matrix.settle`, refused across procedures);
+  `--prove-red` gains P.8r. **Re-calibrated at calibration 3's commit (OMEGA-COMPILE01, 2026-10-12 11:41–13:03):**
+  `--prove-red` **131/131** (the Needle determinism rows and the lazy-logo browser row among them); the v3 baseline
+  `parity-v3-52715180.json` (224 matrix cells, 8 Sell cells, 44 book cells; normalisers market-ids, eat-dates,
+  tied-cards; the book's B.0–B.8 all PASS on the same pool and states as above); **the null compare on a second fresh
+  server 53/53, exit 0**. Every later S7 package compares against this baseline with `--allow-base`: main moves under
+  it, and the harness names each served-file commit since.
 - **WP2 ✅ LIVE ⟦LIVE⟧ (2026-10-12) — the pure move** (`87be7bb7`; the laptop's two WIP commits folded into one). The
   home body moves to `src/components/home/legacy-landing.tsx` — the old page.tsx's :4-36 and :71-356, byte for byte but
   for the export's name and one blank line between the imports and the body (read on OMEGA from the two blobs);
