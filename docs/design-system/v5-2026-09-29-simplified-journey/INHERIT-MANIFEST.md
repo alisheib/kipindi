@@ -87,7 +87,7 @@ rule requires an addition (SJ-22).
 | L3 | Two-tone "50**pick**" wordmark | §B1 / brand kit: the mark is never re-tinted | `FiftyMark` / `FiftyLockup` unchanged |
 | L4 | Near-white selected chip | Kit `FilterPill` selected style | `FilterPill` as is |
 | L5 | The deck's navy palette and typeface | `globals.css` tokens; Sora / Inter / JetBrains Mono | 50pick tokens and fonts |
-| L6 | The warning card and the coral stake border use a NO-like ink | §B2a: YES/NO inks only for sides; F3 severity | `Callout tone="neutral"` and a new `Input` `attention` state |
+| L6 | The warning card and the coral stake border use a NO-like ink | §B2a: YES/NO inks only for sides; F3 severity | `Callout tone="neutral"` and a new `Input` `attention` state (S8-PLAN Correction 16: the panel's D5 made the warning `Callout tone="info"`) |
 | L7 | Phone placeholder "07XX XXX XXX" in a bare field | `test:msisdn-prefill`, `tz-msisdn` rules | The kit `PhoneInput`: accepts the local form, stored as E.164 |
 | L8 | No holder / hedge line, bonus warning or thin-upside notice in the sheet | RULES §2.4/§2.5; the thin-upside disclosure | Added only when they apply (SJ-22) |
 | L9 | "13%" typed into the copy | `test:rate-copy`: rates are `{pct}` from the market | `{pct}` from the frozen fee snapshot (SJ-3) |

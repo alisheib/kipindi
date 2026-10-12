@@ -16,8 +16,9 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-12):** S6 (the flagged shell) is ✅ — CLOSED 2026-10-12 03:01 EAT, its close record the first ✅ paragraph
-below. S7 (home and cards, flagged) is in progress (§0j). S6's own history (§0i): WP0–WP12 are live behind the flag, the S6 visual
+**State (2026-10-13):** S8 (the bet sheet and low balance, flagged) is in progress (§0k). S7 (home and cards, flagged)
+is closed and live (§0j), ✅ only at S14. S6 (the flagged shell) is ✅ — CLOSED 2026-10-12 03:01 EAT, its close record the
+first ✅ paragraph below. S6's own history (§0i): WP0–WP12 are live behind the flag, the S6 visual
 pass (rounds 1–6), its round 7 and round 8 (the owner's four rulings of 2026-10-10) are live from ALI-BLADE15 (the ✅
 paragraphs below), R8-D — the break's other channels — with them. The close-out read (333 tiles, eight readers, 2026-10-11) found 19
 items: round 9 fixes them. K32 (an agent fee paid into a draft that expired was never owed back) is live. Round 9 (the read's 19
@@ -366,20 +367,14 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S7 — WP0–WP4 are live (`dcf305d5`, 2026-10-12 13:59 EAT, §0j); WP5–WP10 and live fix L1 are live
-(`f20f1617`, 2026-10-12 20:35 EAT, their landing proof whole — §0j); WP11 (the drives) and WP12 (the battery, the
-records) went live with this record — S7's build is complete, and its production read-back is done (§0j) but for
-[E3] measured, which needs the QA player's password on the machine that runs it. S7 is ✅ only at S14. (2) The two
-classic gaps Ali ruled "fix now" (S8-PLAN A23): live fixes L3 and L2, each its own release.
-(3) S8 — the bet sheet and low balance — is next, from its WP0 ([`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md); its citations re-read at `6da7f936` on a helper
-VM: 729 — 459 unchanged, 256 moved, 14 changed, 0 gone — with eight candidate A24 items, most from the TZS 500 minimum
-stake; `origin/vodacom-visual-tools` `tools/s7-cloud-2026-10-12/results/s8-citations-6da7f936-summary.md`; drafts of
-WP0's records — A24, §0k and §0h point 82 with Ali's answers of 2026-10-12 — beside it in `results/evening-2026-10-12/s8-drafts/`).
-S8 also takes the journey hydration note (§0j, WP11's bullet). OMEGA's own 2026-10-07/08 WP1 is on origin
-for reference only as `vodacom-s7-wp1-omega`, never to be merged (§0h point 66). S7's plan:
-[`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), whose Amendments override its body. (4) When
-Ali says so, and not before (nothing turns on until the plan is done): an officer approves the S2 short titles, and
-Ali presses S1's preview switch.
+**Next:** (1) S8 — the bet sheet and low balance — is in progress (§0k): WP0 is live with its record (2026-10-13);
+next WP1 (parity v4) and WP2 (the pure core), then A17's order ([`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md),
+its Amendments A1–A24 overriding its body). (2) S7 is closed (§0j): WP0–WP12 live, the close at `a590790c` (2026-10-13
+01:39 EAT) read back but for [E3] measured, which needs the QA player's password on the machine that runs it; S7 is ✅
+only at S14. (3) The two classic gaps Ali ruled "fix now" are live, each its own release: L3 `c604343b` (§0h point 80)
+and L2 `{L2}` (§0h point 81). OMEGA's own 2026-10-07/08 S7 WP1 is on origin for reference only as
+`vodacom-s7-wp1-omega`, never to be merged (§0h point 66). (4) When Ali says so, and not before (nothing turns on until
+the plan is done): an officer approves the S2 short titles, and Ali presses S1's preview switch.
 
 Session law, the same for every session — ⭐ Ali, 2026-10-10: *"eliminate any checks that are never expected to be wrong,
 or that are very repetitive … maximum efficiency of our time through this plan"*:
@@ -503,6 +498,27 @@ drive (guest, SUPPORT officer, player, Owner Stop and Resume, a stranger on a li
 **Still open (S1 close-out)** — pushed (`41ec1703`), `JOURNEY_PREVIEW_SECRET` set on Railway (48 characters),
 deploy verified, and a signed-out visitor sees nothing on production (`qa:live` 319/0 there, [E2] included). One
 press by Ali remains: `/admin/journey` → "Turn my preview on" → the bar on 50pick.tz. Then S1 is ✅.
+
+## §0k · S8 — the bet sheet and low balance (flagged) (2026-10-13 →) 🔨
+
+**The plan:** [`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md) — 15 packages (WP0, WP1, WP2,
+WP3, WP4, WP5, WP6, WP7a, WP7b, WP8, WP9, WP10, WP11a, WP11b, WP12; A17); its closing Amendments (A1–A24) override its
+body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed live first).
+
+**Progress:**
+- **WP0 · the start line (2026-10-13).** (1) The precondition holds on main: S7 is closed (§0j) — WP0–WP12 merged and
+  live, the close live at `a590790c` and read back, §1's S7 row as S7-PLAN Open point 2 words it, parity v3's last
+  compare recorded (53/53, §0j's landing bullet) — and the live fixes L3 (`c604343b`) and L2 (`{L2}`) after it, each its
+  own release. S8 branches from origin/main at `{BASE}`. (2) Today's reds at the base, Node 24: {REDS}. (3) Every citation
+  re-read (S8-PLAN A24): 729 at `6da7f936` (helper A — 459 unchanged, 256 moved, 14 changed, 0 gone), then the 49 explicit
+  citations in the nine cited files S7's close and the two live fixes changed, at the base (6 unchanged, 40 moved, 3
+  changed — exactly L3's and L2's edit sites — 0 gone). (4) The records: §1's S8 row 🔨 with Open point 2's done-when;
+  §3.2's refresh line (S7-PLAN A7 item 2, never landed until now — S8-PLAN Correction 2); §5 S8 (the card patch and
+  the done-when); the spec lines Corrections 4–7, 11, 12, 14, 16 and 26 name, annotated where they stand (§2's kit
+  rows, §3.2–§3.4 and the R3 row here; INHERIT-MANIFEST L6; S4-COPY-AUDIT's approved canvas words); §0h point 82.
+  (5) Carried from S7: the journey hydration note (§0j, WP11's bullet; S8-PLAN A24 item 11).
+- **Next:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;
+  WP8, WP9 and WP10; WP11a; WP11b; WP12 (A17's order).
 
 ## §0j · S7 — home and cards (flagged) (2026-10-07 →) 🔨
 
@@ -2879,6 +2895,27 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     and S8's sheet does (its doubt state, A2/A3/A7): a retry refused while the first attempt is still running and its key
     not yet committed. S8-PLAN WP11a cell (b) (maintenance on, a retry, `failSystemError`) no longer happens for a key
     that landed — its retry is answered with the receipt — and S8's A24 re-cuts it. No overrule: Ali's ruling.
+82. **S8's plan — the calls taken under delegation, and Ali's answers (filed 2026-10-13, `S8-PLAN.md`, its A1–A24
+    overriding its body).** Its 43 Open points are decisions taken under Ali's delegation, each with the overrule he may
+    choose; its "Points for Ali", with A23's amendments, are the ones that change what players get or what Ali must do.
+    **Ali answered on 2026-10-12:** the bet sheet opens at TZS 500, its chips 500 · 1,000 · 2,500 · 5,000 (the minimum
+    stake since `de44e087`); after a bet "Tiketi zangu" opens that ticket; the sheet's ✕ stands beside the chosen side;
+    from 1024 the two big buttons sit in the question page's right-hand column; the amount box and the bet button take
+    our nearest standard sizes; after a deposit has waited 30 minutes the sheet offers "bet what you have instead"; and
+    the two classic gaps were fixed live now, not with S12 (points 80 and 81). The rest stand as written: (a) S8 is proven
+    on local drives through a staff pass, and on production only for "nothing changed for players" — the staff real bet
+    moves to S14 (overrule: a real TZS 1,000 bet at S8's close); (b) the sheet tells a player at once when they cannot
+    bet — a break, their own limit, maintenance, a held wallet — recorded exactly as a refused tap is; (c) the picked bet
+    is remembered in that browser tab for up to 24 hours, which the privacy notice names the day it ships; (d) until S9's
+    deposit screen, "Weka pesa TZS 3,000" opens today's deposit page filled in, and "Fuatilia malipo" that payment's
+    receipt; (e) the loss block says the limit counts the last 24 hours (point 77); (f) the session-limit line names no
+    clock time; (g) a waiting payment keeps its receipt in the app, never "by email"; (h) on a lopsided question the sheet
+    shows the shilling estimate and "over 100× your bet"; (i) on a question page a journey player sees their tickets
+    first, in the new look, and the two big buttons under them; (j) a player on a break sees it on the home and on every
+    card; (k) with a keyboard the sheet opens on its heading; (l) other pop-ups wait for the open sheet, and a
+    pull-to-refresh that starts inside it is ignored; (m) the bonus warning shows exactly when today's question page
+    shows it; (n) the bet's origin column waits for S9; (o) the sheet speaks the review's corrected Swahili while today's
+    screens wait for S12. Overrule: any one of them, by its letter or by its S8-PLAN Open point.
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
 
@@ -2915,7 +2952,8 @@ shares it). ⭐ The canvas is the source of truth for S4's frames — no copy li
    `--border` edge.
 5. **Wallet rows** use the product's own `PaymentLogo` white tiles. The four `public/pay/*` marks are uploaded to the
    canvas.
-6. **The low-balance row's second line** names all four wallets (from `depositRails()`, R3).
+6. **The low-balance row's second line** names all four wallets (from `depositRails()`, R3). (S8-PLAN Correction 7: there
+   is no `depositRails()`; the rails are `MOBILE_MONEY_METHODS` less the ones paused for deposits.)
    - At 390 it wraps to two lines, breaking cleanly before "Mixx by Yas", and it is drawn that way.
    - S8 must keep each wallet name unbreakable (nowrap), so a break always falls between wallets.
 7. **Amounts** are mono and never letter-spaced (M4), including inside the gold button, which tracks its label
@@ -3365,7 +3403,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | S5 | ~~Colour foundation~~ | ⛔ | Removed by R5 (50pick's look stays unchanged): no palette, font or brand work. |
 | S6 | Shell (flagged) | ✅ | CLOSED 2026-10-12 03:01 EAT at `ca72fe15` (round 10, the last S6 commit), its close record in §0 (test:all, classic parity, the tiles, production read back). Plan filed 2026-10-01 (`S6-PLAN.md`, §0i). Done when every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |
 | S7 | Home and cards (flagged) | 🔨 | Started (§0j): WP0's scripts-only repairs live `ce2c3afa`; WP1–WP4 live `dcf305d5` (2026-10-12); WP5–WP10 and live fix L1 live `f20f1617`, WP11 and WP12 live with S7's close record (2026-10-13): the build is complete, every local done-when holds, and production is read back (qa:live [E2], qa:chunks-prod, classic qa:cls-budget); owed: [E3] measured, from a machine that holds the QA player's password. Plan filed 2026-10-07 ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), its Amendments override its body; §0h point 58). Done when the local staff-pass drives pass (the above-the-fold gate among them) and production shows nothing changed for signed-out and signed-in players; staff seeing the deck's home on production moves to S14 (§0h point 4). |
-| S8 | Bet sheet + low balance (flagged) | ⬜ | `test:bet-sheet`, V20 and the refusal matrix are green. A staff real bet works on production. |
+| S8 | Bet sheet + low balance (flagged) | 🔨 | Started (§0k; [`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md), its Amendments A1–A24 overriding its body): WP0 live with its record. Done when (S8-PLAN Open point 2, §0h point 82): `test:bet-sheet`, V20 (built by S8 WP11a — S8-PLAN Correction 12) and the refusal matrix are green on local drives through a staff pass, and production proves nothing changed for players; the staff real bet waits for S14 (§0h point 4). |
 | S9 | Deposit, waiting and return (flagged) — no email code: the owner's ruling of 2026-10-07 (▶ 0e) has a deposit ask no email question | ⬜ | `test:deposit-return` and `test:deposit-status-read` (exactly-once while racing the webhook) are green. The card `order_id` fix is live. |
 | S10 | Visitor path | ⬜ | guest → sheet → register → deposit → back works. `test:post-register-landing` passes in both flag states. |
 | S11 | How to Play complete + copy ready for the flip | ⬜ | Auto-open rules are proven. FAQ, chat intents, Rules, Terms and tagline are ready for the flip. |
@@ -3799,15 +3837,15 @@ The reply also includes:
 | Chips | `FilterPill` / `.kp-fchip` with its own selected style |
 | Card | `MarketCard` **journey variant**: meta row + short title (within `SHORT_TITLE_MAX`, never clamped; ≤2 lines while the budget was 56 / 28) + `.btn-yes/.btn-no` with the side word and a "Shinda ≈{mult}× dau" line (figure in JetBrains Mono). **Settled variant** for `/results`/`/watchlist` (outcome row, same height). Own height tokens `--jcard-*`; density does not apply |
 | Tabs | `BottomNav` visual language, 4 equal tabs, `--rail-h` variable replacing every literal 88px, `data-needle-keepout` |
-| Sheets | `Modal sheet sheetUntil="lg"` (`.kp-wsheet`). **NEW** `dragToDismiss` on Modal. Desktop = centred dialog, maxWidth ≈440 (no `anchorRef`) |
+| Sheets | `Modal sheet sheetUntil="lg"` (`.kp-wsheet`). **NEW** `dragToDismiss` on Modal (S8-PLAN Correction 11: not built — no drag, as S7 kept). Desktop = centred dialog, maxWidth ≈440 (no `anchorRef`) |
 | "Umechagua NDIO" | `Chip variant="yes"` / `"no"`, side word from `sideWord()` |
-| Stake box | `Input size="lg"` with TZS prefix + **NEW** `grouped` display (thousands separators, stable caret, numeric keypad, 9-digit cap) + **NEW** `attention` state (neutral-strong border, `aria-describedby` → the warning; never `error`, gold or NO ink) |
+| Stake box | `Input size="lg"` with TZS prefix + **NEW** `grouped` display (thousands separators, stable caret, numeric keypad, 9-digit cap) + **NEW** `attention` state (neutral-strong border, `aria-describedby` → the warning; never `error`, gold or NO ink). S8-PLAN Correction 11: neither is built yet — S8 WP5 adds both |
 | Quick chips | `quickStakes` values; the Up & Down chip layout; full-figure labels; 44px floor; no "+ Maalum" |
 | Estimate box | Neutral inset panel (`--bg-inset` + `--border`). The TZS figure is the box's largest number (deck hierarchy), in `.amount` mono `--text` (not gold, not success, not side ink). "≈{mult}× dau lako" as a `Chip`. Makadirio line below |
 | Weka dau CTA | `btn-gold` (a bet commit keeps gold, §M3a) |
 | Low-balance warning | `Callout tone="info"` (the S4 panel, D5: the kit's `neutral` is the dashed empty-state box) with the `alertCircle` glyph |
 | Low-balance eyebrow | microlabel, uppercase via CSS for Latin only |
-| Low-balance deposit | **NEW** 2-line action row (glyph + "Weka pesa TZS X" + wallet sub-line from `depositRails()` + "›") in `gilt-metal` (SJ-12) |
+| Low-balance deposit | **NEW** 2-line action row (glyph + "Weka pesa TZS X" + wallet sub-line from `depositRails()` + "›") in `gilt-metal` (SJ-12). S8-PLAN Correction 7: no `depositRails()` exists — `MOBILE_MONEY_METHODS` less the rails paused for deposits |
 | Bet instead | `btn-outline` |
 | Deposit wallets | `ProviderRadioGrid` **extended**: `layout="rows"` (radio in royal `--brand-500`, 32px logo, name, royal ring) + `noDefault`; kill-switch-disabled rows |
 | Pending-bet strip | card surface + side `Chip` + sentence, stake in `.amount` |
@@ -3927,7 +3965,8 @@ Other rules:
 
 **Page setup**
 - `PageContainer tier="board"` (1280). Grid: 1 column <640, 2 at 640, 3 at ≥1024.
-- `RefreshPoller 30s` plus the SSE `market-odds` patch for visible cards.
+- `RefreshPoller 30s` in S7; the SSE `market-odds` patch for visible cards lands in S8 with the sheet's SSE listener
+  (§3.3 Live refresh), payload-free (S7-PLAN A7 item 2; S8-PLAN Correction 2).
 - Its own journey skeleton, a Suspense boundary inside `page.tsx`. The root `loading.tsx` stays generic.
 - The ticker leaves `/` and `/markets`: `tickerShowsOn(path, journeyOn)` at first, then `TICKER_ROUTES = ["/live",
   "/results"]` at S16.
@@ -3936,7 +3975,9 @@ Other rules:
 
 **Card buttons**
 - `go()` is rewritten (`market-card.tsx:430`): it opens `BetSheetHost` in place, does **not** dispatch
-  `50pick:navigating`, and the press-pop animation replays on every tap.
+  `50pick:navigating`, and the press-pop animation replays on every tap. (S8-PLAN Correction 4: the journey card is S7's own
+  server component, its picks real links to `/markets/<id>?side=…`; S8's host intercepts them, and `market-card.tsx` does
+  not change.)
 - Opening the sheet pushes `?bet=<id>.<side>` via `history.pushState`, so Back closes it and a reload reopens it.
 
 **Other routes**
@@ -4021,10 +4062,13 @@ Other rules:
 - the capped caption
 
 **Mechanics**
-- Keyboard-safe: the sheet lifts by `innerHeight − visualViewport.height`; `enterKeyHint="done"`.
+- Keyboard-safe: the sheet lifts by `innerHeight − visualViewport.height`; `enterKeyHint="done"`. (S8-PLAN Correction 11:
+  the kit Modal reads no `visualViewport`; the lift is the sheet's own, S8 WP6.)
 - The sheet is `role=dialog aria-modal` only while open, so the reality check defers correctly.
 - Pull-to-refresh ignores gestures that start inside the sheet.
-- Consent, install and channels invitations stand down while any sheet is open (`html[data-bet-sheet]`).
+- Consent, install and channels invitations stand down while any sheet is open (`html[data-bet-sheet]`). (S8-PLAN
+  Correction 5: no attribute is needed — the kit Modal is `role=dialog aria-modal` only while open, which is what each
+  invitation already reads.)
 
 **Accessibility**
 - One polite live region, written on entering the low-balance state and on estimate updates, not on every keystroke.
@@ -4034,7 +4078,9 @@ Other rules:
 place (scroll and `?cat` kept); "Tiketi zangu" opens tickets; auto-closes after 5s.
 
 **Deploy skew:** the sheet mirrors its state into `?bet=`. A "Failed to find Server Action" error triggers a reload
-that reopens the sheet. `test:deploy-skew` covers the sheet and the waiting page.
+that reopens the sheet. `test:deploy-skew` covers the sheet and the waiting page. (S8-PLAN Correction 26: the host renders
+in the root layout, outside the route error files, so it reloads itself under RouteError's once-per-build rule — S8
+WP7b.)
 
 ### 3.4 Low balance (deck frame 3)
 
@@ -4058,7 +4104,8 @@ that reopens the sheet. `test:deploy-skew` covers the sheet and the waiting page
 
 **Variants:** 0 options, 1 option, pending deposit, deposit limit, SoF, held wallet, loss limit.
 
-**Funnel:** "short_balance_shown" fires at most once per sheet open.
+**Funnel:** "short_balance_shown" fires at most once per sheet open. (S8-PLAN Correction 6: not a funnel step — the
+allow-list's is `low_balance`, origin `sheet`.)
 
 ### 3.5 Deposit and the return (flagged)
 
@@ -4420,7 +4467,11 @@ retention/backup/DAL and the privacy lines.
 
 **S8 — Bet sheet + low balance (flagged):** §3.3 and §3.4.
 - Checks whether `test:rg-doors` requires a limits link (SJ-22).
-- **Done when:** `test:bet-sheet`, V20 and the refusal matrix pass, and a staff real bet works on production.
+- The §3.2 card patch: when `50pick:sse:market-odds` names a journey card on screen, that card's figures are re-read from
+  the server. They are never computed from yesPct, and the event's payload (event-bus.ts:35) is never widened. It comes
+  with its own test and in-process plant (S7-PLAN A7 item 2; S8 WP10).
+- **Done when:** `test:bet-sheet`, V20 and the refusal matrix pass on local drives through a staff pass, and production
+  proves nothing changed for players (S8-PLAN Open point 2). A staff real bet on production waits for S14 (§0h point 4).
 
 **S9 — Deposit, waiting and return (flagged):** the card `order_id` fix first (✅ done ahead of S9: LIVE `684f72cb`,
 2026-10-09, with the deposit's phone box `b0f490c8` — §0 and §2; do not redo), then §3.5. (§3.6, the email code, is
