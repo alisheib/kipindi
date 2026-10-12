@@ -295,7 +295,8 @@ const row = (over: Partial<TickerRow> & { id: string }): TickerRow => ({
   // ⭐ RE-PINNED IN THE OPEN, S7 WP8 (S7-PLAN A4 item 4): the gate also reads the shell's journey answer, handed down as
   // the `journey` prop — and never the browser's `useJourneyOn`, whose server snapshot is false: the server would paint
   // the strip on a journey reader's `/` and hydration would drop it (S7-PLAN Open point 16). Dropping the argument is
-  // red:ticker-honesty's own case, expected here.
+  // red:ticker-honesty's own case, expected here. The no-`useJourneyOn` clause matches the hook's name only and no case
+  // reaches it (A4 fixes the cases at 31): the refusal is proved by test:journey-home 8.noflag, whose plants reach it.
   ok(client.includes("usePathname()") && /const shown = events\.length > 0 && tickerShowsOn\(\s*pathname\s*,\s*journey\s*\)/.test(client)
     && /if \(!shown\) return null/.test(client) && !client.includes("useJourneyOn"),
     "11.5 the client gates on the LIVE pathname (the root layout does not re-render on a soft navigation) and on the shell's journey answer, a prop — never useJourneyOn");
