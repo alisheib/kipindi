@@ -2445,12 +2445,15 @@ shares it). ⭐ The canvas is the source of truth for S4's frames — no copy li
    - S8 must keep each wallet name unbreakable (nowrap), so a break always falls between wallets.
 7. **Amounts** are mono and never letter-spaced (M4), including inside the gold button, which tracks its label
    0.02em. The helpline number is not an amount: it is Inter with tabular figures, because mono sat off the link's
-   underline.
+   underline. (⛔ Superseded on player surfaces by the owner ruling of 2026-10-06, `docs/COMPLIANCE-DECISIONS.md`: no
+   player surface shows the helpline — S7-PLAN A6.)
 8. **Selection** (the chosen chip or filter) uses the product's own `--pill-active` fill plus a `--brand-400` ring.
 9. **Deposit follows §3.5's order, not the frame's.** The frame omits three things the rulings add:
    - The phone number comes pre-filled (SJ-13), with "Tumia namba nyingine" beside the "Namba ya simu" label.
    - "Lipa kwa kadi" sits under "Lipa", not among the wallets.
-   - A small 18+ and helpline line closes the screen (SJ-18: the focused screen has no footer).
+   - A small 18+ and helpline line closes the screen (SJ-18: the focused screen has no footer). (⛔ Its helpline half is
+     superseded on player surfaces by the owner ruling of 2026-10-06, `docs/COMPLIANCE-DECISIONS.md`; the focused
+     deposit chrome is S9's to build, §3.5 — S7-PLAN A6 item 3.)
 
    With all three, the screen fits 390 × 844 only with 48-px wallet rows and 12-px gaps. At 360 × 640 it scrolls; S9
    measures this.
@@ -2557,7 +2560,9 @@ shares it). ⭐ The canvas is the source of truth for S4's frames — no copy li
 - Item 7 ✅ (row "7 · How to Play", four frames): English, Chinese, 320×640, and desktop.
   - Measured sheet heights at 390: Swahili 641, Chinese 636, English 620. Swahili is the longest, as §A5 predicts.
   - At 320×640 the sheet is capped at the viewport minus 48 px. The steps and MFANO scroll under a fade, while
-    "Nimeelewa, anza" and the limits and helpline line stay pinned, so the exit is always reachable.
+    "Nimeelewa, anza" and the limits and helpline line stay pinned, so the exit is always reachable. (⛔ The helpline is
+    superseded on player surfaces by the owner ruling of 2026-10-06, `docs/COMPLIANCE-DECISIONS.md`: the CTA and the
+    limits link stay pinned — S7-PLAN A6.)
 - Item 8 ✅ (row "8 · Akaunti", three frames): signed in, guest, and the staff row.
   - SJ-17's items appear in its order, grouped into cards without headings. Every label is an existing key; the only
     new word is the plan's "Toa pesa".
@@ -2929,7 +2934,7 @@ Rules for this table:
 | `journey.cardClosesToday` | Inafungwa leo | Closes today | 今天截止 |
 | `journey.cardDaysLeft` | Siku {n} | {n} days (n = 1: "1 day") | {n} 天 |
 | `journey.cardWin` | Shinda ≈{mult}× dau | Win ≈{mult}× your bet | 赢 ≈{mult}× 投注 |
-| `journey.cardWinOver` | Shinda zaidi ya {cap}× dau | Win over {cap}× your bet | 赢超过 {cap}× 投注 |
+| `journey.cardWinOver` — not used on cards, never added (S7-PLAN Correction 9: over the cap the card says `journey.cardOverCap`, with no number) | Shinda zaidi ya {cap}× dau | Win over {cap}× your bet | 赢超过 {cap}× 投注 |
 | `journey.tabQuestions` | Maswali | Questions | 问题 |
 | `journey.tabTickets` | Tiketi zangu | My tickets | 我的注单 |
 | `journey.tabAccount` | Akaunti | Account | 账户 |
@@ -2965,7 +2970,7 @@ Rules for this table:
 | `journey.howExampleLabel` | Mfano | Example | 示例 |
 | `journey.howExampleBody` | Dau {stake} kwenye {side} inayoonyesha ≈{mult}× → ukishinda unapata takriban {payout}. Ukikosea, unapoteza dau lako. | A {stake} bet on {side} showing ≈{mult}× → if you win you get about {payout}. If you're wrong, you lose your bet. | 在显示 ≈{mult}× 的{side}上投注 {stake} → 若赢约可获得 {payout}。若猜错，您将失去投注金额。 |
 | `journey.howCta` | Nimeelewa, anza | Got it, let's start | 明白了，开始 |
-| `journey.howHelplineLabel` | Msaada | Helpline | 求助热线 |
+| ~~`journey.howHelplineLabel`~~ — struck: no player surface shows the helpline (the owner ruling of 2026-10-06, `docs/COMPLIANCE-DECISIONS.md`; S7-PLAN A6) | ~~Msaada~~ | ~~Helpline~~ | ~~求助热线~~ |
 
 Existing keys reused, unchanged:
 - `rg.setLimits` "Weka mipaka"
@@ -2981,6 +2986,30 @@ value is an S4 canvas word or an S6 draft, listed for the native review under "S
 [`S4-COPY-AUDIT.md`](design-system/v5-2026-09-29-simplified-journey/S4-COPY-AUDIT.md). Classic words are reused by key
 (WP1 step 2); a journey value repeats a classic one only for a key the plan names (its key list, and A10 for the hub's
 card names).
+
+**S7 keys (2026-10-12, `S7-PLAN.md` WP4).** The deck strings above that S7 shows are keys of the `journey` namespace
+now, verbatim: `howToCardTitle`, `howToCardMeta`, `headlineAsk`, `headlineSides`, `cardWin`, `showMore`, `howToTitle`,
+`howStep1Title` … `howStep3Body`, `howExampleLabel`, `howExampleBody`, `howCta` and `estimateNote` (shared with S8). Not
+added: `cardWinOver` (Correction 9) and `howHelplineLabel` (A6). S7's own words, which no deck slide gives, are drafts —
+the S4 canvas's approved word where one is drawn, and reviewed in
+[`S4-COPY-AUDIT.md`](design-system/v5-2026-09-29-simplified-journey/S4-COPY-AUDIT.md) "Swahili review" 6:
+
+| S7 draft key | sw | en | zh (draft) |
+|---|---|---|---|
+| `journey.cardBeFirst` | Kuwa wa kwanza | Be the first | 抢先下注 |
+| `journey.cardOverCap` | Upande mdogo, ona makadirio | Small side, see the estimate | 冷门一方，请查看预估 |
+| `journey.cardThin` | Faida ndogo · ≈{mult}× | Small gain · ≈{mult}× | 收益很小 · ≈{mult}× |
+| `journey.cardResultLabel` | Matokeo | Result | 结果 |
+| `journey.similarTitle` | Maswali yanayofanana | Similar questions | 相似问题 |
+| `journey.homeChipsAria` | Aina za maswali | Question topics | 问题类别 |
+| `journey.homeEmptyCatTitle` | {cat}: hakuna maswali wazi kwa sasa | {cat}: no open questions right now | {cat}：目前没有开放的问题 |
+| `journey.homeEmptyTitle` | Hakuna maswali wazi kwa sasa | No open questions right now | 目前没有开放的问题 |
+| `journey.homeEmptyBody` | Maswali mapya yataonekana hapa yakichapishwa. | New questions appear here when they are published. | 新问题发布后会显示在这里。 |
+| `journey.homeEmptyAll` | Onyesha maswali yote | Show all questions | 显示全部问题 |
+| `journey.homeQueryLine` | Unatafuta: “{q}” | Searching for “{q}” | 正在搜索“{q}” |
+| `journey.homeQueryNone` | Hakuna swali linalolingana na “{q}” | No question matches “{q}” | 没有与“{q}”匹配的问题 |
+| `journey.howStepsAria` | Hatua | Steps | 步骤 |
+| `journey.hubSearchPlaceholder` | Tafuta swali | Search questions | 搜索问题 |
 
 **The S15 "Tiketi keys" rename list** (SJ-19: "Tiketi" replaces "Nafasi" on player surfaces), re-derived from the sw
 block and a grep of `src/` on 2026-10-01 — re-grep before S15. These keep "nafasi" until the flip (§3.9); at S15 each
@@ -3202,7 +3231,8 @@ On 2026-09-28 the agency that will sponsor and market 50pick sent `Downloads\50p
 - **SJ-18 Deposit chrome.** The journey deposit screen, its code step (⛔ superseded 2026-10-07: no code step) and
   `/wallet/deposit/waiting` use focused chrome:
   no header, no tabs, no footer, no ticker. Instead: a round "‹", the title "Weka pesa", and a minimal 18+ and
-  helpline line.
+  helpline line. (⛔ The helpline half is superseded on player surfaces by the owner ruling of 2026-10-06,
+  `docs/COMPLIANCE-DECISIONS.md`; the focused chrome is S9's, §3.5 — S7-PLAN A6 item 3.)
 - **SJ-19 Words.**
   - "Weka pesa" is the deposit **action** everywhere; the noun "Amana" stays on receipts, limits and legal pages.
   - "Tiketi" replaces "Nafasi" on player surfaces; support "tiketi" becomes "Ombi la msaada".
@@ -3235,6 +3265,8 @@ On 2026-09-28 the agency that will sponsor and market 50pick sent `Downloads\50p
 - **SJ-24 The "first licensed" claim** leaves `/` with the hero.
   - V22's negative half stays: no "first" claim anywhere on journey surfaces or in metadata.
   - The licence line stays in the footer; 18+ goes in the header; the helpline is in the How-to sheet and the footer.
+    (⛔ The helpline is superseded on player surfaces by the owner ruling of 2026-10-06, `docs/COMPLIANCE-DECISIONS.md`:
+    neither the How-to sheet nor the footer shows it — S7-PLAN A6.)
 
 ---
 
@@ -3252,7 +3284,7 @@ On 2026-09-28 the agency that will sponsor and market 50pick sent `Downloads\50p
 | Bet sheet before sign-up, quick chips, live estimate | Inline ConvictionDial + BetConfirmModal. Guests go to sign-in. Fixed 1.5× estimate | **New** (reuse `Modal sheet`, `payoutFor`, `quickStakes`) |
 | Low balance → shortfall deposit / bet what you have | Dial disables its button; no path | **New** |
 | Deposit: bet strip, shortfall prefilled, last-used wallet/number, back to bet | `/wallet/deposit` (tiles, `?amount=`), always redirects to `/wallet`, no status read | Change + **new** waiting/return |
-| How to Play sheet with limits + helpline | `FirstVisitPrimer` (auto once, not reopenable). Helpline 0800 11 0011 is our real number | **New** component; old primer shelved |
+| How to Play sheet with limits + helpline (⛔ the helpline superseded on player surfaces by the owner ruling of 2026-10-06, `docs/COMPLIANCE-DECISIONS.md`: the sheet's foot is the limits link alone — S7-PLAN A6) | `FirstVisitPrimer` (auto once, not reopenable). Helpline 0800 11 0011 is our real number | **New** component; old primer shelved |
 
 **Answers to the agency (sent in S0 as `AGENCY-REPLY.md`):**
 1. **Preview before sign-up:** yes.
@@ -3672,11 +3704,14 @@ INHERIT-MANIFEST is superseded with it.
 - `first-visit-primer.tsx` is shelved **intact**. The shared keys and opt-ins move to
   `src/lib/onboarding/primer-keys.ts`, so `?primer=1` and `kp-primer-force` still work for the 24 QA drivers.
 - **Seen key:** the new `50pick-howto-seen`, so every browser sees it once after the flip.
-- **Order:** title + X (`showClose`) → steps 1/2/3 → MFANO → "Nimeelewa, anza" → "Weka mipaka · Msaada 0800 11 0011".
+- **Order:** title + X (`showClose`) → steps 1/2/3 → MFANO → "Nimeelewa, anza" → "Weka mipaka". (~~"· Msaada 0800 11
+  0011"~~: no player surface shows the helpline — the owner ruling of 2026-10-06, `docs/COMPLIANCE-DECISIONS.md`; S7-PLAN
+  A6.)
 
 **Links**
 - "Weka mipaka" → `/profile/responsible-gambling` when signed in, `/legal/responsible-gambling` when signed out.
-- The helpline is `<a href="tel:{HELPLINE_TEL()}">`, with the new label key `howTo.helplineLabel` = "Msaada".
+- ~~The helpline is `<a href="tel:{HELPLINE_TEL()}">`, with the new label key `howTo.helplineLabel` = "Msaada".~~ Struck
+  (S7-PLAN A6): the sheet has no `tel:` link, reads no helpline and shows no helpline label or digits.
 - Every exit persists the seen flag. Links close the sheet, then navigate.
 
 **Copy:** side words come from `sideWord()`. The MFANO text is built with `fillNodes` from `HOW_TO_EXAMPLE`.
@@ -4058,7 +4093,8 @@ Design **is** needed for:
 > - Warnings use the factual/neutral family; never gold, danger or NO for app state.
 > - Tap targets ≥44 px; contrast AA.
 > - "≈" on every estimate; the Makadirio line only in the sheet and MFANO.
-> - Helpline "0800 11 0011".
+> - Helpline "0800 11 0011". (⛔ Superseded on player surfaces by the owner ruling of 2026-10-06,
+>   `docs/COMPLIANCE-DECISIONS.md` — S7-PLAN A6.)
 
 ---
 

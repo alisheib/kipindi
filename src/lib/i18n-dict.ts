@@ -3092,6 +3092,55 @@ export const dict = {
       /** Signed out only: the canvas's fairness-and-help card, and the legal card under the footer's own heading. */
       hubGroupFairnessHelp: "Fairness & help",
       hubGroupLegal: "Legal & privacy",
+      /**
+       * ⭐ S7 · HOME AND CARDS (S7-PLAN.md WP4). The words of the journey home, the journey card, the How-to card and
+       * the static How-to sheet. Only journey files read these, so no classic word changes before the S15 flip (§3.9).
+       * sw is the deck's word (VODACOM-PLAN §3, binding), an S4 canvas word (approved in S4-COPY-AUDIT.md "Swahili
+       * review" 3) or a draft listed under "S7 drafts" there. Reused by key, never copied: common.yes and common.no
+       * through `sideWord`, the market.cat* names, market.oneSideOnly, oneSidedNote, waitingForResults, statusClosed and
+       * resolvedOutcome, common.voided, cardClosesToday and cardDaysLeft(One) above, the comp* labels, rg.setLimits,
+       * common.close, common.clearSearch and common.search.
+       * ⛔ No helpline key: no player surface shows the helpline (Ali's ruling of 2026-10-06, COMPLIANCE-DECISIONS;
+       * S7-PLAN A6). ⛔ No cardWinOver: the panel's over-cap rule replaced it on cards (S7-PLAN Correction 9).
+       */
+      /** The How-to card on the home and the static sheet it opens (§3.8). {steps} and {minutes} are numbers. */
+      howToCardTitle: "How to play",
+      howToCardMeta: "{steps} steps · {minutes} min",
+      howToTitle: "How to play",
+      howStepsAria: "Steps",
+      howStep1Title: "Choose a question",
+      howStep1Body: "Every question is a real event with one answer: {yes} or {no}.",
+      howStep2Title: "Tap {yes} or {no}",
+      howStep2Body: "See immediately what you can win, e.g. ≈{mult}× your bet.",
+      howStep3Title: "Place your bet, wait for the result",
+      howStep3Body: "Winners share the pool; winnings go to your balance and out via mobile money.",
+      howExampleLabel: "Example",
+      howExampleBody: "A {stake} bet on {side} showing ≈{mult}× → if you win you get about {payout}. If you're wrong, you lose your bet.",
+      howCta: "Got it, let's start",
+      /** The estimate's footnote (§3), shared with S8's bet sheet. {pct} is the commission on the losing side. */
+      estimateNote: "Estimate. The final amount depends on the pool when the market closes. Our {pct}% commission on the losing side is already deducted.",
+      /** The home's head: two lines, the second built from the side words. */
+      headlineAsk: "Answer the question.",
+      headlineSides: "{yes} or {no}.",
+      /** The home's topic chips, its search line, its empty states and its "show more" link (s4-3-home-*). */
+      homeChipsAria: "Question topics",
+      homeQueryLine: "Searching for “{q}”",
+      homeQueryNone: "No question matches “{q}”",
+      homeEmptyCatTitle: "{cat}: no open questions right now",
+      homeEmptyTitle: "No open questions right now",
+      homeEmptyBody: "New questions appear here when they are published.",
+      homeEmptyAll: "Show all questions",
+      showMore: "Show more",
+      /** The journey card's pick lines (`cardFace`, WP3) and its settled row. A figure is always {mult}, never a literal. */
+      cardWin: "Win ≈{mult}× your bet",
+      cardBeFirst: "Be the first",
+      cardOverCap: "Small side, see the estimate",
+      cardThin: "Small gain · ≈{mult}×",
+      cardResultLabel: "Result",
+      /** The question page's similar rail, in the journey's words. */
+      similarTitle: "Similar questions",
+      /** Tafuta, the question search in the Akaunti hub (S7 WP9). */
+      hubSearchPlaceholder: "Search questions",
     },
   },
 
@@ -5484,6 +5533,38 @@ export const dict = {
       hubGroupStaff: "Wafanyakazi",
       hubGroupFairnessHelp: "Uadilifu na msaada",
       hubGroupLegal: "Sheria na faragha",
+      // S7 · home and cards — see the comments in the en namespace. The deck's words (§3), approved canvas words and the "S7 drafts" of S4-COPY-AUDIT.md.
+      howToCardTitle: "Jinsi ya kucheza",
+      howToCardMeta: "Hatua {steps} · dakika {minutes}",
+      howToTitle: "Jinsi ya kucheza",
+      howStepsAria: "Hatua",
+      howStep1Title: "Chagua swali",
+      howStep1Body: "Kila swali ni tukio halisi lenye jibu moja: {yes} au {no}.",
+      howStep2Title: "Bonyeza {yes} au {no}",
+      howStep2Body: "Utaona papo hapo unachoweza kushinda, mfano ≈{mult}× dau lako.",
+      howStep3Title: "Weka dau, subiri matokeo",
+      howStep3Body: "Washindi wanagawana bwawa. Ushindi unaingia kwenye salio, unatoa kwa pesa ya simu.",
+      howExampleLabel: "Mfano",
+      howExampleBody: "Dau {stake} kwenye {side} inayoonyesha ≈{mult}× → ukishinda unapata takriban {payout}. Ukikosea, unapoteza dau lako.",
+      howCta: "Nimeelewa, anza",
+      estimateNote: "Makadirio. Kiasi halisi hutegemea bwawa soko likifungwa. Kamisheni ya {pct}% imeshatolewa.",
+      headlineAsk: "Jibu swali.",
+      headlineSides: "{yes} au {no}.",
+      homeChipsAria: "Aina za maswali",
+      homeQueryLine: "Unatafuta: “{q}”",
+      homeQueryNone: "Hakuna swali linalolingana na “{q}”",
+      homeEmptyCatTitle: "{cat}: hakuna maswali wazi kwa sasa",
+      homeEmptyTitle: "Hakuna maswali wazi kwa sasa",
+      homeEmptyBody: "Maswali mapya yataonekana hapa yakichapishwa.",
+      homeEmptyAll: "Onyesha maswali yote",
+      showMore: "Onyesha zaidi",
+      cardWin: "Shinda ≈{mult}× dau",
+      cardBeFirst: "Kuwa wa kwanza",
+      cardOverCap: "Upande mdogo, ona makadirio",
+      cardThin: "Faida ndogo · ≈{mult}×",
+      cardResultLabel: "Matokeo",
+      similarTitle: "Maswali yanayofanana",
+      hubSearchPlaceholder: "Tafuta swali",
     },
   },
 
@@ -7856,6 +7937,38 @@ export const dict = {
       hubGroupStaff: "员工",
       hubGroupFairnessHelp: "公平性与帮助",
       hubGroupLegal: "法律与隐私",
+      // S7 · home and cards — see the comments in the en namespace. Formal 您; the §3 table's drafts and the "S7 drafts" of S4-COPY-AUDIT.md.
+      howToCardTitle: "玩法说明",
+      howToCardMeta: "{steps} 步 · {minutes} 分钟",
+      howToTitle: "玩法说明",
+      howStepsAria: "步骤",
+      howStep1Title: "选择问题",
+      howStep1Body: "每个问题都是一个真实事件，只有一个答案：{yes}或{no}。",
+      howStep2Title: "点击{yes}或{no}",
+      howStep2Body: "立即看到您可赢取的金额，例如 ≈{mult}× 您的投注。",
+      howStep3Title: "投注，等待结果",
+      howStep3Body: "赢家平分奖池。奖金进入您的余额，可通过手机钱包提现。",
+      howExampleLabel: "示例",
+      howExampleBody: "在显示 ≈{mult}× 的{side}上投注 {stake} → 若赢约可获得 {payout}。若猜错，您将失去投注金额。",
+      howCta: "明白了，开始",
+      estimateNote: "预估。最终金额取决于市场关闭时的奖池。已扣除输方 {pct}% 的佣金。",
+      headlineAsk: "回答问题。",
+      headlineSides: "{yes}还是{no}。",
+      homeChipsAria: "问题类别",
+      homeQueryLine: "正在搜索“{q}”",
+      homeQueryNone: "没有与“{q}”匹配的问题",
+      homeEmptyCatTitle: "{cat}：目前没有开放的问题",
+      homeEmptyTitle: "目前没有开放的问题",
+      homeEmptyBody: "新问题发布后会显示在这里。",
+      homeEmptyAll: "显示全部问题",
+      showMore: "显示更多",
+      cardWin: "赢 ≈{mult}× 投注",
+      cardBeFirst: "抢先下注",
+      cardOverCap: "冷门一方，请查看预估",
+      cardThin: "收益很小 · ≈{mult}×",
+      cardResultLabel: "结果",
+      similarTitle: "相似问题",
+      hubSearchPlaceholder: "搜索问题",
     },
   },
 } as const;
