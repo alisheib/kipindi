@@ -555,12 +555,33 @@ body. Owner-level calls: §0h point 58, and 65 on.
   name the route file and each is decided (body re-pointed, route kept, history left); `test:journey-home` (new, 8
   checks, 8 plants). Its gates run after WP1, ending with a parity v3 compare at 0 differences; then it is rebased onto
   WP1 and pushed.
-- **⏳ IN FLIGHT — PICKED UP ON OMEGA-COMPILE01, 2026-10-12 ~10:00 EAT** (Ali: no other session works on S7; nothing
-  runs on ALI-BLADE15). Worktrees `F:\kipindi-s7b` (branch `vodacom-s7-wp1b`, then WP2 and WP3) and `F:\kipindi-s7srv`
-  (the dev servers, detached), each with its own `npm ci`. Order: WP1 rebased onto main (scripts and docs only moved
-  since `daf0e799`), the v3 baseline and its null compare on two fresh in-memory servers at the rebased WP1; WP2 rebased
-  onto it and its proofs (the ▶ LEFT list below); WP1 + WP2 to main and read back; then WP3. OMEGA's own 2026-10-07/08
-  WP1 is on origin for reference only as `vodacom-s7-wp1-omega` (`9ad1f6d9`), never to be merged (§0h point 66).
+- **⏳ IN FLIGHT — OMEGA-COMPILE01, as of 2026-10-12 ~12:00 EAT (everything below is ON ORIGIN; nothing is only on
+  this PC):**
+  - **`origin/vodacom-s7-land2` at `03b14f00`** — WP1–WP4 rebased on main `05d42f7f`, in plan order: WP1's three
+    commits (`cecb6181`, `d03a9d95`, `49b15398`), **WP1 calibration 2** (`9a7bbb24`), WP2 folded into one commit
+    (`87be7bb7`, no longer "WIP"), WP3 finished after a file-by-file review of the laptop's draft (`b47ee0fb`), WP4 —
+    S7's 31 `journey.*` keys with the Swahili review signed and A6's helpline annotations (`03b14f00`). Proven so far:
+    each package's in-process gates (WP3: journey-home + red 47/47, markets-redirect + red 13/13, journey-sheet + red
+    17/17, ticker-honesty 147, red-anchors 5280/0, …; WP4: i18n en = sw = zh = 2685, translation-safety, rate-copy,
+    labels, docs); typecheck 0 on the stack; red:ticker-honesty alone 30/30, tree clean.
+  - **Why calibration 2:** WP1's first null compare (baseline at `090bbf76`, a second fresh server) failed 4.8 — 13 of
+    44 book cells differed, all noise no tree change causes: four catalogue questions with no pool and one close instant
+    fall in their ids' order (each server mints its own ids); seeded date-times are relative to the seeding moment;
+    four lazy payment logos were fetched on one run only. `9a7bbb24` turns `eat-dates` on, adds the `tied-cards` page
+    normaliser and settles lazy images before boxes are read; offline it accounts for all 13 fields.
+  - **Running now, under the lock:** the re-calibration at `9a7bbb24` (`--prove-red`, a new v3 baseline, a null
+    compare), then — only if that compare exits 0 — the landing proof at `03b14f00` (typecheck, ~45 gates, the three
+    file-mutating reds alone, `next build`, local qa:live, parity v3 against the new baseline, the served-skeleton
+    pair). Then WP1–WP4 go to main together and are read back (§0h point 71). The draft record for it is
+    `origin/vodacom-s7-docs` (`1620ffa8`, WIP, placeholders for the results).
+  - **WP6** (the How-to card, its sheet, the shared lost-chunk guard, the primary-material tokens) — built:
+    `origin/vodacom-s7-wp6` (`fa9d65e8`, `4af74948`, `499ab7c8`, on the earlier WP4); typecheck 0, red:contrast 27/27,
+    qa:dg-eyebrow 0, its in-process suites green; an independent review is running. **WP5** (the journey card) is being
+    built on `origin/vodacom-s7-wp5` (no commit yet). Then WP7–WP12.
+  - **If this PC stops:** on any machine, check out `vodacom-s7-land2`, run the re-calibration and the landing proof
+    with `origin/vodacom-visual-tools` `tools/s7-omega-2026-10-12/` (`chain-wp1.sh`, `chain-land.sh`; re-point the
+    paths), push WP1–WP4 when both pass; then rebase `vodacom-s7-wp6` onto it and prove WP6. OMEGA's own 2026-10-07/08
+    WP1 stays reference-only as `vodacom-s7-wp1-omega` (§0h point 66).
 - **⏸ HANDOFF — 2026-10-12 ~08:55 EAT, Ali moved to another machine. THE EXACT PLACE:**
   - **WP1 — `origin/vodacom-s7-wp1b` at `203a150f`** (3 commits on main `daf0e799`: the A9 tools `b0873185`, parity v3
     `9b18ea59`, the calibration `203a150f`). Proven on ALI-BLADE15: parity v3's `--prove-red` on a real server **125/125**
