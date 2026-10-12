@@ -107,10 +107,38 @@
  * its own plant (P.check B.*); the head reader, the normalisers, A8's two verdicts, the card classifier and the trace are
  * tried on synthetic input (P.8*); and in the browser a card class changed in one route's body is reported in that body
  * only, a dropped og:url in the head, and a journey-* id or a kp-jcard element in a classic page as a trace.
+ * ⭐ S8 WP1 (S8-PLAN WP1, amendments A15, A17 item 5, A22 item 6 and A24) — VERSION 4: THE QUESTION PAGE'S CLASSIC BODY.
+ * S8 re-lays the question page for a journey reader (its bet panel's signed-in arm and its holder section become
+ * ternaries whose else arm is today's element), and v3 never read that page's body: only its similar rail. After the
+ * matrix, the Sell capture and the book, the QUESTION phase builds its questions through dev-test doors that already
+ * exist, after the book's own (seedQuestions, judged by questionVerdict): the open question is the Sell capture's held
+ * one (both pools; the demo player holds YES on it, so it is also the holder's question, read bare and at ?side=YES and
+ * ?side=NO, the hedge warning); a one-sided and an empty question are read off the guest's /markets by their card
+ * state, each the first by title among its state's cards (the empty pool's next two are the settled and closed-by-time
+ * questions' sources); selection closed is seed-watchlist's forced progress row; closed by time is fast-forward-market
+ * pulling a question's result an hour into the past; settled is fast-forward-market pulling one a day into the past
+ * (so resolve-seed-markets { markets: 1 } takes it, live[0] by resolutionAt) and then that door, complete and settled;
+ * and a reader on a break is the demo player after a cooling-off taken through /profile/responsible-gambling's real
+ * form (its confirm pressed), signed in again — captured last, since it ends the session and the account stays on a
+ * break. Before the first cell the holder's free windows are waited out (the held question read as the player until no
+ * free strip stands in its holder section), so no cell reads a window that closes during the run. Per question cell
+ * (guest and player × en and sw × 360 and 1280; the guest takes the open, one-sided, selection-closed and settled
+ * questions; the reader on a break the open and the empty ones): the question page's <main> — markup, boxes and computed
+ * styles — with the bet panel (QUESTION_PANEL) and the holder section (QUESTION_HOLDER) each stubbed in it and captured
+ * as a field of its own, so a difference names its region. Its masks are named before any null pair (A17 item 5:
+ * QUESTION_MASKS — the [role=timer] texts, the countdown's clock, the Sell countdown, the chart's time axis, and the
+ * server-rendered times through the book's eat-dates and `norm`); each mask counts what it masked in every cell, and
+ * Q.6 fails a mask that masked nothing anywhere unless it is marked as absent from the classic page. The book's
+ * normalisers apply to the question's cells too (their similar rails are book cards). §Q holds the population; --prove-red
+ * plants a class in the bet panel (the panel field only), a kp-jbet element in a classic question page (a trace),
+ * data-sheet on a classic card in the raw bytes (a trace) and a changed Sell label in the holder (the holder field only).
+ * The trace sees S8's names: kp-bsheet, kp-jbet and kp-qghost in the page (JOURNEY_CLASS_PARTS, P.8t re-pinned) and
+ * `data-sheet` in the bytes (RAW_TRACE, matched as `\bdata-sheet(?![\w-])` so the classic filter sheet's
+ * data-sheet-open is not it: A22 item 6). A v3 file holds no question cell, so --compare refuses it.
  *
  *   KP_BASE=http://localhost:3041 npm run qa:classic-shell-parity                  (the control: --prove-red is the default)
- *   KP_BASE=http://localhost:3041 npm run qa:classic-shell-parity -- --baseline <scratchpad>/parity-v3-<sha8>.json
- *   KP_BASE=http://localhost:3041 npm run qa:classic-shell-parity -- --compare <scratchpad>/parity-v3-<sha8>.json
+ *   KP_BASE=http://localhost:3041 npm run qa:classic-shell-parity -- --baseline <scratchpad>/parity-v4-<sha8>.json
+ *   KP_BASE=http://localhost:3041 npm run qa:classic-shell-parity -- --compare <scratchpad>/parity-v4-<sha8>.json
  *   … any of the three with --norm <id>,<id> (or KP_PARITY_NORMALISE=<id>,<id>): the book's normalisers for this run only
  *
  * ⭐ THE INSTRUMENT IS CALIBRATED BEFORE IT IS TRUSTED: --prove-red green, then the baseline, then — on a FRESH server
@@ -440,7 +468,7 @@ function baseRefusal(sha) {
 }
 
 const KIND = "kp-classic-shell-parity";
-const VERSION = 3;   // 3 · S7 WP1: the matrix gained the book (A8), so a v2 baseline cannot be compared — capture a new one (2 · S6 WP10: the Sell capture)
+const VERSION = 4;   // 4 · S8 WP1: the matrix gained the question page (S8-PLAN WP1), so a v3 baseline cannot be compared — capture a new one (3 · S7 WP1: the book, A8; 2 · S6 WP10: the Sell capture)
 const VIEWERS = [
   { id: "guest", door: null, who: "a guest" },
   { id: "player", door: "/auth/demo", who: "the demo player" },
@@ -512,7 +540,77 @@ function bookCellKeys() {
   }
   return out;
 }
-const MATRIX = { viewers: VIEWERS.map((v) => v.id), locales: LOCALES, widths: WIDTHS, routes: ROUTES, body: BODY_ROUTE, height: HEIGHT, sell: SELL, book: BOOK, settle: SETTLE };
+/**
+ * ⭐ S8 WP1 · THE QUESTION PHASE (S8-PLAN WP1 steps 2-3; A15, A17 item 5, A24): the question page's classic body, in every
+ * classic state S8's ternaries stand beside. Taken AFTER the book (it reads the book's world: the Sell capture's held
+ * question, seed-watchlist's forced progress row, the guest's /markets by card state), so the matrix, the Sell cells and
+ * the book are captured exactly as v3 captured them. A cell is keyed `question-<viewer>|locale|width|route`, its route
+ * written with the state's placeholder (each server mints its own ids). The reader on a break is a viewer of its own
+ * (`break`): the demo player after a cooling-off taken through the real form, captured last.
+ */
+const QUESTION_PANEL = 'aside[aria-labelledby="bet-panel-heading"]';
+/** The holder section ("Your positions", app/markets/[id]/page.tsx): the content column's one elevated section, a session's only. */
+const QUESTION_HOLDER = "section.order-2 > section.bg-bg-elevated";
+/** Each state's route (its placeholder names the question), and who reads it. The guest takes the open, one-sided,
+ *  selection-closed and settled questions (WP1 step 3); the holder's question is the open one (the demo player holds YES
+ *  on it: seed-player-portfolio's plan gives marketIds[0] YES), read bare, at ?side=YES and at ?side=NO (the hedge). */
+const QUESTION_STATES = [
+  { id: "open", route: "/markets/:open", viewers: ["guest", "player"] },
+  { id: "open-yes", route: "/markets/:open?side=YES", viewers: ["player"] },
+  { id: "open-no", route: "/markets/:open?side=NO", viewers: ["player"] },
+  { id: "one-sided", route: "/markets/:one-sided", viewers: ["guest", "player"] },
+  { id: "empty", route: "/markets/:empty", viewers: ["player"] },
+  { id: "selection-closed", route: "/markets/:selection-closed", viewers: ["guest", "player"] },
+  { id: "time-closed", route: "/markets/:time-closed", viewers: ["player"] },
+  { id: "settled", route: "/markets/:settled", viewers: ["guest", "player"] },
+  { id: "break-open", route: "/markets/:open", viewers: ["break"] },
+  { id: "break-empty", route: "/markets/:empty", viewers: ["break"] },
+];
+/**
+ * ⭐ S8 WP1 · THE QUESTION PAGE'S MASKS, NAMED BEFORE THE FIRST NULL PAIR (S8-PLAN A17 item 5). Each acts on every region
+ * of a question cell, inside the page before any snapshot is compared with the next (so a ticking clock cannot keep a
+ * cell from settling), and counts what it masked in every cell (Q.6). A text mask writes its `text` for the element's
+ * whole text; an `inside` mask keeps the element's own box and style and reads nothing inside it. `seen` says whether the
+ * classic question page draws it in this phase: a mask that is seen must mask something somewhere (Q.6), and one that is
+ * not reports its count and is never failed on it. The server-rendered times are the fifth: text, not an element, read
+ * through the book's eat-dates (on for these cells whatever the book's switch says) and `norm`'s datetime and ago rules.
+ */
+const QUESTION_MASKS = [
+  { id: "timer-text", selector: '[role="timer"]', text: "~", seen: false,
+    what: "every [role=timer] text (A17 item 5): at this base only the journey Sell look's grace clock (sell-button.tsx) carries the role, and the classic page draws none; named so a classic one added later is masked, not failed" },
+  { id: "countdown-clock", selector: 'div[class~="text-[28px]"][class~="tabular-nums"]', text: "~", seen: true,
+    what: "the question's countdown (countdown.tsx Cell: the selection close and the result clocks, [id]/page.tsx's '3b. Countdown'), four digit cells each that tick every second; ⚠️ the plan names them [role=timer] (S8-PLAN A17 item 5), but at this base Countdown's cells carry no role" },
+  { id: "sell-countdown", selector: 'div[class~="mb-1.5"] > span[class~="tabular-nums"]', text: "m:ss", seen: false,
+    what: "the Sell button's free-window clock in a holder row (sell-button.tsx's strip), read as m:ss as the Sell capture reads it; the phase waits the held tickets' free windows out first, so no cell should draw one" },
+  { id: "chart-time-axis", selector: "div.tv-lightweight-charts tr:last-child", inside: true, seen: true,
+    what: "the probability chart's time axis (market-curve.tsx, lightweight-charts: the table's last row, its canvases): its box and style are read, nothing inside it" },
+];
+/** The server-rendered times (the fifth mask): eat-dates, always on for a question cell (idempotent beside the book's). */
+const EAT_DATES = BOOK_NORMALISERS.find((n) => n.id === "eat-dates");
+const QUESTION = {
+  viewers: ["guest", "player", "break"],
+  locales: LOCALES,
+  widths: [360, 1280],
+  states: QUESTION_STATES,
+  panel: QUESTION_PANEL,
+  holder: QUESTION_HOLDER,
+  masks: [...QUESTION_MASKS.map((m) => m.id), "server-times"],
+  /** The book's normalisers, which the question's cells use too (their similar rails are book cards). */
+  normalise: BOOK_NORMALISE,
+  settle: BOOK_SETTLE,
+};
+/** Every question cell in capture order, as [key, viewer, locale, width, state]: the guest's, the player's, then the break's. */
+function questionCellKeys() {
+  const out = [];
+  for (const v of QUESTION.viewers) for (const l of QUESTION.locales) for (const w of QUESTION.widths) for (const s of QUESTION.states) {
+    if (!s.viewers.includes(v)) continue;
+    out.push([keyOf(`question-${v}`, l, w, s.route), v, l, w, s]);
+  }
+  return out;
+}
+/** A state's route with its question's id in place of the placeholder (`ids` maps placeholder → id). */
+const routeOfQuestion = (route, ids) => route.replace(/:([a-z-]+)/, (m, name) => ids?.[name] ?? m);
+const MATRIX = { viewers: VIEWERS.map((v) => v.id), locales: LOCALES, widths: WIDTHS, routes: ROUTES, body: BODY_ROUTE, height: HEIGHT, sell: SELL, book: BOOK, question: QUESTION, settle: SETTLE };
 const HOST = new URL(BASE).hostname;
 const keyOf = (v, l, w, r) => `${v}|${l}|${w}|${r}`;
 const partsOf = (k) => { const [v, l, w, r] = k.split("|"); return { v, l, w: Number(w), r }; };
@@ -872,6 +970,13 @@ SELL_EXPECTED_DIFFS.push(
  * a re-baseline (A3).
  */
 const BOOK_EXPECTED_DIFFS = [];
+/**
+ * ⭐ S8 WP1 · THE DIFFERENCES S8 MAKES ON PURPOSE IN A CLASSIC READER'S QUESTION PAGE — none is planned (S8-PLAN, the
+ * Summary's "Why a classic visitor's served markup does not change"), so this list starts empty. Any entry S8 adds is named
+ * as the book's are — its field, routes, `cells` and reason, matched by diffCells and held by §4.12 to all of its cells or
+ * none — and listed in VODACOM-PLAN §0k. ⛔ Never a wildcard and never a re-baseline.
+ */
+const QUESTION_EXPECTED_DIFFS = [];
 
 /** The computed properties recorded per element. Geometry is recorded separately, relative to the region's root. */
 const PROPS = [
@@ -891,10 +996,12 @@ const CREST = ".crest-holder svg";
 /** The rail's entry in the overlay census. Each entry leads with its kp- classes, so the rail is named however many others it carries. */
 const RAIL_OVERLAY = /^nav.*\.kp-rail(?=[.\s])/;
 /** A journey trace in the bytes the server sent: a test id or the flag attribute, as HTML or as the RSC payload's escaped JSON. */
-const RAW_TRACE = /(?:data-testid|testId)(?:=|\\":)\\?"journey-[\w-]*|\bdata-journey(?![\w-])/g;
+/** ⭐ S8 WP1 · …and since v4 S8's sheet attribute, `data-sheet` (WP7a puts it on a journey card): matched whole, so the classic
+ *  filter sheet's `data-sheet-open` (filter-sheet.tsx; globals.css) is not it (S8-PLAN A22 item 6). P.8w holds the three. */
+const RAW_TRACE = /(?:data-testid|testId)(?:=|\\":)\\?"journey-[\w-]*|\bdata-journey(?![\w-])|\bdata-sheet(?![\w-])/g;
 const rawOf = (body) => (typeof body !== "string" ? null : {
   shell: body.includes("app-topbar"),
-  trace: [...new Set((body.match(RAW_TRACE) ?? []).map((m) => (m.includes("journey-") ? `testid:${m.slice(m.indexOf("journey-"))}` : "data-journey")))].sort(),
+  trace: [...new Set((body.match(RAW_TRACE) ?? []).map((m) => (m.includes("journey-") ? `testid:${m.slice(m.indexOf("journey-"))}` : m.startsWith("data-sheet") ? "data-sheet" : "data-journey")))].sort(),
 });
 /**
  * ⭐ S7 WP1 · A8 item 3 — THE LIVE TRACE SEES S7'S CLASS NAMES. The trace in the page (SNAPSHOT's `journey`, in every cell
@@ -904,8 +1011,11 @@ const rawOf = (body) => (typeof body !== "string" ? null : {
  * `class:`. None of the four occurs in src/ before S7 builds it, so the trace stays empty on a classic page (2.4, 3.4, S.3,
  * B.6). RAW_TRACE above already reads any journey-* test id in the bytes. P.8t holds the selector and the report to S7's
  * names and to no classic class.
+ * ⭐ S8 WP1 (S8-PLAN WP1 step 4) — and S8's: the bet sheet (kp-bsheet), the question page's two big buttons (kp-jbet) and
+ * its loading picture (kp-qghost). None occurs in src/ before S8 builds it, so a classic page still draws none (2.4, 3.4,
+ * S.3, B.6, Q.4); P.8t is re-pinned to all eight parts in the open.
  */
-const JOURNEY_CLASS_PARTS = ["journey", "kp-jcard", "kp-jhome", "kp-jhowto", "kp-howto"];
+const JOURNEY_CLASS_PARTS = ["journey", "kp-jcard", "kp-jhome", "kp-jhowto", "kp-howto", "kp-bsheet", "kp-jbet", "kp-qghost"];
 const TRACE = {
   selector: ['[data-testid^="journey-"]', "[data-journey]", ...JOURNEY_CLASS_PARTS.map((p) => `[class*="${p}"]`)].join(","),
   parts: JOURNEY_CLASS_PARTS,
@@ -1068,6 +1178,10 @@ const SETTLE_LAZY = async ({ regions, ms }) => {
 const SNAPSHOT = ({ crest, props, animated, notFound, pageBody, sell, confirm, trace, book }) => {
   const r2 = (n) => Math.round(n * 2) / 2;
   const chart = book ? book.chart : null;
+  // S8 WP1 · a question cell's masks (QUESTION_MASKS), and the regions stubbed inside its <main> (`book.stubs`, for the
+  // region named `book.stubbed`): each stub is read as one element line, its box and style, and nothing inside it.
+  const masks = book?.masks ?? [];
+  const inside = (el) => masks.some((m) => m.inside && el.matches(m.selector));
   const sigOf = (el, moving) => {
     const cs = getComputedStyle(el);
     const parts = [];
@@ -1081,9 +1195,10 @@ const SNAPSHOT = ({ crest, props, animated, notFound, pageBody, sell, confirm, t
     if (moving) parts.push(`animation:${cs.animationName}`);
     return parts.join("\n");
   };
-  const region = (els) => {
+  const region = (els, stubs = null) => {
     const root = els[0];
     if (!root) return { count: 0, html: null, lines: null };
+    const stubOf = (el) => (stubs && el !== root ? Object.entries(stubs).find(([, s]) => el.matches(s))?.[0] ?? null : null);
     const box = root.getBoundingClientRect();
     const lines = [];
     const walk = (el, path) => {
@@ -1094,7 +1209,7 @@ const SNAPSHOT = ({ crest, props, animated, notFound, pageBody, sell, confirm, t
       // S7 WP1 · inside a chart's svg (chart-paths, when on) a shape's box is its data's.
       const geo = moving || (chart && !el.matches(chart) && el.closest(chart)) ? "~" : r.width === 0 && r.height === 0 ? "0x0" : `${r2(r.left - box.left)},${r2(r.top - box.top)},${r2(r.width)}x${r2(r.height)}`;
       lines.push([path, geo, sigOf(el, moving)]);
-      if (el.matches(crest)) return;
+      if (el.matches(crest) || stubOf(el) || inside(el)) return;
       let i = 0;
       for (const c of el.children) walk(c, `${path}>${c.tagName.toLowerCase()}${i++}`);
     };
@@ -1107,6 +1222,14 @@ const SNAPSHOT = ({ crest, props, animated, notFound, pageBody, sell, confirm, t
       s.replaceWith(stub);
     }
     if (chart) for (const s of clone.querySelectorAll(chart)) for (const d of s.querySelectorAll("*")) for (const a of book.chartAttrs) if (d.hasAttribute(a)) d.setAttribute(a, "~");
+    // S8 WP1 · a stubbed region stands in its place as <parity-region data-parity="<name>">; a mask writes its text, or
+    // (an `inside` mask) keeps the element and drops what is in it.
+    if (stubs) for (const [name, sel] of Object.entries(stubs)) for (const x of [...clone.querySelectorAll(sel)]) {
+      const stub = document.createElement("parity-region");
+      stub.setAttribute("data-parity", name);
+      x.replaceWith(stub);
+    }
+    for (const m of masks) for (const x of clone.querySelectorAll(m.selector)) { if (m.inside) x.replaceChildren(); else x.textContent = m.text; }
     return { count: els.length, html: clone.outerHTML, lines };
   };
   const overlays = () => {
@@ -1153,7 +1276,7 @@ const SNAPSHOT = ({ crest, props, animated, notFound, pageBody, sell, confirm, t
   return {
     url: location.pathname + location.search,
     regions: book
-      ? Object.fromEntries(Object.entries(book.regions).map(([name, selector]) => [name, region([...document.querySelectorAll(selector)])]))
+      ? Object.fromEntries(Object.entries(book.regions).map(([name, selector]) => [name, region([...document.querySelectorAll(selector)], name === book.stubbed ? book.stubs : null)]))
       : {
           header: region([...document.querySelectorAll("header.app-topbar")]),
           rail: region([...document.querySelectorAll("nav.kp-rail")]),
@@ -1175,8 +1298,12 @@ const SNAPSHOT = ({ crest, props, animated, notFound, pageBody, sell, confirm, t
       return `class:${[...e.classList].filter((c) => trace.parts.some((p) => c.includes(p))).join(".")}`;
     }).sort(),
     // S7 WP1 · a book cell's classic cards, each by its facts (cardStateOf reads them in Node).
+    // S8 WP1 · how many elements each question mask masked in the page's <main> (Q.6).
+    ...(masks.length ? { masked: Object.fromEntries(masks.map((m) => [m.id, [...document.querySelectorAll(m.selector)].filter((e) => !!e.closest("#main-content")).length])) } : {}),
     ...(book ? { cards: [...document.querySelectorAll(book.cards)].map((a) => ({
       id: a.getAttribute("data-row-id") ?? "",
+      // S8 WP1 · the card's title (its stretched link's name): seedQuestions picks a state's question by it.
+      title: a.querySelector(".mcardp-open")?.getAttribute("aria-label") ?? "",
       pct: a.querySelector(".mcardp-prob .mcardp-pct")?.getAttribute("class") ?? "",
       marks: book.marks.filter((m) => !!a.querySelector(`.${m}`)),
     })) } : {}),
@@ -1238,6 +1365,20 @@ function toBookCell(snap, extra) {
     };
   }
   return { ...extra, landed: snap.url, regions, journey: snap.journey, cards: (snap.cards ?? []).map((c) => ({ id: c.id, state: cardStateOf(c) })) };
+}
+/** S8 WP1 · a question cell's text: the book's (bookNorm), then the server-rendered times (eat-dates, always on here). */
+const questionNorm = (s) => EAT_DATES.apply(bookNorm(s));
+/** S8 WP1 · a question cell from its snapshot: each region as a book cell records one, under questionNorm, and the masks' counts. */
+function toQuestionCell(snap, extra) {
+  const regions = {};
+  for (const [name, r] of Object.entries(snap.regions)) {
+    regions[name] = r.count === 0 ? { count: 0, html: null, layout: null } : {
+      count: r.count,
+      html: put(questionNorm(r.html)),
+      layout: put(r.lines.map(([path, geo, sig]) => `${path} ${geo} ${put(questionNorm(sig))}`).join(NL)),
+    };
+  }
+  return { ...extra, landed: snap.url, regions, journey: snap.journey, masked: snap.masked ?? {} };
 }
 
 // ── the diff ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -1654,6 +1795,126 @@ function syntheticBook() {
   return { book, seed, store };
 }
 
+// ── S8 WP1 · the question phase: its verdict and §Q, as pure functions so --prove-red can break each one ─────────
+/**
+ * ⭐ THE QUESTIONS, JUDGED (seedQuestions' record), before any question cell is captured. `problems` refuse the phase (the
+ * baseline is INVALID). The open question is the Sell capture's held one and must be drawn priced (both pools) on the
+ * guest's /markets; the one-sided question is the first by title among the one-sided cards there, and the empty, settled
+ * and closed-by-time questions the first three by title among the empty ones (none of them the held one); selection
+ * closed is seed-watchlist's first forced progress row; the settled question's fast-forward and resolve-seed-markets
+ * (which must name it, complete) and the closed-by-time question's fast-forward must each answer 200 ok; and the held
+ * tickets' free windows must have closed before the first cell. A door that answered no ok is one problem, and nothing
+ * in its reply is read.
+ */
+function questionVerdict(seed) {
+  const problems = [];
+  if (!seed || seed.error) return { problems: [seed?.error ?? "the questions were not seeded"], ids: null };
+  const answered = (name, d) => {
+    if (!d) { problems.push(`${name} was not run`); return null; }
+    if (d.status !== 200 || d.reply?.ok !== true) { problems.push(`${name} answered ${d.status}${d.reply ? `: ${JSON.stringify(d.reply).slice(0, 160)}` : ""}`); return null; }
+    return d.reply;
+  };
+  const board = Array.isArray(seed.board) ? seed.board : null;
+  if (!board) problems.push(`the guest's /markets was not read${seed.boardError ? ` (${seed.boardError})` : ""}`);
+  const ids = seed.ids ?? {};
+  for (const name of ["open", "one-sided", "empty", "selection-closed", "time-closed", "settled"]) {
+    if (typeof ids[name] !== "string" || !ids[name]) problems.push(`no ${name} question was found`);
+  }
+  if (board && ids.open) {
+    const card = board.find((c) => c.id === ids.open);
+    if (!card) problems.push("the held question's card is not on the guest's /markets");
+    else if (card.state !== "priced") problems.push(`the held question's card is drawn ${CARD_LABELS[card.state] ?? card.state}, not live priced (both pools)`);
+  }
+  if (Object.values(ids).filter(Boolean).length !== new Set(Object.values(ids).filter(Boolean)).size) problems.push(`two states name one question: ${JSON.stringify(ids)}`);
+  const settledFf = answered("fast-forward-market (the settled question, a day back)", seed.settledForward);
+  // resolve-seed-markets runs only after the settled question's fast-forward answered (seedQuestions), so it is judged only then.
+  const resolved = settledFf ? answered("resolve-seed-markets { markets: 1, stage: complete, settle: true }", seed.resolved) : null;
+  if (settledFf && resolved) {
+    const first = resolved.markets?.[0];
+    if (resolved.resolved !== 1 || first?.id !== ids.settled || first?.state !== "complete") problems.push(`resolve-seed-markets took ${first?.id ?? "nothing"} (${first?.state ?? "no state"}), not the settled question ${ids.settled}, complete`);
+  }
+  answered("fast-forward-market (the closed-by-time question, an hour back)", seed.timeForward);
+  if (!seed.freeWait?.closed) problems.push(`the held tickets' free windows were still open ${secs(seed.freeWait?.ms ?? 0)} after the phase began${seed.freeWait?.error ? ` (${seed.freeWait.error})` : ""}`);
+  return { problems, ids };
+}
+
+/** §Q — the question phase is what it claims (S8 WP1). Each check returns the cells (or facts) that fail it. */
+function questionChecks(question, seed, store) {
+  const all = Object.entries(question ?? {});
+  const live = all.filter(([, c]) => !c.error);
+  const keys = questionCellKeys();
+  const size = keys.length;
+  const stateOf = new Map(keys.map(([k, , , , s]) => [k, s]));
+  const viewerOf = new Map(keys.map(([k, v]) => [k, v]));
+  const bad = (pred) => live.filter(([k, c]) => pred(stateOf.get(k) ?? null, c, viewerOf.get(k) ?? null)).map(([k]) => k);
+  const html = (c, region) => (c.regions?.[region]?.html ? store[c.regions[region].html] ?? "" : "");
+  const verdict = questionVerdict(seed);
+  const masked = new Map(QUESTION_MASKS.map((m) => [m.id, 0]));
+  for (const [, c] of live) for (const [id, n] of Object.entries(c.masked ?? {})) masked.set(id, (masked.get(id) ?? 0) + n);
+  return [
+    { id: "Q.0", name: `the questions were found and made through dev-test doors that already exist — the guest's /markets by card state, fast-forward-market, resolve-seed-markets, the cooling-off through its real form — and every question cell was captured (${size})`,
+      fails: [...verdict.problems, ...(seed?.breakTaken === false ? [`the cooling-off: ${seed.breakError ?? "not taken"}`] : []),
+        ...(all.length === size && keys.every(([k]) => k in (question ?? {})) ? [] : [`the question phase holds ${all.length} cells`]),
+        ...all.filter(([, c]) => c.error).map(([k, c]) => `${k} (${c.error})`)] },
+    { id: "Q.1", name: "every question cell settled, answered 200 and stayed where it was sent: the player and the reader on a break are signed in",
+      fails: bad((s, c) => !c.stable || c.status !== 200 || c.landed !== s?.route) },
+    { id: "Q.2", name: "every question cell captured its <main>, its bet panel and — for a signed-in reader, never for a guest — its holder section, each once",
+      fails: bad((s, c, v) => c.regions?.main?.count !== 1 || c.regions?.panel?.count !== 1 || c.regions?.holder?.count !== (v === "guest" ? 0 : 1)) },
+    { id: "Q.3", name: "no holder section draws a free-window strip: the held tickets' free windows were waited out first",
+      fails: bad((s, c) => html(c, "holder").includes('<div class="mb-1.5 ')) },
+    { id: "Q.4", name: "no journey test id, flag or class (S8's kp-bsheet, kp-jbet and kp-qghost included) in a question cell, in the page or in the bytes the server sent (data-sheet included)",
+      fails: bad((s, c) => (c.journey ?? []).length > 0 || !c.raw || !c.raw.shell || c.raw.trace.length > 0) },
+    { id: "Q.5", name: "each state is the one it names: the break's panel holds the break notice and no other cell's does; the holder's ?side cells hold ticket rows and the hedge warning; the guest's open and one-sided panels offer sign-up",
+      fails: bad((s, c, v) => {
+        const panel = html(c, "panel");
+        const isBreak = v === "break";
+        if (panel.includes('data-testid="market-bet-break"') !== isBreak) return true;
+        if ((s?.id === "open-yes" || s?.id === "open-no") && (!html(c, "holder").includes("ticket-target") || !panel.includes("border-warning-border"))) return true;
+        if (v === "guest" && (s?.id === "open" || s?.id === "one-sided") && !panel.includes("/auth/register?next=")) return true;
+        return false;
+      }) },
+    { id: "Q.6", name: `every mask the classic question page draws masked something (${QUESTION_MASKS.filter((m) => m.seen).map((m) => m.id).join(", ")}); the others are counted, never failed (${QUESTION_MASKS.filter((m) => !m.seen).map((m) => m.id).join(", ")})`,
+      fails: live.length ? QUESTION_MASKS.filter((m) => m.seen && !(masked.get(m.id) > 0)).map((m) => `${m.id} masked nothing in ${live.length} cell(s)`) : [] },
+    { id: "Q.7", name: "only React's DEV performance-track sentence is ever filed as DEV-only in a question cell — every other page error is compared",
+      fails: live.filter(([, c]) => (c.devOnly ?? []).some((x) => !isDevMeasure(x))).map(([k, c]) => `${k} (filed DEV-only: ${c.devOnly.find((x) => !isDevMeasure(x))})`) },
+  ];
+}
+
+/** A question phase with every §Q check met, built in memory: what --prove-red breaks one check at a time. */
+function syntheticQuestion() {
+  const ids = { open: "mkt_qopen0000000000000", "one-sided": "mkt_qone00000000000000", empty: "mkt_qempty000000000000", "selection-closed": "mkt_qclosed00000000000", "time-closed": "mkt_qtime0000000000000", settled: "mkt_qsettled0000000000" };
+  const store = {
+    main: '<main id="main-content"><parity-region data-parity="panel"></parity-region><parity-region data-parity="holder"></parity-region></main>',
+    guestPanel: '<aside aria-labelledby="bet-panel-heading"><a href="/auth/register?next=%2Fmarkets%2Fmkt_~">Sign up</a></aside>',
+    panel: '<aside aria-labelledby="bet-panel-heading"><h2 id="bet-panel-heading">Place your stake</h2></aside>',
+    hedgePanel: '<aside aria-labelledby="bet-panel-heading"><div class="rounded-lg border border-warning-border bg-warning-bg"></div></aside>',
+    breakPanel: '<aside aria-labelledby="bet-panel-heading"><div data-testid="market-bet-break"></div></aside>',
+    holder: '<section class="rounded-xl border border-border bg-bg-elevated"><div class="ticket-target"><button>Sell now</button></div></section>',
+  };
+  const region = (html) => ({ count: 1, html, layout: null });
+  const none = () => ({ count: 0, html: null, layout: null });
+  const question = {};
+  for (const [k, v, , , s] of questionCellKeys()) {
+    const panel = v === "break" ? "breakPanel" : v === "guest" ? (s.id === "open" || s.id === "one-sided" ? "guestPanel" : "panel") : (s.id === "open-yes" || s.id === "open-no" ? "hedgePanel" : "panel");
+    question[k] = {
+      status: 200, stable: true, landed: s.route, pageErrors: [], devOnly: [], journey: [], raw: { shell: true, trace: [] },
+      regions: { main: region("main"), panel: region(panel), holder: v === "guest" ? none() : region("holder") },
+      masked: { "timer-text": 0, "countdown-clock": 8, "sell-countdown": 0, "chart-time-axis": 1 },
+    };
+  }
+  const ok200 = (reply) => ({ status: 200, reply: { ok: true, ...reply } });
+  const seed = {
+    ids,
+    board: [{ id: ids.open, state: "priced" }, { id: ids["one-sided"], state: "one-sided" }, { id: ids.empty, state: "empty" }, { id: ids.settled, state: "empty" }, { id: ids["time-closed"], state: "empty" }],
+    settledForward: ok200({ marketId: ids.settled }),
+    resolved: ok200({ resolved: 1, markets: [{ id: ids.settled, state: "complete" }] }),
+    timeForward: ok200({ marketId: ids["time-closed"] }),
+    freeWait: { closed: true, ms: 1000 },
+    breakTaken: true,
+  };
+  return { question, seed, store };
+}
+
 // ── the run ───────────────────────────────────────────────────────────────────────────────────────────────
 const results = [];
 const ok = (name, pass, detail = "") => { results.push(!!pass); console.log(`  ${pass ? "PASS" : "FAIL"} ${name}${detail ? ` — ${detail}` : ""}`); };
@@ -1688,10 +1949,10 @@ if (COMPARE) {
   // step 4: a baseline is only comparable under the set it was captured with); then the way the book was read
   // (calibration 2, BOOK_SETTLE); then the way every page was read (calibration 3, SETTLE); then the rest of the matrix.
   const notThis = () => `${COMPARE} is not a v${VERSION} ${KIND} capture of this matrix (kind=${baseline?.kind}, version=${baseline?.version}, captured at ${short(baseline?.base?.sha) || "an unnamed commit"}).`;
-  const where = `Capture a v${VERSION} baseline into a NEW file at the base VODACOM-PLAN names for it (v3: §0j, S7-PLAN WP1 step 6; v2: §0i, S6 A8 and A18).`;
+  const where = `Capture a v${VERSION} baseline into a NEW file at the base VODACOM-PLAN names for it (v4: §0k, S8-PLAN WP1 step 6; v3: §0j, S7-PLAN WP1 step 6; v2: §0i, S6 A8 and A18).`;
   if (baseline?.kind !== KIND || baseline.version !== VERSION) {
     const why = baseline?.kind === KIND && typeof baseline.version === "number"
-      ? ` A v${baseline.version} capture holds none of the book's cells or fields (VERSION ${VERSION} adds the book: S7 WP1, A8), so it cannot be compared with a v${VERSION} run.` : "";
+      ? ` A v${baseline.version} capture holds none of the ${baseline.version < 3 ? "book's or the question page's" : "question page's"} cells or fields (VERSION 3 added the book: S7 WP1, A8; VERSION 4 the question page: S8 WP1), so it cannot be compared with a v${VERSION} run.` : "";
     refuse(`${notThis()}${why} ${where}`);
   }
   const theirs = Array.isArray(baseline.matrix?.book?.normalise) ? baseline.matrix.book.normalise : null;
@@ -2220,6 +2481,227 @@ async function captureBook(still) {
   }
 }
 
+/** S8 WP1 · what SNAPSHOT is asked for a question cell: <main> with the bet panel and the holder section stubbed in it, each
+ *  of the two its own region; the masks; the similar rail's cards; chart-paths and tied-cards exactly as for a book cell. */
+const questionArgsOf = () => {
+  const { book } = bookArgsOf(BOOK.similar);
+  return {
+    crest: CREST, props: PROPS, animated: ANIMATED, notFound: false, pageBody: false, trace: TRACE,
+    book: {
+      ...book,
+      regions: { main: "#main-content", panel: `#main-content ${QUESTION_PANEL}`, holder: `#main-content ${QUESTION_HOLDER}` },
+      stubbed: "main",
+      stubs: { panel: QUESTION_PANEL, holder: QUESTION_HOLDER },
+      masks: QUESTION_MASKS.map(({ id, selector, text, inside }) => ({ id, selector, text: text ?? null, inside: !!inside })),
+    },
+  };
+};
+
+/**
+ * ⭐ S8 WP1 · one question cell, in a FRESH context, read as a book cell is (open() and the Needle at rest; the lazy images
+ * settled; tied-cards before every snapshot while it is on), its regions <main>, the bet panel and the holder section.
+ * --prove-red plants through `plant` exactly as captureBookCell's: `css` and `js` in the page, `bytes` on the bytes the
+ * harness reads. The cell's landing is written back with the state's placeholder.
+ */
+async function captureQuestionCell(jar, locale, width, state, ids, plant = null) {
+  const ctx = await b.newContext({ viewport: { width, height: HEIGHT } });
+  const pageErrors = [], devOnly = [];
+  try {
+    await ctx.addCookies([...jar, localeCookie(locale)]);
+    const page = await ctx.newPage();
+    page.on("pageerror", fileError(pageErrors, devOnly));
+    const { status, body: sent, needle } = await open(page, routeOfQuestion(state.route, ids), plant);
+    const body = plant?.bytes && typeof sent === "string" ? plant.bytes(sent) : sent;
+    const args = questionArgsOf();
+    const regions = Object.values(args.book.regions);
+    let lazy = null;
+    const settled = await page.evaluate(SETTLE_LAZY, { regions, ms: LAZY_SETTLE_MS });
+    if (settled.unloaded.length) lazy = `${settled.unloaded.length} of its ${settled.lazy} lazy image(s) had not loaded ${secs(LAZY_SETTLE_MS)} into the settle, so their boxes are read as the browser left them: ${settled.unloaded.join(", ")}`;
+    const untie = args.book.tied ? { ...args.book.tied, regions } : null;
+    const read = async () => {
+      if (untie) await page.evaluate(UNTIE_CARDS, untie);
+      return page.evaluate(SNAPSHOT, args);
+    };
+    const seen = (s) => JSON.stringify([s.url, s.regions, s.journey, s.masked]);
+    let snap = await read();
+    let stable = false;
+    for (let i = 0; i < 6 && !stable; i++) {
+      await page.waitForTimeout(700);
+      const next = await read();
+      stable = seen(next) === seen(snap);
+      snap = next;
+    }
+    const cell = toQuestionCell(snap, { status, stable, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort(), ...notesOf([needle, lazy]) });
+    for (const [name, id] of Object.entries(ids ?? {})) if (id) cell.landed = cell.landed.split(id).join(`:${name}`);
+    return cell;
+  } catch (e) {
+    return { error: msg(e) };
+  } finally {
+    await ctx.close().catch(() => {});
+  }
+}
+
+/** S8 WP1 · the cards the guest's /markets draws (en, 1280), each by its id, title and state; null when it was not read. */
+async function boardCardsOf() {
+  const ctx = await b.newContext({ viewport: { width: 1280, height: HEIGHT } });
+  try {
+    await ctx.addCookies([localeCookie("en")]);
+    const page = await ctx.newPage();
+    await open(page, "/markets", null);
+    const snap = await page.evaluate(SNAPSHOT, bookArgsOf("/markets"));
+    return { board: (snap.cards ?? []).map((c) => ({ id: c.id, title: c.title, state: cardStateOf(c) })) };
+  } catch (e) {
+    return { board: null, boardError: msg(e) };
+  } finally {
+    await ctx.close().catch(() => {});
+  }
+}
+
+/** S8 WP1 · how long the phase waits, at most, for the held tickets' free windows to close (a default poll's is 5:00). */
+const FREE_WAIT_MS = 8 * 60_000;
+/**
+ * S8 WP1 · the held question read as the player (en, 1280) every 10 s until its holder section draws no free-window strip,
+ * FREE_WAIT_MS at most: every Sell capture and book ticket on it was placed minutes before, and a window that closed during
+ * the phase would make two runs disagree. Never a hang: what it saw is returned, and Q.0 fails a wait that ran out.
+ */
+async function waitFreeWindows(jar, held) {
+  const t = Date.now();
+  const ctx = await b.newContext({ viewport: { width: 1280, height: HEIGHT } });
+  try {
+    await ctx.addCookies([...jar, localeCookie("en")]);
+    const page = await ctx.newPage();
+    for (;;) {
+      await page.goto(`${BASE}/markets/${held}`, { waitUntil: "load", timeout: 180_000 });
+      await page.locator("main").first().waitFor({ timeout: 120_000 });
+      const rows = await page.locator(`#main-content ${QUESTION_HOLDER} .ticket-target`).count();
+      const strips = await page.locator(`#main-content ${QUESTION_HOLDER} .ticket-target > div[class~="mb-1.5"]`).count();
+      if (rows > 0 && strips === 0) return { closed: true, ms: Date.now() - t, rows };
+      if (Date.now() - t > FREE_WAIT_MS) return { closed: false, ms: Date.now() - t, rows, strips };
+      await page.waitForTimeout(10_000);
+    }
+  } catch (e) {
+    return { closed: false, ms: Date.now() - t, error: msg(e) };
+  } finally {
+    await ctx.close().catch(() => {});
+  }
+}
+
+/**
+ * ⭐ S8 WP1 · THE QUESTIONS, FOUND AND MADE THROUGH DEV-TEST DOORS THAT ALREADY EXIST (WP1 step 2; test:cert-devroutes),
+ * after the book: the open question is the Sell capture's held one (`held`); the guest's /markets names the one-sided
+ * question and three empty ones by card state, each state's cards in their titles' order (the board's own order ties on
+ * minted ids); selection closed is seed-watchlist's first forced progress row (`progress`); the second empty question is
+ * pulled a day into the past (fast-forward-market) so resolve-seed-markets { markets: 1 } takes it first (live[0] by
+ * resolutionAt) and settles it; the third is pulled an hour into the past, closed by time — after the settle, so the door
+ * cannot take it. Then the held tickets' free windows are waited out. ⛔ No new dev-test route and no admin console.
+ */
+async function seedQuestions(jar, held, progress) {
+  const seed = { held, progress };
+  const ctx = await b.newContext();
+  try {
+    await ctx.addCookies(jar);
+    const post = async (door, data) => {
+      const res = await ctx.request.post(`${BASE}/api/dev-test/${door}`, { data, timeout: 300_000 });
+      return { status: res.status(), reply: await res.json().catch(() => null) };
+    };
+    Object.assign(seed, await boardCardsOf());
+    const byTitle = (state) => (seed.board ?? []).filter((c) => c.state === state && c.id !== held)
+      .sort((x, y) => (x.title < y.title ? -1 : x.title > y.title ? 1 : 0)).map((c) => c.id);
+    const empties = byTitle("empty");
+    seed.ids = { open: held ?? null, "one-sided": byTitle("one-sided")[0] ?? null, empty: empties[0] ?? null, "selection-closed": progress ?? null, "time-closed": empties[2] ?? null, settled: empties[1] ?? null };
+    if (seed.ids.settled) {
+      seed.settledForward = await post("fast-forward-market", { marketId: seed.ids.settled, seconds: -86_400 });
+      if (seed.settledForward.status === 200 && seed.settledForward.reply?.ok) seed.resolved = await post("resolve-seed-markets", { markets: 1, stage: "complete", settle: true });
+    }
+    if (seed.ids["time-closed"]) seed.timeForward = await post("fast-forward-market", { marketId: seed.ids["time-closed"], seconds: -3_600 });
+  } catch (e) {
+    seed.error = msg(e);
+  } finally {
+    await ctx.close().catch(() => {});
+  }
+  seed.freeWait = held ? await waitFreeWindows(jar, held) : { closed: false, ms: 0, error: "no held question" };
+  return seed;
+}
+
+/**
+ * ⭐ S8 WP1 · A READER ON A BREAK (WP1 step 2): the demo player, signed in afresh, takes a cooling-off through
+ * /profile/responsible-gambling's real form — its "take a break" button, then the confirm it opens (the period the form
+ * holds by default) — which ends the session (coolOffAction) and lands on /auth/login?cooled=1; then signs in again
+ * through its door, and that session is the break's. Taken LAST: the account stays on a break. Returns the jar, or why not.
+ */
+async function takeBreak() {
+  const player = VIEWERS.find((v) => v.id === "player");
+  const first = await signIn(player);
+  if (!first.length) return { jar: [], error: "the demo player could not be signed in to take the break" };
+  const ctx = await b.newContext({ viewport: { width: 1280, height: HEIGHT } });
+  try {
+    await ctx.addCookies([...first, localeCookie("en")]);
+    const page = await ctx.newPage();
+    await page.goto(`${BASE}/profile/responsible-gambling`, { waitUntil: "load", timeout: 180_000 });
+    await page.locator("main").first().waitFor({ timeout: 120_000 });
+    await hydrated(page);
+    const form = page.locator('#main-content form:has([name="period"])').first();
+    const trigger = form.locator('button[type="button"]').first();
+    const label = (await trigger.innerText()).trim();
+    await trigger.click();
+    const dialog = page.locator('[role="dialog"][aria-modal="true"]').last();
+    await dialog.waitFor({ timeout: 10_000 });
+    await page.waitForTimeout(600);   // the dialog's 400 ms arming beat (key-guard.tsx) and its focus
+    await dialog.getByRole("button", { name: label, exact: true }).click();
+    await page.waitForURL(/\/auth\/login\?cooled=1/, { timeout: 60_000 });
+  } catch (e) {
+    return { jar: [], error: `the cooling-off form: ${msg(e)}` };
+  } finally {
+    await ctx.close().catch(() => {});
+  }
+  const jar = await signIn(player);
+  return jar.length ? { jar } : { jar: [], error: "the demo player could not be signed in again after the break" };
+}
+
+/**
+ * ⭐ S8 WP1 · THE QUESTION PHASE: after the book, the questions are found and made (seedQuestions) and judged
+ * (questionVerdict); a refused phase captures nothing, every cell says why, and Q.0 fails, so the baseline is INVALID.
+ * Then the guest's cells, the player's, and last the break's (takeBreak).
+ */
+async function captureQuestions(still) {
+  console.log(`${NL}§1q · the question page's classic body (S8 WP1): ${QUESTION.states.map((s) => s.id).join(" · ")} at ${QUESTION.widths.join("/")} × ${QUESTION.locales.join("/")} for ${QUESTION.viewers.join(", ")} — <main>, the bet panel and the holder section`);
+  const keys = questionCellKeys();
+  const skip = (why) => {
+    for (const [k] of keys) if (!questionCells[k]) questionCells[k] = { error: `not captured: ${why}` };
+    console.log(`  ✗ not captured: ${why}`);
+  };
+  const player = VIEWERS.find((v) => v.id === "player");
+  const jar = await signIn(player);
+  if (!jar.length) { questionSeed = { error: "the demo player could not be signed in" }; return skip(questionSeed.error); }
+  questionSeed = await seedQuestions(jar, sellSeed?.held ?? null, bookSeed?.watchlist?.reply?.forcedProgress?.[0] ?? null);
+  const verdict = questionVerdict(questionSeed);
+  console.log(`  the questions: ${JSON.stringify(questionSeed.ids ?? null)} · the free windows ${questionSeed.freeWait?.closed ? `closed after ${secs(questionSeed.freeWait.ms)}` : "NOT closed"} · ${verdict.problems.length ? `REFUSED: ${verdict.problems.join(" · ")}` : "accepted"}`);
+  if (verdict.problems.length) return skip(`the questions were refused (${verdict.problems.join(" · ")})`);
+  const ids = questionSeed.ids;
+  const run = async (v, vjar) => {
+    await warm(vjar, [...new Set(QUESTION.states.filter((s) => s.viewers.includes(v)).map((s) => routeOfQuestion(s.route, ids)))]);
+    for (const l of QUESTION.locales) {
+      const t = Date.now();
+      let n = 0;
+      for (const [k, kv, kl, w, s] of keys) {
+        if (kv !== v || kl !== l) continue;
+        questionCells[k] = await captureQuestionCell(vjar, l, w, s, ids);
+        n++;
+        if (questionCells[k].error) console.log(`  ✗ ${k} — ${questionCells[k].error}`);
+        sayNotes(k, questionCells[k]);
+      }
+      console.log(`  question-${v} · ${l} · ${n} cells · ${secs(Date.now() - t)}`);
+      still(`by the end of question-${v} · ${l}`);
+    }
+  };
+  await run("guest", []);
+  await run("player", jar);
+  const brk = await takeBreak();
+  questionSeed.breakTaken = !brk.error;
+  if (brk.error) { questionSeed.breakError = brk.error; return skip(brk.error); }
+  await run("break", brk.jar);
+}
+
 /** Report only (WP0 step 4): how far the classic signed-in header runs past a 320 viewport. Not S6's to fix. */
 async function header320(jar) {
   const out = {};
@@ -2257,6 +2739,9 @@ let sellSeed = null;
 /** S7 WP1 · the book's cells (keyed `book-<viewer>|locale|width|route`), and its seed: the three replies, the probe, the strip's wait. */
 const bookCells = {};
 let bookSeed = null;
+/** S8 WP1 · the question phase's cells (keyed `question-<viewer>|locale|width|route`), and its seed: the questions and the doors' replies. */
+const questionCells = {};
+let questionSeed = null;
 let report320 = null;
 let treeMoved = null;
 try {
@@ -2293,8 +2778,10 @@ async function captureMatrix() {
   }
   // WP10 · the Sell capture comes after the matrix: it gives the demo player a portfolio, and every cell above read it empty.
   await captureSell();
-  // S7 WP1 · and the book comes last (A8): it seeds through the same player, after the Sell capture's { markets: 5 }.
+  // S7 WP1 · then the book (A8): it seeds through the same player, after the Sell capture's { markets: 5 }.
   await captureBook(still);
+  // S8 WP1 · and the question page last: it reads the book's world, and its reader on a break ends the session for good.
+  await captureQuestions(still);
   still("by the end of the capture");
 }
 
@@ -2941,9 +3428,12 @@ async function proveRed() {
       probeRuns.length === 0 && misread.length === 0, JSON.stringify({ probeRuns, misread }).slice(0, 400));
   }
   // ②g S7 WP1 · A8 item 3: the live trace's selector asks for S7's class names beside S6's journey, and its class report
-  // names them; neither the selector nor the report takes a class a classic page draws.
+  // names them; neither the selector nor the report takes a class a classic page draws. S8 WP1 (step 4) re-pins it in the
+  // open: S8's bet sheet (kp-bsheet), big buttons (kp-jbet) and question ghost (kp-qghost) too, and the parts are exactly
+  // the eight.
   {
-    const S7_CLASSES = ["kp-jcard", "kp-jcard__price", "kp-jhome", "kp-jhome__lead", "kp-jhowto", "kp-jhowto__step", "kp-howto", "kp-howto__sheet", "journey-tabs"];
+    const S7_CLASSES = ["kp-jcard", "kp-jcard__price", "kp-jhome", "kp-jhome__lead", "kp-jhowto", "kp-jhowto__step", "kp-howto", "kp-howto__sheet", "journey-tabs",
+      "kp-bsheet", "kp-bsheet__cta", "kp-bsheet--placing", "kp-jbet", "kp-jbet__yes", "kp-qghost", "kp-qghost__panel"];
     const CLASSIC = ["mcardp", "mcardp-pct", "mcardp-pct--no", "mcardp-oneside", "mcardp-src__seq", "market-grid", "ticker-strip", "ticker-item", "kp-rail",
       "app-topbar", "kp-sell-stack", "kp-sell-wrap", "kp-seq", "kp-modal-title", "kp-proof__cap", "kp-udtrack__svg", "crest-holder", "btn-gold"];
     const selectorParts = [...TRACE.selector.matchAll(/\[class\*="([^"]+)"\]/g)].map((m) => m[1]);
@@ -2951,9 +3441,28 @@ async function proveRed() {
     const reported = (c) => TRACE.parts.some((p) => c.includes(p));
     const missed = S7_CLASSES.filter((c) => !selected(c) || !reported(c));
     const caught = CLASSIC.filter((c) => selected(c) || reported(c));
-    ok("P.8t the live trace asks for S7's class names (kp-jcard, kp-jhome, kp-jhowto, kp-howto) beside S6's journey, and its class report names them — and no classic class",
-      TRACE.selector.split(",").includes('[data-testid^="journey-"]') && TRACE.selector.split(",").includes("[data-journey]") && missed.length === 0 && caught.length === 0,
+    const EIGHT = ["journey", "kp-jcard", "kp-jhome", "kp-jhowto", "kp-howto", "kp-bsheet", "kp-jbet", "kp-qghost"];
+    ok("P.8t the live trace asks for S7's class names (kp-jcard, kp-jhome, kp-jhowto, kp-howto) and S8's (kp-bsheet, kp-jbet, kp-qghost) beside S6's journey — exactly those eight parts — and its class report names them, and no classic class",
+      TRACE.selector.split(",").includes('[data-testid^="journey-"]') && TRACE.selector.split(",").includes("[data-journey]") && missed.length === 0 && caught.length === 0
+        && JSON.stringify(TRACE.parts) === JSON.stringify(EIGHT) && selectorParts.join() === EIGHT.join(),
       JSON.stringify({ selector: TRACE.selector, missed, caught }).slice(0, 400));
+  }
+  // ②g2 S8 WP1 · the raw trace (RAW_TRACE, rawOf) on synthetic bytes: data-sheet on an element, in HTML and in the RSC
+  // payload's escaped JSON, is reported as "data-sheet"; the classic filter sheet's data-sheet-open, a data-sheets or a
+  // class named data-sheet-x are not (A22 item 6); S6's journey test id and flag are still read as before.
+  {
+    const shell = '<header class="app-topbar"></header>';
+    const RAW = [
+      ["an article with data-sheet", `${shell}<article data-sheet="" class="mcardp"></article>`, ["data-sheet"]],
+      ["data-sheet with a value", `${shell}<a data-sheet="mkt_x:YES" href="/markets/mkt_x?side=YES"></a>`, ["data-sheet"]],
+      ["data-sheet in the RSC payload's JSON", `${shell}<script>self.__next_f.push([1,"[\\"$\\",\\"a\\",null,{\\"data-sheet\\":\\"mkt_x\\"}]"])</script>`, ["data-sheet"]],
+      ["the classic filter sheet's data-sheet-open", `${shell}<html data-sheet-open=""><style>[data-sheet-open] body{overflow:hidden}</style>`, []],
+      ["data-sheets and data-sheet-x", `${shell}<div data-sheets="" class="data-sheet-x"></div>`, []],
+      ["S6's test id and flag beside it", `${shell}<html data-journey=""><div data-testid="journey-tabs" data-sheet=""></div>`, ["data-journey", "data-sheet", "testid:journey-tabs"]],
+    ];
+    const misread = RAW.filter(([, body, want]) => JSON.stringify(rawOf(body)?.trace) !== JSON.stringify(want)).map(([what, body]) => `${what}: ${JSON.stringify(rawOf(body)?.trace)}`);
+    ok("P.8w the raw trace reads S8's data-sheet — on an element, with a value, in the RSC payload's JSON — and not the classic filter sheet's data-sheet-open, data-sheets or a class named data-sheet-x; S6's test id and flag are read as before",
+      misread.length === 0, JSON.stringify(misread).slice(0, 400));
   }
   // ②h S7 WP1 · the book's checks (§B): a clean synthetic book passes them all, and each plant turns exactly its own one red.
   const SB = syntheticBook();
@@ -2988,6 +3497,93 @@ async function proveRed() {
     plant(m);
     const got = bookRed(m);
     ok(`P.check ${id} — ${what} turns ${id} red, and nothing else in §B`, got.join() === id, got.join(" ") || "nothing went red");
+  }
+
+  // ②i S8 WP1 · the question phase's checks (§Q): a clean synthetic phase passes them all, and each plant turns exactly its
+  // own one red; and its verdict refuses each defect alone.
+  const SQ = syntheticQuestion();
+  const questionRed = (m) => questionChecks(m.question, m.seed, m.store).filter((x) => x.fails.length).map((x) => x.id);
+  ok("P.7q a clean synthetic question phase passes every check in §Q", questionRed(SQ).length === 0, JSON.stringify(questionRed(SQ)));
+  const atQ = (m, v, l, w, route) => m.question[keyOf(`question-${v}`, l, w, route)];
+  const QUESTION_FLOOR_PLANTS = [
+    ["Q.0", "a resolve-seed-markets that took another question", (m) => { m.seed.resolved.reply.markets[0].id = "mkt_qother000000000000"; }],
+    ["Q.0", "a held question drawn one-sided", (m) => { m.seed.board[0].state = "one-sided"; }],
+    ["Q.0", "free windows still open when the phase began", (m) => { m.seed.freeWait = { closed: false, ms: FREE_WAIT_MS }; }],
+    ["Q.0", "a cooling-off that was not taken", (m) => { m.seed.breakTaken = false; m.seed.breakError = "planted"; }],
+    ["Q.0", "a question cell missing from the capture", (m) => { delete m.question[keyOf("question-player", "sw", 360, "/markets/:open?side=NO")]; }],
+    ["Q.1", "a question cell that never settled", (m) => { atQ(m, "guest", "en", 360, "/markets/:settled").stable = false; }],
+    ["Q.1", "the holder's ?side=NO page that landed without its side", (m) => { atQ(m, "player", "en", 1280, "/markets/:open?side=NO").landed = "/markets/:open"; }],
+    ["Q.2", "a cell without its bet panel", (m) => { atQ(m, "player", "sw", 1280, "/markets/:empty").regions.panel = { count: 0, html: null, layout: null }; }],
+    ["Q.2", "a guest cell with a holder section", (m) => { atQ(m, "guest", "sw", 360, "/markets/:open").regions.holder = { count: 1, html: "holder", layout: null }; }],
+    ["Q.3", "a holder section with a free-window strip", (m) => { m.store.stripHolder = '<section class="bg-bg-elevated"><div class="ticket-target"><div class="mb-1.5 flex"></div><button>Sell</button></div></section>'; atQ(m, "player", "en", 360, "/markets/:open?side=YES").regions.holder.html = "stripHolder"; }],
+    ["Q.4", "a kp-jbet element in a classic question page", (m) => { atQ(m, "player", "en", 1280, "/markets/:open").journey = ["class:kp-jbet"]; }],
+    ["Q.4", "data-sheet in a classic question page's raw bytes", (m) => { atQ(m, "guest", "en", 1280, "/markets/:open").raw.trace = ["data-sheet"]; }],
+    ["Q.5", "a break cell without the break notice", (m) => { atQ(m, "break", "sw", 360, "/markets/:empty").regions.panel.html = "panel"; }],
+    ["Q.5", "the break notice on a cell that is not on a break", (m) => { atQ(m, "player", "en", 360, "/markets/:empty").regions.panel.html = "breakPanel"; }],
+    ["Q.5", "the holder's ?side=NO without the hedge warning", (m) => { atQ(m, "player", "sw", 1280, "/markets/:open?side=NO").regions.panel.html = "panel"; }],
+    ["Q.5", "the guest's open question without sign-up", (m) => { atQ(m, "guest", "en", 1280, "/markets/:open").regions.panel.html = "panel"; }],
+    ["Q.6", "the countdown mask masking nothing anywhere", (m) => { for (const c of Object.values(m.question)) c.masked["countdown-clock"] = 0; }],
+    ["Q.7", "a real page error filed as DEV-only", (m) => { atQ(m, "player", "sw", 360, "/markets/:settled").devOnly = ["TypeError: Cannot read properties of undefined (reading 'yesPool')"]; }],
+  ];
+  for (const [id, what, plant] of QUESTION_FLOOR_PLANTS) {
+    const m = structuredClone(SQ);
+    plant(m);
+    const got = questionRed(m);
+    ok(`P.check ${id} — ${what} turns ${id} red, and nothing else in §Q`, got.join() === id, got.join(" ") || "nothing went red");
+  }
+  // ②j S8 WP1 · the question verdict: the synthetic seed passes, and each defect alone is one problem.
+  {
+    const good = SQ.seed;
+    const verdictOf = (mutate) => { const x = structuredClone(good); mutate?.(x); return questionVerdict(x); };
+    const DEFECTS = [
+      ["no one-sided question", (x) => { x.ids["one-sided"] = null; }],
+      ["two states naming one question", (x) => { x.ids.empty = x.ids.settled; x.resolved.reply.markets[0].id = x.ids.settled; }],
+      ["the guest's /markets unread", (x) => { x.board = null; }],
+      ["the held question missing from /markets", (x) => { x.board = x.board.slice(1); }],
+      ["the settled question's fast-forward answering 404", (x) => { x.settledForward.status = 404; delete x.resolved; }],
+      ["resolve-seed-markets not complete", (x) => { x.resolved.reply.markets[0].state = "stage1"; }],
+      ["the closed-by-time fast-forward not ok", (x) => { x.timeForward.reply.ok = false; }],
+      ["the free windows still open", (x) => { x.freeWait.closed = false; }],
+    ];
+    const g = verdictOf(null);
+    const bad = DEFECTS.filter(([, mutate]) => verdictOf(mutate).problems.length !== 1).map(([what, mutate]) => `${what}: ${JSON.stringify(verdictOf(mutate).problems)}`);
+    ok("P.8v the question verdict passes a seed whose questions and doors hold what WP1 step 2 asks, and refuses each defect alone — no one-sided question, two states on one question, /markets unread, the held question missing, a door's 404, a settle not complete, a fast-forward not ok, the free windows open",
+      g.problems.length === 0 && bad.length === 0, JSON.stringify({ good: g.problems, bad }).slice(0, 400));
+  }
+  // ②k S8 WP1 · the question page's stubs and masks, in a real page built from markup (no server): SNAPSHOT, given
+  // questionArgsOf(), reads <main> with the bet panel and the holder section stubbed in it and each its own region, and
+  // the masks. A change inside the panel is in the panel's region alone, and one inside the holder in the holder's alone;
+  // a ticking countdown, a [role=timer] text, the Sell strip's clock and the chart's time axis change no region at all;
+  // and the same change to a figure no mask names is seen in <main>.
+  {
+    const page = await b.newPage({ viewport: { width: 1280, height: HEIGHT } });
+    try {
+      const doc = (o = {}) => `<!doctype html><html><body><main id="main-content"><div class="grid">
+        <div class="order-1"><aside aria-labelledby="bet-panel-heading"><h2 id="bet-panel-heading">Place your stake</h2><p class="kp-ok">${o.panel ?? "Pick a side"}</p></aside></div>
+        <section class="order-2 space-y-5">
+          <div class="glass-panel"><div class="flex gap-2"><div class="flex flex-col"><div class="font-mono font-bold text-[28px] tabular-nums">${o.secs ?? "05"}</div></div></div></div>
+          <div class="tv-lightweight-charts"><table><tr><td><canvas width="542" height="212"></canvas></td></tr><tr><td><canvas width="${o.axis ?? 542}" height="28"></canvas></td></tr></table></div>
+          <p class="kp-figure">${o.figure ?? "TZS 3,600"}</p><span role="timer">${o.timer ?? "0:42"}</span>
+          <section class="bg-bg-elevated"><div class="ticket-target"><div class="mb-1.5 flex"><span class="tabular-nums">${o.clock ?? "4:07"}</span></div><button><span>${o.sell ?? "Sell now"}</span></button></div></section>
+        </section></div></main></body></html>`;
+      const args = questionArgsOf();
+      const take = async (o) => { await page.setContent(doc(o)); const sn = await page.evaluate(SNAPSHOT, args); return Object.fromEntries(Object.entries(sn.regions).map(([n, r]) => [n, r.html])); };
+      const clean = await take({});
+      const moved = async (o) => { const x = await take(o); return Object.keys(clean).filter((n) => clean[n] !== x[n]); };
+      const runs = {
+        panel: await moved({ panel: "Pick a side!" }), holder: await moved({ sell: "Sell n0w" }),
+        secs: await moved({ secs: "06" }), timer: await moved({ timer: "0:41" }), clock: await moved({ clock: "4:06" }), axis: await moved({ axis: 540 }),
+        figure: await moved({ figure: "TZS 3,601" }),
+      };
+      const stubbed = clean.main?.includes('<parity-region data-parity="panel"></parity-region>') && clean.main?.includes('<parity-region data-parity="holder"></parity-region>') && !clean.main?.includes("Pick a side");
+      ok("P.8m the question page's stubs and masks, in a page built from markup: <main> holds the bet panel and the holder section as stubs; a change in the panel is in the panel's region alone and one in the holder in the holder's alone; a ticking countdown, a [role=timer] text, the Sell strip's clock and the chart's time axis move no region's markup; a figure no mask names moves <main>'s",
+        stubbed && runs.panel.join() === "panel" && runs.holder.join() === "holder" && [runs.secs, runs.timer, runs.clock, runs.axis].every((r) => r.length === 0) && runs.figure.join() === "main",
+        JSON.stringify({ stubbed, ...runs }).slice(0, 400));
+    } catch (e) {
+      ok("P.8m the question page's stubs and masks, in a page built from markup", false, msg(e));
+    } finally {
+      await page.close().catch(() => {});
+    }
   }
 
   // ③ The browser: the instrument agrees with itself, and sees each plant in its own field and nowhere else.
@@ -3202,6 +3798,71 @@ async function proveRed() {
       }
     }
   }
+
+  // ⑥ S8 WP1 · the question phase in the browser, after the book (it reads the book's world, as a capture does): the
+  // questions are found and made through the existing doors and judged; then two clean captures of each QUESTION_PROVE
+  // cell agree — the clocks masked, the chart's time axis read whole — and each plant is reported in its own field and
+  // nowhere else: a class added in the bet panel (the panel's field only), a holder row's Sell label changed (the holder's
+  // field only), a kp-jbet element in a classic question page (the trace in the page) and data-sheet on a classic card in
+  // the question page's raw bytes (the raw trace). Last, the reader on a break: the cooling-off taken through its real
+  // form, and two clean captures of a break cell agree.
+  {
+    const progress = bookPR?.watchlist?.reply?.forcedProgress?.[0] ?? null;
+    const qSeed = holder.length && seeded.held && !bookRefused.length
+      ? await seedQuestions(holder, seeded.held, progress)
+      : { error: !holder.length ? "the demo player is not signed in" : !seeded.held ? "no held question (the Sell seed)" : "the book was refused" };
+    const qV = questionVerdict(qSeed);
+    ok(`P.question the questions are found and made through the existing doors (${JSON.stringify(qSeed.ids ?? null)}), and the held tickets' free windows closed first (${qSeed.freeWait?.closed ? `after ${secs(qSeed.freeWait.ms)}` : "not"})`,
+      qV.problems.length === 0, qV.problems.join(" · "));
+    if (!qV.problems.length) {
+      const ids = qSeed.ids;
+      const stateOf = (id) => QUESTION.states.find((x) => x.id === id);
+      const QUESTION_PROVE = [
+        { v: "player", l: "en", w: 1280, s: "open-yes", plants: [
+          { id: "q-panel", js: () => { const x = document.querySelector('#main-content aside[aria-labelledby="bet-panel-heading"] > div'); if (x) x.classList.add("kp-parity-plant"); },
+            what: "a class added in the bet panel", need: "regions.panel.html", within: ["regions.panel."] },
+          { id: "q-sell-label", js: () => { const x = document.querySelector("#main-content section.order-2 > section.bg-bg-elevated .ticket-target > button span"); if (x) x.textContent = `${x.textContent}·`; },
+            what: "a holder row's Sell label changed", need: "regions.holder.html", within: ["regions.holder."] },
+        ] },
+        { v: "guest", l: "sw", w: 360, s: "open", plants: [
+          { id: "q-jbet", js: () => { const d = document.createElement("div"); d.className = "kp-jbet"; d.setAttribute("data-parity-plant", ""); document.body.append(d); },
+            what: "a kp-jbet element in a classic question page", need: "journey", within: ["journey"] },
+          { id: "q-sheet", bytes: (t) => t.replace(/<article\b(?=[^>]*\bmcardp\b)/, '<article data-sheet=""'),
+            what: "data-sheet on a classic card in the question page's raw bytes", need: "raw", within: ["raw"] },
+        ] },
+        { v: "player", l: "sw", w: 360, s: "settled", plants: [] },
+        { v: "player", l: "en", w: 360, s: "time-closed", plants: [] },
+        { v: "guest", l: "en", w: 1280, s: "selection-closed", plants: [] },
+      ];
+      const proveCell = async (v, l, w, s, jar, plants) => {
+        const st = stateOf(s);
+        const k = keyOf(`question-${v}`, l, w, st.route);
+        const clean = await captureQuestionCell(jar, l, w, st, ids);
+        const again = await captureQuestionCell(jar, l, w, st, ids);
+        if (clean.error || again.error) { ok(`P.${k} the question cell was captured`, false, clean.error ?? again.error); return; }
+        const noise = diffCells(st.route, clean, again, blobs, blobs, QUESTION_EXPECTED_DIFFS).unexpected;
+        const regionsOk = clean.regions.main?.count === 1 && clean.regions.panel?.count === 1 && clean.regions.holder?.count === (v === "guest" ? 0 : 1);
+        ok(`P.${k} two clean captures of a question cell agree — the instrument is deterministic on one server, its clocks masked`,
+          noise.length === 0 && regionsOk && clean.stable && again.stable,
+          `${noise.length ? noise.slice(0, 3).map((d) => `${d.field}: ${d.detail}`).join(" | ").slice(0, 400)
+            : `main ${clean.regions.main?.count ?? 0} · panel ${clean.regions.panel?.count ?? 0} · holder ${clean.regions.holder?.count ?? 0} · stable ${clean.stable}/${again.stable} · masked ${JSON.stringify(clean.masked)}`}${notedIn(clean, again)}`);
+        for (const plant of plants) {
+          const planted = await captureQuestionCell(jar, l, w, st, ids, plant);
+          if (planted.error) { ok(`P.${k} ${plant.id} was captured`, false, planted.error); continue; }
+          const seen = diffCells(st.route, clean, planted, blobs, blobs, QUESTION_EXPECTED_DIFFS).unexpected;
+          ok(`P.${k} ⭐ ${plant.what} is reported in ${plant.need}, and nowhere outside ${plant.within.join(" / ")}`,
+            seen.some((d) => inside(d.field, [plant.need])) && seen.every((d) => inside(d.field, plant.within)),
+            seen.length ? seen.slice(0, 2).map((d) => `${d.field}: ${d.detail}`).join(" | ").slice(0, 400) : "NOT SEEN — a question compare with this harness proves nothing");
+        }
+      };
+      await warm(holder, [...new Set(QUESTION_PROVE.filter((c) => c.v === "player").map((c) => routeOfQuestion(stateOf(c.s).route, ids)))]);
+      await warm([], [...new Set(QUESTION_PROVE.filter((c) => c.v === "guest").map((c) => routeOfQuestion(stateOf(c.s).route, ids)))]);
+      for (const { v, l, w, s, plants } of QUESTION_PROVE) await proveCell(v, l, w, s, v === "player" ? holder : [], plants);
+      const brk = await takeBreak();
+      ok("P.break the reader on a break: the cooling-off is taken through /profile/responsible-gambling's real form, and the demo player signs in again", !brk.error, brk.error ?? "");
+      if (!brk.error) await proveCell("break", "sw", 1280, "break-empty", brk.jar, []);
+    }
+  }
 }
 
 // ── what every capture must show, in every mode that captures the matrix ──────────────────────────────────
@@ -3221,6 +3882,15 @@ if (!PROVE_RED) {
   const drawn = cardTally(bookCells);
   console.log(`  card states drawn across the book's cells: ${[...CARD_STATES, "other"].map((s) => `${CARD_LABELS[s]} ${drawn.get(s) ?? 0}`).join(" · ")}`);
   for (const c of bookChecks(bookCells, bookSeed, blobs)) ok(`${c.id} ${c.name}`, c.fails.length === 0, listOf(c.fails));
+
+  console.log(`${NL}§Q · the question page's classic body — <main>, the bet panel and the holder section — in every classic state S8's ternaries stand beside (S8 WP1 — every run that captures)`);
+  console.log(`  the questions: ${JSON.stringify(questionSeed?.ids ?? null)}`);
+  {
+    const masked = new Map();
+    for (const c of Object.values(questionCells)) for (const [id, n] of Object.entries(c.masked ?? {})) masked.set(id, (masked.get(id) ?? 0) + n);
+    console.log(`  masked across the question cells: ${QUESTION_MASKS.map((m) => `${m.id} ${masked.get(m.id) ?? 0}`).join(" · ")} · server-times by eat-dates and norm`);
+  }
+  for (const c of questionChecks(questionCells, questionSeed, blobs)) ok(`${c.id} ${c.name}`, c.fails.length === 0, listOf(c.fails));
 
   if (COMPARE) {
     console.log(`\n§4 · parity with the baseline (${short(baseline.base.sha)}, captured ${baseline.base.capturedAt})`);
@@ -3324,9 +3994,32 @@ if (!PROVE_RED) {
     for (const e of BOOK_EXPECTED_DIFFS) console.log(`  EXPECTED ${e.id} — seen in ${bookHits.get(e.id) ?? 0} of ${e.cells} book cell(s). ${e.reason}`);
     ok("4.9 each named book difference is seen in all of its cells or in none", partialExpected(bookHits, BOOK_EXPECTED_DIFFS).length === 0,
       partialExpected(bookHits, BOOK_EXPECTED_DIFFS).join(" · "));
-    if (differing || sellDiffering || bookDiffering) {
+    // ⭐ S8 WP1 · the question cells against the baseline's: the question page's classic <main>, bet panel and holder
+    // section. S8 promises them unchanged, so any difference is a failure unless QUESTION_EXPECTED_DIFFS names it.
+    const questionBase = baseline.question ?? {};
+    const questionBaseKeys = Object.keys(questionBase).sort(), questionCurKeys = Object.keys(questionCells).sort();
+    ok("4.10 the same question cells as the baseline", questionCurKeys.length > 0 && JSON.stringify(questionBaseKeys) === JSON.stringify(questionCurKeys), `${questionBaseKeys.length} vs ${questionCurKeys.length}`);
+    const questionHits = new Map();
+    let questionDiffering = 0, questionCompared = 0, questionShown = 0;
+    for (const k of questionCurKeys) {
+      const was = questionBase[k], now = questionCells[k];
+      if (!was || was.error || now.error) continue;
+      questionCompared++;
+      const { unexpected, expected } = diffCells(partsOf(k).r, was, now, baseline.blobs, blobs, QUESTION_EXPECTED_DIFFS);
+      for (const e of expected) questionHits.set(e.id, (questionHits.get(e.id) ?? 0) + 1);
+      if (!unexpected.length) continue;
+      questionDiffering++;
+      if (questionShown++ < 40) for (const d of unexpected.slice(0, 3)) console.log(`  ✗ ${k} — ${d.field}: ${d.detail}`.slice(0, 600));
+    }
+    if (questionShown > 40) console.log(`  … and ${questionShown - 40} more question cell(s)`);
+    ok(`4.11 ⭐ no unexpected difference in the ${questionCompared} question cells: a classic reader is served today's question page — its <main>, its bet panel and its holder section`,
+      questionCompared > 0 && questionCompared === questionCurKeys.length && questionDiffering === 0, questionDiffering ? `${questionDiffering} question cell(s) differ` : "");
+    for (const e of QUESTION_EXPECTED_DIFFS) console.log(`  EXPECTED ${e.id} — seen in ${questionHits.get(e.id) ?? 0} of ${e.cells} question cell(s). ${e.reason}`);
+    ok("4.12 each named question difference is seen in all of its cells or in none", partialExpected(questionHits, QUESTION_EXPECTED_DIFFS).length === 0,
+      partialExpected(questionHits, QUESTION_EXPECTED_DIFFS).join(" · "));
+    if (differing || sellDiffering || bookDiffering || questionDiffering) {
       const side = `${COMPARE}.current.json`;
-      writeFileSync(side, `${JSON.stringify({ kind: KIND, version: VERSION, role: "compare-capture", base: { sha: HEAD.out, tree: TREE, dirty: DIRTY }, matrix: MATRIX, cells, sell: sellCells, book: bookCells, bookSeed, blobs })}${NL}`, "utf8");
+      writeFileSync(side, `${JSON.stringify({ kind: KIND, version: VERSION, role: "compare-capture", base: { sha: HEAD.out, tree: TREE, dirty: DIRTY }, matrix: MATRIX, cells, sell: sellCells, book: bookCells, bookSeed, question: questionCells, questionSeed, blobs })}${NL}`, "utf8");
       console.log(`  this run's capture, for reading beside the baseline: ${side}`);
     }
   }
@@ -3342,11 +4035,12 @@ if (!PROVE_RED) {
       kind: KIND, version: VERSION, role: "baseline", rejected: failedSoFar,
       base: { sha: HEAD.out, main: MAIN, fork: FORK.code === 0 ? FORK.out : null, tree: TREE, dirty: DIRTY, capturedAt: new Date().toISOString() },
       server: { base: BASE, rollout, store: health.store ?? null, browser: BROWSER },
-      matrix: MATRIX, expectedDiffs: EXPECTED_DIFFS.map((e) => e.id), bookExpectedDiffs: BOOK_EXPECTED_DIFFS.map((e) => e.id), report: { header320: report320 },
-      cells, sell: sellCells, seed: sellSeed, book: bookCells, bookSeed, blobs,
+      matrix: MATRIX, expectedDiffs: EXPECTED_DIFFS.map((e) => e.id), bookExpectedDiffs: BOOK_EXPECTED_DIFFS.map((e) => e.id), questionExpectedDiffs: QUESTION_EXPECTED_DIFFS.map((e) => e.id), report: { header320: report320 },
+      cells, sell: sellCells, seed: sellSeed, book: bookCells, bookSeed, question: questionCells, questionSeed, blobs,
     };
     writeFileSync(target, `${JSON.stringify(doc)}${NL}`, "utf8");
     console.log(`  the book: ${Object.keys(bookCells).length} cells over a pool of ${bookVerdict(bookSeed).pool ?? "?"} LIVE non-demo question(s) (§0j records it) · its normalisers ${BOOK.normalise.join(", ") || "none"}${NORM_SOURCE ? ` (set by ${NORM_SOURCE})` : ""}`);
+    console.log(`  the question page: ${Object.keys(questionCells).length} cells over ${JSON.stringify(questionSeed?.ids ?? null)} (§0k records the file) · its masks ${QUESTION.masks.join(", ")}`);
     console.log(failedSoFar
       ? `\n⛔ baseline NOT written — a check above failed, and a baseline is only as good as its population. The capture is in ${target} for reading; --compare refuses it.`
       : `\nbaseline written: ${BASELINE} — base ${short(HEAD.out)}, ${Object.keys(cells).length} cells, ${Object.keys(blobs).length} blobs. Next: a null --compare on a FRESH server at this commit must exit 0.`);
