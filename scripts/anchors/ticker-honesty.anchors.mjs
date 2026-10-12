@@ -11,6 +11,8 @@
  * an expected 11.2 is no longer met by 11.21, nor 1.1 by 1.1-control.
  * S7 WP3 declared two more (A4 items 3 and 5): the journey arm of `tickerShowsOn`, each expected on 11.2j. The verdict's
  * N is the length of this list, so it reads 30/30 from that commit.
+ * S7 WP8 (A4 item 4) re-pointed the 11.5 case's `from` to the line that now hands the shell's journey answer on, in the
+ * commit that changed it, and declared one more — that argument dropped, also expected on 11.5: 31/31 from that commit.
  */
 const PURE = "src/lib/markets/ticker.ts";
 const FEED = "src/lib/server/ticker-feed.ts";
@@ -151,8 +153,17 @@ export const MUTATIONS = [
   {
     name: "the client stops reading the page, so the strip runs above the wallet and the bet screen again",
     file: CLIENT,
-    from: `  const shown = events.length > 0 && tickerShowsOn(pathname);`,
+    // ⚠️ RE-POINTED by S7 WP8 (A4 item 4): the line also hands on the shell's journey answer since that commit.
+    from: `  const shown = events.length > 0 && tickerShowsOn(pathname, journey);`,
     to: `  const shown = events.length > 0;`,
+    expect: "11.5",
+  },
+  // ── S7 WP8 (Amendment A4 item 4): the shell's journey answer, handed down and then not read ──
+  {
+    name: "the client drops the shell's journey answer, so a journey reader's home and board keep the strip",
+    file: CLIENT,
+    from: `  const shown = events.length > 0 && tickerShowsOn(pathname, journey);`,
+    to: `  const shown = events.length > 0 && tickerShowsOn(pathname);`,
     expect: "11.5",
   },
   {
