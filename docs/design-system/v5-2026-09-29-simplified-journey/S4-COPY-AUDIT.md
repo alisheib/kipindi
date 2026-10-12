@@ -20,7 +20,7 @@
 - Settled: caption "Matokeo" + NDIO/HAPANA/Batili; "Imetatuliwa {word}" on /results; void "Imebatilishwa". No won/lost on cards.
 - Source "Linatatuliwa kwa {source}". "Onyesha zaidi" NO STRING (plan journey.showMore).
 - Engine: emptyPool → both "Kuwa wa kwanza"; oneSidedRefund (other side empty) → "Upande mmoja tu"; fillsEmptySide → "Kuwa wa kwanza";
-  hidden (legacy capped) → no figure (describeFeeModel is an ENGLISH admin string "capped 13%/33.33%" — not player copy); overCap → "Shinda zaidi ya 100× dau".
+  hidden (legacy capped) → no figure (describeFeeModel is an ENGLISH admin string "capped 13%/33.33%" — not player copy); overCap → "Upande mdogo, ona makadirio", with no number, and a thin side → "Faida ndogo · ≈{mult}×" (the S4 panel's amended SJ-1, VODACOM-PLAN §0h point 2 — corrected by S7 WP4 on 2026-10-12, S7-PLAN Correction 9; this snapshot said "Shinda zaidi ya 100× dau").
 - Short title max: sw/en 56 code points, zh 28. ⟶ 2026-10-10 (Ali): sw/en 100, zh 50 (`SHORT_TITLE_MAX`).
 
 ## Home
@@ -201,6 +201,35 @@ strip's name in every language (VODACOM-PLAN §0h point 27):
 - `journey.ticketsEmptyRefunded` · "Hakuna yako iliyorudishwa" · of `positions.emptyRefunded`; zh "您没有被退还的注单".
 - `journey.ticketsFilterAria` · "Chuja tiketi", unchanged · en "Status" → "Filter tickets" and zh "状态" → "筛选注单" (approved): the strip's name now says what it does in every language, as the Swahili always did.
 
+## S7 drafts (2026-10-12) — for the native review
+
+Added by S7 WP4 (`S7-PLAN.md`) as keys of the `journey` namespace; only journey files read them, so no classic word
+changed (§3.9). Each line: key · sw · where it comes from. The dictionary stays the truth.
+
+**The deck's words, now keys** (VODACOM-PLAN §3, binding — read, never re-worded): `howToCardTitle`, `howToCardMeta`,
+`headlineAsk`, `headlineSides`, `cardWin`, `showMore`, `howToTitle`, `howStep1Title` … `howStep3Body`,
+`howExampleLabel`, `howExampleBody`, `howCta`, `estimateNote` (shared with S8). Not added: `cardWinOver` (S7-PLAN
+Correction 9) and `howHelplineLabel` (no player surface shows the helpline: the owner ruling of 2026-10-06, A6).
+
+**S4 canvas words, now keys** (approved in "Swahili review" 3 below):
+- `journey.cardOverCap` · "Upande mdogo, ona makadirio" · the over-cap pick line, with no number.
+- `journey.cardThin` · "Faida ndogo · ≈{mult}×" · the thin-side pick line; the canvas's "≈1.0×" is the `{mult}` placeholder.
+- `journey.similarTitle` · "Maswali yanayofanana" · the similar rail's heading in the journey's words.
+- `journey.homeEmptyCatTitle` · "{cat}: hakuna maswali wazi kwa sasa" · the canvas's "Kripto: hakuna maswali wazi kwa sasa".
+- `journey.homeEmptyBody` · "Maswali mapya yataonekana hapa yakichapishwa." · the home's empty-book body.
+- `journey.homeEmptyAll` · "Onyesha maswali yote" · the empty category's way back to every question.
+
+**Drafted at S7** (no deck or canvas source):
+- `journey.cardBeFirst` · "Kuwa wa kwanza" · the empty-side pick line (§0g item 11; S7-PLAN Open point 8): `market.beFirst`'s
+  "Kuwa wa kwanza kutabiri" wraps on a pick at every width.
+- `journey.cardResultLabel` · "Matokeo" · the settled row's caption (the "Cards" line above).
+- `journey.homeChipsAria` · "Aina za maswali" · the chips rail's name.
+- `journey.homeEmptyTitle` · "Hakuna maswali wazi kwa sasa" · the empty book, the canvas's category line without its category.
+- `journey.homeQueryLine` · "Unatafuta: “{q}”" · the line over a searched home.
+- `journey.homeQueryNone` · "Hakuna swali linalolingana na “{q}”" · a search with no match.
+- `journey.howStepsAria` · "Hatua" · the How-to sheet's scrolling steps region.
+- `journey.hubSearchPlaceholder` · "Tafuta swali" · Tafuta in the Akaunti hub (S7 WP9).
+
 ## Swahili review — signed off by Claude (Ali, 2026-10-02: "you will be the Swahili speaker")
 
 Reviewed 2026-10-02, string by string, for grammar (noun-class agreement, tense, object markers), meaning against the
@@ -266,3 +295,21 @@ the box's own label (`refConsent`: "Wadhamini wote wawili … wamekubali …"), 
 *kutajwa*, the passive of *kutaja*, "to be named". The step's other refusals now show the two rules the boxes already
 carry as their titles (`refNameRule`, `refContactRule`), live words unchanged. A new sentence, not a correction, so it
 shipped with its fix rather than with S12. Chinese: "请勾选此框，确认两位推荐人均同意被提名。" — 勾选 for ticking a box, and the label's own 两位推荐人 and 提名.
+
+**6. S7 dictionary keys (2026-10-12, S7 WP4; journey.*, not shown to anyone until S15) — approved as written:**
+- The deck's words are binding and were read, not re-worded; each agrees: *tukio* (class 5) takes *lenye* in
+  `howStep1Body`; *dau* (class 5) takes *lako* in `howStep2Body` and `howExampleBody`; *soko likifungwa* (class 5, "when
+  the market is closed") and *kamisheni … imeshatolewa* (class 9, perfect passive, "has already been deducted") in
+  `estimateNote`.
+- The canvas words keep review 3's approval; `cardThin`'s figure is now the `{mult}` placeholder, and
+  `homeEmptyCatTitle`'s category is `{cat}` ("Kripto" was the drawn example).
+- The S7 drafts: `cardBeFirst` · "Kuwa wa kwanza" — imperative of *kuwa* with *wa kwanza* (class 1, "the first
+  [person]"), short enough for a pick's second line; `cardResultLabel` · "Matokeo" — the noun the settled card already
+  uses as its caption; `homeChipsAria` · "Aina za maswali" — *aina* in the plural (class 10) takes *za*;
+  `homeEmptyTitle` · "Hakuna maswali wazi kwa sasa" — the approved category line without its category;
+  `homeQueryLine` · "Unatafuta: “{q}”" — present tense, second person, as the product addresses the player;
+  `homeQueryNone` · "Hakuna swali linalolingana na “{q}”" — *swali* (class 5) takes the relative *-li-* in
+  *linalolingana*; `howStepsAria` · "Hatua" — one form for one step and for many (class 9/10); `hubSearchPlaceholder`
+  · "Tafuta swali" — an imperative with its object, like the hub's other doors ("Weka mipaka", "Alika").
+- Chinese: formal 您 wherever the player is addressed (`howStep2Body`, `howStep3Body`, `howExampleBody`), 投注 for a bet,
+  and full-width punctuation around `{q}`; `cardBeFirst` · "抢先下注" ("bet first") is the action the empty side invites.
