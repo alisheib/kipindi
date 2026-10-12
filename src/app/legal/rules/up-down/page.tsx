@@ -30,16 +30,19 @@ const SUBTITLE: Record<Locale, string> = {
  * `closeRound` stamps `objectionsClosedAt` to now and settles in the same call (updown-service.ts, owner decision
  * 2026-07-24). The binding English moved, so the date moved with it. Same version: the Swahili game name reads
  * "Juu na Chini", as every screen says.
+ * ⛔ BUMPED 2026-10-12 (owner ruling, docs/COMPLIANCE-DECISIONS.md 2026-10-12): the minimum stake this document quotes
+ * from the live Up & Down default went from TZS 1,000 to TZS 500. The template did not change, the binding text a player
+ * reads did — the same reason the 2026-09-13 label moved for a live rate (COMPLIANCE-DECISIONS 2026-09-14).
  */
 const META: Record<Locale, string> = {
-  en: "Version 2026-09-14 · Effective on entering a round.",
-  sw: "Toleo 2026-09-14 · Zinaanza kutumika unapoingia raundi.",
-  zh: "版本 2026-09-14 · 自进入回合时生效。",
+  en: "Version 2026-10-12 · Effective on entering a round.",
+  sw: "Toleo 2026-10-12 · Zinaanza kutumika unapoingia raundi.",
+  zh: "版本 2026-10-12 · 自进入回合时生效。",
 };
 
 export default async function UpDownRulesPage() {
   const { locale } = await getServerT();
-  /* ⭐ THE STAKE BOUNDS ARE UP & DOWN'S OWN (2026-10-07). They quoted the polls' global config — the same TZS 1,000 by rule,
+  /* ⭐ THE STAKE BOUNDS ARE UP & DOWN'S OWN (2026-10-07). They quoted the polls' global config — the same minimum by rule,
      but set in a different place (`updown-config.ts`, the product default every chain inherits and `stakeBoundsFor`
      floors at). A binding document states the bounds of the game it governs; both reads are floored at the platform
      minimum on read. The fee and the rest still come from the shared rates. */

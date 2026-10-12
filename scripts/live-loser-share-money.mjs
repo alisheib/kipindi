@@ -17,20 +17,23 @@
  * and with one winner there is no remainder to get wrong. The stakes below are deliberately
  * unequal and deliberately not a clean division.
  *
- *   UP    fleet:01 5K · fleet:03 2K · fleet:05 1K   =  8,000
- *   DOWN  fleet:02 10K · fleet:04 1K · fleet:06 2K  = 13,000
+ *   UP    fleet:01 5K · fleet:03 2.5K · fleet:05 1K   =  8,500
+ *   DOWN  fleet:02 5K · fleet:04 500 · fleet:06 2.5K   =  8,000
  *
- *   UP wins   → fee = 13% × 13,000 = 1,690, split 5:2:1 → 1056.25 / 422.5 / 211.25,
+ *   UP wins   → fee = 13% × 8,000 = 1,040, split 10:5:2 → 611.76 / 305.88 / 122.35,
  *               which does NOT divide evenly and forces the largest-remainder path.
- *   DOWN wins → fee = 13% ×  8,000 = 1,040, split 10:1:2 → 800 / 80 / 160, exact.
+ *   DOWN wins → fee = 13% × 8,500 = 1,105, split 10:1:5 → 690.63 / 69.06 / 345.31 — the same.
+ *   ⚠️ RE-CUT 2026-10-12 for the 500 · 1K · 2.5K · 5K ladder (the minimum stake came down to 500, so the 2K and 10K
+ *   chips this plan clicked no longer exist) and NOT RUN since. fleet:04 stakes the new minimum itself.
  *   VOID      → nothing is charged and every stake comes back — the A4 question that
  *               production could not answer either.
  *
  * ⚠️ THE DOM CONTRACT IS RE-PROBED, NEVER REMEMBERED. Measured 2026-08-14 by
- * `scripts/live/probe-updown-card.mjs`: the stake chips are `1K 2K 5K 10K Custom` — they
- * MOVED when A1 raised the floor from 500 to 1,000, and the contract recorded in
- * `live-bulk-play.mjs` (`500 1K 2.5K 5K`) is now stale. The side buttons render
- * `Up × N est.` / `Down × N est.` with an aria-label `Up — Bitcoin · TZS 1,000`.
+ * `scripts/live/probe-updown-card.mjs`: the stake chips were `1K 2K 5K 10K Custom` — they
+ * MOVED when A1 raised the floor from 500 to 1,000 — and they move BACK on 2026-10-12, when the
+ * minimum returns to 500: `500 1K 2.5K 5K Custom` (`quickStakes(min, max)`), the contract
+ * `live-bulk-play.mjs` records. Re-probe before trusting either. The side buttons render
+ * `Up × N est.` / `Down × N est.` with an aria-label naming the selected stake (`Up — Bitcoin · TZS 500`).
  * ⛔ Match on rendered TEXT (`filter({hasText})`), never on the accessible name, and never
  * on the `×` (U+00D7) — it does not survive every shell/encoding path.
  *
@@ -50,17 +53,17 @@ const QUERY = process.argv[2] ?? "asset=BTC&d=5";
  */
 const PLANS = {
   "two-sided": [
-    { idx: "01", side: "UP",   chip: "5K"  },
-    { idx: "03", side: "UP",   chip: "2K"  },
-    { idx: "05", side: "UP",   chip: "1K"  },
-    { idx: "02", side: "DOWN", chip: "10K" },
-    { idx: "04", side: "DOWN", chip: "1K"  },
-    { idx: "06", side: "DOWN", chip: "2K"  },
+    { idx: "01", side: "UP",   chip: "5K"   },
+    { idx: "03", side: "UP",   chip: "2.5K" },
+    { idx: "05", side: "UP",   chip: "1K"   },
+    { idx: "02", side: "DOWN", chip: "5K"   },
+    { idx: "04", side: "DOWN", chip: "500"  },
+    { idx: "06", side: "DOWN", chip: "2.5K" },
   ],
   // Nobody on the other side: the winning pool IS the whole pool, so there are no losers
   // to take a slice of. Two players, so "refunded in full" is more than one row.
   "one-sided": [
-    { idx: "07", side: "UP", chip: "2K" },
+    { idx: "07", side: "UP", chip: "2.5K" },
     { idx: "08", side: "UP", chip: "1K" },
   ],
   // Both sides, on a chain whose price band the price will not clear.
@@ -71,7 +74,7 @@ const PLANS = {
   //     get wrong, which is the same blindness the two-sided plan's comment already records.
   //   · A HEDGED PLAYER — `fleet:09` holds BOTH sides. Unlimited positions on either side is
   //     ordinary since B, so a void must return BOTH of that player's stakes, not net them.
-  //   · UNEQUAL, NON-DIVIDING STAKES. UP 8,000 vs DOWN 14,000, so a refund computed from a
+  //   · UNEQUAL, NON-DIVIDING STAKES. UP 8,500 vs DOWN 9,000 (re-cut 2026-10-12), so a refund computed from a
   //     pool share rather than from the position itself lands on the wrong number visibly.
   // A VOID must charge nothing and return every one of the seven in full.
   //
@@ -79,13 +82,13 @@ const PLANS = {
   // `Promise.all`), but the hedge is the SAME account as an earlier row, and two concurrent
   // sign-ins to one account is precisely the attempt-limiting that reads as a wrong password.
   "void": [
-    { idx: "09", side: "UP",   chip: "2K"  },
-    { idx: "11", side: "UP",   chip: "5K"  },
-    { idx: "13", side: "UP",   chip: "1K"  },
-    { idx: "10", side: "DOWN", chip: "1K"  },
-    { idx: "12", side: "DOWN", chip: "2K"  },
-    { idx: "14", side: "DOWN", chip: "10K" },
-    { idx: "09", side: "DOWN", chip: "1K", wave: 1 },
+    { idx: "09", side: "UP",   chip: "2.5K" },
+    { idx: "11", side: "UP",   chip: "5K"   },
+    { idx: "13", side: "UP",   chip: "1K"   },
+    { idx: "10", side: "DOWN", chip: "1K"   },
+    { idx: "12", side: "DOWN", chip: "2.5K" },
+    { idx: "14", side: "DOWN", chip: "5K"   },
+    { idx: "09", side: "DOWN", chip: "500", wave: 1 },
   ],
 };
 const PLAN_NAME = process.env.A4_PLAN ?? "two-sided";

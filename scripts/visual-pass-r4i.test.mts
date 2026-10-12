@@ -45,6 +45,7 @@ import { emptyStateBody } from "../src/components/ui/empty-state-text.ts";
 import { renderFailure, failureUntil } from "../src/lib/failure-reasons.ts";
 import { accountRefusalPath } from "../src/lib/auth-landing.ts";
 import { dialScale, dialTickLabel, dialDetents, DIAL_LABEL_PX } from "../src/components/markets/dial-scale.ts";
+import { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE } from "../src/lib/payout.ts";
 import { rgPeriodFieldPx, legendPx, selectPx } from "../src/components/rg/rg-period-width.ts";
 import { Callout } from "../src/components/ui/callout.tsx";
 import { AuthHeader } from "../src/components/auth/auth-panel.tsx";
@@ -514,23 +515,31 @@ section("6 · the old dial: a legible scale, the label beside the pill, the read
   const widthsPx = [238, 278, 308, 294]; // the track at 320, 360, 390 and the 1280 rail (content widths)
   const PAD = 40, KNOB = 28;
   const problems: string[] = [];
-  for (const w of widthsPx) {
-    const s = dialScale({ width: w, pad: PAD, knobR: KNOB, baseStake: 1000, maxMultiplier: 1000 });
+  // ⭐ BOTH GEOMETRIES (2026-10-12). This measured only base 1,000 × 1,000 — the live dial while the minimum was 1,000.
+  //    The minimum is TZS 500 now, so the live dial is 500 × 2,000: eleven detents, 12.5K and 125K among them. Each is
+  //    measured, the live one read off the rule's own constants, and 1,000 × 1,000 kept because an operator may narrow
+  //    the window back to it (docs/RULES.md §2.3).
+  const GEOMETRIES = [
+    { base: PLATFORM_MIN_STAKE, mult: PLATFORM_MAX_STAKE / PLATFORM_MIN_STAKE, detents: 11 },
+    { base: 1000, mult: 1000, detents: 10 },
+  ];
+  for (const g of GEOMETRIES) for (const w of widthsPx) {
+    const s = dialScale({ width: w, pad: PAD, knobR: KNOB, baseStake: g.base, maxMultiplier: g.mult });
     const scale = w / (w + 2 * PAD);
-    if (Math.abs(s.fontSize * scale - DIAL_LABEL_PX) > 1e-9) problems.push(`${w}: renders ${(s.fontSize * scale).toFixed(2)}px`);
+    if (Math.abs(s.fontSize * scale - DIAL_LABEL_PX) > 1e-9) problems.push(`${g.base}×${g.mult} ${w}: renders ${(s.fontSize * scale).toFixed(2)}px`);
     for (const side of ["YES", "NO"] as const) {
       const labelled = s.ticks.filter((tk) => tk.side === side && tk.label).sort((a, b) => a.x - b.x);
       const half = (lab: string) => (lab.length * 0.64 * s.fontSize) / 2;
-      for (const tk of labelled) if (Math.abs(tk.x - w / 2) - half(tk.label!) < KNOB + 6) problems.push(`${w} ${side} ${tk.label} under the resting thumb`);
+      for (const tk of labelled) if (Math.abs(tk.x - w / 2) - half(tk.label!) < KNOB + 6) problems.push(`${g.base}×${g.mult} ${w} ${side} ${tk.label} under the resting thumb`);
       for (let i = 1; i < labelled.length; i++) {
         const a = labelled[i - 1], b = labelled[i];
-        if (b.x - a.x < half(a.label!) + half(b.label!)) problems.push(`${w} ${side} ${a.label}/${b.label} overlap`);
+        if (b.x - a.x < half(a.label!) + half(b.label!)) problems.push(`${g.base}×${g.mult} ${w} ${side} ${a.label}/${b.label} overlap`);
       }
-      if (labelled.length === 0) problems.push(`${w} ${side}: no figure at all`);
+      if (labelled.length === 0) problems.push(`${g.base}×${g.mult} ${w} ${side}: no figure at all`);
     }
-    if (s.ticks.length !== 2 * dialDetents(1000, 1000).length || dialDetents(1000, 1000).length !== 10) problems.push(`${w}: ${s.ticks.length} ticks (every detent keeps its tick)`);
+    if (s.ticks.length !== 2 * dialDetents(g.base, g.mult).length || dialDetents(g.base, g.mult).length !== g.detents) problems.push(`${g.base}×${g.mult} ${w}: ${s.ticks.length} ticks (every detent keeps its tick)`);
   }
-  ok("6.1 · every figure renders at 10px, clear of the resting thumb and of its neighbour, at 320 / 360 / 390 / 1280 — every detent keeps its tick",
+  ok("6.1 · every figure renders at 10px, clear of the resting thumb and of its neighbour, at 320 / 360 / 390 / 1280, on the live 500 × 2,000 dial and on 1,000 × 1,000 — every detent keeps its tick",
     problems.length === 0, problems.join(" | "));
   // The old drawing: 7.5 units at every width, every inner detent labelled.
   const oldOverlap = (() => {

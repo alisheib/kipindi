@@ -71,10 +71,11 @@ await setChainState(chainR.data.id, "RUNNING", "off");
 const chain = (await chainStore.get(chainR.data.id))!;
 
 // ── 0 · STAKE FLOOR — a chain stored with a below-floor min (100, legacy) must never
-//        surface a sub-floor bound; the product default (1,000) is the hard floor. ─────
+//        surface a sub-floor bound; the product default (the platform minimum, TZS 500 since
+//        2026-10-12) is the hard floor. ─────
 {
   const b = await stakeBoundsFor(chain);
-  ok("0.1 · a stale chain min (100) is floored to the platform min (1,000)", b.min === 1_000, `got ${b.min}`);
+  ok("0.1 · a stale chain min (100) is floored to the platform min (500)", b.min === 500, `got ${b.min}`);
   ok("0.2 · the chain's own higher max is preserved", b.max === 50_000, `got ${b.max}`);
 }
 

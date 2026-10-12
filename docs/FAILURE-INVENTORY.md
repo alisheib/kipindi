@@ -192,7 +192,7 @@ the way `tzsFigures` does today.
 
 | reason | code | severity | server site | what it really means |
 |---|---|---|---|---|
-| `stake_below_min` | INVALID | **warning** | `:692` | the single bet is under TZS 1,000 |
+| `stake_below_min` | INVALID | **warning** | `:692` | the single bet is under the market's minimum stake (`PLATFORM_MIN_STAKE`, TZS 500 since 2026-10-12, or a chain's own higher minimum) |
 | `stake_above_max` | INVALID | **warning** | `:692` | the single bet is over TZS 1,000,000 |
 | `stake_not_whole` | INVALID | **warning** | `:692` | not a whole number of shillings |
 | `balance_insufficient` | INVALID | **warning** | `:976`, `:772` | wallet (or bonus wallet) cannot cover it |

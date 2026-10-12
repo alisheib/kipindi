@@ -110,7 +110,7 @@ async function run(impl: Impl, log: (l: string) => void): Promise<string[]> {
       && p.closesAt === iso(NOW + 24 * HOUR) && p.serverNow === NOW, j(p));
   ok("1.figures · the card figure per side is the engine's: Dodoma ≈2.8× / ≈1.4×",
     p?.estimates.YES?.multText === "2.8" && p?.estimates.NO?.multText === "1.4", j(p?.estimates));
-  ok("1.bounds · the stake bounds are the bet path's (the platform's default window: 1,000 – 1,000,000)",
+  ok("1.bounds · the stake bounds are the bet path's (the platform's default window — 500 – 1,000,000 since 2026-10-12, read from the config)",
     p?.min === DEFAULT_GLOBAL_CONFIG.minStake && p?.max === DEFAULT_GLOBAL_CONFIG.maxStake, j({ min: p?.min, max: p?.max }));
   const legacy = await impl.pub("mkt_sheet0legacy", NOW);
   ok("1.legacy · no selection close: betting closes at resolution", legacy?.closesAt === iso(NOW + 48 * HOUR), j(legacy?.closesAt));

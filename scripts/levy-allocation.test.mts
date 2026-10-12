@@ -9,7 +9,7 @@
  * derived each winner's TRA and GBT independently as `Math.round(thisWinnersFeeShare * rate)`.
  * N independent roundings need not sum to one rounding of the whole, so the ledger and
  * `levySplit` stated two different statutory liabilities for the same settlement. GBT is 5%,
- * so a winner's fee share under 10 TZS books ZERO: fifteen winners at the TZS 1,000 minimum
+ * so a winner's fee share under 10 TZS books ZERO: fifteen winners of TZS 1,000 each
  * against one 1,000 losing bet is a fee of 130 with every share ≤ 9, and the market books
  * **GBT 0 where levySplit says 7** — a levy recorded as never having arisen.
  *
@@ -37,7 +37,7 @@ const ROOT = process.env.LEVY_ROOT || join(here, "..");
 const imp = (rel: string) => import(pathToFileURL(join(ROOT, rel)).href);
 
 const { settlementPayoutEntries } = await imp("src/lib/server/ledger.ts");
-const { levySplit, allocateFeeShares } = await imp("src/lib/payout.ts");
+const { levySplit, allocateFeeShares, PLATFORM_MIN_STAKE } = await imp("src/lib/payout.ts");
 
 const RATES = { traTaxOnCommissionRate: 0.10, gbtLevyOnCommissionRate: 0.05 };
 
@@ -105,7 +105,10 @@ console.log("\n§1 · Σ per-winner levies == levySplit(fee), across winner coun
     ["1.1  one winner (the shape ledger.test.mts fixtures)", 10_000, [20_000]],
     ["1.2  two winners", 1_000, [1_000, 1_000]],
     ["1.3  three winners (RULES §1's production poll)", 13_000, [12_069, 4_827, 2_414]],
-    ["1.4  fifteen minimum bets — the GBT-zero shape", 1_000, Array(15).fill(1_000)],
+    ["1.4  fifteen 1,000 bets against one 1,000 — the GBT-zero shape production measured", 1_000, Array(15).fill(1_000)],
+    // ⭐ 2026-10-12: the minimum stake is TZS 500, so the extreme of that shape is now fifteen bets AT the minimum against
+    //    one losing minimum bet — a fee of 65 and every share ≤ 4. Read from the rule, never typed.
+    ["1.4b fifteen bets at the minimum stake against one losing minimum bet", PLATFORM_MIN_STAKE, Array(15).fill(PLATFORM_MIN_STAKE)],
     ["1.5  two hundred winners on a 100,000 losing side", 100_000, Array(200).fill(1_000)],
     ["1.6  ragged stakes inside the live bounds", 250_000, [1_000, 3_500, 17_250, 400_000, 999_999, 12_345]],
   ];

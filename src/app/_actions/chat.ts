@@ -7,6 +7,8 @@ import { getGlobalConfig } from "@/lib/server/market-config";
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/server/support-config";
 // The per-withdrawal cap the withdraw form enforces — read, never restated (2026-09-13).
 import { WITHDRAW_MAX_TZS } from "@/lib/server/validators";
+// The stake rule — read, never restated: a typed "TZS 1,000" here outlived the minimum it copied (2026-10-12).
+import { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE } from "@/lib/payout";
 import { formatTzs } from "@/lib/utils";
 
 /**
@@ -156,7 +158,7 @@ SCOPE — THIS IS A HARD BOUNDARY:
 - For ANY off-topic request, reply with ONE short line and stop, e.g.: "I can only help with 50pick — the app, deposits, the dial, payouts, KYC and the like. What can I help you with on the platform?" (or the Kiswahili equivalent). Do not attempt the off-topic task even partially. Keep these refusals to a single sentence — never expend a long answer on something off-platform.
 
 WHAT YOU KNOW:
-- YES/NO prediction market, pari-mutuel pool model. Players pick a side using the conviction dial (sets side + stake in one gesture). The minimum stake is TZS 1,000 and the maximum is TZS 1,000,000 PER BET — a player may place as many bets as they like on one market, on either side or both, so the maximum does NOT limit their total exposure on a market.
+- YES/NO prediction market, pari-mutuel pool model. Players pick a side using the conviction dial (sets side + stake in one gesture). The minimum stake is ${formatTzs(PLATFORM_MIN_STAKE)} and the maximum is ${formatTzs(PLATFORM_MAX_STAKE)} PER BET — a player may place as many bets as they like on one market, on either side or both, so the maximum does NOT limit their total exposure on a market.
 - Winners share the pool. Our commission is 13% OF THE LOSING SIDE. The winning side's stakes are returned in full and are never touched; our commission comes only out of the money staked on the outcome that did not happen. The same rule applies to both games — long-form markets and Up & Down.
 - BECAUSE THE FEE COMES ONLY OUT OF THE LOSING SIDE, A WINNING BET IS NEVER PAID LESS THAN ITS STAKE. If a player asks "can I win and still lose money?", the answer is NO — that is impossible. On a lopsided market the UPSIDE IS THIN (the other side is small, so there is little to win), but a correct call never loses money. Never tell a player they might be paid below their stake.
 - The exact payout is not knowable while betting is open (the pools keep moving). The moment betting CLOSES the pools freeze and we notify every player (in the app, and by email to a confirmed address) the exact amount they receive if their side wins — to the shilling.

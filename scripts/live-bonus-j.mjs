@@ -60,8 +60,10 @@ const PLAYER = process.env.PLAYER ?? "01";
 const me = fleetPersona(PLAYER);
 const E164 = `+255${me.phone}`;
 
-/** The fresh grant: multiplier 1 so ONE legal stake completes the requirement. */
-const GRANT_TZS = Number(process.env.GRANT_TZS ?? 2_000);
+/** The fresh grant: multiplier 1 so ONE legal stake completes the requirement.
+ *  ⚠️ 1,000 since 2026-10-12: the default was 2,000, the "2K" preset — which the ladder lost when the minimum stake came
+ *  down to 500 (`quickStakes` gives 500 · 1K · 2.5K · 5K). 1K is on both ladders. Not run since the change. */
+const GRANT_TZS = Number(process.env.GRANT_TZS ?? 1_000);
 const MULT = Number(process.env.MULT ?? 1);
 /** The qualifying stake — equal to the requirement, and one of the card's own presets. */
 const STAKE = GRANT_TZS * MULT;
@@ -488,7 +490,7 @@ async function pickRound() {
  * real price data within its own duration — so this leg watches the whole lifecycle rather
  * than promising the second half to a later session.
  * ⚠️ AND ITS BET CARD IS NOT THE POLL CARD. `/markets/<id>` for a UD round renders a PRESET
- * LADDER (1K/2K/5K/10K) and ONE gold control — `Confirm Up · TZS 2,000` — which is the money
+ * LADDER (1K/2K/5K/10K then; 500/1K/2.5K/5K since 2026-10-12) and ONE gold control — `Confirm Up · TZS 2,000` — which is the money
  * commit itself, with no dialog behind it. `live-bonus-live-proof.mjs`'s `placeBet()` matches
  * `/Place YES|NO/`, a MARKET-lexicon word that does not exist on this page: it would have
  * timed out and read as a broken bet form. Learned from the live page with
@@ -537,7 +539,7 @@ async function settle() {
     await page.goto(`${BASE}/markets/${round.mkt}?side=YES`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(7_000);
 
-    // The preset ladder speaks in K. 2,000 is "2K".
+    // The preset ladder speaks in K. 1,000 is "1K" (and 2,500 would be "2.5K"; a figure under 1,000 prints bare).
     //
     // 🔴 `getByRole("button")` CANNOT MATCH THESE, AND THE PROBE IS WHY I BELIEVED IT COULD.
     // The chips are `<button type="button" role="radio">` (`round-stake-panel.tsx:176-177`) —

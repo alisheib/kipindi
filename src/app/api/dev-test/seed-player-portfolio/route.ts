@@ -212,8 +212,8 @@ export async function POST(req: Request) {
   let udPlaced = 0;
   for (const [i, m] of udLive.entries()) {
     const side: Side = i % 2 === 0 ? "YES" : "NO";
-    // ⚠️ 1,000 is the live platform minimum, not a number chosen here — a fixture that bets
-    //    below it produces refusals that look like a broken seeder.
+    // ⚠️ Every stake here clears the live platform minimum (`PLATFORM_MIN_STAKE`) — a fixture that
+    //    bets below it produces refusals that look like a broken seeder.
     const r = await buyPosition(uid, { marketId: m.id, side, stake: 1000 + ((i * 500) % 3000) });
     if (r.ok) udPlaced++;
     else refusals.push(`updown ${m.id}: ${r.code ?? ""} ${r.error ?? "refused"}`.trim());

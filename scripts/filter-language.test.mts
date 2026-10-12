@@ -205,7 +205,7 @@ const SURFACES = [
      reader's `/` is the landing, whose rail is the row above. Declared in the same commit as the rail, as §0.4 requires.
      ⛔ NOT ADDED TO THE THREE LIVE PROBES' `SURFACES`, for the landing's reasons: its pills carry no count (`homeChips` holds
      only the categories the book holds, so a count would restate the cards below it), the rail is not sticky, and the
-     journey home's frames are the S7 drives' (`qa:journey-home`, WP11). */
+     journey home's frames are the S7 drives' (WP11's journey-home drive). */
   "src/components/journey/home/home-chips.tsx", // / (journey) — the home's topic chips (S7 WP7)
 ];
 

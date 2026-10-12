@@ -145,8 +145,10 @@ export const THIN_SMALLER_SIDE_SHARE = 0.15;
 
 // ── Stake bounds — A RULE, NOT A DEFAULT ────────────────────────────────────
 /**
- * TZS 1,000 minimum and TZS 1,000,000 maximum **PER BET**, on BOTH products
- * (Ali, 2026-08-14 — see `docs/RULES.md`). Unlike the rates above, these are not
+ * TZS 500 minimum (Ali, 2026-10-12 — it was TZS 1,000 from 2026-08-14) and TZS 1,000,000
+ * maximum **PER BET**, on BOTH products (see `docs/RULES.md` §2.3). ⛔ The minimum DEPOSIT is a
+ * separate rule (`DEPOSIT_MIN_TZS`, validators.ts) and did not move with this one: a player
+ * may stake less than the smallest deposit. Unlike the rates above, these are not
  * merely cold-start fallbacks: they are the floor and ceiling the admin doors
  * themselves validate against, so an operator cannot configure the platform out of
  * its own rule. `/admin/config` and `/admin/updown` may narrow the window inside
@@ -159,11 +161,16 @@ export const THIN_SMALLER_SIDE_SHARE = 0.15;
  *
  * ⛔ AND A CONSTANT IS NOT A LIVE SETTING. These are what the persisted
  * SystemConfig rows are reconciled TOWARD (market-config `reconcileConfigDefaults`,
- * updown-config `reconcileUpDownDefaults`); the money path reads the config, never
- * these. Production ran a TZS 500 floor for two and a half weeks while these read
- * 1,000 — verify a bound change by READING THE DB, not by reading this file.
+ * updown-config `reconcileUpDownDefaults`); the money path reads the config, floored at
+ * the minimum on read (2026-10-07). Production ran a TZS 500 floor for two and a half
+ * weeks while these read 1,000 — verify a bound change by READING THE DB, not by
+ * reading this file.
+ * 🔴 THE FLOOR ONLY RAISES (2026-10-12). Lowering this constant lowered nothing a player
+ * could bet: a stored 1,000 is at or above the floor, so it stayed enforced. The
+ * reconciles (market v4, Up & Down v5) lower a stored 1,000 to this value once; any
+ * other stored value is an operator's choice and is left alone.
  */
-export const PLATFORM_MIN_STAKE = 1_000;
+export const PLATFORM_MIN_STAKE = 500;
 /** @see PLATFORM_MIN_STAKE */
 export const PLATFORM_MAX_STAKE = 1_000_000;
 

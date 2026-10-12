@@ -173,7 +173,7 @@ const RULES: {
     amountTzs: { ok: (v) => isWhole(v, 0, 1_000_000), reason: "Prize amount must be whole shillings, 0–1,000,000 TZS." },
     capPerReferrer: { ok: (v) => isWhole(v, 0, 10_000), reason: "Prize cap must be a whole number, 0–10,000." },
     // ⭐ 0 (no minimum) or a real stake (2026-10-07): a figure between them names a bet nobody can place — the minimum
-    // stake is TZS 1,000 (`PLATFORM_MIN_STAKE`; management, relayed by Ali: "consistently 1000 not 500").
+    // stake is `PLATFORM_MIN_STAKE` (docs/RULES.md §2.3), so this window moves with it.
     minBetAmountTzs: { ok: (v) => v === 0 || isWhole(v, PLATFORM_MIN_STAKE, 10_000_000), reason: `Min bet amount must be 0 (no minimum) or whole shillings from ${formatTzs(PLATFORM_MIN_STAKE)} — the minimum stake — to TZS 10,000,000.` },
     requireDeposit: { ok: isBool, reason: "Require-deposit must be on or off." },
   },

@@ -161,8 +161,9 @@ const SEC = 1000;
 // Production's GOLD chain takes TZS 500 stakes, and the incident being reproduced is a
 // 500 stake, so the floor is lowered to match rather than the reproduction being
 // rounded up to fit the default.
-// ⛔ 2026-08-14 · setUpDownConfig REFUSES a sub-floor minimum now — 500 is below the
-// platform rule of TZS 1,000. And its result is CHECKED: the first version of this line
+// ⛔ 2026-08-14 · setUpDownConfig REFUSES a sub-floor minimum — 500 was below the platform
+// rule of TZS 1,000 then (since 2026-10-12 the rule is 500 again, so the 1,000 below is simply
+// a legal narrower window, kept). And its result is CHECKED: the first version of this line
 // discarded it, so when the write started failing the run died 30 lines later on
 // "open price did not confirm" and blamed the price feed for a config refusal.
 {
@@ -236,7 +237,7 @@ let strandedMarketId = "";
   strandedRoundId = opened.data.id;
   strandedMarketId = opened.data.marketId;
 
-  const bet = await buyPosition(alpha, { marketId: strandedMarketId, side: "YES", stake: 1_000 });   // the platform floor (2026-08-14)
+  const bet = await buyPosition(alpha, { marketId: strandedMarketId, side: "YES", stake: 1_000 });   // a 1,000 stake (the platform floor from 2026-08-14 to 2026-10-12)
   ok("2.1 · a real stake enters the round", bet.ok, bet.ok ? "" : bet.error);
   ok("2.2 · the money has left the wallet", (await balanceOf(alpha)) === START_BALANCE - 1_000, String(await balanceOf(alpha)));
 
@@ -291,7 +292,7 @@ let strandedMarketId = "";
      positions.every((p) => Number(p.finalPayout) === Number(p.stake)),
      positions.map((p) => `${p.stake}->${p.finalPayout}`).join(","));
 
-  ok("2.17 · ⭐⭐ THE ACCEPTANCE TEST — the player's TZS 500 is back, to the shilling",
+  ok("2.17 · ⭐⭐ THE ACCEPTANCE TEST — the player's stake is back, to the shilling",
      (await balanceOf(alpha)) === START_BALANCE, String(await balanceOf(alpha)));
   ok("2.18 · the market is VOIDED, not left LIVE",
      (await marketStore.get(strandedMarketId))!.status === "VOIDED",
@@ -738,7 +739,7 @@ console.log("\n── 11 · an ops-state refusal does not spend a round's retrie
     const opened = await openRound(chain, B(201), null, null);
     if (!opened.ok) throw new Error(opened.error);
     const round = (await roundStore.get(opened.data.id))!;
-    const bought = await buyPosition(alpha, { marketId: round.marketId, side: "YES", stake: 1_000 });   // the platform floor (2026-08-14)
+    const bought = await buyPosition(alpha, { marketId: round.marketId, side: "YES", stake: 1_000 });   // a 1,000 stake (the platform floor from 2026-08-14 to 2026-10-12)
     ok("11.4a · a real stake entered the round", bought.ok, bought.ok ? "" : String(bought.error));
     const staked = await balanceOf(alpha);
 

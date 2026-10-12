@@ -270,10 +270,16 @@ export function promptInterpolations(slice) {
  * lines) and the cap enters through `formatTzs(WITHDRAW_MAX_TZS)`, not bare. A pin typed from that list
  * would have gone red on a file nobody had touched.
  * ⭐ 2026-10-06: `HELPLINE()` left the prompt with the helpline (the owner's ruling) — one hole fewer.
+ * ⭐ 2026-10-12: two holes MORE, and both are the stake rule's own constants — the prompt typed "TZS 1,000" for the minimum
+ * stake, a figure the owner then lowered to 500, so the sentence reads `PLATFORM_MIN_STAKE` / `PLATFORM_MAX_STAKE` through
+ * `formatTzs`, exactly as the withdrawal cap already did. A formatted number from `payout.ts` carries no text a house fact
+ * could ride in on.
  */
 export const PROMPT_INTERPOLATIONS = Object.freeze([
   "SUPPORT_EMAIL()",
   "SUPPORT_PHONE()",
+  "formatTzs(PLATFORM_MAX_STAKE)",
+  "formatTzs(PLATFORM_MIN_STAKE)",
   "formatTzs(WITHDRAW_MAX_TZS)",
   "langLine",
   "objectionHours",

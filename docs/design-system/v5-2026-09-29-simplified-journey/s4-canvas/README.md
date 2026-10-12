@@ -19,3 +19,9 @@ and stake are TZS 1,000, and a deposit asks no email question. `s4-5-low-min500.
 minimum ("Weka pesa TZS 1,000", and TZS 800 left in the balance; it keeps its file name, which is `canvas.json`'s key).
 The six `s4-6-code-*` boards (S9's email code) are kept as drawn and marked ⛔ superseded in their titles and in
 `canvas.json`: S9 asks no code and they are not built.
+
+**Noted 2026-10-12, not redrawn — the owner's ruling of that day** (COMPLIANCE-DECISIONS 2026-10-12): the minimum STAKE
+is TZS 500 again; the minimum deposit stays TZS 1,000, so the s4-5 boards stand. `s4-4-sheet-below-min.dc.html` draws a
+TZS 500 stake refused at the TZS 1,000 minimum — at the 500 minimum that stake is legal, and the refusal is drawn for a
+stake under 500 with "Dau la chini kabisa ni TZS 500". The sheet boards' default stake and chips (1,000 / 2,000 / 5,000 /
+10,000) are the old minimum's; at 500 the sheet opens at TZS 500 and `quickStakes` gives 500 / 1,000 / 2,500 / 5,000.

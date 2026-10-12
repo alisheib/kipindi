@@ -119,8 +119,10 @@ const MUTATIONS = [
     name: "assistant-loses-the-per-bet-qualifier",
     why: "⚠️ the assistant drops 'PER BET' from the maximum — docs/RULES.md §1 records that no surface may imply the cap bounds TOTAL exposure on a market",
     file: CHAT,
-    from: `The minimum stake is TZS 1,000 and the maximum is TZS 1,000,000 PER BET — a player may place as many bets as they like on one market, on either side or both, so the maximum does NOT limit their total exposure on a market.`,
-    to: `The minimum stake is TZS 1,000 and the maximum is TZS 1,000,000.`,
+    // ⚠️ RE-ANCHORED 2026-10-12: the prompt now reads the stake bounds from the constants (a typed "TZS 1,000" there
+    // outlived the minimum it copied), so the anchor is the template's own text. `\${` keeps it literal in this file.
+    from: `The minimum stake is \${formatTzs(PLATFORM_MIN_STAKE)} and the maximum is \${formatTzs(PLATFORM_MAX_STAKE)} PER BET — a player may place as many bets as they like on one market, on either side or both, so the maximum does NOT limit their total exposure on a market.`,
+    to: `The minimum stake is \${formatTzs(PLATFORM_MIN_STAKE)} and the maximum is \${formatTzs(PLATFORM_MAX_STAKE)}.`,
   },
   {
     name: "leaderboard-tiers-restate-the-thresholds",

@@ -5,7 +5,8 @@
 // PHASE 1 — one-sided markets only (so the FEATURED card and the board rows are one-sided):
 //   O1 YES only 2×25,000 · O2 NO only 1×30,000 · O3 YES only 1×12,000
 // PHASE 2 — then three contested markets and one lopsided two-sided market (25,000-scale vs 100 is
-//   below the TZS 1,000 minimum stake, so 200,000 vs 1,000 = 99.5%, which Math.round makes 100):
+//   below the minimum stake — TZS 1,000 when this was written, TZS 500 since 2026-10-12 — so 200,000 vs 1,000 = 99.5%,
+//   which Math.round makes 100):
 //   the hero fills with priced markets, a one-sided market is left for a board row and the grid.
 // Writes <OUT>/seed-onesided-phase<N>.json with each market's id and resulting pools.
 import { readFileSync, writeFileSync } from "node:fs";

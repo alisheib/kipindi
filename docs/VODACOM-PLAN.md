@@ -42,6 +42,11 @@ the s4-5 low-minimum and s4-6 code frames on the S4 canvas, `shortfall.ts`'s `em
 `qa:classic-shell-parity` 2.9 once ▶ 0e's Phase B removes the email bar — all three done in WP12's batch (§0i WP12):
 the short-of-the-minimum board offers TZS 1,000 and S9's six code boards are marked superseded; `shortfallPlan` asks no
 email step; 2.9 reads which tree it runs on (the bar's component gone → no viewer may see a bar).
+⚠️ Owner ruling of 2026-10-12: the minimum STAKE is TZS 500 again, and the minimum deposit stays TZS 1,000
+(`docs/COMPLIANCE-DECISIONS.md` § "2026-10-12 · The minimum stake is TZS 500 again; the minimum deposit stays TZS 1,000 (owner)"). Where this plan states a TZS 1,000
+stake minimum, read TZS 500 — the sheet takes its `min` from `stakeBoundsForMarket` and types neither figure — and its
+TZS 1,000 deposit lines stand. SJ-10's chips come from `quickStakes(min, max)`, so at the new minimum they read
+500 / 1,000 / 2,500 / 5,000; the 1,000 / 2,000 / 5,000 / 10,000 written below is the old minimum's ladder.
 
 **✅ S6 IS CLOSED (2026-10-12 03:01 EAT) — the close record (the session law's three: `test:all` with the database suites,
 classic parity, the tiles).** **`test:all`** on the live tree (`daf0e799`, 2026-10-12 02:05–02:19, `--jobs 2`): **501/525**,
@@ -361,9 +366,9 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S7 — WP0–WP4 are live (`dcf305d5`, 2026-10-12 13:59 EAT, §0j); WP5–WP10 and live fix L1 are built, reviewed and stacked on `origin/vodacom-s7-land6`; next WP10's review fixes,
-WP9's review commit (`2592f066`) onto it, the landing proof, the push live, then WP11's drives and WP12 (§0j's "⏸ END OF
-SESSION" bullet); S8's plan is filed ([`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md)). OMEGA's own 2026-10-07/08 WP1 is on origin
+**Next:** (1) S7 — WP0–WP4 are live (`dcf305d5`, 2026-10-12 13:59 EAT, §0j); WP5–WP10 and live fix L1 are live
+(`f20f1617`, 2026-10-12 20:35 EAT, their landing proof whole — §0j); next WP11's drives and WP12 (§0j's "▶ IN FLIGHT" bullet: helper sessions run
+them); S8's plan is filed ([`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md)). OMEGA's own 2026-10-07/08 WP1 is on origin
 for reference only as `vodacom-s7-wp1-omega`, never to be merged (§0h point 66). S7's plan:
 [`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), whose Amendments override its body. (2) When
 Ali says so, and not before (nothing turns on until the plan is done): an officer approves the S2 short titles, and
@@ -611,7 +616,7 @@ body. Owner-level calls: §0h point 58, and 65 on.
   visible word; JS — the dictionary rides in the client bundle (`src/lib/i18n.tsx` imports `dict`), so every page's
   script grows by the 31 keys in three languages. test:house-bot-disclosure 5.1 and 5.1.c3 read red on the branch by
   construction (they pin the whole dictionary to origin/main) and green once the keys are on main (re-read after the push: the read-back below).
-- **WP5 — the journey card: BUILT AND REVIEWED, lands next with WP7** (`origin/vodacom-s7-wp5`: `8fff5425`, its review's fixes `8233347b`): `src/components/journey/cards/journey-card.tsx`, one
+- **WP5 ✅ LIVE `f20f1617` (2026-10-12) — the journey card** (built as `origin/vodacom-s7-wp5` `8fff5425` and its review's fixes `8233347b`; landed as `d371db30` and `62def5a3`): `src/components/journey/cards/journey-card.tsx`, one
   server component for every state (live priced, over the cap, thin, empty pool, one side, hidden, Up & Down, selection
   closed, settled YES/NO/void) that decides nothing itself (cardFigures, cardFace, cardCloseLabel, cardTitle,
   competitionLabel); the settled row's one `<time>` through `formatEatDateTime` (A24 item 3); `.kp-jcard*` and its
@@ -622,7 +627,7 @@ body. Owner-level calls: §0h point 58, and 65 on.
   forced-colours borders on the picks, the §4 test gaps closed — and the thin side's two lines are recorded (§0h point
   74). Served bytes for a classic viewer: CSS only — the new rules, the `:root` tokens, and one selector added to the
   shared one-sided note rule (its declarations unchanged; the selector matches nothing on a classic page).
-- **WP6 — the How-to card and the static How-to sheet: BUILT AND REVIEWED, lands next with WP7** (`origin/vodacom-s7-wp6`: `267cda73`, `9f4b2163`, `a33a9ced`): (a) `.btn-primary`'s
+- **WP6 ✅ LIVE `f20f1617` (2026-10-12) — the How-to card and the static How-to sheet** (built as `origin/vodacom-s7-wp6` `267cda73`, `9f4b2163`, `a33a9ced`; landed as `fbf773e5`, `cf229367`, `bfac674c`): (a) `.btn-primary`'s
   material as three `:root` tokens (A14 item 1), computed values unchanged — test:contrast now scores the button's own
   rule through `tokenNamed`, and offline-neutral holds the offline page's copy to its own tokens; (b) the lost-chunk
   guard lifted into `src/components/layout/lost-chunk.ts`, imported by shell-lazy, route-ghost-lazy and the Tiketi rail
@@ -631,6 +636,38 @@ body. Owner-level calls: §0h point 58, and 65 on.
   only the steps-and-MFANO region scrolling. An independent review found no blocker; its five items are applied. Served
   bytes for a classic viewer: CSS text (the tokens, computed values unchanged); JS — shell-lazy's chunk on every page and
   the Tiketi rail's on /positions and /updown/history (A23 item 6(c)–(d)); no HTML or RSC.
+- **WP7 ✅ LIVE `f20f1617` (2026-10-12) — the journey home on `/`** (`289ce0fd`; its review `ff0c40e4`): a journey reader's `/` is the
+  deck's home — `journey-home.tsx` (one `listMarkets` read; WP3's rules decide the rest: the chips, the search line, 12 a
+  page cumulative, three empty states), the How-to card first, the h1 (`home-headline.tsx`: 28px below 1024, two lines at
+  360 in sw, en and zh; from 1024 44px on one line beside the How-to card), the topic chips (the kit FilterPill), WP5's one
+  card grid, "Onyesha zaidi" and a 30 s refresh — and its ghost (`journey-home-ghost.tsx`: the Suspense fallback, and the
+  root loading's picture of `/` for a journey reader). Every other reader's `/` is today's element after one cached
+  await. The review (no blocker): from 1024 each headline sentence is held whole (§0h point 79); journey-home 7.client —
+  the journey arm brings no client code into `/` but the home's lazy module and what the landing already brings
+  (link-pending). Served bytes for a classic viewer: no HTML or RSC change on `/`; `/`'s first load gains the home's lazy
+  module (A23 (d), the TicketSwitchRail precedent); CSS `.kp-jhome*` and `.kp-jhome-ghost*` (nothing on a classic page);
+  the route ghosts' chunk (journey readers only) gains the home's ghost.
+- **WP8 ✅ LIVE `f20f1617` (2026-10-12) — the LIVE strip leaves `/` and `/markets` for a journey reader, and the old primer stands
+  down** (`84e16bf8`; its review `b6d2d626`): AppShell's journey arm alone hands LiveTicker the shell's answer; the
+  first-visit primer stands down for a journey reader on every route. Served bytes for a classic viewer: no markup and no
+  RSC prop; every page's LiveTicker chunk and the primer's chunk change (A23 (c)).
+- **Live fix L1 ✅ LIVE `f20f1617` (2026-10-12) — for every player** (`4266ad9f`; its review `f9f12889`): a chat-bubble or
+  first-visit-primer chunk that never arrives leaves that part out, with one `/api/client-error` report per page, instead
+  of the critical-error screen (A13 (b)). Gate: journey-shell 12.dynamic.census with its plants; the drive
+  `qa:lost-chunk`, red on L1's parent (its control puts back only `lazy-overlays.tsx`, L1 review). Served bytes: no HTML
+  or RSC; every page's initial JS changes by the LazyOverlays module (it imports the guard).
+- **WP9 ✅ LIVE `f20f1617` (2026-10-12) — a journey reader's `/markets` answers with the journey home; Tafuta moves into Akaunti**
+  (`21887be6`; its review `c1f83655`): AppShell's document door (a real 307, documents only) and the page's own redirect on
+  a flight, both through `journeyMarketsTarget`; Tafuta in Akaunti's settings card (a native GET form to `/`, no script).
+  The review: a search cut at the cap keeps no half character (`/markets?q=` + 119 ASCII + an emoji no longer 500s a
+  journey reader's root layout); Tafuta's submit keeps the kit's outside ring; the edge's two headers and AppShell's top
+  branch pinned; the S6 drives moved off `/markets`. Served bytes for a classic viewer: `/markets` none (today's board at
+  200); `/account` (the not-found page for a classic reader) the kit Input's chunk (A23 (d)).
+- **WP10 ✅ LIVE `f20f1617` (2026-10-12) — the journey card on `/watchlist`, `/live` and the similar rail, and `/results`' settled
+  card** (`ae4623ac`; its review `16beae1c`): one ternary in each cards' slot, the classic arm today's markup line for
+  line. The review: "Onyesha zaidi" is one control, `show-more.tsx` (§0h point 78). Served bytes for a classic viewer: no
+  markup or payload; CSS one journey rule less (`.kp-jhome__more`); JS — the four pages' server graphs gain the journey
+  card (server code only), and `/live`'s client references gain `link-pending.tsx` for every reader (§0h point 78).
 - **The landing proof of WP1–WP4, together at one tip** (§0h point 71), on OMEGA-COMPILE01 under the lock, 2026-10-12
   13:03–13:45 EAT: `F:\kipindi-s7b` at `1da5e091`, on main `fdd662a9` (the afflink lane's three admin-only commits came
   in under the stack; no player route imports `admin-section-gate.tsx` or `admin-skeletons.tsx`). With them, main's own
@@ -658,6 +695,50 @@ body. Owner-level calls: §0h point 58, and 65 on.
   SKIP is the staff-pass control, as on every production run); **qa:chunks-prod 6/6 routes** (47 GETs, a guest: S6's
   shell mark is the one journey marker in a first load, by design); **test:house-bot-disclosure 118/0 on main** — 5.1
   is green now that WP4's keys are origin/main's own.
+- **The landing proof of WP5–WP10 and L1, at one tip** (§0h point 71's rule), on a claude.ai/code cloud VM (Linux, 4 cores; no
+  lock — one heavy job at a time; the chain and its STATUS and logs on `origin/vodacom-visual-tools`
+  `tools/s7-cloud-2026-10-12/`) and a helper VM, 2026-10-12 16:30–20:30 EAT. The tip `4089c9c6`
+  (`origin/vodacom-s7-land7`) = main `395e1a6a` + the sixteen commits. It lands rebased on main `203b1380`, which by then
+  carried the minimum-stake change (`de44e087`, another session's — Ali's ruling of 2026-10-12, TZS 500; it changes
+  pages a classic reader is served), with two scripts-only fixes on top (below). Main having moved under a proof that
+  compares served pages, parity v3 ran again on this VM: a baseline at `de44e087`, then the rebased tip `80915bff`
+  against it — **53/53** (1585 s): no unexpected difference in the 224 matrix cells, the 8 Sell cells or the 44 book cells; the 14 commits since that baseline that change a served file are S7's own. On the rebased tree: typecheck 0; journey-home, journey-sheet, shortfall,
+  journey-estimate, markets-redirect, ticker-honesty, money-minimums 41/0 and dial-stake 15/0 green; `test:all` again at the rebased tip (helper C, `results/s7-battery-a7786df6.md`): 519/526 in the serial battery, and after each red's own re-run only the three known reds remain (test:orphans, test:contacts-export, test:marketing-preflight); test:guards-exist green; test:house-bot-disclosure 118/118 against a current origin/main (the container's ref predated the stake change); the server suites green on a server; the stake change's twins red:stake-bounds 9/9 and red:rate-copy 12/12, each alone, the tree clean; red-anchors 5286/0. **Typecheck 0. The 109 gates: 108 exit 0** — the one red main's own test:orphans (two
+  landing-v3 panels). **WP2's population plants 4/4.** **The file-editing reds, each alone, the tree clean after each:**
+  featured-card 18/18, one-sided 31/31, ticker-honesty 31/31, contrast 29/29, timer-date 19/19, filter-language 43/43,
+  measure 8/8, chat-availability 3/3, failure-reasons 20/20 — main's own red:failure-reasons read 19/20 ("HARNESS ERROR:
+  anchor not found": its RG banner plant still named `{banner.body}`, which round 10 `177981c1` wrapped in
+  `noticeBody`), re-anchored in `e3779012` (scripts only); and S6's qa:journey-header-fit raced the balance capsule
+  (below), fixed in `6c941f11` (scripts only). **Parity v3, calibrated on this VM** (a new machine captures
+  its own baseline): `--prove-red` 131/131 at `52715180`; the baseline — 224 matrix cells, 8 Sell, 44 book, 1179 blobs, the
+  book's B.0–B.8 PASS (30 LIVE questions, 12 placed: VOID 1, WIN 3, LOSS 2, CASHED_OUT 3, OPEN 8); its null compare on a
+  second fresh server **53/53**. **`qa:first-load --build --read` PASS, 10 routes** (`next build` 0 in 94 s; 30 fixture
+  controls): no S7 marker in a classic first load; the home's lazy module a client reference on `/` alone (A23 (d)); the
+  journey card in no client chunk. **Local qa:live 334/334** (its staff-pass control run). **Parity v3 `--compare
+  --allow-base` at the tip: 53/53** — no unexpected difference in the 224 matrix cells, the 8 Sell cells or the 44 book cells (page bodies, the LIVE strip, the similar rail, `/`'s head); it names the 18 commits since the baseline that change a served file (WP2–WP4 and the sixteen). Its first run stalled 17 min inside a browser call in the Sell phase and was stopped (that cell reproduced on a fresh tip server: clean twice, every step under a second); the re-run, under a 55-minute limit, passed in 1591 s. On the helper VM (`session_01SrWuXa3LR3Rew6zEyHBXzJ`): **qa:served-skeleton
+  `--main`** — its null pair at main `395e1a6a` IDENTICAL (14 cells: status, head, preloads, body, main, segments, every bail-out count); main → the tip for classic readers DIFFERENT in exactly what A23 item 6 names: `/` (guest and player) one more async script, the home's lazy module (A23 (d)), its RSC data naming that chunk in the page's client chunk list (and the `link.js` and `reveal.tsx` rows listing it too; two more dev-only debug rows because the page became async — helper A's two captures per commit, 21 pushes each, run against run identical); `/results` the same two async scripts in the other order; `/markets`, `/live`, `/watchlist`, the question page and `/account` identical. The production first load, main against the tip (`qa:first-load --build --read` at both): every route the same number of entry files; `/` +1.0 KB (the home's lazy module), `/account` +9.6 KB (the kit Input's chunk, A23 (d); a classic reader is served the not-found page there), `/live` +0.1 KB (link-pending joins a chunk it already loads — §0h point 78), every other route within 0.6 KB; **qa:lost-chunk** 30/30 on the tip, and its control (L1's parent `lazy-overlays.tsx` put back) 22/22 with the crash it expects (L.chat.1 and L.primer.1 reach the critical-error screen); **qa:chunks-prod `--self-test`** 17/17; **WP9's four drives**
+  — qa:journey-preview 35/35, qa:journey-unread-handover 14/14, qa:landmark-seal `--journey` 504 cells and 0 problems; qa:journey-header-fit first read 5/9 — four cells read the balance capsule masked, a race in the drive (the capsule is masked until its own effect reads the reader's choice, R4-J): fixed in the drive, it reads 66/66 cells and passes, and its mutation (a wrong expected figure) fails as it must. **`test:all` at the release's code** (`5388b4ca`, helper C, `session_017HxNx4Nz7mWgckL3G3wLnu`, Node 24, the
+  database suites on a scratch Postgres; its file on the tools branch, `results/s7-battery-5388b4ca.md`): 497/525 on the
+  first serial pass; after two sandbox causes (the scratch cluster's directory owned by root; a shallow clone the plan
+  suites read commits from) every suite green but four — **test:guards-exist**, this release's: two comments (WP6, WP7)
+  named WP11's drive by its package key before the key exists, fixed in `80915bff` (9/9; test:filter-language,
+  test:popup-fit, red-anchors green); test:orphans (main's own two landing-v3 panels); test:contacts-export (exits during
+  K8 on Node 24, no failure line) and test:marketing-preflight (its "run through a junction" probe in the sandbox) — both
+  red on CI's main as well, not this release's. test:house-bot-designation failed one Postgres assertion (6.9) once and
+  passed on its re-run. The server suites against a fresh dev server: admin-section-gate 21/21, needle-rest 92/92,
+  revoked-deadend 46/46. red-anchors 5286/0; every red twin caught — journey-home 243/243, markets-redirect 31/31,
+  journey-shell 208/208, journey-account 61/61, simple-journey-flag 41/41, journey-sheet 17/17, hero-copy 29/29,
+  marketing-optout 44/44 (alone, tree clean). So nothing a classic reader is served changed beyond what §0j names: the home's lazy module on `/`, the kit Input on `/account`, `/results`' script order, link-pending inside `/live`'s chunks, and L1 for every player.
+- **✅ LIVE `f20f1617` (2026-10-12 20:35 EAT) — WP5–WP10 and L1, read back as far as this VM can:** GitHub's commit status
+  carries Railway's verdict, "Success - www.50pick.tz" (its deployment in progress from 20:26:30, success 20:35:16 EAT —
+  Railway finishes a deploy only once `/api/health` answers). CI at `f20f1617` (Node 24, a shallow clone, no scratch
+  Postgres, no server): its first run 495/524 — the 28 reds main carried at `203b1380` (the database suites, the plan
+  suites, the three server suites, test:orphans, test:contacts-export, test:marketing-preflight) and test:short-title-ai
+  164/167, a suite none of whose modules changed here (167/0 on the live commit here, green in both batteries); its
+  re-run 496/524, exactly main's 28 — so the release adds no red. ⚠️ **NOT MEASURED from this VM** (the sandbox refuses
+  the production hosts; `QA_MOBILE01_PASSWORD` is not set here either): `?dpl=f20f1617` on both hosts, production qa:live
+  with [E3], and `qa:chunks-prod --origin https://50pick.tz` — owed to the next machine that reaches production; until
+  then the deploy's health check and the local proofs above are what stands for them.
 - **⏸ END OF SESSION — 2026-10-12 ~17:00 EAT (Ali: "push progress and everything, later we proceed"). THE EXACT PLACE,
   for any machine — every branch below is ON ORIGIN; nothing is only on OMEGA-COMPILE01:**
   - **LIVE:** S7 WP1–WP4 (`dcf305d5`, read back 13:59) and the loss-limit refusal's fix for every player (`e5b5c9da`,
@@ -671,7 +752,7 @@ body. Owner-level calls: §0h point 58, and 65 on.
     one red main's own test:orphans), red:journey-home 233/233; after the WP7 review, journey-home all pass and red
     237/237. Independent reviews: WP5, WP6, WP8 (their fixes are in the stack); L1+WP7, WP9, WP10 (2026-10-12) — no
     blocker in any.
-  - **▶ NEXT, in order:**
+  - **▶ NEXT, in order** (items 1–4 DONE 2026-10-12 — the "▶ IN FLIGHT" bullet below):
     1. **WP10's review fixes** (not started; one "WP10 review" commit on land6): ONE shared server control
        `src/components/journey/show-more.tsx` — `ShowMore({ href, t })`: a `next/link` with `scroll={false}`, `btn
        btn-ghost btn-lg w-full`, `{t.journey.showMore}`, `<I.chevronDown s={18} edge="end" />` and `<LinkPending />` from
@@ -726,6 +807,25 @@ body. Owner-level calls: §0h point 58, and 65 on.
     builders' `F:\kipindi-s7c…s7j`, `F:\kipindi-s8p` (`node_modules` junctions to `F:\kipindi-s7b` — never `npm ci` in
     them); the lock-turn chains on `origin/vodacom-visual-tools` `tools/s7-omega-2026-10-12/` (`fa8d65da`); the v3
     baseline and the scripts' copies in `F:\kipindi-s7-artifacts`.
+- **▶ IN FLIGHT — a cloud session (a claude.ai/code Linux VM, 2026-10-12 from ~16:25 EAT), working the NEXT list above in
+  order:**
+  - **Items 1–4 DONE:** WP10's review and WP9's review stacked (`origin/vodacom-s7-land7`), the landing proof whole (the
+    bullet above), WP5–WP10 and L1 live `f20f1617` and read back as far as this VM can (the ✅ LIVE bullet above). ⚠️ OWED
+    to a machine that reaches production (this VM's sandbox refuses `50pick.tz`, `www.50pick.tz` and the Railway host):
+    `?dpl=f20f1617` on both hosts, production qa:live (its [E3] signs in as the QA player mobile01) and `qa:chunks-prod
+    --origin https://50pick.tz`.
+  - **Item 5 — WP11 and WP12 — on helper VMs** (Ali, 18:00 EAT: "maximum resources"; each a claude.ai/code session in
+    this environment, its transcript the record): **B** `session_01XGYT5pB9XzX5WLM7gxvAFJ` runs WP11's drafts on
+    `origin/vodacom-s7-wp11` — local qa:live with S7's routes (363/0 on its VM), qa:cls-budget `--journey` with its
+    RED_SHELL control, qa:journey-above-fold, qa:journey-home and its tiles — fixing only the drives; **C**
+    `session_017HxNx4Nz7mWgckL3G3wLnu` runs WP12's battery (`test:all` with the database suites, the server-needing
+    suites, red-anchors and S7's red twins) at `origin/vodacom-s7-land8` `5388b4ca` (this release's code), its results to
+    `origin/vodacom-visual-tools` `tools/s7-cloud-2026-10-12/results/`. Then WP12 here: the records, the parity compare at
+    the final tip, the push.
+  - ⚠️ This VM's limits: only the image's Chromium 141 runs (the sandbox refuses Playwright's download host: no Firefox
+    or WebKit drives). The minimum-stake change (Ali, 2026-10-12: TZS 1,000 → 500) is another session's, not this plan's;
+    it went live first (`de44e087`), so this release's parity ran again against a baseline at it (the landing bullet
+    above), and WP12's compare starts from a baseline at the main it lands on.
 - **The handoff of 2026-10-12 ~08:55 EAT (ALI-BLADE15 → any machine) is done:** picked up on OMEGA-COMPILE01 at ~10:00
   EAT — WP1's void null compare re-run, WP2's last proofs, WP3's draft read and finished. What it said, kept for the
   record:
@@ -2641,6 +2741,18 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     for every player, ahead of the S12 batch.
 
 
+78. **"Onyesha zaidi" is one control, and every reader's `/live` loads the kit's pending mark (S7 WP10 review, 2026-10-12,
+    under Ali's delegation).** WP7 drew the home's "Onyesha zaidi" as its own link and WP10 drew journey `/live`'s as
+    another, without the kit's pending mark (Ali, 2026-09-26: a link that is loading shows it). One server control,
+    `show-more.tsx`, draws both now, with the mark. Because `/live`'s page module imports it, `link-pending.tsx` joins
+    `/live`'s client references for every reader; in production it rides in a chunk `/live` already loads (its first load
+    +0.1 KB, no new file), and a classic reader runs nothing new (the control renders in the journey arm only; `/` already
+    reached it through the landing). Overrule: two controls again, `/live`'s without the mark.
+79. **From 1024 each headline sentence is held whole (S7 WP7 review).** From 1024 the headline sits at 44px beside the
+    How-to card, and between about 1048 and 1223px the Swahili headline broke inside its second sentence ("Jibu swali.
+    NDIO / au HAPANA."). Each sentence is its own unbreakable span from 1024 now, so the line breaks only between the
+    sentences; below 1024 nothing changes. Overrule: let a sentence break where the width falls.
+
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
 
 **The canvas:** https://claude.ai/artifact/UGVgjpiQFwep2hzfYLf3M6 (an Artifact of type Design, private to Ali until he
@@ -3125,7 +3237,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | S4 | Claude Design pass | ✅ | `52afb7c8` 2026-10-01 (§0g): all eleven brief items on the Design canvas, 102 boards; the four-expert panel's findings applied (v16); BRIEF.md filed; choices 1B/2A/3A (§0h point 1). Done when frames for every new composition and undrawn state are filed and scored by the panel, and Ali has reviewed the 5 re-drawn frames. |
 | S5 | ~~Colour foundation~~ | ⛔ | Removed by R5 (50pick's look stays unchanged): no palette, font or brand work. |
 | S6 | Shell (flagged) | ✅ | CLOSED 2026-10-12 03:01 EAT at `ca72fe15` (round 10, the last S6 commit), its close record in §0 (test:all, classic parity, the tiles, production read back). Plan filed 2026-10-01 (`S6-PLAN.md`, §0i). Done when every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |
-| S7 | Home and cards (flagged) | 🔨 | Started (§0j): WP0's scripts-only repairs live `ce2c3afa`; WP1–WP4 live `dcf305d5` (2026-10-12); WP5, WP6 and WP8 built and reviewed; WP7, WP9 and WP10 building. Plan filed 2026-10-07 ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), its Amendments override its body; §0h point 58). Done when the local staff-pass drives pass (the above-the-fold gate among them) and production shows nothing changed for signed-out and signed-in players; staff seeing the deck's home on production moves to S14 (§0h point 4). |
+| S7 | Home and cards (flagged) | 🔨 | Started (§0j): WP0's scripts-only repairs live `ce2c3afa`; WP1–WP4 live `dcf305d5` (2026-10-12); WP5–WP10 and live fix L1 live `f20f1617` (2026-10-12); WP11 (the drives) and WP12 (the battery, the records) next. Plan filed 2026-10-07 ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), its Amendments override its body; §0h point 58). Done when the local staff-pass drives pass (the above-the-fold gate among them) and production shows nothing changed for signed-out and signed-in players; staff seeing the deck's home on production moves to S14 (§0h point 4). |
 | S8 | Bet sheet + low balance (flagged) | ⬜ | `test:bet-sheet`, V20 and the refusal matrix are green. A staff real bet works on production. |
 | S9 | Deposit, waiting and return (flagged) — no email code: the owner's ruling of 2026-10-07 (▶ 0e) has a deposit ask no email question | ⬜ | `test:deposit-return` and `test:deposit-status-read` (exactly-once while racing the webhook) are green. The card `order_id` fix is live. |
 | S10 | Visitor path | ⬜ | guest → sheet → register → deposit → back works. `test:post-register-landing` passes in both flag states. |
@@ -3416,6 +3528,8 @@ On 2026-09-28 the agency that will sponsor and market 50pick sent `Downloads\50p
   - Side locked ("Umechagua NDIO"), no side switch.
   - Chips 1,000 / 2,000 / 5,000 / 10,000 in full figures (never "1K"). A tap **sets** the stake. Chips come from
     `quickStakes(min, max)` and are filtered to the market's bounds, never to the balance.
+    ⚠️ 2026-10-12: those figures are the TZS 1,000 minimum's ladder; at the TZS 500 minimum (owner ruling, §0) the
+    same function gives 500 / 1,000 / 2,500 / 5,000.
   - The CTA "Weka dau · TZS X" **is** the confirm step. BetConfirmModal and its 10-second quote hold are shelved.
   - Enter never submits.
   - Success: an in-sheet receipt (side, stake, ticket) with **no navigation**.

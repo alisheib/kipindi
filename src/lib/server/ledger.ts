@@ -381,7 +381,7 @@ export function settlementPayoutEntries(opts: {
    * the SAME defect the `commissionAmount` note above records: the medicine was applied to
    * the commission and NOT to the two levies computed from it. N independent roundings need
    * not sum to one rounding of the whole. GBT is 5%, so a winner's fee share under 10 TZS
-   * books ZERO — fifteen winners at the TZS 1,000 minimum against one 1,000 losing bet is a
+   * books ZERO — fifteen winners of TZS 1,000 each against one 1,000 losing bet is a
    * fee of 130 with every share ≤ 9, and the market books GBT **0** where `levySplit` says
    * **7**: a statutory levy recorded as never having arisen. Measured on production
    * 2026-09-09 over the 203 settled markets carrying a booked fee, **43 diverge** — 0 of 138

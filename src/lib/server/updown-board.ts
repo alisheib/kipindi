@@ -787,7 +787,7 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
 
   // ONE resolver, shared with the money path (buyPosition → stakeBoundsForUpDownMarket):
   // the product default is the FLOOR — a chain override may raise the min, never drop it
-  // below the platform floor (currently 1,000). What the card shows here is exactly what a
+  // below the platform floor (`PLATFORM_MIN_STAKE`). What the card shows here is exactly what a
   // bet is validated against, so display and enforcement can never diverge.
   const stakeBounds = await stakeBoundsFor(chain);
 

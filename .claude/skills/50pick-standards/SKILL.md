@@ -201,8 +201,9 @@ day, four checks passed while the thing they named was broken — each asserting
    global `minStake` was **500** that day, and **a pari-mutuel multiplier is a function OF the stake**.
    Two numbers answering different questions is not a comparison. **Read the input off the
    product** — it now takes the amount from the button's own accessible name.
-   ⚠️ The minimum is TZS 1,000 now (reconciled 2026-08-14; floored on every read since 2026-10-07,
-   management's "consistently 1000 not 500") — and the lesson stands unchanged: read it, never type it.
+   ⚠️ The minimum was TZS 1,000 from 2026-08-14 (floored on every read since 2026-10-07) and is TZS 500
+   again since 2026-10-12 (owner ruling; `docs/RULES.md` §2.3) — it keeps moving, which is the lesson:
+   read it, never type it.
 11. ⛔ **`node -e` AND SHELL HEREDOCS EAT A BACKSLASH LAYER** (2026-08-06, the second instance).
    A generated driver shipped `/([d,]+)s*$/` and reported *"the Up button names no stake"* over a
    label reading `TZS 500`. **Write files with an editor, never through a shell string.**

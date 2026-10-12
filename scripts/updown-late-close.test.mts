@@ -181,8 +181,9 @@ const anchorMs = Date.parse(chain.gridAnchorAt);
 // refuses a past resolution date and `buyPosition` refuses a stake after it, so a back-dated
 // round cannot be built through the real code at all. The clock moves, not the rows.
 const B = (k: number) => new Date(anchorMs + k * 5 * 60_000).toISOString();
-// ⛔ 2026-08-14 · setUpDownConfig REFUSES a sub-floor minimum now — 500 is below the
-// platform rule of TZS 1,000. And its result is CHECKED: the first version of this line
+// ⛔ 2026-08-14 · setUpDownConfig REFUSES a sub-floor minimum — 500 was below the platform
+// rule of TZS 1,000 then (since 2026-10-12 the rule is 500 again, so the 1,000 below is simply
+// a legal narrower window, kept). And its result is CHECKED: the first version of this line
 // discarded it, so when the write started failing the run died 30 lines later on
 // "open price did not confirm" and blamed the price feed for a config refusal.
 {
@@ -217,7 +218,7 @@ const B = (k: number) => new Date(anchorMs + k * 5 * 60_000).toISOString();
   ok("3.0b · …and therefore carries frozen winning targets",
      (await roundStore.get(roundId))!.upTarget != null);
 
-  const bet = await buyPosition(alpha, { marketId: opened.data.marketId, side: "YES", stake: 1_000 });   // the platform floor (2026-08-14)
+  const bet = await buyPosition(alpha, { marketId: opened.data.marketId, side: "YES", stake: 1_000 });   // a 1,000 stake (the platform floor from 2026-08-14 to 2026-10-12)
   ok("3.1 · a real stake enters the round", bet.ok, bet.ok ? "" : bet.error);
   ok("3.2 · the money has left the wallet", (await balanceOf(alpha)) === START - 1_000);
 

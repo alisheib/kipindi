@@ -21,7 +21,7 @@
  * ⛔ IN-PROCESS BY CONSTRUCTION: no file is written, so `test:red-anchors` counts the twin as in-process.
  */
 import * as ENGINE from "../src/lib/markets/estimate.ts";
-import { payoutFor, poolFee, type Side } from "../src/lib/payout.ts";
+import { payoutFor, poolFee, PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE, type Side } from "../src/lib/payout.ts";
 import { DEFAULT_GLOBAL_CONFIG, snapshotFromConfig } from "../src/lib/server/market-config.ts";
 import { projectedPayout } from "../src/lib/server/market-service.ts";
 
@@ -40,7 +40,9 @@ const LS13 = { feeModel: "loser-share" as const, platformFeeRate: 0.03, operator
 const CAPPED = { feeModel: "capped-commission" as const, commissionRate: 0.10, feeCeilingRate: 1 / 3, showEstimatedWinnings: true };
 const DODOMA = { yesPool: 24_825, noPool: 50_462 };
 const YANGA = { yesPool: 20_000, noPool: 43_700 };
-const BOUNDS = { min: 1_000, max: 1_000_000 };
+// The platform's own bounds — read, never typed: a typed 1,000 here kept treating a legal 500 stake as "below the
+// minimum" after the owner lowered it (2026-10-12).
+const BOUNDS = { min: PLATFORM_MIN_STAKE, max: PLATFORM_MAX_STAKE };
 
 /** A deterministic generator, so a failure names a case that reproduces. */
 function prng(seed: number) {
@@ -154,7 +156,7 @@ async function run(impl: Impl, log: (l: string) => void): Promise<string[]> {
     j({ first, firstS, firstWant }));
   const fact = est({ yesPool: 30_000, noPool: 0 }, "YES", 0, { ...LS13, showEstimatedWinnings: false });
   ok("f.fact · the empty side is reported whatever the display switch says", fact?.state === "oneSidedRefund" && fact.emptySide === "NO", j(fact));
-  const bad = [500, 1_000_001, 1_000.5, -1_000, Number.NaN].map((s) => est(DODOMA, "YES", s));
+  const bad = [PLATFORM_MIN_STAKE - 1, PLATFORM_MAX_STAKE + 1, 1_000.5, -1_000, Number.NaN].map((s) => est(DODOMA, "YES", s));
   ok("f.stake · a stake below the minimum, above the maximum, fractional, negative or not a number is `invalidStake`, with no figure",
     bad.every((b) => b?.state === "invalidStake" && b.payout === null && b.multText === null), j(bad.map((b) => b?.state)));
   const thin = est({ yesPool: 1_000_000, noPool: 5_000 }, "YES", 0), fair = est(DODOMA, "NO", 0);

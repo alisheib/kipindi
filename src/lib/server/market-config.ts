@@ -219,8 +219,9 @@ export const DEFAULT_GLOBAL_CONFIG: RateConfig = {
   // Withdrawal. The ONLY thing a player is charged directly. No withholding tax.
   withdrawalFeeRate: DEFAULT_WITHDRAWAL_FEE_RATE,                     // 0.015 (1.5%) — matches live
   withdrawalGatewayShareRate: DEFAULT_WITHDRAWAL_GATEWAY_SHARE_RATE,  // 0.005 → gateway
-  // Stake floor and ceiling — TZS 1,000 / 1,000,000 PER BET across ALL products
-  // (owner, 2026-07-26; re-affirmed and made a rule 2026-08-14, docs/RULES.md).
+  // Stake floor and ceiling — PLATFORM_MIN_STAKE / PLATFORM_MAX_STAKE PER BET across ALL
+  // products (owner, 2026-07-26; made a rule 2026-08-14; the minimum lowered 2026-10-12 —
+  // docs/RULES.md §2.3 states the figures, payout.ts holds them).
   // Enforced server-side in buyPosition via getEffectiveConfig, and the admin door
   // below validates against the same two constants so the platform cannot be
   // configured out of its own rule.
@@ -446,8 +447,12 @@ const MARKET_CONFIG_KEY = "market.config";
  *      minStake sitting on exactly 100. ⛔ A CODE DEFAULT IS NOT A LIVE SETTING, and
  *      a green `config-persist.test.mts` asserting the constant would have passed with
  *      production on 500 the whole time. Verify this one by READING THE DB.
+ *  v4 (2026-10-12): minStake 1,000 → 500 (Ali: "turn minimum stake instead of 1k to 500").
+ *      The same trap from the other side: the floor on read (`floorStakeBounds`) only
+ *      RAISES, so with the constant at 500 a stored 1,000 stayed enforced. ⛔ The minimum
+ *      DEPOSIT did not move (validators.ts), and no other stored value is touched.
  */
-const CONFIG_VERSION = 3;
+const CONFIG_VERSION = 4;
 type PersistedMarketConfig = { global: RateConfig; perMarket: Array<[string, Partial<RateConfig>]>; v?: number };
 
 declare global {
@@ -476,7 +481,14 @@ export function reconcileConfigDefaults(global: RateConfig, fromVersion: number)
     // 500 → 1,000. THE MINIMUM STAKE IS A RULE, NOT A PREFERENCE (Ali, 2026-08-14):
     // TZS 1,000 minimum and TZS 1,000,000 maximum PER BET, on both products. 500 was
     // the floor between the 100 era and 2026-07-26, and production was still on it.
+    // ⚠️ Since v4 the default it moves a 500 to IS 500, so on its own this step is a no-op.
     if (g.minStake === 500) { g.minStake = DEFAULT_GLOBAL_CONFIG.minStake; changed = true; }
+  }
+  if (fromVersion < 4) {
+    // 1,000 → 500 (Ali, 2026-10-12). The minimum stake is TZS 500 on both products; the stored
+    // 1,000 is the floor v3 wrote, and the floor on read cannot lower it. ⛔ ONLY a stored 1,000:
+    // a deliberate narrower window (1,500, 2,500 …) is an operator's choice and stays.
+    if (g.minStake === 1_000) { g.minStake = DEFAULT_GLOBAL_CONFIG.minStake; changed = true; }
   }
   return { global: g, changed };
 }
@@ -545,14 +557,16 @@ function persist(): void {
 }
 
 /**
- * ⭐ THE STAKE FLOOR, APPLIED ON READ (management, relayed by Ali 2026-10-07: "consistently 1000 not 500" — RULES.md
- * §2.3). The minimum stake is TZS 1,000 (`PLATFORM_MIN_STAKE`), and every WRITE below it is refused (`validate`). But a
- * value STORED before a floor was raised survives until something rewrites it — the v3 reconcile above exists because
- * production sat on 500 for weeks after the code said 1,000, and a per-market override is never reconciled at all. So
- * every READ floors the copy it returns: the rules pages, the dial, the board, the house engine and `buyPosition` can
- * never meet a stake bound under the rule, whatever a row says. The max is lifted to at least the min.
+ * ⭐ THE STAKE FLOOR, APPLIED ON READ (management, relayed by Ali 2026-10-07 — RULES.md §2.3). The minimum stake is
+ * `PLATFORM_MIN_STAKE`, and every WRITE below it is refused (`validate`). But a value STORED before a floor was raised
+ * survives until something rewrites it — the v3 reconcile above exists because production sat on 500 for weeks after the
+ * code said 1,000, and a per-market override is never reconciled at all. So every READ floors the copy it returns: the
+ * rules pages, the dial, the board, the house engine and `buyPosition` can never meet a stake bound under the rule,
+ * whatever a row says. The max is lifted to at least the min.
  * ⛔ The STORE is never mutated here and `persist()` writes it raw; the admin form shows "stored X · enforced Y" when
  * the two differ (`getStoredStakeBounds`), so an officer can see — and save away — a legacy value.
+ * ⚠️ A FLOOR NEVER LOWERS. When the minimum itself goes DOWN (2026-10-12: 1,000 → 500) a stored value above the new
+ * floor stays enforced; that is the reconcile's job (v4), never this function's.
  */
 export function floorStakeBounds<T extends { minStake: number; maxStake: number }>(c: T): T {
   const minStake = Math.max(Number.isFinite(c.minStake) ? c.minStake : PLATFORM_MIN_STAKE, PLATFORM_MIN_STAKE);
@@ -692,7 +706,8 @@ function validate(updates: Partial<RateConfig>): { ok: true; warn?: string } | {
   // ⛔ THE BOUNDS ARE A RULE, SO THE DOOR ENFORCES THEM. These read >= 100 and >= 1,000
   // until 2026-08-14, which meant the platform could be configured out of its own
   // published minimum from the admin console — and had been: production sat on a TZS 500
-  // floor. An operator may NARROW the window inside 1,000 … 1,000,000; never widen it.
+  // floor. An operator may NARROW the window inside PLATFORM_MIN_STAKE … PLATFORM_MAX_STAKE;
+  // never widen it.
   if (updates.minStake !== undefined) {
     if (!Number.isFinite(updates.minStake) || updates.minStake < PLATFORM_MIN_STAKE || updates.minStake > PLATFORM_MAX_STAKE) {
       return { ok: false, reason: `Min stake must be between TZS ${PLATFORM_MIN_STAKE.toLocaleString("en-GB")} and TZS ${PLATFORM_MAX_STAKE.toLocaleString("en-GB")} — the platform minimum is a rule, not a setting.` };

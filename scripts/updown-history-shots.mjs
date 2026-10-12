@@ -2,7 +2,7 @@
  * Visual check for the grouped Up & Down history: drive the REAL quick-bet on the board
  * (multiple bets on one 5-min round), then shoot /updown/history — proving the round
  * groups into ONE card with the bets collapsed to chips (max 2 + "+N"). Also re-shoots
- * the board card to confirm no sub-1,000 preset (the "50") appears.
+ * the board card to confirm no stray "50" preset appears (a 500 chip is the minimum since 2026-10-12 and is allowed).
  *
  *   BASE=http://localhost:3000 node scripts/updown-history-shots.mjs
  */
@@ -36,10 +36,10 @@ await page.screenshot({ path: join(OUT, "history-empty-390.png") });
 await page.setViewportSize({ width: 1280, height: 1000 });
 await page.goto(`${BASE}/updown`, { waitUntil: "domcontentloaded", timeout: 60_000 });
 await page.waitForTimeout(800);
-// Confirm the card presets contain no sub-1,000 value (the "50" guard).
+// Confirm the card presets contain no stray "50" (the "50" guard; the 500 minimum chip is excluded on purpose).
 const chipText = await page.locator('[role="radiogroup"] button').allInnerTexts().catch(() => []);
 const has50 = chipText.some((t) => /\b50\b/.test(t) && !/500|50k|50,000/i.test(t));
-has50 ? fail(`a sub-1,000 stake chip is present: ${chipText.join(" ")}`) : pass(`no sub-1,000 stake chip (chips: ${chipText.join(" ")})`);
+has50 ? fail(`a stray "50" stake chip is present: ${chipText.join(" ")}`) : pass(`no stray "50" stake chip (chips: ${chipText.join(" ")})`);
 await page.screenshot({ path: join(OUT, "board-card-check-1280.png") });
 
 const up = page.locator("button.btn-yes").first();

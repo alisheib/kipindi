@@ -4128,8 +4128,8 @@ export async function settleMarket(
      * `Math.round(thisWinnersFeeShare * rate)`, so N independent roundings were booked
      * against ONE `levySplit` over the whole fee, and the two disagreed by construction.
      *
-     * GBT is 5%, so a fee share under 10 TZS rounds to ZERO. Fifteen winners at the
-     * TZS 1,000 minimum against one 1,000 losing bet is a fee of 130, every share ≤ 9,
+     * GBT is 5%, so a fee share under 10 TZS rounds to ZERO. Fifteen winners of
+     * TZS 1,000 each against one 1,000 losing bet is a fee of 130, every share ≤ 9,
      * and the market books **GBT 0 against a levySplit that says 7** — a statutory levy
      * recorded as never having arisen. Measured on production 2026-09-09 across the 203
      * settled markets carrying a booked fee: **43 disagree**, and the discriminating
