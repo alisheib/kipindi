@@ -361,8 +361,9 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S7 — WP0–WP4 are live (`dcf305d5`, 2026-10-12 13:59 EAT, §0j); WP5, WP6 and WP8 are built and reviewed and land next with WP7 (the journey home), building on OMEGA-COMPILE01 beside WP9 and WP10,
-then WP11's drives and WP12 (§0j's "⏳ IN FLIGHT" bullet); S8's plan is drafted (`origin/vodacom-s8-plan`). OMEGA's own 2026-10-07/08 WP1 is on origin
+**Next:** (1) S7 — WP0–WP4 are live (`dcf305d5`, 2026-10-12 13:59 EAT, §0j); WP5–WP10 and live fix L1 are built, reviewed and stacked on `origin/vodacom-s7-land6`; next WP10's review fixes,
+WP9's review commit (`2592f066`) onto it, the landing proof, the push live, then WP11's drives and WP12 (§0j's "⏸ END OF
+SESSION" bullet); S8's plan is filed ([`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md)). OMEGA's own 2026-10-07/08 WP1 is on origin
 for reference only as `vodacom-s7-wp1-omega`, never to be merged (§0h point 66). S7's plan:
 [`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), whose Amendments override its body. (2) When
 Ali says so, and not before (nothing turns on until the plan is done): an officer approves the S2 short titles, and
@@ -657,30 +658,74 @@ body. Owner-level calls: §0h point 58, and 65 on.
   SKIP is the staff-pass control, as on every production run); **qa:chunks-prod 6/6 routes** (47 GETs, a guest: S6's
   shell mark is the one journey marker in a first load, by design); **test:house-bot-disclosure 118/0 on main** — 5.1
   is green now that WP4's keys are origin/main's own.
-- **⏳ IN FLIGHT (OMEGA-COMPILE01, 2026-10-12; every branch below is ON ORIGIN):**
-  - **Built, independently reviewed, and STACKED ON MAIN, landing next with WP7:** `origin/vodacom-s7-land5` at
-    `f8fcff7d` = main `5ce27db7` + WP5 (the journey card, its review's fixes) + WP6 (three commits) + **WP8** — the LIVE
-    strip leaves `/` and `/markets` for a journey reader, the old primer stands down for one (a classic request's RSC
-    row is unchanged: the else arm is today's element) — and WP8's review fixes. WP8's journey-home §8 met WP5's §4 and
-    WP6's §5 in six "both added" places, resolved keeping both (one merged `load()` return). Proven in process on that
-    tip (2026-10-12 ~14:20 EAT): journey-home all pass, red 159/159; journey-shell 442, red 198/198; journey-tickets 51,
-    red 112/112; ticker-honesty; stacking 137/0; marketing-optout 121/0; simple-journey-flag 135/0, red 41/41;
-    red-anchors 5286/0; decomment; source-bytes; docs. Owed under the lock with WP7: typecheck, the file-mutating reds
-    (red:contrast, red:timer-date, red:ticker-honesty, red:offline-neutral's twin if it writes), `next build`, qa:live,
-    parity v3 against `parity-v3-52715180.json`, qa:served-skeleton `--main`, qa:first-load, test:dead-css (green only
-    once WP7 mounts `.kp-jgrid`).
-  - **Building, each by a helper in its own worktree on WP6** (`node_modules` there is a junction to `F:\kipindi-s7b`'s
-    install — never `npm ci` in them): live fix **L1** and **WP7**, the journey home (`vodacom-s7-wp7`); **WP9**,
-    `/markets`' 307 and Tafuta in Akaunti (`vodacom-s7-wp9`); **WP10**, the journey card on /watchlist, /live, the
-    similar rail and /results (`vodacom-s7-wp10`). ⚠️ The three helpers were stopped mid-work at ~13:50 EAT by the
-    account's session limit: what each had written is on origin as one "WIP snapshot … unverified" commit on its branch
-    (`vodacom-s7-wp7` `166fa1e7`, `vodacom-s7-wp10` `4d55f9c7`; WP9 had written nothing) — read every file against its
-    package before building on it. Then WP11's drives and WP12.
-  - **S8's plan is drafted** (`origin/vodacom-s8-plan`, `262dc9f8`: `S8-PLAN.md`, 13 packages, the refusal matrix, the
-    low-balance branches, the exactly-once rules) and is being critiqued before its amendments; nothing of S8 is built.
-  - This machine's lock-turn chains (one dev server at a time on 3076/3077, a memory watchdog, the verified checkouts)
-    are on `origin/vodacom-visual-tools`, `tools/s7-omega-2026-10-12/` (`18831687`); the v3 baseline is machine-local
-    (re-capture it at calibration 3's commit on another machine, then compare with `--allow-base`).
+- **⏸ END OF SESSION — 2026-10-12 ~17:00 EAT (Ali: "push progress and everything, later we proceed"). THE EXACT PLACE,
+  for any machine — every branch below is ON ORIGIN; nothing is only on OMEGA-COMPILE01:**
+  - **LIVE:** S7 WP1–WP4 (`dcf305d5`, read back 13:59) and the loss-limit refusal's fix for every player (`e5b5c9da`,
+    §0h point 77, read back 15:31).
+  - **BUILT, REVIEWED, STACKED — NOT LIVE:** `origin/vodacom-s7-land6` at `754e81d4` = main `e5b5c9da` + WP5 (2 commits) +
+    WP6 (3) + WP8 (2) + live fix L1 + WP7 + WP9 + WP10 + the L1 review (`026aea65`, qa:lost-chunk's control procedure) +
+    the WP7 review (`754e81d4`: each headline sentence held whole from 1024 — no "Jibu swali. NDIO / au HAPANA." between
+    ~1048 and ~1223px; 7.client — no client module reaches classic `/` beyond home-lazy and link-pending). The six
+    packages' journey-home sections met in "both added" conflicts at each cherry-pick, resolved keeping both in plan
+    order (§1…§9). Proven in process on the integrated tip before the two review commits: **108/109 suites** exit 0 (the
+    one red main's own test:orphans), red:journey-home 233/233; after the WP7 review, journey-home all pass and red
+    237/237. Independent reviews: WP5, WP6, WP8 (their fixes are in the stack); L1+WP7, WP9, WP10 (2026-10-12) — no
+    blocker in any.
+  - **▶ NEXT, in order:**
+    1. **WP10's review fixes** (not started; one "WP10 review" commit on land6): ONE shared server control
+       `src/components/journey/show-more.tsx` — `ShowMore({ href, t })`: a `next/link` with `scroll={false}`, `btn
+       btn-ghost btn-lg w-full`, `{t.journey.showMore}`, `<I.chevronDown s={18} edge="end" />` and `<LinkPending />` from
+       `@/components/ui/link-pending` (the kit's pending mark, Ali's 2026-09-26 ask) — used by journey-home.tsx and
+       live/page.tsx (drop `.kp-jhome__more`; /live's first load then gains link-pending for every reader: name it in
+       this section's served bytes); journey-home 7.order/7.paging/9.live re-pointed and a new 9.more (the one control,
+       its importers, its population) with plants; r10 SITES and r9a KEEP_PAIR updated; docs/SHELVED.md's LivePulseGrid
+       and MarketCard rows' Test cells add `npm run test:journey-home` with the checks a re-mount turns red (measure them
+       on a scratch copy); "A16 item 5" → "VODACOM-PLAN §0h point 73" in the three page comments and §9's notes.
+    2. **WP9's review fixes — DONE, not yet on land6:** `origin/vodacom-s7-wp9` `2592f066` (one commit on `99be41ae`):
+       a search cut at the cap keeps no half character (markets-redirect.ts `wholeQuery`, home-list.ts `clampQuery`: a
+       trailing lone high surrogate and the space the cut uncovered are dropped, so `/markets?q=` + 119 ASCII + an emoji
+       no longer 500s a journey reader's root layout); Tafuta's submit keeps the kit's outside ring
+       (`.kp-hub__form .btn:focus-visible`); 2.proxy.headers and 2.shell.top pin the edge's two headers and AppShell's
+       top-level branch; the S6 drives moved off /markets (qa-journey-preview 2.6 → /results, a new 2.6b and the guest
+       control 1.4 — expect 35/35; journey-unread-handover's A leg on /results through `A_PAGE`, still 14 checks); two
+       comments. Proven in process on its worktree: 99 suites, 96 exit 0 — markets-redirect with red 31/31,
+       journey-home with red 150/150, journey-account 96 with red 61/61, journey-shell 440 with red 195/195,
+       red-anchors 5284/0, all 37 visual-pass censuses — and the three reds are the base's own, byte-identical before
+       WP9 (red:simple-journey-flag 40/41; test:dead-css's `.kp-jgrid` until WP10 mounts it; house-bot-disclosure 5.1
+       against origin/main, as on any branch without `e5b5c9da`). Cherry-pick it onto land6 (journey-home's sections
+       meet as "both added": keep both in plan order); its four drives run in the landing proof.
+    3. **The landing proof under the lock:** `tools/s7-omega-2026-10-12/chain-land6.sh <tip> e5b5c9da 1e9b6203 <v3
+       baseline>` (origin/vodacom-visual-tools; on OMEGA the baseline is `F:\kipindi-s7-artifacts\parity-v3-52715180.json`
+       — on another machine re-capture one at calibration 3's commit `52715180` with `chain-wp1c.sh` and its null compare
+       first). It runs typecheck, the 109 gates, the population plants, nine file-editing reds alone, `qa:first-load
+       --build --read`, local qa:live, parity v3 `--allow-base`, the served-skeleton null pair at main and the tip, and
+       qa:lost-chunk on the tip with its control; add WP9's four drives (qa:journey-preview 35/35,
+       journey-unread-handover 14, qa:journey-header-fit, qa:landmark-seal `--journey`).
+    4. **Push WP5–WP10 + L1 live** with this section's record (the S7 keys' served bytes per package, each review's
+       rulings — §0h points 73-76 already hold WP5's and WP6's), then read back: both hosts' `?dpl=`, `/api/health`,
+       production qa:live (it signs in as the QA player mobile01), `qa:chunks-prod --origin https://50pick.tz`.
+    5. **WP11** (the drives: qa:journey-home tiles 320→1280 in sw/en/zh incl. 1100 and 1180 for the headline, A17's
+       ghost drive, the above-the-fold gate, qa:cls-budget `--journey`, WP9's redirect cells, the two re-pointed S6
+       drives) and **WP12** (the test:all battery, the records). S7 is ✅ only when "staff see the deck's home on
+       production" (S14, §0h point 4).
+  - **S8 — the bet sheet and low balance — is PLANNED, not built:** `origin/vodacom-s8-plan` (`958dc80b`;
+    [`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md), filed on main by this commit): 15
+    packages; the refusal matrix (every refusal the bet path can return, 25 rows), the low-balance branches, the
+    exactly-once rules; two critics' 32 findings folded in as amendments A1–A23 (a lost answer stays one bet until the
+    server says what happened; a reload, Forward or Back can never re-key or reopen a placed bet; a block shown before
+    the tap records what a refused tap records; …); its Points for Ali 17–22 wait for him. It starts after S7 closes.
+  - **On a machine that is not OMEGA (another PC, a cloud session):** there is no shared lock and no `F:` path — run
+    the chains' steps directly, one heavy job at a time; Node 24 (`package.json` engines); `npm ci`, then
+    `npx playwright install --with-deps chromium firefox webkit`; the in-memory dev server is `env -u DATABASE_URL
+    SESSION_SECRET=<random> OTP_PEPPER=<random> DISABLE_ADMIN_TOTP=true npx next dev -p <port>`; re-capture the parity v3
+    baseline at `52715180` on that machine (fonts render differently per OS) and prove its null compare before
+    comparing the tip with `--allow-base`; production qa:live reads `QA_MOBILE01_PASSWORD` from a gitignored
+    `.env.qa.local` at the repository root (never printed, never committed) — without it [E3]'s sign-in is the run's one
+    failure.
+  - On OMEGA-COMPILE01: worktrees `F:\kipindi-s7b` (land6), `F:\kipindi-s7srv` (the dev servers; its own npm ci) and the
+    builders' `F:\kipindi-s7c…s7j`, `F:\kipindi-s8p` (`node_modules` junctions to `F:\kipindi-s7b` — never `npm ci` in
+    them); the lock-turn chains on `origin/vodacom-visual-tools` `tools/s7-omega-2026-10-12/` (`fa8d65da`); the v3
+    baseline and the scripts' copies in `F:\kipindi-s7-artifacts`.
 - **The handoff of 2026-10-12 ~08:55 EAT (ALI-BLADE15 → any machine) is done:** picked up on OMEGA-COMPILE01 at ~10:00
   EAT — WP1's void null compare re-run, WP2's last proofs, WP3's draft read and finished. What it said, kept for the
   record:
