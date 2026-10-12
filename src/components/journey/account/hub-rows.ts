@@ -59,7 +59,7 @@ export const HUB_WORDS = [
   "footer.setLimits", "journey.hubLimitsSub", "footer.takeABreak", "footer.selfExclude",
   "profile.inviteFriends", "profile.inviteEarn", "agent.dashTitle", "proposals.title",
   "common.profile", "profile.kycIdentityVerification", "profile.verifyIdSub", "footer.resolutionAttestation",
-  "common.help", "journey.hubHelpSub", "common.notifications", "common.search", "agent.footerLink",
+  "common.help", "journey.hubHelpSub", "common.notifications", "common.search", "journey.hubSearchPlaceholder", "agent.footerLink",
   "common.consentMore", "footer.amlKyc", "footer.terms", "footer.gameRtp",
 ] as const;
 
@@ -104,7 +104,7 @@ export type HubGlyph =
 
 export type HubLinkId =
   | "wallet" | "withdraw" | "results" | "live" | "leaderboard" | "limits" | "break" | "exclude" | "invite"
-  | "proposals" | "profile" | "kyc" | "fairness" | "help" | "search" | "agent" | "privacy" | "aml" | "terms" | "rules";
+  | "proposals" | "profile" | "kyc" | "fairness" | "help" | "agent" | "privacy" | "aml" | "terms" | "rules";
 
 /** A door to a page. `extra` adds the reader's balance ("balance") or the programme's state badge ("proposals"). */
 export type HubLink = {
@@ -117,10 +117,27 @@ export type HubLink = {
   extra?: "balance" | "proposals";
 };
 
+/**
+ * Tafuta (the Vodacom plan S7 WP9, S7-PLAN A20; SJ-6: "search lives in Akaunti"). At rest it is the settings card's row
+ * the board draws (s4-8-akaunti): the search glyph, the word and the chevron. It opens in place, as Lugha does, and
+ * beneath it is a GET form whose one field, `q`, goes to the journey home (`action`), which states the search and
+ * offers to clear it (WP7). Its two words — the label and the field's placeholder — are hub words like every other.
+ */
+export type HubSearch = {
+  id: "search";
+  kind: "search";
+  action: "/";
+  label: "common.search";
+  placeholder: "journey.hubSearchPlaceholder";
+  glyph: "search";
+};
+
 export type HubRow =
   | HubLink
   /** Arifa: a door that also carries the reader's unread count (the journey's own counter, read once — A1). */
   | { id: "notifications"; kind: "unread"; href: "/notifications"; label: "common.notifications" }
+  /** Tafuta: a search field that opens beneath its row and lands on the journey home (above). */
+  | HubSearch
   /** The controls that are not doors: the language, the phone board's card size, the Needle's drawer. */
   | { id: "language"; kind: "language" }
   | { id: "cardSize"; kind: "cardSize" }
@@ -146,8 +163,13 @@ const NOTIFICATIONS: HubRow = { id: "notifications", kind: "unread", href: "/not
 const LANGUAGE: HubRow = { id: "language", kind: "language" };
 const CARD_SIZE: HubRow = { id: "cardSize", kind: "cardSize" };
 const NEEDLE: HubRow = { id: "needle", kind: "needle" };
-/** Tafuta lands on the board that owns search today; S7 re-points it when that board moves. */
-const SEARCH: HubRow = { id: "search", kind: "link", href: "/markets", label: "common.search", glyph: "search" };
+/**
+ * ⭐ Tafuta SEARCHES FROM AKAUNTI (S7 WP9, A20). It was a link to the board, where a classic reader searches; a journey
+ * reader's `/markets` now answers with the journey home (WP9's redirect), so the row opens a field here instead and sends
+ * `?q=` to the home. ⛔ Never a search box on `/` itself (SJ-6, INHERIT-MANIFEST): the home only states the search it was
+ * handed.
+ */
+const SEARCH: HubRow = { id: "search", kind: "search", action: "/", label: "common.search", placeholder: "journey.hubSearchPlaceholder", glyph: "search" };
 
 /**
  * Weka mipaka, Pumzika, Jizuie. A17: Pumzika and Jizuie are two rows, each landing on its own section of the limits

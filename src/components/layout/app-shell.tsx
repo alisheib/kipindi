@@ -47,6 +47,7 @@ import { agentStandingFor, playerInviteEligibleFor } from "@/lib/server/affiliat
 import { invitePaysPlayersNow } from "@/lib/server/invite-rewards-switch";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { JOURNEY_SHELL_MARK } from "@/lib/journey/shell-mark";
+import { journeyMarketsTarget } from "@/lib/journey/markets-redirect";
 import { PreviewMarker } from "./preview-marker";
 import { FunnelUtm } from "@/components/analytics/funnel-utm";
 import { isStaffRole } from "@/lib/server/roles";
@@ -146,6 +147,26 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     if (h.get("x-kp-document") === "1") redirect(href as never);
     endedNotice = { reason: endedReason, href };
   }
+  // ⭐ S7 WP9 · A JOURNEY READER'S `/markets` ANSWERS WITH A REAL 307, FROM HERE, ON A DOCUMENT (the Vodacom plan §3.2;
+  // S7-PLAN WP9 step 2, Correction 10, Open point 13). The board is shelved for a journey reader, and its address goes
+  // where WP3's one table, `journeyMarketsTarget`, sends it: the journey home, the board's topic as the home's chip and
+  // only the parameters that table keeps (the watch lens to /watchlist).
+  //  · WHY HERE, AND NOT IN THE PAGE: the root `loading.tsx` streams HTTP 200 before a page renders, so a page's
+  //    `redirect()` reaches a document as a meta refresh (the note at the proxy's cookie check, `src/proxy.ts`). This
+  //    component renders in the ROOT layout, before that stream starts, which is why E-381's document redirect above is
+  //    a real 307, measured with JavaScript off too.
+  //  · DOCUMENT-ONLY, for E-381's reason: on a flight a root-layout redirect blanks the page and it stays blank. A flight
+  //    (a soft hop, a refresh) is answered by the page's own redirect, at the head of `markets/page.tsx` before any read,
+  //    which the router follows, through the same function.
+  //  · NOT IN THE PROXY: the proxy may not read the preview pass (`test:simple-journey-flag` 10.no.grant), and only the
+  //    one resolver, this request's `journeyRead`, says whether the journey is shown.
+  //  · NO PATH RULE OF ITS OWN: the target is built from the literals "/" and "/watchlist" and encoded values, never a
+  //    path copied from the request, so `safe-next.ts` stays the one same-origin rule (S7-PLAN A11 item 5).
+  //  · AFTER the `/admin` and opt-out returns (the console is never previewed, the opt-out page never moves) and after
+  //    E-381 (an ended session is told so first).
+  // ⛔ A classic request never meets it, its journey term being false: its `/markets` is today's board, at 200.
+  // `test:markets-redirect` §2 holds this line and the page's.
+  if (pathname === "/markets" && h.get("x-kp-document") === "1" && (await journeyRead).journey) redirect(journeyMarketsTarget(h.get("x-href") ?? pathname) as never);
   let topUser: {
     initials: string;
     name: string;
