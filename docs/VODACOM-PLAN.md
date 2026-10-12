@@ -4282,9 +4282,11 @@ retention/backup/DAL and the privacy lines.
 - **Done when:** every route keeps an entrance (census) and the header fits in all cells.
 
 **S7 — Home and cards (flagged):** §3.2 in full, plus the How-to card wired to a **static** How-to sheet.
-- `test:journey-above-fold`: at 360×640 and 390×844 (sw/en/zh, guest and signed-in, with all bars up), the How-to card
-  sits above the fold and card 1's buttons end above the tab bar.
-- `qa:cls-budget`.
+- `npm run qa:journey-above-fold` (local, through a staff pass; S7-PLAN A5): the How-to card above the rail in every cell;
+  card 1's picks above the rail at 360×640, 360×740 and 390×844 with no transient bar, and at 390×844 with every bar up
+  (guest and signed in) — measured and recorded, never gated, with every bar up at 360×640 and 360×740; the headline on
+  two lines; sw/en/zh; card 1 with its full title and with a short title at the full budget.
+- `npm run qa:cls-budget -- <local base> --journey`, and `npm run qa:journey-home` (its tiles read one by one).
 - **Done when:** staff see the deck's home on production.
 
 **S8 — Bet sheet + low balance (flagged):** §3.3 and §3.4.

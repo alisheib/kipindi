@@ -3,6 +3,8 @@
  *
  *   npm run qa:cls-budget -- https://www.50pick.tz
  *   RED_SHELL=1 npm run qa:cls-budget -- <base>    the pre-fix shell is served back
+ *   npm run qa:cls-budget -- http://localhost:<port> --journey             the new journey, through a staff pass
+ *   RED_SHELL=1 npm run qa:cls-budget -- http://localhost:<port> --journey the same control, in journey mode
  *
  * §9 U25's accept line: **CLS ≤ 0.05 per route, and no single shift > 0.02**, un-input only.
  *
@@ -35,6 +37,17 @@
  *      can promise the board half a screen from where it lands and score a clean 0.0000. It did:
  *      `/live` was out by 538px, `/markets` by 239px, both at CLS 0.0000.
  *
+ * ── --journey (the Vodacom plan S7, S7-PLAN WP11 step 2) ────────────────────────────────────
+ * The same budget for the NEW JOURNEY, which only a request holding a preview pass is shown: LOCAL ONLY, behind
+ * `live/journey-pass.mjs`'s `premise` (an in-memory `http://localhost:PORT` server whose rollout a pass can see, run with
+ * DISABLE_ADMIN_TOTP=true so the preview door mints a pass). The pass is minted the way an officer mints one, and every
+ * cell carries it: a guest on `/`, `/live` and `/results`, and the demo player on those and `/watchlist`, in Swahili at
+ * 360×780. The board is seeded first through the product's own dev doors (the catalogue, the demo player's portfolio —
+ * real bets, sales, settlements and a void, so `/results` has settled cards — and their stars), so every page is long
+ * enough to exercise a load shift. ⛔ A cell is counted only on a JOURNEY page: the journey header must be there once the
+ * page has loaded, or the cell FAILS as not measured (a page the pass did not reach would read as a calm classic page).
+ * The red control is the same RED_SHELL, which must fail here too.
+ *
  * ⛔ THE RED CONTROL REWRITES THE SERVED STYLESHEET rather than injecting a tag. An injected
  * `<style>` at document-start was tried and did NOT take — the parser builds `<head>` after it
  * and the rule was lost, so the "RED" run scored the same as the green one and would have
@@ -43,11 +56,14 @@
  */
 import { chromium } from "playwright";
 import { localisedContext, assertLang } from "./qa-locale.mjs";
+import { premise, mintStaffPass, demoSession } from "./live/journey-pass.mjs";
 
 // NO PRODUCTION DEFAULT (live-target-safe.test.mjs §1b). This used to fall back to the live site, so a run with no
 // target measured production without anyone choosing it. Loopback is the default now; production is reached by
 // NAMING it, as the examples at the top do.
-const BASE = process.argv[2] || process.env.BASE || "http://localhost:3001";
+const JOURNEY = process.argv.includes("--journey");
+const ARGS = process.argv.slice(2).filter((a) => a !== "--journey");
+const BASE = ARGS[0] || process.env.BASE || "http://localhost:3001";
 const RED = process.env.RED_SHELL === "1";
 /**
  * The three routes whose shift was measured and fixed. ⚠️ A second argument replaces them —
@@ -56,16 +72,51 @@ const RED = process.env.RED_SHELL === "1";
  * product. On Git Bash prefix the command with `MSYS_NO_PATHCONV=1`, or a leading `/` is
  * rewritten into a Windows path before node ever sees it.
  */
-const ROUTES = (process.argv[3] || "/,/markets,/results").split(",").map((r) => r.trim()).filter(Boolean);
+const ROUTES = (ARGS[1] || (JOURNEY ? "/,/live,/results,/watchlist" : "/,/markets,/results")).split(",").map((r) => r.trim()).filter(Boolean);
 const BUDGET = 0.05;
 const SINGLE = 0.02;
 
 const failures = [];
 const b = await chromium.launch();
 
-for (const path of ROUTES) {
+/**
+ * --journey's readers: a guest and the demo player, each holding the staff pass. Classic mode has one reader, with no
+ * cookie of its own. ⛔ The signed-in reader's /watchlist is edge-protected, so a guest never reads it.
+ */
+const READERS = [];
+if (JOURNEY) {
+  const pre = await premise(BASE);
+  if (pre.refuse) {
+    console.error(`REFUSED — ${pre.refuse}`);
+    await b.close();
+    process.exit(2);
+  }
+  const pass = await mintStaffPass(b, BASE);
+  const session = await demoSession(b, BASE);
+  // The board, the demo player's settled tickets and their stars, through the product's own dev doors.
+  const seedCtx = await b.newContext();
+  await seedCtx.addCookies([session]);
+  for (const [route, data] of [["seed-markets", {}], ["seed-player-portfolio", { markets: 12 }], ["seed-watchlist", {}]]) {
+    const r = await seedCtx.request.post(`${BASE}/api/dev-test/${route}`, { data, timeout: 240_000 });
+    const body = await r.json().catch(() => null);
+    if (!r.ok() || body?.ok === false) {
+      console.error(`REFUSED — /api/dev-test/${route} answered ${r.status()} ${JSON.stringify(body)?.slice(0, 160)}: the board was not seeded, so no cell would exercise a load shift`);
+      await b.close();
+      process.exit(2);
+    }
+  }
+  await seedCtx.close();
+  READERS.push({ who: "guest", cookies: [pass], routes: ROUTES.filter((r) => r !== "/watchlist") });
+  READERS.push({ who: "player", cookies: [pass, session], routes: ROUTES });
+} else {
+  READERS.push({ who: "", cookies: [], routes: ROUTES });
+}
+
+for (const reader of READERS) for (const path of reader.routes) {
   const ctx = await localisedContext(b, { locale: "sw", width: 360, height: 780, baseUrl: BASE, reducedMotion: "reduce" });
+  if (reader.cookies.length) await ctx.addCookies(reader.cookies);
   const p = await ctx.newPage();
+  const cell = reader.who ? `${reader.who} ${path}` : path;
 
   if (RED) {
     // serve the shell exactly as it was before D26: main content-sized, and the rhythm back on
@@ -73,7 +124,8 @@ for (const path of ROUTES) {
     await p.route(/\/_next\/static\/.*\.css(\?.*)?$/, async (route) => {
       const res = await route.fetch();
       let css = await res.text();
-      css = css.replace(/#main-content\{min-height:100svh\}/g, "#main-content{min-height:auto}");
+      // Minified (a production build) or not (a local dev server, --journey's), the same rule: whitespace is allowed.
+      css = css.replace(/#main-content\s*\{\s*min-height:\s*100svh;?\s*\}/g, "#main-content{min-height:auto}");
       css += "\n.flex.flex-col.gap-5{display:block;gap:0}\n.flex.flex-col.gap-5>:not([hidden])~:not([hidden]){margin-top:24px}\n";
       await route.fulfill({ response: res, body: css, headers: { ...res.headers(), "content-length": String(Buffer.byteLength(css)) } });
     });
@@ -106,6 +158,12 @@ for (const path of ROUTES) {
   await p.goto(BASE + path, { waitUntil: "load", timeout: 180000 });
   await p.waitForTimeout(6000);
   await assertLang(p, "sw");
+  if (JOURNEY && !(await p.locator('header[data-testid="journey-top-bar"]').count())) {
+    failures.push(`${cell} is not a journey page (no journey header once loaded): NOT MEASURED`);
+    console.log(`  ${cell.padEnd(18)} NOT MEASURED — no journey header`);
+    await ctx.close();
+    continue;
+  }
 
   const r = await p.evaluate(() => {
     const main = document.querySelector("main");
@@ -118,16 +176,16 @@ for (const path of ROUTES) {
   });
 
   // ⛔ a route that never grew did not exercise the thing being measured
-  if (r.docH < 1200) failures.push(`${path} the document is only ${r.docH}px — too short to have exercised a load shift`);
-  if (r.cls > BUDGET) failures.push(`${path} CLS ${r.cls} over the ${BUDGET} budget`);
+  if (r.docH < 1200) failures.push(`${cell} the document is only ${r.docH}px — too short to have exercised a load shift`);
+  if (r.cls > BUDGET) failures.push(`${cell} CLS ${r.cls} over the ${BUDGET} budget`);
   const worst = r.shifts[0];
-  if (worst && worst.v > SINGLE) failures.push(`${path} one shift of ${worst.v} (over ${SINGLE}) — ${worst.el} ${worst.prev} -> ${worst.cur}`);
-  console.log(`  ${path.padEnd(10)} CLS ${String(r.cls).padEnd(7)} worst ${worst ? worst.v + " " + worst.el : "none"}  (main min-height ${r.mainMinH}, doc ${r.docH}px)`);
+  if (worst && worst.v > SINGLE) failures.push(`${cell} one shift of ${worst.v} (over ${SINGLE}) — ${worst.el} ${worst.prev} -> ${worst.cur}`);
+  console.log(`  ${cell.padEnd(18)} CLS ${String(r.cls).padEnd(7)} worst ${worst ? worst.v + " " + worst.el : "none"}  (main min-height ${r.mainMinH}, doc ${r.docH}px)`);
   await ctx.close();
 }
 await b.close();
 
-console.log(`\ncls budget — ${RED ? "RED (pre-fix shell served back)" : "GREEN"} — ${BASE}`);
+console.log(`\ncls budget — ${JOURNEY ? "the new journey, through a staff pass — " : ""}${RED ? "RED (pre-fix shell served back)" : "GREEN"} — ${BASE}`);
 if (failures.length) for (const f of failures) console.log("  FAIL " + f);
 else console.log("  no failures");
 

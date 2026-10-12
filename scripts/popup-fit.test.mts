@@ -239,7 +239,7 @@ const popups = all.filter((f) => IS_POPUP.test(code(f)));
  * mid-figure break would damage, the header's own exception. The title is the guest sheet's `.kp-jsheet__title` (right
  * padding clear of the ✕, balanced) at 24px; the CTA and the link are the Wallet sheet's own classes; `maxWidth` 440 is a
  * MAX. PASSES — its live rectangle, every exit reachable without scrolling at 320×640, 360×640, 390×844 and 1280 in sw,
- * en and zh, is WP11's journey-home drive's (S7-PLAN A6 item 5).
+ * en and zh, is WP11's (`qa:journey-home`, S7-PLAN A6 item 5).
  */
 const REVIEWED: readonly string[] = [
   "src/app/admin/affiliate/payable-switch.tsx",   // reviewed 2026-09-27

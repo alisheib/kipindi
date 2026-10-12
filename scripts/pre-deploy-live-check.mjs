@@ -16,8 +16,11 @@
  * visitor, and `/account` to the not-found page, after a LOCAL control that its readers see the shell when it is served;
  * [E3] asks the same of a SIGNED-IN player — on production the QA player `mobile01` through the real form (never an
  * admin; one attempt: a failed sign-in stops the run), locally the demo player through /auth/demo.
+ * ⭐ S7 WP11 (A23 items 1-2): both also read `/live`, `/results` and one question page ([E3] `/watchlist` as well),
+ * each free of the shell's traces and of S7's own ids (`live/journey-home-ids.mjs`), and `/markets` is the board.
  */
 import { chromium } from "playwright";
+import { JOURNEY_HOME_TESTIDS, journeyHomeIdsIn, journeyHomeIdsControl } from "./live/journey-home-ids.mjs";
 
 const BASE = process.env.BASE || "http://localhost:3009";
 const LOCAL = /localhost|127\.0\.0\.1/.test(BASE);
@@ -378,6 +381,31 @@ const JOURNEY_DOM = '[data-testid^="journey-"],[data-testid^="tickets-guest-"],[
 /** The routes [E2] and [E3] hold free of the journey shell. */
 const JOURNEY_SHELL_ROUTES = ["/", "/markets"];
 /**
+ * ⭐ AND S7'S PAGES (the Vodacom plan S7, S7-PLAN WP11 step 4 as amendment A23 items 1-2 amends it). A journey reader's
+ * `/`, `/live` and `/results` draw journey cards and its `/markets` answers with the journey home, so for every reader
+ * WITHOUT a pass [E2] and [E3] also read `/live`, `/results` and one question page ([E3] `/watchlist` as well): each free
+ * of the shell's traces and of S7's own ids (`JOURNEY_HOME_TESTIDS`, the one list `qa:journey-home` proves present for a
+ * pass holder), and `/markets` the classic board itself (HTTP 200 at /markets, its grid there).
+ * ⛔ The question is the first one `/markets` links to, read off the board, never typed: a run that finds none FAILS that
+ * cell, it never skips it. Locally the catalogue is seeded first, as [F] does (a dev-test route, 404 in production).
+ */
+const JOURNEY_S7_ROUTES = ["/live", "/results"];
+/** The question page [E2] reads (set there, then read by [E3]); null until [E2] finds one. */
+let S7_QUESTION = null;
+/** The classic board's own grid on `/markets` (`data-board="grid"`): a journey reader is answered with the home instead. */
+const BOARD_GRID = 'data-board="grid"';
+/** The first question `/markets` links to (a classic card's `/markets/mkt_…`), read signed out; null when there is none. */
+async function firstQuestionPath() {
+  if (LOCAL) await fetch(BASE + "/api/dev-test/seed-markets", { method: "POST" }).catch(() => {});
+  try {
+    const r = await fetch(BASE + "/markets", { headers: { accept: "text/html" }, redirect: "manual" });
+    const m = /href="(\/markets\/mkt_[0-9A-Za-z]+)"/.exec(r.status === 200 ? await r.text() : "");
+    return m ? m[1] : null;
+  } catch {
+    return null;
+  }
+}
+/**
  * In the page: what a visitor sees — the title, the main text, whether the app's header is there, whether this is a
  * signed-in player's page (the classic balance capsule, and no session-ended notice) and every journey trace.
  * Self-contained: Playwright serialises it, so it closes over nothing.
@@ -470,7 +498,7 @@ async function accountNotFound(ctx, who, signedIn = false) {
  * officer's to mint (decision 7). Its one write is the local in-memory store's: a SUPPORT fixture and its pass.
  */
 async function journeyShellControl() {
-  const label = "control · the readers SEE the journey shell when it is served — / with a staff preview pass, through [E2]'s fetch and through the page reader [E3] and /account use";
+  const label = `control · the readers SEE the journey shell when it is served — / with a staff preview pass, through [E2]'s fetch and through the page reader [E3] and /account use — and S7's ids on the journey home (${JOURNEY_HOME_TESTIDS.join(", ")}: WP11, A23 item 3)`;
   const skip = (why) => console.log(`  ⚠ SKIP  ${label} — ${why}. The absence checks below are proved on hand-written traces only, by this run.`);
   if (!LOCAL) return skip("production: a preview pass is an officer's to mint (decision 7)");
   const kit = await import("./live/journey-pass.mjs");
@@ -492,10 +520,13 @@ async function journeyShellControl() {
   const MUST = ["testid:journey-top-bar", "testid:journey-tabs", "#kp-journey-shell"];
   let status = 0;
   let fetched = [];
+  let s7Fetched = [];
   try {
     const r = await fetch(BASE + "/", { headers: { accept: "text/html", cookie: `${previewPass.name}=${previewPass.value}` }, redirect: "follow" });
     status = r.status;
-    fetched = journeyTracesIn(await r.text());
+    const body = await r.text();
+    fetched = journeyTracesIn(body);
+    s7Fetched = journeyHomeIdsIn(body);
   } catch (e) {
     why = String(e?.message ?? e).split("\n")[0].slice(0, 200);
   }
@@ -504,9 +535,14 @@ async function journeyShellControl() {
   const d = await readDocument(ctx, "/");
   await ctx.close();
   const dom = d.view?.traces ?? [];
+  // S7's ids are asked on the home only once [E2] has seeded the board (a fresh in-memory boot holds no question, and
+  // then the home draws no card): the question was found there before this control runs.
+  const s7Paged = journeyHomeIdsIn(d.raw);
+  const s7Want = S7_QUESTION ? JOURNEY_HOME_TESTIDS : JOURNEY_HOME_TESTIDS.filter((x) => x !== "journey-card");
   ok(label, status === 200 && MUST.every((x) => fetched.includes(x))
-      && d.status === 200 && d.final === "/" && MUST.every((x) => d.traces.includes(x)) && ["journey-top-bar", "journey-tabs"].every((x) => dom.includes(x)),
-    `(fetch: HTTP ${status}${why ? ` ${why}` : ""}, ${fetched.join(", ") || "no trace"} · page: HTTP ${d.status} at ${d.final || "?"}, bytes ${d.traces.join(", ") || "no trace"}, DOM ${dom.join(", ") || "no trace"})`);
+      && d.status === 200 && d.final === "/" && MUST.every((x) => d.traces.includes(x)) && ["journey-top-bar", "journey-tabs"].every((x) => dom.includes(x))
+      && s7Want.every((x) => s7Fetched.includes(x) && s7Paged.includes(x)),
+    `(fetch: HTTP ${status}${why ? ` ${why}` : ""}, ${fetched.join(", ") || "no trace"}, S7 ids ${s7Fetched.join(", ") || "none"} · page: HTTP ${d.status} at ${d.final || "?"}, bytes ${d.traces.join(", ") || "no trace"}, S7 ids ${s7Paged.join(", ") || "none"}, DOM ${dom.join(", ") || "no trace"})`);
 }
 const journeyRollout = await (async () => {
   let status = 0, body = null, err = "";
@@ -542,8 +578,19 @@ const journeyRollout = await (async () => {
     && journeyTracesIn(`["$","span",null,{"hidden":true,"id":"kp-journey-shell"}]`).join() === "#kp-journey-shell");
   ok(`control · …and passes the classic shell's own marks`,
     journeyTracesIn(`<header class="sticky top-0 z-30 app-topbar"><a data-testid="deposit-header"></a><span data-testid="wallet-balance-capsule"></span></header><nav class="kp-rail"></nav><span hidden="" data-kp-funnel="old"></span><p>Your journey starts here</p><div data-journey-x="1"></div>`).length === 0);
-  const JOURNEY_PUBLIC_ROUTES = JOURNEY_SHELL_ROUTES;
+  // ⭐ S7 (WP11 step 4, A23 item 1): the journey home's own ids, matched on their own — the second list, beside the marker's.
+  {
+    const problems = journeyHomeIdsControl();
+    ok(`control · S7's id matcher (${JOURNEY_HOME_TESTIDS.join(", ")}) catches each id as an element and as RSC JSON, escaped or plain, and passes a page without them`,
+      problems.length === 0, problems.slice(0, 2).join(" | "));
+  }
+  const JOURNEY_PUBLIC_ROUTES = [...JOURNEY_SHELL_ROUTES, ...JOURNEY_S7_ROUTES];
   if (journeyRollout.state !== "ACTIVE") {
+    // The question page S7's checks read: the first one the board links to (seeded first, locally).
+    S7_QUESTION = await firstQuestionPath();
+    ok(`signed out: /markets links a question to read — the first /markets/<id> on the board`, S7_QUESTION !== null,
+      "(no question link on /markets — the question page was not read, so nothing was checked there)");
+    if (S7_QUESTION) JOURNEY_PUBLIC_ROUTES.push(S7_QUESTION);
     // ⭐ FIRST, THE READERS ARE SEEN TO SEE (S6 WP12): a page the journey IS served on, read the ways the checks read.
     await journeyShellControl();
     for (const route of JOURNEY_PUBLIC_ROUTES) {
@@ -571,6 +618,15 @@ const journeyRollout = await (async () => {
           : !read ? `(HTTP ${status}, ${html.length} chars, not an HTML document — the page was not read, so nothing was checked)`
           : !shellRead ? "(the HTML carries no app header — not the shell's page, so nothing was checked)"
           : traces.length ? `(found ${traces.join(", ")} on a page that holds no preview pass)` : "");
+      // ⭐ AND NONE OF S7'S IDS (WP11, A23 item 1) — matched on their own, the list qa:journey-home proves present for a pass.
+      const s7 = read ? journeyHomeIdsIn(html) : [];
+      ok(`signed out: ${route} carries none of S7's journey ids (rollout ${journeyRollout.state ?? "UNKNOWN"})`, shellRead && s7.length === 0,
+        !shellRead ? "(the page was not read as the shell's page — the line above says why — so nothing was checked)"
+          : s7.length ? `(found ${s7.join(", ")} on a page that holds no preview pass)` : "");
+      if (route === "/markets") {
+        ok(`signed out: /markets is the classic board (HTTP 200 at /markets, its grid there)`, read && html.includes(BOARD_GRID),
+          !read ? "(the page was not read — the lines above say why)" : `(no ${BOARD_GRID} in the bytes: not the board)`);
+      }
     }
     // ⭐ AND /account IS THE NOT-FOUND PAGE for a signed-out visitor (S6 A2, A3), judged against a path no route matches.
     {
@@ -644,7 +700,9 @@ if (journeyRollout.state !== "ACTIVE") {
   if (signedIn) {
     const ctx = await browser.newContext({ storageState: player, viewport: { width: 390, height: 844 } });
     await ctx.addCookies([{ name: "kp-locale", value: "en", url: BASE }]);
-    for (const route of JOURNEY_SHELL_ROUTES) {
+    // S6's two, then S7's (WP11, A23 item 2): /live, /results, /watchlist (edge-protected: a signed-in player's own
+    // page, never the sign-in) and the same question page [E2] read.
+    for (const route of [...JOURNEY_SHELL_ROUTES, ...JOURNEY_S7_ROUTES, "/watchlist", ...(S7_QUESTION ? [S7_QUESTION] : [])]) {
       const d = await readDocument(ctx, route);
       const v = d.view;
       const read = !!v && d.raw.length > 0 && v.shell && d.status === 200 && d.final === route;
@@ -654,8 +712,16 @@ if (journeyRollout.state !== "ACTIVE") {
         !read ? `(HTTP ${d.status} at ${d.final || "?"}${d.err ? `: ${d.err}` : ""} — the page named was not read, or carried no app header: nothing was checked)`
           : !v.signedIn ? "(not a signed-in page: no balance capsule, or the session-ended notice — this was not the player's page)"
           : found.length ? `(found ${found.join(", ")} for a player who holds no preview pass)` : "");
+      const s7 = [...new Set([...journeyHomeIdsIn(d.raw), ...(v?.traces ?? []).filter((x) => JOURNEY_HOME_TESTIDS.includes(x))])];
+      ok(`${who}: ${route} carries none of S7's journey ids, in the page or in the bytes sent`, read && v.signedIn && s7.length === 0,
+        !read || !v.signedIn ? "(the page named was not read as the player's — the line above says why — so nothing was checked)"
+          : `(found ${s7.join(", ")} for a player who holds no preview pass)`);
+      if (route === "/markets") {
+        ok(`${who}: /markets is the classic board (its grid there)`, read && d.raw.includes(BOARD_GRID), !read ? "(the page was not read)" : `(no ${BOARD_GRID} in the bytes)`);
+      }
       ok(`${who}: ${route} no uncaught page error`, d.errs.length === 0, d.errs.slice(0, 2).join(" | "));
     }
+    if (!S7_QUESTION) ok(`${who}: the question page — none was found on /markets by [E2], so it was not read`, false);
     await accountNotFound(ctx, who, true);
     await ctx.close();
   } else {
