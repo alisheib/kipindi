@@ -25,6 +25,11 @@ export const SEAM_SITES = [
   /* ⭐ `shownCount` ADDED 2026-10-11 WITH ITS SITE (sanctioned change (s), owner ruling "a desk account may count as
    * more than one predictor"): straight after H2, the house context reads its "Counts as" for the pool increment's
    * `predictorExtra`. It moves no money and refuses nothing; a player's stake reads 0. */
+  /* ⭐ `landedKey` ADDED 2026-10-12 WITH ITS SITE (live fix L2, VODACOM-PLAN §0h point 81): a player's REFUSED keyed bet is
+   * answered with the bet that key already placed (`landedKeyAnswer`) — only the player's own, and never a house stake's,
+   * the replay's own rule (sanctioned change (b)) — so its `houseBotId != null` is a house branch, under its marker. It
+   * moves no money and runs only after a refusal of a player's request; `placeHouseBet` answers its key at H0. */
+  "landedKey",
   "H0", "H1", "session", "replay", "H2", "shownCount", "cash", "marker", "lockTimeout", "H3", "markPlaced", "revertNoFunds",
   "revertNoFundsBonus", "txnMarker", "H4", "wagering", "superseded", "audit", "receipts", "recruit",
   "reverseWageringOrphan", "markerOrphan", "cashOutValue", "cashOutReason", "cashOutPosition", "markerCashout", "markerOneSided",
