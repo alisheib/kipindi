@@ -829,7 +829,8 @@ console.log("\n§9b · every mapped code is emitted by something");
   };
   // ⛔ The registry's OWN file is excluded, and so is the mapper's: a row citing itself, or a
   // `case "X":` in `error-copy.ts`, is not an emitter. An emitter is something that RETURNS it.
-  const sources = [...walkCode("src/lib/server"), ...walkCode("src/app")]
+  // (The home's body is read too: S7 WP2 moved it from src/app/page.tsx into components/home/legacy-landing.tsx.)
+  const sources = [...walkCode("src/lib/server"), ...walkCode("src/app"), "src/components/home/legacy-landing.tsx"]
     .filter((f) => !f.endsWith("failure-reasons.ts") && !f.endsWith("error-copy.ts"))
     .map((f) => readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/.*$/gm, "$1"));
 
