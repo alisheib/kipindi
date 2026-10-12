@@ -53,18 +53,41 @@
  *      ⭐ Every §4 plant must fail its own check ALONE too.
  *      ⚠️ The rules are read as the cascade reads them: a selector's value is the LAST one any rule gives it (a list of
  *      one or of several, under any at-rule), so a later rule cannot re-set the card behind a check's back.
+ *   §5 THE HOW-TO CARD AND THE STATIC HOW-TO SHEET (S7 WP6, amendments A6, A13(a), A14, A15 and A24; Open points 18-21).
+ *      Both RENDER in a test world (WP6's done-when): React's server renderer inside the i18n provider, in sw, en and zh,
+ *      the sheet open signed in and out — the kit Modal stood in by one that draws its children in place, since the real
+ *      one draws nothing until a browser mounts it. Read rendered and in source:
+ *        · the card: a `<button aria-haspopup="dialog">` (never a link) with its test id, holding `open` and rendering the
+ *          sheet; its royal plate (choice 3A) with no inline colour, its rule reading the primary material's three tokens
+ *          (A14), its play glyph the kit's size for the plate (`plateGlyph(48)`, 24px); its words, with `{steps}` the
+ *          sheet's own count and `{minutes}` its named constant;
+ *        · the sheet: the kit's bottom sheet, 440 wide from 1024, on the default rung with the kit's ✕ and its test id; in
+ *          §3.8's order (grab, title, the steps region holding the three steps and MFANO, the CTA, Weka mipaka); its title
+ *          24px through `.kp-jsheet__title--lg` (A15); the side words through `sideWord`; every figure from HOW_TO_EXAMPLE
+ *          through `estimateFor` and `{pct}` from `loserSharePct` — the sums `.amount`, the multiple one mono unit; NO
+ *          helpline, by any name, in source or rendered (A6, A24 item 4); Weka mipaka's door by sign-in; the kit Button
+ *          that closes it; nothing written to storage (Open point 18); the cap on the panel, in CSS, down a flex chain of
+ *          its own (the panel, the sheet with `min-height: 0`), the steps region alone scrolling under a fade at the edges
+ *          that hide something; MFANO the kit's info Callout, its eyebrow plain in zh;
+ *        · the home's lazy module: client code, next/dynamic and the one lost-chunk guard, exactly its parts, each part's
+ *          only loader among the home's files, imported by `journey-home.tsx` alone (WP7); and the sheet on test:popup-fit's
+ *          review record.
+ *      ⚠️ §5 stands in its own delimited block (its world, readers, checks and plants), after §4's; its stylesheet is read
+ *      with §4's reader (`cssRules`, `declOf`), as the cascade reads it.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY and requires the check named for it to fail.
  * §1's plants edit copies of the source text; §2's and §3's swap ONE rule (a function `home-list.ts` or `card-face.ts`
  * exports, or the `cardEstimate` the card's figures come through) for a copy of the real one carrying one defect; §4's
  * edit a copy of the card's source, of globals.css or of one rendered card (the world is rendered once, from the real
- * component). Nothing here touches a file on disk, so `test:red-anchors` §4 counts it in the in-process class.
+ * component); §5's edit a copy of the How-to card's, the sheet's or the lazy module's source, of globals.css, of
+ * test:popup-fit's record or of one rendered card or sheet (rendered once, in §5's own test world). Nothing here
+ * touches a file on disk, so `test:red-anchors` §4 counts it in the in-process class.
  * ⚠️ Every read is DECOMMENTED (`scripts/lib/decomment.mts`), so a rule quoted in a note is never mistaken for the rule.
  * ⚠️ This file carries no escape a tool could decode on its way to disk: line breaks are built from their code points, and
  * its patterns use look-arounds and character classes, never a word boundary.
  */
 import { existsSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
+import NodeModule, { createRequire } from "node:module";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createElement as h } from "react";
@@ -81,6 +104,7 @@ import { I } from "../src/components/ui/glyphs.tsx";
 import { dict, type Locale } from "../src/lib/i18n-dict.ts";
 import { formatEatDateTime } from "../src/lib/eat-day.ts";
 import { DEFAULT_GLOBAL_CONFIG, snapshotFromConfig } from "../src/lib/server/market-config.ts";
+import { IS_POPUP, reviewGaps, reviewedIn } from "./lib/popup-review.mts";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 const PROVE_RED = process.argv.includes("--prove-red");
@@ -130,6 +154,7 @@ type World = {
   cardNaming: Map<string, string>; // §4: every OTHER file under src/ whose text names journey-card: the importer census
   renders: Renders;              // §4: the card's test world, each case rendered once from the real component
   gutter: number | null;         // §4: a phone page's side gutter — PageContainer's house padding (px-3) on the house scale
+  howto: HowToWorld;             // §5 (S7 WP6): the How-to card, the sheet, the home's lazy module — and what they render
 };
 
 /** §4's frame: the house padding every page container lays (`px-3` below lg), and the house scale's step 3. */
@@ -153,7 +178,7 @@ function load(): World {
   }
   return {
     page: read(PAGE), landing: read(LANDING), layout: read(LAYOUT), walked: all.length, naming, rules: RULES,
-    card: read(CARD), css: read(CSS), cardNaming, renders: renderCards(), gutter: pageGutter(),
+    card: read(CARD), css: read(CSS), cardNaming, renders: renderCards(), gutter: pageGutter(), howto: loadHowTo(all),
   };
 }
 
@@ -966,6 +991,516 @@ const METADATA_EXPORT = /export\s+(?:const\s+metadata(?![\w$])|(?:async\s+)?func
 const IMPORTS_LANDING = /(?:from|import)\s*[(]?\s*["'`][^"'`]*legacy-landing(?:[.]tsx)?["'`]/;
 const DIRECTIVE = /["']use (?:client|server)["']/;
 
+/* ══ §5 · THE HOW-TO CARD AND THE STATIC HOW-TO SHEET (S7 WP6) ═══════════════════════════════════════════════════════════
+ * S7-PLAN WP6 steps 2-5, as A6 (no helpline on the sheet: the owner's ruling of 2026-10-06), A13(a) (the one lost-chunk
+ * guard), A14 (the royal plate on the primary material's tokens), A15 (the 24px title) and A24 items 4-5 (the helpline's
+ * readers were deleted 2026-10-09, so a read would name the config field) amend them, with Open points 18 (no storage),
+ * 19 (a button, no URL), 20 (the kit's sheet, the cap, the fade) and 21 (the example's own 13%). WP7 mounts the card; in
+ * WP6 no page renders it, so it is rendered HERE, in a test world, and read in source.
+ * ⭐ Everything below is §5's own — its world, its readers, its checks and its plants — so S7 WP3's §2–§3 (written on their
+ * own branch) and this block meet only at the World type, load(), run() and the plant list, one line each.
+ * ⚠️ No escape a tool could decode: quotes and line breaks are built from their code points, patterns use classes. */
+const HT_CARD = "src/components/journey/home/howto-card.tsx";
+const HT_SHEET = "src/components/onboarding/how-to-play-sheet.tsx";
+const HT_LAZY = "src/components/journey/home/home-lazy.tsx";
+/** WP7's server home: the home's lazy module's one importer once it exists (absent in WP6, so nothing may import it yet). */
+const HT_HOME = "src/components/journey/home/journey-home.tsx";
+const HT_GUARD = "src/components/layout/lost-chunk.ts";
+const HT_POPUP_FIT = "scripts/popup-fit.test.mts";
+type HtLocale = "sw" | "en" | "zh";
+const HT_LOCALES: readonly HtLocale[] = ["sw", "en", "zh"];
+/** The home's deferred parts (WP6 step 2): the binding, the module next/dynamic loads, the component it picks from it. */
+const HT_PARTS: ReadonlyArray<readonly [string, string, string]> = [
+  ["LazyHowToCard", "@/components/journey/home/howto-card", "HowToCard"],
+  ["LazyRefreshPoller", "@/components/ui/refresh-poller", "RefreshPoller"],
+];
+const htPartLine = ([binding, spec, symbol]: readonly [string, string, string]) =>
+  `export const ${binding} = dynamic(() => import("${spec}").then((m) => m.${symbol}).catch(nothingIfLost));`;
+/** The words a helpline is named by, in each language (`test:support-contact`'s HELPLINE_WORD, and the canvas's own). */
+const HT_HELPLINE_WORD = /helpline|hotline|msaada wa tanzania|热线/i;
+/** A read of the helpline: an old reader's call, or its config field named (A24 item 4: the readers went on 2026-10-09). */
+const HT_HELPLINE_READ = /HELPLINE(?:_TEL)?[ ]*[(]|nationalHelpline/;
+const HT_QUOTE = String.fromCharCode(34);
+const HT_QUOTES = String.fromCharCode(34, 39, 96);
+
+type HtDict = Record<HtLocale, Record<string, Record<string, string>>>;
+/** What the checks hold the render to, read from the modules themselves — never typed here (SJ-21's deck figures aside). */
+type HowToTruth = {
+  dict: HtDict;
+  /** `sideWord(t, "YES" | "NO", "MARKET")`, and the example's own side, in each language. */
+  sides: Record<HtLocale, { yes: string; no: string; example: string }>;
+  /** HOW_TO_EXAMPLE through `estimateFor`: the stake and the payout as `formatTzs` writes them, the multiple, and `{pct}`. */
+  stake: string;
+  mult: string;
+  payout: string;
+  pct: number | null;
+};
+type HowToRendered = {
+  card: Partial<Record<HtLocale, string>>;
+  sheetIn: Partial<Record<HtLocale, string>>;
+  sheetOut: Partial<Record<HtLocale, string>>;
+  /** A render that threw, named — or null. */
+  error: string | null;
+};
+type HowToWorld = {
+  card: string;
+  sheet: string;
+  lazy: string;
+  guard: string;
+  css: string;                   // src/app/globals.css, its comments blanked
+  popupFit: string;              // scripts/popup-fit.test.mts, decommented: the review record the sheet must be on
+  naming: Map<string, string>;   // every OTHER file under src/ whose text names one of the three modules: the census's subjects
+  rendered: HowToRendered;
+  truth: HowToTruth | null;
+};
+
+function loadHowTo(all: readonly string[]): HowToWorld {
+  const own = new Set([HT_CARD, HT_SHEET, HT_LAZY]);
+  const naming = new Map<string, string>();
+  for (const rel of all) {
+    if (own.has(rel)) continue;
+    const s = read(rel);
+    if (s.includes("home-lazy") || s.includes("howto-card") || s.includes("how-to-play-sheet")) naming.set(rel, s);
+  }
+  const { rendered, truth } = renderHowTo();
+  return {
+    card: read(HT_CARD), sheet: read(HT_SHEET), lazy: read(HT_LAZY), guard: read(HT_GUARD),
+    css: decommentCss(read("src/app/globals.css")), popupFit: decomment(read(HT_POPUP_FIT)), naming, rendered, truth,
+  };
+}
+
+/**
+ * THE TEST WORLD (WP6's done-when: "the card and the sheet render in a test world"). The card, and the sheet open, drawn
+ * by React's server renderer inside the app's i18n provider (with the router context it asks for), in sw, en and zh, the
+ * sheet signed in and signed out.
+ * ⭐ THE KIT MODAL IS STOOD IN FOR: it draws nothing until a browser has mounted it open (modal.tsx: a portal after a mount
+ * effect), so here a stand-in draws the sheet's children in place, on an element that carries the props the sheet
+ * handed it — the frame is read from what the sheet asked for. Everything is loaded through `require`, so the stand-in is
+ * in the module cache before the sheet asks for the Modal, and the provider and the components share one React.
+ */
+function renderHowTo(): { rendered: HowToRendered; truth: HowToTruth | null } {
+  const rendered: HowToRendered = { card: {}, sheetIn: {}, sheetOut: {}, error: null };
+  try {
+    const req = createRequire(import.meta.url);
+    const React = req("react") as typeof import("react");
+    const h = React.createElement;
+    type ModalLike = { open: boolean; children?: unknown; sheet?: boolean; sheetUntil?: string; maxWidth?: number; panelClassName?: string; labelledBy?: string; showClose?: boolean; zIndex?: number };
+    const StandIn = (p: ModalLike) => (p.open
+      ? h("div", { "data-world-modal": j({ sheet: p.sheet ?? false, sheetUntil: p.sheetUntil ?? null, maxWidth: p.maxWidth ?? null, panelClassName: p.panelClassName ?? null, labelledBy: p.labelledBy ?? null, showClose: p.showClose ?? true, zIndex: p.zIndex ?? null }) }, p.children as never)
+      : null);
+    const modalAt = req.resolve("../src/components/ui/modal.tsx");
+    const standIn = new NodeModule(modalAt);
+    standIn.filename = modalAt;
+    standIn.loaded = true;
+    standIn.exports = { Modal: StandIn };
+    (req.cache as Record<string, unknown>)[modalAt] = standIn;
+    const { renderToStaticMarkup } = req("react-dom/server") as typeof import("react-dom/server");
+    const { I18nProvider } = req("../src/lib/i18n.tsx") as { I18nProvider: unknown };
+    const { AppRouterContext } = req("next/dist/shared/lib/app-router-context.shared-runtime") as { AppRouterContext: import("react").Context<unknown> };
+    const { HowToCard } = req("../src/components/journey/home/howto-card.tsx") as { HowToCard: unknown };
+    const { HowToPlaySheet } = req("../src/components/onboarding/how-to-play-sheet.tsx") as { HowToPlaySheet: unknown };
+    const router = { push() {}, replace() {}, refresh() {}, prefetch() {}, back() {}, forward() {} };
+    const draw = (l: HtLocale, type: unknown, props: object) =>
+      renderToStaticMarkup(h(AppRouterContext.Provider, { value: router }, h(I18nProvider as never, { initial: l } as never, h(type as never, props as never))));
+    for (const l of HT_LOCALES) {
+      rendered.card[l] = draw(l, HowToCard, { signedIn: false });
+      rendered.sheetIn[l] = draw(l, HowToPlaySheet, { open: true, onClose() {}, signedIn: true });
+      rendered.sheetOut[l] = draw(l, HowToPlaySheet, { open: true, onClose() {}, signedIn: false });
+    }
+    const { dict } = req("../src/lib/i18n-dict.ts") as { dict: HtDict };
+    const { sideWordIn } = req("../src/lib/side-label.ts") as { sideWordIn: (l: HtLocale, side: "YES" | "NO", line: "MARKET") => string };
+    const est = req("../src/lib/markets/estimate.ts") as {
+      estimateFor: (i: object) => { multText: string | null; payout: number | null } | null;
+      HOW_TO_EXAMPLE: { stake: number; side: "YES" | "NO"; rates: object };
+    };
+    const { loserSharePct } = req("../src/lib/payout.ts") as { loserSharePct: (r: object) => number | null };
+    const { formatTzs } = req("../src/lib/utils.ts") as { formatTzs: (n: number) => string };
+    const e = est.estimateFor({ ...est.HOW_TO_EXAMPLE, bettable: true });
+    const sides = Object.fromEntries(HT_LOCALES.map((l) => [l, {
+      yes: sideWordIn(l, "YES", "MARKET"), no: sideWordIn(l, "NO", "MARKET"), example: sideWordIn(l, est.HOW_TO_EXAMPLE.side, "MARKET"),
+    }])) as HowToTruth["sides"];
+    return {
+      rendered,
+      truth: {
+        dict, sides, stake: formatTzs(est.HOW_TO_EXAMPLE.stake), mult: e?.multText ?? "",
+        payout: e?.payout == null ? "" : formatTzs(e.payout), pct: loserSharePct(est.HOW_TO_EXAMPLE.rates),
+      },
+    };
+  } catch (err) {
+    rendered.error = String((err as Error)?.stack ?? err).split(LF).slice(0, 3).join(" | ");
+    return { rendered, truth: null };
+  }
+}
+
+/** A rendered page's words: its tags out, React's five escapes read back. */
+const htText = (html: string) => html.split(/<[^>]*>/).join("")
+  .split("&#x27;").join("'").split("&quot;").join(HT_QUOTE).split("&lt;").join("<").split("&gt;").join(">").split("&amp;").join("&");
+/** `{key}` filled from `vars`, every occurrence — the dictionary's own grammar (`fill`, src/lib/utils.ts). */
+const htFill = (template: string, vars: Record<string, string | number>) =>
+  Object.entries(vars).reduce((s, [k, v]) => s.split(`{${k}}`).join(String(v)), template);
+/**
+ * §5 reads the stylesheet as §4 does — as the cascade reads it (WP5's review, 2026-10-12): `cssRules` above parses it
+ * and `declOf` gives a selector's LAST declaration of a property in any rule whose list holds it, under any at-rule, so a
+ * later rule that re-sets one of §5's selectors is the one read, as a browser paints it. This is every declaration the
+ * rules naming a selector write, in source order (the plate's "no literal colour" reads them all).
+ */
+const htDecls = (sheet: CssRule[], sel: string) => sheet.filter((r) => r.sels.includes(sel)).flatMap((r) => r.decls);
+/** Just past the `</div>` that closes the `<div` opening at `at`, or -1. */
+function htCloseOf(html: string, at: number): number {
+  let depth = 0;
+  for (let i = at; ;) {
+    const open = html.indexOf("<div", i), close = html.indexOf("</div>", i);
+    if (close < 0) return -1;
+    if (open >= 0 && open < close) { depth++; i = open + 4; } else { depth--; i = close + 6; if (depth === 0) return i; }
+  }
+}
+/** Whether a source imports `name` — static, dynamic or re-exported, by any specifier that ends in it. */
+const htImports = (src: string, name: string) =>
+  new RegExp(`(?:from|import)[ ]*[(]?[ ]*[${HT_QUOTES}][^${HT_QUOTES}]*${name}(?:[.]tsx?)?[${HT_QUOTES}]`).test(decomment(src));
+
+type HtOk = (label: string, cond: boolean, extra?: string) => void;
+
+function howToChecks(hw: HowToWorld, ok: HtOk) {
+  const card = decomment(hw.card), sheet = decomment(hw.sheet), lazy = decomment(hw.lazy);
+  const flat = (s: string) => s.split(LF).map((l) => l.trim()).join(" ");
+  const cardFlat = flat(card), sheetFlat = flat(sheet);
+  const r = hw.rendered, T = hw.truth;
+  const sheets = HT_LOCALES.flatMap((l) => [[l, r.sheetIn[l] ?? ""], [l, r.sheetOut[l] ?? ""]] as Array<[HtLocale, string]>);
+  // The stylesheet as the cascade leaves it (see htDecls): `cv` is a selector's last value for a property, or null.
+  const cascade = cssRules(hw.css);
+  const cv = (sel: string, prop: string) => declOf(cascade, sel, prop);
+
+  // 5.render — WP6's done-when.
+  const drawn = HT_LOCALES.every((l) => (r.card[l] ?? "").includes(`data-testid="journey-howto-card"`) && !(r.card[l] ?? "").includes("journey-howto-sheet"))
+    && sheets.every(([, html]) => count(html, `data-testid="journey-howto-sheet"`) === 1);
+  ok("5.render · the card and the sheet render in a test world: React's server renderer inside the i18n provider, in sw, en and zh, the sheet open signed in and signed out (the kit Modal stood in by one that draws its children in place) — and the card, closed, draws no sheet",
+    r.error === null && T !== null && drawn, r.error ?? j({ drawn, truth: T !== null }));
+
+  // 5.card — WP6 step 3; Correction 8; Open points 18 and 19.
+  const cardSrc = card.trimStart().startsWith(`${HT_QUOTE}use client${HT_QUOTE}`) && count(card, "<button") === 1 && cardFlat.includes(`type="button"`)
+    && cardFlat.includes(`aria-haspopup="dialog"`) && cardFlat.includes("aria-expanded={open}") && cardFlat.includes("onClick={() => setOpen(true)}")
+    && cardFlat.includes(`data-testid="journey-howto-card"`) && card.includes("useState(false)")
+    && card.includes("<HowToPlaySheet open={open} onClose={() => setOpen(false)} signedIn={signedIn} />")
+    && !/<(?:a|Link)[ >]/.test(card) && !card.includes("href");
+  const cardDrawn = HT_LOCALES.every((l) => (r.card[l] ?? "").startsWith(`<button type="button" aria-haspopup="dialog" aria-expanded="false" class="kp-jhowto" data-testid="journey-howto-card">`));
+  ok(`5.card · the How-to card is a <button type="button" aria-haspopup="dialog"> with the test id journey-howto-card — never a link (the canvas's <a>, Correction 8; no URL, Open point 19) — holding open, rendering the sheet beside it with the server's signedIn and saying aria-expanded; drawn so in sw, en and zh`,
+    cardSrc && cardDrawn, j({ cardSrc, cardDrawn }));
+
+  // 5.plate — A14 items 2 and 4; Correction 22 (the glyph); the coordinator's decision of 2026-10-12 (its size): the kit
+  // wins over the canvas (§0h point 7), so the glyph is the kit's for a 48px plate, plateGlyph(48) = 24, not the board's 20.
+  const plateTag = cardFlat.match(/<IconPlate[^>]*>/)?.[0] ?? "";
+  const PLATE = ".kp-jhowto__plate", plateDecls = htDecls(cascade, PLATE);
+  const plateSrc = plateTag.includes("size={48}") && plateTag.includes(`className="kp-jhowto__plate"`) && !/[ ](?:bg|fg|border|style)=/.test(plateTag)
+    && cardFlat.includes("<I.playBare s={plateGlyph(48)} />");
+  const plateCss = cv(PLATE, "background") === "var(--wash-primary)" && cv(PLATE, "box-shadow") === "var(--edge-primary), var(--shadow-primary)"
+    && cv(PLATE, "color") === "var(--pearl-50)" && !plateDecls.some(([, v]) => /oklch[(]|#[0-9a-fA-F]{3}|rgba?[(]|hsla?[(]/.test(v));
+  const plateDrawn = HT_LOCALES.every((l) => (r.card[l] ?? "").includes(`class="grid shrink-0 place-items-center rounded-control kp-jhowto__plate" style="width:48px;height:48px"><svg viewBox="0 0 24 24" width="24" height="24" `));
+  ok("5.plate · the royal plate (choice 3A, A14): a 48px IconPlate with the play glyph I.playBare at the kit's size for that plate, plateGlyph(48) — drawn 24px (the kit over the canvas's 20, §0h point 7) — and NO bg, fg, border or style, so no inline colour (drawn: its style is its size alone); .kp-jhowto__plate paints it, as the cascade leaves it, from the primary material's tokens (--wash-primary; --edge-primary and --shadow-primary, never the glow) with the glyph in --pearl-50, no literal colour in any rule that names it",
+    plateSrc && plateCss && plateDrawn, j({ plateSrc, plateCss, plateDrawn, plate: plateDecls }));
+
+  // 5.card.words — WP6 step 3: steps is the sheet's step count, minutes its named constant.
+  const wordsSrc = card.includes("{t.journey.howToCardTitle}") && card.includes("fill(t.journey.howToCardMeta, { steps: HOW_TO_STEPS, minutes: HOW_TO_MINUTES })")
+    && sheet.includes("export const HOW_TO_STEPS = STEPS.length;") && sheet.includes("export const HOW_TO_MINUTES = 1;");
+  const wordsDrawn = T !== null && HT_LOCALES.every((l) => {
+    const steps = count(r.sheetIn[l] ?? "", "<li ");
+    return steps === 3 && htText(r.card[l] ?? "") === T.dict[l].journey.howToCardTitle + htFill(T.dict[l].journey.howToCardMeta, { steps, minutes: 1 });
+  });
+  ok("5.card.words · the card says journey.howToCardTitle over journey.howToCardMeta, its {steps} the sheet's own step count (HOW_TO_STEPS = the steps the sheet draws, 3) and its {minutes} the sheet's named constant (HOW_TO_MINUTES, the deck's dakika 1) — drawn in each language exactly",
+    wordsSrc && wordsDrawn, j({ wordsSrc, wordsDrawn }));
+
+  // 5.frame — WP6 step 4, the frame; Open point 20.
+  const modalTag = sheetFlat.match(/<Modal[^>]*>/)?.[0] ?? "";
+  const frameSrc = count(sheet, "<Modal") === 1
+    && ["open={open}", "onClose={onClose}", "labelledBy={titleId}", " sheet ", `sheetUntil="lg"`, "maxWidth={440}", `panelClassName="kp-wsheet kp-howto"`].every((p) => modalTag.includes(p))
+    && !modalTag.includes("zIndex") && !modalTag.includes("showClose") && sheet.includes("const titleId = useId();")
+    && sheet.includes(`<div aria-hidden className="kp-wsheet__grab" />`) && sheet.includes(`data-testid="journey-howto-sheet"`);
+  const frameOf = (html: string): Record<string, unknown> | null => {
+    const m = /data-world-modal="([^"]*)"/.exec(html);
+    if (!m) return null;
+    try { return JSON.parse(m[1].split("&quot;").join(HT_QUOTE).split("&amp;").join("&")) as Record<string, unknown>; } catch { return null; }
+  };
+  const frameDrawn = sheets.every(([, html]) => {
+    const f = frameOf(html);
+    return f !== null && f.sheet === true && f.sheetUntil === "lg" && f.maxWidth === 440 && f.panelClassName === "kp-wsheet kp-howto"
+      && f.showClose === true && f.zIndex === null && typeof f.labelledBy === "string" && html.includes(`<h2 id="${f.labelledBy}"`);
+  });
+  ok("5.frame · the kit's sheet (Open point 20): a bottom sheet below 1024 and a centred dialog 440 wide from it (sheet, sheetUntil lg, maxWidth 440), titled by its h2, on the default dialog rung (no zIndex: 100), with the kit's own ✕ (showClose untouched), the grab handle and the test id journey-howto-sheet, panelClassName kp-wsheet kp-howto",
+    frameSrc && frameDrawn, j({ frameSrc, frameDrawn, modalTag }));
+
+  // 5.order — §3.8's order (A6: it ends at Weka mipaka).
+  const orderOf = (l: HtLocale, html: string) => {
+    const grab = html.indexOf(`class="kp-wsheet__grab"`), h2 = html.indexOf("<h2 "), region = html.indexOf(`<div role="region"`);
+    const end = region < 0 ? -1 : htCloseOf(html, region);
+    const ol = html.indexOf(`<ol role="list"`), note = html.indexOf(`<div role="note"`), cta = html.indexOf("<button "), link = html.indexOf("<a ");
+    const regionTag = region < 0 ? "" : html.slice(region, html.indexOf(">", region) + 1);
+    return grab >= 0 && grab < h2 && h2 < region && region < ol && ol < note && note < end && end <= cta && cta < link
+      && count(html, "<h2 ") === 1 && count(html, "<li ") === 3 && count(html, "<button ") === 1 && count(html, "<a ") === 1
+      && regionTag.includes(`tabindex="0"`) && T !== null && regionTag.includes(`aria-label="${T.dict[l].journey.howStepsAria}"`);
+  };
+  const misordered = sheets.filter(([l, html]) => !orderOf(l, html)).map(([l]) => l);
+  ok("5.order · in §3.8's order, and nothing else: the grab handle, the title (the dialog's one h2), the steps region (role region, tabindex 0, named by journey.howStepsAria) holding the three steps' list and then MFANO, then the CTA, then Weka mipaka — the sheet's one button and one link, both outside the region that scrolls",
+    misordered.length === 0, j({ misordered }));
+
+  // 5.title — A15 (and A24 item 6: the base rule's margin is computed from --type-h3).
+  const LG = ".kp-jsheet__title--lg", lg = { size: cv(LG, "font-size"), line: cv(LG, "line-height"), top: cv(LG, "margin-top") };
+  const titleSrc = count(sheet, `<h2 id={titleId} className="kp-jsheet__title kp-jsheet__title--lg">{t.journey.howToTitle}</h2>`) === 1;
+  const titleCss = lg.size === "var(--type-h2)" && lg.line === "1.2" && lg.top === "calc(var(--sp-10) - var(--sp-8) - var(--type-h2) * 0.575)"
+    && cv(".kp-jsheet__title", "font-size") === "var(--type-h3)";
+  const titleDrawn = T !== null && sheets.every(([l, html]) => /<h2 id="[^"]+" class="kp-jsheet__title kp-jsheet__title--lg">/.test(html)
+    && htText(html.slice(html.indexOf("<h2 "), html.indexOf("</h2>"))) === T.dict[l].journey.howToTitle);
+  ok("5.title · the title is 24px, as its canvas draws it (A15): the h2 carries kp-jsheet__title AND kp-jsheet__title--lg, whose rule declares font-size var(--type-h2) in a 1.2 line and re-derives the base rule's top margin for that size (40 − 32 − 0.575em: its capitals on the ✕); the guest sheet's base rule keeps --type-h3",
+    titleSrc && titleCss && titleDrawn, j({ titleSrc, titleCss, titleDrawn, lg }));
+
+  // 5.steps — WP6 step 4 item 2; choice 1B.
+  const stepKeys = ["howStep1Title", "howStep1Body", "howStep2Title", "howStep2Body", "howStep3Title", "howStep3Body"];
+  const keyAt = stepKeys.map((k) => sheet.indexOf(`${HT_QUOTE}${k}${HT_QUOTE}`));
+  const stepsSrc = keyAt.every((at, i) => at >= 0 && (i === 0 || at > keyAt[i - 1])) && stepKeys.every((k) => count(sheet, `${HT_QUOTE}${k}${HT_QUOTE}`) === 1)
+    && sheet.includes(`sideWord(t, "YES", "MARKET")`) && sheet.includes(`sideWord(t, "NO", "MARKET")`) && sheet.includes(`sideWord(t, HOW_TO_EXAMPLE.side, "MARKET")`)
+    && !/t[.]common[.](?:yes|no)(?![A-Za-z])|t[.]market[.]ud(?:Up|Down)/.test(sheet);
+  const NUM = ".kp-howto__num";
+  const badge = cv(NUM, "background") === "var(--bg-royal-soft)" && cv(NUM, "box-shadow") === "inset 0 0 0 1px var(--border-strong)" && cv(NUM, "color") === "var(--text)";
+  const stepsDrawn = T !== null && sheets.every(([l, html]) => {
+    const d = T.dict[l].journey, s = T.sides[l];
+    const items = html.split("<li ").slice(1).map((li) => htText(`<li ${li.slice(0, li.indexOf("</li>"))}`));
+    const want = [1, 2, 3].map((n) => `${n}${htFill(d[`howStep${n}Title`], s)}${htFill(d[`howStep${n}Body`], { ...s, mult: T.mult })}`);
+    return j(items) === j(want);
+  });
+  ok("5.steps · the three steps are WP4's words in §3.8's order — each numeral, title and body exactly, in each language — their YES and NO the product's side words through sideWord (never common.yes or common.no read directly), on the neutral badge (choice 1B: --bg-royal-soft, an inset --border-strong ring, --text)",
+    stepsSrc && badge && stepsDrawn, j({ stepsSrc, badge, stepsDrawn }));
+
+  // 5.figures — WP6 step 4 item 3; Open point 21; SJ-21.
+  const typed = ["2.7", "2,700", "2700", "2_700", "1,000", "1000", "1_000", "pct: 13"].filter((s) => sheet.includes(s));
+  const figuresSrc = count(sheet, "estimateFor({ ...HOW_TO_EXAMPLE, bettable: true })") === 1 && count(sheet, "loserSharePct(HOW_TO_EXAMPLE.rates)") === 1
+    && sheet.includes("formatTzs(HOW_TO_EXAMPLE.stake)") && sheet.includes("formatTzs(EXAMPLE.payout)") && typed.length === 0
+    // the multiple is handed only to a step whose body writes {mult} (step 2): steps 1 and 3 get no figure to look for
+    && sheet.includes(`const holdsMult = body.includes("{mult}");`) && sheetFlat.includes(`holdsMult ? [{ text: multUnit(body, mult), className: "kp-howto__mult" }] : []`);
+  const golden = T !== null && T.stake === "TZS 1,000" && T.mult === "2.7" && T.payout === "TZS 2,700" && T.pct === 13;
+  const figuresDrawn = T !== null && sheets.every(([, html]) => count(html, `<span class="amount">${T.stake}</span>`) === 1
+    && count(html, `<span class="amount">${T.payout}</span>`) === 1 && count(html, `<span class="kp-howto__mult">≈${T.mult}×</span>`) === 2
+    && htText(html.slice(html.indexOf(`class="kp-howto__note`))).includes(`${T.pct}%`));
+  ok("5.figures · every figure is the engine's: HOW_TO_EXAMPLE through estimateFor and {pct} from loserSharePct(HOW_TO_EXAMPLE.rates), none typed in the sheet — SJ-21's TZS 1,000 → ≈2.7× → TZS 2,700 at 13% — drawn with the two sums as .amount spans and the multiple one mono unit with its ≈ and × (step 2 and MFANO), handed only to the step whose words write {mult}",
+    figuresSrc && golden && figuresDrawn, j({ figuresSrc, typed, golden, figuresDrawn, truth: T && { stake: T.stake, mult: T.mult, payout: T.payout, pct: T.pct } }));
+
+  // 5.helpline — A6 item 4; A24 item 4.
+  const paths = [...new Set([...`${card}${LF}${sheet}`.matchAll(/(?<![A-Za-z0-9_$.])t(?:[.][A-Za-z0-9_]+)+/g)].map((m) => m[0].slice(2)))]
+    .concat([...sheet.matchAll(/(?:title|body): "([A-Za-z0-9]+)"/g)].map((m) => `journey.${m[1]}`));
+  const enOf = (path: string) => (T === null ? "" : String(path.split(".").reduce<unknown>((v, k) => (v as Record<string, unknown> | undefined)?.[k], T.dict.en)));
+  const named = T === null ? ["the dictionary was not read"] : paths.filter((p) => HT_HELPLINE_WORD.test(enOf(p)));
+  const helplineSrc = [card, sheet].every((s) => !HT_HELPLINE_READ.test(s) && !s.includes("0800") && !s.includes("tel:")) && named.length === 0;
+  const helplineDrawn = sheets.every(([, html]) => {
+    const words = htText(html).toLowerCase();
+    return !HT_HELPLINE_WORD.test(words) && !words.includes("0800") && !html.includes("tel:");
+  });
+  ok("5.helpline · NO helpline on the sheet (the owner's ruling of 2026-10-06; A6): the card's and the sheet's decommented source read neither nationalHelpline nor nationalHelplineTel (nor the deleted HELPLINE()/HELPLINE_TEL(), A24 item 4), hold no 0800 and no tel: link, and render no label whose English names a helpline; drawn, no language says one",
+    helplineSrc && helplineDrawn, j({ helplineSrc, named, helplineDrawn, labels: paths.length }));
+
+  // 5.limits — A6 item 1: Weka mipaka alone.
+  const limitsSrc = sheet.includes(`const LIMITS = { signedIn: "/profile/responsible-gambling", signedOut: "/legal/responsible-gambling" } as const;`)
+    && sheetFlat.includes(`<Link href={signedIn ? LIMITS.signedIn : LIMITS.signedOut} onClick={onClose} className="kp-wsheet__link">`)
+    && sheet.includes("{t.rg.setLimits}") && count(sheet, "<Link") === 1 && cv(".kp-wsheet__link", "min-height") === "var(--h-control-md)";
+  const linkOf = (html: string) => html.slice(html.indexOf("<a "), html.indexOf("</a>") + 4);
+  const limitsDrawn = T !== null && HT_LOCALES.every((l) => {
+    const signedIn = linkOf(r.sheetIn[l] ?? ""), guest = linkOf(r.sheetOut[l] ?? "");
+    return signedIn.includes(`href="/profile/responsible-gambling"`) && guest.includes(`href="/legal/responsible-gambling"`)
+      && htText(signedIn) === T.dict[l].rg.setLimits && htText(guest) === T.dict[l].rg.setLimits;
+  });
+  ok("5.limits · Weka mipaka (rg.setLimits) is the sheet's one link (A6): /profile/responsible-gambling for a signed-in reader and /legal/responsible-gambling for a guest — the card hands the sheet signedIn from the server — at least 44px (the Wallet's link, --h-control-md), and it closes the sheet as it navigates",
+    limitsSrc && limitsDrawn, j({ limitsSrc, limitsDrawn }));
+
+  // 5.cta — WP6 step 4 item 4; test:ui-consistency's rule (the kit Button, never a raw btn button).
+  const ctaSrc = sheetFlat.includes(`<Button type="button" variant="primary" size="lg" className="kp-wsheet__act" onClick={onClose}> {t.journey.howCta} </Button>`)
+    && !sheet.includes("<button") && cv(".kp-wsheet__act", "width") === "100%";
+  const ctaDrawn = T !== null && sheets.every(([l, html]) => {
+    const at = html.indexOf("<button ");
+    return html.slice(at, html.indexOf(">", at) + 1) === `<button class="btn btn-primary btn-lg kp-wsheet__act" type="button">`
+      && htText(html.slice(at, html.indexOf("</button>", at))) === T.dict[l].journey.howCta;
+  });
+  ok(`5.cta · "Nimeelewa, anza" (journey.howCta) is a full-width kit Button in the primary material (the Wallet's 56px sheet action), and it closes the sheet — never a raw btn button`,
+    ctaSrc && ctaDrawn, j({ ctaSrc, ctaDrawn }));
+
+  // 5.storage — Open point 18.
+  const STORES = ["localStorage", "sessionStorage", "document.cookie", "indexedDB"];
+  const writes = ([[HT_CARD, card], [HT_SHEET, sheet], [HT_LAZY, lazy]] as Array<[string, string]>)
+    .flatMap(([f, s]) => STORES.filter((w) => s.includes(w)).map((w) => `${f}: ${w}`));
+  ok("5.storage · nothing writes to storage: no localStorage, sessionStorage, cookie or IndexedDB in the card, the sheet or the home's lazy module — no seen key (Open point 18: it is S11's, with the auto-open), so Privacy §7 is unchanged",
+    writes.length === 0, j(writes));
+
+  // 5.cap — WP6 step 4, sizing; Open point 20. The chain the cap runs down is the block's own (the review of 2026-10-12):
+  // the panel a flex column itself, never leaning on .kp-wsheet; the sheet in it a flex column that may shrink below its
+  // content (min-height: 0 — without it the sheet keeps its content's height and runs out of the capped panel); in that,
+  // the steps region alone gives way. Each value as the cascade leaves it (null: no rule declares it).
+  const CAP: Array<[string, string, string | null]> = [
+    [".kp-howto", "display", "flex"], [".kp-howto", "flex-direction", "column"], [".kp-howto", "max-height", "calc(100dvh - var(--sp-12))"],
+    [".kp-howto__sheet", "display", "flex"], [".kp-howto__sheet", "flex-direction", "column"], [".kp-howto__sheet", "min-height", "0"],
+    [".kp-howto__sheet > *", "flex-shrink", "0"],
+    [".kp-howto__scroll", "flex-shrink", "1"], [".kp-howto__scroll", "min-height", "0"], [".kp-howto__scroll", "overflow-y", "auto"],
+    [".kp-howto__scroll", "overscroll-behavior", "contain"], [".kp-howto__scroll", "mask-image", null], [".kp-howto__scroll", "-webkit-mask-image", null],
+    [".kp-howto__scroll:focus-visible", "mask-image", "none"], [".kp-howto__scroll:focus-visible", "-webkit-mask-image", "none"],
+  ];
+  const capDrift = CAP.filter(([sel, prop, v]) => cv(sel, prop) !== v).map(([sel, prop, v]) => `${sel} { ${prop} } is ${cv(sel, prop)}, not ${v}`);
+  const fades = ["end", "start", "both"].map((e) => `.kp-howto__scroll[data-edges=${HT_QUOTE}${e}${HT_QUOTE}]`);
+  const fadeDrift = fades.filter((f) => !(cv(f, "mask-image") ?? "").startsWith("linear-gradient(to bottom,") || cv(f, "-webkit-mask-image") !== cv(f, "mask-image"));
+  const capCss = capDrift.length === 0 && fadeDrift.length === 0;
+  const capSrc = sheet.includes(`panelClassName="kp-wsheet kp-howto"`) && sheet.includes(`<div className="kp-howto__sheet" data-testid="journey-howto-sheet">`)
+    && sheetFlat.includes(`<div ref={ref} role="region" tabIndex={0} aria-label={label} className="kp-howto__scroll">`)
+    && sheet.includes(`el.setAttribute("data-edges", edges)`) && ["el.scrollHeight", "el.clientHeight", "el.scrollTop"].every((x) => sheet.includes(x));
+  ok("5.cap · the cap is on the panel, in CSS: .kp-howto holds it to the viewport less 48px (calc(100dvh - var(--sp-12)), the first-visit primer's fixed gutter) and is a flex column itself, never leaning on .kp-wsheet; the sheet inside it a flex column that may shrink (.kp-howto__sheet: display flex, flex-direction column, min-height 0); the rest of the sheet never shrinks and the steps region alone gives way and scrolls, its own scroll held; a fade only at an edge that hides something (data-edges, read from the region), none on a region that fits or holds keyboard focus",
+    capCss && capSrc, j({ capCss, capSrc, capDrift, fadeDrift }));
+
+  // 5.mfano — WP6 step 4 item 3; Open point 20 (the kit Callout tone="info"). The label's ink is the one section ink, Ali's
+  // ruling (3) of 2026-10-10 (`test:visual-pass-r8b` §1 holds every eyebrow to it), which the canvas's info-blue predates.
+  const mfanoSrc = count(sheet, `<Callout tone="info" className="kp-howto__ex">`) === 1
+    && sheet.includes(`<p className="kp-howto__ex-label eyebrow font-mono text-caption font-semibold uppercase text-text-subtle">{t.journey.howExampleLabel}</p>`)
+    && sheet.includes("{noticeBody(fill(t.journey.estimateNote, { pct: PCT }))}");
+  const mfanoDrawn = T !== null && sheets.every(([l, html]) => {
+    const at = html.indexOf(`<div role="note"`), end = at < 0 ? -1 : htCloseOf(html, at);
+    const d = T.dict[l].journey;
+    const want = d.howExampleLabel + htFill(d.howExampleBody, { stake: T.stake, side: T.sides[l].example, mult: T.mult, payout: T.payout })
+      + htFill(d.estimateNote, { pct: T.pct ?? "" });
+    return at >= 0 && end > at && html.slice(at, html.indexOf(">", at)).includes("border-info-border bg-info-bg") && htText(html.slice(at, end)) === want;
+  });
+  ok("5.mfano · MFANO is the kit Callout tone=info: its label an .eyebrow in the one section ink, --text-subtle (journey.howExampleLabel), the example (journey.howExampleBody, its side the example's own side word), then the estimate's note (journey.estimateNote) — each exactly, in each language",
+    mfanoSrc && mfanoDrawn, j({ mfanoSrc, mfanoDrawn }));
+
+  // 5.eyebrow.zh — qa:dg-eyebrow's rule for a Chinese label.
+  const ZH = ".kp-howto__ex-label:lang(zh)", zh = { face: cv(ZH, "font-family"), tracking: cv(ZH, "letter-spacing"), transform: cv(ZH, "text-transform") };
+  ok("5.eyebrow.zh · MFANO's label is uppercase and mono for Latin words, and for zh 示例 neither, nor tracked: .kp-howto__ex-label:lang(zh) sets the body face, no letter-spacing and no transform",
+    zh.face === "var(--font-body)" && zh.tracking === "0" && zh.transform === "none", j(zh));
+
+  // 5.lazy — WP6 step 2; A13(a).
+  const statics = [...lazy.matchAll(/^[ ]*import[ ]+([^;]*?)[ ]+from[ ]+"([^"]+)";/gm)].map((m) => `${m[1].trim()} from ${m[2]}`);
+  const lazyShape = lazy.trimStart().startsWith(`${HT_QUOTE}use client${HT_QUOTE}`)
+    && j(statics) === j(["dynamic from next/dynamic", "{ nothingIfLost } from @/components/layout/lost-chunk"])
+    && HT_PARTS.every((p) => count(lazy, htPartLine(p)) === 1) && count(lazy, "export ") === HT_PARTS.length && count(lazy, "dynamic(") === HT_PARTS.length
+    && !["ssr", "loading", "suspense"].some((w) => lazy.includes(w)) && !lazy.includes("function nothingIfLost(")
+    && decomment(hw.guard).includes("export function nothingIfLost(");
+  const subjects: Array<[string, string]> = [[HT_CARD, hw.card], [HT_SHEET, hw.sheet], [HT_LAZY, hw.lazy], ...hw.naming];
+  const importersOf = (name: string) => subjects.filter(([f]) => f !== HT_LAZY || name !== "home-lazy").filter(([, s]) => htImports(s, name)).map(([f]) => f).sort();
+  const lazyHome = importersOf("home-lazy"), cardHome = importersOf("howto-card"), sheetHome = importersOf("how-to-play-sheet");
+  const homeFiles = subjects.filter(([f]) => f.startsWith("src/components/journey/home/") && f !== HT_LAZY && f !== HT_CARD);
+  const around = homeFiles.filter(([, s]) => htImports(s, "refresh-poller") || htImports(s, "howto-card")).map(([f]) => f);
+  ok("5.lazy · the home's lazy module is client code whose static imports are next/dynamic and the app's one lost-chunk guard, declaring exactly its parts (LazyHowToCard, LazyRefreshPoller), each one line with no option object, its loader ending in .catch(nothingIfLost); it is the card's one loader (the sheet's is the card), no other home file reaches a part around it, and only journey-home.tsx (WP7) may import it",
+    lazyShape && lazyHome.every((f) => f === HT_HOME) && j(cardHome) === j([HT_LAZY]) && j(sheetHome) === j([HT_CARD]) && around.length === 0,
+    j({ lazyShape, statics, lazyHome, cardHome, sheetHome, around }));
+
+  // 5.popup — WP6 step 5; A13's pattern (popup-review.mts).
+  const record = reviewedIn(hw.popupFit);
+  const gaps = reviewGaps([HT_SHEET], record);
+  ok("5.popup · the sheet is on test:popup-fit's review record by name (a popup no one judged against Ali's rule fails here too), and the card itself renders no popup primitive",
+    record.length > 50 && gaps.unreviewed.length === 0 && IS_POPUP.test(sheet) && !IS_POPUP.test(card), j({ unreviewed: gaps.unreviewed, record: record.length }));
+}
+
+/* ── §5's plants: each one defect, in memory, on the source, the stylesheet, the record or the render ─────────────── */
+type HtPlant = { name: string; expect: RegExp; plant: (w: World) => World };
+/** One swap on a copy of a text. ⛔ An anchor that does not resolve exactly once THROWS: a broken plant, never a miss. */
+function htSwap(text: string, from: string, to: string): string {
+  const n = count(text, from);
+  if (n !== 1) throw new Error(`the plant's anchor resolves ${n} times, not once: ${from}`);
+  return text.replace(from, () => to);
+}
+const htWith = (w: World, edit: Partial<HowToWorld>): World => ({ ...w, howto: { ...w.howto, ...edit } });
+const htDrawn = (w: World, which: "card" | "sheetIn" | "sheetOut", l: HtLocale, edit: (html: string) => string): World =>
+  htWith(w, { rendered: { ...w.howto.rendered, [which]: { ...w.howto.rendered[which], [l]: edit(w.howto.rendered[which][l] ?? "") } } });
+const htCard = (from: string, to: string) => (w: World) => htWith(w, { card: htSwap(w.howto.card, from, to) });
+const htSheet = (from: string, to: string) => (w: World) => htWith(w, { sheet: htSwap(w.howto.sheet, from, to) });
+const htCss = (from: string, to: string) => (w: World) => htWith(w, { css: htSwap(w.howto.css, from, to) });
+const htLazy = (from: string, to: string) => (w: World) => htWith(w, { lazy: htSwap(w.howto.lazy, from, to) });
+const htNamed = (rel: string, text: string) => (w: World) => htWith(w, { naming: new Map(w.howto.naming).set(rel, text) });
+
+function howToDefects(): HtPlant[] {
+  const CTA = `<button class="btn btn-primary btn-lg kp-wsheet__act" type="button">`;
+  return [
+    { name: "the sheet does not render in Chinese (a missing word, a throw)", expect: /^5[.]render /,
+      plant: (w) => htDrawn(w, "sheetOut", "zh", () => "") },
+    // (Anchored on the line's own break: the card's header names `<button aria-haspopup="dialog">` too.)
+    { name: "the card loses aria-haspopup (a screen reader is not told it opens a dialog)", expect: /^5[.]card /,
+      plant: htCard(`aria-haspopup="dialog"${LF}`, LF) },
+    { name: "the card is a link to /?howto=1 (the canvas's <a>, S11's URL)", expect: /^5[.]card /,
+      plant: (w) => htWith(w, { card: htSwap(htSwap(w.howto.card, `<button${LF}`, `<a href="/?howto=1"${LF}`), "</button>", "</a>") }) },
+    { name: "the plate painted by an inline colour prop", expect: /^5[.]plate /,
+      plant: htCard(`<IconPlate size={48} className="kp-jhowto__plate"`, `<IconPlate size={48} bg="var(--royal-500)" className="kp-jhowto__plate"`) },
+    { name: "a literal oklch in the plate's rule (A14 item 4: a second definition of the primary material)", expect: /^5[.]plate /,
+      plant: htCss(".kp-jhowto__plate { background: var(--wash-primary);", ".kp-jhowto__plate { background: oklch(53% 0.20 268);") },
+    // (Read as the cascade reads it: a LATER rule that re-sets the selector is the one painted — WP5's review.)
+    { name: "a later rule repaints the plate in the gold ramp (its own rule left untouched)", expect: /^5[.]plate /,
+      plant: (w) => htWith(w, { css: `${w.howto.css}${LF}.kp-jhowto__plate { background: var(--g-gold); }${LF}` }) },
+    { name: "the play glyph typed at the board's 20px (the kit's plateGlyph(48) is 24; §0h point 7)", expect: /^5[.]plate /,
+      plant: htCard("<I.playBare s={plateGlyph(48)} />", "<I.playBare s={20} />") },
+    { name: "the play glyph drawn 20px on its 48px plate", expect: /^5[.]plate /,
+      plant: (w) => htDrawn(w, "card", "zh", (html) => htSwap(html, `style="width:48px;height:48px"><svg viewBox="0 0 24 24" width="24" height="24" `, `style="width:48px;height:48px"><svg viewBox="0 0 24 24" width="20" height="20" `)) },
+    { name: "the card's minutes typed instead of read from the sheet", expect: /^5[.]card[.]words /,
+      plant: htCard("minutes: HOW_TO_MINUTES", "minutes: 1") },
+    // (Anchored on its line: the sheet's header quotes the Modal's props too.)
+    { name: "the sheet 480 wide, the canvas's (Open point 20: the kit's 440)", expect: /^5[.]frame /,
+      plant: htSheet(`${LF}      maxWidth={440}`, `${LF}      maxWidth={480}`) },
+    { name: "the kit's ✕ withheld for a hand-drawn one", expect: /^5[.]frame /,
+      plant: htSheet(`panelClassName="kp-wsheet kp-howto"`, `panelClassName="kp-wsheet kp-howto" showClose={false}`) },
+    { name: "the CTA drawn above the steps (§3.8's order broken)", expect: /^5[.]order /,
+      plant: (w) => htDrawn(w, "sheetIn", "en", (html) => {
+        const at = html.indexOf(CTA), cta = html.slice(at, html.indexOf("</button>", at) + 9);
+        return htSwap(htSwap(html, cta, ""), `<div role="region"`, `${cta}<div role="region"`);
+      }) },
+    { name: "the title's 24px modifier dropped from the h2 (A15)", expect: /^5[.]title /,
+      plant: htSheet(`className="kp-jsheet__title kp-jsheet__title--lg"`, `className="kp-jsheet__title"`) },
+    { name: "the modifier's size re-pointed to --type-h3 (A15)", expect: /^5[.]title /,
+      plant: htCss("font-size: var(--type-h2); line-height: 1.2; }", "font-size: var(--type-h3); line-height: 1.2; }") },
+    { name: "YES read straight from common.yes (an Up & Down reader would read YES for UP)", expect: /^5[.]steps /,
+      plant: htSheet(`yes: sideWord(t, "YES", "MARKET")`, "yes: t.common.yes") },
+    { name: "steps 2 and 3 swapped", expect: /^5[.]steps /,
+      plant: htSheet(`{ title: "howStep2Title", body: "howStep2Body" },${LF}  { title: "howStep3Title", body: "howStep3Body" },`,
+        `{ title: "howStep3Title", body: "howStep3Body" },${LF}  { title: "howStep2Title", body: "howStep2Body" },`) },
+    { name: "the multiple typed in the sheet (2.7)", expect: /^5[.]figures /,
+      plant: htSheet("mult: EXAMPLE.multText", `mult: "2.7"`) },
+    { name: "{pct} typed as 13 instead of the example's own loser-share", expect: /^5[.]figures /,
+      plant: htSheet("const PCT = loserSharePct(HOW_TO_EXAMPLE.rates);", "const PCT = 13;") },
+    { name: "the multiple handed to every step's body (steps 1 and 3 write no {mult})", expect: /^5[.]figures /,
+      plant: htSheet(`holdsMult ? [{ text: multUnit(body, mult), className: "kp-howto__mult" }] : []`, `FIGURES ? [{ text: multUnit(body, mult), className: "kp-howto__mult" }] : []`) },
+    { name: "the payout drawn bare, not as one .amount figure", expect: /^5[.]figures /,
+      plant: (w) => htDrawn(w, "sheetOut", "sw", (html) => htSwap(html, `<span class="amount">TZS 2,700</span>`, "TZS 2,700")) },
+    { name: "the helpline put back: a tel: link on the config field (A6, A24 item 4)", expect: /^5[.]helpline /,
+      plant: htSheet(`<div className="kp-howto__foot">`, `<div className="kp-howto__foot"><a href={"tel:" + getSupportConfig().nationalHelplineTel}>{getSupportConfig().nationalHelpline}</a>`) },
+    { name: "the English sheet says Helpline 0800 11 0011", expect: /^5[.]helpline /,
+      plant: (w) => htDrawn(w, "sheetIn", "en", (html) => `${html}<p>Helpline 0800 11 0011</p>`) },
+    { name: "Weka mipaka sends a guest to the signed-in limits page", expect: /^5[.]limits /,
+      plant: htSheet("signedIn ? LIMITS.signedIn : LIMITS.signedOut", "LIMITS.signedIn") },
+    { name: "the guest's sheet drawn with the signed-in door", expect: /^5[.]limits /,
+      plant: (w) => htDrawn(w, "sheetOut", "sw", (html) => htSwap(html, `href="/legal/responsible-gambling"`, `href="/profile/responsible-gambling"`)) },
+    { name: "the CTA a raw btn button (test:ui-consistency's rule)", expect: /^5[.]cta /,
+      plant: (w) => htWith(w, { sheet: htSwap(htSwap(w.howto.sheet, `<Button type="button" variant="primary" size="lg" className="kp-wsheet__act" onClick={onClose}>`,
+        `<button type="button" className="btn btn-primary btn-lg kp-wsheet__act" onClick={onClose}>`), "</Button>", "</button>") }) },
+    { name: "the CTA no longer closes the sheet", expect: /^5[.]cta /,
+      plant: htSheet(`className="kp-wsheet__act" onClick={onClose}>`, `className="kp-wsheet__act">`) },
+    { name: "a seen key written on open (S11's, Open point 18)", expect: /^5[.]storage /,
+      plant: htSheet("const titleId = useId();", `const titleId = useId();${LF}  localStorage.setItem("50pick-howto-seen", "1");`) },
+    { name: "a later rule lifts the panel's cap from 1024 (an at-rule after it: max-height none)", expect: /^5[.]cap /,
+      plant: (w) => htWith(w, { css: `${w.howto.css}${LF}@media (min-width: 1024px) { .kp-howto { max-height: none; } }${LF}` }) },
+    { name: "the panel's cap dropped (a tall sheet's top unreachable on a short phone)", expect: /^5[.]cap /,
+      plant: htCss(".kp-howto { display: flex; flex-direction: column; max-height: calc(100dvh - var(--sp-12)); }", ".kp-howto { display: flex; flex-direction: column; }") },
+    { name: "the panel no flex column of its own (the cap's chain leaning on .kp-wsheet again)", expect: /^5[.]cap /,
+      plant: htCss(".kp-howto { display: flex; flex-direction: column; max-height:", ".kp-howto { max-height:") },
+    { name: "min-height: 0 dropped from .kp-howto__sheet (the sheet keeps its content's height and runs out of the capped panel)", expect: /^5[.]cap /,
+      plant: htCss(".kp-howto__sheet { display: flex; flex-direction: column; gap: var(--sp-4); min-height: 0; }", ".kp-howto__sheet { display: flex; flex-direction: column; gap: var(--sp-4); }") },
+    { name: "the steps region no longer scrolls", expect: /^5[.]cap /,
+      plant: htCss("overflow-y: auto; overscroll-behavior: contain; }", "overscroll-behavior: contain; }") },
+    { name: "a fade drawn on every region, whether it hides anything or not", expect: /^5[.]cap /,
+      plant: htCss(".kp-howto__scroll { display: flex;", ".kp-howto__scroll { mask-image: linear-gradient(to bottom, #000 80%, transparent); display: flex;") },
+    { name: "MFANO a hand-rolled box instead of the kit Callout", expect: /^5[.]mfano /,
+      plant: (w) => htWith(w, { sheet: htSwap(htSwap(w.howto.sheet, `<Callout tone="info" className="kp-howto__ex">`, `<div className="kp-howto__ex">`), "</Callout>", "</div>") }) },
+    { name: "the Chinese label left mono and tracked (示例 spaced apart)", expect: /^5[.]eyebrow[.]zh /,
+      plant: htCss(".kp-howto__ex-label:lang(zh) { font-family: var(--font-body); letter-spacing: 0; text-transform: none; }", "") },
+    { name: "the How-to card loaded with ssr: false (its HTML leaves the home's first paint)", expect: /^5[.]lazy /,
+      plant: htLazy(".then((m) => m.HowToCard).catch(nothingIfLost));", ".then((m) => m.HowToCard).catch(nothingIfLost), { ssr: false });") },
+    { name: "a part's loader drops the lost-chunk guard", expect: /^5[.]lazy /,
+      plant: htLazy(".then((m) => m.RefreshPoller).catch(nothingIfLost));", ".then((m) => m.RefreshPoller));") },
+    { name: "a classic file imports the card statically (its code in every visitor's first load of /)", expect: /^5[.]lazy /,
+      plant: htNamed("src/components/home/legacy-landing.tsx", `import { HowToCard } from "@/components/journey/home/howto-card";${LF}`) },
+    { name: "a classic page imports the home's lazy module", expect: /^5[.]lazy /,
+      plant: htNamed("src/app/markets/page.tsx", `import { LazyHowToCard } from "@/components/journey/home/home-lazy";${LF}`) },
+    { name: "the sheet leaves test:popup-fit's review record (A13's pattern)", expect: /^5[.]popup /,
+      plant: (w) => htWith(w, { popupFit: htSwap(w.howto.popupFit, `"src/components/onboarding/how-to-play-sheet.tsx",`, "") }) },
+  ];
+}
+
 function run(w: World, log: (l: string) => void): string[] {
   const failed: string[] = [];
   const ok = (label: string, cond: boolean, extra = "") => {
@@ -1021,6 +1556,8 @@ function run(w: World, log: (l: string) => void): string[] {
   cardFaceChecks(w.rules, ok);
   /* §4 · the journey card (S7 WP5) */
   journeyCardChecks(w, ok);
+  /* §5 · the How-to card and the static How-to sheet (S7 WP6) — its own block, above */
+  howToChecks(w.howto, ok);
   return failed;
 }
 
@@ -1335,6 +1872,8 @@ if (!PROVE_RED) {
     ...ruleDefects(),
     /* §4 (S7 WP5): one defect in a copy of the card's source, of globals.css or of one drawn card, each failing ALONE. */
     ...cardDefects(),
+    /* §5 (S7 WP6): the How-to card, the sheet and the home's lazy module — each plant one defect, its own check named. */
+    ...howToDefects(),
   ];
   let caught = 0, fail = 0;
   const ok = (label: string, cond: boolean, extra = "") => { if (!cond) fail++; console.log(`${cond ? "PROVED  " : "MISSED  "} ${label}${extra ? ` — ${extra}` : ""}`); };
