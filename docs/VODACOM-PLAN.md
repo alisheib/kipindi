@@ -3482,21 +3482,21 @@ Rules for this table:
 | `journey.tabTickets` | Tiketi zangu | My tickets | 我的注单 |
 | `journey.tabAccount` | Akaunti | Account | 账户 |
 | `journey.showMore` | Onyesha zaidi | Show more | 显示更多 |
-| `journey.sheetChosen` | Umechagua {side} | You picked {side} | 您选择了{side} |
-| `journey.stakeLabel` | Dau lako | Your bet | 您的投注 |
-| `journey.estimateLead` | Ukishinda, unapata takriban | If you win, you get about | 若您赢，约可获得 |
-| `journey.estimatePill` | ≈{mult}× dau lako | ≈{mult}× your bet | ≈{mult}× 您的投注 |
+| `journey.sheetChosen` — built (S8 WP4) | Umechagua {side} | You picked {side} | 您选择了{side} |
+| `journey.stakeLabel` — built (S8 WP4) | Dau lako | Your bet | 您的投注 |
+| `journey.estimateLead` — built (S8 WP4) | Ukishinda, unapata takriban | If you win, you get about | 若您赢，约可获得 |
+| `journey.estimatePill` — built (S8 WP4) | ≈{mult}× dau lako | ≈{mult}× your bet | ≈{mult}× 您的投注 |
 | `journey.estimateNote` | Makadirio. Kiasi halisi hutegemea bwawa soko likifungwa. Kamisheni ya {pct}% imeshatolewa. | Estimate. The final amount depends on the pool when the market closes. Our {pct}% commission on the losing side is already deducted. | 预估。最终金额取决于市场关闭时的奖池。已扣除输方 {pct}% 的佣金。 |
-| `journey.balanceRow` | Salio lako | Your balance | 您的余额 |
-| `journey.placeCta` | Weka dau · {amount} | Place bet · {amount} | 投注 · {amount} |
-| `journey.placeCtaBare` | Weka dau | Place bet | 投注 |
-| `journey.estimateCompact` | Ukishinda ≈ {amount} | If you win ≈ {amount} | 若赢 ≈ {amount} |
-| `journey.lowTitle` | Salio halitoshi | Not enough balance | 余额不足 |
-| `journey.lowBody` | Una {have}. Unahitaji {short} zaidi. | You have {have}. You need {short} more. | 您有 {have}，还需 {short}。 |
-| `journey.lowChoose` | Chagua unachotaka kufanya | Choose what to do | 请选择操作 |
-| `journey.lowDeposit` | Weka pesa {amount} | Deposit {amount} | 充值 {amount} |
-| `journey.lowBetInstead` | Weka dau la {amount} badala yake | Bet {amount} instead | 改为投注 {amount} |
-| `journey.pendingBet` | Dau lako la {amount} linakusubiri | Your {amount} bet is waiting | 您的 {amount} 投注正在等待 |
+| `journey.balanceRow` — built (S8 WP4) | Salio lako | Your balance | 您的余额 |
+| `journey.placeCta` — built (S8 WP4) | Weka dau · {amount} | Place bet · {amount} | 投注 · {amount} |
+| `journey.placeCtaBare` — built (S8 WP4) | Weka dau | Place bet | 投注 |
+| `journey.estimateCompact` — built (S8 WP4) | Ukishinda ≈ {amount} | If you win ≈ {amount} | 若赢 ≈ {amount} |
+| `journey.lowTitle` — built (S8 WP4) | Salio halitoshi | Not enough balance | 余额不足 |
+| `journey.lowBody` — built (S8 WP4) | Una {have}. Unahitaji {short} zaidi. | You have {have}. You need {short} more. | 您有 {have}，还需 {short}。 |
+| `journey.lowChoose` — built (S8 WP4) | Chagua unachotaka kufanya | Choose what to do | 请选择操作 |
+| `journey.lowDeposit` — built (S8 WP4) | Weka pesa {amount} | Deposit {amount} | 充值 {amount} |
+| `journey.lowBetInstead` — built (S8 WP4) | Weka dau la {amount} badala yake | Bet {amount} instead | 改为投注 {amount} |
+| `journey.pendingBet` — not added by S8 (S9's: the deposit strip; S8-PLAN "Not added") | Dau lako la {amount} linakusubiri | Your {amount} bet is waiting | 您的 {amount} 投注正在等待 |
 | `journey.amountLabel` | Kiasi | Amount | 金额 |
 | `journey.payWith` | Lipa kwa | Pay with | 支付方式 |
 | `journey.phoneLabel` | Namba ya simu | Phone number | 手机号码 |
@@ -3553,6 +3553,42 @@ the S4 canvas's approved word where one is drawn, and reviewed in
 | `journey.homeQueryNone` | Hakuna swali linalolingana na “{q}” | No question matches “{q}” | 没有与“{q}”匹配的问题 |
 | `journey.howStepsAria` | Hatua | Steps | 步骤 |
 | `journey.hubSearchPlaceholder` | Tafuta swali | Search questions | 搜索问题 |
+
+**S8 keys (2026-10-13, `S8-PLAN.md` WP4, as amended by A5, A10, A20 and A24).** The thirteen deck strings above that
+S8's sheet shows are keys of the `journey` namespace now, verbatim, each marked "built (S8 WP4)": `sheetChosen`,
+`stakeLabel`, `estimateLead`, `estimatePill`, `balanceRow`, `placeCta`, `placeCtaBare`, `estimateCompact`, `lowTitle`,
+`lowBody`, `lowChoose`, `lowDeposit` and `lowBetInstead`. `estimateNote` was S7's and is reused; `pendingBet` is S9's and
+not added. Beside them: the S4 canvas words review 3 approved (`estimatePillOver`, `estimateUpdated`,
+`sheetEmptyPoolBody`, `sheetRefundRule`, `sheetFirstOnSide`, `sheetLegacyFee`, `lowMinNote`, `lowPendingTitle`,
+`lowPendingTrack`, `lowSofCta`, `homeBreakTitle`, `homeBreakBody`, `cardBreak`), each drawn figure a placeholder; and
+review 2's corrected live words as journey copies (`sheetClosedTitle` … `sheetAboveMax`, sixteen keys), which the sheet
+reads while the classic keys keep their words until S12. Every amount, multiple and rate is a placeholder — the minimum
+stake (TZS 500 since 2026-10-12) is read per market and typed nowhere. Reused by key, never copied: the loss block is
+`error.failLossLimitDaily` as corrected live on 2026-10-12 (S8-PLAN A5; no `sheetLossBlock`), the ✕ is `common.close`,
+the receipt's "Dau" is `common.stake`, and the rest of S8-PLAN's "Reused, never copied" list. ⛔ No helpline key. S8's
+own words, which no deck slide gives, are drafts, reviewed in
+[`S4-COPY-AUDIT.md`](design-system/v5-2026-09-29-simplified-journey/S4-COPY-AUDIT.md) "S8 drafts" and "Swahili review" 8
+(drafted by the build, for Ali's or a Swahili reviewer's sign-off):
+
+| S8 draft key | sw | en | zh (draft) |
+|---|---|---|---|
+| `journey.sheetRailsPaused` | Kuweka pesa hakupatikani kwa sasa. Njia zote za malipo zimesimama kwa muda — jaribu tena baadaye. | Deposits are unavailable right now. Every payment method is paused for a while — try again later. | 目前无法充值。所有支付方式暂停中——请稍后再试。 |
+| `journey.sheetDepositMax` | Kiwango cha juu cha kuweka pesa mara moja ni {max}. | The most you can deposit at once is {max}. | 单笔充值上限为 {max}。 |
+| `journey.sheetPlacing` | Inaweka dau… | Placing your bet… | 正在投注… |
+| `journey.sheetPlacingSlow` | Bado tunaweka dau lako — inachukua muda kidogo. | Still placing your bet — this is taking a moment. | 仍在为您投注——需要一点时间。 |
+| `journey.retryCta` | Jaribu tena · {amount} | Try again · {amount} | 重试 · {amount} |
+| `journey.sheetNotTaking` | Swali hili halipokei dau kwa sasa. | This question isn’t taking bets right now. | 此问题目前不接受投注。 |
+| `journey.sheetBonusWager` | Dau hili halitahesabiwa kwenye bonasi yako. Tayari una fedha upande wa pili wa swali hili, na upande mmoja tu ndio unaohesabiwa kwenye {remaining} unayohitaji kuweka kabla ya bonasi yako kutolewa. | This bet won’t count toward your bonus. You already have money on the other side of this question, and only one side counts toward the {remaining} you still need to bet before your bonus can be withdrawn. | 此注不计入您的奖金要求。您在此问题的另一方已有资金，仅一方计入您提取奖金前仍需投注的 {remaining}。 |
+| `journey.estimateUpdatedLive` | Makadirio yamesasishwa: ≈ {amount}, ≈{mult}× dau lako | Estimate updated: ≈ {amount}, ≈{mult}× your bet | 预估已更新：≈ {amount}，≈{mult}× 您的投注 |
+| `journey.estimateNoteCompact` | Makadirio · kamisheni ya {pct}% imeshatolewa. | Estimate · our {pct}% commission is already deducted. | 预估 · 已扣除 {pct}% 佣金。 |
+| `journey.multOnly` | ≈{mult}× | ≈{mult}× | ≈{mult}× |
+| `journey.lowBetInsteadEstimate` | Ukishinda ≈ {amount} · ≈{mult}× | If you win ≈ {amount} · ≈{mult}× | 若赢 ≈ {amount} · ≈{mult}× |
+| `journey.lowLossTitle` | Kikomo cha hasara | Loss limit | 亏损上限 |
+| `journey.lowLossRoom` | Kikomo chako cha hasara kinaruhusu dau la hadi {amount} kwa sasa. | Your loss limit allows a bet of up to {amount} right now. | 您的亏损上限目前最多允许投注 {amount}。 |
+| `journey.lowPendingWaitBody` | Inaweza kuchukua hadi dakika 30 — usianzishe malipo mengine. | It can take up to 30 minutes — don’t start another payment. | 最长可能需要 30 分钟——请勿发起另一笔付款。 |
+| `journey.lowPendingLateTitle` | Malipo bado hayajathibitishwa | Payment not confirmed yet | 付款尚未确认 |
+| `journey.lowPendingLateBody` | Imepita dakika 30. Usianzishe malipo mengine — pesa zikikatwa, zitaingia kwenye salio lako zikithibitishwa. | It’s been 30 minutes. Don’t start another payment — if money was taken, it will reach your balance once confirmed. | 已超过 30 分钟。请勿发起另一笔付款——如已扣款，确认后将计入您的余额。 |
+| `journey.ticketsHere` | Tiketi zako | Your tickets | 您的注单 |
 
 **The S15 "Tiketi keys" rename list** (SJ-19: "Tiketi" replaces "Nafasi" on player surfaces), re-derived from the sw
 block and a grep of `src/` on 2026-10-01 — re-grep before S15. These keep "nafasi" until the flip (§3.9); at S15 each
