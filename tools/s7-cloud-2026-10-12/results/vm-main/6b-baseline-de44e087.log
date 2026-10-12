@@ -1,0 +1,95 @@
+
+> fiftypick@0.1.0 qa:classic-shell-parity
+> node scripts/qa-classic-shell-parity.mjs --baseline /tmp/claude-0/proof/parity-v3-de44e087.json
+
+qa:classic-shell-parity — baseline — http://localhost:3076
+  tree /home/user/kipindi-srv/ @ de44e087 (clean) · forks from origin/main at de44e087 · rollout STAFF_PREVIEW
+  the book's normalisers ON: market-ids, eat-dates, tied-cards (this file's switches) · candidates: market-ids, time-left, eat-dates, relative-times, chart-paths, avatar-ids, chunk-hashes, tied-cards
+  Chromium 141.0.7390.37
+
+§1 · a guest
+  guest · en · 28 cells · 140s
+  guest · sw · 28 cells · 138s
+
+§1 · the demo player
+  PASS 1.player the demo player is signed in (a kp_session cookie in the jar)
+  player · en · 28 cells · 150s
+  player · sw · 28 cells · 150s
+
+§1 · the demo player under an officer's hold
+  PASS 1.held the demo player under an officer's hold is signed in (a kp_session cookie in the jar)
+  held · en · 28 cells · 150s
+  held · sw · 28 cells · 149s
+
+§1 · the demo player with an unconfirmed email
+  PASS 1.unverified the demo player with an unconfirmed email is signed in (a kp_session cookie in the jar)
+  unverified · en · 28 cells · 149s
+  unverified · sw · 28 cells · 150s
+
+§1s · the Sell button a classic holder is served (WP10): the demo player's open ticket, at 360/1280 × en/sw, and the classic confirm at 360 in the holder block
+  PASS 1.player the demo player is signed in (a kp_session cookie in the jar)
+  8 Sell cells · the last captured 49s after the seed (a default poll's free window is 5:00; §S.2 fails a cell that missed it)
+
+§1b · a classic reader's page bodies (S7 WP1, A8): the book, seeded through existing dev-test doors, then / · /markets · /live · /results · /watchlist · /markets/:similar at 360/1280 × en/sw for guest and player (/watchlist: the player only)
+  PASS 1.player the demo player is signed in (a kp_session cookie in the jar)
+  the book: seed-markets named 30 LIVE non-demo question(s) (of 30 LIVE) · placed 12 · byStatus {"VOID":1,"LOSS":2,"WIN":3,"CASHED_OUT":3,"OPEN":8} · byLens {"all":9,"open":3,"progress":2,"done":3,"void":1} · accepted
+  the probe: /results 5 card(s), /watchlist 9 — A8 item 2's cards are there
+  the LIVE strip named the book's settlements after 1s
+  book-guest · en · 10 cells · 52s
+  book-guest · sw · 10 cells · 51s
+  book-player · en · 12 cells · 61s
+  book-player · sw · 12 cells · 62s
+
+§2 · the population is what it claims
+  PASS 2.0 every cell was captured (224)
+  PASS 2.1 every cell rendered the shell — one header, one rail, one footer
+  PASS 2.2 every cell settled — two snapshots 700 ms apart agreed
+  PASS 2.3 no viewer carries a preview pass
+  PASS 2.4 no journey test id, flag or class anywhere in the page
+  PASS 2.5 the raw HTML was read, is the shell's, and carries no journey trace
+  PASS 2.6 the guest is a guest — /positions, /wallet and /profile land on the sign-in page
+  PASS 2.7 the signed-in viewers are signed in — none of those three lands anywhere else
+  PASS 2.8 the held viewer is held — no header deposit control at 1280, where the player has one
+  PASS 2.9 no viewer sees an email bar, in any cell — the bar is deleted (the owner's ruling of 2026-10-07), the unconfirmed email included
+  PASS 2.10 below 1024 the rail is among the fixed overlays — the census sees what is there
+  PASS 2.11 the signed-in viewers' /positions captured its page body
+  PASS 2.13 only React's DEV performance-track sentence is ever filed as DEV-only — every other page error is compared
+  PASS 2.12 the served files held still for the whole capture (checked after every viewer and language)
+
+§3 · /account, for a viewer the journey is not shown to, is the not-found page (A3 — every run)
+  PASS 3.0 the control path is a true 404 with a not-found body (32 of 32 pairs)
+  PASS 3.1 /account shows the not-found body (its main text is the control's)
+  PASS 3.2 …under the not-found title
+  PASS 3.3 …marked noindex
+  PASS 3.4 …with no journey test id, flag or class in the page
+  PASS 3.5 …and none in the bytes the server sent, where a streamed fallback would still be (G3)
+  PASS 3.6 no loading file of /account's own in the tree the server runs — the root loader is generic (A3)
+
+§S · the Sell button a classic holder is served (WP10 — every run that captures)
+  PASS S.0 the demo player was given an open ticket through the real money paths, and every Sell cell was captured (8)
+  PASS S.1 every Sell cell settled, answered 200 and stayed where it was sent: the holder is signed in
+  PASS S.2 every Sell cell was captured INSIDE the free window — one strip, its countdown read as m:ss, and one button — and each confirm cell holds one classic confirm, captured inside its quote hold (and no other cell holds one)
+  PASS S.3 no journey test id, flag or class in a Sell cell, in the page or in the bytes the server sent
+  PASS S.4 every Sell cell's first paint was captured in a page whose scripts were all held — nothing hydrated — and it holds the page's Sell button (S6 A8e)
+
+§B · a classic reader's page bodies, the LIVE strip, the similar rail and /'s head, over the seeded book (S7 WP1, A8 — every run that captures)
+  the book: seed-markets named 30 LIVE non-demo question(s) (of 30 LIVE) · placed 12 · byStatus {"VOID":1,"LOSS":2,"WIN":3,"CASHED_OUT":3,"OPEN":8} · byLens {"all":9,"open":3,"progress":2,"done":3,"void":1} · accepted
+  card states drawn across the book's cells: live priced 44 · one-sided 16 · empty pool 80 · selection closed 8 · resolved YES 48 · resolved NO 20 · void 12 · other 0
+  PASS B.0 the book was seeded through dev-test doors that already exist — seed-markets, seed-player-portfolio { markets: 12 }, seed-watchlist — and every reply holds what A8 item 1 asks; every book cell was captured (44)
+  PASS B.1 every book cell settled, answered 200 and stayed where it was sent: the player is signed in, and the question page is the book's first question
+  PASS B.2 before any book cell, /results showed the voided question's card (marketIds[11]), drawn void, and settled YES and NO cards (A8 item 2)
+  PASS B.3 before any book cell, /watchlist showed a void card, a done card and a selection-closed card (A8 item 2)
+  PASS B.4 every book cell captured its body — <main> on /, /markets, /live, /results, /watchlist and the similar rail on /markets/:similar — and every / cell its head from the bytes: the canonical link and og:url
+  PASS B.5 every lobby cell (/, /markets, /live, /results) captured one LIVE strip — the book's settlements, waited for before the first cell
+  PASS B.6 no journey test id, flag or class (S7's kp-jcard, kp-jhome, kp-jhowto and kp-howto included) in a book cell, in the page or in the bytes the server sent
+  PASS B.7 the book drew every classic card state S7 touches — live priced, one-sided, empty pool, selection closed, resolved YES, resolved NO, void
+  PASS B.8 only React's DEV performance-track sentence is ever filed as DEV-only in a book cell — every other page error is compared
+
+§R · report only — the classic signed-in header at 320 (DESIGN_AUTHORITY files it as 21px over)
+  en · the header's content ends 0px past the 320px viewport (rightmost: div); its row overflows by 0px
+  sw · the header's content ends 0px past the 320px viewport (rightmost: div); its row overflows by 0px
+  the book: 44 cells over a pool of 30 LIVE non-demo question(s) (§0j records it) · its normalisers market-ids, eat-dates, tied-cards
+
+baseline written: /tmp/claude-0/proof/parity-v3-de44e087.json — base de44e087, 224 cells, 1179 blobs. Next: a null --compare on a FRESH server at this commit must exit 0.
+
+40/40 passed — baseline · tree de44e087 · 1593s

@@ -124,6 +124,13 @@ case "$PHASE" in
     run_srv 9-live node scripts/pre-deploy-live-check.mjs; font_invalid 9-live
     note "9 qa:live local: $(verdict 9-live 'ALL PASS|passed|failed|FAIL' 2)"; touch "$R/WATCHDOG.off"
     ;;
+  parity-base)
+    # A v3 baseline at a later main on this (calibrated) machine: no --prove-red or null compare while the harness is unchanged.
+    WANT="$1"; PB="$2"; fonts_ok || die "Google Fonts unreachable before the baseline"
+    srv_at "$WANT"; watchdog
+    run_srv 6b-baseline timeout 3300 npm run qa:classic-shell-parity -- --baseline "$PB"; font_invalid 6b-baseline
+    note "6b baseline at $WANT: $(verdict 6b-baseline 'ALL PASS|FAILURES|REFUSED|written|rejected|INVALID' 3)"; touch "$R/WATCHDOG.off"
+    ;;
   parity-tip)
     WANT="$1"; PB="$2"; fonts_ok || die "Google Fonts unreachable before the parity compare"
     srv_at "$WANT"; watchdog

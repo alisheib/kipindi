@@ -1,0 +1,269 @@
+[qa:first-load] build at HEAD 4089c9c6507bebefe02d4c6c99fdc9327339e862 — rm -rf .next && /opt/node24/bin/node /home/user/kipindi-srv/node_modules/next/dist/bin/next build
+[qa:first-load] next build exited 0 after 94 s
+[qa:first-load] .next/kp-head = 4089c9c6507bebefe02d4c6c99fdc9327339e862
+[qa:first-load] reading /home/user/kipindi-srv/.next: .next/kp-head is HEAD (4089c9c6507b)
+[qa:first-load] the controls on a fixture build: all pass (30)
+
+[qa:first-load] the marker table against src/ (A9: every marker unique in src/)
+  ✓ control classic deposit (top bar) "deposit-header"                               unique in src/ (src/components/layout/top-app-bar.tsx)
+  ✓ control classic deposit (rail) "deposit-rail"                                 unique in src/ (src/components/layout/bottom-nav.tsx)
+  ✓ S6 OfflineBanner             "\"offline-notice\""                           unique in src/ (src/components/ui/offline-banner.tsx)
+  ✓ S6 PullToRefresh             "opacity var(--t-flick)"                       unique in src/ (src/components/ui/pull-to-refresh.tsx)
+  ✓ S6 WinCelebrationHost        "50pick:celebrate"                             unique in src/ (src/components/markets/win-celebration.tsx)
+  ✓ S6 NotifyPoller              "50pick-notify-seen-positions"                 unique in src/ (src/components/markets/notify-poller.tsx)
+  ✓ S6 EventStreamProvider       "EventSource("                                 unique in src/ (src/lib/use-event-stream.ts)
+  ✓ S6 InstallInvite             "50pick-install-visits"                        unique in src/ (src/components/pwa/install-invite.tsx)
+  ✓ S6 ConsentPrompt             "kp-consent-force"                             unique in src/ (src/components/analytics/consent-prompt.tsx)
+  ✓ S6 ChannelsPanel             "50pick-channels-shown"                        unique in src/ (src/components/social/channels-panel.tsx)
+  ✓ S6 SellResultHost            "input, select, textarea, [contenteditable]"   unique in src/ (src/components/markets/sell-result-host.tsx)
+  ✓ S6 JourneyFlag               (no marker)                                    structural only, no marker
+  ✓ S6 JourneyTopBar             "\"journey-top-bar\""                          unique in src/ (src/components/journey/journey-top-bar.tsx)
+  ✓ S6 JourneyTabs               "\"journey-tabs\""                             unique in src/ (src/components/journey/journey-tabs.tsx)
+  ✓ S6 JourneyShellMark          "\"kp-journey-shell\""                         unique in src/ (src/lib/journey/shell-mark.ts)
+  ✓ S7 WP6 HomeLazy              "\"JourneyHome.HowToCard\""                    unique in src/ (src/components/journey/home/home-lazy.tsx)
+  ✓ S7 WP6 HowToCard             "\"journey-howto-card\""                       unique in src/ (src/components/journey/home/howto-card.tsx)
+  ✓ S7 WP6 HowToSheet            "\"journey-howto-sheet\""                      unique in src/ (src/components/onboarding/how-to-play-sheet.tsx)
+  ✓ S7 WP5 JourneyCard           "\"journey-card\""                             unique in src/ (src/components/journey/cards/journey-card.tsx)
+
+[qa:first-load] the control (must pass before any verdict is read)
+  ✓ /: classic deposit test id "deposit-header" FOUND in its 17 entry files
+  ✓ /markets: classic deposit test id "deposit-header" FOUND in its 19 entry files
+  ✓ /positions: classic deposit test id "deposit-header" FOUND in its 20 entry files
+  ✓ /help: classic deposit test id "deposit-header" FOUND in its 16 entry files
+  ✓ /live: classic deposit test id "deposit-header" FOUND in its 18 entry files
+  ✓ /results: classic deposit test id "deposit-header" FOUND in its 19 entry files
+  ✓ /watchlist: classic deposit test id "deposit-header" FOUND in its 20 entry files
+  ✓ /markets/[id]: classic deposit test id "deposit-header" FOUND in its 23 entry files
+  ✓ /account: classic deposit test id "deposit-header" FOUND in its 16 entry files
+  ✓ /updown/history: classic deposit test id "deposit-header" FOUND in its 21 entry files
+  ✓ JourneyTopBar's marker "\"journey-top-bar\"" planted into /'s entry set: REPORTED (IN the first load ((planted in memory)); UNEXPECTED)
+
+[qa:first-load] where each marker sits in the build's 235 client chunks
+  OfflineBanner          "\"offline-notice\""                           in 1 client chunk(s): 03-i-ywqr1.~9.js
+  PullToRefresh          "opacity var(--t-flick)"                       in 1 client chunk(s): 0l7idi2rtm_89.js
+  WinCelebrationHost     "50pick:celebrate"                             in 1 client chunk(s): 0g7tvi8d17-wp.js
+  NotifyPoller           "50pick-notify-seen-positions"                 in 1 client chunk(s): 0ee3bqaddylbu.js
+  EventStreamProvider    "EventSource("                                 in 3 client chunk(s): 0fi-3m4oi41-w.js, 0j8sj9orvn33j.js, 0vks749vylohe.js
+  InstallInvite          "50pick-install-visits"                        in 1 client chunk(s): 0qlbva8-3ipde.js
+  ConsentPrompt          "kp-consent-force"                             in 1 client chunk(s): 0l7j30qbazsf5.js
+  ChannelsPanel          "50pick-channels-shown"                        in 1 client chunk(s): 02haplna2uswf.js
+  SellResultHost         "input, select, textarea, [contenteditable]"   in 1 client chunk(s): 16bdi_ymq~2uw.js
+  JourneyTopBar          "\"journey-top-bar\""                          in 1 client chunk(s): 0z6z_ot33v673.js
+  JourneyTabs            "\"journey-tabs\""                             in 1 client chunk(s): 02lf.agkvcnys.js
+  JourneyShellMark       "\"kp-journey-shell\""                         in 1 client chunk(s): 0g7tvi8d17-wp.js
+  HomeLazy               "\"JourneyHome.HowToCard\""                    in 1 client chunk(s): 0bhh2c0dh~afy.js
+  HowToCard              "\"journey-howto-card\""                       in 1 client chunk(s): 0jzommaqk-ld0.js
+  HowToSheet             "\"journey-howto-sheet\""                      in 1 client chunk(s): 0jzommaqk-ld0.js
+  JourneyCard            "\"journey-card\""                             in 0 client chunk(s)
+
+/: 17 entry JS files, 739.2 KB
+  entry files: 00p_ss~6fa_sn.js 4.3 KB, 02~abe9tkf417.js 32.4 KB, 03-i-ywqr1.~9.js 70.2 KB, 07_939kut~bus.js 6.4 KB, 08_~24pwv19io.js 18.9 KB, 0b.c916_346zj.js 22.0 KB, 0bdweb4snjbdu.js 42.2 KB, 0bhh2c0dh~afy.js 25.1 KB, 0cfo22l3t.ktu.js 20.1 KB, 0fe06o~9~0xm8.js 338.6 KB, 0g7tvi8d17-wp.js 40.3 KB, 0i.l9589uvx0j.js 53.5 KB, 0i1~2y--k5mtz.js 14.8 KB, 0mwo19-oo5cu~.js 0.4 KB, 0xxkhx9z2rlgf.js 14.2 KB, 0~agkqp09z~5h.js 30.9 KB, 10n991xwdosye.js 4.9 KB
+    OfflineBanner              structural: no next/dynamic entry                          marker: IN the first load (03-i-ywqr1.~9.js) as expected
+    PullToRefresh              structural: own chunk (0l7idi2rtm_89.js 1.5 KB)            marker: not in the first load          as expected
+    WinCelebrationHost         structural: own chunk (0tzy.m2dj~-0~.js 0.1 KB)            marker: IN the first load (0g7tvi8d17-wp.js) as expected
+    NotifyPoller               structural: own chunk (0ee3bqaddylbu.js 3.9 KB)            marker: not in the first load          as expected
+    EventStreamProvider        structural: own chunk (0vks749vylohe.js 1.6 KB)            marker: not in the first load          as expected
+    InstallInvite              structural: own chunk (0qlbva8-3ipde.js 4.2 KB)            marker: not in the first load          as expected
+    ConsentPrompt              structural: own chunk (0l7j30qbazsf5.js 3.0 KB)            marker: not in the first load          as expected
+    ChannelsPanel              structural: own chunk (02haplna2uswf.js 5.3 KB)            marker: not in the first load          as expected
+    SellResultHost             structural: own chunk (16bdi_ymq~2uw.js 8.8 KB)            marker: not in the first load          as expected
+    JourneyFlag                structural: own chunk (05ojxb1dm_f63.js 0.3 KB)            marker: -                              as expected
+    JourneyTopBar              structural: own chunk (0z6z_ot33v673.js 6.7 KB)            marker: not in the first load          as expected
+    JourneyTabs                structural: own chunk (02lf.agkvcnys.js 6.4 KB)            marker: not in the first load          as expected
+    JourneyShellMark           marker only                                                marker: IN the first load (0g7tvi8d17-wp.js) (reported)
+    HomeLazy (S7)              module: client reference (02~abe9tkf417.js, 03-i-ywqr1.~9.js, 08_~24pwv19io.js, 0b.c916_346zj.js, 0bdweb4snjbdu.js, 0bhh2c0dh~afy.js, 0cfo22l3t.ktu.js, 0fe06o~9~0xm8.js, 0g7tvi8d17-wp.js, 0i.l9589uvx0j.js, 0i1~2y--k5mtz.js, 0xxkhx9z2rlgf.js, 0~agkqp09z~5h.js; in the first load) marker: IN the first load (0bhh2c0dh~afy.js) as expected
+    HowToCard (S7)             structural: own chunk (0jzommaqk-ld0.js 11.0 KB)           marker: not in the first load          as expected
+    HowToSheet (S7)            marker only                                                marker: not in the first load          as expected
+    JourneyCard (S7)           marker only                                                marker: not in the first load          as expected
+  other next/dynamic parts here: ChatRoot — own chunk (0.9~ok2oqf3wk.js 62.7 KB, 0rzzg~evop2pa.js 26.3 KB); EmptyState — own chunk (0y787hw_nno45.js 9.5 KB); FirstVisitPrimer — own chunk (0~_jc9e_c8t0y.js 10.4 KB); JourneyRouteGhost — own chunk (06b6qk0yjw8bl.js 48.6 KB); RefreshPoller — own chunk (0emot~ti5liej.js 0.6 KB); StripAutoScroll — own chunk (06h8vmzjfxzns.js 3.3 KB)
+
+/markets: 19 entry JS files, 780.0 KB
+  entry files: 00p_ss~6fa_sn.js 4.3 KB, 02~abe9tkf417.js 32.4 KB, 03-i-ywqr1.~9.js 70.2 KB, 07_939kut~bus.js 6.4 KB, 08_~24pwv19io.js 18.9 KB, 0b.c916_346zj.js 22.0 KB, 0bdweb4snjbdu.js 42.2 KB, 0cfo22l3t.ktu.js 20.1 KB, 0fe06o~9~0xm8.js 338.6 KB, 0g7tvi8d17-wp.js 40.3 KB, 0i.l9589uvx0j.js 53.5 KB, 0i1~2y--k5mtz.js 14.8 KB, 0luj01r745icf.js 18.9 KB, 0mwo19-oo5cu~.js 0.4 KB, 0ukwhynqo7_4_.js 4.3 KB, 0xxkhx9z2rlgf.js 14.2 KB, 0~agkqp09z~5h.js 30.9 KB, 10n991xwdosye.js 4.9 KB, 17u6orqw1mpuc.js 42.7 KB
+    OfflineBanner              structural: no next/dynamic entry                          marker: IN the first load (03-i-ywqr1.~9.js) as expected
+    PullToRefresh              structural: own chunk (0l7idi2rtm_89.js 1.5 KB)            marker: not in the first load          as expected
+    WinCelebrationHost         structural: own chunk (0tzy.m2dj~-0~.js 0.1 KB)            marker: IN the first load (0g7tvi8d17-wp.js) as expected
+    NotifyPoller               structural: own chunk (0ee3bqaddylbu.js 3.9 KB)            marker: not in the first load          as expected
+    EventStreamProvider        structural: own chunk (0vks749vylohe.js 1.6 KB)            marker: not in the first load          as expected
+    InstallInvite              structural: own chunk (0qlbva8-3ipde.js 4.2 KB)            marker: not in the first load          as expected
+    ConsentPrompt              structural: own chunk (0l7j30qbazsf5.js 3.0 KB)            marker: not in the first load          as expected
+    ChannelsPanel              structural: own chunk (02haplna2uswf.js 5.3 KB)            marker: not in the first load          as expected
+    SellResultHost             structural: own chunk (16bdi_ymq~2uw.js 8.8 KB)            marker: not in the first load          as expected
+    JourneyFlag                structural: own chunk (05ojxb1dm_f63.js 0.3 KB)            marker: -                              as expected
+    JourneyTopBar              structural: own chunk (0z6z_ot33v673.js 6.7 KB)            marker: not in the first load          as expected
+    JourneyTabs                structural: own chunk (02lf.agkvcnys.js 6.4 KB)            marker: not in the first load          as expected
+    JourneyShellMark           marker only                                                marker: IN the first load (0g7tvi8d17-wp.js) (reported)
+    HomeLazy (S7)              module: not a client reference here                        marker: not in the first load          as expected
+    HowToCard (S7)             structural: no next/dynamic entry                          marker: not in the first load          as expected
+    HowToSheet (S7)            marker only                                                marker: not in the first load          as expected
+    JourneyCard (S7)           marker only                                                marker: not in the first load          as expected
+  other next/dynamic parts here: ChatRoot — own chunk (0.9~ok2oqf3wk.js 62.7 KB, 0rzzg~evop2pa.js 26.3 KB); FirstVisitPrimer — own chunk (0~_jc9e_c8t0y.js 10.4 KB); JourneyRouteGhost — own chunk (06b6qk0yjw8bl.js 48.6 KB)
+
+/positions: 20 entry JS files, 793.3 KB
+  entry files: 00p_ss~6fa_sn.js 4.3 KB, 02~abe9tkf417.js 32.4 KB, 03-i-ywqr1.~9.js 70.2 KB, 074.b3zwpd7f~.js 11.8 KB, 07_939kut~bus.js 6.4 KB, 0b.c916_346zj.js 22.0 KB, 0bdweb4snjbdu.js 42.2 KB, 0cfo22l3t.ktu.js 20.1 KB, 0f4p8h6h.x1t8.js 17.4 KB, 0fe06o~9~0xm8.js 338.6 KB, 0g7tvi8d17-wp.js 40.3 KB, 0i.l9589uvx0j.js 53.5 KB, 0i1~2y--k5mtz.js 14.8 KB, 0mwo19-oo5cu~.js 0.4 KB, 0pjvy-x1zx~w0.js 4.4 KB, 0xxkhx9z2rlgf.js 14.2 KB, 0~agkqp09z~5h.js 30.9 KB, 10n991xwdosye.js 4.9 KB, 15gky5k_s66kj.js 23.8 KB, 16df34hifv_aa.js 40.7 KB
+    OfflineBanner              structural: no next/dynamic entry                          marker: IN the first load (03-i-ywqr1.~9.js) as expected
+    PullToRefresh              structural: own chunk (0l7idi2rtm_89.js 1.5 KB)            marker: not in the first load          as expected
+    WinCelebrationHost         structural: own chunk (0tzy.m2dj~-0~.js 0.1 KB)            marker: IN the first load (0g7tvi8d17-wp.js) as expected
+    NotifyPoller               structural: own chunk (0ee3bqaddylbu.js 3.9 KB)            marker: not in the first load          as expected
+    EventStreamProvider        structural: own chunk (0vks749vylohe.js 1.6 KB)            marker: not in the first load          as expected
+    InstallInvite              structural: own chunk (0qlbva8-3ipde.js 4.2 KB)            marker: not in the first load          as expected
+    ConsentPrompt              structural: own chunk (0l7j30qbazsf5.js 3.0 KB)            marker: not in the first load          as expected
+    ChannelsPanel              structural: own chunk (02haplna2uswf.js 5.3 KB)            marker: not in the first load          as expected
+    SellResultHost             structural: own chunk (16bdi_ymq~2uw.js 8.8 KB)            marker: not in the first load          as expected
+    JourneyFlag                structural: own chunk (05ojxb1dm_f63.js 0.3 KB)            marker: -                              as expected
+    JourneyTopBar              structural: own chunk (0z6z_ot33v673.js 6.7 KB)            marker: not in the first load          as expected
+    JourneyTabs                structural: own chunk (02lf.agkvcnys.js 6.4 KB)            marker: not in the first load          as expected
+    JourneyShellMark           marker only                                                marker: IN the first load (0g7tvi8d17-wp.js) (reported)
+    HomeLazy (S7)              module: not a client reference here                        marker: not in the first load          as expected
+    HowToCard (S7)             structural: no next/dynamic entry                          marker: not in the first load          as expected
+    HowToSheet (S7)            marker only                                                marker: not in the first load          as expected
+    JourneyCard (S7)           marker only                                                marker: not in the first load          as expected
+  other next/dynamic parts here: ChatRoot — own chunk (0.9~ok2oqf3wk.js 62.7 KB, 0rzzg~evop2pa.js 26.3 KB); FirstVisitPrimer — own chunk (0~_jc9e_c8t0y.js 10.4 KB); JourneyRouteGhost — own chunk (08ilhd1yk3~qe.js 31.8 KB); Tabs — own chunk (12g0evwz.a-3a.js 3.6 KB)
+
+/help: 16 entry JS files, 699.1 KB
+  entry files: 00p_ss~6fa_sn.js 4.3 KB, 02~abe9tkf417.js 32.4 KB, 03-i-ywqr1.~9.js 70.2 KB, 05f.__v5_ezec.js 3.9 KB, 07_939kut~bus.js 6.4 KB, 0b.c916_346zj.js 22.0 KB, 0bdweb4snjbdu.js 42.2 KB, 0cfo22l3t.ktu.js 20.1 KB, 0fe06o~9~0xm8.js 338.6 KB, 0g7tvi8d17-wp.js 40.3 KB, 0i.l9589uvx0j.js 53.5 KB, 0i1~2y--k5mtz.js 14.8 KB, 0mwo19-oo5cu~.js 0.4 KB, 0xxkhx9z2rlgf.js 14.2 KB, 0~agkqp09z~5h.js 30.9 KB, 10n991xwdosye.js 4.9 KB
+    OfflineBanner              structural: no next/dynamic entry                          marker: IN the first load (03-i-ywqr1.~9.js) as expected
+    PullToRefresh              structural: own chunk (0l7idi2rtm_89.js 1.5 KB)            marker: not in the first load          as expected
+    WinCelebrationHost         structural: own chunk (0tzy.m2dj~-0~.js 0.1 KB)            marker: IN the first load (0g7tvi8d17-wp.js) as expected
+    NotifyPoller               structural: own chunk (0ee3bqaddylbu.js 3.9 KB)            marker: not in the first load          as expected
+    EventStreamProvider        structural: own chunk (0vks749vylohe.js 1.6 KB)            marker: not in the first load          as expected
+    InstallInvite              structural: own chunk (0qlbva8-3ipde.js 4.2 KB)            marker: not in the first load          as expected
+    ConsentPrompt              structural: own chunk (0l7j30qbazsf5.js 3.0 KB)            marker: not in the first load          as expected
+    ChannelsPanel              structural: own chunk (02haplna2uswf.js 5.3 KB)            marker: not in the first load          as expected
+    SellResultHost             structural: own chunk (16bdi_ymq~2uw.js 8.8 KB)            marker: not in the first load          as expected
+    JourneyFlag                structural: own chunk (05ojxb1dm_f63.js 0.3 KB)            marker: -                              as expected
+    JourneyTopBar              structural: own chunk (0z6z_ot33v673.js 6.7 KB)            marker: not in the first load          as expected
+    JourneyTabs                structural: own chunk (02lf.agkvcnys.js 6.4 KB)            marker: not in the first load          as expected
+    JourneyShellMark           marker only                                                marker: IN the first load (0g7tvi8d17-wp.js) (reported)
+    HomeLazy (S7)              module: not a client reference here                        marker: not in the first load          as expected
+    HowToCard (S7)             structural: no next/dynamic entry                          marker: not in the first load          as expected
+    HowToSheet (S7)            marker only                                                marker: not in the first load          as expected
+    JourneyCard (S7)           marker only                                                marker: not in the first load          as expected
+  other next/dynamic parts here: ChatRoot — own chunk (0.9~ok2oqf3wk.js 62.7 KB, 0rzzg~evop2pa.js 26.3 KB); FirstVisitPrimer — own chunk (0~_jc9e_c8t0y.js 10.4 KB); JourneyRouteGhost — own chunk (06b6qk0yjw8bl.js 48.6 KB)
+
+/live: 18 entry JS files, 751.3 KB
+  entry files: 00p_ss~6fa_sn.js 4.3 KB, 02~abe9tkf417.js 32.4 KB, 03-i-ywqr1.~9.js 70.2 KB, 07_939kut~bus.js 6.4 KB, 0b.c916_346zj.js 22.0 KB, 0bdweb4snjbdu.js 42.2 KB, 0cfo22l3t.ktu.js 20.1 KB, 0fe06o~9~0xm8.js 338.6 KB, 0g7tvi8d17-wp.js 40.3 KB, 0i.l9589uvx0j.js 53.5 KB, 0i1~2y--k5mtz.js 14.8 KB, 0mwo19-oo5cu~.js 0.4 KB, 0o7scm-q2h5a7.js 36.0 KB, 0xxkhx9z2rlgf.js 14.2 KB, 0~agkqp09z~5h.js 30.9 KB, 0~nvbjl5hsvym.js 15.8 KB, 0~v~~cg_ttdu1.js 4.3 KB, 10n991xwdosye.js 4.9 KB
+    OfflineBanner              structural: no next/dynamic entry                          marker: IN the first load (03-i-ywqr1.~9.js) as expected
+    PullToRefresh              structural: own chunk (0l7idi2rtm_89.js 1.5 KB)            marker: not in the first load          as expected
+    WinCelebrationHost         structural: own chunk (0tzy.m2dj~-0~.js 0.1 KB)            marker: IN the first load (0g7tvi8d17-wp.js) as expected
+    NotifyPoller               structural: own chunk (0ee3bqaddylbu.js 3.9 KB)            marker: not in the first load          as expected
+    EventStreamProvider        structural: own chunk (0vks749vylohe.js 1.6 KB)            marker: not in the first load          as expected
+    InstallInvite              structural: own chunk (0qlbva8-3ipde.js 4.2 KB)            marker: not in the first load          as expected
+    ConsentPrompt              structural: own chunk (0l7j30qbazsf5.js 3.0 KB)            marker: not in the first load          as expected
+    ChannelsPanel              structural: own chunk (02haplna2uswf.js 5.3 KB)            marker: not in the first load          as expected
+    SellResultHost             structural: own chunk (16bdi_ymq~2uw.js 8.8 KB)            marker: not in the first load          as expected
+    JourneyFlag                structural: own chunk (05ojxb1dm_f63.js 0.3 KB)            marker: -                              as expected
+    JourneyTopBar              structural: own chunk (0z6z_ot33v673.js 6.7 KB)            marker: not in the first load          as expected
+    JourneyTabs                structural: own chunk (02lf.agkvcnys.js 6.4 KB)            marker: not in the first load          as expected
+    JourneyShellMark           marker only                                                marker: IN the first load (0g7tvi8d17-wp.js) (reported)
+    HomeLazy (S7)              module: not a client reference here                        marker: not in the first load          as expected
+    HowToCard (S7)             structural: no next/dynamic entry                          marker: not in the first load          as expected
+    HowToSheet (S7)            marker only                                                marker: not in the first load          as expected
+    JourneyCard (S7)           marker only                                                marker: not in the first load          as expected
+  other next/dynamic parts here: ChatRoot — own chunk (0.9~ok2oqf3wk.js 62.7 KB, 0rzzg~evop2pa.js 26.3 KB); FirstVisitPrimer — own chunk (0~_jc9e_c8t0y.js 10.4 KB); JourneyRouteGhost — own chunk (06b6qk0yjw8bl.js 48.6 KB)
+
+/results: 19 entry JS files, 795.3 KB
+  entry files: 00p_ss~6fa_sn.js 4.3 KB, 02~abe9tkf417.js 32.4 KB, 03-i-ywqr1.~9.js 70.2 KB, 07_939kut~bus.js 6.4 KB, 08_~24pwv19io.js 18.9 KB, 0b.c916_346zj.js 22.0 KB, 0bdweb4snjbdu.js 42.2 KB, 0cfo22l3t.ktu.js 20.1 KB, 0fe06o~9~0xm8.js 338.6 KB, 0g7tvi8d17-wp.js 40.3 KB, 0i.l9589uvx0j.js 53.5 KB, 0i1~2y--k5mtz.js 14.8 KB, 0mwo19-oo5cu~.js 0.4 KB, 0ppp~vno05hs2.js 50.9 KB, 0u66s0go.8o-d.js 26.1 KB, 0xxkhx9z2rlgf.js 14.2 KB, 0~agkqp09z~5h.js 30.9 KB, 10n991xwdosye.js 4.9 KB, 11_d6dvvhy~th.js 4.3 KB
+    OfflineBanner              structural: no next/dynamic entry                          marker: IN the first load (03-i-ywqr1.~9.js) as expected
+    PullToRefresh              structural: own chunk (0l7idi2rtm_89.js 1.5 KB)            marker: not in the first load          as expected
+    WinCelebrationHost         structural: own chunk (0tzy.m2dj~-0~.js 0.1 KB)            marker: IN the first load (0g7tvi8d17-wp.js) as expected
+    NotifyPoller               structural: own chunk (0ee3bqaddylbu.js 3.9 KB)            marker: not in the first load          as expected
+    EventStreamProvider        structural: own chunk (0vks749vylohe.js 1.6 KB)            marker: not in the first load          as expected
+    InstallInvite              structural: own chunk (0qlbva8-3ipde.js 4.2 KB)            marker: not in the first load          as expected
+    ConsentPrompt              structural: own chunk (0l7j30qbazsf5.js 3.0 KB)            marker: not in the first load          as expected
+    ChannelsPanel              structural: own chunk (02haplna2uswf.js 5.3 KB)            marker: not in the first load          as expected
+    SellResultHost             structural: own chunk (16bdi_ymq~2uw.js 8.8 KB)            marker: not in the first load          as expected
+    JourneyFlag                structural: own chunk (05ojxb1dm_f63.js 0.3 KB)            marker: -                              as expected
+    JourneyTopBar              structural: own chunk (0z6z_ot33v673.js 6.7 KB)            marker: not in the first load          as expected
+    JourneyTabs                structural: own chunk (02lf.agkvcnys.js 6.4 KB)            marker: not in the first load          as expected
+    JourneyShellMark           marker only                                                marker: IN the first load (0g7tvi8d17-wp.js) (reported)
+    HomeLazy (S7)              module: not a client reference here                        marker: not in the first load          as expected
+    HowToCard (S7)             structural: no next/dynamic entry                          marker: not in the first load          as expected
+    HowToSheet (S7)            marker only                                                marker: not in the first load          as expected
+    JourneyCard (S7)           marker only                                                marker: not in the first load          as expected
+  other next/dynamic parts here: ChatRoot — own chunk (0.9~ok2oqf3wk.js 62.7 KB, 0rzzg~evop2pa.js 26.3 KB); FirstVisitPrimer — own chunk (0~_jc9e_c8t0y.js 10.4 KB); JourneyRouteGhost — own chunk (06b6qk0yjw8bl.js 48.6 KB)
+
+/watchlist: 20 entry JS files, 752.9 KB
+  entry files: 00f1z4z20lg05.js 4.3 KB, 00p_ss~6fa_sn.js 4.3 KB, 02~abe9tkf417.js 32.4 KB, 03-i-ywqr1.~9.js 70.2 KB, 07_939kut~bus.js 6.4 KB, 08_~24pwv19io.js 18.9 KB, 0a50rb~8~_ra~.js 13.9 KB, 0b.c916_346zj.js 22.0 KB, 0bdweb4snjbdu.js 42.2 KB, 0cfo22l3t.ktu.js 20.1 KB, 0f4p8h6h.x1t8.js 17.4 KB, 0fe06o~9~0xm8.js 338.6 KB, 0g7tvi8d17-wp.js 40.3 KB, 0i.l9589uvx0j.js 53.5 KB, 0i1~2y--k5mtz.js 14.8 KB, 0mwo19-oo5cu~.js 0.4 KB, 0ra.k-gs23no3.js 3.1 KB, 0xxkhx9z2rlgf.js 14.2 KB, 0~agkqp09z~5h.js 30.9 KB, 10n991xwdosye.js 4.9 KB
+    OfflineBanner              structural: no next/dynamic entry                          marker: IN the first load (03-i-ywqr1.~9.js) as expected
+    PullToRefresh              structural: own chunk (0l7idi2rtm_89.js 1.5 KB)            marker: not in the first load          as expected
+    WinCelebrationHost         structural: own chunk (0tzy.m2dj~-0~.js 0.1 KB)            marker: IN the first load (0g7tvi8d17-wp.js) as expected
+    NotifyPoller               structural: own chunk (0ee3bqaddylbu.js 3.9 KB)            marker: not in the first load          as expected
+    EventStreamProvider        structural: own chunk (0vks749vylohe.js 1.6 KB)            marker: not in the first load          as expected
+    InstallInvite              structural: own chunk (0qlbva8-3ipde.js 4.2 KB)            marker: not in the first load          as expected
+    ConsentPrompt              structural: own chunk (0l7j30qbazsf5.js 3.0 KB)            marker: not in the first load          as expected
+    ChannelsPanel              structural: own chunk (02haplna2uswf.js 5.3 KB)            marker: not in the first load          as expected
+    SellResultHost             structural: own chunk (16bdi_ymq~2uw.js 8.8 KB)            marker: not in the first load          as expected
+    JourneyFlag                structural: own chunk (05ojxb1dm_f63.js 0.3 KB)            marker: -                              as expected
+    JourneyTopBar              structural: own chunk (0z6z_ot33v673.js 6.7 KB)            marker: not in the first load          as expected
+    JourneyTabs                structural: own chunk (02lf.agkvcnys.js 6.4 KB)            marker: not in the first load          as expected
+    JourneyShellMark           marker only                                                marker: IN the first load (0g7tvi8d17-wp.js) (reported)
+    HomeLazy (S7)              module: not a client reference here                        marker: not in the first load          as expected
+    HowToCard (S7)             structural: no next/dynamic entry                          marker: not in the first load          as expected
+    HowToSheet (S7)            marker only                                                marker: not in the first load          as expected
+    JourneyCard (S7)           marker only                                                marker: not in the first load          as expected
+  other next/dynamic parts here: ChatRoot — own chunk (0.9~ok2oqf3wk.js 62.7 KB, 0rzzg~evop2pa.js 26.3 KB); FirstVisitPrimer — own chunk (0~_jc9e_c8t0y.js 10.4 KB); JourneyRouteGhost — own chunk (06b6qk0yjw8bl.js 48.6 KB)
+
+/markets/[id]: 23 entry JS files, 869.8 KB
+  entry files: 00p_ss~6fa_sn.js 4.3 KB, 01_p2p37mncx5.js 33.1 KB, 01red1mzogks-.js 16.0 KB, 02ywanq3bqjfh.js 67.8 KB, 02~abe9tkf417.js 32.4 KB, 03-i-ywqr1.~9.js 70.2 KB, 03nqpxutl0.dz.js 3.8 KB, 074.b3zwpd7f~.js 11.8 KB, 07_939kut~bus.js 6.4 KB, 08_~24pwv19io.js 18.9 KB, 0b.c916_346zj.js 22.0 KB, 0bdweb4snjbdu.js 42.2 KB, 0cfo22l3t.ktu.js 20.1 KB, 0fe06o~9~0xm8.js 338.6 KB, 0g7tvi8d17-wp.js 40.3 KB, 0i.l9589uvx0j.js 53.5 KB, 0i1~2y--k5mtz.js 14.8 KB, 0luj01r745icf.js 18.9 KB, 0mwo19-oo5cu~.js 0.4 KB, 0ukwhynqo7_4_.js 4.3 KB, 0xxkhx9z2rlgf.js 14.2 KB, 0~agkqp09z~5h.js 30.9 KB, 10n991xwdosye.js 4.9 KB
+    OfflineBanner              structural: no next/dynamic entry                          marker: IN the first load (03-i-ywqr1.~9.js) as expected
+    PullToRefresh              structural: own chunk (0l7idi2rtm_89.js 1.5 KB)            marker: not in the first load          as expected
+    WinCelebrationHost         structural: own chunk (0tzy.m2dj~-0~.js 0.1 KB)            marker: IN the first load (0g7tvi8d17-wp.js) as expected
+    NotifyPoller               structural: own chunk (0ee3bqaddylbu.js 3.9 KB)            marker: not in the first load          as expected
+    EventStreamProvider        structural: own chunk (0vks749vylohe.js 1.6 KB)            marker: not in the first load          as expected
+    InstallInvite              structural: own chunk (0qlbva8-3ipde.js 4.2 KB)            marker: not in the first load          as expected
+    ConsentPrompt              structural: own chunk (0l7j30qbazsf5.js 3.0 KB)            marker: not in the first load          as expected
+    ChannelsPanel              structural: own chunk (02haplna2uswf.js 5.3 KB)            marker: not in the first load          as expected
+    SellResultHost             structural: own chunk (0ibp1zk_kdsw5.js 0.0 KB)            marker: not in the first load          as expected
+    JourneyFlag                structural: own chunk (05ojxb1dm_f63.js 0.3 KB)            marker: -                              as expected
+    JourneyTopBar              structural: own chunk (0z6z_ot33v673.js 6.7 KB)            marker: not in the first load          as expected
+    JourneyTabs                structural: own chunk (02lf.agkvcnys.js 6.4 KB)            marker: not in the first load          as expected
+    JourneyShellMark           marker only                                                marker: IN the first load (0g7tvi8d17-wp.js) (reported)
+    HomeLazy (S7)              module: not a client reference here                        marker: not in the first load          as expected
+    HowToCard (S7)             structural: no next/dynamic entry                          marker: not in the first load          as expected
+    HowToSheet (S7)            marker only                                                marker: not in the first load          as expected
+    JourneyCard (S7)           marker only                                                marker: not in the first load          as expected
+  other next/dynamic parts here: ChatRoot — own chunk (0.2-_j1148~yt.js 0.0 KB, 0.9~ok2oqf3wk.js 62.7 KB); FirstVisitPrimer — own chunk (0red00u187piz.js 0.0 KB); JourneyRouteGhost — own chunk (06b6qk0yjw8bl.js 48.6 KB)
+
+/account: 16 entry JS files, 715.6 KB
+  entry files: 00p_ss~6fa_sn.js 4.3 KB, 02~abe9tkf417.js 32.4 KB, 03-i-ywqr1.~9.js 70.2 KB, 07_939kut~bus.js 6.4 KB, 0b.c916_346zj.js 22.0 KB, 0bdweb4snjbdu.js 42.2 KB, 0cfo22l3t.ktu.js 20.1 KB, 0fe06o~9~0xm8.js 338.6 KB, 0g7tvi8d17-wp.js 40.3 KB, 0i.l9589uvx0j.js 53.5 KB, 0i1~2y--k5mtz.js 14.8 KB, 0mwo19-oo5cu~.js 0.4 KB, 0xxkhx9z2rlgf.js 14.2 KB, 0~agkqp09z~5h.js 30.9 KB, 10n991xwdosye.js 4.9 KB, 11pfrvg1wmrnv.js 20.4 KB
+    OfflineBanner              structural: no next/dynamic entry                          marker: IN the first load (03-i-ywqr1.~9.js) as expected
+    PullToRefresh              structural: own chunk (0l7idi2rtm_89.js 1.5 KB)            marker: not in the first load          as expected
+    WinCelebrationHost         structural: own chunk (0tzy.m2dj~-0~.js 0.1 KB)            marker: IN the first load (0g7tvi8d17-wp.js) as expected
+    NotifyPoller               structural: own chunk (0ee3bqaddylbu.js 3.9 KB)            marker: not in the first load          as expected
+    EventStreamProvider        structural: own chunk (0vks749vylohe.js 1.6 KB)            marker: not in the first load          as expected
+    InstallInvite              structural: own chunk (0qlbva8-3ipde.js 4.2 KB)            marker: not in the first load          as expected
+    ConsentPrompt              structural: own chunk (0l7j30qbazsf5.js 3.0 KB)            marker: not in the first load          as expected
+    ChannelsPanel              structural: own chunk (02haplna2uswf.js 5.3 KB)            marker: not in the first load          as expected
+    SellResultHost             structural: own chunk (16bdi_ymq~2uw.js 8.8 KB)            marker: not in the first load          as expected
+    JourneyFlag                structural: own chunk (05ojxb1dm_f63.js 0.3 KB)            marker: -                              as expected
+    JourneyTopBar              structural: own chunk (0z6z_ot33v673.js 6.7 KB)            marker: not in the first load          as expected
+    JourneyTabs                structural: own chunk (02lf.agkvcnys.js 6.4 KB)            marker: not in the first load          as expected
+    JourneyShellMark           marker only                                                marker: IN the first load (0g7tvi8d17-wp.js) (reported)
+    HomeLazy (S7)              module: not a client reference here                        marker: not in the first load          as expected
+    HowToCard (S7)             structural: no next/dynamic entry                          marker: not in the first load          as expected
+    HowToSheet (S7)            marker only                                                marker: not in the first load          as expected
+    JourneyCard (S7)           marker only                                                marker: not in the first load          as expected
+  other next/dynamic parts here: ChatRoot — own chunk (0.9~ok2oqf3wk.js 62.7 KB, 0rzzg~evop2pa.js 26.3 KB); FirstVisitPrimer — own chunk (0~_jc9e_c8t0y.js 10.4 KB); JourneyRouteGhost — own chunk (06b6qk0yjw8bl.js 48.6 KB)
+
+/updown/history: 21 entry JS files, 752.8 KB
+  entry files: 00p_ss~6fa_sn.js 4.3 KB, 02~abe9tkf417.js 32.4 KB, 03-i-ywqr1.~9.js 70.2 KB, 07_939kut~bus.js 6.4 KB, 0b.c916_346zj.js 22.0 KB, 0bdweb4snjbdu.js 42.2 KB, 0cfo22l3t.ktu.js 20.1 KB, 0f4p8h6h.x1t8.js 17.4 KB, 0fe06o~9~0xm8.js 338.6 KB, 0g7tvi8d17-wp.js 40.3 KB, 0i.l9589uvx0j.js 53.5 KB, 0i1~2y--k5mtz.js 14.8 KB, 0jrd_1ch6uvvc.js 3.4 KB, 0mwo19-oo5cu~.js 0.4 KB, 0ssspvg1csq5..js 4.4 KB, 0xxkhx9z2rlgf.js 14.2 KB, 0~agkqp09z~5h.js 30.9 KB, 0~mow-jy830hr.js 15.6 KB, 10hiy4d~ky941.js 4.3 KB, 10n991xwdosye.js 4.9 KB, 124vxp_bnyf7j.js 12.5 KB
+    OfflineBanner              structural: no next/dynamic entry                          marker: IN the first load (03-i-ywqr1.~9.js) as expected
+    PullToRefresh              structural: own chunk (0l7idi2rtm_89.js 1.5 KB)            marker: not in the first load          as expected
+    WinCelebrationHost         structural: own chunk (0tzy.m2dj~-0~.js 0.1 KB)            marker: IN the first load (0g7tvi8d17-wp.js) as expected
+    NotifyPoller               structural: own chunk (0ee3bqaddylbu.js 3.9 KB)            marker: not in the first load          as expected
+    EventStreamProvider        structural: own chunk (0vks749vylohe.js 1.6 KB)            marker: not in the first load          as expected
+    InstallInvite              structural: own chunk (0qlbva8-3ipde.js 4.2 KB)            marker: not in the first load          as expected
+    ConsentPrompt              structural: own chunk (0l7j30qbazsf5.js 3.0 KB)            marker: not in the first load          as expected
+    ChannelsPanel              structural: own chunk (02haplna2uswf.js 5.3 KB)            marker: not in the first load          as expected
+    SellResultHost             structural: own chunk (16bdi_ymq~2uw.js 8.8 KB)            marker: not in the first load          as expected
+    JourneyFlag                structural: own chunk (05ojxb1dm_f63.js 0.3 KB)            marker: -                              as expected
+    JourneyTopBar              structural: own chunk (0z6z_ot33v673.js 6.7 KB)            marker: not in the first load          as expected
+    JourneyTabs                structural: own chunk (02lf.agkvcnys.js 6.4 KB)            marker: not in the first load          as expected
+    JourneyShellMark           marker only                                                marker: IN the first load (0g7tvi8d17-wp.js) (reported)
+    HomeLazy (S7)              module: not a client reference here                        marker: not in the first load          as expected
+    HowToCard (S7)             structural: no next/dynamic entry                          marker: not in the first load          as expected
+    HowToSheet (S7)            marker only                                                marker: not in the first load          as expected
+    JourneyCard (S7)           marker only                                                marker: not in the first load          as expected
+  other next/dynamic parts here: ChatRoot — own chunk (0.9~ok2oqf3wk.js 62.7 KB, 0rzzg~evop2pa.js 26.3 KB); FirstVisitPrimer — own chunk (0~_jc9e_c8t0y.js 10.4 KB); JourneyRouteGhost — own chunk (0dg9h20pvqbhn.js 33.5 KB); Tabs — own chunk (12g0evwz.a-3a.js 3.6 KB)
+
+PASS — qa:first-load at 4089c9c6507b: 10 route(s)

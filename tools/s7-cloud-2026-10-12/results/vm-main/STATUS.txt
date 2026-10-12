@@ -23,3 +23,29 @@
 18:12:45 7-null: exit 0 (free 14.7 GB)
 18:12:45 7 null compare: 53/53 passed — compare · tree 52715180 · 1592s 
 18:12:45 phase parity-cal done · server tree at 52715180 · free 14.7 GB
+18:13:19 server tree VERIFIED at 4089c9c6
+18:14:57 8 qa:first-load --build --read: exit 0 · PASS — qa:first-load at 4089c9c6507b: 10 route(s) 
+18:14:57 phase firstload done · server tree at 4089c9c6 · free 14.4 GB
+18:15:28 server tree VERIFIED at 4089c9c6
+18:18:35 9-live: exit 0 (free 14.7 GB)
+18:18:35 9 qa:live local:   ✓ control · ⛔ an EMPTY or unreadable page FAILS the verdict ✅ ALL PASS — 334 passed, 0 failed 
+18:18:35 phase live done · server tree at 4089c9c6 · free 14.7 GB
+18:19:07 server tree VERIFIED at 4089c9c6
+18:57:53 10-parity: exit 1 (free 14.7 GB)
+18:57:53 10 parity v3 vs parity-v3-52715180.json: 
+18:57:53 phase parity-tip done · server tree at 4089c9c6 · free 14.7 GB
+18:57:54 REST DONE (this VM's three phases)
+19:00:04 server tree VERIFIED at 4089c9c6
+19:27:25 10-parity: exit 0 (free 14.7 GB)
+19:27:25 10 parity v3 vs parity-v3-52715180.json: 53/53 passed — compare · tree 4089c9c6 · 1591s 
+19:27:25 phase parity-tip done · server tree at 4089c9c6 · free 14.7 GB
+19:29:54 server tree VERIFIED at de44e087
+19:57:15 6b-baseline: exit 0 (free 14.8 GB)
+19:57:15 6b baseline at de44e0872: baseline written: /tmp/claude-0/proof/parity-v3-de44e087.json — base de44e087, 224 cells, 1179 blobs. Next: a null --compare on a FRESH server at this commit must exit 0. 
+19:57:15 phase parity-base done · server tree at de44e087 · free 14.8 GB
+19:57:47 server tree VERIFIED at a7786df6
+19:58:16 10-parity: server did not come up (try 1)
+20:25:33 10-parity: exit 0 (free 14.7 GB)
+20:25:33 10 parity v3 vs parity-v3-de44e087.json: 53/53 passed — compare · tree a7786df6 · 1585s 
+20:25:33 phase parity-tip done · server tree at a7786df6 · free 14.7 GB
+20:25:34 REBASE PARITY DONE

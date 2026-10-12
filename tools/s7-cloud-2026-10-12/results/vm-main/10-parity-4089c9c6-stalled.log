@@ -1,0 +1,65 @@
+
+> fiftypick@0.1.0 qa:classic-shell-parity
+> node scripts/qa-classic-shell-parity.mjs --compare /tmp/claude-0/proof/parity-v3-52715180.json --allow-base
+
+qa:classic-shell-parity — compare — http://localhost:3076
+  tree /home/user/kipindi-srv/ @ 4089c9c6 (clean) · forks from origin/main at 395e1a6a · rollout STAFF_PREVIEW
+  the book's normalisers ON: market-ids, eat-dates, tied-cards (this file's switches) · candidates: market-ids, time-left, eat-dates, relative-times, chart-paths, avatar-ids, chunk-hashes, tied-cards
+
+§0 · the base (S6-PLAN A18)
+  PASS 0.1 the baseline's 52715180 is an ancestor of HEAD 4089c9c6, and no merge since it carried served files in
+  18 commit(s) since the baseline change a served file — each should be an S6 package; any other is another lane's change inside this compare:
+    35f8be88f Vodacom S7 WP9 review: a search cut at the cap keeps no half character, Tafuta's button keeps the kit's outside ring, the edge's two headers and the shell branch pinned, and the S6 drives moved off /markets
+    1e1337cac Vodacom S7 WP10 review: "Onyesha zaidi" is one control - the journey home and journey /live draw show-more.tsx (the kit's pending mark on /live too); journey-home 9.more pins it, its two importers and its words; SHELVED's two Test cells name the checks a re-mount turns red; the card grid cites VODACOM-PLAN section 0h point 73
+    46203576b Vodacom S7 WP7 review: from 1024 each headline sentence is held whole (no "Jibu swali. NDIO / au HAPANA." between ~1048 and ~1223px), and journey-home 7.client - the journey arm brings no client code into / but the home's lazy module and what the classic landing already brings, and the ghost's graph reads no server
+    0251b28a5 Vodacom S7 WP10: the journey card on /watchlist, /live and the question page's similar rail, and /results' settled card - one ternary in each cards' slot, the classic arm today's markup line for line (flagged: only a journey request takes the new arm)
+    b52d42611 Vodacom S7 WP9: a journey reader's /markets answers with the journey home (a real 307 from AppShell on a document, the page's own redirect on a flight, both through journeyMarketsTarget) and Tafuta searches from Akaunti (flagged: no player sees it until S15)
+    b18a13fc2 Vodacom S7 WP7: the journey home on / - a journey reader's / is the deck's home (the How-to card, the headline, the topic chips, the questions as journey cards, Onyesha zaidi, three empty states) and its own ghost; every other reader's / is today's element - journey-home sections 6 and 7, rendered in a test world
+    db2e48713 Vodacom S7 live fix L1 (every player): a chat-bubble or first-visit-primer chunk that never arrives leaves that part out, with one /api/client-error report per page, instead of the critical-error screen - journey-shell 12.dynamic.census, its plants, and the qa:lost-chunk drive
+    85e6d14d4 Vodacom S7 WP8 review: SHELVED's two Test cells name the checks a re-mount turns red; journey-home 8.noflag proves the strip reads no client-side journey answer; 8.slot reads AppShell's own landmark; the primer's dock note says it never opens in the journey
+    16de6bd4b Vodacom S7 WP8: the LIVE strip leaves / and /markets for a journey reader (AppShell's journey arm alone hands LiveTicker the shell's answer), and the old first-visit primer stands down for a journey reader on every route - each held in process with its plants
+    52881330e Vodacom S7 WP6 (3/3): the How-to card and the static How to Play sheet, the home's lazy module, the plate's contrast pair, and journey-home section 5 - rendered in a test world in sw, en and zh (flagged: nothing mounts them until WP7)
+    61e4bb526 Vodacom S7 WP6 (2/3): the lost-chunk guard lifted into one module - shell-lazy, the route ghosts and the Tiketi rail import it; journey-shell 12, journey-tickets 5.lazy and visual-pass-r5d 2 re-pinned (S7-PLAN A13(a), A24 item 5)
+    49304d752 Vodacom S7 WP6 (1/3): the primary material as tokens; computed values unchanged - --wash-primary, --edge-primary and --shadow-primary, read by .btn-primary (S7-PLAN A14 item 1)
+    9056d0e35 Vodacom S7 WP5 follow-up: the review's six items - a five-character figure breaks before its words (the width proof, with the repo's fonts), the journey card grid whose cards share their rows (subgrid, the title reserve withdrawn), a pick's edge in forced colours, and the tests read the sheet as the cascade does
+    dfb5bd342 Vodacom S7 WP5: the journey card - one server component for every state (priced, closes today, Siku N, an empty pool, one side, over the cap, a hidden figure, selection closed, settled YES / NO / void, Up & Down), in the kit's tokens, unmounted until WP7 and WP10
+    e5b5c9daa fix(rg): the daily loss-limit refusal says it counts the last 24 hours - "It resets tomorrow" was untrue at any hour (Ali's ruling, 2026-10-12)
+    2322cf09f Vodacom S7 WP4: S7's words - the journey.* keys of the home, the journey card, the How-to card and its sheet (en, sw, zh), the Swahili review signed, and every record agrees that no helpline appears on a player surface
+    63cded994 Vodacom S7 WP3: the pure rules - the home's list, the card's face, the /markets target, the journey ticker list and cardFigures - each proven in process with its plants
+    53cf56099 Vodacom S7 WP2: the pure move - the home's body leaves the route file for components/home/legacy-landing.tsx, and every gate that reads it follows it
+  · origin/main has moved past the baseline (they fork at 395e1a6a): normal once this lane has pushed, and the list above is still every served commit in between.
+  Chromium 141.0.7390.37
+
+§1 · a guest
+  guest · en · 28 cells · 140s
+  guest · sw · 28 cells · 139s
+
+§1 · the demo player
+  PASS 1.player the demo player is signed in (a kp_session cookie in the jar)
+  player · en · 28 cells · 150s
+  player · sw · 28 cells · 150s
+
+§1 · the demo player under an officer's hold
+  PASS 1.held the demo player under an officer's hold is signed in (a kp_session cookie in the jar)
+  held · en · 28 cells · 150s
+  held · sw · 28 cells · 151s
+
+§1 · the demo player with an unconfirmed email
+  PASS 1.unverified the demo player with an unconfirmed email is signed in (a kp_session cookie in the jar)
+  unverified · en · 28 cells · 151s
+  unverified · sw · 28 cells · 150s
+
+§1s · the Sell button a classic holder is served (WP10): the demo player's open ticket, at 360/1280 × en/sw, and the classic confirm at 360 in the holder block
+  PASS 1.player the demo player is signed in (a kp_session cookie in the jar)
+  ✗ sell|en|360|/markets/:held — browserContext.newPage: Target page, context or browser has been closed
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+browser.newContext: Target page, context or browser has been closed
+    at async captureSellCell (/home/user/kipindi-srv/scripts/qa-classic-shell-parity.mjs:1960:15)
+    at async captureSell (/home/user/kipindi-srv/scripts/qa-classic-shell-parity.mjs:2029:20)
+    at async captureMatrix (/home/user/kipindi-srv/scripts/qa-classic-shell-parity.mjs:2295:3)
+    at async file:///home/user/kipindi-srv/scripts/qa-classic-shell-parity.mjs:2264:8
+
+Node.js v24.21.0
