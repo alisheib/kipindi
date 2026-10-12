@@ -927,8 +927,10 @@ const PLANTS: Plant[] = [
     world: (w) => ({ ...w, shell: w.shell.replace(" : <BottomNav isAuthed={!!session} proposalsState={proposalsState} inviteVisible={inviteVisible} walletHeld={!!topUser.walletHeld} />}", " : null}") }) },
   { name: "the classic footer's arm says journeyShown too, so every reader's proposals link is balanced (the visual pass, 2026-10-09)", expect: new RegExp("^10[.]shell[.]chrome[.]footer"),
     world: (w) => ({ ...w, shell: w.shell.replace("supportPhoneTel={SUPPORT_PHONE_TEL()} />}", "supportPhoneTel={SUPPORT_PHONE_TEL()} journeyShown />}") }) },
+  // ⚠️ RE-ANCHORED 2026-10-12: R9-B (c4f65f6e) gave this link `keep={journeyShown}`, so the old anchor matched nothing and
+  // the plant read INCONCLUSIVE. The defect is unchanged — `balance` answered for every reader; `keep` stays as written.
   { name: "the footer balances its proposals link for every reader (the visual pass, 2026-10-09)", expect: new RegExp("^10[.]shell[.]chrome[.]footer"),
-    world: (w) => files(w, "src/components/layout/public-footer.tsx", (s) => s.replace('<FooterLink href="/proposals" balance={journeyShown}>', '<FooterLink href="/proposals" balance>')) },
+    world: (w) => files(w, "src/components/layout/public-footer.tsx", (s) => s.replace('<FooterLink href="/proposals" keep={journeyShown} balance={journeyShown}>', '<FooterLink href="/proposals" keep={journeyShown} balance>')) },
   { name: "the footer's journey answer is on unless it is said (the visual pass, 2026-10-09)", expect: new RegExp("^10[.]shell[.]chrome[.]footer"),
     world: (w) => files(w, "src/components/layout/public-footer.tsx", (s) => s.replace("journeyShown = false,", "journeyShown = true,")) },
   { name: "the journey header renders beside the classic one (S6 WP6b)", expect: new RegExp("^10[.]shell[.]chrome[.]header"),
