@@ -54,6 +54,7 @@ import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { tmpdir } from "node:os";
+import { request as httpRequest } from "node:http";
 import { fileURLToPath } from "node:url";
 import { premise, mintStaffPass, demoSession, LOCALE_COOKIE } from "./live/journey-pass.mjs";
 import { JOURNEY_HOME_TESTIDS, journeyHomeIdsIn } from "./live/journey-home-ids.mjs";
@@ -501,10 +502,20 @@ if (run("tap")) {
 // ── redirect · /markets for a pass holder (A19 item 2) ──────────────────────────────────────────────────────────────
 if (run("redirect")) {
   console.log("\nredirect · /markets for a pass holder, and for a reader with no pass");
-  const doc = await fetch(`${BASE}/markets?topic=sports&utm_source=x`, { redirect: "manual", headers: { cookie: `${PASS.name}=${PASS.value}`, "sec-fetch-mode": "navigate", "sec-fetch-dest": "document", accept: "text/html" } });
-  ok("redirect · a pass holder's document /markets?topic=sports&utm_source=x answers 307 to /?cat=sports&utm_source=x", doc.status === 307 && (doc.headers.get("location") ?? "").endsWith("/?cat=sports&utm_source=x"), `${doc.status} → ${doc.headers.get("location")}`);
-  const classic = await fetch(`${BASE}/markets`, { redirect: "manual", headers: { "sec-fetch-mode": "navigate", accept: "text/html" } });
-  ok("redirect · a reader with no pass gets HTTP 200 and the board", classic.status === 200 && (await classic.text()).includes('data-board="grid"'), `${classic.status}`);
+  // A DOCUMENT load, as a browser asks for one (Sec-Fetch-Mode: navigate), over node:http — qa:served-skeleton's door.
+  const navGet = (path, cookie) => new Promise((done) => {
+    const u = new URL(`${BASE}${path}`);
+    const req = httpRequest({ host: u.hostname, port: u.port, path: u.pathname + u.search, method: "GET",
+      headers: { accept: "text/html", "sec-fetch-mode": "navigate", "sec-fetch-dest": "document", ...(cookie ? { cookie } : {}) } }, (res) => {
+      let body = ""; res.setEncoding("utf8"); res.on("data", (c) => { body += c; }); res.on("end", () => done({ status: res.statusCode, location: res.headers.location ?? "", body }));
+    });
+    req.on("error", (e) => done({ status: 0, location: "", body: String(e) }));
+    req.end();
+  });
+  const doc = await navGet("/markets?topic=sports&utm_source=x", `${PASS.name}=${PASS.value}`);
+  ok("redirect · a pass holder's document /markets?topic=sports&utm_source=x answers 307 to /?cat=sports&utm_source=x", doc.status === 307 && doc.location.endsWith("/?cat=sports&utm_source=x"), `${doc.status} → ${doc.location}`);
+  const classic = await navGet("/markets", "");
+  ok("redirect · a reader with no pass gets HTTP 200 and the board", classic.status === 200 && classic.body.includes('data-board="grid"'), `${classic.status}`);
   const ctx = await ctxFor({ w: 390, h: 844, locale: "sw", session: SESSION });
   const page = await ctx.newPage();
   await open(page, "/results", { wait: SEL.card });
