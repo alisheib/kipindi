@@ -658,10 +658,17 @@ body. Owner-level calls: §0h point 58, and 65 on.
   shell mark is the one journey marker in a first load, by design); **test:house-bot-disclosure 118/0 on main** — 5.1
   is green now that WP4's keys are origin/main's own.
 - **⏳ IN FLIGHT (OMEGA-COMPILE01, 2026-10-12; every branch below is ON ORIGIN):**
-  - **Built and independently reviewed, landing next with WP7:** WP5 (`vodacom-s7-wp5`), WP6 (`vodacom-s7-wp6`, on
-    WP5) and **WP8** — the LIVE strip leaves `/` and `/markets` for a journey reader, and the old primer stands down for
-    one (`vodacom-s7-wp8`: `5db019c0`, its review's fixes `51aa7337`; a classic request's RSC row is unchanged — the
-    else arm is today's element; typecheck and its file-mutating red are owed to the next landing).
+  - **Built, independently reviewed, and STACKED ON MAIN, landing next with WP7:** `origin/vodacom-s7-land5` at
+    `f8fcff7d` = main `5ce27db7` + WP5 (the journey card, its review's fixes) + WP6 (three commits) + **WP8** — the LIVE
+    strip leaves `/` and `/markets` for a journey reader, the old primer stands down for one (a classic request's RSC
+    row is unchanged: the else arm is today's element) — and WP8's review fixes. WP8's journey-home §8 met WP5's §4 and
+    WP6's §5 in six "both added" places, resolved keeping both (one merged `load()` return). Proven in process on that
+    tip (2026-10-12 ~14:20 EAT): journey-home all pass, red 159/159; journey-shell 442, red 198/198; journey-tickets 51,
+    red 112/112; ticker-honesty; stacking 137/0; marketing-optout 121/0; simple-journey-flag 135/0, red 41/41;
+    red-anchors 5286/0; decomment; source-bytes; docs. Owed under the lock with WP7: typecheck, the file-mutating reds
+    (red:contrast, red:timer-date, red:ticker-honesty, red:offline-neutral's twin if it writes), `next build`, qa:live,
+    parity v3 against `parity-v3-52715180.json`, qa:served-skeleton `--main`, qa:first-load, test:dead-css (green only
+    once WP7 mounts `.kp-jgrid`).
   - **Building, each by a helper in its own worktree on WP6** (`node_modules` there is a junction to `F:\kipindi-s7b`'s
     install — never `npm ci` in them): live fix **L1** and **WP7**, the journey home (`vodacom-s7-wp7`); **WP9**,
     `/markets`' 307 and Tafuta in Akaunti (`vodacom-s7-wp9`); **WP10**, the journey card on /watchlist, /live, the
