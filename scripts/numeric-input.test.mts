@@ -117,7 +117,7 @@ eq("'' clean", sanitizeNumericInput("", INT), "");
 // the change event. Each JUDGE is one promise; each runs on the shipped module and must pass, and on a planted copy of
 // input.tsx that puts its defect back, and must go red.
 
-type Kit = Pick<typeof KIT, "sanitizeNumericInput" | "readNumericEntry" | "numericBox" | "numericNoticeKeys">;
+type Kit = Pick<typeof KIT, "sanitizeNumericInput" | "readNumericEntry" | "numericBox" | "numericNoticeKeys" | "groupedBox" | "groupedDigits" | "readsDigits">;
 type Opts = { decimal: boolean; negative: boolean; separators?: boolean };
 type Owed = { dot: boolean; minus: boolean } | null;
 const TEL: Opts = { decimal: false, negative: false, separators: true };
@@ -146,8 +146,9 @@ function element(value: string): El {
  * ⭐ The box is told the selection as the Input tells it: before every key (its onKeyDown) and after every move of the
  * caret or the selection (its onSelect — a select-all, a tap, an arrow).
  */
-function drive(kit: Kit, steps: string[], opts: Opts = INT, start = "", android = false) {
-  const box = kit.numericBox();
+function drive(kit: Kit, steps: string[], opts: Opts = INT, start = "", android = false, grouped = false) {
+  /* (S8 WP5) `grouped` drives the box a grouped Input keeps — the same events, on the text it shows. */
+  const box = grouped ? kit.groupedBox() : kit.numericBox();
   const el = element(start);
   box.seen(el.value);                                   // the officer focused the box
   const owed: Owed[] = [];
@@ -376,6 +377,94 @@ const JUDGES: Record<string, { label: string; run: (kit: Kit) => Verdict }> = {
       return { pass: r.value === "125000", detail: show({ value: r.value, lines: lines(r.owed) }) };
     },
   },
+
+  // ═══ S8 WP5 · THE GROUPED BOX (the bet sheet's stake box), driven key by key through the box a grouped Input keeps ══
+  groupedTyped: {
+    label: "⭐ (S8 WP5) a grouped box: 5000 typed key by key shows 5,000, with the caret after the last digit",
+    run: (kit) => {
+      const r = drive(kit, [..."5000"], INT, "", false, true);
+      return { pass: r.value === "5,000" && r.caret === 5, detail: show({ value: r.value, caret: r.caret }) };
+    },
+  },
+  groupedInside: {
+    label: "⭐ (S8 WP5) a digit typed inside a group lands where it was typed: 7 after the 1 of 12,500 → 172,500 with the caret after the 7; 9 after the comma → 129,500 with the caret after the 9",
+    run: (kit) => {
+      const a = drive(kit, ["tap:1", "7"], INT, "12,500", false, true);
+      const b = drive(kit, ["tap:3", "9"], INT, "12,500", false, true);
+      return { pass: a.value === "172,500" && a.caret === 2 && b.value === "129,500" && b.caret === 3, detail: show({ a, b }) };
+    },
+  },
+  groupedPaste: {
+    label: "⭐ (S8 WP5) a paste reads exactly as numericStep reads it: 12,500 keeps 12500 (shown 12,500); 12,500.00 keeps 12500 and owes the dot's line; 9 500,00 keeps 9500 — the box's own separators are taken out, never what arrived",
+    run: (kit) => {
+      const a = drive(kit, ["paste:12,500"], INT, "", false, true);
+      const b = drive(kit, ["paste:12,500.00"], INT, "", false, true);
+      const c = drive(kit, ["paste:9 500,00"], INT, "", false, true);
+      return {
+        pass: a.value === "12,500" && kit.groupedDigits(a.value) === "12500" && lines(a.owed) === "-" && b.value === "12,500" && lines(b.owed) === "D" && c.value === "9,500",
+        detail: show({ a: a.value, b: b.value, bLine: lines(b.owed), c: c.value }),
+      };
+    },
+  },
+  groupedCap: {
+    label: "⭐ (S8 WP5) nine digits is the cap, and a change past it is refused whole — never cut, which would change the number's size: 1234567890 typed ends on 123,456,789; a pasted 1234567890 leaves the box empty; a digit typed into a full box (after its 4) leaves it as it was, the caret back after the 4",
+    run: (kit) => {
+      const typed = drive(kit, [..."1234567890"], INT, "", false, true);
+      const pasted = drive(kit, ["paste:1234567890"], INT, "", false, true);
+      const full = drive(kit, ["tap:5", "5"], INT, "123,456,789", false, true);
+      return {
+        pass: typed.value === "123,456,789" && typed.caret === 11 && pasted.value === "" && full.value === "123,456,789" && full.caret === 5,
+        detail: show({ typed, pasted: pasted.value, full }),
+      };
+    },
+  },
+  groupedErase: {
+    label: "(S8 WP5) Backspace over the box's own comma moves the caret, and the next one erases the digit before it: 12,500 → 12,500 (caret 2) → 1,500 (caret 1); Backspace at the end of 1,234,567 regroups to 123,456 — the box's commas are never read as a decimal mark",
+    run: (kit) => {
+      const one = drive(kit, ["tap:3", "Backspace"], INT, "12,500", false, true);
+      const two = drive(kit, ["tap:3", "Backspace", "Backspace"], INT, "12,500", false, true);
+      const end = drive(kit, ["Backspace"], INT, "1,234,567", false, true);
+      return {
+        pass: one.value === "12,500" && one.caret === 2 && two.value === "1,500" && two.caret === 1 && end.value === "123,456" && end.caret === 7 && lines(end.owed) === "-",
+        detail: show({ one, two, end }),
+      };
+    },
+  },
+  groupedHold: {
+    label: "⭐ (S8 WP5) a refused dot holds across a regrouping, by digit: 12500.00 typed ends on 12,500 (the line owed with the first dropped zero), and a tap back on the dot's own caret keeps the hold",
+    run: (kit) => {
+      const r = drive(kit, [..."12500.00"], INT, "", false, true);
+      const tapped = drive(kit, [..."12500.", "tap:6", "0"], INT, "", false, true);
+      return { pass: r.value === "12,500" && lines(r.owed) === "------DD" && tapped.value === "12,500", detail: show({ value: r.value, lines: lines(r.owed), tapped: tapped.value }) };
+    },
+  },
+  groupedDigitsRead: {
+    label: "(S8 WP5) a grouped box holds its digits without leading zeros — the same number: 0500 holds 500, 0 holds 0, and 0 then 5 typed shows 5",
+    run: (kit) => {
+      const r = drive(kit, ["0", "5"], INT, "", false, true);
+      return { pass: kit.groupedDigits("0500") === "500" && kit.groupedDigits("0") === "0" && r.value === "5", detail: show({ a: kit.groupedDigits("0500"), b: kit.groupedDigits("0"), typed: r.value }) };
+    },
+  },
+  groupedCaller: {
+    label: "⭐ (S8 WP5) a grouped box's caller reads its DIGITS: inside onChange the element holds 12500; when the caller returns it shows 12,500 again with the caret where the box put it",
+    run: (kit) => {
+      const el = element("12,500");
+      el.selectionStart = 3; el.selectionEnd = 3;
+      let seen = "";
+      let held = "";
+      const handler = kit.readsDigits((e) => { seen = e.target.value; }, (d) => { held = d; });
+      handler({ target: el } as unknown as Parameters<typeof handler>[0]);
+      return { pass: seen === "12500" && held === "12500" && el.value === "12,500" && el.selectionEnd === 3, detail: show({ seen, held, value: el.value, caret: el.selectionEnd }) };
+    },
+  },
+  ungroupedControl: {
+    label: "(S8 WP5) CONTROL — a box that is NOT grouped answers exactly as before: 5000 typed shows 5000 (caret 4), and a pasted 12,500 holds 12500",
+    run: (kit) => {
+      const a = drive(kit, [..."5000"]);
+      const b = drive(kit, ["paste:12,500"]);
+      return { pass: a.value === "5000" && a.caret === 4 && b.value === "12500", detail: show({ a, b: b.value }) };
+    },
+  },
 };
 
 const judgeOn = (kit: Kit, name: string): Verdict => {
@@ -397,8 +486,8 @@ const KIT_DEPS: Record<string, unknown> = {
 };
 /** input.tsx with each [from, to] planted (every `from` must occur exactly once), built with esbuild and evaluated as a
  *  module in memory — nothing touches the disk. */
-async function plantedKit(plants: Array<[string, string]>): Promise<Kit> {
-  let src = KIT_SOURCE;
+async function plantedKit(plants: Array<[string, string]>, source = KIT_SOURCE): Promise<Kit> {
+  let src = source;
   for (const [from, to] of plants) {
     const parts = src.split(from);
     if (parts.length !== 2) throw new Error(`the plant's anchor occurs ${parts.length - 1} times in input.tsx, not once: ${from}`);
@@ -471,6 +560,31 @@ const PLANTS: Array<{ judge: string; what: string; plant: Array<[string, string]
     plant: [["/[0-9]/.test(value.slice(0, at ?? value.length))", "true"]] },
   { judge: "tapAway", what: "the third build's select, which never ends the hold — a tap away and back, and the next digit still vanishes",
     plant: [["if (start !== null && start === end && memory.latchedAt !== null && start !== memory.latchedAt) memory = { ...memory, latchedAt: null };", ""]] },
+  // ── S8 WP5 · the grouped box ──
+  { judge: "groupedTyped", what: "(S8 WP5) the digits shown ungrouped — 5000 stays 5000",
+    plant: [['return digits === "" ? "" : formatNumber(Number(digits));', "return digits;"]] },
+  { judge: "groupedTyped", what: "(S8 WP5) the caret left in the digits' coordinates — after a regrouping it stops one short of the end",
+    plant: [["caret: at === null ? null : caretAfterDigit(text, at),", "caret: at,"]] },
+  { judge: "groupedInside", what: "(S8 WP5) the caret sent to the end after every regrouping — a digit typed inside a group pushes the caret away",
+    plant: [["caret: at === null ? null : caretAfterDigit(text, at),", "caret: text.length,"]] },
+  { judge: "groupedPaste", what: "(S8 WP5) the separators stripped from what ARRIVED too — a pasted 9 500,00 reads 950000",
+    plant: [["const arrived = change.raw.slice(span.start, span.end);", 'const arrived = change.raw.slice(span.start, span.end).replace(GROUP_MARK, "");']] },
+  { judge: "groupedCap", what: "(S8 WP5) no cap — a tenth digit is taken",
+    plant: [["if (value.length > GROUPED_MAX_DIGITS) {", "if (false) {"]] },
+  { judge: "groupedCap", what: "(S8 WP5) a change past the cap CUT to nine digits — a pasted 1234567890 becomes 123,456,789, a tenth of what was pasted",
+    plant: [["const value = groupedDigits(step.value);", "const value = groupedDigits(step.value).slice(0, GROUPED_MAX_DIGITS);"]] },
+  { judge: "groupedErase", what: "(S8 WP5) the box's own commas left in its digits — Backspace over a comma regroups nothing and the box stops reading",
+    plant: [['const head = change.raw.slice(0, span.start).replace(GROUP_MARK, "");', "const head = change.raw.slice(0, span.start);"]] },
+  { judge: "groupedHold", what: "(S8 WP5) a refused dot's hold dropped by the regrouping — 12500.00 reads 1,250,000",
+    plant: [["memory: { latchedAt: shift(step.memory.latchedAt), owed: step.memory.owed },", "memory: { latchedAt: null, owed: step.memory.owed },"]] },
+  { judge: "groupedHold", what: "(S8 WP5) a tap read in the shown text's coordinates — a tap back on the dot's own caret ends the hold",
+    plant: [['digitsAhead(before ?? "", start) !== memory.latchedAt', "start !== memory.latchedAt"]] },
+  { judge: "groupedDigitsRead", what: "(S8 WP5) leading zeros kept in the digits",
+    plant: [['return text.replace(/[^0-9]/g, "").replace(/^0+(?=[0-9])/, "");', 'return text.replace(/[^0-9]/g, "");']] },
+  { judge: "groupedCaller", what: "(S8 WP5) the caller handed the grouped text — it reads 12,500",
+    plant: [["    el.value = held;\n", ""]] },
+  { judge: "ungroupedControl", what: "(S8 WP5) the grouping reached by every numeric box",
+    plant: [["export function numericBox(): NumericBox {", "export function numericBox(): NumericBox {\n  return groupedBox();"]] },
 ];
 for (const p of PLANTS) {
   let verdict = "";
@@ -579,6 +693,270 @@ for (const p of PLANTS) {
     const once = adjustCode.split(from).length === 2;
     const got = adjustWired(adjustCode.split(from).join(to))[flag];
     eq(`CONTROL · a copy of balance-adjust-controls.tsx with ${what} fails the "${flag}" pin`, once ? got : "anchor not found exactly once", false);
+  }
+}
+
+// ═══ S8 WP5 · A15 — THE NEW PROPS ARE INERT WHEN UNSET, PROVEN BY RENDER EQUALITY ══════════════════════════════════
+// Every `<Input` call site in src/ is read, and each configuration the classic pages hand it is rendered through
+// `renderToStaticMarkup` by the kit as it stood BEFORE WP5 (its blob, pinned below — content-addressed, so a rebase
+// cannot move it) and by the kit as it stands: alone, and inside its own Field. The markup must be byte-equal. A call
+// site that sets one of WP5's own props (`grouped`, `attention`, `size="xl"`) is the new path, not a classic one: it is
+// counted and named, never rendered against the old kit. The plants show the census red on a stray `aria-invalid`
+// with `attention` unset, on the grouped path reached without its prop, and on the attention edge reached without it.
+const { execFileSync } = await import("node:child_process");
+const { readdirSync, statSync } = await import("node:fs");
+const { join, relative } = await import("node:path");
+const { renderToStaticMarkup } = nodeRequire("react-dom/server") as typeof import("react-dom/server");
+const R = nodeRequire("react") as typeof import("react");
+type RenderKit = { Input: React.ElementType; Field: React.ElementType };
+
+/** input.tsx as it stood before S8 WP5: the blob of origin/main 5da3db0f (2026-10-08), unchanged to S8's base. */
+const PRE_WP5_BLOB = "c8be959a9c6a0da64676ac706ffa1491f57b94f0";
+let preSource = "";
+try {
+  preSource = execFileSync("git", ["cat-file", "blob", PRE_WP5_BLOB], { cwd: new URL("..", import.meta.url).pathname, encoding: "utf8" });
+} catch (e) { preSource = ""; console.log(`   (git could not read ${PRE_WP5_BLOB}: ${(e as Error).message.split("\n")[0]})`); }
+eq("A15 · the kit as it stood before WP5 is readable (blob c8be959a) — without it no equality below means anything", preSource.length > 0 && !preSource.includes("groupedBox"), true);
+
+const ROOT_DIR = new URL("../src", import.meta.url).pathname;
+function walk(dir: string): string[] {
+  const out: string[] = [];
+  for (const n of readdirSync(dir)) {
+    const f = join(dir, n);
+    if (statSync(f).isDirectory()) out.push(...walk(f));
+    else if (f.endsWith(".tsx")) out.push(f);
+  }
+  return out;
+}
+/** The text of one JSX opening tag from `at` (just after `<Input`) to its close, braces and strings respected. */
+function openingTag(src: string, at: number): string | null {
+  let depth = 0;
+  let quote: string | null = null;
+  for (let i = at; i < src.length; i++) {
+    const c = src[i];
+    if (quote !== null) { if (c === "\\") i++; else if (c === quote) quote = null; continue; }
+    if (c === '"' || c === "'" || c === "`") { quote = c; continue; }
+    if (c === "{") depth++;
+    else if (c === "}") depth--;
+    else if (depth === 0 && c === ">") return src.slice(at, src[i - 1] === "/" ? i - 1 : i);
+  }
+  return null;
+}
+type Attr = { name: string; literal?: string; expr?: string; bare?: boolean } | { spread: string };
+function attrsOf(tag: string): Attr[] | null {
+  const out: Attr[] = [];
+  let i = 0;
+  const balanced = (from: number): number => {
+    let depth = 0, quote: string | null = null;
+    for (let j = from; j < tag.length; j++) {
+      const c = tag[j];
+      if (quote !== null) { if (c === "\\") j++; else if (c === quote) quote = null; continue; }
+      if (c === '"' || c === "'" || c === "`") { quote = c; continue; }
+      if (c === "{") depth++;
+      else if (c === "}" && --depth === 0) return j;
+    }
+    return -1;
+  };
+  while (i < tag.length) {
+    while (i < tag.length && /\s/.test(tag[i])) i++;
+    if (i >= tag.length) break;
+    if (tag[i] === "{") {
+      const end = balanced(i);
+      if (end < 0) return null;
+      out.push({ spread: tag.slice(i + 1, end).trim() });
+      i = end + 1;
+      continue;
+    }
+    const m = /^[A-Za-z_][\w:-]*/.exec(tag.slice(i));
+    if (m === null) return null;
+    const name = m[0];
+    i += name.length;
+    if (tag[i] !== "=") { out.push({ name, bare: true }); continue; }
+    i++;
+    if (tag[i] === '"' || tag[i] === "'") {
+      const end = tag.indexOf(tag[i], i + 1);
+      out.push({ name, literal: tag.slice(i + 1, end) });
+      i = end + 1;
+    } else if (tag[i] === "{") {
+      const end = balanced(i);
+      if (end < 0) return null;
+      out.push({ name, expr: tag.slice(i + 1, end).trim() });
+      i = end + 1;
+    } else return null;
+  }
+  return out;
+}
+const NOOP = () => {};
+/** The values one attribute takes in the census: its literal; an expression's own literals; else a stand-in by name. */
+function valuesOf(a: { name: string; literal?: string; expr?: string; bare?: boolean }): unknown[] | null {
+  if (a.bare) return [true];
+  if (a.literal !== undefined) return [a.literal];
+  const e = a.expr ?? "";
+  if (a.name === "ref" || a.name === "key") return null;
+  if (/^on[A-Z]/.test(a.name)) return [NOOP];
+  if (e === "true" || e === "false") return [e === "true"];
+  if (/^-?[0-9.]+$/.test(e)) return [Number(e)];
+  if (/^"[^"]*"$|^'[^']*'$/.test(e)) return [e.slice(1, -1)];
+  if (["size", "type", "inputMode"].includes(a.name)) {
+    const lits = [...e.matchAll(/"([^"]*)"|'([^']*)'/g)].map((m) => m[1] ?? m[2]);
+    return lits.length > 0 ? lits : null;
+  }
+  if (["value", "defaultValue"].includes(a.name)) return ["1500"];
+  if (["error"].includes(a.name)) return [true, "x"];
+  if (["disabled", "readOnly", "mono", "required", "autoFocus", "allowDecimal", "allowNegative"].includes(a.name)) return [true, false];
+  if (["prefix", "trailing"].includes(a.name)) return ["TZS"];
+  if (["min", "max", "step", "maxLength", "minLength"].includes(a.name)) return ["1"];
+  return ["x"];
+}
+const NEW_PROPS = new Set(["grouped", "attention"]);
+const sites: Array<{ file: string; line: number; props: Attr[] }> = [];
+const newPathSites: string[] = [];
+const unread: string[] = [];
+let kitFiles = 0;
+for (const f of walk(ROOT_DIR)) {
+  /* Comments out first: a JSX comment inside a tag ("the atom's prefix cell") would open a quote the tag never closes. */
+  const src = decomment(readFileSync(f, "utf8"));
+  const rel = relative(new URL("..", import.meta.url).pathname, f);
+  const imp = [...src.matchAll(/import\s*(?:type\s*)?\{([^}]*)\}\s*from\s*"(?:@\/components\/ui\/input|\.\/input)"/g)];
+  if (!imp.some((m) => /(^|[,\s])Input(\s*(,|$)|\s+as\s)/.test(m[1]))) continue;
+  if (rel === "src/components/ui/input.tsx") continue;
+  kitFiles++;
+  for (const m of src.matchAll(/<Input(?=[\s/>])/g)) {
+    const line = src.slice(0, m.index).split("\n").length;
+    const tag = openingTag(src, (m.index ?? 0) + 6);
+    const props = tag === null ? null : attrsOf(tag);
+    if (props === null) { unread.push(`${rel}:${line}`); continue; }
+    const named = props.filter((p): p is { name: string; literal?: string; expr?: string; bare?: boolean } => "name" in p);
+    if (named.some((p) => NEW_PROPS.has(p.name) || (p.name === "size" && (p.literal === "xl" || (p.expr ?? "").includes('"xl"'))))) {
+      newPathSites.push(`${rel}:${line}`);
+      continue;
+    }
+    sites.push({ file: rel, line, props });
+  }
+}
+/** Every configuration a site can hand the kit: the cross product of its attributes' values. */
+function configsOf(props: Attr[]): Array<Record<string, unknown>> {
+  let out: Array<Record<string, unknown>> = [{}];
+  for (const p of props) {
+    if ("spread" in p) continue;
+    const vs = valuesOf(p);
+    if (vs === null) continue;
+    out = out.flatMap((c) => vs.map((v) => ({ ...c, [p.name]: v })));
+  }
+  return out;
+}
+const configs = new Map<string, Record<string, unknown>>();
+for (const s of sites) for (const c of configsOf(s.props)) configs.set(JSON.stringify(c, (_k, v) => (typeof v === "function" ? "ƒ" : v)), c);
+console.log(`   A15 census: ${sites.length} classic <Input> call sites in ${kitFiles} files · ${configs.size} distinct configurations · ${newPathSites.length} on WP5's new path${newPathSites.length ? ` (${newPathSites.join(", ")})` : ""}`);
+eq("A15 · the census reads every <Input call site — none it could not parse", unread, []);
+eq("A15 · CONTROL — the census's population did not collapse (measured 2026-10-13: 174 sites, 53 files, 267 configurations; held at ≥ 170 · ≥ 50 · ≥ 200)",
+   sites.length >= 170 && kitFiles >= 50 && configs.size >= 200, true);
+
+function markupOf(kit: RenderKit, props: Record<string, unknown>, inField: boolean): string {
+  const box = R.createElement(kit.Input, props);
+  try {
+    return renderToStaticMarkup(inField ? R.createElement(kit.Field, { label: "L", hint: "h" }, box) : box);
+  } catch (e) { return `threw: ${(e as Error).message}`; }
+}
+/** The configurations whose markup differs between the two kits. */
+function differences(before: RenderKit, after: RenderKit): string[] {
+  const out: string[] = [];
+  for (const [key, props] of configs) {
+    for (const inField of [false, true]) {
+      if (markupOf(before, props, inField) !== markupOf(after, props, inField)) out.push(`${inField ? "in a Field · " : ""}${key}`);
+    }
+  }
+  return out;
+}
+const preKit = preSource === "" ? null : (await plantedKit([], preSource)) as unknown as RenderKit;
+const nowKit = (await plantedKit([])) as unknown as RenderKit;
+if (preKit !== null) {
+  const diff = differences(preKit, nowKit);
+  eq(`⭐ A15 · without WP5's props every classic configuration renders byte for byte as before WP5 — alone and inside a Field (${configs.size * 2} renders)`, diff.slice(0, 5), []);
+  eq("A15 · CONTROL — the shipped module and its in-memory copy render the same (so a red plant is the plant)", differences(KIT as unknown as RenderKit, nowKit), []);
+  const A15_PLANTS: Array<[string, Array<[string, string]>]> = [
+    ["a stray aria-invalid=\"false\" on every box while `attention` is unset", [["aria-invalid={errored || undefined}", "aria-invalid={errored || (attention === true ? undefined : false)}"]]],
+    ["the grouped path reached without its prop", [["const grouping = grouped === true;", "const grouping = grouped !== false;"]]],
+    ["the attention edge reached without its prop", [["const attentionEdge = attention === true && !errored && !locked;", "const attentionEdge = attention !== true && !errored && !locked;"]]],
+    ["the xl figure size leaking onto another size", [['{...(size === "xl" ? { style: { ...inputRest.style, ...xlStyle.figure } } : {})}', '{...(size !== "lg" ? { style: { ...inputRest.style, ...xlStyle.figure } } : {})}']]],
+  ];
+  for (const [what, plant] of A15_PLANTS) {
+    let verdict = "";
+    try { verdict = differences(preKit, (await plantedKit(plant)) as unknown as RenderKit).length > 0 ? "red" : "still equal — the census is blind to this defect"; }
+    catch (e) { verdict = `the plant could not be built: ${(e as Error).message}`; }
+    eq(`CONTROL · A15 · ${what} → the render census goes red`, verdict, "red");
+  }
+}
+
+// ── S8 WP5 · and RIGHT WHEN SET: what each new prop renders ─────────────────────────────────────────────────────
+{
+  type SetJudge = (kit: RenderKit) => Verdict;
+  const html = (kit: RenderKit, props: Record<string, unknown>) => markupOf(kit, props, false);
+  const SET: Record<string, { label: string; run: SetJudge }> = {
+    groupedControlled: {
+      label: "⭐ grouped + a controlled 5000 named \"stake\": the box shows 5,000 as a text box on the numeric keypad and carries no name; a hidden field named stake carries 5000",
+      run: (kit) => {
+        const h = html(kit, { grouped: true, value: "5000", name: "stake", onChange: NOOP });
+        const visible = /<input(?![^>]*type="hidden")[^>]*>/.exec(h)?.[0] ?? "";
+        const hidden = /<input[^>]*type="hidden"[^>]*>/.exec(h)?.[0] ?? "";
+        return {
+          pass: /value="5,000"/.test(visible) && /type="text"/.test(visible) && /inputmode="numeric"/i.test(visible) && !/name=/.test(visible)
+            && /name="stake"/.test(hidden) && /value="5000"/.test(hidden),
+          detail: h,
+        };
+      },
+    },
+    groupedDefault: {
+      label: "grouped + an uncontrolled default of 012500: the box shows 12,500 and the hidden field carries 12500",
+      run: (kit) => {
+        const h = html(kit, { grouped: true, defaultValue: "012500", name: "stake" });
+        return { pass: /<input(?![^>]*type="hidden")[^>]*value="12,500"/.test(h) && /type="hidden"[^>]*value="12500"|value="12500"[^>]*type="hidden"/.test(h), detail: h };
+      },
+    },
+    attention: {
+      label: "⭐ attention: the strong neutral edge (--input-attention), the caller's aria-describedby, and NO aria-invalid — never the error's red",
+      run: (kit) => {
+        const h = html(kit, { attention: true, "aria-describedby": "warn" });
+        return {
+          pass: h.includes("border-color:var(--input-attention)") && !h.includes("border-danger-500") && !/aria-invalid/.test(h) && /aria-describedby="warn"/.test(h) && !h.includes("--danger-wash"),
+          detail: h,
+        };
+      },
+    },
+    attentionUnderError: {
+      label: "attention under an error: the error wins — its red edge and aria-invalid=\"true\" — and the attention edge is not drawn",
+      run: (kit) => {
+        const h = html(kit, { attention: true, error: true });
+        return { pass: h.includes("border-danger-500") && /aria-invalid="true"/.test(h) && !h.includes("--input-attention"), detail: h };
+      },
+    },
+    sizeXl: {
+      label: "⭐ size xl: the ladder's top rung (--h-control-xl, 56px), the figure on --type-h2 (24px), the unit cell on --type-h4",
+      run: (kit) => {
+        const h = html(kit, { size: "xl", prefix: "TZS", mono: true, inputMode: "numeric" });
+        return { pass: /^<span[^>]*style="[^"]*height:var\(--h-control-xl\)/.test(h) && /<input[^>]*style="font-size:var\(--type-h2\)"/.test(h) && /style="font-size:var\(--type-h4\)"[^>]*>TZS/.test(h), detail: h };
+      },
+    },
+  };
+  for (const [name, j] of Object.entries(SET)) {
+    let v: Verdict;
+    try { v = j.run(KIT as unknown as RenderKit); } catch (e) { v = { pass: false, detail: `threw: ${(e as Error).message}` }; }
+    eq(`(S8 WP5) ${name} · ${j.label}`, v.pass ? true : v.detail, true);
+  }
+  const SET_PLANTS: Array<[string, string, Array<[string, string]>]> = [
+    ["groupedControlled", "the controlled digits shown ungrouped", [["? { name: undefined, value: groupedText(heldDigits) }", "? { name: undefined, value: heldDigits }"]]],
+    ["groupedControlled", "the name left on the visible box — a form posts 5,000", [["? { name: undefined, value: groupedText(heldDigits) }", "? { value: groupedText(heldDigits) }"]]],
+    ["groupedDefault", "the hidden field's digits not read from the default", [['const [ownDigits, setOwnDigits] = React.useState(() => (grouping ? groupedDigits(String(rest.defaultValue ?? "")) : ""));', 'const [ownDigits, setOwnDigits] = React.useState(() => "");']]],
+    ["attention", "attention drawn in the error's red", [['{ borderColor: "var(--input-attention)" }', '{ borderColor: "var(--danger-500)" }']]],
+    ["attention", "attention claiming aria-invalid", [["aria-invalid={errored || undefined}", "aria-invalid={errored || attention || undefined}"]]],
+    ["attentionUnderError", "attention drawn over an error", [["const attentionEdge = attention === true && !errored && !locked;", "const attentionEdge = attention === true;"]]],
+    ["sizeXl", "xl on a literal height off the ladder (the canvas's 60px)", [['box: { height: "var(--h-control-xl)" },', 'box: { height: "60px" },']]],
+  ];
+  for (const [judge, what, plant] of SET_PLANTS) {
+    let verdict = "";
+    try { verdict = SET[judge].run((await plantedKit(plant)) as unknown as RenderKit).pass ? "still passes — the judge is blind to this defect" : "red"; }
+    catch (e) { verdict = `the plant could not be built: ${(e as Error).message}`; }
+    eq(`CONTROL · (S8 WP5) ${what} → "${judge}" goes red on the planted copy`, verdict, "red");
   }
 }
 
