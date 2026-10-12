@@ -103,17 +103,33 @@ const byLength = live.slice().sort((a, b) => b.titleEn.length - a.titleEn.length
 const FULL_ID = byLength[0].id;
 const SHORT_ID = byLength[1].id;
 say(`  books: full → ${FULL_ID} (${JSON.stringify(byLength[0].titleEn)}), short → ${SHORT_ID}`);
+// ⛔ THE SAVE IS READ BACK, NOT ASSUMED (review of WP11, #3). One click and a sleep stood here: a refused or lost save
+// left every book:short cell measuring the FULL title clamped to two lines — shorter than a 100-code-point short title —
+// and passing. The form is filled and saved until a fresh load of the page shows all three words, at most three times;
+// then each cell also checks that card 1 draws the short title itself (`cardOneIs`).
 {
   const page = await admin.newPage();
-  await page.goto(`${BASE}/admin/markets/${SHORT_ID}`, { waitUntil: "domcontentloaded", timeout: 240_000 });
-  for (const [label, l] of [["English short title", "en"], ["Swahili short title", "sw"], ["Chinese short title · 中文", "zh"]]) {
-    const f = page.getByLabel(label, { exact: true });
-    await f.waitFor({ timeout: 120_000 });
-    await f.fill(SHORT[l]);
+  const FIELDS = [["English short title", "en"], ["Swahili short title", "sw"], ["Chinese short title · 中文", "zh"]];
+  const held = async () => {
+    await page.goto(`${BASE}/admin/markets/${SHORT_ID}`, { waitUntil: "load", timeout: 240_000 });
+    for (const [label] of FIELDS) await page.getByLabel(label, { exact: true }).waitFor({ timeout: 120_000 });
+    for (const [label, l] of FIELDS) if ((await page.getByLabel(label, { exact: true }).inputValue()) !== SHORT[l]) return false;
+    return true;
+  };
+  let saved = await held();
+  for (let attempt = 0; attempt < 3 && !saved; attempt++) {
+    for (const [label, l] of FIELDS) await page.getByLabel(label, { exact: true }).fill(SHORT[l]);
+    const save = page.getByRole("button", { name: "Save card wording" }).first();
+    // The button is drawn by the server before it is hydrated, and a press then does nothing: it is enabled once the form
+    // has seen the change (its own disabled state), so that is waited for first.
+    await page.waitForFunction((el) => !el.disabled, await save.elementHandle(), { timeout: 30_000 }).catch(() => {});
+    await save.click();
+    await page.getByText("Couldn't save the card wording").first().waitFor({ timeout: 5_000 }).then(() => say("  NOTE the short-title save was refused once")).catch(() => {});
+    await page.waitForTimeout(1500);
+    saved = await held();
   }
-  await page.getByRole("button", { name: "Save card wording" }).first().click();
-  await page.waitForTimeout(3000);
   await page.close();
+  if (!saved) { console.error(`REFUSED — the short titles on ${SHORT_ID} did not save in three tries: every book:short cell would measure the full title`); process.exit(2); }
 }
 /** Card 1 is `id`: its betting closes first (the home orders by when betting closes), the other book's later. */
 async function makeCardOne(id, other) {
@@ -152,8 +168,17 @@ async function openHome(page) {
   await page.addStyleTag({ content: HIDE_MARKER_CSS });
   return marker ? Math.round(marker.height * 10) / 10 : null;
 }
+/** Card 1's row id, whether it draws its FULL title (`kp-jcard__title--full`) and the title's words, hints removed. */
 async function cardOneIs(page) {
-  return page.evaluate((sel) => document.querySelector(sel)?.getAttribute("data-row-id") ?? null, SEL.card).catch(() => null);
+  return page.evaluate((sel) => {
+    const card = document.querySelector(sel);
+    const title = card?.querySelector(".kp-jcard__title");
+    return card ? {
+      id: card.getAttribute("data-row-id"),
+      full: !!title?.classList.contains("kp-jcard__title--full"),
+      words: (title?.textContent ?? "").replace(/[\u200B\u00AD\u2060\uFEFF]/g, "").replace(/\s+/g, " ").trim(),
+    } : null;
+  }, SEL.card).catch(() => null);
 }
 /** Raises the cell's bars on an open page; returns a note when one could not be raised (the verdict reads visibility). */
 async function raiseBars(page, cell, mine) {
@@ -189,7 +214,10 @@ async function runCell(cell, { plant = null } = {}) {
   } catch (e) { note = String(e?.message ?? e).split("\n")[0].slice(0, 160); }
   let j = judge(cell, m);
   const wantId = cell.book === "full" ? FULL_ID : SHORT_ID;
-  if (cardOne !== wantId) j = { ...j, verdict: "INVALID", invalid: [...j.invalid, `card 1 is ${cardOne}, not the ${cell.book} book's ${wantId}`] };
+  if (cardOne?.id !== wantId) j = { ...j, verdict: "INVALID", invalid: [...j.invalid, `card 1 is ${cardOne?.id ?? null}, not the ${cell.book} book's ${wantId}`] };
+  // The book's title, drawn: the short book's own saved words in the cell's language, the full book's clamped full title.
+  else if (cell.book === "short" && (cardOne.full || cardOne.words !== SHORT[cell.locale])) j = { ...j, verdict: "INVALID", invalid: [...j.invalid, `card 1 does not draw the saved short title (${cardOne.full ? "its full title" : JSON.stringify(cardOne.words.slice(0, 60))})`] };
+  else if (cell.book === "full" && !cardOne.full) j = { ...j, verdict: "INVALID", invalid: [...j.invalid, "card 1 does not draw its full title"] };
   // A5 (a): the post-flip page is measured, so the preview marker must have been there before it was hidden.
   if (marker === null) j = { ...j, verdict: "INVALID", invalid: [...j.invalid, "no preview marker on the page before it was hidden (the pass did not hold)"] };
   let planted = null;

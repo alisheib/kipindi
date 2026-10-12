@@ -876,11 +876,13 @@ A strict Playwright gauntlet guards releases: `scripts/pre-deploy-live-check.mjs
   staff preview pass minted on that local server (S6 WP12); without it that
   control prints a SKIP, never a pass.
 - `BASE=https://kipindi-production.up.railway.app npm run qa:live` — read-only
-  against prod EXCEPT section [E3] (S6 WP12): unless `/api/health` says the new
-  journey is ACTIVE (an unreadable answer counts as not ACTIVE), it signs the
-  QA player `mobile01` in ONCE through
-  the real form (`QA_MOBILE01_PASSWORD` in `.env.qa.local` at the checkout root).
-  A missing or wrong password stops the run (exit 1) and is never retried — each
+  against prod. Section [E3] (S6 WP12) signs the QA player `mobile01` in ONCE
+  through the real form only when `QA_SIGNED_IN=mobile01` is set as well (S7-PLAN
+  A23 item 2) and `/api/health` does not say the new journey is ACTIVE (an
+  unreadable answer counts as not ACTIVE). Without the opt-in, or without
+  `QA_MOBILE01_PASSWORD` in `.env.qa.local` at the checkout root, [E3] prints NOT
+  MEASURED — neither a pass nor a failure — and the form is never touched.
+  A wrong password stops the run (exit 1) and is never retried — each
   wrong try counts toward the account's lockout (five, then thirty minutes). The
   sign-in writes a session that ENDS any other `mobile01` session, so run it only
   while no other drive uses `mobile01`. The local-only authed section ([F]) is

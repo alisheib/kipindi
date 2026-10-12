@@ -52,7 +52,7 @@
  * EXIT 0 every line passed · 1 a FAIL · 2 REFUSED · 3 no FAIL, but something BLOCKED or NOT MEASURED (not proven).
  */
 import { chromium } from "playwright";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { request as httpRequest } from "node:http";
@@ -246,14 +246,22 @@ if (run("positive")) {
   // journey-home-ghost is in the list because this control found it in a pass holder's served / (A23 item 1), so it is
   // required there: an id the list keeps must keep appearing, or its absence checks prove nothing.
   const WANT = { "/": ["journey-home", "journey-howto-card", "journey-card", "journey-home-ghost"], "/live": ["journey-card"], "/results": ["journey-card"] };
+  // ⛔ An absence counts only on a page that was READ: HTTP 200 and the app's own shell (`#main-content`, the landmark
+  // AppShell draws on every route). An error page carries none of the ids and would otherwise pass (review of WP11, note 5).
+  const read = async (path, cookie) => {
+    const r = await fetch(`${BASE}${path}`, { headers: { cookie } });
+    const text = await r.text();
+    return { status: r.status, text, shell: text.includes('id="main-content"') };
+  };
   for (const [path, want] of Object.entries(WANT)) {
-    const withPass = await (await fetch(`${BASE}${path}`, { headers: { cookie: `${PASS.name}=${PASS.value}; ${LOCALE_COOKIE}=sw` } })).text();
-    const without = await (await fetch(`${BASE}${path}`, { headers: { cookie: `${LOCALE_COOKIE}=sw` } })).text();
-    const found = journeyHomeIdsIn(withPass), leaked = journeyHomeIdsIn(without);
-    ok(`positive · ${path} with a pass carries ${want.join(", ")}`, want.every((x) => found.includes(x)), `found ${found.join(", ") || "none"}`);
-    ok(`positive · ${path} without a pass carries none of ${JOURNEY_HOME_TESTIDS.join(", ")}`, leaked.length === 0, `found ${leaked.join(", ")}`);
+    const withPass = await read(path, `${PASS.name}=${PASS.value}; ${LOCALE_COOKIE}=sw`);
+    const without = await read(path, `${LOCALE_COOKIE}=sw`);
+    const found = journeyHomeIdsIn(withPass.text), leaked = journeyHomeIdsIn(without.text);
+    ok(`positive · ${path} with a pass carries ${want.join(", ")}`, withPass.status === 200 && want.every((x) => found.includes(x)), `HTTP ${withPass.status} · found ${found.join(", ") || "none"}`);
+    ok(`positive · ${path} without a pass carries none of ${JOURNEY_HOME_TESTIDS.join(", ")}`, without.status === 200 && without.shell && leaked.length === 0,
+      without.status !== 200 || !without.shell ? `HTTP ${without.status}${without.shell ? "" : ", no app shell"}: the page was not read, so nothing was checked` : `found ${leaked.join(", ")}`);
     if (path === "/") {
-      ghostListed = /data-testid(?:=|\\?":)\\?"journey-home-ghost\\?"/.test(withPass);
+      ghostListed = /data-testid(?:=|\\?":)\\?"journey-home-ghost\\?"/.test(withPass.text);
       console.log(`    · journey-home-ghost in a pass holder's served / : ${ghostListed ? "FOUND (listed, A23 item 1)" : "NOT FOUND — it is in the list, so the line above fails: take it out of the list only with the §0j record changed"}`);
     }
   }
@@ -356,8 +364,15 @@ if (run("home")) {
       }, [SEL.title, SEL.howto]);
       const served = res ? await res.text().catch(() => "") : "";
       ok(`home ${locale} 1280 · the headline is ONE line, left of the How-to card (A16 item 5)`, !!head?.oneLine && !!head?.left, JSON.stringify(head));
+      // ⛔ Read inside the page's own h1 (the ghost's copy is a <p>), between the first sentence's </span> and the <br>:
+      // one space after a Latin full stop, nothing at all after 。 (review of WP11, note 7 — a match anywhere in the
+      // document, or a 。 with anything after it, proved nothing).
+      const h1 = served.match(/<h1\b[^>]*\bkp-jhome__title\b[^>]*>([\s\S]*?)<\/h1>/)?.[1] ?? null;
+      const gap = h1?.match(/<\/span>((?:<!-- -->| )*)<br\b/)?.[1]?.replace(/<!-- -->/g, "") ?? null;
+      const stop = h1?.match(/([.。])<\/span>(?:<!-- -->| )*<br\b/)?.[1] ?? null;
       ok(`home ${locale} 1280 · the served headline holds the sentence gap (a space after "." in sw and en, none after 。)`,
-        locale === "zh" ? /。<\/span><br/.test(served) || /。<\/span><!-- -->/.test(served) || served.includes("。</span>") : /\.<\/span> <br|\.<\/span><!-- --> <!-- --><br|\.<\/span> /.test(served));
+        h1 !== null && (locale === "zh" ? stop === "。" && gap === "" : stop === "." && gap === " "),
+        h1 === null ? "no h1.kp-jhome__title in the served page" : `stop ${JSON.stringify(stop)} · gap ${JSON.stringify(gap)} · ${h1.slice(0, 160)}`);
     }
     if (w === 768 || w === 1280) {
       const rows = await page.evaluate((sel) => {
@@ -431,7 +446,17 @@ if (run("routes")) {
         await chips.nth(i).evaluate((el) => el.closest("[data-testid=\"journey-card\"]").scrollIntoView({ block: "center" })); await page.waitForTimeout(200);
         await tile(page, `/results sw 360 settled ${word}`);
       }
-      ok(`routes /results sw 360 · settled cards drawn with their outcome, each tiled (${seen.join(", ") || "none"})`, seen.length >= 2, `${seen.length} outcome(s)`);
+      // ⛔ ALL THREE, BY THEIR OWN WORDS (review of WP11, note 8: two of three passed, so a missing void card did too). The
+      // words are the Swahili dictionary's `common.yes`, `common.no` and `market.statusVoid` (`outcomeWord`, side-label.ts),
+      // checked against the dictionary file first, so a renamed word fails this line instead of hiding an outcome.
+      const SW_OUTCOME = { YES: "NDIO", NO: "HAPANA", VOID: "Batili" };
+      const dictText = readFileSync(new URL("../src/lib/i18n-dict.ts", import.meta.url), "utf8");
+      const swBlock = dictText.slice(dictText.indexOf("\n  sw: {"), dictText.indexOf("\n  zh: {"));
+      const wordsHold = swBlock.includes(`yes: "${SW_OUTCOME.YES}", no: "${SW_OUTCOME.NO}"`) && swBlock.includes(`statusVoid: "${SW_OUTCOME.VOID}"`);
+      const drawnKinds = Object.entries(SW_OUTCOME).filter(([, word]) => seen.some((x) => x.toLowerCase() === word.toLowerCase())).map(([k]) => k);
+      ok(`routes /results sw 360 · settled cards drawn with each outcome, YES, NO and void, each tiled (${seen.join(", ") || "none"})`,
+        wordsHold && drawnKinds.length === 3,
+        wordsHold ? `drawn: ${drawnKinds.join(", ") || "none"}` : "the drive's Swahili outcome words no longer match i18n-dict.ts: nothing was checked");
     }
     await ctx.close();
   }
@@ -466,8 +491,17 @@ if (run("live")) {
     await open(page, "/live", { wait: SEL.card });
     if (locale === "sw" && w === 360) {
       const ud = page.locator(`${SEL.card} a[href^="/updown/"]`);
-      if (await ud.count()) { await ud.first().evaluate((el) => el.scrollIntoView({ block: "center" })); await page.waitForTimeout(200); await tile(page, "/live sw 360 Up & Down"); ok("live · an Up & Down row opens its round", true); }
-      else blockedLine("live · an Up & Down row", "no running round on this server");
+      if (await ud.count()) {
+        await ud.first().evaluate((el) => el.scrollIntoView({ block: "center" })); await page.waitForTimeout(200); await tile(page, "/live sw 360 Up & Down");
+        // ⛔ OPENS, NOT "HAS A LINK" (review of WP11, note 8): the row is pressed and must land on its own round's address.
+        const to = new URL((await ud.first().getAttribute("href")) ?? "/", BASE).pathname;
+        const live = await hydrated(ud.first());
+        if (live) await Promise.all([page.waitForURL((u) => new URL(u).pathname === to, { timeout: 120_000 }).catch(() => {}), ud.first().click()]);
+        const at = new URL(page.url()).pathname;
+        ok("live · an Up & Down row opens its round (the press lands on its /updown/<round>)", live && /^\/updown\/[^/]+$/.test(to) && at === to,
+          !live ? "the row's link never hydrated" : `pressed ${to}, landed on ${at}`);
+        await open(page, "/live", { wait: SEL.card });
+      } else blockedLine("live · an Up & Down row", "no running round on this server");
       const count = await page.locator("[data-result-count]").first().getAttribute("data-result-count").then(Number).catch(() => NaN);
       for (let i = 0; i < 40; i++) {
         const more = page.locator(SEL.more).first();
@@ -506,11 +540,14 @@ if (run("tafuta")) {
 
 // ── ghost · the home's ghost against the landed page (A17 item 3) ───────────────────────────────────────────────────
 const GHOST_PROBE = (sel) => {
-  window.__ghost = null; window.__ghostFrames = 0;
+  // `__ghostPresent` counts the frames the ghost is in the page on `/` at all, `__ghostFrames` those it is DRAWN in: the
+  // hidden-ghost plant and the classic control are told apart from a hop that never reached `/` (review of WP11, #1-#2).
+  window.__ghost = null; window.__ghostFrames = 0; window.__ghostPresent = 0;
   const parts = ["howto", "headline", "chips", "card"];
   const tick = () => {
     const g = document.querySelector(sel.ghost);
     if (g && location.pathname === "/") {
+      window.__ghostPresent++;
       const b = g.getBoundingClientRect();
       if (b.height > 0) {
         window.__ghostFrames++;
@@ -536,21 +573,34 @@ async function ghostHop({ w, h, locale, red = null, pass = true }) {
   await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: (400 * 1024) / 8, uploadThroughput: (400 * 1024) / 8 });
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
   await page.evaluate(GHOST_PROBE, SEL);
-  const link = w >= 1024 ? page.locator(`${SEL.header} a[href="/"]:not(.kp-jhdr__home)`).first() : page.locator(`${SEL.rail} a[href="/"]`).first();
-  if (!(await link.count())) { await ctx.close(); return { error: "no visible journey link to /" }; }
-  if (!(await hydrated(link))) { await ctx.close(); return { error: "the journey link to / never hydrated: a press would be a document load" }; }
+  // ⛔ THE CLASSIC CONTROL HOPS TOO (review of WP11, #1). Without a pass `/live` has no journey header or tabs, so the
+  // control used to stop at "no visible journey link" before any hop — and passed on that error. A classic reader's own
+  // soft hop to `/` is the top bar's logo link (top-app-bar.tsx); a pass holder's is the journey's header link from 1024
+  // and the tabs' below.
+  const which = pass ? "journey" : "classic";
+  const link = !pass ? page.locator('header a[href="/"][aria-label]').first()
+    : w >= 1024 ? page.locator(`${SEL.header} a[href="/"]:not(.kp-jhdr__home)`).first() : page.locator(`${SEL.rail} a[href="/"]`).first();
+  if (!(await link.count())) { await ctx.close(); return { error: `no visible ${which} link to /` }; }
+  if (!(await hydrated(link))) { await ctx.close(); return { error: `the ${which} link to / never hydrated: a press would be a document load` }; }
   try { await link.click({ timeout: 60_000 }); }
-  catch (e) { await ctx.close(); return { error: `the click on the journey link to / failed: ${String(e?.message ?? e).split("\n")[0].slice(0, 140)}` }; }
-  await page.locator(SEL.home).first().waitFor({ timeout: 180_000 }).catch(() => {});
-  await page.locator(SEL.rail).first().waitFor({ state: "visible", timeout: 60_000 }).catch(() => {});
+  catch (e) { await ctx.close(); return { error: `the click on the ${which} link to / failed: ${String(e?.message ?? e).split("\n")[0].slice(0, 140)}` }; }
+  if (pass) {
+    await page.locator(SEL.home).first().waitFor({ timeout: 180_000 }).catch(() => {});
+    await page.locator(SEL.rail).first().waitFor({ state: "visible", timeout: 60_000 }).catch(() => {});
+  } else {
+    await page.waitForURL((u) => new URL(u).pathname === "/", { timeout: 180_000 }).catch(() => {});
+    await page.locator("#main-content").first().waitFor({ timeout: 180_000 }).catch(() => {});
+  }
   await page.waitForTimeout(800);
-  const ghost = await page.evaluate(() => ({ g: window.__ghost, frames: window.__ghostFrames }));
+  // `present` is undefined after a document load (a new window, the probe gone): the hop was not the soft one measured.
+  const ghost = await page.evaluate(() => ({ g: window.__ghost, frames: window.__ghostFrames, present: window.__ghostPresent }));
+  const path = new URL(page.url()).pathname;
   const landed = await page.evaluate((sel) => {
     const at = (q) => { const e = document.querySelector(q); const r = e?.getBoundingClientRect(); return r ? { x: r.left, y: r.top + scrollY } : null; };
     return { howto: at(sel.howto), headline: at(sel.title), chips: at(sel.chips), card: at(`${sel.home} ${sel.card}`) };
   }, SEL);
   await ctx.close();
-  return { ghost, landed };
+  return { ghost, landed, path };
 }
 if (run("ghost")) {
   console.log("\nghost · a throttled hop from journey /live to / (A17 item 3)");
@@ -562,15 +612,24 @@ if (run("ghost")) {
     const off = ["howto", "headline", "chips", "card"].map((p) => [p, r.ghost.g[p] && r.landed[p] ? Math.max(Math.abs(r.ghost.g[p].x - r.landed[p].x), Math.abs(r.ghost.g[p].y - r.landed[p].y)) : null]);
     ok(`ghost ${w} ${locale} · every part lands within ±2px of its ghost (${r.ghost.frames} ghost frames)`, off.every(([, d]) => d !== null && d <= 2), JSON.stringify(off));
   }
+  // The classic control counts only when its hop LANDED on `/` as the same soft hop (the probe still there): no error, the
+  // address `/`, the ghost never in the page (review of WP11, #1).
   const control = await ghostHop({ w: 390, h: 844, locale: "sw", pass: false });
-  ok("ghost · the classic control (the same hop, no pass) shows no home ghost", !control?.ghost?.g, JSON.stringify(control?.ghost ?? control));
+  ok("ghost · the classic control (the same throttled hop, by the classic top bar's link, no pass) lands on / and never mounts the home ghost",
+    !control.error && control.path === "/" && control.ghost?.present === 0 && !control.ghost?.g,
+    control.error ?? JSON.stringify({ path: control.path, ghost: control.ghost }));
   const moved = await ghostHop({ w: 390, h: 844, locale: "en", red: '[data-ghost-part="card"] { margin-top: 40px !important; }' });
-  if (moved?.ghost?.g) {
+  if (moved.error) ok("ghost · RED: the moved-card hop", false, moved.error);
+  else if (moved.ghost?.g) {
     const d = moved.ghost.g.card && moved.landed.card ? Math.abs(moved.ghost.g.card.y - moved.landed.card.y) : null;
     ok("ghost · RED: a ghost card moved 40px is reported off (the drive can fail)", d !== null && d > 2, `${d}px`);
   } else nmLine("ghost · RED: the moved card", "no ghost frame was caught on the planted hop");
+  // ⛔ The hidden ghost counts only on a hop that landed on the home with the ghost IN the page: then no drawn frame proves
+  // the probe reads a drawn ghost, not a mounted one. A hop that errored proves nothing (review of WP11, #2).
   const hidden = await ghostHop({ w: 390, h: 844, locale: "en", red: `${SEL.ghost} { display: none !important; }` });
-  ok("ghost · RED: a hidden ghost reports no ghost frame", !hidden?.ghost?.g, JSON.stringify(hidden?.ghost ?? hidden));
+  if (hidden.error || hidden.path !== "/" || !hidden.landed?.card) ok("ghost · RED: the hidden-ghost hop landed on the home", false, hidden.error ?? `at ${hidden.path}, the home's card ${hidden.landed?.card ? "drawn" : "never drawn"}`);
+  else if (!hidden.ghost?.present) nmLine("ghost · RED: a hidden ghost", "the ghost never mounted on the planted hop (the home's read resolved before the first flush)");
+  else ok("ghost · RED: a ghost in the page but hidden reports no ghost frame", !hidden.ghost.g && hidden.ghost.frames === 0, JSON.stringify(hidden.ghost));
 }
 
 // ── tap · from the home to a question page: which loading picture (A19 item 3) ──────────────────────────────────────

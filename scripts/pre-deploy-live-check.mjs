@@ -2,7 +2,8 @@
  * pre-deploy-live-check — strict adversarial browser gauntlet.
  *
  *   BASE=http://localhost:3009 node scripts/pre-deploy-live-check.mjs   # full (authed + mutating)
- *   BASE=https://kipindi-production.up.railway.app node scripts/...      # prod: read-only but for [E3]'s one QA-player sign-in
+ *   BASE=https://kipindi-production.up.railway.app node scripts/...      # prod: read-only
+ *   QA_SIGNED_IN=mobile01 BASE=https://50pick.tz node scripts/...         # prod + [E3]'s one QA-player sign-in
  *
  * Rules: ANY console error (minus React dev eval noise), page error, Next.js
  * error overlay, broken internal link, layout overflow, clipped date segment,
@@ -15,7 +16,8 @@
  * ⭐ S6 WP12: short of ACTIVE, [E2] also holds `/` and `/markets` free of every trace of the journey SHELL for a signed-out
  * visitor, and `/account` to the not-found page, after a LOCAL control that its readers see the shell when it is served;
  * [E3] asks the same of a SIGNED-IN player — on production the QA player `mobile01` through the real form (never an
- * admin; one attempt: a failed sign-in stops the run), locally the demo player through /auth/demo.
+ * admin; one attempt: a failed sign-in stops the run), and only when QA_SIGNED_IN=mobile01 is set (S7-PLAN A23 item 2:
+ * without it, or without the password, [E3] prints NOT MEASURED); locally the demo player through /auth/demo.
  * ⭐ S7 WP11 (A23 items 1-2): both also read `/live`, `/results` and one question page ([E3] `/watchlist` as well),
  * each free of the shell's traces and of S7's own ids (`live/journey-home-ids.mjs`), and `/markets` is the board.
  */
@@ -652,7 +654,11 @@ const journeyRollout = await (async () => {
  * second wrong attempt counts toward the account's lockout (five, then thirty minutes), and every other lane's
  * production drive signs in as this player too. Locally the lockout does not apply, so a failed demo sign-in is
  * recorded as a failure and the run goes on: [F] still reports. The password is QA_MOBILE01_PASSWORD in
- * `.env.qa.local` at the repository root, read only here; a missing one stops the run before the form is touched.
+ * `.env.qa.local` at the repository root, read only here.
+ * ⭐ OPTED INTO, NEVER ASSUMED (S7-PLAN A23 item 2). On a non-local BASE the QA player is signed in only when
+ * QA_SIGNED_IN=mobile01 is set. Without it — or with it and no password on this machine — [E3] prints NOT MEASURED with
+ * the reason, and the form is never touched: neither a pass nor a failure. So predeploy's qa:live (always local) and
+ * every other lane's production run are unchanged, and no run ends a concurrent mobile01 drive's session unasked.
  * ⚠️ WHAT THE PRODUCTION RUN WRITES: this one sign-in, and only what any password sign-in writes — mobile01's session
  * row (which ENDS any other mobile01 session: one session per account, so run it while no other drive is using
  * mobile01), two audit rows (`user.login.password`, and `session.created` naming the session it ended), its
@@ -664,11 +670,15 @@ const journeyRollout = await (async () => {
  * the route named (the browser ended there, at HTTP 200: a 404 or a redirect is another page) and as a signed-in
  * player's page (the balance capsule there, no session-ended notice); an unread page is not a clean page.
  */
-console.log("\n[E3] New journey shell — absent for the signed-in QA player (production: mobile01 through the real form)");
-if (journeyRollout.state !== "ACTIVE") {
+console.log("\n[E3] New journey shell — absent for the signed-in QA player (production: mobile01 through the real form, with QA_SIGNED_IN=mobile01)");
+const E3_OPTED = LOCAL || process.env.QA_SIGNED_IN === "mobile01";
+if (journeyRollout.state !== "ACTIVE" && !E3_OPTED) {
+  console.log(`  ⚠ NOT MEASURED  [E3] — on a non-local BASE the QA player is signed in only when QA_SIGNED_IN=mobile01 is set (S7-PLAN A23 item 2): one session per account, so an unasked sign-in would end another lane's mobile01 session. Neither a pass nor a failure.`);
+} else if (journeyRollout.state !== "ACTIVE") {
   const who = LOCAL ? "signed in (demo PLAYER)" : "signed in (QA player mobile01)";
   let player = null;
   let why = "";
+  let noSecret = "";
   try {
     if (LOCAL) {
       const c = await enContext({ viewport: { width: 390, height: 844 } });
@@ -681,51 +691,56 @@ if (journeyRollout.state !== "ACTIVE") {
       process.env.LIVE_BASE = BASE;
       const harness = await import("./live/harness.mjs");
       if (harness.BASE !== BASE) throw new Error(`the harness would sign in on ${harness.BASE} while this run measures ${BASE}`);
-      // Throws before any request when the password is not on this machine: the form is never touched without it.
-      harness.qaEnv(harness.PERSONA.mobile01.secret);
-      player = await harness.loginOnce(browser, "mobile01");
+      // No password on this machine is NOT MEASURED (A23 item 2), never a failure: the form is never touched without it.
+      try { harness.qaEnv(harness.PERSONA.mobile01.secret); }
+      catch (e) { noSecret = String(e?.message ?? e).split("\n")[0].slice(0, 200); }
+      if (!noSecret) player = await harness.loginOnce(browser, "mobile01");
     }
   } catch (e) {
     why = String(e?.message ?? e).split("\n")[0].slice(0, 200);
   }
-  const signedIn = !!player && player.cookies.some((c) => c.name === "kp_session" && !!c.value);
-  ok(`${who}: the sign-in held (a kp_session cookie)`, signedIn, why ? `(${why})` : signedIn ? "" : "(no kp_session cookie)");
-  if (!signedIn && !LOCAL) {
-    console.log(`\n⛔ STOPPED — the QA player's sign-in failed, and on production a failed sign-in stops the run: it is never tried twice (a second wrong attempt counts toward mobile01's lockout). Nothing after [E3] ran.`);
-    await browser.close();
-    console.log(`\n❌ FAILURES — ${pass} passed, ${failures.length} failed`);
-    console.log("\nFAILED:\n" + failures.map((f) => "  - " + f).join("\n"));
-    process.exit(1);
-  }
-  if (signedIn) {
-    const ctx = await browser.newContext({ storageState: player, viewport: { width: 390, height: 844 } });
-    await ctx.addCookies([{ name: "kp-locale", value: "en", url: BASE }]);
-    // S6's two, then S7's (WP11, A23 item 2): /live, /results, /watchlist (edge-protected: a signed-in player's own
-    // page, never the sign-in) and the same question page [E2] read.
-    for (const route of [...JOURNEY_SHELL_ROUTES, ...JOURNEY_S7_ROUTES, "/watchlist", ...(S7_QUESTION ? [S7_QUESTION] : [])]) {
-      const d = await readDocument(ctx, route);
-      const v = d.view;
-      const read = !!v && d.raw.length > 0 && v.shell && d.status === 200 && d.final === route;
-      const found = [...new Set([...(v?.traces ?? []), ...d.traces])];
-      ok(`${who}: ${route} carries no trace of the journey shell, in the page or in the bytes sent (rollout ${journeyRollout.state ?? "UNKNOWN"})`,
-        read && v.signedIn && found.length === 0,
-        !read ? `(HTTP ${d.status} at ${d.final || "?"}${d.err ? `: ${d.err}` : ""} — the page named was not read, or carried no app header: nothing was checked)`
-          : !v.signedIn ? "(not a signed-in page: no balance capsule, or the session-ended notice — this was not the player's page)"
-          : found.length ? `(found ${found.join(", ")} for a player who holds no preview pass)` : "");
-      const s7 = [...new Set([...journeyHomeIdsIn(d.raw), ...(v?.traces ?? []).filter((x) => JOURNEY_HOME_TESTIDS.includes(x))])];
-      ok(`${who}: ${route} carries none of S7's journey ids, in the page or in the bytes sent`, read && v.signedIn && s7.length === 0,
-        !read || !v.signedIn ? "(the page named was not read as the player's — the line above says why — so nothing was checked)"
-          : `(found ${s7.join(", ")} for a player who holds no preview pass)`);
-      if (route === "/markets") {
-        ok(`${who}: /markets is the classic board (its grid there)`, read && d.raw.includes(BOARD_GRID), !read ? "(the page was not read)" : `(no ${BOARD_GRID} in the bytes)`);
-      }
-      ok(`${who}: ${route} no uncaught page error`, d.errs.length === 0, d.errs.slice(0, 2).join(" | "));
-    }
-    if (!S7_QUESTION) ok(`${who}: the question page — none was found on /markets by [E2], so it was not read`, false);
-    await accountNotFound(ctx, who, true);
-    await ctx.close();
+  if (noSecret) {
+    console.log(`  ⚠ NOT MEASURED  [E3] — QA_SIGNED_IN=mobile01 is set, but the QA player's password is not on this machine (${noSecret}): the form was not touched. Neither a pass nor a failure (S7-PLAN A23 item 2).`);
   } else {
-    console.log(`  ⚠ [E3]'s page checks NOT run — the demo sign-in did not hold (the failure above). Locally that stops nothing: [F] runs next and asks its own signed-in pages.`);
+    const signedIn = !!player && player.cookies.some((c) => c.name === "kp_session" && !!c.value);
+    ok(`${who}: the sign-in held (a kp_session cookie)`, signedIn, why ? `(${why})` : signedIn ? "" : "(no kp_session cookie)");
+    if (!signedIn && !LOCAL) {
+      console.log(`\n⛔ STOPPED — the QA player's sign-in failed, and on production a failed sign-in stops the run: it is never tried twice (a second wrong attempt counts toward mobile01's lockout). Nothing after [E3] ran.`);
+      await browser.close();
+      console.log(`\n❌ FAILURES — ${pass} passed, ${failures.length} failed`);
+      console.log("\nFAILED:\n" + failures.map((f) => "  - " + f).join("\n"));
+      process.exit(1);
+    }
+    if (signedIn) {
+      const ctx = await browser.newContext({ storageState: player, viewport: { width: 390, height: 844 } });
+      await ctx.addCookies([{ name: "kp-locale", value: "en", url: BASE }]);
+      // S6's two, then S7's (WP11, A23 item 2): /live, /results, /watchlist (edge-protected: a signed-in player's own
+      // page, never the sign-in) and the same question page [E2] read.
+      for (const route of [...JOURNEY_SHELL_ROUTES, ...JOURNEY_S7_ROUTES, "/watchlist", ...(S7_QUESTION ? [S7_QUESTION] : [])]) {
+        const d = await readDocument(ctx, route);
+        const v = d.view;
+        const read = !!v && d.raw.length > 0 && v.shell && d.status === 200 && d.final === route;
+        const found = [...new Set([...(v?.traces ?? []), ...d.traces])];
+        ok(`${who}: ${route} carries no trace of the journey shell, in the page or in the bytes sent (rollout ${journeyRollout.state ?? "UNKNOWN"})`,
+          read && v.signedIn && found.length === 0,
+          !read ? `(HTTP ${d.status} at ${d.final || "?"}${d.err ? `: ${d.err}` : ""} — the page named was not read, or carried no app header: nothing was checked)`
+            : !v.signedIn ? "(not a signed-in page: no balance capsule, or the session-ended notice — this was not the player's page)"
+            : found.length ? `(found ${found.join(", ")} for a player who holds no preview pass)` : "");
+        const s7 = [...new Set([...journeyHomeIdsIn(d.raw), ...(v?.traces ?? []).filter((x) => JOURNEY_HOME_TESTIDS.includes(x))])];
+        ok(`${who}: ${route} carries none of S7's journey ids, in the page or in the bytes sent`, read && v.signedIn && s7.length === 0,
+          !read || !v.signedIn ? "(the page named was not read as the player's — the line above says why — so nothing was checked)"
+            : `(found ${s7.join(", ")} for a player who holds no preview pass)`);
+        if (route === "/markets") {
+          ok(`${who}: /markets is the classic board (its grid there)`, read && d.raw.includes(BOARD_GRID), !read ? "(the page was not read)" : `(no ${BOARD_GRID} in the bytes)`);
+        }
+        ok(`${who}: ${route} no uncaught page error`, d.errs.length === 0, d.errs.slice(0, 2).join(" | "));
+      }
+      if (!S7_QUESTION) ok(`${who}: the question page — none was found on /markets by [E2], so it was not read`, false);
+      await accountNotFound(ctx, who, true);
+      await ctx.close();
+    } else {
+      console.log(`  ⚠ [E3]'s page checks NOT run — the demo sign-in did not hold (the failure above). Locally that stops nothing: [F] runs next and asks its own signed-in pages.`);
+    }
   }
 } else {
   console.log(`  ⚠ SKIP  [E3] — /api/health says simpleJourney.state = ACTIVE: the new journey is the product for everyone, so nobody is signed in to look for its absence ${journeyRollout.detail}. NOT measured by this run.`);

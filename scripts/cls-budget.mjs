@@ -77,6 +77,8 @@ const BUDGET = 0.05;
 const SINGLE = 0.02;
 
 const failures = [];
+/** The failures that are a shift over a budget: in RED mode only these prove the control. */
+let shiftFailures = 0;
 const b = await chromium.launch();
 
 /**
@@ -177,9 +179,9 @@ for (const reader of READERS) for (const path of reader.routes) {
 
   // ⛔ a route that never grew did not exercise the thing being measured
   if (r.docH < 1200) failures.push(`${cell} the document is only ${r.docH}px — too short to have exercised a load shift`);
-  if (r.cls > BUDGET) failures.push(`${cell} CLS ${r.cls} over the ${BUDGET} budget`);
+  if (r.cls > BUDGET) { failures.push(`${cell} CLS ${r.cls} over the ${BUDGET} budget`); shiftFailures++; }
   const worst = r.shifts[0];
-  if (worst && worst.v > SINGLE) failures.push(`${cell} one shift of ${worst.v} (over ${SINGLE}) — ${worst.el} ${worst.prev} -> ${worst.cur}`);
+  if (worst && worst.v > SINGLE) { failures.push(`${cell} one shift of ${worst.v} (over ${SINGLE}) — ${worst.el} ${worst.prev} -> ${worst.cur}`); shiftFailures++; }
   console.log(`  ${cell.padEnd(18)} CLS ${String(r.cls).padEnd(7)} worst ${worst ? worst.v + " " + worst.el : "none"}  (main min-height ${r.mainMinH}, doc ${r.docH}px)`);
   await ctx.close();
 }
@@ -190,11 +192,13 @@ if (failures.length) for (const f of failures) console.log("  FAIL " + f);
 else console.log("  no failures");
 
 if (RED) {
-  if (!failures.length) {
-    console.error("\n🔴 BROKEN HARNESS — the pre-fix shell was served and the budget still PASSED.\n   This check proves nothing; fix the check before trusting any green run of it.");
+  // ⛔ ONLY A SHIFT FAILURE IS THE CONTROL WORKING (review of WP11, note 6). A cell NOT MEASURED (the pass did not hold) or
+  // a document too short is a failure of the run, not proof that the budget can catch the pre-fix shell.
+  if (!shiftFailures) {
+    console.error(`\n🔴 BROKEN HARNESS — the pre-fix shell was served and no cell went over a budget${failures.length ? ` (${failures.length} other failure(s), none a shift)` : ""}.\n   This check proves nothing; fix the check before trusting any green run of it.`);
     process.exit(2);
   }
-  console.log(`\nRED control behaved: ${failures.length} failure(s), as required.`);
+  console.log(`\nRED control behaved: ${shiftFailures} shift failure(s) of ${failures.length}, as required.`);
   process.exit(0);
 }
 process.exit(failures.length ? 1 : 0);
