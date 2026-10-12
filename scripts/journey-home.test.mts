@@ -41,12 +41,18 @@
  *      `from`, the similar rail's h3, a short title and the fallback) at a pinned clock — plus its source and its rules
  *      in globals.css. It holds: a server component no client module imports; every figure and word through WP3's
  *      rules, no percentage, pool or amount printed, none of the classic card's hooks or classes, no click handler; the
- *      links (one stretched card link named by the full title; the picks' hrefs, `from=home` on the home only, never
- *      prefetched); the heading (its rung, `keepFigures`, balance, the clamp on the fallback alone); the meta label's
- *      words, glyph and ink (A12); category · competition; each face's words and the figure's unit; the closed row; the
- *      settled row's instant and outcome chip; the refund sentence; the local stacking plane; the picks' press and lift;
- *      the action block on the card's floor (A16); and only the kit's tokens (A15's side word).
+ *      links (one stretched card link named by the full title, and a card's only controls its links: three while it
+ *      takes bets, one after; the picks' hrefs, `from=home` on the home only, never prefetched); the heading (its rung,
+ *      `keepFigures`, balance by the last word of every rule that styles it, the clamp and its box on the fallback
+ *      alone); the meta label's words, glyph and ink (A12); category · competition; each face's words and the figure's
+ *      unit; THE WIDTH PROOF — every unit a pick prints, measured with the repo's own fonts against a 320 phone's pick
+ *      line ("≈99.9×" kept whole with its words, "≈100.0×" breaking before them); the closed row; the settled row's
+ *      instant and outcome chip; the refund sentence; the local stacking plane; the picks' press and lift and their edge
+ *      in forced colours; the action block on the card's floor, and THE JOURNEY CARD GRID whose cards share their rows
+ *      (A16 item 5, subgrid); and only the kit's tokens (A15's side word).
  *      ⭐ Every §4 plant must fail its own check ALONE too.
+ *      ⚠️ The rules are read as the cascade reads them: a selector's value is the LAST one any rule gives it (a list of
+ *      one or of several, under any at-rule), so a later rule cannot re-set the card behind a check's back.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY and requires the check named for it to fail.
  * §1's plants edit copies of the source text; §2's and §3's swap ONE rule (a function `home-list.ts` or `card-face.ts`
@@ -58,6 +64,7 @@
  * its patterns use look-arounds and character classes, never a word boundary.
  */
 import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createElement as h } from "react";
@@ -122,7 +129,17 @@ type World = {
   css: string;                   // §4: src/app/globals.css, where the card's rules and tokens live
   cardNaming: Map<string, string>; // §4: every OTHER file under src/ whose text names journey-card: the importer census
   renders: Renders;              // §4: the card's test world, each case rendered once from the real component
+  gutter: number | null;         // §4: a phone page's side gutter — PageContainer's house padding (px-3) on the house scale
 };
+
+/** §4's frame: the house padding every page container lays (`px-3` below lg), and the house scale's step 3. */
+const CONTAINER = "src/components/layout/page-container.tsx";
+const TAILWIND = "tailwind.config.ts";
+function pageGutter(): number | null {
+  if (!decomment(read(CONTAINER)).includes('pad === "page" && "px-3 lg:px-6 py-6"')) return null;
+  const step = /"3":[ ]*"([0-9]+)px"/.exec(decomment(read(TAILWIND)));
+  return step ? Number(step[1]) : null;
+}
 
 function load(): World {
   const all = srcFiles();
@@ -136,7 +153,7 @@ function load(): World {
   }
   return {
     page: read(PAGE), landing: read(LANDING), layout: read(LAYOUT), walked: all.length, naming, rules: RULES,
-    card: read(CARD), css: read(CSS), cardNaming, renders: renderCards(),
+    card: read(CARD), css: read(CSS), cardNaming, renders: renderCards(), gutter: pageGutter(),
   };
 }
 
@@ -374,6 +391,15 @@ const CARD_WORLD = {
   short: { m: cardRow("mkt_jcShort", { shortTitleSw: "Je, Dodoma itanyesha kesho?" }), heading: "h3" },
   competition: { m: cardRow("mkt_jcComp", { category: "sports", competition: "ligi-kuu" }) },
   oddCompetition: { m: cardRow("mkt_jcOdd", { category: "sports", competition: "ligi-ya-mwezini" }) },
+  /* The widest figures a pick prints (4.picks.fit): at 13% a YES pool of 1,000 against 113,700 reads ≈99.9× (the longest
+     four-character figure) and against 113,800 ≈100.0× — which the engine still prints, withholding only a figure ABOVE
+     its cap (`estimate.ts`). */
+  cap999: { m: cardRow("mkt_jcW999", { yesPool: 1_000, noPool: 113_700 }) },
+  cap999En: { m: cardRow("mkt_jcW999En", { yesPool: 1_000, noPool: 113_700 }), locale: "en" },
+  cap999Zh: { m: cardRow("mkt_jcW999Zh", { yesPool: 1_000, noPool: 113_700 }), locale: "zh" },
+  cap100: { m: cardRow("mkt_jcW100", { yesPool: 1_000, noPool: 113_800 }) },
+  cap100En: { m: cardRow("mkt_jcW100En", { yesPool: 1_000, noPool: 113_800 }), locale: "en" },
+  cap100Zh: { m: cardRow("mkt_jcW100Zh", { yesPool: 1_000, noPool: 113_800 }), locale: "zh" },
 } satisfies Record<string, CardCase>;
 type CardName = keyof typeof CARD_WORLD;
 type Renders = Record<CardName, string>;
@@ -381,7 +407,8 @@ const CARD_NAMES = Object.keys(CARD_WORLD) as CardName[];
 const caseOf = (n: CardName): CardCase => CARD_WORLD[n];
 /** The cards that take bets now (two picks), and the ones that do not (a closed or a result row). */
 const OPEN_CARDS: CardName[] = ["priced", "home", "pricedEn", "pricedZh", "today", "oneSided", "empty", "overCap", "overCapEn",
-  "overCapZh", "legacy", "updownLive", "updownNoRound", "updownElsewhere", "short", "competition", "oddCompetition"];
+  "overCapZh", "legacy", "updownLive", "updownNoRound", "updownElsewhere", "short", "competition", "oddCompetition",
+  "cap999", "cap999En", "cap999Zh", "cap100", "cap100En", "cap100Zh"];
 const CLOSED_CARDS: CardName[] = ["closed", "oneSidedClosed"];
 const SETTLED_CARDS: CardName[] = ["settledYes", "settledNo", "lastYear", "void", "unrecorded", "updownSettled"];
 
@@ -442,33 +469,163 @@ const winInner = (l: Locale, mult: string) => {
 };
 const plain = (s: string) => s.split(NBSP).join(" ");
 
-/** The stylesheet's rules (media wrappers read through), each as its selector list and its declarations. */
-type CssRule = { sels: string[]; decls: Array<[string, string]> };
+/** White space of every kind, read as one space (a selector list or an at-rule's prelude may span lines). */
+const WS = new RegExp(`[ ${LF}${CR}${String.fromCharCode(9)}]+`, "g");
+/**
+ * The stylesheet's rules in source order, each as its selector list, its declarations and the at-rules it sits in
+ * (outermost first, each prelude as written with its white space read as one space: "@media (min-width: 640px)").
+ */
+type CssRule = { sels: string[]; decls: Array<[string, string]>; at: string[] };
 function cssRules(css: string): CssRule[] {
-  return [...decommentCss(css).matchAll(/([^{}]+)[{]([^{}]*)[}]/g)].map((m) => ({
-    sels: m[1].split(",").map((s) => s.trim()).filter(Boolean),
-    decls: m[2].split(";").map((d) => d.trim()).filter(Boolean).map((d) => {
-      const c = d.indexOf(":");
-      return [d.slice(0, c).trim(), d.slice(c + 1).trim()] as [string, string];
-    }),
-  }));
+  const text = decommentCss(css), out: CssRule[] = [], at: string[] = [];
+  let from = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === ";") from = i + 1;
+    else if (c === "}") { at.pop(); from = i + 1; }
+    else if (c === "{") {
+      const prelude = text.slice(from, i).replace(WS, " ").trim();
+      if (prelude.startsWith("@")) { at.push(prelude); from = i + 1; continue; }
+      const end = text.indexOf("}", i);
+      if (end < 0) break;
+      out.push({
+        sels: prelude.split(",").map((s) => s.trim()).filter(Boolean),
+        decls: text.slice(i + 1, end).split(";").map((d) => d.replace(WS, " ").trim()).filter(Boolean).map((d) => {
+          const k = d.indexOf(":");
+          return [d.slice(0, k).trim(), d.slice(k + 1).trim()] as [string, string];
+        }),
+        at: [...at],
+      });
+      i = end;
+      from = end + 1;
+    }
+  }
+  return out;
 }
-/** The card's own rules: every selector in the list is the card's (the shared note rule and a grid's rules are not). */
-const cardRules = (css: string) => cssRules(css).filter((r) => r.sels.length > 0 && r.sels.every((s) => s.startsWith(".kp-jcard")));
-/** One declaration of the card's rule with exactly this selector, or null. */
-const declOf = (rules: CssRule[], sel: string, prop: string) => rules.find((r) => r.sels.length === 1 && r.sels[0] === sel)?.decls.find(([p]) => p === prop)?.[1] ?? null;
+/** The card's own rules and its grid's: every selector in the list is theirs (the shared note rule is not). */
+const cardRules = (sheet: CssRule[]) => sheet.filter((r) => r.sels.length > 0 && r.sels.every((s) => s.startsWith(".kp-jcard") || s.startsWith(".kp-jgrid")));
+/**
+ * What the cascade leaves for this selector: the LAST declaration of the property in any rule whose selector list
+ * holds it — a list of one or of several, under any at-rule — or null. ⚠️ The last, never the first: a later rule
+ * that re-sets the card's own selector is the one a browser paints.
+ */
+const declOf = (sheet: CssRule[], sel: string, prop: string) => {
+  const said = sheet.filter((r) => r.sels.includes(sel)).flatMap((r) => r.decls.filter(([p]) => p === prop).map(([, v]) => v));
+  return said.length > 0 ? said[said.length - 1] : null;
+};
+/** A selector's last compound: the element it styles (".kp-jcard__picks > .kp-jcard__pick:hover" styles the pick). */
+const lastCompound = (sel: string) => { const parts = sel.split(/[ >+~]+/).filter(Boolean); return parts.length > 0 ? parts[parts.length - 1] : ""; };
+/** Every class a selector names. */
+const classesIn = (sel: string) => sel.match(/[.][A-Za-z_][A-Za-z0-9_-]*/g) ?? [];
+
+/** An element's direct children (tag and classes) and the text that stands beside them, nothing nested counted. */
+const VOID_TAGS = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"]);
+function childrenOf(inner: string): { kids: Array<{ tag: string; cls: string[] }>; text: string } {
+  const kids: Array<{ tag: string; cls: string[] }> = [];
+  let depth = 0, text = "";
+  for (const m of inner.matchAll(/<([/]?)([a-z][a-z0-9]*)((?:[^>"]|"[^"]*")*)>|([^<]+)/g)) {
+    if (m[4] !== undefined) { if (depth === 0) text += decodeHtml(m[4]); continue; }
+    if (m[1]) { depth--; continue; }
+    if (depth === 0) kids.push({ tag: m[2], cls: classesOf(m[3]) });
+    if (!m[3].endsWith("/") && !VOID_TAGS.has(m[2])) depth++;
+  }
+  return { kids, text };
+}
+/** The card's own children: what its <article> holds. */
+const cardChildren = (html: string) => {
+  const open = /^<article(?= )[^>]*>/.exec(html);
+  const close = html.lastIndexOf("</article>");
+  return open && close > 0 ? childrenOf(html.slice(open[0].length, close)) : { kids: [], text: html };
+};
+
+/**
+ * ⭐ THE WIDTH MODEL (4.picks.fit), as `test:visual-pass-r9a` §5.3 measures the classic card's labels: each character
+ * at its face's own advance from the repo's font files — the words Inter Medium (the line's weight, 500), the figure
+ * JetBrains Mono Bold (700) — at the line's size, its tracking added after every character; Chinese at one em (the
+ * system CJK face's full width); kerning ignored, which only tightens a run, so every width is an upper bound.
+ */
+const req = createRequire(import.meta.url);
+type Face = { unitsPerEm: number; glyphForCodePoint: (c: number) => { id: number; advanceWidth: number } };
+const FACES = (() => {
+  const fontkit = req("fontkit") as { openSync: (p: string) => Face };
+  const open = (n: string) => fontkit.openSync(join(ROOT, "src/lib/server/reports/fonts", `${n}.ttf`));
+  return { words: open("Inter-Medium"), figure: open("JetBrainsMono-Bold") };
+})();
+/** A wide East Asian character or mark (ideographs, CJK punctuation, full-width forms): one em, and a break beside it. */
+const isWide = (ch: string) => { const p = ch.codePointAt(0) ?? 0; return (p >= 0x3000 && p <= 0x303f) || (p >= 0x3400 && p <= 0x9fff) || (p >= 0xf900 && p <= 0xfaff) || (p >= 0xff00 && p <= 0xffef); };
+/** Chinese closing marks: no line opens with one (UAX #14: no break before a closing mark). */
+const CLOSING = "，。、：；！？）」』";
+/** One character of a pick's line as a browser lays it: its face, whether a nowrap span holds it, and which stacked
+ *  part (`DotSeq`'s centred form: each part a line of its own) it sits in. A dot hidden in the gap is not on the line. */
+type Glyph = { ch: string; mono: boolean; kept: boolean; part: number };
+function lineGlyphs(inner: string): Glyph[] {
+  const out: Glyph[] = [];
+  const stack: Array<{ mono: boolean; kept: boolean; hidden: boolean }> = [];
+  let part = 0;
+  for (const m of inner.matchAll(/<([/]?)([a-z][a-z0-9]*)((?:[^>"]|"[^"]*")*)>|([^<]+)/g)) {
+    const top = stack.length > 0 ? stack[stack.length - 1] : { mono: false, kept: false, hidden: false };
+    if (m[4] !== undefined) {
+      if (!top.hidden) for (const ch of decodeHtml(m[4])) out.push({ ch, mono: top.mono, kept: top.kept, part });
+      continue;
+    }
+    if (m[1]) { stack.pop(); continue; }
+    const cls = classesOf(m[3]);
+    if (cls.includes("kp-seq__item")) part++;
+    stack.push({
+      mono: top.mono || cls.includes("kp-jcard__mult"),
+      kept: top.kept || cls.includes("kp-jcard__mult") || cls.includes("kp-jcard__run"),
+      hidden: top.hidden || cls.includes("kp-seq__dot"),
+    });
+  }
+  return out;
+}
+/** The line's unbreakable runs: it breaks at an ordinary space outside a nowrap span (the space hangs), between stacked
+ *  parts, and beside a wide character — except across a no-break space or before a closing mark. */
+function lineRuns(gs: Glyph[]): Glyph[][] {
+  const runs: Glyph[][] = [];
+  let cur: Glyph[] = [];
+  const flush = () => { if (cur.length > 0) runs.push(cur); cur = []; };
+  gs.forEach((g, i) => {
+    const prev = i > 0 ? gs[i - 1] : null;
+    if (prev && prev.part !== g.part) flush();
+    if (g.ch === " " && !g.kept) { flush(); return; }
+    if (prev && !g.kept && !prev.kept && (isWide(g.ch) || isWide(prev.ch)) && g.ch !== NBSP && prev.ch !== NBSP && !CLOSING.includes(g.ch)) flush();
+    cur.push(g);
+  });
+  flush();
+  return runs;
+}
+/** A run's width at the line's size and tracking, or null when a face lacks one of its characters (a run the model
+ *  cannot measure is never passed as fitting). */
+function runWidth(run: Glyph[], size: number, tracking: number): number | null {
+  let w = 0;
+  for (const g of run) {
+    if (isWide(g.ch)) { w += size + tracking; continue; }
+    const face = g.mono ? FACES.figure : FACES.words;
+    const glyph = face.glyphForCodePoint(g.ch.codePointAt(0) ?? 0);
+    if (!glyph || glyph.id === 0) return null;
+    w += (glyph.advanceWidth / face.unitsPerEm) * size + tracking;
+  }
+  return w;
+}
+const runText = (run: Glyph[]) => run.map((g) => g.ch).join("");
 
 function journeyCardChecks(w: World, ok: Ok) {
   const src = decomment(w.card);
   const R = w.renders;
   const sw = dict.sw, en = dict.en, zh = dict.zh;
-  const rules = cardRules(w.css);
+  const sheet = cssRules(w.css);
+  const rules = cardRules(sheet);
+  const rootDecl = (name: string) => [...decommentCss(w.css).matchAll(new RegExp(`(?<![A-Za-z0-9_-])${name}:([^;]*);`, "g"))].map((m) => m[1].trim());
 
   /* the card is a server component, and only server code imports it */
   const hooks = src.match(/(?<![A-Za-z0-9_$.])use(?:State|Effect|LayoutEffect|Ref|Transition|Router|Reducer|Context|SyncExternalStore)[(]/g) ?? [];
-  ok("4.directive · journey-card.tsx is a SERVER component: no directive, one named export (JourneyCard), no client hook",
-    w.card.length > 0 && !DIRECTIVE.test(src) && count(src, "export function JourneyCard(") === 1 && hooks.length === 0,
-    j({ directive: src.match(DIRECTIVE)?.[0] ?? null, exports: count(src, "export function JourneyCard("), hooks }));
+  const EXPORTS_WANT = ["export type JourneyCardMarket", "export function JourneyCard"];
+  const exported = src.split(LF).filter((l) => /^export(?![A-Za-z0-9_$])/.test(l.trim())).map((l) => l.trim().split(/[(=<{;]/)[0].trim());
+  const exportWords = (src.match(/(?<![A-Za-z0-9_$.])export(?![A-Za-z0-9_$])/g) ?? []).length;
+  ok("4.directive · journey-card.tsx is a SERVER component: no directive, no client hook, and one component export (JourneyCard) beside the row type it takes (JourneyCardMarket) — nothing else exported",
+    w.card.length > 0 && !DIRECTIVE.test(src) && hooks.length === 0 && j(exported) === j(EXPORTS_WANT) && exportWords === EXPORTS_WANT.length,
+    j({ directive: src.match(DIRECTIVE)?.[0] ?? null, exported, exportWords, hooks }));
   const IMPORTS_CARD = /(?:from|import)[ ]*[(]?[ ]*["'`][^"'`]*journey-card(?:[.]tsx)?["'`]/;
   const importers = [...w.cardNaming].filter(([, s]) => IMPORTS_CARD.test(decomment(s)));
   const clientImporters = importers.filter(([, s]) => /["']use client["']/.test(decomment(s))).map(([f]) => f);
@@ -492,8 +649,14 @@ function journeyCardChecks(w: World, ok: Ok) {
     printed.length === 0, printed.join(", "));
   const forbiddenSrc = src.match(/onClick|50pick:navigating|data-market-surface|mcardp|market-grid/g) ?? [];
   const forbiddenDrawn = CARD_NAMES.flatMap((n) => (R[n].match(/data-market-surface|class="[^"]*(?:mcardp|market-grid)[^"]*"/g) ?? []).map((x) => `${n}: ${x}`));
-  ok("4.forbidden · no click handler and no navigating event (NavProgress starts on any internal link), no classic surface hook and no classic card or board-grid class, in the source or on any card drawn (V18 selects them; phone density rewrites them)",
-    forbiddenSrc.length === 0 && forbiddenDrawn.length === 0, j({ forbiddenSrc, forbiddenDrawn }));
+  const unsorted = CARD_NAMES.filter((n) => [OPEN_CARDS, CLOSED_CARDS, SETTLED_CARDS].filter((s) => s.includes(n)).length !== 1);
+  const LINKS = /<a(?=[ >])/g;
+  const CONTROLS = /<(?:button|input|select|textarea|form)(?=[ >/])|role="button"/g;
+  const badControls = CARD_NAMES.map((n) => [n, (R[n].match(LINKS) ?? []).length, (R[n].match(CONTROLS) ?? []).length] as const)
+    .filter(([n, links, controls]) => links !== (OPEN_CARDS.includes(n) ? 3 : 1) || controls !== 0);
+  ok("4.forbidden · no click handler and no navigating event (NavProgress starts on any internal link), no classic surface hook and no classic card or board-grid class, in the source or on any card drawn (V18 selects them; phone density rewrites them); and a card's only controls are its links — three on a card that takes bets (the card and its two picks), one on a closed or a settled card, never a button",
+    forbiddenSrc.length === 0 && forbiddenDrawn.length === 0 && unsorted.length === 0 && badControls.length === 0,
+    j({ forbiddenSrc, forbiddenDrawn, unsorted, badControls }));
 
   /* the links (WP5 step 3, Open point 4) */
   const fullTitle = (c: CardCase) => { const l = c.locale ?? "sw"; return l === "sw" ? c.m.titleSw : l === "zh" ? (c.m.titleZh ?? c.m.titleEn) : c.m.titleEn; };
@@ -508,13 +671,10 @@ function journeyCardChecks(w: World, ok: Ok) {
     badOpen.length === 0 && notFirst.length === 0, j({ badOpen, notFirst }));
   const picksOf = (n: CardName) => anchorsOf(R[n]).filter((a) => classesOf(a).includes("kp-jcard__pick"));
   const pickWant = (n: CardName) => ["YES", "NO"].map((s) => `/markets/${caseOf(n).m.id}?side=${s}${n === "home" ? "&from=home" : ""}`);
-  const badPicks = [
-    ...OPEN_CARDS.filter((n) => j(picksOf(n).map((a) => attrOf(a, "href"))) !== j(pickWant(n)) || picksOf(n).some((a) => attrOf(a, "aria-label") !== null)),
-    ...[...CLOSED_CARDS, ...SETTLED_CARDS].filter((n) => picksOf(n).length !== 0),
-  ];
+  const badPicks = OPEN_CARDS.filter((n) => j(picksOf(n).map((a) => attrOf(a, "href"))) !== j(pickWant(n)) || picksOf(n).some((a) => attrOf(a, "aria-label") !== null));
   const pickBuilder = src.slice(src.indexOf("const pick = ("), src.indexOf("const Heading = heading;"));
   const prefetchOff = count(src, "prefetch={false}") === 1 && pickBuilder.includes("prefetch={false}");
-  ok("4.links.picks · the picks go where today's buttons go — the question with ?side=YES, then ?side=NO, &from=home on the home alone — never prefetched, each named by its visible words; a closed or a settled card has none",
+  ok("4.links.picks · the picks go where today's buttons go — the question with ?side=YES, then ?side=NO, &from=home on the home alone — never prefetched, each named by its visible words (a closed or a settled card's one link is 4.forbidden's count)",
     badPicks.length === 0 && prefetchOff, j({ badPicks: badPicks.map((n) => [n, picksOf(n).map((a) => attrOf(a, "href"))]), prefetchOff }));
 
   /* the heading */
@@ -525,21 +685,28 @@ function journeyCardChecks(w: World, ok: Ok) {
   });
   const keptFigure = (headOf("priced")?.inner ?? "").includes('<span class="whitespace-nowrap">1 Oktoba</span>')
     && textOf(headOf("priced")?.inner ?? "") === caseOf("priced").m.titleSw && textOf(headOf("short")?.inner ?? "") === "Je, Dodoma itanyesha kesho?";
-  const titleWrap = declOf(rules, ".kp-jcard__title", "text-wrap");
-  ok("4.title.heading · the question is an h2 (an h3 where the similar rail asks) on the title-sm rung, the short title else the full one, its figures kept whole (keepFigures) and its lines balanced, never pretty",
-    badHead.length === 0 && keptFigure && titleWrap === "balance", j({ badHead, keptFigure, titleWrap }));
-  const clampRules = rules.filter((r) => r.decls.some(([p]) => p === "-webkit-line-clamp")).map((r) => [r.sels.join(", "), r.decls.find(([p]) => p === "-webkit-line-clamp")?.[1]]);
+  /** Every rule that styles the question: its class or its fallback's modifier the selector's last compound. */
+  const TITLE_EL = /[.]kp-jcard__title(?:--full)?(?![A-Za-z0-9_-])/;
+  const titleRules = sheet.filter((r) => r.sels.some((s) => TITLE_EL.test(lastCompound(s))));
+  const titleWrap = declOf(sheet, ".kp-jcard__title", "text-wrap");
+  const titleWraps = titleRules.flatMap((r) => r.decls.filter(([p]) => /^text-wrap(?:-style)?$/.test(p)).map(([, v]) => `${r.sels.join(", ")} ${v}`));
+  ok("4.title.heading · the question is an h2 (an h3 where the similar rail asks) on the title-sm rung, the short title else the full one, its figures kept whole (keepFigures) and its lines balanced, never pretty — the last word of every rule that styles it, a later one included",
+    badHead.length === 0 && keptFigure && titleWrap === "balance" && j(titleWraps) === j([".kp-jcard__title balance"]), j({ badHead, keptFigure, titleWrap, titleWraps }));
+  const clampRules = titleRules.filter((r) => r.decls.some(([p]) => p === "-webkit-line-clamp" || p === "line-clamp"))
+    .map((r) => [r.sels.join(", "), r.decls.filter(([p]) => p === "-webkit-line-clamp" || p === "line-clamp").map(([p, v]) => `${p}: ${v}`).join("; ")]);
+  const clampBox = ["display", "-webkit-box-orient", "overflow"].map((p) => declOf(sheet, ".kp-jcard__title--full", p));
   const badClamp = CARD_NAMES.filter((n) => classesOf(headOf(n)?.attrs ?? "").includes("kp-jcard__title--full") !== (n !== "short"));
-  ok("4.title.clamp · only the full-title FALLBACK is held to two lines: the clamp lives on the fallback's modifier alone, which a card wears exactly when it has no short title (a short title is never clamped)",
-    j(clampRules) === j([[".kp-jcard__title--full", "2"]]) && badClamp.length === 0, j({ clampRules, badClamp }));
+  ok("4.title.clamp · only the full-title FALLBACK is held to two lines: the clamp lives on the fallback's modifier alone, with the box it needs to clamp at all (display: -webkit-box, a vertical orient, the overflow hidden), and a card wears it exactly when it has no short title (a short title is never clamped)",
+    j(clampRules) === j([[".kp-jcard__title--full", "-webkit-line-clamp: 2"]]) && j(clampBox) === j(["-webkit-box", "vertical", "hidden"]) && badClamp.length === 0,
+    j({ clampRules, clampBox, badClamp }));
 
   /* the meta row (A12) */
   const labelOf = (n: CardName) => elementsOf(R[n], "kp-jcard__when")[0] ?? null;
   const EMPHASIS: Partial<Record<CardName, string>> = { today: "muted", closed: "muted", oneSidedClosed: "muted", priced: "subtle", settledYes: "subtle", void: "subtle", updownSettled: "subtle" };
   const badEmphasis = (Object.keys(EMPHASIS) as CardName[]).filter((n) => attrOf(labelOf(n)?.attrs ?? "", "data-emphasis") !== EMPHASIS[n]);
   const META_FAMILY = /kp-jcard__(?:meta|when|where)(?![A-Za-z0-9_-])/;
-  const inks = rules.filter((r) => r.sels.every((s) => META_FAMILY.test(s))).flatMap((r) => r.decls.filter(([p]) => p === "color").map(([, v]) => [r.sels.join(", "), v]));
-  ok("4.meta.ink · A12: the label carries its face's ink — closes today and waiting muted; Siku N, settled and void subtle — and the meta row sets the subtle ink once, the muted rule the only other colour on it",
+  const inks = sheet.filter((r) => r.sels.some((s) => META_FAMILY.test(s))).flatMap((r) => r.decls.filter(([p]) => p === "color").map(([, v]) => [r.sels.join(", "), v]));
+  ok("4.meta.ink · A12: the label carries its face's ink — closes today and waiting muted; Siku N, settled and void subtle — and the meta row sets the subtle ink once, the muted rule the only other colour on it, in any rule whose selector list names the row (a list shared with another surface's included)",
     badEmphasis.length === 0 && j(inks) === j([[".kp-jcard__meta", "var(--text-subtle)"], ['.kp-jcard__when[data-emphasis="muted"]', "var(--text-muted)"]]),
     j({ badEmphasis, inks }));
   const LABEL: Partial<Record<CardName, string>> = {
@@ -586,8 +753,14 @@ function journeyCardChecks(w: World, ok: Ok) {
     return p.length === 2 && p[0].cls.includes("btn-yes") && !p[0].cls.includes("btn-no") && p[1].cls.includes("btn-no") && !p[1].cls.includes("btn-yes")
       && p.every((x) => !x.cls.some((c) => c === "btn" || /^btn-(?:xs|sm|md|lg|xl)$/.test(c)));
   });
-  ok("4.picks.words · each pick: the side word in the reader's and the product's words over its face's — win, be first, one side only, over the cap with no number, a thin side stacked; nothing under a hidden figure or an Up & Down side (centred); the YES ink on YES and the NO ink on NO, with no button height or nowrap",
-    badWords.length === 0 && wordOnly && thinStacked && inked, j({ badWords, wordOnly, thinStacked, inked }));
+  /* …and no rule that styles a pick cuts it: a pick's last compound, every class it names the card's or the side inks' */
+  const PICK_EL = /[.](?:kp-jcard__pick|kp-jcard__pick--word|btn-yes|btn-no)(?![A-Za-z0-9_-])/;
+  const stylesPick = (s: string) => PICK_EL.test(lastCompound(s)) && classesIn(s).every((c) => c.startsWith(".kp-jcard") || c === ".btn-yes" || c === ".btn-no");
+  const CUTS = (p: string, v: string) => /^(?:height|max-height|block-size|max-block-size|line-clamp|-webkit-line-clamp|text-overflow)$/.test(p)
+    || (p === "white-space" && v !== "normal") || (/^text-wrap(?:-mode)?$/.test(p) && v.includes("nowrap"));
+  const pickCuts = sheet.filter((r) => r.sels.some(stylesPick)).flatMap((r) => r.decls.filter(([p, v]) => CUTS(p, v)).map(([p, v]) => `${r.sels.join(", ")} ${p}: ${v}`));
+  ok("4.picks.words · each pick: the side word in the reader's and the product's words over its face's — win, be first, one side only, over the cap with no number, a thin side stacked; nothing under a hidden figure or an Up & Down side (centred); the YES ink on YES and the NO ink on NO, with no button height or nowrap — on the markup, or in any rule that styles a pick",
+    badWords.length === 0 && wordOnly && thinStacked && inked && pickCuts.length === 0, j({ badWords, wordOnly, thinStacked, inked, pickCuts }));
   const lineOf = (n: CardName, i: number) => picks(n)[i]?.line?.inner ?? null;
   const UNIT_WANT: Array<[CardName, number, string]> = [
     ["priced", 0, winInner("sw", "2.8")], ["priced", 1, winInner("sw", "1.4")], ["pricedEn", 0, winInner("en", "2.8")], ["pricedZh", 0, winInner("zh", "2.8")],
@@ -596,11 +769,78 @@ function journeyCardChecks(w: World, ok: Ok) {
     ["overCapZh", 0, zh.journey.cardOverCap],
   ];
   const badUnit = UNIT_WANT.filter(([n, i, want]) => lineOf(n, i) !== want).map(([n, i]) => [n, i, lineOf(n, i)]);
-  const nowrap = (["kp-jcard__mult", "kp-jcard__run"] as const).every((c) => declOf(rules, `.${c}`, "white-space") === "nowrap")
-    && declOf(rules, ".kp-jcard__mult", "font-family") === "var(--font-mono)";
+  const nowrap = (["kp-jcard__mult", "kp-jcard__run"] as const).every((c) => declOf(sheet, `.${c}`, "white-space") === "nowrap")
+    && declOf(sheet, ".kp-jcard__mult", "font-family") === "var(--font-mono)";
   const capWords = sw.journey.cardOverCap === "Upande mdogo, ona makadirio" && en.journey.cardOverCap === "Small side, see the estimate";
-  ok("4.picks.unit · the figure is one mono unit, never broken, joined to the words after it by no-break spaces (“≈2.8× dau”, “≈2.8× your bet”, “≈2.8× 投注”), so a line breaks only before it; over the cap each clause is kept whole where a space follows its comma (sw, en), and Chinese is left as written",
+  ok("4.picks.unit · the figure is one mono unit, never broken, joined to the words after it by no-break spaces (“≈2.8× dau”, “≈2.8× your bet”, “≈2.8× 投注”), so a Latin line breaks only before it (a figure of five characters is 4.picks.fit's); over the cap each clause is kept whole where a space follows its comma (sw, en), and Chinese is left as written",
     capWords && badUnit.length === 0 && nowrap, j({ capWords, badUnit, nowrap }));
+
+  /* ⭐ the width proof (the WP5 review's item 1): every unit a pick prints holds a 320 phone's pick line */
+  const px = (v: string | null): number | null => {
+    if (v === null) return null;
+    const ref = /^var[(](--[a-z0-9-]+)[)]$/.exec(v.trim());
+    if (ref) { const d = rootDecl(ref[1]); return d.length === 1 ? px(d[0]) : null; }
+    const n = /^([0-9]+(?:[.][0-9]+)?)px$/.exec(v.trim());
+    return n ? Number(n[1]) : v.trim() === "0" ? 0 : null;
+  };
+  /** A box shorthand's two inline sides (one value, two, three or four). */
+  const inline = (v: string | null): [number | null, number | null] => {
+    const p = (v ?? "").split(" ").filter(Boolean);
+    return p.length === 0 ? [null, null] : p.length === 1 ? [px(p[0]), px(p[0])] : p.length < 4 ? [px(p[1]), px(p[1])] : [px(p[1]), px(p[3])];
+  };
+  const firstPx = (v: string | null) => px((v ?? "").split(" ")[0] || null);
+  const forcedBorder = sheet.filter((r) => r.at.includes("@media (forced-colors: active)") && r.sels.includes(".kp-jcard__pick"))
+    .flatMap((r) => r.decls.filter(([p]) => p === "border").map(([, v]) => v));
+  const frame = {
+    view: 320, gutter: w.gutter, cardEdge: firstPx(declOf(sheet, ".kp-jcard", "border")), cardPad: inline(declOf(sheet, ".kp-jcard", "padding")),
+    pairGap: px(declOf(sheet, ".kp-jcard__picks", "column-gap") ?? declOf(sheet, ".kp-jcard__picks", "gap")),
+    pickPad: inline(declOf(sheet, ".kp-jcard__pick", "padding")),
+    forcedEdge: forcedBorder.length === 0 ? 0 : firstPx(forcedBorder[forcedBorder.length - 1]),
+  };
+  const sizes = [frame.gutter, frame.cardEdge, ...frame.cardPad, frame.pairGap, ...frame.pickPad, frame.forcedEdge];
+  const framed = sizes.every((x) => typeof x === "number");
+  const num = (x: number | null) => x ?? Number.NaN;
+  const LINE = (frame.view - 2 * num(frame.gutter) - 2 * num(frame.cardEdge) - num(frame.cardPad[0]) - num(frame.cardPad[1]) - num(frame.pairGap)) / 2
+    - num(frame.pickPad[0]) - num(frame.pickPad[1]);
+  const FORCED = LINE - 2 * num(frame.forcedEdge);
+  const fontSize = px(declOf(sheet, ".kp-jcard__line", "font-size"));
+  const track = declOf(sheet, ".kp-jcard__line", "letter-spacing");
+  const trackEm = /^(-?[0-9]+(?:[.][0-9]+)?)em$/.exec(track ?? "");
+  const tracking = track === null ? null : track === "0" ? 0 : trackEm ? (fontSize === null ? null : Number(trackEm[1]) * fontSize) : px(track);
+  const faces = declOf(sheet, ".kp-jcard__line", "font-weight") === "500" && declOf(sheet, ".kp-jcard__mult", "font-weight") === "700"
+    && declOf(sheet, ".kp-jcard__mult", "font-family") === "var(--font-mono)";
+  const measured = OPEN_CARDS.flatMap((n) => [0, 1].flatMap((i) => {
+    const inner = lineOf(n, i);
+    return inner === null ? [] : lineRuns(lineGlyphs(inner)).map((run) => ({
+      n, text: runText(run), width: fontSize === null || tracking === null ? null : runWidth(run, fontSize, tracking),
+    }));
+  }));
+  const unmeasured = measured.filter((u) => u.width === null).map((u) => `${u.n}: ${u.text}`);
+  const widest = measured.reduce<{ n: string; text: string; width: number | null } | null>((a, b) => (a === null || num(b.width) > num(a.width) ? b : a), null);
+  const overLine = measured.filter((u) => !(num(u.width) <= FORCED)).map((u) => `${u.n} “${u.text}” ${num(u.width).toFixed(1)}px`);
+  /* ≈99.9× kept whole, ≈100.0× broken before its words, in the three languages — as served */
+  const capLine = (l: Locale, mult: string, kept: boolean) => {
+    const tpl = dict[l].journey.cardWin, at = tpl.indexOf("{mult}"), from = tpl.lastIndexOf(" ", at) + 1, to = tpl.indexOf(" ", at);
+    return `${tpl.slice(0, from)}<span class="kp-jcard__mult">${tpl.slice(from, to).replace("{mult}", mult)}</span>${kept ? tpl.slice(to).split(" ").join(NBSP) : tpl.slice(to)}`;
+  };
+  const CAPS: Array<[CardName, Locale, string, boolean]> = [
+    ["cap999", "sw", "99.9", true], ["cap999En", "en", "99.9", true], ["cap999Zh", "zh", "99.9", true],
+    ["cap100", "sw", "100.0", false], ["cap100En", "en", "100.0", false], ["cap100Zh", "zh", "100.0", false],
+  ];
+  const badCaps = CAPS.filter(([n, l, mult, kept]) => lineOf(n, 0) !== capLine(l, mult, kept)).map(([n]) => [n, lineOf(n, 0)]);
+  const unitWidth = (inner: string, figure: string) => {
+    const run = lineRuns(lineGlyphs(inner)).find((r) => runText(r).includes(figure));
+    return run && fontSize !== null && tracking !== null ? runWidth(run, fontSize, tracking) : null;
+  };
+  const kept999 = (["sw", "en", "zh"] as const).map((l) => num(unitWidth(capLine(l, "99.9", true), "≈99.9×")));
+  /* CONTROL — the ruling's reason: ≈100.0× held to its words would run past the line (en: “≈100.0× your bet”) */
+  const kept100 = Math.max(...(["sw", "en", "zh"] as const).map((l) => num(unitWidth(capLine(l, "100.0", true), "≈100.0×"))));
+  const fmt = (x: number) => (Number.isFinite(x) ? x.toFixed(1) : "?");
+  const widestSaid = widest === null ? "none measured" : `“${widest.text}” (${widest.n}) at ${fmt(num(widest.width))}px`;
+  ok(`4.picks.fit · the width proof (the repo's Inter Medium and JetBrains Mono Bold by their own advances, kerning ignored, so an upper bound): at 320 a pick's line is ${fmt(LINE)}px — ${fmt(FORCED)}px in forced colours, inside its edge — and every unit a pick prints in sw, en and zh holds it, the widest ${widestSaid}; “≈99.9×” stays joined to its words (sw ${fmt(kept999[0])}, en ${fmt(kept999[1])}, zh ${fmt(kept999[2])}px), and “≈100.0×” breaks before them — held to them, it would run ${fmt(kept100)}px`,
+    w.gutter !== null && framed && fontSize !== null && tracking !== null && faces && measured.length > 0 && unmeasured.length === 0
+      && overLine.length === 0 && badCaps.length === 0 && kept100 > LINE,
+    j({ frame, LINE, FORCED, fontSize, track, faces, unmeasured, overLine, badCaps, kept999, kept100 }));
 
   /* the closed and the result rows */
   const closedRow = (n: CardName) => elementsOf(R[n], "kp-jcard__closed");
@@ -640,43 +880,72 @@ function journeyCardChecks(w: World, ok: Ok) {
     const ns = notesOf(n);
     return n === "oneSided" || n === "oneSidedClosed" ? ns.length !== 1 || ns[0].tag !== "p" || textOf(ns[0].inner) !== noteWant : ns.length !== 0;
   });
-  const shared = cssRules(w.css).filter((r) => r.sels.includes(".kp-jcard__note")).map((r) => r.sels.join(", "));
+  const shared = sheet.filter((r) => r.sels.includes(".kp-jcard__note")).map((r) => r.sels.join(", "));
   ok("4.note · an unsettled one-sided card says the refund rule under its action, naming the EMPTY side — the closed phase too — and nothing else does; its voice is the ONE note rule the classic card and the landing rows share",
     badNote.length === 0 && j(shared) === j([".mcardp-onesided-note, .kp-qrow__note, .kp-jcard__note"]),
     j({ badNote: badNote.map((n) => [n, notesOf(n).map((x) => textOf(x.inner))]), shared }));
 
   /* the rules in globals.css */
   const zs = rules.flatMap((r) => r.decls.filter(([p]) => p === "z-index").map(([, v]) => [r.sels.join(", "), v]));
-  const stackOk = declOf(rules, ".kp-jcard", "position") === "relative" && declOf(rules, ".kp-jcard", "isolation") === "isolate"
-    && declOf(rules, ".kp-jcard__open", "position") === "absolute" && declOf(rules, ".kp-jcard__open", "inset") === "0"
-    && declOf(rules, ".kp-jcard__picks", "position") === "relative"
+  const stackOk = declOf(sheet, ".kp-jcard", "position") === "relative" && declOf(sheet, ".kp-jcard", "isolation") === "isolate"
+    && declOf(sheet, ".kp-jcard__open", "position") === "absolute" && declOf(sheet, ".kp-jcard__open", "inset") === "0"
+    && declOf(sheet, ".kp-jcard__picks", "position") === "relative"
     && j(zs) === j([[".kp-jcard__open", "2"], [".kp-jcard__picks", "3"]]);
   ok("4.stack · the card isolates its own stacking context; the stretched link covers it at 2 and the picks rise to 3 — the local plane (z ≤ 10), and no other z-index in the card's rules",
-    stackOk, j({ zs, card: [declOf(rules, ".kp-jcard", "position"), declOf(rules, ".kp-jcard", "isolation")], picks: declOf(rules, ".kp-jcard__picks", "position") }));
-  const press = declOf(rules, ".kp-jcard__pick:active", "transform");
-  const lift = declOf(rules, ".kp-jcard__pick:hover", "transform");
-  const fade = declOf(rules, ".kp-jcard__picks > .kp-jcard__pick", "transition") ?? "";
+    stackOk, j({ zs, card: [declOf(sheet, ".kp-jcard", "position"), declOf(sheet, ".kp-jcard", "isolation")], picks: declOf(sheet, ".kp-jcard__picks", "position") }));
+  const press = declOf(sheet, ".kp-jcard__pick:active", "transform");
+  const lift = declOf(sheet, ".kp-jcard__pick:hover", "transform");
+  const fade = declOf(sheet, ".kp-jcard__picks > .kp-jcard__pick", "transition") ?? "";
   const liftGated = decommentCss(w.css).includes("@media (hover: hover) { .kp-jcard__pick:hover { transform: translateY(var(--m-lift)); } }");
   ok("4.press · a pick moves as the side buttons move: the one press scale (--m-press) when pressed, the one hover lift (--m-lift) only where a pointer hovers (a lift stuck after a tap is the classic fills' lesson), on the motion ladder's timing — the pressed feedback the transparent tap-flash counts on",
     press === "translateY(0) scale(var(--m-press))" && lift === "translateY(var(--m-lift))" && liftGated && fade.startsWith("transform var(--t-flick) var(--m-glide)"),
     j({ press, lift, liftGated, fade }));
-  const reserveReaders = rules.filter((r) => r.decls.some(([, v]) => v.includes("--jcard-title-2l"))).map((r) => r.sels.join(", "));
-  const rootDecl = (name: string) => [...decommentCss(w.css).matchAll(new RegExp(`(?<![A-Za-z0-9_-])${name}:([^;]*);`, "g"))].map((m) => m[1].trim());
-  const actOk = declOf(rules, ".kp-jcard__act", "margin-block-start") === "auto" && declOf(rules, ".kp-jcard", "height") === "100%"
-    && declOf(rules, ".kp-jcard__title", "line-height") === "var(--jcard-title-line)"
-    && j(rootDecl("--jcard-title-2l")) === j(["calc(2 * var(--jcard-title-line))"]) && reserveReaders.length === 0;
-  ok("4.act · A16: the action block (picks, closed or result row, with the note) stands on the card's floor and the card fills its cell, so picks stay level across a grid's row; the title's line is the card's token and its two-line reserve a token no card rule reads — a multi-column grid's own rule applies it",
-    actOk, j({ act: declOf(rules, ".kp-jcard__act", "margin-block-start"), height: declOf(rules, ".kp-jcard", "height"), line: declOf(rules, ".kp-jcard__title", "line-height"), reserve: rootDecl("--jcard-title-2l"), reserveReaders }));
+  const FORCED_AT = "@media (forced-colors: active)";
+  const forcedShape = sheet.filter((r) => r.at.includes(FORCED_AT) && r.sels.some((s) => s.includes("kp-jcard") || s.includes("kp-jgrid")))
+    .map((r) => [r.at.join(" "), r.sels.join(", "), r.decls.map(([p, v]) => `${p}: ${v}`).join("; ")]);
+  ok("4.forced · in forced colours a pick keeps its edge: one 1px border in the system's own ink (no colour named), where the side fill's ring — an inset shadow — goes with the fill (E-129: a forced palette keeps a border or an outline, never a shadow); nothing else in the card changes there",
+    j(forcedShape) === j([[FORCED_AT, ".kp-jcard__pick", "border: 1px solid"]]), j(forcedShape));
+
+  /* the action block and the grid (A16) */
+  const titleHeights = titleRules.flatMap((r) => r.decls.filter(([p]) => /^(?:height|min-height|block-size|min-block-size)$/.test(p)).map(([p, v]) => `${r.sels.join(", ")} ${p}: ${v}`));
+  const actOk = declOf(sheet, ".kp-jcard__act", "margin-block-start") === "auto" && declOf(sheet, ".kp-jcard", "height") === "100%"
+    && declOf(sheet, ".kp-jcard__title", "line-height") === "var(--jcard-title-line)" && titleHeights.length === 0;
+  ok("4.act · A16: the action block (picks, closed or result row, with the note) stands on the card's floor and the card fills its cell — the layout wherever the cards do not share their rows (4.grid) — and the question keeps no height of its own: its line is the card's token, and no reserve is paid, in one column or in several",
+    actOk, j({ act: declOf(sheet, ".kp-jcard__act", "margin-block-start"), height: declOf(sheet, ".kp-jcard", "height"), line: declOf(sheet, ".kp-jcard__title", "line-height"), titleHeights }));
+  const SUBGRID_AT = "@supports (grid-template-rows: subgrid)", AT640 = "@media (min-width: 640px)", AT1024 = "@media (min-width: 1024px)";
+  /** What the cascade leaves for this selector under exactly these at-rules ("" — none). */
+  const gridDecl = (at: string, sel: string, prop: string) => declOf(sheet.filter((r) => r.at.join(" ") === at), sel, prop);
+  const SHARED = [".kp-jgrid > li", ".kp-jgrid > .kp-jcard", ".kp-jgrid > li > .kp-jcard"];
+  const GRID_WANT: Array<[string, string, string, string]> = [
+    ["", ".kp-jgrid", "display", "grid"], ["", ".kp-jgrid", "grid-template-columns", "minmax(0, 1fr)"], ["", ".kp-jgrid", "gap", "var(--sp-4)"],
+    [AT640, ".kp-jgrid", "grid-template-columns", "repeat(2, minmax(0, 1fr))"], [AT1024, ".kp-jgrid", "grid-template-columns", "repeat(3, minmax(0, 1fr))"],
+    ...SHARED.flatMap((sel): Array<[string, string, string, string]> => [[SUBGRID_AT, sel, "display", "grid"], [SUBGRID_AT, sel, "grid-row", "span 3"], [SUBGRID_AT, sel, "grid-template-rows", "subgrid"]]),
+    ...["meta", "title", "act"].map((x): [string, string, string, string] => [SUBGRID_AT, `.kp-jgrid .kp-jcard__${x}`, "align-self", "start"]),
+    [SUBGRID_AT, ".kp-jgrid .kp-jcard__act", "margin-block-start", "0"],
+  ];
+  const badGrid = GRID_WANT.filter(([at, sel, p, v]) => gridDecl(at, sel, p) !== v).map(([at, sel, p, v]) => `${at || "(none)"} ${sel} ${p}: ${gridDecl(at, sel, p)}, not ${v}`);
+  const unfenced = sheet.filter((r) => !r.at.includes(SUBGRID_AT) && r.sels.some((s) => /kp-jgrid|kp-jcard/.test(s))
+    && r.decls.some(([p, v]) => /^grid-template-rows$|^grid-template$|^grid$/.test(p) && v.includes("subgrid"))).map((r) => r.sels.join(", "));
+  const strayAt = sheet.filter((r) => r.sels.some((s) => s.startsWith(".kp-jgrid")) && !["", AT640, AT1024, SUBGRID_AT].includes(r.at.join(" ")))
+    .map((r) => `${r.at.join(" ")} ${r.sels.join(", ")}`);
+  const ROWS_WANT = ["div kp-jcard__meta", "h kp-jcard__title", "div kp-jcard__act"];
+  const rowsOf = (n: CardName) => cardChildren(R[n]).kids.filter((k) => !k.cls.includes("kp-jcard__open"))
+    .map((k) => `${/^h[23]$/.test(k.tag) ? "h" : k.tag} ${k.cls.find((c) => c.startsWith("kp-jcard__")) ?? k.cls.join(".")}`);
+  const badRows = CARD_NAMES.filter((n) => j(rowsOf(n)) !== j(ROWS_WANT) || cardChildren(R[n]).text.trim() !== "" || gridDecl(SUBGRID_AT, ".kp-jgrid > .kp-jcard", "grid-row") !== `span ${rowsOf(n).length}`)
+    .map((n) => [n, rowsOf(n), cardChildren(R[n]).text.trim()]);
+  ok("4.grid · A16 item 5: the one journey card grid (.kp-jgrid — one column, two from 640, three from 1024, 16px apart, min-width steps only) lets a row's cards SHARE their rows: where subgrid is supported, each card (or the list item that holds one) spans three of its tracks as a subgrid — the meta row, the question and the action block, the three rows every card draws — each at its track's top, the action block's auto margin reset, so a row's picks start on one line (S6's tickets the precedent); no subgrid outside the fence",
+    badGrid.length === 0 && unfenced.length === 0 && strayAt.length === 0 && badRows.length === 0, j({ badGrid, unfenced, strayAt, badRows }));
+
   const COLOUR_PROP = /^(?:color|background(?:-color|-image)?|border(?:-[a-z]+)?|box-shadow|outline(?:-color)?|fill|stroke|text-shadow)$/;
   const LITERAL_INK = /oklch[(]|rgba?[(]|hsla?[(]|#[0-9a-fA-F]{3,8}(?![A-Za-z0-9_-])/;
   const offLadder = rules.flatMap((r) => r.decls.filter(([p, v]) => p === "font-size" && !/^var[(]--type-[a-z0-9-]+[)]$/.test(v)).map(([, v]) => `${r.sels.join(", ")} font-size: ${v}`));
   const literalInk = rules.flatMap((r) => r.decls.filter(([p, v]) => COLOUR_PROP.test(p) && LITERAL_INK.test(v)).map(([p, v]) => `${r.sels.join(", ")} ${p}: ${v}`));
   const important = rules.filter((r) => r.decls.some(([, v]) => v.includes("!important"))).map((r) => r.sels.join(", "));
-  const TOKENS = ["--jcard-pad", "--jcard-gap", "--jcard-meta-line", "--jcard-title-line", "--jcard-title-2l", "--jcard-act-h"];
+  const TOKENS = ["--jcard-pad", "--jcard-gap", "--jcard-meta-line", "--jcard-title-line", "--jcard-act-h"];
   const tokenSites = TOKENS.map((t) => [t, rootDecl(t).length] as const);
   const readTokens = [...new Set(rules.flatMap((r) => r.decls.flatMap(([, v]) => v.match(/--jcard-[a-z0-9-]+/g) ?? [])))];
-  const sideWord = declOf(rules, ".kp-jcard__side", "font-size");
-  ok("4.css · only the kit: every size in the card's rules a --type-* rung (the call-site rungs ride on the markup), every ink a token, no !important, the side word on the h4 rung (A15), and the --jcard-* geometry declared once each — every token the rules read among them",
+  const sideWord = declOf(sheet, ".kp-jcard__side", "font-size");
+  ok("4.css · only the kit: every size in the card's and its grid's rules a --type-* rung (the call-site rungs ride on the markup), every ink a token, no !important, the side word on the h4 rung (A15), and the --jcard-* geometry declared once each — every token the rules read among them",
     offLadder.length === 0 && literalInk.length === 0 && important.length === 0 && sideWord === "var(--type-h4)"
       && tokenSites.every(([, n]) => n === 1) && readTokens.length > 0 && readTokens.every((t) => TOKENS.includes(t)),
     j({ offLadder, literalInk, important, sideWord, tokenSites, readTokens }));
@@ -899,6 +1168,8 @@ function cardDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) 
   return [
     { name: "the card marked use client (its markup would hydrate, and the close label could run on the phone's clock)", expect: /^4[.]directive /, alone: true,
       plant: (w) => ({ ...w, card: '"use client";' + LF + LF + w.card }) },
+    { name: "a helper exported beside the card (a second entry a client module could reach for)", expect: /^4[.]directive /, alone: true,
+      plant: (w) => sourced(w, "function winWords(", "export function winWords(") },
     { name: "a client module imports the card", expect: /^4[.]importers /, alone: true,
       plant: (w) => ({ ...w, cardNaming: new Map(w.cardNaming).set("src/components/journey/home/home-island.tsx",
         '"use client";' + LF + 'import { JourneyCard } from "@/components/journey/cards/journey-card";' + LF) }) },
@@ -910,13 +1181,17 @@ function cardDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) 
     { name: "the card reads a pool into its markup", expect: /^4[.]computes /, alone: true,
       plant: (w) => sourced(w, "<Heading className=", "<span>{m.yesPool}</span><Heading className=") },
     { name: "a percentage printed on a card", expect: /^4[.]printed /, alone: true,
-      plant: (w) => drawn(w, "priced", "</article>", "<p>33% NDIO</p></article>") },
+      plant: (w) => drawn(w, "priced", "</div></div></article>", "</div><p>33% NDIO</p></div></article>") },
     { name: "the pool printed on a card", expect: /^4[.]printed /, alone: true,
-      plant: (w) => drawn(w, "home", "</article>", "<p>Bwawa TZS 75,287</p></article>") },
+      plant: (w) => drawn(w, "home", "</div></div></article>", "</div><p>Bwawa TZS 75,287</p></div></article>") },
     { name: "a click handler that fires the navigating event (NavProgress already starts on any internal link)", expect: /^4[.]forbidden /, alone: true,
       plant: (w) => sourced(w, 'className="kp-jcard__open"', 'className="kp-jcard__open" onClick={() => window.dispatchEvent(new Event("50pick:navigating"))}') },
     { name: "the classic card's class on a journey card (V18 selects it; phone density rewrites it)", expect: /^4[.]forbidden /, alone: true,
       plant: (w) => drawn(w, "priced", '<article class="kp-jcard"', '<article class="kp-jcard mcardp"') },
+    { name: "a button among the picks (a control that is no link, under the stretched card)", expect: /^4[.]forbidden /, alone: true,
+      plant: (w) => drawn(w, "priced", '<div class="kp-jcard__picks">', '<div class="kp-jcard__picks"><button type="button">Shiriki</button>') },
+    { name: "a second link on a settled card (a tap target the result row never had)", expect: /^4[.]forbidden /, alone: true,
+      plant: (w) => drawn(w, "settledYes", '<p class="kp-jcard__result">', '<p class="kp-jcard__result"><a href="/results">Matokeo yote</a>') },
     { name: "an Up & Down row on /live linked to the question, not its round", expect: /^4[.]links[.]open /, alone: true,
       plant: (w) => drawn(w, "updownLive", 'href="/updown/rnd_jcLive"', 'href="/markets/mkt_jcUd"') },
     { name: "the card link named by the short title (a screen reader loses the full question)", expect: /^4[.]links[.]open /, alone: true,
@@ -925,20 +1200,28 @@ function cardDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) 
       plant: (w) => drawn(w, "home", '?side=NO&amp;from=home"', '?side=NO"') },
     { name: "the picks prefetched (two question pages per card, on every card in view)", expect: /^4[.]links[.]picks /, alone: true,
       plant: (w) => sourced(w, "prefetch={false}", "prefetch={true}") },
-    { name: "a closed card keeps a pick", expect: /^4[.]links[.]picks /, alone: true,
+    { name: "a closed card keeps a pick", expect: /^4[.]forbidden /, alone: true,
       plant: (w) => drawn(w, "closed", '<p class="kp-jcard__closed">', '<a class="btn-yes kp-jcard__pick" href="/markets/mkt_jcClosed?side=YES"><span class="kp-jcard__side">NDIO</span></a><p class="kp-jcard__closed">') },
     { name: "the similar rail's card drawn as an h2 (two h2 levels under the rail's own heading)", expect: /^4[.]title[.]heading /, alone: true,
       plant: (w) => drawn(w, "short", '<h3 class="kp-jcard__title text-title-sm">Je, Dodoma itanyesha kesho?</h3>', '<h2 class="kp-jcard__title text-title-sm">Je, Dodoma itanyesha kesho?</h2>') },
     { name: "the question no longer balanced (a word left alone on its last line)", expect: /^4[.]title[.]heading /, alone: true,
       plant: (w) => styled(w, "color: var(--text); text-wrap: balance; overflow-wrap: break-word; }", "color: var(--text); overflow-wrap: break-word; }") },
+    { name: "a later rule re-sets the question to pretty (the first rule still says balance)", expect: /^4[.]title[.]heading /, alone: true,
+      plant: (w) => ({ ...w, css: w.css + LF + ".kp-jcard__title { text-wrap: pretty; }" + LF }) },
     { name: "every title clamped, the short title included (its end lost)", expect: /^4[.]title[.]clamp /, alone: true,
       plant: (w) => styled(w, ".kp-jcard__title { margin: 0;", ".kp-jcard__title { -webkit-line-clamp: 2; margin: 0;") },
     { name: "a short title given the fallback's clamp", expect: /^4[.]title[.]clamp /, alone: true,
       plant: (w) => drawn(w, "short", '<h3 class="kp-jcard__title text-title-sm">', '<h3 class="kp-jcard__title kp-jcard__title--full text-title-sm">') },
+    { name: "the fallback's clamp without its box (no -webkit-box: the clamp does nothing and the full question runs on)", expect: /^4[.]title[.]clamp /, alone: true,
+      plant: (w) => styled(w, ".kp-jcard__title--full { display: -webkit-box; -webkit-box-orient: vertical;", ".kp-jcard__title--full { -webkit-box-orient: vertical;") },
+    { name: "the fallback's box without its vertical orient", expect: /^4[.]title[.]clamp /, alone: true,
+      plant: (w) => styled(w, ".kp-jcard__title--full { display: -webkit-box; -webkit-box-orient: vertical;", ".kp-jcard__title--full { display: -webkit-box;") },
     { name: "A12's plant: the muted rule re-pointed to the subtle ink (closes today and waiting no brighter than Siku N)", expect: /^4[.]meta[.]ink /, alone: true,
       plant: (w) => styled(w, '.kp-jcard__when[data-emphasis="muted"] { color: var(--text-muted); }', '.kp-jcard__when[data-emphasis="muted"] { color: var(--text-subtle); }') },
     { name: "the label inks itself muted in every state (Siku N as loud as closes today)", expect: /^4[.]meta[.]ink /, alone: true,
       plant: (w) => styled(w, ".kp-jcard__when { display: inline-flex;", ".kp-jcard__when { color: var(--text-muted); display: inline-flex;") },
+    { name: "the label inked by a list it shares with another surface (a colour the card's own rules never set)", expect: /^4[.]meta[.]ink /, alone: true,
+      plant: (w) => ({ ...w, css: w.css + LF + ".kp-hub__sub, .kp-jcard__when { color: var(--text); }" + LF }) },
     { name: "closes today drawn in the subtle ink", expect: /^4[.]meta[.]ink /, alone: true,
       plant: (w) => drawn(w, "today", 'data-emphasis="muted"', 'data-emphasis="subtle"') },
     { name: "closes today drawn with the waiting hourglass", expect: /^4[.]meta[.]label /, alone: true,
@@ -957,6 +1240,14 @@ function cardDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) 
       plant: (w) => drawn(w, "priced", 'class="btn-no kp-jcard__pick"', 'class="btn-yes kp-jcard__pick"') },
     { name: "a pick given a button's height and nowrap (a two-line pick cut)", expect: /^4[.]picks[.]words /, alone: true,
       plant: (w) => drawn(w, "priced", 'class="btn-yes kp-jcard__pick"', 'class="btn btn-yes btn-md kp-jcard__pick"') },
+    { name: "the pick's rule given a fixed height (its second line cut)", expect: /^4[.]picks[.]words /, alone: true,
+      plant: (w) => styled(w, ".kp-jcard__pick { display: flex;", ".kp-jcard__pick { height: 44px; display: flex;") },
+    { name: "the pick's rule held to one line (white-space: nowrap)", expect: /^4[.]picks[.]words /, alone: true,
+      plant: (w) => styled(w, ".kp-jcard__pick { display: flex;", ".kp-jcard__pick { white-space: nowrap; display: flex;") },
+    { name: "≈100.0× held to its words by no-break spaces (en: “≈100.0× your bet” runs past a 320 pick's line)", expect: /^4[.]picks[.]fit /, alone: true,
+      plant: (w) => drawn(w, "cap100En", "≈100.0×</span> your bet", `≈100.0×</span>${NBSP}your${NBSP}bet`) },
+    { name: "≈99.9× parted from its words (a break could read “≈99.9× / your bet”)", expect: /^4[.]picks[.]fit /, alone: true,
+      plant: (w) => drawn(w, "cap999En", `≈99.9×</span>${NBSP}your`, "≈99.9×</span> your") },
     { name: "the figure parted from its unit (a break could read “≈2.8× / dau”)", expect: /^4[.]picks[.]unit /, alone: true,
       plant: (w) => drawn(w, "priced", `≈2.8×</span>${NBSP}dau`, "≈2.8×</span> dau") },
     { name: "the English unit split (“≈2.8× your / bet”)", expect: /^4[.]picks[.]unit /, alone: true,
@@ -986,10 +1277,20 @@ function cardDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) 
       plant: (w) => styled(w, ".kp-jcard__pick:active { transform: translateY(0) scale(var(--m-press)); filter: brightness(0.93); }", ".kp-jcard__pick:active { filter: brightness(0.93); }") },
     { name: "the hover lift on every pointer (stuck on a phone after a tap)", expect: /^4[.]press /, alone: true,
       plant: (w) => styled(w, "@media (hover: hover) { .kp-jcard__pick:hover { transform: translateY(var(--m-lift)); } }", ".kp-jcard__pick:hover { transform: translateY(var(--m-lift)); }") },
-    { name: "the action block off the card's floor (picks out of line across a grid's row)", expect: /^4[.]act /, alone: true,
+    { name: "the pick's edge lost in forced colours (the ring is a shadow, stripped with the fill)", expect: /^4[.]forced /, alone: true,
+      plant: (w) => styled(w, "@media (forced-colors: active) { .kp-jcard__pick { border: 1px solid; } }", "") },
+    { name: "the action block off the card's floor (picks out of line across a row, wherever the rows are not shared)", expect: /^4[.]act /, alone: true,
       plant: (w) => styled(w, "gap: var(--jcard-gap); margin-block-start: auto; }", "gap: var(--jcard-gap); }") },
-    { name: "the two-line reserve set by the card itself (one column pays it too)", expect: /^4[.]act /, alone: true,
-      plant: (w) => styled(w, ".kp-jcard__title { margin: 0;", ".kp-jcard__title { min-height: var(--jcard-title-2l); margin: 0;") },
+    { name: "a two-line reserve back on the question (one column pays it too)", expect: /^4[.]act /, alone: true,
+      plant: (w) => styled(w, ".kp-jcard__title { margin: 0;", ".kp-jcard__title { min-height: 48px; margin: 0;") },
+    { name: "the cards no longer share their rows (the subgrid dropped: a longer question pushes its picks below its neighbour's)", expect: /^4[.]grid /, alone: true,
+      plant: (w) => styled(w, ".kp-jgrid > li > .kp-jcard { display: grid; grid-row: span 3; grid-template-rows: subgrid; }", ".kp-jgrid > li > .kp-jcard { display: grid; grid-row: span 3; }") },
+    { name: "the action block's auto margin kept in the shared rows (a shorter block sinks to its track's floor, off its neighbours' line)", expect: /^4[.]grid /, alone: true,
+      plant: (w) => styled(w, "  .kp-jgrid .kp-jcard__act { margin-block-start: 0; }" + LF, "") },
+    { name: "the subgrid out of its @supports fence (a browser without subgrid loses the floor and the shared rows alike)", expect: /^4[.]grid /, alone: true,
+      plant: (w) => styled(w, "@supports (grid-template-rows: subgrid) {" + LF + "  .kp-jgrid > li {", "@media screen {" + LF + "  .kp-jgrid > li {") },
+    { name: "the refund sentence drawn after the action block (a fourth row: the card no longer fits its three tracks)", expect: /^4[.]grid /, alone: true,
+      plant: (w) => drawn(w, "oneSided", `</div><p class="kp-jcard__note">${note}</p></div></article>`, `</div></div><p class="kp-jcard__note">${note}</p></article>`) },
     { name: "a hand-typed ink in the card's rules", expect: /^4[.]css /, alone: true,
       plant: (w) => styled(w, "background: var(--bg-inset); font-size: var(--type-body);", "background: oklch(11% 0.11 268); font-size: var(--type-body);") },
     { name: "A15: the side word off the h4 rung", expect: /^4[.]css /, alone: true,
