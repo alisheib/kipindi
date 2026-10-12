@@ -7531,6 +7531,15 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    by 0.5 while the title's baseline snapped up by 0.3. Centring the 0.6em point instead makes the margin −4px — the
    sheet's height whole again (147, two lines 172) — so phone and desktop both land within ±0.5px (predicted +0.3). */
 .kp-jsheet__title { margin: calc(var(--sp-10) - var(--sp-8) - var(--type-h3) * 0.6) 0 0; padding-right: var(--sp-12); font-family: var(--font-display); font-weight: 700; font-size: var(--type-h3); line-height: 1.25; color: var(--text); text-wrap: balance; }
+/* ⭐ THE HOW-TO SHEET'S TITLE IS 24px, AS ITS CANVAS DRAWS IT (the Vodacom plan S7, S7-PLAN A15; pick-5-how-to-play.dc.html
+   :40, Sora 700 24px in a 1.2 line) — the guest sheet's rule above, a rung up; the guest Tiketi sheet keeps its board's 20.
+   ⭐ …AND ITS CAPITALS STILL STAND ON THE ✕ (A24 item 6: the base rule's top margin is computed from --type-h3). The ✕ is
+   centred 40px down and the title starts 32px down, as above; Sora's capitals centre L/2 − 0.025em down a line of height L
+   (modal.tsx's `CloseX` note: ascent 0.97, descent 0.29, cap 0.73 per em), 0.575em in a 1.2 line — 13.8px at 24 — so the
+   margin is 40 − 32 − 13.8 = −5.8px, and the title's one line still adds a whole 23px (28.8 − 5.8) to the sheet: docked,
+   its top lands on a whole pixel, as the guest sheet's does. At 320 the board draws 22, a size on no CSS rung: the title
+   keeps 24 if qa:journey-home's 320×640 tiles hold it on one line beside the ✕ in sw, en and zh (A15 item 2, WP11). */
+.kp-jsheet__title--lg { margin-top: calc(var(--sp-10) - var(--sp-8) - var(--type-h2) * 0.575); font-size: var(--type-h2); line-height: 1.2; }
 /* ⭐ EVERY DIALOG'S TITLE STANDS ON ITS CORNER ✕ THE SAME WAY (round 5 of the visual pass, 2026-10-09, F20 — the one
    convention, `CloseX` in modal.tsx). The guest sheet's rule above, for every other Modal whose title sits beside the
    corner ✕: Modal pins the ✕'s 48px box 16px under the panel's padding edge (`right-3 top-3`), so it centres 40px down;
@@ -7542,6 +7551,80 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    guest sheet's does. */
 .kp-modal-title { margin-top: calc(var(--sp-10) - var(--sp-6) - 0.6em); padding-right: var(--sp-12); line-height: 1.25; }
 @media (min-width: 1024px) { .kp-modal-title { margin-top: calc(var(--sp-10) - var(--sp-8) - 0.6em); } }
+
+/* ── S7 · THE HOW-TO CARD (`journey/home/howto-card.tsx`; pick-1-home.dc.html :37-46) ──────────────────────────────────
+   The journey home's first row (WP7 mounts it): a button that opens the How to Play sheet in place. The frame's geometry,
+   on the platform's tokens: the card's fill and edge are a journey card's (`--bg-elevated`, a 1px `--border`, `--r-lg`),
+   the plate 48 with the kit's glyph for it (`plateGlyph(48)`, 24: where the board draws 20 the kit wins, §0h point 7),
+   14px between the three parts and inside the end, 12 elsewhere; at least 72px tall
+   (the plate and the padding make it 74, as the board's own CSS does). Its words take the ladder's rungs in the markup
+   (`text-body-lg` Sora 600 over `text-body-sm`). Journey-only: nothing classic draws these classes.
+   ⭐ THE ROYAL PLATE (choice 3A, S7-PLAN A14): the primary material from its ONE definition — `.btn-primary`'s ramp, lit
+   edge and drop as tokens (`:root`, A14 item 1), the board's two shadows and never the button's glow, the glyph in
+   `--pearl-50` (test:contrast scores the pair: pearl on the ramp's worst stop, 3.0 for a mark). IconPlate gets no colour
+   prop, so it writes no inline colour (`test:journey-home` §5 holds both halves).
+   ⭐ Its hover answers only a pointer that hovers (the touch rule above `.btn-primary`'s): the edge takes the royal border,
+   the topic tile's hover ink, in the colour cross-fade's `linear`. */
+.kp-jhowto { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 72px; padding: var(--sp-3) 14px var(--sp-3) var(--sp-3); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg-elevated); color: var(--text); font: inherit; text-align: start; cursor: pointer; transition: border-color var(--t-quick) linear; }
+@media (hover: hover) { .kp-jhowto:hover { border-color: var(--border-royal); } }
+.kp-jhowto__plate { background: var(--wash-primary); box-shadow: var(--edge-primary), var(--shadow-primary); color: var(--pearl-50); }
+.kp-jhowto__text { display: flex; flex: 1 1 auto; flex-direction: column; gap: 2px; min-width: 0; }
+.kp-jhowto__meta { color: var(--text-subtle); }
+.kp-jhowto__chev { flex-shrink: 0; color: var(--text-subtle); }
+
+/* ── S7 · THE HOW-TO SHEET (`onboarding/how-to-play-sheet.tsx`; pick-5-how-to-play, s4-7-howto-320/-desktop/-en/-zh) ──
+   The kit's sheet, as the guest Tiketi sheet and the Wallet draw it (`.kp-wsheet`: its padding, its grab handle below 1024,
+   its 56px action and its link), plus what this one needs: the cap, one scrolling part, the steps and MFANO.
+   ⭐ THE CAP IS ON THE PANEL, AND IT IS CSS (Open point 20): `.kp-howto`'s max-height, the viewport less 48px
+   (`calc(100dvh - var(--sp-12))`) — the same fixed gutter as the first-visit primer's panel (`max-h-[calc(100dvh-48px)]`),
+   nothing measured at run time. The Modal's wrapper is `items-end`, so a docked panel taller than the screen would hide
+   its top where nothing can scroll it back.
+   ⭐ THE CHAIN THE CAP RUNS DOWN IS THIS BLOCK'S OWN, never leaning on `.kp-wsheet`'s: the panel is a flex column
+   (`.kp-howto`), the sheet inside it a flex column that may shrink below its content (`.kp-howto__sheet`, `min-height: 0`
+   — without it the sheet keeps its content's height and runs out of the capped panel), and in the sheet only the steps
+   and MFANO give way (`.kp-howto__scroll`: shrinks, scrolls, holds its own scroll); the grab, the title, the CTA and
+   Weka mipaka never shrink, so every way out stays on screen.
+   ⭐ THE FADE IS WHERE MORE IS HIDDEN, AND ONLY THERE — the scrolling strip's convention (`.kp-strip-fade`, `data-edges`),
+   on the block axis: the region says which edges hide something and a 24px ramp dims exactly those; a region that fits
+   draws none. A keyboard reader who focuses it gets the whole region, ring and all, with no fade over its edges.
+   ⭐ THE STEPS: 36px numerals on the neutral plate (choice 1B, DESIGN_AUTHORITY §M3 — `--bg-royal-soft`, an inset
+   `--border-strong` ring, `--text`), the title's first line centred on its badge (6px over a 24px line), the body in the
+   muted ink with the multiple a mono unit in the text ink.
+   ⭐ MFANO is the kit's info Callout; its label an `.eyebrow` (§T3) in the one section ink (`text-text-subtle` in the
+   markup: Ali's ruling (3) of 2026-10-10, newer than the canvas's info-blue label) — uppercase and mono for Latin words,
+   and for zh 示例 neither, nor tracked (Chinese has no case, and mono and tracking only space its two characters apart);
+   its sums `.amount` and its multiple bold, as the board sets them; the estimate's note in the subtle ink. */
+.kp-howto { display: flex; flex-direction: column; max-height: calc(100dvh - var(--sp-12)); }
+.kp-howto__sheet { display: flex; flex-direction: column; gap: var(--sp-4); min-height: 0; }
+.kp-howto__sheet > * { flex-shrink: 0; }
+.kp-howto__scroll { display: flex; flex-direction: column; gap: var(--sp-4); flex-shrink: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.kp-howto__scroll[data-edges="end"] {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--sp-6)), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--sp-6)), transparent);
+}
+.kp-howto__scroll[data-edges="start"] {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--sp-6));
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--sp-6));
+}
+.kp-howto__scroll[data-edges="both"] {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--sp-6), #000 calc(100% - var(--sp-6)), transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--sp-6), #000 calc(100% - var(--sp-6)), transparent);
+}
+.kp-howto__scroll:focus-visible { -webkit-mask-image: none; mask-image: none; }
+.kp-howto__steps { display: flex; flex-direction: column; gap: var(--sp-4); margin: 0; padding: 0; list-style: none; }
+.kp-howto__step { display: flex; align-items: flex-start; gap: 14px; }
+.kp-howto__num { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: var(--r-pill); background: var(--bg-royal-soft); box-shadow: inset 0 0 0 1px var(--border-strong); color: var(--text); }
+.kp-howto__text { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; padding-top: 6px; }
+.kp-howto__step-title { margin: 0; color: var(--text); }
+.kp-howto__step-body { margin: 0; color: var(--text-muted); }
+.kp-howto__mult { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: 0; white-space: nowrap; }
+.kp-howto__step-body .kp-howto__mult { font-weight: 600; color: var(--text); }
+.kp-howto__ex-label:lang(zh) { font-family: var(--font-body); letter-spacing: 0; text-transform: none; }
+.kp-howto__ex-body { margin: 6px 0 0; color: var(--text); }
+.kp-howto__ex-body :is(.amount, .kp-howto__mult) { font-weight: 700; }
+.kp-howto__note { margin: 6px 0 0; color: var(--text-subtle); }
+.kp-howto__foot { display: flex; justify-content: center; }
+
 /* ⭐ TIKETI ZANGU'S CARDS SHARE THEIR ROWS, NOT ONLY THEIR HEIGHT (2026-10-09, the visual pass's round 3, tile 168 at
    1280). A pair already shares a height (the grid's stretch, `tickets-view.tsx`), but each card laid its own rows out,
    so a two-line question beside a one-line one put DAU at y714 in the first card and y694 in its neighbour, and left
