@@ -1777,8 +1777,9 @@ function g8Tabs(I: Impl, W: World, G: Graph, ok: Ok) {
  * in some file.
  *   ROOTS: what a journey PHONE shows. The four tabs (a guest's Tiketi zangu opens the guest sheet), the header's own
  *   links as `journeyHeaderState` decides them, the Wallet the capsule opens and the footer; and on `/account`, which
- *   only the Akaunti tab reaches, `hubRowsFor(viewer)`. The language menu, the bell and the avatar menu show from 1024
- *   only, so they open nothing here.
+ *   only the Akaunti tab reaches, `hubRowsFor(viewer)` — each row's href, and since S7 WP9 Tafuta's form target, the
+ *   journey home (A20 item 4: the hub's root moved there from `/markets`, 9.hub.search). The language menu, the bell and
+ *   the avatar menu show from 1024 only, so they open nothing here.
  *   EDGES: the path literals of the code each page renders, its comments stripped: the page, the files beside it, the
  *   layouts above it (never the root's, which renders the chrome) and every component they load. The chrome is never
  *   an edge; its doors are roots, counted only where a phone shows them.
@@ -2075,9 +2076,10 @@ function hubViewerFor(k: CensusKind, d: DO): HUB.HubViewer {
     doors: d,
   };
 }
-/** The doors on `/account` for a reader: `hubRowsFor`'s rows, the only doors the hub page holds. */
+/** The doors on `/account` for a reader: `hubRowsFor`'s rows, the only doors the hub page holds — a door's or Arifa's
+ *  href, and Tafuta's form target (S7 WP9, S7-PLAN A20 item 4: its `action`, the journey home, is an edge like a door's). */
 function hubDoorsFor(I: Impl, k: CensusKind, d: DO): string[] {
-  return I.hubRows(hubViewerFor(k, d)).flatMap((g) => g.rows.flatMap((r) => (r.kind === "link" || r.kind === "unread" ? [r.href] : [])));
+  return I.hubRows(hubViewerFor(k, d)).flatMap((g) => g.rows.flatMap((r) => (r.kind === "link" || r.kind === "unread" ? [r.href] : r.kind === "search" ? [r.action] : [])));
 }
 /** The journey's phone chrome for a reader: the tabs, the header's own links, the sheets they open, the footer. */
 function journeyRootsFor(I: Impl, k: CensusKind, d: DO): string[] {
@@ -2188,6 +2190,13 @@ function g9Census(I: Impl, W: World, G: Graph, ok: Ok) {
   const unoffered = [...namedIn(HUB_ROWS_FILE)].filter((r) => !offered.has(r));
   ok("9.hub.complete · every door the hub's rows name opens a route on disk and is offered to some reader the census draws",
     hubBad.length === 0 && unoffered.length === 0 && offered.size > 10, show({ hubBad, unoffered, offered: offered.size }));
+  // S7 WP9 (A20 item 4): the hub's root moved from /markets to / — Tafuta's form lands on the journey home, and no hub door
+  // leads to the board a journey reader's /markets no longer shows (it answers with the home).
+  const searchTargets = kinds.filter(({ k }) => k.signedIn)
+    .map(({ k, d }) => I.hubRows(hubViewerFor(k, d)).flatMap((g) => g.rows).flatMap((r) => (r.kind === "search" ? [r.action] : [])));
+  const toBoard = kinds.filter(({ k, d }) => hubDoorsFor(I, k, d).some((href) => toRoute(href) === "/markets")).map(({ k }) => k.id);
+  ok("9.hub.search · Tafuta's form lands on the journey home (/) for every signed-in reader the census draws — the hub's root moved there from /markets (S7 WP9, A20) — and no hub door leads to the shelved board",
+    searchTargets.length > 0 && searchTargets.every((t) => t.length === 1 && t[0] === "/") && toBoard.length === 0, show({ searchTargets, toBoard }));
   for (const { k, d } of kinds) {
     const has = new Set<string>(I.hubRows(hubViewerFor(k, d)).flatMap((g) => g.rows.map((r) => r.kind)));
     const need = k.signedIn ? ["language", "unread", "cardSize", "needle"] : ["language"];
@@ -2928,6 +2937,11 @@ ${s}`);
     const withoutRow = (id: string): Impl["hubRows"] => (v) => HUB.hubRowsFor(v).map((g) => ({ ...g, rows: g.rows.filter((r) => r.id !== id) }));
     const noArifa = withoutRow("notifications");
     const noLanguage = withoutRow("language");
+    // S7 WP9 (A20 item 4): Tafuta's edge to the journey home.
+    const noSearch = withoutRow("search");
+    const searchToBoard: Impl["hubRows"] = (v) => HUB.hubRowsFor(v).map((g) => ({
+      ...g, rows: g.rows.map((r) => (r.kind === "search" ? ({ ...r, action: "/markets" } as unknown as HUB.HubRow) : r)),
+    }));
     const censusPlayer = CENSUS_KINDS[1];
     const playerHub = hubViewerFor(censusPlayer, DOORS.viewerDoorsFor(censusPlayer.input));
     const hasRow = (groups: HUB.HubGroup[], id: string) => groups.some((g) => g.rows.some((r) => r.id === id));
@@ -3360,6 +3374,13 @@ ${s}`);
       { name: "the hub loses its language control", expect: at("9.controls."),
         impl: { hubRows: noLanguage }, landed: !hasRow(noLanguage({ signedIn: false }), "language"),
         landedAs: "a journey phone cannot change its language" },
+      { name: "the hub loses Tafuta, and its edge to the journey home with it (S7 WP9, A20 item 4)", expect: at("9.hub.complete ·"),
+        impl: { hubRows: noSearch }, landed: hasRow(HUB.hubRowsFor(playerHub), "search") && !hasRow(noSearch(playerHub), "search"),
+        landedAs: "the hub names a door to / that no reader is offered: search is gone from Akaunti" },
+      { name: "Tafuta's form sent back to the board (/markets) (S7 WP9, A20)", expect: at("9.hub.search ·"),
+        impl: { hubRows: searchToBoard },
+        landed: searchToBoard(playerHub).flatMap((g) => g.rows).some((r) => r.kind === "search" && (r as { action: string }).action === "/markets"),
+        landedAs: "a journey reader's search lands on a board that only redirects them home, and drops the words" },
       { name: "the reset link's generator no longer names its page", expect: at("9.external./auth/reset-password ·"),
         world: resetUnnamed, landed: changed(resetUnnamed, RESET_LINK), landedAs: "an external entrance claimed for a page nothing sends anyone to" },
       { name: "a page links an external entrance, and its exemption stays", expect: at("9.external./auth/verify-email ·"),

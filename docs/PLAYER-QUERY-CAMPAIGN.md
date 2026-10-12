@@ -984,7 +984,10 @@ the two movements that have a receipt: All · Deposits · Withdrawals, the walle
 cross-filtered counts and empty states that name their cause; no sort and no search, as on `/wallet` (a receipt list is
 chronological, and every row opens a receipt that prints both references in full). `/markets` is listed because it is the
 shape everything copies; **its only change is Stage 1, and nothing on it moves for a
-player.**
+player** — for classic readers; journey readers are redirected (S7). Since the Vodacom plan's S7 WP9 a journey reader's
+`/markets` answers with the journey home: its topic becomes the home's chip, its search the home's `?q=`, its watch lens
+lands on `/watchlist`, and its other axes (status, sort, dir, odds, pool, page) are shelved for that reader
+([SHELVED.md](SHELVED.md), `npm run test:markets-redirect`). The board and its bar are unchanged for everybody else.
 
 **B · One axis (5)** — `/leaderboard` (sort) · `/live` (`q` into the URL) ·
 `/positions/performance` (product lens) · `/profile/invite` (lens + sort) ·
@@ -1002,7 +1005,7 @@ total written in prose.
 | Single object | `/updown/[roundId]` · `/proposals/[id]` · `/wallet/receipt/[id]` · `/positions/[positionId]` (a redirect) · `/agent/invite/[token]` · `/wallet/deposit/return` · `/s/[token]` · `/s` | One object, or a handful of the viewer's own rows on it. A filter over three rows is noise. `/s/[token]` is the marketing opt-out (U8): one number, one button, no login — a lens on it would be a control with nothing to sort. `/s` (added 2026-09-27) is the same opt-out link with its token lost: it renders the same refusal as an invalid token and lists nothing, so there is nothing to filter. Deeper `/s/…` paths have no route of their own and get the full shell's 404. |
 | Forms and flows | `/auth/login` · `/auth/register` · `/auth/otp` · `/auth/2fa` · `/auth/forgot-password` · `/auth/reset-password` · `/auth/verify-email` · `/auth/admin` · `/proposals/new` · `/wallet/deposit` · `/wallet/withdraw` · `/profile/source-of-funds` | Nothing is listed. |
 | Settings | `/profile` · `/profile/notifications` · `/profile/responsible-gambling` · `/profile/security` · `/profile/sessions` | Fixed short lists of controls, not collections. `/profile/sessions` renders exactly one device **by design** — single-session model. |
-| Journey hub | `/account` | A fixed list of doors, not a collection. Journey only: every request the journey is not shown to gets the not-found page until S15 (Vodacom plan S6 WP5, SJ-17). |
+| Journey hub | `/account` | A fixed list of doors, not a collection. Journey only: every request the journey is not shown to gets the not-found page until S15 (Vodacom plan S6 WP5, SJ-17). Its Tafuta row (S7 WP9, SJ-6's "search lives in Akaunti") opens a search field in place that sends `?q=` to the journey home, which does the searching; the hub itself lists and filters nothing. |
 | Public agent | `/agent` · `/agent/apply` · `/agent/status` | Static copy and a form. |
 | Legal | `/legal/terms` · `/legal/aml` · `/legal/privacy` · `/legal/responsible-gambling` · `/legal/agent-terms` · `/legal/rules` · `/legal/rules/yes-no` · `/legal/rules/up-down` | A document is read, not queried — but see the ruling below. |
 | Other | `/` · `/help` | See the rulings below. |

@@ -454,7 +454,7 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/components/home/trust-band.tsx', '<I.externalLink s={11} edge="end" text="mono-400" />', 1, "text", "a source link's end"],
     ['src/components/home/updown-band.tsx', '<I.chevronRight s={14} edge="end" text="mono-700" />', 1, "text", "a section's see-all"],
     ['src/components/home/updown-band.tsx', '<I.chevronRight s={14} edge="end" text="body-600" />', 3, "text", "the Watch link's end, and the band's two buttons' ends: a centred control frames its ink (R10-A6)"],
-    ['src/components/journey/account/hub-row.tsx', '<I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />', 1, "row", "the hub's row end"],
+    ['src/components/journey/account/hub-row.tsx', '<I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />', 2, "row", "the hub's row end, and Tafuta's (S7 WP9: a disclosure like the language row, turned by the same rule, 4.8)"],
     ['src/components/journey/account/language-row.tsx', '<I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />', 1, "row", "the hub's row end (and its turn, 4.8)"],
     ['src/components/journey/account/unread-row.tsx', '<I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />', 1, "row", "the hub's row end"],
     ['src/components/journey/home/howto-card.tsx', '<I.chevronRight s={20} edge="end" className="kp-jhowto__chev" />', 1, "row", "the journey home's How-to card's end: a door's end mark on its content edge (the Vodacom plan S7, WP6)"],

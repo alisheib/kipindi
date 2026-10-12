@@ -3463,12 +3463,21 @@ Other rules:
 - Opening the sheet pushes `?bet=<id>.<side>` via `history.pushState`, so Back closes it and a reload reopens it.
 
 **Other routes**
-- `/markets` (list only): a **307** via `redirect()` while flagged, and a 308 only at S16.
+- `/markets` (list only): a **307** while flagged, and a 308 only at S16.
+  - ⚠️ **The 307 is AppShell's, not the page's (S7 WP9, 2026-10-12; S7-PLAN Correction 10, Open point 13).** A
+    `redirect()` in `markets/page.tsx` cannot answer a document with a 307: the root `loading.tsx` streams HTTP 200
+    before any page renders, so a page-level redirect reaches a document as a meta refresh (the note at the cookie
+    check in `src/proxy.ts`). AppShell renders in the root layout, ahead of that stream, so it answers a DOCUMENT
+    (`x-kp-document`) with a real 307, as E-381 does. On a FLIGHT (a soft hop or a refresh) a root-layout redirect
+    would blank the page, so there the page redirects at its head, before any read, and the router follows. The edge
+    cannot do it: the proxy may not read the preview pass. Both doors call one function, `journeyMarketsTarget`
+    (`src/lib/journey/markets-redirect.ts`, S7 WP3's table); a classic reader's `/markets` is today's board, at 200.
   - `topic` becomes `cat`.
-  - `q`, `utm_*`, `gclid`, `ref`, `invite`, `side` and `bet` are kept.
-  - `status=watch` goes to `/watchlist`.
+  - `q`, `utm_*`, `gclid`, `ref`, `invite`, `side` and `bet` are kept — and, by S7-PLAN Open point 13 and A11,
+    `utm_id`, `gbraid`, `wbraid` and `welcome=new|back` (WP3's table is the one list).
+  - `status=watch` goes to `/watchlist` (with `cat`, `q` and `welcome`).
   - `status/sort/dir/odds/pool/page` are dropped and recorded in SHELVED.md.
-  - Covered by `test:markets-redirect`.
+  - Covered by `test:markets-redirect` (§1 the table, §2 the two doors).
 - **The journey card also appears on** `/watchlist`, `/live` (replacing `LivePulseGrid` under the flag), and
   similar-markets. `/results` gets the settled variant.
   - The card-site census is updated in the same commit: `test:featured-card` 3.0 count, `test:one-sided` 2.4 + a new

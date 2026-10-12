@@ -6935,18 +6935,28 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 /* A balance in a list of doors is neutral ink: gold marks money that was earned (§M3). */
 .kp-hub__money { flex-shrink: 0; font-family: var(--font-mono); font-weight: 600; font-size: var(--type-body); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text); }
 .kp-hub__chev { flex-shrink: 0; color: var(--text-subtle); }
-/* The language row is a disclosure: its summary is the row, and the three languages open beneath it, in the flow. */
-.kp-hub__lang > summary { list-style: none; }
-.kp-hub__lang > summary::-webkit-details-marker { display: none; }
+/* The language row and Tafuta are disclosures (Tafuta since S7 WP9, S7-PLAN A20): each summary is its row, and what it
+   opens — the three languages, the search field — sits beneath it, in the flow. One set of rules serves both. */
+.kp-hub__find > summary, .kp-hub__lang > summary { list-style: none; }
+.kp-hub__find > summary::-webkit-details-marker, .kp-hub__lang > summary::-webkit-details-marker { display: none; }
 /* The row's chevron ends on the row's end edge (R9-A4, `edge="end"`), turned or not: closed, its ink ends at x15.95 of 24;
    turned a quarter about its box's centre it reaches x18.95, so the turn steps back those 3 units — 2.25px at the hub's
    18px — and the open chevron's ink ends on the same edge. */
-.kp-hub__lang[open] > summary .kp-hub__chev { transform: translateX(-2.25px) rotate(90deg); }
+.kp-hub__find[open] > summary .kp-hub__chev, .kp-hub__lang[open] > summary .kp-hub__chev { transform: translateX(-2.25px) rotate(90deg); }
 .kp-hub__opts { display: flex; flex-direction: column; gap: var(--sp-1); padding: 0 var(--sp-2) var(--sp-2); }
 .kp-hub__opt { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: var(--h-control-md); padding: 0 var(--sp-3); border: 0; border-radius: var(--r-md); background: transparent; color: var(--text-muted); font: inherit; font-size: var(--type-body); text-align: left; cursor: pointer; }
 .kp-hub__opt:hover { background: var(--bg-overlay); }
 .kp-hub__opt[aria-selected="true"] { background: var(--pill-active); color: var(--text); font-weight: 600; }
 .kp-hub__tick { flex-shrink: 0; display: inline-flex; width: 16px; color: var(--brand-300); }
+/* ⭐ TAFUTA'S FORM (S7 WP9, A20): the kit field and the kit button on one line, on the inset the language choices open on
+   (`.kp-hub__opts`' padding: one panel inset for the card's two disclosures), the two controls 12px apart as every pair
+   of controls stands (A5); the field takes the line and the button keeps its word whole. At 320 the widest placeholder,
+   en "Search questions", still has room beside "Search" (`test:journey-account` 9.fit measures it in sw, en and zh).
+   Open, the row is no longer its card's last box, so its bottom corners square: its hover and its focus ring meet the
+   form edge to edge rather than on the card's curve. */
+.kp-hub__form { display: flex; align-items: center; gap: var(--sp-3); padding: 0 var(--sp-2) var(--sp-2); }
+.kp-hub__field { flex: 1 1 auto; min-width: 0; }
+.kp-hub__card .kp-hub__find[open] > .kp-hub__row { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 /* The Needle's row is the hub's own row (`NeedleControlsDrawer variant="hub-row"`, round 3, 2026-10-09): it wore the
    account menu's row inside a padded item, sized up here, and stood 2px off every column of the card. No rule of its own. */
 /* Sign-out stands alone under the cards, as the canvas draws it: an act, not a door.
