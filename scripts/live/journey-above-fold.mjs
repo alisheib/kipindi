@@ -86,8 +86,12 @@ export const PROBE = ({ sel, announce }) => {
     return { top: r1(b.top), bottom: r1(b.bottom), h: r1(b.height), shown };
   };
   const main = document.querySelector(sel.main);
-  // R1: the first element in main that carries a journey test id, in document order.
-  const firstJourney = main ? [...main.querySelectorAll("[data-testid]")].find((e) => (e.getAttribute("data-testid") ?? "").startsWith("journey-")) : null;
+  const howtoEl = document.querySelector(sel.howto);
+  // R1: the first element in main that carries a journey test id, in document order — skipping the ones that HOLD the
+  // How-to card (the home's own root wraps everything it draws, so it is never "before" the card).
+  const firstJourney = main ? [...main.querySelectorAll("[data-testid]")]
+    .filter((e) => (e.getAttribute("data-testid") ?? "").startsWith("journey-"))
+    .find((e) => e === howtoEl || !howtoEl || !e.contains(howtoEl)) : null;
   const title = document.querySelector(sel.title);
   let lines = null;
   if (title) {
@@ -104,7 +108,7 @@ export const PROBE = ({ sel, announce }) => {
   bars.announcement = box(notice ?? null);
   return {
     first: firstJourney ? firstJourney.getAttribute("data-testid") : null,
-    howto: box(document.querySelector(sel.howto)),
+    howto: box(howtoEl),
     title: title ? { ...box(title), lines } : null,
     picks: box(picks),
     card: box(card),
