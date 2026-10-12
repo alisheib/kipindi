@@ -41,7 +41,8 @@
  *     (chunks-check.sh:20), or a journey class (kp-jhdr, kp-jsheet; S7's kp-jcard, kp-jhome, kp-jhowto, kp-howto).
  *   · CLIENT-RENDERED BOUNDARIES (A9 (3)). The tree carries lazy-overlays' boundaries by design (VODACOM-PLAN.md:539):
  *     the first-visit primer, and the chat bubble when the chatbot is on, load with `ssr: false`
- *     (lazy-overlays.tsx:17-24, :45-46), and next/dynamic wraps each in a bail-out boundary of its own. So:
+ *     (lazy-overlays.tsx's two loaders — each ending in the lost-chunk guard since S7's live fix L1, which leaves the
+ *     server's render as it was — and their two mounts), and next/dynamic wraps each in a bail-out boundary of its own. So:
  *       - every `<!--$!-->` must be such a boundary: its template carries data-dgst BAILOUT_TO_CLIENT_SIDE_RENDERING;
  *       - their number must be exactly 1 (the primer), plus 1 when the document's inline RSC data passes
  *         chatbotEnabled true to LazyOverlays (layout.tsx:243) — read from the I-row naming LazyOverlays and the
