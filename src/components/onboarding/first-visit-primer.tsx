@@ -410,7 +410,9 @@ export function FirstVisitPrimer() {
          `overflow-hidden` was really buying (the gilt corners clipped to the rounded edge; the
          progress strip still runs to the sheet's edge).
          ⭐ R5-B (2026-10-09, F7): docked in the journey the sheet draws no bottom edge and runs 1px past the screen's last
-         row (`[data-dock]`, globals.css), its padding taking that 1px back — from the 0 this panel has (`--dock-pb`). */
+         row (`[data-dock]`, globals.css), its padding taking that 1px back — from the 0 this panel has (`--dock-pb`).
+         Since S7 WP8 the primer never opens in the journey (the `journeyOn` term above), so nothing docks it there today;
+         `[--dock-pb:0px]` is kept for its re-mount (docs/SHELVED.md), and `test:visual-pass-r5b` 3.5 pins it. */
       panelClassName="!p-0 [--dock-pb:0px] max-h-[calc(100dvh-48px)] overflow-y-auto overflow-x-hidden"
     >
         {/* ⛔ NO GILT CORNERS (R5-C, the second gold audit, 2026-10-09). Two heraldic gilt brackets framed the first screen
