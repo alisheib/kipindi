@@ -64,3 +64,58 @@ blank for it.
 inline `style={{…}}`. They are `.mcardp-*` classes here: law 15's "broken looks
 like" names that exact shape ("a cold-start look shipped as inline style in
 market-card.tsx instead of a token/class") as the failure to avoid.
+
+---
+
+## THE JOURNEY STATE — the journey card (added 2026-10-12, effective at the S15 flip)
+
+**What it is.** The market card as the Vodacom plan's simplified journey draws it (`docs/VODACOM-PLAN.md` §3.2;
+`S7-PLAN.md` WP5 with amendments A12, A15, A16 and A24; the S4 boards `s4-3-card-*` and `pick-1-home`): one question,
+its two picks, nothing else. It is built as its own server component, `JourneyCard`
+(`src/components/journey/cards/journey-card.tsx`), beside `MarketCard` rather than as a variant prop on it (S7-PLAN Open
+point 3): the classic card's client chunk, its red anchors and the scripts that read it stay untouched, and phone
+density cannot reach the journey card. Its states are B9's rule inside it — the live, closed and settled cards are one
+component, the state the market's own. Until the flip it is drawn for a journey request alone (a staff preview pass);
+every other reader sees this file's classic card. At the flip the classic card is shelved (`docs/SHELVED.md`) and this
+is the card.
+
+Contract: `JourneyCard { m (the market row), nowMs (the render's clock), t, locale, heading?: h2|h3, from?: "home", roundId? }`.
+It decides nothing: every figure and word comes from the journey's pure rules, called once on the server —
+`cardFigures` (bettable now, each side's `cardEstimate`: what the bet sheet serves), `cardFace`, `cardCloseLabel` with
+`cardCloseText`, `cardTitle`, `normaliseCompetition` with `competitionLabel`.
+
+Redlines (the live values are `.kp-jcard*` and the `--jcard-*` tokens in `src/app/globals.css`):
+- container: `--bg-elevated`, 1px `--border`, radius `--r-lg`, padding `--jcard-pad` (16), rows `--jcard-gap` (12) apart;
+  flat — no wash, shadow, hover lift or ring (the boards draw none). It isolates its own stacking context.
+- meta row: `--type-small` on a 1.4 line (`--jcard-meta-line`) in `--text-subtle`: "category · competition" on the
+  left (`DotSeq`); the label on the right, never broken — "Inafungwa leo" with a clock and "Inasubiri matokeo" with the
+  closed hourglass in `--text-muted`; "Siku N", "Imetatuliwa" with a check and "Imebatilishwa" in the row's ink (A12).
+- title: the reader's short title, else the full one, Sora 600 on the `title-sm` rung (18px) on a 24px line
+  (`--jcard-title-line`), `keepFigures`, balanced; only the full-title fallback clamps to two lines. In a grid of more
+  than one column the grid reserves two lines (`--jcard-title-2l`, 48px) — never the card.
+- picks: a 2-column grid 12px apart (the platform's one pair gap, R9-A5; the board drew 10), each a link in `.btn-yes` /
+  `.btn-no`'s ink and tracking without `.btn`'s height or nowrap, radius `--r-md`, at least `--jcard-act-h` (64) tall,
+  growing together when a second line wraps, and moving as the side buttons move (the `--m-lift` hover where a pointer
+  hovers, the `--m-press` scale when pressed). The side word Sora on `--type-h4` (17, A15); under it, at `--type-small`
+  500 and balanced: "Shinda ≈2.8× dau" (the figure a JetBrains Mono 700 unit joined to its words by no-break spaces),
+  "Kuwa wa kwanza", "Upande mmoja tu", "Upande mdogo, ona makadirio" (no number over the 100× cap; each clause whole),
+  "Faida ndogo · ≈1.0×" (stacked, one part a line — a centred line cannot hide a dot at its edge). A hidden figure or
+  an Up & Down side shows its side word alone, centred.
+- closed row (selection closed, not a control) and result row (settled): the picks' height, an inset well
+  (`--bg-inset`, 1px `--border`, `--r-md`). Closed: a lock and "Imefungwa", `--type-body` 600 `--text-subtle`.
+  Result: "Matokeo" (14px, the `body` rung, 500, `--text-muted`) over the settled instant (`settledAt`, else
+  `resolutionAt`; `formatEatDateTime`, the year once it is not this year) at `--type-small` in `--text-subtle` (the
+  board's 12px is under §T4's floor), and the outcome as the kit `Chip` (lg) in its own ink — YES, NO, a void neutral.
+- under the action, on an unsettled one-sided pool: the refund sentence (`market.oneSidedNote`, naming the empty side),
+  in the one note rule this file's card and the landing rows share. The action block stands on the card's floor
+  (`margin-block-start: auto`), so picks stay level across a grid's row.
+- links: the card is ONE stretched link (the question; an Up & Down row on /live its round, or /updown), named by the
+  reader's full title, under the picks, which rise above it on the card's local plane (z 2 / 3). The picks go where
+  today's buttons go — `/markets/<id>?side=YES|NO`, `&from=home` on the home — never prefetched. No click handler.
+
+Never on it: a pool, a predictor count, a bar, a sparkline, a 24-hour move, a status or signal chip, the category
+watermark, the info popup, Share or Details; `data-market-surface`, `.mcardp` or `.market-grid`.
+
+Guards: `test:journey-home` §4 and `red:journey-home` (the card rendered in every state, its source and its rules),
+`test:timer-date` §3 with two declared anchors (its one date), `test:visual-pass-r5e` §2 (a title surface),
+`test:visual-pass-r5i` §1 (its side inks, ruled), `test:contrast` (the result label's pair).

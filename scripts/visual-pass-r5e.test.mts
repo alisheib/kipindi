@@ -244,6 +244,11 @@ section("2 · F1 F4 + H1's siblings: every market title is balanced and keeps it
     // its figures, dash and last two words as before.
     { name: "the bet dialog's title", file: "src/components/markets/bet-confirm-modal.tsx", draws: [`{keepText(marketTitle, figureRuns(marketTitle), { phrases: false })}`],
       balanced: (s) => cls(s, `<p className="mt-1 font-display text-[15px] font-semibold text-text leading-snug text-balance">`) },
+    // S7 WP5 (2026-10-12): the journey card's question — the reader's short title, else the full one — through keepFigures,
+    // balanced by its own rule (`.kp-jcard__title`); only the full-title fallback is clamped (`test:journey-home` §4).
+    // Appended, never inserted: 2.2″ plants on SURFACES[4] and [6] by position.
+    { name: "the journey card", file: "src/components/journey/cards/journey-card.tsx", draws: ["{keepFigures(title.text)}"],
+      balanced: () => rulesFor(".kp-jcard__title").some((b) => /text-wrap:[ ]*balance/.test(b)) },
   ];
   const surfaceFault = (s: Surface, src: string) => [
     !s.draws.every((d) => src.includes(d)) && "does not draw the title through keepFigures",
@@ -251,7 +256,7 @@ section("2 · F1 F4 + H1's siblings: every market title is balanced and keeps it
     /\btext-pretty\b/.test(src.slice(Math.max(0, src.indexOf(s.draws[0]) - 400), src.indexOf(s.draws[0]))) && "wears text-pretty",
   ].filter(Boolean) as string[];
   const faults = SURFACES.map((s) => [s.name, surfaceFault(s, code(s.file))] as const).filter(([, f]) => f.length);
-  ok(`2.1 · ${SURFACES.length} title surfaces draw the title through keepFigures and balance its lines — the seven of round 4 and /results' notable card, the proposals board and page, the classic ticket, /fairness, the bet dialog`,
+  ok(`2.1 · ${SURFACES.length} title surfaces draw the title through keepFigures and balance its lines — the seven of round 4 and /results' notable card, the proposals board and page, the classic ticket, /fairness, the bet dialog, S7's journey card`,
     faults.length === 0, faults.map(([n, f]) => `${n}: ${f.join(", ")}`).join(" | "));
   // ⛔ No market title is set `pretty`: Chromium's orphan rule pulls ONE character down in Chinese (F1).
   const PRETTY_ON_TITLE = (css: string) => [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].some((m) => /mcardp-q|kp-qrow__q/.test(m[1]) && /text-wrap(?:-style)?:\s*pretty/.test(m[2]));
@@ -277,6 +282,7 @@ section("2 · F1 F4 + H1's siblings: every market title is balanced and keeps it
     "src/app/proposals/[id]/page.tsx": "surface", "src/app/proposals/page.tsx": "surface", "src/app/results/page.tsx": "surface",
     "src/components/home/landing-hero.tsx": "surface", "src/components/markets/bet-confirm-modal.tsx": "surface",
     "src/components/markets/market-card.tsx": "surface", "src/components/markets/position-card.tsx": "surface",
+    "src/components/journey/cards/journey-card.tsx": "surface",
     "src/app/live/page.tsx": "hands it to featured-contest.tsx and pulse-grid.tsx", "src/app/markets/page.tsx": "hands it to MarketCard",
     "src/components/home/legacy-landing.tsx": "hands it to the landing hero", "src/app/positions/page.tsx": "hands it to PositionCard and the tickets view",
     "src/app/watchlist/page.tsx": "hands it to MarketCard", "src/components/markets/side-picker.tsx": "hands it to the dial and the notify prompt",
