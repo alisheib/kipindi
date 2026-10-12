@@ -233,8 +233,10 @@ if (run("home")) {
       await page.waitForTimeout(200);
       await tile(page, `home ${locale} 360 card ${name}`);
       if (name === "a full title clamped") {
-        const lines = await card.first().evaluate((el) => { const t = el.querySelector("h2, h3"); if (!t) return null; const lh = parseFloat(getComputedStyle(t).lineHeight); return Math.round(t.getBoundingClientRect().height / lh); });
-        ok(`home ${locale} · the full title is clamped to two lines`, lines !== null && lines <= 2, `${lines} lines`);
+        // The fallback (a full question) is clamped to two lines; a question that fits in two shows no clamp to read.
+        const t = await card.first().evaluate((el) => { const h = el.querySelector("h2, h3"); if (!h) return null; const lh = parseFloat(getComputedStyle(h).lineHeight); return { lines: Math.round(h.getBoundingClientRect().height / lh), cut: h.scrollHeight > h.clientHeight + 1 }; });
+        if (t && !t.cut) blockedLine(`home ${locale} · a full title clamped`, `this language's longest question fits in ${t.lines} line(s) at 360: nothing is clamped to read`);
+        else ok(`home ${locale} · the full title is clamped to two lines`, !!t && t.lines === 2 && t.cut, JSON.stringify(t));
       }
     }
     // the end of page 1 and its "Onyesha zaidi"
