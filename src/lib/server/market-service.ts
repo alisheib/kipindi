@@ -1113,6 +1113,7 @@ export async function buyPosition(userId: string, opts: BuyOpts): Promise<BuyRes
 async function landedKeyAnswer(userId: string, key: string): Promise<BuyResult | null> {
   try {
     const p = await positionStore.findByIdempotencyKey(key);
+    // SEAM:landedKey
     if (!p || p.userId !== userId || p.houseBotId != null) return null;
     const w = await db.wallet.findByUserId(userId);
     return {
