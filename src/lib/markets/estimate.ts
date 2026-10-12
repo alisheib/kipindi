@@ -29,8 +29,11 @@
  * `emptySide` is a FACT about the pool, reported whatever the display switch says (the Up & Down rule: a switch that
  * hides a multiplier may never hide that a side is empty).
  *
- * ⚠️ ABOVE `ESTIMATE_DISPLAY_CAP` (100) the figure is not printed: `overCap` is set and the surface says "Shinda
- * zaidi ya {cap}× dau", with {cap} read from here — never typed into the dictionary (`test:rate-copy`).
+ * ⚠️ ABOVE `ESTIMATE_DISPLAY_CAP` (100) the multiple is not printed: `overCap` is set, and {cap} is read from here — never
+ * typed into the dictionary (`test:rate-copy`). What each surface prints over the cap (S8-PLAN Correction 20):
+ *   · THE CARD prints no number at all — `journey.cardOverCap`;
+ *   · THE SHEET prints the whole-TZS `payout` (still `payoutFor`'s figure) and `journey.estimatePillOver`
+ *     ("≈ zaidi ya {cap}× dau lako") in place of the multiple's pill.
  *
  * ── WHY IT IMPORTS `payout.ts` (a recorded deviation from §3.1's "import-free") ─────────────────────────────────
  * §3.1 asked for an import-free module so the card can run it on the client. `@/lib/payout` is itself import-free and

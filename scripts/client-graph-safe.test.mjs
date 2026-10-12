@@ -128,6 +128,11 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // The bet sheet's low-balance plan: imports only the deposit bounds from `validators.ts` (zod + id-documents),
     // which the deposit form already ships to the browser.
     "lib/journey/shortfall.ts",
+    // ⭐ ADDED 2026-10-13 (Vodacom plan S8 WP2). The bet sheet's rules and its refusal matrix: the sheet and its host run
+    // them in the browser. They import only estimate, shortfall, failure-reasons, pending-bet, funnel-beacon (→ funnel),
+    // stake-math, action-redirect and each other — `test:bet-sheet` §6 pins that list.
+    "lib/journey/sheet-state.ts",
+    "lib/journey/sheet-refusal.ts",
     // The journey funnel's allow-list and wire body (S3b): the beacon builds with it, `/api/funnel` re-checks with it.
     "lib/journey/funnel.ts",
     // ⭐ ADDED 2026-10-01 (Vodacom plan S6 WP2). The new shell's client-side decisions. `surfaces.ts` was already
