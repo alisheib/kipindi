@@ -812,6 +812,16 @@ body. Owner-level calls: §0h point 58, and 65 on.
   [E3] measured** — `QA_SIGNED_IN=mobile01 BASE=https://50pick.tz npm run qa:live` from a machine that holds
   `QA_MOBILE01_PASSWORD` in `.env.qa.local` (S7-PLAN A23 item 4: the proof counts only once [E3] has measured). S7 is ✅
   only when staff see the deck's home on production (S14, §0h point 4).
+- **✅ LIVE `a590790c` (2026-10-13 01:39 EAT) — S7's close (WP11, WP12 and their records), read back** from the next
+  cloud session (Node 24; Node's fetch through the session proxy, `NODE_USE_ENV_PROXY=1`): GitHub's commit status
+  "Success - www.50pick.tz" (01:39:17 EAT); `?dpl=a590790c` on `50pick.tz`, `www.50pick.tz` and
+  `kipindi-production.up.railway.app`; `/api/health` ok on all three (the database reachable and migrated, `simpleJourney`
+  STAFF_PREVIEW, a fresh boot). Production qa:live, read-only: 253 passed — [E2] holds `/`, `/markets`, `/live`,
+  `/results` and a question page free of the preview marker, the journey shell and S7's ids for a signed-out visitor,
+  `/markets` the classic board and `/account` not found; its staff-pass control the one SKIP; [E3] NOT MEASURED (no
+  `QA_SIGNED_IN`, and no password on this VM). Its 89 dead-link lines read 0 only because Playwright's request client
+  does not take this VM's proxy: the same 89 paths answered curl through it 84 × 200 and 5 × 307. `qa:chunks-prod
+  --origin https://50pick.tz` PASS, 6/6 routes (47 GETs). Still owed: [E3] measured (above).
 - **⏸ END OF SESSION — 2026-10-12 ~17:00 EAT (Ali: "push progress and everything, later we proceed"). THE EXACT PLACE,
   for any machine — every branch below is ON ORIGIN; nothing is only on OMEGA-COMPILE01:**
   - **LIVE:** S7 WP1–WP4 (`dcf305d5`, read back 13:59) and the loss-limit refusal's fix for every player (`e5b5c9da`,
