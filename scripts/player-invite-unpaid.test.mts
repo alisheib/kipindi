@@ -1086,8 +1086,8 @@ setAffiliateConfig({
     setAffiliateConfig({
       commission: { enabled: true, rate: 0.1, windowMonths: 24, capPerRecruitTzs: 250_000 },
       bonus: { enabled: true, recipient: "REFERRER", newAmountTzs: 2_000, referrerAmountTzs: 5_000, trigger: "SIGNUP" },
-      // minBetAmountTzs 2,000 (2026-10-07): a programme's minimum bet is 0 or at least the TZS 1,000 stake floor (management),
-      // so "lowered" now goes 2,000 → 1,000 — it went 1,000 → 500, which the floor refuses.
+      // minBetAmountTzs 2,000 (2026-10-07): a programme's minimum bet is 0 or at least the stake floor (`PLATFORM_MIN_STAKE` —
+      // TZS 1,000 from 2026-10-07, TZS 500 since 2026-10-12), so "lowered" goes 2,000 → 1,000, legal under either floor.
       prize: { enabled: false, milestone: "FIRST_BET", amountTzs: 9_000, capPerReferrer: 20, minBetAmountTzs: 2_000, requireDeposit: false },
     }, "test-officer");
     const CASES: Array<[string, Record<string, unknown>, string | null]> = [

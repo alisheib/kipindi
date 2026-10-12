@@ -8,6 +8,50 @@
 
 ---
 
+## 2026-10-12 · The minimum stake is TZS 500 again; the minimum deposit stays TZS 1,000 (owner)
+
+**Authority.** Ali, 2026-10-12, as typed: *"turn minimum stake instead of 1k to 500, everywhere in the platform where
+needed, and push it live"*. The session brief that carried it fixed the scope: the minimum STAKE moves on both products;
+the minimum deposit, the withdrawal minimum and the maximum stake do not.
+
+**What it rules — in force from the release that carries it.**
+1. **Minimum stake TZS 500** (`PLATFORM_MIN_STAKE`, `src/lib/payout.ts`), per bet, on polls and Up & Down alike — every
+   surface a bet can be placed from. The maximum stays TZS 1,000,000 per bet.
+2. **The minimum deposit stays TZS 1,000** (`DEPOSIT_MIN_TZS`) and the withdrawal minimum stays the true one (TZS 1,015 at
+   1.5%). The two minimums were the same figure from 2026-10-07 to today; they are two rules again, and a player may stake
+   less than the smallest deposit.
+3. **The stored settings move once, by the code.** Production stores the old 1,000 in `SystemConfig["market.config"]`
+   (`global.minStake`) and `SystemConfig["updown.config"]` (`defaultMinStake`). The floor on read of 2026-10-07 only RAISES
+   a stored value, so lowering the constant alone would have changed nothing a player can bet. `reconcileConfigDefaults` v4
+   and `reconcileUpDownDefaults` v5 lower an exact stored 1,000 to 500 on the first read after the deploy and write the row
+   back at the new version. ⛔ Any other stored value is an operator's deliberate window and stays; a per-market override and
+   a chain's own minimum are per-item choices and are not touched (`/admin/config` and `/admin/updown` show them). No
+   production data was written by hand.
+4. **Every surface reads it.** The dial, the Up & Down quick-stake chips (500 · 1K · 2.5K · 5K), the round panel, the
+   below-minimum refusal in three languages, the two game-rules documents, the chat assistant (which had the old figure
+   typed into its prompt and now reads the constants) and the admin console all take the figure from the config or the
+   constant. The two game-rules documents quote the live minimum, so their binding text moved: both are re-dated
+   **v2026-10-12**. The Terms state no minimum stake and do not move.
+5. **The house bots read the same live minimum** (`stakeBoundsForMarket`). Nothing pauses: a saved desk limit at or above
+   1,000 is still at or above 500. The desk's own settings do not move — Stake min, the opener's stake window (1,000–5,000
+   by default) and the counter's trigger minimum, which takes the live minimum when a bot's rules are first saved, so a bot
+   set up before today carries 1,000. The house keeps staking what it was set to, and a counter set up before today does
+   not answer a player's bet under 1,000 until an officer lowers that bot's trigger minimum on `/admin/desk`.
+6. An invite programme's minimum bet is 0 or at least TZS 500 now (it was 0 or at least 1,000).
+
+**Why no notice.** A lower minimum takes nothing from a player: every bet that was allowed stays allowed. The rules
+documents' version moves because the binding text moved, not because a right narrowed.
+
+**Supersedes:** item 2 of § "2026-10-07 · Minimum deposit and minimum stake are TZS 1,000 everywhere, and the withdrawal
+minimum is stated truly (management, relayed by the owner)" — the stake figure only. The floor applied on every read, the
+deposit minimum (item 1), the true withdrawal minimum (item 3) and item 4 all stand. Anything outside the app that teaches
+a TZS 1,000 minimum bet (posters, SMS templates, agents' scripts) is not in this repository.
+
+**Records:** `docs/RULES.md` §1, §2.3, §2.7a, §6 · guards `test:config` §6b, `red:stake-bounds`, `test:stake-minimum-db`,
+`test:money-minimums`, `test:updown-engine` §8B.
+
+---
+
 ## 2026-10-11 · A desk account may count as more than one predictor in the count players see (owner ruling; the Gaming Board's view, relayed verbally)
 
 **Ali, 2026-10-11, in the session**, as typed: *"we disucssed a plan with gbt and we disucessed the bots hourse btos they
@@ -683,6 +727,8 @@ true minimum"**.
    rose can no longer reach a rules page, the dial, the board, the house engine or `buyPosition`; the stored row is not
    rewritten, and the admin screens say "stored X · enforced 1,000" where they differ. An invite programme's minimum bet
    is 0 or at least the minimum stake.
+   ⚠️ *Superseded 2026-10-12 as to the FIGURE: the minimum stake is TZS 500 (§ "2026-10-12 · The minimum stake is TZS 500
+   again; the minimum deposit stays TZS 1,000 (owner)"). The floor on every read stands.*
 3. **The withdrawal minimum is the TRUE one** — the smallest amount whose net, after the withdrawal fee, still clears
    the payment provider's TZS 1,000 floor: **TZS 1,015 at today's 1.5%** (`withdrawMinFor`, derived from the live fee).
    The fee ROUNDS — 1,015 pays round(15.225) = 15 and nets exactly 1,000 — so the figure is found at the true boundary,

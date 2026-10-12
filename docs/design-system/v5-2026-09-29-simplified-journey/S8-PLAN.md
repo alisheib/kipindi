@@ -289,6 +289,10 @@ Makadirio line and the balance row are hidden (:3590).
 The minimums are the money doors' (COMPLIANCE-DECISIONS.md:669-700): `DEPOSIT_MIN_TZS` 1,000 (validators.ts:90) is D's
 floor (shortfall.ts:200), and `PLATFORM_MIN_STAKE` 1,000 (payout.ts:166), floored on every read (market-config.ts:547-571),
 reaches the sheet as its `min` through `stakeBoundsForMarket` (market-service.ts:994-1003). The sheet types neither.
+⚠️ 2026-10-12 (owner ruling — `docs/COMPLIANCE-DECISIONS.md` § "2026-10-12 · The minimum stake is TZS 500 again; the minimum deposit stays TZS 1,000 (owner)"):
+`PLATFORM_MIN_STAKE` is **500** now, and production's stored 1,000 is lowered by the market config v4 / Up & Down v5
+reconcile, so the sheet's `min` is 500; `DEPOSIT_MIN_TZS` stays 1,000. The line numbers above are the 2026-10-12
+morning's and have moved.
 
 | Plan | Frame | Board | What it says and offers |
 |---|---|---|---|

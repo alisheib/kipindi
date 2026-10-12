@@ -42,6 +42,11 @@ the s4-5 low-minimum and s4-6 code frames on the S4 canvas, `shortfall.ts`'s `em
 `qa:classic-shell-parity` 2.9 once ▶ 0e's Phase B removes the email bar — all three done in WP12's batch (§0i WP12):
 the short-of-the-minimum board offers TZS 1,000 and S9's six code boards are marked superseded; `shortfallPlan` asks no
 email step; 2.9 reads which tree it runs on (the bar's component gone → no viewer may see a bar).
+⚠️ Owner ruling of 2026-10-12: the minimum STAKE is TZS 500 again, and the minimum deposit stays TZS 1,000
+(`docs/COMPLIANCE-DECISIONS.md` § "2026-10-12 · The minimum stake is TZS 500 again; the minimum deposit stays TZS 1,000 (owner)"). Where this plan states a TZS 1,000
+stake minimum, read TZS 500 — the sheet takes its `min` from `stakeBoundsForMarket` and types neither figure — and its
+TZS 1,000 deposit lines stand. SJ-10's chips come from `quickStakes(min, max)`, so at the new minimum they read
+500 / 1,000 / 2,500 / 5,000; the 1,000 / 2,000 / 5,000 / 10,000 written below is the old minimum's ladder.
 
 **✅ S6 IS CLOSED (2026-10-12 03:01 EAT) — the close record (the session law's three: `test:all` with the database suites,
 classic parity, the tiles).** **`test:all`** on the live tree (`daf0e799`, 2026-10-12 02:05–02:19, `--jobs 2`): **501/525**,
@@ -3470,6 +3475,8 @@ On 2026-09-28 the agency that will sponsor and market 50pick sent `Downloads\50p
   - Side locked ("Umechagua NDIO"), no side switch.
   - Chips 1,000 / 2,000 / 5,000 / 10,000 in full figures (never "1K"). A tap **sets** the stake. Chips come from
     `quickStakes(min, max)` and are filtered to the market's bounds, never to the balance.
+    ⚠️ 2026-10-12: those figures are the TZS 1,000 minimum's ladder; at the TZS 500 minimum (owner ruling, §0) the
+    same function gives 500 / 1,000 / 2,500 / 5,000.
   - The CTA "Weka dau · TZS X" **is** the confirm step. BetConfirmModal and its 10-second quote hold are shelved.
   - Enter never submits.
   - Success: an in-sheet receipt (side, stake, ticket) with **no navigation**.

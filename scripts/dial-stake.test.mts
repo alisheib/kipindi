@@ -23,6 +23,7 @@
  * Run: npm run test:dial-stake
  */
 import { maxMultiplierFor, stakeCeilingFor, stakeFromPosition, LEGACY_MAX_MULTIPLIER } from "../src/lib/dial-stake.ts";
+import { PLATFORM_MIN_STAKE } from "../src/lib/payout.ts";
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => {
@@ -44,24 +45,30 @@ console.log("Dial stake ladder\n");
   // Every one of these is a legal `/admin/config` value. The three middle ones are the ones
   // that used to break: their last two digits are ≥ 50 and not 00, so the snap rounds up.
   const MAXES = [1_000_000, 250_050, 249_950, 50_050, 100_000, 1_999, 12_345, 999_999];
-  let worst = { maxStake: 0, pos: 0, stake: 0, over: 0 };
+  // ⭐ BOTH MINIMUMS (2026-10-12): the live dial's base is the platform minimum — TZS 500 now — and 1,000 stays a legal
+  //    narrower window, so the sweep runs at each. The named cases below keep the 1,000 base they were found at.
+  const BASES = [PLATFORM_MIN_STAKE, BASE];
+  let worst = { base: 0, maxStake: 0, pos: 0, stake: 0, over: 0 };
   let checked = 0;
-  for (const maxStake of MAXES) {
-    const ceiling = stakeCeilingFor(BASE, maxStake);
+  for (const base of BASES) for (const maxStake of MAXES) {
+    const ceiling = stakeCeilingFor(base, maxStake);
     for (let i = 0; i <= 1000; i++) {
       const pos = i / 1000;
-      const s = stakeFromPosition(pos, BASE, maxStake);
+      const s = stakeFromPosition(pos, base, maxStake);
       checked++;
-      if (s > ceiling && s - ceiling > worst.over) worst = { maxStake, pos, stake: s, over: s - ceiling };
+      if (s > ceiling && s - ceiling > worst.over) worst = { base, maxStake, pos, stake: s, over: s - ceiling };
     }
   }
   ok("1: 🔴 no position on the dial offers more than the configured maximum",
      worst.over === 0,
-     worst.over === 0 ? `${checked} positions × ${MAXES.length} maxima`
-       : `maxStake=${worst.maxStake} pos=${worst.pos} offered ${worst.stake} (+${worst.over})`);
+     worst.over === 0 ? `${checked} positions × ${MAXES.length} maxima × ${BASES.length} minimums`
+       : `base=${worst.base} maxStake=${worst.maxStake} pos=${worst.pos} offered ${worst.stake} (+${worst.over})`);
 
   ok("1: …and never less than the configured minimum",
-     MAXES.every((m) => [0, 0.25, 0.5, 0.75, 1].every((p) => stakeFromPosition(p, BASE, m) >= BASE)));
+     BASES.every((b) => MAXES.every((m) => [0, 0.25, 0.5, 0.75, 1].every((p) => stakeFromPosition(p, b, m) >= b))));
+  ok("1: ⭐ at the live minimum the centre stakes exactly it, and the far end reaches the maximum",
+     stakeFromPosition(0.5, PLATFORM_MIN_STAKE, 1_000_000) === PLATFORM_MIN_STAKE && stakeFromPosition(1, PLATFORM_MIN_STAKE, 1_000_000) === 1_000_000,
+     `${stakeFromPosition(0.5, PLATFORM_MIN_STAKE, 1_000_000)} … ${stakeFromPosition(1, PLATFORM_MIN_STAKE, 1_000_000)}`);
 
   ok("1: ⭐ the far end still REACHES the maximum — a clamp that just lowers the ceiling is a bug too",
      stakeFromPosition(1, BASE, 1_000_000) === 1_000_000,

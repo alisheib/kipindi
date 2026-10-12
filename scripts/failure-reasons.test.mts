@@ -7,7 +7,7 @@
  * when a NEW reason is added without copy, without a severity, or with a placeholder nothing
  * fills. `docs/FAILURE-INVENTORY.md` §4.
  *
- *   §1  ★ 999 IS REFUSED WITH A MESSAGE NAMING THE MINIMUM — on BOTH products, driven
+ *   §1  ★ ONE SHILLING UNDER THE MINIMUM IS REFUSED WITH A MESSAGE NAMING IT — on BOTH products, driven
  *       through the real `buyPosition` and rendered through the real surface mappers.
  *       This is `docs/RULES.md` §2.3's acceptance, and it was met by NEITHER before today.
  *   §2  every reason in the registry has copy in ALL THREE languages, a severity and a
@@ -65,7 +65,7 @@ async function fundedUser(id: string, balance: number): Promise<void> {
 }
 
 // ── §1 · the acceptance criterion, driven ────────────────────────────────────
-console.log("\n§1 · a 999 stake is refused with a message NAMING the minimum");
+console.log("\n§1 · a stake one shilling under the minimum is refused with a message NAMING the minimum");
 {
   await fundedUser("fr_player", 5_000_000);
   const m = await createMarket({
@@ -74,8 +74,11 @@ console.log("\n§1 · a 999 stake is refused with a message NAMING the minimum")
     resolutionAt: new Date(Date.now() + 7 * 864e5).toISOString(), proposedBy: "test",
   } as never);
 
-  const low = await buyPosition("fr_player", { marketId: m.id, side: "YES", stake: 999 });
-  ok("1.1 · 999 is refused", !low.ok, low.ok ? "ACCEPTED" : (low as { error: string }).error);
+  // ⛔ One shilling under the RULE, never a typed 999: that was "under the minimum" only while the minimum was
+  // 1,000, and on 2026-10-12 (minimum TZS 500) a 999 stake became a legal bet — every line below would have
+  // measured an accepted bet's fallback toast instead of a refusal.
+  const low = await buyPosition("fr_player", { marketId: m.id, side: "YES", stake: PLATFORM_MIN_STAKE - 1 });
+  ok(`1.1 · ${PLATFORM_MIN_STAKE - 1} (one under the minimum) is refused`, !low.ok, low.ok ? "ACCEPTED" : (low as { error: string }).error);
   ok("1.2 · ★ and the refusal carries the machine reason `stake_below_min`",
      !low.ok && (low as { reason?: string }).reason === "stake_below_min",
      String((low as { reason?: string }).reason));
@@ -128,11 +131,11 @@ console.log("\n§1 · a 999 stake is refused with a message NAMING the minimum")
   ok("1.9 · ★ …the sentence names the maximum AND says the cap is per BET",
      maxBody.includes(formatTzs(PLATFORM_MAX_STAKE)) && /more than one bet/i.test(maxBody), maxBody);
 
-  // ⭐ AND THE BOUND IS REALLY THE BOUND: exactly 1,000 and exactly 1,000,000 are ACCEPTED.
+  // ⭐ AND THE BOUND IS REALLY THE BOUND: exactly the minimum and exactly the maximum are ACCEPTED.
   // Without this, a mutation that refused everything would satisfy every line above.
   const atMin = await buyPosition("fr_player", { marketId: m.id, side: "YES", stake: PLATFORM_MIN_STAKE });
   const atMax = await buyPosition("fr_player", { marketId: m.id, side: "NO", stake: PLATFORM_MAX_STAKE });
-  ok("1.10 · ★ exactly 1,000 and exactly 1,000,000 are ACCEPTED — the refusals above are not blanket",
+  ok(`1.10 · ★ exactly ${PLATFORM_MIN_STAKE.toLocaleString("en-US")} and exactly ${PLATFORM_MAX_STAKE.toLocaleString("en-US")} are ACCEPTED — the refusals above are not blanket`,
      atMin.ok && atMax.ok, `min=${atMin.ok} max=${atMax.ok}`);
 }
 

@@ -94,8 +94,9 @@ corrected.
 > is required to WITHDRAW, beside identity: register → deposit and play → verify identity + confirm email → withdraw.
 > The app-wide bar below is DELETED (the step is asked quietly on the withdraw screen, the profile pill and the
 > first-deposit notice); money email goes only to confirmed addresses; every deposit and withdrawal is kept in the app
-> at `/wallet/receipts` (Profile → Receipts). Minimum deposit and stake: TZS 1,000. `docs/COMPLIANCE-DECISIONS.md`,
-> the two 2026-10-07 entries.
+> at `/wallet/receipts` (Profile → Receipts). Minimum deposit: TZS 1,000. `docs/COMPLIANCE-DECISIONS.md`,
+> the two 2026-10-07 entries. ⚠️ **Minimum STAKE: TZS 500 since 2026-10-12 (owner ruling)** — it was TZS 1,000
+> alongside the deposit from 2026-10-07; the two are separate rules again (`docs/RULES.md` §2.3, §2.7a).
 > ✅ **SELCOM STATES/NOTIFICATIONS/VERIFICATION COMPLETED 2026-07-19.** Every deposit state
 > (PROCESSING · CONFIRMED · FAILED · REVERSED) now has a player notification, an email where
 > it matters, a truthful label and a receipt link; deposit emails carry BOTH the 50pick and

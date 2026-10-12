@@ -85,8 +85,9 @@ export const fullName = z.string().trim().min(2).max(120);
 // the numbers a player sees can never drift from what the server actually
 // enforces (wallet-client reads them via the server page's `limits` prop).
 // ⭐ TZS 1,000 since 2026-10-07 (management, relayed by Ali: "in deposits and in the minimum stake … should be always
-// consistently 1000 not 500") — the same figure as the minimum stake (`PLATFORM_MIN_STAKE`). The rule is
-// docs/RULES.md §1; every surface that states it (the deposit hint, the chatbot, the Limits tab) is filled from here.
+// consistently 1000 not 500"). The rule is docs/RULES.md §1 / §2.7a; every surface that states it (the deposit hint, the
+// chatbot, the Limits tab) is filled from here. ⛔ NO LONGER the minimum stake's figure: Ali lowered the stake minimum
+// on 2026-10-12 (`PLATFORM_MIN_STAKE`, payout.ts) and kept this one — the two are separate rules, never one constant.
 export const DEPOSIT_MIN_TZS = 1_000;
 export const DEPOSIT_MAX_TZS = 2_000_000;
 export const WITHDRAW_MIN_TZS = 1_000;

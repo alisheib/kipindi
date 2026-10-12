@@ -25,7 +25,7 @@ file is worthless the moment it describes an intention as a fact.
 
 | Rule | Status |
 |---|---|
-| Stake bounds 1,000 / 1,000,000 | ✅ live — config reconciled and read back from the production DB; ⭐ floored on every read from the 2026-10-07 release (§2.3) |
+| Stake bounds **500** / 1,000,000 | ⏳ LANDING — the minimum lowered from 1,000 to 500 by owner ruling 2026-10-12; production's stored 1,000 is lowered by the reconcile (market config v4, Up & Down v5) on the first read after that release. ⛔ Read it back on production before marking it ✅. The maximum is unchanged and live; every read is floored at the minimum since 2026-10-07 (§2.3) |
 | Minimum deposit TZS 1,000 · the true withdrawal minimum (§2.7a) | ⭐ 2026-10-07 (management, via Ali) — lands with the money-doors release; ⛔ read it back on production before removing this note |
 | Withdrawal fee 1.5% | ✅ live — production has charged 1.5% since before 2026-08-10 |
 | Taxes only on our fee · free cancellation 5 min | ✅ live, unchanged by this programme |
@@ -54,7 +54,7 @@ file is worthless the moment it describes an intention as a fact.
 |---|---|---|
 | **Our fee** | **13% of the LOSING side** — Platform 3% + Operator 10% | **Both games — identical** |
 | Tax on our fee | TRA 10% + GBT 5% **of the fee we earned**, never from a player's payout | Both |
-| **Minimum stake** | **TZS 1,000** | Both |
+| **Minimum stake** | **TZS 500** (since 2026-10-12; it was TZS 1,000) | Both |
 | **Maximum stake** | **TZS 1,000,000 — PER BET**, not per player per market | Both |
 | **Positions per market** | **Unlimited, either or both sides** | Both |
 | **Bonus wagering** | Only **one side** of a market counts toward a bonus requirement | Both |
@@ -162,8 +162,8 @@ are levied on the fee *we* earned. Enforced in `payout.ts` → `levySplit`; rate
 > not sum to one rounding of the whole, so the two records of the same statutory liability
 > disagreed by construction.
 >
-> **GBT is 5%, so a winner's fee share under 10 TZS rounds to ZERO.** Fifteen bets at the TZS
-> 1,000 minimum against one 1,000 losing bet is a fee of 130 with every share ≤ 9 — the market
+> **GBT is 5%, so a winner's fee share under 10 TZS rounds to ZERO.** Fifteen bets of TZS
+> 1,000 each against one 1,000 losing bet is a fee of 130 with every share ≤ 9 — the market
 > books **GBT 0 where `levySplit` says 7**: a levy recorded as never having arisen.
 >
 > | winner groups | markets | diverge |
@@ -192,18 +192,18 @@ are levied on the fee *we* earned. Enforced in `payout.ts` → `levySplit`; rate
 > of GBT across all of production. Rewriting settled ledger rows is a bigger act than the error;
 > it is recorded here and left for Ali.
 
-### 2.3 · Stake bounds — TZS 1,000 to TZS 1,000,000, per bet
+### 2.3 · Stake bounds — TZS 500 to TZS 1,000,000, per bet
 
 | | |
 |---|---|
-| **Decided** | Ali, 2026-07-26; re-affirmed and made a **rule** (not a default) 2026-08-14. |
+| **Decided** | Ali, 2026-07-26; re-affirmed and made a **rule** (not a default) 2026-08-14. ⭐ **The minimum lowered from TZS 1,000 to TZS 500 by Ali, 2026-10-12** (*"turn minimum stake instead of 1k to 500, everywhere in the platform where needed"*) — `docs/COMPLIANCE-DECISIONS.md` § "2026-10-12 · The minimum stake is TZS 500 again; the minimum deposit stays TZS 1,000 (owner)". The maximum and the minimum DEPOSIT (§2.7a) did not change. |
 | **Enforced in** | `src/lib/server/market-service.ts` → `buyPosition`, against the bounds `getEffectiveConfig` + `stakeBoundsForUpDownMarket` resolve for that market. The check is on a **single bet's** amount. |
-| **The rule itself** | `PLATFORM_MIN_STAKE` / `PLATFORM_MAX_STAKE` in `src/lib/payout.ts`. The admin doors validate against these, so the platform cannot be configured out of its own rule: an operator may NARROW the window inside 1,000…1,000,000, never widen it. |
+| **The rule itself** | `PLATFORM_MIN_STAKE` / `PLATFORM_MAX_STAKE` in `src/lib/payout.ts`. The admin doors validate against these, so the platform cannot be configured out of its own rule: an operator may NARROW the window inside 500…1,000,000, never widen it. |
 | **Configured in** | `SystemConfig["market.config"].global.minStake/maxStake` (`/admin/config`) and `SystemConfig["updown.config"].defaultMinStake/defaultMaxStake` (`/admin/updown`). All Up & Down chains carry NULL min/max and inherit (**23 of 23** on production, read 2026-09-09 — this line said "16" until then, and a count written twice is a count that will disagree with itself); `stakeBoundsFor` additionally FLOORS any chain at the product minimum, so a legacy row below the floor can never take a sub-floor stake. |
-| **Migration** | `reconcileConfigDefaults` (v3) and `reconcileUpDownDefaults` (v3) raise a stored 500 → 1,000 and 100,000 → 1,000,000 on first read after deploy, and leave a deliberate custom value alone. |
-| **Floored on read** | ⭐ 2026-10-07 (management: *"consistently 1000 not 500"*). A per-market override is never reconciled and any stored value can predate a floor, so every READ floors the copy it returns: `floorStakeBounds` in `getEffectiveConfig` / `getGlobalConfig`, the twin in `getUpDownConfig`, and `stakeBoundsFor` names `PLATFORM_MIN_STAKE` itself. The stored row is never rewritten by a read; `/admin/config` and `/admin/updown` say "stored X · enforced 1,000" where the two differ. An invite programme's minimum bet is 0 or at least the minimum stake. |
+| **Migration** | `reconcileConfigDefaults` (v3) and `reconcileUpDownDefaults` (v3) raised a stored 500 → 1,000 and 100,000 → 1,000,000 on first read after deploy (2026-08-14). ⭐ **2026-10-12: `reconcileConfigDefaults` v4 and `reconcileUpDownDefaults` v5 lower a stored 1,000 → 500** — the global minimum and Up & Down's product default — on the first read after that release. Every step moves ONLY the exact value it names and leaves a deliberate custom value alone; a per-market override and a chain's own minimum are an operator's per-item choice and are never reconciled. |
+| **Floored on read** | ⭐ 2026-10-07 (management: *"consistently 1000 not 500"*). A per-market override is never reconciled and any stored value can predate a floor, so every READ floors the copy it returns: `floorStakeBounds` in `getEffectiveConfig` / `getGlobalConfig`, the twin in `getUpDownConfig`, and `stakeBoundsFor` names `PLATFORM_MIN_STAKE` itself. The stored row is never rewritten by a read; `/admin/config` and `/admin/updown` say "stored X · enforced Y" where the two differ. An invite programme's minimum bet is 0 or at least the minimum stake. ⚠️ **A floor only RAISES.** When the minimum came DOWN (2026-10-12) a stored 1,000 stayed enforced on every read — exactly as an operator's deliberate narrower window must — which is why the v4/v5 reconcile above exists. A lowered constant alone lowers nothing a player can bet. |
 | **Stated to players** | The stake panel and preset ladder derive their range from the same resolver the money path uses — one source, no display/enforcement split. |
-| **Guarded by** | `npm run test:config` · `npm run red:stake-bounds` (6 mutations, incl. the exact 2026-08-14 state) · `test:updown-engine` §8B (floor-on-read for legacy rows) · `test:money-minimums` (a 500 planted in each stored place reads 1,000 everywhere) |
+| **Guarded by** | `npm run test:config` §6b (production's exact stored shapes lowered; a deliberate value and an already-migrated row left alone) · `npm run red:stake-bounds` (the reconcile steps taken away one at a time, the constant planted back at 1,000, and the exact 2026-08-14 state) · `test:stake-minimum-db` (the same rows planted in a real Postgres: the first read lowers them, writes them back at the new version, and the money path then refuses 499 and takes 500) · `test:updown-engine` §8B (floor-on-read for legacy rows; 499 refused, 500 accepted) · `test:money-minimums` (a sub-minimum value planted in each stored place reads 500 everywhere; 499 refused and rendered with TZS 500 in all three languages; 500 accepted; the deposit minimum is still 1,000) |
 
 > 🔴 **THE TRAP THIS RULE WAS FOUND BY.** On 2026-08-14 the code default read `1_000`, a green
 > suite asserted it read `1_000` — and **production had been charging a TZS 500 floor on both
@@ -419,6 +419,7 @@ configured in `market.config`, editable at `/admin/config`. Stated to players on
 | **The rule itself** | `DEPOSIT_MIN_TZS = 1_000` in `src/lib/server/validators.ts` — the player's deposit form and the officer's manual deposit read it. The withdrawal minimum is `withdrawMinFor(rate)` = the larger of `WITHDRAW_MIN_TZS` and `minWithdrawalForRate(rate)` (`payout.ts`): the smallest gross whose net clears the provider's TZS 1,000 payout floor, found at the TRUE boundary with the same rounding fee function (`computeWithdrawalFee`): TZS 1,015 at 1.5%, where the algebra `ceil(1,000 / 0.985)` gives 1,016 (corrected the same day, before release). |
 | **Stated to players** | The deposit hint is a `{min}`/`{max}` template filled from the constants in all three languages; the withdraw hint, its confirm step, the server's refusal and the wallet's Limits tab all state `withdrawMinFor` of the LIVE fee — never a typed "1,000", which a 1,000 withdrawal at 1.5% would contradict. The chat assistant states "Min TZS 1,000". |
 | **Money already moving** | A deposit of TZS 500–999 that FAILED before the release can only be cancelled (its retry meets the new minimum); one still PROCESSING then credits normally — completion never re-checks the minimum. |
+| **Not the stake minimum** | ⚠️ 2026-10-12: Ali lowered the minimum STAKE to TZS 500 (§2.3) and kept this one. The two figures were the same from 2026-10-07 to 2026-10-12 and are two rules again — `DEPOSIT_MIN_TZS` and `PLATFORM_MIN_STAKE` are separate constants, and a player may stake less than the smallest deposit. |
 | **Guarded by** | `test:money-minimums` (999 refused, 1,000 accepted; no figure typed into the dictionary; the prompt's literal equals the constant; the withdraw hint and refusal show the derived figure with no `{` left) and `test:withdrawal-fee` (at every rate an operator could set, the derived gross nets the floor and one shilling less does NOT — strictly). |
 
 ### 2.8 · What a player is charged, in full
@@ -497,6 +498,12 @@ find yourself adding a deduction to a player's money, stop.
 > Every "does it name the minimum" assertion was GREEN, in all three languages. Only reading
 > the rendered output caught it. `test:failure-reasons` §1.5b and §2.render now assert that
 > **no placeholder survives** and that **every declared figure changes the sentence**.
+>
+> ⚠️ **2026-10-12 — the figures in this box are the 2026-08-14 minimum.** The minimum stake is
+> TZS 500 now (§2.3), and the sentence carries it from the refusal's own `detail`, so a 499
+> stake reads *"Minimum bet is TZS 500. Enter TZS 500 or more and try again."* —
+> `test:money-minimums` 3.6 renders that refusal from the real `buyPosition` in all three
+> languages.
 
 Every player-facing refusal states **the reason** and **the next step**, at a severity that
 matches what happened:
@@ -645,7 +652,7 @@ only the snapshot. Do not "harmonise" history.
 These are settings an operator may tune inside the rules above, not rules themselves: the
 per-market fee override, the daily loss limit, the objection window, the estimated-winnings
 display rate, the Up & Down round margin and tick floor, and the per-chain stake window
-(within 1,000…1,000,000).
+(within 500…1,000,000).
 
 ---
 
@@ -665,6 +672,7 @@ display rate, the Up & Down round margin and tick floor, and the per-chain stake
 
 | Date | Decision | Record |
 |---|---|---|
+| 2026-10-12 | ⭐ **Minimum stake TZS 500** (was TZS 1,000), on both products — Ali: *"turn minimum stake instead of 1k to 500, everywhere in the platform where needed"*. The minimum deposit stays TZS 1,000 (§2.7a); the withdrawal minimum and the maximum stake do not change. Production's stored 1,000 is lowered by the market config v4 / Up & Down v5 reconcile. Supersedes the stake half of the 2026-10-07 row below and nothing else | §2.3 · `docs/COMPLIANCE-DECISIONS.md` § "2026-10-12 · The minimum stake is TZS 500 again; the minimum deposit stays TZS 1,000 (owner)" |
 | 2026-10-07 | ⭐ **Minimum deposit TZS 1,000** (was 500), the **stake floor applied on every read**, and the **withdrawal minimum stated truly** (TZS 1,015 at 1.5%) — management, relayed by Ali | `docs/COMPLIANCE-DECISIONS.md` § "2026-10-07 · Minimum deposit and minimum stake are TZS 1,000 everywhere, and the withdrawal minimum is stated truly (management, relayed by the owner)" |
 | 2026-09-27 | ⭐ **Invite rewards need no separate Gaming Board clearance — 50pick's licence covers them (owner ruling).** The state card's clearance line and the Make-payable dialog's warning are removed; the card states the enforced 50% commission cap instead. The Owner's switch stays the one control, and nothing else changes. Supersedes the clearance sentence of the 2026-09-26 row below. | §2.10a · `docs/COMPLIANCE-DECISIONS.md` § 2026-09-27 |
 | 2026-09-26 | ⭐ **Deposit-tied invite rewards retired.** The bonus pays on sign-up only and the prize on a friend's first bet only; a deposit pays no referral reward, so the published RG policy's "No bonus offers tied to deposit increases" stays true. `requireDeposit` on the first-bet prize stays, as an anti-fraud precondition. | §2.10a · `docs/COMPLIANCE-DECISIONS.md` § 2026-09-26 · Deposit-tied invite rewards retired · `docs/PLAYER-INVITE-UNPAID.md` §7 |

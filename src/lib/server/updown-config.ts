@@ -256,10 +256,10 @@ export const DEFAULT_UPDOWN_CONFIG: UpDownConfig = {
   // 24h — longer than any outage this platform has had, shorter than the provider's history.
   maxSettleLookbackSeconds: 86_400,
   retryBackoffSeconds: [15, 45, 120],
-  // TZS 1,000 / 1,000,000 PER BET — the platform rule, shared with polls (docs/RULES.md
-  // §2.3). All 16 chains carry NULL min/max and inherit these; `stakeBoundsFor` also
-  // FLOORS every chain at the product minimum, so a legacy row below it can never take a
-  // sub-floor stake.
+  // PLATFORM_MIN_STAKE / PLATFORM_MAX_STAKE PER BET — the platform rule, shared with polls
+  // (docs/RULES.md §2.3 states the figures). Chains with NULL min/max inherit these;
+  // `stakeBoundsFor` also FLOORS every chain at the product minimum, so a legacy row below
+  // it can never take a sub-floor stake.
   defaultMinStake: PLATFORM_MIN_STAKE,
   defaultMaxStake: PLATFORM_MAX_STAKE,
   defaultRateProfile: {
@@ -335,8 +335,12 @@ function cfgStore(): UpDownConfig {
  *      chain rows must NOT be touched for this.
  *  v4 (2026-08-14): defaultRateProfile capped-commission → loser-share (A2). ⛔ The 16
  *      UpDownChain rows carry their OWN rateProfile and are NOT reached by this — see
- *      `ops:updown-loser-share`. */
-const UPDOWN_CONFIG_VERSION = 4;
+ *      `ops:updown-loser-share`.
+ *  v5 (2026-10-12): defaultMinStake 1,000 → 500 (Ali: "turn minimum stake instead of 1k to
+ *      500"). The floor on read (`getUpDownConfig`) only RAISES, so a stored 1,000 stayed
+ *      enforced under a 500 constant. Chains with a NULL minimum inherit this default; a
+ *      chain row with its own minimum is an operator's choice and is NOT touched. */
+const UPDOWN_CONFIG_VERSION = 5;
 
 /**
  * Forward-reconcile a config persisted under an older UPDOWN_CONFIG_VERSION.
@@ -367,6 +371,7 @@ export function reconcileUpDownDefaults(
     // 500 → 1,000 and 100,000 → 1,000,000. THE BOUNDS ARE A RULE, NOT A PREFERENCE
     // (Ali, 2026-08-14): TZS 1,000 minimum and TZS 1,000,000 maximum PER BET, on BOTH
     // products. Up & Down was the product still on 500 / 100,000 in production.
+    // ⚠️ Since v5 the default a 500 moves to IS 500, so the min half is a no-op on its own.
     bump("defaultMinStake", 500);
     bump("defaultMaxStake", 100_000);
   }
@@ -388,6 +393,12 @@ export function reconcileUpDownDefaults(
       c.defaultRateProfile = { ...DEFAULT_UPDOWN_CONFIG.defaultRateProfile };
       changed = true;
     }
+  }
+  if (fromVersion < 5) {
+    // 1,000 → 500 (Ali, 2026-10-12): the minimum stake is TZS 500 on both products, and a stored
+    // 1,000 is the floor v3 wrote. ⛔ ONLY that value — a deliberate narrower default stays — and
+    // the maximum is not touched.
+    bump("defaultMinStake", 1_000);
   }
   return { config: c, changed };
 }
@@ -434,11 +445,13 @@ async function hydrateUpDownNow(): Promise<void> {
 }
 
 /**
- * ⭐ THE PRODUCT STAKE FLOOR, ON READ (management via Ali, 2026-10-07: "consistently 1000 not 500"). Every write under
- * `PLATFORM_MIN_STAKE` is refused (`setUpDownConfig`), but a stored default from before a floor rose survives until
- * rewritten — the market config's twin (`floorStakeBounds`, market-config.ts) records the weeks production sat on 500.
- * So the copy returned here is floored; the STORE is never mutated, and the admin form shows "stored X · enforced Y"
+ * ⭐ THE PRODUCT STAKE FLOOR, ON READ (management via Ali, 2026-10-07). Every write under `PLATFORM_MIN_STAKE` is
+ * refused (`setUpDownConfig`), but a stored default from before a floor rose survives until rewritten — the market
+ * config's twin (`floorStakeBounds`, market-config.ts) records the weeks production sat on 500. So the copy returned
+ * here is floored; the STORE is never mutated, and the admin form shows "stored X · enforced Y"
  * (`getStoredUpDownStakeDefaults`). The max is lifted to at least the min.
+ * ⚠️ A floor never lowers: when the minimum went DOWN (2026-10-12) a stored 1,000 stayed enforced here until the v5
+ * reconcile lowered it.
  */
 export async function getUpDownConfig(): Promise<UpDownConfig> {
   await ensureHydrated();
@@ -1340,7 +1353,7 @@ export async function deleteChain(id: string, officerId: string): Promise<Servic
 /**
  * The stake bounds in force for a chain — its own override, else the product default.
  * The product default is the FLOOR: a per-chain override may raise the minimum but never
- * drop it below `defaultMinStake` (the platform stake floor, currently 1,000). This
+ * drop it below `defaultMinStake` (itself floored at `PLATFORM_MIN_STAKE`). This
  * guarantees no surface can ever present a sub-floor stake, even if a chain row was
  * created/stored with an older, lower minimum before the floor was raised.
  * ⭐ AND THE PLATFORM MINIMUM IS NAMED HERE TOO (2026-10-07): `getUpDownConfig` already floors the product default,

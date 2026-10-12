@@ -512,8 +512,9 @@ let round1Id = "";
 {
   const dave = await fundedUser("ud_dave", 500_000);
 
-  // (a) A DELIBERATELY NARROW window: 2,000–5,000 — both strictly inside the global
-  //     1,000–1,000,000, so the OLD global-only check would have ACCEPTED 1,500 and 6,000.
+  // (a) A DELIBERATELY NARROW window: 2,000–5,000 — both strictly inside the platform window
+  //     (PLATFORM_MIN_STAKE–PLATFORM_MAX_STAKE, 500–1,000,000 since 2026-10-12), so the OLD
+  //     global-only check would have ACCEPTED 1,500 and 6,000.
   const cN = await createChain({ assetId: asset.id, durationMinutes: 15, minStake: 2_000, maxStake: 5_000 }, OFFICER);
   ok("8B.1 · narrow-bounds chain (2k–5k) created", cN.ok, cN.ok ? "" : cN.error);
   if (cN.ok) {
@@ -544,16 +545,21 @@ let round1Id = "";
     }
   }
 
-  // (b) A stale chain min stored BELOW the platform floor (100) must be FLOORED to 1,000 on
-  //     BOTH surfaces — display and money path — so no sub-floor stake can ever be placed.
+  // (b) A stale chain min stored BELOW the platform floor (100) must be FLOORED to the platform
+  //     minimum (500 since 2026-10-12, owner ruling) on BOTH surfaces — display and money path —
+  //     so no sub-floor stake can ever be placed.
   // ⛔ THE DOOR NOW REFUSES A SUB-FLOOR MIN (2026-08-14) — the platform minimum is a rule,
   //    not a setting — so this scenario can no longer be built through createChain. That is
   //    the point: it is a LEGACY ROW, not an operator action, and it is written straight
   //    through the DAL to say so. Both halves are asserted: the door refuses, AND the
   //    read-path floor still catches a row that predates the door. Defence in depth means
   //    tightening the door must not delete the proof that the floor works without it.
-  const refusedLow = await createChain({ assetId: asset.id, durationMinutes: 45, minStake: 100, maxStake: 50_000 }, OFFICER);
-  ok("8B.7 · the admin door REFUSES a sub-floor chain minimum", !refusedLow.ok,
+  // 🔴 THIS USED TO ASK FOR A 45-MINUTE CHAIN, AND 45 IS NOT AN ALLOWED DURATION (found 2026-10-12): the door refused
+  //    on the duration, two checks before it ever reached the minimum, so this line was green whatever the stake rule
+  //    said. A valid, unused duration now, and the refusal must NAME the minimum — a refusal for any other reason fails.
+  const refusedLow = await createChain({ assetId: asset.id, durationMinutes: 60, minStake: 100, maxStake: 50_000 }, OFFICER);
+  ok("8B.7b · the admin door REFUSES a sub-floor chain minimum — and says it is the minimum (TZS 500) it refused on",
+     !refusedLow.ok && /Minimum stake must be between TZS 500 and/.test(refusedLow.error),
      refusedLow.ok ? "ACCEPTED — the rule is not enforced at the door" : refusedLow.error);
   const cS = await createChain({ assetId: asset.id, durationMinutes: 30, minStake: 1_000, maxStake: 50_000 }, OFFICER);
   ok("8B.8 · stale-min chain created legally, then back-dated to a stored min of 100", cS.ok, cS.ok ? "" : cS.error);
@@ -568,13 +574,13 @@ let round1Id = "";
     if (rS.ok) {
       const mId = rS.data.marketId;
       const rb = await stakeBoundsForUpDownMarket(mId);
-      ok("8B.10 · the stored 100 min is FLOORED to 1,000 on the money path (max preserved)",
-         !!rb && rb.min === 1_000 && rb.max === 50_000, JSON.stringify(rb));
-      const sub = await buyPosition(dave, { marketId: mId, side: "NO", stake: 500 });
-      ok("8B.11 · a sub-floor stake (500) is REJECTED even though the chain stored 100",
+      ok("8B.10 · the stored 100 min is FLOORED to 500 on the money path (max preserved)",
+         !!rb && rb.min === 500 && rb.max === 50_000, JSON.stringify(rb));
+      const sub = await buyPosition(dave, { marketId: mId, side: "NO", stake: 499 });
+      ok("8B.11 · a sub-floor stake (499) is REJECTED even though the chain stored 100",
          !sub.ok && (sub as { code?: string }).code === "INVALID", sub.ok ? "ACCEPTED — floor bypassed!" : (sub as { error: string }).error);
-      const atFloor = await buyPosition(dave, { marketId: mId, side: "NO", stake: 1_000 });
-      ok("8B.12 · a stake AT the floor (1,000) is accepted", atFloor.ok, atFloor.ok ? "" : (atFloor as { error: string }).error);
+      const atFloor = await buyPosition(dave, { marketId: mId, side: "NO", stake: 500 });
+      ok("8B.12 · a stake AT the floor (500) is accepted", atFloor.ok, atFloor.ok ? "" : (atFloor as { error: string }).error);
     }
   }
 }

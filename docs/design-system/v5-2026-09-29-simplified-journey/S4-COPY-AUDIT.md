@@ -29,7 +29,7 @@
   none at all "Hakuna masoko kwa sasa" / "Masoko yatatokea hapa opereta watakapoyachapisha. Rudi baadaye." No per-category empty message.
 
 ## Bet sheet
-- Bounds: failStakeBelowMin "Dau la chini kabisa ni {min}. Weka {min} au zaidi kisha jaribu tena." · failStakeAboveMax "Kiwango cha juu kwa dau moja ni {max}. Unaweza kuweka zaidi ya dau moja kwenye soko hili." · dial chip "Chini 1,000"/"Juu …".
+- Bounds: failStakeBelowMin "Dau la chini kabisa ni {min}. Weka {min} au zaidi kisha jaribu tena." · failStakeAboveMax "Kiwango cha juu kwa dau moja ni {max}. Unaweza kuweka zaidi ya dau moja kwenye soko hili." · dial chip "Chini 1,000"/"Juu …" (⚠️ "Chini 500" since the owner's ruling of 2026-10-12 — the chip reads the minimum).
 - "Makadirio yamesasishwa" NO STRING. Capped: payout2 "Lipo" + payoutCalcBody "Inahesabiwa wakati wa matokeo kutoka bwawa la mwisho. Tutakuambia kiasi kamili mara dau litakapofungwa."
 - Holder: "Tayari unashikilia NDIO hapa" (youAlreadyHold + here). hedgeOppositeBody "Tayari una dau upande mwingine wa soko hili. Dau zote mbili zinabaki na kila moja hulipwa peke yake — upande mmoja tu unaweza kushinda, na ada yetu hutolewa kabla washindi hawajalipwa." hedgeAddBody "Kuweka tena kunaongeza dau lako kwenye soko hili."
 - Bonus warning failBonusWageringOneSide (never shows in practice; bonus withdrawn).
@@ -47,7 +47,7 @@
   - failSystemBusy "Tuna shughuli nyingi kwa sasa. Dau lako HALIJAONDOKA — jaribu tena baada ya muda mfupi."
   - failMaintenance "Uwekaji dau umesimamishwa kwa matengenezo. Hakuna kilichotozwa."
 - Guest: "Ingia ili kutabiri" / "Weka dau lako kwenye soko hili" / "Tazama bure, lakini simu iliyothibitishwa inahitajika kabla ya kuweka dau." / Jisajili / Ingia. "Jisajili uweke dau" NO STRING (plan).
-- Stake bounds: PLATFORM_MIN_STAKE 1,000, MAX 1,000,000 (per-market via config).
+- Stake bounds: PLATFORM_MIN_STAKE 1,000, MAX 1,000,000 (per-market via config). ⚠️ PLATFORM_MIN_STAKE is 500 since the owner's ruling of 2026-10-12; the deposit minimum stays 1,000.
 
 ## Low balance variants (shortfallPlan states: pending, deposit_limit, sof_required, wallet_held, loss_limit, belowDepositMin, rails_paused) — NO sheet strings yet.
 - Pending: depositStarted "Amana imeanza"; returnPendingWarnTitle "Tafadhali usilipe tena".

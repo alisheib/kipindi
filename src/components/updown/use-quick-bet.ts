@@ -6,6 +6,7 @@ import { buyPositionAction } from "@/app/markets/actions";
 import { funnelBetFields, sendFunnel } from "@/lib/journey/funnel-beacon";
 import { formatTzs } from "@/lib/utils";
 import { haptics } from "@/lib/haptics";
+import { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE } from "@/lib/payout";
 // §F8 · how long the success toast stands, from the ONE module that owns dwell times.
 import { DWELL_BET_PLACED_MS } from "@/lib/feedback-timing";
 import { quickStakes, parseStake, insufficientFor } from "./stake-math";
@@ -122,8 +123,10 @@ export function useUpDownQuickBet(opts: {
   when?: (atMs: number) => string;
 }) {
   const { marketId, myUpStake = 0, myDownStake = 0, copy, errCopy, reasonCopy, when } = opts;
-  const min = opts.minStake ?? 1_000;
-  const max = opts.maxStake ?? 1_000_000;
+  // The page always passes the round's resolved bounds; these only stand in when it has none, and they are the
+  // platform rule's own constants — a typed 1,000 here outlived the minimum it copied (2026-10-12).
+  const min = opts.minStake ?? PLATFORM_MIN_STAKE;
+  const max = opts.maxStake ?? PLATFORM_MAX_STAKE;
   const stakes = useMemo(() => quickStakes(min, max), [min, max]);
   const [stakeIdx, setStakeIdx] = useState(0);
 

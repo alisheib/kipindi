@@ -46,11 +46,13 @@ const SUBTITLE: Record<Locale, string> = {
  * ⚠️ DATED, like every other document under `/legal` — not marketing's "Version 1.0". A dated
  * version is the only kind that signals when the binding text last moved, and `/legal/terms:22-25`
  * makes bumping it in the same commit a rule rather than a habit.
+ * ⛔ BUMPED 2026-10-12 (owner ruling, docs/COMPLIANCE-DECISIONS.md 2026-10-12): the minimum stake this document quotes
+ * from the live config went from TZS 1,000 to TZS 500 — the binding text a player reads moved, so the date moved.
  */
 const META: Record<Locale, string> = {
-  en: "Version 2026-09-13 · Effective on entering a market.",
-  sw: "Toleo 2026-09-13 · Yanaanza kutumika unapoingia sokoni.",
-  zh: "版本 2026-09-13 · 自进入市场时生效。",
+  en: "Version 2026-10-12 · Effective on entering a market.",
+  sw: "Toleo 2026-10-12 · Yanaanza kutumika unapoingia sokoni.",
+  zh: "版本 2026-10-12 · 自进入市场时生效。",
 };
 
 export default async function YesNoRulesPage() {

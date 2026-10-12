@@ -133,7 +133,7 @@ console.table((await c.query(`
 
 // 8b · ⛔ WHAT WE ACTUALLY EARN PER RESOLUTION — measured, never quoted.
 //      50pick charges a `loser-share` POOL COMMISSION (docs/RULES.md §2). It does NOT
-//      charge a flat TZS 1,000 per market — that figure is the MINIMUM STAKE. A suggested
+//      charge a flat TZS 1,000 per market — that figure was the MINIMUM STAKE (TZS 500 since 2026-10-12). A suggested
 //      price is only meaningful beside real revenue, and an admin screen that names a
 //      price we do not charge is the defect `test:fee-model-caption` exists to prevent.
 console.log("8b · HOUSE:COMMISSION earned, by product line (TZS)");

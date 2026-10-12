@@ -70,8 +70,8 @@ const BURSTS = [
   { n: 50,   yesRatio: 0.5, stake: 1000, prefix: "b50",  label: "50 mixed YES/NO" },
   { n: 100,  yesRatio: 1.0, stake: 1000, prefix: "b1y",  label: "100 ALL-YES (same-direction)" },
   { n: 100,  yesRatio: 0.0, stake: 1000, prefix: "b1n",  label: "100 ALL-NO (same-direction)" },
-  // ⚠️ Both at the TZS 1,000 minimum (2026-10-07): the route clamps a stake at `PLATFORM_MIN_STAKE`, so a 500 or
-  // 200 here was staked as 1,000 while the label said otherwise.
+  // ⚠️ Both at TZS 1,000 (the minimum on 2026-10-07; it is 500 since 2026-10-12, so 1,000 is simply a legal stake): the
+  // route clamps a stake at `PLATFORM_MIN_STAKE`, so a figure under it is staked as the minimum while the label says otherwise.
   { n: 200,  yesRatio: 0.5, stake: 1000, prefix: "b2x",  label: "200 mixed @ TZS 1,000" },
   { n: 500,  yesRatio: 0.5, stake: 1000, prefix: "b5x",  label: "500 mixed @ TZS 1,000" },
 ];

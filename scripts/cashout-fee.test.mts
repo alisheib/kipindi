@@ -164,8 +164,8 @@ await fundedUser("usr_co_b");
     ok("EXIT WINDOW: the winning side's prize is INTACT (not gutted)", (await getMarket(m.id))!.yesPool === 200_000);
 
     // And the 'buy a fresh token position then bail' bypass no longer helps: the big
-    // position is still past its OWN window, so it stays locked. (Stake is the platform
-    // minimum, 1,000 TZS, so the fresh bet actually places.)
+    // position is still past its OWN window, so it stays locked. (A 1,000 stake clears the
+    // platform minimum, so the fresh bet actually places.)
     await buyPosition("win_a", { marketId: m.id, side: "YES", stake: 1_000 });
     const stillLocked = await cashOutPosition("win_a", pid);
     ok("EXIT WINDOW: the token-bet bypass is dead — the big position is still locked", !stillLocked.ok);

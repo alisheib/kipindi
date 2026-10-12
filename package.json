@@ -441,6 +441,7 @@
     "test:withdraw-email-gate": "tsx scripts/withdraw-email-gate.test.mts",
     "test:wallet-receipts": "tsx scripts/wallet-receipts.test.mts",
     "test:money-minimums": "tsx scripts/money-minimums.test.mts",
+    "test:stake-minimum-db": "tsx scripts/db-scratch.mts --run npx tsx scripts/stake-minimum-db.test.mts",
     "test:kyc-stage": "tsx scripts/kyc-stage.test.mts",
     "test:deploy-skew": "tsx scripts/deploy-skew.test.mts",
     "test:revoked-deadend": "node scripts/revoked-deadend.test.mjs",

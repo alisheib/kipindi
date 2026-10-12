@@ -19,6 +19,7 @@ import { AI_SUBJECT_LABEL, AI_SUBJECT_TYPES } from "@/lib/ai-cycle-rules";
 import { CycleSettings, StartCycleControl, CloseCycleControl } from "./cycle-controls";
 // ⛔ THE ONE MONEY FORMATTER. See `tzsFmt` below for why a local `toLocaleString` is a defect.
 import { formatTzs, adminCount } from "@/lib/utils";
+import { PLATFORM_MIN_STAKE } from "@/lib/payout";
 import { getAnthropicSpend } from "@/lib/server/anthropic-billing";
 import { CreditControls } from "./credit-controls";
 import { AiOpsControls } from "./ai-ops-controls";
@@ -562,7 +563,7 @@ async function AdminAiUsageContent({ searchParams }: { searchParams: Promise<SP>
                   this rendered "not a flat fee.The". */}
               ⛔ <strong>What 50pick actually charges is a pool commission, not a flat fee.</strong>{" "}The &ldquo;suggested&rdquo; column is
               what this AI cost plus a {cyc.config.targetMarginPct}% margin would come to per market — it is a cost floor to compare
-              against real commission earned, not a price we charge. TZS 1,000 is the <em>minimum stake</em>, not a price.
+              against real commission earned, not a price we charge. {formatTzs(PLATFORM_MIN_STAKE)} is the <em>minimum stake</em>, not a price.
             </p>
             <p>
               {cyc.fx.usable ? (

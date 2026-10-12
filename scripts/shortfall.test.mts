@@ -21,17 +21,19 @@
  * ⛔ IN-PROCESS BY CONSTRUCTION: no file is written.
  */
 import * as SF from "../src/lib/journey/shortfall.ts";
+import { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE } from "../src/lib/payout.ts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
 type Impl = { plan: typeof SF.shortfallPlan };
 const REAL: Impl = { plan: SF.shortfallPlan };
 const NOW = Date.UTC(2026, 9, 1, 9, 0);
 
-/** A player who may bet, with TZS 2,000, staking TZS 5,000 on a LIVE market (min 1,000, max 1,000,000). */
+/** A player who may bet, with TZS 2,000, staking TZS 5,000 on a LIVE market at the platform's own bounds (min 500 since
+ *  2026-10-12, max 1,000,000 — read from the rule, never typed). */
 function base(): SF.ShortfallInput {
   return {
     maintenance: false, lockout: null, session: null, account: { status: "ACTIVE", coolingOffUntil: null },
-    market: { live: true, selectionClosed: false }, stake: 5_000, bounds: { min: 1_000, max: 1_000_000 },
+    market: { live: true, selectionClosed: false }, stake: 5_000, bounds: { min: PLATFORM_MIN_STAKE, max: PLATFORM_MAX_STAKE },
     wallet: { status: "ACTIVE", balance: 2_000, bonusBalance: 0 }, loss: { dailyLossLimit: null, lossToday: 0 },
     pendingDeposit: null,
     deposit: {
@@ -56,7 +58,7 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   const all: SF.ShortfallInput = {
     ...base(), maintenance: true, lockout: { kind: "cooling_off", until: "2 Oct 2026, 09:00" },
     session: { exceeded: true, limitMin: 60, playedMin: 75 }, account: { status: "SUSPENDED" },
-    market: { live: false, selectionClosed: true }, stake: 500, wallet: { status: "FROZEN", balance: 2_000, bonusBalance: 0 },
+    market: { live: false, selectionClosed: true }, stake: PLATFORM_MIN_STAKE - 1, wallet: { status: "FROZEN", balance: 2_000, bonusBalance: 0 },
     loss: { dailyLossLimit: 3_000, lossToday: 0 }, pendingDeposit: { amount: 3_000, txnId: "txn_p" },
   };
   const seen: string[] = [];
@@ -79,7 +81,7 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     se.kind === "blocked" && se.reason === "self_excluded" && se.until === "1 Apr 2027"
       && cooling(new Date(NOW + 3_600_000).toISOString()) === "account_blocked" && cooling(null) === "account_blocked"
       && cooling(new Date(NOW - 3_600_000).toISOString()) === "short", j({ se }));
-  const stakeTags = [5_000.5, 999, 1_000_001].map((s) => tag(P({ ...base(), stake: s })));
+  const stakeTags = [5_000.5, PLATFORM_MIN_STAKE - 1, PLATFORM_MAX_STAKE + 1].map((s) => tag(P({ ...base(), stake: s })));
   ok("1.stake · a fractional stake, one below the minimum, one above the maximum — each named", j(stakeTags) === j(["stake_not_whole", "stake_below_min", "stake_above_max"]), j(stakeTags));
 
   /* 2 · the deck's examples */
@@ -120,10 +122,16 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   ok("4.refused · a deposit the daily limit, source of funds, or paused rails would refuse is not offered — \"bet instead\" (2,000) is",
     onlyInstead(limit, "deposit_limit") && onlyInstead(sof, "sof_required") && onlyInstead(paused, "rails_paused"), j({ limit, sof, paused }));
   const both = P(base());
-  const poor = P({ ...base(), wallet: { status: "ACTIVE", balance: 800, bonusBalance: 0 } });
-  ok("4.instead · \"bet instead\" sits beside the deposit at 2,000; with 800 (below the 1,000 minimum) it is not offered",
+  // ⚠️ 2026-10-12: the wallet one shilling under the minimum stake, not a typed 800 — at the 500 minimum an 800 wallet
+  // CAN bet, so it is offered "bet instead" now (4.instead500).
+  const poor = P({ ...base(), wallet: { status: "ACTIVE", balance: PLATFORM_MIN_STAKE - 1, bonusBalance: 0 } });
+  ok("4.instead · \"bet instead\" sits beside the deposit at 2,000; with one shilling under the minimum stake it is not offered",
     both.kind === "short" && both.options.length === 2 && both.options[1].kind === "betInstead" && (both.options[1] as SF.BetInsteadOption).stake === 2_000
       && poor.kind === "short" && poor.options.length === 1 && poor.options[0].kind === "deposit", j({ both, poor }));
+  const atMin = P({ ...base(), wallet: { status: "ACTIVE", balance: 800, bonusBalance: 0 } });
+  ok("4.instead500 · ⭐ and an 800 wallet — under the smallest DEPOSIT but over the smallest STAKE — is offered \"bet instead\" at 800",
+    atMin.kind === "short" && atMin.options.length === 2 && atMin.options[1].kind === "betInstead" && (atMin.options[1] as SF.BetInsteadOption).stake === 800,
+    j(atMin));
   // A stake over the player's own loss headroom is blocked — never an offer to deposit past their own limit. (A stake
   // within it that the wallet cannot cover leaves "bet instead" at most the balance, which is then within it too.)
   const lossOver = P({ ...base(), loss: { dailyLossLimit: 10_000, lossToday: 7_000 } });

@@ -362,11 +362,17 @@ let goldId = "";
 
     // ⛔ THE PLATFORM FLOOR IS A RULE, NOT A SETTING (2026-08-14). This line asserted that
     //    500 was "valid" — and production was running on exactly that floor. The door must
-    //    refuse it now; an operator may narrow the window inside 1,000…1,000,000, never
-    //    widen it past either end.
-    const belowFloor = await updateChain(chains[0].id, { minStake: 500 }, OFFICER);
-    ok("4.8b · a sub-floor chain minimum is REFUSED at the door", !belowFloor.ok,
+    //    refuse anything under the rule; an operator may narrow the window inside
+    //    PLATFORM_MIN_STAKE…PLATFORM_MAX_STAKE, never widen it past either end.
+    //    ⚠️ 2026-10-12: the minimum IS 500 now (owner ruling), so the refused value is one
+    //    shilling under the rule — 499 — and 500 itself must be ACCEPTED (4.8b2).
+    const belowFloor = await updateChain(chains[0].id, { minStake: 499 }, OFFICER);
+    ok("4.8b · a sub-floor chain minimum (499) is REFUSED at the door — and the refusal names the TZS 500 minimum",
+       !belowFloor.ok && /TZS 500 and/.test(belowFloor.error),
        belowFloor.ok ? "ACCEPTED — the rule is not enforced" : belowFloor.error);
+    const atFloor = await updateChain(chains[0].id, { minStake: 500 }, OFFICER);
+    ok("4.8b2 · …and a chain minimum AT the rule (500) is accepted", atFloor.ok, atFloor.ok ? "" : atFloor.error);
+    await updateChain(chains[0].id, { minStake: 1_000, maxStake: 50_000 }, OFFICER);
     const aboveCeiling = await updateChain(chains[0].id, { maxStake: 5_000_000 }, OFFICER);
     ok("4.8c · a chain maximum above the platform ceiling is REFUSED", !aboveCeiling.ok,
        aboveCeiling.ok ? "ACCEPTED — the rule is not enforced" : aboveCeiling.error);

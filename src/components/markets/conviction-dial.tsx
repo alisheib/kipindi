@@ -27,7 +27,7 @@ import { funnelBetFields, sendFunnel } from "@/lib/journey/funnel-beacon";
 import { HouseLeanWarning } from "./house-lean-warning";
 import { BetConfirmModal } from "./bet-confirm-modal";
 import { OperationResultModal } from "./operation-result-modal";
-import { payoutFor, leanFor, DEFAULT_COMMISSION_RATE, DEFAULT_FEE_CEILING_RATE, type LeanLevel, type PollRates } from "@/lib/payout";
+import { payoutFor, leanFor, DEFAULT_COMMISSION_RATE, DEFAULT_FEE_CEILING_RATE, PLATFORM_MIN_STAKE, type LeanLevel, type PollRates } from "@/lib/payout";
 import { maxMultiplierFor, stakeFromPosition } from "@/lib/dial-stake";
 import { haptics, motionReduced } from "@/lib/haptics";
 import { formatTzs, formatNumber, fill, fmtRate, pctNum } from "@/lib/utils";
@@ -176,7 +176,7 @@ type Props = {
   boardHref?: string;
 };
 
-export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, maxStake, initial = 0.5, marketTitle, resolutionAt, closesAt, serverNow, balance, lockedSide, rates, boardHref = "/markets" }: Props) {
+export function ConvictionDial({ marketId, yesPool, noPool, baseStake = PLATFORM_MIN_STAKE, maxStake, initial = 0.5, marketTitle, resolutionAt, closesAt, serverNow, balance, lockedSide, rates, boardHref = "/markets" }: Props) {
   // The side the dial is locked to (null = free bidirectional). The choice is
   // made on the market card (outside) and is FINAL here — the in-dial YES/NO
   // pills are display-only indicators, NOT switchable. To change sides the
@@ -395,7 +395,7 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = 1_000, m
    *  editing intent (or current side) exists. The knob visually
    *  nudges ~2.3% off-centre but the displayed multiplier is
    *  overridden to "1.00×" via exactStake (above) so the player sees
-   *  a coherent { side, 1.00×, TZS 1,000 (the platform minimum), Place button } state. */
+   *  a coherent { side, 1.00×, the minimum stake, Place button } state. */
   const posFromStake = useCallback((tzs: number): number => {
     const minDial = baseStake;          // multiplier 1 → baseStake
     const maxDial = baseStake * maxMultiplier; // multiplier 200 → baseStake × 200
