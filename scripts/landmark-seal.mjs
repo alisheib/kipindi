@@ -66,6 +66,9 @@ const JOURNEY = process.argv.includes("--journey");
 const GATED = ["/wallet", "/profile", "/positions", "/notifications", "/profile/security",
                "/wallet/deposit", "/wallet/withdraw", "/wallet/receipts", "/profile/kyc", "/positions/performance"];
 const PUBLIC = ["/", "/markets", "/results", "/leaderboard", "/help", "/legal/privacy",
+  // ⚠️ --journey: since S7 WP9 a journey reader's /markets answers with the journey home (a real 307 on a document), so
+  // its --journey cells measure / again under the /markets name (a public route passes wherever it lands; a problem
+  // line shows "→ /"). The classic seal's /markets is today's board, as it always was.
   // ⭐ The rules documents join the SEAL, not just the static sweep: they are the only legal
   // pages carrying tables, and this is the check that asserts zero h-overflow per locale.
   "/legal/rules", "/legal/rules/yes-no", "/legal/rules/up-down",

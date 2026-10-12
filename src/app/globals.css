@@ -6950,13 +6950,20 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-hub__tick { flex-shrink: 0; display: inline-flex; width: 16px; color: var(--brand-300); }
 /* ⭐ TAFUTA'S FORM (S7 WP9, A20): the kit field and the kit button on one line, on the inset the language choices open on
    (`.kp-hub__opts`' padding: one panel inset for the card's two disclosures), the two controls 12px apart as every pair
-   of controls stands (A5); the field takes the line and the button keeps its word whole. At 320 the widest placeholder,
-   en "Search questions", still has room beside "Search" (`test:journey-account` 9.fit measures it in sw, en and zh).
-   Open, the row is no longer its card's last box, so its bottom corners square: its hover and its focus ring meet the
-   form edge to edge rather than on the card's curve. */
+   of controls stands (R9-A5); the field takes the line and the button keeps its word whole. At 320 the widest
+   placeholder, en "Search questions", still has room beside "Search" (`test:journey-account` 9.fit measures it in sw,
+   en and zh). Open, the row is no longer its card's last box, so its bottom corners square: its hover and its focus ring
+   meet the form edge to edge rather than on the card's curve. */
 .kp-hub__form { display: flex; align-items: center; gap: var(--sp-3); padding: 0 var(--sp-2) var(--sp-2); }
 .kp-hub__field { flex: 1 1 auto; min-width: 0; }
 .kp-hub__card .kp-hub__find[open] > .kp-hub__row { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+/* ⭐ …AND ITS BUTTON KEEPS THE KIT'S RING OUTSIDE IT (the WP9 review). The card draws every ring 2px INSIDE its control
+   (`.kp-hub__card :where(a, button, summary):focus-visible`), because it clips its rows to its corners; that rule ties
+   `.btn:focus-visible` (each (0,2,0)) and comes later, so it took this button's ring inside too. This button needs no
+   such care: the panel's 8px inset keeps it off the card's clip at its side and foot, and the open row stands above it,
+   so the kit's whole ring (2px off its edge, 2px wide, and the 4px halo) is drawn. The kit's offset is set back here,
+   at (0,3,0). */
+.kp-hub__form .btn:focus-visible { outline-offset: 2px; }
 /* The Needle's row is the hub's own row (`NeedleControlsDrawer variant="hub-row"`, round 3, 2026-10-09): it wore the
    account menu's row inside a padded item, sized up here, and stood 2px off every column of the card. No rule of its own. */
 /* Sign-out stands alone under the cards, as the canvas draws it: an act, not a door.

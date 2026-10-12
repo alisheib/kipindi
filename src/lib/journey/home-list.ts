@@ -4,9 +4,9 @@
  * A21). The home draws what these return; it decides none of it itself.
  *
  *   · `parseHomeParams` — the three things an address may ask for: `?cat` (a known category, else none), `?q` (trimmed
- *     and clamped to the product's one cap, `MAX_QUERY_LEN`) and `?page` (`parsePageParam`). A repeated parameter takes
- *     its first value (`oneParam`). An unknown value FALLS BACK: it never throws, and it is never passed through
- *     (`query/parse.ts`).
+ *     and clamped to the product's one cap, `MAX_QUERY_LEN`, never half a character: `clampQuery`) and `?page`
+ *     (`parsePageParam`). A repeated parameter takes its first value (`oneParam`). An unknown value FALLS BACK: it never
+ *     throws, and it is never passed through (`query/parse.ts`).
  *   · `parsePageParam` — THE `?page` rule, one for the home and journey `/live` (A21 item 4): a positive whole number
  *     as an address writes it, else 1.
  *   · `homeBook` — the questions taking bets now, soonest-closing first by the instant BETTING closes
@@ -93,6 +93,20 @@ export function parsePageParam(raw: unknown): number {
   return typeof raw === "string" && PAGE.test(raw) ? Math.min(Number(raw), Number.MAX_SAFE_INTEGER) : 1;
 }
 
+/**
+ * `?q` clamped as every search is (`clampText`: trimmed, then cut at `MAX_QUERY_LEN`), less any half character the cut
+ * left. The cap counts UTF-16 units, so a pair (an emoji) standing across it is cut in two, and its first half alone
+ * makes `encodeURIComponent` throw a URIError: `homeHref` would fail on the home's own chips and "Onyesha zaidi" (the
+ * WP9 review). The half is dropped, with any space the cut uncovered; a whole pair at the cap stays.
+ * ⛔ Here and in `markets-redirect.ts` (its twin, for the /markets target), never in the shared `clampText`: every
+ * classic board reads that helper, and none of them may move. `test:journey-home` 2.parse.q and 2.href hold it.
+ */
+function clampQuery(raw: unknown): string {
+  const q = clampText(raw, MAX_QUERY_LEN);
+  const last = q.charCodeAt(q.length - 1);
+  return last >= 0xd800 && last <= 0xdbff ? q.slice(0, -1).trimEnd() : q;
+}
+
 /** The home's three parameters. `categories` is the closed set `?cat` is read against. */
 export function parseHomeParams(
   sp: HomeSearch | null | undefined,
@@ -101,7 +115,7 @@ export function parseHomeParams(
   const search: HomeSearch = sp ?? {};
   const rawCat = oneParam(search, "cat");
   const cat = typeof rawCat === "string" && (categories as readonly string[]).includes(rawCat) ? (rawCat as MarketCategory) : null;
-  const q = clampText(oneParam(search, "q"), MAX_QUERY_LEN);
+  const q = clampQuery(oneParam(search, "q"));
   return { cat, q, page: parsePageParam(oneParam(search, "page")) };
 }
 
@@ -176,7 +190,7 @@ export function homeView<T extends HomeMarket>(
 export function homeHref(p: { cat?: MarketCategory | null; q?: string | null; page?: number | null }): string {
   const parts: string[] = [];
   if (p.cat && (MARKET_CATEGORIES as readonly string[]).includes(p.cat)) parts.push(`cat=${encodeURIComponent(p.cat)}`);
-  const q = clampText(p.q, MAX_QUERY_LEN);
+  const q = clampQuery(p.q);
   if (q !== "") parts.push(`q=${encodeURIComponent(q)}`);
   if (typeof p.page === "number" && Number.isSafeInteger(p.page) && p.page > 1) parts.push(`page=${p.page}`);
   return parts.length > 0 ? `/?${parts.join("&")}` : "/";

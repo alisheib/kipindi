@@ -4,8 +4,10 @@
  * browser, through the real doors, and reads every state from the PAGE, the COOKIE JAR and `/api/health`:
  *   §1 a guest sees nothing — no marker, no pass cookie, no trace in the HTML (the journey shell's test ids included);
  *   §2 a SUPPORT officer (not the Owner) turns their preview on from /admin/journey → lands on / wearing the marker,
- *      drawn the journey header at 1280 and its four tabs at 390 with no classic bar or coin (WP6b step 7), keeps it
- *      on a document load of /markets, exits with the marker's own button, and it is gone;
+ *      drawn the journey header at 1280 and its four tabs at 390 with no classic bar or coin (WP6b step 7); a document
+ *      load of /markets answers a real 307 to the journey home with the board's topic as its chip (S7 WP9; 1.4 is the
+ *      guest's control: today's board at 200); keeps the marker on a document load of /results, exits with the
+ *      marker's own button, and it is gone;
  *   §3 a signed-in player sees nothing;
  *   §4 the Owner stops the rollout → the officer's pass is ignored → Resume → it counts again;
  *   §5 the Owner issues a preview link → a stranger opens it and previews → the Owner revokes it → gone again;
@@ -117,6 +119,15 @@ ok("1.1 no marker on / for a guest", (await markerCount(gp)) === 0);
 ok("1.2 no pass cookie in a guest's jar", (await passCookie(guest)) === null);
 ok("1.3 the guest's HTML carries no trace of the preview or the journey shell (the marker, the pass, the header's and tabs' test ids)", traceFree(await gp.content()));
 await tile(gp, "1-guest-home-390");
+{
+  // S7 WP9's control for 2.6b: a reader the journey is not shown to keeps today's board — no hop, a 200, its own address.
+  const res = await gp.goto(`${BASE}/markets?topic=sports&utm_source=x`, { waitUntil: "domcontentloaded" });
+  await settle(gp);
+  const hop = res ? res.request().redirectedFrom() : null;
+  ok("1.4 S7 WP9 control · a guest's document load of /markets is today's board: answered 200 with no redirect, on its own address, no marker",
+    !!res && res.status() === 200 && hop === null && new URL(gp.url()).pathname === "/markets" && (await markerCount(gp)) === 0,
+    JSON.stringify({ status: res ? res.status() : null, from: hop ? hop.url() : null, landed: gp.url() }));
+}
 
 // ── §2 · a SUPPORT officer previews ──────────────────────────────────────────────────────────────────────
 console.log("\n§2 · a SUPPORT officer turns the preview on, sees the marker, exits");
@@ -151,8 +162,23 @@ ok("2.5d at 390 the pass holder is drawn the journey header and its rail of four
   phone.journeyHeader === 1 && phone.railShown && phone.tabs === 4 && phone.classicHeader === 0 && phone.classicCoin === 0, JSON.stringify(phone));
 await tile(sp, "2-home-with-marker-390");
 await sp.setViewportSize(DESK);
-await sp.goto(`${BASE}/markets`, { waitUntil: "domcontentloaded" }); await settle(sp);
-ok("2.6 a document load of /markets still wears the marker", (await markerCount(sp)) === 1);
+{
+  // ⭐ S7 WP9: a pass holder's /markets is the journey home — on a DOCUMENT, a real 307 from AppShell (the root loading
+  // file streams a 200 before any page renders, so the page itself could only meta-refresh), through the one table
+  // (`journeyMarketsTarget`): the board's topic becomes the home's chip and the utm key rides along.
+  const res = await sp.goto(`${BASE}/markets?topic=sports&utm_source=x`, { waitUntil: "domcontentloaded" });
+  await settle(sp);
+  const hop = res ? res.request().redirectedFrom() : null;
+  const hopRes = hop ? await hop.response() : null;
+  const landed = new URL(sp.url());
+  ok("2.6b S7 WP9 · a pass holder's document load of /markets?topic=sports&utm_source=x answers a real 307 to the journey home, /?cat=sports&utm_source=x, still wearing the marker",
+    !!hop && new URL(hop.url()).pathname === "/markets" && !!hopRes && hopRes.status() === 307
+      && landed.pathname === "/" && landed.search === "?cat=sports&utm_source=x" && (await markerCount(sp)) === 1,
+    JSON.stringify({ from: hop ? hop.url() : null, status: hopRes ? hopRes.status() : null, landed: sp.url() }));
+}
+// The marker's document-load check reads /results, a page the journey keeps (WP9: /markets now answers with the home).
+await sp.goto(`${BASE}/results`, { waitUntil: "domcontentloaded" }); await settle(sp);
+ok("2.6 a document load of /results still wears the marker", (await markerCount(sp)) === 1);
 await Promise.all([sp.waitForURL(`${BASE}/`, { timeout: 60_000 }), sp.locator(EXIT).click()]);
 await settle(sp);
 ok("2.7 'Exit preview' lands on / and the marker is gone", (await markerCount(sp)) === 0);
