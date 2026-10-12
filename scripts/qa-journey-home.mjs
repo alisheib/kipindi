@@ -52,7 +52,7 @@
  * EXIT 0 every line passed · 1 a FAIL · 2 REFUSED · 3 no FAIL, but something BLOCKED or NOT MEASURED (not proven).
  */
 import { chromium } from "playwright";
-import { mkdirSync, readFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { request as httpRequest } from "node:http";
@@ -224,6 +224,9 @@ function watchProblems(page) {
     pageProblems.add(key);
     let at = "?"; try { at = new URL(page.url()).pathname; } catch { /* no address yet */ }
     console.log(`  NOTE ${key} (on ${at})`);
+    // The whole text goes beside the tiles: a hydration mismatch names its attributes only below its first line (two
+    // sightings of one, on / and on /results, were kept as a first line only — VODACOM-PLAN §0j, WP11's review).
+    try { mkdirSync(OUT, { recursive: true }); appendFileSync(join(OUT, "console-errors.txt"), `── ${key} (on ${at})\n${String(text)}\n\n`); } catch { /* best effort */ }
   };
   page.on("pageerror", (e) => note("page error", e?.message ?? e));
   page.on("console", (m) => { if (m.type() === "error") note("console error", m.text()); });

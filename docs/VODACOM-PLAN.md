@@ -367,10 +367,15 @@ S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on 
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
 **Next:** (1) S7 — WP0–WP4 are live (`dcf305d5`, 2026-10-12 13:59 EAT, §0j); WP5–WP10 and live fix L1 are live
-(`f20f1617`, 2026-10-12 20:35 EAT, their landing proof whole — §0j); next WP11's drives and WP12 (§0j's "▶ IN FLIGHT" bullet: helper sessions run
-them); S8's plan is filed ([`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md)). OMEGA's own 2026-10-07/08 WP1 is on origin
+(`f20f1617`, 2026-10-12 20:35 EAT, their landing proof whole — §0j); WP11 (the drives) and WP12 (the battery, the
+records) went live with this record — S7's build is complete, and its production read-back is done (§0j) but for
+[E3] measured, which needs the QA player's password on the machine that runs it. S7 is ✅ only at S14. (2) The two
+classic gaps Ali ruled "fix now" (S8-PLAN A23): live fixes L3 and L2, each its own release.
+(3) S8 — the bet sheet and low balance — is next, from its WP0 ([`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md); its citations re-read at `6da7f936` on a helper
+VM: 729 — 459 unchanged, 256 moved, 14 changed, 0 gone — with eight candidate A24 items, most from the TZS 500 minimum
+stake; `origin/vodacom-visual-tools` `tools/s7-cloud-2026-10-12/results/s8-citations-6da7f936-summary.md`). OMEGA's own 2026-10-07/08 WP1 is on origin
 for reference only as `vodacom-s7-wp1-omega`, never to be merged (§0h point 66). S7's plan:
-[`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), whose Amendments override its body. (2) When
+[`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), whose Amendments override its body. (4) When
 Ali says so, and not before (nothing turns on until the plan is done): an officer approves the S2 short titles, and
 Ali presses S1's preview switch.
 
@@ -735,10 +740,52 @@ body. Owner-level calls: §0h point 58, and 65 on.
   Postgres, no server): its first run 495/524 — the 28 reds main carried at `203b1380` (the database suites, the plan
   suites, the three server suites, test:orphans, test:contacts-export, test:marketing-preflight) and test:short-title-ai
   164/167, a suite none of whose modules changed here (167/0 on the live commit here, green in both batteries); its
-  re-run 496/524, exactly main's 28 — so the release adds no red. ⚠️ **NOT MEASURED from this VM** (the sandbox refuses
-  the production hosts; `QA_MOBILE01_PASSWORD` is not set here either): `?dpl=f20f1617` on both hosts, production qa:live
-  with [E3], and `qa:chunks-prod --origin https://50pick.tz` — owed to the next machine that reaches production; until
-  then the deploy's health check and the local proofs above are what stands for them.
+  re-run 496/524, exactly main's 28 — so the release adds no red. ✅ **Production read back on 2026-10-12 at about 23:05
+  EAT**, once Ali opened the environment's network: `?dpl=6da7f936` (the docs commit on top of `f20f1617`, the same code)
+  on `50pick.tz`, `www.50pick.tz` and `kipindi-production.up.railway.app`; `/api/health` ok on all three
+  (`simpleJourney` STAFF_PREVIEW). Production qa:live, read-only, run with S7's close drives (WP11 and its review): 253
+  passed, and [E2] holds `/`, `/markets`, `/live`, `/results` and a question page free of the preview marker, every
+  trace of the journey shell and S7's ids for a signed-out visitor, and `/markets` the classic board. Its 89 dead-link
+  lines read 0 only because Playwright's request client does not take this VM's proxy; the same 89 paths answered under
+  400 to curl through it. [E2]'s control is a SKIP (no staff pass is minted on production), and [E3] is NOT MEASURED
+  (no `QA_SIGNED_IN=mobile01`, and no password on this VM). `qa:chunks-prod --origin https://50pick.tz` PASS, 6/6 routes
+  (47 GETs: S7's markers absent from every classic first load, no journey markup in the HTML); classic
+  `qa:cls-budget` on production GREEN — `/`, `/markets`, `/results` and `/live` at CLS 0. ⚠️ On this VM Node's own
+  fetch needs `NODE_USE_ENV_PROXY=1` to reach any host (/root/.ccr/README.md); without it the same runs read nothing.
+- **WP11 ✅ LIVE (2026-10-12, with this record) — the drives** (`992ad807`; run, fixed and proven on helper VM B,
+  `session_01XGYT5pB9XzX5WLM7gxvAFJ`, its WIP history on `origin/vodacom-s7-wp11`; served bytes: none).
+  **qa:journey-above-fold** — A5's 72 cells (360×640, 360×740, 390×844 × sw/en/zh × a guest/signed in × no bar/every bar
+  × card 1's full title/a short title at the full budget), the preview marker asserted (112.8px sw and en, 94.9 zh) and
+  then hidden: **72/72 PASS**, its red control 7/7 caught (each cell clean first). Least slack: card 1's picks GATED
+  33.8px (360×640 sw, a guest, no bar, the short title); RECORDED −157.6px (360×640 sw, a guest, every bar, the short
+  title — recorded, never gated); the How-to card 221.6px; at 390×844 with every bar the picks keep 106.2–156px.
+  **qa:cls-budget `--journey`** (sw 360×780; `/`, `/live` and `/results` for a guest and signed in, `/watchlist` signed in):
+  no failure, the largest `/live` 0.0103; its RED_SHELL control fails six times, as it must. **qa:journey-home: 83
+  passed, 0 failed, 0 blocked, 0 not measured; 101 tiles, each read.** Its positive control finds `journey-home`,
+  `journey-card`, `journey-howto-card` and `journey-home-ghost` in a pass holder's served documents and none without a pass
+  — so the ghost joins the shared list that qa:live's [E2] and [E3] hold absent (A23 item 1); the ghost hop PASS at 360
+  sw, 390 en and 1280 zh (every part within ±2px; the classic control shows no home ghost; the 40px plant caught; a hidden
+  ghost no frame); the tap cell (a card, an NDIO pick) shows only the question page's own ghost, never the home's; the
+  redirect cell — a document `/markets?topic=sports&utm_source=x` answers 307 to `/?cat=sports&utm_source=x`, a classic
+  reader 200 and the board — and the soft hop (the dev router's push: `/results` draws no classic `/markets` link) lands
+  home showing only the home's ghost: A19 item 2 had expected today's markets ghost first, and the page's flight redirect
+  answers before that boundary paints (recorded for S8). **Local qa:live with S7's routes and ids 363/363.** Seen in the
+  tiles, none gated: the English headline takes three lines at 320 (its rung is measured at 360, A16); "Tiketi zangu" two
+  lines at sw 320 (as S6's header-fit records); the seeded catalogue has no Chinese titles, so zh cards read English
+  (data); at 1024 the How-to card wraps under the h1 (A16's recorded composition). One console error was seen once in the
+  long run — a hydration attribute mismatch on `/` after Tafuta's landing (sw 360, signed in) — and did not come back in
+  six tries on the live code (directly, through Tafuta, plain; two rounds each): recorded, not reproduced.
+- **WP12 ✅ LIVE (2026-10-12, with this record) — S7's close:** the battery (`test:all` at the release's code twice, helper
+  C — after each red's own re-run only main's three known reds; the server suites green against a server; every red twin
+  caught), parity v3 against a baseline at the main it landed on (53/53, the landing bullet), qa:first-load PASS, the
+  drives above, and an independent review of WP11's drives. Records: this section, §1's S7 row, SHELVED (its six S7 rows —
+  the landing, the LIVE strip, the primer, the board, the live wall, the classic card — checked against what landed),
+  LANDING-TEN §0 (the landing shelved for journey readers), MOBILE-VISUAL U16 and U18 (the re-target checked); the memory
+  file lives on the machines that keep one (there is none on the cloud VM). **S7's production proof is read back** (the
+  release bullet above): `?dpl=`, health, qa:live [E2], `qa:chunks-prod` and classic `qa:cls-budget`. ⚠️ **Still owed:
+  [E3] measured** — `QA_SIGNED_IN=mobile01 BASE=https://50pick.tz npm run qa:live` from a machine that holds
+  `QA_MOBILE01_PASSWORD` in `.env.qa.local` (S7-PLAN A23 item 4: the proof counts only once [E3] has measured). S7 is ✅
+  only when staff see the deck's home on production (S14, §0h point 4).
 - **⏸ END OF SESSION — 2026-10-12 ~17:00 EAT (Ali: "push progress and everything, later we proceed"). THE EXACT PLACE,
   for any machine — every branch below is ON ORIGIN; nothing is only on OMEGA-COMPILE01:**
   - **LIVE:** S7 WP1–WP4 (`dcf305d5`, read back 13:59) and the loss-limit refusal's fix for every player (`e5b5c9da`,
@@ -807,25 +854,17 @@ body. Owner-level calls: §0h point 58, and 65 on.
     builders' `F:\kipindi-s7c…s7j`, `F:\kipindi-s8p` (`node_modules` junctions to `F:\kipindi-s7b` — never `npm ci` in
     them); the lock-turn chains on `origin/vodacom-visual-tools` `tools/s7-omega-2026-10-12/` (`fa8d65da`); the v3
     baseline and the scripts' copies in `F:\kipindi-s7-artifacts`.
-- **▶ IN FLIGHT — a cloud session (a claude.ai/code Linux VM, 2026-10-12 from ~16:25 EAT), working the NEXT list above in
-  order:**
-  - **Items 1–4 DONE:** WP10's review and WP9's review stacked (`origin/vodacom-s7-land7`), the landing proof whole (the
-    bullet above), WP5–WP10 and L1 live `f20f1617` and read back as far as this VM can (the ✅ LIVE bullet above). ⚠️ OWED
-    to a machine that reaches production (this VM's sandbox refuses `50pick.tz`, `www.50pick.tz` and the Railway host):
-    `?dpl=f20f1617` on both hosts, production qa:live (its [E3] signs in as the QA player mobile01) and `qa:chunks-prod
-    --origin https://50pick.tz`.
-  - **Item 5 — WP11 and WP12 — on helper VMs** (Ali, 18:00 EAT: "maximum resources"; each a claude.ai/code session in
-    this environment, its transcript the record): **B** `session_01XGYT5pB9XzX5WLM7gxvAFJ` runs WP11's drafts on
-    `origin/vodacom-s7-wp11` — local qa:live with S7's routes (363/0 on its VM), qa:cls-budget `--journey` with its
-    RED_SHELL control, qa:journey-above-fold, qa:journey-home and its tiles — fixing only the drives; **C**
-    `session_017HxNx4Nz7mWgckL3G3wLnu` runs WP12's battery (`test:all` with the database suites, the server-needing
-    suites, red-anchors and S7's red twins) at `origin/vodacom-s7-land8` `5388b4ca` (this release's code), its results to
-    `origin/vodacom-visual-tools` `tools/s7-cloud-2026-10-12/results/`. Then WP12 here: the records, the parity compare at
-    the final tip, the push.
-  - ⚠️ This VM's limits: only the image's Chromium 141 runs (the sandbox refuses Playwright's download host: no Firefox
-    or WebKit drives). The minimum-stake change (Ali, 2026-10-12: TZS 1,000 → 500) is another session's, not this plan's;
-    it went live first (`de44e087`), so this release's parity ran again against a baseline at it (the landing bullet
-    above), and WP12's compare starts from a baseline at the main it lands on.
+- **▶ IN FLIGHT — a cloud session (a claude.ai/code Linux VM, 2026-10-12 from ~16:25 EAT): the NEXT list above is DONE**
+  (items 1–5: WP10's and WP9's reviews, the landing proof, WP5–WP10 and L1 live `f20f1617`, WP11 and WP12 with this
+  record), worked with three helper sessions on their own VMs (Ali, 18:00 EAT: "maximum resources"): **A**
+  `session_01SrWuXa3LR3Rew6zEyHBXzJ` (the landing proof's served skeleton, lost chunk and WP9 drives; S8's citations), **B**
+  `session_01XGYT5pB9XzX5WLM7gxvAFJ` (WP11's drives), **C** `session_017HxNx4Nz7mWgckL3G3wLnu` (the `test:all` batteries);
+  their results are on `origin/vodacom-visual-tools` `tools/s7-cloud-2026-10-12/results/`. ⚠️ This VM's limits: only the
+  image's Chromium 141 runs (no Firefox or WebKit drives); the production hosts opened at about 23:00 EAT (Ali changed
+  the environment's network access), so S7's production read-back is done but for [E3] (the WP12 bullet), and Node's
+  fetch needs `NODE_USE_ENV_PROXY=1` here. Node 24 is at `/opt/node24/bin` and must lead PATH: the image's default
+  Node 22 makes in-memory suites that patch a store method fail falsely (`test:kyc-gate` §6). **Next:** the live fixes
+  L3 and L2, then S8's WP0 (§0 Next).
 - **The handoff of 2026-10-12 ~08:55 EAT (ALI-BLADE15 → any machine) is done:** picked up on OMEGA-COMPILE01 at ~10:00
   EAT — WP1's void null compare re-run, WP2's last proofs, WP3's draft read and finished. What it said, kept for the
   record:
@@ -3237,7 +3276,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | S4 | Claude Design pass | ✅ | `52afb7c8` 2026-10-01 (§0g): all eleven brief items on the Design canvas, 102 boards; the four-expert panel's findings applied (v16); BRIEF.md filed; choices 1B/2A/3A (§0h point 1). Done when frames for every new composition and undrawn state are filed and scored by the panel, and Ali has reviewed the 5 re-drawn frames. |
 | S5 | ~~Colour foundation~~ | ⛔ | Removed by R5 (50pick's look stays unchanged): no palette, font or brand work. |
 | S6 | Shell (flagged) | ✅ | CLOSED 2026-10-12 03:01 EAT at `ca72fe15` (round 10, the last S6 commit), its close record in §0 (test:all, classic parity, the tiles, production read back). Plan filed 2026-10-01 (`S6-PLAN.md`, §0i). Done when every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |
-| S7 | Home and cards (flagged) | 🔨 | Started (§0j): WP0's scripts-only repairs live `ce2c3afa`; WP1–WP4 live `dcf305d5` (2026-10-12); WP5–WP10 and live fix L1 live `f20f1617` (2026-10-12); WP11 (the drives) and WP12 (the battery, the records) next. Plan filed 2026-10-07 ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), its Amendments override its body; §0h point 58). Done when the local staff-pass drives pass (the above-the-fold gate among them) and production shows nothing changed for signed-out and signed-in players; staff seeing the deck's home on production moves to S14 (§0h point 4). |
+| S7 | Home and cards (flagged) | 🔨 | Started (§0j): WP0's scripts-only repairs live `ce2c3afa`; WP1–WP4 live `dcf305d5` (2026-10-12); WP5–WP10 and live fix L1 live `f20f1617`, WP11 and WP12 live with S7's close record (2026-10-12): the build is complete, every local done-when holds, and production is read back (qa:live [E2], qa:chunks-prod, classic qa:cls-budget); owed: [E3] measured, from a machine that holds the QA player's password. Plan filed 2026-10-07 ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), its Amendments override its body; §0h point 58). Done when the local staff-pass drives pass (the above-the-fold gate among them) and production shows nothing changed for signed-out and signed-in players; staff seeing the deck's home on production moves to S14 (§0h point 4). |
 | S8 | Bet sheet + low balance (flagged) | ⬜ | `test:bet-sheet`, V20 and the refusal matrix are green. A staff real bet works on production. |
 | S9 | Deposit, waiting and return (flagged) — no email code: the owner's ruling of 2026-10-07 (▶ 0e) has a deposit ask no email question | ⬜ | `test:deposit-return` and `test:deposit-status-read` (exactly-once while racing the webhook) are green. The card `order_id` fix is live. |
 | S10 | Visitor path | ⬜ | guest → sheet → register → deposit → back works. `test:post-register-landing` passes in both flag states. |
