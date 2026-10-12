@@ -39,7 +39,8 @@ const ROUTE = read("src/app/api/funnel/route.ts");
 const BEACON = read("src/lib/journey/funnel-beacon.ts");
 const SHELL = read("src/components/layout/app-shell.tsx");
 /** Every src file that calls the beacon, for the census (8). */
-const CALLERS = ["src/components/markets/side-picker.tsx", "src/components/markets/conviction-dial.tsx", "src/components/updown/use-quick-bet.ts"]
+// ⭐ S8 WP2 (S8-PLAN A16): the bet sheet's rules build its bet form (`requestFor` → `funnelBetFields(fd, "sheet")`).
+const CALLERS = ["src/components/markets/side-picker.tsx", "src/components/markets/conviction-dial.tsx", "src/components/updown/use-quick-bet.ts", "src/lib/journey/sheet-state.ts"]
   .map((rel) => ({ rel, text: read(rel) }));
 const DEPOSIT_LINKS = ["src/components/updown/updown-stake-controls.tsx", "src/components/updown/round-stake-panel.tsx"].map((rel) => read(rel));
 const HOME = read("src/components/home/landing-hero.tsx");
@@ -220,8 +221,8 @@ async function run(impl: Impl, log: (l: string) => void, tag: string): Promise<s
   const badCalls = calls.filter((c) => !(c.step in F.FUNNEL_STEPS) || !(F.CLIENT_FUNNEL_STEPS as readonly string[]).includes(c.step as F.FunnelStep)
     || literalOrigins(c.arg).length === 0 || literalOrigins(c.arg).some((o) => !F.isFunnelOrigin(c.step as F.FunnelStep, o)));
   const betFields = impl.callers.flatMap((c) => [...c.text.matchAll(/funnelBetFields\(fd, "(\w+)"\)/g)].map((m) => m[1]));
-  ok("8.census · every sendFunnel call names a browser step and only origins its step allows; the bet forms carry allowed origins (dial, quick)",
-    calls.length === 3 && badCalls.length === 0 && betFields.length === 2 && betFields.every((o) => F.isFunnelOrigin("bet", o)),
+  ok("8.census · every sendFunnel call names a browser step and only origins its step allows; the bet forms carry allowed origins (dial, quick, sheet)",
+    calls.length === 3 && badCalls.length === 0 && betFields.length === 3 && betFields.includes("sheet") && betFields.every((o) => F.isFunnelOrigin("bet", o)),
     j({ calls, badCalls, betFields }));
   ok("8.links · the Up & Down deposit links carry from=low-balance; the home page's side links carry from=home",
     impl.depositLinks.every((t) => t.includes('"/wallet/deposit?from=low-balance"') && !t.includes('"/wallet/deposit"'))
