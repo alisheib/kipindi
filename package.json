@@ -643,6 +643,7 @@
     "qa:served-skeleton": "node scripts/qa-served-skeleton.mjs",
     "qa:first-load": "node scripts/qa-first-load.mjs",
     "qa:chunks-prod": "node scripts/qa-chunks-prod.mjs",
+    "qa:lost-chunk": "node scripts/qa-lost-chunk.mjs",
     "qa:journey-header-fit": "node scripts/qa-journey-header-fit.mjs",
     "red:journey-header-fit": "node scripts/journey-header-fit-red.mjs",
     "qa:journey-shell": "node scripts/qa-journey-shell.mjs",
