@@ -280,16 +280,25 @@ const row = (over: Partial<TickerRow> & { id: string }): TickerRow => ({
   }
 
   const shell = readCode("src/components/layout/app-shell.tsx", "11.3");
-  ok(/<LiveTicker\s+events=\{tickerEvents\}/.test(shell), "11.3-control the shell renders the strip");
+  // ⭐ RE-PINNED IN THE OPEN, S7 WP8 (S7-PLAN WP8 step 2): the strip's slot is ONE ternary on the shell's per-request
+  // answer, so the shell renders exactly two `<LiveTicker events={tickerEvents}` — the journey arm's and today's, the
+  // else arm — and both inside it. (test:journey-home §8 holds each arm's props.)
+  const strips = shell.split("<LiveTicker events={tickerEvents}").length - 1;
+  ok(strips === 2 && /\{journeyShown \? <LiveTicker events=\{tickerEvents\}[^<>]*\/> : <LiveTicker events=\{tickerEvents\}[^<>]*\/>\}/.test(shell),
+    "11.3-control the shell renders the strip: two LiveTicker elements, both inside the one journeyShown ternary", `${strips} element(s)`);
   // ⚠️ SIGNED-IN ONLY, and the label says so: a self-excluded person has no session at all (every
   // session is revoked and sign-in refused), so this gate cannot reach them — see app-shell's note.
   ok(/promoSuppressed\s*\?\s*Promise\.resolve\(\[\]\)\s*:\s*getTickerFeed\(/.test(shell),
     "11.4 a SIGNED-IN player on an active break is never sent the feed (source check)");
 
   const client = readCode("src/components/layout/live-ticker.tsx", "11.5");
-  ok(client.includes("usePathname()") && /const shown = events\.length > 0 && tickerShowsOn\(\s*pathname\s*\)/.test(client)
-    && /if \(!shown\) return null/.test(client),
-    "11.5 the client gates on the LIVE pathname (the root layout does not re-render on a soft navigation)");
+  // ⭐ RE-PINNED IN THE OPEN, S7 WP8 (S7-PLAN A4 item 4): the gate also reads the shell's journey answer, handed down as
+  // the `journey` prop — and never the browser's `useJourneyOn`, whose server snapshot is false: the server would paint
+  // the strip on a journey reader's `/` and hydration would drop it (S7-PLAN Open point 16). Dropping the argument is
+  // red:ticker-honesty's own case, expected here.
+  ok(client.includes("usePathname()") && /const shown = events\.length > 0 && tickerShowsOn\(\s*pathname\s*,\s*journey\s*\)/.test(client)
+    && /if \(!shown\) return null/.test(client) && !client.includes("useJourneyOn"),
+    "11.5 the client gates on the LIVE pathname (the root layout does not re-render on a soft navigation) and on the shell's journey answer, a prop — never useJourneyOn");
   ok(client.includes("aria-pressed={stopped}"), "11.6 the stop control reports its state to a screen reader");
   ok(client.includes("onClick={toggle}") && /className="ticker-viewport"[\s\S]{0,900}toggle\(\)/.test(client),
     "11.7 the named control AND a tap on the run both stop it");
