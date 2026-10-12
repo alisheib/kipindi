@@ -14,6 +14,8 @@ import { isWatching } from "@/lib/server/watchlist-service";
 import { resolveWinShareToken } from "@/lib/server/share-token";
 import { SidePicker } from "@/components/markets/side-picker";
 import { MarketCard } from "@/components/markets/market-card";
+import { JourneyCard } from "@/components/journey/cards/journey-card";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { getSimilarMarkets } from "@/lib/server/market-service";
 import { ChartToggle } from "@/components/charts/chart-toggle";
 import { SellButton } from "@/components/markets/sell-button";
@@ -302,6 +304,11 @@ export default async function MarketDetail({
   const similar = await getSimilarMarkets(m, 3).catch(() => []);
   // The similar cards' ONE clock: each card's time-left label and its SOON milliseconds read this instant.
   const simNow = Date.now();
+  // ⭐ THE NEW JOURNEY, ASKED ONCE FOR THIS REQUEST (the Vodacom plan S7, S7-PLAN WP10) — the one cached resolver
+  // AppShell asked too, so the page and its chrome cannot disagree. Asked here, beside the rail's own read: in S7 the
+  // similar rail alone differs for a journey request (its heading's words and its cards); the rest of this page stays
+  // classic until S8 builds the journey question page.
+  const { journey } = await resolveSimpleJourney();
 
   // F11 — decide the viewer's objection standing HERE, on the server, so the panel
   // never dangles a control the service would refuse. The same rules are re-checked
@@ -1212,8 +1219,10 @@ export default async function MarketDetail({
           >
             <div className="mb-3 flex items-center gap-2">
               <I.sparkle s={15} />
+              {/* The rail's name in the journey's words for a journey request ("Maswali yanayofanana", S7 WP10); every
+                  other request reads today's. The element is today's either way: only its words are chosen. */}
               <h2 id="similar-markets-heading" className="font-display text-[16px] font-bold text-text">
-                {t.market.similarMarkets}
+                {journey ? t.journey.similarTitle : t.market.similarMarkets}
               </h2>
             </div>
             {/* R4-I · the line that says "place another prediction" is not said to a reader on a break; the markets stay. */}
@@ -1221,6 +1230,19 @@ export default async function MarketDetail({
             {/* The shared board grid at EVERY width now. It used to be forced to
                 `lg:!grid-cols-1` because this block lived inside the 360px rail, which is
                 also why the titles truncated mid-word. Full width, each card gets ~470px. */}
+            {/* ⭐ THE CARDS' SLOT IS ONE TERNARY (the Vodacom plan S7, §3.2; S7-PLAN WP10 with A16 item 5). A journey
+                request draws the journey card for each similar question, an h3 under the rail's h2: the rail holds
+                questions taking bets, so each card shows its two picks with what each side stands to win. Each card
+                reads the market row it is handed and the rail's one clock, and the cards stand in the one journey
+                card grid, whose cards share their rows. Every other request gets the classic arm: today's markup,
+                line for line. */}
+            {journey ? (
+              <div className="kp-jgrid">
+                {similar.map((s) => (
+                  <JourneyCard key={s.id} m={s} nowMs={simNow} t={t} locale={locale} heading="h3" />
+                ))}
+              </div>
+            ) : (
             <div className="market-grid">
               {similar.map((s) => (
                 /* ONE clock per card: the label and SOON's milliseconds read the same instant (L17). */
@@ -1248,6 +1270,7 @@ export default async function MarketDetail({
                 />
               ))}
             </div>
+            )}
           </section>
         )}
       </div>

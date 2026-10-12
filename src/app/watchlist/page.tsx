@@ -27,11 +27,13 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterPill } from "@/components/ui/filter-pill";
 import { MarketCard } from "@/components/markets/market-card";
+import { JourneyCard } from "@/components/journey/cards/journey-card";
 import { shownPredictors } from "@/lib/markets/predictors";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { SearchBox } from "@/components/ui/search-box";
 import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
 import { getSession } from "@/lib/server/session";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { listWatchedMarketIds } from "@/lib/server/watchlist-service";
 import { playerMarketsByIds, isClosedByTime, isSelectionClosed } from "@/lib/server/market-service";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
@@ -71,6 +73,10 @@ export default async function WatchlistPage({
   const { t, locale } = await getServerT();
   const session = await getSession();
   if (!session) redirect("/auth/login?next=/watchlist");
+  // ⭐ THE NEW JOURNEY, ASKED ONCE FOR THIS REQUEST (the Vodacom plan S7, S7-PLAN WP10) — the one cached resolver
+  // AppShell asked too, so the page and its chrome cannot disagree. Everything below is read for both views; only the
+  // cards' slot branches (the grid below), and its classic arm is today's markup.
+  const { journey } = await resolveSimpleJourney();
 
   const sp = (await searchParams) ?? {};
   const state = parseFollowParams(sp);
@@ -136,6 +142,9 @@ export default async function WatchlistPage({
   const safePage = Math.min(pageNum, totalPages);
   const paged = matched.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
   const marketById = new Map(markets.map((m) => [m.id, m] as const));
+  // The journey cards' ONE clock (S7 WP10): each card's close label, the resolution half of its bet test and its
+  // settled date's year read this instant.
+  const nowMs = Date.now();
 
   const baseHref = buildFollowHref(state);
   const cause = followEmptyCause(state, matchesRow, totalCount, rows.length);
@@ -232,6 +241,20 @@ export default async function WatchlistPage({
         />
       ) : (
         <>
+          {/* ⭐ THE CARDS' SLOT IS ONE TERNARY (the Vodacom plan S7, §3.2; S7-PLAN WP10 with A16 item 5). A journey
+              request draws the journey card for every starred row, whatever its phase: its two picks while it takes
+              bets, the closed row once selection has closed, the result row once settled, and an Up & Down row in its
+              own side words. Each card decides its state from the market row it is handed, and the cards stand in the
+              one journey card grid, whose cards share their rows.
+              ⛔ The card's own root carries the row identity, so nothing here wraps a card (the classic arm's note).
+              Every other request gets the classic arm: today's markup, line for line. */}
+          {journey ? (
+            <section className="kp-jgrid">
+              {paged.map((row) => (
+                <JourneyCard key={row.id} m={marketById.get(row.id)!} nowMs={nowMs} t={t} locale={locale} />
+              ))}
+            </section>
+          ) : (
           <section className="market-grid">
             {paged.map((row) => {
               const m = marketById.get(row.id)!;
@@ -276,6 +299,7 @@ export default async function WatchlistPage({
               );
             })}
           </section>
+          )}
 
           {totalPages > 1 && (
             <div className="rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
