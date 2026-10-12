@@ -95,9 +95,14 @@
  * that state the same figures are read in their titles' order, and a card that states any figure differently never
  * moves). And since 090bbf76's pair, where four lazy payment logos on the guest's / at 360 read 0x0 on one server and
  * were drawn on the other, every book cell is read SETTLED (BOOK_SETTLE): each lazy image in its regions is loaded before
- * any box is read, and its attribute put back, so the markup is the server's. A baseline records its set
- * (matrix.book.normalise) and its procedure (matrix.book.settle), and a compare under another set or another procedure
- * is refused, as is any file that is not v3. The live trace
+ * any box is read, and its attribute put back, so the markup is the server's. And since 9a7bbb24's --prove-red, whose two
+ * clean captures of the player's /markets at 1280 in Swahili read the Needle's overlay (div[role=presentation] z=45) in
+ * the first and not in the second — its engine mounts after hydration, behind two dynamic imports that a busy dev server
+ * can land after the 3 s read — every page is read with the Needle AT REST (SETTLE): open() ends by waiting, 15 s at
+ * most, until the page has no #needle-root or its engine has mounted and answers window.needle.resting() true, and a
+ * Needle that does not come to rest is a note in its cell. A baseline records its set (matrix.book.normalise) and its
+ * procedures (matrix.book.settle, matrix.settle), and a compare under another set or another procedure is refused, as is
+ * any file that is not v3. The live trace
  * sees S7's class names too (A8 item 3, JOURNEY_CLASS_PARTS). --prove-red is taught the bodies: each §B check goes red on
  * its own plant (P.check B.*); the head reader, the normalisers, A8's two verdicts, the card classifier and the trace are
  * tried on synthetic input (P.8*); and in the browser a card class changed in one route's body is reported in that body
@@ -325,13 +330,32 @@ const TIED_CARDS = BOOK_NORMALISERS.find((n) => n.id === "tied-cards").hands;
  * guest's / at 360 in English (regions.main.layout, 4 of 556 element lines), was the payment rail's four logos
  * (/pay/mpesa.svg, airtel.png, halopesa.png and mixx.png, loading="lazy" at y≈5380 in a 40×40 slot each), 0x0 on the
  * baseline's server and drawn on the null's (M-Pesa's 26x22); nothing else in the cell moved. A lazy image that has not
- * loaded LAZY_SETTLE_MS after the settle began is a warning in the log, never a hang, and its box is read as the browser
- * left it. --prove-red's book phase holds the settle to a lazy image it plants out of the browser's reach: 0x0 in a
- * capture without the settle, drawn in one with it, and the markup of the two the same.
+ * loaded LAZY_SETTLE_MS after the settle began is a note in the cell (and a line in the log), never a hang, and its box is
+ * read as the browser left it. --prove-red's book phase holds the settle to a lazy image it plants out of the browser's
+ * reach: 0x0 in a capture without the settle, drawn in one with it, and the markup of the two the same.
  */
 const BOOK_SETTLE = ["lazy-images"];
 /** How long a book cell's settle waits, in all, for its lazy images to load. */
 const LAZY_SETTLE_MS = 10_000;
+/**
+ * ⭐ S7 WP1 calibration 3 · EVERY PAGE IS READ WITH THE NEEDLE AT REST — the procedure every page this harness opens is
+ * read under (the matrix's cells, the Sell cells and the book's), recorded in a baseline (matrix.settle); --compare
+ * refuses a baseline read under another, as it refuses another book procedure or normaliser set.
+ *   · needle-rest  open() ends — after hydration, the plant and the 3 s, and after a client redirect's second document —
+ *                  by waiting until the Needle is at rest (NEEDLE_AT_REST: no #needle-root, or its engine mounted and
+ *                  `window.needle.resting()` true), NEEDLE_REST_MS at most; a Needle that has not come to rest by then is
+ *                  a note in the cell (and a line in the log), never a hang and never a failure by itself, and the page is
+ *                  read as it stands.
+ * The run that showed it: 9a7bbb24's --prove-red (OMEGA-COMPILE01, 2026-10-12, a fresh in-memory server; calibration 2
+ * rebased onto main 05d42f7f), 128/129, its one failure the player's /markets at 1280 in Swahili, whose two clean
+ * captures disagreed in one field: overlays, "div[role=presentation] z=45" in the first and nothing in the second. That
+ * is the Needle (`#needle-root #needle`, needle.css:152's z 45), which a signed-in shell renders (app-shell.tsx:600) and
+ * whose engine mounts only after hydration, behind two dynamic imports (needle.tsx's mount, ~:1035-1050): on a busy dev
+ * server it can land after the 3 s read, so one capture has it and the next does not. A Sell cell's first paint is the
+ * one read it does not precede (servedSellOf opens its page without open()): every script is held there, so no Needle can
+ * mount, and that capture reads no overlays.
+ */
+const SETTLE = ["needle-rest"];
 
 const BASE = process.env.KP_BASE ?? "http://localhost:3041";
 if (!/^http:\/\/localhost(:\d+)?$/.test(BASE)) {
@@ -488,7 +512,7 @@ function bookCellKeys() {
   }
   return out;
 }
-const MATRIX = { viewers: VIEWERS.map((v) => v.id), locales: LOCALES, widths: WIDTHS, routes: ROUTES, body: BODY_ROUTE, height: HEIGHT, sell: SELL, book: BOOK };
+const MATRIX = { viewers: VIEWERS.map((v) => v.id), locales: LOCALES, widths: WIDTHS, routes: ROUTES, body: BODY_ROUTE, height: HEIGHT, sell: SELL, book: BOOK, settle: SETTLE };
 const HOST = new URL(BASE).hostname;
 const keyOf = (v, l, w, r) => `${v}|${l}|${w}|${r}`;
 const partsOf = (k) => { const [v, l, w, r] = k.split("|"); return { v, l, w: Number(w), r }; };
@@ -1636,6 +1660,12 @@ const ok = (name, pass, detail = "") => { results.push(!!pass); console.log(`  $
 const listOf = (keys) => (keys.length ? `${keys.length}: ${keys.slice(0, 6).join(" · ")}${keys.length > 6 ? " …" : ""}` : "");
 const secs = (ms) => `${Math.round(ms / 1000)}s`;
 const pathOf = (u) => { const x = new URL(u); return x.pathname + x.search; };
+/** Calibration 3 · a cell's notes — what a settle could not do (SETTLE's Needle, a book cell's lazy images): never a
+ *  failure by itself and never compared (fieldsOf reads no notes), recorded as the cell's own field when there is any. */
+const notesOf = (list) => { const notes = list.filter(Boolean); return notes.length ? { notes } : {}; };
+/** …and each said in the log under its cell's key, as the capture goes; in a --prove-red row, after the row's detail. */
+const sayNotes = (k, cell) => { for (const n of cell?.notes ?? []) console.log(`  ⚠ ${k} — ${n}`); };
+const notedIn = (...cells) => { const n = [...new Set(cells.flatMap((c) => c?.notes ?? []))]; return n.length ? ` · notes: ${n.join(" | ")}` : ""; };
 
 console.log(`qa:classic-shell-parity — ${MODE} — ${BASE}`);
 console.log(`  tree ${TREE} @ ${short(HEAD.out)}${DIRTY.length ? ` (${DIRTY.length} uncommitted change(s) the server serves)` : " (clean)"} · forks from ${MAIN} at ${FORK.code === 0 ? short(FORK.out) : "?"} · rollout ${rollout.state}`);
@@ -1656,7 +1686,7 @@ if (COMPARE) {
   // ⭐ S7 WP1 · in this order: the kind and the version (a v2 file was captured before the book existed, so it holds none
   // of the book's cells or fields, and can be no v3 baseline: WP1 step 1, A2 item 3); then the book's normalisers (WP1
   // step 4: a baseline is only comparable under the set it was captured with); then the way the book was read
-  // (calibration 2, BOOK_SETTLE); then the rest of the matrix.
+  // (calibration 2, BOOK_SETTLE); then the way every page was read (calibration 3, SETTLE); then the rest of the matrix.
   const notThis = () => `${COMPARE} is not a v${VERSION} ${KIND} capture of this matrix (kind=${baseline?.kind}, version=${baseline?.version}, captured at ${short(baseline?.base?.sha) || "an unnamed commit"}).`;
   const where = `Capture a v${VERSION} baseline into a NEW file at the base VODACOM-PLAN names for it (v3: §0j, S7-PLAN WP1 step 6; v2: §0i, S6 A8 and A18).`;
   if (baseline?.kind !== KIND || baseline.version !== VERSION) {
@@ -1673,6 +1703,12 @@ if (COMPARE) {
   const readAs = Array.isArray(baseline.matrix?.book?.settle) ? baseline.matrix.book.settle : null;
   if (!readAs || readAs.join() !== BOOK.settle.join()) {
     refuse(`${COMPARE} was captured under the book's capture procedure [${readAs ? readAs.join(", ") || "none" : "unrecorded"}], and this run reads the book under [${BOOK.settle.join(", ")}] (BOOK_SETTLE: every lazy image in a book cell's regions loaded before a box is read). A different procedure needs a NEW baseline captured under it.`);
+  }
+  // ⭐ S7 WP1 calibration 3 · and the way every page was read (SETTLE): a page read before its Needle had mounted holds an
+  // overlay census the next read of it may not, so a baseline is only comparable when its pages were read the same way.
+  const pagesReadAs = Array.isArray(baseline.matrix?.settle) ? baseline.matrix.settle : null;
+  if (!pagesReadAs || pagesReadAs.join() !== MATRIX.settle.join()) {
+    refuse(`${COMPARE} was captured under the page capture procedure [${pagesReadAs ? pagesReadAs.join(", ") || "none" : "unrecorded"}], and this run reads every page under [${MATRIX.settle.join(", ")}] (SETTLE: the Needle at rest before any page is read — its matrix, Sell and book cells alike). A different procedure needs a NEW baseline captured under it.`);
   }
   if (JSON.stringify(baseline.matrix) !== JSON.stringify(MATRIX)) refuse(`${notThis()} ${where}`);
   if (baseline.role !== "baseline" || baseline.rejected !== false) {
@@ -1717,6 +1753,35 @@ async function applyPlant(page, plant) {
   if (plant?.css) await page.addStyleTag({ content: plant.css });
   if (plant?.js) await page.evaluate(plant.js);
 }
+/**
+ * ⭐ S7 WP1 calibration 3 · THE NEEDLE AT REST (SETTLE "needle-rest"), read IN THE PAGE from needle.tsx's own probe for
+ * drives, `window.needle.resting()` (~:953-956: true when it is tucked, no rest check is pending, no glide runs and its
+ * loop is asleep — or when it is hidden). A page without `#needle-root` (a guest's: the shell renders it for a session
+ * only) is at rest. A page WITH one is at rest only once the engine has mounted (`window.needle` exists) and `resting()`
+ * answers true. ⚠️ qa:journey-shell's NEEDLE_RESTING (~:876) reads an absent probe as resting — a journey page may hide
+ * the Needle for good — but here an absent engine is a Needle still on its way: every signed-in classic page mounts one,
+ * after hydration, behind two dynamic imports. Self-contained (Playwright serialises it and calls it with its one
+ * argument); --prove-red P.8r hands it synthetic pages as `doc` and `win`.
+ */
+const NEEDLE_AT_REST = (_, doc = document, win = window) => {
+  if (!doc.getElementById("needle-root")) return true;
+  const n = win.needle;
+  return !!n && typeof n.resting === "function" && n.resting() === true;
+};
+/** How long open() waits, at most, for the Needle to come to rest: its engine's two dynamic imports (which a dev server
+ *  may compile on first request), the rest check (180–900 ms), a glide (under 1.5 s) and one more check. */
+const NEEDLE_REST_MS = 15_000;
+/** The Needle brought to rest (NEEDLE_AT_REST, read every 100 ms for NEEDLE_REST_MS at most): null once it is, else the
+ *  note its cell carries — never a throw, never a failure by itself; the page is then read as it stands. */
+async function settleNeedle(page) {
+  const rested = await page.waitForFunction(NEEDLE_AT_REST, null, { timeout: NEEDLE_REST_MS, polling: 100 }).then(() => true, () => false);
+  if (rested) return null;
+  const seen = await page.evaluate(() => ({ mounted: !!window.needle, resting: typeof window.needle?.resting === "function" ? window.needle.resting() : null })).catch(() => null);
+  return `the Needle had not come to rest ${secs(NEEDLE_REST_MS)} into the settle (${seen ? `${seen.mounted ? "its engine mounted" : "its engine not mounted"}, resting() ${seen.resting}` : "unread"}), so the page is read as it stands`;
+}
+/** Opens a cell's page: its bytes, hydration, the plant and 3 s (again for a client redirect's second document), and —
+ *  calibration 3 — the Needle at rest (SETTLE), so every read of an opened page comes after it. `needle` is the settle's
+ *  note, or null. */
 async function open(page, route, plant) {
   const res = await page.goto(BASE + route, { waitUntil: "load", timeout: 180_000 });
   // The bytes the server sent, read before anything replaces the document: hydration removes what streamed first.
@@ -1733,7 +1798,8 @@ async function open(page, route, plant) {
     await applyPlant(page, plant).catch(() => {});
     await page.waitForTimeout(3000);
   }
-  return { status: res ? res.status() : 0, body };
+  const needle = await settleNeedle(page);
+  return { status: res ? res.status() : 0, body, needle };
 }
 const localeCookie = (locale) => ({ name: "kp-locale", value: locale, domain: HOST, path: "/" });
 
@@ -1745,7 +1811,7 @@ async function capture(jar, locale, width, route, plant = null) {
     await ctx.addCookies([...jar, localeCookie(locale)]);
     const page = await ctx.newPage();
     page.on("pageerror", fileError(pageErrors, devOnly));
-    const { status, body } = await open(page, route, plant);
+    const { status, body, needle } = await open(page, route, plant);
     const args = { crest: CREST, props: PROPS, animated: ANIMATED, notFound: route === "/account" || route === NOT_FOUND, pageBody: jar.length > 0 && route === BODY_ROUTE, trace: TRACE };
     let snap = await page.evaluate(SNAPSHOT, args);
     let stable = false;
@@ -1762,7 +1828,7 @@ async function capture(jar, locale, width, route, plant = null) {
       snap = { ...snap, notFound: { ...snap.notFound, robots: [...body.matchAll(/<meta name="robots" content="([^"]*)"/g)].map((m) => m[1]).sort() } };
     }
     const pass = (await ctx.cookies(BASE)).some((c) => c.name === "kp_preview");
-    return toCell(snap, { status, stable, pass, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort() });
+    return toCell(snap, { status, stable, pass, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort(), ...notesOf([needle]) });
   } catch (e) {
     return { error: msg(e) };
   } finally {
@@ -1899,7 +1965,7 @@ async function captureSellCell(jar, locale, width, place, held, plant = null, wi
     const served = withServed ? await servedSellOf(ctx, routeOfPlace(place, held), args).catch((e) => ({ error: msg(e) })) : undefined;
     const page = await ctx.newPage();
     page.on("pageerror", fileError(pageErrors, devOnly));
-    const { status, body } = await open(page, routeOfPlace(place, held), plant);
+    const { status, body, needle } = await open(page, routeOfPlace(place, held), plant);
     let snap = await page.evaluate(SNAPSHOT, args);
     let stable = false;
     for (let i = 0; i < 6 && !stable; i++) {
@@ -1941,6 +2007,7 @@ async function captureSellCell(jar, locale, width, place, held, plant = null, wi
       ...(served === undefined ? {} : { served }),
       pageErrors: [...new Set(pageErrors)].sort(),
       devOnly: [...new Set(devOnly)].sort(),
+      ...notesOf([needle]),
     };
   } catch (e) {
     return { error: msg(e) };
@@ -1961,6 +2028,7 @@ async function captureSell() {
   for (const [k, l, w, place] of keys) {
     sellCells[k] = await captureSellCell(jar, l, w, place, sellSeed.held);
     if (sellCells[k].error) console.log(`  ✗ ${k} — ${sellCells[k].error}`);
+    sayNotes(k, sellCells[k]);
   }
   sellSeed.lastCellMs = Date.now() - sellSeed.at;
   console.log(`  ${keys.length} Sell cells · the last captured ${secs(sellSeed.lastCellMs)} after the seed (a default poll's free window is 5:00; §S.2 fails a cell that missed it)`);
@@ -2056,6 +2124,7 @@ async function waitForStrip(jar) {
  * are, and `bytes` on the bytes the harness reads (the head and the raw trace) — never on what the browser renders.
  * Calibration 2: the cell is read SETTLED (BOOK_SETTLE, SETTLE_LAZY) before its first snapshot — except in --prove-red's
  * one control capture (`plant.unsettled`) — and, while tied-cards is on, UNTIE_CARDS runs before every snapshot.
+ * Calibration 3: open() has brought the Needle to rest first (SETTLE); what either settle could not do is the cell's notes.
  */
 async function captureBookCell(jar, locale, width, route, similarId, plant = null) {
   const ctx = await b.newContext({ viewport: { width, height: HEIGHT } });
@@ -2065,14 +2134,15 @@ async function captureBookCell(jar, locale, width, route, similarId, plant = nul
     const page = await ctx.newPage();
     page.on("pageerror", fileError(pageErrors, devOnly));
     const target = route === BOOK.similar ? `/markets/${similarId}` : route;
-    const { status, body: sent } = await open(page, target, { css: `${STRIP_STILL}${plant?.css ? `${NL}${plant.css}` : ""}`, js: plant?.js ?? null });
+    const { status, body: sent, needle } = await open(page, target, { css: `${STRIP_STILL}${plant?.css ? `${NL}${plant.css}` : ""}`, js: plant?.js ?? null });
     const body = plant?.bytes && typeof sent === "string" ? plant.bytes(sent) : sent;
     const args = bookArgsOf(route);
     const regions = Object.values(args.book.regions);
+    let lazy = null;
     if (!plant?.unsettled) {
       const settled = await page.evaluate(SETTLE_LAZY, { regions, ms: LAZY_SETTLE_MS });
       if (settled.unloaded.length) {
-        console.log(`  ⚠ ${keyOf(`book-${jar.length ? "player" : "guest"}`, locale, width, route)} — ${settled.unloaded.length} of its ${settled.lazy} lazy image(s) had not loaded ${secs(LAZY_SETTLE_MS)} into the settle, so their boxes are read as the browser left them: ${settled.unloaded.join(", ")}`);
+        lazy = `${settled.unloaded.length} of its ${settled.lazy} lazy image(s) had not loaded ${secs(LAZY_SETTLE_MS)} into the settle, so their boxes are read as the browser left them: ${settled.unloaded.join(", ")}`;
       }
     }
     const untie = args.book.tied ? { ...args.book.tied, regions } : null;
@@ -2089,7 +2159,7 @@ async function captureBookCell(jar, locale, width, route, similarId, plant = nul
       stable = seen(next) === seen(snap);
       snap = next;
     }
-    const cell = toBookCell(snap, { status, stable, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort() });
+    const cell = toBookCell(snap, { status, stable, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort(), ...notesOf([needle, lazy]) });
     if (route === BOOK.similar && similarId) cell.landed = cell.landed.split(similarId).join(":similar");
     if (route === BOOK.head) cell.head = typeof body === "string" ? put(bookNorm(headOf(body))) : null;
     return cell;
@@ -2142,6 +2212,7 @@ async function captureBook(still) {
         bookCells[k] = await captureBookCell(vjar, l, w, r, verdict.similarId);
         n++;
         if (bookCells[k].error) console.log(`  ✗ ${k} — ${bookCells[k].error}`);
+        sayNotes(k, bookCells[k]);
       }
       console.log(`  book-${v} · ${l} · ${n} cells · ${secs(Date.now() - t)}`);
       still(`by the end of book-${v} · ${l}`);
@@ -2212,6 +2283,7 @@ async function captureMatrix() {
           const k = keyOf(v.id, l, w, r);
           cells[k] = await capture(jar, l, w, r);
           if (cells[k].error) console.log(`  ✗ ${k} — ${cells[k].error}`);
+          sayNotes(k, cells[k]);
         }
       }
       console.log(`  ${v.id} · ${l} · ${WIDTHS.length * ROUTES.length} cells · ${secs(Date.now() - t)}`);
@@ -2706,6 +2778,65 @@ async function proveRed() {
     ok("P.8o (c) a run of one card, a list of non-cards, cards without a V18 surface, and two tied cards that do not stand side by side (another element, or a text, between them) are untouched, and a second pass moves nothing",
       leftFails.length === 0, JSON.stringify(leftFails).slice(0, 400));
   }
+  // ②c3 S7 WP1 calibration 3 · the Needle at rest (SETTLE). (a) NEEDLE_AT_REST, the function the page runs, on synthetic
+  // pages reads needle.tsx's probe as the page states it: no #needle-root (a guest's page) is at rest; a #needle-root whose
+  // engine has not mounted is NOT — qa:journey-shell reads an absent probe as resting, but every signed-in classic page
+  // mounts one — nor is an engine without the probe, or one whose resting() answers anything but true. (b) open(), the one
+  // door every read of a hydrated page goes through (the matrix's cells, the Sell cells' and the book's), on a synthetic
+  // page that records what it is asked: it ends with the settle, once — after hydration, the plant and the 3 s, and after a
+  // client redirect's second document too — bounded by NEEDLE_REST_MS and read every 100 ms; and a Needle that never comes
+  // to rest is a note in what open() returns, never a throw.
+  {
+    const docOf = (root) => ({ getElementById: (id) => (root && id === "needle-root" ? { id } : null) });
+    const PAGES = [
+      ["a page without #needle-root (a guest's)", false, {}, true],
+      ["a #needle-root whose engine has not mounted (no window.needle)", true, {}, false],
+      ["an engine without the probe (window.needle without resting())", true, { needle: {} }, false],
+      ["an engine whose resting() is false (a rest check pending, a glide)", true, { needle: { resting: () => false } }, false],
+      ["an engine whose resting() answers something else than true", true, { needle: { resting: () => "yes" } }, false],
+      ["an engine at rest", true, { needle: { resting: () => true } }, true],
+    ];
+    const misread = PAGES.filter(([, root, win, want]) => NEEDLE_AT_REST(null, docOf(root), win) !== want).map(([what, , , want]) => `${what} read ${want ? "unsettled" : "at rest"}`);
+    ok("P.8r (a) the Needle's rest is read from needle.tsx's probe as the page states it: a page without #needle-root (a guest's) is at rest; a #needle-root whose engine has not mounted is NOT (qa:journey-shell reads that as resting; every signed-in classic page mounts one), nor is an engine without the probe or one whose resting() answers anything but true; resting() true is",
+      misread.length === 0, JSON.stringify(misread).slice(0, 400));
+    const pageOf = ({ redirect = false, rests = true } = {}) => {
+      const asked = [];
+      let at = null;
+      return {
+        asked,
+        goto: async (url) => { asked.push("goto"); at = url; return { text: async () => "<main></main>", url: () => url, status: () => 200 }; },
+        locator: () => ({ first: () => ({ waitFor: async () => { asked.push("main"); } }) }),
+        waitForFunction: async (fn, arg, options) => {
+          if (fn !== NEEDLE_AT_REST) { asked.push("hydrated"); return true; }
+          asked.push(`needle ${options?.timeout} ${options?.polling}`);
+          if (!rests) throw new Error("page.waitForFunction: Timeout exceeded");
+          return true;
+        },
+        addStyleTag: async () => { asked.push("plant"); },
+        evaluate: async () => { asked.push("read"); return { mounted: true, resting: false }; },
+        waitForTimeout: async (ms) => { asked.push(`wait ${ms}`); },
+        url: () => (redirect && asked.includes("wait 3000") ? `${BASE}/auth/login` : at),
+        waitForLoadState: async () => { asked.push("load"); },
+      };
+    };
+    const SETTLE_ASK = `needle ${NEEDLE_REST_MS} 100`;
+    const openFails = [];
+    for (const [what, opts, waits] of [["a page", {}, 1], ["a page the client redirects", { redirect: true }, 2]]) {
+      const page = pageOf(opts);
+      const got = await open(page, "/markets", { css: "main { color: red }" }).catch((e) => ({ error: msg(e) }));
+      const at = page.asked.indexOf(SETTLE_ASK);
+      const after = ["hydrated", "plant", "wait 3000"].every((x) => page.asked.lastIndexOf(x) < at);
+      if (got.error || got.needle !== null || page.asked.filter((x) => x.startsWith("needle")).length !== 1 || at !== page.asked.length - 1 || !after
+        || page.asked.filter((x) => x === "wait 3000").length !== waits) openFails.push(`${what}: asked ${page.asked.join(", ")} → ${JSON.stringify(got).slice(0, 120)}`);
+    }
+    {
+      const page = pageOf({ rests: false });
+      const got = await open(page, "/markets", null).catch((e) => ({ error: msg(e) }));
+      if (got.error || got.status !== 200 || typeof got.needle !== "string" || !got.needle.includes("had not come to rest")) openFails.push(`a Needle that never rests: asked ${page.asked.join(", ")} → ${JSON.stringify(got).slice(0, 160)}`);
+    }
+    ok(`P.8r (b) open(), the one door every read of a hydrated page goes through (matrix, Sell and book cells), ends with the Needle's settle, once — after hydration, the plant and the 3 s, and after a client redirect's second document too — bounded (${secs(NEEDLE_REST_MS)}, read every 100 ms); a Needle that never comes to rest is a note in what open() returns, never a throw`,
+      openFails.length === 0, JSON.stringify(openFails).slice(0, 400));
+  }
   // ②d S7 WP1 · /'s head from the bytes (WP1 steps 3 and 5): the reader takes the canonical link and every og:* meta in
   // order — attributes in any order, a tag streamed into the body — and never twitter:*, a comment or the RSC payload's
   // copy; a dropped og:url is reported in a book cell's head field and nowhere else; unread bytes read as null.
@@ -2889,7 +3020,9 @@ async function proveRed() {
     const again = await capture(jars[vid], l, w, r);
     if (clean.error || again.error) { ok(`P.${k} the cell was captured`, false, clean.error ?? again.error); continue; }
     const noise = diffCells(r, clean, again, blobs, blobs).unexpected;
-    ok(`P.${k} two clean captures agree — the instrument is deterministic on one server`, noise.length === 0, noise.slice(0, 3).map((d) => `${d.field}: ${d.detail}`).join(" | "));
+    // Calibration 3 · a pass shows the overlay census both captures read (a signed-in page's Needle, at rest, among it).
+    ok(`P.${k} two clean captures agree — the instrument is deterministic on one server`, noise.length === 0,
+      `${noise.length ? noise.slice(0, 3).map((d) => `${d.field}: ${d.detail}`).join(" | ") : `the overlays both read: ${clean.overlays.join(" · ") || "none"}`}${notedIn(clean, again)}`);
     for (const plant of PLANTS) {
       if (plant.widths && !plant.widths.includes(w)) continue;
       const planted = await capture(jars[vid], l, w, r, plant);
@@ -2931,7 +3064,7 @@ async function proveRed() {
       const confirmOk = !confirmCell(w, place) || (clean.regions.confirm?.count === 1 && clean.confirmLive === true);
       ok(`P.${k} two clean captures of a Sell cell agree, inside the free window (the strip's clock read as m:ss)${confirmCell(w, place) ? ", the classic confirm captured inside its quote hold" : ""}`,
         noise.length === 0 && clean.regions.strip.count === 1 && clean.regions.button.count === 1 && confirmOk,
-        noise.length ? noise.slice(0, 3).map((d) => `${d.field}: ${d.detail}`).join(" | ") : `strip ${clean.regions.strip.count} · button ${clean.regions.button.count} · confirm ${clean.regions.confirm?.count ?? "-"}`);
+        `${noise.length ? noise.slice(0, 3).map((d) => `${d.field}: ${d.detail}`).join(" | ") : `strip ${clean.regions.strip.count} · button ${clean.regions.button.count} · confirm ${clean.regions.confirm?.count ?? "-"}`}${notedIn(clean, again)}`);
       // S6 A8e · the first paint: two of them agree — every script held, nothing hydrated, the page's Sell button in both —
       // and a change planted in it alone is seen. Held to the first paint itself, never to the button the browser then
       // drew: that is A8e's claim about the tree (4.4f, in a compare), and the calibration must hold on any tree, the one
@@ -3024,8 +3157,8 @@ async function proveRed() {
       const stripOk = !BOOK.lobby.includes(r) || clean.regions.ticker?.count === 1;
       ok(`P.${k} two clean captures of a book cell agree — the instrument is deterministic on one server, the LIVE strip read still`,
         noise.length === 0 && bodyCount === 1 && stripOk,
-        noise.length ? noise.slice(0, 3).map((d) => `${d.field}: ${d.detail}`).join(" | ").slice(0, 400)
-          : `body ${bodyCount ?? 0} · strip ${BOOK.lobby.includes(r) ? clean.regions.ticker?.count ?? 0 : "-"} · cards ${clean.cards.length}`);
+        `${noise.length ? noise.slice(0, 3).map((d) => `${d.field}: ${d.detail}`).join(" | ").slice(0, 400)
+          : `body ${bodyCount ?? 0} · strip ${BOOK.lobby.includes(r) ? clean.regions.ticker?.count ?? 0 : "-"} · cards ${clean.cards.length}`}${notedIn(clean, again)}`);
       for (const plant of plants) {
         const planted = await captureBookCell(jar, l, w, r, bookV.similarId, plant);
         if (planted.error) { ok(`P.${k} ${plant.id} was captured`, false, planted.error); continue; }
