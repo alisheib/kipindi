@@ -82,6 +82,9 @@ section("§1 · the destination account reaches no rendered page but the withhel
     }
   };
   walk("src/app");
+  // The home's body is a rendered page that lives outside `src/app` since the Vodacom plan's S7 WP2 moved it from
+  // `src/app/page.tsx` into `src/components/home/legacy-landing.tsx`: the walk follows it there.
+  walk("src/components/home");
 
   ok("1.0 ⛔ RATCHET · the walk really found the app tree (a broken walk finds nothing and passes)",
     pages.length >= 80, `found ${pages.length} .tsx files under src/app`);

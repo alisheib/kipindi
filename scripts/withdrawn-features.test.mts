@@ -127,11 +127,12 @@ function ok(label: string, cond: boolean, extra?: string) {
 }
 
 // ── §3 · NO PLAYER ROUTE STILL READS THE WITHDRAWN COPY ────────────────────
-// Population: `src/app` minus `admin` and `api`, plus `src/components/layout`.
+// Population: `src/app` minus `admin` and `api`, plus `src/components/layout`, plus `src/components/home` — the
+// home's body lives in `home/legacy-landing.tsx` since the Vodacom plan's S7 WP2 moved it out of `src/app/page.tsx`.
 // The admin console is EXCLUDED on purpose — an operator must still be able to read and
 // audit the grants that exist. Withdrawal is a player-product decision, not a data deletion.
 {
-  const ROOTS = ["src/app", "src/components/layout"];
+  const ROOTS = ["src/app", "src/components/layout", "src/components/home"];
   const SKIP = ["src/app/admin", "src/app/api"];
   const WITHDRAWN_KEYS = ["inviteComingSoonTag", "inviteComingSoonTitle", "inviteComingSoonBody"];
 
