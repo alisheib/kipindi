@@ -167,6 +167,9 @@ let HIDDEN = null;
     // hidden figure is the first match that is NOT a catalogue question, i.e. one seed-real-markets just made.
     const known = new Set((catalogue?.ids ?? []).map((m) => m.id));
     HIDDEN = [...html.matchAll(/href="\/markets\/(mkt_[0-9a-f]+)"/g)].map((x) => x[1]).find((id) => !known.has(id)) ?? null;
+    // Bets on both sides, as on the priced card: with an empty pool every card says "be first", so a hidden figure would
+    // read the same as an empty one and the tile would prove nothing.
+    if (HIDDEN) await bet(HIDDEN, 12, 0.6);
     console.log(`  hidden figure: the display switch off while seed-real-markets made ${made.body?.created ?? "?"} questions · ${HIDDEN ?? "none found"}`);
   } catch (e) { console.log(`  hidden figure: not made — ${String(e?.message ?? e).split("\n")[0].slice(0, 140)}`); }
   await page.close();
@@ -179,6 +182,7 @@ async function ctxFor({ w, h, locale = "sw", pass = true, session = null }) {
   if (session) cookies.push(asCookie(session));
   await ctx.addCookies(cookies);
   await ctx.addInitScript(() => { try { window.localStorage.setItem("50pick-primer-seen", "1"); } catch { /* storage refused */ } });
+  ctx.on("page", watchProblems);
   return ctx;
 }
 /**
@@ -189,9 +193,29 @@ async function ctxFor({ w, h, locale = "sw", pass = true, session = null }) {
 const DEV_TOOLS_CSS = "nextjs-portal { pointer-events: none !important; }";
 const devErrorsSeen = new Set();
 async function devErrors(page, where) {
-  const up = await page.evaluate(() => !!document.querySelector("nextjs-portal")?.shadowRoot?.querySelector("[data-nextjs-dialog], [data-nextjs-dialog-overlay]")).catch(() => false);
-  if (up && !devErrorsSeen.has(where)) { devErrorsSeen.add(where); console.log(`  NOTE the dev server's error dialog is up on ${where}`); }
+  // The error dialog, or the tools button's issue count ("1 Issue"): either says the page raised something.
+  const up = await page.evaluate(() => {
+    const root = document.querySelector("nextjs-portal")?.shadowRoot;
+    if (!root) return null;
+    if (root.querySelector("[data-nextjs-dialog], [data-nextjs-dialog-overlay]")) return "the error dialog";
+    const n = /(\d+)\s+Issues?/.exec(root.textContent ?? "");
+    return n ? `${n[1]} issue(s) on the tools button` : null;
+  }).catch(() => null);
+  if (up && !devErrorsSeen.has(where)) { devErrorsSeen.add(where); console.log(`  NOTE the dev server reports ${up} on ${where}`); }
   return up;
+}
+/** Every page error and console error a page raises, printed once each with where it was raised. */
+const pageProblems = new Set();
+function watchProblems(page) {
+  const note = (kind, text) => {
+    const key = `${kind}: ${String(text).split("\n")[0].slice(0, 200)}`;
+    if (pageProblems.has(key)) return;
+    pageProblems.add(key);
+    let at = "?"; try { at = new URL(page.url()).pathname; } catch { /* no address yet */ }
+    console.log(`  NOTE ${key} (on ${at})`);
+  };
+  page.on("pageerror", (e) => note("page error", e?.message ?? e));
+  page.on("console", (m) => { if (m.type() === "error") note("console error", m.text()); });
 }
 async function open(page, path, { wait = SEL.home } = {}) {
   const res = await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded", timeout: 240_000 });
@@ -260,7 +284,9 @@ if (run("home")) {
         card = page.locator(`${SEL.card}[data-row-id="${id}"]`);
       }
       if (!(await card.count())) { blockedLine(`home ${locale} · ${name}`, `card ${id} is not on the home (it takes no bets, or lies past page five)`); continue; }
-      await card.first().scrollIntoViewIfNeeded();
+      // Centred, so the tile is THIS card's (an already-visible card is not moved by scrollIntoViewIfNeeded, and two states'
+      // tiles came out as one frame) and no edge of it sits under the header or the rail.
+      await card.first().evaluate((el) => el.scrollIntoView({ block: "center" }));
       await page.waitForTimeout(200);
       await tile(page, `home ${locale} 360 card ${name}`);
       if (name === "a full title clamped") {
@@ -273,7 +299,7 @@ if (run("home")) {
           const cut = page.locator(`${SEL.card}:has(.kp-jcard__title--full)`);
           for (let i = 0; i < (await cut.count()); i++) {
             const ti = await cut.nth(i).evaluate(clampOf);
-            if (ti?.cut) { t = ti; await cut.nth(i).scrollIntoViewIfNeeded(); await page.waitForTimeout(200); await tile(page, `home ${locale} 360 card a full title clamped (the first cut on the page)`); break; }
+            if (ti?.cut) { t = ti; await cut.nth(i).evaluate((el) => el.scrollIntoView({ block: "center" })); await page.waitForTimeout(200); await tile(page, `home ${locale} 360 card a full title clamped (the first cut on the page)`); break; }
           }
         }
         if (t && !t.cut) blockedLine(`home ${locale} · a full title clamped`, `this language's longest question fits in ${t.lines} line(s) at 360: nothing is clamped to read`);
@@ -389,7 +415,7 @@ if (run("routes")) {
         const word = ((await chips.nth(i).textContent()) ?? "").trim();
         if (!word || seen.includes(word)) continue;
         seen.push(word);
-        await chips.nth(i).scrollIntoViewIfNeeded();
+        await chips.nth(i).evaluate((el) => el.closest("[data-testid=\"journey-card\"]").scrollIntoView({ block: "center" })); await page.waitForTimeout(200);
         await tile(page, `/results sw 360 settled ${word}`);
       }
       ok(`routes /results sw 360 · settled cards drawn with their outcome, each tiled (${seen.join(", ") || "none"})`, seen.length >= 2, `${seen.length} outcome(s)`);
@@ -413,12 +439,21 @@ if (run("live")) {
     const ctx = await ctxFor({ w, h: w === 360 ? 780 : 900, locale, session: SESSION });
     const page = await ctx.newPage();
     await open(page, "/live", { wait: SEL.card });
+    // The selection-closed rows keep /live's order (A21 item 1), so one can sit past page 1: "Onyesha zaidi" is pressed
+    // until one is drawn or the list ends. Then /live is opened again, so the checks below read page 1.
     const closed = page.locator(`${SEL.card}:has(.kp-jcard__closed)`);
-    if (await closed.count()) { await closed.first().scrollIntoViewIfNeeded(); await tile(page, `/live ${locale} ${w} selection closed`); ok(`live ${locale} ${w} · a selection-closed row is drawn as the card's closed face`, true); }
-    else blockedLine(`live ${locale} ${w} · a selection-closed row`, "none on the board (seed-watchlist's progress row was not made)");
+    for (let i = 0; i < 10 && !(await closed.count()); i++) {
+      const more = page.locator(SEL.more).first();
+      if (!(await more.count())) break;
+      await hydrated(more);
+      await more.click(); await page.waitForTimeout(1500);
+    }
+    if (await closed.count()) { await closed.first().evaluate((el) => el.scrollIntoView({ block: "center" })); await page.waitForTimeout(200); await tile(page, `/live ${locale} ${w} selection closed`); ok(`live ${locale} ${w} · a selection-closed row is drawn as the card's closed face`, true); }
+    else blockedLine(`live ${locale} ${w} · a selection-closed row`, "none on any page of the list (seed-watchlist's progress row was not made, or it has closed)");
+    await open(page, "/live", { wait: SEL.card });
     if (locale === "sw" && w === 360) {
       const ud = page.locator(`${SEL.card} a[href^="/updown/"]`);
-      if (await ud.count()) { await ud.first().scrollIntoViewIfNeeded(); await tile(page, "/live sw 360 Up & Down"); ok("live · an Up & Down row opens its round", true); }
+      if (await ud.count()) { await ud.first().evaluate((el) => el.scrollIntoView({ block: "center" })); await page.waitForTimeout(200); await tile(page, "/live sw 360 Up & Down"); ok("live · an Up & Down row opens its round", true); }
       else blockedLine("live · an Up & Down row", "no running round on this server");
       const count = await page.locator("[data-result-count]").first().getAttribute("data-result-count").then(Number).catch(() => NaN);
       for (let i = 0; i < 40; i++) {
@@ -444,7 +479,7 @@ if (run("tafuta")) {
     const row = page.locator("details:has(form[action='/']) > summary").first();
     if (!(await row.count())) { ok(`tafuta ${locale} · the row is on the hub`, false); await ctx.close(); continue; }
     await row.scrollIntoViewIfNeeded(); await tile(page, `tafuta ${locale} 360 closed`);
-    await row.click(); await page.waitForTimeout(300); await tile(page, `tafuta ${locale} 360 open`);
+    await row.click(); await page.waitForTimeout(300); await tile(page, `tafuta ${locale} 360 open`); await devErrors(page, `/account (${locale}, Tafuta open)`);
     if (locale === "sw") {
       await page.locator("details[open] form[action='/'] input[name='q']").fill("Simba");
       await Promise.all([page.waitForURL(/\/\?q=Simba/, { timeout: 60_000 }).catch(() => {}), page.locator("details[open] form[action='/'] button[type='submit']").click()]);
@@ -632,6 +667,6 @@ if (run("redirect")) {
 
 await browser.close();
 console.log(`\nqa:journey-home — ${pass} passed · ${fail} failed · ${blocked} blocked · ${notMeasured} not measured · ${tileNo} tiles in ${OUT}`);
-console.log(`dev error dialog: ${devErrorsSeen.size ? [...devErrorsSeen].join(", ") : "never up"}`);
+console.log(`dev server reports: ${devErrorsSeen.size ? [...devErrorsSeen].join(", ") : "none"} · page and console errors: ${pageProblems.size}`);
 console.log(`journey-home-ghost in a pass holder's served /: ${ghostListed === null ? "not read (positive not run)" : ghostListed ? "found" : "not found"}`);
 process.exit(fail ? 1 : blocked || notMeasured ? 3 : 0);
