@@ -107,6 +107,7 @@ import { useRouter } from "next/navigation";
 import { useDeferredToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { cashOutPositionAction } from "@/app/markets/actions";
+import { isActionRedirect } from "@/lib/action-redirect";
 import { SellConfirmModal } from "./sell-confirm-modal";
 import { SellResultModal, handSellResult, type SellResultData } from "./sell-result";
 import { formatTzs, formatNumber } from "@/lib/utils";
@@ -407,17 +408,21 @@ export function SellButton({
         let r: Awaited<ReturnType<typeof cashOutPositionAction>>;
         try {
           r = await cashOutPositionAction(fd);
-        } catch {
+        } catch (e) {
+          // ⭐ L3 · AUTH LOSS IS NOT A FAILED SALE, AND IT ARRIVES HERE, AS A REJECTION. A session ended
+          // on another device makes `cashOutPositionAction` redirect to the sign-in door, and in Next 16
+          // the call REJECTS with that redirect while the router is already navigating
+          // (`isActionRedirect`). This catch used to map it to BUSY — a sticky "Couldn't cash out —
+          // we're busy right now" and the ✗ "CASH-OUT FAILED" result over the sign-in page, about a
+          // sale the server never started. Tested FIRST: the confirm closes, nothing is said, the
+          // navigation speaks. Not rethrown — the router has it.
+          if (isActionRedirect(e)) { setConfirmOpen(false); return; }
           r = { ok: false as const, error: "", code: "BUSY" } as Awaited<ReturnType<typeof cashOutPositionAction>>;
         }
         setConfirmOpen(false);
-        // AUTH LOSS IS NOT A FAILED SALE — same shape as the bet path, same model
-        // (`use-quick-bet.ts`). A session revoked in another tab makes
-        // `cashOutPositionAction` `redirect("/auth/login")`, and a Server Action that
-        // redirects RESOLVES TO NOTHING. Reading `.ok` off that undefined throws a
-        // TypeError below the catch above, so the rejection escapes the transition and
-        // the error boundary flashes while the login page loads — leaving the player
-        // unable to tell whether the position was sold. Return silently; the nav speaks.
+        // A verdict-less answer is not a failed sale either: return silently. (This line once caught
+        // the redirect itself, on the belief that a redirecting action resolves to nothing; in Next 16
+        // it rejects, and the catch above takes it — `test:action-redirect` §1 reads the reducer.)
         if (r == null) return;
         if (!r.ok) {
           // B-7 — the refusal is rendered as toast body AND modal title, so it must

@@ -34,6 +34,7 @@ import { formatTzs, formatNumber, fill, fmtRate, pctNum } from "@/lib/utils";
 import { errorCopy } from "@/lib/error-copy";
 import { renderFailure, hasReason, failureUntil, refusalVariant, reasonForCode, type FailureDetail } from "@/lib/failure-reasons";
 import { formatBreakEnd } from "@/lib/break-end";
+import { isActionRedirect } from "@/lib/action-redirect";
 import { dialScale } from "./dial-scale";
 import { keepText } from "@/components/ui/keep-run";
 import { keepFigures } from "@/components/ui/keep-words";
@@ -1005,25 +1006,24 @@ export function ConvictionDial({ marketId, yesPool, noPool, baseStake = PLATFORM
       let r: Awaited<ReturnType<typeof buyPositionAction>>;
       try {
         r = await buyPositionAction(fd);
-      } catch {
+      } catch (e) {
+        // ⭐ L3 · AUTH LOSS IS NOT A FAILED BET, AND IT ARRIVES HERE, AS A REJECTION. A session ended
+        // on another device makes `buyPositionAction` redirect to the sign-in door that names this
+        // page (signInPathForAction, route audit B2), and in Next 16 that call REJECTS with the
+        // redirect while the router is already navigating (`isActionRedirect`). This catch used to
+        // map it to `system_error` — a sticky "Could not place — something went wrong at our end"
+        // over the sign-in page, about a bet the server never started. Tested FIRST, before any
+        // failure: the confirm closes, and nothing is said; the navigation speaks. Not rethrown —
+        // the router has it. Nothing was placed.
+        if (isActionRedirect(e)) { setConfirmOpen(false); return; }
         r = { ok: false as const, error: "", code: "BUSY", reason: "system_error" } as Awaited<ReturnType<typeof buyPositionAction>>;
       }
       // Whether success or failure, the modal MUST close — leaving it
       // open with the same locked quote was racing into double-place.
       setConfirmOpen(false);
-      // AUTH LOSS IS NOT A FAILED BET (the model is `use-quick-bet.ts`). A session
-      // revoked in another tab makes `buyPositionAction` answer with a redirect to the
-      // sign-in door that names this page (signInPathForAction, route audit B2),
-      // and a Server Action that redirects RESOLVES TO NOTHING — the router is already
-      // navigating by the time we get here and there is no verdict object at all.
-      // Reading `.ok` off that undefined throws a TypeError the try/catch above cannot
-      // see (the throw is BELOW it), so the rejection escapes the transition and the
-      // error boundary flashes on top of the login navigation — two contradictory
-      // stories about one tap, on a money control. Return silently; the nav speaks.
-      // Nothing else needs unwinding: the confirm modal is already closed above,
-      // `pending` clears when this callback returns, and after signing in the player is
-      // back on this market with the side still locked; the stake is chosen again, and
-      // nothing was placed.
+      // A verdict-less answer is not a failed bet either: return silently. (This line once caught
+      // the redirect itself, on the belief that a redirecting action resolves to nothing; in Next 16
+      // it rejects, and the catch above takes it — `test:action-redirect` §1 reads the reducer.)
       if (r == null) return;
       if (!r.ok) {
         const mapped = errorToToast((r as { code?: string }).code, r.error, r as { reason?: string; detail?: FailureDetail; retryAfterSec?: number });
