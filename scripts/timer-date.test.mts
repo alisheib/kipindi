@@ -174,6 +174,8 @@ ok("1: the platform zone resolves to a real IANA zone", /^[A-Za-z]+\/[A-Za-z_]+$
     ["positions/page.tsx", read("../src/app/positions/page.tsx")],
     // ⭐ S6 WP9 — the journey's ticket card states the same two instants to a preview reader.
     ["journey ticket-card.tsx", read("../src/components/journey/tickets/ticket-card.tsx")],
+    // ⭐ S7 WP5 — the journey card's one date, a settled question's instant (S7-PLAN A12 item 5, A24 item 3).
+    ["journey journey-card.tsx", read("../src/components/journey/cards/journey-card.tsx")],
   ] as const) {
     const calls = eatCalls(src);
     ok(`3: ${file} dates every deadline through formatEatDateTime/formatEatDate, in the reader's month words`,
@@ -200,6 +202,26 @@ ok("1: the platform zone resolves to a real IANA zone", /^[A-Za-z]+\/[A-Za-z_]+$
   ok("3: ...and its close line names the instant its Sell button closes at",
     card.includes("const cutoffIso = m.selectionClosedAt ?? m.resolutionAt;") && card.includes("closesAt={cutoffIso}")
       && card.includes("<time dateTime={cutoffIso}"));
+
+  // ⭐ S7 WP5 · THE JOURNEY CARD STATES ONE INSTANT — when a settled question was settled (`settledAt`, else its
+  // `resolutionAt`: S7-PLAN A12 item 4, its date as A24 item 3 re-derives it) — and /results lists the whole settled
+  // archive, so the year rule matters there most. The date must name the instant it is about: it is a
+  // `formatEatDateTime(Date.parse(X), nowMs, t.common.monthsShort, locale)` inside a `<time dateTime={X}>` naming that
+  // very X, asked with the render's own clock (`nowMs`) and the reader's month words (§L4); there is exactly one; and the
+  // card formats on the server — no directive, no locale formatter of its own.
+  const jcard = read("../src/components/journey/cards/journey-card.tsx");
+  const jdated = [...jcard.matchAll(/<time dateTime=[{]([^}]+)[}][^>]*>[{]formatEatDateTime[(]Date[.]parse[(]([^()]+)[)], nowMs, t[.]common[.]monthsShort, locale[)][}]<[/]time>/g)];
+  ok("3: the journey card dates exactly one instant, the settled one, in a <time> naming it", jdated.length === 1, `found ${jdated.length}`);
+  for (const m of jdated) {
+    ok(`3: ...the journey card's <time dateTime={${m[1].trim()}}> names the SAME instant it formats`, m[1].trim() === m[2].trim(),
+      `dateTime=${m[1]} formats ${m[2]}`);
+  }
+  ok("3: ...and the journey card formats no date outside it", eatCalls(jcard).length === jdated.length && englishIn(jcard).length === 0,
+    `${eatCalls(jcard).length} localized calls, English: ${englishIn(jcard).join(", ") || "none"}`);
+  ok("3: the journey card formats on the server, never with a locale formatter of its own",
+    jcard.length > 0 && !/["']use (?:client|server)["']/.test(jcard) && !/toLocale(Date|Time)?String/.test(jcard));
+  ok("3: ...and the instant it names is the settled one, bound once: settledAt, else resolutionAt",
+    jcard.includes("const settledIso = m.settledAt ?? m.resolutionAt;") && jdated.length === 1 && jdated[0][1].trim() === "settledIso");
 
   // ⭐ S6 WP10 · THE JOURNEY'S SELL LINE STATES A THIRD INSTANT, "Uza bila ada hadi {time} · m:ss", and its time must be
   // the instant the countdown runs to. The card binds the server's free-sell instant once, hands it to the Sell button
