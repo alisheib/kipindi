@@ -22,7 +22,24 @@
  *        · the module imports only pending-bet.ts, the query helpers and the category list, nothing dynamic, carries no
  *          directive, and keeps no second copy of pending-bet's utm keys;
  *        · the wiring: this suite runs in predeploy and its red twin is declared.
- *   §2 (WP9) will hold AppShell's document branch and the page's flight redirect to this one function.
+ *   §2 THE TWO DOORS (S7 WP9, Correction 10, amendments A1 item 6, A11 item 5 and A18), read from their source:
+ *        · AppShell's DOCUMENT door, a real 307 (`app-shell.tsx`): ONE statement, after the E-381 block, whose condition
+ *          is exactly the board's own address (`/markets`, never a prefix: a question page is never redirected), a
+ *          document (`x-kp-document`: a root-layout redirect on a flight blanks the page) and the request's journey
+ *          answer (`journeyRead`, never a classic request) — no path rule of its own — and whose redirect goes through the
+ *          one function, fed the request's path and query (`x-href`); after the `/admin` and opt-out returns and
+ *          E-381's document redirect, before the render; S6's two anchors (`const h = await headers();`,
+ *          `const journeyRead = resolveSimpleJourney();`) verbatim, once each;
+ *        · the board page's FLIGHT door (`markets/page.tsx`): its first statement asks the one resolver, its second
+ *          redirects a journey request (never a classic one) — so nothing is read before them, not the words, the board
+ *          or the search — and its redirect goes through the same function, fed the page's own search;
+ *        · ONE TARGET (2.callers): nothing but the two doors calls `journeyMarketsTarget`, nothing but its module defines
+ *          it, and each door imports it from there — over every file under src/, its population printed;
+ *        · the proxy names neither the preview pass nor the redirect (`test:simple-journey-flag` 10.no.grant's rule);
+ *        · SHELVED.md carries the board's row in its six columns, naming this suite (A18).
+ *
+ * The journey home's own reading of `?cat` and `?q` is `test:journey-home`'s; where Tafuta sends `?q` from is
+ * `test:journey-account`'s (§9).
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION: `--prove-red` plants each defect into a copy of the world held in memory, and this file
  * only ever READS files, so `test:red-anchors` §4 counts it in the in-process class. Each plant declares the exact set of
@@ -33,6 +50,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment } from "./lib/decomment.mts";
+import { srcFiles } from "./lib/tracked-files.mts";
 import * as MR from "../src/lib/journey/markets-redirect.ts";
 import { isSafePath } from "../src/lib/safe-next.ts";
 import { GA_KEPT_PARAMS } from "../src/lib/google-tag.ts";
@@ -42,6 +60,12 @@ const PROVE_RED = process.argv.includes("--prove-red");
 const LF = String.fromCharCode(10);
 const CR = String.fromCharCode(13);
 const MODULE = "src/lib/journey/markets-redirect.ts";
+/** §2 · the two doors, the edge and the record (S7 WP9). */
+const SHELL = "src/components/layout/app-shell.tsx";
+const PAGE = "src/app/markets/page.tsx";
+const PROXY = "src/proxy.ts";
+const SHELVED = "docs/SHELVED.md";
+const TARGET = "journeyMarketsTarget";
 
 /** A file's text with CRLF read as LF (this machine checks files out as CRLF). */
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8").split(CR + LF).join(LF);
@@ -59,14 +83,34 @@ type World = {
   /** The module's source text. */
   source: string;
   scripts: Readonly<Record<string, string>>;
+  /** §2 · AppShell's source (the document door). */
+  shell: string;
+  /** §2 · the board page's source (the flight door). */
+  page: string;
+  /** §2 · the proxy's source (which must name neither the pass nor the redirect). */
+  proxy: string;
+  /** §2 · docs/SHELVED.md (the board's row, A18). */
+  shelved: string;
+  /** §2 · every file under src/ whose text names the target, by path: 2.callers' population. */
+  namers: Readonly<Record<string, string>>;
+  /** §2 · how many files under src/ the census read (printed, and held to a floor). */
+  walked: number;
 };
 
+/** Every file under src/ (the one walker, `tracked-files.mts`), read once; the census keeps those that name the target. */
+const SRC = srcFiles();
 const REAL: World = {
   target: MR.journeyMarketsTarget,
   keys: [...MR.KEPT_UTM_KEYS, ...MR.KEPT_CLICK_KEYS],
   ga: GA_KEPT_PARAMS,
   source: read(MODULE),
   scripts: (JSON.parse(read("package.json")) as { scripts: Record<string, string> }).scripts,
+  shell: read(SHELL),
+  page: read(PAGE),
+  proxy: read(PROXY),
+  shelved: read(SHELVED),
+  namers: Object.fromEntries(SRC.map((p) => [p, read(p)] as const).filter(([, s]) => s.includes(TARGET))),
+  walked: SRC.length,
 };
 
 /** The parameters of any input form, read as the module reads them (the query after the first "?", before any "#"). */
@@ -109,6 +153,76 @@ const SWEEP: Input[] = [
   { q: "//evil.example", "/evil": "x" },
   new URLSearchParams([["q", `/${BS}evil.example`]]),
 ];
+
+// ══ §2's READERS — the source as its checks read it: comments out (`decomment`), every run of whitespace one space, so a
+// statement reads as one line whatever its wrapping. Brackets are counted, so a term or a statement is cut only at its
+// own level. (Each pattern is built from code points or plain text: this file carries no backslash.)
+const WS = new RegExp(`[ ${TAB}${CR}${LF}]+`, "g");
+const flat = (s: string) => decomment(s).replace(WS, " ");
+const count = (hay: string, needle: string) => hay.split(needle).length - 1;
+const OPENERS = "([{";
+const CLOSERS = ")]}";
+/** `s` cut at every `sep` that stands outside any bracket. */
+function splitTop(s: string, sep: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let from = 0;
+  for (let i = 0; i < s.length; i++) {
+    if (OPENERS.includes(s[i])) depth++;
+    else if (CLOSERS.includes(s[i])) depth--;
+    else if (depth === 0 && s.startsWith(sep, i)) { out.push(s.slice(from, i).trim()); from = i + sep.length; i += sep.length - 1; }
+  }
+  out.push(s.slice(from).trim());
+  return out;
+}
+/** Each `if (…) …;` statement of `code` that holds `needle`, whole: from the `if (` before it to the `;` after it. */
+function ifsHolding(code: string, needle: string): string[] {
+  const out = new Set<string>();
+  for (let at = code.indexOf(needle); at >= 0; at = code.indexOf(needle, at + needle.length)) {
+    const start = code.lastIndexOf("if (", at);
+    const end = code.indexOf(";", at);
+    if (start >= 0 && end > at) out.add(code.slice(start, end + 1));
+  }
+  return [...out];
+}
+/** An `if (cond) body;` statement: its condition's top-level `&&` terms, and the body after it. */
+function parseIf(stmt: string): { terms: string[]; body: string } | null {
+  if (!stmt.startsWith("if (")) return null;
+  let depth = 0;
+  for (let i = 3; i < stmt.length; i++) {
+    if (stmt[i] === "(") depth++;
+    else if (stmt[i] === ")" && --depth === 0) return { terms: splitTop(stmt.slice(4, i), " && "), body: stmt.slice(i + 1).trim() };
+  }
+  return null;
+}
+/** What follows the parameters of the function whose head is `head`: its body, then the rest of the file. */
+function bodyAfter(code: string, head: string): string {
+  const at = code.indexOf(head);
+  const open = at < 0 ? -1 : code.indexOf(") {", at);
+  return open < 0 ? "" : code.slice(open + 3).trim();
+}
+/** The first `n` statements of a body, each up to a `;` that stands outside any bracket. */
+function statements(body: string, n: number): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let from = 0;
+  for (let i = 0; i < body.length && out.length < n; i++) {
+    if (OPENERS.includes(body[i])) depth++;
+    else if (CLOSERS.includes(body[i])) depth--;
+    else if (body[i] === ";" && depth === 0) { out.push(body.slice(from, i + 1).trim()); from = i + 1; }
+  }
+  return out;
+}
+/** §2's terms, as AppShell writes them: the board's address, a document, the request's journey answer. */
+const T_PATH = 'pathname === "/markets"';
+const T_DOC = 'h.get("x-kp-document") === "1"';
+const T_JOURNEY = "(await journeyRead).journey";
+/** Nothing the edge may name: the preview pass in any spelling, its resolver, or the redirect (10.no.grant's rule). */
+const PROXY_NEVER = ["kp_preview", "JOURNEY_PREVIEW_COOKIE", "journey-preview", "resolveSimpleJourney", "markets-redirect", TARGET];
+/** The one import each door takes the target by. */
+const TARGET_IMPORT = `import { ${TARGET} } from "@/lib/journey/markets-redirect";`;
+/** What declares the target: a second one anywhere is a second rule. */
+const DECLARES = [`function ${TARGET}(`, `const ${TARGET} =`, `let ${TARGET} =`, `var ${TARGET} =`];
 
 function run(w: World, log: (l: string) => void): string[] {
   const failed: string[] = [];
@@ -230,6 +344,76 @@ function run(w: World, log: (l: string) => void): string[] {
       && w.scripts["red:markets-redirect"] === "tsx scripts/markets-redirect.test.mts --prove-red"
       && (w.scripts.predeploy ?? "").includes("npm run test:journey-home && npm run test:markets-redirect && "),
     j({ test: w.scripts["test:markets-redirect"] ?? null, red: w.scripts["red:markets-redirect"] ?? null }));
+
+  // ══ §2 · THE TWO DOORS (S7 WP9) ══
+  // AppShell's DOCUMENT door: a real 307, because the root layout answers before the root loading file streams its 200.
+  const shell = flat(w.shell);
+  const branches = ifsHolding(shell, '"/markets"');
+  const branch = branches.length === 1 ? parseIf(branches[0]) : null;
+  const terms = branch?.terms ?? [];
+  const seen = j({ statements: branches.length, terms });
+  ok("2.shell.path · AppShell holds ONE branch for the board, and it answers the board's own address exactly (/markets, never a prefix: a question page is never redirected)",
+    branches.length === 1 && terms.includes(T_PATH), seen);
+  ok("2.shell.document · …for a DOCUMENT only (x-kp-document): a root-layout redirect on a flight blanks the page and it stays blank (E-381); a flight meets the page's own door",
+    terms.includes(T_DOC), seen);
+  ok("2.shell.journey · …for a request the journey is shown to only (this request's journeyRead): a classic request's /markets stays today's board",
+    terms.includes(T_JOURNEY), seen);
+  ok("2.shell.terms · …and on nothing else: no path rule of its own beside those three terms (safe-next.ts stays the one same-origin rule, A11 item 5)",
+    terms.length > 0 && terms.every((t) => t === T_PATH || t === T_DOC || t === T_JOURNEY), seen);
+  ok("2.shell.target · its redirect goes through the one function, fed the request's path and query (x-href), typed as typedRoutes asks — the shell's only call of it",
+    branch !== null && branch.body === `redirect(${TARGET}(h.get("x-href") ?? pathname) as never);` && count(shell, `${TARGET}(`) === 1,
+    j({ body: branch?.body ?? null, calls: count(shell, `${TARGET}(`) }));
+  const at = branches.length === 1 ? shell.indexOf(branches[0]) : -1;
+  const marks = {
+    admin: shell.indexOf('if (pathname.startsWith("/admin"))'),
+    optOut: shell.indexOf("if (isOptOutPath(pathname))"),
+    e381: shell.indexOf('if (h.get("x-kp-document") === "1") redirect(href as never);'),
+    render: shell.indexOf('return ( <div className="min-h-screen'),
+  };
+  ok("2.shell.order · it stands after the /admin return, the opt-out return and E-381's document redirect (the console is never previewed, the opt-out page never moves, an ended session hears so first), and before the render",
+    at > 0 && Object.values(marks).every((m) => m > 0) && at > marks.admin && at > marks.optOut && at > marks.e381 && at < marks.render,
+    j({ at, ...marks }));
+  ok("2.shell.anchors · S6's two anchors stand verbatim, once each: `const h = await headers();` and `const journeyRead = resolveSimpleJourney();`",
+    count(shell, "const h = await headers();") === 1 && count(shell, "const journeyRead = resolveSimpleJourney();") === 1);
+
+  // The board page's FLIGHT door: a soft hop or a refresh, which the router follows.
+  const page = flat(w.page);
+  const body = bodyAfter(page, "export default async function MarketsPage(");
+  const [first, second] = statements(body, 2);
+  ok("2.page.ask · the board page's FIRST statement asks the one resolver, so nothing is read before it: not the words, the board, the session or the search",
+    first === "const { journey } = await resolveSimpleJourney();", j(first ?? null));
+  ok("2.page.branch · its SECOND statement redirects a journey request, and only a journey request, before the page reads anything",
+    typeof second === "string" && second.startsWith("if (journey) redirect(") && second.endsWith(");"), j(second ?? null));
+  ok("2.page.target · that redirect goes through the one function, fed the page's own search, typed as typedRoutes asks — the page's only call of it",
+    count(page, `redirect(${TARGET}(await searchParams) as never)`) === 1 && count(page, `${TARGET}(`) === 1, j({ calls: count(page, `${TARGET}(`) }));
+  const meta = page.slice(Math.max(0, page.indexOf("export async function generateMetadata")), page.indexOf("export const dynamic"));
+  ok("2.page.c · CONTROL · the page does read its words and its board (2.page.ask is not vacuous), and its title is still read apart, in a generateMetadata that redirects nothing",
+    body.includes("getServerT(") && body.includes("getBoard(") && meta.includes("getServerT(") && !meta.includes("redirect("));
+
+  // ONE TARGET: the two doors and the table, and nothing else, over every file under src/.
+  const files: Record<string, string> = { ...w.namers, [SHELL]: w.shell, [PAGE]: w.page };
+  const flats = Object.entries(files).map(([p, s]) => [p, flat(s)] as const);
+  const defines = flats.filter(([, c]) => DECLARES.some((d) => c.includes(d))).map(([p]) => p).sort();
+  const callers = flats.filter(([p, c]) => p !== MODULE && c.includes(`${TARGET}(`)).map(([p]) => p).sort();
+  const imports = [SHELL, PAGE].map((p) => count(flat(files[p] ?? ""), TARGET_IMPORT));
+  log(`     the census walked ${w.walked} files under src/; ${Object.keys(w.namers).length} name ${TARGET}: ${Object.keys(w.namers).sort().join(" · ")}`);
+  ok(`2.callers · ONE target: nothing but the two doors calls ${TARGET}, nothing but its module declares it, and each door imports it from there (${w.walked} src files walked)`,
+    w.walked >= 500 && j(defines) === j([MODULE]) && callers.every((p) => p === SHELL || p === PAGE) && imports.every((n) => n === 1),
+    j({ defines, callers, imports }));
+
+  // The edge, and the record.
+  const proxy = flat(w.proxy);
+  const named = PROXY_NEVER.filter((n) => proxy.includes(n));
+  ok("2.proxy · the edge names neither the preview pass nor the redirect: it may not read the pass (10.no.grant), which is why the 307 is the shell's",
+    proxy.includes("export async function proxy(") && named.length === 0, j(named));
+  const rows = w.shelved.split(LF).filter((l) => l.startsWith("| The board (`/markets`)"));
+  const cells = rows.length === 1 ? rows[0].split("|").slice(1, -1).map((c) => c.trim()) : [];
+  ok("2.shelved · SHELVED.md carries the board's row in its six columns (A18): unmounted for a journey request, '§3.2: /markets answers 307', its date, how to re-mount it (the shell's branch and the page's redirect) and this suite",
+    rows.length === 1 && cells.length === 6 && cells[1].includes("`src/app/markets/page.tsx`") && cells[1].includes("unmounted")
+      && cells[2] === "§3.2: /markets answers 307" && /^20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/.test(cells[3])
+      && cells[4].includes("`src/components/layout/app-shell.tsx`") && cells[4].includes("`src/app/markets/page.tsx`")
+      && cells[5].includes("`npm run test:markets-redirect`"),
+    j({ rows: rows.length, cells }));
   return failed;
 }
 
@@ -244,6 +428,17 @@ if (!PROVE_RED) {
   type Plant = { name: string; fails: string[]; plant: (w: World) => World };
   /** The real target with one defect laid over its answer. */
   const wrap = (w: World, f: (input: Input, real: string) => string): World => ({ ...w, target: (input) => f(input, w.target(input)) });
+  /** §2's plants edit a copy of a door's text; an anchor that does not occur exactly once breaks the plant, never hides it. */
+  const swap = (s: string, from: string, to: string): string => {
+    if (s.split(from).length !== 2) throw new Error(`the plant's anchor does not resolve exactly once: ${from.slice(0, 90)}`);
+    return s.split(from).join(to);
+  };
+  const onShell = (f: (s: string) => string) => (w: World): World => ({ ...w, shell: f(w.shell) });
+  const onPage = (f: (s: string) => string) => (w: World): World => ({ ...w, page: f(w.page) });
+  /** The shell's branch and the page's redirect, as written: the lines §2's moving plants lift and put back elsewhere. */
+  const BRANCH = `  if (${T_PATH} && ${T_DOC} && ${T_JOURNEY}) redirect(${TARGET}(h.get("x-href") ?? pathname) as never);`;
+  const PAGE_REDIRECT = `  if (journey) redirect(${TARGET}(await searchParams) as never);`;
+  const PAGE_READS = `  const { t } = await getServerT();${LF}  const board = await getBoard();${LF}`;
   const PLANTS: Plant[] = [
     { name: "a dropped key leaks: the board's sort and page ride along to the home", fails: ["1.dropped"],
       plant: (w) => wrap(w, (input, real) => {
@@ -313,6 +508,37 @@ if (!PROVE_RED) {
       } },
     { name: "the suite left out of predeploy (a gate not in the pipeline is not a gate)", fails: ["1.wired"],
       plant: (w) => ({ ...w, scripts: { ...w.scripts, predeploy: (w.scripts.predeploy ?? "").split("npm run test:markets-redirect && ").join("") } }) },
+    // §2 · the two doors (S7 WP9)
+    { name: "the shell's document guard dropped: a soft hop's or a refresh's flight redirects in the root layout, which blanks the page (E-381)", fails: ["2.shell.document"],
+      plant: onShell((s) => swap(s, `${T_PATH} && ${T_DOC} && `, `${T_PATH} && `)) },
+    { name: "the shell's branch fires for a classic request (its journey term dropped): every player's /markets leaves the board", fails: ["2.shell.journey"],
+      plant: onShell((s) => swap(s, ` && ${T_JOURNEY})`, ")")) },
+    { name: "the shell's branch takes the board's address as a prefix: a question page (/markets/<id>) is sent home", fails: ["2.shell.path", "2.shell.terms"],
+      plant: onShell((s) => swap(s, `if (${T_PATH} && `, 'if (pathname.startsWith("/markets") && ')) },
+    { name: "the shell keeps a path rule of its own beside the three terms (a second same-origin rule, free to drift from safe-next.ts)", fails: ["2.shell.terms"],
+      plant: onShell((s) => swap(s, ` && ${T_JOURNEY})`, ` && ${T_JOURNEY} && isSafePath(h.get("x-href") ?? ""))`)) },
+    { name: "a second target function in the shell (an address made by hand beside WP3's table)", fails: ["2.shell.target"],
+      plant: onShell((s) => swap(s, `redirect(${TARGET}(h.get("x-href") ?? pathname) as never);`, 'redirect(boardTarget(h.get("x-href") ?? pathname) as never);')
+        + `${LF}function boardTarget(href: string) { return href.includes("topic=") ? "/?cat=" + href.split("topic=")[1] : "/"; }${LF}`) },
+    { name: "the shell's branch moved above the opt-out return (a reader stopping marketing could be sent away from /s)", fails: ["2.shell.order"],
+      plant: onShell((s) => swap(swap(s, `${BRANCH}${LF}`, ""), "  if (isOptOutPath(pathname)) {", `${BRANCH}${LF}  if (isOptOutPath(pathname)) {`)) },
+    { name: "S6's anchor re-spelt: the resolver's read wrapped where S6's plants and censuses find it", fails: ["2.shell.anchors"],
+      plant: onShell((s) => swap(s, "const journeyRead = resolveSimpleJourney();", "const journeyRead = resolveSimpleJourney().catch(() => NOTHING);")) },
+    { name: "the page redirecting after its reads (the words asked and the board read for a request that leaves)", fails: ["2.page.branch"],
+      plant: onPage((s) => swap(swap(s, `${PAGE_REDIRECT}${LF}`, ""), PAGE_READS, `${PAGE_READS}${PAGE_REDIRECT}${LF}`)) },
+    { name: "the page redirects a classic request (its journey term inverted)", fails: ["2.page.branch"],
+      plant: onPage((s) => swap(s, "if (journey) redirect(", "if (!journey) redirect(")) },
+    { name: "a second target function on the page", fails: ["2.page.target"],
+      plant: onPage((s) => swap(s, `redirect(${TARGET}(await searchParams) as never)`, "redirect(boardTarget(await searchParams) as never)")
+        + `${LF}function boardTarget(sp: unknown) { return sp ? "/" : "/watchlist"; }${LF}`) },
+    { name: "a third door calls the target (a question page sending its readers home)", fails: ["2.callers"],
+      plant: (w) => ({ ...w, namers: { ...w.namers, "src/app/markets/[id]/page.tsx": `export default async function P({ searchParams }) { redirect(${TARGET}(await searchParams) as never); }${LF}` } }) },
+    { name: "a second home for the target (a copy in another module, free to drift from WP3's table)", fails: ["2.callers"],
+      plant: (w) => ({ ...w, namers: { ...w.namers, "src/lib/journey/home-list.ts": `export function ${TARGET}(search: string) { return search ? "/" : "/watchlist"; }${LF}` } }) },
+    { name: "the edge reads the preview pass (to redirect /markets there)", fails: ["2.proxy"],
+      plant: (w) => ({ ...w, proxy: `${w.proxy}${LF}const pass = req.cookies.get("kp_preview");${LF}` }) },
+    { name: "the board's SHELVED row is gone (shelved with no record of how to bring it back)", fails: ["2.shelved"],
+      plant: (w) => ({ ...w, shelved: w.shelved.split(LF).filter((l) => !l.startsWith("| The board (`/markets`)")).join(LF) }) },
   ];
   let caught = 0, fail = 0;
   const ok = (label: string, cond: boolean, extra = "") => { if (!cond) fail++; console.log(`${cond ? "PROVED  " : "MISSED  "} ${label}${extra ? ` — ${extra}` : ""}`); };

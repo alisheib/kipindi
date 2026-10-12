@@ -13,7 +13,8 @@
  *   §3 THE ROWS — `hubRowsFor` for every kind of reader: guest, player, held wallet, agent in standing, SUPPORT, ADMIN,
  *      invite closed, proposals DISABLED, "Verify ID" not offered. The play-safe card sits above invite (A17); Pumzika
  *      and Jizuie are two rows landing on #break and #exclude, and both sections exist on the page they land on; every
- *      door names a route on disk.
+ *      door names a route on disk, Tafuta's form target included; and Tafuta is the search kind for every signed-in
+ *      reader, sent to the journey home, never to the shelved board (S7 WP9, S7-PLAN A20).
  *   §4 THE WORDS — every word in the rows data, and every word the page and its islands read by path, resolves in en,
  *      sw and zh; Msaada's second line names no number (§0h point 10); the hub carries no helpline row (the owner's
  *      ruling of 2026-10-06), and no phone number is typed into the hub.
@@ -25,11 +26,19 @@
  *      two stores), failed reads included.
  *   §8 THE ISLANDS — the Arifa row reads once (A1), the language row takes the menu's own list, the sign-out row asks
  *      before it POSTs to /auth/logout, and `test:popup-fit` has reviewed it.
+ *   §9 TAFUTA (S7 WP9, S7-PLAN A20; SJ-6: "search lives in Akaunti") — the row RENDERED in sw, en and zh: at rest the
+ *      board's row (a disclosure whose summary holds the search glyph, the word and the chevron, and nothing that acts);
+ *      beneath it ONE GET form to the journey home holding ONE named field, q (the kit Input: its label, its placeholder,
+ *      the home's cap, a text field, never the search type) and ONE submit (the kit Button), nothing hidden; no script
+ *      (server markup, no handler, no hook: it opens and sends with JavaScript off); in globals.css, the language row's
+ *      own disclosure rules and its one chevron turn, the form on the inset its choices open on with a pair's gap and the
+ *      field taking the line, and, open, the row's bottom corners squared; and THE WIDTH PROOF — at 320, in sw, en and
+ *      zh, the field leaves its placeholder whole beside the button (the repo's Inter by its own advances).
  *
- * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` hands §1–§6 and §8 defective implementations and edited source TEXT held
- * in memory, and requires the check named for each defect to fail. Nothing here touches a file on disk, so
- * `test:red-anchors` §4 counts it in the in-process class. §7 runs in the plain run only, as `test:simple-journey-flag`
- * §12 does.
+ * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` hands §1–§6, §8 and §9 defective implementations, edited source TEXT and
+ * edited rendered markup held in memory, and requires the check named for each defect to fail. Nothing here touches a
+ * file on disk, so `test:red-anchors` §4 counts it in the in-process class. §7 runs in the plain run only, as
+ * `test:simple-journey-flag` §12 does.
  * ⚠️ This file carries no escape sequences (line breaks are built from their code points): a tool that rewrites an
  * escape on the way to disk cannot corrupt it.
  */
@@ -129,7 +138,7 @@ const { inviteViewerFor } = await import("../src/lib/server/affiliate-service.ts
 const { displayLabel } = await import("../src/lib/display-label.ts");
 const { maskPhone } = await import("../src/lib/phone-normalize.ts");
 const { dict } = await import("../src/lib/i18n-dict.ts");
-const { decomment } = await import("./lib/decomment.mts");
+const { decomment, decommentCss } = await import("./lib/decomment.mts");
 
 type HubViewer = import("../src/components/journey/account/hub-rows.ts").HubViewer;
 type HubMember = import("../src/components/journey/account/hub-rows.ts").HubMember;
@@ -245,6 +254,12 @@ if (DB_MODE) {
   process.exit(fails ? 1 : 0);
 }
 
+// ══ §9's RENDERER — the real row component on React's own server renderer (the database-mode process never loads it) ══
+const { HubRowItem } = await import("../src/components/journey/account/hub-row.tsx");
+const { MAX_QUERY_LEN } = await import("../src/lib/search/query.ts");
+const { createElement } = await import("react");
+const { renderToStaticMarkup } = await import("react-dom/server");
+
 // ══ THE SOURCE WORLD — read once; the red twin plants edits in memory ════════════════════════════════════════
 const read = (rel: string) => (existsSync(join(REPO, rel)) ? readFileSync(join(REPO, rel), "utf8").split(CR + LF).join(LF) : "");
 const code = (rel: string) => decomment(read(rel));
@@ -282,8 +297,11 @@ type World = {
   page: string; rows: string; hubRow: string; viewer: string; rgPage: string; notFound: string;
   unread: string; language: string; languageMenu: string; signOut: string; cardSize: string; popupFit: string;
   loaders: readonly string[]; routes: readonly string[]; dicts: Readonly<Record<string, unknown>>;
+  /** §9 · globals.css, decommented; and the three sources 9.fit's geometry is read from (the kit Input, the page's
+   *  container, the spacing scale). */
+  css: string; input: string; container: string; tailwind: string;
 };
-type TextKey = "page" | "rows" | "hubRow" | "viewer" | "rgPage" | "unread" | "language" | "signOut" | "cardSize" | "popupFit";
+type TextKey = "page" | "rows" | "hubRow" | "viewer" | "rgPage" | "unread" | "language" | "signOut" | "cardSize" | "popupFit" | "css";
 const WORLD: World = {
   page: code("src/app/account/page.tsx"),
   rows: code("src/components/journey/account/hub-rows.ts"),
@@ -300,6 +318,10 @@ const WORLD: World = {
   loaders: accountLoaders(),
   routes: routesOnDisk(),
   dicts: { en: dict.en, sw: dict.sw, zh: dict.zh },
+  css: decommentCss(read("src/app/globals.css")),
+  input: code("src/components/ui/input.tsx"),
+  container: code("src/components/layout/page-container.tsx"),
+  tailwind: code("tailwind.config.ts"),
 };
 
 const after = (s: string, head: string) => { const at = s.indexOf(head); return at < 0 ? "" : s.slice(at); };
@@ -330,12 +352,25 @@ function phoneLike(s: string): boolean {
 }
 
 // ══ THE IMPLEMENTATIONS UNDER TEST — passed in, so the red twin can hand in defective ones ══════════════════
+/** §9's three languages. */
+const LOCS = ["sw", "en", "zh"] as const;
+type Loc = (typeof LOCS)[number];
 type Impl = {
   rows: typeof ROWS.hubRowsFor;
   load: (userId: string | null, deps?: Deps) => Promise<HubViewer>;
   words: typeof ROWS.hubWordProblems;
+  /** §9 · a signed-in reader's Tafuta row as the server draws it, in one language. */
+  search: (l: Loc) => string;
 };
-const REAL: Impl = { rows: ROWS.hubRowsFor, load: HV.loadHubViewer, words: ROWS.hubWordProblems };
+/** The markup the real `HubRowItem` draws for a player's Tafuta row: the row as `hubRowsFor` gives it, the language's
+ *  own dictionary. A reader with no such row draws nothing, which §9 reports. */
+function renderSearch(l: Loc): string {
+  const viewer = member();
+  const row = ROWS.hubRowsFor(viewer).flatMap((g) => g.rows).find((r) => r.id === "search");
+  if (!row) return "";
+  return renderToStaticMarkup(createElement(HubRowItem, { row, t: dict[l], viewer, locale: l }));
+}
+const REAL: Impl = { rows: ROWS.hubRowsFor, load: HV.loadHubViewer, words: ROWS.hubWordProblems, search: renderSearch };
 
 // ══ §1 · THE GATE ════════════════════════════════════════════════════════════════════════════════════════════
 const GATE_STEPS = ["const { journey } = await resolveSimpleJourney();", "if (!journey) notFound();"];
@@ -381,7 +416,10 @@ function g2Title(W: World, ok: Ok) {
 // ══ §3 · THE ROWS ════════════════════════════════════════════════════════════════════════════════════════════
 const layout = (groups: readonly HubGroup[]) => groups.map((g) => `${g.key}:${g.rows.map((r) => r.id).join(",")}`).join(" | ");
 const rowOf = (groups: readonly HubGroup[], id: string): HubRow | undefined => groups.flatMap((g) => g.rows).find((r) => r.id === id);
-const hrefOf = (r: HubRow | undefined): string | null => (r && "href" in r ? r.href : null);
+/** Where a row goes: a door's href, or Tafuta's form target (S7 WP9: its `action`, the journey home). */
+const hrefOf = (r: HubRow | undefined): string | null => (r && "href" in r ? r.href : r && "action" in r ? r.action : null);
+/** Tafuta as every signed-in reader is drawn it (S7 WP9, S7-PLAN A20): the search kind, sent to the journey home. */
+const SEARCH_ROW = { id: "search", kind: "search", action: "/", label: "common.search", placeholder: "journey.hubSearchPlaceholder", glyph: "search" };
 type Facts = { role?: string; held?: boolean; kyc?: boolean; standing?: boolean; eligible?: boolean; agentEnabled?: boolean; proposals?: ProposalsState };
 /** A signed-in reader whose doors the REAL `viewerDoorsFor` composes from the facts given. */
 function member(o: Facts = {}): HubMember {
@@ -457,6 +495,15 @@ function g3Rows(I: Impl, W: World, ok: Ok) {
     layout(noKyc) === want({ kyc: false }), layout(noKyc));
   const keys = I.rows(player).map((g) => g.key);
   ok("3.order · the play-safe card sits above invite and rewards (A17)", keys.indexOf("safety") >= 0 && keys.indexOf("safety") < keys.indexOf("invite"), keys.join(" "));
+  // S7 WP9 (A20): Tafuta keeps the settings card's last row — the order above, `language,cardSize,needle,search`, is
+  // unchanged — and is a search field now, never a door to the board a journey reader's /markets no longer shows.
+  const signedInReaders = [player, member({ held: true }), member({ role: "AGENT", standing: true }), member({ role: "SUPPORT" }),
+    member({ eligible: false }), member({ proposals: "DISABLED" }), member({ kyc: false })];
+  const searches = signedInReaders.map((v) => show(rowOf(I.rows(v), "search") ?? null));
+  ok("3.search · Tafuta is the search kind for every signed-in reader (A20): sent to the journey home (/), never to the shelved board, its word common.search and its field's journey.hubSearchPlaceholder (a hub word), the search glyph; and a guest's board draws none (s4-8-akaunti-guest)",
+    searches.every((s) => s === show(SEARCH_ROW)) && rowOf(guest, "search") === undefined
+      && (ROWS.HUB_WORDS as readonly string[]).includes(SEARCH_ROW.placeholder),
+    show({ rows: [...new Set(searches)], guest: rowOf(guest, "search") ?? null }));
 
   const rgOf = (groups: readonly HubGroup[]) => ["limits", "break", "exclude"].map((id) => hrefOf(rowOf(groups, id)));
   const signedIn = I.rows(player);
@@ -645,6 +692,160 @@ function g8Islands(W: World, ok: Ok) {
     reviewed.includes('"src/components/journey/account/sign-out-row.tsx"') && W.signOut.includes("<ConfirmDialog"));
 }
 
+// ══ §9 · TAFUTA (S7 WP9, S7-PLAN A20) ═════════════════════════════════════════════════════════════════════════
+/** One attribute of an opening tag as the server writes it (letter case aside), or null when the tag has none. */
+const attrOf = (tag: string, name: string): string | null => new RegExp(` ${name}="([^"]*)"`, "i").exec(tag)?.[1] ?? null;
+/** Every opening tag of one element in a piece of markup. */
+const tagsOf = (html: string, name: string): string[] => [...html.matchAll(new RegExp(`<${name}(?=[ >/])[^>]*>`, "g"))].map((m) => m[0]);
+/** Every flat rule of a stylesheet: its selector list, each selector trimmed, and its declarations. (A rule inside a query
+ *  reads as its own selector; the hub's rules stand in none.) */
+function cssRules(css: string): Array<{ selectors: string[]; body: string }> {
+  return [...css.matchAll(/([^{}]+)[{]([^{}]*)[}]/g)].map((m) => ({ selectors: m[1].split(",").map((s) => s.trim()), body: m[2] }));
+}
+/** Whitespace of any kind, from its code points (a rule's declarations may stand one to a line). */
+const SPACE = `[ ${String.fromCharCode(9)}${CR}${LF}]*`;
+/** A property's value in the rules whose selector list holds `selector` exactly — the last one wins, as the cascade reads it. */
+function declOf(css: string, selector: string, prop: string): string | null {
+  let value: string | null = null;
+  for (const r of cssRules(css)) {
+    if (!r.selectors.includes(selector)) continue;
+    const m = new RegExp(`(?:^|;)${SPACE}${prop}${SPACE}:${SPACE}([^;]+)`).exec(r.body.trim());
+    if (m) value = m[1].trim();
+  }
+  return value;
+}
+/** A length the sheet writes — `16px`, `0`, or a `var(--token)` the root declares in px — in px; NaN when it is neither. */
+function pxOf(css: string, v: string): number {
+  const t = v.trim();
+  const token = /^var[(](--[a-z0-9-]+)[)]$/.exec(t);
+  if (token) return Number(new RegExp(`${token[1]}:[ ]*([0-9.]+)px`).exec(css)?.[1] ?? NaN);
+  const n = /^(-?[0-9.]+)(?:px)?$/.exec(t);
+  return n ? Number(n[1]) : NaN;
+}
+/** A padding shorthand's start and end, in px (one, two, three or four values). */
+function inlinePad(css: string, v: string | null): number {
+  const p = (v ?? "").split(" ").filter((s) => s.length > 0);
+  const [start, end] = p.length === 4 ? [p[3], p[1]] : p.length >= 2 ? [p[1], p[1]] : [p[0] ?? "", p[0] ?? ""];
+  return pxOf(css, start) + pxOf(css, end);
+}
+
+/**
+ * ⭐ THE WIDTH MODEL (9.fit), the one `test:journey-home` 4.picks.fit and `test:visual-pass-r9a` §5.3 use: each character at
+ * its face's own advance from the repo's font files (the field's words Inter Regular 400 at 16px; the button's Inter 600,
+ * Medium's and Bold's advances averaged, at its own size and tracking), a wide East Asian character at one em, kerning
+ * ignored — which only tightens a run, so every width is an upper bound.
+ */
+type Face = { unitsPerEm: number; glyphForCodePoint: (c: number) => { id: number; advanceWidth: number } };
+const FACES = (() => {
+  const fontkit = createRequire(import.meta.url)("fontkit") as { openSync: (p: string) => Face };
+  const open = (n: string) => fontkit.openSync(join(REPO, "src", "lib", "server", "reports", "fonts", `${n}.ttf`));
+  return { regular: open("Inter-Regular"), medium: open("Inter-Medium"), bold: open("Inter-Bold") };
+})();
+const isWide = (ch: string) => { const p = ch.codePointAt(0) ?? 0; return (p >= 0x3000 && p <= 0x303f) || (p >= 0x3400 && p <= 0x9fff) || (p >= 0xf900 && p <= 0xfaff) || (p >= 0xff00 && p <= 0xffef); };
+const runWidth = (face: Face, s: string, size: number, tracking = 0) =>
+  [...s].reduce((w, ch) => w + tracking + (isWide(ch) ? size : (face.glyphForCodePoint(ch.codePointAt(0) ?? 0).advanceWidth / face.unitsPerEm) * size), 0);
+/**
+ * At `vw`, per language: the room the field leaves its words beside the button, and what the placeholder needs. Every
+ * figure is read where it is decided — the page's gutter (PageContainer's house `px-3`, 16px on the overridden spacing
+ * scale), the card's border, the form's inset (or `inset` a side, for the control) and gap, the kit Input's box (its 1px
+ * border and its `px-3`, at 16px type) and the kit button's (`.btn`'s border, `.btn-md`'s padding and size, the primary's
+ * tracking) — and a premise that no longer holds is reported, never assumed.
+ */
+function fitAt(W: World, vw: number, inset?: number): Array<{ l: Loc; room: number; need: number }> | string {
+  if (!W.container.includes('pad === "page" && "px-3 lg:px-6 py-6"') || !W.tailwind.includes('"3": "16px"')) return "the page's 16px gutter (px-3) is not where it was";
+  if (!W.input.includes('"flex-1 min-w-0 bg-transparent px-3 outline-none') || !W.input.includes('md: "text-[16px]"') || !W.input.includes("rounded-lg border overflow-hidden"))
+    return "the kit Input's box (a 1px border, px-3 inside it, 16px type) is not what it was";
+  const gutter = 16;
+  const fieldSides = 2 * (1 + 16);
+  const cardBorder = pxOf(W.css, (declOf(W.css, ".kp-hub__card", "border") ?? "").split(" ")[0]);
+  const panel = inset === undefined ? inlinePad(W.css, declOf(W.css, ".kp-hub__form", "padding")) : 2 * inset;
+  const gap = pxOf(W.css, declOf(W.css, ".kp-hub__form", "gap") ?? "");
+  const btnBorder = pxOf(W.css, (declOf(W.css, ".btn", "border") ?? "").split(" ")[0]);
+  const btnPad = inlinePad(W.css, declOf(W.css, ".btn-md", "padding"));
+  const btnSize = pxOf(W.css, declOf(W.css, ".btn-md", "font-size") ?? "");
+  const tracking = Number(/^([0-9.]+)em$/.exec(declOf(W.css, ".btn-primary", "letter-spacing") ?? "")?.[1] ?? NaN) * btnSize;
+  const parts = { cardBorder, panel, gap, btnBorder, btnPad, btnSize, tracking };
+  if (!Object.values(parts).every((n) => Number.isFinite(n))) return `a figure did not read: ${show(parts)}`;
+  return LOCS.map((l) => {
+    const word = wordAt(W.dicts[l], "common.search");
+    const label = (runWidth(FACES.medium, word, btnSize, tracking) + runWidth(FACES.bold, word, btnSize, tracking)) / 2;
+    const button = 2 * btnBorder + btnPad + label;
+    const room = vw - 2 * gutter - 2 * cardBorder - panel - gap - button - fieldSides;
+    return { l, room, need: runWidth(FACES.regular, wordAt(W.dicts[l], "journey.hubSearchPlaceholder"), 16) };
+  });
+}
+
+function g9Search(I: Impl, W: World, ok: Ok) {
+  const rowBad: string[] = [];
+  const formBad: string[] = [];
+  for (const l of LOCS) {
+    const html = I.search(l);
+    const word = wordAt(W.dicts[l], "common.search");
+    const summary = between(html, "<summary", "</summary>");
+    const rowOk = html.startsWith('<li><details class="kp-hub__find"><summary class="kp-hub__row">') && count(html, "<summary") === 1
+      && count(summary, '<span class="kp-hub__glyph" aria-hidden="true"><svg') === 1
+      && summary.includes(`<span class="kp-hub__label">${word}</span>`)
+      && tagsOf(summary, "svg").filter((t) => attrOf(t, "class") === "kp-hub__chev").length === 1
+      && ["a", "button", "input", "form", "select", "textarea"].every((t) => tagsOf(summary, t).length === 0);
+    if (!rowOk) rowBad.push(`${l}: ${summary.slice(0, 220)}`);
+    const formAt = html.indexOf("<form");
+    const form = between(html, "<form", "</form>");
+    const [formTag] = tagsOf(form, "form");
+    const inputs = tagsOf(form, "input");
+    const buttons = [...form.matchAll(/<button(?=[ >])([^>]*)>([^<]*)<[/]button>/g)];
+    const field = inputs[0] ?? "";
+    const fieldOk = inputs.length === 1 && attrOf(field, "name") === "q" && attrOf(field, "aria-label") === word
+      && attrOf(field, "placeholder") === wordAt(W.dicts[l], "journey.hubSearchPlaceholder") && attrOf(field, "maxlength") === String(MAX_QUERY_LEN)
+      && attrOf(field, "enterkeyhint") === "search" && attrOf(field, "autocomplete") === "off" && attrOf(field, "type") === null;
+    const formOk = formAt > html.indexOf("</summary>") && formAt < html.indexOf("</details>") && formTag !== undefined
+      && attrOf(formTag, "method") === "get" && attrOf(formTag, "action") === "/" && fieldOk
+      && buttons.length === 1 && attrOf(`<button${buttons[0][1]}>`, "type") === "submit" && buttons[0][2] === word && count(form, " name=") === 1;
+    if (!formOk) formBad.push(`${l}: ${form.slice(0, 300)}`);
+  }
+  ok("9.row · RENDERED in sw, en and zh: at rest Tafuta is the board's row — a disclosure whose summary IS the hub row, holding the search glyph, the word (common.search) and the chevron, and nothing that acts",
+    rowBad.length === 0, rowBad.join(" | "));
+  ok("9.form · RENDERED in sw, en and zh: beneath the row, inside the disclosure, ONE GET form to the journey home (/) holding ONE named field, q — the kit Input named by common.search, journey.hubSearchPlaceholder its placeholder, the home's cap (MAX_QUERY_LEN), a search key, no autocomplete, a text field, never the search type — and ONE submit, the kit Button in common.search's word; nothing hidden, so the address it builds is the home with q alone",
+    formBad.length === 0, formBad.join(" | "));
+
+  const fn = after(W.hubRow, "function SearchRow(");
+  const dispatch = W.hubRow.includes('if (row.kind === "search") return <SearchRow row={row} t={t} />;');
+  const acts = ["onSubmit", "onClick", "onToggle", "onChange", "onKeyDown", "useState(", "useEffect(", "useRef(", "useTransition("].filter((s) => fn.includes(s));
+  ok("9.script · it needs no script: hub-row.tsx is server code (no directive), HubRowItem hands the search kind to SearchRow, and SearchRow's details element and GET form carry no handler and no hook — it opens and sends with JavaScript off",
+    !isClient(W.hubRow) && dispatch && fn.includes('<details className="kp-hub__find">')
+      && fn.includes('<form method="get" action={row.action} className="kp-hub__form">') && acts.length === 0,
+    show({ dispatch, acts }));
+
+  const rules = cssRules(W.css);
+  const holding = (sel: string) => rules.filter((r) => r.selectors.includes(sel));
+  const marker = holding(".kp-hub__find > summary");
+  const webkit = holding(".kp-hub__find > summary::-webkit-details-marker");
+  const turn = rules.filter((r) => r.selectors.some((s) => s.startsWith(".kp-hub__find[open]") && s.endsWith(".kp-hub__chev")));
+  const shares = (rs: typeof rules, lang: string, decl: string) => rs.length === 1 && rs[0].selectors.includes(lang) && rs[0].body.includes(decl);
+  ok("9.css.disclosure · the language row's own disclosure rules serve Tafuta too, one selector list each: its summary drops the list marker (both engines' spellings), and open, its chevron turns on the language row's ONE rule (translateX(-2.25px) rotate(90deg), round 9's measured turn) — no second definition of the turn",
+    shares(marker, ".kp-hub__lang > summary", "list-style: none") && shares(webkit, ".kp-hub__lang > summary::-webkit-details-marker", "display: none")
+      && shares(turn, ".kp-hub__lang[open] > summary .kp-hub__chev", "transform: translateX(-2.25px) rotate(90deg)"),
+    show({ marker: marker.map((r) => r.selectors), webkit: webkit.length, turn: turn.map((r) => r.selectors) }));
+  const formDecl = (p: string) => declOf(W.css, ".kp-hub__form", p);
+  const optsPad = declOf(W.css, ".kp-hub__opts", "padding");
+  ok("9.css.panel · the form is one flex line on the inset the language choices open on (`.kp-hub__opts`' own padding, read from the sheet), its two controls a pair's 12px apart (--sp-3), the field taking the line (flex 1 1 auto, min-width 0) and the button keeping its word whole (nowrap)",
+    formDecl("display") === "flex" && formDecl("align-items") === "center" && formDecl("gap") === "var(--sp-3)" && optsPad !== null && formDecl("padding") === optsPad
+      && declOf(W.css, ".kp-hub__field", "flex") === "1 1 auto" && declOf(W.css, ".kp-hub__field", "min-width") === "0" && declOf(W.css, ".btn", "white-space") === "nowrap",
+    show({ form: ["display", "align-items", "gap", "padding"].map(formDecl), opts: optsPad, field: [declOf(W.css, ".kp-hub__field", "flex"), declOf(W.css, ".kp-hub__field", "min-width")] }));
+  const OPEN_ROW = ".kp-hub__card .kp-hub__find[open] > .kp-hub__row";
+  const LAST_ROW = ".kp-hub__card > li:last-child .kp-hub__row";
+  ok("9.css.corners · open, the row squares its bottom corners — it is no longer its card's last box — by a rule that outranks the last row's rounding ((0,4,0) against (0,3,1))",
+    declOf(W.css, OPEN_ROW, "border-bottom-left-radius") === "0" && declOf(W.css, OPEN_ROW, "border-bottom-right-radius") === "0"
+      && declOf(W.css, LAST_ROW, "border-bottom-left-radius") !== null,
+    show({ open: [declOf(W.css, OPEN_ROW, "border-bottom-left-radius"), declOf(W.css, OPEN_ROW, "border-bottom-right-radius")], last: declOf(W.css, LAST_ROW, "border-bottom-left-radius") }));
+
+  const fit = fitAt(W, 320);
+  ok(`9.fit · THE WIDTH PROOF at 320, in sw, en and zh: beside its button the field leaves its placeholder whole — ${typeof fit === "string" ? fit : fit.map((f) => `${f.l} ${f.need.toFixed(1)} of ${f.room.toFixed(1)}px`).join(", ")} (the repo's Inter by its own advances, kerning ignored, so an upper bound)`,
+    typeof fit !== "string" && fit.every((f) => Number.isFinite(f.room) && Number.isFinite(f.need) && f.need > 0 && f.need <= f.room), typeof fit === "string" ? fit : show(fit));
+  const tight = fitAt(W, 320, 16);
+  ok("9.fit.c · CONTROL · the measure can fail: on the row's own 16px gutters instead of the language choices' inset, en's placeholder would be cut at 320",
+    typeof tight !== "string" && tight.some((f) => f.l === "en" && f.need > f.room), typeof tight === "string" ? tight : show(tight));
+}
+
 // ══ THE RUN ══════════════════════════════════════════════════════════════════════════════════════════════════
 async function run(I: Impl, W: World, log: (l: string) => void): Promise<{ failed: string[]; total: number }> {
   const failed: string[] = [];
@@ -668,6 +869,8 @@ async function run(I: Impl, W: World, log: (l: string) => void): Promise<{ faile
   await g6Reader(I, ok);
   log(""); log("§8 · the islands — Arifa once, one list of languages, sign-out confirmed, the dialog reviewed");
   g8Islands(W, ok);
+  log(""); log("§9 · Tafuta (S7 WP9) — the board's row at rest, a GET form to the home beneath it, no script, Lugha's rules, the fit at 320");
+  g9Search(I, W, ok);
   return { failed, total };
 }
 
@@ -777,9 +980,33 @@ const proposalsAlways = rowsWith((v) => ({ ...v, doors: { ...v.doors, proposalsV
 const guestAsMember: Impl["rows"] = (v) => ROWS.hubRowsFor(v.signedIn ? v : member());
 const kycAlways = rowsWith((v) => ({ ...v, kycOffered: true }));
 const agentAsPlayer = rowsWith((v) => ({ ...v, agentInStanding: false }));
-const searchMisspelt = mapRows((r) => (r.id === "search" && r.kind === "link" ? { ...r, href: "/marketz" } : r));
+/** Tafuta's form sent to a route that is not on disk (A20: the misspelt-route plant re-pointed to the search kind's target). */
+const searchMisspelt = mapRows((r) => (r.kind === "search" ? ({ ...r, action: "/marketz" } as unknown as HubRow) : r));
+/** Tafuta a link to the board again — the row S6 left, which S7 WP9 replaces (A20). */
+const searchAsLink = mapRows((r) => (r.kind === "search" ? ({ id: "search", kind: "link", href: "/markets", label: "common.search", glyph: "search" } as unknown as HubRow) : r));
 const resultsTwice: Impl["rows"] = (v) => ROWS.hubRowsFor(v).map((g) => (g.key === "play" ? { ...g, rows: [...g.rows, ...g.rows.filter((r) => r.id === "results")] } : g));
 const labelOf = (r: HubRow | undefined): string | null => (r && r.kind === "link" ? r.label : null);
+
+// §9 — Tafuta: its rendering, its source and its rules
+const searchPosts: Impl["search"] = (l) => REAL.search(l).replace('method="get"', 'method="post"');
+const searchRenamed: Impl["search"] = (l) => REAL.search(l).replace('name="q"', 'name="query"');
+const searchHidden: Impl["search"] = (l) => REAL.search(l).replace("</form>", '<input type="hidden" name="page" value="1"/></form>');
+const searchTyped: Impl["search"] = (l) => REAL.search(l).replace('name="q"', 'type="search" name="q"');
+const searchNoChevron: Impl["search"] = (l) => {
+  const s = REAL.search(l);
+  const at = s.indexOf('class="kp-hub__chev"');
+  const open = s.lastIndexOf("<svg", at);
+  const close = s.indexOf("</svg>", at);
+  return at < 0 || open < 0 || close < 0 ? s : s.slice(0, open) + s.slice(close + "</svg>".length);
+};
+const FORM_OPEN = '<form method="get" action={row.action} className="kp-hub__form">';
+const searchScripted = withText("hubRow", (s) => s.replace(FORM_OPEN, '<form method="get" action={row.action} className="kp-hub__form" onSubmit={(e) => e.preventDefault()}>'));
+const turnCopied = withText("css", (s) => `${s.replace(".kp-hub__find[open] > summary .kp-hub__chev, ", "")}${LF}.kp-hub__find[open] > summary .kp-hub__chev { transform: rotate(90deg); }${LF}`);
+const markerShown = withText("css", (s) => s.replace(".kp-hub__find > summary, .kp-hub__lang > summary { list-style: none; }", ".kp-hub__lang > summary { list-style: none; }"));
+const fieldShrinks = withText("css", (s) => s.replace(".kp-hub__field { flex: 1 1 auto; min-width: 0; }", ".kp-hub__field { flex: 0 0 auto; }"));
+const rowGutters = withText("css", (s) => s.replace("gap: var(--sp-3); padding: 0 var(--sp-2) var(--sp-2); }", "gap: var(--sp-3); padding: 0 var(--sp-4) var(--sp-4); }"));
+const cornersKept = withText("css", (s) => s.replace(".kp-hub__card .kp-hub__find[open] > .kp-hub__row { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }", ""));
+const searchDiffers = (planted: Impl["search"]) => LOCS.some((l) => planted(l) !== REAL.search(l));
 
 // §6 — the reader
 const guestReads: Impl["load"] = async (id, deps = base()) => {
@@ -862,6 +1089,20 @@ const plants: Plant[] = [
   { name: "sign-out POSTs without asking", expect: ["8.signout ·"], world: noConfirm, landed: changed(noConfirm, "signOut") },
   { name: "sign-out is sent as a GET, which the logout route neuters", expect: ["8.signout ·"], world: signOutGets, landed: changed(signOutGets, "signOut") },
   { name: "popup-fit stops reviewing the sign-out row", expect: ["8.popup"], world: unreviewed, landed: changed(unreviewed, "popupFit") },
+  // §3 · §9 — Tafuta (S7 WP9, A20)
+  { name: "Tafuta turned back into a link to the board a journey reader's /markets no longer shows", expect: ["3.search"], impl: { rows: searchAsLink },
+    landed: hrefOf(rowOf(searchAsLink(member()), "search")) === "/markets" },
+  { name: "Tafuta's form POSTs (no address to land on, nothing for the home to read)", expect: ["9.form"], impl: { search: searchPosts }, landed: searchDiffers(searchPosts) },
+  { name: "Tafuta's field renamed (the home reads q)", expect: ["9.form"], impl: { search: searchRenamed }, landed: searchDiffers(searchRenamed) },
+  { name: "a hidden field rides along with Tafuta's q", expect: ["9.form"], impl: { search: searchHidden }, landed: searchDiffers(searchHidden) },
+  { name: "Tafuta's field turned into the search type (a second search box beside SearchBox)", expect: ["9.form"], impl: { search: searchTyped }, landed: searchDiffers(searchTyped) },
+  { name: "Tafuta's row loses its chevron (not the board's row any more)", expect: ["9.row"], impl: { search: searchNoChevron }, landed: searchDiffers(searchNoChevron) },
+  { name: "Tafuta's form taken over by a script (nothing sends with JavaScript off)", expect: ["9.script"], world: searchScripted, landed: changed(searchScripted, "hubRow") },
+  { name: "Tafuta turns its chevron by a rule of its own (a second definition of the turn)", expect: ["9.css.disclosure"], world: turnCopied, landed: changed(turnCopied, "css") },
+  { name: "Tafuta's summary keeps its list marker", expect: ["9.css.disclosure"], world: markerShown, landed: changed(markerShown, "css") },
+  { name: "Tafuta's field stops taking the line", expect: ["9.css.panel"], world: fieldShrinks, landed: changed(fieldShrinks, "css") },
+  { name: "Tafuta's form on the row's own 16px gutters (en's placeholder cut at 320)", expect: ["9.fit ·"], world: rowGutters, landed: changed(rowGutters, "css") },
+  { name: "open, Tafuta's row keeps the card's rounded corners over the field", expect: ["9.css.corners"], world: cornersKept, landed: changed(cornersKept, "css") },
   { name: "sign-out is offered to a guest", expect: ["8.signout.page"], world: guestsSignOut, landed: changed(guestsSignOut, "page") },
   { name: "Alika is offered where the reader may not hold a link", expect: ["3.closed", "3.invite.empty"], impl: { rows: inviteUngated }, landed: differs(inviteUngated, member({ eligible: false })) },
   { name: "a held wallet is offered Toa pesa", expect: ["3.held"], impl: { rows: heldWithdraws }, landed: differs(heldWithdraws, member({ held: true })) },
