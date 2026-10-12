@@ -507,6 +507,8 @@ section("10 · C9 every player dialog's ✕ is ruled — on its title, in its he
   const RULED: Record<string, Kind> = {
     "src/components/journey/tickets-guest-sheet.tsx": "title", "src/components/markets/market-card.tsx": "title",
     "src/components/markets/objection-dialog.tsx": "title", "src/components/markets/share-button.tsx": "title", "src/components/rg/reality-check.tsx": "title",
+    // The Vodacom plan S7, WP6: the How to Play sheet — the guest sheet's title class (its 24px modifier) on the corner ✕.
+    "src/components/onboarding/how-to-play-sheet.tsx": "title",
     "src/components/markets/bet-confirm-modal.tsx": "header-row", "src/components/markets/sell-confirm-modal.tsx": "header-row", "src/components/ui/modal.tsx": "header-row",
     "src/components/layout/wallet-sheet.tsx": "none", "src/components/onboarding/first-visit-primer.tsx": "none",
     "src/components/markets/operation-result-modal.tsx": "crest", "src/components/markets/win-celebration.tsx": "crest",
