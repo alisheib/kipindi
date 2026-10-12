@@ -2808,6 +2808,21 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     How-to card, and between about 1048 and 1223px the Swahili headline broke inside its second sentence ("Jibu swali.
     NDIO / au HAPANA."). Each sentence is its own unbreakable span from 1024 now, so the line breaks only between the
     sentences; below 1024 nothing changes. Overrule: let a sentence break where the width falls.
+80. **A session that ends mid-bet is a sign-in, never a failed bet — Ali's ruling, 2026-10-12 (asked; "fix now"), live
+    fix L3, not with S12.** S8's plan critique (S8-PLAN A23 item 2) found that the classic dial and Up & Down's quick bet
+    waited for a sign-out as an answer of nothing (`r == null`), while in Next 16 a money action whose session has ended
+    REJECTS with its redirect (`server-action-reducer.js`), so the rejection fell to the catch that maps a thrown call to
+    an unknown outcome. Measured on a dev server at `6da7f936`, the session ended by a second sign-in before the commit:
+    the dial said "Could not place — Something went wrong at our end", the sell button (the same defect, found while
+    measuring) "Couldn't cash out — We're busy right now" with its "CASH-OUT FAILED" result, and the quick bet "Bet not
+    placed — The game is busy right now". Each was sticky, over the sign-in page, about money the server never touched.
+    Each of the three catches now asks `isActionRedirect` (`src/lib/action-redirect.ts`, Next's own rule) before any
+    failure is said: the confirm closes, nothing is said, and the navigation speaks. Proof: `test:action-redirect`
+    (predeploy: the reducer still rejects, the rule equals Next's over real redirect errors and near misses, and each
+    control asks first; `red:action-redirect` catches 13 of 13 plants and passes a green control) and
+    `qa:auth-loss-mid-bet` (each control commits with the session alive, then with it ended: 15/15 on the fix, the three
+    "no failure is said" lines red on its parent, and the wallet unmoved). §3.3's auth-loss line is annotated (S8-PLAN A6
+    item 4's WP0 note, done here). No overrule: Ali's ruling.
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
 
@@ -3928,7 +3943,9 @@ Other rules:
   `system_busy`/`system_error` or a double tap while pending.
 - While placing: the field, chips and CTA are locked, `aria-busy` is set, and scrim / Esc / X / swipe / Back are
   ignored.
-- An auth-loss redirect (`r == null`) is treated as navigation, not failure.
+- An auth-loss redirect (`r == null`) is treated as navigation, not failure. ⚠️ *Annotated 2026-10-12 (live fix L3,
+  §0h point 80): in Next 16 the call does not resolve to nothing — it REJECTS with the redirect. The test is
+  `isActionRedirect` in the catch, before any failure is said (`src/lib/action-redirect.ts`, `test:action-redirect`).*
 
 **Refusals, all shown inside the sheet**
 - Mapped by `REASONS[].channel` (the `udBetErrorCopy` pattern):
