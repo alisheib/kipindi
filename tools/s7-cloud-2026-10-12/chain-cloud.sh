@@ -127,7 +127,8 @@ case "$PHASE" in
   parity-tip)
     WANT="$1"; PB="$2"; fonts_ok || die "Google Fonts unreachable before the parity compare"
     srv_at "$WANT"; watchdog
-    run_srv 10-parity npm run qa:classic-shell-parity -- --compare "$PB" --allow-base; font_invalid 10-parity
+    # A hard limit: one run stalled 17 min inside a browser call late in the Sell phase (2026-10-12; a repro was clean).
+    run_srv 10-parity timeout 3300 npm run qa:classic-shell-parity -- --compare "$PB" --allow-base; font_invalid 10-parity
     note "10 parity v3 vs $(basename "$PB"): $(verdict 10-parity '^  FAIL|passed —|FAILURES|REFUSED|ALL PASS' 4)"; touch "$R/WATCHDOG.off"
     ;;
   # ── D · served skeleton --main, classic readers: a null pair at main, then the tip, compared offline ───────────────
@@ -167,7 +168,7 @@ case "$PHASE" in
     run_srv 18-header-fit npm run -s qa:journey-header-fit
     note "18 qa:journey-header-fit: $(verdict 18-header-fit 'passed|PASS|FAIL|failed' 2)"; sleep 30
     run_srv 19-landmark-journey npm run -s qa:landmark-seal -- --journey
-    note "19 qa:landmark-seal --journey: $(verdict 19-landmark-journey 'passed|PASS|FAIL|failed|problems' 2)"
+    note "19 qa:landmark-seal --journey: $(verdict 19-landmark-journey 'passed|PASS|FAIL|failed|problem' 2)"
     touch "$R/WATCHDOG.off"
     ;;
   *) echo "unknown phase $PHASE"; exit 2 ;;

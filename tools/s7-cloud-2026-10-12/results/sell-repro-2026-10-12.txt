@@ -1,0 +1,51 @@
+    0.1s  → sign in the demo player
+    2.1s  ✓ sign in the demo player
+    2.1s  → seed-real-markets
+    3.0s  ✓ seed-real-markets
+    3.0s  → warm /positions and a question
+   11.1s  ✓ warm /positions and a question
+   11.1s  → seed-player-portfolio {markets: 5}
+   12.5s  ✓ seed-player-portfolio {markets: 5}
+   12.5s  held mkt_77398a6d96eb957e00bb · byStatus {"CASHED_OUT":1,"OPEN":4}
+   12.5s  → [1] newContext 360
+   12.5s  ✓ [1] newContext 360
+   12.5s  → [1] first-paint page: newPage
+   12.6s  ✓ [1] first-paint page: newPage
+   12.6s  → [1] first paint: goto /markets/held (scripts held)
+   13.3s  ✓ [1] first paint: goto /markets/held (scripts held)
+   13.3s  → [1] first paint: the Sell button in the markup
+   13.6s  ✓ [1] first paint: the Sell button in the markup
+   13.6s  → [1] first paint: fonts ready
+   13.7s  ✓ [1] first paint: fonts ready
+   13.7s  → [1] first paint: page.close
+   13.7s  ✓ [1] first paint: page.close
+   13.7s  → [1] hydrated page: newPage  (the stalled call)
+   13.7s  ✓ [1] hydrated page: newPage  (the stalled call)
+   13.7s  → [1] hydrated page: goto load
+   14.6s  ✓ [1] hydrated page: goto load
+   14.6s  → [1] hydrated page: main
+   14.7s  ✓ [1] hydrated page: main
+   14.7s  → [1] context close
+   14.7s  ✓ [1] context close
+   14.7s  → [2] newContext 360
+   14.7s  ✓ [2] newContext 360
+   14.7s  → [2] first-paint page: newPage
+   14.8s  ✓ [2] first-paint page: newPage
+   14.8s  → [2] first paint: goto /markets/held (scripts held)
+   15.1s  ✓ [2] first paint: goto /markets/held (scripts held)
+   15.1s  → [2] first paint: the Sell button in the markup
+   15.4s  ✓ [2] first paint: the Sell button in the markup
+   15.4s  → [2] first paint: fonts ready
+   15.5s  ✓ [2] first paint: fonts ready
+   15.5s  → [2] first paint: page.close
+   15.5s  ✓ [2] first paint: page.close
+   15.5s  → [2] hydrated page: newPage  (the stalled call)
+   15.5s  ✓ [2] hydrated page: newPage  (the stalled call)
+   15.5s  → [2] hydrated page: goto load
+   16.2s  ✓ [2] hydrated page: goto load
+   16.2s  → [2] hydrated page: main
+   16.3s  ✓ [2] hydrated page: main
+   16.3s  → [2] context close
+   16.3s  ✓ [2] context close
+   16.3s  DONE — no stall
+repro exit 0
