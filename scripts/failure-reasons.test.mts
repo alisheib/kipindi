@@ -712,6 +712,10 @@ console.log("\n§8c · the services still emit the reasons that replaced the phr
       // holder's own limit would block a house stake before firing. It answers the engine only; the stake itself still
       // meets `buyPosition`'s own check, which is the refusal that says why.
       "src/lib/server/house-bot/control.ts": "engine pre-fire holder read; refuses no player, the house stake still meets buyPosition's check",
+      // The Vodacom plan S8 WP3 (S8-PLAN A4): the bet sheet's OPEN read asks the gate at the market's minimum stake only to
+      // write the `bet.loss_limit_blocked` row a refused tap would write. It returns no refusal: the sheet shows the plan's
+      // loss block from `viewerFacts`, and a tap still meets `buyPosition`'s own check, the refusal that says why.
+      "src/lib/server/journey-sheet.ts": "the sheet's open read records the refused tap's row; refuses no player, a bet still meets buyPosition's check",
     };
     const all = walkServer("src/lib/server").filter((f) => !f.endsWith("responsible-gambling.ts")).filter(callsIt);
     const callers = all.filter((f) => !Object.keys(READ_ONLY_CALLERS).some((x) => f.endsWith(x)));
