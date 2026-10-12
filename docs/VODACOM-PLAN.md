@@ -373,7 +373,9 @@ records) went live with this record — S7's build is complete, and its producti
 classic gaps Ali ruled "fix now" (S8-PLAN A23): live fixes L3 and L2, each its own release.
 (3) S8 — the bet sheet and low balance — is next, from its WP0 ([`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md); its citations re-read at `6da7f936` on a helper
 VM: 729 — 459 unchanged, 256 moved, 14 changed, 0 gone — with eight candidate A24 items, most from the TZS 500 minimum
-stake; `origin/vodacom-visual-tools` `tools/s7-cloud-2026-10-12/results/s8-citations-6da7f936-summary.md`). OMEGA's own 2026-10-07/08 WP1 is on origin
+stake; `origin/vodacom-visual-tools` `tools/s7-cloud-2026-10-12/results/s8-citations-6da7f936-summary.md`; drafts of
+WP0's records — A24, §0k and §0h point 82 with Ali's answers of 2026-10-12 — beside it in `results/evening-2026-10-12/s8-drafts/`).
+S8 also takes the journey hydration note (§0j, WP11's bullet). OMEGA's own 2026-10-07/08 WP1 is on origin
 for reference only as `vodacom-s7-wp1-omega`, never to be merged (§0h point 66). S7's plan:
 [`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), whose Amendments override its body. (4) When
 Ali says so, and not before (nothing turns on until the plan is done): an officer approves the S2 short titles, and
@@ -774,7 +776,22 @@ body. Owner-level calls: §0h point 58, and 65 on.
   lines at sw 320 (as S6's header-fit records); the seeded catalogue has no Chinese titles, so zh cards read English
   (data); at 1024 the How-to card wraps under the h1 (A16's recorded composition). One console error was seen once in the
   long run — a hydration attribute mismatch on `/` after Tafuta's landing (sw 360, signed in) — and did not come back in
-  six tries on the live code (directly, through Tafuta, plain; two rounds each): recorded, not reproduced.
+  six tries on the live code (directly, through Tafuta, plain; two rounds each). **The drives' review** (independent: four
+  should-fix weaknesses and four notes, all closed in `83bcfab3`, drives only — the ghost's classic control hops by the
+  classic link and must land, the hidden-ghost red counts only a landed hop with the ghost mounted, the short-title save
+  is read back and card 1's title checked per cell, [E3] signs in only with `QA_SIGNED_IN=mobile01`, the positive control
+  reads only a page that answered with the app shell, the sentence gap is read inside the served h1, `/results` needs all
+  three outcomes, the Up & Down row is pressed, cls-budget's red counts only a shift) **and the re-run after it** (this
+  VM, Node 24, each drive on a fresh in-memory server; logs on `origin/vodacom-visual-tools`
+  `tools/s7-cloud-2026-10-12/results/evening-2026-10-12/drives/`): qa:journey-home 83 passed, 0 failed, 0 blocked, 0 not
+  measured, 101 tiles; qa:journey-above-fold 72/72 and its plants 7/7 (so too `--prove-red`), its least slack unchanged;
+  ⚠️ **owed before this record goes to main:** the re-run of qa:cls-budget `--journey` (and its RED_SHELL control, which
+  must fail) and of local qa:live in its three modes (local; non-local `127.0.0.2`; non-local with
+  `QA_SIGNED_IN=mobile01`, which must stop on the missing password) — the cloud session handed over mid-run (its recipe:
+  `results/evening-2026-10-12/scripts/close-drives.sh`). Its one console note was the same kind of hydration attribute mismatch, on journey `/results` (en 360)
+  this time — two sightings, both on staff-pass pages only, neither brought back (nine more tries on `/results`). The
+  drive now keeps the whole console text beside its tiles (`console-errors.txt`), so the next sighting names the
+  attribute: handed to S8 (§0 Next).
 - **WP12 ✅ LIVE (2026-10-12, with this record) — S7's close:** the battery (`test:all` at the release's code twice, helper
   C — after each red's own re-run only main's three known reds; the server suites green against a server; every red twin
   caught), parity v3 against a baseline at the main it landed on (53/53, the landing bullet), qa:first-load PASS, the
