@@ -135,9 +135,15 @@ export async function POST(req: Request) {
   }
 
   // ⛔ `isWatching` FIRST — `toggleWatch` is a toggle, so a re-run would unstar everything.
+  // ⭐ ONE MILLISECOND APART AT LEAST (the Vodacom plan, S7 WP1's calibration, 2026-10-12). `/watchlist` lists the newest
+  // star first by its `createdAt`, to the millisecond, and stars written inside one millisecond keep the order they were
+  // written in — so a loop that ran faster or slower drew the same cards in another order, and two fresh servers of one
+  // tree disagreed (parity v3's null pair, the player's four /watchlist cells). A 2 ms pause between stars gives each its
+  // own moment, and the page's order is the stars' own: the last starred first.
   let starred = 0;
   for (const id of new Set(wanted)) {
     if (await isWatching(id, uid)) continue;
+    if (starred > 0) await new Promise((resolve) => setTimeout(resolve, 2));
     await toggleWatch(id, uid);
     starred++;
   }
