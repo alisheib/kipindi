@@ -248,9 +248,16 @@ const BOOK_NORMALISERS = [
     control: '<span class="kp-tag-0a1b2c3d">deadbeef12 · page_tsx._.css · __className</span>',
   },
 ];
-/** ⭐ THIS FILE'S SWITCHES: the normalisers a calibration null pair has proved necessary, by id. None yet — WP1 step 6's
- *  calibration decides, and the commit that turns one on says which pair proved it (VODACOM-PLAN §0j). */
-const BOOK_NORMALISE_ON = [];
+/** ⭐ THIS FILE'S SWITCHES: the normalisers a calibration null pair has proved necessary, by id (VODACOM-PLAN §0j).
+ *  · market-ids — WP1 step 6's null pair, 2026-10-12 (ALI-BLADE15): the baseline captured at 9b18ea59 and a null compare
+ *    on a second fresh server of the same commit, every book normaliser off. 48 of the book's 196 fields differed (the
+ *    bodies of /, /markets, /live, /results and /watchlist, and the similar rail), and market-ids alone left 8: each
+ *    server mints its own question ids, so every card's link and row id differed. The 8 were /watchlist's order — the
+ *    same nine cards drawn in another order — which no normaliser here absorbs and none should: seed-watchlist starred
+ *    inside one millisecond, so the page's newest-first order hung on the loop's speed. The seed now stars one
+ *    millisecond apart at least (its route, the same commit), and the order is the stars' own. Every other candidate
+ *    stays off: the pair needed none of them. */
+const BOOK_NORMALISE_ON = ["market-ids"];
 /** The ids a switch names, in BOOK_NORMALISERS' order; a name that is not a candidate is refused. */
 function normaliseIds(text, from) {
   const ids = BOOK_NORMALISERS.map((n) => n.id);
