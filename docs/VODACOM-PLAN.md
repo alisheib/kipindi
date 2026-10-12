@@ -2845,23 +2845,30 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     independent review found no blocker. Its one case for later, S8's doubt state: a dial Retry after an unknown
     outcome, made once the session has ended, now redirects in silence, so its "check your wallet" advice is not
     repeated. §3.3's auth-loss line is annotated (S8-PLAN A6 item 4's WP0 note, done here). No overrule: Ali's ruling.
-81. **A lost answer can never become a second bet — Ali's ruling, 2026-10-12 (asked; "fix now"), live fix L2, not with
-    S12.** S8's plan critique (S8-PLAN A23 item 1): a bet carries an idempotency key and the same key is the same bet,
-    but the replay sat inside the wallet lock AFTER every gate, so when a bet landed and only its answer was lost, the
-    same-key retry could be refused by a gate that came up meanwhile. Maintenance then said "Nothing has been charged"
-    about a charged bet, the dial wiped itself on that terminal refusal, and its next confirm minted a fresh key: a
-    second bet. `buyPosition` now answers any refusal of a keyed request (but BUSY) with the receipt of the bet that key
-    already placed for that player (`landedKeyAnswer`, market-service.ts): never another player's key or a house stake's,
-    and a read that fails is the unknown outcome (`system_error`, retried with the same key), never a refusal. A bet
-    that goes through, a request with no key and a key that placed nothing are unchanged, and the happy path reads
-    nothing more. Proof: `test:bet-landed-key` (predeploy), on the in-memory store and on Postgres 16 — under
+81. **A lost answer no longer becomes a second bet once the first has committed — Ali's ruling, 2026-10-12 (asked; "fix
+    now"), live fix L2, not with S12.** S8's plan critique (S8-PLAN A23 item 1): a bet carries an idempotency key and the
+    same key is the same bet, but the replay sits inside the wallet lock AFTER every gate. So when a bet landed and only
+    its answer was lost, the dial's same-key Retry could be refused by a gate that came up meanwhile. Maintenance then said
+    "Nothing has been charged" about a charged bet, the dial wiped itself on that terminal refusal, and its next confirm
+    minted a fresh key: a second bet. `buyPosition` now answers a refusal made BEFORE the in-lock replay with the receipt
+    of the bet that key already placed (`landedKeyAnswer`, market-service.ts) — only the player's own, never a house
+    stake's, and only the very bet asked for again (the same question, side and stake). The override is recorded beside
+    the gate's own row (`market.position.replayed`, the gate's code and reason; COMPLIANCE-DECISIONS 2026-10-12, a call
+    under delegation with its overrule: a responsible-gambling gate wins over the receipt). A refusal made after the
+    in-lock lookup (the balance, the loss limit, a held wallet) asks nothing more; a read that fails leaves the gate's
+    refusal exactly as it was; the read runs inside admission; a bet that goes through, a request with no key and BUSY
+    are unchanged. Proof: `test:bet-landed-key` (predeploy) — on the in-memory store and on Postgres 16, under
     maintenance, a drained rate bucket, betting closed and a cooling-off break the landed key is answered with its bet
-    while a fresh key is still refused; another player's use of it never; one debit, one position — red on its parent
-    (1.2, 1.7, 1.9, 1.11, 1.12), `red:bet-landed-key` 7 of 7 with a green control; `e2e:money` and `e2e:fault` on
-    Postgres; `test:all`. What it cannot close, and S8's sheet does (its doubt state, A2/A3/A7): a retry refused while
-    the first attempt is still running and its key not yet committed. S8-PLAN WP11a cell (b) — maintenance on, a
-    retry, `failSystemError` — no longer happens for a key that landed (its retry is answered with the receipt); S8's
-    A24 re-cuts it. No overrule: Ali's ruling.
+    while a fresh key is still refused; other figures, another player's key and a house stake's key on the caller's own
+    account never; one debit, one position; in memory only (stated, not run on Postgres), the in-lock refusal reads
+    nothing more and a failed read keeps the refusal — red on its parent (1.2, 1.3, 1.9, 1.11, 1.13); `red:bet-landed-key`
+    10 of 10 with a green control; `e2e:money` 64/64 and `e2e:fault` 34/34 on Postgres; `test:house-bot-seam` with the
+    answer's house check at its own seam site (`SEAM:landedKey`); `test:all`. An independent review found no blocker;
+    its should-fix items (a failed read must not turn a must-read refusal into a toast; a refusal after the in-lock
+    lookup must not read again) and notes (the figures, the record, the wording here) are taken. What it cannot close,
+    and S8's sheet does (its doubt state, A2/A3/A7): a retry refused while the first attempt is still running and its key
+    not yet committed. S8-PLAN WP11a cell (b) (maintenance on, a retry, `failSystemError`) no longer happens for a key
+    that landed — its retry is answered with the receipt — and S8's A24 re-cuts it. No overrule: Ali's ruling.
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
 
