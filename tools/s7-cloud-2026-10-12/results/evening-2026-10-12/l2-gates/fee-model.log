@@ -1,0 +1,58 @@
+[audit] ADMIN config.global.updated fee-model-test-setup MarketConfig#global
+[audit] ADMIN market.created test Market#mkt_e1bcf3e4029cea98a761
+[audit] BET market.position.opened rp_victim Position#pos_fe6d908546b404b894e7
+[email] sendEmailToUser skipped — no email for user rp_victim… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened rp_yes2 Position#pos_7b2d11f0fbf7d17d4420
+[email] sendEmailToUser skipped — no email for user rp_yes2… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened rp_yes3 Position#pos_59acda015aab43b176ef
+[email] sendEmailToUser skipped — no email for user rp_yes3… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened rp_no Position#pos_e2ead57b65fa097ac881
+[email] sendEmailToUser skipped — no email for user rp_no… (user.email=null, phone=+25597…)
+[audit] ADMIN market.adjudicated fee_a Market#mkt_e1bcf3e4029cea98a761
+[audit] WALLET bet.payout rp_victim Position#pos_fe6d908546b404b894e7
+[email] sendEmailToUser skipped — no email for user rp_victim… (user.email=null, phone=+25597…)
+[audit] WALLET bet.payout rp_yes2 Position#pos_7b2d11f0fbf7d17d4420
+[email] sendEmailToUser skipped — no email for user rp_yes2… (user.email=null, phone=+25597…)
+[audit] WALLET bet.payout rp_yes3 Position#pos_59acda015aab43b176ef
+[audit] ADMIN market.resolved system Market#mkt_e1bcf3e4029cea98a761
+[email] sendEmailToUser skipped — no email for user rp_yes3… (user.email=null, phone=+25597…)
+[email] sendEmailToUser skipped — no email for user rp_no… (user.email=null, phone=+25597…)
+[audit] WALLET market.settled system Market#mkt_e1bcf3e4029cea98a761
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_e1bcf3e4029cea98a761
+[audit] ADMIN market.created test Market#mkt_4519219930029d65a545
+[audit] BET market.position.opened rn_y1 Position#pos_1936184661dbd07fb381
+[email] sendEmailToUser skipped — no email for user rn_y1… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened rn_y2 Position#pos_f930cf2f7e1cdfa68c35
+[email] sendEmailToUser skipped — no email for user rn_y2… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened rn_y3 Position#pos_1ebaaf84652f5d9dab22
+[email] sendEmailToUser skipped — no email for user rn_y3… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened rn_no Position#pos_24803237c8a763422cfd
+[email] sendEmailToUser skipped — no email for user rn_no… (user.email=null, phone=+25597…)
+[audit] ADMIN market.adjudicated fee_a Market#mkt_4519219930029d65a545
+[email] sendEmailToUser skipped — no email for user rn_y1… (user.email=null, phone=+25597…)
+[email] sendEmailToUser skipped — no email for user rn_y2… (user.email=null, phone=+25597…)
+[email] sendEmailToUser skipped — no email for user rn_y3… (user.email=null, phone=+25597…)
+[audit] WALLET bet.payout rn_no Position#pos_24803237c8a763422cfd
+[audit] ADMIN market.resolved system Market#mkt_4519219930029d65a545
+[email] sendEmailToUser skipped — no email for user rn_no… (user.email=null, phone=+25597…)
+[audit] WALLET market.settled system Market#mkt_4519219930029d65a545
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_4519219930029d65a545
+[audit] ADMIN market.created test Market#mkt_889d0d7c065fb52747c9
+[audit] BET market.position.opened st_y Position#pos_908aec534d0e9a2b4dfd
+[email] sendEmailToUser skipped — no email for user st_y… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened st_n Position#pos_58a1d4f55d3ac40b975e
+[email] sendEmailToUser skipped — no email for user st_n… (user.email=null, phone=+25597…)
+[audit] ADMIN config.global.updated officer_greedy MarketConfig#global
+[audit] ADMIN market.adjudicated fee_a Market#mkt_889d0d7c065fb52747c9
+[audit] WALLET bet.payout st_y Position#pos_908aec534d0e9a2b4dfd
+[audit] ADMIN market.resolved system Market#mkt_889d0d7c065fb52747c9
+[email] sendEmailToUser skipped — no email for user st_y… (user.email=null, phone=+25597…)
+[email] sendEmailToUser skipped — no email for user st_n… (user.email=null, phone=+25597…)
+[audit] WALLET market.settled system Market#mkt_889d0d7c065fb52747c9
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_889d0d7c065fb52747c9
+[audit] ADMIN market.created test Market#mkt_e65d36c7ab57e6ddac27
+[audit] ADMIN config.global.updated officer_test MarketConfig#global
+[audit] ADMIN config.global.updated officer_test MarketConfig#global
+
+fee-model: 78 passed, 0 failed
+[audit] ADMIN config.global.updated officer_test MarketConfig#global

@@ -1,0 +1,12 @@
+PROVED   the REAL tree passes every source check
+PROVED   GREEN: a sound variant passes every source check
+PROVED   buyPosition never asks (the defect as it was)
+PROVED   it asks of a keyless request too
+PROVED   the owner is not checked (another player's key would be answered with that player's bet)
+PROVED   a house stake's key is answered to a player
+PROVED   a failed read returns null (the refusal, maybe "nothing charged", stands)
+PROVED   the house path asks it as well
+PROVED   predeploy without the suite
+
+RED CONTROL — 7/7 caught
+

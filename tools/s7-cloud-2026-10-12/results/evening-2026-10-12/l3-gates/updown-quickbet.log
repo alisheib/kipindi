@@ -1,0 +1,89 @@
+[audit] ADMIN source.added system TrustedSource#src_98c41e9d112db555
+[audit] ADMIN source.added system TrustedSource#src_48326750c59b08e8
+[audit] ADMIN updown.asset.created off UpDownAsset#uda_39969385e540f3dc
+[audit] ADMIN updown.asset.enabled off UpDownAsset#uda_39969385e540f3dc
+[audit] ADMIN updown.chain.created off UpDownChain#udc_af8cd7747bb1f5d3
+[audit] ADMIN updown.chain.started off UpDownChain#udc_af8cd7747bb1f5d3
+PASS 0.1 · a stale chain min (100) is floored to the platform min (500) — got 500
+PASS 0.2 · the chain's own higher max is preserved — got 50000
+[audit] SYSTEM updown.round.opened system_updown UpDownRound#udr_afd67e64e75e96a982f3
+[audit] BET market.position.opened qb_alice Position#pos_91b8bb042d74e721867b
+PASS 1 · a tap places a bet
+PASS 2 · the stake left the wallet exactly once — moved 2000
+PASS 3 · the card shows it on the UP side — up 2000 down 0
+[audit] BET market.position.opened qb_alice Position#pos_35aedb209ec8d2dbce6c
+PASS 4 · both idempotent calls report ok
+PASS 5 · only ONE stake was charged for the duplicate key — moved 3000
+PASS 6 · both return the SAME position
+[audit] BET market.position.opened qb_alice Position#pos_3261baaae3da14aa8203
+[audit] BET market.position.opened qb_alice Position#pos_d2cb442dfe9135168844
+[audit] BET market.position.opened qb_alice Position#pos_4697d9f4e58aedf3c41a
+[audit] BET market.position.opened qb_alice Position#pos_85f083a5fbe10c218486
+[audit] BET market.position.opened qb_alice Position#pos_5ec82f4dd290d41f8607
+PASS 7 · five distinct rapid taps all placed — moved 5000
+PASS 8 · 'you're in' sums every distinct UP tap — up 10000
+[audit] WALLET bonus.wagering_skipped_opposite_side qb_alice Position#pos_912d24755e22dede3cf8
+[audit] BET market.position.opened qb_alice Position#pos_912d24755e22dede3cf8
+PASS 9 · ⭐ a DOWN tap is ACCEPTED for an account already holding UP
+PASS 10 · ⭐ the chip reads BOTH sides separately, and exactly the DOWN stake left the wallet — up 10000 down 4000 balance 990000→986000
+[audit] BET market.position.opened qb_bob Position#pos_1071da90a32a354cec23
+PASS 11 · Bob sees only Bob's stake — bob up 0 down 7000
+PASS 12 · Alice is unchanged by Bob's bet on the SAME side she holds — alice up 10000 down 4000
+PASS 13 · a signed-out board shows no 'you're in' — anon up 0 down 0
+PASS 14 · over-balance is refused — Not enough balance.
+PASS 15 · a refused bet moved no money — balance 10000
+PASS 16 · over-max stake is refused
+PASS 17 · a zero stake is refused
+PASS 18 · a fractional stake is refused
+PASS 20 · parseStake reads a grouped amount — got 1250
+PASS 21 · parseStake rejects empty / non-numeric / zero
+PASS 22 · quickStakes stays within [min,max] and dedupes
+PASS 23 · stakeIsValid gates on the chain bounds
+[audit] WALLET bonus.wagering_skipped_opposite_side qb_alice Position#pos_4256f1bef804e0496c5d
+[audit] BET market.position.opened qb_alice Position#pos_4256f1bef804e0496c5d
+PASS 24 · a valid custom amount places
+PASS 25 · exactly the custom amount left the wallet — moved 1337
+PASS 26 · the custom amount joins the UP 'you're in' — up 11337
+[audit] COMPLIANCE updown.round.resolved system_updown UpDownRound#udr_afd67e64e75e96a982f3
+[audit] WALLET bet.payout qb_alice Position#pos_91b8bb042d74e721867b
+[audit] WALLET bet.payout qb_alice Position#pos_35aedb209ec8d2dbce6c
+[audit] WALLET bet.payout qb_alice Position#pos_3261baaae3da14aa8203
+[audit] WALLET bet.payout qb_alice Position#pos_d2cb442dfe9135168844
+[audit] WALLET bet.payout qb_alice Position#pos_4697d9f4e58aedf3c41a
+[audit] WALLET bet.payout qb_alice Position#pos_85f083a5fbe10c218486
+[audit] WALLET bet.payout qb_alice Position#pos_5ec82f4dd290d41f8607
+[audit] WALLET bet.payout qb_alice Position#pos_4256f1bef804e0496c5d
+[audit] ADMIN market.resolved system_updown Market#mkt_2083d3e39b690c1e5ead
+[audit] WALLET market.settled system_updown Market#mkt_2083d3e39b690c1e5ead
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_2083d3e39b690c1e5ead
+PASS 27 · a closed round refuses a late tap — Market is not accepting predictions.
+[audit] ADMIN updown.asset.created off UpDownAsset#uda_fbb014b19b28bee3
+[audit] ADMIN updown.asset.enabled off UpDownAsset#uda_fbb014b19b28bee3
+PASS 28.1 · ⭐ with no query string the board lands on an asset that HAS a chain — landed on XAU · durations [5]
+PASS 28.2 · …so a duration resolves and the board is not reported paused — duration 5 · paused false
+PASS 28.3 · ⛔ an EXPLICIT ?asset= still wins, even onto an idle asset — landed on IDLE · duration null
+PASS 28.4 · …and the idle asset is still listed, not hidden
+PASS 29.1 · SELECTION_CLOSED → transient sticky toast, localized, AND flips the surface locked
+PASS 29.2 · RATE_LIMITED → transient, localized, no lock
+PASS 29.3 · BUSY → transient, localized
+PASS 29.4 · ⛔ SUSPENDED → the acknowledge-modal (LCCP), never a toast
+PASS 29.5 · ⛔ the RG daily-loss refusal → the acknowledge-modal, even though its code is INVALID — {"kind":"blocked","title":"rgT","body":"the cap you set has been reached","variant":"danger"}
+PASS 29.5b · 🔴 …and it is headed by the LIMIT, never by the account-block heading — rgT
+PASS 29.5c · control · a real account block keeps the account-block heading — {"kind":"blocked","title":"suspT","body":"your account cannot bet","variant":"danger"}
+PASS 29.6 · an ordinary INVALID (bounds) stays a transient toast, localized
+PASS 29.7 · with NO code at all the server string survives as fallback — and only then
+PASS 29.8 · every OTHER mapped refusal never leaks the wire string
+PASS 30.1 · the optimistic state is a per-key MAP, not two counters
+PASS 30.2 · a failed or transport-dead tap deletes ITS OWN key — never subtracts from a sum
+PASS 30.3 · success SETTLES the key; only a server advance removes settled entries
+PASS 30.4 · auth loss is not a failed bet — a null action result clears silently, no toast
+PASS 30.5 · ⭐ ONE surface reconciliation per tap burst — the falling-edge 50pick:refresh dispatch
+PASS 30.6 · ⛔ and /updown is GONE from the action's revalidate list (UD-6a) — the burst refresh replaced it
+PASS 31.1 · the card ARMS a tap guard on mount and releases it on a timer
+PASS 31.2 · …and while armed a BETTABLE card ignores pointer events
+PASS 31.3 · ⭐ the card list is keyed by roundId, so a card that only MOVES SLOTS does not remount and does not re-arm
+PASS 31.4 · the effect has an EMPTY dep array — a re-render must not restart the window
+PASS 31.5 · the assertions above are anchored on text that really is in the file (not vacuously false)
+
+updown-quickbet: 53 passed, 0 failed
+updown-quickbet: OK — one tap places once, duplicates pay once, distinct taps stack, 'you're in' is per-viewer, bad taps refused

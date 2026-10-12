@@ -1,0 +1,42 @@
+bet-landed-key — live fix L2: a lost answer can never become a second bet
+§1 the behaviour (the real buyPosition, in memory)
+[audit] ADMIN market.created test Market#mkt_45c36f9bdf8a93f5d357
+[audit] BET market.position.opened lk_a Position#pos_995230e2dcce6f51bad5
+  ✓ 1.1 control: a bet under K1 lands, once
+[email] sendEmailToUser skipped — no email for user lk_a… (user.email=null, phone=+25576…)
+[audit] ADMIN config.platform_updated lk_officer System#platform
+  ✓ 1.2 maintenance on: the same player's K1 is answered with its bet, not "Nothing has been charged"
+  ✓ 1.3 …while a fresh key is refused for maintenance (a gate still guards a NEW bet)
+  ✓ 1.4 …and another player's use of K1 is never answered with it (refused for maintenance)
+  ✓ 1.5 …and a request with no key is refused as before
+[audit] ADMIN config.platform_updated lk_officer System#platform
+  ✓ 1.6 maintenance off: another player's K1 is refused as a conflict, as before
+  ✓ 1.7 a drained rate bucket: K1 is answered with its bet
+  ✓ 1.8 …while a fresh key is told to slow down
+  ✓ 1.9 betting closed: K1 is answered with its bet
+  ✓ 1.10 …while a fresh key is refused (selection closed)
+[audit] ADMIN config.platform_updated lk_officer System#platform
+  ✓ 1.11 the key's read failing: the answer is the unknown outcome (system_error), never the maintenance refusal
+[audit] ADMIN config.platform_updated lk_officer System#platform
+[audit] COMPLIANCE rg.cooling_off.activated lk_a User#lk_a
+[email] sendEmailToUser skipped — no email for user lk_a… (user.email=null, phone=+25576…)
+  ✓ 1.12 a cooling-off break: K1 is answered with its bet (a replay places nothing)
+  ✓ 1.13 …while a fresh key is refused for the break
+  ✓ 1.14 the wallet was debited once: A holds 100,000 less one stake, B untouched
+[audit] COMPLIANCE push.suppressed.rg_lockout lk_a User#lk_a
+  ✓ 1.15 and one bet stands: A holds K1's bet alone on the market, B none
+§2 the source
+  ✓ 2.1 buyPosition asks landedKeyAnswer after the bet path ran
+  ✓ 2.2 …only for a refusal of a keyed request, and answers with it or the refusal
+  ✓ 2.3 the BUSY shed returns before it
+  ✓ 2.4 the answer checks the owner and refuses a house stake's key
+  ✓ 2.5 the answer is the bet's own receipt, marked replayed
+  ✓ 2.6 a failed read answers system_error, never null
+  ✓ 2.7 placeHouseBet does not ask it (the house answers its key at H0)
+§3 the wiring
+  ✓ 3.1 test:bet-landed-key runs this suite
+  ✓ 3.2 red:bet-landed-key is its red twin
+  ✓ 3.3 predeploy runs it
+
+BET LANDED KEY — all checks passed
+

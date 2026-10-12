@@ -1,0 +1,21 @@
+[audit] WALLET withdraw.initiated wd_neverbet Transaction#txn_612b43039df6f25ef363a336
+[audit] WALLET withdraw.dispatch wd_neverbet User#wd_neverbet
+[audit] WALLET withdraw.confirmed wd_neverbet Transaction#txn_612b43039df6f25ef363a336
+[email] sending "Withdrawal sent · TZS 98,500" → w***@test.tz (tag=withdrawal)
+[email-stub] To: w***@test.tz | Subject: Withdrawal sent · TZS 98,500
+[audit] ADMIN config.global.updated officer_test MarketConfig#global
+[audit] WALLET withdraw.initiated wd_tuned Transaction#txn_4a022847c70807a41865a068
+[audit] WALLET withdraw.dispatch wd_tuned User#wd_tuned
+[audit] WALLET withdraw.confirmed wd_tuned Transaction#txn_4a022847c70807a41865a068
+[audit] ADMIN config.global.updated officer_test MarketConfig#global
+[email] sending "Withdrawal sent · TZS 49,000" → w***@test.tz (tag=withdrawal)
+[email-stub] To: w***@test.tz | Subject: Withdrawal sent · TZS 49,000
+[audit] ADMIN config.global.updated officer_test MarketConfig#global
+[audit] WALLET withdraw.initiated wd_free Transaction#txn_2acce21182803d0d45ee3ee7
+[audit] WALLET withdraw.dispatch wd_free User#wd_free
+[audit] WALLET withdraw.confirmed wd_free Transaction#txn_2acce21182803d0d45ee3ee7
+
+withdrawal-fee: 36 passed, 0 failed
+[audit] ADMIN config.global.updated officer_test MarketConfig#global
+[email] sending "Withdrawal sent · TZS 20,000" → w***@test.tz (tag=withdrawal)
+[email-stub] To: w***@test.tz | Subject: Withdrawal sent · TZS 20,000

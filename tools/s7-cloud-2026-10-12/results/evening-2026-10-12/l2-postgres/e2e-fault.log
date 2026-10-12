@@ -1,0 +1,68 @@
+
+  FAULT-INJECTION — bet-stake single-tx rollback proof (user fi_loomep_u)
+
+  ✓ setup: wallet 3,000 real + 2,000 bonus
+  ✓ setup: grant ACTIVE with 2,000 remaining
+
+  Phase 1 — poison "LedgerEntry" (the final write; was fire-and-forget before this branch)
+prisma:error 
+Invalid `tx.ledgerEntry.createMany()` invocation in
+/home/user/kipindi-l2/src/lib/server/ledger.ts:148:26
+
+  145 // wallet + txn roll back with it — that is the entire point (a ledger write can
+  146 // no longer be lost while the money moved). No retry/swallow here.
+  147 if (tx) {
+→ 148   await tx.ledgerEntry.createMany(
+Error occurred during query execution:
+ConnectorError(ConnectorError { user_facing_error: None, kind: QueryError(PostgresError { code: "P0001", message: "fault-injection: poisoned insert", severity: "ERROR", detail: None, column: None, hint: None }), transient: false })
+  ✓ P1: buyPosition threw (bet rejected, not half-committed)
+  ✓ P1: wallet.balance unchanged (3000)
+  ✓ P1: wallet.bonusBalance unchanged (2000)
+  ✓ P1: grant.remainingTzs unchanged (2000)
+  ✓ P1: grant.wageredTzs unchanged (0)
+  ✓ P1: pools unchanged (0/0)
+  ✓ P1: predictorCount unchanged (0)
+  ✓ P1: no Position row
+  ✓ P1: no BET_PLACED Transaction row
+  ✓ P1: no LedgerEntry rows
+
+  Phase 2 — poison "Transaction" (a middle write; wallet/bonus/pool/position around it must roll back)
+prisma:error 
+Invalid `db.transaction.create()` invocation in
+/home/user/kipindi-l2/src/lib/server/prisma-dal.ts:2418:40
+
+  2415 txn: {
+  2416   create: async (t: StoredTxn, tx?: Prisma.TransactionClient | null): Promise<StoredTxn> => {
+  2417     const db: Db = tx ?? pc();
+→ 2418     const row = await db.transaction.create(
+Error occurred during query execution:
+ConnectorError(ConnectorError { user_facing_error: None, kind: QueryError(PostgresError { code: "P0001", message: "fault-injection: poisoned insert", severity: "ERROR", detail: None, column: None, hint: None }), transient: false })
+  ✓ P2: buyPosition threw
+  ✓ P2: wallet.balance unchanged (3000)
+  ✓ P2: wallet.bonusBalance unchanged (2000)
+  ✓ P2: grant.remainingTzs unchanged (2000)
+  ✓ P2: grant.wageredTzs unchanged (0)
+  ✓ P2: pools unchanged (0/0)
+  ✓ P2: predictorCount unchanged (0)
+  ✓ P2: no Position row
+  ✓ P2: no BET_PLACED Transaction row
+  ✓ P2: no LedgerEntry rows
+
+  Phase 3 — poison removed: the same bet must land exactly once
+[audit] WALLET bonus.spent fi_loomep_u Wallet#fi_loomep_w
+[email] sendEmailToUser skipped — no email for user fi_loomep_u… (user.email=null, phone=+25570…)
+  ✓ P3: bet accepted
+[audit] BET market.position.opened fi_loomep_u Position#pos_6fe3274e7946b4a53b4b
+  ✓ P3: wallet.balance 3000 → 0 (real part fully staked)
+  ✓ P3: bonusBalance 2000 → 1000 (bonus part spent)
+  ✓ P3: grant.remainingTzs → 1000
+  ✓ P3: grant.wageredTzs → 4000 (turnover on full stake)
+  ✓ P3: yesPool → 4000, exactly once
+  ✓ P3: predictorCount → 1
+  ✓ P3: exactly 1 Position row
+  ✓ P3: exactly 1 BET_PLACED Transaction row
+  ✓ P3: exactly 4 stake LedgerEntry rows (2 balanced pairs)
+  ✓ P3: ledger group sums to 0 (balanced)
+  ✓ P3: conservation — balance+bonus+pool == funding
+
+fault-injection: 34 passed, 0 failed

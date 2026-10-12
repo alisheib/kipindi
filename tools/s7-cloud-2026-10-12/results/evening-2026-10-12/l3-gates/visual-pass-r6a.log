@@ -1,0 +1,61 @@
+
+── 0 · A1's proof stays registered beside this one (it is cherry-picked onto main with the hotfix) ─────
+  ok   0.1 · test:rg-email-end runs scripts/rg-email-end.test.mts, and test:visual-pass-r6a runs this file
+
+── 1 · BetBreakNotice — the approved sentence with its end, the neutral box, the lock, a status (rendered, 3 locales × 2) 
+  ok   1.1 · EXECUTED · every locale, break and exclusion: the dictionary's own sentence (nothing inserted), the end one nowrap run, role=status, the neutral md box, the lock, no warning or gold ink
+  ok   1.1′ CONTROL · a warning box with the bare sentence is reported (box, glyph, ink and run)
+
+── 2 · /markets/[id] — a reader on a break gets the break's notice where the bet panel stood (both shells) 
+  ok   2.1 · the break branch comes first under `bettingOpen`: the column's D40 heading, the one-sided note, BetBreakNotice — and the page's one SidePicker only after it, in the `session` branch
+  ok   2.1′ PLANT · the dial drawn inside the break branch is reported
+  ok   2.1″ PLANT · the branch removed (the panel back for a reader on a break) is reported
+  ok   2.2 · the read fails OPEN (a failed read shows the panel; the server refuses) and the sentence is `breakSentence` — the one formatter, the end one run
+  ok   2.2′ PLANT · a read that throws past the page (no catch) is reported
+  ok   2.3 · `bettingOpen` stays the market's own truth — a break is the reader's, and the closed panels would misstate the market
+  ok   2.4 · R4-I's two break lines on the page are untouched (Your positions' sentence, Similar markets' withheld line)
+
+── 3 · /updown — a bettable card offers no one-tap stake to a reader on a break (rendered) ─────────────
+  ok   3.1 · the board reads its reader's lockout beside the board (failing open) and hands every card the sentence
+  ok   3.1′ PLANT · a read without its catch is reported
+  ok   3.2 · the card's break branch stands first in the bettable arm: `canQuickBet && breakBody` → the notice, then the stake controls
+  ok   3.3 · EXECUTED · a signed-in reader's bettable card on a break (3 locales × break/exclusion): the notice, the sentence, and no stake chip, side button or commit
+  ok   3.3′ CONTROL · the same card with no break draws the stake controls and no notice
+  ok   3.4 · EXECUTED · a LOCKED card keeps its locked presentation on a break — the notice stands only where a stake would
+  ok   3.5 · EXECUTED · the gate is the signed-in stake path (`canQuickBet`): a guest's card is untouched
+
+── 4 · /updown/[roundId] — the round's stake panel gives way to the notice, in the same #stake region (rendered) 
+  ok   4.1 · the round page reads its reader's lockout beside the round (failing open) and puts the sentence in the stake panel's props
+  ok   4.2 · the panel's bettable arm: `breakBody` taken out of the stake props, the notice for a signed-in reader on a break, RoundStakePanel only otherwise
+  ok   4.3 · EXECUTED · signed in, on a break (3 locales × break/exclusion): #stake holds the notice alone — no stake card, no chip, no Confirm
+  ok   4.3′ CONTROL · with no break the same panel draws the stake card and its controls
+  ok   4.4 · EXECUTED · a guest keeps the sign-in route (the gate is the signed-in reader)
+  ok   4.5 · EXECUTED · a locked round keeps its locked panel on a break
+
+── 5 · the census — every in-place stake control is gated, every other door leads into a gated page ────
+  ok   5.1 · every in-place stake site is classified (7: page.tsx, conviction-dial.tsx, side-picker.tsx, round-action-panel.tsx, round-stake-panel.tsx, updown-card.tsx, use-quick-bet.ts)
+  ok   5.2 · each host is drawn where §2–§4 gate it: SidePicker by the market page, the board card by /updown, RoundActionPanel by the round page, RoundStakePanel by RoundActionPanel, the dial by SidePicker
+  ok   5.3 · every door that carries a side (10) opens /markets/<id> or /updown/<round> — the gated pages
+  ok   5.3′ CONTROL · the door census sees the home rows, the band's picks and the card's push
+
+── 6 · no empty state invites a first bet during a break (A3 and the sweep), rendered and read ─────────
+  ok   6.1 · Tiketi zangu's Juu/Chini tab (/updown/history): on a break the no-rows state says the break and offers no 'Juu na Chini' button (read only for that state, failing open)
+  ok   6.1′ PLANT · the board door kept during a break is reported
+  ok   6.2 · /positions/performance: on a break the empty page says the break and offers no 'Browse markets'
+  ok   6.2′ PLANT · the invitation kept as the body during a break is reported
+  ok   6.3 · the sweep · the empty leaderboard ('Place a prediction to get on the board.'): a signed-in reader on a break reads the break, no button; a guest's board unchanged
+  ok   6.3′ PLANT · a session read that can throw past the page is reported
+  ok   6.4 · the sweep · the empty activity page (its own note: 'invited to go and bet'): the break from the usage row's own timers, no button
+  ok   6.4′ PLANT · the Browse door kept during a break is reported
+  ok   6.5 · EXECUTED · the empty state the pages draw on a break (3 locales × 2): the title, the sentence with its end one run, no link and no button
+  ok   6.5′ CONTROL · off a break the same state draws its invitation and its door
+  ok   6.6 · the census · every use of the eight first-bet invitations (8) sits behind its page's break gate
+  ok   6.6′ CONTROL · the eight are the dictionary's invitations to bet (each says pick / place / back / choose, or is the board's door)
+
+── 7 · the bell — a permanent exclusion's notice names no end, as its letter does (executed on the in-memory store) 
+  ok   7.1 · EXECUTED · permanent: "Your account is closed to betting and deposits." / "…kuweka dau na amana." / "…投注与充值。" — no end, every other word the notice's own
+  ok   7.1′ CONTROL · a six-month exclusion keeps its dated sentence in every language
+  ok   7.2 · permanence is the one definition, read lazily, and a failed read keeps the dated sentence (the notice is never lost)
+
+visual-pass-r6a: 42 passed, 0 failed
+

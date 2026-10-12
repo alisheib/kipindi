@@ -1,0 +1,79 @@
+
+── 1 · R8-4 every notice band draws its words on the page's edge — 16px below 1024, 32px from it (tile 326: x21 / x369) 
+  ok   1.1 · RENDERED: the band's row pads exactly as a page does — ["lg:px-6","px-3"], PageContainer's ["lg:px-6","px-3"]
+  ok   1.2 · on the header's edge: 16px below 1024 (the journey row's --sp-4 = 16px), 32px from it (--sp-8 = 32px)
+  ok   1.3 · at sw 390 the glyph's box opens at x16 and the Ingia box closes at x374 (last column x373); the tile read x21 / x369 under 20px
+  ok   1.3′ PLANT · the row as it was (`px-4`) is reported
+  ok   1.4 · the session-ended notice, the offline notice, the announcement and maintenance bars, the away summary and the preview marker all draw through it (5 files)
+  ok   1.5 · every full-bleed row pads as the page does, or is ruled (3 ruled: the classic header, the opt-out header, the auth grid)
+  ok   1.6 · CONTROL · the journey's ticker keeps the page's edge from 1024 (round 3's rule, unchanged)
+
+── 2 · R5-9 every tracked label that ends on an edge takes its trailing tracking back — the census, the technique, the steps 
+  ok   2.1 · THE CENSUS: no tracked label that ends on an edge keeps its trailing tracking — 49 take it back, 5 end on a glyph, 7 sit padded in a box, 0 loose
+  ok   2.2 · /fairness' reference "FATF R.10 · POCA CAP 423 §16" is in the census (the last of a justify-between row, which C11 read as left-aligned) and takes its 0.14em back
+  ok   2.3 · at 1280 its last letter stood 2.24px short of the panel's edge (the tile: x1113 against x1115); it stands 0.70px short — the 6's own bearing in its cell, as R3-C and F19 left every such letter
+  ok   2.4 · the padded boxes are boxes — their edge is the box's, their words padded: the Wallet's bonus pill and the cashback pill, the dial's lock pill and its bet button's stake, the home row's NO button, the handover's ghost button, the time field's suffix: ["src/app/wallet/wallet-client.tsx<span>","src/components/home/landing-hero.tsx<Link>","src/components/markets/conviction-dial.tsx<button>","src/components/markets/conviction-dial.tsx<span>","src/components/ui/cashback-promo.tsx<span>","src/components/ui/time-select.tsx<span>","src/components/updown/updown-handover.tsx<a>"]
+  ok   2.5 · the labels that end on a glyph end on the glyph's edge (C11's two, the landing's "see all ›" links): ["src/components/home/landing-hero.tsx<Link>","src/components/home/topic-tiles.tsx<Link>","src/components/home/trust-band.tsx<Link>","src/components/markets/conviction-dial.tsx<InfoHint>","src/components/updown/updown-card.tsx<div>"]
+  ok   2.6 · each label takes back exactly its own tracking (0.14em by default; the --16, --12, --10, --08, --06 and --05 steps)
+  ok   2.7 · the steps are the stylesheet's: --16 0.16em, --12 0.12em, --10 0.10em, --08 0.08em, --06 0.06em, --05 0.05em
+  ok   2.8 · ONE TECHNIQUE: the price caption, the one-sided label, the bar's side label and `kp-track-end` take their tracking back with their own end margin — no empty box after the words
+  ok   2.9 · the one exception is ruled: a right-aligned table head keeps R3-C's empty box (a table cell takes no margin; the heads never wrap)
+  ok   2.10 · every `kp-track-end` is the label's own box (a block, or a flex or grid item), carries no margin-right utility and paints no box (its box reaches its tracking past the edge)
+  ok   2.11 · every end-anchored tracked SVG label is anchored its tracking further out (the round chart's two targets at x606.85, the primer's NO at x274.68): 3 labels
+  ok   2.1′ PLANT · /fairness' reference without its take-back is reported LOOSE
+  ok   2.2′ PLANT · a tracked label at the end of a justify-between row is found (C11's census, reading only `text-right`, missed it)
+  ok   2.3′ CONTROL · a justify-between row's ONLY item stands at the row's start — not an end label
+  ok   2.4′ PLANT · a label pushed to the end by its wrapper (`ml-auto`) is found through the wrapper
+  ok   2.5′ CONTROL · a centred label keeps its tracking (F19: centred and left-aligned labels are untouched)
+  ok   2.6′ CONTROL · a label that ends on a glyph is ruled GLYPH
+  ok   2.10′ PLANT · `kp-track-end` on a bare inline inside a block that sizes itself to it is reported
+  ok   2.6″ PLANT · a 0.12em label taking back 0.10em is a mismatch the step check reads
+  ok   2.8′ PLANT · the empty box after the words, put back, is reported
+
+── 3 · R6-3 every display heading opens on its column's edge — the letter decides, never the locale ("My tickets" x18.17 / x16.39 / x16.17) 
+  ok   3.1 · the straight-stem capitals: round 4's B D E F H I K L M N P R, and U (Sora 700: 0.068em of outline, measured)
+  ok   3.2 · "My tickets" is set back; "Tiketi zangu" and the Chinese title are not: [["sw","Tiketi zangu",null],["en","My tickets",""],["zh","我的注单",null]]
+  ok   3.3 · it reads a heading through what a heading is given: a run (`keepText`), a loading drawing's `GhostText`, an array, a number
+  ok   3.4 · the 600 heading asks for 600's amount; the letter still decides
+  ok   3.5 · ONE RULE in globals.css: 0.075em at 700, 0.085em at 600; the hero's groups keep their own; round 4's Tailwind utility is retired
+  ok   3.6 · "My tickets" inked from x18.17 (the tile: x18.17); it inks from x16.07 — on the column's x16 at 390, x132.07 at 1280
+  ok   3.7 · U: 1.78px inside at 28px before, -0.32px after — a third of a pixel past the edge, where it stood 1.8px inside; 600's stem leaves 0.01px at 24px
+  ok   3.8 · RENDERED: PageHeader's h1 carries data-stem for "My tickets" only: [["sw",false],["en",true],["zh",false]]
+  ok   3.9 · THE CENSUS: every display heading in player code asks the one stem question (23 headings: PageHeader's h1, the market question, a proposal, the round page, the hub and its drawing, the auth panel and rail, the bet confirm's side word, the primer, /live's title, the landing's heads and claim)
+  ok   3.10 · the centred display headings keep their bearing (a stem's is the same on both sides): ["src/app/auth/admin/page.tsx<h1>","src/components/ui/not-found-view.tsx<h1>","src/components/ui/route-error.tsx<h1>"]
+  ok   3.9′ PLANT · PageHeader's h1 without its question is reported
+  ok   3.9″ PLANT · a new 26px display heading that does not ask is reported
+  ok   3.9‴ PLANT · a 600 heading asking for 700's amount is reported
+  ok   3.1′ CONTROL · T is not a stem (0.022em) — set back it would hang 1.5px past the edge at 28px
+  ok   3.11 · the market question asks the shared module (round 4's local letters and its Tailwind utility retired)
+
+── 4 · R2-D5 every selection ring is drawn inside its box (the payment tile's ring stood 1px past its column: x40 / x41, gap 11) 
+  ok   4.1 · the ring's box covers the tile's border box (`-inset-px` over its 1px border) and is drawn inward (`ring-inset`)
+  ok   4.2 · the ring's outer edge is the tile's edge (it stood 1px outside), so the selected tile meets the column and stands 12px from its neighbour (it stood 11)
+  ok   4.3 · RENDERED: both tiles draw the inward ring
+  ok   4.4 · the targeted ticket's hard ring is drawn inward too; its 18% halo stays a wash outside
+  ok   4.5 · every hard ring in player code is inside its box or ruled (the chip's admin-only selected ring, the crest's photo ring, the picker's today): 6
+  ok   4.6 · CONTROL · the quick amounts, the source-of-funds tiles and Up & Down's stakes select with their own 1px border — inside their box
+  ok   4.1′ PLANT · the ring as it was (`inset-0`, an outer ring) is reported
+
+── 5 · R7-3 / R8-5 the stacked flag: a whole-pixel box (17 vs 18 rows), and the pair centred by its ink (12 above / 8.5 below) 
+  ok   5.1 · the xs flag is 17.5px tall as drawn (a 9.5px glyph, 3px + 3px, a 1px edge) — 17 or 18 rows by where its top falls
+  ok   5.2 · `.kp-flag-xs` gives it a whole 18px box
+  ok   5.3 · in 18px its capitals stand 5.85 | 5.94 from its top and bottom — the tile's 5 | 5 everywhere it was 18
+  ok   5.4 · the hub's row, the journey menu's and the journey footer's flags wear it; the classic menu's and footer's class strings are today's
+  ok   5.5 · the label's line keeps 4.293px over its capitals ((19.5 − 15 × 0.7275) / 2) — the air the stylesheet gives the flag
+  ok   5.6 · before: its ink 12.79px under the row's top and 8.50px over its bottom — 2.15px low (the tiles: 12 | 8–9)
+  ok   5.7 · after: 8.25 | 8.25 — centred by its ink, and the row stays 56px (the head's 39.5px within the 40px between its padding)
+  ok   5.8 · beside its label nothing moves: the label at 18.25 (was 18.25), the flag at 19.00 (its 18px box centred, was 19.25 at 17.5)
+  ok   5.9 · the head returns the air only as its text's one line, and the flag takes it only there
+  ok   5.10 · RENDERED: the row's text holds the head alone, and the head holds the label and the 18px flag
+  ok   5.7′ PLANT · without the flag's air the ink is 2px low again
+  ok   5.2′ PLANT · without the whole-pixel box the flag is 17.5px again
+
+── 6 · composition only: the dictionary is the tip's, byte for byte; the classic arms of the shared chrome are today's 
+  ok   6.1 · src/lib/i18n-dict.ts is the commit's own (every word above is an existing key)
+  ok   6.2 · the classic header, rail, ticker, More menu, bell and capsule are the commit's own, byte for byte (round 8's two named swaps in the bell aside: its title in the one section ink, its See all in the link blue)
+  ok   6.2′ PLANT · the swaps are hunk-exact: the bell equals the commit with them applied, and one change ELSEWHERE in it still fails
+  ok   6.3 · RENDERED: the classic footer's flag is today's (no `kp-flag-xs`); the journey's wears it
+
+65 passed, 0 failed

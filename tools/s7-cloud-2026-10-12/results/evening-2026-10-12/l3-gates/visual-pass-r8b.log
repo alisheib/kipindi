@@ -1,0 +1,55 @@
+
+── 1 · THE CENSUS — every `.eyebrow` in player code computes the one section ink, or is registered with its role ─
+     162 eyebrow elements in 77 player files: 126 the one ink · 18 drawings (words not shown) · 7 status · 2 stepper · 5 side · 1 form label · 3 staff-only
+  ok   1.1 · CENSUS · every one of the 162 eyebrow elements in player code computes `--text-subtle` (all branches, inherited or own), is a drawing whose words are not shown, or is registered with its role
+  ok   1.2 · the registry is exact — each of its 18 entries names one site, none stale
+  ok   1.3 · the section heads the round moved are in it, in the one ink: /live's two, the invite cards' two, the bell's panel title, the Lipa panel's four
+  ok   1.4 · the data labels the round moved are in it, in the one ink: Up & Down's (card, round, history, pods), the wallet's rows, the agent's worked example, the board's viz
+  ok   1.1′ PLANT · 10 defects, each reported by the census: /live's heading back in aqua · the wallet row's data label back in faint · the round page's label table back in faint · a royal invite label · the bell panel's title back in the text's white · the fairness chain's plain steps back in muted · a new eyebrow with no ink of its own (it would wear its caller's) · a ghost row that would show its words (an ink on the hidden label) · a ghost row that would show its words even in the one ink · a section head at one width only (`sm:text-text-faint`)
+  ok   1.2′ PLANT · a registered state line in another ink than its state's (the CLOSED word's) is reported
+  ok   1.2″ CONTROL · the CLOSED word's ink is the dictionary's royal word ink, `TONE_INK.royal`
+  ok   1.5 · the STAFF entries are staff-only: no player file asks for the confirm's hard tier or draws the range filter (else their labels need a ruling)
+  ok   1.5′ PLANT · a player page drawing the range filter is reported
+
+── 2 · the stylesheet's eyebrows — the shared 0.14em list and every uppercase rule tracked like one — wear the one ink 
+  ok   2.1 · the 14 stylesheet eyebrows paint `--text-subtle`, or are registered (5: the console's table head, the landing's claim, the YES caption, the chat layer's two)
+  ok   2.1′ CONTROL · the settled card's caption is the one ink; the chat's two are read (an owner question, not silence)
+  ok   2.2 · no element that wears a stylesheet eyebrow (`.gilt-eyebrow`, `.kp-mine__eyebrow`, `.kp-wsheet__label`…) paints over it in another ink
+  ok   2.1″ PLANT · `.gilt-eyebrow` in faint is read as faint
+
+── 3 · a data label is no role of its own — it wears the one ink, the `<Stat>` kit's labels included ─────────────
+  ok   3.1 · the role gate's roles are ["CELEBRATION","CONTROL_LABEL","OTHER","STATUS_CHIP","TYPE_TO_CONFIRM"] — none is a data label (a `.eyebrow` site is the gate's section eyebrow)
+  ok   3.2 · the `<Stat>` kit: all 8 label styles wear the one ink (`micro`, the default, and the wallet's were faint)
+  ok   3.2′ PLANT · a style back in faint is reported
+  ok   3.3 · no label style is named for an ink it does not draw: the wallet's `faint` is `plain` (9.5px, regular, 0.10em), and its two callers say so
+  ok   3.4 EXECUTED · every `<Stat>` label renders in the one ink and no other
+  ok   3.5 CONTROL · the figure keeps its own ink (`--text`) and the hint the one ink
+
+── 4 · the KYC gate panel — a state word keeps its tone's ink; a heading that names the step takes the one ink ───
+  ok   4.1 · each of the 9 states says which its eyebrow is: a state word (pending review, more info, rejected, a hold, the agent's upload) keeps the tone, a heading (not started, the payout's upload, the final refusal, the e-mail, the agent's photo upgrade) does not
+  ok   4.2 · the eyebrow draws the tone's ink only for a state word: `${copy.stateWord ? tone.ink : "text-text-subtle"}`
+  ok   4.2′ PLANT · the round-7 line (every eyebrow in the tone's ink) is reported
+  ok   4.1′ PLANT · "Before you withdraw" marked a state word, and "Your move" marked a heading, are each reported
+  ok   4.3 · the six eyebrows are distinct words in sw, en and zh (a state word is never a heading's words): Zamu yako / Iko kwa timu yetu / Kutoa pesa kumesitishwa · Your move / With our team / Withdrawals paused
+
+── 5 · rendered in sw, en and zh — every eyebrow a player reads on these surfaces is in the one ink (or a side) ──
+  ok   5.1 EXECUTED · Up & Down's card in sw, en and zh: its 6 eyebrows — the price's name, the countdown's, "Vol", the target heading — in the one ink; UP and DOWN in their sides' inks
+  ok   5.2 EXECUTED · the agent's worked example in sw, en and zh: its title's eyebrow and its two column heads in the one ink (they were faint)
+  ok   5.3 EXECUTED · the Up & Down board's "last rounds" label in sw, en and zh in the one ink (it was faint)
+  ok   5.4 EXECUTED · CONTROL · a form field's label keeps the kit's form-label ink and weight (`--text-muted`, bold) — the password row now draws through it, as the e-mail row beside it
+  ok   5.1′ PLANT · a card eyebrow back in faint is reported by the rendered reader
+
+── 6 · contrast — the one ink on every surface a moved label sits on (≥ 4.5:1 text) ──────────────────────────────
+  ok   6 · the one ink on the invite and agent share cards' label on `--royal-950` — 7.51:1
+  ok   6 · the one ink on a card, the KYC panel, the bell's panel: `--bg-elevated` — 6.67:1
+  ok   6 · the one ink on Up & Down's pods and the round page's insets: `--bg-inset` — 7.50:1
+  ok   6 · the one ink on a ticket's or the wallet's inset tile: `--bg-overlay` at 40% over a card — 7.04:1
+  ok   6 · the one ink on the page itself: `--bg` — 7.52:1
+  ok   6′ CONTROL · the share card's old label (royal-300 at 80% on --royal-950) measured 6.12:1 — the one ink reads 7.51
+
+── 7 · the record — the rule where the page heads' is, the old spec lines marked, no dictionary word changed ─────
+  ok   7.1 · DESIGN_AUTHORITY §T3 carries the section heads beside the page heads, with Ali's ruling (3) of 2026-10-10 and this census
+  ok   7.2 · the 6 spec lines that drew a label in --text-faint are marked superseded where they are written
+  ok   7.3 · src/lib/i18n-dict.ts is the commit's own — every word above is an existing key
+
+38 passed, 0 failed

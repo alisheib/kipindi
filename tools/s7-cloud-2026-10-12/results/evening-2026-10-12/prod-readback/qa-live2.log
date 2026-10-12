@@ -1,0 +1,452 @@
+
+[A] Public route health (render + no console/page/5xx errors + no error overlay)
+  ✓ control · the fused-word matcher catches the shipped defect
+  ✓ control · …and accepts the explicit-space form React renders
+  ✓ control · …and catches a fused </span> (2026-09-14)
+  ✓ control · …and two text nodes fused at an expression seam ("hour<!-- -->of")
+  ✓ control · …but not a span CSS spaces: the legal section number, an icon span, a span whose text ends in a space
+  ✓ control · ⛔ an EMPTY or unreadable page FAILS the verdict
+  ✓ control · …and a clean page passes the same verdict
+  ✓ / renders content
+  ✓ / no error overlay
+  ✓ / no console/page errors
+  ✓ / no words run together after an inline tag
+  ✓ /markets renders content
+  ✓ /markets no error overlay
+  ✓ /markets no console/page errors
+  ✓ /markets no words run together after an inline tag
+  ✓ /markets?when=new renders content
+  ✓ /markets?when=new no error overlay
+  ✓ /markets?when=new no console/page errors
+  ✓ /markets?when=new no words run together after an inline tag
+  ✓ /markets?when=soon renders content
+  ✓ /markets?when=soon no error overlay
+  ✓ /markets?when=soon no console/page errors
+  ✓ /markets?when=soon no words run together after an inline tag
+  ✓ /markets?when=week renders content
+  ✓ /markets?when=week no error overlay
+  ✓ /markets?when=week no console/page errors
+  ✓ /markets?when=week no words run together after an inline tag
+  ✓ /live renders content
+  ✓ /live no error overlay
+  ✓ /live no console/page errors
+  ✓ /live no words run together after an inline tag
+  ✓ /leaderboard renders content
+  ✓ /leaderboard no error overlay
+  ✓ /leaderboard no console/page errors
+  ✓ /leaderboard no words run together after an inline tag
+  ✓ /fairness renders content
+  ✓ /fairness no error overlay
+  ✓ /fairness no console/page errors
+  ✓ /fairness no words run together after an inline tag
+  ✓ /proposals renders content
+  ✓ /proposals no error overlay
+  ✓ /proposals no console/page errors
+  ✓ /proposals no words run together after an inline tag
+  ✓ /help renders content
+  ✓ /help no error overlay
+  ✓ /help no console/page errors
+  ✓ /help no words run together after an inline tag
+  ✓ /legal/terms renders content
+  ✓ /legal/terms no error overlay
+  ✓ /legal/terms no console/page errors
+  ✓ /legal/terms no words run together after an inline tag
+  ✓ /legal/privacy renders content
+  ✓ /legal/privacy no error overlay
+  ✓ /legal/privacy no console/page errors
+  ✓ /legal/privacy no words run together after an inline tag
+  ✓ /legal/aml renders content
+  ✓ /legal/aml no error overlay
+  ✓ /legal/aml no console/page errors
+  ✓ /legal/aml no words run together after an inline tag
+  ✓ /legal/responsible-gambling renders content
+  ✓ /legal/responsible-gambling no error overlay
+  ✓ /legal/responsible-gambling no console/page errors
+  ✓ /legal/responsible-gambling no words run together after an inline tag
+  ✓ /legal/agent-terms renders content
+  ✓ /legal/agent-terms no error overlay
+  ✓ /legal/agent-terms no console/page errors
+  ✓ /legal/agent-terms no words run together after an inline tag
+  ✓ /legal/rules renders content
+  ✓ /legal/rules no error overlay
+  ✓ /legal/rules no console/page errors
+  ✓ /legal/rules no words run together after an inline tag
+  ✓ /legal/rules/yes-no renders content
+  ✓ /legal/rules/yes-no no error overlay
+  ✓ /legal/rules/yes-no no console/page errors
+  ✓ /legal/rules/yes-no no words run together after an inline tag
+  ✓ /legal/rules/up-down renders content
+  ✓ /legal/rules/up-down no error overlay
+  ✓ /legal/rules/up-down no console/page errors
+  ✓ /legal/rules/up-down no words run together after an inline tag
+  ✓ /auth/login renders content
+  ✓ /auth/login no error overlay
+  ✓ /auth/login no console/page errors
+  ✓ /auth/login no words run together after an inline tag
+  ✓ /auth/register renders content
+  ✓ /auth/register no error overlay
+  ✓ /auth/register no console/page errors
+  ✓ /auth/register no words run together after an inline tag
+  ✓ /auth/forgot-password renders content
+  ✓ /auth/forgot-password no error overlay
+  ✓ /auth/forgot-password no console/page errors
+  ✓ /auth/forgot-password no words run together after an inline tag
+  ✓ [sw] / renders content
+  ✓ [sw] / no error overlay
+  ✓ [sw] / no console/page errors
+  ✓ [sw] / rendered in sw (html lang)
+  ✓ [sw] / no words run together after an inline tag
+  ✓ [sw] /markets renders content
+  ✓ [sw] /markets no error overlay
+  ✓ [sw] /markets no console/page errors
+  ✓ [sw] /markets rendered in sw (html lang)
+  ✓ [sw] /markets no words run together after an inline tag
+  ✓ [sw] /markets?when=new renders content
+  ✓ [sw] /markets?when=new no error overlay
+  ✓ [sw] /markets?when=new no console/page errors
+  ✓ [sw] /markets?when=new rendered in sw (html lang)
+  ✓ [sw] /markets?when=new no words run together after an inline tag
+  ✓ [sw] /markets?when=soon renders content
+  ✓ [sw] /markets?when=soon no error overlay
+  ✓ [sw] /markets?when=soon no console/page errors
+  ✓ [sw] /markets?when=soon rendered in sw (html lang)
+  ✓ [sw] /markets?when=soon no words run together after an inline tag
+  ✓ [sw] /markets?when=week renders content
+  ✓ [sw] /markets?when=week no error overlay
+  ✓ [sw] /markets?when=week no console/page errors
+  ✓ [sw] /markets?when=week rendered in sw (html lang)
+  ✓ [sw] /markets?when=week no words run together after an inline tag
+  ✓ [sw] /live renders content
+  ✓ [sw] /live no error overlay
+  ✓ [sw] /live no console/page errors
+  ✓ [sw] /live rendered in sw (html lang)
+  ✓ [sw] /live no words run together after an inline tag
+  ✓ [sw] /leaderboard renders content
+  ✓ [sw] /leaderboard no error overlay
+  ✓ [sw] /leaderboard no console/page errors
+  ✓ [sw] /leaderboard rendered in sw (html lang)
+  ✓ [sw] /leaderboard no words run together after an inline tag
+  ✓ [sw] /fairness renders content
+  ✓ [sw] /fairness no error overlay
+  ✓ [sw] /fairness no console/page errors
+  ✓ [sw] /fairness rendered in sw (html lang)
+  ✓ [sw] /fairness no words run together after an inline tag
+  ✓ [sw] /proposals renders content
+  ✓ [sw] /proposals no error overlay
+  ✓ [sw] /proposals no console/page errors
+  ✓ [sw] /proposals rendered in sw (html lang)
+  ✓ [sw] /proposals no words run together after an inline tag
+  ✓ [sw] /help renders content
+  ✓ [sw] /help no error overlay
+  ✓ [sw] /help no console/page errors
+  ✓ [sw] /help rendered in sw (html lang)
+  ✓ [sw] /help no words run together after an inline tag
+  ✓ [sw] /legal/terms renders content
+  ✓ [sw] /legal/terms no error overlay
+  ✓ [sw] /legal/terms no console/page errors
+  ✓ [sw] /legal/terms rendered in sw (html lang)
+  ✓ [sw] /legal/terms no words run together after an inline tag
+  ✓ [sw] /legal/privacy renders content
+  ✓ [sw] /legal/privacy no error overlay
+  ✓ [sw] /legal/privacy no console/page errors
+  ✓ [sw] /legal/privacy rendered in sw (html lang)
+  ✓ [sw] /legal/privacy no words run together after an inline tag
+  ✓ [sw] /legal/aml renders content
+  ✓ [sw] /legal/aml no error overlay
+  ✓ [sw] /legal/aml no console/page errors
+  ✓ [sw] /legal/aml rendered in sw (html lang)
+  ✓ [sw] /legal/aml no words run together after an inline tag
+  ✓ [sw] /legal/responsible-gambling renders content
+  ✓ [sw] /legal/responsible-gambling no error overlay
+  ✓ [sw] /legal/responsible-gambling no console/page errors
+  ✓ [sw] /legal/responsible-gambling rendered in sw (html lang)
+  ✓ [sw] /legal/responsible-gambling no words run together after an inline tag
+  ✓ [sw] /legal/agent-terms renders content
+  ✓ [sw] /legal/agent-terms no error overlay
+  ✓ [sw] /legal/agent-terms no console/page errors
+  ✓ [sw] /legal/agent-terms rendered in sw (html lang)
+  ✓ [sw] /legal/agent-terms no words run together after an inline tag
+  ✓ [sw] /legal/rules renders content
+  ✓ [sw] /legal/rules no error overlay
+  ✓ [sw] /legal/rules no console/page errors
+  ✓ [sw] /legal/rules rendered in sw (html lang)
+  ✓ [sw] /legal/rules no words run together after an inline tag
+  ✓ [sw] /legal/rules/yes-no renders content
+  ✓ [sw] /legal/rules/yes-no no error overlay
+  ✓ [sw] /legal/rules/yes-no no console/page errors
+  ✓ [sw] /legal/rules/yes-no rendered in sw (html lang)
+  ✓ [sw] /legal/rules/yes-no no words run together after an inline tag
+  ✓ [sw] /legal/rules/up-down renders content
+  ✓ [sw] /legal/rules/up-down no error overlay
+  ✓ [sw] /legal/rules/up-down no console/page errors
+  ✓ [sw] /legal/rules/up-down rendered in sw (html lang)
+  ✓ [sw] /legal/rules/up-down no words run together after an inline tag
+  ✓ [sw] /auth/login renders content
+  ✓ [sw] /auth/login no error overlay
+  ✓ [sw] /auth/login no console/page errors
+  ✓ [sw] /auth/login rendered in sw (html lang)
+  ✓ [sw] /auth/login no words run together after an inline tag
+  ✓ [sw] /auth/register renders content
+  ✓ [sw] /auth/register no error overlay
+  ✓ [sw] /auth/register no console/page errors
+  ✓ [sw] /auth/register rendered in sw (html lang)
+  ✓ [sw] /auth/register no words run together after an inline tag
+  ✓ [sw] /auth/forgot-password renders content
+  ✓ [sw] /auth/forgot-password no error overlay
+  ✓ [sw] /auth/forgot-password no console/page errors
+  ✓ [sw] /auth/forgot-password rendered in sw (html lang)
+  ✓ [sw] /auth/forgot-password no words run together after an inline tag
+  ✓ ⛔ RATCHET · the fused-word check read every public route in every pass
+
+[B] Date field — clipping, typing order, validation, junk
+  ✓ [w=360] Day not clipped (v="31")
+  ✓ [w=360] Month not clipped (v="")
+  ✓ [w=360] Year not clipped (v="")
+  ✓ [w=768] Day not clipped (v="31")
+  ✓ [w=768] Month not clipped (v="")
+  ✓ [w=768] Year not clipped (v="")
+  ✓ [w=1280] Day not clipped (v="31")
+  ✓ [w=1280] Month not clipped (v="")
+  ✓ [w=1280] Year not clipped (v="")
+  ✓ valid "10051990" -> hidden dob=1990-05-10
+  ✓ type "1" -> "1"
+  ✓ type "10" -> "10" (never "01")
+  ✓ 31/02/2000 -> hidden dob empty
+  ✓ 31/02/2000 -> "Invalid date" shown
+  ✓ 01/01/2025 (under 18) -> hidden dob empty
+  ✓ letters ignored in Day
+  ✓ date page no console errors
+
+[C] Responsive — no horizontal overflow at 360px
+  ✓ / no horizontal overflow
+  ✓ /markets no horizontal overflow
+  ✓ /auth/register no horizontal overflow
+  ✓ /leaderboard no horizontal overflow
+  ✓ /proposals no horizontal overflow
+  ✓ /help no horizontal overflow
+
+[D] Dead-link crawl (internal links must not 404/5xx)
+  ✗ link / -> 0 
+  ✗ link /markets -> 0 
+  ✗ link /updown -> 0 
+  ✗ link /live -> 0 
+  ✗ link /results -> 0 
+  ✗ link /leaderboard -> 0 
+  ✗ link /auth/login -> 0 
+  ✗ link /auth/register -> 0 
+  ✗ link /profile/responsible-gambling -> 0 
+  ✗ link /legal/responsible-gambling -> 0 
+  ✗ link /fairness -> 0 
+  ✗ link /proposals -> 0 
+  ✗ link /legal/rules -> 0 
+  ✗ link /agent -> 0 
+  ✗ link /help -> 0 
+  ✗ link /legal/privacy -> 0 
+  ✗ link /legal/aml -> 0 
+  ✗ link /legal/terms -> 0 
+  ✗ link /profile/account -> 0 
+  ✗ link /wallet/deposit -> 0 
+  ✗ link /markets/mkt_51dad2d8cd61b4d88789 -> 0 
+  ✗ link /markets?sort=closing -> 0 
+  ✗ link /?sort=pool -> 0 
+  ✗ link /markets/mkt_37fa3fb7d2b5cc32f672 -> 0 
+  ✗ link /markets/mkt_37fa3fb7d2b5cc32f672?side=YES&from=home -> 0 
+  ✗ link /markets/mkt_37fa3fb7d2b5cc32f672?side=NO&from=home -> 0 
+  ✗ link /markets/mkt_78c683d1e6b885f1c678 -> 0 
+  ✗ link /markets/mkt_78c683d1e6b885f1c678?side=YES&from=home -> 0 
+  ✗ link /markets/mkt_78c683d1e6b885f1c678?side=NO&from=home -> 0 
+  ✗ link /markets/mkt_786d494cb8b43a15ec67 -> 0 
+  ✗ link /markets/mkt_786d494cb8b43a15ec67?side=YES&from=home -> 0 
+  ✗ link /markets/mkt_786d494cb8b43a15ec67?side=NO&from=home -> 0 
+  ✗ link /markets/mkt_cb60735ac25bc07e0845 -> 0 
+  ✗ link /markets/mkt_cb60735ac25bc07e0845?side=YES&from=home -> 0 
+  ✗ link /markets/mkt_cb60735ac25bc07e0845?side=NO&from=home -> 0 
+  ✗ link /markets/mkt_d8fa20d471ae7cd28aad -> 0 
+  ✗ link /markets/mkt_d8fa20d471ae7cd28aad?side=YES&from=home -> 0 
+  ✗ link /markets/mkt_d8fa20d471ae7cd28aad?side=NO&from=home -> 0 
+  ✗ link /markets/mkt_73407e3296dc0d950b2c -> 0 
+  ✗ link /markets/mkt_73407e3296dc0d950b2c?side=YES&from=home -> 0 
+  ✗ link /markets/mkt_73407e3296dc0d950b2c?side=NO&from=home -> 0 
+  ✗ link /markets/mkt_0d271bde3ae784abe12b -> 0 
+  ✗ link /markets/mkt_0d271bde3ae784abe12b?side=YES&from=home -> 0 
+  ✗ link /markets/mkt_0d271bde3ae784abe12b?side=NO&from=home -> 0 
+  ✗ link /markets?topic=sports -> 0 
+  ✗ link /markets?topic=macro -> 0 
+  ✗ link /markets?topic=culture -> 0 
+  ✗ link /markets?topic=crypto -> 0 
+  ✗ link /markets?topic=weather -> 0 
+  ✗ link /markets?topic=other -> 0 
+  ✗ link /updown/udr_a766731f9a338fbb1662 -> 0 
+  ✗ link /updown/udr_a766731f9a338fbb1662?side=UP -> 0 
+  ✗ link /updown/udr_a766731f9a338fbb1662?side=DOWN -> 0 
+  ✗ link /markets/mkt_6613c085222fce2a4901 -> 0 
+  ✗ link /markets/mkt_d5b350aec2ea2686af52 -> 0 
+  ✗ link /markets/mkt_9031db0219db6263c4f2 -> 0 
+  ✗ link /markets/mkt_f63f37e3d7de40a9d91f -> 0 
+  ✗ link /markets/mkt_d1d89fa825624f2a409f -> 0 
+  ✗ link /auth/login?next=%2Fmarkets -> 0 
+  ✗ link /auth/register?next=%2Fmarkets -> 0 
+  ✗ link /markets?status=today -> 0 
+  ✗ link /markets?status=new -> 0 
+  ✗ link /markets?status=progress -> 0 
+  ✗ link /markets?status=all -> 0 
+  ✗ link /markets?sort=people -> 0 
+  ✗ link /markets?sort=close -> 0 
+  ✗ link /markets?sort=move -> 0 
+  ✗ link /markets?sort=new -> 0 
+  ✗ link /markets?dir=asc -> 0 
+  ✗ link /markets?odds=call -> 0 
+  ✗ link /markets?odds=cont -> 0 
+  ✗ link /markets?odds=long -> 0 
+  ✗ link /markets?pool=10k -> 0 
+  ✗ link /markets?pool=50k -> 0 
+  ✗ link /markets?topic=tech -> 0 
+  ✗ link /markets/mkt_7f0b280b26cb46e4490d -> 0 
+  ✗ link /markets/mkt_802eda282f4768ab1441 -> 0 
+  ✗ link /markets/mkt_21b71666eedfa936ad11 -> 0 
+  ✗ link /markets/mkt_c0d8d7196ce86fa42310 -> 0 
+  ✗ link /markets?page=1 -> 0 
+  ✗ link /markets?page=2 -> 0 
+  ✗ link /markets?page=3 -> 0 
+  ✗ link /markets?page=4 -> 0 
+  ✗ link /auth/login?next=%2Fhelp -> 0 
+  ✗ link /auth/register?next=%2Fhelp -> 0 
+  ✗ link /wallet -> 0 
+  ✗ link /positions -> 0 
+  ✗ link /auth/login?next=%2Fproposals -> 0 
+  ✗ link /auth/register?next=%2Fproposals -> 0 
+
+[E] Tester changes — demos hidden, New tab, footer email
+  ✓ no demo polls on /markets
+  ✓ New tab present
+  ✓ footer publishes a support address on the licensed domain
+  ✓ …and it is not the no-reply sender
+
+[E2] New journey rollout — /api/health contract + no preview marker and no journey shell on signed-out pages, /account not found
+  ✓ /api/health states the new journey's rollout (simpleJourney.ceiling, .state; state never above its ceiling)
+  ✓ control · the preview-marker matcher catches the marker and its exit (element and RSC payload)
+  ✓ control · …and passes a page without them
+  ✓ control · the journey-shell matcher catches every trace the shell leaves — its test ids, the shell mark, the flag and a "new" funnel scope, as HTML and as RSC JSON
+  ✓ control · …and passes the classic shell's own marks
+  ✓ control · S7's id matcher (journey-home, journey-card, journey-howto-card, journey-home-ghost) catches each id as an element and as RSC JSON, escaped or plain, and passes a page without them
+  ✓ signed out: /markets links a question to read — the first /markets/<id> on the board
+  ⚠ SKIP  control · the readers SEE the journey shell when it is served — / with a staff preview pass, through [E2]'s fetch and through the page reader [E3] and /account use — and S7's ids on the journey home (journey-home, journey-card, journey-howto-card, journey-home-ghost: WP11, A23 item 3) — production: a preview pass is an officer's to mint (decision 7). The absence checks below are proved on hand-written traces only, by this run.
+  ✓ signed out: / carries no preview marker (rollout STAFF_PREVIEW)
+  ✓ signed out: / carries no trace of the journey shell (rollout STAFF_PREVIEW)
+  ✓ signed out: / carries none of S7's journey ids (rollout STAFF_PREVIEW)
+  ✓ signed out: /markets carries no preview marker (rollout STAFF_PREVIEW)
+  ✓ signed out: /markets carries no trace of the journey shell (rollout STAFF_PREVIEW)
+  ✓ signed out: /markets carries none of S7's journey ids (rollout STAFF_PREVIEW)
+  ✓ signed out: /markets is the classic board (HTTP 200 at /markets, its grid there)
+  ✓ signed out: /live carries no preview marker (rollout STAFF_PREVIEW)
+  ✓ signed out: /live carries no trace of the journey shell (rollout STAFF_PREVIEW)
+  ✓ signed out: /live carries none of S7's journey ids (rollout STAFF_PREVIEW)
+  ✓ signed out: /results carries no preview marker (rollout STAFF_PREVIEW)
+  ✓ signed out: /results carries no trace of the journey shell (rollout STAFF_PREVIEW)
+  ✓ signed out: /results carries none of S7's journey ids (rollout STAFF_PREVIEW)
+  ✓ signed out: /markets/mkt_51dad2d8cd61b4d88789 carries no preview marker (rollout STAFF_PREVIEW)
+  ✓ signed out: /markets/mkt_51dad2d8cd61b4d88789 carries no trace of the journey shell (rollout STAFF_PREVIEW)
+  ✓ signed out: /markets/mkt_51dad2d8cd61b4d88789 carries none of S7's journey ids (rollout STAFF_PREVIEW)
+  ✓ signed out: control · /kp-qa-live-no-such-page is a true 404 with a not-found body and title
+  ✓ signed out: /account renders the not-found body (its main text is the control's)
+  ✓ signed out: …under the not-found title
+  ✓ signed out: …marked noindex in the bytes the server sent
+  ✓ signed out: …and no trace of the journey, in the page or in those bytes
+  ✓ signed out: …and no uncaught page error on either
+  · signed out: /account answered HTTP 200 (A3 expects 200: the root loader streams first), the control HTTP 404 — printed, never judged
+
+[E3] New journey shell — absent for the signed-in QA player (production: mobile01 through the real form, with QA_SIGNED_IN=mobile01)
+  ⚠ NOT MEASURED  [E3] — on a non-local BASE the QA player is signed in only when QA_SIGNED_IN=mobile01 is set (S7-PLAN A23 item 2): one session per account, so an unasked sign-in would end another lane's mobile01 session. Neither a pass nor a failure.
+
+❌ FAILURES — 253 passed, 89 failed
+
+FAILED:
+  - link / -> 0
+  - link /markets -> 0
+  - link /updown -> 0
+  - link /live -> 0
+  - link /results -> 0
+  - link /leaderboard -> 0
+  - link /auth/login -> 0
+  - link /auth/register -> 0
+  - link /profile/responsible-gambling -> 0
+  - link /legal/responsible-gambling -> 0
+  - link /fairness -> 0
+  - link /proposals -> 0
+  - link /legal/rules -> 0
+  - link /agent -> 0
+  - link /help -> 0
+  - link /legal/privacy -> 0
+  - link /legal/aml -> 0
+  - link /legal/terms -> 0
+  - link /profile/account -> 0
+  - link /wallet/deposit -> 0
+  - link /markets/mkt_51dad2d8cd61b4d88789 -> 0
+  - link /markets?sort=closing -> 0
+  - link /?sort=pool -> 0
+  - link /markets/mkt_37fa3fb7d2b5cc32f672 -> 0
+  - link /markets/mkt_37fa3fb7d2b5cc32f672?side=YES&from=home -> 0
+  - link /markets/mkt_37fa3fb7d2b5cc32f672?side=NO&from=home -> 0
+  - link /markets/mkt_78c683d1e6b885f1c678 -> 0
+  - link /markets/mkt_78c683d1e6b885f1c678?side=YES&from=home -> 0
+  - link /markets/mkt_78c683d1e6b885f1c678?side=NO&from=home -> 0
+  - link /markets/mkt_786d494cb8b43a15ec67 -> 0
+  - link /markets/mkt_786d494cb8b43a15ec67?side=YES&from=home -> 0
+  - link /markets/mkt_786d494cb8b43a15ec67?side=NO&from=home -> 0
+  - link /markets/mkt_cb60735ac25bc07e0845 -> 0
+  - link /markets/mkt_cb60735ac25bc07e0845?side=YES&from=home -> 0
+  - link /markets/mkt_cb60735ac25bc07e0845?side=NO&from=home -> 0
+  - link /markets/mkt_d8fa20d471ae7cd28aad -> 0
+  - link /markets/mkt_d8fa20d471ae7cd28aad?side=YES&from=home -> 0
+  - link /markets/mkt_d8fa20d471ae7cd28aad?side=NO&from=home -> 0
+  - link /markets/mkt_73407e3296dc0d950b2c -> 0
+  - link /markets/mkt_73407e3296dc0d950b2c?side=YES&from=home -> 0
+  - link /markets/mkt_73407e3296dc0d950b2c?side=NO&from=home -> 0
+  - link /markets/mkt_0d271bde3ae784abe12b -> 0
+  - link /markets/mkt_0d271bde3ae784abe12b?side=YES&from=home -> 0
+  - link /markets/mkt_0d271bde3ae784abe12b?side=NO&from=home -> 0
+  - link /markets?topic=sports -> 0
+  - link /markets?topic=macro -> 0
+  - link /markets?topic=culture -> 0
+  - link /markets?topic=crypto -> 0
+  - link /markets?topic=weather -> 0
+  - link /markets?topic=other -> 0
+  - link /updown/udr_a766731f9a338fbb1662 -> 0
+  - link /updown/udr_a766731f9a338fbb1662?side=UP -> 0
+  - link /updown/udr_a766731f9a338fbb1662?side=DOWN -> 0
+  - link /markets/mkt_6613c085222fce2a4901 -> 0
+  - link /markets/mkt_d5b350aec2ea2686af52 -> 0
+  - link /markets/mkt_9031db0219db6263c4f2 -> 0
+  - link /markets/mkt_f63f37e3d7de40a9d91f -> 0
+  - link /markets/mkt_d1d89fa825624f2a409f -> 0
+  - link /auth/login?next=%2Fmarkets -> 0
+  - link /auth/register?next=%2Fmarkets -> 0
+  - link /markets?status=today -> 0
+  - link /markets?status=new -> 0
+  - link /markets?status=progress -> 0
+  - link /markets?status=all -> 0
+  - link /markets?sort=people -> 0
+  - link /markets?sort=close -> 0
+  - link /markets?sort=move -> 0
+  - link /markets?sort=new -> 0
+  - link /markets?dir=asc -> 0
+  - link /markets?odds=call -> 0
+  - link /markets?odds=cont -> 0
+  - link /markets?odds=long -> 0
+  - link /markets?pool=10k -> 0
+  - link /markets?pool=50k -> 0
+  - link /markets?topic=tech -> 0
+  - link /markets/mkt_7f0b280b26cb46e4490d -> 0
+  - link /markets/mkt_802eda282f4768ab1441 -> 0
+  - link /markets/mkt_21b71666eedfa936ad11 -> 0
+  - link /markets/mkt_c0d8d7196ce86fa42310 -> 0
+  - link /markets?page=1 -> 0
+  - link /markets?page=2 -> 0
+  - link /markets?page=3 -> 0
+  - link /markets?page=4 -> 0
+  - link /auth/login?next=%2Fhelp -> 0
+  - link /auth/register?next=%2Fhelp -> 0
+  - link /wallet -> 0
+  - link /positions -> 0
+  - link /auth/login?next=%2Fproposals -> 0
+  - link /auth/register?next=%2Fproposals -> 0

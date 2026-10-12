@@ -1,0 +1,19 @@
+Dial stake ladder
+
+PASS 1: 🔴 no position on the dial offers more than the configured maximum — 16016 positions × 8 maxima × 2 minimums
+PASS 1: …and never less than the configured minimum
+PASS 1: ⭐ at the live minimum the centre stakes exactly it, and the far end reaches the maximum — 500 … 1000000
+PASS 1: ⭐ the far end still REACHES the maximum — a clamp that just lowers the ceiling is a bug too — 1000000
+PASS 1: 🔴 maxStake 249,950 offers 249,950, not the 250,000 the server refuses — 249950
+PASS 2: ⭐ CONTROL — the OLD formula does exceed the maximum, so §1 can fail — old(1)=250000 > maxStake=249950
+PASS 2: …and the current one does not, on the identical input — 249950 ≤ 249950
+PASS 3: a fractional maximum yields a whole-number ceiling — 250000
+PASS 3: …and every offered stake is a whole number
+PASS 4: max ≤ min falls back to the legacy ceiling rather than a ≤0 range
+PASS 4: an absent maximum keeps old callers working
+PASS 4: ⛔ a non-finite maximum never reaches the Place button as NaN — NaN→200000 Inf→200000
+PASS 5: the centre stakes exactly the minimum
+PASS 5: both sides of the centre are symmetric — left is YES and right is NO — the SIDE differs, the money must not
+PASS 5: moving away from the centre never LOWERS the stake
+
+dial-stake: 15 passed, 0 failed

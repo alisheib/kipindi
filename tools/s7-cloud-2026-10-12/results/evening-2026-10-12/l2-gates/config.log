@@ -1,0 +1,6 @@
+[audit] ADMIN config.global.updated usr_officer MarketConfig#global
+[audit] ADMIN config.global.updated usr_officer MarketConfig#global
+
+config-persist: 32 passed, 0 failed
+[audit] ADMIN config.global.updated usr_officer MarketConfig#global
+[audit] ADMIN proposals.config.updated usr_officer ProposalsConfig#global

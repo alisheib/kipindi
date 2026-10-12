@@ -1,0 +1,72 @@
+
+── 0 · the premise: one fixed grouping is the reader's in all three languages; a runtime locale's is not ─────────
+  ok   0.1 CONTROL · `formatNumber` groups a count as "12,479" and leaves "999" bare
+  ok   0.2 CONTROL · Swahili, English and Chinese all group as `formatNumber` does — so the one fixed grouping IS the reader's
+  ok   0.3 CONTROL · …and a runtime's own locale need not: a German phone groups "12.479", a French one with a narrow no-break space — what `toLocaleString()` and `new Intl.NumberFormat()` printed after hydration on a server-rendered client card
+  ok   0.4 CONTROL · a bare count is ungrouped — production's /results lens read "Zote 12479"
+
+── 1 · G-4 · one way to count: every count a player's page prints goes through `formatNumber` ────────────────────
+     population: 486 player-visible files; 36 sites seen; 23 classified
+  ok   1.1 · every count a player's page prints is grouped through `formatNumber` — over 486 player-visible files, no JSX count, no {n}/{total}/{shown} slot, no template count, no `toLocaleString`, no `new Intl.NumberFormat`, no `String(count)` outside the 23 classified sites
+  ok   1.2 · no classified site is stale: each one is still where its reason says (a list that outlives its sites would excuse a new one)
+  ok   1.3 · every query bar (13, every file drawing a `QueryResultCount`) builds its result phrase with the count grouped — "masoko 12,479", and the sheet's apply label and its filter count from the same
+  ok   1.4 · the progress bar the census excuses is the operator console's: no player-visible file imports it
+  ok   1.5 · the two local names the census accepts are the convention: the away bar's `n` IS `formatNumber`, and the bell's `countText` groups the journey's count (the classic branch is §6.1)
+  ok   1.6 · the phrase the inbox's bulk bar prints is built with its count grouped: "1,247 hazijasomwa"
+  ok   1.1′ PLANT · a bare count in JSX (/updown/history's "2 dau" as it shipped) is found
+  ok   1.1″ PLANT · a bar's phrase filled with `String(resultCount)` is found
+  ok   1.1‴ PLANT · a `fill` slot handed a bare count (the home's topic tile as it shipped) is found
+  ok   1.1⁗ PLANT · a template's count (/positions' win-rate hint as it shipped) is found
+  ok   1.1⁵ PLANT · `toLocaleString()` and a private `new Intl.NumberFormat()` (the Up & Down card's) are found
+  ok   1.1⁶ PLANT · a primitive's bare `{count}` (the filter pill as it shipped) is found
+  ok   1.1⁷ CONTROL · the convention is not flagged: `formatNumber(…)` in each of those shapes
+
+── 2 · G-4 · the counts drawn: a pill, the pager, a bar at production's 12,479 — on a German phone; the cards; the share card; the bounds 
+  ok   2.0 CONTROL · the German phone is real: under it `(12479).toLocaleString()` and `new Intl.NumberFormat().format(12479)` print "12.479", and `formatNumber` still "12,479"
+  ok   2.1 · a filter pill says its count grouped ("Zote 12,479") and still hands the probes the bare integer (`data-count="12479"`)
+  ok   2.2 · the pager's range is grouped ("12,469–12,479 kati ya 12,479" on the archive's last page) and each page button still names its page bare ("1040" — the address's `?page=1040`)
+  ok   2.3 · sw · /results' bar at production's 12,479: the result line "masoko 12,479" (its `data-result-count` the bare integer), every pill's count grouped as its `data-count` reads ("6,912", "5,023")
+  ok   2.3 · en · /results' bar at production's 12,479: the result line "12,479 markets" (its `data-result-count` the bare integer), every pill's count grouped as its `data-count` reads ("6,912", "5,023")
+  ok   2.3 · zh · /results' bar at production's 12,479: the result line "12,479 个市场" (its `data-result-count` the bare integer), every pill's count grouped as its `data-count` reads ("6,912", "5,023")
+  ok   2.4 · the Up & Down card's player count is grouped as the round page's is (`formatNumber`): its private device-locale formatter is gone, so its first paint and its hydration agree
+  ok   2.5 · the share card's count reads as every count does — grouped, and the dictionary's one/many pair ("1 predictor", where it read "1 predictors")
+  ok   2.6 · the deposit refusal fills its bounds as the withdraw refusal does (`formatNumber`), one spelling for one grouping
+  ok   2.7 · the siblings R5-A's count line left: the leaderboard table's resolved column and its hot streak (the podium already grouped), /proposals' tally, the market page's predictor tile, /results' donut legend
+
+── 3 · G-6 · the result reads every figure with the one reader (`moneyRuns`), for every result ───────────────────
+  ok   3.1 · the result imports the platform's reader and draws its title, a subtitle given as words and its footnote through it — no matcher of its own, no opt-in prop anywhere
+  ok   3.2 · the title: the bet receipt's stake (the dial's success title) — "NDIO · TZS 1,000" draws ["TZS 1,000"] as amounts, its words the caller's character for character
+  ok   3.2 · the title: a sentence's comma after a figure stays the sentence's — "Kiwango cha juu ni TZS 5,000,000, kisha jaribu tena" draws ["TZS 5,000,000"] as amounts, its words the caller's character for character
+  ok   3.2 · the title: a compact figure — "Bwawa ni TZS 1.2M sasa" draws ["TZS 1.2M"] as amounts, its words the caller's character for character
+  ok   3.2 · the title: a decimal figure — "Ada ni TZS 2.5 tu" draws ["TZS 2.5"] as amounts, its words the caller's character for character
+  ok   3.2 · the title: the dictionary's no-break space — "Salio lako ni TZS 500" draws ["TZS 500"] as amounts, its words the caller's character for character
+  ok   3.2 · the title: a signed figure, the sign before the code — "Faida +TZS 1,234 leo" draws ["+TZS 1,234"] as amounts, its words the caller's character for character
+  ok   3.2 · the title: a minus after the code — "Salio TZS −4,200" draws ["TZS −4,200"] as amounts, its words the caller's character for character
+  ok   3.2′ CONTROL · the private matcher got each of those wrong: the comma taken ("TZS 5,000,000,"), "TZS 1" without ".2M", "TZS 2" without ".5", the no-break space missed, "+" left outside
+  ok   3.3 · a refusal's subtitle given as words and the footnote read their figures too (the toast beside it already does): "TZS 500", "TZS 1,000", "TZS 15"
+  ok   3.3′ · a subtitle handed in as nodes (a kept sentence) is drawn as given — the modal adds nothing to a caller's nodes
+  ok   3.4 CONTROL · a title with no figure renders as plain text, as before (no element added)
+  ok   3.5 · the sale's result asks for nothing and its figure is still one amount: "TZS 9,000 imerudishwa" (S6 A8f's outcome, now every result's)
+  ok   3.6 · the bet receipt's title is the one the reader now dresses: the dial still hands "NDIO · TZS 1,000" as words
+
+── 4 · G-6 · every regular expression that reads a currency or a thousands group is the shared reader's or classified 
+     728 files read; figure readers in 6: src/components/ui/keep-words.tsx, src/lib/contacts/vcard.ts, src/lib/contacts/xlsx-limits.ts, src/lib/fill-nodes.tsx, src/lib/house-bot/rules.ts, src/lib/markets/short-title.ts
+  ok   4.1 · over 728 player-visible files (and the share card), every regular expression reading a currency or a thousands group is the shared reader's (fill-nodes.tsx, keep-words.tsx) or classified (4) — the result's private `FIGURE` and the share card's private grouping are gone
+  ok   4.2 · no classified reader is stale
+  ok   4.3 · the share card writes money with the platform's one grammar (`const tzs = formatTzs;` — built in Node, which has Intl), no grouping regex of its own
+  ok   4.1′ PLANT · a private money matcher (the result's, as it shipped) is read as one
+
+── 5 · G-6 · an empty slot keeps its line with no character in the page: one rule, four slots ────────────────────
+  ok   5.1 · globals.css draws the empty slot's space once, as generated content: `.kp-keep-line:empty::before { content: "\00a0"; }` — no other rule names the class
+  ok   5.2 · the four slots hold no typed no-break space (raw or escaped), each renders nothing when empty and wears `kp-keep-line`
+  ok   5.3 · the analytics choice before it mounts (the server's page): its line is an EMPTY element the rule draws — no character in the page's text
+  ok   5.4 · the time field's empty preview: an empty, aria-hidden element the rule draws
+  ok   5.5 CONTROL · the typed space WAS page text — a copy, a find-in-page and `textContent` carried it; the generated one is not in the markup at all
+  ok   5.6 · what stays, by design: Up & Down's live-region nonce (a zero-width space that makes a repeated message announce again) and the legal tree's authored no-break spaces (byte-pinned)
+  ok   5.7 · the round-5 sweep no longer excuses the four slots (`test:visual-pass-r5e` 6.5) and holds them clear (6.5′): a typed space coming back fails there too
+
+── 6 · what classic viewers keep: the classic bell's count (frozen chrome) and the capped badge ──────────────────
+  ok   6.1 · the classic bell's count is byte-for-byte what it was (frozen, `qa:classic-shell-parity`); only the journey's bell groups it — both through one value, the change for classic its prop dropped
+  ok   6.2 · the count badge stays as it is: capped at "99+" (two digits, never a group to write) — and no caller lifts the cap (1 pass one: 99)
+
+visual-pass-r5j: 54 passed, 0 failed

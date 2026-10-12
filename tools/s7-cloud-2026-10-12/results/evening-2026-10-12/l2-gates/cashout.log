@@ -1,0 +1,156 @@
+[audit] ADMIN config.global.updated officer_test MarketConfig#global
+[audit] ADMIN market.created test Market#mkt_addd494c0216dd185edb
+[audit] BET market.position.opened usr_co_a Position#pos_08669a287c01f1f5eca0
+[email] sendEmailToUser skipped — no email for user usr_co_a… (user.email=null, phone=+25598…)
+[audit] BET market.position.opened usr_co_a2 Position#pos_c7de5f10e1a7aa9cea6f
+[email] sendEmailToUser skipped — no email for user usr_co_a2… (user.email=null, phone=+25598…)
+[audit] BET market.position.opened usr_co_b Position#pos_fb8ce7658f42f441dc2f
+[email] sendEmailToUser skipped — no email for user usr_co_b… (user.email=null, phone=+25598…)
+[audit] BET market.position.cashed_out usr_co_a Position#pos_08669a287c01f1f5eca0
+[email] sendEmailToUser skipped — no email for user usr_co_a… (user.email=null, phone=+25598…)
+[audit] ADMIN market.created test Market#mkt_4872c05a9c3b8f510985
+[audit] BET market.position.opened win_a Position#pos_a683adec39fb44f03d0a
+[email] sendEmailToUser skipped — no email for user win_a… (user.email=null, phone=+25598…)
+[audit] BET market.position.opened win_a2 Position#pos_40725594b681df5395c4
+[email] sendEmailToUser skipped — no email for user win_a2… (user.email=null, phone=+25598…)
+[audit] BET market.position.opened win_b Position#pos_bab87018d41e0cd24b86
+[email] sendEmailToUser skipped — no email for user win_b… (user.email=null, phone=+25598…)
+[audit] BET market.position.opened win_a Position#pos_f9204c1ab3ccf11d3822
+[email] sendEmailToUser skipped — no email for user win_a… (user.email=null, phone=+25598…)
+[audit] ADMIN market.created test Market#mkt_79926352271dccce78ee
+[audit] BET market.position.opened short_a Position#pos_23cfadec4815bcd14de6
+[email] sendEmailToUser skipped — no email for user short_a… (user.email=null, phone=+25598…)
+[audit] BET market.position.opened short_b Position#pos_00db0ec6146edd31a358
+[email] sendEmailToUser skipped — no email for user short_b… (user.email=null, phone=+25598…)
+[audit] ADMIN config.global.updated officer_test MarketConfig#global
+[audit] ADMIN market.created test Market#mkt_236e7fbbae8057a924a7
+[audit] BET market.position.opened usr_co_c Position#pos_8e88250537da573874b6
+[email] sendEmailToUser skipped — no email for user usr_co_c… (user.email=null, phone=+25598…)
+[audit] BET market.position.opened usr_co_c2 Position#pos_50c16b21c12c6e78c9e7
+[email] sendEmailToUser skipped — no email for user usr_co_c2… (user.email=null, phone=+25598…)
+[audit] BET market.position.opened usr_co_d Position#pos_cbbfcb9fa8c01f60f923
+[email] sendEmailToUser skipped — no email for user usr_co_d… (user.email=null, phone=+25598…)
+[audit] BET market.position.cashed_out usr_co_c Position#pos_8e88250537da573874b6
+[email] sendEmailToUser skipped — no email for user usr_co_c… (user.email=null, phone=+25598…)
+[audit] ADMIN config.global.updated officer_test MarketConfig#global
+[audit] ADMIN market.created test Market#mkt_c78826ebc217f26390ec
+[audit] BET market.position.opened usr_stick_a Position#pos_66b90e87aad73c45f9dd
+[email] sendEmailToUser skipped — no email for user usr_stick_a… (user.email=null, phone=+25598…)
+[audit] BET market.position.opened usr_stick_a2 Position#pos_fbe40563caba2a0d93a4
+[email] sendEmailToUser skipped — no email for user usr_stick_a2… (user.email=null, phone=+25598…)
+[audit] BET market.position.opened usr_stick_b Position#pos_065e3d57b6577e6af172
+[email] sendEmailToUser skipped — no email for user usr_stick_b… (user.email=null, phone=+25598…)
+[audit] ADMIN config.global.updated officer_test MarketConfig#global
+[audit] BET market.position.cashed_out usr_stick_a Position#pos_66b90e87aad73c45f9dd
+[email] sendEmailToUser skipped — no email for user usr_stick_a… (user.email=null, phone=+25598…)
+[audit] ADMIN config.global.updated officer_test MarketConfig#global
+[audit] ADMIN config.global.updated officer_test MarketConfig#global
+[audit] ADMIN market.created test Market#mkt_2dcfe2d231a32aca6ce8
+[audit] BET market.position.opened usr_co_e Position#pos_7c60bfe828493bb49f5c
+[email] sendEmailToUser skipped — no email for user usr_co_e… (user.email=null, phone=+25598…)
+[audit] BET market.position.opened usr_co_e2 Position#pos_e476b30a1015dcc3f2fe
+[email] sendEmailToUser skipped — no email for user usr_co_e2… (user.email=null, phone=+25598…)
+[audit] BET market.position.opened usr_co_f Position#pos_e51b2ae2dd1c2f633fc0
+[email] sendEmailToUser skipped — no email for user usr_co_f… (user.email=null, phone=+25598…)
+[audit] BET market.position.cashed_out usr_co_e Position#pos_7c60bfe828493bb49f5c
+[email] sendEmailToUser skipped — no email for user usr_co_e… (user.email=null, phone=+25598…)
+[audit] ADMIN config.global.updated officer_test MarketConfig#global
+[audit] ADMIN config.global.updated officer_test MarketConfig#global
+[audit] ADMIN market.created test Market#mkt_6e45b295059379ea05d1
+[audit] BET market.position.opened usr_hold Position#pos_57ba6bd5716ed0d5f946
+[email] sendEmailToUser skipped — no email for user usr_hold… (user.email=null, phone=+25598…)
+[audit] BET market.position.opened usr_hold2 Position#pos_815dd0a6985f2411f303
+[email] sendEmailToUser skipped — no email for user usr_hold2… (user.email=null, phone=+25598…)
+[audit] ADMIN market.adjudicated officer_one Market#mkt_6e45b295059379ea05d1
+[audit] WALLET bet.payout usr_hold Position#pos_57ba6bd5716ed0d5f946
+[audit] ADMIN market.resolved system Market#mkt_6e45b295059379ea05d1
+[email] sendEmailToUser skipped — no email for user usr_hold… (user.email=null, phone=+25598…)
+[email] sendEmailToUser skipped — no email for user usr_hold2… (user.email=null, phone=+25598…)
+[audit] WALLET market.settled system Market#mkt_6e45b295059379ea05d1
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_6e45b295059379ea05d1
+[audit] ADMIN config.global.updated officer_test MarketConfig#global
+[audit] ADMIN config.global.updated officer_test MarketConfig#global
+[audit] ADMIN market.created test Market#mkt_a2cefe6b4c06564ef027
+[audit] BET market.position.opened usr_lock_a Position#pos_ef28b88af0c4496208e1
+[email] sendEmailToUser skipped — no email for user usr_lock_a… (user.email=null, phone=+25598…)
+[audit] BET market.position.opened usr_lock_b Position#pos_0a9795486d414cd9196a
+[email] sendEmailToUser skipped — no email for user usr_lock_b… (user.email=null, phone=+25598…)
+[audit] ADMIN config.global.updated officer_test MarketConfig#global
+[audit] ADMIN market.created usr_a8c_fixture Market#mkt_73af3018ea51e12aeb1b
+[audit] WALLET bonus.credited usr_hb_20678_1 BonusGrant#bg_c4ec07c17b1994bbf86ca817
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_1… (user.email=null, phone=+25571…)
+[audit] BET market.position.opened usr_hb_20678_1 Position#pos_6628515a08f67d4d3eab
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_1… (user.email=null, phone=+25571…)
+[audit] BET market.position.sell_refused usr_hb_20678_1 Position#pos_6628515a08f67d4d3eab
+[audit] BET market.position.sell_refused usr_hb_20678_1 Position#pos_6628515a08f67d4d3eab
+[audit] BET market.position.sell_refused usr_hb_20678_1 Position#pos_6628515a08f67d4d3eab
+[audit] WALLET bonus.wagering_reversed usr_hb_20678_1 Wallet#usr_hb_20678_1
+[audit] BET market.position.cashed_out usr_hb_20678_1 Position#pos_6628515a08f67d4d3eab
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_1… (user.email=null, phone=+25571…)
+[audit] ADMIN market.created usr_a8c_fixture Market#mkt_17f54b5ce2c5d5df9d7b
+[audit] WALLET bonus.credited usr_hb_20678_2 BonusGrant#bg_f6bb05f1653d3bb459a5b71b
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_2… (user.email=null, phone=+25574…)
+[audit] BET market.position.opened usr_hb_20678_2 Position#pos_53875b8ab3feaac9294b
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_2… (user.email=null, phone=+25574…)
+[audit] WALLET bonus.wagering_reversed usr_hb_20678_2 Wallet#usr_hb_20678_2
+[audit] BET market.position.cashed_out usr_hb_20678_2 Position#pos_53875b8ab3feaac9294b
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_2… (user.email=null, phone=+25574…)
+[audit] ADMIN market.created usr_a8c_fixture Market#mkt_6c82b3dbd43f13e12cf9
+[audit] WALLET bonus.credited usr_hb_20678_3 BonusGrant#bg_bac73d6505c7f9d6a544a8a6
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_3… (user.email=null, phone=+25572…)
+[audit] BET market.position.opened usr_hb_20678_3 Position#pos_bb88cf2c9e3755dc6e84
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_3… (user.email=null, phone=+25572…)
+[audit] ADMIN market.created usr_a8c_fixture Market#mkt_22dfe235d23f69100f5b
+[audit] WALLET bonus.credited usr_hb_20678_4 BonusGrant#bg_58beefcf96410ea0b4c068e6
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_4… (user.email=null, phone=+25573…)
+[audit] BET market.position.opened usr_hb_20678_4 Position#pos_f961f9462150ef6263d9
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_4… (user.email=null, phone=+25573…)
+[audit] WALLET bonus.wagering_reversed usr_hb_20678_4 Wallet#usr_hb_20678_4
+[audit] BET market.position.cashed_out usr_hb_20678_4 Position#pos_f961f9462150ef6263d9
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_4… (user.email=null, phone=+25573…)
+[audit] ADMIN market.created usr_a8c_fixture Market#mkt_309a03940d34bb4205e0
+[audit] WALLET bonus.credited usr_hb_20678_5 BonusGrant#bg_1ea43a7a1c6611d57630660c
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_5… (user.email=null, phone=+25570…)
+[audit] BET market.position.opened usr_hb_20678_5 Position#pos_7097ec7d529e2d839413
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_5… (user.email=null, phone=+25570…)
+[audit] BET market.position.sell_refused usr_hb_20678_5 Position#pos_7097ec7d529e2d839413
+[audit] WALLET bonus.wagering_reversed usr_hb_20678_5 Wallet#usr_hb_20678_5
+[audit] BET market.position.cashed_out usr_hb_20678_5 Position#pos_7097ec7d529e2d839413
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_5… (user.email=null, phone=+25570…)
+[audit] ADMIN market.created usr_a8c_fixture Market#mkt_a1d2b715fa872607538f
+[audit] WALLET bonus.credited usr_hb_20678_6 BonusGrant#bg_0404365ba1e9f24650a7ddbe
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_6… (user.email=null, phone=+25574…)
+[audit] BET market.position.opened usr_hb_20678_6 Position#pos_f4dc81307e92cf92d0db
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_6… (user.email=null, phone=+25574…)
+[audit] ADMIN market.created usr_a8c_fixture Market#mkt_de387fb46b7fcb0808e7
+[audit] WALLET bonus.credited usr_hb_20678_7 BonusGrant#bg_b941f0ccb9e0429faf69a663
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_7… (user.email=null, phone=+25576…)
+[audit] BET market.position.opened usr_hb_20678_7 Position#pos_d36f9ac2bcdfd2282fd4
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_7… (user.email=null, phone=+25576…)
+[audit] BET market.position.sell_refused usr_hb_20678_7 Position#pos_d36f9ac2bcdfd2282fd4
+[audit] BET market.position.sell_refused usr_hb_20678_7 Position#pos_d36f9ac2bcdfd2282fd4
+[audit] BET market.position.sell_refused usr_hb_20678_7 Position#pos_d36f9ac2bcdfd2282fd4
+[audit] BET market.position.sell_refused usr_hb_20678_7 Position#pos_d36f9ac2bcdfd2282fd4
+[audit] BET market.position.sell_refused usr_hb_20678_7 Position#pos_d36f9ac2bcdfd2282fd4
+[audit] BET market.position.sell_refused usr_hb_20678_7 Position#pos_d36f9ac2bcdfd2282fd4
+[audit] WALLET bonus.wagering_reversed usr_hb_20678_7 Wallet#usr_hb_20678_7
+[audit] BET market.position.cashed_out usr_hb_20678_7 Position#pos_d36f9ac2bcdfd2282fd4
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_7… (user.email=null, phone=+25576…)
+[audit] ADMIN market.created usr_a8c_fixture Market#mkt_38991c9dfc53a0ceb416
+[audit] WALLET bonus.credited usr_hb_20678_8 BonusGrant#bg_03d556df07bb5129d6be9703
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_8… (user.email=null, phone=+25577…)
+[audit] BET market.position.opened usr_hb_20678_8 Position#pos_08e26893afa8097e3c50
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_8… (user.email=null, phone=+25577…)
+[audit] WALLET bonus.wagering_reversed usr_hb_20678_8 Wallet#usr_hb_20678_8
+[audit] BET market.position.cashed_out usr_hb_20678_8 Position#pos_08e26893afa8097e3c50
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_8… (user.email=null, phone=+25577…)
+[audit] ADMIN market.created usr_a8c_fixture Market#mkt_20fe2dc27b312b98240d
+[audit] WALLET bonus.credited usr_hb_20678_9 BonusGrant#bg_9d4f1960ce637ddfc4207152
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_9… (user.email=null, phone=+25572…)
+[audit] BET market.position.opened usr_hb_20678_9 Position#pos_8d5874470f579a965c07
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_9… (user.email=null, phone=+25572…)
+[audit] WALLET bonus.wagering_reversed usr_hb_20678_9 Wallet#usr_hb_20678_9
+[audit] BET market.position.cashed_out usr_hb_20678_9 Position#pos_8d5874470f579a965c07
+[email] sendEmailToUser skipped — no email for user usr_hb_20678_9… (user.email=null, phone=+25572…)
+
+cashout-fee: 85 passed, 0 failed

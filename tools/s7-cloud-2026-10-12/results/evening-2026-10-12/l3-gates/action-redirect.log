@@ -1,0 +1,40 @@
+action-redirect — live fix L3: a session that ends mid-bet is a sign-in, never a failed bet
+§1 the framework: Next's reducer rejects an action's redirect
+  ✓ 1.1 the redirect branch of the action's answer is found
+  ✓ 1.2 it REJECTS the call with the redirect, internal and external (two rejections)
+  ✓ 1.3 and resolves nothing on that branch
+  ✓ 1.4 its error is Next's getRedirectError, marked handled
+§2 the rule: isActionRedirect is Next's isRedirectError
+  ✓ 2.1 every real redirect error is a redirect
+  ✓ 2.2 no near miss is
+  ✓ 2.3 and it answers as Next's own isRedirectError on every one
+§3 the controls: the redirect is asked first, and said by nothing
+  ✓ 3.0 conviction-dial.tsx: imports isActionRedirect from @/lib/action-redirect
+  ✓ 3.1 conviction-dial.tsx: buyPositionAction is awaited once, inside a try
+  ✓ 3.2 conviction-dial.tsx: its catch binds the error
+  ✓ 3.3 conviction-dial.tsx: the catch asks isActionRedirect(e)
+  ✓ 3.4 conviction-dial.tsx: before any failure is said or a verdict made
+  ✓ 3.5 conviction-dial.tsx: the branch returns, rethrows nothing and says nothing
+  ✓ 3.6 conviction-dial.tsx: the confirm closes before it returns
+  ✓ 3.0 sell-button.tsx: imports isActionRedirect from @/lib/action-redirect
+  ✓ 3.1 sell-button.tsx: cashOutPositionAction is awaited once, inside a try
+  ✓ 3.2 sell-button.tsx: its catch binds the error
+  ✓ 3.3 sell-button.tsx: the catch asks isActionRedirect(e)
+  ✓ 3.4 sell-button.tsx: before any failure is said or a verdict made
+  ✓ 3.5 sell-button.tsx: the branch returns, rethrows nothing and says nothing
+  ✓ 3.6 sell-button.tsx: the confirm closes before it returns
+  ✓ 3.0 use-quick-bet.ts: imports isActionRedirect from @/lib/action-redirect
+  ✓ 3.1 use-quick-bet.ts: buyPositionAction is awaited once, inside a try
+  ✓ 3.2 use-quick-bet.ts: its catch binds the error
+  ✓ 3.3 use-quick-bet.ts: the catch asks isActionRedirect(e)
+  ✓ 3.4 use-quick-bet.ts: before any failure is said or a verdict made
+  ✓ 3.5 use-quick-bet.ts: the branch returns, rethrows nothing and says nothing
+  ✓ 3.6 use-quick-bet.ts: the tap's own entry is out before it returns
+§4 the wiring
+  ✓ 4.1 test:action-redirect runs this suite
+  ✓ 4.2 red:action-redirect is its red twin
+  ✓ 4.3 predeploy runs it
+  ✓ 4.4 its drive qa:auth-loss-mid-bet is declared and on disk
+
+ACTION REDIRECT — all checks passed
+

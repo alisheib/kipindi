@@ -1,0 +1,113 @@
+[qa:chunks-prod] TARGET https://50pick.tz — as a guest, GET only; routes / /markets /positions /help /live /results
+[qa:chunks-prod] the controls on synthetic documents: all pass (17)
+[qa:chunks-prod] the marker table holds against src/ (8 journey rows)
+
+/ → https://50pick.tz/ (200, HTML 237.3 KB)
+  initial scripts (24, 1295.0 KB): 0~k6u5_j-9bf2.js 27.1 KB, 18cilrg3kkkfk.js 106.7 KB, 0h9l_p_xvhu-7.js 227.4 KB, 04.i-__.as.dk.js 43.0 KB, turbopack-0zvsw5gxyb6j1.js 10.4 KB, 0was_cwa3s49~.js 20.1 KB, 0hircb9zufc-5.js 14.2 KB, 0i.l9589uvx0j.js 53.5 KB, 0b.c916_346zj.js 22.0 KB, 0i1~2y--k5mtz.js 14.8 KB, 03-i-ywqr1.~9.js 70.2 KB, 0fe06o~9~0xm8.js 338.6 KB, 0.wnkjb-saker.js 30.9 KB, 02~abe9tkf417.js 32.4 KB, 0g7tvi8d17-wp.js 40.3 KB, 0bdweb4snjbdu.js 42.2 KB, 07_939kut~bus.js 6.4 KB, 08_~24pwv19io.js 18.9 KB, 0_raf172~5m6p.js 25.1 KB, 00p_ss~6fa_sn.js 4.3 KB, 10n991xwdosye.js 4.9 KB, 0mwo19-oo5cu~.js 0.4 KB, 03~yq9q893hmn.js [nomodule] 109.9 KB, 0_ycpehfi.z.4.js 31.3 KB
+  low-priority preloads, apart (4, 9.9 KB): 0tzy.m2dj~-0~.js [low] 0.1 KB, 0l7idi2rtm_89.js [low] 1.5 KB, 0l7j30qbazsf5.js [low] 3.0 KB, 02haplna2uswf.js [low] 5.3 KB
+  control: "deposit-header" FOUND (03-i-ywqr1.~9.js) · "deposit-rail" FOUND (03-i-ywqr1.~9.js)
+  journey markers:
+    · S6 JourneyFlag                                    structural only — not read here
+    · S6 JourneyTopBar       "\"journey-top-bar\""      absent from the initial scripts
+    · S6 JourneyTabs         "\"journey-tabs\""         absent from the initial scripts
+    · S6 JourneyShellMark    "\"kp-journey-shell\""     IN the initial scripts (0g7tvi8d17-wp.js) — by design (every page): reported, never failed
+    · S7 HomeLazy            "\"JourneyHome.HowToCard\"" IN the initial scripts (0_raf172~5m6p.js) — by design (/ only): reported, never failed
+    · S7 HowToCard           "\"journey-howto-card\""   absent from the initial scripts
+    · S7 HowToSheet          "\"journey-howto-sheet\""  absent from the initial scripts
+    · S7 JourneyCard         "\"journey-card\""         absent from the initial scripts
+  journey markup in the HTML: none
+  client-rendered boundaries: 2 <!--$!--> (BAILOUT_TO_CLIENT_SIDE_RENDERING, BAILOUT_TO_CLIENT_SIDE_RENDERING); data-dgst templates 2; $RX 0; chatbotEnabled true → expected 2
+  the RSC data's client references name 0 chunk(s); 0 of them are not initial scripts
+  ✓ PASS
+
+/markets → https://50pick.tz/markets (200, HTML 317.5 KB)
+  initial scripts (26, 1335.8 KB): 0~k6u5_j-9bf2.js 27.1 KB, 18cilrg3kkkfk.js 106.7 KB, 0h9l_p_xvhu-7.js 227.4 KB, 04.i-__.as.dk.js 43.0 KB, turbopack-0zvsw5gxyb6j1.js 10.4 KB, 0was_cwa3s49~.js 20.1 KB, 0hircb9zufc-5.js 14.2 KB, 0i.l9589uvx0j.js 53.5 KB, 0b.c916_346zj.js 22.0 KB, 0i1~2y--k5mtz.js 14.8 KB, 03-i-ywqr1.~9.js 70.2 KB, 0fe06o~9~0xm8.js 338.6 KB, 0.wnkjb-saker.js 30.9 KB, 02~abe9tkf417.js 32.4 KB, 0g7tvi8d17-wp.js 40.3 KB, 0bdweb4snjbdu.js 42.2 KB, 08_~24pwv19io.js 18.9 KB, 17u6orqw1mpuc.js 42.7 KB, 0ukwhynqo7_4_.js 4.3 KB, 07_939kut~bus.js 6.4 KB, 00p_ss~6fa_sn.js 4.3 KB, 10n991xwdosye.js 4.9 KB, 0luj01r745icf.js 18.9 KB, 0mwo19-oo5cu~.js 0.4 KB, 03~yq9q893hmn.js [nomodule] 109.9 KB, 0_ycpehfi.z.4.js 31.3 KB
+  low-priority preloads, apart (4, 9.9 KB): 0tzy.m2dj~-0~.js [low] 0.1 KB, 0l7idi2rtm_89.js [low] 1.5 KB, 0l7j30qbazsf5.js [low] 3.0 KB, 02haplna2uswf.js [low] 5.3 KB
+  control: "deposit-header" FOUND (03-i-ywqr1.~9.js) · "deposit-rail" FOUND (03-i-ywqr1.~9.js)
+  journey markers:
+    · S6 JourneyFlag                                    structural only — not read here
+    · S6 JourneyTopBar       "\"journey-top-bar\""      absent from the initial scripts
+    · S6 JourneyTabs         "\"journey-tabs\""         absent from the initial scripts
+    · S6 JourneyShellMark    "\"kp-journey-shell\""     IN the initial scripts (0g7tvi8d17-wp.js) — by design (every page): reported, never failed
+    · S7 HomeLazy            "\"JourneyHome.HowToCard\"" absent from the initial scripts
+    · S7 HowToCard           "\"journey-howto-card\""   absent from the initial scripts
+    · S7 HowToSheet          "\"journey-howto-sheet\""  absent from the initial scripts
+    · S7 JourneyCard         "\"journey-card\""         absent from the initial scripts
+  journey markup in the HTML: none
+  client-rendered boundaries: 2 <!--$!--> (BAILOUT_TO_CLIENT_SIDE_RENDERING, BAILOUT_TO_CLIENT_SIDE_RENDERING); data-dgst templates 2; $RX 0; chatbotEnabled true → expected 2
+  the RSC data's client references name 0 chunk(s); 0 of them are not initial scripts
+  ✓ PASS
+
+/positions → https://50pick.tz/auth/login?next=%2Fpositions (200, HTML 105.5 KB)
+  initial scripts (25, 1281.6 KB): 0~k6u5_j-9bf2.js 27.1 KB, 18cilrg3kkkfk.js 106.7 KB, 0h9l_p_xvhu-7.js 227.4 KB, 04.i-__.as.dk.js 43.0 KB, turbopack-0zvsw5gxyb6j1.js 10.4 KB, 0was_cwa3s49~.js 20.1 KB, 0hircb9zufc-5.js 14.2 KB, 0i.l9589uvx0j.js 53.5 KB, 0b.c916_346zj.js 22.0 KB, 0i1~2y--k5mtz.js 14.8 KB, 03-i-ywqr1.~9.js 70.2 KB, 0fe06o~9~0xm8.js 338.6 KB, 0.wnkjb-saker.js 30.9 KB, 02~abe9tkf417.js 32.4 KB, 0g7tvi8d17-wp.js 40.3 KB, 0bdweb4snjbdu.js 42.2 KB, 0d-e33cnzicjy.js 4.3 KB, 07_939kut~bus.js 6.4 KB, 00.1s8glm713g.js 8.7 KB, 0pc_nobz6cnr9.js 17.6 KB, 00p_ss~6fa_sn.js 4.3 KB, 10n991xwdosye.js 4.9 KB, 0mwo19-oo5cu~.js 0.4 KB, 03~yq9q893hmn.js [nomodule] 109.9 KB, 0_ycpehfi.z.4.js 31.3 KB
+  low-priority preloads, apart (4, 9.9 KB): 0tzy.m2dj~-0~.js [low] 0.1 KB, 0l7idi2rtm_89.js [low] 1.5 KB, 0l7j30qbazsf5.js [low] 3.0 KB, 02haplna2uswf.js [low] 5.3 KB
+  control: "deposit-header" FOUND (03-i-ywqr1.~9.js) · "deposit-rail" FOUND (03-i-ywqr1.~9.js)
+  journey markers:
+    · S6 JourneyFlag                                    structural only — not read here
+    · S6 JourneyTopBar       "\"journey-top-bar\""      absent from the initial scripts
+    · S6 JourneyTabs         "\"journey-tabs\""         absent from the initial scripts
+    · S6 JourneyShellMark    "\"kp-journey-shell\""     IN the initial scripts (0g7tvi8d17-wp.js) — by design (every page): reported, never failed
+    · S7 HomeLazy            "\"JourneyHome.HowToCard\"" absent from the initial scripts
+    · S7 HowToCard           "\"journey-howto-card\""   absent from the initial scripts
+    · S7 HowToSheet          "\"journey-howto-sheet\""  absent from the initial scripts
+    · S7 JourneyCard         "\"journey-card\""         absent from the initial scripts
+  journey markup in the HTML: none
+  client-rendered boundaries: 2 <!--$!--> (BAILOUT_TO_CLIENT_SIDE_RENDERING, BAILOUT_TO_CLIENT_SIDE_RENDERING); data-dgst templates 2; $RX 0; chatbotEnabled true → expected 2
+  the RSC data's client references name 0 chunk(s); 0 of them are not initial scripts
+  ✓ PASS
+
+/help → https://50pick.tz/help (200, HTML 126.8 KB)
+  initial scripts (23, 1254.9 KB): 0~k6u5_j-9bf2.js 27.1 KB, 18cilrg3kkkfk.js 106.7 KB, 0h9l_p_xvhu-7.js 227.4 KB, 04.i-__.as.dk.js 43.0 KB, turbopack-0zvsw5gxyb6j1.js 10.4 KB, 0was_cwa3s49~.js 20.1 KB, 0hircb9zufc-5.js 14.2 KB, 0i.l9589uvx0j.js 53.5 KB, 0b.c916_346zj.js 22.0 KB, 0i1~2y--k5mtz.js 14.8 KB, 03-i-ywqr1.~9.js 70.2 KB, 0fe06o~9~0xm8.js 338.6 KB, 0.wnkjb-saker.js 30.9 KB, 02~abe9tkf417.js 32.4 KB, 0g7tvi8d17-wp.js 40.3 KB, 0bdweb4snjbdu.js 42.2 KB, 05f.__v5_ezec.js 3.9 KB, 07_939kut~bus.js 6.4 KB, 00p_ss~6fa_sn.js 4.3 KB, 10n991xwdosye.js 4.9 KB, 0mwo19-oo5cu~.js 0.4 KB, 03~yq9q893hmn.js [nomodule] 109.9 KB, 0_ycpehfi.z.4.js 31.3 KB
+  low-priority preloads, apart (4, 9.9 KB): 0tzy.m2dj~-0~.js [low] 0.1 KB, 0l7idi2rtm_89.js [low] 1.5 KB, 0l7j30qbazsf5.js [low] 3.0 KB, 02haplna2uswf.js [low] 5.3 KB
+  control: "deposit-header" FOUND (03-i-ywqr1.~9.js) · "deposit-rail" FOUND (03-i-ywqr1.~9.js)
+  journey markers:
+    · S6 JourneyFlag                                    structural only — not read here
+    · S6 JourneyTopBar       "\"journey-top-bar\""      absent from the initial scripts
+    · S6 JourneyTabs         "\"journey-tabs\""         absent from the initial scripts
+    · S6 JourneyShellMark    "\"kp-journey-shell\""     IN the initial scripts (0g7tvi8d17-wp.js) — by design (every page): reported, never failed
+    · S7 HomeLazy            "\"JourneyHome.HowToCard\"" absent from the initial scripts
+    · S7 HowToCard           "\"journey-howto-card\""   absent from the initial scripts
+    · S7 HowToSheet          "\"journey-howto-sheet\""  absent from the initial scripts
+    · S7 JourneyCard         "\"journey-card\""         absent from the initial scripts
+  journey markup in the HTML: none
+  client-rendered boundaries: 2 <!--$!--> (BAILOUT_TO_CLIENT_SIDE_RENDERING, BAILOUT_TO_CLIENT_SIDE_RENDERING); data-dgst templates 2; $RX 0; chatbotEnabled true → expected 2
+  the RSC data's client references name 0 chunk(s); 0 of them are not initial scripts
+  ✓ PASS
+
+/live → https://50pick.tz/live (200, HTML 213.0 KB)
+  initial scripts (25, 1307.1 KB): 0~k6u5_j-9bf2.js 27.1 KB, 18cilrg3kkkfk.js 106.7 KB, 0h9l_p_xvhu-7.js 227.4 KB, 04.i-__.as.dk.js 43.0 KB, turbopack-0zvsw5gxyb6j1.js 10.4 KB, 0was_cwa3s49~.js 20.1 KB, 0hircb9zufc-5.js 14.2 KB, 0i.l9589uvx0j.js 53.5 KB, 0b.c916_346zj.js 22.0 KB, 0i1~2y--k5mtz.js 14.8 KB, 03-i-ywqr1.~9.js 70.2 KB, 0fe06o~9~0xm8.js 338.6 KB, 0.wnkjb-saker.js 30.9 KB, 02~abe9tkf417.js 32.4 KB, 0g7tvi8d17-wp.js 40.3 KB, 0bdweb4snjbdu.js 42.2 KB, 0~nvbjl5hsvym.js 15.8 KB, 0~v~~cg_ttdu1.js 4.3 KB, 07_939kut~bus.js 6.4 KB, 0o7scm-q2h5a7.js 36.0 KB, 00p_ss~6fa_sn.js 4.3 KB, 10n991xwdosye.js 4.9 KB, 0mwo19-oo5cu~.js 0.4 KB, 03~yq9q893hmn.js [nomodule] 109.9 KB, 0_ycpehfi.z.4.js 31.3 KB
+  low-priority preloads, apart (4, 9.9 KB): 0tzy.m2dj~-0~.js [low] 0.1 KB, 0l7idi2rtm_89.js [low] 1.5 KB, 0l7j30qbazsf5.js [low] 3.0 KB, 02haplna2uswf.js [low] 5.3 KB
+  control: "deposit-header" FOUND (03-i-ywqr1.~9.js) · "deposit-rail" FOUND (03-i-ywqr1.~9.js)
+  journey markers:
+    · S6 JourneyFlag                                    structural only — not read here
+    · S6 JourneyTopBar       "\"journey-top-bar\""      absent from the initial scripts
+    · S6 JourneyTabs         "\"journey-tabs\""         absent from the initial scripts
+    · S6 JourneyShellMark    "\"kp-journey-shell\""     IN the initial scripts (0g7tvi8d17-wp.js) — by design (every page): reported, never failed
+    · S7 HomeLazy            "\"JourneyHome.HowToCard\"" absent from the initial scripts
+    · S7 HowToCard           "\"journey-howto-card\""   absent from the initial scripts
+    · S7 HowToSheet          "\"journey-howto-sheet\""  absent from the initial scripts
+    · S7 JourneyCard         "\"journey-card\""         absent from the initial scripts
+  journey markup in the HTML: none
+  client-rendered boundaries: 2 <!--$!--> (BAILOUT_TO_CLIENT_SIDE_RENDERING, BAILOUT_TO_CLIENT_SIDE_RENDERING); data-dgst templates 2; $RX 0; chatbotEnabled true → expected 2
+  the RSC data's client references name 0 chunk(s); 0 of them are not initial scripts
+  ✓ PASS
+
+/results → https://50pick.tz/results (200, HTML 307.9 KB)
+  initial scripts (26, 1351.1 KB): 0~k6u5_j-9bf2.js 27.1 KB, 18cilrg3kkkfk.js 106.7 KB, 0h9l_p_xvhu-7.js 227.4 KB, 04.i-__.as.dk.js 43.0 KB, turbopack-0zvsw5gxyb6j1.js 10.4 KB, 0was_cwa3s49~.js 20.1 KB, 0hircb9zufc-5.js 14.2 KB, 0i.l9589uvx0j.js 53.5 KB, 0b.c916_346zj.js 22.0 KB, 0i1~2y--k5mtz.js 14.8 KB, 03-i-ywqr1.~9.js 70.2 KB, 0fe06o~9~0xm8.js 338.6 KB, 0.wnkjb-saker.js 30.9 KB, 02~abe9tkf417.js 32.4 KB, 0g7tvi8d17-wp.js 40.3 KB, 0bdweb4snjbdu.js 42.2 KB, 08_~24pwv19io.js 18.9 KB, 0ppp~vno05hs2.js 50.9 KB, 11_d6dvvhy~th.js 4.3 KB, 07_939kut~bus.js 6.4 KB, 00p_ss~6fa_sn.js 4.3 KB, 10n991xwdosye.js 4.9 KB, 0u66s0go.8o-d.js 26.1 KB, 0mwo19-oo5cu~.js 0.4 KB, 03~yq9q893hmn.js [nomodule] 109.9 KB, 0_ycpehfi.z.4.js 31.3 KB
+  low-priority preloads, apart (4, 9.9 KB): 0tzy.m2dj~-0~.js [low] 0.1 KB, 0l7idi2rtm_89.js [low] 1.5 KB, 0l7j30qbazsf5.js [low] 3.0 KB, 02haplna2uswf.js [low] 5.3 KB
+  control: "deposit-header" FOUND (03-i-ywqr1.~9.js) · "deposit-rail" FOUND (03-i-ywqr1.~9.js)
+  journey markers:
+    · S6 JourneyFlag                                    structural only — not read here
+    · S6 JourneyTopBar       "\"journey-top-bar\""      absent from the initial scripts
+    · S6 JourneyTabs         "\"journey-tabs\""         absent from the initial scripts
+    · S6 JourneyShellMark    "\"kp-journey-shell\""     IN the initial scripts (0g7tvi8d17-wp.js) — by design (every page): reported, never failed
+    · S7 HomeLazy            "\"JourneyHome.HowToCard\"" absent from the initial scripts
+    · S7 HowToCard           "\"journey-howto-card\""   absent from the initial scripts
+    · S7 HowToSheet          "\"journey-howto-sheet\""  absent from the initial scripts
+    · S7 JourneyCard         "\"journey-card\""         absent from the initial scripts
+  journey markup in the HTML: none
+  client-rendered boundaries: 2 <!--$!--> (BAILOUT_TO_CLIENT_SIDE_RENDERING, BAILOUT_TO_CLIENT_SIDE_RENDERING); data-dgst templates 2; $RX 0; chatbotEnabled true → expected 2
+  the RSC data's client references name 0 chunk(s); 0 of them are not initial scripts
+  ✓ PASS
+
+PASS — qa:chunks-prod at https://50pick.tz: 6/6 route(s) held every rule (47 GETs)

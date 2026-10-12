@@ -1,0 +1,152 @@
+bet-landed-key — live fix L2: a lost answer can never become a second bet
+prisma:error 
+Invalid `pc().user.create()` invocation in
+/home/user/kipindi-l2/src/lib/server/prisma-dal.ts:1687:35
+
+  1684   return rows.map(toStoredUser);
+  1685 },
+  1686 create: async (u: StoredUser): Promise<StoredUser> => {
+→ 1687   const row = await pc().user.create(
+Can't reach database server at `127.0.0.1:55432`
+
+Please make sure your database server is running at `127.0.0.1:55432`.
+prisma:error 
+Invalid `client.systemConfig.findUnique()` invocation in
+/home/user/kipindi-l2/src/lib/server/config-store.ts:41:43
+
+  38 const client = prisma();
+  39 if (!client) return { ok: true, value: null };
+  40 try {
+→ 41   const row = await client.systemConfig.findUnique(
+Can't reach database server at `127.0.0.1:55432`
+
+Please make sure your database server is running at `127.0.0.1:55432`.
+prisma:error 
+Invalid `client.systemConfig.findUnique()` invocation in
+/home/user/kipindi-l2/src/lib/server/config-store.ts:41:43
+
+  38 const client = prisma();
+  39 if (!client) return { ok: true, value: null };
+  40 try {
+→ 41   const row = await client.systemConfig.findUnique(
+Can't reach database server at `127.0.0.1:55432`
+
+Please make sure your database server is running at `127.0.0.1:55432`.
+prisma:error 
+Invalid `client.systemConfig.findUnique()` invocation in
+/home/user/kipindi-l2/src/lib/server/config-store.ts:41:43
+
+  38 const client = prisma();
+  39 if (!client) return { ok: true, value: null };
+  40 try {
+→ 41   const row = await client.systemConfig.findUnique(
+Can't reach database server at `127.0.0.1:55432`
+
+Please make sure your database server is running at `127.0.0.1:55432`.
+prisma:error 
+Invalid `client.systemConfig.findUnique()` invocation in
+/home/user/kipindi-l2/src/lib/server/config-store.ts:41:43
+
+  38 const client = prisma();
+  39 if (!client) return { ok: true, value: null };
+  40 try {
+→ 41   const row = await client.systemConfig.findUnique(
+Can't reach database server at `127.0.0.1:55432`
+
+Please make sure your database server is running at `127.0.0.1:55432`.
+prisma:error 
+Invalid `client.systemConfig.findUnique()` invocation in
+/home/user/kipindi-l2/src/lib/server/config-store.ts:41:43
+
+  38 const client = prisma();
+  39 if (!client) return { ok: true, value: null };
+  40 try {
+→ 41   const row = await client.systemConfig.findUnique(
+Can't reach database server at `127.0.0.1:55432`
+
+Please make sure your database server is running at `127.0.0.1:55432`.
+[config] load "bonus.config" failed: 
+Invalid `client.systemConfig.findUnique()` invocation in
+/home/user/kipindi-l2/src/lib/server/config-store.ts:41:43
+
+  38 const client = prisma();
+  39 if (!client) return { ok: true, value: null };
+  40 try {
+→ 41   const row = await client.systemConfig.findUnique(
+Can't reach database server at `127.0.0.1:55432`
+
+Please make sure your database server is running at `127.0.0.1:55432`.
+[config] load "email.suppression" failed: 
+Invalid `client.systemConfig.findUnique()` invocation in
+/home/user/kipindi-l2/src/lib/server/config-store.ts:41:43
+
+  38 const client = prisma();
+  39 if (!client) return { ok: true, value: null };
+  40 try {
+→ 41   const row = await client.systemConfig.findUnique(
+Can't reach database server at `127.0.0.1:55432`
+
+Please make sure your database server is running at `127.0.0.1:55432`.
+[config] load "support_config" failed: 
+Invalid `client.systemConfig.findUnique()` invocation in
+/home/user/kipindi-l2/src/lib/server/config-store.ts:41:43
+
+  38 const client = prisma();
+  39 if (!client) return { ok: true, value: null };
+  40 try {
+→ 41   const row = await client.systemConfig.findUnique(
+Can't reach database server at `127.0.0.1:55432`
+
+Please make sure your database server is running at `127.0.0.1:55432`.
+[config] load "affiliate.config" failed: 
+Invalid `client.systemConfig.findUnique()` invocation in
+/home/user/kipindi-l2/src/lib/server/config-store.ts:41:43
+
+  38 const client = prisma();
+  39 if (!client) return { ok: true, value: null };
+  40 try {
+→ 41   const row = await client.systemConfig.findUnique(
+Can't reach database server at `127.0.0.1:55432`
+
+Please make sure your database server is running at `127.0.0.1:55432`.
+[config] load "agent.config" failed: 
+Invalid `client.systemConfig.findUnique()` invocation in
+/home/user/kipindi-l2/src/lib/server/config-store.ts:41:43
+
+  38 const client = prisma();
+  39 if (!client) return { ok: true, value: null };
+  40 try {
+→ 41   const row = await client.systemConfig.findUnique(
+Can't reach database server at `127.0.0.1:55432`
+
+Please make sure your database server is running at `127.0.0.1:55432`.
+/home/user/kipindi-l2/node_modules/@prisma/client/src/runtime/RequestHandler.ts:242
+      throw new PrismaClientInitializationError(message, this.client._clientVersion)
+            ^
+
+PrismaClientInitializationError: 
+Invalid `pc().user.create()` invocation in
+/home/user/kipindi-l2/src/lib/server/prisma-dal.ts:1687:35
+
+  1684   return rows.map(toStoredUser);
+  1685 },
+  1686 create: async (u: StoredUser): Promise<StoredUser> => {
+→ 1687   const row = await pc().user.create(
+Can't reach database server at `127.0.0.1:55432`
+
+Please make sure your database server is running at `127.0.0.1:55432`.
+    at ei.handleRequestError (/home/user/kipindi-l2/node_modules/@prisma/client/src/runtime/RequestHandler.ts:242:13)
+    at ei.handleAndLogRequestError (/home/user/kipindi-l2/node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)
+    at ei.request (/home/user/kipindi-l2/node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)
+    at async a (/home/user/kipindi-l2/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:833:24)
+    at async Object.create (/home/user/kipindi-l2/src/lib/server/prisma-dal.ts:1687:19)
+    at async Object.db.user.create (/home/user/kipindi-l2/scripts/lib/verified-fixtures.mts:127:21)
+    at async player (/home/user/kipindi-l2/scripts/bet-landed-key.test.mts:101:5)
+    at async runBehaviour (/home/user/kipindi-l2/scripts/bet-landed-key.test.mts:110:3)
+    at async <anonymous> (/home/user/kipindi-l2/scripts/bet-landed-key.test.mts:194:23) {
+  clientVersion: '6.19.3',
+  errorCode: undefined,
+  retryable: undefined
+}
+
+Node.js v24.21.0

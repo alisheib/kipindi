@@ -1,0 +1,39 @@
+
+E-64 · the player must SEE that their bet was placed
+
+§0 · the slices this suite reasons over (refuse to measure an empty one)
+  ok   0.1 · the `place` function body is locatable
+  ok   0.2 · …and it is substantial, not a stub
+  ok   0.3 · the SUCCESS branch inside `place` is locatable
+  ok   0.4 · …and it is substantial, not a stub
+  ok   0.5 · the failure side is separable from the success side
+
+§1 · a successful placement is announced VISIBLY, in the success branch itself
+  ok   1.1 · the SUCCESS branch calls toast() at all (E-64: it did not)
+  ok   1.2 · …exactly once — a placement is one event, not two
+  ok   1.3 · …and it is the SUCCESS variant, not danger/default
+  ok   1.4 · the `Deliberately NOT a toast` instruction is gone from the success branch
+
+§2 · the toast is trilingual and states the side and the amount
+  ok   2.0 · the toast call itself is locatable (everything below is scoped to IT)
+  ok   2.1 · the title comes from the injected `copy`, never a literal
+  ok   2.2 · …specifically `copy.placed` (the `udBetPlaced` token)
+  ok   2.3 · the toast names the SIDE, from copy — not the raw "UP"/"DOWN" enum
+  ok   2.4 · …and the AMOUNT, formatted as shillings
+  ok   2.5 · the toast has an explicit short duration (rapid taps must not stack up)
+  ok   2.6 · …and that duration is between 2s and 4s
+
+§3 · the non-visual channels are kept, and failures still shout
+  ok   3.1 · the aria-live announcement is KEPT (a toast does not replace it)
+  ok   3.2 · the confirm haptic is KEPT
+  ok   3.3 · the optimistic pulse signal is KEPT
+  ok   3.4 · server failures toast at the registry's rank AND sticky (the throw `danger`); the pre-flight prevention is `factual`
+  ok   3.5 · ⭐ SUCCESS is announced at least as loudly as FAILURE (E-64 stated as an invariant)
+
+§4 · `udBetPlaced` resolves in EN, SW and ZH
+  ok   4.1 · udBetPlaced is defined three times (en · sw · zh)
+  ok   4.2 · …and no two of them are the byte-identical English string
+  ok   4.3 · none is empty
+
+updown-bet-feedback: 24 passed, 0 failed
+updown-bet-feedback: OK — placing a bet is announced visibly, audibly and haptically, in three languages

@@ -1,0 +1,208 @@
+
+── loser-share
+PASS loser-share · the fee model was set for the markets below (precondition) — {"ok":true,"config":{"commissionRate":0.1,"feeCeilingRate":0.3333333333333333,"cashOutFeeRate":0.1,"freeExitGraceMinutes":5,"paidExitWindowMinutes":0,"withdrawa
+[audit] ADMIN config.global.updated charged-fee-test MarketConfig#global
+[audit] ADMIN market.created test Market#mkt_b00c745c144d4f87b937
+[audit] BET market.position.opened cf_loser-share_twosidedYESwins_YES_0 Position#pos_e7ce207fb0ab3005b7e0
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened cf_loser-share_twosidedYESwins_YES_1 Position#pos_f5f07b14b95f361e48c5
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened cf_loser-share_twosidedYESwins_NO_2 Position#pos_8725fdc39265335830a3
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened cf_loser-share_twosidedYESwins_NO_3 Position#pos_6de856d39e1919e7d229
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] ADMIN market.adjudicated cf_officer_a Market#mkt_b00c745c144d4f87b937
+[audit] WALLET bet.payout cf_loser-share_twosidedYESwins_YES_0 Position#pos_e7ce207fb0ab3005b7e0
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] WALLET bet.payout cf_loser-share_twosidedYESwins_YES_1 Position#pos_f5f07b14b95f361e48c5
+[audit] ADMIN market.resolved system Market#mkt_b00c745c144d4f87b937
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] WALLET market.settled system Market#mkt_b00c745c144d4f87b937
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_b00c745c144d4f87b937
+PASS loser-share · two-sided YES wins · settlement ran on every position (precondition, staked 20000)
+PASS loser-share · two-sided YES wins · chargedFee === what settlement retained (1300) — chargedFee 1300 · retained 1300
+PASS loser-share · two-sided YES wins · netPool === what settlement paid back (18700) — netPool 18700
+PASS loser-share · two-sided YES wins · 'refunded' names settlement's branch (pari-mutuel)
+[audit] ADMIN market.created test Market#mkt_61609eec7db6d4382548
+[audit] BET market.position.opened cf_loser-share_twosidedNOwins_YES_0 Position#pos_b1ac479aaae19f9209a4
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened cf_loser-share_twosidedNOwins_YES_1 Position#pos_544b7bfd7f16f61dfff0
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened cf_loser-share_twosidedNOwins_NO_2 Position#pos_fb2042dfa11919b415b4
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] ADMIN market.adjudicated cf_officer_a Market#mkt_61609eec7db6d4382548
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] WALLET bet.payout cf_loser-share_twosidedNOwins_NO_2 Position#pos_fb2042dfa11919b415b4
+[audit] ADMIN market.resolved system Market#mkt_61609eec7db6d4382548
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] WALLET market.settled system Market#mkt_61609eec7db6d4382548
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_61609eec7db6d4382548
+PASS loser-share · two-sided NO wins · settlement ran on every position (precondition, staked 20000)
+PASS loser-share · two-sided NO wins · chargedFee === what settlement retained (1300) — chargedFee 1300 · retained 1300
+PASS loser-share · two-sided NO wins · netPool === what settlement paid back (18700) — netPool 18700
+PASS loser-share · two-sided NO wins · 'refunded' names settlement's branch (pari-mutuel)
+[audit] ADMIN market.created test Market#mkt_d35fd9f277b91dbfb84b
+[audit] BET market.position.opened cf_loser-share_onesidedresolvedFORitsmoney_YES_0 Position#pos_759ec7c115c2ada0c226
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened cf_loser-share_onesidedresolvedFORitsmoney_YES_1 Position#pos_fe901ef2953e284db235
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] ADMIN market.adjudicated cf_officer_a Market#mkt_d35fd9f277b91dbfb84b
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] ADMIN market.resolved.one_sided_refund system Market#mkt_d35fd9f277b91dbfb84b
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] WALLET market.settled system Market#mkt_d35fd9f277b91dbfb84b
+PASS loser-share · one-sided resolved FOR its money · settlement ran on every position (precondition, staked 10000)
+PASS loser-share · one-sided resolved FOR its money · chargedFee === what settlement retained (0) — chargedFee 0 · retained 0
+PASS loser-share · one-sided resolved FOR its money · netPool === what settlement paid back (10000) — netPool 10000
+PASS loser-share · one-sided resolved FOR its money · 'refunded' names settlement's branch (refund)
+[audit] ADMIN market.created test Market#mkt_f120d8fa9bfdef2c61f4
+[audit] BET market.position.opened cf_loser-share_onesidedresolvedAGAINSTitsmoney_YES_0 Position#pos_dd47fcf7dcf80af612be
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened cf_loser-share_onesidedresolvedAGAINSTitsmoney_YES_1 Position#pos_f715edd5324801d8cd88
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] ADMIN market.adjudicated cf_officer_a Market#mkt_f120d8fa9bfdef2c61f4
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] ADMIN market.resolved.one_sided_refund system Market#mkt_f120d8fa9bfdef2c61f4
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] WALLET market.settled system Market#mkt_f120d8fa9bfdef2c61f4
+PASS loser-share · one-sided resolved AGAINST its money · settlement ran on every position (precondition, staked 10000)
+PASS loser-share · one-sided resolved AGAINST its money · chargedFee === what settlement retained (0) — chargedFee 0 · retained 0
+PASS loser-share · one-sided resolved AGAINST its money · netPool === what settlement paid back (10000) — netPool 10000
+PASS loser-share · one-sided resolved AGAINST its money · 'refunded' names settlement's branch (refund)
+[audit] ADMIN market.created test Market#mkt_da6c3c789a8929e5b6ea
+[audit] BET market.position.opened cf_loser-share_onesidedNOonlyresolvedYES_NO_0 Position#pos_936130515635bfda39ec
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] ADMIN market.adjudicated cf_officer_a Market#mkt_da6c3c789a8929e5b6ea
+[audit] ADMIN market.resolved.one_sided_refund system Market#mkt_da6c3c789a8929e5b6ea
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] WALLET market.settled system Market#mkt_da6c3c789a8929e5b6ea
+PASS loser-share · one-sided NO-only resolved YES · settlement ran on every position (precondition, staked 10000)
+PASS loser-share · one-sided NO-only resolved YES · chargedFee === what settlement retained (0) — chargedFee 0 · retained 0
+PASS loser-share · one-sided NO-only resolved YES · netPool === what settlement paid back (10000) — netPool 10000
+PASS loser-share · one-sided NO-only resolved YES · 'refunded' names settlement's branch (refund)
+[audit] ADMIN market.created test Market#mkt_b3f2ec36d5050df70e3e
+[audit] BET market.position.opened cf_loser-share_voidtwosided_YES_0 Position#pos_6a2bb70b6050bf0b4c48
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened cf_loser-share_voidtwosided_YES_1 Position#pos_b47dab90bf24b951092d
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened cf_loser-share_voidtwosided_NO_2 Position#pos_a2a836dbe1a95cd5a84a
+[email] sendEmailToUser skipped — no email for user cf_loser-share… (user.email=null, phone=+25597…)
+[audit] ADMIN market.adjudicated cf_officer_a Market#mkt_b3f2ec36d5050df70e3e
+[audit] ADMIN market.resolved system Market#mkt_b3f2ec36d5050df70e3e
+[audit] WALLET market.settled system Market#mkt_b3f2ec36d5050df70e3e
+PASS loser-share · void, two-sided · settlement ran on every position (precondition, staked 15000)
+PASS loser-share · void, two-sided · chargedFee === what settlement retained (0) — chargedFee 0 · retained 0
+PASS loser-share · void, two-sided · netPool === what settlement paid back (15000) — netPool 15000
+PASS loser-share · void, two-sided · 'refunded' names settlement's branch (refund)
+
+── capped
+PASS capped · the fee model was set for the markets below (precondition) — {"ok":true,"config":{"commissionRate":0.1,"feeCeilingRate":0.3333333333333333,"cashOutFeeRate":0.1,"freeExitGraceMinutes":5,"paidExitWindowMinutes":0,"withdrawa
+[audit] ADMIN config.global.updated charged-fee-test MarketConfig#global
+[audit] ADMIN market.created test Market#mkt_63ddee3c8fff08da86af
+[audit] BET market.position.opened cf_capped_twosidedYESwins_YES_0 Position#pos_d9be1fd6a391e5cf8f46
+[email] sendEmailToUser skipped — no email for user cf_capped_twos… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened cf_capped_twosidedYESwins_YES_1 Position#pos_529f985cd92e06de489f
+[email] sendEmailToUser skipped — no email for user cf_capped_twos… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened cf_capped_twosidedYESwins_NO_2 Position#pos_8dd6f45ab93b353587c7
+[email] sendEmailToUser skipped — no email for user cf_capped_twos… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened cf_capped_twosidedYESwins_NO_3 Position#pos_596c386fa0686e63cf15
+[email] sendEmailToUser skipped — no email for user cf_capped_twos… (user.email=null, phone=+25597…)
+[audit] ADMIN market.adjudicated cf_officer_a Market#mkt_63ddee3c8fff08da86af
+[audit] WALLET bet.payout cf_capped_twosidedYESwins_YES_0 Position#pos_d9be1fd6a391e5cf8f46
+[email] sendEmailToUser skipped — no email for user cf_capped_twos… (user.email=null, phone=+25597…)
+[audit] WALLET bet.payout cf_capped_twosidedYESwins_YES_1 Position#pos_529f985cd92e06de489f
+[audit] ADMIN market.resolved system Market#mkt_63ddee3c8fff08da86af
+[email] sendEmailToUser skipped — no email for user cf_capped_twos… (user.email=null, phone=+25597…)
+[email] sendEmailToUser skipped — no email for user cf_capped_twos… (user.email=null, phone=+25597…)
+[email] sendEmailToUser skipped — no email for user cf_capped_twos… (user.email=null, phone=+25597…)
+[audit] WALLET market.settled system Market#mkt_63ddee3c8fff08da86af
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_63ddee3c8fff08da86af
+PASS capped · two-sided YES wins · settlement ran on every position (precondition, staked 20000)
+PASS capped · two-sided YES wins · chargedFee === what settlement retained (2000) — chargedFee 2000 · retained 2000
+PASS capped · two-sided YES wins · netPool === what settlement paid back (18000) — netPool 18000
+PASS capped · two-sided YES wins · 'refunded' names settlement's branch (pari-mutuel)
+[audit] ADMIN market.created test Market#mkt_152d05f854669eb3e85a
+[audit] BET market.position.opened cf_capped_twosidedNOwins_YES_0 Position#pos_4985821cc5e4392e1ef3
+[email] sendEmailToUser skipped — no email for user cf_capped_twos… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened cf_capped_twosidedNOwins_YES_1 Position#pos_bcbccc1e066c3db786c5
+[email] sendEmailToUser skipped — no email for user cf_capped_twos… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened cf_capped_twosidedNOwins_NO_2 Position#pos_2510507c5f87ed5713ea
+[email] sendEmailToUser skipped — no email for user cf_capped_twos… (user.email=null, phone=+25597…)
+[audit] ADMIN market.adjudicated cf_officer_a Market#mkt_152d05f854669eb3e85a
+[email] sendEmailToUser skipped — no email for user cf_capped_twos… (user.email=null, phone=+25597…)
+[email] sendEmailToUser skipped — no email for user cf_capped_twos… (user.email=null, phone=+25597…)
+[audit] WALLET bet.payout cf_capped_twosidedNOwins_NO_2 Position#pos_2510507c5f87ed5713ea
+[audit] ADMIN market.resolved system Market#mkt_152d05f854669eb3e85a
+[email] sendEmailToUser skipped — no email for user cf_capped_twos… (user.email=null, phone=+25597…)
+[audit] WALLET market.settled system Market#mkt_152d05f854669eb3e85a
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_152d05f854669eb3e85a
+PASS capped · two-sided NO wins · settlement ran on every position (precondition, staked 20000)
+PASS capped · two-sided NO wins · chargedFee === what settlement retained (2000) — chargedFee 2000 · retained 2000
+PASS capped · two-sided NO wins · netPool === what settlement paid back (18000) — netPool 18000
+PASS capped · two-sided NO wins · 'refunded' names settlement's branch (pari-mutuel)
+[audit] ADMIN market.created test Market#mkt_46aef336ad680ec710b5
+[audit] BET market.position.opened cf_capped_onesidedresolvedFORitsmoney_YES_0 Position#pos_bcb52a3ff5cf347c6b50
+[email] sendEmailToUser skipped — no email for user cf_capped_ones… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened cf_capped_onesidedresolvedFORitsmoney_YES_1 Position#pos_1b921219d2e20750f4f7
+[email] sendEmailToUser skipped — no email for user cf_capped_ones… (user.email=null, phone=+25597…)
+[audit] ADMIN market.adjudicated cf_officer_a Market#mkt_46aef336ad680ec710b5
+[email] sendEmailToUser skipped — no email for user cf_capped_ones… (user.email=null, phone=+25597…)
+[audit] ADMIN market.resolved.one_sided_refund system Market#mkt_46aef336ad680ec710b5
+[email] sendEmailToUser skipped — no email for user cf_capped_ones… (user.email=null, phone=+25597…)
+[audit] WALLET market.settled system Market#mkt_46aef336ad680ec710b5
+PASS capped · one-sided resolved FOR its money · settlement ran on every position (precondition, staked 10000)
+PASS capped · one-sided resolved FOR its money · chargedFee === what settlement retained (0) — chargedFee 0 · retained 0
+PASS capped · one-sided resolved FOR its money · netPool === what settlement paid back (10000) — netPool 10000
+PASS capped · one-sided resolved FOR its money · 'refunded' names settlement's branch (refund)
+[audit] ADMIN market.created test Market#mkt_3e8bd961878b2d072a3b
+[audit] BET market.position.opened cf_capped_onesidedresolvedAGAINSTitsmoney_YES_0 Position#pos_bab8a4d54151d6509ba4
+[email] sendEmailToUser skipped — no email for user cf_capped_ones… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened cf_capped_onesidedresolvedAGAINSTitsmoney_YES_1 Position#pos_dd6b718679ea26f095fd
+[email] sendEmailToUser skipped — no email for user cf_capped_ones… (user.email=null, phone=+25597…)
+[audit] ADMIN market.adjudicated cf_officer_a Market#mkt_3e8bd961878b2d072a3b
+[email] sendEmailToUser skipped — no email for user cf_capped_ones… (user.email=null, phone=+25597…)
+[audit] ADMIN market.resolved.one_sided_refund system Market#mkt_3e8bd961878b2d072a3b
+[email] sendEmailToUser skipped — no email for user cf_capped_ones… (user.email=null, phone=+25597…)
+[audit] WALLET market.settled system Market#mkt_3e8bd961878b2d072a3b
+PASS capped · one-sided resolved AGAINST its money · settlement ran on every position (precondition, staked 10000)
+PASS capped · one-sided resolved AGAINST its money · chargedFee === what settlement retained (0) — chargedFee 0 · retained 0
+PASS capped · one-sided resolved AGAINST its money · netPool === what settlement paid back (10000) — netPool 10000
+PASS capped · one-sided resolved AGAINST its money · 'refunded' names settlement's branch (refund)
+[audit] ADMIN market.created test Market#mkt_79e9cc00af225797de8d
+[audit] BET market.position.opened cf_capped_onesidedNOonlyresolvedYES_NO_0 Position#pos_e91c7ed61804d52dae72
+[email] sendEmailToUser skipped — no email for user cf_capped_ones… (user.email=null, phone=+25597…)
+[audit] ADMIN market.adjudicated cf_officer_a Market#mkt_79e9cc00af225797de8d
+[audit] ADMIN market.resolved.one_sided_refund system Market#mkt_79e9cc00af225797de8d
+[email] sendEmailToUser skipped — no email for user cf_capped_ones… (user.email=null, phone=+25597…)
+[audit] WALLET market.settled system Market#mkt_79e9cc00af225797de8d
+PASS capped · one-sided NO-only resolved YES · settlement ran on every position (precondition, staked 10000)
+PASS capped · one-sided NO-only resolved YES · chargedFee === what settlement retained (0) — chargedFee 0 · retained 0
+PASS capped · one-sided NO-only resolved YES · netPool === what settlement paid back (10000) — netPool 10000
+PASS capped · one-sided NO-only resolved YES · 'refunded' names settlement's branch (refund)
+[audit] ADMIN market.created test Market#mkt_cfd3eb8dd29ff45d29d8
+[audit] BET market.position.opened cf_capped_voidtwosided_YES_0 Position#pos_5157e6463c4c14d814cf
+[email] sendEmailToUser skipped — no email for user cf_capped_void… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened cf_capped_voidtwosided_YES_1 Position#pos_18775d330ebb349c2ff2
+[email] sendEmailToUser skipped — no email for user cf_capped_void… (user.email=null, phone=+25597…)
+[audit] BET market.position.opened cf_capped_voidtwosided_NO_2 Position#pos_b3b4d0758e943ea5af09
+[email] sendEmailToUser skipped — no email for user cf_capped_void… (user.email=null, phone=+25597…)
+[audit] ADMIN market.adjudicated cf_officer_a Market#mkt_cfd3eb8dd29ff45d29d8
+[audit] ADMIN market.resolved system Market#mkt_cfd3eb8dd29ff45d29d8
+[audit] WALLET market.settled system Market#mkt_cfd3eb8dd29ff45d29d8
+PASS capped · void, two-sided · settlement ran on every position (precondition, staked 15000)
+PASS capped · void, two-sided · chargedFee === what settlement retained (0) — chargedFee 0 · retained 0
+PASS capped · void, two-sided · netPool === what settlement paid back (15000) — netPool 15000
+PASS capped · void, two-sided · 'refunded' names settlement's branch (refund)
+
+── control: the pre-C1 reader (`poolFee(…, winner)`) against the same settlements
+     loser-share · one-sided resolved AGAINST its money: poolFee 1300 vs settlement 0
+     loser-share · one-sided NO-only resolved YES: poolFee 1300 vs settlement 0
+     capped · void, two-sided: poolFee 1500 vs settlement 0
+PASS control · the old reader DISAGREES with settlement on a one-sided pool resolved against its money (the phantom fee)
+PASS control · …and on a capped-commission VOID (a fee for a market that charged none)
+PASS control · …and AGREES on every two-sided win (the guard is not merely rejecting poolFee)
+
+charged-fee: 53 passed, 0 failed

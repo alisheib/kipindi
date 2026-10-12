@@ -1,0 +1,48 @@
+PASS 1: YES wins — fee is 13% of the NO pool = 84,500 — fee=84500
+PASS 1: NO wins — fee is 13% of the YES pool = 2,080 — fee=2080
+PASS 1: netPool YES wins = 581,500 — net=581500
+PASS 1: netPool NO wins = 663,920 — net=663920
+PASS 1: ★ OUTCOME-DEPENDENT — the fee differs by winner
+PASS 2: Jimmy (YES 1,000) → 36,344 — payout=36344
+PASS 2: NO bettor (100,000) → 102,142 — payout=102142
+PASS 2: winner floor — Jimmy ≥ stake
+PASS 2: winner floor — NO bettor ≥ stake
+PASS 3: YES wins — Σpayouts + fee == pool — 581500+84500
+PASS 3: NO wins — Σpayouts + fee == pool — 663920+2080
+PASS 4: one-sided — fee is 0 — fee=0
+PASS 5: TRA = 10% of the fee — tra=8450
+PASS 5: GBT = 5% of the fee — gbt=4225
+PASS 5: operator net = fee − TRA − GBT (taxes out of the 13%)
+PASS 6: projection and settlement agree to the shilling — proj=36344 settled=36344
+[audit] ADMIN config.global.updated ls-test MarketConfig#global
+[audit] ADMIN market.created test Market#mkt_519a9708daa3b7826378
+[audit] BET market.position.opened ls_y1 Position#pos_17dfac85aef20270deca
+[email] sendEmailToUser skipped — no email for user ls_y1… (user.email=null, phone=+25596…)
+[audit] BET market.position.opened ls_n1 Position#pos_249bfcaf2b3b4477cb58
+[email] sendEmailToUser skipped — no email for user ls_n1… (user.email=null, phone=+25596…)
+[audit] ADMIN market.adjudicated fee_a Market#mkt_519a9708daa3b7826378
+[audit] WALLET bet.payout ls_y1 Position#pos_17dfac85aef20270deca
+[audit] ADMIN market.resolved system Market#mkt_519a9708daa3b7826378
+[email] sendEmailToUser skipped — no email for user ls_y1… (user.email=null, phone=+25596…)
+[email] sendEmailToUser skipped — no email for user ls_n1… (user.email=null, phone=+25596…)
+[audit] WALLET market.settled system Market#mkt_519a9708daa3b7826378
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_519a9708daa3b7826378
+PASS 7: e2e — sole YES winner receives netPool 581,500 — payout=581500
+PASS 7: e2e — wallet credited by the payout — credited=581500
+PASS 8: accountant view lists the poll — rows=1
+PASS 8: accountant view — feeModel = loser-share — model=loser-share
+PASS 8: accountant view — fee = 84,500 (13% of the NO pool) — fee=84500
+PASS 8: accountant view — operator net = fee − TRA − GBT — net=71825
+PASS 8: accountant per-model total matches
+PASS 9: side omitted on loser-share — the fee is ZERO, not a preview against the smaller pool — fee=0
+PASS 9: …and the losing pool it is a share of is zero too — ceiling=0
+PASS 9: …so the whole pool survives — netPool=950000
+PASS 9: …while the SAME pools WITH a winner charge the losing side — fee=84500
+PASS 9: …and it is the LOSING pool, not the smaller one — ceiling=650000 smaller=300000
+PASS 9: the doc block was located (the check is not vacuous) — 1832 chars
+PASS 9: the provenance note is present and separable — marker@856
+PASS 9: …the operative description no longer claims a preview against the SMALLER pool
+PASS 9: …and states the zero rule positively
+PASS 9: …while the provenance note still records what was retracted
+
+loser-share-fee: 33 passed, 0 failed

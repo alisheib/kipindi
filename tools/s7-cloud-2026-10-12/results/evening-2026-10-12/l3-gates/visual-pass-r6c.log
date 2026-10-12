@@ -1,0 +1,121 @@
+
+── 1 · C12 the bet confirm's stake: one amount, and a row that wraps (the sell confirm's S6 A8f shape) ───────────
+  ok   1.1 · the stake is an amount — mono, tabular, never split (`.amount`), where it was mono and broke "TZS" / "1,000"
+  ok   1.2 · the side | stake row wraps: `flex-wrap … gap-y-2`, the stake's column `grow text-right` — the sell confirm's own shape
+  ok   1.3 · the 16px between the two values sits on the side word (`pr-3`), the one value the stake meets on its line — so a row wraps exactly when the two would come closer
+  ok   1.4 · the largest stake, whole ("TZS 1,000,000", 171.6px at 22px mono), fits the box at 320 (198px): once it wraps under the side it can never run out
+  ok   1.4′ CONTROL · it did NOT fit beside the side at 320 — the case the old row broke: HAPANA (26px) + 16 + the stake is wider than the box
+  ok   1.5 PLANT · the stake set mono but not `.amount`, and the row that cannot wrap, are each reported
+
+── 2 · C7 Up & Down's range line: the range is the amount, the sentence before it wraps — and no `.amount` holds a sentence it can clip 
+  ok   2.1 · the board card's range line: the line is the hint's own words, and only the range is an amount (it was ONE `.amount` — mono, nowrap)
+  ok   2.1′ · …and its twin on the round page says it the same way (one rule, both stake panels)
+  ok   2.2 · every unbreakable piece fits the card at 320 (256px): the range whole (138px) and the sentence's longest word (80.1px) — nothing can be clipped
+  ok   2.2′ CONTROL · the old line, one nowrap piece, ran out of the box: sw 336px, en 306px, zh 192px against 256px (sw and en)
+  ok   2.3 · every `.amount` that holds dictionary words is ruled (6 sites: a tally line drawn from 640, a pick · stake, two labels in a figure's slot, two "you get" payouts) — none is a sentence that can be clipped
+  ok   2.4 PLANT · the whole-line `.amount` back on the board card is reported (2.1 reads it), and its sentence would be an unruled `.amount` site
+
+── 3 · C8 every auto-filled grid keeps its tracks inside a 320 phone's column (`min(Npx, 100%)`, `.market-grid`'s guard) 
+  ok   3.1 · no grid's fixed track floor is wider than a 320 phone's 288px column unguarded (20 auto-filled grids; 4 wide floors guarded)
+  ok   3.2 · the board and its ghost keep one track rule (so nothing shifts when the board lands)
+  ok   3.3 PLANT · the history list's old 320px floor is reported
+
+── 4 · C13 the door to /profile/kyc: one question everywhere (the journey's menu too), and the page's own name ───
+  ok   4.1 · RUN: one question decides the door (`kycDoorOffered`): offered until the identity is approved or finally refused — 12 states
+  ok   4.2 · /profile, the Akaunti hub's reader and the shell ask that one function — no copy of the predicate anywhere
+  ok   4.3 · the shell reads the KYC row for a JOURNEY reader alone, in its one batch, chained on its own journey answer — a classic page makes no query, a journey page no extra round trip
+  ok   4.4 · the journey bar hands the answer to its menu; the classic bar's menu takes nothing new (frozen chrome)
+  ok   4.5 · RUN: the journey menu offers the KYC door only where the hub and /profile do — not to a verified reader (it asked every reader to verify)
+  ok   4.5′ CONTROL · the classic menu keeps its row for everybody, in its own words (frozen chrome)
+  ok   4.6 · the hub's row, the journey menu and /profile's row say the page's tab and eyebrow ("Uthibitisho wa kitambulisho" / "Identity verification" / "身份验证") in every language
+  ok   4.6′ CONTROL · the page's h1 is a headline that changes with the state — "Verify your identity", "Your identity is verified", "We couldn't verify you", "We're checking your details" (or documents) — so no door could name it in every state
+  ok   4.7 PLANT · the menu's KYC row offered to every reader again, and its h1 words back, are each reported
+
+── 5 · C1 /profile/invite: one name per reader — the tab, the h1, and every door ─────────────────────────────────
+  ok   5.1 · RUN: the one rule (`invite-name.ts`): an agent's page is the dashboard, a paid player's "Alika na upate zawadi", every other player's "Alika marafiki"
+  ok   5.1′ · the rule's home is pure — an erased type import, no directive (the `money-names.ts` shape), so the server pages, the client chrome and the hub's pure rows all read it
+  ok   5.2 · RUN: the page's tab says the reader's name through the one rule (an agent, a paid player, an unpaid one, a failed agent read, no session) in every language
+  ok   5.3 · the player body's h1, its visible title and its hero line ask the same rule; the agent's dashboard is headed by the dashboard's own name
+  ok   5.4 · RUN: for every reader, the hub's row, the journey's avatar menu and the journey's footer say the page's own name, in every language (12 doors) — an agent's "Invite & Earn" menu row and a paid player's "Alika marafiki" hub and footer are gone
+  ok   5.5 · /profile's row (both shells: a page body) says the player's page name and its line from the same rule, reading whether invites pay beside the reader's standing
+  ok   5.6 CONTROL · the classic footer keeps "Alika marafiki" for everybody (frozen chrome), and the classic menu its own two words
+  ok   5.7 · the shell hands the journey's two door answers to the journey arms alone
+  ok   5.8 PLANT · the hub's old label (a paid player told "Alika marafiki") and the menu's old literal (an agent told "Invite & Earn") are each reported
+
+── 6 · C14 the journey's doors and pages call /positions "Tiketi zangu" (no "nafasi" one tap from it) ────────────
+  ok   6.1 · after every bet the result's second door says the journey's name for the tickets page (`useJourneyOn`, read where the dial is drawn: the result opens only in the browser, after a bet)
+  ok   6.1′ · …called once, at the component's top beside `useT` — never in a branch
+  ok   6.2 · /positions/performance in the journey: its back link and eyebrow name Tiketi zangu, and its empty state says the journey's settled sentence
+  ok   6.3 · RENDERED: the loading drawing's eyebrow is the page's for either reader, in every language ("TIKETI ZANGU" in the journey)
+  ok   6.3′ · the loading file is a server file that asks the journey answer and hands the drawing only that (R5-H's convention, as the withdraw screen's)
+  ok   6.4 · /help's card to /positions says Tiketi zangu with the tab's ticket glyph in the journey; everybody else's is today's
+  ok   6.5 · a settled round's door to its tickets says Tiketi zangu in the journey (it said "Fungua kwenye Nafasi")
+  ok   6.6 · every door or page line that says a "positions" word outside classic-only chrome has its journey arm ("Tiketi zangu" / "Rudi kwenye tiketi")
+  ok   6.7 PLANT · the dial's old label ("Tazama nafasi" in the journey) is reported by the census
+
+── 7 · the journey's back links on the pages the Akaunti hub opens name the hub ("‹ AKAUNTI") and fall back to it 
+  ok   7.1 · the five pages the hub opens (Arifa, Alika, the agent's dashboard, KYC, Weka mipaka / Pumzika / Jizuie) take the hub's name and fall back to /account in the journey; everybody else's link is today's
+  ok   7.2 · every page a hub row opens under /profile or /notifications (/profile/responsible-gambling, /profile/invite, /profile/kyc, /notifications) has the journey's back link — a new row's page without one is reported
+  ok   7.3 CONTROL · the money pages keep "‹ POCHI" (R5-G: their eyebrow and back link name the Wallet, their section) and /profile's own children keep "‹ WASIFU" (the hub opens them through Wasifu)
+
+── 8 · C4 the sign-in break notice is the break's neutral notice — tone only, its words unchanged ────────────────
+  ok   8.1 · the break's panel is `neutral`, with the same title and the same approved sentence (`rg.breakActive` and its end, or `auth.coolingOffBody`)
+  ok   8.2 · the neutral arm is the kit Callout's own neutral paint (`callout.tsx`) with the break's pause glyph in its icon ink, in the alert glyph's 16px box
+  ok   8.3 CONTROL · the exclusion panels stay `danger`: each refuses the sign-in itself, a block the player cannot clear (R5-I's ranking) — the break is not a refusal (sign-in goes on)
+  ok   8.4 · the same break is neutral everywhere it is said: the limits page's Callout, /wallet/deposit's paused notice
+  ok   8.5 PLANT · the amber arm back is reported
+
+── 9 · C2 the Needle drawer's and the chat panel's ✕: the one CloseX, on their titles' capitals, 16px inside the edge 
+  ok   9.0 · CONTROL · CloseX is a 48px box (`h-8 w-8` on this scale) with the kit glyph
+  ok   9.1 · the Needle drawer: CloseX centred 9.00px down its header row, on the 15px title's capitals (9.00; it centred 20), 16px inside the panel's edge (16 / 16 from 640; it stood 20 / 24)
+  ok   9.1′ · …taking 40px of the row, the old box's 40, so the row is as tall as it was and nothing below moves
+  ok   9.2 · the chat panel: CloseX at its header's top (`self-start`) centred 10.875px down the title block, on the 15px name's capitals (10.875); the header's own 16px padding puts it 16px inside the edge
+  ok   9.2′ · …taking 34.875px of the 41px title block, so the header is as tall as it was; its own `.cm-close` box and rules are gone
+  ok   9.3 · neither dialog draws a ✕ of its own any more (no <svg> of the glyph's two strokes)
+  ok   9.4 · R5-A's ✕ census reads the glyph in any spelling (one path or two, absolute or relative, two <line>s) and refuses both old ✕s planted back; the bell's ✕ is classified by its geometry
+  ok   9.5 · the bell's ✕ is CloseX's proportion in its 44px toolbar: a 40px box (`h-7 w-7`) with a 13px glyph (16/48 against 13/40), the bar's last control 16px inside the panel
+
+── 10 · C9 every player dialog's ✕ is ruled — on its title, in its header row, none, or Modal's corner over a crest (the one exception) 
+  ok   10.1 · every player file that hosts a <Modal> is ruled and holds its rule (13: 6 title, 3 header-row, 2 none, 2 crest)
+  ok   10.2 · the exception is written where it applies: both crest-first dialogs say why their ✕ keeps Modal's corner
+  ok   10.3 · the corner is Modal's own (`absolute right-3 top-3`: 16px in, centred 40px down) — where the crest-first dialogs keep it
+  ok   10.4 PLANT · a titled dialog ruled a crest, a new dialog nobody ruled, and a crest dialog whose title comes first are each reported
+
+── 11 · C3 the warning census counts the family in every spelling, and every file that paints it is ruled ────────
+  ok   11.1 · the census's two patterns (read from R8-A's warning census, R5-C's until 2026-10-10) cover every warning-family paint in player code — `--warning`, `-500`, `-bg`, `-border`, as variables and as utilities
+  ok   11.2 PLANT · the census as it stood (`--warning-fg` alone) misses 62 of them — the review's 61, 63 since R8-A's amber, 62 since typed-only identity
+  ok   11.3 · the files the census saw first are registered, each with its ruling (a rate-limit wait, an erasure's caution, the one limit ramp's caution step) — and the maintenance flag reads MAINTENANCE_AMBER whole
+
+── 12 · C10 the journey's bell draws a notice with the page's renderers; the classic bell is today's (frozen chrome) 
+  ok   12.1 · the journey arm: the title whole (no one-line cut), its clauses by `DotSeq` and its money by `moneyRuns`; the body's figures whole and its last two words together (`moneySentence`) — /notifications' own renderers
+  ok   12.2 · a wrapping title keeps its dot on its first line (`items-start`, the dot's 4px the line's centre: (13 × 1.25 − 8) / 2 ≈ 4.1)
+  ok   12.3 CONTROL · the classic bell's class strings are today's, byte for byte (frozen chrome)
+  ok   12.4 PLANT · the journey arm drawing the plain title again is reported
+
+── 13 · C11 every right-aligned tracked label ends on its column's edge (F19's `kp-track-end`) or on a glyph ─────
+  ok   13.1 · no right-aligned tracked label keeps its trailing tracking: 17 labels in 9 files take it back (the review's 8 and two more the census found — the round's players, the Wallet history's status — and round 7's seven); two end on a glyph
+  ok   13.2 · the 0.08em label takes back 0.08em (a `--track-end` step of its own, beside F19's 0.16 and 0.10)
+  ok   13.3 PLANT · the bet confirm's STAKE label without its take-back is reported
+
+── 14 · C16 one pill size in the board card's row · C17 the classic held question whole, and the win seal's · C18 the tickets ghost's pills 18px 
+  ok   14.1 · C16: the status pill and the signal pill state the row's one size and box (`xs`, `metrics="status"`)
+  ok   14.2 · RENDERED: every signal pill is the status pill's box and type (23/9) whatever its colour
+  ok   14.2′ CONTROL · the default size drew two boxes in that row: 23/11 and 21/10.5 against the status pill's 23/9
+  ok   14.3 · C17: the classic position card's question is whole (no clamp), as its journey twin's — the board's two-line clamp is for browsing cards
+  ok   14.4 · C18 RENDERED: the ghost's card pills are the ticket card's pills' 18px (18px, `Chip size="sm"`) — 8 pills in 4 cards
+  ok   14.4′ CONTROL · the old `h-5` was 24px on this scale — 6px taller than the pills it stood for
+  ok   14.5 PLANT · the clamp back on the held question is reported
+  ok   14.6 · C17's sibling: the win seal's market name is whole (no clamp), balanced, its figures kept (`keepFigures`, R5-E's F1 F4)
+  ok   14.7 · every `line-clamp` left in player code is ruled (4 files): a browsing list's or a linked compact line's — never a held or won question
+  ok   14.7′ PLANT · the win seal clamped again is an unruled clamp
+
+── 16 · one gap between two large buttons, stacked or side by side: 12px, the override scale's `gap-2` (the coordinator's item from R5-K) 
+  ok   16.1 · every pair of large buttons stands 12px apart — `gap-2` (12px on this scale) or the Wallet sheet's pair class (`--sp-3`) — 10 pairs: the receipt's and the deposit return's, both confirms', the market's and Up & Down's two sides, the reality check's, the mail-link pages'
+  ok   16.2 · the two money pages the coordinator named say it the same way, and the receipt's ghost draws its pair on the same gap
+  ok   16.3 PLANT · the deposit return's old 10px pair (`gap-2.5`, a stock key off the scale) is reported
+  ok   16.4 · the deposit return's ghost draws no off-scale gap, and any row of two it draws stands on the page's `gap-2` (flex flex-col sm:flex-row gap-2)
+
+── 15 · composition only: the dictionary is the tip's, byte for byte ─────────────────────────────────────────────
+  ok   15.1 · src/lib/i18n-dict.ts is the commit's own (every word above is an existing key)
+
+87 passed, 0 failed

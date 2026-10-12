@@ -1,0 +1,4 @@
+1 qa:live https://50pick.tz
+1 qa:chunks-prod --origin https://50pick.tz
+0 qa:cls-budget classic https://50pick.tz
+DONE

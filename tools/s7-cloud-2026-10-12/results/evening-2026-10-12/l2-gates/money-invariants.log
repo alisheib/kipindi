@@ -1,0 +1,114 @@
+[audit] COMPLIANCE resolution.two_admin_enabled money-invariants-setup SystemFlag#requireTwoOfficerResolution
+[audit] ADMIN market.created test Market#mkt_1507743fb98216c4c644
+[audit] BET market.position.opened inv_0_0 Position#pos_e876a0fb701ef6276e12
+[email] sendEmailToUser skipped — no email for user inv_0_0… (user.email=null, phone=+25599…)
+[audit] BET market.position.opened inv_0_1 Position#pos_e18b364f471c092a5af7
+[email] sendEmailToUser skipped — no email for user inv_0_1… (user.email=null, phone=+25599…)
+[audit] ADMIN market.resolve.stage1 officer_alpha Market#mkt_1507743fb98216c4c644
+[audit] ADMIN market.adjudicated officer_beta Market#mkt_1507743fb98216c4c644
+[audit] WALLET bet.payout inv_0_0 Position#pos_e876a0fb701ef6276e12
+[audit] ADMIN market.resolved system Market#mkt_1507743fb98216c4c644
+[email] sendEmailToUser skipped — no email for user inv_0_0… (user.email=null, phone=+25599…)
+[email] sendEmailToUser skipped — no email for user inv_0_1… (user.email=null, phone=+25599…)
+[audit] WALLET market.settled system Market#mkt_1507743fb98216c4c644
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_1507743fb98216c4c644
+[audit] ADMIN market.created test Market#mkt_d4cac1ac6c1b5652106f
+[audit] BET market.position.opened inv_1_0 Position#pos_715c10a41f358417da3e
+[email] sendEmailToUser skipped — no email for user inv_1_0… (user.email=null, phone=+25599…)
+[audit] BET market.position.opened inv_1_1 Position#pos_ae23f9a4b0f63cb0e78e
+[email] sendEmailToUser skipped — no email for user inv_1_1… (user.email=null, phone=+25599…)
+[audit] ADMIN market.resolve.stage1 officer_alpha Market#mkt_d4cac1ac6c1b5652106f
+[audit] ADMIN market.adjudicated officer_beta Market#mkt_d4cac1ac6c1b5652106f
+[email] sendEmailToUser skipped — no email for user inv_1_0… (user.email=null, phone=+25599…)
+[audit] WALLET bet.payout inv_1_1 Position#pos_ae23f9a4b0f63cb0e78e
+[audit] ADMIN market.resolved system Market#mkt_d4cac1ac6c1b5652106f
+[email] sendEmailToUser skipped — no email for user inv_1_1… (user.email=null, phone=+25599…)
+[audit] WALLET market.settled system Market#mkt_d4cac1ac6c1b5652106f
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_d4cac1ac6c1b5652106f
+[audit] ADMIN market.created test Market#mkt_da754a1ff49d1767b91f
+[audit] BET market.position.opened inv_2_0 Position#pos_aabcc8ffdfc0441d5067
+[email] sendEmailToUser skipped — no email for user inv_2_0… (user.email=null, phone=+25599…)
+[audit] BET market.position.opened inv_2_1 Position#pos_a58ddd644861fc67f554
+[email] sendEmailToUser skipped — no email for user inv_2_1… (user.email=null, phone=+25599…)
+[audit] BET market.position.opened inv_2_2 Position#pos_179cfc672bbb58416b87
+[email] sendEmailToUser skipped — no email for user inv_2_2… (user.email=null, phone=+25599…)
+[audit] ADMIN market.resolve.stage1 officer_alpha Market#mkt_da754a1ff49d1767b91f
+[audit] ADMIN market.adjudicated officer_beta Market#mkt_da754a1ff49d1767b91f
+[audit] WALLET bet.payout inv_2_0 Position#pos_aabcc8ffdfc0441d5067
+[email] sendEmailToUser skipped — no email for user inv_2_0… (user.email=null, phone=+25599…)
+[audit] WALLET bet.payout inv_2_1 Position#pos_a58ddd644861fc67f554
+[audit] ADMIN market.resolved system Market#mkt_da754a1ff49d1767b91f
+[email] sendEmailToUser skipped — no email for user inv_2_1… (user.email=null, phone=+25599…)
+[email] sendEmailToUser skipped — no email for user inv_2_2… (user.email=null, phone=+25599…)
+[audit] WALLET market.settled system Market#mkt_da754a1ff49d1767b91f
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_da754a1ff49d1767b91f
+[audit] ADMIN market.created test Market#mkt_3a6203243cf9f5299d1c
+[audit] BET market.position.opened inv_3_0 Position#pos_e2c9d1caa50fe563d3f9
+[email] sendEmailToUser skipped — no email for user inv_3_0… (user.email=null, phone=+25599…)
+[audit] BET market.position.opened inv_3_1 Position#pos_1b2dc21046192124ed0d
+[email] sendEmailToUser skipped — no email for user inv_3_1… (user.email=null, phone=+25599…)
+[audit] ADMIN market.resolve.stage1 officer_alpha Market#mkt_3a6203243cf9f5299d1c
+[audit] ADMIN market.adjudicated officer_beta Market#mkt_3a6203243cf9f5299d1c
+[audit] WALLET bet.payout inv_3_0 Position#pos_e2c9d1caa50fe563d3f9
+[audit] ADMIN market.resolved system Market#mkt_3a6203243cf9f5299d1c
+[email] sendEmailToUser skipped — no email for user inv_3_0… (user.email=null, phone=+25599…)
+[email] sendEmailToUser skipped — no email for user inv_3_1… (user.email=null, phone=+25599…)
+[audit] WALLET market.settled system Market#mkt_3a6203243cf9f5299d1c
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_3a6203243cf9f5299d1c
+[audit] ADMIN market.created test Market#mkt_a904b8d95626b915b106
+[audit] BET market.position.opened void_a Position#pos_b35b7e8684413a0f6bff
+[email] sendEmailToUser skipped — no email for user void_a… (user.email=null, phone=+25599…)
+[audit] BET market.position.opened void_b Position#pos_ea8245b5cb76bd12c264
+[email] sendEmailToUser skipped — no email for user void_b… (user.email=null, phone=+25599…)
+[audit] ADMIN market.resolve.stage1 officer_alpha Market#mkt_a904b8d95626b915b106
+[audit] ADMIN market.adjudicated officer_beta Market#mkt_a904b8d95626b915b106
+[audit] ADMIN market.resolved system Market#mkt_a904b8d95626b915b106
+[audit] WALLET market.settled system Market#mkt_a904b8d95626b915b106
+[audit] ADMIN config.global.updated officer_mi MarketConfig#global
+[audit] ADMIN market.created test Market#mkt_a298501194c04a8df9fa
+[audit] BET market.position.opened co_x Position#pos_6fc2bd123a5ffb1454f9
+[email] sendEmailToUser skipped — no email for user co_x… (user.email=null, phone=+25599…)
+[audit] BET market.position.opened co_y Position#pos_19fd4dab44f7eda8fbe9
+[email] sendEmailToUser skipped — no email for user co_y… (user.email=null, phone=+25599…)
+[audit] BET market.position.opened co_z Position#pos_4ace3d3a0de9a56bccde
+[email] sendEmailToUser skipped — no email for user co_z… (user.email=null, phone=+25599…)
+[audit] BET market.position.cashed_out co_x Position#pos_6fc2bd123a5ffb1454f9
+[email] sendEmailToUser skipped — no email for user co_x… (user.email=null, phone=+25599…)
+[audit] ADMIN market.resolve.stage1 officer_alpha Market#mkt_a298501194c04a8df9fa
+[audit] ADMIN market.adjudicated officer_beta Market#mkt_a298501194c04a8df9fa
+[audit] WALLET bet.payout co_y Position#pos_19fd4dab44f7eda8fbe9
+[audit] ADMIN market.resolved system Market#mkt_a298501194c04a8df9fa
+[email] sendEmailToUser skipped — no email for user co_y… (user.email=null, phone=+25599…)
+[email] sendEmailToUser skipped — no email for user co_z… (user.email=null, phone=+25599…)
+[audit] WALLET market.settled system Market#mkt_a298501194c04a8df9fa
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_a298501194c04a8df9fa
+[audit] ADMIN market.created test Market#mkt_3917ab8d3a164b58fa99
+[audit] BET market.position.opened idem_u Position#pos_ac205c5c73546f89e272
+[email] sendEmailToUser skipped — no email for user idem_u… (user.email=null, phone=+25599…)
+[audit] ADMIN market.created test Market#mkt_779e9ee5005a6788c66a
+[audit] BET market.position.opened sweep_u0 Position#pos_ce40975195d5ae1b5bd8
+[email] sendEmailToUser skipped — no email for user sweep_u0… (user.email=null, phone=+25599…)
+[audit] BET market.position.opened sweep_u1 Position#pos_667f44a1d871dfd982bb
+[email] sendEmailToUser skipped — no email for user sweep_u1… (user.email=null, phone=+25599…)
+[audit] BET market.position.opened sweep_u2 Position#pos_d49df7f0181a0552e88a
+[email] sendEmailToUser skipped — no email for user sweep_u2… (user.email=null, phone=+25599…)
+[audit] BET market.position.opened sweep_u3 Position#pos_1ec86930e52858c53805
+[email] sendEmailToUser skipped — no email for user sweep_u3… (user.email=null, phone=+25599…)
+[audit] BET market.position.opened sweep_u4 Position#pos_244220a27b4f524a2e4f
+[email] sendEmailToUser skipped — no email for user sweep_u4… (user.email=null, phone=+25599…)
+[audit] BET market.position.opened sweep_u5 Position#pos_59976ccfbae01b8f39b8
+[email] sendEmailToUser skipped — no email for user sweep_u5… (user.email=null, phone=+25599…)
+[audit] BET market.position.opened sweep_u6 Position#pos_c91820f5a96d1478e89a
+[email] sendEmailToUser skipped — no email for user sweep_u6… (user.email=null, phone=+25599…)
+[audit] BET market.position.opened sweep_u7 Position#pos_2eb81693e94b42a45795
+[email] sendEmailToUser skipped — no email for user sweep_u7… (user.email=null, phone=+25599…)
+[audit] BET market.position.opened sweep_u8 Position#pos_eb91207279ba6c8882f6
+[email] sendEmailToUser skipped — no email for user sweep_u8… (user.email=null, phone=+25599…)
+[audit] BET market.position.opened sweep_u9 Position#pos_b29d2edbd1f2edc768bb
+[email] sendEmailToUser skipped — no email for user sweep_u9… (user.email=null, phone=+25599…)
+[audit] BET market.position.opened sweep_u10 Position#pos_cdadc57c717ec79920f1
+[email] sendEmailToUser skipped — no email for user sweep_u10… (user.email=null, phone=+25599…)
+[audit] BET market.position.opened sweep_u11 Position#pos_e4c81634b0d5b431b04e
+[email] sendEmailToUser skipped — no email for user sweep_u11… (user.email=null, phone=+25599…)
+
+money-invariants: 89 passed, 0 failed

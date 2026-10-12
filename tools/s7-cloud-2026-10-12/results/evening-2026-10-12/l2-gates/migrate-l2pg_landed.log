@@ -1,0 +1,6 @@
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": PostgreSQL database "l2pg_landed", schema "public" at "127.0.0.1:55432"
+
+Error: P1001: Can't reach database server at `127.0.0.1:55432`
+
+Please make sure your database server is running at `127.0.0.1:55432`.

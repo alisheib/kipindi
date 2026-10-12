@@ -1,0 +1,9 @@
+source bytes
+PASS 1 · no BACKSPACE, VERTICAL TAB or FORM FEED anywhere in src/, scripts/ or prisma/ — each is a decoded escape
+PASS 2 · no other raw control character outside the named fixtures
+PASS 3 · every allowlisted fixture still carries its control character (the list may only shrink)
+PASS C1 · CONTROL · a planted backspace before `reset(` is refused — even inside an allowlisted fixture
+PASS C2 · CONTROL · a NUL is refused in a file that is not a named fixture, and allowed in one that is
+PASS C3 · CONTROL · tabs, line feeds and carriage returns are text, and the line count follows the line feeds
+PASS C4 · CONTROL · the scan read the tree (2,000+ source files under src/, scripts/ and prisma/)
+source-bytes: 7 passed, 0 failed

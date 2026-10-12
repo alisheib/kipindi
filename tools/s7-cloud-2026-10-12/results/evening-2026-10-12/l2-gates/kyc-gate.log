@@ -1,0 +1,309 @@
+
+§1 · a never-approved account deposits and plays, and cannot withdraw
+[audit] ADMIN market.created test Market#mkt_aa24bdb33104cf01a7b7
+[audit] WALLET deposit.initiated kg_not_started_noemail Transaction#txn_ce9c4e3696be931178d81314
+[audit] WALLET deposit.dispatch kg_not_started_noemail User#kg_not_started_noemail
+[audit] WALLET deposit.confirmed kg_not_started_noemail Transaction#txn_ce9c4e3696be931178d81314
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user kg_not_started… (user.email=k***@t.tz)
+PASS 1.NOT_STARTED.deposit · with NO confirmed email: accepted — no identity door and no email door — ok {"txnId":"txn_ce9c4e3696be931178d81314","status":"CONFIRMED","balance":50000}
+[audit] WALLET deposit.initiated kg_not_started Transaction#txn_6849db1354c4ed3a858ba3b2
+[audit] WALLET deposit.dispatch kg_not_started User#kg_not_started
+[audit] WALLET deposit.confirmed kg_not_started Transaction#txn_6849db1354c4ed3a858ba3b2
+[email] sending "Deposit confirmed · TZS 50,000" → k***@t.tz (tag=deposit)
+[email-stub] To: k***@t.tz | Subject: Deposit confirmed · TZS 50,000
+PASS 1.NOT_STARTED.deposit · goes through with a confirmed email — ok {"txnId":"txn_6849db1354c4ed3a858ba3b2","status":"CONFIRMED","balance":50000}
+PASS 1.NOT_STARTED.deposit · …confirmed and credited — status CONFIRMED · balance 50000
+[audit] BET market.position.opened kg_not_started Position#pos_97606227df499093fd68
+PASS 1.NOT_STARTED.bet · accepted — ok {"positionId":"pos_97606227df499093fd68","balance":45000,"payoutIfWin":5000,"placedAt":"2026-10-12T20:01:07.758Z","bonusStakeTzs":0}
+[email] sending "Bet placed · YES on "Identity gate market"" → k***@t.tz (tag=bet-placed)
+[email-stub] To: k***@t.tz | Subject: Bet placed · YES on "Identity gate market"
+PASS 1.NOT_STARTED.withdraw · REFUSED — INVALID / kyc_not_verified · Identity not verified (NOT_STARTED).
+PASS 1.NOT_STARTED.withdraw · reason is "kyc_not_verified" — INVALID / kyc_not_verified · Identity not verified (NOT_STARTED).
+[audit] COMPLIANCE withdraw.kyc_blocked kg_not_started User#kg_not_started
+PASS 1.NOT_STARTED.withdraw · nothing moved — balance 45000→45000 · hold 0→0
+[audit] WALLET deposit.initiated kg_in_progress_noemail Transaction#txn_8ddaaadceb9bddf81ef3dfcc
+[audit] WALLET deposit.dispatch kg_in_progress_noemail User#kg_in_progress_noemail
+[audit] WALLET deposit.confirmed kg_in_progress_noemail Transaction#txn_8ddaaadceb9bddf81ef3dfcc
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user kg_in_progress… (user.email=k***@t.tz)
+PASS 1.IN_PROGRESS.deposit · with NO confirmed email: accepted — no identity door and no email door — ok {"txnId":"txn_8ddaaadceb9bddf81ef3dfcc","status":"CONFIRMED","balance":50000}
+[audit] WALLET deposit.initiated kg_in_progress Transaction#txn_d878fba6ad400716392cc9cf
+[audit] WALLET deposit.dispatch kg_in_progress User#kg_in_progress
+[audit] WALLET deposit.confirmed kg_in_progress Transaction#txn_d878fba6ad400716392cc9cf
+[email] sending "Deposit confirmed · TZS 50,000" → k***@t.tz (tag=deposit)
+[email-stub] To: k***@t.tz | Subject: Deposit confirmed · TZS 50,000
+PASS 1.IN_PROGRESS.deposit · goes through with a confirmed email — ok {"txnId":"txn_d878fba6ad400716392cc9cf","status":"CONFIRMED","balance":50000}
+PASS 1.IN_PROGRESS.deposit · …confirmed and credited — status CONFIRMED · balance 50000
+[audit] BET market.position.opened kg_in_progress Position#pos_e70499f018f92e188d3b
+PASS 1.IN_PROGRESS.bet · accepted — ok {"positionId":"pos_e70499f018f92e188d3b","balance":45000,"payoutIfWin":5000,"placedAt":"2026-10-12T20:01:10.777Z","bonusStakeTzs":0}
+[email] sending "Bet placed · YES on "Identity gate market"" → k***@t.tz (tag=bet-placed)
+[email-stub] To: k***@t.tz | Subject: Bet placed · YES on "Identity gate market"
+PASS 1.IN_PROGRESS.withdraw · REFUSED — INVALID / kyc_not_verified · Identity not verified (IN_PROGRESS).
+PASS 1.IN_PROGRESS.withdraw · reason is "kyc_not_verified" — INVALID / kyc_not_verified · Identity not verified (IN_PROGRESS).
+[audit] COMPLIANCE withdraw.kyc_blocked kg_in_progress User#kg_in_progress
+PASS 1.IN_PROGRESS.withdraw · nothing moved — balance 45000→45000 · hold 0→0
+[audit] WALLET deposit.initiated kg_pending_review_noemail Transaction#txn_e20721f92969820f313c6bb1
+[audit] WALLET deposit.dispatch kg_pending_review_noemail User#kg_pending_review_noemail
+[audit] WALLET deposit.confirmed kg_pending_review_noemail Transaction#txn_e20721f92969820f313c6bb1
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user kg_pending_rev… (user.email=k***@t.tz)
+PASS 1.PENDING_REVIEW.deposit · with NO confirmed email: accepted — no identity door and no email door — ok {"txnId":"txn_e20721f92969820f313c6bb1","status":"CONFIRMED","balance":50000}
+[audit] WALLET deposit.initiated kg_pending_review Transaction#txn_1cde49bd77140225484193e6
+[audit] WALLET deposit.dispatch kg_pending_review User#kg_pending_review
+[audit] WALLET deposit.confirmed kg_pending_review Transaction#txn_1cde49bd77140225484193e6
+[email] sending "Deposit confirmed · TZS 50,000" → k***@t.tz (tag=deposit)
+[email-stub] To: k***@t.tz | Subject: Deposit confirmed · TZS 50,000
+PASS 1.PENDING_REVIEW.deposit · goes through with a confirmed email — ok {"txnId":"txn_1cde49bd77140225484193e6","status":"CONFIRMED","balance":50000}
+PASS 1.PENDING_REVIEW.deposit · …confirmed and credited — status CONFIRMED · balance 50000
+[audit] BET market.position.opened kg_pending_review Position#pos_eb0761a9b6ac4eaca9a3
+PASS 1.PENDING_REVIEW.bet · accepted — ok {"positionId":"pos_eb0761a9b6ac4eaca9a3","balance":45000,"payoutIfWin":5000,"placedAt":"2026-10-12T20:01:13.789Z","bonusStakeTzs":0}
+[email] sending "Bet placed · YES on "Identity gate market"" → k***@t.tz (tag=bet-placed)
+[email-stub] To: k***@t.tz | Subject: Bet placed · YES on "Identity gate market"
+PASS 1.PENDING_REVIEW.withdraw · REFUSED — INVALID / kyc_pending_review · Identity not verified (PENDING_REVIEW).
+PASS 1.PENDING_REVIEW.withdraw · reason is "kyc_pending_review" — INVALID / kyc_pending_review · Identity not verified (PENDING_REVIEW).
+[audit] COMPLIANCE withdraw.kyc_blocked kg_pending_review User#kg_pending_review
+PASS 1.PENDING_REVIEW.withdraw · nothing moved — balance 45000→45000 · hold 0→0
+[audit] WALLET deposit.initiated kg_additional_info_required_noemail Transaction#txn_9412788f4ac644f4b02e7ff4
+[audit] WALLET deposit.dispatch kg_additional_info_required_noemail User#kg_additional_info_required_noemail
+[audit] WALLET deposit.confirmed kg_additional_info_required_noemail Transaction#txn_9412788f4ac644f4b02e7ff4
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user kg_additional_… (user.email=k***@t.tz)
+PASS 1.ADDITIONAL_INFO_REQUIRED.deposit · with NO confirmed email: accepted — no identity door and no email door — ok {"txnId":"txn_9412788f4ac644f4b02e7ff4","status":"CONFIRMED","balance":50000}
+[audit] WALLET deposit.initiated kg_additional_info_required Transaction#txn_6111a177a36cf31b273a52f3
+[audit] WALLET deposit.dispatch kg_additional_info_required User#kg_additional_info_required
+[audit] WALLET deposit.confirmed kg_additional_info_required Transaction#txn_6111a177a36cf31b273a52f3
+[email] sending "Deposit confirmed · TZS 50,000" → k***@t.tz (tag=deposit)
+[email-stub] To: k***@t.tz | Subject: Deposit confirmed · TZS 50,000
+PASS 1.ADDITIONAL_INFO_REQUIRED.deposit · goes through with a confirmed email — ok {"txnId":"txn_6111a177a36cf31b273a52f3","status":"CONFIRMED","balance":50000}
+PASS 1.ADDITIONAL_INFO_REQUIRED.deposit · …confirmed and credited — status CONFIRMED · balance 50000
+[audit] BET market.position.opened kg_additional_info_required Position#pos_3e22e28248dedd6b96fa
+PASS 1.ADDITIONAL_INFO_REQUIRED.bet · accepted — ok {"positionId":"pos_3e22e28248dedd6b96fa","balance":45000,"payoutIfWin":5000,"placedAt":"2026-10-12T20:01:16.802Z","bonusStakeTzs":0}
+[email] sending "Bet placed · YES on "Identity gate market"" → k***@t.tz (tag=bet-placed)
+[email-stub] To: k***@t.tz | Subject: Bet placed · YES on "Identity gate market"
+PASS 1.ADDITIONAL_INFO_REQUIRED.withdraw · REFUSED — INVALID / kyc_more_info · Identity not verified (ADDITIONAL_INFO_REQUIRED).
+PASS 1.ADDITIONAL_INFO_REQUIRED.withdraw · reason is "kyc_more_info" — INVALID / kyc_more_info · Identity not verified (ADDITIONAL_INFO_REQUIRED).
+[audit] COMPLIANCE withdraw.kyc_blocked kg_additional_info_required User#kg_additional_info_required
+PASS 1.ADDITIONAL_INFO_REQUIRED.withdraw · nothing moved — balance 45000→45000 · hold 0→0
+[audit] WALLET deposit.initiated kg_rejected_noemail Transaction#txn_0934a39d0247fc1e21894db2
+[audit] WALLET deposit.dispatch kg_rejected_noemail User#kg_rejected_noemail
+[audit] WALLET deposit.confirmed kg_rejected_noemail Transaction#txn_0934a39d0247fc1e21894db2
+[email] sendEmailToUser withheld — money mail to an unconfirmed address for user kg_rejected_no… (user.email=k***@t.tz)
+PASS 1.REJECTED.deposit · with NO confirmed email: accepted — no identity door and no email door — ok {"txnId":"txn_0934a39d0247fc1e21894db2","status":"CONFIRMED","balance":50000}
+[audit] WALLET deposit.initiated kg_rejected Transaction#txn_02ad1260493c30c80adb1888
+[audit] WALLET deposit.dispatch kg_rejected User#kg_rejected
+[audit] WALLET deposit.confirmed kg_rejected Transaction#txn_02ad1260493c30c80adb1888
+[email] sending "Deposit confirmed · TZS 50,000" → k***@t.tz (tag=deposit)
+[email-stub] To: k***@t.tz | Subject: Deposit confirmed · TZS 50,000
+PASS 1.REJECTED.deposit · goes through with a confirmed email — ok {"txnId":"txn_02ad1260493c30c80adb1888","status":"CONFIRMED","balance":50000}
+PASS 1.REJECTED.deposit · …confirmed and credited — status CONFIRMED · balance 50000
+[audit] BET market.position.opened kg_rejected Position#pos_bf42eef1c41d752a5d5c
+PASS 1.REJECTED.bet · accepted — ok {"positionId":"pos_bf42eef1c41d752a5d5c","balance":45000,"payoutIfWin":5000,"placedAt":"2026-10-12T20:01:19.813Z","bonusStakeTzs":0}
+[email] sending "Bet placed · YES on "Identity gate market"" → k***@t.tz (tag=bet-placed)
+[email-stub] To: k***@t.tz | Subject: Bet placed · YES on "Identity gate market"
+PASS 1.REJECTED.withdraw · REFUSED — INVALID / kyc_rejected · Identity not verified (REJECTED).
+PASS 1.REJECTED.withdraw · reason is "kyc_rejected" — INVALID / kyc_rejected · Identity not verified (REJECTED).
+[audit] COMPLIANCE withdraw.kyc_blocked kg_rejected User#kg_rejected
+PASS 1.REJECTED.withdraw · nothing moved — balance 45000→45000 · hold 0→0
+
+§2 · ★ an approved account withdraws — the gate is not a blanket refusal
+[audit] WALLET deposit.initiated kg_approved Transaction#txn_e8a46ca0c2010406082810dc
+[audit] WALLET deposit.dispatch kg_approved User#kg_approved
+[audit] WALLET deposit.confirmed kg_approved Transaction#txn_e8a46ca0c2010406082810dc
+[email] sending "Deposit confirmed · TZS 50,000" → k***@t.tz (tag=deposit)
+[email-stub] To: k***@t.tz | Subject: Deposit confirmed · TZS 50,000
+PASS 2.1 · ★ APPROVED deposits — ok {"txnId":"txn_e8a46ca0c2010406082810dc","status":"CONFIRMED","balance":50000}
+[audit] BET market.position.opened kg_approved Position#pos_278ef33097b986e5f167
+PASS 2.2 · ★ APPROVED bets — ok {"positionId":"pos_278ef33097b986e5f167","balance":45000,"payoutIfWin":5000,"placedAt":"2026-10-12T20:01:21.318Z","bonusStakeTzs":0}
+[email] sending "Bet placed · YES on "Identity gate market"" → k***@t.tz (tag=bet-placed)
+[email-stub] To: k***@t.tz | Subject: Bet placed · YES on "Identity gate market"
+[audit] WALLET withdraw.initiated kg_approved Transaction#txn_20855246724d3dca05dc2543
+[audit] WALLET withdraw.dispatch kg_approved User#kg_approved
+[audit] WALLET withdraw.confirmed kg_approved Transaction#txn_20855246724d3dca05dc2543
+PASS 2.3 · ★ APPROVED withdraws — ok {"txnId":"txn_20855246724d3dca05dc2543","status":"CONFIRMED","fee":300,"net":19700}
+PASS 2.4 · fixture · the row really is APPROVED with no first-approval stamp — APPROVED · null
+[email] sending "Withdrawal sent · TZS 19,700" → k***@t.tz (tag=withdrawal)
+[email-stub] To: k***@t.tz | Subject: Withdrawal sent · TZS 19,700
+PASS 2.5 · the gate says eligible — {"eligible":true,"kycStatus":"APPROVED","firstApprovedAt":null}
+PASS 2.6 · kycGateState draws no panel (null) — null
+PASS 2.7 · approvedEver says true
+[audit] WALLET deposit.initiated kg_unstamped Transaction#txn_710d3e80812c1959aa3e1e7d
+[audit] WALLET deposit.dispatch kg_unstamped User#kg_unstamped
+[audit] WALLET deposit.confirmed kg_unstamped Transaction#txn_710d3e80812c1959aa3e1e7d
+[email] sending "Deposit confirmed · TZS 50,000" → k***@t.tz (tag=deposit)
+[email-stub] To: k***@t.tz | Subject: Deposit confirmed · TZS 50,000
+[audit] WALLET withdraw.initiated kg_unstamped Transaction#txn_817d4d5eb3583a34a9227b79
+[audit] WALLET withdraw.dispatch kg_unstamped User#kg_unstamped
+[audit] WALLET withdraw.confirmed kg_unstamped Transaction#txn_817d4d5eb3583a34a9227b79
+PASS 2.8 · ★ …and the withdrawal itself goes through — ok {"txnId":"txn_817d4d5eb3583a34a9227b79","status":"CONFIRMED","fee":300,"net":19700}
+[email] sending "Withdrawal sent · TZS 19,700" → k***@t.tz (tag=withdrawal)
+[email-stub] To: k***@t.tz | Subject: Withdrawal sent · TZS 19,700
+[audit] WALLET deposit.initiated kg_typed Transaction#txn_0a9e70a63f39fb06edb36d8f
+[audit] WALLET deposit.dispatch kg_typed User#kg_typed
+[audit] WALLET deposit.confirmed kg_typed Transaction#txn_0a9e70a63f39fb06edb36d8f
+[email] sending "Deposit confirmed · TZS 50,000" → k***@t.tz (tag=deposit)
+[email-stub] To: k***@t.tz | Subject: Deposit confirmed · TZS 50,000
+PASS 2.9a · fixture · before the press, the withdrawal is refused for identity — INVALID / kyc_not_verified · Identity not verified (NOT_STARTED).
+[audit] COMPLIANCE withdraw.kyc_blocked kg_typed User#kg_typed
+[audit] KYC kyc.started kg_typed Kyc#kyc_7f8ea30a4e0557acc3ea
+[audit] KYC kyc.approved system User#kg_typed
+[audit] KYC kyc.id.accepted kg_typed Kyc#kyc_7f8ea30a4e0557acc3ea
+PASS 2.9b · fixture · the typed press approved at once, automatically — ok {"outcome":"approved"} · APPROVED
+[email] sending "Identity verified · You're fully verified" → k***@t.tz (tag=kyc-approved)
+[email-stub] To: k***@t.tz | Subject: Identity verified · You're fully verified
+[audit] WALLET withdraw.initiated kg_typed Transaction#txn_cd02cad29b5ccac027b1dc04
+[audit] WALLET withdraw.dispatch kg_typed User#kg_typed
+[audit] WALLET withdraw.confirmed kg_typed Transaction#txn_cd02cad29b5ccac027b1dc04
+PASS 2.9 · ★ an AUTOMATIC typed approval opens the withdrawal — the gate, the panel and the predicate agree — ok {"txnId":"txn_cd02cad29b5ccac027b1dc04","status":"CONFIRMED","fee":300,"net":19700} · panel null
+
+§3 · 🔴 approved once, correcting now — the money already earned stays reachable
+[email] sending "Withdrawal sent · TZS 19,700" → k***@t.tz (tag=withdrawal)
+[email-stub] To: k***@t.tz | Subject: Withdrawal sent · TZS 19,700
+[audit] WALLET deposit.initiated kg_reverify Transaction#txn_03b758b3bdbf7ac71d66dc6f
+[audit] WALLET deposit.dispatch kg_reverify User#kg_reverify
+[audit] WALLET deposit.confirmed kg_reverify Transaction#txn_03b758b3bdbf7ac71d66dc6f
+[email] sending "Deposit confirmed · TZS 50,000" → k***@t.tz (tag=deposit)
+[email-stub] To: k***@t.tz | Subject: Deposit confirmed · TZS 50,000
+[audit] COMPLIANCE kyc.corrections_asked kg_officer User#kg_reverify
+PASS 3.0 · fixture · the officer really asked for corrections — ok {}
+PASS 3.1 · status moved off APPROVED — ADDITIONAL_INFO_REQUIRED
+PASS 3.2 · ⛔ …but the first-approval stamp SURVIVED — cleared here, and the player is locked out of money they already earned
+[email] sending "Please check your details · 50pick verification" → k***@t.tz (tag=kyc-more-info)
+[email-stub] To: k***@t.tz | Subject: Please check your details · 50pick verification
+[audit] BET market.position.opened kg_reverify Position#pos_fcc3c5a7d474afc14e6c
+PASS 3.3 · betting stays open while re-verifying — ok {"positionId":"pos_fcc3c5a7d474afc14e6c","balance":45000,"payoutIfWin":5000,"placedAt":"2026-10-12T20:01:30.355Z","bonusStakeTzs":0}
+[email] sending "Bet placed · YES on "Identity gate market"" → k***@t.tz (tag=bet-placed)
+[email-stub] To: k***@t.tz | Subject: Bet placed · YES on "Identity gate market"
+[audit] WALLET withdraw.initiated kg_reverify Transaction#txn_cc2ce42addbb1cb9915dfaf4
+[audit] COMPLIANCE withdraw.unverified_payer kg_reverify Transaction#txn_cc2ce42addbb1cb9915dfaf4
+[audit] WALLET withdraw.dispatch kg_reverify User#kg_reverify
+[audit] WALLET withdraw.confirmed kg_reverify Transaction#txn_cc2ce42addbb1cb9915dfaf4
+PASS 3.4 · ★★ WITHDRAWAL STILL WORKS mid-re-verification — money already earned is never trapped
+PASS 3.5 · the seam, the panel and the predicate say the same thing — gate {"eligible":true,"kycStatus":"ADDITIONAL_INFO_REQUIRED","firstApprovedAt":"2026-10-12T20:01:28.847Z"} · panel null
+
+§4 · the stamp is written once and never cleared
+[email] sending "Withdrawal sent · TZS 19,700" → k***@t.tz (tag=withdrawal)
+[email-stub] To: k***@t.tz | Subject: Withdrawal sent · TZS 19,700
+PASS 4.0 · fixture · the stamp was set to begin with — 2026-01-01T00:00:00.000Z
+[audit] COMPLIANCE kyc.corrections_asked kg_officer User#kg_restart
+PASS 4.0b · fixture · corrections asked — ok {}
+[email] sending "Please check your details · 50pick verification" → k***@t.tz (tag=kyc-more-info)
+[email-stub] To: k***@t.tz | Subject: Please check your details · 50pick verification
+[audit] KYC kyc.rejected kg_officer User#kg_restart
+PASS 4.1 · fixture · the submission really is REJECTED (a recoverable code) — ok {} · REJECTED
+PASS 4.1b · fixture · the restart was accepted — ok {"kycId":"kyc_kg_restart"}
+[email] sending "Identity check needs attention" → k***@t.tz (tag=kyc-rejected)
+[email-stub] To: k***@t.tz | Subject: Identity check needs attention
+[audit] KYC kyc.started kg_restart Kyc#kyc_kg_restart
+PASS 4.2 · ⛔ restart RESET the submission — IN_PROGRESS
+PASS 4.3 · ★ …and the first-approval stamp came through the reset intact — 2026-01-01T00:00:00.000Z
+PASS 4.4 · …so the account can still be paid — {"eligible":true,"kycStatus":"IN_PROGRESS","firstApprovedAt":"2026-01-01T00:00:00.000Z"}
+[audit] KYC nida.check.requested kg_restart User#kg_restart
+[audit] KYC nida.check.format_accepted kg_restart User#kg_restart
+[audit] KYC kyc.routed system User#kg_restart
+[audit] KYC kyc.id.accepted kg_restart Kyc#kyc_kg_restart
+[email] sending "Details received · verification pending" → k***@t.tz (tag=kyc-submitted)
+[email-stub] To: k***@t.tz | Subject: Details received · verification pending
+PASS 4.4a · fixture · the re-sent identity went to an officer, not straight to an automatic approval — ok {"outcome":"routed","routes":["OFFICER_PROVENANCE"]}
+[audit] KYC kyc.approved kg_officer User#kg_restart
+PASS 4.4b · fixture · the re-approval actually happened — ok {}
+[kyc] no admin notify recipients resolved — admin email skipped
+PASS 4.4c · fixture · …and the account really is APPROVED again — APPROVED
+PASS 4.5 · ★ re-approval did NOT move the first-approval date — 2026-01-01T00:00:00.000Z → 2026-01-01T00:00:00.000Z
+
+§5 · the state a brand-new account is actually in
+PASS 5.0 · fixture · there really is no KYC row
+[email] sending "Identity verified · You're fully verified" → k***@t.tz (tag=kyc-approved)
+[email-stub] To: k***@t.tz | Subject: Identity verified · You're fully verified
+PASS 5.1 · ★ no row → the gate refuses — {"eligible":false,"kycStatus":"NOT_STARTED","firstApprovedAt":null,"reason":"kyc_not_verified"}
+PASS 5.2 · …reported as NOT_STARTED with kyc_not_verified, not as an empty string or undefined — {"eligible":false,"kycStatus":"NOT_STARTED","firstApprovedAt":null,"reason":"kyc_not_verified"}
+PASS 5.3 · the record says NOT_STARTED / never approved — a real `false`, not a null — {"kycStatus":"NOT_STARTED","everApproved":false}
+PASS 5.4 · the panel says not_started and the predicate says false — not_started
+
+§6 · a failed identity read: the gate refuses, the record says UNREADABLE, nothing else stops
+[audit] WALLET deposit.initiated kg_brokenread Transaction#txn_8d2f13376af4b5e8b48d9f5b
+[audit] WALLET deposit.dispatch kg_brokenread User#kg_brokenread
+[audit] WALLET deposit.confirmed kg_brokenread Transaction#txn_8d2f13376af4b5e8b48d9f5b
+[email] sending "Deposit confirmed · TZS 50,000" → k***@t.tz (tag=deposit)
+[email-stub] To: k***@t.tz | Subject: Deposit confirmed · TZS 50,000
+PASS 6.0 · fixture · funded while the read still worked — ok {"txnId":"txn_8d2f13376af4b5e8b48d9f5b","status":"CONFIRMED","balance":50000}
+PASS 6.0b · control · the read really fails for this account, and only this one — simulated KYC read failure · other read
+PASS 6.1 · readIdentityStanding records UNREADABLE and a null — never throws, never guesses — {"kycStatus":"UNREADABLE","everApproved":null}
+PASS 6.2 · ★ the gate does NOT say eligible when it could not read — {"ok":false,"threw":"simulated KYC read failure"}
+PASS 6.3 · ★ …so the withdrawal fails closed, and nothing moved — THREW: simulated KYC read failure · balance 50000→50000 · hold 0→0
+[audit] WALLET deposit.initiated kg_brokenread Transaction#txn_68950dc9bd97a66ca8dadd1d
+[audit] WALLET deposit.dispatch kg_brokenread User#kg_brokenread
+[audit] WALLET deposit.confirmed kg_brokenread Transaction#txn_68950dc9bd97a66ca8dadd1d
+[email] sending "Deposit confirmed · TZS 50,000" → k***@t.tz (tag=deposit)
+[email-stub] To: k***@t.tz | Subject: Deposit confirmed · TZS 50,000
+PASS 6.4 · ★ a deposit still goes through when the identity read fails — ok {"txnId":"txn_68950dc9bd97a66ca8dadd1d","status":"CONFIRMED","balance":100000}
+PASS 6.5 · …and its record says UNREADABLE / null, never NOT_STARTED / false — {"provider":"MPESA","amount":50000,"kycStatus":"UNREADABLE","everApproved":null,"hasEmail":true,"emailConfirmed":true}
+[audit] BET market.position.opened kg_brokenread Position#pos_438f32344439458ff4fd
+PASS 6.6 · ★ a bet is still accepted when the identity read fails — ok {"positionId":"pos_438f32344439458ff4fd","balance":95000,"payoutIfWin":5000,"placedAt":"2026-10-12T20:01:36.351Z","bonusStakeTzs":0}
+[email] sending "Bet placed · YES on "Identity gate market"" → k***@t.tz (tag=bet-placed)
+[email-stub] To: k***@t.tz | Subject: Bet placed · YES on "Identity gate market"
+PASS 6.7 · …and its record says UNREADABLE / null — {"marketId":"mkt_aa24bdb33104cf01a7b7","side":"YES","stake":5000,"payoutIfWin":5000,"kycStatus":"UNREADABLE","everApproved":null}
+
+§7 · what replaced the deposit and bet gates is a RECORD — two fields, never a row
+PASS 7.0 · control · the identity-row detector can fire
+[audit] WALLET deposit.initiated kg_rec_unverified Transaction#txn_2661a7383f842b0f0090b9bc
+[audit] WALLET deposit.dispatch kg_rec_unverified User#kg_rec_unverified
+[audit] WALLET deposit.confirmed kg_rec_unverified Transaction#txn_2661a7383f842b0f0090b9bc
+[email] sending "Deposit confirmed · TZS 50,000" → k***@t.tz (tag=deposit)
+[email-stub] To: k***@t.tz | Subject: Deposit confirmed · TZS 50,000
+PASS 7.1 · [NOT_STARTED] fixture · the deposit went through — ok {"txnId":"txn_2661a7383f842b0f0090b9bc","status":"CONFIRMED","balance":50000}
+PASS 7.2 · deposit.initiated carries kycStatus AND everApproved [NOT_STARTED] — 1 row(s) · {"provider":"MPESA","amount":50000,"kycStatus":"NOT_STARTED","everApproved":false,"hasEmail":true,"emailConfirmed":true}
+[audit] BET market.position.opened kg_rec_unverified Position#pos_0585167353a42eddc3fb
+PASS 7.3 · [NOT_STARTED] fixture · the bet was accepted — ok {"positionId":"pos_0585167353a42eddc3fb","balance":45000,"payoutIfWin":5000,"placedAt":"2026-10-12T20:01:38.358Z","bonusStakeTzs":0}
+[email] sending "Bet placed · YES on "Identity gate market"" → k***@t.tz (tag=bet-placed)
+[email-stub] To: k***@t.tz | Subject: Bet placed · YES on "Identity gate market"
+PASS 7.4 · control · the instrument sees the bet's rows [NOT_STARTED] — 1 new row(s): market.position.opened
+PASS 7.5 · one bet writes EXACTLY ONE market.position.opened row, with kycStatus AND everApproved [NOT_STARTED] — 1 row(s) · {"marketId":"mkt_aa24bdb33104cf01a7b7","side":"YES","stake":5000,"payoutIfWin":5000,"kycStatus":"NOT_STARTED","everApproved":false}
+PASS 7.6 · ⛔ …and the bet wrote NO other identity row [NOT_STARTED]
+[audit] WALLET deposit.initiated kg_rec_approved Transaction#txn_73d6dc4cef667ab46a8d98b8
+[audit] WALLET deposit.dispatch kg_rec_approved User#kg_rec_approved
+[audit] WALLET deposit.confirmed kg_rec_approved Transaction#txn_73d6dc4cef667ab46a8d98b8
+[email] sending "Deposit confirmed · TZS 50,000" → k***@t.tz (tag=deposit)
+[email-stub] To: k***@t.tz | Subject: Deposit confirmed · TZS 50,000
+PASS 7.1 · [APPROVED] fixture · the deposit went through — ok {"txnId":"txn_73d6dc4cef667ab46a8d98b8","status":"CONFIRMED","balance":50000}
+PASS 7.2 · deposit.initiated carries kycStatus AND everApproved [APPROVED] — 1 row(s) · {"provider":"MPESA","amount":50000,"kycStatus":"APPROVED","everApproved":true,"hasEmail":true,"emailConfirmed":true}
+[audit] BET market.position.opened kg_rec_approved Position#pos_d4af9fde67272fa02401
+PASS 7.3 · [APPROVED] fixture · the bet was accepted — ok {"positionId":"pos_d4af9fde67272fa02401","balance":45000,"payoutIfWin":5000,"placedAt":"2026-10-12T20:01:40.368Z","bonusStakeTzs":0}
+[email] sending "Bet placed · YES on "Identity gate market"" → k***@t.tz (tag=bet-placed)
+[email-stub] To: k***@t.tz | Subject: Bet placed · YES on "Identity gate market"
+PASS 7.4 · control · the instrument sees the bet's rows [APPROVED] — 1 new row(s): market.position.opened
+PASS 7.5 · one bet writes EXACTLY ONE market.position.opened row, with kycStatus AND everApproved [APPROVED] — 1 row(s) · {"marketId":"mkt_aa24bdb33104cf01a7b7","side":"YES","stake":5000,"payoutIfWin":5000,"kycStatus":"APPROVED","everApproved":true}
+PASS 7.6 · ⛔ …and the bet wrote NO other identity row [APPROVED]
+
+§8 · no call to assertIdentityForPayout outside withdraw(), anywhere under src/
+PASS 8.0 · control · the locator finds planted calls, attributes each to its function, and skips the definition — [{"line":2,"fn":"withdraw"},{"line":5,"fn":"deposit"}]
+     population: 1486 source files under src/ · 6 name the gate (src/lib/failure-reasons.ts, src/lib/i18n-dict.ts, src/lib/kyc-gate-state.ts, src/lib/server/kyc-gate.ts, src/lib/server/store.ts, src/lib/server/wallet-service.ts)
+     call sites: src/lib/server/wallet-service.ts:1646 in withdraw()
+PASS 8.1 · fixture · the walk really covered the tree — 1486 files
+PASS 8.2 · the gate is called at all — a renamed gate would make 8.3 vacuous — 1 call site(s)
+PASS 8.3 · ⛔ every call to the gate sits inside withdraw() in wallet-service.ts
+
+§9 · a withdrawal refused for identity sends the player nothing extra
+[audit] WALLET deposit.initiated kg_quiet Transaction#txn_f811fac5ae1802d80c4f994a
+[audit] WALLET deposit.dispatch kg_quiet User#kg_quiet
+[audit] WALLET deposit.confirmed kg_quiet Transaction#txn_f811fac5ae1802d80c4f994a
+[email] sending "Deposit confirmed · TZS 50,000" → k***@t.tz (tag=deposit)
+[email-stub] To: k***@t.tz | Subject: Deposit confirmed · TZS 50,000
+PASS 9.0 · control · the instruments see a confirmed deposit's receipt (bell AND email) — ok {"txnId":"txn_f811fac5ae1802d80c4f994a","status":"CONFIRMED","balance":50000} · bell 0→1 · mail 0→1
+[audit] COMPLIANCE withdraw.kyc_blocked kg_quiet User#kg_quiet
+PASS 9.1 · fixture · the withdrawal really was refused for identity — INVALID / kyc_not_verified · Identity not verified (NOT_STARTED).
+PASS 9.2 · ⛔ …and it put NOTHING in the player's notifications — 1→1
+PASS 9.3 · ⛔ …and sent the player NO email — 1→1
+[audit] WALLET deposit.initiated kg_quiet_approved Transaction#txn_65c8798bc762c568101da229
+[audit] WALLET deposit.dispatch kg_quiet_approved User#kg_quiet_approved
+[audit] WALLET deposit.confirmed kg_quiet_approved Transaction#txn_65c8798bc762c568101da229
+[email] sending "Deposit confirmed · TZS 50,000" → k***@t.tz (tag=deposit)
+[email-stub] To: k***@t.tz | Subject: Deposit confirmed · TZS 50,000
+[audit] WALLET withdraw.initiated kg_quiet_approved Transaction#txn_d0a6bf4990f4b30c0cddf7f6
+[audit] WALLET withdraw.dispatch kg_quiet_approved User#kg_quiet_approved
+[audit] WALLET withdraw.confirmed kg_quiet_approved Transaction#txn_d0a6bf4990f4b30c0cddf7f6
+[email] sending "Withdrawal sent · TZS 19,700" → k***@t.tz (tag=withdrawal)
+[email-stub] To: k***@t.tz | Subject: Withdrawal sent · TZS 19,700
+PASS 9.4 · control · an accepted withdrawal IS visible to the same counter — ok {"txnId":"txn_d0a6bf4990f4b30c0cddf7f6","status":"CONFIRMED","fee":300,"net":19700} · bell 1→2
+
+§10 · one stake path, one record, both products
+PASS 10.1 · the Up & Down surface stakes through buyPositionAction — if Up & Down grows its own stake action, it needs its own record and this test must change
+PASS 10.2 · …and updown-service never debits a wallet on its own — an independent debit path in updown-service would be a stake with no identity record
+
+kyc-gate: 101 passed, 0 failed

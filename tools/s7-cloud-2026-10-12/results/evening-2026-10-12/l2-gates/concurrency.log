@@ -1,0 +1,542 @@
+[audit] COMPLIANCE resolution.two_admin_enabled concurrency-setup SystemFlag#requireTwoOfficerResolution
+[audit] ADMIN market.created test Market#mkt_ae5688455da61b853672
+[audit] BET market.position.opened cc_bet_0 Position#pos_c5bde98519355dca5153
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_bet_1 Position#pos_efa24a8f14baa393c756
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] BET market.position.opened cc_bet_2 Position#pos_2cd919d4fc8a46de7449
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_bet_3 Position#pos_e7d5162a8a1819d8a4b8
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] BET market.position.opened cc_bet_4 Position#pos_edba52dda686b0d624c9
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_bet_5 Position#pos_1f9f813a5f1e54210b85
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] BET market.position.opened cc_bet_6 Position#pos_9411fe1f4bc11a65ccb4
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_bet_7 Position#pos_fd2c29fd0b255865f0ff
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] BET market.position.opened cc_bet_8 Position#pos_9b24beafe81fca3cdb02
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_bet_9 Position#pos_1f3117dc9496b75afa4a
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] BET market.position.opened cc_bet_10 Position#pos_11e5e279a0eae769a2b5
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_bet_11 Position#pos_2c37ec9483aece82b620
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.created test Market#mkt_a6bcd9cbc4d0acb97924
+[audit] BET market.position.opened cc_idem Position#pos_54d450aa0dbbee804663
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] ADMIN market.created test Market#mkt_dfc021ce237e5801dd2a
+[audit] BET market.position.opened cc_win Position#pos_216ab254e93845b1b6e5
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_lose Position#pos_316f728ae8c3a873f6f9
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_officer_alpha Market#mkt_dfc021ce237e5801dd2a
+[audit] ADMIN market.adjudicated cc_officer_beta Market#mkt_dfc021ce237e5801dd2a
+[audit] WALLET bet.payout cc_win Position#pos_216ab254e93845b1b6e5
+[audit] ADMIN market.resolved system Market#mkt_dfc021ce237e5801dd2a
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_dfc021ce237e5801dd2a
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_dfc021ce237e5801dd2a
+[audit] ADMIN market.created test Market#mkt_2eb7b991445c4419b118
+[audit] BET market.position.opened cc_race_win_0 Position#pos_29f0e87b51ffa0630350
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_0 Position#pos_dba813902e4a21ff0aa9
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_0 Market#mkt_2eb7b991445c4419b118
+[audit] ADMIN market.adjudicated cc_race_beta_0 Market#mkt_2eb7b991445c4419b118
+[audit] WALLET bet.payout cc_race_win_0 Position#pos_29f0e87b51ffa0630350
+[audit] ADMIN market.resolved system Market#mkt_2eb7b991445c4419b118
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_2eb7b991445c4419b118
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_2eb7b991445c4419b118
+[audit] ADMIN market.created test Market#mkt_9a025e45fa5844344d0f
+[audit] BET market.position.opened cc_race_win_1 Position#pos_2373d6b3550f36ea3722
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_1 Position#pos_19f7c0614680f27975d0
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_1 Market#mkt_9a025e45fa5844344d0f
+[audit] ADMIN market.adjudicated cc_race_beta_1 Market#mkt_9a025e45fa5844344d0f
+[audit] WALLET bet.payout cc_race_win_1 Position#pos_2373d6b3550f36ea3722
+[audit] ADMIN market.resolved system Market#mkt_9a025e45fa5844344d0f
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_9a025e45fa5844344d0f
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_9a025e45fa5844344d0f
+[audit] ADMIN market.created test Market#mkt_13f13d0d585e5aa26d4e
+[audit] BET market.position.opened cc_race_win_2 Position#pos_816325b619984cfe885a
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_2 Position#pos_f16bb8f4e9af4094164d
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_2 Market#mkt_13f13d0d585e5aa26d4e
+[audit] ADMIN market.adjudicated cc_race_beta_2 Market#mkt_13f13d0d585e5aa26d4e
+[audit] WALLET bet.payout cc_race_win_2 Position#pos_816325b619984cfe885a
+[audit] ADMIN market.resolved system Market#mkt_13f13d0d585e5aa26d4e
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_13f13d0d585e5aa26d4e
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_13f13d0d585e5aa26d4e
+[audit] ADMIN market.created test Market#mkt_50c2439dc618fa12d3ed
+[audit] BET market.position.opened cc_race_win_3 Position#pos_a3b97c082f85205b6ce0
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_3 Position#pos_0578f5511a9f572ac5f8
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_3 Market#mkt_50c2439dc618fa12d3ed
+[audit] ADMIN market.adjudicated cc_race_beta_3 Market#mkt_50c2439dc618fa12d3ed
+[audit] WALLET bet.payout cc_race_win_3 Position#pos_a3b97c082f85205b6ce0
+[audit] ADMIN market.resolved system Market#mkt_50c2439dc618fa12d3ed
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_50c2439dc618fa12d3ed
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_50c2439dc618fa12d3ed
+[audit] ADMIN market.created test Market#mkt_74ebe803a6da1f3f08a0
+[audit] BET market.position.opened cc_race_win_4 Position#pos_75cad0020a566c1d7991
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_4 Position#pos_85bb452a1de41bf33723
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_4 Market#mkt_74ebe803a6da1f3f08a0
+[audit] ADMIN market.adjudicated cc_race_beta_4 Market#mkt_74ebe803a6da1f3f08a0
+[audit] WALLET bet.payout cc_race_win_4 Position#pos_75cad0020a566c1d7991
+[audit] ADMIN market.resolved system Market#mkt_74ebe803a6da1f3f08a0
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_74ebe803a6da1f3f08a0
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_74ebe803a6da1f3f08a0
+[audit] ADMIN market.created test Market#mkt_41de2eb408ee8973010e
+[audit] BET market.position.opened cc_race_win_5 Position#pos_4ebbda53cc939581c1d3
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_5 Position#pos_b3b3acac5481164e3d50
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_5 Market#mkt_41de2eb408ee8973010e
+[audit] ADMIN market.adjudicated cc_race_beta_5 Market#mkt_41de2eb408ee8973010e
+[audit] WALLET bet.payout cc_race_win_5 Position#pos_4ebbda53cc939581c1d3
+[audit] ADMIN market.resolved system Market#mkt_41de2eb408ee8973010e
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_41de2eb408ee8973010e
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_41de2eb408ee8973010e
+[audit] ADMIN market.created test Market#mkt_fdbc8f484be9928b6822
+[audit] BET market.position.opened cc_race_win_6 Position#pos_dddcd21379d926b697f8
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_6 Position#pos_fa7992d91dbde87baa7f
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_6 Market#mkt_fdbc8f484be9928b6822
+[audit] ADMIN market.adjudicated cc_race_beta_6 Market#mkt_fdbc8f484be9928b6822
+[audit] WALLET bet.payout cc_race_win_6 Position#pos_dddcd21379d926b697f8
+[audit] ADMIN market.resolved system Market#mkt_fdbc8f484be9928b6822
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_fdbc8f484be9928b6822
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_fdbc8f484be9928b6822
+[audit] ADMIN market.created test Market#mkt_58af4614ba0448f97b97
+[audit] BET market.position.opened cc_race_win_7 Position#pos_7d57de1c3ecd617d85a3
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_7 Position#pos_6a11d17a3f8b3b0953c5
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_7 Market#mkt_58af4614ba0448f97b97
+[audit] ADMIN market.adjudicated cc_race_beta_7 Market#mkt_58af4614ba0448f97b97
+[audit] WALLET bet.payout cc_race_win_7 Position#pos_7d57de1c3ecd617d85a3
+[audit] ADMIN market.resolved system Market#mkt_58af4614ba0448f97b97
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_58af4614ba0448f97b97
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_58af4614ba0448f97b97
+[audit] ADMIN market.created test Market#mkt_d3020b2f1bc1c2ad5f73
+[audit] BET market.position.opened cc_race_win_8 Position#pos_feba701e834b4185dd18
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_8 Position#pos_03fbc3a4c88a11b4d729
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_8 Market#mkt_d3020b2f1bc1c2ad5f73
+[audit] ADMIN market.adjudicated cc_race_beta_8 Market#mkt_d3020b2f1bc1c2ad5f73
+[audit] WALLET bet.payout cc_race_win_8 Position#pos_feba701e834b4185dd18
+[audit] ADMIN market.resolved system Market#mkt_d3020b2f1bc1c2ad5f73
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_d3020b2f1bc1c2ad5f73
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_d3020b2f1bc1c2ad5f73
+[audit] ADMIN market.created test Market#mkt_a3f404830c8442212a18
+[audit] BET market.position.opened cc_race_win_9 Position#pos_da830920a8eccfbd370c
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_9 Position#pos_4d2b03c32f58440f67be
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_9 Market#mkt_a3f404830c8442212a18
+[audit] ADMIN market.adjudicated cc_race_beta_9 Market#mkt_a3f404830c8442212a18
+[audit] WALLET bet.payout cc_race_win_9 Position#pos_da830920a8eccfbd370c
+[audit] ADMIN market.resolved system Market#mkt_a3f404830c8442212a18
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_a3f404830c8442212a18
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_a3f404830c8442212a18
+[audit] ADMIN market.created test Market#mkt_a06564aaaf72b86b8765
+[audit] BET market.position.opened cc_race_win_10 Position#pos_2d32c8cecd5747bcfbae
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_10 Position#pos_b4c9ad699ded4e2b648f
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_10 Market#mkt_a06564aaaf72b86b8765
+[audit] ADMIN market.adjudicated cc_race_beta_10 Market#mkt_a06564aaaf72b86b8765
+[audit] WALLET bet.payout cc_race_win_10 Position#pos_2d32c8cecd5747bcfbae
+[audit] ADMIN market.resolved system Market#mkt_a06564aaaf72b86b8765
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_a06564aaaf72b86b8765
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_a06564aaaf72b86b8765
+[audit] ADMIN market.created test Market#mkt_32c79ad6da6267abad65
+[audit] BET market.position.opened cc_race_win_11 Position#pos_afd6d91b21c65ce104a6
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_11 Position#pos_351196eeda6138dcf595
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_11 Market#mkt_32c79ad6da6267abad65
+[audit] ADMIN market.adjudicated cc_race_beta_11 Market#mkt_32c79ad6da6267abad65
+[audit] WALLET bet.payout cc_race_win_11 Position#pos_afd6d91b21c65ce104a6
+[audit] ADMIN market.resolved system Market#mkt_32c79ad6da6267abad65
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_32c79ad6da6267abad65
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_32c79ad6da6267abad65
+[audit] ADMIN market.created test Market#mkt_c01ad1f863bad6917bb5
+[audit] BET market.position.opened cc_race_win_12 Position#pos_91ce3e1a3ec1e22b0a07
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_12 Position#pos_16307d3c376733314ed8
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_12 Market#mkt_c01ad1f863bad6917bb5
+[audit] ADMIN market.adjudicated cc_race_beta_12 Market#mkt_c01ad1f863bad6917bb5
+[audit] WALLET bet.payout cc_race_win_12 Position#pos_91ce3e1a3ec1e22b0a07
+[audit] ADMIN market.resolved system Market#mkt_c01ad1f863bad6917bb5
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_c01ad1f863bad6917bb5
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_c01ad1f863bad6917bb5
+[audit] ADMIN market.created test Market#mkt_f8ad5c64ca909aa57749
+[audit] BET market.position.opened cc_race_win_13 Position#pos_cb3e2d11bf9850474c42
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_13 Position#pos_bc8b9dce7e0559fdf50e
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_13 Market#mkt_f8ad5c64ca909aa57749
+[audit] ADMIN market.adjudicated cc_race_beta_13 Market#mkt_f8ad5c64ca909aa57749
+[audit] WALLET bet.payout cc_race_win_13 Position#pos_cb3e2d11bf9850474c42
+[audit] ADMIN market.resolved system Market#mkt_f8ad5c64ca909aa57749
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_f8ad5c64ca909aa57749
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_f8ad5c64ca909aa57749
+[audit] ADMIN market.created test Market#mkt_0dcb9b86a5c4a084cd78
+[audit] BET market.position.opened cc_race_win_14 Position#pos_4bb6d993514e4a0ffaad
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_14 Position#pos_9e4ca826d939989f2c2b
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_14 Market#mkt_0dcb9b86a5c4a084cd78
+[audit] ADMIN market.adjudicated cc_race_beta_14 Market#mkt_0dcb9b86a5c4a084cd78
+[audit] WALLET bet.payout cc_race_win_14 Position#pos_4bb6d993514e4a0ffaad
+[audit] ADMIN market.resolved system Market#mkt_0dcb9b86a5c4a084cd78
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_0dcb9b86a5c4a084cd78
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_0dcb9b86a5c4a084cd78
+[audit] ADMIN market.created test Market#mkt_a121f83f60870ef1513d
+[audit] BET market.position.opened cc_race_win_15 Position#pos_884e34e208edb9dba091
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_15 Position#pos_89d430983b9e5d164de1
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_15 Market#mkt_a121f83f60870ef1513d
+[audit] ADMIN market.adjudicated cc_race_beta_15 Market#mkt_a121f83f60870ef1513d
+[audit] WALLET bet.payout cc_race_win_15 Position#pos_884e34e208edb9dba091
+[audit] ADMIN market.resolved system Market#mkt_a121f83f60870ef1513d
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_a121f83f60870ef1513d
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_a121f83f60870ef1513d
+[audit] ADMIN market.created test Market#mkt_2b7ea2b3c9e6002dc8eb
+[audit] BET market.position.opened cc_race_win_16 Position#pos_488a1537411a3402b559
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_16 Position#pos_d86ada13488a82264879
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_16 Market#mkt_2b7ea2b3c9e6002dc8eb
+[audit] ADMIN market.adjudicated cc_race_beta_16 Market#mkt_2b7ea2b3c9e6002dc8eb
+[audit] WALLET bet.payout cc_race_win_16 Position#pos_488a1537411a3402b559
+[audit] ADMIN market.resolved system Market#mkt_2b7ea2b3c9e6002dc8eb
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_2b7ea2b3c9e6002dc8eb
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_2b7ea2b3c9e6002dc8eb
+[audit] ADMIN market.created test Market#mkt_020bc59c4fdad5691f87
+[audit] BET market.position.opened cc_race_win_17 Position#pos_79a734bad362794086cc
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_17 Position#pos_ea8a1c1e21e8170d2fba
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_17 Market#mkt_020bc59c4fdad5691f87
+[audit] ADMIN market.adjudicated cc_race_beta_17 Market#mkt_020bc59c4fdad5691f87
+[audit] WALLET bet.payout cc_race_win_17 Position#pos_79a734bad362794086cc
+[audit] ADMIN market.resolved system Market#mkt_020bc59c4fdad5691f87
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_020bc59c4fdad5691f87
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_020bc59c4fdad5691f87
+[audit] ADMIN market.created test Market#mkt_76e719a7312677e8e8e3
+[audit] BET market.position.opened cc_race_win_18 Position#pos_d35ff0be312f9f2edf80
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_18 Position#pos_fbf3d156bb5d42160bc2
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_18 Market#mkt_76e719a7312677e8e8e3
+[audit] ADMIN market.adjudicated cc_race_beta_18 Market#mkt_76e719a7312677e8e8e3
+[audit] WALLET bet.payout cc_race_win_18 Position#pos_d35ff0be312f9f2edf80
+[audit] ADMIN market.resolved system Market#mkt_76e719a7312677e8e8e3
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_76e719a7312677e8e8e3
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_76e719a7312677e8e8e3
+[audit] ADMIN market.created test Market#mkt_88d1f6aed505e592eeba
+[audit] BET market.position.opened cc_race_win_19 Position#pos_baee509a9d456decd868
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_19 Position#pos_a67c0126cbafa23edc27
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_19 Market#mkt_88d1f6aed505e592eeba
+[audit] ADMIN market.adjudicated cc_race_beta_19 Market#mkt_88d1f6aed505e592eeba
+[audit] WALLET bet.payout cc_race_win_19 Position#pos_baee509a9d456decd868
+[audit] ADMIN market.resolved system Market#mkt_88d1f6aed505e592eeba
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_88d1f6aed505e592eeba
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_88d1f6aed505e592eeba
+[audit] ADMIN market.created test Market#mkt_b96874a0a6256a48121b
+[audit] BET market.position.opened cc_race_win_20 Position#pos_0a5f22e6ea218e297f36
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_20 Position#pos_aa9abefb3c377899dea8
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_20 Market#mkt_b96874a0a6256a48121b
+[audit] ADMIN market.adjudicated cc_race_beta_20 Market#mkt_b96874a0a6256a48121b
+[audit] WALLET bet.payout cc_race_win_20 Position#pos_0a5f22e6ea218e297f36
+[audit] ADMIN market.resolved system Market#mkt_b96874a0a6256a48121b
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_b96874a0a6256a48121b
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_b96874a0a6256a48121b
+[audit] ADMIN market.created test Market#mkt_0a1d262892a1930ccbf9
+[audit] BET market.position.opened cc_race_win_21 Position#pos_c9da28b963d8d772d9d8
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_21 Position#pos_74a4aac59b47e25cc2d8
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_21 Market#mkt_0a1d262892a1930ccbf9
+[audit] ADMIN market.adjudicated cc_race_beta_21 Market#mkt_0a1d262892a1930ccbf9
+[audit] WALLET bet.payout cc_race_win_21 Position#pos_c9da28b963d8d772d9d8
+[audit] ADMIN market.resolved system Market#mkt_0a1d262892a1930ccbf9
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_0a1d262892a1930ccbf9
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_0a1d262892a1930ccbf9
+[audit] ADMIN market.created test Market#mkt_791146529cab8b46e480
+[audit] BET market.position.opened cc_race_win_22 Position#pos_cdad94fe58d8f2602676
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_22 Position#pos_0bb91c95a0ad0d86db54
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_22 Market#mkt_791146529cab8b46e480
+[audit] ADMIN market.adjudicated cc_race_beta_22 Market#mkt_791146529cab8b46e480
+[audit] WALLET bet.payout cc_race_win_22 Position#pos_cdad94fe58d8f2602676
+[audit] ADMIN market.resolved system Market#mkt_791146529cab8b46e480
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_791146529cab8b46e480
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_791146529cab8b46e480
+[audit] ADMIN market.created test Market#mkt_d9b62bb0a530b1ad834e
+[audit] BET market.position.opened cc_race_win_23 Position#pos_b528e011f2084f1a4f1a
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_23 Position#pos_612bed955b5ed75d3f6f
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_23 Market#mkt_d9b62bb0a530b1ad834e
+[audit] ADMIN market.adjudicated cc_race_beta_23 Market#mkt_d9b62bb0a530b1ad834e
+[audit] WALLET bet.payout cc_race_win_23 Position#pos_b528e011f2084f1a4f1a
+[audit] ADMIN market.resolved system Market#mkt_d9b62bb0a530b1ad834e
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_d9b62bb0a530b1ad834e
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_d9b62bb0a530b1ad834e
+[audit] ADMIN market.created test Market#mkt_7832186a4e64a9a3b693
+[audit] BET market.position.opened cc_race_win_24 Position#pos_cdb7f7919d5197eb951e
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_race_other_24 Position#pos_be50ec5401ce182a47c8
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_race_alpha_24 Market#mkt_7832186a4e64a9a3b693
+[audit] ADMIN market.adjudicated cc_race_beta_24 Market#mkt_7832186a4e64a9a3b693
+[audit] WALLET bet.payout cc_race_win_24 Position#pos_cdb7f7919d5197eb951e
+[audit] ADMIN market.resolved system Market#mkt_7832186a4e64a9a3b693
+[email] sending "You won · TZS 18,700" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 18,700
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_7832186a4e64a9a3b693
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_7832186a4e64a9a3b693
+[audit] WALLET withdraw.initiated cc_wd_idem Transaction#txn_c42dbf32b719677fce10f0e7
+[audit] WALLET withdraw.dispatch cc_wd_idem User#cc_wd_idem
+[audit] WALLET withdraw.confirmed cc_wd_idem Transaction#txn_c42dbf32b719677fce10f0e7
+[email] sending "Withdrawal sent · TZS 19,700" → c***@test.tz (tag=withdrawal)
+[email-stub] To: c***@test.tz | Subject: Withdrawal sent · TZS 19,700
+[audit] SYSTEM affiliate.account.created cc_ref_x AffiliateAccount#cc_ref_x
+[audit] SYSTEM affiliate.account.created cc_rec_y AffiliateAccount#cc_rec_y
+[audit] ADMIN affiliate.recruit.bound cc_rec_y User#cc_rec_y
+[audit] WALLET bonus.credited cc_ref_x BonusGrant#bg_97649057f03b70f09fd26e78
+[audit] WALLET affiliate.reward.recorded system ReferralReward#ref_bc59efc697c96ffaf252b2c1
+[email] sending "Bonus added · TZS 10,000" → c***@test.tz (tag=bonus)
+[email-stub] To: c***@test.tz | Subject: Bonus added · TZS 10,000
+[email] sending "Referral reward · TZS 10,000" → c***@test.tz (tag=referral-reward)
+[email-stub] To: c***@test.tz | Subject: Referral reward · TZS 10,000
+[audit] SYSTEM affiliate.account.created cc_agent_a AffiliateAccount#cc_agent_a
+[audit] SYSTEM affiliate.account.created cc_agent_rec AffiliateAccount#cc_agent_rec
+[audit] ADMIN affiliate.recruit.bound cc_agent_rec User#cc_agent_rec
+[audit] WALLET wallet.credit_internal system Wallet#wal_cc_agent_a
+[audit] WALLET affiliate.reward.recorded system ReferralReward#ref_016ce29d502e7d4854a9a7d4
+[email] sending "Agent commission · TZS 2,000" → c***@test.tz (tag=agent-commission)
+[email-stub] To: c***@test.tz | Subject: Agent commission · TZS 2,000
+[audit] WALLET wallet.credit_internal system Wallet#wal_cc_agent_a
+[audit] WALLET affiliate.reward.recorded system ReferralReward#ref_ca717342cfed2baa092a03bb
+[audit] SYSTEM notification.deduped system Notification#ntf_d71d0867e6b3baf2cb90
+[email] sending "Agent commission · TZS 2,000" → c***@test.tz (tag=agent-commission)
+[email-stub] To: c***@test.tz | Subject: Agent commission · TZS 2,000
+[audit] WALLET wallet.credit_internal system Wallet#wal_cc_agent_a
+[audit] WALLET affiliate.reward.recorded system ReferralReward#ref_0cbd3f13bbc1f0db5384460a
+[audit] SYSTEM notification.deduped system Notification#ntf_d71d0867e6b3baf2cb90
+[email] sending "Agent commission · TZS 2,000" → c***@test.tz (tag=agent-commission)
+[email-stub] To: c***@test.tz | Subject: Agent commission · TZS 2,000
+[audit] WALLET wallet.credit_internal system Wallet#wal_cc_agent_a
+[audit] WALLET affiliate.reward.recorded system ReferralReward#ref_e633df5007cd2ddcebfe6e2f
+[audit] SYSTEM notification.deduped system Notification#ntf_d71d0867e6b3baf2cb90
+[email] sending "Agent commission · TZS 2,000" → c***@test.tz (tag=agent-commission)
+[email-stub] To: c***@test.tz | Subject: Agent commission · TZS 2,000
+[audit] ADMIN market.created test Market#mkt_abf4e07e3f66e55f51cb
+[audit] BET market.position.opened cc_res_wa Position#pos_0b7baba3c34123a5e6d3
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_res_wb Position#pos_304a3848535c5e3cd484
+[email] sending "Bet placed · YES on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · YES on "Concurrency market"
+[audit] BET market.position.opened cc_res_l Position#pos_a85a99ef69344ec3fcad
+[email] sending "Bet placed · NO on "Concurrency market"" → c***@test.tz (tag=bet-placed)
+[email-stub] To: c***@test.tz | Subject: Bet placed · NO on "Concurrency market"
+[audit] ADMIN market.resolve.stage1 cc_res_alpha Market#mkt_abf4e07e3f66e55f51cb
+[audit] ADMIN market.adjudicated cc_res_beta Market#mkt_abf4e07e3f66e55f51cb
+[audit] WALLET bet.payout cc_res_wb Position#pos_304a3848535c5e3cd484
+[audit] ADMIN market.resolved system Market#mkt_abf4e07e3f66e55f51cb
+[email] sending "You won · TZS 14,350" → c***@test.tz (tag=win)
+[email-stub] To: c***@test.tz | Subject: You won · TZS 14,350
+[email] sending "Bet lost · TZS 10,000" → c***@test.tz (tag=loss)
+[email-stub] To: c***@test.tz | Subject: Bet lost · TZS 10,000
+[audit] WALLET market.settled system Market#mkt_abf4e07e3f66e55f51cb
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_abf4e07e3f66e55f51cb
+
+concurrency: 40 passed, 0 failed

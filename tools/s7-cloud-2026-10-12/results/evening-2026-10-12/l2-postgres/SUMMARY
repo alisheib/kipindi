@@ -1,0 +1,7 @@
+0 migrate l2pg_landed
+0 migrate e2e_money2
+0 migrate e2e_fault2
+0 pg:test:bet-landed-key
+0 e2e:money
+0 e2e:fault
+DONE

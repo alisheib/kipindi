@@ -1,0 +1,18 @@
+PROVED   the REAL tree passes every check
+PROVED   GREEN: sound variants (`=== true`, a braced branch) pass every check
+PROVED   the dial without the test — the defect as it was (the redirect said as an unknown outcome)
+PROVED   the dial asks only after its verdict is made
+PROVED   the dial asks of the wrong name
+PROVED   the dial's catch binds nothing (`catch {`)
+PROVED   the sell button's branch toasts before it returns
+PROVED   the sell button's branch leaves the confirm open
+PROVED   the sell button's rule imported from elsewhere
+PROVED   the quick bet asks only after its toast
+PROVED   the quick bet rethrows the redirect
+PROVED   the rule loosened to a prefix
+PROVED   the rule that never says yes
+PROVED   a framework that resolves the redirect to nothing
+PROVED   predeploy without the suite
+
+RED CONTROL — 13/13 caught
+

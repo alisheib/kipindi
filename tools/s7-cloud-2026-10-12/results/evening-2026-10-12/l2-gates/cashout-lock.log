@@ -1,0 +1,87 @@
+[audit] ADMIN config.global.updated officer_test MarketConfig#global
+[audit] ADMIN market.created test Market#mkt_e26d5ce76d8b315577e4
+[audit] BET market.position.opened co_a Position#pos_978e350fc1b6578b2e7c
+[email] sendEmailToUser skipped — no email for user co_a… (user.email=null, phone=+25593…)
+[audit] BET market.position.opened co_a2 Position#pos_19062bcd6c8bfe922ba7
+[email] sendEmailToUser skipped — no email for user co_a2… (user.email=null, phone=+25593…)
+[audit] BET market.position.opened co_b Position#pos_6314bc02b7008b5819d3
+[email] sendEmailToUser skipped — no email for user co_b… (user.email=null, phone=+25593…)
+PASS 1: selections are open
+[audit] BET market.position.cashed_out co_a Position#pos_978e350fc1b6578b2e7c
+PASS 1: a player CAN still sell out while selections are open
+[email] sendEmailToUser skipped — no email for user co_a… (user.email=null, phone=+25593…)
+PASS 1: they were paid for it — delta=9000
+[audit] ADMIN market.created test Market#mkt_0d8c7e752adfddc42dcb
+[audit] BET market.position.opened co_late Position#pos_eddc0dec3ea25990012e
+[email] sendEmailToUser skipped — no email for user co_late… (user.email=null, phone=+25593…)
+[audit] BET market.position.opened co_hold Position#pos_2bddfc3d776ca89efc46
+[email] sendEmailToUser skipped — no email for user co_hold… (user.email=null, phone=+25593…)
+PASS 2: selections are closed
+PASS 2: SELLING OUT IS REFUSED once selections have closed — Selections are closed — this position now rides to settlement and can't be sold. · Uchaguzi umefungwa — dau hili litaenda hadi malipo, haliwezi kuuzwa.
+PASS 2: they were paid nothing — delta=0
+PASS 2: the pool was not drained
+PASS 2: their position is still OPEN and rides to settlement
+[audit] ADMIN market.created test Market#mkt_542f13f73fc48ed7b365
+[audit] BET market.position.opened co_loser Position#pos_eae0513ba7c4a8309d12
+[email] sendEmailToUser skipped — no email for user co_loser… (user.email=null, phone=+25593…)
+[audit] BET market.position.opened co_winner Position#pos_38ff431cc03abd39f33a
+[email] sendEmailToUser skipped — no email for user co_winner… (user.email=null, phone=+25593…)
+PASS 3: the losing player cannot bail out after the answer is knowable
+[audit] ADMIN market.adjudicated lock_a Market#mkt_542f13f73fc48ed7b365
+[email] sendEmailToUser skipped — no email for user co_loser… (user.email=null, phone=+25593…)
+[audit] WALLET bet.payout co_winner Position#pos_38ff431cc03abd39f33a
+[audit] ADMIN market.resolved system Market#mkt_542f13f73fc48ed7b365
+[email] sendEmailToUser skipped — no email for user co_winner… (user.email=null, phone=+25593…)
+[audit] WALLET market.settled system Market#mkt_542f13f73fc48ed7b365
+[audit] SYSTEM affiliate.settlement_accruals system Market#mkt_542f13f73fc48ed7b365
+PASS 3: the winner receives the WHOLE net pool (nothing was siphoned) — won=18000 expected=18000
+PASS 3: WINNER FLOOR — a correct call is never paid below its stake — won=18000
+PASS 3: the loser lost their stake, as they should
+[audit] ADMIN market.created test Market#mkt_c3849495a903a986daaa
+[audit] BET market.position.opened co_s1 Position#pos_a1ab666eae0f5b5a3ed8
+[email] sendEmailToUser skipped — no email for user co_s1… (user.email=null, phone=+25593…)
+[audit] BET market.position.opened co_s2 Position#pos_ea5af4dbaa306898aeb6
+[email] sendEmailToUser skipped — no email for user co_s2… (user.email=null, phone=+25593…)
+PASS 4: selling is refused on a sentinel-CLOSED market — Selections are closed — this position now rides to settlement and can't be sold. · Uchaguzi umefungwa — dau hili litaenda hadi malipo, haliwezi kuuzwa.
+PASS 4: nothing moved
+[audit] ADMIN market.created test Market#mkt_aa72bcfbc47a34d415e8
+[audit] BET market.position.opened co_q1 Position#pos_8d7cfafa61c99ce2686f
+[email] sendEmailToUser skipped — no email for user co_q1… (user.email=null, phone=+25593…)
+[audit] BET market.position.opened co_q2 Position#pos_873873b08222896a7de1
+[email] sendEmailToUser skipped — no email for user co_q2… (user.email=null, phone=+25593…)
+PASS 5: a live market still quotes a sell price — value=4500
+PASS 5: isSelectionClosed agrees the market is shut
+PASS 5: the server refuses the sale regardless of any quote the client holds
+[audit] ADMIN market.created test Market#mkt_68b5063efa69fb8e14d7
+[audit] BET market.position.opened co_h1 Position#pos_fe50802edad4d5f597e1
+[email] sendEmailToUser skipped — no email for user co_h1… (user.email=null, phone=+25593…)
+[audit] BET market.position.opened co_h2 Position#pos_3fa064ff0c546257d801
+[email] sendEmailToUser skipped — no email for user co_h2… (user.email=null, phone=+25593…)
+PASS 6: every concurrent attempt is refused
+PASS 6: not a single shilling moved — delta=0
+PASS 6: another player still cannot sell someone else's position
+PASS 6: a bogus position id is refused
+[audit] ADMIN market.created test Market#mkt_b93ac73c376be9c9b62e
+[audit] BET market.position.opened co_bonus Position#pos_ff033ae1f8199d6d2aad
+[email] sendEmailToUser skipped — no email for user co_bonus… (user.email=null, phone=+25593…)
+[audit] BET market.position.opened co_bonus2 Position#pos_7b3b3d94ba08ef389357
+[email] sendEmailToUser skipped — no email for user co_bonus2… (user.email=null, phone=+25593…)
+[audit] BET market.position.opened co_bonus_ctl Position#pos_9e3dd7c7c4e74ee53121
+[email] sendEmailToUser skipped — no email for user co_bonus_ctl… (user.email=null, phone=+25593…)
+PASS 7: CONTROL — an ordinary position in this same window IS sellable — reason=none — if this fails the section below proves nothing
+PASS 7: CONTROL — and it is quoted a real price — value=7200
+PASS 7: a bonus-funded position is NOT offered for sale
+PASS 7: and it says why — reason=BONUS_FUNDED
+PASS 7: the server refuses it too — quote and server AGREE
+PASS 7: no money moved — delta=0
+[audit] BET market.position.cashed_out co_bonus_ctl Position#pos_9e3dd7c7c4e74ee53121
+PASS 7: the control position still sells — the refusal is the BONUS, not the window
+
+cashout-lockout: 28 passed, 0 failed
+[email] sendEmailToUser skipped — no email for user co_bonus_ctl… (user.email=null, phone=+25593…)
+[email] sendEmailToUser skipped — no email for user co_late… (user.email=null, phone=+25593…)
+[email] sendEmailToUser skipped — no email for user co_hold… (user.email=null, phone=+25593…)
+[email] sendEmailToUser skipped — no email for user co_q1… (user.email=null, phone=+25593…)
+[email] sendEmailToUser skipped — no email for user co_q2… (user.email=null, phone=+25593…)
+[email] sendEmailToUser skipped — no email for user co_h1… (user.email=null, phone=+25593…)
+[email] sendEmailToUser skipped — no email for user co_h2… (user.email=null, phone=+25593…)

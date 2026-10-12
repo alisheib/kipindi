@@ -1,0 +1,78 @@
+
+── 1 · C1 the podium's #1 stands 16px above #2/#3 by layout — and no element's own transform sits under an entrance that writes `transform` 
+  ok   1.1 · THE CENSUS: of the 130 animations (any fill, infinite ones, runtime-added) on elements whose keyframes write a placement property, none meets a placement of the element's own in the SAME property (a utility in any variant, an inline style, a stylesheet rule in any state) — 2 carry their own placement in every frame: src/components/layout/needle-drawer.tsx:211 <div> · src/lib/i18n.tsx:230 <span>
+  ok   1.2 · the podium's column carries its raise as LAYOUT: #1 `-mt-3`, #2/#3 `mt-1.5`, no transform utility on any branch; the grid hangs its columns from the top (`items-start`)
+  ok   1.3 · at EVERY width #1's name row stands 16px above #2's and #3's (84 against 100 from the grid's top), its crest's foot 16px and its crown 24px above their spacer — a chip or a wrapped handle below a name moves nothing above it
+  ok   1.4 · tile 178 re-predicted (1280, sw): #1's name row y595 (was y631), #2/#3's y611 (was y604) — #1 16px ABOVE where it stood 27px below; #1's crown box y495–517 inside the panel's 32px top padding, as A10's `pt-6` was set for; CONFIRM IN BROWSER (/leaderboard, 1280 and 390: the podium names' tops differ by 16, #1 higher)
+  ok   1.5 · CONTROL · `.kp-rise` fills `both` with keyframes that write `transform` (why a static `-translate-y-3` lost), and no keyframe anywhere writes `margin-top` (where the raise lives now)
+  ok   1.9 · every animation class a component adds at runtime is in the census (press-pop, route-enter, on): ["src/components/layout/needle.tsx#on","src/components/markets/market-card.tsx#press-pop","src/components/ui/route-transition.tsx#route-enter"]
+  ok   1.6 · the board card's hover lift rides `translate` (a `.market-grid > *` entrance held `transform: none`, so the lift never drew on /markets) and its transition names `translate`
+  ok   1.7 · the chat's starter presses with `scale` (its `cm-starter-in` filled `both` on `transform: translateY(0)`) and its transition names `scale`
+  ok   1.8 · the win's Continue keeps the kit's hover and press: its arrival (`g-settle`, `--i: 5`) is its wrapper's, not the button's
+  ok   1.10 · Up & Down's side flash and the card's press pop swell on `scale` (composing with the button's lift and press), and the press pop's calm branch rests on `scale: none` — no `transform` in either
+  ok   1.11 · the podium's loading drawing stands as the page does: its columns hang from the top, #1 `-mt-3`, its neighbours `mt-1.5`, no transform — so the page arrives where the drawing stood
+  ok   1.1′ PLANT · 7 defects, each reported on its own element: the podium's `-translate-y-3` back on #1 · a hover lift on /live's pulse card (`hover:-translate-y-0.5`) · Up & Down's side flash back on `transform` · the card's press pop back on `transform` · the board card's lift back on `transform` · the chat starter's press back on `transform` · `g-settle` back on the Continue button
+  ok   1.1″ PLANT · even a bare `transform-gpu` under an entrance is a transform of its own (it writes `transform`) — reported on the pulse card under both rules that animate it (its own `.kp-rise` and the wall's `.market-grid > *`)
+
+── 2 · C2 every pager's dots stand equally apart, the pill growing where it stands, round, on the ladder (/live 12 | 18 | 18) 
+  ok   2.1 · RENDERED: /live's rail (4 slides) and /results' (3): each target its drawing and 9px either side, 40px tall; the drawing 6px tall — a round 6px dot, the current slide an 18 × 6 pill
+  ok   2.2 · for every rail of 2–6 slides and every current slide: every two drawings stand 18px apart, every target is at least 24px wide (a dot's 24, the pill's 36), and the rail's length is 24n + 12 whichever slide is current
+  ok   2.2′ CONTROL · the fixed 24px targets drew gaps of [12,18,18] (the tile's 12 | 18 | 18: x197–214 · 227–232 · 251–256 · 275–280); now [18,18,18]
+  ok   2.3 · the pill and the dot it trades with change width together on the ladder (`duration-quick` = --t-quick, `ease-glide` = --m-glide) — `transition-all`'s off-ladder 150ms gone from every dot
+  ok   2.4 · /live's rail `-ml-[9px]`: the first drawing stands the row's 16px after the button (it stood 19 or 25 by the current slide) and on the content's edge when the row wraps; with six slides the button and rail need sw 301 · en 302 · zh 270 of 308px at 390 — one line
+  ok   2.5 · the two loading drawings draw the pages' rails: targets `grid h-[40px] place-items-center px-[9px]`, the 6px drawing at 18 / 6, /live's rail `-ml-[9px]`
+  ok   2.6 · the primer's step dots are the pager's: a 6px round dot, the current step an 18px pill grown in its own box (no `scale(1.4)` transform, which drew 7px in a 5px box and stood 7 from its neighbours against 8), every two 8px apart, on the ladder, `--border-strong` / `--brand-400`
+  ok   2.7 · every dot rail in player code (5: the two carousels, their two drawings, the primer) draws a 6px-tall dot — none an 8px capsule — in a target that is its drawing and 9px either side (the primer's dots are not targets): none keeps a fixed 24px target
+  ok   2.2″ PLANT · /live's fixed 24px target back (the 12 | 18 | 18 rail) is reported
+  ok   2.7′ PLANT · /results' 6 × 8 capsule back (`h-1.5` is 8px here) is reported
+  ok   2.1′ PLANT · `h-1.5` (8px here) back on the drawing is reported — the dot reads as no height of its own
+
+── 3 · C3 the invite dial's caption in the one section ink — and every wrapper of `.eyebrow`, every caller, every inked child 
+  ok   3.1 · the invite dial's caption ("Marafiki waliojiunga" / "Earn …") passes `Cap` layout only — `!text-royal-300` gone — and `Cap` paints `--text-subtle`
+  ok   3.2 · THE WRAPPER CENSUS: 4 components render an `.eyebrow` with a class their caller passes (Cap.className, FieldLegend.className, FilterGroupKey.className, MenuShell.labelClassName); all 76 call sites pass layout only — or `text-transparent` on a drawing whose words are not shown — and no caller inks the words it passes, but the 1 registered (FORM)
+  ok   3.3 · no `.eyebrow` in player code paints part of its words in another ink through a child — 1 chip(s) inside an eyebrow row keep their own ink (the pulse wall's game tag), and 2 registered: SIDE, STAFF — none stale
+  ok   3.1′ PLANT · `!text-royal-300` back on the dial's `Cap` is reported at its call site
+  ok   3.2′ PLANT · a gold ink passed to a shared wrapper (`FieldLegend`, from another file) is reported
+  ok   3.3′ PLANT · a gold word passed as a wrapper's CHILD (`<Cap><span className="text-gold-300">…`) is reported at its call site — the words a caller passes render inside the eyebrow
+
+── 4 · C4 the journey rail stacks from the top only where a label wraps — each language's width, derived from its words 
+  ok   4.1 · each language's longest label fits its quarter of the phone from: sw 332.8px ("Tiketi zangu"), en 280px, zh 192px — so only Swahili wraps at 320
+  ok   4.2 · the stylesheet holds exactly those widths: the slots stack from the top (the base rule), each language centres them from its width (`:lang()`), and from 360 every slot centres; mobile-first — no width-capping query reaches the rail
+  ok   4.3 · English and Chinese at 320: the items centred 10.675 | 10.675 under the rail's edge and over its foot (the tiles read 6 | 15); at 390 11.5 | 11.5 as before; Swahili at 320 still stacks (its Tiketi slot is 26 + 4 + 2 × 12.65 = 55.3px) and centres from 332.8 — CONFIRM IN BROWSER (any journey page, 320 × 780, en and zh: the pip 10.7px under the rail's top border)
+  ok   4.1′ PLANT · English's Tiketi label grown to "My open tickets" moves its width to 412px: the very check fails on today's stylesheet
+  ok   4.2′ PLANT · Swahili keyed at 360 is reported
+  ok   4.2″ PLANT · the round-8 rule (every language stacked below 360) is reported
+
+── 5 · C5 stacked under its label, the INAKUJA flag lands on a whole pixel — its caps sit as the beside-its-label flag's 
+  ok   5.1 · stacked, the flag's box stands 30.00px into its row (it stood 29.75) and beside its label 19.00 — both whole pixels
+  ok   5.2 · the label's line inside the head is 20px: 1.3 × 15 = 19.5 rounded up to the next even pixel (the flag stands at 20 + L / 2, a whole pixel only for an even L)
+  ok   5.3 · the label's words do not move: stacked its line's centre stays 13.7063px (now 13.7063); beside, the head's line is the flag's 26.59px either way, so its centre stays 28.00
+  ok   5.4 · the stacked block's ink stands 8.25 | 8.00 in the 56px row (8.25 | 8.25 before: the flag moved a quarter pixel down), and the row keeps its rung
+  ok   5.5 · tile 297 re-read: the box at 343.75 painted on row 344, its caps' baseline on 355 — 11 rows under the box, a row short (the tile: box y344–361, caps 348.85–355.0); now 344 and 356, 12 rows, as the beside-its-label flag's 5.85 | 6.0 — CONFIRM IN BROWSER (/account, a signed-in player, sw, 390 × 780: the proposals row's INAKUJA box y344–361, its caps' baseline on y356)
+  ok   5.6 · the account menu's flag lands on a whole pixel too: its row's line is 18px, the flag's 18, so it stands 0px into the line, one line or two
+  ok   5.1′ PLANT · without the rule the stacked flag is back on 29.75
+  ok   5.2′ PLANT · an odd line (21px) lands it on 30.50
+
+── 6 · C6 the guest Tiketi sheet's Ingia is the ghost secondary its siblings are — `btn-outline` retired ─────────
+  ok   6.1 · Ingia is `btn btn-ghost btn-lg kp-wsheet__act` — the Wallet sheet's second action, exactly — and Jisajili the primary
+  ok   6.2 · the header's Ingia is the ghost too: one sign-in action, one face
+  ok   6.3 · `btn-outline` is gone: no source draws it and no stylesheet defines it (its 1px `--brand-500` edge was the focus ring's own blue); the kit's spec says it is retired
+  ok   6.4 · every sheet action is the primary, the gilt or the ghost: ["btn-primary","btn-ghost","gilt-metal","btn-ghost"]
+  ok   6.1′ PLANT · `btn-outline` back on Ingia is reported
+
+── 7 · C7 the wallet's Bonus lens: offered when the book holds a bonus row (or while it is on), never as "Bonasi 0" 
+  ok   7.1 · a book with no bonus row is offered 7 lenses, no "bonus" (tile 172: "Bonasi 0" on a 19-row book); one with a `BONUS_CREDIT` row is offered "bonus", in its place
+  ok   7.2 · the lens being shown is always offered: `?type=bonus` on a window holding none keeps its pill (at 0), so the rail says which lens is on
+  ok   7.3 · CONTROL · the agent lenses keep their rule: `commission` with a commission row, `agentfee` with the fee, neither otherwise
+  ok   7.4 · the loading drawing's lenses are an empty book's: 7 (Zote · Pesa zilizoingia · Pesa zilizotoka · Dau · Malipo · Marejesho · Marekebisho)
+  ok   7.0 · CONTROL · the rule read from the source and run on its own agrees with the module
+  ok   7.1′ PLANT · the rule before R9-C (the agent lenses only) offers "bonus" to the empty book — reported by 7.1
+  ok   7.2′ PLANT · a rule that hides "bonus" whatever the rows is reported by 7.1 — a player with a prize or an invitation reward must still find it
+  ok   7.2″ PLANT · a rule deaf to the lens being shown is reported by 7.2
+
+── 8 · the record — no dictionary word changed; the classic chrome's files are the commit's own; the guard registered 
+  ok   8.1 · src/lib/i18n-dict.ts is the commit's own — every word above is an existing key
+  ok   8.2 · the classic chrome's files (header, rail, ticker, More, bell, capsule, avatar menu, footer) are the commit's own, byte for byte
+  ok   8.3 · `test:visual-pass-r9c` is registered beside the other visual-pass guards
+
+60 passed, 0 failed

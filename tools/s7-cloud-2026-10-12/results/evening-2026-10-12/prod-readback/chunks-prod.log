@@ -1,0 +1,17 @@
+[qa:chunks-prod] TARGET https://50pick.tz — as a guest, GET only; routes / /markets /positions /help /live /results
+[qa:chunks-prod] the controls on synthetic documents: all pass (17)
+[qa:chunks-prod] the marker table holds against src/ (8 journey rows)
+
+/: NOT READ — https://50pick.tz/ answered 0
+
+/markets: NOT READ — https://50pick.tz/markets answered 0
+
+/positions: NOT READ — https://50pick.tz/positions answered 0
+
+/help: NOT READ — https://50pick.tz/help answered 0
+
+/live: NOT READ — https://50pick.tz/live answered 0
+
+/results: NOT READ — https://50pick.tz/results answered 0
+
+FAIL — qa:chunks-prod at https://50pick.tz: 0/6 route(s) held every rule (6 GETs)
