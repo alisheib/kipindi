@@ -746,8 +746,10 @@ body. Owner-level calls: §0h point 58, and 65 on.
     contrast 29/29, timer-date 19/19, filter-language 43/43, measure 8/8, chat-availability 3/3, failure-reasons 20/20.
     Parity v3 calibrated on this VM at `52715180`: `--prove-red` **131/131**; this VM's baseline captured (224 cells,
     1179 blobs, the book's B.0–B.8 PASS: 30 LIVE questions, 12 placed — VOID 1, WIN 3, LOSS 2, CASHED_OUT 3, OPEN 8);
-    its null compare on a second fresh server running (18:00 EAT). Then on this VM: `qa:first-load --build --read`, local
-    qa:live, parity `--compare --allow-base` at the tip. ⭐ **Ali, 18:00 EAT: "maximum resources"** — three helper
+    its null compare on a second fresh server **53/53**. Then: `qa:first-load --build --read` PASS (10 routes; the home's
+    lazy module a client reference on `/` alone); local qa:live **334/334**; parity `--compare --allow-base` at the tip —
+    its first run stalled 17 min inside a browser call in the Sell phase (a repro of that cell on a fresh tip server was
+    clean twice), so it re-runs under a 55-minute limit (19:05 EAT). ⭐ **Ali, 18:00 EAT: "maximum resources"** — three helper
     sessions (claude.ai/code, this environment), each on its own VM, its transcript the record: **A**
     `session_01SrWuXa3LR3Rew6zEyHBXzJ` runs the served-skeleton null pair at main and the tip, qa:lost-chunk with its
     control and qa:chunks-prod `--self-test`, and WP9's four drives (on `4089c9c6`); **B** `session_01XGYT5pB9XzX5WLM7gxvAFJ`
@@ -759,6 +761,16 @@ body. Owner-level calls: §0h point 58, and 65 on.
     `origin/vodacom-visual-tools` `tools/s7-cloud-2026-10-12/results/`. ⚠️ The minimum-stake change (Ali, 2026-10-12:
     TZS 1,000 → 500) is another session's, not this plan's: if it reaches main before S7 does, S7's parity compare is
     re-run against a baseline at the new main before the push.
+    **Results by 19:05 EAT.** **A** (its file: `origin/vodacom-visual-tools` `tools/s7-cloud-2026-10-12/results/`): the
+    served-skeleton null pair IDENTICAL (14 cells); main → tip for classic readers: `/` one more async script (the home's
+    lazy module, A23 (d)) and, for a guest, one more flight script (being named), `/results` the same two async scripts in
+    the other order, every other cell identical; qa:lost-chunk 30/30 and its control 22/22 with the expected crash;
+    qa:chunks-prod `--self-test` 17/17; qa:journey-preview 35/35; qa:journey-unread-handover 14/14; qa:landmark-seal
+    `--journey` 504 cells, 0 problems; qa:journey-header-fit raced the masked balance capsule (R4-J) — fixed in the drive,
+    66/66 cells and its mutation caught. **C**: `test:all` at `5388b4ca` green but test:guards-exist (this release's: two
+    comments named WP11's drive by its package key — fixed), test:orphans (main's own) and test:contacts-export and
+    test:marketing-preflight (red on CI's main too); every red twin caught. The release branch is
+    `origin/vodacom-s7-release`: main + the sixteen commits + those two fixes (scripts only).
     ⚠️ This VM's limits: only the image's Chromium 141 runs (the sandbox refuses Playwright's download host: no Firefox
     or WebKit drives), and it cannot read production at all (the sandbox refuses `50pick.tz`, `www.50pick.tz` and the
     Railway host — asked of Ali). A push's deploy IS read: GitHub's commit status carries Railway's verdict (this
