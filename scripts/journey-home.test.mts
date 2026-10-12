@@ -146,7 +146,7 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import NodeModule, { createRequire } from "node:module";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -1586,7 +1586,8 @@ function howToDefects(): HtPlant[] {
 /* ══ §6 · THE ROUTE FILE'S JOURNEY ARM · §7 · THE JOURNEY HOME (S7 WP7) ═════════════════════════════════════════════════════
  * S7-PLAN WP7 steps 1-3, as A5(c) (the house padding), A7 (no SSE listener: the 30-second poller is the home's one
  * refresh), A16 (the head at every width; card titles in a grid of several columns — the one journey card grid, whose
- * cards share their rows, the coordinator's ruling on its item 5), A17 (the test ids and the ghost's parts), A19 (no
+ * cards share their rows: VODACOM-PLAN §0h point 73, which retired item 3's title reserve; item 5 is the drive that
+ * measures it), A17 (the test ids and the ghost's parts), A19 (no
  * loading file but the root's draws the home's ghost) and A24 items 1-2 (the route's `generateMetadata`, the resolver the
  * landing's body asks too, the root ghost's "/" re-pointed) amend them.
  * ⭐ §6 reads the route file and the home's ghost: the resolver asked once, the journey arm first, the classic return
@@ -1594,7 +1595,8 @@ function howToDefects(): HtPlant[] {
  * ⭐ §7 RENDERS THE HOME in a test world (React's server renderer, its view handed fixtures of thirty questions in three
  * categories, the rules' own answers for twelve addresses: the plain home in sw, en and zh, a guest, a category, a
  * search, pages two and three, and the three empty states), its lazy parts stood in by elements that show the props the
- * home handed them; and it reads the home's source, its stylesheet, and the two suites that must name its files.
+ * home handed them; and it reads the home's source, its stylesheet, and the two suites that must name its files — and
+ * (7.client, the WP7 review) the static import graph of the journey arm's files, as the bundler reads it for `/`.
  * ⭐ Everything below is §6's and §7's own — their world, their readers, their checks and their plants; they meet the rest
  * of the file at the World type, load(), run() and the plant list, one line each.
  * ⚠️ No escape a tool could decode: quotes and line breaks are built from their code points, patterns use classes. */
@@ -1652,19 +1654,23 @@ type JhWorld = {
   journeyFiles: Map<string, string>;    // every file under src/components/journey/: the classic card's and the SSE censuses
   filterLanguage: string;               // scripts/filter-language.test.mts, decommented: SURFACES must name the chips
   productLine: string;                  // scripts/product-line.test.mts, decommented: MUST_STAY_DEFAULT must name the home
+  srcText: Map<string, string>;        // every file under src/: 7.client's import graph (the arm's own files read from above)
   drawn: JhDrawn;
 };
 
 function loadHome(all: readonly string[]): JhWorld {
   const ghostNaming = new Map<string, string>();
   const journeyFiles = new Map<string, string>();
+  const srcText = new Map<string, string>();
   for (const rel of all) {
-    if (rel !== JH_GHOST) { const s = read(rel); if (s.includes("journey-home-ghost")) ghostNaming.set(rel, s); }
-    if (rel.startsWith("src/components/journey/")) journeyFiles.set(rel, read(rel));
+    const s = read(rel);
+    srcText.set(rel, s);
+    if (rel !== JH_GHOST && s.includes("journey-home-ghost")) ghostNaming.set(rel, s);
+    if (rel.startsWith("src/components/journey/")) journeyFiles.set(rel, s);
   }
   return {
     home: read(HT_HOME), ghost: read(JH_GHOST), chips: read(JH_CHIPS), headline: read(JH_HEADLINE), ghostNaming, journeyFiles,
-    filterLanguage: decomment(read(JH_FILTER_LANGUAGE)), productLine: decomment(read(JH_PRODUCT_LINE)), drawn: renderHome(),
+    filterLanguage: decomment(read(JH_FILTER_LANGUAGE)), productLine: decomment(read(JH_PRODUCT_LINE)), srcText, drawn: renderHome(),
   };
 }
 
@@ -1754,6 +1760,69 @@ const jhHref = (p: { cat?: HL.HomeChip; q?: string; page?: number }) => HL.homeH
 /** The markup's form of an address (`&` written `&amp;`). */
 const jhAttr = (href: string) => href.split("&").join("&amp;");
 
+/* ── 7.client's import graph (the WP7 review): what the journey arm's files put in `/`'s first load ─────────────────── */
+/** The journey arm's own server files: what `/` draws for a journey request, around the home's lazy module. */
+const JH_ARM = [HT_HOME, JH_HEADLINE, JH_CHIPS, JH_GHOST, CARD];
+const JH_STATIC_FROM = /^[ ]*(?:import|export)[ ]+([^;]*?)[ ]*from[ ]*["']([^"']+)["']/gm;
+const JH_BARE_IMPORT = /^[ ]*import[ ]*["']([^"']+)["']/gm;
+/**
+ * A module's static imports as the bundler follows them, its comments left out: `import … from`, `export … from` and a
+ * bare `import "…"`. An `import type` (or a clause of types alone) is erased and loads nothing; `import(…)` is a chunk of
+ * its own, fetched when used (the lazy module's parts), so neither is an edge.
+ */
+function jhImports(src: string): string[] {
+  const code = decomment(src), out: string[] = [];
+  for (const m of code.matchAll(JH_STATIC_FROM)) {
+    const clause = m[1].trim();
+    if (clause.startsWith("type ")) continue;
+    const braces = /^[{]([^}]*)[}]$/.exec(clause);
+    if (braces && braces[1].split(",").map((x) => x.trim()).filter((x) => x.length > 0).every((x) => x.startsWith("type "))) continue;
+    out.push(m[2]);
+  }
+  for (const m of code.matchAll(JH_BARE_IMPORT)) out.push(m[1]);
+  return out;
+}
+/** A module whose first statement is the client directive. */
+const jhClient = (src: string) => {
+  const head = decomment(src).trimStart();
+  return head.startsWith(`${HT_QUOTE}use client${HT_QUOTE}`) || head.startsWith("'use client'");
+};
+/** A specifier resolved to a file under src/ ("@/…" and relative); a package is null. */
+function jhResolve(from: string, spec: string, has: (rel: string) => boolean): string | null {
+  const base = spec.startsWith("@/") ? `src/${spec.slice(2)}` : spec.startsWith(".") ? posix.join(posix.dirname(from), spec) : null;
+  if (base === null) return null;
+  for (const tail of ["", ".ts", ".tsx", "/index.ts", "/index.tsx"]) if (has(base + tail)) return base + tail;
+  return null;
+}
+type JhSrc = { text: (rel: string) => string; has: (rel: string) => boolean };
+/**
+ * The client modules a set of server files reaches by static import — the walk stopping at each, whose own imports ride
+ * in its chunk: what those files add to their route's first load, for every visitor (§0h point 20).
+ */
+function jhBoundaries(roots: readonly string[], g: JhSrc): string[] {
+  const seen = new Set<string>(), out = new Set<string>(), stack = [...roots];
+  while (stack.length > 0) {
+    const f = stack.pop() as string;
+    if (seen.has(f)) continue;
+    seen.add(f);
+    const s = g.text(f);
+    if (!roots.includes(f) && jhClient(s)) { out.add(f); continue; }
+    for (const spec of jhImports(s)) { const r = jhResolve(f, spec, g.has); if (r !== null) stack.push(r); }
+  }
+  return [...out].sort();
+}
+/** A module's whole static graph, through client modules too: every file it loads and every specifier they name. */
+function jhGraph(root: string, g: JhSrc): { files: string[]; specs: string[] } {
+  const seen = new Set<string>(), specs = new Set<string>(), stack = [root];
+  while (stack.length > 0) {
+    const f = stack.pop() as string;
+    if (seen.has(f)) continue;
+    seen.add(f);
+    for (const spec of jhImports(g.text(f))) { specs.add(spec); const r = jhResolve(f, spec, g.has); if (r !== null) stack.push(r); }
+  }
+  return { files: [...seen].sort(), specs: [...specs].sort() };
+}
+
 function homeChecks(w: World, ok: Ok) {
   const hw = w.home, D = hw.drawn, H = D.home, IN = D.input;
   const page = decomment(w.page), landing = decomment(w.landing);
@@ -1841,18 +1910,27 @@ function homeChecks(w: World, ok: Ok) {
     [".kp-jhome__head", "gap", [["", "var(--sp-4)"], [AT1024, "var(--sp-4) var(--sp-6)"]]],
     [".kp-jhome__title", "flex", [[AT1024, "1 1 520px"]]], [".kp-jhome__title", "min-width", [[AT1024, "0"]]],
     [".kp-jhome__head > .kp-jhowto", "flex", [[AT1024, "0 1 440px"]]], [".kp-jhome__head > .kp-jhowto", "min-width", [[AT1024, "320px"]]],
+    // Each sentence held whole from 1024 (the WP7 review): its own span, which may not wrap inside itself there.
+    [".kp-jhome__title > span", "white-space", [[AT1024, "nowrap"]]],
   ];
   const headDrift = HEAD_WANT.filter(([sel, p, want]) => j(declared(sel, p)) !== j(want)).map(([sel, p]) => `${sel} ${p}: ${j(declared(sel, p))}`);
   const orderRule = declared(".kp-jhome__title", "order"), brRule = declared(".kp-jhome__br", "display");
   const brOnly = sheet.filter((r) => r.sels.includes(".kp-jhome__br")).map((r) => [r.at.join(" "), r.decls.map(([p, v]) => `${p}: ${v}`).join("; ")]);
   const sepSrc = count(headline, "<span>{ask}</span>{sentenceGap(ask)}<br className=") === 1 && headline.includes(`return sentence.endsWith(IDEOGRAPHIC_FULL_STOP) ? "" : " ";`)
-    && headline.includes("const IDEOGRAPHIC_FULL_STOP = String.fromCharCode(0x3002);");
+    && headline.includes("const IDEOGRAPHIC_FULL_STOP = String.fromCharCode(0x3002);")
+    && count(headline, `<br className=${HT_QUOTE}kp-jhome__br${HT_QUOTE} /><span>{sides}</span>`) === 1;
   const said = ([["sw", "full"], ["en", "fullEn"], ["zh", "fullZh"]] as Array<[HtLocale, JhName]>).map(([l, n]) => [l, textOf(jhInner(H[n] ?? "", "<h1 ") ?? "")]);
   const saidWrong = said.filter(([l, t]) => t !== jhHeadline(l as HtLocale));
-  ok(`7.head · A16: from 1024 the head is one row that wraps — the headline flex 1 1 520px, min-width 0, the How-to card flex 0 1 440px, min-width 320px, 16px between rows and 24px between them — the headline drawn first there by order: -1 alone (inside the ≥1024 query only, so the markup keeps the phone order); the <br> hidden from 1024 only; and the sentence gap carried by the markup, the language's own — "Jibu swali. NDIO au HAPANA.", "Answer the question. YES or NO.", and nothing after 。 in Chinese`,
+  // As drawn, in each language: the h1 holds exactly two spans, one per sentence — what the nowrap rule holds whole.
+  const spansWrong = ([["sw", "full"], ["en", "fullEn"], ["zh", "fullZh"]] as Array<[HtLocale, JhName]>).filter(([l, n]) => {
+    const spans = [...(jhInner(H[n] ?? "", "<h1 ") ?? "").matchAll(/<span>([^<]*)<[/]span>/g)].map((m) => decodeHtml(m[1]));
+    const d = dict[l];
+    return j(spans) !== j([d.journey.headlineAsk, d.journey.headlineSides.replace("{yes}", d.common.yes).replace("{no}", d.common.no)]);
+  }).map(([l]) => l);
+  ok(`7.head · A16: from 1024 the head is one row that wraps — the headline flex 1 1 520px, min-width 0, the How-to card flex 0 1 440px, min-width 320px, 16px between rows and 24px between them — the headline drawn first there by order: -1 alone (inside the ≥1024 query only, so the markup keeps the phone order); the <br> hidden from 1024 only; each sentence its own span, held whole from 1024 alone (white-space: nowrap — where the box beside the card is too narrow for both, the line breaks between the sentences, never inside one); and the sentence gap carried by the markup, the language's own — "Jibu swali. NDIO au HAPANA.", "Answer the question. YES or NO.", and nothing after 。 in Chinese`,
     headDrift.length === 0 && j(orderRule) === j([[AT1024, "-1"]]) && j(brRule) === j([[AT1024, "none"]]) && j(brOnly) === j([[AT1024, "display: none"]])
-      && sepSrc && saidWrong.length === 0,
-    j({ headDrift, orderRule, brOnly, sepSrc, said }));
+      && sepSrc && saidWrong.length === 0 && spansWrong.length === 0,
+    j({ headDrift, orderRule, brOnly, sepSrc, said, spansWrong }));
 
   // 7.rung — A16 item 2 and the §2 build map's Headline row (the .kp-hero__headline family).
   const h1Tags = [H.full, H.fullEn, H.fullZh].map((x) => (x ?? "").match(/<h1 [^>]*>/g) ?? []);
@@ -1911,7 +1989,8 @@ function homeChecks(w: World, ok: Ok) {
   ok(`7.paging · "Onyesha zaidi" pages CUMULATIVELY (Open point 12): page n draws the first 12·n questions — page 2 opens with page 1's twelve — and links page n+1 while any are left (keeping the category and the search, the scroll position kept), and is gone on the last page`,
     pagingWrong.length === 0 && firstOfPage2 && moreSrc && D.perPage === JH_PER_PAGE, j({ pagingWrong, firstOfPage2, moreSrc, perPage: D.perPage }));
 
-  // 7.grid — WP7 step 2 item 5 as the coordinator's ruling on A16 item 5 replaced the title reserve: the one journey card grid.
+  // 7.grid — WP7 step 2 item 5 as VODACOM-PLAN §0h point 73 amends it (A16 item 3's title reserve retired for the one journey
+  // card grid, whose cards share their rows; A16 item 5 is the drive that measures the picks' tops).
   const listed = (["full", "page2", "query", "selected", "guest"] as JhName[]).filter((n) => {
     const html = H[n] ?? "", list = jhInner(html, `<ul role="list" class="kp-jgrid">`) ?? "";
     const items = list.split("<li>").length - 1, cards = count(list, `<article class="kp-jcard"`);
@@ -1973,6 +2052,24 @@ function homeChecks(w: World, ok: Ok) {
   ok("7.signed · the How-to card is the home's one, first in its head, handed whether the reader is signed in — read from the session on the server (getSession), which decides where the sheet's Weka mipaka goes",
     j(signed) === j([j([{ signedIn: true }]), j([{ signedIn: false }])]) && home.includes("signedIn={session !== null}") && home.includes("<LazyHowToCard signedIn={signedIn} />"),
     j(signed));
+
+  // 7.client — the WP7 review; S7-PLAN Risk 5 and VODACOM-PLAN §0h point 20: a client module that any file of a route's
+  // server graph imports joins that route's first load for EVERY visitor, a classic one included. So the journey arm's
+  // own files may reach no client module but the home's lazy module and what the classic landing already reaches; and
+  // the ghost, which a client module draws too (route-ghost.tsx), may reach no server code anywhere in its graph.
+  const jg: JhSrc = {
+    text: (rel) => rel === HT_HOME ? hw.home : rel === JH_HEADLINE ? hw.headline : rel === JH_CHIPS ? hw.chips
+      : rel === JH_GHOST ? hw.ghost : rel === CARD ? w.card : rel === LANDING ? w.landing : hw.srcText.get(rel) ?? "",
+    has: (rel) => hw.srcText.has(rel),
+  };
+  const armReach = jhBoundaries(JH_ARM, jg), landingReach = jhBoundaries([LANDING], jg);
+  const strayClient = armReach.filter((f) => f !== HT_LAZY && !landingReach.includes(f));
+  const ghostGraph = jhGraph(JH_GHOST, jg);
+  const ghostReads = [...ghostGraph.files.filter((f) => f.startsWith("src/lib/server/")),
+    ...ghostGraph.specs.filter((s) => s.startsWith("@/lib/server") || s === "next/headers" || s === "server-only")];
+  ok("7.client · the journey arm's files — the home, its headline, its chips, its ghost and the journey card — bring no client code into / but the home's lazy module and what the classic landing already brings (each client module they reach by static import: home-lazy.tsx, or one legacy-landing.tsx reaches too, as link-pending.tsx); and the ghost's whole import graph reads no server — no @/lib/server, no next/headers — since a client module draws it too",
+    armReach.includes(HT_LAZY) && landingReach.length > 0 && strayClient.length === 0 && ghostGraph.files.includes(JH_HEADLINE) && ghostReads.length === 0,
+    j({ armReach, strayClient, ghostReads }));
 }
 
 /* ── §6's and §7's plants: each one defect, in memory, on the route file, the home's sources, the stylesheet, a suite's
@@ -2028,6 +2125,10 @@ function homeDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) 
       plant: (w) => jhDrawn(w, "fullZh", (html) => htSwap(html, `</span><br class="kp-jhome__br"/>`, `</span> <br class="kp-jhome__br"/>`)) },
     { name: "the head's row wraps the card under the headline at 1280 too (the How-to card's basis 640px)", expect: /^7[.]head /,
       plant: (w) => ({ ...w, css: swap(w.css, ".kp-jhome__head > .kp-jhowto { flex: 0 1 440px;", ".kp-jhome__head > .kp-jhowto { flex: 0 1 640px;") }) },
+    { name: "a sentence no longer held whole from 1024 (between ~1048 and ~1223 the balanced wrap splits it: Jibu swali. NDIO / au HAPANA.)", expect: /^7[.]head /,
+      plant: (w) => ({ ...w, css: swap(w.css, `  .kp-jhome__title > span { white-space: nowrap; }${LF}`, "") }) },
+    { name: "the sentences held whole at every width (a long sentence can no longer wrap in a 320 phone's line)", expect: /^7[.]head /,
+      plant: (w) => ({ ...w, css: `${w.css}${LF}.kp-jhome__title > span { white-space: nowrap; }${LF}` }) },
     { name: "the phone rung raised to text-display-3 (English wraps to three lines at 360)", expect: /^7[.]rung /,
       plant: (w) => jhDrawn(w, "fullEn", (html) => htSwap(html, `<h1 class="kp-jhome__title text-title-lg">`, `<h1 class="kp-jhome__title text-display-3">`)) },
     { name: "the desktop rung lowered to --type-h1 (a smaller headline than the line holds)", expect: /^7[.]rung /,
@@ -2084,6 +2185,12 @@ function homeDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) 
       }) },
     { name: "the How-to card handed signedIn from the wall, not the session (a guest sent to the signed-in limits page)", expect: /^7[.]signed /,
       plant: (w) => jhWith(w, { home: htSwap(w.home.home, "signedIn={session !== null}", "signedIn={true}") }) },
+    { name: "the home imports the kit's SearchBox (its client code in every visitor's first load of /)", expect: /^7[.]client /,
+      plant: (w) => jhWith(w, { home: htSwap(w.home.home, `import { PageContainer } from ${HT_QUOTE}@/components/layout/page-container${HT_QUOTE};`,
+        `import { PageContainer } from ${HT_QUOTE}@/components/layout/page-container${HT_QUOTE};${LF}import { SearchBox } from ${HT_QUOTE}@/components/ui/search-box${HT_QUOTE};`) }) },
+    { name: "the headline reads the server (a session read inside the drawing a client module renders as the ghost)", expect: /^7[.]client /,
+      plant: (w) => jhWith(w, { headline: htSwap(w.home.headline, `import { stemOf } from ${HT_QUOTE}@/lib/display-stem${HT_QUOTE};`,
+        `import { stemOf } from ${HT_QUOTE}@/lib/display-stem${HT_QUOTE};${LF}import { getSession } from ${HT_QUOTE}@/lib/server/session${HT_QUOTE};`) }) },
   ];
 }
 
