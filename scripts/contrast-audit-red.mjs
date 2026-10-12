@@ -193,6 +193,21 @@ const MUTATIONS = [
     to: `oklch(53% 0.20 268) 0%, color-mix(in oklab, oklch(48% 0.20 268) 80%, black) 100%);`,
   },
   {
+    // ⭐ THE HOW-TO CARD'S ROYAL PLATE (the Vodacom plan S7, S7-PLAN A14 item 3): its pair is read off the plate's own rule,
+    // so an ink the ramp cannot carry must FAIL — the play mark sunk into its plate.
+    name: "darken the How-to plate's play glyph to the card's own fill — a mark that vanishes into its royal plate",
+    kind: "fail",
+    from: `.kp-jhowto__plate { background: var(--wash-primary); box-shadow: var(--edge-primary), var(--shadow-primary); color: var(--pearl-50); }`,
+    to: `.kp-jhowto__plate { background: var(--wash-primary); box-shadow: var(--edge-primary), var(--shadow-primary); color: var(--bg-elevated); }`,
+  },
+  {
+    // …and the plate must READ the material's token: a ramp typed into its rule is a second definition (A14), refused.
+    name: "type the How-to plate's ramp as a literal — the plate stops reading the primary material's one definition",
+    kind: "throw",
+    from: `.kp-jhowto__plate { background: var(--wash-primary);`,
+    to: `.kp-jhowto__plate { background: linear-gradient(180deg, oklch(53% 0.20 268) 0%, oklch(48% 0.20 268) 100%);`,
+  },
+  {
     // ⛔ A FILTER FUNCTION THIS MODEL DOES NOT IMPLEMENT MUST REFUSE, NOT ROUND
     // DOWN TO 1.0. `contrast()` would quietly change what the eye receives and
     // the gate would keep printing the resting ratio over it.

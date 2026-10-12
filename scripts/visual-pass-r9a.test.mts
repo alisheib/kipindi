@@ -457,6 +457,7 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/components/journey/account/hub-row.tsx', '<I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />', 1, "row", "the hub's row end"],
     ['src/components/journey/account/language-row.tsx', '<I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />', 1, "row", "the hub's row end (and its turn, 4.8)"],
     ['src/components/journey/account/unread-row.tsx', '<I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />', 1, "row", "the hub's row end"],
+    ['src/components/journey/home/howto-card.tsx', '<I.chevronRight s={20} edge="end" className="kp-jhowto__chev" />', 1, "row", "the journey home's How-to card's end: a door's end mark on its content edge (the Vodacom plan S7, WP6)"],
     ['src/components/layout/avatar-menu.tsx', '<I.arrowRight s={14} className={journey ? "text-brand-300/70 transition-colors group-hover:text-brand-300" : "text-gold-300/70 transition-colors group-hover:text-gold-300"} aria-hidden />', 1, "frozen", "the account menu is classic chrome, frozen until the flip — named for the integrator"],
     ['src/components/layout/needle-drawer.tsx', '<I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />', 1, "row", "the hub's Needle row end"],
     ['src/components/layout/notifications-panel.tsx', '<I.chevronRight s={11} />', 1, "frozen", "the bell is frozen (qa:bell-untouched) — named for the integrator"],

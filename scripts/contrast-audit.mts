@@ -371,7 +371,8 @@ function tokenGradient(name: string): Oklch[] {
 /**
  * The token one declaration of a rule names — `background: var(--wash-primary)` gives "wash-primary", bare, as
  * `tokenGradient` takes it (the Vodacom plan S7, S7-PLAN A14: the primary material's ramp has ONE definition, the
- * `--wash-primary` token, and every rule that paints it reads it from there — `.btn-primary` first).
+ * `--wash-primary` token, and every rule that paints it reads it from there — `.btn-primary` and the How-to card's
+ * royal plate).
  * ⭐ READ OFF THE RULE, NEVER ASSUMED (the review of 2026-10-12): a pair scored on `tokenGradient("wash-primary")` goes on
  * scoring the token while the rule paints something else — a ramp typed back into it, or another token named.
  * ⛔ Anything but one `var(--token)` THROWS: a ramp typed into the rule is a second definition of the material, and
@@ -640,6 +641,12 @@ const T = {
   // The token's value is byte-identical to the literal the rule held, so every ratio below is the one it was.
   btnPrimaryStops: tokenGradient(tokenNamed(".btn-primary", "background")),
   btnPrimaryHover: ruleFilter(".btn-primary:hover:not(:disabled)"),
+  // ── THE HOW-TO CARD'S ROYAL PLATE (the Vodacom plan S7, S7-PLAN A14 item 3; INTAKE §4c: a new surface taking a ramp gets
+  // its worst-stop pair in the same commit). Read off the plate's own rule: its glyph's ink, and the ramp its background
+  // NAMES — one token, followed to its gradient (`tokenNamed` refuses a typed ramp: that would be a second definition of
+  // the primary material, A14).
+  howToPlateFg: ruleValue(".kp-jhowto__plate", "color"),
+  howToPlateStops: tokenGradient(tokenNamed(".kp-jhowto__plate", "background")),
   btnClaretFg: ruleValue(".btn-claret", "color"),
   btnClaretStops: ruleGradient(".btn-claret", "background"),
   btnClaretHover: ruleFilter(".btn-claret:hover:not(:disabled)"),
@@ -900,6 +907,9 @@ const CHECKS: Check[] = [
   // so 4.5 is the bar on every one of these and 3.0 is not available.
   { name: "btn-primary label (pearl on royal ramp, worst stop)", fg: T.pearl50, bg: worstStop(T.pearl50, T.btnPrimaryStops), min: 4.5 },
   { name: "btn-primary label :hover (filter rastered)", fg: T.pearl50, bg: worstStop(T.pearl50, T.btnPrimaryStops, T.btnPrimaryHover), min: 4.5, filter: T.btnPrimaryHover },
+  // ⭐ S7-PLAN A14 item 3 · the How-to card's play glyph on its royal plate: a MARK, not text (WCAG 1.4.11's 3.0), on the
+  // ramp's worst stop for the glyph's ink — the plate takes the button's ramp, so this pair moves with it.
+  { name: "How-to plate's play glyph (pearl on the primary ramp, worst stop — a mark)", fg: T.howToPlateFg, bg: worstStop(T.howToPlateFg, T.howToPlateStops), min: 3.0 },
   { name: "btn-claret label (claret-50 on claret ramp, worst stop)", fg: T.btnClaretFg, bg: worstStop(T.btnClaretFg, T.btnClaretStops), min: 4.5 },
   { name: "btn-claret label :hover (filter rastered)", fg: T.btnClaretFg, bg: worstStop(T.btnClaretFg, T.btnClaretStops, T.btnClaretHover), min: 4.5, filter: T.btnClaretHover },
 
