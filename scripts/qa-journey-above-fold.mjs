@@ -53,12 +53,13 @@ setTimeout(() => { console.log(`\nWATCHDOG: ${WATCHDOG_MIN} minutes — stopped`
 
 /** The announcement's words: the admin form's own example message. */
 const ANNOUNCE = "New markets are live for the AFCON qualifiers — good luck!";
-/** Short titles at the full budget (`SHORT_TITLE_MAX`: en 100, sw 100, zh 50 code points), words only (no figure the
- *  full question would not hold), GSM-7 in en and sw. */
+/** Short titles at the full budget (`SHORT_TITLE_MAX`: en 100, sw 100, zh 50 code points), in the forms the admin
+ *  form accepts (`short-title.ts`: sw "Je, …?", en ending "?", zh ending in the full-width "？", built, never pasted),
+ *  words only (no figure the full question would not hold: a number drift), GSM-7 in en and sw. */
 const SHORT = {
-  en: "Will the national team reach the final round of the regional cup before the long rainy season begins",
-  sw: "Je timu ya taifa itafika hatua ya mwisho ya kombe la kanda kabla ya kuanza kwa msimu wa mvua ndefu",
-  zh: "国家队能否在漫长的雨季开始之前进入地区杯赛的最后一轮比赛并且最终赢得冠军奖杯呢这是一个关于足球的问题",
+  en: "Will the national team reach the final round of the regional cup before the long rain season starts?",
+  sw: "Je, timu ya taifa itafika hatua ya mwisho ya kombe la kanda kabla ya kuanza kwa msimu wa mvua ndefu?",
+  zh: `国家队能否在漫长的雨季开始之前进入地区杯赛的最后一轮比赛并且最终赢得冠军奖杯以及全体球迷的热烈掌声${String.fromCharCode(0xff1f)}`,
 };
 /** The away ledger as `recordAway` writes it (the bar probe's mixed set: the longest calm-bar sentence). */
 const AWAY_ROWS = (now) => [
