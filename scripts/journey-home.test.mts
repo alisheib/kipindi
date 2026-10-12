@@ -21,13 +21,15 @@
  *          BETTING closes, ties by the bigger pool, then by id, and never reorders the caller's list;
  *        · homeChips: Zote, the deck's three (Michezo, Hali ya hewa, Uchumi), then the rest; only the categories the
  *          book holds, plus the one the address selected;
- *        · parseHomeParams: cat known (against the caller's closed set) or none, q trimmed and clamped, page through
- *          parsePageParam, first values only; no search object at all is the plain home, never a crash;
+ *        · parseHomeParams: cat known (against the caller's closed set) or none, q trimmed and clamped — never half a
+ *          character: an emoji the cap cuts in two is dropped (S7 WP9's review) — page through parsePageParam, first
+ *          values only; no search object at all is the plain home, never a crash;
  *        · parsePageParam, the ?page rule the home and journey /live share (A21 item 4): a positive whole number as an
  *          address writes it, else 1 (02 is 1);
  *        · pageCumulative (the home's and journey /live's one paging rule) and homeView: the filters, the paging, the
  *          clamp and the three empty states;
- *        · homeHref: only what is set, always cat, q, page, every value encoded.
+ *        · homeHref: only what is set, always cat, q, page, every value encoded — a search cut at the cap written without
+ *          a throw (encodeURIComponent throws on half an emoji).
  *   §3 THE CARD'S FACE (S7 WP3 step 2, amendment A12), `src/lib/journey/card-face.ts` over `cardEstimate`'s real figures:
  *      the S3 golden pools (Dodoma ≈2.8× / ≈1.4×, Yanga ≈2.9× / ≈1.4×); the canvas states (an empty pool, one side, over
  *      the cap with its thin side at ≈1.0×, a hidden figure for each of its three causes, closed); settled YES, NO and
@@ -321,9 +323,16 @@ function homeListChecks(r: Rules, ok: Ok) {
   });
   ok("2.parse.absent · no search object at all (null or undefined) is the plain home, Zote with no search on page 1, never a crash",
     j(absent) === j([j({ cat: null, q: "", page: 1 }), j({ cat: null, q: "", page: 1 })]), j(absent));
-  const qs = [P({ q: "  simba yanga  " }).q, P({ q: "y".repeat(300) }).q.length, P({}).q];
-  ok(`2.parse.q · ?q is trimmed and clamped to the product's one cap (${MAX_QUERY_LEN}); no q is ""`,
-    j(qs) === j(["simba yanga", MAX_QUERY_LEN, ""]), j(qs));
+  // S7 WP9's review: the cap counts UTF-16 units, so an emoji standing across it is cut in two, and half of it alone makes
+  // encodeURIComponent throw — the cut keeps no half (it goes with the space it uncovered), a whole one at the cap stays.
+  // (Built from code points: this file carries no escape.)
+  const smile = String.fromCodePoint(0x1f600);
+  const ys = (n: number) => "y".repeat(n);
+  const qs = [P({ q: "  simba yanga  " }).q, P({ q: "y".repeat(300) }).q.length, P({}).q,
+    P({ q: `${ys(119)}${smile}` }).q, P({ q: `${ys(118)} ${smile}` }).q, P({ q: `${ys(118)}${smile}` }).q];
+  ok(`2.parse.q · ?q is trimmed and clamped to the product's one cap (${MAX_QUERY_LEN}), never keeping half a character (an emoji the cut splits is dropped with the space it uncovered, a whole one at the cap stays); no q is ""`,
+    j(qs) === j(["simba yanga", MAX_QUERY_LEN, "", ys(119), ys(118), `${ys(118)}${smile}`]),
+    j(qs.map((q) => (typeof q === "string" ? [q.length, q.charCodeAt(q.length - 1)] : q))));
   const pagesIn = ["3", undefined, "0", "-2", "2.5", "2abc", "02", "abc", "5000", "99999999999999999999"];
   const pagesOut = pagesIn.map((p) => P(p === undefined ? {} : { page: p }).page);
   ok("2.parse.page · ?page is a positive whole number as an address writes it, else 1 (none, 0, -2, 2.5, 2abc, 02, abc); a huge one stays past the end for the view to clamp",
@@ -366,9 +375,13 @@ function homeListChecks(r: Rules, ok: Ok) {
     r.href({ page: 2, q: "a&b=c#d", cat: "macro" }), r.href({ q: "x", page: 1 }), r.href({ page: 0 }), r.href({ page: 2.5 }),
     r.href({ q: "   " }), r.href({ cat: "politics" as never }),
   ];
-  ok("2.href · / plus only what is set, always cat, q, page; page 1 is the home itself; every value encoded, so an ampersand, an equals sign or a hash adds no parameter",
-    j(hrefs) === j(["/", "/", "/?cat=sports", "/?cat=sports&q=simba%20yanga&page=3", "/?cat=macro&q=a%26b%3Dc%23d&page=2", "/?q=x", "/", "/", "/", "/"]),
-    j(hrefs));
+  // A search cut at the cap is written without a throw (S7 WP9's review): each call caught, so a throw is a value here.
+  const written = [{ q: `${ys(119)}${smile}` }, { cat: "sports" as const, q: `${ys(118)}${smile}`, page: 2 }]
+    .map((p) => { try { return r.href(p); } catch (e) { return `threw: ${(e as Error).message}`; } });
+  ok("2.href · / plus only what is set, always cat, q, page; page 1 is the home itself; every value encoded, so an ampersand, an equals sign or a hash adds no parameter; a search cut at the cap is written without a throw (half an emoji dropped, a whole one encoded)",
+    j([...hrefs, ...written]) === j(["/", "/", "/?cat=sports", "/?cat=sports&q=simba%20yanga&page=3", "/?cat=macro&q=a%26b%3Dc%23d&page=2", "/?q=x", "/", "/", "/", "/",
+      `/?q=${ys(119)}`, `/?cat=sports&q=${ys(118)}%F0%9F%98%80&page=2`]),
+    j([...hrefs, ...written]));
 }
 
 /* ── §3 · the card's face (S7 WP3 step 2, A12) ──────────────────────────────────────────────────────────────── */
@@ -2773,6 +2786,8 @@ function ruleDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) 
       } }) },
     { name: "?q not clamped to the product's one cap", expect: /^2[.]parse[.]q /, alone: true,
       plant: (w) => rule(w, { parse: (sp, c) => { const p = R.parse(sp, c); const raw = sp?.q; return typeof raw === "string" ? { ...p, q: raw.trim() } : p; } }) },
+    { name: "?q clamped without its guard (S7 WP9's review): an emoji the cap cuts in two leaves half a character in the search", expect: /^2[.]parse[.]q /, alone: true,
+      plant: (w) => rule(w, { parse: (sp, c) => { const p = R.parse(sp, c); const raw = sp?.q; return typeof raw === "string" ? { ...p, q: raw.trim().slice(0, MAX_QUERY_LEN) } : p; } }) },
     { name: "?page read with parseInt (2abc, 02 and 2.5 become page 2)", expect: /^2[.]parse[.]page /, alone: true,
       plant: (w) => rule(w, { parse: (sp, c) => {
         const p = R.parse(sp, c);
@@ -2802,6 +2817,12 @@ function ruleDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) 
       plant: (w) => rule(w, { href: (p) => {
         const parts = Object.keys(p).flatMap((k) => { const one = R.href({ [k]: (p as Record<string, unknown>)[k] } as never); return one === "/" ? [] : [one.slice(2)]; });
         return parts.length > 0 ? `/?${parts.join("&")}` : "/";
+      } }) },
+    { name: "homeHref clamps ?q without the guard (S7 WP9's review): writing a search whose emoji the cap cut in two throws, and the home's own links fail", expect: /^2[.]href /, alone: true,
+      plant: (w) => rule(w, { href: (p) => {
+        const q = typeof p.q === "string" ? p.q.trim().slice(0, MAX_QUERY_LEN) : "";
+        if (q !== "") encodeURIComponent(q);
+        return R.href(p);
       } }) },
 
     /* §3 · the card's face */

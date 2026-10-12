@@ -10,7 +10,8 @@
  *   topic=all, an unknown topic                                    /
  *   topic=sports&topic=macro                                       /?cat=sports (the first value, as `oneParam` reads it)
  *   cat=<a known id> and no topic                                  /?cat=<id>
- *   q                                                              kept, trimmed and clamped (MAX_QUERY_LEN)
+ *   q                                                              kept, trimmed and clamped (MAX_QUERY_LEN), never half
+ *                                                                  a character (an emoji the cap cuts in two is dropped)
  *   ref, invite                                                    kept in pending-bet's code shape
  *   utm_source, utm_medium, utm_campaign, utm_term, utm_content    kept in pending-bet's utm shape
  *   utm_id, gclid, gbraid, wbraid                                  kept in one token shape (GA's own list: GA_KEPT_PARAMS)
@@ -55,6 +56,20 @@ export const KEPT_CLICK_KEYS = ["utm_id", "gclid", "gbraid", "wbraid"] as const;
 /** One token shape for the click ids: the URL's unreserved characters, 1 to 200 of them. */
 const TOKEN = /^[A-Za-z0-9._~-]{1,200}$/;
 
+/**
+ * `?q` clamped as every search is (`clampText`: trimmed, then cut at `MAX_QUERY_LEN`), less any half character the cut
+ * left. The cap counts UTF-16 units, so a pair (an emoji) standing across it is cut in two, and its first half alone
+ * makes `encodeURIComponent` throw a URIError: AppShell's branch would turn a journey reader's /markets into an error
+ * page (the WP9 review). The half is dropped, with any space the cut uncovered; a whole pair at the cap stays.
+ * ⛔ Here and in `home-list.ts` (its twin, for the home's own reading and links), never in the shared `clampText`: every
+ * classic board reads that helper, and none of them may move. `test:markets-redirect` 1.whole holds this one.
+ */
+function wholeQuery(raw: string | undefined): string {
+  const q = clampText(raw, MAX_QUERY_LEN);
+  const last = q.charCodeAt(q.length - 1);
+  return last >= 0xd800 && last <= 0xdbff ? q.slice(0, -1).trimEnd() : q;
+}
+
 type Search = Record<string, string | string[] | undefined>;
 
 /** Every value of `p`, by key, in a record with no prototype. */
@@ -94,7 +109,7 @@ export function journeyMarketsTarget(search: MarketsSearch | null | undefined): 
   const topic = one("topic");
   const cat = topic !== undefined ? knownCategory(topic) : knownCategory(one("cat"));
   if (cat) parts.push(["cat", cat]);
-  const q = clampText(one("q"), MAX_QUERY_LEN);
+  const q = wholeQuery(one("q"));
   if (q !== "") parts.push(["q", q]);
   const welcome = one("welcome");
   const greeting = welcome === "new" || welcome === "back" ? welcome : null;

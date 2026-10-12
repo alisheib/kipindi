@@ -16,6 +16,8 @@
  *        · every form a door hands in (an x-href, a bare search, Next's record, URLSearchParams, nothing), a fragment, and
  *          crafted keys such as __proto__;
  *        · a path in the request, or one inside q, is never copied into the target (1.no-path-copy, its goldens);
+ *        · a search cut at the cap never keeps half a character (1.whole, the WP9 review): an emoji the cap splits is
+ *          dropped with the space it uncovered, so the address is written rather than thrown (a URIError);
  *        · ALWAYS a same-origin path (1.same-origin): every target, the goldens' and an unpinned sweep of hostile
  *          requests', is / or /watchlist and passes isSafePath (`safe-next.ts`, the one rule) — A11 item 5;
  *        · the attribution kept is GA's own list (`GA_KEPT_PARAMS`), in its order;
@@ -28,14 +30,18 @@
  *          document (`x-kp-document`: a root-layout redirect on a flight blanks the page) and the request's journey
  *          answer (`journeyRead`, never a classic request) — no path rule of its own — and whose redirect goes through the
  *          one function, fed the request's path and query (`x-href`); after the `/admin` and opt-out returns and
- *          E-381's document redirect, before the render; S6's two anchors (`const h = await headers();`,
+ *          E-381's document redirect, before the render, at AppShell's own top level in no block (2.shell.top: inside
+ *          `if (session)` a guest with a pass would get the board); S6's two anchors (`const h = await headers();`,
  *          `const journeyRead = resolveSimpleJourney();`) verbatim, once each;
  *        · the board page's FLIGHT door (`markets/page.tsx`): its first statement asks the one resolver, its second
  *          redirects a journey request (never a classic one) — so nothing is read before them, not the words, the board
  *          or the search — and its redirect goes through the same function, fed the page's own search;
  *        · ONE TARGET (2.callers): nothing but the two doors calls `journeyMarketsTarget`, nothing but its module defines
  *          it, and each door imports it from there — over every file under src/, its population printed;
- *        · the proxy names neither the preview pass nor the redirect (`test:simple-journey-flag` 10.no.grant's rule);
+ *        · the proxy names neither the preview pass nor the redirect (`test:simple-journey-flag` 10.no.grant's rule), and
+ *          it SETS the two headers both doors trust — x-href from the path and query it parsed, x-kp-document from the
+ *          browser's Sec-Fetch-Mode — over its copy of the client's headers, never forwarding a client's own
+ *          (2.proxy.headers);
  *        · SHELVED.md carries the board's row in its six columns, naming this suite (A18).
  *
  * The journey home's own reading of `?cat` and `?q` is `test:journey-home`'s; where Tafuta sends `?q` from is
@@ -54,6 +60,8 @@ import { srcFiles } from "./lib/tracked-files.mts";
 import * as MR from "../src/lib/journey/markets-redirect.ts";
 import { isSafePath } from "../src/lib/safe-next.ts";
 import { GA_KEPT_PARAMS } from "../src/lib/google-tag.ts";
+import { clampText } from "../src/lib/query/parse.ts";
+import { MAX_QUERY_LEN } from "../src/lib/search/query.ts";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 const PROVE_RED = process.argv.includes("--prove-red");
@@ -132,6 +140,9 @@ const brief = (v: unknown): unknown =>
 /** A backslash and a tab, built from their code points (this file carries no backslash). */
 const BS = String.fromCharCode(92);
 const TAB = String.fromCharCode(9);
+/** An emoji, two UTF-16 units: put at the cap (`MAX_QUERY_LEN`, 120) after 119 letters, the cut splits it (1.whole). */
+const EMOJI = String.fromCodePoint(0x1f600);
+const ys = (n: number) => "y".repeat(n);
 /**
  * Hostile requests with NO golden of their own: 1.same-origin asserts only that each one's target is safe, so a defect
  * that copies a request value into the path is caught even where no golden happens to look (a backslash after the first
@@ -152,6 +163,10 @@ const SWEEP: Input[] = [
   `/markets?${TAB}=x&q=a`,
   { q: "//evil.example", "/evil": "x" },
   new URLSearchParams([["q", `/${BS}evil.example`]]),
+  // An emoji the cap cuts in two (the WP9 review): the target must still be written, never a URIError's error page.
+  `/markets?q=${ys(119)}${EMOJI}`,
+  `/markets?status=watch&topic=sports&q=${ys(119)}%F0%9F%98%80`,
+  new URLSearchParams([["q", `${ys(119)}${EMOJI}`], ["utm_source", "x"]]),
 ];
 
 // ══ §2's READERS — the source as its checks read it: comments out (`decomment`), every run of whitespace one space, so a
@@ -321,6 +336,15 @@ function run(w: World, log: (l: string) => void): string[] {
     ["https://evil.example/markets?topic=macro", "/?cat=macro"],
   ]);
 
+  table("1.whole · a search cut at the cap never keeps half a character (the WP9 review): an emoji the cut splits is dropped, with the space the cut uncovered, so the address is written rather than thrown; a whole emoji at the cap stays — on / and on /watchlist, from an x-href (raw or encoded) and from Next's record", [
+    [`/markets?q=${ys(119)}${EMOJI}`, `/?q=${ys(119)}`],
+    [`/markets?q=${ys(119)}%F0%9F%98%80`, `/?q=${ys(119)}`],
+    [`/markets?status=watch&q=${ys(119)}${EMOJI}`, `/watchlist?q=${ys(119)}`],
+    [`/markets?q=${ys(118)}%20${EMOJI}`, `/?q=${ys(118)}`],
+    [`/markets?q=${ys(118)}${EMOJI}`, `/?q=${ys(118)}%F0%9F%98%80`],
+    [{ q: `${ys(119)}${EMOJI}`, topic: "sports" }, `/?cat=sports&q=${ys(119)}`],
+  ]);
+
   // The sweep's targets join the goldens' in `targets`; nothing pins their exact text, only their safety below.
   for (const input of SWEEP) go(input);
   const unsafe = targets.filter((t) => !isSafePath(t) || !(t === "/" || t.startsWith("/?") || t === "/watchlist" || t.startsWith("/watchlist?")));
@@ -375,6 +399,14 @@ function run(w: World, log: (l: string) => void): string[] {
     j({ at, ...marks }));
   ok("2.shell.anchors · S6's two anchors stand verbatim, once each: `const h = await headers();` and `const journeyRead = resolveSimpleJourney();`",
     count(shell, "const h = await headers();") === 1 && count(shell, "const journeyRead = resolveSimpleJourney();") === 1);
+  // The WP9 review: the branch is AppShell's own statement, in no block — inside `if (session)` it would answer only a
+  // signed-in reader, and a guest holding a preview pass would get the board. Braces are counted from the body's start.
+  const shellBody = bodyAfter(shell, "export async function AppShell(");
+  const bodyAt = branches.length === 1 ? shellBody.indexOf(branches[0]) : -1;
+  const before = bodyAt < 0 ? "" : shellBody.slice(0, bodyAt);
+  const depth = count(before, "{") - count(before, "}");
+  ok("2.shell.top · the branch stands at AppShell's own top level, in no block of its own (never inside `if (session)` or any other condition): every journey document load meets it, signed in or out",
+    bodyAt > 0 && depth === 0, j({ bodyAt, depth }));
 
   // The board page's FLIGHT door: a soft hop or a refresh, which the router follows.
   const page = flat(w.page);
@@ -406,6 +438,21 @@ function run(w: World, log: (l: string) => void): string[] {
   const named = PROXY_NEVER.filter((n) => proxy.includes(n));
   ok("2.proxy · the edge names neither the preview pass nor the redirect: it may not read the pass (10.no.grant), which is why the 307 is the shell's",
     proxy.includes("export async function proxy(") && named.length === 0, j(named));
+  // The WP9 review: both doors trust two request headers, so the edge must SET them from what it measured — the path and
+  // query it parsed, and the browser's own Sec-Fetch-Mode — over the copy of the client's headers it starts from, never
+  // forward a value a client sent (a forged x-kp-document would turn a flight into a root-layout redirect: a blank page).
+  const squeezed = proxy.split(" ").join("");
+  const at4 = (needle: string) => squeezed.indexOf(needle);
+  const COPY = "constrequestHeaders=newHeaders(req.headers);";
+  const SET_HREF = 'requestHeaders.set("x-href",pathname+search);';
+  const SET_DOC = 'requestHeaders.set("x-kp-document",req.headers.get("sec-fetch-mode")==="navigate"&&!req.headers.has("next-action")?"1":"0"';
+  const PASS_ON = "NextResponse.next({request:{headers:requestHeaders}})";
+  const clientReads = ["x-href", "x-kp-document"].flatMap((n) => ["get", "has", "append", "delete"].map((m) => `.${m}("${n}"`)).filter((r) => squeezed.includes(r));
+  const order = [at4(COPY), at4(SET_HREF), at4(SET_DOC), at4(PASS_ON)];
+  ok("2.proxy.headers · the edge SETS x-href (the path and query it parsed) and x-kp-document (from the browser's Sec-Fetch-Mode) over its copy of the client's headers, before passing them on — each named once, never read from or appended to what a client sent",
+    squeezed.includes('const{pathname,search}=req.nextUrl;') && order.every((n) => n >= 0) && order[0] < order[1] && order[0] < order[2] && order[1] < order[3] && order[2] < order[3]
+      && count(squeezed, '"x-href"') === 1 && count(squeezed, '"x-kp-document"') === 1 && clientReads.length === 0,
+    j({ order, clientReads, href: count(squeezed, '"x-href"'), doc: count(squeezed, '"x-kp-document"') }));
   const rows = w.shelved.split(LF).filter((l) => l.startsWith("| The board (`/markets`)"));
   const cells = rows.length === 1 ? rows[0].split("|").slice(1, -1).map((c) => c.trim()) : [];
   ok("2.shelved · SHELVED.md carries the board's row in its six columns (A18): unmounted for a journey request, '§3.2: /markets answers 307', its date, how to re-mount it (the shell's branch and the page's redirect) and this suite",
@@ -446,7 +493,7 @@ if (!PROVE_RED) {
         const extra = ["sort", "page"].flatMap((k) => { const v = p.get(k); return v === null ? [] : [`${k}=${encodeURIComponent(v)}`]; });
         return extra.length === 0 ? real : `${real}${real.includes("?") ? "&" : "?"}${extra.join("&")}`;
       }) },
-    { name: "status=watch ignored: the reader's watch lens lands on the home (the greeting's watch row with it)", fails: ["1.watch", "1.welcome"],
+    { name: "status=watch ignored: the reader's watch lens lands on the home (the greeting's and the cut search's watch rows with it)", fails: ["1.watch", "1.welcome", "1.whole"],
       plant: (w) => wrap(w, (input, real) => {
         const p = paramsOf(input);
         if (p.get("status") !== "watch") return real;
@@ -495,6 +542,12 @@ if (!PROVE_RED) {
       }) },
     { name: "a fragment read as part of the query (a link's #?topic= becomes the home's chip)", fails: ["1.forms"],
       plant: (w) => wrap(w, (input, real) => (typeof input === "string" && input.includes("#") ? w.target(input.split("#").join("")) : real)) },
+    { name: "the search clamped without its guard (the WP9 review): an emoji the cap cuts in two leaves half a character, writing the address throws a URIError, and a journey reader's /markets answers an error page", fails: ["1.whole", "1.same-origin"],
+      plant: (w) => wrap(w, (input, real) => {
+        const q = clampText(paramsOf(input).get("q") ?? undefined, MAX_QUERY_LEN);
+        if (q !== "") encodeURIComponent(q);
+        return real;
+      }) },
     { name: "GA's list gains a key the redirect does not keep", fails: ["1.ga"],
       plant: (w) => ({ ...w, ga: [...w.ga, "dclid"] }) },
     { name: "the module imports a server module (the server graph in a browser chunk)", fails: ["1.imports"],
@@ -539,6 +592,14 @@ if (!PROVE_RED) {
       plant: (w) => ({ ...w, proxy: `${w.proxy}${LF}const pass = req.cookies.get("kp_preview");${LF}` }) },
     { name: "the board's SHELVED row is gone (shelved with no record of how to bring it back)", fails: ["2.shelved"],
       plant: (w) => ({ ...w, shelved: w.shelved.split(LF).filter((l) => !l.startsWith("| The board (`/markets`)")).join(LF) }) },
+    // The WP9 review's hardening
+    { name: "the shell's branch nested inside `if (session)` (a guest holding a preview pass is served the board)", fails: ["2.shell.top"],
+      plant: onShell((s) => swap(s, `${BRANCH}${LF}`, `  if (session) {${LF}  ${BRANCH}${LF}  }${LF}`)) },
+    { name: "the edge forwards the client's own x-kp-document (a forged 1 turns a flight into a root-layout redirect: a blank page)", fails: ["2.proxy.headers"],
+      plant: (w) => ({ ...w, proxy: swap(w.proxy, '    req.headers.get("sec-fetch-mode") === "navigate" && !req.headers.has("next-action") ? "1" : "0",',
+        '    req.headers.get("x-kp-document") ?? "0",') }) },
+    { name: "the edge stops setting x-href (a client's own x-href rides through the copied headers into the redirect's target)", fails: ["2.proxy.headers"],
+      plant: (w) => ({ ...w, proxy: swap(w.proxy, `  requestHeaders.set("x-href", pathname + search);${LF}`, "") }) },
   ];
   let caught = 0, fail = 0;
   const ok = (label: string, cond: boolean, extra = "") => { if (!cond) fail++; console.log(`${cond ? "PROVED  " : "MISSED  "} ${label}${extra ? ` — ${extra}` : ""}`); };
