@@ -490,6 +490,7 @@ async function ghostHop({ w, h, locale, red = null, pass = true }) {
   await page.evaluate(GHOST_PROBE, SEL);
   const link = w >= 1024 ? page.locator(`${SEL.header} a[href="/"]:not(.kp-jhdr__home)`).first() : page.locator(`${SEL.rail} a[href="/"]`).first();
   if (!(await link.count())) { await ctx.close(); return { error: "no visible journey link to /" }; }
+  if (!(await hydrated(link))) { await ctx.close(); return { error: "the journey link to / never hydrated: a press would be a document load" }; }
   try { await link.click({ timeout: 60_000 }); }
   catch (e) { await ctx.close(); return { error: `the click on the journey link to / failed: ${String(e?.message ?? e).split("\n")[0].slice(0, 140)}` }; }
   await page.locator(SEL.home).first().waitFor({ timeout: 180_000 }).catch(() => {});
@@ -525,35 +526,60 @@ if (run("ghost")) {
 }
 
 // ── tap · from the home to a question page: which loading picture (A19 item 3) ──────────────────────────────────────
+/**
+ * The loading pictures a hop can paint, each found by a mark unique to its own markup (A19 item 3), never by a shimmer
+ * class the landed pages carry too (a question page draws ten shimmer bars of its own while its parts stream):
+ *   · the home's ghost       — its root's test id (journey-home-ghost.tsx);
+ *   · the markets ghost      — markets/loading.tsx's search band, drawn aria-hidden (the board's real box is not);
+ *   · the question's ghost   — markets/[id]/loading.tsx's header, drawn aria-hidden (the landed page's header is not).
+ * Runs IN THE PAGE: the list of pictures on screen in one frame.
+ */
+const LOADING_PICTURES = () => {
+  const seen = [];
+  if (document.querySelector('[data-testid="journey-home-ghost"]')) seen.push("journey-home-ghost");
+  if (document.querySelector(".search-box-wrap.kp-markets-search[aria-hidden]")) seen.push("markets/loading's ghost");
+  if (document.querySelector("main header.mt-3[aria-hidden]")) seen.push("[id]/loading's ghost");
+  return seen;
+};
+/** Waits until a link's own script has hydrated it (React's props on the element): a press before that is a document load. */
+async function hydrated(locator, timeout = 60_000) {
+  return locator.first().evaluate((el, ms) => new Promise((done) => {
+    const t0 = performance.now();
+    const check = () => {
+      if (Object.keys(el).some((k) => k.startsWith("__reactProps"))) return done(true);
+      if (performance.now() - t0 > ms) return done(false);
+      setTimeout(check, 100);
+    };
+    check();
+  }), timeout).catch(() => false);
+}
 if (run("tap")) {
   console.log("\ntap · a throttled tap from the home to a question page (A19 item 3)");
   for (const how of ["the card's stretched link", "an NDIO pick"]) {
     const ctx = await ctxFor({ w: 390, h: 844, locale: "sw", session: SESSION });
     const page = await ctx.newPage();
     await open(page, "/");
+    const card = page.locator(SEL.card).first();
+    const target = how === "an NDIO pick" ? card.locator(".kp-jcard__pick.btn-yes").first() : card.locator(".kp-jcard__open").first();
+    if (!(await hydrated(target))) { ok(`tap · ${how}: the link hydrates`, false, "no React props on it after 60 s: a press would be a document load"); await ctx.close(); continue; }
     const cdp = await ctx.newCDPSession(page);
     await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 400, downloadThroughput: (400 * 1024) / 8, uploadThroughput: (400 * 1024) / 8 });
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
-    await page.evaluate((sel) => {
+    await page.evaluate((probe) => {
+      const pictures = new Function(`return (${probe})()`);
       window.__frames = [];
-      const tick = () => {
-        const seen = [];
-        if (document.querySelector(sel.ghost)) seen.push("journey-home-ghost");
-        if (document.querySelector('[aria-busy="true"], .kp-shimmer-track') && !document.querySelector(sel.ghost)) seen.push(location.pathname.startsWith("/markets/") ? "a question page ghost" : "a markets ghost");
-        if (seen.length) window.__frames.push(seen.join("+"));
-        requestAnimationFrame(tick);
-      };
+      const tick = () => { const seen = pictures(); if (seen.length) window.__frames.push(seen.join("+")); requestAnimationFrame(tick); };
       requestAnimationFrame(tick);
-    }, SEL);
-    const card = page.locator(SEL.card).first();
-    const target = how === "an NDIO pick" ? card.locator(".kp-jcard__pick.btn-yes").first() : card.locator(".kp-jcard__open").first();
+    }, LOADING_PICTURES.toString());
     await target.click();
     await page.waitForURL(/\/markets\/mkt_/, { timeout: 180_000 }).catch(() => {});
-    await page.waitForTimeout(1500);
-    const frames = await page.evaluate(() => window.__frames ?? []);
+    // Landed: the question's own h1 is drawn and no loading picture is left on screen.
+    await page.waitForFunction((probe) => !!document.querySelector("main h1")?.textContent?.trim() && new Function(`return (${probe})()`)().length === 0, LOADING_PICTURES.toString(), { timeout: 180_000 }).catch(() => {});
+    const frames = await page.evaluate(() => window.__frames ?? null);
+    if (frames === null) { ok(`tap · ${how}: a soft hop`, false, "the probe was lost: the press loaded a new document"); await ctx.close(); continue; }
     const kinds = [...new Set(frames)];
     if (!frames.length) nmLine(`tap · ${how}`, "no loading frame was captured");
-    else ok(`tap · ${how}: no frame of the home's ghost on the way to the question (seen: ${kinds.join(", ")})`, !kinds.some((k) => k.includes("journey-home-ghost")));
+    else ok(`tap · ${how}: no frame of the home's ghost on the way to the question (seen: ${kinds.join(", ")}; ${frames.length} frames)`, !kinds.some((k) => k.includes("journey-home-ghost")));
     await ctx.close();
   }
 }
@@ -584,8 +610,9 @@ if (run("redirect")) {
   // — both a flight request, which only the page's own redirect answers.
   const linkCount = await page.locator('a[href^="/markets?"], a[href="/markets"]').count();
   const how = linkCount ? "a classic /markets link on the page" : "the app router pushed to /markets?topic=sports (no classic link on the page)";
-  await page.evaluate((sel) => { window.__seq = []; window.__docLoads = performance.getEntriesByType("navigation").length; const tick = () => { const k = document.querySelector(sel.ghost) ? "home ghost" : document.querySelector('[aria-busy="true"], .kp-shimmer-track') ? "a ghost" : null; if (k && window.__seq[window.__seq.length - 1] !== k) window.__seq.push(k); requestAnimationFrame(tick); }; requestAnimationFrame(tick); }, SEL);
+  await page.evaluate((probe) => { const pictures = new Function(`return (${probe})()`); window.__seq = []; const tick = () => { const k = pictures().join("+") || null; if (k && window.__seq[window.__seq.length - 1] !== k) window.__seq.push(k); requestAnimationFrame(tick); }; requestAnimationFrame(tick); }, LOADING_PICTURES.toString());
   let pushed = true;
+  if (linkCount) await hydrated(page.locator('a[href^="/markets?"], a[href="/markets"]'));
   if (linkCount) await page.locator('a[href^="/markets?"], a[href="/markets"]').first().click();
   else pushed = await page.evaluate(() => { const r = window.nd?.router; if (!r?.push) return false; r.push("/markets?topic=sports"); return true; });
   if (!pushed) nmLine("redirect · a soft hop to /markets", "no classic /markets link on /results and no development router handle to push one");
