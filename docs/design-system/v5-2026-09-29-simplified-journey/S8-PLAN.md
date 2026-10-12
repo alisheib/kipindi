@@ -1203,7 +1203,7 @@ The classic keys keep their words until S12 (§0h point 3); the sheet reads thes
 | `sheetFrozen` | `failWalletFrozen` (:100) | Pochi yako imegandishwa, kwa hiyo huwezi kuweka dau. Wasiliana na msaada kutatua hili. | Your wallet is frozen, so you can't place a bet. Contact support to resolve it. | 您的钱包已冻结，无法投注。请联系客服处理。 |
 | `sheetSessionLimit` | `failSessionLimit` (:122) | Ulijiwekea kikomo cha dakika {limitMin} kwa kipindi kimoja, na kipindi hiki kimefikia kikomo hicho. Uwekaji dau umezimwa hadi upumzike — rudi baadaye uanze kipindi kipya. | You set a {limitMin}-minute limit for one session, and this session has reached it. Betting is off until you take a break — come back later to start a new session. | 您为单次时长设定了 {limitMin} 分钟上限，本次已达到。投注已关闭，请先休息——稍后回来开始新的时段。 |
 | `sheetRateLimited` | `failRateLimited` (:123) | Umejaribu haraka mno. Subiri sekunde {sec} kisha jaribu tena. | You tried too quickly. Wait {sec}s and try again. | 操作过快。请等待 {sec} 秒后重试。 |
-| `sheetDepositLimit` | `errDepositLimit`, the C11 sentence (:128; s4-5-low-limit) | Kuweka {amount} kungepita kikomo cha kuweka pesa ulichojiwekea. Unaweza kukagua vikomo vyako kwenye Uchezaji salama. | Depositing {amount} would go over the deposit limit you set. You can review your limits under Responsible gambling. | 充值 {amount} 将超过您设定的充值上限。您可在“负责任博彩”中查看限额。 |
+| `sheetDepositLimit` | `errDepositLimit`, the C11 sentence (:128; s4-5-low-limit) | Kuweka {amount} kungepita kikomo cha kuweka pesa ulichojiwekea. Unaweza kukagua vikomo vyako kwenye ukurasa wa Vikomo (A20 item 7, corrected). | Depositing {amount} would go over the deposit limit you set. You can review your limits under Responsible gambling. | 充值 {amount} 将超过您设定的充值上限。您可在“负责任博彩”中查看限额。 |
 | `sheetSofRequired` | `errSofRequired`, the C11 sentence (:128; s4-5-low-sof) | Ili uweke pesa, tamko lako la chanzo cha fedha linahitaji kukubaliwa na timu yetu kwanza. Jaza tamko kwenye wasifu wako; utaweza kuweka pesa likishakubaliwa. | To deposit, your source-of-funds declaration must first be accepted by our team. Fill it in on your profile; you can deposit once it is accepted. | 充值前，您的资金来源声明需先经我们团队接受。请在个人资料中填写声明；接受后即可充值。 |
 | `sheetBelowMin` | the first sentence of `failStakeBelowMin` (§0g :2545) | Dau la chini kabisa ni {min}. | The minimum bet is {min}. | 最低投注为 {min}。 |
 | `sheetAboveMax` | the first sentence of `failStakeAboveMax` | Kiwango cha juu kwa dau moja ni {max}. | The maximum for a single bet is {max}. | 单笔投注上限为 {max}。 |
@@ -2132,6 +2132,10 @@ matrix rows 1, 2, 12 and 15; WP6 steps 2.3 and 6.
 7. **One name for the limits page.** The sentences name the page by its title, "Uchezaji salama", as
    `error.failLossLimitDaily` (since `e5b5c9da`) and the approved `sheetDepositLimit` do. The button keeps its action,
    "Weka mipaka" (`rg.setLimits`). Review 8 confirms.
+   ⚠️ **Corrected in place 2026-10-13 (S8 WP4's independent review; review 8 signed with it):** no Swahili page or label
+   is named "Uchezaji salama" — the limits page's sw title is "Vikomo" (`profile.responsibleGambling`, its h1). So
+   `sheetDepositLimit` says "…kwenye ukurasa wa Vikomo"; the live `error.failLossLimitDaily` and `error.errDepositLimit`
+   keep their words until S12 (filed in S4-COPY-AUDIT), and the sheet's loss block reads the live key as it stands.
 8. `estimateUpdatedLive` keeps the board's "≈ ": sw "Makadirio yamesasishwa: ≈ {amount}, ≈{mult}× dau lako"; en
    "Estimate updated: ≈ {amount}, ≈{mult}× your bet"; zh "预估已更新：≈ {amount}，≈{mult}× 您的投注"
    (s4-4-sheet-updated).

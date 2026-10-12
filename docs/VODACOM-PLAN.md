@@ -2867,7 +2867,9 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     `Date.now() - 86_400 * 1000`) — untrue at any hour. It now says "It counts the last 24 hours" / "Kinahesabu saa 24
     zilizopita" / "该上限按过去 24 小时计算", the clause S8's sheet will use (S4-COPY-AUDIT.md review 7; its S12 line for this
     key is withdrawn). A responsible-gambling message is a statement about the player's own control, so it ships alone,
-    for every player, ahead of the S12 batch.
+    for every player, ahead of the S12 batch. (S8 WP4, 2026-10-13: the sheet's loss block reads this key itself — no
+    `journey.sheetLossBlock` — S8-PLAN A5 item 2. Its sw sentence still names the page "Uchezaji salama", which is no
+    page's name: filed for S12 in S4-COPY-AUDIT.)
 
 
 78. **"Onyesha zaidi" is one control, and every reader's `/live` loads the kit's pending mark (S7 WP10 review, 2026-10-12,
@@ -3555,32 +3557,34 @@ the S4 canvas's approved word where one is drawn, and reviewed in
 | `journey.hubSearchPlaceholder` | Tafuta swali | Search questions | 搜索问题 |
 
 **S8 keys (2026-10-13, `S8-PLAN.md` WP4, as amended by A5, A10, A20 and A24).** The thirteen deck strings above that
-S8's sheet shows are keys of the `journey` namespace now, verbatim, each marked "built (S8 WP4)": `sheetChosen`,
+S8's sheet will show are keys of the `journey` namespace now, verbatim, each marked "built (S8 WP4)": `sheetChosen`,
 `stakeLabel`, `estimateLead`, `estimatePill`, `balanceRow`, `placeCta`, `placeCtaBare`, `estimateCompact`, `lowTitle`,
 `lowBody`, `lowChoose`, `lowDeposit` and `lowBetInstead`. `estimateNote` was S7's and is reused; `pendingBet` is S9's and
 not added. Beside them: the S4 canvas words review 3 approved (`estimatePillOver`, `estimateUpdated`,
 `sheetEmptyPoolBody`, `sheetRefundRule`, `sheetFirstOnSide`, `sheetLegacyFee`, `lowMinNote`, `lowPendingTitle`,
 `lowPendingTrack`, `lowSofCta`, `homeBreakTitle`, `homeBreakBody`, `cardBreak`), each drawn figure a placeholder; and
 review 2's corrected live words as journey copies (`sheetClosedTitle` … `sheetAboveMax`, sixteen keys), which the sheet
-reads while the classic keys keep their words until S12. Every amount, multiple and rate is a placeholder — the minimum
-stake (TZS 500 since 2026-10-12) is read per market and typed nowhere. Reused by key, never copied: the loss block is
+will read while the classic keys keep their words until S12. Every amount, multiple and rate is a placeholder — the minimum
+stake is read per market (RULES.md is its one home) and typed nowhere. Reused by key, never copied: the loss block will be
 `error.failLossLimitDaily` as corrected live on 2026-10-12 (S8-PLAN A5; no `sheetLossBlock`), the ✕ is `common.close`,
-the receipt's "Dau" is `common.stake`, and the rest of S8-PLAN's "Reused, never copied" list. ⛔ No helpline key. S8's
+the receipt's "Dau" is `common.stake`, and the rest of S8-PLAN's "Reused, never copied" list (less
+`error.failMarketNotLive`, which A20 item 3 replaced with `journey.sheetNotTaking`). ⛔ No helpline key. S8's
 own words, which no deck slide gives, are drafts, reviewed in
 [`S4-COPY-AUDIT.md`](design-system/v5-2026-09-29-simplified-journey/S4-COPY-AUDIT.md) "S8 drafts" and "Swahili review" 8
-(drafted by the build, for Ali's or a Swahili reviewer's sign-off):
+(drafted by the build; signed 2026-10-13 by Claude as Ali's Swahili reviewer, with WP4's independent review's
+corrections — the values below are the signed ones):
 
 | S8 draft key | sw | en | zh (draft) |
 |---|---|---|---|
 | `journey.sheetRailsPaused` | Kuweka pesa hakupatikani kwa sasa. Njia zote za malipo zimesimama kwa muda — jaribu tena baadaye. | Deposits are unavailable right now. Every payment method is paused for a while — try again later. | 目前无法充值。所有支付方式暂停中——请稍后再试。 |
-| `journey.sheetDepositMax` | Kiwango cha juu cha kuweka pesa mara moja ni {max}. | The most you can deposit at once is {max}. | 单笔充值上限为 {max}。 |
+| `journey.sheetDepositMax` | Kiwango cha juu ni {max} kwa kila kuweka pesa. | The most you can deposit at once is {max}. | 单笔充值上限为 {max}。 |
 | `journey.sheetPlacing` | Inaweka dau… | Placing your bet… | 正在投注… |
 | `journey.sheetPlacingSlow` | Bado tunaweka dau lako — inachukua muda kidogo. | Still placing your bet — this is taking a moment. | 仍在为您投注——需要一点时间。 |
 | `journey.retryCta` | Jaribu tena · {amount} | Try again · {amount} | 重试 · {amount} |
 | `journey.sheetNotTaking` | Swali hili halipokei dau kwa sasa. | This question isn’t taking bets right now. | 此问题目前不接受投注。 |
 | `journey.sheetBonusWager` | Dau hili halitahesabiwa kwenye bonasi yako. Tayari una fedha upande wa pili wa swali hili, na upande mmoja tu ndio unaohesabiwa kwenye {remaining} unayohitaji kuweka kabla ya bonasi yako kutolewa. | This bet won’t count toward your bonus. You already have money on the other side of this question, and only one side counts toward the {remaining} you still need to bet before your bonus can be withdrawn. | 此注不计入您的奖金要求。您在此问题的另一方已有资金，仅一方计入您提取奖金前仍需投注的 {remaining}。 |
 | `journey.estimateUpdatedLive` | Makadirio yamesasishwa: ≈ {amount}, ≈{mult}× dau lako | Estimate updated: ≈ {amount}, ≈{mult}× your bet | 预估已更新：≈ {amount}，≈{mult}× 您的投注 |
-| `journey.estimateNoteCompact` | Makadirio · kamisheni ya {pct}% imeshatolewa. | Estimate · our {pct}% commission is already deducted. | 预估 · 已扣除 {pct}% 佣金。 |
+| `journey.estimateNoteCompact` | Makadirio · kamisheni ya {pct}% imeshatolewa. | Estimate · our {pct}% commission on the losing side is already deducted. | 预估 · 已扣除输方 {pct}% 佣金。 |
 | `journey.multOnly` | ≈{mult}× | ≈{mult}× | ≈{mult}× |
 | `journey.lowBetInsteadEstimate` | Ukishinda ≈ {amount} · ≈{mult}× | If you win ≈ {amount} · ≈{mult}× | 若赢 ≈ {amount} · ≈{mult}× |
 | `journey.lowLossTitle` | Kikomo cha hasara | Loss limit | 亏损上限 |
