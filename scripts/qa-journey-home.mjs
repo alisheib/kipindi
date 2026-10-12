@@ -12,9 +12,10 @@
  *
  * ── WHAT A MACHINE ASSERTS, ONE PASS / FAIL / BLOCKED / NOT MEASURED LINE EACH ──────────────────────────────────────
  *   positive  (A23 item 3) with a pass, the documents of /, /live and /results carry S7's ids where they belong —
- *             journey-home and journey-howto-card on /, journey-card on all three (`live/journey-home-ids.mjs`, the
- *             list qa:live's absence checks read) — and, with no pass, none of them; journey-home-ghost is looked for
- *             on / and its finding PRINTED (the list holds it only if it is found);
+ *             journey-home, journey-howto-card and journey-home-ghost on /, journey-card on all three
+ *             (`live/journey-home-ids.mjs`, the list qa:live's absence checks read) — and, with no pass, none of them.
+ *             journey-home-ghost is listed because this control found it (A23 item 1: listed if, and only if, found), so
+ *             it is required like the others;
  *   controls  a reader with no pass gets today's /, /markets (the board, HTTP 200), /live, /results and /watchlist,
  *             with no journey trace in the page or the bytes;
  *   home      the home's states as cards (priced, closes today, an empty pool, one side, over the cap, a hidden figure,
@@ -242,7 +243,9 @@ async function open(page, path, { wait = SEL.home } = {}) {
 let ghostListed = null;
 if (run("positive")) {
   console.log("\npositive · S7's ids in a pass holder's documents, none without the pass");
-  const WANT = { "/": ["journey-home", "journey-howto-card", "journey-card"], "/live": ["journey-card"], "/results": ["journey-card"] };
+  // journey-home-ghost is in the list because this control found it in a pass holder's served / (A23 item 1), so it is
+  // required there: an id the list keeps must keep appearing, or its absence checks prove nothing.
+  const WANT = { "/": ["journey-home", "journey-howto-card", "journey-card", "journey-home-ghost"], "/live": ["journey-card"], "/results": ["journey-card"] };
   for (const [path, want] of Object.entries(WANT)) {
     const withPass = await (await fetch(`${BASE}${path}`, { headers: { cookie: `${PASS.name}=${PASS.value}; ${LOCALE_COOKIE}=sw` } })).text();
     const without = await (await fetch(`${BASE}${path}`, { headers: { cookie: `${LOCALE_COOKIE}=sw` } })).text();
@@ -251,7 +254,7 @@ if (run("positive")) {
     ok(`positive · ${path} without a pass carries none of ${JOURNEY_HOME_TESTIDS.join(", ")}`, leaked.length === 0, `found ${leaked.join(", ")}`);
     if (path === "/") {
       ghostListed = /data-testid(?:=|\\?":)\\?"journey-home-ghost\\?"/.test(withPass);
-      console.log(`    · journey-home-ghost in a pass holder's served / : ${ghostListed ? "FOUND (it belongs in the list)" : "not found (the list leaves it out, A23 item 1)"}`);
+      console.log(`    · journey-home-ghost in a pass holder's served / : ${ghostListed ? "FOUND (listed, A23 item 1)" : "NOT FOUND — it is in the list, so the line above fails: take it out of the list only with the §0j record changed"}`);
     }
   }
   const every = JOURNEY_HOME_TESTIDS.every((id) => Object.values(WANT).flat().includes(id));

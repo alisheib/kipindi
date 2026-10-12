@@ -498,7 +498,7 @@ async function accountNotFound(ctx, who, signedIn = false) {
  * officer's to mint (decision 7). Its one write is the local in-memory store's: a SUPPORT fixture and its pass.
  */
 async function journeyShellControl() {
-  const label = "control · the readers SEE the journey shell when it is served — / with a staff preview pass, through [E2]'s fetch and through the page reader [E3] and /account use — and S7's ids on the journey home (journey-home, journey-card, journey-howto-card: WP11, A23 item 3)";
+  const label = `control · the readers SEE the journey shell when it is served — / with a staff preview pass, through [E2]'s fetch and through the page reader [E3] and /account use — and S7's ids on the journey home (${JOURNEY_HOME_TESTIDS.join(", ")}: WP11, A23 item 3)`;
   const skip = (why) => console.log(`  ⚠ SKIP  ${label} — ${why}. The absence checks below are proved on hand-written traces only, by this run.`);
   if (!LOCAL) return skip("production: a preview pass is an officer's to mint (decision 7)");
   const kit = await import("./live/journey-pass.mjs");
