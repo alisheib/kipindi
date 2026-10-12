@@ -2828,10 +2828,13 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     Each of the three catches now asks `isActionRedirect` (`src/lib/action-redirect.ts`, Next's own rule) before any
     failure is said: the confirm closes, nothing is said, and the navigation speaks. Proof: `test:action-redirect`
     (predeploy: the reducer still rejects, the rule equals Next's over real redirect errors and near misses, and each
-    control asks first; `red:action-redirect` catches 13 of 13 plants and passes a green control) and
-    `qa:auth-loss-mid-bet` (each control commits with the session alive, then with it ended: 15/15 on the fix, the three
-    "no failure is said" lines red on its parent, and the wallet unmoved). §3.3's auth-loss line is annotated (S8-PLAN A6
-    item 4's WP0 note, done here). No overrule: Ali's ruling.
+    control asks first; `red:action-redirect` catches 14 of 14 plants, a deferred toast among them, and passes a green
+    control) and `qa:auth-loss-mid-bet` (each control commits with the session alive, then with it ended: 15/15 on the
+    fix, the three "no failure is said" lines red on its parent, and the wallet unmoved; on Node 24, the production
+    version). `test:updown-quickbet` 30.4, which certified the dead `r == null` branch, now reads the catch. An
+    independent review found no blocker. Its one case for later, S8's doubt state: a dial Retry after an unknown
+    outcome, made once the session has ended, now redirects in silence, so its "check your wallet" advice is not
+    repeated. §3.3's auth-loss line is annotated (S8-PLAN A6 item 4's WP0 note, done here). No overrule: Ali's ruling.
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
 

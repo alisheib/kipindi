@@ -354,7 +354,12 @@ async function mine(userId: string | undefined): Promise<{ up: number; down: num
      (hook.match(/m\.delete\(key\)/g) ?? []).length >= 3);
   ok("30.3 · success SETTLES the key; only a server advance removes settled entries",
      /settled: true/.test(hook) && /filter\(\[, e\]\) => !e\.settled\)|filter\(\(\[, e\]\) => !e\.settled\)/.test(hook));
-  ok("30.4 · auth loss is not a failed bet — a null action result clears silently, no toast",
+  // ⭐ L3 (VODACOM-PLAN §0h point 80): in Next 16 a signed-out session's redirect REJECTS the action's call, so auth
+  // loss arrives in the catch — `isActionRedirect`, asked before the toast — never as a null result. 30.4 used to certify
+  // the `r == null` branch, which no redirect reaches; `test:action-redirect` §3 holds the catch's order.
+  ok("30.4 · auth loss is not a failed bet — the catch asks isActionRedirect, clears the tap's entry and returns before the toast",
+     /\} catch \(e\) \{\s*\n\s*mutateInFlight\(\(m\) => \{ m\.delete\(key\); \}\);[\s\S]{0,800}?if \(isActionRedirect\(e\)\) return;[\s\S]{0,400}?toast\(/.test(hook));
+  ok("30.4b · …and a verdict-less answer still clears silently (the belt the redirect test used to be)",
      /if \(r == null\) \{\s*\n\s*mutateInFlight\(\(m\) => \{ m\.delete\(key\); \}\);\s*\n\s*return;/.test(hook));
   ok("30.5 · ⭐ ONE surface reconciliation per tap burst — the falling-edge 50pick:refresh dispatch",
      /wasPending\.current && !pending/.test(hook) && /dispatchEvent\(new Event\("50pick:refresh"\)\)/.test(hook));
