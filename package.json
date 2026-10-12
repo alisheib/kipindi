@@ -645,6 +645,7 @@
     "qa:lost-chunk": "node scripts/qa-lost-chunk.mjs",
     "qa:journey-header-fit": "node scripts/qa-journey-header-fit.mjs",
     "qa:journey-above-fold": "node scripts/qa-journey-above-fold.mjs",
+    "qa:journey-home": "node scripts/qa-journey-home.mjs",
     "red:journey-header-fit": "node scripts/journey-header-fit-red.mjs",
     "qa:journey-shell": "node scripts/qa-journey-shell.mjs",
     "test:short-title-fit": "tsx scripts/short-title-fit.test.mts",
