@@ -230,7 +230,7 @@ With a null marker, each gives a player exactly what they had before; the letter
 
 | Change | What it does | Where |
 |---|---|---|
-| (b) | A replayed idempotency key that belongs to another account's bet refuses instead of returning that bet as this caller's receipt: a player gets `idempotency_key_conflict`; a house stake whose key belongs to another user or another bot gets `house_key_mismatch`. | `buyPositionInner` replay |
+| (b) | A replayed idempotency key that belongs to another account's bet refuses instead of returning that bet as this caller's receipt: a player gets `idempotency_key_conflict`; a house stake whose key belongs to another user or another bot gets `house_key_mismatch`. | `buyPositionInner` replay; and since 2026-10-12 (live fix L2, VODACOM-PLAN §0h point 81) `landedKeyAnswer` at `SEAM:landedKey`, which answers a player's REFUSED keyed bet with that key's bet only when it is the player's own and not a house stake |
 | (c) | `buyPositionAction` refuses a key starting `hb:` with `idempotency_key_conflict`. | `app/markets/actions.ts` |
 | (d) | `cashOutValue` takes `houseBotId`; a house position is not sellable, and reads as a closed exit (`WINDOW_PASSED`, C4 ruling 147 — no caller can tell it apart, D19c). Output for every player position is byte-identical to the golden grid captured before the change. | `market-service.ts`, both page callers |
 | (e) | `cashOutPosition` refuses a house position with the closed exit window's own refusal, word for word (`exit_window_closed`, code `SELECTION_CLOSED`; C4 ruling 147). The house refusal reasons are server-only `HouseSeamReason`s, never in the client-bundled registry or dictionary (ruling 148). | `market-service.ts` |
