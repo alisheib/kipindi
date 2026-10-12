@@ -334,7 +334,17 @@ function normaliser(extras, without) {
 
 function idValue(el, v, without) {
   if (!without.has("streamed segment ids") && /^[SBP]:[0-9a-f]+$/.test(v)) return `${v[0]}:~`;
-  if (!without.has("the identity avatar's ids") && SVG_DEFS.has(el.tag) && /^c[tmgc][0-9a-z]+$/.test(v)) return `${v.slice(0, 2)}~`;
+  // ⭐ S7 WP1 calibration 4 (OMEGA-COMPILE01, 2026-10-12). An avatar's id is its kind's two letters, the base-36 hash of
+  // its seed, and — since the visual pass gave every avatar its own `useId` (identity-avatar.tsx: `"cm" +
+  // hashSeed(seed).toString(36) + uid`) — React's id after it; a clip path adds a "c". Only the HASH is this server's own
+  // (each fresh server mints a new demo player): it reads ~, and whatever follows it is kept, React's id among it, which
+  // the base normalisation reads. The rule this replaces asked for the bare hash to the end of the id, so today's
+  // `cm49rp65_R_5_` was never read: a null pair of two fresh servers at one commit differed in every signed-in cell, by
+  // exactly the avatar's gradient and clip path (7 of 14 cells, 4 lines each; the guest's 7 identical).
+  if (!without.has("the identity avatar's ids") && SVG_DEFS.has(el.tag)) {
+    const m = /^(c[tmgc])[0-9a-z]+([^0-9a-z].*)?$/.exec(v);
+    if (m) return `${m[1]}~${m[2] ?? ""}`;
+  }
   return v;
 }
 
