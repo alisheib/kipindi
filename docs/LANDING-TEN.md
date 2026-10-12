@@ -74,6 +74,10 @@ whether a floor of 10 is right for a book this size, or whether the card should 
 withholds. Not a defect to fix quietly — a number to rule on.
 
 ⛔ **R18 (Ali, 2026-09-29): WP5, V21 and WP20 are superseded by the Vodacom plan**, the sponsor's journey, tracked in [`VODACOM-PLAN.md`](VODACOM-PLAN.md) and not here. The home page follows that plan from its S15 flip; what this programme built is shelved, never deleted ([`SHELVED.md`](SHELVED.md)).
+⭐ **Since the Vodacom plan's S7 (LIVE `f20f1617`, 2026-10-12): the landing is shelved for journey readers.** A reader whom
+the journey is shown to (today only a staff preview pass) is drawn the plan's journey home on `/`; every other reader is
+served this programme's landing exactly as before — the same element, its markup and data unchanged (parity v3, 224
+cells; SHELVED.md's landing row). Nothing here changes for players until the plan's S15 flip.
 
 **Next:** WP9, then the small R7 build. In order:
 1. ~~The production frame review for WP3, WP4 and WP12~~ — **DONE 2026-09-28**; all three rows ✅.

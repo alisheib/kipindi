@@ -844,7 +844,8 @@ Until then the status line stays 🟠 and `§0 NEXT` names real work.
     grey circle, and not one word on screen.** Nothing in the register mentioned it; it was found
     by reading the filter rather than the defect. ⭐ That is why the fix is a SIBLING row and not a
     third term inside the map: inside it, it renders zero times on exactly the view that was empty.
-  - ⛔ **EVERY FIGURE AND ADDRESS IN D42'S CELL WAS STALE** — 171 → 210 markets, 147 → 179 named,    24 → 31 unnamed, both line references off by ~200. The archive grew by 39 rows and the defect
+  - ⛔ **EVERY FIGURE AND ADDRESS IN D42'S CELL WAS STALE** — 171 → 210 markets, 147 → 179 named,
+    24 → 31 unnamed, both line references off by ~200. The archive grew by 39 rows and the defect
     grew with it; only the percentage held. And §9's arc triple "124/182/49" sums to **355°**, so it
     cannot be a reading of this component — a `Ring` clamps to exactly 1 (ring.tsx:52).
   - ⭐ **THIRD ROW, NOT THIRD TERM** — D64 measured that legend row 10px past the viewport at 277px
@@ -861,7 +862,8 @@ Until then the status line stays 🟠 and `§0 NEXT` names real work.
     `live &&`, one token" trades a fabricated PRICE for a fabricated ABSENCE. Two of the three
     "no bets yet" claims reach a SCREEN READER ONLY — the price slot's `aria-label` and the empty
     rail's accessible name — so an emergency-voided market that refunded real money would have
-    told a blind player nobody bet, while deleting the visible caption a sighted colleague could    have caught. It also destroyed the outcome readout on resolved cards: that arm was gated on
+    told a blind player nobody bet, while deleting the visible caption a sighted colleague could
+    have caught. It also destroyed the outcome readout on resolved cards: that arm was gated on
     `isResolved` (status `RESOLVED`) and sat AFTER the absence branch, so a VOIDED market — whose
     status is `VOIDED` — fell through to the percentage arm and printed the empty pool's 50%.
   - ⭐ **THE TWO CLAIMS ARE DIFFERENT QUESTIONS, and that is the whole lesson.** `noPrice` asks the
@@ -887,7 +889,8 @@ Until then the status line stays 🟠 and `§0 NEXT` names real work.
     · **v2 reported BLIND — also wrongly.** It read the status from `.chip`, and the kit's Chip
       renders no such class, so every status came back null and nothing matched. A false green
       became a false blind from the same instrument.
-    · **v3 reads the status word out of `.mcardp-top` and is BLIND for the right reason:** 12 cards,      all "Live". `/markets` lists only live markets and its recently-resolved strip is empty;
+    · **v3 reads the status word out of `.mcardp-top` and is BLIND for the right reason:** 12 cards,
+      all "Live". `/markets` lists only live markets and its recently-resolved strip is empty;
       `/results` renders NO `MarketCard` at all. So no terminal card is reachable on production
       today, which is §0 trap 3 — and why D29 rests on `test:outcome`'s five RED mutations.
     ⭐ THE TRANSFERABLE PART: an instrument that can report BLIND will still report it for the wrong
@@ -904,7 +907,8 @@ Until then the status line stays 🟠 and `§0 NEXT` names real work.
     STRUCTURALLY blind to: a stored side reaching copy through a VARIABLE (the `.side` read is two
     lines above the string that ships), and a display-position template whose only literal text is
     " · " so a prose gate skips it. ⛔ Its own taint pass came back EMPTY for two runs until CRLF was
-    normalised — `.` does not match ``, so every `$`-anchored rule silently matched nothing. A
+    normalised — `.` does not match `
+`, so every `$`-anchored rule silently matched nothing. A
     control now pins that reason in place.
   - 🔴 **AND THE REAL FIND, WHICH WAS NOT D39 AT ALL.** `red:labels` scored **10/12**, and chasing the
     uncaught one led to `stripComments`. Its JSX-comment rule was `/{s*/*[sS]*?*/s*}/` —
@@ -2117,7 +2121,7 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 - Render order (`app-shell.tsx`): TopAppBar `:303` · Announcement `:304` · session-ended `:307` · EmailVerifyBanner `:333` (collapsible, never dismissible; ⛔ deleted 2026-10-07, the owner's ruling) ·
   AwaySummaryBar `:341` · LiveTicker `:351`. On phones the AwaySummaryBar waits while the email bar is expanded; nothing else changes order or dismissibility.
   Re-run `qa:social-panel`.
-- ↪ **RE-TARGETED TO [VODACOM-PLAN](VODACOM-PLAN.md) (Ali, 2026-09-29): the old primer is shelved, and the new How to Play sheet's first-visit order (Vodacom plan §3.8) replaces this bullet. Not built in this unit.** D4: extend `src/lib/invitation-slot.ts` (today `useInvitationSlot(id, zone, priority, eligible)`, zones `bottom`/`top-right`) with a blocker the primer
+- ↪ **RE-TARGETED TO [VODACOM-PLAN](VODACOM-PLAN.md) (Ali, 2026-09-29): the old primer is shelved, and the new How to Play sheet's first-visit order (Vodacom plan §3.8) replaces this bullet. Not built in this unit.** (Checked at the plan's S7 close, 2026-10-12: since S7 WP8, live `f20f1617`, the old primer stands down for a journey reader on every route and the static How-to sheet opens from the home's How-to card; the auto-open order stays S11's.) D4: extend `src/lib/invitation-slot.ts` (today `useInvitationSlot(id, zone, priority, eligible)`, zones `bottom`/`top-right`) with a blocker the primer
   registers while open. Every claimant's eligibility (consent, install, channels) requires no blocker, and consent's 1200ms timer starts after the primer closes.
 - Guards:
   - demo player (email unverified + away entries) at 360: the email bar shows while the away bar waits, then the away bar appears after collapse;
@@ -2140,7 +2144,7 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
   PageContainer route is measured before and after. Update `scripts/measure-system.test.mts` (`test:measure`), `scripts/measure-parity-check.mjs`
   (`qa:measure-parity`) and `scripts/anchors/measure.anchors.mjs:73` in the same commit. Pages with their own padding: `updown/[roundId]`, `fairness`, `legal`.
 - Wallet/profile section gaps one step down; `KycGatePanel` `p-6` (`:133`) and `Callout` `stack` `p-6 sm:p-8` (`callout.tsx:257`) one step down below 640.
-- ↪ **RE-TARGETED TO [VODACOM-PLAN](VODACOM-PLAN.md) (Ali, 2026-09-29): the old primer is shelved, and the new How to Play sheet's first-visit order (Vodacom plan §3.8) replaces this bullet. Not built in this unit.** Primer (`first-visit-primer.tsx:453-468`): body `pb` and illustration one step down; title 22 → 20 below 640.
+- ↪ **RE-TARGETED TO [VODACOM-PLAN](VODACOM-PLAN.md) (Ali, 2026-09-29): the old primer is shelved, and the new How to Play sheet's first-visit order (Vodacom plan §3.8) replaces this bullet. Not built in this unit.** (Checked at the plan's S7 close, 2026-10-12: the re-target holds — the primer stands down for journey readers since S7 WP8, live `f20f1617`; classic readers keep it until the flip.) Primer (`first-visit-primer.tsx:453-468`): body `pb` and illustration one step down; title 22 → 20 below 640.
 - `/updown/[roundId]` `pb-14` (`page.tsx:276`) → the measured rail clearance.
 - Kept: `PageHeader` `text-title-lg`, wallet 38px balance, UP/DOWN and stake `btn-lg`.
 - Guards: `qa:footer-reachable`, `test:revoked-deadend`, page-height driver. Accept: each touched page shorter at 360, 0 overflow, nothing below the floor.
