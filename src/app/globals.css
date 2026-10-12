@@ -449,6 +449,11 @@
      dividers (exempt), preserving the elevation hierarchy. --border-control on
      --bg = 3.45:1, on --bg-elevated = 3.35:1. */
   --border-control: oklch(52% 0.130 268);
+  /* ⭐ S8 WP5 — THE ATTENTION EDGE (VODACOM-PLAN §0g, design call 2): a form control's "too much" — a stake over the
+     balance — drawn as a STRONG NEUTRAL edge, hue 268 like the rest of this family. ⛔ It is never the error's red, gold
+     (money) or the NO ink, and it is not an error: the Input's `attention` sets no `aria-invalid`. Held to WCAG 1.4.11's
+     3.0 on --bg-inset, where a field sits (`test:contrast`). One consumer: input.tsx. */
+  --input-attention: oklch(78% 0.06 268);
   --text:          oklch(98% 0.012 268);
   --text-muted:    oklch(86% 0.040 268);
   --text-subtle:   oklch(70% 0.080 268);
@@ -1431,6 +1436,19 @@ body {
 }
 @media (hover: hover) {
 .btn-gold:hover:not(:disabled) { filter: brightness(var(--btn-hover-gain)); box-shadow: inset 0 0 0 1px oklch(95% 0.054 84 / 0.55), 0 5px 16px oklch(80% 0.114 84 / 0.5); }
+}
+
+/* ⭐ S8 WP5 — THE BET SHEET'S OWN DISABLED GOLD (VODACOM-PLAN §0g, design call 4; §0h: scoped to the sheet).
+   `.btn:disabled` dims a button to 45%, which turns the gold CTA a muddy brown on navy; inside the sheet a disabled
+   "Weka dau" is a navy plate with subtle words and a 1px edge instead. ⛔ SCOPED UNDER `.kp-bsheet`, never a bare
+   `.btn-gold:disabled`: gold is money, and every other gold button keeps `.btn:disabled` exactly as it is. The words
+   on the plate are held to 4.5 by `test:contrast`. */
+.kp-bsheet .btn-gold:disabled {
+  opacity: 1;
+  background: oklch(28% 0.12 268);
+  color: var(--text-subtle);
+  border-color: var(--border);
+  box-shadow: none;
 }
 
 .btn-claret {

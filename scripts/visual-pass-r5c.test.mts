@@ -196,7 +196,10 @@ const REGISTRY: Record<string, [number, string]> = {
   // with the warning family — globals.css −5 (the `--warning-*` tokens), motion.css −1 (`.mat-tint-warn`), chip −7 (the
   // amber `paused`/`warning`), dot −2, toast −5, the result modal −4, the circular progress's `warning` name −1; and the
   // tone unions and the warning-only files went whole. `test:visual-pass-r8a` §3 registers each, with these rulings.
-  "src/app/globals.css": [92, "the ramp and its aliases; `--metal-gold` and the tier/badge metal; `.btn-gold`; the seal; the needle, shimmer and sweep (§B1a); the capsule and Wallet-sheet amounts (§8a); paid money (`.kp-settled__amt`, `.kp-mine__n--gold`); `count-up-flash` (celebration); OWNER: the classic rail dot and coin, `.claret-rule`'s gilt midpoint, the classic chrome's 'coming soon' tag tint (`.cs-badge` outside page bodies and the journey); dead: `.bg-damask`; admin: `poll-flash`"],
+  // S8 WP5 (+1, 92 → 93): `.kp-bsheet .btn-gold:disabled`, the bet sheet's own disabled gold — a `.btn-gold` selector
+  // that DE-golds the button (a navy plate, subtle words), ruled by VODACOM-PLAN §0g design call 4 and scoped to the
+  // sheet by S8-PLAN Open point 20; every other gold button keeps `.btn:disabled`.
+  "src/app/globals.css": [93, "the ramp and its aliases; `--metal-gold` and the tier/badge metal; `.btn-gold`; the bet sheet's disabled gold (`.kp-bsheet .btn-gold:disabled`, S8 WP5: a navy plate, §0g design call 4); the seal; the needle, shimmer and sweep (§B1a); the capsule and Wallet-sheet amounts (§8a); paid money (`.kp-settled__amt`, `.kp-mine__n--gold`); `count-up-flash` (celebration); OWNER: the classic rail dot and coin, `.claret-rule`'s gilt midpoint, the classic chrome's 'coming soon' tag tint (`.cs-badge` outside page bodies and the journey); dead: `.bg-damask`; admin: `poll-flash`"],
   "src/app/motion.css": [22, "the gilt material — gilt-metal on deposit doors and the celebration, gilt-ink on earned figures, the win toast's tint; dead: `.m-skeleton`"],
   "src/app/state-tokens.css": [2, "`.countdown--urgent` — dead CSS (no consumer)"],
   "src/components/ui/button.tsx": [2, "the `gold` variant — bet and sell commits"],

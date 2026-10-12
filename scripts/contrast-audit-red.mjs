@@ -349,6 +349,31 @@ const MUTATIONS = [
     from: `                 oklch(91% 0.090 84) 0%, oklch(79% 0.114 84) 48%,`,
     to: `                 oklch(91% 0.090 84) 0%, oklch(28% 0.114 84) 48%,`,
   },
+  // ── S8 WP5 · the Input's attention edge and the bet sheet's own disabled gold ──
+  {
+    name: "S8 WP5 · darken --input-attention into the field's own fill — the attention edge stops separating (non-text 3.0)",
+    kind: "fail",
+    from: `  --input-attention: oklch(78% 0.06 268);`,
+    to: `  --input-attention: oklch(20% 0.06 268);`,
+  },
+  {
+    name: "S8 WP5 · darken the sheet's disabled-gold words — they stop clearing 4.5 on the navy plate",
+    kind: "fail",
+    from: `  background: oklch(28% 0.12 268);\n  color: var(--text-subtle);`,
+    to: `  background: oklch(28% 0.12 268);\n  color: oklch(46% 0.08 268);`,
+  },
+  {
+    name: "S8 WP5 · lighten the sheet's disabled-gold plate under its words — the words are scored on the plate the rule paints",
+    kind: "fail",
+    from: `  opacity: 1;\n  background: oklch(28% 0.12 268);`,
+    to: `  opacity: 1;\n  background: oklch(62% 0.12 268);`,
+  },
+  {
+    name: "S8 WP5 · drop the plate's opacity: 1 — .btn:disabled's 0.45 would dim plate and words together, which the gate cannot score",
+    kind: "throw",
+    from: `.kp-bsheet .btn-gold:disabled {\n  opacity: 1;\n`,
+    to: `.kp-bsheet .btn-gold:disabled {\n`,
+  },
 ];
 
 // ⛔ Normalise line endings before matching — a tracked CRLF file makes a

@@ -781,6 +781,19 @@ function ruleOpacity(selector: string): number {
   const m = /(?:^|;)\s*opacity\s*:([^;]*)/.exec(ruleBody(selector));
   return m ? parseFloat(m[1].trim()) : 1;
 }
+/**
+ * ⭐ S8 WP5 — THE BET SHEET'S OWN DISABLED GOLD (`.kp-bsheet .btn-gold:disabled`, globals.css). Its words are scored
+ * on its navy plate below. ⛔ That ratio is the painted one only while the rule sets `opacity: 1`: without it
+ * `.btn:disabled`'s 0.45 still applies and dims the plate and its words together, which this gate does not model — so a
+ * rule that drops it is REFUSED here rather than scored as though it were opaque.
+ */
+const SHEET_GOLD_OFF = ".kp-bsheet .btn-gold:disabled";
+if (!/(?:^|;)\s*opacity\s*:/.test(ruleBody(SHEET_GOLD_OFF)) || ruleOpacity(SHEET_GOLD_OFF) !== 1) {
+  throw new Error(
+    `contrast-audit: "${SHEET_GOLD_OFF}" does not set opacity: 1, so .btn:disabled's dimming still paints it — ` +
+      `the ratio below would describe a plate the product does not draw.`,
+  );
+}
 const CHECKS: Check[] = [
   { name: "btn-no label (pearl on no-bg)", fg: T.pearl50, bg: T.btnNoBg, min: 4.5 },
   { name: "btn-yes label (pearl on yes-bg)", fg: T.pearl50, bg: T.btnYesBg, min: 4.5 },
@@ -799,6 +812,9 @@ const CHECKS: Check[] = [
   { name: "--text-subtle on --bg-elevated", fg: T.textSubtle, bg: T.bgElevated, min: 4.5 },
   { name: "--text-subtle on --panel", fg: T.textSubtle, bg: T.panel, min: 4.5 },
   { name: "--text-subtle on --bg-inset", fg: T.textSubtle, bg: T.bgInset, min: 4.5 },
+  // ⭐ S8 WP5 — the Input's `attention` edge is a control's only boundary when it shows: non-text, WCAG 1.4.11's 3.0, on
+  // the field's own fill.
+  { name: "S8 · --input-attention edge on --bg-inset (a field's attention border, non-text)", fg: token("input-attention"), bg: T.bgInset, min: 3.0 },
   // S7 WP5 · the journey card's result row is an inset well: its label ("Matokeo") sets the muted ink on it, beside the
   // date in the subtle ink above (INTAKE §4c: a new pair is scored in the change that paints it).
   { name: "--text-muted on --bg-inset (the journey card's result label)", fg: T.textMuted, bg: T.bgInset, min: 4.5 },
@@ -881,6 +897,8 @@ const CHECKS: Check[] = [
 
   // ── Gold, checked for the first time (ATOM 2d) ────────────────────────────
   { name: "btn-gold label (gold-fg on gold-500)", fg: T.btnGoldFg, bg: T.btnGoldBg, min: 4.5 },
+  // ⭐ S8 WP5 — the sheet's disabled "Weka dau": its words (text, 4.5) on its own navy plate.
+  { name: "S8 · the sheet's disabled gold — its words on its navy plate", fg: ruleValue(SHEET_GOLD_OFF, "color"), bg: ruleValue(SHEET_GOLD_OFF, "background"), min: 4.5 },
   { name: "--gilt money ink on --bg", fg: T.gilt, bg: T.bg, min: 4.5 },
   { name: "--gilt money ink on --bg-elevated", fg: T.gilt, bg: T.bgElevated, min: 4.5 },
   { name: "--gilt money ink on --panel", fg: T.gilt, bg: T.panel, min: 4.5 },

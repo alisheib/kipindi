@@ -38,6 +38,19 @@
  * always mounted, so a screen reader hears its words arrive) and the hint get ids, and the kit control inside — this
  * Input, `Textarea`, `Select`, `DateSelect` — reads them through `useFieldWiring`: `aria-describedby`, `aria-invalid`,
  * `aria-required`, and the legend as its name. DESIGN_AUTHORITY §A7 holds the rule.
+ *
+ * ⭐ THREE ADDITIONS FOR THE BET SHEET'S STAKE BOX (Vodacom S8 WP5, VODACOM-PLAN §2 and §0g's design calls), EACH INERT
+ * UNLESS SET — a box that names none of them renders and behaves byte for byte as it did (`test:numeric`'s census
+ * renders every call site's configuration through the kit before and after, and holds the markup equal):
+ *   · `grouped` — a whole-number box that SHOWS its digits in thousands groups while they are typed ("5,000"), keeps
+ *     the caret by digit index across a regrouping, opens the numeric keypad and holds at most nine digits. What its
+ *     caller reads is the DIGITS: `e.target.value` inside its `onChange`, and the hidden field that carries its `name`.
+ *     Every change still goes through `numericStep`, so a paste reads exactly as it reads in any whole-number box;
+ *   · `attention` — "too much": a strong NEUTRAL border (`--input-attention`). ⛔ It is not an error: it never paints
+ *     the error's red, gold or the NO ink, and it sets no `aria-invalid` (a caller that means "invalid" says so itself).
+ *     The words it points at are the caller's `aria-describedby`;
+ *   · `size="xl"` — the control ladder's top rung, `--h-control-xl` (56px), with its figure on `--type-h2` (24px).
+ *     S8-PLAN A18: the canvas drew 60px and 26px, which sit on no rung; Ali's answer of 2026-10-12 took the nearest.
  */
 import * as React from "react";
 import { cn, formatNumber } from "@/lib/utils";
@@ -50,15 +63,19 @@ type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> & {
   mono?: boolean;
   error?: boolean | string;
   /**
-   * Rendered height: sm 36 · md 44 · lg 48 (px). See the warning on `heightCls`
-   * below — these are arbitrary literals, not spacing-scale classes, on purpose.
+   * Rendered height: sm 40 · md 44 · lg 48 · xl 56 (px). See the warning on `heightCls`
+   * below — these are arbitrary values, not spacing-scale classes, on purpose.
    */
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   containerClassName?: string;
   /** Force-allow a decimal point (otherwise inferred from inputMode/step). */
   allowDecimal?: boolean;
   /** Allow a leading minus sign. Default false — numeric fields are ≥ 0. */
   allowNegative?: boolean;
+  /** (S8 WP5) A whole-number box shown in thousands groups, its caller reading the digits; nine digits at most. */
+  grouped?: boolean;
+  /** (S8 WP5) "Too much": the strong neutral border. Never an error, never `aria-invalid`. */
+  attention?: boolean;
 };
 
 /** How a numeric box reads its text. */
@@ -414,6 +431,161 @@ export function numericBox(): NumericBox {
   };
 }
 
+/* ═══ S8 WP5 · THE GROUPED BOX ═══════════════════════════════════════════════════════════════════════════════════════
+   A grouped box SHOWS "12,500" and HOLDS 12500. Each change is carried from the text it shows into its digits, read by
+   `numericStep` exactly as any whole-number box reads it, and carried back. Only the box's OWN separators are taken
+   out: what ARRIVED reaches `numericStep` as it arrived, so a pasted "9 500,00" still keeps 9500 and a pasted
+   "12,500.00" still keeps 12500 and owes the dot's line. */
+
+/** The most digits a grouped box holds: nine (TZS 999,999,999). A change that would hold more is refused whole — the
+ *  box keeps what it held — because cutting a pasted number to nine digits would change its size (vb6's rule). */
+export const GROUPED_MAX_DIGITS = 9;
+
+/** How a grouped box reads: a whole number, never negative — whatever else the box declares (a `type="tel"` too). */
+const GROUPED_OPTS: NumericOpts = { decimal: false, negative: false };
+
+/** The box's own separator, as `formatNumber` writes it. */
+const GROUP_MARK = /,/g;
+
+/** A grouped box's digits, as it shows them: "12500" → "12,500"; "" stays "". */
+export function groupedText(digits: string): string {
+  return digits === "" ? "" : formatNumber(Number(digits));
+}
+
+/** The digits a grouped box's text holds, leading zeros dropped ("0500" holds 500 — the same number). */
+export function groupedDigits(text: string): string {
+  return text.replace(/[^0-9]/g, "").replace(/^0+(?=[0-9])/, "");
+}
+
+/** How many digits stand in front of a caret. */
+function digitsAhead(text: string, at: number): number {
+  return text.slice(0, at).replace(/[^0-9]/g, "").length;
+}
+
+/** The caret just after a text's n-th digit (the start, for none). */
+function caretAfterDigit(text: string, n: number): number {
+  if (n <= 0) return 0;
+  let seen = 0;
+  for (let i = 0; i < text.length; i++) if (/[0-9]/.test(text[i]) && ++seen === n) return i + 1;
+  return text.length;
+}
+
+/** What a grouped box keeps after one change: `value` its digits, `text` what it shows, `caret` in that text. */
+export type GroupedStep = NumericStep & { text: string };
+
+/**
+ * ⭐ ONE CHANGE TO A GROUPED BOX. `change` is in the coordinates of the text the box shows ("12,500"); the step is
+ * taken by `numericStep` in the coordinates of its digits, with the refused dot's hold kept in those, and the caret
+ * comes back to the same DIGIT it followed — so a digit typed inside a group lands where it was typed, whatever the
+ * regrouping did around it. A change that would hold more than `GROUPED_MAX_DIGITS` is refused: the box keeps its text,
+ * the caret goes back to where the change began, and nothing it carries moves.
+ */
+export function groupedStep(memory: NumericMemory, change: NumericChange, opts: NumericOpts): GroupedStep {
+  const before = change.before ?? "";
+  const span = insertedSpan(before, change.raw, change.caret);
+  const inner: NumericChange = span === null
+    ? { before: null, raw: change.raw, caret: change.caret, replaced: change.replaced }
+    : (() => {
+        const head = change.raw.slice(0, span.start).replace(GROUP_MARK, "");
+        const arrived = change.raw.slice(span.start, span.end);
+        const tail = change.raw.slice(span.end).replace(GROUP_MARK, "");
+        return { before: before.replace(GROUP_MARK, ""), raw: head + arrived + tail, caret: head.length + arrived.length, replaced: change.replaced };
+      })();
+  const step = numericStep(memory, inner, opts);
+  const value = groupedDigits(step.value);
+  if (value.length > GROUPED_MAX_DIGITS) {
+    const kept = groupedDigits(before);
+    const text = groupedText(kept);
+    return { value: kept, text, caret: span === null ? null : caretAfterDigit(text, digitsAhead(before, span.start)), memory };
+  }
+  /* The leading zeros dropped stood in front of the caret and of a refused dot's caret. */
+  const zeros = step.value.length - value.length;
+  const shift = (at: number | null) => (at === null ? null : Math.max(0, at - zeros));
+  const text = groupedText(value);
+  const at = shift(step.caret);
+  return {
+    value,
+    text,
+    caret: at === null ? null : caretAfterDigit(text, at),
+    memory: { latchedAt: shift(step.memory.latchedAt), owed: step.memory.owed },
+  };
+}
+
+/**
+ * ⭐ THE GROUPED BOX'S HANDLERS — `numericBox`'s five events, in the coordinates of the text the box shows. The Input
+ * keeps one in place of its `numericBox` when `grouped` is set, and calls it from the same handlers; `test:numeric`
+ * drives it key by key with the same stand-in element. `before`, when the box is controlled, is the controlled value —
+ * its digits or its text, either: both are read as digits and shown grouped.
+ */
+export function groupedBox(): NumericBox {
+  let memory: NumericMemory = NO_NUMERIC_MEMORY;
+  let before: string | null = null;
+  let selected = false;
+  const shown = (value: string) => groupedText(groupedDigits(value));
+  return {
+    seen: (value) => { before = value; },
+    select: (start, end) => {
+      selected = start !== null && end !== null && end > start;
+      if (start !== null && start === end && memory.latchedAt !== null && digitsAhead(before ?? "", start) !== memory.latchedAt) {
+        memory = { ...memory, latchedAt: null };
+      }
+    },
+    key: (key) => { memory = numericKey(memory, key); },
+    change: (target, _opts, given) => {
+      const replaced = selected;
+      selected = false;
+      const from = given === undefined ? before : shown(given);
+      const next = groupedStep(memory, { before: from, raw: target.value, caret: target.selectionEnd, replaced }, GROUPED_OPTS);
+      if (next.text !== target.value) {
+        target.value = next.text;
+        if (next.caret !== null && typeof target.setSelectionRange === "function") {
+          try { target.setSelectionRange(next.caret, next.caret); } catch { /* a box that holds no caret */ }
+        }
+      }
+      memory = next.memory;
+      before = next.text;
+      return memory.owed;
+    },
+    blur: () => { memory = numericBlur(memory); },
+    moved: (value) => {
+      const hadLine = memory.owed !== null;
+      memory = NO_NUMERIC_MEMORY;
+      before = value === null ? null : shown(value);
+      selected = false;
+      return hadLine;
+    },
+    owed: () => memory.owed,
+  };
+}
+
+/**
+ * ⭐ WHAT A GROUPED BOX'S CALLER READS: its digits. The caller's `onChange` runs while the element holds the digits
+ * ("12500"), and the element is handed back its grouped text and its caret the moment the caller returns — before React
+ * compares the element with what it rendered, so nothing is written twice and the caret stays where the box put it.
+ */
+export function readsDigits(
+  onChange: React.ChangeEventHandler<HTMLInputElement> | undefined,
+  digits: (value: string) => void,
+): React.ChangeEventHandler<HTMLInputElement> {
+  return (e) => {
+    const el = e.target;
+    const text = el.value;
+    const at = el.selectionEnd;
+    const held = groupedDigits(text);
+    digits(held);
+    if (onChange === undefined) return;
+    el.value = held;
+    try {
+      onChange(e);
+    } finally {
+      el.value = text;
+      if (at !== null && typeof el.setSelectionRange === "function") {
+        try { el.setSelectionRange(at, at); } catch { /* a box that holds no caret */ }
+      }
+    }
+  };
+}
+
 /** The dictionary words (`t.common`) of the line a box owes, by what it dropped. */
 export const NUMERIC_NOTICE_KEYS = { dot: "wholeNumbersOnly", minus: "noNegativeNumbers" } as const;
 export type NumericNoticeKey = (typeof NUMERIC_NOTICE_KEYS)[keyof typeof NUMERIC_NOTICE_KEYS];
@@ -486,34 +658,57 @@ const heightCls: Record<NonNullable<Props["size"]>, string> = {
   sm: "h-[var(--h-control-sm)]",
   md: "h-[var(--h-input)]",   // 44px — the kit input token, globals.css
   lg: "h-[48px]",
+  // ⭐ S8 WP5 (A18) — xl is the ladder's top rung, `--h-control-xl` (56px), read from its TOKEN in the box's own style
+  // (`xlStyle` below), not by a class: a new arbitrary class here would add a utility to the stylesheet every page loads.
+  xl: "",
 };
 
 const fontCls: Record<NonNullable<Props["size"]>, string> = {
   sm: "text-[13px]",
   md: "text-[16px]",
   lg: "text-[16px]",
+  // ⭐ S8 WP5 (A18) — xl's figure is on the type scale's 24px rung, `--type-h2` (the canvas drew 26px, on no rung), and
+  // its unit cell on `--type-h4` (17px; the canvas drew "TZS" at 18px): `xlStyle`, for the same reason as the height.
+  xl: "",
 };
 
+/**
+ * ⭐ (S8 WP5) WHAT `size="xl"` READS — the three tokens, as the element's own style. Only an xl box carries them, so
+ * every other box's markup is what it was, and the stylesheet gains nothing.
+ */
+const xlStyle = {
+  box: { height: "var(--h-control-xl)" },
+  figure: { fontSize: "var(--type-h2)" },
+  unit: { fontSize: "var(--type-h4)" },
+} as const;
+
 export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
-  { prefix, trailing, mono, error, size = "md", className, containerClassName, allowDecimal, allowNegative, ...rest },
+  { prefix, trailing, mono, error, size = "md", className, containerClassName, allowDecimal, allowNegative, grouped, attention, ...rest },
   ref,
 ) {
   const field = useFieldWiring();
   const owner = React.useId();
+  /** (S8 WP5) The grouped box is on only when the prop says so — every branch below reads this one flag. */
+  const grouping = grouped === true;
 
   // ── Strict numeric mode ────────────────────────────────────────────
-  const { type, inputMode, step, onChange, onKeyDown, onFocus, onBlur, onSelect, ...inputRest } = rest;
-  const isNumeric = type === "number" || inputMode === "numeric" || inputMode === "decimal";
-  const decimal = isNumeric && (
+  const { type, inputMode, step, onChange: callerChange, onKeyDown, onFocus, onBlur, onSelect, ...inputRest } = rest;
+  /* A grouped box is a whole-number box whatever it declares: no decimal, no minus, no phone separators. */
+  const isNumeric = grouping || type === "number" || inputMode === "numeric" || inputMode === "decimal";
+  const decimal = !grouping && isNumeric && (
     allowDecimal ??
     (inputMode === "decimal" || (step !== undefined && !Number.isInteger(Number(step))))
   );
-  const negative = isNumeric && !!allowNegative;
+  const negative = !grouping && isNumeric && !!allowNegative;
   /* ⭐ A PHONE-NUMBER BOX READS A DOT AS A SEPARATOR (vb6). `type="tel"` is what PhoneInput and the deposit number
      declare, and in a phone number "712.345.678" is one number: cutting it at the dot would keep "712". So a tel box
      keeps every digit, as it always has, and owes no line — no "Whole numbers only" under a phone number. */
   const separators = isNumeric && type === "tel";
   const opts: NumericOpts = { decimal: !!decimal, negative, separators };
+  /* (S8 WP5) The digits an UNCONTROLLED grouped box holds, for the hidden field that carries its name. */
+  const [ownDigits, setOwnDigits] = React.useState(() => (grouping ? groupedDigits(String(rest.defaultValue ?? "")) : ""));
+  /* ⭐ A grouped box's caller reads its digits (`readsDigits`); any other box's caller gets its own handler, untouched. */
+  const onChange = grouping ? readsDigits(callerChange, setOwnDigits) : callerChange;
 
   /**
    * ⭐ THE BOX'S MEMORY (vb6) — one `numericBox` per box, in a ref: the Input paints nothing for it (its Field prints the
@@ -523,7 +718,10 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
    */
   const box = React.useRef<NumericBox | null>(null);
   if (box.current === null) box.current = numericBox();
-  const numeric = box.current;
+  /* (S8 WP5) A grouped box keeps a `groupedBox` instead: the same five events, in the coordinates of its grouped text. */
+  const groupedRef = React.useRef<NumericBox | null>(null);
+  if (grouping && groupedRef.current === null) groupedRef.current = groupedBox();
+  const numeric = grouping && groupedRef.current !== null ? groupedRef.current : box.current;
   const controlledValue = (inputRest as { value?: unknown }).value;
   const controlled = controlledValue !== undefined && controlledValue !== null;
   const produced = React.useRef<string | null>(null);
@@ -537,18 +735,23 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
   }, [numeric, owner]);
   React.useEffect(() => {
     if (!isNumeric || !controlled) return;
-    const now = String(controlledValue);
+    /* A grouped box wrote its grouped text; its parent holds the digits — compared as the text the box shows. */
+    const now = grouping ? groupedText(groupedDigits(String(controlledValue))) : String(controlledValue);
     if (now === produced.current) return;
     produced.current = now;
     if (numeric.moved(now)) reportRef.current?.(owner, null);
-  }, [isNumeric, controlled, controlledValue, numeric, owner]);
+  }, [isNumeric, controlled, controlledValue, numeric, owner, grouping]);
   const watchReset = (el: HTMLInputElement) => {
     const form = el.form;
     if (stopWatchingReset.current !== null || form === null) return;
     const onReset = () => {
       if (numeric.moved(null)) reportRef.current?.(owner, null);
       /* A reset puts the values back AFTER its event: read what it left once it has. */
-      window.setTimeout(() => numeric.seen(el.value), 0);
+      window.setTimeout(() => {
+        numeric.seen(el.value);
+        /* (S8 WP5) An uncontrolled grouped box's hidden field follows the default the reset put back. */
+        if (grouping) setOwnDigits(groupedDigits(el.value));
+      }, 0);
     };
     form.addEventListener("reset", onReset);
     stopWatchingReset.current = () => form.removeEventListener("reset", onReset);
@@ -601,6 +804,28 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
   const locked = !!(inputRest as { disabled?: boolean; readOnly?: boolean }).disabled
     || !!(inputRest as { disabled?: boolean; readOnly?: boolean }).readOnly;
 
+  /* ⭐ (S8 WP5) WHAT A GROUPED BOX SHOWS, AND WHAT IT POSTS. It shows its digits grouped — the controlled value's, or
+     its default's — and gives its `name` to a hidden field that carries the digits, so a form posts "12500", never
+     "12,500". A box that is not grouped spreads nothing here. */
+  const name = inputRest.name;
+  const heldDigits = controlled ? groupedDigits(String(controlledValue)) : ownDigits;
+  const groupedAttrs = controlled
+    ? { name: undefined, value: groupedText(heldDigits) }
+    : { name: undefined, defaultValue: groupedText(groupedDigits(String(inputRest.defaultValue ?? ""))) };
+
+  /* The box's surface, exactly as it always was — and what WP5's props add to it, `null` when neither is set. ⭐ "Too
+     much" is a strong NEUTRAL edge, its own token: it gives way to an error and to a locked box, and it is never the
+     error's red, gold or the NO ink. It is the element's own style (it outranks the hover edge); a class would add a
+     utility to the stylesheet every page loads. */
+  const surface: React.CSSProperties =
+    errored ? { background: "var(--danger-wash)" }
+    : locked ? { background: "var(--bg-base)", opacity: 0.72 }
+    : { background: "var(--bg-inset)" };
+  const attentionEdge = attention === true && !errored && !locked;
+  const added: React.CSSProperties | null = attentionEdge || size === "xl"
+    ? { ...(size === "xl" ? xlStyle.box : {}), ...(attentionEdge ? { borderColor: "var(--input-attention)" } : {}) }
+    : null;
+
   // Render numeric fields as text so we fully control the characters; keep an
   // appropriate inputMode so phones still show the numeric keypad.
   const effectiveType = isNumeric ? "text" : type;
@@ -630,11 +855,7 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
           : "border-border hover:border-border-strong",
         containerClassName,
       )}
-      style={
-        errored ? { background: "var(--danger-wash)" }
-        : locked ? { background: "var(--bg-base)", opacity: 0.72 }
-        : { background: "var(--bg-inset)" }
-      }
+      style={added === null ? surface : { ...surface, ...added }}
     >
       {prefix !== undefined && (
         <span
@@ -642,6 +863,7 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
             "inline-flex items-center px-3 bg-bg-elevated border-r border-border font-mono text-text-muted shrink-0",
             fontCls[size],
           )}
+          style={size === "xl" ? xlStyle.unit : undefined}
         >
           {prefix}
         </span>
@@ -652,6 +874,8 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
         type={effectiveType}
         inputMode={effectiveInputMode}
         {...(isNumeric ? { autoComplete: inputRest.autoComplete ?? "off" } : {})}
+        {...(grouping ? groupedAttrs : {})}
+        {...(size === "xl" ? { style: { ...inputRest.style, ...xlStyle.figure } } : {})}
         /**
          * 🔴 AN ERRORED FIELD SAID NOTHING TO A SCREEN READER, AND THAT IS THE SAME DEFECT AS THE
          * LOCKED BOX ABOVE IT (measured 2026-09-21 on `/admin/desk/[id]?tab=rules`: a refused save
@@ -688,12 +912,14 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
           className,
         )}
       />
+      {grouping && name !== undefined ? <input type="hidden" name={name} form={inputRest.form} value={heldDigits} /> : null}
       {trailing !== undefined && (
         <span
           className={cn(
             "inline-flex items-center px-3 bg-bg-elevated border-l border-border font-mono text-text-subtle shrink-0",
             fontCls[size],
           )}
+          style={size === "xl" ? xlStyle.unit : undefined}
         >
           {trailing}
         </span>
