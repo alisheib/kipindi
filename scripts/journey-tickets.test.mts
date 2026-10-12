@@ -474,8 +474,15 @@ const KINDS = [`{ value: "questions", labelEn: t.journey.tabQuestions, href: "/p
   `{ value: "updown", labelEn: t.nav.updown, href: "/updown/history" }`];
 /** The wrapper's one element: the kit's underline rail, handed the switch's three props and nothing else. */
 const RAIL_TABS = `<Tabs variant="line" ariaLabel={ariaLabel} value={value} tabs={tabs} />`;
-/** The wrapper's one binding: the kit's Tabs through next/dynamic, with no option object — the server render stays on. */
-const LAZY_TABS = `const Tabs = dynamic(() => import("@/components/ui/tabs").then((m) => m.Tabs));`;
+/**
+ * The wrapper's one binding: the kit's Tabs through next/dynamic, with no option object — the server render stays on.
+ * ⚠️ RE-PINNED 2026-10-12 (the Vodacom plan S7, S7-PLAN WP6, A13(a)): the loader ends in the app's one lost-chunk guard,
+ * imported from `lost-chunk.ts` (RAIL_GUARD), as the shell's parts do — a tabs chunk that never arrives leaves the rail
+ * out instead of taking the page to the critical-error screen.
+ */
+const LAZY_TABS = `const Tabs = dynamic(() => import("@/components/ui/tabs").then((m) => m.Tabs).catch(nothingIfLost));`;
+/** The guard's import, exactly as the wrapper writes it (S7-PLAN A13(a)). */
+const RAIL_GUARD = `import { nothingIfLost } from "@/components/layout/lost-chunk";`;
 /** A VALUE import of the kit's tabs module (an `import type` is erased at build and loads nothing). */
 const TABS_VALUE_IMPORT = /^[ ]*import[ ]+(?!type[ ])[^;]*from[ ]+"@[/]components[/]ui[/]tabs"/m;
 
@@ -489,12 +496,13 @@ function g5Switch(W: World, ok: Ok) {
       && tabs.includes(`aria-current={active ? "page" : undefined}`) && tabs.includes("<nav")
       && !tabs.includes(`role="tablist"`) && !tabs.includes(`role="tab"`) && !tabs.includes("aria-selected"),
     show({ kinds: KINDS.map((k) => sw.includes(k)), rail: count(rail, RAIL_TABS), role: sw.includes("role=") || tabs.includes(`role="tablist"`) }));
-  ok("5.lazy · ticket-switch.tsx imports nothing from @/components/ui/tabs at runtime: its wrapper, a client file, asks for the kit's Tabs through next/dynamic with the server render on and takes only its item type, so a classic reader's first load carries none of the kit's code (VODACOM-PLAN §0h point 20)",
+  ok("5.lazy · ticket-switch.tsx imports nothing from @/components/ui/tabs at runtime: its wrapper, a client file, asks for the kit's Tabs through next/dynamic with the server render on, its loader ending in the app's one lost-chunk guard (imported, never copied — S7-PLAN A13(a)), and takes only its item type, so a classic reader's first load carries none of the kit's code (VODACOM-PLAN §0h point 20)",
     sw.length > 0 && !TABS_VALUE_IMPORT.test(sw) && !sw.includes(`import("@/components/ui/tabs")`)
       && sw.includes(`from "@/components/journey/tickets/ticket-switch-rail"`)
       && isClient(rail) && rail.includes(`import dynamic from "next/dynamic";`) && count(rail, LAZY_TABS) === 1 && !rail.includes("ssr")
+      && count(rail, RAIL_GUARD) === 1 && !rail.includes("function nothingIfLost(")
       && rail.includes(`import type { TabItem } from "@/components/ui/tabs";`) && !TABS_VALUE_IMPORT.test(rail),
-    show({ switchImportsTabs: TABS_VALUE_IMPORT.test(sw), client: isClient(rail), lazy: count(rail, LAZY_TABS), ssr: rail.includes("ssr") }));
+    show({ switchImportsTabs: TABS_VALUE_IMPORT.test(sw), client: isClient(rail), lazy: count(rail, LAZY_TABS), guard: count(rail, RAIL_GUARD), ssr: rail.includes("ssr") }));
   ok("5.current · each page passes its own kind: /positions is Maswali and /updown/history is Juu/Chini, so the current link is the page being read (A12)",
     count(text(W, VIEW), `current="questions"`) === 1 && !text(W, VIEW).includes(`current="updown"`)
       && count(text(W, HISTORY), `<TicketsHead current="updown" t={t} />`) === 1 && !text(W, HISTORY).includes(`current="questions"`));
@@ -1097,7 +1105,10 @@ const zhMissing = withWord("zh", "journey", "ticketPayoutAtResult", "");
 const switchButtons = swap(SWITCH, `, href: "/updown/history" }`, " }");
 const tabWidget = withFile(TABS, (s) => `${s}${LF}const widget = <div role="tablist" />;${LF}`);
 const staticTabs = withFile(SWITCH, (s) => `import { Tabs } from "@/components/ui/tabs";${LF}${s}`);
-const railNoServerRender = swap(RAIL, LAZY_TABS, `const Tabs = dynamic(() => import("@/components/ui/tabs").then((m) => m.Tabs), { ssr: false });`);
+// ⚠️ RE-PINNED 2026-10-12 (S7-PLAN WP6, A13(a)): the binding ends in the lost-chunk guard now, so the plant keeps the guard
+// and adds only the option; a second plant drops the guard itself.
+const railNoServerRender = swap(RAIL, LAZY_TABS, `const Tabs = dynamic(() => import("@/components/ui/tabs").then((m) => m.Tabs).catch(nothingIfLost), { ssr: false });`);
+const railUnguarded = swap(RAIL, LAZY_TABS, `const Tabs = dynamic(() => import("@/components/ui/tabs").then((m) => m.Tabs));`);
 const wrongKind = swap(VIEW, `current="questions"`, `current="updown"`);
 const historyWrongKind = swap(HISTORY, `<TicketsHead current="updown" t={t} />`, `<TicketsHead current="questions" t={t} />`);
 // §6 — the guest sheet
@@ -1226,6 +1237,7 @@ const plants: Plant[] = [
   { name: "the kit's tabs grow a tab widget", expect: ["5.rail"], world: tabWidget, landed: changed(tabWidget, TABS) },
   { name: "the switch imports the kit's Tabs statically again (its code back in every visitor's first load)", expect: ["5.lazy"], world: staticTabs, landed: changed(staticTabs, SWITCH) },
   { name: "the wrapper turns the server render off (an empty band, then the rail)", expect: ["5.lazy"], world: railNoServerRender, landed: changed(railNoServerRender, RAIL) },
+  { name: "the wrapper's loader drops the lost-chunk guard (a tabs chunk that never arrives takes the page down — S7-PLAN A13(a))", expect: ["5.lazy"], world: railUnguarded, landed: changed(railUnguarded, RAIL) },
   { name: "the view marks Juu/Chini as the page being read", expect: ["5.current"], world: wrongKind, landed: changed(wrongKind, VIEW) },
   { name: "the history page marks Maswali as the page being read", expect: ["5.current"], world: historyWrongKind, landed: changed(historyWrongKind, HISTORY) },
   { name: "the guest's sign-in forgets /positions", expect: ["6.next"], world: guestLost, landed: changed(guestLost, GUEST_SHEET) },

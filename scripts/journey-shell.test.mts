@@ -82,8 +82,9 @@
  *      round 5's follow-up (R5-H, G-3) so it mounts in the commit that first paints them (12.shell.flag); AppShell
  *      imports none of the parts' own modules and no React `lazy`, and
  *      imports the offline banner statically (its job is a connection that fails); that module is "use client", imports
- *      nothing statically but `next/dynamic`, declares exactly the parts table (each part one line, server render on, no
- *      option object, its loader ending in the lost-chunk guard, which takes a ChunkLoadError alone) and only AppShell
+ *      nothing statically but `next/dynamic` and the app's one lost-chunk guard (since S7 WP6, `lost-chunk.ts`: no
+ *      directive, no import of its own — A13(a)), declares exactly the parts table (each part one line, server render
+ *      on, no option object, its loader ending in that guard, which takes a ChunkLoadError alone) and only AppShell
  *      imports it; every module it loads is "use client" and loaded from there alone (the win celebration's three
  *      static importers named); and no server module anywhere in src defers a "use client" module through
  *      `import(…)`.
@@ -240,6 +241,16 @@ const SHELL = "src/components/layout/app-shell.tsx";
  * imports it statically (12.shell.offline).
  */
 const SHELL_LAZY = "src/components/layout/shell-lazy.tsx";
+/**
+ * THE APP'S ONE LOST-CHUNK GUARD (the Vodacom plan S7, S7-PLAN WP6 and amendment A13(a), 2026-10-12): `Nothing`, the
+ * once-per-page flag and `nothingIfLost`, lifted verbatim out of the shell's lazy module so every `next/dynamic` loader
+ * takes the same one. The shell's lazy module imports it — its one static import besides `next/dynamic` (12.module.dynamic)
+ * and the one module it names that is not a client part (12.parts.client) — and 12.module.lost reads the guard here.
+ */
+const LOST_CHUNK = "src/components/layout/lost-chunk.ts";
+const LOST_CHUNK_SPEC = "@/components/layout/lost-chunk";
+/** The guard's import, exactly as the shell's lazy module writes it. */
+const LOST_CHUNK_IMPORT = `import { nothingIfLost } from "${LOST_CHUNK_SPEC}";`;
 /** Each part: the binding AppShell renders, the module `next/dynamic` loads, and the component it picks from it. */
 const SHELL_PARTS: ReadonlyArray<readonly [string, string, string]> = [
   ["LazyPullToRefresh", "@/components/ui/pull-to-refresh", "PullToRefresh"],
@@ -2313,14 +2324,17 @@ function g10Terms(I: Impl, W: World, ok: Ok) {
  *       any import; nothing else imports the
  *       module; and the offline banner is NOT a part: AppShell imports it statically, as its code always came, because
  *       its one job is a connection that fails;
- *   (c) the module is "use client", its one static import is `next/dynamic`, and it declares exactly the table, each
- *       part one line with no option object — no `ssr: false` (the part would leave the server's HTML) and no `loading`
- *       (a Suspense boundary of next/dynamic's own inside AppShell's: new boundary markers) — each loader ending in
- *       `.catch(nothingIfLost)`, the guard that leaves out a part whose code never arrives (a ChunkLoadError: without it
- *       the whole page falls to the critical-error screen), reports it once, and throws every other error on;
- *   (d) every module it loads is a "use client" module, and the module is that part's only loader (a static import
- *       anywhere else puts the part's code back in that file's first load), save the three named files that import the
- *       win celebration's module for `dispatchWinCelebration`;
+ *   (c) the module is "use client", its static imports are `next/dynamic` and the app's one lost-chunk guard (S7-PLAN
+ *       A13(a): lifted out of this module into `lost-chunk.ts`, so every next/dynamic loader takes the same one), and it
+ *       declares exactly the table, each part one line with no option object — no `ssr: false` (the part would leave the
+ *       server's HTML) and no `loading` (a Suspense boundary of next/dynamic's own inside AppShell's: new boundary
+ *       markers) — each loader ending in `.catch(nothingIfLost)`, the guard that leaves out a part whose code never
+ *       arrives (a ChunkLoadError: without it the whole page falls to the critical-error screen), reports it once, and
+ *       throws every other error on — the guard read in its module, and imported, never copied, here;
+ *   (d) every module it loads is a "use client" module (the guard's module set aside by its exact specifier: no
+ *       directive, no import of its own), and the module is that part's only loader (a static import anywhere else puts
+ *       the part's code back in that file's first load), save the three named files that import the win celebration's
+ *       module for `dispatchWinCelebration`;
  *   and, platform-wide, no server module in src calls or imports React's `lazy`, and none defers a "use client" module
  *   through `import(…)` at all — React.lazy, next/dynamic or any wrapper: the defect AppShell had, wherever it recurs.
  * ⚠️ It cannot see chunking itself: that a part leaves the first load is shown only by a production build (VODACOM-PLAN
@@ -2336,9 +2350,11 @@ const LAZY_TAG = new RegExp("<(Lazy[A-Za-z0-9_]*)(?![A-Za-z0-9_])", "g");
 const wrappedPart = (binding: string) =>
   new RegExp(`<Suspense fallback=[{](?:null|<[^{}<>]*/>)[}]><${binding}(?:[ ][^<>]*)?[ ]/></Suspense>`, "g");
 /**
- * The lost-chunk guard every part's loader ends in, as written in the module (the stand-in squashed): it renders
+ * The lost-chunk guard every part's loader ends in, as written in its module (the stand-in squashed): it renders
  * nothing; it takes a ChunkLoadError alone and throws every other error on; it reports the loss to the client-error
- * endpoint the error boundaries use; and it gives the stand-in.
+ * endpoint the error boundaries use; and it gives the stand-in. ⚠️ RE-PINNED 2026-10-12 (S7-PLAN WP6, A13(a)): read in
+ * `lost-chunk.ts` (LOST_CHUNK), where it moved verbatim — `export` added, nothing else — and no longer in the shell's
+ * lazy module, which imports it.
  */
 const LOST_GUARD = {
   stand: "function Nothing(): null {return null;}",
@@ -2408,26 +2424,45 @@ function g12ShellParts(W: World, G: Graph, ok: Ok) {
   const bare = [...lazySrc.matchAll(BARE_IMPORT)].map((m) => m[1]);
   const options = ["ssr", "loading", "suspense"].filter((word) => lazySrc.includes(word));
   const calls = count(lazySrc, "dynamic(");
-  ok("12.module.dynamic · it loads every part with next/dynamic and nothing statically: its one static import is next/dynamic, no part passes an option object (no ssr: false, no loading), and it calls no React lazy",
-    show(statics) === show(["dynamic from next/dynamic"]) && bare.length === 0 && options.length === 0 && calls === SHELL_PARTS.length
-      && !LAZY_CALL.test(lazySrc),
+  // ⚠️ RE-PINNED 2026-10-12 (the Vodacom plan S7, S7-PLAN WP6, A13(a)): the module's static imports are next/dynamic and,
+  // exactly one more, the app's one lost-chunk guard (`lost-chunk.ts`), which left this module so every next/dynamic
+  // loader can take it. Any other static import is still a part's code in every page's first load.
+  ok("12.module.dynamic · it loads every part with next/dynamic and nothing statically: its static imports are next/dynamic and, exactly one more, the app's one lost-chunk guard (S7-PLAN A13(a)), no part passes an option object (no ssr: false, no loading), and it calls no React lazy",
+    show(statics) === show(["dynamic from next/dynamic", `{ nothingIfLost } from ${LOST_CHUNK_SPEC}`]) && bare.length === 0 && options.length === 0
+      && calls === SHELL_PARTS.length && !LAZY_CALL.test(lazySrc),
     show({ statics, bare, options, calls }));
   const missing = SHELL_PARTS.filter((row) => count(lazySrc, partLine(row)) !== 1).map(([b]) => b);
   const exported = count(lazySrc, "export ");
   ok(`12.parts.table · the module declares exactly the ${SHELL_PARTS.length} parts of the table, each its one line: export const <name> = dynamic(() => import("<module>").then((m) => m.<component>).catch(nothingIfLost));`,
     missing.length === 0 && exported === SHELL_PARTS.length, show({ missing, exported }));
+  // ⚠️ RE-PINNED 2026-10-12 (S7-PLAN WP6, A13(a)): the guard is read in its own module, `lost-chunk.ts`, where it moved
+  // verbatim (`export` added), and the shell's lazy module must import it — by name, from that module — and keep no copy
+  // of its own (no stand-in, no guard, no once-per-page flag): one guard, one flag, every loader.
+  const lostSrc = text(W, LOST_CHUNK);
   const guard = {
-    stand: count(squash(lazySrc), LOST_GUARD.stand), head: count(lazySrc, LOST_GUARD.head), rethrow: count(lazySrc, LOST_GUARD.rethrow),
-    report: count(lazySrc, LOST_GUARD.report), gives: count(lazySrc, LOST_GUARD.gives),
+    stand: count(squash(lostSrc), LOST_GUARD.stand), head: count(lostSrc, LOST_GUARD.head), exported: count(lostSrc, `export ${LOST_GUARD.head}`),
+    rethrow: count(lostSrc, LOST_GUARD.rethrow), report: count(lostSrc, LOST_GUARD.report), gives: count(lostSrc, LOST_GUARD.gives),
   };
-  const order = [LOST_GUARD.head, LOST_GUARD.rethrow, LOST_GUARD.report, LOST_GUARD.gives].map((s) => lazySrc.indexOf(s));
-  ok("12.module.lost · a part whose code never arrives is left out, not fatal: the guard every loader ends in takes a ChunkLoadError alone (any other error is thrown on, as before WP6c), reports it to /api/client-error, and gives a stand-in that renders nothing",
-    Object.values(guard).every((n) => n === 1) && order.every((at, i) => at >= 0 && (i === 0 || at > order[i - 1])),
-    show({ guard, order }));
-  const loads = importsIn(W, SHELL_LAZY).filter((i) => i.spec !== "next/dynamic");
+  const order = [LOST_GUARD.head, LOST_GUARD.rethrow, LOST_GUARD.report, LOST_GUARD.gives].map((s) => lostSrc.indexOf(s));
+  const guardImported = importedNames(W, SHELL_LAZY, LOST_CHUNK);
+  const ownCopy = ["function Nothing(", "function nothingIfLost(", "let reported"].filter((s) => lazySrc.includes(s));
+  ok("12.module.lost · a part whose code never arrives is left out, not fatal: the guard every loader ends in — the app's one, in lost-chunk.ts (S7-PLAN A13(a)), which the shell's lazy module imports and never copies — takes a ChunkLoadError alone (any other error is thrown on, as before WP6c), reports it to /api/client-error, and gives a stand-in that renders nothing",
+    Object.values(guard).every((n) => n === 1) && order.every((at, i) => at >= 0 && (i === 0 || at > order[i - 1]))
+      && show(guardImported) === show(["nothingIfLost"]) && count(lazySrc, LOST_CHUNK_IMPORT) === 1 && ownCopy.length === 0,
+    show({ guard, order, guardImported, ownCopy }));
+  // ⚠️ RE-PINNED 2026-10-12 (S7-PLAN WP6, A13(a)): the guard's module is the one module the shell's lazy module names that
+  // is not a client part. It is set aside by its EXACT specifier — any other module still counts here and must be a
+  // "use client" part — and it must carry no directive and import nothing: a plain module the client loaders share.
+  const loads = importsIn(W, SHELL_LAZY).filter((i) => i.spec !== "next/dynamic" && i.spec !== LOST_CHUNK_SPEC);
   const notClient = loads.map((i) => resolveIn(W, SHELL_LAZY, i.spec) ?? `${i.spec} (unresolved)`).filter((f) => !isClient(text(W, f)));
-  ok(`12.parts.client · every module the shell's lazy module loads is a "use client" module (${loads.length})`,
-    loads.length === SHELL_PARTS.length && notClient.length === 0, show({ notClient }));
+  const guardModule = {
+    present: lostSrc.length > 0,
+    directive: hasDirective(lostSrc, "use client") || hasDirective(lostSrc, "use server"),
+    imports: importsIn(W, LOST_CHUNK).map((i) => i.spec),
+  };
+  ok(`12.parts.client · every module the shell's lazy module loads is a "use client" module (${loads.length}) — save the lost-chunk guard's module, set aside by its exact specifier, which carries no directive and imports nothing (S7-PLAN A13(a))`,
+    loads.length === SHELL_PARTS.length && notClient.length === 0 && guardModule.present && !guardModule.directive && guardModule.imports.length === 0,
+    show({ notClient, loads: loads.length, guardModule }));
   const strayLoaders = SHELL_PARTS.map(([b], i) => {
     const file = partFiles[i];
     const want = file === WIN_HOME ? [...WIN_IMPORTERS, SHELL_LAZY].sort() : [SHELL_LAZY];
@@ -2953,8 +2988,17 @@ ${s}`);
     const extraDynamic = withFile(WORLD, SHELL_LAZY,
       (s) => `${s}${LF}const Extra = dynamic(() => import("@/components/ui/offline-banner").then((m) => m.OfflineBanner));${LF}`);
     const footerLoadsPart = withFile(WORLD, FOOTER, (s) => `${s}${LF}import { ConsentPrompt } from "@/components/analytics/consent-prompt";${LF}`);
-    const guardSwallows = withFile(WORLD, SHELL_LAZY, (s) => s.replace(`if (!(error instanceof Error) || error.name !== "ChunkLoadError") throw error;`, ""));
+    // ⚠️ RE-PLANTED 2026-10-12 (S7-PLAN WP6, A13(a)): the guard lives in `lost-chunk.ts` now, so the weakened guard is
+    // planted there. And each re-pin has its own plant: a local copy of the guard back in the shell's lazy module, the
+    // guard taken from another module, a second static import that is not a client part beside it (A13's named plant),
+    // and the guard's module turned client code or importing a module.
+    const guardSwallows = withFile(WORLD, LOST_CHUNK, (s) => s.replace(`if (!(error instanceof Error) || error.name !== "ChunkLoadError") throw error;`, ""));
     const guardDropped = withFile(WORLD, SHELL_LAZY, (s) => s.replace(".then((m) => m.ConsentPrompt).catch(nothingIfLost));", ".then((m) => m.ConsentPrompt));"));
+    const guardCopied = withFile(WORLD, SHELL_LAZY, (s) => s.replace(LOST_CHUNK_IMPORT, text(WORLD, LOST_CHUNK).split("export ").join("")));
+    const guardElsewhere = withFile(WORLD, SHELL_LAZY, (s) => s.replace(LOST_CHUNK_IMPORT, `import { nothingIfLost } from "@/lib/lost-chunk-copy";`));
+    const secondPlain = withFile(WORLD, SHELL_LAZY, (s) => s.replace(LOST_CHUNK_IMPORT, `${LOST_CHUNK_IMPORT}${LF}import { cn } from "@/lib/utils";`));
+    const guardClient = withFile(WORLD, LOST_CHUNK, (s) => `"use client";${LF}${s}`);
+    const guardImports = withFile(WORLD, LOST_CHUNK, (s) => `import { cn } from "@/lib/utils";${LF}${s}`);
     // §10 — the header-fit gate's terms: the drives' copy of the pill rule, the red twin's leash, a witness left behind.
     const withExtra = (rel: string, edit: (s: string) => string): World =>
       ({ ...WORLD, extra: new Map<string, string>([...WORLD.extra, [rel, edit(WORLD.extra.get(rel) ?? "")] as [string, string]]) });
@@ -3387,10 +3431,22 @@ ${s}`);
         world: extraDynamic, landed: changed(extraDynamic, SHELL_LAZY), landedAs: "a part no gate names" },
       { name: "a classic file imports a part's module statically", expect: at("12.parts.home ·"),
         world: footerLoadsPart, landed: changed(footerLoadsPart, FOOTER), landedAs: "the consent prompt back in every page's first load, through the footer" },
-      { name: "the lost-chunk guard takes every error", expect: at("12.module.lost ·"),
-        world: guardSwallows, landed: changed(guardSwallows, SHELL_LAZY), landedAs: "a part's render bug hidden as if its chunk were lost" },
+      { name: "the lost-chunk guard takes every error (planted in its module, lost-chunk.ts, since S7-PLAN A13(a))", expect: at("12.module.lost ·"),
+        world: guardSwallows, landed: changed(guardSwallows, LOST_CHUNK), landedAs: "a part's render bug hidden as if its chunk were lost" },
       { name: "a part's loader drops the lost-chunk guard", expect: at("12.parts.table ·"),
         world: guardDropped, landed: changed(guardDropped, SHELL_LAZY), landedAs: "a dropped connection takes the whole page to the critical-error screen" },
+      // §12 · S7 WP6 (S7-PLAN A13(a)) — the guard lifted into one module: each re-pin with its plant
+      { name: "the shell's lazy module keeps its own copy of the guard instead of importing the one (A13(a))", expect: at("12.module.lost ·"),
+        world: guardCopied, landed: changed(guardCopied, SHELL_LAZY) && !text(guardCopied, SHELL_LAZY).includes(LOST_CHUNK_IMPORT),
+        landedAs: "two guards and two once-per-page flags: one dropped connection reported twice, and a fix to one guard missing from the other" },
+      { name: "the shell's lazy module takes its guard from another module (A13(a))", expect: at("12.module.dynamic ·"),
+        world: guardElsewhere, landed: changed(guardElsewhere, SHELL_LAZY), landedAs: "a second guard beside the app's one" },
+      { name: "a second static import that is not a client part, beside the guard (A13(a))", expect: at("12.parts.client ·"),
+        world: secondPlain, landed: changed(secondPlain, SHELL_LAZY), landedAs: "a plain module's code in every page's first load, through the module that keeps the parts out of it" },
+      { name: "the guard's module turned into a client module (A13(a))", expect: at("12.parts.client ·"),
+        world: guardClient, landed: changed(guardClient, LOST_CHUNK), landedAs: "a client boundary where a plain module of three declarations should be" },
+      { name: "the guard's module imports a module (A13(a))", expect: at("12.parts.client ·"),
+        world: guardImports, landed: changed(guardImports, LOST_CHUNK), landedAs: "every page that loads a part pulls another module in through the guard" },
       // §10 — the header-fit gate's terms (A5, A6)
       { name: "the header draws the pill on the deposit screen while the drives skip it there", expect: at("10.rules.pill ·"),
         impl: { header: pillOnDeposit }, landed: pillOnDeposit(onDeposit).pill && !HDR.journeyHeaderState(onDeposit).pill,

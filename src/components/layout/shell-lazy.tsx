@@ -32,49 +32,20 @@
  * for the rest of that page's life, one report per page goes to `/api/client-error` (the endpoint and the body the
  * error boundaries send), and any other error is thrown on, exactly as before. The server never takes this path (its
  * chunks are on disk), so the HTML does not change.
+ * ⭐ THE GUARD IS THE APP'S ONE GUARD, IMPORTED (the Vodacom plan S7, S7-PLAN A13(a), 2026-10-12): it was defined here,
+ * and lifted verbatim into `lost-chunk.ts` so every `next/dynamic` loader takes the same one — these parts, the journey's
+ * route ghosts, the Tiketi switch's tabs and the journey home's parts. It is this module's one import besides
+ * `next/dynamic`, and the eleven loader lines below are unchanged, byte for byte.
  * ⛔ THE OFFLINE BANNER IS NOT HERE, ON PURPOSE: its one job is a connection that fails, so AppShell imports it
  * statically and its code comes with the page, as it always did (12.shell.offline).
  * ⛔ Each part keeps the name AppShell rendered before WP6c, and AppShell renders it where it did, with the same props.
  * `test:journey-shell` §12 holds AppShell, this file and every module named below to all of the above, with plants: the
- * parts and their boundaries (the 12.shell checks), this file's shape and its guard (the 12.module checks and
+ * parts and their boundaries (the 12.shell checks), this file's shape and the guard it imports (the 12.module checks and
  * 12.parts.table), each part's module (12.parts.client and 12.parts.home), and no server module anywhere deferring a
  * client one (12.nolazy.platform and 12.nodefer.platform).
  */
 import dynamic from "next/dynamic";
-
-/** What a part renders when its code never arrived: nothing. */
-function Nothing(): null {
-  return null;
-}
-
-/** One report per page: the parts share one connection, so a dropped one would otherwise report each of them. */
-let reported = false;
-
-/**
- * The end of every part's loader: a `ChunkLoadError` (the browser could not fetch the part's code) leaves the part out,
- * reported once; anything else is thrown on, as it was before WP6c. See "A PART WHOSE CODE NEVER ARRIVES" above.
- */
-function nothingIfLost(error: unknown): typeof Nothing {
-  if (!(error instanceof Error) || error.name !== "ChunkLoadError") throw error;
-  if (!reported && typeof window !== "undefined") {
-    reported = true;
-    try {
-      const body = JSON.stringify({
-        message: `A part of the shell never arrived and was left out: ${error.message}`.slice(0, 1_000),
-        stack: String(error.stack ?? "").slice(0, 4_000),
-        path: window.location.pathname,
-        digest: null,
-        build: String((globalThis as { NEXT_DEPLOYMENT_ID?: string }).NEXT_DEPLOYMENT_ID ?? "") || null,
-      });
-      if (typeof navigator.sendBeacon === "function") {
-        navigator.sendBeacon("/api/client-error", new Blob([body], { type: "application/json" }));
-      }
-    } catch {
-      /* reporting must never be the thing that breaks the page */
-    }
-  }
-  return Nothing;
-}
+import { nothingIfLost } from "@/components/layout/lost-chunk";
 
 // The shell's own overlays, mounted for every visitor. Each draws nothing in the server's HTML, and most draw nothing
 // until an event, a poll or a timer fires. The win celebration's module also reaches every first load through
