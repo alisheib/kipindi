@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { MarketCard } from "@/components/markets/market-card";
+import { JourneyCard } from "@/components/journey/cards/journey-card";
 import { Chip } from "@/components/ui/chip";
 import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
 import { TippingBar } from "@/components/brand";
@@ -37,6 +38,7 @@ import { Ring } from "@/components/charts/ring";
 import { pickLocalized, marketCategoryLabel } from "@/lib/localized";
 import { keepFigures } from "@/components/ui/keep-words";
 import { getServerT } from "@/lib/i18n-server";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { outcomeWord, sideWord, type LabelProductLine } from "@/lib/side-label";
 import { STATUS_TONE, TONE_CHIP, playerStatusInk } from "@/lib/status-tone";
 import { PageContainer } from "@/components/layout/page-container";
@@ -154,6 +156,10 @@ async function ResultsContent({
   pageNum: number;
 }) {
   const { t, locale } = await getServerT();
+  // ⭐ THE NEW JOURNEY, ASKED ONCE FOR THIS REQUEST (the Vodacom plan S7, S7-PLAN WP10) — the one cached resolver
+  // AppShell asked too, so the page and its chrome cannot disagree. Everything below is read for both views; only the
+  // cards' slot branches (the grid under the notable carousel), and its classic arm is today's markup.
+  const { journey } = await resolveSimpleJourney();
   const qRaw = state.q;
 
   // ⛔ DERIVED, NEVER RE-DECLARED. This used to be a hand-written eight-item list; the canonical
@@ -533,6 +539,19 @@ async function ResultsContent({
                   ))}
                 />
               )}
+              {/* ⭐ THE CARDS' SLOT IS ONE TERNARY (the Vodacom plan S7, §3.2; S7-PLAN WP10 with A12 and A16 item 5). A
+                  journey request draws the journey card's settled face for the same rows the classic grid draws (the
+                  page less the notables lifted into the carousel above, which stays as it is): the result's word in
+                  its own ink beside the settled instant, year included once it is not this year. Each card reads the
+                  market row it is handed, and the cards stand in the one journey card grid, whose cards share their
+                  rows. Every other request gets the classic arm: today's markup, line for line. */}
+              {journey ? (
+                <section className="kp-jgrid">
+                  {paged.filter((m) => !notableIds.has(m.id)).map((m) => (
+                    <JourneyCard key={m.id} m={m} nowMs={nowMs} t={t} locale={locale} />
+                  ))}
+                </section>
+              ) : (
               <section className="market-grid">
                 {paged.filter((m) => !notableIds.has(m.id)).map((m) => (
                   <MarketCard
@@ -556,6 +575,7 @@ async function ResultsContent({
                   />
                 ))}
               </section>
+              )}
 
               {/* Pagination — shared platform pager */}
               {totalPages > 1 && (
