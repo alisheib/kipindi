@@ -361,7 +361,7 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S7 — WP0–WP4 are live (`1da5e091`, 2026-10-12, §0j); WP5, WP6 and WP8 are built and reviewed and land next with WP7 (the journey home), building on OMEGA-COMPILE01 beside WP9 and WP10,
+**Next:** (1) S7 — WP0–WP4 are live (`dcf305d5`, 2026-10-12 13:59 EAT, §0j); WP5, WP6 and WP8 are built and reviewed and land next with WP7 (the journey home), building on OMEGA-COMPILE01 beside WP9 and WP10,
 then WP11's drives and WP12 (§0j's "⏳ IN FLIGHT" bullet); S8's plan is drafted (`origin/vodacom-s8-plan`). OMEGA's own 2026-10-07/08 WP1 is on origin
 for reference only as `vodacom-s7-wp1-omega`, never to be merged (§0h point 66). S7's plan:
 [`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), whose Amendments override its body. (2) When
@@ -535,7 +535,7 @@ body. Owner-level calls: §0h point 58, and 65 on.
   `generateMetadata` and asks the resolver itself; the root loading's journey ghost; dates through `formatEatDateTime`;
   the helpline's new names; a second `nothingIfLost` copy for A13; test:stacking 6.1 green). **WP0 is ✅** with this
   record.
-- **WP1 ✅ LIVE `1da5e091` (2026-10-12) — parity v3 and A9's three served-bytes tools** (scripts and one dev-only route;
+- **WP1 ✅ LIVE `dcf305d5` (2026-10-12) — parity v3 and A9's three served-bytes tools** (scripts and one dev-only route;
   served bytes for a classic viewer: none). Rebuilt on ALI-BLADE15, because the version OMEGA-COMPILE01 wrote on
   2026-10-07/08 was never pushed (§0h point 66; it is on origin for reference only as `vodacom-s7-wp1-omega`,
   `9ad1f6d9`, never merged): the three tools recovered byte for byte from OMEGA's mutation copies on
@@ -582,7 +582,7 @@ body. Owner-level calls: §0h point 58, and 65 on.
   tied-cards; the book's B.0–B.8 all PASS on the same pool and states as above); **the null compare on a second fresh
   server 53/53, exit 0**. Every later S7 package compares against this baseline with `--allow-base`: main moves under
   it, and the harness names each served-file commit since.
-- **WP2 ✅ LIVE `1da5e091` (2026-10-12) — the pure move** (`53cf5609`; the laptop's two WIP commits folded into one). The
+- **WP2 ✅ LIVE `dcf305d5` (2026-10-12) — the pure move** (`53cf5609`; the laptop's two WIP commits folded into one). The
   home body moves to `src/components/home/legacy-landing.tsx` — the old page.tsx's :4-36 and :71-356, byte for byte but
   for the export's name and one blank line between the imports and the body (read on OMEGA from the two blobs);
   page.tsx keeps `generateMetadata` (A24 item 1), `dynamic` and the metadata JSDoc, and returns `<LegacyLanding … />`;
@@ -591,7 +591,7 @@ body. Owner-level calls: §0h point 58, and 65 on.
   the new file, each proven by a defect planted in the moved body; `test:journey-home` §1 (8 checks, 8 plants). Served
   bytes for a classic viewer: none — a server component's boundary leaves nothing of its own (parity v3 and
   qa:served-skeleton `--main`, below).
-- **WP3 ✅ LIVE `1da5e091` (2026-10-12) — the pure rules** (`63cded99`): `home-list.ts`, `card-face.ts` and
+- **WP3 ✅ LIVE `dcf305d5` (2026-10-12) — the pure rules** (`63cded99`): `home-list.ts`, `card-face.ts` and
   `markets-redirect.ts` (new, pure); `JOURNEY_TICKER_ROUTES` and the one journey line in `ticker.ts` (A4 item 3);
   `cardFigures` and `bettableAt` out of `journey-sheet.ts` (sheetPublic calls it once, after its await, so the card and
   the sheet cannot disagree). Drafted by a helper on ALI-BLADE15 (`49f7eff3`, stopped when Ali moved), read file by
@@ -602,7 +602,7 @@ body. Owner-level calls: §0h point 58, and 65 on.
   fail-closed. Its readings are §0h points 68–69. Served bytes for a classic viewer: HTML and RSC none (nothing mounts
   these yet); JS — `ticker.ts` ships to the browser (11.14), so LiveTicker's chunk carries the journey list on every
   page with its output unchanged, and pending-bet's module exports one more name (A23 item 6(c)).
-- **WP4 ✅ LIVE `1da5e091` (2026-10-12) — S7's words** (`2322cf09`): 31 `journey.*` keys in en, sw and zh — the deck's §3
+- **WP4 ✅ LIVE `dcf305d5` (2026-10-12) — S7's words** (`2322cf09`): 31 `journey.*` keys in en, sw and zh — the deck's §3
   words verbatim, the S4 canvas words approved in review 3, S7's drafts — with the Swahili review signed
   (S4-COPY-AUDIT "Swahili review" 6); not added: `cardWinOver` (Correction 9) and `howHelplineLabel` (A6). The records
   agree that no helpline appears on a player surface: the §3 row struck, §3.8's order ends at "Weka mipaka", A6 item
@@ -651,6 +651,12 @@ body. Owner-level calls: §0h point 58, and 65 on.
   N.7b and N.8 new); the same three captures, re-compared offline with it: the null pair **IDENTICAL, 14 cells**, and
   WP1 against the tip **IDENTICAL, 14 cells** — status, head, preloads, body, `<main>`, the streamed segments and every
   bail-out count. So nothing a classic reader is served changed.
+- **✅ LIVE `dcf305d5` (2026-10-12 13:59 EAT) — WP1–WP4, read back on production:** both hosts serve `?dpl=dcf305d5`;
+  `/api/health` ok, the database reachable and migrated; **production qa:live 340/340** (its [E3] signed in as the QA
+  player mobile01 through the real form: no journey id, flag or marker for a classic reader, signed out or in — the one
+  SKIP is the staff-pass control, as on every production run); **qa:chunks-prod 6/6 routes** (47 GETs, a guest: S6's
+  shell mark is the one journey marker in a first load, by design); **test:house-bot-disclosure 118/0 on main** — 5.1
+  is green now that WP4's keys are origin/main's own.
 - **⏳ IN FLIGHT (OMEGA-COMPILE01, 2026-10-12; every branch below is ON ORIGIN):**
   - **Built and independently reviewed, landing next with WP7:** WP5 (`vodacom-s7-wp5`), WP6 (`vodacom-s7-wp6`, on
     WP5) and **WP8** — the LIVE strip leaves `/` and `/markets` for a journey reader, and the old primer stands down for
@@ -3060,7 +3066,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | S4 | Claude Design pass | ✅ | `52afb7c8` 2026-10-01 (§0g): all eleven brief items on the Design canvas, 102 boards; the four-expert panel's findings applied (v16); BRIEF.md filed; choices 1B/2A/3A (§0h point 1). Done when frames for every new composition and undrawn state are filed and scored by the panel, and Ali has reviewed the 5 re-drawn frames. |
 | S5 | ~~Colour foundation~~ | ⛔ | Removed by R5 (50pick's look stays unchanged): no palette, font or brand work. |
 | S6 | Shell (flagged) | ✅ | CLOSED 2026-10-12 03:01 EAT at `ca72fe15` (round 10, the last S6 commit), its close record in §0 (test:all, classic parity, the tiles, production read back). Plan filed 2026-10-01 (`S6-PLAN.md`, §0i). Done when every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |
-| S7 | Home and cards (flagged) | 🔨 | Started (§0j): WP0's scripts-only repairs live `ce2c3afa`; WP1–WP4 live `1da5e091` (2026-10-12); WP5, WP6 and WP8 built and reviewed; WP7, WP9 and WP10 building. Plan filed 2026-10-07 ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), its Amendments override its body; §0h point 58). Done when the local staff-pass drives pass (the above-the-fold gate among them) and production shows nothing changed for signed-out and signed-in players; staff seeing the deck's home on production moves to S14 (§0h point 4). |
+| S7 | Home and cards (flagged) | 🔨 | Started (§0j): WP0's scripts-only repairs live `ce2c3afa`; WP1–WP4 live `dcf305d5` (2026-10-12); WP5, WP6 and WP8 built and reviewed; WP7, WP9 and WP10 building. Plan filed 2026-10-07 ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), its Amendments override its body; §0h point 58). Done when the local staff-pass drives pass (the above-the-fold gate among them) and production shows nothing changed for signed-out and signed-in players; staff seeing the deck's home on production moves to S14 (§0h point 4). |
 | S8 | Bet sheet + low balance (flagged) | ⬜ | `test:bet-sheet`, V20 and the refusal matrix are green. A staff real bet works on production. |
 | S9 | Deposit, waiting and return (flagged) — no email code: the owner's ruling of 2026-10-07 (▶ 0e) has a deposit ask no email question | ⬜ | `test:deposit-return` and `test:deposit-status-read` (exactly-once while racing the webhook) are green. The card `order_id` fix is live. |
 | S10 | Visitor path | ⬜ | guest → sheet → register → deposit → back works. `test:post-register-landing` passes in both flag states. |
