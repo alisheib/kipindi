@@ -754,7 +754,7 @@ body. Owner-level calls: §0h point 58, and 65 on.
   (47 GETs: S7's markers absent from every classic first load, no journey markup in the HTML); classic
   `qa:cls-budget` on production GREEN — `/`, `/markets`, `/results` and `/live` at CLS 0. ⚠️ On this VM Node's own
   fetch needs `NODE_USE_ENV_PROXY=1` to reach any host (/root/.ccr/README.md); without it the same runs read nothing.
-- **WP11 ✅ LIVE (2026-10-12, with this record) — the drives** (`992ad807`; run, fixed and proven on helper VM B,
+- **WP11 ✅ LIVE (2026-10-13, with this record) — the drives** (`992ad807`; run, fixed and proven on helper VM B,
   `session_01XGYT5pB9XzX5WLM7gxvAFJ`, its WIP history on `origin/vodacom-s7-wp11`; served bytes: none).
   **qa:journey-above-fold** — A5's 72 cells (360×640, 360×740, 390×844 × sw/en/zh × a guest/signed in × no bar/every bar
   × card 1's full title/a short title at the full budget), the preview marker asserted (112.8px sw and en, 94.9 zh) and
@@ -784,15 +784,24 @@ body. Owner-level calls: §0h point 58, and 65 on.
   three outcomes, the Up & Down row is pressed, cls-budget's red counts only a shift) **and the re-run after it** (this
   VM, Node 24, each drive on a fresh in-memory server; logs on `origin/vodacom-visual-tools`
   `tools/s7-cloud-2026-10-12/results/evening-2026-10-12/drives/`): qa:journey-home 83 passed, 0 failed, 0 blocked, 0 not
-  measured, 101 tiles; qa:journey-above-fold 72/72 and its plants 7/7 (so too `--prove-red`), its least slack unchanged;
-  ⚠️ **owed before this record goes to main:** the re-run of qa:cls-budget `--journey` (and its RED_SHELL control, which
-  must fail) and of local qa:live in its three modes (local; non-local `127.0.0.2`; non-local with
-  `QA_SIGNED_IN=mobile01`, which must stop on the missing password) — the cloud session handed over mid-run (its recipe:
-  `results/evening-2026-10-12/scripts/close-drives.sh`). Its one console note was the same kind of hydration attribute mismatch, on journey `/results` (en 360)
+  measured, 101 tiles; qa:journey-above-fold 72/72 and its plants 7/7 (so too `--prove-red`), its least slack unchanged.
+  The rest of the re-run, on the next cloud session (2026-10-13 ~01:05–01:35 EAT, Node 24, the code at `c3b56cbf`, each
+  run on a fresh in-memory server; the recipe `results/evening-2026-10-12/scripts/close-drives.sh`'s last five steps):
+  **qa:cls-budget `--journey` GREEN** — `/`, `/live` and `/results` for a guest and signed in, `/watchlist` signed in,
+  the largest a guest's `/results` at 0.0103 and every other cell 0 or 0.0001 — and its RED_SHELL control failing 8
+  shift checks of 8, as it must; **local qa:live 363/363**; and its two non-local modes, each **334/334**: [E2]'s
+  absence checks all pass, its staff-pass control is the one SKIP (no pass is minted off localhost), and [E3] prints
+  NOT MEASURED — without `QA_SIGNED_IN`, and with `QA_SIGNED_IN=mobile01` because no password is on the machine (the
+  sign-in form untouched). The non-local modes' first run read 264/300 and 266/300 for want of a server that served its
+  own scripts to `127.0.0.2`: Next's dev server refuses its dev resources to an origin it was not started on, so those
+  pages never hydrated (the date-field checks, `/account`'s not-found body) and every page logged the refused hot-reload
+  socket; and qa:live seeds questions only on localhost, so the fresh store's board had no question to link. Re-run on a
+  server started on `127.0.0.2` and seeded first, as production has questions: the counts above. The re-run's one
+  console note was the same kind of hydration attribute mismatch, on journey `/results` (en 360)
   this time — two sightings, both on staff-pass pages only, neither brought back (nine more tries on `/results`). The
   drive now keeps the whole console text beside its tiles (`console-errors.txt`), so the next sighting names the
   attribute: handed to S8 (§0 Next).
-- **WP12 ✅ LIVE (2026-10-12, with this record) — S7's close:** the battery (`test:all` at the release's code twice, helper
+- **WP12 ✅ LIVE (2026-10-13, with this record) — S7's close:** the battery (`test:all` at the release's code twice, helper
   C — after each red's own re-run only main's three known reds; the server suites green against a server; every red twin
   caught), parity v3 against a baseline at the main it landed on (53/53, the landing bullet), qa:first-load PASS, the
   drives above, and an independent review of WP11's drives. Records: this section, §1's S7 row, SHELVED (its six S7 rows —
@@ -3293,7 +3302,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | S4 | Claude Design pass | ✅ | `52afb7c8` 2026-10-01 (§0g): all eleven brief items on the Design canvas, 102 boards; the four-expert panel's findings applied (v16); BRIEF.md filed; choices 1B/2A/3A (§0h point 1). Done when frames for every new composition and undrawn state are filed and scored by the panel, and Ali has reviewed the 5 re-drawn frames. |
 | S5 | ~~Colour foundation~~ | ⛔ | Removed by R5 (50pick's look stays unchanged): no palette, font or brand work. |
 | S6 | Shell (flagged) | ✅ | CLOSED 2026-10-12 03:01 EAT at `ca72fe15` (round 10, the last S6 commit), its close record in §0 (test:all, classic parity, the tiles, production read back). Plan filed 2026-10-01 (`S6-PLAN.md`, §0i). Done when every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |
-| S7 | Home and cards (flagged) | 🔨 | Started (§0j): WP0's scripts-only repairs live `ce2c3afa`; WP1–WP4 live `dcf305d5` (2026-10-12); WP5–WP10 and live fix L1 live `f20f1617`, WP11 and WP12 live with S7's close record (2026-10-12): the build is complete, every local done-when holds, and production is read back (qa:live [E2], qa:chunks-prod, classic qa:cls-budget); owed: [E3] measured, from a machine that holds the QA player's password. Plan filed 2026-10-07 ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), its Amendments override its body; §0h point 58). Done when the local staff-pass drives pass (the above-the-fold gate among them) and production shows nothing changed for signed-out and signed-in players; staff seeing the deck's home on production moves to S14 (§0h point 4). |
+| S7 | Home and cards (flagged) | 🔨 | Started (§0j): WP0's scripts-only repairs live `ce2c3afa`; WP1–WP4 live `dcf305d5` (2026-10-12); WP5–WP10 and live fix L1 live `f20f1617`, WP11 and WP12 live with S7's close record (2026-10-13): the build is complete, every local done-when holds, and production is read back (qa:live [E2], qa:chunks-prod, classic qa:cls-budget); owed: [E3] measured, from a machine that holds the QA player's password. Plan filed 2026-10-07 ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), its Amendments override its body; §0h point 58). Done when the local staff-pass drives pass (the above-the-fold gate among them) and production shows nothing changed for signed-out and signed-in players; staff seeing the deck's home on production moves to S14 (§0h point 4). |
 | S8 | Bet sheet + low balance (flagged) | ⬜ | `test:bet-sheet`, V20 and the refusal matrix are green. A staff real bet works on production. |
 | S9 | Deposit, waiting and return (flagged) — no email code: the owner's ruling of 2026-10-07 (▶ 0e) has a deposit ask no email question | ⬜ | `test:deposit-return` and `test:deposit-status-read` (exactly-once while racing the webhook) are green. The card `order_id` fix is live. |
 | S10 | Visitor path | ⬜ | guest → sheet → register → deposit → back works. `test:post-register-landing` passes in both flag states. |
