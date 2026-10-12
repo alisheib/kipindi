@@ -9,23 +9,34 @@ kit's tokens. Its written spec is `02-components/market-card/spec.md` § "THE JO
   the market's own — never a caller's choice. It stands BESIDE the classic `MarketCard` until the flip (S7-PLAN Open point
   3): the classic card's chunk, anchors and readers stay untouched, and phone density cannot reach it. At the flip the
   classic card is shelved and this is the card, so one of the pair is in use.
-- **The rules:** the `.kp-jcard` family in `globals.css` and six tokens beside the card rhythms in `:root` —
-  `--jcard-pad`, `--jcard-gap`, `--jcard-meta-line`, `--jcard-title-line`, `--jcard-title-2l` (a multi-column grid's
-  two-line title reserve, applied by that grid's rule) and `--jcard-act-h` — which the home's ghost reads too, with no
-  Compact rung. The one-sided note shares the classic card's and the landing rows' one note rule (its selector list gains
-  `.kp-jcard__note`). No new ink, colour, radius, shadow or motion token — the picks move as the side buttons move, on
-  `--m-lift` and `--m-press`; every size a rung (`--type-small`, `-body`, `-h4` in the stylesheet; `title-sm` and `body`
-  at the call site, §T7); no inline style.
+- **The rules:** the `.kp-jcard` family in `globals.css` and five tokens beside the card rhythms in `:root` —
+  `--jcard-pad`, `--jcard-gap`, `--jcard-meta-line`, `--jcard-title-line` and `--jcard-act-h` — which the home's ghost
+  reads too, with no Compact rung. The one-sided note shares the classic card's and the landing rows' one note rule (its
+  selector list gains `.kp-jcard__note`). No new ink, colour, radius, shadow or motion token — the picks move as the side
+  buttons move, on `--m-lift` and `--m-press`, and keep a 1px border in forced colours, where their ring (an inset
+  shadow) is stripped with the fill (E-129); every size a rung (`--type-small`, `-body`, `-h4` in the stylesheet;
+  `title-sm` and `body` at the call site, §T7); no inline style.
+- **The journey card grid, `.kp-jgrid`** — the one list WP7's home and WP10's lists lay their cards in: one column, two
+  from 640, three from 1024, 16px apart. Where subgrid is supported each card (or the list item holding one) spans three
+  of its row tracks — meta, question, action — so a row's questions and picks start on one line whatever the titles'
+  line counts (A16 item 5), after S6's tickets; without subgrid each card's action block stands on its floor. It replaces
+  A16 item 3's two-line title reserve (a 48px `--jcard-title-2l`), withdrawn by the WP5 review of 2026-10-12: nothing
+  read it once the rows were shared. Nothing uses the class until WP7.
 - **Calls taken in the build, each against a later or stronger rule than the board's:** the picks stand 12px apart, the
-  platform's one gap for a pair of buttons (R9-A5), where the board drew 10; the thin side's "Faida ndogo · ≈1.0×" is
-  `DotSeq`'s centred form, one part a line, so no line opens or ends on its dot; the waiting label wears the kit's closed
+  platform's one gap for a pair of buttons (R9-A5), where the board drew 10; the waiting label wears the kit's closed
   hourglass, the market page's and /live's mark for that state, where the board drew a plain one; the settled date is
   the small rung, not the board's 12px (§T4's floor, as the hub's second line, §K 8c); the title is the `title-sm` rung on
-  its own 24px line, so its two-line reserve is 48px, where the board drew 47 on an 18px × 1.3 line; the result chip is
-  the kit `Chip` at `lg`.
-- **Guards:** `test:journey-home` §4 and `red:journey-home` (the card rendered in every state, its source and its rules);
-  `test:timer-date` §3 and its two declared anchors; `test:visual-pass-r5e` §2.1/§2.5 and `test:visual-pass-r5i` §1 (its
-  title surface and its side inks, registered); `test:contrast` (the result label's ink on the inset well).
+  its own 24px line, where the board drew an 18px × 1.3 line; the result chip is the kit `Chip` at `lg`; a figure of
+  five characters ("≈100.0×", which the engine still prints at its cap) breaks before its words, which every shorter
+  figure keeps by no-break spaces — kept whole, "≈100.0× your bet" runs 109.8px against a 320 phone's 105px pick line
+  (the WP5 review's ruling; the engine's cap unchanged).
+- **A recorded deviation from the canvas:** the thin side's "Faida ndogo · ≈1.0×" is `DotSeq`'s centred form, one part
+  a line, so no centred line opens or ends on its dot, where s4-3-card-over-cap draws it on one line.
+- **Guards:** `test:journey-home` §4 and `red:journey-home` (the card rendered in every state, its source and its rules,
+  read as the cascade reads them — the last word any rule says; the width proof, every unit a pick prints measured with
+  the repo's fonts against the 320 line; the grid's shared rows); `test:timer-date` §3 and its two declared anchors;
+  `test:visual-pass-r5e` §2.1/§2.2/§2.5 and `test:visual-pass-r5i` §1 (its title surface and its side inks, registered);
+  `test:contrast` (the result label's ink on the inset well).
 
 Nothing mounts it yet (S7's WP7 and WP10 do), so no page a player sees changes; the stylesheet's new rules match nothing
 on a classic page.
