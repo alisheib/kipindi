@@ -2,8 +2,9 @@
  * ONE ROW OF THE AKAUNTI HUB — how a `HubRow` (`hub-rows.ts`) is drawn (the Vodacom plan S6, SJ-17; S6-PLAN WP5).
  *
  * Rendered on the server with the page's own dictionary; only the controls that act in the browser are client islands
- * — the Arifa count, the language, the card size and the Needle's drawer. Every row is one list item of its card, at
- * least the 56px rung tall, and a second line makes it taller rather than clipped.
+ * — the Arifa count, the language, the card size and the Needle's drawer (and Tafuta's field, the kit Input: its row and
+ * its form are this file's own server markup). Every row is one list item of its card, at least the 56px rung tall, and
+ * a second line makes it taller rather than clipped.
  * ⛔ No helpline row since the owner's ruling of 2026-10-06 (docs/COMPLIANCE-DECISIONS.md); nothing here types a phone number.
  * ⛔ Every figure is neutral ink: gold is money that was earned, and a balance in a list of doors is not that.
  */
@@ -16,8 +17,11 @@ import { NeedleControlsDrawer } from "@/components/layout/needle-drawer";
 import { formatTzs, fill } from "@/lib/utils";
 import { firstDateSentence, formatBreakEnd } from "@/lib/break-end";
 import { keepConnectives, keepText } from "@/components/ui/keep-run";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { MAX_QUERY_LEN } from "@/lib/search/query";
 import type { Dict, Locale } from "@/lib/i18n-dict";
-import { hubWord, type HubRow, type HubViewer } from "@/components/journey/account/hub-rows";
+import { hubWord, type HubRow, type HubSearch, type HubViewer } from "@/components/journey/account/hub-rows";
 import { UnreadRow } from "@/components/journey/account/unread-row";
 import { LanguageRow } from "@/components/journey/account/language-row";
 import { CardSizeRow } from "@/components/journey/account/card-size-row";
@@ -36,6 +40,7 @@ export function HubRowItem({ row, t, viewer, locale }: { row: HubRow; t: Dict; v
   if (row.kind === "unread") {
     return <UnreadRow userId={viewer.signedIn ? viewer.userId : null} href={row.href} label={hubWord(t, row.label)} />;
   }
+  if (row.kind === "search") return <SearchRow row={row} t={t} />;
   const Glyph = I[row.glyph];
   // Round 7 (2026-10-10, the owner's item 37): a label never ends a line on a connective — "Mapendekezo" / "ya Masoko",
   // never "Mapendekezo ya" / "Masoko" (`keepConnectives`; the words unchanged).
@@ -89,4 +94,45 @@ export function HubRowItem({ row, t, viewer, locale }: { row: HubRow; t: Dict; v
  */
 function HubSub({ text }: { text: string }) {
   return <DotSeq text={text} className="kp-hub__sub" />;
+}
+
+/**
+ * TAFUTA — the settings card's search (the Vodacom plan S7 WP9, S7-PLAN A20; SJ-6: "search lives in Akaunti").
+ * ⭐ AT REST IT IS THE BOARD'S ROW (s4-8-akaunti): the search glyph, "Tafuta" and the chevron, drawn as every row here.
+ * ⭐ IT OPENS IN PLACE, AS LUGHA DOES (`language-row.tsx`): a disclosure whose summary is the row, its chevron turned a
+ * quarter by Lugha's own rule, and beneath it, in the flow, a GET form to the journey home: the kit Input (`q`) and the
+ * kit Button on one line, on the inset Lugha's choices open on (`.kp-hub__form`). The home states the search (WP7).
+ * ⭐ NO SCRIPT: a details element and a native GET form, both server markup, so it opens and sends with JavaScript off.
+ * A send is a document load of the home, which the journey home answers.
+ * ⛔ One field and one submit, nothing hidden: the address it builds is the home with `q` alone. ⛔ The field is a text
+ *    field, never the search type: SearchBox is the product's one search box (`test:search-adoption`), and this field
+ *    searches nothing here — it hands the words to the home, which reads them with the platform's grammar, capped as the
+ *    home caps them (`MAX_QUERY_LEN`).
+ */
+function SearchRow({ row, t }: { row: HubSearch; t: Dict }) {
+  const SearchGlyph = I[row.glyph];
+  const label = hubWord(t, row.label);
+  return (
+    <li>
+      <details className="kp-hub__find">
+        <summary className="kp-hub__row">
+          <span className="kp-hub__glyph" aria-hidden><SearchGlyph s={20} /></span>
+          <span className="kp-hub__text"><span className="kp-hub__label">{keepConnectives(label)}</span></span>
+          <I.chevronRight s={18} edge="end" className="kp-hub__chev" aria-hidden />
+        </summary>
+        <form method="get" action={row.action} className="kp-hub__form">
+          <Input
+            name="q"
+            aria-label={label}
+            placeholder={hubWord(t, row.placeholder)}
+            maxLength={MAX_QUERY_LEN}
+            enterKeyHint="search"
+            autoComplete="off"
+            containerClassName="kp-hub__field"
+          />
+          <Button type="submit" variant="primary" size="md">{label}</Button>
+        </form>
+      </details>
+    </li>
+  );
 }
