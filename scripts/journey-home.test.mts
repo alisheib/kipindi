@@ -74,14 +74,28 @@
  *          review record.
  *      ⚠️ §5 stands in its own delimited block (its world, readers, checks and plants), after §4's; its stylesheet is read
  *      with §4's reader (`cssRules`, `declOf`), as the cascade reads it.
+ *   §9 THE JOURNEY CARD ON /watchlist, /live, /results AND THE SIMILAR RAIL (S7 WP10, amendments A12, A16 item 5, A18,
+ *      A21, A22 and A24 item 6; Open points 9-12). The pages need a server to render, so they are read in source (the card
+ *      itself renders in §4's world): the card's sites are named — the four pages, and WP7's journey-home.tsx once it
+ *      lands — and nothing else under src/ imports it; each page asks the one resolver once and decides nothing itself;
+ *      each puts ONE ternary in its cards' slot, the journey arm first and the classic arm today's markup line for line
+ *      (pinned at both ends, at today's indentation), and reads `journey` nowhere else, so no false child joins a classic
+ *      payload; each hands the card the market row itself and one clock, never a price or a pool, and computes no face;
+ *      no journey file or arm uses the classic card's hooks or the board grid; the cards stand in the one journey card
+ *      grid, each its own child (no wrapper, no title reserve); h2 on the pages, h3 in the similar rail under its h2 in
+ *      the journey's words; journey /live keeps today's list, order and search box, and pages only through the home's
+ *      rules (A21); /watchlist draws every phase, /results exactly the classic grid's rows; and the classic arms keep
+ *      what A24 item 6 names.
+ *      ⚠️ §9 stands in its own delimited block, after §5's, and every §9 plant must fail its own check ALONE.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY and requires the check named for it to fail.
  * §1's plants edit copies of the source text; §2's and §3's swap ONE rule (a function `home-list.ts` or `card-face.ts`
  * exports, or the `cardEstimate` the card's figures come through) for a copy of the real one carrying one defect; §4's
  * edit a copy of the card's source, of globals.css or of one rendered card (the world is rendered once, from the real
  * component); §5's edit a copy of the How-to card's, the sheet's or the lazy module's source, of globals.css, of
- * test:popup-fit's record or of one rendered card or sheet (rendered once, in §5's own test world). Nothing here
- * touches a file on disk, so `test:red-anchors` §4 counts it in the in-process class.
+ * test:popup-fit's record or of one rendered card or sheet (rendered once, in §5's own test world); §9's edit a copy of
+ * one of the four pages, of a census subject or of a journey file. Nothing here touches a file on disk, so
+ * `test:red-anchors` §4 counts it in the in-process class.
  * ⚠️ Every read is DECOMMENTED (`scripts/lib/decomment.mts`), so a rule quoted in a note is never mistaken for the rule.
  * ⚠️ This file carries no escape a tool could decode on its way to disk: line breaks are built from their code points, and
  * its patterns use look-arounds and character classes, never a word boundary.
@@ -155,6 +169,7 @@ type World = {
   renders: Renders;              // §4: the card's test world, each case rendered once from the real component
   gutter: number | null;         // §4: a phone page's side gutter — PageContainer's house padding (px-3) on the house scale
   howto: HowToWorld;             // §5 (S7 WP6): the How-to card, the sheet, the home's lazy module — and what they render
+  pages: PagesWorld;             // §9 (S7 WP10): the four pages that draw the journey card, its census, the journey files
 };
 
 /** §4's frame: the house padding every page container lays (`px-3` below lg), and the house scale's step 3. */
@@ -179,6 +194,7 @@ function load(): World {
   return {
     page: read(PAGE), landing: read(LANDING), layout: read(LAYOUT), walked: all.length, naming, rules: RULES,
     card: read(CARD), css: read(CSS), cardNaming, renders: renderCards(), gutter: pageGutter(), howto: loadHowTo(all),
+    pages: loadPages(all),
   };
 }
 
@@ -1501,6 +1517,405 @@ function howToDefects(): HtPlant[] {
   ];
 }
 
+/* ══ §9 · THE JOURNEY CARD ON /watchlist, /live, /results AND THE SIMILAR RAIL (S7 WP10) ════════════════════════════════
+ * S7-PLAN WP10 as A12, A16 item 5 (the coordinator's ruling: the one journey card grid, whose cards share their rows — no
+ * title reserve), A18, A21, A22 and A24 item 6 amend it, with Open points 9-12. Each page asks the one resolver once and
+ * puts ONE ternary in its cards' slot: the journey arm first, then the classic arm, today's markup line for line, so a
+ * classic request is served today's page (Open point 10: only the cards swap; each page's frame stays). The pages need
+ * a server to render, so §9 reads them in source; the card itself renders in §4's test world, and WP11's drives read
+ * the served pages.
+ * ⭐ Everything below is §9's own — its world, its readers, its checks and its plants — so the branches that add §6 to
+ * §8 meet it only at the World type, load(), run() and the plant list, one line each.
+ * ⚠️ No escape a tool could decode: line breaks are built from their code points, patterns use classes. */
+const PG_WATCH = "src/app/watchlist/page.tsx";
+const PG_LIVE = "src/app/live/page.tsx";
+const PG_RESULTS = "src/app/results/page.tsx";
+const PG_QUESTION = "src/app/markets/[id]/page.tsx";
+/** WP7's server home: the card's fifth site once it lands (absent from WP10's tree, so it is named and not required). */
+const PG_HOME = "src/components/journey/home/journey-home.tsx";
+/** The player page size's one definition, and the classic /live wall whose search box the journey list keeps. */
+const PG_PAGER = "src/components/ui/pagination.tsx";
+const PG_WALL = "src/app/live/pulse-grid.tsx";
+const PG_JOURNEY_DIR = "src/components/journey/";
+type PgName = "watch" | "live" | "results" | "question";
+const PG_NAMES: readonly PgName[] = ["watch", "live", "results", "question"];
+const PG_FILE: Record<PgName, string> = { watch: PG_WATCH, live: PG_LIVE, results: PG_RESULTS, question: PG_QUESTION };
+const pgPad = (n: number) => " ".repeat(n);
+/**
+ * Each page's cards' slot as today's markup spells it: the ternary's indentation, and the classic arm's first and last
+ * lines (one line on /live), which must stand right after the ternary's `) : (` and right before its closing `)}` — so
+ * the classic arm is pinned at both ends: never re-indented, wrapped or moved.
+ */
+const PG_SLOT: Record<PgName, { pad: string; head: string; tail: string }> = {
+  watch: { pad: pgPad(10), head: pgPad(10) + '<section className="market-grid">', tail: pgPad(10) + "</section>" },
+  live: { pad: pgPad(12), head: pgPad(12) + "<LivePulseGrid markets={markets} />", tail: pgPad(12) + "<LivePulseGrid markets={markets} />" },
+  results: { pad: pgPad(14), head: pgPad(14) + '<section className="market-grid">', tail: pgPad(14) + "</section>" },
+  question: { pad: pgPad(12), head: pgPad(12) + '<div className="market-grid">', tail: pgPad(12) + "</div>" },
+};
+/** What each site hands the card: the row ITSELF, the page's one clock — and nothing but the card's own props (WP5). */
+const PG_ROW: Record<PgName, string> = { watch: "marketById.get(row.id)!", live: "m", results: "m", question: "s" };
+const PG_CLOCK: Record<PgName, string> = { watch: "nowMs", live: "nowMs", results: "nowMs", question: "simNow" };
+const PG_CLOCK_DECL: Record<PgName, string> = {
+  watch: "const nowMs = Date.now();", live: "const nowMs = Date.now();", results: "const nowMs = Date.now();", question: "const simNow = Date.now();",
+};
+const PG_PROPS = new Set(["key", "m", "nowMs", "t", "locale", "heading", "roundId"]);
+/** The resolver's one line, the slot's opener and the similar rail's heading words: the only places a page reads `journey`. */
+const PG_ASK = "const { journey } = await resolveSimpleJourney();";
+const PG_ASK_IMPORT = 'import { resolveSimpleJourney } from "@/lib/server/journey-preview";';
+const PG_OPENER = "{journey ? (";
+const PG_RAIL_WORDS = "{journey ? t.journey.similarTitle : t.market.similarMarkets}";
+/** `journey` the identifier: not a member (`t.journey`), a path segment (`journey-card`, `/journey/`) or a longer name. */
+const PG_JOURNEY_ID = /(?<![A-Za-z0-9_$./-])journey(?![A-Za-z0-9_$-])/g;
+const PG_IMPORTS_CARD = /(?:from|import)[ ]*[(]?[ ]*["'`][^"'`]*journey-card(?:[.]tsx)?["'`]/;
+/** Journey /live's own pins (A21): the slot's one element, the page parameter, the paging and the more link. */
+const PG_LIVE_ARM = "<JourneyLiveList rows={all} page={journeyPage} q={q} rounds={roundByMarket} nowMs={nowMs} t={t} locale={locale} />";
+const PG_LIVE_PAGE = 'const journeyPage = parsePageParam(oneParam((await searchParams) ?? {}, "page"));';
+const PG_LIVE_SHELF = "const shelf = pageCumulative(rows, page, JOURNEY_LIVE_PER_PAGE);";
+const PG_LIVE_MORE = '<Link href={buildQueryHref("/live", { q }, { q: "" }, {}, { page: shelf.page + 1 }) as never} scroll={false}';
+/** /results' journey rows: exactly the classic grid's own (the page less the notables the carousel lifts out). */
+const PG_RESULTS_ROWS = "{paged.filter((m) => !notableIds.has(m.id)).map((m) => (";
+/** A24 item 6: what the classic arms kept — the count players see, and the similar rail's line withheld on a break. */
+const PG_BREAK_LINE = '{!breakEnd && <p className="mb-4 text-body-sm text-text-muted">{t.market.similarMarketsBody}</p>}';
+
+type PagesWorld = {
+  src: Record<PgName, string>;   // the four pages WP10 edits
+  home: string;                  // WP7's journey-home.tsx, "" until it lands
+  naming: Map<string, string>;   // every OTHER file under src/ whose text names journey-card: the census's subjects
+  journey: Map<string, string>;  // every file under src/components/journey/
+  pager: string;                 // src/components/ui/pagination.tsx: PLAYER_PER_PAGE's one definition
+  wall: string;                  // src/app/live/pulse-grid.tsx: the classic wall and its search box
+  walked: number;
+};
+
+function loadPages(all: readonly string[]): PagesWorld {
+  const own = new Set([PG_WATCH, PG_LIVE, PG_RESULTS, PG_QUESTION, PG_HOME, CARD]);
+  const naming = new Map<string, string>();
+  const journey = new Map<string, string>();
+  for (const rel of all) {
+    const isJourney = rel.startsWith(PG_JOURNEY_DIR);
+    if (own.has(rel) && !isJourney) continue;
+    const s = read(rel);
+    if (isJourney) journey.set(rel, s);
+    if (!own.has(rel) && s.includes("journey-card")) naming.set(rel, s);
+  }
+  return {
+    src: { watch: read(PG_WATCH), live: read(PG_LIVE), results: read(PG_RESULTS), question: read(PG_QUESTION) },
+    home: read(PG_HOME), naming, journey, pager: read(PG_PAGER), wall: read(PG_WALL), walked: all.length,
+  };
+}
+
+/** JSX as the compiler reads it: white space of every kind one space, trimmed. */
+const pgFlat = (s: string) => s.replace(WS, " ").trim();
+type PgSlotRead = { openers: number; journeyArm: string | null; elseLine: string | null; classicArm: string | null };
+/**
+ * A page's cards' slot in its decommented source: how many `{journey ? (` openers the page holds, the journey arm (the
+ * lines between the slot's opener and its `) : (`), that `) : (` line as written, and the classic arm (the lines between
+ * it and the slot's closing `)}`) — each null when the slot has no such part.
+ */
+function pgSlot(code: string, n: PgName): PgSlotRead {
+  const { pad } = PG_SLOT[n];
+  const opener = `${LF}${pad}${PG_OPENER}${LF}`;
+  const at = code.indexOf(opener);
+  const elseAt = at < 0 ? -1 : code.indexOf(`${LF}${pad}) : (`, at + opener.length - 1);
+  const elseEnd = elseAt < 0 ? -1 : code.indexOf(LF, elseAt + 1);
+  const closeAt = elseEnd < 0 ? -1 : code.indexOf(`${LF}${pad})}${LF}`, elseEnd);
+  return {
+    openers: count(code, `${PG_OPENER}${LF}`),
+    journeyArm: at < 0 || elseAt < 0 ? null : code.slice(at + opener.length, elseAt),
+    elseLine: elseAt < 0 || elseEnd < 0 ? null : code.slice(elseAt + 1, elseEnd),
+    classicArm: elseEnd < 0 || closeAt < 0 ? null : code.slice(elseEnd + 1, closeAt),
+  };
+}
+/**
+ * Journey /live's list, `JourneyLiveList`, from its signature to the brace that closes its body (decommented), or "".
+ * ⚠️ Read by brace depth, never to the next line that is a lone `}`: a JSX comment spread over lines decomments to a
+ * `{` and a `}` at the start of a line, which would end the function early.
+ */
+function pgLiveList(code: string): string {
+  const at = code.indexOf("function JourneyLiveList(");
+  const body = at < 0 ? -1 : code.indexOf(`}) {${LF}`, at);
+  if (body < 0) return "";
+  for (let depth = 0, i = body + 3; i < code.length; i++) {
+    if (code[i] === "{") depth++;
+    else if (code[i] === "}" && --depth === 0) return code.slice(at, i + 1);
+  }
+  return code.slice(at);
+}
+/** Every `<JourneyCard … />` element in a text, as written. */
+function pgCards(text: string): string[] {
+  const out: string[] = [];
+  for (let at = text.indexOf("<JourneyCard"); at >= 0; at = text.indexOf("<JourneyCard", at + 1)) {
+    const end = text.indexOf("/>", at);
+    out.push(end < 0 ? text.slice(at) : text.slice(at, end + 2));
+  }
+  return out;
+}
+/** An element's props in order, each with its value as written (a `{…}` value read to its balanced close). */
+function pgProps(el: string): Array<[string, string]> {
+  const out: Array<[string, string]> = [];
+  const name = /(?<=[ ])([A-Za-z]+)=/g;
+  for (let m = name.exec(el); m; m = name.exec(el)) {
+    const from = m.index + m[0].length;
+    let to = from + 1;
+    if (el[from] === "{") {
+      for (let depth = 0, i = from; i < el.length; i++) {
+        if (el[i] === "{") depth++;
+        else if (el[i] === "}" && --depth === 0) { to = i + 1; break; }
+      }
+    } else if (el[from] === '"') to = el.indexOf('"', from + 1) + 1;
+    out.push([m[1], el.slice(from, to)]);
+    name.lastIndex = Math.max(to, name.lastIndex);
+  }
+  return out;
+}
+const pgProp = (el: string, p: string) => pgProps(el).find(([k]) => k === p)?.[1] ?? null;
+/** A JSX element of `tag` in a text, read to its first `/>` and flattened, or null. */
+function pgElement(text: string, tag: string): string | null {
+  const at = text.indexOf(`<${tag}`);
+  const end = at < 0 ? -1 : text.indexOf("/>", at);
+  return end < 0 ? null : pgFlat(text.slice(at, end + 2));
+}
+
+function pagesChecks(pw: PagesWorld, ok: Ok) {
+  const code = Object.fromEntries(PG_NAMES.map((n) => [n, decomment(pw.src[n])])) as Record<PgName, string>;
+  const slot = Object.fromEntries(PG_NAMES.map((n) => [n, pgSlot(code[n], n)])) as Record<PgName, PgSlotRead>;
+  const liveList = pgLiveList(code.live);
+  /** Where each page draws its cards: the slot's journey arm — on /live, the journey list that arm renders. */
+  const cardsText = (n: PgName) => (n === "live" ? liveList : slot[n].journeyArm ?? "");
+  const cards = Object.fromEntries(PG_NAMES.map((n) => [n, pgCards(cardsText(n))])) as Record<PgName, string[]>;
+
+  /* the sites (WP10 Gates: "the JourneyCard sites are named") */
+  const census: Array<[string, string]> = [
+    ...PG_NAMES.map((n): [string, string] => [PG_FILE[n], pw.src[n]]),
+    ...(pw.home !== "" ? [[PG_HOME, pw.home] as [string, string]] : []),
+    ...pw.naming,
+  ];
+  const importers = census.filter(([, s]) => PG_IMPORTS_CARD.test(decomment(s))).map(([rel]) => rel).sort();
+  const sitesWant = [...PG_NAMES.map((n) => PG_FILE[n]), ...(pw.home !== "" ? [PG_HOME] : [])].sort();
+  const drawnElsewhere = PG_NAMES.filter((n) => count(code[n], "<JourneyCard") !== 1).map((n) => [n, count(code[n], "<JourneyCard")]);
+  ok("9.sites · the journey card's sites are named (WP10): /watchlist, /live, /results and the question page import it — and WP7's journey-home.tsx once it lands — and no other file under src/ does; each of the four draws it in one place",
+    pw.walked >= 500 && j(importers) === j(sitesWant) && drawnElsewhere.length === 0, j({ walked: pw.walked, importers, drawnElsewhere }));
+
+  /* the one resolver, asked once (WP10 step 1) */
+  const DECIDES = ["simpleJourneyFor", "resolveJourneyFor", "useJourneyOn", "JOURNEY_PREVIEW_COOKIE", "kp_preview"];
+  const badAsk = PG_NAMES.filter((n) => count(code[n], PG_ASK) !== 1 || count(code[n], "resolveSimpleJourney(") !== 1
+    || count(code[n], PG_ASK_IMPORT) !== 1 || DECIDES.some((d) => code[n].includes(d)))
+    .map((n) => [n, count(code[n], "resolveSimpleJourney("), DECIDES.filter((d) => code[n].includes(d))]);
+  ok("9.ask · each page asks the one per-request resolver exactly once (const { journey } = await resolveSimpleJourney(), the answer AppShell is given too) and decides nothing itself: no simpleJourneyFor, no pass cookie, no client hook",
+    badAsk.length === 0, j(badAsk));
+
+  /* one ternary per slot, the classic arm today's (WP10 step 2) */
+  const badSlot = PG_NAMES.flatMap((n) => {
+    const s = slot[n], { pad, head, tail } = PG_SLOT[n];
+    const lines = s.classicArm === null ? [] : s.classicArm.split(LF);
+    let rest = code[n].replace(PG_ASK, "").replace(`${pad}${PG_OPENER}`, "");
+    if (n === "question") rest = rest.replace(PG_RAIL_WORDS, "");
+    const stray = (rest.match(PG_JOURNEY_ID) ?? []).length;
+    const problems = [
+      s.openers !== 1 ? `${s.openers} openers` : "",
+      s.journeyArm === null ? "no journey arm" : "",
+      s.elseLine !== `${pad}) : (` ? `its else line ${j(s.elseLine)}` : "",
+      lines[0] !== head ? `the classic arm opens ${j(lines[0] ?? null)}` : "",
+      lines[lines.length - 1] !== tail ? `the classic arm ends ${j(lines[lines.length - 1] ?? null)}` : "",
+      s.classicArm !== null && /journey/i.test(s.classicArm) ? "journey code in the classic arm" : "",
+      stray !== 0 ? `${stray} other read(s) of journey` : "",
+    ].filter((p) => p !== "");
+    return problems.length > 0 ? [[n, problems]] : [];
+  });
+  ok("9.slot · each page's cards' slot is ONE ternary on the resolver's answer — the journey arm first, then the classic arm, today's markup line for line (pinned at its first and last lines, at today's indentation, never wrapped) — and the page reads journey nowhere else (the similar rail's heading words aside): no journey && sibling, which would add a false child to every classic payload",
+    badSlot.length === 0, j(badSlot));
+
+  /* what each site hands the card (WP10 Gates) */
+  const noCards = PG_NAMES.filter((n) => cards[n].length === 0);
+  const MINTED = /Pool|[Pp]rice|Pct|[Ee]stimate|[?][?][ ]*0(?![.0-9])|[.]{3}/;
+  const badHands = PG_NAMES.flatMap((n) => cards[n].filter((el) => pgProp(el, "m") !== `{${PG_ROW[n]}}`
+    || pgProps(el).some(([p]) => !PG_PROPS.has(p)) || MINTED.test(el)).map((el) => [n, pgFlat(el)]));
+  ok("9.hands · each site hands the card the market row ITSELF (/watchlist its starred row, /live and /results theirs, the similar rail its question) and nothing the card computes for itself: never a price, a pool, an estimate, a defaulted pool (?? 0) or a spread copy — only the card's own props",
+    noCards.length === 0 && badHands.length === 0, j({ noCards, badHands }));
+  const badClock = PG_NAMES.flatMap((n) => cards[n].filter((el) => pgProp(el, "nowMs") !== `{${PG_CLOCK[n]}}`).map((el) => [n, pgProp(el, "nowMs")]));
+  const badDecl = PG_NAMES.filter((n) => count(code[n], PG_CLOCK_DECL[n]) !== 1);
+  ok("9.clock · each site hands its cards ONE clock, read once per render (nowMs; the similar rail's own simNow), never the wall clock card by card: every card's close label, the resolution half of its bet test and its settled year read one instant",
+    badClock.length === 0 && badDecl.length === 0, j({ badClock, badDecl }));
+  const FACE_IMPORTS = ["@/lib/journey/card-face", "@/lib/server/journey-sheet", "@/lib/markets/estimate"];
+  const FACE_CALLS = /(?<![A-Za-z0-9_$.])(?:cardFace|cardFigures|cardEstimate|estimateFor|pickEstimateRates|bettableAt)[ ]*[(]/g;
+  const badFaces = PG_NAMES.map((n) => [n, [...FACE_IMPORTS.filter((s) => code[n].includes(`"${s}"`)), ...(code[n].match(FACE_CALLS) ?? [])]] as const)
+    .filter(([, hits]) => hits.length > 0);
+  ok("9.faces · no site computes a face: the pages import none of the card's rules (card-face, the sheet's cardFigures, the estimate) and call none of them — the card computes its face itself, through cardFigures and cardFace (§4), so no page can price a card its own way",
+    badFaces.length === 0, j(badFaces));
+
+  /* the classic card's hooks, and the one journey card grid (WP10 Gates; A16 item 5) */
+  const CLASSIC_HOOK = /data-market-surface|mcardp|market-grid/g;
+  const inFiles = [...pw.journey].flatMap(([rel, s]) => (decomment(s).match(CLASSIC_HOOK) ?? []).map((x) => `${rel}: ${x}`));
+  const inArms = PG_NAMES.flatMap((n) => (cardsText(n).match(CLASSIC_HOOK) ?? []).map((x) => `${n}: ${x}`));
+  ok("9.forbidden · no journey file (every file under src/components/journey/) and no journey arm on the four pages uses the classic card's surface hook, its class or the board grid (V18 selects them, and phone density rewrites them)",
+    pw.journey.size >= 15 && inFiles.length === 0 && inArms.length === 0, j({ journeyFiles: pw.journey.size, inFiles, inArms }));
+  const GRID_OPEN = /<(?:section|div|ul)(?=[ ])[^>]*className="kp-jgrid"[^>]*>/;
+  const badGrid = PG_NAMES.flatMap((n) => {
+    const text = cardsText(n);
+    const open = GRID_OPEN.exec(text);
+    const first = open ? text.indexOf("<JourneyCard", open.index) : -1;
+    const problems = [
+      count(text, 'className="kp-jgrid"') !== 1 || count(text, "kp-jgrid") !== 1 ? `the grid's class ${count(text, "kp-jgrid")} times` : "",
+      !open || first < 0 || text.slice(open.index + open[0].length, first).includes("<") ? "an element between the grid and its cards" : "",
+      /grid-cols-|min-h-|(?<![A-Za-z-])h-[[]/.test(text) ? "a column rule or a reserve of its own" : "",
+    ].filter((p) => p !== "");
+    return problems.length > 0 ? [[n, problems]] : [];
+  });
+  ok("9.grid · A16 item 5, as the coordinator ruled it: each surface lays its cards in the one journey card grid (.kp-jgrid: one column, two from 640, three from 1024, whose cards share their rows), each card the grid's own child — no wrapper, so the card's root is its row's one identity — with no column rule and no title reserve of its own",
+    badGrid.length === 0, j(badGrid));
+
+  /* the headings (WP5 step 1; WP10 step 2) */
+  const badHeading = PG_NAMES.flatMap((n) => cards[n].filter((el) => {
+    const hd = pgProp(el, "heading");
+    return n === "question" ? hd !== '"h3"' : hd !== null && hd !== '"h2"';
+  }).map((el) => [n, pgProp(el, "heading")]));
+  const railAt = code.question.indexOf('<h2 id="similar-markets-heading"');
+  const railHead = railAt < 0 ? "" : code.question.slice(railAt, code.question.indexOf("</h2>", railAt));
+  const railWords = railHead.includes(PG_RAIL_WORDS) && count(code.question, PG_RAIL_WORDS) === 1;
+  const worded = (["sw", "en", "zh"] as const).every((l) => dict[l].journey.similarTitle.length > 0 && dict[l].journey.similarTitle !== dict[l].market.similarMarkets);
+  ok("9.headings · the cards are h2 on /watchlist, /live and /results (each page's h1 above them) and h3 in the similar rail, under the rail's own h2 — whose words are the journey's for a journey request (journey.similarTitle, “Maswali yanayofanana”) and today's for every other, the element itself today's",
+    badHeading.length === 0 && railWords && worded, j({ badHeading, railWords, worded }));
+
+  /* journey /live (A21) */
+  const perPage = /export const PLAYER_PER_PAGE = ([0-9]+);/.exec(decomment(pw.pager));
+  const ownPage = /const JOURNEY_LIVE_PER_PAGE = ([0-9]+);/.exec(code.live);
+  const wallBox = pgElement(decomment(pw.wall), "SearchBox");
+  const listBox = pgElement(liveList, "SearchBox");
+  const band = liveList.indexOf("<div className={QUERY_SEARCH_BAND_CLASS}>");
+  const suspense = band < 0 ? -1 : liveList.indexOf("<Suspense>", band);
+  const ONLY_THROUGH_THE_RULE = /[.](?:filter|sort|slice|reverse|toSorted|toReversed)[(]|homeBook|bettableAt|isSelectionClosed|isClosedByTime|cardFigures/g;
+  const reordered = liveList.match(ONLY_THROUGH_THE_RULE) ?? [];
+  const live = {
+    arm: slot.live.journeyArm !== null && pgFlat(slot.live.journeyArm) === PG_LIVE_ARM,
+    pageRule: count(code.live, PG_LIVE_PAGE) === 1 && code.live.includes('import { pageCumulative, parsePageParam } from "@/lib/journey/home-list";'),
+    paging: count(liveList, PG_LIVE_SHELF) === 1 && count(code.live, "pageCumulative(") === 1 && count(liveList, "{shelf.shown.map((m) => (") === 1 && reordered.length === 0,
+    perPage: !!perPage && !!ownPage && perPage[1] === ownPage[1],
+    search: wallBox !== null && listBox === wallBox && suspense > band && liveList.indexOf("<SearchBox", suspense) > suspense
+      && code.live.includes('import { SearchBox } from "@/components/ui/search-box";') && code.live.includes('import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";'),
+    more: count(liveList, "{shelf.more && (") === 1 && count(liveList, PG_LIVE_MORE) === 1 && count(liveList, "{t.journey.showMore}") === 1
+      && code.live.includes('import { buildQueryHref } from "@/lib/query/href";'),
+    rounds: cards.live.length === 1 && pgProp(cards.live[0], "roundId") === "{rounds.get(m.id) ?? null}",
+  };
+  ok("9.live · A21: journey /live keeps today's list — the slot hands the list the page's own all (the searched open board, both product lines) in today's order, with no bet test and no home order, so a closed selection is drawn as the card's closed face — its search box (the classic wall's own, in its own Suspense, in the one band) and one paging rule: ?page through parsePageParam, the deck's cumulative “Onyesha zaidi” through pageCumulative at the player page size, its link keeping q and the reader's scroll; an Up & Down row opens its round",
+    Object.values(live).every(Boolean), j({ ...live, reordered, perPage: perPage?.[1] ?? null, ownPage: ownPage?.[1] ?? null }));
+
+  /* /watchlist, /results, and what the classic arms kept (A24 item 6) */
+  const watchArm = slot.watch.journeyArm ?? "";
+  ok("9.watchlist · /watchlist's journey arm draws every row the classic grid draws — the page's own paged, whatever each row's phase (taking bets, selection closed, settled, void; Up & Down in its own words) — with no filter of its own",
+    count(watchArm, "{paged.map((row) => (") === 1 && !/[.](?:filter|slice|sort)[(]/.test(watchArm), pgFlat(watchArm));
+  const resultsArm = slot.results.journeyArm ?? "";
+  ok("9.results · /results' journey arm draws the settled face for exactly the classic grid's rows (the page less the notables the carousel above lifts out; the carousel stays), so no settlement is drawn twice",
+    count(resultsArm, PG_RESULTS_ROWS) === 1 && count(code.results, PG_RESULTS_ROWS) === 2 && count(code.results, "<NotableCarousel") === 1,
+    pgFlat(resultsArm));
+  const kept = {
+    watch: count(code.watch, "predictors={shownPredictors(m)}") === 1,
+    results: count(code.results, "predictors={shownPredictors(m)}") === 1,
+    question: count(code.question, "predictors={shownPredictors(s)}") === 1,
+    breakLine: count(code.question, PG_BREAK_LINE) === 1,
+  };
+  ok("9.kept · A24 item 6: the classic arms WP10 kept still hand their cards the count players see (shownPredictors) on /watchlist, /results and the similar rail, and the rail still withholds its invitation from a reader on a break",
+    Object.values(kept).every(Boolean), j(kept));
+}
+
+/* ── §9's plants: each one defect, in memory, on a page, a census subject or a journey file; each fails its check ALONE ── */
+function pagesDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) => World; alone: true }> {
+  const pg = (n: PgName, ...edits: Array<[string, string]>) => (w: World): World =>
+    ({ ...w, pages: { ...w.pages, src: { ...w.pages.src, [n]: edits.reduce((s, [from, to]) => swap(s, from, to), w.pages.src[n]) } } });
+  const CARD_IMPORT = 'import { JourneyCard } from "@/components/journey/cards/journey-card";';
+  const ASK_LINE = `  ${PG_ASK}${LF}`;
+  const WATCH_CARD = "<JourneyCard key={row.id} m={marketById.get(row.id)!} nowMs={nowMs} t={t} locale={locale} />";
+  const BAND = [
+    "      <div className={QUERY_SEARCH_BAND_CLASS}>",
+    "        <Suspense>",
+    "          <SearchBox",
+    "            placeholder={t.common.searchLiveMarkets}",
+    "            ariaLabel={t.common.searchLiveMarkets}",
+    "            helpFields={fieldNames(MARKET_SEARCH)}",
+    "          />",
+    "        </Suspense>",
+    "      </div>",
+  ].join(LF) + LF;
+  return [
+    /* the sites */
+    { name: "a fifth WP10 site: the board imports the journey card (a surface the plan never named)", expect: /^9[.]sites /, alone: true,
+      plant: (w) => ({ ...w, pages: { ...w.pages, naming: new Map(w.pages.naming).set("src/app/markets/page.tsx", CARD_IMPORT + LF) } }) },
+    { name: "/results no longer imports the card (a named site lost)", expect: /^9[.]sites /, alone: true,
+      plant: pg("results", [CARD_IMPORT + LF, ""]) },
+    /* the one resolver */
+    { name: "/live asks the resolver twice", expect: /^9[.]ask /, alone: true,
+      plant: pg("live", [ASK_LINE, `${ASK_LINE}  const again = await resolveSimpleJourney();${LF}`]) },
+    { name: "/results decides the journey itself beside the resolver (simpleJourneyFor: a page that can disagree with its shell)", expect: /^9[.]ask /, alone: true,
+      plant: pg("results", [ASK_LINE, `${ASK_LINE}  const decided = simpleJourneyFor("STAFF_PREVIEW", null);${LF}`]) },
+    /* one ternary per slot */
+    { name: "a journey && sibling beside /watchlist's slot (every classic payload gains a false child)", expect: /^9[.]slot /, alone: true,
+      plant: pg("watch", [`${pgPad(10)}${PG_OPENER}${LF}`, `${pgPad(10)}{journey && <p className="sr-only">{t.watchlist.title}</p>}${LF}${pgPad(10)}${PG_OPENER}${LF}`]) },
+    { name: "/results' classic arm re-indented (no longer today's markup line for line)", expect: /^9[.]slot /, alone: true,
+      plant: pg("results", [`) : (${LF}${PG_SLOT.results.head}`, `) : (${LF}  ${PG_SLOT.results.head}`]) },
+    { name: "the similar rail's classic arm wrapped in a fragment", expect: /^9[.]slot /, alone: true,
+      plant: pg("question", [`) : (${LF}${PG_SLOT.question.head}`, `) : (<>${LF}${PG_SLOT.question.head}`],
+        [`${pgPad(14)}))}${LF}${PG_SLOT.question.tail}${LF}${pgPad(12)})}${LF}`, `${pgPad(14)}))}${LF}${PG_SLOT.question.tail}${LF}${pgPad(12)}</>)}${LF}`]) },
+    /* what each site hands the card */
+    { name: "/results hands a row whose pools are defaulted (?? 0 in a spread copy)", expect: /^9[.]hands /, alone: true,
+      plant: pg("results", [" m={m} nowMs={nowMs}", " m={{ ...m, yesPool: m.yesPool ?? 0, noPool: m.noPool ?? 0 }} nowMs={nowMs}"]) },
+    { name: "the similar rail hands its cards a price of its own", expect: /^9[.]hands /, alone: true,
+      plant: pg("question", [' heading="h3" />', ' heading="h3" price={priceState(s.yesPool, s.noPool)} />']) },
+    { name: "/watchlist's cards each read the wall clock (a clock per card)", expect: /^9[.]clock /, alone: true,
+      plant: pg("watch", [" nowMs={nowMs} t={t} locale={locale} />", " nowMs={Date.now()} t={t} locale={locale} />"]) },
+    { name: "the similar rail prices its questions itself (cardFigures beside the card)", expect: /^9[.]faces /, alone: true,
+      plant: pg("question", [CARD_IMPORT, `${CARD_IMPORT}${LF}import { cardFigures } from "@/lib/server/journey-sheet";`],
+        [ASK_LINE, `${ASK_LINE}  const railFigures = similar.map((s) => cardFigures(s, simNow));${LF}`]) },
+    /* the classic hooks, and the one grid */
+    { name: "a journey file lays a list in the classic board grid", expect: /^9[.]forbidden /, alone: true,
+      plant: (w) => {
+        const rel = "src/components/journey/tickets/tickets-view.tsx";
+        const s = w.pages.journey.get(rel);
+        if (s === undefined) throw new Error(`${rel} is not in the journey population`);
+        return { ...w, pages: { ...w.pages, journey: new Map(w.pages.journey).set(rel, `${s}${LF}export const Stray = () => <div className="market-grid" />;${LF}`) } };
+      } },
+    { name: "/watchlist's journey grid carries the classic surface hook", expect: /^9[.]forbidden /, alone: true,
+      plant: pg("watch", ['<section className="kp-jgrid">', '<section className="kp-jgrid" data-market-surface="board">']) },
+    { name: "/watchlist's cards each wrapped in an element carrying the row identity (two [data-row-id] per row)", expect: /^9[.]grid /, alone: true,
+      plant: pg("watch", [WATCH_CARD, "<div key={row.id} data-row-id={row.id}><JourneyCard m={marketById.get(row.id)!} nowMs={nowMs} t={t} locale={locale} /></div>"]) },
+    { name: "a column rule of its own on the similar rail's grid (beside the one journey card grid)", expect: /^9[.]grid /, alone: true,
+      plant: pg("question", ['<div className="kp-jgrid">', '<div className="kp-jgrid grid-cols-2">']) },
+    /* the headings */
+    { name: "the similar rail's cards drawn as h2 (two h2 levels under the rail's own)", expect: /^9[.]headings /, alone: true,
+      plant: pg("question", [' heading="h3" />', " />"]) },
+    { name: "the similar rail keeps today's words for a journey reader", expect: /^9[.]headings /, alone: true,
+      plant: pg("question", [PG_RAIL_WORDS, "{t.market.similarMarkets}"]) },
+    { name: "a /results card drawn as an h3 (a level skipped under the page's h1)", expect: /^9[.]headings /, alone: true,
+      plant: pg("results", [" m={m} nowMs={nowMs} t={t} locale={locale} />", ' m={m} nowMs={nowMs} t={t} locale={locale} heading="h3" />']) },
+    /* journey /live (A21: the three plants it names first) */
+    { name: "A21: homeBook swapped in (the home's bettable order replaces today's list)", expect: /^9[.]live /, alone: true,
+      plant: pg("live", ["pageCumulative(rows, page, JOURNEY_LIVE_PER_PAGE)", 'pageCumulative(homeBook(rows, nowMs, (m) => m.status === "LIVE"), page, JOURNEY_LIVE_PER_PAGE)']) },
+    { name: "A21: a bettable .filter( added (questions whose selection closed dropped)", expect: /^9[.]live /, alone: true,
+      plant: pg("live", ["{shelf.shown.map((m) => (", "{shelf.shown.filter((m) => !isSelectionClosed(m)).map((m) => ("]) },
+    { name: "A21: the search box dropped", expect: /^9[.]live /, alone: true,
+      plant: pg("live", [BAND, ""]) },
+    { name: "?page read with parseInt (02 and 2abc become pages: a second paging rule)", expect: /^9[.]live /, alone: true,
+      plant: pg("live", ['parsePageParam(oneParam((await searchParams) ?? {}, "page"))', 'Math.max(1, parseInt(String(oneParam((await searchParams) ?? {}, "page") ?? "1"), 10) || 1)']) },
+    { name: "“Onyesha zaidi” loses the reader's place (scroll={false} dropped)", expect: /^9[.]live /, alone: true,
+      plant: pg("live", [' scroll={false} className="btn btn-ghost btn-lg w-full"', ' className="btn btn-ghost btn-lg w-full"']) },
+    { name: "“Onyesha zaidi” drops the search (q not kept)", expect: /^9[.]live /, alone: true,
+      plant: pg("live", ['buildQueryHref("/live", { q }, { q: "" }', 'buildQueryHref("/live", { q: "" }, { q: "" }']) },
+    { name: "the journey page size typed apart from the player page size (24)", expect: /^9[.]live /, alone: true,
+      plant: pg("live", ["const JOURNEY_LIVE_PER_PAGE = 12;", "const JOURNEY_LIVE_PER_PAGE = 24;"]) },
+    { name: "an Up & Down row linked to the question, not its round (roundId dropped)", expect: /^9[.]live /, alone: true,
+      plant: pg("live", [" roundId={rounds.get(m.id) ?? null} />", " />"]) },
+    { name: "the slot hands the list the unsearched board (rows={live}: the count line and the list disagree)", expect: /^9[.]live /, alone: true,
+      plant: pg("live", ["<JourneyLiveList rows={all}", "<JourneyLiveList rows={live}"]) },
+    /* /watchlist, /results, and what the classic arms kept */
+    { name: "/watchlist's journey arm drops closed and settled rows (every phase is the page's)", expect: /^9[.]watchlist /, alone: true,
+      plant: pg("watch", [`{paged.map((row) => (${LF}${pgPad(16)}<JourneyCard`, `{paged.filter((row) => !row.selectionClosed).map((row) => (${LF}${pgPad(16)}<JourneyCard`]) },
+    { name: "/results' journey arm maps the whole page (the notables in the carousel drawn twice)", expect: /^9[.]results /, alone: true,
+      plant: pg("results", [`${PG_RESULTS_ROWS}${LF}${pgPad(20)}<JourneyCard`, `{paged.map((m) => (${LF}${pgPad(20)}<JourneyCard`]) },
+    { name: "A24 item 6: /watchlist's classic arm hands its cards the true count (shownPredictors lost)", expect: /^9[.]kept /, alone: true,
+      plant: pg("watch", ["predictors={shownPredictors(m)}", "predictors={m.predictorCount}"]) },
+    { name: "A24 item 6: the similar rail invites a reader on a break again ({!breakEnd && …} dropped)", expect: /^9[.]kept /, alone: true,
+      plant: pg("question", [PG_BREAK_LINE, '<p className="mb-4 text-body-sm text-text-muted">{t.market.similarMarketsBody}</p>']) },
+  ];
+}
+
 function run(w: World, log: (l: string) => void): string[] {
   const failed: string[] = [];
   const ok = (label: string, cond: boolean, extra = "") => {
@@ -1558,6 +1973,8 @@ function run(w: World, log: (l: string) => void): string[] {
   journeyCardChecks(w, ok);
   /* §5 · the How-to card and the static How-to sheet (S7 WP6) — its own block, above */
   howToChecks(w.howto, ok);
+  /* §9 · the journey card on /watchlist, /live, /results and the similar rail (S7 WP10) — its own block, above */
+  pagesChecks(w.pages, ok);
   return failed;
 }
 
@@ -1874,6 +2291,8 @@ if (!PROVE_RED) {
     ...cardDefects(),
     /* §5 (S7 WP6): the How-to card, the sheet and the home's lazy module — each plant one defect, its own check named. */
     ...howToDefects(),
+    /* §9 (S7 WP10): one defect in a copy of a page, a census subject or a journey file, each failing ALONE. */
+    ...pagesDefects(),
   ];
   let caught = 0, fail = 0;
   const ok = (label: string, cond: boolean, extra = "") => { if (!cond) fail++; console.log(`${cond ? "PROVED  " : "MISSED  "} ${label}${extra ? ` — ${extra}` : ""}`); };

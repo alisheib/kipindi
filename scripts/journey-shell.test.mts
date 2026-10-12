@@ -588,8 +588,14 @@ function g1Tabs(I: Impl, W: World, ok: Ok) {
 
 /* ══ §2 · THE JOURNEY SURFACES ═══════════════════════════════════════════════════════════════════════════════ */
 const ALLOW = ["/", "/positions", "/updown/history", "/markets/mkt_abc", "/wallet/deposit", "/wallet/deposit/return"];
+/**
+ * ⚠️ `/live`, `/results` and `/watchlist` draw the journey card from S7 WP10 and stay OUT of the journey surfaces in S7,
+ * so the Needle, the channels panel and the chat bubble stay on them (S7-PLAN Open point 11). A22 pins all three:
+ * `/watchlist` joined this list with WP10, where it had been missing, so a change to the surfaces cannot take it in
+ * unseen. (The question page, whose similar rail WP10 also changes, is a journey surface already: ALLOW.)
+ */
 const DENY: Array<string | null> = [
-  null, "", "/markets", "/markets/mkt_abc/x", "/updown", "/updown/udr_1", "/updown/history/x", "/live", "/results",
+  null, "", "/markets", "/markets/mkt_abc/x", "/updown", "/updown/udr_1", "/updown/history/x", "/live", "/results", "/watchlist",
   "/wallet", "/wallet/withdraw", "/wallet/depositx", "/help", "/account", "/profile", "/profile/kyc",
   "/profile/responsible-gambling", "/positions/performance", "/positions/pos_1", "/auth/login", "/s",
 ];
@@ -2594,6 +2600,8 @@ if (!PROVE_RED) {
     const ghostGlyph = TAB.JOURNEY_TABS.map((d): JourneyTabDef => (d.key === "tickets" ? { ...d, glyph: "tickets" as string as TAB.TabGlyph } : d));
     const guardIgnoresDicts: Impl["tabKeys"] = () => TAB.tabTableProblems(TAB.TAB_ROUTES, TAB.JOURNEY_TABS);
     const prefixMarkets = (p: string | null) => !!p && (p.startsWith("/markets") || SURF.isJourneySurface(p));
+    /** A22's defect: /watchlist taken into the journey surfaces, so its Needle, panel and chat bubble stand down. */
+    const takesWatchlist = (p: string | null) => p === "/watchlist" || SURF.isJourneySurface(p);
     const dropsHome = (p: string | null) => p !== "/" && SURF.isJourneySurface(p);
     const forgetsRounds = (p: string | null) => SURF.isCommitSurface(p) && !(p ?? "").startsWith("/updown/");
     const pillOnBreak: Impl["header"] = (i) => ({ ...HDR.journeyHeaderState(i), pill: HDR.journeyHeaderState({ ...i, onBreak: false }).pill });
@@ -3058,6 +3066,8 @@ ${s}`);
       // §2 — the surfaces and what each module loads
       { name: "isJourneySurface prefix-matches /markets", expect: at("2.deny./markets ·"),
         impl: { journeySurface: prefixMarkets }, landed: prefixMarkets("/markets"), landedAs: "the board loses its overlays" },
+      { name: "isJourneySurface takes /watchlist in (A22: Open point 11 keeps it out in S7)", expect: at("2.deny./watchlist ·"),
+        impl: { journeySurface: takesWatchlist }, landed: takesWatchlist("/watchlist"), landedAs: "the watchlist loses its overlays" },
       { name: "isJourneySurface drops /", expect: at("2.allow./ ·"),
         impl: { journeySurface: dropsHome }, landed: !dropsHome("/"), landedAs: "the home board keeps every overlay for a journey viewer" },
       { name: "the commit gate forgets Up & Down rounds", expect: at("2.golden./updown/udr_1 ·"),

@@ -989,6 +989,10 @@ player.**
 **B · One axis (5)** — `/leaderboard` (sort) · `/live` (`q` into the URL) ·
 `/positions/performance` (product lens) · `/profile/invite` (lens + sort) ·
 `/markets/[id]` comments (sort). Each reason is in task 4.8–4.12.
+For a journey reader (the Vodacom plan S7 WP10, S7-PLAN A21) `/live` also reads `?page`: the same list in the same
+order, drawn as journey cards, with the deck's cumulative "Onyesha zaidi" (page n shows the first 12·n, by the journey
+home's own rule) where the classic wall reveals its batches as the reader scrolls — a place in the one list, not a
+second axis. Classic `/live` is unchanged.
 
 **C · Window vocabulary only (1)** — `/profile/activity`. Task 4.13.
 

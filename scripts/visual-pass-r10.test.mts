@@ -256,6 +256,7 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     ["src/app/auth/2fa/page.tsx", '<I.arrowLeft s={12} edge="start" text="mono-400" className="mt-0.5" />', 1, "text", "the back link's start — it typed ← (the mono face's arrow, a weight under its words); on its first line (3.6)"],
     ["src/app/auth/otp/page.tsx", '<I.arrowLeft s={12} edge="start" text="mono-400" className="mt-0.5" />', 1, "text", "the change-number link's start — it typed ←; on its first line where its words wrap (3.6)"],
     ["src/app/help/page.tsx", '<I.chevronDown s={13} edge="end" className="transition-transform group-open:rotate-180" />', 1, "edge", "each FAQ row's end (§2)"],
+    ["src/app/live/page.tsx", '<I.chevronDown s={18} edge="end" />', 1, "edge", "journey /live's “Onyesha zaidi” end (S7 WP10): the canvas's caret, ending a centred kit control (§6.6)"],
     ["src/app/profile/activity/page.tsx", "<I.arrowDown s={14} />", 1, "slot", "a Stat tile's pictogram: the slot pulls it (§4); a deposit pictogram keeps the family's stroke"],
     ["src/app/profile/activity/page.tsx", "<I.arrowUp s={14} />", 1, "slot", "a Stat tile's pictogram: the slot pulls it (§4)"],
     ["src/app/profile/kyc/page.tsx", '<I.arrowLeft s={12} edge="start" text="mono-400" />', 1, "text", "the footer's back link's start — it typed ←"],
