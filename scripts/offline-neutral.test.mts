@@ -338,8 +338,27 @@ async function run(W: World, log: (l: string) => void): Promise<string[]> {
     ok(`5.tokens · each of the document's ${Object.keys(W.tokens).length} tokens is globals.css's own value`, drift.length === 0 && Object.keys(W.tokens).length >= 15, drift.join(" | "));
     const block = css.match(/(?:^|\n)\.btn-primary\s*\{([^}]*)\}/)?.[1] ?? "";
     const decl = (p: string) => block.match(new RegExp(`(?:^|;)\\s*${p}\\s*:\\s*([^;]+);`))?.[1];
-    const pDrift = Object.entries(W.primary).filter(([k, v]) => squash(decl(k) ?? "<absent>") !== squash(v)).map(([k, v]) => `${k}: doc ${v} · .btn-primary ${decl(k) ?? "absent"}`);
-    ok("5.primary · the retry's paint is `.btn-primary`'s, property for property", block.length > 0 && pDrift.length === 0, pDrift.join(" | ") || "no .btn-primary block");
+    // ⚠️ RE-PINNED 2026-10-12 (the Vodacom plan S7, S7-PLAN A14): `.btn-primary` reads its ramp, its lit edge and its drop
+    // from three tokens now (`--wash-primary`, `--edge-primary`, `--shadow-primary`, each byte-identical to the literal it
+    // replaced), while the document keeps literals — it cannot load the app's stylesheet offline. So the paint is compared
+    // RESOLVED, each side through what ITS page can read (bounded, so a cycle cannot hang the run): the button's
+    // `var(--token)`s through globals.css, the document's ONLY through its own tokens (`OFFLINE_TOKENS`, the `:root` it
+    // writes itself). A `var(--wash-primary)` typed into the document's copy resolves to nothing offline — no stylesheet
+    // there declares it — so it stays unresolved here and fails, where reading it through globals.css would have passed a
+    // retry painted with no background at all (the review of 2026-10-12). The paint compared is the paint drawn, property
+    // for property, as before.
+    const VAR = /var[(]--([a-z0-9-]+)[)]/g;
+    const resolver = (look: (name: string) => string | undefined) => {
+      const resolve = (v: string, depth = 0): string =>
+        depth > 8 ? v : v.replace(VAR, (whole: string, name: string) => { const val = look(`--${name}`); return val === undefined ? whole : resolve(val, depth + 1); });
+      return resolve;
+    };
+    const viaGlobals = resolver(first);
+    const viaDocument = resolver((name) => (Object.hasOwn(W.tokens, name) ? W.tokens[name] : undefined));
+    const pDrift = Object.entries(W.primary).filter(([k, v]) => squash(viaGlobals(decl(k) ?? "<absent>")) !== squash(viaDocument(v))).map(([k, v]) => `${k}: doc ${v} · .btn-primary ${decl(k) ?? "absent"}`);
+    const tokenRead = squash(viaGlobals("var(--wash-primary)")).startsWith("linear-gradient(180deg,");
+    ok("5.primary · the retry's paint is `.btn-primary`'s, property for property, as globals.css paints it, tokens resolved — the button's `var(--token)`s through globals.css, the document's only through its own tokens, since it cannot load globals.css (the ramp, the lit edge and the drop are tokens since S7-PLAN A14)",
+      block.length > 0 && pDrift.length === 0 && tokenRead, pDrift.join(" | ") || (block.length === 0 ? "no .btn-primary block" : "the token resolver read nothing"));
     const topo = decomment(W.topo);
     const topoPaths = [...topo.matchAll(/<path d="([^"]+)"/g)].map((m) => m[1]);
     const topoOk = j(topoPaths) === j(W.topoData.paths) && topo.includes(`width="${W.topoData.width}" height="${W.topoData.height}"`)
@@ -580,6 +599,15 @@ const PLANTS: Plant[] = [
     world: (w) => ({ ...w, tokens: { ...w.tokens, "--bg": "oklch(15% 0.130 268)" } }), needs: () => true },
   { name: "the retry painted off the primary button", expect: /^5\.primary /,
     world: (w) => ({ ...w, primary: { ...w.primary, "border-color": "oklch(44% 0.20 268)" } }), needs: () => true },
+  // S7-PLAN A14 (2026-10-12): the button's ramp is a token now, read through the resolver — the token re-tuned in
+  // globals.css while the document keeps its copy must still be seen.
+  { name: "the primary ramp's token re-tuned in globals.css, the document's copy left behind", expect: /^5\.primary /,
+    world: swap("globals", "--wash-primary: linear-gradient(180deg, oklch(53% 0.20 268)", "--wash-primary: linear-gradient(180deg, oklch(60% 0.20 268)"),
+    needs: has("globals", "--wash-primary: linear-gradient(180deg, oklch(53% 0.20 268)") },
+  // The review of 2026-10-12: the document's copy resolves only through its OWN tokens — the app's token typed into it
+  // paints nothing offline (no stylesheet there declares it), and must not pass by being read through globals.css.
+  { name: "the document's ramp written as the app's token (`var(--wash-primary)`, which nothing offline declares)", expect: /^5\.primary /,
+    world: (w) => ({ ...w, primary: { ...w.primary, background: "var(--wash-primary)" } }), needs: () => true },
   { name: "a glyph redrawn by hand", expect: /^5\.glyphs /,
     world: (w) => ({ ...w, glyphData: { ...w.glyphData, wifiOff: '<path d="M4 4l16 16"/>' } }), needs: () => true },
   { name: "the shell's header (and its balance) back in the document", expect: /^6\.no-shell /,

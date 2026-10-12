@@ -91,7 +91,7 @@ export const OFFLINE_TOKENS = {
   "--w-board": "1280px",
 } as const;
 
-/** `.btn-primary`'s paint, property for property as `globals.css` writes it (`test:offline-neutral` §5). */
+/** `.btn-primary`'s paint, property for property as `globals.css` paints it, tokens resolved (`test:offline-neutral` §5). */
 export const OFFLINE_PRIMARY = {
   background: "linear-gradient(180deg, oklch(53% 0.20 268) 0%, oklch(48% 0.20 268) 100%)",
   color: "var(--pearl-50)",
