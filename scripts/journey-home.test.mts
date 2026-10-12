@@ -50,7 +50,7 @@
  *      line ("≈99.9×" kept whole with its words, "≈100.0×" breaking before them); the closed row; the settled row's
  *      instant and outcome chip; the refund sentence; the local stacking plane; the picks' press and lift and their edge
  *      in forced colours; the action block on the card's floor, and THE JOURNEY CARD GRID whose cards share their rows
- *      (A16 item 5, subgrid); and only the kit's tokens (A15's side word).
+ *      (VODACOM-PLAN §0h point 73, subgrid); and only the kit's tokens (A15's side word).
  *      ⭐ Every §4 plant must fail its own check ALONE too.
  *      ⚠️ The rules are read as the cascade reads them: a selector's value is the LAST one any rule gives it (a list of
  *      one or of several, under any at-rule), so a later rule cannot re-set the card behind a check's back.
@@ -93,18 +93,22 @@
  *      and no classic grid or card; the poller as the one refresh (no odds listener, A7); the search line; the three empty
  *      states; and the How-to card handed the session's sign-in.
  *      ⚠️ §6 and §7 stand in their own delimited block, after §5's, and read the stylesheet as §4 does.
- *   §9 THE JOURNEY CARD ON /watchlist, /live, /results AND THE SIMILAR RAIL (S7 WP10, amendments A12, A16 item 5, A18,
- *      A21, A22 and A24 item 6; Open points 9-12). The pages need a server to render, so they are read in source (the card
- *      itself renders in §4's world): the card's sites are named — the four pages, and WP7's journey-home.tsx once it
- *      lands — and nothing else under src/ imports it; each page asks the one resolver once and decides nothing itself;
+ *   §9 THE JOURNEY CARD ON /watchlist, /live, /results AND THE SIMILAR RAIL (S7 WP10, amendments A12, A18, A21, A22 and
+ *      A24 item 6, the card grid as VODACOM-PLAN §0h point 73 rules it; Open points 9-12; and the WP10 review). The pages
+ *      need a server to render, so they are read in source (the card itself renders in §4's world): the card's sites are
+ *      named — the four pages, and WP7's journey-home.tsx once it lands — and nothing else under src/ imports it; each
+ *      page asks the one resolver once and decides nothing itself;
  *      each puts ONE ternary in its cards' slot, the journey arm first and the classic arm today's markup line for line
  *      (pinned at both ends, at today's indentation), and reads `journey` nowhere else, so no false child joins a classic
  *      payload; each hands the card the market row itself and one clock, never a price or a pool, and computes no face;
  *      no journey file or arm uses the classic card's hooks or the board grid; the cards stand in the one journey card
  *      grid, each its own child (no wrapper, no title reserve); h2 on the pages, h3 in the similar rail under its h2 in
  *      the journey's words; journey /live keeps today's list, order and search box, and pages only through the home's
- *      rules (A21); /watchlist draws every phase, /results exactly the classic grid's rows; and the classic arms keep
- *      what A24 item 6 names.
+ *      rules (A21); /watchlist draws every phase, /results exactly the classic grid's rows; the classic arms keep what
+ *      A24 item 6 names; and "Onyesha zaidi" is ONE control (the WP10 review, `show-more.tsx`): its drawing pinned (the
+ *      kit's ghost control at the large rung, full width, the deck's words, the caret on its edge, the kit's pending
+ *      mark, the reader's place kept, no directive), its importers exactly the two lists that page cumulatively (the
+ *      journey home and journey /live, each drawing it once), and no other file under src/ saying its words.
  *      ⚠️ §9 stands in its own delimited block, after §5's, and every §9 plant must fail its own check ALONE.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY and requires the check named for it to fail.
@@ -115,7 +119,7 @@
  * test:popup-fit's record or of one rendered card or sheet (rendered once, in §5's own test world); §6's and §7's edit a copy
  * of the route file, of the home's, the chips', the headline's or the ghost's source, of globals.css, of a suite's record, of
  * a census or of one drawn address or ghost (drawn once, in their own test world); §9’s edit a copy of one of the four
- * pages, of a census subject or of a journey file. Nothing here
+ * pages, of a census subject, of a journey file or of the show-more control. Nothing here
  * touches a file on disk, so `test:red-anchors` §4 counts it in the in-process class.
  *   §8 THE LIVE STRIP LEAVES / AND /markets FOR A JOURNEY READER (S7 WP8; VODACOM-PLAN §3.2, COMPLIANCE-DECISIONS
  *      2026-09-29 §10; S7-PLAN Open point 16), in AppShell and LiveTicker as written:
@@ -1022,7 +1026,7 @@ function journeyCardChecks(w: World, ok: Ok) {
     .map((k) => `${/^h[23]$/.test(k.tag) ? "h" : k.tag} ${k.cls.find((c) => c.startsWith("kp-jcard__")) ?? k.cls.join(".")}`);
   const badRows = CARD_NAMES.filter((n) => j(rowsOf(n)) !== j(ROWS_WANT) || cardChildren(R[n]).text.trim() !== "" || gridDecl(SUBGRID_AT, ".kp-jgrid > .kp-jcard", "grid-row") !== `span ${rowsOf(n).length}`)
     .map((n) => [n, rowsOf(n), cardChildren(R[n]).text.trim()]);
-  ok("4.grid · A16 item 5: the one journey card grid (.kp-jgrid — one column, two from 640, three from 1024, 16px apart, min-width steps only) lets a row's cards SHARE their rows: where subgrid is supported, each card (or the list item that holds one) spans three of its tracks as a subgrid — the meta row, the question and the action block, the three rows every card draws — each at its track's top, the action block's auto margin reset, so a row's picks start on one line (S6's tickets the precedent); no subgrid outside the fence",
+  ok("4.grid · VODACOM-PLAN §0h point 73: the one journey card grid (.kp-jgrid — one column, two from 640, three from 1024, 16px apart, min-width steps only) lets a row's cards SHARE their rows: where subgrid is supported, each card (or the list item that holds one) spans three of its tracks as a subgrid — the meta row, the question and the action block, the three rows every card draws — each at its track's top, the action block's auto margin reset, so a row's picks start on one line (S6's tickets the precedent); no subgrid outside the fence",
     badGrid.length === 0 && unfenced.length === 0 && strayAt.length === 0 && badRows.length === 0, j({ badGrid, unfenced, strayAt, badRows }));
 
   const COLOUR_PROP = /^(?:color|background(?:-color|-image)?|border(?:-[a-z]+)?|box-shadow|outline(?:-color)?|fill|stroke|text-shadow)$/;
@@ -1823,6 +1827,10 @@ function jhGraph(root: string, g: JhSrc): { files: string[]; specs: string[] } {
   return { files: [...seen].sort(), specs: [...specs].sort() };
 }
 
+/** "Onyesha zaidi" as drawn: the journey's one show-more control (`show-more.tsx`, §9's 9.more) — the kit's ghost control at
+ *  the large rung, the board's full width. */
+const JH_MORE = 'class="btn btn-ghost btn-lg w-full"';
+
 function homeChecks(w: World, ok: Ok) {
   const hw = w.home, D = hw.drawn, H = D.home, IN = D.input;
   const page = decomment(w.page), landing = decomment(w.landing);
@@ -1892,10 +1900,11 @@ function homeChecks(w: World, ok: Ok) {
     D.error === null && badId.length === 0 && count(home, `<PageContainer tier="board">`) === 1, D.error ?? j(badId));
 
   // 7.order — §3.2's order; A16 item 1 (the DOM keeps the deck's phone order at every width).
+  // "Onyesha zaidi" as the journey's one control draws it (show-more.tsx, 9.more): the kit's ghost control, full width.
   const ORDER = ['<div class="kp-jhome__head"><x-part data-part="LazyHowToCard"', "</x-part><h1 ", "</h1></div><nav ", 'class="kp-jhome__query"',
-    '<ul role="list" class="kp-jgrid">', 'class="btn btn-ghost btn-lg kp-jhome__more"', '<x-part data-part="LazyStripAutoScroll"', '<x-part data-part="LazyRefreshPoller"'];
+    '<ul role="list" class="kp-jgrid">', JH_MORE, '<x-part data-part="LazyStripAutoScroll"', '<x-part data-part="LazyRefreshPoller"'];
   const orderOf = (html: string, keys: readonly string[]) => keys.map((k) => html.indexOf(k));
-  const queryOrder = orderOf(H.query ?? "", ORDER.filter((k) => !k.includes("kp-jhome__more")));
+  const queryOrder = orderOf(H.query ?? "", ORDER.filter((k) => k !== JH_MORE));
   const fullOrder = orderOf(H.full ?? "", ORDER.filter((k) => !k.includes("kp-jhome__query")));
   const ascending = (xs: number[]) => xs.every((x, i) => x >= 0 && (i === 0 || x > xs[i - 1]));
   ok(`7.order · the deck's order, in the markup at every width: the How-to card then the headline (the head), the topic chips, the search line when a search is set, the questions, "Onyesha zaidi" — the refresh and the strip's framing drawing nothing at the end`,
@@ -1978,15 +1987,15 @@ function homeChecks(w: World, ok: Ok) {
 
   // 7.paging — WP7 step 2 item 6; Open point 12 (cumulative).
   const cardIds = (html: string) => [...html.matchAll(/<article class="kp-jcard" data-row-id="([^"]*)"/g)].map((m) => m[1]);
-  const moreOf = (html: string) => /<a class="btn btn-ghost btn-lg kp-jhome__more" href="([^"]*)">/.exec(html)?.[1] ?? null;
+  const moreOf = (html: string) => new RegExp(`<a ${JH_MORE} href="([^"]*)">`).exec(html)?.[1] ?? null;
   const PAGES: Array<[JhName, number, string | null]> = [["full", 12, "/?page=2"], ["page2", 24, "/?page=3"], ["last", 30, null], ["selected", 10, null], ["query", 6, null]];
   const pagingWrong = PAGES.filter(([n, cards, more]) => {
     const html = H[n] ?? "", ids = cardIds(html);
     return ids.length !== cards || j(ids) !== j(IN[n]?.shown ?? []) || moreOf(html) !== (more === null ? null : jhAttr(more)) || IN[n]?.more !== (more !== null);
   }).map(([n]) => [n, cardIds(H[n] ?? "").length, moreOf(H[n] ?? "")]);
   const firstOfPage2 = j(cardIds(H.page2 ?? "").slice(0, 12)) === j(cardIds(H.full ?? ""));
-  const moreSrc = jhFlat(home).includes(`<Link href={homeHref({ cat, q, page: view.page + 1 }) as never} scroll={false} className=${HT_QUOTE}btn btn-ghost btn-lg kp-jhome__more${HT_QUOTE}>`);
-  ok(`7.paging · "Onyesha zaidi" pages CUMULATIVELY (Open point 12): page n draws the first 12·n questions — page 2 opens with page 1's twelve — and links page n+1 while any are left (keeping the category and the search, the scroll position kept), and is gone on the last page`,
+  const moreSrc = jhFlat(home).includes("{view.more && <ShowMore href={homeHref({ cat, q, page: view.page + 1 })} t={t} />}");
+  ok(`7.paging · "Onyesha zaidi" pages CUMULATIVELY (Open point 12): page n draws the first 12·n questions — page 2 opens with page 1's twelve — and links page n+1 while any are left (keeping the category and the search; the journey's one control, 9.more's, keeps the reader's place), and is gone on the last page`,
     pagingWrong.length === 0 && firstOfPage2 && moreSrc && D.perPage === JH_PER_PAGE, j({ pagingWrong, firstOfPage2, moreSrc, perPage: D.perPage }));
 
   // 7.grid — WP7 step 2 item 5 as VODACOM-PLAN §0h point 73 amends it (A16 item 3's title reserve retired for the one journey
@@ -2195,8 +2204,9 @@ function homeDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) 
 }
 
 /* ══ §9 · THE JOURNEY CARD ON /watchlist, /live, /results AND THE SIMILAR RAIL (S7 WP10) ════════════════════════════════
- * S7-PLAN WP10 as A12, A16 item 5 (the coordinator's ruling: the one journey card grid, whose cards share their rows — no
- * title reserve), A18, A21, A22 and A24 item 6 amend it, with Open points 9-12. Each page asks the one resolver once and
+ * S7-PLAN WP10 as A12, A18, A21, A22 and A24 item 6 amend it, and VODACOM-PLAN §0h point 73 (the coordinator's ruling:
+ * the one journey card grid, whose cards share their rows — no title reserve), with Open points 9-12. Each page asks the
+ * one resolver once and
  * puts ONE ternary in its cards' slot: the journey arm first, then the classic arm, today's markup line for line, so a
  * classic request is served today's page (Open point 10: only the cards swap; each page's frame stays). The pages need
  * a server to render, so §9 reads them in source; the card itself renders in §4's test world, and WP11's drives read
@@ -2248,7 +2258,18 @@ const PG_IMPORTS_CARD = /(?:from|import)[ ]*[(]?[ ]*["'`][^"'`]*journey-card(?:[
 const PG_LIVE_ARM = "<JourneyLiveList rows={all} page={journeyPage} q={q} rounds={roundByMarket} nowMs={nowMs} t={t} locale={locale} />";
 const PG_LIVE_PAGE = 'const journeyPage = parsePageParam(oneParam((await searchParams) ?? {}, "page"));';
 const PG_LIVE_SHELF = "const shelf = pageCumulative(rows, page, JOURNEY_LIVE_PER_PAGE);";
-const PG_LIVE_MORE = '<Link href={buildQueryHref("/live", { q }, { q: "" }, {}, { page: shelf.page + 1 }) as never} scroll={false}';
+const PG_LIVE_MORE = '{shelf.more && <ShowMore href={buildQueryHref("/live", { q }, { q: "" }, {}, { page: shelf.page + 1 })} t={t} />}';
+/**
+ * THE JOURNEY'S ONE SHOW-MORE CONTROL (the WP10 review): the home and journey /live drew "Onyesha zaidi" each their own way
+ * (the home's with the kit's pending mark, /live's without), so it is one server component both lists import. Its
+ * drawing as written (flattened), its one import line, and the two lists that page cumulatively — its only importers.
+ */
+const PG_MORE = "src/components/journey/show-more.tsx";
+const PG_MORE_DRAWN = '<Link href={href as never} scroll={false} className="btn btn-ghost btn-lg w-full"> {t.journey.showMore} <I.chevronDown s={18} edge="end" /> <LinkPending /> </Link>';
+const PG_MORE_PENDING = 'import { LinkPending } from "@/components/ui/link-pending";';
+const PG_MORE_SITES = [PG_HOME, PG_LIVE].sort();
+const PG_IMPORTS_MORE = /(?:from|import)[ ]*[(]?[ ]*["'`][^"'`]*[/]show-more(?:[.]tsx)?["'`]/;
+const PG_SAYS_MORE = /journey[.]showMore/;
 /** /results' journey rows: exactly the classic grid's own (the page less the notables the carousel lifts out). */
 const PG_RESULTS_ROWS = "{paged.filter((m) => !notableIds.has(m.id)).map((m) => (";
 /** A24 item 6: what the classic arms kept — the count players see, and the similar rail's line withheld on a break. */
@@ -2261,6 +2282,8 @@ type PagesWorld = {
   journey: Map<string, string>;  // every file under src/components/journey/
   pager: string;                 // src/components/ui/pagination.tsx: PLAYER_PER_PAGE's one definition
   wall: string;                  // src/app/live/pulse-grid.tsx: the classic wall and its search box
+  more: string;                  // src/components/journey/show-more.tsx: the journey's one "Onyesha zaidi" (the WP10 review)
+  moreNaming: Map<string, string>; // every OTHER file under src/ naming show-more or saying journey.showMore: 9.more's subjects
   walked: number;
 };
 
@@ -2268,16 +2291,19 @@ function loadPages(all: readonly string[]): PagesWorld {
   const own = new Set([PG_WATCH, PG_LIVE, PG_RESULTS, PG_QUESTION, PG_HOME, CARD]);
   const naming = new Map<string, string>();
   const journey = new Map<string, string>();
+  const moreNaming = new Map<string, string>();
   for (const rel of all) {
     const isJourney = rel.startsWith(PG_JOURNEY_DIR);
     if (own.has(rel) && !isJourney) continue;
     const s = read(rel);
     if (isJourney) journey.set(rel, s);
     if (!own.has(rel) && s.includes("journey-card")) naming.set(rel, s);
+    if (!own.has(rel) && rel !== PG_MORE && (s.includes("show-more") || PG_SAYS_MORE.test(s))) moreNaming.set(rel, s);
   }
   return {
     src: { watch: read(PG_WATCH), live: read(PG_LIVE), results: read(PG_RESULTS), question: read(PG_QUESTION) },
-    home: read(PG_HOME), naming, journey, pager: read(PG_PAGER), wall: read(PG_WALL), walked: all.length,
+    home: read(PG_HOME), naming, journey, pager: read(PG_PAGER), wall: read(PG_WALL), more: read(PG_MORE), moreNaming,
+    walked: all.length,
   };
 }
 
@@ -2420,7 +2446,7 @@ function pagesChecks(pw: PagesWorld, ok: Ok) {
   ok("9.faces · no site computes a face: the pages import none of the card's rules (card-face, the sheet's cardFigures, the estimate) and call none of them — the card computes its face itself, through cardFigures and cardFace (§4), so no page can price a card its own way",
     badFaces.length === 0, j(badFaces));
 
-  /* the classic card's hooks, and the one journey card grid (WP10 Gates; A16 item 5) */
+  /* the classic card's hooks, and the one journey card grid (WP10 Gates; VODACOM-PLAN §0h point 73) */
   const CLASSIC_HOOK = /data-market-surface|mcardp|market-grid/g;
   const inFiles = [...pw.journey].flatMap(([rel, s]) => (decomment(s).match(CLASSIC_HOOK) ?? []).map((x) => `${rel}: ${x}`));
   const inArms = PG_NAMES.flatMap((n) => (cardsText(n).match(CLASSIC_HOOK) ?? []).map((x) => `${n}: ${x}`));
@@ -2438,7 +2464,7 @@ function pagesChecks(pw: PagesWorld, ok: Ok) {
     ].filter((p) => p !== "");
     return problems.length > 0 ? [[n, problems]] : [];
   });
-  ok("9.grid · A16 item 5, as the coordinator ruled it: each surface lays its cards in the one journey card grid (.kp-jgrid: one column, two from 640, three from 1024, whose cards share their rows), each card the grid's own child — no wrapper, so the card's root is its row's one identity — with no column rule and no title reserve of its own",
+  ok("9.grid · VODACOM-PLAN §0h point 73, the coordinator's ruling: each surface lays its cards in the one journey card grid (.kp-jgrid: one column, two from 640, three from 1024, whose cards share their rows), each card the grid's own child — no wrapper, so the card's root is its row's one identity — with no column rule and no title reserve of its own",
     badGrid.length === 0, j(badGrid));
 
   /* the headings (WP5 step 1; WP10 step 2) */
@@ -2469,11 +2495,10 @@ function pagesChecks(pw: PagesWorld, ok: Ok) {
     perPage: !!perPage && !!ownPage && perPage[1] === ownPage[1],
     search: wallBox !== null && listBox === wallBox && suspense > band && liveList.indexOf("<SearchBox", suspense) > suspense
       && code.live.includes('import { SearchBox } from "@/components/ui/search-box";') && code.live.includes('import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";'),
-    more: count(liveList, "{shelf.more && (") === 1 && count(liveList, PG_LIVE_MORE) === 1 && count(liveList, "{t.journey.showMore}") === 1
-      && code.live.includes('import { buildQueryHref } from "@/lib/query/href";'),
+    more: count(liveList, PG_LIVE_MORE) === 1 && code.live.includes('import { buildQueryHref } from "@/lib/query/href";'),
     rounds: cards.live.length === 1 && pgProp(cards.live[0], "roundId") === "{rounds.get(m.id) ?? null}",
   };
-  ok("9.live · A21: journey /live keeps today's list — the slot hands the list the page's own all (the searched open board, both product lines) in today's order, with no bet test and no home order, so a closed selection is drawn as the card's closed face — its search box (the classic wall's own, in its own Suspense, in the one band) and one paging rule: ?page through parsePageParam, the deck's cumulative “Onyesha zaidi” through pageCumulative at the player page size, its link keeping q and the reader's scroll; an Up & Down row opens its round",
+  ok("9.live · A21: journey /live keeps today's list — the slot hands the list the page's own all (the searched open board, both product lines) in today's order, with no bet test and no home order, so a closed selection is drawn as the card's closed face — its search box (the classic wall's own, in its own Suspense, in the one band) and one paging rule: ?page through parsePageParam, the deck's cumulative “Onyesha zaidi” through pageCumulative at the player page size, the next page's address keeping q (written by the one href builder; the control is 9.more's, which keeps the reader's place); an Up & Down row opens its round",
     Object.values(live).every(Boolean), j({ ...live, reordered, perPage: perPage?.[1] ?? null, ownPage: ownPage?.[1] ?? null }));
 
   /* /watchlist, /results, and what the classic arms kept (A24 item 6) */
@@ -2492,12 +2517,34 @@ function pagesChecks(pw: PagesWorld, ok: Ok) {
   };
   ok("9.kept · A24 item 6: the classic arms WP10 kept still hand their cards the count players see (shownPredictors) on /watchlist, /results and the similar rail, and the rail still withholds its invitation from a reader on a break",
     Object.values(kept).every(Boolean), j(kept));
+
+  /* the journey's one show-more control (the WP10 review) */
+  const moreCode = decomment(pw.more);
+  const moreCensus: Array<[string, string]> = [
+    ...PG_NAMES.map((n): [string, string] => [PG_FILE[n], pw.src[n]]),
+    ...(pw.home !== "" ? [[PG_HOME, pw.home] as [string, string]] : []),
+    ...pw.moreNaming,
+  ];
+  const control = {
+    drawn: pgFlat(moreCode).includes(PG_MORE_DRAWN) && count(moreCode, "<Link ") === 1 && count(moreCode, "export function ShowMore(") === 1,
+    pending: count(moreCode, PG_MORE_PENDING) === 1,
+    server: moreCode.length > 0 && !DIRECTIVE.test(moreCode),
+  };
+  const moreImporters = moreCensus.filter(([, s]) => PG_IMPORTS_MORE.test(decomment(s))).map(([rel]) => rel).sort();
+  const drawnOnce = moreCensus.filter(([rel]) => PG_MORE_SITES.includes(rel)).filter(([, s]) => count(decomment(s), "<ShowMore ") !== 1).map(([rel]) => rel);
+  const saidElsewhere = moreCensus.filter(([, s]) => PG_SAYS_MORE.test(decomment(s))).map(([rel]) => rel);
+  ok("9.more · the WP10 review: “Onyesha zaidi” is ONE control — show-more.tsx draws the kit's ghost control at the large rung, the board's full width, the deck's words, the caret on its edge and the kit's pending mark, the reader's place kept (scroll={false}), a server component with no directive — its importers are exactly the two lists that page cumulatively (the journey home and journey /live), each drawing it once, and no other file under src/ says its words",
+    Object.values(control).every(Boolean) && j(moreImporters) === j(PG_MORE_SITES) && drawnOnce.length === 0 && saidElsewhere.length === 0,
+    j({ control, moreImporters, drawnOnce, saidElsewhere }));
 }
 
 /* ── §9's plants: each one defect, in memory, on a page, a census subject or a journey file; each fails its check ALONE ── */
 function pagesDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) => World; alone: true }> {
   const pg = (n: PgName, ...edits: Array<[string, string]>) => (w: World): World =>
     ({ ...w, pages: { ...w.pages, src: { ...w.pages.src, [n]: edits.reduce((s, [from, to]) => swap(s, from, to), w.pages.src[n]) } } });
+  /** An edit of the journey's one show-more control (the WP10 review). */
+  const more = (...edits: Array<[string, string]>) => (w: World): World =>
+    ({ ...w, pages: { ...w.pages, more: edits.reduce((s, [from, to]) => swap(s, from, to), w.pages.more) } });
   const CARD_IMPORT = 'import { JourneyCard } from "@/components/journey/cards/journey-card";';
   const ASK_LINE = `  ${PG_ASK}${LF}`;
   const WATCH_CARD = "<JourneyCard key={row.id} m={marketById.get(row.id)!} nowMs={nowMs} t={t} locale={locale} />";
@@ -2571,8 +2618,8 @@ function pagesDefects(): Array<{ name: string; expect: RegExp; plant: (w: World)
       plant: pg("live", [BAND, ""]) },
     { name: "?page read with parseInt (02 and 2abc become pages: a second paging rule)", expect: /^9[.]live /, alone: true,
       plant: pg("live", ['parsePageParam(oneParam((await searchParams) ?? {}, "page"))', 'Math.max(1, parseInt(String(oneParam((await searchParams) ?? {}, "page") ?? "1"), 10) || 1)']) },
-    { name: "“Onyesha zaidi” loses the reader's place (scroll={false} dropped)", expect: /^9[.]live /, alone: true,
-      plant: pg("live", [' scroll={false} className="btn btn-ghost btn-lg w-full"', ' className="btn btn-ghost btn-lg w-full"']) },
+    { name: "“Onyesha zaidi” loses the reader's place (scroll={false} dropped from the one control)", expect: /^9[.]more /, alone: true,
+      plant: more([' scroll={false} className="btn btn-ghost btn-lg w-full"', ' className="btn btn-ghost btn-lg w-full"']) },
     { name: "“Onyesha zaidi” drops the search (q not kept)", expect: /^9[.]live /, alone: true,
       plant: pg("live", ['buildQueryHref("/live", { q }, { q: "" }', 'buildQueryHref("/live", { q: "" }, { q: "" }']) },
     { name: "the journey page size typed apart from the player page size (24)", expect: /^9[.]live /, alone: true,
@@ -2590,6 +2637,15 @@ function pagesDefects(): Array<{ name: string; expect: RegExp; plant: (w: World)
       plant: pg("watch", ["predictors={shownPredictors(m)}", "predictors={m.predictorCount}"]) },
     { name: "A24 item 6: the similar rail invites a reader on a break again ({!breakEnd && …} dropped)", expect: /^9[.]kept /, alone: true,
       plant: pg("question", [PG_BREAK_LINE, '<p className="mb-4 text-body-sm text-text-muted">{t.market.similarMarketsBody}</p>']) },
+    /* the journey's one show-more control (the WP10 review) */
+    { name: "“Onyesha zaidi” without the kit's pending mark (a tap on a slow line shows nothing until the next twelve arrive)", expect: /^9[.]more /, alone: true,
+      plant: more([`      <LinkPending />${LF}`, ""]) },
+    { name: "the control shipped as client code (a directive: the whole control in the scripts of every reader of / and /live)", expect: /^9[.]more /, alone: true,
+      plant: (w) => ({ ...w, pages: { ...w.pages, more: `${HT_QUOTE}use client${HT_QUOTE};${LF}${LF}${w.pages.more}` } }) },
+    { name: "a third page imports the control (/watchlist pages by its pager, never cumulatively)", expect: /^9[.]more /, alone: true,
+      plant: pg("watch", [CARD_IMPORT, `${CARD_IMPORT}${LF}import { ShowMore } from "@/components/journey/show-more";`]) },
+    { name: "a journey file draws its own “Onyesha zaidi” beside the control (two drawings of one control: the home's and /live's drift)", expect: /^9[.]more /, alone: true,
+      plant: (w) => ({ ...w, pages: { ...w.pages, moreNaming: new Map(w.pages.moreNaming).set("src/components/journey/tickets/tickets-view.tsx", `export const More = ({ t }: { t: Dict }) => <a className="btn btn-ghost btn-lg w-full" href="/positions?page=2">{t.journey.showMore}</a>;${LF}`) } }) },
   ];
 }
 
