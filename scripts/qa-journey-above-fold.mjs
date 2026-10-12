@@ -205,17 +205,45 @@ async function runCell(cell, { plant = null } = {}) {
 const fmt = (r) => `${r.j.verdict.padEnd(8)} ${r.id} · rail ${r.j.figures.railTop} · How-to slack ${r.j.figures.slackHowto} · picks slack ${r.j.figures.slackPicks} (${r.j.figures.picksKind}) · h1 ${r.j.figures.titleLines} lines · marker ${r.marker}`
   + (r.j.invalid.length ? ` · INVALID: ${r.j.invalid.join("; ")}` : "") + (r.j.problems.length ? ` · ${r.j.problems.join("; ")}` : "") + (r.note ? ` · note: ${r.note}` : "");
 
-async function publishAnnouncement() {
+/**
+ * Publishes (on) or takes down (off) the announcement through /admin/system as the seeded ADMIN. ⛔ The switch is drawn
+ * by the server before it is hydrated, and a click on it then does nothing, so the switch is pressed until its
+ * aria-checked reads the wanted state; the save is confirmed by the button going back to disabled (the form compares
+ * against the saved values after its refresh). A banner that cannot be set stops the run: every all-bars cell and every
+ * no-bar cell depends on it.
+ */
+async function setAnnouncement(on) {
   const page = await admin.newPage();
-  await page.goto(`${BASE}/admin/system`, { waitUntil: "domcontentloaded", timeout: 240_000 });
-  const box = page.getByPlaceholder(/New markets are live/);
-  await box.waitFor({ timeout: 120_000 });
-  await box.fill(ANNOUNCE);
-  const sw = page.getByRole("switch", { name: "Publish banner" });
-  if ((await sw.first().getAttribute("aria-checked").catch(() => null)) !== "true") await sw.first().click();
-  await page.getByRole("button", { name: "Publish banner" }).first().click();
-  await page.waitForTimeout(2500);
-  await page.close();
+  const saved = async () => {
+    await page.goto(`${BASE}/admin/system`, { waitUntil: "load", timeout: 240_000 });
+    const sw = page.getByRole("switch", { name: "Publish banner" }).first();
+    await sw.waitFor({ timeout: 120_000 });
+    return (await sw.getAttribute("aria-checked")) === String(on) && (!on || (await page.getByPlaceholder(/New markets are live/).inputValue()) === ANNOUNCE);
+  };
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (await saved()) return;
+      const box = page.getByPlaceholder(/New markets are live/);
+      const sw = page.getByRole("switch", { name: "Publish banner" }).first();
+      // ⛔ The page draws other cards' own "Save" buttons (the maintenance note's comes first): the button is the one
+      // inside the banner's own card, the innermost block that holds its message box.
+      const save = page.locator("div.space-y-3").filter({ has: box }).last().getByRole("button", { name: /^(Save|Publish banner)$/ }).first();
+      for (let i = 0; i < 40; i++) {
+        if (on && (await box.inputValue()) !== ANNOUNCE) await box.fill(ANNOUNCE);
+        if ((await sw.getAttribute("aria-checked")) !== String(on)) await sw.click();
+        await page.waitForTimeout(250);
+        if ((await sw.getAttribute("aria-checked")) === String(on) && (!on || (await box.inputValue()) === ANNOUNCE) && (await save.isEnabled())) break;
+      }
+      if (await save.isEnabled()) {
+        await save.click();
+        // the success toast says the action returned (the button's own disabled state also covers its loading beat)
+        await page.getByText(on ? "Banner published to all players" : "Banner taken down").first().waitFor({ timeout: 60_000 }).catch(() => {});
+      }
+    }
+    if (!(await saved())) throw new Error(`the announcement could not be set ${on ? "up" : "down"} through /admin/system`);
+  } finally {
+    await page.close();
+  }
 }
 
 // ── the red control (always first) ─────────────────────────────────────────────────────────────────────────────────
@@ -223,7 +251,7 @@ say("\n§R · the red control: each plant's cell clean, then planted (page-only)
 await makeCardOne(FULL_ID, SHORT_ID);
 let announced = false;
 for (const plant of RED_PLANTS) {
-  if (plant.cell.bars === "all" && !announced) { await publishAnnouncement(); announced = true; }
+  if (plant.cell.bars === "all" && !announced) { await setAnnouncement(true); announced = true; }
   const cell = { viewport: AF_VIEWPORTS[plant.cell.vp], locale: plant.cell.locale, reader: plant.cell.reader, bars: plant.cell.bars, book: plant.cell.book };
   const r = await runCell(cell, { plant });
   const clean = r.j.verdict === "PASS";
@@ -234,21 +262,14 @@ for (const plant of RED_PLANTS) {
 }
 if (announced) {
   // The red control raised the announcement for its all-bars plant: the matrix's no-bar cells need it down again.
-  const page = await admin.newPage();
-  await page.goto(`${BASE}/admin/system`, { waitUntil: "domcontentloaded", timeout: 240_000 });
-  const sw = page.getByRole("switch", { name: "Publish banner" });
-  await sw.first().waitFor({ timeout: 120_000 });
-  if ((await sw.first().getAttribute("aria-checked").catch(() => null)) === "true") await sw.first().click();
-  await page.getByRole("button", { name: /^(Save|Publish banner)$/ }).first().click();
-  await page.waitForTimeout(2500);
-  await page.close();
+  await setAnnouncement(false);
   announced = false;
 }
 
 // ── the matrix ─────────────────────────────────────────────────────────────────────────────────────────────────────
 if (!ONLY_RED) {
   for (const bars of ["none", "all"]) {
-    if (bars === "all") { await publishAnnouncement(); announced = true; }
+    if (bars === "all") { await setAnnouncement(true); announced = true; }
     for (const book of AF_BOOKS) {
       await (book === "full" ? makeCardOne(FULL_ID, SHORT_ID) : makeCardOne(SHORT_ID, FULL_ID));
       say(`\n§M · bars ${bars} · card 1's book: ${book}`);
