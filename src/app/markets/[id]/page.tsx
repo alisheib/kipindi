@@ -1230,10 +1230,10 @@ export default async function MarketDetail({
             {/* The shared board grid at EVERY width now. It used to be forced to
                 `lg:!grid-cols-1` because this block lived inside the 360px rail, which is
                 also why the titles truncated mid-word. Full width, each card gets ~470px. */}
-            {/* ⭐ THE CARDS' SLOT IS ONE TERNARY (the Vodacom plan S7, §3.2; S7-PLAN WP10 with A16 item 5). A journey
-                request draws the journey card for each similar question, an h3 under the rail's h2: the rail holds
-                questions taking bets, so each card shows its two picks with what each side stands to win. Each card
-                reads the market row it is handed and the rail's one clock, and the cards stand in the one journey
+            {/* ⭐ THE CARDS' SLOT IS ONE TERNARY (the Vodacom plan S7, §3.2; S7-PLAN WP10 with VODACOM-PLAN §0h point 73).
+                A journey request draws the journey card for each similar question, an h3 under the rail's h2: the rail
+                holds questions taking bets, so each card shows its two picks with what each side stands to win. Each
+                card reads the market row it is handed and the rail's one clock, and the cards stand in the one journey
                 card grid, whose cards share their rows. Every other request gets the classic arm: today's markup,
                 line for line. */}
             {journey ? (

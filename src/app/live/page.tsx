@@ -12,7 +12,6 @@
  */
 import { Suspense } from "react";
 import Link from "next/link";
-import { I } from "@/components/ui/glyphs";
 import { keepConnectives } from "@/components/ui/keep-run";
 import { fill, formatNumber } from "@/lib/utils";
 import { timeLeftLabel } from "@/lib/markets/time-left";
@@ -31,6 +30,7 @@ import { pageCumulative, parsePageParam } from "@/lib/journey/home-list";
 import { SearchBox } from "@/components/ui/search-box";
 import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
 import { JourneyCard } from "@/components/journey/cards/journey-card";
+import { ShowMore } from "@/components/journey/show-more";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { LivePulseGrid } from "./pulse-grid";
 import { FeaturedContest } from "./featured-contest";
@@ -305,9 +305,9 @@ const JOURNEY_LIVE_PER_PAGE = 12;
  *     the hero and the classic wall are drawn from, so the count above the list is its length. No bet test and no home
  *     order: a question whose selection has closed stays, drawn as the card's closed face (SJ-6 sends it here).
  *   · ONE PAGING RULE: the deck's cumulative "Onyesha zaidi" (Open point 12). Page n shows the first 12·n cards
- *     (`pageCumulative`, the journey home's own rule), its `?page` read by `parsePageParam` above; the link keeps `q` and
- *     the reader's scroll, and is written by the platform's one href builder. The classic wall's batch reveal is not
- *     touched.
+ *     (`pageCumulative`, the journey home's own rule), its `?page` read by `parsePageParam` above; the next page's
+ *     address keeps `q` and is written by the platform's one href builder, and the control is the journey's one
+ *     (`ShowMore`, the home's too), which keeps the reader's place. The classic wall's batch reveal is not touched.
  *   · THE SEARCH BOX STAYS (A21 item 3): today's box with today's props, in its own Suspense, in the one search band.
  *   · AN UP & DOWN ROW opens its round (`rounds`, the page's `roundByMarket`), or Up & Down when none resolved, as the
  *     wall's card does. Every card is an h2 under the page's h1, read with the page's one clock.
@@ -334,20 +334,15 @@ function JourneyLiveList({ rows, page, q, rounds, nowMs, t, locale }: {
         </Suspense>
       </div>
       {/* The list and its "Onyesha zaidi", 16px apart as the deck sets them (the cards' own gap). The cards stand in
-          the one journey card grid, whose cards share their rows; the link is the kit's ghost control at the large
-          rung, the board's full width. */}
+          the one journey card grid, whose cards share their rows; the link is the journey's one show-more control
+          (`show-more.tsx`, the home's too). */}
       <div className="flex flex-col gap-3">
         <div className="kp-jgrid">
           {shelf.shown.map((m) => (
             <JourneyCard key={m.id} m={m} nowMs={nowMs} t={t} locale={locale} roundId={rounds.get(m.id) ?? null} />
           ))}
         </div>
-        {shelf.more && (
-          <Link href={buildQueryHref("/live", { q }, { q: "" }, {}, { page: shelf.page + 1 }) as never} scroll={false} className="btn btn-ghost btn-lg w-full">
-            {t.journey.showMore}
-            <I.chevronDown s={18} edge="end" />
-          </Link>
-        )}
+        {shelf.more && <ShowMore href={buildQueryHref("/live", { q }, { q: "" }, {}, { page: shelf.page + 1 })} t={t} />}
       </div>
     </>
   );
