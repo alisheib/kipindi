@@ -34,11 +34,25 @@
  *      state.
  *      ⭐ Every §2 and §3 plant must fail ITS check and nothing else: the red run reports a plant that also turns another
  *      check red as not proved, so no check stays green only because a neighbour happens to catch its defect.
+ *   §4 THE JOURNEY CARD (S7 WP5, amendments A12, A15, A16 and A24), `src/components/journey/cards/journey-card.tsx`:
+ *      the real server component rendered in a test world — every state it draws (priced, closes today, Siku N, an
+ *      empty pool, one side, over the cap with its thin side, a hidden figure, selection closed, one-sided and closed,
+ *      settled YES / NO / void / never recorded / last year, Up & Down live and settled; sw, en and zh; the home's
+ *      `from`, the similar rail's h3, a short title and the fallback) at a pinned clock — plus its source and its rules
+ *      in globals.css. It holds: a server component no client module imports; every figure and word through WP3's
+ *      rules, no percentage, pool or amount printed, none of the classic card's hooks or classes, no click handler; the
+ *      links (one stretched card link named by the full title; the picks' hrefs, `from=home` on the home only, never
+ *      prefetched); the heading (its rung, `keepFigures`, balance, the clamp on the fallback alone); the meta label's
+ *      words, glyph and ink (A12); category · competition; each face's words and the figure's unit; the closed row; the
+ *      settled row's instant and outcome chip; the refund sentence; the local stacking plane; the picks' press and lift;
+ *      the action block on the card's floor (A16); and only the kit's tokens (A15's side word).
+ *      ⭐ Every §4 plant must fail its own check ALONE too.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY and requires the check named for it to fail.
  * §1's plants edit copies of the source text; §2's and §3's swap ONE rule (a function `home-list.ts` or `card-face.ts`
- * exports, or the `cardEstimate` the card's figures come through) for a copy of the real one carrying one defect.
- * Nothing here touches a file on disk, so `test:red-anchors` §4 counts it in the in-process class.
+ * exports, or the `cardEstimate` the card's figures come through) for a copy of the real one carrying one defect; §4's
+ * edit a copy of the card's source, of globals.css or of one rendered card (the world is rendered once, from the real
+ * component). Nothing here touches a file on disk, so `test:red-anchors` §4 counts it in the in-process class.
  * ⚠️ Every read is DECOMMENTED (`scripts/lib/decomment.mts`), so a rule quoted in a note is never mistaken for the rule.
  * ⚠️ This file carries no escape a tool could decode on its way to disk: line breaks are built from their code points, and
  * its patterns use look-arounds and character classes, never a word boundary.
@@ -46,13 +60,20 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { decomment } from "./lib/decomment.mts";
+import { createElement as h } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { decomment, decommentCss } from "./lib/decomment.mts";
 import { srcFiles } from "./lib/tracked-files.mts";
 import * as HL from "../src/lib/journey/home-list.ts";
 import * as CF from "../src/lib/journey/card-face.ts";
 import { cardEstimate, pickEstimateRates, type Estimate } from "../src/lib/markets/estimate.ts";
 import { MARKET_CATEGORIES } from "../src/lib/markets/categories.ts";
 import { MAX_QUERY_LEN } from "../src/lib/search/query.ts";
+import { JourneyCard, type JourneyCardMarket } from "../src/components/journey/cards/journey-card.tsx";
+import { I } from "../src/components/ui/glyphs.tsx";
+import { dict, type Locale } from "../src/lib/i18n-dict.ts";
+import { formatEatDateTime } from "../src/lib/eat-day.ts";
+import { DEFAULT_GLOBAL_CONFIG, snapshotFromConfig } from "../src/lib/server/market-config.ts";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 const PROVE_RED = process.argv.includes("--prove-red");
@@ -62,6 +83,9 @@ const CR = String.fromCharCode(13);
 const PAGE = "src/app/page.tsx";
 const LANDING = "src/components/home/legacy-landing.tsx";
 const LAYOUT = "src/app/layout.tsx";
+/** §4 · the journey card (S7 WP5) and the stylesheet that holds its rules. */
+const CARD = "src/components/journey/cards/journey-card.tsx";
+const CSS = "src/app/globals.css";
 
 /** A file's text with CRLF read as LF (this machine checks files out as CRLF). A missing file reads as "", which §1 reports. */
 const read = (rel: string) => (existsSync(join(ROOT, rel)) ? readFileSync(join(ROOT, rel), "utf8").split(CR + LF).join(LF) : "");
@@ -94,17 +118,26 @@ type World = {
   walked: number;                // how many files under src/ the importer census walked
   naming: Map<string, string>;   // every OTHER file under src/ whose text names legacy-landing: the census's subjects
   rules: Rules;                  // §2 and §3: the home's list and the card's face, as the modules export them
+  card: string;                  // §4: src/components/journey/cards/journey-card.tsx
+  css: string;                   // §4: src/app/globals.css, where the card's rules and tokens live
+  cardNaming: Map<string, string>; // §4: every OTHER file under src/ whose text names journey-card: the importer census
+  renders: Renders;              // §4: the card's test world, each case rendered once from the real component
 };
 
 function load(): World {
   const all = srcFiles();
   const naming = new Map<string, string>();
+  const cardNaming = new Map<string, string>();
   for (const rel of all) {
-    if (rel === PAGE || rel === LANDING) continue;
+    if (rel === PAGE || rel === LANDING || rel === CARD) continue;
     const s = read(rel);
     if (s.includes("legacy-landing")) naming.set(rel, s);
+    if (s.includes("journey-card")) cardNaming.set(rel, s);
   }
-  return { page: read(PAGE), landing: read(LANDING), layout: read(LAYOUT), walked: all.length, naming, rules: RULES };
+  return {
+    page: read(PAGE), landing: read(LANDING), layout: read(LAYOUT), walked: all.length, naming, rules: RULES,
+    card: read(CARD), css: read(CSS), cardNaming, renders: renderCards(),
+  };
 }
 
 type Ok = (label: string, cond: boolean, extra?: string) => void;
@@ -300,6 +333,355 @@ function cardFaceChecks(r: Rules, ok: Ok) {
     ]), j(metas));
 }
 
+/* ── §4 · the journey card (S7 WP5, A12, A15, A16, A24) ───────────────────────────────────────────────────────── */
+/** The no-break space the card joins a figure to its unit with (built from its code point, as the card builds it). */
+const NBSP = String.fromCharCode(160);
+const DAY_H = 24;
+/** The deck's rates, frozen onto a market as `createMarket` freezes them: 13% loser-share. */
+const LS13_SNAP = snapshotFromConfig({ ...DEFAULT_GLOBAL_CONFIG, feeModel: "loser-share", platformFeeRate: 0.03, operatorFeeRate: 0.10 });
+/** A market row as a surface holds it: the deck's Dodoma question at 13%, taking bets, closing in 11 East Africa days. */
+const cardRow = (id: string, o: Partial<JourneyCardMarket> = {}): JourneyCardMarket => ({
+  id, titleEn: "Will Dodoma see rain on 1 October?", titleSw: "Je, Dodoma itapata mvua tarehe 1 Oktoba?", titleZh: "多多马10月1日会下雨吗？",
+  shortTitleEn: null, shortTitleSw: null, shortTitleZh: null, category: "weather", competition: null,
+  status: "LIVE", resolvedOutcome: null, yesPool: 24_825, noPool: 50_462, feeSnapshot: LS13_SNAP, productLine: "MARKET",
+  selectionClosedAt: null, resolutionAt: at(11 * DAY_H), settledAt: null, ...o,
+});
+type CardCase = { m: JourneyCardMarket; locale?: Locale; heading?: "h2" | "h3"; from?: "home"; roundId?: string | null };
+/** THE TEST WORLD — every state the card draws, at the render clock T0 (10:00 in East Africa, 12 October 2026). */
+const CARD_WORLD = {
+  priced: { m: cardRow("mkt_jcPriced") },
+  home: { m: cardRow("mkt_jcHome"), from: "home" },
+  pricedEn: { m: cardRow("mkt_jcEn"), locale: "en" },
+  pricedZh: { m: cardRow("mkt_jcZh"), locale: "zh" },
+  today: { m: cardRow("mkt_jcToday", { resolutionAt: at(6) }) },
+  closed: { m: cardRow("mkt_jcClosed", { selectionClosedAt: at(-1), resolutionAt: at(2 * DAY_H) }) },
+  settledYes: { m: cardRow("mkt_jcYes", { status: "RESOLVED", resolvedOutcome: "YES", resolutionAt: at(-30), settledAt: at(-26) }) },
+  settledNo: { m: cardRow("mkt_jcNo", { status: "RESOLVED", resolvedOutcome: "NO", resolutionAt: at(-30), settledAt: at(-26) }) },
+  lastYear: { m: cardRow("mkt_jcOld", { status: "RESOLVED", resolvedOutcome: "YES", resolutionAt: "2025-12-30T09:00:00.000Z", settledAt: "2025-12-30T12:00:00.000Z" }) },
+  void: { m: cardRow("mkt_jcVoid", { status: "VOIDED", resolvedOutcome: "VOID", resolutionAt: at(-30) }) },
+  unrecorded: { m: cardRow("mkt_jcBlank", { status: "RESOLVED", resolvedOutcome: null, resolutionAt: at(-30), settledAt: at(-26) }) },
+  oneSided: { m: cardRow("mkt_jcOne", { yesPool: 5_000, noPool: 0 }) },
+  oneSidedClosed: { m: cardRow("mkt_jcOneShut", { yesPool: 5_000, noPool: 0, selectionClosedAt: at(-1), resolutionAt: at(2 * DAY_H) }) },
+  empty: { m: cardRow("mkt_jcEmpty", { yesPool: 0, noPool: 0 }) },
+  overCap: { m: cardRow("mkt_jcCap", { yesPool: 1_000, noPool: 200_000 }) },
+  overCapEn: { m: cardRow("mkt_jcCapEn", { yesPool: 1_000, noPool: 200_000 }), locale: "en" },
+  overCapZh: { m: cardRow("mkt_jcCapZh", { yesPool: 1_000, noPool: 200_000 }), locale: "zh" },
+  legacy: { m: cardRow("mkt_jcLegacy", { feeSnapshot: null }) },
+  updownLive: { m: cardRow("mkt_jcUd", { productLine: "UPDOWN", category: "crypto", yesPool: 5_000, noPool: 3_000 }), roundId: "rnd_jcLive" },
+  updownNoRound: { m: cardRow("mkt_jcUdNone", { productLine: "UPDOWN", category: "crypto" }), roundId: null },
+  updownElsewhere: { m: cardRow("mkt_jcUdElse", { productLine: "UPDOWN", category: "crypto" }) },
+  updownSettled: { m: cardRow("mkt_jcUdDone", { productLine: "UPDOWN", category: "crypto", status: "RESOLVED", resolvedOutcome: "YES", resolutionAt: at(-2), settledAt: at(-1) }) },
+  short: { m: cardRow("mkt_jcShort", { shortTitleSw: "Je, Dodoma itanyesha kesho?" }), heading: "h3" },
+  competition: { m: cardRow("mkt_jcComp", { category: "sports", competition: "ligi-kuu" }) },
+  oddCompetition: { m: cardRow("mkt_jcOdd", { category: "sports", competition: "ligi-ya-mwezini" }) },
+} satisfies Record<string, CardCase>;
+type CardName = keyof typeof CARD_WORLD;
+type Renders = Record<CardName, string>;
+const CARD_NAMES = Object.keys(CARD_WORLD) as CardName[];
+const caseOf = (n: CardName): CardCase => CARD_WORLD[n];
+/** The cards that take bets now (two picks), and the ones that do not (a closed or a result row). */
+const OPEN_CARDS: CardName[] = ["priced", "home", "pricedEn", "pricedZh", "today", "oneSided", "empty", "overCap", "overCapEn",
+  "overCapZh", "legacy", "updownLive", "updownNoRound", "updownElsewhere", "short", "competition", "oddCompetition"];
+const CLOSED_CARDS: CardName[] = ["closed", "oneSidedClosed"];
+const SETTLED_CARDS: CardName[] = ["settledYes", "settledNo", "lastYear", "void", "unrecorded", "updownSettled"];
+
+/**
+ * The world, rendered ONCE from the real component, on the server, at the render clock T0. ⚠️ The wall clock is pinned
+ * to T0 for the render too: the bet test's selection half (`isSelectionClosed`, inside `cardFigures`) reads it, as the
+ * bet path does, so an unpinned run would grade the cards against whatever moment it ran at.
+ */
+function renderCards(): Renders {
+  const wall = Date.now;
+  Date.now = () => T0;
+  try {
+    const out = {} as Renders;
+    for (const n of CARD_NAMES) {
+      const c = caseOf(n), locale = c.locale ?? "sw";
+      out[n] = renderToStaticMarkup(h(JourneyCard, { m: c.m, nowMs: T0, t: dict[locale], locale, heading: c.heading, from: c.from, roundId: c.roundId }));
+    }
+    return out;
+  } finally {
+    Date.now = wall;
+  }
+}
+
+/** The served markup's five entities, read back as text. */
+const ENTITIES: Array<[string, string]> = [["&lt;", "<"], ["&gt;", ">"], ["&quot;", '"'], ["&#x27;", "'"], ["&amp;", "&"]];
+const decodeHtml = (s: string) => ENTITIES.reduce((acc, [e, c]) => acc.split(e).join(c), s);
+const textOf = (html: string) => decodeHtml(html.replace(/<[^>]*>/g, ""));
+const attrOf = (attrs: string, name: string) => { const m = new RegExp(`(?:^| )${name}="([^"]*)"`).exec(attrs); return m ? decodeHtml(m[1]) : null; };
+const classesOf = (attrs: string) => (attrOf(attrs, "class") ?? "").split(" ").filter(Boolean);
+/** Every element whose class list holds `cls`: its tag, its attributes and its inner markup (its own tag's nesting counted). */
+function elementsOf(html: string, cls: string): Array<{ tag: string; attrs: string; inner: string }> {
+  const out: Array<{ tag: string; attrs: string; inner: string }> = [];
+  const open = new RegExp(`<([a-z][a-z0-9]*)((?: [^>]*)? class="(?:[^"]* )?${cls}(?: [^"]*)?"[^>]*)>`, "g");
+  for (let o = open.exec(html); o; o = open.exec(html)) {
+    const tag = o[1], from = o.index + o[0].length;
+    const step = new RegExp(`<(/?)${tag}(?=[ >])[^>]*>`, "g");
+    step.lastIndex = from;
+    let depth = 1;
+    for (let s = step.exec(html); s; s = step.exec(html)) {
+      depth += s[1] ? -1 : 1;
+      if (depth === 0) { out.push({ tag, attrs: o[2], inner: html.slice(from, s.index) }); break; }
+    }
+  }
+  return out;
+}
+const anchorsOf = (html: string) => [...html.matchAll(/<a(?= )([^>]*)>/g)].map((m) => m[1]);
+/** A kit glyph as the card draws it. */
+const glyph = (g: unknown, s: number) => renderToStaticMarkup(h(g as never, { s } as never));
+/** A figure joined to the words after it: "Shinda ≈2.8×" then every space after it a no-break one (the card's rule, said
+ *  again here from the dictionary's own words). */
+const winText = (l: Locale, mult: string) => {
+  const tpl = dict[l].journey.cardWin, at = tpl.indexOf("{mult}"), to = tpl.indexOf(" ", at);
+  return tpl.slice(0, to).replace("{mult}", mult) + tpl.slice(to).split(" ").join(NBSP);
+};
+const winInner = (l: Locale, mult: string) => {
+  const tpl = dict[l].journey.cardWin, at = tpl.indexOf("{mult}"), from = tpl.lastIndexOf(" ", at) + 1, to = tpl.indexOf(" ", at);
+  return `${tpl.slice(0, from)}<span class="kp-jcard__mult">${tpl.slice(from, to).replace("{mult}", mult)}</span>${tpl.slice(to).split(" ").join(NBSP)}`;
+};
+const plain = (s: string) => s.split(NBSP).join(" ");
+
+/** The stylesheet's rules (media wrappers read through), each as its selector list and its declarations. */
+type CssRule = { sels: string[]; decls: Array<[string, string]> };
+function cssRules(css: string): CssRule[] {
+  return [...decommentCss(css).matchAll(/([^{}]+)[{]([^{}]*)[}]/g)].map((m) => ({
+    sels: m[1].split(",").map((s) => s.trim()).filter(Boolean),
+    decls: m[2].split(";").map((d) => d.trim()).filter(Boolean).map((d) => {
+      const c = d.indexOf(":");
+      return [d.slice(0, c).trim(), d.slice(c + 1).trim()] as [string, string];
+    }),
+  }));
+}
+/** The card's own rules: every selector in the list is the card's (the shared note rule and a grid's rules are not). */
+const cardRules = (css: string) => cssRules(css).filter((r) => r.sels.length > 0 && r.sels.every((s) => s.startsWith(".kp-jcard")));
+/** One declaration of the card's rule with exactly this selector, or null. */
+const declOf = (rules: CssRule[], sel: string, prop: string) => rules.find((r) => r.sels.length === 1 && r.sels[0] === sel)?.decls.find(([p]) => p === prop)?.[1] ?? null;
+
+function journeyCardChecks(w: World, ok: Ok) {
+  const src = decomment(w.card);
+  const R = w.renders;
+  const sw = dict.sw, en = dict.en, zh = dict.zh;
+  const rules = cardRules(w.css);
+
+  /* the card is a server component, and only server code imports it */
+  const hooks = src.match(/(?<![A-Za-z0-9_$.])use(?:State|Effect|LayoutEffect|Ref|Transition|Router|Reducer|Context|SyncExternalStore)[(]/g) ?? [];
+  ok("4.directive · journey-card.tsx is a SERVER component: no directive, one named export (JourneyCard), no client hook",
+    w.card.length > 0 && !DIRECTIVE.test(src) && count(src, "export function JourneyCard(") === 1 && hooks.length === 0,
+    j({ directive: src.match(DIRECTIVE)?.[0] ?? null, exports: count(src, "export function JourneyCard("), hooks }));
+  const IMPORTS_CARD = /(?:from|import)[ ]*[(]?[ ]*["'`][^"'`]*journey-card(?:[.]tsx)?["'`]/;
+  const importers = [...w.cardNaming].filter(([, s]) => IMPORTS_CARD.test(decomment(s)));
+  const clientImporters = importers.filter(([, s]) => /["']use client["']/.test(decomment(s))).map(([f]) => f);
+  ok("4.importers · no client module imports the card (a census over every file under src/ that names it): it reaches a page as server markup only",
+    w.walked >= 500 && clientImporters.length === 0, j({ walked: w.walked, importers: importers.map(([f]) => f), client: clientImporters }));
+
+  /* every figure and word through WP3's rules; nothing else printed */
+  const RULE_CALLS = ["cardFigures(", "cardFace(", "cardCloseLabel(", "cardTitle(", "normaliseCompetition("].map((s) => [s, count(src, s)] as const);
+  const ARGS = ["cardFigures(m, nowMs)", "cardCloseLabel(m, nowMs)", "cardTitle(locale, m)", "normaliseCompetition(m.competition)"].map((s) => [s, count(src, s)] as const);
+  const WORDS = ["cardCloseText(close, t.journey)", "competitionLabel(t, competition)"].every((s) => src.includes(s));
+  const bypass = src.match(/(?<![A-Za-z0-9_$.])(?:cardEstimate|estimateFor|pickEstimateRates|ratesFor|priceState|impliedYesPct|pricedYesPct|shownYesPct|yesPct|formatTzs|formatTzsCompact|formatMultiplier|payoutFor)(?![A-Za-z0-9_$])|[.](?:yesPool|noPool)(?![A-Za-z0-9_$])|Date[.]now|new Date[(]/g) ?? [];
+  ok("4.computes · every figure and word comes through WP3's rules, each called once on the server with the render's clock — cardFigures(m, nowMs), cardFace, cardCloseLabel(m, nowMs) with cardCloseText, cardTitle, normaliseCompetition with competitionLabel — and the card reads no pool, rate, price, money formatter or wall clock of its own",
+    RULE_CALLS.every(([, n]) => n === 1) && ARGS.every(([, n]) => n === 1) && WORDS && bypass.length === 0, j({ RULE_CALLS, ARGS, WORDS, bypass }));
+  const POOLS = [...new Set(CARD_NAMES.flatMap((n) => { const m = caseOf(n).m; return [m.yesPool, m.noPool, m.yesPool + m.noPool]; }))].filter((p) => p >= 1_000);
+  const POOL_MARKS = POOLS.flatMap((p) => [String(p), p.toLocaleString("en-US")]);
+  const printed = CARD_NAMES.flatMap((n) => {
+    const text = textOf(R[n]);
+    return [...(text.includes("%") ? ["%"] : []), ...(text.includes("TZS") ? ["TZS"] : []), ...POOL_MARKS.filter((p) => text.includes(p))].map((x) => `${n}: ${x}`);
+  });
+  ok("4.printed · no card prints a percentage, a pool or an amount: the faces' words and figures only (§3.2 — no pool, predictor count, bar or move)",
+    printed.length === 0, printed.join(", "));
+  const forbiddenSrc = src.match(/onClick|50pick:navigating|data-market-surface|mcardp|market-grid/g) ?? [];
+  const forbiddenDrawn = CARD_NAMES.flatMap((n) => (R[n].match(/data-market-surface|class="[^"]*(?:mcardp|market-grid)[^"]*"/g) ?? []).map((x) => `${n}: ${x}`));
+  ok("4.forbidden · no click handler and no navigating event (NavProgress starts on any internal link), no classic surface hook and no classic card or board-grid class, in the source or on any card drawn (V18 selects them; phone density rewrites them)",
+    forbiddenSrc.length === 0 && forbiddenDrawn.length === 0, j({ forbiddenSrc, forbiddenDrawn }));
+
+  /* the links (WP5 step 3, Open point 4) */
+  const fullTitle = (c: CardCase) => { const l = c.locale ?? "sw"; return l === "sw" ? c.m.titleSw : l === "zh" ? (c.m.titleZh ?? c.m.titleEn) : c.m.titleEn; };
+  const openWant = (n: CardName) => (n === "updownLive" ? "/updown/rnd_jcLive" : n === "updownNoRound" ? "/updown" : `/markets/${caseOf(n).m.id}`);
+  const opens = (n: CardName) => anchorsOf(R[n]).filter((a) => classesOf(a).includes("kp-jcard__open"));
+  const badOpen = CARD_NAMES.filter((n) => {
+    const o = opens(n);
+    return o.length !== 1 || attrOf(o[0], "href") !== openWant(n) || attrOf(o[0], "aria-label") !== fullTitle(caseOf(n));
+  }).map((n) => [n, opens(n).map((a) => [attrOf(a, "href"), attrOf(a, "aria-label")])]);
+  const notFirst = CARD_NAMES.filter((n) => !/^<article [^>]*><a class="kp-jcard__open"[^>]*><[/]a>/.test(R[n]));
+  ok("4.links.open · the card is ONE stretched link, first and empty, named by the reader's FULL title: to the question; an Up & Down row on /live to its round, or /updown when none resolved; elsewhere the question, which sends a round on itself",
+    badOpen.length === 0 && notFirst.length === 0, j({ badOpen, notFirst }));
+  const picksOf = (n: CardName) => anchorsOf(R[n]).filter((a) => classesOf(a).includes("kp-jcard__pick"));
+  const pickWant = (n: CardName) => ["YES", "NO"].map((s) => `/markets/${caseOf(n).m.id}?side=${s}${n === "home" ? "&from=home" : ""}`);
+  const badPicks = [
+    ...OPEN_CARDS.filter((n) => j(picksOf(n).map((a) => attrOf(a, "href"))) !== j(pickWant(n)) || picksOf(n).some((a) => attrOf(a, "aria-label") !== null)),
+    ...[...CLOSED_CARDS, ...SETTLED_CARDS].filter((n) => picksOf(n).length !== 0),
+  ];
+  const pickBuilder = src.slice(src.indexOf("const pick = ("), src.indexOf("const Heading = heading;"));
+  const prefetchOff = count(src, "prefetch={false}") === 1 && pickBuilder.includes("prefetch={false}");
+  ok("4.links.picks · the picks go where today's buttons go — the question with ?side=YES, then ?side=NO, &from=home on the home alone — never prefetched, each named by its visible words; a closed or a settled card has none",
+    badPicks.length === 0 && prefetchOff, j({ badPicks: badPicks.map((n) => [n, picksOf(n).map((a) => attrOf(a, "href"))]), prefetchOff }));
+
+  /* the heading */
+  const headOf = (n: CardName) => elementsOf(R[n], "kp-jcard__title")[0] ?? null;
+  const badHead = CARD_NAMES.filter((n) => {
+    const hd = headOf(n);
+    return !hd || hd.tag !== (n === "short" ? "h3" : "h2") || !classesOf(hd.attrs).includes("text-title-sm");
+  });
+  const keptFigure = (headOf("priced")?.inner ?? "").includes('<span class="whitespace-nowrap">1 Oktoba</span>')
+    && textOf(headOf("priced")?.inner ?? "") === caseOf("priced").m.titleSw && textOf(headOf("short")?.inner ?? "") === "Je, Dodoma itanyesha kesho?";
+  const titleWrap = declOf(rules, ".kp-jcard__title", "text-wrap");
+  ok("4.title.heading · the question is an h2 (an h3 where the similar rail asks) on the title-sm rung, the short title else the full one, its figures kept whole (keepFigures) and its lines balanced, never pretty",
+    badHead.length === 0 && keptFigure && titleWrap === "balance", j({ badHead, keptFigure, titleWrap }));
+  const clampRules = rules.filter((r) => r.decls.some(([p]) => p === "-webkit-line-clamp")).map((r) => [r.sels.join(", "), r.decls.find(([p]) => p === "-webkit-line-clamp")?.[1]]);
+  const badClamp = CARD_NAMES.filter((n) => classesOf(headOf(n)?.attrs ?? "").includes("kp-jcard__title--full") !== (n !== "short"));
+  ok("4.title.clamp · only the full-title FALLBACK is held to two lines: the clamp lives on the fallback's modifier alone, which a card wears exactly when it has no short title (a short title is never clamped)",
+    j(clampRules) === j([[".kp-jcard__title--full", "2"]]) && badClamp.length === 0, j({ clampRules, badClamp }));
+
+  /* the meta row (A12) */
+  const labelOf = (n: CardName) => elementsOf(R[n], "kp-jcard__when")[0] ?? null;
+  const EMPHASIS: Partial<Record<CardName, string>> = { today: "muted", closed: "muted", oneSidedClosed: "muted", priced: "subtle", settledYes: "subtle", void: "subtle", updownSettled: "subtle" };
+  const badEmphasis = (Object.keys(EMPHASIS) as CardName[]).filter((n) => attrOf(labelOf(n)?.attrs ?? "", "data-emphasis") !== EMPHASIS[n]);
+  const META_FAMILY = /kp-jcard__(?:meta|when|where)(?![A-Za-z0-9_-])/;
+  const inks = rules.filter((r) => r.sels.every((s) => META_FAMILY.test(s))).flatMap((r) => r.decls.filter(([p]) => p === "color").map(([, v]) => [r.sels.join(", "), v]));
+  ok("4.meta.ink · A12: the label carries its face's ink — closes today and waiting muted; Siku N, settled and void subtle — and the meta row sets the subtle ink once, the muted rule the only other colour on it",
+    badEmphasis.length === 0 && j(inks) === j([[".kp-jcard__meta", "var(--text-subtle)"], ['.kp-jcard__when[data-emphasis="muted"]', "var(--text-muted)"]]),
+    j({ badEmphasis, inks }));
+  const LABEL: Partial<Record<CardName, string>> = {
+    today: glyph(I.clock, 14) + sw.journey.cardClosesToday,
+    priced: sw.journey.cardDaysLeft.replace("{n}", "11"),
+    pricedEn: en.journey.cardDaysLeft.replace("{n}", "11"),
+    pricedZh: zh.journey.cardDaysLeft.replace("{n}", "11"),
+    closed: glyph(I.hourglassOff, 14) + sw.market.waitingForResults,
+    settledYes: glyph(I.checkCircle, 14) + sw.market.resolvedOutcome,
+    void: sw.common.voided,
+  };
+  const badLabel = (Object.keys(LABEL) as CardName[]).filter((n) => labelOf(n)?.inner !== LABEL[n]).map((n) => [n, labelOf(n)?.inner ?? null]);
+  ok("4.meta.label · the label is in the served markup, computed on the server: closes today with its clock, Siku N, waiting with the closed hourglass, settled with its check, void alone — in the reader's words",
+    badLabel.length === 0, j(badLabel));
+  const whereOf = (n: CardName) => elementsOf(R[n], "kp-jcard__where")[0] ?? null;
+  const comp = whereOf("competition"), plainWhere = whereOf("priced"), odd = whereOf("oddCompetition");
+  const whereOk = !!comp && classesOf(comp.attrs).includes("kp-seq") && elementsOf(comp.inner, "kp-seq__item").length === 2
+    && textOf(comp.inner) === `${sw.market.catSports} · ${sw.journey.compLigiKuu}`
+    && !!plainWhere && !classesOf(plainWhere.attrs).includes("kp-seq") && textOf(plainWhere.inner) === sw.market.catWeather
+    && !!odd && textOf(odd.inner) === sw.market.catSports;
+  ok("4.meta.where · category · competition, a DotSeq (it breaks between the two; its dot never opens or ends a line); no competition, or a key the list does not hold, is the category alone",
+    whereOk, j({ comp: comp && textOf(comp.inner), plain: plainWhere && textOf(plainWhere.inner), odd: odd && textOf(odd.inner) }));
+
+  /* the picks */
+  const picks = (n: CardName) => elementsOf(R[n], "kp-jcard__pick").map((p) => ({
+    cls: classesOf(p.attrs), side: textOf(elementsOf(p.inner, "kp-jcard__side")[0]?.inner ?? ""), line: elementsOf(p.inner, "kp-jcard__line")[0] ?? null,
+  }));
+  const said = (n: CardName) => picks(n).map((p) => [p.side, p.line === null ? null : plain(textOf(p.line.inner))]);
+  const thinLine = picks("overCap")[1]?.line;
+  const WORDS_WANT: Array<[CardName, unknown]> = [
+    ["priced", [[sw.common.yes, plain(winText("sw", "2.8"))], [sw.common.no, plain(winText("sw", "1.4"))]]],
+    ["empty", [[sw.common.yes, sw.journey.cardBeFirst], [sw.common.no, sw.journey.cardBeFirst]]],
+    ["oneSided", [[sw.common.yes, sw.market.oneSideOnly], [sw.common.no, sw.journey.cardBeFirst]]],
+    ["overCap", [[sw.common.yes, sw.journey.cardOverCap], [sw.common.no, sw.journey.cardThin.replace("{mult}", "1.0")]]],
+    ["legacy", [[sw.common.yes, null], [sw.common.no, null]]],
+    ["updownLive", [[sw.market.udUp, null], [sw.market.udDown, null]]],
+  ];
+  const badWords = WORDS_WANT.filter(([n, want]) => j(said(n)) !== j(want)).map(([n]) => [n, said(n)]);
+  const wordOnly = (["legacy", "updownLive"] as CardName[]).every((n) => picks(n).length === 2 && picks(n).every((p) => p.cls.includes("kp-jcard__pick--word")))
+    && OPEN_CARDS.filter((n) => n !== "legacy" && !n.startsWith("updown")).every((n) => picks(n).every((p) => !p.cls.includes("kp-jcard__pick--word")));
+  const thinStacked = !!thinLine && thinLine.inner.includes('class="kp-seq kp-seq--stack"') && thinLine.inner.includes('<span class="kp-jcard__mult">≈1.0×</span>');
+  const inked = OPEN_CARDS.every((n) => {
+    const p = picks(n);
+    return p.length === 2 && p[0].cls.includes("btn-yes") && !p[0].cls.includes("btn-no") && p[1].cls.includes("btn-no") && !p[1].cls.includes("btn-yes")
+      && p.every((x) => !x.cls.some((c) => c === "btn" || /^btn-(?:xs|sm|md|lg|xl)$/.test(c)));
+  });
+  ok("4.picks.words · each pick: the side word in the reader's and the product's words over its face's — win, be first, one side only, over the cap with no number, a thin side stacked; nothing under a hidden figure or an Up & Down side (centred); the YES ink on YES and the NO ink on NO, with no button height or nowrap",
+    badWords.length === 0 && wordOnly && thinStacked && inked, j({ badWords, wordOnly, thinStacked, inked }));
+  const lineOf = (n: CardName, i: number) => picks(n)[i]?.line?.inner ?? null;
+  const UNIT_WANT: Array<[CardName, number, string]> = [
+    ["priced", 0, winInner("sw", "2.8")], ["priced", 1, winInner("sw", "1.4")], ["pricedEn", 0, winInner("en", "2.8")], ["pricedZh", 0, winInner("zh", "2.8")],
+    ["overCap", 0, '<span class="kp-jcard__run">Upande mdogo,</span> <span class="kp-jcard__run">ona makadirio</span>'],
+    ["overCapEn", 0, '<span class="kp-jcard__run">Small side,</span> <span class="kp-jcard__run">see the estimate</span>'],
+    ["overCapZh", 0, zh.journey.cardOverCap],
+  ];
+  const badUnit = UNIT_WANT.filter(([n, i, want]) => lineOf(n, i) !== want).map(([n, i]) => [n, i, lineOf(n, i)]);
+  const nowrap = (["kp-jcard__mult", "kp-jcard__run"] as const).every((c) => declOf(rules, `.${c}`, "white-space") === "nowrap")
+    && declOf(rules, ".kp-jcard__mult", "font-family") === "var(--font-mono)";
+  const capWords = sw.journey.cardOverCap === "Upande mdogo, ona makadirio" && en.journey.cardOverCap === "Small side, see the estimate";
+  ok("4.picks.unit · the figure is one mono unit, never broken, joined to the words after it by no-break spaces (“≈2.8× dau”, “≈2.8× your bet”, “≈2.8× 投注”), so a line breaks only before it; over the cap each clause is kept whole where a space follows its comma (sw, en), and Chinese is left as written",
+    capWords && badUnit.length === 0 && nowrap, j({ capWords, badUnit, nowrap }));
+
+  /* the closed and the result rows */
+  const closedRow = (n: CardName) => elementsOf(R[n], "kp-jcard__closed");
+  const badClosed = CARD_NAMES.filter((n) => {
+    const rows = closedRow(n);
+    return CLOSED_CARDS.includes(n) ? rows.length !== 1 || rows[0].tag !== "p" || rows[0].inner !== glyph(I.lock, 16) + sw.market.statusClosed : rows.length !== 0;
+  });
+  ok("4.closed · a market whose selection has closed draws the closed row — a lock and the closed word, not a control — and nothing else does",
+    badClosed.length === 0, j(badClosed.map((n) => [n, closedRow(n).map((r) => r.inner)])));
+  const timesOf = (n: CardName) => [...R[n].matchAll(/<time(?= )([^>]*)>([^<]*)<[/]time>/g)].map((m) => ({ at: attrOf(m[1], "dateTime"), text: decodeHtml(m[2]) }));
+  const badDate = CARD_NAMES.filter((n) => {
+    const ts = timesOf(n);
+    if (!SETTLED_CARDS.includes(n)) return ts.length !== 0;
+    const m = caseOf(n).m, instant = m.settledAt ?? m.resolutionAt;
+    const label = elementsOf(R[n], "kp-jcard__result-label")[0];
+    return ts.length !== 1 || ts[0].at !== instant || ts[0].text !== formatEatDateTime(Date.parse(instant), T0, sw.common.monthsShort, "sw")
+      || !label || textOf(label.inner) !== sw.journey.cardResultLabel;
+  });
+  const yearShown = timesOf("lastYear")[0]?.text.includes("2025") === true;
+  const settledFirst = caseOf("settledYes").m.settledAt !== caseOf("settledYes").m.resolutionAt && timesOf("settledYes")[0]?.at === caseOf("settledYes").m.settledAt;
+  ok("4.settled.date · a settled card's one date is its settled instant — settledAt, else resolutionAt — in a <time> naming it, in the reader's month words and the East Africa clock, with the year once it is not this year; it sits under the result label; no other card prints a date",
+    badDate.length === 0 && yearShown && settledFirst, j({ badDate: badDate.map((n) => [n, timesOf(n)]), yearShown, settledFirst }));
+  const chipOf = (n: CardName) => { const c = elementsOf(R[n], "kp-jcard__outcome")[0]; return c ? [attrOf(c.attrs, "data-kit-chip-variant"), textOf(c.inner)] : null; };
+  const CHIP_WANT: Array<[CardName, unknown]> = [
+    ["settledYes", ["yes", sw.common.yes]], ["settledNo", ["no", sw.common.no]], ["lastYear", ["yes", sw.common.yes]],
+    ["void", ["neutral", sw.market.statusVoid]], ["updownSettled", ["yes", sw.market.udUp]], ["unrecorded", null],
+  ];
+  const badChip = CHIP_WANT.filter(([n, want]) => j(chipOf(n)) !== j(want)).map(([n]) => [n, chipOf(n)]);
+  const chipsElsewhere = [...OPEN_CARDS, ...CLOSED_CARDS].filter((n) => R[n].includes("data-kit-chip"));
+  ok("4.settled.chip · the result's chip is the kit Chip in its outcome's own ink with the product's word — YES, NO, a void neutral, Up & Down's own — and a verdict never recorded draws none",
+    badChip.length === 0 && chipsElsewhere.length === 0, j({ badChip, chipsElsewhere }));
+
+  /* the refund sentence (L22, Open point 7) */
+  const notesOf = (n: CardName) => elementsOf(R[n], "kp-jcard__note");
+  const noteWant = sw.market.oneSidedNote.replace("{side}", sw.common.no);
+  const badNote = CARD_NAMES.filter((n) => {
+    const ns = notesOf(n);
+    return n === "oneSided" || n === "oneSidedClosed" ? ns.length !== 1 || ns[0].tag !== "p" || textOf(ns[0].inner) !== noteWant : ns.length !== 0;
+  });
+  const shared = cssRules(w.css).filter((r) => r.sels.includes(".kp-jcard__note")).map((r) => r.sels.join(", "));
+  ok("4.note · an unsettled one-sided card says the refund rule under its action, naming the EMPTY side — the closed phase too — and nothing else does; its voice is the ONE note rule the classic card and the landing rows share",
+    badNote.length === 0 && j(shared) === j([".mcardp-onesided-note, .kp-qrow__note, .kp-jcard__note"]),
+    j({ badNote: badNote.map((n) => [n, notesOf(n).map((x) => textOf(x.inner))]), shared }));
+
+  /* the rules in globals.css */
+  const zs = rules.flatMap((r) => r.decls.filter(([p]) => p === "z-index").map(([, v]) => [r.sels.join(", "), v]));
+  const stackOk = declOf(rules, ".kp-jcard", "position") === "relative" && declOf(rules, ".kp-jcard", "isolation") === "isolate"
+    && declOf(rules, ".kp-jcard__open", "position") === "absolute" && declOf(rules, ".kp-jcard__open", "inset") === "0"
+    && declOf(rules, ".kp-jcard__picks", "position") === "relative"
+    && j(zs) === j([[".kp-jcard__open", "2"], [".kp-jcard__picks", "3"]]);
+  ok("4.stack · the card isolates its own stacking context; the stretched link covers it at 2 and the picks rise to 3 — the local plane (z ≤ 10), and no other z-index in the card's rules",
+    stackOk, j({ zs, card: [declOf(rules, ".kp-jcard", "position"), declOf(rules, ".kp-jcard", "isolation")], picks: declOf(rules, ".kp-jcard__picks", "position") }));
+  const press = declOf(rules, ".kp-jcard__pick:active", "transform");
+  const lift = declOf(rules, ".kp-jcard__pick:hover", "transform");
+  const fade = declOf(rules, ".kp-jcard__picks > .kp-jcard__pick", "transition") ?? "";
+  const liftGated = decommentCss(w.css).includes("@media (hover: hover) { .kp-jcard__pick:hover { transform: translateY(var(--m-lift)); } }");
+  ok("4.press · a pick moves as the side buttons move: the one press scale (--m-press) when pressed, the one hover lift (--m-lift) only where a pointer hovers (a lift stuck after a tap is the classic fills' lesson), on the motion ladder's timing — the pressed feedback the transparent tap-flash counts on",
+    press === "translateY(0) scale(var(--m-press))" && lift === "translateY(var(--m-lift))" && liftGated && fade.startsWith("transform var(--t-flick) var(--m-glide)"),
+    j({ press, lift, liftGated, fade }));
+  const reserveReaders = rules.filter((r) => r.decls.some(([, v]) => v.includes("--jcard-title-2l"))).map((r) => r.sels.join(", "));
+  const rootDecl = (name: string) => [...decommentCss(w.css).matchAll(new RegExp(`(?<![A-Za-z0-9_-])${name}:([^;]*);`, "g"))].map((m) => m[1].trim());
+  const actOk = declOf(rules, ".kp-jcard__act", "margin-block-start") === "auto" && declOf(rules, ".kp-jcard", "height") === "100%"
+    && declOf(rules, ".kp-jcard__title", "line-height") === "var(--jcard-title-line)"
+    && j(rootDecl("--jcard-title-2l")) === j(["calc(2 * var(--jcard-title-line))"]) && reserveReaders.length === 0;
+  ok("4.act · A16: the action block (picks, closed or result row, with the note) stands on the card's floor and the card fills its cell, so picks stay level across a grid's row; the title's line is the card's token and its two-line reserve a token no card rule reads — a multi-column grid's own rule applies it",
+    actOk, j({ act: declOf(rules, ".kp-jcard__act", "margin-block-start"), height: declOf(rules, ".kp-jcard", "height"), line: declOf(rules, ".kp-jcard__title", "line-height"), reserve: rootDecl("--jcard-title-2l"), reserveReaders }));
+  const COLOUR_PROP = /^(?:color|background(?:-color|-image)?|border(?:-[a-z]+)?|box-shadow|outline(?:-color)?|fill|stroke|text-shadow)$/;
+  const LITERAL_INK = /oklch[(]|rgba?[(]|hsla?[(]|#[0-9a-fA-F]{3,8}(?![A-Za-z0-9_-])/;
+  const offLadder = rules.flatMap((r) => r.decls.filter(([p, v]) => p === "font-size" && !/^var[(]--type-[a-z0-9-]+[)]$/.test(v)).map(([, v]) => `${r.sels.join(", ")} font-size: ${v}`));
+  const literalInk = rules.flatMap((r) => r.decls.filter(([p, v]) => COLOUR_PROP.test(p) && LITERAL_INK.test(v)).map(([p, v]) => `${r.sels.join(", ")} ${p}: ${v}`));
+  const important = rules.filter((r) => r.decls.some(([, v]) => v.includes("!important"))).map((r) => r.sels.join(", "));
+  const TOKENS = ["--jcard-pad", "--jcard-gap", "--jcard-meta-line", "--jcard-title-line", "--jcard-title-2l", "--jcard-act-h"];
+  const tokenSites = TOKENS.map((t) => [t, rootDecl(t).length] as const);
+  const readTokens = [...new Set(rules.flatMap((r) => r.decls.flatMap(([, v]) => v.match(/--jcard-[a-z0-9-]+/g) ?? [])))];
+  const sideWord = declOf(rules, ".kp-jcard__side", "font-size");
+  ok("4.css · only the kit: every size in the card's rules a --type-* rung (the call-site rungs ride on the markup), every ink a token, no !important, the side word on the h4 rung (A15), and the --jcard-* geometry declared once each — every token the rules read among them",
+    offLadder.length === 0 && literalInk.length === 0 && important.length === 0 && sideWord === "var(--type-h4)"
+      && tokenSites.every(([, n]) => n === 1) && readTokens.length > 0 && readTokens.every((t) => TOKENS.includes(t)),
+    j({ offLadder, literalInk, important, sideWord, tokenSites, readTokens }));
+}
+
 /* ── what §1 reads for, spelled as the route file spells it ─────────────────────────────────────────────────── */
 const DYNAMIC = 'export const dynamic = "force-dynamic";';
 const GENERATE = "export async function generateMetadata(): Promise<Metadata> {";
@@ -368,7 +750,17 @@ function run(w: World, log: (l: string) => void): string[] {
   homeListChecks(w.rules, ok);
   /* §3 · the card's face (S7 WP3) */
   cardFaceChecks(w.rules, ok);
+  /* §4 · the journey card (S7 WP5) */
+  journeyCardChecks(w, ok);
   return failed;
+}
+
+/** One swap on a copy of a text. ⛔ An anchor that no longer resolves exactly once THROWS, so a plant that changed nothing
+ *  is reported as a broken plant, never as a check that missed it. */
+function swap(text: string, from: string, to: string) {
+  const n = count(text, from);
+  if (n !== 1) throw new Error(`the plant's anchor resolves ${n} times, not once: ${from}`);
+  return text.replace(from, () => to);
 }
 
 /**
@@ -491,6 +883,120 @@ function ruleDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) 
   ];
 }
 
+/**
+ * §4's plants: each puts ONE defect into a copy of the card's source, of globals.css or of one drawn card, and must turn
+ * its own check red and no other (`alone`). A drawn-card plant edits the markup the real component served, so it proves
+ * the check reads what a reader is served; a source plant proves the check reads how the card computes it.
+ */
+function cardDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) => World; alone: true }> {
+  const drawn = (w: World, n: CardName, from: string, to: string): World => ({ ...w, renders: { ...w.renders, [n]: swap(w.renders[n], from, to) } });
+  const styled = (w: World, from: string, to: string, tail = ""): World => ({ ...w, css: swap(w.css, from, to) + tail });
+  const sourced = (w: World, from: string, to: string): World => ({ ...w, card: swap(w.card, from, to) });
+  const sw = dict.sw;
+  const note = sw.market.oneSidedNote.replace("{side}", sw.common.no);
+  const old = caseOf("lastYear").m.settledAt ?? "";
+  const yes = caseOf("settledYes").m;
+  return [
+    { name: "the card marked use client (its markup would hydrate, and the close label could run on the phone's clock)", expect: /^4[.]directive /, alone: true,
+      plant: (w) => ({ ...w, card: '"use client";' + LF + LF + w.card }) },
+    { name: "a client module imports the card", expect: /^4[.]importers /, alone: true,
+      plant: (w) => ({ ...w, cardNaming: new Map(w.cardNaming).set("src/components/journey/home/home-island.tsx",
+        '"use client";' + LF + 'import { JourneyCard } from "@/components/journey/cards/journey-card";' + LF) }) },
+    { name: "the close label read off the wall clock instead of the render's (midnight in East Africa splits server and phone)", expect: /^4[.]computes /, alone: true,
+      plant: (w) => sourced(w, "cardCloseLabel(m, nowMs)", "cardCloseLabel(m, Date.now())") },
+    { name: "the figures computed beside cardFigures (the card and the bet sheet free to disagree)", expect: /^4[.]computes /, alone: true,
+      plant: (w) => sourced(w, "const { bettable, estimates } = cardFigures(m, nowMs);",
+        'const bettable = m.status === "LIVE"; const rates = pickEstimateRates(ratesFor(m)); const estimates = { YES: cardEstimate(m, rates, "YES", bettable), NO: cardEstimate(m, rates, "NO", bettable) };') },
+    { name: "the card reads a pool into its markup", expect: /^4[.]computes /, alone: true,
+      plant: (w) => sourced(w, "<Heading className=", "<span>{m.yesPool}</span><Heading className=") },
+    { name: "a percentage printed on a card", expect: /^4[.]printed /, alone: true,
+      plant: (w) => drawn(w, "priced", "</article>", "<p>33% NDIO</p></article>") },
+    { name: "the pool printed on a card", expect: /^4[.]printed /, alone: true,
+      plant: (w) => drawn(w, "home", "</article>", "<p>Bwawa TZS 75,287</p></article>") },
+    { name: "a click handler that fires the navigating event (NavProgress already starts on any internal link)", expect: /^4[.]forbidden /, alone: true,
+      plant: (w) => sourced(w, 'className="kp-jcard__open"', 'className="kp-jcard__open" onClick={() => window.dispatchEvent(new Event("50pick:navigating"))}') },
+    { name: "the classic card's class on a journey card (V18 selects it; phone density rewrites it)", expect: /^4[.]forbidden /, alone: true,
+      plant: (w) => drawn(w, "priced", '<article class="kp-jcard"', '<article class="kp-jcard mcardp"') },
+    { name: "an Up & Down row on /live linked to the question, not its round", expect: /^4[.]links[.]open /, alone: true,
+      plant: (w) => drawn(w, "updownLive", 'href="/updown/rnd_jcLive"', 'href="/markets/mkt_jcUd"') },
+    { name: "the card link named by the short title (a screen reader loses the full question)", expect: /^4[.]links[.]open /, alone: true,
+      plant: (w) => drawn(w, "short", `aria-label="${caseOf("short").m.titleSw}"`, 'aria-label="Je, Dodoma itanyesha kesho?"') },
+    { name: "the home's NO pick drops from=home (the old journey's funnel loses the tap)", expect: /^4[.]links[.]picks /, alone: true,
+      plant: (w) => drawn(w, "home", '?side=NO&amp;from=home"', '?side=NO"') },
+    { name: "the picks prefetched (two question pages per card, on every card in view)", expect: /^4[.]links[.]picks /, alone: true,
+      plant: (w) => sourced(w, "prefetch={false}", "prefetch={true}") },
+    { name: "a closed card keeps a pick", expect: /^4[.]links[.]picks /, alone: true,
+      plant: (w) => drawn(w, "closed", '<p class="kp-jcard__closed">', '<a class="btn-yes kp-jcard__pick" href="/markets/mkt_jcClosed?side=YES"><span class="kp-jcard__side">NDIO</span></a><p class="kp-jcard__closed">') },
+    { name: "the similar rail's card drawn as an h2 (two h2 levels under the rail's own heading)", expect: /^4[.]title[.]heading /, alone: true,
+      plant: (w) => drawn(w, "short", '<h3 class="kp-jcard__title text-title-sm">Je, Dodoma itanyesha kesho?</h3>', '<h2 class="kp-jcard__title text-title-sm">Je, Dodoma itanyesha kesho?</h2>') },
+    { name: "the question no longer balanced (a word left alone on its last line)", expect: /^4[.]title[.]heading /, alone: true,
+      plant: (w) => styled(w, "color: var(--text); text-wrap: balance; overflow-wrap: break-word; }", "color: var(--text); overflow-wrap: break-word; }") },
+    { name: "every title clamped, the short title included (its end lost)", expect: /^4[.]title[.]clamp /, alone: true,
+      plant: (w) => styled(w, ".kp-jcard__title { margin: 0;", ".kp-jcard__title { -webkit-line-clamp: 2; margin: 0;") },
+    { name: "a short title given the fallback's clamp", expect: /^4[.]title[.]clamp /, alone: true,
+      plant: (w) => drawn(w, "short", '<h3 class="kp-jcard__title text-title-sm">', '<h3 class="kp-jcard__title kp-jcard__title--full text-title-sm">') },
+    { name: "A12's plant: the muted rule re-pointed to the subtle ink (closes today and waiting no brighter than Siku N)", expect: /^4[.]meta[.]ink /, alone: true,
+      plant: (w) => styled(w, '.kp-jcard__when[data-emphasis="muted"] { color: var(--text-muted); }', '.kp-jcard__when[data-emphasis="muted"] { color: var(--text-subtle); }') },
+    { name: "the label inks itself muted in every state (Siku N as loud as closes today)", expect: /^4[.]meta[.]ink /, alone: true,
+      plant: (w) => styled(w, ".kp-jcard__when { display: inline-flex;", ".kp-jcard__when { color: var(--text-muted); display: inline-flex;") },
+    { name: "closes today drawn in the subtle ink", expect: /^4[.]meta[.]ink /, alone: true,
+      plant: (w) => drawn(w, "today", 'data-emphasis="muted"', 'data-emphasis="subtle"') },
+    { name: "closes today drawn with the waiting hourglass", expect: /^4[.]meta[.]label /, alone: true,
+      plant: (w) => drawn(w, "today", glyph(I.clock, 14), glyph(I.hourglassOff, 14)) },
+    { name: "Siku N missing from the served markup (a label left for the browser to compute)", expect: /^4[.]meta[.]label /, alone: true,
+      plant: (w) => drawn(w, "priced", `data-emphasis="subtle">${sw.journey.cardDaysLeft.replace("{n}", "11")}</span>`, 'data-emphasis="subtle"></span>') },
+    { name: "the competition dropped from the meta row", expect: /^4[.]meta[.]where /, alone: true,
+      plant: (w) => {
+        const el = elementsOf(w.renders.competition, "kp-jcard__where")[0];
+        if (!el) throw new Error("the competition card draws no meta row to plant in");
+        return drawn(w, "competition", `<span${el.attrs}>${el.inner}</span>`, `<span class="kp-jcard__where">${sw.market.catSports}</span>`);
+      } },
+    { name: "a hidden figure's pick told to be the first", expect: /^4[.]picks[.]words /, alone: true,
+      plant: (w) => drawn(w, "legacy", `<span class="kp-jcard__side">${sw.common.yes}</span></a>`, `<span class="kp-jcard__side">${sw.common.yes}</span> <span class="kp-jcard__line">${sw.journey.cardBeFirst}</span></a>`) },
+    { name: "the NO pick in the YES ink", expect: /^4[.]picks[.]words /, alone: true,
+      plant: (w) => drawn(w, "priced", 'class="btn-no kp-jcard__pick"', 'class="btn-yes kp-jcard__pick"') },
+    { name: "a pick given a button's height and nowrap (a two-line pick cut)", expect: /^4[.]picks[.]words /, alone: true,
+      plant: (w) => drawn(w, "priced", 'class="btn-yes kp-jcard__pick"', 'class="btn btn-yes btn-md kp-jcard__pick"') },
+    { name: "the figure parted from its unit (a break could read “≈2.8× / dau”)", expect: /^4[.]picks[.]unit /, alone: true,
+      plant: (w) => drawn(w, "priced", `≈2.8×</span>${NBSP}dau`, "≈2.8×</span> dau") },
+    { name: "the English unit split (“≈2.8× your / bet”)", expect: /^4[.]picks[.]unit /, alone: true,
+      plant: (w) => drawn(w, "pricedEn", `≈2.8×</span>${NBSP}your${NBSP}bet`, `≈2.8×</span>${NBSP}your bet`) },
+    { name: "the closed row without its lock", expect: /^4[.]closed /, alone: true,
+      plant: (w) => drawn(w, "closed", `<p class="kp-jcard__closed">${glyph(I.lock, 16)}`, '<p class="kp-jcard__closed">') },
+    { name: "the result's <time> names the resolution, not the settlement", expect: /^4[.]settled[.]date /, alone: true,
+      plant: (w) => drawn(w, "settledYes", `dateTime="${yes.settledAt}"`, `dateTime="${yes.resolutionAt}"`) },
+    { name: "last year's settlement printed with no year", expect: /^4[.]settled[.]date /, alone: true,
+      plant: (w) => drawn(w, "lastYear", `>${formatEatDateTime(Date.parse(old), T0, sw.common.monthsShort, "sw")}</time>`,
+        `>${formatEatDateTime(Date.parse(old), Date.parse(old), sw.common.monthsShort, "sw")}</time>`) },
+    { name: "a NO result chip in the YES ink", expect: /^4[.]settled[.]chip /, alone: true,
+      plant: (w) => drawn(w, "settledNo", 'data-kit-chip-variant="no"', 'data-kit-chip-variant="yes"') },
+    { name: "a verdict never recorded given a side", expect: /^4[.]settled[.]chip /, alone: true,
+      plant: (w) => drawn(w, "unrecorded", "</time></p>", `</time></p> <span data-kit-chip="" data-kit-chip-variant="yes" class="kp-jcard__outcome">${sw.common.yes}</span>`) },
+    { name: "the refund sentence names the side holding the money", expect: /^4[.]note /, alone: true,
+      plant: (w) => drawn(w, "oneSided", note, sw.market.oneSidedNote.replace("{side}", sw.common.yes)) },
+    { name: "the refund sentence dropped once selection closes", expect: /^4[.]note /, alone: true,
+      plant: (w) => drawn(w, "oneSidedClosed", `<p class="kp-jcard__note">${note}</p>`, "") },
+    { name: "the note given a voice of its own (a second definition of the one note)", expect: /^4[.]note /, alone: true,
+      plant: (w) => styled(w, `.kp-qrow__note,${LF}.kp-jcard__note {`, ".kp-qrow__note {", `${LF}.kp-jcard__note { font-size: var(--type-small); color: var(--text-subtle); }${LF}`) },
+    { name: "the picks not raised (a tap on NDIO opens the question)", expect: /^4[.]stack /, alone: true,
+      plant: (w) => styled(w, ".kp-jcard__picks { position: relative; z-index: 3; display: grid;", ".kp-jcard__picks { display: grid;") },
+    { name: "the card's stacking context dropped (its local z-indexes reach the page)", expect: /^4[.]stack /, alone: true,
+      plant: (w) => styled(w, ".kp-jcard { position: relative; isolation: isolate; display: flex;", ".kp-jcard { position: relative; display: flex;") },
+    { name: "a pick that does not press (no pressed feedback under a transparent tap-flash)", expect: /^4[.]press /, alone: true,
+      plant: (w) => styled(w, ".kp-jcard__pick:active { transform: translateY(0) scale(var(--m-press)); filter: brightness(0.93); }", ".kp-jcard__pick:active { filter: brightness(0.93); }") },
+    { name: "the hover lift on every pointer (stuck on a phone after a tap)", expect: /^4[.]press /, alone: true,
+      plant: (w) => styled(w, "@media (hover: hover) { .kp-jcard__pick:hover { transform: translateY(var(--m-lift)); } }", ".kp-jcard__pick:hover { transform: translateY(var(--m-lift)); }") },
+    { name: "the action block off the card's floor (picks out of line across a grid's row)", expect: /^4[.]act /, alone: true,
+      plant: (w) => styled(w, "gap: var(--jcard-gap); margin-block-start: auto; }", "gap: var(--jcard-gap); }") },
+    { name: "the two-line reserve set by the card itself (one column pays it too)", expect: /^4[.]act /, alone: true,
+      plant: (w) => styled(w, ".kp-jcard__title { margin: 0;", ".kp-jcard__title { min-height: var(--jcard-title-2l); margin: 0;") },
+    { name: "a hand-typed ink in the card's rules", expect: /^4[.]css /, alone: true,
+      plant: (w) => styled(w, "background: var(--bg-inset); font-size: var(--type-body);", "background: oklch(11% 0.11 268); font-size: var(--type-body);") },
+    { name: "A15: the side word off the h4 rung", expect: /^4[.]css /, alone: true,
+      plant: (w) => styled(w, ".kp-jcard__side { font-family: var(--font-display); font-size: var(--type-h4);", ".kp-jcard__side { font-family: var(--font-display); font-size: var(--type-body);") },
+  ];
+}
+
 const REAL = load();
 if (!PROVE_RED) {
   console.log("journey-home — the home on / (the Vodacom plan S7)");
@@ -499,15 +1005,8 @@ if (!PROVE_RED) {
   process.exitCode = failed.length === 0 ? 0 : 1;
 } else {
   const quiet = () => {};
-  /** `alone`: the plant must turn its own check red and NO other (every §2 and §3 plant). */
+  /** `alone`: the plant must turn its own check red and NO other (every §2, §3 and §4 plant). */
   type Plant = { name: string; expect: RegExp; plant: (w: World) => World; alone?: boolean };
-  /** One swap on a copy of a file's text. ⛔ An anchor that no longer resolves exactly once THROWS, so a plant that changed
-   *  nothing is reported as a broken plant, never as a check that missed it. */
-  const swap = (text: string, from: string, to: string) => {
-    const n = count(text, from);
-    if (n !== 1) throw new Error(`the plant's anchor resolves ${n} times, not once: ${from}`);
-    return text.replace(from, () => to);
-  };
   const PLANTS: Plant[] = [
     { name: "the metadata moved into the landing's body, where Next never reads it (/ would lose its canonical, og:url and og:image)", expect: /^1[.]metadata /,
       plant: (w) => {
@@ -533,6 +1032,8 @@ if (!PROVE_RED) {
 
     /* §2 and §3 (S7 WP3): one rule swapped for a copy that carries one defect, each required to fail its check ALONE. */
     ...ruleDefects(),
+    /* §4 (S7 WP5): one defect in a copy of the card's source, of globals.css or of one drawn card, each failing ALONE. */
+    ...cardDefects(),
   ];
   let caught = 0, fail = 0;
   const ok = (label: string, cond: boolean, extra = "") => { if (!cond) fail++; console.log(`${cond ? "PROVED  " : "MISSED  "} ${label}${extra ? ` — ${extra}` : ""}`); };
