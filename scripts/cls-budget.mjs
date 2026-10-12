@@ -124,7 +124,8 @@ for (const reader of READERS) for (const path of reader.routes) {
     await p.route(/\/_next\/static\/.*\.css(\?.*)?$/, async (route) => {
       const res = await route.fetch();
       let css = await res.text();
-      css = css.replace(/#main-content\{min-height:100svh\}/g, "#main-content{min-height:auto}");
+      // Minified (a production build) or not (a local dev server, --journey's), the same rule: whitespace is allowed.
+      css = css.replace(/#main-content\s*\{\s*min-height:\s*100svh;?\s*\}/g, "#main-content{min-height:auto}");
       css += "\n.flex.flex-col.gap-5{display:block;gap:0}\n.flex.flex-col.gap-5>:not([hidden])~:not([hidden]){margin-top:24px}\n";
       await route.fulfill({ response: res, body: css, headers: { ...res.headers(), "content-length": String(Buffer.byteLength(css)) } });
     });
