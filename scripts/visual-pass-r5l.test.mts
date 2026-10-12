@@ -262,6 +262,13 @@ function suspenseCensus(src: Src): string[] {
       if (fb === "null") continue;
       if (/^<(ResultsGhostBands|MarketsBoardGhost)\b/.test(fb) && /from "\.\/loading";/.test(s)) continue;
       if (f === "src/components/layout/top-app-bar.tsx" && fb.startsWith("<GuestAuthPills")) continue; // chrome, not a skeleton
+      // ⭐ THE VODACOM PLAN S7 (WP7, A17 item 2, A24 item 2): `/`'s journey arm stands the journey home's own ghost while the
+      // home's list arrives — the very drawing the root loading's journey picture of `/` draws (route-ghost.tsx), so one
+      // drawing in two places. `/`'s loading file is the root's, generic for every classic reader and unedited (A17 item
+      // 2), so the ghost comes from its own module; test:journey-home §6 pins its importers and test:visual-pass-r4j 3.14
+      // the two places.
+      if (f === "src/app/page.tsx" && fb === "<JourneyHomeGhost t={t} />"
+        && s.includes('import { JourneyHomeGhost } from "@/components/journey/home/journey-home-ghost";')) continue;
       bad.push(`${f}: ${fb.slice(0, 60)}`);
     }
     // A page's own file — and the home's body, which S7 WP2 moved to components/home/legacy-landing.tsx — draws no
@@ -272,10 +279,12 @@ function suspenseCensus(src: Src): string[] {
 }
 {
   const now = suspenseCensus(REAL);
-  ok("2.1 · the census: outside the console every Suspense fallback is null, the classic bar's guest pills (chrome), or its route's own ghost imported from ./loading — no page draws a skeleton of its own",
+  ok("2.1 · the census: outside the console every Suspense fallback is null, the classic bar's guest pills (chrome), or its route's own ghost imported from ./loading (on `/`, the journey home's own ghost: S7 WP7) — no page draws a skeleton of its own",
     now.length === 0, now.join(" | "));
   const back = suspenseCensus(planted("src/app/markets/page.tsx", "<Suspense fallback={<MarketsBoardGhost />}>", "<Suspense fallback={<GridSkeleton />}>"));
   ok("2.1′ PLANT · /markets' own GridSkeleton back as the fallback is reported", back.length > 0, back.join(" | "));
+  const homeBack = suspenseCensus(planted("src/app/page.tsx", "<Suspense fallback={<JourneyHomeGhost t={t} />}>", "<Suspense fallback={<HomeSkeleton />}>"));
+  ok("2.1″ PLANT · `/`'s journey arm standing a skeleton of its own in place of the home's ghost is reported", homeBack.length > 0, homeBack.join(" | "));
   const rp = REAL("src/app/results/page.tsx"), mp = REAL("src/app/markets/page.tsx");
   const rl = raw("src/app/results/loading.tsx"), ml = raw("src/app/markets/loading.tsx");
   ok("2.2 · the fallbacks are the loading files' own drawings — /results' `ResultsGhostBands` (handed the page's carousel and search answers) and /markets' `MarketsBoardGhost`, both from client files (a reference in the payload, which every refresh re-sends), and each loading file renders the same component",

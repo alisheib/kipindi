@@ -301,8 +301,11 @@ function serverOnly(entry: string, text: (p: string) => string = raw): { reached
   const ghost = code(GHOST);
   // ⚠️ MOVED IN ROUND 5'S FOLLOW-UP (R5-H, G-2): the binding also takes `at`, the page a segment's own loading file pins it
   // to (`/positions`, `/updown/history` — `test:visual-pass-r5h` §2 holds the two).
+  // ⚠️ MOVED BY THE VODACOM PLAN S7 (WP7, A24 item 2, 2026-10-12): the binding reads the words alone (`const { t } = useT();`)
+  // — the locale went with the classic landing's ghost, shelved at "/" since a journey reader's `/` is the journey home —
+  // and still takes the rails, which that shelved ghost draws (2.9).
   const shape = (s: string) => hasDirective(s, "use client") && s.includes("export function JourneyRouteGhost({ rails, at }: { rails: readonly string[]; at?: JourneyGhostPage }) {")
-    && squash(s).includes("const { t, locale } = useT();") && s.includes('import { useT } from "@/lib/i18n";');
+    && squash(s).includes("const { t } = useT();") && s.includes('import { useT } from "@/lib/i18n";');
   ok("2.1 · route-ghost.tsx is client code: the ghosts take the rails alone and read the words from the client dictionary (`useT`)", shape(ghost));
   ok("2.1′ PLANT · the ghosts drawn by a server component again (the directive gone) is reported", !shape(ghost.replace(/^\s*"use client";/, "")));
   const graph = serverOnly(GHOST_LAZY);
@@ -399,7 +402,7 @@ const { TicketsGhost, TicketsHeadGhost } = req("../src/components/journey/ticket
 const { LazyJourneyRouteGhost } = req("../src/components/journey/route-ghost-lazy.tsx") as { LazyJourneyRouteGhost: unknown };
 const MarketDetailLoading = (req("../src/app/markets/[id]/loading.tsx") as { default: unknown }).default;
 const DepositReturnLoading = (req("../src/app/wallet/deposit/return/loading.tsx") as { default: unknown }).default;
-const { JourneyRouteGhost } = req("../src/components/journey/route-ghost.tsx") as { JourneyRouteGhost: (p: { rails: readonly string[] }) => unknown };
+const { JourneyRouteGhost, HomeGhost } = req("../src/components/journey/route-ghost.tsx") as { JourneyRouteGhost: (p: { rails: readonly string[] }) => unknown; HomeGhost: unknown };
 const { I18nProvider } = req("../src/lib/i18n.tsx") as { I18nProvider: (p: { initial: Locale; children: unknown }) => unknown };
 collectClientRefs();
 const GHOST_MARKUP = /kp-hero|kp-hub|kp-shimmer-track|kp-hghost|aria-busy/;
@@ -466,7 +469,9 @@ const ghostAt = (path: string, l: Locale) => inApp(path, l, h(JourneyRouteGhost 
 {
   // [path, what that page's ghost shows, read in the reader's language]
   const PAGES: Array<[string, (l: Locale) => string]> = [
-    ["/", () => 'class="kp-hero"'],
+    // ⚠️ MOVED BY THE VODACOM PLAN S7 (WP7, A24 item 2, 2026-10-12): a journey reader's `/` is the journey home, so its ghost
+    // is the home's own (`journey-home-ghost.tsx`), which draws the How-to card's title in words; it was the landing hero's.
+    ["/", (l) => dict[l].journey.howToCardTitle],
     ["/updown", (l) => dict[l].market.udStreaming],
     ["/positions", (l) => dict[l].journey.tabTickets],
     ["/account", (l) => `>${dict[l].journey.tabAccount}</h1>`],
@@ -487,10 +492,16 @@ const ghostAt = (path: string, l: Locale) => inApp(path, l, h(JourneyRouteGhost 
   }
   ok(`2.8 · every ghost renders on React's server renderer, in sw, en and zh, inside the root layout's providers, and shows its own page in that language (${PAGES.length} paths × 3) — no throw (G2: it stands in the shell)`,
     wrong.length === 0, wrong.join(" | "));
-  const homeWords = LOCALES.map((l) => ghostAt("/", l).includes(dict[l].home.heroLedeAct));
-  ok("2.8′ CONTROL · the words follow the provider's language, not the server's: the home ghost's lede in each of the three", homeWords.every(Boolean), j(homeWords));
-  const railsShown = RAILS.every((r) => ghostAt("/", "sw").includes(r));
-  ok(`2.9 · the home ghost's trust rows name the rails it is handed (${RAILS.join(", ")})`, railsShown);
+  // ⚠️ MOVED BY THE VODACOM PLAN S7 (WP7): the home's ghost is the journey home's, its one word line the How-to card's title.
+  const homeWords = LOCALES.map((l) => { const g = ghostAt("/", l); return g.includes('data-testid="journey-home-ghost"') && g.includes(dict[l].journey.howToCardTitle); });
+  const titles = new Set(LOCALES.map((l) => dict[l].journey.howToCardTitle));
+  ok("2.8′ CONTROL · the words follow the provider's language, not the server's: the journey home's ghost, its How-to card's title in each of the three (three different titles)",
+    homeWords.every(Boolean) && titles.size === LOCALES.length, j(homeWords));
+  // ⚠️ MOVED BY THE VODACOM PLAN S7 (WP7): the rails are drawn by the classic landing's ghost alone, shelved at "/" with the
+  // landing for a journey reader and kept in place (docs/SHELVED.md) — rendered here as it waits, so its re-mount is proven.
+  const shelved = inApp("/", "sw", h(HomeGhost as never, { t: dict.sw, locale: "sw", rails: RAILS }));
+  const railsShown = RAILS.every((r) => shelved.includes(r)) && shelved.includes('class="kp-hero"') && !ghostAt("/", "sw").includes('class="kp-hero"');
+  ok(`2.9 · the shelved landing ghost's trust rows still name the rails it is handed (${RAILS.join(", ")}), and "/" draws the journey home's ghost, not it`, railsShown);
 }
 {
   // ONE DRAWING: each page's loading file (RUN, as Next runs it for that page) and the root ghost at that page's address

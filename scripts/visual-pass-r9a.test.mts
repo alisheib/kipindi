@@ -552,6 +552,9 @@ section("5 · A5 every pair of buttons stands 12px apart — the card's YES/NO a
     ["src/app/profile/security/security-client.tsx", "rounded-xl glass-panel p-5 space-y-4", "a section's stacked rows, not a pair"],
     ["src/app/updown/history/page.tsx", "mt-6", "two branches of one condition"],
     ["src/app/watchlist/page.tsx", "space-y-5", "a page's stacked sections, not a pair"],
+    // The Vodacom plan S7 (WP7, 2026-10-12): the journey home's column holds Onyesha zaidi under the list, or (the list
+    // empty) an empty category's way out inside the kit's EmptyState — never both.
+    ["src/components/journey/home/journey-home.tsx", "kp-jhome", "two branches of one condition"],
   ];
   const at12 = (cls: string) => new RegExp("(?:^| )gap(?:-x)?-2(?: |$)").test(cls) || Object.keys(CSS_PAIRS).some((k) => cls.split(" ").includes(k) && rule(CSS_PAIRS[k]).includes("gap: var(--sp-3)"));
   const kept = (p: { f: string; cls: string }) => KEEP_PAIR.some(([f, cls]) => f === p.f && cls === p.cls);

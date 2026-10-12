@@ -164,6 +164,7 @@ const headerCallOk = (file: string, el: string) => {
     "src/app/proposals/page.tsx": { kit: "PageHeader; the sr-only <h1> is the unavailable branch's" },
     "src/app/account/page.tsx": { none: "the journey's Akaunti hub: its name alone (the canvas draws no line over it)" },
     "src/components/journey/route-ghost.tsx": { none: "the Akaunti hub's drawing" },
+    "src/components/journey/home/home-headline.tsx": { none: "the journey home's headline, the deck's two sentences (VODACOM-PLAN §3.2): the canvas draws no line over it, the How-to card beside it (the Vodacom plan S7, WP7)" },
     "src/app/markets/[id]/page.tsx": { none: "the question is the head; its chips stand above it" },
     "src/app/proposals/[id]/page.tsx": { none: "the proposal's question is the head; its chips stand above it" },
     "src/app/updown/[roundId]/page.tsx": { none: "the asset's mark and the game's name" },

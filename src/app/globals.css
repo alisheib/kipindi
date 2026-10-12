@@ -7751,6 +7751,67 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   .kp-jgrid .kp-jcard__act { margin-block-start: 0; }
 }
 
+/* =====================================================================
+   THE JOURNEY HOME — `/` for a journey reader (the Vodacom plan S7, §3.2; S7-PLAN WP7 with A5(c), A16 and A17)
+   =====================================================================
+   Worn only by the files of `components/journey/home` (the home, its headline, its chips and its ghost), which
+   `app/page.tsx` renders for a journey request alone: a classic page carries none of these classes and paints exactly
+   as before.
+   ⭐ THE DECK'S COLUMN (pick-1-home): the How-to card, the headline, the chips, the questions, 16px apart, the canvas's
+   gap — 20px from 1024, the desktop board's (s4-3-home-desktop). The page keeps PageContainer's house padding (A5(c)).
+   ⭐ THE HEAD FROM 1024 (A16 item 1, the desktop board's values): one row that wraps — the headline `flex: 1 1 520px`,
+   drawn first (`order: -1`: the markup keeps the deck's phone order, the How-to card first, so the tab order and a phone
+   screen reader's are the deck's), the How-to card `flex: 0 1 440px` and never under 320px, 16px between rows and 24px
+   between the two. The 984px of bases do not fit a 1024 window's 960px column, so up to ~1047 the card wraps under the
+   headline: the canvas's values kept, the wrapped picture recorded (A16 item 1).
+   ⭐ THE HEADLINE (`home-headline.tsx`; the `.kp-hero__headline` family, §2's Headline row): Sora 800 in the text ink — the
+   side words take no side ink — balanced, Chinese untracked as the family sets it. Its phone rung rides on the markup
+   (`text-title-lg`: the largest ladder rung that holds exactly two lines at 360 in sw, en and zh); from 1024 it is
+   `--type-display-2` at the desktop board's 1.1 line and the family's tracking — the largest of A16's three rungs that
+   holds one line at 1280 beside the How-to card. The `<br>` that sets each sentence on its own line below 1024 draws
+   nothing from 1024, where the sentence gap the markup carries takes its place.
+   ⭐ THE CHIPS (`home-chips.tsx`): below 1024 the house's scrolling strip (`.kp-strip-fade` owns its fades and its inset),
+   bleeding to the screen's right edge as the canvas's rail does — the gutter handed back as padding, so its last chip
+   scrolls fully into view; from 1024 it wraps, as the query bar's strip does. The pills 4px apart, the strip's gap.
+   ⭐ "ONYESHA ZAIDI" spans the column: the kit's ghost button at 48px, the canvas's full-width row (s4-3-home-end).
+   ⭐ THE GHOST (`journey-home-ghost.tsx`) is drawn with the home's own classes above and the card's; here is only its paint
+   — the plate, the bars and the pills, on the sunken surface — and its How-to card's box made inert (no pointer, no
+   hover edge: it is a picture of the card). Its headline is the page's own drawing with its words set but not shown, a
+   bar under each sentence (the landing ghost's convention, `.kp-hghost`). */
+.kp-jhome { display: flex; flex-direction: column; gap: var(--sp-4); }
+.kp-jhome__head { display: flex; flex-direction: column; gap: var(--sp-4); }
+.kp-jhome__title { margin: 0; font-family: var(--font-display); font-weight: 800; color: var(--text); text-wrap: balance; }
+.kp-jhome__title:lang(zh) { letter-spacing: 0; }
+.kp-jhome__chips { display: flex; align-items: center; gap: var(--sp-1); min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; }
+.kp-jhome__query { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2) var(--sp-3); }
+.kp-jhome__query-text { margin: 0; min-width: 0; color: var(--text-muted); overflow-wrap: anywhere; }
+.kp-jhome__more { width: 100%; }
+@media (max-width: 1023.98px) {
+  .kp-jhome__chips { margin-inline-end: calc(-1 * var(--sp-4)); padding-inline-end: var(--sp-4); }
+}
+@media (min-width: 1024px) {
+  .kp-jhome { gap: var(--sp-5); }
+  .kp-jhome__head { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-4) var(--sp-6); }
+  .kp-jhome__title { order: -1; flex: 1 1 520px; min-width: 0; font-size: var(--type-display-2); line-height: 1.1; letter-spacing: -0.030em; }
+  .kp-jhome__head > .kp-jhowto { flex: 0 1 440px; min-width: 320px; }
+  .kp-jhome__br { display: none; }
+  .kp-jhome__chips { flex-wrap: wrap; overflow: visible; }
+}
+.kp-jhome-ghost .kp-jhowto { cursor: default; }
+@media (hover: hover) { .kp-jhome-ghost .kp-jhowto:hover { border-color: var(--border); } }
+.kp-jhome-ghost__plate { flex-shrink: 0; width: 48px; height: 48px; border-radius: var(--r-md); background: var(--bg-overlay); }
+.kp-jhome-ghost__meta { display: block; width: 96px; height: 11px; margin-block: 3.5px; border-radius: var(--r-xs); background: var(--bg-overlay); }
+.kp-jhome-ghost__title { color: transparent; }
+.kp-jhome-ghost__title > span { border-radius: var(--r-md); background: var(--bg-elevated); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.kp-jhome-ghost__chip { flex-shrink: 0; height: var(--h-control-md); border-radius: var(--r-pill); background: var(--bg-overlay); }
+.kp-jhome-ghost__bar { height: 12px; margin-block: calc((var(--jcard-meta-line) - 12px) / 2); border-radius: var(--r-xs); background: var(--bg-overlay); }
+.kp-jhome-ghost__bar--where { width: 88px; }
+.kp-jhome-ghost__bar--when { width: 64px; }
+.kp-jhome-ghost__line { display: flex; align-items: center; height: var(--jcard-title-line); }
+.kp-jhome-ghost__line::before { content: ""; width: 92%; height: 18px; border-radius: var(--r-xs); background: var(--bg-overlay); }
+.kp-jhome-ghost__line + .kp-jhome-ghost__line::before { width: 56%; }
+.kp-jhome-ghost__pick { min-height: var(--jcard-act-h); border-radius: var(--r-md); background: var(--bg-overlay); }
+
 /* ── THE CENTRE COIN — UPDATE-2026-09-28 §2 ───────────────────────────────────────
    The rail's middle slot is the wallet's door, and the coin is the 50pick mark AS a control: the
    ring follows the mark's split at its own −14°, the needle rides that split and shows past the
