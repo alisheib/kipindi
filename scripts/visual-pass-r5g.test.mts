@@ -357,22 +357,25 @@ const TAB_VERDICT: Record<string, [Verdict, string?]> = {
   tickets: ["name"], account: ["name"],
 };
 for (const tab of JOURNEY_TABS) DOORS.push({ at: `tab · ${tab.key}`, proof: ["src/lib/nav/active-tab.ts", `label: "${tab.label}"`], words: tab.label, to: tab.href, verdict: TAB_VERDICT[tab.key]?.[0] ?? ("?" as Verdict), why: TAB_VERDICT[tab.key]?.[1] });
-const { hubRowsFor } = req("../src/components/journey/account/hub-rows.ts") as { hubRowsFor: (v: unknown) => Array<{ rows: Array<{ id: string; kind: string; href?: string; label?: string }> }> };
+const { hubRowsFor } = req("../src/components/journey/account/hub-rows.ts") as { hubRowsFor: (v: unknown) => Array<{ rows: Array<{ id: string; kind: string; href?: string; action?: string; label?: string }> }> };
 const member = (agent: boolean) => ({ signedIn: true, userId: "u", name: "n", initials: "N", phone: "p", balance: 1, walletHeld: false, kycOffered: true, agentInStanding: agent, proposalsState: "OPEN",
   doors: { inviteVisible: true, invitePaid: false, proposalsVisible: true, agentDoorVisible: true, staffConsole: false } });
 const HUB_VERDICT: Record<string, [Verdict, string?]> = {
   limits: ["action", "an RG door names the act on its page (R5-A's ruling; owner-approved RG doors)"], break: ["action", "an RG door, as above"], exclude: ["action", "an RG door, as above"],
-  search: ["action", "\"Tafuta\": the act the board offers (R5-A)"], agent: ["brand", "\"Kuwa wakala\" is the page's name without its brand (\"Kuwa Wakala wa 50pick\") — R5-A ruled it the page's own"],
+  // S7 WP9 (S7-PLAN A20): Tafuta opens its own field in place and sends the words to the journey home — still the act.
+  search: ["action", "\"Tafuta\": the act its field offers, searching the journey home (R5-A; S7 WP9)"], agent: ["brand", "\"Kuwa wakala\" is the page's name without its brand (\"Kuwa Wakala wa 50pick\") — R5-A ruled it the page's own"],
   aml: ["s12", "no key holds the AML page's Swahili title (R5-A's S12)"], rules: ["s12", "no key holds the rules page's name (R5-A's S12)"],
 };
 const seenHub = new Set<string>();
 for (const [viewer, rows] of [["guest", hubRowsFor({ signedIn: false })], ["member", hubRowsFor(member(false))], ["agent", hubRowsFor(member(true))]] as const) {
   for (const row of rows.flatMap((g) => g.rows)) {
-    if (!row.href || !row.label) continue;
-    const key = `${row.id}|${row.href}|${row.label}`;
+    // A row's door: its href, or (S7 WP9) Tafuta's form target, the journey home — counted, never skipped as door-less.
+    const door = row.href ?? row.action;
+    if (!door || !row.label) continue;
+    const key = `${row.id}|${door}|${row.label}`;
     if (seenHub.has(key)) continue;
     seenHub.add(key);
-    const to = row.label === "agent.dashTitle" ? "/profile/invite (an agent)" : row.href.replace(/#.*$/, "");
+    const to = row.label === "agent.dashTitle" ? "/profile/invite (an agent)" : door.replace(/#.*$/, "");
     const [verdict, why] = HUB_VERDICT[row.id] ?? ["name"];
     DOORS.push({ at: `hub (${viewer}) · ${row.id}`, proof: ["src/components/journey/account/hub-rows.ts", `"${row.label}"`], words: row.label, to, verdict, why });
   }
