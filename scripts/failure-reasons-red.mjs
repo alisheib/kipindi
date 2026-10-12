@@ -210,7 +210,9 @@ const MUTATIONS = [
     name: "banner-renders-the-server-string-again",
     why: "🔴 a compliance surface goes back to printing whatever `?error=` says — English prose to a SW/ZH player, and any sentence an attacker puts in a link",
     file: RG_PAGE,
-    from: "<Callout tone={banner.tone} live>{banner.body}</Callout>",
+    // Since round 10 of S6's visual pass (177981c1) the banner's body is held by `noticeBody` (its possessives kept
+    // whole): the anchor follows the line as it is, and the plant still prints the query string in its place.
+    from: "<Callout tone={banner.tone} live>{noticeBody(banner.body)}</Callout>",
     to: "<Callout tone=\"danger\" live>{sp.error}</Callout>",
   },
   {
