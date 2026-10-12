@@ -40,6 +40,10 @@ const IDENTICAL_OK = new Set<string>([
   // fan reads them. The ones with a real local name ARE translated (Kombe la Dunia, Ligi ya Mabingwa Ulaya, 欧冠).
   "journey.compLigiKuu", "journey.compEpl", "journey.compLaliga", "journey.compSerieA", "journey.compBundesliga",
   "journey.compLigue1", "journey.compAfcon", "journey.compNba",
+  // ⭐ THE BARE MULTIPLE (Vodacom S8 WP4, 2026-10-12; S8-PLAN "S8 drafts"). "≈{mult}×" is a figure with no words —
+  // the approximately sign, the engine's multiple and the times sign — drawn beside a payout on the low-balance frame
+  // and the keyboard-up sheet. Every word around it IS translated (`journey.estimatePill` "≈{mult}× dau lako").
+  "journey.multOnly",
   // ⭐ THE THREE FIELD EXAMPLES ON /agent/apply. Each is a literal specimen of a FORMAT, not
   // a sentence — a Tanzanian personal name, a Tanzanian mobile number, and a bank receipt
   // reference. They are written the same way in Swahili and in Chinese because the FORMAT is
