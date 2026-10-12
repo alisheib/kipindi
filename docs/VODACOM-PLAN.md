@@ -2845,6 +2845,23 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     independent review found no blocker. Its one case for later, S8's doubt state: a dial Retry after an unknown
     outcome, made once the session has ended, now redirects in silence, so its "check your wallet" advice is not
     repeated. §3.3's auth-loss line is annotated (S8-PLAN A6 item 4's WP0 note, done here). No overrule: Ali's ruling.
+81. **A lost answer can never become a second bet — Ali's ruling, 2026-10-12 (asked; "fix now"), live fix L2, not with
+    S12.** S8's plan critique (S8-PLAN A23 item 1): a bet carries an idempotency key and the same key is the same bet,
+    but the replay sat inside the wallet lock AFTER every gate, so when a bet landed and only its answer was lost, the
+    same-key retry could be refused by a gate that came up meanwhile. Maintenance then said "Nothing has been charged"
+    about a charged bet, the dial wiped itself on that terminal refusal, and its next confirm minted a fresh key: a
+    second bet. `buyPosition` now answers any refusal of a keyed request (but BUSY) with the receipt of the bet that key
+    already placed for that player (`landedKeyAnswer`, market-service.ts): never another player's key or a house stake's,
+    and a read that fails is the unknown outcome (`system_error`, retried with the same key), never a refusal. A bet
+    that goes through, a request with no key and a key that placed nothing are unchanged, and the happy path reads
+    nothing more. Proof: `test:bet-landed-key` (predeploy), on the in-memory store and on Postgres 16 — under
+    maintenance, a drained rate bucket, betting closed and a cooling-off break the landed key is answered with its bet
+    while a fresh key is still refused; another player's use of it never; one debit, one position — red on its parent
+    (1.2, 1.7, 1.9, 1.11, 1.12), `red:bet-landed-key` 7 of 7 with a green control; `e2e:money` and `e2e:fault` on
+    Postgres; `test:all`. What it cannot close, and S8's sheet does (its doubt state, A2/A3/A7): a retry refused while
+    the first attempt is still running and its key not yet committed. S8-PLAN WP11a cell (b) — maintenance on, a
+    retry, `failSystemError` — no longer happens for a key that landed (its retry is answered with the receipt); S8's
+    A24 re-cuts it. No overrule: Ali's ruling.
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
 
