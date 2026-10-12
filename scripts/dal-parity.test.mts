@@ -5060,5 +5060,37 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     deaf31.length === 0, deaf31.join(" | ") || `${controls31.length} controls held`);
 }
 
+/* ═══ §32 · the bet sheet's pending deposit — txn.newestProcessingDeposit in both twins (Vodacom plan S8 WP3; S8-PLAN Open point 10, A10, A11) ═══ */
+{
+  // ⛔ A MONEY SCREEN'S FACT, SO BOTH HALVES OR NEITHER. The sheet says "a deposit is already on its way" from this read and
+  // withholds a second deposit, so a twin that ignores the status (a CONFIRMED deposit "pending" for ever), the type (a
+  // withdrawal in flight) or the owner shows a player a wait that is not theirs. This holds the SHAPE of both twins; the
+  // memory twin's behaviour is test:journey-sheet §6, and the Prisma twin's is db:probe-sheet-facts on a real Postgres.
+  const memBody = (() => { const a = storeSrc.indexOf("newestProcessingDeposit: (userId: string)"); if (a < 0) return ""; const b = storeSrc.indexOf("\n    },", a); return b < 0 ? "" : storeSrc.slice(a, b); })();
+  const pgBody = (() => { const block = region(dalSrc, "\n  txn: {"); const a = block.indexOf("newestProcessingDeposit: async (userId: string)"); if (a < 0) return ""; const b = block.indexOf("\n    },", a); return b < 0 ? "" : block.slice(a, b); })();
+  const memOk = (body: string) => /t\.userId !== userId/.test(body) && /t\.type !== "DEPOSIT"/.test(body) && /t\.status !== "PROCESSING"/.test(body)
+    && /at > bestAt \|\| \(at === bestAt && t\.id > best\.id\)/.test(body) && /createdAt: best\.createdAt/.test(body) && /txnId: best\.id/.test(body);
+  const pgOk = (body: string) => /\.transaction\.findFirst\(/.test(body) && /where: \{ userId, type: "DEPOSIT", status: "PROCESSING" \}/.test(body)
+    && /orderBy: \[\{ createdAt: "desc" \}, \{ id: "desc" \}\]/.test(body) && /createdAt: row\.createdAt\.toISOString\(\)/.test(body) && /txnId: row\.id/.test(body);
+  ok("32.0 · both newestProcessingDeposit twins resolve", memBody.length > 80 && pgBody.length > 80, `memory ${memBody.length} · prisma ${pgBody.length}`);
+  ok("32.memory · the memory twin takes this user's DEPOSIT rows in PROCESSING only, newest by createdAt, a tie broken by id descending, and returns the row's createdAt",
+    memOk(memBody), memBody.slice(0, 240));
+  ok("32.prisma · the Prisma twin is ONE findFirst on { userId, type: DEPOSIT, status: PROCESSING }, ordered createdAt then id descending, returning the row's createdAt",
+    pgOk(pgBody), pgBody.slice(0, 240));
+  const plantM = (from: string, to: string) => !memOk(memBody.split(from).join(to));
+  const plantP = (from: string, to: string) => !pgOk(pgBody.split(from).join(to));
+  const controls32: Array<[string, boolean]> = [
+    ["a memory twin that ignores the status", plantM('if (t.userId !== userId || t.type !== "DEPOSIT" || t.status !== "PROCESSING") continue;', 'if (t.userId !== userId || t.type !== "DEPOSIT") continue;')],
+    ["a memory twin that reads every player's rows", plantM("t.userId !== userId || ", "")],
+    ["a memory twin with no tie-break", plantM("at > bestAt || (at === bestAt && t.id > best.id)", "at > bestAt")],
+    ["a Prisma twin that ignores the status", plantP(', status: "PROCESSING" }', " }")],
+    ["a Prisma twin that takes any transaction type", plantP('type: "DEPOSIT", ', "")],
+    ["a Prisma twin ordered oldest first", plantP('orderBy: [{ createdAt: "desc" }, { id: "desc" }]', 'orderBy: [{ createdAt: "asc" }, { id: "asc" }]')],
+  ];
+  const deaf32 = controls32.filter(([, caught]) => !caught).map(([n]) => n);
+  ok("32.c1 · CONTROL · every §32 matcher can fail: a twin that ignores the status, reads every player's rows, loses its tie-break, takes any type or orders oldest first FAILS its predicate",
+    deaf32.length === 0, deaf32.join(" | ") || `${controls32.length} controls held`);
+}
+
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

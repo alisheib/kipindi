@@ -19,7 +19,8 @@
  */
 import { db, type StoredWallet, type StoredResponsibleGambling } from "../src/lib/server/store.ts";
 import { buyPosition, createMarket } from "../src/lib/server/market-service.ts";
-import { selfExclusionStanding, checkSessionTimeLimit, setLimits } from "../src/lib/server/responsible-gambling.ts";
+import { selfExclusionStanding, checkSessionTimeLimit, readSessionStanding, setLimits } from "../src/lib/server/responsible-gambling.ts";
+import { sheetForUser, sheetPublic } from "../src/lib/server/journey-sheet.ts";
 import type { HarmFlag } from "../src/lib/server/responsible-gambling.ts";
 import { marketingRgStanding, sixMonthFloor, MARKETING_RG_DEPS } from "../src/lib/server/marketing/rg.ts";
 import type { MarketingRgDeps, MarketingRgStanding } from "../src/lib/server/marketing/rg.ts";
@@ -201,6 +202,80 @@ console.log("\n§3 · the session time limit, measured (E-235)\n");
   ok("3.4 thirty-one minutes into a thirty-minute limit → exceeded", over?.exceeded === true, JSON.stringify(over));
   ok("3.5 …and it reports the figures as DATA, not prose",
     over?.limitMin === 30 && over.playedMin === 31, JSON.stringify(over));
+}
+
+console.log("\n§3b · the bet sheet reads the standing with no write, and its open read holds the sitting (Vodacom plan S8 WP3; S8-PLAN A4)\n");
+{
+  // ⭐ `readSessionStanding` is the sheet's read of the limit: the gate's verdict, case for case, and NO play-clock write
+  // (S8-PLAN Correction 13). Each case reads first, then runs the gate at the same instant, and compares.
+  const T = Date.now();
+  const M = 60_000;
+  const cases: Array<[string, Record<string, unknown>, number | undefined]> = [
+    ["no limit set", { sessionTimeLimitMin: null }, T - 999 * M],
+    ["a limit but no play clock", { sessionTimeLimitMin: 30 }, undefined],
+    ["ten minutes into thirty, a first sitting", { sessionTimeLimitMin: 30 }, T - 10 * M],
+    ["thirty-one minutes into thirty", { sessionTimeLimitMin: 30 }, T - 31 * M],
+    ["a sitting held per player (the earlier start counts)", { sessionTimeLimitMin: 30, playStartedAt: new Date(T - 50 * M).toISOString(), playLastSeenAt: new Date(T - 5 * M).toISOString() }, T - 2 * M],
+    ["a sitting that ended (no attempt for the gap)", { sessionTimeLimitMin: 30, playStartedAt: new Date(T - 90 * M).toISOString(), playLastSeenAt: new Date(T - 45 * M).toISOString() }, T - 2 * M],
+  ];
+  for (const [k, [name, patch, clock]] of cases.entries()) {
+    const id = `sl_read_${k}`;
+    await player(id);
+    await rg(id, patch as never);
+    const before = JSON.stringify(await db.responsible.get(id));
+    const read = await readSessionStanding(id, clock, T);
+    const afterRead = JSON.stringify(await db.responsible.get(id));
+    const gate = await checkSessionTimeLimit(id, clock, T);
+    ok(`3.6 readSessionStanding gives checkSessionTimeLimit's verdict — ${name}`, JSON.stringify(read) === JSON.stringify(gate),
+      JSON.stringify({ read, gate }));
+    ok(`3.7 …and writes nothing: the settings row (playStartedAt, playLastSeenAt) is byte-identical after the read — ${name}`, before === afterRead,
+      `${before} → ${afterRead}`);
+  }
+  // ⚠️ CONTROL — the gate's own write still happens, so 3.7 is measuring something.
+  const held = JSON.stringify(await db.responsible.get("sl_read_4"));
+  ok("3.8 control: checkSessionTimeLimit still writes the play clock (unchanged in output and in write) — the held sitting's row moved",
+    held.includes(new Date(T).toISOString()), held);
+
+  // ⭐ THE SIGN-OUT CASE THROUGH THE SHEET (A4 item 6). The sheet shows the limit at open with its button off, so no tap
+  // reaches the gate; without the open read's gate call the sitting would lapse 30 minutes after the last real attempt and
+  // a sign-out and in would free the player. Time is moved with the process clock, as a real afternoon would move it.
+  const realNow = Date.now;
+  let offset = 0;
+  const at = (min: number) => { offset = min * M; };
+  Date.now = () => realNow() + offset;
+  try {
+    const V0 = realNow();
+    const v = (min: number) => V0 + min * M;
+    const scene = async (id: string, opensSheet: boolean) => {
+      await player(id, 500_000);
+      await rg(id, { sessionTimeLimitMin: 30 } as never);
+      const m = await mkMarket(`S8 A4 sign-out ${id}`);
+      at(0);
+      const first = await buyPosition(id, { marketId: m.id, side: "YES", stake: 2_000, playStartedAt: v(0) });
+      const pub = await sheetPublic(m.id);
+      const open = pub ? { bettable: pub.bettable, min: pub.min, max: pub.max } : null;
+      // past the limit on the first sign-in, then a fresh sign-in at 40 minutes, the sheet opened through the afternoon
+      for (const [min, cookie] of [[35, 0], [45, 40], [55, 40]] as const) {
+        at(min);
+        if (opensSheet) await sheetForUser(m.id, id, { playStartedAt: v(cookie), open });
+        else await sheetForUser(m.id, id, { playStartedAt: v(cookie) });
+      }
+      at(62);
+      const last = await buyPosition(id, { marketId: m.id, side: "YES", stake: 2_000, playStartedAt: v(40) });
+      return { first, last, open };
+    };
+    const withSheet = await scene("sl_sheet_open", true);
+    const noOpen = await scene("sl_sheet_closed", false);
+    ok("3.9 control: the first bet of the sitting is ACCEPTED, and the market is a sheet that takes bets",
+      withSheet.first.ok && !!withSheet.open?.bettable, JSON.stringify({ first: withSheet.first.ok, open: withSheet.open }));
+    ok("3.10 ⭐ the sheet's open read holds the sitting: past a 30-minute limit, opening the sheet (blocked), signing out and in, and opening it again leaves the player STILL REFUSED 62 minutes after the last bet, 22 after the fresh sign-in",
+      !withSheet.last.ok && (withSheet.last as { reason?: string }).reason === "session_limit_reached",
+      withSheet.last.ok ? "the bet went through — a sign-out freed the player" : String((withSheet.last as { reason?: string }).reason));
+    ok("3.11 control: the same afternoon with reads that are NOT the open read (refreshes) frees the player — the hazard A4 closes is real, and only the open read writes",
+      noOpen.first.ok && noOpen.last.ok, noOpen.last.ok ? "" : `refused: ${(noOpen.last as { reason?: string }).reason}`);
+  } finally {
+    Date.now = realNow;
+  }
 }
 
 console.log("\n§4 · and the money path actually refuses (E-235)\n");

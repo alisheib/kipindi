@@ -5,26 +5,31 @@
  *   npm run red:deposit-ceiling      (--prove-red: wrong helpers are planted IN MEMORY and must be caught)
  *
  * ⭐ PROVEN BY DRIVING THE REAL GATES, NOT BY RE-READING THEM. On the in-memory store, for each fixture:
- *   · `depositCeilingFor` (fed `getLimitUsage` and the SoF row) names a ceiling C. The REAL `deposit()` must refuse
+ *   · `depositCeilingFor` (fed the sheet's facts: `getLimitUsage` and the SoF row) names a ceiling C. The REAL `deposit()` must refuse
  *     C + 1 — for the reason the helper says binds (`deposit_limit`, `sof_required`, or the schema's cap) — and must
  *     then ACCEPT C. Fixtures: no limits (the TZS 2,000,000 cap), the daily, weekly and monthly windows each binding
  *     (with CONFIRMED, PROCESSING, FAILED and out-of-window deposits mixed in), the source-of-funds single threshold,
  *     its rolling 30-day threshold, and an accepted declaration lifting both.
- *   · `lossHeadroomFor` (fed `getLimitUsage().lossToday`) names a headroom H. The REAL `checkLossLimit` must allow a
+ *   · `lossHeadroomFor` (fed the sheet's facts: `getLimitUsage().lossToday`) names a headroom H. The REAL `checkLossLimit` must allow a
  *     stake of H and refuse H + 1 — with losses, payouts, refunds and an out-of-window stake mixed in; a player in
  *     profit has the whole limit; no limit is null and allows anything.
  * The SoF thresholds are read from `wallet-service.ts`, where `deposit()` reads them.
+ * ⭐ SINCE THE VODACOM PLAN S8 WP3 THE INPUTS ARE THE SHEET'S OWN FACTS (`viewerFacts`, `lib/server/journey-sheet.ts`),
+ *   not a hand-built copy of them: what the bet sheet serves is what is driven to the real gates here, so a fact read
+ *   from the wrong window, row or status fails a verdict below (S8-PLAN WP3 Gates; shortfall.ts's own method). A
+ *   declaration under review is a fixture of its own: only ACCEPTED lifts the thresholds, as `deposit()` asks.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION: no file is written (the store is in memory).
  */
 import { db } from "../src/lib/server/store.ts";
 import { deposit, SOF_ROLLING_30D_TZS, SOF_SINGLE_TXN_TZS } from "../src/lib/server/wallet-service.ts";
-import { checkLossLimit, getLimitUsage, getRgSettings } from "../src/lib/server/responsible-gambling.ts";
+import { checkLossLimit, getRgSettings } from "../src/lib/server/responsible-gambling.ts";
 import * as SF from "../src/lib/journey/shortfall.ts";
+import { viewerFacts } from "../src/lib/server/journey-sheet.ts";
 
 const PROVE_RED = process.argv.includes("--prove-red");
-type Impl = { ceiling: typeof SF.depositCeilingFor; loss: typeof SF.lossHeadroomFor };
-const REAL: Impl = { ceiling: SF.depositCeilingFor, loss: SF.lossHeadroomFor };
+type Impl = { ceiling: typeof SF.depositCeilingFor; loss: typeof SF.lossHeadroomFor; facts: typeof viewerFacts };
+const REAL: Impl = { ceiling: SF.depositCeilingFor, loss: SF.lossHeadroomFor, facts: viewerFacts };
 
 const HOUR = 60 * 60 * 1000, DAY = 24 * HOUR;
 const iso = (t: number) => new Date(t).toISOString();
@@ -51,11 +56,12 @@ async function txn(id: string, type: string, status: string, amount: number, ago
     provider: "MPESA", providerRef: null, createdAt: iso(Date.now() - agoMs), updatedAt: iso(Date.now() - agoMs),
   } as never);
 }
-async function sofAccepted(id: string) {
+async function sofAccepted(id: string, reviewStatus: "ACCEPTED" | "PENDING" = "ACCEPTED") {
   await db.sourceOfFunds.upsert({
     userId: id, declaredSource: "salary", declaredOccupation: "Engineer", declaredEmployer: null, declaredAnnualIncomeBand: "50m-200m",
-    declaredOther: null, reviewStatus: "ACCEPTED", reviewerId: "usr_officer", reviewedAt: iso(Date.now()), submittedAt: iso(Date.now()),
-  });
+    declaredOther: null, reviewStatus, reviewerId: reviewStatus === "ACCEPTED" ? "usr_officer" : null,
+    reviewedAt: reviewStatus === "ACCEPTED" ? iso(Date.now()) : null, submittedAt: iso(Date.now()),
+  } as never);
 }
 
 type Fixture = { name: string; setup: (id: string) => Promise<void>; want: "deposit_max" | "deposit_limit" | "sof_required"; ceiling?: number };
@@ -92,6 +98,8 @@ const FIXTURES: Fixture[] = [
       await sofAccepted(id);
       for (const [amt, ago] of [[900_000, 2], [900_000, 6], [900_000, 11], [900_000, 17], [1_000_000, 24]] as const) await txn(id, "DEPOSIT", "CONFIRMED", amt, ago * DAY);
     } },
+  { name: "a declaration still under review does NOT lift the single threshold (S8 WP3: only ACCEPTED counts)", want: "sof_required", ceiling: SOF_SINGLE_TXN_TZS - 1,
+    setup: async (id) => { await sofAccepted(id, "PENDING"); } },
 ];
 
 type LossFixture = { name: string; limit: number | null; seed: Array<[string, number, number]>; want: number | null };
@@ -113,14 +121,10 @@ async function run(impl: Impl, log: (l: string) => void, tag: string): Promise<s
     const id = `usr_ceil_${tag}_${k}`;
     await mkUser(id);
     await f.setup(id);
-    const rg = await getRgSettings(id);
-    const usage = await getLimitUsage(id);
-    const sof = await db.sourceOfFunds.get(id);
-    const c = impl.ceiling({
-      limits: { daily: rg.dailyDepositLimit, weekly: rg.weeklyDepositLimit, monthly: rg.monthlyDepositLimit },
-      usage: { day: usage.depositDay, week: usage.depositWeek, month: usage.depositMonth },
-      sof: { accepted: sof?.reviewStatus === "ACCEPTED", singleTxn: SOF_SINGLE_TXN_TZS, rolling30d: SOF_ROLLING_30D_TZS },
-    });
+    // The sheet's own facts (S8 WP3) — what the bet sheet serves is what the real deposit() is held to.
+    const facts = await impl.facts(id, null);
+    if (!facts) { ok(`1.${k} · the facts could not be read`, false); continue; }
+    const c = impl.ceiling({ limits: facts.deposit.limits, usage: facts.deposit.usage, sof: facts.deposit.sof });
     const over = await deposit(id, { provider: "MPESA", amount: c.max + 1, msisdn: "712345678" });
     const reason = over.ok ? "accepted" : ((over as { reason?: string }).reason ?? (over as { code?: string }).code ?? "refused");
     const reasonOk = f.want === "deposit_max" ? !over.ok && (over as { code?: string }).code === "INVALID" : !over.ok && reason === f.want;
@@ -135,9 +139,9 @@ async function run(impl: Impl, log: (l: string) => void, tag: string): Promise<s
     await mkUser(id);
     if (f.limit !== null) await setLimits(id, { dailyLossLimit: f.limit });
     for (const [type, amount, ago] of f.seed) await txn(id, type, "CONFIRMED", amount, ago);
-    const usage = await getLimitUsage(id);
-    const rg = await getRgSettings(id);
-    const h = impl.loss({ dailyLossLimit: rg.dailyLossLimit, lossToday: usage.lossToday });
+    const facts = await impl.facts(id, null);
+    if (!facts) { ok(`2.${k} · the facts could not be read`, false); continue; }
+    const h = impl.loss(facts.loss);
     if (f.want === null) {
       const any = await checkLossLimit(id, 5_000_000);
       ok(`2.${k} · ${f.name}: headroom null, and the real gate allows TZS 5,000,000`, h === null && any.allowed, JSON.stringify({ h, any }));
@@ -177,6 +181,13 @@ if (!PROVE_RED) {
       impl: { ...REAL, loss: (i) => (i.dailyLossLimit === null ? null : i.dailyLossLimit - i.lossToday - 1) } },
     { name: "the loss headroom ignores today's losses", expect: /^2\.0 /,
       impl: { ...REAL, loss: (i) => i.dailyLossLimit } },
+    // S8 WP3 · the sheet's facts, each held to the real gate it feeds
+    { name: "the facts' daily window leaves PROCESSING deposits out (the gate counts them)", expect: /^1\.1 /,
+      impl: { ...REAL, facts: async (u, p) => { const r = await viewerFacts(u, p); return r && { ...r, deposit: { ...r.deposit, usage: { ...r.deposit.usage, day: await db.txn.sumDepositsSince(u, Date.now() - DAY) } } }; } } },
+    { name: "the facts read any declaration on file as accepted (the gate asks ACCEPTED)", expect: /^1\.7 /,
+      impl: { ...REAL, facts: async (u, p) => { const r = await viewerFacts(u, p); return r && { ...r, deposit: { ...r.deposit, sof: { ...r.deposit.sof, accepted: (await db.sourceOfFunds.get(u)) != null } } }; } } },
+    { name: "the facts' loss limit read from another player's row", expect: /^2\.0 /,
+      impl: { ...REAL, facts: async (u, p) => { const r = await viewerFacts(u, p); return r && { ...r, loss: { ...r.loss, dailyLossLimit: null } }; } } },
   ];
   let caught = 0, fail = 0;
   const ok = (label: string, cond: boolean, extra = "") => { if (!cond) fail++; console.log(`${cond ? "PROVED  " : "MISSED  "} ${label}${extra ? ` — ${extra}` : ""}`); };

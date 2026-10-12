@@ -1032,7 +1032,9 @@ export async function buildKycReverify(generatorId: string): Promise<Report> {
  *
  * Writers, measured: `responsible-gambling.ts` (the limit change and its deferred twin,
  * self-exclusion, cooling-off), `market-service.ts` (the session-time refusal),
- * `admin/players/[id]/actions.ts` (an officer reopening a served exclusion).
+ * `admin/players/[id]/actions.ts` (an officer reopening a served exclusion), and `journey-sheet.ts`
+ * (the bet sheet's open read of a viewer already past their session limit — the same row as the
+ * refused tap, with `at: "sheet"`; the Vodacom plan S8-PLAN A4).
  */
 export const RG_AUDIT_ACTIONS = [
   "rg.limit.changed",

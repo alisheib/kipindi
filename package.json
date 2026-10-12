@@ -173,6 +173,7 @@
     "db:probe-referee-keys": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/live/referee-keys-pg-probe.mts",
     "db:probe-marketing-settings": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/live/marketing-settings-pg-probe.mts",
     "db:probe-marketing-u52a": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/live/marketing-u52a-pg-probe.mts",
+    "db:probe-sheet-facts": "tsx scripts/db-scratch.mts --reset --run npx tsx scripts/live/pg-probe-run.mts scripts/live/sheet-facts-pg-probe.mts",
     "ops:mint-qa-mobile": "node scripts/live/mint-qa-mobile.mjs",
     "qa:agent-drive": "node scripts/live/agent-programme-drive.mjs",
     "qa:agent-visual": "node scripts/live/agent-v1-visual.mjs",
