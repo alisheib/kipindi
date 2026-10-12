@@ -136,20 +136,33 @@ const LONGEST = ids.slice().sort((a, b) => b.titleEn.length - a.titleEn.length)[
 let HIDDEN = null;
 {
   const page = await admin.newPage();
-  const flip = async () => {
-    await page.goto(`${BASE}/admin/config`, { waitUntil: "domcontentloaded", timeout: 240_000 });
-    const t = page.getByLabel("Show the possible-winnings estimate to players before betting");
+  // ⛔ The toggle is drawn by the server before it is hydrated, and a click then does nothing: it is pressed until its
+  // aria-checked reads the wanted state, and a reload must read that state back, or the hidden figure is not made.
+  const LABEL = "Show the possible-winnings estimate to players before betting";
+  const state = async () => {
+    await page.goto(`${BASE}/admin/config`, { waitUntil: "load", timeout: 240_000 });
+    const t = page.getByLabel(LABEL);
     await t.waitFor({ timeout: 120_000 });
-    await t.click();
+    return (await t.getAttribute("aria-checked")) === "true";
+  };
+  const flip = async (want) => {
+    if ((await state()) === want) return;
+    const t = page.getByLabel(LABEL);
+    for (let i = 0; i < 40 && (await t.getAttribute("aria-checked")) !== String(want); i++) { await t.click(); await page.waitForTimeout(250); }
     await page.getByRole("button", { name: "Save · Hifadhi" }).first().click();
     await page.waitForTimeout(2500);
+    if ((await state()) !== want) throw new Error(`the display switch did not save as ${want ? "on" : "off"}`);
   };
   try {
-    await flip();
+    const was = await state();
+    await flip(false);
     const made = await post(admin, "seed-real-markets");
-    await flip();
+    await flip(was);
     const html = await (await fetch(`${BASE}/markets?q=${encodeURIComponent("Simba SC")}`)).text();
-    HIDDEN = /href="\/markets\/(mkt_[0-9a-f]+)"/.exec(html)?.[1] ?? null;
+    // ⛔ The catalogue holds a Simba SC question of its own ("…the next Kariakoo Derby?"), made with the switch on: the
+    // hidden figure is the first match that is NOT a catalogue question, i.e. one seed-real-markets just made.
+    const known = new Set((catalogue?.ids ?? []).map((m) => m.id));
+    HIDDEN = [...html.matchAll(/href="\/markets\/(mkt_[0-9a-f]+)"/g)].map((x) => x[1]).find((id) => !known.has(id)) ?? null;
     console.log(`  hidden figure: the display switch off while seed-real-markets made ${made.body?.created ?? "?"} questions · ${HIDDEN ?? "none found"}`);
   } catch (e) { console.log(`  hidden figure: not made — ${String(e?.message ?? e).split("\n")[0].slice(0, 140)}`); }
   await page.close();
