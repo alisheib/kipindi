@@ -361,10 +361,9 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S7 — ⏳ resumed on OMEGA-COMPILE01 2026-10-12 ~10:00 EAT (§0j's "⏳ IN FLIGHT" bullet), from §0j's "⏸ HANDOFF" bullet (2026-10-12 ~08:55 EAT): WP1's null compare
-at `203a150f` (its baseline captured fresh on that machine), WP1 to main, WP2's remaining proofs and its push, then WP3
-(a stopped helper's draft on `vodacom-s7-wp3`). OMEGA's own `vodacom-s7-wp1` (2026-10-07/08) was never pushed: on
-OMEGA push it only as `vodacom-s7-wp1-omega`, for reference, and never merge it (§0h point 66). S7's plan:
+**Next:** (1) S7 — WP0–WP4 are live (⟦LIVE⟧, 2026-10-12, §0j); WP5 (the journey card) and WP6 (the How-to card and sheet) are building on OMEGA-COMPILE01,
+then their proofs under the lock and WP7–WP12 (§0j's "⏳ IN FLIGHT" bullet). OMEGA's own 2026-10-07/08 WP1 is on origin
+for reference only as `vodacom-s7-wp1-omega`, never to be merged (§0h point 66). S7's plan:
 [`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), whose Amendments override its body. (2) When
 Ali says so, and not before (nothing turns on until the plan is done): an officer approves the S2 short titles, and
 Ali presses S1's preview switch.
@@ -536,32 +535,80 @@ body. Owner-level calls: §0h point 58, and 65 on.
   `generateMetadata` and asks the resolver itself; the root loading's journey ghost; dates through `formatEatDateTime`;
   the helpline's new names; a second `nothingIfLost` copy for A13; test:stacking 6.1 green). **WP0 is ✅** with this
   record.
-- **WP1 · parity v3 and A9's three tools — branch `vodacom-s7-wp1b`** (worktree `C:\kipindi-s7` on ALI-BLADE15). The
-  version OMEGA-COMPILE01 wrote on 2026-10-07/08 (branch `vodacom-s7-wp1`) was never pushed, so no other machine had
-  any of it (§0h point 66). The three tools are recovered from the broken copies OMEGA's mutation runs pushed to
-  `origin/vodacom-visual-tools` (tools/s7a9a, tools/s7a9b) — each original is one copy with its one mutation reversed,
-  and re-applying every mutation reproduces every other copy byte for byte — plus OMEGA's calibration patch
-  (Turbopack's dev chunk hashes read as noise): `b0873185`. Two S6 markers had moved since: the offline banner is the
-  kit NoticeBar since R4-G, and the shell mark's bare id is now in globals.css and a comment — each marker is its
-  quoted string now. Proof: qa:served-skeleton self-test 78/78; qa:first-load 29 controls and the marker table (red on
-  the two old markers); qa:chunks-prod 17/17, and production 6/6 routes (`ca72fe15`, GETs only). Parity v3 (VERSION 3,
-  the BOOK, the classic bodies, A8's trace) is rebuilt from v2, the plan and OMEGA's surviving evidence: `9b18ea59`.
-  Offline, with a stubbed browser: the 83 rows that need no browser pass, OMEGA's 87 surviving rows match byte for byte
-  (details included), its 13 mutants and 20 more are all caught, and the compare refuses a v2 file and another
-  normaliser set. Its calibration on a fresh in-memory server is next (WP1 step 6).
-- **WP2 · the pure move — DRAFTED, NOT PROVEN: branch `vodacom-s7-wp2` (`f3afc43a`, marked WIP; do not merge).** The
-  home body moves to `src/components/home/legacy-landing.tsx` byte for byte (a round trip of the two files rebuilds
-  today's page.tsx exactly); page.tsx keeps `generateMetadata` (A24 item 1) and returns `<LegacyLanding … />`; 14 scripts
-  name the route file and each is decided (body re-pointed, route kept, history left); `test:journey-home` (new, 8
-  checks, 8 plants). Its gates run after WP1, ending with a parity v3 compare at 0 differences; then it is rebased onto
-  WP1 and pushed.
-- **⏳ IN FLIGHT — PICKED UP ON OMEGA-COMPILE01, 2026-10-12 ~10:00 EAT** (Ali: no other session works on S7; nothing
-  runs on ALI-BLADE15). Worktrees `F:\kipindi-s7b` (branch `vodacom-s7-wp1b`, then WP2 and WP3) and `F:\kipindi-s7srv`
-  (the dev servers, detached), each with its own `npm ci`. Order: WP1 rebased onto main (scripts and docs only moved
-  since `daf0e799`), the v3 baseline and its null compare on two fresh in-memory servers at the rebased WP1; WP2 rebased
-  onto it and its proofs (the ▶ LEFT list below); WP1 + WP2 to main and read back; then WP3. OMEGA's own 2026-10-07/08
-  WP1 is on origin for reference only as `vodacom-s7-wp1-omega` (`9ad1f6d9`), never to be merged (§0h point 66).
-- **⏸ HANDOFF — 2026-10-12 ~08:55 EAT, Ali moved to another machine. THE EXACT PLACE:**
+- **WP1 ✅ LIVE ⟦LIVE⟧ (2026-10-12) — parity v3 and A9's three served-bytes tools** (scripts and one dev-only route;
+  served bytes for a classic viewer: none). Rebuilt on ALI-BLADE15, because the version OMEGA-COMPILE01 wrote on
+  2026-10-07/08 was never pushed (§0h point 66; it is on origin for reference only as `vodacom-s7-wp1-omega`,
+  `9ad1f6d9`, never merged): the three tools recovered byte for byte from OMEGA's mutation copies on
+  `origin/vodacom-visual-tools` (tools/s7a9a, tools/s7a9b), plus OMEGA's calibration patch — Turbopack's dev chunk
+  hashes read as noise (`b0873185`; two S6 markers had moved and are each their quoted string now); parity v3 —
+  VERSION 3, the BOOK, the classic bodies, A8's trace — rebuilt from v2, the plan and OMEGA's surviving evidence
+  (`9b18ea59`); the calibration (`203a150f`): the book reads question ids as noise (`market-ids` on — each server mints
+  its own) and seed-watchlist stars 2 ms apart, so /watchlist's order is the stars' own (a dev-only route, 404 in
+  production). Landed as `cecb6181`, `d03a9d95`, `49b15398` — the same three commits, rebased — and `9a7bbb24`,
+  calibration 2 (below). The tools' proofs on
+  ALI-BLADE15: qa:served-skeleton self-test 78/78; qa:first-load 29 controls and its marker table; qa:chunks-prod 17/17
+  and production 6/6 routes (`ca72fe15`, GETs only); parity v3 offline with a stubbed browser — its 83 rows that need
+  no browser, OMEGA's 87 surviving rows byte for byte, OMEGA's 13 mutants and 20 more. **Calibrated on OMEGA-COMPILE01
+  at `090bbf76`** (WP1 on main `b7c55deb`; the laptop's own null compare at `203a150f` was void — it slept, and a queued
+  job took the lock over as stale), one fresh in-memory Turbopack server at a time, Google Fonts checked before each:
+  `--prove-red` **125/125**; the v3 baseline `parity-v3-090bbf76.json` (machine-local, never committed: 224 matrix
+  cells, 8 Sell cells, 44 book cells, 1181 blobs) with the book's B.0–B.8 all PASS — a pool of 30 LIVE non-demo
+  questions, 12 placed (VOID 1, WIN 3, LOSS 2, CASHED_OUT 3, OPEN 8; /watchlist's lenses all 9, open 3, progress 2,
+  done 3, void 1) and every classic card state drawn (live priced 44 cells, one-sided 16, empty pool 80, selection
+  closed 8, resolved YES 48, resolved NO 20, void 12). **Its null compare failed, and that was the instrument
+  working:** on a second fresh server the 224 matrix cells and 8 Sell cells were identical, but 13 of the 44 book
+  cells differed, for three reasons no tree change causes — (1) 8 /markets cells: four fresh catalogue questions with
+  no pool and one close instant (Mwanza, Bitcoin, Ethereum, Solana; market-service.ts seedDemoMarkets) fall in their
+  ids' order, because the board sorts by pool, then the close instant, then `byId` (discovery.ts `compareRows`,
+  sort.ts), and each server mints its own ids; (2) 4 /watchlist cells: a seeded row's date-time is relative to its
+  own seeding moment (the runs were 27 min apart); (3) 1 / cell: the four payment-rail logos below the fold are lazy
+  images, fetched on one run and not the other. **Calibration 2 (`9a7bbb24`):** `eat-dates` on; a new page
+  normaliser, `tied-cards`, puts adjacent cards that state exactly the same figures (every `data-market-part` but the
+  source) in their own titles' order in place, so a card that states any figure differently never moves (§0h point
+  72); lazy images settle before boxes are read (`matrix.book.settle`, and a compare refuses another procedure);
+  `--prove-red` gains P.8o (tied cards in every order; unlike cards keep theirs) and a browser row planting a lazy
+  logo. Offline, the three account for all 13 fields (13 → 9 with eat-dates → 1 with tied-cards; the last only the
+  settle answers). **Re-calibrated at `9a7bbb24`:** ⟦NULL⟧. Every later S7 package compares against this baseline
+  with `--allow-base`: main moves under it, and the harness names each served-file commit since.
+- **WP2 ✅ LIVE ⟦LIVE⟧ (2026-10-12) — the pure move** (`87be7bb7`; the laptop's two WIP commits folded into one). The
+  home body moves to `src/components/home/legacy-landing.tsx` — the old page.tsx's :4-36 and :71-356, byte for byte but
+  for the export's name and one blank line between the imports and the body (read on OMEGA from the two blobs);
+  page.tsx keeps `generateMetadata` (A24 item 1), `dynamic` and the metadata JSDoc, and returns `<LegacyLanding … />`;
+  the 14 scripts that named the route file are each decided (body re-pointed, route kept, history left); four
+  src-walking guards (withdrawn-features 3, agent-terms-binding 1, visual-pass-r5l 2.1, failure-reasons 9b) now read
+  the new file, each proven by a defect planted in the moved body; `test:journey-home` §1 (8 checks, 8 plants). Served
+  bytes for a classic viewer: none — a server component's boundary leaves nothing of its own (parity v3 and
+  qa:served-skeleton `--main`, below).
+- **WP3 ✅ LIVE ⟦LIVE⟧ (2026-10-12) — the pure rules** (`b47ee0fb`): `home-list.ts`, `card-face.ts` and
+  `markets-redirect.ts` (new, pure); `JOURNEY_TICKER_ROUTES` and the one journey line in `ticker.ts` (A4 item 3);
+  `cardFigures` and `bettableAt` out of `journey-sheet.ts` (sheetPublic calls it once, after its await, so the card and
+  the sheet cannot disagree). Drafted by a helper on ALI-BLADE15 (`49f7eff3`, stopped when Ali moved), read file by
+  file against WP3 and its amendments on OMEGA — no check went red by hand-trace, three proofs were weaker than the
+  plan asks — and finished: one `?page` rule (`parsePageParam`, A21 item 4); the hidden figure for all three causes;
+  cardFigures proven against sheetPublic (journey-sheet §5); isSafePath over every redirect target (A11 item 5), the
+  no-path-copy check apart; pending-bet's `UTM_KEYS` exported and spread, never re-declared; client-graph-safe's pin
+  fail-closed. Its readings are §0h points 68–69. Served bytes for a classic viewer: HTML and RSC none (nothing mounts
+  these yet); JS — `ticker.ts` ships to the browser (11.14), so LiveTicker's chunk carries the journey list on every
+  page with its output unchanged, and pending-bet's module exports one more name (A23 item 6(c)).
+- **WP4 ✅ LIVE ⟦LIVE⟧ (2026-10-12) — S7's words** (`03b14f00`): 31 `journey.*` keys in en, sw and zh — the deck's §3
+  words verbatim, the S4 canvas words approved in review 3, S7's drafts — with the Swahili review signed
+  (S4-COPY-AUDIT "Swahili review" 6); not added: `cardWinOver` (Correction 9) and `howHelplineLabel` (A6). The records
+  agree that no helpline appears on a player surface: the §3 row struck, §3.8's order ends at "Weka mipaka", A6 item
+  3's annotations made (§0h point 70), INHERIT-MANIFEST's SJ-1 follows the panel. Served bytes for a classic viewer: no
+  visible word; JS — the dictionary rides in the client bundle (`src/lib/i18n.tsx` imports `dict`), so every page's
+  script grows by the 31 keys in three languages. test:house-bot-disclosure 5.1 and 5.1.c3 read red on the branch by
+  construction (they pin the whole dictionary to origin/main) and green once the keys are on main (⟦HBD⟧).
+- **The landing proof — WP1–WP4 together at one tip** (§0h point 71), on OMEGA-COMPILE01 under the lock:
+  `F:\kipindi-s7b` at `03b14f00`, on main `05d42f7f` (the afflink lane's three admin-only commits came in under the
+  stack; no player route imports `admin-section-gate.tsx` or `admin-skeletons.tsx`): ⟦LAND⟧.
+- **⏳ IN FLIGHT (OMEGA-COMPILE01, 2026-10-12):** WP5 (the journey card) and WP6 (the How-to card, its sheet and the
+  shared lost-chunk guard), each built by a helper in its own worktree on WP4 (`F:\kipindi-s7f`, `F:\kipindi-s7d`;
+  `node_modules` there is a junction to `F:\kipindi-s7b`'s install — never `npm ci` in them); then their proofs under
+  the lock; then WP7. This machine's lock-turn chains (one dev server at a time on 3076/3077, a memory watchdog, the
+  verified checkouts) are on `origin/vodacom-visual-tools`, `tools/s7-omega-2026-10-12/` (`18831687`).
+- **The handoff of 2026-10-12 ~08:55 EAT (ALI-BLADE15 → any machine) is done:** picked up on OMEGA-COMPILE01 at ~10:00
+  EAT — WP1's void null compare re-run, WP2's last proofs, WP3's draft read and finished. What it said, kept for the
+  record:
   - **WP1 — `origin/vodacom-s7-wp1b` at `203a150f`** (3 commits on main `daf0e799`: the A9 tools `b0873185`, parity v3
     `9b18ea59`, the calibration `203a150f`). Proven on ALI-BLADE15: parity v3's `--prove-red` on a real server **125/125**
     (at `9b18ea59`); the book's B.0–B.8 all PASS (seed: 30 LIVE questions, 12 placed — VOID 1, WIN 3, LOSS 2 —
@@ -572,7 +619,7 @@ body. Owner-level calls: §0h point 58, and 65 on.
     dev-only route, 404 in production). The v3 baseline at `203a150f` was captured (224 cells, 44 book cells), but **its
     null compare is VOID**: the laptop slept ~05:05–08:45; on waking, the queued WP2 job had waited past the lock
     helper's 3-hour limit and took the lock over as stale while the null compare ran — two heavy jobs at once, free
-    memory 0.4 GB, the watchdog stopped the dev server. **▶ NEXT:** at `203a150f`, on two fresh in-memory dev servers,
+    memory 0.4 GB, the watchdog stopped the dev server. ~~▶ NEXT~~ (done on OMEGA, above): at `203a150f`, on two fresh in-memory dev servers,
     one after the other: `qa:classic-shell-parity -- --baseline <file>` then `-- --compare <file>`; the compare must
     exit 0 (a baseline is machine-local and never committed). Then WP1 goes to main: its one src change is the dev-only
     seed route, so the push gates are typecheck (already 0 on WP2's tree, which holds WP1), `next build` and a local
@@ -583,12 +630,13 @@ body. Owner-level calls: §0h point 58, and 65 on.
     predictor-shown, visual-pass-r4h/r4i/r5e/r5l, withdrawn-features, agent-terms-binding, failure-reasons,
     decomment) and the 23rd, test:orphans, red only on main's own two landing-v3 panels; the four guards whose
     population it widened (an audit of every src-walking script found them) each catch a defect planted in the moved
-    body, 4/4, tree clean. **▶ LEFT:** red:featured-card and red:one-sided, each alone (they write files; then
+    body, 4/4, tree clean. ~~▶ LEFT~~ (done on OMEGA, in the landing proof above): red:featured-card and red:one-sided, each alone (they write files; then
     `git diff --exit-code`); `next build`; local qa:live; parity v3 `--compare` against WP1's baseline with
     `--allow-base` — 0 differences, the bodies and `/`'s head included; qa:served-skeleton `--main` — a null pair at
     WP1, then WP2. Then drop "WIP" from its two commit messages (reword, or squash into one), push WP1 + WP2 to main.
   - **WP3 — `origin/vodacom-s7-wp3` at `49f7eff3`: a helper's draft, stopped mid-way when Ali moved.** Incomplete and
-    unverified: read every file against WP3 (+ A4 items 3/5, A11, A12, A24) before building on it.
+    unverified: read every file against WP3 (+ A4 items 3/5, A11, A12, A24) before building on it. (Done on OMEGA: WP3
+    above.)
   - **This machine's recipes** (lock-turn chains with a memory watchdog, the v3 offline proof kit, the book-noise
     reader, WP2's proof chain and its plants, S6's close scripts): `origin/vodacom-visual-tools`,
     `tools/s7-blade-2026-10-12/`. ⚠️ ALI-BLADE15's memory: a parity v3 run peaks the dev server at ~6.4 GB (free down to
@@ -2403,6 +2451,44 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     PADDING — the home keeps PageContainer's 32px top, as S6's journey pages do; the canvas's 8px top is a canvas
     deviation shared by every journey page. Overrule: (b)'s cells, or the 8px top. (OMEGA-COMPILE01's draft of this
     point, 2026-10-08, was never pushed; it is re-measured here on the tree S6 closed on.)
+68. **The home's chips keep the selected category even when it holds no question (S7 WP3, 2026-10-12, under Ali's
+    delegation).** SJ-7 and S7-PLAN WP3 step 1 list only the categories holding an open question; the canvas's
+    empty-category board (s4-3-home-empty.dc.html:39) draws "Kripto" pressed above "Kripto: hakuna maswali wazi kwa
+    sasa". `homeChips` keeps the address's category in its place even when it is empty, because a vanished chip would
+    leave a filter applied out of the reader's sight. Overrule: drop the chip; WP7 then draws the empty category's line
+    with no chip pressed.
+69. **What the /markets target and the home's page rule read where the WP3 table is silent (S7 WP3, 2026-10-12).**
+    (a) Any `topic` decides the chip, even an unknown, empty or "all" one: `/markets?topic=all&cat=sports` and
+    `?topic=&cat=sports` go to `/`; a `cat` is used only when the link has no topic. (b) `status=watch` goes to
+    `/watchlist` carrying only cat, q and welcome; side, bet, ref, invite, the utm keys and the click ids are dropped
+    there — the table's "carrying cat and q", plus A11's welcome. (c) utm_id, gclid, gbraid and wbraid are kept only in
+    one token shape, 1–200 characters from A–Z, a–z, 0–9 and `. _ ~ -` (the plan names none); the five utm_* keys keep
+    pending-bet's own shape, spaces allowed. (d) `?page=02` is page 1: `parsePageParam`, the one rule the home and
+    journey /live share (A21 item 4), takes a positive whole number with no sign and no leading zero, and nothing the
+    product writes pads a page. (e) markets-redirect.ts imports `markets/categories.ts` beside A11 item 5's
+    "pending-bet.ts and the query helpers": the table keeps a topic or cat only when it is a known category, that list
+    is the platform's one definition, and categories.ts imports nothing (test:markets-redirect 1.imports pins the four
+    imports). Overrule: any of (a)–(e).
+70. **A6's helpline annotations land with WP4 instead of WP0 (2026-10-12).** A6 item 3 gave them to WP0's docs commit,
+    and WP0 recorded itself ✅ without them: §3 still listed `journey.howHelplineLabel` and §3.8 its helpline line. WP4's
+    Done-when ("§3, §3.8, INHERIT-MANIFEST and COMPLIANCE-DECISIONS agree that no helpline appears on a player
+    surface") cannot hold without them, so WP4 makes them — annotations only; the rulings' own text is untouched.
+    Overrule: none needed (records); say if an annotation should read differently.
+71. **WP1–WP4 land together, proven at one tip (2026-10-12, under Ali's delegation: "proceed … until done and all
+    live").** Each package's own in-process gates ran on it; the heavy proofs — typecheck, every gate of the four, the
+    file-mutating reds each alone, `next build`, a local qa:live, parity v3 against WP1's baseline and the
+    served-skeleton pair — ran once on the stack's tip, rebased onto main, instead of once per package: one build and
+    one parity run instead of three of each. A defect in any package fails the tip, so nothing is proven less, and a
+    failure is traced to its package before anything lands. Overrule: land each package on its own proof.
+72. **Parity v3 reads the order of identically-stated cards as noise (S7 WP1 calibration 2, 2026-10-12).** The board
+    breaks a tie on pool and close instant by the question's id, and every fresh server mints its own ids, so two
+    servers of one tree drew four fresh catalogue questions in different orders (§0j WP1). The harness therefore puts
+    adjacent cards that state exactly the same figures — every `data-market-part` but the source, word for word — in
+    their own titles' order before it compares. What this gives up: a change that reorders only such cards (a wrong
+    tie-break among cards a reader cannot tell apart by any figure) is no longer seen by parity; `test:discovery-contract`
+    and its red twin still guard the board's sort itself. A card that states any figure differently never moves, so
+    every visible reordering is still compared. Overrule: seed the catalogue with distinct close instants instead
+    (a dev-only change to `seedDemoMarkets` that the other drives using the catalogue would then share).
 
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
@@ -2889,7 +2975,7 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | S4 | Claude Design pass | ✅ | `52afb7c8` 2026-10-01 (§0g): all eleven brief items on the Design canvas, 102 boards; the four-expert panel's findings applied (v16); BRIEF.md filed; choices 1B/2A/3A (§0h point 1). Done when frames for every new composition and undrawn state are filed and scored by the panel, and Ali has reviewed the 5 re-drawn frames. |
 | S5 | ~~Colour foundation~~ | ⛔ | Removed by R5 (50pick's look stays unchanged): no palette, font or brand work. |
 | S6 | Shell (flagged) | ✅ | CLOSED 2026-10-12 03:01 EAT at `ca72fe15` (round 10, the last S6 commit), its close record in §0 (test:all, classic parity, the tiles, production read back). Plan filed 2026-10-01 (`S6-PLAN.md`, §0i). Done when every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |
-| S7 | Home and cards (flagged) | 🔨 | Started (§0j): WP0's scripts-only repairs live `ce2c3afa`; WP1 on branch `vodacom-s7-wp1b`. Plan filed 2026-10-07 ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), its Amendments override its body; §0h point 58). Done when the local staff-pass drives pass (the above-the-fold gate among them) and production shows nothing changed for signed-out and signed-in players; staff seeing the deck's home on production moves to S14 (§0h point 4). |
+| S7 | Home and cards (flagged) | 🔨 | Started (§0j): WP0's scripts-only repairs live `ce2c3afa`; WP1–WP4 live ⟦LIVE⟧ (2026-10-12); WP5–WP6 building. Plan filed 2026-10-07 ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), its Amendments override its body; §0h point 58). Done when the local staff-pass drives pass (the above-the-fold gate among them) and production shows nothing changed for signed-out and signed-in players; staff seeing the deck's home on production moves to S14 (§0h point 4). |
 | S8 | Bet sheet + low balance (flagged) | ⬜ | `test:bet-sheet`, V20 and the refusal matrix are green. A staff real bet works on production. |
 | S9 | Deposit, waiting and return (flagged) — no email code: the owner's ruling of 2026-10-07 (▶ 0e) has a deposit ask no email question | ⬜ | `test:deposit-return` and `test:deposit-status-read` (exactly-once while racing the webhook) are green. The card `order_id` fix is live. |
 | S10 | Visitor path | ⬜ | guest → sheet → register → deposit → back works. `test:post-register-landing` passes in both flag states. |
