@@ -7779,7 +7779,11 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    (`text-title-lg`: the largest ladder rung that holds exactly two lines at 360 in sw, en and zh); from 1024 it is
    `--type-display-2` at the desktop board's 1.1 line and the family's tracking — the largest of A16's three rungs that
    holds one line at 1280 beside the How-to card. The `<br>` that sets each sentence on its own line below 1024 draws
-   nothing from 1024, where the sentence gap the markup carries takes its place.
+   nothing from 1024, where the sentence gap the markup carries takes its place — and EACH SENTENCE IS HELD WHOLE there
+   (`white-space: nowrap` on its own span, the WP7 review): between ~1048 and ~1223 the headline's box beside the card is
+   too narrow for both sentences at 44px, and a balanced wrap would split one ("Jibu swali. NDIO / au HAPANA."), so the
+   line breaks only between the two (en's longer sentence measures at most 460.9px against the 520px box; from 1024 to
+   ~1047 the headline has the row's 960px to itself). Below 1024 a sentence may still wrap inside a narrow phone line.
    ⭐ THE CHIPS (`home-chips.tsx`): below 1024 the house's scrolling strip (`.kp-strip-fade` owns its fades and its inset),
    bleeding to the screen's right edge as the canvas's rail does — the gutter handed back as padding, so its last chip
    scrolls fully into view; from 1024 it wraps, as the query bar's strip does. The pills 4px apart, the strip's gap.
@@ -7803,6 +7807,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
   .kp-jhome { gap: var(--sp-5); }
   .kp-jhome__head { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-4) var(--sp-6); }
   .kp-jhome__title { order: -1; flex: 1 1 520px; min-width: 0; font-size: var(--type-display-2); line-height: 1.1; letter-spacing: -0.030em; }
+  .kp-jhome__title > span { white-space: nowrap; }
   .kp-jhome__head > .kp-jhowto { flex: 0 1 440px; min-width: 320px; }
   .kp-jhome__br { display: none; }
   .kp-jhome__chips { flex-wrap: wrap; overflow: visible; }
