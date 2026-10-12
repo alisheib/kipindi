@@ -361,7 +361,7 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S7 — ▶ RESUME ON ANY MACHINE at §0j's "⏸ HANDOFF" bullet (2026-10-12 ~08:55 EAT): WP1's null compare
+**Next:** (1) S7 — ⏳ resumed on OMEGA-COMPILE01 2026-10-12 ~10:00 EAT (§0j's "⏳ IN FLIGHT" bullet), from §0j's "⏸ HANDOFF" bullet (2026-10-12 ~08:55 EAT): WP1's null compare
 at `203a150f` (its baseline captured fresh on that machine), WP1 to main, WP2's remaining proofs and its push, then WP3
 (a stopped helper's draft on `vodacom-s7-wp3`). OMEGA's own `vodacom-s7-wp1` (2026-10-07/08) was never pushed: on
 OMEGA push it only as `vodacom-s7-wp1-omega`, for reference, and never merge it (§0h point 66). S7's plan:
@@ -555,6 +555,12 @@ body. Owner-level calls: §0h point 58, and 65 on.
   name the route file and each is decided (body re-pointed, route kept, history left); `test:journey-home` (new, 8
   checks, 8 plants). Its gates run after WP1, ending with a parity v3 compare at 0 differences; then it is rebased onto
   WP1 and pushed.
+- **⏳ IN FLIGHT — PICKED UP ON OMEGA-COMPILE01, 2026-10-12 ~10:00 EAT** (Ali: no other session works on S7; nothing
+  runs on ALI-BLADE15). Worktrees `F:\kipindi-s7b` (branch `vodacom-s7-wp1b`, then WP2 and WP3) and `F:\kipindi-s7srv`
+  (the dev servers, detached), each with its own `npm ci`. Order: WP1 rebased onto main (scripts and docs only moved
+  since `daf0e799`), the v3 baseline and its null compare on two fresh in-memory servers at the rebased WP1; WP2 rebased
+  onto it and its proofs (the ▶ LEFT list below); WP1 + WP2 to main and read back; then WP3. OMEGA's own 2026-10-07/08
+  WP1 is on origin for reference only as `vodacom-s7-wp1-omega` (`9ad1f6d9`), never to be merged (§0h point 66).
 - **⏸ HANDOFF — 2026-10-12 ~08:55 EAT, Ali moved to another machine. THE EXACT PLACE:**
   - **WP1 — `origin/vodacom-s7-wp1b` at `203a150f`** (3 commits on main `daf0e799`: the A9 tools `b0873185`, parity v3
     `9b18ea59`, the calibration `203a150f`). Proven on ALI-BLADE15: parity v3's `--prove-red` on a real server **125/125**
