@@ -531,8 +531,17 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           read — see the limits written there), and it can be stopped — by the control at its end or
           a tap anywhere on it.
           REAL settlements only, and NOTHING when the platform has settled nothing — `LiveTicker`
-          returns null on an empty list, so the strip stops existing rather than inventing a line. */}
-      <LiveTicker events={tickerEvents} />
+          returns null on an empty list, so the strip stops existing rather than inventing a line.
+          ⭐ AND FOR A JOURNEY READER, ON `/live` AND `/results` ONLY (the Vodacom plan S7, WP8; VODACOM-PLAN §3.2 and
+          COMPLIANCE-DECISIONS 2026-09-29 §10): the home and the board become the question list, so the strip leaves them.
+          The journey arm alone says `journey` (the strip then reads `JOURNEY_TICKER_ROUTES`), and the else arm is today's
+          element with today's props, so a request the resolver does not show the journey to is served today's RSC row: a
+          `{journeyShown && …}` sibling would add a `false` child to it. It is the shell's per-request answer, the one that
+          chose the header: it stays put across a soft navigation and is decided again on `router.refresh()`.
+          ⛔ NEVER `useJourneyOn` IN THE STRIP (S7-PLAN Open point 16): that hook's server snapshot is false, so the server
+          would paint the 32px strip on a journey reader's `/` and the browser would take it away after hydration — the
+          shift at the top of the page `qa:cls-budget` exists to fail. `test:journey-home` §8 holds both arms. */}
+      {journeyShown ? <LiveTicker events={tickerEvents} journey /> : <LiveTicker events={tickerEvents} />}
       {/* ⭐ NO BOTTOM PADDING ON <main> (2026-09-13). It used to clear the fixed rail here AND
           `PublicFooter` clears it too — but the footer below is rendered unconditionally, so the
           document never ends at main, and the two stacked into ~250px of blank above the footer
