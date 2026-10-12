@@ -1,0 +1,25 @@
+16:57:16 A start: tip 35f8be88 · free 15.0 GB
+16:57:23 1 typecheck: exit 0 (0 errors)
+17:01:01 2 gates: test:orphans=1 · 108/109 exit 0
+17:01:01 phase inprocess done · server tree at 754e81d4 · free 15.0 GB
+17:01:25 3 population plants: 4/4 population plants caught · tree clean
+17:01:25 phase plants done · server tree at 754e81d4 · free 14.9 GB
+17:02:01 4 red:featured-card alone: exit 0 · 18/18 caught · green after restore: true  · tree clean
+17:03:08 4 red:one-sided alone: exit 0 · 31/31 caught · green after restore: true  · tree clean
+17:03:26 4 red:ticker-honesty alone: exit 0 · 31/31 real defects caught, each on its own assertion  · tree clean
+17:03:54 4 red:contrast alone: exit 0 · RED HARNESS (contrast) — 29/29 caught · 4 sheet(s) untouched  · tree clean
+17:04:07 4 red:timer-date alone: exit 0 · 19/19 caught · restored: true · green after restore: true  · tree clean
+17:05:13 4 red:filter-language alone: exit 0 · 43/43 defects caught, each on its own assertion  · tree clean
+17:05:22 4 red:measure alone: exit 0 ·         → FAIL 8. the back link's chevron hands back its side bearing, so its tip sits on the edge the link heads — bearing 3px (t  · tree clean
+17:05:25 4 red:chat-availability alone: exit 0 · RED HARNESS (chat-availability) — 3/3 caught · src/ untouched  · tree clean
+17:06:54 4 red:failure-reasons alone: exit 1 · tree restored · 19/20 defects caught  · tree clean
+17:06:54 phase reds done · server tree at 754e81d4 · free 14.8 GB
+17:09:50 server tree VERIFIED at 52715180
+17:10:16 5-prove-red: server did not come up (try 1)
+17:16:47 5-prove-red: exit 0 (free 14.9 GB)
+17:16:47 5 prove-red:     131 PASS  · 
+17:44:50 6-baseline: exit 0 (free 14.3 GB)
+17:44:50 6 baseline: baseline written: /tmp/claude-0/proof/parity-v3-52715180.json — base 52715180, 224 cells, 1179 blobs. Next: a null --compare on a FRESH server at this commit must exit 0.  · 5790175 bytes
+18:12:45 7-null: exit 0 (free 14.7 GB)
+18:12:45 7 null compare: 53/53 passed — compare · tree 52715180 · 1592s 
+18:12:45 phase parity-cal done · server tree at 52715180 · free 14.7 GB
