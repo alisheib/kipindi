@@ -149,6 +149,7 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/components/home/trust-band.tsx": [2, "SIDE — a settled market's outcome chip"],
   "src/components/home/updown-band.tsx": [2, "SIDE — the band's Up and Down buttons"],
   "src/components/journey/tickets/ticket-card.tsx": [2, "SIDE — a ticket's side chip"],
+  "src/components/journey/cards/journey-card.tsx": [2, "SIDE — the journey card's two picks in the side buttons' inks (`btn-yes` / `btn-no`); its result chip takes the outcome's ink from `cardFace` (S7 WP5)"],
   "src/components/layout/live-ticker.tsx": [2, "SIDE — a bet's side in the ticker (classic chrome, frozen)"],
   "src/components/markets/bet-confirm-modal.tsx": [6, "SIDE — the confirm's side plate"],
   "src/components/markets/comments-thread.tsx": [2, "SIDE — a commenter's side chip"],

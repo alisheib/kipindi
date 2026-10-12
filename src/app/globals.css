@@ -924,6 +924,24 @@
   --ud-gap-md: 12px;
   --ud-gap-sm: 10px;
   --ud-act-pt: 12px;
+  /* THE JOURNEY CARD'S OWN GEOMETRY (the Vodacom plan S7, S7-PLAN WP5; §2's card row: "own height tokens --jcard-*;
+     density does not apply"). Named once beside the card rhythms above, so WP7's home ghost draws the card's boxes from
+     the numbers the card itself reads and cannot drift from it (the --mcard-h lesson). ⛔ NO COMPACT RUNG: the journey
+     card wears none of the classic card's or the board grid's classes, which are all the phone density blocks rewrite.
+       · --jcard-pad, --jcard-gap — the S4 boards' 16px of padding and 12px between the card's rows;
+       · --jcard-meta-line — the meta row's line: the small rung at 1.4, as the boards set it;
+       · --jcard-title-line — the title's line: the title-sm rung's own 24px, the line WP0's bar budget measured the
+         card with (VODACOM-PLAN §0j); --jcard-title-2l is two of them, the reserve a card title keeps in a grid of more
+         than one column (A16 item 3; the desktop board draws 47px, two of its 23.4px lines), set by that grid's own rule
+         (WP7's, WP10's) and never by the card, so one column reserves nothing;
+       · --jcard-act-h — the action block's floor: each pick, the closed row and the result row (64px; a pick whose
+         second line wraps grows, and its neighbour with it — §0g item 11). */
+  --jcard-pad: var(--sp-4);
+  --jcard-gap: var(--sp-3);
+  --jcard-meta-line: calc(var(--type-small) * 1.4);
+  --jcard-title-line: 24px;
+  --jcard-title-2l: calc(2 * var(--jcard-title-line));
+  --jcard-act-h: 64px;
 }
 
 /* ---------- Vertical rhythm — THE DESKTOP RUNGS ----------------------------------------------
@@ -5608,14 +5626,16 @@ html[data-sheet-open] .route-enter { animation: none; }
   color: var(--text-subtle);
 }
 .mcardp-onesided-note,
-.kp-qrow__note {
+.kp-qrow__note,
+.kp-jcard__note {
   font-size: var(--type-small);
   line-height: 1.4;
   color: var(--text-muted);
   text-wrap: pretty;
   /* A reading measure: on the full-width featured card at 768–1023 the sw note set as ONE ~104-
      character line (V7). Every card narrower than ~560px is untouched. The board row's note (WP4)
-     shares this ONE rule, so a full-width desktop row holds the same measure. */
+     shares this ONE rule, so a full-width desktop row holds the same measure — and so does the
+     journey card's refund sentence (S7 WP5, L22), one note in one voice on every surface. */
   max-inline-size: 60ch;
 }
 
@@ -7524,6 +7544,78 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
     .kp-ticket:nth-child(n + 3) { margin-top: var(--sp-4); }
   }
 }
+
+/* =====================================================================
+   THE JOURNEY CARD — one question, in every state (the Vodacom plan S7, §3.2; S7-PLAN WP5 with A12, A15, A16, A24)
+   =====================================================================
+   Worn only by `journey-card.tsx`, which WP7 (the home) and WP10 (/live, /watchlist, /results, the similar rail) mount
+   for a journey request alone, so a classic page carries none of these classes and paints exactly as before.
+   ⭐ THE S4 BOARDS IN THE KIT'S TOKENS (s4-3-card-*, pick-1-home): the elevated fill and its edge, the card radius, the
+   `--jcard-*` geometry in :root (WP7's ghost reads the same numbers); every size on a ladder — the small, body and h4
+   rungs here, the title-sm rung and the body rung of the call site's ladder on the title and the result's label
+   (DESIGN_AUTHORITY §T7) — and every ink one the system already has. Free of width queries (so the card-spacing fence,
+   `test:density-contract`, has nothing to police): one column or several, the card lays itself out the same, and the
+   grid that holds it (WP7, WP10) sets the title reserve.
+   ⭐ THE CARD IS ONE LINK, STRETCHED UNDER ITS PICKS (WP5 step 3; the classic card's pattern, without its classes):
+   the card isolates its own stacking context, the link covers it at 2 and the picks rise to 3 — both on the local
+   plane (z ≤ 10, `test:stacking`) — so a tap on a pick is the pick's and a tap anywhere else opens the question. The
+   link's ring is the platform's own focus ring: the card does not clip, so it shows whole around the card's edge.
+   ⭐ THE LABEL'S INK (A12 items 1–3): the meta row sets the subtle ink once, and the one other rule here that sets a
+   colour on it is the muted ink of the two labels that ask for attention — closes today, and waiting for the result.
+   `test:journey-home` §4 holds both, and plants a muted rule re-pointed to the subtle ink. */
+.kp-jcard { position: relative; isolation: isolate; display: flex; flex-direction: column; gap: var(--jcard-gap); height: 100%; min-width: 0; padding: var(--jcard-pad); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg-elevated); }
+.kp-jcard__open { position: absolute; inset: 0; z-index: 2; border-radius: inherit; }
+.kp-jcard__meta { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); font-size: var(--type-small); line-height: var(--jcard-meta-line); color: var(--text-subtle); }
+.kp-jcard__where { min-width: 0; }
+/* The label never breaks ("Siku" / "11" would read as two facts) and never yields its width to the left-hand words,
+   which wrap instead — between category and competition first (`DotSeq`). The board's 5px between glyph and words. */
+.kp-jcard__when { display: inline-flex; flex-shrink: 0; align-items: center; gap: 5px; white-space: nowrap; }
+.kp-jcard__when[data-emphasis="muted"] { color: var(--text-muted); }
+/* The question. Its rung and tracking are the call site's title-sm; its line is the card's own token, which the grid's
+   reserve and the ghost read. Balanced, as every market title is (`test:visual-pass-r5e` §2's rule), so no word is left
+   alone on the last line. ⭐ ONLY THE FULL-TITLE FALLBACK IS HELD TO TWO LINES (WP5 step 2; A24 item 6: the ticket
+   card's question went whole, so today's equivalent is the classic card's own clamp, `-webkit-line-clamp` beside
+   `text-wrap: balance`): a short title is written to fit and is never clamped — a longer one takes another line rather
+   than losing its end — while the fallback is the full question, whose whole text is the card link's name. */
+.kp-jcard__title { margin: 0; font-family: var(--font-display); font-weight: 600; line-height: var(--jcard-title-line); color: var(--text); text-wrap: balance; overflow-wrap: break-word; }
+.kp-jcard__title--full { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+/* ⭐ THE ACTION BLOCK STANDS ON THE CARD'S FLOOR (A16 item 3): the picks, or the closed or result row, with the refund
+   sentence. In a grid's stretched row (the card fills its cell, as the classic card does) a title that runs a line longer
+   than its neighbour's leaves the picks level across the row; alone, it changes nothing. */
+.kp-jcard__act { display: flex; flex-direction: column; gap: var(--jcard-gap); margin-block-start: auto; }
+/* ⭐ THE PAIR STANDS 12px APART — the platform's one gap for a pair of buttons (R9-A5, `test:visual-pass-r9a` §5: the
+   classic card's YES/NO and the landing rows'), where the S4 board, drawn before that rule, set 10px. The grid stretches
+   both picks to the taller one, so when one second line wraps both grow together (§0g item 11). */
+.kp-jcard__picks { position: relative; z-index: 3; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+/* A pick wears the side button's ink and tracking (`.btn-yes` / `.btn-no`: fill, pearl words, ring, drop and shadowed
+   text) and none of the button's height or nowrap, which a two-line pick cannot use. The board's padding sets the side
+   word 10px from the top; a pick with no second line centres its word, at 8px all round (s4-3-card-legacy). */
+.kp-jcard__pick { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px; min-width: 0; min-height: var(--jcard-act-h); padding: 10px var(--sp-2) var(--sp-2); border-radius: var(--r-md); text-align: center; text-decoration: none; }
+.kp-jcard__pick--word { justify-content: center; padding: var(--sp-2); }
+/* ⭐ A PICK MOVES AS THE SIDE BUTTONS MOVE (`.btn`'s vocabulary and timing, motion.css): it rises on the one hover lift
+   where a pointer hovers (the fill's glow comes with `.btn-yes:hover`) and takes the one press scale — the pressed
+   feedback the body rule's transparent tap-flash counts on every control to supply. The anchor rule above sets a colour
+   fade on every link that is not a button; this one, later in the file, takes its place on the picks. */
+.kp-jcard__picks > .kp-jcard__pick { transition: transform var(--t-flick) var(--m-glide), box-shadow var(--t-quick) var(--m-glide), filter var(--t-quick) linear; }
+@media (hover: hover) { .kp-jcard__pick:hover { transform: translateY(var(--m-lift)); } }
+.kp-jcard__pick:active { transform: translateY(0) scale(var(--m-press)); filter: brightness(0.93); }
+/* The side word on the h4 rung (A15 item 4: 17px IS on the CSS scale), in the button's weight and tracking. */
+.kp-jcard__side { font-family: var(--font-display); font-size: var(--type-h4); line-height: 1.2; }
+/* The face's words, at the reading floor and without the button's tracking; balanced, so a wrap is an even pair. */
+.kp-jcard__line { font-size: var(--type-small); font-weight: 500; line-height: 1.3; letter-spacing: 0; text-wrap: balance; }
+/* The figure is mono (§T5: every numeral is) and never breaks (the board's "≈2.8×"); a kept clause never breaks either. */
+.kp-jcard__mult { font-family: var(--font-mono); font-weight: 700; white-space: nowrap; }
+.kp-jcard__run { white-space: nowrap; }
+/* ⭐ THE CLOSED AND RESULT ROWS ARE THE PICKS' HEIGHT (§2's card row: "same height"), sunk into the card — the inset
+   well the boards draw (s4-3-card-closed, s4-3-card-settled), never a control. */
+.kp-jcard__closed { display: flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: var(--jcard-act-h); padding-inline: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg-inset); font-size: var(--type-body); font-weight: 600; color: var(--text-subtle); text-align: center; }
+.kp-jcard__settled { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); min-height: var(--jcard-act-h); padding: 10px var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--bg-inset); }
+.kp-jcard__result { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.kp-jcard__result-label { font-weight: 500; color: var(--text-muted); }
+/* The settled instant at the small rung: the board's 12px is under §T4's 12.5px reading floor — the hub's second line
+   took the small rung for the same reason (§K rule 8c). */
+.kp-jcard__at { font-size: var(--type-small); line-height: 1.3; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-subtle); }
+.kp-jcard__outcome { flex-shrink: 0; }
 
 /* ── THE CENTRE COIN — UPDATE-2026-09-28 §2 ───────────────────────────────────────
    The rail's middle slot is the wallet's door, and the coin is the 50pick mark AS a control: the
