@@ -1,0 +1,107 @@
+qa:journey-above-fold — http://localhost:3082 · Chromium 141.0.7390.37
+  books: full → mkt_63717533685955dfb96c ("Will the next Wasafi-released video pass 1M views in its first week?"), short → mkt_106d16fa2c329d9100e6
+
+§R · the red control: each plant's cell clean, then planted (page-only)
+  CAUGHT  a 300px How-to card — clean PASS · planted FAIL: R3 card 1's picks end 144.2px below the rail's top
+  CAUGHT  card 1 pushed down 200px — clean PASS · planted FAIL: R3 card 1's picks end 118.2px below the rail's top
+  CAUGHT  the How-to card pushed past the rail (700px) — clean PASS · planted FAIL: R2 the How-to card ends 213px below the rail's top; R3 card 1's picks end 544.2px below the rail's top
+  CAUGHT  the headline set on one line — clean PASS · planted FAIL: R4 the headline is 1 line(s), not two
+  CAUGHT  a journey element drawn before the How-to card — clean PASS · planted FAIL: R1 the first journey element in main is "journey-planted", not the How-to card
+  CAUGHT  the rail removed — clean PASS · planted INVALID: the rail is not on screen; R2 the How-to card ends 162px below the rail's top; R3 card 1's picks end 493.2px below the rail's top
+  CAUGHT  the session-ended notice hidden (all bars, a guest) — clean PASS · planted INVALID: the ended bar is not visible
+
+§M · bars none · card 1's book: full
+  PASS     360×640 sw guest bars:none book:full · rail 575 · How-to slack 413 · picks slack 81.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     360×640 en guest bars:none book:full · rail 575 · How-to slack 413 · picks slack 81.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     360×640 zh guest bars:none book:full · rail 575 · How-to slack 413 · picks slack 81.8 (GATED) · h1 2 lines · marker 94.9
+  PASS     360×740 sw guest bars:none book:full · rail 675 · How-to slack 513 · picks slack 181.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     360×740 en guest bars:none book:full · rail 675 · How-to slack 513 · picks slack 181.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     360×740 zh guest bars:none book:full · rail 675 · How-to slack 513 · picks slack 181.8 (GATED) · h1 2 lines · marker 94.9
+  PASS     390×844 sw guest bars:none book:full · rail 779 · How-to slack 617 · picks slack 285.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     390×844 en guest bars:none book:full · rail 779 · How-to slack 617 · picks slack 285.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     390×844 zh guest bars:none book:full · rail 779 · How-to slack 617 · picks slack 285.8 (GATED) · h1 2 lines · marker 94.9
+  PASS     360×640 sw player bars:none book:full · rail 575 · How-to slack 413 · picks slack 81.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     360×640 en player bars:none book:full · rail 575 · How-to slack 413 · picks slack 81.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     360×640 zh player bars:none book:full · rail 575 · How-to slack 413 · picks slack 81.8 (GATED) · h1 2 lines · marker 94.9
+  PASS     360×740 sw player bars:none book:full · rail 675 · How-to slack 513 · picks slack 181.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     360×740 en player bars:none book:full · rail 675 · How-to slack 513 · picks slack 181.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     360×740 zh player bars:none book:full · rail 675 · How-to slack 513 · picks slack 181.8 (GATED) · h1 2 lines · marker 94.9
+  PASS     390×844 sw player bars:none book:full · rail 779 · How-to slack 617 · picks slack 285.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     390×844 en player bars:none book:full · rail 779 · How-to slack 617 · picks slack 285.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     390×844 zh player bars:none book:full · rail 779 · How-to slack 617 · picks slack 285.8 (GATED) · h1 2 lines · marker 94.9
+
+§M · bars none · card 1's book: short
+  PASS     360×640 sw guest bars:none book:short · rail 575 · How-to slack 413 · picks slack 33.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     360×640 en guest bars:none book:short · rail 575 · How-to slack 413 · picks slack 33.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     360×640 zh guest bars:none book:short · rail 575 · How-to slack 413 · picks slack 33.8 (GATED) · h1 2 lines · marker 94.9
+  PASS     360×740 sw guest bars:none book:short · rail 675 · How-to slack 513 · picks slack 133.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     360×740 en guest bars:none book:short · rail 675 · How-to slack 513 · picks slack 133.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     360×740 zh guest bars:none book:short · rail 675 · How-to slack 513 · picks slack 133.8 (GATED) · h1 2 lines · marker 94.9
+  PASS     390×844 sw guest bars:none book:short · rail 779 · How-to slack 617 · picks slack 261.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     390×844 en guest bars:none book:short · rail 779 · How-to slack 617 · picks slack 261.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     390×844 zh guest bars:none book:short · rail 779 · How-to slack 617 · picks slack 261.8 (GATED) · h1 2 lines · marker 94.9
+  PASS     360×640 sw player bars:none book:short · rail 575 · How-to slack 413 · picks slack 33.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     360×640 en player bars:none book:short · rail 575 · How-to slack 413 · picks slack 33.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     360×640 zh player bars:none book:short · rail 575 · How-to slack 413 · picks slack 33.8 (GATED) · h1 2 lines · marker 94.9
+  PASS     360×740 sw player bars:none book:short · rail 675 · How-to slack 513 · picks slack 133.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     360×740 en player bars:none book:short · rail 675 · How-to slack 513 · picks slack 133.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     360×740 zh player bars:none book:short · rail 675 · How-to slack 513 · picks slack 133.8 (GATED) · h1 2 lines · marker 94.9
+  PASS     390×844 sw player bars:none book:short · rail 779 · How-to slack 617 · picks slack 261.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     390×844 en player bars:none book:short · rail 779 · How-to slack 617 · picks slack 261.8 (GATED) · h1 2 lines · marker 112.8
+  PASS     390×844 zh player bars:none book:short · rail 779 · How-to slack 617 · picks slack 261.8 (GATED) · h1 2 lines · marker 94.9
+
+§M · bars all · card 1's book: full
+  PASS     360×640 sw player bars:all book:full · rail 575 · How-to slack 257.4 · picks slack -73.8 (RECORDED) · h1 2 lines · marker 112.8
+  PASS     360×640 en player bars:all book:full · rail 575 · How-to slack 257.4 · picks slack -73.8 (RECORDED) · h1 2 lines · marker 112.8
+  PASS     360×640 zh player bars:all book:full · rail 575 · How-to slack 257.4 · picks slack -73.8 (RECORDED) · h1 2 lines · marker 94.9
+  PASS     360×740 sw player bars:all book:full · rail 675 · How-to slack 357.4 · picks slack 26.2 (RECORDED) · h1 2 lines · marker 112.8
+  PASS     360×740 en player bars:all book:full · rail 675 · How-to slack 357.4 · picks slack 26.2 (RECORDED) · h1 2 lines · marker 112.8
+  PASS     360×740 zh player bars:all book:full · rail 675 · How-to slack 357.4 · picks slack 26.2 (RECORDED) · h1 2 lines · marker 94.9
+  PASS     390×844 sw player bars:all book:full · rail 779 · How-to slack 461.4 · picks slack 130.2 (GATED) · h1 2 lines · marker 112.8
+  PASS     390×844 en player bars:all book:full · rail 779 · How-to slack 461.4 · picks slack 130.2 (GATED) · h1 2 lines · marker 112.8
+  PASS     390×844 zh player bars:all book:full · rail 779 · How-to slack 447.2 · picks slack 116 (GATED) · h1 2 lines · marker 94.9
+  PASS     360×640 sw guest bars:all book:full · rail 575 · How-to slack 221.6 · picks slack -109.6 (RECORDED) · h1 2 lines · marker 112.8
+  PASS     360×640 en guest bars:all book:full · rail 575 · How-to slack 221.6 · picks slack -109.6 (RECORDED) · h1 2 lines · marker 112.8
+  PASS     360×640 zh guest bars:all book:full · rail 575 · How-to slack 273.6 · picks slack -57.6 (RECORDED) · h1 2 lines · marker 94.9
+  PASS     360×740 sw guest bars:all book:full · rail 675 · How-to slack 321.6 · picks slack -9.6 (RECORDED) · h1 2 lines · marker 112.8
+  PASS     360×740 en guest bars:all book:full · rail 675 · How-to slack 321.6 · picks slack -9.6 (RECORDED) · h1 2 lines · marker 112.8
+  PASS     360×740 zh guest bars:all book:full · rail 675 · How-to slack 373.6 · picks slack 42.4 (RECORDED) · h1 2 lines · marker 94.9
+  PASS     390×844 sw guest bars:all book:full · rail 779 · How-to slack 477.6 · picks slack 146.4 (GATED) · h1 2 lines · marker 112.8
+  PASS     390×844 en guest bars:all book:full · rail 779 · How-to slack 477.6 · picks slack 146.4 (GATED) · h1 2 lines · marker 112.8
+  PASS     390×844 zh guest bars:all book:full · rail 779 · How-to slack 487.2 · picks slack 156 (GATED) · h1 2 lines · marker 94.9
+
+§M · bars all · card 1's book: short
+  PASS     360×640 sw player bars:all book:short · rail 575 · How-to slack 257.4 · picks slack -121.8 (RECORDED) · h1 2 lines · marker 112.8
+  PASS     360×640 en player bars:all book:short · rail 575 · How-to slack 257.4 · picks slack -121.8 (RECORDED) · h1 2 lines · marker 112.8
+  PASS     360×640 zh player bars:all book:short · rail 575 · How-to slack 257.4 · picks slack -121.8 (RECORDED) · h1 2 lines · marker 94.9
+  PASS     360×740 sw player bars:all book:short · rail 675 · How-to slack 357.4 · picks slack -21.8 (RECORDED) · h1 2 lines · marker 112.8
+  PASS     360×740 en player bars:all book:short · rail 675 · How-to slack 357.4 · picks slack -21.8 (RECORDED) · h1 2 lines · marker 112.8
+  PASS     360×740 zh player bars:all book:short · rail 675 · How-to slack 357.4 · picks slack -21.8 (RECORDED) · h1 2 lines · marker 94.9
+  PASS     390×844 sw player bars:all book:short · rail 779 · How-to slack 461.4 · picks slack 106.2 (GATED) · h1 2 lines · marker 112.8
+  PASS     390×844 en player bars:all book:short · rail 779 · How-to slack 461.4 · picks slack 106.2 (GATED) · h1 2 lines · marker 112.8
+  PASS     390×844 zh player bars:all book:short · rail 779 · How-to slack 447.2 · picks slack 92 (GATED) · h1 2 lines · marker 94.9
+  PASS     360×640 sw guest bars:all book:short · rail 575 · How-to slack 221.6 · picks slack -157.6 (RECORDED) · h1 2 lines · marker 112.8
+  PASS     360×640 en guest bars:all book:short · rail 575 · How-to slack 221.6 · picks slack -157.6 (RECORDED) · h1 2 lines · marker 112.8
+  PASS     360×640 zh guest bars:all book:short · rail 575 · How-to slack 273.6 · picks slack -105.6 (RECORDED) · h1 2 lines · marker 94.9
+  PASS     360×740 sw guest bars:all book:short · rail 675 · How-to slack 321.6 · picks slack -57.6 (RECORDED) · h1 2 lines · marker 112.8
+  PASS     360×740 en guest bars:all book:short · rail 675 · How-to slack 321.6 · picks slack -57.6 (RECORDED) · h1 2 lines · marker 112.8
+  PASS     360×740 zh guest bars:all book:short · rail 675 · How-to slack 373.6 · picks slack -5.6 (RECORDED) · h1 2 lines · marker 94.9
+  PASS     390×844 sw guest bars:all book:short · rail 779 · How-to slack 477.6 · picks slack 122.4 (GATED) · h1 2 lines · marker 112.8
+  PASS     390×844 en guest bars:all book:short · rail 779 · How-to slack 477.6 · picks slack 122.4 (GATED) · h1 2 lines · marker 112.8
+  PASS     390×844 zh guest bars:all book:short · rail 779 · How-to slack 487.2 · picks slack 132 (GATED) · h1 2 lines · marker 94.9
+
+§T · the cells table (A5 (b)) — card 1's picks GATED or RECORDED; R1, R2 and R4 gated everywhere
+  360×640  bars none  → card 1's picks GATED
+  360×640  bars all   → card 1's picks RECORDED
+  360×740  bars none  → card 1's picks GATED
+  360×740  bars all   → card 1's picks RECORDED
+  390×844  bars none  → card 1's picks GATED
+  390×844  bars all   → card 1's picks GATED
+
+  least slack, card 1's picks, GATED: 33.8px (360×640 sw guest bars:none book:short)
+  least slack, card 1's picks, RECORDED: -157.6px (360×640 sw guest bars:all book:short) (recorded, never gated)
+  least slack, the How-to card: 221.6px (360×640 sw guest bars:all book:full)
+  cells: 72 · PASS 72
+  plants: 7/7 caught
+
+✅ every gated cell PASS and every plant caught

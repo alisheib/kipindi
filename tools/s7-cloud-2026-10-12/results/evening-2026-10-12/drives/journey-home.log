@@ -1,0 +1,216 @@
+qa:journey-home — http://localhost:3082 · Chromium 141.0.7390.37 · tiles in /tmp/claude-0/l3/drives/jh-tiles
+
+§0 · the pass, the catalogue, the demo player's portfolio and stars, Up & Down, and the card states
+  catalogue 30 live · portfolio {"VOID":1,"LOSS":2,"WIN":3,"CASHED_OUT":2,"OPEN":4} · stars {"all":9,"open":3,"progress":2,"done":3,"void":1} · up & down 200
+  states {"priced":"mkt_c7d59334c8ff67d2b300","oneSide":"mkt_fdb3b0b0c5b6fb2b968d","overCap":"mkt_961dc236a27257739ac2","today":"mkt_a6796f6c2ba4e5014947","empty":"mkt_a870c8fab6ce9fb8d832"} · bets 200/200/200/200 · today 200
+  hidden figure: the display switch off while seed-real-markets made 6 questions · mkt_22f29564209565275c20
+
+positive · S7's ids in a pass holder's documents, none without the pass
+  PASS positive · / with a pass carries journey-home, journey-howto-card, journey-card, journey-home-ghost
+  PASS positive · / without a pass carries none of journey-home, journey-card, journey-howto-card, journey-home-ghost
+    · journey-home-ghost in a pass holder's served / : FOUND (listed, A23 item 1)
+  PASS positive · /live with a pass carries journey-card
+  PASS positive · /live without a pass carries none of journey-home, journey-card, journey-howto-card, journey-home-ghost
+  PASS positive · /results with a pass carries journey-card
+  PASS positive · /results without a pass carries none of journey-home, journey-card, journey-howto-card, journey-home-ghost
+  PASS positive · every id in the shared list is one this section proves present (an absence asked of an id never seen proves nothing)
+
+controls · no pass: today's pages, no journey trace
+  PASS controls · / (signed in, no pass): HTTP 200, landed on /, no journey trace
+  PASS controls · /markets (signed in, no pass): HTTP 200, landed on /markets, no journey trace
+  PASS controls · /markets is the classic board for a reader with no pass
+  PASS controls · /live (signed in, no pass): HTTP 200, landed on /live, no journey trace
+  PASS controls · /results (signed in, no pass): HTTP 200, landed on /results, no journey trace
+  PASS controls · /watchlist (signed in, no pass): HTTP 200, landed on /watchlist, no journey trace
+
+home · the home's states and widths (sw · en · zh)
+    tile 001 home sw 360 top
+    tile 002 home sw 360 card priced
+    tile 003 home sw 360 card one side
+    tile 004 home sw 360 card over the cap
+    tile 005 home sw 360 card closes today
+    tile 006 home sw 360 card an empty pool
+    tile 007 home sw 360 card a hidden figure
+    tile 008 home sw 360 card a full title clamped
+    tile 009 home sw 360 card a full title clamped (the first cut on the page)
+  PASS home sw · the full title is clamped to two lines
+    tile 010 home sw 360 end of page 1 with Onyesha zaidi
+  PASS home sw · page 1 draws twelve cards and "Onyesha zaidi"
+    tile 011 home sw 360 chips scrolled
+    tile 012 home sw 360 empty category tech
+    tile 013 home sw 360 search line
+  PASS home sw · a search is said in its own line
+    tile 014 home sw 360 search matched nothing
+    tile 015 home en 360 top
+    tile 016 home en 360 card priced
+    tile 017 home en 360 card one side
+    tile 018 home en 360 card over the cap
+    tile 019 home en 360 card closes today
+    tile 020 home en 360 card an empty pool
+    tile 021 home en 360 card a hidden figure
+    tile 022 home en 360 card a full title clamped
+  PASS home en · the full title is clamped to two lines
+    tile 023 home en 360 end of page 1 with Onyesha zaidi
+  PASS home en · page 1 draws twelve cards and "Onyesha zaidi"
+    tile 024 home en 360 chips scrolled
+    tile 025 home en 360 empty category tech
+    tile 026 home en 360 search line
+  PASS home en · a search is said in its own line
+    tile 027 home en 360 search matched nothing
+    tile 028 home zh 360 top
+    tile 029 home zh 360 card priced
+    tile 030 home zh 360 card one side
+    tile 031 home zh 360 card over the cap
+    tile 032 home zh 360 card closes today
+    tile 033 home zh 360 card an empty pool
+    tile 034 home zh 360 card a hidden figure
+    tile 035 home zh 360 card a full title clamped
+  PASS home zh · the full title is clamped to two lines
+    tile 036 home zh 360 end of page 1 with Onyesha zaidi
+  PASS home zh · page 1 draws twelve cards and "Onyesha zaidi"
+    tile 037 home zh 360 chips scrolled
+    tile 038 home zh 360 empty category tech
+    tile 039 home zh 360 search line
+  PASS home zh · a search is said in its own line
+    tile 040 home zh 360 search matched nothing
+    tile 041 home sw 320 head
+    tile 042 home sw 768 head
+  PASS home sw 768 · in every multi-column row the picks' tops are level within ±1px (A16 item 5)
+    tile 043 home sw 1024 head
+    tile 044 home sw 1100 head
+    tile 045 home sw 1180 head
+    tile 046 home sw 1280 head
+  PASS home sw 1280 · the headline is ONE line, left of the How-to card (A16 item 5)
+  PASS home sw 1280 · the served headline holds the sentence gap (a space after "." in sw and en, none after 。)
+  PASS home sw 1280 · in every multi-column row the picks' tops are level within ±1px (A16 item 5)
+    tile 047 home en 320 head
+    tile 048 home en 768 head
+  PASS home en 768 · in every multi-column row the picks' tops are level within ±1px (A16 item 5)
+    tile 049 home en 1024 head
+    tile 050 home en 1100 head
+    tile 051 home en 1180 head
+    tile 052 home en 1280 head
+  PASS home en 1280 · the headline is ONE line, left of the How-to card (A16 item 5)
+  PASS home en 1280 · the served headline holds the sentence gap (a space after "." in sw and en, none after 。)
+  PASS home en 1280 · in every multi-column row the picks' tops are level within ±1px (A16 item 5)
+    tile 053 home zh 320 head
+    tile 054 home zh 768 head
+  PASS home zh 768 · in every multi-column row the picks' tops are level within ±1px (A16 item 5)
+    tile 055 home zh 1024 head
+    tile 056 home zh 1100 head
+    tile 057 home zh 1180 head
+    tile 058 home zh 1280 head
+  PASS home zh 1280 · the headline is ONE line, left of the How-to card (A16 item 5)
+  PASS home zh 1280 · the served headline holds the sentence gap (a space after "." in sw and en, none after 。)
+  PASS home zh 1280 · in every multi-column row the picks' tops are level within ±1px (A16 item 5)
+
+sheet · the How-to sheet at 320×640, 360×640, 390×844 and 1280×900
+    tile 059 sheet sw 320x640
+  PASS sheet sw 320×640 · its exits — the ✕, the CTA and Weka mipaka — are on screen without scrolling
+  PASS sheet sw 320 · the title holds one line beside the ✕ (A15 item 2)
+    tile 060 sheet sw 360x640
+  PASS sheet sw 360×640 · its exits — the ✕, the CTA and Weka mipaka — are on screen without scrolling
+    tile 061 sheet sw 390x844
+  PASS sheet sw 390×844 · its exits — the ✕, the CTA and Weka mipaka — are on screen without scrolling
+    tile 062 sheet sw 1280x900
+  PASS sheet sw 1280×900 · its exits — the ✕, the CTA and Weka mipaka — are on screen without scrolling
+    tile 063 sheet en 320x640
+  PASS sheet en 320×640 · its exits — the ✕, the CTA and Weka mipaka — are on screen without scrolling
+  PASS sheet en 320 · the title holds one line beside the ✕ (A15 item 2)
+    tile 064 sheet en 360x640
+  PASS sheet en 360×640 · its exits — the ✕, the CTA and Weka mipaka — are on screen without scrolling
+    tile 065 sheet en 390x844
+  PASS sheet en 390×844 · its exits — the ✕, the CTA and Weka mipaka — are on screen without scrolling
+    tile 066 sheet en 1280x900
+  PASS sheet en 1280×900 · its exits — the ✕, the CTA and Weka mipaka — are on screen without scrolling
+    tile 067 sheet zh 320x640
+  PASS sheet zh 320×640 · its exits — the ✕, the CTA and Weka mipaka — are on screen without scrolling
+  PASS sheet zh 320 · the title holds one line beside the ✕ (A15 item 2)
+    tile 068 sheet zh 360x640
+  PASS sheet zh 360×640 · its exits — the ✕, the CTA and Weka mipaka — are on screen without scrolling
+    tile 069 sheet zh 390x844
+  PASS sheet zh 390×844 · its exits — the ✕, the CTA and Weka mipaka — are on screen without scrolling
+    tile 070 sheet zh 1280x900
+  PASS sheet zh 1280×900 · its exits — the ✕, the CTA and Weka mipaka — are on screen without scrolling
+
+routes · /results, /watchlist and the similar rail
+  PASS routes /results sw 360 · journey cards drawn (settled YES, NO and void)
+    tile 071 /results sw 360
+    tile 072 /results sw 360 settled Batili
+    tile 073 /results sw 360 settled HAPANA
+    tile 074 /results sw 360 settled NDIO
+  PASS routes /results sw 360 · settled cards drawn with each outcome, YES, NO and void, each tiled (Batili, HAPANA, NDIO)
+  PASS routes /results en 360 · journey cards drawn (settled YES, NO and void)
+  NOTE console error: A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used: (on /results)
+    tile 075 /results en 360
+  PASS routes /results zh 360 · journey cards drawn (settled YES, NO and void)
+    tile 076 /results zh 360
+  PASS routes /results sw 1280 · journey cards drawn (settled YES, NO and void)
+    tile 077 /results sw 1280
+  PASS routes /results en 1280 · journey cards drawn (settled YES, NO and void)
+    tile 078 /results en 1280
+  PASS routes /results zh 1280 · journey cards drawn (settled YES, NO and void)
+    tile 079 /results zh 1280
+  PASS routes /watchlist sw 360 · journey cards drawn (every phase)
+    tile 080 /watchlist sw 360
+  PASS routes /watchlist en 360 · journey cards drawn (every phase)
+    tile 081 /watchlist en 360
+  PASS routes /watchlist zh 360 · journey cards drawn (every phase)
+    tile 082 /watchlist zh 360
+  PASS routes /watchlist sw 1280 · journey cards drawn (every phase)
+    tile 083 /watchlist sw 1280
+  PASS routes /watchlist en 1280 · journey cards drawn (every phase)
+    tile 084 /watchlist en 1280
+  PASS routes /watchlist zh 1280 · journey cards drawn (every phase)
+    tile 085 /watchlist zh 1280
+  PASS routes · the similar rail draws journey cards as h3 for a pass holder
+    tile 086 similar rail sw 390
+
+live · journey /live (A21 item 6)
+    tile 087 /live sw 360 selection closed
+  PASS live sw 360 · a selection-closed row is drawn as the card's closed face
+    tile 088 /live sw 360 Up & Down
+  PASS live · an Up & Down row opens its round (the press lands on its /updown/<round>)
+    tile 089 /live sw 360 end of page 1 with Onyesha zaidi
+  PASS live · pressing "Onyesha zaidi" until it is gone draws exactly the hero's data-result-count (44)
+    tile 090 /live sw 1280 selection closed
+  PASS live sw 1280 · a selection-closed row is drawn as the card's closed face
+    tile 091 /live en 360 selection closed
+  PASS live en 360 · a selection-closed row is drawn as the card's closed face
+    tile 092 /live en 1280 selection closed
+  PASS live en 1280 · a selection-closed row is drawn as the card's closed face
+    tile 093 /live zh 360 selection closed
+  PASS live zh 360 · a selection-closed row is drawn as the card's closed face
+    tile 094 /live zh 1280 selection closed
+  PASS live zh 1280 · a selection-closed row is drawn as the card's closed face
+
+tafuta · Akaunti's Tafuta (A20 item 5)
+    tile 095 tafuta sw 360 closed
+    tile 096 tafuta sw 360 open
+  PASS tafuta · a search lands on /?q=… and the home says it in its line
+    tile 097 tafuta sw 360 landed
+    tile 098 tafuta en 360 closed
+    tile 099 tafuta en 360 open
+    tile 100 tafuta zh 360 closed
+    tile 101 tafuta zh 360 open
+
+ghost · a throttled hop from journey /live to / (A17 item 3)
+  PASS ghost 360 sw · every part lands within ±2px of its ghost (292 ghost frames)
+  PASS ghost 390 en · every part lands within ±2px of its ghost (374 ghost frames)
+  PASS ghost 1280 zh · every part lands within ±2px of its ghost (120 ghost frames)
+  PASS ghost · the classic control (the same throttled hop, by the classic top bar's link, no pass) lands on / and never mounts the home ghost
+  PASS ghost · RED: a ghost card moved 40px is reported off (the drive can fail)
+  PASS ghost · RED: a ghost in the page but hidden reports no ghost frame
+
+tap · a throttled tap from the home to a question page (A19 item 3)
+  PASS tap · the card's stretched link: no frame of the home's ghost on the way to the question (seen: [id]/loading's ghost; 435 frames)
+  PASS tap · an NDIO pick: no frame of the home's ghost on the way to the question (seen: [id]/loading's ghost; 409 frames)
+
+redirect · /markets for a pass holder, and for a reader with no pass
+  PASS redirect · a pass holder's document /markets?topic=sports&utm_source=x answers 307 to /?cat=sports&utm_source=x
+  PASS redirect · a reader with no pass gets HTTP 200 and the board
+  PASS redirect · a soft hop (the app router pushed to /markets?topic=sports (no classic link on the page)) lands on the home (/?cat=sports); loading frames in order: journey-home-ghost
+
+qa:journey-home — 83 passed · 0 failed · 0 blocked · 0 not measured · 101 tiles in /tmp/claude-0/l3/drives/jh-tiles
+dev server reports: none · page and console errors: 1
+journey-home-ghost in a pass holder's served /: found

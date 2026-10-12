@@ -1,0 +1,22 @@
+qa:journey-above-fold — http://localhost:3082 · Chromium 141.0.7390.37 · the red control alone
+  books: full → mkt_6a7dbbba1902d59ce8c3 ("Will the next Wasafi-released video pass 1M views in its first week?"), short → mkt_55bc97266b868f57b706
+
+§R · the red control: each plant's cell clean, then planted (page-only)
+  CAUGHT  a 300px How-to card — clean PASS · planted FAIL: R3 card 1's picks end 144.2px below the rail's top
+  CAUGHT  card 1 pushed down 200px — clean PASS · planted FAIL: R3 card 1's picks end 118.2px below the rail's top
+  CAUGHT  the How-to card pushed past the rail (700px) — clean PASS · planted FAIL: R2 the How-to card ends 213px below the rail's top; R3 card 1's picks end 544.2px below the rail's top
+  CAUGHT  the headline set on one line — clean PASS · planted FAIL: R4 the headline is 1 line(s), not two
+  CAUGHT  a journey element drawn before the How-to card — clean PASS · planted FAIL: R1 the first journey element in main is "journey-planted", not the How-to card
+  CAUGHT  the rail removed — clean PASS · planted INVALID: the rail is not on screen; R2 the How-to card ends 162px below the rail's top; R3 card 1's picks end 493.2px below the rail's top
+  CAUGHT  the session-ended notice hidden (all bars, a guest) — clean PASS · planted INVALID: the ended bar is not visible
+
+§T · the cells table (A5 (b)) — card 1's picks GATED or RECORDED; R1, R2 and R4 gated everywhere
+  360×640  bars none  → card 1's picks GATED
+  360×640  bars all   → card 1's picks RECORDED
+  360×740  bars none  → card 1's picks GATED
+  360×740  bars all   → card 1's picks RECORDED
+  390×844  bars none  → card 1's picks GATED
+  390×844  bars all   → card 1's picks GATED
+  plants: 7/7 caught
+
+✅ every gated cell PASS and every plant caught
