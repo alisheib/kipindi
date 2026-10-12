@@ -17,6 +17,8 @@
  * (`TICKER_ROUTES` in `lib/markets/ticker.ts` — the decision and its reasons live there) and
  * nowhere near money, identity, limits or the bet screen. It carries a real pause control, which a
  * phone never had (D32 / WCAG 2.2.2: hover and focus were the only ways to stop it).
+ * For a reader the shell put in the new journey, two of them (`JOURNEY_TICKER_ROUTES`: `/live` and `/results`), read
+ * from the `journey` prop AppShell's journey arm alone passes (the Vodacom plan S7, WP8; see the note at `LiveTicker`).
  * ⚠️ The page gate is CLIENT-SIDE ON PURPOSE. `AppShell` sits in the ROOT layout, and a layout is
  * not re-rendered on a soft navigation — a server-side pathname check would keep the strip on
  * /wallet after a tap from /markets, or keep it off /markets after a tap from /wallet.
@@ -90,7 +92,14 @@ function Items({ events, prefix, verbs, sides }: { events: TickerEvent[]; prefix
   );
 }
 
-export function LiveTicker({ events }: { events: TickerEvent[] }) {
+/**
+ * `journey` is the SHELL's per-request answer (the Vodacom plan S7, WP8; S7-PLAN Open point 16): AppShell passes it in
+ * its journey arm alone, and the strip then keeps to the journey's two pages. Every other reader is served the else arm,
+ * today's element with no such prop, so it is false and the lobby list is today's.
+ * ⛔ A PROP, NEVER `useJourneyOn`: that hook's server snapshot is false, so the server would paint this 32px strip in the
+ * page's flow on a journey reader's `/` and hydration would take it away — a shift at the top of the page.
+ */
+export function LiveTicker({ events, journey = false }: { events: TickerEvent[]; journey?: boolean }) {
   const pathname = usePathname();
   /** HELD — a mouse resting on the strip, or keyboard focus inside it. Lets go by itself. */
   const [held, setHeld] = useState(false);
@@ -125,7 +134,7 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
     setReady(true);
   }, []);
 
-  const shown = events.length > 0 && tickerShowsOn(pathname);
+  const shown = events.length > 0 && tickerShowsOn(pathname, journey);
   // 🔴 A HOLD MUST NOT OUTLIVE THE STRIP. This component lives in the ROOT layout, so its state
   // survives a soft navigation while its DOM does not — and neither pointerleave nor blur fires on a
   // node that is removed. A mouse resting on the strip when the player clicked through to /updown
@@ -167,7 +176,8 @@ export function LiveTicker({ events }: { events: TickerEvent[] }) {
   const sides: Sides = { YES: sideWord(t, "YES", "MARKET"), NO: sideWord(t, "NO", "MARKET") };
 
   // A platform with no settlements has no strip. ⛔ Not an empty rail, not a placeholder line —
-  // A-5: nothing over a guess. And a page outside the lobby has no strip either (`TICKER_ROUTES`).
+  // A-5: nothing over a guess. And a page outside the lobby has no strip either (`TICKER_ROUTES`, or for a journey
+  // reader `JOURNEY_TICKER_ROUTES`).
   if (!shown) return null;
 
   /** The explicit choice WINS over a hold: pressing Play while the mouse still rests on the strip

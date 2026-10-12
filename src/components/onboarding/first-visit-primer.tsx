@@ -19,6 +19,7 @@ import { FiftyMark, TippingBar } from "@/components/brand";
 import { sideWord } from "@/lib/side-label";
 import { useT } from "@/lib/i18n";
 import { stemOf } from "@/lib/display-stem";
+import { useJourneyOn } from "@/lib/journey/journey-on";
 
 const STORAGE_KEY = "50pick-primer-seen";
 // ⛔ `s` = the marketing opt-out page (D6): somebody who came to STOP marketing is never shown a betting
@@ -267,6 +268,14 @@ export function FirstVisitPrimer() {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const { t } = useT();
+  /* ⭐ THE OLD PRIMER STANDS DOWN FOR A JOURNEY READER, ON EVERY ROUTE (the Vodacom plan S7, WP8; S7-PLAN Open point 17).
+     Whether the shell put this page in the new journey: false for everybody else, and on the server (`journey-on.ts`).
+     The How-to sheet replaces the primer for that reader (VODACOM-PLAN §3.8), so the term is the flag alone, never the
+     overlays' `isJourneySurface`. One term in the open effect and one in the render, and nothing else moves until S11
+     (Open point 18): HIDE_ON, SUPPRESS_ON, STORAGE_KEY and `primerForced` stay here, where their gates read them.
+     No flash: this component mounts in the browser only (`lazy-overlays.tsx`, `ssr: false`), after the shell's mark is
+     on the page, so for a journey reader the first answer it reads is already true. */
+  const journeyOn = useJourneyOn();
 
   /* The primer teaches the LONG-FORM product — its three cards are about a question with a
      YES/NO answer, not a price round — so the vocabulary is asked for as "MARKET". The lexicon
@@ -307,6 +316,7 @@ export function FirstVisitPrimer() {
     if (typeof window === "undefined") return;
     if (HIDE_ON.test(pathname ?? "/")) return;
     if (SUPPRESS_ON.test(pathname ?? "/")) return; // B-26 — not on a deep-linked detail
+    if (journeyOn) return; // S7 WP8 — never for a journey reader: the How-to sheet replaces it
     // 🔴 THE UA BLOCK MADE THIS COMPONENT UNPHOTOGRAPHABLE, AND THAT IS WHY EVERY DESIGN VERDICT
     // ON IT IS SOURCE-DERIVED. Every browser gate on this platform launches default-UA Chromium,
     // so each one captured a page where this modal never opened — including the support drive on
@@ -324,7 +334,7 @@ export function FirstVisitPrimer() {
     } catch {
       /* private browsing */
     }
-  }, [pathname]);
+  }, [pathname, journeyOn]);
 
   useEffect(() => {
     if (!open) return;
@@ -361,7 +371,10 @@ export function FirstVisitPrimer() {
   // over the bet widget it exists to stay away from. SUPPRESS_ON is the bet-intent moment, which
   // is the one place a modal must not be. ⭐ `ChatRoot.tsx` already tests its own HIDE_ON in both
   // the effect AND the render, which is the shape this should have had.
+  // ⭐ S7 WP8 · THE JOURNEY'S TERM IS IN BOTH TOO, straight after this guard, for the same reason: a primer that opened on a
+  // classic page is still `open` when a refresh switches the journey on, and only the render can take it down then.
   if (HIDE_ON.test(pathname ?? "/") || SUPPRESS_ON.test(pathname ?? "/")) return null;
+  if (journeyOn) return null;
 
   const c = CARDS[step];
 
