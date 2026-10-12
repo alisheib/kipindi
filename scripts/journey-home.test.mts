@@ -37,13 +37,17 @@
  *   §8 THE LIVE STRIP LEAVES / AND /markets FOR A JOURNEY READER (S7 WP8; VODACOM-PLAN §3.2, COMPLIANCE-DECISIONS
  *      2026-09-29 §10; S7-PLAN Open point 16), in AppShell and LiveTicker as written:
  *        · the strip's slot is ONE ternary on the shell's per-request answer (`journeyShown`, the one that chose the
- *          header), in today's place under the away summary and above the main landmark — never a `{journeyShown && …}`
- *          sibling, which would add a `false` child to every classic RSC payload;
+ *          header), in today's place under the away summary and above AppShell's OWN main landmark (the first after the
+ *          slot; OptOutShell's never counts, which a control proves) — never a `{journeyShown && …}` sibling, which
+ *          would add a `false` child to every classic RSC payload;
  *        · its journey arm alone says `journey`, and its else arm is today's element with today's props, verbatim, so a
  *          classic request's RSC row is today's (no `journey` key, not even false);
- *        · LiveTicker takes `journey = false`, so the else arm's missing prop is today's lobby list.
- *      Which pages each list holds is test:ticker-honesty's (11.1j, 11.2j); the client's call, and its refusal of the
- *      browser's `useJourneyOn` (its server snapshot is false: the strip would paint, then drop), are its 11.5.
+ *        · LiveTicker takes `journey = false`, so the else arm's missing prop is today's lobby list;
+ *        · and LiveTicker reads no client-side journey answer (Open point 16): nothing from journey-on.ts or the shell's
+ *          mark, and no hook, flag subscription, flag event, attribute or mark — `useJourneyOn`'s server snapshot is
+ *          false, so the strip would paint, then drop.
+ *      Which pages each list holds is test:ticker-honesty's (11.1j, 11.2j), and the client's call is its 11.5 (which
+ *      also refuses the hook, by its name only; 8.noflag is the refusal proved, by its own plants).
  *      ⚠️ §8 stands in its own delimited block (its world, checks and plants), after §2's and §3's plants, just before the
  *      file's run; each plant fails its own check ALONE wherever the defect is one thing (the two that rebuild the whole
  *      slot trip every arm's check).
@@ -525,6 +529,30 @@ const STRIP_SLOT = `{journeyShown ? ${STRIP_JOURNEY} : ${STRIP_TODAY}}`;
 const STRIP_SIGNATURE = "export function LiveTicker({ events, journey = false }: { events: TickerEvent[]; journey?: boolean }) {";
 /** AppShell's main landmark, as written (OptOutShell writes its own on one line): the plants' anchor below the slot. */
 const STRIP_MAIN = ["<MainLandmark>", "        <RouteTransition>{children}</RouteTransition>", "      </MainLandmark>"].join(LF);
+/** The client's own import line, as written: the anchor beside which a plant adds the hook's import. */
+const STRIP_TICKER_IMPORT = 'import { tickerShowsOn } from "@/lib/markets/ticker";';
+/**
+ * What a CLIENT-side journey answer is read through (Open point 16), which LiveTicker must never touch: the hook's module
+ * and the shell's mark, by any specifier; and every name or literal a hand-rolled flag subscription needs, imported or not.
+ * ⚠️ test:ticker-honesty 11.5 refuses the hook by its name only, and no plant reaches that clause (A4 fixes its twin's
+ * cases at 31); 8.noflag is the refusal proved here, by its own plants.
+ */
+const FLAG_MODULES = ["journey/journey-on", "journey/shell-mark"];
+const FLAG_NAMES = ["useJourneyOn", "subscribeJourneyFlag", "journeyFlagSnapshot", "raiseJourneyFlag", "JOURNEY_FLAG_EVENT",
+  "JOURNEY_FLAG_ATTR", "JOURNEY_SHELL_MARK", "50pick:journey-flag", "data-journey", "kp-journey-shell"];
+/** Every module specifier a file names: imported, re-exported, bare, dynamic or required. */
+const SPECIFIER = /(?:from|import|require)[ ]*[(]?[ ]*["'`]([^"'`]+)["'`]/g;
+
+/**
+ * The slot's place: after the away summary and before AppShell's OWN main landmark — the first `<MainLandmark>` after
+ * the slot, with no landmark between the away summary and the slot. Never the file's first `<MainLandmark>`: OptOutShell
+ * writes one too, and moving it above AppShell would move "the first" without moving the strip (8.slot.c).
+ */
+function stripPlaced(shell: string): boolean {
+  const away = shell.indexOf("<AwaySummaryBar"), at = shell.indexOf("<LiveTicker");
+  const main = at < 0 ? -1 : shell.indexOf("<MainLandmark>", at);
+  return away >= 0 && away < at && !shell.slice(away, at).includes("MainLandmark") && main > at;
+}
 
 type StripWorld = {
   shell: string;                 // src/components/layout/app-shell.tsx, as written (the checks decomment it)
@@ -539,14 +567,21 @@ function stripChecks(s: StripWorld, ok: Ok) {
   /** Every line of the shell that mounts the strip, trimmed. */
   const mounts = shell.split(LF).map((l) => l.trim()).filter((l) => l.includes("<LiveTicker"));
   const line = mounts[0] ?? "";
-  const away = shell.indexOf("<AwaySummaryBar"), at = shell.indexOf("<LiveTicker"), main = shell.indexOf("<MainLandmark>");
   const slot = {
     lines: mounts.length, elements: count(shell, "<LiveTicker"), sibling: count(shell, "&& <LiveTicker"),
     ternary: line.startsWith("{journeyShown ? <LiveTicker ") && line.includes(" : <LiveTicker ") && line.endsWith("/>}"),
-    placed: away >= 0 && away < at && at < main,
+    placed: stripPlaced(shell),
   };
-  ok("8.slot · AppShell's strip slot is ONE ternary on the shell's per-request answer (journeyShown, the one that chose the header), in today's place under the away summary and above the main landmark: one line, two LiveTicker elements, and never a {journeyShown && …} sibling (a false child in every classic RSC payload)",
+  ok("8.slot · AppShell's strip slot is ONE ternary on the shell's per-request answer (journeyShown, the one that chose the header), in today's place under the away summary and above AppShell's own main landmark: one line, two LiveTicker elements, and never a {journeyShown && …} sibling (a false child in every classic RSC payload)",
     slot.lines === 1 && slot.elements === 2 && slot.sibling === 0 && slot.ternary && slot.placed, j({ ...slot, line }));
+  // CONTROL · the place reader, on four small shells of AppShell's shape: OptOutShell's landmark written below AppShell or
+  // above it never changes the verdict; a slot above AppShell's landmark is placed, and a slot below it is not.
+  const appShell = (slotFirst: boolean) => ["export async function AppShell() {", "  return (<>", "      {session && <AwaySummaryBar />}",
+    ...(slotFirst ? [`      ${STRIP_SLOT}`] : []), `      ${STRIP_MAIN}`, ...(slotFirst ? [] : [`      ${STRIP_SLOT}`]), "  </>);", "}"].join(LF);
+  const optOut = "function OptOutShell() { return <MainLandmark>{children}</MainLandmark>; }";
+  const probe = [true, false].flatMap((slotFirst) => [[appShell(slotFirst), optOut], [optOut, appShell(slotFirst)]].map((parts) => stripPlaced(parts.join(LF))));
+  ok("8.slot.c · CONTROL · the place reader reads AppShell's own main landmark: a slot above it is placed whether OptOutShell is written below AppShell or above it, and a slot below it is not, either way",
+    j(probe) === j([true, true, false, false]), j(probe));
   const elseArm = count(shell, ` : ${STRIP_TODAY}}`);
   ok(`8.else · the else arm is today's element with today's props, verbatim (${STRIP_TODAY}): a request the resolver does not show the journey to is served today's RSC row, with no journey key — not even false`,
     elseArm === 1, j({ elseArm, line }));
@@ -556,6 +591,13 @@ function stripChecks(s: StripWorld, ok: Ok) {
   const signature = count(client, STRIP_SIGNATURE);
   ok(`8.default · LiveTicker takes journey = false, an optional prop, so the else arm's missing prop is today's lobby list (${STRIP_SIGNATURE})`,
     signature === 1, j({ signature }));
+  const specs = [...client.matchAll(SPECIFIER)].map((m) => m[1]);
+  const flag = {
+    imports: specs.filter((sp) => FLAG_MODULES.some((f) => sp.endsWith(f) || sp.endsWith(`${f}.ts`))),
+    names: FLAG_NAMES.filter((n) => client.includes(n)), specs: specs.length,
+  };
+  ok("8.noflag · LiveTicker reads no client-side journey answer (Open point 16): it imports nothing from journey-on.ts or the shell's mark, and names no useJourneyOn, flag subscription, flag event, attribute or mark — the strip's answer is the shell's prop alone, so what the server paints is what hydration keeps",
+    client.includes("tickerShowsOn(") && flag.specs >= 5 && flag.imports.length === 0 && flag.names.length === 0, j(flag));
 }
 
 /** One swap on a copy of a text. ⛔ An anchor that does not resolve exactly once THROWS: a broken plant, never a miss. */
@@ -588,6 +630,12 @@ function stripDefects(): Array<{ name: string; expect: RegExp; plant: (w: World)
       plant: (w) => inShell(w, ` ? ${STRIP_JOURNEY} : `, " ? <LiveTicker events={[]} journey /> : ") },
     { name: "LiveTicker's journey defaults to true (every classic reader's home and board lose the strip)", expect: /^8[.]default /, alone: true,
       plant: (w) => inClient(w, "journey = false }", "journey = true }") },
+    // Open point 16's refusal, each plant leaving the `shown` line as it is (11.5's regex still holds over both):
+    { name: "LiveTicker imports the browser's flag hook and reads it beside the shell's prop (the strip would paint, then drop)", expect: /^8[.]noflag /, alone: true,
+      plant: (w) => inClient(inClient(w, STRIP_TICKER_IMPORT, `${STRIP_TICKER_IMPORT}${LF}import { useJourneyOn } from "@/lib/journey/journey-on";`),
+        "  const pathname = usePathname();", `  const pathname = usePathname();${LF}  const journeyOn = useJourneyOn();`) },
+    { name: "LiveTicker subscribes to the flag by hand — no import, and the hook's name nowhere", expect: /^8[.]noflag /, alone: true,
+      plant: (w) => inClient(w, "  const pathname = usePathname();", `  const pathname = usePathname();${LF}  const flagged = useSyncExternalStore((cb) => { window.addEventListener("50pick:journey-flag", cb); return () => window.removeEventListener("50pick:journey-flag", cb); }, () => document.documentElement.hasAttribute("data-journey"), () => false);`) },
   ];
 }
 
