@@ -139,10 +139,11 @@ export const MARKERS = [
   // ─── S7 — A9 (2): the home lazy module's chunk, the How-to card, the How-to sheet and the journey card ──────────────
   // ⛔ Each row is PENDING until its WP adds `file` (see the header). Where each marker gets added:
   //   · HomeLazy — S7 WP6 adds home-lazy.tsx ("use client"; S7-PLAN WP6 Files and step 2) and WP7 mounts it from
-  //     journey-home.tsx. WP6 sets `marker` here to a string LITERAL only home-lazy.tsx holds in src/ (a comment or an
-  //     identifier does not survive the minifier: none of its loader lines is unique, since HowToCard is
-  //     howto-card.tsx's export and LazyHowToCard is imported by journey-home.tsx). qa:chunks-prod reports that marker
-  //     on / and fails it on any other route (A9 (3), A23 (d)).
+  //     journey-home.tsx. Its marker is a string LITERAL only home-lazy.tsx holds in src/ (a comment or an identifier
+  //     does not survive the minifier, and none of its loader lines is unique: HowToCard is howto-card.tsx's export and
+  //     LazyHowToCard is imported by journey-home.tsx). WP6 left it null for want of one; WP7 names each part
+  //     (`displayName`, "JourneyHome.<part>" — test:journey-home 5.lazy pins each name to its part), and the first name
+  //     is the marker. qa:chunks-prod reports that marker on / and fails it on any other route (A9 (3), A23 (d)).
   //   · HowToCard — WP6, howto-card.tsx: `data-testid="journey-howto-card"` (WP6 step 3), a next/dynamic part of
   //     home-lazy.tsx, so an own chunk on / once WP7 mounts it.
   //   · HowToSheet — WP6, onboarding/how-to-play-sheet.tsx: `data-testid="journey-howto-sheet"` (WP6 step 4), imported by
@@ -150,7 +151,7 @@ export const MARKERS = [
   //   · JourneyCard — WP5, cards/journey-card.tsx: `data-testid="journey-card"` (WP5 step 2), a server component (no
   //     directive), so in no client chunk at all.
   { id: "HomeLazy", stage: "S7", wp: "WP6", journey: true, byDesign: "/", module: true,
-    file: "src/components/journey/home/home-lazy.tsx", mountedBy: "src/components/journey/home/journey-home.tsx", marker: null,
+    file: "src/components/journey/home/home-lazy.tsx", mountedBy: "src/components/journey/home/journey-home.tsx", marker: '"JourneyHome.HowToCard"',
     expect: (route) => (route === "/" ? { module: "in", marker: "in" } : { module: "out", marker: "out" }) },
   { id: "HowToCard", stage: "S7", wp: "WP6", journey: true, part: "HowToCard",
     file: "src/components/journey/home/howto-card.tsx", mountedBy: "src/components/journey/home/journey-home.tsx", marker: '"journey-howto-card"',
@@ -642,9 +643,14 @@ export function selfTest({ table = MARKERS } = {}) {
     const r6 = readAll(b1, ["/"], { table, judgedRows: t6b.rows });
     const card = r6.routes[0].rows.find((x) => x.row.id === "JourneyCard")?.j;
     check("C6 a landed S7 row gets a verdict on the routes", card?.verdict === "as expected", card ? `${card.mark}; ${card.verdict}` : "PENDING");
+    // The rule for a row still waiting for its marker, on a copy of the table whose HomeLazy row has none (as WP6 left it).
     writeAt(a, "src/components/journey/home/home-lazy.tsx", `"use client";\n`);
-    const t6c = checkMarkerTable(a, [...CONTROLS, ...table]);
+    const unmarked = table.map((r) => (r.id === "HomeLazy" ? { ...r, marker: null } : r));
+    const t6c = checkMarkerTable(a, [...CONTROLS, ...unmarked]);
     check("C6 an S7 file landed while its row has no marker FAILS the table", !t6c.ok && Boolean(t6c.lines.find((l) => l.includes("HomeLazy") && l.includes("give the row its marker"))));
+    const t6d = checkMarkerTable(a, [...CONTROLS, ...table]);
+    const hl6 = t6d.lines.find((l) => l.includes("HomeLazy"));
+    check("C6 an S7 file landed without the marker its row names FAILS the table", !t6d.ok && Boolean(hl6?.startsWith("✗") && hl6.includes("held by no file")), hl6);
 
     // C10: the S7 home lazy module judged by the route's client modules, once landed, mounted and given a marker.
     const c = path.join(tmp, "c");

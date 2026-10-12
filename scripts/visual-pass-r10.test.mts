@@ -272,6 +272,7 @@ section("3 · A3 every chevronDown / chevronUp / arrowUp / arrowDown / arrowLeft
     ["src/components/layout/wallet-balance-pill.tsx", "<I.chevronDown s={12} />", 1, "frozen", "the classic capsule's caret, typed -ml-1 (r7c §6.2 holds the classic capsule byte for byte) — named for the integrator"],
     ["src/components/markets/filter-sheet.tsx", '<I.chevronDown s={14} edge="end" aria-hidden className="kp-fsheet-caret shrink-0 opacity-70" />', 1, "edge", "the filter trigger's end (§1)"],
     ["src/components/markets/menu-shell.tsx", '<I.chevronDown s={14} edge="end" aria-hidden className="kp-menu-caret shrink-0 opacity-70" />', 1, "edge", "the sort/topic menu's end: a centred control (§6)"],
+    ["src/components/journey/home/journey-home.tsx", '<I.chevronDown s={18} edge="end" />', 1, "edge", "the journey home's Onyesha zaidi: the end of a centred control (§6), more below (the Vodacom plan S7, WP7)"],
     ["src/components/proposals/vote-control.tsx", "<I.chevronDown s={18} />", 1, "alone", "alone in its 36×34 vote button"],
     ["src/components/proposals/vote-control.tsx", "<I.chevronUp s={18} />", 1, "alone", "alone in its 36×34 vote button"],
     ["src/components/ui/language-menu.tsx", '<I.chevronDown s={12} edge={journey ? "end" : undefined} aria-hidden className="kp-menu-caret hidden opacity-70 sm:inline" />', 1, "journey", "the language menu's end: the journey's header pulls it, the frozen classic header keeps its box"],
@@ -924,9 +925,23 @@ section("10 · R10-D a scrolling strip always shows a word being cut where it hi
     j({ jumps, maxJump }));
   ok("10.5′ PLANT · the listener as first drafted (every scroll read at once) is reported",
     !squash(code(SA).replace("() => markEdges(rail, true)", "() => markEdges(rail)")).includes("() => markEdges(rail, true)"));
-  ok("10.4′ · every scrolling strip is one of these: the one class (`QUERY_STRIP_CLASS`), the one hook (`data-strip-autoscroll`) — /results, /wallet, /markets, /positions, /updown history, /proposals, /watchlist, /notifications, receipts",
+  // ⭐ REGISTERED BY THE VODACOM PLAN S7 (WP7, 2026-10-12): the journey home's topic chips are a scrolling strip of the
+  // home's own class — the one fade (`kp-strip-fade`) and the one hook (`data-strip-autoscroll`; StripAutoScroll comes
+  // through the home's lazy module) — because QUERY_STRIP_CLASS lives in query-bar.tsx, whose import would bring its
+  // client parts into every visitor's first load of `/` (S7-PLAN Risk 5, §0h point 20), and because the canvas's rail
+  // bleeds to the screen's edge with nothing beside it (WP7 step 2 item 3); its ghost draws the same strip (A17 item 3).
+  const STRIP_FILES: Record<string, string> = {
+    "src/components/ui/query-bar.tsx": "the one class",
+    "src/components/journey/home/home-chips.tsx": "the journey home's chips: the fade, the hook",
+    "src/components/journey/home/journey-home-ghost.tsx": "the journey home's ghost: its chips' strip, aria-hidden",
+  };
+  const holders = PLAYER_TSX.filter((f) => code(f).includes("kp-strip-fade"));
+  const stripsOk = (files: string[]) => files.every((f) => f in STRIP_FILES);
+  ok("10.4′ · every scrolling strip is one of these: the one class (`QUERY_STRIP_CLASS`), the one hook (`data-strip-autoscroll`) — /results, /wallet, /markets, /positions, /updown history, /proposals, /watchlist, /notifications, receipts — and the journey home's chips, registered with the hook (S7 WP7)",
     code("src/components/ui/query-bar.tsx").includes('"kp-thin-scroll kp-strip-fade flex min-w-0 flex-1 items-center gap-1 overflow-x-auto pr-2 lg:flex-wrap lg:overflow-visible lg:pr-0"')
-      && PLAYER_TSX.filter((f) => code(f).includes("kp-strip-fade")).every((f) => ["src/components/ui/query-bar.tsx"].includes(f)));
+      && stripsOk(holders) && squash(code("src/components/journey/home/home-chips.tsx")).includes('data-filter-rail data-strip-autoscroll className="kp-thin-scroll kp-strip-fade kp-jhome__chips"'),
+    j(holders.filter((f) => !(f in STRIP_FILES))));
+  ok("10.4″ PLANT · the strip class typed in a player file nobody registered is reported", !stripsOk([...holders, "src/components/home/landing-hero.tsx"]));
   const plantCut = ss.stripPeekCut({ items: items.map((it) => ({ ...it, pressed: true })), scrollLeft: 0, clientWidth: W, scrollWidth: x - 4 + 12 });
   ok("10.3′ CONTROL · with the pill before the hidden one pressed, the cut stays off it (the active lens is never faded)", plantCut.end === 0);
 }
