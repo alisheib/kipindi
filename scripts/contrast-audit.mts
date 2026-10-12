@@ -771,6 +771,9 @@ const CHECKS: Check[] = [
   { name: "--text-subtle on --bg-elevated", fg: T.textSubtle, bg: T.bgElevated, min: 4.5 },
   { name: "--text-subtle on --panel", fg: T.textSubtle, bg: T.panel, min: 4.5 },
   { name: "--text-subtle on --bg-inset", fg: T.textSubtle, bg: T.bgInset, min: 4.5 },
+  // S7 WP5 · the journey card's result row is an inset well: its label ("Matokeo") sets the muted ink on it, beside the
+  // date in the subtle ink above (INTAKE §4c: a new pair is scored in the change that paints it).
+  { name: "--text-muted on --bg-inset (the journey card's result label)", fg: T.textMuted, bg: T.bgInset, min: 4.5 },
   { name: "--text-faint on --bg", fg: T.textFaint, bg: T.bg, min: 4.5 },
   { name: "--text-faint on --bg-elevated", fg: T.textFaint, bg: T.bgElevated, min: 4.5 },
 
