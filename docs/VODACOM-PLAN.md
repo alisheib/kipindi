@@ -754,7 +754,13 @@ body. Owner-level calls: §0h point 58, and 65 on.
     its null compare on a second fresh server **53/53**. Then: `qa:first-load --build --read` PASS (10 routes; the home's
     lazy module a client reference on `/` alone); local qa:live **334/334**; parity `--compare --allow-base` at the tip —
     its first run stalled 17 min inside a browser call in the Sell phase (a repro of that cell on a fresh tip server was
-    clean twice), so it re-runs under a 55-minute limit (19:05 EAT). ⭐ **Ali, 18:00 EAT: "maximum resources"** — three helper
+    clean twice); the re-run under a 55-minute limit **53/53** (224 matrix cells, 8 Sell, 44 book: no unexpected
+    difference). Then main moved: the minimum-stake change went live first (`de44e087`, another session's), which changes
+    pages a classic reader is served — so the release is rebased onto it (`origin/vodacom-s7-release2` `a7786df6`; S7's
+    suites green on it) and parity v3 runs again here: a baseline at `de44e087`, then the rebased tip (19:45 EAT), while
+    helper C re-runs `test:all` at `a7786df6`. Helper A named the two served differences left: `/`'s RSC data names the
+    home's lazy module in its client chunk list (plus two dev-only debug rows), and the production first load moves by
+    `/` +1.0 KB, `/account` +9.6 KB (the kit Input, A23 (d)), `/live` +0.1 KB, every route the same number of files. ⭐ **Ali, 18:00 EAT: "maximum resources"** — three helper
     sessions (claude.ai/code, this environment), each on its own VM, its transcript the record: **A**
     `session_01SrWuXa3LR3Rew6zEyHBXzJ` runs the served-skeleton null pair at main and the tip, qa:lost-chunk with its
     control and qa:chunks-prod `--self-test`, and WP9's four drives (on `4089c9c6`); **B** `session_01XGYT5pB9XzX5WLM7gxvAFJ`
