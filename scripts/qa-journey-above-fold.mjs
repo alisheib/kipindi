@@ -189,6 +189,8 @@ async function runCell(cell, { plant = null } = {}) {
   let j = judge(cell, m);
   const wantId = cell.book === "full" ? FULL_ID : SHORT_ID;
   if (cardOne !== wantId) j = { ...j, verdict: "INVALID", invalid: [...j.invalid, `card 1 is ${cardOne}, not the ${cell.book} book's ${wantId}`] };
+  // A5 (a): the post-flip page is measured, so the preview marker must have been there before it was hidden.
+  if (marker === null) j = { ...j, verdict: "INVALID", invalid: [...j.invalid, "no preview marker on the page before it was hidden (the pass did not hold)"] };
   let planted = null;
   if (plant) {
     if (plant.script) await page.evaluate(R1_PLANT, SEL).catch(() => {});
