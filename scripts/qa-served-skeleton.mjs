@@ -334,7 +334,17 @@ function normaliser(extras, without) {
 
 function idValue(el, v, without) {
   if (!without.has("streamed segment ids") && /^[SBP]:[0-9a-f]+$/.test(v)) return `${v[0]}:~`;
-  if (!without.has("the identity avatar's ids") && SVG_DEFS.has(el.tag) && /^c[tmgc][0-9a-z]+$/.test(v)) return `${v.slice(0, 2)}~`;
+  // ⭐ S7 WP1 calibration 4 (OMEGA-COMPILE01, 2026-10-12). An avatar's id is its kind's two letters, the base-36 hash of
+  // its seed, and — since the visual pass gave every avatar its own `useId` (identity-avatar.tsx: `"cm" +
+  // hashSeed(seed).toString(36) + uid`) — React's id after it; a clip path adds a "c". Only the HASH is this server's own
+  // (each fresh server mints a new demo player): it reads ~, and whatever follows it is kept, React's id among it, which
+  // the base normalisation reads. The rule this replaces asked for the bare hash to the end of the id, so today's
+  // `cm49rp65_R_5_` was never read: a null pair of two fresh servers at one commit differed in every signed-in cell, by
+  // exactly the avatar's gradient and clip path (7 of 14 cells, 4 lines each; the guest's 7 identical).
+  if (!without.has("the identity avatar's ids") && SVG_DEFS.has(el.tag)) {
+    const m = /^(c[tmgc])[0-9a-z]+([^0-9a-z].*)?$/.exec(v);
+    if (m) return `${m[1]}~${m[2] ?? ""}`;
+  }
   return v;
 }
 
@@ -854,6 +864,16 @@ function selfTest() {
     ok("null", "N.5 a Turbopack dev chunk whose module name changes is still a difference — only the 7-character hash is noise", f === "head", f);
     const tilde = { ...B, html: B.html.replace(`_${NB.tp}._.js`, "_050~h13._.js") };
     ok("null", "N.6 a hash holding '~' (as Turbopack's do) is read as the same noise", fieldsOf(A, tilde, { main: true }) === "(none)", fieldsOf(A, tilde, { main: true }));
+  }
+  {
+    // S7 WP1 calibration 4: today's avatar id is the seed's hash with the avatar's own `useId` after it
+    // (`cm49rp65_R_5_`, its clip path `…_R_5_c`). Two servers' hashes are noise; what follows the hash is still compared.
+    const withId = (base, id, rid) => ({ ...base, html: base.html.split(`id="${id}`).join(`id="${id}${rid}`) });
+    const ua = withId(A, NA.avatar, "_R_5_"), ub = withId(B, NB.avatar, "_R_9_");
+    ok("null", "N.7 an avatar id with its useId suffix (cm<hash>_R_n_, and its clip path's …c) is read as the same noise", fieldsOf(ua, ub, { main: true }) === "(none)", fieldsOf(ua, ub, { main: true }));
+    ok("null", "N.7b with \"the identity avatar's ids\" off, that pair differs", fieldsOf(ua, ub, { main: true, without: new Set(["the identity avatar's ids"]) }) !== "(none)", fieldsOf(ua, ub, { main: true, without: new Set(["the identity avatar's ids"]) }));
+    const other = withId(B, NB.avatar, "-x");
+    ok("null", "N.8 a suffix that is not React's id is still compared (only the hash is noise)", fieldsOf(withId(A, NA.avatar, "-y"), other, { main: true }) !== "(none)", fieldsOf(withId(A, NA.avatar, "-y"), other, { main: true }));
   }
   for (const name of [...BASE_NORMS.map(([n]) => n), ...ID_NORMS]) {
     const f = fieldsOf(A, B, { main: true, without: new Set([name]) });
