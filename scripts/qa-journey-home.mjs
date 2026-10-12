@@ -127,8 +127,18 @@ console.log(`  catalogue ${ids.length} live · portfolio ${JSON.stringify(portfo
 const free = ids.filter((m) => !(portfolio?.marketIds ?? []).includes(m.id));
 const STATE = { priced: free[0]?.id, oneSide: free[1]?.id, overCap: free[2]?.id, today: free[3]?.id, empty: free[4]?.id };
 const bet = async (marketId, n, yesRatio) => post(admin, "stress-bulk-bet", { marketId, n, yesRatio, stake: 1000, userPrefix: `jh${marketId.slice(-4)}` });
-const betLog = [await bet(STATE.priced, 12, 0.6), await bet(STATE.oneSide, 3, 1), await bet(STATE.overCap, 200, 0.995)];
-const ff = await post(admin, "fast-forward-market", { marketId: STATE.today, seconds: 5 * 3600, selectionSeconds: 4 * 3600 });
+// ⛔ stress-bulk-bet picks each bet's side at random by yesRatio, so "over the cap" is built from two exact calls: 199 YES
+// bets, then ONE NO bet by another bettor — the NO side's multiple is then about 1 + 199 × (1 − fee), far over the
+// display cap (100×), every run. (200 bets at 0.995 drew one NO bet on one run and two on the next: ≈87×, under it.)
+const betLog = [await bet(STATE.priced, 12, 0.6), await bet(STATE.oneSide, 3, 1), await bet(STATE.overCap, 199, 1),
+  await post(admin, "stress-bulk-bet", { marketId: STATE.overCap, n: 1, yesRatio: 0, stake: 1000, userPrefix: `nc${STATE.overCap.slice(-4)}` })];
+// "Closes today" is today in Dar es Salaam (EAT, UTC+3, the card's own clock): betting closes four hours out, or ten
+// minutes before the next EAT midnight when that comes sooner (at 20:20 EAT, four hours out is tomorrow: "1 day").
+const EAT_MS = 3 * 3600_000;
+const toEatMidnight = Math.floor((86_400_000 - ((Date.now() + EAT_MS) % 86_400_000)) / 1000);
+const todaySel = Math.max(5 * 60, Math.min(4 * 3600, toEatMidnight - 10 * 60));
+const ff = await post(admin, "fast-forward-market", { marketId: STATE.today, seconds: todaySel + 3600, selectionSeconds: todaySel });
+if (toEatMidnight - 10 * 60 < 5 * 60) console.log("  NOTE less than 15 minutes to midnight in Dar es Salaam: the closes-today card may read tomorrow");
 console.log(`  states ${JSON.stringify(STATE)} · bets ${betLog.map((b) => b.status).join("/")} · today ${ff.status}`);
 // The longest full question: its card clamps it to two lines.
 const LONGEST = ids.slice().sort((a, b) => b.titleEn.length - a.titleEn.length)[0];
