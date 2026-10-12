@@ -16,47 +16,17 @@
  * ⛔ THE SERVER RENDER STAYS ON, AND NO OPTION OBJECT: with neither `ssr: false` nor `loading`, `next/dynamic` adds no
  * Suspense boundary of its own (a boundary here would be outlined behind the shell — R4-J's E36), the server draws the
  * ghost the document opens on into its first HTML as before, and names this chunk in the page's head.
- * ⭐ A PART WHOSE CODE NEVER ARRIVES IS LEFT OUT, NOT FATAL — the shell's guard, character for character
- * (`test:visual-pass-r5d` §2 holds the two equal): a `ChunkLoadError` renders nothing (the move shows no ghost, then the
- * page), reported once per page to `/api/client-error`; any other error is thrown on. The guard is repeated, not
- * imported: `shell-lazy.tsx` is AppShell's alone and states it in itself (`test:journey-shell` 12.module.home,
- * 12.module.dynamic, 12.module.lost).
+ * ⭐ A PART WHOSE CODE NEVER ARRIVES IS LEFT OUT, NOT FATAL — the app's one lost-chunk guard (`layout/lost-chunk.ts`):
+ * a `ChunkLoadError` renders nothing (the move shows no ghost, then the page), reported once per page to
+ * `/api/client-error`; any other error is thrown on.
+ * ⚠️ IMPORTED SINCE THE VODACOM PLAN S7 (S7-PLAN WP6, amendments A13(a) and A24 item 5, 2026-10-12). This file carried the
+ * shell's guard repeated character for character, because `shell-lazy.tsx` was AppShell's alone and stated it in itself
+ * (`test:visual-pass-r5d` §2 held the two copies equal). WP6 lifted the guard into one module that every `next/dynamic`
+ * loader imports, so this copy is gone and r5d §2 holds this file to the import instead: its static imports are exactly
+ * `next/dynamic` and the guard, and it defines no guard of its own.
  */
 import dynamic from "next/dynamic";
-
-/** What a part renders when its code never arrived: nothing. */
-function Nothing(): null {
-  return null;
-}
-
-/** One report per page: the parts share one connection, so a dropped one would otherwise report each of them. */
-let reported = false;
-
-/**
- * The end of every part's loader: a `ChunkLoadError` (the browser could not fetch the part's code) leaves the part out,
- * reported once; anything else is thrown on, as it was before WP6c. See "A PART WHOSE CODE NEVER ARRIVES" above.
- */
-function nothingIfLost(error: unknown): typeof Nothing {
-  if (!(error instanceof Error) || error.name !== "ChunkLoadError") throw error;
-  if (!reported && typeof window !== "undefined") {
-    reported = true;
-    try {
-      const body = JSON.stringify({
-        message: `A part of the shell never arrived and was left out: ${error.message}`.slice(0, 1_000),
-        stack: String(error.stack ?? "").slice(0, 4_000),
-        path: window.location.pathname,
-        digest: null,
-        build: String((globalThis as { NEXT_DEPLOYMENT_ID?: string }).NEXT_DEPLOYMENT_ID ?? "") || null,
-      });
-      if (typeof navigator.sendBeacon === "function") {
-        navigator.sendBeacon("/api/client-error", new Blob([body], { type: "application/json" }));
-      }
-    } catch {
-      /* reporting must never be the thing that breaks the page */
-    }
-  }
-  return Nothing;
-}
+import { nothingIfLost } from "@/components/layout/lost-chunk";
 
 // The journey's loading state, page by page (`route-ghost.tsx`), for a journey request only: `app/loading.tsx` renders
 // it from its journey arm, handing it the rails that pay out (read on the server).
