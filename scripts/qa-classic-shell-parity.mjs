@@ -86,10 +86,18 @@
  * one server 60 of its 73 element lines apart — and /'s head from the BYTES (the canonical link and every og:* meta, in
  * order). Every classic card state S7 touches must be drawn somewhere in the book (B.7): live priced, one-sided, empty
  * pool, selection closed, resolved YES and NO, void. The book's normalisers (BOOK_NORMALISERS: market ids, time-left
- * labels, EAT dates, relative times, chart paths, the identity avatar's ids, chunk hashes) exist one by one and are OFF
- * unless calibration proves two fresh servers of one tree disagree on them (WP1 step 4: never guessed); this file's
- * switches turn them on, `--norm <ids>` (or KP_PARITY_NORMALISE) for one run. A baseline records its set
- * (matrix.book.normalise), and a compare under another set is refused, as is any file that is not v3. The live trace
+ * labels, EAT dates, relative times, chart paths, the identity avatar's ids, chunk hashes, tied cards) exist one by one
+ * and are OFF unless calibration proves two fresh servers of one tree disagree on them (WP1 step 4: never guessed); this
+ * file's switches turn them on, `--norm <ids>` (or KP_PARITY_NORMALISE) for one run. ON, each with the null pair that
+ * proved it (BOOK_NORMALISE_ON): market ids (9b18ea59's pair: each server mints its own), EAT dates (090bbf76's pair: a
+ * seeded /watchlist row's moments are its own seeding moment's) and tied cards (090bbf76's pair: four /markets cards that
+ * state the same figures stand in their ids' order, the board's last tie-break, so each server drew its own; only cards
+ * that state the same figures are read in their titles' order, and a card that states any figure differently never
+ * moves). And since 090bbf76's pair, where four lazy payment logos on the guest's / at 360 read 0x0 on one server and
+ * were drawn on the other, every book cell is read SETTLED (BOOK_SETTLE): each lazy image in its regions is loaded before
+ * any box is read, and its attribute put back, so the markup is the server's. A baseline records its set
+ * (matrix.book.normalise) and its procedure (matrix.book.settle), and a compare under another set or another procedure
+ * is refused, as is any file that is not v3. The live trace
  * sees S7's class names too (A8 item 3, JOURNEY_CLASS_PARTS). --prove-red is taught the bodies: each §B check goes red on
  * its own plant (P.check B.*); the head reader, the normalisers, A8's two verdicts, the card classifier and the trace are
  * tried on synthetic input (P.8*); and in the browser a card class changed in one route's body is reported in that body
@@ -180,7 +188,9 @@ const MODE = BASELINE ? "baseline" : COMPARE ? "compare" : "prove-red";
  * through: the matrix and the Sell cells never see them.
  *   · text  a rewrite of a book cell's recorded markup, signatures and head (`apply`); P.8n holds each to its own
  *           sample, its control, idempotence, the work `norm` does not already do, and to acting exactly when it is on;
- *   · page  a selector handed to the page (SNAPSHOT's `book.chart`) only when it is on.
+ *   · page  what is handed to the page (`hands`, as a book cell's `book[arg]`) only when it is on: chart-paths' selector
+ *           (SNAPSHOT's `book.chart`), and tied-cards' terms (`book.tied`, which captureBookCell runs as UNTIE_CARDS
+ *           before every snapshot). P.8n holds each to being handed exactly when it is on; P.8o holds UNTIE_CARDS.
  */
 /** The page normaliser's charts: a card's 24h spark (micro-spark.tsx) and the Up & Down band's track (updown-match-track.tsx). */
 const CHART_SVGS = "svg.mcardp-spark, svg.kp-udtrack__svg";
@@ -224,7 +234,7 @@ const BOOK_NORMALISERS = [
   {
     id: "chart-paths", kind: "page",
     what: "a chart's own geometry: inside CHART_SVGS every shape's box reads ~ and its d, points and coordinates ~",
-    selector: CHART_SVGS,
+    arg: "chart", hands: CHART_SVGS,
   },
   {
     id: "avatar-ids", kind: "text",
@@ -247,6 +257,12 @@ const BOOK_NORMALISERS = [
     expect: '<link rel="stylesheet" data-precedence="next_static/chunks/~.css"/><i data-chunk="src_app_page_tsx_~._.js" class="__className_~"></i>',
     control: '<span class="kp-tag-0a1b2c3d">deadbeef12 · page_tsx._.css · __className</span>',
   },
+  {
+    id: "tied-cards", kind: "page",
+    what: "the order of market cards that stand side by side AND state the same figures: in each parent, a run of V18 surfaces (data-market-surface — a grid card, the featured card, a board row), each the very next node after the one before it, is cut into stretches whose surfaces state exactly the same figures (the same kind of surface, and every data-market-part but the source — pool, time, state, price, predictors, pick — word for word), and each stretch is read in its titles' order (the stretched link's aria-label, else the question's text), in its own place, before any region is read. A card that states any figure differently from its neighbour never moves, so an order change between unlike cards is still compared; an order change between cards that state the same figures is not seen",
+    arg: "tied",
+    hands: { surface: "data-market-surface", part: "data-market-part", except: ["source"], link: "mcardp-open", title: ["mcardp-q", "kp-qrow__q"] },
+  },
 ];
 /** ⭐ THIS FILE'S SWITCHES: the normalisers a calibration null pair has proved necessary, by id (VODACOM-PLAN §0j).
  *  · market-ids — WP1 step 6's null pair, 2026-10-12 (ALI-BLADE15): the baseline captured at 9b18ea59 and a null compare
@@ -256,8 +272,30 @@ const BOOK_NORMALISERS = [
  *    same nine cards drawn in another order — which no normaliser here absorbs and none should: seed-watchlist starred
  *    inside one millisecond, so the page's newest-first order hung on the loop's speed. The seed now stars one
  *    millisecond apart at least (its route, the same commit), and the order is the stars' own. Every other candidate
- *    stays off: the pair needed none of them. */
-const BOOK_NORMALISE_ON = ["market-ids"];
+ *    stays off: the pair needed none of them.
+ *  · eat-dates — calibration 2's null pair, 2026-10-12 (OMEGA-COMPILE01): the baseline captured at 090bbf76 (WP1 on main
+ *    b7c55deb; this file byte-identical) with market-ids on, and a null compare on a second fresh in-memory server of the
+ *    same commit. The matrix's 224 cells and the 8 Sell cells were identical; 13 of the book's 44 cells differed, one
+ *    field each (13 of its 196 fields), for three causes. Four were the player's /watchlist (en and sw, 360 and 1280,
+ *    regions.main.html): its seeded rows state five moments — 14 Oct, 10:27 (the time part of the card "Bitcoin closes
+ *    above $100,000 on 1 August"), 13 Oct, 10:28, and 12 Oct, 22:27, 16:27 and 12:27 on the baseline's server — and each
+ *    read 27 minutes later on the null's (14 Okt in Swahili): a seeded row's moment is its own seeding moment's, and the
+ *    two servers seeded 27 minutes apart. eat-dates reads each as ~date; with it on, ALI-BLADE15's offline reader of the
+ *    pair (book-noise.cjs) leaves 9 of the 13 fields, none of them a date.
+ *  · tied-cards — the same pair: eight were /markets (guest and player, en and sw, 360 and 1280, regions.main.html), where
+ *    four fresh cards of seedDemoMarkets' catalogue stand side by side, each closing six days after the seed — "Will
+ *    Mwanza max temperature exceed 32°C this Sunday?" and the Bitcoin, Ethereum and Solana "close above … next Sunday?"
+ *    (market-service.ts:5044, :5049-5051) — drawn Mwanza, Ethereum, Bitcoin, Solana on the baseline's server and Mwanza,
+ *    Bitcoin, Solana, Ethereum on the null's. The board's default sort is the pool (discovery.ts:178), its tie-break the
+ *    betting close (:491) and then byId (:536, query/sort.ts:132): the four have no pool and one close instant, so their
+ *    order is their ids', which each server mints (market-ids' own reason). They state the same figures (no bets yet, be
+ *    the first to predict, YES and NO, no pool yet, 5d left), so their boxes were equal and only the markup moved; tied
+ *    cards whose titles wrap differently would move the boxes too, which only an order made in the page absorbs
+ *    (UNTIE_CARDS, before every snapshot). The same function, run on a parsed copy of the pair's stored markup with
+ *    eat-dates, leaves 1 of the 13 fields: it reads one tied stretch of four in each of the eight /markets cells, and
+ *    nothing else in the book's 44 cells. That field is no normaliser's: BOOK_SETTLE records it. Every other candidate
+ *    stays off: neither pair needed one. */
+const BOOK_NORMALISE_ON = ["market-ids", "eat-dates", "tied-cards"];
 /** The ids a switch names, in BOOK_NORMALISERS' order; a name that is not a candidate is refused. */
 function normaliseIds(text, from) {
   const ids = BOOK_NORMALISERS.map((n) => n.id);
@@ -275,6 +313,25 @@ if (NORM_SWITCHES.length === 2 && NORM_SWITCHES[0][1].join() !== NORM_SWITCHES[1
 /** Where this run's set came from: null for this file's switches, else the switch that overrode them for this run. */
 const NORM_SOURCE = NORM_SWITCHES.length ? NORM_SWITCHES.map(([from]) => from).join(" and ") : null;
 const BOOK_NORMALISE = NORM_SWITCHES.length ? NORM_SWITCHES[0][1] : normaliseIds(BOOK_NORMALISE_ON.join(",") || "none", "BOOK_NORMALISE_ON");
+/** tied-cards' terms, handed to the page as a book cell's `book.tied` while it is on (UNTIE_CARDS reads them). */
+const TIED_CARDS = BOOK_NORMALISERS.find((n) => n.id === "tied-cards").hands;
+/**
+ * ⭐ S7 WP1 calibration 2 · THE BOOK IS READ SETTLED — this harness's capture procedure for a book cell, recorded in a
+ * baseline (matrix.book.settle); --compare refuses a baseline read under another, as it refuses another normaliser set.
+ *   · lazy-images  every img[loading="lazy"] inside the regions a book cell captures is told to load and awaited before
+ *                  any box is read, then given its own loading attribute back (SETTLE_LAZY), so the markup is the
+ *                  server's and an image's box no longer hangs on whether the browser happened to fetch it.
+ * The pair that showed it is 090bbf76's (BOOK_NORMALISE_ON's eat-dates records it): its ninth differing field, the
+ * guest's / at 360 in English (regions.main.layout, 4 of 556 element lines), was the payment rail's four logos
+ * (/pay/mpesa.svg, airtel.png, halopesa.png and mixx.png, loading="lazy" at y≈5380 in a 40×40 slot each), 0x0 on the
+ * baseline's server and drawn on the null's (M-Pesa's 26x22); nothing else in the cell moved. A lazy image that has not
+ * loaded LAZY_SETTLE_MS after the settle began is a warning in the log, never a hang, and its box is read as the browser
+ * left it. --prove-red's book phase holds the settle to a lazy image it plants out of the browser's reach: 0x0 in a
+ * capture without the settle, drawn in one with it, and the markup of the two the same.
+ */
+const BOOK_SETTLE = ["lazy-images"];
+/** How long a book cell's settle waits, in all, for its lazy images to load. */
+const LAZY_SETTLE_MS = 10_000;
 
 const BASE = process.env.KP_BASE ?? "http://localhost:3041";
 if (!/^http:\/\/localhost(:\d+)?$/.test(BASE)) {
@@ -417,6 +474,8 @@ const BOOK = {
   markets: 12,
   /** The book's normalisers this run (BOOK_NORMALISERS): a baseline records them, and a compare must use the same. */
   normalise: BOOK_NORMALISE,
+  /** How a book cell is read (BOOK_SETTLE): a baseline records it, and a compare must read the same way. */
+  settle: BOOK_SETTLE,
 };
 /** The book's text normalisers switched on for this run, in BOOK_NORMALISERS' order. */
 const BOOK_TEXT = BOOK_NORMALISERS.filter((n) => n.kind === "text" && BOOK.normalise.includes(n.id));
@@ -889,7 +948,8 @@ const STRIP_STILL = [
 ].join(NL);
 /** The question page's similar rail (app/markets/[id]/page.tsx). */
 const SIMILAR_RAIL = 'section[aria-labelledby="similar-markets-heading"]';
-/** S7 WP1 · what SNAPSHOT is asked for a book cell: the route's regions and cards, and chart-paths' selector only when on. */
+/** S7 WP1 · what SNAPSHOT is asked for a book cell: the route's regions and cards, and chart-paths' selector only when on;
+ *  and, only while tied-cards is on, its terms (`tied`), which captureBookCell runs as UNTIE_CARDS before every snapshot. */
 const bookArgsOf = (route) => ({
   crest: CREST, props: PROPS, animated: ANIMATED, notFound: false, pageBody: false, trace: TRACE,
   book: {
@@ -898,15 +958,88 @@ const bookArgsOf = (route) => ({
     marks: CARD_MARKS,
     chart: BOOK.normalise.includes("chart-paths") ? CHART_SVGS : null,
     chartAttrs: CHART_ATTRS,
+    tied: BOOK.normalise.includes("tied-cards") ? TIED_CARDS : null,
   },
 });
+
+/**
+ * ⭐ S7 WP1 calibration 2 · tied-cards, RUN IN THE PAGE: while it is on, captureBookCell hands it a book cell's regions and
+ * tied-cards' terms (`book.tied`) before every snapshot, so every region — markup, boxes and styles — is read in its
+ * order. In each parent, a run of market surfaces (`surface`) that stand side by side, each the very next node after the
+ * one before it, is cut into stretches that state the same figures: the same kind of surface, and every `part` in it but
+ * `except`, by name and by text, in order. Each stretch of two or more is put in its titles' order (code points; equal
+ * titles keep their places) — the stretched link's aria-label (`link`), else the text of the question (`title`) — back
+ * into the stretch's own place. A surface that states any figure differently from its neighbour starts a stretch of its
+ * own, so it never moves, and nothing inside a surface is ever touched. Self-contained: Playwright serialises it, so it
+ * may close over nothing. Given `roots` (--prove-red P.8o's synthetic trees) it reads only those, and it uses no DOM but
+ * childNodes, nodeType, getAttribute, textContent, nextSibling and insertBefore. Returns how many surfaces it moved.
+ */
+const UNTIE_CARDS = ({ regions, surface, part, except, link, title }, roots = null) => {
+  const tops = roots ?? regions.flatMap((s) => [...document.querySelectorAll(s)]);
+  const kids = (n) => [...n.childNodes].filter((c) => c.nodeType === 1);
+  const classed = (el, names) => String(el.getAttribute("class") ?? "").split(/\s+/).some((c) => names.includes(c));
+  const within = (el, pick) => kids(el).flatMap((c) => [...(pick(c) ? [c] : []), ...within(c, pick)]);
+  const figures = (el) => [el.getAttribute(surface), ...within(el, (e) => e.getAttribute(part) !== null && !except.includes(e.getAttribute(part)))
+    .map((e) => `${e.getAttribute(part)}=${e.textContent}`)].join("\n");
+  const titleOf = (el) => {
+    const named = within(el, (e) => classed(e, [link]) && e.getAttribute("aria-label") !== null)[0];
+    if (named) return named.getAttribute("aria-label");
+    const q = within(el, (e) => classed(e, title))[0];
+    return q ? q.textContent : "";
+  };
+  let moved = 0;
+  const visit = (parent) => {
+    const els = kids(parent);
+    for (let i = 0; i < els.length;) {
+      if (els[i].getAttribute(surface) === null) { i++; continue; }
+      let j = i + 1;
+      while (j < els.length && els[j].getAttribute(surface) !== null && els[j - 1].nextSibling === els[j]) j++;
+      const run = els.slice(i, j).map((el) => ({ el, figures: figures(el), title: titleOf(el) }));
+      for (let a = 0; a < run.length;) {
+        let z = a + 1;
+        while (z < run.length && run[z].figures === run[a].figures) z++;
+        const stretch = run.slice(a, z);
+        const ordered = [...stretch].sort((x, y) => (x.title < y.title ? -1 : x.title > y.title ? 1 : 0));
+        if (ordered.some((s, k) => s !== stretch[k])) {
+          const after = stretch[stretch.length - 1].el.nextSibling;
+          for (const s of ordered) parent.insertBefore(s.el, after);
+          moved += ordered.filter((s, k) => s !== stretch[k]).length;
+        }
+        a = z;
+      }
+      i = j;
+    }
+    for (const c of kids(parent)) if (c.getAttribute(surface) === null) visit(c);
+  };
+  for (const t of tops) visit(t);
+  return moved;
+};
+
+/**
+ * ⭐ S7 WP1 calibration 2 · BOOK_SETTLE's "lazy-images", RUN IN THE PAGE by captureBookCell once the page has opened and
+ * before its first snapshot: every img[loading="lazy"] inside the cell's regions is told to load (loading="eager"), all
+ * are awaited until `complete` for at most `ms` in all — never a hang: one that has not loaded by then is named, and its
+ * box is read as the browser left it — and each is given its own loading attribute back before anything is serialised.
+ * Self-contained (Playwright serialises it). Returns how many lazy images it found, and the src of each that did not load.
+ */
+const SETTLE_LAZY = async ({ regions, ms }) => {
+  const imgs = [...new Set(regions.flatMap((s) => [...document.querySelectorAll(s)]).flatMap((r) => [...r.querySelectorAll('img[loading="lazy"]')]))];
+  const was = imgs.map((img) => img.getAttribute("loading"));
+  for (const img of imgs) img.setAttribute("loading", "eager");
+  const until = Date.now() + ms;
+  while (imgs.some((img) => !img.complete) && Date.now() < until) await new Promise((go) => setTimeout(go, 50));
+  const unloaded = imgs.filter((img) => !img.complete).map((img) => img.getAttribute("src") ?? "");
+  imgs.forEach((img, i) => img.setAttribute("loading", was[i]));
+  return { lazy: imgs.length, unloaded };
+};
 
 /**
  * Runs IN THE PAGE. Self-contained: Playwright serialises it, so it may close over nothing. `trace` is TRACE (S7 WP1, A8
  * item 3: every caller hands it in). `book` (S7 WP1) is set for a book cell only: the regions it names replace the
  * shell's, the overlay census is skipped, its classic cards' facts are read (cardStateOf names their states), and
- * `book.chart` — chart-paths' selector, null unless that normaliser is on — reads a chart's shapes as "~". Without
- * `book`, every capture is as it was.
+ * `book.chart` — chart-paths' selector, null unless that normaliser is on — reads a chart's shapes as "~" (`book.tied`
+ * is not read here: captureBookCell runs UNTIE_CARDS with it before each snapshot). Without `book`, every capture is as
+ * it was.
  */
 const SNAPSHOT = ({ crest, props, animated, notFound, pageBody, sell, confirm, trace, book }) => {
   const r2 = (n) => Math.round(n * 2) / 2;
@@ -1522,7 +1655,8 @@ if (COMPARE) {
   try { baseline = JSON.parse(readFileSync(COMPARE, "utf8")); } catch (e) { refuse(`cannot read the baseline ${COMPARE}: ${msg(e)}`); }
   // ⭐ S7 WP1 · in this order: the kind and the version (a v2 file was captured before the book existed, so it holds none
   // of the book's cells or fields, and can be no v3 baseline: WP1 step 1, A2 item 3); then the book's normalisers (WP1
-  // step 4: a baseline is only comparable under the set it was captured with); then the rest of the matrix.
+  // step 4: a baseline is only comparable under the set it was captured with); then the way the book was read
+  // (calibration 2, BOOK_SETTLE); then the rest of the matrix.
   const notThis = () => `${COMPARE} is not a v${VERSION} ${KIND} capture of this matrix (kind=${baseline?.kind}, version=${baseline?.version}, captured at ${short(baseline?.base?.sha) || "an unnamed commit"}).`;
   const where = `Capture a v${VERSION} baseline into a NEW file at the base VODACOM-PLAN names for it (v3: §0j, S7-PLAN WP1 step 6; v2: §0i, S6 A8 and A18).`;
   if (baseline?.kind !== KIND || baseline.version !== VERSION) {
@@ -1533,6 +1667,12 @@ if (COMPARE) {
   const theirs = Array.isArray(baseline.matrix?.book?.normalise) ? baseline.matrix.book.normalise : null;
   if (!theirs || [...theirs].sort().join() !== [...BOOK.normalise].sort().join()) {
     refuse(`${COMPARE} was captured with the book normalisers [${theirs ? theirs.join(", ") || "none" : "unrecorded"}], and this run uses [${BOOK.normalise.join(", ") || "none"}]. A different set needs a NEW baseline captured under it (S7-PLAN WP1 step 4); --norm (or KP_PARITY_NORMALISE) can match the baseline's set for a calibration run.`);
+  }
+  // ⭐ S7 WP1 calibration 2 · and the way its book cells were read (BOOK_SETTLE): a book read unsettled holds whatever
+  // boxes the browser happened to leave its lazy images, so a baseline is only comparable when it was read the same way.
+  const readAs = Array.isArray(baseline.matrix?.book?.settle) ? baseline.matrix.book.settle : null;
+  if (!readAs || readAs.join() !== BOOK.settle.join()) {
+    refuse(`${COMPARE} was captured under the book's capture procedure [${readAs ? readAs.join(", ") || "none" : "unrecorded"}], and this run reads the book under [${BOOK.settle.join(", ")}] (BOOK_SETTLE: every lazy image in a book cell's regions loaded before a box is read). A different procedure needs a NEW baseline captured under it.`);
   }
   if (JSON.stringify(baseline.matrix) !== JSON.stringify(MATRIX)) refuse(`${notThis()} ${where}`);
   if (baseline.role !== "baseline" || baseline.rejected !== false) {
@@ -1914,6 +2054,8 @@ async function waitForStrip(jar) {
  * still; or the question page's similar rail), its classic cards by state, the journey trace in the page and in the
  * bytes, and on / the head from the bytes. --prove-red plants through `plant`: `css` and `js` in the page as the matrix's
  * are, and `bytes` on the bytes the harness reads (the head and the raw trace) — never on what the browser renders.
+ * Calibration 2: the cell is read SETTLED (BOOK_SETTLE, SETTLE_LAZY) before its first snapshot — except in --prove-red's
+ * one control capture (`plant.unsettled`) — and, while tied-cards is on, UNTIE_CARDS runs before every snapshot.
  */
 async function captureBookCell(jar, locale, width, route, similarId, plant = null) {
   const ctx = await b.newContext({ viewport: { width, height: HEIGHT } });
@@ -1926,12 +2068,24 @@ async function captureBookCell(jar, locale, width, route, similarId, plant = nul
     const { status, body: sent } = await open(page, target, { css: `${STRIP_STILL}${plant?.css ? `${NL}${plant.css}` : ""}`, js: plant?.js ?? null });
     const body = plant?.bytes && typeof sent === "string" ? plant.bytes(sent) : sent;
     const args = bookArgsOf(route);
+    const regions = Object.values(args.book.regions);
+    if (!plant?.unsettled) {
+      const settled = await page.evaluate(SETTLE_LAZY, { regions, ms: LAZY_SETTLE_MS });
+      if (settled.unloaded.length) {
+        console.log(`  ⚠ ${keyOf(`book-${jar.length ? "player" : "guest"}`, locale, width, route)} — ${settled.unloaded.length} of its ${settled.lazy} lazy image(s) had not loaded ${secs(LAZY_SETTLE_MS)} into the settle, so their boxes are read as the browser left them: ${settled.unloaded.join(", ")}`);
+      }
+    }
+    const untie = args.book.tied ? { ...args.book.tied, regions } : null;
+    const read = async () => {
+      if (untie) await page.evaluate(UNTIE_CARDS, untie);
+      return page.evaluate(SNAPSHOT, args);
+    };
     const seen = (s) => JSON.stringify([s.url, s.regions, s.journey, s.cards]);
-    let snap = await page.evaluate(SNAPSHOT, args);
+    let snap = await read();
     let stable = false;
     for (let i = 0; i < 6 && !stable; i++) {
       await page.waitForTimeout(700);
-      const next = await page.evaluate(SNAPSHOT, args);
+      const next = await read();
       stable = seen(next) === seen(snap);
       snap = next;
     }
@@ -2415,7 +2569,7 @@ async function proveRed() {
 
   // ②c S7 WP1 · the book's normalisers (WP1 step 4): each text normaliser maps its own sample to what it names, leaves its
   // control as it is, is idempotent, does work `norm` does not (it runs after it), rewrites no other normaliser's sample,
-  // and acts exactly when it is switched on; the page normaliser is a selector handed to the page only when on.
+  // and acts exactly when it is switched on; each page normaliser is handed to the page (its `book[arg]`) only when on.
   {
     const on = (n) => BOOK.normalise.includes(n.id);
     const texts = BOOK_NORMALISERS.filter((n) => n.kind === "text");
@@ -2431,13 +2585,126 @@ async function proveRed() {
       if ((bookNorm(n.sample) !== norm(n.sample)) !== on(n)) fails.push(`${n.id} ${on(n) ? "is on and does not act" : "acts while it is off"}`);
     }
     for (const n of pages) for (const r of BOOK.routes) {
-      const handed = bookArgsOf(r).book.chart;
-      if (handed !== (on(n) ? n.selector : null)) fails.push(`${n.id} hands the page ${JSON.stringify(handed)} on ${r} while it is ${on(n) ? "on" : "off"}`);
+      const book = bookArgsOf(r).book;
+      if (!n.arg || !(n.arg in book) || n.hands == null) { fails.push(`${n.id} names no book argument it hands the page`); continue; }
+      if (book[n.arg] !== (on(n) ? n.hands : null)) fails.push(`${n.id} hands the page ${JSON.stringify(book[n.arg])} on ${r} while it is ${on(n) ? "on" : "off"}`);
     }
     const ids = BOOK_NORMALISERS.map((n) => n.id);
     if (new Set(ids).size !== ids.length || texts.length + pages.length !== ids.length) fails.push("each candidate is one id, of kind text or page");
-    ok(`P.8n each candidate text normaliser (${texts.map((n) => n.id).join(", ")}) maps its own sample, leaves its control as it is, is idempotent, does work \`norm\` does not, and acts exactly when it is switched on (this run: ${BOOK.normalise.join(", ") || "none"}); the page normaliser (${pages.map((n) => n.id).join(", ")}) is a selector handed to the page only when on`,
+    ok(`P.8n each candidate text normaliser (${texts.map((n) => n.id).join(", ")}) maps its own sample, leaves its control as it is, is idempotent, does work \`norm\` does not, and acts exactly when it is switched on (this run: ${BOOK.normalise.join(", ") || "none"}); each page normaliser (${pages.map((n) => n.id).join(", ")}) is handed to the page only when on`,
       fails.length === 0, JSON.stringify(fails).slice(0, 400));
+  }
+  // ②c2 S7 WP1 calibration 2 · tied-cards on synthetic trees: UNTIE_CARDS, the function the page runs, on trees of grid
+  // cards built as market-card.tsx draws one (its V18 surface, its stretched link, its source and every figure in its
+  // part) out of exactly the DOM the function uses, each tree's markup then read through the book's own compare. (a) Two
+  // cards that state the same figures come out of either order identical, in their titles' order — so do three in every
+  // order, a tied pair between two unlike cards (which keep their places), and two that differ only in their source;
+  // (b) two that differ in any one figure — pool, time, state, price, predictors or pick — or in their kind of surface
+  // keep their order, so a swap of them is still reported in the body's field; (c) a run of one card, a list of
+  // non-cards, cards without a V18 surface, and two tied cards that do not stand side by side (another element, or a text,
+  // between them) are untouched; and a second pass moves nothing.
+  {
+    const sibling = (n) => { const s = n.parentNode ? n.parentNode.childNodes : null; return s ? s[s.indexOf(n) + 1] ?? null : null; };
+    const text = (data) => ({ nodeType: 3, data, childNodes: [], parentNode: null, get textContent() { return this.data; }, get nextSibling() { return sibling(this); } });
+    const el = (tag, attrs = {}, children = []) => {
+      const n = {
+        nodeType: 1, tag, attrs, childNodes: [], parentNode: null,
+        get textContent() { return this.childNodes.map((c) => c.textContent).join(""); },
+        get nextSibling() { return sibling(this); },
+        getAttribute: (a) => (a in attrs ? String(attrs[a]) : null),
+        // As the DOM does: a node that is already in a tree is taken out of it first.
+        insertBefore(c, ref) {
+          if (c.parentNode) c.parentNode.childNodes.splice(c.parentNode.childNodes.indexOf(c), 1);
+          const at = ref ? this.childNodes.indexOf(ref) : this.childNodes.length;
+          if (at < 0) throw new Error("insertBefore: the reference node is not a child");
+          this.childNodes.splice(at, 0, c);
+          c.parentNode = this;
+          return c;
+        },
+      };
+      for (const c of children) n.insertBefore(c, null);
+      return n;
+    };
+    const markup = (n) => (n.nodeType === 3 ? n.data : `<${n.tag}${Object.entries(n.attrs).map(([k, v]) => ` ${k}="${v}"`).join("")}>${n.childNodes.map(markup).join("")}</${n.tag}>`);
+    // The defaults are a fresh card's figures: the four tied cards 090bbf76's null pair reordered stated these.
+    const FRESH = { state: "No bets yet", predictors: "Be the first to predict", pick: "YESNO", pool: "No pool yet", time: "5d left" };
+    const card = (q, figures = {}, { source = "CoinGecko", surface = "card" } = {}) => {
+      const f = { ...FRESH, ...figures };
+      const part = (name, tag, cls) => el(tag, { class: cls, "data-market-part": name }, [text(f[name])]);
+      return el("article", { "data-row-id": "mkt_~", ...(surface ? { "data-market-surface": surface } : {}), class: "mcardp group" }, [
+        el("a", { class: "mcardp-open", "aria-label": q, href: "/markets/mkt_~" }),
+        el("div", { class: "mcardp-head" }, [
+          el("div", { class: "mcardp-qwrap" }, [el("h3", { class: "mcardp-q" }, [text(q)]), el("p", { class: "mcardp-src" }, [el("span", { class: "mcardp-srcname", "data-market-part": "source" }, [text(source)])])]),
+          f.price ? part("price", "div", "mcardp-prob") : el("div", { class: "mcardp-prob" }, [el("div", { class: "mcardp-pct mcardp-pct--empty" }, [text("—")])]),
+        ]),
+        part("state", "div", "mcardp-nobets"),
+        el("div", { class: "mcardp-traders" }, [part("predictors", "span", "t-txt")]),
+        part("pick", "div", "mcardp-actions"),
+        el("div", { class: "mcardp-meta" }, [part("pool", "span", "mcardp-nopool"), el("span", { class: "mcardp-meta-right" }, [part("time", "span", "mcardp-timeleft live")])]),
+      ]);
+    };
+    const grid = (...children) => el("main", { id: "main-content" }, [el("div", { class: "market-grid" }, children)]);
+    const untie = (t) => UNTIE_CARDS({ ...TIED_CARDS, regions: [] }, [t]);
+    const titles = (t) => t.childNodes[0].childNodes.filter((c) => c.nodeType === 1).map((c) => c.childNodes[0]?.attrs?.["aria-label"] ?? c.tag);
+    const store = {};
+    const keep = (s) => { const id = `o${Object.keys(store).length}`; store[id] = s; return id; };
+    const cellOf = (t) => ({ status: 200, stable: true, landed: "/markets", pageErrors: [], journey: [], raw: { shell: true, trace: [] }, regions: { main: { count: 1, html: keep(bookNorm(markup(t))), layout: null } } });
+    const reported = (t1, t2) => diffCells("/markets", cellOf(t1), cellOf(t2), store, store, BOOK_EXPECTED_DIFFS).unexpected.map((d) => d.field);
+    const BTC = "Will Bitcoin close above $90,000 next Sunday?", ETH = "Will Ethereum close above $3,500 next Sunday?", SOL = "Will Solana close above $200 next Sunday?";
+    const FIRST = "Will Arusha get measurable rainfall on Saturday?", LAST = "Will Zanzibar see a full sunny day this Friday?";
+    // (a) the same figures, in either order (or every order) → one markup, in the titles' order
+    const tiedFails = [];
+    {
+      const was = grid(card(ETH), card(BTC)), now = grid(card(BTC), card(ETH));
+      const moves = [untie(was), untie(now)];
+      if (moves.join() !== "2,0" || titles(was).join("|") !== [BTC, ETH].join("|") || reported(was, now).length) tiedFails.push(`a tied pair: moved ${moves}, read ${titles(was).join(" | ")}, reported ${reported(was, now)}`);
+      const orders = [[BTC, ETH, SOL], [BTC, SOL, ETH], [ETH, BTC, SOL], [ETH, SOL, BTC], [SOL, BTC, ETH], [SOL, ETH, BTC]].map((qs) => grid(...qs.map((q) => card(q))));
+      orders.forEach(untie);
+      if (orders.some((t) => markup(t) !== markup(orders[0])) || titles(orders[0]).join("|") !== [BTC, ETH, SOL].join("|")) tiedFails.push(`three tied cards: ${orders.map((t) => titles(t).map((q) => q.split(" ")[1]).join(",")).join(" / ")}`);
+      const unlike = (pair) => grid(card(LAST, { pool: "TZS 9,000", predictors: "4 predictors" }), ...pair.map((q) => card(q)), card(FIRST, { pool: "TZS 1,000", predictors: "1 predictor" }));
+      const around = [unlike([ETH, BTC]), unlike([BTC, ETH])];
+      around.forEach(untie);
+      if (reported(around[0], around[1]).length || titles(around[0]).join("|") !== [LAST, BTC, ETH, FIRST].join("|")) tiedFails.push(`a tied pair between two unlike cards: read ${titles(around[0]).join(" | ")}`);
+      const sourced = [grid(card(ETH, {}, { source: "Binance" }), card(BTC)), grid(card(BTC), card(ETH, {}, { source: "Binance" }))];
+      sourced.forEach(untie);
+      if (reported(sourced[0], sourced[1]).length) tiedFails.push("two cards that differ only in their source were not read as tied");
+    }
+    ok("P.8o (a) tied-cards (UNTIE_CARDS, the function the page runs, on synthetic trees read through the book's compare): two cards that state the same figures come out of either order identical, in their titles' order — as do three in every order, a tied pair between two unlike cards (which keep their places), and two that differ only in their source",
+      tiedFails.length === 0, JSON.stringify(tiedFails).slice(0, 400));
+    // (b) one figure apart, or another kind of surface → each keeps its order, and a swap is reported
+    const OTHER = { pool: "TZS 5,000", time: "4d left", state: "One side only", price: "YES61%", predictors: "2 predictors", pick: "YES @ 61%NO @ 39%" };
+    const apartFails = [];
+    for (const [what, a, z] of [
+      ...Object.keys(OTHER).map((fig) => {
+        const base = fig === "price" ? { price: "YES60%" } : {};
+        return [fig, () => card(FIRST, { ...base, [fig]: OTHER[fig] }), () => card(LAST, base)];
+      }),
+      ["surface", () => card(FIRST, {}, { surface: "board" }), () => card(LAST)],
+    ]) {
+      const was = grid(z(), a()), now = grid(a(), z());
+      const moves = [untie(was), untie(now)];
+      const seen = reported(was, now);
+      if (moves.join() !== "0,0" || seen.join() !== "regions.main.html") apartFails.push(`${what}: moved ${moves}, reported ${seen.join(" ") || "nothing"}`);
+    }
+    ok("P.8o (b) two cards that differ in any one figure — pool, time, state, price, predictors, pick — or in their kind of surface keep their order, so a swap of them is still reported in the body's field (regions.main.html)",
+      apartFails.length === 0, JSON.stringify(apartFails).slice(0, 400));
+    // (c) nothing to untie → untouched; and a second pass moves nothing
+    const leftFails = [];
+    for (const [what, make] of [
+      ["a run of one card", () => grid(card(ETH))],
+      ["a list of non-cards", () => grid(el("ul", { class: "kp-list" }, [el("li", {}, [text(LAST)]), el("li", {}, [text(FIRST)])]))],
+      ["cards without a V18 surface", () => grid(card(ETH, {}, { surface: null }), card(BTC, {}, { surface: null }))],
+      ["two tied cards with another element between them", () => grid(card(ETH), el("div", { class: "kp-slot" }), card(BTC))],
+      ["two tied cards with a text between them", () => grid(card(ETH), text(" "), card(BTC))],
+    ]) {
+      const t = make(), before = markup(t), moved = untie(t);
+      if (moved !== 0 || markup(t) !== before) leftFails.push(`${what}: moved ${moved}`);
+    }
+    const twice = grid(card(SOL), card(ETH), card(BTC));
+    const passes = [untie(twice), untie(twice)];
+    if (passes[0] === 0 || passes[1] !== 0) leftFails.push(`a second pass: moved ${passes}`);
+    ok("P.8o (c) a run of one card, a list of non-cards, cards without a V18 surface, and two tied cards that do not stand side by side (another element, or a text, between them) are untouched, and a second pass moves nothing",
+      leftFails.length === 0, JSON.stringify(leftFails).slice(0, 400));
   }
   // ②d S7 WP1 · /'s head from the bytes (WP1 steps 3 and 5): the reader takes the canonical link and every og:* meta in
   // order — attributes in any order, a tag streamed into the body — and never twitter:*, a comment or the RSC payload's
@@ -2766,6 +3033,39 @@ async function proveRed() {
         ok(`P.${k} ⭐ ${plant.what} is reported in ${plant.need}, and nowhere outside ${plant.within.join(" / ")}`,
           seen.some((d) => inside(d.field, [plant.need])) && seen.every((d) => inside(d.field, plant.within)),
           seen.length ? seen.slice(0, 2).map((d) => `${d.field}: ${d.detail}`).join(" | ").slice(0, 400) : "NOT SEEN — a book compare with this harness proves nothing");
+      }
+    }
+    // ⑤b S7 WP1 calibration 2 · the settle (BOOK_SETTLE), in the cell where 090bbf76's null pair saw its cause: a lazy image
+    // the browser has not fetched — planted as the payment rail draws its logos, first in <main> and 20000px below the
+    // fold, its src set last (so the browser meets it lazy, in the page, out of reach) and one no other image on the page
+    // has (so no cache can draw it) — reads 0x0 in a capture without the settle (the control: the browser left it
+    // unfetched) and is drawn in a capture with it, and the two captures differ in boxes alone: the markup is the same,
+    // its loading="lazy" put back.
+    {
+      const [v, l, w, r] = ["guest", "en", 360, "/"];
+      const k = keyOf(`book-${v}`, l, w, r);
+      const IMG = '<img alt="M-Pesa" loading="lazy" decoding="async" class="max-h-full max-w-full object-contain" src="/pay/mpesa.svg?kp-parity-plant">';
+      const lazy = { js: () => {
+        const slot = document.createElement("div");
+        slot.setAttribute("data-parity-plant", "");
+        slot.setAttribute("style", "position:absolute;left:0;top:20000px;width:40px;height:40px;display:flex;align-items:center;justify-content:center");
+        document.querySelector("#main-content").prepend(slot);
+        const img = document.createElement("img");
+        for (const [a, x] of [["alt", "M-Pesa"], ["loading", "lazy"], ["decoding", "async"], ["class", "max-h-full max-w-full object-contain"]]) img.setAttribute(a, x);
+        slot.append(img);
+        img.setAttribute("src", "/pay/mpesa.svg?kp-parity-plant");
+      } };
+      const unsettled = await captureBookCell([], l, w, r, bookV.similarId, { ...lazy, unsettled: true });
+      const settled = await captureBookCell([], l, w, r, bookV.similarId, lazy);
+      if (unsettled.error || settled.error) ok(`P.${k} the settle's two captures were taken`, false, unsettled.error ?? settled.error);
+      else {
+        const box = (c) => ((blobs[c.regions.main?.layout] ?? "").split(NL).find((x) => x.startsWith("main>div0>img0 ")) ?? "").split(" ")[1] ?? "(no line)";
+        const planted = (c) => (blobs[c.regions.main?.html] ?? "").includes(IMG);
+        const seen = diffCells(r, unsettled, settled, blobs, blobs, BOOK_EXPECTED_DIFFS).unexpected;
+        ok(`P.${k} ⭐ a lazy image the browser has not fetched (planted 20000px below the fold) reads 0x0 in a capture without the settle and is drawn in one with it, and the two differ in boxes alone (regions.*.layout): the markup is the same, its loading="lazy" put back (BOOK_SETTLE)`,
+          planted(unsettled) && planted(settled) && box(unsettled) === "0x0" && !["0x0", "~", "(no line)"].includes(box(settled))
+            && seen.some((d) => d.field === "regions.main.layout") && seen.every((d) => d.field.endsWith(".layout")),
+          `the planted image ${box(unsettled)} unsettled, ${box(settled)} settled · ${seen.length ? seen.slice(0, 3).map((d) => `${d.field}: ${d.detail}`).join(" | ") : "no difference"}`.slice(0, 400));
       }
     }
   }
