@@ -269,6 +269,15 @@ const row = (over: Partial<TickerRow> & { id: string }): TickerRow => ({
     "/positions", "/legal/terms", "/help", "/agent", "/admin", "/results/x", "/marketsx", "", null, undefined,
   ];
   for (const p of never) ok(!tickerShowsOn(p as string), `11.2 the strip never shows on ${JSON.stringify(p)}`);
+  // ⭐ S7 WP3 (Amendment A4): a JOURNEY reader's strip is S16's list, /live and /results, and nowhere else. The
+  // home and the board become the question list, so they lose it; the classic answers above are unchanged (11.1, 11.2
+  // call the function exactly as the classic client does). Exact paths again, never a prefix: /live/x and /livex fail.
+  for (const p of ["/live", "/results", "/live/", "/results/"]) {
+    ok(tickerShowsOn(p, true), `11.1j the journey strip shows on its lobby page ${p}`);
+  }
+  for (const p of ["/", "/markets", "/markets/", "/live/x", "/results/x", "/livex", ...never]) {
+    ok(!tickerShowsOn(p as string, true), `11.2j the journey strip never shows on ${JSON.stringify(p)}`);
+  }
 
   const shell = readCode("src/components/layout/app-shell.tsx", "11.3");
   ok(/<LiveTicker\s+events=\{tickerEvents\}/.test(shell), "11.3-control the shell renders the strip");

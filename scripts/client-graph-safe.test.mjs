@@ -243,6 +243,14 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // ⭐ ADDED 2026-10-01 (Vodacom plan S6 WP6a). Which unread counter may mount at this width — the bell from lg, the
     // Akaunti dot below it: a hook over the browser's media query, importing only React, loaded by the journey chrome.
     "lib/journey/one-poller.ts",
+    // ⭐ ADDED 2026-10-12 (Vodacom plan S7 WP3, the pure rules). The journey home's list, the journey card's face and the
+    // /markets target: the home and the card render them on the server today, and WP9's flight redirect and later client
+    // parts may reach them from the browser. home-list imports the query helpers, the category list and the close label;
+    // card-face imports types only; markets-redirect imports only pending-bet and the query helpers. Pinned from the
+    // commit that adds them.
+    "lib/journey/home-list.ts",
+    "lib/journey/card-face.ts",
+    "lib/journey/markets-redirect.ts",
   ];
   const offenders = [];
   let checked = 0;

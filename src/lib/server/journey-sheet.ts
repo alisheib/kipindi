@@ -9,11 +9,14 @@
  *   · `sheetForUser` — the signed-in viewer's own: what they can spend (balance + bonus, the figure `buyPosition`
  *     refuses against), the sides they already hold on this market (OPEN positions), and whether a stake could draw on
  *     bonus money. Never cached.
+ *   · `cardFigures` — what a journey card prints for a market (S7 WP3 step 5): whether it takes a bet now, its frozen
+ *     rates and the figure for each side. `sheetPublic` serves exactly these, so the card and the sheet cannot disagree
+ *     about a market. `bettableAt` is the bet path's own test, which the journey home hands to `homeBook`.
  *
  * ⛔ AN UP & DOWN ROUND, OR A MARKET THAT IS NOT LIVE, IS NOT A SHEET: `sheetPublic` returns null and the route
- * answers 404. "Bettable" mirrors the bet path exactly: not `isSelectionClosed`, and before `resolutionAt`.
+ * answers 404. "Bettable" mirrors the bet path exactly: LIVE, not `isSelectionClosed`, and before `resolutionAt`.
  */
-import { getMarket, isSelectionClosed, ratesFor, stakeBoundsForMarket } from "./market-service";
+import { getMarket, isSelectionClosed, ratesFor, stakeBoundsForMarket, type StoredMarket } from "./market-service";
 import { positionStore } from "./market-dal";
 import { db } from "./store";
 import { cardEstimate, pickEstimateRates, type Estimate, type EstimateRates } from "@/lib/markets/estimate";
@@ -51,13 +54,44 @@ export type SheetForUser = {
   bonusWarning: boolean;
 };
 
+/** What a journey card prints for one market at `nowMs`; the sheet's public half serves the same three. */
+export type CardFigures = {
+  /** The market takes a bet at this moment (`bettableAt`, the bet path's own test). */
+  bettable: boolean;
+  /** The frozen rates the estimate reads. */
+  rates: EstimateRates | null;
+  /** The figure for each side (stake 0, SJ-1); null on each side of an Up & Down round. */
+  estimates: { YES: Estimate | null; NO: Estimate | null };
+};
+
+/** The bet path's own test: LIVE, the selection still open, and before resolution — at `nowMs`. */
+export function bettableAt(m: Pick<StoredMarket, "status" | "selectionClosedAt" | "resolutionAt">, nowMs: number): boolean {
+  return m.status === "LIVE" && !isSelectionClosed(m) && Date.parse(m.resolutionAt) > nowMs;
+}
+
+/** ⭐ THE CARD'S FIGURES — whether it takes a bet, its frozen rates, and `cardEstimate` for YES and for NO. */
+export function cardFigures(
+  m: Pick<StoredMarket, "status" | "selectionClosedAt" | "resolutionAt" | "feeSnapshot" | "yesPool" | "noPool" | "productLine">,
+  nowMs: number,
+): CardFigures {
+  const bettable = bettableAt(m, nowMs);
+  const rates = pickEstimateRates(ratesFor(m));
+  return {
+    bettable,
+    rates,
+    estimates: {
+      YES: cardEstimate(m, rates, "YES", bettable),
+      NO: cardEstimate(m, rates, "NO", bettable),
+    },
+  };
+}
+
 /** The public half, or null for a missing market, an Up & Down round, or a market that is not LIVE. */
 export async function sheetPublic(marketId: string, nowMs: number = Date.now()): Promise<SheetPublic | null> {
   if (typeof marketId !== "string" || !/^mkt_[A-Za-z0-9]{1,64}$/.test(marketId)) return null;
   const m = await getMarket(marketId);
   if (!m || m.productLine === "UPDOWN" || m.status !== "LIVE") return null;
-  const bettable = !isSelectionClosed(m) && Date.parse(m.resolutionAt) > nowMs;
-  const rates = pickEstimateRates(ratesFor(m));
+  const { bettable, rates, estimates } = cardFigures(m, nowMs);
   const bounds = await stakeBoundsForMarket(m);
   const closes = cardClosesAtMs(m);
   return {
@@ -71,10 +105,7 @@ export async function sheetPublic(marketId: string, nowMs: number = Date.now()):
     max: bounds.max,
     closesAt: closes === null ? null : new Date(closes).toISOString(),
     serverNow: nowMs,
-    estimates: {
-      YES: cardEstimate(m, rates, "YES", bettable),
-      NO: cardEstimate(m, rates, "NO", bettable),
-    },
+    estimates,
   };
 }
 
