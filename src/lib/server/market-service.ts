@@ -1066,15 +1066,32 @@ type BuyResult = ServiceResult<{
  * idempotency key. It never reaches the player as a raw P2024.
  */
 export async function buyPosition(userId: string, opts: BuyOpts): Promise<BuyResult> {
-  let r: BuyResult;
   try {
     // Retry sits INSIDE admission (a retry keeps the slot it already queued for)
     // and OUTSIDE withLock (each attempt needs a fresh transaction — retrying in
     // an aborted one is 25P02). Gated on the caller's idempotency key: without
     // one, a retry would be a double bet, so we make exactly one attempt.
-    r = await withAdmission(() =>
-      withTransientRetry(() => buyPositionInner(userId, opts, { kind: "player", playStartedAt: opts.playStartedAt }), !!opts.idempotencyKey),
-    );
+    return await withAdmission(async () => {
+      const reach: ReplayReach = { reached: false };
+      // Read per attempt: a transient retry that is refused by a gate after an earlier attempt reached the lock (and may
+      // have committed before its error) is asked about too.
+      const r = await withTransientRetry(() => { reach.reached = false; return buyPositionInner(userId, opts, { kind: "player", playStartedAt: opts.playStartedAt }, reach); }, !!opts.idempotencyKey);
+      // ⭐ L2 · A KEY THAT HAS LANDED IS ANSWERED WITH ITS BET, NEVER REFUSED BY A GATE (live fix L2, the Vodacom plan's
+      // S8-PLAN A23 item 1; Ali, 2026-10-12: "fix now"). The replay sits inside the wallet lock, AFTER every gate before
+      // it — the rate limit, maintenance, a break, the session limit, the account, the market's state, the stake bounds.
+      // So when a bet landed and only its answer was lost, the dial's same-key Retry could be REFUSED by a gate that came
+      // up meanwhile: maintenance said "Nothing has been charged" about a bet that had been charged, the dial wiped
+      // itself on that terminal refusal, and its next confirm minted a fresh key — a SECOND bet. A refusal made BEFORE
+      // the in-lock replay now asks whether the key already placed this very bet for this player; if it did, the
+      // answer is that bet's receipt (`replayed`), never the refusal. A gate guards NEW bets; a replay places nothing.
+      // ⛔ Only a refusal made before the in-lock check (`reach`): one made after it — the balance, the loss limit, a
+      // held wallet — was made with the key already looked up under the wallet lock. Inside admission, so the read
+      // queues like any bet work; never on BUSY (admission sheds before this runs, before any money moved); never for a
+      // house stake (`placeHouseBet` answers its key at H0, before any gate); and a bet that goes through reads nothing
+      // more.
+      if (r.ok || !opts.idempotencyKey || reach.reached) return r;
+      return (await landedKeyAnswer(userId, opts, r)) ?? r;
+    });
   } catch (err) {
     if (err instanceof AdmissionBusy) {
       return {
@@ -1086,42 +1103,49 @@ export async function buyPosition(userId: string, opts: BuyOpts): Promise<BuyRes
     }
     throw err;
   }
-  // ⭐ L2 · A KEY THAT HAS LANDED IS NEVER REFUSED (live fix L2, the Vodacom plan's S8-PLAN A23 item 1; Ali, 2026-10-12:
-  // "fix now"). The replay used to sit INSIDE the wallet lock, AFTER every gate before it — the rate limit, maintenance,
-  // a break, the session limit, the account, the market's state, the stake bounds. So when a bet landed and only its
-  // answer was lost, the player's same-key retry could be REFUSED by a gate that came up meanwhile: maintenance said
-  // "Nothing has been charged" about a bet that had been charged, the dial wiped itself on that terminal refusal, and
-  // the next confirm minted a fresh key — a SECOND bet. A refusal of a keyed request now asks first whether the key's
-  // bet stands for this player, and if it does, the answer is that bet's receipt (`replayed`), never the refusal. A
-  // gate guards NEW bets; a replay places nothing.
-  // ⛔ After a refusal only, so a bet that goes through pays nothing extra; never on BUSY (admission shed it before any
-  // money moved, and a saturated pool is the worst moment for another read — its retry keeps the key); and never for a
-  // house stake (`placeHouseBet` answers its key at H0, before any gate).
-  if (!r.ok && opts.idempotencyKey) return (await landedKeyAnswer(userId, opts.idempotencyKey)) ?? r;
-  return r;
 }
 
+/** L2 · set by `buyPositionInner` the moment it looks the key up under the wallet lock (`buyPosition` only). */
+type ReplayReach = { reached: boolean };
+
 /**
- * ⭐ L2 · THE BET A PLAYER'S KEY ALREADY PLACED, AS ITS REPLAY — or null when the key has placed nothing for them.
- * The receipt is the in-lock replay's (the ORIGINAL bet's facts: its `placedAt`, its payout), read outside any lock:
- * the bet is committed or it is not. ⛔ Another player's key, or a house stake's, is never answered (sanctioned change
- * (b)): the refusal stands, and the in-lock check refuses the conflict as before.
- * ⛔ A read that fails cannot say the key placed nothing, so it says what is known: the outcome is unknown
- * (`system_error`, which the dial and the quick bet retry with the SAME key) — never a refusal that may claim nothing
- * was charged.
+ * ⭐ L2 · THE BET A PLAYER'S KEY ALREADY PLACED, AS ITS REPLAY — or null, and then the refusal stands as the gate made it.
+ * The receipt is the in-lock replay's (the ORIGINAL bet's facts: its `placedAt`, its payout), read outside any lock: the
+ * bet is committed or it is not.
+ * ⛔ Null — the refusal stands — unless the key's bet is THIS player's, not a house stake's (sanctioned change (b): the
+ * in-lock check still refuses a conflict), and the very bet asked for again: the same question, side and stake. A key
+ * sent with other figures is not a retry of that bet.
+ * ⛔ A read that fails also answers null: the refusal is what the gate said, exactly as before L2. Turning it into an
+ * unknown outcome would trade a must-read refusal (a break, the loss limit, a blocked account) for a toast, and a closed
+ * round's lock for a retry, on the very moments a pool is under pressure.
+ * ⭐ When the receipt answers over a refusal, the refusal is recorded beside it (`market.position.replayed`, the gate's
+ * code and reason): the gate's own record — a session limit's `rg.session_limit.enforced`, say — still stands, and this
+ * row says the request was a replay that placed nothing (docs/COMPLIANCE-DECISIONS.md, 2026-10-12).
  */
-async function landedKeyAnswer(userId: string, key: string): Promise<BuyResult | null> {
+async function landedKeyAnswer(userId: string, opts: BuyOpts, refused: BuyResult): Promise<BuyResult | null> {
+  const key = opts.idempotencyKey;
+  if (!key) return null;
   try {
     const p = await positionStore.findByIdempotencyKey(key);
     // SEAM:landedKey
     if (!p || p.userId !== userId || p.houseBotId != null) return null;
+    if (p.marketId !== opts.marketId || p.side !== opts.side || p.stake !== opts.stake) return null;
     const w = await db.wallet.findByUserId(userId);
+    const why = refused.ok ? null : { code: refused.code ?? null, reason: (refused as { reason?: string }).reason ?? null };
+    audit({
+      category: "BET",
+      action: "market.position.replayed",
+      actorId: userId,
+      targetType: "Position",
+      targetId: p.id,
+      payload: { marketId: p.marketId, side: p.side, stake: p.stake, status: p.status, refused: why },
+    });
     return {
       ok: true,
       data: { positionId: p.id, balance: w?.balance ?? 0, payoutIfWin: p.potentialPayout, placedAt: p.placedAt, bonusStakeTzs: p.bonusStakeTzs ?? 0, replayed: true },
     };
   } catch {
-    return { ok: false, error: "We couldn't confirm this bet. Check your wallet before trying again.", code: "BUSY", reason: "system_error" };
+    return null;
   }
 }
 
@@ -1159,7 +1183,7 @@ function isLockTimeout(err: unknown): boolean {
   return !!e && (e.code === "55P03" || e.meta?.code === "55P03" || (typeof e.message === "string" && e.message.includes("55P03")));
 }
 
-async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext): Promise<BuyResult> {
+async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext, reach?: ReplayReach): Promise<BuyResult> {
   // ── H0 · house bots: the key, the replay and the intent row, before any other gate (N1 §3) ──
   // SEAM:H0
   let houseIntent: StoredHouseBotIntent | null = null;
@@ -1402,6 +1426,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext):
     // Idempotency: if this key was already used, return the existing position.
     // This prevents double-submit on 2G (same key = same intent, two taps).
     if (opts.idempotencyKey) {
+      if (reach) reach.reached = true; // L2: from here on a refusal was made with the key already looked up
       const existing = await positionStore.findByIdempotencyKey(opts.idempotencyKey, lockTx);
       if (existing) {
         // 🔴 SANCTIONED CHANGE (b) (house bots, PLAN §3) · THE KEY-ONLY LOOKUP RETURNED ANOTHER ACCOUNT'S

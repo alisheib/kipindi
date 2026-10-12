@@ -8,6 +8,37 @@
 
 ---
 
+## 2026-10-12 · A retried bet that already went through is answered with its receipt, even while a gate refuses new bets (live fix L2; a call taken under the owner's delegation)
+
+**Authority.** Ali, 2026-10-12, answering the S8 plan's point 22 by question: *"fix them now"* — the classic bet screen's
+lost-answer gap (VODACOM-PLAN §0h point 81). How the fix treats a responsible-gambling gate is a call taken under his
+delegation, with the overrule below, and it is his to change.
+
+**What it rules — in force from the release that carries it.**
+1. A bet request carries an idempotency key, and the same key is the same bet. When a request is refused by a gate that
+   stands before the bet path's own replay — the rate limit, maintenance, a break, the player's session-time limit, an
+   officer's block on the account, the market's state, the stake bounds — and that player's key already placed that very
+   bet (the same question, side and stake), the answer is that bet's receipt, marked as a replay. No money moves and no
+   position is opened.
+2. The gate's refusal of a NEW bet is unchanged and recorded where it always was: the session limit's
+   `rg.session_limit.enforced` row (counted by the responsible-gambling engagement report) and the account block's row
+   stand. Beside them the bet path writes `market.position.replayed`, naming the gate's code and reason, so the two rows
+   together say what happened: a new bet was refused, and the request was a retry of a bet already placed.
+3. The player's next NEW bet under the gate is refused as before, with the gate's own message.
+4. A self-exclusion and a cooling-off end the player's session when they are taken, so a retry under them meets the
+   sign-in page first; in practice this reaches the session-time limit and an officer's block.
+
+**Why.** Before it, the retry was refused, the dial wiped itself, and its next confirm minted a fresh key: a second bet the
+player did not mean, placed as soon as the gate lifted. A receipt for money already staked is a statement of fact about
+the player's own account; a gate guards new money.
+
+**Overrule.** A responsible-gambling gate (a break, the session limit, an account block) wins over the receipt: the retry
+shows the gate's message, and the bet stands in the player's tickets. The dial then needs its own guard against minting a
+fresh key after such a refusal.
+
+**Evidence.** `test:bet-landed-key` (predeploy; on the in-memory store and on Postgres) and `red:bet-landed-key`;
+VODACOM-PLAN §0h point 81.
+
 ## 2026-10-12 · The minimum stake is TZS 500 again; the minimum deposit stays TZS 1,000 (owner)
 
 **Authority.** Ali, 2026-10-12, as typed: *"turn minimum stake instead of 1k to 500, everywhere in the platform where
