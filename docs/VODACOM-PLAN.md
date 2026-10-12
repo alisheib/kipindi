@@ -2587,6 +2587,13 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     only while the figure has at most four characters, so "Win ≈100.0×" / "your bet" wraps like any two-line pick; a
     width proof holds the longest printable figure in sw, en and zh to the 320 pick. Overrule: put the display cap at
     100.0 itself.
+77. **The live loss-limit refusal tells the truth now — Ali's ruling, 2026-10-12 (asked; "fix it now"), not with S12.**
+    S8's plan critique found that the classic `error.failLossLimitDaily` told every player who hit their limit "It
+    resets tomorrow" / "Kitaanza upya kesho" / "明天重置", while the gate sums the last 24 hours (responsible-gambling.ts,
+    `Date.now() - 86_400 * 1000`) — untrue at any hour. It now says "It counts the last 24 hours" / "Kinahesabu saa 24
+    zilizopita" / "该上限按过去 24 小时计算", the clause S8's sheet will use (S4-COPY-AUDIT.md review 7; its S12 line for this
+    key is withdrawn). A responsible-gambling message is a statement about the player's own control, so it ships alone,
+    for every player, ahead of the S12 batch.
 
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali

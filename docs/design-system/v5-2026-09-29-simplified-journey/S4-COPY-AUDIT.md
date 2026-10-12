@@ -121,7 +121,12 @@ rule as above: they ship with S12, never earlier.
 
 - `failSessionLimit` · "kipindi hiki kimefika … rudi baadaye na kitaanza upya" → "kipindi hiki kimefikia kikomo hicho … rudi baadaye uanze kipindi kipya".
 - `failRateLimited` · "Hilo lilikuwa haraka." → "Umejaribu haraka mno."
-- `failLossLimitDaily` · "Kitaanza upya kesho — … kwenye Uchezaji salama" → "Kitaanza upya kesho saa 00:00 — … kwenye Weka mipaka".
+- ~~`failLossLimitDaily` · "Kitaanza upya kesho — … kwenye Uchezaji salama" → "Kitaanza upya kesho saa 00:00 — … kwenye Weka mipaka".~~
+  ⟶ **SHIPPED LIVE 2026-10-12, in another form, by Ali's ruling** (not with S12): the limit is a rolling 24 hours
+  (responsible-gambling.ts, `Date.now() - 86_400 * 1000`), so "kesho" — at any hour — was untrue. Now: "Umefikia kikomo
+  cha hasara cha siku ulichojiwekea. **Kinahesabu saa 24 zilizopita** — unaweza kukiangalia kwenye Uchezaji salama." (en
+  "It counts the last 24 hours", zh "该上限按过去 24 小时计算"), the same clause S8's `journey.sheetLossBlock` uses; see
+  "Swahili review" 7.
 - `youAlreadyHold` · "Tayari unashikilia NDIO hapa" → "Tayari una dau la NDIO hapa"; `hedgeAddBody` "kwenye soko hili" → "kwenye swali hili".
 - `failSelectionClosed` / "Soko limefungwa" → "Swali hili limefungwa" / "Muda wa kuchagua umekwisha. Sasa tunasubiri matokeo."
 - Cash-out: "Toka bila gharama · Hakuna ada" → "Uza bila ada hadi {saa}"; "TZS {n} pesa yote" → "Rudishiwa TZS {n} kamili".
@@ -254,7 +259,9 @@ kept: the product already names its sections and doors with imperatives, and pla
 
 **2. Corrections to words players see today — approved as listed above; they ship with S12, never earlier.** Every line
 in "Existing words the S4 panel found wrong" is correct Swahili and says what the English says. Two notes: "kesho saa
-00:00" keeps the platform's 24-hour digital time (the product never uses Swahili clock reckoning); and the classic
+00:00" keeps the platform's 24-hour digital time (the product never uses Swahili clock reckoning) — ⚠️ withdrawn
+2026-10-12: the loss limit is a rolling 24 hours, so no reset time is true; that line shipped live in its corrected form
+(review 7); and the classic
 `error.positionsSafe` typo "hayajaaathiriwa" (three a's) is fixed in the same S12 commit.
 
 **3. S4 canvas drafts that S7–S11 will turn into keys — approved, with two corrections the build must use:**
@@ -313,3 +320,11 @@ shipped with its fix rather than with S12. Chinese: "请勾选此框，确认两
   · "Tafuta swali" — an imperative with its object, like the hub's other doors ("Weka mipaka", "Alika").
 - Chinese: formal 您 wherever the player is addressed (`howStep2Body`, `howStep3Body`, `howExampleBody`), 投注 for a bet,
   and full-width punctuation around `{q}`; `cardBeFirst` · "抢先下注" ("bet first") is the action the empty side invites.
+
+**7. The live loss-limit refusal (2026-10-12; Ali's ruling, by question: "fix it now", not with S12) — approved:**
+`error.failLossLimitDaily` · "Umefikia kikomo cha hasara cha siku ulichojiwekea. Kinahesabu saa 24 zilizopita — unaweza
+kukiangalia kwenye Uchezaji salama." — *kikomo* (class 7) takes *ki-* in *kinahesabu* ("it counts"); *saa 24 zilizopita*
+is "the past 24 hours", *saa* in the plural (class 10) with *zilizopita*. It replaces "Kitaanza upya kesho" ("it starts
+again tomorrow"), which was untrue at any hour: the gate sums the last 24 hours (responsible-gambling.ts). The page keeps
+its classic name, *Uchezaji salama*. English "It counts the last 24 hours"; Chinese "该上限按过去 24 小时计算" as its own
+sentence — the same clause S8's `journey.sheetLossBlock` will use, so the classic and journey refusals say one truth.
