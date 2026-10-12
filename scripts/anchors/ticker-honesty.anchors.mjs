@@ -9,6 +9,8 @@
  * for byte: S7 edits `ticker.ts` and `live-ticker.tsx`, and a twin whose anchors nobody audits cannot give a verdict
  * on them. `expect` is the gate's check id; the harness now requires a failing line that STARTS with `✗ <id> `, so
  * an expected 11.2 is no longer met by 11.21, nor 1.1 by 1.1-control.
+ * S7 WP3 declared two more (A4 items 3 and 5): the journey arm of `tickerShowsOn`, each expected on 11.2j. The verdict's
+ * N is the length of this list, so it reads 30/30 from that commit.
  */
 const PURE = "src/lib/markets/ticker.ts";
 const FEED = "src/lib/server/ticker-feed.ts";
@@ -123,6 +125,21 @@ export const MUTATIONS = [
     from: `  return TICKER_ROUTES.includes(p);`,
     to: `  return TICKER_ROUTES.some((r) => p.startsWith(r));`,
     expect: "11.2",
+  },
+  // ── S7 WP3 (Amendment A4 items 3 and 5): the journey arm of the same rule, judged on its own check id ──
+  {
+    name: "the JOURNEY page rule matches by PREFIX, so every page under /live or /results (and /livex) inherits the strip",
+    file: PURE,
+    from: `  if (journey) return JOURNEY_TICKER_ROUTES.includes(p);`,
+    to: `  if (journey) return JOURNEY_TICKER_ROUTES.some((r) => p.startsWith(r));`,
+    expect: "11.2j",
+  },
+  {
+    name: "the JOURNEY page rule reads the classic list, so the strip comes back on the home and the board for a journey reader",
+    file: PURE,
+    from: `  if (journey) return JOURNEY_TICKER_ROUTES.includes(p);`,
+    to: `  if (journey) return TICKER_ROUTES.includes(p);`,
+    expect: "11.2j",
   },
   {
     name: "a SIGNED-IN player on an active break is sent the settlement feed anyway",

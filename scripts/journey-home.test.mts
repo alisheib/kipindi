@@ -15,9 +15,30 @@
  *        · `ROOT_OPEN_GRAPH` from "./layout", the layout's one definition;
  *      and its default export's one classic return is `<LegacyLanding searchParams={searchParams} />`. The body carries no
  *      directive (an async server component, as the route's body was), and the route is the only file that imports it.
+ *   §2 THE HOME'S LIST (S7 WP3 step 1, amendment A21), `src/lib/journey/home-list.ts` driven in memory:
+ *        · homeBook keeps what the caller's bet-path test accepts at the caller's clock, soonest-closing first by when
+ *          BETTING closes, ties by the bigger pool, then by id, and never reorders the caller's list;
+ *        · homeChips: Zote, the deck's three (Michezo, Hali ya hewa, Uchumi), then the rest; only the categories the
+ *          book holds, plus the one the address selected;
+ *        · parseHomeParams: cat known (against the caller's closed set) or none, q trimmed and clamped, page through
+ *          parsePageParam, first values only; no search object at all is the plain home, never a crash;
+ *        · parsePageParam, the ?page rule the home and journey /live share (A21 item 4): a positive whole number as an
+ *          address writes it, else 1 (02 is 1);
+ *        · pageCumulative (the home's and journey /live's one paging rule) and homeView: the filters, the paging, the
+ *          clamp and the three empty states;
+ *        · homeHref: only what is set, always cat, q, page, every value encoded.
+ *   §3 THE CARD'S FACE (S7 WP3 step 2, amendment A12), `src/lib/journey/card-face.ts` over `cardEstimate`'s real figures:
+ *      the S3 golden pools (Dodoma ≈2.8× / ≈1.4×, Yanga ≈2.9× / ≈1.4×); the canvas states (an empty pool, one side, over
+ *      the cap with its thin side at ≈1.0×, a hidden figure for each of its three causes, closed); settled YES, NO and
+ *      VOID with their inks; an Up & Down row, live and settled; the one-sided note; and A12's label and ink for every
+ *      state.
+ *      ⭐ Every §2 and §3 plant must fail ITS check and nothing else: the red run reports a plant that also turns another
+ *      check red as not proved, so no check stays green only because a neighbour happens to catch its defect.
  *
- * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect into source TEXT held in memory and requires the check
- * named for it to fail; nothing here touches a file on disk, so `test:red-anchors` §4 counts it in the in-process class.
+ * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY and requires the check named for it to fail.
+ * §1's plants edit copies of the source text; §2's and §3's swap ONE rule (a function `home-list.ts` or `card-face.ts`
+ * exports, or the `cardEstimate` the card's figures come through) for a copy of the real one carrying one defect.
+ * Nothing here touches a file on disk, so `test:red-anchors` §4 counts it in the in-process class.
  * ⚠️ Every read is DECOMMENTED (`scripts/lib/decomment.mts`), so a rule quoted in a note is never mistaken for the rule.
  * ⚠️ This file carries no escape a tool could decode on its way to disk: line breaks are built from their code points, and
  * its patterns use look-arounds and character classes, never a word boundary.
@@ -27,6 +48,11 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment } from "./lib/decomment.mts";
 import { srcFiles } from "./lib/tracked-files.mts";
+import * as HL from "../src/lib/journey/home-list.ts";
+import * as CF from "../src/lib/journey/card-face.ts";
+import { cardEstimate, pickEstimateRates, type Estimate } from "../src/lib/markets/estimate.ts";
+import { MARKET_CATEGORIES } from "../src/lib/markets/categories.ts";
+import { MAX_QUERY_LEN } from "../src/lib/search/query.ts";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 const PROVE_RED = process.argv.includes("--prove-red");
@@ -42,6 +68,24 @@ const read = (rel: string) => (existsSync(join(ROOT, rel)) ? readFileSync(join(R
 const count = (hay: string, needle: string) => hay.split(needle).length - 1;
 const j = (v: unknown) => JSON.stringify(v);
 
+/** The pure rules §2 and §3 drive (S7 WP3). A §2 or §3 plant swaps one of them for a copy carrying one defect. */
+type Rules = {
+  parse: typeof HL.parseHomeParams;
+  pageParam: typeof HL.parsePageParam;
+  book: typeof HL.homeBook;
+  chips: typeof HL.homeChips;
+  pages: typeof HL.pageCumulative;
+  view: typeof HL.homeView;
+  href: typeof HL.homeHref;
+  face: typeof CF.cardFace;
+  /** The figure each pick reads (`cardEstimate`, what `cardFigures` calls), so a plant can break the hidden causes. */
+  estimate: typeof cardEstimate;
+};
+const RULES: Rules = {
+  parse: HL.parseHomeParams, pageParam: HL.parsePageParam, book: HL.homeBook, chips: HL.homeChips, pages: HL.pageCumulative,
+  view: HL.homeView, href: HL.homeHref, face: CF.cardFace, estimate: cardEstimate,
+};
+
 /** Everything the checks read. The red run plants on copies of it. */
 type World = {
   page: string;                  // src/app/page.tsx
@@ -49,6 +93,7 @@ type World = {
   layout: string;                // src/app/layout.tsx, where ROOT_OPEN_GRAPH is defined
   walked: number;                // how many files under src/ the importer census walked
   naming: Map<string, string>;   // every OTHER file under src/ whose text names legacy-landing: the census's subjects
+  rules: Rules;                  // §2 and §3: the home's list and the card's face, as the modules export them
 };
 
 function load(): World {
@@ -59,7 +104,200 @@ function load(): World {
     const s = read(rel);
     if (s.includes("legacy-landing")) naming.set(rel, s);
   }
-  return { page: read(PAGE), landing: read(LANDING), layout: read(LAYOUT), walked: all.length, naming };
+  return { page: read(PAGE), landing: read(LANDING), layout: read(LAYOUT), walked: all.length, naming, rules: RULES };
+}
+
+type Ok = (label: string, cond: boolean, extra?: string) => void;
+
+/* ── §2 · the home's list (S7 WP3 step 1, A21) ─────────────────────────────────────────────────────────────── */
+const T0 = Date.UTC(2026, 9, 12, 7, 0);   // 10:00 in East Africa, 12 October 2026
+const HOUR = 3_600_000;
+const at = (h: number) => new Date(T0 + h * HOUR).toISOString();
+/** A home row, with the caller's bet-path answer (`open`) and a title for the search matcher. */
+type Row = HL.HomeMarket & { open: boolean; title: string };
+const row = (id: string, category: string, resolvesInH: number, pool: number, o: { selectionClosesInH?: number; open?: boolean; title?: string } = {}): Row => ({
+  id, category, yesPool: Math.floor(pool / 2), noPool: pool - Math.floor(pool / 2),
+  resolutionAt: at(resolvesInH), selectionClosedAt: o.selectionClosesInH === undefined ? null : at(o.selectionClosesInH),
+  open: o.open ?? true, title: o.title ?? id,
+});
+/** The caller's bet-path test, as WP7 hands it in: the row's own answer, and only at the caller's clock. */
+const takesBets = (m: Row, now: number) => now === T0 && m.open;
+const ids = (list: readonly { id: string }[]) => list.map((m) => m.id);
+/** f's selection closes in 1 hour though it resolves in 120; c and d tie on the instant AND the pool (id decides); a, c and
+ *  d tie on the instant (the pool decides); e takes no bets; g holds the biggest pool and closes last. */
+const BOOK_IN: readonly Row[] = [
+  row("mkt_g", "other", 4, 90_000),
+  row("mkt_a", "sports", 3, 10_000),
+  row("mkt_e", "macro", 0.5, 99_999, { open: false }),
+  row("mkt_c", "weather", 3, 30_000),
+  row("mkt_d", "macro", 3, 30_000),
+  row("mkt_b", "sports", 2, 5_000),
+  row("mkt_f", "crypto", 120, 1_000, { selectionClosesInH: 1 }),
+];
+const BOOK_GOLDEN = ["mkt_f", "mkt_b", "mkt_c", "mkt_d", "mkt_a", "mkt_g"];
+const VIEW_BOOK: readonly Row[] = [
+  row("mkt_v1", "sports", 5, 3_000, { title: "Simba v Yanga" }),
+  row("mkt_v2", "sports", 6, 2_000, { title: "Azam v Namungo" }),
+  row("mkt_v3", "weather", 7, 1_000, { title: "Yanga day rain" }),
+];
+
+function homeListChecks(r: Rules, ok: Ok) {
+  const book = r.book(BOOK_IN.slice(), T0, takesBets);
+  ok("2.book.keeps · homeBook keeps the questions the caller's bet-path test accepts at the caller's clock, and only those (one that takes no bets is left for /live)",
+    j(ids(book).slice().sort()) === j(BOOK_GOLDEN.slice().sort()), j(ids(book)));
+  const golden = new Set(BOOK_GOLDEN);
+  const order = ids(book).filter((id) => golden.has(id));
+  ok("2.book.order · soonest-closing first by when BETTING closes (a selection closing in 1 hour leads a resolution in 2), equal instants by the bigger pool: f, b, c, d, a, g",
+    j(order) === j(BOOK_GOLDEN), j(order));
+  const mine = BOOK_IN.slice().reverse();
+  const before = j(ids(mine));
+  const again = ids(r.book(mine, T0, takesBets));
+  ok("2.book.stable · the same book in another input order gives the same order (a full tie, same instant and pool, goes by id), and the caller's list is never reordered",
+    j(again) === j(ids(book)) && j(ids(mine)) === before, j({ again, first: ids(book), callerAfter: ids(mine) }));
+
+  const holding = (...cats: string[]) => cats.map((c, i) => row(`mkt_k${i}`, c, 5, 1_000));
+  const every = r.chips(holding("other", "tech", "culture", "crypto", "macro", "weather", "sports"));
+  ok("2.chips.order · Zote first, then the deck's three (Michezo, Hali ya hewa, Uchumi), then the rest in the platform's order",
+    j(every) === j([null, "sports", "weather", "macro", "crypto", "culture", "tech", "other"]), j(every));
+  const some = r.chips(holding("macro", "other", "sports", "macro", "politics")), none = r.chips([]);
+  ok("2.chips.held · a chip only for a category the book holds (an unknown category gets none), and an empty book is Zote alone",
+    j(some) === j([null, "sports", "macro", "other"]) && j(none) === j([null]), j({ some, none }));
+  const sm = holding("sports", "macro");
+  const picked = r.chips(sm, "crypto"), pickedHeld = r.chips(sm, "sports");
+  ok("2.chips.selected · the category the address selected keeps its chip, in its place, though it holds no question (a filter is never applied out of sight); selecting a held one adds nothing",
+    picked.includes("crypto") && picked.indexOf("crypto") > picked.indexOf("macro") && j(pickedHeld) === j(r.chips(sm)), j({ picked, pickedHeld }));
+
+  const P = (sp: HL.HomeSearch) => r.parse(sp, MARKET_CATEGORIES);
+  const NARROW = ["sports"] as const;
+  const cats = [P({ cat: "sports" }).cat, P({ cat: "politics" }).cat, P({ cat: "all" }).cat, P({ cat: "Sports" }).cat, P({ cat: "" }).cat, P({}).cat,
+    r.parse({ cat: "macro" }, NARROW).cat, r.parse({ cat: "sports" }, NARROW).cat];
+  ok("2.parse.cat · ?cat is a known category or none: sports is kept; politics, all, Sports, an empty value and no value are none; against a caller's narrower set (sports alone) macro is none and sports is kept",
+    j(cats) === j(["sports", null, null, null, null, null, null, "sports"]), j(cats));
+  const absent = ([null, undefined] as const).map((sp) => {
+    try { return j(r.parse(sp, MARKET_CATEGORIES)); } catch (e) { return `threw: ${(e as Error).message}`; }
+  });
+  ok("2.parse.absent · no search object at all (null or undefined) is the plain home, Zote with no search on page 1, never a crash",
+    j(absent) === j([j({ cat: null, q: "", page: 1 }), j({ cat: null, q: "", page: 1 })]), j(absent));
+  const qs = [P({ q: "  simba yanga  " }).q, P({ q: "y".repeat(300) }).q.length, P({}).q];
+  ok(`2.parse.q · ?q is trimmed and clamped to the product's one cap (${MAX_QUERY_LEN}); no q is ""`,
+    j(qs) === j(["simba yanga", MAX_QUERY_LEN, ""]), j(qs));
+  const pagesIn = ["3", undefined, "0", "-2", "2.5", "2abc", "02", "abc", "5000", "99999999999999999999"];
+  const pagesOut = pagesIn.map((p) => P(p === undefined ? {} : { page: p }).page);
+  ok("2.parse.page · ?page is a positive whole number as an address writes it, else 1 (none, 0, -2, 2.5, 2abc, 02, abc); a huge one stays past the end for the view to clamp",
+    j(pagesOut) === j([3, 1, 1, 1, 1, 1, 1, 1, 5000, Number.MAX_SAFE_INTEGER]), j(pagesOut));
+  const arr = P({ cat: ["sports", "macro"], q: ["first", "second"], page: ["4", "9"] });
+  ok("2.parse.array · a repeated parameter takes its FIRST value, as every reader in the product does (oneParam): cat, q and page",
+    j(arr) === j({ cat: "sports", q: "first", page: 4 }), j(arr));
+  const rawPages: unknown[] = ["7", "1", "02", "0", "-3", "+3", "3.0", "4abc", " 5", "", undefined, null, 5, ["2"], "99999999999999999999"];
+  const rulePages = rawPages.map((v) => r.pageParam(v));
+  ok("2.page.rule · parsePageParam, the ?page rule the home and journey /live share (A21 item 4): a positive whole number as an address writes it, else 1; 02, 0, a sign, 3.0, a suffix, a space, an empty value, none, a number and an array are 1; a huge one stays past the end",
+    j(rulePages) === j([7, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, Number.MAX_SAFE_INTEGER]), j(rulePages));
+
+  const L30 = Array.from({ length: 30 }, (_, i) => i), L24 = L30.slice(0, 24);
+  const pg = (list: number[], page: number) => { const x = r.pages(list, page, 12); return [x.shown.length, x.shown[0] ?? null, x.more, x.page]; };
+  const paged = [pg(L30, 1), pg(L30, 2), pg(L30, 3), pg(L30, 9), pg(L24, 2), pg([], 3), ...[0, -1, 2.5, Number.NaN].map((p) => pg(L30, p))];
+  ok("2.pages · pageCumulative, the home's and journey /live's one rule: page n shows the FIRST 12·n cards; more while any are left (none at an exact end); past the end is the last page; 0, -1, 2.5 and NaN are page 1",
+    j(paged) === j([[12, 0, true, 1], [24, 0, true, 2], [30, 0, false, 3], [30, 0, false, 3], [24, 0, false, 2], [0, null, false, 1],
+      [12, 0, true, 1], [12, 0, true, 1], [12, 0, true, 1], [12, 0, true, 1]]), j(paged));
+
+  let asked = 0;
+  const match = (m: Row, s: string) => { asked += 1; return m.title.toLowerCase().includes(s.toLowerCase()); };
+  const f1 = ids(r.view(VIEW_BOOK, { cat: "sports", q: "yanga", page: 1 }, 12, match).shown);
+  const f2 = ids(r.view(VIEW_BOOK, { cat: null, q: "yanga", page: 1 }, 12, match).shown);
+  const askedBefore = asked;
+  const f3 = ids(r.view(VIEW_BOOK, { cat: "weather", q: "", page: 1 }, 12, match).shown);
+  ok("2.view.filter · homeView keeps the chosen category and what the caller's matcher accepts for q (sports and yanga is Simba v Yanga alone), and asks no matcher without a search",
+    j([f1, f2, f3]) === j([["mkt_v1"], ["mkt_v1", "mkt_v3"], ["mkt_v3"]]) && asked === askedBefore, j({ f1, f2, f3, askedWithoutSearch: asked - askedBefore }));
+  const B30 = Array.from({ length: 30 }, (_, i) => row(`mkt_p${String(i).padStart(2, "0")}`, "sports", 5 + i, 1_000));
+  const v2 = r.view(B30, { cat: null, q: "", page: 2 }, 12, match), v9 = r.view(B30, { cat: null, q: "", page: 9 }, 12, match);
+  const views = [v2.shown.length, v2.shown[0]?.id ?? null, v2.more, v2.page, v2.total, v9.shown.length, v9.more, v9.page];
+  ok("2.view.paged · homeView pages through the one rule: page 2 of 30 shows the first 24 with more below; page 9 is page 3, all 30, nothing more",
+    j(views) === j([24, "mkt_p00", true, 2, 30, 30, false, 3]), j(views));
+  const E = (b: readonly Row[], cat: HL.HomeParams["cat"], q: string) => r.view(b, { cat, q, page: 1 }, 12, match).empty;
+  const empties = [E([], null, ""), E(VIEW_BOOK, "crypto", ""), E(VIEW_BOOK, null, "zzz"), E(VIEW_BOOK, "sports", ""), E([], "crypto", "zzz")];
+  ok("2.view.empty · which empty state: nothing takes bets is book; a category holding none is cat, with or without a search; a search that matched none of the questions is q; cards are none",
+    j(empties) === j(["book", "cat", "q", null, "cat"]), j(empties));
+
+  const hrefs = [
+    r.href({}), r.href({ cat: null, q: "", page: 1 }), r.href({ cat: "sports" }), r.href({ cat: "sports", q: "simba yanga", page: 3 }),
+    r.href({ page: 2, q: "a&b=c#d", cat: "macro" }), r.href({ q: "x", page: 1 }), r.href({ page: 0 }), r.href({ page: 2.5 }),
+    r.href({ q: "   " }), r.href({ cat: "politics" as never }),
+  ];
+  ok("2.href · / plus only what is set, always cat, q, page; page 1 is the home itself; every value encoded, so an ampersand, an equals sign or a hash adds no parameter",
+    j(hrefs) === j(["/", "/", "/?cat=sports", "/?cat=sports&q=simba%20yanga&page=3", "/?cat=macro&q=a%26b%3Dc%23d&page=2", "/?q=x", "/", "/", "/", "/"]),
+    j(hrefs));
+}
+
+/* ── §3 · the card's face (S7 WP3 step 2, A12) ──────────────────────────────────────────────────────────────── */
+/** The deck's rates: 13% loser-share (3% platform + 10% operator), and a legacy capped-commission poll. */
+const LS13 = { feeModel: "loser-share", platformFeeRate: 0.03, operatorFeeRate: 0.10, showEstimatedWinnings: true } as const;
+const CAPPED = { feeModel: "capped-commission", commissionRate: 0.10, feeCeilingRate: 1 / 3, showEstimatedWinnings: true } as const;
+const DAYS = { kind: "days", n: 3 } as const;
+type FaceOpts = { bettable?: boolean; rates?: object | null; productLine?: string; status?: string; outcome?: string | null; close?: CF.CardFaceInput["close"] };
+/** cardFace's input exactly as WP5's card builds it: the figures through `estimate`, the rules' `cardEstimate` (what
+ *  `cardFigures` calls). No `rates` is the deck's 13%; `rates: null` is a market with no rates at all. */
+function faceInput(estimate: typeof cardEstimate, yes: number, no: number, o: FaceOpts = {}): CF.CardFaceInput {
+  const bettable = o.bettable ?? true;
+  const productLine = o.productLine ?? "MARKET";
+  const rates = o.rates === null ? null : pickEstimateRates((o.rates ?? LS13) as never);
+  const m = { yesPool: yes, noPool: no, productLine };
+  return {
+    productLine, status: o.status ?? "LIVE", resolvedOutcome: o.outcome ?? null, bettable,
+    estimates: { YES: estimate(m, rates, "YES", bettable), NO: estimate(m, rates, "NO", bettable) },
+    close: o.close === undefined ? DAYS : o.close,
+  };
+}
+
+function cardFaceChecks(r: Rules, ok: Ok) {
+  const F = (yes: number, no: number, o: FaceOpts = {}) => r.face(faceInput(r.estimate, yes, no, o));
+  const open = (yes: CF.PickFace, no: CF.PickFace) => j({ kind: "open", YES: yes, NO: no });
+  const win = (mult: string): CF.PickFace => ({ kind: "win", mult });
+  const dodoma = F(24_825, 50_462).picks, yanga = F(20_000, 43_700).picks;
+  ok("3.golden · the S3 golden pools: Dodoma reads ≈2.8× / ≈1.4× and Yanga ≈2.9× / ≈1.4×, each pick a win line",
+    j(dodoma) === open(win("2.8"), win("1.4")) && j(yanga) === open(win("2.9"), win("1.4")), j({ dodoma, yanga }));
+  const empty = F(0, 0).picks;
+  ok("3.empty · an empty pool: both picks say Kuwa wa kwanza, never a figure", j(empty) === open({ kind: "beFirst" }, { kind: "beFirst" }), j(empty));
+  const oneYes = F(5_000, 0).picks, oneNo = F(0, 7_000).picks;
+  ok("3.oneside · money on one side only: that side says Upande mmoja tu, and the empty side Kuwa wa kwanza",
+    j(oneYes) === open({ kind: "oneSide" }, { kind: "beFirst" }) && j(oneNo) === open({ kind: "beFirst" }, { kind: "oneSide" }), j({ oneYes, oneNo }));
+  const over = F(1_000, 200_000).picks;
+  ok("3.overcap · over the cap: the small side says Upande mdogo with NO number, and its thin other side Faida ndogo ≈1.0×",
+    j(over) === open({ kind: "overCap" }, { kind: "thin", mult: "1.0" }), j(over));
+  const legacy = F(24_825, 50_462, { rates: CAPPED }).picks;
+  const switchedOff = F(24_825, 50_462, { rates: { ...LS13, showEstimatedWinnings: false } }).picks;
+  const noRates = F(24_825, 50_462, { rates: null }).picks;
+  ok("3.legacy · a hidden figure, for each of its three causes, prints no number, each pick its side word alone: a legacy capped-commission market, a two-sided pool whose display switch is off, and a market with no rates",
+    [legacy, switchedOff, noRates].every((p) => j(p) === open({ kind: "word" }, { kind: "word" })), j({ legacy, switchedOff, noRates }));
+  const closed = F(24_825, 50_462, { bettable: false }).picks;
+  ok("3.closed · a market that takes no bets now is the one closed row, with no control", j(closed) === j({ kind: "closed" }), j(closed));
+  const settled = ([["RESOLVED", "YES"], ["RESOLVED", "NO"], ["VOIDED", "VOID"], ["VOIDED", null], ["RESOLVED", null], ["RESOLVED", "MAYBE"]] as const)
+    .map(([status, outcome]) => F(24_825, 50_462, { status, outcome, bettable: false }).picks);
+  ok("3.settled · settled YES takes the YES ink, NO the NO ink and a void the neutral ink (one-sided 8.10); a VOIDED market with no stamp is a void; a verdict never recorded names no side",
+    j(settled) === j([
+      { kind: "settled", outcome: "YES", ink: "yes" }, { kind: "settled", outcome: "NO", ink: "no" },
+      { kind: "settled", outcome: "VOID", ink: "neutral" }, { kind: "settled", outcome: "VOID", ink: "neutral" },
+      { kind: "settled", outcome: null, ink: "neutral" }, { kind: "settled", outcome: null, ink: "neutral" },
+    ]), j(settled));
+  const udLive = F(5_000, 3_000, { productLine: "UPDOWN" }).picks;
+  const udSettled = F(5_000, 3_000, { productLine: "UPDOWN", status: "RESOLVED", outcome: "YES", bettable: false }).picks;
+  ok("3.updown · an Up & Down row: live, each pick is the product's side word alone (it has no estimate); settled, its outcome in that outcome's ink",
+    j(udLive) === open({ kind: "word" }, { kind: "word" }) && j(udSettled) === j({ kind: "settled", outcome: "YES", ink: "yes" }), j({ udLive, udSettled }));
+  const notes = [
+    F(5_000, 0), F(0, 7_000), F(5_000, 0, { bettable: false }), F(5_000, 0, { rates: { ...LS13, showEstimatedWinnings: false } }),
+    F(0, 0), F(24_825, 50_462), F(5_000, 0, { status: "RESOLVED", outcome: "YES", bettable: false }), F(5_000, 0, { productLine: "UPDOWN" }),
+  ].map((f) => f.oneSidedNote);
+  ok("3.note · an unsettled one-sided pool names its EMPTY side for the refund sentence, the closed phase and a display switch turned off included; an empty pool, a two-sided one, a settled card and an Up & Down row carry none",
+    j(notes) === j(["NO", "YES", "NO", "NO", null, null, null, null]), j(notes));
+  const metas = [
+    F(24_825, 50_462, { close: { kind: "today" } }), F(24_825, 50_462, { close: DAYS }), F(24_825, 50_462, { close: { kind: "closed" } }),
+    F(24_825, 50_462, { bettable: false, close: DAYS }), F(24_825, 50_462, { status: "RESOLVED", outcome: "YES", bettable: false }),
+    F(24_825, 50_462, { status: "VOIDED", outcome: "VOID", bettable: false }), F(24_825, 50_462, { close: null }),
+  ].map((f) => f.meta);
+  ok("3.meta · A12's label and ink: closes today and waiting are muted; Siku N, settled and void stay subtle; a market that takes no bets is waiting whatever its clock says; no closing instant is no label",
+    j(metas) === j([
+      { kind: "today", emphasis: "muted" }, { kind: "days", emphasis: "subtle" }, { kind: "waiting", emphasis: "muted" },
+      { kind: "waiting", emphasis: "muted" }, { kind: "settled", emphasis: "subtle" }, { kind: "void", emphasis: "subtle" }, null,
+    ]), j(metas));
 }
 
 /* ── what §1 reads for, spelled as the route file spells it ─────────────────────────────────────────────────── */
@@ -125,7 +363,132 @@ function run(w: World, log: (l: string) => void): string[] {
   const importers = subjects.filter(([, s]) => IMPORTS_LANDING.test(decomment(s))).map(([rel]) => rel).sort();
   ok("1.importers · only src/app/page.tsx imports legacy-landing.tsx (a census over every file under src/): the route is the body's one mount",
     w.walked >= 500 && j(importers) === j([PAGE]), j({ walked: w.walked, importers }));
+
+  /* §2 · the home's list (S7 WP3) */
+  homeListChecks(w.rules, ok);
+  /* §3 · the card's face (S7 WP3) */
+  cardFaceChecks(w.rules, ok);
   return failed;
+}
+
+/**
+ * §2 and §3's plants: each swaps ONE rule for a copy of the real one carrying one defect, and must turn its own check red
+ * and no other (`alone`). The copies wrap the real export, so every plant is the real rule with exactly one thing wrong.
+ */
+function ruleDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) => World; alone: true }> {
+  const R = RULES;
+  const rule = (w: World, swapIn: Partial<Rules>): World => ({ ...w, rules: { ...w.rules, ...swapIn } });
+  const byIdIn = <T extends { id: string }>(originals: readonly T[]) => (x: { id: string }) => originals.find((m) => m.id === x.id) as T;
+  /** Each open pick's face remapped from its side's estimate; closed and settled rows pass through. */
+  const remap = (f: (face: CF.PickFace, e: Estimate | null) => CF.PickFace) => (i: CF.CardFaceInput): CF.CardFace => {
+    const out = R.face(i);
+    return out.picks.kind !== "open" ? out
+      : { ...out, picks: { kind: "open", YES: f(out.picks.YES, i.estimates?.YES ?? null), NO: f(out.picks.NO, i.estimates?.NO ?? null) } };
+  };
+  const flip = (s: "YES" | "NO" | null): "YES" | "NO" | null => (s === "YES" ? "NO" : s === "NO" ? "YES" : null);
+  return [
+    /* §2 · the home's list */
+    { name: "a market that takes no bets kept on the home (the caller's bet-path test ignored)", expect: /^2[.]book[.]keeps /, alone: true,
+      plant: (w) => rule(w, { book: (ms, now) => R.book(ms, now, () => true) }) },
+    { name: "the home ordered by when a market RESOLVES, not by when betting closes", expect: /^2[.]book[.]order /, alone: true,
+      plant: (w) => rule(w, { book: (ms, now, ok) => R.book(ms.map((m) => ({ ...m, selectionClosedAt: null })), now, ok).map(byIdIn(ms)) }) },
+    { name: "equal closing instants broken by the SMALLER pool", expect: /^2[.]book[.]order /, alone: true,
+      plant: (w) => rule(w, { book: (ms, now, ok) => R.book(ms.map((m) => ({ ...m, yesPool: -m.yesPool, noPool: -m.noPool })), now, ok).map(byIdIn(ms)) }) },
+    { name: "no id tie-break: a full tie keeps whatever order the list arrived in", expect: /^2[.]book[.]stable /, alone: true,
+      plant: (w) => rule(w, { book: (ms, now, ok) => ms.filter((m) => ok(m, now))
+        .map((m) => ({ m, closes: Date.parse(String(m.selectionClosedAt ?? m.resolutionAt)), pool: m.yesPool + m.noPool }))
+        .sort((a, b) => (a.closes - b.closes) || (b.pool - a.pool)).map((x) => x.m) }) },
+    { name: "the caller's list sorted in place (a shared list reordered under every other reader)", expect: /^2[.]book[.]stable /, alone: true,
+      plant: (w) => rule(w, { book: (ms, now, ok) => {
+        const out = R.book(ms, now, ok);
+        (ms as unknown as Array<{ id: string }>).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+        return out;
+      } }) },
+    { name: "the chips in the platform's order, not the deck's three first", expect: /^2[.]chips[.]order /, alone: true,
+      plant: (w) => rule(w, { chips: (b, sel) => { const held = new Set<string>(b.map((m) => m.category)); return [null, ...MARKET_CATEGORIES.filter((c) => held.has(c) || c === sel)]; } }) },
+    { name: "a chip for every category, held or not (a tap that leads to nothing)", expect: /^2[.]chips[.]held /, alone: true,
+      plant: (w) => rule(w, { chips: () => [null, "sports", "weather", "macro", "crypto", "culture", "tech", "other"] }) },
+    { name: "the selected category loses its chip when it holds no question (the filter applied out of sight)", expect: /^2[.]chips[.]selected /, alone: true,
+      plant: (w) => rule(w, { chips: (b) => R.chips(b) }) },
+    { name: "an unknown ?cat passed through to the filter", expect: /^2[.]parse[.]cat /, alone: true,
+      plant: (w) => rule(w, { parse: (sp, c) => { const p = R.parse(sp, c); const raw = sp?.cat; return typeof raw === "string" && raw !== "" ? { ...p, cat: raw as never } : p; } }) },
+    { name: "the caller's closed set ignored (?cat read against the whole category list)", expect: /^2[.]parse[.]cat /, alone: true,
+      plant: (w) => rule(w, { parse: (sp) => R.parse(sp, MARKET_CATEGORIES) }) },
+    { name: "a page handed no search object crashes (the null guard dropped)", expect: /^2[.]parse[.]absent /, alone: true,
+      plant: (w) => rule(w, { parse: (sp, c) => {
+        if (sp === null || sp === undefined) throw new TypeError("Cannot read properties of undefined (reading 'cat')");
+        return R.parse(sp, c);
+      } }) },
+    { name: "?q not clamped to the product's one cap", expect: /^2[.]parse[.]q /, alone: true,
+      plant: (w) => rule(w, { parse: (sp, c) => { const p = R.parse(sp, c); const raw = sp?.q; return typeof raw === "string" ? { ...p, q: raw.trim() } : p; } }) },
+    { name: "?page read with parseInt (2abc, 02 and 2.5 become page 2)", expect: /^2[.]parse[.]page /, alone: true,
+      plant: (w) => rule(w, { parse: (sp, c) => {
+        const p = R.parse(sp, c);
+        const raw = Array.isArray(sp?.page) ? sp?.page[0] : sp?.page;
+        const n = parseInt(raw ?? "1", 10);
+        return { ...p, page: Number.isFinite(n) && n >= 1 ? n : 1 };
+      } }) },
+    { name: "a repeated parameter takes its LAST value", expect: /^2[.]parse[.]array /, alone: true,
+      plant: (w) => rule(w, { parse: (sp, c) => R.parse(Object.fromEntries(Object.entries(sp ?? {}).map(([k, v]) => [k, Array.isArray(v) ? v[v.length - 1] : v])), c) }) },
+    { name: "the shared page rule read with parseInt (02, 3.0, 4abc and a padded 5 become pages)", expect: /^2[.]page[.]rule /, alone: true,
+      plant: (w) => rule(w, { pageParam: (raw) => { const n = parseInt(String(raw ?? "1"), 10); return Number.isFinite(n) && n >= 1 ? n : 1; } }) },
+    { name: "Onyesha zaidi pages instead of growing (page 2 shows cards 13 to 24 alone)", expect: /^2[.]pages /, alone: true,
+      plant: (w) => rule(w, { pages: (l, p, per) => { const x = R.pages(l, p, per); return { ...x, shown: l.slice((x.page - 1) * per, x.page * per) }; } }) },
+    { name: "a page past the end not clamped (an empty page that calls itself page 9)", expect: /^2[.]pages /, alone: true,
+      plant: (w) => rule(w, { pages: (l, p, per) => { const x = R.pages(l, p, per); return Number.isSafeInteger(p) && p > x.page ? { ...x, page: p } : x; } }) },
+    { name: "the search ignored once a category is chosen", expect: /^2[.]view[.]filter /, alone: true,
+      plant: (w) => rule(w, { view: (b, p, per, m) => R.view(b, p.cat !== null ? { ...p, q: "" } : p, per, m) }) },
+    { name: "homeView shows only its own page's cards, not everything above them", expect: /^2[.]view[.]paged /, alone: true,
+      plant: (w) => rule(w, { view: (b, p, per, m) => { const v = R.view(b, p, per, m); return { ...v, shown: v.shown.slice((v.page - 1) * per) }; } }) },
+    { name: "a search that matched nothing reported as an empty book", expect: /^2[.]view[.]empty /, alone: true,
+      plant: (w) => rule(w, { view: (b, p, per, m) => { const v = R.view(b, p, per, m); return v.empty === "q" ? { ...v, empty: "book" as const } : v; } }) },
+    { name: "page 1 written into the link (two addresses for the one home)", expect: /^2[.]href /, alone: true,
+      plant: (w) => rule(w, { href: (p) => { const h = R.href(p); return p.page === 1 ? `${h}${h.includes("?") ? "&" : "?"}page=1` : h; } }) },
+    { name: "values written raw, not encoded (a search holding an ampersand adds a parameter)", expect: /^2[.]href /, alone: true,
+      plant: (w) => rule(w, { href: (p) => decodeURIComponent(R.href(p)) }) },
+    { name: "the parameters written in the order the caller's object lists them", expect: /^2[.]href /, alone: true,
+      plant: (w) => rule(w, { href: (p) => {
+        const parts = Object.keys(p).flatMap((k) => { const one = R.href({ [k]: (p as Record<string, unknown>)[k] } as never); return one === "/" ? [] : [one.slice(2)]; });
+        return parts.length > 0 ? `/?${parts.join("&")}` : "/";
+      } }) },
+
+    /* §3 · the card's face */
+    { name: "a priced pick printed as the bare side word (the figure lost)", expect: /^3[.]golden /, alone: true,
+      plant: (w) => rule(w, { face: remap((f) => (f.kind === "win" ? { kind: "word" } : f)) }) },
+    { name: "an empty pool printed as the bare side word, not Kuwa wa kwanza", expect: /^3[.]empty /, alone: true,
+      plant: (w) => rule(w, { face: remap((f, e) => (e?.state === "emptyPool" ? { kind: "word" } : f)) }) },
+    { name: "the side holding all the money told to be the first", expect: /^3[.]oneside /, alone: true,
+      plant: (w) => rule(w, { face: remap((f, e) => (e?.state === "oneSidedRefund" ? { kind: "beFirst" } : f)) }) },
+    { name: "over the cap, the cap printed as a figure", expect: /^3[.]overcap /, alone: true,
+      plant: (w) => rule(w, { face: remap((f, e) => (e?.overCap ? { kind: "win", mult: e.multText ?? "100" } : f)) }) },
+    { name: "a thin side printed as an ordinary win (Faida ndogo lost)", expect: /^3[.]overcap /, alone: true,
+      plant: (w) => rule(w, { face: remap((f) => (f.kind === "thin" ? { kind: "win", mult: f.mult } : f)) }) },
+    { name: "a legacy (hidden) market's pick told to be the first", expect: /^3[.]legacy /, alone: true,
+      plant: (w) => rule(w, { face: remap((f, e) => (e?.state === "hidden" ? { kind: "beFirst" } : f)) }) },
+    { name: "the display switch ignored (a market whose figures are switched off prints one anyway)", expect: /^3[.]legacy /, alone: true,
+      plant: (w) => rule(w, { estimate: (m, rates, side, bettable) => R.estimate(m, rates && { ...rates, showEstimatedWinnings: true }, side, bettable) }) },
+    { name: "a market with no rates priced at the deck's 13% instead of showing its side word", expect: /^3[.]legacy /, alone: true,
+      plant: (w) => rule(w, { estimate: (m, rates, side, bettable) => R.estimate(m, rates ?? pickEstimateRates(LS13 as never), side, bettable) }) },
+    { name: "a market that takes no bets keeps its two picks", expect: /^3[.]closed /, alone: true,
+      plant: (w) => rule(w, { face: (i) => { const f = R.face(i); return f.picks.kind === "closed" ? { ...f, picks: { kind: "open", YES: { kind: "word" }, NO: { kind: "word" } } } : f; } }) },
+    { name: "every result in the YES ink (one-sided 8.10's defect: the slot's ink inherited)", expect: /^3[.]settled /, alone: true,
+      plant: (w) => rule(w, { face: (i) => { const f = R.face(i); return f.picks.kind === "settled" ? { ...f, picks: { ...f.picks, ink: "yes" as const } } : f; } }) },
+    { name: "a VOIDED market with no stamped outcome shows no result", expect: /^3[.]settled /, alone: true,
+      plant: (w) => rule(w, { face: (i) => {
+        const f = R.face(i);
+        return i.status === "VOIDED" && !i.resolvedOutcome && f.picks.kind === "settled" ? { ...f, picks: { kind: "settled", outcome: null, ink: "neutral" } } : f;
+      } }) },
+    { name: "an Up & Down pick told to be the first (its missing estimate read as an empty pool)", expect: /^3[.]updown /, alone: true,
+      plant: (w) => rule(w, { face: remap((f, e) => (e === null ? { kind: "beFirst" } : f)) }) },
+    { name: "the refund sentence names the side holding the money", expect: /^3[.]note /, alone: true,
+      plant: (w) => rule(w, { face: (i) => { const f = R.face(i); return { ...f, oneSidedNote: flip(f.oneSidedNote) }; } }) },
+    { name: "the refund sentence dropped once betting closes", expect: /^3[.]note /, alone: true,
+      plant: (w) => rule(w, { face: (i) => { const f = R.face(i); return i.bettable ? f : { ...f, oneSidedNote: null }; } }) },
+    { name: "closes today returned in the subtle ink (A12)", expect: /^3[.]meta /, alone: true,
+      plant: (w) => rule(w, { face: (i) => { const f = R.face(i); return f.meta?.kind === "today" ? { ...f, meta: { kind: "today", emphasis: "subtle" } } : f; } }) },
+    { name: "Siku N returned in the muted ink (A12)", expect: /^3[.]meta /, alone: true,
+      plant: (w) => rule(w, { face: (i) => { const f = R.face(i); return f.meta?.kind === "days" ? { ...f, meta: { kind: "days", emphasis: "muted" } } : f; } }) },
+  ];
 }
 
 const REAL = load();
@@ -136,7 +499,8 @@ if (!PROVE_RED) {
   process.exitCode = failed.length === 0 ? 0 : 1;
 } else {
   const quiet = () => {};
-  type Plant = { name: string; expect: RegExp; plant: (w: World) => World };
+  /** `alone`: the plant must turn its own check red and NO other (every §2 and §3 plant). */
+  type Plant = { name: string; expect: RegExp; plant: (w: World) => World; alone?: boolean };
   /** One swap on a copy of a file's text. ⛔ An anchor that no longer resolves exactly once THROWS, so a plant that changed
    *  nothing is reported as a broken plant, never as a check that missed it. */
   const swap = (text: string, from: string, to: string) => {
@@ -166,18 +530,40 @@ if (!PROVE_RED) {
       plant: (w) => ({ ...w, landing: '"use client";' + LF + LF + w.landing }) },
     { name: "the landing's body a default export again", expect: /^1[.]landing /,
       plant: (w) => ({ ...w, landing: swap(w.landing, LANDING_EXPORT, "export default async function LegacyLanding(") }) },
+
+    /* §2 and §3 (S7 WP3): one rule swapped for a copy that carries one defect, each required to fail its check ALONE. */
+    ...ruleDefects(),
   ];
   let caught = 0, fail = 0;
   const ok = (label: string, cond: boolean, extra = "") => { if (!cond) fail++; console.log(`${cond ? "PROVED  " : "MISSED  "} ${label}${extra ? ` — ${extra}` : ""}`); };
+  /** The verdict: the plant's own check failed and, for an `alone` plant, no other check did. */
+  const judge = (failures: string[], p: Pick<Plant, "expect" | "alone">) => {
+    const hit = failures.some((f) => p.expect.test(f));
+    const beside = p.alone ? failures.filter((f) => !p.expect.test(f)) : [];
+    return { proved: hit && beside.length === 0, hit, beside };
+  };
+  // CONTROL, before any plant: the verdict must tell a lone failure from a crowd, and a check from its neighbour.
+  {
+    const lone = { expect: /^2[.]book[.]order /, alone: true };
+    const cases: Array<[string[], boolean]> = [
+      [["2.book.order · x"], true], [["2.book.order · x", "2.book.keeps · y"], false], [["2.book.orderly · x"], false],
+      [["2.book.keeps · y"], false], [[], false],
+    ];
+    const wrong = cases.filter(([failures, want]) => judge(failures, lone).proved !== want);
+    ok("the verdict's control: a lone failure of the check proves it; a second failure beside it, a neighbouring id or nothing does not",
+      wrong.length === 0, wrong.length === 0 ? "" : j(wrong));
+  }
   const clean = run(REAL, quiet);
   ok("the REAL tree passes every check", clean.length === 0, clean.join(" | "));
   for (const p of PLANTS) {
     let failures: string[];
     try { failures = run(p.plant(REAL), quiet); }
     catch (e) { ok(p.name, false, `the plant is broken: ${(e as Error).message}`); continue; }
-    const hit = failures.some((f) => p.expect.test(f));
-    if (hit) caught++;
-    ok(p.name, hit, hit ? "" : failures.length === 0 ? "NOTHING failed — the gate cannot see this defect" : `failed instead: ${failures.slice(0, 2).join(" | ")}`);
+    const { proved, hit, beside } = judge(failures, p);
+    if (proved) caught++;
+    ok(p.name, proved, proved ? ""
+      : !hit ? (failures.length === 0 ? "NOTHING failed — the gate cannot see this defect" : `failed instead: ${failures.slice(0, 2).join(" | ")}`)
+      : `its check failed, but so did another, so the check is not proved to catch it alone: ${beside.slice(0, 2).join(" | ")}`);
   }
   console.log(`${LF}RED CONTROL — ${caught}/${PLANTS.length} caught${fail === 0 ? "" : ` · ${fail} FAILED`}${LF}`);
   process.exitCode = fail === 0 ? 0 : 1;
