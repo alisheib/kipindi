@@ -94,7 +94,7 @@ export type PendingBetMarker = {
 };
 
 const CODE = /^[A-Za-z0-9_-]{1,64}$/;
-const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"] as const;
+export const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"] as const;
 const UTM_VALUE = /^[A-Za-z0-9._~ -]{1,100}$/;
 
 /** The attribution a link arrived with — only `ref`, `invite` and the five `utm_*`, each in its own safe shape. */

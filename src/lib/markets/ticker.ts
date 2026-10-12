@@ -108,11 +108,20 @@ export const TICKER_LIMIT = 12;
  */
 export const TICKER_ROUTES: readonly string[] = ["/", "/markets", "/live", "/results"];
 
+/**
+ * The strip's pages for a JOURNEY reader (the Vodacom plan S7, §3.2; S7-PLAN WP3 step 4, amendment A4): S16's list. The
+ * strip leaves the home and the board, which become the question list, and stays on the two pages that report what
+ * happened. The same rule as above: exact paths, never a prefix. A classic reader's answer does not read this list.
+ */
+export const JOURNEY_TICKER_ROUTES: readonly string[] = ["/live", "/results"];
+
 /** True when the strip belongs on this page. `pathname` is `usePathname()` — no query, no hash.
- *  A trailing slash is tolerated; anything else is an exact match against `TICKER_ROUTES`. */
-export function tickerShowsOn(pathname: string | null | undefined): boolean {
+ *  A trailing slash is tolerated; anything else is an exact match against `TICKER_ROUTES`, or against
+ *  `JOURNEY_TICKER_ROUTES` when `journey` is true (the shell's per-request answer, passed down by WP8). */
+export function tickerShowsOn(pathname: string | null | undefined, journey = false): boolean {
   if (!pathname) return false;
   const p = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+  if (journey) return JOURNEY_TICKER_ROUTES.includes(p);
   return TICKER_ROUTES.includes(p);
 }
 
