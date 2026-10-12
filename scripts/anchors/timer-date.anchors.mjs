@@ -31,6 +31,11 @@
  * words away; `client-reads-device-clock` is the hydration hazard; and
  * `fence-control-formatted-elsewhere` is the fence's positive control.
  *
+ * ⭐ S7 WP5 (2026-10-12) — the journey card's one date, a settled question's instant: `journey-home-card-year-blind`
+ * (the English same-year formatter back, caught by the one-home check) and `journey-home-card-names-another-instant`
+ * (the resolution formatted under a `<time>` that names the settled instant, caught by the same-instant check) — S7-PLAN
+ * A12 item 6, both re-derived on `formatEatDateTime` by A24 item 3.
+ *
  * ⚠️ SINGLE-LINE ANCHORS. This tree is CRLF and these declarations are LF, so a
  * multi-line anchor cannot match and the replace becomes a silent no-op — which reads
  * as "the guard failed to catch the defect" rather than "the harness never ran".
@@ -48,6 +53,9 @@ const GATE = "scripts/timer-date.test.mts";
 const JOURNEY_CARD = "src/components/journey/tickets/ticket-card.tsx";
 /** S6 WP10 — the Sell button, whose journey look names the free-sell instant beside its countdown. */
 const SELL_BUTTON = "src/components/markets/sell-button.tsx";
+/** S7 WP5 — the journey card (the home's, and WP10's), whose one date is a settled question's instant (S7-PLAN A12 items
+ *  4–6, the date as A24 item 3 re-derives it: `formatEatDateTime` in the reader's words, never `formatDeadline`). */
+const JOURNEY_HOME_CARD = "src/components/journey/cards/journey-card.tsx";
 /** §L4 (2026-10-08) — converted player files the fence holds to the localized date helper. */
 const RESOLUTION_PANEL = "src/components/markets/resolution-panel.tsx";
 const POSITIONS = "src/app/positions/page.tsx";
@@ -208,5 +216,23 @@ export const MUTATIONS = [
     from: `{freeUntilLabel}</time>`,
     to: `{freeUntil ? new Date(freeUntil).toLocaleTimeString() : null}</time>`,
     expect: "3: the Sell button formats no time of its own — no locale formatter, no date helper, no Intl",
+  },
+  {
+    name: "journey-home-card-year-blind",
+    why: "⭐ S7 WP5 · the journey card's settled date goes back through the raw same-year English formatter: /results lists the whole settled archive, so a question settled last year reads as this year's, and a Swahili reader reads 'Oct' where the dictionary says 'Okt' again (§L4; S7-PLAN A12 item 6, re-derived on formatEatDateTime by A24 item 3)",
+    file: JOURNEY_HOME_CARD,
+    suite: "timer-date",
+    from: `{formatEatDateTime(Date.parse(settledIso), nowMs, t.common.monthsShort, locale)}`,
+    to: `{formatDayTime(settledIso)}`,
+    expect: "3: journey journey-card.tsx dates every deadline through formatEatDateTime/formatEatDate, in the reader's month words",
+  },
+  {
+    name: "journey-home-card-names-another-instant",
+    why: "⭐ S7 WP5 · the journey card's result row formats the question's RESOLUTION while its <time> still claims the settled instant — present, formatted, zoned, and about a different moment: the wrong-instant case on the settled card (S7-PLAN A12 item 6)",
+    file: JOURNEY_HOME_CARD,
+    suite: "timer-date",
+    from: `{formatEatDateTime(Date.parse(settledIso), nowMs, t.common.monthsShort, locale)}`,
+    to: `{formatEatDateTime(Date.parse(m.resolutionAt), nowMs, t.common.monthsShort, locale)}`,
+    expect: "3: ...the journey card's <time dateTime={settledIso}> names the SAME instant it formats",
   },
 ];
