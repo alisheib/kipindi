@@ -837,6 +837,13 @@ function g9Search(I: Impl, W: World, ok: Ok) {
     declOf(W.css, OPEN_ROW, "border-bottom-left-radius") === "0" && declOf(W.css, OPEN_ROW, "border-bottom-right-radius") === "0"
       && declOf(W.css, LAST_ROW, "border-bottom-left-radius") !== null,
     show({ open: [declOf(W.css, OPEN_ROW, "border-bottom-left-radius"), declOf(W.css, OPEN_ROW, "border-bottom-right-radius")], last: declOf(W.css, LAST_ROW, "border-bottom-left-radius") }));
+  // The WP9 review: the card's inside-ring rule ((0,2,0), later) ties the kit's `.btn:focus-visible` and took the button's
+  // ring inside it; `.kp-hub__form .btn:focus-visible` ((0,3,0)) sets the kit's own offset back.
+  const CARD_RING = ".kp-hub__card :where(a, button, summary):focus-visible { outline-offset: -2px; }";
+  const kitOffset = declOf(W.css, ".btn:focus-visible", "outline-offset");
+  const tafutaOffset = declOf(W.css, ".kp-hub__form .btn:focus-visible", "outline-offset");
+  ok("9.css.ring · Tafuta's button keeps the kit's focus ring OUTSIDE it: the card's inside-ring rule ties `.btn:focus-visible` and comes later, so `.kp-hub__form .btn:focus-visible`, which outranks it, sets the kit's own offset back",
+    W.css.includes(CARD_RING) && kitOffset === "2px" && tafutaOffset === kitOffset, show({ cardRule: W.css.includes(CARD_RING), kit: kitOffset, tafuta: tafutaOffset }));
 
   const fit = fitAt(W, 320);
   ok(`9.fit · THE WIDTH PROOF at 320, in sw, en and zh: beside its button the field leaves its placeholder whole — ${typeof fit === "string" ? fit : fit.map((f) => `${f.l} ${f.need.toFixed(1)} of ${f.room.toFixed(1)}px`).join(", ")} (the repo's Inter by its own advances, kerning ignored, so an upper bound)`,
@@ -1006,6 +1013,7 @@ const markerShown = withText("css", (s) => s.replace(".kp-hub__find > summary, .
 const fieldShrinks = withText("css", (s) => s.replace(".kp-hub__field { flex: 1 1 auto; min-width: 0; }", ".kp-hub__field { flex: 0 0 auto; }"));
 const rowGutters = withText("css", (s) => s.replace("gap: var(--sp-3); padding: 0 var(--sp-2) var(--sp-2); }", "gap: var(--sp-3); padding: 0 var(--sp-4) var(--sp-4); }"));
 const cornersKept = withText("css", (s) => s.replace(".kp-hub__card .kp-hub__find[open] > .kp-hub__row { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }", ""));
+const ringInside = withText("css", (s) => s.replace(".kp-hub__form .btn:focus-visible { outline-offset: 2px; }", ""));
 const searchDiffers = (planted: Impl["search"]) => LOCS.some((l) => planted(l) !== REAL.search(l));
 
 // §6 — the reader
@@ -1103,6 +1111,7 @@ const plants: Plant[] = [
   { name: "Tafuta's field stops taking the line", expect: ["9.css.panel"], world: fieldShrinks, landed: changed(fieldShrinks, "css") },
   { name: "Tafuta's form on the row's own 16px gutters (en's placeholder cut at 320)", expect: ["9.fit ·"], world: rowGutters, landed: changed(rowGutters, "css") },
   { name: "open, Tafuta's row keeps the card's rounded corners over the field", expect: ["9.css.corners"], world: cornersKept, landed: changed(cornersKept, "css") },
+  { name: "Tafuta's button takes the card's ring inside it (the kit's outside ring lost, the WP9 review)", expect: ["9.css.ring"], world: ringInside, landed: changed(ringInside, "css") },
   { name: "sign-out is offered to a guest", expect: ["8.signout.page"], world: guestsSignOut, landed: changed(guestsSignOut, "page") },
   { name: "Alika is offered where the reader may not hold a link", expect: ["3.closed", "3.invite.empty"], impl: { rows: inviteUngated }, landed: differs(inviteUngated, member({ eligible: false })) },
   { name: "a held wallet is offered Toa pesa", expect: ["3.held"], impl: { rows: heldWithdraws }, landed: differs(heldWithdraws, member({ held: true })) },
