@@ -14,7 +14,9 @@
  * report's words unchanged), every loader takes the one guard and none keeps its own: the shell's parts
  * (`shell-lazy.tsx`), the journey's route ghosts (`route-ghost-lazy.tsx`), the Tiketi switch's tabs
  * (`journey/tickets/ticket-switch-rail.tsx`) and the journey home's parts (`journey/home/home-lazy.tsx`). The chat bubble
- * and the first-visit primer (`lazy-overlays.tsx`) take it in S7's live fix L1, for every player (A13(b)) — not before.
+ * and the first-visit primer (`lazy-overlays.tsx`) take it since S7's live fix L1, for every player (A13(b)): the two
+ * older loaders a lost chunk still took to the critical-error screen. `test:journey-shell` 12.dynamic.census holds every
+ * file in src that imports `next/dynamic` to this one guard, by name.
  * The once-per-page flag is shared with it: one report per page across every loader that takes the guard.
  * ⛔ NO DIRECTIVE AND NO IMPORTS. It is a plain module the client loaders import (`test:journey-shell` 12.parts.client
  * sets aside exactly this specifier and requires both), so it adds nothing to a page but these few lines; and
