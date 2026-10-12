@@ -3,7 +3,8 @@
  * (the Vodacom plan S6, `S6-PLAN.md` WP6b step 6 as amended by A5; S6's done-when "the header fits at 320/360/390/1024/
  * 1150/1279 × sw/en/zh × guest/signed-in").
  *
- *   KP_BASE=http://localhost:3041 npm run qa:journey-header-fit          (KP_ROUTE=/markets to measure another page)
+ *   KP_BASE=http://localhost:3041 npm run qa:journey-header-fit          (KP_ROUTE=/live to measure another page)
+ *   (never KP_ROUTE=/markets: since S7 WP9 a pass holder's /markets answers with the journey home, so it measures /)
  *
  * Through a real staff preview pass (`live/journey-pass.mjs`), per cell (`live/journey-header-fit.mjs`, the module its
  * red twin imports too):
