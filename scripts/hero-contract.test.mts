@@ -73,7 +73,7 @@ function heroRow(over: Partial<HeroRow> = {}): HeroRow {
     ...over,
     // Derived AFTER the spread so a caller overriding pools cannot leave pool/yesPct disagreeing
     // with them — a fixture that contradicts itself proves whatever you want.
-    // ⚠️ `shownYesPct`, as `app/page.tsx` builds the real rows since WP6: the printable price, null
+    // ⚠️ `shownYesPct`, as `components/home/legacy-landing.tsx` builds the real rows since WP6: the printable price, null
     // on an empty OR one-sided pool. (`pricedYesPct` is the aggregate's raw share — §1 and §4.)
     pool: (over.yesPool ?? yesPool) + (over.noPool ?? noPool),
     yesPct: shownYesPct(over.yesPool ?? yesPool, over.noPool ?? noPool),

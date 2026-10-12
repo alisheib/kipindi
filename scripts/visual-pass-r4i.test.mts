@@ -663,7 +663,8 @@ section("8 · the deposit-paused notice: the card's width, the way to Withdraw, 
 /* ══ §9 · NOTHING SAYS "BET NOW" DURING A BREAK ═══════════════════════════════════════════════════════════════════════ */
 section("9 · during a break nothing says \"bet now\" (E19)");
 {
-  const HERO = read("src/components/home/landing-hero.tsx"), HOME = read("src/app/page.tsx");
+  // HOME is the landing's body, since S7 WP2 moved it verbatim out of the route file (`src/app/page.tsx`).
+  const HERO = read("src/components/home/landing-hero.tsx"), HOME = read("src/components/home/legacy-landing.tsx");
   ok("9.1 · the home's lead (\"Bado huna chaguo. Chagua upande…\") and the empty-balance call are withheld on a break, as for a held wallet",
     /held \|\| emptyWallet \|\| onBreak \? null : <p className="kp-mine__lead">\{t\.home\.picksNone\}<\/p>/.test(HERO)
       && /const emptyWallet = !held && !onBreak && balance !== null && balance <= 0;/.test(HERO));

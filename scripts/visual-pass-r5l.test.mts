@@ -264,7 +264,9 @@ function suspenseCensus(src: Src): string[] {
       if (f === "src/components/layout/top-app-bar.tsx" && fb.startsWith("<GuestAuthPills")) continue; // chrome, not a skeleton
       bad.push(`${f}: ${fb.slice(0, 60)}`);
     }
-    if (/^src\/app\//.test(f) && /\bfunction \w*Skeleton\(/.test(s)) bad.push(`${f}: an inline skeleton function`);
+    // A page's own file — and the home's body, which S7 WP2 moved to components/home/legacy-landing.tsx — draws no
+    // skeleton function of its own.
+    if ((/^src\/app\//.test(f) || f === "src/components/home/legacy-landing.tsx") && /\bfunction \w*Skeleton\(/.test(s)) bad.push(`${f}: an inline skeleton function`);
   }
   return bad;
 }

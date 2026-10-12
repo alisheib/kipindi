@@ -315,7 +315,8 @@ log("\n── §3 · the call sites");
     `${live.length} live-capable; resolved-only: ${resolvedOnly.join(", ")}; missing msLeft: ${noMs.map((s) => s.at).join(", ")}`);
   check("3.3-control a live call site without `msLeft` IS detected",
     !/\bmsLeft=\{/.test('<MarketCard productLine={"MARKET"} timeLeft={timeLeftStr(x)} status="LIVE" yesPool={a} noPool={b} />'));
-  const page = decomment(read("src/app/page.tsx"));
+  // The landing's body, since S7 WP2 moved it verbatim out of the route file (`src/app/page.tsx` keeps the metadata).
+  const page = decomment(read("src/components/home/legacy-landing.tsx"));
   check("3.4 the page reads the registry ONCE and resolves each row through `sourceNameFor`",
     (page.match(/listSources\(/g) ?? []).length === 1 && /sourceName: sourceNameFor\(sources, m\.sourceUrl, resolvePublishCategory\(m\.category\)\)/.test(page));
 }

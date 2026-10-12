@@ -229,7 +229,7 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
       const h = readableHitsFor(rel, t);
       if (h.length) printing.push(`${rel} :: ${[...new Set(h)].join(", ")}`);
     }
-    const NAMED = ["src/app/legal/rules/_content-up-down.tsx", "src/app/legal/rules/_content-yes-no.tsx", "src/app/legal/terms/page.tsx", "src/app/legal/privacy/page.tsx", "src/app/page.tsx", "src/app/leaderboard/page.tsx", "src/components/markets/resolution-panel.tsx", "src/app/markets/[id]/page.tsx"];
+    const NAMED = ["src/app/legal/rules/_content-up-down.tsx", "src/app/legal/rules/_content-yes-no.tsx", "src/app/legal/terms/page.tsx", "src/app/legal/privacy/page.tsx", "src/app/page.tsx", "src/components/home/legacy-landing.tsx", "src/app/leaderboard/page.tsx", "src/components/markets/resolution-panel.tsx", "src/app/markets/[id]/page.tsx"];
     const absent = NAMED.filter((p) => !population.includes(p));
     ok("5.2.0 · POPULATION · every player-rendered file is read from disk — `src/app/` outside `admin/` and `api/`, `src/components/` outside `admin/` — and the rulebooks, Terms, the privacy notice, the home page, the leaderboard and BOTH surfaces 0.198.3 already reads are in it BY NAME. A sweep over zero files passes, so the count and the printed characters are printed here",
       population.length >= 350 && chars > 400_000 && absent.length === 0,

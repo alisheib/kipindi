@@ -79,7 +79,7 @@ type World = {
   src: Map<string, string>;
   hero: string;               // decommented hero-intro.tsx, then landing-hero.tsx (`heroOf`)
   css: string;                // globals.css, line endings normalised — §2c reads the headline's set-back rules
-  page: string;               // decommented app/page.tsx
+  page: string;               // decommented components/home/legacy-landing.tsx (`LANDING`)
   evidence: Evidence;
   compliance: string;
   payoutRails: { id: string; name: string }[];
@@ -96,6 +96,9 @@ const INTRO = "src/components/home/hero-intro.tsx";
 /** Between the two files in `World.hero`: a line neither file can hold, so a plant on the joined text splits back cleanly. */
 const JOIN = "\n/* ══ hero-copy: landing-hero.tsx follows ══ */\n";
 const heroOf = (src: Map<string, string>) => (src.get(INTRO) ?? "") + JOIN + (src.get(HERO) ?? "");
+/** The landing's body — the call that hands the hero and the trust band their rails — moved verbatim out of the route file
+ *  (`src/app/page.tsx`, which keeps the metadata) on 2026-10-12 (S7 WP2). §3-control proves the world found it. */
+const LANDING = "src/components/home/legacy-landing.tsx";
 const DICT = "src/lib/i18n-dict.ts";
 
 function load(): World {
@@ -109,7 +112,7 @@ function load(): World {
     src,
     hero: heroOf(src),
     css: read("src/app/globals.css"),
-    page: src.get("src/app/page.tsx") ?? "",
+    page: src.get(LANDING) ?? "",
     evidence: FIRST_LICENSED_EVIDENCE(),
     compliance: read("docs/COMPLIANCE-DECISIONS.md"),
     payoutRails: payoutCapableRails().map((m) => ({ id: m.id, name: m.name })),
@@ -302,16 +305,24 @@ const CHECKS: Check[] = [
       if (WALLET_NAME.test(s)) d.push(`${loc}.home.heroRails types a wallet name: ${JSON.stringify(s)}`);
       if ((s.match(/\{rails\}/g) ?? []).length !== 1) d.push(`${loc}.home.heroRails has no single {rails}`);
     }
-    if (!/rails=\{heroRailNames\(railPauses\)\}/.test(w.page)) d.push("page.tsx does not pass rails={heroRailNames(railPauses)}");
+    if (!/rails=\{heroRailNames\(railPauses\)\}/.test(w.page)) d.push("legacy-landing.tsx does not pass rails={heroRailNames(railPauses)}");
     if (!/railListParts\(locale, rails\)/.test(w.hero)) d.push("the hero does not join the names with railListParts(locale, rails)");
     return d;
   } },
   { id: "3e", label: "the trust band's wallet marks come from the same heroRails list as the hero's names (a paused rail leaves both)", run: (w) => {
     const d: string[] = [];
     const band = w.src.get("src/components/home/trust-band.tsx") ?? "";
-    if (!/<TrustBand\b[^>]*rails=\{heroRails\(railPauses\)\}/.test(w.page)) d.push("page.tsx does not pass rails={heroRails(railPauses)} to TrustBand");
+    if (!/<TrustBand\b[^>]*rails=\{heroRails\(railPauses\)\}/.test(w.page)) d.push("legacy-landing.tsx does not pass rails={heroRails(railPauses)} to TrustBand");
     if (/MOBILE_MONEY_METHODS\.map\(/.test(band)) d.push("trust-band.tsx draws MOBILE_MONEY_METHODS, not the rails it is given");
     if (!/\brails\.map\(/.test(band)) d.push("trust-band.tsx does not draw the rails it is given");
+    return d;
+  } },
+  /* ⚠️ §3d and §3e read the landing's BODY, and the world reads it with `?? ""`: a path that holds nothing would be
+     reported as a page that passes no rails. This control says which it is, so a wrong path cannot pass as a finding. */
+  { id: "3-control", label: "CONTROL: §3d and §3e read the landing's body — legacy-landing.tsx is found, over 1,000 characters, and draws <TrustBand", run: (w) => {
+    const d: string[] = [];
+    if (w.page.length <= 1000) d.push(`${LANDING} reads as ${w.page.length} characters — §3d and §3e are not reading the landing's body`);
+    if (!w.page.includes("<TrustBand")) d.push(`${LANDING} draws no <TrustBand — §3d and §3e are not reading the landing's body`);
     return d;
   } },
 
@@ -418,6 +429,10 @@ const PLANTS: Record<string, { note: string; plant: (w: World) => World }[]> = {
   "3e": [
     { note: "the trust band draws the whole catalogue again", plant: (w) => { const s = new Map(w.src); s.set("src/components/home/trust-band.tsx", (s.get("src/components/home/trust-band.tsx") ?? "").replace("rails.map((m) =>", "MOBILE_MONEY_METHODS.map((m) =>")); return { ...w, src: s }; } },
     { note: "the page stops passing heroRails to the band", plant: (w) => ({ ...w, page: w.page.replace("rails={heroRails(railPauses)}", "rails={payoutCapableRails()}") }) },
+  ],
+  "3-control": [
+    { note: "the landing's body read from a path that holds nothing (the world's `?? \"\"`)", plant: (w) => ({ ...w, page: "" }) },
+    { note: "the route file read in its place (it hands the body on and draws no band)", plant: (w) => ({ ...w, page: w.src.get("src/app/page.tsx") ?? "" }) },
   ],
   "4a": [{ note: "the warning sentence back in the trust rows", plant: (w) => inTrust(w, "<li>{t.footer.stopGambling}</li>") }],
   "4b": [{ note: "a second lang in the hero", plant: (w) => inTrust(w, '<li lang="sw">x</li>') }],
