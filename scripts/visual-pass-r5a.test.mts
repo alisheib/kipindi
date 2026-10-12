@@ -549,6 +549,8 @@ section("8 · F20 · every close ✕ of a panel, a sheet or a dialog: on its tit
     "src/components/ui/empty-state.tsx": [C("glyph", "`ErrorMark`, an error state's circled ✕ illustration — it closes nothing")],
     "src/components/ui/search-box.tsx": [C("row ✕", "clears the field")],
     "src/components/ui/query-bar.tsx": [C("row ✕", "a link that clears the query, worded beside its ✕")],
+    // The Vodacom plan S7 (WP7, 2026-10-12): the journey home's "Futa utafutaji", the query bar's clear in the home's words.
+    "src/components/journey/home/journey-home.tsx": [C("row ✕", "a link that clears the home's search, worded beside its ✕ (the query bar's clear)")],
     "src/components/ui/date-select.tsx": [C("row ✕", "back to the calendar")],
     "src/app/admin/invites/invite-admin-client.tsx": [C("row ✕", "removes a staged row")],
     "src/app/admin/approvals/sof-review-client.tsx": [C("glyph", "Reject")],

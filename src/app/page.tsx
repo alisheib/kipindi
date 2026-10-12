@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { ROOT_OPEN_GRAPH } from "./layout";
 
 import { LegacyLanding } from "@/components/home/legacy-landing";
+import { JourneyHome } from "@/components/journey/home/journey-home";
+import { JourneyHomeGhost } from "@/components/journey/home/journey-home-ghost";
 import { getServerT } from "@/lib/i18n-server";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 
 export const dynamic = "force-dynamic";
 
@@ -37,8 +41,23 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function LandingPage({ searchParams }: {
+export default async function LandingPage({ searchParams }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  /* ⭐ THE JOURNEY HOME, FOR A JOURNEY REQUEST ALONE (the Vodacom plan S7, S7-PLAN WP7 step 1; A17 item 2, A24 items 1-2).
+     The one per-request answer AppShell is given too (React-cached, so the page and its chrome cannot disagree about one
+     render) — never the pass cookie, never `simpleJourneyFor`. A journey request is drawn the deck's home, its own ghost
+     standing while the list is on its way (a Suspense boundary of the home's own: the root loading file stays as it is);
+     every other request takes the one classic return below, today's element after one cached await. The tab's title is
+     the one `generateMetadata` gives every reader (Open point 25's decision). */
+  const { journey } = await resolveSimpleJourney();
+  if (journey) {
+    const { t } = await getServerT();
+    return (
+      <Suspense fallback={<JourneyHomeGhost t={t} />}>
+        <JourneyHome searchParams={searchParams} />
+      </Suspense>
+    );
+  }
   return <LegacyLanding searchParams={searchParams} />;
 }

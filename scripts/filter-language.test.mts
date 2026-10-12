@@ -198,6 +198,15 @@ const SURFACES = [
      360/768/1280 × sw/en/zh are already measured by `qa:landing-ten` and the landing drives, which is
      what `qa:filter-scan` would be adding. If the rail ever gains a count or a sheet, it joins them. */
   "src/components/home/landing-hero.tsx",       // / — the one board's ordering rail (WP9)
+  /* DECLARED 2026-10-12 (the Vodacom plan S7, WP7 · S7-PLAN Correction 8 and WP7 step 2 item 3). ⭐ THE JOURNEY HOME'S TOPIC
+     CHIPS — Zote, then each category the open book holds — are `?cat=` addresses, so they speak the filter language:
+     `<FilterPill semantics="toggle">` with `replace` and `scroll={false}` (the canvas draws `aria-pressed`, as `/markets`'
+     topic chips have always shipped), in the house's scrolling strip below 1024. A journey reader's `/` only: a classic
+     reader's `/` is the landing, whose rail is the row above. Declared in the same commit as the rail, as §0.4 requires.
+     ⛔ NOT ADDED TO THE THREE LIVE PROBES' `SURFACES`, for the landing's reasons: its pills carry no count (`homeChips` holds
+     only the categories the book holds, so a count would restate the cards below it), the rail is not sticky, and the
+     journey home's frames are the S7 drives' (`qa:journey-home`, WP11). */
+  "src/components/journey/home/home-chips.tsx", // / (journey) — the home's topic chips (S7 WP7)
 ];
 
 /**

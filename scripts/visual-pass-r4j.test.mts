@@ -14,7 +14,8 @@
  *   §2  E37 · E41 · a route change moves only the page: no document cross-fade for a journey reader, and one current
  *            destination and one lit tab in every frame (the journey's own rules; the classic rail keeps its fades)
  *   §3  E38 · each journey tab's loading state is its own page's ghost in its own column, picked by the exact path; the
- *            hero's intro is ONE module both draw; /live's search ghost wears the page's band
+ *            hero's intro is ONE module both draw; /live's search ghost wears the page's band; and since the Vodacom plan
+ *            S7's WP7 `/`'s is the journey home's own ghost, the landing's shelved beside it (3.14)
  *   §4  E40 · the Needle's rest rule clears a Chinese caption of tile 269's geometry, and the caption's box holds its ink
  *   §5  the not-found mark: the overlays stop standing down, and the chrome stops lighting a tab and polling, on any
  *            not-found page — and (round 5, R5-D, review F4/F5) for the path being drawn only, in every frame, and before
@@ -338,6 +339,21 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
       && /\.kp-hero__inner > \*:nth-child\(1\) \{ animation: kp-rise/.test(CSS)
       && /\.kp-hghost \.kp-hero__intro, \.kp-hghost \.kp-hero__intro \* \{ color: transparent; \}/.test(CSS)
       && homeGhost.includes('<section className="kp-hero" aria-hidden="true">'));
+  // ⭐ RE-POINTED BY THE VODACOM PLAN S7 (WP7, S7-PLAN A24 item 2, 2026-10-12): a journey reader's `/` is the journey home,
+  // so the root ghost draws the home's OWN ghost there — the very drawing app/page.tsx's journey arm stands in its Suspense
+  // boundary while the home's list arrives (one drawing, two places). The landing's ghost (3.9, 3.10) is SHELVED with the
+  // landing for a journey reader (docs/SHELVED.md): kept in place, unmounted, and still held to the hero's skeleton, so
+  // putting it back at "/" is one line.
+  const PAGE_FILE = read("src/app/page.tsx");
+  const HOME_GHOST_IMPORT = 'import { JourneyHomeGhost } from "@/components/journey/home/journey-home-ghost";';
+  const homeEntry = (g: string, p: string) => squash(g).includes('"/": <JourneyHomeGhost t={t} />,') && g.includes(HOME_GHOST_IMPORT)
+    && !/"\/": <HomeGhost/.test(squash(g)) && squash(p).includes("<Suspense fallback={<JourneyHomeGhost t={t} />}>") && p.includes(HOME_GHOST_IMPORT);
+  ok("3.14 · \"/\" draws the journey home's own ghost (journey-home-ghost.tsx), the same drawing app/page.tsx's journey arm stands in its Suspense boundary — the root's picture of the home and the page's own are one; the landing's ghost is shelved, unmounted (3.9 and 3.10 hold it still)",
+    homeEntry(ghost, PAGE_FILE));
+  ok("3.14′ PLANT · \"/\" back to the landing's ghost is reported",
+    !homeEntry(ghost.replace('"/": <JourneyHomeGhost t={t} />,', '"/": <HomeGhost t={t} locale={locale} rails={rails} />,'), PAGE_FILE));
+  ok("3.14″ PLANT · the page's Suspense fallback drawn as anything but the home's ghost is reported",
+    !homeEntry(ghost, PAGE_FILE.replace("<Suspense fallback={<JourneyHomeGhost t={t} />}>", "<Suspense fallback={null}>")));
 }
 {
   // /account: the page's own column, h1, identity card, prompt and column cut.
