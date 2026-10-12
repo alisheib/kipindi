@@ -201,12 +201,29 @@ async function AdminAffiliateContent({ searchParams }: AffiliateProps) {
           ) : (
             <>
               <ScrollX label={paid ? "Affiliate leaderboard" : "Invites by player"}>
-                <table className="admin-tbl min-w-[480px]">
+                {/* 📐 TWO COLUMNS FIT A PHONE (2026-10-12). The 480px floor was set in June for the FOUR-column
+                    leaderboard and stayed on the two-column roster, so at 360 the only figure in the table — friends
+                    joined — sat off the card's right edge behind a sideways scroll. Unpaid, the figure's column has a
+                    fixed width and the name takes the rest: 9rem from `sm` up ("FRIENDS JOINED" on one line, ~98px,
+                    plus 36px of padding — 16, and the last column's 20); 5.5rem on a phone, where the heading wraps to
+                    two lines — the room goes to the names, and a 19-character handle (`handleOf`'s cap) is whole from
+                    360 (measured: 6rem left it 2px short). ⚠️ A WRAPPING HEAD CANNOT TAKE ITS TRACKING BACK THE TABLE
+                    WAY: `th.text-right::after`'s empty box reaches only the last line, so "FRIENDS" ended 0.14em short
+                    of "JOINED" under it. So this th is not `text-right`: its words are their own right-aligned BLOCK
+                    with `kp-track-end` (globals.css, R7-C), whose end margin brings every line's last letter to the
+                    figures' edge — and the block opts out of the th's shared `nowrap`, not the th. Narrower still, a
+                    handle ends in "…" (the `truncate` below, which an auto-width table never let engage) instead of
+                    pushing the count away. ⛔ Paid keeps the floor: four columns need it. The loading ghost draws this
+                    head's two lines and these rows' height (loading.tsx).
+                    ⚠️ The class string starts with `admin-tbl` as a literal: `test:ui-consistency` reads it there. */}
+                <table className={`admin-tbl ${paid ? "min-w-[480px]" : "table-fixed"}`}>
                   <thead>
                     <tr>
                       {paid && <th className="text-left">#</th>}
                       <th className="text-left">{paid ? "Affiliate" : "Player"}</th>
-                      <th className="text-right">{paid ? "Recruits" : "Friends joined"}</th>
+                      <th className={paid ? "text-right" : "w-[5.5rem] sm:w-[9rem]"}>
+                        {paid ? "Recruits" : <span className="block text-right whitespace-normal kp-track-end">Friends joined</span>}
+                      </th>
                       {paid && <th className="text-right">Earned (TZS)</th>}
                     </tr>
                   </thead>
@@ -234,7 +251,7 @@ async function AdminAffiliateContent({ searchParams }: AffiliateProps) {
                               <span className="truncate font-mono font-semibold text-royal-300 underline-offset-2 group-hover:underline">{b.handle}</span>
                             </Link>
                           ) : (
-                            <span className="inline-flex items-center gap-2 min-w-0">
+                            <span className="inline-flex items-center gap-2 min-w-0 max-w-full">
                               <Avatar initials={b.handle.replace(/[^a-z0-9]/gi, "").slice(0, 2)} size="sm" seed={b.userId} />
                               <span className="truncate font-mono font-semibold">{b.handle}</span>
                             </span>

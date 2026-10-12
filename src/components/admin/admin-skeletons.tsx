@@ -244,6 +244,7 @@ export function SkTableCard({
   beforeBody,
   cellPy = 12,
   rowMinH,
+  headClass,
 }: {
   cols?: number;
   rows?: number;
@@ -282,6 +283,8 @@ export function SkTableCard({
   cellPy?: 12 | 16;
   /** The body row's own height, where a cell holds a tap-floor control. See `SkTableRows.rowMinH`. */
   rowMinH?: number;
+  /** The header row's own height class, where a heading wraps. See `SkTableRows.headClass`. */
+  headClass?: string;
 }) {
   return (
     <div className="glass-panel p-0">
@@ -299,6 +302,7 @@ export function SkTableCard({
         cellPy={cellPy}
         maxH={bodyMaxH}
         rowMinH={rowMinH}
+        headClass={headClass}
         className="px-4 pb-4"
       />
       {pager && <SkPager />}
@@ -322,6 +326,7 @@ export function SkTableRows({
   cellPy = 12,
   maxH = "",
   rowMinH,
+  headClass,
   className = "",
 }: {
   cols?: number;
@@ -339,6 +344,14 @@ export function SkTableRows({
    * ⛔ Absent, nothing changes: every loader that does not pass it renders byte-for-byte what it did.
    */
   rowMinH?: number;
+  /**
+   * ⭐ A HEADER WHOSE HEADING WRAPS IS TALLER THAN ONE LINE (added 2026-10-12 for /admin/affiliate's roster, §K5 — the
+   * kit extended, not forked, as `rowMinH` was). Its "FRIENDS JOINED" takes two lines on a phone: 10 + 2 × 14.25 + 10 +
+   * the thead's 1px border = 49.5px against this ghost's 35.25, and the ghost's swap dropped the page 14px. Pass the
+   * page's own height as a class, breakpoint and all (`"max-sm:min-h-[49.5px]"`), so it applies only where the page wraps.
+   * ⛔ Absent, nothing changes: every loader that does not pass it renders byte-for-byte what it did.
+   */
+  headClass?: string;
   className?: string;
 }) {
   return (
@@ -350,7 +363,7 @@ export function SkTableRows({
         <div
           className={`flex items-center gap-4 border-b border-border ${
             sortable ? "min-h-[44px]" : cellPy === 16 ? "py-[16px]" : "py-[10px]"
-          }`}
+          }${headClass ? ` ${headClass}` : ""}`}
         >
           {Array.from({ length: cols }).map((_, i) => (
             <SkBar key={i} className="h-[14px] flex-1 max-w-[84px]" />

@@ -133,7 +133,10 @@ campaigns) and not `/admin/agents` (the paid agent programme; both untouched):
   error, they are somebody who does not get paid. ⭐ Since 2026-10-12 each player's handle is a link to
   their player page (Ali: a handle alone does not tell you who the player is), painted only for a
   viewer whose role may open player pages — a Growth officer, by default, keeps plain text rather
-  than a link that ends on "Restricted";
+  than a link that ends on "Restricted". The same day the two-column roster lost the 480px width floor
+  it had kept from the four-column leaderboard: on a phone the friends-joined figure had sat off the
+  card's edge behind a sideways scroll. It now fits from 320px, a 19-character handle is whole from
+  360, and a longer cut ends in "…" (the paid leaderboard keeps its floor);
 - KPIs: **Total referrals** (summed from the SAME roster rows below it, so the headline and the
   table can never disagree — it used to count the AGENT programme's recruits too), **Players
   inviting** (how many brought ≥ 1 friend, over every account), and **Paid by 50pick**, which SUMS

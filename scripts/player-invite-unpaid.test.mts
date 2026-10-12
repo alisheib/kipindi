@@ -264,6 +264,10 @@ setAffiliateConfig({
   ok("6.link · the roster handle is a link to that player's page, painted only when viewerMayOpen(the players path) says so",
     /const PLAYERS_PATH = "\/admin\/players";/.test(page) && /viewerMayOpen\(PLAYERS_PATH\)/.test(page)
       && /\{mayOpenPlayers \? \(\s*<Link\s+href=\{`\$\{PLAYERS_PATH\}\/\$\{b\.userId\}` as Route\}/.test(page));
+  ok("6.fit · 📐 the two-column roster has no width floor (only the four-column leaderboard keeps 480px), its figure's column is fixed, its wrapping head takes its tracking back on EVERY line (kp-track-end, not th.text-right's last-line box), and its loading ghost draws the two-line head and the avatar rows' height",
+    /<table className=\{`admin-tbl \$\{paid \? "min-w-\[480px\]" : "table-fixed"\}`\}>/.test(page)
+      && /<th className=\{paid \? "text-right" : "w-\[5\.5rem\] sm:w-\[9rem\]"\}>\s*\{paid \? "Recruits" : <span className="block text-right whitespace-normal kp-track-end">Friends joined<\/span>\}/.test(page)
+      && /<SkTableCard cols=\{2\} rows=\{5\} minWidth=\{0\} rowMinH=\{58\.5\} headClass="max-sm:min-h-\[49\.5px\]" \/>/.test(src("app/admin/affiliate/loading.tsx")));
   ok("6.link.gate · ⛔ viewerMayOpen asks the section gate's own view question on its stored-row read, and fails closed",
     /export async function viewerMayOpen\(path: string\)/.test(gate)
       && /const user = session \? await viewerRow\(session\.userId\) : null;\s*if \(!user \|\| !isStaffRole\(user\.role\) \|\| !path\.startsWith\("\/admin"\)\) return false;/.test(gate)
