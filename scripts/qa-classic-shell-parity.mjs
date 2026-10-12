@@ -2641,10 +2641,14 @@ async function takeBreak() {
     await page.locator("main").first().waitFor({ timeout: 120_000 });
     await hydrated(page);
     const form = page.locator('#main-content form:has([name="period"])').first();
-    const trigger = form.locator('button[type="button"]').first();
+    // The form's own trigger, not its period picker (the kit Select is a button too, role=combobox), pressed once its
+    // own fiber exists (it hydrates after the shell, which is all hydrated() waits for).
+    const trigger = form.locator('button[type="button"]:not([role="combobox"])').first();
+    await trigger.waitFor({ timeout: 30_000 });
+    await page.waitForFunction((el) => Object.keys(el).some((k) => k.startsWith("__reactFiber$")), await trigger.elementHandle(), { timeout: 60_000 });
     const label = (await trigger.innerText()).trim();
     await trigger.click();
-    const dialog = page.locator('[role="dialog"][aria-modal="true"]').last();
+    const dialog = page.locator(':is([role="dialog"],[role="alertdialog"])[aria-modal="true"]').last();
     await dialog.waitFor({ timeout: 10_000 });
     await page.waitForTimeout(600);   // the dialog's 400 ms arming beat (key-guard.tsx) and its focus
     await dialog.getByRole("button", { name: label, exact: true }).click();
