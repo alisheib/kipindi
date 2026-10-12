@@ -1058,6 +1058,10 @@ total written in prose.
 editorial choice, not a subset a player narrows. Every strip already links through to
 `/markets` where the lenses live. A lens on a hero would make the front page argue with the
 board.
+That ruling now holds for **classic** readers. A journey reader's home (the Vodacom plan S7, WP7,
+2026-10-12) is the question list itself, and it filters by `?cat` (its topic chips, a declared
+filter surface in `test:filter-language`) and `?q` (a search, said on the page in a line of its
+own with its way out) — SJ-6, SJ-7.
 
 ---
 

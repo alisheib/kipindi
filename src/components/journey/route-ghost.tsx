@@ -17,11 +17,11 @@
  * ⭐ WHAT EACH PAGE GETS, picked in the browser by the path (`RoutePick`: the root's loading element is drawn once, with
  * the document, and kept), every node drawn here — in the browser since round 5 (below), and on the server for the
  * document's own first paint:
- *   /           the hero's own band and grid, its claim, h1, lede and trust rows set in the page's own words (from
- *               `hero-intro.tsx`, the very components the page renders) but not shown — each line a bar — so every
- *               block stands where the page puts it in every language; the featured card and the act as blocks.
- *               ⛔ Not shown, because the hero's blocks rise in as they arrive (`kp-rise`): readable words in the
- *               ghost would vanish and fade back in, identical, the moment the page lands.
+ *   /           the journey home's ghost (`journey/home/journey-home-ghost.tsx`) — the very drawing `app/page.tsx`'s
+ *               journey arm stands in its Suspense boundary while the home's list arrives, so the root's state and the
+ *               page's own are one drawing (the Vodacom plan S7, S7-PLAN WP7 and A24 item 2, 2026-10-12). Until WP7 a
+ *               journey reader's `/` was the classic landing, drawn here as the hero's ghost (`HomeGhost` below): that
+ *               ghost is SHELVED with the landing for a journey reader (docs/SHELVED.md), kept in place and unmounted.
  *   /updown     Juu/Chini's ghost, the drawing `updown/loading.tsx` renders (`updown-ghost.tsx`: one drawing for both
  *               shells, and the tab's page), so a tap on the tab shows the board it opens, not a box.
  *   /positions  Tiketi zangu's ghost, the one `positions/loading.tsx` draws for a journey reader, so the two are one.
@@ -52,7 +52,8 @@
  * the server; its chunk is preloaded in the head). The chunk itself is fetched once and kept: its size is a production
  * build's to measure (the lock turn's).
  * ⚠️ WHAT IT CANNOT DO IN THE BROWSER: read the server. The rails that pay out are read on the server (`heroRailNames`)
- * and handed in; nothing else here is read at all.
+ * and handed in; nothing else here is read at all. ⚠️ Since WP7 only the shelved landing ghost draws them (its trust
+ * rows): they keep flowing, unchanged, so putting that ghost back at "/" is one line.
  * ⚠️ AND A THROW HERE STILL FAILS THE DOCUMENT (review G2). The server renders this ghost inside the root loading
  * boundary's fallback, which is part of the shell, and React's server renderer contains a throw only in a Suspense
  * boundary BELOW it — a boundary here would be outlined behind the shell (R4-J's E36), so there is none. It draws from
@@ -83,6 +84,7 @@ import MarketDetailLoading from "@/app/markets/[id]/loading";
 import { DepositGhost } from "@/app/wallet/deposit/deposit-ghost";
 import DepositReturnLoading from "@/app/wallet/deposit/return/loading";
 import { Ask, Claim, TrustLines } from "@/components/home/hero-intro";
+import { JourneyHomeGhost } from "@/components/journey/home/journey-home-ghost";
 import { hubColumnCut, hubRowsFor, wideRowCount, type HubGroup, type HubMember, type HubRow } from "@/components/journey/account/hub-rows";
 import { useT } from "@/lib/i18n";
 import { stemOf } from "@/lib/display-stem";
@@ -91,10 +93,15 @@ import type { Dict, Locale } from "@/lib/i18n-dict";
 /** The pages whose own loading file hands a journey reader this ghost, pinned (`at`) — see "A SEGMENT MAY PIN ITS PAGE". */
 export type JourneyGhostPage = "/positions" | "/updown/history";
 
+/**
+ * ⚠️ `rails` — the rails that pay out, read on the server — is drawn by no page's ghost since WP7: only the shelved landing
+ * ghost (`HomeGhost` below) names them. The prop keeps flowing, unchanged, so that ghost's re-mount is the one line at "/".
+ */
 export function JourneyRouteGhost({ rails, at }: { rails: readonly string[]; at?: JourneyGhostPage }) {
-  const { t, locale } = useT();
+  const { t } = useT();
   const routes = {
-    "/": <HomeGhost t={t} locale={locale} rails={rails} />,
+    // The journey home's own ghost (WP7, A24 item 2) — the shelved landing's was `<HomeGhost t={t} locale={…} rails={rails} />`.
+    "/": <JourneyHomeGhost t={t} />,
     "/updown": <UpDownGhost />,
     "/positions": <TicketsGhost t={t} />,
     "/account": <AccountGhost t={t} />,
@@ -113,13 +120,19 @@ export function JourneyRouteGhost({ rails, at }: { rails: readonly string[]; at?
 }
 
 /**
+ * ⛔ SHELVED (the Vodacom plan S7, WP7, 2026-10-12; docs/SHELVED.md, the classic landing's row): the classic landing's
+ * ghost, for a journey reader — unmounted at "/" since that reader's `/` is the journey home, kept in place so the landing
+ * can be put back for that reader (`app/page.tsx`'s classic return for every request, and this ghost at "/" above, with
+ * the rails it is still handed). Exported so `test:visual-pass-r5d` §2 keeps rendering it while it waits.
  * `/` — LandingHero's band, grid and intro (`landing-hero.tsx`), the words set but not shown. The lede is the page's two
  * spans as the page writes them; the trust rows name every rail that pays out (the page drops a paused one: a row a word
  * shorter, below the h1). The featured card is the live card's height (`--mcard-h`) and the act one control tall — enough
  * that from 1024 the left column stays the taller one, as on the page, so the intro sits on the band's padding there too.
  * The rails are the server's answer (`heroRailNames(null)`, read by `app/loading.tsx`): this module runs in the browser.
+ * ⛔ Not shown, because the hero's blocks rise in as they arrive (`kp-rise`): readable words in the ghost would vanish and
+ * fade back in, identical, the moment the page lands.
  */
-function HomeGhost({ t, locale, rails }: { t: Dict; locale: Locale; rails: readonly string[] }) {
+export function HomeGhost({ t, locale, rails }: { t: Dict; locale: Locale; rails: readonly string[] }) {
   return (
     <section className="kp-hero" aria-hidden="true">
       <div className="kp-hero__inner kp-hghost">
