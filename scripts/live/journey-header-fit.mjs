@@ -253,11 +253,23 @@ async function expectState(page, state) {
   await capsule.waitFor({ timeout: 60_000 }).catch(() => {});
   if ((await capsule.count()) !== 1) throw new Error("no balance capsule in a signed-in journey header — did the session count?");
   if (state.held && (await capsule.getAttribute("data-held")) === null) throw new Error("the capsule is not held — did ?hold=officer land?");
+  // ⭐ THE CAPSULE IS MASKED UNTIL ITS OWN EFFECT HAS READ THE READER'S CHOICE (`wallet-balance-pill.tsx`, R4-J,
+  // 2026-10-09): the server's render and the hydration that matches it draw the mask, and the figure — or the kept mask —
+  // comes with the first render after hydration. The header can be hydrated while that render is still to commit, and a
+  // heavier page widens the gap (S7's journey home on `/`: four cells read "Salio · Ficha salio" there, 2026-10-12). A
+  // reading taken before it says nothing about the state — a figure not yet drawn reads as missing, a mask not yet lifted
+  // as kept — so the capsule's own hydration and the effect's render (two frames) come first.
+  await page.waitForFunction(() => {
+    const el = document.querySelector('[data-testid="journey-balance"]');
+    return !!el && Object.keys(el).some((k) => k.startsWith("__reactFiber$"));
+  }, null, { timeout: 60_000 }).catch(() => {});
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(done, 50)))));
   if (state.masked) {
     await page.waitForFunction(() => document.querySelector('[data-testid="journey-balance"]')?.hasAttribute("data-masked") === true, null, { timeout: 30_000 }).catch(() => {});
     if ((await capsule.getAttribute("data-masked")) === null) throw new Error("the capsule is not masked — did the hidden-balances flag land?");
   }
   if (state.figure && !state.masked) {
+    await page.waitForFunction((fig) => (document.querySelector('[data-testid="journey-balance"]')?.getAttribute("aria-label") ?? "").includes(fig), state.figure, { timeout: 30_000 }).catch(() => {});
     const name = (await capsule.getAttribute("aria-label")) ?? "";
     if (!name.includes(state.figure)) throw new Error(`the capsule reads "${name}", not ${state.figure} — the balance did not land`);
   }
