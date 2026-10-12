@@ -744,9 +744,21 @@ body. Owner-level calls: §0h point 58, and 65 on.
     0; the 109 gates 108/109 exit 0 (test:orphans, main's own two landing-v3 panels); WP2's population plants 4/4; the
     file-editing reds each alone, tree clean after each — featured-card 18/18, one-sided 31/31, ticker-honesty 31/31,
     contrast 29/29, timer-date 19/19, filter-language 43/43, measure 8/8, chat-availability 3/3, failure-reasons 20/20.
-    Running: parity v3's calibration on this VM at `52715180` (`--prove-red`, this VM's own baseline, its null compare
-    on a second fresh server); then `qa:first-load --build --read`, local qa:live, parity `--compare --allow-base` at the
-    tip, the served-skeleton null pair at main and the tip, qa:lost-chunk with its control, WP9's four drives.
+    Parity v3 calibrated on this VM at `52715180`: `--prove-red` **131/131**; this VM's baseline captured (224 cells,
+    1179 blobs, the book's B.0–B.8 PASS: 30 LIVE questions, 12 placed — VOID 1, WIN 3, LOSS 2, CASHED_OUT 3, OPEN 8);
+    its null compare on a second fresh server running (18:00 EAT). Then on this VM: `qa:first-load --build --read`, local
+    qa:live, parity `--compare --allow-base` at the tip. ⭐ **Ali, 18:00 EAT: "maximum resources"** — three helper
+    sessions (claude.ai/code, this environment), each on its own VM, its transcript the record: **A**
+    `session_01SrWuXa3LR3Rew6zEyHBXzJ` runs the served-skeleton null pair at main and the tip, qa:lost-chunk with its
+    control and qa:chunks-prod `--self-test`, and WP9's four drives (on `4089c9c6`); **B** `session_01XGYT5pB9XzX5WLM7gxvAFJ`
+    runs WP11's drafts (local qa:live, qa:cls-budget `--journey` with its RED_SHELL control, qa:journey-above-fold,
+    qa:journey-home and its tiles, each on a fresh server), fixing only the drives and pushing to `origin/vodacom-s7-wp11`;
+    **C** `session_017HxNx4Nz7mWgckL3G3wLnu` runs WP12's battery (`test:all` with the database suites, the server-needing
+    suites against a dev server, red-anchors and S7's red twins) at `origin/vodacom-s7-land8` `5388b4ca` — the release
+    branch: land7 rebased on main `8056fc22`, its non-docs files identical to the proven tip — and saves its results on
+    `origin/vodacom-visual-tools` `tools/s7-cloud-2026-10-12/results/`. ⚠️ The minimum-stake change (Ali, 2026-10-12:
+    TZS 1,000 → 500) is another session's, not this plan's: if it reaches main before S7 does, S7's parity compare is
+    re-run against a baseline at the new main before the push.
     ⚠️ This VM's limits: only the image's Chromium 141 runs (the sandbox refuses Playwright's download host: no Firefox
     or WebKit drives), and it cannot read production at all (the sandbox refuses `50pick.tz`, `www.50pick.tz` and the
     Railway host — asked of Ali). A push's deploy IS read: GitHub's commit status carries Railway's verdict (this
