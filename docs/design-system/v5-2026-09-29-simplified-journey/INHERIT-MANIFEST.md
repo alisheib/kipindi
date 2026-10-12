@@ -25,7 +25,7 @@ and §1 is the board. This file is frozen once written, except to add a ruling.
 | `frames/2-bet-sheet.png` (`image1.png`) | **Kept: functional template** | It defines the bet sheet's elements, order and copy. |
 | `frames/3-balance-too-low.png` (`image3.png`) | **Kept: functional template** | It defines the low-balance state: the compact estimate row, the warning, the two options and the disabled CTA. |
 | `frames/4-deposit.png` (`image4.png`) | **Kept: functional template** | It defines the journey deposit screen: the pending-bet strip, the prefilled amount, the wallet rows, the PIN note and the pay button. |
-| `frames/5-how-to-play.png` (`image5.png`) | **Kept: functional template** | It defines the How to Play sheet: 3 steps, the MFANO example, the CTA, and the limits and helpline links. |
+| `frames/5-how-to-play.png` (`image5.png`) | **Kept: functional template** | It defines the How to Play sheet: 3 steps, the MFANO example, the CTA, and the limits and helpline links. (⛔ The helpline link is superseded on player surfaces by the owner ruling of 2026-10-06, `docs/COMPLIANCE-DECISIONS.md`: the sheet's foot is the limits link alone — S7-PLAN A6.) |
 | [`AGENCY-REPLY.md`](AGENCY-REPLY.md) | **Ours** | The draft reply for Ali to send. It answers the agency's 4 questions. |
 
 The frames are evidence and are not regenerable, so they are committed like v4's `before/*.png`. Comparison
@@ -49,7 +49,7 @@ in full in `docs/VODACOM-PLAN.md` §5 onward, section 0.
 
 | # | Decision | Supersedes / narrows |
 |---|---|---|
-| SJ-1 | **Card figure** = the zero-stake pool multiple, 1 + (1 − loser-share)·opposite/own, rounded half-up to tenths with integer arithmetic. It is shown as "Shinda ≈{mult}× dau": the deck's card reads ≈2.8× while its sheet at TZS 1,000 reads ≈2.7×. An empty own side shows the state words `beFirst` / `oneSideOnly`, never a figure. Above `ESTIMATE_DISPLAY_CAP` (100) it shows "Shinda zaidi ya {cap}× dau". | v4 R3 (no estimate on cards); L11 / law 40 for cards; DESIGN_AUTHORITY §C3 for cards (scoped) |
+| SJ-1 | **Card figure** = the zero-stake pool multiple, 1 + (1 − loser-share)·opposite/own, rounded half-up to tenths with integer arithmetic. It is shown as "Shinda ≈{mult}× dau": the deck's card reads ≈2.8× while its sheet at TZS 1,000 reads ≈2.7×. An empty own side shows the state words `beFirst` / `oneSideOnly`, never a figure. Above `ESTIMATE_DISPLAY_CAP` (100) it shows "Upande mdogo, ona makadirio" (`journey.cardOverCap`) with no number, and a thin side (`lean === "thin"`) shows "Faida ndogo · ≈{mult}×" (`journey.cardThin`) — the S4 panel's amended SJ-1 (VODACOM-PLAN §0h point 2), written here by S7 WP4 (2026-10-12, S7-PLAN Correction 9); the old "Shinda zaidi ya {cap}× dau" lives on only in the history. | v4 R3 (no estimate on cards); L11 / law 40 for cards; DESIGN_AUTHORITY §C3 for cards (scoped) |
 | SJ-2 | **Sheet figure** = `payoutFor()` at the entered stake, which equals the server's `potentialPayout`. The "≈N.N×" is derived from that whole-TZS figure, half-up. This is a scoped exception to the floor rule; Up & Down keeps floor. | the floor rule, on journey surfaces only |
 | SJ-3 | **`{pct}`** = the market's frozen loser-share total (platform + operator), never `commissionRate`. Legacy capped-commission markets show no figure and use the `describeFeeModel` caption. | — |
 | SJ-4 | "≈" marks every estimate. **The Makadirio sentence appears only where the deck draws it**: the sheet's estimate box and the How-to MFANO box. The post-bet receipt and Tiketi zangu keep §C3: no per-position payout before resolution. | §C3, scoped to the cards + the pre-bet sheet |
@@ -67,13 +67,13 @@ in full in `docs/VODACOM-PLAN.md` §5 onward, section 0.
 | SJ-15 | **Phone header:** `FiftyMark` (the lockup cannot fit at 360), the 18+ badge, a new captioned balance ("Salio" over "TZS 2,000"; TZS at every width; no eye or caret in the capsule), and the gilt "+ Weka pesa" pill. Tapping the capsule opens WalletSheet, which holds the hide-balance eye and "Toa pesa". | v4 R1 / L4 / L20; UPDATE-2026-09-28 §1 (no header Deposit below 1024) |
 | SJ-16 | **Four tabs:** Maswali (`/`) · Juu/Chini · Tiketi zangu (`/positions`) · Akaunti (`/account`, new, public), in 50pick's glyph + label + `--pill-active` style. Guests tapping Tiketi zangu get a small sign-in sheet. | v4 WP1b (5 slots + centre coin), V26 |
 | SJ-17 | **Akaunti hub (`/account`)** holds every door the avatar menu and "More" give today, with the same gates (invite, proposals, chat, agent, staff console as a plain `<a href="/admin">`), plus the unread badge. | — |
-| SJ-18 | **Focused deposit chrome:** the journey deposit screen, its code step and the waiting page show no header, tabs, footer or ticker. They show "‹" + "Weka pesa" and a minimal 18+ and helpline line. | — |
+| SJ-18 | **Focused deposit chrome:** the journey deposit screen, its code step and the waiting page show no header, tabs, footer or ticker. They show "‹" + "Weka pesa" and a minimal 18+ and helpline line. (⛔ The helpline half is superseded on player surfaces by the owner ruling of 2026-10-06, `docs/COMPLIANCE-DECISIONS.md`; the focused chrome is S9's to build, VODACOM-PLAN §3.5 — S7-PLAN A6 item 3.) | — |
 | SJ-19 | **Words:** "Weka pesa" is the deposit ACTION ("Amana" stays the noun). "Tiketi" replaces "Nafasi" on player surfaces, and support tickets become "Ombi la msaada". "NDIO" is the one spelling. "Maswali" replaces "Masoko" as the destination name. | — |
 | SJ-20 | **Tagline:** the deck's "Pick. See what you win. Play." (sw and zh drafted) replaces the retired "Tabiri matukio. Si bahati." on ~12 surfaces at the flip. | v4 R7 (slogan retirement, now with a named replacement) |
 | SJ-21 | **Copy source:** sw is deck-verbatim and binding for SJ keys. en follows the deck's own English where given. zh and all undrawn states are drafted (R8 of v4). How-to step numerals read "1/2/3". The How-to example figures come from `HOW_TO_EXAMPLE`, which must render TZS 1,000 → ≈2.7× → TZS 2,700. | — |
 | SJ-22 | **Rule-required additions to the frames**, each recorded as a deviation: the holder / hedge line, the bonus-wager warning, the thin-upside notice, the capped-market caption, and PayoutStatusNotice on deposit. A "Weka mipaka" link after the sheet CTA is added only if `test:rg-doors` / RG policy requires it. | — |
 | SJ-23 | **Preview:** every staff role, SUPPORT included, sees the journey before the flip. The agency gets a signed, revocable 7-day visitor-preview link. | — |
-| SJ-24 | **The "first licensed" claim leaves `/`** with the hero. No journey surface or metadata claims "first" (v4 V22's negative half stays). The licence line stays in the footer, 18+ goes in the header, and the helpline is in How to Play and the footer. | v4 R9 (the claim on the home hero); COMPLIANCE 2026-09-27 hero entry, placement only |
+| SJ-24 | **The "first licensed" claim leaves `/`** with the hero. No journey surface or metadata claims "first" (v4 V22's negative half stays). The licence line stays in the footer, 18+ goes in the header, and the helpline is in How to Play and the footer. (⛔ The helpline is superseded on player surfaces by the owner ruling of 2026-10-06, `docs/COMPLIANCE-DECISIONS.md`: neither How to Play nor the footer shows it — S7-PLAN A6.) | v4 R9 (the claim on the home hero); COMPLIANCE 2026-09-27 hero entry, placement only |
 
 ## 4 · Where our laws beat the delivery
 
@@ -91,7 +91,7 @@ rule requires an addition (SJ-22).
 | L7 | Phone placeholder "07XX XXX XXX" in a bare field | `test:msisdn-prefill`, `tz-msisdn` rules | The kit `PhoneInput`: accepts the local form, stored as E.164 |
 | L8 | No holder / hedge line, bonus warning or thin-upside notice in the sheet | RULES §2.4/§2.5; the thin-upside disclosure | Added only when they apply (SJ-22) |
 | L9 | "13%" typed into the copy | `test:rate-copy`: rates are `{pct}` from the market | `{pct}` from the frozen fee snapshot (SJ-3) |
-| L10 | "Msaada 0800 11 0011" | `HELPLINE()` / `HELPLINE_TEL()` from `support-config.ts`, never a literal | A `tel:` link built from `HELPLINE_TEL()` |
+| L10 | "Msaada 0800 11 0011" | `HELPLINE()` / `HELPLINE_TEL()` from `support-config.ts`, never a literal | A `tel:` link built from `HELPLINE_TEL()` (⛔ superseded on player surfaces by the owner ruling of 2026-10-06, `docs/COMPLIANCE-DECISIONS.md`: no player surface shows the helpline, and `HELPLINE()` / `HELPLINE_TEL()` were deleted on 2026-10-09 — S7-PLAN A6, A24 item 4) |
 
 ## 5 · Open questions for the agency (non-blocking; the build proceeds meanwhile)
 
