@@ -598,8 +598,28 @@ body. Owner-level calls: §0h point 58, and 65 on.
   visible word; JS — the dictionary rides in the client bundle (`src/lib/i18n.tsx` imports `dict`), so every page's
   script grows by the 31 keys in three languages. test:house-bot-disclosure 5.1 and 5.1.c3 read red on the branch by
   construction (they pin the whole dictionary to origin/main) and green once the keys are on main (⟦HBD⟧).
-- **The landing proof — WP1–WP4 together at one tip** (§0h point 71), on OMEGA-COMPILE01 under the lock:
-  `F:\kipindi-s7b` at `03b14f00`, on main `05d42f7f` (the afflink lane's three admin-only commits came in under the
+- **WP5 ✅ LIVE ⟦LIVE⟧ (2026-10-12) — the journey card** (⟦WP5⟧): `src/components/journey/cards/journey-card.tsx`, one
+  server component for every state (live priced, over the cap, thin, empty pool, one side, hidden, Up & Down, selection
+  closed, settled YES/NO/void) that decides nothing itself (cardFigures, cardFace, cardCloseLabel, cardTitle,
+  competitionLabel); the settled row's one `<time>` through `formatEatDateTime` (A24 item 3); `.kp-jcard*` and its
+  `--jcard-*` tokens; the shared journey card grid, whose cards are 3-row subgrids so the picks' tops align across a row
+  (§0h point 73); journey-home §4 with its plants, timer-date §3 and two anchors (A12 items 5–6), the market card's
+  spec ("the journey state") and its CHANGELOG entry. An independent review said ship; its items are applied — a
+  five-character figure breaks before its words rather than overflow the 320 pick in English (§0h point 76),
+  forced-colours borders on the picks, the §4 test gaps closed — and the thin side's two lines are recorded (§0h point
+  74). Served bytes for a classic viewer: CSS only — the new rules, the `:root` tokens, and one selector added to the
+  shared one-sided note rule (its declarations unchanged; the selector matches nothing on a classic page).
+- **WP6 ✅ LIVE ⟦LIVE⟧ (2026-10-12) — the How-to card and the static How-to sheet** (⟦WP6⟧): (a) `.btn-primary`'s
+  material as three `:root` tokens (A14 item 1), computed values unchanged — test:contrast now scores the button's own
+  rule through `tokenNamed`, and offline-neutral holds the offline page's copy to its own tokens; (b) the lost-chunk
+  guard lifted into `src/components/layout/lost-chunk.ts`, imported by shell-lazy, route-ghost-lazy and the Tiketi rail
+  (A13(a), A24 item 5); (c) `home-lazy.tsx`, the How-to card (74px, with the kit's 24px play glyph — §0h point 75) and
+  the static sheet in §3.8's order with no helpline (A6), its title at 24px (A15), capped at the viewport less 48px with
+  only the steps-and-MFANO region scrolling. An independent review found no blocker; its five items are applied. Served
+  bytes for a classic viewer: CSS text (the tokens, computed values unchanged); JS — shell-lazy's chunk on every page and
+  the Tiketi rail's on /positions and /updown/history (A23 item 6(c)–(d)); no HTML or RSC.
+- **The landing proof — WP1–WP6 together at one tip** (§0h point 71), on OMEGA-COMPILE01 under the lock:
+  `F:\kipindi-s7b` at ⟦TIP⟧, on main ⟦MAIN⟧ (the afflink lane's three admin-only commits came in under the
   stack; no player route imports `admin-section-gate.tsx` or `admin-skeletons.tsx`): ⟦LAND⟧.
 - **⏳ IN FLIGHT (OMEGA-COMPILE01, 2026-10-12):** WP5 (the journey card) and WP6 (the How-to card, its sheet and the
   shared lost-chunk guard), each built by a helper in its own worktree on WP4 (`F:\kipindi-s7f`, `F:\kipindi-s7d`;
@@ -2489,6 +2509,29 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     and its red twin still guard the board's sort itself. A card that states any figure differently never moves, so
     every visible reordering is still compared. Overrule: seed the catalogue with distinct close instants instead
     (a dev-only change to `seedDemoMarkets` that the other drives using the catalogue would then share).
+73. **The journey card grid keeps a row's picks level by subgrid (S7 WP5, 2026-10-12, under Ali's delegation).** A16
+    item 3 put the card's action block on `margin-block-start: auto` "so picks stay level across a row", but a one-sided
+    note or a two-line pick bottom-aligns the whole block, so one row's picks could sit up to ~67px apart and A16 item
+    5's drive ("picks' tops equal ±1px at 768 and 1280") would fail. S6 met the same problem in its round 3 (tile 168)
+    and fixed it with subgrid rows (`.kp-ticket`); the journey's one card grid does the same — each card a 3-row
+    subgrid (meta / title / action), so the picks' tops align whatever the notes or line counts — and A16's 48px title
+    reserve is retired. WP7 and WP10 use that one grid. Overrule: keep the auto margin and narrow A16 item 5's drive to
+    rows whose blocks are equally tall.
+74. **The thin side is drawn on two lines (S7 WP5).** The canvas draws "Faida ndogo · ≈1.0×" on one line; wherever that
+    wraps (below about 362px) a line would start on "·", which the kit's DotSeq forbids, so the card uses DotSeq's
+    stacked form ("Faida ndogo" over "≈1.0×") at every width, and a thin card's picks are 75px where the plain ones are
+    64. Overrule: one line wherever it fits.
+75. **The How-to card is 74px, its play glyph 24px (S7 WP6).** The card is the height its board's own CSS gives (a 48px
+    plate, 24px of padding, 2px of border), not the 72 the bar budget assumed: every gated cell still holds — least
+    slack 42.4px with no bar (was 44.4), 76.6px with all bars at 390×844 (was 78.6), the How-to card's bottom 221.6px
+    (was 223.6) — and WP7's ghost reserves 74. Its glyph is the kit's `plateGlyph(48)`, 24px, not the canvas's 20: the
+    kit wins where the canvas drifts (point 7). Overrule: the canvas's 20px glyph.
+76. **A five-character figure breaks before its words (S7 WP5).** The engine prints up to "≈100.0×" (over the cap only
+    above 100.0), and in English at 320 "≈100.0× your bet" is 109.8px against the pick's 105px line. The engine's cap is
+    left as it is — "over 100×" would be untrue at exactly 100.0 — and the card keeps a figure and its words unbroken
+    only while the figure has at most four characters, so "Win ≈100.0×" / "your bet" wraps like any two-line pick; a
+    width proof holds the longest printable figure in sw, en and zh to the 320 pick. Overrule: put the display cap at
+    100.0 itself.
 
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
