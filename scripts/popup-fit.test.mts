@@ -224,6 +224,23 @@ const popups = all.filter((f) => IS_POPUP.test(code(f)));
  * primary on top at 360); `maxWidth` 760 is a MAX; at 360 the Modal is a full-height sheet whose overlay scrolls, so more
  * lines make it taller and never clip. PASSES — and its live rectangle is the S15 drive's (360 and 1280, every step).
  */
+/*
+ * ── 2026-10-12 · +1: `components/onboarding/how-to-play-sheet.tsx`, the static How to Play sheet the journey home's How-to
+ * card opens (the Vodacom plan S7, S7-PLAN WP6 step 5). Opened and judged like the record above: no `truncate`, no
+ * `line-clamp-*`, no `text-ellipsis`, no `overflow-hidden`, no fixed height on any text. ⭐ ITS ONE BOUNDED BOX HAS ITS
+ * SCROLLING PARTNER, which is the point of it: the panel is capped in CSS at the viewport less 48px (`.kp-howto`'s
+ * `calc(100dvh - var(--sp-12))`, the first-visit primer's fixed gutter — the Modal's wrapper is `items-end`, so a docked
+ * panel taller than the screen would hide its top where nothing can scroll it back), down a flex chain of its own (the
+ * panel, then the sheet with `min-height: 0`), and when the cap bites the steps and MFANO alone scroll (`.kp-howto__scroll`, a
+ * keyboard-scrollable region), under a fade only at an edge that hides something, while the title, the CTA and Weka
+ * mipaka never scroll — more lines make the region scroll further, never clip it. Every sentence is a dictionary sentence
+ * in a block that wraps, its phrases held as a notice body's (`noticeBody`'s ranges, each kept run far narrower than the
+ * 230px step column at 320); the one nowrap runs are the example's two sums (`.amount`) and its multiple — short figures a
+ * mid-figure break would damage, the header's own exception. The title is the guest sheet's `.kp-jsheet__title` (right
+ * padding clear of the ✕, balanced) at 24px; the CTA and the link are the Wallet sheet's own classes; `maxWidth` 440 is a
+ * MAX. PASSES — its live rectangle, every exit reachable without scrolling at 320×640, 360×640, 390×844 and 1280 in sw,
+ * en and zh, is WP11's (`qa:journey-home`, S7-PLAN A6 item 5).
+ */
 const REVIEWED: readonly string[] = [
   "src/app/admin/affiliate/payable-switch.tsx",   // reviewed 2026-09-27
   "src/app/admin/agents/[id]/decision-rail.tsx",   // reviewed 2026-09-21
@@ -292,6 +309,7 @@ const REVIEWED: readonly string[] = [
   "src/components/markets/share-button.tsx",
   "src/components/markets/win-celebration.tsx",
   "src/components/onboarding/first-visit-primer.tsx",
+  "src/components/onboarding/how-to-play-sheet.tsx",   // reviewed 2026-10-12 (Vodacom S7 WP6) — a capped panel whose steps region is its scrolling partner
   "src/components/pwa/install-invite.tsx",
   "src/components/rg/reality-check.tsx",
   "src/components/rg/rg-confirm-submit.tsx",
