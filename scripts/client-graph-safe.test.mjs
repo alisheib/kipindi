@@ -243,15 +243,32 @@ console.log("\n[client-graph-safe] \u00a71 client-reachable modules stay clear o
     // ⭐ ADDED 2026-10-01 (Vodacom plan S6 WP6a). Which unread counter may mount at this width — the bell from lg, the
     // Akaunti dot below it: a hook over the browser's media query, importing only React, loaded by the journey chrome.
     "lib/journey/one-poller.ts",
+    // ⭐ ADDED 2026-10-12 (Vodacom plan S7 WP3, the pure rules). The journey home's list, the journey card's face and the
+    // /markets target: nothing imports them yet; the home (WP7) and the card (WP5) will render them on the server, and
+    // WP9's flight redirect and later client parts may reach them from the browser. home-list imports the query helpers,
+    // the category list and the close label; card-face imports types only; markets-redirect imports pending-bet, the query
+    // helpers and the category list. Pinned from the commit that adds them, and FAIL-CLOSED below (S7_WP3_RULES).
+    "lib/journey/home-list.ts",
+    "lib/journey/card-face.ts",
+    "lib/journey/markets-redirect.ts",
   ];
   const offenders = [];
+  const walked = new Set();
   let checked = 0;
   for (const rel of PINNED) {
     const r = reaches(rel, PRISMA);
     if (r.missing) continue;
     checked++;
+    walked.add(rel);
     if (r.hit) offenders.push(rel + " -> " + r.hit.split("\\").join("/").replace(SRC.split("\\").join("/"), "src"));
   }
+  // ⛔ FAIL-CLOSED FOR S7 WP3's THREE RULES (2026-10-12). The loop above skips a pinned file that is missing, and the
+  // ratchet only asks for two walked files, so a pin alone stays green over a rule module renamed or deleted. These
+  // three must exist AND be walked; a missing one fails here by name.
+  const S7_WP3_RULES = ["lib/journey/home-list.ts", "lib/journey/card-face.ts", "lib/journey/markets-redirect.ts"];
+  const unwalked = S7_WP3_RULES.filter((rel) => !PINNED.includes(rel) || !walked.has(rel));
+  ok("§1 S7 WP3 · the journey home's list, the card's face and the /markets target are pinned, exist and were walked",
+    unwalked.length === 0, unwalked.join(", "));
   ok("\u00a71 ratchet \u00b7 every pinned module exists and was walked", checked >= 2, checked + " of " + PINNED.length);
   ok("\u00a71 no pinned client-reachable module reaches the Prisma client", offenders.length === 0, offenders.join(" | "));
 }

@@ -8,32 +8,49 @@
  *   1. THE PUBLIC HALF — a LIVE market's pools, its FROZEN rates (not the live config), {pct} 13, the stake bounds the
  *      bet path enforces, when betting closes (selection, not resolution), the server clock, and the card figure per
  *      side (Dodoma: ≈2.8× / ≈1.4×).
- *   2. NOT A SHEET — a missing market, a malformed id, an Up & Down round and a RESOLVED market are null (404); a LIVE
- *      market whose selection has closed is a sheet that is not bettable, with no figure.
+ *   2. NOT A SHEET — a missing market, a malformed id, an Up & Down round, a RESOLVED and a DRAFT market are null (404);
+ *      a LIVE market whose selection has closed is a sheet that is not bettable, with no figure.
  *   3. THE VIEWER'S HALF — spendable = balance + bonus, the sides they hold OPEN (a cashed-out side is not held), the
  *      bonus warning; an unread wallet is null spendable, never zero.
  * And it reads the route as text — the contract a cache and an attacker meet:
  *   4. GET only; force-dynamic on the nodejs runtime; rate-limited per IP on `sheet.ip` (a real rule); the public half
  *      `s-maxage` ≤ 5; the viewer's half `private, no-store` and 401 without a session; 404 and 503 are `no-store`.
+ *   5. THE CARD'S FIGURES (the Vodacom plan S7, S7-PLAN WP3 step 5) — `cardFigures`, the one source a journey card and
+ *      this public half share: it gives exactly the sheet's bettable, rates and figures; on the markets only a card meets,
+ *      an Up & Down round has no figure and a RESOLVED or DRAFT market takes no bet (`bettableAt`'s LIVE test); and, read
+ *      as text, `sheetPublic` takes all three from one `cardFigures` call after the stake bounds' await, as before the
+ *      extraction, and computes none of them itself.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION: no file is written (the store is in memory).
  */
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { decomment } from "./lib/decomment.mts";
 import { db } from "../src/lib/server/store.ts";
 import { marketStore, positionStore } from "../src/lib/server/market-dal.ts";
 import { DEFAULT_GLOBAL_CONFIG, snapshotFromConfig } from "../src/lib/server/market-config.ts";
 import { RATE_RULES } from "../src/lib/server/rate-limit.ts";
 import * as SHEET from "../src/lib/server/journey-sheet.ts";
-import { pickEstimateRates } from "../src/lib/markets/estimate.ts";
+import { isSelectionClosed } from "../src/lib/server/market-service.ts";
+import { cardEstimate, pickEstimateRates } from "../src/lib/markets/estimate.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ROUTE = readFileSync(join(ROOT, "src/app/api/markets/[id]/sheet/route.ts"), "utf8").replace(/\r\n/g, "\n");
 const PROVE_RED = process.argv.includes("--prove-red");
 
-type Impl = { pub: typeof SHEET.sheetPublic; forUser: typeof SHEET.sheetForUser; route: string; rules: Record<string, unknown> };
-const REAL: Impl = { pub: SHEET.sheetPublic, forUser: SHEET.sheetForUser, route: ROUTE, rules: RATE_RULES };
+const LF = String.fromCharCode(10);
+/** `src/lib/server/journey-sheet.ts` as text, CRLF read as LF: §5 reads `sheetPublic`'s body. */
+const SHEET_SRC = readFileSync(join(ROOT, "src/lib/server/journey-sheet.ts"), "utf8").split(String.fromCharCode(13) + LF).join(LF);
+
+type Impl = {
+  pub: typeof SHEET.sheetPublic; forUser: typeof SHEET.sheetForUser; route: string; rules: Record<string, unknown>;
+  /** §5: the card's figures, and the module's text. */
+  figures: typeof SHEET.cardFigures; sheetSrc: string;
+};
+const REAL: Impl = {
+  pub: SHEET.sheetPublic, forUser: SHEET.sheetForUser, route: ROUTE, rules: RATE_RULES, figures: SHEET.cardFigures, sheetSrc: SHEET_SRC,
+};
 
 const NOW = Date.now();
 const HOUR = 60 * 60 * 1000;
@@ -70,6 +87,7 @@ async function fixtures() {
   await market("mkt_sheet0closed", { selectionClosedAt: NOW - HOUR });
   await market("mkt_sheet0updown", { productLine: "UPDOWN" });
   await market("mkt_sheet0resolved", { status: "RESOLVED" });
+  await market("mkt_sheet0draft", { status: "DRAFT" });
   await market("mkt_sheet0legacy", { selectionClosedAt: null });
   await player("usr_sheet_1", 3_000, 500);
   await position("pos_sheet_1", "usr_sheet_1", "mkt_sheet0live", "YES", "OPEN");
@@ -98,8 +116,8 @@ async function run(impl: Impl, log: (l: string) => void): Promise<string[]> {
   ok("1.legacy · no selection close: betting closes at resolution", legacy?.closesAt === iso(NOW + 48 * HOUR), j(legacy?.closesAt));
 
   /* 2 · not a sheet */
-  const nulls = await Promise.all(["mkt_sheet0updown", "mkt_sheet0resolved", "mkt_nothere", "not an id", "mkt_a/../b"].map((id) => impl.pub(id, NOW)));
-  ok("2.not-a-sheet · an Up & Down round, a RESOLVED market, a missing one and a malformed id are all null (404)", nulls.every((n) => n === null), j(nulls.map((n) => n?.id ?? null)));
+  const nulls = await Promise.all(["mkt_sheet0updown", "mkt_sheet0resolved", "mkt_sheet0draft", "mkt_nothere", "not an id", "mkt_a/../b"].map((id) => impl.pub(id, NOW)));
+  ok("2.not-a-sheet · an Up & Down round, a RESOLVED market, a DRAFT market, a missing one and a malformed id are all null (404)", nulls.every((n) => n === null), j(nulls.map((n) => n?.id ?? null)));
   const closed = await impl.pub("mkt_sheet0closed", NOW);
   ok("2.closed · a LIVE market whose selection has closed is a sheet that is NOT bettable, with no figure",
     !!closed && closed.bettable === false && closed.estimates.YES?.state === "closed" && closed.estimates.YES?.multText === null, j(closed));
@@ -125,6 +143,30 @@ async function run(impl: Impl, log: (l: string) => void): Promise<string[]> {
   ok("4.errors · ?me=1 without a session is 401; a non-sheet is 404; a store failure is 503 — each no-store",
     /status: 401, headers: NO_STORE/.test(code) && /status: 404, headers: NO_STORE/.test(code) && /status: 503, headers: NO_STORE/.test(code)
       && /const NO_STORE = \{ "Cache-Control": "no-store" \};/.test(code));
+
+  /* 5 · the card's figures (S7 WP3 step 5): the one source a journey card and the public half share */
+  const figuresOf = async (id: string) => { const m = await marketStore.get(id); return m ? impl.figures(m, NOW) : null; };
+  const differ: string[] = [];
+  for (const id of ["mkt_sheet0live", "mkt_sheet0closed", "mkt_sheet0legacy"]) {
+    const f = await figuresOf(id), s = await impl.pub(id, NOW);
+    const same = !!f && !!s && j({ bettable: f.bettable, rates: f.rates, estimates: f.estimates }) === j({ bettable: s.bettable, rates: s.rates, estimates: s.estimates });
+    if (!same) differ.push(id);
+  }
+  ok("5.figures · the card's figures are the sheet's: for a LIVE market, one whose selection has closed and one with no selection close, cardFigures gives exactly sheetPublic's bettable, rates and estimates",
+    differ.length === 0, j({ differ }));
+  const ud = await figuresOf("mkt_sheet0updown"), rs = await figuresOf("mkt_sheet0resolved"), dr = await figuresOf("mkt_sheet0draft");
+  const closedBoth = (f: Awaited<ReturnType<typeof figuresOf>>) => !!f && f.bettable === false && f.estimates.YES?.state === "closed" && f.estimates.NO?.state === "closed";
+  ok("5.card-only · the markets only a card meets: an Up & Down round has no figure on either side; a RESOLVED and a DRAFT market take no bet (the LIVE test) and their figures are the closed state",
+    !!ud && ud.estimates.YES === null && ud.estimates.NO === null && closedBoth(rs) && closedBoth(dr),
+    j({ updown: ud?.estimates ?? null, resolved: rs && [rs.bettable, rs.estimates.YES?.state], draft: dr && [dr.bettable, dr.estimates.YES?.state] }));
+  const src = decomment(impl.sheetSrc);
+  const fnAt = src.indexOf("export async function sheetPublic(");
+  const body = fnAt < 0 ? "" : src.slice(fnAt, src.indexOf(LF + "}" + LF, fnAt) + 2);
+  const awaitAt = body.indexOf("await stakeBoundsForMarket(m)"), figuresAt = body.indexOf("cardFigures(m, nowMs)");
+  const ownCopy = ["isSelectionClosed(", "pickEstimateRates(", "cardEstimate(", "bettableAt("].filter((name) => body.includes(name));
+  ok("5.one-source · sheetPublic takes its bettable, rates and figures from ONE cardFigures call, read after the stake bounds' await (the pools it returns and the figures priced from them come from one moment), and computes none of them itself",
+    body.length > 0 && body.split("cardFigures(").length - 1 === 1 && awaitAt >= 0 && figuresAt > awaitAt && ownCopy.length === 0,
+    j({ calls: body.split("cardFigures(").length - 1, awaitAt, figuresAt, ownCopy }));
   return failed;
 }
 
@@ -158,6 +200,27 @@ if (!PROVE_RED) {
     { name: "the public half cached for a minute", expect: /^4\.cache /, impl: swap("s-maxage=5,", "s-maxage=60,") },
     { name: "the viewer's half served with the public cache header", expect: /^4\.cache /, impl: swap("{ headers: PRIVATE }", "{ headers: PUBLIC }") },
     { name: "a 503 that a cache may keep", expect: /^4\.errors /, impl: swap("status: 503, headers: NO_STORE", "status: 503, headers: PUBLIC") },
+    // §5 · the card's figures (S7 WP3 step 5)
+    { name: "the card's figures drop the selection close (a closed market still prices its card)", expect: /^5[.]figures /,
+      impl: { ...REAL, figures: (m, now) => REAL.figures({ ...m, selectionClosedAt: null }, now) } },
+    { name: "an Up & Down round priced on its card as if it were a market", expect: /^5[.]card-only /,
+      impl: { ...REAL, figures: (m, now) => REAL.figures({ ...m, productLine: "MARKET" }, now) } },
+    { name: "the card's bettable test drops its LIVE conjunct (a DRAFT market takes bets on its card; a RESOLVED one is still shut by isSelectionClosed)", expect: /^5[.]card-only /,
+      impl: { ...REAL, figures: (m, now) => {
+        const f = REAL.figures(m, now);
+        const open = !isSelectionClosed(m) && Date.parse(m.resolutionAt) > now;
+        return { ...f, bettable: open, estimates: { YES: cardEstimate(m, f.rates, "YES", open), NO: cardEstimate(m, f.rates, "NO", open) } };
+      } } },
+    { name: "sheetPublic re-inlined: its own copy of the figures beside cardFigures, free to drift from the card's", expect: /^5[.]one-source /,
+      impl: { ...REAL, sheetSrc: REAL.sheetSrc.replace("  const { bettable, rates, estimates } = cardFigures(m, nowMs);", [
+        "  const bettable = !isSelectionClosed(m) && Date.parse(m.resolutionAt) > nowMs;",
+        "  const rates = pickEstimateRates(ratesFor(m));",
+        '  const estimates = { YES: cardEstimate(m, rates, "YES", bettable), NO: cardEstimate(m, rates, "NO", bettable) };',
+      ].join(LF)) } },
+    { name: "the figures read before the stake bounds' await again (the returned pools and the figures from two moments)", expect: /^5[.]one-source /,
+      impl: { ...REAL, sheetSrc: REAL.sheetSrc.replace("  const bounds = await stakeBoundsForMarket(m);" + LF, "").replace(
+        "  const { bettable, rates, estimates } = cardFigures(m, nowMs);" + LF,
+        "  const { bettable, rates, estimates } = cardFigures(m, nowMs);" + LF + "  const bounds = await stakeBoundsForMarket(m);" + LF) } },
   ];
   let caught = 0, fail = 0;
   const ok = (label: string, cond: boolean, extra = "") => { if (!cond) fail++; console.log(`${cond ? "PROVED  " : "MISSED  "} ${label}${extra ? ` — ${extra}` : ""}`); };
