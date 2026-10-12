@@ -223,11 +223,12 @@ async function AdminAffiliateContent({ searchParams }: AffiliateProps) {
                               player"). A handle alone cannot be paid or checked, so for a viewer the player page will
                               let in it is a link there — in the link colour, because a phone has no hover to reveal
                               it. ⛔ Only then: a role that cannot open players (Growth, by default) keeps plain text.
-                              The 6px in and out make a 40px tap target (`--tap-min`) without changing the row height. */}
+                              Its floor is stated (`--tap-min`, 40px); the 8px in and out (this scale's `1.5`) around
+                              the 28px avatar make a 44px tap target without changing the row height. */}
                           {mayOpenPlayers ? (
                             <Link
                               href={`${PLAYERS_PATH}/${b.userId}` as Route}
-                              className="admin-focus group inline-flex items-center gap-2 min-w-0 max-w-full -my-1.5 py-1.5 rounded-md"
+                              className="admin-focus group inline-flex items-center gap-2 min-w-0 max-w-full min-h-[var(--tap-min)] -my-1.5 py-1.5 rounded-md"
                             >
                               <Avatar initials={b.handle.replace(/[^a-z0-9]/gi, "").slice(0, 2)} size="sm" seed={b.userId} />
                               <span className="truncate font-mono font-semibold text-royal-300 underline-offset-2 group-hover:underline">{b.handle}</span>
