@@ -25,7 +25,7 @@ file is worthless the moment it describes an intention as a fact.
 
 | Rule | Status |
 |---|---|
-| Stake bounds **500** / 1,000,000 | ⏳ LANDING — the minimum lowered from 1,000 to 500 by owner ruling 2026-10-12; production's stored 1,000 is lowered by the reconcile (market config v4, Up & Down v5) on the first read after that release. ⛔ Read it back on production before marking it ✅. The maximum is unchanged and live; every read is floored at the minimum since 2026-10-07 (§2.3) |
+| Stake bounds **500** / 1,000,000 | ✅ live 2026-10-12 (`de44e087`, Railway "Success" 16:18 UTC) — the minimum lowered from 1,000 to 500 by owner ruling; production's stored 1,000 was lowered by the reconcile (market config v4, Up & Down v5) on the first read after the deploy. Read back on production through the pages that read the STORED settings (a floor only raises, so a stored 1,000 would still print 1,000): both game-rules documents say minimum TZS 500 in en/sw/zh at v2026-10-12, and `/updown` carries `minStake: 500`. The maximum is unchanged; every read is floored at the minimum since 2026-10-07 (§2.3) |
 | Minimum deposit TZS 1,000 · the true withdrawal minimum (§2.7a) | ⭐ 2026-10-07 (management, via Ali) — lands with the money-doors release; ⛔ read it back on production before removing this note |
 | Withdrawal fee 1.5% | ✅ live — production has charged 1.5% since before 2026-08-10 |
 | Taxes only on our fee · free cancellation 5 min | ✅ live, unchanged by this programme |
