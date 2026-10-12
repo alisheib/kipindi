@@ -91,24 +91,35 @@ Redlines (the live values are `.kp-jcard*` and the `--jcard-*` tokens in `src/ap
   left (`DotSeq`); the label on the right, never broken — "Inafungwa leo" with a clock and "Inasubiri matokeo" with the
   closed hourglass in `--text-muted`; "Siku N", "Imetatuliwa" with a check and "Imebatilishwa" in the row's ink (A12).
 - title: the reader's short title, else the full one, Sora 600 on the `title-sm` rung (18px) on a 24px line
-  (`--jcard-title-line`), `keepFigures`, balanced; only the full-title fallback clamps to two lines. In a grid of more
-  than one column the grid reserves two lines (`--jcard-title-2l`, 48px) — never the card.
+  (`--jcard-title-line`), `keepFigures`, balanced; only the full-title fallback clamps to two lines. No line is
+  reserved for it, in one column or in several: in a grid the cards share their rows instead (`.kp-jgrid`, below).
 - picks: a 2-column grid 12px apart (the platform's one pair gap, R9-A5; the board drew 10), each a link in `.btn-yes` /
   `.btn-no`'s ink and tracking without `.btn`'s height or nowrap, radius `--r-md`, at least `--jcard-act-h` (64) tall,
   growing together when a second line wraps, and moving as the side buttons move (the `--m-lift` hover where a pointer
-  hovers, the `--m-press` scale when pressed). The side word Sora on `--type-h4` (17, A15); under it, at `--type-small`
-  500 and balanced: "Shinda ≈2.8× dau" (the figure a JetBrains Mono 700 unit joined to its words by no-break spaces),
-  "Kuwa wa kwanza", "Upande mmoja tu", "Upande mdogo, ona makadirio" (no number over the 100× cap; each clause whole),
-  "Faida ndogo · ≈1.0×" (stacked, one part a line — a centred line cannot hide a dot at its edge). A hidden figure or
-  an Up & Down side shows its side word alone, centred.
+  hovers, the `--m-press` scale when pressed). In forced colours a pick keeps a 1px border in the system's ink: its
+  ring is the fill's inset shadow, which a forced palette strips with the fill (E-129). The side word Sora on
+  `--type-h4` (17, A15); under it, at `--type-small` 500 and balanced: "Shinda ≈2.8× dau" (the figure a JetBrains Mono
+  700 unit joined to its words by no-break spaces — up to four characters: "≈100.0×", which the engine still prints at
+  its cap, breaks before its words, since "≈100.0× your bet" kept whole runs 109.8px against a 320 phone's 105px pick
+  line, where "≈99.9× your bet" holds it at 102.0), "Kuwa wa kwanza", "Upande mmoja tu", "Upande mdogo, ona makadirio"
+  (no number over the 100× cap; each clause whole), "Faida ndogo · ≈1.0×" (stacked, one part a line, since a centred
+  line cannot hide a dot at its edge — a recorded deviation from the canvas: s4-3-card-over-cap draws it on one line).
+  A hidden figure or an Up & Down side shows its side word alone, centred.
 - closed row (selection closed, not a control) and result row (settled): the picks' height, an inset well
   (`--bg-inset`, 1px `--border`, `--r-md`). Closed: a lock and "Imefungwa", `--type-body` 600 `--text-subtle`.
   Result: "Matokeo" (14px, the `body` rung, 500, `--text-muted`) over the settled instant (`settledAt`, else
   `resolutionAt`; `formatEatDateTime`, the year once it is not this year) at `--type-small` in `--text-subtle` (the
   board's 12px is under §T4's floor), and the outcome as the kit `Chip` (lg) in its own ink — YES, NO, a void neutral.
 - under the action, on an unsettled one-sided pool: the refund sentence (`market.oneSidedNote`, naming the empty side),
-  in the one note rule this file's card and the landing rows share. The action block stands on the card's floor
-  (`margin-block-start: auto`), so picks stay level across a grid's row.
+  in the one note rule this file's card and the landing rows share. Outside a shared grid the action block stands on
+  the card's floor (`margin-block-start: auto`) in a card that fills its cell.
+- grid: `.kp-jgrid`, the one journey card grid (WP7's home and WP10's lists lay their cards in it): one column, two
+  from 640, three from 1024, 16px apart (min-width steps only). Where subgrid is supported, each card — or the list
+  item holding one — spans three of the grid's row tracks as a subgrid (the meta row, the question, the action block),
+  each standing at its track's top and the action block's auto margin reset, so across a row the questions start on
+  one line and so do the picks, whatever the titles' line counts or a refund sentence (A16 item 5; the 2026-10-12 WP5
+  review's ruling, after S6's tickets, in place of A16 item 3's 48px two-line reserve). Without subgrid the cards fall
+  back to the floor rule above.
 - links: the card is ONE stretched link (the question; an Up & Down row on /live its round, or /updown), named by the
   reader's full title, under the picks, which rise above it on the card's local plane (z 2 / 3). The picks go where
   today's buttons go — `/markets/<id>?side=YES|NO`, `&from=home` on the home — never prefetched. No click handler.
