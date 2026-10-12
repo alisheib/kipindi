@@ -1,6 +1,7 @@
 /**
- * test:journey-home — THE HOME ON `/`, HELD BEFORE THE JOURNEY ARM IS BUILT BESIDE IT (the Vodacom plan S7: `docs/VODACOM-PLAN.md`
- * §3.2, "First commit of S7"; `docs/design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md` WP2, amendment A10).
+ * test:journey-home — THE HOME ON `/`: THE CLASSIC LANDING HELD AS IT WAS, AND THE JOURNEY HOME BUILT BESIDE IT (the Vodacom
+ * plan S7: `docs/VODACOM-PLAN.md` §3.2, "First commit of S7"; `docs/design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md`
+ * WP2 with amendment A10, and WP3 to WP7).
  *
  *   npm run test:journey-home     (in predeploy)
  *   npm run red:journey-home      (--prove-red: every defect below is planted IN MEMORY and must be caught)
@@ -74,13 +75,33 @@
  *          review record.
  *      ⚠️ §5 stands in its own delimited block (its world, readers, checks and plants), after §4's; its stylesheet is read
  *      with §4's reader (`cssRules`, `declOf`), as the cascade reads it.
+ *   §6 THE ROUTE FILE'S JOURNEY ARM (S7 WP7 step 1, amendments A17, A19 and A24 items 1-2; Open point 25): the route asks
+ *      the one per-request resolver exactly once (generateMetadata asks nothing, the landing's body its own once), reads no
+ *      cookie; for a journey request it returns the journey home inside a Suspense boundary whose fallback is the home's
+ *      ghost, before the one classic return — today's element, the default export's last statement; its metadata and
+ *      route config are WP2's. The ghost: its test id and four marked parts in sw, en and zh, no directive and no server
+ *      read, imported by the route and the root loading's picture of `/` (A24 item 2) alone — never by another loading
+ *      file (A19) — and drawn on the home's own frame, its headline the page's own drawing.
+ *   §7 THE JOURNEY HOME (S7 WP7 step 2, amendments A5(c), A7, A16 and A17; Correction 8; Open point 12): the home's view
+ *      RENDERED in a test world at twelve addresses (the plain home in sw, en and zh and for a guest, a category, a search,
+ *      pages two and three, the three empty states), its lazy parts stood in by elements that carry the props the home
+ *      handed them; and its source, its stylesheet and the two suites that must name its files. It holds: the test id in
+ *      the board's container; the deck's order at every width; the head from 1024 (A16's row, `order: -1` and the hidden
+ *      `<br>` inside the ≥1024 query only, the sentence gap in the markup, the language's own); the headline's two rungs;
+ *      the one list read on the product default, unswallowed, and WP3's rules deciding everything; the chips (a declared
+ *      filter surface: toggle, replace, the search kept and the page dropped); cumulative paging; the one journey card grid
+ *      and no classic grid or card; the poller as the one refresh (no odds listener, A7); the search line; the three empty
+ *      states; and the How-to card handed the session's sign-in.
+ *      ⚠️ §6 and §7 stand in their own delimited block, after §5's, and read the stylesheet as §4 does.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY and requires the check named for it to fail.
  * §1's plants edit copies of the source text; §2's and §3's swap ONE rule (a function `home-list.ts` or `card-face.ts`
  * exports, or the `cardEstimate` the card's figures come through) for a copy of the real one carrying one defect; §4's
  * edit a copy of the card's source, of globals.css or of one rendered card (the world is rendered once, from the real
  * component); §5's edit a copy of the How-to card's, the sheet's or the lazy module's source, of globals.css, of
- * test:popup-fit's record or of one rendered card or sheet (rendered once, in §5's own test world). Nothing here
+ * test:popup-fit's record or of one rendered card or sheet (rendered once, in §5's own test world); §6's and §7's edit a copy
+ * of the route file, of the home's, the chips', the headline's or the ghost's source, of globals.css, of a suite's record, of
+ * a census or of one drawn address or ghost (drawn once, in their own test world). Nothing here
  * touches a file on disk, so `test:red-anchors` §4 counts it in the in-process class.
  *   §8 THE LIVE STRIP LEAVES / AND /markets FOR A JOURNEY READER (S7 WP8; VODACOM-PLAN §3.2, COMPLIANCE-DECISIONS
  *      2026-09-29 §10; S7-PLAN Open point 16), in AppShell and LiveTicker as written:
@@ -178,6 +199,7 @@ type World = {
   renders: Renders;              // §4: the card's test world, each case rendered once from the real component
   gutter: number | null;         // §4: a phone page's side gutter — PageContainer's house padding (px-3) on the house scale
   howto: HowToWorld;             // §5 (S7 WP6): the How-to card, the sheet, the home's lazy module — and what they render
+  home: JhWorld;                 // §6-§7 (S7 WP7): the journey home and its ghost — their sources, and what they render
   strip: StripWorld;             // §8 (S7 WP8): AppShell and LiveTicker as written — the strip's slot and its client's default
 };
 
@@ -203,6 +225,7 @@ function load(): World {
   return {
     page: read(PAGE), landing: read(LANDING), layout: read(LAYOUT), walked: all.length, naming, rules: RULES,
     card: read(CARD), css: read(CSS), cardNaming, renders: renderCards(), gutter: pageGutter(), howto: loadHowTo(all),
+    home: loadHome(all),
     strip: loadStrip(),
   };
 }
@@ -1028,16 +1051,23 @@ const DIRECTIVE = /["']use (?:client|server)["']/;
 const HT_CARD = "src/components/journey/home/howto-card.tsx";
 const HT_SHEET = "src/components/onboarding/how-to-play-sheet.tsx";
 const HT_LAZY = "src/components/journey/home/home-lazy.tsx";
-/** WP7's server home: the home's lazy module's one importer once it exists (absent in WP6, so nothing may import it yet). */
+/** WP7's server home: the home's lazy module's one importer. */
 const HT_HOME = "src/components/journey/home/journey-home.tsx";
 const HT_GUARD = "src/components/layout/lost-chunk.ts";
 const HT_POPUP_FIT = "scripts/popup-fit.test.mts";
 type HtLocale = "sw" | "en" | "zh";
 const HT_LOCALES: readonly HtLocale[] = ["sw", "en", "zh"];
-/** The home's deferred parts (WP6 step 2): the binding, the module next/dynamic loads, the component it picks from it. */
+/**
+ * The home's deferred parts: the binding, the module next/dynamic loads, the component it picks from it. WP6 step 2 declared
+ * the first two; WP7 adds the kit's EmptyState (it draws the home's three empty states — WP6 step 2's condition) and the
+ * kit's StripAutoScroll (the chips rail's pressed chip framed on load, and its edge fades), each through this module so
+ * neither joins a classic visitor's first load of `/`.
+ */
 const HT_PARTS: ReadonlyArray<readonly [string, string, string]> = [
   ["LazyHowToCard", "@/components/journey/home/howto-card", "HowToCard"],
   ["LazyRefreshPoller", "@/components/ui/refresh-poller", "RefreshPoller"],
+  ["LazyEmptyState", "@/components/ui/empty-state", "EmptyState"],
+  ["LazyStripAutoScroll", "@/components/ui/strip-autoscroll", "StripAutoScroll"],
 ];
 const htPartLine = ([binding, spec, symbol]: readonly [string, string, string]) =>
   `export const ${binding} = dynamic(() => import("${spec}").then((m) => m.${symbol}).catch(nothingIfLost));`;
@@ -1085,7 +1115,8 @@ function loadHowTo(all: readonly string[]): HowToWorld {
   for (const rel of all) {
     if (own.has(rel)) continue;
     const s = read(rel);
-    if (s.includes("home-lazy") || s.includes("howto-card") || s.includes("how-to-play-sheet")) naming.set(rel, s);
+    // …and every file of the home's own folder (WP7), named or not: 5.lazy holds each to reaching no part around the module.
+    if (s.includes("home-lazy") || s.includes("howto-card") || s.includes("how-to-play-sheet") || rel.startsWith("src/components/journey/home/")) naming.set(rel, s);
   }
   const { rendered, truth } = renderHowTo();
   return {
@@ -1392,21 +1423,26 @@ function howToChecks(hw: HowToWorld, ok: HtOk) {
   ok("5.eyebrow.zh · MFANO's label is uppercase and mono for Latin words, and for zh 示例 neither, nor tracked: .kp-howto__ex-label:lang(zh) sets the body face, no letter-spacing and no transform",
     zh.face === "var(--font-body)" && zh.tracking === "0" && zh.transform === "none", j(zh));
 
-  // 5.lazy — WP6 step 2; A13(a).
+  // 5.lazy — WP6 step 2; A13(a); WP7 (its two parts, its one importer, each part named).
   const statics = [...lazy.matchAll(/^[ ]*import[ ]+([^;]*?)[ ]+from[ ]+"([^"]+)";/gm)].map((m) => `${m[1].trim()} from ${m[2]}`);
+  // ⭐ Each part is named for React's tools (WP7) — and the names are the one string of this module a minifier keeps, which
+  // `qa:first-load`'s marker table finds its chunk by. A name that drifted from its part would point the tool elsewhere.
+  const unnamed = HT_PARTS.filter(([binding, , symbol]) => count(lazy, `${binding}.displayName = ${HT_QUOTE}JourneyHome.${symbol}${HT_QUOTE};`) !== 1).map(([b]) => b);
   const lazyShape = lazy.trimStart().startsWith(`${HT_QUOTE}use client${HT_QUOTE}`)
     && j(statics) === j(["dynamic from next/dynamic", "{ nothingIfLost } from @/components/layout/lost-chunk"])
     && HT_PARTS.every((p) => count(lazy, htPartLine(p)) === 1) && count(lazy, "export ") === HT_PARTS.length && count(lazy, "dynamic(") === HT_PARTS.length
     && !["ssr", "loading", "suspense"].some((w) => lazy.includes(w)) && !lazy.includes("function nothingIfLost(")
-    && decomment(hw.guard).includes("export function nothingIfLost(");
+    && decomment(hw.guard).includes("export function nothingIfLost(") && unnamed.length === 0;
   const subjects: Array<[string, string]> = [[HT_CARD, hw.card], [HT_SHEET, hw.sheet], [HT_LAZY, hw.lazy], ...hw.naming];
   const importersOf = (name: string) => subjects.filter(([f]) => f !== HT_LAZY || name !== "home-lazy").filter(([, s]) => htImports(s, name)).map(([f]) => f).sort();
   const lazyHome = importersOf("home-lazy"), cardHome = importersOf("howto-card"), sheetHome = importersOf("how-to-play-sheet");
   const homeFiles = subjects.filter(([f]) => f.startsWith("src/components/journey/home/") && f !== HT_LAZY && f !== HT_CARD);
-  const around = homeFiles.filter(([, s]) => htImports(s, "refresh-poller") || htImports(s, "howto-card")).map(([f]) => f);
-  ok("5.lazy · the home's lazy module is client code whose static imports are next/dynamic and the app's one lost-chunk guard, declaring exactly its parts (LazyHowToCard, LazyRefreshPoller), each one line with no option object, its loader ending in .catch(nothingIfLost); it is the card's one loader (the sheet's is the card), no other home file reaches a part around it, and only journey-home.tsx (WP7) may import it",
-    lazyShape && lazyHome.every((f) => f === HT_HOME) && j(cardHome) === j([HT_LAZY]) && j(sheetHome) === j([HT_CARD]) && around.length === 0,
-    j({ lazyShape, statics, lazyHome, cardHome, sheetHome, around }));
+  // No other home file reaches ANY part's module around the lazy one (a static import would put it in `/`'s first load).
+  const partNames = HT_PARTS.map(([, spec]) => spec.slice(spec.lastIndexOf("/") + 1));
+  const around = homeFiles.filter(([, s]) => partNames.some((n) => htImports(s, n))).map(([f]) => f);
+  ok("5.lazy · the home's lazy module is client code whose static imports are next/dynamic and the app's one lost-chunk guard, declaring exactly its parts (LazyHowToCard, LazyRefreshPoller, and WP7's LazyEmptyState and LazyStripAutoScroll), each one line with no option object, its loader ending in .catch(nothingIfLost), each named JourneyHome.<part>; it is the card's one loader (the sheet's is the card), no other home file reaches a part's module around it, and journey-home.tsx (WP7) is its one importer",
+    lazyShape && j(lazyHome) === j([HT_HOME]) && j(cardHome) === j([HT_LAZY]) && j(sheetHome) === j([HT_CARD]) && around.length === 0,
+    j({ lazyShape, statics, unnamed, lazyHome, cardHome, sheetHome, around }));
 
   // 5.popup — WP6 step 5; A13's pattern (popup-review.mts).
   const record = reviewedIn(hw.popupFit);
@@ -1523,6 +1559,515 @@ function howToDefects(): HtPlant[] {
       plant: htNamed("src/app/markets/page.tsx", `import { LazyHowToCard } from "@/components/journey/home/home-lazy";${LF}`) },
     { name: "the sheet leaves test:popup-fit's review record (A13's pattern)", expect: /^5[.]popup /,
       plant: (w) => htWith(w, { popupFit: htSwap(w.howto.popupFit, `"src/components/onboarding/how-to-play-sheet.tsx",`, "") }) },
+    // WP7's two parts
+    { name: "a home file imports the kit's EmptyState around the lazy module (its code in every visitor's first load of /)", expect: /^5[.]lazy /,
+      plant: htNamed("src/components/journey/home/home-chips.tsx", `import { EmptyState } from "@/components/ui/empty-state";${LF}`) },
+    { name: "a part's name drifts from its part (qa:first-load would look for a string no chunk holds)", expect: /^5[.]lazy /,
+      plant: htLazy(`LazyEmptyState.displayName = ${HT_QUOTE}JourneyHome.EmptyState${HT_QUOTE};`, `LazyEmptyState.displayName = ${HT_QUOTE}JourneyHome.Empty${HT_QUOTE};`) },
+  ];
+}
+
+/* ══ §6 · THE ROUTE FILE'S JOURNEY ARM · §7 · THE JOURNEY HOME (S7 WP7) ═════════════════════════════════════════════════════
+ * S7-PLAN WP7 steps 1-3, as A5(c) (the house padding), A7 (no SSE listener: the 30-second poller is the home's one
+ * refresh), A16 (the head at every width; card titles in a grid of several columns — the one journey card grid, whose
+ * cards share their rows, the coordinator's ruling on its item 5), A17 (the test ids and the ghost's parts), A19 (no
+ * loading file but the root's draws the home's ghost) and A24 items 1-2 (the route's `generateMetadata`, the resolver the
+ * landing's body asks too, the root ghost's "/" re-pointed) amend them.
+ * ⭐ §6 reads the route file and the home's ghost: the resolver asked once, the journey arm first, the classic return
+ * today's and last, the metadata untouched, and the ghost — its id, its parts, its two importers, its frame the home's.
+ * ⭐ §7 RENDERS THE HOME in a test world (React's server renderer, its view handed fixtures of thirty questions in three
+ * categories, the rules' own answers for twelve addresses: the plain home in sw, en and zh, a guest, a category, a
+ * search, pages two and three, and the three empty states), its lazy parts stood in by elements that show the props the
+ * home handed them; and it reads the home's source, its stylesheet, and the two suites that must name its files.
+ * ⭐ Everything below is §6's and §7's own — their world, their readers, their checks and their plants; they meet the rest
+ * of the file at the World type, load(), run() and the plant list, one line each.
+ * ⚠️ No escape a tool could decode: quotes and line breaks are built from their code points, patterns use classes. */
+const JH_GHOST = "src/components/journey/home/journey-home-ghost.tsx";
+const JH_CHIPS = "src/components/journey/home/home-chips.tsx";
+const JH_HEADLINE = "src/components/journey/home/home-headline.tsx";
+const JH_ROUTE_GHOST = "src/components/journey/route-ghost.tsx";
+const JH_FILTER_LANGUAGE = "scripts/filter-language.test.mts";
+const JH_PRODUCT_LINE = "scripts/product-line.test.mts";
+/** The ghost's parts the ghost drive measures against the landed page (A17 item 1). */
+const JH_GHOST_PARTS = ["howto", "headline", "chips", "card"];
+/** The home's page of cards, as the deck draws it: "Onyesha zaidi" reaches twelve more each time. The home reads the
+ *  product's one player page size (`PLAYER_PER_PAGE`, pagination.tsx); the test world renders with that value, and 7.paging
+ *  holds it to this one. */
+const JH_PER_PAGE = 12;
+
+type JhCase = { locale: HtLocale; empty?: boolean; cat?: string; q?: string; page?: number; signedIn?: boolean };
+/** The addresses the home is drawn at: the plain home in the three languages and for a guest, a category, a search,
+ *  pages two and three, and each of the three empty states (a category with none — with a search too —, a search that
+ *  matched none, and a book with nothing taking bets). */
+const JH_CASES = {
+  full: { locale: "sw" },
+  fullEn: { locale: "en" },
+  fullZh: { locale: "zh" },
+  guest: { locale: "sw", signedIn: false },
+  selected: { locale: "sw", cat: "weather" },
+  query: { locale: "sw", q: "simba" },
+  page2: { locale: "sw", page: 2 },
+  last: { locale: "sw", page: 3 },
+  emptyCat: { locale: "sw", cat: "crypto" },
+  emptyCatQ: { locale: "sw", cat: "crypto", q: "simba" },
+  emptyQ: { locale: "sw", q: "zzz" },
+  emptyBook: { locale: "sw", empty: true },
+} satisfies Record<string, JhCase>;
+type JhName = keyof typeof JH_CASES;
+const JH_NAMES = Object.keys(JH_CASES) as JhName[];
+/** Thirty questions on the deck's 13%, a third each in sports, weather and macro, one in five about Simba (a search's
+ *  six), closing an hour apart: the book `homeBook` would hand the view, in its order. */
+const JH_BOOK: JourneyCardMarket[] = Array.from({ length: 30 }, (_, i) => cardRow(`mkt_jh${String(i).padStart(2, "0")}`, {
+  category: ["sports", "weather", "macro"][i % 3],
+  titleSw: i % 5 === 0 ? `Je, Simba itashinda mechi ya ${i}?` : `Je, mvua itanyesha siku ya ${i}?`,
+  titleEn: i % 5 === 0 ? `Will Simba win match ${i}?` : `Will it rain on day ${i}?`,
+  resolutionAt: at(24 + i),
+}));
+
+/** What the view was handed for one case, from the rules themselves — what each check holds the drawing to. */
+type JhInput = { locale: HtLocale; params: HL.HomeParams; chips: HL.HomeChip[]; shown: string[]; more: boolean; page: number; empty: HL.HomeEmpty | null; signedIn: boolean };
+type JhDrawn = { home: Partial<Record<JhName, string>>; input: Partial<Record<JhName, JhInput>>; ghost: Partial<Record<HtLocale, string>>; perPage: number | null; error: string | null };
+type JhWorld = {
+  home: string;                         // journey-home.tsx
+  ghost: string;                        // journey-home-ghost.tsx
+  chips: string;                        // home-chips.tsx
+  headline: string;                     // home-headline.tsx
+  ghostNaming: Map<string, string>;     // every OTHER file under src/ whose text names journey-home-ghost: its importers' census
+  journeyFiles: Map<string, string>;    // every file under src/components/journey/: the classic card's and the SSE censuses
+  filterLanguage: string;               // scripts/filter-language.test.mts, decommented: SURFACES must name the chips
+  productLine: string;                  // scripts/product-line.test.mts, decommented: MUST_STAY_DEFAULT must name the home
+  drawn: JhDrawn;
+};
+
+function loadHome(all: readonly string[]): JhWorld {
+  const ghostNaming = new Map<string, string>();
+  const journeyFiles = new Map<string, string>();
+  for (const rel of all) {
+    if (rel !== JH_GHOST) { const s = read(rel); if (s.includes("journey-home-ghost")) ghostNaming.set(rel, s); }
+    if (rel.startsWith("src/components/journey/")) journeyFiles.set(rel, read(rel));
+  }
+  return {
+    home: read(HT_HOME), ghost: read(JH_GHOST), chips: read(JH_CHIPS), headline: read(JH_HEADLINE), ghostNaming, journeyFiles,
+    filterLanguage: decomment(read(JH_FILTER_LANGUAGE)), productLine: decomment(read(JH_PRODUCT_LINE)), drawn: renderHome(),
+  };
+}
+
+/**
+ * THE TEST WORLD: the home's VIEW (`JourneyHomeView`, what `JourneyHome` draws once its reads are in) rendered on React's
+ * server renderer at the twelve addresses, handed what the rules answer for each (`parseHomeParams`, `homeView` over the
+ * product's search grammar, `homeChips` — as the home calls them), at the render clock T0 (the wall clock pinned too, as
+ * §4 pins it for the cards); and the home's ghost in the three languages.
+ * ⭐ THE LAZY PARTS ARE STOOD IN: `next/dynamic` loads nothing in a test process, so the home's lazy module is replaced in
+ * the module cache, before the home is first loaded, by one whose parts each draw an `x-part` element carrying the props
+ * the home handed it (and an empty state's action, drawn inside it). Everything is loaded through `require`, as §5 does.
+ */
+function renderHome(): JhDrawn {
+  const drawn: JhDrawn = { home: {}, input: {}, ghost: {}, perPage: null, error: null };
+  const wall = Date.now;
+  try {
+    const req = createRequire(import.meta.url);
+    const React = req("react") as typeof import("react");
+    const make = React.createElement;
+    const lazyAt = req.resolve("../src/components/journey/home/home-lazy.tsx");
+    const part = (name: string) => (p: Record<string, unknown>) => make("x-part",
+      { "data-part": name, "data-props": j(Object.fromEntries(Object.entries(p).filter(([k]) => k !== "action" && k !== "children"))) },
+      (p.action ?? null) as never);
+    const standIn = new NodeModule(lazyAt);
+    standIn.filename = lazyAt;
+    standIn.loaded = true;
+    standIn.exports = Object.fromEntries(HT_PARTS.map(([binding]) => [binding, part(binding)]));
+    (req.cache as Record<string, unknown>)[lazyAt] = standIn;
+    const { renderToStaticMarkup: draw } = req("react-dom/server") as typeof import("react-dom/server");
+    const { JourneyHomeView } = req("../src/components/journey/home/journey-home.tsx") as { JourneyHomeView: unknown };
+    const { JourneyHomeGhost } = req("../src/components/journey/home/journey-home-ghost.tsx") as { JourneyHomeGhost: unknown };
+    const S = req("../src/lib/search/index.ts") as {
+      parseQuery: (q: string, o: { fields: readonly string[] }) => unknown;
+      matchesQuery: (q: unknown, m: Record<string, string | null | undefined>, s: unknown) => boolean;
+      fieldNames: (s: unknown) => string[];
+      MARKET_SEARCH: unknown;
+    };
+    // The page size the home itself reads (`PLAYER_PER_PAGE`), so the drawing pages as the product does.
+    const perPage = (req("../src/components/ui/pagination.tsx") as { PLAYER_PER_PAGE: number }).PLAYER_PER_PAGE;
+    drawn.perPage = perPage;
+    Date.now = () => T0;
+    for (const name of JH_NAMES) {
+      const c: JhCase = JH_CASES[name];
+      const book = c.empty ? [] : JH_BOOK;
+      const params = HL.parseHomeParams({ cat: c.cat, q: c.q, page: c.page ? String(c.page) : undefined }, MARKET_CATEGORIES);
+      const search = S.parseQuery(params.q, { fields: S.fieldNames(S.MARKET_SEARCH) });
+      const view = HL.homeView(book, params, perPage, (m) => S.matchesQuery(search, m as unknown as Record<string, string | null | undefined>, S.MARKET_SEARCH));
+      const chips = HL.homeChips(book, params.cat);
+      const signedIn = c.signedIn ?? true;
+      drawn.input[name] = { locale: c.locale, params, chips, shown: view.shown.map((m) => m.id), more: view.more, page: view.page, empty: view.empty, signedIn };
+      drawn.home[name] = draw(make(JourneyHomeView as never, { t: dict[c.locale], locale: c.locale, nowMs: T0, params, chips, view, signedIn } as never));
+    }
+    for (const l of HT_LOCALES) drawn.ghost[l] = draw(make(JourneyHomeGhost as never, { t: dict[l] } as never));
+  } catch (err) {
+    drawn.error = String((err as Error)?.stack ?? err).split(LF).slice(0, 3).join(" | ");
+  } finally {
+    Date.now = wall;
+  }
+  return drawn;
+}
+
+/** A source's lines trimmed and joined by one space, blank lines dropped: JSX and statements compared across their breaks. */
+const jhFlat = (s: string) => s.split(LF).map((l) => l.trim()).filter((l) => l.length > 0).join(" ");
+/** An element's inner markup, from the first opening tag that starts with `open` to its own closing `</tag>` (no nesting of
+ *  the same tag in the elements read here). */
+function jhInner(html: string, open: string): string | null {
+  const at = html.indexOf(open);
+  if (at < 0) return null;
+  const tag = /^<([a-z0-9-]+)/.exec(open)?.[1] ?? "";
+  const from = html.indexOf(">", at) + 1;
+  const to = html.indexOf(`</${tag}>`, from);
+  return to < 0 ? null : html.slice(from, to);
+}
+/** The props a stood-in part was handed, by its name: one object per time the home drew it. */
+const jhParts = (html: string, name: string): Array<Record<string, unknown>> =>
+  [...html.matchAll(new RegExp(`<x-part data-part="${name}" data-props="([^"]*)"`, "g"))].map((m) => {
+    try { return JSON.parse(decodeHtml(m[1])) as Record<string, unknown>; } catch { return {}; }
+  });
+/** The headline the page should say in a language: the ask, its language's own gap, the sides from the side words. */
+const jhHeadline = (l: HtLocale) => {
+  const d = dict[l];
+  const ask = d.journey.headlineAsk, sides = d.journey.headlineSides.replace("{yes}", d.common.yes).replace("{no}", d.common.no);
+  return `${ask}${ask.endsWith(String.fromCharCode(0x3002)) ? "" : " "}${sides}`;
+};
+/** The rules' answer for a link: `/` plus only what is set, as the home writes it (WP3's `homeHref`). */
+const jhHref = (p: { cat?: HL.HomeChip; q?: string; page?: number }) => HL.homeHref(p);
+/** The markup's form of an address (`&` written `&amp;`). */
+const jhAttr = (href: string) => href.split("&").join("&amp;");
+
+function homeChecks(w: World, ok: Ok) {
+  const hw = w.home, D = hw.drawn, H = D.home, IN = D.input;
+  const page = decomment(w.page), landing = decomment(w.landing);
+  const def = page.indexOf("export default ");
+  const body = def < 0 ? "" : page.slice(def), meta = def < 0 ? page : page.slice(0, def);
+  const flatBody = jhFlat(body);
+  const home = decomment(hw.home), ghostSrc = decomment(hw.ghost), chips = decomment(hw.chips), headline = decomment(hw.headline);
+  const sheet = cssRules(w.css);
+  const AT1024 = "@media (min-width: 1024px)";
+  /** The rules naming `sel` that declare `prop`, as [the at-rules they sit in, the value]. */
+  const declared = (sel: string, prop: string) => sheet.filter((r) => r.sels.includes(sel)).flatMap((r) => r.decls.filter(([p]) => p === prop).map(([, v]) => [r.at.join(" "), v]));
+
+  /* ── §6 · the route file's journey arm ── */
+  // 6.resolver — WP7 step 1; A24 item 1; Open point 25.
+  const asks = { page: count(page, "resolveSimpleJourney("), body: count(body, "resolveSimpleJourney("), meta: count(meta, "resolveSimpleJourney("), landing: count(landing, "resolveSimpleJourney(") };
+  const resolverImport = page.includes(`import { resolveSimpleJourney } from ${HT_QUOTE}@/lib/server/journey-preview${HT_QUOTE};`);
+  const ownRead = page.match(/cookies[(]|JOURNEY_PREVIEW_COOKIE|simpleJourneyFor|kp_preview/g) ?? [];
+  ok("6.resolver · the route asks the one per-request resolver EXACTLY ONCE, in its default export — generateMetadata asks nothing (the journey home keeps the title every reader gets, Open point 25) — imported from journey-preview, and never reads the pass cookie or calls simpleJourneyFor; the landing's body still asks it once for its own signed-in block, the same cached answer (A24 item 1)",
+    asks.page === 1 && asks.body === 1 && asks.meta === 0 && asks.landing === 1 && resolverImport && ownRead.length === 0, j({ asks, resolverImport, ownRead }));
+
+  // 6.arm — WP7 step 1; A17 item 2 (the home's ghost in a Suspense boundary of its own; the root loading file as it is).
+  const ARM = "const { journey } = await resolveSimpleJourney(); if (journey) { const { t } = await getServerT(); return ( <Suspense fallback={<JourneyHomeGhost t={t} />}> <JourneyHome searchParams={searchParams} /> </Suspense> ); }";
+  const armAt = flatBody.indexOf(ARM), classicAt = flatBody.indexOf(CLASSIC_RETURN);
+  const arm = { armAt, classicAt, homes: count(page, "<JourneyHome "), boundaries: count(page, "<Suspense"), ghosts: count(page, "<JourneyHomeGhost"), async: body.startsWith("export default async function LandingPage(") };
+  ok("6.arm · the journey arm comes first, exactly: the resolver's answer, then for a journey request the journey home inside a Suspense boundary of its own whose fallback is the home's ghost (A17 item 2: the root loading file stays as it is) — one of each — and the classic return after it",
+    armAt >= 0 && classicAt > armAt && arm.homes === 1 && arm.boundaries === 1 && arm.ghosts === 1 && arm.async, j(arm));
+
+  // 6.classic — WP7: "every other reader's / is byte-for-byte today's".
+  ok("6.classic · the classic return is today's element and the default export's LAST statement — return <LegacyLanding searchParams={searchParams} />; — so a classic request takes today's element after one cached await",
+    flatBody.endsWith(`${CLASSIC_RETURN} }`) && count(page, CLASSIC_RETURN) === 1 && flatBody.lastIndexOf("return ") === classicAt, flatBody.slice(-120));
+
+  // 6.meta — WP2's metadata and route config, untouched (A24 item 1: the form is generateMetadata).
+  const TITLE = "title: { absolute: `50pick — ${t.auth.railTagline}` },";
+  ok("6.meta · the route config and metadata are WP2's, untouched: dynamic force-dynamic once, ONE generateMetadata whose title is the reader's-language title every reader gets, with no journey branch (Open point 25: the journey home keeps the root title) — its canonical and spread open graph are 1.spelled's",
+    count(page, DYNAMIC) === 1 && count(page, GENERATE) === 1 && meta.includes(TITLE) && !/journey/i.test(meta.slice(meta.indexOf(GENERATE))), j({ title: meta.includes(TITLE) }));
+
+  // 6.ghost — A17 items 1 and 3; A19; A24 item 2.
+  const ghostDrawn = HT_LOCALES.filter((l) => {
+    const g = D.ghost[l] ?? "";
+    return !(count(g, `data-testid="journey-home-ghost"`) === 1 && JH_GHOST_PARTS.every((p) => count(g, `data-ghost-part="${p}"`) === 1)
+      && g.includes(`>${dict[l].journey.howToCardTitle}</span>`) && g.startsWith(`<div data-measure="board"`));
+  });
+  const ghostImporters = [...hw.ghostNaming].filter(([, s]) => htImports(s, "journey-home-ghost")).map(([f]) => f).sort();
+  const ghostServer = ghostSrc.match(/@[/]lib[/]server[/]|next[/]headers|["']use (?:client|server)["']/g) ?? [];
+  ok("6.ghost · the home's ghost (A17): its root carries data-testid=journey-home-ghost once and its How-to card, headline, chips and first card box each carry data-ghost-part, in the board's PageContainer, the How-to card's title drawn in words — in sw, en and zh; it has no directive and reads no server (a server page and a client module both draw it); and its importers are exactly app/page.tsx (the Suspense fallback) and route-ghost.tsx (the root loading's picture of /, A24 item 2) — no other loading file draws it (A19)",
+    D.error === null && ghostDrawn.length === 0 && ghostServer.length === 0 && j(ghostImporters) === j([JH_ROUTE_GHOST, PAGE].sort()),
+    D.error ?? j({ ghostDrawn, ghostServer, ghostImporters }));
+
+  // 6.ghost.frame — WP7 step 3: the ghost at the landed geometry, by the home's own classes (one drawing of the frame).
+  const FRAME_HOME = ['<div class="kp-jhome" data-testid="journey-home">', '<div class="kp-jhome__head">', '<h1 class="kp-jhome__title text-title-lg">',
+    'class="kp-thin-scroll kp-strip-fade kp-jhome__chips"', '<ul role="list" class="kp-jgrid">'];
+  const FRAME_GHOST = ['<div class="kp-jhome kp-jhome-ghost" data-testid="journey-home-ghost">', '<div class="kp-jhome__head"><div class="kp-jhowto" data-ghost-part="howto">',
+    '<p aria-hidden="true" class="kp-jhome__title kp-jhome-ghost__title text-title-lg" data-ghost-part="headline">', 'class="kp-strip-fade kp-jhome__chips" data-ghost-part="chips"',
+    '<ul aria-hidden="true" class="kp-jgrid"><li><div class="kp-jcard kp-shimmer-track" data-ghost-part="card"><div class="kp-jcard__meta">'];
+  const inOrder = (s: string, keys: readonly string[]) => { let at = -1; return keys.every((k) => { const i = s.indexOf(k, at + 1); if (i < 0) return false; at = i; return true; }); };
+  const sameWords = ([["sw", "full"], ["en", "fullEn"], ["zh", "fullZh"]] as Array<[HtLocale, JhName]>).filter(([l, n]) =>
+    jhInner(D.ghost[l] ?? "", `<p aria-hidden="true" class="kp-jhome__title`) !== jhInner(H[n] ?? "", `<h1 class="kp-jhome__title`)).map(([l]) => l);
+  ok("6.ghost.frame · the ghost stands on the home's own frame, in the home's order — the board's container, the column (.kp-jhome), the head, the How-to card's own box (.kp-jhowto), the page's own headline drawing (HomeHeadline: the same words, set but not shown), the chips' strip, the journey card grid and the card's own box and rows — so each part lands where the page's does (A17 item 3's ±2px)",
+    inOrder(H.full ?? "", FRAME_HOME) && inOrder(D.ghost.sw ?? "", FRAME_GHOST) && sameWords.length === 0 && ghostSrc.includes("<HomeHeadline t={t} ghost />"),
+    j({ home: inOrder(H.full ?? "", FRAME_HOME), ghost: inOrder(D.ghost.sw ?? "", FRAME_GHOST), sameWords }));
+
+  /* ── §7 · the journey home ── */
+  // 7.testid — A17 item 1; WP7 step 2 (PageContainer board, no padding or width of its own).
+  const CONTAINER_OPEN = `<div data-measure="board" class="mx-auto w-full max-w-board px-3 lg:px-6 py-6"><div class="kp-jhome" data-testid="journey-home">`;
+  const badId = JH_NAMES.filter((n) => !(H[n] ?? "").startsWith(CONTAINER_OPEN) || count(H[n] ?? "", `data-testid="journey-home"`) !== 1);
+  ok("7.testid · the home's outermost element inside its container carries data-testid=journey-home exactly once, at every address (A17 item 1), in the board's PageContainer with the house padding and nothing of its own (A5(c); measure §6)",
+    D.error === null && badId.length === 0 && count(home, `<PageContainer tier="board">`) === 1, D.error ?? j(badId));
+
+  // 7.order — §3.2's order; A16 item 1 (the DOM keeps the deck's phone order at every width).
+  const ORDER = ['<div class="kp-jhome__head"><x-part data-part="LazyHowToCard"', "</x-part><h1 ", "</h1></div><nav ", 'class="kp-jhome__query"',
+    '<ul role="list" class="kp-jgrid">', 'class="btn btn-ghost btn-lg kp-jhome__more"', '<x-part data-part="LazyStripAutoScroll"', '<x-part data-part="LazyRefreshPoller"'];
+  const orderOf = (html: string, keys: readonly string[]) => keys.map((k) => html.indexOf(k));
+  const queryOrder = orderOf(H.query ?? "", ORDER.filter((k) => !k.includes("kp-jhome__more")));
+  const fullOrder = orderOf(H.full ?? "", ORDER.filter((k) => !k.includes("kp-jhome__query")));
+  const ascending = (xs: number[]) => xs.every((x, i) => x >= 0 && (i === 0 || x > xs[i - 1]));
+  ok(`7.order · the deck's order, in the markup at every width: the How-to card then the headline (the head), the topic chips, the search line when a search is set, the questions, "Onyesha zaidi" — the refresh and the strip's framing drawing nothing at the end`,
+    ascending(queryOrder) && ascending(fullOrder), j({ queryOrder, fullOrder }));
+
+  // 7.head — A16 items 1-2: the head's row from 1024, the headline drawn first there, the <br> phone-only, the separator.
+  // Every declaration of each property, in source order, as [its at-rules, its value]: the phone's column first ("" — no
+  // query), then the ≥1024 row; a property only the row sets is declared there alone.
+  const HEAD_WANT: Array<[string, string, Array<[string, string]>]> = [
+    [".kp-jhome__head", "flex-direction", [["", "column"], [AT1024, "row"]]], [".kp-jhome__head", "flex-wrap", [[AT1024, "wrap"]]],
+    [".kp-jhome__head", "align-items", [[AT1024, "center"]]], [".kp-jhome__head", "justify-content", [[AT1024, "space-between"]]],
+    [".kp-jhome__head", "gap", [["", "var(--sp-4)"], [AT1024, "var(--sp-4) var(--sp-6)"]]],
+    [".kp-jhome__title", "flex", [[AT1024, "1 1 520px"]]], [".kp-jhome__title", "min-width", [[AT1024, "0"]]],
+    [".kp-jhome__head > .kp-jhowto", "flex", [[AT1024, "0 1 440px"]]], [".kp-jhome__head > .kp-jhowto", "min-width", [[AT1024, "320px"]]],
+  ];
+  const headDrift = HEAD_WANT.filter(([sel, p, want]) => j(declared(sel, p)) !== j(want)).map(([sel, p]) => `${sel} ${p}: ${j(declared(sel, p))}`);
+  const orderRule = declared(".kp-jhome__title", "order"), brRule = declared(".kp-jhome__br", "display");
+  const brOnly = sheet.filter((r) => r.sels.includes(".kp-jhome__br")).map((r) => [r.at.join(" "), r.decls.map(([p, v]) => `${p}: ${v}`).join("; ")]);
+  const sepSrc = count(headline, "<span>{ask}</span>{sentenceGap(ask)}<br className=") === 1 && headline.includes(`return sentence.endsWith(IDEOGRAPHIC_FULL_STOP) ? "" : " ";`)
+    && headline.includes("const IDEOGRAPHIC_FULL_STOP = String.fromCharCode(0x3002);");
+  const said = ([["sw", "full"], ["en", "fullEn"], ["zh", "fullZh"]] as Array<[HtLocale, JhName]>).map(([l, n]) => [l, textOf(jhInner(H[n] ?? "", "<h1 ") ?? "")]);
+  const saidWrong = said.filter(([l, t]) => t !== jhHeadline(l as HtLocale));
+  ok(`7.head · A16: from 1024 the head is one row that wraps — the headline flex 1 1 520px, min-width 0, the How-to card flex 0 1 440px, min-width 320px, 16px between rows and 24px between them — the headline drawn first there by order: -1 alone (inside the ≥1024 query only, so the markup keeps the phone order); the <br> hidden from 1024 only; and the sentence gap carried by the markup, the language's own — "Jibu swali. NDIO au HAPANA.", "Answer the question. YES or NO.", and nothing after 。 in Chinese`,
+    headDrift.length === 0 && j(orderRule) === j([[AT1024, "-1"]]) && j(brRule) === j([[AT1024, "none"]]) && j(brOnly) === j([[AT1024, "display: none"]])
+      && sepSrc && saidWrong.length === 0,
+    j({ headDrift, orderRule, brOnly, sepSrc, said }));
+
+  // 7.rung — A16 item 2 and the §2 build map's Headline row (the .kp-hero__headline family).
+  const h1Tags = [H.full, H.fullEn, H.fullZh].map((x) => (x ?? "").match(/<h1 [^>]*>/g) ?? []);
+  const rung = {
+    phone: h1Tags.every((t) => t.length === 1 && t[0] === '<h1 class="kp-jhome__title text-title-lg">') && count(headline, `className="kp-jhome__title text-title-lg"`) === 1,
+    base: [declOf(sheet, ".kp-jhome__title", "font-family"), declOf(sheet.filter((r) => r.at.length === 0), ".kp-jhome__title", "font-weight"), declOf(sheet.filter((r) => r.at.length === 0), ".kp-jhome__title", "color")],
+    baseSize: ["font-size", "line-height", "letter-spacing"].map((p) => declOf(sheet.filter((r) => r.at.length === 0), ".kp-jhome__title", p)),
+    desk: ["font-size", "line-height", "letter-spacing"].map((p) => j(declared(".kp-jhome__title", p))),
+    zh: declOf(sheet, ".kp-jhome__title:lang(zh)", "letter-spacing"),
+  };
+  ok("7.rung · the headline's rungs: below 1024 the markup's text-title-lg (28px — the largest ladder rung that holds exactly two lines at 360 in sw, en and zh; the base rule sets no size, line or tracking of its own, so the rung's are the ones drawn), from 1024 --type-display-2 at a 1.1 line and the family's -0.030em (one line at 1280 beside the How-to card); Sora 800 in the text ink, as the .kp-hero__headline family sets it, and Chinese untracked",
+    rung.phone && j(rung.base) === j(["var(--font-display)", "800", "var(--text)"]) && rung.baseSize.every((x) => x === null)
+      && j(rung.desk) === j([j([[AT1024, "var(--type-display-2)"]]), j([[AT1024, "1.1"]]), j([[AT1024, "-0.030em"]])]) && rung.zh === "0",
+    j(rung));
+
+  // 7.read — WP7 step 2: the reads, the rules, the product default (test:product-line names the file).
+  const reads = ["const [{ t, locale }, session, live, sp] = await Promise.all([", "getServerT(),", "getSession(),", `listMarkets({ status: ${HT_QUOTE}LIVE${HT_QUOTE} }),`, "searchParams,",
+    "const params = parseHomeParams(sp, MARKET_CATEGORIES);", "const book = homeBook(live, nowMs, bettableAt);",
+    "const search = parseQuery(params.q, { fields: fieldNames(MARKET_SEARCH) });", "const view = homeView(book, params, PLAYER_PER_PAGE, (m) =>",
+    "matchesQuery(search, m as unknown as Record<string, string | null | undefined>, MARKET_SEARCH));", "chips={homeChips(book, params.cat)}"];
+  const missingReads = reads.filter((r) => !jhFlat(home).includes(r));
+  const stay = (() => { const at = hw.productLine.indexOf("const MUST_STAY_DEFAULT = ["); return at < 0 ? "" : hw.productLine.slice(at, hw.productLine.indexOf("];", at)); })();
+  ok(`7.read · the home reads its words, the session and ONE list — listMarkets({ status: "LIVE" }), on the product default (long-form questions only; test:product-line's MUST_STAY_DEFAULT names this file) and never swallowed (no .catch: a failed read is the error page, never an empty book) — then hands every decision to WP3's rules: parseHomeParams against the platform's categories, homeBook with the bet path's own test (bettableAt), homeView over the product's search grammar (MARKET_SEARCH) at the page of twelve, homeChips`,
+    missingReads.length === 0 && count(home, "listMarkets(") === 1 && !home.includes("productLine") && !home.includes(".catch(") && stay.includes(`${HT_QUOTE}${HT_HOME}${HT_QUOTE}`),
+    j({ missingReads, listCalls: count(home, "listMarkets("), catches: count(home, ".catch("), named: stay.includes(HT_HOME) }));
+
+  // 7.chips — WP7 step 2 item 3; Correction 8 (a declared filter surface).
+  const surfaces = (() => { const at = hw.filterLanguage.indexOf("const SURFACES = ["); return at < 0 ? "" : hw.filterLanguage.slice(at, hw.filterLanguage.indexOf("];", at)); })();
+  const chipsSrc = chips.includes(`import { FilterPill } from ${HT_QUOTE}@/components/ui/filter-pill${HT_QUOTE};`) && count(chips, "<FilterPill") === 1
+    && jhFlat(chips).includes(`<nav aria-label={t.journey.homeChipsAria} data-filter-rail data-strip-autoscroll className=${HT_QUOTE}kp-thin-scroll kp-strip-fade kp-jhome__chips${HT_QUOTE}>`)
+    && ["href={homeHref({ cat: c, q })}", `semantics=${HT_QUOTE}toggle${HT_QUOTE}`, "replace", "scroll={false}", "on={c === selected}"].every((x) => jhFlat(chips).includes(x))
+    && !DIRECTIVE.test(chips) && surfaces.includes(`${HT_QUOTE}${JH_CHIPS}${HT_QUOTE}`);
+  const chipsDrawn = (["full", "selected", "query", "emptyCatQ"] as JhName[]).filter((n) => {
+    const html = H[n] ?? "", inp = IN[n];
+    if (!inp) return true;
+    const nav = jhInner(html, "<nav ") ?? "";
+    const pills = [...nav.matchAll(/<a data-chip="([^"]*)"(?: data-on="true")? aria-pressed="(true|false)"[^>]*href="([^"]*)">([^<]*)/g)]
+      .map((m) => [m[1], m[2], decodeHtml(m[3]), m[4]]);
+    const want = inp.chips.map((c) => [`cat:${c ?? "all"}`, String(c === inp.params.cat), jhHref({ cat: c, q: inp.params.q }), c === null ? dict.sw.market.catAll : ""]);
+    return pills.length !== want.length || pills.some((p, i) => p[0] !== want[i][0] || p[1] !== want[i][1] || p[2] !== want[i][2] || (i === 0 && p[3] !== want[0][3]))
+      || !html.includes(`<nav aria-label="${dict.sw.journey.homeChipsAria}"`);
+  });
+  ok("7.chips · the topic chips are a declared filter surface (filter-language's SURFACES names home-chips.tsx): the kit FilterPill in a <nav> named by journey.homeChipsAria carrying data-filter-rail, toggle semantics, replace and no scroll; drawn, Zote first, then homeChips' categories, the selected one alone pressed (a selected category with no question keeps its chip), each chip's address its category with the search KEPT and the page DROPPED",
+    chipsSrc && chipsDrawn.length === 0, j({ chipsSrc, chipsDrawn }));
+
+  // 7.paging — WP7 step 2 item 6; Open point 12 (cumulative).
+  const cardIds = (html: string) => [...html.matchAll(/<article class="kp-jcard" data-row-id="([^"]*)"/g)].map((m) => m[1]);
+  const moreOf = (html: string) => /<a class="btn btn-ghost btn-lg kp-jhome__more" href="([^"]*)">/.exec(html)?.[1] ?? null;
+  const PAGES: Array<[JhName, number, string | null]> = [["full", 12, "/?page=2"], ["page2", 24, "/?page=3"], ["last", 30, null], ["selected", 10, null], ["query", 6, null]];
+  const pagingWrong = PAGES.filter(([n, cards, more]) => {
+    const html = H[n] ?? "", ids = cardIds(html);
+    return ids.length !== cards || j(ids) !== j(IN[n]?.shown ?? []) || moreOf(html) !== (more === null ? null : jhAttr(more)) || IN[n]?.more !== (more !== null);
+  }).map(([n]) => [n, cardIds(H[n] ?? "").length, moreOf(H[n] ?? "")]);
+  const firstOfPage2 = j(cardIds(H.page2 ?? "").slice(0, 12)) === j(cardIds(H.full ?? ""));
+  const moreSrc = jhFlat(home).includes(`<Link href={homeHref({ cat, q, page: view.page + 1 }) as never} scroll={false} className=${HT_QUOTE}btn btn-ghost btn-lg kp-jhome__more${HT_QUOTE}>`);
+  ok(`7.paging · "Onyesha zaidi" pages CUMULATIVELY (Open point 12): page n draws the first 12·n questions — page 2 opens with page 1's twelve — and links page n+1 while any are left (keeping the category and the search, the scroll position kept), and is gone on the last page`,
+    pagingWrong.length === 0 && firstOfPage2 && moreSrc && D.perPage === JH_PER_PAGE, j({ pagingWrong, firstOfPage2, moreSrc, perPage: D.perPage }));
+
+  // 7.grid — WP7 step 2 item 5 as the coordinator's ruling on A16 item 5 replaced the title reserve: the one journey card grid.
+  const listed = (["full", "page2", "query", "selected", "guest"] as JhName[]).filter((n) => {
+    const html = H[n] ?? "", list = jhInner(html, `<ul role="list" class="kp-jgrid">`) ?? "";
+    const items = list.split("<li>").length - 1, cards = count(list, `<article class="kp-jcard"`);
+    return count(html, `<ul role="list" class="kp-jgrid">`) !== 1 || items !== cards || cards === 0 || !list.includes("&amp;from=home") || count(list, "<h2 ") !== cards;
+  });
+  const classicHooks = [...hw.journeyFiles].flatMap(([f, s]) => (decomment(s).match(/market-grid|mcardp/g) ?? []).map((x) => `${f}: ${x}`));
+  const secondGrid = sheet.filter((r) => r.sels.some((s) => s.includes("kp-jhome")) && r.decls.some(([p]) => p.startsWith("grid-template"))).map((r) => r.sels.join(", "));
+  ok("7.grid · the questions are a list of journey cards in the ONE journey card grid (.kp-jgrid: one column, two from 640, three from 1024, the cards sharing their rows — §4.grid), each an h2 whose picks carry from=home; the home adds no grid of its own, and no file of the journey uses the classic board's grid or card (.market-grid, .mcardp)",
+    listed.length === 0 && classicHooks.length === 0 && secondGrid.length === 0, j({ listed, classicHooks, secondGrid }));
+
+  // 7.refresh — A7: the 30-second poller is the home's one refresh; no listener for the odds event on the home or the card.
+  const sse = [...hw.journeyFiles].filter(([f]) => f.startsWith("src/components/journey/home/") || f.startsWith("src/components/journey/cards/"))
+    .flatMap(([f, s]) => (decomment(s).match(/50pick:sse|market-odds|EventSource|useEventStream/g) ?? []).map((x) => `${f}: ${x}`));
+  const pollers = JH_NAMES.filter((n) => j(jhParts(H[n] ?? "", "LazyRefreshPoller")) !== j([{ intervalMs: 30_000 }]));
+  ok("7.refresh · the home refreshes by the 30-second poller alone (A7): drawn once at every address with intervalMs 30000 and no event of its own, and no file of the home or the card listens for the odds event (the SSE patch is S8's, beside the bet sheet's own listener)",
+    sse.length === 0 && pollers.length === 0 && home.includes("const REFRESH_MS = 30_000;") && home.includes("<LazyRefreshPoller intervalMs={REFRESH_MS} />"),
+    j({ sse, pollers }));
+
+  // 7.query — WP7 step 2 item 4: a search is never applied out of sight (§0h point 23).
+  const queryLine = (n: JhName) => jhInner(H[n] ?? "", `<div class="kp-jhome__query">`);
+  // At every address: the line is drawn exactly when a search is applied and the list is not the search's own empty state,
+  // its words the reader's, its one link the same address with the search gone and the category KEPT.
+  const qlWrong = JH_NAMES.filter((n) => {
+    const inp = IN[n], ql = queryLine(n);
+    if (!inp) return true;
+    if (inp.params.q === "" || inp.empty === "q") return ql !== null;
+    const d = dict[inp.locale], hrefs = [...(ql ?? "").matchAll(/href="([^"]*)"/g)].map((m) => m[1]);
+    return ql === null || textOf(ql) !== `${d.journey.homeQueryLine.replace("{q}", inp.params.q)}${d.common.clearSearch}`
+      || j(hrefs) !== j([jhAttr(jhHref({ cat: inp.params.cat }))]);
+  }).map((n) => [n, textOf(queryLine(n) ?? "")]);
+  const drawnAt = JH_NAMES.filter((n) => queryLine(n) !== null);
+  ok("7.query · a search is said in a line of its own — journey.homeQueryLine with common.clearSearch, a link to the same address without the search (the category kept) — whenever it is applied, an empty category included; where it matched nothing, the empty state names it instead, with the same way out",
+    qlWrong.length === 0 && j(drawnAt) === j(["query", "emptyCatQ"]), j({ qlWrong, drawnAt }));
+
+  // 7.empty — WP7 step 2 item 7: the three empty states, the kit's EmptyState through the home's lazy module.
+  const sw = dict.sw;
+  const emptyOf = (n: JhName) => {
+    const html = H[n] ?? "";
+    const props = jhParts(html, "LazyEmptyState");
+    const action = jhInner(html, `<x-part data-part="LazyEmptyState"`) ?? "";
+    return { props, href: /href="([^"]*)"/.exec(action)?.[1] ?? null, words: textOf(action), list: html.includes(`<ul role="list" class="kp-jgrid">`) };
+  };
+  const EMPTY_WANT: Array<[JhName, Record<string, unknown>, string | null, string]> = [
+    ["emptyCat", { fill: true, kind: "markets", title: sw.journey.homeEmptyCatTitle.replace("{cat}", sw.market.catCrypto), body: sw.journey.homeEmptyBody }, "/", sw.journey.homeEmptyAll],
+    ["emptyCatQ", { fill: true, kind: "markets", title: sw.journey.homeEmptyCatTitle.replace("{cat}", sw.market.catCrypto), body: sw.journey.homeEmptyBody }, jhAttr(jhHref({ q: "simba" })), sw.journey.homeEmptyAll],
+    ["emptyQ", { fill: true, kind: "markets", title: sw.journey.homeQueryNone.replace("{q}", "zzz") }, "/", sw.common.clearSearch],
+    ["emptyBook", { fill: true, kind: "markets", title: sw.journey.homeEmptyTitle, body: sw.journey.homeEmptyBody }, null, ""],
+  ];
+  const emptyWrong = EMPTY_WANT.filter(([n, props, href, words]) => {
+    const e = emptyOf(n);
+    return j(e.props) !== j([props]) || e.href !== href || e.words !== words || e.list || IN[n]?.empty !== (n === "emptyQ" ? "q" : n === "emptyBook" ? "book" : "cat");
+  }).map(([n]) => [n, emptyOf(n)]);
+  const noEmpty = (["full", "page2", "query", "selected"] as JhName[]).filter((n) => jhParts(H[n] ?? "", "LazyEmptyState").length !== 0);
+  ok(`7.empty · the three empty states, in the canvas's words, through the kit's EmptyState (full width): a category with none — "{cat}: hakuna maswali wazi kwa sasa" and its body, with "Onyesha maswali yote" to every category, the search kept (Zote's own address); an empty book — its title and body, no way out to offer; a search that matched nothing — journey.homeQueryNone with "Futa utafutaji"; none draws the list, and a home with questions draws none`,
+    emptyWrong.length === 0 && noEmpty.length === 0, j({ emptyWrong, noEmpty }));
+
+  // 7.signed — WP6 step 4 / WP7 step 2: the How-to card hands its sheet the server's sign-in (Weka mipaka's door).
+  const signed = (["full", "guest"] as JhName[]).map((n) => j(jhParts(H[n] ?? "", "LazyHowToCard")));
+  ok("7.signed · the How-to card is the home's one, first in its head, handed whether the reader is signed in — read from the session on the server (getSession), which decides where the sheet's Weka mipaka goes",
+    j(signed) === j([j([{ signedIn: true }]), j([{ signedIn: false }])]) && home.includes("signedIn={session !== null}") && home.includes("<LazyHowToCard signedIn={signedIn} />"),
+    j(signed));
+}
+
+/* ── §6's and §7's plants: each one defect, in memory, on the route file, the home's sources, the stylesheet, a suite's
+   record or a drawing ── */
+const jhWith = (w: World, edit: Partial<JhWorld>): World => ({ ...w, home: { ...w.home, ...edit } });
+const jhDrawn = (w: World, n: JhName, edit: (html: string) => string): World =>
+  jhWith(w, { drawn: { ...w.home.drawn, home: { ...w.home.drawn.home, [n]: edit(w.home.drawn.home[n] ?? "") } } });
+const jhGhostDrawn = (w: World, l: HtLocale, edit: (html: string) => string): World =>
+  jhWith(w, { drawn: { ...w.home.drawn, ghost: { ...w.home.drawn.ghost, [l]: edit(w.home.drawn.ghost[l] ?? "") } } });
+
+function homeDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) => World }> {
+  const ARM_OPEN = "  if (journey) {";
+  return [
+    /* §6 */
+    { name: "the resolver asked a second time, by generateMetadata (a journey title nobody ruled)", expect: /^6[.]resolver /,
+      plant: (w) => ({ ...w, page: swap(w.page, "  const { t } = await getServerT();" + LF + "  return {", "  const { t } = await getServerT();" + LF + "  await resolveSimpleJourney();" + LF + "  return {") }) },
+    { name: "the route reads the pass cookie itself (a second decider beside the one resolver)", expect: /^6[.]resolver /,
+      plant: (w) => ({ ...w, page: swap(w.page, "  const { journey } = await resolveSimpleJourney();", `  const pass = (await cookies()).get("kp_preview");` + LF + "  const { journey } = await resolveSimpleJourney();") }) },
+    { name: "the classic return moved above the journey arm (no journey reader ever reaches the home)", expect: /^6[.]arm /,
+      plant: (w) => ({ ...w, page: swap(w.page, ARM_OPEN, "  return <LegacyLanding searchParams={searchParams} />;" + LF + ARM_OPEN) }) },
+    { name: "the journey home returned bare, its Suspense boundary dropped (no ghost while the list arrives)", expect: /^6[.]arm /,
+      plant: (w) => ({ ...w, page: swap(w.page, "<Suspense fallback={<JourneyHomeGhost t={t} />}>", "<>").replace("</Suspense>", "</>") }) },
+    { name: "the classic return changed (searchParams no longer handed on: the board's ?sort= lost)", expect: /^6[.]classic /,
+      plant: (w) => ({ ...w, page: swap(w.page, "  return <LegacyLanding searchParams={searchParams} />;", "  return <LegacyLanding searchParams={Promise.resolve({})} />;") }) },
+    { name: `generateMetadata branches on the journey ("Maswali" for a journey reader: Open point 25's overrule, unruled)`, expect: /^6[.]meta /,
+      plant: (w) => ({ ...w, page: swap(w.page, `    alternates: { canonical: "/" },`, `    alternates: { canonical: "/" }, // journey` + LF + "    ...(journeyTitle ? {} : {}),") }) },
+    { name: "the ghost's test id removed (the ghost drive finds no ghost)", expect: /^6[.]ghost /,
+      plant: (w) => jhGhostDrawn(w, "en", (html) => htSwap(html, ` data-testid="journey-home-ghost"`, "")) },
+    { name: "the ghost's first card box loses its part mark", expect: /^6[.]ghost /,
+      plant: (w) => jhGhostDrawn(w, "sw", (html) => htSwap(html, ` data-ghost-part="card"`, "")) },
+    { name: "markets/loading.tsx draws the home's ghost (a hop to a question page shows the home's picture, A19)", expect: /^6[.]ghost /,
+      plant: (w) => jhWith(w, { ghostNaming: new Map(w.home.ghostNaming).set("src/app/markets/loading.tsx", `import { JourneyHomeGhost } from "@/components/journey/home/journey-home-ghost";${LF}`) }) },
+    { name: "the ghost made client code (a server page's fallback pulling a client module into / for every reader)", expect: /^6[.]ghost /,
+      plant: (w) => jhWith(w, { ghost: `"use client";${LF}${w.home.ghost}` }) },
+    { name: "the ghost redraws the headline by hand at the canvas's 30px (its lines no longer the page's)", expect: /^6[.]ghost[.]frame /,
+      plant: (w) => jhGhostDrawn(w, "zh", (html) => htSwap(html, `class="kp-jhome__title kp-jhome-ghost__title text-title-lg"`, `class="kp-jhome-ghost__title kp-jhome-ghost__headline"`)) },
+    /* §7 */
+    { name: "the test id removed from the home (the drives and qa:live's lists lose their anchor)", expect: /^7[.]testid /,
+      plant: (w) => jhDrawn(w, "query", (html) => htSwap(html, ` data-testid="journey-home"`, "")) },
+    { name: "the headline drawn before the How-to card in the markup (a phone reader hears the deck out of order)", expect: /^7[.]order /,
+      plant: (w) => jhDrawn(w, "full", (html) => {
+        const card = /<x-part data-part="LazyHowToCard"[^>]*><[/]x-part>/.exec(html)?.[0] ?? "";
+        const h1 = html.slice(html.indexOf("<h1 "), html.indexOf("</h1>") + 5);
+        return htSwap(html, card + h1, h1 + card);
+      }) },
+    { name: "the headline drawn first at every width (order: -1 outside the 1024 query)", expect: /^7[.]head /,
+      plant: (w) => ({ ...w, css: `${w.css}${LF}.kp-jhome__title { order: -1; }${LF}` }) },
+    { name: "the <br> hidden at every width (the two sentences run on one line on a phone)", expect: /^7[.]head /,
+      plant: (w) => ({ ...w, css: `${w.css}${LF}.kp-jhome__br { display: none; }${LF}` }) },
+    { name: `the sentence gap left to source whitespace (the compiler drops it: "Jibu swali.NDIO" from 1024)`, expect: /^7[.]head /,
+      plant: (w) => jhWith(w, { headline: htSwap(w.home.headline, "<span>{ask}</span>{sentenceGap(ask)}<br className=", "<span>{ask}</span> <br className=") }) },
+    { name: `a space drawn after Chinese 。 ("回答问题。 是还是否。")`, expect: /^7[.]head /,
+      plant: (w) => jhDrawn(w, "fullZh", (html) => htSwap(html, `</span><br class="kp-jhome__br"/>`, `</span> <br class="kp-jhome__br"/>`)) },
+    { name: "the head's row wraps the card under the headline at 1280 too (the How-to card's basis 640px)", expect: /^7[.]head /,
+      plant: (w) => ({ ...w, css: swap(w.css, ".kp-jhome__head > .kp-jhowto { flex: 0 1 440px;", ".kp-jhome__head > .kp-jhowto { flex: 0 1 640px;") }) },
+    { name: "the phone rung raised to text-display-3 (English wraps to three lines at 360)", expect: /^7[.]rung /,
+      plant: (w) => jhDrawn(w, "fullEn", (html) => htSwap(html, `<h1 class="kp-jhome__title text-title-lg">`, `<h1 class="kp-jhome__title text-display-3">`)) },
+    { name: "the desktop rung lowered to --type-h1 (a smaller headline than the line holds)", expect: /^7[.]rung /,
+      plant: (w) => ({ ...w, css: swap(w.css, "font-size: var(--type-display-2); line-height: 1.1; letter-spacing: -0.030em; }", "font-size: var(--type-h1); line-height: 1.1; letter-spacing: -0.030em; }") }) },
+    { name: "a size set in the headline's base rule (it would beat the phone rung on source order)", expect: /^7[.]rung /,
+      plant: (w) => ({ ...w, css: swap(w.css, ".kp-jhome__title { margin: 0;", ".kp-jhome__title { font-size: var(--type-h2); margin: 0;") }) },
+    { name: "the list read opts into both product lines (Up & Down rounds flood the home)", expect: /^7[.]read /,
+      plant: (w) => jhWith(w, { home: htSwap(w.home.home, `listMarkets({ status: "LIVE" }),`, `listMarkets({ status: "LIVE", productLine: "ALL" }),`) }) },
+    { name: `the list read swallowed (a failed read drawn as "no open questions right now")`, expect: /^7[.]read /,
+      plant: (w) => jhWith(w, { home: htSwap(w.home.home, `listMarkets({ status: "LIVE" }),`, `listMarkets({ status: "LIVE" }).catch(() => []),`) }) },
+    { name: "homeBook handed a test that takes every LIVE row (a selection-closed question priced on the home)", expect: /^7[.]read /,
+      plant: (w) => jhWith(w, { home: htSwap(w.home.home, "homeBook(live, nowMs, bettableAt)", "homeBook(live, nowMs, () => true)") }) },
+    { name: "test:product-line no longer names the home (its read unguarded)", expect: /^7[.]read /,
+      plant: (w) => jhWith(w, { productLine: w.home.productLine.split(`"${HT_HOME}",`).join("") }) },
+    { name: "the chips rail left undeclared in test:filter-language's SURFACES", expect: /^7[.]chips /,
+      plant: (w) => jhWith(w, { filterLanguage: w.home.filterLanguage.split(`"${JH_CHIPS}",`).join("") }) },
+    { name: "a chip that keeps the page (a category opened on page 3 of another)", expect: /^7[.]chips /,
+      plant: (w) => jhDrawn(w, "selected", (html) => htSwap(html, `href="/?cat=sports">`, `href="/?cat=sports&amp;page=2">`)) },
+    { name: "the chips speak tab semantics (aria-current, where the canvas says aria-pressed)", expect: /^7[.]chips /,
+      plant: (w) => jhWith(w, { chips: htSwap(w.home.chips, `semantics="toggle"`, `semantics="tab"`) }) },
+    { name: "two chips pressed at once", expect: /^7[.]chips /,
+      plant: (w) => jhDrawn(w, "selected", (html) => htSwap(html, `data-chip="cat:sports" aria-pressed="false"`, `data-chip="cat:sports" aria-pressed="true"`)) },
+    { name: "Onyesha zaidi pages instead of growing (page 2 draws only questions 13 to 24)", expect: /^7[.]paging /,
+      plant: (w) => jhDrawn(w, "page2", (html) => {
+        const list = jhInner(html, `<ul role="list" class="kp-jgrid">`) ?? "";
+        const items = list.split("<li>").slice(1);
+        return htSwap(html, list, items.slice(12).map((x) => `<li>${x}`).join(""));
+      }) },
+    { name: "the product's page size drifts from the deck's twelve (Onyesha zaidi would reach 24 more)", expect: /^7[.]paging /,
+      plant: (w) => jhWith(w, { drawn: { ...w.home.drawn, perPage: 24 } }) },
+    { name: "Onyesha zaidi links the page it is on (a tap that changes nothing)", expect: /^7[.]paging /,
+      plant: (w) => jhWith(w, { home: htSwap(w.home.home, "page: view.page + 1", "page: view.page") }) },
+    { name: "the classic board's grid on the home's list (V18 selects it; phone density rewrites it)", expect: /^7[.]grid /,
+      plant: (w) => jhWith(w, { journeyFiles: new Map(w.home.journeyFiles).set(HT_HOME, htSwap(w.home.home, `className="kp-jgrid"`, `className="kp-jgrid market-grid"`)) }) },
+    { name: "a second card grid of the home's own (.kp-jhome__grid, three columns from 768)", expect: /^7[.]grid /,
+      plant: (w) => ({ ...w, css: `${w.css}${LF}@media (min-width: 768px) { .kp-jhome__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }${LF}` }) },
+    { name: "an odds listener on the home (the SSE patch is S8's, A7)", expect: /^7[.]refresh /,
+      plant: (w) => jhWith(w, { journeyFiles: new Map(w.home.journeyFiles).set("src/components/journey/home/odds-patch.tsx", `"use client";${LF}window.addEventListener("50pick:sse:market-odds", () => {});${LF}`) }) },
+    { name: "the poller at 15 seconds", expect: /^7[.]refresh /,
+      plant: (w) => jhDrawn(w, "guest", (html) => htSwap(html, `data-part="LazyRefreshPoller" data-props="{&quot;intervalMs&quot;:30000}"`, `data-part="LazyRefreshPoller" data-props="{&quot;intervalMs&quot;:15000}"`)) },
+    { name: "a search applied out of sight (the search line dropped)", expect: /^7[.]query /,
+      plant: (w) => jhDrawn(w, "query", (html) => {
+        const at = html.indexOf(`<div class="kp-jhome__query">`);
+        return html.slice(0, at) + html.slice(html.indexOf("</div>", html.indexOf("</a>", at)) + 6);
+      }) },
+    { name: "the search line's way out drops the category too", expect: /^7[.]query /,
+      plant: (w) => jhDrawn(w, "emptyCatQ", (html) => htSwap(html, `<a class="btn btn-ghost btn-md" href="/?cat=crypto">`, `<a class="btn btn-ghost btn-md" href="/">`)) },
+    { name: "the empty category's way out drops the search (Onyesha maswali yote to the bare home)", expect: /^7[.]empty /,
+      plant: (w) => jhDrawn(w, "emptyCatQ", (html) => htSwap(html, `href="/?q=simba">${dict.sw.journey.homeEmptyAll}`, `href="/">${dict.sw.journey.homeEmptyAll}`)) },
+    { name: "an empty book offered a way out to nowhere", expect: /^7[.]empty /,
+      plant: (w) => jhDrawn(w, "emptyBook", (html) => {
+        const open = /<x-part data-part="LazyEmptyState" data-props="[^"]*">/.exec(html)?.[0] ?? "<x-part>";
+        return htSwap(html, `${open}</x-part>`, `${open}<a class="btn btn-ghost btn-md" href="/">${dict.sw.journey.homeEmptyAll}</a></x-part>`);
+      }) },
+    { name: "the How-to card handed signedIn from the wall, not the session (a guest sent to the signed-in limits page)", expect: /^7[.]signed /,
+      plant: (w) => jhWith(w, { home: htSwap(w.home.home, "signedIn={session !== null}", "signedIn={true}") }) },
   ];
 }
 
@@ -1583,6 +2128,8 @@ function run(w: World, log: (l: string) => void): string[] {
   journeyCardChecks(w, ok);
   /* §5 · the How-to card and the static How-to sheet (S7 WP6) — its own block, above */
   howToChecks(w.howto, ok);
+  /* §6 · the route file's journey arm and §7 · the journey home (S7 WP7) — their own block, above */
+  homeChecks(w, ok);
   /* §8 · the LIVE strip leaves / and /markets for a journey reader (S7 WP8) — its own block, below */
   stripChecks(w.strip, ok);
   return failed;
@@ -2028,6 +2575,8 @@ if (!PROVE_RED) {
     ...cardDefects(),
     /* §5 (S7 WP6): the How-to card, the sheet and the home's lazy module — each plant one defect, its own check named. */
     ...howToDefects(),
+    /* §6 and §7 (S7 WP7): the route's journey arm, the home and its ghost — each plant one defect, its own check named. */
+    ...homeDefects(),
     /* §8 (S7 WP8): one defect in a copy of AppShell's or LiveTicker's source, ALONE wherever the defect is one thing. */
     ...stripDefects(),
   ];

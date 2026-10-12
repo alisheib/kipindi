@@ -181,7 +181,24 @@ const MUST_STAY_DEFAULT = [
   // more precisely, by the RESULTS_FLOOD_GUARD block below. Read that before touching this list.
   "src/app/fairness/page.tsx",
   "src/app/api/fairness/recent/route.ts",
+  // ⭐ THE JOURNEY HOME (the Vodacom plan S7, S7-PLAN WP7): a journey reader's `/` is a list of open questions read by
+  // `listMarkets({ status: "LIVE" })` — long-form polls only, as every player board; Up & Down rounds live on Juu/Chini.
+  "src/components/journey/home/journey-home.tsx",
 ];
+/**
+ * A MUST_STAY_DEFAULT entry, judged. ⛔ A LISTED FILE THAT IS GONE NOW FAILS (S7-PLAN WP7, Risk 3): it used to be skipped
+ * in silence (`if (!src) continue`, "a page may legitimately be renamed"), so a renamed or moved board kept no
+ * protection while the suite went on reporting this list as covered — the "silent re-point" S7's plan names. A rename is
+ * a deliberate edit, and so is the entry that follows it. And a file that reads no market at all is a finding too: the
+ * entry would then guard nothing, and the board's read has moved somewhere this list does not name.
+ */
+function stayVerdict(src: string): { pass: boolean; why: string } {
+  if (!src) return { pass: false, why: "the file is gone: the list names a board this suite can no longer read — re-point the entry to where the board's read lives" };
+  const calls = listMarketsCalls(src);
+  if (calls.length === 0) return { pass: false, why: "the file reads no market: the entry guards nothing — re-point it to the file that holds the board's read" };
+  const optedIn = calls.filter(readsAllProducts);
+  return optedIn.length === 0 ? { pass: true, why: "" } : { pass: false, why: "a player board opted into ALL — Up & Down rounds would flood it" };
+}
 /**
  * RESULTS_FLOOD_GUARD — the results archive reads BOTH product lines and still leads with the
  * long-form one.
@@ -229,11 +246,20 @@ const MUST_STAY_DEFAULT = [
 }
 
 for (const file of MUST_STAY_DEFAULT) {
-  const src = read(file);
-  if (!src) continue; // optional — a page may legitimately be renamed
-  const optedIn = listMarketsCalls(src).filter(readsAllProducts);
-  ok(`A · ${file} stays on the MARKET default`, optedIn.length === 0,
-     optedIn.length ? "a player board opted into ALL — Up & Down rounds would flood it" : "");
+  const v = stayVerdict(read(file));
+  ok(`A · ${file} stays on the MARKET default`, v.pass, v.why);
+}
+// ⭐ CONTROL (S7-PLAN WP7): the verdict can fail each way it is meant to — a listed file that is gone, a file that reads no
+// market, and a board that opts into both products — and passes a board on the default (the journey home's own call).
+{
+  const verdicts = [
+    stayVerdict(""),
+    stayVerdict(`export default function Page() { return null; }`),
+    stayVerdict(`const all = await listMarkets({ status: "LIVE", productLine: "ALL" });`),
+    stayVerdict(`const live = await listMarkets({ status: "LIVE" });`),
+  ].map((v) => v.pass);
+  ok("A · CONTROL · a listed file that is gone FAILS (no longer skipped in silence), and so do a file that reads no market and a board that opts into ALL; a board on the default passes",
+     JSON.stringify(verdicts) === JSON.stringify([false, false, false, true]), JSON.stringify(verdicts));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
