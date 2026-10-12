@@ -361,11 +361,10 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S7 (§0j) — WP1's calibration on a fresh in-memory server under the lock (WP1 step 6): parity v3's
-`--prove-red` with its browser rows, the v3 baseline at WP1's commit (`9b18ea59`, branch `vodacom-s7-wp1b`), a null
-compare on a second fresh server; then WP1 lands on main; then WP2 (drafted on `vodacom-s7-wp2`) is rebased onto it,
-proven and pushed. OMEGA's own `vodacom-s7-wp1` (2026-10-07/08) was never pushed: on OMEGA push it only as
-`vodacom-s7-wp1-omega`, for reference, and never merge it (§0h point 66). S7's plan:
+**Next:** (1) S7 — ▶ RESUME ON ANY MACHINE at §0j's "⏸ HANDOFF" bullet (2026-10-12 ~08:55 EAT): WP1's null compare
+at `203a150f` (its baseline captured fresh on that machine), WP1 to main, WP2's remaining proofs and its push, then WP3
+(a stopped helper's draft on `vodacom-s7-wp3`). OMEGA's own `vodacom-s7-wp1` (2026-10-07/08) was never pushed: on
+OMEGA push it only as `vodacom-s7-wp1-omega`, for reference, and never merge it (§0h point 66). S7's plan:
 [`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), whose Amendments override its body. (2) When
 Ali says so, and not before (nothing turns on until the plan is done): an officer approves the S2 short titles, and
 Ali presses S1's preview switch.
@@ -556,6 +555,40 @@ body. Owner-level calls: §0h point 58, and 65 on.
   name the route file and each is decided (body re-pointed, route kept, history left); `test:journey-home` (new, 8
   checks, 8 plants). Its gates run after WP1, ending with a parity v3 compare at 0 differences; then it is rebased onto
   WP1 and pushed.
+- **⏸ HANDOFF — 2026-10-12 ~08:55 EAT, Ali moved to another machine. THE EXACT PLACE:**
+  - **WP1 — `origin/vodacom-s7-wp1b` at `203a150f`** (3 commits on main `daf0e799`: the A9 tools `b0873185`, parity v3
+    `9b18ea59`, the calibration `203a150f`). Proven on ALI-BLADE15: parity v3's `--prove-red` on a real server **125/125**
+    (at `9b18ea59`); the book's B.0–B.8 all PASS (seed: 30 LIVE questions, 12 placed — VOID 1, WIN 3, LOSS 2 —
+    every classic card state drawn; `/`'s canonical and og:* read from the bytes); a null compare at `9b18ea59` with every
+    book normaliser off: the 224 matrix cells and 8 Sell cells IDENTICAL, 48 of the book's 196 fields different — 40 of
+    them question ids (each server mints its own: `market-ids` now ON, §0h-style record in the harness) and 8 the player's
+    /watchlist drawn in another order (seed-watchlist starred inside one millisecond: it now stars 2 ms apart, a
+    dev-only route, 404 in production). The v3 baseline at `203a150f` was captured (224 cells, 44 book cells), but **its
+    null compare is VOID**: the laptop slept ~05:05–08:45; on waking, the queued WP2 job had waited past the lock
+    helper's 3-hour limit and took the lock over as stale while the null compare ran — two heavy jobs at once, free
+    memory 0.4 GB, the watchdog stopped the dev server. **▶ NEXT:** at `203a150f`, on two fresh in-memory dev servers,
+    one after the other: `qa:classic-shell-parity -- --baseline <file>` then `-- --compare <file>`; the compare must
+    exit 0 (a baseline is machine-local and never committed). Then WP1 goes to main: its one src change is the dev-only
+    seed route, so the push gates are typecheck (already 0 on WP2's tree, which holds WP1), `next build` and a local
+    qa:live, then the production read-back.
+  - **WP2 — `origin/vodacom-s7-wp2` at `ebe50c0c`** (rebased on WP1; marked WIP until proven). Proven on its tree:
+    typecheck 0; 22 of its 23 gates exit 0 (test:featured-card, one-sided, landing-mine, hero-copy + red,
+    house-bot-disclosure, simple-journey-flag, route-census, journey-home + red, red-anchors, measure, docs,
+    predictor-shown, visual-pass-r4h/r4i/r5e/r5l, withdrawn-features, agent-terms-binding, failure-reasons,
+    decomment) and the 23rd, test:orphans, red only on main's own two landing-v3 panels; the four guards whose
+    population it widened (an audit of every src-walking script found them) each catch a defect planted in the moved
+    body, 4/4, tree clean. **▶ LEFT:** red:featured-card and red:one-sided, each alone (they write files; then
+    `git diff --exit-code`); `next build`; local qa:live; parity v3 `--compare` against WP1's baseline with
+    `--allow-base` — 0 differences, the bodies and `/`'s head included; qa:served-skeleton `--main` — a null pair at
+    WP1, then WP2. Then drop "WIP" from its two commit messages (reword, or squash into one), push WP1 + WP2 to main.
+  - **WP3 — `origin/vodacom-s7-wp3` at `49f7eff3`: a helper's draft, stopped mid-way when Ali moved.** Incomplete and
+    unverified: read every file against WP3 (+ A4 items 3/5, A11, A12, A24) before building on it.
+  - **This machine's recipes** (lock-turn chains with a memory watchdog, the v3 offline proof kit, the book-noise
+    reader, WP2's proof chain and its plants, S6's close scripts): `origin/vodacom-visual-tools`,
+    `tools/s7-blade-2026-10-12/`. ⚠️ ALI-BLADE15's memory: a parity v3 run peaks the dev server at ~6.4 GB (free down to
+    ~1.8 GB of 15.8); `experimental.turbopackMemoryLimit` at 2.5 GB did not hold it (5.5 GB peak, tried and reverted).
+    Never queue a second lock job behind a long one on a laptop that may sleep: the helper takes a 3-hour waiter's turn
+    by force.
 
 ## §0i · S6 — the flagged shell (2026-10-01 → 2026-10-12) ✅
 
