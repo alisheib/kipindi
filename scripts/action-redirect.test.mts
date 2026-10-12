@@ -54,8 +54,12 @@ const CONTROLS = [
   { file: "src/components/markets/sell-button.tsx", action: "cashOutPositionAction", closes: "setConfirmOpen(false)" },
   { file: "src/components/updown/use-quick-bet.ts", action: "buyPositionAction", closes: "m.delete(key)" },
 ] as const;
-/** What "saying a failure" is on these controls: a toast, a result, a verdict a refusal is mapped from, a live line, a block. */
-const SAYS = ["toast(", "showResult(", "setResultOpen(", "setResultData(", "setLiveMessage(", "setBlocked(", "\"BUSY\"", "\"system_error\""];
+/** What "saying a failure" is on these controls: a toast (deferred too, in any case), a result, a verdict a refusal is
+ *  mapped from, a live line, a block. */
+const SAYS: readonly RegExp[] = [
+  /\b(?:defer)?toast\(/i, /\bshowResult\(/, /\bsetResultOpen\(/, /\bsetResultData\(/, /\bsetLiveMessage\(/, /\bsetBlocked\(/,
+  /"BUSY"/, /"system_error"/,
+];
 
 type World = { read: (rel: string) => string };
 const REAL: World = { read: readRaw };
@@ -98,7 +102,7 @@ function buildRule(world: World): (e: unknown) => boolean {
 
 /** Every statement of a block, read without its comments. */
 const textOf = (node: ts.Node, sf: ts.SourceFile) => decomment(node.getText(sf));
-const says = (text: string) => SAYS.filter((m) => text.includes(m));
+const says = (text: string) => SAYS.filter((m) => m.test(text)).map((m) => m.source);
 
 /** The condition asks `isActionRedirect(<name>)` — bare, or compared `=== true` / `== true`. */
 function asksRedirect(cond: ts.Expression, name: string): boolean {
@@ -254,6 +258,8 @@ if (!PROVE_RED) {
       world: () => plantIn(DIAL, `} catch (e) {\n        // ⭐ L3 · AUTH LOSS IS NOT A FAILED BET`, `} catch {\n        // ⭐ L3 · AUTH LOSS IS NOT A FAILED BET`) },
     { name: "the sell button's branch toasts before it returns", expect: /^3\.5 /,
       world: () => plantIn(SELL, SELL_TEST, "if (isActionRedirect(e)) { toast({ title: t.toast.couldntCashOut }); setConfirmOpen(false); return; }") },
+    { name: "the dial's branch defers a failure toast before it returns", expect: /^3\.5 /,
+      world: () => plantIn(DIAL, DIAL_TEST, "if (isActionRedirect(e)) { setConfirmOpen(false); deferToast({ title: t.common.couldNotPlace }); return; }") },
     { name: "the sell button's branch leaves the confirm open", expect: /^3\.6 /,
       world: () => plantIn(SELL, SELL_TEST, "if (isActionRedirect(e)) { return; }") },
     { name: "the sell button's rule imported from elsewhere", expect: /^3\.0 /,
