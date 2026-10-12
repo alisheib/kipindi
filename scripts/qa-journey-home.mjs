@@ -333,10 +333,17 @@ if (run("routes")) {
     await page.locator(SEL.card).first().scrollIntoViewIfNeeded().catch(() => {});
     await tile(page, `${path} ${locale} ${w}`);
     if (path === "/results" && w === 360 && locale === "sw") {
-      for (const outcome of ["YES", "NO"]) {
-        const c = page.locator(`${SEL.card}:has(.kp-jcard__outcome)`);
-        if (await c.count()) { await c.first().scrollIntoViewIfNeeded(); await tile(page, `/results sw 360 settled ${outcome}`); }
+      // One tile per outcome the page draws (YES, NO, void), found by the outcome chip's own words.
+      const chips = page.locator(`${SEL.card} .kp-jcard__outcome`);
+      const seen = [];
+      for (let i = 0; i < (await chips.count()); i++) {
+        const word = ((await chips.nth(i).textContent()) ?? "").trim();
+        if (!word || seen.includes(word)) continue;
+        seen.push(word);
+        await chips.nth(i).scrollIntoViewIfNeeded();
+        await tile(page, `/results sw 360 settled ${word}`);
       }
+      ok(`routes /results sw 360 · settled cards drawn with their outcome, each tiled (${seen.join(", ") || "none"})`, seen.length >= 2, `${seen.length} outcome(s)`);
     }
     await ctx.close();
   }
@@ -521,17 +528,28 @@ if (run("redirect")) {
   const ctx = await ctxFor({ w: 390, h: 844, locale: "sw", session: SESSION });
   const page = await ctx.newPage();
   await open(page, "/results", { wait: SEL.card });
-  const hasLink = await page.evaluate(() => !!document.querySelector('a[href^="/markets?"], a[href="/markets"]'));
-  if (!hasLink) {
-    // A classic /markets link drawn into the journey page for the hop (the flip re-points every such link to /).
-    await page.evaluate(() => { const a = document.createElement("a"); a.href = "/markets?topic=sports"; a.textContent = "classic link"; a.id = "kp-hop"; a.style.cssText = "position:fixed;top:120px;left:12px;z-index:9999;background:#fff;color:#000;padding:8px"; document.body.append(a); });
+  // ⛔ A SOFT hop, never a document load: a link drawn into the page by a script is a plain anchor, which the browser
+  // loads as a document (the 307 above, again). The hop is a classic next/link to /markets when the page draws one, else
+  // the dev server's own router (`window.nd.router`, Next's debugging handle in development) pushed to the same address
+  // — both a flight request, which only the page's own redirect answers.
+  const linkCount = await page.locator('a[href^="/markets?"], a[href="/markets"]').count();
+  const how = linkCount ? "a classic /markets link on the page" : "the app router pushed to /markets?topic=sports (no classic link on the page)";
+  await page.evaluate((sel) => { window.__seq = []; window.__docLoads = performance.getEntriesByType("navigation").length; const tick = () => { const k = document.querySelector(sel.ghost) ? "home ghost" : document.querySelector('[aria-busy="true"], .kp-shimmer-track') ? "a ghost" : null; if (k && window.__seq[window.__seq.length - 1] !== k) window.__seq.push(k); requestAnimationFrame(tick); }; requestAnimationFrame(tick); }, SEL);
+  let pushed = true;
+  if (linkCount) await page.locator('a[href^="/markets?"], a[href="/markets"]').first().click();
+  else pushed = await page.evaluate(() => { const r = window.nd?.router; if (!r?.push) return false; r.push("/markets?topic=sports"); return true; });
+  if (!pushed) nmLine("redirect · a soft hop to /markets", "no classic /markets link on /results and no development router handle to push one");
+  else {
+    await page.waitForURL((u) => new URL(u).pathname === "/", { timeout: 120_000 }).catch(() => {});
+    await page.locator(SEL.home).first().waitFor({ timeout: 120_000 }).catch(() => {});
+    // Still the same document (a soft hop keeps the page's own script state): the probe's sequence survived.
+    const soft = await page.evaluate(() => Array.isArray(window.__seq));
+    const seq = await page.evaluate(() => window.__seq ?? []);
+    const at = new URL(page.url());
+    ok(`redirect · a soft hop (${how}) lands on the home (${at.pathname}${at.search}); loading frames in order: ${seq.join(" → ") || "none"}`,
+      soft && at.pathname === "/" && at.searchParams.get("cat") === "sports" && (await page.locator(SEL.home).count()) === 1,
+      soft ? "" : "the page was reloaded as a document — not a soft hop");
   }
-  await page.evaluate((sel) => { window.__seq = []; const tick = () => { const k = document.querySelector(sel.ghost) ? "home ghost" : document.querySelector('[aria-busy="true"], .kp-shimmer-track') ? "a ghost" : null; if (k && window.__seq[window.__seq.length - 1] !== k) window.__seq.push(k); requestAnimationFrame(tick); }; requestAnimationFrame(tick); }, SEL);
-  await page.locator('#kp-hop, a[href^="/markets?"], a[href="/markets"]').first().click();
-  await page.waitForURL((u) => new URL(u).pathname === "/", { timeout: 120_000 }).catch(() => {});
-  await page.locator(SEL.home).first().waitFor({ timeout: 120_000 }).catch(() => {});
-  const seq = await page.evaluate(() => window.__seq ?? []);
-  ok(`redirect · a soft hop through a classic /markets link lands on the home (${new URL(page.url()).pathname}${new URL(page.url()).search}); loading frames in order: ${seq.join(" → ") || "none"}`, new URL(page.url()).pathname === "/" && (await page.locator(SEL.home).count()) === 1);
   await ctx.close();
 }
 
