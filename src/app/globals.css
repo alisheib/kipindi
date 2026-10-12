@@ -7799,7 +7799,6 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-jhome__chips { display: flex; align-items: center; gap: var(--sp-1); min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; }
 .kp-jhome__query { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2) var(--sp-3); }
 .kp-jhome__query-text { margin: 0; min-width: 0; color: var(--text-muted); overflow-wrap: anywhere; }
-.kp-jhome__more { width: 100%; }
 @media (max-width: 1023.98px) {
   .kp-jhome__chips { margin-inline-end: calc(-1 * var(--sp-4)); padding-inline-end: var(--sp-4); }
 }

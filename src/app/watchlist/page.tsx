@@ -241,11 +241,11 @@ export default async function WatchlistPage({
         />
       ) : (
         <>
-          {/* ⭐ THE CARDS' SLOT IS ONE TERNARY (the Vodacom plan S7, §3.2; S7-PLAN WP10 with A16 item 5). A journey
-              request draws the journey card for every starred row, whatever its phase: its two picks while it takes
-              bets, the closed row once selection has closed, the result row once settled, and an Up & Down row in its
-              own side words. Each card decides its state from the market row it is handed, and the cards stand in the
-              one journey card grid, whose cards share their rows.
+          {/* ⭐ THE CARDS' SLOT IS ONE TERNARY (the Vodacom plan S7, §3.2; S7-PLAN WP10 with VODACOM-PLAN §0h point 73).
+              A journey request draws the journey card for every starred row, whatever its phase: its two picks while
+              it takes bets, the closed row once selection has closed, the result row once settled, and an Up & Down
+              row in its own side words. Each card decides its state from the market row it is handed, and the cards
+              stand in the one journey card grid, whose cards share their rows.
               ⛔ The card's own root carries the row identity, so nothing here wraps a card (the classic arm's note).
               Every other request gets the classic arm: today's markup, line for line. */}
           {journey ? (
