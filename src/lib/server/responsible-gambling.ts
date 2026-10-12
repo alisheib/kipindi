@@ -499,9 +499,36 @@ export async function checkSessionTimeLimit(
   userId: string,
   playStartedAt: number | null | undefined,
   now: number = Date.now(),
-): Promise<{ exceeded: boolean; limitMin: number; playedMin: number } | null> {
+): Promise<SessionStanding | null> {
   if (!playStartedAt) return null;
   const r = await getRgSettings(userId);
+  const c = sessionStandingOf(r, playStartedAt, now);
+  if (!c) return null;
+  // Recorded on every attempt — a refused one included, or the refusal itself would end the sitting — throttled to one
+  // write a minute. ⛔ Best-effort: a failed write must not turn into a refused bet.
+  // ⛔ THIS WRITE IS THE GATE'S ALONE (the Vodacom plan S8 WP3). `readSessionStanding` below gives the same answer and
+  // never writes it: a sheet that reads its standing every few seconds would otherwise keep a sitting alive with no bet.
+  if (!c.sameSitting || c.start !== c.held || now - c.seen > 60_000) {
+    await Promise.resolve(db.responsible.touchPlayClock(userId, new Date(c.start).toISOString(), new Date(now).toISOString())).catch(() => {});
+  }
+  return c.standing;
+}
+
+/** The session limit's verdict: past it, the limit, and the minutes played in this sitting. */
+export type SessionStanding = { exceeded: boolean; limitMin: number; playedMin: number };
+
+/**
+ * ⭐ THE SESSION LIMIT'S ARITHMETIC, AS A PURE FUNCTION OF THE SETTINGS ROW — reads nothing, writes nothing (the Vodacom
+ * plan S8 WP3). `checkSessionTimeLimit` calls it before its own write; `readSessionStanding` calls it and writes nothing.
+ * ⛔ ONE definition: a second copy of "which sitting is this" only has to disagree with the gate once.
+ * Null exactly where the gate is null: no play clock, or no limit set.
+ */
+export function sessionStandingOf(
+  r: Pick<StoredResponsibleGambling, "sessionTimeLimitMin" | "playStartedAt" | "playLastSeenAt">,
+  playStartedAt: number | null | undefined,
+  now: number,
+): { standing: SessionStanding; start: number; held: number; seen: number; sameSitting: boolean } | null {
+  if (!playStartedAt) return null;
   const limitMin = r.sessionTimeLimitMin;
   if (limitMin === null || limitMin === undefined || limitMin <= 0) return null;
   // 🔴 E-408 remainder (2026-09-14) · THE CLOCK SURVIVES A NEW SIGN-IN. The cookie's `playStartedAt` is restamped by
@@ -513,13 +540,25 @@ export async function checkSessionTimeLimit(
   const held = r.playStartedAt ? Date.parse(r.playStartedAt) : NaN;
   const sameSitting = Number.isFinite(seen) && now - seen <= PLAY_SESSION_GAP_MS && Number.isFinite(held);
   const start = sameSitting ? Math.min(held, playStartedAt) : playStartedAt;
-  // Recorded on every attempt — a refused one included, or the refusal itself would end the sitting — throttled to one
-  // write a minute. ⛔ Best-effort: a failed write must not turn into a refused bet.
-  if (!sameSitting || start !== held || now - seen > 60_000) {
-    await Promise.resolve(db.responsible.touchPlayClock(userId, new Date(start).toISOString(), new Date(now).toISOString())).catch(() => {});
-  }
   const playedMin = Math.floor((now - start) / 60_000);
-  return { exceeded: playedMin >= limitMin, limitMin, playedMin };
+  return { standing: { exceeded: playedMin >= limitMin, limitMin, playedMin }, start, held, seen, sameSitting };
+}
+
+/**
+ * ⭐ THE SAME VERDICT AS `checkSessionTimeLimit`, WITHOUT THE PLAY-CLOCK WRITE (the Vodacom plan S8 WP3; S8-PLAN
+ * Correction 13, A1, A4). What the bet sheet reads to show the session limit before the tap. It reads the settings
+ * through the gate's own `getRgSettings` (whose lazy default row and due-limit apply are every RG read's, S8-PLAN A4
+ * item 5) and never touches `playStartedAt` / `playLastSeenAt`: only a bet attempt — or the sheet's open read of a
+ * viewer already past the limit, which runs the gate itself (A4) — may hold a sitting open.
+ */
+export async function readSessionStanding(
+  userId: string,
+  playStartedAt: number | null | undefined,
+  now: number = Date.now(),
+): Promise<SessionStanding | null> {
+  if (!playStartedAt) return null;
+  const r = await getRgSettings(userId);
+  return sessionStandingOf(r, playStartedAt, now)?.standing ?? null;
 }
 
 /**

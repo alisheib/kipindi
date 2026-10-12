@@ -118,11 +118,24 @@ export const MUTATIONS = [
     //    gambling guarantee had been unable to fire for nine days. The mutation is unchanged: `exceeded` is
     //    pinned false, so the limit keeps its value, keeps showing on the player page and keeps being reported,
     //    and simply stops refusing anything.
+    // ⚠️ RE-ANCHORED 2026-10-13 (the Vodacom plan S8 WP3). The arithmetic moved, unchanged, into the pure
+    //    `sessionStandingOf`, which the gate and the sheet's write-free `readSessionStanding` both call; the mutation is
+    //    the same defect at its one home, so it now silences the limit for both readers at once.
     from: `  const playedMin = Math.floor((now - start) / 60_000);
-  return { exceeded: playedMin >= limitMin, limitMin, playedMin };`,
+  return { standing: { exceeded: playedMin >= limitMin, limitMin, playedMin }, start, held, seen, sameSitting };`,
     to: `  const playedMin = Math.floor((now - start) / 60_000);
-  return { exceeded: false, limitMin, playedMin };`,
+  return { standing: { exceeded: false, limitMin, playedMin }, start, held, seen, sameSitting };`,
     check: "4.1 ⭐ forty-five minutes into a thirty-minute limit, the bet is REFUSED",
+  },
+  {
+    name: "the-sheet-open-read-stops-holding-the-sitting",
+    why: "🔴 THE VODACOM PLAN S8-PLAN A4 HAZARD. The bet sheet shows the session limit at open with its button off, so no "
+       + "tap reaches the gate; the open read runs the gate to hold the sitting. Without that call the block is only "
+       + "shown, the sitting lapses 30 minutes after the last real attempt, and a sign-out and in frees the player.",
+    file: "src/lib/server/journey-sheet.ts",
+    from: `    const s = await checkSessionTimeLimit(userId, playStartedAt);`,
+    to: `    const s = await readSessionStanding(userId, playStartedAt);`,
+    check: "3.10 ⭐ the sheet's open read holds the sitting",
   },
   {
     name: "the-login-screen-goes-back-to-matching-prose",

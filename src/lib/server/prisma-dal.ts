@@ -2668,6 +2668,15 @@ export const prismaDb = {
       });
       return Number(result._sum.amount ?? 0);
     },
+    /** The memory twin's note (`store.ts`): the newest DEPOSIT in PROCESSING for this user, ties broken by id. */
+    newestProcessingDeposit: async (userId: string): Promise<{ amount: number; txnId: string; createdAt: string } | null> => {
+      const row = await pc().transaction.findFirst({
+        where: { userId, type: "DEPOSIT", status: "PROCESSING" },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        select: { id: true, amount: true, createdAt: true },
+      });
+      return row ? { amount: Number(row.amount), txnId: row.id, createdAt: row.createdAt.toISOString() } : null;
+    },
     sumGamblingNetSince: async (userId: string, sinceMs: number, tx?: Prisma.TransactionClient | null): Promise<number> => {
       const result = await (tx ?? pc()).transaction.aggregate({
         where: {

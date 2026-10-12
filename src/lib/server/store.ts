@@ -2982,6 +2982,20 @@ const memoryDb = {
       }
       return sum;
     },
+    /** ⭐ THE PLAYER'S NEWEST DEPOSIT STILL IN FLIGHT (the Vodacom plan S8 WP3; S8-PLAN Open point 10, A10) — the newest
+     *  DEPOSIT row in PROCESSING for this user, ties on `createdAt` broken by `id` descending (the Prisma twin's orderBy),
+     *  or null. What the bet sheet reads to say "a deposit is already on its way" instead of offering a second one.
+     *  ⛔ Its own row only, PROCESSING only, DEPOSIT only — `test:dal-parity` §32 holds the twins to that, and
+     *  `db:probe-sheet-facts` proves the Prisma twin on a real Postgres. */
+    newestProcessingDeposit: (userId: string): { amount: number; txnId: string; createdAt: string } | null => {
+      let best: StoredTxn | null = null;
+      for (const t of store.txns.values()) {
+        if (t.userId !== userId || t.type !== "DEPOSIT" || t.status !== "PROCESSING") continue;
+        const at = Date.parse(t.createdAt), bestAt = best ? Date.parse(best.createdAt) : NaN;
+        if (!best || at > bestAt || (at === bestAt && t.id > best.id)) best = t;
+      }
+      return best ? { amount: best.amount, txnId: best.id, createdAt: best.createdAt } : null;
+    },
     /** Net real-money gambling result for a user since a cutoff — Σ of the signed
      *  amounts of the four gambling txn types (BET_PLACED is negative money-out;
      *  BET_PAYOUT / BET_REFUND / CASHOUT are positive money-back). A negative
