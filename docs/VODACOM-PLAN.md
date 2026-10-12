@@ -822,6 +822,15 @@ body. Owner-level calls: §0h point 58, and 65 on.
   `QA_SIGNED_IN`, and no password on this VM). Its 89 dead-link lines read 0 only because Playwright's request client
   does not take this VM's proxy: the same 89 paths answered curl through it 84 × 200 and 5 × 307. `qa:chunks-prod
   --origin https://50pick.tz` PASS, 6/6 routes (47 GETs). Still owed: [E3] measured (above).
+- **✅ LIVE `c604343b` (2026-10-13 01:48 EAT) — live fix L3, its own release (§0h point 80), read back:** the release
+  `89beb5f7` + `99434d85` (L3's two commits rebased onto `a590790c`, their `src/` byte-identical to the reviewed
+  `origin/live-fix-l3r` `4e7504f5`) + the S7 close read-back above. Before the push, on the rebased tip: test:action-redirect
+  green, red:action-redirect 14/14 caught, test:updown-quickbet 54/0, test:docs and test:vodacom-plan green; typecheck 0;
+  `next build` 0; local qa:live 363/363 on a fresh in-memory server; `test:all` at L3's code: the battery at L2's tip
+  `9c254bec` (helper C, `results/battery-9c254bec.md`), whose one new red was L2's. Read back: GitHub's commit status
+  "Success - www.50pick.tz" (01:48:51 EAT); `?dpl=c604343b` on the three hosts; `/api/health` ok on all three (the database
+  reachable and migrated, STAFF_PREVIEW); production qa:live read-only 253 passed, [E2] clean, [E3] NOT MEASURED, its 89
+  dead-link lines the proxy's (curl through it: 84 × 200, 5 × 307); `qa:chunks-prod --origin https://50pick.tz` PASS 6/6.
 - **⏸ END OF SESSION — 2026-10-12 ~17:00 EAT (Ali: "push progress and everything, later we proceed"). THE EXACT PLACE,
   for any machine — every branch below is ON ORIGIN; nothing is only on OMEGA-COMPILE01:**
   - **LIVE:** S7 WP1–WP4 (`dcf305d5`, read back 13:59) and the loss-limit refusal's fix for every player (`e5b5c9da`,
@@ -2845,6 +2854,7 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     independent review found no blocker. Its one case for later, S8's doubt state: a dial Retry after an unknown
     outcome, made once the session has ended, now redirects in silence, so its "check your wallet" advice is not
     repeated. §3.3's auth-loss line is annotated (S8-PLAN A6 item 4's WP0 note, done here). No overrule: Ali's ruling.
+    **LIVE `c604343b` (2026-10-13 01:48 EAT), its own release, read back (§0j).**
 81. **A lost answer no longer becomes a second bet once the first has committed — Ali's ruling, 2026-10-12 (asked; "fix
     now"), live fix L2, not with S12.** S8's plan critique (S8-PLAN A23 item 1): a bet carries an idempotency key and the
     same key is the same bet, but the replay sits inside the wallet lock AFTER every gate. So when a bet landed and only
