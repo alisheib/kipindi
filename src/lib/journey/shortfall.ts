@@ -29,6 +29,15 @@
  * "BET INSTEAD" — a second option, the bet the wallet CAN place now: min(spendable, the stake maximum, the loss
  * headroom), offered only when that is at least the market's minimum stake.
  *
+ * ⭐ `leftAfter` (S8 WP2, S8-PLAN Correction 19) — every deposit option says what stays in the wallet once the deposit has
+ * landed and the stake has been placed: spendable + D − stake. The below-minimum note ("{left} zitabaki") reads it, so no
+ * figure is computed in a component.
+ *
+ * ⭐ A PENDING DEPOSIT CARRIES ITS AGE AND "BET INSTEAD" (S8-PLAN A10). A deposit can stay PROCESSING for hours in live
+ * money mode; the sheet describes it by its age (`createdAt`, on its own server-offset clock) and, from 30 minutes, offers
+ * "bet instead" beside the notice — the option computed here exactly as the `short` branch computes it. The deposit offer
+ * stays withheld at every age: never a second deposit while one is in flight.
+ *
  * ⚠️ A RECORDED DEPARTURE FROM §3.1 STEP 7. §3.1 offered "bet instead" beside a wallet that is not ACTIVE; the bet
  * path refuses a non-ACTIVE wallet outright (`wallet_frozen`), so that offer could only ever fail. A held wallet is
  * `blocked` (the notice + /help) with no option; the "deposits paused" notice with "bet instead" belongs to the case
@@ -106,8 +115,8 @@ export type ShortfallInput = {
   /** Null when the page could not read the wallet. A null `balance` is UNKNOWN, never zero. */
   wallet: { status: string; balance: number | null; bonusBalance: number | null } | null;
   loss: { dailyLossLimit: number | null; lossToday: number };
-  /** The player's newest PROCESSING deposit, if one is still in flight. */
-  pendingDeposit: { amount: number; txnId: string } | null;
+  /** The player's newest PROCESSING deposit, if one is still in flight; `createdAt` ISO (null: its age is unknown). */
+  pendingDeposit: { amount: number; txnId: string; createdAt: string | null } | null;
   deposit: {
     limits: DepositLimits;
     usage: DepositUsage;
@@ -130,6 +139,8 @@ export type DepositOption = {
   chips: number[];
   /** The shortfall is below DEPOSIT_MIN_TZS, so D is the minimum deposit, not the shortfall. */
   belowDepositMin: boolean;
+  /** What stays in the wallet after D lands and the stake is placed: spendable + D − stake (S8 WP2). */
+  leftAfter: number;
 };
 export type BetInsteadOption = { kind: "betInstead"; stake: number };
 export type ShortfallOption = DepositOption | BetInsteadOption;
@@ -138,7 +149,16 @@ export type ShortfallPlan =
   | { kind: "blocked"; reason: ShortfallBlock; until?: string; min?: number; max?: number; headroom?: number; limitMin?: number }
   | { kind: "unknown" }
   | { kind: "enough"; spendable: number }
-  | { kind: "pending"; amount: number; txnId: string; spendable: number }
+  | {
+    kind: "pending";
+    amount: number;
+    txnId: string;
+    /** When the pending deposit was made (ISO), or null when its age is unknown — the sheet's age bands read it (A10). */
+    createdAt: string | null;
+    spendable: number;
+    /** "Bet instead" exactly as the `short` branch would offer it; the sheet shows it from 30 minutes (A10). */
+    betInstead: BetInsteadOption | null;
+  }
   | {
     kind: "short";
     spendable: number;
@@ -188,12 +208,17 @@ export function shortfallPlan(i: ShortfallInput): ShortfallPlan {
   const spendable = Math.max(0, i.wallet.balance) + Math.max(0, i.wallet.bonusBalance ?? 0);
   if (spendable >= i.stake) return { kind: "enough", spendable };
 
-  // 10 · a deposit already in flight — wait for it, never a second one.
-  if (i.pendingDeposit) return { kind: "pending", amount: i.pendingDeposit.amount, txnId: i.pendingDeposit.txnId, spendable };
-
   // "Bet instead": what the wallet can place now, within the stake maximum and the loss headroom.
   const insteadStake = Math.min(Math.floor(spendable), i.bounds.max, lossRoom ?? Number.POSITIVE_INFINITY);
   const betInstead: BetInsteadOption[] = insteadStake >= i.bounds.min ? [{ kind: "betInstead", stake: insteadStake }] : [];
+
+  // 10 · a deposit already in flight — wait for it, never a second one. "Bet instead" rides along for the sheet (A10).
+  if (i.pendingDeposit) {
+    return {
+      kind: "pending", amount: i.pendingDeposit.amount, txnId: i.pendingDeposit.txnId,
+      createdAt: i.pendingDeposit.createdAt ?? null, spendable, betInstead: betInstead[0] ?? null,
+    };
+  }
 
   // 11–15 · the deposit that covers the shortfall.
   const shortfall = i.stake - spendable;
@@ -206,6 +231,7 @@ export function shortfallPlan(i: ShortfallInput): ShortfallPlan {
     amount: d,
     chips: depositChips(d, ceiling.max),
     belowDepositMin: shortfall < DEPOSIT_MIN_TZS,
+    leftAfter: spendable + d - i.stake,
   };
   return { kind: "short", spendable, shortfall, options: [deposit, ...betInstead] };
 }

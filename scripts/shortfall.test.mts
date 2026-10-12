@@ -17,6 +17,9 @@
  *      2026-10-07); chips above the ceiling are dropped;
  *      a deposit the limits or source of funds would refuse is not offered, and neither is one with every rail paused;
  *      "bet instead" appears only at or above the minimum stake, within the loss headroom; a held wallet offers nothing.
+ *   5. WHAT STAYS, AND A PENDING DEPOSIT'S AGE (S8 WP2) — every deposit option carries `leftAfter` = spendable + D − stake
+ *      (the below-minimum note's "{left} zitabaki", Correction 19); a pending plan carries the deposit's `createdAt` and
+ *      "bet instead" exactly as the `short` branch would offer it (S8-PLAN A10), never a deposit.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION: no file is written.
  */
@@ -59,7 +62,7 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     ...base(), maintenance: true, lockout: { kind: "cooling_off", until: "2 Oct 2026, 09:00" },
     session: { exceeded: true, limitMin: 60, playedMin: 75 }, account: { status: "SUSPENDED" },
     market: { live: false, selectionClosed: true }, stake: PLATFORM_MIN_STAKE - 1, wallet: { status: "FROZEN", balance: 2_000, bonusBalance: 0 },
-    loss: { dailyLossLimit: 3_000, lossToday: 0 }, pendingDeposit: { amount: 3_000, txnId: "txn_p" },
+    loss: { dailyLossLimit: 3_000, lossToday: 0 }, pendingDeposit: { amount: 3_000, txnId: "txn_p", createdAt: null },
   };
   const seen: string[] = [];
   let cur = { ...all };
@@ -108,9 +111,10 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   // ⛔ No email step (the owner's ruling of 2026-10-07: a deposit asks no email question). The deposit option is exactly
   // its four fields, so a code-first flag cannot come back without failing here.
   const email = P(base());
-  ok("4.email · the deposit option carries no email step — exactly kind, amount, chips and belowDepositMin",
+  // ⚠️ S8 WP2 (2026-10-13): the option gained `leftAfter` (§5), so the exact set is five fields — still no email step.
+  ok("4.email · the deposit option carries no email step — exactly kind, amount, chips, belowDepositMin and leftAfter",
     email.kind === "short" && email.options[0]?.kind === "deposit"
-      && j(Object.keys(email.options[0]).sort()) === j(["amount", "belowDepositMin", "chips", "kind"]), j(email));
+      && j(Object.keys(email.options[0]).sort()) === j(["amount", "belowDepositMin", "chips", "kind", "leftAfter"]), j(email));
   const clamp = P({ ...base(), deposit: { ...base().deposit, limits: { daily: 7_000, weekly: null, monthly: null } } });
   ok("4.clamp · a chip above the ceiling is dropped (daily headroom 7,000: [3,000, 5,000])",
     clamp.kind === "short" && j((clamp.options[0] as SF.DepositOption).chips) === j([3_000, 5_000]), j(clamp));
@@ -141,10 +145,30 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     lossOver.kind === "blocked" && lossOver.reason === "loss_limit" && lossOver.headroom === 3_000
       && lossAt.kind === "short" && spent.kind === "blocked" && spent.reason === "loss_limit" && spent.headroom === 0, j({ lossOver, lossAt, spent }));
   const held = P({ ...base(), wallet: { status: "FROZEN", balance: 50_000, bonusBalance: 0 } });
-  const pending = P({ ...base(), pendingDeposit: { amount: 3_000, txnId: "txn_p" } });
+  const pending = P({ ...base(), pendingDeposit: { amount: 3_000, txnId: "txn_p", createdAt: null } });
   ok("4.held · a held wallet offers nothing (the bet path refuses it); a pending deposit is waited on, never a second one",
     held.kind === "blocked" && held.reason === "wallet_held" && !("options" in held) && pending.kind === "pending" && pending.amount === 3_000 && pending.txnId === "txn_p",
     j({ held, pending }));
+
+  /* 5 · what stays after the deposit, and a pending deposit's age (S8 WP2) */
+  const leftOf = (balance: number, stake: number) => {
+    const p = P({ ...base(), stake, wallet: { status: "ACTIVE", balance, bonusBalance: 0 } });
+    const d = p.kind === "short" ? p.options.find((o) => o.kind === "deposit") : undefined;
+    return d && d.kind === "deposit" ? [d.amount, d.leftAfter] : null;
+  };
+  const lefts = [leftOf(2_000, 5_000), leftOf(4_700, 5_000), leftOf(0, PLATFORM_MIN_STAKE), leftOf(1_200, 1_500)];
+  const bonusLeft = P({ ...base(), stake: 5_000, wallet: { status: "ACTIVE", balance: 1_000, bonusBalance: 1_500 } });
+  const bl = bonusLeft.kind === "short" ? bonusLeft.options.find((o) => o.kind === "deposit") as SF.DepositOption | undefined : undefined;
+  ok("5.leftAfter · spendable + D − stake on every deposit: 2,000 on 5,000 → 3,000 and 0 left; 4,700 on 5,000 → 1,000 and 700 left; 0 at the minimum stake → 1,000 and 500 left (A24); 1,200 on 1,500 → 1,000 and 700; the bonus counts as spendable",
+    j(lefts) === j([[3_000, 0], [1_000, 700], [1_000, 1_000 - PLATFORM_MIN_STAKE], [1_000, 700]]) && PLATFORM_MIN_STAKE === 500 && bl?.amount === 2_500 && bl.leftAfter === 0, j({ lefts, bl }));
+  const at = new Date(NOW - 45 * 60_000).toISOString();
+  const pend = P({ ...base(), pendingDeposit: { amount: 3_000, txnId: "txn_p", createdAt: at } });
+  const pendPoor = P({ ...base(), wallet: { status: "ACTIVE", balance: PLATFORM_MIN_STAKE - 1, bonusBalance: 0 }, pendingDeposit: { amount: 3_000, txnId: "txn_p", createdAt: at } });
+  const pendLoss = P({ ...base(), loss: { dailyLossLimit: 6_000, lossToday: 0 }, wallet: { status: "ACTIVE", balance: 2_000, bonusBalance: 0 }, pendingDeposit: { amount: 3_000, txnId: "txn_p", createdAt: at } });
+  ok("5.pending · a pending plan carries the deposit's createdAt and \"bet instead\" exactly as `short` computes it (2,000; none one shilling under the minimum; the same under a loss limit), and never a deposit",
+    pend.kind === "pending" && pend.createdAt === at && pend.betInstead?.stake === 2_000 && !("options" in pend)
+      && pendPoor.kind === "pending" && pendPoor.betInstead === null && pendLoss.kind === "pending" && pendLoss.betInstead?.stake === 2_000
+      && pend.spendable === 2_000, j({ pend, pendPoor, pendLoss }));
   return failed;
 }
 
@@ -182,6 +206,16 @@ if (!PROVE_RED) {
       impl: { plan: (i) => { const l = SF.lossHeadroomFor(i.loss); return l !== null && i.stake >= l && i.wallet?.status === "ACTIVE" ? { kind: "blocked", reason: "loss_limit", headroom: Math.max(0, l) } : real(i); } } },
     { name: "a pending deposit ignored (a second deposit offered)", expect: /^4\.held /,
       impl: { plan: (i) => real({ ...i, pendingDeposit: null }) } },
+    { name: "leftAfter computed without the stake (spendable + D)", expect: /^5\.leftAfter /,
+      impl: { plan: (i) => { const r = real(i); return r.kind === "short" ? { ...r, options: r.options.map((o) => (o.kind === "deposit" ? { ...o, leftAfter: r.spendable + o.amount } : o)) } : r; } } },
+    { name: "leftAfter read from the cash balance alone (the bonus left out)", expect: /^5\.leftAfter /,
+      impl: { plan: (i) => { const r = real(i); const cash = Math.max(0, i.wallet?.balance ?? 0); return r.kind === "short" ? { ...r, options: r.options.map((o) => (o.kind === "deposit" ? { ...o, leftAfter: cash + o.amount - i.stake } : o)) } : r; } } },
+    { name: "the pending deposit's age dropped", expect: /^5\.pending /,
+      impl: { plan: (i) => { const r = real(i); return r.kind === "pending" ? { ...r, createdAt: null } : r; } } },
+    { name: "\"bet instead\" never carried beside a pending deposit", expect: /^5\.pending /,
+      impl: { plan: (i) => { const r = real(i); return r.kind === "pending" ? { ...r, betInstead: null } : r; } } },
+    { name: "\"bet instead\" beside a pending deposit offered below the minimum stake", expect: /^5\.pending /,
+      impl: { plan: (i) => { const r = real(i); return r.kind === "pending" && !r.betInstead ? { ...r, betInstead: { kind: "betInstead", stake: Math.floor(r.spendable) } } : r; } } },
   ];
   let caught = 0, fail = 0;
   const ok = (label: string, cond: boolean, extra = "") => { if (!cond) fail++; console.log(`${cond ? "PROVED  " : "MISSED  "} ${label}${extra ? ` — ${extra}` : ""}`); };
