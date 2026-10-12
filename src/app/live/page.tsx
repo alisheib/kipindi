@@ -10,7 +10,9 @@
  * backdrop. Every detail is from the kit; the composition is unique to
  * this page.
  */
+import { Suspense } from "react";
 import Link from "next/link";
+import { I } from "@/components/ui/glyphs";
 import { keepConnectives } from "@/components/ui/keep-run";
 import { fill, formatNumber } from "@/lib/utils";
 import { timeLeftLabel } from "@/lib/markets/time-left";
@@ -24,6 +26,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { liveContest } from "@/lib/markets/live-contest";
 import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH, MAX_QUERY_LEN } from "@/lib/search";
 import { clampText, oneParam } from "@/lib/query/parse";
+import { buildQueryHref } from "@/lib/query/href";
+import { pageCumulative, parsePageParam } from "@/lib/journey/home-list";
+import { SearchBox } from "@/components/ui/search-box";
+import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
+import { JourneyCard } from "@/components/journey/cards/journey-card";
+import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { LivePulseGrid } from "./pulse-grid";
 import { FeaturedContest } from "./featured-contest";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
@@ -52,6 +60,10 @@ export default async function LivePage({
     // live/error.tsx, never render "no live markets right now" over a live board.
     listMarkets({ status: "LIVE", productLine: "ALL" }),
   ]);
+  // ⭐ THE NEW JOURNEY, ASKED ONCE FOR THIS REQUEST (the Vodacom plan S7, S7-PLAN WP10 with A21) — the one cached
+  // resolver AppShell asked too, so the page and its chrome cannot disagree. Everything below is read for both views;
+  // only the wall's slot branches, and its classic arm is today's `LivePulseGrid`.
+  const { journey } = await resolveSimpleJourney();
 
   // ONE definition — `src/lib/markets/time-left.ts`, shared with the landing, the hero, `/markets`
   // and the detail page's similar-market cards. This copy floored the minute branch with a plain
@@ -99,6 +111,9 @@ export default async function LivePage({
     ? live
     : live.filter((m) =>
         matchesQuery(parsedQ, m as unknown as Record<string, string | null | undefined>, MARKET_SEARCH));
+  // Journey /live's place in its list (S7 WP10, A21 item 4): `?page` through the one rule the journey home reads it by
+  // (`parsePageParam`). The classic wall reads no page: it reveals its batches as the reader scrolls.
+  const journeyPage = parsePageParam(oneParam((await searchParams) ?? {}, "page"));
 
   // ⚠️ Scoped to THIS wall, and sequential on purpose — see traderSeedsByMarket. It
   // used to run in the Promise.all above and therefore could not know which markets it
@@ -237,7 +252,16 @@ export default async function LivePage({
         ) : (
           <>
             {/* Wall of TippingBars — every live market, animated reveal stagger */}
+            {/* ⭐ THE WALL'S SLOT IS ONE TERNARY (the Vodacom plan S7, §3.2; S7-PLAN WP10 with A21). A journey request
+                draws today's list in journey cards (`JourneyLiveList`, below): the same rows in the same order, the
+                search box kept, and the deck's "Onyesha zaidi" where the wall reveals its batches. Every other
+                request gets the classic arm: today's wall, line for line. The hero above and the explainer below
+                are drawn for both. */}
+            {journey ? (
+              <JourneyLiveList rows={all} page={journeyPage} q={q} rounds={roundByMarket} nowMs={nowMs} t={t} locale={locale} />
+            ) : (
             <LivePulseGrid markets={markets} />
+            )}
 
             {/* Cross-cut callout — the most-contested feature now lives in the
                 aqua hero above (C1e), so this stays a lean explainer. */}
@@ -263,5 +287,68 @@ export default async function LivePage({
         )}
       </PageContainer>
     </div>
+  );
+}
+
+/**
+ * Twelve cards to a tap of "Onyesha zaidi": the player page size (`PLAYER_PER_PAGE`, `components/ui/pagination.tsx`).
+ * ⛔ Written here, not imported: that module also loads the pager's client code, which this page draws nowhere, and an
+ * import would put it in the scripts every reader of /live is sent. `test:journey-home` §9 holds the two equal.
+ */
+const JOURNEY_LIVE_PER_PAGE = 12;
+
+/**
+ * ⭐ JOURNEY /live — TODAY'S LIST, IN JOURNEY CARDS (the Vodacom plan S7, §3.2; S7-PLAN WP10 as A21 amends it; Open
+ * points 9, 10 and 12). Drawn for a journey request in the wall's slot above; every other reader gets today's wall.
+ *   · THE LIST IS TODAY'S: `rows` is the page's own `all` (every open question not yet closed by time, searched on the
+ *     server, both product lines, in the board's own order: soonest resolution first), the one array the count line,
+ *     the hero and the classic wall are drawn from, so the count above the list is its length. No bet test and no home
+ *     order: a question whose selection has closed stays, drawn as the card's closed face (SJ-6 sends it here).
+ *   · ONE PAGING RULE: the deck's cumulative "Onyesha zaidi" (Open point 12). Page n shows the first 12·n cards
+ *     (`pageCumulative`, the journey home's own rule), its `?page` read by `parsePageParam` above; the link keeps `q` and
+ *     the reader's scroll, and is written by the platform's one href builder. The classic wall's batch reveal is not
+ *     touched.
+ *   · THE SEARCH BOX STAYS (A21 item 3): today's box with today's props, in its own Suspense, in the one search band.
+ *   · AN UP & DOWN ROW opens its round (`rounds`, the page's `roundByMarket`), or Up & Down when none resolved, as the
+ *     wall's card does. Every card is an h2 under the page's h1, read with the page's one clock.
+ */
+function JourneyLiveList({ rows, page, q, rounds, nowMs, t, locale }: {
+  rows: Awaited<ReturnType<typeof listMarkets>>;
+  page: number;
+  q: string;
+  rounds: ReadonlyMap<string, string>;
+  nowMs: number;
+  t: Awaited<ReturnType<typeof getServerT>>["t"];
+  locale: Awaited<ReturnType<typeof getServerT>>["locale"];
+}) {
+  const shelf = pageCumulative(rows, page, JOURNEY_LIVE_PER_PAGE);
+  return (
+    <>
+      <div className={QUERY_SEARCH_BAND_CLASS}>
+        <Suspense>
+          <SearchBox
+            placeholder={t.common.searchLiveMarkets}
+            ariaLabel={t.common.searchLiveMarkets}
+            helpFields={fieldNames(MARKET_SEARCH)}
+          />
+        </Suspense>
+      </div>
+      {/* The list and its "Onyesha zaidi", 16px apart as the deck sets them (the cards' own gap). The cards stand in
+          the one journey card grid, whose cards share their rows; the link is the kit's ghost control at the large
+          rung, the board's full width. */}
+      <div className="flex flex-col gap-3">
+        <div className="kp-jgrid">
+          {shelf.shown.map((m) => (
+            <JourneyCard key={m.id} m={m} nowMs={nowMs} t={t} locale={locale} roundId={rounds.get(m.id) ?? null} />
+          ))}
+        </div>
+        {shelf.more && (
+          <Link href={buildQueryHref("/live", { q }, { q: "" }, {}, { page: shelf.page + 1 }) as never} scroll={false} className="btn btn-ghost btn-lg w-full">
+            {t.journey.showMore}
+            <I.chevronDown s={18} edge="end" />
+          </Link>
+        )}
+      </div>
+    </>
   );
 }
