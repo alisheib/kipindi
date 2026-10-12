@@ -74,6 +74,14 @@ function keyIssues(node: unknown): number {
 /** Every CSS rule, as [selector, body]. */
 const RULES = [...CSS.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => [m[1].trim(), m[2]] as const);
 const rulesFor = (selector: string) => RULES.filter(([s]) => s.split(",").map((x) => x.trim()).includes(selector)).map(([, b]) => b);
+/** The last `text-wrap` (or `text-wrap-style`) a stylesheet gives a selector, in any rule whose list holds it — what the
+ *  cascade leaves — or null. */
+const lastWrap = (css: string, selector: string) => {
+  const said = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter((m) => m[1].split(",").map((x) => x.trim()).includes(selector))
+    .flatMap((m) => [...m[2].matchAll(/text-wrap(?:-style)?:\s*([a-z-]+)/g)].map((w) => w[1]));
+  return said.length > 0 ? said[said.length - 1] : null;
+};
 const IDEO = /[㐀-䶿一-鿿豈-﫿]/u;
 const SEG = new Intl.Segmenter("en", { granularity: "grapheme" });
 function xorshift(seed: number) { return () => { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return ((seed >>> 0) % 1e6) / 1e6; }; }
@@ -211,6 +219,8 @@ section("2 · F1 F4 + H1's siblings: every market title is balanced and keeps it
 {
   type Surface = { name: string; file: string; draws: string[]; balanced: (src: string) => boolean };
   const cls = (src: string, needle: string) => src.includes(needle);
+  /** The journey card's question is balanced by the LAST text-wrap the sheet gives `.kp-jcard__title` (S7 WP5). */
+  const journeyBalanced = (css: string) => lastWrap(css, ".kp-jcard__title") === "balance";
   const SURFACES: Surface[] = [
     { name: "the grid and featured cards", file: "src/components/markets/market-card.tsx",
       draws: [`{featured ? <h2 className="mcardp-q">{keepFigures(title)}</h2> : <h3 className="mcardp-q">{keepFigures(title)}</h3>}`],
@@ -246,9 +256,10 @@ section("2 · F1 F4 + H1's siblings: every market title is balanced and keeps it
       balanced: (s) => cls(s, `<p className="mt-1 font-display text-[15px] font-semibold text-text leading-snug text-balance">`) },
     // S7 WP5 (2026-10-12): the journey card's question — the reader's short title, else the full one — through keepFigures,
     // balanced by its own rule (`.kp-jcard__title`); only the full-title fallback is clamped (`test:journey-home` §4).
+    // Balanced by the LAST word the sheet says on it: a later rule that re-sets the question wins in a browser (2.1′).
     // Appended, never inserted: 2.2″ plants on SURFACES[4] and [6] by position.
     { name: "the journey card", file: "src/components/journey/cards/journey-card.tsx", draws: ["{keepFigures(title.text)}"],
-      balanced: () => rulesFor(".kp-jcard__title").some((b) => /text-wrap:[ ]*balance/.test(b)) },
+      balanced: () => journeyBalanced(CSS) },
   ];
   const surfaceFault = (s: Surface, src: string) => [
     !s.draws.every((d) => src.includes(d)) && "does not draw the title through keepFigures",
@@ -258,11 +269,16 @@ section("2 · F1 F4 + H1's siblings: every market title is balanced and keeps it
   const faults = SURFACES.map((s) => [s.name, surfaceFault(s, code(s.file))] as const).filter(([, f]) => f.length);
   ok(`2.1 · ${SURFACES.length} title surfaces draw the title through keepFigures and balance its lines — the seven of round 4 and /results' notable card, the proposals board and page, the classic ticket, /fairness, the bet dialog, S7's journey card`,
     faults.length === 0, faults.map(([n, f]) => `${n}: ${f.join(", ")}`).join(" | "));
-  // ⛔ No market title is set `pretty`: Chromium's orphan rule pulls ONE character down in Chinese (F1).
-  const PRETTY_ON_TITLE = (css: string) => [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].some((m) => /mcardp-q|kp-qrow__q/.test(m[1]) && /text-wrap(?:-style)?:\s*pretty/.test(m[2]));
+  ok("2.1′ PLANT · a later rule that re-sets the journey card's question to `pretty` is reported (its own rule still says balance)",
+    journeyBalanced(CSS) && !journeyBalanced(`${CSS}\n.kp-jcard__title { text-wrap: pretty; }\n`));
+  // ⛔ No market title is set `pretty`: Chromium's orphan rule pulls ONE character down in Chinese (F1). S7 WP5 added the
+  // journey card's question (`.kp-jcard__title`, its fallback modifier included) to the titles this reads.
+  const PRETTY_ON_TITLE = (css: string) => [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].some((m) => /mcardp-q|kp-qrow__q|kp-jcard__title/.test(m[1]) && /text-wrap(?:-style)?:\s*pretty/.test(m[2]));
   ok("2.2 · no rule sets a market title `text-wrap: pretty` (the featured card wore it — F1's mechanism, §3)", !PRETTY_ON_TITLE(CSS));
   ok("2.2′ PLANT · the featured question back on `pretty` is reported",
     PRETTY_ON_TITLE(CSS.replace(".mcardp--featured .mcardp-q { -webkit-line-clamp: 3;", ".mcardp--featured .mcardp-q { text-wrap: pretty; -webkit-line-clamp: 3;")));
+  ok("2.2‴ PLANT · the journey card's question set `pretty` (its fallback's modifier, in a later rule) is reported",
+    PRETTY_ON_TITLE(`${CSS}\n.kp-jcard__title--full { text-wrap: pretty; }\n`));
   ok("2.2″ PLANT · a surface that loses its balance or its keepFigures is reported",
     // R8-A (2026-10-10): the plant follows the pin above — the title hovers in the link blue's step now (ruling (2)).
     surfaceFault(SURFACES[4], code(SURFACES[4].file).replace("text-text text-balance group-hover:text-brand-200", "text-text group-hover:text-brand-200")).length > 0
