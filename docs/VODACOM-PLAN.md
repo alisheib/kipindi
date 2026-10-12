@@ -361,9 +361,9 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S7 — WP0–WP4 are live (`dcf305d5`, 2026-10-12 13:59 EAT, §0j); WP5–WP10 and live fix L1 are built, reviewed and stacked on `origin/vodacom-s7-land6`; next WP10's review fixes,
-WP9's review commit (`2592f066`) onto it, the landing proof, the push live, then WP11's drives and WP12 (§0j's "⏸ END OF
-SESSION" bullet); S8's plan is filed ([`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md)). OMEGA's own 2026-10-07/08 WP1 is on origin
+**Next:** (1) S7 — WP0–WP4 are live (`dcf305d5`, 2026-10-12 13:59 EAT, §0j); WP5–WP10, live fix L1 and the WP9 and WP10 reviews are built, reviewed and stacked on `origin/vodacom-s7-land7`; next
+the landing proof, the push live, then WP11's drives and WP12 (§0j's "⏸ END OF SESSION" bullet and its "▶ IN FLIGHT"
+bullet); S8's plan is filed ([`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md)). OMEGA's own 2026-10-07/08 WP1 is on origin
 for reference only as `vodacom-s7-wp1-omega`, never to be merged (§0h point 66). S7's plan:
 [`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), whose Amendments override its body. (2) When
 Ali says so, and not before (nothing turns on until the plan is done): an officer approves the S2 short titles, and
@@ -726,6 +726,22 @@ body. Owner-level calls: §0h point 58, and 65 on.
     builders' `F:\kipindi-s7c…s7j`, `F:\kipindi-s8p` (`node_modules` junctions to `F:\kipindi-s7b` — never `npm ci` in
     them); the lock-turn chains on `origin/vodacom-visual-tools` `tools/s7-omega-2026-10-12/` (`fa8d65da`); the v3
     baseline and the scripts' copies in `F:\kipindi-s7-artifacts`.
+- **▶ IN FLIGHT — a cloud session (a claude.ai/code Linux VM, 2026-10-12 from ~16:25 EAT), working the NEXT list above in
+  order:**
+  - **Items 1 and 2 DONE, stacked and pushed:** `origin/vodacom-s7-land7` at `35f8be88` = main `395e1a6a` + land6's 13
+    commits rebased + the WP10 review (`1e1337ca`: "Onyesha zaidi" is one control, `show-more.tsx`, drawn by the journey
+    home and journey /live — the kit's pending mark on /live too; journey-home 9.more with four plants; SHELVED's two
+    Test cells measured on a scratch copy by doing each row's re-mount; the grid's citations read §0h point 73) + WP9's
+    review cherry-picked clean (`35f8be88`). `origin/vodacom-s7-land6` is left as it was (`354d8178`: the same two
+    commits on `e5b5c9da`). Proven in process on the tip: typecheck 0; journey-home all pass and red 243/243;
+    markets-redirect red 31/31; journey-account red 61/61; journey-shell 446 and red 208/208; simple-journey-flag 135
+    and red 41/41; visual-pass-r10 81/0 and r9a 52/0; red-anchors 5286/0; 30 more suites green but test:orphans (main's
+    own two landing-v3 panels).
+  - **Item 3, the landing proof, runs next on this VM:** no lock, one heavy job at a time. ⚠️ This VM's browsers: the
+    sandbox's network policy refuses Playwright's download host, so only the image's Chromium 141 runs (mapped onto
+    Playwright 1.59's expected path); Firefox and WebKit cannot run here. The parity v3 baseline is this VM's own,
+    captured at `52715180` with its null compare first. Then item 4 (the push live, rebased on main as it is then) and
+    item 5.
 - **The handoff of 2026-10-12 ~08:55 EAT (ALI-BLADE15 → any machine) is done:** picked up on OMEGA-COMPILE01 at ~10:00
   EAT — WP1's void null compare re-run, WP2's last proofs, WP3's draft read and finished. What it said, kept for the
   record:
