@@ -13,11 +13,18 @@
  * link marked, so a journey reader's first paint already has it and nothing moves when the script lands. The precedent,
  * `layout/lazy-overlays.tsx`, turns it off only for overlays no first paint shows.
  * ⛔ The kit's item type is imported as a TYPE: erased at build, it loads nothing.
+ * ⭐ A RAIL WHOSE CODE NEVER ARRIVES IS LEFT OUT, NOT FATAL (the Vodacom plan S7, S7-PLAN A13(a), 2026-10-12). The tabs'
+ * chunk is a fetch of its own, and a `ChunkLoadError` with nothing to catch it took the page to the critical-error
+ * screen. The loader ends in the app's one lost-chunk guard (`layout/lost-chunk.ts`), as the shell's parts do: the rail
+ * is left out for the rest of that page's life (the page's heading and its list still stand), reported once per page;
+ * any other error is thrown on. Only a journey request draws this rail, so no classic reader's page changes but by the
+ * name of this module's chunk (`/positions`, `/updown/history`). `test:journey-tickets` 5.lazy holds the loader line.
  */
 import dynamic from "next/dynamic";
 import type { TabItem } from "@/components/ui/tabs";
+import { nothingIfLost } from "@/components/layout/lost-chunk";
 
-const Tabs = dynamic(() => import("@/components/ui/tabs").then((m) => m.Tabs));
+const Tabs = dynamic(() => import("@/components/ui/tabs").then((m) => m.Tabs).catch(nothingIfLost));
 
 export function TicketSwitchRail({ ariaLabel, value, tabs }: { ariaLabel: string; value: string; tabs: TabItem[] }) {
   return <Tabs variant="line" ariaLabel={ariaLabel} value={value} tabs={tabs} />;
