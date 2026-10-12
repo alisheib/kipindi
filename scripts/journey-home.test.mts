@@ -34,10 +34,24 @@
  *      state.
  *      ⭐ Every §2 and §3 plant must fail ITS check and nothing else: the red run reports a plant that also turns another
  *      check red as not proved, so no check stays green only because a neighbour happens to catch its defect.
+ *   §8 THE LIVE STRIP LEAVES / AND /markets FOR A JOURNEY READER (S7 WP8; VODACOM-PLAN §3.2, COMPLIANCE-DECISIONS
+ *      2026-09-29 §10; S7-PLAN Open point 16), in AppShell and LiveTicker as written:
+ *        · the strip's slot is ONE ternary on the shell's per-request answer (`journeyShown`, the one that chose the
+ *          header), in today's place under the away summary and above the main landmark — never a `{journeyShown && …}`
+ *          sibling, which would add a `false` child to every classic RSC payload;
+ *        · its journey arm alone says `journey`, and its else arm is today's element with today's props, verbatim, so a
+ *          classic request's RSC row is today's (no `journey` key, not even false);
+ *        · LiveTicker takes `journey = false`, so the else arm's missing prop is today's lobby list.
+ *      Which pages each list holds is test:ticker-honesty's (11.1j, 11.2j); the client's call, and its refusal of the
+ *      browser's `useJourneyOn` (its server snapshot is false: the strip would paint, then drop), are its 11.5.
+ *      ⚠️ §8 stands in its own delimited block (its world, checks and plants), after §2's and §3's plants, just before the
+ *      file's run; each plant fails its own check ALONE wherever the defect is one thing (the two that rebuild the whole
+ *      slot trip every arm's check).
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` plants each defect IN MEMORY and requires the check named for it to fail.
  * §1's plants edit copies of the source text; §2's and §3's swap ONE rule (a function `home-list.ts` or `card-face.ts`
- * exports, or the `cardEstimate` the card's figures come through) for a copy of the real one carrying one defect.
+ * exports, or the `cardEstimate` the card's figures come through) for a copy of the real one carrying one defect; §8's
+ * edit a copy of AppShell's or LiveTicker's source.
  * Nothing here touches a file on disk, so `test:red-anchors` §4 counts it in the in-process class.
  * ⚠️ Every read is DECOMMENTED (`scripts/lib/decomment.mts`), so a rule quoted in a note is never mistaken for the rule.
  * ⚠️ This file carries no escape a tool could decode on its way to disk: line breaks are built from their code points, and
@@ -94,6 +108,7 @@ type World = {
   walked: number;                // how many files under src/ the importer census walked
   naming: Map<string, string>;   // every OTHER file under src/ whose text names legacy-landing: the census's subjects
   rules: Rules;                  // §2 and §3: the home's list and the card's face, as the modules export them
+  strip: StripWorld;             // §8 (S7 WP8): AppShell and LiveTicker as written — the strip's slot and its client's default
 };
 
 function load(): World {
@@ -104,7 +119,7 @@ function load(): World {
     const s = read(rel);
     if (s.includes("legacy-landing")) naming.set(rel, s);
   }
-  return { page: read(PAGE), landing: read(LANDING), layout: read(LAYOUT), walked: all.length, naming, rules: RULES };
+  return { page: read(PAGE), landing: read(LANDING), layout: read(LAYOUT), walked: all.length, naming, rules: RULES, strip: loadStrip() };
 }
 
 type Ok = (label: string, cond: boolean, extra?: string) => void;
@@ -368,6 +383,8 @@ function run(w: World, log: (l: string) => void): string[] {
   homeListChecks(w.rules, ok);
   /* §3 · the card's face (S7 WP3) */
   cardFaceChecks(w.rules, ok);
+  /* §8 · the LIVE strip leaves / and /markets for a journey reader (S7 WP8) — its own block, below */
+  stripChecks(w.strip, ok);
   return failed;
 }
 
@@ -491,6 +508,89 @@ function ruleDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) 
   ];
 }
 
+/* ══ §8 · THE LIVE STRIP LEAVES / AND /markets FOR A JOURNEY READER (S7 WP8) — its own block: world, checks, plants ══ */
+/**
+ * S7-PLAN WP8 steps 1-2 and Open point 16; VODACOM-PLAN §3.2; COMPLIANCE-DECISIONS 2026-09-29 §10. The strip leaves `/`
+ * and `/markets` for a journey reader and stays on `/live` and `/results`; every other reader keeps it where it is. The
+ * answer is the SHELL's, handed down: `useJourneyOn`'s server snapshot is false, so a client-side answer would paint the
+ * 32px strip on a journey reader's `/` and take it away after hydration (the shift `qa:cls-budget` exists to fail).
+ */
+const STRIP_SHELL = "src/components/layout/app-shell.tsx";
+const STRIP_CLIENT = "src/components/layout/live-ticker.tsx";
+/** Today's element, verbatim: the else arm, served to every request the resolver does not show the journey to. */
+const STRIP_TODAY = "<LiveTicker events={tickerEvents} />";
+/** The journey arm: today's element and the bare `journey` attribute, nothing else. */
+const STRIP_JOURNEY = "<LiveTicker events={tickerEvents} journey />";
+const STRIP_SLOT = `{journeyShown ? ${STRIP_JOURNEY} : ${STRIP_TODAY}}`;
+const STRIP_SIGNATURE = "export function LiveTicker({ events, journey = false }: { events: TickerEvent[]; journey?: boolean }) {";
+/** AppShell's main landmark, as written (OptOutShell writes its own on one line): the plants' anchor below the slot. */
+const STRIP_MAIN = ["<MainLandmark>", "        <RouteTransition>{children}</RouteTransition>", "      </MainLandmark>"].join(LF);
+
+type StripWorld = {
+  shell: string;                 // src/components/layout/app-shell.tsx, as written (the checks decomment it)
+  client: string;                // src/components/layout/live-ticker.tsx, as written
+};
+function loadStrip(): StripWorld {
+  return { shell: read(STRIP_SHELL), client: read(STRIP_CLIENT) };
+}
+
+function stripChecks(s: StripWorld, ok: Ok) {
+  const shell = decomment(s.shell), client = decomment(s.client);
+  /** Every line of the shell that mounts the strip, trimmed. */
+  const mounts = shell.split(LF).map((l) => l.trim()).filter((l) => l.includes("<LiveTicker"));
+  const line = mounts[0] ?? "";
+  const away = shell.indexOf("<AwaySummaryBar"), at = shell.indexOf("<LiveTicker"), main = shell.indexOf("<MainLandmark>");
+  const slot = {
+    lines: mounts.length, elements: count(shell, "<LiveTicker"), sibling: count(shell, "&& <LiveTicker"),
+    ternary: line.startsWith("{journeyShown ? <LiveTicker ") && line.includes(" : <LiveTicker ") && line.endsWith("/>}"),
+    placed: away >= 0 && away < at && at < main,
+  };
+  ok("8.slot · AppShell's strip slot is ONE ternary on the shell's per-request answer (journeyShown, the one that chose the header), in today's place under the away summary and above the main landmark: one line, two LiveTicker elements, and never a {journeyShown && …} sibling (a false child in every classic RSC payload)",
+    slot.lines === 1 && slot.elements === 2 && slot.sibling === 0 && slot.ternary && slot.placed, j({ ...slot, line }));
+  const elseArm = count(shell, ` : ${STRIP_TODAY}}`);
+  ok(`8.else · the else arm is today's element with today's props, verbatim (${STRIP_TODAY}): a request the resolver does not show the journey to is served today's RSC row, with no journey key — not even false`,
+    elseArm === 1, j({ elseArm, line }));
+  const arm = count(shell, ` ? ${STRIP_JOURNEY} : `);
+  ok(`8.arm · the journey arm alone says journey: today's element and the bare attribute, nothing else (${STRIP_JOURNEY})`,
+    arm === 1, j({ arm, line }));
+  const signature = count(client, STRIP_SIGNATURE);
+  ok(`8.default · LiveTicker takes journey = false, an optional prop, so the else arm's missing prop is today's lobby list (${STRIP_SIGNATURE})`,
+    signature === 1, j({ signature }));
+}
+
+/** One swap on a copy of a text. ⛔ An anchor that does not resolve exactly once THROWS: a broken plant, never a miss. */
+function stripSwap(text: string, from: string, to: string): string {
+  const n = count(text, from);
+  if (n !== 1) throw new Error(`the plant's anchor resolves ${n} times, not once: ${from}`);
+  return text.replace(from, () => to);
+}
+const inShell = (w: World, from: string, to: string): World => ({ ...w, strip: { ...w.strip, shell: stripSwap(w.strip.shell, from, to) } });
+const inClient = (w: World, from: string, to: string): World => ({ ...w, strip: { ...w.strip, client: stripSwap(w.strip.client, from, to) } });
+
+/** §8's plants: each one defect in a copy of AppShell's or LiveTicker's source; `alone` wherever the defect is one thing. */
+function stripDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) => World; alone?: true }> {
+  return [
+    { name: "the strip's ternary decided by the preview pass, not by the answer that chose the header", expect: /^8[.]slot /, alone: true,
+      plant: (w) => inShell(w, "{journeyShown ? <LiveTicker", "{journeyPreview ? <LiveTicker") },
+    { name: "the strip moved below the main landmark (it would paint under the page for every reader)", expect: /^8[.]slot /, alone: true,
+      plant: (w) => inShell(inShell(w, STRIP_SLOT, ""), STRIP_MAIN, `${STRIP_MAIN}${LF}      ${STRIP_SLOT}`) },
+    { name: "a second mount of today's strip beside the slot (two strips for a classic reader)", expect: /^8[.]slot /, alone: true,
+      plant: (w) => inShell(w, STRIP_MAIN, `${STRIP_MAIN}${LF}      ${STRIP_TODAY}`) },
+    { name: "two siblings in place of the ternary (a false child in every RSC payload, the classic one included)", expect: /^8[.]slot /,
+      plant: (w) => inShell(w, STRIP_SLOT, `{journeyShown && ${STRIP_JOURNEY}}{!journeyShown && ${STRIP_TODAY}}`) },
+    { name: "the else arm hands journey={false} on (a classic request's RSC row gains a key)", expect: /^8[.]else /, alone: true,
+      plant: (w) => inShell(w, ` : ${STRIP_TODAY}}`, " : <LiveTicker events={tickerEvents} journey={false} />}") },
+    { name: "one element for every reader, journey={journeyShown} (the classic row gains journey: false)", expect: /^8[.]else /,
+      plant: (w) => inShell(w, STRIP_SLOT, "<LiveTicker events={tickerEvents} journey={journeyShown} />") },
+    { name: "the journey arm loses its journey (a journey reader's home and board keep the strip)", expect: /^8[.]arm /, alone: true,
+      plant: (w) => inShell(w, ` ? ${STRIP_JOURNEY} : `, ` ? ${STRIP_TODAY} : `) },
+    { name: "the journey arm hands the strip another list (a journey reader's /live and /results lose it)", expect: /^8[.]arm /, alone: true,
+      plant: (w) => inShell(w, ` ? ${STRIP_JOURNEY} : `, " ? <LiveTicker events={[]} journey /> : ") },
+    { name: "LiveTicker's journey defaults to true (every classic reader's home and board lose the strip)", expect: /^8[.]default /, alone: true,
+      plant: (w) => inClient(w, "journey = false }", "journey = true }") },
+  ];
+}
+
 const REAL = load();
 if (!PROVE_RED) {
   console.log("journey-home — the home on / (the Vodacom plan S7)");
@@ -533,6 +633,8 @@ if (!PROVE_RED) {
 
     /* §2 and §3 (S7 WP3): one rule swapped for a copy that carries one defect, each required to fail its check ALONE. */
     ...ruleDefects(),
+    /* §8 (S7 WP8): one defect in a copy of AppShell's or LiveTicker's source, ALONE wherever the defect is one thing. */
+    ...stripDefects(),
   ];
   let caught = 0, fail = 0;
   const ok = (label: string, cond: boolean, extra = "") => { if (!cond) fail++; console.log(`${cond ? "PROVED  " : "MISSED  "} ${label}${extra ? ` — ${extra}` : ""}`); };

@@ -72,8 +72,11 @@
  *      a guard straight after the pinned line it follows; each overlay reads the flag once and asks the one list (§2)
  *      once; the chat keeps its conversation; the HIDE_ON patterns other gates pin are unchanged; the analytics consent
  *      prompt is still asked of everybody; the email-verify bar — gated on the same per-request answer (VODACOM-PLAN
- *      §3.2 item 2) until it was deleted on 2026-10-07 — stays absent (11.emailbar); and the shell's lazy module alone loads the flag, through `next/dynamic` (WP6c). In the file it
- *      sits beside §5, whose flag it reads.
+ *      §3.2 item 2) until it was deleted on 2026-10-07 — stays absent (11.emailbar); and the shell's lazy module alone loads the flag, through `next/dynamic` (WP6c). And
+ *      since S7 WP8 the old first-visit primer stands down for a journey reader on EVERY route — the flag alone, no list:
+ *      one term in its open effect (with the flag among the effect's dependencies) and one in its render, each straight
+ *      after the guard it follows (11.primer.effect, 11.primer.render, 11.reads.primer); the How-to sheet replaces it.
+ *      In the file it sits beside §5, whose flag it reads.
  *   §12 THE SHELL'S DEFERRED PARTS (WP6c, VODACOM-PLAN §0h point 20) — AppShell is a server component, and its own
  *      `React.lazy` split nothing: every module it named rode in every page's first load. So every lazily loaded part
  *      AppShell renders comes from ONE client module, `shell-lazy.tsx`, under the name it always had, each the one child
@@ -877,7 +880,8 @@ function g5Flag(I: Impl, W: World, G: Graph, ok: Ok) {
  * written beside today's half; each overlay reading the flag once and the one journey list once; the chat keeping its
  * conversation; the HIDE_ON patterns other gates pin; the analytics consent prompt still asked of every reader; the
  * email-verify bar — deleted 2026-10-07 (owner ruling), so now its ABSENCE (11.emailbar); and the shell's lazy module alone
- * loading the flag, through `next/dynamic` (WP6c; 5.mount holds where it is mounted).
+ * loading the flag, through `next/dynamic` (WP6c; 5.mount holds where it is mounted). Since S7 WP8, the old first-visit
+ * primer too — by the flag ALONE, on every route (the note at OVERLAY_PRIMER, below).
  * ⚠️ Kept here, beside §5 whose flag it reads, and numbered after WP6b's §9 and §10.
  */
 const OVERLAY_NEEDLE = "src/components/layout/needle.tsx";
@@ -922,6 +926,22 @@ const FLAG_BINDING = partLineOf("LazyJourneyFlag");
 /** The email-verify bar's last mount — it was deleted on 2026-10-07 (owner ruling: ask quietly at withdrawal). Kept as
  *  the PLANT that puts it back: 11.emailbar must see any return of it, for a classic request or a journey one. */
 const EMAIL_BAR_MOUNT = "{emailVerifyState && !journeyShown && !promoSuppressed && <EmailVerifyBanner email={emailVerifyState.email} />}";
+/**
+ * ⭐ THE OLD FIRST-VISIT PRIMER (the Vodacom plan S7, WP8 step 3; S7-PLAN Open points 17 and 18). It stands down for a
+ * journey reader on EVERY route, so its term is the flag ALONE — never the overlays' `isJourneySurface` term: the How-to
+ * sheet replaces the primer for that reader (VODACOM-PLAN §3.8), and S11's auto-open will run on /live, /results and
+ * /watchlist too. One term in the open effect, straight after the SUPPRESS_ON line, with the flag among that effect's
+ * dependencies; one in the render, straight after the HIDE_ON and SUPPRESS_ON guard, the only place a primer already open
+ * when a refresh switches the journey on can be taken down. Nothing moves out of the file in S7: HIDE_ON
+ * (`test:marketing-optout`), SUPPRESS_ON and the automation opt-in (`test:stacking` 8.1–8.5) and the seen key stay where
+ * their gates read them.
+ */
+const OVERLAY_PRIMER = "src/components/onboarding/first-visit-primer.tsx";
+const PRIMER_EFFECT_PINNED = `if (SUPPRESS_ON.test(pathname ?? "/")) return;`;
+const PRIMER_EFFECT_GUARD = "if (journeyOn) return;";
+const PRIMER_EFFECT_DEPS = "}, [pathname, journeyOn]);";
+const PRIMER_RENDER_PINNED = `if (HIDE_ON.test(pathname ?? "/") || SUPPRESS_ON.test(pathname ?? "/")) return null;`;
+const PRIMER_RENDER_GUARD = "if (journeyOn) return null;";
 
 function g11Overlays(W: World, G: Graph, ok: Ok) {
   for (const j of OVERLAY_JOINS) {
@@ -976,6 +996,31 @@ function g11Overlays(W: World, G: Graph, ok: Ok) {
   ok("11.flag.lazy · the shell's lazy module alone loads JourneyFlag, through next/dynamic (WP6c), and AppShell never imports it — a classic page's first load carries none of it",
     FLAG_BINDING.length > 0 && binding === 1 && !shell.includes(`from "@/components/journey/journey-flag"`) && show(loaders) === show([SHELL_LAZY]),
     show({ binding, loaders }));
+  // ⭐ S7 WP8 · the old first-visit primer: the flag alone, on every route (the note at OVERLAY_PRIMER).
+  const primer = text(W, OVERLAY_PRIMER);
+  const primerFlat = squash(primer);
+  const effect = {
+    adjacent: count(primerFlat, PRIMER_EFFECT_PINNED + PRIMER_EFFECT_GUARD), pinned: count(primer, PRIMER_EFFECT_PINNED),
+    guard: count(primer, PRIMER_EFFECT_GUARD), deps: count(primer, PRIMER_EFFECT_DEPS), staleDeps: count(primer, "}, [pathname]);"),
+  };
+  ok(`11.primer.effect · the primer's open effect stands down for a journey reader straight after its SUPPRESS_ON line (${PRIMER_EFFECT_PINNED} then ${PRIMER_EFFECT_GUARD}), and runs again when the flag goes up or down (${PRIMER_EFFECT_DEPS})`,
+    effect.adjacent === 1 && effect.pinned === 1 && effect.guard === 1 && effect.deps === 1 && effect.staleDeps === 0, show(effect));
+  const render = {
+    adjacent: count(primerFlat, PRIMER_RENDER_PINNED + PRIMER_RENDER_GUARD), pinned: count(primer, PRIMER_RENDER_PINNED),
+    guard: count(primer, PRIMER_RENDER_GUARD),
+  };
+  ok(`11.primer.render · its render refuses too, straight after the HIDE_ON and SUPPRESS_ON guard (${PRIMER_RENDER_PINNED} then ${PRIMER_RENDER_GUARD}): a primer already open when a refresh switches the journey on is taken down there`,
+    render.adjacent === 1 && render.pinned === 1 && render.guard === 1, show(render));
+  const primerSpecs = importsIn(W, OVERLAY_PRIMER).filter((i) => !i.typeOnly).map((i) => i.spec);
+  const alone = {
+    reads: count(primer, OVERLAY_READS_FLAG), hook: primerSpecs.includes("@/lib/journey/journey-on"),
+    asks: count(primer, "isJourneySurface("), surfaces: primerSpecs.includes("@/lib/surfaces"),
+    joined: ["journeyOn &&", "&& journeyOn", "journeyOn ||", "|| journeyOn"].reduce((n, t) => n + count(primer, t), 0),
+    own: ["JOURNEY_ROUTE", "function isJourneySurface", "const isJourneySurface"].filter((n) => primer.includes(n)),
+  };
+  ok(`11.reads.primer · ${OVERLAY_PRIMER} is client code that reads the flag once, through useJourneyOn, and uses it ALONE — no journey list and no term joined to it — so the primer stands down for a journey reader on every route (Open point 17), not on the journey's surfaces only`,
+    isClient(primer) && alone.reads === 1 && alone.hook && alone.asks === 0 && !alone.surfaces && alone.joined === 0 && alone.own.length === 0,
+    show(alone));
 }
 
 /* ══ §6 · THE UNREAD COUNT ═══════════════════════════════════════════════════════════════════════════════════ */
@@ -2621,6 +2666,17 @@ if (!PROVE_RED) {
     const emailBarForAll = withFile(WORLD, SHELL, (s) => s.replace("<Suspense fallback={null}><LazyConsentPrompt /></Suspense>", `<Suspense fallback={null}><LazyConsentPrompt /></Suspense>${EMAIL_BAR_MOUNT}`));
     const flagEager = withFile(WORLD, SHELL, (s) => `${s}${LF}import { JourneyFlag } from "@/components/journey/journey-flag";${LF}`);
     const flagInClassic = withFile(WORLD, BOTTOM_NAV, (s) => `${s}${LF}import { JourneyFlag } from "@/components/journey/journey-flag";${LF}`);
+    // §11 · S7 WP8 — the old primer: its term dropped from the open effect, the flag from that effect's dependencies, the
+    // term from the render; the term narrowed to the journey's surfaces (S6's overlay term, not Open point 17's every
+    // route); the flag read another way.
+    const primerOpensAnyway = withFile(WORLD, OVERLAY_PRIMER, (s) => s.replace(PRIMER_EFFECT_GUARD, ""));
+    const primerDepsStale = withFile(WORLD, OVERLAY_PRIMER, (s) => s.replace(PRIMER_EFFECT_DEPS, "}, [pathname]);"));
+    const primerRendersAnyway = withFile(WORLD, OVERLAY_PRIMER, (s) => s.replace(PRIMER_RENDER_GUARD, ""));
+    const PRIMER_HOOK_IMPORT = `import { useJourneyOn } from "@/lib/journey/journey-on";`;
+    const primerOnSurfacesOnly = withFile(WORLD, OVERLAY_PRIMER, (s) => s
+      .replace(PRIMER_HOOK_IMPORT, `${PRIMER_HOOK_IMPORT}${LF}import { isJourneySurface } from "@/lib/surfaces";`)
+      .replace(OVERLAY_READS_FLAG, "const journeyOn = useJourneyOn() && isJourneySurface(pathname);"));
+    const primerReadsAttribute = withFile(WORLD, OVERLAY_PRIMER, (s) => s.replace(OVERLAY_READS_FLAG, `const journeyOn = typeof document !== "undefined" && document.documentElement.hasAttribute("data-journey");`));
 
     // §6 — defective counters, each wrapped around the real one, and the files around them edited in memory.
     /** G1's defect: the last viewer's count stays up until the next viewer's first answer lands. */
@@ -3115,6 +3171,17 @@ ${s}`);
         world: flagEager, landed: changed(flagEager, SHELL), landedAs: "every classic visitor's first load carries the journey flag" },
       { name: "a classic layout component loads the flag", expect: at("11.flag.lazy ·"),
         world: flagInClassic, landed: changed(flagInClassic, BOTTOM_NAV), landedAs: "the flag's code rides in the classic rail" },
+      // §11 · S7 WP8 — the old first-visit primer, which the How-to sheet replaces for a journey reader on every route
+      { name: "the primer's open effect forgets the journey reader", expect: at("11.primer.effect ·"),
+        world: primerOpensAnyway, landed: changed(primerOpensAnyway, OVERLAY_PRIMER), landedAs: "the tour is set open 700 ms into a journey reader's visit, kept off the screen by the render's term alone" },
+      { name: "the primer's open effect forgets the flag in its dependencies", expect: at("11.primer.effect ·"),
+        world: primerDepsStale, landed: changed(primerDepsStale, OVERLAY_PRIMER), landedAs: "a timer armed on a classic page survives a refresh that switches the journey on, and sets the tour open behind the render's term" },
+      { name: "the primer's render forgets the journey reader", expect: at("11.primer.render ·"),
+        world: primerRendersAnyway, landed: changed(primerRendersAnyway, OVERLAY_PRIMER), landedAs: "a tour already open stays over the journey's pages once the journey is switched on" },
+      { name: "the primer stands down on the journey's surfaces only (S6's overlay term, not every route)", expect: at("11.reads.primer ·"),
+        world: primerOnSurfacesOnly, landed: changed(primerOnSurfacesOnly, OVERLAY_PRIMER), landedAs: "the old tour opens for a journey reader on /live, /results and /watchlist, beside the How-to sheet's future auto-open" },
+      { name: "the primer reads the flag's attribute during render", expect: at("11.reads.primer ·"),
+        world: primerReadsAttribute, landed: changed(primerReadsAttribute, OVERLAY_PRIMER), landedAs: "a primer deaf to the flag going up or down, and blind to the shell's mark before the lazy flag lands" },
       // §6 — the unread count
       { name: "a store that keeps the last viewer's count across a sign-in (critic G1)", expect: at("6.viewer."),
         impl: { unread: { ...REAL.unread, feed: stickyFeed } }, landed: stickyKeeps, landedAs: "B's dot shows A's count until B's first answer lands" },
