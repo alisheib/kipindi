@@ -254,6 +254,29 @@ setAffiliateConfig({
   ok("6.count · ⭐ the KPI counts players who brought somebody, over every account and not a page",
     stats.referrerCount >= 12, String(stats.referrerCount));
   ok("6.unpaid · the admin read model carries the same one discriminator", stats.rewardsLive === false);
+
+  // ⭐ 2026-10-12 (Ali: "I can see the name but I can't know the player") — the roster's handle opens that player,
+  // for exactly the viewers the player page's gate admits. ⛔ A Growth officer reads this page but, by default, cannot
+  // open a player: a link for them would end on "Restricted".
+  const src = (p: string) => readFileSync(new URL(`../src/${p}`, import.meta.url), "utf8").replace(/\r\n/g, "\n");
+  const page = src("app/admin/affiliate/page.tsx");
+  const gate = src("components/admin/admin-section-gate.tsx");
+  ok("6.link · the roster handle is a link to that player's page, painted only when viewerMayOpen(the players path) says so",
+    /const PLAYERS_PATH = "\/admin\/players";/.test(page) && /viewerMayOpen\(PLAYERS_PATH\)/.test(page)
+      && /\{mayOpenPlayers \? \(\s*<Link\s+href=\{`\$\{PLAYERS_PATH\}\/\$\{b\.userId\}` as Route\}/.test(page));
+  ok("6.link.gate · ⛔ viewerMayOpen asks the section gate's own view question on its stored-row read, and fails closed",
+    /export async function viewerMayOpen\(path: string\)/.test(gate)
+      && /const user = session \? await viewerRow\(session\.userId\) : null;\s*if \(!user \|\| !isStaffRole\(user\.role\) \|\| !path\.startsWith\("\/admin"\)\) return false;/.test(gate)
+      && /return isOwnerOnlyPath\(path\) \? isAdmin\(user\.role\) : await canView\(user\.role, domainForPath\(path\)\);\s*\} catch \{\s*return false;/.test(gate));
+  const { canView } = await import("../src/lib/server/rbac");
+  const { domainForPath } = await import("../src/lib/server/roles");
+  const playersDomain = domainForPath("/admin/players/usr_x");
+  ok("6.link.roles · by default the Owner, Support and Compliance get the link; Growth, Finance, Moderator and Auditor do not",
+    playersDomain === domainForPath("/admin/players")
+      && (await canView("ADMIN", playersDomain)) && (await canView("SUPPORT", playersDomain)) && (await canView("COMPLIANCE", playersDomain))
+      && !(await canView("GROWTH", playersDomain)) && !(await canView("FINANCE", playersDomain))
+      && !(await canView("MODERATOR", playersDomain)) && !(await canView("AUDITOR", playersDomain)),
+    `players domain = ${playersDomain}`);
 }
 
 // ── §7 · THE REAL SIGN-UP PATH — the register form's own function, not `bindRecruit` alone ────

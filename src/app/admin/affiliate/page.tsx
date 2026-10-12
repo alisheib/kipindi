@@ -1,4 +1,6 @@
-import { AdminPageGate } from "@/components/admin/admin-section-gate";
+import Link from "next/link";
+import type { Route } from "next";
+import { AdminPageGate, viewerMayOpen } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminKpi, AdminCard } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
@@ -22,6 +24,8 @@ export const metadata = { title: "Affiliate · Admin" };
 export const dynamic = "force-dynamic";
 
 const LEDGER_CHIP: Record<string, "resolved" | "pending" | "objection"> = { PAID: "resolved", PENDING: "pending", HELD: "objection" };
+/** Where a roster name leads — and the path whose gate decides whether it is a link at all. */
+const PLAYERS_PATH = "/admin/players";
 
 /**
  * /admin/affiliate — referral program control room, on the shared admin shell.
@@ -47,10 +51,12 @@ async function AdminAffiliateContent({ searchParams }: AffiliateProps) {
   const settingsRow = await reloadAffiliateConfig();
   /* ⭐ THE SWITCH IS READ FRESH, FOR THIS VIEWER — the ceremony's `expectSeq` comes from this read, and
      whether the viewer is the Owner is decided on their STORED role, never on the session cookie. It runs
-     beside the stats read rather than before it: neither waits on the other. */
-  const [view, stats] = await Promise.all([
+     beside the stats read rather than before it: neither waits on the other. So does the roster's question —
+     may this viewer open a player? — on the page gate's own read of the viewer. */
+  const [view, stats, mayOpenPlayers] = await Promise.all([
     (async () => invitePayableView((await currentSession())?.userId ?? null))(),
     getAdminAffiliateStats(),
+    viewerMayOpen(PLAYERS_PATH),
   ]);
   /* ⛔ ONE READ OF THE SETTINGS, AND IT IS THE ONE THE OWNER SEES PRICED. The editor's values, the price
      in the Make-payable dialog, the fingerprint that "the settings on this page" posts back AND the Save's
@@ -213,10 +219,25 @@ async function AdminAffiliateContent({ searchParams }: AffiliateProps) {
                           </td>
                         )}
                         <td>
-                          <span className="inline-flex items-center gap-2 min-w-0">
-                            <Avatar initials={b.handle.replace(/[^a-z0-9]/gi, "").slice(0, 2)} size="sm" seed={b.userId} />
-                            <span className="truncate font-mono font-semibold">{b.handle}</span>
-                          </span>
+                          {/* ⭐ THE HANDLE OPENS THE PLAYER (Ali, 2026-10-12: "I can see the name but I can't know the
+                              player"). A handle alone cannot be paid or checked, so for a viewer the player page will
+                              let in it is a link there — in the link colour, because a phone has no hover to reveal
+                              it. ⛔ Only then: a role that cannot open players (Growth, by default) keeps plain text.
+                              The 6px in and out make a 40px tap target (`--tap-min`) without changing the row height. */}
+                          {mayOpenPlayers ? (
+                            <Link
+                              href={`${PLAYERS_PATH}/${b.userId}` as Route}
+                              className="admin-focus group inline-flex items-center gap-2 min-w-0 max-w-full -my-1.5 py-1.5 rounded-md"
+                            >
+                              <Avatar initials={b.handle.replace(/[^a-z0-9]/gi, "").slice(0, 2)} size="sm" seed={b.userId} />
+                              <span className="truncate font-mono font-semibold text-royal-300 underline-offset-2 group-hover:underline">{b.handle}</span>
+                            </Link>
+                          ) : (
+                            <span className="inline-flex items-center gap-2 min-w-0">
+                              <Avatar initials={b.handle.replace(/[^a-z0-9]/gi, "").slice(0, 2)} size="sm" seed={b.userId} />
+                              <span className="truncate font-mono font-semibold">{b.handle}</span>
+                            </span>
+                          )}
                         </td>
                         <td className="text-right font-mono tabular font-semibold text-text">{b.recruits}</td>
                         {paid && <td className="text-right font-mono tabular font-semibold text-text">{formatTzs(b.earnedTzs)}</td>}

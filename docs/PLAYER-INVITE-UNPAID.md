@@ -130,7 +130,10 @@ campaigns) and not `/admin/agents` (the paid agent programme; both untouched):
 - **Invites by player** — the FULL roster, paginated, ranked by friends joined. ⭐ It used to be a
   top ten ranked by money earned; with the platform paying nothing that sorted on a column of
   zeros, and a top-ten cut is useless as a payables list — the eleventh person is not a rounding
-  error, they are somebody who does not get paid;
+  error, they are somebody who does not get paid. ⭐ Since 2026-10-12 each player's handle is a link to
+  their player page (Ali: a handle alone does not tell you who the player is), painted only for a
+  viewer whose role may open player pages — a Growth officer, by default, keeps plain text rather
+  than a link that ends on "Restricted";
 - KPIs: **Total referrals** (summed from the SAME roster rows below it, so the headline and the
   table can never disagree — it used to count the AGENT programme's recruits too), **Players
   inviting** (how many brought ≥ 1 friend, over every account), and **Paid by 50pick**, which SUMS

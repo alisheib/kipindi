@@ -94,3 +94,22 @@ export async function AdminSectionGate({ children, title: titleProp, banner = tr
     </AdminActProvider>
   );
 }
+
+/**
+ * ⭐ MAY THE VIEWER OPEN `path`? — for a page deciding whether to paint a link INTO another section (2026-10-12, Ali:
+ * the affiliate roster's names should open the player). It asks this gate's own view question, in the same order —
+ * staff on the STORED row, Owner-only paths for ADMIN, every other path by its domain's view grant — on the same
+ * per-render read, so a link is painted exactly when the target's gate will let the viewer in. ⛔ A link the target
+ * would refuse ends on "Restricted": a Growth officer reads the affiliate page but cannot open a player by default.
+ * Never throws; anything unread answers `false`, and the target's own gate still decides.
+ */
+export async function viewerMayOpen(path: string): Promise<boolean> {
+  try {
+    const session = await currentSession();
+    const user = session ? await viewerRow(session.userId) : null;
+    if (!user || !isStaffRole(user.role) || !path.startsWith("/admin")) return false;
+    return isOwnerOnlyPath(path) ? isAdmin(user.role) : await canView(user.role, domainForPath(path));
+  } catch {
+    return false;
+  }
+}
