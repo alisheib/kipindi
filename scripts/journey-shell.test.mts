@@ -90,7 +90,11 @@
  *      on, no option object, its loader ending in that guard, which takes a ChunkLoadError alone) and only AppShell
  *      imports it; every module it loads is "use client" and loaded from there alone (the win celebration's three
  *      static importers named); and no server module anywhere in src defers a "use client" module through
- *      `import(…)`.
+ *      `import(…)`. ⭐ And, since S7's LIVE FIX L1 (S7-PLAN A13(b), A24 item 5), THE NEXT/DYNAMIC CENSUS
+ *      (12.dynamic.census): the files in src that import `next/dynamic` are exactly the five it names — the shell's lazy
+ *      module, `lazy-overlays.tsx` (the chat bubble and the first-visit primer, for every player), the Tiketi switch's
+ *      rail, the journey's route ghosts and the journey home's lazy module — every loader in them ends its import chain
+ *      in `.catch(nothingIfLost)`, and each takes that guard by name from `lost-chunk.ts` and defines none of its own.
  *
  * ⛔ IN-PROCESS BY CONSTRUCTION. `--prove-red` hands the same checks defective implementations and edited source TEXT
  * held in memory, and requires the check named for each defect to fail. This file makes no file-system change anywhere,
@@ -2381,7 +2385,11 @@ function g10Terms(I: Impl, W: World, ok: Ok) {
  *       the part's code back in that file's first load), save the three named files that import the win celebration's
  *       module for `dispatchWinCelebration`;
  *   and, platform-wide, no server module in src calls or imports React's `lazy`, and none defers a "use client" module
- *   through `import(…)` at all — React.lazy, next/dynamic or any wrapper: the defect AppShell had, wherever it recurs.
+ *   through `import(…)` at all — React.lazy, next/dynamic or any wrapper: the defect AppShell had, wherever it recurs;
+ *   and (e), since S7's live fix L1 (S7-PLAN A13(b)), every CLIENT file that imports `next/dynamic` is on the census's
+ *   list, and every loader in every one of them ends in the app's one guard (DYNAMIC_FILES, 12.dynamic.census): the
+ *   chat bubble's and the first-visit primer's two among them, which a lost chunk took to the critical-error screen
+ *   on any page, for any player, until L1.
  * ⚠️ It cannot see chunking itself: that a part leaves the first load is shown only by a production build (VODACOM-PLAN
  * §0i, WP6c). This holds the source to the shape that build proved.
  */
@@ -2414,6 +2422,52 @@ const OFFLINE_MOUNT = "<Suspense fallback={null}><OfflineBanner /></Suspense>";
 /** The win celebration's module, and the three files that import it statically for `dispatchWinCelebration`. */
 const WIN_HOME = "src/components/markets/win-celebration.tsx";
 const WIN_IMPORTERS = ["src/components/layout/away-summary-bar.tsx", "src/components/markets/notify-poller.tsx", "src/components/updown/updown-result-announcer.tsx"];
+/**
+ * THE NEXT/DYNAMIC CENSUS (the Vodacom plan S7's LIVE FIX L1, S7-PLAN A13(b), with A24 item 5's fifth file; 2026-10-12).
+ * Every file in src that imports `next/dynamic`, BY NAME: a part loaded through it is a fetch of its own, and a fetch that
+ * fails with nothing to catch it takes the whole page to the critical-error screen. The shell's parts took the guard in
+ * S6 WP6c; the Tiketi rail, the route ghosts and the journey home's parts in S7 WP6 (A13(a)); the two OLDER loaders — the
+ * chat bubble and the first-visit primer, `lazy-overlays.tsx`, on every page, for every player — take it in L1.
+ * 12.dynamic.census holds all of them at once, and holds the list: a sixth file that imports `next/dynamic` fails here
+ * until it is named, so no loader can join the app without the guard, and none can keep a guard of its own beside the
+ * app's one.
+ */
+const DYNAMIC_FILES: readonly string[] = [
+  SHELL_LAZY,                                              // the shell's deferred parts (S6 WP6c)
+  "src/components/layout/lazy-overlays.tsx",               // the chat bubble and the first-visit primer (L1)
+  "src/components/journey/tickets/ticket-switch-rail.tsx", // the Maswali | Juu/Chini rail's tabs (S6 WP9; guarded in S7 WP6)
+  "src/components/journey/route-ghost-lazy.tsx",           // the journey's route ghosts (R5-D; A24 item 5)
+  "src/components/journey/home/home-lazy.tsx",             // the journey home's parts (S7 WP6)
+];
+/** The overlays' two loaders live in the second of those (L1's file): the red twin plants in it by name. */
+const LAZY_OVERLAYS = DYNAMIC_FILES[1];
+/** next/dynamic's import, as every one of those files writes it: the census reads the loaders by this name. */
+const DYNAMIC_IMPORT = `import dynamic from "next/dynamic";`;
+/** A guard of a file's own: the stand-in, the guard or its once-per-page flag declared outside the app's one module. */
+const OWN_GUARD: readonly string[] = ["function Nothing(", "function nothingIfLost(", "const nothingIfLost", "let reported"];
+/** A call of `dynamic(`, and not a longer name that ends in it (`makedynamic(`) or a member of something else (`x.dynamic(`). */
+const DYNAMIC_CALL = new RegExp("(?<![A-Za-z0-9_$.])dynamic[ ]*[(]", "g");
+/**
+ * The loader of every `dynamic(…)` call in a source: the call's FIRST argument, whole, read by its brackets — written on
+ * one line or over several, an option object after it or not — with its line breaks read as spaces.
+ */
+function dynamicLoaders(s: string): string[] {
+  return [...s.matchAll(DYNAMIC_CALL)].map((m) => {
+    const from = (m.index ?? 0) + m[0].length;
+    let depth = 0, i = from;
+    for (; i < s.length; i++) {
+      const c = s[i];
+      if (c === "(" || c === "{" || c === "[") depth++;
+      else if (c === ")" || c === "}" || c === "]") { if (depth === 0) break; depth--; }
+      else if (c === "," && depth === 0) break;
+    }
+    return s.slice(from, i).split(LF).map((l) => l.trim()).join(" ").trim();
+  });
+}
+/** A loader whose import chain ENDS in the app's guard, and holds no other catch (one that swallowed an error before it). */
+const guardedLoader = (loader: string) =>
+  loader.startsWith("() => import(") && loader.endsWith(".catch(nothingIfLost)") && count(loader, ".catch(") === 1;
+
 /** Every `import(…)` or `require(…)` in a server module of src that names a "use client" module, as "file -> module". */
 function deferredClientImports(w: World): string[] {
   return [...w.files].filter(([, s]) => !isClient(s)).flatMap(([p, s]) => [...s.matchAll(CALLED)]
@@ -2522,6 +2576,38 @@ function g12ShellParts(W: World, G: Graph, ok: Ok) {
   const deferred = deferredClientImports(W);
   ok(`12.nodefer.platform · no server module in src defers a "use client" module through import(…) — React.lazy, next/dynamic or any wrapper: from a server file that module joins the first load all the same`,
     deferred.length === 0, deferred.join(", "));
+  // ⭐ LIVE FIX L1 (S7-PLAN A13(b), A24 item 5; 2026-10-12): the census of every file that imports next/dynamic — the
+  // list itself, each file's loaders, and the one guard each takes. See DYNAMIC_FILES.
+  const dynamicUsers = [...W.files.keys()].filter((p) => importsIn(W, p).some((i) => i.spec === "next/dynamic")).sort();
+  const censusRows = DYNAMIC_FILES.map((f) => {
+    const s = text(W, f);
+    const loaders = dynamicLoaders(s);
+    return {
+      f,
+      spelled: count(s, DYNAMIC_IMPORT) === 1,
+      loaders: loaders.length,
+      unguarded: loaders.filter((l) => !guardedLoader(l)),
+      guard: show(importedNames(W, f, LOST_CHUNK)) === show(["nothingIfLost"]) && count(s, LOST_CHUNK_IMPORT) === 1,
+      own: OWN_GUARD.filter((x) => s.includes(x)),
+    };
+  });
+  const censusOff = censusRows.filter((r) => !r.spelled || r.loaders === 0 || r.unguarded.length > 0 || !r.guard || r.own.length > 0);
+  ok(`12.dynamic.census · every file in src that imports next/dynamic is one of the ${DYNAMIC_FILES.length} the census names — the shell's lazy module, lazy-overlays (the chat bubble and the first-visit primer), the Tiketi switch's rail, the journey's route ghosts and the journey home's lazy module — and each imports it as dynamic, ends EVERY loader's import chain in .catch(nothingIfLost), takes that guard by name from the app's one module (lost-chunk.ts) and defines none of its own: a chunk that never arrives leaves its part out, for every player, instead of the critical-error screen (S7-PLAN A13(b), A24 item 5; live fix L1)`,
+    show(dynamicUsers) === show([...DYNAMIC_FILES].sort()) && censusOff.length === 0,
+    show({ unnamed: dynamicUsers.filter((p) => !DYNAMIC_FILES.includes(p)), gone: DYNAMIC_FILES.filter((p) => !dynamicUsers.includes(p)), off: censusOff }));
+  const loaderProbe = dynamicLoaders([
+    `const A = dynamic(() => import("@/p/a").then((m) => m.A).catch(nothingIfLost), { ssr: false });`,
+    `const B = dynamic(`, `  () => import("@/p/b").then(m => m.B),`, `  { ssr: false },`, `);`,
+    `const C = dynamic(() => import("@/p/c").then((m) => m.C).catch(() => Nothing));`,
+    `const D = dynamic(() => import("@/p/d").then((m) => m.D).catch(() => Nothing).catch(nothingIfLost));`,
+    `const E = makedynamic(1); const F = kit.dynamic(2);`,
+  ].join(LF));
+  ok("12.dynamic.c · CONTROL · the loader reader can fail: it takes each dynamic( call's first argument whole — on one line or over several, an option object after it or not — and leaves makedynamic( and a member call alone; and only a loader whose chain ENDS in the guard, with no other catch before it, counts as guarded",
+    show(loaderProbe) === show([
+      `() => import("@/p/a").then((m) => m.A).catch(nothingIfLost)`, `() => import("@/p/b").then(m => m.B)`,
+      `() => import("@/p/c").then((m) => m.C).catch(() => Nothing)`, `() => import("@/p/d").then((m) => m.D).catch(() => Nothing).catch(nothingIfLost)`,
+    ]) && show(loaderProbe.map(guardedLoader)) === show([true, false, false, false]),
+    show({ loaderProbe, guarded: loaderProbe.map(guardedLoader) }));
   const cases = ['const A = lazy(() => import("x"));', "const B = React.lazy(load);", "const C = makelazy(1);", "const D = LazyThing(2);", "const E = lazy<Props>(load);"];
   const caught = cases.map((c) => LAZY_CALL.test(c));
   const importCases = ['import { Suspense, lazy } from "react";', 'import { lazy as deferred } from "react";', 'import { lazyLoad } from "react";', 'import { lazy } from "./mine";'];
@@ -2583,7 +2669,7 @@ async function run(I: Impl, W: World, log: (l: string) => void): Promise<{ faile
   log("§10 · the header-fit gate's terms — the drives' pill rule, the red twin's leash, no witness left behind (WP6b, A6)");
   g10Terms(I, W, ok);
   log("");
-  log("§12 · the shell's deferred parts — no React lazy in AppShell, one client module of next/dynamic parts each in its own boundary, a lost chunk left out, no server module deferring a client one (WP6c)");
+  log("§12 · the shell's deferred parts — no React lazy in AppShell, one client module of next/dynamic parts each in its own boundary, a lost chunk left out, no server module deferring a client one (WP6c); and every next/dynamic loader in the app ends in the one guard (S7's live fix L1)");
   g12ShellParts(W, G, ok);
   return { failed, total };
 }
@@ -3055,6 +3141,24 @@ ${s}`);
     const secondPlain = withFile(WORLD, SHELL_LAZY, (s) => s.replace(LOST_CHUNK_IMPORT, `${LOST_CHUNK_IMPORT}${LF}import { cn } from "@/lib/utils";`));
     const guardClient = withFile(WORLD, LOST_CHUNK, (s) => `"use client";${LF}${s}`);
     const guardImports = withFile(WORLD, LOST_CHUNK, (s) => `import { cn } from "@/lib/utils";${LF}${s}`);
+    // §12 · S7's LIVE FIX L1 (S7-PLAN A13(b), A24 item 5) — the next/dynamic census. A13's named plants: the guard dropped
+    // from the chat bubble's loader and from the primer's; a further file importing next/dynamic without the guard; a
+    // local copy of the guard inside lazy-overlays.tsx; and the guard catching every error — which is `guardSwallows`
+    // above, planted in the guard's own module and caught by 12.module.lost. Beside them, the same defects one step
+    // on: a loader that swallows every error in place of the guard, the guard taken from another module, and a further
+    // file that takes the guard and is still not named (the list is the census: it grows by a deliberate edit).
+    const CHAT_LOADER = ".then((m) => m.ChatRoot).catch(nothingIfLost), { ssr: false });";
+    const PRIMER_LOADER = ".then((m) => m.FirstVisitPrimer).catch(nothingIfLost), { ssr: false });";
+    const chatUnguarded = withFile(WORLD, LAZY_OVERLAYS, (s) => s.replace(CHAT_LOADER, ".then((m) => m.ChatRoot), { ssr: false });"));
+    const primerUnguarded = withFile(WORLD, LAZY_OVERLAYS, (s) => s.replace(PRIMER_LOADER, ".then((m) => m.FirstVisitPrimer), { ssr: false });"));
+    const chatSwallows = withFile(WORLD, LAZY_OVERLAYS, (s) => s.replace(CHAT_LOADER, ".then((m) => m.ChatRoot).catch(() => () => null), { ssr: false });"));
+    const overlaysOwnGuard = withFile(WORLD, LAZY_OVERLAYS, (s) => s.replace(LOST_CHUNK_IMPORT, text(WORLD, LOST_CHUNK).split("export ").join("")));
+    const overlaysGuardElsewhere = withFile(WORLD, LAZY_OVERLAYS, (s) => s.replace(LOST_CHUNK_IMPORT, `import { nothingIfLost } from "@/lib/lost-chunk-copy";`));
+    const SIXTH_DYNAMIC = "src/components/journey/home/home-island.tsx";
+    const sixthUnguarded = withFile(WORLD, SIXTH_DYNAMIC, () => `"use client";${LF}import dynamic from "next/dynamic";${LF}`
+      + `export const LazyPoller = dynamic(() => import("@/components/ui/refresh-poller").then((m) => m.RefreshPoller));${LF}`);
+    const sixthUnnamed = withFile(WORLD, SIXTH_DYNAMIC, () => `"use client";${LF}import dynamic from "next/dynamic";${LF}${LOST_CHUNK_IMPORT}${LF}`
+      + `export const LazyPoller = dynamic(() => import("@/components/ui/refresh-poller").then((m) => m.RefreshPoller).catch(nothingIfLost));${LF}`);
     // §10 — the header-fit gate's terms: the drives' copy of the pill rule, the red twin's leash, a witness left behind.
     const withExtra = (rel: string, edit: (s: string) => string): World =>
       ({ ...WORLD, extra: new Map<string, string>([...WORLD.extra, [rel, edit(WORLD.extra.get(rel) ?? "")] as [string, string]]) });
@@ -3514,6 +3618,24 @@ ${s}`);
         world: guardClient, landed: changed(guardClient, LOST_CHUNK), landedAs: "a client boundary where a plain module of three declarations should be" },
       { name: "the guard's module imports a module (A13(a))", expect: at("12.parts.client ·"),
         world: guardImports, landed: changed(guardImports, LOST_CHUNK), landedAs: "every page that loads a part pulls another module in through the guard" },
+      // §12 · S7's live fix L1 (S7-PLAN A13(b), A24 item 5) — the next/dynamic census, each plant on 12.dynamic.census
+      // (A13's fifth, "the guard catching every error", is the 12.module.lost plant above, in the guard's own module)
+      { name: "the lost-chunk guard dropped from the chat bubble's loader (L1)", expect: at("12.dynamic.census ·"),
+        world: chatUnguarded, landed: changed(chatUnguarded, LAZY_OVERLAYS),
+        landedAs: "a chat chunk that never arrives takes any page, for any player, to the critical-error screen again" },
+      { name: "the lost-chunk guard dropped from the first-visit primer's loader (L1)", expect: at("12.dynamic.census ·"),
+        world: primerUnguarded, landed: changed(primerUnguarded, LAZY_OVERLAYS), landedAs: "the same, for the primer's chunk, which every page mounts" },
+      { name: "the chat bubble's loader swallows every error in place of the guard (L1)", expect: at("12.dynamic.census ·"),
+        world: chatSwallows, landed: changed(chatSwallows, LAZY_OVERLAYS), landedAs: "a render bug in the chat hidden as if its chunk were lost, and nothing reported" },
+      { name: "a local copy of the guard inside lazy-overlays.tsx (L1)", expect: at("12.dynamic.census ·"),
+        world: overlaysOwnGuard, landed: changed(overlaysOwnGuard, LAZY_OVERLAYS) && !text(overlaysOwnGuard, LAZY_OVERLAYS).includes(LOST_CHUNK_IMPORT),
+        landedAs: "a second guard and a second once-per-page flag: one dropped connection reported twice" },
+      { name: "lazy-overlays.tsx takes its guard from another module (L1)", expect: at("12.dynamic.census ·"),
+        world: overlaysGuardElsewhere, landed: changed(overlaysGuardElsewhere, LAZY_OVERLAYS), landedAs: "a guard beside the app's one, which no check reads" },
+      { name: "a further file imports next/dynamic without the guard (L1: A13's \"fifth file\", the sixth since A24 item 5 counted the route ghosts)", expect: at("12.dynamic.census ·"),
+        world: sixthUnguarded, landed: changed(sixthUnguarded, SIXTH_DYNAMIC), landedAs: "a new deferred part whose lost chunk is fatal" },
+      { name: "a further file imports next/dynamic, guard and all, without being named in the census (L1)", expect: at("12.dynamic.census ·"),
+        world: sixthUnnamed, landed: changed(sixthUnnamed, SIXTH_DYNAMIC), landedAs: "a loader no gate holds to the guard from then on" },
       // §10 — the header-fit gate's terms (A5, A6)
       { name: "the header draws the pill on the deposit screen while the drives skip it there", expect: at("10.rules.pill ·"),
         impl: { header: pillOnDeposit }, landed: pillOnDeposit(onDeposit).pill && !HDR.journeyHeaderState(onDeposit).pill,
