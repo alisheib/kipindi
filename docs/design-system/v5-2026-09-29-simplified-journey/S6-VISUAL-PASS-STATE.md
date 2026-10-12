@@ -1,8 +1,11 @@
 # S6 visual pass — the state, for resuming on any machine (updated 2026-10-11, ALI-BLADE15)
 
+**✅ S6 IS CLOSED (2026-10-12 03:01 EAT).** The close record (test:all with the database suites, classic parity at `c2d9e156` →
+`ca72fe15`, production) is VODACOM-PLAN §0's first ✅ paragraph. This file and `S6-READ-TRIAGE.md` stay as the record of
+the visual pass; the owner questions (appendix K) and the S12 list (appendix G) carry forward.
+
 **⭐ ROUND 10 IS LIVE (2026-10-12 01:37 EAT, `ca72fe15` — Railway's first build failed on the Google-font fetch (the known transient), rebuilt from source).** Appendix L is done (its items, the /updown chart's rebuild bug, the read's
-follow-ups); the reads' record is `S6-READ-TRIAGE.md`. Left for S6: its close record (classic parity at `c2d9e156` + the
-tip, test:all), then S6 ✅.
+follow-ups); the reads' record is `S6-READ-TRIAGE.md`. S6's close record ran after it (above): S6 ✅.
 
 **⭐ 2026-10-11 19:24 — ROUND 9 IS LIVE (`35efb6a9`); ROUND 10 IS THE LAST STEP — ▶ appendix L.** Round 9's own read (336
 tiles of `9a740922`, eight readers) found no regression and one real item, fixed in `35efb6a9`. What remains of S6:

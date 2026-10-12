@@ -2199,6 +2199,33 @@ In-memory plants, each of which must be caught: the row turned back into a link 
 
 *From:* Critiques 5 and 14; critique 4 (its [E2] part). Second review: the A23 problem and missing item 10 (the done-when and the Summary name L1 and every served-byte change). modal.tsx's render guard is :317-319 since 23f762f4.
 
+### A24 · The base moved: every citation re-read at `daf0e799`, S6's close (2026-10-12)
+
+*Overrides:* A1's base — every line number now reads at origin/main `daf0e799`, 727 commits after `7d4b0ad5` — and, item by item below, every amendment or body line the new base contradicts.
+
+Re-read 2026-10-12 (S7 WP0 item 5, read-only, each finding checked against the file): 439 line citations — 112 unchanged, 274 moved (the same text on a new line: read it by its text), 42 changed, 11 gone; 82 file checks — 56 exist, 25 are files S7 creates (absent, as planned), and 1 already exists (`scripts/anchors/ticker-honesty.anchors.mjs`, WP0's). The changes that alter what a package does:
+1. `/`'s route file (WP2, journey-home §1, WP7 §6, Open point 25).
+- The static `metadata` is now `export async function generateMetadata()`, the title in the reader's language (round 4 of S6's visual pass, `92b4cc11`). WP2 keeps `generateMetadata`, and the imports only it needs, in page.tsx; journey-home §1 reads that form (canonical "/" and `openGraph: { ...ROOT_OPEN_GRAPH, url: "/" }` as today's file spells them); WP7 §6's "no generateMetadata" check is struck; Open point 25's overrule has happened.
+- The body WP2 moves is now page.tsx :71-356, its imports :4-36, and it calls `resolveSimpleJourney()` itself (:254). Correction 23 ("no card page asks the resolver") is false for `/`, and WP7 §6's "asked exactly once" counts that call.
+- Four more gates read the body and are re-pointed in WP2: predictor-shown, visual-pass-r4h (two reads), r4i and r5e.
+2. The loading drawings (A17 item 2, A17 item 4, A19 item 4, Point 14, WP7).
+- The root `loading.tsx` now gives a journey reader `LazyJourneyRouteGhost`, picked by path in the browser, and its `/` ghost is the classic landing's (`HomeGhost`). WP7 re-points `route-ghost.tsx`'s `/` entry; `test:visual-pass-r4j` §3 holds it to the landing page today.
+- `positions/loading.tsx`'s pattern is now a lone `resolveSimpleJourney()` and `<LazyJourneyRouteGhost at=…/>`, with `getServerT` banned there (`test:journey-tickets` reads it). A17 item 4 and A19 item 4 quote the retired lines.
+3. Dates (A12, Point 9). Every player date goes through `formatEatDateTime(…, monthsShort, locale)` (the market page imports it at :52), and `test:timer-date` §3 fences the English helpers out. The card's settled date uses it, never `formatDeadline`, and A12's two anchors are re-derived on it. Point 9's "English months until S12" no longer holds: S6 put sw and zh dates on the localized formatters (`8e0f1e69`).
+4. The helpline (A6). `HELPLINE()` and `HELPLINE_TEL()` were deleted on 2026-10-09; journey-home §5's check and its plant read `nationalHelpline` and `nationalHelplineTel`.
+5. The lost-chunk guard (A13). A fourth `next/dynamic` file, `src/components/journey/route-ghost-lazy.tsx`, carries its own `nothingIfLost` (:39), "repeated, not imported", and `test:visual-pass-r5d` §2 holds the two copies equal. WP6's shared module takes both copies, its census counts this file, and r5d §2 is re-pointed in the same commit.
+6. The journey card's neighbours (WP5, WP10, A15).
+- `ticket-card.tsx`'s fallback-only `line-clamp` (WP5 step 2's model) is gone.
+- The card slots WP10 swaps — the similar rail (`markets/[id]/page.tsx` :1208-1252), `/results` (:538-556), `/watchlist` (:255-275) — now pass `shownPredictors(…)` and `{!breakEnd && …}`: re-read each else-arm at the base and keep both.
+- `.kp-jsheet__title` (globals.css :7494) now has a top margin computed from `--type-h3` and `text-wrap: balance`: A15's 24px title accounts for that margin.
+7. Where a sign-in lands (A11). The landing code of `register/actions.ts` and `login/actions.ts` is now `landingAfterAuth` (`auth-landing.ts`) plus `withWelcome` (`safe-next.ts`). A11 still holds, and is wider: every sign-in also adds `welcome=back`.
+8. Tafuta and the search band (A20, A21). The language row's chevron is now `translateX(-2.25px) rotate(90deg)` with `edge="end"` (round 9's edge rule): A20's Tafuta row mirrors it. /live's SearchBox now sits inside `QUERY_SEARCH_BAND_CLASS`: A21 item 3 keeps the band.
+9. Done on main by WP0 (`284f3bc7`, `ce2c3afa`) and not redone: red:ticker-honesty's cases in the anchors file, its verdict the whole check id (`caughtOn`); test:red-anchors' ceiling 64; test:stacking's primer checks 8.1-8.5. And test:stacking's z-order 6.1 is GREEN since `dfd0072e` (z 11 is the named `ticker-focus-lift`): A3's "exits 1 on main" is stale, and WP8's gate reads every test:stacking check green.
+10. The bars above a journey page (A5). AppShell's notices wrap their bodies in `noticeBody`, NoticeBar is `px-3`, and the primer adds `[--dock-pb:0px]`: A5's estimates are replaced by the figures measured on this base (VODACOM-PLAN §0j, §0h point 67).
+11. Still as the plan assumes: the parity harness is VERSION 2 until WP1; A22's DENY list has no `/watchlist`; no `kp-jcard`, `kp-jhome`, `kp-jhowto` or `kp-howto` in src; `markets/loading.tsx` is still classic-only; predeploy gained 13 suites and lost none (C2's lists hold). A21's `market-dal.ts:775` and `:1322` each point one line above the sort they mean (:814 and :1376 at this base).
+
+*From:* S7 WP0 item 5 (VODACOM-PLAN §0j).
+
 ### Points for Ali (VODACOM-PLAN §0h point 58)
 
 1. [Replaces Open point 1] Decision: S7 starts only when S6 is closed, on a branch from origin/main at that close. S6 is closed when three things hold. First, A8i-2 and A8j, the two Enter-key money fixes for every player that S6 now does first, are live and read back. Second, the owed proof of A8d, A8g and A8h has run. Third, WP12 is done, with its classic-parity comparisons recorded in §0i. A8i itself has been live since 23f762f4. Overrule: start once A8i-2 and A8j are live and read back, but do only WP0 (the records, the reds, the test repairs and the bar measurements) until §0i records S6's last two comparisons, because WP1's upgraded check can no longer read S6's old baselines. Under the overrule, WP0's points are numbered after S6's last point (57 today). The draft's old overrule, 'start on A8h's commit', is withdrawn: A8h and A8i are both live.

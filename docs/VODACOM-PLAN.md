@@ -16,12 +16,13 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-11):** S6 (the flagged shell) is in progress (§0i): WP0–WP12 are live behind the flag, the S6 visual
+**State (2026-10-12):** S6 (the flagged shell) is ✅ — CLOSED 2026-10-12 03:01 EAT, its close record the first ✅ paragraph
+below. S7 (home and cards, flagged) is in progress (§0j). S6's own history (§0i): WP0–WP12 are live behind the flag, the S6 visual
 pass (rounds 1–6), its round 7 and round 8 (the owner's four rulings of 2026-10-10) are live from ALI-BLADE15 (the ✅
 paragraphs below), R8-D — the break's other channels — with them. The close-out read (333 tiles, eight readers, 2026-10-11) found 19
 items: round 9 fixes them. K32 (an agent fee paid into a draft that expired was never owed back) is live. Round 9 (the read's 19
-items) is LIVE (`35efb6a9`, 2026-10-11 19:24 EAT) and its own read found no regression; ROUND 10 (S6-VISUAL-PASS-STATE
-appendix L) is the last S6 step. As of 2026-10-07: WP0–WP11 are live behind the flag — the shell
+items) is LIVE (`35efb6a9`, 2026-10-11 19:24 EAT) and its own read found no regression; round 10 (S6-VISUAL-PASS-STATE
+appendix L) is LIVE (`ca72fe15`, 2026-10-12 01:37 EAT). As of 2026-10-07: WP0–WP11 are live behind the flag — the shell
 swap, the overlay rules, Tiketi zangu (WP9), the journey sell look (WP10), `--rail-h` (WP11) and the first-download fix
 (WP6c), each verified locally before its push — and classic viewers are served what they were
 (`qa:classic-shell-parity`, 224 cells, no unexpected difference; v2 also compares the Sell region). ⭐ Ali, 2026-10-02: nothing is turned on — no staff preview, no journey — until
@@ -41,6 +42,26 @@ the s4-5 low-minimum and s4-6 code frames on the S4 canvas, `shortfall.ts`'s `em
 `qa:classic-shell-parity` 2.9 once ▶ 0e's Phase B removes the email bar — all three done in WP12's batch (§0i WP12):
 the short-of-the-minimum board offers TZS 1,000 and S9's six code boards are marked superseded; `shortfallPlan` asks no
 email step; 2.9 reads which tree it runs on (the bar's component gone → no viewer may see a bar).
+
+**✅ S6 IS CLOSED (2026-10-12 03:01 EAT) — the close record (the session law's three: `test:all` with the database suites,
+classic parity, the tiles).** **`test:all`** on the live tree (`daf0e799`, 2026-10-12 02:05–02:19, `--jobs 2`): **501/525**,
+every red read by its label — 17 database suites could not start their scratch cluster (this machine's PostgreSQL binaries
+are a `--no-save` package, and the 2026-10-11 worktree-junction incident's `npm ci` had removed it: reinstalled and the 17
+run again — all 17 green once the binaries were back (with R8-D's guard after its fix, 18/18 in 878.6 s on `eefc1eec`): `test:cashout-price-guard`, `test:results-freshness` (R9-D's), `test:agent-fee-expiry` (K32's), `test:visual-pass-r8d-stores` (R8-D's), `test:kyc-restart-docs`, `test:contacts-import-db`, `test:contacts-staging-db` and the ten house-bot database suites (migrations, money, caps, designation, engine, comms, info-edge, reports, console, ops)); 5 need a running server (`test:responsive`, `test:motion`, `test:revoked-deadend`,
+`test:admin-section-gate`, `test:needle-rest`, as at every close); `test:orphans` is main's own (two undeclared landing-v3
+panels, `scripts/qa/landing-v3/panels/band-panel.js` and `hero-panel.js`); and **`test:visual-pass-r8d` 10.2 was round 10's
+own** — a guard that compares app-shell.tsx with HEAD undid round 10's edit on the working side only, so it passed before
+`177981c1` and failed once HEAD held the edit: fixed `eefc1eec` (both sides; 74/74, a planted code line caught). **Classic
+parity** (rounds 9 and 10 together): baseline at `c2d9e156` (the live main before round 9), the tip `ca72fe15` compared
+with `--allow-base` — 4.1 read 24 of 224 cells different and 4.4 2 of 8 Sell cells — and every difference is one of round 9's and round 10's possessive holds, read cell by cell on the two captures (a script over both files, not the harness's first-difference line): the /positions empty-state body holds "your first" (en, 12 cells) and "utabiri wako" (sw, 12 cells), R9-B; the Sell confirm's free-exit note at 360 holds "your full" and "your way." (en) and "dau lako" and "upande wako." (sw), R10-B's `noticeBody`. Each is a `whitespace-nowrap` span added around the held words, and the layout lists gain exactly those spans (one per /positions cell, two per Sell cell): no other element's box moves. Nothing else differs in any cell — header, footer, rail and overlays identical in all 224 — and 4.0, 4.2, 4.2b, 4.3, 4.4f, 4.5 and 4.6 pass. (For the English cells the harness's first-difference line points at round 7's `positions-h1-stem-sw` substitution, which a baseline that already holds round 7 does not need: the English h1 is the same in both captures.) Not added to EXPECTED_DIFFS, by decision: the next baseline is parity v3's, captured at S7 WP1's commit, which already holds both. (A first compare at 02:05 was INVALID: Google Fonts was unreachable, so its server drew
+fallback fonts and every header and footer line moved; it was re-run with a font check before and after.) **Tiles:**
+round 10's 336, read by eight readers, and the follow-ups re-tiled (above). **Production** at `ca72fe15`: both hosts,
+health, the service worker, the first-load chunks (01:37); `qa:live` 328/329 at 02:21 EAT — its one failure the QA
+player's sign-in, which this machine has no password for, as on every push. The red twins the 2026-10-10 crash left owed
+(`red:house-bot-c5`, `-money`, `-engine`, `red:campaign-visuals`, `red:contacts-import`) stay DROPPED by the efficiency
+ruling: they prove other lanes' guards, which S6 never touched. The build plan was `S6-PLAN.md` (its Amendments
+override its body); the visual pass's state, `S6-VISUAL-PASS-STATE.md`, and its reads, `S6-READ-TRIAGE.md`, stay as the
+record. S7 starts (§0j).
 
 **✅ ROUND 10 IS LIVE (2026-10-12 01:37 EAT, `ca72fe15` — Railway's first build failed on the Google-font fetch (the known transient), rebuilt from source) — the last S6 visual round: round 9's rules carried everywhere, and the read's
 follow-ups.** One helper (`177981c1`): the edge and stroke rules' remaining glyphs (carets by a census, `Stat`'s icon
@@ -340,12 +361,12 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S6 — round 10 is LIVE; S6's close record runs now (classic parity — baseline at `c2d9e156`, the main
-before round 9, so it covers rounds 9 and 10 — and test:all), then S6 ✅ (tick §1 and NEXT-PLAN's count); S6 closes when a read finds nothing (§0i;
-[S6-VISUAL-PASS-STATE.md](design-system/v5-2026-09-29-simplified-journey/S6-VISUAL-PASS-STATE.md) §3/§4). The red twins the 2026-10-10 crash left owed
-(`red:house-bot-c5`, `-money`, `-engine`, `red:campaign-visuals`, `red:contacts-import`) are DROPPED from this plan by
-the efficiency ruling: they prove other lanes' guards, which rounds 7 and 8 never touched. The build plan is
-`docs/design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md`, whose closing Amendments override its body. S7's plan is filed ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), 2026-10-07, §0h point 58); it starts only when S6 has closed, as its Amendments' start line says. (2) When
+**Next:** (1) S7 (§0j) — WP1's calibration on a fresh in-memory server under the lock (WP1 step 6): parity v3's
+`--prove-red` with its browser rows, the v3 baseline at WP1's commit (`9b18ea59`, branch `vodacom-s7-wp1b`), a null
+compare on a second fresh server; then WP1 lands on main; then WP2 (drafted on `vodacom-s7-wp2`) is rebased onto it,
+proven and pushed. OMEGA's own `vodacom-s7-wp1` (2026-10-07/08) was never pushed: on OMEGA push it only as
+`vodacom-s7-wp1-omega`, for reference, and never merge it (§0h point 66). S7's plan:
+[`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), whose Amendments override its body. (2) When
 Ali says so, and not before (nothing turns on until the plan is done): an officer approves the S2 short titles, and
 Ali presses S1's preview switch.
 
@@ -472,7 +493,75 @@ drive (guest, SUPPORT officer, player, Owner Stop and Resume, a stranger on a li
 deploy verified, and a signed-out visitor sees nothing on production (`qa:live` 319/0 there, [E2] included). One
 press by Ali remains: `/admin/journey` → "Turn my preview on" → the bar on 50pick.tz. Then S1 is ✅.
 
-## §0i · S6 — the flagged shell (2026-10-01 →) 🔨
+## §0j · S7 — home and cards (flagged) (2026-10-07 →) 🔨
+
+**The plan:** [`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md) — WP0–WP12; its closing Amendments (A1–A23) override its
+body. Owner-level calls: §0h point 58, and 65 on.
+
+**Progress:**
+- **Started 2026-10-07, before S6 closed, by Ali's choice** (S7-PLAN A2 item 4, the narrower overrule; §0h point 65):
+  WP0 only, until §0i recorded S6's last v2 compares — it does since S6 closed (2026-10-12 03:01 EAT).
+- **WP0 · the start line.** (1) The precondition holds: S6 is closed (§0) and S7's trees are clean. (2) The scripts-only
+  repairs are LIVE on main: `284f3bc7` (red:ticker-honesty's 28 cases declared in `scripts/anchors/ticker-honesty.anchors.mjs`
+  and judged by the whole check id behind a control; test:stacking's primer checks renumbered 8.1–8.5;
+  test:red-anchors' undeclared ceiling 65 → 64) and `ce2c3afa` (red:ops-provision-staff's six plants declared: 64
+  against 64). Their proof, on OMEGA-COMPILE01 on 2026-10-08: red:ticker-honesty alone 28/28 with the tree unchanged
+  after; test:red-anchors 4865/0; test:stacking 129/129; red:simple-journey-flag 37/37 (the twin as money doors'
+  release left it, A3 item 3). (3) Today's reds, by label: S6's close `test:all` on `daf0e799` (§0's first ✅ paragraph)
+  — all 17 green once the binaries were back (with R8-D's guard after its fix, 18/18 in 878.6 s on `eefc1eec`): `test:cashout-price-guard`, `test:results-freshness` (R9-D's), `test:agent-fee-expiry` (K32's), `test:visual-pass-r8d-stores` (R8-D's), `test:kyc-restart-docs`, `test:contacts-import-db`, `test:contacts-staging-db` and the ten house-bot database suites (migrations, money, caps, designation, engine, comms, info-edge, reports, console, ops); with `eefc1eec`, what stays red is the five suites that need a running server and main's own
+  `test:orphans` (two landing-v3 panels). (4) **The bar budget (A5), measured on main `daf0e799`** (2026-10-12 02:44, a
+  local in-memory server, Google Fonts checked before and after, 82 s, no problem): the journey header and the preview
+  marker read on `/` for a pass holder; the announcement published through /admin/system by a seeded admin, as an
+  operator would; the away summary from its ledger as `recordAway` writes it, then a reload; the session-ended notice
+  after a second sign-in and a refresh flight on /live (the tabs stay up); the rail's top at 640, 740 and 844 tall; the
+  headline (`headlineAsk` + `headlineSides`) in each A16 rung. Heights in px:
+
+  | cell | header | marker | announcement | away summary | session ended | rail top 640 / 740 / 844 | rung holding two lines |
+  |---|---|---|---|---|---|---|---|
+  | 360 sw | 56 | 112.8 | 60.8 | 94.9 | 130.6 | 575 / 675 / 779 | text-display-3 (36/40), 80 |
+  | 360 en | 56 | 112.8 | 60.8 | 94.9 | 130.6 | 575 / 675 / 779 | canvas (30/1.12), 67.2 |
+  | 360 zh | 56 | 94.9 | 60.8 | 94.9 | 78.6 | 575 / 675 / 779 | --type-display-2 (44), 98.6 |
+  | 390 sw | 56 | 112.8 | 60.8 | 94.9 | 78.6 | 575 / 675 / 779 | text-display-3 (36/40), 80 |
+  | 390 en | 56 | 112.8 | 60.8 | 94.9 | 78.6 | 575 / 675 / 779 | canvas (30/1.12), 67.2 |
+  | 390 zh | 56 | 94.9 | 60.8 | 109 | 69 | 575 / 675 / 779 | --type-display-2 (44), 98.6 |
+
+  Card 1's picks against the rail's top (A5 item 1's stack: PageContainer's 32 top, the How-to card 72, the chips 44,
+  the card's meta 18, its title 24 or 48, its picks 64 or the grown 74, the gaps), every combination: **GATED — every
+  cell holds.** No transient bar (360×640, 360×740, 390×844; 36 combinations): least slack 44.4 (360 zh at 640, a
+  two-line title and 74px picks). All bars at 390×844 (guest and signed in; 24): least 78.6 (zh, signed in). The How-to
+  card's bottom: least 223.6. **RECORDED, never gated** — all bars at 360×640 and 360×740 (48 combinations): 31 are over
+  the line, by up to 128.4 (360 sw, a guest at 640: the announcement and the two-line session-ended notice, 191.4
+  together); the best +54.1. So no bar-budget point is raised before WP7 (§0h point 67). (5) **Every S7-PLAN citation
+  re-read at `daf0e799`** (727 commits after the amendments' base): 439 line citations — 112 unchanged, 274 moved, 42
+  changed, 11 gone — and 82 file checks; what changes a package is S7-PLAN's new amendment A24 (among it: `/` now has
+  `generateMetadata` and asks the resolver itself; the root loading's journey ghost; dates through `formatEatDateTime`;
+  the helpline's new names; a second `nothingIfLost` copy for A13; test:stacking 6.1 green). **WP0 is ✅** with this
+  record.
+- **WP1 · parity v3 and A9's three tools — branch `vodacom-s7-wp1b`** (worktree `C:\kipindi-s7` on ALI-BLADE15). The
+  version OMEGA-COMPILE01 wrote on 2026-10-07/08 (branch `vodacom-s7-wp1`) was never pushed, so no other machine had
+  any of it (§0h point 66). The three tools are recovered from the broken copies OMEGA's mutation runs pushed to
+  `origin/vodacom-visual-tools` (tools/s7a9a, tools/s7a9b) — each original is one copy with its one mutation reversed,
+  and re-applying every mutation reproduces every other copy byte for byte — plus OMEGA's calibration patch
+  (Turbopack's dev chunk hashes read as noise): `b0873185`. Two S6 markers had moved since: the offline banner is the
+  kit NoticeBar since R4-G, and the shell mark's bare id is now in globals.css and a comment — each marker is its
+  quoted string now. Proof: qa:served-skeleton self-test 78/78; qa:first-load 29 controls and the marker table (red on
+  the two old markers); qa:chunks-prod 17/17, and production 6/6 routes (`ca72fe15`, GETs only). Parity v3 (VERSION 3,
+  the BOOK, the classic bodies, A8's trace) is rebuilt from v2, the plan and OMEGA's surviving evidence: `9b18ea59`.
+  Offline, with a stubbed browser: the 83 rows that need no browser pass, OMEGA's 87 surviving rows match byte for byte
+  (details included), its 13 mutants and 20 more are all caught, and the compare refuses a v2 file and another
+  normaliser set. Its calibration on a fresh in-memory server is next (WP1 step 6).
+- **WP2 · the pure move — DRAFTED, NOT PROVEN: branch `vodacom-s7-wp2` (`f3afc43a`, marked WIP; do not merge).** The
+  home body moves to `src/components/home/legacy-landing.tsx` byte for byte (a round trip of the two files rebuilds
+  today's page.tsx exactly); page.tsx keeps `generateMetadata` (A24 item 1) and returns `<LegacyLanding … />`; 14 scripts
+  name the route file and each is decided (body re-pointed, route kept, history left); `test:journey-home` (new, 8
+  checks, 8 plants). Its gates run after WP1, ending with a parity v3 compare at 0 differences; then it is rebased onto
+  WP1 and pushed.
+
+## §0i · S6 — the flagged shell (2026-10-01 → 2026-10-12) ✅
+
+**✅ CLOSED 2026-10-12 03:01 EAT** — the close record is §0's first ✅ paragraph. S6's last v2 compare (S7-PLAN A2 item 3):
+classic parity, baseline `parity-main-c2d9e156.json` captured at `c2d9e156`, the tip `ca72fe15` compared —
+4.1 read 24 of 224 cells different and 4.4 2 of 8 Sell cells — and every difference is one of round 9's and round 10's possessive holds, read cell by cell on the two captures (a script over both files, not the harness's first-difference line): the /positions empty-state body holds "your first" (en, 12 cells) and "utabiri wako" (sw, 12 cells), R9-B; the Sell confirm's free-exit note at 360 holds "your full" and "your way." (en) and "dau lako" and "upande wako." (sw), R10-B's `noticeBody`. Each is a `whitespace-nowrap` span added around the held words, and the layout lists gain exactly those spans (one per /positions cell, two per Sell cell): no other element's box moves. Nothing else differs in any cell — header, footer, rail and overlays identical in all 224 — and 4.0, 4.2, 4.2b, 4.3, 4.4f, 4.5 and 4.6 pass. (For the English cells the harness's first-difference line points at round 7's `positions-h1-stem-sw` substitution, which a baseline that already holds round 7 does not need: the English h1 is the same in both captures.) Not added to EXPECTED_DIFFS, by decision: the next baseline is parity v3's, captured at S7 WP1's commit, which already holds both. From here on `qa:classic-shell-parity` may move to VERSION 3 (S7 WP1).
 
 **The plan:** [`S6-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S6-PLAN.md) — 13 work packages (WP0–WP12),
 from a read-only mapping workflow (7 researchers, a planner, an adversarial critic: 1 blocker + 9 majors, all accepted).
@@ -2252,6 +2341,29 @@ here, with how to overrule it. Newest last; nothing here blocks the work.
     until a read finds nothing. One more real bug the drives found: the kit Modal's opening took focus back from a
     field already chosen in the dialog (qa:journey-preview §5, 2 of 3 runs) — fixed on `vodacom-modal-focus`. S6
     closes after the pass.
+65. **S7's preparation started before S6 closed — Ali's choice, 2026-10-07 (S7-PLAN's narrower overrule).** A8i-2 and
+    A8j were live and read back, so by S7-PLAN A2 item 4 S7 could start on origin/main before the A8 proof and WP12:
+    WP0 only — the records, the reds, the scripts-only repairs (`284f3bc7`, `ce2c3afa`, live) and the bar measurements.
+    WP1 (parity v3) waited for §0i to record S6's last v2 compares; it does since S6 closed (2026-10-12). Asked of Ali in
+    plain words on 2026-10-07 ("May I start S7's preparation now? Nothing players see changes"): yes. (Filed
+    2026-10-12: OMEGA-COMPILE01's draft of this point was never pushed.)
+66. **S7 WP1 is rebuilt on ALI-BLADE15 instead of waiting for OMEGA (2026-10-12, under Ali's delegation).**
+    OMEGA-COMPILE01 wrote WP1 on 2026-10-07/08 and never pushed it. Ali works from either machine and asked for every
+    step to be pushed so the other can continue ("keep pushing live each progress because we could continue from
+    another machine"); waiting would stop S7. So the three A9 tools are recovered byte for byte (§0j) and parity v3 is
+    rebuilt from the plan, OMEGA's 13 mutants and its `--prove-red` listing, then calibrated here. OMEGA's branch is
+    kept for reference only: push it as `vodacom-s7-wp1-omega` and never merge it. Overrule: tell the next session to
+    take OMEGA's branch instead — it is then pushed and compared with the rebuild, check for check, before either lands.
+67. **The bar budget (S7-PLAN A5, three parts) — measured on main `daf0e799`, every GATED cell holds (2026-10-12).**
+    (a) POPULATION — the matrix measures the post-flip page: the preview marker is asserted present and its height
+    recorded (112.8 in sw and en, 94.9 in zh, at 360 and 390), then hidden by a page-only style; figures with the marker
+    on are recorded, never gated. (b) CELLS — GATED: the How-to card's bottom at or above the rail's top in every cell
+    (least slack 223.6px); card 1's picks at or above it in every cell with no transient bar (360×640, 360×740, 390×844:
+    least 44.4px) and in the all-bars cells at 390×844, guest and signed in (least 78.6px). RECORDED: card 1 in the
+    all-bars cells at 360×640 and 360×740 (31 of 48 combinations over, by up to 128.4px). The figures are §0j's. (c)
+    PADDING — the home keeps PageContainer's 32px top, as S6's journey pages do; the canvas's 8px top is a canvas
+    deviation shared by every journey page. Overrule: (b)'s cells, or the 8px top. (OMEGA-COMPILE01's draft of this
+    point, 2026-10-08, was never pushed; it is re-measured here on the tree S6 closed on.)
 
 
 ## §0g · S4 (2026-10-01) — the Design canvas: all eleven items drawn, the panel's findings applied; waiting on Ali
@@ -2732,8 +2844,8 @@ Status: ⬜ not started · 🔨 in progress · ✅ done and verified live · ⛔
 | S3b | Measures baseline | ✅ | LIVE `64a63b7c` 2026-10-01 (§0f); counts appear daily (second read 2026-10-03: both full days, every client and bet step; no deposit was confirmed on either day, checked) and the 14-day baseline runs to 2026-10-15. |
 | S4 | Claude Design pass | ✅ | `52afb7c8` 2026-10-01 (§0g): all eleven brief items on the Design canvas, 102 boards; the four-expert panel's findings applied (v16); BRIEF.md filed; choices 1B/2A/3A (§0h point 1). Done when frames for every new composition and undrawn state are filed and scored by the panel, and Ali has reviewed the 5 re-drawn frames. |
 | S5 | ~~Colour foundation~~ | ⛔ | Removed by R5 (50pick's look stays unchanged): no palette, font or brand work. |
-| S6 | Shell (flagged) | 🔨 | Plan filed 2026-10-01 (`S6-PLAN.md`, §0i). Done when every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |
-| S7 | Home and cards (flagged) | ⬜ | Plan filed 2026-10-07 ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), its Amendments override its body; §0h point 58). Done when the local staff-pass drives pass (the above-the-fold gate among them) and production shows nothing changed for signed-out and signed-in players; staff seeing the deck's home on production moves to S14 (§0h point 4). |
+| S6 | Shell (flagged) | ✅ | CLOSED 2026-10-12 03:01 EAT at `ca72fe15` (round 10, the last S6 commit), its close record in §0 (test:all, classic parity, the tiles, production read back). Plan filed 2026-10-01 (`S6-PLAN.md`, §0i). Done when every route keeps an entrance (route census). The header fits at 320/360/390/1024/1150/1279 × sw/en/zh × guest/signed-in. |
+| S7 | Home and cards (flagged) | 🔨 | Started (§0j): WP0's scripts-only repairs live `ce2c3afa`; WP1 on branch `vodacom-s7-wp1b`. Plan filed 2026-10-07 ([`S7-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S7-PLAN.md), its Amendments override its body; §0h point 58). Done when the local staff-pass drives pass (the above-the-fold gate among them) and production shows nothing changed for signed-out and signed-in players; staff seeing the deck's home on production moves to S14 (§0h point 4). |
 | S8 | Bet sheet + low balance (flagged) | ⬜ | `test:bet-sheet`, V20 and the refusal matrix are green. A staff real bet works on production. |
 | S9 | Deposit, waiting and return (flagged) — no email code: the owner's ruling of 2026-10-07 (▶ 0e) has a deposit ask no email question | ⬜ | `test:deposit-return` and `test:deposit-status-read` (exactly-once while racing the webhook) are green. The card `order_id` fix is live. |
 | S10 | Visitor path | ⬜ | guest → sheet → register → deposit → back works. `test:post-register-landing` passes in both flag states. |
