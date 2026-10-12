@@ -13,10 +13,10 @@
  * "poll") and the hub's Arifa row (`components/journey/account/unread-row.tsx`, mode "once") — are keyed by the viewer's
  * id and drop everything the moment it changes (`lib/journey/unread-count.ts`). `test:journey-shell` §6 holds that rule
  * in process; this drive holds what the person holding the phone SEES, in a real browser, on that very path:
- *   §1 player A, signed in and holding a staff preview pass, on /account and then /markets: the dot and the row show
- *      A's count, and it is the server's;
+ *   §1 player A, signed in and holding a staff preview pass, on /account and then /results (`A_PAGE`): the dot and the
+ *      row show A's count, and it is the server's;
  *   §2 A's session ends through the IDLE path: A's own cookie re-signed 25 h idle with the dev server's SESSION_SECRET
- *      (the way `test:revoked-deadend` §4 does it, with its control), then the refresh /markets' own poller runs on
+ *      (the way `test:revoked-deadend` §4 does it, with its control), then the refresh /results' own poller runs on
  *      `50pick:refresh` — the shell re-renders in place as a guest's;
  *   §3 player B signs in through the journey header's "Sign in" link and the real form, and B's FIRST unread answer is
  *      HELD for G1_HOLD_MS (default 4000) — the response, never the request: `route.fetch`, wait, `fulfill` — so the
@@ -67,6 +67,13 @@ const PASSWORD = "QaG1Reader2026!";
 /** Past the 24-hour idle limit (`src/lib/server/session.ts`), with an hour to spare. */
 const IDLE_MS = 25 * 3600_000;
 const DEVICE_COPY = "signed in on another device";
+/**
+ * Where A's session ends: a page the journey keeps, whose own RefreshPoller runs on `50pick:refresh` (§2). It was
+ * /markets until S7 WP9, which answers a journey reader's /markets with the journey home (a real 307 on a document):
+ * A would have stood on /, and 6.doc would have found no /markets document and blocked the run. The verdict and its
+ * controls read this one value.
+ */
+const A_PAGE = "/results";
 
 class Blocked extends Error {}
 /** A premise the drive cannot measure without: thrown, reported as BLOCKED (exit 2), never as a pass. */
@@ -158,10 +165,10 @@ function judge({ samples, nA, nB, marks }) {
     marks.rowLanded !== null && afterRow.length > 0 && wrongRow.length === 0,
     afterRow.length === 0 ? "the row never showed B's count" : wrongRow.slice(0, 6).join(" · "));
 
-  const docA = marks.refreshed === null ? null : (list.filter((s) => s.t < marks.refreshed && s.path === "/markets").at(-1)?.doc ?? null);
+  const docA = marks.refreshed === null ? null : (list.filter((s) => s.t < marks.refreshed && s.path === A_PAGE).at(-1)?.doc ?? null);
   const strays = within(marks.refreshed, null).filter((s) => s.doc !== docA).map((s) => `${rel(s)} in another document`);
-  add("6.doc", "the whole path, from A's /markets to B's /account, stayed in ONE document — the case G1 names (no reload)",
-    docA !== null && strays.length === 0, docA === null ? "A's /markets document was never recorded" : strays.slice(0, 3).join(" · "));
+  add("6.doc", `the whole path, from A's ${A_PAGE} to B's /account, stayed in ONE document — the case G1 names (no reload)`,
+    docA !== null && strays.length === 0, docA === null ? `A's ${A_PAGE} document was never recorded` : strays.slice(0, 3).join(" · "));
   return out;
 }
 
@@ -174,8 +181,8 @@ function judgeControls() {
   const idle = "Signed out. For your security, a sign-in ends after 24 hours without activity, and after 7 days at most.";
   const clean = () => [
     st(-500, "/account", { doc: "d0", dot: true, dotWords: ", 6 unread", row: true, rowWords: ", 6 unread", rowBadge: "6" }),
-    st(10, "/markets", { dot: true, dotWords: ", 6 unread" }),
-    st(100, "/markets", { signedIn: false, notice: true, noticeText: idle }),
+    st(10, A_PAGE, { dot: true, dotWords: ", 6 unread" }),
+    st(100, A_PAGE, { signedIn: false, notice: true, noticeText: idle }),
     st(200, "/auth/login", { signedIn: false }),
     st(300, "/"),
     st(500, "/", { dot: true, dotWords: ", 8 unread" }),
@@ -187,7 +194,7 @@ function judgeControls() {
   const plants = [
     ["a clean timeline", (s) => s, []],
     ["A's count on the dot while B's answer is held", (s) => [...s, st(350, "/", { dot: true, dotWords: ", 6 unread" })], ["3.held"]],
-    ["A's count on the dot after A's end", (s) => [...s, st(150, "/markets", { signedIn: false, dot: true, dotWords: ", 6 unread" })], ["2.guest"]],
+    ["A's count on the dot after A's end", (s) => [...s, st(150, A_PAGE, { signedIn: false, dot: true, dotWords: ", 6 unread" })], ["2.guest"]],
     ["no signed-in shell while the answer is held", (s) => s.filter((x) => x.t !== 300), ["3.seen"]],
     ["A's count on the dot after B's answer", (s) => [...s, st(520, "/", { dot: true, dotWords: ", 6 unread" })], ["4.dot"]],
     ["a row badge before the row's answer", (s) => [...s, st(650, "/account", { dot: true, dotWords: ", 8 unread", row: true, rowBadge: "6" })], ["5.row.held"]],
@@ -393,10 +400,12 @@ try {
     nA !== null && nA >= 1 && rowA === nA && served.includes(nA), `dot ${nA ?? "-"} · row ${rowA ?? "-"} · server ${served.join("/") || "-"}`);
   if (!(nA !== null && nA >= 1 && rowA === nA)) block(`A's count never showed (dot ${nA ?? "-"}, row ${rowA ?? "-"}) — the seed left A nothing unread, or the journey's counters never mounted`);
   if (!unreadAction) block("the unread read was never seen as a Server Action answer, so B's first answer could not be held");
-  await page.goto(`${BASE}/markets`, { waitUntil: "domcontentloaded", timeout: 240_000 });
-  const onMarkets = await shows("dotWords", nA);
-  ok("1.b", "on /markets — whose poller ends the session in place — A's dot shows A's count", onMarkets);
-  if (!onMarkets) block("A's dot never showed on /markets, so nothing could have been left over for B");
+  await page.goto(`${BASE}${A_PAGE}`, { waitUntil: "domcontentloaded", timeout: 240_000 });
+  // A page that answers with another address (as /markets does since S7 WP9) is named here, never left to 6.doc.
+  const standsOn = new URL(page.url()).pathname;
+  const onPage = standsOn === A_PAGE && (await shows("dotWords", nA));
+  ok("1.b", `on ${A_PAGE} — whose poller ends the session in place — A's dot shows A's count`, onPage, standsOn === A_PAGE ? "" : `the page answered with ${standsOn}`);
+  if (!onPage) block(standsOn === A_PAGE ? `A's dot never showed on ${A_PAGE}, so nothing could have been left over for B` : `${A_PAGE} answered with ${standsOn}, so A's session could not end there`);
   await sleep(800);
 
   console.log(`${NL}§2 · A's session ends through the idle path, in place`);

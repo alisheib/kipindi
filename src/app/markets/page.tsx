@@ -146,10 +146,11 @@ function toRow(m: BoardMarket, watched: Set<string>, move24h: number | undefined
 
 export default async function MarketsPage({ searchParams }: { searchParams: Promise<SP> }) {
   // ⭐ S7 WP9 · A JOURNEY READER'S BOARD IS THE JOURNEY HOME — asked FIRST, before a word, the board or the search is
-  // read: the one resolver (AppShell's own answer for this request, cached), so a classic request pays one cached await
-  // and gets today's board. This is the door a FLIGHT meets (a soft hop or a refresh, which the router follows); a
-  // DOCUMENT is answered before it by AppShell's real 307, through the same `journeyMarketsTarget` (WP3's one table).
-  // `test:markets-redirect` §2 holds both doors.
+  // read: the one resolver, cached per request. On a refresh it hands back the answer AppShell already got; on a soft
+  // hop the root layout does not run, so this call is the request's first resolution. Either way a classic request pays
+  // one await and gets today's board. This is the door a FLIGHT meets (a soft hop or a refresh, which the router
+  // follows); a DOCUMENT is answered before it by AppShell's real 307, through the same `journeyMarketsTarget` (WP3's
+  // one table). `test:markets-redirect` §2 holds both doors.
   const { journey } = await resolveSimpleJourney();
   if (journey) redirect(journeyMarketsTarget(await searchParams) as never);
   const { t } = await getServerT();
