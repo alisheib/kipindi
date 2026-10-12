@@ -624,6 +624,12 @@
   --shadow-3: 0 4px 14px oklch(14% 0.08 268 / 0.50);
   --shadow-4: 0 8px 28px -8px oklch(14% 0.08 268 / 0.55);
   --shadow-5: 0 14px 44px -12px oklch(14% 0.08 268 / 0.62);
+  /* ⭐ THE PRIMARY MATERIAL'S DROP (the Vodacom plan S7, S7-PLAN A14, 2026-10-12) — `.btn-primary`'s own second shadow,
+     byte for byte, lifted into a token so the button and the How-to card's royal plate (choice 3A, `.kp-jhowto__plate`)
+     read ONE definition. Its two partners sit with their families: `--edge-primary` beside `--edge-lit`, and
+     `--wash-primary` beside the washes. The button's third layer, its glow, stays a literal in its rule: the plate is
+     drawn with the board's two shadows, never the glow. Computed values are unchanged. */
+  --shadow-primary: 0 2px 8px -2px oklch(20% 0.10 268 / 0.50);
   /* ---------- The FLOATING-SURFACE rungs (DESIGN_AUTHORITY B10) ----------
      Added 2026-07-29. The ladder above covers surfaces that sit ON the page.
      Anything that floats ABOVE it — a dialog, a menu, a drawer, a popover —
@@ -757,6 +763,9 @@
   /* The one deliberate exception to "even": a SUNKEN well is lit from above by
      definition, so its shading sits on the bottom edge. Inset surfaces only. */
   --edge-shade:      inset 0 -1px 0 oklch(6% 0.03 268 / 0.30);
+  /* The primary material's lit edge (S7-PLAN A14): `.btn-primary`'s even 1px ring at the delivery's 32% tinted-edge
+     strength, byte for byte — its first shadow, read by the button and the How-to card's royal plate. */
+  --edge-primary:    inset 0 0 0 1px oklch(74% 0.16 268 / 0.32);
 
   /* The wash each rung catches. The lightness spread is deliberately small —
      this is material, not decoration. Rung 4 carries +0.015 chroma against mud
@@ -792,6 +801,11 @@
   --wash-float:  linear-gradient(var(--light-angle), oklch(24% 0.165 268) 0%, oklch(21% 0.150 268) 100%);
   --wash-modal:  linear-gradient(var(--light-angle), oklch(24% 0.155 268) 0%, oklch(21.5% 0.138 268) 100%);
   --wash-inset:  linear-gradient(var(--light-angle), oklch(10% 0.100 268) 0%, oklch(12.5% 0.115 268) 100%);
+  /* The primary material's ramp (S7-PLAN A14): `.btn-primary`'s 53% → 48% royal, byte for byte — E-119's corrected light
+     stop (the note above `.btn-primary`). It is a CONTROL's fill, not a rung: straight down (180deg), not on the lamp's
+     axis, because it was drawn that way and a token lift moves no pixel. Read by the button and the How-to card's royal
+     plate; `test:contrast` scores both on its worst stop (`btnPrimaryStops`, the plate's pair). */
+  --wash-primary: linear-gradient(180deg, oklch(53% 0.20 268) 0%, oklch(48% 0.20 268) 100%);
 
   /* The five rungs. Rung = wash + edge + ring + cast; these carry the shadow half.
      ⚠️ --elev-float deliberately adds an OUTER 1px ring at 42%. Six surfaces today
@@ -1312,9 +1326,14 @@ body {
    5-point spread that leaves is the delivery's own law, not a compromise:
    the delivery's §A1 sets `--wash-float` at 26.5%→21% and says the spread is
    "deliberately small: material, not decoration". The 12-point ramp was the
-   decoration. Gated at BOTH stops and in BOTH states by `test:contrast`. */
+   decoration. Gated at BOTH stops and in BOTH states by `test:contrast`.
+   ⭐ THE RAMP, THE LIT EDGE AND THE DROP ARE TOKENS NOW (the Vodacom plan S7, S7-PLAN A14, 2026-10-12): `--wash-primary`,
+   `--edge-primary` and `--shadow-primary` in `:root`, each byte-identical to the literal it replaced, so the How-to
+   card's royal plate (choice 3A, `.kp-jhowto__plate`) reads the button's material from ONE definition. Computed values
+   are unchanged (qa:classic-shell-parity reads the guest Sign-up CTA's background-image and box-shadow); the third
+   shadow, the glow, stays a literal here — the plate takes the board's two shadows, never the glow. */
 .btn-primary {
-  background: linear-gradient(180deg, oklch(53% 0.20 268) 0%, oklch(48% 0.20 268) 100%);
+  background: var(--wash-primary);
   color: var(--pearl-50);
   border-color: oklch(40% 0.20 268);
   /* ⭐ ATOM 5 · M1 — this was a BEVEL PAIR: `0 1px 0 oklch(74%…)` on the top edge
@@ -1327,10 +1346,11 @@ body {
      precisely because it HAS a wash: its 53%→48% gradient already carries the
      direction, which is what the law asks for. The ring takes 32% alpha, the
      delivery's own tinted-edge strength (`.mat-edge-*` = 32% of the hue) —
-     at full opacity an even ring is a hard outline rather than a lit edge. */
+     at full opacity an even ring is a hard outline rather than a lit edge.
+     The ring and the drop read their tokens (S7-PLAN A14, above); the glow is this rule's own. */
   box-shadow:
-    inset 0 0 0 1px oklch(74% 0.16 268 / 0.32),
-    0 2px 8px -2px oklch(20% 0.10 268 / 0.50),
+    var(--edge-primary),
+    var(--shadow-primary),
     0 8px 22px -10px oklch(48% 0.20 268 / 0.55);
   letter-spacing: 0.005em;
   text-shadow: 0 1px 0 oklch(20% 0.10 268 / 0.40);

@@ -369,6 +369,22 @@ function tokenGradient(name: string): Oklch[] {
 }
 
 /**
+ * The token one declaration of a rule names — `background: var(--wash-primary)` gives "wash-primary", bare, as
+ * `tokenGradient` takes it (the Vodacom plan S7, S7-PLAN A14: the primary material's ramp has ONE definition, the
+ * `--wash-primary` token, and every rule that paints it reads it from there — `.btn-primary` first).
+ * ⭐ READ OFF THE RULE, NEVER ASSUMED (the review of 2026-10-12): a pair scored on `tokenGradient("wash-primary")` goes on
+ * scoring the token while the rule paints something else — a ramp typed back into it, or another token named.
+ * ⛔ Anything but one `var(--token)` THROWS: a ramp typed into the rule is a second definition of the material, and
+ * scoring either copy would print a ratio for a ramp the other no longer matches.
+ */
+function tokenNamed(selector: string, prop: string): string {
+  const raw = ruleDecl(selector, prop);
+  const m = /^var[(][ ]*--([a-z0-9-]+)[ ]*[)]$/.exec(raw);
+  if (!m) throw new Error(`contrast-audit: "${selector} { ${prop} }" is "${raw}", not one var(--token) — the rule must read the material's one definition, its token`);
+  return m[1];
+}
+
+/**
  * ⭐ A THIRD SOURCE: A VARIANT'S VALUE THAT LIVES IN A `.tsx` OBJECT, NOT IN CSS — PV-13c,
  * 2026-09-03.
  *
@@ -617,7 +633,12 @@ const T = {
   // against a hand-picked `--gold-500`, and the two buttons were not scored at
   // all, because `ruleValue()` refuses anything that is not one flat colour.
   chipResolvedStops: tsxVariantGradient("src/components/ui/chip.tsx", "resolved", "background"),
-  btnPrimaryStops: ruleGradient(".btn-primary", "background"),
+  // ⚠️ RE-POINTED 2026-10-12 (the Vodacom plan S7, S7-PLAN A14): `.btn-primary`'s ramp is the `--wash-primary` token now
+  // (`background: var(--wash-primary)`, which `ruleGradient` cannot parse). It is read off the button's OWN rule — the
+  // token its background names, followed to its gradient (`tokenNamed`) — so a ramp typed back into the rule is refused
+  // and a rule pointed at another token is scored on that one (the review of 2026-10-12; `red:contrast` plants both).
+  // The token's value is byte-identical to the literal the rule held, so every ratio below is the one it was.
+  btnPrimaryStops: tokenGradient(tokenNamed(".btn-primary", "background")),
   btnPrimaryHover: ruleFilter(".btn-primary:hover:not(:disabled)"),
   btnClaretFg: ruleValue(".btn-claret", "color"),
   btnClaretStops: ruleGradient(".btn-claret", "background"),
