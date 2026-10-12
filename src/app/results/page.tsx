@@ -539,12 +539,12 @@ async function ResultsContent({
                   ))}
                 />
               )}
-              {/* ⭐ THE CARDS' SLOT IS ONE TERNARY (the Vodacom plan S7, §3.2; S7-PLAN WP10 with A12 and A16 item 5). A
-                  journey request draws the journey card's settled face for the same rows the classic grid draws (the
-                  page less the notables lifted into the carousel above, which stays as it is): the result's word in
-                  its own ink beside the settled instant, year included once it is not this year. Each card reads the
-                  market row it is handed, and the cards stand in the one journey card grid, whose cards share their
-                  rows. Every other request gets the classic arm: today's markup, line for line. */}
+              {/* ⭐ THE CARDS' SLOT IS ONE TERNARY (the Vodacom plan S7, §3.2; S7-PLAN WP10 with A12 and VODACOM-PLAN
+                  §0h point 73). A journey request draws the journey card's settled face for the same rows the classic
+                  grid draws (the page less the notables lifted into the carousel above, which stays as it is): the
+                  result's word in its own ink beside the settled instant, year included once it is not this year. Each
+                  card reads the market row it is handed, and the cards stand in the one journey card grid, whose cards
+                  share their rows. Every other request gets the classic arm: today's markup, line for line. */}
               {journey ? (
                 <section className="kp-jgrid">
                   {paged.filter((m) => !notableIds.has(m.id)).map((m) => (

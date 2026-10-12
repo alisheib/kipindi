@@ -23,7 +23,7 @@
  * ⭐ ITS CLIENT PARTS COME THROUGH THE HOME'S LAZY MODULE ALONE (`home-lazy.tsx`, WP6): the How-to card and its sheet, the
  * 30-second refresh, the kit's empty state and the chips rail's framing — so a classic visitor's first load of `/` gains
  * that small module's declarations and none of their code (§0h point 20). The rest is server markup: the journey card
- * (WP5), the kit's FilterPill and Link.
+ * (WP5), the journey's one show-more control (`show-more.tsx`, journey /live's too), the kit's FilterPill and Link.
  * ⭐ THE REFRESH IS THE POLLER ALONE (A7): every 30 seconds, and no listener for the odds event — the SSE patch for cards
  * on screen is S8's, beside the bet sheet's own listener (`test:journey-home` §7 refuses one here or on the card).
  * ⛔ A SETTING IS NEVER APPLIED OUT OF SIGHT (§0h point 23's lesson): a selected category keeps its chip, a search is said
@@ -33,6 +33,7 @@
 import Link from "next/link";
 import { PageContainer } from "@/components/layout/page-container";
 import { JourneyCard } from "@/components/journey/cards/journey-card";
+import { ShowMore } from "@/components/journey/show-more";
 import { LinkPending } from "@/components/ui/link-pending";
 import { I } from "@/components/ui/glyphs";
 import { PLAYER_PER_PAGE } from "@/components/ui/pagination";
@@ -124,13 +125,7 @@ export function JourneyHomeView({ t, locale, nowMs, params, chips, view, signedI
                 </li>
               ))}
             </ul>
-            {view.more && (
-              <Link href={homeHref({ cat, q, page: view.page + 1 }) as never} scroll={false} className="btn btn-ghost btn-lg kp-jhome__more">
-                {t.journey.showMore}
-                <I.chevronDown s={18} edge="end" />
-                <LinkPending />
-              </Link>
-            )}
+            {view.more && <ShowMore href={homeHref({ cat, q, page: view.page + 1 })} t={t} />}
           </>
         ) : view.empty === "cat" && cat !== null ? (
           <LazyEmptyState
