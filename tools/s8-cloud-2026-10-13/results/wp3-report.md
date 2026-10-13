@@ -200,3 +200,28 @@ gate.
 - No VODACOM-PLAN or S8-PLAN edit (the coordinator writes §0k). §0k should record two things:
   - the RG report counts a sheet's enforcement (`at: "sheet"`, A4 item 6);
   - `db:probe-sheet-facts`' first run: 11/11, PostgreSQL 16.15, at `e197d6fb`.
+
+## Review round (2026-10-13) — `51cd122c`
+
+The coordinator's full `test:all` on the integration tip found a red that WP3 causes:
+- `test:house-bot-holder-lifecycle`, "14 passed, 2 failed";
+- 2.1: the probe did not carry the L2-sweep declaration;
+- 2.2: 38 found, ceiling 36.
+
+My run missed it because I did not run `test:all`.
+
+**Fix** (`51cd122c`, one commit on `545930db`, no rebase). Both new members were read before they were admitted:
+- `scripts/journey-sheet.test.mts`: its §6 writes `db.responsible.upsert` rows and one `db.user.update` status, in the
+  memory store, only to fixture accounts it creates. Declared by the `.test.mts` rule.
+- `scripts/live/sheet-facts-pg-probe.mts`: four accounts it creates, on a loopback scratch Postgres, no house bot. It now
+  carries `// house-bot: covered by L2 sweep`, with its reason.
+- `SCRIPT_CEILING` 36 → 38, with both members named in writing beside it, as the file asks.
+
+**Re-run on `51cd122c`.**
+- `test:house-bot-holder-lifecycle`: exit 0, `ALL PASS — house-bot-holder-lifecycle: 16 passed, 0 failed`. §4's planted
+  fixtures still fail as designed (4.1 an unhooked writer found, 4.3 an undeclared raw-SQL script caught).
+- typecheck, test:journey-sheet, test:deposit-ceiling, test:rg-doors, test:dal-parity, test:failure-reasons,
+  test:client-graph-safe, test:cert-d3, test:guards-exist, test:docs, test:red-anchors, test:money-invariants and
+  test:withdrawal: all exit 0.
+- red:journey-sheet `RED CONTROL — 37/37 caught`; red:deposit-ceiling `RED CONTROL — 12/12 caught`.
+- test:orphans: exit 1, the same two pre-existing base orphans.
