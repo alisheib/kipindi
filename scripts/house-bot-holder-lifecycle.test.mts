@@ -207,7 +207,17 @@ ok("2.1 · ⭐ every script that writes an account fact is a suite, or carries t
  * twin or the LOOPBACK `.pgscratch` Postgres of its own test process; its world holds no house bot. It is declared by
  * the `-cases.mts` rule (2.1). Its lane moved neither count; `test:all` on c706c7c6 found it (2026-10-10 23:28).
  */
-const SCRIPT_CEILING = 36;
+/**
+ * ⚠️ 36 → 38 on 2026-10-13, by the same rule: both new members were READ before they were admitted, in the commit that adds
+ * them (the Vodacom plan S8 WP3, review commit on 545930db). Nobody else joined or left.
+ *   - journey-sheet.test.mts: its §6 (the bet sheet's viewer facts and the open read's records) writes `db.responsible.upsert`
+ *     rows (limits, breaks, the play clock) and one `db.user.update` status (SUSPENDED) — each to the fixture accounts it
+ *     creates itself, in the IN-MEMORY store of its own test process. Declared by the `.test.mts` rule (2.1).
+ *   - live/sheet-facts-pg-probe.mts (`db:probe-sheet-facts`, S8-PLAN A11): a responsible-gambling row each for the four
+ *     accounts it creates itself, and the gate's play-clock write on one of them, in the LOOPBACK scratch Postgres it
+ *     refuses to leave; its world holds no house bot. It carries the L2-sweep declaration (2.1), saying so.
+ */
+const SCRIPT_CEILING = 38;
 ok(`2.2 · the script population is shrink-only (${scriptWriters.length} found, ceiling ${SCRIPT_CEILING})`, scriptWriters.length <= SCRIPT_CEILING,
   scriptWriters.map((s) => s.file).slice(0, 6).join(" · "));
 
