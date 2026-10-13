@@ -56,6 +56,7 @@ const ORM = "src/components/markets/operation-result-modal.tsx";
 const MODAL = "src/components/ui/modal.tsx";
 const RULE = "src/lib/held-key.ts";
 const DIAL = "src/components/markets/conviction-dial.tsx";
+const SHEET = "src/components/journey/bet-sheet/bet-sheet.tsx";
 /* ⭐ A8i-2 — the key guard, the shell that mounts it, the dialog stack, the win seal (its queue gap), and the dropdown. */
 const GUARD = "src/components/ui/key-guard.tsx";
 const SHELL = "src/components/layout/app-shell.tsx";
@@ -952,6 +953,10 @@ function run(w: World, log: (l: string) => void): string[] {
       && /initialFocus=\{confirmRef\}/.test(sell) && /onConfirm\(\)/.test(sellConfirm) && !/onCancel/.test(sellConfirm)
       && /initialFocus=\{primaryRef\}/.test(orm) && /if \(onPrimary\) onPrimary\(\); else onClose\(\)/.test(ormPrimary),
     JSON.stringify({ bet: betConfirm.slice(0, 80), sell: sellConfirm.slice(0, 80), orm: ormPrimary.slice(0, 80) }));
+  const sheetSrc = decomment(w.read(SHEET));
+  ok("2.2s · the journey's bet sheet is a stake surface: first focus is its heading, each frame re-arms it, and only the commit button's own click places the bet",
+    sheetSrc.includes("initialFocus={headingRef}") && /<h2[^>]*ref=\{headingRef\}[^>]*tabIndex=\{-1\}/.test(sheetSrc)
+      && sheetSrc.includes("refocusKey={props.frame.frame}") && /type="button"[^>]*data-testid="journey-sheet-place"[^>]*onClick=\{onPlace\}/.test(sheetSrc));
   const ormSecondary = buttonWith(orm, "if (onSecondary) onSecondary(); else onClose()") ?? "";
   // Round 5 (R5-A, F20, 2026-10-09): the bet's ✕ is no longer drawn by hand with `onClick={onCancel}` — it is the one ✕,
   // `CloseX` (a real `type="button"`, modal.tsx), closing through the dialog's guarded close as the Sell's does, and
@@ -1088,7 +1093,8 @@ function run(w: World, log: (l: string) => void): string[] {
   ok("5.10 · ★ every money confirm names its way out (`safeFocus`), and it is the button that leaves: the bet confirm's \"Ghairi\", the Sell confirm's \"Hifadhi nafasi\", and ConfirmModal's Cancel (deposit, withdraw and every officer's money confirm) — so an Enter meant for a dialog drawn over them can at worst close them",
     betSrc.includes("safeFocus={cancelRef}") && /onClick=\{onCancel\}/.test(betWayOut) && !/onConfirm/.test(betWayOut)
       && sellSrc.includes("safeFocus={keepRef}") && /onClick=\{onCancel\}/.test(sellWayOut) && !/onConfirm/.test(sellWayOut)
-      && cmText.includes("safeFocus={cancelRef}") && /onClick=\{onClose\}/.test(cmWayOut) && !/onConfirm/.test(cmWayOut),
+      && cmText.includes("safeFocus={cancelRef}") && /onClick=\{onClose\}/.test(cmWayOut) && !/onConfirm/.test(cmWayOut)
+      && sheetSrc.includes("safeFocus={closeRef}") && /<CloseX ref=\{closeRef\} withheld=\{placing\} onClick=\{onClose\}/.test(sheetSrc),
     JSON.stringify({ bet: squashed(betWayOut).slice(0, 60), sell: squashed(sellWayOut).slice(0, 60), cm: squashed(cmWayOut).slice(0, 60) }));
 
   log("§6 · the first focus (A8i-2)");
@@ -1393,6 +1399,10 @@ if (!PROVE_RED) {
     { name: "a covered dialog that held focus closes and nobody takes it", expect: /^5[.]9 /,
       world: () => plantIn(STACK, "    top?.focusIn();" + NL, "") },
     // §5.10 · the way out
+    { name: "the journey stake sheet opens on a control instead of its heading", expect: /^2[.]2s /,
+      world: () => plantIn(SHEET, "initialFocus={headingRef}", "initialFocus={closeRef}") },
+    { name: "the journey stake sheet names no safe way out", expect: /^5[.]10 /,
+      world: () => plantIn(SHEET, "safeFocus={closeRef}", "") },
     { name: "the Sell confirm names no way out (the seal's close hands focus to its sell button)", expect: /^5[.]10 /,
       world: () => plantIn(SELL, "      safeFocus={keepRef}" + NL, "") },
     { name: "the bet confirm's way out is not its Cancel button", expect: /^5[.]10 /,

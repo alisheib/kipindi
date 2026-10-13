@@ -180,7 +180,9 @@ export function useExitPhase(open: boolean, beat: ExitBeat = "--t-quick"): { pre
  * of height L (ascent 0.97, descent 0.29, cap 0.73 per em): 0.6em in a 1.25 line, 0.6625em in a 1.375 one. Where the ✕
  * is pinned to the corner, the title comes to it (`.kp-modal-title`, `.kp-jsheet__title`, globals.css); where it stands
  * in a header row, it goes to the title (ConfirmModal below, the bet and sell confirms, the filter sheet, and since round 6
- * the Needle drawer and the chat panel). THE ONE EXCEPTION (round 6, 2026-10-09, review C9): a dialog that opens on a
+ * the Needle drawer and the chat panel). S8 A13 adds the chosen-side row as a sheet's header row: the bet sheet's CloseX
+ * stands beside its locked side chip (beside the receipt's eyebrow after a bet), and takes an optional ref for safeFocus.
+ * THE ONE EXCEPTION (round 6, 2026-10-09, review C9): a dialog that opens on a
  * centred crest or seal — the operation result, the win celebration — has no title beside its ✕ (the title stands under
  * the crest), so its ✕ keeps the corner. `test:visual-pass-r6c` §10 holds every player dialog to one of these places.
  * ⭐ ONE RULE WHILE A REQUEST IS IN FLIGHT (round 5, 2026-10-09, F20): the ✕ is there exactly when the dialog's own way
@@ -192,9 +194,10 @@ export function useExitPhase(open: boolean, beat: ExitBeat = "--t-quick"): { pre
  * focus trap skips), its box kept — so the row is as tall and the title wraps exactly as beside the ✕: the body never
  * moves. A dialog busy with its way out still open (ConfirmModal's `confirmHeld`, a re-read) keeps its ✕ drawn and live.
  */
-export function CloseX({ onClick, label, className, withheld = false }: { onClick: () => void; label: string; className: string; withheld?: boolean }) {
+export function CloseX({ onClick, label, className, withheld = false, ref }: { onClick: () => void; label: string; className: string; withheld?: boolean; ref?: React.Ref<HTMLButtonElement> }) {
   return (
     <button
+      ref={ref}
       type="button"
       onClick={onClick}
       aria-label={label}

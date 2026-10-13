@@ -177,7 +177,7 @@ const HANG_REST = restRule ? Number(restRule[1]) : NaN;
   // /markets keeps no rung between its search and its bar: its echo row IS the gap (25 + 10 = 35), and its grid now
   // stands as far under the bar.
   const markets = code("src/app/markets/page.tsx");
-  const marketsGhost = code("src/app/markets/loading.tsx");
+  const marketsGhost = code("src/app/markets/markets-ghost.tsx");
   const gridMt = SCALE[/<section data-board="grid" className="market-grid mt-([0-9.]+)">/.exec(markets)?.[1] ?? ""] ?? NaN;
   ok("1.7 · /markets wears no band (no rung between its search and its bar: 25 + 10 = 35 to the pills) and its cards stand 34 under the bar (pb 10 + mt-5), its ghost's grid likewise (tile 196 read 26)",
     !markets.includes("QUERY_SEARCH_BAND_CLASS") && Math.abs(ECHO + ROW1_PT - (ROW2_PB + gridMt)) <= 1 && marketsGhost.includes(`<div className="market-grid mt-5" aria-hidden>`),

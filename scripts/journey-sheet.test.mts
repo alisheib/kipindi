@@ -76,10 +76,11 @@ type Impl = {
   /** §6–§7 (S8 WP3): the viewer's facts, the memory twin of the pending-deposit read, and the card's seed. */
   facts: typeof SHEET.viewerFacts; pending: (userId: string) => Promise<{ amount: number; txnId: string; createdAt: string } | null>;
   seed: typeof SHEET.sheetSeedFor;
+  closedKey: typeof SHEET.sheetClosedKeyRead;
 };
 const REAL: Impl = {
   pub: SHEET.sheetPublic, forUser: SHEET.sheetForUser, route: ROUTE, rules: RATE_RULES, figures: SHEET.cardFigures, sheetSrc: SHEET_SRC,
-  facts: SHEET.viewerFacts, pending: async (u) => db.txn.newestProcessingDeposit(u), seed: SHEET.sheetSeedFor,
+  facts: SHEET.viewerFacts, pending: async (u) => db.txn.newestProcessingDeposit(u), seed: SHEET.sheetSeedFor, closedKey: SHEET.sheetClosedKeyRead,
 };
 
 const NOW = Date.now();
@@ -156,6 +157,7 @@ async function clock(userId: string) {
 const KEY_MINE = "6f1e2d3c-4b5a-4987-8a6b-5c4d3e2f1a00";
 const KEY_THEIRS = "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d";
 const KEY_HOUSE = "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
+const KEY_CLOSED = "1a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
 
 async function fixtures() {
   await market("mkt_sheet0live");
@@ -176,6 +178,8 @@ async function fixtures() {
   await position("pos_sheet_k2", "usr_sheet_2", "mkt_sheet0live", "YES", "OPEN", { key: KEY_THEIRS });
   await position("pos_sheet_k3", "usr_sheet_1", "mkt_sheet0live", "NO", "CASHED_OUT", { key: KEY_HOUSE, houseBotId: "hb_sheet" });
   await position("pos_sheet_k4", "usr_sheet_1", "mkt_sheet0live", "YES", "CASHED_OUT", { key: "not-a-uuid" });
+  await market("mkt_sheet0receipt");
+  await position("pos_sheet_closed", "usr_sheet_1", "mkt_sheet0receipt", "YES", "OPEN", { key: KEY_CLOSED });
 }
 
 /** The public half as it was assembled before S8 WP3's extraction — the same primitives, in the same order. */
@@ -240,7 +244,7 @@ async function run(impl: Impl, log: (l: string) => void, tag = "real"): Promise<
   ok("4.rate · rate-limited per IP on `sheet.ip`, a rule that exists", /rateCheckAsync\(ip, "sheet\.ip"\)/.test(code) && Object.prototype.hasOwnProperty.call(impl.rules, "sheet.ip"));
   ok("4.cache · the public half is shared-cacheable for at most 5 seconds; the viewer's half is private, no-store",
     !!sMax && Number(sMax[1]) <= 5 && /const PRIVATE = \{ "Cache-Control": "private, no-store" \};/.test(code)
-      && /const mine = await sheetForUser\(pub\.id, session\.userId, \{/.test(code) && /\{ \.\.\.pub, me: mine \}, \{ headers: PRIVATE \}/.test(code)
+      && /const mine = await sheetForUser\(pub\.id, session\.userId, \{/.test(code) && /\{ \.\.\.pub, title, me: mine \}, \{ headers: PRIVATE \}/.test(code)
       && /NextResponse\.json\(pub, \{ headers: PUBLIC \}\)/.test(code), sMax?.[0] ?? "no public cache header");
   ok("4.errors · ?me=1 without a session is 401; a non-sheet is 404; a store failure is 503 — each no-store",
     /status: 401, headers: NO_STORE/.test(code) && /status: 404, headers: NO_STORE/.test(code) && /status: 503, headers: NO_STORE/.test(code)
@@ -471,7 +475,7 @@ async function seedAndRoute(impl: Impl, ok: Ok) {
   ok("8.params · the viewer's read takes the session's play clock, the side only as YES or NO, the key as given (the read checks its shape), and `open` only from open=1 — handed the public half it just read",
     /playStartedAt: session\.playStartedAt \?\? null,/.test(code) && /side: side === "YES" \|\| side === "NO" \? side : null,/.test(code)
       && /key: q\.get\("key"\),/.test(code) && /open: q\.get\("open"\) === "1" \? pub : null,/.test(code)
-      && /\{ \.\.\.pub, me: mine \}, \{ headers: PRIVATE \}/.test(code));
+      && /\{ \.\.\.pub, title, me: mine \}, \{ headers: PRIVATE \}/.test(code));
   const mine = await impl.forUser("mkt_sheet0live", "usr_sheet_1", { key: KEY_MINE });
   ok("8.key.mine · the viewer's own key names its position", j(mine.keyPosition) === j({ positionId: "pos_sheet_k1" }), j(mine.keyPosition));
   const theirs = await impl.forUser("mkt_sheet0live", "usr_sheet_1", { key: KEY_THEIRS });
@@ -482,6 +486,57 @@ async function seedAndRoute(impl: Impl, ok: Ok) {
   const none = await impl.forUser("mkt_sheet0live", "usr_sheet_1", {});
   ok("8.key.shape · a key that is not a UUID is never looked up (a row stored under it is not found), and no key is null",
     bad.keyPosition === null && none.keyPosition === null, j({ bad: bad.keyPosition, none: none.keyPosition }));
+  const wrongMarket = await impl.forUser("mkt_sheet0closed", "usr_sheet_1", { key: KEY_MINE });
+  ok("8.key.market · the viewer's key for another question is never this question's receipt", wrongMarket.keyPosition === null, j(wrongMarket.keyPosition));
+
+  const walletGetter = db.wallet.findByUserId;
+  let walletReads = 0;
+  db.wallet.findByUserId = async (userId) => {
+    walletReads++;
+    const row = await walletGetter(userId);
+    // A concurrent bonus spend is visible to a SECOND read. One response must not carry both snapshots.
+    return row && walletReads > 1 ? { ...row, bonusBalance: 0 } : row;
+  };
+  let snapshot: Awaited<ReturnType<typeof impl.forUser>>;
+  try { snapshot = await impl.forUser("mkt_sheet0live", "usr_sheet_1"); }
+  finally { db.wallet.findByUserId = walletGetter; }
+  ok("8.wallet.snapshot · the headline and shortfall facts share one wallet read, even if a second read would see a bonus spent meanwhile",
+    walletReads === 1 && snapshot!.spendable === 3_500 && snapshot!.facts?.wallet?.balance === 3_000 && snapshot!.facts?.wallet?.bonusBalance === 500,
+    j({ walletReads, spendable: snapshot!.spendable, wallet: snapshot!.facts?.wallet }));
+  db.wallet.findByUserId = () => { throw new Error("planted wallet read outage"); };
+  let walletOutage: Awaited<ReturnType<typeof impl.forUser>>;
+  try { walletOutage = await impl.forUser("mkt_sheet0live", "usr_sheet_1"); }
+  finally { db.wallet.findByUserId = walletGetter; }
+  ok("8.wallet.outage · a wallet read failure leaves both the headline and facts unknown; it never becomes a zero balance",
+    walletOutage!.spendable === null && walletOutage!.facts === null);
+
+  // The bet landed, its answer was lost, and then the question changed state. A public 404 must not hide its receipt.
+  const closedAnswers: unknown[] = [];
+  for (const status of ["CLOSED", "RESOLVED", "VOIDED"]) {
+    await market("mkt_sheet0receipt", { status });
+    closedAnswers.push({ public: await impl.pub("mkt_sheet0receipt", NOW), key: await impl.closedKey("mkt_sheet0receipt", "usr_sheet_1", KEY_CLOSED) });
+  }
+  ok("8.closedKey.receipt · after a landed bet's question closes, resolves or voids, its public sheet stays absent but the private key read still answers its one receipt",
+    closedAnswers.every((x) => j(x) === j({ public: null, key: { public: null, me: { keyPosition: { positionId: "pos_sheet_closed" } } } })), j(closedAnswers));
+  const hidden = await Promise.all([
+    impl.closedKey("mkt_sheet0receipt", "usr_sheet_2", KEY_CLOSED),
+    impl.closedKey("mkt_sheet0live", "usr_sheet_1", KEY_HOUSE),
+    impl.closedKey("mkt_sheet0receipt", "usr_sheet_1", KEY_MINE),
+  ]);
+  ok("8.closedKey.private · the closed-key shape contains only public:null and the scoped key position; another viewer, a house stake and another question never answer a receipt",
+    hidden.every((x) => j(x) === j({ public: null, me: { keyPosition: null } })), j(hidden));
+  ok("8.closedKey.shape · a missing or malformed key has no special response, and a malformed market id is refused",
+    (await impl.closedKey("mkt_sheet0receipt", "usr_sheet_1", null)) === null
+      && (await impl.closedKey("mkt_sheet0receipt", "usr_sheet_1", "not-a-uuid")) === null
+      && (await impl.closedKey("not-an-id", "usr_sheet_1", KEY_CLOSED)) === null);
+  ok("8.closedKey.route · only a signed-in me read may use the missing-public-sheet key fallback, before the 404, and its response is private/no-store",
+    /if \(!pub\) \{\s*const receipt = me && session \? await sheetClosedKeyRead\(id, session\.userId, q\.get\("key"\)\) : null;\s*if \(receipt\) return NextResponse\.json\(receipt, \{ headers: PRIVATE \}\);\s*return NextResponse\.json\(\{ error: "NOT_FOUND" \}, \{ status: 404, headers: NO_STORE \}\);\s*\}/.test(code));
+  const findKey = positionStore.findByIdempotencyKey;
+  positionStore.findByIdempotencyKey = () => { throw new Error("planted key read outage"); };
+  let keyOutageThrown = false;
+  try { await impl.closedKey("mkt_sheet0receipt", "usr_sheet_1", KEY_CLOSED); } catch { keyOutageThrown = true; }
+  finally { positionStore.findByIdempotencyKey = findKey; }
+  ok("8.closedKey.outage · a failed key lookup rejects the read instead of answering that no bet landed", keyOutageThrown);
 }
 
 await fixtures();
@@ -512,7 +567,8 @@ if (!PROVE_RED) {
     { name: "a POST handler added", expect: /^4\.verbs /, impl: swap("export async function GET(", "export async function POST() { return null; }\nexport async function GET(") },
     { name: "the rate limit removed", expect: /^4\.rate /, impl: swap('rateCheckAsync(ip, "sheet.ip")', "({ allowed: true })") },
     { name: "the public half cached for a minute", expect: /^4\.cache /, impl: swap("s-maxage=5,", "s-maxage=60,") },
-    { name: "the viewer's half served with the public cache header", expect: /^4\.cache /, impl: swap("{ headers: PRIVATE }", "{ headers: PUBLIC }") },
+    { name: "the viewer's half served with the public cache header", expect: /^4\.cache /,
+      impl: swap("NextResponse.json({ ...pub, title, me: mine }, { headers: PRIVATE })", "NextResponse.json({ ...pub, title, me: mine }, { headers: PUBLIC })") },
     { name: "a 503 that a cache may keep", expect: /^4\.errors /, impl: swap("status: 503, headers: NO_STORE", "status: 503, headers: PUBLIC") },
     // §5 · the card's figures (S7 WP3 step 5)
     { name: "the card's figures drop the selection close (a closed market still prices its card)", expect: /^5[.]figures /,
@@ -584,6 +640,19 @@ if (!PROVE_RED) {
     // §8 · the route and the key (S8 WP3 step 5; S8-PLAN A2)
     { name: "the session read on the public half too", expect: /^8[.]anon /, impl: swap("const session = me ? await getSession() : null;", "const session = await getSession();") },
     { name: "open on every viewer read", expect: /^8[.]params /, impl: swap('open: q.get("open") === "1" ? pub : null,', "open: pub,") },
+    { name: "a second wallet read feeds the shortfall facts after a concurrent bonus spend", expect: /^8[.]wallet[.]snapshot /,
+      impl: { ...REAL, forUser: async (m, u, o = {}) => {
+        const r = await REAL.forUser(m, u, o);
+        let wallet: Awaited<ReturnType<typeof db.wallet.findByUserId>>;
+        try { wallet = await db.wallet.findByUserId(u); } catch { return { ...r, facts: null }; }
+        return r.facts ? { ...r, facts: { ...r.facts, wallet: wallet ? { status: wallet.status, balance: wallet.balance, bonusBalance: wallet.bonusBalance ?? 0 } : null } } : r;
+      } } },
+    { name: "a closed question hides its landed receipt", expect: /^8[.]closedKey[.]receipt /,
+      impl: { ...REAL, closedKey: async () => null } },
+    { name: "the closed-key route uses a public cache header", expect: /^8[.]closedKey[.]route /,
+      impl: swap("if (receipt) return NextResponse.json(receipt, { headers: PRIVATE });", "if (receipt) return NextResponse.json(receipt, { headers: PUBLIC });") },
+    { name: "the closed-key lookup outage is answered as no bet", expect: /^8[.]closedKey[.]outage /,
+      impl: { ...REAL, closedKey: async (m, u, k) => { try { return await REAL.closedKey(m, u, k); } catch { return { public: null, me: { keyPosition: null } }; } } } },
     { name: "another player's key answered", expect: /^8[.]key[.]theirs /,
       impl: { ...REAL, forUser: async (m, u, o = {}) => { const r = await REAL.forUser(m, u, o); const p = o.key ? await positionStore.findByIdempotencyKey(o.key) : null; return p && p.houseBotId == null ? { ...r, keyPosition: { positionId: p.id } } : r; } } },
     { name: "a house bot's key answered", expect: /^8[.]key[.]house /,

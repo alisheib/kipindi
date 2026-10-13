@@ -3209,7 +3209,7 @@ export const dict = {
        * S8 drafts, for review 8. The pending lines follow the deposit's age (A10): `common.depositPendingBody` under 10
        * minutes, lowPendingWaitBody to 30, lowPendingLateTitle/Body after. multOnly is a figure with no words (IDENTICAL_OK).
        */
-      sheetRailsPaused: "Deposits are unavailable right now. Every payment method is paused for a while — try again later.",
+      sheetRailsPaused: "Mobile-money deposits are unavailable right now. Every mobile-money method is paused for a while — try again later.",
       sheetDepositMax: "The most you can deposit at once is {max}.",
       sheetPlacing: "Placing your bet…",
       sheetPlacingSlow: "Still placing your bet — this is taking a moment.",
@@ -5693,7 +5693,7 @@ export const dict = {
       sheetSofRequired: "Ili uweke pesa, tamko lako la chanzo cha fedha linahitaji kukubaliwa na timu yetu kwanza. Jaza tamko kwenye wasifu wako; utaweza kuweka pesa likishakubaliwa.",
       sheetBelowMin: "Dau la chini kabisa ni {min}.",
       sheetAboveMax: "Kiwango cha juu kwa dau moja ni {max}.",
-      sheetRailsPaused: "Kuweka pesa hakupatikani kwa sasa. Njia zote za malipo zimesimama kwa muda — jaribu tena baadaye.",
+      sheetRailsPaused: "Kuweka pesa kwa simu hakupatikani kwa sasa. Njia zote za malipo kwa simu zimesimama kwa muda — jaribu tena baadaye.",
       sheetDepositMax: "Kiwango cha juu cha kuweka pesa mara moja ni {max}.",
       sheetPlacing: "Inaweka dau…",
       sheetPlacingSlow: "Bado tunaweka dau lako — inachukua muda kidogo.",
@@ -8157,7 +8157,7 @@ export const dict = {
       sheetSofRequired: "充值前，您的资金来源声明需先经我们团队接受。请在个人资料中填写声明；接受后即可充值。",
       sheetBelowMin: "最低投注为 {min}。",
       sheetAboveMax: "单笔投注上限为 {max}。",
-      sheetRailsPaused: "目前无法充值。所有支付方式暂停中——请稍后再试。",
+      sheetRailsPaused: "目前无法通过手机钱包充值。所有手机钱包支付方式暂停中——请稍后再试。",
       sheetDepositMax: "单笔充值上限为 {max}。",
       sheetPlacing: "正在投注…",
       sheetPlacingSlow: "仍在为您投注——需要一点时间。",

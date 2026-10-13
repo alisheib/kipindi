@@ -61,7 +61,7 @@ import {
 } from "../src/lib/markets/discovery.ts";
 // The skeleton's own declaration of how many status pills it reserves space for. Imported, not
 // re-typed, so §7 compares the real array against the real status list.
-import { STATUS_PILL_W } from "../src/app/markets/loading.tsx";
+import { STATUS_PILL_W } from "../src/app/markets/markets-ghost.tsx";
 
 /**
  * The status-id alternation used by §2's source scans, BUILT FROM `STATUS_IDS`.

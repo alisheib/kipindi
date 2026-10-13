@@ -933,7 +933,9 @@ for every player.
 (Vodacom S6 A8i 2026-10-06, A8i-2 2026-10-07).** Never add a `window`/`document` keydown listener that does a dialog's act
 on Enter: it cancels the focused button's own press, which is how Enter on "Ghairi" placed bets and Enter on the win seal
 sold the ticket underneath (live until A8i). Money dialogs open with focus on their primary, so Enter there is the
-button's own click. Every `Modal` stands on one dialog stack (`src/lib/modal-stack.ts`): only the top dialog takes focus
+button's own click — except the journey's bet sheet, a stake surface whose primary is the money commit: it opens on its
+heading, re-arms that heading for each frame, and its CTA's own click is the act (S8-PLAN A12, Open point 5;
+`test:enter-where-pressed` 2.2s). Every `Modal` stands on one dialog stack (`src/lib/modal-stack.ts`): only the top dialog takes focus
 and answers Escape and Tab, and a closing dialog hands focus back by `leaveLayer` — never behind the dialog now on top, and
 an uncovered money dialog lands on its WAY OUT (`safeFocus`: Ghairi, Hifadhi nafasi, Cancel), never its money button. One
 app-wide key guard (`src/components/ui/key-guard.tsx`, window capture phase, mounted by AppShell and by every Modal)

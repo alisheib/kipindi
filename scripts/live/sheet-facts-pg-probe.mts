@@ -32,9 +32,9 @@ if (!process.env.DATABASE_URL) {
 }
 
 const { db } = await import("../../src/lib/server/store.ts");
-const { positionStore } = await import("../../src/lib/server/market-dal.ts");
+const { marketStore, positionStore } = await import("../../src/lib/server/market-dal.ts");
 const { createMarket, buyPosition } = await import("../../src/lib/server/market-service.ts");
-const { sheetForUser, sheetPublic, viewerFacts } = await import("../../src/lib/server/journey-sheet.ts");
+const { sheetClosedKeyRead, sheetForUser, sheetPublic, viewerFacts } = await import("../../src/lib/server/journey-sheet.ts");
 const { auditFlush } = await import("../../src/lib/server/audit.ts");
 const { prisma } = await import("../../src/lib/server/prisma.ts");
 
@@ -152,6 +152,44 @@ await auditFlush();
 const rows = await pc.auditLog.findMany({ where: { action: "rg.session_limit.enforced", actorId: "probe_sf_over" }, select: { payload: true } });
 ok("11 · ★ past the limit, the OPEN read writes the gate's play clock and exactly ONE rg.session_limit.enforced row, with at: \"sheet\"",
   o2 !== o1 && /"playStartedAt":"/.test(o2) && rows.length === 1 && (rows[0]?.payload as { at?: string } | null)?.at === "sheet", json({ o2, rows }));
+
+/* ── 4 · a landed key remains readable after the question is no longer a public sheet ── */
+for (const status of ["CLOSED", "RESOLVED", "VOIDED"] as const) {
+  await marketStore.set({ ...m, status });
+  const publicSheet = await sheetPublic(m.id);
+  const receipt = await sheetClosedKeyRead(m.id, "probe_sf_me", KEY_ME);
+  ok(`12 · ★ ${status}: the public sheet is absent, while a lost answer still recovers the landed position through its private key`,
+    publicSheet === null && mine.ok && json(receipt) === json({ public: null, me: { keyPosition: { positionId: mine.data.positionId } } }), json({ publicSheet, receipt }));
+}
+const terminalOther = await sheetClosedKeyRead(m.id, "probe_sf_me", KEY_OTHER);
+const terminalHouse = await sheetClosedKeyRead(m.id, "probe_sf_me", KEY_HOUSE);
+const terminalWrongMarket = await sheetClosedKeyRead("mkt_otherquestion", "probe_sf_me", KEY_ME);
+const terminalBad = await sheetClosedKeyRead(m.id, "probe_sf_me", "not-a-uuid");
+ok("13 · ★ terminal key reads reveal neither another player's position, a house stake nor a position on another question; a malformed key has no lookup response",
+  [terminalOther, terminalHouse, terminalWrongMarket].every((r) => json(r) === json({ public: null, me: { keyPosition: null } })) && terminalBad === null,
+  json({ other: terminalOther, house: terminalHouse, wrongMarket: terminalWrongMarket, bad: terminalBad }));
+
+/* ── 5 · a real database change between reads cannot split the headline from the shortfall facts ── */
+const walletGetter = db.wallet.findByUserId;
+const walletBefore = await walletGetter("probe_sf_me");
+let walletReads = 0;
+db.wallet.findByUserId = async (userId) => {
+  walletReads++;
+  const row = await walletGetter(userId);
+  // The real DB changes immediately after the first snapshot. A second read would see 123 less cash.
+  if (walletReads === 1) await pc.wallet.update({ where: { userId }, data: { balance: { decrement: 123 } } });
+  return row;
+};
+let walletSnapshot: Awaited<ReturnType<typeof sheetForUser>>;
+try { walletSnapshot = await sheetForUser(m.id, "probe_sf_me"); }
+finally { db.wallet.findByUserId = walletGetter; }
+const walletAfter = await walletGetter("probe_sf_me");
+ok("14 · ★ after a concurrent database change, one wallet snapshot still supplies both the spendable headline and shortfall facts — the later DB balance is not mixed into this response",
+  !!walletBefore && walletReads === 1 && walletAfter?.balance === walletBefore.balance - 123
+    && walletSnapshot!.spendable === walletBefore.balance + (walletBefore.bonusBalance ?? 0)
+    && walletSnapshot!.facts?.wallet?.balance === walletBefore.balance
+    && walletSnapshot!.facts?.wallet?.bonusBalance === (walletBefore.bonusBalance ?? 0),
+  json({ walletReads, before: walletBefore?.balance, after: walletAfter?.balance, spendable: walletSnapshot!.spendable, factsWallet: walletSnapshot!.facts?.wallet }));
 
 console.log(`\nsheet-facts-pg-probe: ${pass} passed, ${fail} failed`);
 process.exitCode = fail === 0 ? 0 : 1;

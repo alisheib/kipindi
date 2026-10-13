@@ -389,7 +389,13 @@ or that are very repetitive … maximum efficiency of our time through this plan
   browser viewport tiles of everything, read one by one. Between closes, tiles only of what changed.
 - **Not run:** a check on code the change never touched (the header fit, the landmark seals, needle-rest, the preview
   drive), another lane's red twins, a repeat of a proof that already passed on the same files.
-- Heavy Node only through `~/heavy-node-lock.sh`, one heavy job at a time and no helper running suites beside it (this
+- **OMEGA-DEV072 override (Ali, 2026-10-13):** this PC has enough compute capacity; use independent work and verification
+  in parallel. Measured here: 32 GB RAM, Intel i7-12700, 12 cores / 20 logical processors. The single-heavy-job and LIGHT
+  restrictions below apply to the resource-constrained machine they describe, not this PC. Separate server ports,
+  scratch database ports and artifact paths; stop only processes started by this session. Keep lockfile versions for
+  reproducible verification. Ali also instructs us to fix encountered visual defects as we go: sizing, borders,
+  spacing and inconsistent implementations of the same component. Visual and logical correctness are both release gates.
+- On the resource-constrained machine: heavy Node only through `~/heavy-node-lock.sh`, one heavy job at a time and no helper running suites beside it (this
   laptop's RAM fails); ⭐ the LIGHT profile (Ali, 2026-10-11, after the fifth crash): one in-memory dev server per lock
   job and no heap cap (a cap makes `next dev` restart and wipe its store), a 30 s cool-down, routes warmed one at a time,
   qa:live and the tile drive on that one server, every worktree checkout VERIFIED by HEAD, 2–3 tiles opened before any
@@ -520,7 +526,23 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   the done-when); the spec lines Corrections 4–7, 11, 12, 14, 16 and 26 name, annotated where they stand (§2's kit
   rows, §3.2–§3.4 and the R3 row here; INHERIT-MANIFEST L6; S4-COPY-AUDIT's approved canvas words); §0h point 82.
   (5) Carried from S7: the journey hydration note (§0j, WP11's bullet; S8-PLAN A24 item 11).
-- **Next:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;
+- **Codex continuation, OMEGA-DEV072 (2026-10-13, Ali: continue this plan and push verified progress live).** WP1–WP5's
+  remote package commits are integrated on `codex/vodacom-s8`, with independent reviews. WP6's sheet, WP7's host and
+  card seeds, WP8's question layout and loading, WP9's break states and WP10's payload-free refresh are implemented;
+  WP11's browser drives and visual review are in progress. **NOT CLOSED / NOT LIVE yet:** the working branch is a
+  recoverable checkpoint, never evidence that the release gates passed. Current proof: typecheck; the sheet's 49
+  core/render checks and 78 mutations; 173 numeric input checks including real Chromium IME and its broken-handler
+  control; the sheet read's 41 mutations, home 244 and question 6; parity v4's 167 controls at `ff8c731e2`.
+  The fresh v4 baseline/null pair, full battery including scratch Postgres, host/matrix browser drives, visual tiles,
+  production build/render and production read-back remain the closure work. Local worktree:
+  `C:\Users\asheib\.codex\worktrees\latest-onboarding\kipindi-main`; baseline tree at `ff8c731e2` in
+  `C:\Users\asheib\.codex\worktrees\vodacom-s8-baseline\kipindi-main` (its source is main + WP1 only).
+  The independent reviews fixed terminal-market key lookup, shared wallet truth, a reopened selection's doubt,
+  grouped input composition/caret/hidden disabled field, mobile-money-only outage copy and small-screen figure fit.
+  The host now retains every unfinished request identity in the disclosed pending-bet envelope and refuses a new
+  commit before sending if it cannot persist the key; an unread key response never retires doubt. Privacy v2026-10-13
+  names this storage. The journey remains staff preview; no real-money staff drive before S14 and no public flip.
+- **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;
   WP8, WP9 and WP10; WP11a; WP11b; WP12 (A17's order).
 - **▶ IN FLIGHT (2026-10-13, from ~02:05 EAT) — the coordinator, a claude.ai/code cloud VM, with five builders on their
   own VMs, each on WP0's draft base `origin/vodacom-s8-wp0-draft` (`bbbf2cb7`, the code of `9c167bef`):** WP1 parity v4
@@ -3568,11 +3590,11 @@ stake (TZS 500 since 2026-10-12) is read per market and typed nowhere. Reused by
 the receipt's "Dau" is `common.stake`, and the rest of S8-PLAN's "Reused, never copied" list. ⛔ No helpline key. S8's
 own words, which no deck slide gives, are drafts, reviewed in
 [`S4-COPY-AUDIT.md`](design-system/v5-2026-09-29-simplified-journey/S4-COPY-AUDIT.md) "S8 drafts" and "Swahili review" 8
-(drafted by the build, for Ali's or a Swahili reviewer's sign-off):
+(independently reviewed and signed by Codex under the existing Swahili-speaker delegation; review 8 records the mobile-money scope correction):
 
 | S8 draft key | sw | en | zh (draft) |
 |---|---|---|---|
-| `journey.sheetRailsPaused` | Kuweka pesa hakupatikani kwa sasa. Njia zote za malipo zimesimama kwa muda — jaribu tena baadaye. | Deposits are unavailable right now. Every payment method is paused for a while — try again later. | 目前无法充值。所有支付方式暂停中——请稍后再试。 |
+| `journey.sheetRailsPaused` | Kuweka pesa kwa simu hakupatikani kwa sasa. Njia zote za malipo kwa simu zimesimama kwa muda — jaribu tena baadaye. | Mobile-money deposits are unavailable right now. Every mobile-money method is paused for a while — try again later. | 目前无法通过手机钱包充值。所有手机钱包支付方式暂停中——请稍后再试。 |
 | `journey.sheetDepositMax` | Kiwango cha juu cha kuweka pesa mara moja ni {max}. | The most you can deposit at once is {max}. | 单笔充值上限为 {max}。 |
 | `journey.sheetPlacing` | Inaweka dau… | Placing your bet… | 正在投注… |
 | `journey.sheetPlacingSlow` | Bado tunaweka dau lako — inachukua muda kidogo. | Still placing your bet — this is taking a moment. | 仍在为您投注——需要一点时间。 |

@@ -1213,7 +1213,7 @@ The classic keys keep their words until S12 (§0h point 3); the sheet reads thes
 | Key | sw | en | zh | Source |
 |---|---|---|---|---|
 | `sheetLossBlock` | Umefikia kikomo cha hasara cha siku ulichojiwekea. Kinahesabu saa 24 zilizopita — unaweza kukiangalia kwenye Weka mipaka. | You've reached the daily loss limit you set. It counts the last 24 hours — you can review it under Set limits. | 您已达到自己设定的每日亏损上限。该上限按过去 24 小时计算——可在“设置限额”中查看。 | replaces the canvas's midnight reset (Correction 14; Open point 22) |
-| `sheetRailsPaused` | Kuweka pesa hakupatikani kwa sasa. Njia zote za malipo zimesimama kwa muda — jaribu tena baadaye. | Deposits are unavailable right now. Every payment method is paused for a while — try again later. | 目前无法充值。所有支付方式暂停中——请稍后再试。 | s4-5-low-paused |
+| `sheetRailsPaused` | Kuweka pesa kwa simu hakupatikani kwa sasa. Njia zote za malipo kwa simu zimesimama kwa muda — jaribu tena baadaye. | Mobile-money deposits are unavailable right now. Every mobile-money method is paused for a while — try again later. | 目前无法通过手机钱包充值。所有手机钱包支付方式暂停中——请稍后再试。 | s4-5-low-paused |
 | `sheetDepositMax` | Kiwango cha juu cha kuweka pesa mara moja ni {max}. | The most you can deposit at once is {max}. | 单笔充值上限为 {max}。 | none drawn (the `deposit_max` branch) |
 | `sheetPlacing` | Inaweka dau… | Placing your bet… | 正在投注… | s4-4-sheet-placing |
 | `estimateUpdatedLive` | Makadirio yamesasishwa: {amount}, ≈{mult}× dau lako | Estimate updated: {amount}, ≈{mult}× your bet | 预估已更新：{amount}，≈{mult}× 您的投注 | s4-4-sheet-updated (the live region) |

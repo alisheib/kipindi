@@ -266,7 +266,7 @@ section("3 · E38 · the journey's loading ghosts (tiles 277 280 290 293 296: on
     ['"/updown/history": <UpDownHistoryGhost journeyHead={<TicketsHeadGhost t={t} />} />', 'import { UpDownHistoryGhost } from "@/app/updown/history/history-ghost";', "src/app/updown/history/loading.tsx", "return <UpDownHistoryGhost />;"],
     ['"/wallet/deposit": <DepositGhost journey />', 'import { DepositGhost } from "@/app/wallet/deposit/deposit-ghost";', "src/app/wallet/deposit/loading.tsx", "return <DepositGhost journey={journey} />;"],
     ['"/wallet/deposit/return": <DepositReturnLoading />', 'import DepositReturnLoading from "@/app/wallet/deposit/return/loading";', "src/app/wallet/deposit/return/loading.tsx", "export default function DepositReturnLoading() {"],
-    ['["^/markets/[^/]+$", <MarketDetailLoading />]', 'import MarketDetailLoading from "@/app/markets/[id]/loading";', "src/app/markets/[id]/loading.tsx", "export default function MarketDetailLoading() {"],
+    ['["^/markets/[^/]+$", <QuestionGhost />]', 'import { QuestionGhost } from "@/components/journey/question/question-ghost";', "src/components/journey/question/question-ghost.tsx", "export function QuestionGhost() {"],
   ];
   const oneDrawing = (g: string) => own.filter(([use, imp, file, renders]) => !(g.includes(use) && g.includes(imp) && read(file).includes(renders)));
   ok("3.4 · each ghost is its page's own: Tiketi zangu's journey ghost, the hero's intro components, and every other page's own drawing — the one its loading file renders — imported, never redrawn",

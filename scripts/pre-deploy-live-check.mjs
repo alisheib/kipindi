@@ -23,6 +23,7 @@
  */
 import { chromium } from "playwright";
 import { JOURNEY_HOME_TESTIDS, journeyHomeIdsIn, journeyHomeIdsControl } from "./live/journey-home-ids.mjs";
+import { BET_SHEET_TESTIDS, betSheetTracesIn, betSheetTracesControl } from "./live/bet-sheet-cells.mjs";
 
 const BASE = process.env.BASE || "http://localhost:3009";
 const LOCAL = /localhost|127\.0\.0\.1/.test(BASE);
@@ -585,6 +586,9 @@ const journeyRollout = await (async () => {
     const problems = journeyHomeIdsControl();
     ok(`control · S7's id matcher (${JOURNEY_HOME_TESTIDS.join(", ")}) catches each id as an element and as RSC JSON, escaped or plain, and passes a page without them`,
       problems.length === 0, problems.slice(0, 2).join(" | "));
+    const s8Problems = betSheetTracesControl();
+    ok(`control · S8 matcher (${BET_SHEET_TESTIDS.join(", ")}, data-sheet, kp-bsheet) sees element/RSC traces without mistaking data-sheet-open`,
+      s8Problems.length === 0, s8Problems.slice(0, 2).join(" | "));
   }
   const JOURNEY_PUBLIC_ROUTES = [...JOURNEY_SHELL_ROUTES, ...JOURNEY_S7_ROUTES];
   if (journeyRollout.state !== "ACTIVE") {
@@ -593,6 +597,17 @@ const journeyRollout = await (async () => {
     ok(`signed out: /markets links a question to read — the first /markets/<id> on the board`, S7_QUESTION !== null,
       "(no question link on /markets — the question page was not read, so nothing was checked there)");
     if (S7_QUESTION) JOURNEY_PUBLIC_ROUTES.push(S7_QUESTION);
+    // /watchlist is protected. Read its OWN response rather than silently following it and calling the login page
+    // the watchlist; a redirect to the real sign-in door is its expected signed-out state.
+    try {
+      const response = await fetch(BASE + "/watchlist", { redirect: "manual", headers: { accept: "text/html" } });
+      const body = await response.text();
+      const location = response.headers.get("location");
+      const signIn = [302, 303, 307, 308].includes(response.status) && location && new URL(location, BASE).pathname === "/auth/login";
+      const document = response.status === 200 && /<html[\s>]/i.test(body);
+      ok("signed out: /watchlist preserves its sign-in door (or classic document), and its own response carries no S8 trace", !!(signIn || document) && betSheetTracesIn(body).length === 0,
+        `HTTP ${response.status}, redirect ${location ? new URL(location, BASE).pathname : "none"}`);
+    } catch (error) { ok("signed out: /watchlist own response was readable", false, String(error)); }
     // ⭐ FIRST, THE READERS ARE SEEN TO SEE (S6 WP12): a page the journey IS served on, read the ways the checks read.
     await journeyShellControl();
     for (const route of JOURNEY_PUBLIC_ROUTES) {
@@ -622,6 +637,9 @@ const journeyRollout = await (async () => {
           : traces.length ? `(found ${traces.join(", ")} on a page that holds no preview pass)` : "");
       // ⭐ AND NONE OF S7'S IDS (WP11, A23 item 1) — matched on their own, the list qa:journey-home proves present for a pass.
       const s7 = read ? journeyHomeIdsIn(html) : [];
+      const s8 = read ? betSheetTracesIn(html) : [];
+      ok(`signed out: ${route} carries none of S8's sheet traces (rollout ${journeyRollout.state ?? "UNKNOWN"})`, shellRead && s8.length === 0,
+        !shellRead ? "the requested page was not read" : `found ${s8.join(", ") || "none"}`);
       ok(`signed out: ${route} carries none of S7's journey ids (rollout ${journeyRollout.state ?? "UNKNOWN"})`, shellRead && s7.length === 0,
         !shellRead ? "(the page was not read as the shell's page — the line above says why — so nothing was checked)"
           : s7.length ? `(found ${s7.join(", ")} on a page that holds no preview pass)` : "");
@@ -727,6 +745,9 @@ if (journeyRollout.state !== "ACTIVE" && !E3_OPTED) {
             : !v.signedIn ? "(not a signed-in page: no balance capsule, or the session-ended notice — this was not the player's page)"
             : found.length ? `(found ${found.join(", ")} for a player who holds no preview pass)` : "");
         const s7 = [...new Set([...journeyHomeIdsIn(d.raw), ...(v?.traces ?? []).filter((x) => JOURNEY_HOME_TESTIDS.includes(x))])];
+        const s8 = betSheetTracesIn(d.raw);
+        ok(`${who}: ${route} carries none of S8's sheet traces in its served document`, read && v.signedIn && s8.length === 0,
+          !read || !v.signedIn ? "the requested signed-in page was not read" : `found ${s8.join(", ") || "none"}`);
         ok(`${who}: ${route} carries none of S7's journey ids, in the page or in the bytes sent`, read && v.signedIn && s7.length === 0,
           !read || !v.signedIn ? "(the page named was not read as the player's — the line above says why — so nothing was checked)"
             : `(found ${s7.join(", ")} for a player who holds no preview pass)`);

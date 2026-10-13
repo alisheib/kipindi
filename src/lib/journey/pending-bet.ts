@@ -31,6 +31,8 @@ export type PendingBet =
 export const PENDING_BET_KEY = "kp-pending-bet";
 /** A marker older than this is ignored: the stake falls back to the minimum. */
 export const PENDING_BET_TTL_MS = 24 * 60 * 60 * 1000;
+/** Bounded tab data; the host refuses a new commit before it could exceed this recoverable envelope. */
+export const PENDING_BET_MAX_BYTES = 64_000;
 /** A marker stamped further in the future than this is not ours (a clock cannot drift a minute in a tab's life). */
 const FUTURE_TOLERANCE_MS = 60 * 1000;
 
@@ -88,6 +90,8 @@ export type PendingBetMarker = {
   bet: string;
   /** When it was chosen (ms since epoch). */
   at: number;
+  /** The random request id, retained only while that bet can still be in flight (S8 A3). */
+  k?: string;
   ref?: string;
   invite?: string;
   utm?: Record<string, string>;
@@ -114,14 +118,15 @@ export function attributionFrom(search: URLSearchParams): Pick<PendingBetMarker,
 }
 
 /** The marker to store when a bet is chosen, as the string sessionStorage holds. */
-export function writeMarker(bet: PendingBet, nowMs: number, attribution: Pick<PendingBetMarker, "ref" | "invite" | "utm"> = {}): string {
+export function writeMarker(bet: PendingBet, nowMs: number, attribution: Pick<PendingBetMarker, "ref" | "invite" | "utm"> = {}, key?: string): string {
   const m: PendingBetMarker = { bet: formatBetParam(bet), at: nowMs, ...attribution };
+  if (typeof key === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)) m.k = key;
   return JSON.stringify(m);
 }
 
 /** A stored marker, read defensively: anything malformed, expired or future-dated is null. */
 export function readMarker(raw: string | null | undefined, nowMs: number): PendingBetMarker | null {
-  if (typeof raw !== "string" || raw.length > 2_000) return null;
+  if (typeof raw !== "string" || raw.length > PENDING_BET_MAX_BYTES) return null;
   let v: unknown;
   try { v = JSON.parse(raw); } catch { return null; }
   if (!v || typeof v !== "object") return null;
@@ -130,6 +135,7 @@ export function readMarker(raw: string | null | undefined, nowMs: number): Pendi
   if (typeof m.at !== "number" || !Number.isFinite(m.at)) return null;
   if (m.at > nowMs + FUTURE_TOLERANCE_MS || nowMs - m.at >= PENDING_BET_TTL_MS) return null;
   const out: PendingBetMarker = { bet: m.bet, at: m.at };
+  if (typeof m.k === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(m.k)) out.k = m.k;
   if (typeof m.ref === "string" && CODE.test(m.ref)) out.ref = m.ref;
   if (typeof m.invite === "string" && CODE.test(m.invite)) out.invite = m.invite;
   if (m.utm && typeof m.utm === "object") {

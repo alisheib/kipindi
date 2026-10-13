@@ -31,7 +31,7 @@ import { SearchBox } from "@/components/ui/search-box";
 import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { DiscoveryBar, type DiscoveryCounts } from "@/components/markets/discovery-bar";
-import { MarketsBoardGhost } from "./loading";
+import { MarketsBoardGhost } from "./markets-ghost";
 import {
   ODDS_IDS,
   POOL_IDS,

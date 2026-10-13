@@ -72,7 +72,8 @@ import { competitionLabel } from "@/lib/markets/competition-label";
 import { marketCategoryLabel, pickLocalized } from "@/lib/localized";
 import { outcomeWord, sideWord } from "@/lib/side-label";
 import { formatEatDateTime } from "@/lib/eat-day";
-import { cardFigures } from "@/lib/server/journey-sheet";
+import { formatBreakEnd, type BreakState } from "@/lib/break-end";
+import { cardFigures, type SheetSeed } from "@/lib/server/journey-sheet";
 import type { StoredMarket } from "@/lib/server/market-service";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 
@@ -189,7 +190,7 @@ function metaGlyph(meta: CardMeta): ReactNode {
   return null;
 }
 
-export function JourneyCard({ m, nowMs, t, locale, heading = "h2", from, roundId }: {
+export function JourneyCard({ m, nowMs, t, locale, heading = "h2", from, roundId, sheet, onBreak }: {
   m: JourneyCardMarket;
   /** The render's clock (ms since the epoch): the close label, the bet test's resolution half and the settled date's
    *  year all read it. (`cardFigures` reads the selection half off the wall clock itself, as the bet path does.) */
@@ -203,10 +204,13 @@ export function JourneyCard({ m, nowMs, t, locale, heading = "h2", from, roundId
   /** An Up & Down row on `/live`: its round's id, or null when none resolved. Omitted elsewhere — the question page
    *  sends an Up & Down market to its round itself. */
   roundId?: string | null;
+  sheet?: SheetSeed | null;
+  onBreak?: BreakState | null;
 }) {
   const { bettable, estimates } = cardFigures(m, nowMs);
   const close = cardCloseLabel(m, nowMs);
-  const face = cardFace({ productLine: m.productLine, status: m.status, resolvedOutcome: m.resolvedOutcome, bettable, estimates, close });
+  const face = cardFace({ productLine: m.productLine, status: m.status, resolvedOutcome: m.resolvedOutcome, bettable, estimates, close, onBreak });
+  const openSheet = face.picks.kind === "open" && m.productLine !== "UPDOWN" && sheet?.bettable && sheet.id === m.id ? sheet : null;
   const title = cardTitle(locale, m);
   const competition = normaliseCompetition(m.competition);
   const where = [marketCategoryLabel(t, m.category), competition ? competitionLabel(t, competition) : null]
@@ -220,6 +224,8 @@ export function JourneyCard({ m, nowMs, t, locale, heading = "h2", from, roundId
     <Link
       href={pickHref(side) as never}
       prefetch={false}
+      data-bet-side={openSheet ? side : undefined}
+      data-bet-origin={openSheet ? (from === "home" ? "home" : "card") : undefined}
       className={`${side === "YES" ? "btn-yes" : "btn-no"} kp-jcard__pick${pf.kind === "word" ? " kp-jcard__pick--word" : ""}`}
     >
       <span className="kp-jcard__side">{sideWord(t, side, m.productLine)}</span>
@@ -228,7 +234,8 @@ export function JourneyCard({ m, nowMs, t, locale, heading = "h2", from, roundId
   );
   const Heading = heading;
   return (
-    <article className="kp-jcard" data-row-id={m.id} data-testid="journey-card">
+    <article className="kp-jcard" data-row-id={m.id} data-testid="journey-card" data-sheet={openSheet ? JSON.stringify(openSheet) : undefined}
+      data-sheet-title={openSheet ? title.text : undefined} data-sheet-origin={openSheet ? (from === "home" ? "home" : "card") : undefined}>
       <Link href={target as never} className="kp-jcard__open" aria-label={pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)} />
       <div className="kp-jcard__meta">
         <DotSeq text={where} className="kp-jcard__where" />
@@ -248,6 +255,10 @@ export function JourneyCard({ m, nowMs, t, locale, heading = "h2", from, roundId
             {pick("YES", face.picks.YES)}
             {pick("NO", face.picks.NO)}
           </div>
+        ) : face.picks.kind === "break" ? (
+          <p className="kp-jcard__break flex items-center justify-center gap-2 text-body-sm text-text-muted">
+            <I.lock s={16} />{t.journey.cardBreak.replace("{date}", formatBreakEnd(Date.parse(face.picks.until), nowMs, t.common.monthsShort, locale))}
+          </p>
         ) : face.picks.kind === "closed" ? (
           <p className="kp-jcard__closed"><I.lock s={16} />{t.market.statusClosed}</p>
         ) : (

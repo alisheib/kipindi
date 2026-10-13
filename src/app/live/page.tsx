@@ -30,6 +30,8 @@ import { pageCumulative, parsePageParam } from "@/lib/journey/home-list";
 import { SearchBox } from "@/components/ui/search-box";
 import { QUERY_SEARCH_BAND_CLASS } from "@/components/ui/query-bar";
 import { JourneyCard } from "@/components/journey/cards/journey-card";
+import { journeyCardState } from "@/lib/server/journey-sheet";
+import { getSession } from "@/lib/server/session";
 import { ShowMore } from "@/components/journey/show-more";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { LivePulseGrid } from "./pulse-grid";
@@ -312,7 +314,7 @@ const JOURNEY_LIVE_PER_PAGE = 12;
  *   · AN UP & DOWN ROW opens its round (`rounds`, the page's `roundByMarket`), or Up & Down when none resolved, as the
  *     wall's card does. Every card is an h2 under the page's h1, read with the page's one clock.
  */
-function JourneyLiveList({ rows, page, q, rounds, nowMs, t, locale }: {
+async function JourneyLiveList({ rows, page, q, rounds, nowMs, t, locale }: {
   rows: Awaited<ReturnType<typeof listMarkets>>;
   page: number;
   q: string;
@@ -322,6 +324,8 @@ function JourneyLiveList({ rows, page, q, rounds, nowMs, t, locale }: {
   locale: Awaited<ReturnType<typeof getServerT>>["locale"];
 }) {
   const shelf = pageCumulative(rows, page, JOURNEY_LIVE_PER_PAGE);
+  const session = await getSession();
+  const { onBreak, seeds } = await journeyCardState(shelf.shown, nowMs, session?.userId);
   return (
     <>
       <div className={QUERY_SEARCH_BAND_CLASS}>
@@ -339,7 +343,7 @@ function JourneyLiveList({ rows, page, q, rounds, nowMs, t, locale }: {
       <div className="flex flex-col gap-3">
         <div className="kp-jgrid">
           {shelf.shown.map((m) => (
-            <JourneyCard key={m.id} m={m} nowMs={nowMs} t={t} locale={locale} roundId={rounds.get(m.id) ?? null} />
+            <JourneyCard key={m.id} m={m} nowMs={nowMs} t={t} locale={locale} roundId={rounds.get(m.id) ?? null} sheet={seeds.get(m.id)} onBreak={onBreak} />
           ))}
         </div>
         {shelf.more && <ShowMore href={buildQueryHref("/live", { q }, { q: "" }, {}, { page: shelf.page + 1 })} t={t} />}

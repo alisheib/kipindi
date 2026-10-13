@@ -24,6 +24,7 @@ import { readFileSync } from "node:fs";
 const POLLER = "src/components/markets/notify-poller.tsx";
 const ROUTE = "src/app/api/positions/settled/route.ts";
 const DIAL = "src/components/markets/conviction-dial.tsx";
+const PLACE_SURFACES = [DIAL, "src/components/journey/bet-sheet/bet-sheet.tsx"];
 const DICT = "src/lib/i18n-dict.ts";
 
 let pass = 0;
@@ -66,6 +67,7 @@ const pollerRaw = read(POLLER);
 const pollerCode = stripComments(pollerRaw);
 const routeCode = stripComments(read(ROUTE));
 const dialCode = stripComments(read(DIAL));
+const placeCode = PLACE_SURFACES.map((file) => ({ file, code: stripComments(read(file)) }));
 const dict = read(DICT);
 
 const tick = sliceBraces(pollerCode, "const tick = async () => {");
@@ -97,11 +99,11 @@ ok("1.2 · the poller never mentions `payoutIfWin`", !/payoutIfWin/.test(pollerC
 // assertion is about the write, not the word — and 1.3b is its control, proving the
 // legitimate use survived rather than being deleted along with the defect.
 ok("1.3 · ⭐ the dial persists no bet record — the key is gone and no setItem carries the projection",
-   !/50pick-bet-/.test(dialCode) && !/localStorage\.setItem\([\s\S]{0,200}?payoutIfWin/.test(dialCode));
+   placeCode.every(({ code }) => !/50pick-bet-/.test(code) && !/localStorage\.setItem\([\s\S]{0,200}?payoutIfWin/.test(code)));
 ok("1.3b · …and the CONTROL: the receipt still shows a payout-if-win projection at bet time",
    /payoutIfWin/.test(dialCode), "a projection labelled as one is honest; only storing it was not");
 ok("1.4 · …while the dial's watch-list write SURVIVES (it is what makes the poller look)",
-   /50pick-notify-markets/.test(dialCode));
+   placeCode.every(({ code }) => /50pick-notify-markets/.test(code) && /localStorage\.setItem\(WATCH_KEY/.test(code)));
 
 console.log("\n── 2 · the amount is the REALISED payout from the row ───────────");
 

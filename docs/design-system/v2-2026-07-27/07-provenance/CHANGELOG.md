@@ -1,5 +1,14 @@
 # Changelog (reconstructed)
 
+## 2026-10-13 (design-system · simplified journey) — the bet sheet, effective at the S15 flip
+
+S8 WP6 adds the journey state of the stake surface; its spec is `02-components/bet-sheet/spec.md`. It draws the deck's
+two sheets through the kit Modal, Input, Chip, Button, Callout and Cash, with the S8 amendments' heading-first focus,
+neutral attention, one scrolling middle, visual-viewport keyboard cap and pauseable committed-ticket receipt. Only
+`.kp-bsheet*` defines its layout. The chosen-side header is F20's third ruled placement; CloseX's optional ref changes
+no existing output. No side switch, new palette, new motion or payout promise is introduced. The classic dial remains
+in use until the flip. The question's big picks and the neutral break rows share their journey rules with their siblings.
+
 ## 2026-10-12 (design-system · the simplified journey) — the journey card, the market card's journey state, effective at the S15 flip
 
 **The market card gains its journey state: `JourneyCard`** (`src/components/journey/cards/journey-card.tsx`, the Vodacom

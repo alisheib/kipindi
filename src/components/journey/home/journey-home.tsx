@@ -40,7 +40,9 @@ import { PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { getServerT } from "@/lib/i18n-server";
 import { getSession } from "@/lib/server/session";
 import { listMarkets, type StoredMarket } from "@/lib/server/market-service";
-import { bettableAt } from "@/lib/server/journey-sheet";
+import { bettableAt, journeyCardState, type SheetSeed } from "@/lib/server/journey-sheet";
+import { formatBreakEnd, type BreakState } from "@/lib/break-end";
+import { keepText } from "@/components/ui/keep-run";
 import { homeBook, homeChips, homeHref, homeView, parseHomeParams, type HomeChip, type HomeParams, type HomeSearch, type HomeView } from "@/lib/journey/home-list";
 import { MARKET_CATEGORIES } from "@/lib/markets/categories";
 import { fieldNames, matchesQuery, MARKET_SEARCH, parseQuery } from "@/lib/search";
@@ -69,6 +71,7 @@ export async function JourneyHome({ searchParams }: { searchParams: Promise<Home
   const search = parseQuery(params.q, { fields: fieldNames(MARKET_SEARCH) });
   const view = homeView(book, params, PLAYER_PER_PAGE, (m) =>
     matchesQuery(search, m as unknown as Record<string, string | null | undefined>, MARKET_SEARCH));
+  const { onBreak, seeds } = await journeyCardState(view.shown, nowMs, session?.userId);
   return (
     <JourneyHomeView
       t={t}
@@ -78,12 +81,14 @@ export async function JourneyHome({ searchParams }: { searchParams: Promise<Home
       chips={homeChips(book, params.cat)}
       view={view}
       signedIn={session !== null}
+      onBreak={onBreak}
+      seeds={seeds}
     />
   );
 }
 
 /** The home as the reads leave it: the server markup, its lazy parts placed where the deck puts them. */
-export function JourneyHomeView({ t, locale, nowMs, params, chips, view, signedIn }: {
+export function JourneyHomeView({ t, locale, nowMs, params, chips, view, signedIn, onBreak = null, seeds }: {
   t: Dict;
   locale: Locale;
   /** The render's clock: every card reads it (WP5). */
@@ -92,6 +97,8 @@ export function JourneyHomeView({ t, locale, nowMs, params, chips, view, signedI
   chips: readonly HomeChip[];
   view: HomeView<StoredMarket>;
   signedIn: boolean;
+  onBreak?: BreakState | null;
+  seeds?: ReadonlyMap<string, SheetSeed>;
 }) {
   const { cat, q } = params;
   /* The way out of a search, wherever it is said: the same address with the search gone, the category kept. */
@@ -105,6 +112,13 @@ export function JourneyHomeView({ t, locale, nowMs, params, chips, view, signedI
   return (
     <PageContainer tier="board">
       <div className="kp-jhome" data-testid="journey-home">
+        {onBreak && (() => {
+          const date = formatBreakEnd(Date.parse(onBreak.until), nowMs, t.common.monthsShort, locale);
+          return <div className="kp-jhome__break rounded-xl border border-border bg-bg-elevated p-4 text-body-sm" role="status" data-testid="journey-home-break">
+            <p className="font-semibold text-text flex items-start gap-2"><I.lock s={16} />{keepText(fill(onBreak.exclusion ? t.rg.exclusionActive : t.journey.homeBreakTitle, { date }), [date])}</p>
+            {!onBreak.exclusion && <p className="mt-1 text-text-muted">{t.journey.homeBreakBody}</p>}
+          </div>;
+        })()}
         <div className="kp-jhome__head">
           <LazyHowToCard signedIn={signedIn} />
           <HomeHeadline t={t} />
@@ -121,7 +135,7 @@ export function JourneyHomeView({ t, locale, nowMs, params, chips, view, signedI
             <ul role="list" className="kp-jgrid">
               {view.shown.map((m) => (
                 <li key={m.id}>
-                  <JourneyCard m={m} nowMs={nowMs} t={t} locale={locale} from="home" />
+                  <JourneyCard m={m} nowMs={nowMs} t={t} locale={locale} from="home" sheet={seeds?.get(m.id)} onBreak={onBreak} />
                 </li>
               ))}
             </ul>

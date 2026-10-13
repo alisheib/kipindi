@@ -198,6 +198,7 @@ const UD_CONTROLS = "src/components/updown/updown-stake-controls.tsx", UD_PANEL 
   }
   /** Each `.amount` that holds words, and why the words may stand in one unbreakable mono run. */
   const RULED: Array<[string, RegExp, string]> = [
+    ["src/components/journey/bet-sheet/sheet-parts.tsx", /fill\(t\.journey\.multOnly/, "S8 keyboard compact multiple: the translation is the bare figure ≈{mult}× in every locale, no dictionary words"],
     ["src/app/results/page.tsx", /formatNumber\(totalCount\)/, "the archive's tally line — drawn from 640 only (`hidden sm:block`), one deliberate line"],
     ["src/app/updown/[roundId]/page.tsx", /udBothSides/, "a settled round's pick · stake: a side word and one figure (\"Juu · TZS 1,000\"), short in every language"],
     ["src/components/markets/sell-confirm-modal.tsx", /t\.dialog\.noFee/, "\"No fee\" in the fee figure's own slot — two words where a figure stands"],
@@ -505,6 +506,7 @@ section("10 · C9 every player dialog's ✕ is ruled — on its title, in its he
 {
   type Kind = "title" | "header-row" | "none" | "crest";
   const RULED: Record<string, Kind> = {
+    "src/components/journey/bet-sheet/bet-sheet.tsx": "header-row", // S8 A13: the chosen-side row is the sheet's header; pure BetSheetBody draws CloseX there.
     "src/components/journey/tickets-guest-sheet.tsx": "title", "src/components/markets/market-card.tsx": "title",
     "src/components/markets/objection-dialog.tsx": "title", "src/components/markets/share-button.tsx": "title", "src/components/rg/reality-check.tsx": "title",
     // The Vodacom plan S7, WP6: the How to Play sheet — the guest sheet's title class (its 24px modifier) on the corner ✕.
@@ -530,7 +532,13 @@ section("10 · C9 every player dialog's ✕ is ruled — on its title, in its he
     if (!kind) return "unruled";
     const noCorner = modals.every((m) => /showClose=\{false\}/.test(m[1]));
     if (kind === "title") return !noCorner && /kp-modal-title|kp-jsheet__title|id="reality-check-title"/.test(src) ? "" : "a titled dialog without its title on the corner ✕";
-    if (kind === "header-row") return noCorner && /<CloseX\b/.test(src.slice(src.indexOf("<Modal"))) ? "" : "a header-row ✕ that is not CloseX in the row";
+    if (kind === "header-row") {
+      const inModal = src.slice(src.indexOf("<Modal"));
+      const inline = /<CloseX\b/.test(inModal);
+      const sheetBody = file === "src/components/journey/bet-sheet/bet-sheet.tsx" && /<BetSheetBody\b/.test(inModal)
+        && /export function BetSheetBody\([\s\S]*className="kp-bsheet__header"[\s\S]*<CloseX\b/.test(src);
+      return noCorner && (inline || sheetBody) ? "" : "a header-row ✕ that is not CloseX in the row";
+    }
     if (kind === "none") return noCorner && !/<CloseX\b/.test(src) ? "" : "a dialog ruled without a ✕ that draws one";
     // The exception: Modal's corner ✕, and the panel's first drawn thing a crest or seal, before any title.
     const body = src.slice(src.indexOf("<Modal"));

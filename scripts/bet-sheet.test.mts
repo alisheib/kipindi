@@ -33,12 +33,17 @@ import { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE } from "../src/lib/payout.ts";
 import { DEPOSIT_MIN_TZS, DEPOSIT_MAX_TZS } from "../src/lib/server/validators.ts";
 import { dict } from "../src/lib/i18n-dict.ts";
 import { decomment } from "./lib/decomment.mts";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { BetSheetBody } from "../src/components/journey/bet-sheet/bet-sheet.tsx";
+import type { Dict, Locale } from "../src/lib/i18n-dict.ts";
+import { formatTzs } from "../src/lib/utils.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
 const PROVE_RED = process.argv.includes("--prove-red");
 
-type Sources = { state: string; refusal: string; service: string; actions: string; admission: string; retry: string; prisma: string; locks: string };
+type Sources = { state: string; refusal: string; service: string; actions: string; admission: string; retry: string; prisma: string; locks: string; sheet: string; parts: string; css: string };
 const SOURCES: Sources = {
   state: read("src/lib/journey/sheet-state.ts"),
   refusal: read("src/lib/journey/sheet-refusal.ts"),
@@ -48,6 +53,9 @@ const SOURCES: Sources = {
   retry: read("src/lib/server/retry.ts"),
   prisma: read("src/lib/server/prisma.ts"),
   locks: read("src/lib/server/locks.ts"),
+  sheet: read("src/components/journey/bet-sheet/bet-sheet.tsx"),
+  parts: read("src/components/journey/bet-sheet/sheet-parts.tsx"),
+  css: read("src/app/globals.css"),
 };
 
 type Impl = {
@@ -55,6 +63,7 @@ type Impl = {
   SR: { refusalOutcome: typeof SR.refusalOutcome; settleRefusal: typeof SR.settleRefusal; CLASSIFIED_REASONS: readonly string[]; CLASSIFIED_CODES: readonly string[]; HOUSE_ONLY_REASONS: readonly string[] };
   plan: typeof SF.shortfallPlan;
   src: Sources;
+  draw?: (html: string) => string;
 };
 const REAL: Impl = {
   SS,
@@ -306,7 +315,7 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     { name: "20 balance, with figures", a: R(fail({ code: "INVALID", reason: "balance_insufficient", detail: { balance: 2_000, needed: 5_000 } })), rr: okRead(true, facts({ wallet: wallet(2_000) })), want: { row: 20, view: "plan", plan: "short", retry: "new" } },
     { name: "21 balance, the abort", a: R(fail({ code: "INVALID", reason: "balance_insufficient" })), rr: okRead(true, facts({ wallet: wallet(2_000) })), want: { row: 21, view: "plan", plan: "short" } },
     { name: "21 balance, a failed read", a: R(fail({ code: "INVALID", reason: "balance_insufficient" })), rr: { state: "failed" }, want: { row: 21, view: "lowNoRead" } },
-    { name: "22 selection closed (in flight)", a: R(fail({ code: "SELECTION_CLOSED", reason: "selection_closed" })), want: { row: 22, view: "closed", body: "journey.sheetClosedBody", retry: "none" } },
+    { name: "22 selection closed early (in flight)", a: R(fail({ code: "SELECTION_CLOSED", reason: "selection_closed" })), want: { row: 22, view: "closed", body: "journey.sheetNotTaking", retry: "none" } },
     { name: "23 the action's own refusal", a: R({ ok: false, error: "Invalid side." }), want: { row: 23, view: "inDoubt", retry: "same", doubt: "enter", marker: "keepKey" } },
     { name: "24 replayed (L2)", a: R({ ok: true, data: { positionId: "pos_1", balance: 0, payoutIfWin: 0, placedAt: "", bonusStakeTzs: 0, replayed: true } }), want: { row: 24, view: "receipt", positionId: "pos_1", replayed: true, retry: "none", marker: "clear" } },
     { name: "25 placed", a: R({ ok: true, data: { positionId: "pos_2", balance: 0, payoutIfWin: 0, placedAt: "", bonusStakeTzs: 0 } }), want: { row: 25, view: "receipt", positionId: "pos_2", replayed: false, marker: "clear" } },
@@ -415,18 +424,18 @@ function run(impl: Impl, log: (l: string) => void): string[] {
       && S.afterSettle(doubt, ends[6], NOW) === null, j(ends.map((s) => [s.row, s.doubt, s.view.kind, s.marker])));
   // Review finding 1: an in-lock refusal of a RETRY only says the key had not landed when the retry held the lock.
   const inLockRows = [R(fail({ code: "INVALID", reason: "balance_insufficient", detail: { balance: 100, needed: 5_000 } })), R(fail({ code: "INVALID", reason: "balance_insufficient" })),
-    R(fail({ code: "INVALID", reason: "loss_limit_daily" })), R(fail({ code: "NOT_FOUND", reason: "wallet_frozen" })), R(fail({ code: "NOT_FOUND", reason: "wallet_missing" }))];
-  const finals = [R(fail({ code: "INVALID", reason: "idempotency_key_conflict" })), R(fail({ code: "SELECTION_CLOSED", reason: "selection_closed" }))];
+    R(fail({ code: "INVALID", reason: "loss_limit_daily" })), R(fail({ code: "NOT_FOUND", reason: "wallet_frozen" })), R(fail({ code: "NOT_FOUND", reason: "wallet_missing" })), R(fail({ code: "SELECTION_CLOSED", reason: "selection_closed" }))];
+  const finals = [R(fail({ code: "INVALID", reason: "idempotency_key_conflict" }))];
   const rr = okRead(true, facts({ wallet: wallet(100), loss: { dailyLossLimit: 10_000, lossToday: 9_900 } }));
   const within = inLockRows.map((a) => settle(a, rr, { inDoubt: true, priorSettledAt: NOW - 5_000 }));
   const edge = inLockRows.map((a) => settle(a, rr, { inDoubt: true, priorSettledAt: NOW - S.DOUBT_SETTLE_MS + 1 }));
   const after = inLockRows.map((a) => settle(a, rr, { inDoubt: true, priorSettledAt: NOW - S.DOUBT_SETTLE_MS }));
   const finalsWithin = finals.map((a) => settle(a, rr, { inDoubt: true, priorSettledAt: NOW - 5_000 }));
   const extras = within.map((st) => (st.view.kind === "inDoubt" ? st.view.extra?.key ?? null : "not-in-doubt"));
-  ok("3.retry-window · in doubt, an in-lock refusal of a retry (priorSettledAt 5 s ago) HOLDS the doubt and keeps the key, beside its own line where it makes no money claim; only DOUBT_SETTLE_MS after the last settle does it end; rows 16 and 22 (refused for good) end at once",
+  ok("3.retry-window · an in-lock refusal of a retry holds doubt inside its window, including a closed selection an officer can reopen; only a permanent key conflict ends it immediately",
     within.every((st) => st.doubt === "hold" && st.marker === "keepKey" && st.retry === "same") && edge.every((st) => st.doubt === "hold")
       && after.every((st) => st.doubt === "end" && st.marker === "dropKey") && finalsWithin.every((st) => st.doubt === "end")
-      && j(extras) === j(["journey.lowTitle", "journey.lowTitle", "error.failLossLimitDaily", "journey.sheetFrozen", null])
+      && j(extras) === j(["journey.lowTitle", "journey.lowTitle", "error.failLossLimitDaily", "journey.sheetFrozen", null, "journey.sheetNotTaking"])
       && S.afterSettle(doubt, within[0], NOW)?.phase === "inDoubt" && S.nextKey(S.afterSettle(doubt, within[0], NOW), q(5_000), () => K2).key === K1,
     j({ within: within.map((st) => [st.row, st.doubt, st.marker]), after: after.map((st) => [st.row, st.doubt]), finals: finalsWithin.map((st) => [st.row, st.doubt]), extras }));
   // Review finding 3: the window runs from the LAST same-key settle.
@@ -637,6 +646,72 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   const missingKeys = wp4.filter((k) => { const [ns, key] = k.split("."); return ns === "journey" ? !WP4_KEYS.has(key) && !(key in (en.journey ?? {})) : !(key in (en[ns] ?? {})); });
   ok("6.client-safe · neither module imports a server module, `server-only`, a Server Action or Next; every key either names a live dictionary entry or is one of WP4's new journey keys",
     srv.length === 0 && missingKeys.length === 0 && wp4.length >= 25, j({ srv: srv.length, missingKeys, keys: wp4.length }));
+  /* §7–§9 · WP6's actual three-language render, then its dialog/focus and paint contracts. */
+  const drawFrame = (frame: SS.SheetFrame, locale: Locale, theSeed = seed(), side: SS.SheetSide = "YES") => {
+    const html = renderToStaticMarkup(createElement(BetSheetBody, {
+      seed: theSeed, side, title: locale === "sw" ? "Je, Dodoma itapata mvua?" : locale === "zh" ? "多多马是否会下雨？" : "Will it rain in Dodoma?",
+      frame, stakeText: frame.stake === null ? "" : String(frame.stake), estimateUpdated: false, railNames: ["M-Pesa", "Airtel Money"],
+      t: dict[locale] as unknown as Dict, locale, id: "sheet-proof", nowMs: NOW,
+      onStakeChange: () => {}, onPlace: () => {}, onBetInstead: () => {}, onDeposit: () => {}, onClose: () => {},
+    }));
+    return impl.draw ? impl.draw(html) : html;
+  };
+  const frameAt = (o: Partial<SS.SheetFrameInput> = {}) => S.sheetFrame({ seed: seed(), side: "YES", stakeText: "5000", viewer: viewer(facts()), nowMs: NOW, intent: null, settled: null, ...o });
+  const renderCases = [
+    frameAt(), frameAt({ viewer: viewer(facts({ wallet: wallet(2_000) })) }),
+    frameAt({ viewer: viewer(facts({ loss: { dailyLossLimit: 3_000, lossToday: 0 } })) }),
+    frameAt({ viewer: viewer(facts({ wallet: wallet(2_000), pendingDeposit: { amount: 3_000, txnId: "txn_pending01", createdAt: new Date(NOW - 31 * 60_000).toISOString() } })) }),
+    frameAt({ viewer: viewer(facts({ lockout: { kind: "self_exclusion", until: new Date(NOW + 86_400_000).toISOString() } })) }),
+    frameAt({ seed: seed({ bettable: false }) }),
+    frameAt({ intent: { quote: q(5_000), key: K1, phase: "placing", sentAt: NOW, settledAt: null } }),
+    frameAt({ intent: { quote: q(5_000), key: K1, phase: "inDoubt", sentAt: null, settledAt: NOW } }),
+    frameAt({ settled: { row: 24, reason: null, view: { kind: "receipt", positionId: "pos_receipt01", replayed: true, quote: q(2_000) }, retry: "none", doubt: "end", marker: "clear" } }),
+  ];
+  const rendered = (["en", "sw", "zh"] as const).flatMap((locale) => renderCases.map((frame) => ({ locale, frame, html: drawFrame(frame, locale) })));
+  const order = (html: string, classes: string[]) => { const indexes = classes.map((c) => html.indexOf(c)); return indexes.every((n) => n >= 0) && indexes.every((n, i) => i === 0 || n > indexes[i - 1]); };
+  ok("7.order · every frame renders in all three languages; edit follows chosen side, question, stake, chips, estimate, balance, commit, while the low frame places its offer before the disabled commit",
+    rendered.length === 27 && rendered.every((x) => x.html.includes('id="sheet-proof-title"'))
+      && rendered.filter((x) => x.frame.frame === "edit").every((x) => order(x.html, ["kp-bsheet__chosen", "kp-bsheet__title", "kp-bsheet__stake", "kp-bsheet__chips", "kp-bsheet__estimate", "kp-bsheet__balance", "kp-bsheet__commit"]))
+      && rendered.filter((x) => x.frame.frame === "low").every((x) => order(x.html, ["kp-bsheet__stake", "kp-bsheet__compact", '<div id="sheet-proof-callout">', "journey-sheet-deposit", "journey-sheet-bet-instead", "kp-bsheet__commit"])));
+  ok("7.figures · every printed priced estimate and committed receipt stake is its pure frame's figure; receipt has the exact ticket link and no payout estimate, and no frame leaks an unfilled placeholder",
+    rendered.every((x) => !/\{(?:amount|have|short|min|left|max|remaining|side|mult|pct|until)\}/.test(x.html)
+      && (x.frame.estimate?.payout === null || x.frame.estimate?.payout === undefined || x.frame.frame === "blocked" || x.frame.frame === "closed" || x.html.includes(formatTzs(x.frame.estimate.payout)))
+      && (!x.frame.receipt || x.html.includes("pos_receipt01") && x.html.includes(formatTzs(2_000)) && x.html.includes("/positions/pos_receipt01") && !x.html.includes("kp-bsheet__estimate"))));
+  const invalidFrames = rendered.filter((x) => x.frame.stakeInvalid);
+  ok("7.invalid · low, loss-room and pending stakes are aria-invalid, described by the reason and use the neutral attention prop; placing locks both its field and commit",
+    invalidFrames.length === 9 && invalidFrames.every((x) => x.html.includes('aria-invalid="true"') && x.html.includes('aria-describedby="sheet-proof-callout"'))
+      && rendered.filter((x) => x.frame.frame === "placing").every((x) => /data-testid="journey-sheet-stake"[^>]*disabled|disabled[^>]*data-testid="journey-sheet-stake"/.test(x.html)));
+  const refusedDeposit = frameAt({ viewer: viewer(facts({ wallet: wallet(2_000), deposit: { ...facts().deposit, limits: { daily: 10_000, weekly: null, monthly: null }, usage: { day: 8_000, week: 8_000, month: 8_000 } } })) });
+  ok("4.refusal-figures · a refused deposit names the deposit engine's requested amount and maximum, never a stake bound; the selected higher chip's remainder is also the engine's",
+    refusedDeposit.low?.requestedDeposit === 3_000 && refusedDeposit.low?.depositMaximum === DEPOSIT_MAX_TZS
+      && drawFrame(refusedDeposit, "en").includes(formatTzs(3_000))
+      && SF.depositLeftAfterFor({ kind: "deposit", amount: 1_000, chips: [1_000, 5_000], belowDepositMin: true, leftAfter: 700 }, 5_000) === 4_700);
+  const sheetSrc = strip(impl.src.sheet), partsSrc = strip(impl.src.parts);
+  ok("8.surface · the stake surface draws no form, submit button or key handler; each commit is its own type=button click and balance uses Cash",
+    !/<form\b|type=["']submit["']|\bonKey(?:Down|Up|Press)\b/.test(sheetSrc + partsSrc)
+      && /type="button"[^>]*data-testid="journey-sheet-place"[^>]*onClick=\{onPlace\}/.test(sheetSrc)
+      && /<Cash\b/.test(partsSrc) && /<Cash\b/.test(sheetSrc));
+  ok("8.focus · the sheet opens on its heading, every frame re-arms that focus, the kit CloseX is its safe way out and placing withdraws scrim/Escape",
+    sheetSrc.includes("initialFocus={headingRef}") && sheetSrc.includes("safeFocus={closeRef}") && sheetSrc.includes("refocusKey={props.frame.frame}")
+      && /<h2[^>]*ref=\{headingRef\}[^>]*tabIndex=\{-1\}/.test(sheetSrc)
+      && /<CloseX ref=\{closeRef\} withheld=\{placing\} onClick=\{onClose\}/.test(sheetSrc)
+      && /closeOnScrim=\{props.frame.closable\} closeOnEsc=\{props.frame.closable\}/.test(sheetSrc));
+  ok("8.receipt-hold · the receipt banks its five-second dwell on focus-visible or changed pointer coordinates, clears the backstop, and resumes only after all reading holds leave",
+    sheetSrc.includes("DWELL_BET_RECEIPT_MS") && sheetSrc.includes('event.target.matches(":focus-visible")')
+      && !/onPointerEnter=/.test(sheetSrc) && /prior\.x !== event\.clientX \|\| prior\.y !== event\.clientY/.test(sheetSrc)
+      && /remaining\.current = Math\.max\(0, target\.current - performance\.now\(\)\)/.test(sheetSrc)
+      && /if \(closeTimer\.current\) clearTimeout\(closeTimer\.current\)/.test(sheetSrc) && /pauseKinds\.current\.size === 0/.test(sheetSrc));
+  ok("8.announcements · blocks/closed speak by their alert and describedBy, inline refusals by status, and the single polite region speaks only frame changes or an estimate update, never a keystroke",
+    sheetSrc.includes('role="alert"') && sheetSrc.includes('id={lineId} role="status"') && sheetSrc.includes('aria-live="polite" aria-atomic="true"')
+      && sheetSrc.includes("describedBy={terminal ?") && sheetSrc.includes("if (!moved && !updated) return;")
+      && !/frame\.frame === "blocked"\) message|frame\.frame === "closed"\) message/.test(sheetSrc));
+  ok("9.tokens · inset neutral estimate, standard figure ink, kit gold commit, metal deposit label, info callouts, forced-colours-safe selected outline and one capped scrolling middle",
+    /\.kp-bsheet__estimate \{[^}]*background: var\(--bg-inset\)/.test(impl.src.css)
+      && /\.kp-bsheet__estimate-figure[^}]*color: var\(--text\)/.test(impl.src.css)
+      && sheetSrc.includes('variant="gold"') && sheetSrc.includes('className="gilt-metal"') && sheetSrc.includes('Callout tone="info"')
+      && /\.kp-bsheet__chip\[aria-pressed="true"\][^}]*outline: 2px solid var\(--brand-400\)/.test(impl.src.css)
+      && /\.kp-bsheet__scroll[^}]*min-height: 0[^}]*overflow-y: auto/.test(impl.src.css)
+      && /\.kp-bsheet \{[^}]*max-height: min\(calc\(100dvh - var\(--sp-12\)\)/.test(impl.src.css));
   return failed;
 }
 
@@ -654,6 +729,17 @@ if (!PROVE_RED) {
   const settleWith = (f: (s: SS.Settled, o: SR.RefusalOutcome, c: SR.SettleContext) => SS.Settled) =>
     withSR({ settleRefusal: (o, rr, c) => f(SR.settleRefusal(o, rr, c), o, c) });
   const plants: Plant[] = [
+    // WP6 · actual markup mutations and source contracts; no repository file is written.
+    { name: "the rendered balance row dropped from edit's order", expect: /^7\.order /, impl: { ...REAL, draw: (html) => html.replaceAll("kp-bsheet__balance", "kp-bsheet__missing") } },
+    { name: "the rendered committed receipt stake repriced", expect: /^7\.figures /, impl: { ...REAL, draw: (html) => html.replaceAll(formatTzs(2_000), formatTzs(9_000)) } },
+    { name: "a low frame renders no aria-invalid", expect: /^7\.invalid /, impl: { ...REAL, draw: (html) => html.replaceAll('aria-invalid="true"', '') } },
+    { name: "a deposit refusal uses the stake maximum", expect: /^4\.refusal-figures /, impl: withSS({ sheetFrame: (i) => { const f = SS.sheetFrame(i); return f.low ? { ...f, low: { ...f.low, depositMaximum: f.bounds.max } } : f; } }) },
+    { name: "a submit form added to the stake surface", expect: /^8\.surface /, impl: withSrc({ sheet: SOURCES.sheet + '\nconst bad = <form><button type="submit" /></form>;\n' }) },
+    { name: "a frame change no longer re-arms heading focus", expect: /^8\.focus /, impl: withSrc({ sheet: SOURCES.sheet.replace("refocusKey={props.frame.frame}", "") }) },
+    { name: "a plain focus pauses the receipt", expect: /^8\.receipt-hold /, impl: withSrc({ sheet: SOURCES.sheet.replace('event.target.matches(":focus-visible")', 'true') }) },
+    { name: "pointerenter pauses the receipt under a stationary cursor", expect: /^8\.receipt-hold /, impl: withSrc({ sheet: SOURCES.sheet.replace("onPointerMove=", "onPointerEnter=") }) },
+    { name: "a keystroke can repeat the live announcement", expect: /^8\.announcements /, impl: withSrc({ sheet: SOURCES.sheet.replace("if (!moved && !updated) return;", "") }) },
+    { name: "the estimate's figure painted gold", expect: /^9\.tokens /, impl: withSrc({ css: SOURCES.css.replace(/(\.kp-bsheet__estimate-figure[^}]*color: )var\(--text\)/, "$1var(--gilt)") }) },
     // §1
     { name: "the sheet's figure from a second formula (stake × the card's multiple)", expect: /^1\.deck /,
       impl: withSS({ sheetEstimate: (s, side, stake) => { const e = SS.sheetEstimate(s, side, stake); return e && stake ? { ...e, payout: Math.round(stake * 2.8) } : e; } }) },

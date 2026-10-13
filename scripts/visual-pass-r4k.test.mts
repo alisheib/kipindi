@@ -184,7 +184,7 @@ section("2 · the not-found's title in the page's language, noindex in the head 
   const noindex = at("server/app-render/make-get-server-inserted-html.js", 'content: "noindex"');
   ok(`2.10 · a notFound() inside a Suspense boundary is captured (create-error-handler.js:${captured}) and streams a robots noindex (make-get-server-inserted-html.js:${noindex})`, captured > 0 && noindex > 0);
   ok("2.11 · …and the two routes that answer 200 have a loading.tsx — the boundary that commits the status first (⛔ kept: every async route keeps one)",
-    existsSync("src/app/markets/[id]/loading.tsx") && existsSync("src/app/updown/[roundId]/loading.tsx") && existsSync("src/app/loading.tsx"));
+    existsSync("src/app/markets/[id]/market-detail-ghost.tsx") && existsSync("src/app/updown/[roundId]/loading.tsx") && existsSync("src/app/loading.tsx"));
 }
 
 /* ══ §3 · BREAKS ══════════════════════════════════════════════════════════════════════════════════════════════════════ */

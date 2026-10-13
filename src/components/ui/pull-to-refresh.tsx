@@ -29,6 +29,7 @@ export function PullToRefresh() {
   const active = useRef(false);
 
   const onTouchStart = useCallback((e: TouchEvent) => {
+    if (e.target instanceof Element && e.target.closest("[data-ptr-skip]")) return;
     if (window.scrollY > 5 || refreshing) return;
     startY.current = e.touches[0].clientY;
     active.current = true;

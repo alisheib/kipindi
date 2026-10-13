@@ -177,6 +177,16 @@ export function depositChips(d: number, ceiling: number): number[] {
   return [d, ...above].filter((a) => a <= ceiling);
 }
 
+/** The refused deposit's figures, too: the proposed amount and the platform deposit maximum, never stake bounds. */
+export function depositRequestFor(shortfall: number): { amount: number; maximum: number } {
+  return { amount: Math.max(shortfall, DEPOSIT_MIN_TZS), maximum: DEPOSIT_MAX_TZS };
+}
+
+/** The selected deposit chip's remainder, from the option's own base remainder. No component computes this figure. */
+export function depositLeftAfterFor(option: DepositOption, amount: number): number {
+  return option.chips.includes(amount) ? option.leftAfter + amount - option.amount : option.leftAfter;
+}
+
 /** ⭐ THE PLAN. Total: never throws. */
 export function shortfallPlan(i: ShortfallInput): ShortfallPlan {
   const blocked = (reason: ShortfallBlock, extra: Omit<Extract<ShortfallPlan, { kind: "blocked" }>, "kind" | "reason"> = {}): ShortfallPlan =>
@@ -222,7 +232,7 @@ export function shortfallPlan(i: ShortfallInput): ShortfallPlan {
 
   // 11–15 · the deposit that covers the shortfall.
   const shortfall = i.stake - spendable;
-  const d = Math.max(shortfall, DEPOSIT_MIN_TZS);
+  const d = depositRequestFor(shortfall).amount;
   if (!i.deposit.railsOpen) return { kind: "short", spendable, shortfall, options: betInstead, depositRefusal: "rails_paused" };
   const ceiling = depositCeilingFor({ limits: i.deposit.limits, usage: i.deposit.usage, sof: i.deposit.sof });
   if (d > ceiling.max) return { kind: "short", spendable, shortfall, options: betInstead, depositRefusal: ceiling.binding };

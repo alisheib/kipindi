@@ -286,13 +286,13 @@ function suspenseCensus(src: Src): string[] {
   const homeBack = suspenseCensus(planted("src/app/page.tsx", "<Suspense fallback={<JourneyHomeGhost t={t} />}>", "<Suspense fallback={<HomeSkeleton />}>"));
   ok("2.1″ PLANT · `/`'s journey arm standing a skeleton of its own in place of the home's ghost is reported", homeBack.length > 0, homeBack.join(" | "));
   const rp = REAL("src/app/results/page.tsx"), mp = REAL("src/app/markets/page.tsx");
-  const rl = raw("src/app/results/loading.tsx"), ml = raw("src/app/markets/loading.tsx");
+  const rl = raw("src/app/results/loading.tsx"), ml = raw("src/app/markets/markets-ghost.tsx");
   ok("2.2 · the fallbacks are the loading files' own drawings — /results' `ResultsGhostBands` (handed the page's carousel and search answers) and /markets' `MarketsBoardGhost`, both from client files (a reference in the payload, which every refresh re-sends), and each loading file renders the same component",
     rp.includes('import { ResultsGhostBands } from "./loading";') && rp.includes("<Suspense fallback={<ResultsGhostBands notable={!searching && pageNum === 1} searching={searching} />}>")
       && mp.includes('import { MarketsBoardGhost } from "./loading";') && hasDirective(rl, "use client") && hasDirective(ml, "use client")
-      && REAL("src/app/results/loading.tsx").includes("<ResultsGhostBands />") && REAL("src/app/markets/loading.tsx").includes("<MarketsBoardGhost />"));
+      && REAL("src/app/results/loading.tsx").includes("<ResultsGhostBands />") && REAL("src/app/markets/markets-ghost.tsx").includes("<MarketsBoardGhost />"));
   const { ResultsGhostBands } = req("../src/app/results/loading.tsx") as { ResultsGhostBands: unknown };
-  const { MarketsBoardGhost } = req("../src/app/markets/loading.tsx") as { MarketsBoardGhost: unknown };
+  const { MarketsBoardGhost } = req("../src/app/markets/markets-ghost.tsx") as { MarketsBoardGhost: unknown };
   const grid = (html: string) => count(html.slice(html.indexOf('class="market-grid')), 'style="height:var(--mcard-h-closed)"');
   const one = inApp("/results", "sw", h(ResultsGhostBands as never, { notable: true } as never)), two = inApp("/results", "sw", h(ResultsGhostBands as never, { notable: false, searching: true } as never));
   ok(`2.3 · RUN: page one's ghost draws the carousel and ${grid(one)} cards (a page less the three it lifts); a search's page none and ${grid(two)}, with the search's 16.5px line over the grid`,
@@ -557,19 +557,19 @@ const rsPairs: Pair[] = [
 /* ══ §7 · /markets ═════════════════════════════════════════════════════════════════════════════════════════════════ */
 section("7 · /markets: row 2 from lg in the page's words; the bar and the grid are the page's fallback");
 {
-  const g = REAL("src/app/markets/loading.tsx"), d = REAL("src/components/markets/discovery-bar.tsx");
+  const g = REAL("src/app/markets/markets-ghost.tsx"), d = REAL("src/components/markets/discovery-bar.tsx");
   const ghostOrder = ["<SortGhost label={t.common.sort} value={t.market.sortPool} />", "<FiltersGhost label={t.market.filtersOpen} />", "<GroupGhost label={t.market.oddsKey}>", "<GroupGhost label={t.market.poolKey}>", "<MenuGhost label={t.common.topic} value={t.market.catAll} />"].map((x) => g.indexOf(x));
   const pageOrder = ["<QuerySort label={t.common.sort}", "<FilterSheet label={t.market.filtersOpen}", "<FilterGroupKey>{t.market.oddsKey}</FilterGroupKey>", "<FilterGroupKey>{t.market.poolKey}</FilterGroupKey>", "<MenuShell rootClassName=\"hidden max-w-full lg:block\" label={t.common.topic}"].map((x) => d.indexOf(x));
   ok("7.1 · row 2 is the page's: the sort (its cell `data-bar-cell`), the phone's Filters, then the odds and pool groups and the topic menu in DiscoveryBar's order, each behind the page's divider; the pool's floors set as money (`amount`)",
     ghostOrder.every((x, i) => x > 0 && (i === 0 || x > ghostOrder[i - 1])) && pageOrder.every((x, i) => x > 0 && (i === 0 || x > pageOrder[i - 1]))
       && count(g, "<QueryGroupDivider />") === 3 && count(d, "<QueryGroupDivider />") === 3 && count(g, "amount />") === 2 && d.includes('<span className="amount">{formatTzsCompact(POOL_FLOORS[p])}+</span>')
       && !/\[56, 92, 88, 84\]/.test(g), j({ ghostOrder, pageOrder }));
-  const html = inApp("/markets", "sw", h((req("../src/app/markets/loading.tsx") as { MarketsBoardGhost: unknown }).MarketsBoardGhost as never));
+  const html = inApp("/markets", "sw", h((req("../src/app/markets/markets-ghost.tsx") as { MarketsBoardGhost: unknown }).MarketsBoardGhost as never));
   const t = dict.sw;
   const words = [t.market.oddsAny, t.market.oddsCall, t.market.oddsCont, t.market.oddsLong, t.market.poolAny, "TZS 10K+", "TZS 50K+"];
   const miss = words.filter((w) => !html.includes(esc(w)));
   ok("7.2 · RUN: the groups' pills carry the page's words (four odds, the pool's \"Any\" and its two floors through the money formatter), the menu its key and value", miss.length === 0 && html.includes(esc(t.common.topic)) && html.includes(esc(t.market.catAll)), miss.join(", "));
-  const { STATUS_PILL_W } = req("../src/app/markets/loading.tsx") as { STATUS_PILL_W: number[] };
+  const { STATUS_PILL_W } = req("../src/app/markets/markets-ghost.tsx") as { STATUS_PILL_W: number[] };
   ok("7.3 · row 1 keeps its six per-status widths (`test:board-discovery` §7 counts them) — row 1 never wraps: a scrolling strip below lg, and one line from it", STATUS_PILL_W.length === 6 && g.includes("{STATUS_PILL_W.map("));
 }
 

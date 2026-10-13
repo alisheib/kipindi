@@ -155,3 +155,6 @@ export const DWELL_ADMIN_RESULT_MS = 2_000;
  * until dismissed. Only the good news is timed.
  */
 export const DWELL_BET_PLACED_MS = 3_000;
+
+/** The journey bet sheet's committed ticket receipt (S8 A12): five seconds, banked while it is being read. */
+export const DWELL_BET_RECEIPT_MS = 5_000;

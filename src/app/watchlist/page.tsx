@@ -28,6 +28,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FilterPill } from "@/components/ui/filter-pill";
 import { MarketCard } from "@/components/markets/market-card";
 import { JourneyCard } from "@/components/journey/cards/journey-card";
+import { journeyCardState } from "@/lib/server/journey-sheet";
 import { shownPredictors } from "@/lib/markets/predictors";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { SearchBox } from "@/components/ui/search-box";
@@ -145,6 +146,7 @@ export default async function WatchlistPage({
   // The journey cards' ONE clock (S7 WP10): each card's close label, the resolution half of its bet test and its
   // settled date's year read this instant.
   const nowMs = Date.now();
+  const journeyCards = journey ? await journeyCardState(paged.map((row) => marketById.get(row.id)!).filter(Boolean), nowMs, session.userId) : null;
 
   const baseHref = buildFollowHref(state);
   const cause = followEmptyCause(state, matchesRow, totalCount, rows.length);
@@ -251,7 +253,7 @@ export default async function WatchlistPage({
           {journey ? (
             <section className="kp-jgrid">
               {paged.map((row) => (
-                <JourneyCard key={row.id} m={marketById.get(row.id)!} nowMs={nowMs} t={t} locale={locale} />
+                <JourneyCard key={row.id} m={marketById.get(row.id)!} nowMs={nowMs} t={t} locale={locale} sheet={journeyCards?.seeds.get(row.id)} onBreak={journeyCards?.onBreak} />
               ))}
             </section>
           ) : (

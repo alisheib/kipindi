@@ -400,7 +400,7 @@ const { UpDownHistoryGhost } = req("../src/app/updown/history/history-ghost.tsx"
 const { DepositGhost } = req("../src/app/wallet/deposit/deposit-ghost.tsx") as { DepositGhost: unknown };
 const { TicketsGhost, TicketsHeadGhost } = req("../src/components/journey/tickets/tickets-ghost.tsx") as { TicketsGhost: unknown; TicketsHeadGhost: unknown };
 const { LazyJourneyRouteGhost } = req("../src/components/journey/route-ghost-lazy.tsx") as { LazyJourneyRouteGhost: unknown };
-const MarketDetailLoading = (req("../src/app/markets/[id]/loading.tsx") as { default: unknown }).default;
+const MarketDetailLoading = (req("../src/app/markets/[id]/market-detail-ghost.tsx") as { default: unknown }).default;
 const DepositReturnLoading = (req("../src/app/wallet/deposit/return/loading.tsx") as { default: unknown }).default;
 const { JourneyRouteGhost, HomeGhost } = req("../src/components/journey/route-ghost.tsx") as { JourneyRouteGhost: (p: { rails: readonly string[] }) => unknown; HomeGhost: unknown };
 const { I18nProvider } = req("../src/lib/i18n.tsx") as { I18nProvider: (p: { initial: Locale; children: unknown }) => unknown };
@@ -533,7 +533,7 @@ const ghostAt = (path: string, l: Locale) => inApp(path, l, h(JourneyRouteGhost 
   ok(`2.10 · one drawing: each page's own loading file, RUN for a journey reader, and the root ghost at its address write the same bytes (${CASES.length} pages × 3 languages)`,
     differ.length === 0, differ.join(", "));
   ok("2.10″ · …and where a journey reader's picture differs from a classic reader's (/positions, /updown/history) the loading file hands back the journey's own binding pinned to its own page — in every language",
-    j([...new Set(pinned)].sort()) === j(["/positions=/positions", "/updown/history=/updown/history"]), j([...new Set(pinned)]));
+    j([...new Set(pinned)].sort()) === j(["/markets/mkt_any=/markets/[id]", "/positions=/positions", "/updown/history=/updown/history"]), j([...new Set(pinned)]));
   REQ.locale = "sw"; REQ.journey = false;
   const classicHistory = inApp("/updown/history", "sw", await load("../src/app/updown/history/loading.tsx")());
   REQ.journey = true;

@@ -270,7 +270,7 @@ the pending body under 10 minutes is `common.depositPendingBody`; and the rest o
 - `journey.retryCta` · "Jaribu tena · {amount}" · the in-doubt frame's retry with its amount (A2, A20 item 1): "Jaribu tena" as `common.retryNow` says it, then the figure as `placeCta` carries it.
 - `journey.sheetNotTaking` · "Swali hili halipokei dau kwa sasa." · the closed frame's body for a question that is not LIVE (A8, A20 item 3): `error.failMarketNotLive` with "swali hili" for "soko hili".
 - `journey.sheetBonusWager` · "Dau hili halitahesabiwa kwenye bonasi yako. Tayari una fedha upande wa pili wa swali hili, na upande mmoja tu ndio unaohesabiwa kwenye {remaining} unayohitaji kuweka kabla ya bonasi yako kutolewa." · the sheet's SJ-22 bonus line (A20 item 2): `error.failBonusWageringOneSide` with "swali hili" for "soko hili", nothing else changed.
-- `journey.sheetRailsPaused` · "Kuweka pesa hakupatikani kwa sasa. Njia zote za malipo zimesimama kwa muda — jaribu tena baadaye." · every rail paused (s4-5-low-paused).
+- `journey.sheetRailsPaused` · "Kuweka pesa kwa simu hakupatikani kwa sasa. Njia zote za malipo kwa simu zimesimama kwa muda — jaribu tena baadaye." · every mobile-money rail paused (s4-5-low-paused; review 8 narrows the wording to the methods the gate reads).
 - `journey.sheetDepositMax` · "Kiwango cha juu cha kuweka pesa mara moja ni {max}." · the `deposit_max` branch (none drawn), in `sheetAboveMax`'s shape.
 - `journey.estimateUpdatedLive` · "Makadirio yamesasishwa: ≈ {amount}, ≈{mult}× dau lako" · the polite region's estimate update (s4-4-sheet-updated), with the board's "≈ " (A20 item 8).
 - `journey.estimateNoteCompact` · "Makadirio · kamisheni ya {pct}% imeshatolewa." · the keyboard-up note (s4-4-sheet-keyboard-360), `estimateNote` shortened.
@@ -383,10 +383,22 @@ sentence — the same clause S8's `journey.sheetLossBlock` will use, so the clas
 ⟶ S8 WP4 (2026-10-13, S8-PLAN A5 item 2): there is no `journey.sheetLossBlock` — the sheet's loss block reads
 `error.failLossLimitDaily` itself, so the classic and journey refusals are one sentence, not two copies of it.
 
-**8. S8 dictionary keys (2026-10-13, S8 WP4; journey.*, not shown to anyone until S15) — drafted by the build, for Ali's
-or a Swahili reviewer's sign-off.** No human has signed this review yet: each line below is the build's draft and its
-reason, to be approved, corrected or overruled. Until it is signed, the strings stay in the `journey` namespace that no
-player sees before the S15 flip.
+**8. S8 dictionary keys (2026-10-13, S8 WP4; journey.*, not shown to anyone until S15) — independently reviewed and
+signed by Codex, the AI reviewer, under Ali's existing delegation of the Swahili-speaker role (2026-10-02, quoted in
+this section's heading).** This is the reviewer's sign-off, not a human or owner signature. All 59 new keys in each
+language were read against the deck's binding words, the approved canvas words, review 2 and S8-PLAN's amendments;
+the S8 drafts below are approved with the payment-scope correction recorded here. The strings stay in the `journey`
+namespace that no player sees before the S15 flip.
+
+**Correction found by the independent review:** `sheetRailsPaused` formerly said all deposits and every payment
+method were unavailable. `viewerFacts` reads only `MOBILE_MONEY_METHODS` after the deposit kill switches, and S8-PLAN
+Open point 36 leaves Card to the deposit screen's link (S9). All four mobile-money methods can be paused while Card
+still works. Both sentences now name mobile-money deposits and methods in en, sw and zh; the dictionary and the S8
+tables in VODACOM-PLAN, this audit and S8-PLAN agree. No gate or payment availability changed. Swahili *kwa simu*
+qualifies both *kuweka pesa* and *njia zote za malipo*; Chinese *手机钱包* names the same phone-wallet scope. No other
+new key needed correction: amounts, multiples and rates remain placeholders; loss-room words say *kwa sasa*, never a
+calendar-day reset; uncertain placing lines make no claim that money was or was not taken; no helpline or literal side
+word was introduced.
 - The deck's words (VODACOM-PLAN §3) are binding and were read, not re-worded: *dau lako* (class 5) in `stakeLabel` and
   `estimatePill`; *salio halitoshi* (class 5, negative of *-tosha*) in `lowTitle`; *Weka dau la {amount} badala yake*
   (class 5 *la*) in `lowBetInstead`.
@@ -396,11 +408,11 @@ player sees before the S15 flip.
   say "swali hili" (class 5 *hili*) where the corrected classic sentences say "soko hili" — SJ-19, "Maswali" replaces
   "Masoko", as `hedgeAddBody`'s correction already does; `sheetNotTaking` and `sheetBonusWager` below follow the same
   rule (S8-PLAN A20 items 2 and 3).
-- One name for the limits page (A20 item 7), to confirm: sentences name the page by its title, "Uchezaji salama", as
+- One name for the limits page (A20 item 7), confirmed: sentences name the page by its title, "Uchezaji salama", as
   `error.failLossLimitDaily` (review 7) and `sheetDepositLimit` do; the button keeps its action, "Weka mipaka"
   (`rg.setLimits`).
-- The S8 drafts, each with its three languages and a one-line reason:
-- `journey.sheetRailsPaused` · sw "Kuweka pesa hakupatikani kwa sasa. Njia zote za malipo zimesimama kwa muda — jaribu tena baadaye." · en "Deposits are unavailable right now. Every payment method is paused for a while — try again later." · zh "目前无法充值。所有支付方式暂停中——请稍后再试。" — *kuweka pesa* (class 15) takes *haku-* in *hakupatikani*; *njia zote* (class 10) takes *zimesimama*.
+- The S8 drafts, now approved, each with its three languages and a one-line reason:
+- `journey.sheetRailsPaused` · sw "Kuweka pesa kwa simu hakupatikani kwa sasa. Njia zote za malipo kwa simu zimesimama kwa muda — jaribu tena baadaye." · en "Mobile-money deposits are unavailable right now. Every mobile-money method is paused for a while — try again later." · zh "目前无法通过手机钱包充值。所有手机钱包支付方式暂停中——请稍后再试。" — *kuweka pesa* (class 15) takes *haku-* in *hakupatikani*; *njia zote* (class 10) takes *zimesimama*.
 - `journey.sheetDepositMax` · sw "Kiwango cha juu cha kuweka pesa mara moja ni {max}." · en "The most you can deposit at once is {max}." · zh "单笔充值上限为 {max}。" — *kiwango* (class 7) takes *cha* twice, in `sheetAboveMax`'s shape; *mara moja* "at once".
 - `journey.sheetPlacing` · sw "Inaweka dau…" · en "Placing your bet…" · zh "正在投注…" — *inaweka* (impersonal present) takes its object *dau*, so the frame says what is being placed.
 - `journey.sheetPlacingSlow` · sw "Bado tunaweka dau lako — inachukua muda kidogo." · en "Still placing your bet — this is taking a moment." · zh "仍在为您投注——需要一点时间。" — *bado tunaweka* ("we are still placing") with *dau lako* (class 5); *inachukua muda kidogo* ("it is taking a little time") makes no money claim.

@@ -80,7 +80,7 @@ import { RoutePick } from "@/components/ui/route-pick";
 import { TicketsGhost, TicketsHeadGhost } from "@/components/journey/tickets/tickets-ghost";
 import { UpDownGhost } from "@/app/updown/updown-ghost";
 import { UpDownHistoryGhost } from "@/app/updown/history/history-ghost";
-import MarketDetailLoading from "@/app/markets/[id]/loading";
+import { QuestionGhost } from "@/components/journey/question/question-ghost";
 import { DepositGhost } from "@/app/wallet/deposit/deposit-ghost";
 import DepositReturnLoading from "@/app/wallet/deposit/return/loading";
 import { Ask, Claim, TrustLines } from "@/components/home/hero-intro";
@@ -91,7 +91,7 @@ import { stemOf } from "@/lib/display-stem";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 
 /** The pages whose own loading file hands a journey reader this ghost, pinned (`at`) — see "A SEGMENT MAY PIN ITS PAGE". */
-export type JourneyGhostPage = "/positions" | "/updown/history";
+export type JourneyGhostPage = "/positions" | "/updown/history" | "/markets/[id]";
 
 /**
  * ⚠️ `rails` — the rails that pay out, read on the server — is drawn by no page's ghost since WP7: only the shelved landing
@@ -108,12 +108,13 @@ export function JourneyRouteGhost({ rails, at }: { rails: readonly string[]; at?
     "/updown/history": <UpDownHistoryGhost journeyHead={<TicketsHeadGhost t={t} />} />,
     "/wallet/deposit": <DepositGhost journey />,
     "/wallet/deposit/return": <DepositReturnLoading />,
+    "/markets/[id]": <QuestionGhost />,
   };
   if (at) return routes[at];
   return (
     <RoutePick
       routes={routes}
-      patterns={[["^/markets/[^/]+$", <MarketDetailLoading />]]}
+      patterns={[["^/markets/[^/]+$", <QuestionGhost />]]}
       other={<AnyPageGhost />}
     />
   );

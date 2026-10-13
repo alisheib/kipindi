@@ -493,15 +493,19 @@ export function groupedStep(memory: NumericMemory, change: NumericChange, opts: 
       })();
   const step = numericStep(memory, inner, opts);
   const value = groupedDigits(step.value);
-  if (value.length > GROUPED_MAX_DIGITS) {
+  /* Removing the leading 1 from 1,000 leaves three zero placeholders. Showing only 0 would make a replacement 5
+     produce 50 instead of 5,000. Keep these editable places until blur; the caller still reads the same numeric 0.
+     A pasted leading zero is normalized as before, and ordinary 0 then 5 typing still holds 5. */
+  const keepZeroPlaces = /^0\d/.test(step.value) && (change.raw.length < before.length || /^0\d/.test(before.replace(GROUP_MARK, "")));
+  if (value.length > GROUPED_MAX_DIGITS || (keepZeroPlaces && step.value.length > GROUPED_MAX_DIGITS)) {
     const kept = groupedDigits(before);
     const text = groupedText(kept);
     return { value: kept, text, caret: span === null ? null : caretAfterDigit(text, digitsAhead(before, span.start)), memory };
   }
   /* The leading zeros dropped stood in front of the caret and of a refused dot's caret. */
-  const zeros = step.value.length - value.length;
+  const zeros = keepZeroPlaces ? 0 : step.value.length - value.length;
   const shift = (at: number | null) => (at === null ? null : Math.max(0, at - zeros));
-  const text = groupedText(value);
+  const text = keepZeroPlaces ? step.value.replace(/\B(?=(\d{3})+(?!\d))/g, ",") : groupedText(value);
   const at = shift(step.caret);
   return {
     value,
@@ -521,6 +525,7 @@ export function groupedBox(): NumericBox {
   let memory: NumericMemory = NO_NUMERIC_MEMORY;
   let before: string | null = null;
   let selected = false;
+  let keyPressed: string | null = null;
   const shown = (value: string) => groupedText(groupedDigits(value));
   return {
     seen: (value) => { before = value; },
@@ -530,12 +535,20 @@ export function groupedBox(): NumericBox {
         memory = { ...memory, latchedAt: null };
       }
     },
-    key: (key) => { memory = numericKey(memory, key); },
+    key: (key) => { keyPressed = key; memory = numericKey(memory, key); },
     change: (target, _opts, given) => {
       const replaced = selected;
       selected = false;
-      const from = given === undefined ? before : shown(given);
+      const from = given === undefined || (before !== null && groupedDigits(before) === groupedDigits(given)) ? before : shown(given);
       const next = groupedStep(memory, { before: from, raw: target.value, caret: target.selectionEnd, replaced }, GROUPED_OPTS);
+      /* Deleting a display comma restores that comma. Forward Delete must move past it, or every subsequent Delete
+         repeats forever at the same separator; Backspace already lands on its left. */
+      const at = target.selectionEnd;
+      if (keyPressed === "Delete" && from !== null && at !== null && from[at] === ","
+        && target.value === from.slice(0, at) + from.slice(at + 1) && next.caret !== null && next.text[next.caret] === ",") {
+        next.caret++;
+      }
+      keyPressed = null;
       if (next.text !== target.value) {
         target.value = next.text;
         if (next.caret !== null && typeof target.setSelectionRange === "function") {
@@ -552,6 +565,7 @@ export function groupedBox(): NumericBox {
       memory = NO_NUMERIC_MEMORY;
       before = value === null ? null : shown(value);
       selected = false;
+      keyPressed = null;
       return hadLine;
     },
     owed: () => memory.owed,
@@ -559,9 +573,10 @@ export function groupedBox(): NumericBox {
 }
 
 /**
- * ⭐ WHAT A GROUPED BOX'S CALLER READS: its digits. The caller's `onChange` runs while the element holds the digits
- * ("12500"), and the element is handed back its grouped text and its caret the moment the caller returns — before React
- * compares the element with what it rendered, so nothing is written twice and the caret stays where the box put it.
+ * ⭐ WHAT A GROUPED BOX'S CALLER READS: its digits, including from a deferred state updater. Temporarily changing the
+ * live element back to digits let that updater read "12,500" after the handler restored the display, and also wrote
+ * the browser's edit twice. The event instead has an input target whose value is the committed digits; its other
+ * properties and methods still belong to the real input, which keeps its grouped text and caret throughout.
  */
 export function readsDigits(
   onChange: React.ChangeEventHandler<HTMLInputElement> | undefined,
@@ -569,20 +584,21 @@ export function readsDigits(
 ): React.ChangeEventHandler<HTMLInputElement> {
   return (e) => {
     const el = e.target;
-    const text = el.value;
-    const at = el.selectionEnd;
-    const held = groupedDigits(text);
+    const held = groupedDigits(el.value);
     digits(held);
     if (onChange === undefined) return;
-    el.value = held;
-    try {
-      onChange(e);
-    } finally {
-      el.value = text;
-      if (at !== null && typeof el.setSelectionRange === "function") {
-        try { el.setSelectionRange(at, at); } catch { /* a box that holds no caret */ }
-      }
-    }
+    const target = new Proxy(el, {
+      get: (input, key) => {
+        if (key === "value") return held;
+        const value = Reflect.get(input, key, input);
+        return typeof value === "function" ? value.bind(input) : value;
+      },
+    });
+    const change = Object.create(e, {
+      target: { value: target },
+      currentTarget: { value: target },
+    }) as React.ChangeEvent<HTMLInputElement>;
+    onChange(change);
   };
 }
 
@@ -707,6 +723,13 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
   const opts: NumericOpts = { decimal: !!decimal, negative, separators };
   /* (S8 WP5) The digits an UNCONTROLLED grouped box holds, for the hidden field that carries its name. */
   const [ownDigits, setOwnDigits] = React.useState(() => (grouping ? groupedDigits(String(rest.defaultValue ?? "")) : ""));
+  /* Grouping an IME's live text ends its composition range; the next update then APPENDS the same digits again.
+     Keep that draft exactly as the browser wrote it, and publish/group only the committed text. */
+  const composing = React.useRef(false);
+  const [compositionText, setCompositionText] = React.useState<string | null>(null);
+  const [zeroPlacesText, setZeroPlacesText] = React.useState<string | null>(null);
+  /* DOM formatting does not enter the browser's native undo stack. Keep an edit history for grouped boxes only. */
+  const groupedHistory = React.useRef({ entries: [{ text: groupedText(groupedDigits(String(rest.value ?? rest.defaultValue ?? ""))), caret: 0 }], at: 0, restoring: false });
   /* ⭐ A grouped box's caller reads its digits (`readsDigits`); any other box's caller gets its own handler, untouched. */
   const onChange = grouping ? readsDigits(callerChange, setOwnDigits) : callerChange;
 
@@ -720,7 +743,12 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
   if (box.current === null) box.current = numericBox();
   /* (S8 WP5) A grouped box keeps a `groupedBox` instead: the same five events, in the coordinates of its grouped text. */
   const groupedRef = React.useRef<NumericBox | null>(null);
-  if (grouping && groupedRef.current === null) groupedRef.current = groupedBox();
+  if (grouping && groupedRef.current === null) {
+    groupedRef.current = groupedBox();
+    /* Autofill and accessibility edits need not focus first. Otherwise "12,34" after deleting from "12,345"
+       looks like a new decimal paste and becomes 12, rather than the intended 1,234. */
+    groupedRef.current.seen(groupedText(groupedDigits(String(inputRest.value ?? inputRest.defaultValue ?? ""))));
+  }
   const numeric = grouping && groupedRef.current !== null ? groupedRef.current : box.current;
   const controlledValue = (inputRest as { value?: unknown }).value;
   const controlled = controlledValue !== undefined && controlledValue !== null;
@@ -738,7 +766,12 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
     /* A grouped box wrote its grouped text; its parent holds the digits — compared as the text the box shows. */
     const now = grouping ? groupedText(groupedDigits(String(controlledValue))) : String(controlledValue);
     if (now === produced.current) return;
+    if (grouping && produced.current !== null && groupedDigits(now) === groupedDigits(produced.current)) return;
     produced.current = now;
+    if (grouping) {
+      setZeroPlacesText(null);
+      groupedHistory.current = { entries: [{ text: now, caret: now.length }], at: 0, restoring: false };
+    }
     if (numeric.moved(now)) reportRef.current?.(owner, null);
   }, [isNumeric, controlled, controlledValue, numeric, owner, grouping]);
   const watchReset = (el: HTMLInputElement) => {
@@ -762,29 +795,84 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
   // uncontrolled fields we mutate the DOM value in place so junk never sticks.
   const handleChange: React.ChangeEventHandler<HTMLInputElement> | undefined = isNumeric
     ? (e) => {
+        if (grouping && composing.current) {
+          setCompositionText(e.target.value);
+          return;
+        }
         const was = numeric.owed();
         const owed = numeric.change(e.target, opts, controlled ? String(controlledValue) : undefined);
         produced.current = e.target.value;
+        if (grouping) {
+          setZeroPlacesText(/^0\d/.test(e.target.value.replace(GROUP_MARK, "")) ? e.target.value : null);
+          const history = groupedHistory.current;
+          if (!history.restoring && history.entries[history.at].text !== e.target.value) {
+            history.entries.splice(history.at + 1);
+            history.entries.push({ text: e.target.value, caret: e.target.selectionEnd ?? e.target.value.length });
+            history.at++;
+          }
+        }
         if (!sameOwed(was, owed)) field?.report(owner, owed);
         watchReset(e.target);
         onChange?.(e);
       }
     : onChange;
+  const handleCompositionStart: React.CompositionEventHandler<HTMLInputElement> = (e) => {
+    numeric.seen(e.currentTarget.value);
+    numeric.select(e.currentTarget.selectionStart, e.currentTarget.selectionEnd);
+    composing.current = true;
+    setCompositionText(e.currentTarget.value);
+    inputRest.onCompositionStart?.(e);
+  };
+  const handleCompositionEnd: React.CompositionEventHandler<HTMLInputElement> = (e) => {
+    composing.current = false;
+    setCompositionText(null);
+    handleChange?.(e as unknown as React.ChangeEvent<HTMLInputElement>);
+    inputRest.onCompositionEnd?.(e);
+  };
   /* ⭐ The four other events a numeric box needs (vb6): a key that is not a digit and a blur end a refused dot's hold,
      a focus reads the text an uncontrolled box holds, and a select — and every key, before it acts — tells the box
      what is selected, so a change over a selection is known for one. Each still hands the event to the caller's own
      handler. */
   const handleKeyDown: React.KeyboardEventHandler<HTMLInputElement> | undefined = isNumeric
-    ? (e) => { numeric.select(e.currentTarget.selectionStart, e.currentTarget.selectionEnd); numeric.key(e.key); onKeyDown?.(e); }
+    ? (e) => {
+        if (grouping && !composing.current && (e.ctrlKey || e.metaKey) && !e.altKey && /^(z|y)$/i.test(e.key)) {
+          e.preventDefault();
+          const history = groupedHistory.current;
+          const forward = e.key.toLowerCase() === "y" || e.shiftKey;
+          const next = history.at + (forward ? 1 : -1);
+          if (next >= 0 && next < history.entries.length) {
+            history.at = next;
+            const entry = history.entries[next];
+            e.currentTarget.value = entry.text;
+            e.currentTarget.setSelectionRange(entry.caret, entry.caret);
+            numeric.moved(entry.text);
+            history.restoring = true;
+            try { handleChange?.(e as unknown as React.ChangeEvent<HTMLInputElement>); }
+            finally { history.restoring = false; }
+          }
+        } else if (!grouping || !composing.current) {
+          if (grouping) groupedHistory.current.entries[groupedHistory.current.at].caret = e.currentTarget.selectionEnd ?? 0;
+          numeric.select(e.currentTarget.selectionStart, e.currentTarget.selectionEnd); numeric.key(e.key);
+        }
+        onKeyDown?.(e);
+      }
     : onKeyDown;
   const handleSelect: React.ReactEventHandler<HTMLInputElement> | undefined = isNumeric
-    ? (e) => { numeric.select(e.currentTarget.selectionStart, e.currentTarget.selectionEnd); onSelect?.(e); }
+    ? (e) => { if (!grouping || !composing.current) numeric.select(e.currentTarget.selectionStart, e.currentTarget.selectionEnd); onSelect?.(e); }
     : onSelect;
   const handleFocus: React.FocusEventHandler<HTMLInputElement> | undefined = isNumeric
     ? (e) => { numeric.seen(e.target.value); onFocus?.(e); }
     : onFocus;
   const handleBlur: React.FocusEventHandler<HTMLInputElement> | undefined = isNumeric
-    ? (e) => { numeric.blur(); onBlur?.(e); }
+    ? (e) => {
+        numeric.blur();
+        if (grouping && !composing.current && zeroPlacesText !== null) {
+          e.target.value = groupedText(groupedDigits(e.target.value));
+          numeric.seen(e.target.value);
+          setZeroPlacesText(null);
+        }
+        onBlur?.(e);
+      }
     : onBlur;
 
   /**
@@ -809,21 +897,24 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
      "12,500". A box that is not grouped spreads nothing here. */
   const name = inputRest.name;
   const heldDigits = controlled ? groupedDigits(String(controlledValue)) : ownDigits;
+  const groupedShown = compositionText ?? (zeroPlacesText !== null && groupedDigits(zeroPlacesText) === heldDigits ? zeroPlacesText : groupedText(heldDigits));
   const groupedAttrs = controlled
-    ? { name: undefined, value: groupedText(heldDigits) }
+    ? { name: undefined, value: groupedShown }
     : { name: undefined, defaultValue: groupedText(groupedDigits(String(inputRest.defaultValue ?? ""))) };
 
   /* The box's surface, exactly as it always was — and what WP5's props add to it, `null` when neither is set. ⭐ "Too
      much" is a strong NEUTRAL edge, its own token: it gives way to an error and to a locked box, and it is never the
      error's red, gold or the NO ink. It is the element's own style (it outranks the hover edge); a class would add a
      utility to the stylesheet every page loads. */
+  /* A18: the sheet may truthfully mark a low stake aria-invalid while its attention cue stays NEUTRAL. A real
+     error prop or Field error still paints the error; merely declaring invalid does not replace this chosen cue. */
+  const attentionEdge = attention === true && !error && !field?.invalid && !locked;
   const surface: React.CSSProperties =
-    errored ? { background: "var(--danger-wash)" }
+    errored && !attentionEdge ? { background: "var(--danger-wash)" }
     : locked ? { background: "var(--bg-base)", opacity: 0.72 }
     : { background: "var(--bg-inset)" };
-  const attentionEdge = attention === true && !errored && !locked;
   const added: React.CSSProperties | null = attentionEdge || size === "xl"
-    ? { ...(size === "xl" ? xlStyle.box : {}), ...(attentionEdge ? { borderColor: "var(--input-attention)" } : {}) }
+    ? { ...(size === "xl" ? xlStyle.box : {}), ...(attentionEdge ? { borderColor: "var(--input-attention)", borderWidth: "2px" } : {}) }
     : null;
 
   // Render numeric fields as text so we fully control the characters; keep an
@@ -840,7 +931,7 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
         // cap only applies where a form column has opted in.
         "field-measure flex items-stretch rounded-lg border overflow-hidden brand-focus-within transition-all duration-150",
         heightCls[size],
-        errored ? "border-danger-500"
+        errored && !attentionEdge ? "border-danger-500"
           // 🔴 A LOCKED FIELD MUST *LOOK* LOCKED — and until 2026-09-10 this atom painted no
           // disabled state whatsoever. The pinned statutory helpline on `/admin/system` rendered
           // through the same <Field>/<Input> as the two editable boxes: same border, same fill,
@@ -875,6 +966,7 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
         inputMode={effectiveInputMode}
         {...(isNumeric ? { autoComplete: inputRest.autoComplete ?? "off" } : {})}
         {...(grouping ? groupedAttrs : {})}
+        {...(grouping ? { maxLength: undefined } : {})}
         {...(size === "xl" ? { style: { ...inputRest.style, ...xlStyle.figure } } : {})}
         /**
          * 🔴 AN ERRORED FIELD SAID NOTHING TO A SCREEN READER, AND THAT IS THE SAME DEFECT AS THE
@@ -902,6 +994,7 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
         onSelect={handleSelect}
         onFocus={handleFocus}
         onBlur={handleBlur}
+        {...(grouping ? { onCompositionStart: handleCompositionStart, onCompositionEnd: handleCompositionEnd } : {})}
         className={cn(
           "flex-1 min-w-0 bg-transparent px-3 outline-none placeholder:text-text-subtle",
           // ⛔ NOT a bare `text-text`. That explicit colour is what overrode the UA grey and made a
@@ -912,7 +1005,7 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
           className,
         )}
       />
-      {grouping && name !== undefined ? <input type="hidden" name={name} form={inputRest.form} value={heldDigits} /> : null}
+      {grouping && name !== undefined ? <input type="hidden" name={name} form={inputRest.form} value={heldDigits} disabled={inputRest.disabled} /> : null}
       {trailing !== undefined && (
         <span
           className={cn(

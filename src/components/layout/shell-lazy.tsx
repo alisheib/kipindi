@@ -70,3 +70,4 @@ export const LazyChannelsPanel = dynamic(() => import("@/components/social/chann
 export const LazyJourneyFlag = dynamic(() => import("@/components/journey/journey-flag").then((m) => m.JourneyFlag).catch(nothingIfLost));
 export const LazyJourneyTopBar = dynamic(() => import("@/components/journey/journey-top-bar").then((m) => m.JourneyTopBar).catch(nothingIfLost));
 export const LazyJourneyTabs = dynamic(() => import("@/components/journey/journey-tabs").then((m) => m.JourneyTabs).catch(nothingIfLost));
+export const LazyBetSheetHost = dynamic(() => import("@/components/journey/bet-sheet/bet-sheet-host").then((m) => m.BetSheetHost).catch(nothingIfLost));

@@ -103,7 +103,7 @@ export const MUTATIONS = [
     name: "skeleton-drops-a-status-pill",
     expect: "the skeleton draws exactly one status pill per status",
     why: "the loading skeleton goes back to reserving five status pills against six statuses, so the first paint draws the bar one pill short and then widens it under the reader's eye — the B-29 shape `markets/loading.tsx` was rewritten to document, and four pixels of missing shimmer is not something a human review catches",
-    file: "src/app/markets/loading.tsx",
+    file: "src/app/markets/markets-ghost.tsx",
     suite: "board-discovery",
     from: "export const STATUS_PILL_W = [64, 104, 60, 92, 84, 52];",
     to: "export const STATUS_PILL_W = [64, 104, 60, 84, 52];",

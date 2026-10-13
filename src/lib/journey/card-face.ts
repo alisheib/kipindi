@@ -53,6 +53,7 @@ export type CardMeta = {
 /** The pick row: two picks, the one closed row, or the settled row with its outcome and the outcome's ink. */
 export type CardPicks =
   | { kind: "open"; YES: PickFace; NO: PickFace }
+  | { kind: "break"; until: string }
   | { kind: "closed" }
   | { kind: "settled"; outcome: "YES" | "NO" | "VOID" | null; ink: "yes" | "no" | "neutral" };
 
@@ -74,6 +75,8 @@ export type CardFaceInput = {
   estimates: { YES: Estimate | null; NO: Estimate | null } | null;
   /** `cardCloseLabel(market, nowMs)`, computed on the server with the render's clock. */
   close: CardCloseLabel | null;
+  /** The server's running break: only an unsettled, bettable card replaces its picks with this row. */
+  onBreak?: { until: string } | null;
 };
 
 /** One pick, from its side's estimate. */
@@ -124,6 +127,7 @@ export function cardFace(input: CardFaceInput): CardFace {
   if (!input.bettable) {
     return { meta: { kind: "waiting", emphasis: "muted" }, picks: { kind: "closed" }, oneSidedNote };
   }
+  if (input.onBreak) return { meta: openMeta(input.close), picks: { kind: "break", until: input.onBreak.until }, oneSidedNote };
   return {
     meta: openMeta(input.close),
     picks: { kind: "open", YES: pickFace(input.estimates?.YES ?? null, updown), NO: pickFace(input.estimates?.NO ?? null, updown) },

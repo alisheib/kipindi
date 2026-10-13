@@ -73,7 +73,8 @@ const HTML_JOURNEY = [
   { id: "journey test id / data-journey", re: RAW_TRACE },
   { id: "the journey shell's mark", re: /kp-journey-shell/g },
   { id: "journey-top-bar / journey-tabs", re: /journey-top-bar|journey-tabs/g },
-  { id: "journey class", re: /(?<![\w-])kp-(?:jhdr|jsheet|jcard|jhome|jhowto|howto)(?![A-Za-z0-9])/g },
+  { id: "journey class", re: /(?<![\w-])kp-(?:jhdr|jsheet|jcard|jhome|jhowto|howto|bsheet)(?![A-Za-z0-9])/g },
+  { id: "S8 sheet seed", re: /\bdata-sheet(?![\w-])(?:=|\\?"\s*:)/g },
 ];
 
 const kb = (n) => (n / 1024).toFixed(1) + " KB";

@@ -812,7 +812,7 @@ section("11 · the checks: /markets' 34px, the hub's two glyphs, the chart's dea
   const compact = Number(/html:not\(\[data-density="comfortable"\]\) \.kp-markets-search \{ margin-bottom: (-?[0-9]+)px; \}/.exec(mediaBlock(CSS, "max-width: 639.98px", ".kp-markets-search"))?.[1]);
   ok(`11.1 · /markets: the box stands ${echo + row1 + wide}px over its pills from 640 and ${echo + compactTop + compact}px in the compact phone bar — 34, as every bar (it was ${echo + row1} and ${echo + compactTop}; tile 193 measured 31)`,
     echo === 25 && row1 === 10 && compactTop === 6 && echo + row1 + wide === 34 && echo + compactTop + compact === 34
-      && read("src/app/markets/page.tsx").includes('className="kp-markets-search"') && read("src/app/markets/loading.tsx").includes('className="search-box-wrap kp-markets-search"'));
+      && read("src/app/markets/page.tsx").includes('className="kp-markets-search"') && read("src/app/markets/markets-ghost.tsx").includes('className="search-box-wrap kp-markets-search"'));
   // The hub: Matokeo and Uthibitisho wa utatuzi drew one sign.
   const svg = (k: keyof typeof I) => html(h(I[k] as never, { s: 20 } as never));
   const shape = (k: keyof typeof I) => (svg(k).match(/<(circle|path|line)\b/g) ?? []).map((tag) => tag.slice(1)).join(" ");

@@ -57,6 +57,8 @@ import {
 import { dict } from "../src/lib/i18n-dict.ts";
 import { OPTOUT_PATH, composeMarketing, footerMeasurementToken } from "../src/lib/marketing/footer.ts";
 import { REFEREE_PROMISE_REWORDED_IN } from "../src/lib/legal/privacy-referees.ts";
+import { PENDING_BET_KEY, PENDING_BET_TTL_MS, readMarker, writeMarker } from "../src/lib/journey/pending-bet.ts";
+import { pendingIntents, pendingStorage } from "../src/lib/journey/sheet-storage.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
@@ -77,11 +79,11 @@ const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[
 // 2026-10-11 · Part C (COMPLIANCE-DECISIONS "Privacy v2026-10-11", the owner's ruling of 2026-10-10): §5's first bullet —
 // on erasure the identity record is held 7 years from closure, then erased except a coded form of the number (§4l holds
 // it to the code). PRIVACY_EN_SHA re-pinned 2026-10-11 from the measured English block (99219bf5625a -> 8c519b652ed0 -> 2009d2e3707b: the selfie named and the images erased with the record, reviews PC-2).
-const PRIVACY_VERSION = "2026-10-11";
+const PRIVACY_VERSION = "2026-10-13";
 /** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one.
  *  (Re-pinned 2026-10-09 within v2026-10-09: §4's SMS gateway bullet names no company — COMPLIANCE-DECISIONS "Privacy
  *  v2026-10-09", item 5.) */
-const PRIVACY_EN_SHA = "2009d2e3707b";
+const PRIVACY_EN_SHA = "1d4437c7d57d";
 /** Every cookie name the code writes, as of v2026-09-30. A new one must be described in §7 first. */
 const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-density", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_preview", "kp_revoked", "kp_session"];
 // ⭐ `_ga` / `_ga_W66WRL67MQ` joined the census 2026-09-15.2: gtag.js SETS them, and our code EXPIRES them when consent is
@@ -379,7 +381,15 @@ function cookieDefects(src: string): string[] {
   for (const name of COOKIES) {
     const words = COOKIE_WORDS[name];
     if (!words) { d.push(`no §7 wording is defined for ${name}`); continue; }
-    for (const l of LOCS) for (const w of words[l]) if (!section(bl[l], "7").includes(w)) d.push(`${l} §7 does not say "${w}" (${name})`);
+    for (const l of LOCS) for (const w of words[l]) {
+      const s7 = section(bl[l], "7");
+      // The preview cookie and the bet marker both last a day. The marker's sentence cannot witness the preview's
+      // lifetime: inspect the preview clause alone for its hours (its key is followed by kp-utm's separate disclosure).
+      const from = s7.indexOf("kp_preview"), next = s7.indexOf("kp-utm", from);
+      const witness = name === "kp_preview" && w.includes(String(previewHours))
+        ? s7.slice(from, next < 0 ? s7.length : next) : s7;
+      if (!witness.includes(w)) d.push(`${l} §7 does not say "${w}" (${name})`);
+    }
   }
   return d;
 }
@@ -1256,6 +1266,64 @@ console.log(String.fromCharCode(10) + "§4l · v2026-10-11 · §5: on erasure th
     holdDefects(plantCodedZh, eraseSrc).some((x) => x.startsWith("zh §5 does not say")));
 }
 
+
+/* ══ §4m · S8's necessary tab marker: its disclosed fields and the actual recovery envelope ═════════════════════ */
+{
+  const hours = PENDING_BET_TTL_MS / (60 * 60 * 1000);
+  const words: Record<Loc, string[]> = {
+    en: ["sessionStorage", "question, side and amount you chose", "referral and campaign tags", "random request ids", "unfinished bets", "reload", "confirmed bet", "closing the tab"],
+    sw: ["sessionStorage", "swali, upande na kiasi ulichochagua", "lebo za mwaliko na kampeni", "vitambulisho vya maombi", "bila mpangilio", "bado hazijathibitishwa", "kupakia ukurasa upya", "lililothibitishwa", "ukifunga kichupo"],
+    zh: ["sessionStorage", "问题、方向和金额", "推荐与推广标签", "随机请求标识符", "尚未完成投注", "重新加载页面", "已确认投注", "关闭标签页"],
+  };
+  const tabWordsDefects = (page: string, key = PENDING_BET_KEY, lifetimeHours = hours): string[] => {
+    const d: string[] = [];
+    const bl = blocks(page);
+    const lifetime: Record<Loc, string> = { en: `at most ${lifetimeHours} hours`, sw: `usiozidi saa ${lifetimeHours}`, zh: `最长 ${lifetimeHours} 小时` };
+    for (const l of LOCS) {
+      const text = section(bl[l], "7").replace(/\s+/g, " ").toLowerCase();
+      for (const word of [key, lifetime[l], ...words[l]]) if (!text.includes(word.toLowerCase())) d.push(`${l}: ${word}`);
+    }
+    return d;
+  };
+  ok("§4m en/sw/zh §7 name the necessary tab key, sessionStorage, its code's own lifetime, chosen question/side/amount, referral/campaign tags, random unfinished-request identities, reload recovery and confirmed/tab-close removal",
+    Number.isInteger(hours) && hours > 0 && hours <= 24 && tabWordsDefects(pageSrc).length === 0, tabWordsDefects(pageSrc).join("; "), `${PENDING_BET_KEY} · ${hours} hours`);
+  const missingZh = pageSrc.replace("问题、方向和金额", "问题和方向");
+  ok("§4m control · removing the chosen amount from the Chinese disclosure is reported, without changing either other language",
+    missingZh !== pageSrc && tabWordsDefects(missingZh).some((d) => d.startsWith("zh:")) && !tabWordsDefects(missingZh).some((d) => !d.startsWith("zh:")));
+  ok("§4m control · changing only the stored key or the lifetime leaves a false disclosure in every language",
+    LOCS.every((l) => tabWordsDefects(pageSrc, "kp-other-bet").some((d) => d.startsWith(`${l}:`)))
+      && LOCS.every((l) => tabWordsDefects(pageSrc, PENDING_BET_KEY, 12).some((d) => d.startsWith(`${l}:`))));
+
+  const nowMs = 1_800_000_000_000;
+  const selected = readMarker(writeMarker({ kind: "market", id: "mkt_privacychosen", side: "YES", stake: 500 }, nowMs,
+    { ref: "referral", invite: "invite", utm: { utm_source: "source", utm_campaign: "campaign" } }), nowMs)!;
+  const unfinished = Array.from({ length: 20 }, (_, i) => ({
+    quote: { marketId: `mkt_privacy${i}`, side: (i % 2 === 0 ? "YES" : "NO") as "YES" | "NO", stake: 500 + i },
+    key: `01234567-89ab-4cde-8fab-${i.toString(16).padStart(12, "0")}`, at: nowMs,
+  }));
+  const storageDefects = (serialize = pendingStorage, resume = pendingIntents, markerRead = readMarker): string[] => {
+    const d: string[] = [];
+    const raw = serialize(selected, unfinished);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (!parsed || parsed.bet !== "mkt_privacychosen.YES.500" || parsed.at !== nowMs || parsed.ref !== "referral" || parsed.invite !== "invite"
+      || parsed.utm?.utm_source !== "source" || parsed.utm?.utm_campaign !== "campaign") d.push("chosen fields and attribution");
+    if (JSON.stringify(resume(raw, nowMs)) !== JSON.stringify(unfinished)) d.push("unfinished quotes and keys survive a reload after changing questions");
+    const retired = serialize(null, unfinished.slice(1));
+    if (resume(retired, nowMs).some((i) => i.key === unfinished[0].key) || resume(retired, nowMs).length !== unfinished.length - 1) d.push("retiring one confirmed key leaves the other unfinished requests");
+    if (serialize(null, []) !== null) d.push("the envelope is removed once it has no chosen link or unfinished request");
+    if (markerRead(raw, nowMs + PENDING_BET_TTL_MS) !== null || resume(raw, nowMs + PENDING_BET_TTL_MS).length !== 0
+      || markerRead(raw, nowMs + PENDING_BET_TTL_MS - 1) === null) d.push("the exact lifetime boundary");
+    return d;
+  };
+  ok("§4m the real serializer preserves only chosen-link fields/tags and every unresolved quote/key across a reload; retiring a confirmed entry preserves the others, an empty envelope is removed, and entries expire at the exact code lifetime",
+    storageDefects().length === 0, storageDefects().join("; "));
+  ok("§4m control · dropping the random request key from the serialized bytes is reported",
+    storageDefects((choice, rows) => { const raw = pendingStorage(choice, rows); return raw ? raw.replace(/,"k":"[^"]*"/g, "") : raw; }).includes("unfinished quotes and keys survive a reload after changing questions"));
+  ok("§4m control · retaining only sixteen unresolved requests silently loses identities and is reported",
+    storageDefects(pendingStorage, (raw, at) => pendingIntents(raw, at).slice(0, 16)).includes("unfinished quotes and keys survive a reload after changing questions"));
+  ok("§4m control · a marker whose lifetime check is bypassed is reported",
+    storageDefects(pendingStorage, pendingIntents, (raw, _at) => readMarker(raw, nowMs)).includes("the exact lifetime boundary"));
+}
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 if (pass + fail < 20) { console.error(`!! only ${pass + fail} assertions ran`); process.exit(3); }

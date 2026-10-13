@@ -8,6 +8,32 @@
 
 ---
 
+## 2026-10-13 · Privacy v2026-10-13 — the bet sheet's necessary tab storage (Vodacom S8)
+
+**Authority.** The approved Vodacom S8 plan, WP7b and its amendments A2, A3 and A16; Ali's instruction to continue
+the plan and carry the verified work to production. This entry describes the new storage; it introduces no analytics
+or marketing permission.
+
+**What §7 says, in English, Swahili and Chinese.** `kp-pending-bet` is necessary state in the browser tab's
+`sessionStorage`, valid for at most 24 hours. It contains the question identifier, side and chosen amount, the link's
+referral and campaign tags, and random request identifiers for bets whose answer is unfinished. Confirmed entries are
+removed; closing the tab removes the stored entries. A reload resumes the chosen bet without placing it, and an
+unfinished request keeps its own key so it can be recognized instead of placed again.
+
+**What the implementation keeps.** The selected link and all unresolved quotes and request keys share this one
+disclosed key, in the optional `pending` array. Changing questions cannot erase a prior unfinished request. The
+24-hour lifetime comes from `PENDING_BET_TTL_MS`; no entry remains eligible after it. The bounded envelope is
+`PENDING_BET_MAX_BYTES` (64,000); a commit that cannot preserve its identity, because storage is unavailable or the
+envelope would be exceeded, is refused before any bet is sent. Confirming one request retires only that entry, leaving
+other unfinished requests intact. This tab data contains no account credentials, telephone number or payment details.
+
+**Version and proof.** The page's three META labels and `POLICY_PAGES.privacy.codeVersion` move together to
+2026-10-13. `test:privacy-notice` §4m binds the three disclosures to the marker's actual fields, lifetime and request-key
+round trip, with planted controls; `test:policy-lines` continues to bind the public version to its saved-line rules.
+
+**Limit.** This describes recovery within one browser tab and the stated lifetime; closing that tab loses the local
+marker. The server's ledger and tickets remain the record of placed bets.
+
 ## 2026-10-12 · A retried bet that already went through is answered with its receipt, even while a gate refuses new bets (live fix L2; a call taken under the owner's delegation)
 
 **Authority.** Ali, 2026-10-12, answering the S8 plan's point 22 by question: *"fix them now"* — the classic bet screen's

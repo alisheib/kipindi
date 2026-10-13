@@ -24,6 +24,7 @@ Each folder: `preview.html` (open offline in any browser; loads ../../01-foundat
 | stat-tiles | tile + glass ledger cells | INVENTED (on GIVEN glass/gilt classes) |
 | countdown | kit ring + D1 band | GIVEN + INVENTED |
 | market-card | MarketCard live/tipping/resolved | GIVEN |
+| bet-sheet | journey stake, low balance, refusal and committed receipt (effective S15) | GIVEN flow + ruled kit adaptation |
 | updown-card | D1, all states (links runnable DC) | INVENTED |
 | positions-pnl | ledger strip, pages (links runnable DCs) | INVENTED |
 | charts | PriceChart (source) + PnlChart | GIVEN + INVENTED |

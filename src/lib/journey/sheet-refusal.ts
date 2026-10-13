@@ -71,7 +71,7 @@ export type RefusalOutcome = {
   receipt?: { positionId: string; replayed: boolean };
   /** The refusal was made inside the wallet lock, after the key lookup (A2 item 3; the census ties it to the source). */
   inLock: boolean;
-  /** An in-lock refusal that stays true for every later attempt with the same key (rows 16 and 22): it ends a doubt. */
+  /** A key conflict is permanent. A closed selection can be reopened, so it is never permanent proof of no bet. */
   final?: boolean;
   /** The row's own sentence makes a money claim ("nothing has been charged"): never shown while in doubt. */
   moneyClaim: boolean;
@@ -103,7 +103,7 @@ const BY_REASON: Readonly<Record<string, Row>> = {
   wallet_missing:           { row: 18, frame: "inline", line: L("error.failWalletMissing"), retry: "new", reread: null, inLock: true, moneyClaim: true },
   loss_limit_daily:         { row: 19, frame: "decide", retry: "none", reread: "viewer", inLock: true, moneyClaim: false },
   balance_insufficient:     { row: 20, frame: "decide", retry: "new", reread: "viewer", inLock: true, moneyClaim: false },
-  selection_closed:         { row: 22, frame: "closed", retry: "none", reread: null, inLock: true, final: true, moneyClaim: false },
+  selection_closed:         { row: 22, frame: "closed", retry: "none", reread: null, inLock: true, moneyClaim: false },
 };
 
 /** ⭐ THE ROWS BY CODE, for a refusal that carries no reason. */
@@ -276,7 +276,7 @@ export function settleRefusal(o: RefusalOutcome, reread: Reread, ctx: SettleCont
     case "block":
       return ended({ kind: "block", block: o.block ?? blockFor("account_blocked") });
     case "closed":
-      return ended({ kind: "closed", body: o.row === 13 || o.row === 22 ? "journey.sheetClosedBody" : closedBody(ctx.seed, ctx.nowMs, offset) });
+      return ended({ kind: "closed", body: o.row === 13 ? "journey.sheetClosedBody" : closedBody(ctx.seed, ctx.nowMs, offset) });
     case "bounds":
       return ended({ kind: "bounds", bounds: o.bounds ?? { min: ctx.seed.min, max: ctx.seed.max } });
     case "decide":
@@ -311,7 +311,7 @@ function ownLine(o: RefusalOutcome, ctx: SettleContext): SheetLine | null {
   if (o.row === 19) return { key: "error.failLossLimitDaily" };
   if (o.row === 20 || o.row === 21) return { key: "journey.lowTitle" };
   if (o.block) return o.block.body;
-  if (o.frame === "closed") return { key: "journey.sheetClosedBody" };
+  if (o.frame === "closed") return { key: o.row === 13 ? "journey.sheetClosedBody" : closedBody(ctx.seed, ctx.nowMs, ctx.offsetMs ?? 0) };
   if (o.frame === "bounds") {
     const b = o.bounds ?? { min: ctx.seed.min, max: ctx.seed.max };
     if (o.reason === "stake_below_min") return { key: "journey.sheetBelowMin", vars: { min: b.min } };

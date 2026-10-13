@@ -29,6 +29,7 @@
 import { estimateFor, type Estimate, type EstimateRates } from "@/lib/markets/estimate";
 import {
   shortfallPlan,
+  depositRequestFor,
   type BetInsteadOption,
   type DepositOption,
   type ShortfallBlock,
@@ -67,7 +68,9 @@ export type SheetSeed = {
 export type SheetBounds = { min: number; max: number };
 
 /** Every `ShortfallInput` fact but the stake, the market, its bounds and the clock (WP3's `facts`). */
-export type SheetFacts = Omit<ShortfallInput, "stake" | "market" | "bounds" | "nowMs">;
+export type SheetFacts = Omit<ShortfallInput, "stake" | "market" | "bounds" | "nowMs" | "deposit"> & {
+  deposit: ShortfallInput["deposit"] & { railNames?: string[] };
+};
 
 /** The signed-in half (`?me=1`), as read. */
 export type SheetViewer = {
@@ -570,6 +573,9 @@ export type SheetFrame = {
     deposit: DepositOption | null;
     betInstead: BetInsteadOption | null;
     depositRefusal: "rails_paused" | "deposit_limit" | "sof_required" | "deposit_max" | null;
+    /** The deposit engine's proposed amount and ceiling, for refusal sentences; null after an unread re-read. */
+    requestedDeposit: number | null;
+    depositMaximum: number | null;
     /** The `lowChoose` eyebrow: two options show. */
     eyebrow: boolean;
     /** A failed re-read after a balance refusal: `lowTitle` alone, no option, until a read lands (A8). */
@@ -677,7 +683,7 @@ export function sheetFrame(input: SheetFrameInput): SheetFrame {
   if (view?.kind === "lowNoRead") {
     return {
       ...base, frame: "low", stakeInvalid: true, attention: true, showEstimate: false,
-      low: { shortfall: null, spendable: null, deposit: null, betInstead: null, depositRefusal: null, eyebrow: false, titleOnly: true },
+      low: { shortfall: null, spendable: null, deposit: null, betInstead: null, depositRefusal: null, requestedDeposit: null, depositMaximum: null, eyebrow: false, titleOnly: true },
       cta: { label: stake !== null ? ctaPlace(stake) : CTA_BARE, enabled: false, describedBy: "callout" },
     };
   }
@@ -719,6 +725,7 @@ export function sheetFrame(input: SheetFrameInput): SheetFrame {
       low: {
         shortfall: plan.shortfall, spendable: plan.spendable, deposit, betInstead: instead,
         depositRefusal: plan.depositRefusal ?? null, eyebrow: deposit !== null && instead !== null, titleOnly: false,
+        requestedDeposit: depositRequestFor(plan.shortfall).amount, depositMaximum: depositRequestFor(plan.shortfall).maximum,
       },
       cta: { label: stake !== null ? ctaPlace(stake) : CTA_BARE, enabled: false, describedBy: "callout" },
       betInsteadQuote: instead ? quoteOf(instead.stake) : null,

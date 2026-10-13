@@ -240,7 +240,7 @@ const keyed = (s: Site, key: string) => s.text.includes(key) || s.clsSrc.include
  *  other line of a drawing is set and not shown. */
 const GHOST_HEADS: Array<[string, string]> = [
   ["src/app/live/loading.tsx", "{t.common.live}"],
-  ["src/app/markets/loading.tsx", "{t.market.title}"],
+  ["src/app/markets/markets-ghost.tsx", "{t.market.title}"],
   ["src/app/results/loading.tsx", "{t.results.title}"],
 ];
 type Verdict = { site: Site; verdict: string; bad?: string };

@@ -14,7 +14,9 @@
  *                                      session's own (S8-PLAN A2);
  *        &open=1                       the ONE read each open makes (S8-PLAN A4).
  *
- * ⛔ 404 for a missing market, an Up & Down round, or a market that is not LIVE. ⛔ GET only. ⛔ NOTHING HERE WRITES,
+ * ⛔ The public half is 404 for a missing market, an Up & Down round, or a market that is not LIVE. A signed-in key
+ * read still answers `{ public: null, me: { keyPosition } }` privately, so a lost bet answer can find its receipt after
+ * the question closes. ⛔ GET only. ⛔ NOTHING HERE WRITES,
  * EXCEPT THE OPEN'S READ OF A BLOCKED VIEWER, WHICH WRITES WHAT A REFUSED TAP WRITES (S8-PLAN A4): the session limit's
  * sitting and its `rg.session_limit.enforced` row, `bet.account_blocked`, or `bet.loss_limit_blocked` — and nothing else.
  * ⛔ A store failure is a 503 with no-store — never a cached 200 that says something false.
@@ -23,7 +25,8 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/server/session";
 import { rateCheckAsync } from "@/lib/server/rate-limit";
-import { sheetForUser, sheetPublic } from "@/lib/server/journey-sheet";
+import { sheetClosedKeyRead, sheetForUser, sheetPublic, sheetTitleFor } from "@/lib/server/journey-sheet";
+import { getServerT } from "@/lib/i18n-server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -44,7 +47,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const session = me ? await getSession() : null;
     if (me && !session) return NextResponse.json({ error: "UNAUTHENTICATED" }, { status: 401, headers: NO_STORE });
     const pub = await sheetPublic(id);
-    if (!pub) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404, headers: NO_STORE });
+    if (!pub) {
+      const receipt = me && session ? await sheetClosedKeyRead(id, session.userId, q.get("key")) : null;
+      if (receipt) return NextResponse.json(receipt, { headers: PRIVATE });
+      return NextResponse.json({ error: "NOT_FOUND" }, { status: 404, headers: NO_STORE });
+    }
     if (!me || !session) return NextResponse.json(pub, { headers: PUBLIC });
     const side = q.get("side");
     const mine = await sheetForUser(pub.id, session.userId, {
@@ -53,7 +60,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       key: q.get("key"),
       open: q.get("open") === "1" ? pub : null,
     });
-    return NextResponse.json({ ...pub, me: mine }, { headers: PRIVATE });
+    const { locale } = await getServerT();
+    const title = await sheetTitleFor(pub.id, locale);
+    return NextResponse.json({ ...pub, title, me: mine }, { headers: PRIVATE });
   } catch (err) {
     console.error("[markets/sheet] read failed", { id, err });
     return NextResponse.json({ error: "temporarily unavailable" }, { status: 503, headers: NO_STORE });

@@ -242,6 +242,7 @@ const popups = all.filter((f) => IS_POPUP.test(code(f)));
  * en and zh, is WP11's (`qa:journey-home`, S7-PLAN A6 item 5).
  */
 const REVIEWED: readonly string[] = [
+  "src/components/journey/bet-sheet/bet-sheet.tsx", // S8 WP6 A14: one capped scrolling middle, fixed chosen-side row/CloseX and commit; keyboard lift uses visualViewport. Every terminal/refusal wraps; ticket id breaks anywhere. WP11 measures the real panel in all frames and languages.
   "src/app/admin/affiliate/payable-switch.tsx",   // reviewed 2026-09-27
   "src/app/admin/agents/[id]/decision-rail.tsx",   // reviewed 2026-09-21
   "src/app/admin/agents/[id]/doc-grid.tsx",   // reviewed 2026-09-21

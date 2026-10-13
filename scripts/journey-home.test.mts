@@ -426,6 +426,14 @@ function cardFaceChecks(r: Rules, ok: Ok) {
     [legacy, switchedOff, noRates].every((p) => j(p) === open({ kind: "word" }, { kind: "word" })), j({ legacy, switchedOff, noRates }));
   const closed = F(24_825, 50_462, { bettable: false }).picks;
   ok("3.closed · a market that takes no bets now is the one closed row, with no control", j(closed) === j({ kind: "closed" }), j(closed));
+  const paused = { until: "2099-01-02T12:00:00.000Z" };
+  const breakFaces = [
+    r.face({ ...faceInput(r.estimate, 24_825, 50_462), onBreak: paused }).picks,
+    r.face({ ...faceInput(r.estimate, 24_825, 50_462, { bettable: false }), onBreak: paused }).picks,
+    r.face({ ...faceInput(r.estimate, 24_825, 50_462, { status: "RESOLVED", outcome: "YES", bettable: false }), onBreak: paused }).picks,
+  ];
+  ok("3.break · a running break replaces the picks on a bettable card, while a closed and a settled card keep their existing row",
+    j(breakFaces) === j([{ kind: "break", until: paused.until }, { kind: "closed" }, { kind: "settled", outcome: "YES", ink: "yes" }]), j(breakFaces));
   const settled = ([["RESOLVED", "YES"], ["RESOLVED", "NO"], ["VOIDED", "VOID"], ["VOIDED", null], ["RESOLVED", null], ["RESOLVED", "MAYBE"]] as const)
     .map(([status, outcome]) => F(24_825, 50_462, { status, outcome, bettable: false }).picks);
   ok("3.settled · settled YES takes the YES ink, NO the NO ink and a void the neutral ink (one-sided 8.10); a VOIDED market with no stamp is a void; a verdict never recorded names no side",
@@ -2425,7 +2433,12 @@ function pagesChecks(pw: PagesWorld, ok: Ok) {
     const s = slot[n], { pad, head, tail } = PG_SLOT[n];
     const lines = s.classicArm === null ? [] : s.classicArm.split(LF);
     let rest = code[n].replace(PG_ASK, "").replace(`${pad}${PG_OPENER}`, "");
-    if (n === "question") rest = rest.replace(PG_RAIL_WORDS, "");
+    if (n === "question") rest = rest.replace(PG_RAIL_WORDS, "")
+      .replace('journey && bettingOpen && session && !breakBody ? "hidden lg:flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10"', '"hidden lg:flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10"')
+      .replace('session ? (journey ? (', 'session ? (')
+      .replace('session && (journey ? (', 'session && (')
+      .replace('journey && bettingOpen && session && !breakBody && questionSeed', 'bettingOpen && session && !breakBody && questionSeed');
+    if (n === "question" || n === "watch") rest = rest.replace(/const journeyCards = journey \? await journeyCardState\([^;]+;\s*/g, "");
     const stray = (rest.match(PG_JOURNEY_ID) ?? []).length;
     const problems = [
       s.openers !== 1 ? `${s.openers} openers` : "",
@@ -2445,16 +2458,17 @@ function pagesChecks(pw: PagesWorld, ok: Ok) {
   const noCards = PG_NAMES.filter((n) => cards[n].length === 0);
   const MINTED = /Pool|[Pp]rice|Pct|[Ee]stimate|[?][?][ ]*0(?![.0-9])|[.]{3}/;
   const badHands = PG_NAMES.flatMap((n) => cards[n].filter((el) => pgProp(el, "m") !== `{${PG_ROW[n]}}`
-    || pgProps(el).some(([p]) => !PG_PROPS.has(p)) || MINTED.test(el)).map((el) => [n, pgFlat(el)]));
+    || pgProps(el).some(([p]) => !PG_PROPS.has(p) && p !== "sheet" && p !== "onBreak") || MINTED.test(el)).map((el) => [n, pgFlat(el)]));
   ok("9.hands · each site hands the card the market row ITSELF (/watchlist its starred row, /live and /results theirs, the similar rail its question) and nothing the card computes for itself: never a price, a pool, an estimate, a defaulted pool (?? 0) or a spread copy — only the card's own props",
     noCards.length === 0 && badHands.length === 0, j({ noCards, badHands }));
   const badClock = PG_NAMES.flatMap((n) => cards[n].filter((el) => pgProp(el, "nowMs") !== `{${PG_CLOCK[n]}}`).map((el) => [n, pgProp(el, "nowMs")]));
   const badDecl = PG_NAMES.filter((n) => count(code[n], PG_CLOCK_DECL[n]) !== 1);
   ok("9.clock · each site hands its cards ONE clock, read once per render (nowMs; the similar rail's own simNow), never the wall clock card by card: every card's close label, the resolution half of its bet test and its settled year read one instant",
     badClock.length === 0 && badDecl.length === 0, j({ badClock, badDecl }));
-  const FACE_IMPORTS = ["@/lib/journey/card-face", "@/lib/server/journey-sheet", "@/lib/markets/estimate"];
+  const FACE_IMPORTS = ["@/lib/journey/card-face", "@/lib/markets/estimate"];
   const FACE_CALLS = /(?<![A-Za-z0-9_$.])(?:cardFace|cardFigures|cardEstimate|estimateFor|pickEstimateRates|bettableAt)[ ]*[(]/g;
-  const badFaces = PG_NAMES.map((n) => [n, [...FACE_IMPORTS.filter((s) => code[n].includes(`"${s}"`)), ...(code[n].match(FACE_CALLS) ?? [])]] as const)
+  const badFaces = PG_NAMES.map((n) => [n, [...FACE_IMPORTS.filter((s) => code[n].includes(`"${s}"`)), ...(code[n].match(FACE_CALLS) ?? []),
+    ...[...code[n].matchAll(/import \{([^}]+)\} from "@\/lib\/server\/journey-sheet";/g)].filter((m) => m[1].trim() !== "journeyCardState").map(() => "another journey-sheet read")]] as const)
     .filter(([, hits]) => hits.length > 0);
   ok("9.faces · no site computes a face: the pages import none of the card's rules (card-face, the sheet's cardFigures, the estimate) and call none of them — the card computes its face itself, through cardFigures and cardFace (§4), so no page can price a card its own way",
     badFaces.length === 0, j(badFaces));
@@ -2560,7 +2574,7 @@ function pagesDefects(): Array<{ name: string; expect: RegExp; plant: (w: World)
     ({ ...w, pages: { ...w.pages, more: edits.reduce((s, [from, to]) => swap(s, from, to), w.pages.more) } });
   const CARD_IMPORT = 'import { JourneyCard } from "@/components/journey/cards/journey-card";';
   const ASK_LINE = `  ${PG_ASK}${LF}`;
-  const WATCH_CARD = "<JourneyCard key={row.id} m={marketById.get(row.id)!} nowMs={nowMs} t={t} locale={locale} />";
+  const WATCH_CARD = "<JourneyCard key={row.id} m={marketById.get(row.id)!} nowMs={nowMs} t={t} locale={locale} sheet={journeyCards?.seeds.get(row.id)} onBreak={journeyCards?.onBreak} />";
   const BAND = [
     "      <div className={QUERY_SEARCH_BAND_CLASS}>",
     "        <Suspense>",
@@ -2597,7 +2611,7 @@ function pagesDefects(): Array<{ name: string; expect: RegExp; plant: (w: World)
     { name: "the similar rail hands its cards a price of its own", expect: /^9[.]hands /, alone: true,
       plant: pg("question", [' heading="h3" />', ' heading="h3" price={priceState(s.yesPool, s.noPool)} />']) },
     { name: "/watchlist's cards each read the wall clock (a clock per card)", expect: /^9[.]clock /, alone: true,
-      plant: pg("watch", [" nowMs={nowMs} t={t} locale={locale} />", " nowMs={Date.now()} t={t} locale={locale} />"]) },
+      plant: pg("watch", [WATCH_CARD, WATCH_CARD.replace("nowMs={nowMs}", "nowMs={Date.now()}")]) },
     { name: "the similar rail prices its questions itself (cardFigures beside the card)", expect: /^9[.]faces /, alone: true,
       plant: pg("question", [CARD_IMPORT, `${CARD_IMPORT}${LF}import { cardFigures } from "@/lib/server/journey-sheet";`],
         [ASK_LINE, `${ASK_LINE}  const railFigures = similar.map((s) => cardFigures(s, simNow));${LF}`]) },
@@ -2638,7 +2652,7 @@ function pagesDefects(): Array<{ name: string; expect: RegExp; plant: (w: World)
     { name: "the journey page size typed apart from the player page size (24)", expect: /^9[.]live /, alone: true,
       plant: pg("live", ["const JOURNEY_LIVE_PER_PAGE = 12;", "const JOURNEY_LIVE_PER_PAGE = 24;"]) },
     { name: "an Up & Down row linked to the question, not its round (roundId dropped)", expect: /^9[.]live /, alone: true,
-      plant: pg("live", [" roundId={rounds.get(m.id) ?? null} />", " />"]) },
+      plant: pg("live", [" roundId={rounds.get(m.id) ?? null}", ""]) },
     { name: "the slot hands the list the unsearched board (rows={live}: the count line and the list disagree)", expect: /^9[.]live /, alone: true,
       plant: pg("live", ["<JourneyLiveList rows={all}", "<JourneyLiveList rows={live}"]) },
     /* /watchlist, /results, and what the classic arms kept */
@@ -2752,6 +2766,8 @@ function ruleDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) 
   };
   const flip = (s: "YES" | "NO" | null): "YES" | "NO" | null => (s === "YES" ? "NO" : s === "NO" ? "YES" : null);
   return [
+    { name: "a running break still offers the card's picks", expect: /^3[.]break /, alone: true,
+      plant: (w) => rule(w, { face: (i) => R.face({ ...i, onBreak: null }) }) },
     /* §2 · the home's list */
     { name: "a market that takes no bets kept on the home (the caller's bet-path test ignored)", expect: /^2[.]book[.]keeps /, alone: true,
       plant: (w) => rule(w, { book: (ms, now) => R.book(ms, now, () => true) }) },
@@ -2843,7 +2859,7 @@ function ruleDefects(): Array<{ name: string; expect: RegExp; plant: (w: World) 
     { name: "a market with no rates priced at the deck's 13% instead of showing its side word", expect: /^3[.]legacy /, alone: true,
       plant: (w) => rule(w, { estimate: (m, rates, side, bettable) => R.estimate(m, rates ?? pickEstimateRates(LS13 as never), side, bettable) }) },
     { name: "a market that takes no bets keeps its two picks", expect: /^3[.]closed /, alone: true,
-      plant: (w) => rule(w, { face: (i) => { const f = R.face(i); return f.picks.kind === "closed" ? { ...f, picks: { kind: "open", YES: { kind: "word" }, NO: { kind: "word" } } } : f; } }) },
+      plant: (w) => rule(w, { face: (i) => { const f = R.face(i); return f.picks.kind === "closed" && !i.onBreak ? { ...f, picks: { kind: "open", YES: { kind: "word" }, NO: { kind: "word" } } } : f; } }) },
     { name: "every result in the YES ink (one-sided 8.10's defect: the slot's ink inherited)", expect: /^3[.]settled /, alone: true,
       plant: (w) => rule(w, { face: (i) => { const f = R.face(i); return f.picks.kind === "settled" ? { ...f, picks: { ...f.picks, ink: "yes" as const } } : f; } }) },
     { name: "a VOIDED market with no stamped outcome shows no result", expect: /^3[.]settled /, alone: true,

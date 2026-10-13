@@ -160,6 +160,11 @@ export const MARKERS = [
     file: "src/components/onboarding/how-to-play-sheet.tsx", marker: '"journey-howto-sheet"', expect: () => ({ marker: "out" }) },
   { id: "JourneyCard", stage: "S7", wp: "WP5", journey: true,
     file: "src/components/journey/cards/journey-card.tsx", marker: '"journey-card"', expect: () => ({ marker: "out" }) },
+  // S8: the click selector identifies the host's executable code without adding a hidden product element.
+  { id: "BetSheetHost", stage: "S8", wp: "WP7a", journey: true, part: "BetSheetHost",
+    file: "src/components/journey/bet-sheet/bet-sheet-host.tsx", marker: '"a[data-bet-side]"', expect: OWN_CHUNK },
+  { id: "BetSheet", stage: "S8", wp: "WP6", journey: true,
+    file: "src/components/journey/bet-sheet/bet-sheet.tsx", marker: '"journey-bet-sheet"', expect: () => ({ marker: "out" }) },
 ];
 
 /** S6's four (first-load-parts.py:32), S7's (A9 (2), A20 item 6) and /updown/history (A23 (d)). */
@@ -232,13 +237,13 @@ export function checkMarkerTable(root, table = [...CONTROLS, ...MARKERS]) {
     let note = "";
     if (row.marker !== null && seen.has(row.marker)) bad = `the same marker as ${seen.get(row.marker)}`;
     if (row.marker !== null) seen.set(row.marker, row.id);
-    if (!bad && !landed && row.stage === "S7") {
+    if (!bad && !landed && (row.stage === "S7" || row.stage === "S8")) {
       if (holders.length) bad = `PENDING (${row.file} does not exist yet) but already held by ${holders.join(", ")}: the row names the wrong file, or the marker is not unique`;
       else note = `PENDING: ${row.wp} has not added ${row.file}`;
     } else if (!bad && !landed) {
       bad = `its file ${row.file} is gone`;
     } else if (!bad && row.marker === null) {
-      if (row.stage === "S7") bad = `${row.wp} has added ${row.file}: give the row its marker (see the S7 block)`;
+      if (row.stage === "S7" || row.stage === "S8") bad = `${row.wp} has added ${row.file}: give the row its marker (see its stage's block)`;
       else note = "structural only, no marker";
     } else if (!bad && (holders.length !== 1 || holders[0] !== row.file)) {
       bad = `not unique in src/: held by ${holders.length ? holders.join(", ") : "no file"} (want ${row.file} alone)`;
@@ -413,7 +418,7 @@ export function judgeRow(row, reading, judged, expectOn) {
  * `table` and `judgedRows` come from checkMarkerTable. Returns { routes, controlOk, plant, bad }.
  */
 export function readAll(build, routes, { table = MARKERS, judgedRows, expectOn = true, control = CONTROLS[0] } = {}) {
-  const judged = (row) => judgedRows?.get(row.id)?.judged ?? row.stage !== "S7";
+  const judged = (row) => judgedRows?.get(row.id)?.judged ?? (row.stage !== "S7" && row.stage !== "S8");
   const out = [];
   let controlOk = true;
   for (const route of routes) {

@@ -41,6 +41,9 @@ import { shortfallPlan, type ShortfallInput } from "@/lib/journey/shortfall";
 import { cardEstimate, pickEstimateRates, type Estimate, type EstimateRates } from "@/lib/markets/estimate";
 import { cardClosesAtMs } from "@/lib/markets/card-close-label";
 import { loserSharePct } from "@/lib/payout";
+import { breakStateOf, type BreakState } from "@/lib/break-end";
+import { cardTitle } from "@/lib/markets/short-title";
+import type { Locale } from "@/lib/i18n-dict";
 
 export type SheetPublic = {
   id: string;
@@ -174,6 +177,12 @@ export async function sheetPublic(marketId: string, nowMs: number = Date.now()):
   return sheetPublicFrom(m, bounds, nowMs);
 }
 
+/** Private address-open reads use the same localized short title as the journey card, never an unrelated page heading. */
+export async function sheetTitleFor(marketId: string, locale: Locale): Promise<string | null> {
+  const m = await getMarket(marketId);
+  return m ? cardTitle(locale, m).text : null;
+}
+
 /**
  * ⭐ THE CARD'S SEED (S8 WP3 step 4; S8-PLAN Open point 4) — `sheetPublicFrom`'s fields without `estimates`, versioned,
  * for a journey card to hand the sheet so it draws on the tap frame. Null exactly where `sheetPublic` is null.
@@ -187,8 +196,41 @@ export async function sheetSeedFor(m: StoredMarket, nowMs: number = Date.now()):
   return { v: 1, ...rest };
 }
 
+/** The journey card pages batch their seeds once, and share one fail-open break read. Classic callers never ask. */
+export async function journeyCardState(markets: readonly StoredMarket[], nowMs: number, userId?: string | null, knownBreak?: BreakState | null): Promise<{
+  onBreak: BreakState | null;
+  seeds: ReadonlyMap<string, SheetSeed>;
+}> {
+  const onBreak = knownBreak !== undefined ? knownBreak : userId ? await isLockedOut(userId).then(breakStateOf).catch(() => null) : null;
+  const entries = onBreak ? [] : await Promise.all(markets.filter((m) => isSheetMarket(m) && bettableAt(m, nowMs)).map(async (m) => {
+    const seed = await sheetSeedFor(m, nowMs);
+    return seed ? [m.id, seed] as const : null;
+  }));
+  return { onBreak, seeds: new Map(entries.filter((e): e is readonly [string, SheetSeed] => e !== null)) };
+}
+
 /** A position key as the sheet mints it (`crypto.randomUUID()`); anything else is answered null with no lookup. */
 const KEY_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** A landed key belongs to this viewer and this question, and never to a house stake. A failed read throws. */
+async function keyPositionFor(marketId: string, userId: string, key: string | null | undefined): Promise<SheetForUser["keyPosition"]> {
+  if (typeof key !== "string" || !KEY_UUID.test(key)) return null;
+  const p = await positionStore.findByIdempotencyKey(key);
+  return p && p.userId === userId && p.marketId === marketId && p.houseBotId == null ? { positionId: p.id } : null;
+}
+
+/**
+ * A lost answer must still find its receipt after the question closes or resolves. The public sheet then remains a
+ * 404, but a signed-in key read answers this private, minimal shape. No wallet, RG or open read runs here, and no
+ * public market fields are invented. A malformed key has no read; a lookup failure throws instead of saying no bet.
+ */
+export async function sheetClosedKeyRead(marketId: string, userId: string, key: string | null | undefined): Promise<{
+  public: null;
+  me: { keyPosition: SheetForUser["keyPosition"] };
+} | null> {
+  if (!/^mkt_[A-Za-z0-9]{1,64}$/.test(marketId) || typeof key !== "string" || !KEY_UUID.test(key)) return null;
+  return { public: null, me: { keyPosition: await keyPositionFor(marketId, userId, key) } };
+}
 
 /**
  * ⭐ THE VIEWER'S FACTS, FROM THE GATES' OWN READS, IN ONE `Promise.all` (S8 WP3 step 1). Null when any read fails.
@@ -203,14 +245,17 @@ const KEY_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
  *                (`db.sourceOfFunds.get`, `reviewStatus === "ACCEPTED"`, as `deposit()` reads it) and its thresholds, and
  *                the mobile-money rails `getKillSwitches()` does not pause for deposits.
  */
-export async function viewerFacts(userId: string, playStartedAt: number | null | undefined): Promise<SheetFacts | null> {
+type SheetWalletRead = { row: Awaited<ReturnType<typeof db.wallet.findByUserId>>; failed: boolean };
+
+export async function viewerFacts(userId: string, playStartedAt: number | null | undefined, walletRead?: SheetWalletRead): Promise<SheetFacts | null> {
+  if (walletRead?.failed) return null;
   try {
     const [maintenance, lockout, session, user, wallet, rg, usage, pendingDeposit, sof, kill] = await Promise.all([
       isMaintenanceMode(),
       isLockedOut(userId),
       readSessionStanding(userId, playStartedAt),
       db.user.findById(userId),
-      db.wallet.findByUserId(userId),
+      walletRead ? walletRead.row : db.wallet.findByUserId(userId),
       getRgSettings(userId),
       getLimitUsage(userId),
       db.txn.newestProcessingDeposit(userId),
@@ -311,7 +356,11 @@ export type SheetForUserOpts = {
 export async function sheetForUser(marketId: string, userId: string, opts: SheetForUserOpts = {}): Promise<SheetForUser> {
   // ⚠️ try/catch, not `.catch()`: the in-memory twin answers synchronously, and a read that fails is "unknown", not 0.
   let wallet: Awaited<ReturnType<typeof db.wallet.findByUserId>> | null = null;
-  try { wallet = await db.wallet.findByUserId(userId); } catch { wallet = null; }
+  let walletReadFailed = false;
+  try {
+    const row = await db.wallet.findByUserId(userId);
+    wallet = row ? { ...row } : null;
+  } catch { wallet = null; walletReadFailed = true; }
   const balance = wallet && Number.isFinite(wallet.balance) ? wallet.balance : null;
   const bonusBalance = Math.max(0, wallet?.bonusBalance ?? 0);
   let positions: Awaited<ReturnType<typeof positionStore.listForUserAndMarket>> = [];
@@ -319,7 +368,9 @@ export async function sheetForUser(marketId: string, userId: string, opts: Sheet
   const held = new Set<"YES" | "NO">();
   for (const p of positions) if (p.status === "OPEN" && (p.side === "YES" || p.side === "NO")) held.add(p.side);
 
-  const facts = await viewerFacts(userId, opts.playStartedAt);
+  // One wallet snapshot feeds both the headline and the shortfall plan: a bonus spent between two reads must not
+  // leave the headline showing yesterday's spendable while the plan offers a deposit from the later balance.
+  const facts = await viewerFacts(userId, opts.playStartedAt, { row: wallet, failed: walletReadFailed });
   if (opts.open) await recordOpenBlock(userId, opts.playStartedAt, facts, opts.open);
 
   // B2, the market page's own rule ([id]/page.tsx): the other side held, and an active grant with wagering left.
@@ -333,11 +384,7 @@ export async function sheetForUser(marketId: string, userId: string, opts: Sheet
   }
 
   // A2: the key's position — this viewer's own, never a house bot's. ⛔ No try/catch: a failed lookup is no answer.
-  let keyPosition: SheetForUser["keyPosition"] = null;
-  if (typeof opts.key === "string" && KEY_UUID.test(opts.key)) {
-    const p = await positionStore.findByIdempotencyKey(opts.key);
-    if (p && p.userId === userId && p.houseBotId == null) keyPosition = { positionId: p.id };
-  }
+  const keyPosition = await keyPositionFor(marketId, userId, opts.key);
 
   return {
     spendable: balance === null ? null : Math.max(0, balance) + bonusBalance,

@@ -15,6 +15,10 @@ import { resolveWinShareToken } from "@/lib/server/share-token";
 import { SidePicker } from "@/components/markets/side-picker";
 import { MarketCard } from "@/components/markets/market-card";
 import { JourneyCard } from "@/components/journey/cards/journey-card";
+import { JourneyBetButtons } from "@/components/journey/question/journey-bet-buttons";
+import { JourneyHolder } from "@/components/journey/question/journey-holder";
+import { journeyCardState } from "@/lib/server/journey-sheet";
+import { cardTitle } from "@/lib/markets/short-title";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 import { getSimilarMarkets } from "@/lib/server/market-service";
 import { ChartToggle } from "@/components/charts/chart-toggle";
@@ -309,6 +313,9 @@ export default async function MarketDetail({
   // similar rail alone differs for a journey request (its heading's words and its cards); the rest of this page stays
   // classic until S8 builds the journey question page.
   const { journey } = await resolveSimpleJourney();
+  const journeyCards = journey ? await journeyCardState([m, ...similar], simNow, session?.userId, breakEnd) : null;
+  const questionSeed = journeyCards?.seeds.get(m.id) ?? null;
+  const questionTitle = cardTitle(locale, m).text;
 
   // F11 — decide the viewer's objection standing HERE, on the server, so the panel
   // never dangles a control the service would refuse. The same rules are re-checked
@@ -718,7 +725,7 @@ export default async function MarketDetail({
             y354, and 16px further from the question on a phone. `gap` spaces in-flow items only, and an absolutely
             positioned child is not one, so the heading stays first in the region (D40) and costs nothing. */}
         <div className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1 lg:self-stretch">
-        <aside className="flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10" aria-labelledby={BET_PANEL_HEADING}>
+        <aside className={journey && bettingOpen && session && !breakBody ? "hidden lg:flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10" : "flex flex-col gap-3 lg:sticky lg:top-[72px] lg:z-10"} aria-labelledby={BET_PANEL_HEADING}>
           {bettingOpen ? (
             session && breakBody ? (
               <>
@@ -730,7 +737,13 @@ export default async function MarketDetail({
               {oneSidedCallout}
               <BetBreakNotice body={breakBody} testId="market-bet-break" />
               </>
-            ) : session ? (
+            ) : session ? (journey ? (
+              <>
+                <h2 id={BET_PANEL_HEADING} className="sr-only">{t.market.placeYourStake}</h2>
+                {oneSidedCallout}
+                {questionSeed && <JourneyBetButtons seed={questionSeed} title={questionTitle} t={t} headingId={BET_PANEL_HEADING} className="hidden lg:grid" />}
+              </>
+            ) : (
               <>
               {/* D40 · THE ONLY BRANCH WITH NO HEADING OF ITS OWN, so it gets one that is read
                   and not seen. The other four states already name themselves in a heading; this
@@ -796,7 +809,7 @@ export default async function MarketDetail({
                 boardHref="/markets"
               />
               </>
-            ) : (
+            )) : (
               <>
               {oneSidedCallout}
               {/* Sign-in CTA — styled to invite prediction */}
@@ -997,7 +1010,10 @@ export default async function MarketDetail({
           )}
 
           {/* 4. Your open positions — relevant context before reading the criterion */}
-          {session && (
+          {session && (journey ? (
+            <JourneyHolder m={m} positions={myPositions} values={positionCashOutValues} sellable={positionSellable}
+              pricedFree={positionPricedFree} selectionClosed={isSelectionClosed(m)} nowMs={Date.now()} t={t} locale={locale} />
+          ) : (
             <section className="rounded-xl border border-border bg-bg-elevated p-5 space-y-3">
               {/* The heading's glyph on the section's content edge (round 10, R10-A5 — tile 162: its ink stood at x158.12 on
                   the 157.0 edge its positions start on), as every page head's and eyebrow's is (R9-A4). */}
@@ -1099,6 +1115,14 @@ export default async function MarketDetail({
                   </div>
                 );
               })}
+            </section>
+          ))}
+
+          {journey && bettingOpen && session && !breakBody && questionSeed && (
+            <section className="lg:hidden" aria-labelledby="journey-bet-mobile-heading">
+              <h2 id="journey-bet-mobile-heading" className="sr-only">{t.market.placeYourStake}</h2>
+              {oneSidedCallout}
+              <JourneyBetButtons seed={questionSeed} title={questionTitle} t={t} headingId="journey-bet-mobile-heading" />
             </section>
           )}
 
@@ -1239,7 +1263,7 @@ export default async function MarketDetail({
             {journey ? (
               <div className="kp-jgrid">
                 {similar.map((s) => (
-                  <JourneyCard key={s.id} m={s} nowMs={simNow} t={t} locale={locale} heading="h3" />
+                  <JourneyCard key={s.id} m={s} nowMs={simNow} t={t} locale={locale} sheet={journeyCards?.seeds.get(s.id)} onBreak={breakEnd} heading="h3" />
                 ))}
               </div>
             ) : (

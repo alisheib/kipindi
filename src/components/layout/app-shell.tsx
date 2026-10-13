@@ -17,7 +17,7 @@ import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/server/su
 // `test:journey-shell` §12 holds this.
 import {
   LazyPullToRefresh, LazyNotifyPoller, LazyEventStream, LazyInstallInvite, LazyConsentPrompt, LazyChannelsPanel,
-  LazyJourneyFlag, LazyWinCelebration, LazySellResultHost, LazyJourneyTopBar, LazyJourneyTabs,
+  LazyJourneyFlag, LazyWinCelebration, LazySellResultHost, LazyJourneyTopBar, LazyJourneyTabs, LazyBetSheetHost,
 } from "./shell-lazy";
 // ⛔ THE OFFLINE BANNER IS NOT ONE OF THEM, ON PURPOSE (WP6c): its one job is a connection that fails, so its code comes
 // with the page's own scripts, as it always did, and never by a fetch of its own that the same failure could stop. It
@@ -614,6 +614,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           shared 5 s), and a move to another page closes it. It draws nothing until a sale, and a lost chunk leaves each
           button drawing its own result, as before. */}
       {session && <Suspense fallback={null}><LazySellResultHost /></Suspense>}
+      {journeyShown && session && <Suspense fallback={null}><LazyBetSheetHost /></Suspense>}
       <Suspense fallback={null}>
         <AuthFlash />
       </Suspense>

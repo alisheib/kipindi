@@ -661,14 +661,14 @@ const classOf = (s: string, head: string) => new RegExp(`className="(${head.repl
 const sweep = (text: (p: string) => string) => {
   const t = (p: string) => squash(decomment(text(p)));
   const resultsPage = t("src/app/results/page.tsx"), resultsGhost = t("src/app/results/loading.tsx");
-  const mkGhost = t("src/app/markets/loading.tsx"), liveGhost = t("src/app/live/loading.tsx"), hero = t("src/components/ui/page-hero.tsx");
+  const mkGhost = t("src/app/markets/markets-ghost.tsx"), liveGhost = t("src/app/live/loading.tsx"), hero = t("src/components/ui/page-hero.tsx");
   const barKit = t("src/components/ui/query-bar-ghost.tsx"), livePage = t("src/app/live/page.tsx");
   const rcGhost = t("src/app/wallet/receipts/loading.tsx"), rcRow = t("src/components/wallet/receipt-list-row.tsx");
   const pfPage = t("src/app/profile/page.tsx"), pfGhost = t("src/app/profile/loading.tsx");
   const agPage = t("src/app/agent/page.tsx"), agGhost = t("src/app/agent/loading.tsx");
   const udPage = t("src/app/updown/page.tsx"), udGhost = t("src/app/updown/updown-ghost.tsx"), udTabs = t("src/components/updown/updown-board-tabs.tsx");
   const rdPage = t("src/app/updown/[roundId]/page.tsx"), rdGhost = t("src/app/updown/[roundId]/loading.tsx");
-  const midGhost = t("src/app/markets/[id]/loading.tsx"), midPage = t("src/app/markets/[id]/page.tsx");
+  const midGhost = t("src/app/markets/[id]/market-detail-ghost.tsx"), midPage = t("src/app/markets/[id]/page.tsx");
   const tg = t("src/components/journey/tickets/tickets-ghost.tsx"), css = decommentCss(raw("src/app/globals.css"));
   const hPage = t("src/app/updown/history/page.tsx"), hGhost = t("src/app/updown/history/history-ghost.tsx");
   const header = (s: string) => /<PageHeader eyebrow=\{[^}]+\} title=\{[^}]+\} subtitle=\{[^}]+\}/.exec(s)?.[0] ?? "";
@@ -730,14 +730,14 @@ const sweep = (text: (p: string) => string) => {
   // PLANTS — each fix undone in memory, one at a time, and its check alone reported.
   const PLANTS: Array<[string, string, string, string]> = [
     ["5.2 results", "src/app/results/loading.tsx", '<div className="min-w-0 flex-1">', "<div>"],
-    ["5.3 markets", "src/app/markets/loading.tsx", "<FiltersGhost label={t.market.filtersOpen} />", '<div className="kp-fsheet kp-shimmer-track h-[44px] w-[170px] rounded-pill bg-bg-elevated" />'],
+    ["5.3 markets", "src/app/markets/markets-ghost.tsx", "<FiltersGhost label={t.market.filtersOpen} />", '<div className="kp-fsheet kp-shimmer-track h-[44px] w-[170px] rounded-pill bg-bg-elevated" />'],
     ["5.4 live", "src/app/live/loading.tsx", '<PageHero glow="aqua" watermark={200}>', '<PageHero glow="aqua" watermark={200} contentClassName="relative z-10 p-5">'],
     ["5.5 receipts", "src/app/wallet/receipts/loading.tsx", '<div className="h-[18px] w-[88px] rounded-pill', '<div className="h-[22px] w-[88px] rounded-pill'],
     ["5.6 profile", "src/app/profile/loading.tsx", '<div className="grid grid-cols-1 gap-3 md:grid-cols-2">', '<div className="grid grid-cols-1 gap-2 md:grid-cols-2">'],
     ["5.7 agent", "src/app/agent/loading.tsx", " subtitle={t.agent.heroSub} />", " />"],
     ["5.8 updown", "src/app/updown/updown-ghost.tsx", '<div className="h-[50px] w-[136px] rounded-pill bg-bg-elevated kp-shimmer-track" />', ""],
     ["5.9 round", "src/app/updown/[roundId]/loading.tsx", "items-start gap-4 lg:[grid-template-columns", "items-start gap-4 xl:[grid-template-columns"],
-    ["5.10 question", "src/app/markets/[id]/loading.tsx", '<div className="mb-3 h-px w-full bg-border" />', ""],
+    ["5.10 question", "src/app/markets/[id]/market-detail-ghost.tsx", '<div className="mb-3 h-px w-full bg-border" />', ""],
     ["5.11 tickets rail", "src/components/journey/tickets/tickets-ghost.tsx", ' data-rail-ghost=""', ""],
     ["5.12 history", "src/app/updown/history/history-ghost.tsx", "<div className={QUERY_BAR_CLASS} aria-hidden>", "<div aria-hidden>"],
   ];

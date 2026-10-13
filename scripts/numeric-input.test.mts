@@ -21,6 +21,7 @@
 
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 import { transform } from "esbuild";
 import * as KIT from "../src/components/ui/input.tsx";
 import { dict } from "../src/lib/i18n-dict.ts";
@@ -185,13 +186,14 @@ function drive(kit: Kit, steps: string[], opts: Opts = INT, start = "", android 
       el.selectionStart = to;
       el.selectionEnd = to;
       told();
-    } else if (s === "Backspace") {
+    } else if (s === "Backspace" || s === "Delete") {
       told();
       box.key(s);
       const a = el.selectionStart, b = el.selectionEnd;
-      if (a !== b || a > 0) {
-        const from = a === b ? a - 1 : a;
-        el.value = el.value.slice(0, from) + el.value.slice(b);
+      if (a !== b || (s === "Backspace" ? a > 0 : a < el.value.length)) {
+        const from = a === b && s === "Backspace" ? a - 1 : a;
+        const to = a === b && s === "Delete" ? b + 1 : b;
+        el.value = el.value.slice(0, from) + el.value.slice(to);
         el.selectionStart = from;
         el.selectionEnd = from;
         box.change(el, opts);
@@ -457,6 +459,30 @@ const JUDGES: Record<string, { label: string; run: (kit: Kit) => Verdict }> = {
       return { pass: seen === "12500" && held === "12500" && el.value === "12,500" && el.selectionEnd === 3, detail: show({ seen, held, value: el.value, caret: el.selectionEnd }) };
     },
   },
+  groupedDelete: {
+    label: "forward Delete passes a restored grouping comma, so the next Delete reaches the next digit",
+    run: (kit) => {
+      const r = drive(kit, ["tap:1", "Delete", "Delete"], INT, "1,000", false, true);
+      return { pass: r.value === "100" && r.caret === 1, detail: show(r) };
+    },
+  },
+  groupedLeadingEdit: {
+    label: "deleting then replacing a leading digit preserves its decimal places: 1,000 → 000 → 5,000",
+    run: (kit) => {
+      const r = drive(kit, ["tap:1", "Backspace", "5"], INT, "1,000", false, true);
+      return { pass: r.value === "5,000" && r.caret === 1, detail: show(r) };
+    },
+  },
+  groupedDeferredCaller: {
+    label: "a deferred state updater reads committed digits from target and currentTarget after the handler returns",
+    run: (kit) => {
+      const el = element("12,500");
+      let later = () => "";
+      const handler = kit.readsDigits((e) => { later = () => `${e.target.value}/${e.currentTarget.value}`; }, () => {});
+      handler({ target: el, currentTarget: el } as unknown as Parameters<typeof handler>[0]);
+      return { pass: later() === "12500/12500" && el.value === "12,500", detail: later() };
+    },
+  },
   ungroupedControl: {
     label: "(S8 WP5) CONTROL — a box that is NOT grouped answers exactly as before: 5000 typed shows 5000 (caret 4), and a pasted 12,500 holds 12500",
     run: (kit) => {
@@ -476,7 +502,7 @@ for (const name of Object.keys(JUDGES)) {
 }
 
 // ── The plants: a copy of input.tsx with one defect put back, built in memory, judged by the SAME judge ──
-const KIT_SOURCE = readFileSync(new URL("../src/components/ui/input.tsx", import.meta.url), "utf8");
+const KIT_SOURCE = readFileSync(new URL("../src/components/ui/input.tsx", import.meta.url), "utf8").replace(/\r\n/g, "\n");
 const nodeRequire = createRequire(import.meta.url);
 const KIT_DEPS: Record<string, unknown> = {
   react: nodeRequire("react"),
@@ -570,7 +596,7 @@ const PLANTS: Array<{ judge: string; what: string; plant: Array<[string, string]
   { judge: "groupedPaste", what: "(S8 WP5) the separators stripped from what ARRIVED too — a pasted 9 500,00 reads 950000",
     plant: [["const arrived = change.raw.slice(span.start, span.end);", 'const arrived = change.raw.slice(span.start, span.end).replace(GROUP_MARK, "");']] },
   { judge: "groupedCap", what: "(S8 WP5) no cap — a tenth digit is taken",
-    plant: [["if (value.length > GROUPED_MAX_DIGITS) {", "if (false) {"]] },
+    plant: [["if (value.length > GROUPED_MAX_DIGITS || (keepZeroPlaces && step.value.length > GROUPED_MAX_DIGITS)) {", "if (false) {"]] },
   { judge: "groupedCap", what: "(S8 WP5) a change past the cap CUT to nine digits — a pasted 1234567890 becomes 123,456,789, a tenth of what was pasted",
     plant: [["const value = groupedDigits(step.value);", "const value = groupedDigits(step.value).slice(0, GROUPED_MAX_DIGITS);"]] },
   { judge: "groupedErase", what: "(S8 WP5) the box's own commas left in its digits — Backspace over a comma regroups nothing and the box stops reading",
@@ -582,7 +608,13 @@ const PLANTS: Array<{ judge: string; what: string; plant: Array<[string, string]
   { judge: "groupedDigitsRead", what: "(S8 WP5) leading zeros kept in the digits",
     plant: [['return text.replace(/[^0-9]/g, "").replace(/^0+(?=[0-9])/, "");', 'return text.replace(/[^0-9]/g, "");']] },
   { judge: "groupedCaller", what: "(S8 WP5) the caller handed the grouped text — it reads 12,500",
-    plant: [["    el.value = held;\n", ""]] },
+    plant: [['if (key === "value") return held;', 'if (key === "value") return input.value;']] },
+  { judge: "groupedDeferredCaller", what: "the callback's event is the live target again, so a deferred reader sees the grouped text",
+    plant: [["    onChange(change);", "    onChange(e);"]] },
+  { judge: "groupedDelete", what: "forward Delete cannot pass a grouping comma",
+    plant: [['keyPressed === "Delete"', "false"]] },
+  { judge: "groupedLeadingEdit", what: "normalizing zero placeholders while editing changes the next typed stake's size",
+    plant: [['const keepZeroPlaces = /^0\\d/.test(step.value)', 'const keepZeroPlaces = false && /^0\\d/.test(step.value)']] },
   { judge: "ungroupedControl", what: "(S8 WP5) the grouping reached by every numeric box",
     plant: [["export function numericBox(): NumericBox {", "export function numericBox(): NumericBox {\n  return groupedBox();"]] },
 ];
@@ -714,11 +746,11 @@ type RenderKit = { Input: React.ElementType; Field: React.ElementType };
 const PRE_WP5_BLOB = "c8be959a9c6a0da64676ac706ffa1491f57b94f0";
 let preSource = "";
 try {
-  preSource = execFileSync("git", ["cat-file", "blob", PRE_WP5_BLOB], { cwd: new URL("..", import.meta.url).pathname, encoding: "utf8" });
+  preSource = execFileSync("git", ["cat-file", "blob", PRE_WP5_BLOB], { cwd: fileURLToPath(new URL("..", import.meta.url)), encoding: "utf8" });
 } catch (e) { preSource = ""; console.log(`   (git could not read ${PRE_WP5_BLOB}: ${(e as Error).message.split("\n")[0]})`); }
 eq("A15 · the kit as it stood before WP5 is readable (blob c8be959a) — without it no equality below means anything", preSource.length > 0 && !preSource.includes("groupedBox"), true);
 
-const ROOT_DIR = new URL("../src", import.meta.url).pathname;
+const ROOT_DIR = fileURLToPath(new URL("../src", import.meta.url));
 function walk(dir: string): string[] {
   const out: string[] = [];
   for (const n of readdirSync(dir)) {
@@ -816,7 +848,7 @@ let kitFiles = 0;
 for (const f of walk(ROOT_DIR)) {
   /* Comments out first: a JSX comment inside a tag ("the atom's prefix cell") would open a quote the tag never closes. */
   const src = decomment(readFileSync(f, "utf8"));
-  const rel = relative(new URL("..", import.meta.url).pathname, f);
+  const rel = relative(fileURLToPath(new URL("..", import.meta.url)), f);
   const imp = [...src.matchAll(/import\s*(?:type\s*)?\{([^}]*)\}\s*from\s*"(?:@\/components\/ui\/input|\.\/input)"/g)];
   if (!imp.some((m) => /(^|[,\s])Input(\s*(,|$)|\s+as\s)/.test(m[1]))) continue;
   if (rel === "src/components/ui/input.tsx") continue;
@@ -877,7 +909,7 @@ if (preKit !== null) {
   const A15_PLANTS: Array<[string, Array<[string, string]>]> = [
     ["a stray aria-invalid=\"false\" on every box while `attention` is unset", [["aria-invalid={errored || undefined}", "aria-invalid={errored || (attention === true ? undefined : false)}"]]],
     ["the grouped path reached without its prop", [["const grouping = grouped === true;", "const grouping = grouped !== false;"]]],
-    ["the attention edge reached without its prop", [["const attentionEdge = attention === true && !errored && !locked;", "const attentionEdge = attention !== true && !errored && !locked;"]]],
+    ["the attention edge reached without its prop", [["const attentionEdge = attention === true && !error && !field?.invalid && !locked;", "const attentionEdge = attention !== true && !error && !field?.invalid && !locked;"]]],
     ["the xl figure size leaking onto another size", [['{...(size === "xl" ? { style: { ...inputRest.style, ...xlStyle.figure } } : {})}', '{...(size !== "lg" ? { style: { ...inputRest.style, ...xlStyle.figure } } : {})}']]],
   ];
   for (const [what, plant] of A15_PLANTS) {
@@ -913,6 +945,15 @@ if (preKit !== null) {
         return { pass: /<input(?![^>]*type="hidden")[^>]*value="12,500"/.test(h) && /type="hidden"[^>]*value="12500"|value="12500"[^>]*type="hidden"/.test(h), detail: h };
       },
     },
+    groupedDisabled: {
+      label: "a disabled grouped named box disables its hidden carrier too, so a form omits the stake; a read-only box still carries it",
+      run: (kit) => {
+        const disabled = html(kit, { grouped: true, name: "stake", defaultValue: "5000", disabled: true });
+        const readonly = html(kit, { grouped: true, name: "stake", defaultValue: "5000", readOnly: true });
+        const carrier = (h: string) => /<input[^>]*type="hidden"[^>]*>/.exec(h)?.[0] ?? "";
+        return { pass: /disabled=""/.test(carrier(disabled)) && !/disabled=/.test(carrier(readonly)), detail: disabled };
+      },
+    },
     attention: {
       label: "⭐ attention: the strong neutral edge (--input-attention), the caller's aria-describedby, and NO aria-invalid — never the error's red",
       run: (kit) => {
@@ -930,6 +971,14 @@ if (preKit !== null) {
         return { pass: h.includes("border-danger-500") && /aria-invalid="true"/.test(h) && !h.includes("--input-attention"), detail: h };
       },
     },
+    attentionWithCallerInvalid: {
+      label: "the sheet may declare aria-invalid while attention stays neutral with a 2px noncolour cue; explicit errors still win",
+      run: (kit) => {
+        const h = html(kit, { attention: true, "aria-invalid": true, "aria-describedby": "low" });
+        return { pass: /aria-invalid="true"/.test(h) && /aria-describedby="low"/.test(h) && h.includes("border-color:var(--input-attention)")
+          && h.includes("border-width:2px") && !h.includes("border-danger-500") && !h.includes("--danger-wash"), detail: h };
+      },
+    },
     sizeXl: {
       label: "⭐ size xl: the ladder's top rung (--h-control-xl, 56px), the figure on --type-h2 (24px), the unit cell on --type-h4",
       run: (kit) => {
@@ -944,12 +993,15 @@ if (preKit !== null) {
     eq(`(S8 WP5) ${name} · ${j.label}`, v.pass ? true : v.detail, true);
   }
   const SET_PLANTS: Array<[string, string, Array<[string, string]>]> = [
-    ["groupedControlled", "the controlled digits shown ungrouped", [["? { name: undefined, value: groupedText(heldDigits) }", "? { name: undefined, value: heldDigits }"]]],
-    ["groupedControlled", "the name left on the visible box — a form posts 5,000", [["? { name: undefined, value: groupedText(heldDigits) }", "? { value: groupedText(heldDigits) }"]]],
+    ["groupedControlled", "the controlled digits shown ungrouped", [["? { name: undefined, value: groupedShown }", "? { name: undefined, value: heldDigits }"]]],
+    ["groupedControlled", "the name left on the visible box — a form posts 5,000", [["? { name: undefined, value: groupedShown }", "? { value: groupedText(heldDigits) }"]]],
     ["groupedDefault", "the hidden field's digits not read from the default", [['const [ownDigits, setOwnDigits] = React.useState(() => (grouping ? groupedDigits(String(rest.defaultValue ?? "")) : ""));', 'const [ownDigits, setOwnDigits] = React.useState(() => "");']]],
-    ["attention", "attention drawn in the error's red", [['{ borderColor: "var(--input-attention)" }', '{ borderColor: "var(--danger-500)" }']]],
+    ["groupedDisabled", "a disabled grouped box still submits its hidden digits", [["value={heldDigits} disabled={inputRest.disabled}", "value={heldDigits}"]]],
+    ["attention", "attention drawn in the error's red", [['borderColor: "var(--input-attention)"', 'borderColor: "var(--danger-500)"']]],
     ["attention", "attention claiming aria-invalid", [["aria-invalid={errored || undefined}", "aria-invalid={errored || attention || undefined}"]]],
-    ["attentionUnderError", "attention drawn over an error", [["const attentionEdge = attention === true && !errored && !locked;", "const attentionEdge = attention === true;"]]],
+    ["attentionUnderError", "attention drawn over an error", [["const attentionEdge = attention === true && !error && !field?.invalid && !locked;", "const attentionEdge = attention === true;"]]],
+    ["attentionWithCallerInvalid", "the sheet's aria-invalid suppresses its neutral attention cue", [["attention === true && !error && !field?.invalid && !locked", "attention === true && !errored && !locked"]]],
+    ["attentionWithCallerInvalid", "attention loses its noncolour thickness cue", [['borderWidth: "2px"', 'borderWidth: "1px"']]],
     ["sizeXl", "xl on a literal height off the ladder (the canvas's 60px)", [['box: { height: "var(--h-control-xl)" },', 'box: { height: "60px" },']]],
   ];
   for (const [judge, what, plant] of SET_PLANTS) {
@@ -958,6 +1010,132 @@ if (preKit !== null) {
     catch (e) { verdict = `the plant could not be built: ${(e as Error).message}`; }
     eq(`CONTROL · (S8 WP5) ${what} → "${judge}" goes red on the planted copy`, verdict, "red");
   }
+}
+
+// Real browser proof is opt-in: the normal in-process CI gate needs no browser installation or server.
+// Chromium's real composition range is essential here; a fabricated input event could never show the duplicate
+// stake that formatting mid-composition caused. The former handler is planted out of a second bundled kit.
+if (process.argv.includes("--browser")) {
+  const { build } = await import("esbuild");
+  const { chromium } = await import("playwright");
+  const compositionAttrs = "{...(grouping ? { onCompositionStart: handleCompositionStart, onCompositionEnd: handleCompositionEnd } : {})}";
+  eq("browser control: composition handler plant has exactly one anchor", KIT_SOURCE.split(compositionAttrs).length, 2);
+  const bundle = await build({
+    stdin: {
+      contents: `
+        import * as React from "react";
+        import { createRoot } from "react-dom/client";
+        import { flushSync } from "react-dom";
+        import { Input as Fixed } from "numeric-proof:fixed";
+        import { Input as Broken } from "numeric-proof:broken";
+        const w = window; let root;
+        function Box({ kit, props, controlled, functional }) {
+          const Input = kit === "broken" ? Broken : Fixed;
+          const [value, setValue] = React.useState(props.initial ?? "");
+          const [, setOther] = React.useState("first");
+          w.state = controlled ? value : undefined;
+          const onChange = e => {
+            w.changes.push(e.target.value);
+            if (controlled) {
+              if (functional) { setOther(null); setValue(() => e.target.value); }
+              else setValue(e.target.value);
+            }
+          };
+          const { initial, ...rest } = props;
+          return <Input {...rest} {...(controlled ? { value } : { defaultValue: initial })} onChange={onChange} />;
+        }
+        w.mount = (kit, props, controlled = true, functional = false) => {
+          if (root) root.unmount();
+          document.body.innerHTML = '<form id="proof"></form>';
+          w.changes = []; w.state = undefined;
+          root = createRoot(document.getElementById("proof"));
+          flushSync(() => root.render(<Box {...{ kit, props, controlled, functional }} />));
+        };
+        w.snap = () => {
+          const input = document.querySelector('input:not([type="hidden"])');
+          return { value: input.value, caret: input.selectionEnd, state: w.state, changes: w.changes,
+            hidden: document.querySelector('input[type="hidden"]')?.value,
+            form: Object.fromEntries(new FormData(document.getElementById("proof"))) };
+        };`,
+      loader: "tsx", resolveDir: fileURLToPath(new URL("..", import.meta.url)), sourcefile: "numeric-browser-proof.tsx",
+    },
+    bundle: true, write: false, format: "iife", platform: "browser", jsx: "automatic",
+    tsconfig: fileURLToPath(new URL("../tsconfig.json", import.meta.url)),
+    define: { "process.env.NODE_ENV": '"production"' },
+    plugins: [{ name: "numeric-proof", setup(b) {
+      b.onResolve({ filter: /^numeric-proof:/ }, args => ({ path: args.path, namespace: "numeric-proof" }));
+      b.onLoad({ filter: /.*/, namespace: "numeric-proof" }, args => ({
+        contents: args.path.endsWith(":broken") ? KIT_SOURCE.replace(compositionAttrs, "") : KIT_SOURCE,
+        loader: "tsx", resolveDir: fileURLToPath(new URL("../src/components/ui", import.meta.url)),
+      }));
+    } }],
+  });
+  const browser = await chromium.launch(process.env.QA_CHROMIUM_PATH ? { executablePath: process.env.QA_CHROMIUM_PATH } : {});
+  try {
+    const page = await browser.newPage();
+    await page.setContent("<body></body>");
+    await page.addScriptTag({ content: bundle.outputFiles[0].text });
+    type BrowserSnap = { value: string; caret: number; state?: string; changes: string[]; hidden?: string; form: Record<string, string> };
+    const snap = () => page.evaluate(() => (window as any).snap()) as Promise<BrowserSnap>;
+    const mount = (props: Record<string, unknown>, controlled = true, functional = false, kit = "fixed") =>
+      page.evaluate(([kit, props, controlled, functional]) => (window as any).mount(kit, props, controlled, functional), [kit, props, controlled, functional]);
+    const compose = async (initial: string, parts: string[], committed: string, controlled = true, kit = "fixed") => {
+      await mount({ grouped: true, name: "stake", initial }, controlled, false, kit);
+      await page.locator('input:not([type="hidden"])').focus();
+      await page.keyboard.press("End");
+      const cdp = await page.context().newCDPSession(page);
+      try {
+        for (const text of parts) await cdp.send("Input.imeSetComposition", { text, selectionStart: text.length, selectionEnd: text.length });
+        await cdp.send("Input.insertText", { text: committed });
+        return await snap();
+      } finally { await cdp.detach(); }
+    };
+    const compositions: Array<[string, string[], string, string]> = [
+      ["", ["5", "50", "500", "5000"], "5000", "5000"],
+      ["", ["1", "12", "123", "1234", "12345"], "12345", "12345"],
+      ["50", ["0", "00"], "00", "5000"],
+      ["500", ["0"], "0", "5000"],
+      ["1000", ["0"], "0", "10000"],
+      ["2500", ["0", "00"], "00", "250000"],
+    ];
+    for (const controlled of [true, false]) for (const [initial, parts, committed, expected] of compositions) {
+      const got = await compose(initial, parts, committed, controlled);
+      eq(`browser IME (${controlled ? "controlled" : "uncontrolled"}) ${initial}+${committed}: one commit, same stake in display/parent/form`,
+        [got.value, controlled ? got.state : got.hidden, got.form.stake, got.changes],
+        [KIT.groupedText(expected), expected, expected, [expected]]);
+    }
+    const broken = await compose("", ["5", "50", "500", "5000"], "5000", true, "broken");
+    eq("RED browser control: removing composition guards multiplies the stake, so the 5000 assertion detects it", broken.form.stake !== "5000", true);
+    await mount({ grouped: true, name: "stake", initial: "", maxLength: 9 }, true, true);
+    await page.locator('input:not([type="hidden"])').focus(); await page.keyboard.type("1234567890");
+    const nine = await snap();
+    eq("browser: deferred parent reads digits and native maxLength counts no display commas; cap refuses tenth digit", [nine.state, nine.hidden, nine.value], ["123456789", "123456789", "123,456,789"]);
+    await mount({ grouped: true, name: "stake", initial: "5000", disabled: true });
+    eq("browser: disabled grouped stake is absent from actual FormData", (await snap()).form, {});
+    await mount({ grouped: true, name: "stake", initial: "12345" }, false);
+    await page.evaluate(() => {
+      const input = document.querySelector('input:not([type="hidden"])') as HTMLInputElement;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "12,34");
+      input.setSelectionRange(5, 5); input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const unfocused = await snap();
+    eq("browser: no-focus deletion preserves the intended digits", [unfocused.value, unfocused.form.stake], ["1,234", "1234"]);
+    await mount({ grouped: true, name: "stake", initial: "1000" });
+    await page.locator('input:not([type="hidden"])').focus();
+    await page.keyboard.press("Home"); await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Delete"); await page.keyboard.press("Delete");
+    eq("browser: forward Delete passes a grouping comma and then deletes the digit", (await snap()).form.stake, "100");
+    await mount({ grouped: true, name: "stake", initial: "1000" });
+    await page.locator('input:not([type="hidden"])').focus();
+    await page.keyboard.press("Home"); await page.keyboard.press("ArrowRight"); await page.keyboard.press("Backspace");
+    eq("browser: after deleting the leading digit the remaining places stay editable", (await snap()).value, "000");
+    await page.keyboard.type("5");
+    eq("browser: replacing that digit keeps the intended 5000 stake", (await snap()).form.stake, "5000");
+    await page.keyboard.press("Control+z");
+    eq("browser: grouped Undo restores the previous numeric amount", [(await snap()).form.stake, (await snap()).value], ["0", "000"]);
+    await page.keyboard.press("Control+Shift+z");
+    eq("browser: grouped Redo restores the same intended stake", (await snap()).form.stake, "5000");
+  } finally { await browser.close(); }
 }
 
 console.log(`\nnumeric-input: ${pass} passed, ${fail} failed`);
