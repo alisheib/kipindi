@@ -1,0 +1,296 @@
+# S9 — Deposit, waiting and return
+
+**Status: plan and pure preparation only, 2026-10-13.** This plan is in the separate managed checkout
+`C:\Users\asheib\.codex\worktrees\vodacom-s9\kipindi-main`, branch `codex/vodacom-s9`, created at
+`e767f3f52c54b2659d9057dcbc46d42c5edcc833`. S8 is still being verified in its own checkout. No S9 server, schema,
+database, provider or production change has been made. Rebase this branch onto the verified S8 release before wiring
+its host: the final S8 recovery and keyboard corrections are newer than this preparation base.
+
+This is an implementation plan for the existing S9, not another programme or a design rulebook. The authority is
+[VODACOM-PLAN](../../VODACOM-PLAN.md), §3.5 and §5 S9, with §0h's later owner rulings; [INHERIT-MANIFEST](INHERIT-MANIFEST.md),
+SJ-12, SJ-13, SJ-13b and SJ-18; [S4-COPY-AUDIT](S4-COPY-AUDIT.md); and the durable [S4 canvas](s4-canvas/README.md).
+The kit and [DESIGN_AUTHORITY](../../DESIGN_AUTHORITY.md) govern appearance. [S8-PLAN](S8-PLAN.md), especially A3/A10
+and §0h point 82, governs the handoff from the sheet. The [migration protocol](../../../.claude/skills/50pick-audit/SKILL.md)
+governs any later database work.
+
+## 1. The inherited decisions
+
+| Subject | What S9 builds | Authority / correction |
+|---|---|---|
+| Deposit layout | One screen on `/wallet/deposit` for every journey reader; a bet strip only for a valid pending bet | §3.5 |
+| Mobile wallets | M-Pesa, Airtel Money, HaloPesa, Mixx by Yas, in the shared chooser's order; paused deposit rails disabled | R3; SJ-13b; `MOBILE_MONEY_METHODS` and deposit kill switches |
+| Card | A separate “Lipa kwa kadi” link carrying the bet; retain the complete classic card form and its confirm | §3.5; SJ-12 |
+| Submit | Journey “Lipa TZS X” is the explicit one-tap payment commit, in the kit's primary ink | SJ-12; the classic confirm stays |
+| Email / identity | A deposit asks neither question. First-deposit identity information uses the existing notice rule; withdrawal gates stay where they are | Owner, 2026-10-07 and 2026-10-10; §3.6 superseded |
+| Phone / rail | Most recent **CONFIRMED mobile-money** deposit supplies both. Otherwise registered phone and no selected rail. An error return preserves a deliberately emptied phone | SJ-13/SJ-13b; `moneyFormMsisdn`; no phone-prefix rail inference |
+| Amounts | Deposit minimum remains TZS 1,000; stake minimum is TZS 500. Read the real validators/bounds, not canvas literals | Owner, 2026-10-07 / 2026-10-12 |
+| Focused chrome | Journey deposit and waiting have no normal header, tabs, footer or ticker; use a back control, title and minimal 18+ | SJ-18; no player helpline after the 2026-10-06 ruling |
+| Back / paid return | Rebuild the safe pending-bet destination and replace history. Return opens a bet for a manual tap; it never places one | §3.5; pending-bet and safe-next rules |
+| Receipt | The payment receipt stays in the app. Optional transactional mail still goes only to a confirmed address | §0h point 82(g); S4 review 3's correction |
+| Loss limit on return | Keep the chosen stake, explain the current room, hide chips above it, disable an excessive commit. Never prefill to the room | §0h point 2; S4 panel A3 overrides the old “return-clamped” canvas |
+| Long payment | Never turn the passage of time into failure. From 30 minutes offer the explicit bet-with-existing-money alternative when allowed; no new payment without a separate choice | §0h point 82; S8 A10 |
+| Card reference / phone input | Already live: card `order_id` fix `684f72cb`, classic kit PhoneInput `b0f490c8`. Preserve and extend their proof | §5 S9; do not redo these fixes |
+
+The canvas's six code boards are not implemented. Its helpline, “receipt by email”, “today” loss-room language and
+automatic loss-room clamp are superseded. Its “within 3 working days” held-payment sentence is **not an established
+refund SLA**: §0h point 5 still needs the finance answer. Use the truthful existing held-for-return explanation and
+receipt/support path without a promised date. Record a finance answer if one is actually obtained.
+
+## 2. Source seams and real prerequisites
+
+These locators identify the preparation base; names and control flow are the durable anchors.
+
+| Seam | Current source | S9 change |
+|---|---|---|
+| Payment entry / failures | [deposit action](../../../src/app/wallet/deposit/actions.ts), `carry`, `fail`, `depositAction` | Preserve canonical bet/next/key on every failure, recompute current facts, route journey results to waiting/return |
+| Existing form | [deposit page](../../../src/app/wallet/deposit/page.tsx), `prevMsisdn`, five provider tiles, billing block, `DepositConfirm` | Keep the classic arm intact; add the journey arm and a full classic card route |
+| Deposit replay | [wallet service](../../../src/lib/server/wallet-service.ts), `deposit`: early key lookup and concurrent-create catch | **Actual defect:** a globally found key is currently returned without owner/type/payload checks. Fix both sites before using replay to recover a journey payment |
+| Signed return | Same service, `settleDepositFromReturn` | **Actual defect:** owner is checked but transaction type is not. Require an owned DEPOSIT before any provider call or settle; share the status core |
+| Money settle | Same service, `settlePaymentWebhook`, `settleDepositConfirmed`, `settleDepositFailed` | Reuse the exactly-once wallet/transaction/ledger path and its amount-mismatch escalation; do not add a credit path |
+| Provider authority | [payments](../../../src/lib/server/payments.ts), `verifyDepositStatus`; [Selcom](../../../src/lib/server/selcom.ts), `selcomVerifyOrder` | Signed COMPLETED confirms; only CANCELLED/USERCANCELLED/REJECTED fail. PENDING, INPROGRESS, unrecognised values, transport failure and UNSUPPORTED leave PROCESSING |
+| Background lane | Wallet service, `creditConfirmedDeposits`; lifecycle's 15-second lane | Remains confirm-only and bounded to its existing window. S9's foreground read covers long waits |
+| Shared facts | [journey sheet](../../../src/lib/server/journey-sheet.ts), `viewerFacts` / `sheetForUser`; [shortfall](../../../src/lib/journey/shortfall.ts) | Reuse current spendable balance, RG, ceilings, pending payment and market facts; do not infer balance from a deposit amount |
+| Tab intent | [pending bet](../../../src/lib/journey/pending-bet.ts), [sheet storage](../../../src/lib/journey/sheet-storage.ts), [sheet state](../../../src/lib/journey/sheet-state.ts) | Preserve the chosen bet and all unresolved bet keys through payment, auth, reload and return; no overwrite of a prior uncertain bet |
+| Deposit chooser / amount | [provider grid](../../../src/components/wallet/provider-radio-grid.tsx), [amount field](../../../src/components/wallet/amount-field.tsx), [phone normalisation](../../../src/lib/phone-normalize.ts) | Optional row layout/noDefault and full figures/onValueChange; defaults preserve classic deposit and withdrawal behavior |
+| Server stores | [store](../../../src/lib/server/store.ts), [Prisma DAL](../../../src/lib/server/prisma-dal.ts), [market DAL](../../../src/lib/server/market-dal.ts) | Matching narrow reads, JSON mapping and create-only metadata in memory and Postgres |
+| Shell | [AppShell](../../../src/components/layout/app-shell.tsx), [surface rules](../../../src/lib/surfaces.ts) | One exact journey-focused route decision used by server paint, ghosts, overlays and chrome; classic same-slot else |
+| Receipts / inbox / mail | [receipt](../../../src/app/wallet/receipt/[id]/page.tsx), [notifications](../../../src/lib/server/notification-service.ts) `notifyDeposit`, wallet service `notifyStillPendingDeposits`, [mail](../../../src/lib/server/email.ts) `depositPendingHtml` | Derive the bet return link from the owned deposit's stored intent; preserve all existing receipt/reference and confirmed-email controls |
+| Attribution | [funnel](../../../src/lib/journey/funnel.ts), [beacon](../../../src/lib/journey/funnel-beacon.ts), [server counters](../../../src/lib/server/journey-funnel.ts), [report](../../../src/lib/server/journey-funnel-report.ts) | `deposit_return` already exists in the central origin list. Persist a verified origin when the manual returned bet is created; no URL-only attribution |
+
+### 2a. The shared server status contract
+
+The status service resolves by transaction id for waiting, and by the sanitized provider reference for the card return.
+Both adapters first authenticate, resolve a row and require `userId === caller` **and** `type === DEPOSIT`.
+Missing, foreign and wrong-type references expose the same UNKNOWN shape, with no row, phone, provider reference,
+amount or existence signal. Write a SECURITY audit for refused lookup attempts without logging raw credentials.
+No provider request or money mutation happens before that check. A storage read fault is uncertainty, not failure.
+
+For an owned PROCESSING non-CARD deposit with a provider reference and age at least 20 seconds, the foreground status
+path may spend `deposit.probe` for that transaction and call the signed verifier. The foreground probe requires one
+of the four currently registered mobile-wallet rails and a valid funding row; null/unknown/legacy/Card/internal/bank
+rails are not eligible. Marked house rows are outside player status, trust, probes and funding-key recovery. The return adapter retains the card
+leg's signed verification. Both feed only authoritative CONFIRMED/FAILED into `settlePaymentWebhook`, then reread the
+row: the result of a competing webhook or RG hold wins. A status must never be inferred from `payment_status`,
+`cancelled`, elapsed age, `handled: true`, a client amount or an SSE message.
+
+Project the fresh owned row with `presentedStatus`, including `RG_RETURN_MARK`. Distinguish confirmed/paid,
+processing/pending, failed and held-for-return; a generic AML review must not become “nothing was taken”. Return only
+the fields needed for the page, plus server time and a throttling hint. A failed balance read is unknown, never a
+zero or an old wallet snapshot presented as current. First-deposit information uses `firstDepositNoticeDue` and its
+per-player dismissal rule, not a guessed “first” from the payment response.
+
+The authenticated GET is dynamic and `private, no-store`; JSON errors and unauthenticated responses get the same
+cache prohibition. It is never prefetched and is bypassed by the service worker. `deposit.status` is keyed by caller,
+and checked before a probe; `deposit.probe` is keyed by the **owned** transaction, never a foreign id. Bucket capacities
+must accommodate the specified 3-second polling without turning rate limiting into a false terminal state. Add and
+prove the chosen rules in the real rate registry; do not rely on its unknown-action fallback.
+
+### 2b. Deposit key and saved-intent contract
+
+A UUID belongs to a canonical deposit intent, not to a page render. A lost action answer or uncertain dispatch
+keeps that key locked and recovers the original transaction; it does not unlock a fresh Lipa. A definitive refusal
+before dispatch, or an authoritative FAILED payment, permits a fresh key at the next explicit attempt. A changed
+amount/rail/phone is a new intent only after the previous attempt is conclusively resolved or a pending-payment
+choice explicitly declines another payment. Auth-loss and deploy recovery use the existing redirect / reload rules.
+
+At both replay sites require caller, DEPOSIT type, amount, currency, provider and normalized phone to match, and compare the
+stored normalized pending-bet intent when present. Reject mismatches without disclosing another owner's row and
+without dispatch. Retain lookup inside the reservation race path. Preserve create-only origin and pending intent on
+a matching replay; an update must not replace either. A read failure cannot be called a definitive “not sent”.
+
+**Reviewed choice, 2026-10-13:** idempotency covers the persisted funding intent: caller/type/amount/currency/provider/
+normalized phone/canonical pending bet. Card billing changes do not mutate the original order. A matching CARD key
+recovers the verified existing order/status and never dispatches a new checkout, irrespective of subsequently edited
+billing fields. No third fingerprint column is added, and no byte-equality claim is made for billing that was never
+stored. A lost Card redirect needs the verified recovery/waiting path for that existing order.
+
+`Transaction.pendingBet` is a small versioned nullable JSON envelope containing the normalized bet and rebuilt
+destination, sufficient for an owned receipt, notification or pending email to reopen it. Parse it on every read;
+no arbitrary URL, query bag, provider callback string, phone, credentials or unfinished **bet** key belongs in that
+envelope. The payment UUID and the S8 bet UUID are different namespaces and are never interchanged. Legacy rows with
+null intent continue to open the existing wallet/receipt path.
+
+Use `parseBetParam`, `pendingBetUrl` and bounded safe-next rules, plus a permitted return-surface allowlist; reject
+auth/admin/payment-loop destinations. The URL stake remains a claim. A forwarded link cannot prefill a stake or
+shortfall from that claim: the same browser's fresh matching tab marker must authorize it, or an authenticated owned
+deposit's normalized saved intent must supply a separately verified return. The server cannot read sessionStorage;
+WP1 must specify the client/server handoff and prove the initial HTML never presents an untrusted stake as chosen.
+The chosen amount is recomputed from live spendable funds and limits; unknown facts keep payment disabled.
+**Reviewed bridge choice, 2026-10-13:** initial SSR supplies the explicit trust source `none` and never calls a URL
+stake chosen. After hydration only a fresh matching marker may restore it, before writing a saved intent or sending
+an action. An owned server-saved deposit intent may restore it across authentication/receipt contexts; raw URL tags
+cannot substitute for that proof. The concrete page/action bridge must be independently reviewed before WP4.
+
+Keep `kp-pending-bet`'s disclosed 24-hour lifetime and size limit, and preserve the unresolved-key array while writing
+the chosen bet for a payment. Clear a bet key only when its bet is confirmed; a deposit confirmation does not confirm
+a bet. An unavailable/over-cap marker store refuses the dependent operation before sending it, as S8 does. Review
+the server intent's purpose and retention against the existing transaction/privacy policy separately from tab TTL.
+
+## 3. Ordered workpacks
+
+Each workpack ends with its own actual evidence and independent review. Schema/server/browser work starts after
+the S8 release is verified and this contract is reviewed. Pure status timing/intent helpers and their tests may be
+built independently here first; they have no provider, database or server import.
+
+### WP0 — Rebase, authority and proof setup
+
+Rebase onto the verified S8 release and read its host/storage amendments. Record the tested base and source SHA.
+Link this plan from the existing session tracker; add no S9 “done” claim. Declare the two S9 proof suites only once
+their real package scripts exist: planned **deposit-return** and **deposit-status-read**, with red twins reachable
+from `red:all` and declared anchors. Use a dedicated runtime on F: if required; no dependency install on the full C:
+drive. Coordinate the disposable cluster/data directory with the root owner; a different port alone is insufficient.
+
+### WP1 — Pure intent, schedule and state projection
+
+Agree the versioned pending-intent grammar and trusted-stake handoff before implementing persistence. Build pure
+waiting age bands/poll schedule, terminal classification, canonical replay comparisons, safe rebuilt destinations and
+returned-bet attribution predicates. Test exact 20-second, 1-minute, 10-minute, 30-minute and 24-hour boundaries;
+invalid/future dates; forged external/loop URLs; null/legacy/malformed JSON; wrong kind/side/stake; and loss-room versus
+market-bounds behavior. Use actual failing-input assertions and mutation controls, not a symbol census alone.
+
+### WP2 — Replay prerequisites and additive persistence
+
+Fix the two confirmed prerequisite defects in §2, with their red proofs. Add nullable `Transaction.pendingBet Json?`
+and `Position.origin String?` in the Prisma schema and a handwritten rerunnable additive migration. No historical
+backfill, default player origin, destructive rewrite or house-marker change. Ensure old rows/old code remain valid.
+Map the fields through memory/Prisma transaction and position creation/reads; strip them from every ordinary update.
+Latest confirmed mobile-money history is a narrow owner/type/status/rail query with deterministic time/id ordering,
+not a full-history download or most-recent PROCESSING/Card guess. Prove ties, foreign rows, failed/Card/internal rails
+and deliberately empty error-return numbers in both stores. Run the real migration and backup-schema rehearsal on a
+disposable marked database before any release.
+
+### WP3 — Shared status service and private route
+
+Implement §2a in a small shared server core and make card return use it. Add the owner-only status GET and real rate
+rules, then fault/race proof. In memory and Postgres race status reads, card returns, fast confirm and duplicate
+webhooks for the same order; assert exactly one wallet credit, one ledger group, one claimed transition and correct
+notification/counter behavior. Amount mismatch remains PROCESSING with its review signal. RG beginning while payment
+is moving yields suspense/held and no playable credit. Prove terminal contradictions remain escalated without an
+automatic reversal. A probe exception/unknown signature/unsupported gateway never becomes FAILED.
+
+### WP4 — Journey deposit and classic card route
+
+Render §3.5's order: focused back/title; optional chosen-bet strip; payout notice when applicable; amount, chips,
+four wallet rows; phone and alternative-number affordance; PIN note; explicit primary Lipa; Card link; minimal 18+.
+Keep ordinary classic `/wallet/deposit` markup/flow in its same-slot else. Move/extract its whole form so the Card
+route retains billing fields, confirmation, signed flashes, phone input and all auth/error preservation. Specify and
+prove direct Card-route behavior in both flag states; avoid a route where billing fields are inaccessible.
+
+Extend `ProviderRadioGrid` with optional rows/noDefault and `AmountField` with optional full figures/onValueChange,
+preserving both old callers' default output. Use shared PaymentLogo, PhoneInput, kit glyphs/type/spacing/radii, real
+focus outlines and reduced-motion rules. Lipa stays disabled with no available chosen rail; choosing one enables it
+only when actual deposit inputs/gates permit. A deposit below the bet shortfall, but above the deposit minimum, shows
+the neutral gap sentence and remains payable. Over-ceiling chips are omitted rather than pushed to the limit.
+
+### WP5 — Focused navigation and action routing
+
+One server route predicate selects focused chrome for journey deposit/card/waiting/return as reviewed, in first HTML
+and each loading picture. No normal bar/tab/footer/ticker or intervening promotional overlay appears while paying.
+Back and entry/exit use document navigation and history replacement, so cached route chrome cannot linger. Keep the
+staff preview seal available without reintroducing player chrome. Classic requests retain their current shell.
+
+`depositAction` carries canonical bet/next and the payment key through every refusal; server facts are reread.
+Journey CONFIRMED returns to the safe pending bet; PROCESSING opens waiting for the actual transaction; a Card
+handoff keeps the canonical intent in its owned row and the signed-return URL. Preserve `withOrderId`, custom-domain
+URL construction and cancelled-return verification. Never trust a raw `next`, posted status or browser amount.
+
+### WP6 — Waiting page and manual return
+
+Server-render an authenticated owned initial status; missing/foreign/type-mismatched ids get indistinguishable
+UNKNOWN and no leaked receipt. Poll every 3 seconds during the first minute and 10 seconds afterwards, including
+10–30 minutes and later. Listen to the existing `50pick:sse:wallet-balance` event as a payload-free refresh hint;
+the response remains the authority. One request at a time; stale completions cannot overwrite a terminal state or
+another transaction. Abort/remove all polls, timers and listeners at terminal, unmount or auth loss. Network/rate
+failures keep truthful uncertainty and a recoverable same-key route.
+
+Fresh asks for the phone PIN without another payment; slow says still waiting; long offers the owned receipt; from
+30 minutes keep receipt/support/status access and the existing-money alternative if the real gates allow it.
+PAID shows the real amount and first-deposit notice when due, then replaces location with the rebuilt chosen-bet
+destination. FAILED offers a fresh explicit retry and return to the bet. Held says held for return and never failed,
+“nothing taken”, another payment, or an invented refund deadline. UNKNOWN does not reveal existence or invite a
+fresh charge on an uncertain result.
+
+The sheet rereads current facts on return. Closed/suspended question: truthful closed frame, safe funds statement
+only with a successful balance read, and up to three **real** similar available questions (never fabricated cards).
+Changed market min/max: clamp only to those legal bounds and show what changed. Loss room: preserve the stake and
+explain the refusal. Still short: recompute the gap; a second top-up needs explicit “Weka pesa tena”. No return,
+refresh, mount, SSE event, identity notice or timer invokes a bet commit. Keyboard focus opens on the heading; the
+manual button and its amount remain reachable when the keyboard is raised.
+
+### WP7 — Records and returned-bet measures
+
+Receipt/inbox/still-pending email links derive from the deposit's parsed stored intent, never a raw query. Retain
+the receipt even when the question closes; transaction amounts/references stay authoritative. Money mail remains
+confirmed-only and the existing delayed-email claim remains once-only. Review new strings in en/sw/zh against the
+S4 copy audit; use corrected journey keys while classic words await S12.
+
+Persist Position.origin only on a newly committed manual bet. `deposit_return` requires a real owned CONFIRMED
+deposit, matching saved target/side/stake, player rather than house stake, and a bet placed within 30 minutes of
+completion. Forged tags, foreign/failed/held deposits, expired windows, changed quotes and replayed positions cannot
+acquire it. Keep the origin create-only on replay/cash-out/settle/void. Prove the numerator and denominator of §3.10
+against row times and the actual report/counter; no client beacon may create a bet/deposit count. Review how round
+intents are retained without attributing them to the question Position table; S12 owns the Up & Down consistency
+sweep and S9 must not silently drop an existing valid round return.
+
+### WP8 — Full proof, parity and release
+
+Both planned S9 suites and their red controls must pass on memory and real disposable Postgres. Run the existing
+`npm run test:deposit-gate`, `npm run test:msisdn-prefill`, `npm run test:payments`, `npm run e2e:money`,
+`npm run e2e:fault`, `npm run test:dal-parity`, `npm run test:shortfall`, `npm run test:deposit-ceiling`,
+`npm run test:pending-bet`, `npm run test:journey-funnel`, `npm run test:journey-shell`,
+`npm run test:red-anchors`, `npm run test:orphans`, `npm run test:docs` and affected money/compliance/design guards.
+Then fresh-store `test:all`, relevant red battery, typecheck, production build and `npm run verify:backup-schema`.
+Do not claim a memory race proves cross-process credit safety or a source-string guard proves a served screen.
+
+Read actual tiles for en/sw/zh at 320×640, 360×640, 390×844, 768, 1024, 1280 and 1920: default/no history, each paused
+rail/all mobile wallets paused with Card available, phone edit/paste/empty error return, below shortfall, ceiling/RG/
+SoF/maintenance, payout notice, every waiting state, and each return. Include real Chrome/Firefox/WebKit, keyboard
+raised and reduced motion. Check visible focus/forced colours, Enter only at the explicit control, repeated-key/
+double-tap suppression, errors/live regions, readable whole amounts/phone/reference, scroll/reachable commit,
+document Back/Forward and auth expiry. Use production-served SHA/build evidence for first HTML, focused ghosts and
+first-load cost. Classic null calibration and a scoped classic parity compare must precede a PASS; name any actual
+unflagged bug correction rather than widening a baseline.
+
+Before release, add exact [SHELVED](../../SHELVED.md) rows for newly hidden application source, with remount steps and
+guards; keep the source compiling. Update VODACOM/COMPLIANCE/copy/migration records with measured outcomes, source
+SHA and limitations. Root owns the main merge/push and migration deploy. After it, verify served deployment SHA,
+HTTP health/database reachability, clean Railway migration/boot logs, and real classic player screens. Production
+journey remains off until S14 under §0h point 4. A green local drive is not the S14 real-money staff drive.
+
+## 4. Gates that code cannot close
+
+- Finance's actual held-payment refund period remains unresolved. No made-up SLA or human approval.
+- S14's real TZS 1,000 staff journey and written agency sign-off (or an explicit owner override) remain external gates.
+- S15 requires the completed 14-day baseline and actual launch approval.
+- S16 is no earlier than seven days after launch, with real measures/rollback history and agency acknowledgement.
+  This preparation creates no substitute session, fabricated elapsed week or acknowledgement.
+
+## 5. Preparation record
+
+- Read-only audit completed at the preparation base: current deposit/action/return, signed verifier and settlement,
+  two DALs, marker/recovery helpers, chooser/amount controls, shell/surface rules, receipts/comms/funnel, §3.5/S9,
+  relevant §0h owner rulings, inheritance, copy audit and all deposit/waiting/return canvas boards.
+- Confirmed prerequisite defects and the Card fingerprint decision in §2 were sent to the root reviewer.
+- The root reviewer accepted the ordered scope and the two concrete choices in §2b. The new
+  [pure helper](../../../src/lib/journey/deposit-state.ts) has **no application caller**: no server/schema/provider
+  integration, payment route, screen or migration is implemented. Its explicit trust source is `none`, a fresh
+  matching tab marker after hydration, or a separately owned deposit's saved intent; the actual bridge awaits review.
+- `npm run test:deposit-state`: 168/168 value assertions; `npm run red:deposit-state`: 38/38 actual source mutants
+  caught in memory and the transpiled green control held. Unique declared anchors cover scope/funding mismatches,
+  URL/SSR/hydration trust, key loss/TTL renewal/cap, probe/poll boundaries, false failure and returned-bet attribution.
+  Review added four registered-MNO probe eligibility, non-null house-marker exclusion at every player seam, and
+  finite creation/completion dates with completion no earlier than creation for returned-bet attribution.
+  The unconfirmed-origin red initially exposed a weak test whose missing completion date masked the status check;
+  that fixture now has a valid completion date and differs only in status, so removing the confirmed gate fails.
+- A restored tab choice keeps its original marker age even when another question is currently selected; the current
+  storage's live unresolved keys keep their own keys/quotes/ages. A corrupt/over-cap envelope yields no proposed write.
+  Matching Card funding identities ignore later billing edits and do not contain dispatch behavior or a fingerprint.
+- Targeted TypeScript check of the helper/test dependency graph passed. Pure tests use the approved junction to
+  `F:\50pick-work\isolated-red-runtime\node_modules`; its lockfile is identical to this branch's. No dependency install
+  or disposable database was run. This scoped exception is for pure preparation, not a deployment/build premise.
+- `npm run test:docs` passed; each local link in this plan was also resolved directly. The preparation base has two
+  known inherited hygiene failures: `test:red-anchors`'s `market-columns` missing anchor and `test:orphans`'s two old
+  Claude workflow panel scripts. All 38 new helper anchors resolve uniquely and both new proof commands are reachable.
+  The S8 lane already owns those repairs; rebase onto its verified release instead of changing baselines here.
+- No database race, signed provider response, production build, browser or money proof is claimed. The full S9
+  done-when remains open; these pure assertions do not close either of the planned server proof suites.
