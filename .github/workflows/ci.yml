@@ -86,7 +86,18 @@ jobs:
         run: node scripts/test-all.mjs --no-tsc --skip responsive,motion,revoked-deadend,admin-section-gate,needle-rest,integrity
 
       - name: Build
-        run: npm run build
+        run: |
+          set -euo pipefail
+          build_head=$(git rev-parse HEAD)
+          npm run build
+          test "$(git rev-parse HEAD)" = "$build_head"
+          test -z "$(git status --porcelain -- src scripts package.json)"
+          printf '%s\n' "$build_head" > .next/kp-head
+
+      # The compiler may succeed while a lazy preload manifest names an absent chunk.
+      # Read the actual artifact before any deployment, including the question route.
+      - name: Production first-load delivery
+        run: npm run qa:first-load -- --read --routes 'index,markets,positions,help,live,results,watchlist,markets/[id],account,updown/history'
 
       - name: Install Chromium for browser gates
         run: npx playwright install --with-deps chromium

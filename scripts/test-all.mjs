@@ -95,6 +95,10 @@ if (skipList) {
   }
   suites = suites.filter((s) => !skipList.some((f) => s.key === f || s.key === `test:${f}`));
 }
+if (!suites.length) {
+  console.error("No test suites matched the requested selection. Refusing an empty green verdict.");
+  process.exit(2);
+}
 
 // ── Resource class, read off the suite's OWN source ──────────────────────────
 // Derived, never declared. `pure` is the default and the fallback: a suite whose
@@ -136,9 +140,17 @@ function render(label, passed, ms, out) {
   const tag = passed ? "\x1b[32mPASS\x1b[0m" : "\x1b[31mFAIL\x1b[0m";
   console.log(`  ${tag}  ${label.padEnd(26)} ${(ms / 1000).toFixed(1)}s`);
   if (!passed) {
-    // Surface the failing tail so an unattended run captures the reason.
-    const tail = out.trim().split("\n").slice(-25).join("\n");
-    console.log(`\x1b[90m${tail.split("\n").map((l) => "        │ " + l).join("\n")}\x1b[0m`);
+    // A long suite can fail near its beginning and print hundreds of later passes. Keep the actual assertion and
+    // its detail, as well as the shutdown tail, so CI never replaces the reason with only "160 passed, 1 failed".
+    const lines = out.trim().split("\n"), shown = new Set();
+    let failures = 0;
+    for (let index = 0; index < lines.length && failures < 5; index++) {
+      if (!/^\s*(?:FAIL\b|not ok\b)/.test(lines[index].replace(/\x1b\[[0-9;]*m/g, ""))) continue;
+      failures++;
+      for (let detail = index; detail < Math.min(lines.length, index + 5); detail++) shown.add(detail);
+    }
+    for (let index = Math.max(0, lines.length - 25); index < lines.length; index++) shown.add(index);
+    console.log(`\x1b[90m${[...shown].sort((a, b) => a - b).map(index => "        │ " + lines[index]).join("\n")}\x1b[0m`);
   }
 }
 

@@ -653,6 +653,39 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   persistence checkpoint `898a05ff6` is separately pushed, including immutable pendingBet/origin, 32 memory/34
   Postgres persistence checks and 17 mutation controls, plus 39 memory/39 Postgres service checks and 12 plants.
   Status-core/adapters remain in progress on that separate branch and S9 is not closed.
+  The next recovery checkpoint `4b92c13f7` is pushed. Its fresh local battery completed 532/534 (1226.9s): the
+  remaining reds are the old unconditional-focus pin in enter-where-pressed and the previously documented Postgres
+  house-bot designation disagreement. The latter's isolated rerun is 169 memory/161 Postgres, but the original
+  failure is retained. Actual row diagnostics refute the old clock-order hypothesis: the RG start is later than
+  verifiedAt, but the asynchronous holder hook races the consent read. Draining that real hook reproduces the exact
+  CONSENT_VOID disagreement on both stores. Case 6.9 now uses the suite's existing ruling-156 hook suspension and
+  independently requires a later start and no void; it passes 169 memory/161 Postgres, without a widened sleep or
+  product change. All fourteen
+  A16 in-process families pass; isolated file/copy proofs pass failure-reasons 20, rg-doors 27, dal-parity 285 and
+  contrast 33, with clean source after each.
+  The production build at `4b92c13f7` compiled successfully, but its actual A21 drive failed the 150ms budget (six
+  heading frames, 542–846ms at 4× CPU), so no production-latency PASS is claimed. A separate real browser trace
+  identifies an extra empty portal commit and a full-height entrance keeping the heading below the viewport.
+  The narrow candidate mounts Modal's existing client portal in a layout effect and gives only the bet sheet the
+  existing kit settle-lift keyframe; SSR initial false, the 30ms focus timer, arming, exits and all motion-off gates
+  remain. Enter's repaired AST/helper and before-paint guards pass the full 116 mutations; related sheet, popup and
+  motion guards pass. Exact-tip production rendering still must prove the candidate.
+  The same drive also exposed stale lazy preload filenames in the build's home/question manifests. The build cache
+  is preserved and a fresh-cache build is required; the strengthened first-load reader now rejects those actual
+  missing files and passes 47 controls, including missing known and unlisted lazy parts and clean restoration.
+  CI now reads its actual production first-load delivery immediately after build. A background bell read was also
+  miscounted as a money action: the driver now allows only the build manifest's exact fetchMyNotifications
+  reader/file pair, with unknown/money/misleading-worker controls; no other POST is accepted.
+  The normal phone read found AdminKpi's touch-only ambiguity ("ACTIVE …", "AWAITING RESOL…"). Under Ali's later
+  encountered-visual-fix instruction, full balanced captions and shared header/body tracks preserve the existing
+  caption/amount tokens and align figures without a guessed reserved line height; the live signal stays on the
+  first line and unavailable values remain explicitly unavailable. Existing clip/type/consistency/spacing gates
+  pass; the new actual-page multilingual/width proof and its truncate/unaligned plants are still pending.
+  Linux CI at `4b92c13f7` is 530/533 and remains red on audit-drain, the old focus pin and house-bot-ops. Its previous
+  summary hid the early failing assertions behind later passes; the aggregator now preserves up to five actual
+  failures with their details as well as the final tail, and refuses an empty selector instead of printing 0/0
+  green. Actual renderer/empty-selector controls pass. The next CI run must disclose and resolve the two remaining
+  Linux failures, rather than reclassifying them without evidence.
   **Still NOT CLOSED / NOT LIVE:** current browser/visual closure, clean exact-tip production proof, repaired v4
   baseline/null/branch parity, complete battery and both-host production read-back are required.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;

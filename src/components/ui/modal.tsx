@@ -336,7 +336,8 @@ export function Modal({
   const { present, exiting } = useExitPhase(open, "--t-quick");
 
   useModalLock(open);
-  React.useEffect(() => { setMounted(true); }, []);
+  // Keep SSR's first render empty, then supply the portal refs before the first browser paint.
+  React.useLayoutEffect(() => { setMounted(true); }, []);
   /* ⭐ S6 A8i-2 · THE KEY GUARD STANDS WHEREVER A DIALOG CAN OPEN (`key-guard.tsx`). AppShell installs it on every player
      page; a page outside the shell (the console) gets it from the first dialog it mounts, open or not, so it already
      stands when one opens. It is installed once per page, by whichever asks first. */

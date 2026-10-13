@@ -365,7 +365,7 @@ export function readRoute(build, route, plant = null) {
     return { route, missing: `no ${fs.existsSync(mf) ? "react-loadable" : "client-reference"} manifest at ${path.relative(build.nextDir, fs.existsSync(mf) ? lmf : mf).replace(/\\/g, "/")}` };
   }
   const { entries, clientModules } = readManifest(mf);
-  const texts = [...entries].sort().map((f) => ({ f, t: build.chunks.get(f) ?? null }));
+  const texts = [...entries].sort().map((f) => ({ f, t: exists(build.nextDir, f) ? build.chunks.get(f) ?? null : null }));
   if (plant !== null) texts.push({ f: "(planted in memory)", t: plant });
   const lm = JSON.parse(fs.readFileSync(lmf, "utf8"));
   const parts = new Map(); // export → [{ id, files }]
@@ -376,7 +376,10 @@ export function readRoute(build, route, plant = null) {
       parts.get(sym).push({ id, files: (row?.files ?? []).map(normFile) });
     }
   }
-  return { route, build, entries, clientModules, texts, parts, unreadable: texts.filter((x) => x.t === null).map((x) => x.f) };
+  // A lazy manifest can name a missing preload even when the client loader names an extant chunk. That build still
+  // sends a 404 on first navigation; "own chunk (0 KB)" must not pass as valid lazy delivery.
+  const unreadableParts = [...new Set([...parts.values()].flatMap(rows => rows.flatMap(row => row.files)))].filter(f => !exists(build.nextDir, f));
+  return { route, build, entries, clientModules, texts, parts, unreadable: texts.filter((x) => x.t === null).map((x) => x.f), unreadableParts };
 }
 
 /** first-load-parts.py:135-145. */
@@ -437,7 +440,7 @@ export function readAll(build, routes, { table = MARKERS, judgedRows, expectOn =
       continue;
     }
     const found = reading.texts.some((x) => x.t && x.t.includes(control.marker));
-    if (!found || reading.unreadable.length) controlOk = false;
+    if (!found || reading.unreadable.length || reading.unreadableParts.length) controlOk = false;
     const rows = table.map((row) => ({ row, j: judgeRow(row, reading, judged(row), expectOn) }));
     const known = new Set(table.map((r) => r.part).filter(Boolean));
     const others = [...reading.parts.keys()].filter((s) => !known.has(s)).sort().map((s) => ({ sym: s, struct: structOf(reading, s) }));
@@ -477,8 +480,9 @@ function printReading(result, build, table, { verdicts, tableRows }) {
   for (const r of result.routes) {
     if (r.missing) say(`  ✗ ${r.route}: NOT MEASURED (${r.missing})`);
     else {
-      say(`  ${r.found && !r.reading.unreadable.length ? "✓" : "✗"} ${r.route}: classic deposit test id ${JSON.stringify(result.control.marker)} ${r.found ? "FOUND" : "MISSING"} in its ${r.reading.entries.size} entry files` +
-        (r.reading.unreadable.length ? `; ${r.reading.unreadable.length} entry file(s) not on disk: ${r.reading.unreadable.map(base).join(", ")}` : ""));
+      say(`  ${r.found && !r.reading.unreadable.length && !r.reading.unreadableParts.length ? "✓" : "✗"} ${r.route}: classic deposit test id ${JSON.stringify(result.control.marker)} ${r.found ? "FOUND" : "MISSING"} in its ${r.reading.entries.size} entry files` +
+        (r.reading.unreadable.length ? `; ${r.reading.unreadable.length} entry file(s) not on disk: ${r.reading.unreadable.map(base).join(", ")}` : "") +
+        (r.reading.unreadableParts.length ? `; ${r.reading.unreadableParts.length} lazy file(s) not on disk: ${r.reading.unreadableParts.map(base).join(", ")}` : ""));
     }
   }
   say(`  ${result.plant.ok ? "✓" : "✗"} ${result.plant.text}`);
@@ -619,6 +623,15 @@ export function selfTest({ table = MARKERS } = {}) {
       good.routes.flatMap((r) => r.rows.filter((x) => x.j?.bad).map((x) => `${r.route} ${x.row.id}: ${x.j.struct ?? ""} ${x.j.mark}`)).join(" | "));
     check("C2 control: a journey marker planted in memory into one route's entry set is REPORTED", good.plant.ok, good.plant.text);
     check("C2 and the good reading passes as a whole", !good.bad);
+    for (const part of ["JourneyTopBar", "ChatRoot"]) {
+      const file = path.join(a, `.next/static/chunks/part-${part}.js`), bytes = fs.readFileSync(file);
+      fs.rmSync(file);
+      const lost = readAll(b1, ["/"], { table, judgedRows: t1.rows });
+      check(`C3 a missing ${part} lazy preload fails the same whole-build verdict`, !lost.controlOk && lost.bad
+        && lost.routes[0].reading.unreadableParts.includes(`static/chunks/part-${part}.js`));
+      fs.writeFileSync(file, bytes);
+    }
+    check("C3 restored lazy files recover the same whole-build verdict", !readAll(b1, ["/"], { table, judgedRows: t1.rows }).bad);
     const noCtl = readAll(b1, ["/help"], { table, judgedRows: t1.rows });
     check("C3 a route whose entry files lack the deposit test id FAILS the control", !noCtl.controlOk && noCtl.routes[0].found === false);
     const onDisk = readAll(b1, ["/positions"], { table, judgedRows: t1.rows });

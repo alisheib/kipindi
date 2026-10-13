@@ -42,6 +42,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, posix, relative, sep } from "node:path";
 import { transformSync } from "esbuild";
+import ts from "typescript";
 import { decomment, blankLiterals } from "./lib/decomment.mts";
 import * as HK from "../src/lib/held-key.ts";
 import * as MS from "../src/lib/modal-stack.ts";
@@ -57,6 +58,8 @@ const MODAL = "src/components/ui/modal.tsx";
 const RULE = "src/lib/held-key.ts";
 const DIAL = "src/components/markets/conviction-dial.tsx";
 const SHEET = "src/components/journey/bet-sheet/bet-sheet.tsx";
+const SHEET_FOCUS = "src/lib/journey/sheet-focus.ts";
+const CSS = "src/app/globals.css", MOTION = "src/app/motion.css";
 /* ⭐ A8i-2 — the key guard, the shell that mounts it, the dialog stack, the win seal (its queue gap), and the dropdown. */
 const GUARD = "src/components/ui/key-guard.tsx";
 const SHELL = "src/components/layout/app-shell.tsx";
@@ -572,6 +575,59 @@ function buildModule(file: string, text: string, deps: Record<string, unknown>, 
   new Function("require", "module", "exports", ...names, code)(need, mod, mod.exports, ...names.map((n) => globals[n]));
   return mod.exports;
 }
+/** Read the actual render cursor: a delayed effect, a stale cursor or a wrong identity cannot arm Modal correctly. */
+function sheetFocusBound(text: string): boolean {
+  const ast = ts.createSourceFile(SHEET, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const component = ast.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === "BetSheet") as ts.FunctionDeclaration | undefined;
+  if (!component?.body) return false;
+  const declarations = new Map<string, ts.Expression>(); let adjusted = false, modalKey = false;
+  for (const statement of component.body.statements) {
+    if (ts.isVariableStatement(statement)) for (const node of statement.declarationList.declarations) if (node.initializer) declarations.set(node.name.getText(ast).replace(/\s/g, ""), node.initializer);
+    if (ts.isIfStatement(statement) && statement.expression.getText(ast).replace(/\s/g, "") === "nextFocus!==focusState"
+      && statement.thenStatement.getText(ast).replace(/\s/g, "") === "setFocusState(nextFocus);") adjusted = true;
+  }
+  const visit = (node: ts.Node) => { if (ts.isJsxAttribute(node) && node.name.getText(ast) === "refocusKey" && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression?.getText(ast) === "refocusKey") modalKey = true; ts.forEachChild(node, visit); };
+  visit(component.body);
+  const identity = declarations.get("focusIdentity"), next = declarations.get("nextFocus"), key = declarations.get("refocusKey"), state = declarations.get("[focusState,setFocusState]");
+  const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+  return ast.statements.some(n => ts.isImportDeclaration(n) && ts.isStringLiteral(n.moduleSpecifier) && n.moduleSpecifier.text === "@/lib/journey/sheet-focus" && n.importClause?.namedBindings && ts.isNamedImports(n.importClause.namedBindings) && n.importClause.namedBindings.elements.some(e => e.name.text === "nextSheetFocus" && !e.propertyName))
+    && !!identity && ts.isCallExpression(identity) && identity.expression.getText(ast) === "JSON.stringify" && !!identity.arguments[0] && ts.isArrayLiteralExpression(identity.arguments[0])
+    && same(identity.arguments[0].elements.map(n => n.getText(ast).replace(/\s/g, "")), ["props.seed.id", "props.side", "props.frame.receipt?.positionId??null"])
+    && !!next && ts.isCallExpression(next) && next.expression.getText(ast) === "nextSheetFocus" && same(next.arguments.map(n => n.getText(ast)), ["focusState", "focusIdentity", "props.frame.frame", "stakeFocused"])
+    && !!key && ts.isTemplateExpression(key) && same(key.templateSpans.map(n => n.expression.getText(ast)), ["nextFocus.identity", "nextFocus.revision"])
+    && !!state && ts.isCallExpression(state) && state.expression.getText(ast) === "useState" && /identity: focusIdentity, frame: props\.frame\.frame, revision: 0/.test(state.arguments[0]?.getText(ast) ?? "") && adjusted && modalKey;
+}
+function sheetFocusHolds(w: World): boolean {
+  try {
+    const next = buildModule(SHEET_FOCUS, w.read(SHEET_FOCUS), {}).nextSheetFocus;
+    const editable = new Set(["edit", "low", "lossRoom", "pending"]), frames = [...editable, "blocked", "closed", "placing", "inDoubt", "receipt"];
+    for (const before of frames) for (const after of frames) for (const typing of [false, true]) for (const identity of ["same", "other"]) {
+      const previous = { identity: "same", frame: before, revision: 4 }, result = next(previous, identity, after, typing);
+      const unchanged = identity === "same" && before === after, preserve = identity === "same" && typing && editable.has(before) && editable.has(after);
+      if (result.identity !== identity || result.frame !== after || result.revision !== 4 + (unchanged || preserve ? 0 : 1) || unchanged && result !== previous) return false;
+    }
+    return true;
+  } catch { return false; }
+}
+/** Run the actual mounted initializer and setter callback in React's before-paint layout/passive order. */
+function portalMountBeforePaint(text: string): boolean {
+  try {
+    const ast = ts.createSourceFile(MODAL, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    const component = ast.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === "Modal") as ts.FunctionDeclaration | undefined;
+    if (!component?.body) return false;
+    let state: ts.CallExpression | undefined, hook: ts.CallExpression | undefined;
+    for (const statement of component.body.statements) {
+      if (ts.isVariableStatement(statement)) for (const node of statement.declarationList.declarations) if (node.name.getText(ast).replace(/\s/g, "") === "[mounted,setMounted]" && node.initializer && ts.isCallExpression(node.initializer)) state = node.initializer;
+      if (ts.isExpressionStatement(statement) && ts.isCallExpression(statement.expression) && /setMounted\(/.test(statement.expression.arguments[0]?.getText(ast) ?? "")) hook = statement.expression;
+    }
+    if (!state || state.expression.getText(ast) !== "React.useState" || !hook || hook.arguments[1]?.getText(ast) !== "[]") return false;
+    let mounted = buildModule("mount-state.ts", `export const initial = (${state.arguments[0]?.getText(ast)});`, {}).initial;
+    if (mounted !== false) return false; // server and first client render both omit the portal
+    const callback = buildModule("mount-effect.ts", `export const run = (${hook.arguments[0].getText(ast)});`, {}, { setMounted: (value: boolean) => { mounted = value; } }).run;
+    if (hook.expression.getText(ast) === "React.useLayoutEffect") callback();
+    return mounted === true && /if \(!mounted \|\| !present\) return null;/.test(decomment(text));
+  } catch { return false; }
+}
 /** A fresh held-key rule and dialog stack (its registry empty, its beat unarmed), built from the world's text. */
 function freshStack(w: World): { hk: Mod; ms: Mod } {
   const hk = buildModule(RULE, w.read(RULE), {});
@@ -954,9 +1010,16 @@ function run(w: World, log: (l: string) => void): string[] {
       && /initialFocus=\{primaryRef\}/.test(orm) && /if \(onPrimary\) onPrimary\(\); else onClose\(\)/.test(ormPrimary),
     JSON.stringify({ bet: betConfirm.slice(0, 80), sell: sellConfirm.slice(0, 80), orm: ormPrimary.slice(0, 80) }));
   const sheetSrc = decomment(w.read(SHEET));
-  ok("2.2s · the journey's bet sheet is a stake surface: first focus is its heading, each frame re-arms it, and only the commit button's own click places the bet",
+  ok("2.2s · the journey's bet sheet is a stake surface: first focus is its heading; actual market/side/receipt revision re-arms frame changes except a live editable stake transition, and only the commit button's own click places the bet",
     sheetSrc.includes("initialFocus={headingRef}") && /<h2[^>]*ref=\{headingRef\}[^>]*tabIndex=\{-1\}/.test(sheetSrc)
-      && sheetSrc.includes("refocusKey={props.frame.frame}") && /type="button"[^>]*data-testid="journey-sheet-place"[^>]*onClick=\{onPlace\}/.test(sheetSrc));
+      && sheetFocusBound(w.read(SHEET)) && sheetFocusHolds(w) && /type="button"[^>]*data-testid="journey-sheet-place"[^>]*onClick=\{onPlace\}/.test(sheetSrc));
+  ok("2.2m · all shared Modal readers retain a false SSR initializer but mount the portal before the first browser paint, so its first actual refs can register and take focus",
+    portalMountBeforePaint(w.read(MODAL)));
+  const sheetArrival = decomment(w.read(CSS)).match(/\.kp-bsheet\.m-sheet-in\s*\{([^}]+)\}/)?.[1] ?? "";
+  ok("2.2a · only the stake sheet replaces the full offscreen rise with the existing kit settle-lift name; kit duration/ease and distinct exit remain inherited",
+    sheetArrival.trim() === "animation-name: m-settle-lift;" && /@keyframes m-settle-lift\s*\{\s*from \{ opacity: 0; transform: translateY\(14px\) scale\(0\.975\); \} to \{ opacity: 1; transform: translateY\(0\) scale\(1\); \} \}/.test(decomment(w.read(MOTION)))
+      && /\.m-sheet-in\s*\{ animation: m-sheet-rise var\(--t-move\) var\(--m-settle\) both; \}/.test(decomment(w.read(MOTION)))
+      && /\.m-out\s*\{ animation: m-leave-out var\(--t-quick\) var\(--m-leave\) both; \}/.test(decomment(w.read(MOTION))));
   const ormSecondary = buttonWith(orm, "if (onSecondary) onSecondary(); else onClose()") ?? "";
   // Round 5 (R5-A, F20, 2026-10-09): the bet's ✕ is no longer drawn by hand with `onClick={onCancel}` — it is the one ✕,
   // `CloseX` (a real `type="button"`, modal.tsx), closing through the dialog's guarded close as the Sell's does, and
@@ -1401,6 +1464,28 @@ if (!PROVE_RED) {
     // §5.10 · the way out
     { name: "the journey stake sheet opens on a control instead of its heading", expect: /^2[.]2s /,
       world: () => plantIn(SHEET, "initialFocus={headingRef}", "initialFocus={closeRef}") },
+    { name: "the journey stake sheet refocuses every frame during live typing", expect: /^2[.]2s /,
+      world: () => plantIn(SHEET, "refocusKey={refocusKey}", "refocusKey={props.frame.frame}") },
+    { name: "the journey focus cursor tracks the prior revision", expect: /^2[.]2s /,
+      world: () => plantIn(SHEET, "${nextFocus.revision}", "${focusState.revision}") },
+    { name: "the journey focus identity loses the selected side", expect: /^2[.]2s /,
+      world: () => plantIn(SHEET, "[props.seed.id, props.side, props.frame.receipt?.positionId ?? null]", '[props.seed.id, "YES", props.frame.receipt?.positionId ?? null]') },
+    { name: "the journey cursor is adjusted after paint instead of during render", expect: /^2[.]2s /,
+      world: () => plantIn(SHEET, "if (nextFocus !== focusState) setFocusState(nextFocus);", "useEffect(() => { if (nextFocus !== focusState) setFocusState(nextFocus); }, [nextFocus]);") },
+    { name: "the journey forgets live stake focus when deciding to re-arm", expect: /^2[.]2s /,
+      world: () => plantIn(SHEET, "nextSheetFocus(focusState, focusIdentity, props.frame.frame, stakeFocused)", "nextSheetFocus(focusState, focusIdentity, props.frame.frame, false)") },
+    { name: "the focus rule preserves a button-focused editable change", expect: /^2[.]2s /,
+      world: () => plantIn(SHEET_FOCUS, "&& stakeFocused &&", "&& true &&") },
+    { name: "the focus rule preserves a terminal transition during typing", expect: /^2[.]2s /,
+      world: () => plantIn(SHEET_FOCUS, "&& editable(previous.frame) && editable(frame)", "") },
+    { name: "Modal waits until after the first paint to mount its portal", expect: /^2[.]2m /,
+      world: () => plantIn(MODAL, "React.useLayoutEffect(() => { setMounted(true); }, []);", "React.useEffect(() => { setMounted(true); }, []);") },
+    { name: "Modal starts mounted and makes server markup differ", expect: /^2[.]2m /,
+      world: () => plantIn(MODAL, "const [mounted, setMounted] = React.useState(false);", "const [mounted, setMounted] = React.useState(true);") },
+    { name: "the stake sheet restores a full offscreen rise", expect: /^2[.]2a /,
+      world: () => plantIn(CSS, ".kp-bsheet.m-sheet-in { animation-name: m-settle-lift; }", ".kp-bsheet.m-sheet-in { animation-name: m-sheet-rise; }") },
+    { name: "the stake sheet overrides the kit duration", expect: /^2[.]2a /,
+      world: () => plantIn(CSS, ".kp-bsheet.m-sheet-in { animation-name: m-settle-lift; }", ".kp-bsheet.m-sheet-in { animation-name: m-settle-lift; animation-duration: 1s; }") },
     { name: "the journey stake sheet names no safe way out", expect: /^5[.]10 /,
       world: () => plantIn(SHEET, "safeFocus={closeRef}", "") },
     { name: "the Sell confirm names no way out (the seal's close hands focus to its sell button)", expect: /^5[.]10 /,
