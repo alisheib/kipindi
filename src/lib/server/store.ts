@@ -64,6 +64,7 @@ import { assertRefereeKeyRows, assertRefereeKeys } from "@/lib/server/marketing/
 // C8b (B8) · the re-dating's ONE shape rule — this twin asks it before its compare, exactly as the Prisma twin does
 // (`test:dal-parity` §31). It takes only TYPES back from this file, so there is no cycle.
 import { assertAddedRedates } from "@/lib/server/contacts/added-redate-model";
+import { isMobileMoneyMethodId } from "@/lib/payment-providers";
 
 export type StoredUser = {
   id: string;
@@ -1621,6 +1622,8 @@ export type StoredTxn = {
   houseBotId?: string | null;
   /** The journey funnel's origin of a DEPOSIT (Vodacom plan S3b): "low_balance", else null. ⛔ Create-only. */
   origin?: string | null;
+  /** S9's versioned canonical chosen-bet/return-path JSON. Parse with parseSavedDepositBet before use. Create-only. */
+  pendingBet?: unknown | null;
 };
 
 export type StoredResponsibleGambling = {
@@ -2867,7 +2870,7 @@ const memoryDb = {
     },
   },
   txn: {
-    create: (t: StoredTxn) => { store.txns.set(t.id, t); return t; },
+    create: (t: StoredTxn) => { const row = { ...t, pendingBet: t.pendingBet ?? null }; store.txns.set(t.id, row); return row; },
     /**
      * ⭐ `excludeHouseBets` (C5-SPEC ruling 173): drop house-marked rows (`houseBotId != null`) INSIDE the filter, BEFORE
      * `.slice(-limit)` — or a holder's newest-N window stays flooded by house rows on this store only. Default off, so every
@@ -2908,6 +2911,11 @@ const memoryDb = {
         .filter((t) => t.userId === userId && types.includes(t.type))
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
         .slice(0, limit),
+    /** S9 phone/rail history: one own, unmarked, confirmed TZS deposit on a currently offered mobile-wallet rail. */
+    latestConfirmedMobileDeposit: (userId: string): StoredTxn | null =>
+      Array.from(store.txns.values())
+        .filter((t) => t.userId === userId && t.type === "DEPOSIT" && t.status === "CONFIRMED" && t.currency === "TZS" && t.houseBotId == null && isMobileMoneyMethodId(t.provider))
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id.localeCompare(a.id))[0] ?? null,
     findById: (id: string) => store.txns.get(id) ?? null,
     findByProviderRef: (providerRef: string) => Array.from(store.txns.values()).find((t) => t.providerRef === providerRef) ?? null,
     update: (id: string, patch: Partial<StoredTxn>) => {
@@ -2918,7 +2926,7 @@ const memoryDb = {
       // either (C5-7's review: `positionId` passed through here, and a row positioned by an update is permanently
       // unmarkable — visible in the holder's own wallet feed and missing from the house book's `returned`, with
       // ruling 232's `.txn.create(` pin blind to it). The pin is `test:house-bot-reports` 0.232.4.
-      const { houseBotId: _marker, positionId: _positioned, origin: _origin, ...rest } = patch;
+      const { houseBotId: _marker, positionId: _positioned, origin: _origin, pendingBet: _pendingBet, ...rest } = patch;
       const next = { ...t, ...rest, updatedAt: new Date().toISOString() };
       store.txns.set(id, next);
       return next;

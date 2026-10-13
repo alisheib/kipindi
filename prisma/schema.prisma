@@ -699,6 +699,10 @@ model Transaction {
   /// player came from a not-enough-money state, else NULL. Counted when the deposit is CONFIRMED. ⛔ Create-only (both
   /// `txn.update` implementations skip it), like `houseBotId`.
   origin            String?
+  /// S9's versioned chosen-bet envelope, validated by parseSavedDepositBet on use. NULL on legacy/direct deposits.
+  /// Contains the canonical bet and permitted return path only; never a phone, query bag or unfinished bet key.
+  /// Create-only: ordinary Transaction updates cannot replace the intent behind a payment's funding key.
+  pendingBet        Json?
   amlReviewedById   String?
   amlReviewedAt     DateTime?
   amlReason         String?
@@ -1903,6 +1907,9 @@ model Position {
   ///   "Position_marketId_marked_idx" (marketId)                        — house money per market
   ///   "Position_houseBotId_open_idx" (houseBotId) AND status='OPEN'    — open exposure (04 A24)
   houseBotId      String?
+  /// S9's verified manual-return attribution ("deposit_return"). NULL on legacy/direct/house bets; no backfill.
+  /// Create-only: cash-out, settle, void and keyed replay cannot rewrite where the original bet came from.
+  origin          String?
 
   @@index([userId, marketId])
   @@index([marketId, status])

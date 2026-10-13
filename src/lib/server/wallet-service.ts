@@ -47,7 +47,7 @@ import { payoutDestinationFor } from "@/lib/payout-destination";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
 import { formatTzs, formatDateTime } from "@/lib/utils";
-import { sameDepositFunding } from "@/lib/journey/deposit-state";
+import { parseSavedDepositBet, sameDepositFunding, type SavedDepositBet } from "@/lib/journey/deposit-state";
 
 /**
  * Source-of-Funds thresholds (AML Act 2006 + LCCP SR 9.2). An accepted SoF
@@ -72,14 +72,20 @@ export async function deposit(
   /** CARD only — buyer + billing details and the return URLs for Selcom's hosted
    *  checkout. Ignored on the mobile-money rails, which push to the handset. */
   card?: CardCheckoutContext,
+  /** S9's private server handoff. The page/action must establish chosen-stake trust before supplying this envelope;
+   * an incoming URL claim is never this argument. Existing four-argument callers retain a null intent. */
+  savedBet?: SavedDepositBet | null,
 ): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; balance: number; redirectUrl?: string }>> {
   const rl = await rateCheckAsync(userId, "wallet.deposit");
   if (!rl.allowed) return { ok: false, error: "Too many deposit attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
+  const pendingBet = savedBet == null ? null : parseSavedDepositBet(savedBet);
+  if (savedBet != null && !pendingBet) return { ok: false, error: "The saved question selection is invalid.", code: "INVALID" };
+
   // A global key recovers only this caller's persisted funding intent. Billing edits on CARD do not change that
-  // intent or dispatch another checkout. Current callers have no saved pending bet yet; S9's additive field will
-  // join this comparison when it is wired. Origin is create-only and is not rewritten on a replay.
-  const funding = { userId, type: "DEPOSIT", amount: input?.amount, currency: "TZS", provider: input?.provider, msisdn: input?.msisdn, pendingBet: null };
+  // intent or dispatch another checkout. The canonical saved question is part of that identity. Origin and saved
+  // intent are create-only and are not rewritten on a replay.
+  const funding = { userId, type: "DEPOSIT", amount: input?.amount, currency: "TZS", provider: input?.provider, msisdn: input?.msisdn, pendingBet };
   const matchesFunding = (existing: StoredTxn) => DepositSchema.shape.provider.safeParse(input?.provider).success && sameDepositFunding(funding, existing);
   const keyConflict = () => ({ ok: false as const, error: "This request cannot recover the saved deposit.", code: "INVALID" as const });
   // Matching replays stay available during maintenance: they recover a payment already made, never send a new one.
@@ -276,6 +282,7 @@ export async function deposit(
         idempotencyKey: idempotencyKey ?? null,
         // The journey funnel's origin (S3b) — create-only; read when the deposit is confirmed.
         origin: (parse.data as { origin?: "low_balance" }).origin ?? null,
+        pendingBet,
       });
       return { ok: true, txn: created, reused: false };
     } catch (err) {

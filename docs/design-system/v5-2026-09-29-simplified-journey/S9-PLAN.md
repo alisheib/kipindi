@@ -1,10 +1,11 @@
 # S9 — Deposit, waiting and return
 
-**Status: pure preparation and deposit-safety prerequisites; S9 remains open, 2026-10-13.** This plan is in the separate managed checkout
+**Status: pure preparation, deposit-safety prerequisites and additive persistence rehearsal; S9 remains open, 2026-10-13.** This plan is in the separate managed checkout
 `C:\Users\asheib\.codex\worktrees\vodacom-s9\kipindi-main`, branch `codex/vodacom-s9`, created at
 `e767f3f52c54b2659d9057dcbc46d42c5edcc833`. S8 is still being verified in its own checkout. The root reviewer authorized
 the two existing money-path prerequisite repairs independently. No S9 screen, route, schema, provider or production
-change has been made. A dedicated disposable Postgres has been used for those prerequisites only. Rebase this branch onto the verified S8 release before wiring
+change has been deployed. Nullable persistence is prepared and rehearsed locally, with no application writer yet.
+Rebase this branch onto the verified S8 release before wiring
 its host: the final S8 recovery and keyboard corrections are newer than this preparation base.
 
 This is an implementation plan for the existing S9, not another programme or a design rulebook. The authority is
@@ -132,11 +133,12 @@ the server intent's purpose and retention against the existing transaction/priva
 
 ## 3. Ordered workpacks
 
-Each workpack ends with its own actual evidence and independent review. Schema/server/browser work starts after
+Each workpack ends with its own actual evidence and independent review. Product integration starts after
 the S8 release is verified and this contract is reviewed. Pure status timing/intent helpers and their tests may be
 built independently here first; they have no provider, database or server import. The root's scoped 2026-10-13
-instruction also permits the existing deposit replay and signed-return scope prerequisites below; it does not permit
-the new status service, persistence migration or product flow ahead of the S8 release.
+instruction also permits the existing deposit replay and signed-return scope prerequisites below, then the locally
+rehearsed additive persistence in WP2. This separate branch does not deploy those fields or introduce the product
+flow ahead of the S8 release. The trusted bridge remains an independent review gate before WP4.
 
 ### WP0 — Rebase, authority and proof setup
 
@@ -331,4 +333,76 @@ journey remains off until S14 under §0h point 4. A green local drive is not the
   FAILED replay fixture is corrected to carry one shared valid MNO phone/intent across original, replay and new key;
   its FAILED/notDone expectations are retained. The new suite separately refuses a missing-phone replay.
 - No new status route, saved-intent migration, trusted page/action bridge, production build, browser or live-money
-  result is claimed. The full S9 done-when and both planned server proof suites remain open.
+  result was claimed at prerequisite checkpoint `f041e56e365bba26c1bdda43a59730a24d1a5a23`. The full S9 done-when
+  and both planned server proof suites remain open.
+
+### 5b. Additive persistence rehearsal
+
+- [Migration 20261013160000_deposit_return_intent](../../../prisma/migrations/20261013160000_deposit_return_intent/migration.sql)
+  adds nullable JSONB `Transaction.pendingBet` and nullable TEXT `Position.origin`, without a default, backfill,
+  destructive statement or house-marker change. Its local lock timeout is set inside the DO transaction: each
+  individual metadata-lock wait is at most 3 seconds, with at most 20 attempts, 1.5 seconds apart; a failed attempt rolls both
+  additions back. Legacy/direct metadata remains null. No application caller creates either new value yet.
+- Both transaction stores retain the raw nullable JSON on create/read and ignore it on ordinary updates. A caller
+  must parse it before use; malformed JSON remains visible to the funding guard so it cannot be mistaken for a null
+  intent. Both position stores write origin only on create and retain it on subsequent full-row writes, including
+  cash-out, void and win transitions. They cannot retrofit deposit-return attribution onto a legacy position.
+- The root approved the additive fifth private `deposit` parameter, `SavedDepositBet | null`. It is parsed exactly
+  before a new reservation/dispatch, included in canonical funding identity and persisted with the reserved row.
+  Malformed non-null input is refused rather than erased. Existing four-argument application callers retain null;
+  the reviewed page/action trust bridge is still required before any application supplies a chosen envelope.
+  Expanded deposit-replay measured **39/39 memory, 39/39 Postgres and 12/12 source plants caught**. Its controlled
+  adapter reads the real stored envelope at the dispatch boundary, proving it existed before dispatch, then proves
+  matching recovery, changed-intent refusal, no replay mutation and malformed-input refusal before creating/sending.
+- `db.txn.latestConfirmedMobileDeposit(userId)` resolves one own, unmarked, confirmed TZS deposit on a currently
+  registered MNO rail, newest creation time then id. The Prisma twin asks SQL for one row; the memory twin uses the
+  same scope/order. Card/internal/retired rails, pending/failed/wrong-type/foreign/marked/non-TZS rows are excluded.
+  An unusable phone must cause the later page's registered-phone/no-rail fallback; deliberately empty error-return
+  phone handling is still the page bridge's job, not silently filled by this DAL read.
+- [deposit-persistence](../../../scripts/deposit-persistence.test.mts) measured **32/32 memory, 34/34 Postgres,
+  17/17 in-process source plants caught**. The PG run applies the actual migration twice to legacy TEMP rows,
+  preserves their values/null metadata, then forces a real 3-second lock timeout before successful retry. It also
+  proves JSON/origin retention and the history query with both same-time ids and timezone-equivalent timestamps.
+- The final SQL passed the mandatory **backup-schema gate 13/13** on this checkout's own PostgreSQL 18.3/5444:
+  all 103 migrations, real dump, real restore/invariants, all 126 unique indexes and the existing failing controls.
+  The gate removed its temporary artifact and the runner stopped/swept its own cluster. This is local schema/recovery
+  evidence; no production database or provider was contacted.
+- S9 now uses a separate locked runtime at `F:\50pick-work\vodacom-s9-runtime`. Real `npm ci` used the identical
+  lockfile, and Prisma generation writes only there; S8's runtime was not regenerated. The earlier shared-runtime
+  junction is retained under ignored `.qa-artifacts/node-modules-pure-baseline`.
+- Migration ownership 13, DAL parity 2324 and house-bot rules 639 checks pass. Journey-funnel's 26 red controls pass
+  after admitting only the named `pendingBet` exclusion while its origin-removal control still removes origin alone.
+  House-report's deliberate absolute money-site locators move exactly +2 for the two new StoredPosition type lines:
+  removing only those two lines made the entire source byte-identical to immutable `f041e56e3` (LF SHA256
+  `8e46218bfa85c244eedd2b48e761c4e7dfb78f8d58d04a7e7cfe1af588efb28b`). The paired marker defect controls move by
+  the same two lines; its exclusion control removes `positionId` alone and retains the new metadata field. No floor
+  or population count is raised. Rebase onto S8 must reconcile its corresponding explicit locators again.
+  The complete reports wrapper subsequently passed: memory 251, Postgres 80; 3/3 wrapper controls.
+
+### 5c. Next adapter/bridge review
+
+The root approved the following technical resolutions during WP2. They are not implemented routes/client writers;
+the actual trusted bridge and privacy/storage proof remain required before WP4:
+
+- Put the authenticated shared status core in `src/lib/server/deposit-status.ts`. Resolve an owned row, require
+  DEPOSIT/TZS/unmarked scope, then consider a signed provider probe, settle through the existing webhook path and
+  reread/recheck scope. Only the fresh row decides the result; balance-read failure remains unknown. The waiting
+  adapter uses a transaction id. For a lost funding-action answer, use an owner-only funding-key lookup through
+  the same core so recovering a row does not dispatch; foreign/missing/wrong-type keys get the same minimal UNKNOWN.
+- Keep Card's signed return adapter for an owned order after its browser return, including a later check beyond the
+  background lane's window. Regular MNO foreground probing stays restricted to the registered rails/valid funding
+  row and the 20-second boundary. A client return flag, `payment_status`, age or handled verdict supplies no payment
+  authority. Later pending Card checks retain this signed adapter, with the same ownership, rate and fresh-row guards.
+- Declare status/probe rules in the real rate registry, with status keyed by caller and probe keyed by the owned
+  transaction. The registry uses token capacity/refill per minute, not a fixed request count: the normal 3-second
+  first-minute/10-second later polling must fit, including initial SSR and receipt refresh. The concrete capacities
+  and rate/fault controls will be measured with WP3 rather than claimed from this plan.
+- Initial deposit SSR uses trust `none`; incoming URL stake is never chosen. After hydration only the fresh matching
+  tab marker can restore it. An owned normalized saved deposit intent can supply return context after auth/receipt.
+  The payment's server action validates the canonical saved envelope, and funding equality includes it; the raw URL
+  claim is never passed as the saved intent. Independently review this actual page/action code before WP4 ships.
+- Funding UUIDs need durable recovery without overwriting any unresolved S8 bet UUID or renewing its 24-hour age.
+  Use a separate necessary tab funding marker namespace: an older S8 Host's save would strip an added funding
+  member from `kp-pending-bet`. A new namespace would require its own bounded owner/intent/key/TTL parser, storage
+  failure-before-send proof and explicit privacy disclosure. The namespace and controller are still unimplemented;
+  payment confirmation never clears an unresolved bet key or places a bet.

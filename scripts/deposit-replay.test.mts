@@ -9,7 +9,7 @@ import { readFileSync, realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
 import ts from "typescript";
 import { DepositSchema, AdminDepositSchema } from "../src/lib/server/validators.ts";
-import { sameDepositFunding } from "../src/lib/journey/deposit-state.ts";
+import { parseSavedDepositBet, sameDepositFunding } from "../src/lib/journey/deposit-state.ts";
 import { paymentMethodName } from "../src/lib/payment-providers.ts";
 import { presentedStatus } from "../src/lib/wallet/receipts.ts";
 import { formatDateTime, formatTzs } from "../src/lib/utils.ts";
@@ -58,16 +58,19 @@ function threshold(name: string): number {
   return Number(text.replaceAll("_", ""));
 }
 function service(source: string, data = db) {
-  const counters = { dispatches: 0, verifies: 0, settles: 0, capReads: 0, audit: [] as unknown[], maintenance: false };
+  const counters = { dispatches: 0, dispatchIntents: [] as unknown[], verifies: 0, settles: 0, capReads: 0, audit: [] as unknown[], maintenance: false };
   const dependencies = {
-    db: data, withLock, sameDepositFunding, DepositSchema, AdminDepositSchema, paymentMethodName, presentedStatus, formatDateTime, formatTzs,
+    db: data, withLock, parseSavedDepositBet, sameDepositFunding, DepositSchema, AdminDepositSchema, paymentMethodName, presentedStatus, formatDateTime, formatTzs,
     rateCheckAsync: async () => ({ allowed: true }), randomId: () => String(++sequence).padStart(24, "0"),
     audit: (entry: unknown) => counters.audit.push(entry), isMaintenanceMode: async () => counters.maintenance,
     maintenanceMessage: async () => "Maintenance", isPaymentPaused: async () => false,
     isLockedOut: async () => ({ locked: false }), checkDepositLimit: async () => { counters.capReads++; return { allowed: true }; },
     SOF_SINGLE_TXN_TZS: threshold("SOF_SINGLE_TXN_TZS"), SOF_ROLLING_30D_TZS: threshold("SOF_ROLLING_30D_TZS"),
     readIdentityStanding: async () => ({ kycStatus: "NOT_STARTED", everApproved: false }),
-    dispatchDeposit: async ({ correlationId }: { correlationId: string }) => { counters.dispatches++; return { ok: true, providerRef: correlationId, correlationId, status: "PENDING", redirectUrl: "https://checkout.example.test/original" }; },
+    dispatchDeposit: async ({ correlationId }: { correlationId: string }) => {
+      counters.dispatches++; counters.dispatchIntents.push((await data.txn.findByProviderRef(correlationId))?.pendingBet ?? null);
+      return { ok: true, providerRef: correlationId, correlationId, status: "PENDING", redirectUrl: "https://checkout.example.test/original" };
+    },
     verifyDepositStatus: async () => { counters.verifies++; return { status: "PENDING" }; },
     settlePaymentWebhook: async () => { counters.settles++; throw new Error("Unexpected settlement in replay/scope proof"); },
     settleDepositConfirmed: async () => { throw new Error("Unexpected synchronous credit in replay proof"); }, notifyDeposit: () => {},
@@ -75,7 +78,7 @@ function service(source: string, data = db) {
   const text = ["deposit", "settleDepositFromReturn", "friendlyProvider", "friendlyDepositReason"].map(n => body(source, n)).join("\n");
   const js = ts.transpileModule(text, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   const exports = new Function(...Object.keys(dependencies), `${js}\nreturn { deposit, settleDepositFromReturn };`)(...Object.values(dependencies)) as {
-    deposit: (userId: string, input: any, key?: string, card?: any) => Promise<any>;
+    deposit: (userId: string, input: any, key?: string, card?: any, savedBet?: any) => Promise<any>;
     settleDepositFromReturn: (userId: string, reference: string) => Promise<any>;
   };
   return { ...exports, counters };
@@ -183,6 +186,20 @@ async function run(source: string, mapper = MAPPER): Promise<Check[]> {
   }
   const paid = await transaction(me, { provider: "CARD", msisdn: null }), result = await returns.settleDepositFromReturn(me, paid.providerRef!);
   ok("return.owned-control", result.state === "PENDING" && result.txn.id === paid.id && returns.counters.verifies === 1 && returns.counters.settles === 0);
+  const saved = { v: 1, bet: "mkt_saved01.YES.5000", returnPath: "/live" }, savedService = service(source);
+  const savedKey = `00000000-0000-4000-8000-${String(++sequence).padStart(12, "0")}`;
+  const created = await savedService.deposit(me, request, savedKey, undefined, saved);
+  const createdRow = created.ok ? await db.txn.findById(created.data.txnId) : null;
+  ok("metadata.saved-before-dispatch", created.ok && JSON.stringify(createdRow?.pendingBet) === JSON.stringify(saved) && savedService.counters.dispatches === 1
+    && JSON.stringify(savedService.counters.dispatchIntents) === JSON.stringify([saved]));
+  const same = await savedService.deposit(me, request, savedKey, undefined, { returnPath: "/live", bet: saved.bet, v: 1 });
+  ok("metadata.same-intent", same.ok && same.data.txnId === created.data?.txnId && savedService.counters.dispatches === 1);
+  const changed = await savedService.deposit(me, request, savedKey, undefined, { ...saved, bet: "mkt_saved01.NO.6000" });
+  ok("metadata.changed-intent", !changed.ok && changed.code === "INVALID" && changed.data === undefined && savedService.counters.dispatches === 1);
+  const badKey = `00000000-0000-4000-8000-${String(++sequence).padStart(12, "0")}`, beforeBad = (await db.txn.findByUser(me)).length;
+  const badSaved = await savedService.deposit(me, request, badKey, undefined, { ...saved, phone: "not permitted" });
+  ok("metadata.malformed-before-send", !badSaved.ok && badSaved.code === "INVALID" && savedService.counters.dispatches === 1 && (await db.txn.findByUser(me)).length === beforeBad);
+  ok("metadata.replay-never-mutates", JSON.stringify((await db.txn.findById(created.data?.txnId))?.pendingBet) === JSON.stringify(saved));
   return checks;
 }
 

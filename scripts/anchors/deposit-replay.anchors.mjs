@@ -12,4 +12,6 @@ export const MUTATIONS = [
   mutation("foreign-reference-on-return", "!txn || txn.userId !== userId || txn.type", "!txn || txn.type", "return.foreign"),
   mutation("replay-ignores-current-rail-grammar", "DepositSchema.shape.provider.safeParse(input?.provider).success && sameDepositFunding", "sameDepositFunding", "early.unsupported-rail"),
   { name: "prisma-relabels-foreign-currency", file: "src/lib/server/prisma-dal.ts", from: "currency: t.currency,\n    provider: t.provider", to: 'currency: "TZS",\n    provider: t.provider', expect: "dal.currency" },
+  mutation("reservation-loses-chosen-bet", "origin: (parse.data as { origin?: \"low_balance\" }).origin ?? null,\n        pendingBet,", "origin: (parse.data as { origin?: \"low_balance\" }).origin ?? null,", "metadata.saved-before-dispatch"),
+  mutation("malformed-intent-dispatches", 'if (savedBet != null && !pendingBet) return { ok: false, error: "The saved question selection is invalid.", code: "INVALID" };', "", "metadata.malformed-before-send"),
 ];
