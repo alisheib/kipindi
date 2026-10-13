@@ -5,7 +5,7 @@ import { freeExitEndsAt, type StoredMarket, type StoredPosition } from "@/lib/se
 import { formatEatDateTime } from "@/lib/eat-day";
 import { sideWord } from "@/lib/side-label";
 import { playerStatusInk } from "@/lib/status-tone";
-import { formatTzs } from "@/lib/utils";
+import { formatClock, formatTzs } from "@/lib/utils";
 import type { Dict, Locale } from "@/lib/i18n-dict";
 
 export function JourneyHolder({ m, positions, values, sellable, pricedFree, selectionClosed, nowMs, t, locale }: {
@@ -21,7 +21,8 @@ export function JourneyHolder({ m, positions, values, sellable, pricedFree, sele
     {positions.map((p) => {
       const value = values.get(p.id) ?? null;
       const shut = p.status === "OPEN" && (selectionClosed || sellable.get(p.id) === false);
-      return <div key={p.id} id={p.id} className="ticket-target scroll-mt-24 rounded-md border border-border bg-bg-overlay/40 p-3 space-y-2">
+      const freeUntil = freeExitEndsAt({ placedAt: p.placedAt }, m);
+      return <div key={p.id} id={p.id} className="ticket-target scroll-mt-11 rounded-md border border-border bg-bg-overlay/40 p-3 space-y-2">
         <div className="flex items-center justify-between gap-2 font-mono text-body-sm">
           <div className="flex items-center gap-2">
             <span className={`font-bold ${p.side === "YES" ? "text-yes-300" : "text-no-300"}`}>{sideWord(t, p.side, "MARKET")}</span>
@@ -40,8 +41,8 @@ export function JourneyHolder({ m, positions, values, sellable, pricedFree, sele
           </p>
         </div>
         {(value !== null || shut) && <SellButton look="journey" positionId={p.id} stake={p.stake} value={value ?? 0}
-          freeUntil={freeExitEndsAt({ placedAt: p.placedAt }, m)} closesAt={m.selectionClosedAt ?? m.resolutionAt} alreadyClosed={shut}
-          serverNow={nowMs} pricedFree={pricedFree.get(p.id) === true} stackOnPhone />}
+          freeUntil={freeUntil} freeUntilLabel={freeUntil ? formatClock(freeUntil) : null} closesAt={m.selectionClosedAt ?? m.resolutionAt} alreadyClosed={shut}
+          serverNow={nowMs} pricedFree={pricedFree.get(p.id) === true} />}
       </div>;
     })}
   </section>;

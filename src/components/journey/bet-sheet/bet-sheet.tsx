@@ -77,7 +77,7 @@ export function BetSheetBody(props: BodyProps) {
     <div className="kp-bsheet__scroll" data-testid="journey-sheet-scroll">
       {terminal && <p className="kp-bsheet__question">{title}</p>}
       <h2 id={titleId} ref={headingRef} tabIndex={-1} className="kp-bsheet__title">
-        {receipt ? <><Chip variant={side === "YES" ? "yes" : "no"}>{sideWord(t, side, "MARKET")}</Chip><span className="amount">{frame.stake === null ? "—" : formatTzs(frame.stake)}</span></>
+        {receipt ? <><Chip variant={side === "YES" ? "yes" : "no"} size="lg" metrics="status">{sideWord(t, side, "MARKET")}</Chip><span className="amount">{frame.stake === null ? "—" : formatTzs(frame.stake)}</span></>
           : frame.frame === "blocked" && frame.block ? sheetTemplate(t, frame.block.title) : frame.frame === "closed" ? t.journey.sheetClosedTitle : title}
       </h2>
       {receipt ? <Receipt {...parts} title={title} onClose={onClose} /> : terminal ? <div id={calloutId} role="alert" className="kp-bsheet__terminal">
@@ -91,7 +91,7 @@ export function BetSheetBody(props: BodyProps) {
             aria-describedby={bound ? boundsId : frame.attention ? calloutId : undefined}
             onChange={(event) => onStakeChange(event.target.value)} onFocus={onStakeFocus} onBlur={onStakeBlur} />
         </div>
-        {bound && <p id={boundsId} role="status" className="kp-bsheet__bounds"><I.info s={16} /><SheetSentence t={t} locale={locale} nowMs={nowMs} line={bound} /></p>}
+        {bound && <p id={boundsId} role="status" className="kp-bsheet__bounds"><I.info s={16} edge="start" text="body-400" /><SheetSentence t={t} locale={locale} nowMs={nowMs} line={bound} /></p>}
         {!keyboard && frame.chips && <div role="group" aria-label={t.journey.stakeLabel} className="kp-bsheet__chips">
           {frame.chips.map((amount) => <Button key={amount} type="button" variant="ghost" size="md" className="kp-bsheet__chip amount" aria-pressed={frame.stake === amount} disabled={placing || frame.stakeLocked} onClick={() => onStakeChange(String(amount))}>{formatNumber(amount)}</Button>)}
         </div>}
@@ -103,13 +103,13 @@ export function BetSheetBody(props: BodyProps) {
         {frame.lossRoom && <div id={calloutId}><Callout tone="info" glyph="info" title={t.journey.lowLossTitle}><SheetSentence t={t} locale={locale} nowMs={nowMs} line={{ key: "journey.lowLossRoom", vars: { amount: frame.lossRoom.headroom } }} /></Callout></div>}
         {pending && <div id={calloutId}><Callout tone="info" glyph="info" title={<SheetSentence t={t} locale={locale} nowMs={nowMs} line={pending.title} />}>
           <p><SheetSentence t={t} locale={locale} nowMs={nowMs} line={pending.body} /></p>
-          <Link href={`/wallet/receipt/${encodeURIComponent(pending.txnId)}`} onClick={onClose} className="kp-bsheet__link">{t.journey.lowPendingTrack}<I.chevronRight s={16} edge="end" /></Link>
+          <Link href={`/wallet/receipt/${encodeURIComponent(pending.txnId)}`} onClick={onClose} className="kp-bsheet__link">{t.journey.lowPendingTrack}<I.chevronRight s={16} edge="end" text="body-400" /></Link>
         </Callout></div>}
         {low?.depositRefusal && <p className="kp-bsheet__deposit-refusal"><SheetSentence t={t} locale={locale} nowMs={nowMs} line={low.depositRefusal === "rails_paused" ? { key: "journey.sheetRailsPaused" }
           : low.depositRefusal === "sof_required" ? { key: "journey.sheetSofRequired" } : low.depositRefusal === "deposit_max" ? { key: "journey.sheetDepositMax", vars: { max: low.depositMaximum ?? "—" } } : { key: "journey.sheetDepositLimit", vars: { amount: low.requestedDeposit ?? "—" } }} /></p>}
         {low?.eyebrow && <p className="kp-bsheet__eyebrow">{t.journey.lowChoose}</p>}
         {options && selectedDeposit !== undefined && <>
-          <Button type="button" variant="ghost" size="xl" fullWidth className="kp-bsheet__deposit" data-testid="journey-sheet-deposit" onClick={() => onDeposit(selectedDeposit)} leading={<I.wallet s={20} />} trailing={<I.chevronRight s={20} />}>
+          <Button type="button" variant="ghost" size="xl" fullWidth className="kp-bsheet__deposit" data-testid="journey-sheet-deposit" onClick={() => onDeposit(selectedDeposit)} leading={<I.wallet s={20} text="body-600" />} trailing={<I.chevronRight s={20} text="body-600" />}>
             <span className="kp-bsheet__deposit-copy"><span className="gilt-metal">{fillNodes(t.journey.lowDeposit, { amount: <span className="amount">{formatTzs(selectedDeposit)}</span> })}</span>
               <span className="kp-bsheet__rails">{railNames.map((name, index) => <span key={name}>{index > 0 && <span aria-hidden> · </span>}<span className="kp-bsheet__rail">{name}</span></span>)}</span>
             </span>
@@ -117,8 +117,8 @@ export function BetSheetBody(props: BodyProps) {
           {options.chips.length > 1 && <div className="kp-bsheet__chips" role="group" aria-label={t.common.deposit}>{options.chips.map((amount) => <Button key={amount} type="button" variant="ghost" size="md" className="kp-bsheet__chip amount" aria-pressed={selectedDeposit === amount} onClick={() => onDepositAmount?.(amount)}>{formatNumber(amount)}</Button>)}</div>}
           {options.belowDepositMin && <p className="kp-bsheet__note"><SheetSentence t={t} locale={locale} nowMs={nowMs} line={{ key: "journey.lowMinNote", vars: { min: options.amount, left: depositLeftAfterFor(options, selectedDeposit) } }} /></p>}
         </>}
-        {low?.depositRefusal === "sof_required" && <Link className="kp-bsheet__link" href="/profile/source-of-funds" onClick={onClose}>{t.journey.lowSofCta}<I.chevronRight s={16} edge="end" /></Link>}
-        {low?.depositRefusal === "deposit_limit" && <Link className="kp-bsheet__link" href="/profile/responsible-gambling" onClick={onClose}>{t.rg.setLimits}<I.chevronRight s={16} edge="end" /></Link>}
+        {low?.depositRefusal === "sof_required" && <Link className="kp-bsheet__link" href="/profile/source-of-funds" onClick={onClose}>{t.journey.lowSofCta}<I.chevronRight s={16} edge="end" text="body-400" /></Link>}
+        {low?.depositRefusal === "deposit_limit" && <Link className="kp-bsheet__link" href="/profile/responsible-gambling" onClick={onClose}>{t.rg.setLimits}<I.chevronRight s={16} edge="end" text="body-400" /></Link>}
         {instead && <BetInstead t={t} seed={seed} side={side} stake={instead.stake} estimate={sheetEstimate(seed, side, instead.stake)} onClick={onBetInstead} />}
         {frame.showEstimate && <BalanceRow t={t} frame={frame} />}
         {placing && <p role="status" className="kp-bsheet__placing">{t.journey.sheetPlacing}</p>}

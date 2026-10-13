@@ -542,6 +542,47 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   The host now retains every unfinished request identity in the disclosed pending-bet envelope and refuses a new
   commit before sending if it cannot persist the key; an unread key response never retires doubt. Privacy v2026-10-13
   names this storage. The journey remains staff preview; no real-money staff drive before S14 and no public flip.
+- **Continuation checkpoint and access (2026-10-13, OMEGA-DEV072).** `68ef3f611fa1aa4cb444881b9ae444007c4b2cd7`
+  is pushed to `origin/codex/vodacom-s8`, not main. The following reviewed fixes are being verified before the next
+  checkpoint: a receipt landing while its sheet is closed is retained for the next explicit open; the holder's
+  server-clock free-exit sentence is passed to its journey Sell button; the estimate measures after its font arrives
+  and only responds to width
+  changes. `test:bet-sheet-host` proves seeds, 20 unfinished identities, expiry, retirement of one identity, persistence
+  before send, send-time key reads, the boundary, capture and authenticated flagged mount (18 controls, 17 in-process
+  mutation controls). `test:deploy-skew` adds the host's guarded recovery (33/33, seven new plants). Typecheck passes.
+  The independent PostgreSQL sheet probe passes 16/16, including CLOSED/RESOLVED/VOIDED key recovery, foreign/house/wrong
+  question refusals and one wallet snapshot across a concurrent balance change. Railway CLI sign-in to 50pick's owning
+  account is verified; a read-only production connection confirms 102 applied migrations and no unfinished migration.
+  No production money or rollout switch was changed. Parity v4's baseline is captured at `ff8c731e2` (224 cells,
+  1,694 blobs; 51/51); its fresh-server null compare is in progress. The first broad battery was interrupted by C:
+  becoming full; its 30 reported failures are being repaired or re-run, and there was no completed battery verdict.
+  The second battery includes the database suites; server-mutating checks remain separate from WP11's driver.
+  Ali authorized F: storage and parallel work on this capable host. The active checkout stays at its managed path;
+  `.next` and `.qa-artifacts` are junctions to `F:\50pick-work\generated\latest-onboarding-next` and
+  `F:\50pick-work\generated\latest-onboarding-qa-artifacts`. Runtime external dependencies resolve through
+  `F:\50pick-work\generated\node_modules` to this checkout's own locked install; temporary files, browser downloads
+  and npm cache use F:. Moving a populated Next cache followed generated dependency junctions: exact `npm ci`
+  restored the affected packages and the dev cache was rebuilt. On another PC, install locked dependencies and
+  generate a fresh cache at the intended location; do not move populated generated dependency junctions.
+  **Still NOT CLOSED / NOT LIVE:** the final visual tiles, complete WP11 drives, production-build tap budget,
+  branch parity, broad battery and both-host production read-back remain required.
+- **Later S8 checks, still before release.** The actual A7 held-60-second/closed/landed/reopened browser cell now shows
+  its receipt with exactly one Position and one BET_PLACED row. The viewport read found and repaired a bounds-frame
+  defect: below/above/nonwhole stakes now have a neutral 2px attention edge and semantic invalidity; the disabled CTA
+  is still withheld. The production build passed after regenerating the stale font-query cache from locked Next.
+  Its exact-tip rebuild and 4× CPU tap proof remain pending. The local production rendering fixture uses Next's
+  production bundle on loopback with the existing build-only memory exception inside its guarded fixture process;
+  this exception is disclosed by served metadata and does not change the application's production store guard.
+  Its pools are rendering fixtures, not money proof. The real RG form accepts a typed 15-minute session limit;
+  an earlier proposed min/step source edit was unnecessary because the kit renders that field as text, and was
+  reverted. A bounded local-only clock fixture drives the actual elapsed-sitting gate without fabricated sheet facts.
+  The payment console's memory-store crash (`.catch` called on a synchronous DAL result) is repaired by handling both
+  synchronous and asynchronous reads; success and both failure modes are executed by `test:selcom-statement`, with
+  controls reproducing the old crash and an updated declared mutation anchor. Privacy and old-player-word golden
+  checks keep origin/main as their reference, accepting only S8's three separately hashed disclosure paragraphs and
+  named dictionary additions, with deletion/change controls. The first v4 baseline null compare failed 4.11 on the
+  unchanged baseline tree (56 question cells, including JSON-LD timestamps and several table widths); both captures
+  are kept and the harness/fixture instability is under independent review. This is not a valid branch-parity pass.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;
   WP8, WP9 and WP10; WP11a; WP11b; WP12 (A17's order).
 - **▶ IN FLIGHT (2026-10-13, from ~02:05 EAT) — the coordinator, a claude.ai/code cloud VM, with five builders on their

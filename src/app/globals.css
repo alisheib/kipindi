@@ -2408,6 +2408,9 @@ html.kp-reduce-motion .ticker-pause,
   select {
     font-size: 16px !important;
   }
+  /* The xl kit field is already above the iOS zoom threshold. Preserve its
+     deliberate figure size; this opt-in marker leaves classic fields alone. */
+  input[data-input-size="xl"]:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]) { font-size: var(--type-h2) !important; }
 }
 
 /* Hide native number spinners */
@@ -8567,7 +8570,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-bsheet__estimate { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-4); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg-inset); color: var(--text); }
 .kp-bsheet__estimate p, .kp-bsheet__compact p { margin: 0; }
 .kp-bsheet__estimate-label { font-size: var(--type-body); color: var(--text-muted); }
-.kp-bsheet__estimate-figure { font-size: var(--type-h1); font-weight: 700; line-height: 1.1; color: var(--text); overflow-wrap: anywhere; }
+.kp-bsheet__estimate-figure { min-width: 0; max-width: 100%; font-size: var(--type-h1); font-weight: 700; line-height: 1.1; color: var(--text); overflow-wrap: anywhere; }
 .kp-bsheet__mult { align-self: flex-start; padding: var(--sp-1) var(--sp-2); border: 1px solid var(--border); border-radius: var(--r-pill); font-size: var(--type-small); font-weight: 600; color: var(--text); }
 .kp-bsheet__note, .kp-bsheet__deposit-refusal { margin: 0; font-size: var(--type-small); line-height: 1.5; color: var(--text-subtle); }
 .kp-bsheet__compact { padding-block: var(--sp-2); font-size: var(--type-body); line-height: 1.5; color: var(--text); }
@@ -8582,6 +8585,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-bsheet__eyebrow { margin: 0; color: var(--text-subtle); font-family: var(--font-mono); font-size: var(--type-small); font-weight: 600; letter-spacing: .06em; }
 :lang(en) .kp-bsheet__eyebrow, :lang(sw) .kp-bsheet__eyebrow { text-transform: uppercase; }
 .kp-bsheet__deposit { height: auto; min-height: var(--h-control-xl); justify-content: space-between; border: 1px solid var(--border-control); }
+.kp-bsheet__deposit + .kp-bsheet__chips { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .kp-bsheet__deposit-copy { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; gap: var(--sp-1); text-align: left; white-space: normal; }
 .kp-bsheet__rails { font-size: var(--type-small); font-weight: 400; line-height: 1.5; color: var(--text-muted); }
 .kp-bsheet__rail { white-space: nowrap; }

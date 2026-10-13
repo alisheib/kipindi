@@ -165,6 +165,15 @@ ok("1.0 · the population is real: ≥ 200 client entries and ≥ 300 reachable 
   `${clientEntries.length} entries · ${reached.size} modules`);
 ok("1.1 · ⛔ D19 · no house-bot word in any client-reachable module (types and comments stripped as the bundler does)",
   hits.length === 0, hits.slice(0, 12).map((h) => `"${h.word}" in ${chain(h.file)}`).join(" · "));
+// S8's refusal census belongs in its server-run test, not an export in the controller's client-reachable leaf.
+{
+  const host = join(SRC, "components", "journey", "bet-sheet", "bet-sheet-host.tsx");
+  const refusal = join(SRC, "lib", "journey", "sheet-refusal.ts");
+  const planted: Reader = { exists: disk.exists, read: (p) => disk.read(p) + (p === refusal ? '\nexport const PLANTED_REASONS = ["house_key_mismatch", "house_intent_superseded"];' : "") };
+  const r = walkClientGraph([host], planted, SRC);
+  ok("1.s8.c · CONTROL · server-only refusal names replanted in the real sheet leaf are caught through the real controller import",
+    reached.has(refusal) && r.hits.some((h) => h.file === refusal && h.word === "house_key") && r.hits.some((h) => h.file === refusal && h.word === "house_intent"));
+}
 const houseModules = [...reached.keys()].filter((f) => /[\\/]house-bot[\\/]|house-bot-dal/.test(f));
 ok("1.2 · ⛔ no module under house-bot/ (or the house DAL) is reachable from a client component", houseModules.length === 0, houseModules.map((f) => relative(ROOT, f)).join(", "));
 // ⚠️ MEASURED, NOT ASSUMED (eighth session): `prisma.ts` IS reachable in source through `utils.ts → server/platform-config`,
@@ -391,9 +400,11 @@ console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-disclosure:
  * ⭐ 114 → 118 (2026-09-26, build step 8), the count that run PRINTED — with 115 before it: accepted risks 8–12 arrived
  * in both registers, and d.7, d.7b and d.7.c1 hold them to one text; d.2 now counts 1–20.
  */
-const MIN_ASSERTIONS = 118;
-if (pass < MIN_ASSERTIONS) {
-  console.error(`\n!! FLOOR — test:house-bot-disclosure ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
+// 118 → 122 (S8, 2026-10-13): measured green after the real client-leaf control and three approved-publication controls.
+const MIN_ASSERTIONS = 122;
+const assertions = pass + fail;
+if (assertions < MIN_ASSERTIONS) {
+  console.error(`\n!! FLOOR — test:house-bot-disclosure ran ${assertions} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
   process.exit(4);
 }
 process.exit(fail === 0 ? 0 : 1);

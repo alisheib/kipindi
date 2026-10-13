@@ -550,9 +550,9 @@ export type SheetFrame = {
   breaks: StakeBreak | null;
   /** The stake box is locked to the frozen quote (placing, in doubt). */
   stakeLocked: boolean;
-  /** `aria-invalid="true"` on the stake (A18 item 3): the low, loss-room, pending and below-minimum frames. */
+  /** `aria-invalid="true"` on the stake: low, loss-room, pending and nonempty bounds breaks (A18; below/above canvases). */
   stakeInvalid: boolean;
-  /** The Input's `attention` border: the low, loss-room and pending frames. */
+  /** The Input's neutral `attention` border: low, loss-room, pending and nonempty bounds breaks. */
   attention: boolean;
   /** The chips, or null where the frame hides them. */
   chips: number[] | null;
@@ -739,10 +739,12 @@ export function sheetFrame(input: SheetFrameInput): SheetFrame {
   const enabled = !blockedLine && !outOfBounds && (plan.kind === "enough" || plan.kind === "unknown" || plan.kind === "loading");
   const retry = intent?.phase === "retry" && stake !== null && intent.quote.stake === stake && enabled;
   const label = retry ? lineOf("journey.retryCta", { amount: stake as number }) : inBounds ? ctaPlace(stake as number) : CTA_BARE;
+  const boundsInvalid = breaks !== null && breaks !== "empty";
   return {
     ...base,
     frame: "edit",
-    stakeInvalid: breaks === "below",
+    stakeInvalid: boundsInvalid,
+    attention: boundsInvalid,
     chips,
     lines,
     cta: { label, enabled, describedBy: lines.length > 0 ? "line" : breaks && breaks !== "empty" ? "bounds" : null },

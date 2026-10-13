@@ -42,6 +42,18 @@ const p = (...s) => join(ROOT, ...s);
 
 const MUTATIONS = [
   {
+    name: "§3d · the transport exception swallows adjacent visible titles",
+    file: p("scripts", "label-lexicon.test.mts"),
+    from: `    return ranges;`,
+    to: `    return [[0, source.length]];`,
+  },
+  {
+    name: "§3d · transport URL arguments are wrongly treated as translated copy",
+    file: p("scripts", "label-lexicon.test.mts"),
+    from: `    return ranges;`,
+    to: `    return [];`,
+  },
+  {
     name: "§2 · a Chinese key carries the ASCII token YES again (the shipped defect)",
     file: p("src", "lib", "i18n-dict.ts"),
     from: `      probOverTime: "「是」概率随时间变化",`,

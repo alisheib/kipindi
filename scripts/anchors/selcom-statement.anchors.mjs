@@ -115,8 +115,8 @@ export const MUTATIONS = [
     why: "the DB-side aggregate is replaced by a full table load. It is CORRECT and it is what `report-money.ts` measured at 3,176 ms and 333 MB of heap, on a page an operator opens while payouts are failing",
     file: PAGE,
     suite: "selcom-statement",
-    from: `  const railTotalsRaw = await db.txn.totalsByType([...TALLY_TYPES]).catch(() => null);`,
-    to: `  const railTotalsRaw = await db.txn.listAll().catch(() => null);`,
+    from: `  const railTotalsRaw = await Promise.resolve().then(() => db.txn.totalsByType([...TALLY_TYPES])).catch(() => null);`,
+    to: `  const railTotalsRaw = await Promise.resolve().then(() => db.txn.listAll()).catch(() => null);`,
     expect: "6: …and reads its tallies from the DB aggregate, never a ledger walk",
   },
   {

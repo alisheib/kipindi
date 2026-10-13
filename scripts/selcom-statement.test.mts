@@ -204,5 +204,31 @@ const st = buildSelcomStatement(totals, 26_385);
      /db\.txn\.totalsByType\(/.test(pageSrc) && !/db\.txn\.listAll\(/.test(pageSrc));
 }
 
+// ── 7 · Both DAL twins and both failure modes preserve an honest unavailable read ──
+{
+  const page = decomment(readFileSync(join(ROOT, "src/app/admin/payments/page.tsx"), "utf8"));
+  async function readCases(expression: string, method: string, sample: unknown): Promise<boolean[]> {
+    const run = new Function("db", "TALLY_TYPES", `return (async () => { return ${expression}; })();`);
+    const outcomes: boolean[] = [];
+    for (const mode of ["sync", "async", "throw", "reject"]) {
+      const fn = () => { if (mode === "throw") throw new Error("read unavailable"); if (mode === "reject") return Promise.reject(new Error("read unavailable")); return mode === "async" ? Promise.resolve(sample) : sample; };
+      try {
+        const value = await run({ txn: { [method]: fn } }, TALLY_TYPES);
+        outcomes.push(JSON.stringify(value) === JSON.stringify(mode === "throw" || mode === "reject" ? null : sample));
+      } catch { outcomes.push(false); }
+    }
+    return outcomes;
+  }
+  for (const [binding, method, sample, bad] of [
+    ["railTotalsRaw", "totalsByType", { DEPOSIT: { amount: 5000, count: 1 } }, "await db.txn.totalsByType([...TALLY_TYPES]).catch(() => null)"],
+    ["frozenPayoutsRead", "listByStatus", [{ id: "local-payout" }], 'await db.txn.listByStatus("PROCESSING").catch(() => null)'],
+  ] as const) {
+    const expression = new RegExp(`const ${binding} = ([^\\n]+);`).exec(page)?.[1];
+    const outcomes = expression ? await readCases(expression, method, sample) : [];
+    ok(`7: ${binding} accepts both sync-memory and async-Postgres success, while sync throws and async failures are unavailable, never fabricated zeros`, outcomes.length === 4 && outcomes.every(Boolean));
+    ok(`7: CONTROL ${binding} catches the old direct .catch crash on the sync memory twin`, !(await readCases(bad, method, sample))[0]);
+  }
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

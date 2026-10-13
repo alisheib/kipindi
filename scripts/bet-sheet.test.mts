@@ -60,14 +60,14 @@ const SOURCES: Sources = {
 
 type Impl = {
   SS: typeof SS;
-  SR: { refusalOutcome: typeof SR.refusalOutcome; settleRefusal: typeof SR.settleRefusal; CLASSIFIED_REASONS: readonly string[]; CLASSIFIED_CODES: readonly string[]; HOUSE_ONLY_REASONS: readonly string[] };
+  SR: { refusalOutcome: typeof SR.refusalOutcome; settleRefusal: typeof SR.settleRefusal; CLASSIFIED_REASONS: readonly string[]; CLASSIFIED_CODES: readonly string[] };
   plan: typeof SF.shortfallPlan;
   src: Sources;
   draw?: (html: string) => string;
 };
 const REAL: Impl = {
   SS,
-  SR: { refusalOutcome: SR.refusalOutcome, settleRefusal: SR.settleRefusal, CLASSIFIED_REASONS: SR.CLASSIFIED_REASONS, CLASSIFIED_CODES: SR.CLASSIFIED_CODES, HOUSE_ONLY_REASONS: SR.HOUSE_ONLY_REASONS },
+  SR: { refusalOutcome: SR.refusalOutcome, settleRefusal: SR.settleRefusal, CLASSIFIED_REASONS: SR.CLASSIFIED_REASONS, CLASSIFIED_CODES: SR.CLASSIFIED_CODES },
   plan: SF.shortfallPlan,
   src: SOURCES,
 };
@@ -75,6 +75,8 @@ const REAL: Impl = {
 /* ─── The world ───────────────────────────────────────────────────────────────────────────────────────────────── */
 
 const NOW = Date.UTC(2026, 9, 13, 9, 0);
+// Server-only census exclusions stay in the test: no client module needs this vocabulary to treat an unknown answer safely.
+const NON_PLAYER_REASONS = ["house_key_mismatch", "house_intent_superseded"] as const;
 const RATES = { feeModel: "loser-share", platformFeeRate: 0.03, operatorFeeRate: 0.10, showEstimatedWinnings: true } as const;
 const MIN = PLATFORM_MIN_STAKE, MAX = PLATFORM_MAX_STAKE;
 const MKT = "mkt_dodoma01";
@@ -344,6 +346,11 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   }).filter((x) => x.bad.length > 0);
   ok(`2.matrix · every row as a golden (${goldens.length} answers and their re-reads → the settled view, the retry, the doubt and the marker)`,
     off.length === 0, j(off.slice(0, 3)));
+  const unclassifiedAnswers = [...NON_PLAYER_REASONS, "new_unclassified_reason"].map((reason) => ({
+    reason, ...flat(settle(R(fail({ code: "INVALID", reason })))),
+  }));
+  ok("2.unclassified · a non-player or new reason stays unknown even with a known code: the quote stays in doubt, locked to the same key, with no money claim",
+    unclassifiedAnswers.every((a) => a.view === "inDoubt" && a.retry === "same" && a.doubt === "enter" && a.marker === "keepKey"), j(unclassifiedAnswers));
   const prose = [M.refusalOutcome(R(fail({ code: "INVALID", error: "Daily loss limit reached." }))), M.refusalOutcome(R(fail({ error: "Wallet unavailable." })))];
   ok("2.prose · the matrix never reads `error`: an INVALID whose sentence names the loss limit is row 12, and a bare sentence is row 23",
     prose[0].row === 12 && prose[1].row === 23, j(prose.map((p) => p.row)));
@@ -354,7 +361,7 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     busyKey.frame === "edit" && j(busyKey.cta?.label) === j({ key: "journey.retryCta", vars: { amount: 5_000 } }) && busyKey.cta?.enabled === true
       && busyKey.lines.some((l) => l.key === "journey.sheetBusy"), j({ cta: busyKey.cta, lines: busyKey.lines }));
   const cen = census(impl.src);
-  const classifiedR = new Set(impl.SR.CLASSIFIED_REASONS), classifiedC = new Set(impl.SR.CLASSIFIED_CODES), house = new Set(impl.SR.HOUSE_ONLY_REASONS);
+  const classifiedR = new Set(impl.SR.CLASSIFIED_REASONS), classifiedC = new Set(impl.SR.CLASSIFIED_CODES), house = new Set<string>(NON_PLAYER_REASONS);
   const unclassified = cen.sites.filter((s) => s.reasons.length === 0 ? s.code !== null && !classifiedC.has(s.code) : s.reasons.some((r) => !classifiedR.has(r) && !house.has(r)));
   const seenR = new Set(cen.sites.flatMap((s) => s.reasons)), seenC = new Set(cen.sites.map((s) => s.code).filter(Boolean) as string[]);
   const positive = ["maintenance", "rate_limited", "cooling_off", "self_excluded", "session_limit_reached", "account_blocked", "stake_not_whole", "stake_below_min", "stake_above_max", "market_not_live",
@@ -659,6 +666,7 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   const frameAt = (o: Partial<SS.SheetFrameInput> = {}) => S.sheetFrame({ seed: seed(), side: "YES", stakeText: "5000", viewer: viewer(facts()), nowMs: NOW, intent: null, settled: null, ...o });
   const renderCases = [
     frameAt(), frameAt({ viewer: viewer(facts({ wallet: wallet(2_000) })) }),
+    frameAt({ stakeText: "499" }), frameAt({ stakeText: "1000001" }), frameAt({ stakeText: "12.5" }),
     frameAt({ viewer: viewer(facts({ loss: { dailyLossLimit: 3_000, lossToday: 0 } })) }),
     frameAt({ viewer: viewer(facts({ wallet: wallet(2_000), pendingDeposit: { amount: 3_000, txnId: "txn_pending01", createdAt: new Date(NOW - 31 * 60_000).toISOString() } })) }),
     frameAt({ viewer: viewer(facts({ lockout: { kind: "self_exclusion", until: new Date(NOW + 86_400_000).toISOString() } })) }),
@@ -670,7 +678,7 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   const rendered = (["en", "sw", "zh"] as const).flatMap((locale) => renderCases.map((frame) => ({ locale, frame, html: drawFrame(frame, locale) })));
   const order = (html: string, classes: string[]) => { const indexes = classes.map((c) => html.indexOf(c)); return indexes.every((n) => n >= 0) && indexes.every((n, i) => i === 0 || n > indexes[i - 1]); };
   ok("7.order · every frame renders in all three languages; edit follows chosen side, question, stake, chips, estimate, balance, commit, while the low frame places its offer before the disabled commit",
-    rendered.length === 27 && rendered.every((x) => x.html.includes('id="sheet-proof-title"'))
+    rendered.length === 36 && rendered.every((x) => x.html.includes('id="sheet-proof-title"'))
       && rendered.filter((x) => x.frame.frame === "edit").every((x) => order(x.html, ["kp-bsheet__chosen", "kp-bsheet__title", "kp-bsheet__stake", "kp-bsheet__chips", "kp-bsheet__estimate", "kp-bsheet__balance", "kp-bsheet__commit"]))
       && rendered.filter((x) => x.frame.frame === "low").every((x) => order(x.html, ["kp-bsheet__stake", "kp-bsheet__compact", '<div id="sheet-proof-callout">', "journey-sheet-deposit", "journey-sheet-bet-instead", "kp-bsheet__commit"])));
   ok("7.figures · every printed priced estimate and committed receipt stake is its pure frame's figure; receipt has the exact ticket link and no payout estimate, and no frame leaks an unfilled placeholder",
@@ -678,8 +686,10 @@ function run(impl: Impl, log: (l: string) => void): string[] {
       && (x.frame.estimate?.payout === null || x.frame.estimate?.payout === undefined || x.frame.frame === "blocked" || x.frame.frame === "closed" || x.html.includes(formatTzs(x.frame.estimate.payout)))
       && (!x.frame.receipt || x.html.includes("pos_receipt01") && x.html.includes(formatTzs(2_000)) && x.html.includes("/positions/pos_receipt01") && !x.html.includes("kp-bsheet__estimate"))));
   const invalidFrames = rendered.filter((x) => x.frame.stakeInvalid);
-  ok("7.invalid · low, loss-room and pending stakes are aria-invalid, described by the reason and use the neutral attention prop; placing locks both its field and commit",
-    invalidFrames.length === 9 && invalidFrames.every((x) => x.html.includes('aria-invalid="true"') && x.html.includes('aria-describedby="sheet-proof-callout"'))
+  ok("7.invalid · low, loss-room, pending and nonempty bounds stakes are aria-invalid, described by the reason and use the neutral two-pixel attention edge; placing locks its field and commit",
+    invalidFrames.length === 18 && invalidFrames.every((x) => x.html.includes('aria-invalid="true"')
+      && x.html.includes(x.frame.breaks ? 'aria-describedby="sheet-proof-bounds"' : 'aria-describedby="sheet-proof-callout"')
+      && x.html.includes("border-color:var(--input-attention);border-width:2px") && !x.html.includes("border-danger-500"))
       && rendered.filter((x) => x.frame.frame === "placing").every((x) => /data-testid="journey-sheet-stake"[^>]*disabled|disabled[^>]*data-testid="journey-sheet-stake"/.test(x.html)));
   const refusedDeposit = frameAt({ viewer: viewer(facts({ wallet: wallet(2_000), deposit: { ...facts().deposit, limits: { daily: 10_000, weekly: null, monthly: null }, usage: { day: 8_000, week: 8_000, month: 8_000 } } })) });
   ok("4.refusal-figures · a refused deposit names the deposit engine's requested amount and maximum, never a stake bound; the selected higher chip's remainder is also the engine's",
@@ -712,6 +722,13 @@ function run(impl: Impl, log: (l: string) => void): string[] {
       && /\.kp-bsheet__chip\[aria-pressed="true"\][^}]*outline: 2px solid var\(--brand-400\)/.test(impl.src.css)
       && /\.kp-bsheet__scroll[^}]*min-height: 0[^}]*overflow-y: auto/.test(impl.src.css)
       && /\.kp-bsheet \{[^}]*max-height: min\(calc\(100dvh - var\(--sp-12\)\)/.test(impl.src.css));
+  ok("9.figure-fit · a whole estimate fits through existing type rungs, remeasures on container resize and font arrival, and preserves the xl phone field above the iOS zoom minimum",
+    partsSrc.includes('["--type-h1", "--type-h2", "--type-h3", "--type-h4"]')
+      && partsSrc.includes("probe.getBoundingClientRect().width <= element.clientWidth") && partsSrc.includes("new ResizeObserver(onEstimateResize)")
+      && partsSrc.includes("if (width === lastWidth) return;") && partsSrc.includes("probe.remove()")
+      && partsSrc.includes('transitionProperty: "none", animation: "none"')
+      && partsSrc.includes('document.fonts.addEventListener("loadingdone", fitEstimateFigure)')
+      && /input\[data-input-size="xl"\][^}]*font-size: var\(--type-h2\) !important/.test(impl.src.css));
   return failed;
 }
 
@@ -733,6 +750,7 @@ if (!PROVE_RED) {
     { name: "the rendered balance row dropped from edit's order", expect: /^7\.order /, impl: { ...REAL, draw: (html) => html.replaceAll("kp-bsheet__balance", "kp-bsheet__missing") } },
     { name: "the rendered committed receipt stake repriced", expect: /^7\.figures /, impl: { ...REAL, draw: (html) => html.replaceAll(formatTzs(2_000), formatTzs(9_000)) } },
     { name: "a low frame renders no aria-invalid", expect: /^7\.invalid /, impl: { ...REAL, draw: (html) => html.replaceAll('aria-invalid="true"', '') } },
+    { name: "a bounds break paints the red error edge instead of neutral attention", expect: /^7\.invalid /, impl: withSS({ sheetFrame: (i) => { const f = SS.sheetFrame(i); return f.breaks && f.breaks !== "empty" ? { ...f, attention: false } : f; } }) },
     { name: "a deposit refusal uses the stake maximum", expect: /^4\.refusal-figures /, impl: withSS({ sheetFrame: (i) => { const f = SS.sheetFrame(i); return f.low ? { ...f, low: { ...f.low, depositMaximum: f.bounds.max } } : f; } }) },
     { name: "a submit form added to the stake surface", expect: /^8\.surface /, impl: withSrc({ sheet: SOURCES.sheet + '\nconst bad = <form><button type="submit" /></form>;\n' }) },
     { name: "a frame change no longer re-arms heading focus", expect: /^8\.focus /, impl: withSrc({ sheet: SOURCES.sheet.replace("refocusKey={props.frame.frame}", "") }) },
@@ -740,6 +758,11 @@ if (!PROVE_RED) {
     { name: "pointerenter pauses the receipt under a stationary cursor", expect: /^8\.receipt-hold /, impl: withSrc({ sheet: SOURCES.sheet.replace("onPointerMove=", "onPointerEnter=") }) },
     { name: "a keystroke can repeat the live announcement", expect: /^8\.announcements /, impl: withSrc({ sheet: SOURCES.sheet.replace("if (!moved && !updated) return;", "") }) },
     { name: "the estimate's figure painted gold", expect: /^9\.tokens /, impl: withSrc({ css: SOURCES.css.replace(/(\.kp-bsheet__estimate-figure[^}]*color: )var\(--text\)/, "$1var(--gilt)") }) },
+    { name: "a late font no longer remeasures the whole estimate", expect: /^9\.figure-fit /, impl: withSrc({ parts: SOURCES.parts.replace('document.fonts.addEventListener("loadingdone", fitEstimateFigure)', 'document.fonts.addEventListener("loadingdone", () => {})') }) },
+    { name: "the figure's fitting loop ignores its rendered width", expect: /^9\.figure-fit /, impl: withSrc({ parts: SOURCES.parts.replace("probe.getBoundingClientRect().width <= element.clientWidth", "true") }) },
+    { name: "a height change retriggers the figure resize loop", expect: /^9\.figure-fit /, impl: withSrc({ parts: SOURCES.parts.replace("if (width === lastWidth) return;", "") }) },
+    { name: "reduced-motion transitions corrupt the synchronous figure measurement", expect: /^9\.figure-fit /, impl: withSrc({ parts: SOURCES.parts.replace('transitionProperty: "none", animation: "none"', '') }) },
+    { name: "the iOS zoom rule shrinks the xl stake back to sixteen", expect: /^9\.figure-fit /, impl: withSrc({ css: SOURCES.css.replace('input[data-input-size="xl"]:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]) { font-size: var(--type-h2) !important; }', '') }) },
     // §1
     { name: "the sheet's figure from a second formula (stake × the card's multiple)", expect: /^1\.deck /,
       impl: withSS({ sheetEstimate: (s, side, stake) => { const e = SS.sheetEstimate(s, side, stake); return e && stake ? { ...e, payout: Math.round(stake * 2.8) } : e; } }) },
@@ -758,6 +781,8 @@ if (!PROVE_RED) {
     { name: "the hedge read as \"this side\"", expect: /^1\.holder /,
       impl: withSS({ holderLine: (h) => (h.length ? "this" : "none") }) },
     // §2
+    { name: "an unclassified answer unlocks a fresh key", expect: /^2\.unclassified /,
+      impl: settleWith((s, o) => o.frame === "unknown" ? { ...s, retry: "new", marker: "dropKey" } : s) },
     { name: "rows 10 and 12 swapped (A8)", expect: /^2\.matrix /,
       impl: withSR({ refusalOutcome: (a) => { const o = SR.refusalOutcome(a); return o.row === 10 ? { ...o, row: 12 } : o.row === 12 ? { ...o, row: 10 } : o; } }) },
     { name: "a cached re-read trusted: a market that says bettable answered as closed", expect: /^2\.matrix /,

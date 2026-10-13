@@ -68,14 +68,14 @@ async function PaymentsOpsContent({ searchParams }: PaymentsProps) {
   // holds 20,000+ rows. B-1: a failed read is an explicit `null`, so the card renders the
   // honest load-error branch instead of a statement full of fabricated zeros, which on a
   // regulator-facing page would read as "no money has ever moved".
-  const railTotalsRaw = await db.txn.totalsByType([...TALLY_TYPES]).catch(() => null);
+  const railTotalsRaw = await Promise.resolve().then(() => db.txn.totalsByType([...TALLY_TYPES])).catch(() => null);
   const railTotals = railTotalsRaw === null ? null : asRailTotals(railTotalsRaw);
   // Payouts frozen in PROCESSING. A withdrawal whose provider call was refused
   // outright (e.g. Selcom's 403 "endpoint not enabled") never becomes terminal, so
   // nothing automatic can resolve it and the player's money stays held. Surfaced
   // here, oldest first, so an officer can see and release them.
   const FROZEN_AFTER_MS = 30 * 60 * 1000;
-  const frozenPayoutsRead = await db.txn.listByStatus("PROCESSING").catch(() => null);
+  const frozenPayoutsRead = await Promise.resolve().then(() => db.txn.listByStatus("PROCESSING")).catch(() => null);
   const frozenPayouts = frozenPayoutsRead === null ? null : frozenPayoutsRead
     .filter((t) => t.type === "WITHDRAWAL" && Date.now() - Date.parse(t.createdAt) > FROZEN_AFTER_MS)
     .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))

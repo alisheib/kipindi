@@ -983,7 +983,7 @@ if (preKit !== null) {
       label: "⭐ size xl: the ladder's top rung (--h-control-xl, 56px), the figure on --type-h2 (24px), the unit cell on --type-h4",
       run: (kit) => {
         const h = html(kit, { size: "xl", prefix: "TZS", mono: true, inputMode: "numeric" });
-        return { pass: /^<span[^>]*style="[^"]*height:var\(--h-control-xl\)/.test(h) && /<input[^>]*style="font-size:var\(--type-h2\)"/.test(h) && /style="font-size:var\(--type-h4\)"[^>]*>TZS/.test(h), detail: h };
+        return { pass: /^<span[^>]*style="[^"]*height:var\(--h-control-xl\)/.test(h) && /<input[^>]*style="font-size:var\(--type-h2\)"/.test(h) && /data-input-size="xl"/.test(h) && /style="font-size:var\(--type-h4\)"[^>]*>TZS/.test(h), detail: h };
       },
     },
   };
@@ -1003,6 +1003,7 @@ if (preKit !== null) {
     ["attentionWithCallerInvalid", "the sheet's aria-invalid suppresses its neutral attention cue", [["attention === true && !error && !field?.invalid && !locked", "attention === true && !errored && !locked"]]],
     ["attentionWithCallerInvalid", "attention loses its noncolour thickness cue", [['borderWidth: "2px"', 'borderWidth: "1px"']]],
     ["sizeXl", "xl on a literal height off the ladder (the canvas's 60px)", [['box: { height: "var(--h-control-xl)" },', 'box: { height: "60px" },']]],
+    ["sizeXl", "xl loses the opt-in marker that keeps its figure above the phone anti-zoom floor", [['{...(size === "xl" ? { "data-input-size": "xl" } : {})}', ""]]],
   ];
   for (const [judge, what, plant] of SET_PLANTS) {
     let verdict = "";

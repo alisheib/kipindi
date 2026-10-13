@@ -567,9 +567,22 @@ section("10 · untouched — the dictionary, R8-C's one rule, the voting door");
   const r10b = (s: string) => s.replace('import { noticeBody } from "@/components/ui/empty-state-text";', "")
     .replace('{/* Round 10 (R10-B): its phrases held as an empty state' + "'" + 's body holds them ("Kikao chako", "Your session"). */}', "")
     .replace("{noticeBody(endedNotice.reason", "{endedNotice.reason").replace(": t.auth.sessionIdleBody)}", ": t.auth.sessionIdleBody}");
-  const sameCode = (p: string) => { try { return squash(decomment(r10b(git("show", `HEAD:${p}`).split(CR + LF).join(LF)))) === squash(decomment(r10b(raw(p)))); } catch { return false; } };
+  // S8 adds exactly the signed-in journey host. Remove only this import/slot on BOTH sides; PTR's classic mount stays pinned.
+  const hostImport = ", LazyBetSheetHost";
+  const hostSlot = "{journeyShown && session && <Suspense fallback={null}><LazyBetSheetHost /></Suspense>}";
+  const priorShell = (s: string) => r10b(s).replace(hostImport, "").replace(hostSlot, "");
+  const sameShell = (a: string, b: string) => squash(decomment(priorShell(a))) === squash(decomment(priorShell(b)));
+  const shellFile = "src/components/layout/app-shell.tsx", shellNow = raw(shellFile);
+  const sameCode = (p: string) => { try { return sameShell(git("show", `HEAD:${p}`).split(CR + LF).join(LF), raw(p)); } catch { return false; } };
   ok("10.1 · no dictionary string changed (src/lib/i18n-dict.ts is HEAD's)", clean("src/lib/i18n-dict.ts"));
   ok("10.2 · R8-C's one rule is unchanged (viewer-doors.ts, hub-viewer.ts, app-shell.tsx are HEAD's)", clean("src/lib/journey/viewer-doors.ts") && clean("src/lib/server/hub-viewer.ts") && sameCode("src/components/layout/app-shell.tsx"));
+  const shellBeforeS8 = shellNow.replace(hostImport, "").replace(hostSlot, "");
+  const unrelatedShell = shellNow.replace("const journeyShown = (await journeyRead).journey;", "const journeyShown = false;");
+  ok("10.2′ CONTROL · only the exact S8 host delta is symmetric: an unrelated journey-rule edit, changed host gate, or missing PTR mount still differs",
+    shellNow.includes(hostImport) && shellNow.includes(hostSlot) && sameShell(shellNow, shellBeforeS8) && sameShell(shellBeforeS8, shellNow)
+      && unrelatedShell !== shellNow && !sameShell(shellNow, unrelatedShell)
+      && !sameShell(shellNow, shellNow.replace(hostSlot, hostSlot.replace("journeyShown && session", "journeyShown")))
+      && shellNow.includes("<LazyPullToRefresh />") && !sameShell(shellNow, shellNow.replace("<LazyPullToRefresh />", "")));
   const PS = code("src/lib/server/proposals-service.ts");
   ok("10.3 · voting is kept by decision: castVote reads no break", !/isLockedOut|breakStateOf/.test(decl(PS, "export async function castVote(")));
 }

@@ -54,11 +54,12 @@ export function betSheetDomProbe(selectors) {
     overflow: root.scrollWidth - root.clientWidth, text: root.innerText,
   };
 }
-export function betSheetDomVerdict(probe, { frame = null, focus = false, safeInset = 0, keyboard = false } = {}) {
+export function betSheetDomVerdict(probe, { frame = null, focus = false, trap = false, safeInset = 0, keyboard = false } = {}) {
   const errors = [];
   if (!probe.present) return ["sheet absent"];
   if (frame && probe.frame !== frame) errors.push(`frame ${probe.frame}, expected ${frame}`);
   if (focus && !probe.headingFocused) errors.push("initial focus is not the heading");
+  if (trap && !probe.focusedInside) errors.push("focus escaped the sheet");
   if (probe.overflow > 1) errors.push(`sheet horizontal overflow ${probe.overflow}px`);
   if (probe.root.left < -1 || probe.root.right > probe.viewport.width + 1) errors.push("sheet exceeds viewport width");
   if (safeInset > 0 && probe.place && probe.place.bottom > probe.viewport.height - safeInset + 1) errors.push("CTA enters the bottom safe area");
@@ -84,9 +85,9 @@ export function onceOnlyVerdict(before, after, requestCount, count = 1) {
 }
 
 export const NOT_DRIVEN_MATRIX = [
-  { row: 9, reason: "account_blocked divergence", proof: "test:bet-sheet §2 and test:journey-sheet" },
-  { row: 17, reason: "missing wallet", proof: "test:bet-sheet §2 and test:journey-sheet" },
+  { row: 11, reason: "account_blocked divergence", proof: "test:bet-sheet §2 and test:journey-sheet" },
+  { row: 18, reason: "missing wallet", proof: "test:bet-sheet §2 and test:journey-sheet" },
   { row: 16, reason: "idempotency_key_conflict", proof: "test:bet-sheet §2/§3" },
-  { row: 11, reason: "missing parameters", proof: "test:bet-sheet §2" },
-  { row: 12, reason: "invalid side", proof: "test:bet-sheet §2" },
+  { row: 23, reason: "missing parameters", proof: "test:bet-sheet §2" },
+  { row: 23, reason: "invalid side", proof: "test:bet-sheet §2" },
 ];

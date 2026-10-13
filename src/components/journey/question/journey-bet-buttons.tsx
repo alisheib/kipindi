@@ -8,7 +8,7 @@ export function JourneyBetButtons({ seed, title, t, headingId, className = "" }:
   if (!seed.bettable) return null;
   return <div className={`kp-jbet grid grid-cols-2 gap-3 ${className}`} data-sheet={JSON.stringify(seed)} data-sheet-title={title} data-sheet-origin="market" data-testid="journey-bet-buttons" aria-labelledby={headingId}>
     {(["YES", "NO"] as const).map((side) => <Link key={side} href={`/markets/${seed.id}?side=${side}` as never} prefetch={false}
-      data-bet-side={side} data-bet-origin="market" className={`${side === "YES" ? "btn-yes" : "btn-no"} min-h-[64px] flex items-center justify-center text-h3 press-pop`}>
+      data-bet-side={side} data-bet-origin="market" className={`${side === "YES" ? "btn-yes" : "btn-no"} min-h-[64px] flex items-center justify-center press-pop`}>
       {sideWord(t, side, "MARKET")}
     </Link>)}
   </div>;

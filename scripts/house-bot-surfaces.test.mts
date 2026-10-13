@@ -1120,6 +1120,7 @@ section("§5 · ⛔ D19 · the SHAPE family in public code, and the one crossing
  *   · the five `dev-test` routes are dev-only; `5.ids.4` asserts the production door each sits behind.
  */
 const PUBLIC_IDENTIFIER_REGISTER: Readonly<Record<string, readonly string[]>> = {
+  "src/app/api/dev-test/bet-sheet-observe/route.ts": ["houseBotId"],
   "src/app/api/dev-test/affiliate-e2e/route.ts": ["houseBotId"],
   "src/app/api/dev-test/affiliate-security/route.ts": ["houseBotId"],
   "src/app/api/dev-test/affiliate-seed-recruits/route.ts": ["houseBotId"],
@@ -1209,7 +1210,7 @@ function doorProblems(rel: string, code: string): string[] {
 const devEntries = Object.keys(PUBLIC_IDENTIFIER_REGISTER).filter((r) => r.startsWith("src/app/api/dev-test/"));
 const doorFindings = devEntries.flatMap((rel) => doorProblems(rel, read(rel)));
 ok("5.ids.4 · ⛔ THE DEV-TEST EXEMPTIONS ARE HELD TO THEIR DOOR · every HTTP handler each registered dev-test route exports refuses in production as its FIRST statement — `if (process.env.NODE_ENV === \"production\") return …` — so the house-shaped code below it is unreachable on the live platform, which is the entire claim those five register entries rest on",
-  devEntries.length === 5 && doorFindings.length === 0, j({ routes: devEntries.length, problems: doorFindings }));
+  devEntries.length === 6 && devEntries.includes("src/app/api/dev-test/bet-sheet-observe/route.ts") && doorFindings.length === 0, j({ routes: devEntries.length, problems: doorFindings }));
 
 ok("5.ids.5 · the two player pages that read `houseBotId` are SERVER modules: neither declares \"use client\", and §0's own client-graph walk — the walk `test:house-bot-disclosure` §1 reaches its verdict through — does not reach either of them, while it DOES reach the resolution panel beside them, so this is a measurement and not a dead reach test",
   !isDirective(read(MARKET_PAGE), "use client") && !isDirective(read(POSITIONS), "use client")
@@ -1263,10 +1264,12 @@ ok("5.c4 · CONTROL · THE SWEEP IS LIVE AND THE REGISTER IS DOING WORK · with 
 const DEV_DOOR = "if (process.env.NODE_ENV === \"production\") {";
 const DEV_ROUTE = "src/app/api/dev-test/affiliate-e2e/route.ts";
 const undoored = doorProblems(DEV_ROUTE, plant(read(DEV_ROUTE), DEV_DOOR, "if (false) {"));
+const OBSERVER_ROUTE = "src/app/api/dev-test/bet-sheet-observe/route.ts";
+const observerUndoored = doorProblems(OBSERVER_ROUTE, plant(read(OBSERVER_ROUTE), DEV_DOOR, "if (false) {"));
 const adminAttrs = surfaceFiles.filter((f) => f.rel.endsWith(".tsx")).flatMap((f) => jsxAttributeHits(f.rel, f.code).map((h) => `${f.rel}: ${h}`));
 ok("5.c5 · CONTROL · BOTH PINS MEASURED AGAINST REAL CODE · removing the production door from the REAL dev-test route is reported by 5.ids.4, and the SAME attribute sweep that reports nothing across 8,000 public attribute sites reports the admin surfaces' own three house props — so 5.ids.3's zero is a measurement, not a scan that never fires",
-  undoored.length === 1 && undoored[0].includes("POST") && adminAttrs.length >= 3,
-  j({ undoored, adminAttrs }));
+  undoored.length === 1 && undoored[0].includes("POST") && observerUndoored.length === 1 && observerUndoored[0].includes("GET") && adminAttrs.length >= 3,
+  j({ undoored, observerUndoored, adminAttrs }));
 
 /* ════════════════════════════════════════════════════════════════════════════════════════════════════════════
  * §6 · THE PUBLIC ONE-HOP PAINTERS · L52's SHAPE ON THE SIDE OF THE TREE A PLAYER READS

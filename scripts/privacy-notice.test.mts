@@ -79,11 +79,13 @@ const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[
 // 2026-10-11 · Part C (COMPLIANCE-DECISIONS "Privacy v2026-10-11", the owner's ruling of 2026-10-10): §5's first bullet —
 // on erasure the identity record is held 7 years from closure, then erased except a coded form of the number (§4l holds
 // it to the code). PRIVACY_EN_SHA re-pinned 2026-10-11 from the measured English block (99219bf5625a -> 8c519b652ed0 -> 2009d2e3707b: the selfie named and the images erased with the record, reviews PC-2).
+// 2026-10-13 · S8 WP7b: §7 discloses the necessary bet/link and unresolved request identities in tab storage;
+// §4m proves the marker's field/expiry/recovery contract; the separate necessary-state paragraph measures as 6cb5b4f816b1.
 const PRIVACY_VERSION = "2026-10-13";
 /** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one.
  *  (Re-pinned 2026-10-09 within v2026-10-09: §4's SMS gateway bullet names no company — COMPLIANCE-DECISIONS "Privacy
  *  v2026-10-09", item 5.) */
-const PRIVACY_EN_SHA = "1d4437c7d57d";
+const PRIVACY_EN_SHA = "6cb5b4f816b1";
 /** Every cookie name the code writes, as of v2026-09-30. A new one must be described in §7 first. */
 const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-density", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_preview", "kp_revoked", "kp_session"];
 // ⭐ `_ga` / `_ga_W66WRL67MQ` joined the census 2026-09-15.2: gtag.js SETS them, and our code EXPIRES them when consent is
@@ -733,7 +735,8 @@ ok("§4h control · the journey-count period dropped from ONE locale (zh) is rep
 const plantUngated = gaComponent.replace(' && consent === "granted"', "");
 const plantNudge = promptSrc.replace(/variant="ghost"(?= size="sm" data-testid="consent-allow")/, 'variant="primary"');
 const plantLI = pageSrc.replace("security alerting</li>", "security alerting, measuring how the website is used</li>");
-const plantChoiceSw = pageSrc.replace(/(ndani ya kifaa chako\.\s*<\/p>\s*)<AnalyticsChoice \/>/, "$1");
+const swChoiceSource = blocks(pageSrc).sw;
+const plantChoiceSw = pageSrc.replace(swChoiceSource, swChoiceSource.replace("<AnalyticsChoice />", ""));
 const plantFlagged = shellSrc.replace("<Suspense fallback={null}><LazyConsentPrompt /></Suspense>", "{installInviteLive && <Suspense fallback={null}><LazyConsentPrompt /></Suspense>}");
 const plantIpField = schemaSrc.replace(/(model SiteVisitPage \{[\s\S]*?)(\r?\n  views)/, "$1$2\n  ip      String");
 const plantStorage = beaconSrc.replace("const entry = !entered.current;", "const entry = !localStorage.getItem('kp-seen');");

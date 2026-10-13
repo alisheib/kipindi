@@ -173,7 +173,7 @@ const L = {
   // ── §UI · U40b · THE CONFIRMATION ON SCREEN (ENGINE-SPEC §4.6, and the U40b review's fixes) ──
   u1: "UI.1 · ⭐ 6.4 · A5 · THE CONFIRM BUTTON IS NEVER FOCUSED WHEN THE DIALOG OPENS, NOR AFTER A REFUSAL — modal.tsx keeps `initialFocus={isHard ? inputRef : cancelRef}` byte-identical, exactly once; the Confirm card renders the kit's ConfirmModal once (no Modal and no dialog role of its own) and NEVER re-keys it: a refusal RE-ARMS it (`armKey` = `${watermark}:${attempt}` — the box cleared and the first target given the focus again through the opening's own focusIn, no remount, no blink), and the attempt is bumped in the router's re-arm branch and nowhere else",
   u2: "UI.2 · ⭐ OD67 · THE DIALOG'S TIER IS THE VIEW'S, NEVER THE COUNT'S (the U40a re-review's ruling) — on a listed-size audience of 3 the gate is the TYPED tier (the bare count to type, the digit keypad) for a viewer who may not read a number and the list tier for a reader; 7 people are typed for both; a view with no tier or no count opens nothing; and the card spreads `confirmGate(view)` into the dialog, with no CONFIRM_ENUMERATE_MAX, no confirmTier and no count compared in the card or the copy",
-  u3: "UI.3 · THE KIT'S ADDITIONS ARE ADDITIVE — the hard arm keeps `{ tier: 'hard'; typedWord: string }` and gains only an optional `typedInputMode?: 'numeric'`; the medium arm forbids it (`typedInputMode?: never`, beside `typedWord?: never`); the keypad line is unchanged and opens for the caller's ask or a count word; the gate gives it to the typed tier alone; `armKey?` (both tiers), Modal's `refocusKey?` and ConfirmModal's `confirmHeld?` are optional, the re-arm going through the opening's own focusIn; and no file in src names typedInputMode but the confirmation's gate and the kit, nor armKey, refocusKey or confirmHeld but the Confirm card and the kit (every existing caller unchanged)",
+  u3: "UI.3 · THE KIT'S ADDITIONS ARE ADDITIVE — the hard arm keeps `{ tier: 'hard'; typedWord: string }` and gains only an optional `typedInputMode?: 'numeric'`; the medium arm forbids it (`typedInputMode?: never`, beside `typedWord?: never`); the keypad line is unchanged and opens for the caller's ask or a count word; the gate gives it to the typed tier alone; `armKey?` (both tiers), Modal's `refocusKey?` and ConfirmModal's `confirmHeld?` are optional, the re-arm going through the opening's own focusIn; typedInputMode names only the confirmation's gate and the kit; armKey/refocusKey name exactly the Confirm card, contacts import dialog, S8 bet sheet and kit; confirmHeld names only the Confirm card and kit (every existing caller unchanged)",
   u4: "UI.4 · ⭐ THE CONFIRMATION'S ACTION — confirm-actions.ts is a 'use server' file with EXACTLY ONE exported function, `confirmCampaignAction(formData: FormData)`, whose FIRST statement is `softRequireStaff('growth', 'marketing.campaign.confirm', …)` — and growth is domainForPath('/admin/campaigns') — and which hands the form to `runConfirmFor(g.userId, confirmRequestOf(formData))`; the request reads only the campaign, the typed text and the watermark, never a count; the confirmation is judged as the STORED role sees it (the doors' viewer is `confirmViewerFor`); and the Confirm card imports it and calls it — no orphan",
   u4b: "UI.4b · ⭐ THE READ'S ACTION — confirm-view-actions.ts is a 'use server' file with EXACTLY ONE exported function, `campaignConfirmViewAction(request: unknown)`, whose FIRST statement is the confirmation's gate under the READ's own action (`marketing.campaign.confirm_view` — a refused read is never audited as a refused confirmation), whose SECOND is the officer's read budget (`marketing.campaignConfirmRead`, a real rule: a spent budget answered in words, nothing read), and which hands the request to `readConfirmCardFor(g.userId, confirmReadRequestOf(request))`; the request keeps only the campaign, a whole-number revision and the audience's campaign keys — a posted count, a typed word or any other key is dropped; a refusal of the read's own (the role's, a spent budget's) is printed ALONE, with no way back beside it, while a read lost in transit offers 'Count again'; and the Confirm card imports it and calls it — no orphan",
   u5: "UI.5 · ⭐ THE VIEWER IS THE STORED ROLE'S, AND IT FAILS CLOSED — confirmViewerFor reads GROWTH as no number and no money, FINANCE as money without a number, ADMIN as both; an unknown officer, no officer and a blank id as neither; a role read that throws as neither, and a cell that throws as that cell refused",
@@ -437,6 +437,8 @@ const CARD_REL = `${NEW_DIR}campaign-confirm.tsx`;
 /** S15's import dialog (2026-10-09) passes the kit Modal's optional `refocusKey` to move focus as its steps change — a NEW caller
  *  of the additive prop, not a changed one (UI.3 holds that every OTHER file stays a stranger to these keys). */
 const IMPORT_DIALOG_REL = "src/app/admin/contacts/import/contacts-import-dialog.tsx";
+// S8's sheet uses the same optional re-arm key to focus the heading when its frame changes. It asks for no typed/held gate.
+const BET_SHEET_REL = "src/components/journey/bet-sheet/bet-sheet.tsx";
 const ACTIONS_REL = `${NEW_DIR}confirm-actions.ts`;
 const VIEW_ACTIONS_REL = `${NEW_DIR}confirm-view-actions.ts`;
 const DOORS_REL = `${NEW_DIR}confirm-doors.ts`;
@@ -1354,7 +1356,7 @@ async function runAssertions(impl: Impl): Promise<void> {
       // The re-arm keys and the held Confirm: optional, and the kit's own focusIn does the focusing.
       armOptional: m.includes("armKey?: string | number;") && m.includes("refocusKey?: string | number;") && m.includes("confirmHeld?: boolean;"),
       armThroughFocusIn: m.includes("const refocusSeen = React.useRef(refocusKey);") && m.includes("refocusKey={loading ? undefined : armKey}"),
-      armCallers: json(impl.sources.armKeyHolders) === json([CARD_REL, IMPORT_DIALOG_REL, MODAL_REL].sort()),
+      armCallers: json(impl.sources.armKeyHolders) === json([CARD_REL, IMPORT_DIALOG_REL, BET_SHEET_REL, MODAL_REL].sort()),
       heldCallers: json(impl.sources.heldHolders) === json([CARD_REL, MODAL_REL].sort()),
     };
     return [Object.values(checks).every(Boolean),
@@ -2467,6 +2469,12 @@ if (!PROVE_RED) {
       impl: () => withSources({ modal: plantIn(REAL_SOURCES.modal, "typedWord?: never; typedInputMode?: never };", 'typedWord?: never; typedInputMode?: "numeric" };') }) },
     { name: "R-UI.3b · `armKey` made REQUIRED — every existing ConfirmModal caller stops compiling", expect: [L.u3],
       impl: () => withSources({ modal: plantIn(REAL_SOURCES.modal, "armKey?: string | number;", "armKey: string | number;") }) },
+    { name: "R-UI.3d · another caller joins the re-arm census", expect: [L.u3],
+      impl: () => withSources({ armKeyHolders: [...REAL_SOURCES.armKeyHolders, "src/components/unreviewed-dialog.tsx"].sort() }) },
+    { name: "R-UI.3e · the sheet starts asking for a typed gate", expect: [L.u3],
+      impl: () => withSources({ inputModeHolders: [...REAL_SOURCES.inputModeHolders, BET_SHEET_REL].sort() }) },
+    { name: "R-UI.3f · the sheet starts asking for a held confirmation", expect: [L.u3],
+      impl: () => withSources({ heldHolders: [...REAL_SOURCES.heldHolders, BET_SHEET_REL].sort() }) },
     { name: "R-UI.4 · ⛔ ruling 523 · the confirmation action's guard moved BELOW the confirmation", expect: [L.u4],
       impl: () => withSources({ actions: guardBelow(REAL_SOURCES.actions) }) },
     { name: "R-UI.4b · a second action in the confirmation's file — an orphan beside the one the card imports", expect: [L.u4],

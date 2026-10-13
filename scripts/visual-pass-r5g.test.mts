@@ -25,6 +25,7 @@ import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
 import NodeModule from "node:module";
 import { decomment } from "./lib/decomment.mts";
+import { sameS8PublishedWords } from "./lib/s8-published-words.mts";
 
 const req = createRequire(import.meta.url);
 let pass = 0;
@@ -775,11 +776,19 @@ const keptIn = (mk: string, open: string) => { const m = new RegExp(`${open}((?:
   const legalFiles = walk("src/app/legal");
   const legalKept = legalFiles.filter((f) => /keepRegulator|kp-gbt/.test(code(f)));
   let legalTouched: string[] = [];
+  const privacyFile = "src/app/legal/privacy/page.tsx";
+  const privacyGolden = (() => { try { return execFileSync("git", ["show", `origin/main:${privacyFile}`], { encoding: "utf8" }); } catch { return ""; } })();
+  const approvedPrivacy = (file: string, source = raw(file)) => file === privacyFile && privacyGolden.length > 0 && sameS8PublishedWords(file, source, privacyGolden);
   // Round 7 (R7-A): `_components.tsx` is the legal tree's shared CHROME (the header, where a title breaks — the owner's item
   // 37 — and the section head), not prose; the prose files stay untouched.
-  try { legalTouched = execFileSync("git", ["diff", "--name-only", "HEAD"], { encoding: "utf8" }).split("\n").filter((p) => p.startsWith("src/app/legal/") && p !== "src/app/legal/_components.tsx"); } catch { legalTouched = ["‹git unavailable›"]; }
-  ok(`4.14 · legal prose is left as published: none of the ${legalFiles.length} legal files wraps the name, and this item's diff touches none (D19a's pin; a policy version ships any change there)`,
+  try { legalTouched = execFileSync("git", ["diff", "--name-only", "HEAD"], { encoding: "utf8" }).split("\n").filter((p) => p.startsWith("src/app/legal/") && p !== "src/app/legal/_components.tsx" && !approvedPrivacy(p)); } catch { legalTouched = ["‹git unavailable›"]; }
+  ok(`4.14 · no legal file wraps the regulator name; published clauses stay origin/main's, with only S8's separately pinned necessary-tab disclosure and version accounted for`,
     legalFiles.length >= 14 && legalKept.length === 0 && legalTouched.length === 0, j({ legalKept, legalTouched }));
+  ok("4.14′ CONTROL · S8's named paragraph is accepted, but an old policy clause changed/deleted, a missing new disclosure, or a different legal page is still rejected",
+    approvedPrivacy(privacyFile) && !approvedPrivacy(privacyFile, raw(privacyFile).replace("No advertising cookies.", "Advertising cookies are used."))
+      && !approvedPrivacy(privacyFile, raw(privacyFile).replace("No advertising cookies.", ""))
+      && !approvedPrivacy(privacyFile, raw(privacyFile).replace(/\n {8}<p data-policy-addition="pending-bet">[\s\S]*?\n {8}<\/p>/, ""))
+      && !approvedPrivacy("src/app/legal/terms/page.tsx"));
 }
 
 /* ══ §5 · WHAT CLASSIC READERS KEEP ════════════════════════════════════════════════════════════════════════════════ */

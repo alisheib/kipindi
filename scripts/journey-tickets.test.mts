@@ -44,7 +44,8 @@
  *      server renderer cannot run an error boundary): each mounts in the browser as a fresh render and picks its words
  *      from `useJourneyOn()`, which reads the shell's mark, already in the page.
  *   §11 THE WIRING (A14) — this suite is in predeploy and its red twin is declared.
- *   §12 THE SELL LOOK (WP10) — the journey's look is the card's alone (every host is found on disk), and without it the
+ *   §12 THE SELL LOOK (WP10; S8 question adoption) — the journey's look is the card's and JourneyHolder's alone (every
+ *      host is found on disk), and without it the
  *      button is today's (its classic return and the dialogs it shares pinned line for line, the dialogs' own words
  *      today's); the sale is one code path for both looks; the free offer names the server's clock time beside the
  *      countdown and promises the server's own figure, and every piece of it is drawn only on the free offer; a free
@@ -108,6 +109,7 @@ const HISTORY_ERROR = "src/app/updown/history/error.tsx";
 const TICKETS_DIR = "src/components/journey/tickets/";
 const VIEW = `${TICKETS_DIR}tickets-view.tsx`;
 const CARD = `${TICKETS_DIR}ticket-card.tsx`;
+const QUESTION_HOLDER = "src/components/journey/question/journey-holder.tsx";
 const SWITCH = `${TICKETS_DIR}ticket-switch.tsx`;
 const RAIL = `${TICKETS_DIR}ticket-switch-rail.tsx`;
 const GHOST = `${TICKETS_DIR}tickets-ghost.tsx`;
@@ -130,7 +132,7 @@ const MARKET_PAGE = "src/app/markets/[id]/page.tsx";
 /** The journey's own Tiketi files, each held whole. */
 const JOURNEY_FILES = [VIEW, CARD, SWITCH, RAIL, GHOST, RULE];
 const SOURCES = [PAGE, BAR, LOADING, ERROR, HISTORY, HISTORY_LOADING, HISTORY_GHOST, POSITIONS_GHOST, ROUTE_GHOST, HISTORY_ERROR, ...JOURNEY_FILES,
-  CLASSIC_CARD, TONE, SIDE_LABEL, TABS, GUEST_SHEET, PROXY, SELL_GATE, TW_CONFIG, SELL_BUTTON, SELL_MODAL, SELL_RESULT, SELL_HOST, MARKET_PAGE];
+  CLASSIC_CARD, TONE, SIDE_LABEL, TABS, GUEST_SHEET, PROXY, SELL_GATE, TW_CONFIG, SELL_BUTTON, SELL_MODAL, SELL_RESULT, SELL_HOST, MARKET_PAGE, QUESTION_HOLDER];
 
 type World = {
   files: Readonly<Record<string, string>>;
@@ -903,11 +905,14 @@ function g12SellLook(W: World, ok: Ok) {
   const modal = text(W, SELL_MODAL);
   const look = between(button, "if (journey) {", SELL_CLASSIC_HEAD);
   const hosts = sellHosts(W);
-  const askers = hosts.filter(([f]) => f !== CARD).flatMap(([f, els]) => els.filter((e) => JOURNEY_PROPS.some((x) => e.includes(x))).map(() => f));
+  const askers = hosts.filter(([f]) => f !== CARD && f !== QUESTION_HOLDER).flatMap(([f, els]) => els.filter((e) => JOURNEY_PROPS.some((x) => e.includes(x))).map(() => f));
   const classicHosts = hosts.filter(([f]) => f === PAGE || f === MARKET_PAGE);
-  ok("12.opt-in · the journey look is the journey card's alone: every other file that renders SellButton (found on disk — /positions' classic list and the question page's holder block among them) passes no look and no clock label, so it draws today's button (the free-price flag is every host's since S6 A8b)",
-    SELL_HOSTS_ON_DISK.length >= 3 && [PAGE, MARKET_PAGE, CARD].every((f) => hosts.some(([h]) => h === f)) && classicHosts.every(([, els]) => els.length === 1)
-      && askers.length === 0 && count(text(W, CARD), `look="journey"`) === 1,
+  const holder = text(W, QUESTION_HOLDER);
+  ok("12.opt-in · S8's JourneyHolder and the journey card alone ask for the journey look and the server's free-window clock; every other SellButton host found on disk, including both classic hosts, draws today's button",
+    SELL_HOSTS_ON_DISK.length >= 4 && [PAGE, MARKET_PAGE, CARD, QUESTION_HOLDER].every((f) => hosts.some(([h]) => h === f)) && classicHosts.every(([, els]) => els.length === 1)
+      && askers.length === 0 && count(text(W, CARD), `look="journey"`) === 1 && count(holder, `look="journey"`) === 1
+      && count(holder, "freeExitEndsAt(") === 1 && holder.includes("const freeUntil = freeExitEndsAt({ placedAt: p.placedAt }, m);")
+      && count(holder, CLOCK_LABEL) === 1 && !holder.includes("stackOnPhone"),
     show({ hosts: hosts.map(([f, els]) => `${f} ×${els.length}`), askers }));
   const dialogs = squash(between(button, "const dialogs = (", "if (journey) {"));
   // S6 A8h — and the result a sale opens, from its own module: today's words and figures, line for line.
@@ -1147,6 +1152,9 @@ const unwired: World = { ...WORLD, scripts: { ...WORLD.scripts, predeploy: (WORL
 const PLANTED_HOST = "src/components/markets/zz-planted-sell-host.tsx";
 const classicAsks = swap(PAGE, "alreadyClosed={sellShut}", `alreadyClosed={sellShut} look="journey"`);
 const holderLabel = swap(MARKET_PAGE, "alreadyClosed={sellShut}", "alreadyClosed={sellShut} freeUntilLabel={null}");
+const questionHolderLosesLook = swap(QUESTION_HOLDER, `look="journey"`, "");
+const questionHolderLosesClock = swap(QUESTION_HOLDER, CLOCK_LABEL, "");
+const questionHolderClassicStack = swap(QUESTION_HOLDER, `look="journey"`, `look="journey" stackOnPhone`);
 const thirdHostAsks = withFile(PLANTED_HOST, () => [`import { SellButton } from "@/components/markets/sell-button";`,
   `export function PlantedHost() {`, `  return <SellButton positionId="x" stake={1} value={1} pricedFree look="journey" />;`, `}`].join(LF));
 const classicMoved = swap(SELL_BUTTON, "px-2 py-1 rounded-md", "px-3 py-1 rounded-md");
@@ -1268,6 +1276,9 @@ const plants: Plant[] = [
   { name: "the suite drops out of predeploy", expect: ["11.wired"], world: unwired, landed: unwired.scripts.predeploy !== WORLD.scripts.predeploy },
   { name: "/positions' classic SellButton asks for the journey look", expect: ["12.opt-in"], world: classicAsks, landed: changed(classicAsks, PAGE) },
   { name: "the question page's holder block hands a clock label", expect: ["12.opt-in"], world: holderLabel, landed: changed(holderLabel, MARKET_PAGE) },
+  { name: "the journey question holder loses the journey look", expect: ["12.opt-in"], world: questionHolderLosesLook, landed: changed(questionHolderLosesLook, QUESTION_HOLDER) },
+  { name: "the journey question holder hides the server's free-window clock", expect: ["12.opt-in"], world: questionHolderLosesClock, landed: changed(questionHolderLosesClock, QUESTION_HOLDER) },
+  { name: "the journey question holder asks for the classic-only stack prop", expect: ["12.opt-in"], world: questionHolderClassicStack, landed: changed(questionHolderClassicStack, QUESTION_HOLDER) },
   { name: "a third host, found nowhere in a list, asks for the journey look", expect: ["12.opt-in"], world: thirdHostAsks, landed: changed(thirdHostAsks, PLANTED_HOST) },
   { name: "the classic free strip changes its padding", expect: ["12.default"], world: classicMoved, landed: changed(classicMoved, SELL_BUTTON) },
   { name: "the shared result dialog changes for every reader", expect: ["12.default"], world: sharedMoved, landed: changed(sharedMoved, SELL_RESULT) },

@@ -163,6 +163,8 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/components/brand/reward-burst.tsx": [7, "the gold medallion for money earned (the proposal bonus) — `success` for an approval"],
   "src/components/journey/journey-top-bar.tsx": [1, "the journey's deposit pill — the deposit door (gilt-metal, §M3a)"],
   "src/components/journey/tickets/ticket-card.tsx": [2, "a won ticket's struck payout (§M3)"],
+  "src/components/journey/bet-sheet/bet-sheet.tsx": [2, "S8 money commit (D1) and deposit door label in gilt-metal (§M3a); the estimate remains neutral"],
+  "src/components/journey/question/journey-holder.tsx": [2, "S8's settled WIN status and payout, money earned (§M3), as the classic holder"],
   "src/components/layout/wallet-balance-pill.tsx": [9, "the capsule: the live balance (§8a, 'gold on a live balance only')"],
   "src/components/layout/wallet-sheet.tsx": [1, "the Wallet's deposit door (gilt-metal)"],
   "src/components/markets/bet-confirm-modal.tsx": [1, "the bet commit (D1: bet keeps gold)"],
@@ -254,6 +256,10 @@ const census = new Map<string, Hit[]>();
   ok("1.2 · no registered file gained a gold use (a new one must be RULED, then registered with its reason)", rose.length === 0, rose.join(" | "));
   if (fell.length) note(`✓ fewer than the registry — lock it in: ${fell.join(" · ")}`);
   ok("1.3 · the registry's every entry carries its ruling", Object.values(REGISTRY).every(([n, why]) => n > 0 && why.length > 12));
+  for (const f of ["src/components/journey/bet-sheet/bet-sheet.tsx", "src/components/journey/question/journey-holder.tsx"]) {
+    const planted = read(f) + '\nconst unearned = <span className="text-gold-300">ordinary words</span>;';
+    ok(`1.3s PLANT · a new non-money gold use in ${f} exceeds its ruled census`, goldHits(f, planted).length === REGISTRY[f][0] + 1);
+  }
 
   // ⭐ PLANTS — each spelling of gold the census promises to see, planted in memory, is seen; decoys are not.
   const n = (f: string, s: string) => goldHits(f, s).length;

@@ -59,7 +59,7 @@ export async function premise(base) {
 export async function mintStaffPass(browser, base, { phone = "+255700000084", name = "Fit Support" } = {}) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   try {
-    const seeded = await ctx.request.post(`${base}/api/dev-test/seed-admin`, { data: { role: "SUPPORT", phone, name } });
+    const seeded = await ctx.request.post(`${base}/api/dev-test/seed-admin`, { data: { role: "SUPPORT", phone, name }, timeout: 240_000 });
     if (!seeded.ok()) throw new Error(`/api/dev-test/seed-admin answered ${seeded.status()} — a stale .next 404s every dev-test route: rm -rf .next and restart`);
     const page = await ctx.newPage();
     await page.goto(`${base}/admin/journey`, { waitUntil: "domcontentloaded", timeout: 240_000 });

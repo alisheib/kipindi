@@ -968,6 +968,7 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
         {...(grouping ? groupedAttrs : {})}
         {...(grouping ? { maxLength: undefined } : {})}
         {...(size === "xl" ? { style: { ...inputRest.style, ...xlStyle.figure } } : {})}
+        {...(size === "xl" ? { "data-input-size": "xl" } : {})}
         /**
          * 🔴 AN ERRORED FIELD SAID NOTHING TO A SCREEN READER, AND THAT IS THE SAME DEFECT AS THE
          * LOCKED BOX ABOVE IT (measured 2026-09-21 on `/admin/desk/[id]?tab=rules`: a refused save

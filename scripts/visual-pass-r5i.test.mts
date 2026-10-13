@@ -150,6 +150,10 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/components/home/updown-band.tsx": [2, "SIDE — the band's Up and Down buttons"],
   "src/components/journey/tickets/ticket-card.tsx": [2, "SIDE — a ticket's side chip"],
   "src/components/journey/cards/journey-card.tsx": [2, "SIDE — the journey card's two picks in the side buttons' inks (`btn-yes` / `btn-no`); its result chip takes the outcome's ink from `cardFace` (S7 WP5)"],
+  "src/components/journey/bet-sheet/bet-sheet.tsx": [2, "SIDE — S8 receipt's committed YES/NO chip (§B2), without a projected payout"],
+  "src/components/journey/bet-sheet/sheet-parts.tsx": [2, "SIDE — S8 chosen-side kit Chip, the side locked for this stake (§B2)"],
+  "src/components/journey/question/journey-bet-buttons.tsx": [2, "SIDE — S8 question page's two stake choices, the kit YES/NO button inks (§B2)"],
+  "src/components/journey/question/journey-holder.tsx": [3, "SIDE and LOSS — S8 held ticket's side word plus the owner's betting-rose LOSS ruling (§B2a)"],
   "src/components/layout/live-ticker.tsx": [2, "SIDE — a bet's side in the ticker (classic chrome, frozen)"],
   "src/components/markets/bet-confirm-modal.tsx": [6, "SIDE — the confirm's side plate"],
   "src/components/markets/comments-thread.tsx": [2, "SIDE — a commenter's side chip"],
@@ -220,6 +224,10 @@ const census = new Map<string, Hit[]>();
   ok("1.2 · no registered file gained a use of the pair (a new one must be RULED, then registered with its reason)", rose.length === 0, rose.join(" | "));
   if (fell.length) note(`✓ fewer than the registry — lock it in: ${fell.join(" · ")}`);
   ok("1.3 · the registry's every entry carries its ruling", Object.values(REGISTRY).every(([n, why]) => n > 0 && why.length > 12));
+  for (const f of ["src/components/journey/bet-sheet/bet-sheet.tsx", "src/components/journey/bet-sheet/sheet-parts.tsx", "src/components/journey/question/journey-bet-buttons.tsx", "src/components/journey/question/journey-holder.tsx"]) {
+    const planted = read(f) + '\nconst appState = <span className="text-yes-300">ordinary app state</span>;';
+    ok(`1.3s PLANT · an app-state use of the betting pair in ${f} exceeds its ruled census`, bettingHits(f, planted).length === REGISTRY[f][0] + 1);
+  }
 
   // ⭐ PLANTS — each spelling of the pair the census promises to see, planted in memory, is seen; decoys are not.
   const n = (f: string, s: string) => bettingHits(f, s).length;

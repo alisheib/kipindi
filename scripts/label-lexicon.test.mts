@@ -31,6 +31,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 import { dict, type Locale } from "../src/lib/i18n-dict.ts";
 import {
   sideWord, outcomeWord, positionStatusWord,
@@ -526,6 +527,40 @@ check("§3c a {side}/{outcome}/{status} placeholder is filled from the lexicon, 
   const hitsA: string[] = [];
   const hitsB: string[] = [];
 
+  // Transport arguments keep stored protocol values. Read their syntax ranges,
+  // not whole lines: an adjacent visible title still needs the lexicon.
+  const transportRanges = (source: string): Array<[number, number]> => {
+    const tree = ts.createSourceFile("player.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    const ranges: Array<[number, number]> = [];
+    const visit = (node: ts.Node) => {
+      if (ts.isCallExpression(node)) {
+        const callee = node.expression.getText(tree);
+        const index = callee === "fetch" || callee === "router.push" || callee === "router.replace" ? 0
+          : callee === "window.history.pushState" || callee === "window.history.replaceState" ? 2 : -1;
+        let arg = index < 0 ? undefined : node.arguments[index];
+        while (arg && (ts.isAsExpression(arg) || ts.isParenthesizedExpression(arg))) arg = arg.expression;
+        if (arg && (ts.isTemplateExpression(arg) || ts.isNoSubstitutionTemplateLiteral(arg))) ranges.push([arg.getStart(tree), arg.end]);
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(tree);
+    return ranges;
+  };
+  const visibleBuildLines = (source: string, build: RegExp): number[] => {
+    const transports = transportRanges(source), hits: number[] = [];
+    let offset = 0;
+    source.split("\n").forEach((ln, i) => {
+      if (!LEX.test(ln)) {
+        for (const match of ln.matchAll(new RegExp(build.source, "g"))) {
+          const at = offset + match.index!;
+          if (!transports.some(([start, end]) => at >= start && at < end)) { hits.push(i + 1); break; }
+        }
+      }
+      offset += ln.length + 1;
+    });
+    return hits;
+  };
+
   for (const f of playerJsx) {
     const rel = f.slice(ROOT.length + 1).split(String.fromCharCode(92)).join("/");
     const lines = nl(f).split("\n");
@@ -548,9 +583,7 @@ check("§3c a {side}/{outcome}/{status} placeholder is filled from the lexicon, 
     if (tainted.size) {
       const names = [...tainted].join("|");
       const build = new RegExp("(?:" + names + ")[^;]{0,60}[.]join[(]|[$][{]\s*(?:" + names + ")\s*[}]");
-      lines.forEach((ln, i) => {
-        if (build.test(ln) && !LEX.test(ln)) hitsB.push(`${rel}:${i + 1}`);
-      });
+      for (const line of visibleBuildLines(lines.join("\n"), build)) hitsB.push(`${rel}:${line}`);
     }
   }
 
@@ -604,6 +637,13 @@ check("§3c a {side}/{outcome}/{status} placeholder is filled from the lexicon, 
     const TAINT = /^\s*const\s+(\w+)\s*=(.*)$/;
     check("§3d control · a trailing CR WOULD have blinded the taint rule (why nl() exists)",
       TAINT.test("  const x = p.side;") && !TAINT.test("  const x = p.side;" + String.fromCharCode(13)));
+    const queryBuild = /[$][{]query[}]/;
+    check("§3d control · fetch, navigation and history URLs keep their protocol side",
+      visibleBuildLines('fetch(`/sheet?${query}`);\nrouter.push(\n `/deposit?${query}` as never\n);\nrouter.replace(`/question?${query}`);\nwindow.history.replaceState(null, "", `/question?${query}`);', queryBuild).length === 0);
+    check("§3d control · the same tainted query in a title is rejected beside a transport",
+      visibleBuildLines('fetch(`/sheet?${query}`); const title = `${query}`;', queryBuild).length === 1);
+    check("§3d control · a URL-shaped title is still visible copy and must be rejected",
+      visibleBuildLines('return <h2 title={`/sheet?${query}`}>{`${query}`}</h2>;', queryBuild).length === 1);
   }
 }
 // ───────────────────────────────────────────────────────────────────────────

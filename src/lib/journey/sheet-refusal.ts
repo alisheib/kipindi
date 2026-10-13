@@ -124,9 +124,6 @@ const BY_CODE: Readonly<Record<string, Row>> = {
  * unknown shape — row 2's handling (Open point 35), in doubt, never a guess (review finding 2).
  */
 
-/** The house seam's refusals: they need a house context no player call has (S8-PLAN, the matrix's closing note). */
-export const HOUSE_ONLY_REASONS: readonly string[] = ["house_key_mismatch", "house_intent_superseded"];
-
 /** For the census: the reasons and codes the matrix classifies. */
 export const CLASSIFIED_REASONS: readonly string[] = Object.keys(BY_REASON);
 export const CLASSIFIED_CODES: readonly string[] = Object.keys(BY_CODE);

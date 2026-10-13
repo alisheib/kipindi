@@ -9,7 +9,7 @@ export function QuestionGhost() {
   const { t } = useT();
   const picks = <div className="kp-qghost__picks grid grid-cols-2 gap-3" aria-hidden><div className="h-[64px] rounded-lg bg-bg-overlay kp-shimmer-track" /><div className="h-[64px] rounded-lg bg-bg-overlay kp-shimmer-track" /></div>;
   return <PageContainer tier="reading" className="kp-qghost space-y-5">
-    <div><BackLinkGhost /><header className="mt-3" aria-hidden>
+    <div><BackLinkGhost /><header data-testid="journey-question-ghost" className="mt-3" aria-hidden>
       <div className="mb-3 flex h-[40px] items-center gap-2"><div className="h-[25px] w-[64px] rounded-pill bg-bg-overlay kp-shimmer-track" /><div className="h-[25px] w-[64px] rounded-pill bg-bg-overlay kp-shimmer-track" /></div>
       <div className="mb-3 h-px w-full bg-border" /><div className="h-[35px] rounded bg-bg-overlay kp-shimmer-track md:h-[45px] w-3/4" />
     </header></div>

@@ -56,23 +56,42 @@ export function EstimateFigure({ payout }: { payout: number | null }) {
     if (!element) return;
     let active = true;
     const fitEstimateFigure = () => {
-      if (!active) return;
-      for (const rung of ["--type-h1", "--type-h2", "--type-h3"]) {
-        element.style.fontSize = `var(${rung})`;
-        if (element.scrollWidth <= element.clientWidth) break;
-      }
+      if (!active || element.clientWidth === 0) return;
+      const probe = document.createElement("span"), paint = getComputedStyle(element);
+      probe.setAttribute("aria-hidden", "true");
+      probe.textContent = element.textContent;
+      Object.assign(probe.style, { position: "fixed", visibility: "hidden", whiteSpace: "pre", transitionProperty: "none", animation: "none", fontFamily: paint.fontFamily, fontWeight: paint.fontWeight, fontStyle: paint.fontStyle, letterSpacing: paint.letterSpacing });
+      document.body.appendChild(probe);
+      let chosen = "--type-h4";
+      try {
+        for (const rung of ["--type-h1", "--type-h2", "--type-h3", "--type-h4"]) {
+          probe.style.fontSize = `var(${rung})`;
+          chosen = rung;
+          if (probe.getBoundingClientRect().width <= element.clientWidth) break;
+        }
+      } finally { probe.remove(); }
+      const fontSize = `var(${chosen})`;
+      if (element.style.fontSize !== fontSize) element.style.fontSize = fontSize;
+    };
+    let lastWidth = element.clientWidth;
+    const onEstimateResize = () => {
+      const width = element.clientWidth;
+      if (width === lastWidth) return;
+      lastWidth = width;
+      fitEstimateFigure();
     };
     fitEstimateFigure();
-    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fitEstimateFigure);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(onEstimateResize);
     if (element.parentElement) observer?.observe(element.parentElement);
+    document.fonts.addEventListener("loadingdone", fitEstimateFigure);
     void document.fonts.ready.then(fitEstimateFigure);
-    return () => { active = false; observer?.disconnect(); };
+    return () => { active = false; observer?.disconnect(); document.fonts.removeEventListener("loadingdone", fitEstimateFigure); };
   }, [payout]);
   return <p ref={ref} className="kp-bsheet__estimate-figure amount">{payout === null ? "TZS —" : <>≈ {formatTzs(payout)}</>}</p>;
 }
 
 export function ChosenSide({ t, side }: Pick<Parts, "t" | "side">) {
-  return <Chip variant={side === "YES" ? "yes" : "no"} className="kp-bsheet__chosen">{fill(t.journey.sheetChosen, { side: sideWord(t, side, "MARKET") })}</Chip>;
+  return <Chip variant={side === "YES" ? "yes" : "no"} size="lg" metrics="status" className="kp-bsheet__chosen">{fill(t.journey.sheetChosen, { side: sideWord(t, side, "MARKET") })}</Chip>;
 }
 
 export function HolderNote({ t, locale, frame, side, nowMs }: Pick<Parts, "t" | "locale" | "frame" | "side" | "nowMs">) {
@@ -140,6 +159,6 @@ export function Receipt({ t, locale, seed, side, title, frame, nowMs, onClose }:
       <div><dt>{t.journey.ticketPayout}</dt><dd>{t.journey.ticketPayoutAtResult}</dd></div>
     </dl>
     <p className="kp-bsheet__good-luck">{t.common.goodLuck}</p>
-    <Link className="kp-bsheet__ticket-link" href={positionPermalinkHref(receipt.positionId)} onClick={onClose}>{t.journey.tabTickets}<I.chevronRight s={16} edge="end" /></Link>
+    <Link className="kp-bsheet__ticket-link" href={positionPermalinkHref(receipt.positionId)} onClick={onClose}>{t.journey.tabTickets}<I.chevronRight s={16} edge="end" text="body-400" /></Link>
   </>;
 }

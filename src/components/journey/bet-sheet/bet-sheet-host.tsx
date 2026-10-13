@@ -55,6 +55,7 @@ export function BetSheetHost() {
   const [, setRevision] = useState(0);
   const current = useRef<Active | null>(null);
   const pending = useRef(new Map<string, Pending>());
+  const closedReceipts = useRef(new Map<string, Settled>());
   const requests = useRef(new Set<string>());
   const readingKeys = useRef(new Set<string>());
   const selected = useRef<PendingBetMarker | null>(null);
@@ -133,11 +134,16 @@ export function BetSheetHost() {
     pending.current.delete(id);
     const a = current.current;
     if (selected.current?.k === record.intent.key) selected.current = null;
+    const settled: Settled = { row: replayed ? 24 : 25, reason: null, view: { kind: "receipt", positionId, replayed, quote: record.intent.quote }, retry: "none", doubt: "end", marker: "clear" };
     if (a && activeIdentity(a) === id) {
       stripAddress(a.dropSide);
-      const settled: Settled = { row: replayed ? 24 : 25, reason: null, view: { kind: "receipt", positionId, replayed, quote: record.intent.quote }, retry: "none", doubt: "end", marker: "clear" };
       show({ ...a, settled, pushed: false, viewer: { state: "loading" } });
-    } else if (!a) {
+    } else {
+      // A7: a request can land after its doubtful dialog was closed. The next explicit open shows that receipt
+      // once, without retaining its key/address or turning a late answer into another unplaced bet.
+      closedReceipts.current.set(id, settled);
+    }
+    if (!a) {
       // Closing a doubtful sheet may have left its entry in Forward. Retire that entry too: a receipt can never
       // reopen as an unplaced bet, including when its answer arrived while the dialog was closed.
       const bet = pendingBetFrom(window.location.pathname, new URLSearchParams(window.location.search));
@@ -182,13 +188,17 @@ export function BetSheetHost() {
     const raw = (() => { try { return window.sessionStorage.getItem(PENDING_BET_KEY); } catch { return null; } })();
     const bet = { kind: "market" as const, id: seed.id, side, stake: pendingBetFrom(window.location.pathname, new URLSearchParams(window.location.search))?.stake ?? null };
     const remembered = pending.current.get(identity({ marketId: seed.id, side }));
-    const stake = remembered?.intent.quote.stake ?? sheetPreset(seed, stakeFromUrl(bet, raw, stamp));
-    show({ seed, side, title, stakeText: String(stake), viewer: { state: "loading" }, offset: clockOffset(seed.serverNow, stamp), serial: ++serial.current, pathname: window.location.pathname, pushed, dropSide, settled: null, estimateUpdated: false, lowCounted: false });
+    const id = identity({ marketId: seed.id, side });
+    const received = closedReceipts.current.get(id) ?? null;
+    closedReceipts.current.delete(id);
+    const stake = received?.view.kind === "receipt" ? received.view.quote.stake : remembered?.intent.quote.stake ?? sheetPreset(seed, stakeFromUrl(bet, raw, stamp));
+    if (received) stripAddress(dropSide);
+    show({ seed, side, title, stakeText: String(stake), viewer: { state: "loading" }, offset: clockOffset(seed.serverNow, stamp), serial: ++serial.current, pathname: window.location.pathname, pushed: received ? false : pushed, dropSide, settled: received, estimateUpdated: false, lowCounted: false });
     setNow(stamp);
     sendFunnel("sheet_open", origin);
     void refreshed(true);
     if (remembered?.intent.phase === "inDoubt") void readKey(remembered);
-  }, [readKey, refreshed, show]);
+  }, [readKey, refreshed, show, stripAddress]);
 
   const close = useCallback(() => {
     const a = current.current;

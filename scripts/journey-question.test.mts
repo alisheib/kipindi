@@ -2,6 +2,7 @@
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { JourneyCard, type JourneyCardMarket } from "../src/components/journey/cards/journey-card.tsx";
 import { JourneyBetButtons } from "../src/components/journey/question/journey-bet-buttons.tsx";
 import { JourneyHolder } from "../src/components/journey/question/journey-holder.tsx";
@@ -27,18 +28,25 @@ const read = (p: string) => decomment(readFileSync(new URL(`../${p}`, import.met
 const page = read("src/app/markets/[id]/page.tsx");
 const detailLoading = read("src/app/markets/[id]/loading.tsx");
 const parentLoading = read("src/app/markets/loading.tsx");
+const questionGhost = read("src/components/journey/question/question-ghost.tsx");
+// S8's fetched, immutable pre-product main. WP8 moved this drawing wholesale so loading.tsx can select its reader;
+// only the default export's name changed. Comparing the original bytes keeps future main merges from rebasing proof.
+const CLASSIC_GHOST_BASE = "7624cf8c9db9f6e43d62d3ff03d09364385e96cc";
+const oldBoardGhost = execFileSync("git", ["show", `${CLASSIC_GHOST_BASE}:src/app/markets/loading.tsx`], { encoding: "utf8" }).replace(/\r\n/g, "\n");
+const canonicalBoardGhost = oldBoardGhost.replace("export default function MarketsLoading()", "export default function MarketsGhost()");
+const boardGhost = readFileSync(new URL("../src/app/markets/markets-ghost.tsx", import.meta.url), "utf8").replace(/\r\n/g, "\n");
 const decode = (s: string) => s.replaceAll("&quot;", '"').replaceAll("&#x27;", "'").replaceAll("&amp;", "&").replaceAll("&lt;", "<").replaceAll("&gt;", ">");
 const attr = (html: string, name: string) => { const match = new RegExp(` ${name}="([^"]*)"`).exec(html); return match ? decode(match[1]) : null; };
 const shown = (m: JourneyCardMarket, locale: Locale, onBreak: { until: string; exclusion: boolean } | null = null, supplied: SheetSeed | null = seed) =>
   renderToStaticMarkup(h(JourneyCard, { m, nowMs: NOW, t: dict[locale], locale, sheet: supplied, onBreak }));
 const buttons = (locale: Locale, s: SheetSeed = seed) => renderToStaticMarkup(h(JourneyBetButtons, { seed: s, title: cardTitle(locale, market).text, t: dict[locale], headingId: "test-heading" }));
-type World = { open: Record<Locale, string>; break: Record<Locale, string>; other: string[]; buttons: Record<Locale, string>; closedButtons: string; page: string; detailLoading: string; parentLoading: string };
+type World = { open: Record<Locale, string>; break: Record<Locale, string>; other: string[]; buttons: Record<Locale, string>; closedButtons: string; page: string; detailLoading: string; parentLoading: string; questionGhost: string; boardGhost: string };
 const LOCALES = ["sw", "en", "zh"] as const;
 const real: World = {
   open: Object.fromEntries(LOCALES.map((l) => [l, shown(market, l)])) as World["open"],
   break: Object.fromEntries(LOCALES.map((l) => [l, shown(market, l, { until: new Date(NOW + 86_400_000).toISOString(), exclusion: false })])) as World["break"],
   other: [shown(market, "sw", null, null), shown({ ...market, status: "CLOSED" }, "sw"), shown({ ...market, status: "RESOLVED", resolvedOutcome: "YES" }, "sw"), shown({ ...market, productLine: "UPDOWN" }, "sw")],
-  buttons: Object.fromEntries(LOCALES.map((l) => [l, buttons(l)])) as World["buttons"], closedButtons: buttons("sw", { ...seed, bettable: false }), page, detailLoading, parentLoading,
+  buttons: Object.fromEntries(LOCALES.map((l) => [l, buttons(l)])) as World["buttons"], closedButtons: buttons("sw", { ...seed, bettable: false }), page, detailLoading, parentLoading, questionGhost, boardGhost,
 };
 function checks(w: World): string[] {
   const failed: string[] = [];
@@ -57,7 +65,13 @@ function checks(w: World): string[] {
   ok("loading", w.detailLoading.includes('const { journey } = await resolveSimpleJourney();')
     && w.detailLoading.includes('if (journey) return <LazyJourneyRouteGhost rails={[]} at="/markets/[id]" />;')
     && w.detailLoading.includes('return <MarketDetailGhost />;') && w.parentLoading.includes('journey && /^\\/markets\\/[^/]+$/.test(pathname)')
-    && w.parentLoading.includes('return <MarketsGhost />;'));
+    && w.parentLoading.includes('return <MarketsGhost />;') && w.parentLoading.includes('import MarketsGhost from "./markets-ghost";')
+    && w.parentLoading.includes('import { headers } from "next/headers";')
+    && w.parentLoading.includes('const pathname = (await headers()).get("x-pathname") ?? "";')
+    && !w.parentLoading.includes('"use client"') && !w.detailLoading.includes('"use client"'));
+  ok("board-ghost", oldBoardGhost.includes("export default function MarketsLoading()") && w.boardGhost === canonicalBoardGhost);
+  ok("ghost-marker", (w.questionGhost.match(/data-testid="journey-question-ghost"/g) ?? []).length === 1
+    && /<header data-testid="journey-question-ghost" className="mt-3" aria-hidden>/.test(w.questionGhost));
   return failed;
 }
 const failures = checks(real);
@@ -74,6 +88,11 @@ if (!process.argv.includes("--prove-red")) {
     ["buttons", { ...real, closedButtons: real.buttons.sw }],
     ["mount", { ...real, page: page.replace('className="lg:hidden"', 'className="grid"') }],
     ["loading", { ...real, parentLoading: parentLoading.replace('journey && /^\\/markets\\/[^/]+$/.test(pathname)', 'journey') }],
+    ["ghost-marker", { ...real, questionGhost: questionGhost.replace('data-testid="journey-question-ghost"', '') }],
+    ["board-ghost", { ...real, boardGhost: boardGhost.replace('tier="board"', 'tier="reading"') }],
+    ["board-ghost", { ...real, boardGhost: boardGhost.replace('"use client";', '') }],
+    ["loading", { ...real, parentLoading: parentLoading.replace('"x-pathname"', '"x-wrong-pathname"') }],
+    ["loading", { ...real, parentLoading: `"use client";\n${parentLoading}` }],
   ];
   const missed = plants.filter(([expect, world]) => { const got = checks(world); return got.length !== 1 || got[0] !== expect; });
   console.log(`journey-question red: ${plants.length - missed.length}/${plants.length} caught${missed.length ? ` MISSED ${missed.map(([n]) => n).join(", ")}` : ""}`);

@@ -216,7 +216,18 @@ ok("1: the platform zone resolves to a real IANA zone", /^[A-Za-z]+\/[A-Za-z_]+$
     ok(`3: ...the journey card's <time dateTime={${m[1].trim()}}> names the SAME instant it formats`, m[1].trim() === m[2].trim(),
       `dateTime=${m[1]} formats ${m[2]}`);
   }
-  ok("3: ...and the journey card formats no date outside it", eatCalls(jcard).length === jdated.length && englishIn(jcard).length === 0,
+  // S8's break row also states its end, through the same localized formatter used by every break notice.
+  const breakDates = (src: string) => eatCalls(src).filter((c) => c.fn === "formatBreakEnd");
+  const ownBreakEnd = (src: string) => {
+    const calls = breakDates(src);
+    return calls.length === 1 && calls[0].args[0] === "Date.parse(face.picks.until)" && calls[0].args[1] === "nowMs" && inReaderWords(calls[0]);
+  };
+  ok("3: the journey card's break row states its own end in the reader's words", ownBreakEnd(jcard), showCalls(breakDates(jcard)));
+  ok("3: CONTROL · another end, missing month words, and a second break formatter are rejected",
+    !ownBreakEnd(jcard.replace("formatBreakEnd(Date.parse(face.picks.until)", "formatBreakEnd(Date.parse(m.resolutionAt)"))
+      && !ownBreakEnd(jcard.replace("formatBreakEnd(Date.parse(face.picks.until), nowMs, t.common.monthsShort, locale)", "formatBreakEnd(Date.parse(face.picks.until), nowMs, undefined, locale)"))
+      && !ownBreakEnd(jcard + "\nformatBreakEnd(Date.parse(face.picks.until), nowMs, t.common.monthsShort, locale);"));
+  ok("3: ...and the journey card formats no date outside its settled instant and break end", eatCalls(jcard).length === jdated.length + breakDates(jcard).length && englishIn(jcard).length === 0,
     `${eatCalls(jcard).length} localized calls, English: ${englishIn(jcard).join(", ") || "none"}`);
   ok("3: the journey card formats on the server, never with a locale formatter of its own",
     jcard.length > 0 && !/["']use (?:client|server)["']/.test(jcard) && !/toLocale(Date|Time)?String/.test(jcard));

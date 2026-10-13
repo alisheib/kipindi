@@ -30,6 +30,12 @@ other unfinished requests intact. This tab data contains no account credentials,
 **Version and proof.** The page's three META labels and `POLICY_PAGES.privacy.codeVersion` move together to
 2026-10-13. `test:privacy-notice` §4m binds the three disclosures to the marker's actual fields, lifetime and request-key
 round trip, with planted controls; `test:policy-lines` continues to bind the public version to its saved-line rules.
+The necessary-tab disclosure is its own paragraph in each language; its English content block measures
+`6cb5b4f816b1`. The original policy clauses and existing dictionary entries still compare against `origin/main`.
+`scripts/lib/s8-published-words.mts` separately pins only these three new paragraphs, this version change and S8's
+59 approved journey keys per language; changing or deleting an old clause/entry, changing or deleting an addition,
+or inserting an unapproved key/paragraph fails the copied-source controls. This is the scoped implementation of the
+approved S8 publication, not a replacement of the published-text golden with the working tree.
 
 **Limit.** This describes recovery within one browser tab and the stated lifetime; closing that tab loses the local
 marker. The server's ledger and tickets remain the record of placed bets.

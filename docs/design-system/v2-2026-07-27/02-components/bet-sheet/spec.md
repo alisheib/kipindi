@@ -12,12 +12,17 @@ the journey rollout; the classic dial keeps its surface until the flip. Implemen
 - The side is locked. The question names edit, low, loss-room and pending frames; a blocking/closed title names those
   frames, with the question above it; the receipt is named by its side and committed stake. Each frame re-arms heading
   focus. The CloseX is the safe way out after a covering dialog leaves.
-- The grouped stake uses Input's xl rung. Low, pending and loss-room use neutral attention plus aria-invalid and a
+- The grouped stake uses Input's xl rung. Low, pending, loss-room and nonempty bounds breaks use neutral attention plus aria-invalid and a
   reason association. The chip ring uses an outline that survives forced colours. Placing locks input/chips/commit and
   withholds CloseX, scrim and Escape. In doubt keeps the frozen quote and the same key; the host decides the retry.
+  The phone anti-zoom rule preserves the opt-in xl 24px figure. Chip choices show whole grouped numbers under the
+  field's TZS prefix, as on the approved boards, so the four choices fit at 320px without truncating money. The chosen
+  side and receipt side use the same large kit status metrics; deposit choices fill three equal columns.
 - The estimate uses inset paint and neutral money ink. The amount, multiple and fee read the frozen-market engine.
   Empty, one-sided, hidden legacy, thin, below-bound and newly updated estimates each have their own supplied copy.
   Balance and a low frame's current-balance figure use Cash privacy. No estimate appears on a committed receipt.
+  Long full figures step through the existing heading rungs after measuring their width, including after fonts arrive
+  or the container changes; the amount is never abbreviated or rounded for fit.
 - The low frame shows only the deposit/bet-instead offers the engine permits. The deposit row names the open phone
   wallets, holding each wallet name whole. The selected deposit chip's remainder is the deposit engine's. A pause
   sentence names mobile money only, because Card is outside this gate. Pending is described at its server-clock age.
