@@ -60,6 +60,13 @@ jobs:
       - name: Content integrity
         run: npm run test:integrity
 
+      # db-scratch suites own a separate, marked cluster on 5433. Keep their optional
+      # binary runtime outside the locked application install and Railway builds.
+      - name: Install scratch database test runtime
+        run: |
+          npm install --prefix /tmp/50pick-ci-scratch --no-audit --no-fund embedded-postgres@18.3.0-beta.17
+          ln -s /tmp/50pick-ci-scratch/node_modules/embedded-postgres node_modules/embedded-postgres
+
       # In-memory suite (no DATABASE_URL).
       #
       # Five suites drive a running local browser/server. Run them serially below against

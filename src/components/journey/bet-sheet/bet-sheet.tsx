@@ -17,6 +17,7 @@ import { sideWord } from "@/lib/side-label";
 import { DWELL_BET_RECEIPT_MS } from "@/lib/feedback-timing";
 import { sheetEstimate, type SheetFrame, type SheetLine, type SheetSeed, type SheetSide } from "@/lib/journey/sheet-state";
 import { depositLeftAfterFor } from "@/lib/journey/shortfall";
+import { nextSheetFocus, type SheetFocusState } from "@/lib/journey/sheet-focus";
 import { BalanceRow, BetInstead, ChosenSide, EstimateBox, HolderNote, Receipt, SheetSentence, sheetLineText, sheetTemplate } from "./sheet-parts";
 
 export type BetSheetProps = {
@@ -132,7 +133,7 @@ export function BetSheetBody(props: BodyProps) {
           {frame.block?.actions.includes("setLimits") && <Link className="kp-bsheet__link" href="/profile/responsible-gambling" onClick={onClose}>{t.rg.setLimits}</Link>}
           {frame.block?.actions.includes("contactSupport") && <Link className="kp-bsheet__link" href="/help" onClick={onClose}>{t.kycGate.frozenCta}</Link>}
           <Button type="button" variant="ghost" size="xl" fullWidth onClick={onClose}>{t.common.gotIt}</Button>
-        </> : footerLine && <Button type="button" variant="gold" size="xl" fullWidth className="kp-bsheet__commit" data-testid="journey-sheet-place" disabled={!frame.cta?.enabled} aria-describedby={descriptionId} onClick={onPlace}><SheetSentence t={t} locale={locale} nowMs={nowMs} line={footerLine} /></Button>}
+        </> : footerLine && <Button type="button" variant="gold" size="xl" fullWidth className="kp-bsheet__commit" data-testid="journey-sheet-place" disabled={!frame.cta?.enabled} aria-describedby={descriptionId} onClick={onPlace}><span><SheetSentence t={t} locale={locale} nowMs={nowMs} line={footerLine} /></span></Button>}
     </div>
   </>;
 }
@@ -145,6 +146,12 @@ export function BetSheet(props: BetSheetProps) {
   const id = useId();
   const headingRef = useRef<HTMLHeadingElement>(null), closeRef = useRef<HTMLButtonElement>(null), shellRef = useRef<HTMLDivElement>(null);
   const [stakeFocused, setStakeFocused] = useState(false), [keyboard, setKeyboard] = useState(false);
+  const focusIdentity = JSON.stringify([props.seed.id, props.side, props.frame.receipt?.positionId ?? null]);
+  const [focusState, setFocusState] = useState<SheetFocusState>(() => ({ identity: focusIdentity, frame: props.frame.frame, revision: 0 }));
+  const nextFocus = nextSheetFocus(focusState, focusIdentity, props.frame.frame, stakeFocused);
+  // Adjust during render, as useExitPhase does: no intermediate paint steals the field's focus or drops its lift.
+  if (nextFocus !== focusState) setFocusState(nextFocus);
+  const refocusKey = `${nextFocus.identity}:${nextFocus.revision}`;
   const [depositAmount, setDepositAmount] = useState<number | null>(null);
   const [live, setLive] = useState("");
   const nowMs = Date.now();
@@ -230,7 +237,7 @@ export function BetSheet(props: BetSheetProps) {
   const terminal = props.frame.frame === "closed" || props.frame.frame === "blocked";
   return <Modal open={open} onClose={props.onClose} labelledBy={`${id}-title`} describedBy={terminal ? `${id}-callout` : undefined}
     sheet sheetUntil="lg" maxWidth={440} showClose={false} initialFocus={headingRef} safeFocus={closeRef}
-    refocusKey={props.frame.frame} panelClassName="kp-wsheet kp-bsheet" closeOnScrim={props.frame.closable} closeOnEsc={props.frame.closable} ariaBusy={props.frame.frame === "placing"}>
+    refocusKey={refocusKey} panelClassName="kp-wsheet kp-bsheet" closeOnScrim={props.frame.closable} closeOnEsc={props.frame.closable} ariaBusy={props.frame.frame === "placing"}>
     <div ref={shellRef} className="kp-bsheet__shell" data-testid="journey-bet-sheet" data-frame={props.frame.frame} data-ptr-skip=""
       onFocusCapture={(event) => { if (open && receiptId && event.target.matches(":focus-visible")) hold("focus"); }}
       onBlurCapture={(event) => { if (open && !event.currentTarget.contains(event.relatedTarget)) release("focus"); }}

@@ -188,8 +188,8 @@ async function loadEmbeddedPostgres(): Promise<any> {
         `   this repo — they are 107 MB and would be downloaded into every Railway build.\n\n` +
         `   Install them once, locally:\n\n` +
         `     npm i -D --no-save embedded-postgres@18.3.0-beta.17\n\n` +
-        `   (18.3 matches production. CI does not need this: the nightly workflow uses a\n` +
-        `   postgres:18 service container instead.)\n`,
+        `   (18.3 matches production. CI installs this in an isolated test runtime;\n` +
+        `   the nightly workflow uses its postgres:18 service container.)\n`,
     );
     process.exit(2);
   }

@@ -627,6 +627,32 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   The actual lifecycle browser drive passes 12/12: failed reads recover, the silent inert ghost leaves in 153 ms,
   reduced motion leaves in 11 ms, and old handlers cannot commit against an unrelated reopen. S9 preparation is separately pushed at `6f741881f` on
   `codex/vodacom-s9`: the deposit plan and pure state core (168 controls, 38 mutants), without an application caller.
+  The later coherent Chromium drive passes 370 checks with six explicitly permitted exceptions, followed by a
+  stricter rendered cooling/sign-in proof. That stricter proof invalidated the earlier blank cooling tile and found
+  the session-ended route calling `.catch` on the memory DAL's synchronous user result. It and the two remaining
+  bare-DAL catch sites now handle synchronous values/throws and asynchronous values/rejections; 25 executed
+  outcome/census/defect checks and the read/privacy/push regressions pass. The final rendered cooling drive is 5/5:
+  a second context revokes the session, the real sign-in restores the same wallet balance and break, and neither
+  Position nor BET_PLACED counts change. Both final viewport tiles are read.
+  The keyboard's longer typing sequence found editable frame changes stole focus and removed its viewport lift.
+  The A12 correction preserves focus only during same-question stake typing, while every other frame/identity change
+  retains the heading re-arm and Enter beat. Its 648 pure sequence cases and six actual 320/360 language cells pass;
+  the final sheet proof is 58 checks/114 mutants. WebKit's final two-reload, two-width, three-language drive is 181/181.
+  The complete static A14 read covers 480 tops and 396 bottoms, plus 12 corrected footer captures
+  ([record](qa/s8-a14-static-body-read.md)). A further narrow title-balance repair replaces the Chinese 320px
+  two-character last line; 36 representative top states and 30 bottoms retain their geometry, and removing the
+  declaration fails the same rendered line-balance verdict. The shared normal/journey press helper reuses the actual CSS keyframes
+  and removes its temporary DOM class before React can observe it; repeated taps cancel, and all three motion-off
+  gates cancel an ongoing pulse (22 actual browser controls/plants, R9C 65 and R5H 59 guards).
+  The fresh v4 null compare's clock/geometry controls now hold, but encoded sign-in return links exposed one further
+  generated-ID normalization gap. Twenty-six rendered controls hold the narrow encoded-ID repair; new baseline,
+  fresh null and branch comparisons remain pending. GitHub PR #1 is draft. Its first CI run failed on missing optional
+  scratch binaries and test-fixture portability/cancellation/scanner issues; those are repaired, with 195 marketing
+  and 33 export mutation controls, while a fresh Linux CI run remains required. S9's independently reviewed funding
+  recovery checkpoint `f041e56e3` is also pushed, with 34 memory/34 Postgres cases and 10 defect plants. Its additive
+  persistence checkpoint `898a05ff6` is separately pushed, including immutable pendingBet/origin, 32 memory/34
+  Postgres persistence checks and 17 mutation controls, plus 39 memory/39 Postgres service checks and 12 plants.
+  Status-core/adapters remain in progress on that separate branch and S9 is not closed.
   **Still NOT CLOSED / NOT LIVE:** current browser/visual closure, clean exact-tip production proof, repaired v4
   baseline/null/branch parity, complete battery and both-host production read-back are required.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;

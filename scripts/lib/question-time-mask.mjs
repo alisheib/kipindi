@@ -2,7 +2,8 @@
 export function maskQuestionEventTimes(html) {
   let fields = 0;
   const masked = html.replace(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi, (script, attributes, json) => {
-    const attrs = [...attributes.matchAll(/(?:^|\s)([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g)];
+    // Hex quote/backtick spellings keep the literal-aware source guard unambiguous without changing HTML grammar.
+    const attrs = [...attributes.matchAll(/(?:^|\s)([^\s\x22\x27<>/=]+)(?:\s*=\s*(?:\x22([^\x22]*)\x22|\x27([^\x27]*)\x27|([^\s\x22\x27=<>\x60]+)))?/g)];
     const type = attrs.find((match) => match[1].toLowerCase() === "type");
     if (!type || (type[2] ?? type[3] ?? type[4]) !== "application/ld+json") return script;
     let event;
@@ -12,7 +13,7 @@ export function maskQuestionEventTimes(html) {
     const edits = [];
     let depth = 0, previous = null, key = null;
     // JSON.parse validates the grammar first. String tokens include their escapes; nesting keeps child dates intact.
-    for (const match of json.matchAll(/"(?:\\.|[^"\\])*"|[{}\[\]:,]|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null/g)) {
+    for (const match of json.matchAll(/\x22(?:\\.|[^\x22\\])*\x22|[{}\[\]:,]|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null/g)) {
       const token = match[0];
       if (depth === 1 && token.startsWith('"') && (previous === "{" || previous === ",")) key = JSON.parse(token);
       else if (depth === 1 && previous === ":") {

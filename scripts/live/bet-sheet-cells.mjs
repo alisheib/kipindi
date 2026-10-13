@@ -48,7 +48,7 @@ export function betSheetDomProbe(selectors) {
   return {
     present: true, frame: root.dataset.frame, focusedInside: root.contains(document.activeElement), headingFocused: heading === document.activeElement,
     viewport: { width: innerWidth, height: innerHeight, visualHeight: visualViewport?.height ?? innerHeight },
-    root: rect(root), heading: rect(heading), stake: stakeBox, place: rect(place), scroll: scrollBox, stakeClipped, stakePainted,
+    root: rect(root), heading: rect(heading), stake: stakeBox, place: rect(place), close: rect(root.querySelector(selectors.close)), scroll: scrollBox, stakeClipped, stakePainted,
     stakeValue: stake?.value, stakeInvalid: stake?.getAttribute("aria-invalid"), stakeLocked: !!stake?.disabled,
     attentionBorder: box ? { width: getComputedStyle(box).borderTopWidth, color: getComputedStyle(box).borderTopColor, background: getComputedStyle(box).backgroundColor } : null,
     placeDisabled: place ? !!place.disabled : null,
@@ -72,6 +72,7 @@ export function betSheetDomVerdict(probe, { frame = null, focus = false, trap = 
   if (keyboard && probe.stake && probe.stakeClipped) errors.push("stake is clipped by the sheet scroller");
   if (keyboard && probe.stake && !probe.stakePainted) errors.push("stake is obscured");
   if (keyboard && probe.place && probe.place.bottom > probe.viewport.visualHeight + 1) errors.push("CTA lies behind the keyboard");
+  if (keyboard && probe.close && (probe.close.top < 0 || probe.close.bottom > probe.viewport.visualHeight + 1)) errors.push("CloseX lies behind the keyboard");
   if (depositMetal && probe.visibleDeposit && !probe.depositPaint?.image.includes("gradient(")) errors.push("deposit loses its gold material");
   if (["placing", "inDoubt"].includes(probe.frame) && !probe.stakeLocked) errors.push("frozen intent stake remains editable");
   if (["low", "lossRoom", "pending"].includes(probe.frame)) {

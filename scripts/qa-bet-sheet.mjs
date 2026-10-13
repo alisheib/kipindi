@@ -19,14 +19,14 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = resolve(process.argv[2] ?? join(tmpdir(), `qa-bet-sheet-${Date.now()}`));
 const rel = relative(ROOT, OUT);
 if (!rel.startsWith("..") && !isAbsolute(rel)) { console.error("REFUSED: output must be outside the repository"); process.exit(2); }
-const SECTIONS = ["controls", "v20", "once", "lock", "host", "lifecycle", "low", "matrix", "doors", "tap"];
+const SECTIONS = ["controls", "v20", "keyboard", "once", "lock", "host", "lifecycle", "low", "matrix", "cooling", "doors", "tap"];
 const ONLY = (process.env.KP_ONLY ?? "").split(",").filter(Boolean);
 if (ONLY.some(s => !SECTIONS.includes(s))) { console.error(`REFUSED: KP_ONLY must name ${SECTIONS.join(",")}`); process.exit(2); }
 const run = s => !ONLY.length || ONLY.includes(s);
 const LOCALES = (process.env.KP_LOCALES ?? "sw,en,zh").split(",");
-const WIDTHS = (process.env.KP_WIDTHS ?? "360,390,1280").split(",").map(Number);
-if (LOCALES.some(locale => !["sw", "en", "zh"].includes(locale)) || WIDTHS.some(width => ![360, 390, 1280].includes(width))) { console.error("REFUSED: invalid locale/width selection"); process.exit(2); }
-const VIEWPORTS = WIDTHS.map(width => ({ width, height: width === 360 ? 640 : width === 390 ? 844 : 900 }));
+const WIDTHS = (process.env.KP_WIDTHS ?? "320,360,390,1280").split(",").map(Number);
+if (LOCALES.some(locale => !["sw", "en", "zh"].includes(locale)) || WIDTHS.some(width => ![320, 360, 390, 1280].includes(width))) { console.error("REFUSED: invalid locale/width selection"); process.exit(2); }
+const VIEWPORTS = WIDTHS.map(width => ({ width, height: width <= 360 ? 640 : width === 390 ? 844 : 900 }));
 const RELOADS = Number(process.env.KP_RELOADS ?? "1");
 if (!Number.isInteger(RELOADS) || RELOADS < 1 || RELOADS > 3) { console.error("REFUSED: KP_RELOADS must be1–3"); process.exit(2); }
 const pre = await premise(BASE);
@@ -64,7 +64,10 @@ async function context(locale = "en", viewport = { width: 390, height: 844 }, { 
 async function pageIn(ctx, route = "/") {
   const page = await ctx.newPage();
   await readyProbe(page);
-  page.on("console", m => { if (["error", "warning"].includes(m.type())) consoleRows.push({ route, type: m.type(), text: m.text() }); });
+  page.on("console", m => {
+    if (["error", "warning"].includes(m.type())) consoleRows.push({ route, type: m.type(), text: m.text() });
+    if (/hydrated but|hydration failed|server rendered HTML didn't match/i.test(m.text())) result(`${route}: hydration mismatch`, "FAIL", "Full console text, attribute and element retained in evidence.json");
+  });
   page.on("pageerror", error => { consoleRows.push({ route, type: "pageerror", text: error.message }); result(`${route}: uncaught page error`, "FAIL", error.message.slice(0, 180)); });
   await page.goto(BASE + route, { waitUntil: "domcontentloaded", timeout: 240_000 });
   await page.waitForFunction(() => document.querySelector("main"), { timeout: 90_000 });
@@ -73,7 +76,9 @@ async function pageIn(ctx, route = "/") {
 }
 async function readyProbe(page) {
   await page.addInitScript(tracing => {
-    window.__sheetDocument = crypto.randomUUID();
+    // This diagnostic also runs in child documents whose secure-context UUID API may be unavailable.
+    // It never supplies a money intent or changes the application's crypto.
+    window.__sheetDocument = globalThis.crypto?.randomUUID?.() ?? `qa-${performance.timeOrigin}-${Math.random()}`;
     if (tracing) {
       window.__sheetTrace = [];
       const identity = node => node instanceof Element ? { tag: node.tagName, id: node.id, testid: node.getAttribute("data-testid"), nearestSheet: node.closest('[data-testid="journey-bet-sheet"]')?.getAttribute("data-frame"), nearestDialog: node.closest('[role="dialog"]')?.getAttribute("aria-labelledby") } : null;
@@ -145,12 +150,12 @@ async function observed(ctx, marketId) {
 }
 // Persistent RG changes use isolated local seeded PLAYER accounts so one hour's cooling-off cannot poison the demo
 // player's later cells. The actual limits/cooling/freeze forms and services still make every decision.
-async function freshPlayer(balance = 100000) {
-  const ctx = await context("en", { width: 390, height: 844 }, { signedIn: false });
+async function freshPlayer(balance = 100000, {locale="en",viewport={width:390,height:844}}={}) {
+  const ctx = await context(locale, viewport, { signedIn: false });
   const phone = `+25571${String(parseInt(crypto.randomUUID().replaceAll("-", "").slice(0, 10), 16) % 10_000_000).padStart(7, "0")}`;
   const seeded = await post(ctx, "seed-admin", { role: "PLAYER", phone, name: "Local Sheet Matrix", balance });
   if (seeded.note) throw new Error("Synthetic account already existed: invalid fresh-player premise");
-  return { ctx, userId: seeded.userId, phone };
+  return { ctx, userId: seeded.userId, phone, password: seeded.password };
 }
 async function sibling(ctx) {
   const other = await browser.newContext({ viewport: { width: 1280, height: 900 } }); contexts.add(other);
@@ -170,7 +175,7 @@ async function hydratedClick(locator) {
   for (let n = 0; n < 300; n++) {
     if (await locator.evaluate(el => {
       const props = node => node && Object.keys(node).filter(key => key.startsWith("__reactProps$")).map(key => node[key]);
-      return props(el)?.some(p => typeof p.onClick === "function") || props(el.closest("form"))?.some(p => typeof p.onSubmit === "function");
+      return props(el)?.some(p => typeof p.onClick === "function") || props(el.closest("form"))?.some(p => typeof p.onSubmit === "function" || typeof p.action === "function");
     })) return locator.click();
     await new Promise(resolve => setTimeout(resolve, 300));
   }
@@ -200,6 +205,46 @@ async function setMaintenance(enabled) {
   } finally { await page.close(); }
 }
 
+async function coolingOffDrive(){
+  const {ctx:player,phone,password}=await freshPlayer(),page=await pageIn(player),seed=await open(page),other=await sibling(player),before=await observed(player,seed.id);
+  if(typeof password!=="string"||!password)throw new Error("Synthetic owner password absent; invalid actual-login premise");
+  const rg=await pageIn(other,"/profile/responsible-gambling");
+  await rg.locator("#break").getByRole("button",{name:"Start a break",exact:true}).click();
+  await rg.getByRole("alertdialog").waitFor({state:"visible"});
+  await rg.waitForFunction(()=>document.querySelector('[role="alertdialog"]')?.contains(document.activeElement));
+  await rg.waitForTimeout(450); // The actual confirm portal's400ms arming beat.
+  await rg.getByRole("alertdialog").getByRole("button",{name:"Start a break",exact:true}).click();
+  try{await rg.waitForURL(url=>url.pathname==="/auth/login"&&url.searchParams.has("cooled"));}
+  catch{await tile(rg,"cooling-confirm-navigation-failure");throw new Error(`Actual cooling confirm did not reach cooled sign-in: ${new URL(rg.url()).pathname+new URL(rg.url()).search}; visible dialog=${await rg.getByRole("alertdialog").count()}`);}
+  await page.locator(S.place).click();
+  await page.waitForURL(url=>url.pathname==="/auth/login",{timeout:90_000});
+  await page.locator(S.root).waitFor({state:"hidden"});
+  try{await page.locator("#identifier").waitFor({state:"visible"});}
+  catch{
+    await tile(page,"cooling-final-sign-in-render-failure");
+    throw new Error(`Cooling redirect never rendered sign-in at ${new URL(page.url()).origin+new URL(page.url()).pathname}; document=${JSON.stringify(await page.evaluate(()=>({ready:document.readyState,secure:isSecureContext,title:document.title,forms:document.forms.length,bodyBytes:document.body?.innerHTML.length??0})))}`);
+  }
+  ok("real cooling-off in second context after open rejects mid-bet and reaches rendered sign-in",!await page.locator(S.root).count()&&!await page.locator('[role="dialog"][aria-modal="true"]').count());
+  await tile(page,"matrix-cooling-off-rendered-sign-in");
+  ok("cooling-off observer is not usable after session revocation",(await player.request.get(`${BASE}/api/dev-test/bet-sheet-observe?marketId=${seed.id}`)).status()===401);
+  await page.waitForFunction(()=>{
+    const input=document.getElementById("identifier");
+    return input&&Object.keys(input).some(key=>key.startsWith("__reactProps$")&&typeof input[key].onChange==="function");
+  });
+  await page.locator("#identifier").fill(phone.slice(4));
+  await page.waitForFunction(raw=>document.querySelector('input[type="hidden"][name="identifier"]')?.value===raw,phone.slice(4));
+  await page.locator('input[name="password"]').fill(password);
+  await hydratedClick(page.locator('form:has(input[name="password"]) button[type="submit"]'));
+  try{await page.waitForURL(url=>url.pathname==="/",{timeout:90_000});}
+  catch{await tile(page,"cooling-own-password-login-failure");throw new Error(`Synthetic owner login did not reach home: ${new URL(page.url()).pathname}; error=${new URL(page.url()).searchParams.get("error")??"none"}; identifier carrier digit count=${await page.locator('input[type="hidden"][name="identifier"]').inputValue().then(value=>value.length).catch(()=>-1)}`);}
+  await page.getByTestId("journey-home-break").waitFor({state:"visible"});
+  await page.getByTestId("journey-balance").getByText("TZS 100,000",{exact:true}).filter({visible:true}).waitFor();
+  const after=await observed(player,seed.id);
+  ok("cooling-off refused bet: real own password login preserves100000 wallet, break and own money rows",after.positionCount===before.positionCount&&after.betPlacedCount===before.betPlacedCount,"actual same-owner login, no seed reset; rendered break/balance and authenticated own positions/BET_PLACED recounted");
+  await tile(page,"matrix-cooling-off-own-login-preserves-wallet-break");
+  await closeContext(other);await closeContext(player);
+}
+
 try {
   ok("S8 served trace matcher controls", betSheetTracesControl().length === 0, betSheetTracesControl().join("; "));
   if (run("controls")) {
@@ -224,6 +269,34 @@ try {
       ok("journey guest pick navigates, never opens a sheet", !(await page.locator(S.root).count()) && !!href);
     } else nm("journey guest pick", "no pick on seeded guest home");
     await guest.close(); contexts.delete(guest);
+  }
+
+  if (run("keyboard")) for(const locale of LOCALES) for(const viewport of VIEWPORTS.filter(viewport=>viewport.width<=360)){
+    const {ctx}=await freshPlayer(100000,{locale,viewport}),page=await pageIn(ctx),seed=await open(page),watch=actionWatch(page);
+    const label=`${locale} ${viewport.width}x${viewport.height}`;
+    await page.locator(`${S.root} .kp-bsheet__balance`).getByText("TZS 100,000",{exact:true}).waitFor();
+    await page.locator(S.stake).focus();
+    await page.evaluate(()=>{
+      Object.defineProperty(window.visualViewport,"height",{configurable:true,value:340});
+      Object.defineProperty(window.visualViewport,"offsetTop",{configurable:true,value:0});
+      window.visualViewport.dispatchEvent(new Event("resize"));
+    });
+    await page.waitForTimeout(200);
+    for(const stake of [seed.min,seed.max,Math.max(seed.min,seed.max-500),seed.min]){
+      await page.locator(S.stake).fill(String(stake));await page.waitForTimeout(250);
+      const p=await probe(page,{keyboard:true}),focused=await page.locator(S.stake).evaluate(input=>document.activeElement===input);
+      ok(`${label}: focused typing${stake} keeps field painted, CloseX and CTA above keyboard`,focused&&!p.errors.length,p.errors.length?`${p.errors.join(";")} ${JSON.stringify({stake:p.got.stake,scroll:p.got.scroll,place:p.got.place,close:p.got.close})}`:"real input changes with unchanged visual viewport; focus remains on field");
+      if(stake===seed.max)await tile(page,`keyboard-${label}-maximum-long-cta`);
+    }
+    const clipped=await page.addStyleTag({content:`${S.scroll}{max-height:20px!important;}`});
+    ok(`${label}: RED clipped typed field fails same keyboard verdict`,(await probe(page,{keyboard:true})).errors.includes("stake is clipped by the sheet scroller"));
+    await clipped.evaluate(style=>style.remove());
+    const closePlant=await page.addStyleTag({content:`${S.close}{position:fixed!important;top:1000px!important;}`});
+    ok(`${label}: RED offscreen CloseX fails same keyboard verdict`,(await probe(page,{keyboard:true})).errors.includes("CloseX lies behind the keyboard"));
+    await closePlant.evaluate(style=>style.remove());
+    ok(`${label}: keyboard editing sends zero money actions`,watch.requests.length===0);
+    await page.evaluate(()=>{delete window.visualViewport.height;delete window.visualViewport.offsetTop;window.visualViewport.dispatchEvent(new Event("resize"));});
+    watch.stop();await closeContext(ctx);
   }
 
   if (run("v20")) for (const locale of LOCALES) for (const viewport of VIEWPORTS) {
@@ -280,7 +353,7 @@ try {
       if (prior.inlineCap) root.style.setProperty("max-height", prior.inlineCap, prior.capPriority);
       else root.style.removeProperty("max-height");
     }, [S.root, safeStyle]);
-    if (viewport.width === 360) {
+    if (viewport.width <= 360) {
       await page.locator(S.stake).focus();
       await page.evaluate(() => {
         Object.defineProperty(window.visualViewport, "height", { configurable: true, value: 340 });
@@ -545,8 +618,9 @@ try {
       await page.waitForFunction(()=>!new URL(location.href).searchParams.has("bet"));
       await page.evaluate(()=>window.__staleSheetPlace());
       await page.locator(S.root).waitFor({state:"hidden"});
-      const samples=await page.evaluate(()=>window.__sheetCloseSamples),ghost=samples.find(sample=>sample.present&&sample.inert&&sample.hidden),gone=samples.find(sample=>!sample.present);
-      ok(`${motion}: close releases address/key/focus; normal ghost inert/silent, reduced exit prompt`,!!gone&&samples.every(sample=>!sample.inert||(!sample.focusInside&&sample.live===0&&sample.keys===0))&&(motion==="reduce"?gone.ms<100:!!ghost),JSON.stringify({ghost,gone}));
+      const samples=await page.evaluate(()=>window.__sheetCloseSamples),ghost=samples.find(sample=>sample.present&&sample.inert&&sample.hidden),gone=samples.find(sample=>!sample.present),addressClean=samples.find(sample=>!sample.bet);
+      observations.push({label:`lifecycle-${motion}-close`,samples});
+      ok(`${motion}: close releases address/key/focus; normal ghost inert/silent, reduced exit prompt`,!!gone&&!!addressClean&&addressClean.ms<100&&samples.every(sample=>!sample.inert||(!sample.focusInside&&sample.live===0&&sample.keys===0))&&(motion==="reduce"?gone.ms<100:!!ghost),JSON.stringify({ghost,addressClean,gone}));
       const reopened=await open(page,otherId);
       await page.evaluate(()=>window.__staleSheetPlace()); await page.waitForTimeout(300);
       const after=await observed(ctx,seed.id);
@@ -816,29 +890,11 @@ try {
       ok("real bet.place capacity exhausted by same-key service replays: fresh commitment refused inline", p.frame === "edit" && /wait|again|too many|second/i.test(p.text) && after.positionCount === before.positionCount && after.betPlacedCount === before.betPlacedCount);
       await tile(page, "matrix-rate-capacity"); await post(admin, "reset-rate-limits"); watch.stop(); await closeContext(player);
     }
-    {
-      const { ctx: player, phone } = await freshPlayer(), page = await pageIn(player), seed = await open(page), other = await sibling(player), before = await observed(player, seed.id);
-      const rg = await pageIn(other, "/profile/responsible-gambling");
-      await rg.locator("#break").getByRole("button", { name: "Start a break", exact: true }).click();
-      await rg.getByRole("alertdialog").waitFor({state:"visible"});
-      await rg.waitForFunction(()=>document.querySelector('[role="alertdialog"]')?.contains(document.activeElement));
-      await rg.waitForTimeout(450); // The actual confirm portal has armed the kit's400ms beat; a press during it is intentionally swallowed.
-      await rg.getByRole("alertdialog").getByRole("button", { name: "Start a break", exact: true }).click();
-      try { await rg.waitForURL(url => url.pathname === "/auth/login" && url.searchParams.has("cooled")); }
-      catch { await tile(rg,"cooling-confirm-navigation-failure"); throw new Error(`Actual cooling confirm did not reach cooled sign-in: ${new URL(rg.url()).pathname+new URL(rg.url()).search}; visible dialog=${await rg.getByRole("alertdialog").count()}`); }
-      await page.locator(S.place).click();
-      await page.waitForURL(url => url.pathname === "/auth/login" || url.pathname === "/auth/session-ended", { timeout: 90_000 });
-      ok("real cooling-off in second context after open rejects mid-bet and routes to sign-in", !await page.locator(S.root).count());
-      await tile(page, "matrix-cooling-off-redirect");
-      // The cooling action ends the real session, so the owner-only observer correctly refuses it after the change.
-      ok("cooling-off observer is not usable after session revocation", (await player.request.get(`${BASE}/api/dev-test/bet-sheet-observe?marketId=${seed.id}`)).status() === 401);
-      await post(player, "seed-admin", { role: "PLAYER", phone, name: "Local Sheet Matrix", balance: 100000 });
-      const after = await observed(player, seed.id);
-      ok("cooling-off refused bet: own money rows remain unchanged after re-authenticating same fixture owner", after.positionCount === before.positionCount && after.betPlacedCount === before.betPlacedCount, "existing owner seed restores read authentication after proof; no cross-user observer");
-      await closeContext(other); await closeContext(player);
-    }
+    await coolingOffDrive();
     for (const cell of NOT_DRIVEN_MATRIX) result(`matrix row ${cell.row}: ${cell.reason}`, "NOT DRIVEN", cell.proof);
   }
+
+  if(run("cooling")&&!run("matrix"))await coolingOffDrive();
 
   if (run("doors")) {
     for (const path of ["/", "/live"]) {
@@ -928,7 +984,10 @@ try {
       }
       if (p.frame === "edit" && /busy/i.test(p.text)) {
         ok("real admission BUSY observed under2000-call storm: inline retry, zero own money rows", before.positionCount === after.positionCount && before.betPlacedCount === after.betPlacedCount);
-      } else nm("admission BUSY under actual2000-call storm", `own positionsΔ=${after.positionCount-before.positionCount}, ledgerΔ=${after.betPlacedCount-before.betPlacedCount}, final frame=${p.frame ?? "closed"}; no BUSY refusal observed`);
+      } else {
+        if(after.positionCount>before.positionCount){await waitFrame(page,"receipt");p=(await probe(page)).got;after=await observed(ctx,seed.id);}
+        nm("admission BUSY under actual2000-call storm", `own positionsΔ=${after.positionCount-before.positionCount}, ledgerΔ=${after.betPlacedCount-before.betPlacedCount}, final frame=${p.frame ?? "closed"}; no BUSY refusal observed`);
+      }
       await tile(page, "doors-admission-storm"); await closeContext(ctx);
     }
   }

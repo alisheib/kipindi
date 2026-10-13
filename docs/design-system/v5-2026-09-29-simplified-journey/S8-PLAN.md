@@ -1908,6 +1908,13 @@ Open point 5; WP11b (the tiles); the CLAUDE.md half of the plan critique's A-12.
    re-arms focus onto that h2 through Modal's `refocusKey` (modal.tsx:274-281, :383-391), so the 400 ms beat swallows a
    quick second Enter and a screen reader hears the new frame. test:bet-sheet §8 pins it (plant: a frame change with no
    re-arm).
+   **Implementation correction, 2026-10-13, within the owner's later visual/logic repair scope:** a change among edit,
+   low, loss-room and pending while the stake input itself is focused keeps that focus and keyboard layout. Actual
+   320/360 browser typing from the minimum to a short balance and back otherwise dismissed the keyboard and put the
+   commit below it. The polite region still announces the changed message. Every other frame change re-arms the h2
+   and its 400 ms beat, including a balance change while another control has focus; question/side/receipt identity
+   changes always re-arm. Blurring alone never triggers a deferred focus move. The pure focus sequence and actual
+   long-typing browser cell hold both sides of this exception.
 3. **Each message is spoken once.**
    - The closed frame and every block speak through their message's own `role="alert"`, as the boards draw them, and
      that message is the dialog's `describedBy` (modal.tsx:219-221: "the bet refusal names its reason here").

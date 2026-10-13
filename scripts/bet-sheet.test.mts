@@ -39,6 +39,7 @@ import { BetSheetBody } from "../src/components/journey/bet-sheet/bet-sheet.tsx"
 import type { Dict, Locale } from "../src/lib/i18n-dict.ts";
 import { formatTzs } from "../src/lib/utils.ts";
 import { DWELL_BET_RECEIPT_MS } from "../src/lib/feedback-timing.ts";
+import { nextSheetFocus, type SheetFocusState } from "../src/lib/journey/sheet-focus.ts";
 import ts from "typescript";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -143,6 +144,7 @@ const SOURCES: Sources = {
 };
 
 type Impl = {
+  focus: typeof nextSheetFocus;
   SS: typeof SS;
   SR: { refusalOutcome: typeof SR.refusalOutcome; settleRefusal: typeof SR.settleRefusal; CLASSIFIED_REASONS: readonly string[]; CLASSIFIED_CODES: readonly string[] };
   plan: typeof SF.shortfallPlan;
@@ -150,11 +152,37 @@ type Impl = {
   draw?: (html: string) => string;
 };
 const REAL: Impl = {
+  focus: nextSheetFocus,
   SS,
   SR: { refusalOutcome: SR.refusalOutcome, settleRefusal: SR.settleRefusal, CLASSIFIED_REASONS: SR.CLASSIFIED_REASONS, CLASSIFIED_CODES: SR.CLASSIFIED_CODES },
   plan: SF.shortfallPlan,
   src: SOURCES,
 };
+
+function focusBinding(text: string): boolean {
+  const j = (value: unknown) => JSON.stringify(value);
+  const ast = ts.createSourceFile("bet-sheet.tsx", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const component = ast.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === "BetSheet") as ts.FunctionDeclaration | undefined;
+  if (!component?.body) return false;
+  const declarations = new Map<string, ts.Expression>(); let adjusted = false, modalKey = false;
+  const visit = (node: ts.Node) => {
+    if (ts.isVariableDeclaration(node) && node.initializer) declarations.set(node.name.getText(ast).replace(/\s/g, ""), node.initializer);
+    if (ts.isIfStatement(node) && node.expression.getText(ast).replace(/\s/g, "") === "nextFocus!==focusState"
+      && node.thenStatement.getText(ast).replace(/\s/g, "") === "setFocusState(nextFocus);") adjusted = true;
+    if (ts.isJsxAttribute(node) && node.name.getText(ast) === "refocusKey" && node.initializer && ts.isJsxExpression(node.initializer)
+      && node.initializer.expression?.getText(ast) === "refocusKey") modalKey = true;
+    ts.forEachChild(node, visit);
+  };
+  visit(component.body);
+  const identity = declarations.get("focusIdentity"), next = declarations.get("nextFocus"), key = declarations.get("refocusKey"), state = declarations.get("[focusState,setFocusState]");
+  return !!identity && ts.isCallExpression(identity) && identity.expression.getText(ast) === "JSON.stringify" && !!identity.arguments[0] && ts.isArrayLiteralExpression(identity.arguments[0])
+    && j(identity.arguments[0].elements.map(n => n.getText(ast).replace(/\s/g, ""))) === j(["props.seed.id", "props.side", "props.frame.receipt?.positionId??null"])
+    && !!next && ts.isCallExpression(next) && next.expression.getText(ast) === "nextSheetFocus"
+    && j(next.arguments.map(n => n.getText(ast))) === j(["focusState", "focusIdentity", "props.frame.frame", "stakeFocused"])
+    && !!key && ts.isTemplateExpression(key) && j(key.templateSpans.map(n => n.expression.getText(ast))) === j(["nextFocus.identity", "nextFocus.revision"])
+    && !!state && ts.isCallExpression(state) && state.expression.getText(ast) === "useState" && /identity: focusIdentity, frame: props\.frame\.frame, revision: 0/.test(state.arguments[0]?.getText(ast) ?? "")
+    && adjusted && modalKey;
+}
 
 /* ─── The world ───────────────────────────────────────────────────────────────────────────────────────────────── */
 
@@ -783,15 +811,42 @@ function run(impl: Impl, log: (l: string) => void): string[] {
       && drawFrame(refusedDeposit, "en").includes(formatTzs(3_000))
       && SF.depositLeftAfterFor({ kind: "deposit", amount: 1_000, chips: [1_000, 5_000], belowDepositMin: true, leftAfter: 700 }, 5_000) === 4_700);
   const sheetSrc = strip(impl.src.sheet), partsSrc = strip(impl.src.parts);
+  const commitRows = rendered.filter(x => x.html.includes('data-testid="journey-sheet-place"'));
+  ok("7.cta-line · the commit's words, separator and money form one inline sentence inside the button, so a long Swahili figure wraps coherently",
+    commitRows.length > 0 && commitRows.every(x => /data-testid="journey-sheet-place"[^>]*><span>/.test(x.html))
+      && /data-testid="journey-sheet-place"[^]*?<span><SheetSentence[^]*?line=\{footerLine\} \/><\/span><\/Button>/.test(sheetSrc));
+  const titleStyle = impl.src.css.match(/\.kp-bsheet__title \{([^}]+)\}/)?.[1] ?? "";
+  ok("7.title-wrap · the actual question and receipt heading uses the kit's balanced title wrap, without a clamp that hides its words",
+    rendered.every(x => /<h2[^>]*class="kp-bsheet__title"/.test(x.html)) && /text-wrap:\s*balance\s*;/.test(titleStyle)
+      && !/line-clamp|max-height|overflow:\s*hidden/.test(titleStyle));
   ok("8.surface · the stake surface draws no form, submit button or key handler; each commit is its own type=button click and balance uses Cash",
     !/<form\b|type=["']submit["']|\bonKey(?:Down|Up|Press)\b/.test(sheetSrc + partsSrc)
       && /type="button"[^>]*data-testid="journey-sheet-place"[^>]*onClick=\{onPlace\}/.test(sheetSrc)
       && /<Cash\b/.test(partsSrc) && /<Cash\b/.test(sheetSrc));
-  ok("8.focus · the sheet opens on its heading, every frame re-arms that focus, the kit CloseX is its safe way out and placing withdraws scrim/Escape",
-    sheetSrc.includes("initialFocus={headingRef}") && sheetSrc.includes("safeFocus={closeRef}") && sheetSrc.includes("refocusKey={props.frame.frame}")
+  ok("8.focus · the sheet opens on its heading, its focus revision re-arms that focus, the kit CloseX is its safe way out and placing withdraws scrim/Escape",
+    sheetSrc.includes("initialFocus={headingRef}") && sheetSrc.includes("safeFocus={closeRef}") && sheetSrc.includes("refocusKey={refocusKey}")
       && /<h2[^>]*ref=\{headingRef\}[^>]*tabIndex=\{-1\}/.test(sheetSrc)
       && /<CloseX ref=\{closeRef\} withheld=\{placing\} onClick=\{onClose\}/.test(sheetSrc)
       && /closeOnScrim=\{props.frame.closable\} closeOnEsc=\{props.frame.closable\}/.test(sheetSrc));
+  const frameKinds: SS.SheetFrameKind[] = ["edit", "low", "lossRoom", "pending", "blocked", "closed", "placing", "inDoubt", "receipt"];
+  const editing = new Set<SS.SheetFrameKind>(["edit", "low", "lossRoom", "pending"]);
+  const ids = [j(["mkt_a", "YES", "pos_a"]), j(["mkt_b", "YES", "pos_a"]), j(["mkt_a", "NO", "pos_a"]), j(["mkt_a", "YES", "pos_b"])];
+  const focusFailures: string[] = [];
+  for (const before of frameKinds) for (const after of frameKinds) for (const typing of [false, true]) for (const identity of ids) {
+    const previous: SheetFocusState = { identity: ids[0], frame: before, revision: 7 };
+    const same = identity === previous.identity && before === after;
+    const preserve = identity === previous.identity && typing && editing.has(before) && editing.has(after);
+    const next = impl.focus(previous, identity, after, typing);
+    if (next.identity !== identity || next.frame !== after || next.revision !== 7 + (same || preserve ? 0 : 1) || same && next !== previous) focusFailures.push(`${before}/${after}/${typing}/${identity}`);
+  }
+  let cursor: SheetFocusState = { identity: ids[0], frame: "edit", revision: 0 };
+  const sequence: number[] = [];
+  for (const [frame, typing] of [["low", true], ["low", false], ["edit", true], ["pending", true], ["lossRoom", false], ["placing", true], ["receipt", false]] as const) {
+    cursor = impl.focus(cursor, ids[0], frame, typing); sequence.push(cursor.revision);
+  }
+  ok("8.focus-rules · all 648 frame/typing/market-side-receipt identity transitions preserve a live stake edit only across editable frames; blur alone does not defer rearm, and button-focused, outcome and terminal changes rearm",
+    focusFailures.length === 0 && j(sequence) === j([0, 0, 0, 0, 1, 2, 3]), j({ failures: focusFailures.slice(0, 4), sequence }));
+  ok("8.focus-binding · actual AST binds market/side/receipt identity and stake focus to the pure transition during render, and Modal receives the new cursor's revision without an intermediate focus-losing commit", focusBinding(impl.src.sheet));
   ok("8.focus-ink · middle-region controls keep the kit's visible two-pixel focus outline inside the clipping scrollport",
     /\.kp-bsheet__scroll :where\(a, button\):focus-visible \{[^}]*outline-offset: -2px/.test(impl.src.css));
   ok("8.receipt-hold · the receipt banks its five-second dwell on focus-visible or changed pointer coordinates, clears the backstop, and resumes only after all reading holds leave",
@@ -855,12 +910,23 @@ if (!PROVE_RED) {
     { name: "a low frame renders no aria-invalid", expect: /^7\.invalid /, impl: { ...REAL, draw: (html) => html.replaceAll('aria-invalid="true"', '') } },
     { name: "a bounds break paints the red error edge instead of neutral attention", expect: /^7\.invalid /, impl: withSS({ sheetFrame: (i) => { const f = SS.sheetFrame(i); return f.breaks && f.breaks !== "empty" ? { ...f, attention: false } : f; } }) },
     { name: "bounds words and money become separate flex columns", expect: /^7\.invalid /, impl: { ...REAL, draw: (html) => html.replace(/(class="kp-bsheet__bounds"><svg\b[^]*?<\/svg>)<span>/, "$1") } },
+    { name: "the commit separates long words, separator and money into flex items again", expect: /^7\.cta-line /, impl: withSrc({ sheet: SOURCES.sheet.replace('<span><SheetSentence t={t} locale={locale} nowMs={nowMs} line={footerLine} /></span>', '<SheetSentence t={t} locale={locale} nowMs={nowMs} line={footerLine} />') }) },
+    { name: "the question title loses balanced wrapping and leaves a Chinese widow", expect: /^7\.title-wrap /, impl: withSrc({ css: SOURCES.css.replace(/(\.kp-bsheet__title \{[^}]*?)text-wrap: balance; /, "$1") }) },
     { name: "a keyboard resize leaves the focused stake under the fixed commit", expect: /^8\.keyboard /, impl: withSrc({ sheet: SOURCES.sheet.replace('requestAnimationFrame(revealFocusedStake)', 'requestAnimationFrame(() => {})') }) },
     { name: "compact layout never reveals the focused field after rendering", expect: /^8\.keyboard /, impl: withSrc({ sheet: SOURCES.sheet.replace('if (open && keyboard && stakeFocused) revealFocusedStake();', 'if (open && keyboard && stakeFocused) return;') }) },
     { name: "the scrollport clips a control's outward keyboard outline", expect: /^8\.focus-ink /, impl: withSrc({ css: SOURCES.css.replace('.kp-bsheet__scroll :where(a, button):focus-visible { outline-offset: -2px; }', '.kp-bsheet__scroll :where(a, button):focus-visible { outline-offset: 2px; }') }) },
     { name: "a deposit refusal uses the stake maximum", expect: /^4\.refusal-figures /, impl: withSS({ sheetFrame: (i) => { const f = SS.sheetFrame(i); return f.low ? { ...f, low: { ...f.low, depositMaximum: f.bounds.max } } : f; } }) },
     { name: "a submit form added to the stake surface", expect: /^8\.surface /, impl: withSrc({ sheet: SOURCES.sheet + '\nconst bad = <form><button type="submit" /></form>;\n' }) },
-    { name: "a frame change no longer re-arms heading focus", expect: /^8\.focus /, impl: withSrc({ sheet: SOURCES.sheet.replace("refocusKey={props.frame.frame}", "") }) },
+    { name: "a focus revision no longer re-arms heading focus", expect: /^8\.focus /, impl: withSrc({ sheet: SOURCES.sheet.replace("refocusKey={refocusKey}", "") }) },
+    { name: "typing a low-balance stake steals focus on every derived frame", expect: /^8\.focus-rules /, impl: { ...REAL, focus: (p, identity, frame) => p.identity === identity && p.frame === frame ? p : { identity, frame, revision: p.revision + 1 } } },
+    { name: "a button-focused editable frame skips the required focus beat", expect: /^8\.focus-rules /, impl: { ...REAL, focus: (p, identity, frame) => nextSheetFocus(p, identity, frame, true) } },
+    { name: "a terminal or receipt change is preserved while typing", expect: /^8\.focus-rules /, impl: { ...REAL, focus: (p, identity, frame, typing) => typing ? { identity, frame, revision: p.revision } : nextSheetFocus(p, identity, frame, typing) } },
+    { name: "blur alone triggers a delayed focus rearm", expect: /^8\.focus-rules /, impl: { ...REAL, focus: (p, identity, frame, typing) => !typing && p.identity === identity && p.frame === frame ? { ...p, revision: p.revision + 1 } : nextSheetFocus(p, identity, frame, typing) } },
+    { name: "another question-side-receipt keeps the old focus revision", expect: /^8\.focus-rules /, impl: { ...REAL, focus: (p, identity, frame, typing) => identity !== p.identity ? { identity, frame, revision: p.revision } : nextSheetFocus(p, identity, frame, typing) } },
+    { name: "the refocus identity omits the side", expect: /^8\.focus-binding /, impl: withSrc({ sheet: SOURCES.sheet.replace('JSON.stringify([props.seed.id, props.side, props.frame.receipt?.positionId ?? null])', 'JSON.stringify([props.seed.id, null, props.frame.receipt?.positionId ?? null])') }) },
+    { name: "the focus rule is told the field is never focused", expect: /^8\.focus-binding /, impl: withSrc({ sheet: SOURCES.sheet.replace('nextSheetFocus(focusState, focusIdentity, props.frame.frame, stakeFocused)', 'nextSheetFocus(focusState, focusIdentity, props.frame.frame, false)') }) },
+    { name: "Modal receives the prior render's refocus revision", expect: /^8\.focus-binding /, impl: withSrc({ sheet: SOURCES.sheet.replace('`${nextFocus.identity}:${nextFocus.revision}`', '`${focusState.identity}:${focusState.revision}`') }) },
+    { name: "focus adjustment is deferred until an effect after the losing commit", expect: /^8\.focus-binding /, impl: withSrc({ sheet: SOURCES.sheet.replace('if (nextFocus !== focusState) setFocusState(nextFocus);', 'useEffect(() => { setFocusState(nextFocus); }, [nextFocus]);') }) },
     { name: "a plain focus pauses the receipt", expect: /^8\.receipt-hold /, impl: withSrc({ sheet: SOURCES.sheet.replace('event.target.matches(":focus-visible")', 'true') }) },
     { name: "pointerenter pauses the receipt under a stationary cursor", expect: /^8\.receipt-hold /, impl: withSrc({ sheet: SOURCES.sheet.replace("onPointerMove=", "onPointerEnter=") }) },
     { name: "a keystroke can repeat the live announcement", expect: /^8\.announcements /, impl: withSrc({ sheet: SOURCES.sheet.replace("if (!moved && !updated) return;", "") }) },

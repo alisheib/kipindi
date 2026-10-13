@@ -318,16 +318,19 @@ function withJunction<T>(fn: (link: string) => T): T {
   }
 }
 /** A tool run as a child process with its working directory the junction and its script reached through it (memoised: a plant changes text, not files). */
-const SPAWNED_LINKED = new Map<string, { status: number | null; out: string }>();
-function spawnLinked(link: string, scriptRel: string, args: string[]): { status: number | null; out: string } {
-  const memo = JSON.stringify([scriptRel, args]);
+const SPAWNED_LINKED = new Map<string, { status: number | null; out: string; cwd: "checkout" | "link" | null }>();
+function spawnLinked(link: string, scriptRel: string, args: string[]): { status: number | null; out: string; cwd: "checkout" | "link" | null } {
+  const memo = JSON.stringify([link === ROOT ? "direct" : "linked", scriptRel, args]);
   const hit = SPAWNED_LINKED.get(memo);
   if (hit) return hit;
   const tsxCli = join(ROOT, "node_modules", "tsx", "dist", "cli.mjs");
   const env: Record<string, string> = { PATH: process.env.PATH ?? "", SESSION_SECRET: process.env.SESSION_SECRET ?? "", OTP_PEPPER: process.env.OTP_PEPPER ?? "" };
   if (process.env.SystemRoot) env.SystemRoot = process.env.SystemRoot;
   const r = spawnSync(process.execPath, [tsxCli, join(link, ...scriptRel.split("/")), ...args], { cwd: link, env, encoding: "utf8", timeout: 90_000 });
-  const done = { status: r.status, out: `${r.stdout ?? ""}${r.stderr ?? ""}` };
+  const where = spawnSync(process.execPath, ["-e", "process.stdout.write(process.cwd())"], { cwd: link, env, encoding: "utf8", timeout: 10_000 });
+  // Cache the measured kind, not a temporary link's spelling: every mutation receives a new temporary directory.
+  const cwd = where.status !== 0 ? null : where.stdout.trim() === ROOT ? "checkout" as const : where.stdout.trim() === link ? "link" as const : null;
+  const done = { status: r.status, out: `${r.stdout ?? ""}${r.stderr ?? ""}`, cwd };
   SPAWNED_LINKED.set(memo, done);
   return done;
 }
@@ -2402,8 +2405,17 @@ async function runAssertions(impl: Impl): Promise<void> {
       withJunction((link) => {
         if (!isMainFn(preTool, join(link, "scripts", "live", "marketing-preflight.mjs"))) wrong.push("isMain: the tool reached through a junction is not itself");
         if (isMainFn(preTool, join(link, "scripts", "live", "marketing-campaign-evidence.mjs"))) wrong.push("isMain: another tool reached through a junction is the pre-flight");
+        if (boot.checkoutProblem(link, preTool) === null) wrong.push("checkoutProblem: a raw link path was accepted as the tool's checkout");
         for (const [name, script, args] of [["pre-flight", "scripts/live/marketing-preflight.mjs", [`--test=+${W.TEST.key}`, `--origin=${W.ORIGIN}`]], ["evidence", "scripts/live/marketing-campaign-evidence.mjs", ["--ledger"]]] as const) {
           const r = spawnLinked(link, script, [...args]);
+          // POSIX getcwd resolves a symlink before Node exposes process.cwd(); Windows retains the junction path.
+          // A real checkout cwd must behave exactly like the direct command; a raw link cwd must still refuse.
+          if (r.cwd === "checkout") {
+            const direct = spawnLinked(ROOT, script, [...args]);
+            if (r.status !== direct.status || r.out !== direct.out || leakOf(r.out) !== null) wrong.push(`${name} physical-checkout cwd differs from its direct command`);
+            continue;
+          }
+          if (r.cwd !== "link") { wrong.push(`${name} could not establish the child's working-directory premise`); continue; }
           const said = r.out.split(NL).filter((l) => l.trim() !== "");
           if (r.status !== 2 || said.length !== 1 || !said[0].startsWith("REFUSING: run it from the checkout it belongs to") || new RegExp("Error|    at ").test(r.out) || leakOf(r.out) !== null) wrong.push(`${name} run through a junction: exit ${r.status}, ${said.length} line(s) ("${(said[0] ?? "").slice(0, 60)}")`);
         }

@@ -94,7 +94,7 @@ export async function GET(req: Request) {
   // probe could mint that viewer at all — the earlier runs sent plain PLAYER cookies, which belt 1 turned away at
   // the edge before anything could be measured.
   const session = await currentSession();
-  const u = session ? await db.user.findById(session.userId).catch(() => null) : null;
+  const u = session ? await Promise.resolve().then(() => db.user.findById(session.userId)).catch(() => null) : null;
   if (!session || !u || !(u.role === "ADMIN" || (await canView(u.role, "accounting")))) {
     // Same shape as any other missing route — don't confirm the endpoint exists.
     return new NextResponse("Not Found", { status: 404 });

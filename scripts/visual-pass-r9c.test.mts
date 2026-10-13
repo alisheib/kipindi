@@ -294,11 +294,87 @@ const CARRIED: Array<{ file: string; cls: string; why: string; verify: (r: Read)
 /** An animation class a component ADDS AT RUNTIME (`classList.add`) — invisible to a class census — and the classes of the
  *  element it lands on. Every runtime-added animation class in `src` must be named here (1.9). */
 const RUNTIME: Array<{ file: string; cls: string; on: string[]; also?: string[][]; why: string }> = [
-  { file: "src/components/markets/market-card.tsx", cls: "press-pop", on: ["btn"], why: "a card's YES / NO button, on tap, before the route changes" },
-  { file: "src/components/journey/bet-sheet/bet-sheet-host.tsx", cls: "press-pop", on: ["btn"], also: [["kp-jcard__pick"]], why: "S8's delegated click animates a question's kit btn or a card's own kp-jcard__pick before opening the in-place sheet" },
+  { file: "src/components/markets/market-card.tsx", cls: "press-pop", on: ["btn"], why: "a card's YES / NO button calls playPressPop on tap; the helper plays captured kit frames without retaining a React-owned class" },
+  { file: "src/components/journey/bet-sheet/bet-sheet-host.tsx", cls: "press-pop", on: ["btn"], also: [["kp-jcard__pick"]], why: "S8's delegated click calls that same helper on the actual kit btn or card pick before opening the sheet" },
   { file: "src/components/ui/route-transition.tsx", cls: "route-enter", on: ["route-enter"], why: "the route frame re-arms its own entrance" },
   { file: "src/components/layout/needle.tsx", cls: "on", on: [], why: "the needle's wake halo breathes while it is awake (`#needle-root #wake.on`; the halo is placed by `inset`)" },
 ];
+const PRESS_HELPER = "src/lib/press-feedback.ts";
+/** Follow the exact helper import, including named aliases/namespaces. A new caller must have its element profile
+ * registered above; an unresolved or unused helper import is reported, never silently dropped from the census. */
+function pressCaller(f: string, text: string): string[] {
+  const ast = ts.createSourceFile(f, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const names = new Set<string>(), namespaces = new Set<string>(); let imported = false, called = false;
+  for (const node of ast.statements) if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && node.moduleSpecifier.text === "@/lib/press-feedback") {
+    imported = true;
+    const bindings = node.importClause?.namedBindings;
+    if (bindings && ts.isNamedImports(bindings)) for (const spec of bindings.elements) if ((spec.propertyName ?? spec.name).text === "playPressPop") names.add(spec.name.text);
+    if (bindings && ts.isNamespaceImport(bindings)) namespaces.add(bindings.name.text);
+  }
+  const visit = (node: ts.Node) => {
+    if (ts.isCallExpression(node)) {
+      const e = node.expression;
+      if (ts.isIdentifier(e) && names.has(e.text) || ts.isPropertyAccessExpression(e) && ts.isIdentifier(e.expression) && namespaces.has(e.expression.text) && e.name.text === "playPressPop") called = true;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(ast);
+  return called ? [`${f}#press-pop`] : imported ? [`${f}#‹unresolved press helper caller›`] : [];
+}
+/** Run the actual shared helper against stylesheet-animation/platform seams: capture timing/frames, remove the
+ * temporary class before WAAPI, cancel a repeated tap, and leave no class even where browser APIs throw. */
+async function pressHelperHolds(text: string): Promise<boolean> {
+  try {
+    const frames = [{ offset: 0, scale: "1" }, { offset: 0.5, scale: "0.955" }, { offset: 1, scale: "1" }], timing = { duration: 160, fill: "none" };
+    class SheetAnimation { animationName = "press-pop"; effect = { getKeyframes: () => frames, getTiming: () => timing }; }
+    const compiled = ts.transpile(text.replace(/\bexport\s+/g, ""), { target: ts.ScriptTarget.ES2020 });
+    const observers = new Set<{ callback: () => void }>(), mediaListeners = new Set<() => void>();
+    let dataMotion = "full"; const rootClasses = new Set<string>();
+    const root = { classList: { contains: (name: string) => rootClasses.has(name) }, getAttribute: () => dataMotion };
+    const media = { matches: false, addEventListener: (_name: string, callback: () => void) => mediaListeners.add(callback), removeEventListener: (_name: string, callback: () => void) => mediaListeners.delete(callback) };
+    let observedCorrectly = true;
+    class Observer {
+      constructor(public callback: () => void) {}
+      observe(node: unknown, options: { attributes: boolean; attributeFilter: string[] }) { observedCorrectly &&= node === root && options.attributes && options.attributeFilter.join() === "class,data-motion"; observers.add(this); }
+      disconnect() { observers.delete(this); }
+    }
+    const play = new Function("CSSAnimation", "MutationObserver", `${compiled}\nreturn playPressPop;`)(SheetAnimation, Observer) as (el: unknown) => void;
+    const classes = new Set<string>(); let cancelled = 0, played = 0, captured = true, throws = false;
+    const animations: Array<{ finish: () => void; cancel: () => void }> = [];
+    const el = {
+      classList: { add: (cls: string) => classes.add(cls), remove: (cls: string) => classes.delete(cls) },
+      getAnimations: () => { if (throws) throw new Error("unsupported"); return [new SheetAnimation()]; },
+      ownerDocument: { documentElement: root, defaultView: { matchMedia: () => media } },
+      animate: (f: unknown, t: unknown) => {
+        captured &&= f === frames && t === timing && classes.size === 0; played++;
+        let resolve = () => {}, done = false;
+        const finished = new Promise<void>(r => { resolve = r; });
+        const animation = { finished, finish: () => { done = true; resolve(); }, cancel: () => { if (!done) { cancelled++; done = true; resolve(); } } };
+        animations.push(animation); return animation;
+      },
+    };
+    const flush = async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); };
+    const mutate = () => { for (const observer of observers) observer.callback(); };
+    play(el); play(el); await flush();
+    const repeated = played === 2 && cancelled === 1 && observers.size === 1 && mediaListeners.size === 1;
+    dataMotion = "reduced"; mutate(); for (const callback of mediaListeners) callback();
+    const throttleKept = cancelled === 1;
+    play(el); await flush(); // A prior finished callback must not delete the newly active WeakMap entry.
+    const thirdReplaced = played === 3 && cancelled === 2 && observers.size === 1 && mediaListeners.size === 1;
+    rootClasses.add("kp-reduce-motion"); mutate(); await flush();
+    const classStopped = cancelled === 3 && observers.size === 0 && mediaListeners.size === 0;
+    rootClasses.clear(); dataMotion = "full"; play(el); media.matches = true; for (const callback of mediaListeners) callback(); await flush();
+    const systemStopped = cancelled === 4 && observers.size === 0 && mediaListeners.size === 0;
+    media.matches = false; play(el); dataMotion = "minimal"; mutate(); await flush();
+    const minimalStopped = cancelled === 5 && observers.size === 0 && mediaListeners.size === 0;
+    dataMotion = "full"; play(el); animations.at(-1)!.finish(); await flush();
+    const finishedClean = observers.size === 0 && mediaListeners.size === 0;
+    play(el); const oldCancelled = cancelled; throws = true; play(el); await flush();
+    return repeated && throttleKept && thirdReplaced && classStopped && systemStopped && minimalStopped && finishedClean
+      && cancelled === oldCancelled + 1 && captured && observedCorrectly && classes.size === 0 && observers.size === 0 && mediaListeners.size === 0
+      && !/\b(?:setTimeout|requestAnimationFrame)\(/.test(text);
+  } catch { return false; }
+}
 /** THE CENSUS — every element that wears an animation writing a placement property, against its own placements. */
 function census(over: Record<string, string> = {}): { hits: Hit[]; animated: number; carried: string[] } {
   const R = readSheets(sheetsOf(over));
@@ -397,6 +473,7 @@ ok(`1.1 · THE CENSUS: of the ${NOW.animated} animations (any fill, infinite one
   // Every class a component adds at runtime that names an animation is in RUNTIME, so the census sees it.
   const animatedSites = (source: (f: string) => string = code) => {
     const added = new Set(walk("src", /\.(?:tsx|ts)$/).flatMap((f) => [...source(f).matchAll(/classList\.(?:add|toggle)\("([\w-]+)"/g)].map((m) => `${f}#${m[1]}`)));
+    if (added.delete(`${PRESS_HELPER}#press-pop`)) for (const f of walk("src", /\.(?:tsx|ts)$/)) for (const site of pressCaller(f, source(f))) added.add(site);
     return [...added].filter((k) => { const cls = k.split("#")[1]; return R.anims.some((a) => !a.parent && a.subject.includes(cls) && animProps(R, a.kfs).size > 0); });
   };
   const runtimeHolds = (animated: string[]) => animated.every(k => RUNTIME.some(r => `${r.file}#${r.cls}` === k)) && RUNTIME.every(r => animated.includes(`${r.file}#${r.cls}`));
@@ -404,8 +481,23 @@ ok(`1.1 · THE CENSUS: of the ${NOW.animated} animations (any fill, infinite one
   ok(`1.9 · every animation class a component adds at runtime is in the census (${RUNTIME.map((r) => r.cls).join(", ")}): ${j(animated)}`,
     runtimeHolds(animated), j({ animated }));
   const extraHostAnimation = animatedSites(f => f === "src/components/journey/bet-sheet/bet-sheet-host.tsx" ? `${code(f)}\nexport const wrong = () => anchor.classList.add("route-enter");` : code(f));
-  const missingHostAnimation = animatedSites(f => f === "src/components/journey/bet-sheet/bet-sheet-host.tsx" ? code(f).replaceAll('classList.add("press-pop")', 'classList.add("plain-class")') : code(f));
+  const missingHostAnimation = animatedSites(f => f === "src/components/journey/bet-sheet/bet-sheet-host.tsx" ? code(f).replaceAll('playPressPop(anchor)', 'plainPress(anchor)') : code(f));
   ok("1.9′ PLANT · the S8 host's extra animated class and a stale press-pop registration both fail the same runtime census", !runtimeHolds(extraHostAnimation) && !runtimeHolds(missingHostAnimation));
+  const extraHelperCaller = animatedSites(f => f === "src/components/ui/toast.tsx" ? `${code(f)}\nimport { playPressPop } from "@/lib/press-feedback"; export const wrong = () => playPressPop(toast);` : code(f));
+  const extraHelperClass = animatedSites(f => f === PRESS_HELPER ? `${code(f)}\nexport const wrong = () => node.classList.add("route-enter");` : code(f));
+  ok("1.9″ PLANT · a new shared-helper caller or another animation in that helper still needs its own runtime registration", !runtimeHolds(extraHelperCaller) && !runtimeHolds(extraHelperClass));
+  const helper = code(PRESS_HELPER);
+  ok("1.9a · actual shared press helper captures stylesheet frames/timing, clears React classes, replaces taps, stops on changed calm gates, permits the throttled tier and cleans listeners/observers on finish or cancel", await pressHelperHolds(helper));
+  ok("1.9a′ PLANT · leaving a class, copying timing or deferring class removal all fail the same actual helper control",
+    !await pressHelperHolds(helper.replace('finally { element.classList.remove("press-pop"); }', 'finally {}'))
+      && !await pressHelperHolds(helper.replace('element.animate(frames, timing)', 'element.animate(frames, { duration: 160 })'))
+      && !await pressHelperHolds(helper.replace('finally { element.classList.remove("press-pop"); }', 'finally { setTimeout(() => element.classList.remove("press-pop"), 160); }')));
+  ok("1.9b′ PLANT · absent calm observer/system listener, cancelling the allowed throttled tier, or leaked cleanup fail the same actual helper control",
+    !await pressHelperHolds(helper.replace('observer.observe(root, { attributes: true, attributeFilter: ["class", "data-motion"] });', ''))
+      && !await pressHelperHolds(helper.replace('media?.addEventListener("change", stopForCalm);', ''))
+      && !await pressHelperHolds(helper.replace('=== "minimal"', '=== "reduced"'))
+      && !await pressHelperHolds(helper.replace('observer?.disconnect();', ''))
+      && !await pressHelperHolds(helper.replace('media?.removeEventListener("change", stopForCalm);', '')));
 }
 {
   // THE THREE SIBLINGS THE CENSUS FOUND, each fixed the same way: the static or stateful placement leaves `transform`.

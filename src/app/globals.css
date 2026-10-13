@@ -8564,7 +8564,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-bsheet__scroll > * { flex-shrink: 0; }
 /* As on section rails and clipped strips, the two-pixel keyboard outline stays inside this scrollport's controls. */
 .kp-bsheet__scroll :where(a, button):focus-visible { outline-offset: -2px; }
-.kp-bsheet__title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin: 0; font-family: var(--font-display); font-size: var(--type-h3); font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; outline: none; }
+.kp-bsheet__title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin: 0; font-family: var(--font-display); font-size: var(--type-h3); font-weight: 600; line-height: 1.3; text-wrap: balance; overflow-wrap: anywhere; outline: none; }
 .kp-bsheet__question { margin: 0; font-size: var(--type-body); line-height: 1.5; color: var(--text-muted); overflow-wrap: anywhere; }
 .kp-bsheet__stake { display: grid; gap: var(--sp-2); }
 .kp-bsheet__stake label { font-size: var(--type-body); font-weight: 500; color: var(--text-muted); }

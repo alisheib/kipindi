@@ -10,8 +10,8 @@
  *     The host is matched in any letter case and with or without a trailing dot (`POSTGRES.Railway.Internal.` is the same host).
  *   · THE CHECKOUT. The repo's `.ts` modules reach each other through `@/…` aliases that tsx resolves from the tsconfig.json of the
  *     WORKING directory. Run from anywhere else they fail with a stack from inside the module graph; here it is ONE friendly line
- *     and exit 2, said before a single import is attempted. A junction or a symlink to the checkout is "somewhere else": the
- *     tool's own path is the real one, so the working directory must be the real checkout too.
+ *     and exit 2, said before a single import is attempted. The working directory Node reports must be the real checkout.
+ *     Windows retains a junction path and it is refused; POSIX getcwd already resolves a symlink to the physical checkout.
  *   · WHETHER THIS FILE IS THE PROGRAM. `isMain` compares REAL paths (`realpathSync.native`): Node's main URL is the real path of the
  *     script, while `process.argv[1]` keeps the path as it was typed, so through a junction or a symlink the two differ and a plain
  *     comparison would make the tool a silent no-op - exit 0 and not one line printed, which on a tool whose exit 0 means "GO" is

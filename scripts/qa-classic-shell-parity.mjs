@@ -241,6 +241,14 @@ const BOOK_NORMALISERS = [
     control: '<i class="mkt_new udr_up kp-mkt_row"></i>',
   },
   {
+    id: "encoded-market-ids", kind: "text",
+    what: "only a seeded 20-hex market id immediately after percent-encoded /markets/ in a return target: the existing word-boundary market-id reader cannot match mkt_ after %2F; the route, query, auth door and words remain compared",
+    apply: (s) => s.replace(/(%2[Ff]markets%2[Ff])mkt_[a-f0-9]{20}(?=%|[\x22\x27&\s<]|$)/g, "$1mkt_~"),
+    sample: '<a href="/auth/login?next=%2Fmarkets%2Fmkt_4f9c2a7b1e0d3c5a8b6e%3Fside%3DYES">Login</a>',
+    expect: '<a href="/auth/login?next=%2Fmarkets%2Fmkt_~%3Fside%3DYES">Login</a>',
+    control: '<a href="/auth/login?next=%2Fmarkets%2Fmkt_4f9c2a7b1e0d3c5a8b6ebad">Login</a><a href="/auth/login?next=%2Fpositions%2Fmkt_4f9c2a7b1e0d3c5a8b6e">Login</a>',
+  },
+  {
     id: "time-left", kind: "text",
     what: "a card's betting countdown, which moves by the minute (time-left.ts with the dictionary's {n}d/{n}h/{n}m left and siku/masaa/dakika {n} zimebaki/yamebaki)",
     apply: (s) => s
@@ -330,7 +338,7 @@ const BOOK_NORMALISERS = [
  *    eat-dates, leaves 1 of the 13 fields: it reads one tied stretch of four in each of the eight /markets cells, and
  *    nothing else in the book's 44 cells. That field is no normaliser's: BOOK_SETTLE records it. Every other candidate
  *    stays off: neither pair needed one. */
-const BOOK_NORMALISE_ON = ["market-ids", "eat-dates", "tied-cards"];
+const BOOK_NORMALISE_ON = ["market-ids", "encoded-market-ids", "eat-dates", "tied-cards"];
 /** The ids a switch names, in BOOK_NORMALISERS' order; a name that is not a candidate is refused. */
 function normaliseIds(text, from) {
   const ids = BOOK_NORMALISERS.map((n) => n.id);
@@ -2843,7 +2851,7 @@ async function proveQuestionCalibration() {
   const take = async (o = {}) => {
     const event = { "@context": "https://schema.org", "@type": "Event", name: o.eventWord ?? "Rain", startDate: o.eventClock ?? first, endDate: o.eventClock ?? first, organizer: { name: "50pick", startDate: o.nestedClock ?? first }, location: { url: o.eventUrl ?? "/markets/fixed" } };
     await page.setContent(`<!doctype html><html lang="en"><head><style>.whitespace-nowrap{white-space:nowrap}.date{font:13px Arial;padding:${o.padding ?? 0}px;font-family:${o.font ?? "Arial"}}.axis{width:${o.axis ?? 114}px;height:20px}</style></head><body>
-      <main id="main-content"><script type="application/ld+json">${JSON.stringify(event)}</script><aside aria-labelledby="bet-panel-heading"><h2 id="bet-panel-heading">Place your stake</h2><div data-testid="market-bet-break"><p>${o.words ?? "A break is active until"} <span class="whitespace-nowrap date">${o.date ?? "14 Oct, 13:43"}</span>. Betting is paused.${o.extra ? '<span class="whitespace-nowrap date">14 Oct, 13:43</span>' : ""}</p></div></aside>
+      <main id="main-content"><script type="application/ld+json">${JSON.stringify(event)}</script><aside aria-labelledby="bet-panel-heading"><h2 id="bet-panel-heading">Place your stake</h2><div data-testid="market-bet-break"><p>${o.words ?? "A break is active until"} <span class="whitespace-nowrap date">${o.date ?? "14 Oct, 13:43"}</span>. Betting is paused.${o.extra ? '<span class="whitespace-nowrap date">14 Oct, 13:43</span>' : ""}</p></div><a href="/auth/${o.authDoor ?? "login"}?next=%2F${o.returnRoute ?? "markets"}%2Fmkt_${o.marketId ?? "4f9c2a7b1e0d3c5a8b6e"}${o.returnQuery ?? "%3Fside%3DYES%26stake%3D500%26keep%3D1"}">${o.authWords ?? "Continue"}</a></aside>
       <section class="order-2"><section class="bg-bg-elevated"><p data-testid="market-break">A break is active until <span class="whitespace-nowrap date">${o.date ?? "14 Oct, 13:43"}</span>.</p></section></section>
       <div class="tv-lightweight-charts"><table><tr><td class="axis">plot</td><td>price</td></tr><tr><td>time axis</td></tr></table></div><p>${o.money ?? "TZS 1,234"}</p><time datetime="${o.visibleDate ?? first}">${o.visibleDate ?? first}</time></main></body></html>`);
     if (o.chartStyle !== undefined) await page.locator("#main-content").evaluate((el, style) => el.setAttribute("style", style), o.chartStyle);
@@ -2866,12 +2874,19 @@ async function proveQuestionCalibration() {
     }
     const shifted = await take({ date: "14 Oct, 14:21", eventClock: next });
     ok("P.8t only the two inert seed clocks and exact two A17 date leaves move: the same real diff verdict compares every region equal", fields(clean.cell, shifted.cell).length === 0 && q6(shifted.cell).length === 0);
+    const freshId = await take({ marketId: "17e07a91ecf526c2ae17" });
+    ok("P.8t a freshly seeded market id inside the encoded return target alone moves no region under the same real diff verdict", fields(clean.cell, freshId.cell).length === 0);
     for (const [name, o, need] of [
       ["date font", { font: "monospace" }, "regions.panel.layout"], ["date padding", { padding: 3 }, "regions.panel.layout"],
       ["surrounding words", { words: "A wrong notice until" }, "regions.panel.html"], ["visible money", { money: "TZS 9,876" }, "regions.main.html"],
       ["visible timestamp", { visibleDate: next }, "regions.main.html"], ["event words", { eventWord: "Snow" }, "regions.main.html"],
       ["event URL", { eventUrl: "/markets/changed" }, "regions.main.html"], ["nested clock", { nestedClock: next }, "regions.main.html"],
       ["chart table width", { axis: 130 }, "regions.main.layout"],
+      ["auth door", { authDoor: "register" }, "regions.panel.html"], ["return route", { returnRoute: "positions" }, "regions.panel.html"],
+      ["return side", { returnQuery: "%3Fside%3DNO%26stake%3D500%26keep%3D1" }, "regions.panel.html"],
+      ["return stake", { returnQuery: "%3Fside%3DYES%26stake%3D501%26keep%3D1" }, "regions.panel.html"],
+      ["other return query", { returnQuery: "%3Fside%3DYES%26stake%3D500%26keep%3D2" }, "regions.panel.html"], ["auth words", { authWords: "Wrong" }, "regions.panel.html"],
+      ["malformed market id", { marketId: "4f9c2a7b1e0d3c5a8b6ebad" }, "regions.panel.html"],
     ]) { const changed = await take(o); const diff = fields(clean.cell, changed.cell); ok(`P.8t ${name} stays detected by the real diff verdict (${need})`, diff.some((d) => d.field === need), diff.map((d) => d.field).join(", ")); }
     for (const [name, date] of [["missing comma", "14 Oct 13:43"], ["impossible day", "31 Feb, 13:43"], ["wrong locale", "14 Okt, 13:43"], ["year zero", "14 Oct 0000, 13:43"]]) {
       const changed = await take({ date }); ok(`P.8t ${name} fails the same real Q.6 clock population verdict`, q6(changed.cell).length > 0);

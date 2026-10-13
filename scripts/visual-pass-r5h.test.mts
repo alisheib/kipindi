@@ -485,18 +485,21 @@ const phasesOf = (t: (p: string) => string) => ({
     "src/components/updown/use-quick-bet.ts": "a request in flight (body data-ud-busy): a gate the handover reads, not a picture",
     "src/components/updown/updown-handover.tsx": "reads the busy gate and the scroll lock; writes no mark",
     "src/components/markets/win-celebration.tsx": "reads the motion class; writes no mark",
-    "src/components/markets/market-card.tsx": "a tapped button's press animation (press-pop), in its click handler",
-    "src/components/journey/bet-sheet/bet-sheet-host.tsx": "S8's delegated pick click re-arms that real anchor's press-pop before opening the sheet; event phase, never a mount-time DOM mark",
+    "src/lib/press-feedback.ts": "normal and journey pick handlers call this shared event-phase helper: a synchronous temporary press-pop class probes stylesheet frames/timing, is removed before returning to React, and plays via WAAPI; no retained hydration mark",
     "src/components/layout/needle.tsx": "the Needle's own engine (its root's suppressed and wake classes), run from its own gate; R4-J's and R5-D's notes hold its first frame (the shell's mark in the server's HTML)",
     "src/components/ui/route-transition.tsx": "the route entrance (route-enter): restarted in the layout phase of a route change, before the new route's first paint, and never at mount — FIXED (R5-H's patch, proven in a browser 2026-10-09; 3.7, 3.8)",
   };
   const PATTERN = /document\.documentElement\.(?:setAttribute|removeAttribute|classList|dataset)|document\.body\.(?:style|dataset|classList|setAttribute)|\.setAttribute\("data-|\.classList\.(?:add|remove|toggle)\(|body\.dataset\.|body\.style\./;
   const writers = (text: (p: string) => string) => walk("src").filter((p) => /\.tsx?$/.test(p) && !p.startsWith("src/app/admin/") && PATTERN.test(decomment(text(p)))).sort();
   const now = writers(raw);
+  const writerHolds = (files: string[]) => j(files) === j(Object.keys(MARK_WRITERS).sort());
   ok(`3.5 · every file outside the console that writes a DOM mark is classified (${now.length}): the phase it writes in and why that is right for what reads it — the journey flag, the strip's edges and the route entrance fixed`,
-    j(now) === j(Object.keys(MARK_WRITERS).sort()), j(now.filter((f) => !(f in MARK_WRITERS))) + " / " + j(Object.keys(MARK_WRITERS).filter((f) => !now.includes(f))));
+    writerHolds(now), j(now.filter((f) => !(f in MARK_WRITERS))) + " / " + j(Object.keys(MARK_WRITERS).filter((f) => !now.includes(f))));
   const planted = writers((p) => (p === "src/components/ui/toast.tsx" ? `${raw(p)}\nexport const markToast = () => document.documentElement.setAttribute("data-toast", "");` : raw(p)));
   ok("3.5′ PLANT · a new writer of a DOM mark (a toast stamping the html element) is reported until it is classified", planted.includes("src/components/ui/toast.tsx"));
+  const staleCaller = writers(p => p === "src/components/journey/bet-sheet/bet-sheet-host.tsx" ? `${raw(p)}\nexport const stale = () => anchor.classList.add("press-pop");` : raw(p));
+  const missingHelper = writers(p => p === "src/lib/press-feedback.ts" ? raw(p).replaceAll(".classList.", ".classes.") : raw(p));
+  ok("3.5″ PLANT · a caller that again retains a React class, or a stale shared-helper writer registration, fails the same complete writer census", !writerHolds(staleCaller) && !writerHolds(missingHelper));
   const strip = squash(code("src/components/ui/strip-autoscroll.tsx"));
   const stripOk = (s: string) => s.includes('useLayoutEffect(() => { for (const rail of Array.from(document.querySelectorAll<HTMLElement>("[data-strip-autoscroll]"))) markEdges(rail); });');
   ok("3.6 · the strip's edge fade is marked in the layout phase (and the framing effect still marks it again after it scrolls)", stripOk(strip) && count(strip, "markEdges(rail);") >= 4);

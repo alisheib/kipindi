@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { buyPositionAction } from "@/app/markets/actions";
 import { useT } from "@/lib/i18n";
 import { isActionRedirect } from "@/lib/action-redirect";
+import { playPressPop } from "@/lib/press-feedback";
 import { attributionFrom, pendingBetFrom, readMarker, writeMarker, stakeFromUrl, PENDING_BET_KEY, type PendingBetMarker } from "@/lib/journey/pending-bet";
 import { pendingIntents, pendingStorage, PENDING_STORAGE_MAX_BYTES } from "@/lib/journey/sheet-storage";
 import { parseSheetSeed } from "@/lib/journey/sheet-seed";
@@ -346,7 +347,7 @@ export function BetSheetHost() {
       const href = new URL(anchor.href, window.location.href);
       if (href.origin !== window.location.origin) return;
       event.preventDefault();
-      anchor.classList.remove("press-pop"); void anchor.offsetWidth; anchor.classList.add("press-pop");
+      playPressPop(anchor);
       const bet = { kind: "market" as const, id: seed.id, side: side as SheetSide, stake: null };
       window.history.pushState(window.history.state, "", window.location.pathname + withBet(window.location.search, bet) + window.location.hash);
       open(seed, side, box.dataset.sheetTitle ?? "", true, false, box.dataset.sheetOrigin ?? "card");

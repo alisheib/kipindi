@@ -19,6 +19,7 @@ import { MicroSpark } from "@/components/charts/micro-spark";
 import { dayAgoYesPct, isTipping, priceState } from "@/lib/markets/price-state";
 import { closesWithinTheHour } from "@/lib/markets/time-left";
 import { FEATURED_PREDICTOR_FLOOR, featuredShowsPredictors } from "@/lib/markets/featured";
+import { playPressPop } from "@/lib/press-feedback";
 
 type Props = {
   id: string;
@@ -448,7 +449,7 @@ export function MarketCard({
     e.preventDefault(); e.stopPropagation();
     // Micro-interaction: brief press-pop on the button before navigating
     const btn = e.currentTarget as HTMLElement;
-    btn.classList.add("press-pop");
+    playPressPop(btn);
     window.dispatchEvent(new Event("50pick:navigating"));
     // Small delay lets the press animation land visually before the route change
     setTimeout(() => router.push(`/markets/${id}?side=${side}`), 80);
