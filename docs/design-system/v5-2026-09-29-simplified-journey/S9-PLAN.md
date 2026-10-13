@@ -1,9 +1,9 @@
 # S9 — Deposit, waiting and return
 
-**Status: pure preparation, deposit-safety prerequisites and additive persistence rehearsal; S9 remains open, 2026-10-13.** This plan is in the separate managed checkout
+**Status: preparation, deposit-safety prerequisites, additive persistence and private status rehearsal; S9 remains open, 2026-10-13.** This plan is in the separate managed checkout
 `C:\Users\asheib\.codex\worktrees\vodacom-s9\kipindi-main`, branch `codex/vodacom-s9`, created at
 `e767f3f52c54b2659d9057dcbc46d42c5edcc833`. S8 is still being verified in its own checkout. The root reviewer authorized
-the two existing money-path prerequisite repairs independently. No S9 screen, route, schema, provider or production
+the deposit prerequisites, additive persistence and private status rehearsal independently. No S9 screen, route, schema, provider or production
 change has been deployed. Nullable persistence is prepared and rehearsed locally, with no application writer yet.
 Rebase this branch onto the verified S8 release before wiring
 its host: the final S8 recovery and keyboard corrections are newer than this preparation base.
@@ -81,6 +81,12 @@ the fields needed for the page, plus server time and a throttling hint. A failed
 zero or an old wallet snapshot presented as current. First-deposit information uses `firstDepositNoticeDue` and its
 per-player dismissal rule, not a guessed “first” from the payment response.
 
+An exact deposit-only `providerStatus = deposit-terminal-review:v1` takes precedence over a stored terminal status.
+It projects REVIEW/AML_REVIEW without changing that status or ledger. A rejected RG-held collection stays HELD:
+FAILED plus `RG_RETURN_MARK` does not prove an outbound refund. Matching retries never clear either review authority.
+A request which observes a signed contradiction but cannot persist its review signal must answer UNKNOWN; it cannot
+present the opposing raw terminal status as settled or safe to retry. The post-UNKNOWN controller/recheck gate is §5e.
+
 The authenticated GET is dynamic and `private, no-store`; JSON errors and unauthenticated responses get the same
 cache prohibition. It is never prefetched and is bypassed by the service worker. `deposit.status` is keyed by caller,
 and checked before a probe; `deposit.probe` is keyed by the **owned** transaction, never a foreign id. Bucket capacities
@@ -91,7 +97,7 @@ prove the chosen rules in the real rate registry; do not rely on its unknown-act
 
 A UUID belongs to a canonical deposit intent, not to a page render. A lost action answer or uncertain dispatch
 keeps that key locked and recovers the original transaction; it does not unlock a fresh Lipa. A definitive refusal
-before dispatch with no earlier unknown attempt, or an authoritative FAILED payment, permits a fresh key at the next explicit attempt. A changed
+before dispatch with no earlier unknown attempt, or an authoritative FAILED payment with no unresolved earlier uncertainty or review, permits a fresh key at the next explicit attempt. A changed
 amount/rail/phone is a new intent only after the previous attempt is conclusively resolved or a pending-payment
 choice explicitly declines another payment. Auth-loss and deploy recovery use the existing redirect / reload rules.
 An uncertain earlier same-key request can still reserve or dispatch after a retry meets a pre-lock refusal. That
@@ -137,7 +143,7 @@ Each workpack ends with its own actual evidence and independent review. Product 
 the S8 release is verified and this contract is reviewed. Pure status timing/intent helpers and their tests may be
 built independently here first; they have no provider, database or server import. The root's scoped 2026-10-13
 instruction also permits the existing deposit replay and signed-return scope prerequisites below, then the locally
-rehearsed additive persistence in WP2. This separate branch does not deploy those fields or introduce the product
+rehearsed additive persistence in WP2 and private status/settlement work in WP3. This separate branch does not deploy those fields or introduce the product
 flow ahead of the S8 release. The trusted bridge remains an independent review gate before WP4.
 
 ### WP0 — Rebase, authority and proof setup
@@ -381,8 +387,8 @@ journey remains off until S14 under §0h point 4. A green local drive is not the
 
 ### 5c. Next adapter/bridge review
 
-The root approved the following technical resolutions during WP2. They are not implemented routes/client writers;
-the actual trusted bridge and privacy/storage proof remain required before WP4:
+The root approved the following technical resolutions during WP2. The private routes are locally rehearsed in §5d;
+the actual trusted bridge, client writer and privacy/storage proof remain required before WP4:
 
 - Put the authenticated shared status core in `src/lib/server/deposit-status.ts`. Resolve an owned row, require
   DEPOSIT/TZS/unmarked scope, then consider a signed provider probe, settle through the existing webhook path and
@@ -406,3 +412,111 @@ the actual trusted bridge and privacy/storage proof remain required before WP4:
   member from `kp-pending-bet`. A new namespace would require its own bounded owner/intent/key/TTL parser, storage
   failure-before-send proof and explicit privacy disclosure. The namespace and controller are still unimplemented;
   payment confirmation never clears an unresolved bet key or places a bet.
+
+### 5d. WP3 private status and settlement evidence
+
+The shared [status core](../../../src/lib/server/deposit-status.ts) and its two authenticated GET adapters are prepared
+locally: `/api/wallet/deposits/[id]/status` and `/api/wallet/deposits/recover?key=<funding-uuid>`. Neither dispatches a
+payment. Funding-key recovery is strictly read-only apart from its rate/audit record; it never probes or settles.
+The transaction-id door may probe only a valid, owned, registered-MNO PROCESSING deposit at least 20 seconds old.
+The classic signed Card return adapter now uses the same core, retaining later owned Card checks beyond 30 minutes.
+It imports that reader dynamically to avoid a static wallet-mutation/reader cycle. Waiting's later explicit Card
+check must retain this signed adapter; its client handoff is still to be built, not inferred from an unsigned flag.
+
+- Scope requires owner, DEPOSIT, TZS and no house marker before provider I/O. Missing/foreign/wrong-type identifiers
+  have the same minimal UNKNOWN view. Refused lookups write SECURITY without the submitted UUID/reference or a foreign
+  row id. Invalid identifiers also refuse without lookup/provider I/O. Signed terminal authority enters only the existing
+  webhook settle path. PENDING/UNSUPPORTED/unrecognised replies and exceptions never manufacture FAILED.
+- The reader rereads and rechecks the row after a probe, even when the probe threw after a webhook won. It projects that
+  row with the central review/held-for-return rules and reads a fresh wallet. A missing/failed wallet read gives
+  UNKNOWN, never a stale balance or synthetic zero. Generic and marked disputes project REVIEW; the classic Card adapter
+  now has an explicit REVIEW explanation and receipt access without retry or polling. Its UNKNOWN balance is null, and the page renders only non-null PAID
+  balances. The old empty-reference assertion was changed specifically to prove this minimal UNKNOWN contract; no
+  historical source baseline, population floor or count was raised.
+- The final freshness boundary exposed a real mapper mismatch: the SQL wallet column can hold a non-TZS value,
+  while `toStoredWallet` fabricated `currency: "TZS"`. Its single read property now preserves the stored value and
+  the private core refuses a non-TZS balance as UNKNOWN. A real USD stored-row fixture failed before the repair;
+  memory, Postgres and a directly executed mapper/old-hardcode plant prove the refusal after it. Valid TZS rows and
+  money mutations are unchanged. This is a data-truth repair, not support for a new currency.
+- Both GETs are force-dynamic and `private, no-store` on 200/401/429/503; only GET is exported. The existing service worker
+  already bypasses all `/api/` addresses. There is no current waiting/recovery browser caller or prefetch to claim tested.
+  The registered caller budget is 30 tokens/refill 30 per minute; the owned-transaction probe budget is one token/refill
+  six per minute. The actual rate evaluator accepts the required 3-second first-minute cadence plus initial SSR/receipt
+  reads. Refused probes retain stored PENDING and give a retry hint. Executed controls prove caller-key versus submitted
+  id, owned-transaction probe key, refusal before lookup and no foreign probe-budget drain.
+- Three existing settlement defects were reproduced before repair. A failure's old PROCESSING read could overwrite a
+  concurrently confirmed credit and send a false failure notice: failure now rereads/claims under confirmation's same
+  wallet lock and sends side effects only for its winning claim. An opposing terminal claim arriving after the webhook's
+  early check also bypassed its contradiction alarm: a fresh post-settle opposing state now re-enters that existing
+  review/escalation branch, with no automatic reversal or credit. Finally, synchronous dispatch could return CONFIRMED
+  while RG settlement actually wrote AML_REVIEW/suspense: its result now uses the freshly scoped stored status.
+- The root approved a durable deposit-only review signal in the existing `Transaction.providerStatus` field. The
+  [exact predicate](../../../src/lib/wallet/deposit-review.ts) is shared by the core, common player status, receipts and
+  every deposit replay result: early lookup, in-wallet lookup and uniqueness-race recovery. An opposing terminal claim
+  sets it after a fresh scope/status read under the same wallet lock, preserves the original status and ledger, and
+  emits one three-language review bell notice. Duplicate matching/opposing callbacks never clear the marker or credit
+  again. Current ordinary `providerStatus` writers are five WITHDRAWAL-only sites; the executed source census and a
+  planted DEPOSIT overwrite protect that inventory. No new column or automatic credit/refund decision was added.
+- A review persistence fault propagates from the webhook service. Executed generic and Selcom HTTP adapters return
+  **500 / `ok:false`**, allowing provider retry. The signed reader keeps its observed terminal verdict and answers
+  UNKNOWN if the fresh row still contradicts it without a persisted review marker. A lost answer after the marker
+  actually persisted rereads REVIEW. Physical status, wallet and ledger remain unchanged in both fault directions.
+- The real `refundAmlRejection` DEPOSIT arm was executed on a genuinely received RG-suspense-funded row. It writes
+  FAILED/completedAt and retains `RG_RETURN_MARK`; it dispatches no outbound payment and leaves the RG_SUSPENSE ledger
+  entries byte-identical. This remains HELD, not RETURNED. A duplicate signed CONFIRMED for the original collection is
+  `already-rg-held`/received, with no new credit, review marker or notice. An explicitly different reported amount
+  refuses and alarms as amount-mismatch instead of being called that same collection. Ordinary FAILED-to-CONFIRMED disagreement
+  still creates durable REVIEW. The legacy common REVERSED label is preserved; new/changed Card headings, bell text
+  and English/Swahili email say held for return, with no delivered-refund claim or unsupported five-day promise.
+- Receipts render the current review/held explanation in all three languages. They suppress the automatic-processing
+  promise, completion date and balance-after figure for disputed/held money. Actual React renders cover both disputed
+  physical statuses and the real RG rejection; kit/chrome leaves are controlled and are not visual measurements.
+- [deposit-status-read](../../../scripts/deposit-status-read.test.mts) measured **105/105 memory, 108/108 Postgres and
+  45/45 in-process source plants caught**. It executes the shipped reader, adapters and settlement bodies against the actual
+  DAL, wallet locks and ledger. Its verifier/notification/mail/counter boundaries are controlled local fixtures, not real
+  provider proof. Both opposing signed-reader/webhook interleavings preserve the winning ledger state and escalate;
+  duplicate failure notices and confirmed credit/funnel notices happen once. Postgres independently checks the real
+  balanced DEPOSIT group and RG_SUSPENSE entries. The checkout's own 5444 cluster stopped after the run.
+- Existing deposit replay passes 39/39 memory with all 12 plants caught after moving its return-scope plants to the
+  actual shared core. Payment-webhook 77, deposit-gate-return 77, wallet-status-writers 51, house-bot rules 639, Card
+  deposit 48, rendered deposit-notifications 73, wallet-receipts 57 and email truth 1246 pass. Pure deposit state remains
+  168/168 with 38/38 plants: the former FAILED-plus-RG "returned" expectation now honestly requires HELD. Full application
+  typecheck and the status test's explicit TypeScript graph pass. Replay Postgres also passes 39/39 after the review
+  changes. Disclosure remains 122/122: the immutable `7624cf8c9` original-clause golden stays, only S9's six existing
+  held literals are restored and six exact new REVIEW literals removed for that comparison, and old/new deletions,
+  mutations, unapproved keys and duplicates are rejected. No golden or assertion floor was moved. Translation safety
+  24/24, source bytes 7/7 and doc links pass. The preceding WP3 rehearsal also passed DAL parity 2324 and the complete
+  house-report wrapper (memory 251, Postgres 80, wrapper 3/3); these are not
+  relabelled as measurements of later source changes.
+
+The expanded source/test packet is prepared for independent root review before integration. The latest scoped
+mapper repair and publication-delta helper remain explicitly in that packet; a branch checkpoint preserves this
+reviewable work and is not a main/production approval. S8's final shared-lock corrections must arrive on rebase.
+
+**Officer-resolution limitation:** no existing reviewed action resolves/clears the exact dispute marker. Matching
+callbacks, retries and signed status reads do not clear it. The officer's policy for disputed credited money, a durable
+outbound RG-return proof, any refund SLA and agency acknowledgement remain open; this checkpoint does not manufacture
+them. The bell is best-effort: an older immutable notice can remain in history, and a lost response after the marker
+write can precede notice creation. The fresh status/receipt is the authority; no durable notification outbox is claimed.
+
+### 5e. Post-UNKNOWN recovery gate before client integration
+
+[VODACOM-PLAN §3.5](../../VODACOM-PLAN.md) limits the automatic foreground probe to PROCESSING (the Selcom-probe
+paragraph) and permits the failed page's "nothing was taken"/fresh-key retry only on terminal authority. This core
+does not silently broaden terminal-row polling. A total persistence outage cannot durably remember an observed
+contradiction: the failed review write propagates HTTP 500 for provider retry and this request returns UNKNOWN, but a
+later ordinary stored FAILED read alone cannot erase a controller's earlier uncertainty.
+
+Before any client writer, prove the actual controller keeps that owned funding identity/key locked across UNKNOWN,
+auth loss and reload. It must not treat a later read-only bare FAILED as fresh-key authority after a known UNKNOWN.
+Prepare an independently reviewed **explicit signed recheck** contract: an owned, canonical DEPOSIT/TZS/unmarked row,
+one of the four MNO rails or the existing signed Card adapter, the same caller/owned-row budgets and no dispatch.
+Fresh unmarked/non-RG stored FAILED plus a matching signed FAILED can resolve that uncertainty; signed CONFIRMED which
+opposes stored FAILED must persist REVIEW before any terminal presentation. Faults, unsupported replies, missing or
+changed scope and missing wallet truth remain UNKNOWN. Review/held markers never clear from recheck. Funding-key
+recovery stays read-only. This proposal and its real controller/persistence proof are **not implemented or approved
+as an expanded polling policy** at this checkpoint; review them before WP4.
+
+The real trusted page/action bridge, separate bounded funding namespace and disclosure remain gates before a client
+writer. No waiting/deposit journey screen, production build, visual/flag parity or live provider result is claimed.
+S9 stays open and undeployed and must rebase onto the verified S8 release before product integration.

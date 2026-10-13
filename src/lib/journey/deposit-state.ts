@@ -2,7 +2,7 @@
 import { boundedNext, MAX_NEXT_LEN } from "../safe-next";
 import { isGatewayMsisdn, readAsciiDigits, toMsisdn255 } from "../phone-normalize";
 import { isMobileMoneyMethodId, isPaymentMethodId, type PaymentMethodId } from "../payment-providers";
-import { presentedStatus, RG_RETURN_MARK } from "../wallet/receipts";
+import { hasDepositStatusReview, isRgHeldDeposit, presentedStatus, RG_RETURN_MARK } from "../wallet/receipts";
 import type { TxnStatusValue } from "../wallet/ledger";
 import { formatBetParam, parseBetParam, readMarker, stakeFromUrl, type PendingBet } from "./pending-bet";
 import { pendingIntents, pendingStorage, PENDING_STORAGE_MAX_BYTES } from "./sheet-storage";
@@ -52,6 +52,7 @@ export type DepositRow = {
   createdAt: string;
   completedAt?: string | null;
   providerRef?: string | null;
+  providerStatus?: string | null;
   amlReason?: string | null;
   pendingBet?: unknown;
   houseBotId?: string | null;
@@ -165,10 +166,12 @@ export function depositProjection(callerId: string, row: DepositRow | null, nowM
     || !isPaymentMethodId(row.provider) || depositAge(row.createdAt, nowMs) === null) return { state: "UNKNOWN" };
   const status = row.status;
   let state: Exclude<DepositViewState, "UNKNOWN">;
-  if (status === "PROCESSING" || status === "PENDING") state = "PENDING";
+  if (hasDepositStatusReview(row)) state = "REVIEW";
+  else if (isRgHeldDeposit(row)) state = "HELD";
+  else if (status === "PROCESSING" || status === "PENDING") state = "PENDING";
   else if (status === "CONFIRMED") state = "PAID";
   else if (status === "AML_REVIEW") state = (row.amlReason ?? "").startsWith(RG_RETURN_MARK) ? "HELD" : "REVIEW";
-  else if (status === "REVERSED" || (status === "FAILED" && (row.amlReason ?? "").startsWith(RG_RETURN_MARK))) state = "RETURNED";
+  else if (status === "REVERSED") state = "RETURNED";
   else if (status === "FAILED" || status === "CANCELLED") state = "FAILED";
   else return { state: "UNKNOWN" };
   return {
@@ -180,7 +183,7 @@ export function depositProjection(callerId: string, row: DepositRow | null, nowM
 
 /** Eligibility only: the server still spends the real owned-transaction bucket and verifies the signed provider reply. */
 export function canProbeDeposit(callerId: string, row: DepositRow | null, nowMs: number): boolean {
-  if (!ownedDeposit(callerId, row) || !isMobileMoneyMethodId(row.provider) || !canonicalDepositFunding(row)
+  if (!ownedDeposit(callerId, row) || hasDepositStatusReview(row) || !isMobileMoneyMethodId(row.provider) || !canonicalDepositFunding(row)
     || row.status !== "PROCESSING" || !row.providerRef) return false;
   const age = depositAge(row.createdAt, nowMs);
   return age !== null && age >= DEPOSIT_PROBE_AGE_MS;

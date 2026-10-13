@@ -27,7 +27,7 @@ import {
   hasActiveReceiptFilters, receiptsSheetCount, filterReceipts, receiptCounts, receiptEmptyView, receiptsWereCapped,
   receiptTypeWord, receiptStatusWord, methodLabel, receiptLensLabel, anyInFlight, RG_RETURN_MARK, type ReceiptRowData,
 } from "../src/lib/wallet/receipts.ts";
-import { refundAmlRejection } from "../src/lib/server/wallet-service.ts";
+import { refundAmlRejection, settleDepositFromReturn } from "../src/lib/server/wallet-service.ts";
 import { decomment } from "./lib/decomment.mts";
 
 let pass = 0, fail = 0;
@@ -91,8 +91,8 @@ section("§2 · what has a receipt, and the status a player is shown");
   ok("2.4 …a withdrawal in review keeps its own word", P("WITHDRAWAL", "AML_REVIEW") === "AML_REVIEW");
   ok("2.5 every other status passes through unchanged (no return mark)",
     (["PENDING", "PROCESSING", "CONFIRMED", "FAILED", "REVERSED", "CANCELLED"] as const).every((s) => P("DEPOSIT", s) === s && P("WITHDRAWAL", s) === s));
-  // 2026-10-07 (money-and-compliance review): the officer's return writes FAILED — the deposit must still read REVERSED.
-  ok("2.6 ★ a held deposit an officer has RETURNED (FAILED, mark kept) still reads REVERSED",
+  // The DEPOSIT rejection writes FAILED without an outbound refund. Preserve the legacy label; it is not delivery proof.
+  ok("2.6 ★ an officer-rejected held deposit (FAILED, mark kept) retains the legacy REVERSED label",
     P("DEPOSIT", "FAILED", `${RG_RETURN_MARK}COOLED_OFF · returned to card`) === "REVERSED");
   ok("2.7 control · a FAILED deposit without the mark stays FAILED; a withdrawal with a mark-like reason stays FAILED",
     P("DEPOSIT", "FAILED", "provider declined") === "FAILED" && P("WITHDRAWAL", "FAILED", `${RG_RETURN_MARK}X`) === "FAILED");
@@ -108,9 +108,9 @@ section("§2 · what has a receipt, and the status a player is shown");
   ok("2.8 ★ refundAmlRejection keeps a held deposit's mark before the officer's reason, and the row still reads REVERSED",
     back.status === "FAILED" && back.amlReason === `${RG_RETURN_MARK}COOLED_OFF · returned to the card` && presentedStatus(back) === "REVERSED",
     `${back.status} · ${back.amlReason}`);
-  const ws = src("src/lib/server/wallet-service.ts");
-  ok("2.9 the card return reads the same rule: a held deposit is REVERSED there, never FAILED (\"nothing was taken\")",
-    ws.includes("const shown = presentedStatus(txn);") && ws.includes('shown === "REVERSED" ? "REVERSED" :'));
+  const returnRead = await settleDepositFromReturn("rc_me", "ord_rc_held");
+  ok("2.9 the real shared card return keeps rejected RG funds held under its legacy REVERSED state, never FAILED",
+    returnRead.state === "REVERSED" && returnRead.txn?.id === back.id && (await db.txn.findById(back.id))?.status === "FAILED");
 }
 
 // ── §3 ────────────────────────────────────────────────────────────────────────────────────────────

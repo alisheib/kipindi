@@ -198,17 +198,20 @@ await setPaymentControls({ provider: "mock" }, "test").catch(() => {});
   ok("C3 an excluded player was NOT credited", (await balanceOf("usr_dn_rg")) === 0);
 
   const ns = await notifsFor("usr_dn_rg");
-  const revNote = ns.find((n) => n.kind === "DEPOSIT" && /reversed/i.test(n.titleEn));
-  ok("C4 a reversal notification exists", !!revNote);
-  ok("C5 notification explains it was not added and was returned",
-    /not added/i.test(revNote?.bodyEn ?? "") && /returned/i.test(revNote?.bodyEn ?? ""));
+  const revNote = ns.find((n) => n.kind === "DEPOSIT" && /held for return/i.test(n.titleEn));
+  ok("C4 a held-for-return notification exists", !!revNote);
+  ok("C5 notification explains held funds without claiming a completed refund",
+    /not added/i.test(revNote?.bodyEn ?? "") && /held for return/i.test(revNote?.bodyEn ?? "")
+    && !/has been returned|imerudishwa|已退回/.test([revNote?.titleEn, revNote?.titleSw, revNote?.titleZh, revNote?.bodyEn, revNote?.bodySw, revNote?.bodyZh].join(" ")));
   ok("C6 reversal notification is trilingual", !!revNote?.titleSw && !!revNote?.titleZh);
 
   const mail = depositMail();
   ok("C7 a reversal email was sent", mail.length === 1, `got ${mail.length}`);
   const html = mail[0]?.html ?? "";
   ok("C8 email explains the self-exclusion", /self-excluded|cooling-off/i.test(html));
-  ok("C9 email says the money went back", /returned to the account it came from/i.test(html));
+  ok("C9 email says held for return without claiming delivery or a refund deadline", /held for return/i.test(html)
+    && /zinashikiliwa ili zirudishwe/i.test(html) && /has not been confirmed/i.test(html)
+    && !/returned to the account it came from|Amana imerudishwa|5 working days|siku 5 za kazi/.test(html));
   ok("C10 email carries both references", html.includes("txn_dn_rg") && html.includes("dep_rg_001"));
   // We must not invite a self-excluded player back into the deposit flow.
   ok("C11 email does NOT link them back to depositing", !/\/wallet\/deposit/.test(html));

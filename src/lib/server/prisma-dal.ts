@@ -1120,7 +1120,7 @@ function toStoredWallet(w: any): StoredWallet {
     pending: num(w.pending),
     hold: num(w.hold),
     bonusBalance: num(w.bonusBalance),
-    currency: "TZS",
+    currency: w.currency,
     status: w.status,
     freezeReasons: Array.isArray(w.freezeReasons) ? [...w.freezeReasons] : [],
     createdAt: iso(w.createdAt)!,

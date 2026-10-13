@@ -712,7 +712,7 @@ export function notifySelectionClosed(userId: string, opts: {
 export function notifyDeposit(
   userId: string,
   opts: {
-    status: "PROCESSING" | "CONFIRMED" | "FAILED" | "REVERSED";
+    status: "PROCESSING" | "CONFIRMED" | "FAILED" | "REVERSED" | "AML_REVIEW";
     amount: number;
     provider: string;
     /** Internal txn id — makes the notification deep-link to its own receipt. */
@@ -723,6 +723,20 @@ export function notifyDeposit(
 ) {
   const amt = formatTzs(opts.amount);
   const href = opts.txnId ? `/wallet/receipt/${opts.txnId}` : "/wallet";
+
+  if (opts.status === "AML_REVIEW") {
+    return notify({
+      userId,
+      kind: "DEPOSIT",
+      titleEn: `Deposit under review · ${amt}`,
+      titleSw: `Amana inakaguliwa · ${amt}`,
+      titleZh: `充值待核查 · ${amt}`,
+      bodyEn: "Your provider reported conflicting payment results. We're checking the payment. Don't pay again; open the receipt for its references.",
+      bodySw: "Mtoa huduma ameripoti matokeo ya malipo yanayokinzana. Tunakagua malipo. Usilipe tena; fungua risiti kuona kumbukumbu zake.",
+      bodyZh: "支付服务商报告了相互矛盾的结果，我们正在核查此笔付款。请勿重复支付；可打开凭据查看参考编号。",
+      href,
+    });
+  }
 
   if (opts.status === "CONFIRMED") {
     return notify({
@@ -777,12 +791,12 @@ export function notifyDeposit(
   return notify({
     userId,
     kind: "DEPOSIT",
-    titleEn: `Deposit reversed · ${amt}`,
-    titleSw: `Amana imerudishwa · ${amt}`,
-    titleZh: `充值已退回 · ${amt}`,
-    bodyEn: "Your account is self-excluded, so this deposit was not added. It has been returned to where it came from.",
-    bodySw: "Akaunti yako imejifungia, hivyo amana hii haikuongezwa. Imerudishwa ilikotoka.",
-    bodyZh: "您的账户处于自我限制状态，此笔充值未入账，已原路退回。",
+    titleEn: `Deposit held for return · ${amt}`,
+    titleSw: `Amana imeshikiliwa ili irudishwe · ${amt}`,
+    titleZh: `充值暂扣待退还 · ${amt}`,
+    bodyEn: "Your account could not accept this deposit, so it was not added. The money is held for return; contact support using this receipt.",
+    bodySw: "Akaunti yako haikuweza kupokea amana hii, hivyo haikuongezwa. Pesa zinashikiliwa ili zirudishwe; wasiliana na usaidizi ukitumia risiti hii.",
+    bodyZh: "您的账户当时无法接收此笔充值，款项未入账，现正保留待退还。请凭此收据联系支持。",
     href,
   });
 }

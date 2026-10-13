@@ -138,7 +138,7 @@ function run(impl: typeof D, verbose = false): { count: number; failed: string[]
   ok("status.failed", impl.depositProjection("usr_s9", { ...BASE, status: "FAILED" }, NOW).state === "FAILED");
   ok("status.held", impl.depositProjection("usr_s9", { ...BASE, status: "AML_REVIEW", amlReason: `${RC.RG_RETURN_MARK}cooling_off` }, NOW).state === "HELD");
   ok("status.review-not-failed", impl.depositProjection("usr_s9", { ...BASE, status: "AML_REVIEW", amlReason: "unknown officer review" }, NOW).state === "REVIEW");
-  ok("status.returned", impl.depositProjection("usr_s9", { ...BASE, status: "FAILED", amlReason: `${RC.RG_RETURN_MARK}returned` }, NOW).state === "RETURNED");
+  ok("status.rejected-rg-still-held", impl.depositProjection("usr_s9", { ...BASE, status: "FAILED", amlReason: `${RC.RG_RETURN_MARK}rejected` }, NOW).state === "HELD");
   ok("status.reversed", impl.depositProjection("usr_s9", { ...BASE, status: "REVERSED" }, NOW).state === "RETURNED");
   ok("status.unrecognised", j(impl.depositProjection("usr_s9", { ...BASE, status: "EXPIRED" }, NOW)) === unknown);
   const held = impl.depositProjection("usr_s9", { ...BASE, status: "AML_REVIEW", amlReason: RC.RG_RETURN_MARK }, NOW);

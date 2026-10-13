@@ -22,7 +22,8 @@
  *     as a foreign one. It used to render anything the viewer owned and name the type by the SIGN of the amount, so a
  *     bonus credit read "Deposit" and a house fee "Withdrawal" (finding S10-02).
  *   · THE STATUS chip takes its tone from `status-tone.ts` (§B11), as the list's does — it carried a file-local map in
- *     the BETTING inks (§B2a). A deposit held for return reads "Reversed" (`presentedStatus`), as its notice and email do.
+ *     the BETTING inks (§B2a). A held deposit retains the legacy "Reversed" label (`presentedStatus`), with held copy;
+ *     that label and an officer's rejection date do not prove delivery of an outbound refund.
  *   · THE METHOD reads "Kadi" / "银行卡" for a card (`methodLabel`) — brand names stay brand names, words are translated —
  *     and the subtitle is "Deposit · M-Pesa" in the reader's language, not the stored English description.
  *   · DATES are East Africa Time in the reader's month words (`formatEatDateTime`), the list's own.
@@ -46,11 +47,12 @@ import { formatTzs } from "@/lib/utils";
 import { formatEatDateTime } from "@/lib/eat-day";
 import { playerStatusChip } from "@/lib/status-tone";
 import { STATE_STATUSES } from "@/lib/wallet/ledger";
-import { hasReceipt, methodLabel, presentedStatus, receiptStatusWord, receiptTypeWord } from "@/lib/wallet/receipts";
+import { hasDepositStatusReview, hasReceipt, isRgHeldDeposit, methodLabel, presentedStatus, receiptStatusWord, receiptTypeWord } from "@/lib/wallet/receipts";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { Cash } from "@/components/ui/cash";
 import { keepIdRuns } from "@/components/ui/keep-words";
 import { PageContainer } from "@/components/layout/page-container";
+import { Callout } from "@/components/ui/callout";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Receipt", which a Swahili player saw in their browser tab and history.
@@ -73,6 +75,8 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
   if (!txn || txn.userId !== session.userId || !hasReceipt(txn.type)) notFound();
 
   const status = presentedStatus(txn);
+  const needsReview = hasDepositStatusReview(txn);
+  const heldForReturn = isRgHeldDeposit(txn);
   const statusWord = receiptStatusWord(t, status);
   const typeWord = receiptTypeWord(t, txn.type);
   const method = methodLabel(t, txn.provider);
@@ -107,7 +111,13 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
         </Chip>
       </div>
 
-      {moving && (
+      {(heldForReturn || needsReview) && (
+        <Callout tone="info">
+          {needsReview ? t.wallet.returnReviewBody : t.wallet.returnReversedBody}
+        </Callout>
+      )}
+
+      {moving && !needsReview && !heldForReturn && (
         <p className="rounded-xl border border-brand-600/50 bg-brand-500/[0.08] px-4 py-3 text-body-sm leading-relaxed text-text-muted">
           {t.wallet.receiptPendingNote}
         </p>
@@ -135,7 +145,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
         )}
         {/* Dates in the numeral face (§T5), as the list prints the same instant. */}
         <Row label={t.wallet.date}><span className="font-mono tabular-nums">{formatEatDateTime(Date.parse(txn.createdAt), nowMs, t.common.monthsShort, locale)}</span></Row>
-        {txn.completedAt && <Row label={t.wallet.receiptCompletedAt}><span className="font-mono tabular-nums">{formatEatDateTime(Date.parse(txn.completedAt), nowMs, t.common.monthsShort, locale)}</span></Row>}
+        {txn.completedAt && !needsReview && !heldForReturn && <Row label={t.wallet.receiptCompletedAt}><span className="font-mono tabular-nums">{formatEatDateTime(Date.parse(txn.completedAt), nowMs, t.common.monthsShort, locale)}</span></Row>}
         {/* balanceAfter is only meaningful once the movement actually settled. */}
         {txn.balanceAfter != null && settled && (
           <Row label={t.wallet.balanceAfter}>

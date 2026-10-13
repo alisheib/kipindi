@@ -10,6 +10,8 @@ import { join, resolve } from "node:path";
 import ts from "typescript";
 import { DepositSchema, AdminDepositSchema } from "../src/lib/server/validators.ts";
 import { parseSavedDepositBet, sameDepositFunding } from "../src/lib/journey/deposit-state.ts";
+import * as DepositState from "../src/lib/journey/deposit-state.ts";
+import { depositResultStatus } from "../src/lib/wallet/receipts.ts";
 import { paymentMethodName } from "../src/lib/payment-providers.ts";
 import { presentedStatus } from "../src/lib/wallet/receipts.ts";
 import { formatDateTime, formatTzs } from "../src/lib/utils.ts";
@@ -19,6 +21,7 @@ import { MUTATIONS } from "./anchors/deposit-replay.anchors.mjs";
 const ROOT = resolve(import.meta.dirname, "..");
 const SOURCE = readFileSync(join(ROOT, "src/lib/server/wallet-service.ts"), "utf8");
 const MAPPER = readFileSync(join(ROOT, "src/lib/server/prisma-dal.ts"), "utf8");
+const STATUS = readFileSync(join(ROOT, "src/lib/server/deposit-status.ts"), "utf8");
 const PG = process.argv.includes("--pg");
 if (process.env.NODE_ENV === "production" || (!!process.env.DATABASE_URL !== PG)) {
   throw new Error("deposit-replay requires memory with DATABASE_URL unset, or explicit --pg on its own scratch cluster");
@@ -57,10 +60,10 @@ function threshold(name: string): number {
   if (!text || !/^[0-9_]+$/.test(text)) throw new Error(`Nonliteral fixture threshold ${name}`);
   return Number(text.replaceAll("_", ""));
 }
-function service(source: string, data = db) {
+function serviceFor(source: string, data = db, statusSource = STATUS) {
   const counters = { dispatches: 0, dispatchIntents: [] as unknown[], verifies: 0, settles: 0, capReads: 0, audit: [] as unknown[], maintenance: false };
   const dependencies = {
-    db: data, withLock, parseSavedDepositBet, sameDepositFunding, DepositSchema, AdminDepositSchema, paymentMethodName, presentedStatus, formatDateTime, formatTzs,
+    db: data, withLock, parseSavedDepositBet, sameDepositFunding, depositResultStatus, DepositSchema, AdminDepositSchema, paymentMethodName, presentedStatus, formatDateTime, formatTzs,
     rateCheckAsync: async () => ({ allowed: true }), randomId: () => String(++sequence).padStart(24, "0"),
     audit: (entry: unknown) => counters.audit.push(entry), isMaintenanceMode: async () => counters.maintenance,
     maintenanceMessage: async () => "Maintenance", isPaymentPaused: async () => false,
@@ -75,9 +78,21 @@ function service(source: string, data = db) {
     settlePaymentWebhook: async () => { counters.settles++; throw new Error("Unexpected settlement in replay/scope proof"); },
     settleDepositConfirmed: async () => { throw new Error("Unexpected synchronous credit in replay proof"); }, notifyDeposit: () => {},
   };
-  const text = ["deposit", "settleDepositFromReturn", "friendlyProvider", "friendlyDepositReason"].map(n => body(source, n)).join("\n");
+  const statusImports: Record<string, unknown> = { "./store": { db: data }, "./audit": { audit: dependencies.audit },
+    "./rate-limit": { rateCheckAsync: dependencies.rateCheckAsync }, "./payments": { verifyDepositStatus: dependencies.verifyDepositStatus },
+    "./wallet-service": { settlePaymentWebhook: dependencies.settlePaymentWebhook }, "@/lib/journey/deposit-state": DepositState };
+  const statusModule = { exports: {} as any };
+  const statusJs = ts.transpileModule(statusSource, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
+  new Function("require", "module", "exports", statusJs)((id: string) => {
+    if (!Object.hasOwn(statusImports, id)) throw new Error(`Unexpected core import ${id}`);
+    return statusImports[id];
+  }, statusModule, statusModule.exports);
+  const adapterImport = 'const { readDepositStatus } = await import("./deposit-status");';
+  if (source.split(adapterImport).length !== 2) throw new Error("The real return adapter no longer has its one shared-core import");
+  const text = ["deposit", "settleDepositFromReturn", "friendlyProvider", "friendlyDepositReason"].map(n => body(source, n)).join("\n")
+    .replace(adapterImport, "const { readDepositStatus } = statusCore;");
   const js = ts.transpileModule(text, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
-  const exports = new Function(...Object.keys(dependencies), `${js}\nreturn { deposit, settleDepositFromReturn };`)(...Object.values(dependencies)) as {
+  const exports = new Function(...Object.keys(dependencies), "statusCore", `${js}\nreturn { deposit, settleDepositFromReturn };`)(...Object.values(dependencies), statusModule.exports) as {
     deposit: (userId: string, input: any, key?: string, card?: any, savedBet?: any) => Promise<any>;
     settleDepositFromReturn: (userId: string, reference: string) => Promise<any>;
   };
@@ -111,7 +126,8 @@ function hiddenBeforeCreate() {
     },
   } };
 }
-async function run(source: string, mapper = MAPPER): Promise<Check[]> {
+async function run(source: string, mapper = MAPPER, statusSource = STATUS): Promise<Check[]> {
+  const service = (text: string, data = db) => serviceFor(text, data, statusSource);
   const checks: Check[] = [], ok = (name: string, pass: boolean) => checks.push({ name, pass });
   const mapperJs = ts.transpileModule(body(mapper, "toStoredTxn"), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   const map = new Function("num", "numOrNull", "iso", `${mapperJs}\nreturn toStoredTxn;`)(Number, (n: unknown) => n == null ? null : Number(n), (d: Date | null) => d?.toISOString() ?? null);
@@ -176,13 +192,13 @@ async function run(source: string, mapper = MAPPER): Promise<Check[]> {
 
   const returns = service(source), unknown = await returns.settleDepositFromReturn(me, "dep_s9_absent");
   ok("return.missing", unknown.state === "UNKNOWN" && unknown.txn === undefined && returns.counters.verifies === 0);
-  const foreign = await returns.settleDepositFromReturn(other, base.providerRef!);
-  ok("return.foreign", foreign.state === "UNKNOWN" && foreign.txn === undefined && returns.counters.verifies === 0);
+  const auditBeforeForeign = returns.counters.audit.length, foreign = await returns.settleDepositFromReturn(other, base.providerRef!);
+  ok("return.foreign", foreign.state === "UNKNOWN" && foreign.txn === undefined && returns.counters.verifies === 0 && returns.counters.audit.length === auditBeforeForeign + 1);
   for (const [name, patch] of [["wrong-type", { type: "WITHDRAWAL" }], ["currency", { currency: "USD" }], ["house", { houseBotId: "s9_synthetic_house" }]] as const) {
-    const row = await transaction(me, patch), before = returns.counters.verifies;
+    const row = await transaction(me, patch), before = returns.counters.verifies, auditBefore = returns.counters.audit.length;
     const answer = await returns.settleDepositFromReturn(me, row.providerRef!);
     ok(`return.${name}`, answer.state === "UNKNOWN" && answer.txn === undefined && returns.counters.verifies === before && returns.counters.settles === 0
-      && (await db.txn.findById(row.id))?.status === "PROCESSING");
+      && returns.counters.audit.length === auditBefore + 1 && (await db.txn.findById(row.id))?.status === "PROCESSING");
   }
   const paid = await transaction(me, { provider: "CARD", msisdn: null }), result = await returns.settleDepositFromReturn(me, paid.providerRef!);
   ok("return.owned-control", result.state === "PENDING" && result.txn.id === paid.id && returns.counters.verifies === 1 && returns.counters.settles === 0);
@@ -205,7 +221,7 @@ async function run(source: string, mapper = MAPPER): Promise<Check[]> {
 
 try {
   for (const mutation of MUTATIONS) {
-    const anchor = resolveAnchor(mutation.file.endsWith("prisma-dal.ts") ? MAPPER : SOURCE, mutation.from);
+    const anchor = resolveAnchor(mutation.file.endsWith("prisma-dal.ts") ? MAPPER : mutation.file.endsWith("deposit-status.ts") ? STATUS : SOURCE, mutation.from);
     if (!anchor.ok) throw new Error(`${mutation.name}: ${anchor.reason}`);
   }
   const green = await run(SOURCE), failed = green.filter(c => !c.pass);
@@ -214,7 +230,9 @@ try {
   if (process.argv.includes("--prove-red")) {
     if (PG) throw new Error("Red controls run only in isolated memory; PG is the independent DAL proof");
     for (const mutation of MUTATIONS) {
-      const planted = mutation.file.endsWith("prisma-dal.ts") ? await run(SOURCE, injectDefect(MAPPER, mutation.from, mutation.to)) : await run(injectDefect(SOURCE, mutation.from, mutation.to));
+      const planted = mutation.file.endsWith("prisma-dal.ts") ? await run(SOURCE, injectDefect(MAPPER, mutation.from, mutation.to))
+        : mutation.file.endsWith("deposit-status.ts") ? await run(SOURCE, MAPPER, injectDefect(STATUS, mutation.from, mutation.to))
+        : await run(injectDefect(SOURCE, mutation.from, mutation.to));
       if (!planted.some(c => c.name === mutation.expect && !c.pass)) throw new Error(`SURVIVED ${mutation.name}: expected ${mutation.expect}`);
       console.log(`PASS PLANT ${mutation.name}`);
     }

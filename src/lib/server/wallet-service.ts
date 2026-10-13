@@ -42,7 +42,8 @@ import { emit } from "./event-bus";
 import { postLedgerEntries, depositEntries, rgSuspenseEntries, withdrawalEntries, internalCreditEntries, adjustmentEntries, agentCommissionEntries, agentRegistrationFeeEntries, withMoneyTx } from "./ledger";
 import { getEffectiveConfig } from "./market-config";
 import { computeWithdrawalFee, minWithdrawalForRate, PROVIDER_MIN_PAYOUT_TZS } from "@/lib/payout";
-import { RG_RETURN_MARK, presentedStatus } from "@/lib/wallet/receipts";
+import { depositResultStatus, isRgHeldDeposit, RG_RETURN_MARK } from "@/lib/wallet/receipts";
+import { DEPOSIT_STATUS_REVIEW_MARK, hasDepositStatusReview } from "@/lib/wallet/deposit-review";
 import { payoutDestinationFor } from "@/lib/payout-destination";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
@@ -94,7 +95,7 @@ export async function deposit(
     if (existing) {
       if (!matchesFunding(existing)) return keyConflict();
       const w = await db.wallet.findByUserId(userId);
-      return { ok: true, data: { txnId: existing.id, status: existing.status, balance: w?.balance ?? 0 } };
+      return { ok: true, data: { txnId: existing.id, status: depositResultStatus(existing), balance: w?.balance ?? 0 } };
     }
   }
 
@@ -303,7 +304,7 @@ export async function deposit(
   if (reservation.reused) {
     // Idempotent replay — the deposit was already initiated; don't dispatch again.
     const w = await db.wallet.findByUserId(userId);
-    return { ok: true, data: { txnId, status: txn.status, balance: w?.balance ?? 0 } };
+    return { ok: true, data: { txnId, status: depositResultStatus(txn), balance: w?.balance ?? 0 } };
   }
   // ⭐ THE RECORD THAT REPLACED THE DEPOSIT GATES: the account's identity standing (2026-09-13) and
   // its email standing (2026-10-07), as fields on the row every deposit already writes. Stamped on
@@ -381,7 +382,12 @@ export async function deposit(
   // credit immediately. settleDepositConfirmed is the SAME exactly-once path the
   // webhook uses, so the two can never double-credit.
   const settled = await settleDepositConfirmed(txnId, result.providerRef);
-  return { ok: true, data: { txnId, status: "CONFIRMED", balance: settled.balance } };
+  const final = await db.txn.findById(txnId);
+  if (!final || final.userId !== userId || final.type !== "DEPOSIT" || final.currency !== "TZS") {
+    throw new Error("Deposit settlement could not be reread.");
+  }
+  // RG can begin while the collection is moving. A held/refused settlement is not a successful wallet credit.
+  return { ok: true, data: { txnId, status: depositResultStatus(final), balance: settled.balance } };
 }
 
 /**
@@ -408,10 +414,8 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
     if (!fresh) return { credited: false, balance: 0 };
     // Responsible-gambling gate (GLI-19 / LCCP): if the player self-excluded or
     // cooled-off AFTER this deposit was initiated (or the provider pushed it late),
-    // we must NOT credit an excluded account. Reverse it instead — mark the deposit
-    // REVERSED and leave the balance untouched. On the stub INTERNAL provider no
-    // money actually moved, so this IS the refund; a real aggregator (Appendix D1)
-    // plugs an outbound reversal in right here.
+    // we must NOT credit an excluded account. Book the received money in suspense and leave the wallet untouched.
+    // This path does not dispatch an outbound return; an AML rejection/status change is not proof of refund delivery.
     const rgLock = await isLockedOut(t.userId);
     if (rgLock.locked) {
       // The comment above was written when the only rail was the INTERNAL stub, where
@@ -572,9 +576,18 @@ function friendlyFailureReason(reason: string): string | undefined {
  *  Idempotent: only acts while the txn is PROCESSING — which is also what makes
  *  the player-facing notification + email below fire EXACTLY ONCE. */
 async function settleDepositFailed(txnId: string, reason: string): Promise<boolean> {
-  const t = await db.txn.findById(txnId);
-  if (!t || t.status !== "PROCESSING") return false;
-  await db.txn.update(txnId, { status: "FAILED", description: `${friendlyProvider(t.provider)} deposit failed: ${reason}` });
+  const pre = await db.txn.findById(txnId);
+  if (!pre) return false;
+  // The same claim lock as confirmation. An old PROCESSING read is not authority to overwrite a concurrently paid
+  // deposit or to tell its owner that nothing was taken. Only the winner below sends the failure notice/email.
+  const done = await withLock(`wallet:${pre.userId}`, async () => {
+    const t = await db.txn.findById(txnId);
+    if (!t || t.status !== "PROCESSING") return null;
+    await db.txn.update(txnId, { status: "FAILED", description: `${friendlyProvider(t.provider)} deposit failed: ${reason}` });
+    return t;
+  });
+  if (!done) return false;
+  const t = done;
   audit({ category: "WALLET", action: "deposit.failed", actorId: t.userId, targetType: "Transaction", targetId: txnId, payload: { reason } });
   // Tell the player. This path used to write an audit row and stop — so a player
   // whose card was declined, or whose deposit was reconciled to failed half an
@@ -922,8 +935,8 @@ export async function settleWithdrawalFailed(txnId: string, reason: string): Pro
 export type DepositReturnOutcome = {
   /** `REVERSED` (2026-10-07): the card paid, but the account could not take money (a break or an exclusion), so the
    *  deposit is held for return — never "nothing was taken from your card", which is what FAILED says. */
-  state: "PAID" | "PENDING" | "FAILED" | "UNKNOWN" | "REVERSED";
-  balance: number;
+  state: "PAID" | "PENDING" | "FAILED" | "UNKNOWN" | "REVERSED" | "REVIEW";
+  balance: number | null;
   txn?: {
     id: string;
     amount: number;
@@ -958,53 +971,16 @@ export type DepositReturnOutcome = {
  * failed while it is still moving is what makes them pay twice.
  */
 export async function settleDepositFromReturn(userId: string, orderId: string): Promise<DepositReturnOutcome> {
-  const wallet = await db.wallet.findByUserId(userId);
-  const balanceOf = async () => (await db.wallet.findByUserId(userId))?.balance ?? wallet?.balance ?? 0;
-
-  if (!orderId) return { state: "UNKNOWN", balance: await balanceOf() };
-
-  let txn = await db.txn.findByProviderRef(orderId);
-  // Unknown reference, another player's row, another transaction type or a marked house row — the same answer.
-  // These checks precede the signed provider request and every possible settlement. We do NOT
-  // distinguish them: confirming "that reference exists but isn't yours" would
-  // leak the existence of other players' transactions.
-  if (!txn || txn.userId !== userId || txn.type !== "DEPOSIT" || txn.currency !== "TZS" || txn.houseBotId != null) {
-    if (txn) {
-      audit({
-        category: "SECURITY",
-        action: "deposit.return_ownership_mismatch",
-        actorId: userId, targetType: "Transaction", targetId: txn.id,
-        payload: { providerRef: orderId },
-      });
-    }
-    return { state: "UNKNOWN", balance: await balanceOf() };
-  }
-
-  // Still open → ask the authority. verifyDepositStatus returns PENDING for
-  // anything non-terminal (incl. INPROGRESS and unrecognised values), so an
-  // in-flight payment stays PROCESSING rather than being failed here.
-  if (txn.status === "PROCESSING" && txn.providerRef) {
-    const v = await verifyDepositStatus(txn.providerRef);
-    if (v.status === "CONFIRMED") {
-      await settlePaymentWebhook({ providerRef: txn.providerRef, status: "CONFIRMED", amount: v.amount });
-    } else if (v.status === "FAILED") {
-      await settlePaymentWebhook({ providerRef: txn.providerRef, status: "FAILED" });
-    }
-    // PENDING / UNSUPPORTED → leave it PROCESSING for the webhook + reconcile sweep.
-    txn = (await db.txn.findById(txn.id)) ?? txn;
-  }
-
-  // Through the player's one status rule, so the return page, the receipt and the bell agree about a held deposit.
-  const shown = presentedStatus(txn);
-  const state: DepositReturnOutcome["state"] =
-    shown === "CONFIRMED" ? "PAID" :
-    shown === "PROCESSING" ? "PENDING" :
-    shown === "REVERSED" ? "REVERSED" :
-    "FAILED"; // FAILED / CANCELLED / anything terminal-but-not-credited
-
+  // Dynamic at the adapter boundary: the shared core imports the existing webhook settlement entry point, so the
+  // wallet's mutation module does not statically depend on its reader. Both doors execute the same scope/probe/read.
+  const { readDepositStatus } = await import("./deposit-status");
+  const result = await readDepositStatus(userId, { kind: "card-order", value: orderId });
+  const view = result.view, txn = result.txn;
+  if (view.state === "UNKNOWN" || !txn) return { state: "UNKNOWN", balance: null };
+  const state: DepositReturnOutcome["state"] = view.state === "HELD" || view.state === "RETURNED" ? "REVERSED" : view.state;
   return {
     state,
-    balance: await balanceOf(),
+    balance: view.balance,
     txn: {
       id: txn.id,
       amount: Math.abs(txn.amount),
@@ -1026,6 +1002,20 @@ export async function settlePaymentWebhook(input: { providerRef: string; status:
   const txn = await db.txn.findByProviderRef(input.providerRef);
   if (!txn) return { handled: false, reason: "unknown-reference" };
   if (txn.status !== "PROCESSING") {
+    // The original collection can repeat CONFIRMED after an RG rejection. The rejection records no outbound refund,
+    // so that is already-received/held money, not an opposing collection result and not authority to credit it again.
+    if (isRgHeldDeposit(txn) && input.status === "CONFIRMED") {
+      const collectionAmountMatches = input.amount == null || Math.abs(input.amount) === Math.abs(txn.amount);
+      if (!collectionAmountMatches) {
+        audit({ category: "SECURITY", action: "webhook.amount_mismatch", actorId: null, targetType: "Transaction", targetId: txn.id,
+          payload: { expected: txn.amount, got: input.amount, providerRef: input.providerRef } });
+        auditNeedsReviewOnce(txn.id, "provider reported a DIFFERENT collection amount for an RG-held deposit — never auto-settled", {
+          providerRef: input.providerRef, expected: txn.amount, got: input.amount, type: txn.type,
+        });
+        return { handled: false, reason: "amount-mismatch" };
+      }
+      return { handled: true, reason: "already-rg-held" };
+    }
     // 🔴 A TERMINAL TRANSACTION BEING TOLD THE OPPOSITE IS NOT A DUPLICATE CALLBACK.
     // Every non-PROCESSING txn used to return `already-<status>` with `handled: true`,
     // which is right for a provider's at-least-once retry and WRONG for a contradiction:
@@ -1047,6 +1037,8 @@ export async function settlePaymentWebhook(input: { providerRef: string; status:
       (txn.status === "CONFIRMED" && input.status === "FAILED") ||
       ((txn.status === "FAILED" || txn.status === "REVERSED") && input.status === "CONFIRMED");
     if (contradicted) {
+      const reviewAdded = txn.type === "DEPOSIT" ? await markDepositStatusReview(txn.id, input.status) : false;
+      if (reviewAdded) notifyDeposit(txn.userId, { status: "AML_REVIEW", amount: Math.abs(txn.amount), provider: friendlyProvider(txn.provider), txnId: txn.id });
       audit({
         category: "SECURITY",
         action: "webhook.terminal_contradicted",
@@ -1091,6 +1083,13 @@ export async function settlePaymentWebhook(input: { providerRef: string; status:
   if (txn.type === "DEPOSIT") {
     if (input.status === "CONFIRMED") await settleDepositConfirmed(txn.id, txn.providerRef ?? input.providerRef);
     else await settleDepositFailed(txn.id, "provider-reported-failure");
+    const fresh = await db.txn.findById(txn.id);
+    if (fresh && ((fresh.status === "CONFIRMED" && input.status === "FAILED")
+      || ((fresh.status === "FAILED" || fresh.status === "REVERSED") && input.status === "CONFIRMED"))) {
+      // The opposing terminal claim may win AFTER the early PROCESSING check. Re-enter the existing terminal
+      // contradiction alarm instead of acknowledging it as settled. This path never reverses or credits again.
+      return settlePaymentWebhook(input);
+    }
     return { handled: true, reason: `deposit-${input.status.toLowerCase()}` };
   }
   if (txn.type === "WITHDRAWAL") {
@@ -1099,6 +1098,24 @@ export async function settlePaymentWebhook(input: { providerRef: string; status:
     return { handled: true, reason: `withdrawal-${input.status.toLowerCase()}` };
   }
   return { handled: false, reason: `untracked-type-${txn.type.toLowerCase()}` };
+}
+
+/** One durable deposit-only review signal, claimed under its wallet lock. No terminal status, amount or ledger changes.
+ * Matching callbacks/retries do not clear it. An officer's actual resolution needs a separate reviewed action. */
+async function markDepositStatusReview(txnId: string, reported: "CONFIRMED" | "FAILED"): Promise<boolean> {
+  const pre = await db.txn.findById(txnId);
+  if (!pre || pre.type !== "DEPOSIT" || pre.currency !== "TZS" || pre.houseBotId != null) return false;
+  return withLock(`wallet:${pre.userId}`, async () => {
+    const fresh = await db.txn.findById(txnId);
+    if (!fresh || fresh.type !== "DEPOSIT" || fresh.currency !== "TZS" || fresh.houseBotId != null || hasDepositStatusReview(fresh)) return false;
+    if (fresh.userId !== pre.userId || (isRgHeldDeposit(fresh) && reported === "CONFIRMED")) return false;
+    const opposed = (fresh.status === "CONFIRMED" && reported === "FAILED")
+      || ((fresh.status === "FAILED" || fresh.status === "REVERSED") && reported === "CONFIRMED");
+    if (!opposed) return false;
+    const saved = await db.txn.update(txnId, { providerStatus: DEPOSIT_STATUS_REVIEW_MARK });
+    if (!saved || !hasDepositStatusReview(saved)) throw new Error("Deposit review signal was not persisted.");
+    return true;
+  });
 }
 
 /**
@@ -2712,9 +2729,9 @@ export async function refundAmlRejection(txn: StoredTxn, reason: string): Promis
         if (!updated) throw new Error(`aml reject ${txn.id}: wallet ${wallet.id} row missing`);
       }
     }
-    // ⭐ A DEPOSIT HELD FOR RETURN KEEPS ITS MARK in front of the officer's reason (2026-10-07). The player's surfaces read
-    // the mark (`presentedStatus`), so the returned deposit still reads "Reversed" — as the notice and the email already
-    // said — instead of turning into "Failed" the moment the money goes back. A withdrawal's reason is unchanged.
+    // A deposit keeps its held-for-return mark. This DEPOSIT arm dispatches no refund and posts no outbound ledger
+    // movement; FAILED/completedAt is the officer's rejection, not refund-delivery authority. The player's legacy
+    // "Reversed" label remains, with truthful held copy. A withdrawal's reason and actual wallet refund stay unchanged.
     const keepMark = txn.type === "DEPOSIT" && (txn.amlReason ?? "").startsWith(RG_RETURN_MARK);
     await db.txn.update(txn.id, { status: "FAILED", completedAt: new Date().toISOString(), amlReason: keepMark ? `${txn.amlReason} · ${reason}` : reason }, tx);
   });

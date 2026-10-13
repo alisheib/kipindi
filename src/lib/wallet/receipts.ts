@@ -31,6 +31,8 @@ import { emptyKind, relaxations, type EmptyKind, type ExitCandidate, type Relaxa
 import { paymentMethodName } from "@/lib/payment-providers";
 import { LEDGER_STATES, LENS_TYPES, STATE_STATUSES, type LedgerState, type TxnStatusValue, type TxnTypeValue } from "./ledger";
 import type { Dict } from "@/lib/i18n-dict";
+import { hasDepositStatusReview } from "./deposit-review";
+export { hasDepositStatusReview } from "./deposit-review";
 
 /* ─────────────────────────────── what has a receipt ──────────────────────────────── */
 
@@ -44,6 +46,17 @@ export function hasReceipt(type: string | null | undefined): type is ReceiptType
 
 /** The mark a deposit held for RETURN carries in `amlReason` (`wallet-service.ts`, an excluded or resting account). */
 export const RG_RETURN_MARK = "rg_refund_due_";
+
+/** The recorded collection is owed back; FAILED/rejection alone is not durable proof of an outbound refund. */
+export function isRgHeldDeposit(row: { type: string; status: string; amlReason?: string | null }): boolean {
+  return row.type === "DEPOSIT" && ["AML_REVIEW", "FAILED", "REVERSED"].includes(row.status)
+    && (row.amlReason ?? "").startsWith(RG_RETURN_MARK);
+}
+
+/** Matching service recovery must not turn disputed or still-owed money into a safe-new-payment result. */
+export function depositResultStatus<T extends string>(row: { type: string; status: T; amlReason?: string | null; providerStatus?: string | null }): T | "AML_REVIEW" {
+  return hasDepositStatusReview(row) || isRgHeldDeposit(row) ? "AML_REVIEW" : row.status;
+}
 
 /**
  * THE STATUS A PLAYER IS SHOWN for their own transaction — the stored status, with ONE translation: a deposit held for
@@ -60,7 +73,8 @@ export const RG_RETURN_MARK = "rg_refund_due_";
  * read THIS, so no surface files a reversed deposit under "in flight" or "failed" while another calls it reversed.
  * Officer surfaces keep the stored word.
  */
-export function presentedStatus(row: { type: string; status: TxnStatusValue; amlReason?: string | null }): TxnStatusValue {
+export function presentedStatus(row: { type: string; status: TxnStatusValue; amlReason?: string | null; providerStatus?: string | null }): TxnStatusValue {
+  if (hasDepositStatusReview(row)) return "AML_REVIEW";
   if (row.type !== "DEPOSIT") return row.status;
   if (row.status === "AML_REVIEW") return "REVERSED";
   if (row.status === "FAILED" && (row.amlReason ?? "").startsWith(RG_RETURN_MARK)) return "REVERSED";
