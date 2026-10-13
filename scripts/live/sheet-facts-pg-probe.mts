@@ -13,6 +13,9 @@
  * Run (through the heavy-node lock; it needs a migrated EMPTY database):
  *   npm run db:probe-sheet-facts   (db-scratch boots Postgres; scripts/live/pg-probe-run.mts migrates it and runs this)
  */
+// house-bot: covered by L2 sweep — it writes account facts (a responsible-gambling row each, the play clock through the
+// gate) only to the four accounts it creates itself, in a LOOPBACK scratch Postgres it refuses to leave; its world holds
+// no house bot (test:house-bot-holder-lifecycle 2.1).
 process.exitCode = 1;
 if (!process.env.DATABASE_URL) {
   console.error("sheet-facts-pg-probe: needs DATABASE_URL (a scratch Postgres) — refusing to run on the memory twin, which proves nothing here.");
