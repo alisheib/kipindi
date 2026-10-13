@@ -90,7 +90,7 @@ const viewer = (f: SS.SheetFacts | null, o: Partial<SS.SheetViewer> = {}): SS.Sh
 };
 const wallet = (balance: number | null, bonusBalance = 0) => ({ status: "ACTIVE", balance, bonusBalance });
 const q = (stake: number, side: "YES" | "NO" = "YES"): SS.Quote => ({ marketId: MKT, side, stake });
-const ctx = (o: Partial<SR.SettleContext> = {}): SR.SettleContext => ({ inDoubt: false, seed: seed(), stake: 5_000, nowMs: NOW, ...o });
+const ctx = (o: Partial<SR.SettleContext> = {}): SR.SettleContext => ({ inDoubt: false, priorSettledAt: null, seed: seed(), quote: { marketId: MKT, side: "YES", stake: 5_000 }, nowMs: NOW, ...o });
 const R = (value: unknown): SR.ActionAnswer => ({ kind: "resolved", value });
 const T = (error: unknown): SR.ActionAnswer => ({ kind: "rejected", error });
 const fail = (o: Record<string, unknown>) => ({ ok: false, error: "an English sentence the sheet never reads", ...o });
@@ -99,7 +99,7 @@ const fail = (o: Record<string, unknown>) => ({ ok: false, error: "an English se
 const WP4_KEYS = new Set([
   "placeCta", "placeCtaBare", "retryCta", "sheetBusy", "sheetRateLimited", "sheetSessionLimit", "sheetBlocked", "sheetFrozen",
   "sheetClosedBody", "sheetNotTaking", "sheetBelowMin", "sheetAboveMax", "sheetPlacingSlow", "lowPendingTitle",
-  "lowPendingWaitBody", "lowPendingLateTitle", "lowPendingLateBody",
+  "lowPendingWaitBody", "lowPendingLateTitle", "lowPendingLateBody", "lowTitle",
 ]);
 
 /* ─── The census: the player bet path's refusals, read from the source ───────────────────────────────────────── */
@@ -135,8 +135,8 @@ function skipTemplate(t: string, i: number): number {
   return t.length;
 }
 /** Every `{ ok: false … }` literal in a body, as its text (braces matched the same way). */
-function refusalSites(body: string): string[] {
-  const out: string[] = [];
+function refusalSites(body: string): { text: string; at: number }[] {
+  const out: { text: string; at: number }[] = [];
   for (const m of body.matchAll(/\{\s*ok:\s*false\b/g)) {
     const start = m.index as number;
     let depth = 0;
@@ -145,7 +145,7 @@ function refusalSites(body: string): string[] {
       if (c === '"' || c === "'") { i = skipQuote(body, i); continue; }
       if (c === "`") { i = skipTemplate(body, i); continue; }
       if (c === "{") depth++;
-      else if (c === "}" && --depth === 0) { out.push(body.slice(start, i + 1)); break; }
+      else if (c === "}" && --depth === 0) { out.push({ text: body.slice(start, i + 1), at: start }); break; }
     }
   }
   return out;
@@ -157,7 +157,8 @@ function siteTokens(site: string): { code: string | null; reasons: string[]; rea
   const reasons = rm ? [...rm[1].matchAll(/"([a-z_]+)"/g)].map((x) => x[1]) : [];
   return { code, reasons, reasonExpr: !!rm };
 }
-function census(src: Sources): { sites: { fn: string; code: string | null; reasons: string[]; reasonExpr: boolean }[]; missing: string[] } {
+type Site = { fn: string; code: string | null; reasons: string[]; reasonExpr: boolean; postLock: boolean; afterBusyCatch: boolean };
+function census(src: Sources): { sites: Site[]; missing: string[]; lockMark: boolean } {
   const svc = decomment(src.service), act = decomment(src.actions);
   const bodies: [string, string | null][] = [
     ["buyPosition", functionBody(svc, "export async function buyPosition(")],
@@ -166,8 +167,20 @@ function census(src: Sources): { sites: { fn: string; code: string | null; reaso
     ["buyPositionAction", functionBody(act, "export async function buyPositionAction(")],
   ];
   const missing = bodies.filter(([, b]) => b === null).map(([n]) => n);
-  const sites = bodies.flatMap(([fn, b]) => (b ? refusalSites(b).map((s) => ({ fn, ...siteTokens(s) })) : []));
-  return { sites, missing };
+  // ⭐ BEFORE OR AFTER THE KEY LOOKUP (review finding 2): in `buyPositionInner` a site after `reach.reached = true` is
+  // made with the key already looked up under the wallet lock; every `buyPosition` and `buyPositionAction` site is before.
+  const inner = bodies[2][1] ?? "";
+  const mark = inner.indexOf("reach.reached = true");
+  const sites = bodies.flatMap(([fn, b]) => {
+    if (!b) return [];
+    const busyCatch = b.indexOf("instanceof AdmissionBusy");
+    return refusalSites(b).map((s) => ({
+      fn, ...siteTokens(s.text),
+      postLock: fn === "buyPositionInner" && mark >= 0 && s.at > mark,
+      afterBusyCatch: fn === "buyPosition" && busyCatch >= 0 && s.at > busyCatch,
+    }));
+  });
+  return { sites, missing, lockMark: mark >= 0 };
 }
 
 /* ─── The ceiling a doubt must outlast (A2 item 3) ────────────────────────────────────────────────────────────── */
@@ -194,6 +207,9 @@ function doubtCeiling(src: Sources): { ms: number; parts: Record<string, number>
   };
   return { ms: parts.admissionMs + parts.attempts * (parts.reads * parts.poolMs + parts.lockWaitMs + parts.lockRunMs) + parts.backoffMs, parts };
 }
+
+/** Note a: what `answerOf` makes of a call that resolves and of one that throws (read once, before the checks). */
+const ANSWERS = [await SR.answerOf(async () => ({ ok: true, data: { positionId: "p" } })), await SR.answerOf(async () => { throw new Error("dropped"); })];
 
 /* ─── The checks ──────────────────────────────────────────────────────────────────────────────────────────────── */
 
@@ -297,6 +313,7 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     { name: "unknown: a reason no row knows", a: R(fail({ code: "INVALID", reason: "a_reason_from_the_future" })), want: { row: 2, view: "inDoubt", doubt: "enter" } },
     { name: "unknown: ok with no ticket", a: R({ ok: true, data: {} }), want: { row: 2, view: "inDoubt", doubt: "enter" } },
     { name: "unknown: nothing at all", a: R(undefined), want: { row: 2, view: "inDoubt", doubt: "enter" } },
+    { name: "unknown: a host-built BUSY with reason system_error (note a)", a: R(fail({ code: "BUSY", reason: "system_error" })), want: { row: 2, view: "inDoubt", doubt: "enter", marker: "keepKey" } },
   ];
   const flat = (s: SS.Settled) => {
     const v = s.view as Record<string, unknown> & SS.SettledView;
@@ -337,6 +354,19 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     && cen.sites.filter((s) => s.code === null && s.reasons.length === 0).length === 2 && cen.sites.length >= 25;
   ok("2.census · every reason and code literal on the player bet path (buyPosition, landedKeyAnswer, buyPositionInner, buyPositionAction; ternaries read) has a row — the house seam's two reasons excepted, by name — and the reader found them all",
     cen.missing.length === 0 && unclassified.length === 0 && positive && [...house].every((r) => seenR.has(r)), j({ missing: cen.missing, unclassified, sites: cen.sites.length }));
+  // Review finding 2: every site's flag equals the source's side of the key lookup — one named exception, the action's
+  // `hb:` key refusal (`idempotency_key_conflict` before buyPosition runs), which `requestFor` makes unreachable.
+  const flagged = cen.sites.flatMap((st) => (st.reasons.length ? st.reasons : [null]).filter((r) => !(r !== null && house.has(r))).map((r) => {
+    const o = impl.SR.refusalOutcome(R({ ok: false, error: "x", ...(st.code ? { code: st.code } : {}), ...(r ? { reason: r } : {}) }));
+    return { fn: st.fn, code: st.code, reason: r, postLock: st.postLock, inLock: o.inLock };
+  }));
+  const hbException = (f: { fn: string; reason: string | null }) => f.fn === "buyPositionAction" && f.reason === "idempotency_key_conflict";
+  const wrongFlag = flagged.filter((f) => f.inLock !== f.postLock && !hbException(f));
+  ok("2.lock · every player-path site's in-lock flag matches the source: a refusal after `reach.reached = true` is in-lock, every one before it (and every buyPosition and action site) is not — the action's hb: refusal the one named exception",
+    cen.lockMark && wrongFlag.length === 0 && flagged.some((f) => f.postLock) && flagged.some((f) => !f.postLock) && flagged.filter(hbException).length === 1, j({ wrongFlag, n: flagged.length }));
+  const busySites = cen.sites.filter((st) => st.code === "BUSY");
+  ok("2.busy-once · code BUSY occurs exactly once on the player path, inside buyPosition's AdmissionBusy catch (so a BUSY answer always means admission shed the bet before anything ran)",
+    busySites.length === 1 && busySites[0].fn === "buyPosition" && busySites[0].afterBusyCatch && !impl.SR.CLASSIFIED_CODES.includes("SUSPENDED"), j({ busySites, codes: impl.SR.CLASSIFIED_CODES }));
   // The house seam's two reasons are excepted by name above and are not the registry's (they never reach a player).
   const unreal = [...classifiedR].filter((r) => !Object.prototype.hasOwnProperty.call(REASONS, r));
   ok("2.registry · the matrix classifies only reasons the registry already has (no reason added), and no classified reason is one the path never sends (system_busy is BUSY's, by its code)",
@@ -352,27 +382,78 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   const keyAfter = (a: SR.ActionAnswer, quote = q(5_000)) => { const s = settle(a); const next = S.afterSettle(placing, s, NOW + 500); return S.nextKey(next, quote, () => K2); };
   const afterBusy = keyAfter(R(fail({ code: "BUSY" }))), afterBusyEdit = keyAfter(R(fail({ code: "BUSY" })), q(2_500));
   const afterThrow = keyAfter(T(new Error("x")), q(2_500));
+  // Note b: in doubt on YES, a tap on NO (or another market) is another bet with its own key (A2 item 4).
+  const inDoubtYes: SS.SheetIntent = { quote: q(5_000), key: K1, phase: "inDoubt", sentAt: null, settledAt: NOW };
+  const otherSide = S.nextKey(inDoubtYes, q(5_000, "NO"), () => K2);
+  const otherMarket = S.nextKey(inDoubtYes, { marketId: "mkt_another01", side: "YES", stake: 5_000 }, () => K2);
   const afterOthers = [R(fail({ code: "SUSPENDED", reason: "maintenance" })), R(fail({ code: "INVALID", reason: "stake_below_min", detail: { min: MIN, max: MAX } })), R(fail({ code: "NOT_FOUND", reason: "wallet_missing" })), R(fail({ code: "RATE_LIMITED", reason: "rate_limited" }))].map((a) => keyAfter(a));
-  ok("3.keys · mint for a first tap; a double tap while placing reuses; BUSY reuses for the same stake and mints for an edited one; a throw (in doubt) reuses the key AND the frozen quote; every other refusal mints a new key",
+  ok("3.keys · mint for a first tap; a double tap while placing reuses; BUSY reuses for the same stake and mints for an edited one; a throw (in doubt) reuses the key AND the frozen quote; every other refusal mints a new key; another side or market never reuses it",
     first.key === K1 && !first.reused && dbl.key === K1 && dbl.reused && afterBusy.key === K1 && afterBusy.reused && afterBusyEdit.key === K2 && !afterBusyEdit.reused
-      && afterThrow.key === K1 && afterThrow.quote.stake === 5_000 && afterOthers.every((k) => k.key === K2 && !k.reused), j({ first, dbl, afterBusy, afterBusyEdit, afterThrow, afterOthers }));
+      && afterThrow.key === K1 && afterThrow.quote.stake === 5_000 && afterOthers.every((k) => k.key === K2 && !k.reused)
+      && otherSide.key === K2 && !otherSide.reused && otherSide.quote.side === "NO" && otherMarket.key === K2 && !otherMarket.reused,
+    j({ first, dbl, afterBusy, afterBusyEdit, afterThrow, afterOthers, otherSide, otherMarket }));
   const doubt: SS.SheetIntent = { quote: q(5_000), key: K1, phase: "inDoubt", sentAt: null, settledAt: NOW };
   const preLock = [R(fail({ code: "SUSPENDED", reason: "maintenance" })), R(fail({ code: "BUSY" })), R(fail({ code: "RATE_LIMITED", reason: "rate_limited" })), R(fail({ code: "SUSPENDED", reason: "session_limit_reached", detail: { limitMin: 30 } })),
     R(fail({ code: "SUSPENDED", reason: "cooling_off", detail: { until: "x" } })), R(fail({ code: "INVALID" })), R(fail({ code: "SELECTION_CLOSED" })), R(fail({ code: "INVALID", reason: "stake_above_max", detail: { min: MIN, max: MAX } })), T(new Error("x")),
     T(Object.assign(new Error("x"), { name: "UnrecognizedActionError" })), T({ digest: "NEXT_REDIRECT;replace;/auth/login;307;" }), R({ ok: false, error: "Invalid bet parameters." })];
-  const held = preLock.map((a) => settle(a, { state: "failed" }, { inDoubt: true }));
+  // Widened (review finding 2): every pre-lock (code, reason) the census finds in the source, beside the hand-written set.
+  const fromSource = cen.sites.filter((st) => !st.postLock).flatMap((st) => (st.reasons.length ? st.reasons : [null]).filter((r) => !(r !== null && house.has(r)) && !(st.fn === "buyPositionAction" && r === "idempotency_key_conflict"))
+    .map((r) => R(fail({ ...(st.code ? { code: st.code } : {}), ...(r ? { reason: r } : {}), detail: { min: MIN, max: MAX, until: "x", limitMin: 30 } }))));
+  preLock.push(...fromSource);
+  const held = preLock.map((a) => settle(a, { state: "failed" }, { inDoubt: true, priorSettledAt: NOW - 5_000 }));
   const heldFrames = held.map((s) => S.sheetFrame({ seed: seed(), side: "YES", stakeText: "2500", viewer: viewer(facts({ wallet: wallet(100) })), nowMs: NOW, intent: S.afterSettle(doubt, s, NOW + 1_000), settled: s }));
   const claims = heldFrames.flatMap((f) => f.lines.map((l) => l.key)).filter((k) => k === "journey.sheetBusy" || k === "error.failMaintenance");
   ok("3.doubt · in doubt, every refusal made before the wallet lock (and a throw, a skew, a redirect, the action's own refusal) HOLDS the doubt: the key kept, the marker keeps it, the frame stays in doubt over a low balance, the stake locked to the frozen quote, and no line claims nothing was charged",
     held.every((s) => s.doubt === "hold" && s.retry === "same" && s.marker === "keepKey") && claims.length === 0
       && heldFrames.every((f) => f.frame === "inDoubt" && f.stake === 5_000 && f.stakeLocked && f.lines[0]?.key === "error.failSystemError" && j(f.cta?.label) === j({ key: "journey.retryCta", vars: { amount: 5_000 } }))
-      && heldFrames[3].lines.some((l) => l.key === "journey.sheetSessionLimit"), j({ held: held.map((s) => [s.row, s.doubt, s.marker]), claims, lines: heldFrames.map((f) => f.lines.map((l) => l.key)) }));
+      && heldFrames[3].lines.some((l) => l.key === "journey.sheetSessionLimit") && fromSource.length >= 16, j({ fromSource: fromSource.length, held: held.map((s) => [s.row, s.doubt, s.marker]), claims, lines: heldFrames.map((f) => f.lines.map((l) => l.key)) }));
   const ends = [R(fail({ code: "INVALID", reason: "idempotency_key_conflict" })), R(fail({ code: "NOT_FOUND", reason: "wallet_frozen" })), R(fail({ code: "NOT_FOUND", reason: "wallet_missing" })), R(fail({ code: "INVALID", reason: "loss_limit_daily" })),
     R(fail({ code: "INVALID", reason: "balance_insufficient" })), R(fail({ code: "SELECTION_CLOSED", reason: "selection_closed" })), R({ ok: true, data: { positionId: "pos_9", replayed: true } })]
-    .map((a) => settle(a, okRead(true, facts({ wallet: wallet(100) })), { inDoubt: true }));
-  ok("3.doubt-ends · in doubt, a refusal from inside the wallet lock (rows 16–22) and a receipt end the doubt; a replay is one ticket and clears the marker",
+    .map((a) => settle(a, okRead(true, facts({ wallet: wallet(100) })), { inDoubt: true, priorSettledAt: null }));
+  ok("3.doubt-ends · in doubt, the FIRST attempt's own late in-lock refusal (rows 16–22; priorSettledAt null) and a receipt end the doubt; a replay is one ticket and clears the marker",
     ends.every((s) => s.doubt === "end") && ends.slice(0, 6).every((s) => s.marker === "dropKey") && ends[6].view.kind === "receipt" && ends[6].marker === "clear"
       && S.afterSettle(doubt, ends[6], NOW) === null, j(ends.map((s) => [s.row, s.doubt, s.view.kind, s.marker])));
+  // Review finding 1: an in-lock refusal of a RETRY only says the key had not landed when the retry held the lock.
+  const inLockRows = [R(fail({ code: "INVALID", reason: "balance_insufficient", detail: { balance: 100, needed: 5_000 } })), R(fail({ code: "INVALID", reason: "balance_insufficient" })),
+    R(fail({ code: "INVALID", reason: "loss_limit_daily" })), R(fail({ code: "NOT_FOUND", reason: "wallet_frozen" })), R(fail({ code: "NOT_FOUND", reason: "wallet_missing" }))];
+  const finals = [R(fail({ code: "INVALID", reason: "idempotency_key_conflict" })), R(fail({ code: "SELECTION_CLOSED", reason: "selection_closed" }))];
+  const rr = okRead(true, facts({ wallet: wallet(100), loss: { dailyLossLimit: 10_000, lossToday: 9_900 } }));
+  const within = inLockRows.map((a) => settle(a, rr, { inDoubt: true, priorSettledAt: NOW - 5_000 }));
+  const edge = inLockRows.map((a) => settle(a, rr, { inDoubt: true, priorSettledAt: NOW - S.DOUBT_SETTLE_MS + 1 }));
+  const after = inLockRows.map((a) => settle(a, rr, { inDoubt: true, priorSettledAt: NOW - S.DOUBT_SETTLE_MS }));
+  const finalsWithin = finals.map((a) => settle(a, rr, { inDoubt: true, priorSettledAt: NOW - 5_000 }));
+  const extras = within.map((st) => (st.view.kind === "inDoubt" ? st.view.extra?.key ?? null : "not-in-doubt"));
+  ok("3.retry-window · in doubt, an in-lock refusal of a retry (priorSettledAt 5 s ago) HOLDS the doubt and keeps the key, beside its own line where it makes no money claim; only DOUBT_SETTLE_MS after the last settle does it end; rows 16 and 22 (refused for good) end at once",
+    within.every((st) => st.doubt === "hold" && st.marker === "keepKey" && st.retry === "same") && edge.every((st) => st.doubt === "hold")
+      && after.every((st) => st.doubt === "end" && st.marker === "dropKey") && finalsWithin.every((st) => st.doubt === "end")
+      && j(extras) === j(["journey.lowTitle", "journey.lowTitle", "error.failLossLimitDaily", "journey.sheetFrozen", null])
+      && S.afterSettle(doubt, within[0], NOW)?.phase === "inDoubt" && S.nextKey(S.afterSettle(doubt, within[0], NOW), q(5_000), () => K2).key === K1,
+    j({ within: within.map((st) => [st.row, st.doubt, st.marker]), after: after.map((st) => [st.row, st.doubt]), finals: finalsWithin.map((st) => [st.row, st.doubt]), extras }));
+  // Review finding 3: the window runs from the LAST same-key settle.
+  const T0 = NOW;
+  const relaid = S.afterSettle({ ...doubt, settledAt: T0 }, held[0], T0 + 590_000);
+  ok("3.settle-last · a held doubt restarts its window at the latest settle: settled at T0, held again at T0 + 590 s → a null key read at T0 + DOUBT_SETTLE_MS still holds",
+    relaid?.settledAt === T0 + 590_000 && relaid !== null && S.afterKeyRead(relaid, null, T0 + S.DOUBT_SETTLE_MS) === "holds" && S.afterKeyRead(relaid, null, T0 + 590_000 + S.DOUBT_SETTLE_MS) === "ended",
+    j(relaid));
+  // Review finding 4: the receipt and the re-read plan are the COMMITTED quote's, never the typed box's.
+  const lowFrame = frame({ stakeText: "5000", viewer: viewer(facts({ wallet: wallet(2_000) })) });
+  const insteadQ0 = S.quoteAt(lowFrame, "betInstead");
+  const insteadQ = insteadQ0 ?? q(2_000); // a plant that drops the option fails the check below, never the run
+  const insteadIntent: SS.SheetIntent = { quote: insteadQ, key: K2, phase: "placing", sentAt: NOW, settledAt: null };
+  const okInstead = settle(R({ ok: true, data: { positionId: "pos_bi" } }), { state: "none" }, { quote: insteadQ });
+  const receiptFrame = S.sheetFrame({ seed: seed(), side: "YES", stakeText: "5000", viewer: viewer(facts({ wallet: wallet(2_000) })), nowMs: NOW, intent: insteadIntent, settled: okInstead });
+  const lowRe = settle(R(fail({ code: "INVALID", reason: "balance_insufficient" })), okRead(true, facts({ wallet: wallet(1_200) })), { quote: insteadQ });
+  const lowReFrame = S.sheetFrame({ seed: seed(), side: "YES", stakeText: "5000", viewer: viewer(facts({ wallet: wallet(1_200) })), nowMs: NOW, intent: null, settled: lowRe });
+  const noRead = settle(R(fail({ code: "INVALID", reason: "balance_insufficient" })), { state: "failed" }, { quote: insteadQ });
+  const noReadFrame = S.sheetFrame({ seed: seed(), side: "YES", stakeText: "5000", viewer: { state: "failed" }, nowMs: NOW, intent: null, settled: noRead });
+  ok("3.receipt · \"bet 2,000 instead\" from a 5,000 low frame receipts 2,000 — the server's ticket, no payout figure; a balance refusal's re-read plan is drawn at the committed 2,000; a failed re-read leaves the figures unknown (null), never zero",
+    insteadQ0?.stake === 2_000 && receiptFrame.frame === "receipt" && receiptFrame.receipt?.quote?.stake === 2_000 && receiptFrame.receipt.positionId === "pos_bi" && receiptFrame.estimate === null && receiptFrame.cta === null
+      && lowReFrame.frame === "low" && lowReFrame.stake === 2_000 && lowReFrame.low?.shortfall === 800 && j(lowReFrame.cta?.label) === j({ key: "journey.placeCta", vars: { amount: 2_000 } })
+      && noReadFrame.frame === "low" && noReadFrame.low?.titleOnly === true && noReadFrame.low.shortfall === null && noReadFrame.low.spendable === null && noReadFrame.stake === 2_000,
+    j({ receipt: receiptFrame.receipt, lowRe: [lowReFrame.stake, lowReFrame.low?.shortfall], noRead: noReadFrame.low }));
+  const ans = ANSWERS;
+  ok("3.answer · answerOf hands the matrix what the call did — the value it resolved to, or its rejection — never a value invented for a throw",
+    ans[0].kind === "resolved" && ans[1].kind === "rejected" && impl.SR.refusalOutcome(ans[1]).row === 2, j(ans.map((a) => a.kind)));
   const editedFrame = S.sheetFrame({ seed: seed(), side: "YES", stakeText: "2500", viewer: viewer(facts()), nowMs: NOW, intent: doubt, settled: null });
   const sentAfterEdit = S.nextKey(doubt, q(2_500), () => K2);
   const fd = S.requestFor(sentAfterEdit.quote, sentAfterEdit.key);
@@ -393,7 +474,11 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     j(stages) === j(["placing", "slow", "slow", "doubt"]) && dog.phase === "inDoubt" && dog.settledAt === null && dogFrame.frame === "inDoubt" && dogFrame.cta?.enabled === false && dogFrame.closable
       && slowFrame.frame === "placing" && !slowFrame.closable && slowFrame.stakeLocked && slowFrame.cta?.enabled === false && slowFrame.lines.some((l) => l.key === "journey.sheetPlacingSlow")
       && S.quoteAt(slowFrame) === null, j({ stages, dog, dogCta: dogFrame.cta }));
-  const settles = [S.afterKeyRead(doubt, { positionId: "pos_x" }, NOW + 1), S.afterKeyRead(doubt, null, NOW + S.DOUBT_SETTLE_MS - 1), S.afterKeyRead(doubt, null, NOW + S.DOUBT_SETTLE_MS),
+  // Note e: readAtMs is the key read's SEND time. A read sent one millisecond inside the window and answered seconds
+  // after it still holds — the server looked inside the window.
+  const sentAt = NOW + S.DOUBT_SETTLE_MS - 1, answeredAt = sentAt + 4_000;
+  void answeredAt;
+  const settles = [S.afterKeyRead(doubt, { positionId: "pos_x" }, NOW + 1), S.afterKeyRead(doubt, null, sentAt), S.afterKeyRead(doubt, null, NOW + S.DOUBT_SETTLE_MS),
     S.afterKeyRead({ ...doubt, settledAt: null }, null, NOW + 10 * S.DOUBT_SETTLE_MS), S.afterKeyRead(placing, null, NOW + 10 * S.DOUBT_SETTLE_MS)];
   ok("3.settle · a position from the key read is the receipt; none ends the doubt only DOUBT_SETTLE_MS after the last attempt SETTLED — never while a request is out, never counted from the send",
     j(settles) === j(["receipt", "holds", "ended", "holds", "holds"]) && S.keyReadDelay(NOW, NOW + 59_999) === 5_000 && S.keyReadDelay(NOW, NOW + 60_000) === 30_000, j(settles));
@@ -402,11 +487,14 @@ function run(impl: Impl, log: (l: string) => void): string[] {
     ceil !== null && ceil.parts.reads >= 5 && ceil.parts.attempts === 4 && S.DOUBT_SETTLE_MS >= ceil.ms, j(ceil));
   const bet = { kind: "market" as const, id: MKT, side: "YES" as const, stake: 5_000 };
   const marker = (k?: string, b = "mkt_dodoma01.YES.5000") => JSON.stringify({ bet: b, at: NOW - 1_000, ...(k === undefined ? {} : { k }) });
-  const mk = [S.markerKeyFor(marker(K1), bet, NOW), S.markerKeyFor(marker(), bet, NOW), S.markerKeyFor(marker("hb:x"), bet, NOW), S.markerKeyFor(marker(K1, "mkt_dodoma01.YES.2500"), bet, NOW),
-    S.markerKeyFor(marker(K1), bet, NOW + 25 * 3_600_000)];
-  const reopened = S.reopenInDoubt(q(5_000), K1, NOW);
-  ok("3.marker · A3: a reopened sheet reads its key from this browser's marker only for the same bet, a well-formed key and a fresh marker; it reopens in doubt, its window from the page's load",
-    j(mk) === j([K1, null, null, null, null]) && reopened.phase === "inDoubt" && reopened.settledAt === NOW && S.nextKey(reopened, q(500), () => K2).key === K1, j(mk));
+  const mk = [S.markerIntentFor(marker(K1), bet, NOW), S.markerIntentFor(marker(), bet, NOW), S.markerIntentFor(marker("hb:x"), bet, NOW),
+    S.markerIntentFor(marker(K1, "mkt_dodoma01.YES.2500"), bet, NOW), S.markerIntentFor(marker(K1), { id: MKT, side: "YES" }, NOW),
+    S.markerIntentFor(marker(K1, "mkt_dodoma01.NO.5000"), bet, NOW), S.markerIntentFor(marker(K1, "mkt_other0001.YES.5000"), bet, NOW), S.markerIntentFor(marker(K1, "mkt_dodoma01.YES"), bet, NOW),
+    S.markerIntentFor(marker(K1), bet, NOW + 25 * 3_600_000)];
+  const reopened = S.reopenInDoubt(q(mk[3]?.stake ?? 5_000), K1, NOW);
+  ok("3.marker · A3 (with review note f): a reopened sheet reads this browser's marker for the same market and side — a well-formed key, a fresh marker, and the stake THAT key was sent with, even when the address's stake differs or is missing; it reopens in doubt at the marker's stake, its window from the page's load",
+    j(mk) === j([{ key: K1, stake: 5_000 }, null, null, { key: K1, stake: 2_500 }, { key: K1, stake: 5_000 }, null, null, null, null])
+      && reopened.phase === "inDoubt" && reopened.settledAt === NOW && reopened.quote.stake === 2_500 && S.nextKey(reopened, q(500), () => K2).key === K1, j(mk));
 
   /* §4 · the low-balance branches */
   const F = (f: Partial<SS.SheetFacts>, stakeText = "5000", s: Partial<SS.SheetSeed> = {}, nowMs = NOW) => frame({ viewer: viewer(facts(f)), stakeText, seed: seed(s), nowMs });
@@ -640,8 +728,34 @@ if (!PROVE_RED) {
       impl: withSS({ afterKeyRead: (it, kp, at) => SS.afterKeyRead(it.settledAt === null ? { ...it, settledAt: it.sentAt ?? 0 } : it, kp, at) }) },
     { name: "DOUBT_SETTLE_MS below the pinned ceiling (30 s)", expect: /^3\.ceiling /,
       impl: withSS({ DOUBT_SETTLE_MS: 30_000 } as Partial<typeof SS>) },
-    { name: "a keyed reopen that trusts another bet's key", expect: /^3\.marker /,
-      impl: withSS({ markerKeyFor: (raw) => { try { const k = (JSON.parse(raw ?? "") as { k?: string }).k; return SS.isIntentKey(k) ? k : null; } catch { return null; } } }) },
+    { name: "a keyed reopen that trusts another bet's key (another side)", expect: /^3\.marker /,
+      impl: withSS({ markerIntentFor: (raw, b, now) => { const r = SS.markerIntentFor(raw, b, now); if (r) return r; try { const k = (JSON.parse(raw ?? "") as { k?: string }).k; return SS.isIntentKey(k) ? { key: k, stake: 5_000 } : null; } catch { return null; } } }) },
+    { name: "the key dropped when the address's stake differs from the marker's (the old full-bet match)", expect: /^3\.marker /,
+      impl: withSS({ markerIntentFor: (raw, b, now) => { const r = SS.markerIntentFor(raw, b, now); const st = (b as { stake?: number | null }).stake; return r && st !== undefined && st !== null && st === r.stake ? r : null; } }) },
+    { name: "an in-lock refusal of a retry ends the doubt at once (finding 1's double bet)", expect: /^3\.retry-window /,
+      impl: settleWith((s, o, c) => (c.inDoubt && o.inLock && o.frame !== "receipt" && s.doubt === "hold" ? { ...s, doubt: "end", retry: o.retry, marker: "dropKey" } : s)) },
+    { name: "the retry window never closing", expect: /^3\.retry-window /,
+      impl: settleWith((s, o, c) => (c.inDoubt && o.inLock && !o.final && o.frame !== "receipt" ? { ...s, doubt: "hold", retry: "same", marker: "keepKey", view: { kind: "inDoubt", extra: null } } : s)) },
+    { name: "a held doubt keeping its FIRST settle (the window not restarted)", expect: /^3\.settle-last /,
+      impl: withSS({ afterSettle: (it, st, now) => { const r = SS.afterSettle(it, st, now); return r && it.settledAt !== null && r.phase === "inDoubt" ? { ...r, settledAt: it.settledAt } : r; } }) },
+    { name: "the receipt printing the typed stake (the fallback)", expect: /^3\.receipt /,
+      impl: withSS({ sheetFrame: (i) => { const f = SS.sheetFrame(i); const t = SS.sheetStake(i.stakeText, f.bounds).stake; return f.receipt && t !== null ? { ...f, receipt: { ...f.receipt, quote: { marketId: i.seed.id, side: i.side, stake: t } } } : f; } }) },
+    { name: "the re-read plan drawn beside the typed box", expect: /^3\.receipt /,
+      impl: withSS({ sheetFrame: (i) => SS.sheetFrame(i.settled?.view.kind === "plan" ? { ...i, settled: { ...i.settled, view: { ...i.settled.view, quote: { ...i.settled.view.quote, stake: SS.sheetStake(i.stakeText, { min: i.seed.min, max: i.seed.max }).stake ?? 0 } } } } : i) }) },
+    { name: "a failed re-read's figures drawn as zero (A9)", expect: /^3\.receipt /,
+      impl: withSS({ sheetFrame: (i) => { const f = SS.sheetFrame(i); return f.low?.titleOnly ? { ...f, low: { ...f.low, shortfall: 0, spendable: 0 } } : f; } }) },
+    { name: "answerOf inventing a BUSY for a throw", expect: /^3\.answer /,
+      impl: withSR({ refusalOutcome: (a) => SR.refusalOutcome(a.kind === "rejected" && (a.error as Error)?.message === "dropped" ? { kind: "resolved", value: { ok: false, code: "BUSY" } } : a) }) },
+    { name: "nextKey reusing the key for the other side (note b)", expect: /^3\.keys /,
+      impl: withSS({ nextKey: (p, quote, mint) => (p && (p.phase === "placing" || p.phase === "inDoubt") ? { key: p.key, quote: p.quote, reused: true } : SS.nextKey(p, quote, mint)) }) },
+    { name: "a pre-lock row flagged in-lock (maintenance)", expect: /^2\.lock /,
+      impl: withSR({ refusalOutcome: (a) => { const o = SR.refusalOutcome(a); return o.reason === "maintenance" ? { ...o, inLock: true } : o; } }) },
+    { name: "a pre-lock site emitting balance_insufficient", expect: /^2\.lock /,
+      impl: withSrc({ service: SOURCES.service.replace('if (!u) return { ok: false, error: "Account not found.", code: "NOT_FOUND" };', 'if (!u) return { ok: false, error: "Account not found.", code: "NOT_FOUND" };\n  if (u.poor) return { ok: false, error: "Poor.", code: "INVALID", reason: "balance_insufficient" };') }) },
+    { name: "a second BUSY site after the L2 check", expect: /^2\.busy-once /,
+      impl: withSrc({ service: SOURCES.service.replace("return (await landedKeyAnswer(userId, opts, r)) ?? r;", 'if (r.ok === false && r.code === "INVALID") return { ok: false, error: "busy", code: "BUSY", retryAfterSec: 1 };\n      return (await landedKeyAnswer(userId, opts, r)) ?? r;') }) },
+    { name: "SUSPENDED classified by its code again", expect: /^2\.busy-once /,
+      impl: withSR({ CLASSIFIED_CODES: [...SR.CLASSIFIED_CODES, "SUSPENDED"] }) },
     // §4
     { name: "the session limit shown as a block instead of the inline line", expect: /^4\.blocks /,
       impl: withSS({ sheetFrame: (i) => { const f = SS.sheetFrame(i); return f.lines[0]?.key === "journey.sheetSessionLimit" ? { ...f, frame: "blocked", block: SS.blockFor("account_blocked") } : f; } }) },

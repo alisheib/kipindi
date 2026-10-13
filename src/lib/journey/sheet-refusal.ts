@@ -16,7 +16,14 @@
  * ⭐ IN DOUBT (A2). After a throw, an unknown shape, or the placing watchdog, only the intent's key is sent until the
  * server has said what happened. A refusal made BEFORE the wallet lock (rows 1, 5–15, 23) cannot say: the doubt holds,
  * the key is kept, and no sentence claims nothing was placed or charged — `journey.sheetBusy` and `error.failMaintenance`
- * are never shown in doubt. A refusal made inside the lock, after the key was looked up (rows 16–22), ends the doubt.
+ * are never shown in doubt.
+ * ⛔ A refusal made inside the lock (rows 16–22) answers only for the attempt that held the lock. When that attempt was
+ * a RETRY, the lost first attempt may still be on its way, and may land once the refusing fact changes (a deposit lands,
+ * a settlement pays): "the key had not landed then" is the same fact as a key read finding nothing then, which A2 trusts
+ * only `DOUBT_SETTLE_MS` after the last same-key settle. So in doubt an in-lock refusal of a retry HOLDS the doubt and
+ * the key until that window has passed (S8 WP2 review, finding 1) — except rows 16 and 22, which stay refused once
+ * refused: a key another bet holds stays held, and a closed selection never reopens, so the first attempt meets the
+ * same refusal. The first attempt's OWN late answer (`priorSettledAt` null) is that attempt's answer, and ends it.
  * Since live fix L2 a keyed retry refused before the in-lock replay is answered with the landed bet's receipt
  * (`replayed: true`): one ticket, never a second (row 24).
  *
@@ -27,9 +34,11 @@ import { REASONS, reasonForCode, type FailureReason } from "@/lib/failure-reason
 import { isActionRedirect } from "@/lib/action-redirect";
 import { lossHeadroomFor } from "./shortfall";
 import {
+  DOUBT_SETTLE_MS,
   blockFor,
   closedBody,
   sheetPlan,
+  type Quote,
   type Settled,
   type SettledView,
   type SheetBounds,
@@ -60,8 +69,10 @@ export type RefusalOutcome = {
   bounds?: SheetBounds;
   /** Rows 24–25: the server's ticket. */
   receipt?: { positionId: string; replayed: boolean };
-  /** The refusal was made inside the wallet lock, after the key lookup: it ends a doubt (A2 item 3). */
+  /** The refusal was made inside the wallet lock, after the key lookup (A2 item 3; the census ties it to the source). */
   inLock: boolean;
+  /** An in-lock refusal that stays true for every later attempt with the same key (rows 16 and 22): it ends a doubt. */
+  final?: boolean;
   /** The row's own sentence makes a money claim ("nothing has been charged"): never shown while in doubt. */
   moneyClaim: boolean;
 };
@@ -86,12 +97,13 @@ const BY_REASON: Readonly<Record<string, Row>> = {
   stake_below_min:          { row: 14, frame: "bounds", retry: "new", reread: null, inLock: false, moneyClaim: false },
   stake_above_max:          { row: 14, frame: "bounds", retry: "new", reread: null, inLock: false, moneyClaim: false },
   market_not_live:          { row: 15, frame: "decide", retry: "new", reread: "public", inLock: false, moneyClaim: false },
-  idempotency_key_conflict: { row: 16, frame: "inline", line: L("error.failIdempotencyKeyConflict"), retry: "new", reread: null, inLock: true, moneyClaim: false },
+  // Row 16's words say nothing was placed: a money claim (review note d).
+  idempotency_key_conflict: { row: 16, frame: "inline", line: L("error.failIdempotencyKeyConflict"), retry: "new", reread: null, inLock: true, final: true, moneyClaim: true },
   wallet_frozen:            { row: 17, frame: "block", blockOf: "wallet_held", retry: "none", reread: null, inLock: true, moneyClaim: false },
   wallet_missing:           { row: 18, frame: "inline", line: L("error.failWalletMissing"), retry: "new", reread: null, inLock: true, moneyClaim: true },
   loss_limit_daily:         { row: 19, frame: "decide", retry: "none", reread: "viewer", inLock: true, moneyClaim: false },
   balance_insufficient:     { row: 20, frame: "decide", retry: "new", reread: "viewer", inLock: true, moneyClaim: false },
-  selection_closed:         { row: 22, frame: "closed", retry: "none", reread: null, inLock: true, moneyClaim: false },
+  selection_closed:         { row: 22, frame: "closed", retry: "none", reread: null, inLock: true, final: true, moneyClaim: false },
 };
 
 /** ⭐ THE ROWS BY CODE, for a refusal that carries no reason. */
@@ -107,18 +119,17 @@ const BY_CODE: Readonly<Record<string, Row>> = {
   SELECTION_CLOSED: { row: 13, frame: "closed", retry: "none", reread: null, inLock: false, moneyClaim: false },
 };
 
-/**
- * Codes the player path sends only WITH a reason (each site carries one). Alone they are an unknown shape, which is
- * row 2's handling (Open point 35): in doubt, never a guess.
+/*
+ * ⛔ `SUSPENDED` has no row by code: every player-path site sends it WITH a reason, so a reasonless SUSPENDED is an
+ * unknown shape — row 2's handling (Open point 35), in doubt, never a guess (review finding 2).
  */
-const CODES_WITH_REASON: readonly string[] = ["SUSPENDED"];
 
 /** The house seam's refusals: they need a house context no player call has (S8-PLAN, the matrix's closing note). */
 export const HOUSE_ONLY_REASONS: readonly string[] = ["house_key_mismatch", "house_intent_superseded"];
 
 /** For the census: the reasons and codes the matrix classifies. */
 export const CLASSIFIED_REASONS: readonly string[] = Object.keys(BY_REASON);
-export const CLASSIFIED_CODES: readonly string[] = [...Object.keys(BY_CODE), ...CODES_WITH_REASON];
+export const CLASSIFIED_CODES: readonly string[] = Object.keys(BY_CODE);
 
 const UNKNOWN: Row = { row: 2, frame: "unknown", line: L("error.failSystemError"), retry: "same", reread: null, inLock: false, moneyClaim: false };
 const PARAMS: Row = { ...UNKNOWN, row: 23 };
@@ -196,6 +207,14 @@ export function refusalOutcome(answer: ActionAnswer): RefusalOutcome {
   return fromRow(UNKNOWN, "system_error");
 }
 
+/**
+ * ⭐ THE ANSWER OF ONE CALL, as the matrix reads it: what it resolved to, or that it rejected — never a value a host
+ * invents for a throw (a hand-built `{ code: "BUSY" }` would be row 1, and drop a key whose bet may have landed).
+ */
+export async function answerOf(call: () => Promise<unknown>): Promise<ActionAnswer> {
+  try { return { kind: "resolved", value: await call() }; } catch (error) { return { kind: "rejected", error }; }
+}
+
 /** A `?me=1` re-read (A8: private, no-store, fresh): the market's half — found or not — and the viewer's. */
 export type Reread =
   | { state: "none" }
@@ -205,9 +224,14 @@ export type Reread =
 export type SettleContext = {
   /** The intent was already in doubt when this answer arrived. */
   inDoubt: boolean;
+  /**
+   * When the intent last settled before THIS attempt was sent (its `settledAt` then): null for the first attempt's own
+   * answer. An in-lock refusal of a retry holds the doubt until `DOUBT_SETTLE_MS` after it (finding 1).
+   */
+  priorSettledAt: number | null;
   seed: SheetSeed;
-  /** The quote's stake, for a plan re-derived at it (rows 20–21). */
-  stake: number;
+  /** The quote this attempt COMMITTED: the receipt prints it, and rows 19–21 are decided at it (review finding 4). */
+  quote: Quote;
   /** The phone's clock and the offset to the server's. */
   nowMs: number;
   offsetMs?: number;
@@ -223,7 +247,7 @@ export function settleRefusal(o: RefusalOutcome, reread: Reread, ctx: SettleCont
   const make = (view: SettledView, retry: Settled["retry"], doubt: Settled["doubt"], marker: Settled["marker"]): Settled =>
     ({ row: o.row, reason: o.reason, view, retry, doubt, marker });
 
-  if (o.frame === "receipt" && o.receipt) return make({ kind: "receipt", positionId: o.receipt.positionId, replayed: o.receipt.replayed }, "none", ctx.inDoubt ? "end" : "none", "clear");
+  if (o.frame === "receipt" && o.receipt) return make({ kind: "receipt", positionId: o.receipt.positionId, replayed: o.receipt.replayed, quote: ctx.quote }, "none", ctx.inDoubt ? "end" : "none", "clear");
 
   // A redirect or a skew proves the server ran nothing — unless the intent was already in doubt, when an earlier
   // attempt may still have landed: the doubt holds and the marker keeps its key (A6 item 2, A7 item 3).
@@ -237,6 +261,10 @@ export function settleRefusal(o: RefusalOutcome, reread: Reread, ctx: SettleCont
   // In doubt, a refusal made before the wallet lock cannot say what the first attempt did: the doubt holds, the key is
   // kept, and the row's own sentence shows beside the doubt's only when it makes no money claim.
   if (ctx.inDoubt && !o.inLock) return make({ kind: "inDoubt", extra: o.moneyClaim ? null : ownLine(o, ctx) }, "same", "hold", "keepKey");
+  // In doubt, an in-lock refusal of a RETRY inside the window says only that the key had not landed then (finding 1).
+  if (ctx.inDoubt && o.inLock && !o.final && ctx.priorSettledAt !== null && ctx.nowMs - ctx.priorSettledAt < DOUBT_SETTLE_MS) {
+    return make({ kind: "inDoubt", extra: o.moneyClaim ? null : ownLine(o, ctx) }, "same", "hold", "keepKey");
+  }
   // Not (or no longer) in doubt: the intent ends as this answer says, and the marker loses its key — BUSY included,
   // since admission shed it before anything ran (the retry's own tap writes the key again, A3 item 4).
   const doubt: Settled["doubt"] = ctx.inDoubt ? "end" : "none";
@@ -271,15 +299,17 @@ function decide(o: RefusalOutcome, reread: Reread, ctx: SettleContext): SettledV
   const facts: SheetFacts | null = reread.state === "read" ? reread.viewer?.facts ?? null : null;
   if (o.row === 19) {
     const room = facts ? lossHeadroomFor(facts.loss) : null;
-    return room !== null && room >= ctx.seed.min ? { kind: "lossRoom", headroom: room } : { kind: "block", block: blockFor("loss_limit") };
+    return room !== null && room >= ctx.seed.min ? { kind: "lossRoom", headroom: room, quote: ctx.quote } : { kind: "block", block: blockFor("loss_limit") };
   }
-  if (!facts || reread.state !== "read" || !reread.viewer) return { kind: "lowNoRead" };
-  return { kind: "plan", plan: sheetPlan({ state: "read", viewer: reread.viewer }, ctx.seed, ctx.stake, ctx.nowMs + offset) };
+  if (!facts || reread.state !== "read" || !reread.viewer) return { kind: "lowNoRead", quote: ctx.quote };
+  return { kind: "plan", plan: sheetPlan({ state: "read", viewer: reread.viewer }, ctx.seed, ctx.quote.stake, ctx.nowMs + offset), quote: ctx.quote };
 }
 
-/** A pre-lock row's own sentence, for beside the doubt's (rows 5 and 7–15). */
+/** A row's own sentence, for beside the doubt's (rows 5 and 7–15; and rows 17–21 while a retry's refusal holds it). */
 function ownLine(o: RefusalOutcome, ctx: SettleContext): SheetLine | null {
   if (o.line) return o.line;
+  if (o.row === 19) return { key: "error.failLossLimitDaily" };
+  if (o.row === 20 || o.row === 21) return { key: "journey.lowTitle" };
   if (o.block) return o.block.body;
   if (o.frame === "closed") return { key: "journey.sheetClosedBody" };
   if (o.frame === "bounds") {

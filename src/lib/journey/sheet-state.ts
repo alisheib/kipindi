@@ -36,7 +36,7 @@ import {
   type ShortfallPlan,
 } from "./shortfall";
 import type { FailureReason } from "@/lib/failure-reasons";
-import { formatBetParam, readMarker, type PendingBet } from "./pending-bet";
+import { formatBetParam, parseBetParam, readMarker, type PendingBet } from "./pending-bet";
 import { funnelBetFields } from "./funnel-beacon";
 import { parseStake, quickStakes } from "@/components/updown/stake-math";
 
@@ -355,10 +355,12 @@ const sameQuote = (a: Quote, b: Quote) => a.marketId === b.marketId && a.side ==
  *   · no intent → a fresh key for the tapped quote;
  *   · placing (a second tap) → the intent's key and quote; the host swallows the tap;
  *   · in doubt → the intent's key and ITS quote, whatever the field now says;
- *   · retry (BUSY) → the intent's key only for the same quote; a changed stake is a new bet with a fresh key.
+ *   · retry (BUSY) → the intent's key only for the same quote; a changed stake is a new bet with a fresh key;
+ *   · another market, or the other side, is another bet with its own key, whatever the prior intent's phase (A2 item 4).
  */
 export function nextKey(prior: SheetIntent | null, quote: Quote, mint: () => string = mintIntentKey): { key: string; quote: Quote; reused: boolean } {
-  if (prior && (prior.phase === "placing" || prior.phase === "inDoubt")) return { key: prior.key, quote: prior.quote, reused: true };
+  const sameBet = prior !== null && prior.quote.marketId === quote.marketId && prior.quote.side === quote.side;
+  if (prior && sameBet && (prior.phase === "placing" || prior.phase === "inDoubt")) return { key: prior.key, quote: prior.quote, reused: true };
   if (prior && prior.phase === "retry" && sameQuote(prior.quote, quote)) return { key: prior.key, quote: prior.quote, reused: true };
   return { key: mint(), quote, reused: false };
 }
@@ -419,6 +421,8 @@ export function keyReadDelay(doubtSinceMs: number, nowMs: number): number {
 /**
  * ⭐ WHAT A KEY READ SAYS ABOUT A DOUBT (A2 items 2–3): a position is that bet's receipt; none ends the doubt only when
  * read `DOUBT_SETTLE_MS` after the last attempt settled — never while a request is still out, never counted from a send.
+ * ⛔ `readAtMs` is when the key read was SENT, never when its answer arrived: a slow answer describes the moment the
+ * server looked, and only that moment may be measured against the window.
  */
 export function afterKeyRead(intent: SheetIntent, keyPosition: { positionId: string } | null, readAtMs: number): "receipt" | "ended" | "holds" {
   if (keyPosition && typeof keyPosition.positionId === "string" && keyPosition.positionId !== "") return "receipt";
@@ -427,15 +431,20 @@ export function afterKeyRead(intent: SheetIntent, keyPosition: { positionId: str
 }
 
 /**
- * A3 item 5 · the key a stored marker carries for THIS bet (same id, side and stake), or null. `readMarker` decides the
- * marker is ours and fresh; the key is kept only when it is a well-formed intent key.
+ * A3 item 5 · the intent a stored marker carries for THIS market and side: its key and the stake THAT key was sent
+ * with — or null. `readMarker` decides the marker is ours and fresh; the key is kept only when it is a well-formed
+ * intent key, and only with a stake. ⭐ Matched on (id, side), not on the address's stake (S8 WP2 review, note f): the
+ * marker records what was SENT, so an address whose stake differs or is missing must still reopen that key in doubt at
+ * the marker's own stake — dropping the key there would let the next tap mint a second one while the first may land.
  */
-export function markerKeyFor(markerRaw: string | null | undefined, bet: PendingBet, nowMs: number): string | null {
+export function markerIntentFor(markerRaw: string | null | undefined, bet: Pick<PendingBet, "id" | "side">, nowMs: number): { key: string; stake: number } | null {
   const m = readMarker(markerRaw, nowMs);
-  if (!m || m.bet !== formatBetParam(bet) || bet.stake === null) return null;
+  if (!m) return null;
+  const sent = parseBetParam(m.bet);
+  if (!sent || sent.kind !== "market" || sent.id !== bet.id || sent.side !== bet.side || sent.stake === null) return null;
   let k: unknown;
   try { k = (JSON.parse(markerRaw as string) as { k?: unknown }).k; } catch { return null; }
-  return isIntentKey(k) ? k : null;
+  return isIntentKey(k) ? { key: k, stake: sent.stake } : null;
 }
 
 /** A sheet reopened from a keyed marker starts in doubt, its settle window counted from this page's load (A3 item 5). */
@@ -485,15 +494,15 @@ export function closedBody(seed: SheetSeed, nowMs: number, offsetMs = 0): "journ
  * because the frame reads it; built there.
  */
 export type SettledView =
-  | { kind: "receipt"; positionId: string; replayed: boolean }
+  | { kind: "receipt"; positionId: string; replayed: boolean; quote: Quote }
   | { kind: "inDoubt"; extra: SheetLine | null }
   | { kind: "inline"; line: SheetLine }
   | { kind: "block"; block: SheetBlock }
   | { kind: "closed"; body: "journey.sheetClosedBody" | "journey.sheetNotTaking" }
   | { kind: "bounds"; bounds: SheetBounds }
-  | { kind: "lossRoom"; headroom: number }
-  | { kind: "plan"; plan: SheetPlan }
-  | { kind: "lowNoRead" }
+  | { kind: "lossRoom"; headroom: number; quote: Quote }
+  | { kind: "plan"; plan: SheetPlan; quote: Quote }
+  | { kind: "lowNoRead"; quote: Quote }
   | { kind: "skew"; reload: boolean }
   | { kind: "redirect" };
 
@@ -555,8 +564,9 @@ export type SheetFrame = {
   block: SheetBlock | null;
   closedBody: "journey.sheetClosedBody" | "journey.sheetNotTaking" | null;
   low: {
-    shortfall: number;
-    spendable: number;
+    /** Null only after a failed re-read (`titleOnly`): unknown is never zero (A9). */
+    shortfall: number | null;
+    spendable: number | null;
     deposit: DepositOption | null;
     betInstead: BetInsteadOption | null;
     depositRefusal: "rails_paused" | "deposit_limit" | "sof_required" | "deposit_max" | null;
@@ -620,7 +630,11 @@ export function sheetFrame(input: SheetFrameInput): SheetFrame {
   const serverNow = input.nowMs + offset;
   const bounds: SheetBounds = settled?.view.kind === "bounds" ? settled.view.bounds : { min: seed.min, max: seed.max };
   const locked = intent && (intent.phase === "placing" || intent.phase === "inDoubt") ? intent.quote : null;
-  const typed = sheetStake(input.stakeText, bounds);
+  // ⭐ A settled answer about a COMMITTED quote (the receipt, the re-read plan, the loss room) is drawn at that quote's
+  // stake, never beside whatever the box now says — "bet 2,000 instead" from a 5,000 frame receipts 2,000 (review 4).
+  const sv = settled?.view;
+  const committed = sv && (sv.kind === "receipt" || sv.kind === "plan" || sv.kind === "lowNoRead" || sv.kind === "lossRoom") ? sv.quote : null;
+  const typed = sheetStake(committed ? String(committed.stake) : input.stakeText, bounds);
   const stake = locked ? locked.stake : typed.stake;
   const breaks = locked ? null : typed.breaks;
   const inBounds = stake !== null && breaks === null;
@@ -638,7 +652,7 @@ export function sheetFrame(input: SheetFrameInput): SheetFrame {
   };
 
   if (settled?.view.kind === "receipt") {
-    return { ...base, frame: "receipt", estimate: null, showEstimate: false, receipt: { positionId: settled.view.positionId, replayed: settled.view.replayed, quote: intent?.quote ?? quoteOf(stake) } };
+    return { ...base, frame: "receipt", estimate: null, showEstimate: false, receipt: { positionId: settled.view.positionId, replayed: settled.view.replayed, quote: settled.view.quote } };
   }
   if (intent?.phase === "placing") {
     const slow = intent.sentAt !== null && placingStage(intent.sentAt, input.nowMs) === "slow";
@@ -663,7 +677,7 @@ export function sheetFrame(input: SheetFrameInput): SheetFrame {
   if (view?.kind === "lowNoRead") {
     return {
       ...base, frame: "low", stakeInvalid: true, attention: true, showEstimate: false,
-      low: { shortfall: 0, spendable: 0, deposit: null, betInstead: null, depositRefusal: null, eyebrow: false, titleOnly: true },
+      low: { shortfall: null, spendable: null, deposit: null, betInstead: null, depositRefusal: null, eyebrow: false, titleOnly: true },
       cta: { label: stake !== null ? ctaPlace(stake) : CTA_BARE, enabled: false, describedBy: "callout" },
     };
   }
