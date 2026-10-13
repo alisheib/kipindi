@@ -168,3 +168,39 @@ FAILED line. Its 8.census had also been red once before the fix, because two of 
 - **The `pending-bet.ts` marker key field** is WP7b's.
 - **The RG census and the route** are WP3's.
 - **No `test:red-anchors` anchors file** was added; none was needed.
+
+## Review fixes (commit `38b7e0c47`, on top of `4d8acb6a9`; no rebase)
+
+| Finding | What changed | The check and plant that hold it |
+|---|---|---|
+| 1 (money): a retry's in-lock refusal ended the doubt while the lost first attempt could still land | `SettleContext.priorSettledAt` (the intent's `settledAt` when this attempt was sent; null for the first attempt's own answer). While in doubt, an in-lock refusal within `DOUBT_SETTLE_MS` of it HOLDS the doubt: `keepKey`, retry `same`, and its own line where it makes no money claim (row 17 `sheetFrozen`, row 19 `failLossLimitDaily`, rows 20–21 `journey.lowTitle`, row 18 none). It ends only once the window has passed. Rows 16 and 22 (`final`) end at once: a key another bet holds stays held, and a closed selection never reopens. The first attempt's own late answer ends it. **Call taken: row 17 (frozen) holds too**, because an officer can lift a freeze (the coordinator allowed it to end). | `3.retry-window`: at now − 5 s every in-lock row holds with `keepKey` and `nextKey` reuses the key; at the window's last millisecond it holds; at now − DOUBT_SETTLE_MS it ends with `dropKey`; 16 and 22 end. Plants: an in-lock refusal of a retry ends at once; the window never closes. `3.doubt-ends` is now the first-attempt case (priorSettledAt null). |
+| 2: the money flags were not tied to the source | The census places every site before or after `reach.reached = true` in `buyPositionInner` (every `buyPosition` and `buyPositionAction` site counts as before). It asserts `refusalOutcome(...).inLock === postLock` for every (site, reason), with one named exception: the action's `hb:` `idempotency_key_conflict`. `code: "BUSY"` occurs exactly once, inside `buyPosition`'s `AdmissionBusy` catch. `SUSPENDED` is removed from `CLASSIFIED_CODES`. `3.doubt` now also runs every pre-lock (code, reason) the census reads from the source (≥ 16 of them). | `2.lock`, `2.busy-once`, the widened `3.doubt`. Plants: a pre-lock row flagged in-lock; a pre-lock site emitting `balance_insufficient` (source plant); a second BUSY site after the L2 check (source plant); SUSPENDED classified by code again. |
+| 3: the window must run from the LAST same-key settle | Already the behaviour (`afterSettle` sets `settledAt` to now); now pinned. | `3.settle-last`: settled at T0, held again at T0 + 590 s → `settledAt` is T0 + 590 s; a null read at T0 + DOUBT_SETTLE_MS holds, at T0 + 590 s + DOUBT_SETTLE_MS it ends. Plant: keep the first settle. |
+| 4: the receipt printed the typed stake | `SettleContext.quote` (the COMMITTED quote) replaces `stake`. `SettledView` receipt, plan, lossRoom and lowNoRead carry it, and `sheetFrame` draws those views at the committed stake, never at the typed box. | `3.receipt`: "bet 2,000 instead" from a 5,000 low frame receipts 2,000 (the ticket, no payout figure); a balance refusal's re-read plan is drawn at 2,000 (shortfall 800, CTA "· 2,000"); a failed re-read is drawn at 2,000 with null figures. Plants: the receipt falls back to the typed stake; the plan is drawn beside the typed box; the figures drawn as zero. |
+| Note a | `answerOf(call) → ActionAnswer` exported from sheet-refusal. | `3.answer` (plant: a throw turned into an invented BUSY); golden `{ code: "BUSY", reason: "system_error" }` → row 2, in doubt, `keepKey`. |
+| Note b | `nextKey` reuses a key only for the same (market, side) (A2 item 4). | `3.keys` gains the other side and the other market. Plant: reuse for the other side. |
+| Note c | `low.shortfall` and `low.spendable` are `number \| null`; `lowNoRead` sets null. | `3.receipt` (plant: zero). |
+| Note d | Row 16 `moneyClaim: true`. | Its line is now never shown in doubt; it ends a doubt before any line shows. |
+| Note e | `afterKeyRead`'s doc: `readAtMs` is the read's SEND time. | `3.settle` passes a send time one ms inside the window, answered seconds later, and it holds. (The pure function cannot see an arrival time, so no plant is possible here; the host is WP7b's.) |
+| Note f | `markerKeyFor` is replaced by `markerIntentFor(raw, {id, side}, now) → {key, stake}`. It matches on (id, side) and reopens in doubt at the MARKER's stake when the address's stake differs or is missing. **A3 item 5 is widened, not kept:** it names the same-stake case, and does not forbid this one. Dropping the key there would let a second key be minted while the first may land. Candidate amendment to A3 item 5. | `3.marker` (9 cases). Plants: another side's key trusted; the key dropped on a differing stake (the old full-bet match). |
+
+**Gates after the fixes,** at the tip `38b7e0c47`, serial, one log directory:
+
+- test:bet-sheet: 40 checks, all passed.
+- red:bet-sheet: **68/68 caught**, every check with a plant.
+- test:shortfall · red 17/17.
+- test:journey-estimate · red 14/14.
+- test:failure-reasons: 387/0.
+- test:client-graph-safe: 6/0.
+- test:rate-copy: 40/0.
+- test:money-minimums: 41/0.
+- test:pending-bet · red 19/19.
+- test:journey-funnel · red 26/26.
+- test:deposit-ceiling · red 9/9.
+- test:journey-sheet; test:journey-home.
+- test:contacts-boundary: 35/0.
+- test:red-anchors: 5289/0.
+- test:guards-exist; test:docs.
+- visual-pass-r5k: 55/0.
+- typecheck: clean.
+- test:orphans: exit 1, the same two base orphans (`scripts/qa/landing-v3/panels/band-panel.js`, `hero-panel.js`), unchanged.
