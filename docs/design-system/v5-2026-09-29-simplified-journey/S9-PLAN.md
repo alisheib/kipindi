@@ -1,9 +1,10 @@
 # S9 — Deposit, waiting and return
 
-**Status: plan and pure preparation only, 2026-10-13.** This plan is in the separate managed checkout
+**Status: pure preparation and deposit-safety prerequisites; S9 remains open, 2026-10-13.** This plan is in the separate managed checkout
 `C:\Users\asheib\.codex\worktrees\vodacom-s9\kipindi-main`, branch `codex/vodacom-s9`, created at
-`e767f3f52c54b2659d9057dcbc46d42c5edcc833`. S8 is still being verified in its own checkout. No S9 server, schema,
-database, provider or production change has been made. Rebase this branch onto the verified S8 release before wiring
+`e767f3f52c54b2659d9057dcbc46d42c5edcc833`. S8 is still being verified in its own checkout. The root reviewer authorized
+the two existing money-path prerequisite repairs independently. No S9 screen, route, schema, provider or production
+change has been made. A dedicated disposable Postgres has been used for those prerequisites only. Rebase this branch onto the verified S8 release before wiring
 its host: the final S8 recovery and keyboard corrections are newer than this preparation base.
 
 This is an implementation plan for the existing S9, not another programme or a design rulebook. The authority is
@@ -89,9 +90,12 @@ prove the chosen rules in the real rate registry; do not rely on its unknown-act
 
 A UUID belongs to a canonical deposit intent, not to a page render. A lost action answer or uncertain dispatch
 keeps that key locked and recovers the original transaction; it does not unlock a fresh Lipa. A definitive refusal
-before dispatch, or an authoritative FAILED payment, permits a fresh key at the next explicit attempt. A changed
+before dispatch with no earlier unknown attempt, or an authoritative FAILED payment, permits a fresh key at the next explicit attempt. A changed
 amount/rail/phone is a new intent only after the previous attempt is conclusively resolved or a pending-payment
 choice explicitly declines another payment. Auth-loss and deploy recovery use the existing redirect / reload rules.
+An uncertain earlier same-key request can still reserve or dispatch after a retry meets a pre-lock refusal. That
+refusal does not prove the earlier attempt never ran: retain its key/locked intent until owned recovery resolves it,
+as S8 A2 does for an uncertain bet. WP3/4 must prove this ordering in the actual deposit recovery controller.
 
 At both replay sites require caller, DEPOSIT type, amount, currency, provider and normalized phone to match, and compare the
 stored normalized pending-bet intent when present. Reject mismatches without disclosing another owner's row and
@@ -130,7 +134,9 @@ the server intent's purpose and retention against the existing transaction/priva
 
 Each workpack ends with its own actual evidence and independent review. Schema/server/browser work starts after
 the S8 release is verified and this contract is reviewed. Pure status timing/intent helpers and their tests may be
-built independently here first; they have no provider, database or server import.
+built independently here first; they have no provider, database or server import. The root's scoped 2026-10-13
+instruction also permits the existing deposit replay and signed-return scope prerequisites below; it does not permit
+the new status service, persistence migration or product flow ahead of the S8 release.
 
 ### WP0 — Rebase, authority and proof setup
 
@@ -271,9 +277,9 @@ journey remains off until S14 under §0h point 4. A green local drive is not the
   two DALs, marker/recovery helpers, chooser/amount controls, shell/surface rules, receipts/comms/funnel, §3.5/S9,
   relevant §0h owner rulings, inheritance, copy audit and all deposit/waiting/return canvas boards.
 - Confirmed prerequisite defects and the Card fingerprint decision in §2 were sent to the root reviewer.
-- The root reviewer accepted the ordered scope and the two concrete choices in §2b. The new
-  [pure helper](../../../src/lib/journey/deposit-state.ts) has **no application caller**: no server/schema/provider
-  integration, payment route, screen or migration is implemented. Its explicit trust source is `none`, a fresh
+- The root reviewer accepted the ordered scope and the two concrete choices in §2b. At the pure checkpoint the
+  [pure helper](../../../src/lib/journey/deposit-state.ts) had **no application caller**: no server/schema/provider
+  integration, payment route, screen or migration was implemented. Its explicit trust source is `none`, a fresh
   matching tab marker after hydration, or a separately owned deposit's saved intent; the actual bridge awaits review.
 - `npm run test:deposit-state`: 168/168 value assertions; `npm run red:deposit-state`: 38/38 actual source mutants
   caught in memory and the transpiled green control held. Unique declared anchors cover scope/funding mismatches,
@@ -292,5 +298,37 @@ journey remains off until S14 under §0h point 4. A green local drive is not the
   known inherited hygiene failures: `test:red-anchors`'s `market-columns` missing anchor and `test:orphans`'s two old
   Claude workflow panel scripts. All 38 new helper anchors resolve uniquely and both new proof commands are reachable.
   The S8 lane already owns those repairs; rebase onto its verified release instead of changing baselines here.
-- No database race, signed provider response, production build, browser or money proof is claimed. The full S9
-  done-when remains open; these pure assertions do not close either of the planned server proof suites.
+- The pure checkpoint was pushed as `6f741881fa455fde1ee1253f0bf26c53f5ea9212` on `codex/vodacom-s9`; it contained
+  no server caller or database work. The following prerequisite work is newer and has not been deployed.
+
+### 5a. Scoped prerequisite checkpoint
+
+- The root authorized the existing replay and signed-return defects while S8 verification continues. The
+  [wallet service](../../../src/lib/server/wallet-service.ts) now compares the reviewed canonical funding identity
+  before returning a global key, inside the wallet lock before cap/SOF reads, and after a unique-create race. The
+  under-lock recheck prevents two early misses from creating two memory rows and makes a replay consume no new cap.
+  Matching replays remain available during maintenance and never dispatch again; Card billing edits recover the
+  original transaction without mutating its order. Pending-bet persistence is still unimplemented: current requests
+  have a null saved intent, and WP2 must connect the reviewed envelope to both reservation and comparison.
+- The signed-return adapter now requires the owned, unmarked row to have type DEPOSIT and currency TZS before any verifier or settle.
+  Unknown, foreign, wrong-type and marked rows expose no transaction detail. Existing balance/status behavior remains;
+  the shared status core, unknown-balance semantics and signed-response race matrix still belong to WP3.
+- Actual Postgres proof found that the [Prisma transaction mapper](../../../src/lib/server/prisma-dal.ts) relabelled
+  every stored currency TZS. It now preserves the stored currency so a USD row is refused by funding recovery and return. No
+  currency conversion, migration or historical rewrite was introduced.
+- [deposit-replay](../../../scripts/deposit-replay.test.mts): **34/34 memory, 34/34 Postgres, 10/10 in-process source
+  plants caught**. It executes the shipped function bodies with real DALs, wallet locks, validators and comparison;
+  provider dispatch/verification and notifications are controlled counters. The PG catch fixtures hit the real
+  unique idempotency-key index; the two-early-miss fixture yields one PROCESSING row and one dispatch. This is replay
+  and pre-verifier scope proof, not signed provider or payment-settlement proof.
+- PG used PostgreSQL 18.3 on loopback port 5444, this checkout's own `.pgscratch`, all 102 existing migrations, and
+  an ignored byte-identical copy of `scripts/db-scratch.mts` beside an optional-runtime junction. The probe verified
+  `SHOW data_directory` against this checkout before writing synthetic rows; the runner stopped/swept its own cluster.
+  Neither repository lockfile nor the locked dependency runtime was changed. For a normally installed optional
+  scratch runtime, run `KP_SCRATCH_PORT=5444 npm run db:probe-deposit-replay` with the appropriate shell environment.
+- Full source typecheck, the targeted service/test type graph and docs-link check pass. Existing deposit gate/return
+  (77), card adapter (48), wallet atomicity (8) and payment-webhook (77) checks pass. The payment-webhook
+  FAILED replay fixture is corrected to carry one shared valid MNO phone/intent across original, replay and new key;
+  its FAILED/notDone expectations are retained. The new suite separately refuses a missing-phone replay.
+- No new status route, saved-intent migration, trusted page/action bridge, production build, browser or live-money
+  result is claimed. The full S9 done-when and both planned server proof suites remain open.

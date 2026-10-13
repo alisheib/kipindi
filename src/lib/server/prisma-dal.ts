@@ -1161,7 +1161,8 @@ function toStoredTxn(t: any): StoredTxn {
     fee: num(t.fee),
     taxWithheld: num(t.taxWithheld),
     balanceAfter: numOrNull(t.balanceAfter),
-    currency: "TZS",
+    // Preserve stored currency so funding recovery can refuse a non-TZS row instead of relabelling it.
+    currency: t.currency,
     provider: t.provider ?? null,
     providerRef: t.providerRef,
     providerStatus: t.providerStatus ?? null,

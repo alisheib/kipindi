@@ -47,6 +47,7 @@ import { payoutDestinationFor } from "@/lib/payout-destination";
 import type { z } from "zod";
 import type { ServiceResult } from "./auth-service";
 import { formatTzs, formatDateTime } from "@/lib/utils";
+import { sameDepositFunding } from "@/lib/journey/deposit-state";
 
 /**
  * Source-of-Funds thresholds (AML Act 2006 + LCCP SR 9.2). An accepted SoF
@@ -75,11 +76,17 @@ export async function deposit(
   const rl = await rateCheckAsync(userId, "wallet.deposit");
   if (!rl.allowed) return { ok: false, error: "Too many deposit attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
 
-  // Idempotency: if this key was already used, return the existing txn result.
-  // (Returned even during maintenance — it's an already-made deposit, not a new one.)
+  // A global key recovers only this caller's persisted funding intent. Billing edits on CARD do not change that
+  // intent or dispatch another checkout. Current callers have no saved pending bet yet; S9's additive field will
+  // join this comparison when it is wired. Origin is create-only and is not rewritten on a replay.
+  const funding = { userId, type: "DEPOSIT", amount: input?.amount, currency: "TZS", provider: input?.provider, msisdn: input?.msisdn, pendingBet: null };
+  const matchesFunding = (existing: StoredTxn) => DepositSchema.shape.provider.safeParse(input?.provider).success && sameDepositFunding(funding, existing);
+  const keyConflict = () => ({ ok: false as const, error: "This request cannot recover the saved deposit.", code: "INVALID" as const });
+  // Matching replays stay available during maintenance: they recover a payment already made, never send a new one.
   if (idempotencyKey) {
     const existing = await db.txn.findByIdempotencyKey(idempotencyKey);
     if (existing) {
+      if (!matchesFunding(existing)) return keyConflict();
       const w = await db.wallet.findByUserId(userId);
       return { ok: true, data: { txnId: existing.id, status: existing.status, balance: w?.balance ?? 0 } };
     }
@@ -195,6 +202,12 @@ export async function deposit(
     | { ok: false; error: string; code: "INVALID"; reason?: FailureReason };
 
   const reservation: Reservation = await withLock(`wallet:${userId}`, async (): Promise<Reservation> => {
+    // The first lookup can miss while another request reserves this same intent. Ask again under the wallet lock,
+    // before the cap/SOF reads; a replay consumes no new cap and the memory twin must not reserve a second row.
+    if (idempotencyKey) {
+      const existing = await db.txn.findByIdempotencyKey(idempotencyKey);
+      if (existing) return matchesFunding(existing) ? { ok: true, txn: existing, reused: true } : keyConflict();
+    }
     // Responsible-gambling deposit-limit (daily / weekly / monthly), re-read
     // INSIDE the lock. Skipped for admin test-funding (see bypass note above).
     if (!adminTest) {
@@ -271,7 +284,7 @@ export async function deposit(
       // 500 — exactly-once, no duplicate PROCESSING row. Mirrors withdraw.
       if (idempotencyKey) {
         const existing = await db.txn.findByIdempotencyKey(idempotencyKey);
-        if (existing) return { ok: true, txn: existing, reused: true };
+        if (existing) return matchesFunding(existing) ? { ok: true, txn: existing, reused: true } : keyConflict();
       }
       throw err;
     }
@@ -924,7 +937,7 @@ export type DepositReturnOutcome = {
  * pre-seeded, and:
  *
  *   1. loads OUR transaction row for that providerRef,
- *   2. checks the row actually belongs to the signed-in user (an attacker must
+ *   2. checks the row is an unmarked DEPOSIT belonging to the signed-in user (an attacker must
  *      not be able to read another player's deposit by guessing a reference),
  *   3. if it is still PROCESSING, asks Selcom's SIGNED order-status endpoint and
  *      settles through `settlePaymentWebhook` — the same exactly-once, amount-
@@ -944,11 +957,12 @@ export async function settleDepositFromReturn(userId: string, orderId: string): 
   if (!orderId) return { state: "UNKNOWN", balance: await balanceOf() };
 
   let txn = await db.txn.findByProviderRef(orderId);
-  // Unknown reference, or someone else's — same answer either way. We do NOT
+  // Unknown reference, another player's row, another transaction type or a marked house row — the same answer.
+  // These checks precede the signed provider request and every possible settlement. We do NOT
   // distinguish them: confirming "that reference exists but isn't yours" would
   // leak the existence of other players' transactions.
-  if (!txn || txn.userId !== userId) {
-    if (txn && txn.userId !== userId) {
+  if (!txn || txn.userId !== userId || txn.type !== "DEPOSIT" || txn.currency !== "TZS" || txn.houseBotId != null) {
+    if (txn) {
       audit({
         category: "SECURITY",
         action: "deposit.return_ownership_mismatch",
