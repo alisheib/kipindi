@@ -55,7 +55,7 @@ every red read by its label — 17 database suites could not start their scratch
 are a `--no-save` package, and the 2026-10-11 worktree-junction incident's `npm ci` had removed it: reinstalled and the 17
 run again — all 17 green once the binaries were back (with R8-D's guard after its fix, 18/18 in 878.6 s on `eefc1eec`): `test:cashout-price-guard`, `test:results-freshness` (R9-D's), `test:agent-fee-expiry` (K32's), `test:visual-pass-r8d-stores` (R8-D's), `test:kyc-restart-docs`, `test:contacts-import-db`, `test:contacts-staging-db` and the ten house-bot database suites (migrations, money, caps, designation, engine, comms, info-edge, reports, console, ops)); 5 need a running server (`test:responsive`, `test:motion`, `test:revoked-deadend`,
 `test:admin-section-gate`, `test:needle-rest`, as at every close); `test:orphans` is main's own (two undeclared landing-v3
-panels, `scripts/qa/landing-v3/panels/band-panel.js` and `hero-panel.js`); and **`test:visual-pass-r8d` 10.2 was round 10's
+panels, now archived with their original source and review rubrics in `docs/qa/landing-v3-panels-history.md`); and **`test:visual-pass-r8d` 10.2 was round 10's
 own** — a guard that compares app-shell.tsx with HEAD undid round 10's edit on the working side only, so it passed before
 `177981c1` and failed once HEAD held the edit: fixed `eefc1eec` (both sides; 74/74, a planted code line caught). **Classic
 parity** (rounds 9 and 10 together): baseline at `c2d9e156` (the live main before round 9), the tip `ca72fe15` compared
@@ -582,7 +582,53 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   checks keep origin/main as their reference, accepting only S8's three separately hashed disclosure paragraphs and
   named dictionary additions, with deletion/change controls. The first v4 baseline null compare failed 4.11 on the
   unchanged baseline tree (56 question cells, including JSON-LD timestamps and several table widths); both captures
-  are kept and the harness/fixture instability is under independent review. This is not a valid branch-parity pass.
+  are kept. The narrow clock masks and real chart-resize calibration are recorded in
+  [`s8-parity-calibration-omega-dev072.md`](qa/s8-parity-calibration-omega-dev072.md), with 18 rendered controls.
+  A new capture, unchanged-source null compare, full red drive and branch compare remain required.
+- **Further review and resumability (2026-10-13, still before release).** The reviewed implementation/fix checkpoint
+  `e767f3f52` is pushed on `codex/vodacom-s8`. The second broad battery completed 504/528 green; its 24 failures were
+  read and repaired or independently re-run; the third broad battery completed 529/529 below.
+  The five browser suites that mutate a dev server run separately from WP11, with an explicit local target.
+  Disk-writing mutation proofs ran in the isolated `s8-guard-proofs` worktree: labels 14/14 and payment statement
+  10/10, with every file restored and the normal gates green afterward. The controller's latest proof executes
+  36 controls and 53 mutations, including strict local-production CLI arguments, a restored receipt address,
+  failed private reads, focus registration on the dialog's actual portal commit, frozen exits and unmounted answers.
+  The sheet proof passes 54 checks and 103 mutations, including closed receipt timers, viewport listeners and live
+  announcements. The CI browser suites now have their own explicit local server, Chromium and serial gates.
+  WP11 found Next could restore a bet query after its receipt had cleared it; the matching receipt now retires that
+  address on the router's later commit. All nine Chromium language/size receipt cells pass with one request,
+  Position and BET_PLACED row and a clean address. The full visual read repaired deposit rows shrinking their
+  multiline content, real-font amount fit, and bounds sentences split by a flex row. An independent keyboard
+  check then found a focused stake hidden beneath the fixed CTA; its middle-scrollport repair passes the stricter
+  actual visibility check. WebKit found the dialog's focus timer could run before its portal committed; the shared
+  Modal now registers its opening with `open` and `mounted`. Nine fresh WebKit reload documents focus the heading,
+  with all three languages' keyboard and held-key checks passing (70/70). Chromium's stable core is 237 passed,
+  zero failed, with the real-lock A24 cell separate. The third broad battery is 529/529 green (951.7 s), excluding
+  only the five separately driven browser suites; the 40 suites reading the changed Modal also pass afterward.
+  The A24 drive exposed a genuine memory-runtime defect: Next's independently compiled route/action copies had
+  separate mutex maps. The lock map and ambient context now share one process registry; actual compiled copies
+  prove serialization, drain, re-entry and context escape (11 checks, three defect plants), and a marked local
+  Postgres proves one connection/transaction, commit, rollback and advisory-lock drain (seven checks). Its first
+  browser A24 drive now proves the original action is inside its wallet lock waiting on the held market lock.
+  Nineteen further money/lock regressions pass. The real browser same-key replay cell returns one Position and one
+  BET_PLACED row. Independently compiled admission copies also shared the semaphore but not its limits or ambient
+  context; one process runtime now shares all three. Seventeen executed controls and seven defect plants pass,
+  followed by the existing admission, money-busy, concurrency, retry, landed-key and Redis fail-open suites.
+  A pointer-state read also found the deposit row's ghost hover cleared its gilt fill; the narrow kit-variant repair
+  survives all 32 default/hover/focus/active visual cells and the browser's negative control.
+  Journey question picks no longer animate on page arrival: kit press feedback runs on the tapped pick only.
+  Ali also authorized encountered animation improvements across both journey and normal 50pick, with accessible
+  focus and reduced-motion behavior preserved. The obsolete Claude-only landing panel scripts are archived with
+  their exact Git blobs and recovery instructions; no runnable caller existed and the orphan allowlist did not grow.
+  The sheet now retains its frozen drawing for the kit's exit beat while closing its active controls and focus;
+  its address follows the required history pop/replace, and unfinished keys remain recoverable. Callbacks are scoped
+  to that drawing's serial and asynchronous completions check mounted state.
+  A failed fresh private read now shows an unknown balance instead of retaining the last successful balance.
+  The actual lifecycle browser drive passes 12/12: failed reads recover, the silent inert ghost leaves in 153 ms,
+  reduced motion leaves in 11 ms, and old handlers cannot commit against an unrelated reopen. S9 preparation is separately pushed at `6f741881f` on
+  `codex/vodacom-s9`: the deposit plan and pure state core (168 controls, 38 mutants), without an application caller.
+  **Still NOT CLOSED / NOT LIVE:** current browser/visual closure, clean exact-tip production proof, repaired v4
+  baseline/null/branch parity, complete battery and both-host production read-back are required.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;
   WP8, WP9 and WP10; WP11a; WP11b; WP12 (A17's order).
 - **▶ IN FLIGHT (2026-10-13, from ~02:05 EAT) — the coordinator, a claude.ai/code cloud VM, with five builders on their

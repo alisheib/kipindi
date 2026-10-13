@@ -46,7 +46,15 @@ export { hashKey64 };
  * by the outermost lock — the one that opened it — and dropped if it rolls back.
  */
 type LockCtx = { tx: Prisma.TransactionClient | null; held: Set<string>; committed: Array<() => void> };
-const lockStore = new AsyncLocalStorage<LockCtx>();
+// Next can compile the same server module into separate route and action bundles. They must serialize the same
+// in-memory rows and inherit the same ambient context, including same-key re-entry and transaction joining.
+const lockGlobal = globalThis as typeof globalThis & {
+  __50pickLocks?: { context: AsyncLocalStorage<LockCtx>; memory: Map<string, Promise<unknown>> };
+};
+const lockRuntime = lockGlobal.__50pickLocks ??= {
+  context: new AsyncLocalStorage<LockCtx>(), memory: new Map<string, Promise<unknown>>(),
+};
+const lockStore = lockRuntime.context;
 
 /**
  * The transaction of the enclosing withLock(), or null when there is none (or
@@ -110,7 +118,7 @@ function runCommitted(fns: ReadonlyArray<() => void>): void {
 
 /* ── In-memory fallback (dev without Postgres) ──────────────────────── */
 
-const memLocks = new Map<string, Promise<unknown>>();
+const memLocks = lockRuntime.memory;
 
 async function withMemoryLock<T>(key: string, fn: (tx: null) => Promise<T>): Promise<T> {
   const parent = lockStore.getStore();

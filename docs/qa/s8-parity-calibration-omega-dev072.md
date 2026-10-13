@@ -1,0 +1,19 @@
+# S8 classic parity calibration — OMEGA-DEV072
+
+2026-10-13 · Codex independent instrument review. This records a repair to the capture instrument; it does not approve deployment or change the baseline's product source.
+
+The first fresh-server null compare at `ff8c731e` passed 66/67 checks and failed 4.11. Both original captures remain intact in the baseline worktree's `.qa-artifacts/s8/parity-v4-ff8c731e.json` and `.json.current.json`; the compare log is `F:\50pick-work\baseline-null-compare.log`.
+
+The recorded differences had three actual causes:
+
+- All 56 question cells retained the seed-generated Event JSON-LD `startDate` and `endDate`. Only those two validated canonical UTC strings, at the root of an exact schema.org Event script, now read as `~event-time`. Script attributes, JSON token spelling, nested dates, Event words/URLs and every visible element remain compared.
+- Eight break-page cells retained the intrinsic widths of the minute glyphs in the server-rendered EAT end date. Under A17's server-rendered-time allowance and the coordinating reviewer’s explicit scope ruling, the exact date leaves inside `market-bet-break` and `market-break` are canonicalized before geometry is read. A leaf must match the complete locale-specific format and a valid Gregorian day/year. Surrounding words, elements, attributes, fonts, padding and paint remain compared. Q.6 requires exactly one leaf in a break-open cell, two in break-empty and zero in other cells.
+- Four probability charts retained a 56px default price axis instead of the populated 40px axis. This was chart layout, not a money-table change: plots were 230/246px on phones and 526/542px on desktops. lightweight-charts avoids shrinking its axis on marks-changed; a full resize after data arrives measures it again. Twelve fresh-context en/sw probes at 360/1280 reproduced the cause and showed that widening the observed container by 1px, allowing two animation frames, and restoring its exact width/style settles the real axis to 40px. No chart/table/axis geometry is masked. The instrument checks the final container width and exact style attribute. It flushes pending Chromium CSSOM serialization before restoring an absent style attribute, preventing a spurious `style=""` capture.
+
+`--calibrate-question` passes 18/18 actual rendered controls through the same SNAPSHOT, comparison and Q.6 functions used by a full capture. Moving only the two inert seed clocks and exact two break-date leaves compares equal. Changes to date font/padding, surrounding words, visible money or standalone timestamp, Event words/URL/nested clock, and chart table width still fail. Missing punctuation, an impossible February date, another locale's month, year zero, and an extra clock leaf fail the exact population verdict. The chart restores absent, empty and nonempty inline styles byte for byte.
+
+`test:question-time-mask` also passes calendar, locale, year, population, JSON scope/grammar and three broad-mask negative controls. Both active and baseline checkouts ran those controls with identical scripts. Only the parity harness and its new helper/test were copied to the baseline; its served source remains clean at `ff8c731e`.
+
+The question capture metadata records `jsonld-event-times`, `break-end-clock` and both new geometry-settle steps. A capture made with the earlier method cannot be silently compared under the new method. The original failed pair is retained; a new filename will hold the repaired capture, followed by a fresh-server null comparison and the working-branch comparison.
+
+Pending at this record: full updated `--prove-red`, the new complete baseline, its fresh-server null compare, and the working-branch compare. Their actual outcomes must be appended before this repair is treated as calibrated for deployment.

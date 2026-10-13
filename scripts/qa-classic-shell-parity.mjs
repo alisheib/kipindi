@@ -169,6 +169,7 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { maskQuestionEventTimes, normaliseQuestionBreakClocks, QUESTION_BREAK_CLOCK } from "./lib/question-time-mask.mjs";
 
 const NL = "\n";
 const msg = (e) => String(e?.message ?? e).split(NL)[0].slice(0, 200);
@@ -188,23 +189,24 @@ const fileError = (pageErrors, devOnly) => (e) => { const m = norm(msg(e)).slice
 const short = (sha) => String(sha ?? "").slice(0, 8);
 const refuse = (text) => { console.error(`REFUSED — ${text}`); process.exit(2); };
 const argv = process.argv.slice(2);
-const FLAGS = new Set(["--baseline", "--compare", "--prove-red", "--allow-base", "--allow-dirty", "--norm"]);
+const FLAGS = new Set(["--baseline", "--compare", "--prove-red", "--calibrate-question", "--allow-base", "--allow-dirty", "--norm"]);
 const valueOf = (flag) => { const i = argv.indexOf(flag); return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith("--") ? argv[i + 1] : null; };
 const BASELINE = valueOf("--baseline");
 const COMPARE = valueOf("--compare");
 // The control is the default: a bare run writes nothing and proves the instrument.
-const PROVE_RED = argv.includes("--prove-red") || (!argv.includes("--baseline") && !argv.includes("--compare"));
+const QUESTION_CALIBRATE = argv.includes("--calibrate-question");
+const PROVE_RED = argv.includes("--prove-red") || (!QUESTION_CALIBRATE && !argv.includes("--baseline") && !argv.includes("--compare"));
 const ALLOW_BASE = argv.includes("--allow-base");
 const ALLOW_DIRTY = argv.includes("--allow-dirty");
-const MODE = BASELINE ? "baseline" : COMPARE ? "compare" : "prove-red";
+const MODE = BASELINE ? "baseline" : COMPARE ? "compare" : QUESTION_CALIBRATE ? "calibrate-question" : "prove-red";
 {
   const unknown = argv.filter((a) => a.startsWith("--") && !FLAGS.has(a));
-  const modes = [BASELINE, COMPARE, PROVE_RED || null].filter(Boolean).length;
+  const modes = [BASELINE, COMPARE, PROVE_RED || null, QUESTION_CALIBRATE || null].filter(Boolean).length;
   const bad = unknown.length || modes !== 1
     || (argv.includes("--baseline") && !BASELINE) || (argv.includes("--compare") && !COMPARE)
     || (ALLOW_BASE && !COMPARE) || (ALLOW_DIRTY && !BASELINE) || (argv.includes("--norm") && !valueOf("--norm"));
   if (bad) {
-    console.error("USAGE — exactly one of: --baseline <new file> [--allow-dirty] · --compare <baseline file> [--allow-base] · --prove-red (the default); with any of them --norm <id>,<id> (or none)"
+    console.error("USAGE — exactly one of: --baseline <new file> [--allow-dirty] · --compare <baseline file> [--allow-base] · --prove-red (the default) · --calibrate-question (only the new rendered clock/geometry controls); with any of them --norm <id>,<id> (or none)"
       + (unknown.length ? `  (unknown: ${unknown.join(" ")})` : ""));
     process.exit(2);
   }
@@ -584,6 +586,8 @@ const QUESTION_MASKS = [
     what: "the Sell button's free-window clock in a holder row (sell-button.tsx's strip), read as m:ss as the Sell capture reads it; the phase waits the held tickets' free windows out first, so no cell should draw one" },
   { id: "chart-time-axis", selector: "div.tv-lightweight-charts tr:last-child", inside: true, seen: true,
     what: "the probability chart's time axis (market-curve.tsx, lightweight-charts: the table's last row, its canvases): its box and style are read, nothing inside it" },
+  { id: "break-end-clock", selector: QUESTION_BREAK_CLOCK.selector, text: QUESTION_BREAK_CLOCK.text, only: QUESTION_BREAK_CLOCK.pattern, canonical: true, seen: true,
+    what: "A17 server-rendered times, calibrated from the ff8c null pair: only full EAT date leaves in market-bet-break / market-break use one same-format time before geometry; their words, element, attributes and paint stay compared" },
 ];
 /** The server-rendered times (the fifth mask): eat-dates, always on for a question cell (idempotent beside the book's). */
 const EAT_DATES = BOOK_NORMALISERS.find((n) => n.id === "eat-dates");
@@ -594,10 +598,10 @@ const QUESTION = {
   states: QUESTION_STATES,
   panel: QUESTION_PANEL,
   holder: QUESTION_HOLDER,
-  masks: [...QUESTION_MASKS.map((m) => m.id), "server-times"],
+  masks: [...QUESTION_MASKS.map((m) => m.id), "server-times", "jsonld-event-times"],
   /** The book's normalisers, which the question's cells use too (their similar rails are book cards). */
   normalise: BOOK_NORMALISE,
-  settle: BOOK_SETTLE,
+  settle: [...BOOK_SETTLE, "question-chart-resize", "break-end-clock-geometry"],
 };
 /** Every question cell in capture order, as [key, viewer, locale, width, state]: the guest's, the player's, then the break's. */
 function questionCellKeys() {
@@ -1229,7 +1233,10 @@ const SNAPSHOT = ({ crest, props, animated, notFound, pageBody, sell, confirm, t
       stub.setAttribute("data-parity", name);
       x.replaceWith(stub);
     }
-    for (const m of masks) for (const x of clone.querySelectorAll(m.selector)) { if (m.inside) x.replaceChildren(); else x.textContent = m.text; }
+    for (const m of masks) for (const x of clone.querySelectorAll(m.selector)) {
+      if (m.only && (x.childElementCount !== 0 || (m.canonical ? x.textContent !== m.text : !new RegExp(m.only).test(x.textContent)))) continue;
+      if (m.inside) x.replaceChildren(); else x.textContent = m.text;
+    }
     return { count: els.length, html: clone.outerHTML, lines };
   };
   const overlays = () => {
@@ -1299,7 +1306,7 @@ const SNAPSHOT = ({ crest, props, animated, notFound, pageBody, sell, confirm, t
     }).sort(),
     // S7 WP1 · a book cell's classic cards, each by its facts (cardStateOf reads them in Node).
     // S8 WP1 · how many elements each question mask masked in the page's <main> (Q.6).
-    ...(masks.length ? { masked: Object.fromEntries(masks.map((m) => [m.id, [...document.querySelectorAll(m.selector)].filter((e) => !!e.closest("#main-content")).length])) } : {}),
+    ...(masks.length ? { masked: Object.fromEntries(masks.map((m) => [m.id, [...document.querySelectorAll(m.selector)].filter((e) => !!e.closest("#main-content") && (!m.only || e.childElementCount === 0 && (m.canonical ? e.textContent === m.text : new RegExp(m.only).test(e.textContent)))).length])) } : {}),
     ...(book ? { cards: [...document.querySelectorAll(book.cards)].map((a) => ({
       id: a.getAttribute("data-row-id") ?? "",
       // S8 WP1 · the card's title (its stretched link's name): seedQuestions picks a state's question by it.
@@ -1367,7 +1374,9 @@ function toBookCell(snap, extra) {
   return { ...extra, landed: snap.url, regions, journey: snap.journey, cards: (snap.cards ?? []).map((c) => ({ id: c.id, state: cardStateOf(c) })) };
 }
 /** S8 WP1 · a question cell's text: the book's (bookNorm), then the server-rendered times (eat-dates, always on here). */
-const questionNorm = (s) => EAT_DATES.apply(bookNorm(s));
+// Fresh seeds name fresh instants in the question's inert Event JSON-LD. Only its top-level startDate/endDate are
+// masked; the visible page, event words/shape/URLs and any nested dates remain compared byte for byte.
+const questionNorm = (s) => maskQuestionEventTimes(EAT_DATES.apply(bookNorm(s))).html;
 /** S8 WP1 · a question cell from its snapshot: each region as a book cell records one, under questionNorm, and the masks' counts. */
 function toQuestionCell(snap, extra) {
   const regions = {};
@@ -1378,7 +1387,7 @@ function toQuestionCell(snap, extra) {
       layout: put(r.lines.map(([path, geo, sig]) => `${path} ${geo} ${put(questionNorm(sig))}`).join(NL)),
     };
   }
-  return { ...extra, landed: snap.url, regions, journey: snap.journey, masked: snap.masked ?? {} };
+  return { ...extra, landed: snap.url, regions, journey: snap.journey, masked: { ...snap.masked, "jsonld-event-times": maskQuestionEventTimes(snap.regions.main.html ?? "").fields } };
 }
 
 // ── the diff ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -1874,7 +1883,9 @@ function questionChecks(question, seed, store) {
         return false;
       }) },
     { id: "Q.6", name: `every mask the classic question page draws masked something (${QUESTION_MASKS.filter((m) => m.seen).map((m) => m.id).join(", ")}); the others are counted, never failed (${QUESTION_MASKS.filter((m) => !m.seen).map((m) => m.id).join(", ")})`,
-      fails: live.length ? QUESTION_MASKS.filter((m) => m.seen && !(masked.get(m.id) > 0)).map((m) => `${m.id} masked nothing in ${live.length} cell(s)`) : [] },
+      fails: live.length ? [...QUESTION_MASKS.filter((m) => m.seen && !(masked.get(m.id) > 0)).map((m) => `${m.id} masked nothing in ${live.length} cell(s)`),
+        ...live.filter(([, c]) => c.masked?.["jsonld-event-times"] !== 2).map(([k]) => `${k} did not mask exactly the Event's two seed timestamps`),
+        ...live.filter(([k, c]) => c.masked?.["break-end-clock"] !== (viewerOf.get(k) === "break" ? stateOf.get(k)?.id === "break-empty" ? 2 : 1 : 0)).map(([k]) => `${k} did not mask exactly its named break-end date leaf population`)] : [] },
     { id: "Q.7", name: "only React's DEV performance-track sentence is ever filed as DEV-only in a question cell — every other page error is compared",
       fails: live.filter(([, c]) => (c.devOnly ?? []).some((x) => !isDevMeasure(x))).map(([k, c]) => `${k} (filed DEV-only: ${c.devOnly.find((x) => !isDevMeasure(x))})`) },
   ];
@@ -1899,7 +1910,7 @@ function syntheticQuestion() {
     question[k] = {
       status: 200, stable: true, landed: s.route, pageErrors: [], devOnly: [], journey: [], raw: { shell: true, trace: [] },
       regions: { main: region("main"), panel: region(panel), holder: v === "guest" ? none() : region("holder") },
-      masked: { "timer-text": 0, "countdown-clock": 8, "sell-countdown": 0, "chart-time-axis": 1 },
+      masked: { "timer-text": 0, "countdown-clock": 8, "sell-countdown": 0, "chart-time-axis": 1, "jsonld-event-times": 2, "break-end-clock": v === "break" ? s.id === "break-empty" ? 2 : 1 : 0 },
     };
   }
   const ok200 = (reply) => ({ status: 200, reply: { ok: true, ...reply } });
@@ -2483,7 +2494,7 @@ async function captureBook(still) {
 
 /** S8 WP1 · what SNAPSHOT is asked for a question cell: <main> with the bet panel and the holder section stubbed in it, each
  *  of the two its own region; the masks; the similar rail's cards; chart-paths and tied-cards exactly as for a book cell. */
-const questionArgsOf = () => {
+const questionArgsOf = (locale) => {
   const { book } = bookArgsOf(BOOK.similar);
   return {
     crest: CREST, props: PROPS, animated: ANIMATED, notFound: false, pageBody: false, trace: TRACE,
@@ -2492,9 +2503,35 @@ const questionArgsOf = () => {
       regions: { main: "#main-content", panel: `#main-content ${QUESTION_PANEL}`, holder: `#main-content ${QUESTION_HOLDER}` },
       stubbed: "main",
       stubs: { panel: QUESTION_PANEL, holder: QUESTION_HOLDER },
-      masks: QUESTION_MASKS.map(({ id, selector, text, inside }) => ({ id, selector, text: text ?? null, inside: !!inside })),
+      masks: QUESTION_MASKS.map(({ id, selector, text, inside, only, canonical }) => ({ id, selector, text: text ?? null, inside: !!inside, only: only ?? null, canonical: !!canonical })),
+      clock: { ...QUESTION_BREAK_CLOCK, locale },
     },
   };
+};
+
+/** Calibrated first-paint settle, not a geometry mask. The chart retains a default 56px axis until a full resize
+ * occurs after its data arrive (lightweight-charts deliberately avoids shrinking on marksChanged). Resize its actual
+ * observed container by one pixel then restore its exact style attribute; the final boxes are the real original size. */
+const SETTLE_QUESTION_CHART = async () => {
+  const result = [];
+  for (const chart of document.querySelectorAll("#main-content div.tv-lightweight-charts")) {
+    const target = chart.parentElement;
+    if (!target || target.clientWidth === 0) continue;
+    const original = target.getAttribute("style"), width = target.clientWidth;
+    target.style.width = `${width + 1}px`;
+    await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
+    // Flush Chromium's pending CSSOM serialization before restoring an absent style attribute; otherwise its lazy
+    // empty declaration can resurrect style="" after removeAttribute, which would change the captured markup.
+    target.getAttribute("style");
+    if (original === null) {
+      target.removeAttribute("style");
+    } else {
+      target.setAttribute("style", original);
+    }
+    await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
+    result.push({ originalWidth: width, restoredWidth: target.clientWidth, styleRestored: target.getAttribute("style") === original });
+  }
+  return result;
 };
 
 /**
@@ -2512,7 +2549,7 @@ async function captureQuestionCell(jar, locale, width, state, ids, plant = null)
     page.on("pageerror", fileError(pageErrors, devOnly));
     const { status, body: sent, needle } = await open(page, routeOfQuestion(state.route, ids), plant);
     const body = plant?.bytes && typeof sent === "string" ? plant.bytes(sent) : sent;
-    const args = questionArgsOf();
+    const args = questionArgsOf(locale);
     const regions = Object.values(args.book.regions);
     let lazy = null;
     const settled = await page.evaluate(SETTLE_LAZY, { regions, ms: LAZY_SETTLE_MS });
@@ -2520,6 +2557,9 @@ async function captureQuestionCell(jar, locale, width, state, ids, plant = null)
     const untie = args.book.tied ? { ...args.book.tied, regions } : null;
     const read = async () => {
       if (untie) await page.evaluate(UNTIE_CARDS, untie);
+      await page.evaluate(normaliseQuestionBreakClocks, args.book.clock);
+      const chart = await page.evaluate(SETTLE_QUESTION_CHART);
+      if (chart.some((x) => !x.styleRestored || x.originalWidth !== x.restoredWidth)) throw new Error("question chart settle did not restore its exact container");
       return page.evaluate(SNAPSHOT, args);
     };
     const seen = (s) => JSON.stringify([s.url, s.regions, s.journey, s.masked]);
@@ -2749,10 +2789,16 @@ let questionSeed = null;
 let report320 = null;
 let treeMoved = null;
 try {
-  if (PROVE_RED) await proveRed();
+  if (QUESTION_CALIBRATE) await proveQuestionCalibration();
+  else if (PROVE_RED) await proveRed();
   else await captureMatrix();
 } finally {
   await b.close();
+}
+if (QUESTION_CALIBRATE) {
+  const failed = results.filter((result) => !result).length;
+  console.log(`\n${results.length - failed}/${results.length} passed — rendered question calibration (no server fixture touched)`);
+  process.exit(failed ? 1 : 0);
 }
 
 async function captureMatrix() {
@@ -2789,7 +2835,54 @@ async function captureMatrix() {
   still("by the end of the capture");
 }
 
+/** The same reader and Q.6 verdict used by a real capture, exercised on rendered clocks and visible controls. */
+async function proveQuestionCalibration() {
+  const page = await b.newPage({ viewport: { width: 1280, height: HEIGHT } });
+  const key = keyOf("question-break", "en", 1280, "/markets/:empty");
+  const first = "2026-10-13T12:00:00.123Z", next = "2026-10-13T12:37:00.123Z";
+  const take = async (o = {}) => {
+    const event = { "@context": "https://schema.org", "@type": "Event", name: o.eventWord ?? "Rain", startDate: o.eventClock ?? first, endDate: o.eventClock ?? first, organizer: { name: "50pick", startDate: o.nestedClock ?? first }, location: { url: o.eventUrl ?? "/markets/fixed" } };
+    await page.setContent(`<!doctype html><html lang="en"><head><style>.whitespace-nowrap{white-space:nowrap}.date{font:13px Arial;padding:${o.padding ?? 0}px;font-family:${o.font ?? "Arial"}}.axis{width:${o.axis ?? 114}px;height:20px}</style></head><body>
+      <main id="main-content"><script type="application/ld+json">${JSON.stringify(event)}</script><aside aria-labelledby="bet-panel-heading"><h2 id="bet-panel-heading">Place your stake</h2><div data-testid="market-bet-break"><p>${o.words ?? "A break is active until"} <span class="whitespace-nowrap date">${o.date ?? "14 Oct, 13:43"}</span>. Betting is paused.${o.extra ? '<span class="whitespace-nowrap date">14 Oct, 13:43</span>' : ""}</p></div></aside>
+      <section class="order-2"><section class="bg-bg-elevated"><p data-testid="market-break">A break is active until <span class="whitespace-nowrap date">${o.date ?? "14 Oct, 13:43"}</span>.</p></section></section>
+      <div class="tv-lightweight-charts"><table><tr><td class="axis">plot</td><td>price</td></tr><tr><td>time axis</td></tr></table></div><p>${o.money ?? "TZS 1,234"}</p><time datetime="${o.visibleDate ?? first}">${o.visibleDate ?? first}</time></main></body></html>`);
+    if (o.chartStyle !== undefined) await page.locator("#main-content").evaluate((el, style) => el.setAttribute("style", style), o.chartStyle);
+    const args = questionArgsOf("en");
+    await page.evaluate(normaliseQuestionBreakClocks, args.book.clock);
+    const settled = await page.evaluate(SETTLE_QUESTION_CHART);
+    const snap = await page.evaluate(SNAPSHOT, args);
+    const cell = toQuestionCell(snap, { status: 200, stable: true, raw: { shell: true, trace: [] }, pageErrors: [], devOnly: [] });
+    cell.landed = "/markets/:empty";
+    return { cell, settled };
+  };
+  const q6 = (cell) => { const sample = syntheticQuestion(); sample.question[key] = cell; return questionChecks(sample.question, sample.seed, { ...sample.store, ...blobs }).find((c) => c.id === "Q.6").fails; };
+  const fields = (a, c) => diffCells("/markets/:empty", a, c, blobs, blobs, QUESTION_EXPECTED_DIFFS).unexpected;
+  try {
+    const clean = await take();
+    ok("P.8t clean rendered clocks pass the real Q.6 exact population verdict; chart settle restores its original width and style", q6(clean.cell).length === 0 && clean.settled.length === 1 && clean.settled.every((s) => s.styleRestored && s.originalWidth === s.restoredWidth), JSON.stringify({ clocks: q6(clean.cell), settled: clean.settled }));
+    for (const style of ["", "position: relative; width: 1120px; padding: 3px 7px;"]) {
+      const styled = await take({ chartStyle: style });
+      ok(`P.8t chart settle restores an ${style ? "existing nonempty" : "existing empty"} style attribute byte for byte`, styled.settled.length === 1 && styled.settled.every((s) => s.styleRestored && s.originalWidth === s.restoredWidth) && await page.locator("#main-content").getAttribute("style") === style);
+    }
+    const shifted = await take({ date: "14 Oct, 14:21", eventClock: next });
+    ok("P.8t only the two inert seed clocks and exact two A17 date leaves move: the same real diff verdict compares every region equal", fields(clean.cell, shifted.cell).length === 0 && q6(shifted.cell).length === 0);
+    for (const [name, o, need] of [
+      ["date font", { font: "monospace" }, "regions.panel.layout"], ["date padding", { padding: 3 }, "regions.panel.layout"],
+      ["surrounding words", { words: "A wrong notice until" }, "regions.panel.html"], ["visible money", { money: "TZS 9,876" }, "regions.main.html"],
+      ["visible timestamp", { visibleDate: next }, "regions.main.html"], ["event words", { eventWord: "Snow" }, "regions.main.html"],
+      ["event URL", { eventUrl: "/markets/changed" }, "regions.main.html"], ["nested clock", { nestedClock: next }, "regions.main.html"],
+      ["chart table width", { axis: 130 }, "regions.main.layout"],
+    ]) { const changed = await take(o); const diff = fields(clean.cell, changed.cell); ok(`P.8t ${name} stays detected by the real diff verdict (${need})`, diff.some((d) => d.field === need), diff.map((d) => d.field).join(", ")); }
+    for (const [name, date] of [["missing comma", "14 Oct 13:43"], ["impossible day", "31 Feb, 13:43"], ["wrong locale", "14 Okt, 13:43"], ["year zero", "14 Oct 0000, 13:43"]]) {
+      const changed = await take({ date }); ok(`P.8t ${name} fails the same real Q.6 clock population verdict`, q6(changed.cell).length > 0);
+    }
+    const extra = await take({ extra: true }); ok("P.8t an extra clock leaf fails the same real Q.6 exact population verdict", q6(extra.cell).length > 0);
+  } catch (e) { ok("P.8t the rendered question calibration completes", false, msg(e)); }
+  finally { await page.close().catch(() => {}); }
+}
+
 async function proveRed() {
+  await proveQuestionCalibration();
   console.log(`\n§P · the control — first on synthetic captures, then planted in the browser`);
   // ① The EXPECTED_DIFFS matcher: it must pass what it names and nothing beside it.
   const store = { f1: '<footer class="pad-old">x</footer>', f2: '<footer class="pad-new">x</footer>', f3: '<footer class="pad-new">y</footer>' };
@@ -3527,6 +3620,10 @@ async function proveRed() {
     ["Q.5", "the holder's ?side=NO without the hedge warning", (m) => { atQ(m, "player", "sw", 1280, "/markets/:open?side=NO").regions.panel.html = "panel"; }],
     ["Q.5", "the guest's open question without sign-up", (m) => { atQ(m, "guest", "en", 1280, "/markets/:open").regions.panel.html = "panel"; }],
     ["Q.6", "the countdown mask masking nothing anywhere", (m) => { for (const c of Object.values(m.question)) c.masked["countdown-clock"] = 0; }],
+    ["Q.6", "a question Event missing one of its exact two clock masks", (m) => { atQ(m, "guest", "en", 360, "/markets/:settled").masked["jsonld-event-times"] = 1; }],
+    ["Q.6", "a break question missing its named date leaf mask", (m) => { atQ(m, "break", "en", 360, "/markets/:open").masked["break-end-clock"] = 0; }],
+    ["Q.6", "a break question with an extra date leaf mask", (m) => { atQ(m, "break", "sw", 1280, "/markets/:empty").masked["break-end-clock"] = 3; }],
+    ["Q.6", "a date leaf masked outside a break question", (m) => { atQ(m, "player", "en", 360, "/markets/:open").masked["break-end-clock"] = 1; }],
     ["Q.7", "a real page error filed as DEV-only", (m) => { atQ(m, "player", "sw", 360, "/markets/:settled").devOnly = ["TypeError: Cannot read properties of undefined (reading 'yesPool')"]; }],
   ];
   for (const [id, what, plant] of QUESTION_FLOOR_PLANTS) {
@@ -3844,7 +3941,22 @@ async function proveRed() {
         ] },
         { v: "player", l: "sw", w: 360, s: "settled", plants: [] },
         { v: "player", l: "en", w: 360, s: "time-closed", plants: [] },
-        { v: "guest", l: "en", w: 1280, s: "selection-closed", plants: [] },
+        { v: "guest", l: "en", w: 1280, s: "selection-closed", plants: [
+          { id: "q-event-clock", noDiff: true, js: () => {
+            const el = document.querySelector('#main-content script[type="application/ld+json"]');
+            const event = JSON.parse(el.textContent);
+            for (const key of ["startDate", "endDate"]) event[key] = new Date(Date.parse(event[key]) + 3_600_000).toISOString();
+            el.textContent = JSON.stringify(event);
+          }, what: "only the inert Event's top-level seed clocks move" },
+          { id: "q-event-words", js: () => {
+            const el = document.querySelector('#main-content script[type="application/ld+json"]');
+            const event = JSON.parse(el.textContent); event.name += "·"; el.textContent = JSON.stringify(event);
+          }, what: "the Event's words change beside its masked clocks", need: "regions.main.html", within: ["regions.main.html"] },
+          { id: "q-event-url", js: () => {
+            const el = document.querySelector('#main-content script[type="application/ld+json"]');
+            const event = JSON.parse(el.textContent); event.location.url += "?changed=1"; el.textContent = JSON.stringify(event);
+          }, what: "the Event's location URL changes beside its masked clocks", need: "regions.main.html", within: ["regions.main.html"] },
+        ] },
       ];
       const proveCell = async (v, l, w, s, jar, plants) => {
         const st = stateOf(s);
@@ -3862,9 +3974,9 @@ async function proveRed() {
           const planted = await captureQuestionCell(jar, l, w, st, ids, plant);
           if (planted.error) { ok(`P.${k} ${plant.id} was captured`, false, planted.error); continue; }
           const seen = diffCells(st.route, clean, planted, blobs, blobs, QUESTION_EXPECTED_DIFFS).unexpected;
-          ok(`P.${k} ⭐ ${plant.what} is reported in ${plant.need}, and nowhere outside ${plant.within.join(" / ")}`,
-            seen.some((d) => inside(d.field, [plant.need])) && seen.every((d) => inside(d.field, plant.within)),
-            seen.length ? seen.slice(0, 2).map((d) => `${d.field}: ${d.detail}`).join(" | ").slice(0, 400) : "NOT SEEN — a question compare with this harness proves nothing");
+          ok(`P.${k} ⭐ ${plant.what}${plant.noDiff ? " compares equal" : ` is reported in ${plant.need}, and nowhere outside ${plant.within.join(" / ")}`}`,
+            plant.noDiff ? seen.length === 0 : seen.some((d) => inside(d.field, [plant.need])) && seen.every((d) => inside(d.field, plant.within)),
+            seen.length ? seen.slice(0, 2).map((d) => `${d.field}: ${d.detail}`).join(" | ").slice(0, 400) : plant.noDiff ? "only the named inert clock tokens moved" : "NOT SEEN — a question compare with this harness proves nothing");
         }
       };
       await warm(holder, [...new Set(QUESTION_PROVE.filter((c) => c.v === "player").map((c) => routeOfQuestion(stateOf(c.s).route, ids)))]);

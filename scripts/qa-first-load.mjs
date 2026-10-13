@@ -165,6 +165,14 @@ export const MARKERS = [
     file: "src/components/journey/bet-sheet/bet-sheet-host.tsx", marker: '"a[data-bet-side]"', expect: OWN_CHUNK },
   { id: "BetSheet", stage: "S8", wp: "WP6", journey: true,
     file: "src/components/journey/bet-sheet/bet-sheet.tsx", marker: '"journey-bet-sheet"', expect: () => ({ marker: "out" }) },
+  // S8 WP8/WP9: the client question ghost is inside the journey-only lazy drawing; picks and the home break are
+  // server drawings. None of their markers belongs in a classic route's entry scripts (WP11 step10).
+  { id: "QuestionGhost", stage: "S8", wp: "WP8", journey: true,
+    file: "src/components/journey/question/question-ghost.tsx", marker: '"journey-question-ghost"', expect: () => ({ marker: "out" }) },
+  { id: "JourneyBetButtons", stage: "S8", wp: "WP8", journey: true,
+    file: "src/components/journey/question/journey-bet-buttons.tsx", marker: '"journey-bet-buttons"', expect: () => ({ marker: "out" }) },
+  { id: "JourneyHomeBreak", stage: "S8", wp: "WP9", journey: true,
+    file: "src/components/journey/home/journey-home.tsx", marker: '"journey-home-break"', expect: () => ({ marker: "out" }) },
 ];
 
 /** S6's four (first-load-parts.py:32), S7's (A9 (2), A20 item 6) and /updown/history (A23 (d)). */
@@ -660,6 +668,9 @@ export function selfTest({ table = MARKERS } = {}) {
     // C10: the S7 home lazy module judged by the route's client modules, once landed, mounted and given a marker.
     const c = path.join(tmp, "c");
     writeFixture(c, { homeLazy: true });
+    // C10 already creates the mounted journey-home owner. Since S8 it also owns this rendering marker.
+    const homeBreakMarker = table.find(row => row.id === "JourneyHomeBreak");
+    if (homeBreakMarker) fs.appendFileSync(path.join(c, homeBreakMarker.file), `\nexport const breakMarker = ${homeBreakMarker.marker};\n`);
     const withMarker = table.map((r) => (r.id === "HomeLazy" ? { ...r, marker: "kp-home-lazy-fixture" } : r));
     const t10 = checkMarkerTable(c, [...CONTROLS, ...withMarker]);
     check("C10 the landed home lazy module with a marker satisfies the table", t10.ok, t10.lines.filter((l) => l.startsWith("✗")).join(" | "));
@@ -671,6 +682,29 @@ export function selfTest({ table = MARKERS } = {}) {
     const p10 = readRoute(b10, "/markets", "kp-home-lazy-fixture");
     const hp = judgeRow(withMarker.find((r) => r.id === "HomeLazy"), p10, true, true);
     check("C10 the home lazy marker planted into /markets' entry set is UNEXPECTED", hp.bad, `${hp.mark}; ${hp.verdict}`);
+
+    // C12: the three actual S8 rendering markers use the same entry reader as every earlier row. Their source owner
+    // must be unique, and each marker joined to a classic entry set must fail — server drawings included.
+    const s8Rendering = table.filter(row => ["QuestionGhost", "JourneyBetButtons", "JourneyHomeBreak"].includes(row.id));
+    check("C12 all three S8 rendering markers are in the canonical table", s8Rendering.length === 3);
+    for (const row of s8Rendering) writeAt(c, row.file, `export const marker = ${row.marker};\n`);
+    const t12 = checkMarkerTable(c, [...CONTROLS, ...withMarker]);
+    check("C12 the landed S8 marker owners satisfy the source table", t12.ok);
+    for (const row of s8Rendering) {
+      const clean = judgeRow(row, readRoute(b10, "/"), t12.rows.get(row.id)?.judged, true);
+      const joined = judgeRow(row, readRoute(b10, "/", row.marker), t12.rows.get(row.id)?.judged, true);
+      check(`C12 ${row.id}: absent from a classic entry set passes`, clean?.bad === false && clean.verdict === "as expected");
+      check(`C12 ${row.id}: planted into that same entry set is UNEXPECTED`, joined?.bad === true && joined.verdict === "UNEXPECTED");
+      const duplicate = `src/control-${row.id}.tsx`;
+      writeAt(c, duplicate, `export const duplicate = ${row.marker};\n`);
+      const duplicated = checkMarkerTable(c, [...CONTROLS, ...withMarker]);
+      check(`C12 ${row.id}: a second source owner is refused`, !duplicated.ok && duplicated.lines.some(line => line.startsWith("✗") && line.includes(row.id)));
+      fs.unlinkSync(path.join(c, duplicate));
+      writeAt(c, row.file, "export const missing = true;\n");
+      const missing = checkMarkerTable(c, [...CONTROLS, ...withMarker]);
+      check(`C12 ${row.id}: its source marker removed is refused`, !missing.ok && missing.lines.some(line => line.startsWith("✗") && line.includes(row.id)));
+      writeAt(c, row.file, `export const marker = ${row.marker};\n`);
+    }
 
     // C7: tied to HEAD.
     const nd = path.join(a, ".next");

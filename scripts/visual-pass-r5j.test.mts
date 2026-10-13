@@ -359,18 +359,25 @@ section("4 · G-6 · every regular expression that reads a currency or a thousan
     "src/lib/house-bot/rules.ts": "the operator console's house-bot rules (admin)",
     "src/lib/contacts/vcard.ts": "the operator's contacts importer (admin)",
     "src/lib/contacts/xlsx-limits.ts": "the operator's contacts importer (admin)",
+    "src/components/ui/input.tsx": "the kit's grouped edit coordinates and zero-place draft, not a finished money sentence; exact regexes and an added-reader control below",
   };
   const pool = walk("src").filter((f) => /\.(tsx?|m?js)$/.test(f) && !/^src\/(?:app|components)\/admin\//.test(f) && !f.startsWith("src/lib/server/") && f !== "src/lib/i18n-dict.ts"
     && (!f.startsWith("src/app/api/") || f.startsWith("src/app/api/og/")));
   const readers = new Map<string, string[]>();
-  for (const f of pool) {
-    const sf = ts.createSourceFile(f, raw(f), ts.ScriptTarget.Latest, true, /\.tsx$/.test(f) ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  const figureReaders = (f: string, source: string) => {
+    const found: string[] = [];
+    const sf = ts.createSourceFile(f, source, ts.ScriptTarget.Latest, true, /\.tsx$/.test(f) ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
     const visit = (n: ts.Node) => {
-      if (ts.isRegularExpressionLiteral(n) && READS_FIGURE.test(n.text)) readers.set(f, [...(readers.get(f) ?? []), n.text]);
-      if (ts.isNewExpression(n) && n.expression.getText(sf) === "RegExp" && n.arguments?.[0] && READS_FIGURE.test(n.arguments[0].getText(sf))) readers.set(f, [...(readers.get(f) ?? []), n.arguments[0].getText(sf)]);
+      if (ts.isRegularExpressionLiteral(n) && READS_FIGURE.test(n.text)) found.push(n.text);
+      if (ts.isNewExpression(n) && n.expression.getText(sf) === "RegExp" && n.arguments?.[0] && READS_FIGURE.test(n.arguments[0].getText(sf))) found.push(n.arguments[0].getText(sf));
       n.forEachChild(visit);
     };
     sf.forEachChild(visit);
+    return found;
+  };
+  for (const f of pool) {
+    const found = figureReaders(f, raw(f));
+    if (found.length) readers.set(f, found);
   }
   const loose = [...readers.keys()].filter((f) => !(f in SHARED) && !(f in CLASSIFIED));
   console.log(`     ${pool.length} files read; figure readers in ${readers.size}: ${[...readers.keys()].join(", ")}`);
@@ -378,6 +385,10 @@ section("4 · G-6 · every regular expression that reads a currency or a thousan
     pool.length > 600 && loose.length === 0 && Object.keys(SHARED).every((f) => readers.has(f)), j(loose.map((f) => [f, readers.get(f)])));
   const staleCls = Object.keys(CLASSIFIED).filter((f) => !readers.has(f));
   ok("4.2 · no classified reader is stale", staleCls.length === 0, j(staleCls));
+  const input = "src/components/ui/input.tsx", editGroup = "/\\B(?=(\\d{3})+(?!\\d))/g";
+  const inputReadersOk = (expressions: string[]) => expressions.length === 1 && expressions[0] === editGroup;
+  ok("4.Input · the kit exception contains exactly its zero-place edit regex; no private currency or sentence reader", inputReadersOk(readers.get(input) ?? []), j(readers.get(input)));
+  ok("4.Input CONTROL · a private finished-money reader added to the actual kit fails that same exact exception", !inputReadersOk(figureReaders(input, raw(input) + "\nconst BAD_PRIVATE_FIGURE = /(TZS [0-9][0-9,]*)/;")));
   const og = code("src/app/api/og/market/[id]/route.tsx");
   ok("4.3 · the share card writes money with the platform's one grammar (`const tzs = formatTzs;` — built in Node, which has Intl), no grouping regex of its own",
     og.includes("const tzs = formatTzs;") && og.includes(`import { formatNumber, formatTzs } from "@/lib/utils";`) && !/\\B\(\?=/.test(og));

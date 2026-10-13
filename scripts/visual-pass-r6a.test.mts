@@ -95,7 +95,7 @@ const noticeDefects = (markup: string, l: L, exclusion: boolean): string[] => {
 /* ══ §2 · THE MARKET PAGE'S BET COLUMN ════════════════════════════════════════════════════════════════════════════════ */
 section("2 · /markets/[id] — a reader on a break gets the break's notice where the bet panel stood (both shells)");
 const MARKET = read("src/app/markets/[id]/page.tsx");
-const asideOf = (src: string) => { const a = src.indexOf("<aside className=\"flex flex-col gap-3 lg:sticky"); return a < 0 ? "" : src.slice(a, src.indexOf("</aside>", a)); };
+const asideOf = (src: string) => { const a = src.indexOf("<aside className="); return a < 0 ? "" : src.slice(a, src.indexOf("</aside>", a)); };
 /** The break branch: first under `bettingOpen`, the column's heading, the one-sided note, the notice — and no SidePicker. */
 const marketGateOk = (src: string) => {
   const aside = asideOf(src);
@@ -219,6 +219,7 @@ const IN_PLACE: Record<string, string> = {
   "src/app/markets/[id]/page.tsx": "draws <SidePicker> only after its break branch (§2)",
   "src/components/markets/side-picker.tsx": "the dial's host — drawn only by the market page",
   "src/components/markets/conviction-dial.tsx": "the dial, which commits through buyPositionAction — drawn only by SidePicker",
+  "src/components/journey/bet-sheet/bet-sheet-host.tsx": "S8: actual sheetFrame/quoteAt gates every commitment and checkSessionTimeLimit/shortfall facts gate breaks (test:bet-sheet, test:bet-sheet-host, qa:bet-sheet)",
   "src/components/updown/updown-card.tsx": "its bettable arm draws the notice first (§3)",
   "src/components/updown/round-stake-panel.tsx": "drawn only by RoundActionPanel's non-break arm (§4)",
   "src/components/updown/updown-stake-controls.tsx": "the shared control itself — drawn by the card and the stake panel only",

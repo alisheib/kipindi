@@ -1,7 +1,7 @@
 "use client";
 
 /** S8 WP6 · the complete flagged stake surface; WP7 owns opening, requests, retries and the address. */
-import { useCallback, useEffect, useId, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import Link from "next/link";
 import { Modal, CloseX } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import { depositLeftAfterFor } from "@/lib/journey/shortfall";
 import { BalanceRow, BetInstead, ChosenSide, EstimateBox, HolderNote, Receipt, SheetSentence, sheetLineText, sheetTemplate } from "./sheet-parts";
 
 export type BetSheetProps = {
+  open?: boolean;
   seed: SheetSeed;
   side: SheetSide;
   title: string;
@@ -86,12 +87,12 @@ export function BetSheetBody(props: BodyProps) {
         <HolderNote {...parts} />
         <div className="kp-bsheet__stake">
           <label htmlFor={`${id}-stake`}>{t.journey.stakeLabel}</label>
-          <Input id={`${id}-stake`} data-testid="journey-sheet-stake" size="xl" grouped attention={frame.attention} prefix="TZS" inputMode="numeric" enterKeyHint="done"
+          <Input id={`${id}-stake`} data-testid="journey-sheet-stake" size="xl" grouped mono attention={frame.attention} prefix="TZS" inputMode="numeric" enterKeyHint="done"
             value={displayedStake} disabled={frame.stakeLocked || placing} aria-invalid={frame.stakeInvalid || undefined}
             aria-describedby={bound ? boundsId : frame.attention ? calloutId : undefined}
             onChange={(event) => onStakeChange(event.target.value)} onFocus={onStakeFocus} onBlur={onStakeBlur} />
         </div>
-        {bound && <p id={boundsId} role="status" className="kp-bsheet__bounds"><I.info s={16} edge="start" text="body-400" /><SheetSentence t={t} locale={locale} nowMs={nowMs} line={bound} /></p>}
+        {bound && <p id={boundsId} role="status" className="kp-bsheet__bounds"><I.info s={16} edge="start" text="body-400" /><span><SheetSentence t={t} locale={locale} nowMs={nowMs} line={bound} /></span></p>}
         {!keyboard && frame.chips && <div role="group" aria-label={t.journey.stakeLabel} className="kp-bsheet__chips">
           {frame.chips.map((amount) => <Button key={amount} type="button" variant="ghost" size="md" className="kp-bsheet__chip amount" aria-pressed={frame.stake === amount} disabled={placing || frame.stakeLocked} onClick={() => onStakeChange(String(amount))}>{formatNumber(amount)}</Button>)}
         </div>}
@@ -109,8 +110,8 @@ export function BetSheetBody(props: BodyProps) {
           : low.depositRefusal === "sof_required" ? { key: "journey.sheetSofRequired" } : low.depositRefusal === "deposit_max" ? { key: "journey.sheetDepositMax", vars: { max: low.depositMaximum ?? "—" } } : { key: "journey.sheetDepositLimit", vars: { amount: low.requestedDeposit ?? "—" } }} /></p>}
         {low?.eyebrow && <p className="kp-bsheet__eyebrow">{t.journey.lowChoose}</p>}
         {options && selectedDeposit !== undefined && <>
-          <Button type="button" variant="ghost" size="xl" fullWidth className="kp-bsheet__deposit" data-testid="journey-sheet-deposit" onClick={() => onDeposit(selectedDeposit)} leading={<I.wallet s={20} text="body-600" />} trailing={<I.chevronRight s={20} text="body-600" />}>
-            <span className="kp-bsheet__deposit-copy"><span className="gilt-metal">{fillNodes(t.journey.lowDeposit, { amount: <span className="amount">{formatTzs(selectedDeposit)}</span> })}</span>
+          <Button type="button" variant="gold" size="xl" fullWidth className="kp-bsheet__deposit gilt-metal" data-testid="journey-sheet-deposit" onClick={() => onDeposit(selectedDeposit)} leading={<I.wallet s={20} text="body-600" />} trailing={<I.chevronRight s={20} text="body-600" />}>
+            <span className="kp-bsheet__deposit-copy"><span>{fillNodes(t.journey.lowDeposit, { amount: <span className="amount">{formatTzs(selectedDeposit)}</span> })}</span>
               <span className="kp-bsheet__rails">{railNames.map((name, index) => <span key={name}>{index > 0 && <span aria-hidden> · </span>}<span className="kp-bsheet__rail">{name}</span></span>)}</span>
             </span>
           </Button>
@@ -138,6 +139,9 @@ export function BetSheetBody(props: BodyProps) {
 
 export function BetSheet(props: BetSheetProps) {
   const { t, locale } = useT();
+  const open = props.open ?? true;
+  const openRef = useRef(open);
+  openRef.current = open;
   const id = useId();
   const headingRef = useRef<HTMLHeadingElement>(null), closeRef = useRef<HTMLButtonElement>(null), shellRef = useRef<HTMLDivElement>(null);
   const [stakeFocused, setStakeFocused] = useState(false), [keyboard, setKeyboard] = useState(false);
@@ -165,7 +169,7 @@ export function BetSheet(props: BetSheetProps) {
     if (wasPaused && pauseKinds.current.size === 0 && target.current !== null) armClose();
   }, [armClose]);
   useEffect(() => {
-    if (!receiptId) return;
+    if (!open || !receiptId) return;
     remaining.current = DWELL_BET_RECEIPT_MS; pauseKinds.current.clear(); pointer.current = null; armClose();
     // The result poller owns the realised payout. A placed sheet records only which market to watch.
     try {
@@ -176,20 +180,40 @@ export function BetSheet(props: BetSheetProps) {
       if (!watch.includes(props.seed.id)) { watch.push(props.seed.id); localStorage.setItem(WATCH_KEY, JSON.stringify(watch)); }
     } catch { /* Private storage cannot alter the committed receipt. */ }
     return () => { if (closeTimer.current) clearTimeout(closeTimer.current); target.current = null; pauseKinds.current.clear(); pointer.current = null; };
-  }, [receiptId, props.seed.id, armClose]);
+  }, [open, receiptId, props.seed.id, armClose]);
+  const revealFocusedStake = useCallback(() => {
+    const middle = shellRef.current?.querySelector<HTMLElement>(".kp-bsheet__scroll");
+    const field = middle?.querySelector<HTMLInputElement>('[data-testid="journey-sheet-stake"]');
+    if (!middle || !field || document.activeElement !== field) return;
+    const port = middle.getBoundingClientRect(), stake = field.getBoundingClientRect();
+    const padding = getComputedStyle(middle);
+    const top = port.top + parseFloat(padding.paddingTop), bottom = port.bottom - parseFloat(padding.paddingBottom);
+    // The keyboard can shrink a focused field's scrollport after the browser has already revealed it.
+    // Move only this middle region, keeping the chosen side, CloseX and commit fixed.
+    if (stake.bottom > bottom) middle.scrollTop += stake.bottom - bottom;
+    else if (stake.top < top) middle.scrollTop -= top - stake.top;
+  }, []);
+  useLayoutEffect(() => {
+    if (open && keyboard && stakeFocused) revealFocusedStake();
+  }, [open, keyboard, stakeFocused, revealFocusedStake]);
   useEffect(() => {
     const viewport = window.visualViewport;
     const panel = shellRef.current?.closest<HTMLElement>(".kp-bsheet");
+    let revealFrame: number | null = null;
     const resizeSheetViewport = () => {
+      if (!openRef.current) return;
       const lifted = !!viewport && stakeFocused && window.innerWidth < 1024 && viewport.height < window.innerHeight;
       setKeyboard(lifted);
       panel?.style.setProperty("--bsheet-keyboard-lift", `${lifted ? Math.max(0, window.innerHeight - viewport!.height - viewport!.offsetTop) : 0}px`);
       if (lifted) panel?.style.setProperty("--bsheet-visible-height", `${viewport!.height}px`); else panel?.style.removeProperty("--bsheet-visible-height");
+      if (revealFrame !== null) cancelAnimationFrame(revealFrame);
+      revealFrame = lifted ? requestAnimationFrame(revealFocusedStake) : null;
     };
     resizeSheetViewport(); viewport?.addEventListener("resize", resizeSheetViewport); viewport?.addEventListener("scroll", resizeSheetViewport);
-    return () => { viewport?.removeEventListener("resize", resizeSheetViewport); viewport?.removeEventListener("scroll", resizeSheetViewport); panel?.style.removeProperty("--bsheet-keyboard-lift"); panel?.style.removeProperty("--bsheet-visible-height"); };
-  }, [stakeFocused]);
+    return () => { if (revealFrame !== null) cancelAnimationFrame(revealFrame); viewport?.removeEventListener("resize", resizeSheetViewport); viewport?.removeEventListener("scroll", resizeSheetViewport); panel?.style.removeProperty("--bsheet-keyboard-lift"); panel?.style.removeProperty("--bsheet-visible-height"); };
+  }, [stakeFocused, revealFocusedStake]);
   useEffect(() => {
+    if (!open) { setLive(""); return; }
     const frame = props.frame;
     const moved = lastFrame.current !== frame.frame;
     const updated = props.estimateUpdated && !wasUpdated.current;
@@ -202,19 +226,19 @@ export function BetSheet(props: BetSheetProps) {
     else if (frame.pending) message = `${sheetLineText(t, locale, frame.pending.title, nowMs)}. ${sheetLineText(t, locale, frame.pending.body, nowMs)}`;
     else if (updated && frame.estimate?.payout !== null && frame.estimate?.payout !== undefined) message = fill(t.journey.estimateUpdatedLive, { amount: formatTzs(frame.estimate.payout), mult: frame.estimate.multText ?? "—" });
     setLive(message);
-  }, [props.frame, props.estimateUpdated, t, locale, receiptId, nowMs]);
+  }, [open, props.frame, props.estimateUpdated, t, locale, receiptId, nowMs]);
   const terminal = props.frame.frame === "closed" || props.frame.frame === "blocked";
-  return <Modal open onClose={props.onClose} labelledBy={`${id}-title`} describedBy={terminal ? `${id}-callout` : undefined}
+  return <Modal open={open} onClose={props.onClose} labelledBy={`${id}-title`} describedBy={terminal ? `${id}-callout` : undefined}
     sheet sheetUntil="lg" maxWidth={440} showClose={false} initialFocus={headingRef} safeFocus={closeRef}
     refocusKey={props.frame.frame} panelClassName="kp-wsheet kp-bsheet" closeOnScrim={props.frame.closable} closeOnEsc={props.frame.closable} ariaBusy={props.frame.frame === "placing"}>
     <div ref={shellRef} className="kp-bsheet__shell" data-testid="journey-bet-sheet" data-frame={props.frame.frame} data-ptr-skip=""
-      onFocusCapture={(event) => { if (receiptId && event.target.matches(":focus-visible")) hold("focus"); }}
-      onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) release("focus"); }}
-      onPointerMove={(event) => { if (!receiptId) return; const prior = pointer.current; pointer.current = { x: event.clientX, y: event.clientY }; if (prior && (prior.x !== event.clientX || prior.y !== event.clientY)) hold("pointer"); }}
-      onPointerLeave={() => { pointer.current = null; release("pointer"); }}>
+      onFocusCapture={(event) => { if (open && receiptId && event.target.matches(":focus-visible")) hold("focus"); }}
+      onBlurCapture={(event) => { if (open && !event.currentTarget.contains(event.relatedTarget)) release("focus"); }}
+      onPointerMove={(event) => { if (!open || !receiptId) return; const prior = pointer.current; pointer.current = { x: event.clientX, y: event.clientY }; if (prior && (prior.x !== event.clientX || prior.y !== event.clientY)) hold("pointer"); }}
+      onPointerLeave={() => { if (open) { pointer.current = null; release("pointer"); } }}>
       <BetSheetBody {...props} t={t} locale={locale} id={id} nowMs={nowMs} keyboard={keyboard} headingRef={headingRef} closeRef={closeRef}
-        depositAmount={depositAmount} onDepositAmount={setDepositAmount} onStakeFocus={() => setStakeFocused(true)} onStakeBlur={() => setStakeFocused(false)} />
-      <p className="sr-only" aria-live="polite" aria-atomic="true">{live}</p>
+        depositAmount={depositAmount} onDepositAmount={setDepositAmount} onStakeFocus={() => { if (open) setStakeFocused(true); }} onStakeBlur={() => { if (open) setStakeFocused(false); }} />
+      {open && <p className="sr-only" aria-live="polite" aria-atomic="true">{live}</p>}
     </div>
   </Modal>;
 }

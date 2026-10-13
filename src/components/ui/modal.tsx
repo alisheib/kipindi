@@ -400,6 +400,9 @@ export function Modal({
      React runs a layout cleanup before it detaches the refs below it, where a passive cleanup came after. */
   React.useLayoutEffect(() => {
     if (!open) return;
+    // The first render has no portal. A cold hydration can postpone its mounted commit beyond the focus timer;
+    // register and focus from the commit that actually supplies the dialog's refs.
+    if (!mounted) return;
     // The way back: what had focus when the dialog opened, captured now — by cleanup time the DOM may have moved on.
     const restoreTo = document.activeElement;
     const focusables = () =>
@@ -502,7 +505,7 @@ export function Modal({
       if (openLayerRef.current === layer) openLayerRef.current = null;
       leaveLayer(layer, PAGE);
     };
-  }, [open]);
+  }, [open, mounted]);
 
   if (!mounted || !present) return null;
 

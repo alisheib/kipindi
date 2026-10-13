@@ -218,11 +218,22 @@ const drawingsOf = (f: string, text: (p: string) => string = raw) => (isClientFi
   : loads(f, text).map((x) => x.to).filter((to): to is string => to !== null && isClientFile(to, text) && !to.endsWith("route-ghost-lazy.tsx")));
 /** The server's own loading files may ask the server these, and nothing else. */
 const SERVER_ASKS = ["@/lib/server/journey-preview", "@/lib/server/payout-rails", "@/lib/feature-state"];
+// S8 WP8: the parent segment selects the question's picture from ONE pathname header. This is reader/path selection,
+// not server words. Strip only these exact two approved lines; another header/cookie/word read still fails below.
+function withoutQuestionPathRead(f: string, s: string): string {
+  const headerImport = 'import { headers } from "next/headers";';
+  const pathRead = 'const pathname = (await headers()).get("x-pathname") ?? "";';
+  if (f !== "src/app/markets/loading.tsx" || count(s, headerImport) !== 1 || count(s, pathRead) !== 1
+    || !s.includes('if (journey && /^\\/markets\\/[^/]+$/.test(pathname)) return <LazyJourneyRouteGhost rails={[]} at="/markets/[id]" />;')
+    || !s.includes('import MarketsGhost from "./markets-ghost";') || !s.includes('return <MarketsGhost />;')) return s;
+  return s.replace(headerImport, "").replace(pathRead, "");
+}
 function wordsCheck(text: (p: string) => string) {
   const wrong: string[] = [];
   for (const f of PLAYER) {
     const s = decomment(text(f));
-    if (/\bgetServerT\(|\bcookies\(|\bheaders\(/.test(s) || /from\s+["'](?:@\/lib\/i18n-server|next\/headers)["']/.test(s)) wrong.push(`${f} reads the request itself`);
+    const requestSource = withoutQuestionPathRead(f, s);
+    if (/\bgetServerT\(|\bcookies\(|\bheaders\(/.test(requestSource) || /from\s+["'](?:@\/lib\/i18n-server|next\/headers)["']/.test(requestSource)) wrong.push(`${f} reads the request itself`);
     if (!isClientFile(f, text)) for (const { spec, to } of loads(f, text)) if (to && !isClientFile(to, text) && !SERVER_ASKS.includes(spec)) wrong.push(`${f} → ${spec} (a server module: its tree would ride the payload)`);
     for (const d of drawingsOf(f, text)) for (const b of clientGraph(d, text).bad) wrong.push(b);
   }
@@ -230,12 +241,15 @@ function wordsCheck(text: (p: string) => string) {
 }
 {
   const now = wordsCheck(raw);
-  ok(`1.3 · the words are the browser's: no player loading file reads the request itself (getServerT, cookies, headers, i18n-server), a server loading file asks only ${SERVER_ASKS.join(", ")} and renders client drawings, and nothing a drawing loads is server code or the feature seam`,
+  ok(`1.3 · the words are the browser's: no player loading file reads request words; S8's markets parent reads exactly its pathname to select the question's picture, a server loading file asks only ${SERVER_ASKS.join(", ")} and renders client drawings, and nothing a drawing loads is server code or the feature seam`,
     now.length === 0, now.slice(0, 4).join(" | "));
   const planted = wordsCheck((p) => (p === "src/app/positions/positions-ghost.tsx" ? raw(p).replace('import { useT } from "@/lib/i18n";', 'import { useT } from "@/lib/i18n";\nimport { getServerT } from "@/lib/i18n-server";') : raw(p)));
   ok("1.3′ PLANT · today's /positions picture reading the words on the server again (`getServerT` imported into the drawing) is reported", planted.some((w) => w.includes("@/lib/i18n-server")), planted.join(" | "));
   const plantedTree = wordsCheck((p) => (p === "src/app/updown/loading.tsx" ? raw(p).replace('import { UpDownGhost } from "./updown-ghost";', 'import { UpDownGhost } from "./updown-ghost";\nimport { PageContainer } from "@/components/layout/page-container";') : raw(p)));
   ok("1.3″ PLANT · a server loading file drawing a server component again (its tree back in every refresh) is reported", plantedTree.some((w) => w.includes("page-container")), plantedTree.join(" | "));
+  const extraRequest = wordsCheck(p => p === "src/app/markets/loading.tsx" ? `${raw(p)}\nexport const more = async () => (await headers()).get("cookie");` : raw(p));
+  const wrongPath = wordsCheck(p => p === "src/app/markets/loading.tsx" ? raw(p).replace('"x-pathname"', '"cookie"') : raw(p));
+  ok("1.3‴ PLANT · the named pathname exception rejects another request read and a different header", extraRequest.some(w => w.includes("markets/loading.tsx reads")) && wrongPath.some(w => w.includes("markets/loading.tsx reads")));
 }
 {
   // The bonus answer: asked on the server (feature-state reads the server's env), handed to the drawing as a boolean.
@@ -258,7 +272,11 @@ function wordsCheck(text: (p: string) => string) {
   ok("1.5 · the words a drawing reads in the browser are the server's: the root layout hands the provider the language it reads from the kp-locale cookie with `localeOrDefault`, the very expression `getServerT` used — so the transport moves no pixel (S/r5h/ghost-markup.cts, at the transport-only state: 222 of 234 renders byte-identical, the 12 others /wallet's and /wallet/receipts' G-2b bands alone; §4 and §5 then change the swept ghosts' bands on purpose)", same);
   // RUN: every player ghost in the three languages — the words follow the provider; a ghost without words does not change.
   // A ghost has words when one of its drawings reads the dictionary (`t.<section>.<key>`); the others draw none.
-  const WORDLESS = new Set(PLAYER.filter((f) => !drawingsOf(f).some((d) => /\bt\.[a-z]\w*\.\w+/.test(code(d)))));
+  // S8 WP8 split the question's drawing by reader: today's detail ghost is wordless; the journey question's ghost
+  // carries ticketsHere. Classify that actual chosen drawing, rather than all readers by the classic import alone.
+  const drawingsForReader = (f: string, journey: boolean) => f === "src/app/markets/[id]/loading.tsx" && journey
+    ? ["src/components/journey/question/question-ghost.tsx"] : drawingsOf(f);
+  const wordless = (f: string, journey: boolean) => !drawingsForReader(f, journey).some(d => /\bt\.[a-z]\w*\.\w+/.test(code(d)));
   const wrong: string[] = [];
   for (const f of PLAYER) for (const journey of [true, false]) {
     const html: string[] = [];
@@ -267,17 +285,20 @@ function wordsCheck(text: (p: string) => string) {
       try { html.push(inApp(routeOf(f), l, await runServer(h(mods.get(f) as never)))); } catch (e) { wrong.push(`${f} ${l}: THREW ${String(e).slice(0, 80)}`); }
     }
     const differ = new Set(html).size === 3;
-    if (WORDLESS.has(f) ? new Set(html).size !== 1 : !differ) wrong.push(`${f} ${journey ? "journey" : "classic"}: ${new Set(html).size} distinct renders in 3 languages`);
+    if (wordless(f, journey) ? new Set(html).size !== 1 : !differ) wrong.push(`${f} ${journey ? "journey" : "classic"}: ${new Set(html).size} distinct renders in 3 languages`);
   }
-  ok(`1.6 · RUN on React's server renderer, every player ghost renders in sw, en and zh for both readers: the ${PLAYER.length - WORDLESS.size} with words draw them in the provider's language, the ${WORDLESS.size} without (${[...WORDLESS].map((f) => f.slice(8, -12)).join(", ")}) draw the same bytes in all three`,
+  ok("1.6 · RUN on React's server renderer, every player ghost renders in sw, en and zh for both readers: chosen drawings with words follow the provider; wordless drawings stay byte-identical (S8's question ghost has words only for the journey reader)",
     wrong.length === 0, wrong.slice(0, 4).join(" | "));
   const pinned: number[] = [];
-  for (const f of PLAYER.filter((x) => !WORDLESS.has(x))) {
+  for (const f of PLAYER.filter((x) => !wordless(x, false))) {
     const html = new Set<string>();
     for (const l of LOCALES) { REQ.locale = l; REQ.path = routeOf(f); REQ.journey = false; html.add(inApp(routeOf(f), "sw", await runServer(h(mods.get(f) as never)))); }
     pinned.push(html.size);
   }
   ok(`1.6′ CONTROL · the same ${pinned.length} ghosts with the provider held at one language, whatever the server's cookie says, draw one render each — so 1.6's difference is the provider's doing, not the server's`, pinned.length > 20 && pinned.every((n) => n === 1), j(pinned));
+  const journeyQuestion = new Set<string>();
+  for (const l of LOCALES) { REQ.locale = l; REQ.path = "/markets/mkt_any"; REQ.journey = true; journeyQuestion.add(inApp(REQ.path, "sw", await runServer(h(mods.get("src/app/markets/[id]/loading.tsx") as never)))); }
+  ok("1.6″ CONTROL · the journey question's new word line also follows the provider, never the server cookie", journeyQuestion.size === 1 && !wordless("src/app/markets/[id]/loading.tsx", true) && wordless("src/app/markets/[id]/loading.tsx", false));
 }
 {
   // The transport: a plain client reference (Flight starts its chunk the moment a payload or a prefetch names it), never
@@ -465,6 +486,7 @@ const phasesOf = (t: (p: string) => string) => ({
     "src/components/updown/updown-handover.tsx": "reads the busy gate and the scroll lock; writes no mark",
     "src/components/markets/win-celebration.tsx": "reads the motion class; writes no mark",
     "src/components/markets/market-card.tsx": "a tapped button's press animation (press-pop), in its click handler",
+    "src/components/journey/bet-sheet/bet-sheet-host.tsx": "S8's delegated pick click re-arms that real anchor's press-pop before opening the sheet; event phase, never a mount-time DOM mark",
     "src/components/layout/needle.tsx": "the Needle's own engine (its root's suppressed and wake classes), run from its own gate; R4-J's and R5-D's notes hold its first frame (the shell's mark in the server's HTML)",
     "src/components/ui/route-transition.tsx": "the route entrance (route-enter): restarted in the layout phase of a route change, before the new route's first paint, and never at mount — FIXED (R5-H's patch, proven in a browser 2026-10-09; 3.7, 3.8)",
   };

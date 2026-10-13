@@ -17,6 +17,7 @@ import { MARKERS, checkMarkerTable, loadBuild, readAll, readRoute, judgeRow } fr
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const BASE = process.env.KP_BASE ?? "http://127.0.0.1:3044";
 const NEXT = join(ROOT, ".next");
+const STARTED_AT = new Date().toISOString();
 const BUDGET_MS = 150;
 const CPU_RATE = 4;
 const sha256 = value => createHash("sha256").update(value).digest("hex");
@@ -87,7 +88,8 @@ function installProbe({ pick, root }) {
       probe.frames++;
       const h = document.querySelector(root)?.querySelector("h2");
       if (visible(h)) {
-        Object.assign(probe, { ms: performance.now() - start, visible: true, heading: h.textContent.trim(), path: location.pathname, frame: document.querySelector(root)?.dataset.frame });
+        const observed = performance.now();
+        Object.assign(probe, { ms: observed - start, headingAtEpoch: performance.timeOrigin + observed, visible: true, heading: h.textContent.trim(), path: location.pathname, frame: document.querySelector(root)?.dataset.frame });
         requestAnimationFrame(() => { probe.confirmedAt = performance.now() - start; probe.remainedVisible = visible(h); });
       } else if (performance.now() - start < 5000) requestAnimationFrame(frame);
       else Object.assign(probe, { visible: false, path: location.pathname });
@@ -133,7 +135,9 @@ const row = (label, state, detail = {}) => { rows.push({ label, state, ...detail
 const ok = (label, pass, detail = {}) => row(label, pass ? "PASS" : "FAIL", detail);
 const chrome = process.env.QA_CHROMIUM_PATH ?? "C:/Program Files/Google/Chrome/Application/chrome.exe";
 if (!existsSync(chrome)) refuse("real Chrome executable unavailable; QA_CHROMIUM_PATH may identify the installed Chrome");
-const browser = await chromium.launch({ executablePath: chrome, headless: true });
+let browser;
+try { browser = await chromium.launch({ executablePath: chrome, headless: true }); }
+catch (error) { refuse(`Chrome launch unavailable: ${scrub(error.message)}`); }
 const browserVersion = browser.version();
 const context = async (preview = true, js = true) => {
   const ctx = await browser.newContext({ viewport: { width: 360, height: 640 }, javaScriptEnabled: js }); contexts.add(ctx);
@@ -182,7 +186,7 @@ try {
     await page.addInitScript(installProbe, { pick: S.pick, root: S.root });
     // Delay only the private GET, proving the selected heading does not wait for its wallet/facts response.
     await page.route("**/api/markets/*/sheet?**", async request => {
-      if (request.request().method() === "GET") { reads.push({ requestedAt: Date.now(), responseReleasedAt: null }); await new Promise(resolve => setTimeout(resolve, 500)); reads.at(-1).responseReleasedAt = Date.now(); }
+      if (request.request().method() === "GET") { const read = { requestedAt: Date.now(), responseReleasedAt: null }; reads.push(read); await new Promise(resolve => setTimeout(resolve, 500)); read.responseReleasedAt = Date.now(); }
       await request.continue();
     });
     const cdp = await ctx.newCDPSession(page);
@@ -197,7 +201,8 @@ try {
     await page.waitForFunction(() => Number.isFinite(window.__productionSheetTap?.ms) && Number.isFinite(window.__productionSheetTap?.confirmedAt), null, { timeout: 10_000 });
     const probe = await page.evaluate(() => window.__productionSheetTap), verdict = tapErrors(probe, { title, route });
     ok(`${route}: production heading frame sample ${sample} at 4× CPU`, verdict.length === 0 && probe.remainedVisible === true, { ...probe, verdict, cpuRate: CPU_RATE, viewport: "360x640", delayedPrivateRead: true });
-    const headingBeforeRead = reads.some(read => read.responseReleasedAt === null);
+    const headingBeforeRead = reads.some(read => read.requestedAt <= probe.headingAtEpoch)
+      && reads.every(read => read.responseReleasedAt === null || read.responseReleasedAt > probe.headingAtEpoch);
     ok(`${route}: sample ${sample} heading drawn before private response`, headingBeforeRead, { privateReads: reads.length });
     await page.screenshot({ path: join(OUT, `${route === "/" ? "home" : "live"}-tap-${sample}.png`) });
     await page.locator(S.close).click();
@@ -212,6 +217,7 @@ try {
     const red = await page.evaluate(() => window.__productionSheetTap), redVerdict = tapErrors(red, { title, route });
     ok(`${route}: RED delayed heading fails the same tap-frame verdict`, redVerdict.includes("heading frame exceeded 150ms") && red.ms >= 200, { ...red, verdict: redVerdict, pageOnlyPlant: "heading hidden 250ms" });
     ok(`${route}: render-only drive submitted no money action`, actions.length === 0, { actionRequests: actions.length });
+    await page.unrouteAll({ behavior: "wait" }); // let delayed read handlers finish before intentionally closing their page
     await cdp.detach(); await close(ctx);
   }
   ok("production drive had no uncaught browser or console errors", errors.length === 0, { errors });
@@ -223,7 +229,7 @@ try {
 } finally {
   for (const ctx of contexts) await ctx.close().catch(() => {});
   await browser.close();
-  writeFileSync(join(OUT, "evidence.json"), JSON.stringify({ scope: "local production rendering/latency only; synthetic pools, no money or database proof; served absence is not a full --main parity comparison", base: BASE, browser: browserVersion, cpuRate: CPU_RATE, budgetMs: BUDGET_MS, metadata: meta, controls: controlRows.map(([label, pass]) => ({ label, pass })), rows, errors }, null, 2));
+  writeFileSync(join(OUT, "evidence.json"), JSON.stringify({ scope: "local production rendering/latency only; synthetic pools, no money or database proof; served absence is not a full --main parity comparison", startedAt: STARTED_AT, finishedAt: new Date().toISOString(), base: BASE, browser: browserVersion, cpuRate: CPU_RATE, budgetMs: BUDGET_MS, metadata: meta, controls: controlRows.map(([label, pass]) => ({ label, pass })), rows, errors }, null, 2));
 }
 const failed = rows.filter(row => row.state === "FAIL"), outstanding = rows.filter(row => row.state === "NOT MEASURED");
 console.log(`qa:bet-sheet-production: ${rows.filter(row => row.state === "PASS").length} passed, ${failed.length} failed, ${outstanding.length} unmeasured; evidence ${OUT}`);

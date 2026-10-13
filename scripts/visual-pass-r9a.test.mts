@@ -416,6 +416,9 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
    *  `alone` and `frozen` neither. */
   type Kind = "row" | "ghost" | "text" | "button" | "float-text" | "float-row" | "alone" | "frozen";
   const SITES: Array<[string, string, number, Kind, string]> = [
+    ['src/components/journey/bet-sheet/bet-sheet.tsx', '<I.chevronRight s={16} edge="end" text="body-400" />', 3, "text", "S8's pending receipt, declaration and limits links: their 15px body/400 words and the same run's end"],
+    ['src/components/journey/bet-sheet/bet-sheet.tsx', '<I.chevronRight s={20} text="body-600" />', 1, "button", B],
+    ['src/components/journey/bet-sheet/sheet-parts.tsx', '<I.chevronRight s={16} edge="end" text="body-400" />', 1, "text", "S8's receipt ticket link: its 15px body/400 words, centred by the run's ink"],
     ['src/app/account/page.tsx', '<I.externalLink s={18} edge="end" className="kp-hub__chev" aria-hidden />', 1, "row", "the hub's staff row end"],
     ['src/app/agent/apply/apply-client.tsx', '<I.arrowRight s={14} text="body-600" />', 1, "button", B],
     ['src/app/agent/apply/loading.tsx', '<I.arrowRight s={14} text="body-600" />', 1, "button", "its ghost's (ButtonGhost): the page's own mark, unpainted, pulled at render as Button pulls it (R10-A6)"],
@@ -483,8 +486,12 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
     ['src/components/wallet/receipt-list-row.tsx', '<I.chevronRight s={16} edge="end" className="shrink-0 text-text-subtle transition-colors duration-quick group-hover:text-text" aria-hidden />', 1, "row", "the receipt row's end"],
   ];
   const MARK = new RegExp("<I[.](?:chevronRight|chevronLeft|chevronsRight|chevronsLeft|arrowRight|ext|externalLink)(?![A-Za-z])(?:[^<>{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*?/>", "g");
-  const seen = new Map<string, number>();
-  for (const f of PLAYER_TSX) for (const m of code(f).matchAll(MARK)) { const k = `${f} ${squash(m[0])}`; seen.set(k, (seen.get(k) ?? 0) + 1); }
+  const marksSeen = (source: (f: string) => string = code) => {
+    const seen = new Map<string, number>();
+    for (const f of PLAYER_TSX) for (const m of source(f).matchAll(MARK)) { const k = `${f} ${squash(m[0])}`; seen.set(k, (seen.get(k) ?? 0) + 1); }
+    return seen;
+  };
+  const seen = marksSeen();
   const listed = new Map(SITES.map(([f, el, n]) => [`${f} ${el}`, n]));
   const unlisted = [...seen].filter(([k]) => !listed.has(k));
   const missing = [...listed].filter(([k, n]) => seen.get(k) !== n);
@@ -497,6 +504,10 @@ const sameMargin = (a: Margin, b: Margin) => !!a && !!b && a.side === b.side && 
   ok("4.11 · each site carries what its kind says — a row end its edge in the family's stroke, a mark in words its words' stroke (with the edge where its run has one), a button's mark the stroke alone", wrong.length === 0, j(wrong));
   const planted = new Map(seen); planted.set("src/components/markets/market-card.tsx <I.chevronRight s={11} />", 1); planted.delete('src/components/markets/market-card.tsx <I.chevronRight s={11} edge="end" text="display-600" />');
   ok("4.10′ PLANT · “Maelezo ›” without its edge (the old element) is an unclassified site", [...planted].some(([k]) => !listed.has(k)));
+  const s8WithoutStroke = marksSeen(f => f === "src/components/journey/bet-sheet/bet-sheet.tsx" ? code(f).replaceAll('s={16} edge="end" text="body-400"', 's={16} edge="end"') : code(f));
+  const s8ExtraMark = marksSeen(f => f === "src/components/journey/bet-sheet/sheet-parts.tsx" ? `${code(f)}\nexport const extra = <I.chevronRight s={16} edge="end" text="body-400" />;` : code(f));
+  ok("4.10″ PLANT · S8's word links losing their stroke and an extra registered-looking mark both fail the same census",
+    [...s8WithoutStroke].some(([k]) => !listed.has(k)) && [...listed].some(([k, n]) => s8ExtraMark.get(k) !== n));
 
   // 4.12 · eyebrow glyphs: a glyph that leads an eyebrow line stands on the column's edge.
   const EYEBROW_FIRST = new RegExp(`className="[^"]*eyebrow[^"]*"[^>]*>${WS}*<I[.]([A-Za-z]+)((?:[^<>{}]|[{](?:[^{}]|[{][^{}]*[}])*[}])*?)/>`, "g");
@@ -552,9 +563,17 @@ section("5 · A5 every pair of buttons stands 12px apart — the card's YES/NO a
     ["src/app/profile/security/security-client.tsx", "rounded-xl glass-panel p-5 space-y-4", "a section's stacked rows, not a pair"],
     ["src/app/updown/history/page.tsx", "mt-6", "two branches of one condition"],
     ["src/app/watchlist/page.tsx", "space-y-5", "a page's stacked sections, not a pair"],
+    ["src/components/journey/bet-sheet/bet-sheet.tsx", "kp-bsheet__footer", "S8's receipt, terminal and editable branches: exactly one Button can render; terminal links are stacked, never a side-by-side button pair"],
   ];
   const at12 = (cls: string) => new RegExp("(?:^| )gap(?:-x)?-2(?: |$)").test(cls) || Object.keys(CSS_PAIRS).some((k) => cls.split(" ").includes(k) && rule(CSS_PAIRS[k]).includes("gap: var(--sp-3)"));
-  const kept = (p: { f: string; cls: string }) => KEEP_PAIR.some(([f, cls]) => f === p.f && cls === p.cls);
+  const footerBranches = (s: string) => {
+    const start = s.indexOf('<div className="kp-bsheet__footer">');
+    if (start < 0) return false;
+    const footer = s.slice(start, s.indexOf("</div>", start));
+    return (footer.match(/<Button\b/g) ?? []).length === 3 && /\{receipt \? <Button\b[\s\S]*: terminal \? <>[\s\S]*<Button\b[\s\S]*<\/> : footerLine && <Button\b/.test(footer);
+  };
+  const kept = (p: { f: string; cls: string }) => KEEP_PAIR.some(([f, cls]) => f === p.f && cls === p.cls)
+    && (p.f !== "src/components/journey/bet-sheet/bet-sheet.tsx" || p.cls !== "kp-bsheet__footer" || footerBranches(code(p.f)));
   const offPairs = pairs.filter((p) => !at12(p.cls) && !kept(p));
   ok(`5.2 · every pair of buttons on a player surface stands 12px apart (gap-2 on the override scale, or a pair class on --sp-3) — ${pairs.length} containers, ${pairs.filter((p) => kept(p)).length} named for what they are instead (ends of a row, a plate, a cluster, branches)`,
     pairs.length >= 35 && offPairs.length === 0, j(offPairs));
@@ -562,6 +581,10 @@ section("5 · A5 every pair of buttons stands 12px apart — the card's YES/NO a
     code("src/components/ui/route-error.tsx").includes('<div className="mt-6 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">'));
   const plantedPairs = [{ f: "src/components/ui/route-error.tsx", cls: "mt-6 flex flex-col items-stretch gap-2.5 sm:flex-row sm:items-center" }, { f: "x.tsx", cls: "grid grid-cols-2 gap-1.5" }];
   ok("5.2″ PLANT · a 10px pair (the stock 2.5 step) and an 8px pair (1.5) are each reported", plantedPairs.every((p) => !at12(p.cls) && !kept(p)));
+  const sheetSource = code("src/components/journey/bet-sheet/bet-sheet.tsx");
+  ok("5.2‴ CONTROL · S8's named footer permits only its mutually exclusive action; an added button or lost receipt condition is rejected",
+    footerBranches(sheetSource) && !footerBranches(sheetSource.replace('<div className="kp-bsheet__footer">', '<div className="kp-bsheet__footer"><Button>extra</Button>'))
+      && !footerBranches(sheetSource.replace('{receipt ? <Button', '{receipt && <Button')));
 
   // 5.3 · the labels at 320, by the fonts' own advances (no kerning: Inter's kerning only tightens these pairs, so this is
   // an upper bound), every character's tracking counted (a browser adds it after the last one too).

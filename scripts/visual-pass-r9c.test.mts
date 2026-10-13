@@ -293,8 +293,9 @@ const CARRIED: Array<{ file: string; cls: string; why: string; verify: (r: Read)
 ];
 /** An animation class a component ADDS AT RUNTIME (`classList.add`) — invisible to a class census — and the classes of the
  *  element it lands on. Every runtime-added animation class in `src` must be named here (1.9). */
-const RUNTIME: Array<{ file: string; cls: string; on: string[]; why: string }> = [
+const RUNTIME: Array<{ file: string; cls: string; on: string[]; also?: string[][]; why: string }> = [
   { file: "src/components/markets/market-card.tsx", cls: "press-pop", on: ["btn"], why: "a card's YES / NO button, on tap, before the route changes" },
+  { file: "src/components/journey/bet-sheet/bet-sheet-host.tsx", cls: "press-pop", on: ["btn"], also: [["kp-jcard__pick"]], why: "S8's delegated click animates a question's kit btn or a card's own kp-jcard__pick before opening the in-place sheet" },
   { file: "src/components/ui/route-transition.tsx", cls: "route-enter", on: ["route-enter"], why: "the route frame re-arms its own entrance" },
   { file: "src/components/layout/needle.tsx", cls: "on", on: [], why: "the needle's wake halo breathes while it is awake (`#needle-root #wake.on`; the halo is placed by `inset`)" },
 ];
@@ -353,9 +354,9 @@ function census(over: Record<string, string> = {}): { hits: Hit[]; animated: num
     }
   }
   // the classes code adds at runtime, judged on the element they land on
-  for (const r of RUNTIME) for (const a of placing) {
-    if (!a.parent && a.subject.length && a.subject.every((c) => [r.cls, ...r.on].includes(c)) && a.subject.includes(r.cls)) {
-      judge({ file: r.file, cls: [r.cls, ...r.on], style: "" }, a.kfs, `${a.kfs.join(",")} ${a.fill} via ${a.sel} (added at runtime)`, a.rule, `${r.file} <${r.on.join(".") || "el"}> + ${r.cls} (${r.why})`);
+  for (const r of RUNTIME) for (const on of [r.on, ...(r.also ?? [])]) for (const a of placing) {
+    if (!a.parent && a.subject.length && a.subject.every((c) => [r.cls, ...on].includes(c)) && a.subject.includes(r.cls)) {
+      judge({ file: r.file, cls: [r.cls, ...on], style: "" }, a.kfs, `${a.kfs.join(",")} ${a.fill} via ${a.sel} (added at runtime)`, a.rule, `${r.file} <${on.join(".") || "el"}> + ${r.cls} (${r.why})`);
     }
   }
   return { hits, animated, carried: [...carried] };
@@ -394,10 +395,17 @@ ok(`1.1 · THE CENSUS: of the ${NOW.animated} animations (any fill, infinite one
     !!rise && rise.fill === "both" && kfProps(R, "kp-rise").has("transform")
       && [...R.kfFrames.values()].every((fs) => fs.every((f) => !f.decls.has("margin-top") && !f.decls.has("margin-block-start") && !f.decls.has("margin"))));
   // Every class a component adds at runtime that names an animation is in RUNTIME, so the census sees it.
-  const added = new Set(walk("src", /\.(?:tsx|ts)$/).flatMap((f) => [...code(f).matchAll(/classList\.(?:add|toggle)\("([\w-]+)"/g)].map((m) => `${f}#${m[1]}`)));
-  const animated = [...added].filter((k) => { const cls = k.split("#")[1]; return R.anims.some((a) => !a.parent && a.subject.includes(cls) && animProps(R, a.kfs).size > 0); });
+  const animatedSites = (source: (f: string) => string = code) => {
+    const added = new Set(walk("src", /\.(?:tsx|ts)$/).flatMap((f) => [...source(f).matchAll(/classList\.(?:add|toggle)\("([\w-]+)"/g)].map((m) => `${f}#${m[1]}`)));
+    return [...added].filter((k) => { const cls = k.split("#")[1]; return R.anims.some((a) => !a.parent && a.subject.includes(cls) && animProps(R, a.kfs).size > 0); });
+  };
+  const runtimeHolds = (animated: string[]) => animated.every(k => RUNTIME.some(r => `${r.file}#${r.cls}` === k)) && RUNTIME.every(r => animated.includes(`${r.file}#${r.cls}`));
+  const animated = animatedSites();
   ok(`1.9 · every animation class a component adds at runtime is in the census (${RUNTIME.map((r) => r.cls).join(", ")}): ${j(animated)}`,
-    animated.every((k) => RUNTIME.some((r) => `${r.file}#${r.cls}` === k)) && RUNTIME.every((r) => animated.includes(`${r.file}#${r.cls}`)), j({ animated }));
+    runtimeHolds(animated), j({ animated }));
+  const extraHostAnimation = animatedSites(f => f === "src/components/journey/bet-sheet/bet-sheet-host.tsx" ? `${code(f)}\nexport const wrong = () => anchor.classList.add("route-enter");` : code(f));
+  const missingHostAnimation = animatedSites(f => f === "src/components/journey/bet-sheet/bet-sheet-host.tsx" ? code(f).replaceAll('classList.add("press-pop")', 'classList.add("plain-class")') : code(f));
+  ok("1.9′ PLANT · the S8 host's extra animated class and a stale press-pop registration both fail the same runtime census", !runtimeHolds(extraHostAnimation) && !runtimeHolds(missingHostAnimation));
 }
 {
   // THE THREE SIBLINGS THE CENSUS FOUND, each fixed the same way: the static or stateful placement leaves `transform`.
@@ -431,6 +439,7 @@ ok(`1.1 · THE CENSUS: of the ${NOW.animated} animations (any fill, infinite one
   // PLANTS — each defect put back in memory, each reported by the census on its own element.
   const swap = (f: string, from: string, to: string) => { const s = raw(f); if (!s.includes(from)) throw new Error(`plant anchor missing in ${f}: ${from}`); return { [f]: s.replace(from, to) }; };
   const P: Array<[string, Record<string, string>, RegExp]> = [
+    ["the journey card's delegated pop back on its hover transform", swap(GLOBALS, "40%  { scale: 0.955; }", "40%  { transform: scale(0.955); }"), /bet-sheet-host\.tsx <kp-jcard__pick> \+ press-pop.*\.kp-jcard__pick:hover.*transform/],
     ["the podium's `-translate-y-3` back on #1", swap("src/app/leaderboard/page.tsx", '${first ? "-mt-3" : "mt-1.5"}', '${first ? "-translate-y-3" : ""}'), /leaderboard\/page\.tsx:\d+ <div> \[kp-rise both via \.kp-rise\] utility -translate-y-3/],
     ["a hover lift on /live's pulse card (`hover:-translate-y-0.5`)", swap("src/app/live/pulse-grid.tsx", "kp-rise group flex flex-col", "kp-rise group flex flex-col hover:-translate-y-0.5"), /pulse-grid\.tsx:\d+ <Link>.*utility hover:-translate-y-0\.5/],
     ["Up & Down's side flash back on `transform`", swap(GLOBALS, "30%  { scale: 1.035; filter: brightness(1.28); }", "30%  { transform: scale(1.035); filter: brightness(1.28); }"), /updown-stake-controls\.tsx:\d+ <button> \[ud-side-flash none via \.ud-side-flash\].*\.btn:hover/],

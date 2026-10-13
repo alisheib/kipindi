@@ -58,6 +58,10 @@ function checks(w: World): string[] {
   ok("other", w.other.every((html) => !html.includes("data-sheet=") && !html.includes("data-bet-side=")));
   ok("buttons", LOCALES.every((l) => ["YES", "NO"].every((s) => w.buttons[l].includes(`href="/markets/${market.id}?side=${s}"`) && w.buttons[l].includes(`data-bet-side="${s}"`))
     && attr(w.buttons[l], "data-sheet-title") === cardTitle(l, market).text && attr(w.buttons[l], "data-sheet-origin") === "market") && w.closedButtons === "");
+  ok("buttons-motion", LOCALES.every(l => {
+    const classes = [...w.buttons[l].matchAll(/<a\b[^>]*class="([^"]+)"/g)].map(m => m[1].split(" "));
+    return classes.length === 2 && classes.every(c => c.includes("btn") && !c.includes("press-pop"));
+  }));
   ok("mount", w.page.includes('session ? (journey ? (') && w.page.includes('session && (journey ? (')
     && w.page.includes('journey && bettingOpen && session && !breakBody && questionSeed')
     && w.page.includes('className="hidden lg:grid"') && w.page.includes('className="lg:hidden"')
@@ -86,6 +90,8 @@ if (!process.argv.includes("--prove-red")) {
     ["break", { ...real, break: { ...real.break, sw: real.open.sw } }],
     ["other", { ...real, other: [...real.other, real.open.sw] }],
     ["buttons", { ...real, closedButtons: real.buttons.sw }],
+    ["buttons-motion", { ...real, buttons: { ...real.buttons, sw: real.buttons.sw.replace('class="btn btn-yes', 'class="btn-yes') } }],
+    ["buttons-motion", { ...real, buttons: { ...real.buttons, sw: real.buttons.sw.replace('class="btn btn-yes', 'class="press-pop btn btn-yes') } }],
     ["mount", { ...real, page: page.replace('className="lg:hidden"', 'className="grid"') }],
     ["loading", { ...real, parentLoading: parentLoading.replace('journey && /^\\/markets\\/[^/]+$/.test(pathname)', 'journey') }],
     ["ghost-marker", { ...real, questionGhost: questionGhost.replace('data-testid="journey-question-ghost"', '') }],
