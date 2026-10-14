@@ -751,6 +751,28 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   22 actual verdicts/20 plants and preserved classic landing: guest identity/storage partition and S9 integration
   remain open. Staff production QA access is still unavailable; the earlier secret-safe `.env.qa.local` request
   remains pending. Infrastructure Railway access is verified separately.
+  **2026-10-14 03:55 UTC continuation.** The calibrated baseline is 52/52 and its independent NULL compare
+  **68/68** (2,021 s), with all shell/Sell/book/question fields equal and the original baseline SHA256 preserved;
+  the final branch compare still awaits a source freeze. The isolated diagnostic history is pushed on
+  `codex/s8-build-probe` through `7c95c0c69`: Next 16.4 defaults and constituent emission still fail delivery,
+  a 16 KiB merge ceiling still names absent files, while its supported `minChunkSize: 0` emits all lazy files.
+  On that last exact diagnostic, twenty authenticated GET-only production cells have no missing document/JS
+  assets, hash mismatches, page errors or hydration errors; the primary BetSheetHost/Sell factories stay outside
+  literal entry scripts, and HomeLazy occurs only on actual home (journey `/markets` redirects there).
+  Shared dependencies trigger six current structural first-load failures; a precise factory-aware reader is
+  preparation, not a broad allowance. The production driver is **45 passed / 7 failed / 0 unmeasured**:
+  those six structural failures and one **159.7 ms** home heading against the strict 150 ms / 4× CPU limit.
+  Other measured heading samples are 114, 126.5, 137.3, 124.6 and 116 ms; every heading precedes the held private
+  response. The sheet's scoped opacity candidate is actually compiled in this diagnostic, unlike the earlier
+  predecessor rendering trial. Current action-manifest classification and deployment-query module controls pass
+  23 and 49 respectively (`2490c75c3`). No bundler/configuration upgrade is integrated in root or released.
+  S9's explicit recheck/atomic-review preparation is pushed `5ac800f71`, and its guard-only S8 merge `9a5d4f860`:
+  88 memory / 90 Postgres, 26 memory plants and two actual SQL rollback plants; markers and new review notices
+  roll back together. Client funding persistence, existing Card retry after UNKNOWN, and expected-owner/original
+  funding binding remain open. S10's account-bound sheet storage/API/action preparation is in progress; the review
+  found that foreign-account scoped null could retire another account's old key. Its proofs/disclosures and guest
+  wiring remain gates. Temporary caches from four stopped diagnostic builds were verified link-free and archived
+  to F; populated `.next` trees remain on C and were not traversed across drives.
   **Still NOT CLOSED / NOT LIVE:** current browser/visual closure, clean exact-tip production proof, repaired v4
   baseline/null/branch parity, complete battery and both-host production read-back are required.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;
