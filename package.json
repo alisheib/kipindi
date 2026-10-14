@@ -712,6 +712,8 @@
     "red:journey-launch": "tsx scripts/journey-launch.test.mts --prove-red",
     "test:harm-watch": "tsx scripts/db-scratch.mts --run npx tsx scripts/harm-watch.test.mts",
     "red:harm-watch": "tsx scripts/harm-watch.test.mts --prove-red",
+    "test:journey-measures": "tsx scripts/db-scratch.mts --run npx tsx scripts/journey-measures.test.mts",
+    "red:journey-measures": "tsx scripts/journey-measures.test.mts --prove-red",
     "test:journey-shell": "tsx scripts/journey-shell.test.mts",
     "red:journey-shell": "tsx scripts/journey-shell.test.mts --prove-red",
     "test:offline-neutral": "tsx scripts/offline-neutral.test.mts",
