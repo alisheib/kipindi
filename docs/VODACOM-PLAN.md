@@ -773,6 +773,29 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   found that foreign-account scoped null could retire another account's old key. Its proofs/disclosures and guest
   wiring remain gates. Temporary caches from four stopped diagnostic builds were verified link-free and archived
   to F; populated `.next` trees remain on C and were not traversed across drives.
+  **2026-10-14 04:37 UTC continuation.** Two completed Linux runs pass all 533 battery suites:
+  `6899da23f` in 576.8s and `11d7fb8e1` in 743.2s (CI tests its PR merge snapshots, not the branch SHA directly).
+  Both then fail production first-load delivery because the compiler emits manifests naming absent lazy files;
+  the failure is reproduced on Linux and Windows and is still a release blocker. Native capture-only frame
+  flushing is pushed in `11d7fb8e1`. Its exact isolated production artifact `87c90055c` measures all six heading
+  samples below 150ms at 4× CPU (107.3–130.3ms), before the held private reply, with every delayed-frame plant
+  rejected. Its six remaining failures are the existing reader's shared-dependency classification; no overall
+  production PASS is claimed. The factory-aware reader remains under review: module identity/reexports must
+  bind to the actual loader, and early returns, context replacement and dynamic export tuples must fail closed.
+  Root integrates collection ownership in `216129c39` and empty-only attributes/native disabled selection in
+  `5c7748c00`. Eight real page/font cells, 24 rendered layout plants and four empty-selection activation checks
+  pass (38/38), all eight normal screenshots are read, the shared exact notification classifier passes 23
+  controls, and the 51 DOM / 224 bulk-resolution / type/measure/source-byte/decomment checks pass. The first
+  capture's ordinary notification read was misclassified; that 33/34 result is retained beside the corrected
+  capture. The owned root dev server3046 is stopped and its F cache retained. Next16.4.0 and only
+  `turbopackChunking.minChunkSize=0` are now root preparation, with an exact lock; this experimental chunking
+  setting still needs final source build, delivery/latency/weight and regression proof before release.
+  S9's original-funding binding checkpoint is separately pushed `ec6ab5a39` (121 memory/123 Postgres,
+  30 memory plants/two SQL rollback plants). Review then reproduced an existing non-unique provider-reference
+  claim selecting another deposit; a restricted same-original-row settlement fix is in progress before clients.
+  S10's account-partitioned keys and immutable legacy quarantine pass nine actual account/recovery browser
+  cells and 36 actual-source controls; its final selected drive/capture and integration remain open. App QA
+  credentials, external approvals and elapsed observation remain distinct outstanding gates.
   **Still NOT CLOSED / NOT LIVE:** current browser/visual closure, clean exact-tip production proof, repaired v4
   baseline/null/branch parity, complete battery and both-host production read-back are required.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;

@@ -72,6 +72,9 @@ const config: NextConfig = {
   serverExternalPackages: ["pdfkit", "exceljs", "@aws-sdk/client-s3"],
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns"],
+    // Keep emitted lazy files aligned with their preload manifests. Default small-chunk merging
+    // produced absent files on both Linux CI and Windows; the exact build is checked by qa:first-load.
+    turbopackChunking: { minChunkSize: 0 },
   },
   images: {
     formats: ["image/webp", "image/avif"],
