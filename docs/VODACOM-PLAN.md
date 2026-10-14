@@ -814,6 +814,28 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   status/recheck fixes refuse ambiguous or changed references before and inside wallet claims (172 memory,
   179 PostgreSQL, 49 memory/four SQL plants). An actual inherited background deposit reference-change probe
   still credits the wrong wallet; its repair and typed withdrawal binding remain open in that lane.
+  **2026-10-14 05:58 UTC correction and continuation.** The earlier `bf0278b46`/`950ec7944` ghost and
+  missing-reopen runs have an invalid startup identity premise: Next16.4 initializes navigation from the initial
+  body's build ID while subsequent RSC responses carry the compiled deployment SHA. Preloading Next without
+  that same startup deployment identity forces document navigations. Those failed captures remain intact.
+  Matching both startup identities before any Next import gives the exact `950ec7944` artifact **70/70**:
+  six heading samples **108.6–128.4 ms**, every held-read/250ms RED and close/Forward/Back cell passes, with
+  no page/console error. All six screenshots are read. A separate page-only suppression of its refresh method
+  leaves the real home and two picks intact throughout seven seconds; the added application refresh and its
+  controls are therefore removed. The original host history behavior is retained. The fixture and production
+  driver are being hardened to verify actual startup/cached-Next and served RSC identities before acceptance.
+  Frozen `bf0278b46` Chromium WP11 is **418 pass / two fail / six outstanding**, with all 79 tiles read;
+  WebKit is **205/0**, 27 tiles read and 18 cold reloads. The actual skew failure is a premature QA read after a
+  native history event; the repaired wait requires a new document and its visible stake field, and its same-wait
+  native-event negative plus focused proof pass 5/5. The receipt URL failure is a real 17.3ms interval between
+  Next's canonical write and the existing receipt cleanup; the same exact reconciliation now runs in the layout
+  phase before paint, with a fresh browser proof still owed. WebKit Windows font weight/blur differences are
+  retained for investigation. The outstanding age band, canonical rows and unobserved BUSY remain unmeasured.
+  All eight previously failed CI guards pass their focused merged-root checks, plus host36 and typecheck0;
+  the first orphan invocation named a nonexistent file and is retained separately from the proper script run.
+  Campaign transport again preserves its original safe64-character codes, while auth/owned-marker readers
+  keep their canonical account-code rules. These checkpoints and the exact `bf0278b46` parity record are saved;
+  the new candidate still needs its own full battery, compiled proof and relevant final parity.
   **Still NOT CLOSED / NOT LIVE:** current browser/visual closure, clean exact-tip production proof, repaired v4
   baseline/null/branch parity, complete battery and both-host production read-back are required.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;

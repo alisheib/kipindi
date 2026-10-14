@@ -35,6 +35,14 @@ function premiseErrors(base, meta, local) {
   if (!/^[a-f0-9]{40}$/.test(meta?.buildSha ?? "") || meta?.buildSha !== meta?.sourceHead || meta?.sourceHead !== local?.head) errors.push("HTTP production source SHA is not the local HEAD");
   if (meta?.sourceDirty !== false || local?.sourceDirty !== false) errors.push("served source was dirty when its fixture booted or since");
   if (!meta?.buildId || meta.buildId !== local?.buildId || meta.buildSha !== local?.deploymentId) errors.push("HTTP build ID/SHA does not match the local production build");
+  if (meta?.runtimeIdentity?.railwayGitCommitSha !== meta?.buildSha || meta?.runtimeIdentity?.nextDeploymentId !== meta?.buildSha || meta?.runtimeIdentity?.deploymentId !== meta?.buildSha) errors.push("fixture startup navigation identity does not match the compiled deployment");
+  return errors;
+}
+function navigationIdentityErrors(header, payload, expected) {
+  const errors = [];
+  if (header !== expected) errors.push("RSC navigation header differs from the compiled deployment");
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) errors.push("RSC root payload is unreadable");
+  else if (Object.hasOwn(payload, "b") && payload.b !== expected) errors.push("RSC body would initialize a conflicting navigation identity");
   return errors;
 }
 function tapErrors(probe, { title, route }) {
@@ -47,7 +55,7 @@ function tapErrors(probe, { title, route }) {
 }
 function controls() {
   const head = "a".repeat(40), local = { head, buildId: "one-build", deploymentId: head, sourceDirty: false };
-  const meta = { mode: "production", localOnly: true, databaseConfigured: false, memoryFixtureBuildException: true, buildSha: head, sourceHead: head, sourceDirty: false, buildId: "one-build" };
+  const meta = { mode: "production", localOnly: true, databaseConfigured: false, memoryFixtureBuildException: true, buildSha: head, sourceHead: head, sourceDirty: false, buildId: "one-build", runtimeIdentity: {railwayGitCommitSha: head, nextDeploymentId: head, deploymentId: head} };
   const good = { ms: 50, visible: true, heading: "Selected question", path: "/live" };
   const expected = { title: good.heading, route: good.path };
   const actions = { node: { reader: { workers: { "app/page": { exportedName: "fetchMyNotifications", filename: "src/app/_actions/notifications.ts" } } },
@@ -69,6 +77,11 @@ function controls() {
     ["configured database is refused", premiseErrors(BASE, { ...meta, databaseConfigured: true }, local).length > 0],
     ["remote or another local port is refused", ["https://www.50pick.tz", "http://127.0.0.1:3043"].every(base => premiseErrors(base, meta, local).length > 0)],
     ["dirty or stale build SHA is refused", [{ ...meta, sourceDirty: true }, { ...meta, buildSha: "b".repeat(40) }, { ...meta, buildId: "stale" }].every(plant => premiseErrors(BASE, plant, local).length > 0)],
+    ["missing or conflicting startup navigation identities are refused", [undefined, {}, ...["railwayGitCommitSha", "nextDeploymentId", "deploymentId"].map(key => ({...meta.runtimeIdentity, [key]: "b".repeat(40)}))].every(runtimeIdentity => premiseErrors(BASE, {...meta, runtimeIdentity}, local).length > 0)],
+    ["RSC header and either valid initial body shape bind to the compiled identity", [{}, {b: head}].every(payload => navigationIdentityErrors(head, payload, head).length === 0)],
+    ["the reproduced build-ID/body versus deployment/header mismatch cannot pass", navigationIdentityErrors(head, {b: "one-build"}, head).length > 0
+      && [null, [], "bad", {b: false}].every(payload => navigationIdentityErrors(head, payload, head).length > 0)
+      && navigationIdentityErrors("b".repeat(40), {}, head).length > 0],
     ["within-budget selected visible frame passes", tapErrors(good, expected).length === 0],
     ["a late frame fails the same verdict", tapErrors({ ...good, ms: 151 }, expected).includes("heading frame exceeded 150ms")],
     ["a hidden or wrong heading fails the same verdict", [{ ...good, visible: false }, { ...good, heading: "Another question" }, null].every(plant => tapErrors(plant, expected).length > 0)],
@@ -121,6 +134,7 @@ function controls() {
  * A second RAF confirms the selected heading remained present after that frame; its time is recorded separately.
  */
 function installProbe({ pick, root }) {
+  window.__productionSheetDocument = crypto.randomUUID();
   const add = EventTarget.prototype.addEventListener, remove = EventTarget.prototype.removeEventListener;
   const host = (target, type, listener) => (target === window || target === document) && type === "click" && typeof listener === "function" && listener.toString().includes("a[data-bet-side]");
   EventTarget.prototype.addEventListener = function(type, listener, options) { const answer = add.call(this, type, listener, options); if (host(this, type, listener)) window.__productionSheetHostReady = true; return answer; };
@@ -214,6 +228,18 @@ try {
   const plant = judgeRow(hostRow, entry, true, true);
   ok("RED host marker joined to an entry set fails the same first-load verdict", plant?.bad === true && plant?.verdict === "UNEXPECTED");
 
+  for (const preview of [false, true]) {
+    const ctx = await context(preview);
+    const response = await ctx.request.get(BASE + "/?_rsc=startup-identity", {headers: {RSC: "1", "x-deployment-id": meta.buildSha}, timeout: 90_000});
+    const body = await response.text();
+    let payload = null;
+    try { payload = JSON.parse(body.split("\n").find(line => line.startsWith("0:"))?.slice(2) ?? "null"); } catch { /* fail the same unreadable-payload verdict */ }
+    const header = response.headers()["x-nextjs-deployment-id"], verdict = navigationIdentityErrors(header, payload, meta.buildSha);
+    ok(`served ${preview ? "journey" : "classic"} RSC startup identity agrees with the compiled deployment`, response.ok() && verdict.length === 0,
+      {status: response.status(), header, bodyIdentity: payload?.b ?? null, bytes: Buffer.byteLength(body), verdict});
+    await close(ctx);
+  }
+
   const served = await context(false, false);
   for (const route of ["/", "/live", `/markets/${fixture.marketId}`]) {
     const response = await served.request.get(BASE + route, { timeout: 90_000 });
@@ -254,6 +280,7 @@ try {
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: CPU_RATE });
     await page.goto(BASE + route, { waitUntil: "domcontentloaded", timeout: 90_000 });
     await page.waitForFunction(() => window.__productionSheetHostReady === true, null, { timeout: 30_000 });
+    const originalDocument = await page.evaluate(() => window.__productionSheetDocument);
     const anchor = page.locator(`${S.pick}[data-bet-side="YES"]`).first();
     await anchor.waitFor({ state: "visible", timeout: 30_000 });
     const title = await anchor.evaluate(a => a.closest("[data-sheet]").getAttribute("data-sheet-title"));
@@ -277,6 +304,7 @@ try {
     await page.locator(S.root).waitFor({ state: "detached", timeout: 10_000 });
     await anchor.waitFor({ state: "visible", timeout: 10_000 });
     ok(`${route}: sample ${sample} Back restores the usable page`, !new URL(page.url()).searchParams.has("bet"));
+    ok(`${route}: sample ${sample} sheet traversal preserves the original document`, originalDocument === await page.evaluate(() => window.__productionSheetDocument));
     // The same pointerup and frame observer must reject a page-only 250ms hidden-heading plant.
     await page.evaluate(selector => {
       const style = document.createElement("style"); style.textContent = `${selector} h2 { visibility:hidden !important }`; document.head.append(style);
@@ -296,7 +324,17 @@ try {
   const sourceDirty = execFileSync("git", ["status", "--porcelain", "--", "src", "next.config.ts", "prisma", "package-lock.json"], { cwd: ROOT, encoding: "utf8" }).trim().length > 0;
   ok("production build and source remained identical through the drive", JSON.stringify(lastMeta) === JSON.stringify(meta) && gitHead() === local.head && !sourceDirty);
 } catch (error) {
-  row("production drive stopped", "FAIL", { message: scrub(error.stack ?? error) });
+  const diagnostics = [];
+  for (const ctx of contexts) for (const page of ctx.pages()) {
+    try {
+      diagnostics.push(await page.evaluate(() => ({ path: location.pathname + location.search, ready: window.__productionSheetHostReady,
+        picks: document.querySelectorAll('[data-sheet] a[data-bet-side]').length, tap: window.__productionSheetTap,
+        sheet: document.querySelector('[data-testid="journey-bet-sheet"]')?.outerHTML.slice(0, 800),
+        ghosts: [...document.querySelectorAll('[data-testid*="ghost"]')].map(e => e.getAttribute("data-testid")) })));
+      await page.screenshot({ path: join(OUT, `failure-${diagnostics.length}.png`) });
+    } catch { /* retain the original failure even if its page is already unavailable */ }
+  }
+  row("production drive stopped", "FAIL", { message: scrub(error.stack ?? error), diagnostics });
 } finally {
   for (const ctx of contexts) await ctx.close().catch(() => {});
   await browser.close();
