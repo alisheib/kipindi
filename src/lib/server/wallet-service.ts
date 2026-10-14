@@ -2843,8 +2843,9 @@ export async function refundAmlRejection(txn: StoredTxn, reason: string): Promis
       }
     }
     // A deposit keeps its held-for-return mark. This DEPOSIT arm dispatches no refund and posts no outbound ledger
-    // movement; FAILED/completedAt is the officer's rejection, not refund-delivery authority. The player's legacy
-    // "Reversed" label remains, with truthful held copy. A withdrawal's reason and actual wallet refund stay unchanged.
+    // movement; FAILED/completedAt is the officer's rejection, not refund-delivery authority. The player still reads it
+    // as "Held for return" (filed with the reversed ones; Ali, 2026-10-14), with truthful held copy. A withdrawal's reason
+    // and actual wallet refund stay unchanged.
     const keepMark = txn.type === "DEPOSIT" && (txn.amlReason ?? "").startsWith(RG_RETURN_MARK);
     await db.txn.update(txn.id, { status: "FAILED", completedAt: new Date().toISOString(), amlReason: keepMark ? `${txn.amlReason} · ${reason}` : reason }, tx);
   });
