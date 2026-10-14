@@ -385,18 +385,27 @@ export function readTurbopackFactories(text, file) {
         const statementScope = terminates < 0 ? ownStatements : ownStatements.slice(0, terminates);
         const writes = [...statementScope];
         let contextChanged = false;
+        const contextWrite = node => {
+          if (!node) return false;
+          if (node.type === "Identifier") return node.name === context;
+          if (node.type === "MemberExpression") return node.object.type === "Identifier" && node.object.name === context;
+          if (node.type === "ObjectPattern") return node.properties.some(property => contextWrite(property.type === "RestElement" ? property.argument : property.value));
+          if (node.type === "ArrayPattern") return node.elements.some(contextWrite);
+          if (node.type === "AssignmentPattern") return contextWrite(node.left);
+          if (node.type === "RestElement") return contextWrite(node.argument);
+          return false;
+        };
         const shadows = declaration => declaration?.type === "VariableDeclaration" && declaration.kind !== "var"
-          && declaration.declarations.some(binding => binding.id.type === "Identifier" && binding.id.name === context);
+          && declaration.declarations.some(binding => contextWrite(binding.id));
         while (writes.length) {
           const write = writes.pop();
           if (["FunctionExpression", "FunctionDeclaration", "ArrowFunctionExpression"].includes(write.type)) continue;
           if ((write.type === "BlockStatement" && write.body.some(shadows))
             || (["ForStatement", "ForOfStatement", "ForInStatement"].includes(write.type) && (shadows(write.init) || shadows(write.left)))
             || (write.type === "CatchClause" && write.param?.type === "Identifier" && write.param.name === context)) continue;
-          const contextWrite = node => (node?.type === "Identifier" && node.name === context)
-            || (node?.type === "MemberExpression" && node.object.type === "Identifier" && node.object.name === context);
           if ((write.type === "AssignmentExpression" && contextWrite(write.left))
             || (write.type === "UpdateExpression" && contextWrite(write.argument))
+            || (write.type === "UnaryExpression" && write.operator === "delete" && contextWrite(write.argument))
             || (write.type === "VariableDeclarator" && write.id.type === "Identifier" && write.id.name === context)) contextChanged = true;
           for (const value of Object.values(write)) {
             if (Array.isArray(value)) writes.push(...value.filter(node => node?.type));
@@ -1163,6 +1172,12 @@ export function selfTest({ table = MARKERS } = {}) {
       topOriginal.replace('ctx.s(["JourneyTopBar",0,()=>null]);', 'ctx=other;ctx.s(["JourneyTopBar",0,()=>null]);'), "factory context is reassigned");
     alterPrimary("C13 an overwritten context export method cannot establish module exports",
       topOriginal.replace('ctx.s(["JourneyTopBar",0,()=>null]);', 'ctx.s=()=>{};ctx.s(["JourneyTopBar",0,()=>null]);'), "factory context is reassigned");
+    alterPrimary("C13 a destructuring write to the context cannot establish module exports",
+      topOriginal.replace('ctx.s(["JourneyTopBar",0,()=>null]);', '({x:ctx}=other);ctx.s(["JourneyTopBar",0,()=>null]);'), "factory context is reassigned");
+    alterPrimary("C13 a destructuring write to the context method cannot establish module exports",
+      topOriginal.replace('ctx.s(["JourneyTopBar",0,()=>null]);', '({x:ctx.s}=other);ctx.s(["JourneyTopBar",0,()=>null]);'), "factory context is reassigned");
+    alterPrimary("C13 deleting the context export method cannot establish module exports",
+      topOriginal.replace('ctx.s(["JourneyTopBar",0,()=>null]);', 'delete ctx.s;ctx.s(["JourneyTopBar",0,()=>null]);'), "factory context is reassigned");
     alterPrimary("C13 a dynamic spread export tuple refuses measurement",
       topOriginal.replace('["JourneyTopBar",0,()=>null]', '["JourneyTopBar",...unknown]'), "dynamic or sparse export table");
     alterPrimary("C13 an unsupported literal export flag is refused", topOriginal.replace('"JourneyTopBar",0', '"JourneyTopBar",1'), "unsupported export flag");
