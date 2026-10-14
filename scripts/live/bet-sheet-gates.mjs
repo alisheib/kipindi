@@ -7,12 +7,14 @@
  * TWO HALVES.
  *  · PURE, exported for each drive's `--self-test`, which plants every failure: the strict multipart reader the transport
  *    control alters one field of a REAL Server Action body with (`parseMultipart`, `actionFields`, `plantTransport`,
- *    `plantErrors`); the flight reader that takes the action's actual returned value out of its real response
- *    (`flightResult`); and the verdicts. A cell whose premise fails is INVALID, an unobserved result NOT MEASURED, and
- *    neither is ever PASS.
+ *    `plantErrors`), whose FormData field naming is read out of the INSTALLED React codec (`replyPrefixRule`), never
+ *    typed; the flight reader that takes the action's actual returned value out of its real response (`flightResult`);
+ *    and the verdicts. A cell whose premise fails is INVALID, an unobserved result NOT MEASURED, and neither is ever PASS.
  *  · BROWSER: the exclusive local memory premise, the synthetic players (qa-bet-sheet.mjs's `freshPlayer`, the same
  *    door, phone scheme and name), the owner-scoped observer (`/api/dev-test/bet-sheet-observe`), the operator's
- *    authenticated admission snapshot (`/api/admin/admission`), and the sheet's own probes scoped to the sheet.
+ *    authenticated admission snapshot (`/api/admin/admission`), the page's own copy of each bet answer (`pageIn`'s
+ *    observer; an answer's origin is Playwright's `serverAddr`, null for anything a route fulfilled), and the sheet's
+ *    own probes scoped to the sheet.
  *
  * ⛔ LOCAL ONLY. Every request goes to the operator's own `http://localhost:PORT` in-memory server, which must be this
  * checkout's `next dev` serving HEAD with no database. No cookie, session or pass is ever written to evidence; keys, ids

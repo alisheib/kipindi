@@ -29,6 +29,7 @@
  */
 import { chromium } from "playwright";
 import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
 import {
   S, ROOT, digest, fileDigest, parseMultipart, actionFields, plantTransport, plantErrors, buildMultipart, flightResult,
   resultSummary, transportVerdict, retryVerdict, healthySheetErrors, exitCodeFor, sourceModules, exclusiveLocalPremise, outputDir, post,
@@ -172,8 +173,21 @@ if (process.argv.includes("--self-test")) {
   const rows = ["Invalid side.", "Invalid bet parameters."].map((error) => refusalOutcome({ kind: "resolved", value: { ok: false, error } }));
   const sourceOk = rows.every((o) => o.row === 23 && o.frame === "unknown" && o.retry === "same");
   console.log(`${sourceOk ? "PASS" : "FAIL"} self-test: the source's matrix reads both bare refusals as row 23, in doubt, same key`);
-  console.log(`qa:bet-sheet-transport --self-test: ${pass + (sourceOk ? 1 : 0)} passed, ${fail + (sourceOk ? 0 : 1)} failed`);
-  process.exit(fail || !sourceOk ? 1 : 0);
+  // The two refusals are the ACTION's own sentences: each once in buyPositionAction, the side checked before the
+  // parameters (so a missing marketId with a valid side can only answer "Invalid bet parameters.").
+  const actions = readFileSync(`${ROOT}/src/app/markets/actions.ts`, "utf8");
+  const body = actions.slice(actions.indexOf("export async function buyPositionAction("), actions.indexOf("export async function cashOutPositionAction("));
+  const refusalsOk = (text) => {
+    const lit = (m) => `error: ${JSON.stringify(TRANSPORT_MODES[m].refusal)}`;
+    return text.length > 0 && Object.keys(TRANSPORT_MODES).every((m) => text.split(lit(m)).length === 2) && text.indexOf(lit("invalid-side")) < text.indexOf(lit("missing-params"));
+  };
+  // RED: the same check over the action with its two refusals' order swapped, and with one sentence reworded.
+  const swapped = body.replace('error: "Invalid side."', "@@SIDE@@").replace('error: "Invalid bet parameters."', 'error: "Invalid side."').replace("@@SIDE@@", 'error: "Invalid bet parameters."');
+  const actionOk = refusalsOk(body) && !refusalsOk(swapped) && !refusalsOk(body.replace("Invalid side.", "Invalid side!"));
+  console.log(`${actionOk ? "PASS" : "FAIL"} self-test: buyPositionAction returns each bare refusal exactly once, the side checked first (and the check fails a swapped or reworded plant)`);
+  const extra = (sourceOk ? 1 : 0) + (actionOk ? 1 : 0);
+  console.log(`qa:bet-sheet-transport --self-test: ${pass + extra} passed, ${fail + 2 - extra} failed`);
+  process.exit(fail || extra !== 2 ? 1 : 0);
 }
 
 /* ─── The drive ──────────────────────────────────────────────────────────────────────────────────────────────── */
