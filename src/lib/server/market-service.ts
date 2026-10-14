@@ -1072,10 +1072,20 @@ export async function buyPosition(userId: string, opts: BuyOpts): Promise<BuyRes
     // an aborted one is 25P02). Gated on the caller's idempotency key: without
     // one, a retry would be a double bet, so we make exactly one attempt.
     return await withAdmission(async () => {
-      const reach: ReplayReach = { reached: false };
+      const reach: ReplayReach = { reached: false, uncertain: false };
       // Read per attempt: a transient retry that is refused by a gate after an earlier attempt reached the lock (and may
       // have committed before its error) is asked about too.
-      const r = await withTransientRetry(() => { reach.reached = false; return buyPositionInner(userId, opts, { kind: "player", playStartedAt: opts.playStartedAt }, reach); }, !!opts.idempotencyKey);
+      const r = await withTransientRetry(async () => {
+        reach.reached = false;
+        try {
+          return await buyPositionInner(userId, opts, { kind: "player", playStartedAt: opts.playStartedAt }, reach);
+        } catch (err) {
+          // A lost answer after the key lookup may have followed a committed bet. A later internal attempt's gate
+          // cannot erase that uncertainty merely because it refused before reaching the wallet lock.
+          if (reach.reached) reach.uncertain = true;
+          throw err;
+        }
+      }, !!opts.idempotencyKey);
       // ⭐ L2 · A KEY THAT HAS LANDED IS ANSWERED WITH ITS BET, NEVER REFUSED BY A GATE (live fix L2, the Vodacom plan's
       // S8-PLAN A23 item 1; Ali, 2026-10-12: "fix now"). The replay sits inside the wallet lock, AFTER every gate before
       // it — the rate limit, maintenance, a break, the session limit, the account, the market's state, the stake bounds.
@@ -1090,7 +1100,7 @@ export async function buyPosition(userId: string, opts: BuyOpts): Promise<BuyRes
       // house stake (`placeHouseBet` answers its key at H0, before any gate); and a bet that goes through reads nothing
       // more.
       if (r.ok || !opts.idempotencyKey || reach.reached) return r;
-      return (await landedKeyAnswer(userId, opts, r)) ?? r;
+      return (await landedKeyAnswer(userId, opts, r, reach.uncertain)) ?? r;
     });
   } catch (err) {
     if (err instanceof AdmissionBusy) {
@@ -1106,7 +1116,7 @@ export async function buyPosition(userId: string, opts: BuyOpts): Promise<BuyRes
 }
 
 /** L2 · set by `buyPositionInner` the moment it looks the key up under the wallet lock (`buyPosition` only). */
-type ReplayReach = { reached: boolean };
+type ReplayReach = { reached: boolean; uncertain: boolean };
 
 /**
  * ⭐ L2 · THE BET A PLAYER'S KEY ALREADY PLACED, AS ITS REPLAY — or null, and then the refusal stands as the gate made it.
@@ -1115,22 +1125,27 @@ type ReplayReach = { reached: boolean };
  * ⛔ Null — the refusal stands — unless the key's bet is THIS player's, not a house stake's (sanctioned change (b): the
  * in-lock check still refuses a conflict), and the very bet asked for again: the same question, side and stake. A key
  * sent with other figures is not a retry of that bet.
- * ⛔ A read that fails also answers null: the refusal is what the gate said, exactly as before L2. Turning it into an
- * unknown outcome would trade a must-read refusal (a break, the loss limit, a blocked account) for a toast, and a closed
- * round's lock for a retry, on the very moments a pool is under pressure.
+ * A failed read keeps a genuine pre-gate refusal when no earlier internal attempt reached the wallet lock. After an
+ * earlier attempt threw beyond that lookup, however, this request may already have committed: a failed recovery read
+ * must throw a neutral unknown outcome so the caller retains its same key and makes no claim that nothing was charged.
+ * A matching landed position is also authority: a failed/missing current wallet cannot turn it into a refusal or a
+ * fabricated zero-balance receipt. The unknown holds its key until both the position and current balance can be read.
  * ⭐ When the receipt answers over a refusal, the refusal is recorded beside it (`market.position.replayed`, the gate's
  * code and reason): the gate's own record — a session limit's `rg.session_limit.enforced`, say — still stands, and this
  * row says the request was a replay that placed nothing (docs/COMPLIANCE-DECISIONS.md, 2026-10-12).
  */
-async function landedKeyAnswer(userId: string, opts: BuyOpts, refused: BuyResult): Promise<BuyResult | null> {
+async function landedKeyAnswer(userId: string, opts: BuyOpts, refused: BuyResult, uncertain = false): Promise<BuyResult | null> {
   const key = opts.idempotencyKey;
   if (!key) return null;
+  let landed = false;
   try {
     const p = await positionStore.findByIdempotencyKey(key);
     // SEAM:landedKey
     if (!p || p.userId !== userId || p.houseBotId != null) return null;
     if (p.marketId !== opts.marketId || p.side !== opts.side || p.stake !== opts.stake) return null;
+    landed = true;
     const w = await db.wallet.findByUserId(userId);
+    if (!w || !Number.isSafeInteger(w.balance) || w.balance < 0) throw new Error("The current balance could not be read.");
     const why = refused.ok ? null : { code: refused.code ?? null, reason: (refused as { reason?: string }).reason ?? null };
     audit({
       category: "BET",
@@ -1142,9 +1157,10 @@ async function landedKeyAnswer(userId: string, opts: BuyOpts, refused: BuyResult
     });
     return {
       ok: true,
-      data: { positionId: p.id, balance: w?.balance ?? 0, payoutIfWin: p.potentialPayout, placedAt: p.placedAt, bonusStakeTzs: p.bonusStakeTzs ?? 0, replayed: true },
+      data: { positionId: p.id, balance: w.balance, payoutIfWin: p.potentialPayout, placedAt: p.placedAt, bonusStakeTzs: p.bonusStakeTzs ?? 0, replayed: true },
     };
   } catch {
+    if (uncertain || landed) throw new Error("We could not confirm this bet's outcome.");
     return null;
   }
 }

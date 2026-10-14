@@ -133,9 +133,9 @@ function TitleRow({ name, chip }: { name: string; chip?: React.ReactNode }) {
   );
 }
 
-function Cap({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+function Cap({ children, className = "", heading = false }: { children: React.ReactNode; className?: string; heading?: boolean }) {
   return (
-    <p className={`font-mono text-micro uppercase eyebrow font-bold text-text-subtle ${className}`}>
+    <p data-section-heading={heading ? "" : undefined} className={`font-mono text-micro uppercase eyebrow font-bold text-text-subtle ${className}`}>
       {children}
     </p>
   );
@@ -420,8 +420,9 @@ export default async function InvitePage({
         className="relative overflow-hidden rounded-xl border p-5"
         style={{ background: "var(--royal-950)", borderColor: "var(--royal-700)" }}
       >
-        <div className="relative flex items-center gap-4">
-          <div className="min-w-0 flex-1">
+        {/* The invitation and code need their own readable column; on phones the QR drops to the card's bottom-right. */}
+        <div className="relative flex flex-wrap items-center gap-4">
+          <div className="min-w-0 basis-[14rem] grow">
             <FiftyMark size={38} />
             <p className="mt-3 font-display text-[20px] font-bold leading-tight text-text">{t.common.youveBeenInvited}</p>
             <p className="mt-3 font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{t.common.invite}</p>
@@ -433,7 +434,7 @@ export default async function InvitePage({
             </div>
           </div>
           {qrDataUrl && (
-            <div className="shrink-0 rounded-lg bg-white p-2">
+            <div className="ml-auto shrink-0 rounded-lg bg-white p-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={qrDataUrl} alt="" aria-hidden width={104} height={104} className="block" />
             </div>
@@ -581,8 +582,8 @@ export default async function InvitePage({
           WP12's tile 182). The label wore `!mt-1` as a sibling of the share block: 4px under the buttons above it
           and 24px over the list it names — a label for the wrong thing. Now the block takes the stack's own 24px,
           and inside it the label sits 12px over what it names, as "Kiungo chako cha rufaa" does over its field. */}
-      <div>
-        <Cap className="mb-2">{paid ? t.profile.yourReferrals : t.profile.yourFriends}</Cap>
+      <div data-empty-state-scope="">
+        <Cap heading className="mb-2">{paid ? t.profile.yourReferrals : t.profile.yourFriends}</Cap>
         {/* ⛔ A PAGE OF A LIST SAYS SO. `recruitCount` is the true total and the dial prints it; this
             array is capped by the read model. Without this line a reader counting rows would reach a
             different number than the dial and have no way to know which was wrong — the silent
@@ -626,6 +627,7 @@ export default async function InvitePage({
           </div>
         ) : (
           <EmptyState
+            fill
             kind="leaderboard"
             title={paid ? t.profile.noReferralsYet : t.profile.noFriendsYet}
             body={paid ? t.profile.noReferralsBody : t.profile.noFriendsBody}

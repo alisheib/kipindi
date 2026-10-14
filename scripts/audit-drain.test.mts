@@ -21,7 +21,7 @@
  * `npm run rehearse:audit-drain`.
  */
 import { spawn } from "node:child_process";
-import { closeSync, mkdtempSync, openSync, readFileSync } from "node:fs";
+import { closeSync, mkdtempSync, openSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -185,14 +185,14 @@ const OUT = mkdtempSync(join(tmpdir(), "audit-drain-"));
 const CHILD = join(ROOT, "scripts", "audit-drain-child.mts");
 type Run = { code: number; out: string; err: string; child: Any; ms: number };
 
-function drive(mode: string, env: Record<string, string>): Promise<Run> {
+function drive(mode: string, env: Record<string, string>, childFile = CHILD): Promise<Run> {
   return new Promise((done) => {
     // ⚠️ FILE descriptors, never pipes: on Windows `process.stdout` is ASYNCHRONOUS when it is a
     // pipe, so the drain's loud block — written immediately before the real exit — can be dropped.
     const op = join(OUT, `${mode}.out`), ep = join(OUT, `${mode}.err`);
     const ofd = openSync(op, "w"), efd = openSync(ep, "w");
     const t0 = Date.now();
-    const c = spawn(process.execPath, [join(ROOT, "node_modules", "tsx", "dist", "cli.mjs"), CHILD, mode], {
+    const c = spawn(process.execPath, [join(ROOT, "node_modules", "tsx", "dist", "cli.mjs"), childFile, mode], {
       cwd: ROOT,
       env: { ...process.env, NODE_ENV: "test", ...env },
       stdio: ["ignore", ofd, efd],
@@ -218,6 +218,17 @@ const lived = (r: Run): number => Number(r.child?.elapsedMs ?? NaN);
 
 const N = 10, WORK_MS = 20;
 const QUEUE_MS = N * WORK_MS; // the stub queue needs at least this long to empty
+/** The same verdict for ordinary cleanup, delayed cleanup and a prematurely started-worker fault plant.
+ * Keep the exact at-risk population AND a real nonzero wait. The fixture now gates worker progress until exit.
+ * CI previously captured 9/10 because a legitimate timer tick ran during Next cleanup, not because the drain lost one.
+ */
+function reallyWaited(r: Run): boolean {
+  return r.child?.pendingAtExitRequest === N && r.child?.queueStarted === true
+    && r.child?.report?.queuedAtExit === N
+    && Number(r.child?.report?.waitedMs) > 0
+    && r.child?.report?.abandoned === 0
+    && r.child?.report?.drained === true;
+}
 
 // ── POSITIVE CONTROL FIRST ───────────────────────────────────────────────────────────────────────
 // Without the drain the process must die with the queue unfinished. If it does NOT, this harness
@@ -239,7 +250,7 @@ console.log(show(ctl));
  * of the verdict.
  */
 ok("4.c1 · POSITIVE CONTROL — with NO drain installed, production's own SIGTERM chain exits 143 with the queue still unfinished",
-  ctl.code === 143 && ctl.child?.pendingAtExit > 0 && !ctl.child?.report,
+  ctl.code === 143 && ctl.child?.pendingAtExitRequest === N && ctl.child?.pendingAtExit > 0 && !ctl.child?.report,
   `exit ${ctl.code}, pendingAtExit ${ctl.child?.pendingAtExit}, report ${JSON.stringify(ctl.child?.report ?? null)}, `
   + `child lived ${lived(ctl)}ms (queue needs ${QUEUE_MS}ms — printed, not asserted: a wall-clock upper bound is breakable by load alone)`);
 
@@ -288,14 +299,33 @@ ok("4.1 · WITH the drain, the same shutdown waits and the queue reaches ZERO be
  * not distinguish from a slow startup. `4.1` holds the same population from the queue's side.
  */
 ok("4.2 · and it really WAITED — the drain captured the WHOLE queue at risk, waited a real interval, and abandoned none of it",
-  ok1.child?.report?.queuedAtExit === N
-  && Number(ok1.child?.report?.waitedMs) > 0
-  && ok1.child?.report?.abandoned === 0
-  && ok1.child?.report?.drained === true,
+  reallyWaited(ok1),
   `queuedAtExit ${ok1.child?.report?.queuedAtExit}/${N}, waited ${ok1.child?.report?.waitedMs}ms, abandoned `
   + `${ok1.child?.report?.abandoned}, drained ${ok1.child?.report?.drained} `
   + `(child lived ${lived(ok1)}ms, un-drained control ${lived(ctl)}ms, nominal queue ${QUEUE_MS}ms — all PRINTED, `
   + `none asserted: see the block above for why a duration floor here is not a measurement)`);
+// A real cleanup delay longer than the entire queue exposes the old race deterministically, without a fake clock.
+const late = await drive("drained-late-cleanup", {
+  N: String(N), WORK_MS: String(WORK_MS), BUDGET_MS: "5000", CLEANUP_MS: String(QUEUE_MS + WORK_MS),
+});
+ok("4.c3 · CONTROL — delayed Next cleanup cannot consume the claimed at-risk queue before the real exit request",
+  late.code === 143 && reallyWaited(late),
+  `exit ${late.code}, pending at request ${late.child?.pendingAtExitRequest}/${N}, report ${JSON.stringify(late.child?.report)}`);
+// Run an actual child-source fault: start the worker before cleanup, as the old fixture did. Production source and
+// process.exit remain untouched; the same reallyWaited predicate must reject its now-empty at-risk population.
+const prematureChild = join(OUT, "audit-drain-premise-mutant.mts");
+const childSource = read("scripts/audit-drain-child.mts");
+const rootAnchor = 'const ROOT = resolve(import.meta.dirname, "..");';
+const startAnchor = "const pendingFn = () => pending;";
+if (childSource.split(rootAnchor).length !== 2 || childSource.split(startAnchor).length !== 2) throw new Error("Audit-drain premise mutation anchors changed");
+writeFileSync(prematureChild, childSource.replace(rootAnchor, `const ROOT = ${JSON.stringify(ROOT)};`)
+  .replace(startAnchor, `startQueue();\n${startAnchor}`));
+const premature = await drive("premature-queue", {
+  N: String(N), WORK_MS: String(WORK_MS), BUDGET_MS: "5000", CLEANUP_MS: String(QUEUE_MS + WORK_MS),
+}, prematureChild);
+ok("4.c4 · PLANTED CONTROL — a worker started before cleanup is rejected by the SAME whole-queue real-wait verdict",
+  premature.code === 143 && premature.child?.pendingAtExitRequest < N && !reallyWaited(premature),
+  `exit ${premature.code}, pending at request ${premature.child?.pendingAtExitRequest}/${N}, report ${JSON.stringify(premature.child?.report)}`);
 ok("4.3 · the exit CODE survives the deferral — a platform must still see 143 for a SIGTERM",
   ok1.code === 143 && ok1.child?.report?.exitCode === 143);
 ok("4.4 · a second install is refused — the wrapper is never stacked",

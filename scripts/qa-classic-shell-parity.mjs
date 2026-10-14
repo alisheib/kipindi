@@ -169,7 +169,7 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { maskQuestionEventTimes, normaliseQuestionBreakClocks, QUESTION_BREAK_CLOCK } from "./lib/question-time-mask.mjs";
+import { maskQuestionEventTimes, normaliseQuestionBreakClocks, QUESTION_BREAK_CLOCK, normaliseBookHomeCloseDates, BOOK_HOME_CLOSE_DATE } from "./lib/question-time-mask.mjs";
 
 const NL = "\n";
 const msg = (e) => String(e?.message ?? e).split(NL)[0].slice(0, 200);
@@ -364,6 +364,9 @@ const TIED_CARDS = BOOK_NORMALISERS.find((n) => n.id === "tied-cards").hands;
  *   · lazy-images  every img[loading="lazy"] inside the regions a book cell captures is told to load and awaited before
  *                  any box is read, then given its own loading attribute back (SETTLE_LAZY), so the markup is the
  *                  server's and an image's box no longer hangs on whether the browser happened to fetch it.
+ *   · home-close-date-leaves  only the home featured card's and board rows' validated complete locale dates are
+ *                  canonicalized before geometry, retaining their prefixes, source words, elements and every paint
+ *                  attribute. B.9 requires the source's one featured plus QUESTION_BOARD_SIZE leaves, zero elsewhere.
  * The pair that showed it is 090bbf76's (BOOK_NORMALISE_ON's eat-dates records it): its ninth differing field, the
  * guest's / at 360 in English (regions.main.layout, 4 of 556 element lines), was the payment rail's four logos
  * (/pay/mpesa.svg, airtel.png, halopesa.png and mixx.png, loading="lazy" at y≈5380 in a 40×40 slot each), 0x0 on the
@@ -372,7 +375,7 @@ const TIED_CARDS = BOOK_NORMALISERS.find((n) => n.id === "tied-cards").hands;
  * read as the browser left it. --prove-red's book phase holds the settle to a lazy image it plants out of the browser's
  * reach: 0x0 in a capture without the settle, drawn in one with it, and the markup of the two the same.
  */
-const BOOK_SETTLE = ["lazy-images"];
+const BOOK_SETTLE = ["lazy-images", "home-close-date-leaves"];
 /** How long a book cell's settle waits, in all, for its lazy images to load. */
 const LAZY_SETTLE_MS = 10_000;
 /**
@@ -519,6 +522,11 @@ const CONFIRM_GOLD = '[role="dialog"][aria-modal="true"] button.btn-gold';
  * `book-<viewer>|locale|width|route`, the question page as ":similar" — each server mints its own ids.
  */
 const BOOK_ROUTES = ["/", "/markets", "/live", "/results", "/watchlist", "/markets/:similar"];
+// The full seeded book fills the actual board: landing-hero renders one featured card and hero.ts's row budget.
+// The preserved ff8c/947c captures independently show this one-plus-seven population, not a guessed date count.
+const HOME_BOARD_SIZE = Number(/^export const QUESTION_BOARD_SIZE = ([1-9][0-9]*);$/m.exec(readFileSync(join(TREE, "src/lib/markets/hero.ts"), "utf8"))?.[1]);
+if (!Number.isInteger(HOME_BOARD_SIZE)) refuse("hero.ts names no literal positive QUESTION_BOARD_SIZE for the home close-date population");
+const HOME_CLOSE_POPULATION = { featured: 1, rows: HOME_BOARD_SIZE };
 const BOOK = {
   viewers: ["guest", "player"],
   locales: LOCALES,
@@ -538,6 +546,7 @@ const BOOK = {
   normalise: BOOK_NORMALISE,
   /** How a book cell is read (BOOK_SETTLE): a baseline records it, and a compare must read the same way. */
   settle: BOOK_SETTLE,
+  homeCloseDates: { ...BOOK_HOME_CLOSE_DATE, population: HOME_CLOSE_POPULATION },
 };
 /** The book's text normalisers switched on for this run, in BOOK_NORMALISERS' order. */
 const BOOK_TEXT = BOOK_NORMALISERS.filter((n) => n.kind === "text" && BOOK.normalise.includes(n.id));
@@ -1761,6 +1770,9 @@ function bookChecks(book, seed, store) {
       fails: CARD_STATES.filter((s) => !((tally.get(s) ?? 0) > 0)).map((s) => `no ${CARD_LABELS[s]} card in any book cell`) },
     { id: "B.8", name: "only React's DEV performance-track sentence is ever filed as DEV-only in a book cell — every other page error is compared",
       fails: live.filter(([, c]) => (c.devOnly ?? []).some((x) => !isDevMeasure(x))).map(([k, c]) => `${k} (filed DEV-only: ${c.devOnly.find((x) => !isDevMeasure(x))})`) },
+    { id: "B.9", name: `only home's complete locale close-date leaves were canonicalized before geometry: one featured and ${HOME_BOARD_SIZE} board rows in every seeded home cell, zero elsewhere`,
+      fails: bad((r, c) => ['featured', 'rows'].some((kind) => c.homeCloseDates?.[kind] !== (r === '/' ? HOME_CLOSE_POPULATION[kind] : 0)
+        || c.homeCloseDates?.leaves?.[kind] !== (r === '/' ? HOME_CLOSE_POPULATION[kind] : 0))) },
   ];
 }
 
@@ -1792,6 +1804,7 @@ function syntheticBook() {
       regions: r === BOOK.similar ? { similar: region("similar") } : { main: region("main"), ...(BOOK.lobby.includes(r) ? { ticker: region("ticker") } : {}) },
       cards: CARDS[r].map((c) => ({ ...c })),
       ...(r === BOOK.head ? { head: "head" } : {}),
+      homeCloseDates: { ...(r === '/' ? HOME_CLOSE_POPULATION : { featured: 0, rows: 0 }), leaves: { ...(r === '/' ? HOME_CLOSE_POPULATION : { featured: 0, rows: 0 }) } },
     };
   }
   const seed = {
@@ -1982,7 +1995,7 @@ if (COMPARE) {
   // boxes the browser happened to leave its lazy images, so a baseline is only comparable when it was read the same way.
   const readAs = Array.isArray(baseline.matrix?.book?.settle) ? baseline.matrix.book.settle : null;
   if (!readAs || readAs.join() !== BOOK.settle.join()) {
-    refuse(`${COMPARE} was captured under the book's capture procedure [${readAs ? readAs.join(", ") || "none" : "unrecorded"}], and this run reads the book under [${BOOK.settle.join(", ")}] (BOOK_SETTLE: every lazy image in a book cell's regions loaded before a box is read). A different procedure needs a NEW baseline captured under it.`);
+    refuse(`${COMPARE} was captured under the book's capture procedure [${readAs ? readAs.join(", ") || "none" : "unrecorded"}], and this run reads the book under [${BOOK.settle.join(", ")}] (BOOK_SETTLE: lazy images loaded and exact home close-date leaves canonicalized before geometry). A different procedure needs a NEW baseline captured under it.`);
   }
   // ⭐ S7 WP1 calibration 3 · and the way every page was read (SETTLE): a page read before its Needle had mounted holds an
   // overlay census the next read of it may not, so a baseline is only comparable when its pages were read the same way.
@@ -2425,9 +2438,23 @@ async function captureBookCell(jar, locale, width, route, similarId, plant = nul
         lazy = `${settled.unloaded.length} of its ${settled.lazy} lazy image(s) had not loaded ${secs(LAZY_SETTLE_MS)} into the settle, so their boxes are read as the browser left them: ${settled.unloaded.join(", ")}`;
       }
     }
+    // A home DOM negative is planted after its own subtree hydrated. The shell fiber in open() is earlier:
+    // changing a streamed home text then makes React replace the plant, which proves no book verdict.
+    // This seam is for --prove-red plants only; ordinary baseline/compare capture timing is unchanged.
+    if (plant?.lateHomeJs) {
+      if (route !== '/') throw new Error('late home plant requested outside home');
+      await page.waitForFunction(({selectors, population}) => Object.entries(selectors).every(([kind, selector]) => {
+        const leaves = [...document.querySelectorAll(selector)].filter((el) => !el.childElementCount);
+        return leaves.length === population[kind] && leaves.every((el) => Object.keys(el).some((key) => key.startsWith('__reactFiber$')));
+      }), {selectors: BOOK_HOME_CLOSE_DATE.selectors, population: HOME_CLOSE_POPULATION}, {timeout: 30_000});
+      await page.evaluate(plant.lateHomeJs);
+    }
     const untie = args.book.tied ? { ...args.book.tied, regions } : null;
+    const homeDateMask = route === '/' ? { ...BOOK_HOME_CLOSE_DATE, locale } : null;
+    let homeCloseDates = { featured: 0, rows: 0, leaves: { featured: 0, rows: 0 } };
     const read = async () => {
       if (untie) await page.evaluate(UNTIE_CARDS, untie);
+      if (homeDateMask) homeCloseDates = await page.evaluate(normaliseBookHomeCloseDates, homeDateMask);
       return page.evaluate(SNAPSHOT, args);
     };
     const seen = (s) => JSON.stringify([s.url, s.regions, s.journey, s.cards]);
@@ -2439,7 +2466,7 @@ async function captureBookCell(jar, locale, width, route, similarId, plant = nul
       stable = seen(next) === seen(snap);
       snap = next;
     }
-    const cell = toBookCell(snap, { status, stable, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort(), ...notesOf([needle, lazy]) });
+    const cell = toBookCell(snap, { status, stable, homeCloseDates, raw: rawOf(body), pageErrors: [...new Set(pageErrors)].sort(), devOnly: [...new Set(devOnly)].sort(), ...notesOf([needle, lazy]) });
     if (route === BOOK.similar && similarId) cell.landed = cell.landed.split(similarId).join(":similar");
     if (route === BOOK.head) cell.head = typeof body === "string" ? put(bookNorm(headOf(body))) : null;
     return cell;
@@ -2797,7 +2824,7 @@ let questionSeed = null;
 let report320 = null;
 let treeMoved = null;
 try {
-  if (QUESTION_CALIBRATE) await proveQuestionCalibration();
+  if (QUESTION_CALIBRATE) { await proveQuestionCalibration(); await proveHomeDateCalibration(); }
   else if (PROVE_RED) await proveRed();
   else await captureMatrix();
 } finally {
@@ -2805,7 +2832,7 @@ try {
 }
 if (QUESTION_CALIBRATE) {
   const failed = results.filter((result) => !result).length;
-  console.log(`\n${results.length - failed}/${results.length} passed — rendered question calibration (no server fixture touched)`);
+  console.log(`\n${results.length - failed}/${results.length} passed — rendered question and home-date calibration (no server fixture touched)`);
   process.exit(failed ? 1 : 0);
 }
 
@@ -2896,8 +2923,68 @@ async function proveQuestionCalibration() {
   finally { await page.close().catch(() => {}); }
 }
 
+/** Rendered home leaves pass through the exact pre-geometry reader, book diff and B.9 population verdict. */
+async function proveHomeDateCalibration() {
+  const page = await b.newPage({ viewport: { width: 360, height: HEIGHT } });
+  const key = keyOf('book-guest', 'en', 360, '/');
+  const take = async (locale, o = {}) => {
+    const prefix = BOOK_HOME_CLOSE_DATE.prefixes[locale];
+    const date = o.date ?? (locale === 'sw' ? '14 Okt' : '14 Oct');
+    const leaf = `<span class="kp-qrow__close${o.extraClass ? ' kp-parity-class' : ''}"${o.rowStyle ? ` style="${o.rowStyle}"` : ''}>${o.words ?? prefix}${date}</span>`;
+    await page.setContent(`<!doctype html><html lang="${locale}"><head><style>
+      .mcardp-src__part,.kp-qrow__close{font:13px Arial;color:rgb(80,80,80);padding:0;display:inline-block}
+      .source{display:inline-block} .kp-qrow{display:flex;gap:8px}
+      ${o.css ?? ''}</style></head><body><main id="main-content">
+      <section class="kp-hero"><article class="mcardp"><span class="mcardp-src__part">${o.featuredWords ?? prefix}${date}</span><span class="mcardp-src__part"><span> · </span>${o.source ?? 'Settles on bot.go.tz'}</span></article></section>
+      <ul class="kp-qboard">${Array.from({length: HOME_BOARD_SIZE}, () => `<li class="kp-qrow">${leaf}<span class="source">TZS 1,234</span></li>`).join('')}${o.extra ? `<li class="kp-qrow">${leaf}</li>` : ''}</ul>
+      <p class="ordinary">${o.ordinary ?? 'Other words'}</p></main></body></html>`);
+    const homeCloseDates = await page.evaluate(normaliseBookHomeCloseDates, { ...BOOK_HOME_CLOSE_DATE, locale });
+    const snap = await page.evaluate(SNAPSHOT, bookArgsOf('/'));
+    const cell = toBookCell(snap, { status: 200, stable: true, homeCloseDates, raw: { shell: true, trace: [] }, pageErrors: [], devOnly: [] });
+    cell.landed = '/';
+    return cell;
+  };
+  const b9 = (cell) => { const sample = syntheticBook(); sample.book[key] = cell; return bookChecks(sample.book, sample.seed, {...sample.store, ...blobs}).find((c) => c.id === 'B.9').fails; };
+  const fields = (a, c) => diffCells('/', a, c, blobs, blobs, BOOK_EXPECTED_DIFFS).unexpected;
+  try {
+    for (const locale of ['en', 'sw']) {
+      const clean = await take(locale);
+      ok(`P.8u ${locale} home has exactly the source's one featured plus ${HOME_BOARD_SIZE} row leaves under the real B.9 verdict`, b9(clean).length === 0, JSON.stringify(clean.homeCloseDates));
+      const shifted = await take(locale, { date: locale === 'sw' ? '13 Okt' : '13 Oct' });
+      ok(`P.8u ${locale} a valid close day alone changes no field under the real book diff after pre-geometry canonicalization`, fields(clean, shifted).length === 0 && b9(shifted).length === 0);
+      for (const [name, o, need] of [
+        ['paint', {css: '.kp-qrow__close{color:rgb(255,0,0)}'}, 'regions.main.layout'],
+        ['font', {css: '.kp-qrow__close{font-family:monospace}'}, 'regions.main.layout'],
+        ['padding', {css: '.kp-qrow__close{padding:3px}'}, 'regions.main.layout'],
+        ['inline style', {rowStyle: 'letter-spacing:2px'}, 'regions.main.html'],
+        ['class', {extraClass: true}, 'regions.main.html'],
+        ['close words', {words: 'Wrong close words '}, 'regions.main.html'],
+        ['featured words', {featuredWords: 'Wrong close words '}, 'regions.main.html'],
+        ['source words', {source: 'Wrong source'}, 'regions.main.html'],
+        ['surrounding words', {ordinary: 'Changed outside date'}, 'regions.main.html'],
+      ]) {
+        const changed = await take(locale, o), diff = fields(clean, changed);
+        ok(`P.8u ${locale} home date ${name} remains detected by the real book diff (${need})`, diff.some((d) => d.field === need), diff.map((d) => d.field).join(', '));
+      }
+      for (const [name, date] of [
+        ['malformed format', locale === 'sw' ? '14, Okt' : '14, Oct'],
+        ['impossible calendar day', '31 Feb'],
+        ['wrong locale month', locale === 'sw' ? '14 Oct' : '14 Okt'],
+        ['year zero', locale === 'sw' ? '14 Okt 0000' : '14 Oct 0000'],
+      ]) {
+        const changed = await take(locale, {date});
+        ok(`P.8u ${locale} ${name} fails the real B.9 exact population verdict`, b9(changed).length > 0);
+      }
+      const extra = await take(locale, {extra: true});
+      ok(`P.8u ${locale} an extra valid close-date leaf fails the real B.9 exact population verdict and book diff`, b9(extra).length > 0 && fields(clean, extra).length > 0);
+    }
+  } catch(e) { ok('P.8u rendered home-date calibration completes', false, msg(e)); }
+  finally { await page.close().catch(() => {}); }
+}
+
 async function proveRed() {
   await proveQuestionCalibration();
+  await proveHomeDateCalibration();
   console.log(`\n§P · the control — first on synthetic captures, then planted in the browser`);
   // ① The EXPECTED_DIFFS matcher: it must pass what it names and nothing beside it.
   const store = { f1: '<footer class="pad-old">x</footer>', f2: '<footer class="pad-new">x</footer>', f3: '<footer class="pad-new">y</footer>' };
@@ -3603,6 +3690,9 @@ async function proveRed() {
     ["B.7", "no one-sided card anywhere in the book", (m) => { for (const c of Object.values(m.book)) c.cards = c.cards.filter((x) => x.state !== "one-sided"); }],
     ["B.7", "no void card anywhere in the book", (m) => { for (const c of Object.values(m.book)) c.cards = c.cards.filter((x) => x.state !== "void"); }],
     ["B.8", "a real page error filed as DEV-only (it would never be compared)", (m) => { atBook(m, "player", "sw", 1280, "/results").devOnly = ["TypeError: Cannot read properties of undefined (reading 'resolvedOutcome')"]; }],
+    ["B.9", "a home featured close date not canonicalized", (m) => { atBook(m, "guest", "en", 360, "/").homeCloseDates.featured = 0; }],
+    ["B.9", "an extra home board close-date leaf", (m) => { atBook(m, "player", "sw", 1280, "/").homeCloseDates.leaves.rows++; }],
+    ["B.9", "a close-date leaf canonicalized outside home", (m) => { atBook(m, "guest", "en", 360, "/markets").homeCloseDates.rows = 1; }],
   ];
   for (const [id, what, plant] of BOOK_FLOOR_PLANTS) {
     const m = structuredClone(SB);
@@ -3836,6 +3926,16 @@ async function proveRed() {
         { id: "book-card", js: cardIn.main, what: "a class added to one card in /'s body", need: "regions.main.html", within: ["regions.main."] },
         { id: "book-og-url", bytes: (s) => s.replace(/<meta\b[^>]*\bproperty="og:url"[^>]*>/g, ""), what: "og:url dropped from /'s bytes", need: "head", within: ["head"] },
         { id: "book-strip", css: ".ticker-strip .ticker-item { color: rgb(255, 0, 0) !important; }", what: "the LIVE strip's items re-inked", need: "regions.ticker.layout", within: ["regions.ticker."] },
+        { id: "home-close-day", lateHomeJs: () => { for (const el of document.querySelectorAll('#main-content .kp-hero article.mcardp .mcardp-src__part, #main-content .kp-qboard .kp-qrow__close')) if (!el.childElementCount && /^Closes [1-9][0-9]? [A-Z][a-z]{2}(?: [0-9]{4})?$/.test(el.textContent)) el.textContent = 'Closes 13 Oct'; },
+          what: "only valid home close days changed, canonicalized before geometry", noDiff: true },
+        { id: "home-close-paint", css: '.kp-qrow__close { color: rgb(255, 0, 0) !important; }', what: 'home date paint changed', need: 'regions.main.layout', within: ['regions.main.'] },
+        { id: "home-close-font", css: '.kp-qrow__close { font-family: monospace !important; }', what: 'home date font changed', need: 'regions.main.layout', within: ['regions.main.'] },
+        { id: "home-close-padding", css: '.kp-qrow__close { padding: 3px !important; }', what: 'home date padding changed', need: 'regions.main.layout', within: ['regions.main.'] },
+        { id: "home-close-inline-style", lateHomeJs: () => document.querySelector('#main-content .kp-qrow__close')?.setAttribute('style', 'letter-spacing: 2px'), what: 'home date inline style changed', need: 'regions.main.html', within: ['regions.main.'] },
+        { id: "home-close-class", lateHomeJs: () => document.querySelector('#main-content .kp-qrow__close')?.classList.add('kp-parity-class'), what: 'home date class changed', need: 'regions.main.html', within: ['regions.main.'] },
+        { id: "home-close-words", lateHomeJs: () => { const el = document.querySelector('#main-content .kp-qrow__close'); if (el) el.textContent = 'Wrong close words 14 Oct'; }, what: 'home close words changed', need: 'regions.main.html', within: ['regions.main.'], population: true },
+        { id: "home-close-date-format", lateHomeJs: () => { const el = document.querySelector('#main-content .kp-qrow__close'); if (el) el.textContent = 'Closes 14, Oct'; }, what: 'home close date format corrupted', need: 'regions.main.html', within: ['regions.main.'], population: true },
+        { id: "home-close-extra-leaf", lateHomeJs: () => { const el = document.querySelector('#main-content .kp-qrow__close'); if (el) el.parentElement.append(el.cloneNode(true)); }, what: 'home has an extra valid close-date leaf', need: 'regions.main.html', within: ['regions.main.'], population: true },
       ] },
       { v: "player", l: "sw", w: 1280, r: "/markets", plants: [
         { id: "book-card", js: cardIn.main, what: "a class added to one card in /markets' body", need: "regions.main.html", within: ["regions.main."] },
@@ -3875,9 +3975,18 @@ async function proveRed() {
         const planted = await captureBookCell(jar, l, w, r, bookV.similarId, plant);
         if (planted.error) { ok(`P.${k} ${plant.id} was captured`, false, planted.error); continue; }
         const seen = diffCells(r, clean, planted, blobs, blobs, BOOK_EXPECTED_DIFFS).unexpected;
+        if (plant.noDiff) {
+          ok(`P.${k} ${plant.what} changes no field under the real book diff`, seen.length === 0 && JSON.stringify(clean.homeCloseDates) === JSON.stringify(planted.homeCloseDates), seen.map((d) => d.field).join(', '));
+          continue;
+        }
         ok(`P.${k} ⭐ ${plant.what} is reported in ${plant.need}, and nowhere outside ${plant.within.join(" / ")}`,
           seen.some((d) => inside(d.field, [plant.need])) && seen.every((d) => inside(d.field, plant.within)),
           seen.length ? seen.slice(0, 2).map((d) => `${d.field}: ${d.detail}`).join(" | ").slice(0, 400) : "NOT SEEN — a book compare with this harness proves nothing");
+        if (plant.population) {
+          const sample = syntheticBook(); sample.book[k] = planted;
+          const failed = bookChecks(sample.book, sample.seed, {...sample.store, ...blobs}).find((c) => c.id === 'B.9').fails;
+          ok(`P.${k} ${plant.what} also fails the same B.9 exact population verdict`, failed.includes(k), JSON.stringify(planted.homeCloseDates));
+        }
       }
     }
     // ⑤b S7 WP1 calibration 2 · the settle (BOOK_SETTLE), in the cell where 090bbf76's null pair saw its cause: a lazy image

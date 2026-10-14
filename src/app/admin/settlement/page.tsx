@@ -91,8 +91,9 @@ async function AdminSettlementContent({ searchParams }: SettlementProps) {
 
         <AdminCard title="Payout queue" sw="Foleni ya malipo" padding="p-0">
           {queue.length === 0 ? (
-            <div className="p-6">
+            <div className="px-4 py-6">
               <EmptyState
+                fill
                 kind="admin"
                 title="Nothing awaiting settlement"
                 body="Every resolved market has been paid. A market appears here once an officer has sealed its verdict — its money waits in the pool until you settle it."
@@ -198,7 +199,7 @@ async function AdminSettlementContent({ searchParams }: SettlementProps) {
         <p className="text-caption text-text-secondary">
           A resolved market is <strong>adjudicated, not paid</strong>. Its pool stays whole and every
           position stays open until it is settled here — which is what lets an upheld objection
-          actually change the outcome. <strong>Settling is irreversible:</strong> once the money is in
+          actually change the outcome. <strong>Settling is irreversible:</strong>{" "}once the money is in
           players&rsquo; wallets it cannot be clawed back, so rule on any objection first.
         </p>
       </AdminBody>

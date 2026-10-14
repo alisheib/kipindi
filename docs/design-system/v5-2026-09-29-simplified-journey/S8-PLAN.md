@@ -2168,6 +2168,13 @@ that says "soko", and the slow-placing and pending lines are A7's and A10's.
    rule and render binding, plus source/behavior plants; its full in-memory red control passes 116/116. Popup fit,
    reduced motion, motion ladder, sheet and R9-C guards pass. These guards are not a production timing PASS:
    the corrected candidate must still pass WP11a on a fresh production build, with that exact sha recorded in §0k.
+   The exact-947 compiled drive subsequently measures six 234–316ms cells: the smaller lift still starts with zero
+   opacity in its first two frames. The same-transform page trial makes the heading legible at 111.4ms under 4×
+   CPU versus 188.2ms in its control. The next candidate therefore parameterizes only the existing lift's initial
+   opacity as `var(--m-settle-start-opacity, 0)`; only `.kp-bsheet.m-sheet-in` supplies `1`. Every unset kit consumer
+   retains its zero-opacity start, and the transform, duration, curve, exit and motion clamps are inherited.
+   The expanded actual-source guards catch 119/119 plants, including transparent start, removed scoped override
+   and changed generic fallback. This remains a candidate until the exact compiled six-cell production drive.
 
 *From:* Plan critique 13 (A-13), taken whole.
 

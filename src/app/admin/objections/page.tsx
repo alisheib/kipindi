@@ -97,8 +97,9 @@ async function AdminObjectionsContent({ searchParams }: ObjectionsProps) {
 
       <AdminCard title="Queue" sw="Foleni" padding="p-0">
         {rows.length === 0 ? (
-          <div className="p-6">
+          <div className="px-4 py-6">
             <EmptyState
+              fill
               kind="admin"
               title="No objections"
               body="No player has disputed a verdict. Resolved markets settle automatically when their objection window closes."

@@ -686,6 +686,71 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   failures with their details as well as the final tail, and refuses an empty selector instead of printing 0/0
   green. Actual renderer/empty-selector controls pass. The next CI run must disclose and resolve the two remaining
   Linux failures, rather than reclassifying them without evidence.
+  The pushed `947c3f48e` recovery checkpoint's Linux CI is also 530/533 (672.9s), now with its actual early failures
+  visible: contacts-import-db's query census attributed a previous allowed read's delayed event to the following
+  bound refusal; eyebrow-roles still held the old AdminKpi signatures; and house-bot-ops' synthetic commit-tree
+  lacked author identity on a clean runner. Audit-drain and the repaired focus gate pass there. Each allowed bulk
+  read now gets its own counted positive control (one real statement), with the following refusal still requiring
+  zero; the real Postgres contact probe passes 63/63. The two reviewed inline caption signatures and existing live
+  status-chip signature are refreshed without changing their roles: all 658 sites are accounted for. Synthetic
+  release commits supply fixture identity only to that process: with ambient Git identity deliberately unavailable,
+  house-bot-ops passes 100 memory/104 Postgres and its parent 3/3. Typecheck passes; a new Linux run remains required.
+  Parity calibration's fresh encoded baseline is 51/51, expanded rendered reds 200/200 and fresh same-source NULL
+  67/67 (2052s), including all 56 question cells. The frozen-947 branch comparison finishes 66/67: eight home book
+  cells differ only in already-masked closing-day leaf widths. Actual day substitution reproduces the exact 0.5px
+  geometry difference; shell, Sell and all 56 question cells pass. Captures remain intact and a narrow pre-geometry
+  date calibration with new baseline/NULL/branch measurements is required, not a retrospective PASS.
+  A fresh-cache production build and a separate clean checkout with real C output both compile but retain missing
+  lazy preload files on home/results/question. The failed F-output cold build also records Next's workStore
+  invariant; moving output to C made that build complete, which does not establish the invariant's cause. The
+  isolated exact-947 browser drive is 41 pass/11 fail: all six heading samples are 234–316ms at 4× CPU, all precede
+  their delayed private response, the missing home preload is actually requested and returns 404, and the question
+  ghost is actually observed. No production PASS is claimed. A separate page-only diagnostic identifies the lift's
+  initial zero opacity: its first two frames hold the heading invisibly. A transform-identical, immediate-opacity
+  trial reads 111.4ms at 4× CPU versus 188.2ms in the control; this is a candidate experiment, not compiled closure.
+  The wider normal-site responsive audit remains open. Its 80 empty-state alignment findings require distinguishing
+  card-scoped headings from page headings before repairs; captures after a dev-server memory restart are invalid
+  premises and retained as such. Fresh bounded-runtime browser gates and the actual AdminKpi proof remain underway.
+  **2026-10-14 recovery checkpoints.** Root S8 is pushed through `9c5a8fd80`; independently reviewed normal section,
+  QR, queue, status-pill and rendered-symbol repairs are integrated from `5f3ad45c0` (root `7c8d774a7`). Their final
+  source proof is 77/0 across 36 actual cases, with scoped independent physical reads; actual populated overlays
+  are 36/0 without committing money. Exact-947 core browser evidence remains Chromium 186/0 plus settled-receipt
+  recapture 22/0, WebKit 182/0 plus fault-context lifecycle 14/0; normal motion 43/0, revoked 46/0, admin gate 21/0,
+  Needle 92/0 and AdminKpi 22/0. Interrupted memory-restart/worker-bypass/capture-premise attempts remain excluded.
+  These are measured predecessor proofs, not acceptance of later source. The four centered whole-collection
+  replacements are visually correct; their independent ownership-instrument amendment `31526cafd` is pushed
+  separately and still awaits fresh served-page proof/integration. No route exception has been broadened.
+  The next sheet arrival retains the existing transform and makes only its initial content opacity legible;
+  generic kit consumers default to their existing zero start. Its extended guards catch 119/119 and related
+  11/11 suites pass; exact compiled timing remains required. Both isolated Turbopack client-nesting and scope-hoist
+  option trials compile but retain absent lazy preloads. A supported Webpack diagnostic compiles and all 27 global
+  lazy rows name existing files, but its different manifest shape requires a measured adapter and actual served
+  asset checks. Its actual 20 GET-only browser cells have no missing JS assets, hash mismatches or page errors,
+  but HomeLazy is a real parser-loaded entry script on seven classic routes outside home. That first-load failure
+  remains; no production delivery PASS or default-bundler change is claimed. The new exact home close-day parity
+  instrument passes 58 focused controls, 247 full negative controls and a fresh 52/52 baseline; its independent
+  NULL comparison and final branch comparison remain pending.
+  Independent money review reproduces internal commit-answer loss followed by a pre-gate refusal and a failed
+  recovery read: the old wrapper discarded its uncertainty and could retire the key. The `9c5a8fd80` repair carries
+  that uncertainty between attempts and returns a neutral unknown on recovery fault. A matching owned landed
+  position also keeps authority if its fresh balance is missing/invalid/unreadable, without inventing zero; genuine
+  first pre-gate refusals remain. Proof: 49 memory, 47 Postgres and 20 plants; the extracted retry/host cases are
+  explicitly bounded-inner fixtures, not real PostgreSQL commit-loss injection. Actual action propagation,
+  typecheck and focused sheet guards pass. Production and the full final battery remain required.
+  Linux CI at `9c5a8fd80` is 531/533: the reports guard's seven exact lines moved while every nine-line money
+  write remains byte-identical to `1b93e44c5` (SHA256 compared; repaired memory run 251/0), and audit-drain's
+  fixture started completing its ten-row queue during Next cleanup before asking to exit. The latter correctly
+  drained the nine actually at risk. Its worker now starts in the exit-request turn, with the exact ten-row,
+  nonzero-wait, no-abandonment assertions retained; a delayed-cleanup control and a real prematurely started-worker
+  source plant use the same verdict. One isolated and four concurrent runs are 44/0. Production drain code is
+  unchanged; final Linux acceptance remains pending. New Next.js/bundling configurations are isolated diagnostics.
+  Separate S9 preparation `862e83fb4` is pushed: 105 memory/108 Postgres/45 plants plus related guards; status/review,
+  RG-held truth and the faithful wallet-currency read are recorded in S9-PLAN §5d. The post-UNKNOWN terminal retry
+  gap remains open in both the future controller and existing Card adapter; an explicit owned signed recheck is
+  preparation in progress, with no new payment dispatch. S10 auth carry preparation `f7bdc2ea1` is pushed, with
+  22 actual verdicts/20 plants and preserved classic landing: guest identity/storage partition and S9 integration
+  remain open. Staff production QA access is still unavailable; the earlier secret-safe `.env.qa.local` request
+  remains pending. Infrastructure Railway access is verified separately.
   **Still NOT CLOSED / NOT LIVE:** current browser/visual closure, clean exact-tip production proof, repaired v4
   baseline/null/branch parity, complete battery and both-host production read-back are required.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;
