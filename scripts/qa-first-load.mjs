@@ -19,9 +19,14 @@
  * ⭐ WHAT IT READS (first-load-parts.py's two ways, kept). For each route, the client-reference manifest's entryJSFiles
  * are the chunks the browser is told to load before anything renders; a module reached only through a client-side
  * dynamic import is not among them. STRUCTURAL: every `next/dynamic` call carries `loadableGenerated: { modules: [id] }`,
- * the route's react-loadable manifest maps that id to its chunk files, and those are compared with the entry files:
- * "own chunk" (none is an entry file), "FIRST LOAD" (one is), "no files of its own" (its module already loads with the
- * page) or "no next/dynamic entry". MARKERS: a string only one module in src/ holds, searched in the entry files; and
+ * the route's react-loadable manifest maps that id to all required chunk files. Every named file must exist. The
+ * reader parses real Turbopack registrations to locate exactly one module exporting the chosen name in each
+ * loader's declared files or the route's actual entries. STRUCTURAL is about that PRIMARY factory's file:
+ * "own chunk" (the primary is outside entries), "FIRST LOAD" (the primary is an entry), "no files of its own" (an
+ * already-loaded module has no declared lazy files) or "no next/dynamic entry". A common dependency in entries
+ * cannot establish FIRST LOAD. Unknown/ambiguous/unreadable primary mapping refuses the reading, even --no-expect.
+ * This is the measured S7 A9 clarification recorded in docs/qa/s8-first-load-factory-reader.md. MARKERS: a string
+ * only one module in src/ holds, searched in the entry files; and
  * where each marker sits across the whole build. A row marked `module` is also read by the route's clientModules: is
  * that file a client reference of the route, and is its chunk an entry file.
  *
@@ -86,6 +91,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { createRequire } from "node:module";
+
+const { parse: parseJavaScript } = createRequire(import.meta.url)("next/dist/compiled/acorn");
 
 const SCRIPT = fileURLToPath(import.meta.url);
 
@@ -301,6 +309,250 @@ const normId = (raw) => {
 /** A chunk path as entryJSFiles writes it: `static/chunks/x.js`. */
 const normFile = (f) => String(f).replace(/^\/?_next\//, "").replace(/\?.*$/, "");
 
+/** Read real Turbopack registration factories and their literal ESM export tables. Never execute client code.
+ * A module's common dependencies can be entry files while the selected component factory remains lazy.
+ * Unsupported or ambiguous exports are not guessed from markers, filenames, or the union of client references.
+ */
+export function readTurbopackFactories(text, file) {
+  let ast;
+  try { ast = parseJavaScript(text, { ecmaVersion: "latest", sourceType: "module" }); }
+  catch (error) { return { factories: [], loaders: [], error: `bad JavaScript in ${file}: ${error.message}` }; }
+  const factories = [], loaders = [], errors = [];
+  const member = (node, object, property) => node?.type === "MemberExpression"
+    && node.object.type === "Identifier" && node.object.name === object
+    && (node.computed ? node.property.value : node.property.name) === property;
+  const registry = node => ["globalThis", "self"].some(object => member(node, object, "TURBOPACK"));
+  const registryReceiver = node => registry(node) || (node?.type === "LogicalExpression" && node.operator === "||"
+    && registry(node.left) && node.right.type === "AssignmentExpression" && node.right.operator === "="
+    && registry(node.right.left) && node.right.right.type === "ArrayExpression" && !node.right.right.elements.length);
+  const mayTerminate = statement => {
+    const flow = [statement];
+    while (flow.length) {
+      const node = flow.pop();
+      if (["FunctionExpression", "FunctionDeclaration", "ArrowFunctionExpression"].includes(node.type)) continue;
+      if (["ReturnStatement", "ThrowStatement"].includes(node.type)) return true;
+      for (const value of Object.values(node)) {
+        if (Array.isArray(value)) flow.push(...value.filter(child => child?.type));
+        else if (value?.type) flow.push(value);
+      }
+    }
+    return false;
+  };
+  // The shell uses a synchronous zero-argument IIFE. Traverse its directly executed statements, never an uncalled
+  // function or conditional branch, and stop at a terminating return/throw.
+  const executed = [...ast.body];
+  for (let position = 0; position < executed.length; position++) {
+    const statement = executed[position];
+    const node = statement.type === "ExpressionStatement" ? statement.expression : null;
+    if (node?.type === "CallExpression" && node.arguments.length === 0
+      && ["ArrowFunctionExpression", "FunctionExpression"].includes(node.callee.type)
+      && !node.callee.async && !node.callee.generator && node.callee.params.length === 0 && node.callee.body.type === "BlockStatement") {
+      const nested = node.callee.body.body;
+      const terminal = nested.findIndex(mayTerminate);
+      executed.splice(position + 1, 0, ...(terminal < 0 ? nested : nested.slice(0, terminal)));
+      continue;
+    }
+    if (node?.type === "CallExpression" && node.callee.type === "MemberExpression"
+      && (node.callee.computed ? node.callee.property.value : node.callee.property.name) === "push"
+      && registryReceiver(node.callee.object)
+      && node.arguments[0]?.type === "ArrayExpression") {
+      const input = node.arguments[0].elements;
+      // A reused module table is emitted as a nested [id,factory,...] slot, unlike an array of alias ids.
+      const expand = nodes => nodes.flatMap(slot => slot?.type === "ArrayExpression"
+        && slot.elements.some(element => ["ArrowFunctionExpression", "FunctionExpression"].includes(element?.type))
+        ? expand(slot.elements) : [slot]);
+      const slots = [input[0], ...expand(input.slice(1))];
+      if (node.arguments.length !== 1 || slots.length < 3) {
+        errors.push(`unsupported Turbopack registration in ${file}`);
+        continue;
+      }
+      const validId = id => (typeof id === "string" && id.length > 0)
+        || (typeof id === "number" && Number.isSafeInteger(id) && id >= 0);
+      for (let i = 1; i < slots.length;) {
+        const ids = [];
+        while (i < slots.length && !["ArrowFunctionExpression", "FunctionExpression"].includes(slots[i]?.type)) {
+          const id = slots[i++];
+          ids.push(...(id?.type === "ArrayExpression" ? id.elements.map(n => n?.value) : [id?.value]));
+        }
+        const factory = slots[i++];
+        if (!factory || !ids.length || !ids.every(validId)) {
+          errors.push(`unsupported factory registration in ${file}`);
+          continue;
+        }
+        const context = factory.params[0]?.type === "Identifier" ? factory.params[0].name : null;
+        const ownStatements = factory.body.type === "BlockStatement" ? factory.body.body : [];
+        const terminates = ownStatements.findIndex(mayTerminate);
+        const statementScope = terminates < 0 ? ownStatements : ownStatements.slice(0, terminates);
+        const writes = [...statementScope];
+        let contextChanged = false;
+        const shadows = declaration => declaration?.type === "VariableDeclaration" && declaration.kind !== "var"
+          && declaration.declarations.some(binding => binding.id.type === "Identifier" && binding.id.name === context);
+        while (writes.length) {
+          const write = writes.pop();
+          if (["FunctionExpression", "FunctionDeclaration", "ArrowFunctionExpression"].includes(write.type)) continue;
+          if ((write.type === "BlockStatement" && write.body.some(shadows))
+            || (["ForStatement", "ForOfStatement", "ForInStatement"].includes(write.type) && (shadows(write.init) || shadows(write.left)))
+            || (write.type === "CatchClause" && write.param?.type === "Identifier" && write.param.name === context)) continue;
+          const contextWrite = node => (node?.type === "Identifier" && node.name === context)
+            || (node?.type === "MemberExpression" && node.object.type === "Identifier" && node.object.name === context);
+          if ((write.type === "AssignmentExpression" && contextWrite(write.left))
+            || (write.type === "UpdateExpression" && contextWrite(write.argument))
+            || (write.type === "VariableDeclarator" && write.id.type === "Identifier" && write.id.name === context)) contextChanged = true;
+          for (const value of Object.values(write)) {
+            if (Array.isArray(value)) writes.push(...value.filter(node => node?.type));
+            else if (value?.type) writes.push(value);
+          }
+        }
+        if (contextChanged) errors.push(`factory context is reassigned in ${file}`);
+        const method = (node, name) => node?.type === "CallExpression" && node.callee.type === "MemberExpression"
+          && node.callee.object.type === "Identifier" && node.callee.object.name === context
+          && (node.callee.computed ? node.callee.property.value : node.callee.property.name) === name;
+        const property = (node, key) => node?.type === "ObjectExpression" ? node.properties.find(prop => prop.type === "Property"
+          && !prop.computed && (prop.key.name ?? prop.key.value) === key)?.value : null;
+        // Read the actual client loader's import, rather than assuming that the LMF id is what its .A shim imports.
+        const loadables = [...statementScope];
+        while (loadables.length) {
+          const candidate = loadables.pop();
+          if (["FunctionExpression", "FunctionDeclaration", "ArrowFunctionExpression"].includes(candidate.type)) continue;
+          if (candidate.type === "CallExpression") {
+            const moduleList = property(property(candidate.arguments[1], "loadableGenerated"), "modules");
+            const loader = candidate.arguments[0];
+            let then = loader?.type === "ArrowFunctionExpression" && !loader.params.length && !loader.async ? loader.body : null;
+            if (then?.type === "CallExpression" && then.callee.type === "MemberExpression"
+              && !then.callee.computed && then.callee.property.name === "catch" && then.arguments.length === 1) then = then.callee.object;
+            const callback = then?.arguments?.[0], imported = then?.callee?.object;
+            const selected = callback?.body;
+            if (moduleList?.type === "ArrayExpression" && moduleList.elements.length
+              && moduleList.elements.every(id => id?.type === "Literal" && validId(id.value))
+              && then?.type === "CallExpression" && then.callee.type === "MemberExpression" && !then.callee.computed
+              && then.callee.property.name === "then" && then.arguments.length === 1
+              && callback?.type === "ArrowFunctionExpression" && callback.params.length === 1 && callback.params[0].type === "Identifier"
+              && !callback.async && selected?.type === "MemberExpression" && !selected.computed
+              && selected.object.type === "Identifier" && selected.object.name === callback.params[0].name
+              && selected.property.type === "Identifier" && method(imported, "A") && imported.arguments.length === 1
+              && imported.arguments[0]?.type === "Literal" && validId(imported.arguments[0].value)) {
+              for (const id of moduleList.elements) loaders.push({ file, start: candidate.start, loadableId: String(id.value),
+                symbol: selected.property.name, asyncModuleId: String(imported.arguments[0].value) });
+            }
+          }
+          for (const value of Object.values(candidate)) {
+            if (Array.isArray(value)) loadables.push(...value.filter(node => node?.type));
+            else if (value?.type) loadables.push(value);
+          }
+        }
+        // Scope-hoisted groups can export several virtual modules from one physical factory. Their literal second
+        // .s argument identifies each module; identical names in DIFFERENT modules must not be merged or deduplicated.
+        let namespaceTarget = null, namespaceError = null, asyncNamespaceTarget = null, asyncNamespaceError = null, asyncFiles = [];
+        const exportsByModule = new Map(), body = factory.body.type === "BlockStatement"
+          ? statementScope.filter(statement => statement.type === "ExpressionStatement").map(statement => statement.expression)
+          : [factory.body];
+        while (body.length) {
+          const child = body.pop();
+          // Only direct unconditional registrations (including comma sequences) establish a literal export table.
+          // Callback, conditional, short-circuited and async-wrapper definitions remain unmeasured.
+          if (child.type === "SequenceExpression") { body.push(...child.expressions); continue; }
+          if (method(child, "v")) {
+            const initializer = child.arguments[0];
+            const importName = initializer?.params?.[0]?.name;
+            let returned = initializer?.body;
+            let prefixValid = true;
+            if (returned?.type === "CallExpression" && returned.callee.type === "MemberExpression" && !returned.callee.computed
+              && returned.callee.property.name === "then" && returned.arguments.length === 1) {
+              const preload = returned.callee.object, map = preload?.arguments?.[0], paths = map?.callee?.object;
+              const load = map?.arguments?.[0], loaded = load?.body;
+              prefixValid = preload?.type === "CallExpression" && preload.callee.type === "MemberExpression"
+                && !preload.callee.computed && preload.callee.object.type === "Identifier" && preload.callee.object.name === "Promise"
+                && preload.callee.property.name === "all" && preload.arguments.length === 1
+                && map?.type === "CallExpression" && map.callee.type === "MemberExpression" && !map.callee.computed
+                && map.callee.property.name === "map" && map.arguments.length === 1 && paths?.type === "ArrayExpression"
+                && paths.elements.every(path => path?.type === "Literal" && typeof path.value === "string"
+                  && /^static\/chunks\/.+\.(?:js|css)$/.test(path.value))
+                && load?.type === "ArrowFunctionExpression" && !load.async && load.params.length === 1 && load.params[0].type === "Identifier"
+                && method(loaded, "l") && loaded.arguments.length === 1 && loaded.arguments[0]?.type === "Identifier"
+                && loaded.arguments[0].name === load.params[0].name;
+              if (prefixValid) asyncFiles = paths.elements.map(path => path.value);
+              const callback = returned.arguments[0];
+              returned = callback?.type === "ArrowFunctionExpression" && !callback.async && !callback.params.length ? callback.body : null;
+            }
+            const direct = prefixValid && child.arguments.length === 1 && initializer?.type === "ArrowFunctionExpression" && !initializer.async
+              && initializer.params.length === 1 && initializer.params[0].type === "Identifier"
+              && returned?.type === "CallExpression" && returned.callee.type === "Identifier" && returned.callee.name === importName
+              && returned.arguments.length === 1 && returned.arguments[0]?.type === "Literal" && validId(returned.arguments[0].value);
+            if (!direct || asyncNamespaceTarget !== null) asyncNamespaceError = `unsupported async namespace shim in ${file}`;
+            else asyncNamespaceTarget = String(returned.arguments[0].value);
+          }
+          if (child.type === "CallExpression" && child.callee.type === "MemberExpression"
+            && child.callee.object.type === "Identifier" && child.callee.object.name === context
+            && (child.callee.computed ? child.callee.property.value : child.callee.property.name) === "n") {
+            const imported = child.arguments[0];
+            const literal = imported?.arguments?.[0];
+            const direct = child.arguments.length === 1 && imported?.type === "CallExpression"
+              && imported.callee.type === "MemberExpression" && imported.callee.object.name === context
+              && (imported.callee.computed ? imported.callee.property.value : imported.callee.property.name) === "i"
+              && imported.arguments.length === 1 && literal?.type === "Literal" && validId(literal.value);
+            if (!direct || namespaceTarget !== null) namespaceError = `unsupported namespace reexport in ${file}`;
+            else namespaceTarget = String(literal.value);
+          }
+          if (child.type === "CallExpression" && child.callee.type === "MemberExpression"
+            && child.callee.object.type === "Identifier" && child.callee.object.name === context
+            && (child.callee.computed ? child.callee.property.value : child.callee.property.name) === "s") {
+            const explicitId = child.arguments[1];
+            if (child.arguments.length > 2 || (explicitId && (explicitId.type !== "Literal" || !validId(explicitId.value)))) {
+              errors.push(`unsupported export module identity in ${file}`);
+              continue;
+            }
+            const moduleIds = explicitId ? [String(explicitId.value)] : ids.map(String);
+            const key = JSON.stringify(moduleIds);
+            if (!exportsByModule.has(key)) exportsByModule.set(key, { moduleIds, names: new Set(), unmeasured: new Set() });
+            const owner = exportsByModule.get(key), names = owner.names;
+            const forwardProperty = value => value?.type === "MemberExpression"
+              || (value?.type === "ArrowFunctionExpression" && value.body.type === "MemberExpression");
+            const table = child.arguments[0];
+            if (table?.type === "ArrayExpression") {
+              const values = table.elements;
+              if (values.some(value => !value || value.type === "SpreadElement")) {
+                errors.push(`dynamic or sparse export table in ${file}`);
+                continue;
+              }
+              for (let at = 0; at < values.length;) {
+                const name = values[at++];
+                if (name?.type !== "Literal" || typeof name.value !== "string") { errors.push(`nonliteral export table in ${file}`); break; }
+                const value = values[at++];
+                if (value?.type === "Literal" && typeof value.value === "number") {
+                  const definition = values[at++];
+                  if (value.value !== 0 || !definition) { errors.push(`unsupported export flag in ${file}`); break; }
+                  if (forwardProperty(definition)) owner.unmeasured.add(name.value);
+                } else if (!value) { errors.push(`missing export definition in ${file}`); break; }
+                else if (forwardProperty(value)) owner.unmeasured.add(name.value);
+                if (names.has(name.value)) errors.push(`duplicate export ${name.value} in ${file}`);
+                names.add(name.value);
+              }
+            } else if (table?.type === "ObjectExpression") {
+              for (const property of table.properties) {
+                const name = !property.computed && property.type === "Property"
+                  ? property.key.name ?? property.key.value : null;
+                if (typeof name !== "string") errors.push(`nonliteral export table in ${file}`);
+                else {
+                  if (names.has(name)) errors.push(`duplicate export ${name} in ${file}`);
+                  names.add(name);
+                  if (forwardProperty(property.value)) owner.unmeasured.add(name);
+                }
+              }
+            } else errors.push(`unsupported export registration in ${file}`);
+          }
+        }
+        if (!exportsByModule.size) exportsByModule.set(JSON.stringify(ids), { moduleIds: ids.map(String), names: new Set(), unmeasured: new Set() });
+        for (const { moduleIds, names, unmeasured } of exportsByModule.values()) factories.push({ file, moduleIds,
+          registrationIds: ids.map(String), exports: names, namespaceTarget, namespaceError,
+          asyncNamespaceTarget, asyncNamespaceError, asyncFiles,
+          unmeasuredExports: unmeasured,
+          start: factory.start, end: factory.end });
+      }
+    }
+  }
+  return { factories, loaders, error: errors.length ? [...new Set(errors)].join("; ") : null };
+}
+
 /** module id → the exports its next/dynamic loaders pick, from the server AND the client chunks. */
 function readSymbols(nextDir) {
   const symbolOf = new Map();
@@ -323,35 +575,56 @@ function readSymbols(nextDir) {
 }
 
 /** A route's client-reference manifest: its entry files and its client modules (src path → chunk files). */
-function readManifest(file) {
+function readManifest(file, route) {
   const text = fs.readFileSync(file, "utf8");
   const entries = new Set();
   const clientModules = new Map();
+  const routeKey = (route === "/" ? "" : route) + "/page";
+  let matched = 0;
   for (const m of text.matchAll(MANIFEST_KEY)) {
+    if (m[1] !== routeKey) continue;
+    if (++matched !== 1) throw new Error(`duplicate ${routeKey} namespace in ${file}`);
     const start = m.index + m[0].length;
     const end = matchBrace(text, start);
     if (end < 0) throw new Error(`unreadable manifest ${file}`);
     const obj = JSON.parse(text.slice(start, end + 1));
-    for (const files of Object.values(obj.entryJSFiles ?? {})) for (const f of files) entries.add(normFile(f));
+    if (!obj.entryJSFiles || typeof obj.entryJSFiles !== "object" || Array.isArray(obj.entryJSFiles)) {
+      throw new Error(`no explicit entryJSFiles for ${routeKey}: a clientModules union cannot identify route entries`);
+    }
+    for (const files of Object.values(obj.entryJSFiles)) {
+      if (!Array.isArray(files) || !files.every(f => typeof f === "string" && normFile(f).endsWith(".js"))) {
+        throw new Error(`unreadable entryJSFiles for ${routeKey}`);
+      }
+      for (const f of files) entries.add(normFile(f));
+    }
+    if (!entries.size) throw new Error(`empty entryJSFiles for ${routeKey}`);
     for (const [key, mod] of Object.entries(obj.clientModules ?? {})) {
       const p = key.replace(/\\/g, "/").replace(/ <module evaluation>$/, "").replace(/ \[[^\]]*\].*$/, "");
       const at = p.startsWith("[project]/") ? "[project]/".length : p.indexOf("/src/") + 1;
       if (at <= 0 && !p.startsWith("src/")) continue;
       const src = p.slice(Math.max(at, 0));
       if (!clientModules.has(src)) clientModules.set(src, new Set());
-      for (const c of mod.chunks ?? []) if (String(c).endsWith(".js")) clientModules.get(src).add(normFile(c));
+      // Normalize deployment queries before recognizing a script; the manifest carries real ?dpl URLs.
+      for (const c of mod.chunks ?? []) { const f = normFile(c); if (f.endsWith(".js")) clientModules.get(src).add(f); }
     }
   }
+  if (matched !== 1) throw new Error(`no ${routeKey} namespace in ${file}`);
   return { entries, clientModules };
 }
 
 /** Everything a reading needs from one build: the symbol map and every client chunk's text. */
 export function loadBuild(nextDir) {
   const chunks = new Map();
+  const factories = new Map();
   for (const rel of listFiles(nextDir, "static/chunks")) {
-    if (rel.endsWith(".js")) chunks.set(rel, fs.readFileSync(path.join(nextDir, rel), "utf8"));
+    if (rel.endsWith(".js")) {
+      const text = fs.readFileSync(path.join(nextDir, rel), "utf8");
+      chunks.set(rel, text);
+      factories.set(rel, readTurbopackFactories(text, rel));
+    }
   }
-  return { nextDir, symbolOf: readSymbols(nextDir), chunks };
+  return { nextDir, symbolOf: readSymbols(nextDir), chunks, factories,
+    loaderBindings: [...factories.values()].flatMap(index => index.loaders) };
 }
 
 const routeDir = (nextDir, route) => path.join(nextDir, "server", "app", ...route.split("/").filter(Boolean));
@@ -364,10 +637,14 @@ export function readRoute(build, route, plant = null) {
   if (!fs.existsSync(mf) || !fs.existsSync(lmf)) {
     return { route, missing: `no ${fs.existsSync(mf) ? "react-loadable" : "client-reference"} manifest at ${path.relative(build.nextDir, fs.existsSync(mf) ? lmf : mf).replace(/\\/g, "/")}` };
   }
-  const { entries, clientModules } = readManifest(mf);
+  let manifest, lm;
+  try {
+    manifest = readManifest(mf, route);
+    lm = JSON.parse(fs.readFileSync(lmf, "utf8"));
+  } catch (error) { return { route, missing: error.message }; }
+  const { entries, clientModules } = manifest;
   const texts = [...entries].sort().map((f) => ({ f, t: exists(build.nextDir, f) ? build.chunks.get(f) ?? null : null }));
   if (plant !== null) texts.push({ f: "(planted in memory)", t: plant });
-  const lm = JSON.parse(fs.readFileSync(lmf, "utf8"));
   const parts = new Map(); // export → [{ id, files }]
   for (const [key, row] of Object.entries(lm)) {
     const id = normId(row?.id ?? key);
@@ -379,18 +656,85 @@ export function readRoute(build, route, plant = null) {
   // A lazy manifest can name a missing preload even when the client loader names an extant chunk. That build still
   // sends a 404 on first navigation; "own chunk (0 KB)" must not pass as valid lazy delivery.
   const unreadableParts = [...new Set([...parts.values()].flatMap(rows => rows.flatMap(row => row.files)))].filter(f => !exists(build.nextDir, f));
-  return { route, build, entries, clientModules, texts, parts, unreadable: texts.filter((x) => x.t === null).map((x) => x.f), unreadableParts };
+  const reading = { route, build, entries, clientModules, texts, parts, unreadable: texts.filter((x) => x.t === null).map((x) => x.f), unreadableParts };
+  reading.primaryFailures = [...parts.keys()].map(sym => ({ sym, primary: primaryOf(reading, sym) })).filter(row => !row.primary.ok);
+  reading.factoryParseFailures = [...entries].filter(file => build.factories.get(file)?.error).map(file => ({ file, error: build.factories.get(file).error }));
+  return reading;
+}
+
+/** Identify exactly one registered factory exporting the loader's chosen name in declared files or actual entries.
+ * A loadable may list only a shared dependency because its component already has an entry factory (WinCelebration).
+ */
+function primaryOf(reading, sym) {
+  const rows = reading.parts.get(sym) ?? [];
+  if (!rows.length) return { ok: true, absent: true };
+  if (sym === "?") return { ok: false, why: "loader's chosen export is unknown" };
+  const definitions = new Map();
+  const loaderTraces = [];
+  for (const row of rows) {
+    const scope = [...new Set([...row.files, ...reading.entries])];
+    const candidates = [];
+    for (const file of scope) {
+      if (!exists(reading.build.nextDir, file)) return { ok: false, why: `declared file is missing: ${file}` };
+      const index = reading.build.factories.get(file);
+      if (!index || index.error) return { ok: false, why: index?.error ?? `unreadable factory index: ${file}` };
+      for (const factory of index.factories) if (factory.exports.has(sym)) candidates.push(factory);
+    }
+    if (candidates.length !== 1) return { ok: false, why: `${sym} has ${candidates.length} primary factory definitions for loader ${row.id}` };
+    const moduleAt = id => scope.flatMap(file => reading.build.factories.get(file).factories.filter(factory => factory.moduleIds.includes(id)));
+    const bindings = reading.build.loaderBindings.filter(binding => binding.loadableId === row.id && binding.symbol === sym
+      && scope.includes(binding.file));
+    if (!bindings.length) return { ok: false, why: `no measured client import binding for loader ${row.id} selecting ${sym}` };
+    for (const binding of bindings) {
+      const shims = moduleAt(binding.asyncModuleId);
+      if (!shims.length) return { ok: false, why: `async shim ${binding.asyncModuleId} has 0 definitions for loader ${row.id}` };
+      // The compiler emits route-specific preload variants of one async-shim ID. Every variant must agree on the
+      // literal namespace and have all dependencies present; this never deduplicates primary component definitions.
+      for (const shim of shims) {
+        if (shim.asyncNamespaceError) return { ok: false, why: shim.asyncNamespaceError };
+        if (shim.asyncNamespaceTarget !== row.id) return { ok: false,
+          why: `async shim ${binding.asyncModuleId} imports namespace ${shim.asyncNamespaceTarget ?? "unknown"}, not loader ${row.id}` };
+        const missing = shim.asyncFiles.filter(file => !exists(reading.build.nextDir, file));
+        if (missing.length) return { ok: false, why: `async shim ${binding.asyncModuleId} dependency missing: ${missing.join(", ")}` };
+      }
+    }
+    const visited = new Set(), trace = [];
+    let id = row.id, factory = null;
+    while (!factory) {
+      if (visited.has(id) || visited.size >= 32) return { ok: false, why: `cyclic or excessive namespace trace for loader ${row.id}` };
+      visited.add(id);
+      const matches = moduleAt(id);
+      if (matches.length !== 1) return { ok: false, why: `namespace module ${id} has ${matches.length} definitions for loader ${row.id}` };
+      const selected = matches[0];
+      trace.push({ moduleId: id, file: selected.file });
+      if (selected.namespaceError) return { ok: false, why: selected.namespaceError };
+      if (selected.namespaceTarget !== null) { id = selected.namespaceTarget; continue; }
+      if (selected.unmeasuredExports.has(sym)) return { ok: false, why: `unsupported property-forwarding export implementation for ${sym} in module ${id}` };
+      if (!selected.exports.has(sym)) return { ok: false, why: `selected namespace module ${id} does not export ${sym} for loader ${row.id}` };
+      factory = selected;
+    }
+    if (factory !== candidates[0]) return { ok: false, why: `selected namespace does not identify the unique ${sym} primary` };
+    loaderTraces.push({ loadableId: row.id, symbol: sym,
+      imports: bindings.map(binding => ({ file: binding.file, asyncModuleId: binding.asyncModuleId,
+        shims: moduleAt(binding.asyncModuleId).map(shim => ({ file: shim.file, namespaceId: shim.asyncNamespaceTarget, files: shim.asyncFiles })) })),
+      namespaceTrace: trace, primaryModuleIds: factory.moduleIds, primaryFile: factory.file });
+    definitions.set(JSON.stringify([factory.file, factory.start, factory.moduleIds]), factory);
+  }
+  if (definitions.size !== 1) return { ok: false, why: `${sym} resolves to ${definitions.size} different primary definitions across loaders` };
+  const factory = [...definitions.values()][0];
+  return { ok: true, factory, loaderTraces, ownFiles: rows.some(row => row.files.length > 0), inEntry: reading.entries.has(factory.file) };
 }
 
 /** first-load-parts.py:135-145. */
 function structOf(reading, sym) {
   const rows = reading.parts.get(sym) ?? [];
   if (!rows.length) return "no next/dynamic entry";
-  const all = [...new Set(rows.flatMap((r) => r.files))].sort();
-  const inFirst = all.filter((f) => reading.entries.has(f));
-  if (!all.length) return "no files of its own";
-  if (inFirst.length) return "FIRST LOAD (" + inFirst.map(base).join(", ") + ")";
-  return `own chunk (${all.map((f) => `${base(f)} ${kb(reading.build.chunks.get(f)?.length ?? 0)}`).join(", ")})`;
+  const primary = primaryOf(reading, sym);
+  if (!primary.ok) return `NOT MEASURED (${primary.why})`;
+  if (!primary.ownFiles) return "no files of its own";
+  const label = `${base(primary.factory.file)}; ${sym} factory ${primary.factory.moduleIds.join("/")}`;
+  if (primary.inEntry) return `FIRST LOAD (${label})`;
+  return `own chunk (${label}, ${kb(reading.build.chunks.get(primary.factory.file)?.length ?? 0)})`;
 }
 
 function moduleOf(reading, file) {
@@ -404,6 +748,8 @@ function moduleOf(reading, file) {
 export function judgeRow(row, reading, judged, expectOn) {
   if (!judged) return null;
   const struct = row.part ? structOf(reading, row.part) : null;
+  const primary = row.part ? primaryOf(reading, row.part) : null;
+  if (primary && !primary.ok) return { struct, module: null, mark: "NOT MEASURED", verdict: "NOT MEASURED", bad: true };
   const mod = row.module ? moduleOf(reading, row.file) : null;
   let mark = "-";
   if (row.marker) {
@@ -421,7 +767,8 @@ export function judgeRow(row, reading, judged, expectOn) {
     verdict = good ? "as expected" : "UNEXPECTED";
     bad = !good;
   } else if (expectOn) verdict = "(reported)";
-  return { struct, module: mod?.text ?? null, mark, verdict, bad };
+  return { struct, module: mod?.text ?? null, mark, verdict, bad,
+    ...(primary?.factory ? { primary: { file: primary.factory.file, moduleIds: primary.factory.moduleIds, loaderTraces: primary.loaderTraces } } : {}) };
 }
 
 /**
@@ -440,7 +787,7 @@ export function readAll(build, routes, { table = MARKERS, judgedRows, expectOn =
       continue;
     }
     const found = reading.texts.some((x) => x.t && x.t.includes(control.marker));
-    if (!found || reading.unreadable.length || reading.unreadableParts.length) controlOk = false;
+    if (!found || reading.unreadable.length || reading.unreadableParts.length || reading.primaryFailures.length || reading.factoryParseFailures.length) controlOk = false;
     const rows = table.map((row) => ({ row, j: judgeRow(row, reading, judged(row), expectOn) }));
     const known = new Set(table.map((r) => r.part).filter(Boolean));
     const others = [...reading.parts.keys()].filter((s) => !known.has(s)).sort().map((s) => ({ sym: s, struct: structOf(reading, s) }));
@@ -480,9 +827,11 @@ function printReading(result, build, table, { verdicts, tableRows }) {
   for (const r of result.routes) {
     if (r.missing) say(`  ✗ ${r.route}: NOT MEASURED (${r.missing})`);
     else {
-      say(`  ${r.found && !r.reading.unreadable.length && !r.reading.unreadableParts.length ? "✓" : "✗"} ${r.route}: classic deposit test id ${JSON.stringify(result.control.marker)} ${r.found ? "FOUND" : "MISSING"} in its ${r.reading.entries.size} entry files` +
+      say(`  ${r.found && !r.reading.unreadable.length && !r.reading.unreadableParts.length && !r.reading.primaryFailures.length && !r.reading.factoryParseFailures.length ? "✓" : "✗"} ${r.route}: classic deposit test id ${JSON.stringify(result.control.marker)} ${r.found ? "FOUND" : "MISSING"} in its ${r.reading.entries.size} entry files` +
         (r.reading.unreadable.length ? `; ${r.reading.unreadable.length} entry file(s) not on disk: ${r.reading.unreadable.map(base).join(", ")}` : "") +
-        (r.reading.unreadableParts.length ? `; ${r.reading.unreadableParts.length} lazy file(s) not on disk: ${r.reading.unreadableParts.map(base).join(", ")}` : ""));
+        (r.reading.unreadableParts.length ? `; ${r.reading.unreadableParts.length} lazy file(s) not on disk: ${r.reading.unreadableParts.map(base).join(", ")}` : "") +
+        (r.reading.primaryFailures.length ? `; primary NOT MEASURED: ${r.reading.primaryFailures.map(p => `${p.sym}: ${p.primary.why}`).join(" | ")}` : "") +
+        (r.reading.factoryParseFailures.length ? `; entry factory parse failed: ${r.reading.factoryParseFailures.map(p => p.error).join(" | ")}` : ""));
     }
   }
   say(`  ${result.plant.ok ? "✓" : "✗"} ${result.plant.text}`);
@@ -506,6 +855,8 @@ function printReading(result, build, table, { verdicts, tableRows }) {
       }
       const how = j.struct !== null ? `structural: ${j.struct}` : j.module !== null ? `module: ${j.module}` : "marker only";
       say(`    ${tag.padEnd(26)} ${how.padEnd(58)} marker: ${j.mark.padEnd(30)} ${j.verdict}`);
+      const declared = row.part ? r.reading.parts.get(row.part) : null;
+      if (declared?.length) say(`      declared loader files: ${declared.map(part => `${part.id} → ${part.files.join(", ") || "(none)"}`).join("; ")}`);
     }
     if (r.others.length) say(`  other next/dynamic parts here: ${r.others.map((o) => `${o.sym} — ${o.struct}`).join("; ")}`);
   }
@@ -544,6 +895,16 @@ const writeAt = (root, rel, text) => {
   fs.writeFileSync(p, text);
 };
 
+const fixtureModule = (id, body) => `(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push([undefined,${id},ctx=>{${body}}]);`;
+const fixtureShim = (id, namespaceId, files = []) => fixtureModule(id, `ctx.v(imported=>${files.length
+  ? `Promise.all(${JSON.stringify(files)}.map(file=>ctx.l(file))).then(()=>imported(${namespaceId}))` : `imported(${namespaceId})`});`);
+const fixtureLoader = (id, namespaceId, symbol, shimId) => fixtureModule(id,
+  `const lazy=(0,t.default)(()=>ctx.A(${shimId}).then(m=>m.${symbol}).catch(a),{loadableGenerated:{modules:[${namespaceId}]}});ctx.s(["FixtureLoader${symbol}",0,lazy]);`);
+const fixtureFactory = (id, name, marker = "") => {
+  const literal = marker.startsWith('"') && marker.endsWith('"') ? marker : JSON.stringify(marker);
+  return fixtureModule(id, `const marker=${literal};ctx.s([${JSON.stringify(name)},0,()=>null]);`);
+};
+
 /**
  * A fixture tree: src/ holding each S6 marker and the controls once, and a .next shaped like a real Turbopack build's
  * (server/app/<route>/page_client-reference-manifest.js, page/react-loadable-manifest.json, server and client chunks).
@@ -558,17 +919,20 @@ function writeFixture(root, { homeLazy = false } = {}) {
   ids.set("WinCelebrationHost", 51000);
   // Server chunk: the loaders as Turbopack's server output writes them; WinCelebrationHost's id minified to 51e3.
   const loader = (sym) => `(0,t.default)(()=>e.A(1).then(e=>e.${sym}).catch(a),{loadableGenerated:{modules:[${sym === "WinCelebrationHost" ? "51e3" : ids.get(sym)}]}})`;
-  writeAt(root, ".next/server/chunks/ssr/shell-lazy.js", `let x=${parts.map((r) => loader(r.part)).join(",y=")};`);
+  writeAt(root, ".next/server/chunks/ssr/shell-lazy.js", `const loadables=[${parts.map((r) => loader(r.part)).join(",")}];`);
   // Client chunk: an ssr:false part, whose loader only the client chunks keep.
-  writeAt(root, ".next/static/chunks/overlays.js", `a=(0,r.default)(()=>e.A(9).then(e=>e.ChatRoot),{loadableGenerated:{modules:[958511]},ssr:!1})`);
+  writeAt(root, ".next/static/chunks/overlays.js", `(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push([undefined,99,ctx=>{const lazy=(0,r.default)(()=>ctx.A(958512).then(e=>e.ChatRoot).catch(a),{loadableGenerated:{modules:[958511]},ssr:!1});ctx.s(["LazyOverlays",0,lazy]);}]);`);
   writeAt(root, ".next/static/chunks/layout.js",
-    `/*layout*/"data-testid":"deposit-header" "deposit-rail" "offline-notice" 50pick:celebrate "kp-journey-shell"`);
+    `(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push([undefined,51000,ctx=>{const markers=["deposit-header","deposit-rail","offline-notice","50pick:celebrate","kp-journey-shell"];ctx.s(["WinCelebrationHost",0,()=>null]);}]);\n`
+    + parts.map((row, index) => fixtureLoader(800001 + index, ids.get(row.part), row.part, 900001 + index)
+      + fixtureShim(900001 + index, ids.get(row.part))).join("\n") + fixtureShim(958512, 958511)
+    + fs.readFileSync(path.join(root, ".next/static/chunks/overlays.js"), "utf8"));
   writeAt(root, ".next/static/chunks/help-layout.js", `/*the help route's layout, without the classic bar*/`);
   writeAt(root, ".next/static/chunks/page.js", `/*page*/`);
-  for (const r of parts) if (r.part !== "WinCelebrationHost") writeAt(root, `.next/static/chunks/part-${r.part}.js`, `/*${r.part}*/${r.marker ?? ""}`);
-  writeAt(root, ".next/static/chunks/part-ChatRoot.js", `/*ChatRoot*/`);
+  for (const r of parts) if (r.part !== "WinCelebrationHost") writeAt(root, `.next/static/chunks/part-${r.part}.js`, fixtureFactory(ids.get(r.part), r.part, r.marker ?? ""));
+  writeAt(root, ".next/static/chunks/part-ChatRoot.js", fixtureFactory(958511, "ChatRoot"));
   if (homeLazy) {
-    writeAt(root, ".next/static/chunks/home-lazy.js", `/*home-lazy*/kp-home-lazy-fixture`);
+    writeAt(root, ".next/static/chunks/home-lazy.js", fixtureFactory(2, "LazyHowToCard", "kp-home-lazy-fixture"));
     writeAt(root, "src/components/journey/home/home-lazy.tsx", `"use client";\nconst m = "kp-home-lazy-fixture";\n`);
     writeAt(root, "src/components/journey/home/journey-home.tsx", `// fixture: mounts home-lazy\n`);
   }
@@ -692,6 +1056,20 @@ export function selfTest({ table = MARKERS } = {}) {
     const hl = r10.routes.map((r) => r.rows.find((x) => x.row.id === "HomeLazy")?.j);
     check("C10 on / the home lazy module is a client reference in the first load, as expected", hl[0]?.verdict === "as expected" && hl[0].module.includes("in the first load"), hl[0] ? `${hl[0].module}; ${hl[0].mark}` : "PENDING");
     check("C10 on /markets it is not a client reference, as expected", hl[1]?.verdict === "as expected" && hl[1].module.startsWith("not"), hl[1]?.module);
+    // The same client-reference reader must keep query-bearing script URLs, without admitting numeric chunk ids.
+    const queryManifest = path.join(c, ".next/server/app/page_client-reference-manifest.js");
+    const queryOriginal = fs.readFileSync(queryManifest, "utf8");
+    const querySource = queryOriginal.replaceAll('/_next/static/chunks/home-lazy.js', '/_next/static/chunks/home-lazy.js?dpl=fixture');
+    fs.writeFileSync(queryManifest, querySource);
+    const queryRead = readAll(b10, ["/"], { table: withMarker, judgedRows: t10.rows });
+    check("C10 deployment-query module scripts keep the exact home client-reference verdict", querySource !== queryOriginal
+      && !queryRead.bad && queryRead.routes[0].reading.clientModules.get("src/components/journey/home/home-lazy.tsx").has("static/chunks/home-lazy.js"));
+    fs.writeFileSync(queryManifest, querySource.replaceAll('/_next/static/chunks/home-lazy.js?dpl=fixture', '/_next/static/chunks/part-JourneyTopBar.js?dpl=fixture'));
+    const queryWrong = readAll(b10, ["/"], { table: withMarker, judgedRows: t10.rows });
+    check("C10 a query-bearing lazy file keeps the module out of first load and fails the same home verdict", queryWrong.bad && queryWrong.routes[0].rows.find(x => x.row.id === "HomeLazy")?.j?.verdict === "UNEXPECTED"
+      && queryWrong.routes[0].reading.clientModules.get("src/components/journey/home/home-lazy.tsx").has("static/chunks/part-JourneyTopBar.js")
+      && !queryWrong.routes[0].reading.clientModules.get("src/components/journey/home/home-lazy.tsx").has("static/chunks/home-lazy.js"));
+    fs.writeFileSync(queryManifest, queryOriginal);
     const p10 = readRoute(b10, "/markets", "kp-home-lazy-fixture");
     const hp = judgeRow(withMarker.find((r) => r.id === "HomeLazy"), p10, true, true);
     check("C10 the home lazy marker planted into /markets' entry set is UNEXPECTED", hp.bad, `${hp.mark}; ${hp.verdict}`);
@@ -718,6 +1096,183 @@ export function selfTest({ table = MARKERS } = {}) {
       check(`C12 ${row.id}: its source marker removed is refused`, !missing.ok && missing.lines.some(line => line.startsWith("✗") && line.includes(row.id)));
       writeAt(c, row.file, `export const marker = ${row.marker};\n`);
     }
+
+    // C13: use real Turbopack registration syntax, not marker-shaped fake chunks. Common payload is allowed in
+    // entries; the chosen component's uniquely identified executable factory must still remain outside them.
+    const d = path.join(tmp, "d");
+    writeFixture(d);
+    const dNext = path.join(d, ".next");
+    const dRows = checkMarkerTable(d, [...CONTROLS, ...table]).rows;
+    const dRead = (build = loadBuild(dNext), extra = {}) => readAll(build, ["/"], { table, judgedRows: dRows, ...extra });
+    const topFile = "static/chunks/part-JourneyTopBar.js";
+    const topPath = path.join(dNext, topFile);
+    const topOriginal = fs.readFileSync(topPath, "utf8");
+    const layoutPath = path.join(dNext, "static/chunks/layout.js");
+    const layoutOriginal = fs.readFileSync(layoutPath, "utf8");
+    const dLoadable = path.join(dNext, "server/app/page/react-loadable-manifest.json");
+    const loadableOriginal = fs.readFileSync(dLoadable, "utf8");
+    const sharedLoadable = JSON.parse(loadableOriginal);
+    const topId = Object.keys(sharedLoadable).find(id => sharedLoadable[id].files.includes(topFile));
+    sharedLoadable[topId].files.unshift("static/chunks/layout.js");
+    fs.writeFileSync(dLoadable, JSON.stringify(sharedLoadable));
+    const shared = dRead();
+    check("C13 a named entry dependency plus lazy primary factory passes the same whole-build verdict", !shared.bad
+      && shared.routes[0].rows.find(x => x.row.id === "JourneyTopBar")?.j?.struct.startsWith("own chunk"));
+    fs.writeFileSync(topPath, 'const marker="journey-top-bar";');
+    fs.writeFileSync(layoutPath, layoutOriginal + "\n" + fixtureFactory(Number(topId), "JourneyTopBar"));
+    const joined = dRead();
+    const joinedTop = joined.routes[0].rows.find(x => x.row.id === "JourneyTopBar")?.j;
+    check("C13 moving the actual primary definition into that entry fails even with its marker kept lazy", joined.bad
+      && joinedTop?.struct.startsWith("FIRST LOAD") && joinedTop.mark === "not in the first load");
+    fs.writeFileSync(layoutPath, layoutOriginal);
+    fs.writeFileSync(topPath, topOriginal);
+    const dependencyPath = path.join(dNext, "static/chunks/only-dependency.js");
+    fs.writeFileSync(dependencyPath, fixtureFactory(888, "SharedDependency"));
+    sharedLoadable[topId].files.push("static/chunks/only-dependency.js");
+    fs.writeFileSync(dLoadable, JSON.stringify(sharedLoadable));
+    check("C13 an existing nonprimary declared dependency passes", !dRead().bad);
+    fs.unlinkSync(dependencyPath);
+    const lostDependency = dRead();
+    check("C13 a missing nonprimary declared dependency fails without a marker or primary leak", lostDependency.bad
+      && !lostDependency.controlOk && lostDependency.routes[0].reading.unreadableParts.includes("static/chunks/only-dependency.js"));
+    fs.writeFileSync(dLoadable, loadableOriginal);
+    const alterPrimary = (label, bytes, reason) => {
+      fs.writeFileSync(topPath, bytes);
+      const result = dRead();
+      check(label, result.bad && !result.controlOk
+        && result.routes[0].reading.primaryFailures.some(x => x.sym === "JourneyTopBar" && x.primary.why.includes(reason)));
+      fs.writeFileSync(topPath, topOriginal);
+    };
+    alterPrimary("C13 deleting the primary export fails despite its original marker", topOriginal.replace('"JourneyTopBar",0,()=>null', ""), "0 primary");
+    alterPrimary("C13 renaming the primary export fails despite its original marker", topOriginal.replace('"JourneyTopBar",0', '"OtherComponent",0'), "0 primary");
+    alterPrimary("C13 two physical factories exporting the selected name are refused", topOriginal + fixtureFactory(999, "JourneyTopBar"), "2 primary");
+    alterPrimary("C13 unreadable primary JavaScript is refused", topOriginal + "(", "bad JavaScript");
+    alterPrimary("C13 an uncalled nested registration is not a primary definition", `function notCalled(){${topOriginal}}`, "0 primary");
+    alterPrimary("C13 a matching registry string is not an actual Turbopack registration", topOriginal.replace("globalThis.TURBOPACK||(globalThis.TURBOPACK=[])", '".TURBOPACK"'), "0 primary");
+    alterPrimary("C13 a callback's shadowed export table is not a primary definition",
+      topOriginal.replace('ctx.s(["JourneyTopBar",0,()=>null]);', 'const callback=ctx=>{ctx.s(["JourneyTopBar",0,()=>null]);};'), "0 primary");
+    alterPrimary("C13 an unreachable conditional export table is not a primary definition",
+      topOriginal.replace('ctx.s(["JourneyTopBar",0,()=>null]);', 'if(false){ctx.s(["JourneyTopBar",0,()=>null]);}'), "0 primary");
+    alterPrimary("C13 a short-circuited export table is not a primary definition",
+      topOriginal.replace('ctx.s(["JourneyTopBar",0,()=>null]);', 'false&&ctx.s(["JourneyTopBar",0,()=>null]);'), "0 primary");
+    alterPrimary("C13 a return before export registration cannot supply a primary definition",
+      topOriginal.replace('ctx.s(["JourneyTopBar",0,()=>null]);', 'return;ctx.s(["JourneyTopBar",0,()=>null]);'), "0 primary");
+    alterPrimary("C13 a conditional return before export registration refuses measurement",
+      topOriginal.replace('ctx.s(["JourneyTopBar",0,()=>null]);', 'if(true)return;ctx.s(["JourneyTopBar",0,()=>null]);'), "0 primary");
+    alterPrimary("C13 a reassigned factory context cannot establish module exports",
+      topOriginal.replace('ctx.s(["JourneyTopBar",0,()=>null]);', 'ctx=other;ctx.s(["JourneyTopBar",0,()=>null]);'), "factory context is reassigned");
+    alterPrimary("C13 an overwritten context export method cannot establish module exports",
+      topOriginal.replace('ctx.s(["JourneyTopBar",0,()=>null]);', 'ctx.s=()=>{};ctx.s(["JourneyTopBar",0,()=>null]);'), "factory context is reassigned");
+    alterPrimary("C13 a dynamic spread export tuple refuses measurement",
+      topOriginal.replace('["JourneyTopBar",0,()=>null]', '["JourneyTopBar",...unknown]'), "dynamic or sparse export table");
+    alterPrimary("C13 an unsupported literal export flag is refused", topOriginal.replace('"JourneyTopBar",0', '"JourneyTopBar",1'), "unsupported export flag");
+    alterPrimary("C13 duplicate export names in one table are refused", topOriginal.replace('"JourneyTopBar",0,()=>null', '"JourneyTopBar",0,()=>null,"JourneyTopBar",0,()=>null'), "duplicate export");
+    alterPrimary("C13 two virtual modules exporting the selected name are ambiguous",
+      topOriginal.replace('ctx.s(["JourneyTopBar",0,()=>null]);', `ctx.s(["JourneyTopBar",0,()=>null],${topId});ctx.s(["JourneyTopBar",0,()=>null],999);`), "2 primary");
+    alterPrimary("C13 a nonliteral virtual module identity refuses measurement",
+      topOriginal.replace('ctx.s(["JourneyTopBar",0,()=>null]);', 'ctx.s(["JourneyTopBar",0,()=>null],chosenId);'), "unsupported export module identity");
+    alterPrimary("C13 a computed unknown export-registration method is not guessed",
+      topOriginal.replace("ctx.s(", "ctx[s]("), "0 primary");
+    // Both emitted export-table generations are understood, and grouped module aliases still count as one factory.
+    for (const [label, bytes] of [
+      ["getter pairs", topOriginal.replace('"JourneyTopBar",0,()=>null', '"JourneyTopBar",()=>null')],
+      ["legacy literal object", topOriginal.replace('["JourneyTopBar",0,()=>null]', '{JourneyTopBar:()=>null}')],
+      ["grouped module ids", topOriginal.replace(`undefined,${topId},`, `undefined,[${topId},999],`)],
+      ["flat scope-hoisted module ids", topOriginal.replace(`undefined,${topId},`, `undefined,${topId},999,`)
+        .replace('ctx.s(["JourneyTopBar",0,()=>null]);', `ctx.s(["JourneyTopBar",0,()=>null],${topId});ctx.s(["Dependency",0,()=>null],999);`)],
+      ["nested reused module table", topOriginal.replace(`undefined,${topId},ctx=>`, `undefined,[${topId},ctx=>`)
+        .replace(";}]);", ";}],999,ctx=>{ctx.s([\"Other\",0,()=>null]);}]);")],
+      ["same common export names in distinct virtual modules", topOriginal.replace('ctx.s(["JourneyTopBar",0,()=>null]);',
+        `ctx.s(["JourneyTopBar",0,()=>null],${topId});ctx.s(["Common",0,()=>null],998);ctx.s(["Common",0,()=>null],999);`)],
+    ]) {
+      fs.writeFileSync(topPath, bytes);
+      check(`C13 ${label} retain one measured lazy primary and the same good verdict`, !dRead().bad);
+    }
+    fs.writeFileSync(topPath, topOriginal);
+    const loaderPath = path.join(dNext, "server/chunks/ssr/shell-lazy.js");
+    const loaderOriginal = fs.readFileSync(loaderPath, "utf8");
+    const secondLoader = ';const second=(0,t.default)(()=>e.A(2).then(e=>e.JourneyTopBar).catch(a),{loadableGenerated:{modules:[787878]}});';
+    fs.writeFileSync(loaderPath, loaderOriginal + secondLoader);
+    const sameExportRows = JSON.parse(loadableOriginal);
+    sameExportRows["787878"] = { id: 787878, files: [topFile] };
+    fs.writeFileSync(topPath, topOriginal + '(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push([undefined,787878,ctx=>{ctx.n(ctx.i(' + topId + '));}]);');
+    fs.writeFileSync(layoutPath, layoutOriginal + fixtureLoader(800787, 787878, "JourneyTopBar", 900787) + fixtureShim(900787, 787878));
+    fs.writeFileSync(dLoadable, JSON.stringify(sameExportRows));
+    check("C13 two loaders that independently resolve to the same unique primary pass", !dRead().bad);
+    sameExportRows["787878"].files = ["static/chunks/page.js"];
+    fs.writeFileSync(dLoadable, JSON.stringify(sameExportRows));
+    const borrowed = dRead();
+    check("C13 an unresolved loader cannot borrow the primary from another loader's unrelated files", borrowed.bad
+      && !borrowed.controlOk && borrowed.routes[0].reading.primaryFailures.some(x => x.primary.why.includes("loader 787878")));
+    fs.writeFileSync(dLoadable, loadableOriginal);
+    fs.writeFileSync(topPath, topOriginal);
+    fs.writeFileSync(layoutPath, layoutOriginal);
+    fs.writeFileSync(loaderPath, loaderOriginal);
+    fs.writeFileSync(loaderPath, loaderOriginal.replace(".then(e=>e.JourneyTopBar)", '.then(e=>e["JourneyTopBar"])'));
+    fs.writeFileSync(layoutPath, layoutOriginal.replace(".then(m=>m.JourneyTopBar)", '.then(m=>m["JourneyTopBar"])'));
+    const unknown = dRead(undefined, { expectOn: false });
+    check("C13 an unreadable chosen export refuses measurement even with --no-expect", unknown.bad && !unknown.controlOk
+      && unknown.routes[0].reading.primaryFailures.some(x => x.sym === "?"));
+    fs.writeFileSync(loaderPath, loaderOriginal);
+    fs.writeFileSync(layoutPath, layoutOriginal);
+    const dManifestPath = path.join(dNext, "server/app/page_client-reference-manifest.js");
+    const manifestOriginal = fs.readFileSync(dManifestPath, "utf8");
+    fs.writeFileSync(dManifestPath, manifestOriginal.replace('"entryJSFiles":', '"notEntryJSFiles":'));
+    const noExplicitEntries = dRead();
+    check("C13 missing explicit route entries never fall back to a global client-reference union", noExplicitEntries.bad
+      && noExplicitEntries.routes[0].missing?.includes("no explicit entryJSFiles"));
+    fs.writeFileSync(dManifestPath, manifestOriginal.replace('__RSC_MANIFEST["/page"]', '__RSC_MANIFEST["/other/page"]'));
+    const wrongNamespace = dRead();
+    check("C13 another route's manifest namespace cannot become this route's entries", wrongNamespace.bad
+      && wrongNamespace.routes[0].missing?.includes("no /page namespace"));
+    fs.writeFileSync(dManifestPath, manifestOriginal);
+    check("C13 restoring every source fault recovers the original whole-build verdict", !dRead().bad);
+
+    // C14: a coincidental export name cannot replace the selected module identity or the actual import path.
+    alterPrimary("C14 a counterfeit same-export factory with the wrong module id is refused",
+      topOriginal.replace(`undefined,${topId},`, "undefined,444444,"), `namespace module ${topId} has 0 definitions`);
+    alterPrimary("C14 a same-name property-forwarding facade is not mistaken for the component's code",
+      topOriginal.replace('["JourneyTopBar",0,()=>null]', '["JourneyTopBar",()=>someNamespace.JourneyTopBar]'), "unsupported property-forwarding export implementation");
+    const namespace = (id, target) => fixtureModule(id, `ctx.n(ctx.i(${target}));`);
+    fs.writeFileSync(topPath, namespace(topId, 444444) + fixtureFactory(444444, "JourneyTopBar", '"journey-top-bar"'));
+    check("C14 literal namespace reexports bind the loader to its real primary id", !dRead().bad);
+    fs.writeFileSync(topPath, namespace(topId, 444444) + namespace(444444, 555555) + fixtureFactory(555555, "JourneyTopBar", '"journey-top-bar"'));
+    check("C14 a measured chain of literal namespace reexports retains the same good verdict", !dRead().bad);
+    alterPrimary("C14 a missing selected namespace target is refused despite a same-name definition",
+      namespace(topId, 777777) + fixtureFactory(444444, "JourneyTopBar", '"journey-top-bar"'), "namespace module 777777 has 0 definitions");
+    alterPrimary("C14 a dynamic namespace reexport is refused despite a same-name definition",
+      fixtureModule(topId, "ctx.n(unknown);") + fixtureFactory(444444, "JourneyTopBar", '"journey-top-bar"'), "unsupported namespace reexport");
+    alterPrimary("C14 a cyclic namespace path is refused despite a same-name definition",
+      namespace(topId, 444444) + namespace(444444, topId) + fixtureFactory(555555, "JourneyTopBar", '"journey-top-bar"'), "cyclic or excessive namespace");
+    const topBinding = loadBuild(dNext).loaderBindings.find(binding => binding.loadableId === topId && binding.symbol === "JourneyTopBar");
+    check("C14 the fixture exposes its real client loader and async shim identity", Boolean(topBinding));
+    const changeLayout = (label, bytes, reason) => {
+      fs.writeFileSync(layoutPath, bytes);
+      const result = dRead();
+      check(label, result.bad && !result.controlOk
+        && result.routes[0].reading.primaryFailures.some(x => x.sym === "JourneyTopBar" && x.primary.why.includes(reason)));
+      fs.writeFileSync(layoutPath, layoutOriginal);
+    };
+    changeLayout("C14 a changed shim namespace cannot retain the LMF row's old identity",
+      layoutOriginal.replace(`imported(${topId})`, "imported(777777)"), `not loader ${topId}`);
+    changeLayout("C14 an unknown client import path is refused despite server loader labels",
+      layoutOriginal.replace(".then(m=>m.JourneyTopBar)", ".then(m=>m.Counterfeit)"), "no measured client import binding");
+    fs.writeFileSync(layoutPath, layoutOriginal + fixtureShim(topBinding.asyncModuleId, topId, ["static/chunks/page.js"]));
+    check("C14 route preload variants of one shim id agree on the same literal namespace", !dRead().bad);
+    changeLayout("C14 conflicting same-id shim variants refuse the same whole-build verdict",
+      layoutOriginal + fixtureShim(topBinding.asyncModuleId, 777777), `not loader ${topId}`);
+    changeLayout("C14 an unmeasured async initializer cannot be treated as a namespace import",
+      layoutOriginal.replace(`imported=>imported(${topId})`, `imported=>(imported=other,Promise.resolve()).then(()=>imported(${topId}))`), "unsupported async namespace shim");
+    changeLayout("C14 a missing shim preload fails even when the LMF primary exists",
+      layoutOriginal + fixtureShim(topBinding.asyncModuleId, topId, ["static/chunks/missing-shim-dependency.js"]), "dependency missing");
+    fs.writeFileSync(topPath, `(()=>{"use strict";${topOriginal}})();`);
+    check("C14 a synchronous directly invoked shell wrapper is measured", !dRead().bad);
+    alterPrimary("C14 a shell wrapper's early return cannot create a registry definition", `(()=>{return;${topOriginal}})();`, "0 primary");
+    alterPrimary("C14 a shell wrapper's conditional return cannot create a registry definition", `(()=>{if(true)return;${topOriginal}})();`, "0 primary");
+    fs.writeFileSync(topPath, topOriginal.replace('ctx.s(["JourneyTopBar",0,()=>null]);', 'if(true){let ctx=other;ctx.s(["Decoy",0,()=>null]);}ctx.s(["JourneyTopBar",0,()=>null]);'));
+    check("C14 block-local context shadowing leaves the real factory context intact", !dRead().bad);
+    fs.writeFileSync(topPath, topOriginal);
+    check("C14 restoring identity faults recovers the original whole-build verdict", !dRead().bad);
 
     // C7: tied to HEAD.
     const nd = path.join(a, ".next");
