@@ -72,6 +72,7 @@ const config: NextConfig = {
   serverExternalPackages: ["pdfkit", "exceljs", "@aws-sdk/client-s3"],
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns"],
+    turbopackChunking: { generateComponentChunks: true, minComponentChunkSize: 0 },
   },
   images: {
     formats: ["image/webp", "image/avif"],
