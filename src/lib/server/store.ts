@@ -2916,7 +2916,8 @@ const memoryDb = {
       Array.from(store.txns.values())
         .filter((t) => t.userId === userId && t.type === "DEPOSIT" && t.status === "CONFIRMED" && t.currency === "TZS" && t.houseBotId == null && isMobileMoneyMethodId(t.provider))
         .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id.localeCompare(a.id))[0] ?? null,
-    findById: (id: string) => store.txns.get(id) ?? null,
+    // Memory has no SQL transaction; accept the same explicit transaction argument as the Prisma twin.
+    findById: (id: string, _tx?: unknown) => store.txns.get(id) ?? null,
     findByProviderRef: (providerRef: string) => Array.from(store.txns.values()).find((t) => t.providerRef === providerRef) ?? null,
     update: (id: string, patch: Partial<StoredTxn>) => {
       const t = store.txns.get(id);

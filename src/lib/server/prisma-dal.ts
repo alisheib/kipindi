@@ -2498,8 +2498,8 @@ export const prismaDb = {
       });
       return row ? toStoredTxn(row) : null;
     },
-    findById: async (id: string): Promise<StoredTxn | null> => {
-      const row = await pc().transaction.findUnique({ where: { id } });
+    findById: async (id: string, tx?: Prisma.TransactionClient | null): Promise<StoredTxn | null> => {
+      const row = await (tx ?? pc()).transaction.findUnique({ where: { id } });
       return row ? toStoredTxn(row) : null;
     },
     findByProviderRef: async (providerRef: string): Promise<StoredTxn | null> => {

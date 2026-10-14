@@ -6,7 +6,7 @@ import * as ReactRuntime from "react/jsx-runtime";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as D from "../src/lib/journey/deposit-state.ts";
 import { DepositSchema, AdminDepositSchema } from "../src/lib/server/validators.ts";
-import { paymentMethodName } from "../src/lib/payment-providers.ts";
+import { paymentMethodName, isMobileMoneyMethodId, MOBILE_MONEY_METHODS } from "../src/lib/payment-providers.ts";
 import { RG_RETURN_MARK } from "../src/lib/wallet/receipts.ts";
 import { depositResultStatus, isRgHeldDeposit, presentedStatus } from "../src/lib/wallet/receipts.ts";
 import * as Review from "../src/lib/wallet/deposit-review.ts";
@@ -15,6 +15,7 @@ import * as QueryWindows from "../src/lib/query/windows.ts";
 import { formatDateTime, formatTzs } from "../src/lib/utils.ts";
 import { resolveAnchor, injectDefect } from "./red-anchor.mjs";
 import { MUTATIONS } from "./anchors/deposit-status-read.anchors.mjs";
+import { MUTATIONS as RECHECK_MUTATIONS, PG_MUTATIONS as RECHECK_PG_MUTATIONS } from "./anchors/deposit-recheck.anchors.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const files = ["src/lib/server/deposit-status.ts", "src/lib/server/wallet-service.ts", "src/lib/server/rate-limit.ts",
@@ -22,6 +23,10 @@ const files = ["src/lib/server/deposit-status.ts", "src/lib/server/wallet-servic
   "src/lib/wallet/deposit-review.ts", "src/lib/wallet/receipts.ts", "src/lib/server/notification-service.ts", "src/app/api/webhooks/payments/route.ts",
   "src/app/wallet/receipt/[id]/page.tsx", "src/lib/server/email.ts", "src/lib/i18n-dict.ts", "src/lib/server/prisma-dal.ts"];
 const sources = Object.fromEntries(files.map(file => [file, readFileSync(join(ROOT, file), "utf8")]));
+const RECHECK_FILE = "src/lib/server/deposit-recheck.ts";
+const RECHECK_ROUTE = "src/app/api/wallet/deposits/[id]/recheck/route.ts";
+for (const file of [RECHECK_FILE, RECHECK_ROUTE]) sources[file] = readFileSync(join(ROOT, file), "utf8");
+const RECHECK = process.argv.includes("--recheck-only");
 const PG = process.argv.includes("--pg");
 if (process.env.NODE_ENV === "production" || (!!process.env.DATABASE_URL !== PG)) throw new Error("Use memory with DATABASE_URL unset, or explicit own scratch --pg");
 if (PG) {
@@ -29,7 +34,7 @@ if (PG) {
   if (!["127.0.0.1", "localhost", "::1", "[::1]"].includes(url.hostname) || url.port !== String(process.env.KP_SCRATCH_PORT ?? 5433)) throw new Error("Unrelated database refused");
 }
 const { db } = await import("../src/lib/server/store.ts");
-const { withLock, runOutsideLock } = await import("../src/lib/server/locks.ts");
+const { withLock, runOutsideLock, inLock, currentLockTx, afterCommit } = await import("../src/lib/server/locks.ts");
 const L = await import("../src/lib/server/ledger.ts");
 const { prisma } = await import("../src/lib/server/prisma.ts");
 if (PG) {
@@ -97,7 +102,7 @@ function system(src = sources, data = db) {
     if (id === "./affiliate-service") return { onRecruitDeposit: async () => {} };
     throw new Error(`Unexpected dynamic side-effect module ${id}`);
   };
-  const deps = { db: data, withLock, runOutsideLock, withMoneyTx: L.withMoneyTx,
+  const deps = { db: data, withLock, runOutsideLock, currentLockTx, afterCommit, withMoneyTx: L.withMoneyTx,
     postLedgerEntries: async (id: string, lines: any, tx: any) => { seen.groups.push(id); return L.postLedgerEntries(id, lines, tx); },
     depositEntries: L.depositEntries, rgSuspenseEntries: L.rgSuspenseEntries,
     audit, isLockedOut: async () => ({ locked: seen.locked, reason: "cooling-off" }), RG_RETURN_MARK, paymentMethodName, formatTzs, formatDateTime,
@@ -126,7 +131,12 @@ function system(src = sources, data = db) {
     "./wallet-service": { settlePaymentWebhook: async (input: any) => { seen.settles++; return money.settlePaymentWebhook(input); } },
     "@/lib/journey/deposit-state": D,
   });
-  return { read: core.readDepositStatus as (id: string, lookup: DLookup) => Promise<any>, money, seen, reviewModule, receiptsModule,
+  const recheck = compile(src[RECHECK_FILE], { "./store": { db: data }, "./audit": { audit }, "./rate-limit": { rateCheckAsync: rate },
+    "./payments": { verifyDepositStatus: async (ref: string) => { seen.verifies.push(ref); return verify(ref); } },
+    "./wallet-service": { settlePaymentWebhook: async (input: any) => { seen.settles++; return money.settlePaymentWebhook(input); } },
+    "./locks": { withLock }, "@/lib/journey/deposit-state": D, "@/lib/payment-providers": { isMobileMoneyMethodId },
+  });
+  return { read: core.readDepositStatus as (id: string, lookup: DLookup) => Promise<any>, recheck: recheck.recheckDepositStatus as (id: string, txnId: string) => Promise<any>, money, seen, reviewModule, receiptsModule,
     verify: (next: typeof verify) => { verify = next; } };
 }
 type DLookup = { kind: "txn-id" | "funding-key" | "card-order"; value: string };
@@ -522,19 +532,269 @@ async function run(src = sources): Promise<Check[]> {
   ok("rate.real-probe-budget", !!rate.RATE_RULES["deposit.probe"] && probe.allowed && !repeat.allowed && repeat.retryAfterSec === 10 && rate.rateCheck("own-txn", "deposit.probe").allowed);
   return checks;
 }
+async function runRecheck(src = sources): Promise<Check[]> {
+  const checks: Check[] = [], ok = (name: string, pass: unknown) => checks.push({ name, pass: !!pass });
+  const me = await player(), other = await player();
+  const unknown = (r: any) => r.view.state === "UNKNOWN" && !r.view.failureAuthority && r.view.balance === undefined && r.view.txnId === undefined;
+  for (const provider of [...MOBILE_MONEY_METHODS.map(p => p.id), "CARD"]) {
+    const row = await txn(me, { status: "FAILED", provider });
+    let verifyOutside = false, walletInside = false, walletTx = false;
+    const data = { ...db, wallet: { ...db.wallet, findByUserId: async (id: string, tx: any) => {
+      walletInside = inLock(); walletTx = !PG || tx === currentLockTx() && tx !== null;
+      return db.wallet.findByUserId(id, tx);
+    } } } as typeof db;
+    const s = system(src, data);
+    s.verify(async () => { verifyOutside = !inLock(); return { status: "FAILED", amount: row.amount }; });
+    const r = await s.recheck(me, row.id);
+    ok(`safe.${provider}`, r.view.state === "FAILED" && r.view.failureAuthority === "signed-recheck" && r.view.txnId === row.id
+      && s.seen.verifies.length === 1 && s.seen.settles === 0 && verifyOutside && walletInside && walletTx);
+    ok(`safe.${provider}.no-money`, (await db.txn.findById(row.id))?.status === "FAILED" && (await db.wallet.findByUserId(me))?.balance === 0 && s.seen.groups.length === 0);
+  }
+  for (const [name, patch] of [
+    ["owner", { userId: other }], ["type", { type: "WITHDRAWAL" }], ["currency", { currency: "USD" }], ["house", { houseBotId: "marked" }],
+    ["canonical", { pendingBet: { v: 99 } }], ["missing-ref", { providerRef: null }], ["legacy-rail", { provider: "TIGO_PESA" }],
+    ["bank", { provider: "BANK_TRANSFER" }], ["processing", { status: "PROCESSING" }], ["cancelled", { status: "CANCELLED" }],
+  ] as const) {
+    const row = await txn(me, { status: "FAILED", ...patch }), s = system(src);
+    s.verify(async () => ({ status: "FAILED" }));
+    const r = await s.recheck(me, row.id);
+    ok(`scope.${name}`, unknown(r) && s.seen.verifies.length === 0 && s.seen.settles === 0);
+    if (["owner", "type", "currency", "house"].includes(name)) ok(`scope.${name}.audit-private`, s.seen.audits.every(a => a.targetId === null && !JSON.stringify(a.payload).includes(row.id)));
+  }
+  const absent = system(src);
+  ok("scope.missing", unknown(await absent.recheck(me, "txn_no_such_deposit")) && absent.seen.verifies.length === 0);
+  const malformed = system(src);
+  ok("scope.invalid-audit", unknown(await malformed.recheck(me, "../private_identifier")) && malformed.seen.verifies.length === 0
+    && malformed.seen.audits.length === 1 && malformed.seen.audits[0].targetId === null && !JSON.stringify(malformed.seen.audits[0].payload).includes("private_identifier"));
+  const row = await txn(me, { status: "FAILED" });
+  let callerLookups = 0;
+  const callerData = { ...db, txn: { ...db.txn, findById: async (id: string) => { callerLookups++; return db.txn.findById(id); } } } as typeof db;
+  const limited = system(src, callerData); limited.seen.statusAllowed = false;
+  ok("rate.caller", unknown(await limited.recheck(me, row.id)) && callerLookups === 0 && limited.seen.verifies.length === 0 && limited.seen.audits.length === 0);
+  ok("rate.caller-key", limited.seen.rateCalls.length === 1 && limited.seen.rateCalls[0].key === me && limited.seen.rateCalls[0].action === "deposit.status");
+  const probe = system(src); probe.seen.probeAllowed = false;
+  ok("rate.probe", unknown(await probe.recheck(me, row.id)) && probe.seen.verifies.length === 0 && probe.seen.rateCalls[1]?.key === row.id);
+  for (const status of ["PENDING", "UNSUPPORTED", "UNRECOGNIZED"]) {
+    const s = system(src); s.verify(async () => ({ status }));
+    ok(`authority.${status}`, unknown(await s.recheck(me, row.id)) && s.seen.settles === 0);
+  }
+  for (const amount of [5001, 0, -5000, NaN, Infinity, 5000.5]) {
+    const s = system(src); s.verify(async () => ({ status: "FAILED", amount }));
+    ok(`authority.amount.${String(amount)}`, unknown(await s.recheck(me, row.id)) && s.seen.settles === 0);
+  }
+  const transport = system(src); transport.verify(async () => { throw new Error("private provider credentials"); });
+  const lost = await transport.recheck(me, row.id);
+  ok("authority.transport", unknown(lost) && lost.unavailable && !JSON.stringify(lost).includes("private"));
+  for (const [name, patch] of [
+    ["amount", { amount: 6000 }], ["phone", { msisdn: "+255712345679" }], ["owner", { userId: other }], ["type", { type: "WITHDRAWAL" }],
+    ["currency", { currency: "USD" }], ["provider", { provider: "CARD" }], ["providerRef", { providerRef: "different_order" }], ["key", { idempotencyKey: "different_key" }],
+  ] as const) {
+    const changed = await txn(me, { status: "FAILED" }), s = system(src);
+    s.verify(async () => {
+      await db.txn.update(changed.id, (name === "key" ? { idempotencyKey: `${patch.idempotencyKey}_${changed.id}` } : patch) as never);
+      return { status: "FAILED" };
+    });
+    ok(`fresh.${name}`, unknown(await s.recheck(me, changed.id)));
+  }
+  for (const [name, patch] of [
+    ["amount", { amount: 6000 }], ["phone", { msisdn: "+255712345679" }], ["owner", { userId: other }], ["type", { type: "WITHDRAWAL" }],
+    ["currency", { currency: "USD" }], ["provider", { provider: "CARD" }], ["providerRef", { providerRef: "different_confirmed_order" }],
+    ["key", { idempotencyKey: "different_confirmed_key" }], ["pendingBet", { pendingBet: { v: 99 } }],
+  ] as const) {
+    const changed = await txn(me, { status: "FAILED" }), s = system(src);
+    s.verify(async () => {
+      // Saved intent is create-only through the DAL. This one corruption control deliberately writes the stored JSON
+      // below that membrane; an ordinary update cannot exercise a changed pendingBet and is not a defect fixture.
+      if (name === "pendingBet") {
+        if (PG) await prisma()!.transaction.update({ where: { id: changed.id }, data: { pendingBet: { v: 99 } } });
+        else {
+          const raw = await db.txn.findById(changed.id);
+          if (!raw) throw new Error("Missing own pending-intent corruption fixture");
+          Object.assign(raw, patch);
+        }
+      } else await db.txn.update(changed.id, (name === "key" ? { idempotencyKey: `${patch.idempotencyKey}_${changed.id}` } : patch) as never);
+      return { status: "CONFIRMED", amount: 5000 };
+    });
+    ok(`binding.confirmed.${name}`, unknown(await s.recheck(me, changed.id)) && s.seen.settles === 0
+      && (await db.txn.findById(changed.id))?.providerStatus !== Review.DEPOSIT_STATUS_REVIEW_MARK && s.seen.groups.length === 0);
+  }
+  const marked = await txn(me, { status: "FAILED" }), markDuring = system(src);
+  const mutable = await txn(me, { status: "FAILED" }), memorySnapshot = system(src);
+  memorySnapshot.verify(async () => {
+    // Raw corruption bypasses ordinary immutable DAL updates. Memory reads can share the actual row object, unlike
+    // the Prisma mapper: the explicit recheck must retain the original canonical snapshot in both stores.
+    if (PG) await prisma()!.transaction.update({ where: { id: mutable.id }, data: { amount: 6000 } });
+    else {
+      const raw = await db.txn.findById(mutable.id);
+      if (!raw) throw new Error("Missing own funding snapshot fixture");
+      Object.assign(raw, { amount: 6000 });
+    }
+    return { status: "FAILED" };
+  });
+  ok("binding.raw-row-snapshot", unknown(await memorySnapshot.recheck(me, mutable.id)) && memorySnapshot.seen.settles === 0);
+  markDuring.verify(async () => { await db.txn.update(marked.id, { providerStatus: Review.DEPOSIT_STATUS_REVIEW_MARK }); return { status: "FAILED" }; });
+  const reviewFresh = await markDuring.recheck(me, marked.id);
+  ok("fresh.review", reviewFresh.view.state === "REVIEW" && !reviewFresh.view.failureAuthority && (await db.txn.findById(marked.id))?.providerStatus === Review.DEPOSIT_STATUS_REVIEW_MARK);
+  const conflict = await txn(me, { status: "FAILED" }), confirmed = system(src);
+  confirmed.verify(async () => ({ status: "CONFIRMED", amount: conflict.amount }));
+  const contradicted = await confirmed.recheck(me, conflict.id);
+  ok("review.confirmed", contradicted.view.state === "REVIEW" && !contradicted.view.failureAuthority
+    && (await db.txn.findById(conflict.id))?.providerStatus === Review.DEPOSIT_STATUS_REVIEW_MARK && (await db.txn.findById(conflict.id))?.status === "FAILED"
+    && confirmed.seen.groups.length === 0 && (await db.wallet.findByUserId(me))?.balance === 0);
+  const verifyCount = confirmed.seen.verifies.length;
+  ok("review.duplicate-keeps-marker", (await confirmed.recheck(me, conflict.id)).view.state === "REVIEW" && confirmed.seen.verifies.length === verifyCount);
+  const atomic = await txn(me, { status: "FAILED" });
+  let outerTx: unknown, updateTx: unknown, updateInside = false, markerReadThroughTx = false, probeOutside = false;
+  let noticesAtRead = -1, atomicNotices: any[] = [];
+  const atomicData = { ...db, wallet: { ...db.wallet, findByUserId: async (id: string, tx: any) => {
+    outerTx = tx; return db.wallet.findByUserId(id, tx);
+  } }, txn: { ...db.txn, findById: async (id: string, tx: any) => {
+    const found = await db.txn.findById(id, tx);
+    if (id === atomic.id && found?.providerStatus === Review.DEPOSIT_STATUS_REVIEW_MARK) {
+      markerReadThroughTx = inLock() && tx === outerTx && tx === currentLockTx() && (!PG || tx !== null);
+      noticesAtRead = atomicNotices.length;
+    }
+    return found;
+  }, update: async (id: string, patch: any, tx: any) => {
+    if (id === atomic.id && patch.providerStatus === Review.DEPOSIT_STATUS_REVIEW_MARK) {
+      updateTx = tx; updateInside = inLock() && tx === currentLockTx() && (!PG || tx !== null);
+    }
+    return db.txn.update(id, patch, tx);
+  } } } as typeof db;
+  const sameTx = system(src, atomicData);
+  atomicNotices = sameTx.seen.notices;
+  sameTx.verify(async () => { probeOutside = !inLock(); return { status: "CONFIRMED", amount: atomic.amount }; });
+  const atomicRead = await sameTx.recheck(me, atomic.id);
+  ok("review.reentrant-same-tx", atomicRead.view.state === "REVIEW" && sameTx.seen.settles === 1 && probeOutside
+    && outerTx !== undefined && updateTx === outerTx && updateInside && markerReadThroughTx
+    && (await db.txn.findById(atomic.id))?.providerStatus === Review.DEPOSIT_STATUS_REVIEW_MARK
+    && sameTx.seen.groups.length === 0 && (await db.wallet.findByUserId(me))?.balance === 0);
+  ok("review.commit-emits-once", sameTx.seen.notices.length === 1 && (!PG || noticesAtRead === 0));
+  const topLevel = await txn(me, { status: "FAILED" }), topLevelClaim = system(src);
+  await topLevelClaim.money.settlePaymentWebhook({ providerRef: topLevel.providerRef!, status: "CONFIRMED", amount: topLevel.amount });
+  ok("review.top-level-claim-commits", (await db.txn.findById(topLevel.id))?.providerStatus === Review.DEPOSIT_STATUS_REVIEW_MARK
+    && (await db.txn.findById(topLevel.id))?.status === "FAILED" && topLevelClaim.seen.notices.length === 1
+    && topLevelClaim.seen.groups.length === 0 && (await db.wallet.findByUserId(me))?.balance === 0);
+  if (PG) {
+    const rollback = await txn(me, { status: "FAILED" });
+    let markerWritten = false;
+    const rollbackData = { ...db, txn: { ...db.txn, findById: async (id: string, tx: any) => {
+      if (id === rollback.id && markerWritten && tx && inLock()) throw new Error("controlled post-claim read fault");
+      return db.txn.findById(id, tx);
+    }, update: async (id: string, patch: any, tx: any) => {
+      const saved = await db.txn.update(id, patch, tx);
+      if (id === rollback.id && patch.providerStatus === Review.DEPOSIT_STATUS_REVIEW_MARK) markerWritten = true;
+      return saved;
+    } } } as typeof db;
+    const rolled = system(src, rollbackData); rolled.verify(async () => ({ status: "CONFIRMED", amount: rollback.amount }));
+    const r = await rolled.recheck(me, rollback.id), after = await db.txn.findById(rollback.id);
+    // Memory locks do not pretend to roll back Maps. This control requires real PG rollback of the actual marker.
+    ok("review.pg-rollback-no-partial-marker", unknown(r) && r.unavailable && markerWritten && rolled.seen.settles === 1
+      && after?.status === "FAILED" && after?.providerStatus !== Review.DEPOSIT_STATUS_REVIEW_MARK
+      && rolled.seen.groups.length === 0 && (await db.wallet.findByUserId(me))?.balance === 0);
+    ok("review.pg-rollback-no-review-notice", rolled.seen.notices.length === 0);
+  }
+  const opposite = await txn(me, { status: "FAILED" }), failedAfterChange = system(src);
+  failedAfterChange.verify(async () => { await db.txn.update(opposite.id, { status: "CONFIRMED" }); return { status: "FAILED" }; });
+  const oppositeRead = await failedAfterChange.recheck(me, opposite.id);
+  ok("review.fresh-confirmed-opposes-failed", oppositeRead.view.state === "REVIEW" && !oppositeRead.view.failureAuthority
+    && (await db.txn.findById(opposite.id))?.providerStatus === Review.DEPOSIT_STATUS_REVIEW_MARK
+    && (await db.txn.findById(opposite.id))?.status === "CONFIRMED" && failedAfterChange.seen.groups.length === 0
+    && (await db.wallet.findByUserId(me))?.balance === 0);
+  const held = await txn(me, { status: "FAILED", amlReason: `${RG_RETURN_MARK}awaiting actual return` }), hold = system(src);
+  const heldRead = await hold.recheck(me, held.id);
+  ok("review.rg-held", heldRead.view.state === "HELD" && !heldRead.view.failureAuthority && hold.seen.verifies.length === 0);
+  const persist = await txn(me, { status: "FAILED" });
+  const faulty = { ...db, txn: { ...db.txn, update: (id: string, patch: any, tx: any) => {
+    if (patch.providerStatus === Review.DEPOSIT_STATUS_REVIEW_MARK) throw new Error("private persistence failure");
+    return db.txn.update(id, patch, tx);
+  } } } as typeof db;
+  const writeFault = system(src, faulty); writeFault.verify(async () => ({ status: "CONFIRMED", amount: persist.amount }));
+  const unrecorded = await writeFault.recheck(me, persist.id);
+  ok("review.write-fault", unknown(unrecorded) && unrecorded.unavailable && (await db.txn.findById(persist.id))?.status === "FAILED");
+  const oppositeFault = await txn(me, { status: "FAILED" }), failedWriteFault = system(src, faulty);
+  failedWriteFault.verify(async () => { await db.txn.update(oppositeFault.id, { status: "CONFIRMED" }); return { status: "FAILED" }; });
+  const oppositeUnknown = await failedWriteFault.recheck(me, oppositeFault.id);
+  ok("review.fresh-confirmed-write-fault", unknown(oppositeUnknown) && oppositeUnknown.unavailable
+    && (await db.txn.findById(oppositeFault.id))?.status === "CONFIRMED" && (await db.wallet.findByUserId(me))?.balance === 0);
+  for (const failure of ["missing", "fault", "wrong-currency"]) {
+    const data = { ...db, wallet: { ...db.wallet, findByUserId: async () => {
+      if (failure === "fault") throw new Error("private wallet fault");
+      if (failure === "missing") return null;
+      return { balance: 0, currency: "USD" };
+    } } } as typeof db;
+    const s = system(src, data); s.verify(async () => ({ status: "FAILED" }));
+    ok(`wallet.${failure}`, unknown(await s.recheck(me, row.id)));
+  }
+  for (const [failure, balance] of [["missing", 0], ["fault", 0], ["wrong-currency", 0], ["negative", -1],
+    ["non-finite", Infinity], ["fractional", 0.5]] as const) {
+    const opposed = await txn(me, { status: "FAILED" });
+    const data = { ...db, wallet: { ...db.wallet, findByUserId: async () => {
+      if (failure === "fault") throw new Error("private wallet fault");
+      if (failure === "missing") return null;
+      return { balance, currency: failure === "wrong-currency" ? "USD" : "TZS" };
+    } } } as typeof db;
+    const s = system(src, data); s.verify(async () => ({ status: "CONFIRMED", amount: opposed.amount }));
+    const r = await s.recheck(me, opposed.id), fresh = await db.txn.findById(opposed.id);
+    ok(`wallet.opposed.${failure}`, unknown(r) && s.seen.verifies.length === 1 && s.seen.settles === 0
+      && fresh?.providerStatus !== Review.DEPOSIT_STATUS_REVIEW_MARK && fresh?.status === "FAILED"
+      && s.seen.groups.length === 0 && s.seen.notices.length === 0 && (await db.wallet.findByUserId(me))?.balance === 0
+      && r.unavailable === (failure === "fault"));
+  }
+  const normal = system(src);
+  const ordinary = await normal.read(me, byId(row)), recovered = await normal.read(me, { kind: "funding-key", value: row.idempotencyKey! });
+  ok("policy.ordinary-and-recovery-no-terminal-probe", ordinary.view.state === "FAILED" && recovered.view.state === "FAILED"
+    && !ordinary.view.failureAuthority && !recovered.view.failureAuthority && normal.seen.verifies.length === 0 && normal.seen.settles === 0);
+  let session: any = { userId: me }, coreCalls = 0, coreFailure = false, result: any = { view: { state: "FAILED", failureAuthority: "signed-recheck" }, rateLimited: false, unavailable: false };
+  const route = compile(src[RECHECK_ROUTE], { "next/server": { NextResponse: { json: (body: any, init: ResponseInit) => new Response(JSON.stringify(body), init) } },
+    "@/lib/server/session": { getSession: async () => session }, "@/lib/server/deposit-recheck": { recheckDepositStatus: async (owner: string, id: string) => {
+      coreCalls++; if (coreFailure) throw new Error("private route failure"); if (owner !== me || id !== row.id) throw new Error("wrong identity"); return result;
+    } } });
+  const request = (headers: Record<string, string> = {}, method = "POST") => new Request("https://local.invalid/api/wallet/deposits/owned/recheck", { method,
+    headers: { "sec-fetch-site": "same-origin", "x-kp-deposit-recheck": "1", ...headers } });
+  const invoke = (req = request()) => route.POST(req, { params: Promise.resolve({ id: row.id }) });
+  for (const site of ["cross-site", "same-site", "none", ""]) {
+    const response = await invoke(request({ "sec-fetch-site": site }));
+    ok(`route.${site || "no-site"}`, response.status === 403 && response.headers.get("cache-control") === "private, no-store" && coreCalls === 0);
+  }
+  ok("route.no-header", (await invoke(request({ "x-kp-deposit-recheck": "" }))).status === 403 && coreCalls === 0);
+  ok("route.not-post", (await invoke(request({}, "GET"))).status === 403 && coreCalls === 0);
+  let response = await invoke();
+  ok("route.200-private", response.status === 200 && response.headers.get("cache-control") === "private, no-store" && (await response.json()).failureAuthority === "signed-recheck");
+  session = null; response = await invoke();
+  ok("route.401-private", response.status === 401 && response.headers.get("cache-control") === "private, no-store");
+  session = { userId: me }; result = { view: { state: "UNKNOWN" }, rateLimited: true, unavailable: false }; response = await invoke();
+  ok("route.429-private", response.status === 429 && response.headers.get("cache-control") === "private, no-store");
+  result = { view: { state: "UNKNOWN" }, rateLimited: false, unavailable: true }; response = await invoke();
+  ok("route.core-unavailable-503", response.status === 503 && response.headers.get("cache-control") === "private, no-store");
+  coreFailure = true; response = await invoke();
+  ok("route.throw-503-private", response.status === 503 && response.headers.get("cache-control") === "private, no-store" && !JSON.stringify(await response.json()).includes("private"));
+  return checks;
+}
 try {
-  for (const m of MUTATIONS) { const anchor = resolveAnchor(sources[m.file], m.from); if (!anchor.ok) throw new Error(`${m.name}: ${anchor.reason}`); }
-  const green = await run(), failed = green.filter(c => !c.pass);
+  const mutations = RECHECK ? RECHECK_MUTATIONS : MUTATIONS;
+  for (const m of mutations) { const anchor = resolveAnchor(sources[m.file], m.from); if (!anchor.ok) throw new Error(`${m.name}: ${anchor.reason}`); }
+  const execute = RECHECK ? runRecheck : run;
+  const green = await execute(), failed = green.filter(c => !c.pass);
   for (const c of green) console.log(`${c.pass ? "PASS" : "FAIL"} ${c.name}`);
   if (failed.length) throw new Error(`${failed.length} status-read controls failed`);
   if (process.argv.includes("--prove-red")) {
     if (PG) throw new Error("Plants remain in memory, PG is independent durable proof");
-    for (const m of MUTATIONS) {
-      const planted = await run({ ...sources, [m.file]: injectDefect(sources[m.file], m.from, m.to) });
+    for (const m of mutations) {
+      const planted = await execute({ ...sources, [m.file]: injectDefect(sources[m.file], m.from, m.to) });
       if (!planted.some(c => !c.pass && c.name.startsWith(m.expect))) throw new Error(`SURVIVED ${m.name}; expected ${m.expect}`);
       console.log(`PASS caught ${m.name}`);
     }
-    console.log(`deposit-status-read red: ${MUTATIONS.length}/${MUTATIONS.length}`);
+    console.log(`${RECHECK ? "deposit-recheck" : "deposit-status-read"} red: ${mutations.length}/${mutations.length}`);
   }
-  console.log(`deposit-status-read ${PG ? "Postgres" : "memory"}: ${green.length}/${green.length}; actual core/settle/DAL/locks, controlled signed adapter`);
+  if (process.argv.includes("--prove-atomic-red")) {
+    if (!PG || !RECHECK) throw new Error("Atomic rollback plants require the actual own Postgres recheck fixture");
+    for (const m of RECHECK_PG_MUTATIONS) {
+      const planted = await runRecheck({ ...sources, [m.file]: injectDefect(sources[m.file], m.from, m.to) });
+      if (!planted.some(c => !c.pass && c.name.startsWith(m.expect))) throw new Error(`SURVIVED ${m.name}; expected ${m.expect}`);
+      console.log(`PASS caught actual-PG ${m.name}`);
+    }
+    console.log(`deposit-recheck PG atomic red: ${RECHECK_PG_MUTATIONS.length}/${RECHECK_PG_MUTATIONS.length}`);
+  }
+  console.log(`${RECHECK ? "deposit-recheck" : "deposit-status-read"} ${PG ? "Postgres" : "memory"}: ${green.length}/${green.length}; actual core/settle/DAL/locks, controlled signed adapter`);
 } finally { await prisma()?.$disconnect(); }

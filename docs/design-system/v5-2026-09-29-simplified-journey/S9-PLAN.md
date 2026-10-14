@@ -514,9 +514,61 @@ one of the four MNO rails or the existing signed Card adapter, the same caller/o
 Fresh unmarked/non-RG stored FAILED plus a matching signed FAILED can resolve that uncertainty; signed CONFIRMED which
 opposes stored FAILED must persist REVIEW before any terminal presentation. Faults, unsupported replies, missing or
 changed scope and missing wallet truth remain UNKNOWN. Review/held markers never clear from recheck. Funding-key
-recovery stays read-only. This proposal and its real controller/persistence proof are **not implemented or approved
-as an expanded polling policy** at this checkpoint; review them before WP4.
+recovery stays read-only. The owner reviewed the explicit one-shot endpoint contract on 2026-10-14; its separate
+implementation is recorded in §5f. It is **not an expanded automatic polling policy**. The actual controller,
+storage/expiry and auth/reload proof remain unimplemented review gates before WP4.
 
 The real trusted page/action bridge, separate bounded funding namespace and disclosure remain gates before a client
 writer. No waiting/deposit journey screen, production build, visual/flag parity or live provider result is claimed.
 S9 stays open and undeployed and must rebase onto the verified S8 release before product integration.
+
+### 5f. Explicit terminal recheck preparation — 2026-10-14
+
+The new [private recheck core](../../../src/lib/server/deposit-recheck.ts) and
+[POST adapter](../../../src/app/api/wallet/deposits/[id]/recheck/route.ts) are isolated preparation. The owner reviewed
+the nine-file endpoint, wallet-before-claim and transaction/notice correction on 2026-10-14 and approved a checkpoint
+on `codex/vodacom-s9`. Ordinary status and funding-key recovery are unchanged. Only an explicit authenticated same-origin
+POST, with `Sec-Fetch-Site: same-origin` and `X-KP-Deposit-Recheck: 1`, enters this door; missing, same-site, cross-site,
+none and non-POST requests refuse before session/core access. No CORS permission is added. The custom non-simple
+header and browser-controlled fetch metadata avoid trusting an internal proxy URL or raw posted payment fields.
+
+Caller budget precedes lookup; only the owned DEPOSIT/TZS/unmarked canonical funding row may spend its owned probe
+budget. A raw FAILED with neither held/review authority nor a missing reference can query one of the four registered
+MNO rails or CARD. Provider I/O runs outside the wallet lock. A signed FAILED, including an exact valid amount when
+one is supplied, gains `failureAuthority: signed-recheck` only after the same canonical funding intent, provider
+reference and funding key are reread under the wallet lock with a valid current TZS wallet. A transport/signature,
+storage or review-write fault returns UNKNOWN/non-success; PENDING, unsupported, rate refusal, changed scope/intent,
+invalid amount or absent wallet give no safe-new-payment authority. The initial canonical funding identity is a
+normalized snapshot: the memory DAL's mutable row object cannot silently change both sides of its later comparison.
+The fresh funding/ref/key/projection and current TZS wallet (safe nonnegative integer balance) are checked **before**
+any opposed review claim. Signed CONFIRMED against fresh FAILED, or signed FAILED opposed by a fresh CONFIRMED row,
+enters the existing durable review claim, with no automatic credit/refund. Its reads/update and the post-claim reread
+use the same wallet transaction through the additive optional `txn.findById` transaction argument in both DAL twins;
+existing callers retain their default reads. The new review notice runs after commit. A later read fault rolls back
+the actual PG marker and drops the notice; the security audit may still record the observed provider contradiction.
+Held/review marks never clear. This endpoint creates
+no transaction, funding key, payment dispatch or refund. It makes no new claim that a rejected RG collection has
+been returned. Every response, including 401/403/429/503, is `private, no-store`.
+
+The proof reuses the existing actual-source wallet/core harness through a named `--recheck-only` mode, the real DAL,
+wallet locks and ledger, with controlled signed adapter I/O. New package keys are `test:deposit-recheck`,
+`red:deposit-recheck` and `db:probe-deposit-recheck`; the normal test is in predeploy. The targeted proof measured
+**88/88 memory, 90/90 Postgres, 26/26 memory source plants and 2/2 actual-PG rollback plants caught**.
+The PG-only controls prove same-transaction marker visibility, rollback of the marker and notice, and the continued
+top-level committed claim; memory Maps are not presented as SQL rollback proof. The initial unsupported-guard deletion
+became redundant after the final signed-FAILED guard was added: its replacement plant promotes an unsupported reply
+to FAILED and is caught by the same verdict. Existing status-read remains **105/105 memory**
+after sharing the harness. The PG run migrated this isolated checkout's own disposable cluster on port 5444, checked
+its actual data directory and stopped it. These are not browser/provider/live proof.
+The fixture imports one actual lock runtime. Sharing its context across independently compiled application bundles
+still depends on rebasing onto S8's reviewed shared-lock repair before integration; this checkpoint does not prove a
+production bundle or bypass that prerequisite.
+
+**UI integration remains blocked by §5e.** This includes the existing classic Card return: its refresh currently
+accepts ordinary stored FAILED and offers a new deposit. After a prior UNKNOWN that is not fresh-key authority.
+The future controller must retain the original funding identity and all unresolved S8 bet keys across UNKNOWN,
+auth and reload, reject stale completion, and persist its resolved transition before allowing a later explicit new
+Lipa. Missing/expired funding storage cannot prove that earlier uncertainty never happened; an owned terminal FAILED
+in such a reentry requires the explicit signed check. No client funding writer, namespace/disclosure, storage/expiry
+controller, classic return retry repair or UI change is included here. Officer resolution, outbound-refund proof/SLA,
+agency acknowledgement and rebase/integration/release gates remain open.

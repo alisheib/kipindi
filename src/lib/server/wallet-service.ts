@@ -37,7 +37,7 @@ import { REFUSED_FUNDS_FORFEIT_DESCRIPTION } from "@/lib/refused-funds-outcomes"
 import type { FailureReason, FailureDetail } from "@/lib/failure-reasons";
 import { paymentMethodName } from "@/lib/payment-providers";
 import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview, notifyRefusedFundsReturnFailed } from "./notification-service";
-import { runOutsideLock, withLock } from "./locks";
+import { afterCommit, currentLockTx, runOutsideLock, withLock } from "./locks";
 import { emit } from "./event-bus";
 import { postLedgerEntries, depositEntries, rgSuspenseEntries, withdrawalEntries, internalCreditEntries, adjustmentEntries, agentCommissionEntries, agentRegistrationFeeEntries, withMoneyTx } from "./ledger";
 import { getEffectiveConfig } from "./market-config";
@@ -1038,7 +1038,8 @@ export async function settlePaymentWebhook(input: { providerRef: string; status:
       ((txn.status === "FAILED" || txn.status === "REVERSED") && input.status === "CONFIRMED");
     if (contradicted) {
       const reviewAdded = txn.type === "DEPOSIT" ? await markDepositStatusReview(txn.id, input.status) : false;
-      if (reviewAdded) notifyDeposit(txn.userId, { status: "AML_REVIEW", amount: Math.abs(txn.amount), provider: friendlyProvider(txn.provider), txnId: txn.id });
+      if (reviewAdded) afterCommit(currentLockTx(), () => notifyDeposit(txn.userId,
+        { status: "AML_REVIEW", amount: Math.abs(txn.amount), provider: friendlyProvider(txn.provider), txnId: txn.id }));
       audit({
         category: "SECURITY",
         action: "webhook.terminal_contradicted",
@@ -1103,16 +1104,16 @@ export async function settlePaymentWebhook(input: { providerRef: string; status:
 /** One durable deposit-only review signal, claimed under its wallet lock. No terminal status, amount or ledger changes.
  * Matching callbacks/retries do not clear it. An officer's actual resolution needs a separate reviewed action. */
 async function markDepositStatusReview(txnId: string, reported: "CONFIRMED" | "FAILED"): Promise<boolean> {
-  const pre = await db.txn.findById(txnId);
+  const pre = await db.txn.findById(txnId, currentLockTx());
   if (!pre || pre.type !== "DEPOSIT" || pre.currency !== "TZS" || pre.houseBotId != null) return false;
-  return withLock(`wallet:${pre.userId}`, async () => {
-    const fresh = await db.txn.findById(txnId);
+  return withLock(`wallet:${pre.userId}`, async (tx) => {
+    const fresh = await db.txn.findById(txnId, tx);
     if (!fresh || fresh.type !== "DEPOSIT" || fresh.currency !== "TZS" || fresh.houseBotId != null || hasDepositStatusReview(fresh)) return false;
     if (fresh.userId !== pre.userId || (isRgHeldDeposit(fresh) && reported === "CONFIRMED")) return false;
     const opposed = (fresh.status === "CONFIRMED" && reported === "FAILED")
       || ((fresh.status === "FAILED" || fresh.status === "REVERSED") && reported === "CONFIRMED");
     if (!opposed) return false;
-    const saved = await db.txn.update(txnId, { providerStatus: DEPOSIT_STATUS_REVIEW_MARK });
+    const saved = await db.txn.update(txnId, { providerStatus: DEPOSIT_STATUS_REVIEW_MARK }, tx);
     if (!saved || !hasDepositStatusReview(saved)) throw new Error("Deposit review signal was not persisted.");
     return true;
   });
