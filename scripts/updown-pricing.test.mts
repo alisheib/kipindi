@@ -404,6 +404,15 @@ for (const loc of ["en", "sw", "zh"] as const) {
   const versions = [...meta.matchAll(/(?:Version|Toleo|版本) (\d{4}-\d{2}-\d{2})/g)].map((m) => m[1]);
   ok("6.9 …and the document's version moved with its words: en/sw/zh each at 2026-10-14 or later",
      versions.length === 3 && versions.every((v) => v >= "2026-10-14"), versions.join(" · "));
+  // ⭐ 2026-10-14, the same day · the ruling's Swahili carried S4-COPY-AUDIT's class-10 agreement error forward. "Dau" is
+  // ma-class in the plural ("madau"), so the clause agrees in ya-: "Madau yakifungwa" (the qualifier) and "…hadi madau
+  // yatakapofungwa" (Rules §2). Read on the dictionary value and the comment-free rulebook, both directions.
+  const swNote = DICTS.sw.market.udEstimateNote;
+  ok("6.10 the Swahili qualifier says \"Madau yakifungwa\" (class 6), never the class-10 \"Dau zikifungwa\"",
+     swNote.includes("Madau yakifungwa, yanakuwa malipo yako kamili.") && !/\bdau zikifungwa\b/i.test(swNote), swNote);
+  ok("6.11 …and the binding Rules §2 in Swahili says \"Si ahadi hadi madau yatakapofungwa.\", never \"dau zitakapofungwa\"",
+     rules.includes("Si ahadi hadi madau yatakapofungwa.") && !/\bdau zitakapofungwa\b/i.test(rules),
+     (rules.match(/Si ahadi hadi[^.<]*\./) ?? ["(no §2 sentence)"])[0]);
 }
 
 // ── §7. RG — INFORMATION, NOT PROMOTION ──────────────────────────────────────────────────

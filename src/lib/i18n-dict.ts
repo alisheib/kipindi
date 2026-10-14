@@ -4065,7 +4065,7 @@ export const dict = {
       udLowerThan: "Chini",
       udTickNote: "Bei inahitaji kusogea hatua moja tu upande wowote.",
       udAwaitingRead: "Inasubiri bei",
-      udEstimateNote: "Marejesho yanayotarajiwa hubadilika kwa kila dau jipya — hutokana na bwawa la sasa hivi, si odds zisizobadilika. Dau zikifungwa, yanakuwa malipo yako kamili.",
+      udEstimateNote: "Marejesho yanayotarajiwa hubadilika kwa kila dau jipya — hutokana na bwawa la sasa hivi, si odds zisizobadilika. Madau yakifungwa, yanakuwa malipo yako kamili.",
       udFilterTitle: "Chuja ubao",
       udFilterAria: "Vichujio — inaonyesha {asset}, {duration}",
       udNobodyBacked: "Hakuna aliyeweka dau {side} bado — kama hali hii haitabadilika, dau lako litarudi.",

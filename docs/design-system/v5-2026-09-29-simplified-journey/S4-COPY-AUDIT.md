@@ -108,6 +108,12 @@ rule as above: they ship with S12, never earlier.
 - `udHistoryBody` · "…tofauti na dau zako za muda mrefu." → "…tofauti na madau yako ya muda mrefu."
 - `udRcBetsClose` · "Dau zinafungwa" → "Madau yanafungwa".
 - `udEstimateNote` · "Dau zikifungwa, inakuwa malipo yako kamili." → "Madau yakifungwa, inakuwa malipo yako kamili."
+  ⟶ **The sentence was rewritten by the owner's Up & Down ruling (2026-10-14)**: the qualifier now names the projected
+  return (*marejesho*, class 6), so its last clause reads "Madau yakifungwa, **yanakuwa** malipo yako kamili." — this
+  line's "inakuwa" no longer fits. The ruling's release carried "Dau zikifungwa" forward; corrected on its own the same
+  day (branch `codex/vodacom-s12-madau`, guard `test:updown-pricing` 6.10), together with the same class-10 error in the
+  binding Up & Down Rules §2 (sw): "Si ahadi hadi dau zitakapofungwa." → "Si ahadi hadi **madau yatakapofungwa**."
+  (6.11; the document stays at its same-day version 2026-10-14).
 - `udNobodyBackedEither` · "…wakati dau zinafungwa, kila dau litarudi." → "…wakati madau yanafungwa, kila dau litarudi."
 - `resVoidRefund` · "Dau zote zilirejeshwa kikamilifu — hakuna ada iliyokatwa." → "Madau yote yalirejeshwa kikamilifu — hakuna
   ada iliyokatwa."
