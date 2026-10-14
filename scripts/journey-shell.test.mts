@@ -3170,11 +3170,14 @@ ${s}`);
     // above, planted in the guard's own module and caught by 12.module.lost. Beside them, the same defects one step
     // on: a loader that swallows every error in place of the guard, the guard taken from another module, and a further
     // file that takes the guard and is still not named (the list is the census: it grows by a deliberate edit).
-    const CHAT_LOADER = ".then((m) => m.ChatRoot).catch(nothingIfLost), { ssr: false });";
-    const PRIMER_LOADER = ".then((m) => m.FirstVisitPrimer).catch(nothingIfLost), { ssr: false });";
-    const chatUnguarded = withFile(WORLD, LAZY_OVERLAYS, (s) => s.replace(CHAT_LOADER, ".then((m) => m.ChatRoot), { ssr: false });"));
-    const primerUnguarded = withFile(WORLD, LAZY_OVERLAYS, (s) => s.replace(PRIMER_LOADER, ".then((m) => m.FirstVisitPrimer), { ssr: false });"));
-    const chatSwallows = withFile(WORLD, LAZY_OVERLAYS, (s) => s.replace(CHAT_LOADER, ".then((m) => m.ChatRoot).catch(() => () => null), { ssr: false });"));
+    // ⚠️ RE-ANCHORED 2026-10-14 (the Vodacom plan S8; docs/qa/s8-next164-boundary-diagnostic-20261014.md): each overlay
+    // loader's option object gained its owner mark (`loading`), so these anchors end where that object opens, and the
+    // plants leave the object as it stands — they move the guard, nothing else.
+    const CHAT_LOADER = ".then((m) => m.ChatRoot).catch(nothingIfLost), {";
+    const PRIMER_LOADER = ".then((m) => m.FirstVisitPrimer).catch(nothingIfLost), {";
+    const chatUnguarded = withFile(WORLD, LAZY_OVERLAYS, (s) => s.replace(CHAT_LOADER, ".then((m) => m.ChatRoot), {"));
+    const primerUnguarded = withFile(WORLD, LAZY_OVERLAYS, (s) => s.replace(PRIMER_LOADER, ".then((m) => m.FirstVisitPrimer), {"));
+    const chatSwallows = withFile(WORLD, LAZY_OVERLAYS, (s) => s.replace(CHAT_LOADER, ".then((m) => m.ChatRoot).catch(() => () => null), {"));
     const overlaysOwnGuard = withFile(WORLD, LAZY_OVERLAYS, (s) => s.replace(LOST_CHUNK_IMPORT, text(WORLD, LOST_CHUNK).split("export ").join("")));
     const overlaysGuardElsewhere = withFile(WORLD, LAZY_OVERLAYS, (s) => s.replace(LOST_CHUNK_IMPORT, `import { nothingIfLost } from "@/lib/lost-chunk-copy";`));
     const SIXTH_DYNAMIC = "src/components/journey/home/home-island.tsx";
