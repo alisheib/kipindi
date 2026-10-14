@@ -1016,8 +1016,8 @@ function run(w: World, log: (l: string) => void): string[] {
   ok("2.2m · all shared Modal readers retain a false SSR initializer but mount the portal before the first browser paint, so its first actual refs can register and take focus",
     portalMountBeforePaint(w.read(MODAL)));
   const sheetArrival = decomment(w.read(CSS)).match(/\.kp-bsheet\.m-sheet-in\s*\{([^}]+)\}/)?.[1] ?? "";
-  ok("2.2a · only the stake sheet replaces the full offscreen rise with the existing kit settle-lift name; kit duration/ease and distinct exit remain inherited",
-    sheetArrival.trim() === "animation-name: m-settle-lift;" && /@keyframes m-settle-lift\s*\{\s*from \{ opacity: 0; transform: translateY\(14px\) scale\(0\.975\); \} to \{ opacity: 1; transform: translateY\(0\) scale\(1\); \} \}/.test(decomment(w.read(MOTION)))
+  ok("2.2a · only the stake sheet is immediately legible during the kit settle-lift; every unset consumer retains zero initial opacity, kit duration/ease and distinct exit remain inherited",
+    sheetArrival.trim() === "animation-name: m-settle-lift; --m-settle-start-opacity: 1;" && /@keyframes m-settle-lift\s*\{\s*from \{ opacity: var\(--m-settle-start-opacity, 0\); transform: translateY\(14px\) scale\(0\.975\); \} to \{ opacity: 1; transform: translateY\(0\) scale\(1\); \} \}/.test(decomment(w.read(MOTION)))
       && /\.m-sheet-in\s*\{ animation: m-sheet-rise var\(--t-move\) var\(--m-settle\) both; \}/.test(decomment(w.read(MOTION)))
       && /\.m-out\s*\{ animation: m-leave-out var\(--t-quick\) var\(--m-leave\) both; \}/.test(decomment(w.read(MOTION))));
   const ormSecondary = buttonWith(orm, "if (onSecondary) onSecondary(); else onClose()") ?? "";
@@ -1483,9 +1483,15 @@ if (!PROVE_RED) {
     { name: "Modal starts mounted and makes server markup differ", expect: /^2[.]2m /,
       world: () => plantIn(MODAL, "const [mounted, setMounted] = React.useState(false);", "const [mounted, setMounted] = React.useState(true);") },
     { name: "the stake sheet restores a full offscreen rise", expect: /^2[.]2a /,
-      world: () => plantIn(CSS, ".kp-bsheet.m-sheet-in { animation-name: m-settle-lift; }", ".kp-bsheet.m-sheet-in { animation-name: m-sheet-rise; }") },
+      world: () => plantIn(CSS, ".kp-bsheet.m-sheet-in { animation-name: m-settle-lift; --m-settle-start-opacity: 1; }", ".kp-bsheet.m-sheet-in { animation-name: m-sheet-rise; --m-settle-start-opacity: 1; }") },
     { name: "the stake sheet overrides the kit duration", expect: /^2[.]2a /,
-      world: () => plantIn(CSS, ".kp-bsheet.m-sheet-in { animation-name: m-settle-lift; }", ".kp-bsheet.m-sheet-in { animation-name: m-settle-lift; animation-duration: 1s; }") },
+      world: () => plantIn(CSS, ".kp-bsheet.m-sheet-in { animation-name: m-settle-lift; --m-settle-start-opacity: 1; }", ".kp-bsheet.m-sheet-in { animation-name: m-settle-lift; --m-settle-start-opacity: 1; animation-duration: 1s; }") },
+    { name: "the stake heading returns to a transparent first frame", expect: /^2[.]2a /,
+      world: () => plantIn(CSS, "--m-settle-start-opacity: 1;", "--m-settle-start-opacity: 0;") },
+    { name: "the immediate stake arrival loses its scoped override", expect: /^2[.]2a /,
+      world: () => plantIn(CSS, "--m-settle-start-opacity: 1;", "") },
+    { name: "unset kit consumers lose their original transparent arrival", expect: /^2[.]2a /,
+      world: () => plantIn(MOTION, "opacity: var(--m-settle-start-opacity, 0);", "opacity: var(--m-settle-start-opacity, 1);") },
     { name: "the journey stake sheet names no safe way out", expect: /^5[.]10 /,
       world: () => plantIn(SHEET, "safeFocus={closeRef}", "") },
     { name: "the Sell confirm names no way out (the seal's close hands focus to its sell button)", expect: /^5[.]10 /,
