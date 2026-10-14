@@ -581,6 +581,17 @@ export function betActionWatch(page) {
   return { requests, stop: () => page.off("request", listener) };
 }
 
+/**
+ * The idempotency key a request body carries — read leniently on purpose: Playwright reports a forwarded request's
+ * ALTERED body (measured: after `route.continue({ postData })`, `postDataBuffer()` is the body sent), and the
+ * missing-parameters plant is no longer a whole request, yet still carries its one key. Exactly one key part, or null.
+ */
+export function bodyKey(body, contentType) {
+  const parsed = parseMultipart(body, contentType);
+  const keys = parsed.ok ? parsed.parts.filter((p) => /(?:^|_)idempotencyKey$/.test(p.name)) : [];
+  return keys.length === 1 && keys[0].value ? keys[0].value : null;
+}
+
 /** The request's sheet fields, read with the strict parser and the installed codec's naming. */
 export function requestFields(request) {
   const parsed = parseMultipart(request.postDataBuffer(), request.headers()["content-type"]);
@@ -603,7 +614,7 @@ export async function answerOf(request, timeoutMs, page) {
     response.text().catch((error) => { networkError = String(error.message).split("\n")[0].slice(0, 160); return null; }),
     response.serverAddr().catch(() => null),
   ]);
-  const key = requestFields(request).af.fields?.idempotencyKey ?? null;
+  const key = bodyKey(request.postDataBuffer(), request.headers()["content-type"]);
   let copy = null;
   if (page && key) {
     const used = consumed.get(page) ?? new Set();

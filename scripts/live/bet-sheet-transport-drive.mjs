@@ -33,7 +33,7 @@ import {
   S, ROOT, digest, fileDigest, parseMultipart, actionFields, plantTransport, plantErrors, buildMultipart, flightResult,
   resultSummary, transportVerdict, retryVerdict, healthySheetErrors, exitCodeFor, sourceModules, exclusiveLocalPremise, outputDir, post,
   freshPlayer, observed, pageIn, betActionWatch, requestFields, answerOf, openSheet, sheetState, waitFrame, ownedRows,
-  holdReceipt, tile, writeEvidence, TRANSPORT_MODES, INVALID_SIDE, REQUEST_FIELDS, MONEY_CLAIM_KEYS, REPLY_RULE, replyPrefixRule,
+  holdReceipt, tile, writeEvidence, TRANSPORT_MODES, INVALID_SIDE, REQUEST_FIELDS, MONEY_CLAIM_KEYS, REPLY_RULE, replyPrefixRule, bodyKey,
 } from "./bet-sheet-gates.mjs";
 import { mintStaffPass } from "./journey-pass.mjs";
 
@@ -107,6 +107,10 @@ function selfTest() {
     check(`plant ${mode}: a second changed field is caught`, plantErrors(parsed, af, buildMultipart(parsed.boundary, raws), good.contentType, mode).length > 0);
   }
   check("plant: an unknown mode is refused", !plantTransport(parsed, af, "other").ok);
+  // The answer is matched to its request by the key the request carried — Playwright reports the FORWARDED body.
+  check("bodyKey: the one key is read from the original and from both planted bodies",
+    bodyKey(good.body, good.contentType) === FIELDS.idempotencyKey && Object.keys(TRANSPORT_MODES).every((mode) => bodyKey(plantTransport(parsed, af, mode).body, good.contentType) === FIELDS.idempotencyKey));
+  check("bodyKey: a doubled key field reads no key", bodyKey(syntheticBody(FIELDS, { extra: [part(`${P1}idempotencyKey`, "22222222-2222-4222-8222-222222222222")] }).body, good.contentType) === null);
   check("plant: a side already invalid is refused", !plantTransport(parseMultipart(...Object.values(syntheticBody({ ...FIELDS, side: "NO!" }))), actionFields(parseMultipart(...Object.values(syntheticBody({ ...FIELDS, side: "NO!" })))), "invalid-side").ok);
 
   // The flight reader.
@@ -250,8 +254,10 @@ async function transportCell(mode, vp, locale, { fake = null, retry = true } = {
   };
   await page.route("**/*", handler);
   let request = null, answer = { observed: false, why: "not sent" }, raw = null;
+  let clickAt = null, msToFrame = null;
   if (!premiseErrors.length) {
     const requestP = page.waitForRequest(isBet, { timeout: 15_000 }).catch(() => null);
+    clickAt = Date.now();
     await page.locator(S.place).click();
     request = await requestP;
     if (request) ({ text: raw, ...answer } = await answerOf(request, 60_000, page));
@@ -259,6 +265,7 @@ async function transportCell(mode, vp, locale, { fake = null, retry = true } = {
   await page.unroute("**/*", handler);
   transport.released = true;
   await waitFrame(page, "inDoubt", 20_000).catch(() => {});
+  if (clickAt !== null) msToFrame = Date.now() - clickAt;
   await page.waitForTimeout(400);
   const after = await sheetState(page);
   const rows = await ownedRows(page).catch(() => null);
@@ -276,7 +283,7 @@ async function transportCell(mode, vp, locale, { fake = null, retry = true } = {
     money: { positionsDelta: afterObs.positionCount - baseline.positionCount, ledgerDelta: afterObs.betPlacedCount - baseline.betPlacedCount },
   };
   const refusedTile = await shot(page, `${fake ? "control-fake-" : ""}row23-${mode}-${vp.width}x${vp.height}-${locale}-in-doubt`);
-  const cell = { tag, mode, locale, viewport: `${vp.width}x${vp.height}`, e, raw, original, page, ctx: p.ctx, watch, seed, baseline, refusedTile, owner: digest(p.userId) };
+  const cell = { tag, mode, locale, viewport: `${vp.width}x${vp.height}`, e, raw, original, page, ctx: p.ctx, watch, seed, baseline, refusedTile, msToFrame, owner: digest(p.userId) };
   if (retry && original?.af?.ok && !fake) {
     const retryP = page.waitForRequest(isBet, { timeout: 15_000 }).catch(() => null);
     await page.locator(S.place).click();
@@ -326,7 +333,7 @@ try {
       answer: { observed: answer.observed, status: answer.status ?? null, fromServer: answer.serverAddr ?? null, contentType: answer.contentType ?? null, returned: answer.result?.ok ? resultSummary(answer.result.value) : null, why: answer.why ?? answer.result?.why ?? null, timing: answer.timing ?? null, bodySource: answer.bodySource ?? null },
       matrixRow: cell.e.outcome?.row ?? null,
       frame: { frame: cell.e.after.frame, lines: cell.e.after.lines, cta: cell.e.after.cta, stake: cell.e.after.stakeValue, stakeLocked: cell.e.after.stakeLocked, linesView: cell.e.after.linesView },
-      stored: cell.e.stored, money: cell.e.money, betActionRequests: cell.e.requests, tile: cell.refusedTile,
+      stored: cell.e.stored, money: cell.e.money, betActionRequests: cell.e.requests, msToInDoubtFrame: cell.msToFrame, tile: cell.refusedTile,
     };
     cells.push(record);
     result(record.cell, v.state, v.errors.join("; ") || `${record.transport.change}; server answered ${JSON.stringify(record.answer.returned?.error)}; row ${record.matrixRow}`);
@@ -359,17 +366,23 @@ try {
   if (!real) result("CONTROL fake fulfilled reply", "NOT MEASURED", "no real refusal was captured to copy");
   else {
     const mode = captured.answers["invalid-side"] ? "invalid-side" : "missing-params";
-    const cell = await transportCell(mode, VIEWPORTS[0], "en", { fake: { status: 200, contentType: real.contentType ?? "text/x-component", body: real.body }, retry: false });
+    // The real refusal's MODEL rows, re-served: a dev server's debug rows point at chunks its debug channel sends for THAT
+    // request id, which a re-served copy never gets (measured: the page then never settled the call, and the retry stayed
+    // disabled behind the 20 s watchdog). Without them the page settles the copy exactly as it settled the original.
+    const fakeBody = real.body.split("\n").filter((line) => !/^[0-9a-f]+:[A-Z]/.test(line)).join("\n");
+    const cell = await transportCell(mode, VIEWPORTS[0], "en", { fake: { status: 200, contentType: real.contentType ?? "text/x-component", body: fakeBody }, retry: false });
     const honest = transportVerdict(cell.e);
     const mislabelled = transportVerdict({ ...cell.e, transport: { ...cell.e.transport, forwarded: "continue" } });
     const detected = honest.state === "FAIL" && mislabelled.state === "FAIL" && mislabelled.errors.some((x) => x.startsWith("FABRICATED"));
+    const pageLikeAPass = cell.e.after.frame === "inDoubt" && cell.e.after.cta?.enabled === true && cell.e.money.positionsDelta === 0;
     const record = {
       control: "a fulfilled copy of the real refusal (never forwarded) is detected and fails", state: detected ? "PASS" : "FAIL",
-      honest, mislabelled, pageSaw: { frame: cell.e.after.frame, lines: cell.e.after.lines, cta: cell.e.after.cta }, fromServer: cell.e.response.serverAddr ?? null,
+      honest, mislabelled, pageSaw: { frame: cell.e.after.frame, lines: cell.e.after.lines, cta: cell.e.after.cta, msToInDoubtFrame: cell.msToFrame }, pageLikeAPass,
+      fromServer: cell.e.response.serverAddr ?? null, returnedToPage: cell.e.response.result?.ok ? resultSummary(cell.e.response.result.value) : null,
       money: cell.e.money, tile: cell.refusedTile,
     };
     controls.push(record);
-    result(`CONTROL ${record.control}`, record.state, `as recorded: ${honest.state} (${honest.errors.join("; ")}); with the record claiming a forward: ${mislabelled.state} (${mislabelled.errors.join("; ")}); the page itself showed ${cell.e.after.frame}`);
+    result(`CONTROL ${record.control}`, record.state, `as recorded: ${honest.state} (${honest.errors.join("; ")}); with the record claiming a forward: ${mislabelled.state} (${mislabelled.errors.join("; ")}); the page itself showed ${cell.e.after.frame} with its retry ${cell.e.after.cta?.enabled ? "enabled" : "disabled"}${pageLikeAPass ? " — on screen indistinguishable from a real refusal" : ""}`);
     await close(cell);
   }
 
