@@ -188,9 +188,11 @@ async function AdminAmlContent({ searchParams }: AmlProps) {
           {/* Stacks below the small breakpoint (2026-09-14). As one unwrapping row at 390 it hyphen-broke the heading over
               four lines, squeezed the icon to a speck and folded the flag count onto two lines. On a phone the criteria
               drop under the heading and the count takes its own line; from 640px up it is the same single row as before.
-              The chip's nowrap goes through `style` because Chip sets white-space inline (G-7). */}
+              The chip's nowrap goes through `style` because Chip sets white-space inline (G-7).
+              ⭐ The icon-led group is this card's heading (`data-section-heading`, PV-03), so "No flags" is measured
+              against the line that names it — it begins at the icon — and not against the page's "AML queue". */}
           <div className="px-4 py-3 border-b border-border-subtle flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <div data-section-heading="" className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
               <I.activity s={16} className="shrink-0" />
               <p className="font-bold text-text">Suspicious-bet detector · Tabia za shaka</p>
               <span className="basis-full text-caption text-text-tertiary sm:basis-auto">stake spike ≥ 10× user 30-day median; or velocity ≥ 100/24h</span>

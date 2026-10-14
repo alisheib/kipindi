@@ -8,6 +8,7 @@ import Link from "next/link";
 import { cache as reactCache } from "react";
 import { db } from "@/lib/server/store";
 import { FiftyMark } from "@/components/brand";
+import { EmptyStateSection } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
 import { AdminMobileNavTrigger } from "./admin-mobile-nav";
 import { AdminCrumbs } from "./admin-crumbs";
@@ -671,8 +672,10 @@ export function AdminCard({
   className?: string;
 } & Omit<React.HTMLAttributes<HTMLElement>, "children" | "title">) {
   const isFlush = padding === "p-0";
+  // `data-card-pad` sets an empty table row's inset inside this card (`--table-empty-inset`, globals.css): a flush
+  // card's title row below is `px-4` (20px) and its table bleeds; a padded card already puts its table under the title.
   return (
-    <div {...rest} data-empty-state-scope="" className={["glass-panel", padding, className ?? ""].join(" ")}>
+    <div {...rest} data-empty-state-scope="" data-card-pad={isFlush ? "flush" : "padded"} className={["glass-panel", padding, className ?? ""].join(" ")}>
       {/* ⛔ G-5 (2026-08-02) — the G-4 shape again, in the card header. The action side
             is `shrink-0` and the title side was `min-w-0`, so on a narrow screen the title
             absorbed ALL the shortfall: measured at 360, `/admin/finance`'s "Settlement fees
@@ -706,7 +709,12 @@ export function AdminCard({
           {action && <div className="shrink-0 max-w-full">{action}</div>}
         </div>
       )}
-      {children}
+      {/* ⭐ A TITLED CARD OWNS ITS EMPTY STATE'S ALIGNMENT (S8, 2026-10-14). The title above is this section's
+          heading (`data-section-heading`), and PV-03 holds an empty state in the body to its left edge — so the card
+          says once that every EmptyState inside fills, instead of each call site remembering `fill`. Remembering is
+          what failed: 78 CI cells on 13 routes, each a box centred 299px (1280) to 567px (1920) from its own title.
+          The provider renders no element; an untitled card leaves its empty states to whatever introduces them. */}
+      {title ? <EmptyStateSection>{children}</EmptyStateSection> : children}
     </div>
   );
 }

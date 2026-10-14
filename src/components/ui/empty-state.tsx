@@ -13,7 +13,7 @@
  * Kinds map to a built-in line-art icon:
  *   markets · positions · leaderboard · notifications · audit · sources · default
  */
-import type { ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { EMPTY_STATE_BOX, EMPTY_STATE_TITLE, EMPTY_STATE_BODY } from "./empty-state-classes";
@@ -25,6 +25,25 @@ type Kind =
   | "markets" | "positions" | "leaderboard" | "notifications" | "audit" | "sources"
   | "proposals" | "kyc" | "fairness" | "rg" | "admin" | "default";
 
+/**
+ * ⭐ A TITLED SECTION SAYS ONCE THAT ITS EMPTY STATE FILLS IT (S8, 2026-10-14) — the call sites stopped having to remember.
+ * PV-03 made `fill` opt-in per call site (the ruling on the prop below), and the opt-in is exactly what failed: a pass on
+ * 2026-10-14 added `fill` to nine admin call sites, and CI then failed 90 cells on fifteen more admin routes — 78 of them,
+ * on thirteen routes, an EmptyState inside a TITLED `AdminCard`, centred 299px from the card title over it at 1280 and
+ * 567px at 1920 (the evaluator, `scripts/live/empty-state-alignment.mjs`, pairs an empty state with the title of the card
+ * that holds it). The other twelve were table rows in untitled cards — `AdminTableEmpty` answers for those.
+ * The section is the one thing that knows it has a title, so it declares the relationship: `AdminCard` mounts this provider
+ * around a titled body, and every EmptyState inside it fills. It renders no element, so the DOM is unchanged.
+ * ⛔ THE DEFAULT IS STILL BOXED. Outside a section that mounts this, nothing changes (the 45-call-site ruling stands), and a
+ * call site's own `fill` — `true` or `false` — always wins over the section's.
+ * Same shape as `AdminActProvider` (admin/act-gate.tsx): one boolean every instance needs, set once where it is known.
+ */
+const SectionFill = createContext(false);
+
+/** Wraps the body of a section that owns a heading; each EmptyState in that body fills it. */
+export function EmptyStateSection({ children }: { children: ReactNode }) {
+  return <SectionFill.Provider value>{children}</SectionFill.Provider>;
+}
 
 export function EmptyState({
   kind = "default",
@@ -58,10 +77,14 @@ export function EmptyState({
    * ⛔ OPT-IN, NEVER A CHANGED DEFAULT. 45 call sites across 33 files inherit `mx-auto`, most
    * of them genuinely inside narrow columns where centring is correct. Flipping the default
    * would silently restyle 44 surfaces to fix one — the opposite of a system-level fix.
+   * ⭐ Left unset inside a titled section (`EmptyStateSection`, above), it follows the section and fills.
    */
   fill?: boolean;
   className?: string;
 }) {
+  // The call site's own word wins, either way; unset, a titled section's declaration decides (boxed outside one).
+  const sectionFill = useContext(SectionFill);
+  const filled = fill ?? sectionFill;
   return (
     <div
       /* ⭐ A CONTRACT FOR THE INSTRUMENTS, exactly like `<PageContainer>`'s `data-measure`.
@@ -70,10 +93,10 @@ export function EmptyState({
          a CLASS NAME stops working the day someone restyles the box. The value says which
          variant shipped, so the sweep can report "boxed, 328px from its heading" rather than a
          bare failure. */
-      data-empty-state={fill ? "fill" : "boxed"}
+      data-empty-state={filled ? "fill" : "boxed"}
       className={cn(
         EMPTY_STATE_BOX,
-        fill ? "w-full" : "max-w-[360px] mx-auto",
+        filled ? "w-full" : "max-w-[360px] mx-auto",
         className,
       )}
     >
