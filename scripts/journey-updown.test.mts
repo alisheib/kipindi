@@ -206,7 +206,8 @@ console.log("\n§3 · the addresses carry what the player chose, and a link alon
     stakeFromUrl(bet, mine, NOW + MIN, "usr_jud01") === 5_000 && stakeFromUrl(bet, null, NOW, "usr_jud01") === null
       && stakeFromUrl(bet, mine, NOW + MIN, "usr_other") === null && stakeFromUrl(A.judBet("udr_jud01", "UP", 9_000), mine, NOW, "usr_jud01") === null);
   const privacy = read("src/app/legal/privacy/page.tsx");
-  const namesRound = /data-policy-addition="pending-round"/.test(privacy);
+  // One round paragraph per language (en, sw, zh): §7 must say it to every reader, not to one.
+  const namesRound = (privacy.match(/data-policy-addition="pending-round"/g) ?? []).length === 3;
   ok("3.4 ⛔ the tab marker that carries a stake is written only once the privacy notice names a round (S12-PLAN Risk 14): JUD_TAB_MARKER is false, or §7 holds the round sentence",
     A.JUD_TAB_MARKER === false || namesRound, `JUD_TAB_MARKER=${A.JUD_TAB_MARKER}, §7 names a round: ${namesRound}`);
   const arm = strip(read(ARM));

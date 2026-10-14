@@ -25,12 +25,12 @@ import { projectedReturn, refundWarningFor, emptySideOf, type UpDownPricing } fr
 
 /**
  * ⛔ THE TAB MARKER THAT CARRIES A CHOSEN STAKE (through the deposit page, and on to the next round) IS WRITTEN ONLY ONCE
- * THE PRIVACY NOTICE NAMES A ROUND (S12-PLAN Risk 14, Open point 12): §7 says what `kp-pending-bet` holds for a question,
- * and a round written there before §7 says so would be storage the notice does not disclose. False until the commit
- * that adds §7's round sentence; until then a carried bet keeps its side and the round's minimum stake (the address
- * alone never sets a stake). Reading a marker is never gated: `stakeFromUrl` only answers for one this tab wrote.
+ * THE PRIVACY NOTICE NAMES A ROUND (S12-PLAN Risk 14, Open point 12): a round written into `kp-pending-bet` before §7 says
+ * so would be storage the notice does not disclose. ON since Privacy v2026-10-15, whose §7 round paragraph
+ * (data-policy-addition="pending-round") landed in the same commit; `test:journey-updown` 3.4 refuses this true without
+ * it. Reading a marker is never gated: `stakeFromUrl` only answers for one this tab wrote, for its owner.
  */
-export const JUD_TAB_MARKER = false;
+export const JUD_TAB_MARKER = true;
 
 export type JudSide = "UP" | "DOWN";
 
