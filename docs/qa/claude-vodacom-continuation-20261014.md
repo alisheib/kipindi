@@ -2,7 +2,23 @@
 
 Prepared 2026-10-14. This is a continuation of the existing Vodacom plan, not a new project. Product name: **50pick**; repository: **https://github.com/alisheib/kipindi** (legacy directory names contain kipindi). Ali authorizes continued visual/logic/animation fixes, parallel isolated work, recoverable GitHub checkpoints and verified LIVE releases. Keep the journey **STAFF_PREVIEW** until its actual S15 gates are satisfied. A saved LIVE checkpoint does not mean S8 or the whole plan is complete.
 
-## ⭐ UPDATE 2026-10-14 ~10:45 UTC (Claude, OMEGA-COMPILE01) — read this first
+## ⭐ UPDATE 2026-10-14 ~12:30 UTC (Claude, OMEGA-COMPILE01) — read this first
+
+- **LIVE is `4946a777deaa8e206336202d8c57db8ad39ec3ba`** (main `f830a091c..4946a777d`): Ali's Up & Down ruling (Up/Down
+  only, no multiplier on any Up & Down choice) and the A21 first-frame warm-up (behind the flag). Read back: both public
+  hosts serve the exact `dpl` from 12:08:15 UTC, health ok on all three, DB migrated, STAFF_PREVIEW, `qa:chunks-prod` 6/6
+  on both, production `qa:live` 351/0 signed out ([E3] NOT MEASURED), live /updown read by eye. Record: VODACOM-PLAN §0k,
+  "2026-10-14 Claude continuation (2)".
+- **Next, in order:** (1) A21's root-`:has()` fix (the journey mark as a root-layout attribute on `<html>`; the not-found,
+  signed-out-header and sort-open switches off `:root`), measured on a quiet machine with `qa:bet-sheet-production`;
+  with it the sw "madau" form for the two new Up & Down sentences. (2) Land `codex/s8-battery-final` `a4a5f409e`
+  (db:probe-sheet-facts). (3) Parity v4 compare. (4) S9: integrate `codex/vodacom-s9-fixes` `daaffe1b3` as its own
+  release (it carries a migration: `verify:backup-schema` and the PG battery first). (5) Critique, then build, S10–S13.
+- **Tools for A21** (this machine, `F:\50pick-work\tools\`): `a21-first-second-lite.mjs` (first/second open on one page,
+  load-robust ratio), `a21-css-strip.mjs` (serve the CSS with root-`:has()` selectors removed before load),
+  `a21-invalidations.mjs` (Chrome's style-invalidation tracking with a timeline), `a21-has-trials.mjs`, `a21-sheet-census.mjs`.
+
+## UPDATE 2026-10-14 ~10:45 UTC (Claude, OMEGA-COMPILE01)
 
 - **LIVE is `08a8c04728219690b91eba5ae34a2ac4697f40b3`** (main `da19e5a21..08a8c0472`), read back on all three hosts:
   exact `dpl`, health ok, DB migrated (102, unchanged), lease on the new instance, STAFF_PREVIEW, service worker = Git blob,
