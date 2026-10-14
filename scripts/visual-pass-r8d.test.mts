@@ -590,7 +590,7 @@ section("10 · untouched — the dictionary, R8-C's one rule, the voting door");
   ok("10.1 · no dictionary string changed (src/lib/i18n-dict.ts is HEAD's)", clean("src/lib/i18n-dict.ts"));
   ok("10.2 · R8-C's one rule is unchanged (viewer-doors.ts, hub-viewer.ts, app-shell.tsx are HEAD's)", clean("src/lib/journey/viewer-doors.ts") && clean("src/lib/server/hub-viewer.ts") && sameCode("src/components/layout/app-shell.tsx"));
   const shellBeforeS8 = shellNow.replace(hostImport, "").replace(hostSlot, "");
-  const unrelatedShell = shellNow.replace("const journeyShown = (await journeyRead).journey;", "const journeyShown = false;");
+  const unrelatedShell = shellNow.replace("const journeyShown = await journeyShellShown();", "const journeyShown = false;");
   ok("10.2′ CONTROL · only the exact S8 host delta is symmetric: an unrelated journey-rule edit, changed host gate, or missing PTR mount still differs",
     shellNow.includes(hostImport) && shellNow.includes(hostSlot) && sameShell(shellNow, shellBeforeS8) && sameShell(shellBeforeS8, shellNow)
       && unrelatedShell !== shellNow && !sameShell(shellNow, unrelatedShell)

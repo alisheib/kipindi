@@ -398,7 +398,7 @@ const phasesOf = (t: (p: string) => string) => ({
   flagLayout: squash(decomment(t(FLAG_FILE))).includes("useLayoutEffect(() => raiseJourneyFlag(), []);") && !/\buseEffect\(/.test(decomment(t(FLAG_FILE))) && hasDirective(t(FLAG_FILE), "use client"),
   flagBare: squash(decomment(t(SHELL))).includes("{journeyShown && <LazyJourneyFlag />}") && !/<Suspense[^>]*>\s*<LazyJourneyFlag/.test(decomment(t(SHELL))),
   lowerAfterCommit: squash(decomment(t(FLAG_LIB))).includes("document.documentElement.removeAttribute(JOURNEY_FLAG_ATTR); window.dispatchEvent(new Event(JOURNEY_FLAG_EVENT)); queueMicrotask(announceJourneyFlagAfterCommit);"),
-  markLayout: squash(decomment(t(NF_MARK))).includes("useLayoutEffect(() => { announceNotFound(); }, [path]); useLayoutEffect(() => announceNotFoundAfterCommit, []);") && !/\buseEffect\(/.test(decomment(t(NF_MARK))),
+  markLayout: squash(decomment(t(NF_MARK))).includes("useLayoutEffect(() => { announceNotFound(); document.documentElement.removeAttribute(NOT_FOUND_FLAG); }, [path]); useLayoutEffect(() => announceNotFoundAfterCommit, []);") && !/\buseEffect\(/.test(decomment(t(NF_MARK))),
   markAfterCommit: squash(decomment(t(NF_LIB))).includes("export function announceNotFoundAfterCommit(): void { queueMicrotask(() => { if (typeof window !== \"undefined\") announceNotFound(); }); }"),
 });
 {
@@ -504,8 +504,10 @@ const phasesOf = (t: (p: string) => string) => ({
     "src/lib/press-feedback.ts": "normal and journey pick handlers call this shared event-phase helper: a synchronous temporary press-pop class probes stylesheet frames/timing, is removed before returning to React, and plays via WAAPI; no retained hydration mark",
     "src/components/layout/needle.tsx": "the Needle's own engine (its root's suppressed and wake classes), run from its own gate; R4-J's and R5-D's notes hold its first frame (the shell's mark in the server's HTML)",
     "src/components/ui/route-transition.tsx": "the route entrance (route-enter): restarted in the layout phase of a route change, before the new route's first paint, and never at mount — FIXED (R5-H's patch, proven in a browser 2026-10-09; 3.7, 3.8)",
+    "src/components/ui/not-found-mark.tsx": "lowers the load-time not-found flag (data-not-found, raised by the root layout's watcher before any script ran — A21, 2026-10-14) in the same LAYOUT effect that announces the mark, so the chrome's own answer and the flag's going are painted together",
+    "src/components/markets/menu-shell.tsx": "the open sort menu (data-sort-open on <html>, A21 2026-10-14): mirrored from a MutationObserver on the menu's `open` attribute — a record delivered before the next frame — and taken down when the menu goes",
   };
-  const PATTERN = /document\.documentElement\.(?:setAttribute|removeAttribute|classList|dataset)|document\.body\.(?:style|dataset|classList|setAttribute)|\.setAttribute\("data-|\.classList\.(?:add|remove|toggle)\(|body\.dataset\.|body\.style\./;
+  const PATTERN = /document\.documentElement\.(?:setAttribute|removeAttribute|classList|dataset)|document\.body\.(?:style|dataset|classList|setAttribute)|\.setAttribute\("data-|\.classList\.(?:add|remove|toggle)\(|\.toggleAttribute\(|body\.dataset\.|body\.style\./;
   const writers = (text: (p: string) => string) => walk("src").filter((p) => /\.tsx?$/.test(p) && !p.startsWith("src/app/admin/") && PATTERN.test(decomment(text(p)))).sort();
   const now = writers(raw);
   const writerHolds = (files: string[]) => j(files) === j(Object.keys(MARK_WRITERS).sort());

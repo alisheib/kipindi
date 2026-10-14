@@ -444,7 +444,7 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
   ok("5.1′ PLANT · the hook back to the span's presence (R4-J's: \"not found\" for the next page while the old span is up) is reported",
     !hookOk(lib.replace("return isNotFoundFor(markPath, path);", "return markPath !== null;")));
   const markOk = (s: string) => hasDirective(s, "use client") && s.includes('const path = usePathname() ?? "";')
-    && squash(s).includes("useLayoutEffect(() => { announceNotFound(); }, [path]);") && squash(s).includes("useLayoutEffect(() => announceNotFoundAfterCommit, []);")
+    && squash(s).includes("useLayoutEffect(() => { announceNotFound(); document.documentElement.removeAttribute(NOT_FOUND_FLAG); }, [path]);") && squash(s).includes("useLayoutEffect(() => announceNotFoundAfterCommit, []);")
     && s.includes("return <span hidden id={NOT_FOUND_MARK} data-path={path} />;");
   const { PathnameContext: PathCtx } = createRequire(import.meta.url)("next/dist/shared/lib/hooks-client-context.shared-runtime") as {
     PathnameContext: import("react").Context<string | null>;
@@ -456,7 +456,8 @@ section("5 · the not-found mark (tiles 345–398: the market not-found stood th
     markOk(mark) && drawnAt === '<span hidden="" id="kp-not-found" data-path="/markets/mkt_gone"></span>', drawnAt);
   ok("5.2′ PLANT · a mark that does not announce its going (the overlays stay up after leaving) is reported", !markOk(mark.replace("useLayoutEffect(() => announceNotFoundAfterCommit, []);", "")));
   ok("5.2″ PLANT · its coming announced by a passive effect again (a transition paints the not-found page with a tab lit first) is reported",
-    !markOk(mark.replace("useLayoutEffect(() => { announceNotFound(); }, [path]);", "useEffect(() => { announceNotFound(); }, [path]);")));
+    !markOk(mark.replace("useLayoutEffect(() => { announceNotFound(); document.documentElement.removeAttribute(NOT_FOUND_FLAG); }, [path]);",
+      "useEffect(() => { announceNotFound(); document.documentElement.removeAttribute(NOT_FOUND_FLAG); }, [path]);")));
   ok("5.2‴ PLANT · a mark that names no path (presence again) is reported", !markOk(mark.replace(" data-path={path} />", " />")));
   // Only client code may load the hook module (journey-on.ts's rule, for its reason).
   const files: string[] = [];

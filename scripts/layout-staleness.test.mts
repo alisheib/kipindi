@@ -177,6 +177,13 @@ const REVIEWED: Record<string, string> = {
   "src/components/admin/admin-section-gate.tsx":
     "REVIEWED (added 2026-09-14) · rendered by each console SECTION layout, which is re-executed on every navigation "
     + "into the section — measured, and driven by `test:admin-section-gate`.",
+  "src/lib/server/journey-preview.ts":
+    "REVIEWED (added 2026-10-14, A21) · `journeyShellShown` is read by the ROOT layout for `data-shell` on <html> and by "
+    + "AppShell for the shell it draws — ONE answer from `x-pathname` and the preview pass, frozen at the document load "
+    + "exactly as AppShell's own shell already was (its `/admin` and `/s` returns above). Crossing into or out of the "
+    + "journey is a document navigation: setting and clearing a pass is a form POST answered by a 303, and the console "
+    + "and opt-out shells are hard navigations (`test:shell-boundary`, `test:marketing-optout` S20). `test:root-has` holds "
+    + "the root layout and AppShell to the one helper.",
 };
 /**
  * ⭐ E-381 §6 item 11 · THE POPULATION INCLUDES WHAT A LAYOUT RENDERS. It used to be files NAMED `layout.tsx`, so

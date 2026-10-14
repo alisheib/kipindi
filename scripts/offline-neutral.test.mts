@@ -414,7 +414,7 @@ async function run(W: World, log: (l: string) => void): Promise<string[]> {
     const body = shell.slice(shell.indexOf("export async function AppShell"), shell.indexOf("function SkipToContent"));
     const at = body.indexOf(MOUNT);
     const header = body.search(/<LazyJourneyTopBar\b[\s\S]*?<TopAppBar\b/);
-    const main = body.indexOf("<MainLandmark>");
+    const main = body.indexOf("<MainLandmark viewer=");
     ok("8.flow · AppShell mounts it once, after the header and before the page — in the flow between them",
       body.split(MOUNT).length === 2 && header > 0 && at > header && main > at && shell.split("<OfflineBanner").length === 2, j({ header, at, main }));
   }

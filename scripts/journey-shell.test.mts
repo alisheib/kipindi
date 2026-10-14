@@ -1011,7 +1011,7 @@ function g11Overlays(W: World, G: Graph, ok: Ok) {
   // 🔴 INVERTED 2026-10-07. This pinned the bar's condition (classic requests only, never during a break). The owner
   // removed the bar (a deposit asks no email; a withdrawal asks it, quietly), so the shell must mount it for NOBODY.
   ok("11.emailbar · there is no email-verify bar for any reader — classic or journey (deleted 2026-10-07)",
-    count(shell, "<EmailVerifyBanner") === 0 && !shell.includes("emailVerifyState") && shell.includes("const journeyShown = (await journeyRead).journey;"),
+    count(shell, "<EmailVerifyBanner") === 0 && !shell.includes("emailVerifyState") && shell.includes("const journeyShown = await journeyShellShown();"),
     show({ mounts: count(shell, "<EmailVerifyBanner"), state: shell.includes("emailVerifyState") }));
   const loaders = [...(G.into.get(FLAG_COMPONENT) ?? [])].sort();
   const binding = count(text(W, SHELL_LAZY), FLAG_BINDING);
