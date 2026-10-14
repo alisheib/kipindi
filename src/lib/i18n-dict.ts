@@ -3230,6 +3230,17 @@ export const dict = {
       lowPendingLateTitle: "Payment not confirmed yet",
       lowPendingLateBody: "It’s been 30 minutes. Don’t start another payment — if money was taken, it will reach your balance once confirmed.",
       ticketsHere: "Your tickets",
+      /**
+       * S12 drafts, for review 9: Juu/Chini in the journey's language (S12-PLAN WP8). The round-closed notice (WP11) says the
+       * paid line only with a confirmed deposit and the next round's time only from a server instant; udUseInstead SETS the
+       * stake and never places (Open point 11).
+       */
+      udRoundClosedTitle: "This round has closed",
+      udRoundClosedPaid: "Your money is in — {amount} is in your balance.",
+      udNextRoundAt: "The next round starts at {time}.",
+      udNextRoundGo: "Go to the next round",
+      udUseInstead: "Use {amount} instead",
+      udQuickStakes: "Quick amounts",
     },
   },
 
@@ -5714,6 +5725,13 @@ export const dict = {
       lowPendingLateTitle: "Malipo bado hayajathibitishwa",
       lowPendingLateBody: "Imepita dakika 30. Usianzishe malipo mengine — pesa zikikatwa, zitaingia kwenye salio lako zikithibitishwa.",
       ticketsHere: "Tiketi zako",
+      /** S12, for review 9 (S12-PLAN WP8): the round-closed notice and the Juu/Chini arm's two new controls. */
+      udRoundClosedTitle: "Raundi hii imefungwa",
+      udRoundClosedPaid: "Pesa zako zimeingia — {amount} ziko kwenye salio lako.",
+      udNextRoundAt: "Raundi inayofuata inaanza {time}.",
+      udNextRoundGo: "Nenda kwenye raundi inayofuata",
+      udUseInstead: "Tumia {amount} badala yake",
+      udQuickStakes: "Kiasi cha haraka",
     },
   },
 
@@ -8096,7 +8114,7 @@ export const dict = {
       howStep2Title: "点击{yes}或{no}",
       howStep2Body: "立即看到您可赢取的金额，例如 ≈{mult}× 您的投注。",
       howStep3Title: "投注，等待结果",
-      howStep3Body: "赢家平分奖池。奖金进入您的余额，可通过手机钱包提现。",
+      howStep3Body: "赢家按投注比例分享奖池。奖金进入您的余额，可通过手机钱包提现。",
       howExampleLabel: "示例",
       howExampleBody: "在显示 ≈{mult}× 的{side}上投注 {stake} → 若赢约可获得 {payout}。若猜错，您将失去投注金额。",
       howCta: "明白了，开始",
@@ -8178,6 +8196,13 @@ export const dict = {
       lowPendingLateTitle: "付款尚未确认",
       lowPendingLateBody: "已超过 30 分钟。请勿发起另一笔付款——如已扣款，确认后将计入您的余额。",
       ticketsHere: "您的注单",
+      /** S12, for review 9 (S12-PLAN WP8): the round-closed notice and the Juu/Chini arm's two new controls. */
+      udRoundClosedTitle: "本轮已截止",
+      udRoundClosedPaid: "您的资金已到账——{amount} 已存入您的余额。",
+      udNextRoundAt: "下一轮将于 {time} 开始。",
+      udNextRoundGo: "前往下一轮",
+      udUseInstead: "改用 {amount}",
+      udQuickStakes: "快捷金额",
     },
   },
 } as const;

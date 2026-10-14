@@ -20,6 +20,7 @@ import { getBoard } from "@/lib/server/updown-board";
 import { currentSession } from "@/lib/server/auth-service";
 import { getServerT } from "@/lib/i18n-server";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+import { judViewerFor } from "@/lib/server/journey-updown";
 import { pickLocalized } from "@/lib/localized";
 import { UpDownCard } from "@/components/updown/updown-card";
 import { UpDownResultAnnouncer } from "@/components/updown/updown-result-announcer";
@@ -105,6 +106,8 @@ export default async function UpDownPage({
   // and the portfolio sign, the name its page gives itself for them. The shell's own cached answer for this request.
   const { journey } = await resolveSimpleJourney();
   const historyName = journey ? t.journey.tabTickets : t.market.udHistoryTitle;
+  // S12 WP10 · a journey reader's own facts for Juu/Chini's journey arm, re-read on every render (the poll); classic: none.
+  const judViewer = journey && session ? await judViewerFor(session.userId, session.playStartedAt) : null;
   // R6-A · the break's approved sentence with its end, one kept run (`breakSentence`, the one formatter), for every card.
   const breakEnd = await breakRead;
   const breakBody = breakEnd
@@ -374,11 +377,13 @@ export default async function UpDownPage({
                 isAuthed={isAuthed}
                 minStake={stakeBounds.min}
                 maxStake={stakeBounds.max}
-                walletBalance={walletBalance}
+                walletBalance={judViewer ? judViewer.spendable : walletBalance}
                 myUpStake={r.myUpStake}
                 myDownStake={r.myDownStake}
                 myRefundedStake={r.myRefundedStake}
                 breakBody={breakBody}
+                /* S12 · spread only for a journey reader: a classic card's props (and the page's flight data) gain no key. */
+                {...(judViewer ? { journey: judViewer } : {})}
               />
             ))}
           </div>

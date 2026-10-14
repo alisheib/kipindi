@@ -609,6 +609,63 @@ console.log("\n§8 · rendered: the choices read Up and Down only, the commit ke
   const plantPanelRate = panelUp.html.replace(/(<span class="amount text-body-sm font-semibold text-text-muted">)[^<]+(<\/span>)/, `$1${formatTzs(750)}$2`);
   ok("8.4″ PLANT · a projection that is not the pool's (stake × 1.5) is reported",
      plantPanelRate !== panelUp.html && defectsOf(panelUp, plantPanelRate).some((x) => /pool says/.test(x)), defectsOf(panelUp, plantPanelRate).join(" · "));
+
+  // ⭐ S12 WP9 step 6 · THE JOURNEY ARM OBEYS THE SAME RULE. A journey reader's Juu/Chini controls are their own components
+  // (`journey/updown/jud-arm.tsx`), handed the very hook the classic control uses (built here as the card builds it): the
+  // board card's control, the round page's two-way control and its `?side=` panel, on every pool, the display switch on and
+  // off, in three languages — read by the SAME choice reader as the classic surfaces above, and the panel by its own.
+  const { JudTwoWay, JudConfirm } = await import("../src/components/journey/updown/jud-arm.tsx");
+  const { useUpDownQuickBet } = await import("../src/components/updown/use-quick-bet.ts");
+  function JourneyHost(props: { kind: "card" | "detail" | "confirm"; pricing: UpDownPricing; side?: "UP" | "DOWN"; loc: Loc }) {
+    const t = DICTS[props.loc];
+    const bet = useUpDownQuickBet({
+      marketId: "mkt_rule", minStake: 500, maxStake: 1_000_000, walletBalance: 50_000, selectionClosesAtMs: NOW + 30 * MIN, serverNowMs: NOW,
+      copy: { placed: t.market.udBetPlaced, failed: t.market.udBetFailed, up: t.market.udUp, down: t.market.udDown },
+      errCopy: t.market as never, reasonCopy: t.error as unknown as Record<string, string>,
+    });
+    const round = { marketId: "mkt_rule", roundId: "udr_rule", pricing: props.pricing, min: 500, max: 1_000_000, selectionClosesAtMs: NOW + 30 * MIN, open: true, serverNowMs: NOW, myUpStake: 0, myDownStake: 0 };
+    const viewer = { facts: null, spendable: 50_000, viewerId: "usr_rule" };
+    return props.kind === "confirm"
+      ? createElement(JudConfirm, { bet, round, viewer, assetName: "Bitcoin", side: props.side ?? "UP" })
+      : createElement(JudTwoWay, { bet, round, viewer, assetName: "Bitcoin", size: props.kind });
+  }
+  const journey: Array<{ what: string; loc: Loc; pricing: UpDownPricing; html: string; kind: "choice" | "panel"; side?: "UP" | "DOWN" }> = [];
+  let journeyError = "";
+  try {
+    for (const loc of LOCALES) for (const [shape, up, down] of POOLS) for (const show of [true, false]) {
+      const pricing = P(up, down, LIVE, show);
+      const tag = `${loc}/${shape}/show=${show}`;
+      for (const kind of ["card", "detail"] as const) journey.push({ what: `journey ${kind} control ${tag}`, loc, pricing, kind: "choice", html: wrap(loc, createElement(JourneyHost, { kind, pricing, loc })) });
+      for (const side of ["UP", "DOWN"] as const) journey.push({ what: `journey confirm ${side} ${tag}`, loc, pricing, kind: "panel", side, html: wrap(loc, createElement(JourneyHost, { kind: "confirm", pricing, side, loc })) });
+    }
+  } catch (e) { journeyError = String((e as Error)?.stack ?? e).split("\n").slice(0, 3).join(" | "); }
+  /** The journey `?side=` panel against the rule: no multiple, the projection the pool's, its qualifier iff it, side-aware. */
+  function journeyPanelDefects(loc: Loc, html: string, pricing: UpDownPricing, side: "UP" | "DOWN"): string[] {
+    const d: string[] = [];
+    const t = DICTS[loc].market;
+    const all = text(html);
+    if (/×/.test(all)) d.push(`a "×" is printed: …${(all.match(/.{0,30}×.{0,20}/) ?? [""])[0]}…`);
+    if (/<button[^>]*class="btn btn-(?:yes|no)\b/.test(html)) d.push("a side button on the confirm panel");
+    const shown = html.match(/data-testid="jud-projection"[^>]*>([\s\S]*?)<\/p>/)?.[1] ?? null;
+    const want = projectedReturn(pricing, side, 500);
+    if (want == null) { if (shown != null) d.push(`a projection with the display switch off: ${text(shown)}`); }
+    else if (shown == null || !text(shown).includes(formatTzs(want))) d.push(`the projection reads ${shown == null ? "none" : text(shown)}, the pool says ${formatTzs(want)}`);
+    if (all.includes(t.udEstimateNote) !== (want != null)) d.push(`the qualifier ${want != null ? "is missing beside" : "is shown without"} a projection`);
+    const warn = expectedSentence(loc, refundWarningFor(pricing, side));
+    if (warn != null && !all.includes(warn)) d.push(`the side-aware warning is missing: "${warn}"`);
+    for (const s of allSentences(loc)) if (s !== warn && all.includes(s)) d.push(`a false warning is shown: "${s}"`);
+    return d;
+  }
+  const journeyDefectsOf = (r: (typeof journey)[number], html = r.html) =>
+    r.kind === "panel" ? journeyPanelDefects(r.loc, html, r.pricing, r.side!) : choiceDefects(r.loc, html, r.pricing, false);
+  const journeyBad = journey.flatMap((r) => journeyDefectsOf(r).map((x) => `${r.what}: ${x}`));
+  ok(`8.6 the journey arm (S12): the card control, the two-way control and the ?side= panel say Up and Down only — no "×", no estimate note on a choice, the panel's projection the pool's with its qualifier, the empty side iff true (${journey.length} renders)`,
+     journeyError === "" && journey.length === LOCALES.length * POOLS.length * 2 * 4 && journeyBad.length === 0,
+     journeyError || journeyBad.slice(0, 4).join(" · "));
+  const jTwo = journey.find((r) => r.what === "journey card control en/two-sided/show=true")!;
+  const jPlant = jTwo.html.replace(/(<button[^>]*class="btn btn-yes[^"]*"[^>]*>[\s\S]*?)(<\/button>)/, `$1<span class="amount">× 1.26</span>$2`);
+  ok("8.6′ PLANT · a multiple put back on the journey arm's Up button is reported",
+     jPlant !== jTwo.html && journeyDefectsOf(jTwo, jPlant).some((x) => /Up button reads|×/.test(x)), journeyDefectsOf(jTwo, jPlant).join(" · "));
 }
 
 console.log(`\nupdown-pricing: ${pass} passed, ${fails.length} failed`);

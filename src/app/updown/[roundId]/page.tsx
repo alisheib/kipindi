@@ -49,6 +49,11 @@ import { SOURCE_CLASS_KEY, fmtEAT } from "@/lib/updown-source-label";
 // E-101 · one rule for "where does this ticket live", shared with the wallet and the emails.
 import { positionListHref } from "@/lib/position-permalink";
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
+// S12 WP9–WP11 · Juu/Chini's journey arm: the viewer's facts, a carried round bet, and the round-closed notice's loader.
+import { judViewerFor } from "@/lib/server/journey-updown";
+import { parseBetParam } from "@/lib/journey/pending-bet";
+import { judClosedNotice } from "@/lib/journey/updown-arm";
+import { LazyJudRoundClosed } from "@/components/journey/updown/jud-lazy";
 // E-102 · how often this page re-asks the server, and when it stops.
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { UpDownResultAnnouncer } from "@/components/updown/updown-result-announcer";
@@ -120,7 +125,7 @@ export default async function UpDownRoundPage({
   searchParams,
 }: {
   params: Promise<{ roundId: string }>;
-  searchParams: Promise<{ side?: string; from?: string }>;
+  searchParams: Promise<{ side?: string; from?: string; bet?: string }>;
 }) {
   const { roundId } = await params;
   const sp = await searchParams;
@@ -346,6 +351,16 @@ export default async function UpDownRoundPage({
   const evidence = proof?.closeEvidence ?? proof?.openEvidence ?? null;
   // The shell's own cached answer: a journey reader's door to the round's tickets names the journey's page (round 6, C14).
   const { journey } = await resolveSimpleJourney();
+  /* S12 WP9–WP11 · FOR A JOURNEY READER ONLY: their own facts (the poll re-reads them), the side a bet for THIS round carried
+     back (`?bet=udr_<this round>.<side>[.<stake>]`, the way back from a deposit — its stake is the tab's to prove, client
+     side, `stakeFromUrl`), and, when that round no longer takes a bet, the round-closed notice. Classic readers: none. */
+  const judViewer = journey && session ? await judViewerFor(session.userId, session.playStartedAt) : null;
+  const carriedBet = judViewer ? parseBetParam(sp?.bet) : null;
+  const judSide: "UP" | "DOWN" | null = !judViewer ? null
+    : lockedSide ?? (carriedBet?.kind === "round" && carriedBet.id === roundId ? carriedBet.side : null);
+  const judClosed = judViewer && judSide && !isOpen
+    ? judClosedNotice({ successor: round.successor, confirmedDepositTzs: null, nowMs: round.serverNowMs })
+    : null;
 
   // B7 — was max-w-[1232px] with an inline padding, while this route's own
   // loading.tsx said 1080: a 152px layout jump on EVERY load, which no test
@@ -569,6 +584,7 @@ export default async function UpDownRoundPage({
           />
 
           <div className="flex min-w-0 flex-col gap-4">
+            {judClosed && judSide && <LazyJudRoundClosed roundId={roundId} side={judSide} notice={judClosed} viewer={judViewer} />}
             {/* Stake (open) · Result (resolved & played) · calm panels otherwise.
                 ⭐ UD-2 · the open/locked pair is ONE client component that derives its
                 phase from the instants (`roundPhase` + the server-anchored clock), so
@@ -596,8 +612,10 @@ export default async function UpDownRoundPage({
                   pricing: round.pricing,
                   assetName: name,
                   signInHref: `/auth/login?next=${encodeURIComponent(`/updown/${roundId}${lockedSide ? `?side=${lockedSide}` : ""}`)}`,
-                  lockedSide,
-                  walletBalance: detail.walletBalance,
+                  lockedSide: judSide ?? lockedSide,
+                  walletBalance: judViewer ? judViewer.spendable : detail.walletBalance,
+                  // S12 · spread only for a journey reader: a classic panel's props (and the flight data) gain no key.
+                  ...(judViewer ? { journey: { roundId, viewer: judViewer } } : {}),
                   // UD-22 · assembled server-side on the round itself, so this page and the
                   // board card confirm a bet with the same sentences and the same exit terms.
                   receipt: round.receipt,
@@ -650,7 +668,7 @@ export default async function UpDownRoundPage({
                   <div className="mt-3.5 border-t border-border-subtle/60 pt-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="m-0 font-mono text-micro uppercase eyebrow text-text-subtle">
-                        {t.market.udPositionsOnRound} · {formatNumber(myPosition.items.length)}
+                        {journey ? t.journey.ticketsHere : t.market.udPositionsOnRound} · {formatNumber(myPosition.items.length)}
                       </p>
                       {myPosition.hedged && <Chip>{t.market.udBothSides}</Chip>}
                     </div>

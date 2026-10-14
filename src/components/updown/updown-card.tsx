@@ -42,6 +42,10 @@ import { useT } from "@/lib/i18n";
 import { formatBreakEnd } from "@/lib/break-end";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
 import { UpDownStakeControls, GLYPH_NO_SHRINK } from "./updown-stake-controls";
+// S12 WP9 · the journey arm's loader alone: the arm is a chunk of its own, fetched only for a journey request.
+import { LazyJudTwoWay } from "@/components/journey/updown/jud-lazy";
+import type { JudViewer } from "@/lib/journey/updown-arm";
+import { PLATFORM_MAX_STAKE, PLATFORM_MIN_STAKE } from "@/lib/payout";
 import { AssetMark } from "./asset-mark";
 import { Button } from "@/components/ui/button";
 // ⭐ The kit's ONE pool-split bar, and the home of the cold-start rail (§B9). See the pool-split
@@ -200,6 +204,11 @@ export type UpDownCardProps = {
    * one-tap stakes stand (`BetBreakNotice`) — the page reads the lockout, failing open; the card only draws.
    */
   breakBody?: KeptBody | null;
+  /**
+   * S12 WP9–WP10 · a journey reader's own facts (`judViewerFor`, read by the board page for a journey request with a
+   * session), or absent. Present, the signed-in control is Juu/Chini's journey arm; absent, it is the classic control.
+   */
+  journey?: JudViewer | null;
 };
 
 
@@ -432,7 +441,7 @@ export function UpDownCard(props: UpDownCardProps) {
     sourceClass, sourceQuotedAt, className,
     selectionClosesAtMs, serverNowMs, myExactPayout, myPayoutIfUp, myPayoutIfDown, myRefundedStake,
     marketId, isAuthed, minStake, maxStake, walletBalance, myUpStake = 0, myDownStake = 0,
-    expectedResultAtMs = null, resolvedAtMs = null, successor, receipt, breakBody = null,
+    expectedResultAtMs = null, resolvedAtMs = null, successor, receipt, breakBody = null, journey = null,
   } = props;
   const { t, locale } = useT();
   const router = useRouter();
@@ -1014,11 +1023,16 @@ export function UpDownCard(props: UpDownCardProps) {
             >
               {/* UD-22 · the receipt's ghost CTA goes to the round. From the BOARD that is a
                   real destination, so it is offered here; the round page omits it. */}
+              {/* S12 WP9 · a journey reader's control is Juu/Chini's journey arm, on this very hook; the else arm is the classic control. */}
+              {journey && marketId && serverNowMs != null ? <LazyJudTwoWay bet={bet} viewer={journey} assetName={assetName} receipt={receipt} size="card"
+                onWatchRound={receipt ? () => router.push(receipt.roundHref as never) : undefined}
+                round={{ marketId, roundId, pricing, min: minStake ?? PLATFORM_MIN_STAKE, max: maxStake ?? PLATFORM_MAX_STAKE, selectionClosesAtMs: selectionClosesAtMs ?? null, open: bettable, serverNowMs, myUpStake, myDownStake }} /> : (
               <UpDownStakeControls
                 bet={bet} pricing={pricing} assetName={assetName} size="card" stopPropagation
                 receipt={receipt}
                 onWatchRound={receipt ? () => router.push(receipt.roundHref as never) : undefined}
               />
+              )}
             </div>
           ) : (
             // Signed-out / display-only → the buttons route to the round detail, where
