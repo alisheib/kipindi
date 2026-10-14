@@ -108,7 +108,11 @@ const kMine = await sheetForUser(m.id, "probe_sf_me", { key: KEY_ME });
 const kOther = await sheetForUser(m.id, "probe_sf_me", { key: KEY_OTHER });
 const kHouse = await sheetForUser(m.id, "probe_sf_me", { key: KEY_HOUSE });
 const kBad = await sheetForUser(m.id, "probe_sf_me", { key: "not-a-uuid" });
-ok("6 · ★ the viewer's own key names its position on Postgres", mine.ok && json(kMine.keyPosition) === json({ positionId: mine.data.positionId }), json(kMine.keyPosition));
+// The receipt a key answers, written here by hand from the bet placed above. Since ee518f52a (sheet recovery bound to its
+// account) it carries the bet's own quote beside its id, so the host can match a recovered answer to the stake it asked
+// for; the memory twin pins the same shape (test:journey-sheet 8.key.mine, 8.closedKey.receipt).
+const KEY_ME_RECEIPT = mine.ok ? { positionId: mine.data.positionId, quote: { marketId: m.id, side: "YES", stake: 2_000 } } : null;
+ok("6 · ★ the viewer's own key names its position on Postgres", mine.ok && json(kMine.keyPosition) === json(KEY_ME_RECEIPT), json(kMine.keyPosition));
 ok("7 · ★ another player's key is null, a house bot's key on the viewer's account is null, a malformed key is null",
   kOther.keyPosition === null && kHouse.keyPosition === null && kBad.keyPosition === null, json({ other: kOther.keyPosition, house: kHouse.keyPosition, bad: kBad.keyPosition }));
 
@@ -159,7 +163,7 @@ for (const status of ["CLOSED", "RESOLVED", "VOIDED"] as const) {
   const publicSheet = await sheetPublic(m.id);
   const receipt = await sheetClosedKeyRead(m.id, "probe_sf_me", KEY_ME);
   ok(`12 · ★ ${status}: the public sheet is absent, while a lost answer still recovers the landed position through its private key`,
-    publicSheet === null && mine.ok && json(receipt) === json({ public: null, me: { keyPosition: { positionId: mine.data.positionId } } }), json({ publicSheet, receipt }));
+    publicSheet === null && mine.ok && json(receipt) === json({ public: null, me: { keyPosition: KEY_ME_RECEIPT } }), json({ publicSheet, receipt }));
 }
 const terminalOther = await sheetClosedKeyRead(m.id, "probe_sf_me", KEY_OTHER);
 const terminalHouse = await sheetClosedKeyRead(m.id, "probe_sf_me", KEY_HOUSE);
