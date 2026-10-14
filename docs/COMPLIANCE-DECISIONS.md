@@ -62,6 +62,21 @@ amends PLAN I3 and `docs/RULES.md` §2.11 ("never trades against another bot") i
 - **The holders.** Accounts paired against each other must be held by different real people, and the out-of-band
   reimbursement (D3b) must cover balance moving between holders.
 
+**Later the same day — four more answers** (the session's questions, asked while N3's release gate ran):
+- **The roster's hard ceiling is 100 accounts** (offered 50, 100 and 200). The working number stays a desk setting
+  up to it; the migration's CHECK takes 100.
+- **Desk accounts paired against each other must belong to DIFFERENT holders — "Different holders"** (offered against
+  "same holder allowed"). The pairing build enforces it in code, never as a preference; balance that moves between
+  holders is squared up outside the app (D3b).
+- **Every AML flag on two desk accounts that staked against each other goes to the owner before it is closed —
+  "Always escalate to me"** (offered against "review, note, close"). The officer procedure the pairing build ships
+  with says so.
+- **The desk's own price is HELD until he decides** — he asked *"explain this more before we go, why we need this"*.
+  Explained: 669 of the 1,111 rounds lost in the measured week were stale-price losses, and an answer to a player
+  mid-round needs a price under 3 minutes old; estimated cost about 5,800 TwelveData credits a day for two assets
+  (paid plans carry no daily limit; the free plan stops at 800). Recommended: measure a day of N3 live first. The
+  ruling "Yes, fetch fresh prices" stands; the build waits for his go.
+
 **Controls:** the daily budget is checked inside the bet's own locks (PLAN I6), a budget that is not set means never,
 and the switch stops every queued desk-against-desk stake. Plan: the session's approved plan, recorded in
 `plans/house-bots/RESUME-HERE.md` §0e.

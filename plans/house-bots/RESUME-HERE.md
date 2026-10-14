@@ -295,7 +295,7 @@ baseline and stops the red drive before it starts; (3) flipping `BY_HAND_SCREENS
 `10.start` red and **silently disarms the `scope-byhand-flag-without-screen` mutation**, whose `from`
 quotes that line byte-for-byte — both move in the same commit as the flag.
 
-## 0e · ▶ MANY ACCOUNTS, BOTH SIDES OF THE GAME (Ali, 2026-10-14) · 🔨 PHASE 1 BUILT, RELEASE PENDING — board row ▶ 0h
+## 0e · ▶ MANY ACCOUNTS, BOTH SIDES OF THE GAME (Ali, 2026-10-14) · ✅ PHASE 1 RELEASED 2026-10-14 (gate green at `974e36956`; the live read-back is `docs/HOUSE-BOTS.md` §12.19) · PHASE 2 HELD (Ali) · PHASE 3 NEXT — board row ▶ 0h
 
 **Ali's words, verbatim:** *"lets analye it and fid a way to allow as much as we wnat bots to work with each othr, eve
 et agasint eac hother … so on bot blcks in queu th ebot afetr it etc whast do u reocmmed for full workign expeirence.
@@ -317,11 +317,11 @@ daily budget, may fetch their own price, and the roster may pass 20".
 
 | Phase | What | Needs | State |
 |---|---|---|---|
-| 0 | Settings Ali saves: opener delay max 90 → 45 s; gMaxBetsPerDay → 1,000; gMaxBetsPerMinute → 12; freqMaxPerMarket ≥ 2; freqMinGapSec 20–30; floats above their floors | Ali, on the desk | ⏳ told to Ali |
-| **1** | **N3 — the weighted random draw, hand-off, at-due check, price window, the dead opener, the panel** (`04-amendments.md` § N3) | engineering only | 🔨 built and green on branch `house-bots-multibot` (`F:\kipindi-house-bots-mb`); release pending |
-| 2 | The desk's own fresh price — a TwelveData refresher on the engine's leader, its own cache, a daily credit ceiling (amends A15) | Ali ✅ (ruled) | ⏳ |
-| 3 | One house migration: `gCapPairRoundsPerDay` / `gCapBothSidesDailyTzs` (NULL = never; checked in H4), a `PAIR` kind with its own anchor, a CANCELLED exception on `hbi_counter_anchor_uq`, CHECKs past 20 accounts and 20 bets a minute; the four "exactly two house folders" gates rewritten | Ali ✅ (ruled) | ⏳ |
-| 4 | Two-sided play: 4a answer a player from another account (same-side-only OTHER_BOT for an opted-in untargeted COUNTER); 4b pair empty Up & Down rounds within the budget (PAIR branches in H2/H3/fire, in-lock) — amends I3 and RULES.md §2.11 in the same commit | Ali ✅ (ruled) + the written AML officer procedure | ⏳ |
+| 0 | Settings Ali saves: opener delay max 90 → 45 s; gMaxBetsPerDay → 1,000; gMaxBetsPerMinute → 12; freqMaxPerMarket ≥ 2; freqMinGapSec 20–30; floats above their floors | Ali, on the desk | ⏳ told to Ali 2026-10-14 (in the session's report and the desk guide) |
+| **1** | **N3 — the weighted random draw, hand-off, at-due check, price window, the dead opener, the panel** (`04-amendments.md` § N3) | engineering only | ✅ released 2026-10-14 — gate green at `974e36956` on the SSD worktree (`docs/HOUSE-BOTS.md` §12.19) |
+| 2 | The desk's own fresh price — a TwelveData refresher on the engine's leader, its own cache, a daily credit ceiling (amends A15) | Ali ✅ (ruled) | ⏸ **HELD** — Ali asked why before deciding (`COMPLIANCE-DECISIONS.md` 2026-10-14, "Later the same day"); measure a day of N3 live, then ask him. WIP parked, local branch `house-bots-p2-desk-price` at `14275ddea` (`fetchVendorBars`, `deskBars`/`publishDeskBar`, `house-bot/desk-price.ts`; not wired, no tests) |
+| 3 | One house migration: `gCapPairRoundsPerDay` / `gCapBothSidesDailyTzs` (NULL = never; checked in H4), a `PAIR` kind with its own anchor, a CANCELLED exception on `hbi_counter_anchor_uq`, CHECKs past 20 accounts and 20 bets a minute; the four "exactly two house folders" gates rewritten | Ali ✅ (ruled) | ⏳ **NEXT** — roster ceiling **100** (Ali, 2026-10-14) |
+| 4 | Two-sided play: 4a answer a player from another account (same-side-only OTHER_BOT for an opted-in untargeted COUNTER); 4b pair empty Up & Down rounds within the budget (PAIR branches in H2/H3/fire, in-lock) — amends I3 and RULES.md §2.11 in the same commit | Ali ✅ (ruled) + the written AML officer procedure | ⏳ — pairs only between DIFFERENT holders, enforced in code; every AML flag on a desk pair goes to Ali before it is closed (Ali, 2026-10-14) |
 
 **What Phase 1 built** — read `docs/HOUSE-BOTS.md` §4 (the N3 bullet) and §12.19, not this list:
 `orderBots` (a weighted random draw when every account carries a `turnRoll` — Ali's "random pick" ruling, the 4th

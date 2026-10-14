@@ -102,7 +102,7 @@ System"* v1.0, **made in coordination with the Gaming Board** (ruling in `COMPLI
 | **Where** | A worktree off `main` (`C:\kipindi-tax`, branch `tax-report`, on the laptop; `F:\kipindi-tax`, branch `tax-report-edits`, on OMEGA-COMPILE01) → `main` |
 | **Next** | Read [`TAX-REPORT.md`](TAX-REPORT.md) §0 — never this cell |
 
-## ▶ 0h · HOUSE BOTS — MANY ACCOUNTS, BOTH SIDES OF THE GAME — `HOUSE-BOTS-N3` · 🔨 **OPENED 2026-10-14 (Ali) · Phase 1 BUILT, release pending**
+## ▶ 0h · HOUSE BOTS — MANY ACCOUNTS, BOTH SIDES OF THE GAME — `HOUSE-BOTS-N3` · 🚀 **OPENED 2026-10-14 (Ali) · Phase 1 RELEASED 2026-10-14 · Phase 2 held (Ali) · Phase 3 next**
 
 Ali, 2026-10-14: *"find a way to allow as much as we want bots to work with each other, even bet against each other …
 so on bot blocks in queue the bot after it … the purpose of bots is adding real traffic on both sides of the game"*.
