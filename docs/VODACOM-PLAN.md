@@ -796,6 +796,24 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   S10's account-partitioned keys and immutable legacy quarantine pass nine actual account/recovery browser
   cells and 36 actual-source controls; its final selected drive/capture and integration remain open. App QA
   credentials, external approvals and elapsed observation remain distinct outstanding gates.
+  **2026-10-14 05:36 UTC continuation.** Account-owned recovery/auth carry is integrated at `bf0278b46`.
+  Its exact production build and ten first-load route verdicts pass. Its official compiled frame drive is still
+  **28 passed / 1 failed**: the first heading is 129.5 ms, but closing leaves home permanently on its ghost and
+  prevents reopening. The failure is retained. Network probes reproduce zero home picks, no replacement home
+  request and unchanged authenticated identity; passing null history state and blocking notification POSTs do
+  not repair it. A queued same-page popstate refresh restores the real home within the next observed 350 ms.
+  The host now re-reads only a same-page sheet traversal, including Back/Forward, with guards against placing,
+  a later route change and unmount. This adds one RSC refresh per permitted sheet traversal; opening still uses
+  the carried public seed. Actual callback controls pass 40/40 and all 60 plants; typecheck is clean. The fresh
+  compiled lifecycle/frame drive is required before acceptance. The final classic comparison at frozen
+  `bf0278b46` is **67/67**, 2,038 s: 224 shell, eight Sell, 44 book and 56 question cells have no unexpected
+  differences; the reviewed `--allow-base` history acknowledgment explains the one count difference from NULL.
+  The unchanged baseline SHA256 is `A70976149669B3AA13D322E44BE1DB2A05ECDFC0374BA9A12C711D92BC441070`.
+  Linux CI at that source is **527/535**, with eight failed integration/updated-framework guards under repair;
+  build/browser/Postgres CI steps were skipped, never passed. S9 separately pushes `ae18a4aa8`: owned private
+  status/recheck fixes refuse ambiguous or changed references before and inside wallet claims (172 memory,
+  179 PostgreSQL, 49 memory/four SQL plants). An actual inherited background deposit reference-change probe
+  still credits the wrong wallet; its repair and typed withdrawal binding remain open in that lane.
   **Still NOT CLOSED / NOT LIVE:** current browser/visual closure, clean exact-tip production proof, repaired v4
   baseline/null/branch parity, complete battery and both-host production read-back are required.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;

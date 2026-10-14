@@ -268,6 +268,15 @@ try {
     await page.screenshot({ path: join(OUT, `${route === "/" ? "home" : "live"}-tap-${sample}.png`) });
     await page.locator(S.close).click();
     await page.locator(S.root).waitFor({ state: "detached", timeout: 10_000 });
+    await anchor.waitFor({ state: "visible", timeout: 10_000 });
+    ok(`${route}: sample ${sample} closing restores the page's picks`, await page.locator('[data-testid="journey-home-ghost"]').count() === 0);
+    await page.goForward();
+    await page.locator(`${S.root} h2`).waitFor({ state: "visible", timeout: 10_000 });
+    ok(`${route}: sample ${sample} Forward reopens the original question`, (await page.locator(`${S.root} h2`).innerText()) === title && new URL(page.url()).searchParams.has("bet"));
+    await page.goBack();
+    await page.locator(S.root).waitFor({ state: "detached", timeout: 10_000 });
+    await anchor.waitFor({ state: "visible", timeout: 10_000 });
+    ok(`${route}: sample ${sample} Back restores the usable page`, !new URL(page.url()).searchParams.has("bet"));
     // The same pointerup and frame observer must reject a page-only 250ms hidden-heading plant.
     await page.evaluate(selector => {
       const style = document.createElement("style"); style.textContent = `${selector} h2 { visibility:hidden !important }`; document.head.append(style);

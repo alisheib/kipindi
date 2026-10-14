@@ -69,6 +69,8 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
   const generation = useRef(0);
   const readSequences = useRef(new Map<string, number>());
   const mounted = useRef(true);
+  const pagePath = useRef(pathname);
+  const closingPath = useRef<string | null>(null);
   const lastOdds = useRef(0);
   const pageLoadedAt = useRef(0);
   const ownerEpoch = useRef(0);
@@ -83,6 +85,7 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
     mounted.current = true;
     return () => { mounted.current = false; };
   }, []);
+  useLayoutEffect(() => { pagePath.current = pathname; }, [pathname]);
 
   const revise = useCallback(() => { if (mounted.current) setRevision((v) => v + 1); }, []);
   const show = useCallback((value: Active | null) => { current.current = value; if (mounted.current) setActive(value); }, []);
@@ -280,7 +283,10 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
     const record = pending.current.get(activeIdentity(a));
     if (record?.intent.phase === "placing") return;
     show(null); ++generation.current;
-    if (a.pushed && a.settled?.view.kind !== "receipt") window.history.back();
+    if (a.pushed && a.settled?.view.kind !== "receipt") {
+      closingPath.current = a.pathname;
+      window.history.back();
+    }
     else stripAddress(a.dropSide);
   }, [show, stripAddress]);
 
@@ -394,6 +400,31 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
     router.push(`/wallet/deposit?${query}` as never);
   }, [router, save, show, viewerId, recoveryBlocked]);
 
+  const pop = useCallback(() => {
+    if (!mounted.current) return;
+    const path = window.location.pathname;
+    const closing = closingPath.current;
+    closingPath.current = null;
+    const a = current.current;
+    const record = a && pending.current.get(activeIdentity(a));
+    const bet = pendingBetFrom(path, new URLSearchParams(window.location.search));
+    if (a && !bet) {
+      if (record?.intent.phase === "placing") {
+        const quote = record.intent.quote;
+        window.history.pushState(window.history.state, "", path + withBet(window.location.search, { kind: "market", id: quote.marketId, side: quote.side, stake: quote.stake }));
+        return;
+      }
+      show(null);
+    } else void openAddress();
+    // Next's native history restore can discard the dynamic page without fetching its replacement.
+    // Re-read only a same-page sheet traversal, after the router's popstate restore is queued.
+    if (pagePath.current === path && (a?.pathname === path || closing === path || bet?.kind === "market")) {
+      queueMicrotask(() => {
+        if (mounted.current && window.location.pathname === path) router.refresh();
+      });
+    }
+  }, [openAddress, router, show]);
+
   useEffect(() => {
     mounted.current = true; pageLoadedAt.current = Date.now();
     try {
@@ -422,17 +453,6 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
       window.history.pushState(window.history.state, "", window.location.pathname + withBet(window.location.search, bet) + window.location.hash);
       // The native capture listener supplies the public frame before downstream click work resumes.
       flushSync(() => open(seed, side, box.dataset.sheetTitle ?? "", true, false, box.dataset.sheetOrigin ?? "card"));
-    };
-    const pop = () => {
-      const a = current.current;
-      const record = a && pending.current.get(activeIdentity(a));
-      const bet = pendingBetFrom(window.location.pathname, new URLSearchParams(window.location.search));
-      if (a && !bet) {
-        if (record?.intent.phase === "placing") {
-          const quote = record.intent.quote;
-          window.history.pushState(window.history.state, "", window.location.pathname + withBet(window.location.search, { kind: "market", id: quote.marketId, side: quote.side, stake: quote.stake }));
-        } else show(null);
-      } else void openAddress();
     };
     const refresh = () => {
       if (document.visibilityState !== "visible") return;
@@ -474,7 +494,7 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
       window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh);
       window.removeEventListener("50pick:sse:market-odds", odds); window.removeEventListener("50pick:sse:wallet-balance", refresh);
     };
-  }, [open, openAddress, readKey, refreshed, resolveLegacy, revise, save, show, viewerId]);
+  }, [open, openAddress, pop, readKey, refreshed, resolveLegacy, revise, save, show, viewerId]);
 
   useEffect(() => {
     const a = current.current;

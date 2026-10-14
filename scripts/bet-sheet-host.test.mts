@@ -334,6 +334,38 @@ async function privateRefreshChecks(source: string) {
     return { faultClosed, serialProtected, sequenceProtected, restored, unmounted };
   } catch { return null; }
 }
+/** Run the shipped pop handler with a controlled router/microtask queue, including navigation races. */
+function popChecks(source: string) {
+  try {
+    const run = ({ active = false, closing = false, search = "", page = "/", placing = false, leave = false, unmount = false, mounted = true } = {}) => {
+      const quote = {marketId: "mkt_sheet01", side: "YES", stake: 500};
+      const current = {current: active ? {seed: SEED, side: "YES", pathname: "/"} : null};
+      const closingPath = {current: closing ? "/" : null};
+      const live = {current: mounted};
+      const window = {location: {pathname: "/", search}, history: {state: {}, pushState: () => { pushes++; }}};
+      const queued: (() => void)[] = [];
+      let reads = 0, opens = 0, pushes = 0, closes = 0;
+      const pop = bindHost(source, "pop", {mounted: live, current, closingPath, pagePath: {current: page},
+        pending: {current: new Map(placing ? [["mkt_sheet01.YES", {intent: {phase: "placing", quote}}]] : [])},
+        activeIdentity: (a: any) => `${a.seed.id}.${a.side}`, pendingBetFrom, withBet, window,
+        show: () => { closes++; }, openAddress: () => { opens++; }, queueMicrotask: (fn: () => void) => queued.push(fn), router: {refresh: () => { reads++; }}});
+      pop();
+      const before = reads;
+      if (leave) window.location.pathname = "/wallet";
+      if (unmount) live.current = false;
+      queued.forEach(fn => fn());
+      return {reads, before, opens, pushes, closes, cleared: closingPath.current === null};
+    };
+    const button = run({closing: true}), back = run({active: true}), forward = run({search: "?bet=mkt_sheet01.YES"});
+    const placing = run({active: true, placing: true});
+    return {
+      restores: [button, back, forward].every(r => r.before === 0 && r.reads === 1 && r.pushes === 0 && r.cleared) && back.closes === 1 && forward.opens === 1,
+      scoped: run().reads === 0 && run({active: true, page: "/live"}).reads === 0 && run({search: "?bet=udr_sheet01.YES"}).reads === 0,
+      placing: placing.reads === 0 && placing.pushes === 1 && placing.closes === 0,
+      late: run({closing: true, leave: true}).reads === 0 && run({closing: true, unmount: true}).reads === 0 && run({active: true, mounted: false}).closes === 0,
+    };
+  } catch { return null; }
+}
 async function checks(x: Impl): Promise<Check[]> {
   const result: Check[] = [];
   const ok = (name: string, pass: boolean) => result.push({ name, pass });
@@ -367,6 +399,11 @@ async function checks(x: Impl): Promise<Check[]> {
   ok("host.key-read-send-time", readKey.indexOf("const readAtMs = Date.now()") >= 0 && readKey.indexOf("const readAtMs = Date.now()") < readKey.indexOf("await readTruth") && /afterKeyRead\(record\.intent, null, readAtMs\)/.test(readKey));
   ok("host.key-shape", /Object\.prototype\.hasOwnProperty\.call\(body\.me, "keyPosition"\)/.test(h) && /options\.key && body\.me\.keyPosition !== null/.test(h) && /truth\.reread\.state !== "read"\) return/.test(readKey));
   ok("host.close-and-stake-lock", /record\?\.intent\.phase === "placing"\) return/.test(h) && /intent\?\.phase !== "placing" && intent\?\.phase !== "inDoubt"/.test(h));
+  const pop = popChecks(h);
+  ok("host.pop-restores", pop?.restores === true);
+  ok("host.pop-scoped", pop?.scoped === true);
+  ok("host.pop-placing", pop?.placing === true);
+  ok("host.pop-late", pop?.late === true);
   ok("host.closed-receipt", /closedReceipts\.current\.set\(id, settled\)/.test(h) && /const received = closedReceipts\.current\.get\(id\)/.test(h) && /closedReceipts\.current\.delete\(id\)/.test(h) && /if \(received\) stripAddress\(dropSide\)/.test(h) && /settled: received/.test(h));
   const shown = (kind: string | null, dropSide = false, identity = "mkt_one.YES") => ({ identity, dropSide, settled: kind ? { view: { kind } } : null });
   const restoredReceipt = receiptAddressBarrier(h, shown("receipt"));
@@ -465,6 +502,13 @@ if (process.argv.includes("--prove-red")) {
       ["host.exit-inert-serial", "if (current.current?.serial === view.active.serial) { stripAddress", "if (true) { stripAddress"],
     ].map(([check, from, to]) => ({ name: `${check}: ${from}`, check, impl: { ...REAL, host: REAL.host.replace(from, to) } })),
     ...[
+      ["host.pop-restores", "pop", "router.refresh();", "void router;"],
+      ["host.pop-restores", "pop", "queueMicrotask(() => {", "((fn: () => void) => fn())(() => {"],
+      ["host.pop-scoped", "pop", "pagePath.current === path &&", "true &&"],
+      ["host.pop-scoped", "pop", '(a?.pathname === path || closing === path || bet?.kind === "market")', "true"],
+      ["host.pop-placing", "pop", 'record?.intent.phase === "placing"', "false"],
+      ["host.pop-late", "pop", "mounted.current && window.location.pathname === path", "true"],
+      ["host.pop-late", "pop", "if (!mounted.current) return;", ""],
       ["host.durable-before-send", "commit", "if (!save()) {\n      requests.current.delete", "if (false) {\n      requests.current.delete"],
       ["host.unmounted-receipt-storage-address", "receipt", "!mounted.current || record.owner", "record.owner"],
       ["host.unmounted-receipt-storage-address", "save", "!mounted.current || !recoveryReady.current", "!recoveryReady.current"],
