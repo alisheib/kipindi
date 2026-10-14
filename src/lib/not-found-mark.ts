@@ -37,13 +37,14 @@
  * ⭐ THE SERVER SNAPSHOT IS "NO MARK", like `useJourneyOn`'s: a server render, and the hydration that matches it, are what
  * they were. React checks the store right after hydrating, and the mark is then in the document.
  * ⚠️ BEFORE THE SCRIPTS RUN, ONLY CSS CAN ANSWER, and it can only answer where the server's HTML says "not found". The
- * root not-found (an address no route matches) is drawn by the server with the mark in it: `:root:has(#kp-not-found)`
- * (globals.css) rests the lit tab from the first paint. A record that is not there — a question, a round, a proposal —
- * is found missing INSIDE a loading boundary: React 19.2's server renderer runs no class error boundary, so that HTML is
- * the page's loading ghost, with no mark, and React's own record of the verdict: the boundary's `<template
- * data-dgst="NEXT_HTTP_ERROR_FALLBACK;404">` (written by the server, or by React's inline `$RX` script when the verdict
- * streams in later). The same rule reads that template (round 5, review F5), so the tab rests from the moment the
- * verdict is in the document, while the ghost stands until the scripts draw the not-found page.
+ * root not-found (an address no route matches) is drawn by the server with the mark in it. A record that is not there —
+ * a question, a round, a proposal — is found missing INSIDE a loading boundary: React 19.2's server renderer runs no
+ * class error boundary, so that HTML is the page's loading ghost, with no mark, and React's own record of the verdict:
+ * the boundary's `<template data-dgst="NEXT_HTTP_ERROR_FALLBACK;404">` (written by the server, or by React's inline `$RX`
+ * script when the verdict streams in later; round 5, review F5). Either sign raises `data-not-found` on <html> through
+ * the root layout's load-time watcher (`lib/not-found-watch.ts`, A21 2026-10-14 — it replaced a root `:has()`), and the
+ * rule keyed on that flag (globals.css) rests the lit tab from the moment the verdict is in the document, while the ghost
+ * stands until the scripts draw the not-found page; `NotFoundMark` lowers the flag as it announces itself.
  * ⛔ NO "use client" HERE, AND ONLY CLIENT CODE MAY LOAD IT — `journey-on.ts`'s rule, for its reason: a hook in a server
  * component builds and then fails on its first render. `test:visual-pass-r4j` §5 holds its loaders.
  */

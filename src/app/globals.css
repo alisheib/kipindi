@@ -1605,12 +1605,19 @@ body {
       trailing ground is now 16px of solid (`--sp-4`, the clear the end cap keeps before the pause glyph) and THEN the 24px
       fade (`--sp-6`): 40px over the run, as the end cap's own 40. The run's ink can show no closer than 16px after the
       word, a glyph is still never cut at full ink, and item 1 rests 8px clear of the fade as before — 16px further right. */
-:root:has(#kp-journey-shell) .ticker-label { padding-right: calc(var(--sp-4) + var(--sp-6)); margin-right: calc(-1 * (var(--sp-4) + var(--sp-6))); background: linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) calc(100% - var(--sp-6)), oklch(11% 0.11 268 / 0) 100%); }
-:root:has(#kp-journey-shell) .ticker-viewport { padding-left: calc(8px + var(--sp-4) + var(--sp-6)); }
-:root:has(#kp-journey-shell) .ticker-item { padding-right: var(--sp-8); }
-:root:has(#kp-journey-shell) .ticker-sep { margin-left: var(--sp-6); }
+/* ⭐ `:root:is([data-shell="journey"], #kp-journey-shell)` IS THE JOURNEY SHELL'S SWITCH, here and below (A21, 2026-10-14).
+   The root layout writes `data-shell="journey"` on <html> for a request whose shell draws the journey
+   (`journeyShellShown`, lib/server/journey-preview.ts — AppShell's own answer). The id inside `:is()` matches nothing on
+   <html>: it only carries the specificity of the rule this replaced, `:root:has(#kp-journey-shell)`, so the cascade is
+   unchanged. ⛔ NEVER A ROOT `:has()`: a `:has()` whose subject is the root made Chrome re-run the page's whole `:has()`
+   invalidation set on <html> for every element added anywhere — opening the bet sheet restyled 307 elements, twice,
+   for the ~40 it adds (`test:root-has`). */
+:root:is([data-shell="journey"], #kp-journey-shell) .ticker-label { padding-right: calc(var(--sp-4) + var(--sp-6)); margin-right: calc(-1 * (var(--sp-4) + var(--sp-6))); background: linear-gradient(90deg, var(--bg-inset) 0%, var(--bg-inset) calc(100% - var(--sp-6)), oklch(11% 0.11 268 / 0) 100%); }
+:root:is([data-shell="journey"], #kp-journey-shell) .ticker-viewport { padding-left: calc(8px + var(--sp-4) + var(--sp-6)); }
+:root:is([data-shell="journey"], #kp-journey-shell) .ticker-item { padding-right: var(--sp-8); }
+:root:is([data-shell="journey"], #kp-journey-shell) .ticker-sep { margin-left: var(--sp-6); }
 @media (min-width: 1024px) {
-  :root:has(#kp-journey-shell) .ticker-strip { padding-inline: calc(max(0px, (100% - var(--w-board)) / 2) + var(--sp-4)); }
+  :root:is([data-shell="journey"], #kp-journey-shell) .ticker-strip { padding-inline: calc(max(0px, (100% - var(--w-board)) / 2) + var(--sp-4)); }
 }
 /* ⚠️ AND THE SAME TRAP CAUGHT THE DUPLICATE COPY, one commit after it was written down for the box above.
    This wrapper carried `style={{ display: "contents" }}` INLINE, so the calm branch's `display: none` could
@@ -1888,7 +1895,7 @@ html.kp-reduce-motion .ticker-pause,
   border: 1px solid color-mix(in oklab, var(--gold-500) 22%, var(--border));
 }
 #main-content .cs-badge,
-:root:has(#kp-journey-shell) .cs-badge {
+:root:is([data-shell="journey"], #kp-journey-shell) .cs-badge {
   background: var(--bg-inset);
   border-color: var(--border);
 }
@@ -2726,12 +2733,12 @@ textarea::placeholder { color: var(--text-subtle); }
    The option's 44px height, its 4px gap, its pending mark (`--lp-inset: 12px`, the underline's inset) are unchanged.
    `[data-rail-ghost]` is /wallet's loading rail, drawn to the same geometry so the page lands where its ghost stood.
    ⚠️ Journey-only: in the classic shell the same rails keep the kit's geometry (one rule per shell). */
-:root:has(#kp-journey-shell) :is([data-section-rail], [data-rail-ghost]) {
+:root:is([data-shell="journey"], #kp-journey-shell) :is([data-section-rail], [data-rail-ghost]) {
   margin-inline-start: calc(-1 * var(--sp-3));
   border-bottom-color: transparent;
   background: linear-gradient(var(--border), var(--border)) var(--sp-3) 100% / calc(100% - var(--sp-3)) 1px no-repeat border-box;
 }
-:root:has(#kp-journey-shell) :is([data-section-rail], [data-rail-ghost]) > * { padding-inline: var(--sp-3); }
+:root:is([data-shell="journey"], #kp-journey-shell) :is([data-section-rail], [data-rail-ghost]) > * { padding-inline: var(--sp-3); }
 
 /* ===========================================================================
    Motion polish layer — ⚠️ DEPRECATED ALIASES (2026-07-28)
@@ -4219,10 +4226,13 @@ html[data-sheet-open] .kp-discovery-bar { z-index: 100; }
    ⭐ SO THE BUBBLE YIELDS INSTEAD, which is the only element that can. With this rule the same census
    returns **zero rows losing a tap**. It is scoped to the moment the menu is open and reverts when it
    closes, and it is the behaviour U7 already plans for the bubble while scrolling.
-   ⚠️ The wrapper is matched as well as the button: the bubble is a `.cm-bubble` inside an UNCLASSED fixed
-   `div`, and the hit test found BOTH — the div at x=263 and the button at x=289. Hiding only the button
-   leaves the wrapper still taking the tap. When U7 gives that wrapper `.cm-fab`, add it here. */
-html:has([data-bar-cell="sort"] details[open]) :is(.cm-bubble, div:has(> .cm-bubble)) {
+   ⚠️ The wrapper is matched as well as the button: the bubble is a `.cm-bubble` inside a fixed wrapper, and the hit
+   test found BOTH — the wrapper at x=263 and the button at x=289. Hiding only the button leaves the wrapper still
+   taking the tap. The wrapper is `.cm-fab` (ChatRoot) and is named here.
+   ⭐ A21 (2026-10-14) · THE OPEN MENU RAISES `data-sort-open` ON <html> (query-bar.tsx → MenuShell `openFlag`). This
+   rule read `html:has([data-bar-cell="sort"] details[open]) :is(.cm-bubble, div:has(> .cm-bubble))` before: a root
+   `:has()` (see the note at `.ticker-label`), and `div:has(…)` made every div on the page a `:has()` subject. */
+html[data-sort-open] :is(.cm-bubble, .cm-fab) {
   opacity: 0;
   pointer-events: none;
 }
@@ -6240,12 +6250,12 @@ textarea::-webkit-resizer {
    they were (VODACOM-PLAN §0i, `qa:classic-shell-parity`): the classic home keeps its 24. A browser without `:has()`
    keeps 24 too, which is the classic look and not a break. */
 @media (min-width: 768px) {
-  :root:has(#kp-journey-shell) .kp-hero__inner,
-  :root:has(#kp-journey-shell) .kp-band__inner { padding-inline: var(--sp-4); }
+  :root:is([data-shell="journey"], #kp-journey-shell) .kp-hero__inner,
+  :root:is([data-shell="journey"], #kp-journey-shell) .kp-band__inner { padding-inline: var(--sp-4); }
 }
 @media (min-width: 1024px) {
-  :root:has(#kp-journey-shell) .kp-hero__inner,
-  :root:has(#kp-journey-shell) .kp-band__inner { padding-inline: var(--sp-8); }
+  :root:is([data-shell="journey"], #kp-journey-shell) .kp-hero__inner,
+  :root:is([data-shell="journey"], #kp-journey-shell) .kp-band__inner { padding-inline: var(--sp-8); }
 }
 
 /* A chapter break: a tinted surface, edged top and bottom. */
@@ -6732,16 +6742,16 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    margin, so no word moves: the ring stands 6–7px clear of the ink, its corners on the --r-sm curve.
    ⚠️ Journey-only, like the held/masked ink above: the classic capsule opens this same sheet, and classic chrome is
    frozen until S15 (the classic capsule's Wallet keeps the catch-all's square ring). */
-:root:has(#kp-journey-shell) .kp-wsheet__link { margin-inline: calc(-1 * var(--sp-1)); padding-inline: var(--sp-1); border-radius: var(--r-sm); }
-:root:has(#kp-journey-shell) .kp-wsheet__link:focus-visible { box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25); }
+:root:is([data-shell="journey"], #kp-journey-shell) .kp-wsheet__link { margin-inline: calc(-1 * var(--sp-1)); padding-inline: var(--sp-1); border-radius: var(--r-sm); }
+:root:is([data-shell="journey"], #kp-journey-shell) .kp-wsheet__link:focus-visible { box-shadow: 0 0 0 4px oklch(63% 0.18 262 / 0.25); }
 /* ⭐ The journey's Wallet doors keep their glyph whole (round 4 of the visual pass, 2026-10-09, edges tile 488, E2). At 320
    a door is 133px wide; `.btn-lg`'s 20px a side leaves 91px for the glyph, the 8px gap and the label, and the journey's
    "Weka pesa" (Inter 600 15px, ~79.5px) needs 103.5 — so the 16px ⊕ shrank to ~4px, the one flex item that could give
    (the label is nowrap). The glyph no longer shrinks, and the doors pad 12px a side, which leaves 107px: the content is
    centred, so wherever it fit before nothing moves (Toa pesa 90, Deposit 80, Withdraw 94 — which squeezed its arrow to
    13px at en 320 the same way). ⚠️ Journey-only: the classic capsule opens this same sheet (frozen until S15). */
-:root:has(#kp-journey-shell) .kp-wsheet__act { padding-inline: var(--sp-3); }
-:root:has(#kp-journey-shell) .kp-wsheet__act > svg { flex-shrink: 0; }
+:root:is([data-shell="journey"], #kp-journey-shell) .kp-wsheet__act { padding-inline: var(--sp-3); }
+:root:is([data-shell="journey"], #kp-journey-shell) .kp-wsheet__act > svg { flex-shrink: 0; }
 /* ⭐ THE HAIRLINE OVER THE WALLET'S BOTTOM ROW STANDS IN THE MIDDLE OF ITS GAP (round 5 of the visual pass, 2026-10-09, F3,
    tiles 092 132–137 151–154). The sheet's 16px gap put the rule 16px under the content above it (17–18px under the
    captions' ink) and the row's own 8px padding put the row 8px under the rule — Funga's border 8px off the line, the links'
@@ -6756,7 +6766,7 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    last box 20 over the rule, the quote caption's capitals 20.6 under it) already did; a BAND is not this family — the
    bell's footer tray and the date picker's bars carry their own padding and their rule is their own edge.
    ⚠️ Journey-only, like the rules above: the classic capsule's Wallet is frozen until S15. */
-:root:has(#kp-journey-shell) .kp-wsheet__foot { padding-top: var(--sp-4); }
+:root:is([data-shell="journey"], #kp-journey-shell) .kp-wsheet__foot { padding-top: var(--sp-4); }
 
 /* ⭐ A SHEET DOCKED TO THE SCREEN'S BOTTOM EDGE HAS NO BOTTOM EDGE OF ITS OWN (round 5 of the visual pass, 2026-10-09, F7,
    tiles 132 134 136 151 152 and the Tiketi zangu guest sheet). Docked, a sheet drew its material's whole frame — the 1px
@@ -6783,14 +6793,14 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-wsheet { --dock-pb: calc(var(--sp-5) + env(safe-area-inset-bottom, 0px)); }
 .kp-fsheet-panel { --dock-pb: calc(env(safe-area-inset-bottom, 0px) + var(--sp-4)); }
 @media (max-width: 1023.98px) {
-  :root:has(#kp-journey-shell) :is([data-dock-wrap="lg"], .kp-fsheet-panel) { bottom: -1px; }
-  :root:has(#kp-journey-shell) :is([data-dock="lg"], .kp-fsheet-panel) { border-bottom-width: 0; padding-bottom: calc(var(--dock-pb, var(--sp-6)) + 1px) !important; }
-  :root:has(#kp-journey-shell) .cm-panel-sheet { border-bottom-width: 0; }
+  :root:is([data-shell="journey"], #kp-journey-shell) :is([data-dock-wrap="lg"], .kp-fsheet-panel) { bottom: -1px; }
+  :root:is([data-shell="journey"], #kp-journey-shell) :is([data-dock="lg"], .kp-fsheet-panel) { border-bottom-width: 0; padding-bottom: calc(var(--dock-pb, var(--sp-6)) + 1px) !important; }
+  :root:is([data-shell="journey"], #kp-journey-shell) .cm-panel-sheet { border-bottom-width: 0; }
 }
 @media (max-width: 639.98px) {
   /* density: general — a docked sheet's own bottom edge (R5-B, F7), not the board; both card-spacing settings. */
-  :root:has(#kp-journey-shell) [data-dock-wrap="sm"] { bottom: -1px; }
-  :root:has(#kp-journey-shell) [data-dock="sm"] { border-bottom-width: 0; padding-bottom: calc(var(--dock-pb, var(--sp-6)) + 1px) !important; }
+  :root:is([data-shell="journey"], #kp-journey-shell) [data-dock-wrap="sm"] { bottom: -1px; }
+  :root:is([data-shell="journey"], #kp-journey-shell) [data-dock="sm"] { border-bottom-width: 0; padding-bottom: calc(var(--dock-pb, var(--sp-6)) + 1px) !important; }
 }
 
 /* ── S6 · THE CAPTIONED BALANCE (SJ-15) — the journey header's wallet door ──────────────────────────────────
@@ -7426,8 +7436,8 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    at 72, and from 640 it stands 8px under the header (64), where the account menu hangs (`sm:top-[64px]`). The header is
    sticky at the top, so this holds at every scroll position. ⛔ Journey-only: the classic overlays are parity-captured
    chrome (`qa:classic-shell-parity`), and the hook is an attribute, which that census does not name. */
-:root:has(#kp-journey-shell) [data-toaster] { top: 56px; }
-@media (min-width: 640px) { :root:has(#kp-journey-shell) [data-toaster] { top: calc(56px + var(--sp-2)); } }
+:root:is([data-shell="journey"], #kp-journey-shell) [data-toaster] { top: 56px; }
+@media (min-width: 640px) { :root:is([data-shell="journey"], #kp-journey-shell) [data-toaster] { top: calc(56px + var(--sp-2)); } }
 .kp-jhdr__row { display: flex; align-items: center; gap: 6px; height: 100%; max-width: var(--w-board); margin-inline: auto; padding-inline: var(--sp-4); }
 /* The right-hand controls, grouped as the classic bar groups them: one gap on a phone, the cluster's own from 640. */
 .kp-jhdr__cluster { display: flex; flex-shrink: 0; align-items: center; gap: 6px; }
@@ -7553,19 +7563,24 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
    that HTML is the page's loading ghost with NO mark: R4-J's "from the first paint" never held for them. What that HTML
    does carry is React's own record of the verdict, on the boundary's template: `data-dgst="NEXT_HTTP_ERROR_FALLBACK;404"`
    (Next's digest for `notFound()`), written by the server when the verdict is in before the shell is sent, and by React's
-   inline `$RX` script the moment it streams in later. The rule reads both, so the tab rests from the moment the verdict
-   is in the document; the ghost stands until the scripts draw the not-found page, which brings the mark (the template
-   goes with the ghost). Deciding "missing" before the stream instead would need the record read above the root loading
+   inline `$RX` script the moment it streams in later. Both are read, so the tab rests from the moment the verdict is in
+   the document; the ghost stands until the scripts draw the not-found page, which brings the mark (the template goes
+   with the ghost). Deciding "missing" before the stream instead would need the record read above the root loading
    boundary — on every question page, ahead of its ghost (`test:visual-pass-r4j` §5 has the framework's lines).
+   ⭐ HOW IT READS THEM (A21, 2026-10-14): through `data-not-found` on <html>, raised by the root layout's load-time
+   watcher (`lib/not-found-watch.ts`, journey requests only) the moment either sign arrives, and lowered by
+   `NotFoundMark` once the chrome answers for itself. It read them with `:root:has(#kp-not-found, template[…])` before —
+   a root `:has()` (see the note at `.ticker-label`). The id inside `:is()` matches nothing on <html>: it carries that
+   rule's specificity, so the cascade is unchanged.
    ⚠️ It assumes a page that is left leaves the document with its mark: Next keeps left pages in a hidden <Activity> only
    with `cacheComponents` on, which this app does not turn on (`test:visual-pass-r5d` §5 pins it).
    ⛔ Journey classes only: the classic rail's rules, which the journey rail wears, are not edited, and a classic page
    carries no journey rail. */
-:root:has(#kp-not-found, template[data-dgst="NEXT_HTTP_ERROR_FALLBACK;404"]) .kp-rail--journey .kp-rail__item[data-on] { color: var(--text-subtle); }
-:root:has(#kp-not-found, template[data-dgst="NEXT_HTTP_ERROR_FALLBACK;404"]) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__pip { background: none; box-shadow: none; }
-:root:has(#kp-not-found, template[data-dgst="NEXT_HTTP_ERROR_FALLBACK;404"]) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__label { font-weight: 600; }
-:root:has(#kp-not-found, template[data-dgst="NEXT_HTTP_ERROR_FALLBACK;404"]) .kp-jnav__link:is([aria-current], [data-on]) { color: var(--text-muted); }
-:root:has(#kp-not-found, template[data-dgst="NEXT_HTTP_ERROR_FALLBACK;404"]) .kp-jnav__link:is([aria-current], [data-on])::after { transform: scaleX(0); }
+:root:is([data-not-found], #kp-not-found) .kp-rail--journey .kp-rail__item[data-on] { color: var(--text-subtle); }
+:root:is([data-not-found], #kp-not-found) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__pip { background: none; box-shadow: none; }
+:root:is([data-not-found], #kp-not-found) .kp-rail--journey .kp-rail__item[data-on] .kp-rail__label { font-weight: 600; }
+:root:is([data-not-found], #kp-not-found) .kp-jnav__link:is([aria-current], [data-on]) { color: var(--text-muted); }
+:root:is([data-not-found], #kp-not-found) .kp-jnav__link:is([aria-current], [data-on])::after { transform: scaleX(0); }
 /* The guest Tiketi sheet's title: the display face, kept clear of the close button the Modal pins top-right.
    ⭐ Balanced (2026-10-08, the visual pass, tile 116): at en 320 its 232px measure holds "Sign in to see your" (188px)
    and left "tickets" alone on line 2; balanced, it reads "Sign in to see / your tickets". A title that fits on one
@@ -8012,13 +8027,15 @@ html[lang="zh"] .kp-udrule { word-break: keep-all; }
 .kp-hghost__card { height: var(--mcard-h); border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg-elevated); }
 .kp-hghost__act { width: min(100%, 320px); height: var(--h-control-xl); border-radius: var(--r-pill); background: var(--bg-elevated); }
 /* `/account`. The identity card and every row are the hub's own boxes (the 52px ring, the 56px row), their words bars.
-   A guest is drawn the prompt and a guest's cards, chosen by what the header shows: its sign-in pills
-   (`a.kp-jhdr__auth`, `journeyHeaderState`) are a guest's alone, and the header is in the page's first HTML. A browser
-   without `:has()` draws the member's. */
+   A guest is drawn the prompt and a guest's cards, chosen by the shell's own answer: `#main-content` carries
+   `data-viewer="guest"` exactly when the journey header shows its sign-in pills (`journeyHeaderState` `authPills`;
+   app-shell.tsx `MainLandmark`), and both are in the page's first HTML. ⭐ A21, 2026-10-14: it read
+   `:root:has(.kp-jhdr__auth)` before, a root `:has()` (see the note at `.ticker-label`); `:root [data-viewer]` keeps that
+   rule's specificity. */
 .kp-hubghost--guest { display: none; }
-:root:has(.kp-jhdr__auth) .kp-hubghost--member { display: none; }
-:root:has(.kp-jhdr__auth) p.kp-hubghost--guest { display: block; }
-:root:has(.kp-jhdr__auth) .kp-hub__grid.kp-hubghost--guest { display: grid; }
+:root [data-viewer="guest"] .kp-hubghost--member { display: none; }
+:root [data-viewer="guest"] p.kp-hubghost--guest { display: block; }
+:root [data-viewer="guest"] .kp-hub__grid.kp-hubghost--guest { display: grid; }
 .kp-hubghost__name { width: 144px; max-width: 100%; height: calc(var(--type-h4) * 1.25); border-radius: var(--r-sm); background: var(--bg-overlay); }
 .kp-hubghost__phone { width: 112px; height: calc(var(--type-small) * 1.5); border-radius: var(--r-sm); background: var(--bg-overlay); }
 .kp-hubghost__glyph { flex-shrink: 0; width: 20px; height: 20px; border-radius: var(--r-sm); background: var(--bg-overlay); }

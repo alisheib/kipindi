@@ -38,6 +38,7 @@ export function MenuShell({
   className,
   labelClassName,
   rootClassName,
+  openFlag,
   children,
 }: {
   /** The quiet key — never truncates. */
@@ -53,9 +54,25 @@ export function MenuShell({
   labelClassName?: string;
   /** Classes for the `<details>` root, so the caller can place the control in its row. */
   rootClassName?: string;
+  /** ⭐ An attribute raised on `<html>` while this menu is open — the sort menu's `data-sort-open`, which the chat bubble
+   *  yields to (globals.css, D30). A21 (2026-10-14): the bubble rule read `html:has([data-bar-cell="sort"] details[open])`
+   *  before, a root `:has()` that made Chrome restyle the whole page for every element added anywhere. A mutation record
+   *  is delivered before the next frame, so the flag is up in the frame that draws the open menu, as the rule was. */
+  openFlag?: `data-${string}`;
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDetailsElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !openFlag) return;
+    const root = document.documentElement;
+    const mirror = () => root.toggleAttribute(openFlag, el.open);
+    const watch = new MutationObserver(mirror);
+    watch.observe(el, { attributes: true, attributeFilter: ["open"] });
+    mirror();
+    return () => { watch.disconnect(); root.removeAttribute(openFlag); };
+  }, [openFlag]);
 
   useEffect(() => {
     const el = ref.current;

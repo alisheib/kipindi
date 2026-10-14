@@ -92,7 +92,7 @@ const inter = fontkit.openSync("src/lib/server/reports/fonts/Inter-Regular.ttf")
 const widthOf = (s: string, size: number) => inter.layout(s).positions.reduce((a, p) => a + p.xAdvance, 0) / inter.unitsPerEm * size;
 
 const sw = DICTS.sw, en = DICTS.en, zh = DICTS.zh;
-const JOURNEY = ":root:has(#kp-journey-shell)";
+const JOURNEY = ':root:is([data-shell="journey"], #kp-journey-shell)';
 
 /* ══ §1 · F3 · THE WALLET'S HAIRLINE ══════════════════════════════════════════════════════════════════════════════ */
 section("1 · F3 the Wallet's hairline stands in the middle of its gap (tiles 092 132–137 151–154)");

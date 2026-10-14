@@ -188,6 +188,8 @@ export const viewport: Viewport = {
 };
 
 import { cookies } from "next/headers";
+import { journeyShellShown } from "@/lib/server/journey-preview";
+import { NOT_FOUND_WATCH_SCRIPT } from "@/lib/not-found-watch";
 import { localeOrDefault } from "@/lib/i18n-dict";
 import { CARD_SPACING_COOKIE, cardSpacingFromCookie } from "@/lib/card-spacing";
 
@@ -200,7 +202,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const density = cardSpacingFromCookie(jar.get(CARD_SPACING_COOKIE)?.value) === "comfortable" ? "comfortable" : undefined;
   // Chatbot on/off (AI toolkit). Default ON if the read fails — a config hiccup must
   // never silently hide a working help widget.
-  const chatbotEnabled = await isChatbotEnabled().catch(() => true);
+  // ⭐ AND THE SHELL'S JOURNEY ANSWER (A21, 2026-10-14), read beside it: `data-shell="journey"` on <html> is how the
+  // stylesheet knows the journey shell is drawn (`journeyShellShown` says why it is no longer `:root:has()`). A classic
+  // request gets no attribute, so its served bytes are what they were.
+  const [chatbotEnabled, journeyShell] = await Promise.all([isChatbotEnabled().catch(() => true), journeyShellShown()]);
   // ⛔ `translate="no"` + the `notranslate` class are the ATTRIBUTE half of the
   // `google: "notranslate"` meta in `metadata` above; browsers honour the two in different
   // places, so both are set. See that comment for WHY this product blocks machine translation
@@ -214,7 +219,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
        ⛔ The helpline is NOT published here since 2026-10-09: no player page shows it (the owner's ruling of
        2026-10-06), and once the marketing footer was emptied that day nothing read it — it sat in every page's
        HTML for no reader. `test:support-contact` §15.8 holds it off. */
-    <html lang={lang} translate="no" data-density={density} {...publicFactAttrs(getSupportConfig())} suppressHydrationWarning className={`notranslate ${sora.variable} ${inter.variable} ${jbm.variable}`}>
+    <html lang={lang} translate="no" data-density={density} data-shell={journeyShell ? "journey" : undefined} {...publicFactAttrs(getSupportConfig())} suppressHydrationWarning className={`notranslate ${sora.variable} ${inter.variable} ${jbm.variable}`}>
       <body className="font-sans antialiased">
         {/* ⛔ FIRST IN THE BODY, DELIBERATELY. Makes `removeChild`/`insertBefore` tolerant of a
             page translator that has re-parented React's nodes — the crash that took the Up & Down
@@ -226,6 +231,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <GoogleTag />
         {/* First-party visit counter — every visitor, no cookie, no identifier; see site-visit-beacon.tsx. */}
         <SiteVisitBeacon />
+        {/* ⭐ A21 (2026-10-14) · A JOURNEY REQUEST'S NOT-FOUND WATCH: raises `data-not-found` on <html> while the page loads,
+            so the journey's chrome rests its lit tab before any script runs (`lib/not-found-watch.ts` has the why — it
+            replaced a root `:has()`). Above AppShell, so it is listening before the mark or React's 404 template can
+            arrive; a classic request renders nothing here and its bytes are unchanged. */}
+        {journeyShell && <script dangerouslySetInnerHTML={{ __html: NOT_FOUND_WATCH_SCRIPT }} />}
         <ThemeProvider initialLocale={lang} initialDensity={density}>
           <ScrollRestore />
           <AppShell>{children}</AppShell>

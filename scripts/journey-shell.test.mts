@@ -1438,7 +1438,7 @@ function g7Header(W: World, ok: Ok) {
   // the journey, by the shell's server-rendered mark (`shell-mark.ts`, in the HTML before any script, so nothing moves
   // on hydration), they keep the header's edge: the base rules' 16px to 1023 and 32px from 1024. Classic viewers keep
   // their 24 (VODACOM-PLAN §0i: served what they were).
-  const SHELL_SCOPE = ":root:has(#kp-journey-shell)";
+  const SHELL_SCOPE = ':root:is([data-shell="journey"], #kp-journey-shell)';
   // Read per container: the journey's 1024 step also holds the LIVE strip's edge (7.ticker-edge), in a block of its own.
   const journeyEdge = (px: number) => mediaBlocks(css)
     .filter((b) => b.cond === `(min-width: ${px}px)` && b.body.includes(SHELL_SCOPE) && b.body.includes(".kp-hero__inner"))
@@ -1447,9 +1447,13 @@ function g7Header(W: World, ok: Ok) {
   const landing = {
     hero: baseRule(css, ".kp-hero__inner"), band: baseRule(css, ".kp-band__inner"),
     at768: journeyEdge(768), at1024: journeyEdge(1024),
-    mark: text(W, "src/lib/journey/shell-mark.ts").includes(`export const JOURNEY_SHELL_MARK = "kp-journey-shell";`),
+    // A21 (2026-10-14): the scope is `data-shell="journey"` on <html>, written by the root layout from the ONE answer the
+    // shell draws by (`journeyShellShown`) — no longer a root `:has()` on the mark (see globals.css at `.ticker-label`).
+    mark: text(W, "src/app/layout.tsx").includes(`data-shell={journeyShell ? "journey" : undefined}`)
+      && text(W, "src/app/layout.tsx").includes("journeyShellShown()")
+      && text(W, SHELL).includes("const journeyShown = await journeyShellShown();"),
   };
-  ok("7.landing-edge · on `/` the journey's hero and bands keep the header's edge — the base rules' 16px to 1023 and 32px from 1024, one block per step, scoped by the shell's server-rendered mark so classic viewers keep their 24 (the owner's rule, 2026-10-08)",
+  ok("7.landing-edge · on `/` the journey's hero and bands keep the header's edge — the base rules' 16px to 1023 and 32px from 1024, one block per step, scoped by the shell's server-rendered switch (`data-shell` on <html>) so classic viewers keep their 24 (the owner's rule, 2026-10-08)",
     landing.hero.includes("padding: var(--sp-5) var(--sp-4) var(--sp-8)") && landing.band.includes("padding-inline: var(--sp-4)")
       && landing.at768.length === 1 && landing.at768[0] === landingEdge("4")
       && landing.at1024.length === 1 && landing.at1024[0] === landingEdge("8") && landing.mark,
@@ -2975,12 +2979,12 @@ ${s}`);
     const pageGutterMoves = withFile(WORLD, PAGE_CONTAINER, (s) => s.replace(`"px-3 lg:px-6 py-6"`, `"px-3 lg:px-5 py-6"`));
     // 7.landing-edge's plants: the journey's `/` back on the classic 24 from 768, its 32 step lost, its scope dropped (the
     // classic home would move), and the mark renamed under the rule that reads it.
-    const HOME_SCOPE = ":root:has(#kp-journey-shell)";
+    const HOME_SCOPE = ':root:is([data-shell="journey"], #kp-journey-shell)';
     const homeAt24 = withCss((s) => s.replace(`${HOME_SCOPE} .kp-band__inner { padding-inline: var(--sp-4); }`, `${HOME_SCOPE} .kp-band__inner { padding-inline: var(--sp-6); }`));
     const homeEdgeLost = withCss((s) => s.replace(`${HOME_SCOPE} .kp-band__inner { padding-inline: var(--sp-8); }`, `${HOME_SCOPE} .kp-band__inner { padding-inline: var(--sp-6); }`));
     const homeUnscoped = withCss((s) => s.replace(`${HOME_SCOPE} .kp-hero__inner,`, ".kp-hero__inner,"));
-    const SHELL_MARK = "src/lib/journey/shell-mark.ts";
-    const markRenamed = withFile(WORLD, SHELL_MARK, (s) => s.replace(`= "kp-journey-shell";`, `= "kp-journey-mark";`));
+    const SHELL_SWITCH = "src/app/layout.tsx";
+    const markRenamed = withFile(WORLD, SHELL_SWITCH, (s) => s.replace(` data-shell={journeyShell ? "journey" : undefined}`, ""));
     // 7.ticker-*'s plants (round 3): the strip's edge unscoped (the classic strip would move) or lost, the label's padding
     // inline again (no rule can reach it), the leading fade gone, item 1 moved under the fade, the dot back off-centre.
     const TICKER = "src/components/layout/live-ticker.tsx";
@@ -3418,8 +3422,8 @@ ${s}`);
         world: homeEdgeLost, landed: cssChanged(homeEdgeLost), landedAs: "the bands 8px outside the header on a desktop" },
       { name: "the home's edge rule loses its journey scope", expect: at("7.landing-edge ·"),
         world: homeUnscoped, landed: cssChanged(homeUnscoped), landedAs: "the classic hero moves for every player" },
-      { name: "the shell's mark is renamed under the rule that reads it", expect: at("7.landing-edge ·"),
-        world: markRenamed, landed: changed(markRenamed, SHELL_MARK), landedAs: "the rule waits for a span no page writes" },
+      { name: "the root layout stops writing the shell's switch the rules read", expect: at("7.landing-edge ·"),
+        world: markRenamed, landed: changed(markRenamed, SHELL_SWITCH), landedAs: "the rules wait for an attribute no page writes" },
       { name: "the LIVE strip's edge rule loses its journey scope", expect: at("7.ticker-edge ·"),
         world: tickerEdgeUnscoped, landed: cssChanged(tickerEdgeUnscoped), landedAs: "the classic strip moves 16px in for every player" },
       { name: "the LIVE strip's 1024 edge is lost", expect: at("7.ticker-edge ·"),

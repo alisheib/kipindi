@@ -116,7 +116,7 @@ section("1 · R8-4 every notice band draws its words on the page's edge — 16px
   ok(`1.5 · every full-bleed row pads as the page does, or is ruled (${rows.length} ruled: the classic header, the opt-out header, the auth grid)`,
     rows.every((r) => r.startsWith("ruled:")) && rows.length === 3, j(rows));
   ok("1.6 · CONTROL · the journey's ticker keeps the page's edge from 1024 (round 3's rule, unchanged)",
-    /@media \(min-width: 1024px\) \{\s*:root:has\(#kp-journey-shell\) \.ticker-strip \{ padding-inline: calc\(max\(0px, \(100% - var\(--w-board\)\) \/ 2\) \+ var\(--sp-4\)\); \}/.test(CSS));
+    /@media \(min-width: 1024px\) \{\s*:root:is\(\[data-shell="journey"\], #kp-journey-shell\) \.ticker-strip \{ padding-inline: calc\(max\(0px, \(100% - var\(--w-board\)\) \/ 2\) \+ var\(--sp-4\)\); \}/.test(CSS));
 }
 
 /* ══ §2 · R5-9 · EVERY TRACKED LABEL THAT ENDS ON AN EDGE TAKES ITS TRACKING BACK ═══════════════════════════════════════ */
