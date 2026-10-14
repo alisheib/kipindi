@@ -34,6 +34,8 @@ import { MIN_SAMPLES_FOR_ADVICE } from "./updown-feed-advice";
 // ⭐ R5 (2026-09-27) · ONE stale rule for a confirmed quote, shared with the landing's Up & Down band,
 // so the band and the terminal cannot call one quote "live" and "stale" at the same minute.
 import { QUOTE_GAP_FACTOR, medianCadenceMs, isQuoteStale } from "@/lib/updown-quote-age";
+// The one spelling of "this round is over for good" — the board's selection keeps every started round that is not.
+import { roundIsSettled } from "@/lib/updown-card-phase";
 import { shownPredictors } from "@/lib/markets/predictors";
 
 /**
@@ -817,8 +819,18 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
     raw.map((r) => toBoardRound(r, chain, activeAssetRow, mineByMarket.get(r.marketId), lagSeconds)),
   )).filter(Boolean) as BoardRound[];
 
-  // The board shows what a player can act on or has just watched: open + confirming,
-  // plus the most recent settled one for continuity.
+  // The board shows what a player can act on or is watching: every started round that has
+  // not settled (open · locked · confirming), plus the most recent settled one for continuity.
+  //
+  // 🔴 A ROUND IN ITS LOCK WINDOW USED TO VANISH HERE (2026-10-14, S12-PLAN F2). This kept
+  // `state === "open" || state === "confirming"`, written 2026-07-24 — and E-72 (2026-08-04)
+  // added "locked" between the two without touching it. So a fresh render of /updown in the last
+  // 20% of a round (a reload, or the 20-second poll) had NO current round: the player who had
+  // just bet watched their round disappear while a page loaded earlier kept drawing it locked on
+  // its own clock (`roundPhase`), and the settled card beside it promised the next match "one
+  // card away" over a gap. ⭐ So the rule is stated by what a started round is NOT — settled
+  // (`roundIsSettled`) — and a live state added later cannot be dropped the same way.
+  // Proof: `test:updown-lock-window` (both stores) and its red twin.
   //
   // ⚠️ `opensAt <= now` is load-bearing. A round whose window has not begun is a real
   // row (the chain pre-creates the next one), but showing it as bettable would let a
@@ -827,7 +839,7 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
   // 5-minute rounds side by side with different countdowns.
   const nowMs = Date.now();
   const started = mapped.filter(
-    (r) => (r.state === "open" || r.state === "confirming") && Date.parse(r.opensAt) <= nowMs,
+    (r) => !roundIsSettled(r.state) && Date.parse(r.opensAt) <= nowMs,
   );
 
   // ONE current round per chain — the round whose window contains NOW. A chain is a
