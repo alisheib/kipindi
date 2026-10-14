@@ -513,9 +513,28 @@ section("5 · a label that takes its tracking back is one line, and fits its sit
     [...listed].every((f) => sitesWithClass.includes(f)), [...listed].filter((f) => !sitesWithClass.includes(f)).join(", "));
   const mono = (s: string, tr: number) => Array.from(s.toUpperCase()).reduce((w, ch) => w + (WIDE.test(ch) ? 10 : 6) + tr * 10, 0);
   const widest = SITE.flatMap(([f, keys, tr]) => keys.flatMap((k) => LOCALES.map((l) => ({ f, k, l, w: mono(k === "market.udYourPick" ? `${word(l, k)} · ${word(l, "market.udStake")}` : word(l, k), tr) }))));
-  const max = widest.reduce((a, b2) => (b2.w > a.w ? b2 : a));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-14 (S12 WP3, word-ledger row 26). Review 2's `market.udStake` "Kiasi" → "Dau lako"
+  // makes the round page's composed label "CHAGUO LAKO · DAU LAKO" 162.8px — it was "CHAGUO LAKO · KIASI", 140.6px —
+  // over the 160px bound every take-back label is held under. That ONE label is held to its site's own measure instead
+  // of the bound being raised: it ends the result card's `flex flex-wrap` row, whose right block takes the card's whole
+  // content box when it cannot share the line — 254px at 320 (the page's 16px `px-3` gutters, the card's 1px borders and
+  // 16px side padding). 5.3″ reads those premises; every other label keeps the 160px bound in 5.3.
+  const RP = "src/app/updown/[roundId]/page.tsx";
+  const roundLabel = (x: { f: string; k: string }) => x.f === RP && x.k === "market.udYourPick";
+  const max = widest.filter((x) => !roundLabel(x)).reduce((a, b2) => (b2.w > a.w ? b2 : a));
   ok(`5.3 · every such label, in all three languages, is narrower than 160px (the widest: ${max.l} "${word(max.l, max.k)}" ${max.w.toFixed(1)}px) — no site's column is narrower than its label`,
     max.w < 160, j(max));
+  const round = widest.filter(roundLabel);
+  const roundMax = round.reduce((a, b2) => (b2.w > a.w ? b2 : a));
+  const roundPremises = {
+    gutters: has(RP, '<div className="mx-auto w-full max-w-board px-3 lg:px-6 pt-[22px] pb-14">') && /"3":\s*"16px"/.test(raw("tailwind.config.ts")),
+    card: has(RP, 'border: "1px solid var(--border)"') && has(RP, 'padding: "14px 16px 16px"'),
+    wrapRow: has(RP, '<div className="mt-3 flex flex-wrap items-end justify-between gap-3">'),
+    label: has(RP, '{t.market.udYourPick} · {t.market.udStake}</p>'),
+  };
+  ok(`5.3″ · the round page's result label ("${word(roundMax.l, "market.udYourPick")} · ${word(roundMax.l, "market.udStake")}", ${roundMax.w.toFixed(1)}px, its widest language) fits its site's own measure — 254px at 320, the result card's flex-wrap line`,
+    Object.values(roundPremises).every(Boolean) && round.length === LOCALES.length && roundMax.w < 320 - 2 * 16 - 2 * 1 - 2 * 16,
+    j({ roundMax, roundPremises }));
   ok("5.3′ · the wallet's money-form ghost keeps the page's label class (one box, one look)", has("src/app/wallet/money-form-ghost.tsx", '<p className="font-mono text-micro uppercase eyebrow kp-track-end">'));
 }
 
