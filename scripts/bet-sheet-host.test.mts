@@ -7,7 +7,11 @@ import { parseSheetSeed } from "../src/lib/journey/sheet-seed.ts";
 import { pendingIntents, pendingStorage, PENDING_STORAGE_MAX_BYTES, type StoredIntent } from "../src/lib/journey/sheet-storage.ts";
 import { ownedSheetIntents, saveOwnedSheet, quarantineLegacySheet, saveSheetSelection, sheetOwnerKey } from "../src/lib/journey/sheet-owned-storage.ts";
 import { attributionFrom, pendingBetFrom, readMarker, stakeFromUrl, writeMarker, PENDING_BET_KEY } from "../src/lib/journey/pending-bet.ts";
-import { clockOffset, estimateMoved, sheetEstimate, withBet, withoutBet } from "../src/lib/journey/sheet-state.ts";
+import { clockOffset, estimateMoved, sheetEstimate, sheetFrame, sheetPreset, withBet, withoutBet } from "../src/lib/journey/sheet-state.ts";
+import { dict, type Dict } from "../src/lib/i18n-dict.ts";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { BetSheetBody } from "../src/components/journey/bet-sheet/bet-sheet.tsx";
 import { decomment } from "./lib/decomment.mts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -17,12 +21,14 @@ const SHELL = read("src/components/layout/app-shell.tsx");
 const LAZY = read("src/components/layout/shell-lazy.tsx");
 const BOOTSTRAP = read("scripts/live/bet-sheet-prod-bootstrap.mts");
 const MODAL = read("src/components/ui/modal.tsx");
+const WARMUP = read("src/components/journey/bet-sheet/sheet-warmup.tsx");
+const SHEET = read("src/components/journey/bet-sheet/bet-sheet.tsx");
 const NOW = Date.UTC(2026, 9, 13, 12);
 const SEED = { v: 1, id: "mkt_sheet01", yesPool: 24_825, noPool: 50_462, rates: { feeModel: "loser-share", platformFeeRate: .03, operatorFeeRate: .1 }, feePct: 13, min: 500, max: 1_000_000, closesAt: new Date(NOW + 60_000).toISOString(), serverNow: NOW, bettable: true };
 const key = (i: number) => `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`;
 const stored = (i: number): StoredIntent => ({ quote: { marketId: `mkt_sheet${i}`, side: i % 2 ? "YES" : "NO", stake: 500 + i }, key: key(i), at: NOW - 1_000 });
-type Impl = { parse: typeof parseSheetSeed; restore: typeof pendingIntents; pack: typeof pendingStorage; host: string; shell: string; lazy: string; bootstrap: string; modal: string };
-const REAL: Impl = { parse: parseSheetSeed, restore: pendingIntents, pack: pendingStorage, host: HOST, shell: SHELL, lazy: LAZY, bootstrap: BOOTSTRAP, modal: MODAL };
+type Impl = { parse: typeof parseSheetSeed; restore: typeof pendingIntents; pack: typeof pendingStorage; host: string; shell: string; lazy: string; bootstrap: string; modal: string; warmup: string; sheet: string };
+const REAL: Impl = { parse: parseSheetSeed, restore: pendingIntents, pack: pendingStorage, host: HOST, shell: SHELL, lazy: LAZY, bootstrap: BOOTSTRAP, modal: MODAL, warmup: WARMUP, sheet: SHEET };
 type Check = { name: string; pass: boolean };
 /** Execute only the REAL pure CLI predicate and first refusal expression; never import/seed the fixture. */
 function bootstrapAllows(source: string, entry: string, args: string[], env: Record<string, string | undefined>): boolean {
@@ -379,6 +385,131 @@ async function privateRefreshChecks(source: string) {
     return { faultClosed, serialProtected, sequenceProtected, restored, unmounted };
   } catch { return null; }
 }
+type WarmPage = { seed: unknown; title?: string } | null;
+type WarmFault = "none" | "render-throws" | "render-empty" | "unmount-throws" | "create-throws";
+type WarmNode = { tag: string; attrs: Record<string, string>; style: { cssText: string }; className: string; inert: boolean; children: WarmNode[]; html: string };
+/** A21 · execute the REAL warmSheet against a controlled document, React root and clock — no DOM, no browser: what it
+ *  draws (the real BetSheetBody, to static markup), into what, and what is left once it has returned. */
+function warmRun(source: string, page: WarmPage, fault: WarmFault = "none") {
+  try {
+    const file = ts.createSourceFile("sheet-warmup.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    const fn = file.statements.find(s => ts.isFunctionDeclaration(s) && s.name?.text === "warmSheet");
+    if (!fn) return null;
+    const declaration = fn.getText(file).replace(/^export\s+/, ""); // a module keyword cannot stand in a function body
+    const js = ts.transpileModule(declaration, { compilerOptions: { target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React } }).outputText;
+    const log = { created: [] as WarmNode[], attached: [] as WarmNode[], removed: [] as WarmNode[], containers: [] as WarmNode[], unmounts: 0, flushes: 0,
+      element: null as null | { type: unknown; props: Record<string, unknown> } };
+    const node = (tag: string) => {
+      const n = { tag, attrs: {} as Record<string, string>, style: { cssText: "" }, className: "", inert: false, children: [] as WarmNode[], html: "",
+        setAttribute(k: string, v: string) { n.attrs[k] = v; },
+        appendChild(child: WarmNode) { n.children.push(child); return child; },
+        remove() { log.removed.push(n); },
+        querySelector(selector: string) { return selector === "h2" && /<h2[\s>]/.test(n.html) ? { getBoundingClientRect: () => ({ height: 32 }) } : null; } };
+      log.created.push(n); return n;
+    };
+    const box = page && { getAttribute: (name: string) => name !== "data-sheet" ? null : typeof page.seed === "string" ? page.seed : JSON.stringify(page.seed), dataset: { sheetTitle: page.title } };
+    const document = { querySelector: (selector: string) => selector === "[data-sheet]" ? box : null, createElement: node,
+      body: { appendChild: (n: WarmNode) => { log.attached.push(n); return n; } } };
+    const createRoot = (container: WarmNode) => {
+      if (fault === "create-throws") throw new Error("planted");
+      log.containers.push(container);
+      return {
+        render(element: { type: unknown; props: Record<string, unknown> }) {
+          log.element = element;
+          if (fault === "render-throws") throw new Error("planted");
+          if (fault !== "render-empty") container.html = renderToStaticMarkup(element as never);
+        },
+        unmount() { log.unmounts++; if (fault === "unmount-throws") throw new Error("planted"); },
+      };
+    };
+    const flushSync = (work: () => void) => { log.flushes++; work(); };
+    const warmSheet = new Function("document", "createRoot", "flushSync", "React", "Date", "BetSheetBody", "parseSheetSeed", "sheetFrame", "sheetPreset", "clockOffset", "ignore",
+      `${js}\nreturn warmSheet;`)(document, createRoot, flushSync, { createElement }, { now: () => NOW }, BetSheetBody, parseSheetSeed, sheetFrame, sheetPreset, clockOffset, () => {});
+    const t = dict.sw as unknown as Dict;
+    let threw = false, result: unknown = null;
+    try { result = warmSheet(t, "sw"); } catch { threw = true; }
+    const within = (outer: WarmNode, inner: WarmNode): boolean => outer === inner || outer.children.some(c => within(c, inner));
+    return { result, threw, log, t, within };
+  } catch { return null; }
+}
+/** A21 · what the HOST draws first for a fresh tap at NOW: its real `open` callback, then its real render-time frame and
+ *  title expressions. The warm frame is held to THIS, never to a copy of its own arguments. */
+function hostTapFrame(source: string, seed: ReturnType<typeof parseSheetSeed>, title: string) {
+  try {
+    let shown: Record<string, unknown> | null = null;
+    const open = bindHost(source, "open", { Date: { now: () => NOW }, window: { sessionStorage: { getItem: () => null }, location: { pathname: "/", search: "" } },
+      PENDING_BET_KEY, pendingBetFrom, pending: { current: new Map() }, identity: (q: { marketId: string; side: string }) => `${q.marketId}.${q.side}`,
+      closedReceipts: { current: new Map() }, sheetPreset, stakeFromUrl, viewerId: "usr_host", stripAddress: () => {}, show: (v: Record<string, unknown>) => { shown = v; },
+      clockOffset, serial: { current: 0 }, setNow: () => {}, sendFunnel: () => {}, refreshed: async () => {}, readKey: async () => {}, recoveryBlocked: () => false, resolveLegacy: async () => {} });
+    open(seed, "YES", title, true, false, "card");
+    if (!shown) return null;
+    const file = ts.createSourceFile("host.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    let frameExpression: string | undefined, titleExpression: string | undefined;
+    const visit = (n: ts.Node) => {
+      if (ts.isVariableDeclaration(n) && n.name.getText(file) === "frame" && n.initializer && ts.isConditionalExpression(n.initializer)
+        && n.initializer.condition.getText(file) === "active") frameExpression = n.initializer.getText(file);
+      if (ts.isJsxSelfClosingElement(n) && n.tagName.getText(file) === "BetSheet") {
+        const attr = n.attributes.properties.find(p => ts.isJsxAttribute(p) && p.name.getText(file) === "title");
+        if (attr && ts.isJsxAttribute(attr) && attr.initializer && ts.isJsxExpression(attr.initializer)) titleExpression = attr.initializer.expression?.getText(file);
+      }
+      ts.forEachChild(n, visit);
+    };
+    visit(file);
+    if (!frameExpression || !titleExpression) return null;
+    const active = shown as Record<string, unknown>;
+    const frame = new Function("active", "sheetFrame", "now", "record", "recoveryBlocked", `return ${frameExpression};`)(active, sheetFrame, NOW, null, () => false);
+    const drawnTitle = (t: Dict) => new Function("view", "t", `return ${titleExpression};`)({ active }, t) as string;
+    return { active, frame, drawnTitle };
+  } catch { return null; }
+}
+/** A21 · execute the host's REAL warm-up effect with a controlled window and refs: when it draws, and what it cancels. */
+function warmEffect(source: string) {
+  try {
+    const file = ts.createSourceFile("host.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    let call: ts.CallExpression | undefined;
+    const visit = (n: ts.Node) => {
+      if (ts.isCallExpression(n) && n.expression.getText(file) === "useEffect" && n.arguments[0] && ts.isArrowFunction(n.arguments[0])
+        && n.arguments[0].getText(file).includes("warmSheet(")) call = n;
+      ts.forEachChild(n, visit);
+    };
+    visit(file);
+    const callback = call?.arguments[0], dependencies = call?.arguments[1];
+    if (!callback || !dependencies || !ts.isArrayLiteralExpression(dependencies)) return null;
+    const js = ts.transpileModule(`const effect = ${callback.getText(file)};`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+    const run = (idle: boolean, mounted: boolean, open: boolean) => {
+      const calls: unknown[][] = [], scheduled: { kind: string; fn: () => void; arg: unknown }[] = [], cancelled: string[] = [];
+      const window = {
+        ...(idle ? { requestIdleCallback: (fn: () => void, options: unknown) => { scheduled.push({ kind: "idle", fn, arg: options }); return 7; },
+          cancelIdleCallback: (handle: number) => { cancelled.push(`idle:${handle}`); } } : {}),
+        setTimeout: (fn: () => void, ms: unknown) => { scheduled.push({ kind: "timeout", fn, arg: ms }); return 9; },
+        clearTimeout: (handle: number) => { cancelled.push(`timeout:${handle}`); },
+      };
+      const words = { marker: "t" };
+      const cleanup = new Function("window", "mounted", "current", "warmSheet", "t", "locale", `${js}\nreturn effect();`)(
+        window, { current: mounted }, { current: open ? { seed: SEED } : null }, (...args: unknown[]) => { calls.push(args); return true; }, words, "sw");
+      const synchronous = calls.length;
+      for (const s of scheduled) s.fn();
+      if (typeof cleanup === "function") cleanup();
+      return { scheduled, calls, synchronous, cancelled, words, cleanup: typeof cleanup === "function" };
+    };
+    return { run, dependencies: dependencies.elements.map(e => e.getText(file)).sort().join(",") };
+  } catch { return null; }
+}
+/** The capture listener is registered in the mount effect's own body — never deferred behind a timer or the warm-up. */
+function tapsArmedAtMount(source: string): boolean {
+  try {
+    const file = ts.createSourceFile("host.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    let body: ts.Block | undefined;
+    const visit = (n: ts.Node) => {
+      const callback = ts.isCallExpression(n) && n.expression.getText(file) === "useEffect" ? n.arguments[0] : undefined;
+      if (callback && ts.isArrowFunction(callback) && ts.isBlock(callback.body)
+        && callback.body.statements.some(s => ts.isVariableStatement(s) && s.getText(file).startsWith("const click ="))) body = callback.body;
+      ts.forEachChild(n, visit);
+    };
+    visit(file);
+    return !!body && body.statements.filter(s => s.getText(file) === 'window.addEventListener("click", click, true);').length === 1;
+  } catch { return false; }
+}
 async function checks(x: Impl): Promise<Check[]> {
   const result: Check[] = [];
   const ok = (name: string, pass: boolean) => result.push({ name, pass });
@@ -487,6 +618,44 @@ async function checks(x: Impl): Promise<Check[]> {
     && [undefined, null, "", foreign, "fixture-build"].every(cached => bootstrapCachedIdentity(x.bootstrap, head, cached) === null)
     && runtimeAt >= 0 && runtimeAt < x.bootstrap.indexOf('await import("../../src/')
     && x.bootstrap.includes('await import("next/dist/shared/lib/deployment-id.js")'));
+  // A21 · the warm-up draws what the first tap would draw, out of sight, and leaves nothing behind (sheet-warmup.tsx).
+  const tapSeed = parseSheetSeed(JSON.stringify(SEED));
+  const warm = warmRun(x.warmup, { seed: SEED, title: "Je, Dodoma itapata mvua?" }), tap = hostTapFrame(x.host, tapSeed, "Je, Dodoma itapata mvua?");
+  const props = warm?.log.element?.props;
+  ok("warmup.public-first-frame", warm !== null && tap !== null && warm.result === true && !warm.threw && warm.log.flushes === 1 && warm.log.element?.type === BetSheetBody
+    && JSON.stringify(props?.seed) === JSON.stringify(tap.active.seed) && props?.side === tap.active.side && props?.stakeText === tap.active.stakeText
+    && props?.estimateUpdated === tap.active.estimateUpdated && JSON.stringify(props?.frame) === JSON.stringify(tap.frame) && props?.title === tap.drawnTitle(warm.t)
+    && /<h2[\s>]/.test(warm.log.containers[0]?.html ?? ""));
+  const untitled = warmRun(x.warmup, { seed: SEED, title: "" }), untitledTap = hostTapFrame(x.host, tapSeed, "");
+  ok("warmup.title-as-drawn", untitled?.result === true && untitledTap !== null && untitled.log.element?.props.title === untitledTap.drawnTitle(untitled.t)
+    && untitled.log.element?.props.title === dict.sw.common.temporarilyUnavailable);
+  const attached = warm?.log.attached ?? [], container = attached[0];
+  ok("warmup.hidden-inert-gone", warm !== null && attached.length === 1 && container.attrs["aria-hidden"] === "true" && container.inert === true
+    && /(?:^|;)\s*visibility:\s*hidden/.test(container.style.cssText) && /(?:^|;)\s*pointer-events:\s*none/.test(container.style.cssText) && /(?:^|;)\s*position:\s*fixed/.test(container.style.cssText)
+    && warm.log.containers.length === 1 && warm.within(container, warm.log.containers[0]) && warm.log.unmounts === 1 && warm.log.removed.includes(container));
+  // The panel wears the sheet's own classes and the Modal panel's layout ones, so the words are set at the sheet's width.
+  const panelClasses = (container?.children[0]?.className ?? "").split(/\s+/).filter(Boolean);
+  const sheetClasses = /panelClassName="([^"]+)"/.exec(x.sheet)?.[1].split(/\s+/) ?? [];
+  const modalTemplate = /className=\{`([^`]*\bmat-modal\b[^`]*)`\}/.exec(x.modal)?.[1] ?? "";
+  const modalClasses = new Set(modalTemplate.replace(/\$\{[^}]*\}/g, " ").split(/\s+/).filter(Boolean));
+  const layoutClasses = [...modalClasses].filter(k => /^(?:[a-z]+:)?(?:p[xytblr]?|w|max-w|mat)-/.test(k));
+  ok("warmup.panel-as-drawn", sheetClasses.length > 0 && layoutClasses.length >= 3 && sheetClasses.every(k => panelClasses.includes(k))
+    && layoutClasses.every(k => panelClasses.includes(k)) && panelClasses.every(k => modalClasses.has(k) || sheetClasses.includes(k)));
+  const faults = (["render-throws", "create-throws", "unmount-throws"] as const).map(f => warmRun(x.warmup, { seed: SEED, title: "q" }, f));
+  ok("warmup.never-throws", faults.every(r => r !== null && !r.threw && r.log.attached.length === 1 && r.log.attached.every(n => r.log.removed.includes(n)))
+    && faults[0]?.result === false && faults[0]?.log.unmounts === 1 && faults[1]?.result === false && faults[1]?.log.unmounts === 0 && faults[2]?.result === true);
+  const empty = warmRun(x.warmup, { seed: SEED, title: "q" }, "render-empty");
+  ok("warmup.failed-render-is-false", empty !== null && empty.result === false && !empty.threw && empty.log.unmounts === 1 && empty.log.attached.every(n => empty.log.removed.includes(n)));
+  const skipped = [null, { seed: { ...SEED, bettable: false } }, { seed: "{" }].map(p => warmRun(x.warmup, p));
+  ok("warmup.only-a-bettable-card", skipped.every(r => r !== null && r.result === false && !r.threw && r.log.created.length === 0 && r.log.attached.length === 0));
+  const effect = warmEffect(x.host);
+  const idle = effect?.run(true, true, false), timer = effect?.run(false, true, false), whileOpen = effect?.run(true, true, true), unmounted = effect?.run(true, false, false);
+  ok("host.warmup-idle", effect !== null && effect.dependencies === "locale,t"
+    && idle?.scheduled.length === 1 && idle.scheduled[0].kind === "idle" && Number((idle.scheduled[0].arg as { timeout?: number } | undefined)?.timeout) > 0
+    && idle.synchronous === 0 && idle.calls.length === 1 && idle.calls[0][0] === idle.words && idle.calls[0][1] === "sw" && idle.cleanup && JSON.stringify(idle.cancelled) === '["idle:7"]'
+    && timer?.scheduled.length === 1 && timer.scheduled[0].kind === "timeout" && timer.scheduled[0].arg === 0 && timer.synchronous === 0 && timer.calls.length === 1
+    && JSON.stringify(timer.cancelled) === '["timeout:9"]' && whileOpen?.calls.length === 0 && unmounted?.calls.length === 0);
+  ok("host.taps-armed-at-mount", tapsArmedAtMount(x.host));
   const metadata = bootstrapRuntimeMetadata(x.bootstrap, head, {RAILWAY_GIT_COMMIT_SHA: head, NEXT_DEPLOYMENT_ID: head});
   const movedMetadata = bootstrapRuntimeMetadata(x.bootstrap, head, {RAILWAY_GIT_COMMIT_SHA: foreign, NEXT_DEPLOYMENT_ID: foreign});
   ok("bootstrap.identity-http", metadata?.buildSha === head && metadata?.sourceHead === head
@@ -573,6 +742,29 @@ if (process.argv.includes("--prove-red")) {
       ["bootstrap.identity-http", 'nextDeploymentId: process.env.NEXT_DEPLOYMENT_ID', 'nextDeploymentId: required.config.deploymentId'],
       ["bootstrap.identity-http", 'deploymentId: runtimeDeploymentId', 'deploymentId: required.config.deploymentId'],
     ].map(([check, from, to]) => ({name: `${check}: ${from}`, check, impl: {...REAL, bootstrap: REAL.bootstrap.replace(from, to)}})),
+    ...[
+      ["warmup.hidden-inert-gone", "host.inert = true;", ""],
+      ["warmup.hidden-inert-gone", 'host.setAttribute("aria-hidden", "true");', ""],
+      ["warmup.hidden-inert-gone", "visibility:hidden;", ""],
+      ["warmup.hidden-inert-gone", "host?.remove();", "void host;"],
+      ["warmup.hidden-inert-gone", "root?.unmount();", "void root;"],
+      ["warmup.panel-as-drawn", '"mat-modal relative w-full p-5 lg:p-6 kp-wsheet kp-bsheet"', '"kp-wsheet kp-bsheet"'],
+      ["warmup.public-first-frame", 'sheetFrame({ seed, side: "YES"', 'sheetFrame({ seed, side: "NO"'],
+      ["warmup.public-first-frame", 'viewer: { state: "loading" }', 'viewer: { state: "failed" }'],
+      ["warmup.title-as-drawn", "box.dataset.sheetTitle || t.common.temporarilyUnavailable", 'box.dataset.sheetTitle ?? ""'],
+      ["warmup.failed-render-is-false", "return heading !== null && heading.getBoundingClientRect().height > 0;", "return true;"],
+      ["warmup.never-throws", "} catch {\n    return false;\n  }", "} catch (error) {\n    throw error;\n  }"],
+      ["warmup.only-a-bettable-card", "if (!box || !seed?.bettable) return false;", "if (!box || !seed) return false;"],
+    ].map(([check, from, to]) => ({ name: `${check}: ${from}`, check, impl: { ...REAL, warmup: REAL.warmup.replace(from, to) } })),
+    ...[
+      ["host.warmup-idle", "if (mounted.current && !current.current) warmSheet(t, locale);", "warmSheet(t, locale);"],
+      ["host.warmup-idle", "if (mounted.current && !current.current) warmSheet(t, locale);", "if (!current.current) warmSheet(t, locale);"],
+      ["host.warmup-idle", "return () => window.cancelIdleCallback(handle);", "return () => {};"],
+      ["host.warmup-idle", "}, [t, locale]);", "}, []);"],
+      ["host.warmup-idle", "const handle = window.setTimeout(warm, 0);", "const handle = window.setTimeout(warm, 0); warm();"],
+      ["host.taps-armed-at-mount", 'window.addEventListener("click", click, true);', 'window.setTimeout(() => window.addEventListener("click", click, true), 0);'],
+    ].map(([check, from, to]) => ({ name: `${check}: ${from}`, check, impl: { ...REAL, host: REAL.host.replace(from, to) } })),
+    { name: "the tap's first frame drifts from the warm one", check: "warmup.public-first-frame", impl: { ...REAL, host: plantCallback(REAL.host, "open", 'viewer: { state: "loading" }', 'viewer: { state: "failed" }') } },
   ];
   for (const m of mutants) {
     const caught = (await checks(m.impl)).some((c) => c.name === m.check && !c.pass);
