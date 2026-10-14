@@ -16,15 +16,18 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-14):** (as of 10:45 UTC) S8 (the bet sheet and low balance, flagged) is in progress (§0k). Release
-`08a8c04728219690b91eba5ae34a2ac4697f40b3` is LIVE and read back (§0k's 2026-10-14 Claude bullet): the chunk-boundary
-gate now passes 6/6 on both hosts, CI's 90 admin cells are fixed, the BUSY / row-23 / pending-age browser gates are
-measured, and the refusal line stands above the CTA. It is not S8 acceptance: the strict A21 tap (FAILED on this
-machine, 196–288 ms vs 150), the final parity v4 compare, the full battery with the database suites, [E3] and exact-tip
-CI remain open. The portable continuation and access guide is
+**State (2026-10-14):** (as of 12:30 UTC) S8 (the bet sheet and low balance, flagged) is in progress (§0k). Release
+`4946a777deaa8e206336202d8c57db8ad39ec3ba` is LIVE and read back (§0k's second 2026-10-14 Claude bullet): Ali's Up & Down
+ruling (every Up & Down choice says Up/Down only, no multiplier — COMPLIANCE-DECISIONS 2026-10-14) and the A21 first-frame
+warm-up behind the flag. Before it, `08a8c0472` (the first 2026-10-14 bullet): the chunk gate 6/6 on both hosts, CI's 90
+admin cells, the BUSY / row-23 / pending-age drives, the refusal line above the CTA. The battery at `f830a091c` is
+540/540 (the three server suites on their own server; all 19 database suites). It is not S8 acceptance: the strict A21
+tap is still FAILED (218 ms median under load vs 150; its next cause is found and measured — the root `:has()` rules,
+§0k), and the final parity v4 compare, [E3] and exact-tip CI remain open. The portable continuation and access guide is
 [`qa/claude-vodacom-continuation-20261014.md`](qa/claude-vodacom-continuation-20261014.md); the newest state is on `main`
-(the `codex/*` branches may lag: this session's branch pushes were refused). S9 preparation is on `codex/vodacom-s9`, its
-review fixes on `codex/vodacom-s9-fixes`. S7 (home and cards, flagged)
+(the `codex/*` branches may lag). S9 preparation is on `codex/vodacom-s9`, its review fixes ready on
+`codex/vodacom-s9-fixes` (`daaffe1b3`, not on main); the S11, S12 and S13 build plans are filed on their own
+`codex/vodacom-s1N-plan` branches (§0k). S7 (home and cards, flagged)
 is closed and live (§0j), ✅ only at S14. S6 (the flagged shell) is ✅ — CLOSED 2026-10-12 03:01 EAT, its close record the
 first ✅ paragraph below. S6's own history (§0i): WP0–WP12 are live behind the flag, the S6 visual
 pass (rounds 1–6), its round 7 and round 8 (the owner's four rulings of 2026-10-10) are live from ALI-BLADE15 (the ✅
@@ -962,6 +965,47 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
     at 10:45.
   - *Also fixed (next push):* `red:keyframes` — its "move mark-breathe into the calm branch" plant had lost its second
     anchor when R9-C extended the comment; re-anchored on the unchanged prefix, 7/7 caught, src clean.
+- **2026-10-14 Claude continuation (2), OMEGA-COMPILE01 — release `4946a777d` (main `f830a091c..4946a777d`, pushed ~12:05
+  UTC on Ali's "push live please then proceed").** Not S8 acceptance.
+  - *In the release:* (1) Ali's Up & Down ruling (COMPLIANCE-DECISIONS 2026-10-14): every Up & Down choice says Up/Down
+    only — no multiplier on the board card (signed in and out), the two-way control or the confirm panel; the shilling
+    projection at the commit and the receipt's projected return are kept; Up & Down Rules §2 re-dated v2026-10-14 (wording
+    only, no right changed); `formatMultiplier` and `EstimateNote` deleted. `test:updown-pricing` 89/0 (§8 renders 120
+    cells, 6 plants), `red:updown-pricing` 20/20, the ten red harnesses green. (2) A21 — the host draws the tap's public
+    first frame once, out of sight, at the page's first idle moment (`sheet-warmup.tsx`): a hidden, inert container wearing
+    the panel's classes, laid out, unmounted and removed in one task; taps stay armed at mount. Measured on one page under
+    load (n=7 each): first opening 417 → 218 ms median, first/second 2.56 → 1.66; the first opening's font set-up 35 → 0
+    ms and shaping 47 → 2 ms. `test:bet-sheet-host` gains 9 checks and 19 plants (84 in-process controls). The footer's
+    spacing rule is two plain selectors instead of a rightmost `:is()`.
+  - *Proof at the candidate:* typecheck 0; of the 356 suites that read a changed file, 350 green at once, and needle-rest
+    92/0, admin-section-gate 21/0 and revoked-deadend 46/0 run one at a time (in parallel they sign one demo account out
+    of another's session — a harness premise, not a defect); responsive and motion need :3000 (not run);
+    house-bot-disclosure 119/3 is D19a's pin against the old main (122/0 after the push). Production build at the exact
+    commit; local `qa:live` 407/0.
+  - *Production read-back (12:08–12:30 UTC):* www and the apex serve `dpl=4946a777d…` from 12:08:15; health ok on all
+    three hosts, database migrated, journey STAFF_PREVIEW; `qa:chunks-prod` 6/6 on both (124 GETs each); production
+    `qa:live` 351/0 signed out, [E3] NOT MEASURED; the live /updown read at 360 sw and 1280 en (buttons "Juu"/"Chini" and
+    "Up"/"Down", no multiplier text, no horizontal overflow; tiles read by eye).
+  - *Battery at `f830a091c` (S8 WP12 step 1):* `test:all --serial` 537/540 — the three reds are the server suites with
+    no server — and on their own server 46/21/92, so 540/540; all 19 database suites green; red-anchors 5315/0; A16's reds
+    all caught (dal-parity 285/285, keyframes 7/7). One harness defect: `db:probe-sheet-facts` still expected
+    `keyPosition` without its quote (since ee518f52a) — fixed on `codex/s8-battery-final` `a4a5f409e`, not yet on main.
+  - *A21's next cause (found and measured):* every opening restyles 307 elements when the sheet adds ~40, and again
+    (305) during its entrance. The root's `:has()` rules make `<html>` a :has subject, so any insertion (the dialog's
+    portal, then the router's commit) re-runs Chrome's union :has invalidation set on it — the whole subtree (a `> *`
+    rule) and every `span`. With those 30 selectors stripped before the page loads (an experiment; the server untouched)
+    an opening restyles 52 elements, the second pass is gone, and first/second fall 281/232 → 177/115 ms under load.
+    The fix in hand: the journey mark becomes an attribute the root layout writes on `<html>`; the not-found,
+    signed-out-header and sort-open switches leave `:root`.
+  - *Other lanes:* the S9 review fixes are ready on `codex/vodacom-s9-fixes` `daaffe1b3` (H1–H3, M1–M4, L1–L3, L8; the S9
+    suites green on memory and Postgres; not pushed). The S11, S12 and S13 build plans are filed on
+    `codex/vodacom-s11-plan` `39322dd69`, `codex/vodacom-s12-plan` `ba34bc15c` and `codex/vodacom-s13-plan` `b0af2f1b2`,
+    not yet critiqued. Parity v4's baseline is being captured.
+  - *For Ali:* Up & Down — is the pool split ("Up 75% · 25% Down", /live "Up @ 75%") odds too; keep the projected return
+    on the confirm panel and the receipt; the Rules wording was changed under "wherever this should be reflected". S9 —
+    the sw and zh "Reversed" titles mean "returned" while the bodies say "held for return"; the held and review bodies
+    have no recorded sign-off; the /wallet modal's words for a review-marked deposit (L6). The new sw `udEstimateNote`
+    ("Dau zikifungwa") and Rules §2 ("dau zitakapofungwa") take the reviewed "madau" form in the next release.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;
   WP8, WP9 and WP10; WP11a; WP11b; WP12 (A17's order).
 - **▶ IN FLIGHT (2026-10-13, from ~02:05 EAT) — the coordinator, a claude.ai/code cloud VM, with five builders on their
@@ -3560,6 +3604,8 @@ shares it). ⭐ The canvas is the source of truth for S4's frames — no copy li
     - Open tickets show no payout figure (SJ-4 keeps §C3), and every timer names its absolute instant.
     - Juu/Chini keeps its own side buttons and floor-rounded × multiples; only the chips (full figures) and the
       low-balance pattern change.
+      ⚠️ The multiples are superseded by Ali's ruling of 2026-10-14 ("keep up and down only" — COMPLIANCE-DECISIONS
+      § "2026-10-14 · Up & Down cards show Up and Down only"): Juu/Chini's side buttons carry the side's word only.
     - "Tumia TZS 2,000 badala yake" (draft) sets the stake, because a Juu/Chini bet needs a side.
     - The market chart title is spelt NDIO; the dictionary still says NDIYO, one of SJ-19's seven fixes.
 - **All eleven brief items are on the canvas: 91 frames.**

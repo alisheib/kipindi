@@ -62,8 +62,9 @@ operator registry — added, renamed, enabled and disabled from the admin panel 
 ### What it is NOT
 
 Not a casino, not fixed-odds, not a tick-accurate trading product. It is pari-mutuel:
-players share the pool. The multiplier shown before a bet is a **display estimate**,
-never a promise — see §5.
+players share the pool. Any payout figure shown before betting closes is a **display
+estimate**, never a promise — see §5. (Since Ali's ruling of 2026-10-14 the card shows no
+multiplier at all: its choices read Up and Down only.)
 
 ---
 
@@ -168,9 +169,17 @@ is not restated here. Verified on production 2026-08-14: Up & Down round #267 ch
 
 **Taxes come out of the operator's commission, never a player's money.** Unchanged.
 
-**The multiplier is an estimate.** The "× 1.4" on the buttons is a fixed display figure,
-not fixed odds. The real payout is pari-mutuel and depends on how the pools close. It
-must always carry a qualifier and must never be styled as a guaranteed return.
+**No multiplier on the card; the projected return is an estimate.** ⭐ Ali's ruling of
+2026-10-14 — *"remove odds from up and down market cards … keep up and down only"*
+([`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) § "2026-10-14 · Up & Down cards show Up
+and Down only"; the rule is `DESIGN_AUTHORITY.md` §C3). The card's two choices, and the round
+page's two-way control, read Up and Down and nothing else. The one payout figure shown before
+betting closes is the projected return at the commit — the round page's confirm panel and the
+bet receipt — priced by `payoutFor` from the round's pool and frozen rates. The real payout is
+pari-mutuel and depends on how the pools close, so that figure always carries its qualifier
+line and is never styled as a guaranteed return; at the lock it becomes the exact payout.
+(This paragraph used to describe a "× 1.4" on the buttons: a fixed display figure until D2,
+2026-08-06, then the pool's own multiple until the ruling.)
 
 **Cash-out.** Up & Down rounds are minutes long, so the platform's existing free-exit
 grace already exceeds most round durations. Treatment is settled in Phase 3; until
@@ -265,7 +274,8 @@ Mandatory per the management note, and all four must survive a 360px screen:
 **Volume · Players · Amount · Timer.**
 
 Plus, from the supplied mockup: the asset icon, the live price and its move, the
-Up/Down actions with their estimate multiplier, and the source line.
+Up/Down actions, and the source line. ⛔ The actions carry the side's word only — no
+estimate multiplier (Ali's ruling of 2026-10-14; the mockup's multiplier is retired, see §5).
 
 Currency for player money is **TZS** with thousands separators — never KSH (the mockup's
 label is wrong), never a bare number. The asset's own price is quoted in USD because

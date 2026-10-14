@@ -20,17 +20,15 @@ import { cn, formatNumber, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { formatBreakEnd } from "@/lib/break-end";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
-import { UpDownStakeControls, EstimateNote } from "./updown-stake-controls";
+import { UpDownStakeControls } from "./updown-stake-controls";
 import { UpDownBetBlockedModal } from "./updown-bet-blocked-modal";
 import { stakeChipLabel } from "./stake-math";
 import { I } from "@/components/ui/glyphs";
 import { noticeBody } from "@/components/ui/empty-state-text";
 import { Chip } from "@/components/ui/chip";
-// ⛔ ONE RULE for "what would I be paid" (D2). This panel must agree with the board card to the
-// shilling, so it calls the same function rather than multiplying by a rate of its own.
-import {
-  impliedMultiplier, projectedReturn, refundWarningFor, formatMultiplier, type UpDownPricing,
-} from "@/lib/updown-pricing";
+// ⛔ ONE RULE for "what would I be paid" (D2). This panel's projection must agree with the bet receipt and with what
+// settlement pays, to the shilling, so it calls the same function rather than multiplying by a rate of its own.
+import { projectedReturn, refundWarningFor, type UpDownPricing } from "@/lib/updown-pricing";
 import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
 
 export function RoundStakePanel(props: {
@@ -124,8 +122,10 @@ export function RoundStakePanel(props: {
   // round where the other side held nothing it promised a 50% gain over a stake that was going
   // to come straight back, on the one screen whose whole job is to state the commitment before
   // it is made. It is now `projectedPayout`'s own arithmetic, through the shared module.
+  // ⭐ AND IT IS A SHILLING FIGURE ONLY (Ali's ruling of 2026-10-14). The `× N` that sat beside it was the board
+  // card's multiple again, and the ruling takes every multiple off Up & Down. The projected return stays because
+  // this panel IS the commit — the money is stated before it is committed (CLAUDE.md, "UX commitments").
   const projected = bet.stakeReady ? projectedReturn(pricing, lockedSide, bet.stake) : null;
-  const projectedMult = bet.stakeReady ? impliedMultiplier(pricing, lockedSide, bet.stake) : null;
   // ⭐ SIDE-AWARE, and this is the distinction the copy rests on. On a round holding UP 36,000 /
   // DOWN 0, a player locked to UP must be told DOWN has to fill or their stake comes back — but
   // a player locked to DOWN is the one FILLING it, so the same sentence would be false the
@@ -151,11 +151,11 @@ export function RoundStakePanel(props: {
 
       {/* Stake field — display of the chosen amount + a neutral projection (a projection
           is not earned money, so no gold).
-          ⚠️ `minHeight`, not `height`, and the row may wrap: both figures now carry their
-          unit, and at the platform ceiling (stake 1,000,000) "TZS 1,000,000 → TZS 1,500,000
-          × 1.50" is wider than a 360px viewport leaves this box. A wrap grows the control;
-          a fixed height would have spilled the projection outside its own border. Nothing
-          moves at any ordinary stake. */}
+          ⚠️ `minHeight`, not `height`, and the row may wrap: both figures carry their unit,
+          and at the platform ceiling (stake 1,000,000) the row outgrew a 360px box while a
+          `× N` still stood beside the projection (it left with the owner's ruling of
+          2026-10-14). A wrap grows the control; a fixed height would have spilled the
+          projection outside its own border. Nothing moves at any ordinary stake. */}
       <div
         className="mt-[14px] flex flex-wrap items-center justify-between gap-[10px]"
         style={{ minHeight: 46, background: "var(--bg-inset)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", padding: "0 12px 0 14px" }}
@@ -174,10 +174,12 @@ export function RoundStakePanel(props: {
             the one figure a player reads as "what I get back" was the one figure with no
             shilling on it. `formatTzs` puts the unit back and `udRcProjected` names the
             number on hover/long-press.
-            ⛔ No new "est." token. `udEstimateNote` sits directly under this panel and
-            already says the multiple moves with every bet; the dictionary states in as many
-            words that it is REUSED rather than restated so the surfaces cannot drift.
-            ⛔ And it stays muted (§M3 / R2 Q5) — projected money is not earned money. */}
+            ⛔ No new "est." token. `udEstimateNote` sits directly under this panel and says the
+            projected return moves with every bet; the dictionary states in as many words that it
+            is REUSED by the receipt rather than restated, so the two commit surfaces cannot drift.
+            ⛔ And it stays muted (§M3 / R2 Q5) — projected money is not earned money.
+            ⛔ NO `× N` BESIDE IT (Ali's ruling of 2026-10-14): that was the board card's multiple
+            stated a second time, and the ruling takes every multiple off Up & Down. */}
         {projected != null && (
           <span className="flex shrink-0 items-center gap-1.5" title={t.market.udRcProjected}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
@@ -185,11 +187,6 @@ export function RoundStakePanel(props: {
                 `text-body-sm` (13), the +0.5 already ruled for `.admin-tbl`. The muted ink and
                 the semibold stay: §M3 keeps projected money quieter than earned money. */}
             <span className="amount text-body-sm font-semibold text-text-muted">{formatTzs(projected)}</span>
-            {/* The multiple, in the SAME muted ink as the amount — it is the same fact stated
-                twice, and neither statement gets to be louder than the stake control (G5). */}
-            {projectedMult != null && (
-              <span className="font-mono text-[11px] tabular-nums text-text-faint">× {formatMultiplier(projectedMult)}</span>
-            )}
           </span>
         )}
       </div>
@@ -313,9 +310,20 @@ export function RoundStakePanel(props: {
           <span>{noticeBody(warnCopy)}</span>
         </p>
       )}
-      {/* The × note at the ⓘ notes' size and indent (round 4): it was 10px here, under §T4's 12.5px reading floor,
-          while the same sentence reads at 13px on the card and the two-way panel. */}
-      <EstimateNote className="mt-2" text={t.market.udEstimateNote} />
+      {/* ⭐ THE PROJECTION'S QUALIFIER (§C3: an unrealised figure is always labelled as one), an ⓘ note like its two
+          siblings above — the glyph's 11px column with the sentence hanging beside it, the notice body's kept phrases,
+          13px (round 4: it was once 10px here, under §T4's floor). It travels with the FIGURE, on the receipt's own
+          gate (`projected != null`): never under a panel that states none — the display switch off, or a custom amount
+          not yet usable, where the field reads "—". It sits below the Confirm, so its coming and going moves nothing
+          the player is about to tap.
+          ⚠️ Until the owner's ruling of 2026-10-14 it opened on "×" and hung that sign in the glyph's column
+          (`EstimateNote`, deleted with the multiples it explained); it names the projected return now. */}
+      {projected != null && (
+        <p className="mt-2 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint">
+          <I.info s={11} className="mt-[2px] shrink-0" />
+          <span>{noticeBody(t.market.udEstimateNote)}</span>
+        </p>
+      )}
 
       <span aria-live="polite" className="sr-only">{bet.liveMessage}</span>
 

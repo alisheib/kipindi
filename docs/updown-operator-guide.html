@@ -394,10 +394,12 @@ choice. It also keeps every span dividing evenly into the 1,440 minutes of a day
 and 72 all do), so rounds still start on the same clean clock marks each day and several lengths
 still share boundaries — the saving described in section 2 is unaffected.</p>
 
-<p>When betting closes the player’s buttons are disabled, the card states why, and the estimate
-<i>“× 1.4 est.”</i> becomes an <b>exact figure</b> — once the pool is frozen, each side’s payout is
-known precisely. The countdown then runs again through the result phase under <i>“result in”</i>,
-so the player is never left watching a clock at zero.</p>
+<p>When betting closes the player’s buttons are disabled, the card states why, and a player who
+holds a position sees an <b>exact figure</b> for each outcome — once the pool is frozen, each side’s
+payout is known precisely. Before that the card shows no payout figure at all: its two buttons say
+<b>Up</b> and <b>Down</b> and nothing else (Ali’s ruling of 2026-10-14). The countdown then runs
+again through the result phase under <i>“result in”</i>, so the player is never left watching a
+clock at zero.</p>
 
 <div class="note"><b>WHAT CHANGED, AND WHY</b> Until 2026-08-04 the lead was taken
 <i>out</i> of the advertised time: a “3 min” round ran three minutes end to end and stopped taking
@@ -818,8 +820,9 @@ starting state, not a fault, and it fills in on its own as rounds go by.</p>
   <li>Place a small bet on <b>UP</b> and watch <b>VOL</b> increase. From a second account bet
       <b>DOWN</b>; both sides are required or the round refunds.</li>
   <li>When the five minutes of betting are up, watch the buttons disable, the wording change from
-      <i>betting closes in</i> to <i>result in</i>, and the estimate become an exact figure. The
-      countdown then runs a further <b>1 minute</b> — the result phase — before the round closes.</li>
+      <i>betting closes in</i> to <i>result in</i>, and each account that bet see its exact payout
+      for UP and for DOWN. The countdown then runs a further <b>1 minute</b> — the result phase —
+      before the round closes.</li>
   <li>At the close the card shows the result. In <b>Rounds</b>, check the outcome, the stake, the
       number of players and the settlement time.</li>
   <li>Confirm the winner’s wallet increased by the amount the card promised. It will agree exactly.</li>
@@ -947,9 +950,11 @@ an operator answering a player can say exactly what they should be seeing and wh
       One account betting twice on the same side is still 1.</td>
       <td>Always.</td></tr>
   <tr><td><b>Up 60% / 40% Down</b></td>
-      <td>How the money is split, <b>by stake, not by number of players</b>. It shows an even
-      50/50 when the pool is empty, which is a starting position and not a prediction.</td>
-      <td>Always.</td></tr>
+      <td>How the money is split, <b>by stake, not by number of players</b>. It is the share of the
+      money on each side — not odds, and not what a winner is paid.</td>
+      <td><b>Only when both sides hold money.</b> With money on one side the bar is a dashed rail
+      named <i>“One side only”</i>; on an untouched round it is the empty rail alone. It never shows
+      an even 50/50 for a pool nobody has backed.</td></tr>
   <tr><td><b>Higher or lower than $X</b> and <b>± $0.02</b></td>
       <td>The <b>opening price</b> the round is judged against, and the size of the winning band.</td>
       <td>Open, Locked and Confirming. <b>Hidden once the round settles</b> — it shows its
@@ -961,23 +966,32 @@ an operator answering a player can say exactly what they should be seeing and wh
   <tr><td><b>500 · 1K · 2.5K · 5K · Custom</b></td>
       <td>The stake to be used by the next tap. It is a chooser, not an amount already bet.</td>
       <td><b>Only while betting is open.</b></td></tr>
-  <tr><td><b>Up × 1.4 est.</b> / <b>Down × 1.4 est.</b></td>
-      <td>⭐ <b>An ESTIMATE of the multiplier</b>, based on how the pool stands <i>at this
-      moment</i>. It moves as other people bet, and it is explicitly labelled <i>est.</i> because
-      it is not a promise.</td>
-      <td><b>Only while betting is open.</b> This is the single most common “why did the number
-      change?” question — it changes because the pool changed.</td></tr>
+  <tr><td><b>Up</b> / <b>Down</b> (the two buttons)</td>
+      <td>⭐ <b>The two choices, and nothing else.</b> Since Ali’s ruling of 2026-10-14 (“keep up
+      and down only”) they carry <b>no number</b> — no multiplier and no estimate. A player who
+      wants to know what a stake would return sees it at the moment of betting: the round page’s
+      confirm panel (<i>“TZS 500 → TZS 634”</i>) and the bet receipt (<i>“Projected return”</i>),
+      an estimate from the pool at that moment, which moves as other people bet.</td>
+      <td><b>Only while betting is open.</b> If a player asks where the multiplier went: it was
+      removed from every Up &amp; Down card on purpose; the projected return at the moment of
+      betting is the figure to point to.</td></tr>
+  <tr><td><b>Nobody has backed Down yet — if that does not change, your stake comes back.</b></td>
+      <td>One side of the round holds no money, so if betting closed now nobody could win and every
+      stake would come back in full. A fact about the round, not an estimate.</td>
+      <td><b>Only while betting is open, and only while a side is empty</b> — it disappears the
+      moment both sides hold money.</td></tr>
   <tr><td><b>You’re in UP · TZS 1,000</b></td>
       <td>What <i>this</i> player already has on this round.</td>
       <td>Once they have bet.</td></tr>
   <tr><td>🔒 <b>Bets closed at 09:40:00 — the result is locked…</b></td>
       <td>Why the buttons stopped working, with the exact instant. The round is running normally.</td>
       <td><b>Only in the result phase.</b></td></tr>
-  <tr><td><b>You win TZS 1,740</b> (no “est.”)</td>
-      <td>⭐ <b>The EXACT figure</b>, not an estimate. Once betting closes the pool is frozen, so
-      the payout is known precisely.</td>
-      <td><b>Only in the result phase, and only if the player holds a position.</b> The estimate
-      disappears at the same moment — that swap is deliberate.</td></tr>
+  <tr><td><b>If it closes UP · TZS 1,740</b> / <b>If it closes DOWN · TZS 0</b></td>
+      <td>⭐ <b>The EXACT figures</b>, not estimates — what this player receives under each
+      outcome. Once betting closes the pool is frozen, so the payout is known precisely; a player
+      who backed one side sees 0 on the other line, which is simply true.</td>
+      <td><b>Only in the result phase, and only if the player holds a position.</b> It is the
+      first payout figure the card ever shows.</td></tr>
   <tr><td><b>Reading the closing price…</b></td>
       <td>The closing record is being fetched. The platform never settles on a guess.</td>
       <td>Only while confirming.</td></tr>
@@ -999,7 +1013,7 @@ different situation and the player will know the difference.</div>
 
 <div class="note warn"><b>WHY THE CARD LOOKS DIFFERENT EACH TIME YOU LOOK</b>
 Because a round moves through five stages in a few minutes and each stage shows what is true at
-that stage. The estimate exists only while it can still change; the exact figure replaces it the
+that stage. While betting is open the card shows no payout figure; the exact figure appears the
 moment it stops changing; the targets give way to the result. If a player says a number
 “disappeared”, the answer is almost always that the round moved on — ask which stage the card is
 showing, using the first table above.</div>

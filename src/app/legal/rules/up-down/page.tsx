@@ -33,11 +33,14 @@ const SUBTITLE: Record<Locale, string> = {
  * ⛔ BUMPED 2026-10-12 (owner ruling, docs/COMPLIANCE-DECISIONS.md 2026-10-12): the minimum stake this document quotes
  * from the live Up & Down default went from TZS 1,000 to TZS 500. The template did not change, the binding text a player
  * reads did — the same reason the 2026-09-13 label moved for a live rate (COMPLIANCE-DECISIONS 2026-09-14).
+ * ⛔ BUMPED 2026-10-14 (owner ruling, docs/COMPLIANCE-DECISIONS.md "2026-10-14 · Up & Down cards show Up and Down
+ * only"): §2's bullet described "the displayed multiplier", and no Up & Down surface displays one any more; it names the
+ * projected return shown when a stake is placed. The binding words moved, so the date moved; no right changed.
  */
 const META: Record<Locale, string> = {
-  en: "Version 2026-10-12 · Effective on entering a round.",
-  sw: "Toleo 2026-10-12 · Zinaanza kutumika unapoingia raundi.",
-  zh: "版本 2026-10-12 · 自进入回合时生效。",
+  en: "Version 2026-10-14 · Effective on entering a round.",
+  sw: "Toleo 2026-10-14 · Zinaanza kutumika unapoingia raundi.",
+  zh: "版本 2026-10-14 · 自进入回合时生效。",
 };
 
 export default async function UpDownRulesPage() {

@@ -1,6 +1,17 @@
 /**
  * WHAT A PLAYER WOULD ACTUALLY BE PAID — computed BEFORE the bet, from the real pool.
  *
+ * ── ⛔ WHERE IT IS SHOWN SINCE 2026-10-14: AT THE COMMIT, AND NEVER ON A CARD ─────────────
+ * Ali's ruling of 2026-10-14 — *"remove odds from up and down market cards … keep up and down
+ * only"* (DESIGN_AUTHORITY §C3; COMPLIANCE-DECISIONS § "2026-10-14 · Up & Down cards show Up and
+ * Down only"). No Up & Down surface prints the multiple any more: the board card's buttons, the
+ * one-tap stake control and the round page's two-way control say Up and Down and nothing else.
+ * What this file still prices is the projected RETURN, in shillings, at the moment of commitment —
+ * the round page's confirm panel (`projectedReturn`) and the bet receipt (`impliedMultiplier` at
+ * the amount staked) — and `emptySideOf` / `refundWarningFor` still name the empty side before
+ * any stake, because that is a fact about the pools, not an estimate. The history below is why
+ * the figure is the pool's own wherever it IS shown.
+ *
  * ── WHY THIS FILE EXISTS (D2, `docs/UPDOWN-FINAL-DESIGN.md`) ─────────────────
  * 🔴 The card showed a flat **`× 1.5 est.`** on both buttons. It was not derived from
  * anything: `estimatedWinningsRate` is a config constant (`market-config.ts`), so the
@@ -26,15 +37,16 @@
  *    can never be a promise (G3). It is labelled live in the copy, and at the LOCK the pool
  *    freezes and `myExactPayout` replaces it with arithmetic. That existing behaviour is what
  *    makes showing this safe at all.
- *  · **INFORMATION, NOT PROMOTION** (G5/RG). A big multiplier means the other side is thin,
- *    which is a *risk* statement as much as a reward one. Callers render it in the same ink and
- *    the same size as the small one; nothing here escalates.
+ *  · **INFORMATION, NOT PROMOTION** (G5/RG). A big figure means the other side is thin, which
+ *    is a *risk* statement as much as a reward one. Callers render the projected return muted,
+ *    never gilded and never larger than the stake beside it; nothing here escalates.
  *
  * ── WHY IT LIVES HERE, ISOMORPHIC ───────────────────────────────────────────
- * The board card is a client component, the round page a server component, and the stake panel
- * a third caller. Same reasoning as `updown-refund-reason.ts`: several copies of "what would I
- * be paid" is several chances to disagree about someone's money. `@/lib/payout` is explicitly
- * isomorphic, so this is too — it imports nothing from `server/`.
+ * The board card and the stake controls are client components, the round page a server
+ * component, and the confirm panel and the receipt further callers. Same reasoning as
+ * `updown-refund-reason.ts`: several copies of "what would I be paid" is several chances to
+ * disagree about someone's money. `@/lib/payout` is explicitly isomorphic, so this is too — it
+ * imports nothing from `server/`.
  */
 import { payoutFor, type PollRates } from "@/lib/payout";
 
@@ -67,10 +79,11 @@ export type UpDownPricing = {
   rates: UpDownRates;
   /**
    * The operator's display switch (`showEstimatedWinnings`), frozen per poll. False ⇒ no
-   * multiplier is rendered at all, exactly as before this change; legacy rounds that never
-   * stamped the display fields keep behaving as they always did.
+   * projected return is rendered at all (the confirm panel and the receipt state none, and the
+   * panel's qualifier line goes with it); legacy rounds that never stamped the display fields keep
+   * behaving as they always did.
    *
-   * ⚠️ It gates the MULTIPLIER only. The empty-side sentence is a fact about the round, not a
+   * ⚠️ It gates the ESTIMATE only. The empty-side sentence is a fact about the round, not a
    * winnings estimate, so no display switch may suppress it.
    */
   show: boolean;
@@ -155,31 +168,20 @@ export function refundWarningFor(
   return empty === side ? null : empty;
 }
 
-/**
- * The multiplier as it is printed: `1.00` · `4.24` · `16.6` · `187`.
- *
- * ⛔ IT FLOORS, IT DOES NOT ROUND. `toFixed` rounds half up, so `1.996×` would print `2.00×` —
- * a payout estimate nudged UPWARDS on a money surface. Flooring can only ever understate, which
- * is the safe direction, and it is the same reasoning as refusing to settle rather than
- * underpaying a winner. The `1e-9` absorbs binary float (`1.03 * 100 = 102.99999999999999`,
- * which would otherwise floor to `1.02`).
- *
- * Precision shrinks as the figure grows because the trailing digits stop meaning anything: at
- * `× 187` the pool moves further between two renders than the hundredths place is worth.
+/*
+ * ⛔ `formatMultiplier` — the printed `× N` (floored, never rounded up) — WAS DELETED 2026-10-14 with the last
+ * surface that printed one (Ali's ruling: Up & Down cards show Up and Down only). Restoring it means restoring a
+ * multiple on an Up & Down surface, which needs a new owner ruling (COMPLIANCE-DECISIONS § "2026-10-14 · Up & Down
+ * cards show Up and Down only"); `test:updown-pricing` §5 and §8 fail on a printed multiple.
  */
-export function formatMultiplier(m: number): string {
-  if (!Number.isFinite(m) || m <= 0) return "—";
-  const digits = m >= 100 ? 0 : m >= 10 ? 1 : 2;
-  const f = 10 ** digits;
-  return (Math.floor(m * f + 1e-9) / f).toFixed(digits);
-}
 
 /**
- * What a specific stake would return, in whole shillings — the figure the round page's stake
- * field shows beside the amount.
+ * What a specific stake would return, in whole shillings — the figure the round page's confirm
+ * panel shows beside the amount, at the moment of commitment.
  *
- * Same call, same rates, same rounding as `impliedMultiplier`, so the panel's arrow figure and
- * the button's `× …` can never disagree. Null when there is nothing honest to show.
+ * Same call, same rates, same rounding as the receipt's projected return (`impliedMultiplier` at
+ * the amount staked), so the panel and the receipt can never disagree. Null when there is
+ * nothing honest to show.
  */
 export function projectedReturn(
   pricing: UpDownPricing | null | undefined,
