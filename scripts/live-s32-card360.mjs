@@ -134,6 +134,12 @@ try {
           // 174px cut in Swahili on first run. Its SIZE is still worth a human look, so it is
           // reported as a note below rather than swallowed entirely.
           if (/ellipsis/.test(st.textOverflow)) continue;
+          // ⛔ AND A DASH-FIT RAIL IS WIDE BY DESIGN TOO (R9-A6, 2026-10-11 — globals.css `.kp-dashfit`). The empty and
+          // one-sided TippingBar rail lays its dash tiles on a layer that runs ONE GAP past the host's end so the last
+          // dash ends on the edge, and the host clips that gap (`overflow: hidden`). Its scrollWidth is one pitch (7px)
+          // over its clientWidth on every one-sided or empty round — the overhang IS the fix, and this check reported it
+          // as a 7px cut on the first local run after the 2026-10-14 restatement. Skipped by its class, nothing else.
+          if (n.classList.contains("kp-dashfit")) continue;
           if (/hidden|clip/.test(st.overflowX)) {
             clipped.push(`${n.tagName.toLowerCase()}.${(n.className || "").toString().split(" ").slice(0, 2).join(".")}: ${n.scrollWidth - n.clientWidth}px cut`);
           }
