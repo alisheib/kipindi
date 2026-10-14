@@ -211,8 +211,14 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     const markerDropped = privacyNow.replace(/\n {8}<p data-policy-addition="pending-bet">[\s\S]*?\n {8}<\/p>/, "");
     const wordChanged = dictionaryNow.replace('sheetChosen: "You picked {side}",', 'sheetChosen: "A fabricated claim",');
     const wordDropped = dictionaryNow.replace('sheetChosen: "You picked {side}",', "");
-    const s9WordsChanged = [dictionaryNow.replace('returnReversedTitle: "Payment held for return",', 'returnReversedTitle: "Payment returned",'),
-      dictionaryNow.replace('returnReversedTitle: "Payment held for return",', ""),
+    // ⚠️ RE-TARGETED 2026-10-14 (S9 release candidate). aeb5f515e put the held deposit's TITLE back to the 2026-10-07
+    // ruling's label ("Payment reversed"), but these two plants still searched for the superseded "Payment held for
+    // return": they changed nothing, so this control went red on its own `s !== dictionaryNow` premise (a no-op plant
+    // proves nothing, and the premise said so). They plant into the CURRENT title now, and the held truth S9 did change
+    // — the BODY — gets its own plant: the delivered-refund claim this stack removed.
+    const s9WordsChanged = [dictionaryNow.replace('returnReversedTitle: "Payment reversed",', 'returnReversedTitle: "Payment returned",'),
+      dictionaryNow.replace('returnReversedTitle: "Payment reversed",', ""),
+      dictionaryNow.replace("The money is held for return; contact support using this receipt.", "It goes back to the card it came from."),
       dictionaryNow.replace("We need to review this payment's result. Don't pay again.", "Payment failed. Pay again."),
       dictionaryNow.replace(/\n {6}returnReviewBody: "We need to review[^\n]+/, "")];
     ok("5.1.s8.c2 · CONTROL · the approved NEW notice and S8/S9 dictionary words are not an exemption: changing or deleting notice, held or review truth is red too",
