@@ -173,6 +173,15 @@ async function waitFrame(page, frame) {
   try { await page.waitForFunction(([selector, frame]) => document.querySelector(selector)?.getAttribute("data-frame") === frame, [S.root, frame], { timeout: 90_000 }); await page.waitForTimeout(200); }
   catch (error) { throw new Error(`Expected ${frame}; actual ${JSON.stringify((await probe(page)).got)}; ${error.message}`); }
 }
+/** A native push/replaceState event is not a new document. Wait for this probe's init script
+ * to run again, then for the new document's rendered sheet and field, before reading recovery. */
+async function waitSheetDocumentReload(page, previousDocument, timeout = 90_000) {
+  if (typeof previousDocument !== "string" || !previousDocument) throw new Error("Reload probe needs the previous document identity");
+  await page.waitForFunction(previous => typeof window.__sheetDocument === "string" && window.__sheetDocument !== previous,
+    previousDocument, { timeout });
+  await page.locator(S.root).waitFor({ state: "visible", timeout });
+  await page.locator(S.stake).waitFor({ state: "visible", timeout });
+}
 async function observed(ctx, marketId) {
   const response = await ctx.request.get(`${BASE}/api/dev-test/bet-sheet-observe?marketId=${encodeURIComponent(marketId)}`);
   const body = await response.json().catch(() => null);
@@ -986,8 +995,16 @@ try {
       await page.evaluate(() => { window.NEXT_DEPLOYMENT_ID = "qa-skew-build"; });
       await page.addInitScript(() => { window.NEXT_DEPLOYMENT_ID = "qa-skew-build"; });
       await page.route("**/*", route => { const req = route.request(); return req.method() === "POST" && req.headers()["next-action"] && req.postData()?.includes("idempotencyKey") ? route.fulfill({ status: 404, headers: { "x-nextjs-action-not-found": "1" }, body: "Server action unavailable" }) : route.fallback(); });
-      const reload = page.waitForEvent("framenavigated", { predicate: frame => frame === page.mainFrame() });
-      await page.locator(S.place).click(); await reload; await page.locator(S.root).waitFor({ state: "visible" }); await page.waitForTimeout(350);
+      const beforeDocument = await page.evaluate(() => window.__sheetDocument);
+      const nativeEvent = page.waitForEvent("framenavigated", { predicate: frame => frame === page.mainFrame() });
+      await page.evaluate(() => history.replaceState(history.state, "", location.href));
+      await nativeEvent;
+      const nativeWasReload = await waitSheetDocumentReload(page, beforeDocument, 250).then(() => true,
+        error => { if (error.name === "TimeoutError") return false; throw error; });
+      ok("RED native history event cannot satisfy the same actual document reload wait", !nativeWasReload
+        && beforeDocument === await page.evaluate(() => window.__sheetDocument));
+      const reload = waitSheetDocumentReload(page, beforeDocument);
+      await page.locator(S.place).click(); await reload;
       ok("actual Next not-found protocol reloads once with unkeyed tapped5000 marker", (await probe(page)).got.stakeValue === "5,000" && await page.evaluate(() => sessionStorage.getItem("kp:recovered:/") === "qa-skew-build" && !JSON.parse(sessionStorage.getItem("kp-pending-bet"))?.k));
       let navigations = 0; const count = frame => { if (frame === page.mainFrame()) navigations++; }; page.on("framenavigated", count);
       const sameDocument = await page.evaluate(() => window.__sheetDocument);
