@@ -537,8 +537,16 @@ async function live() {
   let MARKET = null;
   try {
     /* ── 1 · The doors every journey drive goes through ── */
-    try { PASS = await mintStaffPass(browser, BASE, { phone: "+255700000078", name: "Pending Age Support" }); }
-    catch (error) { throw new Premise(`preview pass: ${String(error.message).split("Call log:")[0].trim()}`); }
+    // Minting moves no money and is idempotent (the officer is re-seeded, the preview turned on again), so a cold server
+    // whose first /admin/journey hydrates slower than the shared helper's click budget is simply asked again.
+    for (let attempt = 1; !PASS; attempt++) {
+      try { PASS = await mintStaffPass(browser, BASE, { phone: "+255700000078", name: "Pending Age Support" }); }
+      catch (error) {
+        const why = String(error.message).split("Call log:")[0].trim();
+        if (attempt >= 3) throw new Premise(`preview pass: ${why}`);
+        say(`preview pass attempt ${attempt} failed (${why.slice(0, 120)}); asking again`);
+      }
+    }
     admin = await browser.newContext({ viewport: { width: 1280, height: 900 } }); contexts.add(admin);
     await post(admin, "seed-admin", { role: "ADMIN", phone: "+255700000079", name: "Pending Age Admin" });
     const catalogue = await post(admin, "seed-markets");
