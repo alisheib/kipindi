@@ -30,15 +30,26 @@ export const MUTATIONS = [
   { name: "marker-accepts-suffix", file: "src/lib/wallet/deposit-review.ts", from: "row.providerStatus === DEPOSIT_STATUS_REVIEW_MARK", to: "(row.providerStatus ?? '').startsWith(DEPOSIT_STATUS_REVIEW_MARK)", expect: "review.exact-marker" },
   { name: "marker-labels-withdrawal", file: "src/lib/wallet/deposit-review.ts", from: 'row.type === "DEPOSIT" && ', to: "", expect: "review.deposit-only" },
   { name: "receipt-loses-review-priority", file: "src/lib/wallet/receipts.ts", from: 'if (hasDepositStatusReview(row)) return "AML_REVIEW";', to: "", expect: "review.confirmed.durable" },
+  // Ali, 2026-10-14: the receipt's chip names a held deposit "Held for return" — dropping the flag says "Reversed" again.
+  { name: "receipt-chip-names-held-reversed", file: "src/app/wallet/receipt/[id]/page.tsx", from: "receiptStatusWord(t, status, heldForReturn)", to: "receiptStatusWord(t, status)", expect: "receipt.rg-rejected-held.chip" },
+  // L6 + held, the /wallet result (Ali, 2026-10-14): the words follow the server's kind, which follows the stored row.
+  { name: "result-review-reads-stored-status", file: "src/lib/wallet/result-copy.ts", from: 'if (kind === "review") {', to: "if (false) {", expect: "copy.review." },
+  { name: "result-held-named-reversed", file: "src/lib/wallet/result-copy.ts", from: "eyebrow: t.wallet.txnStatusHeld", to: "eyebrow: t.wallet.txnStatusReversed", expect: "copy.held." },
+  { name: "result-kind-ignores-review-marker", file: "src/lib/wallet/receipts.ts", from: 'if (hasDepositStatusReview(row)) return "review";', to: "", expect: "kind.review-marked" },
+  { name: "result-kind-ignores-held", file: "src/lib/wallet/receipts.ts", from: 'if (isRgHeldDeposit(row)) return "held";', to: "", expect: "kind.held" },
   { name: "bell-promises-rg-refund", file: "src/lib/server/notification-service.ts", from: "The money is held for return; contact support using this receipt.", to: "It has been returned to where it came from.", expect: "rg.bell-does-not-claim-refund" },
-  // M2 (S9 root review): the held deposit's LABEL is the owner's ruling (COMPLIANCE-DECISIONS 2026-10-07 item 6) — a title
-  // or heading that drops "Reversed" contradicts it; a body that claims a delivered return contradicts the record.
-  { name: "bell-title-leaves-ruling", file: "src/lib/server/notification-service.ts", from: "titleEn: `Deposit reversed · ${amt}`,", to: "titleEn: `Deposit held for return · ${amt}`,", expect: "rg.bell-title-follows-ruling" },
-  { name: "card-title-leaves-ruling", file: "src/lib/i18n-dict.ts", from: 'returnReversedTitle: "Payment reversed",', to: 'returnReversedTitle: "Payment held for return",', expect: "rg.card-title.en" },
+  // Ali, 2026-10-14: the held deposit's LABEL MATCHES ITS BODY — held for return, never "Reversed" (superseding the 2026-10-07
+  // label for held deposits). A title, heading, Status row or chip word that says "Reversed" again contradicts it; a body
+  // that claims a delivered return contradicts the 2026-10-07 record.
+  { name: "bell-title-says-reversed", file: "src/lib/server/notification-service.ts", from: "titleEn: `Deposit held for return · ${amt}`,", to: "titleEn: `Deposit reversed · ${amt}`,", expect: "rg.bell-title-matches-body" },
+  { name: "bell-title-sw-says-reversed", file: "src/lib/server/notification-service.ts", from: "titleSw: `Amana imeshikiliwa ili irudishwe · ${amt}`,", to: "titleSw: `Amana imerudishwa · ${amt}`,", expect: "rg.bell-title-matches-body" },
+  { name: "card-title-says-reversed", file: "src/lib/i18n-dict.ts", from: 'returnReversedTitle: "Payment held for return",', to: 'returnReversedTitle: "Payment reversed",', expect: "rg.card-title.en" },
+  { name: "held-status-word-says-reversed", file: "src/lib/i18n-dict.ts", from: 'txnStatusHeld: "Held for return",', to: 'txnStatusHeld: "Reversed",', expect: "rg.status-word.en" },
   { name: "card-body-promises-return", file: "src/lib/i18n-dict.ts", from: 'returnReversedBody: "Your account could not accept this deposit, so it was not added to your wallet. The money is held for return; contact support using this receipt.",', to: 'returnReversedBody: "Your account can\'t take deposits right now, so this payment wasn\'t added to your wallet. It goes back to the card it came from.",', expect: "rg.card-copy.en" },
   { name: "mail-promises-delivered-rg-refund", file: "src/lib/server/email.ts", from: "Pesa zinashikiliwa ili zirudishwe; hatujathibitisha kuwa marejesho yamekufikia.", to: "Amana imerudishwa kwenye akaunti iliyotoka.", expect: "rg.mail-no-delivery-promise" },
   { name: "mail-invents-refund-deadline", file: "src/lib/server/email.ts", from: "Contact support with these references to check the return.", to: "The refund will arrive within 5 working days.", expect: "rg.mail-no-delivery-promise" },
-  { name: "mail-label-leaves-ruling", file: "src/lib/server/email.ts", from: '${heading("This deposit was reversed")}', to: '${heading("This deposit is held for return")}', expect: "rg.mail-label-follows-ruling" },
+  { name: "mail-heading-says-reversed", file: "src/lib/server/email.ts", from: '${heading("This deposit is held for return")}', to: '${heading("This deposit was reversed")}', expect: "rg.mail-label-matches-body" },
+  { name: "mail-status-row-says-reversed", file: "src/lib/server/email.ts", from: '{ label: "Status", value: "Held for return" },', to: '{ label: "Status", value: "Reversed" },', expect: "rg.mail-label-matches-body" },
   // H2: a Decimal(18,2) wallet is a valid wallet — the reader and the credit must not demand whole shillings.
   mutation("status-reader-requires-whole-shillings", "!Number.isFinite(wallet.balance)", "!Number.isSafeInteger(wallet.balance)", "truth.fractional-wallet-readable"),
   { name: "credit-requires-whole-shillings", file: "src/lib/server/wallet-service.ts", from: '      || !Number.isFinite(fresh.balance) || fresh.balance < 0) throw new Error("Deposit wallet could not be verified.");', to: '      || !Number.isSafeInteger(fresh.balance) || fresh.balance < 0) throw new Error("Deposit wallet could not be verified.");', expect: "truth.fractional-wallet-credited" },

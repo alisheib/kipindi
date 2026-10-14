@@ -546,8 +546,9 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string, expec
     // No credit and no CONFIRMATION email — but the player must still be TOLD.
     // Staying silent here was the worst of the notification gaps: a self-excluded
     // player who sees money leave their bank and never arrive has every reason to
-    // believe the platform kept it. We tell them it was reversed and why, without
-    // inviting them back into the deposit flow (see depositReversedHtml).
+    // believe the platform kept it. We tell them it is held for return and why, without
+    // inviting them back into the deposit flow (see depositReversedHtml). The subject names it as the letter does (Ali,
+    // 2026-10-14: a held deposit is "held for return" wherever it is named, never "Reversed").
     const t = outcome.txn;
     const gatewayRef = providerRef ?? t.providerRef;
     audit({ category: "COMPLIANCE", action: "deposit.auto_reversed.rg_lockout", actorId: t.userId, targetType: "Transaction", targetId: t.id, payload: { amount: t.amount, provider: t.provider ?? "INTERNAL" } });
@@ -555,7 +556,7 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string, expec
     notifyDeposit(t.userId, { status: "REVERSED", amount: t.amount, provider: friendlyProvider(t.provider), txnId: t.id });
     sendEmailToUser(t.userId, (email) => ({
       to: email,
-      subject: `Deposit reversed · ${formatTzs(t.amount)}`,
+      subject: `Deposit held for return · ${formatTzs(t.amount)}`,
       html: depositReversedHtml({ amount: t.amount, method: friendlyProvider(t.provider), reference: t.id, gatewayRef }),
       tag: "deposit",
     }), { confirmedOnly: true }).catch(() => {});
@@ -1686,6 +1687,11 @@ export async function withdraw(
     const rl = await rateCheckAsync(userId, "wallet.withdraw");
     if (!rl.allowed) return { ok: false, error: "Too many withdrawal attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
   }
+  // ⛔ THE KEY DOOR, AS ON deposit() (S9 release candidate, Ali 2026-10-14). The payout lanes bind a withdrawal to its
+  // original funding key (`payment-probe-binding.ts`), and a key that binding cannot carry — empty, over 256 characters,
+  // control characters, which a tampered form can send — left the payout outside both automatic lanes for review. It is
+  // refused here, before any read, gate, reservation or hold. Every minted UUID and internal `rfd:` key still passes.
+  if (idempotencyKey != null && !isStoredFundingKey(idempotencyKey)) return { ok: false, error: "The withdrawal request key is invalid.", code: "INVALID" };
 
   // Idempotency: if this key was already used, return the existing txn result.
   // Read the fee off the STORED ROW rather than recomputing it — recomputing

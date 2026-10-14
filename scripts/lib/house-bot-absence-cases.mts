@@ -211,21 +211,22 @@ export async function runAbsenceCases(ok: Ok, section: Section, ROOT: string): P
     const markerDropped = privacyNow.replace(/\n {8}<p data-policy-addition="pending-bet">[\s\S]*?\n {8}<\/p>/, "");
     const wordChanged = dictionaryNow.replace('sheetChosen: "You picked {side}",', 'sheetChosen: "A fabricated claim",');
     const wordDropped = dictionaryNow.replace('sheetChosen: "You picked {side}",', "");
-    // ⚠️ RE-TARGETED 2026-10-14 (S9 release candidate). aeb5f515e put the held deposit's TITLE back to the 2026-10-07
-    // ruling's label ("Payment reversed"), but these two plants still searched for the superseded "Payment held for
-    // return": they changed nothing, so this control went red on its own `s !== dictionaryNow` premise (a no-op plant
-    // proves nothing, and the premise said so). They plant into the CURRENT title now, and the held truth S9 did change
-    // — the BODY — gets its own plant: the delivered-refund claim this stack removed.
-    const s9WordsChanged = [dictionaryNow.replace('returnReversedTitle: "Payment reversed",', 'returnReversedTitle: "Payment returned",'),
-      dictionaryNow.replace('returnReversedTitle: "Payment reversed",', ""),
+    // ⚠️ RE-TARGETED 2026-10-14 (S9 release candidate). Each plant must CHANGE the text (a no-op plant proves nothing, and
+    // `s !== dictionaryNow` says so — that premise is how a stale title literal was caught once already). Ali's decision of
+    // 2026-10-14 makes the held title "Payment held for return" again; the held BODY (the delivered-refund claim this stack
+    // removed), the held chip word ("Reversed" must never come back) and L6's under-review sentence each get a plant.
+    const s9WordsChanged = [dictionaryNow.replace('returnReversedTitle: "Payment held for return",', 'returnReversedTitle: "Payment reversed",'),
+      dictionaryNow.replace('returnReversedTitle: "Payment held for return",', ""),
       dictionaryNow.replace("The money is held for return; contact support using this receipt.", "It goes back to the card it came from."),
+      dictionaryNow.replace('txnStatusHeld: "Held for return",', 'txnStatusHeld: "Reversed",'),
+      dictionaryNow.replace("We're checking this payment. Nothing is lost;", "This payment failed. Pay again;"),
       dictionaryNow.replace("We need to review this payment's result. Don't pay again.", "Payment failed. Pay again."),
       dictionaryNow.replace(/\n {6}returnReviewBody: "We need to review[^\n]+/, "")];
     ok("5.1.s8.c2 · CONTROL · the approved NEW notice and S8/S9 dictionary words are not an exemption: changing or deleting notice, held or review truth is red too",
       [markerChanged, markerDropped].every((s) => s !== privacyNow && !sameS8S9PublishedWords(privacyRel, s, blobOf(privacyRel) ?? ""))
         && [wordChanged, wordDropped, ...s9WordsChanged].every((s) => s !== dictionaryNow && !sameS8S9PublishedWords(dictionaryRel, s, blobOf(dictionaryRel) ?? "")));
     ok("5.1.s8.c3 · CONTROL · unapproved journey/wallet keys, a duplicate review word and a second marked paragraph are rejected, with exact populations in all three languages",
-      s8PublishedWords(dictionaryRel, dictionaryNow).count === 177 && s8PublishedWords(privacyRel, privacyNow).count === 3 && s9PublishedWords(dictionaryRel, dictionaryNow).count === 12
+      s8PublishedWords(dictionaryRel, dictionaryNow).count === 177 && s8PublishedWords(privacyRel, privacyNow).count === 3 && s9PublishedWords(dictionaryRel, dictionaryNow).count === 18
         && !sameS8S9PublishedWords(dictionaryRel, dictionaryNow.replace('sheetChosen: "You picked {side}",', 'sheetChosen: "You picked {side}",\n      unapprovedJourneyWord: "Not reviewed",'), blobOf(dictionaryRel) ?? "")
         && !sameS8S9PublishedWords(dictionaryRel, dictionaryNow.replace('returnReviewTitle: "Payment under review",', 'returnReviewTitle: "Payment under review",\n      unapprovedWalletWord: "Not reviewed",'), blobOf(dictionaryRel) ?? "")
         && !sameS8S9PublishedWords(dictionaryRel, dictionaryNow.replace('returnReviewTitle: "Payment under review",', 'returnReviewTitle: "Payment under review",\n      returnReviewTitle: "Payment under review",'), blobOf(dictionaryRel) ?? "")

@@ -14,6 +14,7 @@ import { depositResultStatus, isRgHeldDeposit, presentedStatus } from "../src/li
 import * as Review from "../src/lib/wallet/deposit-review.ts";
 import * as WalletLedger from "../src/lib/wallet/ledger.ts";
 import * as QueryWindows from "../src/lib/query/windows.ts";
+import * as ResultPhase from "../src/lib/wallet/result-phase.ts";
 import { formatDateTime, formatTzs } from "../src/lib/utils.ts";
 import { resolveAnchor, injectDefect } from "./red-anchor.mjs";
 import { MUTATIONS } from "./anchors/deposit-status-read.anchors.mjs";
@@ -32,7 +33,9 @@ const BINDING_FILE = "src/lib/journey/deposit-recheck-binding.ts";
 const MEMORY_FILE = "src/lib/server/store.ts";
 const PROBE_FILE = "src/lib/server/payment-probe-binding.ts";
 const LIFECYCLE_FILE = "src/lib/server/lifecycle.ts";
-for (const file of [RECHECK_FILE, RECHECK_ROUTE, BINDING_FILE, MEMORY_FILE, PROBE_FILE, LIFECYCLE_FILE]) sources[file] = readFileSync(join(ROOT, file), "utf8");
+/** The /wallet result's words (S9 RC, Ali 2026-10-14: L6 under review, and a held deposit named held for return). */
+const RESULT_COPY_FILE = "src/lib/wallet/result-copy.ts";
+for (const file of [RECHECK_FILE, RECHECK_ROUTE, BINDING_FILE, MEMORY_FILE, PROBE_FILE, LIFECYCLE_FILE, RESULT_COPY_FILE]) sources[file] = readFileSync(join(ROOT, file), "utf8");
 const RECHECK = process.argv.includes("--recheck-only");
 const BACKGROUND = process.argv.includes("--background-only");
 const PG = process.argv.includes("--pg");
@@ -724,22 +727,24 @@ async function run(src = sources): Promise<Check[]> {
   ok("review.bell-copy", reviewNotice.kind === "DEPOSIT" && reviewNotice.href === `/wallet/receipt/${own.id}`
     && reviewNotice.bodyEn.includes("Don't pay again") && reviewNotice.bodySw.includes("Usilipe tena") && reviewNotice.bodyZh.includes("请勿重复支付")
     && !JSON.stringify(reviewNotice).includes(Review.DEPOSIT_STATUS_REVIEW_MARK));
-  // M2 (S9 root review): the LABEL of a held deposit is the owner's — "Reversed" on every player surface, as its notice and
-  // email do (COMPLIANCE-DECISIONS 2026-10-07 item 6), in the status lexicon's words. The BODIES say what is true while the
-  // money waits and claim no delivered return (the same entry records that claim, sent while the money was held, as untrue).
+  // The LABEL of a held deposit MATCHES ITS BODY — held for return, in all three languages, never "Reversed" (Ali,
+  // 2026-10-14, superseding the 2026-10-07 "Reversed" label for held deposits). The BODIES (approved as written) say what is
+  // true while the money waits and claim no delivered return (the 2026-10-07 entry records that claim as untrue).
   const heldNotice = notify(me, { status: "REVERSED", amount: 5000, provider: "M-Pesa", txnId: own.id });
   ok("rg.bell-does-not-claim-refund", heldNotice.bodyEn.includes("held for return") && heldNotice.bodySw.includes("zinashikiliwa")
     && heldNotice.bodyZh.includes("待退还") && !/has been returned|imerudishwa|已(?:原路)?退回/.test(heldNotice.bodyEn + heldNotice.bodySw + heldNotice.bodyZh));
-  ok("rg.bell-title-follows-ruling", heldNotice.titleEn.startsWith("Deposit reversed · ") && heldNotice.titleSw.startsWith("Amana imerudishwa · ")
-    && heldNotice.titleZh.startsWith("充值已退回 · "));
+  ok("rg.bell-title-matches-body", heldNotice.titleEn.startsWith("Deposit held for return · ") && heldNotice.titleSw.startsWith("Amana imeshikiliwa ili irudishwe · ")
+    && heldNotice.titleZh.startsWith("充值暂扣待退还 · ") && !/reversed|imerudishwa|已退回/i.test(heldNotice.titleEn + heldNotice.titleSw + heldNotice.titleZh));
   const dictionary = compile(src[files[11]], {}).dict;
-  const RULING_CARD_TITLE: Record<string, string> = { en: "Payment reversed", sw: "Malipo yamerudishwa", zh: "付款已退回" };
+  const HELD_CARD_TITLE: Record<string, string> = { en: "Payment held for return", sw: "Malipo yanashikiliwa ili yarudishwe", zh: "付款暂扣待退还" };
+  const HELD_STATUS_WORD: Record<string, string> = { en: "Held for return", sw: "Imeshikiliwa ili irudishwe", zh: "暂扣待退还" };
   const HELD_PHRASE: Record<string, string> = { en: "held for return", sw: "zinashikiliwa ili zirudishwe", zh: "待退还" };
   for (const locale of ["en", "sw", "zh"]) {
     const words = dictionary[locale].wallet;
     ok(`rg.card-copy.${locale}`, words.returnReversedBody.includes(HELD_PHRASE[locale])
       && !/has been returned|goes back to the card|yamerudishwa|Yanarudishwa|已退回|将退回/.test(words.returnReversedBody));
-    ok(`rg.card-title.${locale}`, words.returnReversedTitle === RULING_CARD_TITLE[locale]);
+    ok(`rg.card-title.${locale}`, words.returnReversedTitle === HELD_CARD_TITLE[locale]);
+    ok(`rg.status-word.${locale}`, words.txnStatusHeld === HELD_STATUS_WORD[locale] && words.txnStatusHeld !== words.txnStatusReversed);
   }
   // Execute the actual template body with controlled chrome helpers; the notification suite separately renders its full HTML.
   const heldMail = new Function("wrap", "eyebrow", "heading", "subtitle", "subtitleSw", "detailRows", "depositRefRows", "refNote", "formatTzs",
@@ -748,8 +753,8 @@ async function run(src = sources): Promise<Check[]> {
       (rows: any[]) => JSON.stringify(rows), (reference: string, gatewayRef: string) => [{ reference, gatewayRef }], () => "", formatTzs)({ amount: 5000, method: "M-Pesa", reference: own.id, gatewayRef: own.providerRef });
   ok("rg.mail-no-delivery-promise", heldMail.includes("held for return") && heldMail.includes("zinashikiliwa ili zirudishwe")
     && heldMail.includes("has not been confirmed") && !/returned to the account it came from|Amana imerudishwa kwenye|5 working days|siku 5 za kazi/.test(heldMail));
-  ok("rg.mail-label-follows-ruling", heldMail.includes("Deposit reversed Amana imerudishwa") && heldMail.includes("This deposit was reversed")
-    && heldMail.includes('"label":"Status","value":"Reversed"') && !/Deposit held for return|This deposit is held for return|Held for return/.test(heldMail));
+  ok("rg.mail-label-matches-body", heldMail.includes("Deposit held for return Amana imeshikiliwa ili irudishwe") && heldMail.includes("This deposit is held for return")
+    && heldMail.includes('"label":"Status","value":"Held for return"') && !/Deposit reversed|This deposit was reversed|"value":"Reversed"|Amana imerudishwa/.test(heldMail));
   const missing = await s.read(me, { kind: "txn-id", value: "absent" });
   ok("scope.missing", missing.view.state === "UNKNOWN" && !missing.txn && s.seen.verifies.length === 0);
   for (const [name, caller, patch] of [["owner", other, {}], ["type", me, { type: "WITHDRAWAL", amount: -5000 }],
@@ -942,6 +947,50 @@ async function run(src = sources): Promise<Check[]> {
       ok(`receipt.${name}.${locale}`, html.includes(`data-status="${shown}"`) && containsText(expectedBody)
         && html.includes('data-refresh="false"') && !containsText(t.wallet.receiptPendingNote)
         && !containsText(t.wallet.receiptCompletedAt) && !containsText(t.wallet.balanceAfter));
+      // Ali, 2026-10-14: the chip NAMES a held deposit "Held for return" (filed as REVERSED above), never "Reversed".
+      const chipWord = name === "rg-rejected-held" ? t.wallet.txnStatusHeld : t.wallet.txnStatusReview;
+      ok(`receipt.${name}.chip.${locale}`, containsText(chipWord) && !containsText(t.wallet.txnStatusReversed));
+    }
+  }
+  // ── The /wallet RESULT (S9 RC, Ali 2026-10-14). The server decides the kind from the STORED row (`depositResultKind`, the
+  // real receipts module of this run); the client's words are `walletResultCopy` (the real result-copy module). L6: a deposit
+  // under review reads under-review words, never its raw "Failed" / "Funds added"; a held deposit is named held for return.
+  {
+    const kindOf = s.receiptsModule.depositResultKind as (row: any) => string | null;
+    const copy = compile(src[RESULT_COPY_FILE], { "./result-phase": ResultPhase }).walletResultCopy as
+      (t: any, o: { isWithdraw: boolean; status?: string; depositKind?: string | null }) => { eyebrow: string; title: string; subtitle?: string; variant: string };
+    const D_ = (patch: Record<string, unknown>) => ({ type: "DEPOSIT", status: "FAILED", amlReason: null, providerStatus: null, ...patch });
+    const MARK = Review.DEPOSIT_STATUS_REVIEW_MARK;
+    ok("kind.review-marked-failed", kindOf(D_({ status: "FAILED", providerStatus: MARK })) === "review");
+    ok("kind.review-marked-confirmed", kindOf(D_({ status: "CONFIRMED", providerStatus: MARK })) === "review");
+    ok("kind.held-waiting", kindOf(D_({ status: "AML_REVIEW", amlReason: `${RG_RETURN_MARK}cooling_off` })) === "held");
+    ok("kind.held-returned", kindOf(D_({ status: "FAILED", amlReason: `${RG_RETURN_MARK}cooling_off · returned` })) === "held");
+    ok("kind.generic-review", kindOf(D_({ status: "AML_REVIEW", amlReason: "officer review" })) === "review");
+    ok("kind.plain", ["FAILED", "CONFIRMED", "PROCESSING", "REVERSED", "CANCELLED"].every((status) => kindOf(D_({ status })) === null));
+    ok("kind.withdrawal", kindOf({ type: "WITHDRAWAL", status: "AML_REVIEW", amlReason: null, providerStatus: MARK }) === null);
+    for (const locale of ["en", "sw", "zh"]) {
+      const t = dictionary[locale];
+      const never = [t.wallet.txnStatusReversed, t.wallet.depositFailed, t.common.fundsAdded, t.wallet.txnStatusFailed];
+      const clean = (c: { eyebrow: string; title: string; subtitle?: string }) => never.every((w) => ![c.eyebrow, c.title, c.subtitle ?? ""].includes(w));
+      for (const [label, stored] of [["review", "FAILED"], ["review-confirmed", "CONFIRMED"]] as const) {
+        const c = copy(t, { isWithdraw: false, status: stored, depositKind: "review" });
+        ok(`copy.${label}.${locale}`, c.eyebrow === t.wallet.txnStatusReview && c.title === t.wallet.returnReviewTitle
+          && c.subtitle === t.wallet.reviewResultBody && c.variant === "info" && clean(c));
+      }
+      for (const [label, kind] of [["held", "held"], ["held-default", undefined]] as const) {
+        const c = copy(t, { isWithdraw: false, status: "AML_REVIEW", depositKind: kind });
+        ok(`copy.${label}.${locale}`, c.eyebrow === t.wallet.txnStatusHeld && c.title === t.wallet.returnReversedTitle
+          && c.subtitle === t.wallet.returnReversedBody && c.variant === "neutral" && clean(c));
+      }
+      // Every other result keeps its D3a reading, word for word.
+      const f = copy(t, { isWithdraw: false, status: "FAILED" }), ok_ = copy(t, { isWithdraw: false, status: "CONFIRMED" });
+      const mv = copy(t, { isWithdraw: false, status: "PROCESSING" }), rv = copy(t, { isWithdraw: false, status: "REVERSED" });
+      const wr = copy(t, { isWithdraw: true, status: "AML_REVIEW" });
+      ok(`copy.unchanged.${locale}`, f.eyebrow === t.wallet.txnStatusFailed && f.title === t.wallet.depositFailed && f.variant === "danger" && f.subtitle === undefined
+        && ok_.eyebrow === t.common.depositConfirmed && ok_.title === t.common.fundsAdded && ok_.variant === "success"
+        && mv.eyebrow === t.common.depositStarted && mv.title === t.common.awaitingConfirmation && mv.variant === "info"
+        && rv.eyebrow === t.wallet.txnStatusReversed && rv.variant === "neutral"
+        && wr.eyebrow === t.common.underReviewEyebrow && wr.title === t.common.withdrawalUnderReview && wr.variant === "info");
     }
   }
   for (const [stored, reported] of [["FAILED", "CONFIRMED"], ["CONFIRMED", "FAILED"]] as const) {

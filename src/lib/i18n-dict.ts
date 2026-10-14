@@ -1370,10 +1370,12 @@ export const dict = {
       returnFailedBody: "Nothing was taken from your card.",
       // 2026-10-07 · the card paid, but the account could not take money (a break or an exclusion): held for return.
       // Never "nothing was taken" — something was, and it goes back. Never names the reason (the quiet rule).
-      returnReversedTitle: "Payment reversed",
+      returnReversedTitle: "Payment held for return",
       returnReversedBody: "Your account could not accept this deposit, so it was not added to your wallet. The money is held for return; contact support using this receipt.",
       returnReviewTitle: "Payment under review",
       returnReviewBody: "We need to review this payment's result. Don't pay again. Open the receipt for its references, or contact support.",
+      // ⭐ L6 (Ali, 2026-10-14): the /wallet result for a deposit whose result is under review, in his words. NEW in en/sw/zh.
+      reviewResultBody: "We're checking this payment. Nothing is lost; we'll update you here. Contact support if you need help.",
       returnUnknownTitle: "We couldn't find that payment",
       returnUnknownBody: "Open your wallet history to see your latest transactions.",
       returnPendingWarnTitle: "Please don't pay again",
@@ -1428,6 +1430,8 @@ export const dict = {
       txnStatusConfirmed: "Completed",
       txnStatusFailed: "Failed",
       txnStatusReversed: "Reversed",
+      // ⭐ Ali, 2026-10-14: a deposit HELD FOR RETURN is named so on every surface — its chip and row words too, never "Reversed".
+      txnStatusHeld: "Held for return",
       txnStatusCancelled: "Cancelled",
       // === i18n coverage pass ===
       activityPages: "Activity pages",
@@ -4285,10 +4289,11 @@ export const dict = {
       returnPendingBody: "Benki yako bado haijamaliza kuthibitisha hili.",
       returnFailedTitle: "Malipo hayakukamilika",
       returnFailedBody: "Hakuna kilichotolewa kwenye kadi yako.",
-      returnReversedTitle: "Malipo yamerudishwa",
+      returnReversedTitle: "Malipo yanashikiliwa ili yarudishwe",
       returnReversedBody: "Akaunti yako haikuweza kupokea amana hii, hivyo haikuongezwa kwenye pochi yako. Pesa zinashikiliwa ili zirudishwe; wasiliana na usaidizi ukitumia risiti hii.",
       returnReviewTitle: "Malipo yanakaguliwa",
       returnReviewBody: "Tunahitaji kukagua matokeo ya malipo haya. Usilipe tena. Fungua risiti kuona kumbukumbu zake, au wasiliana na usaidizi.",
+      reviewResultBody: "Tunakagua malipo haya. Hakuna kilichopotea; tutakujulisha hapa. Wasiliana na usaidizi ukihitaji msaada.",
       returnUnknownTitle: "Hatukuweza kupata malipo hayo",
       returnUnknownBody: "Fungua historia ya pochi yako kuona miamala yako ya karibuni.",
       returnPendingWarnTitle: "Tafadhali usilipe tena",
@@ -4339,6 +4344,7 @@ export const dict = {
       txnStatusConfirmed: "Imekamilika",
       txnStatusFailed: "Imeshindikana",
       txnStatusReversed: "Imerudishwa",
+      txnStatusHeld: "Imeshikiliwa ili irudishwe",
       txnStatusCancelled: "Imeghairiwa",
       // === i18n coverage pass ===
       activityPages: "Kurasa za shughuli",
@@ -6763,10 +6769,11 @@ export const dict = {
       returnPendingBody: "您的银行尚未完成确认。",
       returnFailedTitle: "付款未完成",
       returnFailedBody: "未从您的银行卡扣款。",
-      returnReversedTitle: "付款已退回",
+      returnReversedTitle: "付款暂扣待退还",
       returnReversedBody: "您的账户当时无法接收此笔充值，款项未计入钱包，现正保留待退还。请凭此收据联系支持。",
       returnReviewTitle: "付款待核查",
       returnReviewBody: "我们需要核查此笔付款的结果。请勿重复支付。可打开凭据查看参考编号，或联系支持。",
+      reviewResultBody: "我们正在核查此笔付款。款项不会丢失；我们会在此处通知您。如需帮助，请联系支持。",
       returnUnknownTitle: "找不到该笔付款",
       returnUnknownBody: "打开钱包历史记录查看您最近的交易。",
       returnPendingWarnTitle: "请勿重复支付",
@@ -6817,6 +6824,7 @@ export const dict = {
       txnStatusConfirmed: "已完成",
       txnStatusFailed: "失败",
       txnStatusReversed: "已退回",
+      txnStatusHeld: "暂扣待退还",
       txnStatusCancelled: "已取消",
       // === i18n coverage pass ===
       activityPages: "活动页",

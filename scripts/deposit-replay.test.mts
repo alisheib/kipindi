@@ -101,6 +101,20 @@ function serviceFor(source: string, data = db, statusSource = STATUS) {
   };
   return { ...exports, counters };
 }
+/**
+ * The withdrawal KEY DOOR (S9 release candidate, Ali 2026-10-14): the shipped `withdraw` body, executed with its rate check
+ * and the real `isStoredFundingKey`, and a DAL that is a TRAP — any read means the request got past the door. A refused
+ * key must answer INVALID with nothing read; a minted UUID, the internal refund shape and the 256-character bound must pass.
+ */
+function withdrawDoorFor(source: string) {
+  const reached: string[] = [];
+  const trap = new Proxy({}, { get(_target, prop) { reached.push(String(prop)); throw new Error("PASSED_DOOR"); } });
+  const dependencies = { rateCheckAsync: async () => ({ allowed: true }), isStoredFundingKey: DepositBinding.isStoredFundingKey, db: trap };
+  const js = ts.transpileModule(body(source, "withdraw"), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  const withdraw = new Function(...Object.keys(dependencies), `${js}\nreturn withdraw;`)(...Object.values(dependencies)) as
+    (userId: string, input: unknown, key?: string) => Promise<{ ok: boolean; code?: string }>;
+  return { withdraw, reached };
+}
 const now = () => new Date().toISOString();
 async function account() {
   const suffix = String(++sequence).padStart(7, "0"), id = `s9_replay_${suffix}`;
@@ -219,6 +233,20 @@ async function run(source: string, mapper = MAPPER, statusSource = STATUS): Prom
   const badSaved = await savedService.deposit(me, request, badKey, undefined, { ...saved, phone: "not permitted" });
   ok("metadata.malformed-before-send", !badSaved.ok && badSaved.code === "INVALID" && savedService.counters.dispatches === 1 && (await db.txn.findByUser(me)).length === beforeBad);
   ok("metadata.replay-never-mutates", JSON.stringify((await db.txn.findById(created.data?.txnId))?.pendingBet) === JSON.stringify(saved));
+
+  // The withdrawal key door — refused keys stop before ANY read; carried keys reach the DAL (the trap).
+  const payout = { provider: "MPESA", amount: 5000, msisdn: "0712345678" };
+  for (const [name, key] of [["empty", ""], ["long", "k".repeat(257)], ["control", "abc\u0007def"], ["newline", "abc\ndef"], ["delete", "abc\u007fdef"]] as const) {
+    const door = withdrawDoorFor(source);
+    const answer = await door.withdraw("s9_withdraw_door", payout, key).catch((e: unknown) => ({ ok: false, code: `THROWN:${(e as Error).message}` }));
+    ok(`withdraw.key-door.${name}`, answer.ok === false && answer.code === "INVALID" && door.reached.length === 0);
+  }
+  for (const [name, key] of [["uuid", "00000000-0000-4000-8000-000000000123"], ["refund", "rfd:rfd_s9door01"], ["boundary-256", "k".repeat(256)], ["absent", undefined]] as const) {
+    const door = withdrawDoorFor(source);
+    const outcome = await door.withdraw("s9_withdraw_door", payout, key).then(() => "returned", (e: unknown) => (e as Error).message);
+    // A carried key reaches the DAL (the trap). An absent key skips the replay lookup and meets the next un-injected step.
+    ok(`withdraw.key-door-passes.${name}`, name === "absent" ? outcome !== "returned" : outcome === "PASSED_DOOR" && door.reached.length > 0);
+  }
   return checks;
 }
 

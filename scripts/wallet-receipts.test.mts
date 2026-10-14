@@ -9,7 +9,8 @@
  *
  * SECTIONS
  *   §1  the store read: own rows only, deposits and withdrawals only, newest first with a stable tie-break, the limit kept
- *   §2  what has a receipt — and how a status is shown (a deposit held for return reads Reversed; a withdrawal keeps its word)
+ *   §2  what has a receipt — and how a status is shown (a deposit held for return is FILED as Reversed and, since Ali's
+ *       2026-10-14 decision, NAMED "Held for return" — §5.8; a withdrawal keeps its word)
  *   §3  the URL contract: defaults omitted, junk falls back, the page number survives
  *   §4  filters, cross-filtered counts and the empty states' causes and exits — over a real, mixed book
  *   §5  the words: every key in all three languages; a card is "Kadi" / "银行卡"; every status has a word
@@ -180,6 +181,11 @@ section("§5 · the words, in all three languages");
   const STATUSES = ["PENDING", "PROCESSING", "AML_REVIEW", "CONFIRMED", "FAILED", "REVERSED", "CANCELLED"] as const;
   ok("5.6 every one of the seven statuses has a word in every language",
     LOCS.every((loc) => STATUSES.every((s) => receiptStatusWord(dict[loc] as never, s).trim().length > 0)));
+  // ⭐ Ali, 2026-10-14: the title matches the body wherever a held deposit is named — its chip and row word included.
+  ok("5.8 ★ a deposit held for return is NAMED \"Held for return\" in every language, never \"Reversed\"; a genuinely reversed one keeps its word",
+    LOCS.every((loc) => receiptStatusWord(dict[loc] as never, "REVERSED", true) === d[loc].wallet.txnStatusHeld
+      && d[loc].wallet.txnStatusHeld !== d[loc].wallet.txnStatusReversed
+      && receiptStatusWord(dict[loc] as never, "REVERSED") === d[loc].wallet.txnStatusReversed));
   ok("5.7 the type words and lens labels resolve in every language",
     LOCS.every((loc) => receiptTypeWord(dict[loc] as never, "DEPOSIT") && receiptTypeWord(dict[loc] as never, "WITHDRAWAL")
       && receiptLensLabel(dict[loc] as never, "in") === d[loc].receipts.lensDeposits && receiptLensLabel(dict[loc] as never, "out") === d[loc].receipts.lensWithdrawals));

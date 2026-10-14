@@ -22,9 +22,10 @@
  *     as a foreign one. It used to render anything the viewer owned and name the type by the SIGN of the amount, so a
  *     bonus credit read "Deposit" and a house fee "Withdrawal" (finding S10-02).
  *   · THE STATUS chip takes its tone from `status-tone.ts` (§B11), as the list's does — it carried a file-local map in
- *     the BETTING inks (§B2a). A deposit held for return reads "Reversed" (`presentedStatus`), as its notice and email do
- *     (owner ruling, COMPLIANCE-DECISIONS 2026-10-07 item 6); its callout says the money is held for return, and the
- *     officer's rejection date is not shown as a completion, because neither proves an outbound refund was delivered.
+ *     the BETTING inks (§B2a). A deposit held for return is FILED with the reversed ones (`presentedStatus`, so its tone is
+ *     unchanged) but its chip NAMES it "Held for return" (Ali, 2026-10-14: the title matches the body wherever a held
+ *     deposit is named — superseding the 2026-10-07 "Reversed" label for it); its callout says the money is held for
+ *     return, and the officer's rejection date is not shown as a completion, because neither proves a refund was delivered.
  *   · THE METHOD reads "Kadi" / "银行卡" for a card (`methodLabel`) — brand names stay brand names, words are translated —
  *     and the subtitle is "Deposit · M-Pesa" in the reader's language, not the stored English description.
  *   · DATES are East Africa Time in the reader's month words (`formatEatDateTime`), the list's own.
@@ -78,7 +79,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
   const status = presentedStatus(txn);
   const needsReview = hasDepositStatusReview(txn);
   const heldForReturn = isRgHeldDeposit(txn);
-  const statusWord = receiptStatusWord(t, status);
+  const statusWord = receiptStatusWord(t, status, heldForReturn);
   const typeWord = receiptTypeWord(t, txn.type);
   const method = methodLabel(t, txn.provider);
   const settled = status === "CONFIRMED";

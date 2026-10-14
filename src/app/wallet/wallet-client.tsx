@@ -565,7 +565,8 @@ function TxnRow({ tx }: { tx: Transaction }) {
           </p>
           {/* Under its right-aligned amount it ends on the amount's edge, its trailing 0.14em taken back (F19, round 6 · C11). */}
           <p className={`mt-0.5 font-mono text-micro uppercase tracking-[0.14em] font-semibold kp-track-end ${statusTone}`}>
-            {statusLabel[tx.status]}
+            {/* A deposit held for return is NAMED so (Ali, 2026-10-14) — filed as `reversed`, never called "Reversed". */}
+            {tx.heldForReturn ? t.wallet.txnStatusHeld : statusLabel[tx.status]}
           </p>
         </div>
       </button>

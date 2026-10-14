@@ -13,24 +13,30 @@
  * the only one that auto-closes); PENDING and PROCESSING are moving; AML_REVIEW is a review; FAILED, REVERSED
  * and CANCELLED are not done, and that modal stays open until the player dismisses it. A status this file has
  * never heard of reads as moving — never as done, never as failed.
+ * ⭐ THE WORDS ARE `walletResultCopy`'s (lib/wallet/result-copy.ts, S9 release candidate, Ali 2026-10-14): a deposit
+ * under review (L6) reads "Payment under review", a deposit held for return reads "Held for return" — `depositKind`,
+ * decided on the server from the stored row (`depositResultKind`), never from the URL.
  */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n";
 import { OperationResultModal } from "@/components/markets/operation-result-modal";
 import { formatTzs } from "@/lib/utils";
-import { resultPhase, type ResultTxnStatus } from "@/lib/wallet/result-phase";
+import { walletResultCopy } from "@/lib/wallet/result-copy";
+import type { DepositResultKind } from "@/lib/wallet/receipts";
 
 export function WalletResultModal({
   deposited,
   withdrawal,
   status,
   amount,
+  depositKind,
 }: {
   deposited?: string;
   withdrawal?: string;
   status?: string;
   amount?: string;
+  depositKind?: DepositResultKind | null;
 }) {
   const router = useRouter();
   const { t } = useT();
@@ -45,60 +51,9 @@ export function WalletResultModal({
 
   const txnId = deposited || withdrawal || "";
   const amt = amount ? formatTzs(Number(amount)) : undefined;
-  const isWithdraw = !!withdrawal;
-  const amlHeld = isWithdraw && status === "AML_REVIEW";
-  // Async collection/payout (PENDING or PROCESSING): money hasn't moved yet — it settles on the
-  // provider's webhook. Show a clear "awaiting confirmation" state, not success.
-  const phase = resultPhase(status);
-  const pending = phase === "moving";
-  // A DEPOSIT in AML_REVIEW landed during a break and is held for return — it was never added, so it is
-  // not a review the player waits on (that word belongs to a held withdrawal, `amlHeld` above).
-  const notDone = phase === "notDone" || (!isWithdraw && phase === "review");
-  const STATUS_WORD: Record<ResultTxnStatus, string> = {
-    PENDING: t.wallet.txnStatusPending,
-    PROCESSING: t.wallet.txnStatusProcessing,
-    AML_REVIEW: t.wallet.txnStatusReview,
-    CONFIRMED: t.wallet.txnStatusConfirmed,
-    FAILED: t.wallet.txnStatusFailed,
-    REVERSED: t.wallet.txnStatusReversed,
-    CANCELLED: t.wallet.txnStatusCancelled,
-  };
+  const { eyebrow, title, subtitle, variant } = walletResultCopy(t, { isWithdraw: !!withdrawal, status, depositKind });
 
   const close = () => { setOpen(false); router.replace("/wallet"); };
-
-  // ⭐ A DEPOSIT HELD FOR RETURN READS "REVERSED" (review of the route audit, 2026-10-07): its in-app notice and its email
-  // both say the deposit was reversed, and "In review" over "Deposit didn't go through" told the player the opposite of
-  // both — a wait for money that will never be added.
-  const eyebrow = notDone
-    ? (!isWithdraw && status === "AML_REVIEW" ? t.wallet.txnStatusReversed : (STATUS_WORD[status as ResultTxnStatus] ?? t.wallet.txnStatusFailed))
-    : isWithdraw
-      ? (amlHeld ? t.common.underReviewEyebrow : pending ? t.common.payoutStarted : t.common.withdrawalSent)
-      : (pending ? t.common.depositStarted : t.common.depositConfirmed);
-  const title = notDone
-    ? (isWithdraw ? t.wallet.withdrawFailed : t.wallet.depositFailed)
-    : isWithdraw
-      ? (amlHeld ? t.common.withdrawalUnderReview : pending ? t.common.payoutInProgress : t.common.withdrawalOnItsWay)
-      : (pending ? t.common.awaitingConfirmation : t.common.fundsAdded);
-  const subtitle = notDone
-    ? undefined
-    : isWithdraw
-      ? (amlHeld
-          ? t.common.amlReviewBody
-          : pending
-            ? t.common.payoutProcessingBody
-            : t.common.payoutMomentsBody)
-      : (pending
-          ? t.common.depositPendingBody
-          : t.common.balanceToppedUp);
-
-  /* ⭐ THE SEVEN PAYMENT WORDS, IN THE DICTIONARY'S TONES (R5-C, the second gold audit, 2026-10-09). A moving payment and a
-     withdrawal under review were the `warning` result — the `--warning-*` crest, whose ink was then `--gilt` (F3; amber
-     since Ali's ruling (1) of 2026-10-10) — and §B11
-     item 5 says of exactly these: "waiting is royal (Pending, Processing, In review) … Never gilt: moving your own money
-     in or out earns nothing" (`info`). Completed is success; Failed is the failure colour (`danger`); Reversed and
-     Cancelled — and a deposit held for return, which reads "Reversed" — are slate (`neutral`): §C4, "refunded is
-     NEUTRAL — never an error treatment". One word, one tone, as the receipt and the /wallet row already read them. */
-  const variant = notDone ? (status === "FAILED" ? "danger" : "neutral") : (amlHeld || pending ? "info" : "success");
 
   return (
     <OperationResultModal

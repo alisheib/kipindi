@@ -37,7 +37,7 @@ import { firstDepositNotice, kycNoticeDismissValue } from "@/lib/server/kyc-noti
 import { KYC_NOTICE_COOKIE } from "@/lib/kyc-notice";
 import { KycNoticeDismissScope } from "@/components/wallet/kyc-first-deposit-notice";
 import { isLockedOut } from "@/lib/server/responsible-gambling";
-import { hasReceipt, presentedStatus } from "@/lib/wallet/receipts";
+import { depositResultKind, hasReceipt, isRgHeldDeposit, presentedStatus } from "@/lib/wallet/receipts";
 // R5-B (2026-10-09, F11): the journey's own words on this page's money doors, from the one per-request resolver.
 import { resolveSimpleJourney } from "@/lib/server/journey-preview";
 
@@ -76,7 +76,8 @@ function adaptTxn(t: StoredTxn): Transaction {
   // one we hadn't sent yet) and REVERSED + CANCELLED into "failed" (so a deposit
   // reversed by the self-exclusion guard read as a declined card). Different
   // events, different remedies, different words.
-  // ⭐ Through `presentedStatus` (2026-10-07): a deposit held for RETURN reads "Reversed", as on its receipt.
+  // ⭐ Through `presentedStatus` (2026-10-07): a deposit held for RETURN is filed with the reversed ones, as on its receipt —
+  // and, since Ali's 2026-10-14 decision, NAMED "Held for return" there and here (`heldForReturn`), never "Reversed".
   const statusMap: Record<StoredTxn["status"], Transaction["status"]> = {
     PENDING: "pending", PROCESSING: "processing", AML_REVIEW: "review", CONFIRMED: "confirmed", FAILED: "failed", REVERSED: "reversed", CANCELLED: "cancelled",
   };
@@ -90,6 +91,7 @@ function adaptTxn(t: StoredTxn): Transaction {
     positionId: t.positionId ?? null,
     providerRef: t.providerRef ?? null,
     hasReceipt: hasReceipt(t.type),
+    heldForReturn: isRgHeldDeposit(t),
   };
 }
 
@@ -390,6 +392,8 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
           withdrawal={resultOwned.type === "WITHDRAWAL" ? resultOwned.id : undefined}
           status={resultOwned.status}
           amount={String(Math.abs(resultOwned.amount))}
+          /* L6 + held (Ali, 2026-10-14): decided from the STORED row — under review, or held for return. */
+          depositKind={depositResultKind(resultOwned)}
         />
       )}
       {/* ⭐ The first-deposit notice is mounted inside the client tree, which receives only the due flag;
