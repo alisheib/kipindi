@@ -77,6 +77,11 @@ export async function vendorBarsFor(
   // Use-time trust recheck — the settlement reader's own gate, applied to the
   // second path that carries this credential.
   if (!hostMatchesDomain(asset.priceSourceUrl, asset.sourceDomain)) return null;
+  try {
+    new URL(asset.priceSourceUrl);
+  } catch {
+    return null;
+  }
 
   const key = `${asset.id}:${range}`;
   const hit = cache.get(key);
@@ -85,6 +90,25 @@ export async function vendorBarsFor(
   // confirmed-reads tier instantly, no 8s timeout queue).
   if (hit && Date.now() - hit.at < (hit.bars ? CACHE_TTL_MS : FAIL_TTL_MS)) return hit.bars;
 
+  const bars = await fetchVendorBars(asset, plan, apiKey, fetchImpl);
+  cache.set(key, { at: Date.now(), bars });
+  return bars;
+}
+
+/**
+ * ONE metered call: the provider's /time_series at the interval and size asked, row by row refused when it is
+ * garbage, oldest→newest — or null. Caches NOTHING: the chart's `vendorBarsFor` keeps its own cache around this, and
+ * the desk's refresher (N4, `house-bot/desk-price.ts`) keeps its reading in `deskBars`, never in `cache`. Both paths
+ * pass the same host gate and the same row refusals, because both carry the same credential. Never throws.
+ */
+export async function fetchVendorBars(
+  asset: Pick<StoredAsset, "id" | "symbol" | "priceSourceUrl" | "sourceDomain">,
+  plan: { interval: string; outputsize: number },
+  apiKey: string | undefined,
+  fetchImpl: typeof fetch = fetch,
+): Promise<VendorBar[] | null> {
+  if (!apiKey) return null;
+  if (!hostMatchesDomain(asset.priceSourceUrl, asset.sourceDomain)) return null;
   let url: URL;
   try {
     url = new URL(asset.priceSourceUrl);
@@ -99,12 +123,11 @@ export async function vendorBarsFor(
   url.searchParams.set("timezone", "UTC"); // E-71 — never the provider's silent Exchange default
   url.searchParams.set("apikey", apiKey);
 
-  const fail = (): null => { cache.set(key, { at: Date.now(), bars: null }); return null; };
   try {
     const res = await fetchImpl(url, { signal: AbortSignal.timeout(8000) });
-    if (!res.ok) return fail();
+    if (!res.ok) return null;
     const body = (await res.json()) as { values?: Array<{ datetime: string; open: string; high: string; low: string; close: string; volume?: string }> };
-    if (!Array.isArray(body.values) || body.values.length === 0) return fail();
+    if (!Array.isArray(body.values) || body.values.length === 0) return null;
     const bars: VendorBar[] = [];
     for (const v of body.values) {
       const t = parseUtc(v.datetime);
@@ -116,12 +139,11 @@ export async function vendorBarsFor(
       const vol = v.volume != null ? Number(v.volume) : NaN;
       bars.push({ t, o, h, l, c, v: Number.isFinite(vol) && vol >= 0 ? vol : null });
     }
-    if (bars.length === 0) return fail();
+    if (bars.length === 0) return null;
     bars.sort((a, b) => a.t - b.t);
-    cache.set(key, { at: Date.now(), bars });
     return bars;
   } catch {
-    return fail();
+    return null;
   }
 }
 
@@ -165,9 +187,32 @@ export function publishOracleBar(assetId: string, price: number, quotedAtIso: st
   oracleBars.set(assetId, { t, o: price, h: price, l: price, c: price, v: null });
 }
 
-/** The newest cached 1-minute bar for this asset, or null — from the cache ONLY (04 A15: house bots make no new
- * metered calls). Never fetches, never extends a TTL, whatever the cache holds and however old it is; the caller
- * judges the bar's age. A cached failure (null bars) is no bar.
+/**
+ * ⭐ THE DESK'S OWN READING (N4; Ali, 2026-10-14: "Yes, fetch fresh prices" — amends A15). The desk's refresher
+ * (`house-bot/desk-price.ts`) fetches the newest 1-minute bar of each asset an active account trades, at most once
+ * per refresh interval and within a daily credit ceiling, and keeps it HERE: a third map, never a write into `cache`
+ * (a one-bar array there would replace a viewer's whole chart series) and never into `oracleBars`.
+ * ⚠️ `t` IS THE BAR'S OPEN, as everywhere in this file, so the caller's age check can only ever call a fresh price
+ * stale — never a stale one fresh.
+ */
+const deskBars = new Map<string, VendorBar>();
+
+/**
+ * Keep the desk's newest bar for an asset. An EARLIER bar never replaces a later one; the SAME minute's bar does,
+ * because a minute still forming carries a newer close on every fetch. A bar that is not finite, or not positive,
+ * is no bar.
+ */
+export function publishDeskBar(assetId: string, bar: VendorBar): void {
+  if (![bar.t, bar.o, bar.h, bar.l, bar.c].every(Number.isFinite) || bar.c <= 0) return;
+  const prev = deskBars.get(assetId);
+  if (prev && prev.t > bar.t) return;
+  deskBars.set(assetId, bar);
+}
+
+/** The newest 1-minute bar held for this asset — the chart's cache, the desk's own reading (N4) or the oracle's —
+ * or null. Never fetches, never extends a TTL, whatever the maps hold and however old it is; the caller judges the
+ * bar's age. A cached failure (null bars) is no bar. ⛔ A DECISION NEVER PAYS FOR A PRICE: a peek that misses calls
+ * nothing (04 A15, still true of every decision); the desk's only metered calls are its refresher's (N4).
  */
 export function peekVendorBar(assetId: string): VendorBar | null {
   let newest: VendorBar | null = null;
@@ -176,6 +221,9 @@ export function peekVendorBar(assetId: string): VendorBar | null {
     const last = bars && bars.length > 0 ? bars[bars.length - 1] : null;
     if (last && (!newest || last.t > newest.t)) newest = last;
   }
+  // N4: the desk's own reading (`deskBars`) competes on the same terms — newest `t` wins, the caller judges its age.
+  const desk = deskBars.get(assetId);
+  if (desk && (!newest || desk.t > newest.t)) newest = desk;
   // The oracle's reading competes on the SAME terms — newest `t` wins, and the caller still judges its age. A
   // chart-warmed bar is usually fresher and keeps winning; this only decides the case where there is no chart.
   const oracle = oracleBars.get(assetId);
@@ -187,4 +235,5 @@ export function peekVendorBar(assetId: string): VendorBar | null {
 export function __clearVendorCacheForTests(): void {
   cache.clear();
   oracleBars.clear();
+  deskBars.clear();
 }
