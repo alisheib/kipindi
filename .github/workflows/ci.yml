@@ -87,6 +87,9 @@ jobs:
       - name: Install Chromium for browser gates
         run: npx playwright install --with-deps chromium
 
+      - name: Section ownership DOM controls
+        run: npm run qa:empty-state-alignment
+
       - name: Test suite (in-memory)
         run: node scripts/test-all.mjs --no-tsc --skip responsive,motion,revoked-deadend,admin-section-gate,needle-rest,integrity
 

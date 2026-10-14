@@ -71,3 +71,42 @@ export function normaliseQuestionBreakClocks(mask, roots = null) {
   }
   return fields;
 }
+
+/** The home book's two close-date leaf kinds; the source-name part is never a date leaf. */
+export const BOOK_HOME_CLOSE_DATE = {
+  selectors: {
+    featured: '#main-content .kp-hero article.mcardp .mcardp-src__part',
+    rows: '#main-content .kp-qboard .kp-qrow__close',
+  },
+  pattern: '^([1-9]|[12][0-9]|3[01]) (Jan|Feb|Mar|Mac|Apr|May|Mei|Jun|Jul|Aug|Ago|Sep|Oct|Okt|Nov|Dec|Des)(?: ([0-9]{4}))?$',
+  months: QUESTION_BREAK_CLOCK.months,
+  prefixes: { en: 'Closes ', sw: 'Litafungwa ' },
+  text: '22 Sep',
+};
+
+/** Before home geometry only: validate the whole locale date, replace its date, retain the prefix and every attribute. */
+export function normaliseBookHomeCloseDates(mask, roots = null) {
+  const result = { featured: 0, rows: 0, leaves: { featured: 0, rows: 0 } };
+  const prefix = mask.prefixes[mask.locale], months = mask.months[mask.locale];
+  if (!prefix || !months) return result;
+  const valid = new RegExp(mask.pattern);
+  for (const kind of ['featured', 'rows']) {
+    const candidates = roots?.[kind] ?? [...document.querySelectorAll(mask.selectors[kind])];
+    for (const el of candidates) {
+      if (el.childElementCount !== 0) continue;
+      result.leaves[kind]++;
+      const text = el.textContent;
+      if (!text.startsWith(prefix)) continue;
+      const parsed = valid.exec(text.slice(prefix.length));
+      if (!parsed) continue;
+      const month = months.indexOf(parsed[2]), day = Number(parsed[1]);
+      const year = parsed[3] === undefined ? 2000 : Number(parsed[3]);
+      if (month < 0 || year < 1 || year > 9999) continue;
+      const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+      if (day > [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month]) continue;
+      el.textContent = prefix + mask.text;
+      result[kind]++;
+    }
+  }
+  return result;
+}

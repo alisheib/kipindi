@@ -711,6 +711,39 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   The wider normal-site responsive audit remains open. Its 80 empty-state alignment findings require distinguishing
   card-scoped headings from page headings before repairs; captures after a dev-server memory restart are invalid
   premises and retained as such. Fresh bounded-runtime browser gates and the actual AdminKpi proof remain underway.
+  **2026-10-14 recovery checkpoints.** Root S8 is pushed through `9c5a8fd80`; independently reviewed normal section,
+  QR, queue, status-pill and rendered-symbol repairs are integrated from `5f3ad45c0` (root `7c8d774a7`). Their final
+  source proof is 77/0 across 36 actual cases, with scoped independent physical reads; actual populated overlays
+  are 36/0 without committing money. Exact-947 core browser evidence remains Chromium 186/0 plus settled-receipt
+  recapture 22/0, WebKit 182/0 plus fault-context lifecycle 14/0; normal motion 43/0, revoked 46/0, admin gate 21/0,
+  Needle 92/0 and AdminKpi 22/0. Interrupted memory-restart/worker-bypass/capture-premise attempts remain excluded.
+  These are measured predecessor proofs, not acceptance of later source. The four centered whole-collection
+  replacements are visually correct; their independent ownership-instrument amendment `31526cafd` is pushed
+  separately and still awaits fresh served-page proof/integration. No route exception has been broadened.
+  The next sheet arrival retains the existing transform and makes only its initial content opacity legible;
+  generic kit consumers default to their existing zero start. Its extended guards catch 119/119 and related
+  11/11 suites pass; exact compiled timing remains required. Both isolated Turbopack client-nesting and scope-hoist
+  option trials compile but retain absent lazy preloads. A supported Webpack diagnostic compiles and all 27 global
+  lazy rows name existing files, but its different manifest shape requires a measured adapter and actual served
+  asset checks. Its actual 20 GET-only browser cells have no missing JS assets, hash mismatches or page errors,
+  but HomeLazy is a real parser-loaded entry script on seven classic routes outside home. That first-load failure
+  remains; no production delivery PASS or default-bundler change is claimed. The new exact home close-day parity
+  instrument passes 58 focused controls, 247 full negative controls and a fresh 52/52 baseline; its independent
+  NULL comparison and final branch comparison remain pending.
+  Independent money review reproduces internal commit-answer loss followed by a pre-gate refusal and a failed
+  recovery read: the old wrapper discarded its uncertainty and could retire the key. The `9c5a8fd80` repair carries
+  that uncertainty between attempts and returns a neutral unknown on recovery fault. A matching owned landed
+  position also keeps authority if its fresh balance is missing/invalid/unreadable, without inventing zero; genuine
+  first pre-gate refusals remain. Proof: 49 memory, 47 Postgres and 20 plants; the extracted retry/host cases are
+  explicitly bounded-inner fixtures, not real PostgreSQL commit-loss injection. Actual action propagation,
+  typecheck and focused sheet guards pass. Production and the full final battery remain required.
+  Separate S9 preparation `862e83fb4` is pushed: 105 memory/108 Postgres/45 plants plus related guards; status/review,
+  RG-held truth and the faithful wallet-currency read are recorded in S9-PLAN §5d. The post-UNKNOWN terminal retry
+  gap remains open in both the future controller and existing Card adapter; an explicit owned signed recheck is
+  preparation in progress, with no new payment dispatch. S10 auth carry preparation `f7bdc2ea1` is pushed, with
+  22 actual verdicts/20 plants and preserved classic landing: guest identity/storage partition and S9 integration
+  remain open. Staff production QA access is still unavailable; the earlier secret-safe `.env.qa.local` request
+  remains pending. Infrastructure Railway access is verified separately.
   **Still NOT CLOSED / NOT LIVE:** current browser/visual closure, clean exact-tip production proof, repaired v4
   baseline/null/branch parity, complete battery and both-host production read-back are required.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;

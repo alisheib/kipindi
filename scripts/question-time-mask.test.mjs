@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { maskQuestionEventTimes, normaliseQuestionBreakClocks, QUESTION_BREAK_CLOCK } from "./lib/question-time-mask.mjs";
+import { maskQuestionEventTimes, normaliseQuestionBreakClocks, QUESTION_BREAK_CLOCK, normaliseBookHomeCloseDates, BOOK_HOME_CLOSE_DATE } from "./lib/question-time-mask.mjs";
 
 const first = "2026-10-13T12:00:00.123Z", next = "2026-10-13T12:37:00.123Z";
 const event = `{"@context":"https://schema.org","@type":"Event","name":"rain \\u003c quote \\\"","startDate":"${first}","endDate":"${first}","organizer":{"startDate":"${first}","name":"50pick"},"location":{"url":"/markets/market_fixed"}}`;
@@ -51,3 +51,27 @@ assert.equal(normaliseQuestionBreakClocks(enClock, [leaf("4 Jan 2027, 00:00"), l
 assert.equal(normaliseQuestionBreakClocks(swClock, [leaf("4 Mar, 00:00")]), 0, "a month from another locale is not masked");
 assert.equal(QUESTION_BREAK_CLOCK.selector, '[data-testid="market-bet-break"] span.whitespace-nowrap, [data-testid="market-break"] span.whitespace-nowrap', "the geometry normalizer's population is exactly the two named notices");
 console.log("question-time-mask: inert Event mask preserves all visible dates/figures and other JSON fields; A17 geometry canonicalizes only valid EAT leaves in two named notices, preserving paint/attributes/words; calendar/locale/year/population controls pass; 3 broad-mask controls caught");
+
+for (const locale of ['en', 'sw']) {
+  const mask = {...BOOK_HOME_CLOSE_DATE, locale}, prefix = mask.prefixes[locale], month = locale === 'sw' ? 'Okt' : 'Oct';
+  const featured = leaf(prefix + '14 ' + month), source = leaf(' · Settles on bot.go.tz', 2), row = leaf(prefix + '13 ' + month);
+  const result = normaliseBookHomeCloseDates(mask, {featured: [featured, source], rows: [row]});
+  assert.deepEqual(result, {featured: 1, rows: 1, leaves: {featured: 1, rows: 1}});
+  assert.equal(featured.textContent, prefix + mask.text);
+  assert.equal(row.textContent, prefix + mask.text);
+  assert.equal(source.textContent, ' · Settles on bot.go.tz');
+  assert.equal(featured.style, 'font: 13px inherit; padding: 1px');
+  assert.equal(featured.attributes['data-kept'], 'exact');
+  assert.deepEqual(normaliseBookHomeCloseDates(mask, {featured: [featured, source], rows: [row]}), result, 'canonical text remains a validated leaf on stability reads');
+  for (const date of ['31 Feb', '31 Apr', '29 Feb 2026', '29 Feb 1900', '14 ' + month + ' 0000', '14 ' + month + ' 10000', '14, ' + month, '14 ' + month + ', 14:21', locale === 'sw' ? '14 Oct' : '14 Okt', '14 ' + month + ' words']) {
+    const invalid = leaf(prefix + date);
+    assert.equal(normaliseBookHomeCloseDates(mask, {featured: [invalid], rows: []}).featured, 0);
+    assert.equal(invalid.textContent, prefix + date);
+  }
+  const changedWords = leaf('Ends 14 ' + month);
+  assert.equal(normaliseBookHomeCloseDates(mask, {featured: [changedWords], rows: []}).featured, 0);
+  assert.equal(changedWords.textContent, 'Ends 14 ' + month);
+  const valid = ['4 Jan 2027', '29 Feb 2000', '29 Feb 2028'].map(date => leaf(prefix + date));
+  assert.equal(normaliseBookHomeCloseDates(mask, {featured: [], rows: valid}).rows, 3);
+}
+console.log('home-close-date: only complete locale dates in the two named home leaf kinds canonicalize; prefix/source/attributes/paint stay intact; invalid date/locale/year/word/population controls pass');
