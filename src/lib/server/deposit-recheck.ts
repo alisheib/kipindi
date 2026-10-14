@@ -7,7 +7,7 @@ import { settlePaymentWebhook } from "./wallet-service";
 import { withLock } from "./locks";
 import { canonicalDepositFunding, depositProjection, ownedDeposit, sameDepositFunding } from "@/lib/journey/deposit-state";
 import { isMobileMoneyMethodId } from "@/lib/payment-providers";
-import { matchesDepositRecheckBinding, parseDepositRecheckBinding } from "@/lib/journey/deposit-recheck-binding";
+import { matchesDepositRecheckBinding, parsePostedDepositRecheckBinding } from "@/lib/journey/deposit-recheck-binding";
 import type { DepositStatusView } from "./deposit-status";
 
 export type DepositRecheckRead = {
@@ -30,7 +30,8 @@ export async function recheckDepositStatus(userId: string, txnId: string, expect
         targetType: "Transaction", targetId: null, payload: { reason: "invalid-identifier" } });
       return unknown();
     }
-    const binding = parseDepositRecheckBinding(expected);
+    // The tuple arrives from the browser: the posted shape (UUID-or-null key) is checked before any lookup.
+    const binding = parsePostedDepositRecheckBinding(expected);
     if (!binding || binding.owner !== userId || binding.txnId !== txnId) return unknown();
     const stored = await db.txn.findById(txnId);
     const funding = canonicalDepositFunding(stored);
@@ -69,7 +70,7 @@ export async function recheckDepositStatus(userId: string, txnId: string, expect
       // A provider contradiction may be recorded only for a valid current wallet. Read before that mutation;
       // the marker-only claim below changes no balance and reenters this same wallet lock.
       const wallet = await db.wallet.findByUserId(userId, tx);
-      if (!wallet || wallet.currency !== "TZS" || !Number.isSafeInteger(wallet.balance) || wallet.balance < 0) return unknown();
+      if (!wallet || wallet.currency !== "TZS" || !Number.isFinite(wallet.balance) || wallet.balance < 0) return unknown();
       const opposed = (fresh.status === "FAILED" && verifiedTerminal === "CONFIRMED")
         || (fresh.status === "CONFIRMED" && verifiedTerminal === "FAILED");
       if (opposed && projection.state !== "REVIEW" && projection.state !== "HELD") {

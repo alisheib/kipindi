@@ -38,7 +38,7 @@ import type { FailureReason, FailureDetail } from "@/lib/failure-reasons";
 import { paymentMethodName } from "@/lib/payment-providers";
 import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview, notifyRefusedFundsReturnFailed } from "./notification-service";
 import { afterCommit, currentLockTx, runOutsideLock, withLock } from "./locks";
-import { depositRecheckBinding, matchesDepositRecheckBinding, parseDepositRecheckBinding, type DepositRecheckBinding } from "@/lib/journey/deposit-recheck-binding";
+import { depositRecheckBinding, isStoredFundingKey, matchesDepositRecheckBinding, parseDepositRecheckBinding, type DepositRecheckBinding } from "@/lib/journey/deposit-recheck-binding";
 import { matchesProcessingProbeBinding, parseProcessingProbeBinding, withdrawalProbeBinding, type ProcessingProbeBinding } from "./payment-probe-binding";
 import { emit } from "./event-bus";
 import { postLedgerEntries, depositEntries, rgSuspenseEntries, withdrawalEntries, internalCreditEntries, adjustmentEntries, agentCommissionEntries, agentRegistrationFeeEntries, withMoneyTx } from "./ledger";
@@ -84,6 +84,10 @@ export async function deposit(
 
   const pendingBet = savedBet == null ? null : parseSavedDepositBet(savedBet);
   if (savedBet != null && !pendingBet) return { ok: false, error: "The saved question selection is invalid.", code: "INVALID" };
+  // The stored key is the funding identity's equality key (`deposit-recheck-binding.ts`). A key that binding cannot carry
+  // (empty, over 256 characters, control characters — the action passes the form's value through) would leave a PAID
+  // deposit outside every automatic settle path, so it is refused here, before anything is reserved or dispatched.
+  if (idempotencyKey != null && !isStoredFundingKey(idempotencyKey)) return { ok: false, error: "The request key is invalid.", code: "INVALID" };
 
   // A global key recovers only this caller's persisted funding intent. Billing edits on CARD do not change that
   // intent or dispatch another checkout. The canonical saved question is part of that identity. Origin and saved
@@ -414,8 +418,10 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string, expec
       return { credited: false, balance: w?.balance ?? 0 };
     }
     const fresh = await db.wallet.findByUserId(t.userId, currentLockTx());
+    // Identity and unit are exact; the balance need only be a real, non-negative amount. `Wallet.balance` is
+    // Decimal(18,2), so a whole-shilling test would refuse a legitimate wallet and strand a paid deposit on every lane.
     if (!fresh || fresh.userId !== t.userId || fresh.id !== t.walletId || t.currency !== "TZS" || fresh.currency !== "TZS"
-      || !Number.isSafeInteger(fresh.balance) || fresh.balance < 0) throw new Error("Deposit wallet could not be verified.");
+      || !Number.isFinite(fresh.balance) || fresh.balance < 0) throw new Error("Deposit wallet could not be verified.");
     // Responsible-gambling gate (GLI-19 / LCCP): if the player self-excluded or
     // cooled-off AFTER this deposit was initiated (or the provider pushed it late),
     // we must NOT credit an excluded account. Book the received money in suspense and leave the wallet untouched.
@@ -630,7 +636,7 @@ async function settleWithdrawalConfirmed(txnId: string, expectedProviderRef?: st
     const amt = Math.abs(t.amount);
     const w = await db.wallet.findByUserId(t.userId, currentLockTx());
     if (!w || w.userId !== t.userId || w.id !== t.walletId || t.currency !== "TZS" || w.currency !== "TZS"
-      || !Number.isSafeInteger(w.balance) || w.balance < 0 || !Number.isSafeInteger(w.hold) || w.hold < amt) throw new Error("Withdrawal wallet could not be verified.");
+      || !Number.isFinite(w.balance) || w.balance < 0 || !Number.isFinite(w.hold) || w.hold < amt) throw new Error("Withdrawal wallet could not be verified.");
     // The fee was frozen onto the txn row at initiation — read it back, never
     // recompute (a rate change mid-flight would reprice a withdrawal in flight).
     const fee = t.fee ?? 0;
@@ -906,7 +912,7 @@ export async function settleWithdrawalFailed(txnId: string, reason: string, expe
     const amt = Math.abs(t.amount);
     const w = await db.wallet.findByUserId(t.userId, tx);
     if (!w || w.userId !== t.userId || w.id !== t.walletId || t.currency !== "TZS" || w.currency !== "TZS"
-      || !Number.isSafeInteger(w.balance) || w.balance < 0 || !Number.isSafeInteger(w.hold) || w.hold < amt) throw new Error("Withdrawal wallet could not be verified.");
+      || !Number.isFinite(w.balance) || w.balance < 0 || !Number.isFinite(w.hold) || w.hold < amt) throw new Error("Withdrawal wallet could not be verified.");
     const refunded = await db.wallet.adjust(w.id, { balance: amt, hold: -amt }, undefined, tx);
     if (!refunded) throw new Error("Withdrawal refund could not be verified.");
     await db.txn.update(txnId, { status: "FAILED", description: `Withdrawal failed: ${reason}` }, tx);
@@ -1018,7 +1024,12 @@ export async function settleDepositFromReturn(userId: string, orderId: string): 
  * All underlying settle fns are idempotent, so a retried (at-least-once) webhook
  * is safe. Returns a small verdict for the route to log.
  */
-export async function settlePaymentWebhook(input: { providerRef: string; status: "CONFIRMED" | "FAILED"; amount?: number }, expected?: DepositRecheckBinding, processing?: ProcessingProbeBinding): Promise<{ handled: boolean; reason: string }> {
+export async function settlePaymentWebhook(
+  input: { providerRef: string; status: "CONFIRMED" | "FAILED"; amount?: number }, expected?: DepositRecheckBinding, processing?: ProcessingProbeBinding,
+  /** Server-only: the reconcile sweep's re-queried FAILED keeps its own reason, so the player's notice ("confirmed the
+   *  payment did not complete") and every audit query keyed on `reconcile-verified-failed` survive the bound path. */
+  failureReason: "provider-reported-failure" | "reconcile-verified-failed" = "provider-reported-failure",
+): Promise<{ handled: boolean; reason: string }> {
   const restriction = expected === undefined ? undefined : parseDepositRecheckBinding(expected);
   if (expected !== undefined && (!restriction || restriction.providerRef !== input.providerRef)) return { handled: false, reason: "scope-mismatch" };
   // An ordinary OWNED status probe freezes its original funding capsule too, but still goes through the global
@@ -1115,7 +1126,7 @@ export async function settlePaymentWebhook(input: { providerRef: string; status:
 
   if (txn.type === "DEPOSIT") {
     if (input.status === "CONFIRMED") await settleDepositConfirmed(txn.id, txn.providerRef ?? input.providerRef, input.providerRef, original ?? undefined);
-    else await settleDepositFailed(txn.id, "provider-reported-failure", input.providerRef, original ?? undefined);
+    else await settleDepositFailed(txn.id, failureReason, input.providerRef, original ?? undefined);
     const fresh = await db.txn.findById(txn.id, currentLockTx());
     if (!fresh || fresh.status === "PROCESSING" || fresh.status === "PENDING") throw new Error("Deposit settlement could not be verified.");
     if (fresh && ((fresh.status === "CONFIRMED" && input.status === "FAILED")
@@ -1128,7 +1139,7 @@ export async function settlePaymentWebhook(input: { providerRef: string; status:
   }
   if (txn.type === "WITHDRAWAL") {
     if (input.status === "CONFIRMED") await settleWithdrawalConfirmed(txn.id, input.providerRef, original ?? undefined);
-    else await settleWithdrawalFailed(txn.id, "provider-reported-failure", input.providerRef, original ?? undefined);
+    else await settleWithdrawalFailed(txn.id, failureReason, input.providerRef, original ?? undefined);
     const fresh = await db.txn.findById(txn.id, currentLockTx());
     if (!fresh || fresh.status === "PROCESSING" || fresh.status === "PENDING") throw new Error("Withdrawal settlement could not be verified.");
     if (fresh && ((fresh.status === "CONFIRMED" && input.status === "FAILED")
@@ -1322,12 +1333,15 @@ export async function settleConfirmedWithdrawals(
       // for an hour should be able to tell an operator what it has been hearing that
       // whole time — the 2026-07-29 incident had no such trail, so "still in flight"
       // and "the gateway is refusing us" were indistinguishable.
-      if (v.detail && v.detail !== t.providerStatus) {
+      // ⚠️ Compare the STORED form. This used to compare the bare detail with the stored "<status>: <detail>", which
+      // never matches, so every in-flight payout took a wallet lock and a write every 15 s to restate an unchanged answer.
+      const trail = v.detail ? `${v.status}: ${v.detail}`.slice(0, 500) : null;
+      if (trail && trail !== t.providerStatus) {
         try { await withLock(`wallet:${original.owner}`, async (tx) => {
           const fresh = await db.txn.findById(original.txnId, tx);
           if (!fresh || fresh.status !== "PROCESSING" || !matchesProcessingProbeBinding(original, fresh)) return;
           await assertUniquePaymentReference(fresh, original.providerRef, original);
-          await db.txn.update(original.txnId, { providerStatus: `${v.status}: ${v.detail}`.slice(0, 500) }, tx);
+          await db.txn.update(original.txnId, { providerStatus: trail }, tx);
         }); } catch { /* non-fatal */ }
       }
       // PENDING is also what a FAILED QUERY looks like (verifyWithdrawalStatus maps
@@ -1410,7 +1424,17 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
   let depositsConfirmed = 0;
   let withdrawalsConfirmed = 0;
   let leftPending = 0;
-  for (const t of stale) {
+  /**
+   * ⛔ ONE ROW NEVER STALLS THE SWEEP (S9 root review H1, 2026-10-14). This loop had no per-row isolation, so a single
+   * row whose settlement threw — an ambiguous reference, a wallet that fails its identity check, a DB fault — aborted the
+   * whole pass, every five minutes, at the same place: every later stale deposit went uncredited, every later
+   * provider-FAILED payout kept its hold, and `maybePaymentSweeps` skipped the still-pending notices and the outage
+   * escalation behind it. This sweep is the ONLY path that credits a deposit confirmed after the fast window, fails a
+   * stale deposit or refunds a FAILED payout, so a stall here strands money. The fast lanes already isolate per row.
+   * A row that throws moves no money (each settle is one transaction under its wallet lock), stays PROCESSING, and is
+   * put in front of an officer once; the sweep goes on to the next row.
+   */
+  for (const t of stale) try {
     const ref = t.providerRef;
     if (t.type === "DEPOSIT") {
       if (!ref) {
@@ -1448,7 +1472,7 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
         // stops reporting the money as absent.
         else leftPending++;
       } else if (v.status === "FAILED") {
-        const r = await settlePaymentWebhook({ providerRef: original.providerRef, status: "FAILED" }, undefined, original);
+        const r = await settlePaymentWebhook({ providerRef: original.providerRef, status: "FAILED" }, undefined, original, "reconcile-verified-failed");
         if (r.handled && r.reason === "deposit-failed") { depositsFailed++; clearNeedsReview(t.id); }
         else leftPending++;
       } else if (v.status === "UNSUPPORTED") {
@@ -1479,12 +1503,13 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
       const v = await verifyWithdrawalStatus(original.providerRef, original.payoutRail);
       // Same trail as the fast lane: a payout stuck across many sweeps must record
       // what the gateway keeps telling us, not just that it is still stuck.
-      if (v.detail && `${v.status}: ${v.detail}` !== t.providerStatus) {
+      const trail = v.detail ? `${v.status}: ${v.detail}`.slice(0, 500) : null;
+      if (trail && trail !== t.providerStatus) {
         try { await withLock(`wallet:${original.owner}`, async (tx) => {
           const fresh = await db.txn.findById(original.txnId, tx);
           if (!fresh || fresh.status !== "PROCESSING" || !matchesProcessingProbeBinding(original, fresh)) return;
           await assertUniquePaymentReference(fresh, original.providerRef, original);
-          await db.txn.update(original.txnId, { providerStatus: `${v.status}: ${v.detail}`.slice(0, 500) }, tx);
+          await db.txn.update(original.txnId, { providerStatus: trail }, tx);
         }); } catch { /* non-fatal */ }
         console.log(`[payments] payout ${t.id} (${ref}) — ${v.status}: ${v.detail}`);
       }
@@ -1492,7 +1517,7 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
         const r = await settlePaymentWebhook({ providerRef: original.providerRef, status: "CONFIRMED" }, undefined, original); // release the hold, exactly-once
         if (r.handled) { withdrawalsConfirmed++; clearNeedsReview(t.id); }
       } else if (v.status === "FAILED") {
-        const r = await settlePaymentWebhook({ providerRef: original.providerRef, status: "FAILED" }, undefined, original);
+        const r = await settlePaymentWebhook({ providerRef: original.providerRef, status: "FAILED" }, undefined, original, "reconcile-verified-failed");
         if (r.handled && r.reason === "withdrawal-failed") { withdrawalsReversed++; clearNeedsReview(t.id); }
         else leftPending++;
       } else if (v.status === "UNSUPPORTED") {
@@ -1512,6 +1537,13 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
         leftPending++; // PENDING — payout may be in flight; NEVER blind-reverse
       }
     }
+  } catch (err) {
+    // The isolation above: count it as still in flight, say so once per transaction (the message rides in the payload,
+    // so the dedupe key stays stable while the cause is visible), and continue with the next row.
+    leftPending++;
+    auditNeedsReviewOnce(t.id, "reconcile settle error — left PROCESSING, not auto-settled",
+      { error: String((err as Error)?.message ?? err).slice(0, 200) });
+    console.error("[payments] reconcile row failed", { txnId: t.id, err: (err as Error)?.message });
   }
   if (stale.length) audit({ category: "WALLET", action: "payments.reconcile_sweep", actorId: null, targetType: null, targetId: null, payload: { olderThanMs, depositsFailed, withdrawalsReversed, depositsConfirmed, withdrawalsConfirmed, leftPending } });
   return { depositsFailed, withdrawalsReversed, depositsConfirmed, withdrawalsConfirmed, leftPending };

@@ -231,15 +231,25 @@ async function maybePaymentSweeps(): Promise<void> {
   const { reconcileStalePayments, notifyStillPendingDeposits } = await import("./wallet-service");
   // Settle first, then notify — so a deposit this very sweep just resolved is
   // already terminal and is NOT then emailed "we're still waiting on it".
-  const r = await reconcileStalePayments();
-  if (r.depositsConfirmed || r.depositsFailed || r.withdrawalsConfirmed || r.withdrawalsReversed || r.leftPending) {
-    console.log(
-      `[lifecycle] payment reconcile — deposits +${r.depositsConfirmed}/-${r.depositsFailed}, ` +
-        `withdrawals +${r.withdrawalsConfirmed}/-${r.withdrawalsReversed}, ${r.leftPending} still in flight`,
-    );
+  // ⛔ Each chore has its OWN catch (S9 root review H1): a reconcile that throws must not skip the still-pending notices or
+  // the outage escalation below, and a notice fault must not skip the escalation. The ORDER is unchanged.
+  try {
+    const r = await reconcileStalePayments();
+    if (r.depositsConfirmed || r.depositsFailed || r.withdrawalsConfirmed || r.withdrawalsReversed || r.leftPending) {
+      console.log(
+        `[lifecycle] payment reconcile — deposits +${r.depositsConfirmed}/-${r.depositsFailed}, ` +
+          `withdrawals +${r.withdrawalsConfirmed}/-${r.withdrawalsReversed}, ${r.leftPending} still in flight`,
+      );
+    }
+  } catch (e) {
+    console.error("[lifecycle] payment reconcile failed (the notices and the escalation below still run):", e instanceof Error ? e.message : e);
   }
-  const n = await notifyStillPendingDeposits();
-  if (n.notified) console.log(`[lifecycle] told ${n.notified} player(s) their deposit is still pending`);
+  try {
+    const n = await notifyStillPendingDeposits();
+    if (n.notified) console.log(`[lifecycle] told ${n.notified} player(s) their deposit is still pending`);
+  } catch (e) {
+    console.error("[lifecycle] still-pending deposit notices failed (the escalation below still runs):", e instanceof Error ? e.message : e);
+  }
   /**
    * ⭐ AND IF THE QUEUE HAS CLOSED WITHDRAWALS FOR EVERYONE, SAY SO (2026-09-24).
    *

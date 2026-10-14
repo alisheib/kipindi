@@ -31,7 +31,8 @@ const RECHECK_ROUTE = "src/app/api/wallet/deposits/[id]/recheck/route.ts";
 const BINDING_FILE = "src/lib/journey/deposit-recheck-binding.ts";
 const MEMORY_FILE = "src/lib/server/store.ts";
 const PROBE_FILE = "src/lib/server/payment-probe-binding.ts";
-for (const file of [RECHECK_FILE, RECHECK_ROUTE, BINDING_FILE, MEMORY_FILE, PROBE_FILE]) sources[file] = readFileSync(join(ROOT, file), "utf8");
+const LIFECYCLE_FILE = "src/lib/server/lifecycle.ts";
+for (const file of [RECHECK_FILE, RECHECK_ROUTE, BINDING_FILE, MEMORY_FILE, PROBE_FILE, LIFECYCLE_FILE]) sources[file] = readFileSync(join(ROOT, file), "utf8");
 const RECHECK = process.argv.includes("--recheck-only");
 const BACKGROUND = process.argv.includes("--background-only");
 const PG = process.argv.includes("--pg");
@@ -122,7 +123,9 @@ function system(src = sources, data = db) {
   const receiptsModule = compile(src[files[6]], { "@/lib/query/windows": QueryWindows, "@/lib/query/parse": {}, "@/lib/query/href": {},
     "@/lib/query/counts": {}, "@/lib/query/empty": {}, "@/lib/payment-providers": { paymentMethodName }, "./ledger": WalletLedger, "./deposit-review": reviewModule });
   const seen = { verifies: [] as string[], settles: 0, reviewAttempts: 0, audits: [] as any[], notices: [] as any[], groups: [] as string[], funnels: 0,
-    locked: false, statusAllowed: true, probeAllowed: true, lockAtDispatch: false, rateCalls: [] as Array<{ key: string; action: string }> };
+    locked: false, statusAllowed: true, probeAllowed: true, lockAtDispatch: false, rateCalls: [] as Array<{ key: string; action: string }>,
+    /** M3: the reader's own settle COMMITS and then its answer is lost (a dropped reply after commit, on either store). */
+    loseSettleAnswer: false, dispatches: 0 };
   let verify: (ref: string) => Promise<any> = async () => ({ status: "PENDING" });
   let core: any;
   const audit = (entry: any) => { seen.audits.push(entry); return Promise.resolve({ recorded: true }); };
@@ -148,6 +151,7 @@ function system(src = sources, data = db) {
     DepositSchema, AdminDepositSchema, parseSavedDepositBet: D.parseSavedDepositBet, sameDepositFunding: D.sameDepositFunding,
     parseDepositRecheckBinding: bindingModule.parseDepositRecheckBinding, matchesDepositRecheckBinding: bindingModule.matchesDepositRecheckBinding,
     depositRecheckBinding: bindingModule.depositRecheckBinding, withdrawalProbeBinding: probeModule.withdrawalProbeBinding,
+    isStoredFundingKey: bindingModule.isStoredFundingKey,
     parseProcessingProbeBinding: probeModule.parseProcessingProbeBinding, matchesProcessingProbeBinding: probeModule.matchesProcessingProbeBinding,
     verifyDepositStatus: async (ref: string) => { seen.verifies.push(ref); return verify(ref); },
     verifyWithdrawalStatus: async (ref: string) => { seen.verifies.push(ref); return verify(ref); }, isLiveMoneyMode: () => true,
@@ -155,7 +159,7 @@ function system(src = sources, data = db) {
     isMaintenanceMode: async () => false, maintenanceMessage: async () => "Maintenance", isPaymentPaused: async () => false,
     checkDepositLimit: async () => ({ allowed: true }), SOF_SINGLE_TXN_TZS: 1_000_000, SOF_ROLLING_30D_TZS: 5_000_000,
     readIdentityStanding: async () => ({ kycStatus: "NOT_STARTED", everApproved: false }),
-    dispatchDeposit: async ({ correlationId }: any) => { if (seen.lockAtDispatch) seen.locked = true; return { ok: true, status: "CONFIRMED", providerRef: correlationId }; },
+    dispatchDeposit: async ({ correlationId }: any) => { seen.dispatches++; if (seen.lockAtDispatch) seen.locked = true; return { ok: true, status: "CONFIRMED", providerRef: correlationId }; },
     emit: () => {}, notifyDeposit: (ownerId: string, notice: any) => seen.notices.push({ ownerId, ...notice }),
     sendEmailToUser: async () => {}, depositConfirmedHtml: () => "", depositReversedHtml: () => "", depositFailedHtml: () => "",
     require: requireFixture,
@@ -172,7 +176,12 @@ function system(src = sources, data = db) {
   };
   core = compile(src[files[0]], { "./store": { db: data }, "./audit": { audit }, "./rate-limit": { rateCheckAsync: rate },
     "./payments": { verifyDepositStatus: async (ref: string) => { seen.verifies.push(ref); return verify(ref); } },
-    "./wallet-service": { settlePaymentWebhook: async (input: any, restriction: any, original: any) => { seen.settles++; return money.settlePaymentWebhook(input, restriction, original); } },
+    "./wallet-service": { settlePaymentWebhook: async (input: any, restriction: any, original: any) => {
+      seen.settles++;
+      const answer = await money.settlePaymentWebhook(input, restriction, original);
+      if (seen.loseSettleAnswer) throw new Error("controlled answer lost after the settle committed");
+      return answer;
+    } },
     "@/lib/journey/deposit-state": D,
     "@/lib/journey/deposit-recheck-binding": bindingModule,
   });
@@ -248,9 +257,22 @@ async function runBackground(src = sources): Promise<Check[]> {
       && wb?.hold === (withdrawal ? 5000 : 0) && row?.status === (mode === "stable" ? reported : "PROCESSING") && other?.status === "PROCESSING"
       && s.seen.notices.length === (mode === "stable" ? 1 : 0)
       && s.seen.groups.length === (mode === "stable" && reported === "CONFIRMED" ? 1 : 0)
-      && (mode === "stable" ? !refused : refused || ["confirmed", "depositsFailed", "withdrawalsReversed", "depositsConfirmed", "withdrawalsConfirmed"].every(key => (result?.[key] ?? 0) === 0)));
+      // ⛔ A THROWN LANE IS A FAILURE (S9 root review H1). This used to read `refused || …` and so scored a sweep that threw
+      // on the row as a pass — while a throw aborts the whole sweep and strands every later row. Every lane must now refuse
+      // the row and carry on: no throw, and nothing settled in the refused modes.
+      && !refused && (mode === "stable" || ["confirmed", "depositsFailed", "withdrawalsReversed", "depositsConfirmed", "withdrawalsConfirmed"].every(key => (result?.[key] ?? 0) === 0)));
     if (mode !== "stable") {
       ok(`background.detail.${lane}.${mode}`, row?.providerStatus == null && other?.providerStatus == null);
+    }
+    // L3 (S9 root review): the sweep's re-queried FAILED keeps ITS reason through the bound path — the player's notice says
+    // the provider "confirmed the payment did not complete", and audit queries keyed on the token keep working.
+    if (mode === "stable" && stale && reported === "FAILED") {
+      const notice = s.seen.notices[0];
+      ok(`background.reason.${lane}`, withdrawal
+        ? notice?.reason === "reconcile-verified-failed" && row?.description === "Withdrawal failed: reconcile-verified-failed"
+        : notice?.reason === "Your payment provider confirmed the payment did not complete."
+          && / deposit failed: reconcile-verified-failed$/.test(row?.description ?? "")
+          && s.seen.audits.some(a => a.action === "deposit.failed" && a.payload?.reason === "reconcile-verified-failed"));
     }
     if (mode === "stable") {
       const before = JSON.stringify({ wa, wb, notices: s.seen.notices.length, groups: s.seen.groups.length });
@@ -337,7 +359,10 @@ async function runBackground(src = sources): Promise<Check[]> {
       && s.seen.audits.some(a => a.action === "webhook.terminal_contradicted"));
   }
   for (const [type, reported] of [["DEPOSIT", "CONFIRMED"], ["WITHDRAWAL", "CONFIRMED"], ["WITHDRAWAL", "FAILED"]] as const) {
-    for (const fault of ["missing", "currency", "throw", "owner", "wallet-id", "balance", ...(type === "WITHDRAWAL" ? ["hold", "null-adjust"] : [])]) {
+    // H2 (S9 root review): the balance refusals that remain are the impossible ones — negative, NaN, infinite. A fractional
+    // balance is NOT a fault (`Wallet.balance` is Decimal(18,2)); it is a positive control below.
+    for (const fault of ["missing", "currency", "throw", "owner", "wallet-id", "negative-balance", "nan-balance", "infinite-balance",
+      ...(type === "WITHDRAWAL" ? ["hold", "nan-hold", "null-adjust"] : [])]) {
       const owner = await player(), row = await txn(owner, { type, amount: type === "WITHDRAWAL" ? -5000 : 5000 });
       if (type === "WITHDRAWAL") await db.wallet.adjust(`wlt_${owner}`, { hold: 5000 });
       if (fault === "currency") {
@@ -350,7 +375,9 @@ async function runBackground(src = sources): Promise<Check[]> {
         if (fault === "missing") return null;
         if (fault === "throw") throw new Error("controlled private wallet-read fault");
         return wallet && { ...wallet, ...(fault === "owner" ? { userId: "foreign" } : fault === "wallet-id" ? { id: "foreign" }
-          : fault === "balance" ? { balance: 0.5 } : fault === "hold" ? { hold: 4999 } : {}) };
+          : fault === "negative-balance" ? { balance: -1 } : fault === "nan-balance" ? { balance: Number.NaN }
+          : fault === "infinite-balance" ? { balance: Number.POSITIVE_INFINITY } : fault === "hold" ? { hold: 4999 }
+          : fault === "nan-hold" ? { hold: Number.NaN } : {}) };
       }, adjust: async (id: string, deltas: any, opts: any, tx: any) => {
         if (fault === "null-adjust" && id === `wlt_${owner}` && inLock()) return null;
         return db.wallet.adjust(id, deltas, opts, tx);
@@ -362,6 +389,155 @@ async function runBackground(src = sources): Promise<Check[]> {
       ok(`background.wallet.${type}.${reported}.${fault}`, refused && wallet?.balance === 0 && wallet.hold === (type === "WITHDRAWAL" ? 5000 : 0)
         && (await db.txn.findById(row.id))?.status === "PROCESSING" && s.seen.groups.length === 0 && s.seen.notices.length === 0);
     }
+    // ⭐ POSITIVE (H2): a REAL stored fractional balance settles exactly — through the actual wallet row on both stores, not a
+    // faked read. The whole-shilling guard this replaces refused it on every lane and stranded the money.
+    const owner = await player(), row = await txn(owner, { type, amount: type === "WITHDRAWAL" ? -5000 : 5000 });
+    await db.wallet.update(`wlt_${owner}`, { balance: 1000.5, ...(type === "WITHDRAWAL" ? { hold: 5000 } : {}) } as never);
+    const s = system(src);
+    let settled = false;
+    try { settled = (await s.money.settlePaymentWebhook({ providerRef: row.providerRef!, status: reported, amount: 5000 })).handled; } catch { settled = false; }
+    const after = await db.wallet.findByUserId(owner), fresh = await db.txn.findById(row.id);
+    const expected = type === "DEPOSIT" ? 6000.5 : reported === "FAILED" ? 6000.5 : 1000.5;
+    ok(`background.wallet.${type}.${reported}.fractional`, settled && fresh?.status === reported && after?.balance === expected && after?.hold === 0
+      && s.seen.notices.length === 1 && s.seen.groups.length === (reported === "CONFIRMED" ? 1 : 0));
+    if (PG) {
+      const ledger = await prisma()!.ledgerEntry.findMany({ where: { txnId: row.id } });
+      ok(`background.wallet.${type}.${reported}.fractional-pg-ledger`, (reported === "CONFIRMED" ? ledger.length >= 2 : ledger.length === 0)
+        && ledger.reduce((sum, line) => sum + Number(line.amount), 0) === 0);
+    }
+  }
+  // ── H1 (S9 root review): ONE THROWING ROW NEVER STALLS THE SWEEP. The REAL listByStatus (no one-row stub): poisoned rows are
+  // created immediately AHEAD of valid rows of the same arm, among every other PROCESSING row this suite left behind. The
+  // provider answers only for these rows; any other reference reads PENDING, so nothing else is settled.
+  {
+    const staleAt = new Date(Date.now() - 31 * 60_000).toISOString();
+    const verdicts = new Map<string, "CONFIRMED" | "FAILED">(), visited: string[] = [];
+    const stalePair = async (type: "DEPOSIT" | "WITHDRAWAL", verdict: "CONFIRMED" | "FAILED", poison: "ambiguous" | "short-hold") => {
+      const amount = type === "WITHDRAWAL" ? -5000 : 5000;
+      const pOwner = await player(), p = await txn(pOwner, { type, amount, createdAt: staleAt });
+      // An ambiguous reference: a second, already-terminal row carries the same one, so the lookup refuses it.
+      if (poison === "ambiguous") await txn(await player(), { type, amount, status: "CONFIRMED", providerRef: p.providerRef, createdAt: staleAt });
+      if (type === "WITHDRAWAL") await db.wallet.adjust(`wlt_${pOwner}`, { hold: poison === "short-hold" ? 3000 : 5000 });
+      const vOwner = await player(), v = await txn(vOwner, { type, amount, createdAt: staleAt });
+      if (type === "WITHDRAWAL") await db.wallet.adjust(`wlt_${vOwner}`, { hold: 5000 });
+      verdicts.set(p.providerRef!, verdict); verdicts.set(v.providerRef!, verdict);
+      return { p, pOwner, v, vOwner };
+    };
+    const dc = await stalePair("DEPOSIT", "CONFIRMED", "ambiguous"), df = await stalePair("DEPOSIT", "FAILED", "ambiguous");
+    const wf = await stalePair("WITHDRAWAL", "FAILED", "short-hold"), wc = await stalePair("WITHDRAWAL", "CONFIRMED", "ambiguous");
+    // M4 rides the same pass: a valid stale deposit stored under a NON-UUID key is credited like any other.
+    const opaqueOwner = await player(), opaque = await txn(opaqueOwner, { createdAt: staleAt, idempotencyKey: `idem_double_submit_${++sequence}` });
+    verdicts.set(opaque.providerRef!, "CONFIRMED");
+    const s = system(src);
+    s.verify(async (ref) => { visited.push(ref); const status = verdicts.get(ref); return status ? { status, amount: 5000 } : { status: "PENDING" }; });
+    let thrown = false, result: any = null;
+    try { result = await s.money.reconcileStalePayments(); } catch { thrown = true; }
+    const w = async (owner: string) => db.wallet.findByUserId(owner), st = async (row: { id: string }) => (await db.txn.findById(row.id))?.status;
+    const ahead = (pair: { p: { providerRef: string | null }; v: { providerRef: string | null } }) =>
+      visited.includes(pair.p.providerRef!) && visited.indexOf(pair.p.providerRef!) < visited.indexOf(pair.v.providerRef!);
+    // ⛔ Refuse the premise silently missing: each poisoned row must really have been visited BEFORE its valid row.
+    ok("background.isolation.premise-poison-ahead", [dc, df, wf, wc].every(ahead));
+    ok("background.isolation.sweep.returned", !thrown && result?.depositsConfirmed === 2 && result?.depositsFailed === 1
+      && result?.withdrawalsReversed === 1 && result?.withdrawalsConfirmed === 1 && result?.leftPending >= 4);
+    ok("background.isolation.sweep.deposit-confirm", await st(dc.v) === "CONFIRMED" && (await w(dc.vOwner))?.balance === 5000);
+    ok("background.isolation.sweep.deposit-fail", await st(df.v) === "FAILED" && (await w(df.vOwner))?.balance === 0);
+    ok("background.isolation.sweep.payout-fail-refunded", await st(wf.v) === "FAILED" && (await w(wf.vOwner))?.balance === 5000 && (await w(wf.vOwner))?.hold === 0);
+    ok("background.isolation.sweep.payout-confirm", await st(wc.v) === "CONFIRMED" && (await w(wc.vOwner))?.hold === 0 && (await w(wc.vOwner))?.balance === 0);
+    const poisoned = [dc, df, wf, wc].map(pair => pair.p.id);
+    ok("background.isolation.sweep.poison-left-for-review", (await Promise.all([dc, df, wf, wc].map(pair => st(pair.p)))).every(x => x === "PROCESSING")
+      && (await w(dc.pOwner))?.balance === 0 && (await w(wf.pOwner))?.hold === 3000 && (await w(wf.pOwner))?.balance === 0
+      && (await w(wc.pOwner))?.hold === 5000 && poisoned.every(id => s.seen.audits.some(a => a.action === "payments.reconcile_needs_review"
+        && a.targetId === id && a.payload?.reason === "reconcile settle error — left PROCESSING, not auto-settled" && typeof a.payload?.error === "string")));
+    ok("background.opaque-key.sweep", await st(opaque) === "CONFIRMED" && (await w(opaqueOwner))?.balance === 5000);
+  }
+  // The two fast lanes already isolate per row — a control that they still do, with the same poison ahead of a valid row.
+  for (const lane of ["fast-deposit", "fast-payout"] as const) {
+    const type = lane === "fast-deposit" ? "DEPOSIT" : "WITHDRAWAL", amount = type === "WITHDRAWAL" ? -5000 : 5000;
+    const at = new Date(Date.now() - 25_000).toISOString(), verdicts = new Set<string>(), visited: string[] = [];
+    const pOwner = await player(), p = await txn(pOwner, { type, amount, createdAt: at });
+    await txn(await player(), { type, amount, status: "CONFIRMED", providerRef: p.providerRef, createdAt: at });
+    const vOwner = await player(), v = await txn(vOwner, { type, amount, createdAt: at });
+    if (type === "WITHDRAWAL") { await db.wallet.adjust(`wlt_${pOwner}`, { hold: 5000 }); await db.wallet.adjust(`wlt_${vOwner}`, { hold: 5000 }); }
+    verdicts.add(p.providerRef!); verdicts.add(v.providerRef!);
+    const s = system(src);
+    s.verify(async (ref) => { visited.push(ref); return verdicts.has(ref) ? { status: "CONFIRMED", amount: 5000 } : { status: "PENDING" }; });
+    let thrown = false;
+    try { lane === "fast-deposit" ? await s.money.creditConfirmedDeposits() : await s.money.settleConfirmedWithdrawals(); } catch { thrown = true; }
+    const vw = await db.wallet.findByUserId(vOwner);
+    ok(`background.isolation.${lane}`, !thrown && visited.indexOf(p.providerRef!) >= 0 && visited.indexOf(p.providerRef!) < visited.indexOf(v.providerRef!)
+      && (await db.txn.findById(v.id))?.status === "CONFIRMED" && (await db.txn.findById(p.id))?.status === "PROCESSING"
+      && (type === "DEPOSIT" ? vw?.balance === 5000 : vw?.hold === 0));
+  }
+  // M4: the 15 s lane credits a deposit stored under a non-UUID key; the binding carries opaque bounded keys only.
+  {
+    const owner = await player(), row = await txn(owner, { idempotencyKey: `rfd:legacy-tooling-key:${++sequence}` });
+    const s = system(src);
+    s.verify(async (ref) => ref === row.providerRef ? { status: "CONFIRMED", amount: 5000 } : { status: "PENDING" });
+    await s.money.creditConfirmedDeposits();
+    ok("background.opaque-key.fast-deposit", (await db.txn.findById(row.id))?.status === "CONFIRMED" && (await db.wallet.findByUserId(owner))?.balance === 5000);
+    const bind = s.bindingModule;
+    const keyed = (key: string | null) => bind.depositRecheckBinding(owner, { ...row, idempotencyKey: key });
+    ok("background.opaque-key.binding", ["idem_double_submit_1", "rfd:legacy", "k".repeat(256), "00000000-0000-4000-8000-000000000001", null]
+      .every(key => keyed(key)?.fundingKey === key)
+      && ["", "k".repeat(257), "x\u0000y", "tab\tkey"].every(key => keyed(key) === null)
+      // The browser-POSTED capsule keeps the UUID-or-null shape; a stored opaque key does not make a posted one acceptable.
+      && bind.parsePostedDepositRecheckBinding(keyed("idem_double_submit_1")) === null
+      && bind.parsePostedDepositRecheckBinding(keyed("00000000-0000-4000-8000-000000000001")) !== null
+      && bind.parsePostedDepositRecheckBinding(keyed(null)) !== null);
+    // deposit() refuses, before anything is reserved, a key the binding could not carry — and accepts an opaque one.
+    const entry = system(src), dispatchesBefore = entry.seen.dispatches;
+    const refused = await entry.money.deposit(owner, { amount: 5000, provider: "MPESA", msisdn: "712345678" }, "k".repeat(257));
+    const opaqueKey = `idem_opaque_entry_${++sequence}`;
+    const accepted = await entry.money.deposit(owner, { amount: 5000, provider: "MPESA", msisdn: "712345678" }, opaqueKey);
+    const replay = await entry.money.deposit(owner, { amount: 5000, provider: "MPESA", msisdn: "712345678" }, opaqueKey);
+    ok("background.opaque-key.entry-refused", !refused.ok && refused.code === "INVALID" && await db.txn.findByIdempotencyKey("k".repeat(257)) == null
+      && entry.seen.dispatches === dispatchesBefore + 1);
+    ok("background.opaque-key.entry-accepted", accepted.ok && replay.ok && replay.data.txnId === accepted.data.txnId
+      && (await db.txn.findById(accepted.data.txnId))?.idempotencyKey === opaqueKey);
+  }
+  // H1: in the lifecycle pass each money chore has its own catch, so a reconcile or notice fault never skips the rest.
+  for (const fault of ["reconcile-throw", "notify-throw"] as const) {
+    const calls: string[] = [];
+    const stubs: Record<string, unknown> = {
+      "./wallet-service": {
+        reconcileStalePayments: async () => { calls.push("reconcile"); if (fault === "reconcile-throw") throw new Error("controlled sweep fault");
+          return { depositsFailed: 0, withdrawalsReversed: 0, depositsConfirmed: 0, withdrawalsConfirmed: 0, leftPending: 0 }; },
+        notifyStillPendingDeposits: async () => { calls.push("notify"); if (fault === "notify-throw") throw new Error("controlled notice fault"); return { notified: 0 }; },
+      },
+      "./payout-status": { escalatePayoutOutage: async () => { calls.push("escalate"); return { raised: false }; } },
+    };
+    const text = `let lastPaymentSweepAt = 0; const PAYMENT_SWEEP_EVERY_MS = 0;\n${fn(src[LIFECYCLE_FILE], "maybePaymentSweeps")}`;
+    const js = ts.transpileModule(text, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
+    const sweeps = new Function("require", `${js}\nreturn maybePaymentSweeps;`)((id: string) => {
+      if (!Object.hasOwn(stubs, id)) throw new Error(`Unexpected lifecycle import ${id}`);
+      return stubs[id];
+    }) as () => Promise<void>;
+    let rejected = false;
+    try { await sweeps(); } catch { rejected = true; }
+    ok(`background.lifecycle.${fault}`, !rejected && calls.join(">") === "reconcile>notify>escalate");
+  }
+  // L2: an unchanged provider answer is written once, not restated (under a wallet lock) on every pass.
+  for (const lane of ["fast-withdraw", "stale-withdraw"] as const) {
+    const owner = await player(), row = await txn(owner, { type: "WITHDRAWAL", amount: -5000,
+      createdAt: new Date(Date.now() - (lane === "fast-withdraw" ? 25_000 : 31 * 60_000)).toISOString() });
+    await db.wallet.adjust(`wlt_${owner}`, { hold: 5000 });
+    let trailWrites = 0;
+    const data = { ...db, txn: { ...db.txn,
+      listByStatus: async (status: string) => { const fresh = await db.txn.findById(row.id); return fresh?.status === status ? [fresh] : []; },
+      update: async (id: string, patch: any, tx?: any) => { if (id === row.id && "providerStatus" in patch) trailWrites++; return db.txn.update(id, patch, tx); },
+    } } as typeof db;
+    const s = system(src, data); s.verify(async () => ({ status: "PENDING", detail: "still moving at the gateway" }));
+    for (let pass = 0; pass < 3; pass++) lane === "fast-withdraw" ? await s.money.settleConfirmedWithdrawals() : await s.money.reconcileStalePayments();
+    const fresh = await db.txn.findById(row.id);
+    ok(`background.trail.${lane}`, trailWrites === 1 && fresh?.providerStatus === "PENDING: still moving at the gateway" && fresh.status === "PROCESSING"
+      && (await db.wallet.findByUserId(owner))?.hold === 5000);
+  }
+  // L3: the WEBHOOK path keeps its own reason; only the sweep's verified FAILED says "confirmed … did not complete".
+  {
+    const owner = await player(), row = await txn(owner), s = system(src);
+    await s.money.settlePaymentWebhook({ providerRef: row.providerRef!, status: "FAILED" });
+    ok("background.reason.webhook-unchanged", s.seen.notices[0]?.reason === "Your payment provider declined the payment."
+      && /deposit failed: provider-reported-failure$/.test((await db.txn.findById(row.id))?.description ?? ""));
   }
   // Notice/publication timing and money rollback are SQL facts. Memory Maps intentionally provide neither.
   if (PG) for (const [type, reported] of [["DEPOSIT", "CONFIRMED"], ["DEPOSIT", "FAILED"], ["WITHDRAWAL", "CONFIRMED"], ["WITHDRAWAL", "FAILED"]] as const) {
@@ -816,9 +992,27 @@ async function run(src = sources): Promise<Check[]> {
     await lost.money.settlePaymentWebhook({ providerRef: lostRow.providerRef!, status: "FAILED" });
     return { status: "CONFIRMED", amount: 5000 };
   });
-  const lostResult = await lost.read(lostOwner, byId(lostRow));
-  ok("review.persisted-write-answer-lost", lostResult.view.state === "REVIEW" && lostResult.txn?.id === lostRow.id
-    && Review.hasDepositStatusReview((await db.txn.findById(lostRow.id))!) && (await db.wallet.findByUserId(lostOwner))?.balance === 0);
+  const lostResult = await lost.read(lostOwner, byId(lostRow)), lostSaved = await db.txn.findById(lostRow.id);
+  // M3 (S9 root review): the fault fires INSIDE the marker's wallet-lock transaction, after its write. A memory Map keeps
+  // the write, so the marker persists and the reader shows REVIEW. PostgreSQL rolls the whole claim back, so nothing was
+  // recorded and the reader must not invent a review it cannot see: UNKNOWN (the safe answer), the row still FAILED with no
+  // marker, no money. Each store is held to ITS truth; the answer-lost-AFTER-commit case below is the same on both.
+  ok("review.persisted-write-answer-lost", PG
+    ? lostResult.view.state === "UNKNOWN" && !lostResult.txn && lostSaved?.status === "FAILED" && lostSaved.providerStatus == null
+      && (await db.wallet.findByUserId(lostOwner))?.balance === 0
+    : lostResult.view.state === "REVIEW" && lostResult.txn?.id === lostRow.id && Review.hasDepositStatusReview(lostSaved!)
+      && (await db.wallet.findByUserId(lostOwner))?.balance === 0);
+  // A marker that DID commit wins after the settle's own answer is lost (the reply dropped after commit): REVIEW on BOTH stores.
+  const afterOwner = await player(), afterRow = await txn(afterOwner), after = system(src);
+  after.verify(async () => {
+    await after.money.settlePaymentWebhook({ providerRef: afterRow.providerRef!, status: "FAILED" });
+    after.seen.loseSettleAnswer = true;
+    return { status: "CONFIRMED", amount: 5000 };
+  });
+  const afterResult = await after.read(afterOwner, byId(afterRow)), afterSaved = await db.txn.findById(afterRow.id);
+  ok("review.answer-lost-after-commit", afterResult.view.state === "REVIEW" && afterResult.txn?.id === afterRow.id
+    && afterSaved?.status === "FAILED" && Review.hasDepositStatusReview(afterSaved) && after.seen.settles === 1
+    && after.seen.notices.filter(n => n.status === "AML_REVIEW").length === 1 && (await db.wallet.findByUserId(afterOwner))?.balance === 0);
   const noSave = system(src, { ...db, txn: { ...db.txn, update: async (id: string, patch: any, tx?: any) =>
     patch.providerStatus === Review.DEPOSIT_STATUS_REVIEW_MARK ? db.txn.findById(id) : db.txn.update(id, patch, tx) } } as typeof db);
   const noSaveRow = await txn(await player(), { status: "FAILED" });
@@ -862,6 +1056,54 @@ async function run(src = sources): Promise<Check[]> {
   const foreignUnitRead = await s.read(foreignUnitOwner, { kind: "funding-key", value: foreignUnitRow.idempotencyKey! });
   ok("truth.wallet-unit-mismatch-unknown", String((await db.wallet.findByUserId(foreignUnitOwner))?.currency) === "USD"
     && foreignUnitRead.view.state === "UNKNOWN" && foreignUnitRead.view.balance === undefined && !foreignUnitRead.txn);
+  // H2 (S9 root review): `Wallet.balance` is Decimal(18,2). A REAL stored fractional balance is a valid wallet: the reader
+  // reports it and the signed credit lands on it — the whole-shilling rule answered UNKNOWN and stranded the money.
+  const fractionalOwner = await player();
+  await db.wallet.update(`wlt_${fractionalOwner}`, { balance: 1000.5 } as never);
+  const fractionalPaid = await txn(fractionalOwner, { status: "CONFIRMED" });
+  const fractionalRead = await s.read(fractionalOwner, { kind: "funding-key", value: fractionalPaid.idempotencyKey! });
+  ok("truth.fractional-wallet-readable", fractionalRead.view.state === "PAID" && fractionalRead.view.balance === 1000.5 && fractionalRead.txn?.id === fractionalPaid.id);
+  const fractionalPending = await txn(fractionalOwner), fractional = system(src);
+  fractional.verify(async () => ({ status: "CONFIRMED", amount: 5000 }));
+  const fractionalCredit = await fractional.read(fractionalOwner, byId(fractionalPending));
+  ok("truth.fractional-wallet-credited", fractionalCredit.view.state === "PAID" && fractionalCredit.view.balance === 6000.5
+    && (await db.txn.findById(fractionalPending.id))?.status === "CONFIRMED" && fractional.seen.groups.join() === `dep_${fractionalPending.id}`);
+  // M4 (S9 root review): a deposit stored under a NON-UUID key is still settled by the owned status probe and the card
+  // return — the stored key is opaque and compared by equality. (The recover route's `?key=` input stays UUID-only.)
+  const opaqueOwner = await player();
+  const opaqueMno = await txn(opaqueOwner, { idempotencyKey: `idem_double_submit_${++sequence}` }), om = system(src);
+  om.verify(async () => ({ status: "CONFIRMED", amount: 5000 }));
+  const opaqueRead = await om.read(opaqueOwner, byId(opaqueMno));
+  ok("probe.opaque-key-settles", opaqueRead.view.state === "PAID" && (await db.txn.findById(opaqueMno.id))?.status === "CONFIRMED"
+    && (await db.wallet.findByUserId(opaqueOwner))?.balance === 5000 && om.seen.verifies.length === 1);
+  const opaqueCard = await txn(opaqueOwner, { provider: "CARD", msisdn: null, idempotencyKey: `idem_card_${++sequence}` }), oc = system(src);
+  oc.verify(async () => ({ status: "CONFIRMED", amount: 5000 }));
+  const opaqueReturn = await oc.money.settleDepositFromReturn(opaqueOwner, opaqueCard.providerRef!);
+  ok("card.opaque-key-settles", opaqueReturn.state === "PAID" && opaqueReturn.txn?.id === opaqueCard.id && opaqueReturn.balance === 10_000);
+  // L1 (S9 root review): an AMBIGUOUS reference on the Selcom callback is an audited 500 (the provider retries), never an
+  // unhandled route error, and nothing is settled.
+  {
+    const ambOwner = await player(), amb = await txn(ambOwner), twin = await txn(await player(), { providerRef: amb.providerRef });
+    const hookAudits: any[] = [];
+    const hook = compile(src[files[8]], { "next/server": { NextResponse: { json: (body: any, init: any = {}) =>
+      new Response(JSON.stringify(body), { ...init, headers: { "content-type": "application/json", ...init.headers } }) } },
+      "@/lib/server/crypto": { verifyWebhookSignature: () => ({ valid: true }) },
+      "@/lib/server/audit": { audit: (entry: any) => { hookAudits.push(entry); return Promise.resolve({ recorded: true }); } },
+      "@/lib/server/wallet-service": { settlePaymentWebhook: async () => { throw new Error("No settlement may run for an ambiguous reference"); } },
+      "@/lib/server/store": { db },
+      "@/lib/server/selcom": { selcomEnv: () => ({ apiSecret: "controlled-local-fixture" }), verifySelcomCallback: () => true,
+        selcomVerifyOrder: async () => ({ status: "CONFIRMED", amount: 5000 }), selcomVerifyPayout: async () => { throw new Error("No payout probe allowed"); }, railOf: () => "WALLET_CASHIN" } });
+    let status = 0, body: any = null;
+    try {
+      const response = await hook.POST(new Request("http://localhost/api/webhooks/payments", { method: "POST",
+        headers: { authorization: "SELCOM local-fixture" }, body: JSON.stringify({ order_id: amb.providerRef }) }));
+      status = response.status; body = await response.json();
+    } catch { status = -1; }
+    ok("webhook.selcom-ambiguous-lookup", status === 500 && body?.ok === false && body?.error === "settle-failed"
+      && hookAudits.some(a => a.action === "webhook.payment.settle_error" && a.payload?.stage === "lookup" && /ambiguous/.test(a.payload?.error ?? ""))
+      && (await db.txn.findById(amb.id))?.status === "PROCESSING" && (await db.txn.findById(twin.id))?.status === "PROCESSING"
+      && (await db.wallet.findByUserId(ambOwner))?.balance === 0);
+  }
   for (const routeFile of files.slice(3, 5)) {
     let session: any = { userId: me }, throwCore = false;
     const route = compile(src[routeFile], { "next/server": { NextResponse: { json: (body: any, init: any = {}) =>
@@ -1218,8 +1460,10 @@ async function runRecheck(src = sources): Promise<Check[]> {
     const s = system(src, data); s.verify(async () => ({ status: "FAILED" }));
     ok(`wallet.${failure}`, unknown(await s.recheck(me, row.id)));
   }
+  // H2 (S9 root review): the refusals that remain are the impossible wallets — negative, NaN, infinite. A fractional
+  // balance is a valid Decimal(18,2) wallet, so it is a positive control below, not a refusal.
   for (const [failure, balance] of [["missing", 0], ["fault", 0], ["wrong-currency", 0], ["negative", -1],
-    ["non-finite", Infinity], ["fractional", 0.5]] as const) {
+    ["non-finite", Infinity], ["nan", Number.NaN]] as const) {
     const opposed = await txn(me, { status: "FAILED" });
     const data = { ...db, wallet: { ...db.wallet, findByUserId: async () => {
       if (failure === "fault") throw new Error("private wallet fault");
@@ -1232,6 +1476,18 @@ async function runRecheck(src = sources): Promise<Check[]> {
       && fresh?.providerStatus !== Review.DEPOSIT_STATUS_REVIEW_MARK && fresh?.status === "FAILED"
       && s.seen.groups.length === 0 && s.seen.notices.length === 0 && (await db.wallet.findByUserId(me))?.balance === 0
       && r.unavailable === (failure === "fault"));
+  }
+  {
+    // ⭐ POSITIVE (H2): a REAL stored fractional balance — the signed contradiction is recorded (review marker, one notice),
+    // and still no money moves. The whole-shilling rule answered UNKNOWN and left the contradiction unrecorded.
+    const fractionalOwner = await player();
+    await db.wallet.update(`wlt_${fractionalOwner}`, { balance: 1000.5 } as never);
+    const opposed = await txn(fractionalOwner, { status: "FAILED" }), s = system(src);
+    s.verify(async () => ({ status: "CONFIRMED", amount: opposed.amount }));
+    const r = await s.recheck(fractionalOwner, opposed.id), fresh = await db.txn.findById(opposed.id);
+    ok("wallet.opposed.fractional-records-review", r.view.state === "REVIEW" && r.view.balance === 1000.5 && !r.view.failureAuthority
+      && fresh?.providerStatus === Review.DEPOSIT_STATUS_REVIEW_MARK && fresh?.status === "FAILED" && s.seen.settles === 1
+      && s.seen.groups.length === 0 && s.seen.notices.length === 1 && (await db.wallet.findByUserId(fractionalOwner))?.balance === 1000.5);
   }
   const normal = system(src);
   const ordinary = await normal.read(me, byId(row)), recovered = await normal.read(me, { kind: "funding-key", value: row.idempotencyKey! });

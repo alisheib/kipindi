@@ -4,7 +4,7 @@ const m = (name, from, to, expect) => ({ name, file, from, to, expect });
 const ORIGINAL_BIND = '\n        || !matchesDepositRecheckBinding(userId, txnId, binding, fresh)';
 const INITIAL_BIND = 'let fresh = await db.txn.findById(initial.id, tx);\n      if (!ownedDeposit(userId, fresh) || !sameDepositFunding(initial, fresh)\n        || fresh.providerRef !== initial.providerRef || fresh.idempotencyKey !== initial.idempotencyKey' + ORIGINAL_BIND + ') return unknown();';
 const binding = (name, from, to, expect) => m(name, INITIAL_BIND, INITIAL_BIND.replace(from, to).replace(ORIGINAL_BIND, ''), expect);
-const WALLET_READ = '      const wallet = await db.wallet.findByUserId(userId, tx);\n      if (!wallet || wallet.currency !== "TZS" || !Number.isSafeInteger(wallet.balance) || wallet.balance < 0) return unknown();\n';
+const WALLET_READ = '      const wallet = await db.wallet.findByUserId(userId, tx);\n      if (!wallet || wallet.currency !== "TZS" || !Number.isFinite(wallet.balance) || wallet.balance < 0) return unknown();\n';
 const CLAIM = `      const opposed = (fresh.status === "FAILED" && verifiedTerminal === "CONFIRMED")
         || (fresh.status === "CONFIRMED" && verifiedTerminal === "FAILED");
       if (opposed && projection.state !== "REVIEW" && projection.state !== "HELD") {
@@ -41,9 +41,13 @@ export const MUTATIONS = [
   binding("changed-funding-key-accepted", " || fresh.idempotencyKey !== initial.idempotencyKey", "", "fresh.key"),
   m("fresh-signed-opposition-not-recorded", '(fresh.status === "CONFIRMED" && verifiedTerminal === "FAILED")', 'false', "review.fresh-confirmed-opposes-failed"),
   m("fresh-marker-ignored", 'let projection = depositProjection(userId, fresh, Date.now());', 'let projection = depositProjection(userId, { ...fresh, providerStatus: null }, Date.now());', "fresh.review"),
-  m("missing-wallet-fabricates-zero", 'if (!wallet || wallet.currency !== "TZS" || !Number.isSafeInteger(wallet.balance) || wallet.balance < 0) return unknown();', 'if (!wallet) return { view: { ...projection, balance: 0, retryAfterSec: 0, failureAuthority: "signed-recheck" }, rateLimited: false, unavailable: false };', "wallet.missing"),
-  m("invalid-wallet-allows-review-claim", 'if (!wallet || wallet.currency !== "TZS" || !Number.isSafeInteger(wallet.balance) || wallet.balance < 0) return unknown();', '', "wallet.opposed.wrong-currency"),
+  m("missing-wallet-fabricates-zero", 'if (!wallet || wallet.currency !== "TZS" || !Number.isFinite(wallet.balance) || wallet.balance < 0) return unknown();', 'if (!wallet) return { view: { ...projection, balance: 0, retryAfterSec: 0, failureAuthority: "signed-recheck" }, rateLimited: false, unavailable: false };', "wallet.missing"),
+  m("invalid-wallet-allows-review-claim", 'if (!wallet || wallet.currency !== "TZS" || !Number.isFinite(wallet.balance) || wallet.balance < 0) return unknown();', '', "wallet.opposed.wrong-currency"),
   m("wallet-validated-after-review-claim", WALLET_READ + CLAIM, CLAIM + WALLET_READ, "wallet.opposed.wrong-currency"),
+  // H2 (S9 root review): a Decimal(18,2) wallet is a valid wallet; the whole-shilling rule refused to record a real contradiction.
+  m("recheck-requires-whole-shillings", 'if (!wallet || wallet.currency !== "TZS" || !Number.isFinite(wallet.balance) || wallet.balance < 0) return unknown();', 'if (!wallet || wallet.currency !== "TZS" || !Number.isSafeInteger(wallet.balance) || wallet.balance < 0) return unknown();', "wallet.opposed.fractional-records-review"),
+  // M4: the browser-POSTED capsule keeps the UUID-or-null key shape and is refused before any lookup (stored keys are opaque).
+  { name: "posted-capsule-accepts-any-stored-key", file: "src/lib/journey/deposit-recheck-binding.ts", from: "return binding && (binding.fundingKey === null || UUID.test(binding.fundingKey)) ? binding : null;", to: "return binding;", expect: "capsule.invalid-key" },
   { name: "review-marker-write-escapes-tx", file: "src/lib/server/wallet-service.ts", from: 'const saved = await db.txn.update(txnId, { providerStatus: DEPOSIT_STATUS_REVIEW_MARK }, tx);', to: 'const saved = await db.txn.update(txnId, { providerStatus: DEPOSIT_STATUS_REVIEW_MARK });', expect: "review.reentrant-same-tx" },
   m("review-reread-escapes-tx", '        fresh = await db.txn.findById(initial.id, tx);', '        fresh = await db.txn.findById(initial.id);', "review.reentrant-same-tx"),
   m("final-read-outside-wallet-lock", 'return await withLock(', 'return await (async (_key: string, callback: any) => callback(null))(', "safe.MPESA"),

@@ -65,6 +65,7 @@ function serviceFor(source: string, data = db, statusSource = STATUS) {
   const counters = { dispatches: 0, dispatchIntents: [] as unknown[], verifies: 0, settles: 0, capReads: 0, audit: [] as unknown[], maintenance: false };
   const dependencies = {
     db: data, withLock, parseSavedDepositBet, sameDepositFunding, depositResultStatus, DepositSchema, AdminDepositSchema, paymentMethodName, presentedStatus, formatDateTime, formatTzs,
+    isStoredFundingKey: DepositBinding.isStoredFundingKey,
     rateCheckAsync: async () => ({ allowed: true }), randomId: () => String(++sequence).padStart(24, "0"),
     audit: (entry: unknown) => counters.audit.push(entry), isMaintenanceMode: async () => counters.maintenance,
     maintenanceMessage: async () => "Maintenance", isPaymentPaused: async () => false,

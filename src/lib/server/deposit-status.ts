@@ -69,6 +69,10 @@ export async function readDepositStatus(userId: string, lookup: DepositLookup): 
             verifiedTerminal = "CONFIRMED";
             await settlePaymentWebhook({ providerRef: original.providerRef, status: "CONFIRMED", amount: verified.amount }, undefined, original);
           } else if (verified.status === "FAILED") {
+            // ⚠️ A DELIBERATE EXCEPTION to the lane rule that terminal decisions stay with the 30-minute sweep (S9 root
+            // review L8): an OWNED, rate-limited probe of a deposit at least 20 s old may record a SIGNED provider FAILED
+            // (`selcomVerifyOrder` maps only CANCELLED / USERCANCELLED / REJECTED to it). The card return already did this
+            // before S9; this extends it to mobile money. The polling lanes stay confirm-only.
             verifiedTerminal = "FAILED";
             await settlePaymentWebhook({ providerRef: original.providerRef, status: "FAILED" }, undefined, original);
           }
@@ -92,7 +96,8 @@ export async function readDepositStatus(userId: string, lookup: DepositLookup): 
       || ((txn.status === "FAILED" || txn.status === "REVERSED") && verifiedTerminal === "CONFIRMED");
     if (opposed && projection.state !== "REVIEW" && projection.state !== "HELD") return unknown(retryAfterSec);
     const wallet = await db.wallet.findByUserId(userId);
-    if (!wallet || wallet.currency !== "TZS" || !Number.isSafeInteger(wallet.balance) || wallet.balance < 0) return unknown(retryAfterSec);
+    // `Wallet.balance` is Decimal(18,2): a real, non-negative TZS amount is a valid wallet, whole shillings or not.
+    if (!wallet || wallet.currency !== "TZS" || !Number.isFinite(wallet.balance) || wallet.balance < 0) return unknown(retryAfterSec);
     return { view: { ...projection, balance: wallet.balance, retryAfterSec }, rateLimited: false, txn };
   } catch { return unknown(); }
 }
