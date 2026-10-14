@@ -54,13 +54,14 @@
  *     follows is printed with every route; neither is inferred from a blank digest alone.
  *       - LEGACY: data-dgst BAILOUT_TO_CLIENT_SIDE_RENDERING, next/dynamic's thrown BailoutToCSRError (Next before 16.4,
  *         or reactBrowserBailout off). A document without owner marks is read as it always was (count and digest); its
- *         fallbacks must be empty, as the overlays' loaders drew none before their marks. With marks, the owner rules
- *         below hold in full.
- *       - BROWSER BAILOUT: data-dgst "" — Next 16.4's React browser bailout (`reactBrowserBailout`, on by default), which
- *         is what production serves since da19e5a2. ⛔ Every other browser bailout writes the same EMPTY digest, so
- *         a blank digest is accepted ONLY inside a boundary whose whole fallback is exactly one OWNER MARK: the empty
- *         `<template data-csr-owner="…">` each overlay loader draws as its `loading` (lazy-overlays.tsx; it renders
- *         nothing and is replaced when the part's code arrives).
+ *         fallbacks must be empty, as the overlays' loaders drew none before their marks. ⚠️ Read that way it cannot
+ *         tell a foreign BailoutToCSRError with an empty fallback from an overlay at the same count — the pre-S8 reading's
+ *         limit, which the route's report names whenever it applies. With marks, the owner rules below hold in full.
+ *       - BROWSER BAILOUT: data-dgst "" — Next 16.4's React browser bailout (`reactBrowserBailout`, on by default; Next
+ *         16.4 since 5cad06f9), which is what production served at da19e5a2. ⛔ Every other browser bailout writes the
+ *         same EMPTY digest, so a blank digest is accepted ONLY inside a boundary whose whole fallback is exactly one
+ *         OWNER MARK: the empty `<template data-csr-owner="…">` each overlay loader draws as its `loading`
+ *         (lazy-overlays.tsx; it renders nothing and is replaced when the part's code arrives).
  *     THE OWNER RULES: every mark is some boundary's whole fallback (a mark anywhere else fails); every name is one of
  *     OVERLAY_OWNERS'; no name twice; and the names are exactly the census — chatbotEnabled true: chat-root and
  *     first-visit-primer; false: first-visit-primer alone — so a foreign boundary standing in for an overlay at the same
@@ -81,14 +82,16 @@
  *   chatbotEnabled false with two failing (and with one passing); another digest, a `$RX`, unread chatbotEnabled,
  *   a journey marker in an initial script, journey markup in the HTML and the home lazy module's marker off / each
  *   failing; the shell mark, the home lazy module's marker on / and a marker in a preload only each reported, not failed.
- *   Since S8 (M*, the profiles): owned browser-bailout documents passing (chatbot on and off, and legacy with marks),
- *   and failing on a blank stray template, an extra browser bailout, a boundary with no data-dgst, a wrong or 404
- *   digest, a `$RX`, a missing or unreadable chatbotEnabled, an owner twice (across boundaries or inside one), an unknown
- *   owner, an owner outside its boundary, a same-count foreign owner, an unowned blank digest (production's bytes before
- *   the marks), two profiles in one document, and the attested profile contradicted; and (O*, the source) the real
- *   lazy-overlays.tsx binding passing, and in-memory plants of it failing — an unrelated bail-out relabelled as an
- *   allowed owner (with and without the real mark removed), the marks swapped, a loader renamed, a mark dropped or
- *   added, either mount's condition changed and `ssr: false` dropped.
+ *   Since S8 (M*, N*, the profiles): owned browser-bailout documents passing (chatbot on and off, and legacy with
+ *   marks), attested and not; and failing on a blank stray template, an extra browser bailout, a boundary with no
+ *   data-dgst, a wrong or 404 digest, a `$RX`, a missing or unreadable chatbotEnabled, an owner twice (across boundaries
+ *   or inside one), an unknown owner, an owner outside its boundary, a same-count foreign owner, an unowned blank digest
+ *   (production's bytes before the marks), two profiles in one document, a mark beside other content or carrying
+ *   another attribute, a boundary that never closes, and the attested profile contradicted — each held to its exact
+ *   failure kinds and boundary rules; and (O*, the source) the real lazy-overlays.tsx binding passing, and in-memory
+ *   plants of it failing — an unrelated bail-out relabelled as an allowed owner (with and without the real mark
+ *   removed), the marks swapped, a loader renamed, a mark dropped or added, a third loader, either mount's condition
+ *   changed, `ssr: false` dropped, the file gone, and no src at all.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -126,7 +129,8 @@ export const OVERLAY_OWNERS = [
 /** A mark DRAWN in source: the attribute assigned in JSX (`data-csr-owner=`), or keyed in an object or a call (`"data-csr-owner":`, `…",`). */
 const OWNER_DRAWN = /data-csr-owner\s*(?:=|["']\s*[:,])/g;
 
-/** `s` with its comments blanked: // and /* … *\/, outside '…', "…" and `…` strings (JSX text holding `//` aside). */
+/** `s` with its comments blanked — // and /* … *\/, outside '…', "…" and `…` strings (JSX text holding `//` aside) — and
+ *  every line break kept, so a line number read in it is the source's. */
 export function decomment(s) {
   let out = "";
   for (let i = 0; i < s.length; ) {
@@ -140,8 +144,9 @@ export function decomment(s) {
       while (i < s.length && s[i] !== "\n") i++;
     } else if (c === "/" && s[i + 1] === "*") {
       const end = s.indexOf("*/", i + 2);
-      i = end < 0 ? s.length : end + 2;
-      out += " ";
+      const stop = end < 0 ? s.length : end + 2;
+      out += " " + s.slice(i, stop).replace(/[^\n]/g, "");
+      i = stop;
     } else {
       out += c;
       i++;
@@ -561,6 +566,7 @@ export async function readRoute(origin, route, { get, table = MARKERS, owners = 
   const attest = attestationOf(deploymentOf(init), build);
   if (attest.attested && profile !== null && profile !== attest.expect) fail("boundary-profile", `the page follows the ${profile} profile; the local build it is (${attest.text.replace(/^attested: /, "")}) writes ${attest.expect}`, "profile-attested");
   reports.push(`boundary profile: ${profile ? PROFILES[profile].name : "none (no client-rendered boundary)"}; ${attest.text}`);
+  if (profile === "legacy" && !owned.length) reports.push("⚠️ legacy without owner marks: a foreign BailoutToCSRError with an empty fallback cannot be told from an overlay at the same count (the pre-S8 reading's limit)");
   const initialPaths = new Set(init.map((s) => new URL(s.url).pathname.replace(/^\/_next\//, "")));
   const unloaded = [...chat.chunks].filter((c) => !initialPaths.has(c));
   reports.push(`the RSC data's client references name ${chat.chunks.size} chunk(s); ${unloaded.length} of them are not initial scripts`);
@@ -800,8 +806,8 @@ export async function selfTest({ root = process.cwd() } = {}) {
   const plants = [
     { id: "O2 an unrelated bail-out relabelled as an allowed owner (the Tiketi rail's loader, ssr: false, drawing chat-root) FAILS",
       world: ownerWorld([relabelled("chat-root")]), expect: `${RAIL} draws 1 owner mark` },
-    { id: "O3 the same, with the real chat bubble's mark removed — the bytes would read clean at the same count — FAILS",
-      world: ownerWorld([relabelled("chat-root"), [OVERLAY_SOURCE, CHAT_OPTS, "{ ssr: false }"]]), expect: `${RAIL} draws 1 owner mark` },
+    { id: "O3 the same, standing in for the chat bubble, whose mount is removed — the served bytes would read clean (two owned boundaries, chat-root and first-visit-primer) — FAILS",
+      world: ownerWorld([relabelled("chat-root"), [OVERLAY_SOURCE, CHAT_MOUNT, ""]]), expect: `${RAIL} draws 1 owner mark` },
     { id: "O4 the two marks swapped between the loaders FAILS", world: swapped, expect: `drawing "first-visit-primer"` },
     { id: "O5 the chat bubble's loader renamed (m.ChatRoot → m.ChatWidget) FAILS", world: ownerWorld([[OVERLAY_SOURCE, "m.ChatRoot)", "m.ChatWidget)"]]), expect: "0 loader(s)" },
     { id: "O6 the primer's mark dropped from its loader FAILS", world: ownerWorld([[OVERLAY_SOURCE, PRIMER_OPTS, "{ ssr: false }"]]), expect: "a dynamic( call that is not" },
