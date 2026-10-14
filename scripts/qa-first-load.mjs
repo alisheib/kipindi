@@ -339,7 +339,8 @@ function readManifest(file) {
       if (at <= 0 && !p.startsWith("src/")) continue;
       const src = p.slice(Math.max(at, 0));
       if (!clientModules.has(src)) clientModules.set(src, new Set());
-      for (const c of mod.chunks ?? []) if (String(c).endsWith(".js")) clientModules.get(src).add(normFile(c));
+      // Normalize deployment queries before recognizing a script; the manifest carries real ?dpl URLs.
+      for (const c of mod.chunks ?? []) { const f = normFile(c); if (f.endsWith(".js")) clientModules.get(src).add(f); }
     }
   }
   return { entries, clientModules };
@@ -692,6 +693,20 @@ export function selfTest({ table = MARKERS } = {}) {
     const hl = r10.routes.map((r) => r.rows.find((x) => x.row.id === "HomeLazy")?.j);
     check("C10 on / the home lazy module is a client reference in the first load, as expected", hl[0]?.verdict === "as expected" && hl[0].module.includes("in the first load"), hl[0] ? `${hl[0].module}; ${hl[0].mark}` : "PENDING");
     check("C10 on /markets it is not a client reference, as expected", hl[1]?.verdict === "as expected" && hl[1].module.startsWith("not"), hl[1]?.module);
+    // The same client-reference reader must keep query-bearing script URLs, without admitting numeric chunk ids.
+    const queryManifest = path.join(c, ".next/server/app/page_client-reference-manifest.js");
+    const queryOriginal = fs.readFileSync(queryManifest, "utf8");
+    const querySource = queryOriginal.replaceAll('/_next/static/chunks/home-lazy.js', '/_next/static/chunks/home-lazy.js?dpl=fixture');
+    fs.writeFileSync(queryManifest, querySource);
+    const queryRead = readAll(b10, ["/"], { table: withMarker, judgedRows: t10.rows });
+    check("C10 deployment-query module scripts keep the exact home client-reference verdict", querySource !== queryOriginal
+      && !queryRead.bad && queryRead.routes[0].reading.clientModules.get("src/components/journey/home/home-lazy.tsx").has("static/chunks/home-lazy.js"));
+    fs.writeFileSync(queryManifest, querySource.replaceAll('/_next/static/chunks/home-lazy.js?dpl=fixture', '/_next/static/chunks/part-JourneyTopBar.js?dpl=fixture'));
+    const queryWrong = readAll(b10, ["/"], { table: withMarker, judgedRows: t10.rows });
+    check("C10 a query-bearing lazy file keeps the module out of first load and fails the same home verdict", queryWrong.bad && queryWrong.routes[0].rows.find(x => x.row.id === "HomeLazy")?.j?.verdict === "UNEXPECTED"
+      && queryWrong.routes[0].reading.clientModules.get("src/components/journey/home/home-lazy.tsx").has("static/chunks/part-JourneyTopBar.js")
+      && !queryWrong.routes[0].reading.clientModules.get("src/components/journey/home/home-lazy.tsx").has("static/chunks/home-lazy.js"));
+    fs.writeFileSync(queryManifest, queryOriginal);
     const p10 = readRoute(b10, "/markets", "kp-home-lazy-fixture");
     const hp = judgeRow(withMarker.find((r) => r.id === "HomeLazy"), p10, true, true);
     check("C10 the home lazy marker planted into /markets' entry set is UNEXPECTED", hp.bad, `${hp.mark}; ${hp.verdict}`);

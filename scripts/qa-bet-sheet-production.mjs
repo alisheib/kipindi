@@ -46,11 +46,31 @@ function tapErrors(probe, { title, route }) {
 }
 /** Classify the real built action, never a request's route: the bell's read uses the same POST route as a bet. */
 function readOnlyAction(manifest, id) {
-  const workers = manifest?.node?.[id]?.workers;
-  if (!workers || typeof workers !== "object") return false;
+  const action = manifest?.node?.[id];
+  if (!action || typeof action !== "object" || Array.isArray(action)) return false;
+  const workers = action.workers;
+  if (!workers || typeof workers !== "object" || Array.isArray(workers)) return false;
   const entries = Object.values(workers);
-  return entries.length > 0 && entries.every(worker => worker?.exportedName === "fetchMyNotifications"
-    && worker?.filename === "src/app/_actions/notifications.ts");
+  if (entries.length === 0) return false;
+  const identity = entry => entry?.exportedName === "fetchMyNotifications"
+    && entry?.filename === "src/app/_actions/notifications.ts";
+  const hasIdentity = entry => Object.hasOwn(entry, "filename") || Object.hasOwn(entry, "exportedName");
+  // Next 16.4 records the source identity on the action, with moduleId/async-only worker rows.
+  // An incomplete or conflicting action identity must never fall back to a plausible worker name.
+  if (hasIdentity(action)) {
+    if (!identity(action)) return false;
+    return entries.every(worker => {
+      if (!worker || typeof worker !== "object" || Array.isArray(worker)) return false;
+      const moduleId = worker.moduleId;
+      const validModule = typeof moduleId === "string" ? moduleId.trim().length > 0
+        : typeof moduleId === "number" && Number.isSafeInteger(moduleId) && moduleId >= 0;
+      return Object.hasOwn(worker, "moduleId") && Object.hasOwn(worker, "async")
+        && validModule && typeof worker.async === "boolean"
+        && (!hasIdentity(worker) || identity(worker));
+    });
+  }
+  // Retain the older manifest's exact identity on every worker. Bare module IDs are unclassified here.
+  return entries.every(identity);
 }
 function controls() {
   const head = "a".repeat(40), local = { head, buildId: "one-build", deploymentId: head, sourceDirty: false };
@@ -59,6 +79,17 @@ function controls() {
   const expected = { title: good.heading, route: good.path };
   const actions = { node: { reader: { workers: { "app/page": { exportedName: "fetchMyNotifications", filename: "src/app/_actions/notifications.ts" } } },
     bet: { workers: { "app/page": { exportedName: "buyPositionAction", filename: "src/app/markets/actions.ts" } } } } };
+  const readerIdentity = { exportedName: "fetchMyNotifications", filename: "src/app/_actions/notifications.ts" };
+  const validWorker = { moduleId: "123", async: false };
+  const modern = (changes = {}, workers = { "app/page": validWorker }) => ({ node: { reader: { ...readerIdentity, workers, ...changes } } });
+  const misleadingTop = modern({ exportedName: "buyPositionAction" });
+  const conflictingWorker = modern({}, { "app/page": { ...validWorker, exportedName: "buyPositionAction", filename: readerIdentity.filename } });
+  const invalidModule = modern({}, { "app/page": { moduleId: null, async: false } });
+  const source = readOnlyAction.toString();
+  const mutate = (before, after) => {
+    if (source.split(before).length !== 2) throw new Error("Read-only action classifier mutation anchor changed");
+    return new Function(`return (${source.replace(before, after)});`)();
+  };
   return [
     ["production premise accepts only its declared matching build", premiseErrors(BASE, meta, local).length === 0],
     ["dev metadata cannot claim production PASS", premiseErrors(BASE, { ...meta, mode: "development" }, local).length > 0],
@@ -75,6 +106,40 @@ function controls() {
       && !readOnlyAction({ node: { reader: { workers: {} } } }, "reader")
       && !readOnlyAction({ node: { reader: { workers: { "app/page": { exportedName: "fetchMyNotifications", filename: "src/app/markets/actions.ts" } } } } }, "reader")
       && !readOnlyAction({ node: { reader: { workers: { ...actions.node.reader.workers, "app/live": actions.node.bet.workers["app/page"] } } } }, "reader")],
+    ["new manifest accepts the exact top-level notification identity with valid string/numeric module workers",
+      readOnlyAction(modern({}, { "app/page": validWorker, "app/help/page": { moduleId: 0, async: true } }), "reader")],
+    ["new manifest rejects missing, empty, array or invalid worker collections",
+      [undefined, null, {}, [], "workers"].every(workers => !readOnlyAction(modern({ workers }), "reader"))],
+    ["new manifest rejects malformed worker module IDs or async flags",
+      [null, undefined, [], "worker", {}, { moduleId: " ", async: false }, { moduleId: null, async: false },
+        { moduleId: -1, async: false }, { moduleId: Infinity, async: false }, { moduleId: 1.2, async: false },
+        { moduleId: "123" }, { moduleId: "123", async: "false" }]
+        .every(worker => !readOnlyAction(modern({}, { "app/page": worker }), "reader"))],
+    ["new manifest rejects conflicting or incomplete worker identities",
+      !readOnlyAction(conflictingWorker, "reader")
+      && !readOnlyAction(modern({}, { "app/page": { ...validWorker, filename: "src/app/markets/actions.ts" } }), "reader")
+      && !readOnlyAction(modern({}, { "app/page": { ...validWorker, exportedName: "fetchMyNotifications" } }), "reader")],
+    ["new manifest permits matching redundant worker identity",
+      readOnlyAction(modern({}, { "app/page": { ...validWorker, ...readerIdentity } }), "reader")],
+    ["misleading or incomplete top-level identity cannot use the legacy fallback",
+      [{ exportedName: "buyPositionAction" }, { filename: "src/app/markets/actions.ts" },
+        { filename: undefined }, { exportedName: undefined }]
+        .every(changes => !readOnlyAction(modern(changes, actions.node.reader.workers), "reader"))],
+    ["bare module worker metadata never classifies an unknown action as a reader",
+      !readOnlyAction({ node: { reader: { workers: { "app/page": validWorker } } } }, "reader")
+      && !readOnlyAction(modern(), "unknown")],
+    ["PLANTED CONTROL top-level source identity removal is caught by the same reader verdict",
+      mutate("if (!identity(action)) return false;", "")(misleadingTop, "reader") === true
+      && !readOnlyAction(misleadingTop, "reader")],
+    ["PLANTED CONTROL conflicting worker identity removal is caught by the same reader verdict",
+      mutate("&& (!hasIdentity(worker) || identity(worker))", "")(conflictingWorker, "reader") === true
+      && !readOnlyAction(conflictingWorker, "reader")],
+    ["PLANTED CONTROL nonempty-worker requirement removal is caught by the same reader verdict",
+      mutate("if (entries.length === 0) return false;", "")(modern({}, {}), "reader") === true
+      && !readOnlyAction(modern({}, {}), "reader")],
+    ["PLANTED CONTROL module-validity removal is caught by the same reader verdict",
+      mutate('validModule && typeof worker.async === "boolean"', 'true && typeof worker.async === "boolean"')(invalidModule, "reader") === true
+      && !readOnlyAction(invalidModule, "reader")],
   ];
 }
 
