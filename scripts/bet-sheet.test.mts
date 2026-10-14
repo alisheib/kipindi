@@ -119,12 +119,24 @@ function sheetLifecycle(source: string) {
     const viewportClosed = openMoved && ghostStayed && listeners.size === 0 && animationFrames.size === 0
       && writes.slice(-2).join() === "remove:--bsheet-keyboard-lift,remove:--bsheet-visible-height";
 
+    // A21 · an unlifted open (no keyboard) leaves the stylesheet's own fallbacks standing: it only removes, never writes
+    // an inherited custom property onto the panel — that restyled every element of the sheet inside the opening tap.
+    const quietWrites: string[] = [], quietKeys: boolean[] = [], quietListeners = new Map<string, () => void>();
+    const quietPanel = { style: { setProperty: (name: string, value: string) => quietWrites.push(`${name}:${value}`), removeProperty: (name: string) => quietWrites.push(`remove:${name}`) } };
+    const cleanupQuiet = runCallback(viewport.body, {
+      window: { visualViewport: { height: 640, offsetTop: 0, addEventListener: (name: string, callback: () => void) => quietListeners.set(name, callback), removeEventListener: (name: string) => quietListeners.delete(name) }, innerWidth: 360, innerHeight: 640 },
+      openRef: { current: true }, stakeFocused: false, shellRef: { current: { closest: () => quietPanel } }, setKeyboard: (value: boolean) => quietKeys.push(value),
+      revealFocusedStake: () => {}, requestAnimationFrame: () => 1, cancelAnimationFrame: () => {},
+    })();
+    const unliftedQuiet = quietKeys.join() === "false" && quietWrites.join() === "remove:--bsheet-keyboard-lift,remove:--bsheet-visible-height";
+    if (typeof cleanupQuiet === "function") cleanupQuiet();
+
     const live: string[] = [];
     runCallback(announcement.body, { open: false, setLive: (value: string) => live.push(value) })();
     const liveClosed = /\[open, props\.frame,/.test(announcement.dependencies) && live.length === 1 && live[0] === "";
-    return { receiptCancelled, viewportClosed, liveClosed };
+    return { receiptCancelled, viewportClosed, liveClosed, unliftedQuiet };
   } catch {
-    return { receiptCancelled: false, viewportClosed: false, liveClosed: false };
+    return { receiptCancelled: false, viewportClosed: false, liveClosed: false, unliftedQuiet: false };
   }
 }
 
@@ -870,6 +882,9 @@ function run(impl: Impl, log: (l: string) => void): string[] {
       && /open\?: boolean/.test(sheetSrc) && sheetSrc.includes("const open = props.open ?? true;")
       && sheetSrc.includes("openRef.current = open;") && /<Modal open=\{open\}/.test(sheetSrc)
       && /\{open && <p className="sr-only" aria-live="polite"/.test(sheetSrc), j(lifecycle));
+  ok("8.viewport-quiet · an unlifted sheet only removes its keyboard properties: no inherited custom property is written onto the panel, which restyled the whole sheet inside the opening tap (A21)",
+    lifecycle.unliftedQuiet && /translate: 0 calc\(-1 \* var\(--bsheet-keyboard-lift, 0px\)\)/.test(impl.src.css)
+      && /var\(--bsheet-visible-height, 100dvh\)/.test(impl.src.css), j(lifecycle));
   ok("9.tokens · inset neutral estimate, standard figure ink, kit gold commit, metal deposit row with dark rail ink, info callouts, forced-colours-safe selected outline and one capped scrolling middle",
     /\.kp-bsheet__estimate \{[^}]*background: var\(--bg-inset\)/.test(impl.src.css)
       && /\.kp-bsheet__estimate-figure[^}]*color: var\(--text\)/.test(impl.src.css)
@@ -880,12 +895,20 @@ function run(impl: Impl, log: (l: string) => void): string[] {
       && /\.kp-bsheet__scroll > \* \{[^}]*flex-shrink: 0/.test(impl.src.css)
       && /\.kp-bsheet__deposit \{[^}]*padding-block: var\(--sp-2\)/.test(impl.src.css)
       && /\.kp-bsheet \{[^}]*max-height: min\(calc\(100dvh - var\(--sp-12\)\)/.test(impl.src.css));
-  ok("9.figure-fit · a whole estimate fits through existing type rungs, remeasures on container resize and font arrival, and preserves the xl phone field above the iOS zoom minimum",
-    partsSrc.includes('["--type-h1", "--type-h2", "--type-h3", "--type-h4"]')
-      && partsSrc.includes("probe.getBoundingClientRect().width <= element.clientWidth") && partsSrc.includes("new ResizeObserver(onEstimateResize)")
-      && partsSrc.includes("if (width === lastWidth) return;") && partsSrc.includes("probe.remove()")
-      && partsSrc.includes('transitionProperty: "none", animation: "none"')
-      && partsSrc.includes('document.fonts.addEventListener("loadingdone", fitEstimateFigure)')
+  // A21 (2026-10-14): the figure is measured IN PLACE — its own text through a Range against its own drawn box, the rung
+  // written before the first read — never with a probe appended to <body> (two whole-sheet restyles inside the tap).
+  const figure = partsSrc.slice(partsSrc.indexOf("export function EstimateFigure"), partsSrc.indexOf("export function ChosenSide"));
+  const figureRule = /\.kp-bsheet__estimate-figure \{([^}]*)\}/.exec(impl.src.css)?.[1] ?? "";
+  const rungWrite = figure.indexOf("if (element.style.fontSize !== fontSize) element.style.fontSize = fontSize;");
+  const roomRead = figure.indexOf("const room = element.getBoundingClientRect().width;");
+  ok("9.figure-fit · a whole estimate fits through existing type rungs, measured in place against its drawn box (no body probe), remeasures on container resize and font arrival, and preserves the xl phone field above the iOS zoom minimum",
+    partsSrc.includes('const FIGURE_RUNGS = ["--type-h1", "--type-h2", "--type-h3", "--type-h4"] as const;')
+      && figure.includes("for (const rung of FIGURE_RUNGS)") && figure.includes("text.selectNodeContents(element);")
+      && rungWrite > 0 && roomRead > rungWrite && figure.includes("if (text.getBoundingClientRect().width <= room) break;")
+      && !/document\.body|appendChild|createElement|getComputedStyle/.test(figure)
+      && figureRule.includes("font-size: var(--type-h1)") && !/padding|border|transition|animation/.test(figureRule)
+      && figure.includes("new ResizeObserver(onEstimateResize)") && figure.includes("if (width === lastWidth) return;")
+      && figure.includes('document.fonts.addEventListener("loadingdone", fitEstimateFigure)')
       && /input\[data-input-size="xl"\][^}]*font-size: var\(--type-h2\) !important/.test(impl.src.css));
   return failed;
 }
@@ -946,9 +969,15 @@ if (!PROVE_RED) {
     { name: "a short viewport shrinks multiline controls across their edges", expect: /^9\.tokens /, impl: withSrc({ css: SOURCES.css.replace('.kp-bsheet__scroll > * { flex-shrink: 0; }', '.kp-bsheet__scroll > * { flex-shrink: 1; }') }) },
     { name: "the deposit door loses its vertical reading space", expect: /^9\.tokens /, impl: withSrc({ css: SOURCES.css.replace(/(\.kp-bsheet__deposit \{[^}]*); padding-block: var\(--sp-2\)/, '$1') }) },
     { name: "a late font no longer remeasures the whole estimate", expect: /^9\.figure-fit /, impl: withSrc({ parts: SOURCES.parts.replace('document.fonts.addEventListener("loadingdone", fitEstimateFigure)', 'document.fonts.addEventListener("loadingdone", () => {})') }) },
-    { name: "the figure's fitting loop ignores its rendered width", expect: /^9\.figure-fit /, impl: withSrc({ parts: SOURCES.parts.replace("probe.getBoundingClientRect().width <= element.clientWidth", "true") }) },
+    { name: "the figure's fitting loop ignores its rendered width", expect: /^9\.figure-fit /, impl: withSrc({ parts: SOURCES.parts.replace("if (text.getBoundingClientRect().width <= room) break;", "break;") }) },
     { name: "a height change retriggers the figure resize loop", expect: /^9\.figure-fit /, impl: withSrc({ parts: SOURCES.parts.replace("if (width === lastWidth) return;", "") }) },
-    { name: "reduced-motion transitions corrupt the synchronous figure measurement", expect: /^9\.figure-fit /, impl: withSrc({ parts: SOURCES.parts.replace('transitionProperty: "none", animation: "none"', '') }) },
+    { name: "a body probe returns to the figure's fit (two whole-sheet restyles inside the tap)", expect: /^9\.figure-fit /, impl: withSrc({ parts: SOURCES.parts.replace("text.selectNodeContents(element);", 'text.selectNodeContents(element); document.body.appendChild(document.createElement("span")).remove();') }) },
+    { name: "the room read from layout while the text is read as drawn (biased by the entrance lift's scale)", expect: /^9\.figure-fit /, impl: withSrc({ parts: SOURCES.parts.replace("const room = element.getBoundingClientRect().width;", "const room = element.clientWidth;") }) },
+    { name: "the rung written after the first read (an extra style pass inside the tap)", expect: /^9\.figure-fit /, impl: withSrc({ parts: SOURCES.parts.replace("if (element.style.fontSize !== fontSize) element.style.fontSize = fontSize;", "").replace("const room = element.getBoundingClientRect().width;", "const room = element.getBoundingClientRect().width; if (element.style.fontSize !== fontSize) element.style.fontSize = fontSize;") }) },
+    { name: "padding on the figure shrinks the room its drawn box reports", expect: /^9\.figure-fit /, impl: withSrc({ css: SOURCES.css.replace(".kp-bsheet__estimate-figure { min-width: 0;", ".kp-bsheet__estimate-figure { padding-inline: var(--sp-2); min-width: 0;") }) },
+    { name: "a size transition on the figure corrupts the in-place measurement", expect: /^9\.figure-fit /, impl: withSrc({ css: SOURCES.css.replace(".kp-bsheet__estimate-figure { min-width: 0;", ".kp-bsheet__estimate-figure { transition: font-size var(--t-quick); min-width: 0;") }) },
+    { name: "an unlifted open writes the keyboard lift onto the panel (a whole-sheet restyle inside the tap)", expect: /^8\.viewport-quiet /, impl: withSrc({ sheet: SOURCES.sheet.replace('} else {\n        panel?.style.removeProperty("--bsheet-keyboard-lift");', '} else {\n        panel?.style.setProperty("--bsheet-keyboard-lift", "0px");') }) },
+    { name: "the panel's lift loses its stylesheet fallback", expect: /^8\.viewport-quiet /, impl: withSrc({ css: SOURCES.css.replace("var(--bsheet-keyboard-lift, 0px)", "var(--bsheet-keyboard-lift)") }) },
     { name: "the iOS zoom rule shrinks the xl stake back to sixteen", expect: /^9\.figure-fit /, impl: withSrc({ css: SOURCES.css.replace('input[data-input-size="xl"]:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]) { font-size: var(--type-h2) !important; }', '') }) },
     // §1
     { name: "the sheet's figure from a second formula (stake × the card's multiple)", expect: /^1\.deck /,

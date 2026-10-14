@@ -211,8 +211,15 @@ export function BetSheet(props: BetSheetProps) {
       if (!openRef.current) return;
       const lifted = !!viewport && stakeFocused && window.innerWidth < 1024 && viewport.height < window.innerHeight;
       setKeyboard(lifted);
-      panel?.style.setProperty("--bsheet-keyboard-lift", `${lifted ? Math.max(0, window.innerHeight - viewport!.height - viewport!.offsetTop) : 0}px`);
-      if (lifted) panel?.style.setProperty("--bsheet-visible-height", `${viewport!.height}px`); else panel?.style.removeProperty("--bsheet-visible-height");
+      // Unlifted is the stylesheet's own fallback (0px, 100dvh): remove, never write "0px". An inherited custom property
+      // written onto the panel restyles every element under it, and the opening tap paid for that before its first frame (A21).
+      if (lifted) {
+        panel?.style.setProperty("--bsheet-keyboard-lift", `${Math.max(0, window.innerHeight - viewport!.height - viewport!.offsetTop)}px`);
+        panel?.style.setProperty("--bsheet-visible-height", `${viewport!.height}px`);
+      } else {
+        panel?.style.removeProperty("--bsheet-keyboard-lift");
+        panel?.style.removeProperty("--bsheet-visible-height");
+      }
       if (revealFrame !== null) cancelAnimationFrame(revealFrame);
       revealFrame = lifted ? requestAnimationFrame(revealFocusedStake) : null;
     };

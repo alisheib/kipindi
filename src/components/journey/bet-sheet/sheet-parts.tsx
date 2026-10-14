@@ -48,31 +48,35 @@ export function SheetSentence({ t, locale, line, nowMs }: { t: Dict; locale: Loc
 
 type Parts = { t: Dict; locale: Locale; seed: SheetSeed; side: SheetSide; frame: SheetFrame; nowMs: number };
 
-/** Long real payouts stay whole: fit by the existing type rungs, measured before paint, never by rounding money. */
+/** The figure's type rungs, largest first; the first is `.kp-bsheet__estimate-figure`'s own size. */
+const FIGURE_RUNGS = ["--type-h1", "--type-h2", "--type-h3", "--type-h4"] as const;
+
+/** Long real payouts stay whole: fit by the existing type rungs, measured before paint, never by rounding money.
+ *  ⭐ MEASURED IN PLACE (A21, 2026-10-14) — the figure's own text through a Range, against its own box, both as drawn: the
+ *  sheet's entrance lift scales every box under the panel alike, so the comparison is the layout one. ⛔ Never a probe
+ *  appended to <body>: adding and removing a body child restyled the whole sheet, 307 elements, twice inside the tap that
+ *  opens it (da19e5a21's trace: ~45 ms of a 265 ms first frame at 4× CPU). The rung is written before the first read, so
+ *  a figure that fits its first rung costs no style pass of its own; a smaller rung restyles this one element. */
 export function EstimateFigure({ payout }: { payout: number | null }) {
   const ref = useRef<HTMLParagraphElement>(null);
   useLayoutEffect(() => {
     const element = ref.current;
     if (!element) return;
     let active = true;
+    const text = document.createRange();
     const fitEstimateFigure = () => {
-      if (!active || element.clientWidth === 0) return;
-      const probe = document.createElement("span"), paint = getComputedStyle(element);
-      probe.setAttribute("aria-hidden", "true");
-      probe.textContent = element.textContent;
-      Object.assign(probe.style, { position: "fixed", visibility: "hidden", whiteSpace: "pre", transitionProperty: "none", animation: "none", fontFamily: paint.fontFamily, fontWeight: paint.fontWeight, fontStyle: paint.fontStyle, letterSpacing: paint.letterSpacing });
-      document.body.appendChild(probe);
-      let chosen = "--type-h4";
-      try {
-        for (const rung of ["--type-h1", "--type-h2", "--type-h3", "--type-h4"]) {
-          probe.style.fontSize = `var(${rung})`;
-          chosen = rung;
-          if (probe.getBoundingClientRect().width <= element.clientWidth) break;
-        }
-      } finally { probe.remove(); }
-      const fontSize = `var(${chosen})`;
-      if (element.style.fontSize !== fontSize) element.style.fontSize = fontSize;
+      if (!active) return;
+      text.selectNodeContents(element);
+      for (const rung of FIGURE_RUNGS) {
+        const fontSize = `var(${rung})`;
+        if (element.style.fontSize !== fontSize) element.style.fontSize = fontSize;
+        // The figure has no padding or border, so its drawn box is the room its text may fill.
+        const room = element.getBoundingClientRect().width;
+        if (room === 0) return;
+        if (text.getBoundingClientRect().width <= room) break;
+      }
     };
+    fitEstimateFigure();
     let lastWidth = element.clientWidth;
     const onEstimateResize = () => {
       const width = element.clientWidth;
@@ -80,7 +84,6 @@ export function EstimateFigure({ payout }: { payout: number | null }) {
       lastWidth = width;
       fitEstimateFigure();
     };
-    fitEstimateFigure();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(onEstimateResize);
     if (element.parentElement) observer?.observe(element.parentElement);
     document.fonts.addEventListener("loadingdone", fitEstimateFigure);
