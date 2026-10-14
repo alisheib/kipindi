@@ -1003,20 +1003,25 @@ export function depositFailedHtml({ amount, method, reference, gatewayRef, reaso
  * reads as a platform that kept it. We state plainly that it was not credited
  * and that it is held for return, and we deliberately do NOT invite them
  * to deposit again: there is no CTA into the deposit flow on this one.
+ *
+ * ⛔ The eyebrow, heading and Status row carry the owner's label — a held deposit reads "Reversed" on every player
+ * surface (docs/COMPLIANCE-DECISIONS.md, 2026-10-07, item 6). The sentences say what is true while the money waits: no
+ * claim that it was "returned to the account it came from" and no delivery deadline (the same entry records that letter,
+ * sent while the money was still held, as untrue).
  */
 export function depositReversedHtml({ amount, method, reference, gatewayRef }: {
   amount: number; method: string; reference: string; gatewayRef?: string | null;
 }): string {
   return wrap(`
-    ${eyebrow("Deposit held for return", "Amana imeshikiliwa ili irudishwe")}
-    ${heading("This deposit is held for return")}
+    ${eyebrow("Deposit reversed", "Amana imerudishwa")}
+    ${heading("This deposit was reversed")}
     ${subtitle("Your account is self-excluded or in a cooling-off period, so these funds were not added. The money is held for return; delivery of a return has not been confirmed. Contact support using the references below.")}
     ${subtitleSw("Akaunti yako imejifungia au iko katika kipindi cha kupumzika, hivyo hatukuweza kuongeza pesa hizi. Pesa zinashikiliwa ili zirudishwe; hatujathibitisha kuwa marejesho yamekufikia. Wasiliana na usaidizi ukitumia kumbukumbu zilizo hapa chini.")}
     ${detailRows([
       { label: "Amount", value: formatTzs(amount) },
       { label: "Method", value: method },
       ...depositRefRows(reference, gatewayRef),
-      { label: "Status", value: "Held for return" },
+      { label: "Status", value: "Reversed" },
     ])}
     ${subtitle("Your exclusion stays in place. Contact support with these references to check the return.")}
     ${subtitleSw("Kujifungia kwako kunaendelea. Wasiliana na usaidizi ukitumia kumbukumbu hizi ili kufuatilia marejesho.")}

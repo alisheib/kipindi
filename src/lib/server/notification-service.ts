@@ -788,12 +788,16 @@ export function notifyDeposit(
   }
 
   // REVERSED — arrived while the account was self-excluded / cooling off.
+  // ⛔ THE TITLE IS THE OWNER'S LABEL: a deposit held for return reads "Reversed" on every player surface, as its notice and
+  // email do (docs/COMPLIANCE-DECISIONS.md, 2026-10-07, item 6) — in the status lexicon's words (`txnStatusReversed`). The
+  // BODY says what is true while it waits: not added, held for return, no claim that a return has been delivered (the same
+  // entry records "returned to the account it came from", sent while the money was still held, as untrue).
   return notify({
     userId,
     kind: "DEPOSIT",
-    titleEn: `Deposit held for return · ${amt}`,
-    titleSw: `Amana imeshikiliwa ili irudishwe · ${amt}`,
-    titleZh: `充值暂扣待退还 · ${amt}`,
+    titleEn: `Deposit reversed · ${amt}`,
+    titleSw: `Amana imerudishwa · ${amt}`,
+    titleZh: `充值已退回 · ${amt}`,
     bodyEn: "Your account could not accept this deposit, so it was not added. The money is held for return; contact support using this receipt.",
     bodySw: "Akaunti yako haikuweza kupokea amana hii, hivyo haikuongezwa. Pesa zinashikiliwa ili zirudishwe; wasiliana na usaidizi ukitumia risiti hii.",
     bodyZh: "您的账户当时无法接收此笔充值，款项未入账，现正保留待退还。请凭此收据联系支持。",

@@ -548,14 +548,22 @@ async function run(src = sources): Promise<Check[]> {
   ok("review.bell-copy", reviewNotice.kind === "DEPOSIT" && reviewNotice.href === `/wallet/receipt/${own.id}`
     && reviewNotice.bodyEn.includes("Don't pay again") && reviewNotice.bodySw.includes("Usilipe tena") && reviewNotice.bodyZh.includes("请勿重复支付")
     && !JSON.stringify(reviewNotice).includes(Review.DEPOSIT_STATUS_REVIEW_MARK));
+  // M2 (S9 root review): the LABEL of a held deposit is the owner's — "Reversed" on every player surface, as its notice and
+  // email do (COMPLIANCE-DECISIONS 2026-10-07 item 6), in the status lexicon's words. The BODIES say what is true while the
+  // money waits and claim no delivered return (the same entry records that claim, sent while the money was held, as untrue).
   const heldNotice = notify(me, { status: "REVERSED", amount: 5000, provider: "M-Pesa", txnId: own.id });
   ok("rg.bell-does-not-claim-refund", heldNotice.bodyEn.includes("held for return") && heldNotice.bodySw.includes("zinashikiliwa")
-    && heldNotice.bodyZh.includes("待退还") && !/has been returned|imerudishwa|已(?:原路)?退回/.test(JSON.stringify(heldNotice)));
+    && heldNotice.bodyZh.includes("待退还") && !/has been returned|imerudishwa|已(?:原路)?退回/.test(heldNotice.bodyEn + heldNotice.bodySw + heldNotice.bodyZh));
+  ok("rg.bell-title-follows-ruling", heldNotice.titleEn.startsWith("Deposit reversed · ") && heldNotice.titleSw.startsWith("Amana imerudishwa · ")
+    && heldNotice.titleZh.startsWith("充值已退回 · "));
   const dictionary = compile(src[files[11]], {}).dict;
+  const RULING_CARD_TITLE: Record<string, string> = { en: "Payment reversed", sw: "Malipo yamerudishwa", zh: "付款已退回" };
+  const HELD_PHRASE: Record<string, string> = { en: "held for return", sw: "zinashikiliwa ili zirudishwe", zh: "待退还" };
   for (const locale of ["en", "sw", "zh"]) {
     const words = dictionary[locale].wallet;
-    ok(`rg.card-copy.${locale}`, !/has been returned|yamerudishwa|已退回/.test(words.returnReversedTitle + words.returnReversedBody)
-      && (locale === "en" ? words.returnReversedTitle.includes("held for return") : locale === "sw" ? words.returnReversedTitle.includes("yanashikiliwa") : words.returnReversedTitle.includes("待退还")));
+    ok(`rg.card-copy.${locale}`, words.returnReversedBody.includes(HELD_PHRASE[locale])
+      && !/has been returned|goes back to the card|yamerudishwa|Yanarudishwa|已退回|将退回/.test(words.returnReversedBody));
+    ok(`rg.card-title.${locale}`, words.returnReversedTitle === RULING_CARD_TITLE[locale]);
   }
   // Execute the actual template body with controlled chrome helpers; the notification suite separately renders its full HTML.
   const heldMail = new Function("wrap", "eyebrow", "heading", "subtitle", "subtitleSw", "detailRows", "depositRefRows", "refNote", "formatTzs",
@@ -563,7 +571,9 @@ async function run(src = sources): Promise<Check[]> {
       (body: string) => body, (en: string, sw: string) => en + " " + sw, (text: string) => text, (text: string) => text, (text: string) => text,
       (rows: any[]) => JSON.stringify(rows), (reference: string, gatewayRef: string) => [{ reference, gatewayRef }], () => "", formatTzs)({ amount: 5000, method: "M-Pesa", reference: own.id, gatewayRef: own.providerRef });
   ok("rg.mail-no-delivery-promise", heldMail.includes("held for return") && heldMail.includes("zinashikiliwa ili zirudishwe")
-    && heldMail.includes("has not been confirmed") && !/returned to the account it came from|Amana imerudishwa|5 working days|siku 5 za kazi/.test(heldMail));
+    && heldMail.includes("has not been confirmed") && !/returned to the account it came from|Amana imerudishwa kwenye|5 working days|siku 5 za kazi/.test(heldMail));
+  ok("rg.mail-label-follows-ruling", heldMail.includes("Deposit reversed Amana imerudishwa") && heldMail.includes("This deposit was reversed")
+    && heldMail.includes('"label":"Status","value":"Reversed"') && !/Deposit held for return|This deposit is held for return|Held for return/.test(heldMail));
   const missing = await s.read(me, { kind: "txn-id", value: "absent" });
   ok("scope.missing", missing.view.state === "UNKNOWN" && !missing.txn && s.seen.verifies.length === 0);
   for (const [name, caller, patch] of [["owner", other, {}], ["type", me, { type: "WITHDRAWAL", amount: -5000 }],

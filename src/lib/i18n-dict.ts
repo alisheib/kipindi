@@ -1366,7 +1366,7 @@ export const dict = {
       returnFailedBody: "Nothing was taken from your card.",
       // 2026-10-07 · the card paid, but the account could not take money (a break or an exclusion): held for return.
       // Never "nothing was taken" — something was, and it goes back. Never names the reason (the quiet rule).
-      returnReversedTitle: "Payment held for return",
+      returnReversedTitle: "Payment reversed",
       returnReversedBody: "Your account could not accept this deposit, so it was not added to your wallet. The money is held for return; contact support using this receipt.",
       returnReviewTitle: "Payment under review",
       returnReviewBody: "We need to review this payment's result. Don't pay again. Open the receipt for its references, or contact support.",
@@ -4281,7 +4281,7 @@ export const dict = {
       returnPendingBody: "Benki yako bado haijamaliza kuthibitisha hili.",
       returnFailedTitle: "Malipo hayakukamilika",
       returnFailedBody: "Hakuna kilichotolewa kwenye kadi yako.",
-      returnReversedTitle: "Malipo yanashikiliwa ili yarudishwe",
+      returnReversedTitle: "Malipo yamerudishwa",
       returnReversedBody: "Akaunti yako haikuweza kupokea amana hii, hivyo haikuongezwa kwenye pochi yako. Pesa zinashikiliwa ili zirudishwe; wasiliana na usaidizi ukitumia risiti hii.",
       returnReviewTitle: "Malipo yanakaguliwa",
       returnReviewBody: "Tunahitaji kukagua matokeo ya malipo haya. Usilipe tena. Fungua risiti kuona kumbukumbu zake, au wasiliana na usaidizi.",
@@ -6759,7 +6759,7 @@ export const dict = {
       returnPendingBody: "您的银行尚未完成确认。",
       returnFailedTitle: "付款未完成",
       returnFailedBody: "未从您的银行卡扣款。",
-      returnReversedTitle: "付款暂扣待退还",
+      returnReversedTitle: "付款已退回",
       returnReversedBody: "您的账户当时无法接收此笔充值，款项未计入钱包，现正保留待退还。请凭此收据联系支持。",
       returnReviewTitle: "付款待核查",
       returnReviewBody: "我们需要核查此笔付款的结果。请勿重复支付。可打开凭据查看参考编号，或联系支持。",

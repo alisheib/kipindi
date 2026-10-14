@@ -22,8 +22,9 @@
  *     as a foreign one. It used to render anything the viewer owned and name the type by the SIGN of the amount, so a
  *     bonus credit read "Deposit" and a house fee "Withdrawal" (finding S10-02).
  *   · THE STATUS chip takes its tone from `status-tone.ts` (§B11), as the list's does — it carried a file-local map in
- *     the BETTING inks (§B2a). A held deposit retains the legacy "Reversed" label (`presentedStatus`), with held copy;
- *     that label and an officer's rejection date do not prove delivery of an outbound refund.
+ *     the BETTING inks (§B2a). A deposit held for return reads "Reversed" (`presentedStatus`), as its notice and email do
+ *     (owner ruling, COMPLIANCE-DECISIONS 2026-10-07 item 6); its callout says the money is held for return, and the
+ *     officer's rejection date is not shown as a completion, because neither proves an outbound refund was delivered.
  *   · THE METHOD reads "Kadi" / "银行卡" for a card (`methodLabel`) — brand names stay brand names, words are translated —
  *     and the subtitle is "Deposit · M-Pesa" in the reader's language, not the stored English description.
  *   · DATES are East Africa Time in the reader's month words (`formatEatDateTime`), the list's own.
