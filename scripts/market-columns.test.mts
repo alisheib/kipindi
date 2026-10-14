@@ -33,12 +33,27 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 import { decomment } from "./lib/decomment.mts";
+import ts from "typescript";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
 
 const page = decomment(readFileSync(join(ROOT, "src/app/markets/[id]/page.tsx"), "utf8"));
+function asideClasses(source: string): string[] {
+  const file = ts.createSourceFile("question.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const result: string[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isJsxOpeningElement(node) && node.tagName.getText(file) === "aside") {
+      const attr = node.attributes.properties.find(p => ts.isJsxAttribute(p) && p.name.getText(file) === "className") as ts.JsxAttribute | undefined;
+      const read = (n: ts.Node | undefined) => { if (n && ts.isStringLiteral(n)) result.push(n.text); else if (n && ts.isConditionalExpression(n)) { read(n.whenTrue); read(n.whenFalse); } };
+      read(attr?.initializer && ts.isJsxExpression(attr.initializer) ? attr.initializer.expression : attr?.initializer);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(file); return result;
+}
+const railClasses = asideClasses(page);
 
 // ── 1 · The grid still has the shape the page is built on ───────────────────
 {
@@ -63,7 +78,7 @@ const page = decomment(readFileSync(join(ROOT, "src/app/markets/[id]/page.tsx"),
   ok("2: ⛔ the left column no longer spans both rows", !/lg:row-span-2/.test(page));
   // 2026-09-14 — the sticky panel sits INSIDE a row-1 wrapper, so it can never slide down over row 2 (it covered the
   // third "Similar markets" card at 1280).
-  ok("2: the bet widget sticks ONLY within row 1", /lg:col-start-2 lg:row-start-1 lg:self-stretch">\s*<aside className="[^"]*lg:sticky/.test(page));
+  ok("2: the bet widget sticks ONLY within row 1", /lg:col-start-2 lg:row-start-1 lg:self-stretch">\s*<aside className=/.test(page) && railClasses.length > 0 && railClasses.every(c => c.split(" ").includes("lg:sticky")));
 }
 
 // ── 3 · The cards get the shared grid, not a forced single column ───────────
@@ -96,7 +111,9 @@ const page = decomment(readFileSync(join(ROOT, "src/app/markets/[id]/page.tsx"),
   const asideAt = page.indexOf("<aside ");
   const aside = asideAt < 0 ? "" : page.slice(asideAt, page.indexOf(">", asideAt));
   ok("5: ⭐ the bet column spaces its cards with a flex gap, which an out-of-flow heading cannot take a rung of",
-     /className="flex flex-col gap-3 lg:sticky/.test(aside) && !/space-y-/.test(aside), aside.slice(0, 90));
+     railClasses.length > 0 && railClasses.every(c => ["flex-col", "gap-3", "lg:sticky"].every(token => c.split(" ").includes(token)) && !/space-y-/.test(c)), aside.slice(0, 90));
+  ok("5: CONTROL — either ternary arm restored to sibling margins fails the same parsed geometry", railClasses.length === 2
+    && [0, 1].every(which => { const planted = asideClasses(page.replace(railClasses[which], railClasses[which].replace("gap-3", "space-y-3"))); return planted.some(c => /space-y-/.test(c)); }));
   // The heading the fix is about must still be there, first in its branch — or the check above guards nothing.
   ok("5: ⭐ …and the signed-in branch still opens on the D40 sr-only heading (the premise)",
      /<h2 id=\{BET_PANEL_HEADING\} className="sr-only">/.test(page));

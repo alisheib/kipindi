@@ -19,18 +19,20 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = resolve(process.argv[2] ?? join(tmpdir(), `qa-bet-sheet-${Date.now()}`));
 const rel = relative(ROOT, OUT);
 if (!rel.startsWith("..") && !isAbsolute(rel)) { console.error("REFUSED: output must be outside the repository"); process.exit(2); }
-const SECTIONS = ["controls", "v20", "once", "host", "low", "matrix", "doors", "tap"];
+const SECTIONS = ["controls", "v20", "keyboard", "once", "lock", "host", "lifecycle", "low", "matrix", "cooling", "doors", "tap"];
 const ONLY = (process.env.KP_ONLY ?? "").split(",").filter(Boolean);
 if (ONLY.some(s => !SECTIONS.includes(s))) { console.error(`REFUSED: KP_ONLY must name ${SECTIONS.join(",")}`); process.exit(2); }
 const run = s => !ONLY.length || ONLY.includes(s);
 const LOCALES = (process.env.KP_LOCALES ?? "sw,en,zh").split(",");
-const WIDTHS = (process.env.KP_WIDTHS ?? "360,390,1280").split(",").map(Number);
-if (LOCALES.some(locale => !["sw", "en", "zh"].includes(locale)) || WIDTHS.some(width => ![360, 390, 1280].includes(width))) { console.error("REFUSED: invalid locale/width selection"); process.exit(2); }
-const VIEWPORTS = WIDTHS.map(width => ({ width, height: width === 360 ? 640 : width === 390 ? 844 : 900 }));
+const WIDTHS = (process.env.KP_WIDTHS ?? "320,360,390,1280").split(",").map(Number);
+if (LOCALES.some(locale => !["sw", "en", "zh"].includes(locale)) || WIDTHS.some(width => ![320, 360, 390, 1280].includes(width))) { console.error("REFUSED: invalid locale/width selection"); process.exit(2); }
+const VIEWPORTS = WIDTHS.map(width => ({ width, height: width <= 360 ? 640 : width === 390 ? 844 : 900 }));
+const RELOADS = Number(process.env.KP_RELOADS ?? "1");
+if (!Number.isInteger(RELOADS) || RELOADS < 1 || RELOADS > 3) { console.error("REFUSED: KP_RELOADS must be1–3"); process.exit(2); }
 const pre = await premise(BASE);
 if (pre.refuse || pre.health?.security?.adminTotp !== "DISABLED") { console.error(`REFUSED: ${pre.refuse ?? "local preview needs DISABLE_ADMIN_TOTP=true"}`); process.exit(2); }
 mkdirSync(OUT, { recursive: true });
-const results = [], consoleRows = [];
+const results = [], consoleRows = [], observations = [];
 let tiles = 0;
 function result(label, state, detail = "") { results.push({ label, state, detail }); console.log(`${state} ${label}${detail ? ` — ${detail}` : ""}`); }
 const ok = (label, test, detail = "") => result(label, test ? "PASS" : "FAIL", detail);
@@ -54,15 +56,19 @@ await post(admin, "reset-rate-limits");
 if (!catalogue?.ids?.length) { console.error("REFUSED: seeded board has no market"); await browser.close(); process.exit(2); }
 let SESSION = await demoSession(browser, BASE);
 const contexts = new Set();
-async function context(locale = "en", viewport = { width: 390, height: 844 }, { preview = true, signedIn = true } = {}) {
-  const ctx = await browser.newContext({ viewport }); contexts.add(ctx);
+async function context(locale = "en", viewport = { width: 390, height: 844 }, { preview = true, signedIn = true, controlledNetwork = false } = {}) {
+  const ctx = await browser.newContext({ viewport, ...(controlledNetwork ? { serviceWorkers: "block" } : {}) }); contexts.add(ctx);
   await ctx.addCookies([{ name: LOCALE_COOKIE, value: locale, url: BASE }, ...(preview ? [asCookie(PASS)] : []), ...(signedIn ? [asCookie(SESSION)] : [])]);
   return ctx;
 }
 async function pageIn(ctx, route = "/") {
   const page = await ctx.newPage();
   await readyProbe(page);
-  page.on("console", m => { if (["error", "warning"].includes(m.type())) consoleRows.push({ route, type: m.type(), text: m.text() }); });
+  await page.bringToFront();
+  page.on("console", m => {
+    if (["error", "warning"].includes(m.type())) consoleRows.push({ route, type: m.type(), text: m.text() });
+    if (/hydrated but|hydration failed|server rendered HTML didn't match/i.test(m.text())) result(`${route}: hydration mismatch`, "FAIL", "Full console text, attribute and element retained in evidence.json");
+  });
   page.on("pageerror", error => { consoleRows.push({ route, type: "pageerror", text: error.message }); result(`${route}: uncaught page error`, "FAIL", error.message.slice(0, 180)); });
   await page.goto(BASE + route, { waitUntil: "domcontentloaded", timeout: 240_000 });
   await page.waitForFunction(() => document.querySelector("main"), { timeout: 90_000 });
@@ -70,18 +76,59 @@ async function pageIn(ctx, route = "/") {
   return page;
 }
 async function readyProbe(page) {
-  await page.addInitScript(() => {
-    window.__sheetDocument = crypto.randomUUID();
+  await page.addInitScript(tracing => {
+    // This diagnostic also runs in child documents whose secure-context UUID API may be unavailable.
+    // It never supplies a money intent or changes the application's crypto.
+    window.__sheetDocument = globalThis.crypto?.randomUUID?.() ?? `qa-${performance.timeOrigin}-${Math.random()}`;
+    if (tracing) {
+      window.__sheetTrace = [];
+      const identity = node => node instanceof Element ? { tag: node.tagName, id: node.id, testid: node.getAttribute("data-testid"), nearestSheet: node.closest('[data-testid="journey-bet-sheet"]')?.getAttribute("data-frame"), nearestDialog: node.closest('[role="dialog"]')?.getAttribute("aria-labelledby") } : null;
+      const address = () => { const url = new URL(location.href), query = new URLSearchParams(); for (const key of ["bet", "side", "cat", "sort", "cursor"]) if (url.searchParams.has(key)) query.set(key, url.searchParams.get(key)); return url.pathname + (query.size ? `?${query}` : ""); };
+      const record = (type, more = {}) => { if (window.__sheetTrace.length < 600) window.__sheetTrace.push({ type, ms: performance.now(), ready: document.readyState, document: window.__sheetDocument, address: address(), active: identity(document.activeElement), ...more }); };
+      for (const type of ["focusin", "focusout"]) document.addEventListener(type, event => record(type, { target: identity(event.target), related: identity(event.relatedTarget) }), true);
+      for (const type of ["DOMContentLoaded", "load", "pageshow", "popstate", "pagehide"]) window.addEventListener(type, () => record(type), true);
+      const focus = HTMLElement.prototype.focus;
+      HTMLElement.prototype.focus = function(...args) { record("focus-call", { target: identity(this), stack: new Error().stack?.split("\n").slice(1,7).join("\n") }); return focus.apply(this,args); };
+      for (const method of ["pushState", "replaceState"]) {
+        const original = history[method];
+        history[method] = function(...args) { const result = original.apply(this,args); record(method); return result; };
+      }
+      let priorFrame;
+      const frameRead = () => {
+        const sheet = document.querySelector('[data-testid="journey-bet-sheet"]'), frame = sheet?.getAttribute("data-frame") ?? "closed", headingPresent = !!sheet?.querySelector("h2"), signature = frame + headingPresent;
+        if (signature !== priorFrame) { priorFrame = signature; record("frame", { frame, headingPresent }); }
+      };
+      const observe = () => { new MutationObserver(frameRead).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:["data-frame"]}); frameRead(); };
+      if (document.body) observe(); else document.addEventListener("DOMContentLoaded",observe,{once:true});
+      record("init");
+    }
     const add = EventTarget.prototype.addEventListener, remove = EventTarget.prototype.removeEventListener;
     const isHost = (target, type, listener) => (target === window || target === document) && type === "click" && typeof listener === "function" && listener.toString().includes("a[data-bet-side]");
     EventTarget.prototype.addEventListener = function(type, listener, options) { const result = add.call(this, type, listener, options); if (isHost(this, type, listener)) window.__sheetHostReady = true; return result; };
     EventTarget.prototype.removeEventListener = function(type, listener, options) { const result = remove.call(this, type, listener, options); if (isHost(this, type, listener)) window.__sheetHostReady = false; return result; };
-  });
+  }, process.env.KP_TRACE === "1");
 }
 async function tile(page, label) {
+  const receipt = await page.locator(`${S.root}[data-frame="receipt"]`).count() > 0;
+  await page.evaluate(async selector => {
+    await document.fonts.ready;
+    const root=document.querySelector(selector),dialog=root?.closest('[role="dialog"]');
+    const finite=(dialog?.getAnimations({subtree:true})??[]).filter(animation=>animation.effect?.getComputedTiming().iterations!==Infinity);
+    await Promise.all(finite.map(animation=>animation.finished.catch(()=>{})));
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+  },S.root);
+  if(receipt){
+    await page.waitForFunction(selector=>{
+      const root=document.querySelector(selector),panel=root?.closest('.kp-bsheet'),dialog=root?.closest('[role="dialog"]');
+      if(root?.getAttribute('data-frame')!=='receipt'||!panel||dialog?.getAttribute('aria-hidden')==='true')return false;
+      let opacity=1;for(let node=panel;node&&node!==document.body;node=node.parentElement)opacity*=Number(getComputedStyle(node).opacity);
+      return opacity>=.999 && !(dialog?.getAnimations({subtree:true})??[]).some(animation=>animation.playState==='running'&&animation.effect?.getComputedTiming().iterations!==Infinity);
+    },S.root);
+  }
   const filename = `${String(++tiles).padStart(3, "0")}-${label.replace(/[^a-z0-9]+/gi, "-").slice(0, 110)}.png`;
   await page.screenshot({ path: join(OUT, filename), fullPage: false });
   results.push({ label, state: "TILE", file: filename });
+  if (process.env.KP_TRACE === "1") observations.push({ label, trace: await page.evaluate(() => window.__sheetTrace ?? []) });
 }
 async function probe(page, expected = {}) {
   const got = await page.evaluate(betSheetDomProbe, S);
@@ -120,12 +167,12 @@ async function observed(ctx, marketId) {
 }
 // Persistent RG changes use isolated local seeded PLAYER accounts so one hour's cooling-off cannot poison the demo
 // player's later cells. The actual limits/cooling/freeze forms and services still make every decision.
-let fixtureNo = 0;
-async function freshPlayer(balance = 100000) {
-  const ctx = await context("en", { width: 390, height: 844 }, { signedIn: false });
-  const phone = `+25571${String((Date.now() % 1_000_000) * 100 + ++fixtureNo).padStart(7, "0").slice(-7)}`;
+async function freshPlayer(balance = 100000, {locale="en",viewport={width:390,height:844},controlledNetwork=false}={}) {
+  const ctx = await context(locale, viewport, { signedIn: false, controlledNetwork });
+  const phone = `+25571${String(parseInt(crypto.randomUUID().replaceAll("-", "").slice(0, 10), 16) % 10_000_000).padStart(7, "0")}`;
   const seeded = await post(ctx, "seed-admin", { role: "PLAYER", phone, name: "Local Sheet Matrix", balance });
-  return { ctx, userId: seeded.userId, phone };
+  if (seeded.note) throw new Error("Synthetic account already existed: invalid fresh-player premise");
+  return { ctx, userId: seeded.userId, phone, password: seeded.password };
 }
 async function sibling(ctx) {
   const other = await browser.newContext({ viewport: { width: 1280, height: 900 } }); contexts.add(other);
@@ -141,6 +188,16 @@ async function limitsIn(other, values) {
   await page.close();
 }
 async function closeContext(ctx) { await ctx.close(); contexts.delete(ctx); }
+async function hydratedClick(locator) {
+  for (let n = 0; n < 300; n++) {
+    if (await locator.evaluate(el => {
+      const props = node => node && Object.keys(node).filter(key => key.startsWith("__reactProps$")).map(key => node[key]);
+      return props(el)?.some(p => typeof p.onClick === "function") || props(el.closest("form"))?.some(p => typeof p.onSubmit === "function" || typeof p.action === "function");
+    })) return locator.click();
+    await new Promise(resolve => setTimeout(resolve, 300));
+  }
+  throw new Error("Target client button did not hydrate; invalid interaction premise");
+}
 function actionWatch(page) {
   const requests = [];
   const listener = request => { if (request.method() === "POST" && request.headers()["next-action"] && request.postData()?.includes("idempotencyKey")) requests.push(request); };
@@ -163,6 +220,46 @@ async function setMaintenance(enabled) {
     }
     if ((await toggle.getAttribute("aria-checked") === "true") !== enabled) throw new Error("Maintenance switch did not persist");
   } finally { await page.close(); }
+}
+
+async function coolingOffDrive(){
+  const {ctx:player,phone,password}=await freshPlayer(),page=await pageIn(player),seed=await open(page),other=await sibling(player),before=await observed(player,seed.id);
+  if(typeof password!=="string"||!password)throw new Error("Synthetic owner password absent; invalid actual-login premise");
+  const rg=await pageIn(other,"/profile/responsible-gambling");
+  await rg.locator("#break").getByRole("button",{name:"Start a break",exact:true}).click();
+  await rg.getByRole("alertdialog").waitFor({state:"visible"});
+  await rg.waitForFunction(()=>document.querySelector('[role="alertdialog"]')?.contains(document.activeElement));
+  await rg.waitForTimeout(450); // The actual confirm portal's400ms arming beat.
+  await rg.getByRole("alertdialog").getByRole("button",{name:"Start a break",exact:true}).click();
+  try{await rg.waitForURL(url=>url.pathname==="/auth/login"&&url.searchParams.has("cooled"));}
+  catch{await tile(rg,"cooling-confirm-navigation-failure");throw new Error(`Actual cooling confirm did not reach cooled sign-in: ${new URL(rg.url()).pathname+new URL(rg.url()).search}; visible dialog=${await rg.getByRole("alertdialog").count()}`);}
+  await page.locator(S.place).click();
+  await page.waitForURL(url=>url.pathname==="/auth/login",{timeout:90_000});
+  await page.locator(S.root).waitFor({state:"hidden"});
+  try{await page.locator("#identifier").waitFor({state:"visible"});}
+  catch{
+    await tile(page,"cooling-final-sign-in-render-failure");
+    throw new Error(`Cooling redirect never rendered sign-in at ${new URL(page.url()).origin+new URL(page.url()).pathname}; document=${JSON.stringify(await page.evaluate(()=>({ready:document.readyState,secure:isSecureContext,title:document.title,forms:document.forms.length,bodyBytes:document.body?.innerHTML.length??0})))}`);
+  }
+  ok("real cooling-off in second context after open rejects mid-bet and reaches rendered sign-in",!await page.locator(S.root).count()&&!await page.locator('[role="dialog"][aria-modal="true"]').count());
+  await tile(page,"matrix-cooling-off-rendered-sign-in");
+  ok("cooling-off observer is not usable after session revocation",(await player.request.get(`${BASE}/api/dev-test/bet-sheet-observe?marketId=${seed.id}`)).status()===401);
+  await page.waitForFunction(()=>{
+    const input=document.getElementById("identifier");
+    return input&&Object.keys(input).some(key=>key.startsWith("__reactProps$")&&typeof input[key].onChange==="function");
+  });
+  await page.locator("#identifier").fill(phone.slice(4));
+  await page.waitForFunction(raw=>document.querySelector('input[type="hidden"][name="identifier"]')?.value===raw,phone.slice(4));
+  await page.locator('input[name="password"]').fill(password);
+  await hydratedClick(page.locator('form:has(input[name="password"]) button[type="submit"]'));
+  try{await page.waitForURL(url=>url.pathname==="/",{timeout:90_000});}
+  catch{await tile(page,"cooling-own-password-login-failure");throw new Error(`Synthetic owner login did not reach home: ${new URL(page.url()).pathname}; error=${new URL(page.url()).searchParams.get("error")??"none"}; identifier carrier digit count=${await page.locator('input[type="hidden"][name="identifier"]').inputValue().then(value=>value.length).catch(()=>-1)}`);}
+  await page.getByTestId("journey-home-break").waitFor({state:"visible"});
+  await page.getByTestId("journey-balance").getByText("TZS 100,000",{exact:true}).filter({visible:true}).waitFor();
+  const after=await observed(player,seed.id);
+  ok("cooling-off refused bet: real own password login preserves100000 wallet, break and own money rows",after.positionCount===before.positionCount&&after.betPlacedCount===before.betPlacedCount,"actual same-owner login, no seed reset; rendered break/balance and authenticated own positions/BET_PLACED recounted");
+  await tile(page,"matrix-cooling-off-own-login-preserves-wallet-break");
+  await closeContext(other);await closeContext(player);
 }
 
 try {
@@ -189,6 +286,34 @@ try {
       ok("journey guest pick navigates, never opens a sheet", !(await page.locator(S.root).count()) && !!href);
     } else nm("journey guest pick", "no pick on seeded guest home");
     await guest.close(); contexts.delete(guest);
+  }
+
+  if (run("keyboard")) for(const locale of LOCALES) for(const viewport of VIEWPORTS.filter(viewport=>viewport.width<=360)){
+    const {ctx}=await freshPlayer(100000,{locale,viewport}),page=await pageIn(ctx),seed=await open(page),watch=actionWatch(page);
+    const label=`${locale} ${viewport.width}x${viewport.height}`;
+    await page.locator(`${S.root} .kp-bsheet__balance`).getByText("TZS 100,000",{exact:true}).waitFor();
+    await page.locator(S.stake).focus();
+    await page.evaluate(()=>{
+      Object.defineProperty(window.visualViewport,"height",{configurable:true,value:340});
+      Object.defineProperty(window.visualViewport,"offsetTop",{configurable:true,value:0});
+      window.visualViewport.dispatchEvent(new Event("resize"));
+    });
+    await page.waitForTimeout(200);
+    for(const stake of [seed.min,seed.max,Math.max(seed.min,seed.max-500),seed.min]){
+      await page.locator(S.stake).fill(String(stake));await page.waitForTimeout(250);
+      const p=await probe(page,{keyboard:true}),focused=await page.locator(S.stake).evaluate(input=>document.activeElement===input);
+      ok(`${label}: focused typing${stake} keeps field painted, CloseX and CTA above keyboard`,focused&&!p.errors.length,p.errors.length?`${p.errors.join(";")} ${JSON.stringify({stake:p.got.stake,scroll:p.got.scroll,place:p.got.place,close:p.got.close})}`:"real input changes with unchanged visual viewport; focus remains on field");
+      if(stake===seed.max)await tile(page,`keyboard-${label}-maximum-long-cta`);
+    }
+    const clipped=await page.addStyleTag({content:`${S.scroll}{max-height:20px!important;}`});
+    ok(`${label}: RED clipped typed field fails same keyboard verdict`,(await probe(page,{keyboard:true})).errors.includes("stake is clipped by the sheet scroller"));
+    await clipped.evaluate(style=>style.remove());
+    const closePlant=await page.addStyleTag({content:`${S.close}{position:fixed!important;top:1000px!important;}`});
+    ok(`${label}: RED offscreen CloseX fails same keyboard verdict`,(await probe(page,{keyboard:true})).errors.includes("CloseX lies behind the keyboard"));
+    await closePlant.evaluate(style=>style.remove());
+    ok(`${label}: keyboard editing sends zero money actions`,watch.requests.length===0);
+    await page.evaluate(()=>{delete window.visualViewport.height;delete window.visualViewport.offsetTop;window.visualViewport.dispatchEvent(new Event("resize"));});
+    watch.stop();await closeContext(ctx);
   }
 
   if (run("v20")) for (const locale of LOCALES) for (const viewport of VIEWPORTS) {
@@ -218,7 +343,11 @@ try {
     ok(`${label}: Enter in stake sends no action`, watch.requests.length === 0);
     const safeStyle = await page.evaluate(selector => {
       const root = document.querySelector(selector), panel = root.closest(".kp-bsheet");
-      const initial = { padding: getComputedStyle(panel).paddingBottom, cap: getComputedStyle(root).maxHeight };
+      const initial = {
+        padding: getComputedStyle(panel).paddingBottom, cap: getComputedStyle(root).maxHeight,
+        inlinePadding: panel.style.getPropertyValue("padding-bottom"), paddingPriority: panel.style.getPropertyPriority("padding-bottom"),
+        inlineCap: root.style.getPropertyValue("max-height"), capPriority: root.style.getPropertyPriority("max-height"),
+      };
       // The dock law sets important padding, so an ordinary added stylesheet cannot substitute the inset. Apply
       // the computed inset geometry to both boxes as inline important values, leaving every actual rule intact.
       panel.style.setProperty("padding-bottom", `calc(${initial.padding} + 34px)`, "important");
@@ -232,7 +361,16 @@ try {
     const planted = await probe(page, { safeInset: 34 });
     ok(`${label}: RED safe-area plant fails the same verdict`, planted.errors.includes("CTA enters the bottom safe area"));
     await safePlant.evaluate(el => el.remove());
-    if (viewport.width === 360) {
+    // The keyboard cell measures the real viewport rules independently; do not leave the safe-area substitution
+    // holding either box to a height from the preceding viewport.
+    await page.evaluate(([selector, prior]) => {
+      const root = document.querySelector(selector), panel = root.closest(".kp-bsheet");
+      if (prior.inlinePadding) panel.style.setProperty("padding-bottom", prior.inlinePadding, prior.paddingPriority);
+      else panel.style.removeProperty("padding-bottom");
+      if (prior.inlineCap) root.style.setProperty("max-height", prior.inlineCap, prior.capPriority);
+      else root.style.removeProperty("max-height");
+    }, [S.root, safeStyle]);
+    if (viewport.width <= 360) {
       await page.locator(S.stake).focus();
       await page.evaluate(() => {
         Object.defineProperty(window.visualViewport, "height", { configurable: true, value: 340 });
@@ -242,8 +380,12 @@ try {
       await page.waitForTimeout(200);
       const keyboard = await probe(page, { keyboard: true });
       const compact = await page.locator(".kp-bsheet__chips").count() === 0;
-      ok(`${label}: shortened visual viewport340px keeps stake and CTA above keyboard, compact row`, !keyboard.errors.length && compact, keyboard.errors.join(";") || (compact ? "visualViewport.height substitution and real resize listener" : "chips remain expanded"));
+      ok(`${label}: shortened visual viewport340px keeps stake and CTA above keyboard, compact row`, !keyboard.errors.length && compact, keyboard.errors.length ? `${keyboard.errors.join(";")} ${JSON.stringify({ stake: keyboard.got.stake, scroll: keyboard.got.scroll, place: keyboard.got.place })}` : compact ? "visualViewport.height substitution and real resize listener; stake wholly inside scroller and painted" : "chips remain expanded");
       await tile(page, `${label}-keyboard340`);
+      const clipPlant = await page.addStyleTag({ content: `${S.scroll} { max-height:20px !important; }` });
+      const plantedClip = await probe(page, { keyboard: true });
+      ok(`${label}: RED clipped stake fails the same keyboard verdict`, plantedClip.errors.includes("stake is clipped by the sheet scroller"));
+      await clipPlant.evaluate(el => el.remove());
       await page.evaluate(() => { delete window.visualViewport.height; delete window.visualViewport.offsetTop; window.visualViewport.dispatchEvent(new Event("resize")); });
     }
     await page.keyboard.press("Escape"); await page.locator(S.root).waitFor({ state: "hidden" });
@@ -254,10 +396,21 @@ try {
     ok(`${label}: scrim closes`, !(await page.locator(S.root).count()));
     await open(page, seed.id); await page.goBack(); await page.locator(S.root).waitFor({ state: "hidden" });
     ok(`${label}: Back closes`, !(await page.locator(S.root).count()));
-    await open(page, seed.id); await page.reload({ waitUntil: "domcontentloaded" });
-    await page.locator(S.root).waitFor({ state: "visible", timeout: 90_000 });
-    await page.waitForFunction(selector => document.querySelector(selector)?.querySelector("h2") === document.activeElement, S.root);
-    ok(`${label}: ordinary reload reopens at market minimum`, (await probe(page)).got.stakeValue.replace(/,/g, "") === String(seed.min));
+    await open(page, seed.id);
+    for (let repeat = 1; repeat <= RELOADS; repeat++) {
+      if (process.env.KP_TRACE === "1") observations.push({ label: `${label}-before-reload${repeat}`, trace: await page.evaluate(() => window.__sheetTrace ?? []) });
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.locator(S.root).waitFor({ state: "visible", timeout: 90_000 });
+      try { await page.waitForFunction(selector => document.querySelector(selector)?.querySelector("h2") === document.activeElement, S.root); }
+      catch {
+        await tile(page, `${label}-reload${repeat}-focus-failure`);
+        const active = await page.evaluate(() => ({ tag: document.activeElement?.tagName, id: document.activeElement?.id, text: document.activeElement?.textContent?.slice(0,100) }));
+        throw new Error(`${label}: reload${repeat} heading-focus failed; active=${JSON.stringify(active)}; probe=${JSON.stringify((await probe(page)).got)}; address=${new URL(page.url()).pathname+new URL(page.url()).search}`);
+      }
+      await page.waitForTimeout(450); // ARMING_MS=400: the kit deliberately refuses a fresh money key during this beat.
+      ok(`${label}: ordinary reload${RELOADS > 1 ? repeat : ""} reopens at market minimum with heading focus`, (await probe(page)).got.stakeValue.replace(/,/g, "") === String(seed.min));
+      if (process.env.KP_TRACE === "1") observations.push({ label: `${label}-after-reload${repeat}`, trace: await page.evaluate(() => window.__sheetTrace ?? []) });
+    }
     await page.locator(S.place).focus();
     const before = await observed(ctx, seed.id);
     await page.keyboard.down("Enter"); await page.keyboard.down("Enter"); await page.keyboard.up("Enter");
@@ -265,7 +418,7 @@ try {
     const after = await observed(ctx, seed.id);
     const errors = onceOnlyVerdict(before, after, watch.requests.length);
     ok(`${label}: focused/held Enter commits exactly once`, !errors.length, errors.join(";"));
-    ok(`${label}: receipt strips bet/side address`, !new URL(page.url()).searchParams.has("bet") && !new URL(page.url()).searchParams.has("side"));
+    ok(`${label}: receipt strips bet/side address`, !new URL(page.url()).searchParams.has("bet") && !new URL(page.url()).searchParams.has("side"), new URL(page.url()).pathname + new URL(page.url()).search);
     await tile(page, `${label}-receipt`);
     watch.stop(); await ctx.close(); contexts.delete(ctx);
   }
@@ -300,7 +453,7 @@ try {
       await waitFrame(page, "receipt");
       if (mode === "landed-maintenance") { await setMaintenance(false); for (const route of heldKeyReads) await route.continue().catch(() => {}); }
       const after = await observed(ctx, seed.id), count = mode === "double" || mode === "drop-after" ? 1 : 2;
-      const errors = onceOnlyVerdict(before, after, watch.requests.length, 1).filter(e => !e.startsWith("2 action requests") || count !== 2);
+      const errors = onceOnlyVerdict(before, after, watch.requests.length, 1, count);
       ok(`${mode}: one position, one BET_PLACED row, one key`, !errors.length && watch.requests.length === count, errors.join(";"));
       const fresh = after.positions.find(p => !before.positions.some(b => b.positionId === p.positionId));
       const href = await page.locator(S.ticket).getAttribute("href");
@@ -342,7 +495,72 @@ try {
       ok("RED duplicated click listener fails the same exactly-once verdict", watch.requests.length === 2 && red.some(error => error.startsWith("2 action requests")), red.join(";"));
       await tile(page, "red-once-duplicate-request"); watch.stop(); await closeContext(ctx);
     }
-    nm("A24 held first server request while maintenance changes", "requires a service-level local lock gate; abort-before and landed-key maintenance variants measured separately, never substituted for this cell");
+    if (!run("lock")) nm("A24 held first server request while maintenance changes", "the real server-lock fixture drive is in the lock section, which this selected run did not include");
+  }
+
+  if (run("lock")) {
+    const { ctx } = await freshPlayer(), page = await pageIn(ctx), seed = await open(page);
+    const before = await observed(ctx,seed.id),watch = actionWatch(page),keyReads = [];
+    // Warm the actual officer form before the bounded gate starts; switching maintenance remains a real officer action.
+    const warm = await admin.newPage(); await warm.goto(BASE+"/admin/system",{waitUntil:"domcontentloaded"}); await warm.close();
+    const hold = await post(ctx,"bet-sheet-hold",{operation:"hold",marketId:seed.id});
+    if (!hold.held || hold.maxHoldMs !== 90_000) throw new Error("A24 actual market-mutex acknowledgement failed");
+    let allowAbort; const abortGate = new Promise(resolve=>{allowAbort=resolve;});
+    let first = true,firstServer = null;
+    const keyedRead = route => {
+      if (new URL(route.request().url()).searchParams.has("key")) { keyReads.push(route); return; }
+      return route.continue();
+    };
+    await page.route("**/api/markets/*/sheet?**",keyedRead);
+    await page.route("**/*",async route=>{
+      const req=route.request();
+      if (!first || req.method()!=="POST" || !req.headers()["next-action"] || !req.postData()?.includes("idempotencyKey")) return route.fallback();
+      first=false;
+      firstServer=route.fetch({timeout:120_000}).catch(()=>null);
+      await abortGate; await route.abort("failed");
+    });
+    try {
+      await page.locator(S.place).click();
+      let inside = false,lastStatus = null;
+      for(let n=0;n<30;n++) {
+        const status=await post(ctx,"bet-sheet-hold",{operation:"status",holdId:hold.holdId}); lastStatus=status;
+        if(status.held&&status.ownWalletBusy){inside=true;break;}
+        await new Promise(resolve=>setTimeout(resolve,100));
+      }
+      const ownKey = async () => page.evaluate(id => { const stored=JSON.parse(sessionStorage.getItem("kp-pending-bet")); return stored?.pending?.find(entry=>entry.bet.startsWith(id+".YES."))?.k ?? stored?.k; },seed.id);
+      const waiting = await observed(ctx,seed.id),keyBefore=await ownKey();
+      if(!inside||waiting.positionCount!==before.positionCount||waiting.betPlacedCount!==before.betPlacedCount||!keyBefore) throw new Error(`A24 first real action did not reach its wallet mutex with an uncommitted key behind the real market hold: ${JSON.stringify({inside,status:lastStatus,positionsDelta:waiting.positionCount-before.positionCount,ledgerDelta:waiting.betPlacedCount-before.betPlacedCount,keyPresent:!!keyBefore,requests:watch.requests.length,frame:(await probe(page)).got.frame})}`);
+      ok("A24 first actual action inside own wallet mutex, real market mutex held, key uncommitted",inside&&watch.requests.length===1);
+      allowAbort(); await waitFrame(page,"inDoubt");
+      await setMaintenance(true);
+      await page.locator(S.place).click();
+      for(let n=0;n<60;n++) { if(watch.requests.length===2 && (await probe(page)).got.frame==="inDoubt" && !(await page.locator(S.place).isDisabled())) break; await new Promise(resolve=>setTimeout(resolve,100)); }
+      const refused=(await probe(page)).got,stillWaiting=await observed(ctx,seed.id),keyAfter=await ownKey();
+      ok("A24 maintenance retry keeps doubt and the identical key, says system error, zero money",watch.requests.length===2&&refused.frame==="inDoubt"&&keyAfter===keyBefore&&/something went wrong|check your wallet/i.test(refused.text)&&! /nothing has been charged|no money.*taken/i.test(refused.text)&&stillWaiting.positionCount===before.positionCount&&stillWaiting.betPlacedCount===before.betPlacedCount);
+      await tile(page,"lock-first-uncommitted-maintenance-retry");
+      await post(ctx,"bet-sheet-hold",{operation:"release",holdId:hold.holdId});
+      await firstServer;
+      const landed=await observed(ctx,seed.id);
+      if(landed.positionCount!==before.positionCount+1||landed.betPlacedCount!==before.betPlacedCount+1) throw new Error("A24 released real first action did not commit exactly once before replay");
+      const replayResponse=page.waitForResponse(response=>{const request=response.request();return request.method()==="POST"&&!!request.headers()["next-action"]&&request.postData()?.includes("idempotencyKey");});
+      await page.locator(S.place).click();
+      // Inspect the actual action envelope in memory; only the replay Boolean enters evidence, never raw RSC/session data.
+      const replayed=/"replayed"\s*:\s*true/.test(await (await replayResponse).text());
+      ok("A24 committed-key retry under maintenance is actual replayed:true",replayed);
+      await page.unroute("**/api/markets/*/sheet?**",keyedRead);
+      for(const route of keyReads) await route.continue().catch(()=>{});
+      await waitFrame(page,"receipt");
+      const after=await observed(ctx,seed.id),errors=onceOnlyVerdict(before,after,watch.requests.length,1,3);
+      const fresh=after.positions.find(position=>!before.positions.some(old=>old.positionId===position.positionId));
+      const href=await page.locator(S.ticket).getAttribute("href");
+      ok("A24 release first actual action: three requests, one position, one BET_PLACED, same key and receipt",!errors.length&&fresh?.key===keyBefore&&!!href&&href.includes(fresh.positionId),errors.join(";"));
+      await tile(page,"lock-first-released-receipt");
+    } finally {
+      allowAbort();
+      await ctx.request.post(BASE+"/api/dev-test/bet-sheet-hold",{data:{operation:"release",holdId:hold.holdId}}).catch(()=>{});
+      await setMaintenance(false);
+      watch.stop(); await closeContext(ctx);
+    }
   }
 
   if (run("low")) for (const [name, balance, stake] of [["zero-min500", 0, 500], ["two-options", 1200, 5000], ["below-deposit-min", 1200, 1500]]) {
@@ -353,6 +571,13 @@ try {
     ok(`${name}: actual wallet ${balance}, neutral invalid cue and disabled full-stake CTA`, !check.errors.length, check.errors.join(";"));
     if (name === "zero-min500") ok("zero at owner minimum500 still offers deposit minimum1000", check.got.visibleDeposit && !check.got.visibleInstead);
     else ok(`${name}: both engine options present`, check.got.visibleDeposit && check.got.visibleInstead);
+    await page.locator(S.deposit).hover(); await page.waitForTimeout(150);
+    const hover = await probe(page,{depositMetal:true});
+    ok(`${name}: hovered deposit row retains kit gold material`,!hover.errors.length,hover.errors.join(";") || "computed background-image retains both material gradients");
+    const noMetal = await page.addStyleTag({content:`${S.deposit}{background-image:none!important}`});
+    const redMetal = await probe(page,{depositMetal:true});
+    ok(`${name}: RED removed gold material fails the same hover verdict`,redMetal.errors.includes("deposit loses its gold material"));
+    await noMetal.evaluate(el=>el.remove());
     await tile(page, `low-${name}`);
     if (name === "two-options") {
       const before = await observed(ctx, seed.id), watch = actionWatch(page);
@@ -366,6 +591,71 @@ try {
       ok("deposit closes sheet; amount/bet/from retained without reopening there", !await page.locator(S.root).count() && url.searchParams.get("amount") === "1000" && url.searchParams.get("from") === "low-balance" && url.searchParams.has("bet"));
     }
     await ctx.close(); contexts.delete(ctx);
+  }
+
+  if (run("lifecycle")) {
+    {
+      // Only this fault-injection context blocks SW interception, so the controlled429 reaches the actual Host fetch.
+      // Core/IME/reload contexts keep the real application's service worker.
+      const {ctx}=await freshPlayer(100000,{controlledNetwork:true}),page=await pageIn(ctx),seed=await open(page),before=await observed(ctx,seed.id),watch=actionWatch(page);
+      ok("controlled fresh-read premise has no service-worker controller",await page.evaluate(()=>!navigator.serviceWorker?.controller));
+      const balance=page.locator(`${S.root} .kp-bsheet__balance`);
+      await balance.getByText("TZS 100,000",{exact:true}).waitFor();
+      await page.bringToFront();
+      await page.waitForFunction(()=>document.visibilityState==="visible");
+      const heading=await page.locator(`${S.root} h2`).innerText();
+      let failing=true,refusedReads=0;
+      await page.route("**/api/markets/*/sheet?**",route=>{if(failing){refusedReads++;return route.fulfill({status:429,contentType:"application/json",body:'{"error":"controlled fresh private read refusal"}'});}return route.fallback();});
+      await page.evaluate(()=>window.dispatchEvent(new Event("focus")));
+      try{await page.locator(`${S.root} .kp-bsheet__balance-unknown`).waitFor();}
+      catch{
+        const diagnostic=await page.evaluate(selector=>({visibility:document.visibilityState,hasFocus:document.hasFocus(),frame:document.querySelector(selector)?.getAttribute('data-frame'),balance:document.querySelector(`${selector} .kp-bsheet__balance`)?.textContent,trace:window.__sheetTrace??[]}),S.root);
+        observations.push({label:"lifecycle-fresh-refusal-diagnostic",refusedReads,...diagnostic});
+        await tile(page,"lifecycle-fresh-refusal-diagnostic");
+        throw new Error(`Controlled429 did not reach unknown balance; matchedReads=${refusedReads}, visibility=${diagnostic.visibility}, hasFocus=${diagnostic.hasFocus}, frame=${diagnostic.frame}`);
+      }
+      ok("controlled fresh refusal reached the actual read on a visible page",refusedReads>0);
+      const unknown=await balance.innerText(),p=(await probe(page)).got;
+      ok("successful wallet read then fresh429: unknown dash, no fake0/old wallet/options, public heading preserved",unknown.includes("—")&&/unavailable/i.test(unknown)&&! /TZS\s*(?:0\b|100,000)/.test(unknown)&&!p.visibleDeposit&&!p.visibleInstead&&await page.locator(`${S.root} h2`).innerText()===heading,unknown);
+      await tile(page,"lifecycle-failed-private-after-known");
+      failing=false; await page.evaluate(()=>window.dispatchEvent(new Event("focus")));
+      await balance.getByText("TZS 100,000",{exact:true}).waitFor();
+      const after=await observed(ctx,seed.id);
+      ok("fresh private read recovers actual100000, zero actions/own money changes",watch.requests.length===0&&before.positionCount===after.positionCount&&before.betPlacedCount===after.betPlacedCount);
+      watch.stop();await closeContext(ctx);
+    }
+    for(const motion of ["no-preference","reduce"]){
+      const {ctx}=await freshPlayer(),page=await pageIn(ctx);
+      await page.emulateMedia({reducedMotion:motion});
+      const seed=await open(page),before=await observed(ctx,seed.id),watch=actionWatch(page);
+      const otherId=await page.evaluate(([pick,id])=>[...document.querySelectorAll(pick)].map(a=>JSON.parse(a.closest("[data-sheet]").getAttribute("data-sheet")).id).find(value=>value!==id),[S.pick,seed.id]);
+      if(!otherId)throw new Error("Close lifecycle needs a genuinely unrelated question");
+      await page.evaluate(selectors=>{
+        const place=document.querySelector(selectors.place),props=Object.keys(place).find(key=>key.startsWith("__reactProps$"));
+        window.__staleSheetPlace=place[props].onClick;
+        window.__sheetCloseSamples=[];
+        let started=null;
+        const sample=()=>{
+          if(started===null)return;
+          const root=document.querySelector(selectors.root),wrap=root?.closest("[inert]"),url=new URL(location.href);
+          window.__sheetCloseSamples.push({ms:performance.now()-started,present:!!root,inert:!!wrap,hidden:!!root?.closest('[aria-hidden="true"]'),focusInside:!!root?.contains(document.activeElement),bet:url.searchParams.has("bet"),keys:JSON.parse(sessionStorage.getItem("kp-pending-bet")??"null")?.pending?.length??0,live:root?.querySelectorAll('[aria-live="polite"]').length??0});
+        };
+        const observer=new MutationObserver(sample);observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:["inert","aria-hidden","aria-modal"]});
+        window.addEventListener("click",function begin(event){if(!event.target.closest(selectors.close))return;window.removeEventListener("click",begin,true);started=performance.now();const frame=()=>{sample();if(performance.now()-started<600)requestAnimationFrame(frame);else observer.disconnect();};requestAnimationFrame(frame);},true);
+      },S);
+      await page.locator(S.close).click();
+      await page.waitForFunction(()=>!new URL(location.href).searchParams.has("bet"));
+      await page.evaluate(()=>window.__staleSheetPlace());
+      await page.locator(S.root).waitFor({state:"hidden"});
+      const samples=await page.evaluate(()=>window.__sheetCloseSamples),ghost=samples.find(sample=>sample.present&&sample.inert&&sample.hidden),gone=samples.find(sample=>!sample.present),addressClean=samples.find(sample=>!sample.bet);
+      observations.push({label:`lifecycle-${motion}-close`,samples});
+      ok(`${motion}: close releases address/key/focus; normal ghost inert/silent, reduced exit prompt`,!!gone&&!!addressClean&&addressClean.ms<100&&samples.every(sample=>!sample.inert||(!sample.focusInside&&sample.live===0&&sample.keys===0))&&(motion==="reduce"?gone.ms<100:!!ghost),JSON.stringify({ghost,addressClean,gone}));
+      const reopened=await open(page,otherId);
+      await page.evaluate(()=>window.__staleSheetPlace()); await page.waitForTimeout(300);
+      const after=await observed(ctx,seed.id);
+      ok(`${motion}: retained rendered callback cannot commit while closed or against unrelated reopen`,watch.requests.length===0&&before.positionCount===after.positionCount&&before.betPlacedCount===after.betPlacedCount&&reopened.id===otherId&&!await page.locator(S.place).isDisabled());
+      await tile(page,`lifecycle-${motion}-unrelated-reopen`);watch.stop();await closeContext(ctx);
+    }
   }
 
   if (run("host")) {
@@ -561,8 +851,10 @@ try {
       if (await live.count() !== 4 || await paused.count() !== 0) throw new Error(`All-rails cell needs four initially open mobile-money rails; live=${await live.count()} paused=${await paused.count()} names=${JSON.stringify(await officer.getByRole("button").allTextContents())}`);
       try {
         while (await live.count()) {
-          await live.first().click(); await officer.getByPlaceholder("PAUSE", { exact: true }).fill("PAUSE");
+          const prior = await paused.count();
+          await hydratedClick(live.first()); await officer.getByPlaceholder("PAUSE", { exact: true }).fill("PAUSE");
           await officer.getByRole("button", { name: "Pause", exact: true }).click(); await officer.getByPlaceholder("PAUSE", { exact: true }).waitFor({ state: "hidden" });
+          await officer.waitForFunction(expected => [...document.querySelectorAll("button")].filter(button => button.textContent.replace(/\s/g, "") === "DepositsPAUSED").length === expected, prior + 1);
         }
         for (const balance of [0, 1200]) {
           const { ctx: player } = await freshPlayer(balance), page = await pageIn(player); await open(page); await page.locator(S.stake).fill("5000"); await waitFrame(page, "low");
@@ -571,7 +863,7 @@ try {
           await tile(page, `matrix-rails-paused-${balance}`); await closeContext(player);
         }
       } finally {
-        while (await paused.count()) { await paused.first().click(); await officer.waitForTimeout(150); }
+        while (await paused.count()) { const prior = await live.count(); await hydratedClick(paused.first()); await officer.waitForFunction(expected => [...document.querySelectorAll("button")].filter(button => button.textContent.replace(/\s/g, "") === "DepositsLIVE").length === expected, prior + 1); }
         await officer.close();
       }
     }
@@ -583,8 +875,8 @@ try {
       try {
         if (!wasOn) { await asyncSwitch.click(); await officer.locator('[aria-label="Demo async (test): on"]').waitFor(); }
         const { ctx: player } = await freshPlayer(0), deposit = await pageIn(player, "/wallet/deposit?amount=1000");
-        await deposit.locator('input#provider-MPESA').check();
-        await deposit.getByRole("button", { name: "Deposit", exact: true }).click();
+        await deposit.locator('label:has(input#provider-MPESA)').click();
+        await deposit.getByRole("button", { name: "Confirm deposit", exact: true }).click();
         await deposit.getByRole("alertdialog").getByRole("button", { name: "Deposit", exact: true }).click();
         await deposit.waitForURL(url => url.pathname !== "/wallet/deposit", { timeout: 90_000 });
         await deposit.goto(BASE, { waitUntil: "domcontentloaded" }); await deposit.waitForTimeout(1200); await open(deposit); await waitFrame(deposit, "pending");
@@ -627,26 +919,11 @@ try {
       ok("real bet.place capacity exhausted by same-key service replays: fresh commitment refused inline", p.frame === "edit" && /wait|again|too many|second/i.test(p.text) && after.positionCount === before.positionCount && after.betPlacedCount === before.betPlacedCount);
       await tile(page, "matrix-rate-capacity"); await post(admin, "reset-rate-limits"); watch.stop(); await closeContext(player);
     }
-    {
-      const { ctx: player, phone } = await freshPlayer(), page = await pageIn(player), seed = await open(page), other = await sibling(player), before = await observed(player, seed.id);
-      const rg = await pageIn(other, "/profile/responsible-gambling");
-      await rg.locator("#break").getByRole("button", { name: "Start a break", exact: true }).click();
-      await rg.getByRole("alertdialog").getByRole("button", { name: "Start a break", exact: true }).click();
-      await rg.waitForURL(url => url.pathname === "/auth/login" && url.searchParams.has("cooled"));
-      await page.locator(S.place).click();
-      await page.waitForURL(url => url.pathname === "/auth/login" || url.pathname === "/auth/session-ended", { timeout: 90_000 });
-      ok("real cooling-off in second context after open rejects mid-bet and routes to sign-in", !await page.locator(S.root).count());
-      await tile(page, "matrix-cooling-off-redirect");
-      // The cooling action ends the real session, so the owner-only observer correctly refuses it after the change.
-      ok("cooling-off observer is not usable after session revocation", (await player.request.get(`${BASE}/api/dev-test/bet-sheet-observe?marketId=${seed.id}`)).status() === 401);
-      await post(player, "seed-admin", { role: "PLAYER", phone, name: "Local Sheet Matrix", balance: 100000 });
-      const after = await observed(player, seed.id);
-      ok("cooling-off refused bet: own money rows remain unchanged after re-authenticating same fixture owner", after.positionCount === before.positionCount && after.betPlacedCount === before.betPlacedCount, "existing owner seed restores read authentication after proof; no cross-user observer");
-      await closeContext(other); await closeContext(player);
-    }
+    await coolingOffDrive();
     for (const cell of NOT_DRIVEN_MATRIX) result(`matrix row ${cell.row}: ${cell.reason}`, "NOT DRIVEN", cell.proof);
-    for (const name of ["15-minute session limit exceeded", "stake bounds moved after open", "admission BUSY observed", "deploy skew/reload spent", "Onyesha zaidi cards intercepted", "hidden-balance Cash privacy"]) nm(name, "remaining service/browser cell explicitly unproven; no fixture result counted as a real gate");
   }
+
+  if(run("cooling")&&!run("matrix"))await coolingOffDrive();
 
   if (run("doors")) {
     for (const path of ["/", "/live"]) {
@@ -709,6 +986,39 @@ try {
       ok("real15-minute sitting advanced through actual gate: inline refusal, no bet", /session|15/.test(p.text) && before.positionCount === after.positionCount && before.betPlacedCount === after.betPlacedCount);
       await tile(page, "doors-session15-real-gate"); await closeContext(other); await closeContext(ctx);
     }
+    {
+      const officer = await pageIn(admin, "/admin/config"), form = officer.locator('form:has(input[name="maxStake"])').first(), field = form.locator('input[name="maxStake"]');
+      const original = await field.inputValue();
+      const saveMax = async value => { await field.fill(value); await hydratedClick(form.getByRole("button", { name: "Save · Hifadhi", exact: true })); await officer.waitForTimeout(400); };
+      const { ctx } = await freshPlayer(), page = await pageIn(ctx), seed = await open(page), before = await observed(ctx, seed.id), held = [];
+      await page.locator(S.stake).fill("5000");
+      await page.route("**/*", route => { const req = route.request(); if (req.method() === "POST" && req.headers()["next-action"] && req.postData()?.includes("idempotencyKey")) { held.push(route); return; } return route.fallback(); });
+      try {
+        await page.locator(S.place).click(); await waitFrame(page, "placing"); await saveMax("1000");
+        for (const route of held) await route.continue(); await waitFrame(page, "edit");
+        const after = await observed(ctx, seed.id), p = (await probe(page)).got;
+        ok("real officer moves max to1000 after5000 quote captured: updated bounds, zero money rows", /1[,\s]000/.test(p.text) && await page.locator(S.place).isDisabled() && before.positionCount === after.positionCount && before.betPlacedCount === after.betPlacedCount);
+        await tile(page, "doors-bounds-after-open");
+      } finally { await saveMax(original); await officer.close(); await closeContext(ctx); }
+    }
+    {
+      const { ctx } = await freshPlayer(), page = await pageIn(ctx), seed = await open(page), before = await observed(ctx, seed.id);
+      const storm = post(admin, "stress-bulk-bet", { marketId: seed.id, n: 2000, stake: seed.min, userPrefix: "s8qa" });
+      await page.waitForTimeout(100); await page.locator(S.place).click(); await storm;
+      let p, after;
+      for (let attempt = 0; attempt < 90; attempt++) {
+        p = (await probe(page)).got; after = await observed(ctx, seed.id);
+        if (after.positionCount > before.positionCount || (p.frame === "edit" && /busy/i.test(p.text))) break;
+        await page.waitForTimeout(1000);
+      }
+      if (p.frame === "edit" && /busy/i.test(p.text)) {
+        ok("real admission BUSY observed under2000-call storm: inline retry, zero own money rows", before.positionCount === after.positionCount && before.betPlacedCount === after.betPlacedCount);
+      } else {
+        if(after.positionCount>before.positionCount){await waitFrame(page,"receipt");p=(await probe(page)).got;after=await observed(ctx,seed.id);}
+        nm("admission BUSY under actual2000-call storm", `own positionsΔ=${after.positionCount-before.positionCount}, ledgerΔ=${after.betPlacedCount-before.betPlacedCount}, final frame=${p.frame ?? "closed"}; no BUSY refusal observed`);
+      }
+      await tile(page, "doors-admission-storm"); await closeContext(ctx);
+    }
   }
 
   if (run("tap")) {
@@ -739,11 +1049,13 @@ try {
     }
   }
 } catch (error) {
-  result("drive stopped on invalid premise or runtime error", "FAIL", String(error?.stack ?? error).split("Call log:")[0].trim());
+  for (const page of await admin.pages()) if (new URL(page.url()).pathname === "/admin/payments") await tile(page, "invalid-payments-premise").catch(() => {});
+  const diagnostic = String(error?.stack ?? error);
+  result("drive stopped on invalid premise or runtime error", "FAIL", diagnostic.split("Call log:")[0].trim() + "\n" + diagnostic.split(/\r?\n/).filter(line => /^\s+at /.test(line) && /scripts[\\/]|qa-bet-sheet/.test(line)).join("\n"));
 } finally {
   for (const ctx of contexts) await ctx.close().catch(() => {});
   await admin.close().catch(() => {}); await browser.close();
-  writeFileSync(join(OUT, "evidence.json"), JSON.stringify({ base: BASE, engine: process.env.ENGINE ?? "chromium", results, console: consoleRows, tiles }, null, 2));
+  writeFileSync(join(OUT, "evidence.json"), JSON.stringify({ base: BASE, engine: process.env.ENGINE ?? "chromium", results, console: consoleRows, observations, tiles }, null, 2));
 }
 const failures = results.filter(r => r.state === "FAIL"), outstanding = results.filter(r => ["NOT MEASURED", "NOT DRIVEN"].includes(r.state));
 console.log(`qa:bet-sheet: ${results.filter(r => r.state === "PASS").length} passed, ${failures.length} failed, ${outstanding.length} outstanding, ${tiles} tiles. Read every tile: ${OUT}`);

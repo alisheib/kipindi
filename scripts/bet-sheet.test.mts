@@ -38,10 +38,95 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { BetSheetBody } from "../src/components/journey/bet-sheet/bet-sheet.tsx";
 import type { Dict, Locale } from "../src/lib/i18n-dict.ts";
 import { formatTzs } from "../src/lib/utils.ts";
+import { DWELL_BET_RECEIPT_MS } from "../src/lib/feedback-timing.ts";
+import { nextSheetFocus, type SheetFocusState } from "../src/lib/journey/sheet-focus.ts";
+import ts from "typescript";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
 const PROVE_RED = process.argv.includes("--prove-red");
+
+/** Execute the actual component's receipt/viewport/live callbacks with a deterministic clock and platform seam.
+ * React runs the prior cleanup when a named dependency changes; the dependency list is checked alongside the callback.
+ * No product implementation is copied into this harness, and mutations are evaluated through the same callbacks. */
+function sheetLifecycle(source: string) {
+  const ast = ts.createSourceFile("bet-sheet.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const calls: ts.CallExpression[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && ["useEffect", "useCallback"].includes(node.expression.text)) calls.push(node);
+    ts.forEachChild(node, visit);
+  };
+  visit(ast);
+  const find = (hook: string, cue: string) => {
+    const call = calls.find((c) => c.expression.getText(ast) === hook && c.arguments[0]?.getText(ast).includes(cue));
+    if (!call || !ts.isArrowFunction(call.arguments[0])) throw new Error(`missing actual ${hook}: ${cue}`);
+    return { body: call.arguments[0].getText(ast), dependencies: call.arguments[1]?.getText(ast) ?? "" };
+  };
+  const runCallback = (body: string, context: Record<string, unknown>) => {
+    const compiled = ts.transpile(`const actualCallback = ${body};`, { target: ts.ScriptTarget.ES2020 });
+    return new Function(...Object.keys(context), `${compiled}\nreturn actualCallback;`)(...Object.values(context)) as () => void | (() => void);
+  };
+  try {
+    const arm = find("useCallback", "target.current = performance.now()");
+    const receipt = find("useEffect", "remaining.current = DWELL_BET_RECEIPT_MS");
+    const viewport = find("useEffect", "const resizeSheetViewport");
+    const announcement = find("useEffect", "lastFrame.current !== frame.frame");
+    let clock = 100, nextTimer = 1, closed = 0, armed = 0, watched = 0;
+    const timers = new Map<number, { at: number; callback: () => void }>();
+    const target = { current: null as number | null }, remaining = { current: DWELL_BET_RECEIPT_MS }, closeTimer = { current: null as number | null };
+    const pauseKinds = { current: new Set<string>() }, pointer = { current: { x: 1, y: 2 } as { x: number; y: number } | null };
+    const timerContext = {
+      target, remaining, closeTimer, onCloseRef: { current: () => closed++ }, performance: { now: () => clock },
+      setTimeout: (callback: () => void, ms: number) => { const id = nextTimer++; timers.set(id, { at: clock + ms, callback }); return id; },
+      clearTimeout: (id: number) => { timers.delete(id); },
+    };
+    const armClose = runCallback(arm.body, timerContext);
+    const receiptContext = (open: boolean) => ({
+      ...timerContext, open, receiptId: "pos_actual", DWELL_BET_RECEIPT_MS, pauseKinds, pointer,
+      armClose: () => { armed++; armClose(); }, props: { seed: { id: "mkt_actual" } },
+      localStorage: { getItem: () => "[]", setItem: () => { watched++; } },
+    });
+    const neverOpened = runCallback(receipt.body, receiptContext(false))();
+    const closedNeverArms = neverOpened === undefined && armed === 0 && watched === 0 && timers.size === 0;
+    const cleanupReceipt = runCallback(receipt.body, receiptContext(true))();
+    const openArms = DWELL_BET_RECEIPT_MS === 5000 && armed === 1 && watched === 1 && target.current === clock + 5000
+      && timers.size === 1 && [...timers.values()][0]?.at === clock + 5000;
+    pauseKinds.current.add("focus"); pointer.current = { x: 3, y: 4 };
+    if (typeof cleanupReceipt === "function") cleanupReceipt();
+    runCallback(receipt.body, receiptContext(false))();
+    clock += 10_000;
+    for (const [id, timer] of timers) if (timer.at <= clock) { timers.delete(id); timer.callback(); }
+    const receiptCancelled = /\[open, receiptId,/.test(receipt.dependencies) && closedNeverArms && openArms && closed === 0 && timers.size === 0
+      && armed === 1 && watched === 1 && target.current === null && pauseKinds.current.size === 0 && pointer.current === null;
+
+    const listeners = new Map<string, () => void>();
+    const windowViewport = { height: 340, offsetTop: 0, addEventListener: (name: string, callback: () => void) => listeners.set(name, callback), removeEventListener: (name: string) => listeners.delete(name) };
+    const openRef = { current: true };
+    const writes: string[] = [], keys: boolean[] = [];
+    const panel = { style: { setProperty: (name: string, value: string) => writes.push(`${name}:${value}`), removeProperty: (name: string) => writes.push(`remove:${name}`) } };
+    const animationFrames = new Set<number>(); let nextFrame = 1;
+    const cleanupViewport = runCallback(viewport.body, {
+      window: { visualViewport: windowViewport, innerWidth: 360, innerHeight: 640 }, openRef, stakeFocused: true,
+      shellRef: { current: { closest: () => panel } }, setKeyboard: (value: boolean) => keys.push(value), revealFocusedStake: () => {},
+      requestAnimationFrame: () => { const id = nextFrame++; animationFrames.add(id); return id; }, cancelAnimationFrame: (id: number) => animationFrames.delete(id),
+    })();
+    const openMoved = keys.join() === "true" && writes.length === 2 && animationFrames.size === 1 && listeners.size === 2;
+    const beforeGhost = JSON.stringify([writes, keys, [...animationFrames]]);
+    openRef.current = false; windowViewport.height = 300;
+    listeners.get("resize")?.(); listeners.get("scroll")?.();
+    const ghostStayed = JSON.stringify([writes, keys, [...animationFrames]]) === beforeGhost;
+    if (typeof cleanupViewport === "function") cleanupViewport();
+    const viewportClosed = openMoved && ghostStayed && listeners.size === 0 && animationFrames.size === 0
+      && writes.slice(-2).join() === "remove:--bsheet-keyboard-lift,remove:--bsheet-visible-height";
+
+    const live: string[] = [];
+    runCallback(announcement.body, { open: false, setLive: (value: string) => live.push(value) })();
+    const liveClosed = /\[open, props\.frame,/.test(announcement.dependencies) && live.length === 1 && live[0] === "";
+    return { receiptCancelled, viewportClosed, liveClosed };
+  } catch {
+    return { receiptCancelled: false, viewportClosed: false, liveClosed: false };
+  }
+}
 
 type Sources = { state: string; refusal: string; service: string; actions: string; admission: string; retry: string; prisma: string; locks: string; sheet: string; parts: string; css: string };
 const SOURCES: Sources = {
@@ -59,6 +144,7 @@ const SOURCES: Sources = {
 };
 
 type Impl = {
+  focus: typeof nextSheetFocus;
   SS: typeof SS;
   SR: { refusalOutcome: typeof SR.refusalOutcome; settleRefusal: typeof SR.settleRefusal; CLASSIFIED_REASONS: readonly string[]; CLASSIFIED_CODES: readonly string[] };
   plan: typeof SF.shortfallPlan;
@@ -66,11 +152,37 @@ type Impl = {
   draw?: (html: string) => string;
 };
 const REAL: Impl = {
+  focus: nextSheetFocus,
   SS,
   SR: { refusalOutcome: SR.refusalOutcome, settleRefusal: SR.settleRefusal, CLASSIFIED_REASONS: SR.CLASSIFIED_REASONS, CLASSIFIED_CODES: SR.CLASSIFIED_CODES },
   plan: SF.shortfallPlan,
   src: SOURCES,
 };
+
+function focusBinding(text: string): boolean {
+  const j = (value: unknown) => JSON.stringify(value);
+  const ast = ts.createSourceFile("bet-sheet.tsx", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const component = ast.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === "BetSheet") as ts.FunctionDeclaration | undefined;
+  if (!component?.body) return false;
+  const declarations = new Map<string, ts.Expression>(); let adjusted = false, modalKey = false;
+  const visit = (node: ts.Node) => {
+    if (ts.isVariableDeclaration(node) && node.initializer) declarations.set(node.name.getText(ast).replace(/\s/g, ""), node.initializer);
+    if (ts.isIfStatement(node) && node.expression.getText(ast).replace(/\s/g, "") === "nextFocus!==focusState"
+      && node.thenStatement.getText(ast).replace(/\s/g, "") === "setFocusState(nextFocus);") adjusted = true;
+    if (ts.isJsxAttribute(node) && node.name.getText(ast) === "refocusKey" && node.initializer && ts.isJsxExpression(node.initializer)
+      && node.initializer.expression?.getText(ast) === "refocusKey") modalKey = true;
+    ts.forEachChild(node, visit);
+  };
+  visit(component.body);
+  const identity = declarations.get("focusIdentity"), next = declarations.get("nextFocus"), key = declarations.get("refocusKey"), state = declarations.get("[focusState,setFocusState]");
+  return !!identity && ts.isCallExpression(identity) && identity.expression.getText(ast) === "JSON.stringify" && !!identity.arguments[0] && ts.isArrayLiteralExpression(identity.arguments[0])
+    && j(identity.arguments[0].elements.map(n => n.getText(ast).replace(/\s/g, ""))) === j(["props.seed.id", "props.side", "props.frame.receipt?.positionId??null"])
+    && !!next && ts.isCallExpression(next) && next.expression.getText(ast) === "nextSheetFocus"
+    && j(next.arguments.map(n => n.getText(ast))) === j(["focusState", "focusIdentity", "props.frame.frame", "stakeFocused"])
+    && !!key && ts.isTemplateExpression(key) && j(key.templateSpans.map(n => n.expression.getText(ast))) === j(["nextFocus.identity", "nextFocus.revision"])
+    && !!state && ts.isCallExpression(state) && state.expression.getText(ast) === "useState" && /identity: focusIdentity, frame: props\.frame\.frame, revision: 0/.test(state.arguments[0]?.getText(ast) ?? "")
+    && adjusted && modalKey;
+}
 
 /* ─── The world ───────────────────────────────────────────────────────────────────────────────────────────────── */
 
@@ -684,11 +796,13 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   ok("7.figures · every printed priced estimate and committed receipt stake is its pure frame's figure; receipt has the exact ticket link and no payout estimate, and no frame leaks an unfilled placeholder",
     rendered.every((x) => !/\{(?:amount|have|short|min|left|max|remaining|side|mult|pct|until)\}/.test(x.html)
       && (x.frame.estimate?.payout === null || x.frame.estimate?.payout === undefined || x.frame.frame === "blocked" || x.frame.frame === "closed" || x.html.includes(formatTzs(x.frame.estimate.payout)))
+      && (!x.html.includes("journey-sheet-stake") || /<input[^>]*data-testid="journey-sheet-stake"[^>]*class="[^"]*font-mono/.test(x.html))
       && (!x.frame.receipt || x.html.includes("pos_receipt01") && x.html.includes(formatTzs(2_000)) && x.html.includes("/positions/pos_receipt01") && !x.html.includes("kp-bsheet__estimate"))));
   const invalidFrames = rendered.filter((x) => x.frame.stakeInvalid);
   ok("7.invalid · low, loss-room, pending and nonempty bounds stakes are aria-invalid, described by the reason and use the neutral two-pixel attention edge; placing locks its field and commit",
     invalidFrames.length === 18 && invalidFrames.every((x) => x.html.includes('aria-invalid="true"')
       && x.html.includes(x.frame.breaks ? 'aria-describedby="sheet-proof-bounds"' : 'aria-describedby="sheet-proof-callout"')
+      && (!x.frame.breaks || /class="kp-bsheet__bounds"><svg\b[^]*?<\/svg><span>[^]*?<\/span><\/p>/.test(x.html))
       && x.html.includes("border-color:var(--input-attention);border-width:2px") && !x.html.includes("border-danger-500"))
       && rendered.filter((x) => x.frame.frame === "placing").every((x) => /data-testid="journey-sheet-stake"[^>]*disabled|disabled[^>]*data-testid="journey-sheet-stake"/.test(x.html)));
   const refusedDeposit = frameAt({ viewer: viewer(facts({ wallet: wallet(2_000), deposit: { ...facts().deposit, limits: { daily: 10_000, weekly: null, monthly: null }, usage: { day: 8_000, week: 8_000, month: 8_000 } } })) });
@@ -697,30 +811,73 @@ function run(impl: Impl, log: (l: string) => void): string[] {
       && drawFrame(refusedDeposit, "en").includes(formatTzs(3_000))
       && SF.depositLeftAfterFor({ kind: "deposit", amount: 1_000, chips: [1_000, 5_000], belowDepositMin: true, leftAfter: 700 }, 5_000) === 4_700);
   const sheetSrc = strip(impl.src.sheet), partsSrc = strip(impl.src.parts);
+  const commitRows = rendered.filter(x => x.html.includes('data-testid="journey-sheet-place"'));
+  ok("7.cta-line · the commit's words, separator and money form one inline sentence inside the button, so a long Swahili figure wraps coherently",
+    commitRows.length > 0 && commitRows.every(x => /data-testid="journey-sheet-place"[^>]*><span>/.test(x.html))
+      && /data-testid="journey-sheet-place"[^]*?<span><SheetSentence[^]*?line=\{footerLine\} \/><\/span><\/Button>/.test(sheetSrc));
+  const titleStyle = impl.src.css.match(/\.kp-bsheet__title \{([^}]+)\}/)?.[1] ?? "";
+  ok("7.title-wrap · the actual question and receipt heading uses the kit's balanced title wrap, without a clamp that hides its words",
+    rendered.every(x => /<h2[^>]*class="kp-bsheet__title"/.test(x.html)) && /text-wrap:\s*balance\s*;/.test(titleStyle)
+      && !/line-clamp|max-height|overflow:\s*hidden/.test(titleStyle));
   ok("8.surface · the stake surface draws no form, submit button or key handler; each commit is its own type=button click and balance uses Cash",
     !/<form\b|type=["']submit["']|\bonKey(?:Down|Up|Press)\b/.test(sheetSrc + partsSrc)
       && /type="button"[^>]*data-testid="journey-sheet-place"[^>]*onClick=\{onPlace\}/.test(sheetSrc)
       && /<Cash\b/.test(partsSrc) && /<Cash\b/.test(sheetSrc));
-  ok("8.focus · the sheet opens on its heading, every frame re-arms that focus, the kit CloseX is its safe way out and placing withdraws scrim/Escape",
-    sheetSrc.includes("initialFocus={headingRef}") && sheetSrc.includes("safeFocus={closeRef}") && sheetSrc.includes("refocusKey={props.frame.frame}")
+  ok("8.focus · the sheet opens on its heading, its focus revision re-arms that focus, the kit CloseX is its safe way out and placing withdraws scrim/Escape",
+    sheetSrc.includes("initialFocus={headingRef}") && sheetSrc.includes("safeFocus={closeRef}") && sheetSrc.includes("refocusKey={refocusKey}")
       && /<h2[^>]*ref=\{headingRef\}[^>]*tabIndex=\{-1\}/.test(sheetSrc)
       && /<CloseX ref=\{closeRef\} withheld=\{placing\} onClick=\{onClose\}/.test(sheetSrc)
       && /closeOnScrim=\{props.frame.closable\} closeOnEsc=\{props.frame.closable\}/.test(sheetSrc));
+  const frameKinds: SS.SheetFrameKind[] = ["edit", "low", "lossRoom", "pending", "blocked", "closed", "placing", "inDoubt", "receipt"];
+  const editing = new Set<SS.SheetFrameKind>(["edit", "low", "lossRoom", "pending"]);
+  const ids = [j(["mkt_a", "YES", "pos_a"]), j(["mkt_b", "YES", "pos_a"]), j(["mkt_a", "NO", "pos_a"]), j(["mkt_a", "YES", "pos_b"])];
+  const focusFailures: string[] = [];
+  for (const before of frameKinds) for (const after of frameKinds) for (const typing of [false, true]) for (const identity of ids) {
+    const previous: SheetFocusState = { identity: ids[0], frame: before, revision: 7 };
+    const same = identity === previous.identity && before === after;
+    const preserve = identity === previous.identity && typing && editing.has(before) && editing.has(after);
+    const next = impl.focus(previous, identity, after, typing);
+    if (next.identity !== identity || next.frame !== after || next.revision !== 7 + (same || preserve ? 0 : 1) || same && next !== previous) focusFailures.push(`${before}/${after}/${typing}/${identity}`);
+  }
+  let cursor: SheetFocusState = { identity: ids[0], frame: "edit", revision: 0 };
+  const sequence: number[] = [];
+  for (const [frame, typing] of [["low", true], ["low", false], ["edit", true], ["pending", true], ["lossRoom", false], ["placing", true], ["receipt", false]] as const) {
+    cursor = impl.focus(cursor, ids[0], frame, typing); sequence.push(cursor.revision);
+  }
+  ok("8.focus-rules · all 648 frame/typing/market-side-receipt identity transitions preserve a live stake edit only across editable frames; blur alone does not defer rearm, and button-focused, outcome and terminal changes rearm",
+    focusFailures.length === 0 && j(sequence) === j([0, 0, 0, 0, 1, 2, 3]), j({ failures: focusFailures.slice(0, 4), sequence }));
+  ok("8.focus-binding · actual AST binds market/side/receipt identity and stake focus to the pure transition during render, and Modal receives the new cursor's revision without an intermediate focus-losing commit", focusBinding(impl.src.sheet));
+  ok("8.focus-ink · middle-region controls keep the kit's visible two-pixel focus outline inside the clipping scrollport",
+    /\.kp-bsheet__scroll :where\(a, button\):focus-visible \{[^}]*outline-offset: -2px/.test(impl.src.css));
   ok("8.receipt-hold · the receipt banks its five-second dwell on focus-visible or changed pointer coordinates, clears the backstop, and resumes only after all reading holds leave",
     sheetSrc.includes("DWELL_BET_RECEIPT_MS") && sheetSrc.includes('event.target.matches(":focus-visible")')
       && !/onPointerEnter=/.test(sheetSrc) && /prior\.x !== event\.clientX \|\| prior\.y !== event\.clientY/.test(sheetSrc)
       && /remaining\.current = Math\.max\(0, target\.current - performance\.now\(\)\)/.test(sheetSrc)
       && /if \(closeTimer\.current\) clearTimeout\(closeTimer\.current\)/.test(sheetSrc) && /pauseKinds\.current\.size === 0/.test(sheetSrc));
+  ok("8.keyboard · focus and viewport resize reveal the focused stake inside the one middle scrollport after compact layout, without moving fixed controls",
+    sheetSrc.includes("document.activeElement !== field") && sheetSrc.includes("if (open && keyboard && stakeFocused) revealFocusedStake();")
+      && sheetSrc.includes("requestAnimationFrame(revealFocusedStake)") && sheetSrc.includes("cancelAnimationFrame(revealFrame)")
+      && sheetSrc.includes("if (stake.bottom > bottom) middle.scrollTop += stake.bottom - bottom;")
+      && sheetSrc.includes("else if (stake.top < top) middle.scrollTop -= top - stake.top;"));
   ok("8.announcements · blocks/closed speak by their alert and describedBy, inline refusals by status, and the single polite region speaks only frame changes or an estimate update, never a keystroke",
     sheetSrc.includes('role="alert"') && sheetSrc.includes('id={lineId} role="status"') && sheetSrc.includes('aria-live="polite" aria-atomic="true"')
       && sheetSrc.includes("describedBy={terminal ?") && sheetSrc.includes("if (!moved && !updated) return;")
       && !/frame\.frame === "blocked"\) message|frame\.frame === "closed"\) message/.test(sheetSrc));
-  ok("9.tokens · inset neutral estimate, standard figure ink, kit gold commit, metal deposit label, info callouts, forced-colours-safe selected outline and one capped scrolling middle",
+  const lifecycle = sheetLifecycle(impl.src.sheet);
+  ok("8.lifecycle · retained M2 exit passes open to Modal; a closed receipt cancels its actual timer, stops watching/live announcements, and ignores viewport events while its inert ghost exits",
+    lifecycle.receiptCancelled && lifecycle.viewportClosed && lifecycle.liveClosed
+      && /open\?: boolean/.test(sheetSrc) && sheetSrc.includes("const open = props.open ?? true;")
+      && sheetSrc.includes("openRef.current = open;") && /<Modal open=\{open\}/.test(sheetSrc)
+      && /\{open && <p className="sr-only" aria-live="polite"/.test(sheetSrc), j(lifecycle));
+  ok("9.tokens · inset neutral estimate, standard figure ink, kit gold commit, metal deposit row with dark rail ink, info callouts, forced-colours-safe selected outline and one capped scrolling middle",
     /\.kp-bsheet__estimate \{[^}]*background: var\(--bg-inset\)/.test(impl.src.css)
       && /\.kp-bsheet__estimate-figure[^}]*color: var\(--text\)/.test(impl.src.css)
-      && sheetSrc.includes('variant="gold"') && sheetSrc.includes('className="gilt-metal"') && sheetSrc.includes('Callout tone="info"')
+      && sheetSrc.includes('variant="gold" size="xl" fullWidth className="kp-bsheet__deposit gilt-metal"') && sheetSrc.includes('Callout tone="info"')
+      && /\.kp-bsheet__rails[^}]*color: var\(--gold-fg\)/.test(impl.src.css)
       && /\.kp-bsheet__chip\[aria-pressed="true"\][^}]*outline: 2px solid var\(--brand-400\)/.test(impl.src.css)
       && /\.kp-bsheet__scroll[^}]*min-height: 0[^}]*overflow-y: auto/.test(impl.src.css)
+      && /\.kp-bsheet__scroll > \* \{[^}]*flex-shrink: 0/.test(impl.src.css)
+      && /\.kp-bsheet__deposit \{[^}]*padding-block: var\(--sp-2\)/.test(impl.src.css)
       && /\.kp-bsheet \{[^}]*max-height: min\(calc\(100dvh - var\(--sp-12\)\)/.test(impl.src.css));
   ok("9.figure-fit · a whole estimate fits through existing type rungs, remeasures on container resize and font arrival, and preserves the xl phone field above the iOS zoom minimum",
     partsSrc.includes('["--type-h1", "--type-h2", "--type-h3", "--type-h4"]')
@@ -749,15 +906,44 @@ if (!PROVE_RED) {
     // WP6 · actual markup mutations and source contracts; no repository file is written.
     { name: "the rendered balance row dropped from edit's order", expect: /^7\.order /, impl: { ...REAL, draw: (html) => html.replaceAll("kp-bsheet__balance", "kp-bsheet__missing") } },
     { name: "the rendered committed receipt stake repriced", expect: /^7\.figures /, impl: { ...REAL, draw: (html) => html.replaceAll(formatTzs(2_000), formatTzs(9_000)) } },
+    { name: "the stake digits lose their money font", expect: /^7\.figures /, impl: { ...REAL, draw: (html) => html.replace(/(<input[^>]*data-testid="journey-sheet-stake"[^>]*class="[^"]*)font-mono/, "$1font-sans") } },
     { name: "a low frame renders no aria-invalid", expect: /^7\.invalid /, impl: { ...REAL, draw: (html) => html.replaceAll('aria-invalid="true"', '') } },
     { name: "a bounds break paints the red error edge instead of neutral attention", expect: /^7\.invalid /, impl: withSS({ sheetFrame: (i) => { const f = SS.sheetFrame(i); return f.breaks && f.breaks !== "empty" ? { ...f, attention: false } : f; } }) },
+    { name: "bounds words and money become separate flex columns", expect: /^7\.invalid /, impl: { ...REAL, draw: (html) => html.replace(/(class="kp-bsheet__bounds"><svg\b[^]*?<\/svg>)<span>/, "$1") } },
+    { name: "the commit separates long words, separator and money into flex items again", expect: /^7\.cta-line /, impl: withSrc({ sheet: SOURCES.sheet.replace('<span><SheetSentence t={t} locale={locale} nowMs={nowMs} line={footerLine} /></span>', '<SheetSentence t={t} locale={locale} nowMs={nowMs} line={footerLine} />') }) },
+    { name: "the question title loses balanced wrapping and leaves a Chinese widow", expect: /^7\.title-wrap /, impl: withSrc({ css: SOURCES.css.replace(/(\.kp-bsheet__title \{[^}]*?)text-wrap: balance; /, "$1") }) },
+    { name: "a keyboard resize leaves the focused stake under the fixed commit", expect: /^8\.keyboard /, impl: withSrc({ sheet: SOURCES.sheet.replace('requestAnimationFrame(revealFocusedStake)', 'requestAnimationFrame(() => {})') }) },
+    { name: "compact layout never reveals the focused field after rendering", expect: /^8\.keyboard /, impl: withSrc({ sheet: SOURCES.sheet.replace('if (open && keyboard && stakeFocused) revealFocusedStake();', 'if (open && keyboard && stakeFocused) return;') }) },
+    { name: "the scrollport clips a control's outward keyboard outline", expect: /^8\.focus-ink /, impl: withSrc({ css: SOURCES.css.replace('.kp-bsheet__scroll :where(a, button):focus-visible { outline-offset: -2px; }', '.kp-bsheet__scroll :where(a, button):focus-visible { outline-offset: 2px; }') }) },
     { name: "a deposit refusal uses the stake maximum", expect: /^4\.refusal-figures /, impl: withSS({ sheetFrame: (i) => { const f = SS.sheetFrame(i); return f.low ? { ...f, low: { ...f.low, depositMaximum: f.bounds.max } } : f; } }) },
     { name: "a submit form added to the stake surface", expect: /^8\.surface /, impl: withSrc({ sheet: SOURCES.sheet + '\nconst bad = <form><button type="submit" /></form>;\n' }) },
-    { name: "a frame change no longer re-arms heading focus", expect: /^8\.focus /, impl: withSrc({ sheet: SOURCES.sheet.replace("refocusKey={props.frame.frame}", "") }) },
+    { name: "a focus revision no longer re-arms heading focus", expect: /^8\.focus /, impl: withSrc({ sheet: SOURCES.sheet.replace("refocusKey={refocusKey}", "") }) },
+    { name: "typing a low-balance stake steals focus on every derived frame", expect: /^8\.focus-rules /, impl: { ...REAL, focus: (p, identity, frame) => p.identity === identity && p.frame === frame ? p : { identity, frame, revision: p.revision + 1 } } },
+    { name: "a button-focused editable frame skips the required focus beat", expect: /^8\.focus-rules /, impl: { ...REAL, focus: (p, identity, frame) => nextSheetFocus(p, identity, frame, true) } },
+    { name: "a terminal or receipt change is preserved while typing", expect: /^8\.focus-rules /, impl: { ...REAL, focus: (p, identity, frame, typing) => typing ? { identity, frame, revision: p.revision } : nextSheetFocus(p, identity, frame, typing) } },
+    { name: "blur alone triggers a delayed focus rearm", expect: /^8\.focus-rules /, impl: { ...REAL, focus: (p, identity, frame, typing) => !typing && p.identity === identity && p.frame === frame ? { ...p, revision: p.revision + 1 } : nextSheetFocus(p, identity, frame, typing) } },
+    { name: "another question-side-receipt keeps the old focus revision", expect: /^8\.focus-rules /, impl: { ...REAL, focus: (p, identity, frame, typing) => identity !== p.identity ? { identity, frame, revision: p.revision } : nextSheetFocus(p, identity, frame, typing) } },
+    { name: "the refocus identity omits the side", expect: /^8\.focus-binding /, impl: withSrc({ sheet: SOURCES.sheet.replace('JSON.stringify([props.seed.id, props.side, props.frame.receipt?.positionId ?? null])', 'JSON.stringify([props.seed.id, null, props.frame.receipt?.positionId ?? null])') }) },
+    { name: "the focus rule is told the field is never focused", expect: /^8\.focus-binding /, impl: withSrc({ sheet: SOURCES.sheet.replace('nextSheetFocus(focusState, focusIdentity, props.frame.frame, stakeFocused)', 'nextSheetFocus(focusState, focusIdentity, props.frame.frame, false)') }) },
+    { name: "Modal receives the prior render's refocus revision", expect: /^8\.focus-binding /, impl: withSrc({ sheet: SOURCES.sheet.replace('`${nextFocus.identity}:${nextFocus.revision}`', '`${focusState.identity}:${focusState.revision}`') }) },
+    { name: "focus adjustment is deferred until an effect after the losing commit", expect: /^8\.focus-binding /, impl: withSrc({ sheet: SOURCES.sheet.replace('if (nextFocus !== focusState) setFocusState(nextFocus);', 'useEffect(() => { setFocusState(nextFocus); }, [nextFocus]);') }) },
     { name: "a plain focus pauses the receipt", expect: /^8\.receipt-hold /, impl: withSrc({ sheet: SOURCES.sheet.replace('event.target.matches(":focus-visible")', 'true') }) },
     { name: "pointerenter pauses the receipt under a stationary cursor", expect: /^8\.receipt-hold /, impl: withSrc({ sheet: SOURCES.sheet.replace("onPointerMove=", "onPointerEnter=") }) },
     { name: "a keystroke can repeat the live announcement", expect: /^8\.announcements /, impl: withSrc({ sheet: SOURCES.sheet.replace("if (!moved && !updated) return;", "") }) },
+    { name: "Modal never receives the close that starts its M2 exit", expect: /^8\.lifecycle /, impl: withSrc({ sheet: SOURCES.sheet.replace("<Modal open={open}", "<Modal open") }) },
+    { name: "closing a retained receipt never reruns its timer cleanup", expect: /^8\.lifecycle /, impl: withSrc({ sheet: SOURCES.sheet.replace("}, [open, receiptId, props.seed.id, armClose]);", "}, [receiptId, props.seed.id, armClose]);") }) },
+    { name: "a receipt ghost starts another dwell timer and watch", expect: /^8\.lifecycle /, impl: withSrc({ sheet: SOURCES.sheet.replace("if (!open || !receiptId) return;", "if (!receiptId) return;") }) },
+    { name: "the receipt's actual arm doubles its five-second dwell", expect: /^8\.lifecycle /, impl: withSrc({ sheet: SOURCES.sheet.replace("setTimeout(() => onCloseRef.current(), remaining.current)", "setTimeout(() => onCloseRef.current(), remaining.current * 2)") }) },
+    { name: "the closed receipt's scheduled callback still fires", expect: /^8\.lifecycle /, impl: withSrc({ sheet: SOURCES.sheet.replace("return () => { if (closeTimer.current) clearTimeout(closeTimer.current); target.current = null;", "return () => { target.current = null;") }) },
+    { name: "keyboard viewport changes reposition an exit ghost", expect: /^8\.lifecycle /, impl: withSrc({ sheet: SOURCES.sheet.replace("if (!openRef.current) return;", "") }) },
+    { name: "the retained viewport callback reads a stale open ref", expect: /^8\.lifecycle /, impl: withSrc({ sheet: SOURCES.sheet.replace("openRef.current = open;", "") }) },
+    { name: "closing keeps the last live message active", expect: /^8\.lifecycle /, impl: withSrc({ sheet: SOURCES.sheet.replace('if (!open) { setLive(""); return; }', '') }) },
+    { name: "a closed exit ghost retains its polite live region", expect: /^8\.lifecycle /, impl: withSrc({ sheet: SOURCES.sheet.replace('{open && <p className="sr-only" aria-live="polite"', '{<p className="sr-only" aria-live="polite"') }) },
     { name: "the estimate's figure painted gold", expect: /^9\.tokens /, impl: withSrc({ css: SOURCES.css.replace(/(\.kp-bsheet__estimate-figure[^}]*color: )var\(--text\)/, "$1var(--gilt)") }) },
+    { name: "metal highlights only the deposit label instead of the whole row", expect: /^9\.tokens /, impl: withSrc({ sheet: SOURCES.sheet.replace('className="kp-bsheet__deposit gilt-metal"', 'className="kp-bsheet__deposit"').replace('className="kp-bsheet__deposit-copy"><span>', 'className="kp-bsheet__deposit-copy"><span className="gilt-metal">') }) },
+    { name: "ghost hover clears the money door's metal wash behind dark rail ink", expect: /^9\.tokens /, impl: withSrc({ sheet: SOURCES.sheet.replace('variant="gold" size="xl" fullWidth className="kp-bsheet__deposit gilt-metal"', 'variant="ghost" size="xl" fullWidth className="kp-bsheet__deposit gilt-metal"') }) },
+    { name: "a short viewport shrinks multiline controls across their edges", expect: /^9\.tokens /, impl: withSrc({ css: SOURCES.css.replace('.kp-bsheet__scroll > * { flex-shrink: 0; }', '.kp-bsheet__scroll > * { flex-shrink: 1; }') }) },
+    { name: "the deposit door loses its vertical reading space", expect: /^9\.tokens /, impl: withSrc({ css: SOURCES.css.replace(/(\.kp-bsheet__deposit \{[^}]*); padding-block: var\(--sp-2\)/, '$1') }) },
     { name: "a late font no longer remeasures the whole estimate", expect: /^9\.figure-fit /, impl: withSrc({ parts: SOURCES.parts.replace('document.fonts.addEventListener("loadingdone", fitEstimateFigure)', 'document.fonts.addEventListener("loadingdone", () => {})') }) },
     { name: "the figure's fitting loop ignores its rendered width", expect: /^9\.figure-fit /, impl: withSrc({ parts: SOURCES.parts.replace("probe.getBoundingClientRect().width <= element.clientWidth", "true") }) },
     { name: "a height change retriggers the figure resize loop", expect: /^9\.figure-fit /, impl: withSrc({ parts: SOURCES.parts.replace("if (width === lastWidth) return;", "") }) },

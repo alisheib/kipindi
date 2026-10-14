@@ -514,7 +514,8 @@ one of the four MNO rails or the existing signed Card adapter, the same caller/o
 Fresh unmarked/non-RG stored FAILED plus a matching signed FAILED can resolve that uncertainty; signed CONFIRMED which
 opposes stored FAILED must persist REVIEW before any terminal presentation. Faults, unsupported replies, missing or
 changed scope and missing wallet truth remain UNKNOWN. Review/held markers never clear from recheck. Funding-key
-recovery stays read-only. The owner reviewed the explicit one-shot endpoint contract on 2026-10-14; its separate
+recovery stays read-only. The root agent reviewed the explicit one-shot endpoint contract on 2026-10-14 under the
+owner's standing delegation; its separate
 implementation is recorded in §5f. It is **not an expanded automatic polling policy**. The actual controller,
 storage/expiry and auth/reload proof remain unimplemented review gates before WP4.
 
@@ -525,8 +526,9 @@ S9 stays open and undeployed and must rebase onto the verified S8 release before
 ### 5f. Explicit terminal recheck preparation — 2026-10-14
 
 The new [private recheck core](../../../src/lib/server/deposit-recheck.ts) and
-[POST adapter](../../../src/app/api/wallet/deposits/[id]/recheck/route.ts) are isolated preparation. The owner reviewed
-the nine-file endpoint, wallet-before-claim and transaction/notice correction on 2026-10-14 and approved a checkpoint
+[POST adapter](../../../src/app/api/wallet/deposits/[id]/recheck/route.ts) are isolated preparation. The root agent
+reviewed the nine-file endpoint, wallet-before-claim and transaction/notice correction on 2026-10-14 under the owner's
+standing delegation and approved a checkpoint
 on `codex/vodacom-s9`. Ordinary status and funding-key recovery are unchanged. Only an explicit authenticated same-origin
 POST, with `Sec-Fetch-Site: same-origin` and `X-KP-Deposit-Recheck: 1`, enters this door; missing, same-site, cross-site,
 none and non-POST requests refuse before session/core access. No CORS permission is added. The custom non-simple
@@ -572,3 +574,17 @@ Lipa. Missing/expired funding storage cannot prove that earlier uncertainty neve
 in such a reentry requires the explicit signed check. No client funding writer, namespace/disclosure, storage/expiry
 controller, classic return retry repair or UI change is included here. Officer resolution, outbound-refund proof/SLA,
 agency acknowledgement and rebase/integration/release gates remain open.
+
+### 5g. S8 prerequisite merge preparation — 2026-10-14
+
+The reviewed explicit-recheck preparation is saved at `5ac800f7152e8a28907a10edd594f8a279ae8eb0` on
+`codex/vodacom-s9`. Preparation now merges `origin/codex/vodacom-s8` at
+`2490c75c3`; S8's release gates remain with the root agent, and this is no LIVE or S9 completion claim.
+The two conflicts were proof inputs: predeploy retains both parents' checks exactly once (239 commands), and the
+house report's seven writer locators move +2 for S9's two `StoredPosition.origin` type lines. Every nine-line writer
+was independently SHA256-compared with that S8 tip and remained byte-identical, along with the unchanged deletion,
+wrong-object and stake controls. The merged memory report child measured **251 passed, zero failed**. Typecheck,
+recheck **88/88**, landed-key **49/49**, admission-copy **17** and lock-copy **11 + 3 plants** pass. The isolated
+Postgres lock-copy proof also passed all **7** actual connection/commit/rollback/drain controls and stopped the cluster.
+This brings in the process-shared lock/admission runtime prerequisite; classic Card/controller/storage and UI work
+still require their own source and browser proof, including the S10-owned account-partition prerequisite.

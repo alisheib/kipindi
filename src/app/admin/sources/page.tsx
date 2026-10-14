@@ -1,6 +1,7 @@
 import { AdminPageGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-shell";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
+import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { formatDate, adminCount } from "@/lib/utils";
@@ -135,13 +136,9 @@ async function AdminSourcesContent({ searchParams }: SourcesProps) {
             padding="p-0"
             className={catEnabled ? "" : "opacity-60"}
             action={
-              <span className={`font-mono text-micro tracking-[0.12em] uppercase px-2 py-0.5 rounded-pill border ${
-                isGeneratable
-                  ? "border-yes-700/40 bg-yes-500/10 text-yes-300"
-                  : "border-warning-border bg-warning-bg text-warning-fg"
-              }`}>
+              <Chip variant={isGeneratable ? "success" : "warning"}>
                 {isGeneratable ? "AI can generate" : catEnabled ? "No enabled source · not generatable" : "category disabled"}
-              </span>
+              </Chip>
             }
           >
             <ScrollX label="Sources">
@@ -158,6 +155,7 @@ async function AdminSourcesContent({ searchParams }: SourcesProps) {
                 <tbody>
                   {sources.length === 0 && (
                     <AdminTableEmpty
+                      fill
                       colSpan={5}
                       kind="admin"
                       title="No sources yet"

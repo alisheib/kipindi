@@ -3,9 +3,22 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 
+/** The actual Next entry and two CLI option pairs, never a stray loopback string elsewhere in argv. */
+function localProductionStart(entry: string, argv: readonly string[]): boolean {
+  const cli = entry.replace(/\\/g, "/");
+  if (!/\/node_modules\/next\/dist\/bin\/next(?:\.js)?$/.test(cli) || argv[0] !== "start" || argv.length !== 5) return false;
+  const options = new Map<string, string>();
+  for (let i = 1; i < argv.length; i += 2) {
+    const name = argv[i], value = argv[i + 1];
+    if ((name !== "--hostname" && name !== "--port") || options.has(name)) return false;
+    options.set(name, value);
+  }
+  return options.get("--hostname") === "127.0.0.1" && options.get("--port") === "3044";
+}
+
 if (process.env.KP_QA_MEMORY_BOOTSTRAP !== "bet-sheet-local-production" || process.env.NODE_ENV !== "production" || process.env.DATABASE_URL ||
-    !process.argv.includes("start") || !process.argv.includes("127.0.0.1")) {
-  throw new Error("Bet-sheet production fixture requires explicit local memory mode and next start bound to127.0.0.1, with no DATABASE_URL.");
+    !localProductionStart(process.argv[1] ?? "", process.argv.slice(2))) {
+  throw new Error("Bet-sheet production fixture requires explicit local memory mode and Next start bound to127.0.0.1:3044, with no DATABASE_URL.");
 }
 if (!process.env.SESSION_SECRET || !process.env.JOURNEY_PREVIEW_SECRET) throw new Error("Local fixture secrets are required.");
 

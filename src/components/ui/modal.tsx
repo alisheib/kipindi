@@ -336,7 +336,8 @@ export function Modal({
   const { present, exiting } = useExitPhase(open, "--t-quick");
 
   useModalLock(open);
-  React.useEffect(() => { setMounted(true); }, []);
+  // Keep SSR's first render empty, then supply the portal refs before the first browser paint.
+  React.useLayoutEffect(() => { setMounted(true); }, []);
   /* ⭐ S6 A8i-2 · THE KEY GUARD STANDS WHEREVER A DIALOG CAN OPEN (`key-guard.tsx`). AppShell installs it on every player
      page; a page outside the shell (the console) gets it from the first dialog it mounts, open or not, so it already
      stands when one opens. It is installed once per page, by whichever asks first. */
@@ -400,6 +401,9 @@ export function Modal({
      React runs a layout cleanup before it detaches the refs below it, where a passive cleanup came after. */
   React.useLayoutEffect(() => {
     if (!open) return;
+    // The first render has no portal. A cold hydration can postpone its mounted commit beyond the focus timer;
+    // register and focus from the commit that actually supplies the dialog's refs.
+    if (!mounted) return;
     // The way back: what had focus when the dialog opened, captured now — by cleanup time the DOM may have moved on.
     const restoreTo = document.activeElement;
     const focusables = () =>
@@ -502,7 +506,7 @@ export function Modal({
       if (openLayerRef.current === layer) openLayerRef.current = null;
       leaveLayer(layer, PAGE);
     };
-  }, [open]);
+  }, [open, mounted]);
 
   if (!mounted || !present) return null;
 

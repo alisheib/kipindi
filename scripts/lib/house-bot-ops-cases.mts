@@ -1268,7 +1268,12 @@ if (STORE === "memory") {
     const env = { GIT_INDEX_FILE: IDX };
     git(["read-tree", "HEAD"], env);
     edit((args, input) => git(args, env, input));
-    return git(["commit-tree", git(["write-tree"], env), "-p", git(["rev-parse", "HEAD"]), "-m", msg]);
+    // These unreferenced fixture objects need an identity even on a clean CI runner.
+    // Keep it local to commit-tree; never change the checkout's or user's Git configuration.
+    return git(["commit-tree", git(["write-tree"], env), "-p", git(["rev-parse", "HEAD"]), "-m", msg], {
+      GIT_AUTHOR_NAME: "50pick release fixture", GIT_AUTHOR_EMAIL: "release-fixture@example.invalid",
+      GIT_COMMITTER_NAME: "50pick release fixture", GIT_COMMITTER_EMAIL: "release-fixture@example.invalid",
+    });
   };
   const MIGS = "prisma/migrations";
 

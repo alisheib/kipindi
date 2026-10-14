@@ -261,6 +261,10 @@ function suspenseCensus(src: Src): string[] {
       const fb = s.slice(open + 1, k).trim();
       if (fb === "null") continue;
       if (/^<(ResultsGhostBands|MarketsBoardGhost)\b/.test(fb) && /from "\.\/loading";/.test(s)) continue;
+      // S8 WP8 moved the classic board drawing verbatim to a client leaf, leaving its loading file a server reader
+      // picker. Only this page and this named binding may use that moved leaf (journey-question pins original bytes).
+      if (f === "src/app/markets/page.tsx" && fb === "<MarketsBoardGhost />"
+        && s.includes('import { MarketsBoardGhost } from "./markets-ghost";')) continue;
       if (f === "src/components/layout/top-app-bar.tsx" && fb.startsWith("<GuestAuthPills")) continue; // chrome, not a skeleton
       // ⭐ THE VODACOM PLAN S7 (WP7, A17 item 2, A24 item 2): `/`'s journey arm stands the journey home's own ghost while the
       // home's list arrives — the very drawing the root loading's journey picture of `/` draws (route-ghost.tsx), so one
@@ -285,11 +289,13 @@ function suspenseCensus(src: Src): string[] {
   ok("2.1′ PLANT · /markets' own GridSkeleton back as the fallback is reported", back.length > 0, back.join(" | "));
   const homeBack = suspenseCensus(planted("src/app/page.tsx", "<Suspense fallback={<JourneyHomeGhost t={t} />}>", "<Suspense fallback={<HomeSkeleton />}>"));
   ok("2.1″ PLANT · `/`'s journey arm standing a skeleton of its own in place of the home's ghost is reported", homeBack.length > 0, homeBack.join(" | "));
+  const wrongBoardImport = suspenseCensus(planted("src/app/markets/page.tsx", 'import { MarketsBoardGhost } from "./markets-ghost";', 'import { MarketsBoardGhost } from "./unreviewed-ghost";'));
+  ok("2.1‴ PLANT · the moved board fallback imported from another drawing is rejected", wrongBoardImport.some(w => w.startsWith("src/app/markets/page.tsx:")));
   const rp = REAL("src/app/results/page.tsx"), mp = REAL("src/app/markets/page.tsx");
   const rl = raw("src/app/results/loading.tsx"), ml = raw("src/app/markets/markets-ghost.tsx");
   ok("2.2 · the fallbacks are the loading files' own drawings — /results' `ResultsGhostBands` (handed the page's carousel and search answers) and /markets' `MarketsBoardGhost`, both from client files (a reference in the payload, which every refresh re-sends), and each loading file renders the same component",
     rp.includes('import { ResultsGhostBands } from "./loading";') && rp.includes("<Suspense fallback={<ResultsGhostBands notable={!searching && pageNum === 1} searching={searching} />}>")
-      && mp.includes('import { MarketsBoardGhost } from "./loading";') && hasDirective(rl, "use client") && hasDirective(ml, "use client")
+      && mp.includes('import { MarketsBoardGhost } from "./markets-ghost";') && hasDirective(rl, "use client") && hasDirective(ml, "use client")
       && REAL("src/app/results/loading.tsx").includes("<ResultsGhostBands />") && REAL("src/app/markets/markets-ghost.tsx").includes("<MarketsBoardGhost />"));
   const { ResultsGhostBands } = req("../src/app/results/loading.tsx") as { ResultsGhostBands: unknown };
   const { MarketsBoardGhost } = req("../src/app/markets/markets-ghost.tsx") as { MarketsBoardGhost: unknown };

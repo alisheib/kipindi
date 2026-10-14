@@ -466,15 +466,17 @@ export function AdminKpi({
   if (unavailable) {
     return (
       <div
-        className="glass-panel admin-kpi p-2 flex flex-col gap-1.5 min-h-[110px]"
+        className="glass-panel admin-kpi p-2 grid grid-rows-subgrid row-span-2 gap-1.5 min-h-[110px]"
         title="This figure could not be computed — a data read failed. It is NOT zero."
       >
-        <span className="font-mono uppercase text-text-tertiary truncate" style={{ fontSize: 9.5, letterSpacing: "0.14em", lineHeight: 1.3 }}>{label}</span>
+        <span className="font-mono uppercase text-text-tertiary min-w-0 whitespace-normal" style={{ fontSize: 9.5, letterSpacing: "0.14em", lineHeight: 1.3, textWrap: "balance", overflowWrap: "anywhere" }}>{label}</span>
+        <div className="min-w-0 flex flex-col gap-1.5">
         <div className="font-mono font-bold text-text-tertiary leading-none" style={{ fontSize: 20, letterSpacing: "-0.01em" }}>n/a</div>
         {sw && <div className="text-text-tertiary italic leading-tight" style={{ fontSize: 10.5 }}>{sw}</div>}
         <div className="mt-auto inline-flex items-center gap-1.5">
           <span aria-hidden className="h-1.5 w-1.5 rounded-pill inline-block" style={{ background: "var(--warning-500)" }} />
           <span className="font-mono uppercase tracking-wider text-warning-fg" style={{ fontSize: 9.5 }}>couldn&apos;t compute</span>
+        </div>
         </div>
       </div>
     );
@@ -493,38 +495,26 @@ export function AdminKpi({
   // It also carried `transition-all`, which this codebase bans outright — the pattern that once
   // had 895 elements computing to `transition: all 0s ease`.
   return (
-    <div className="glass-panel admin-kpi p-2 flex flex-col gap-1.5 min-h-[110px]">
-      <div className="flex items-center justify-between gap-2">
-        {/* ⭐ DG-A-10 · `title`, for the same reason the VALUE below carries one — the label
-            was simply left out of that ruling. Measured on production at 390: "Outstanding
-            bonus" needs 110px of 91 and "Global conservation" 123 of 120, so both ellipsise
-            MID-WORD with no way to read the rest. §A5 permits a LABEL to ellipsise (only money
-            and timestamps may never clip), so the defect is not the clipping — it is that the
-            tail was unreachable. `truncate` + `title` is this component's own answer, stated
-            four lines down: it "gives the tail an affordance and keeps the full string
-            reachable on hover".
-            ⛔ NOT fixed by wrapping to two lines: this label shares a `flex items-center` row
-            with the live pulse, so a second line would misalign that indicator on every tile
-            to spare two labels. ⛔ Nor by dropping the 0.08em tracking — it is a §T3 uppercase
-            microlabel, where tracking is what makes the tier legible, and at 9.5px over 17
-            characters it buys back only ~13px of the 19 needed. Shorter labels are the real
-            cure, and that is a copy decision → DG-A-13.
-            ⚠️ Deliberately NOT added to the `unavailable` branch above: that tile carries a
-            title of its own ("could not be computed … It is NOT zero"), and a nested title
-            would shadow a money-honesty disclosure with a label. */}
+    <div className="glass-panel admin-kpi p-2 grid grid-rows-subgrid row-span-2 gap-1.5 min-h-[110px]">
+      <div className="min-w-0 flex items-start justify-between gap-2">
+        {/* Phone review 2026-10-13: a hover title left "ACTIVE …" ambiguous on touch screens.
+            Whole balanced captions keep the existing mono size/tracking; the live signal stays
+            at the first line. Shared header/body subgrid tracks align every figure in the row
+            to the longest caption, including unavailable tiles, without a guessed line reserve. */}
         <span
-          className="font-mono uppercase text-text-tertiary truncate"
+          className="min-w-0 flex-1 font-mono uppercase text-text-tertiary whitespace-normal"
           title={typeof label === "string" ? label : undefined}
-          style={{ fontSize: 9.5, letterSpacing: "0.14em", lineHeight: 1.3 }}
+          style={{ fontSize: 9.5, letterSpacing: "0.14em", lineHeight: 1.3, textWrap: "balance", overflowWrap: "anywhere" }}
         >{label}</span>
         {pulse && (
           // Aqua = live-feed signal (admin gold-discipline: gold only on the resolved seal).
-          <span className="inline-flex items-center gap-1 text-micro font-mono uppercase tracking-wider" style={{ color: "var(--aqua-400)" }}>
+          <span className="shrink-0 inline-flex items-center gap-1 text-micro font-mono uppercase tracking-wider" style={{ color: "var(--aqua-400)" }}>
             <span className="h-1.5 w-1.5 rounded-pill inline-block animate-pulse" style={{ background: "var(--aqua-400)" }} />
             live
           </span>
         )}
       </div>
+      <div className="min-w-0 flex flex-col gap-1.5">
       {/* ⛔ G-4, and it is E-30's lesson one slot over. E-30 fixed the DELTA row and left
           the VALUE assumed safe because a value is "usually a number". It is not always:
           `/admin/affiliate`'s *Top referrer* tile puts a raw handle here, and
@@ -640,6 +630,7 @@ export function AdminKpi({
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -681,7 +672,7 @@ export function AdminCard({
 } & Omit<React.HTMLAttributes<HTMLElement>, "children" | "title">) {
   const isFlush = padding === "p-0";
   return (
-    <div {...rest} className={["glass-panel", padding, className ?? ""].join(" ")}>
+    <div {...rest} data-empty-state-scope="" className={["glass-panel", padding, className ?? ""].join(" ")}>
       {/* ⛔ G-5 (2026-08-02) — the G-4 shape again, in the card header. The action side
             is `shrink-0` and the title side was `min-w-0`, so on a narrow screen the title
             absorbed ALL the shortfall: measured at 360, `/admin/finance`'s "Settlement fees
@@ -696,7 +687,7 @@ export function AdminCard({
       {(title || action) && (
                 <div className={`flex flex-wrap items-start justify-between gap-3 ${isFlush ? "px-4 pt-4 pb-3" : "mb-3"}`}>
           <div className="min-w-0 basis-[14rem] grow">
-            {title && <p className="font-display font-semibold text-body-sm text-text leading-tight">{title}</p>}
+            {title && <p data-section-heading="" className="font-display font-semibold text-body-sm text-text leading-tight">{title}</p>}
             {sw && (
               <p className="text-caption text-text-tertiary italic leading-tight mt-0.5">{sw}</p>
             )}

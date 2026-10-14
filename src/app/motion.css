@@ -142,7 +142,7 @@
    Keyframes
    =========================================================================== */
 @keyframes m-settle-in    { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes m-settle-lift  { from { opacity: 0; transform: translateY(14px) scale(0.975); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes m-settle-lift  { from { opacity: var(--m-settle-start-opacity, 0); transform: translateY(14px) scale(0.975); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes m-settle-menu  { from { opacity: 0; transform: translateY(-6px) scaleY(0.96); } to { opacity: 1; transform: translateY(0) scaleY(1); } }
 @keyframes m-leave-out    { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(6px); } }
 @keyframes m-sheet-rise   { from { transform: translateY(100%); } to { transform: translateY(0); } }

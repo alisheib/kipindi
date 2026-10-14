@@ -30,7 +30,7 @@
  *     part the server rendered). Both are fetched; their bytes are reported separately.
  *   · CONTROL: the classic bar's test ids (`deposit-header`, `deposit-rail`; chunks-check.sh:19) must be found in the
  *     initial scripts, or the reading proves nothing and the route fails.
- *   · S6's and S7's journey markers (qa-first-load.mjs's table, rows marked `journey`, each unique in src/) must be
+ *   · S6's, S7's and S8's journey markers (qa-first-load.mjs's table, rows marked `journey`, each unique in src/) must be
  *     absent from the initial scripts. Two by-design exceptions are REPORTED, never failed (A9 (3)): kp-journey-shell
  *     (shell-mark.ts reaches every page by design, VODACOM-PLAN.md:528) and, on / only, the home lazy module's marker
  *     (WP7 puts that small module in /'s first load, A23 item 6). A marker found only in a low-priority preload is
@@ -362,6 +362,16 @@ export async function selfTest() {
     { id: "S15 the home lazy module's marker on /markets FAILS", route: "/markets", doc: { scripts: ["runtime.js", "layout.js", "home-lazy.js"] }, want: ["journey-js"] },
     { id: "S16 a page that does not answer 200 FAILS", status: 500, doc: {}, want: ["status"] },
   ];
+  // The newly canonical S8 rendering markers must exercise this served-script reader too, not only the build reader.
+  for (const row of table.filter(row => ["QuestionGhost", "JourneyBetButtons", "JourneyHomeBreak"].includes(row.id))) {
+    const file = `s8-${row.id}.js`;
+    chunks[file] = `/*S8 rendering marker*/${row.marker}`;
+    cases.push(
+      { id: `S17 ${row.id} joined to a classic initial script FAILS`, doc: { scripts: ["runtime.js", "layout.js", file] }, want: ["journey-js"] },
+      { id: `S18 ${row.id} in a low-priority preload is reported separately`, doc: { preloads: ["consent.js", file] }, want: [], expectText: "low-priority preload" },
+      { id: `S19 ${row.id} rendered as markup in the classic document FAILS`, doc: { extraMarkup: `<div data-testid=${row.marker}></div>` }, want: ["journey-html"] },
+    );
+  }
   for (const c of cases) {
     const route = c.route ?? "/";
     const get = fakeSite({ [route]: { html: synthDoc(c.doc), status: c.status } }, chunks);

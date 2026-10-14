@@ -55,7 +55,7 @@ every red read by its label — 17 database suites could not start their scratch
 are a `--no-save` package, and the 2026-10-11 worktree-junction incident's `npm ci` had removed it: reinstalled and the 17
 run again — all 17 green once the binaries were back (with R8-D's guard after its fix, 18/18 in 878.6 s on `eefc1eec`): `test:cashout-price-guard`, `test:results-freshness` (R9-D's), `test:agent-fee-expiry` (K32's), `test:visual-pass-r8d-stores` (R8-D's), `test:kyc-restart-docs`, `test:contacts-import-db`, `test:contacts-staging-db` and the ten house-bot database suites (migrations, money, caps, designation, engine, comms, info-edge, reports, console, ops)); 5 need a running server (`test:responsive`, `test:motion`, `test:revoked-deadend`,
 `test:admin-section-gate`, `test:needle-rest`, as at every close); `test:orphans` is main's own (two undeclared landing-v3
-panels, `scripts/qa/landing-v3/panels/band-panel.js` and `hero-panel.js`); and **`test:visual-pass-r8d` 10.2 was round 10's
+panels, now archived with their original source and review rubrics in `docs/qa/landing-v3-panels-history.md`); and **`test:visual-pass-r8d` 10.2 was round 10's
 own** — a guard that compares app-shell.tsx with HEAD undid round 10's edit on the working side only, so it passed before
 `177981c1` and failed once HEAD held the edit: fixed `eefc1eec` (both sides; 74/74, a planted code line caught). **Classic
 parity** (rounds 9 and 10 together): baseline at `c2d9e156` (the live main before round 9), the tip `ca72fe15` compared
@@ -582,7 +582,177 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   checks keep origin/main as their reference, accepting only S8's three separately hashed disclosure paragraphs and
   named dictionary additions, with deletion/change controls. The first v4 baseline null compare failed 4.11 on the
   unchanged baseline tree (56 question cells, including JSON-LD timestamps and several table widths); both captures
-  are kept and the harness/fixture instability is under independent review. This is not a valid branch-parity pass.
+  are kept. The narrow clock masks and real chart-resize calibration are recorded in
+  [`s8-parity-calibration-omega-dev072.md`](qa/s8-parity-calibration-omega-dev072.md), with 18 rendered controls.
+  A new capture, unchanged-source null compare, full red drive and branch compare remain required.
+- **Further review and resumability (2026-10-13, still before release).** The reviewed implementation/fix checkpoint
+  `e767f3f52` is pushed on `codex/vodacom-s8`. The second broad battery completed 504/528 green; its 24 failures were
+  read and repaired or independently re-run; the third broad battery completed 529/529 below.
+  The five browser suites that mutate a dev server run separately from WP11, with an explicit local target.
+  Disk-writing mutation proofs ran in the isolated `s8-guard-proofs` worktree: labels 14/14 and payment statement
+  10/10, with every file restored and the normal gates green afterward. The controller's latest proof executes
+  36 controls and 53 mutations, including strict local-production CLI arguments, a restored receipt address,
+  failed private reads, focus registration on the dialog's actual portal commit, frozen exits and unmounted answers.
+  The sheet proof passes 54 checks and 103 mutations, including closed receipt timers, viewport listeners and live
+  announcements. The CI browser suites now have their own explicit local server, Chromium and serial gates.
+  WP11 found Next could restore a bet query after its receipt had cleared it; the matching receipt now retires that
+  address on the router's later commit. All nine Chromium language/size receipt cells pass with one request,
+  Position and BET_PLACED row and a clean address. The full visual read repaired deposit rows shrinking their
+  multiline content, real-font amount fit, and bounds sentences split by a flex row. An independent keyboard
+  check then found a focused stake hidden beneath the fixed CTA; its middle-scrollport repair passes the stricter
+  actual visibility check. WebKit found the dialog's focus timer could run before its portal committed; the shared
+  Modal now registers its opening with `open` and `mounted`. Nine fresh WebKit reload documents focus the heading,
+  with all three languages' keyboard and held-key checks passing (70/70). Chromium's stable core is 237 passed,
+  zero failed, with the real-lock A24 cell separate. The third broad battery is 529/529 green (951.7 s), excluding
+  only the five separately driven browser suites; the 40 suites reading the changed Modal also pass afterward.
+  The A24 drive exposed a genuine memory-runtime defect: Next's independently compiled route/action copies had
+  separate mutex maps. The lock map and ambient context now share one process registry; actual compiled copies
+  prove serialization, drain, re-entry and context escape (11 checks, three defect plants), and a marked local
+  Postgres proves one connection/transaction, commit, rollback and advisory-lock drain (seven checks). Its first
+  browser A24 drive now proves the original action is inside its wallet lock waiting on the held market lock.
+  Nineteen further money/lock regressions pass. The real browser same-key replay cell returns one Position and one
+  BET_PLACED row. Independently compiled admission copies also shared the semaphore but not its limits or ambient
+  context; one process runtime now shares all three. Seventeen executed controls and seven defect plants pass,
+  followed by the existing admission, money-busy, concurrency, retry, landed-key and Redis fail-open suites.
+  A pointer-state read also found the deposit row's ghost hover cleared its gilt fill; the narrow kit-variant repair
+  survives all 32 default/hover/focus/active visual cells and the browser's negative control.
+  Journey question picks no longer animate on page arrival: kit press feedback runs on the tapped pick only.
+  Ali also authorized encountered animation improvements across both journey and normal 50pick, with accessible
+  focus and reduced-motion behavior preserved. The obsolete Claude-only landing panel scripts are archived with
+  their exact Git blobs and recovery instructions; no runnable caller existed and the orphan allowlist did not grow.
+  The sheet now retains its frozen drawing for the kit's exit beat while closing its active controls and focus;
+  its address follows the required history pop/replace, and unfinished keys remain recoverable. Callbacks are scoped
+  to that drawing's serial and asynchronous completions check mounted state.
+  A failed fresh private read now shows an unknown balance instead of retaining the last successful balance.
+  The actual lifecycle browser drive passes 12/12: failed reads recover, the silent inert ghost leaves in 153 ms,
+  reduced motion leaves in 11 ms, and old handlers cannot commit against an unrelated reopen. S9 preparation is separately pushed at `6f741881f` on
+  `codex/vodacom-s9`: the deposit plan and pure state core (168 controls, 38 mutants), without an application caller.
+  The later coherent Chromium drive passes 370 checks with six explicitly permitted exceptions, followed by a
+  stricter rendered cooling/sign-in proof. That stricter proof invalidated the earlier blank cooling tile and found
+  the session-ended route calling `.catch` on the memory DAL's synchronous user result. It and the two remaining
+  bare-DAL catch sites now handle synchronous values/throws and asynchronous values/rejections; 25 executed
+  outcome/census/defect checks and the read/privacy/push regressions pass. The final rendered cooling drive is 5/5:
+  a second context revokes the session, the real sign-in restores the same wallet balance and break, and neither
+  Position nor BET_PLACED counts change. Both final viewport tiles are read.
+  The keyboard's longer typing sequence found editable frame changes stole focus and removed its viewport lift.
+  The A12 correction preserves focus only during same-question stake typing, while every other frame/identity change
+  retains the heading re-arm and Enter beat. Its 648 pure sequence cases and six actual 320/360 language cells pass;
+  the final sheet proof is 58 checks/114 mutants. WebKit's final two-reload, two-width, three-language drive is 181/181.
+  The complete static A14 read covers 480 tops and 396 bottoms, plus 12 corrected footer captures
+  ([record](qa/s8-a14-static-body-read.md)). A further narrow title-balance repair replaces the Chinese 320px
+  two-character last line; 36 representative top states and 30 bottoms retain their geometry, and removing the
+  declaration fails the same rendered line-balance verdict. The shared normal/journey press helper reuses the actual CSS keyframes
+  and removes its temporary DOM class before React can observe it; repeated taps cancel, and all three motion-off
+  gates cancel an ongoing pulse (22 actual browser controls/plants, R9C 65 and R5H 59 guards).
+  The fresh v4 null compare's clock/geometry controls now hold, but encoded sign-in return links exposed one further
+  generated-ID normalization gap. Twenty-six rendered controls hold the narrow encoded-ID repair; new baseline,
+  fresh null and branch comparisons remain pending. GitHub PR #1 is draft. Its first CI run failed on missing optional
+  scratch binaries and test-fixture portability/cancellation/scanner issues; those are repaired, with 195 marketing
+  and 33 export mutation controls, while a fresh Linux CI run remains required. S9's independently reviewed funding
+  recovery checkpoint `f041e56e3` is also pushed, with 34 memory/34 Postgres cases and 10 defect plants. Its additive
+  persistence checkpoint `898a05ff6` is separately pushed, including immutable pendingBet/origin, 32 memory/34
+  Postgres persistence checks and 17 mutation controls, plus 39 memory/39 Postgres service checks and 12 plants.
+  Status-core/adapters remain in progress on that separate branch and S9 is not closed.
+  The next recovery checkpoint `4b92c13f7` is pushed. Its fresh local battery completed 532/534 (1226.9s): the
+  remaining reds are the old unconditional-focus pin in enter-where-pressed and the previously documented Postgres
+  house-bot designation disagreement. The latter's isolated rerun is 169 memory/161 Postgres, but the original
+  failure is retained. Actual row diagnostics refute the old clock-order hypothesis: the RG start is later than
+  verifiedAt, but the asynchronous holder hook races the consent read. Draining that real hook reproduces the exact
+  CONSENT_VOID disagreement on both stores. Case 6.9 now uses the suite's existing ruling-156 hook suspension and
+  independently requires a later start and no void; it passes 169 memory/161 Postgres, without a widened sleep or
+  product change. All fourteen
+  A16 in-process families pass; isolated file/copy proofs pass failure-reasons 20, rg-doors 27, dal-parity 285 and
+  contrast 33, with clean source after each.
+  The production build at `4b92c13f7` compiled successfully, but its actual A21 drive failed the 150ms budget (six
+  heading frames, 542–846ms at 4× CPU), so no production-latency PASS is claimed. A separate real browser trace
+  identifies an extra empty portal commit and a full-height entrance keeping the heading below the viewport.
+  The narrow candidate mounts Modal's existing client portal in a layout effect and gives only the bet sheet the
+  existing kit settle-lift keyframe; SSR initial false, the 30ms focus timer, arming, exits and all motion-off gates
+  remain. Enter's repaired AST/helper and before-paint guards pass the full 116 mutations; related sheet, popup and
+  motion guards pass. Exact-tip production rendering still must prove the candidate.
+  The same drive also exposed stale lazy preload filenames in the build's home/question manifests. The build cache
+  is preserved and a fresh-cache build is required; the strengthened first-load reader now rejects those actual
+  missing files and passes 47 controls, including missing known and unlisted lazy parts and clean restoration.
+  CI now reads its actual production first-load delivery immediately after build. A background bell read was also
+  miscounted as a money action: the driver now allows only the build manifest's exact fetchMyNotifications
+  reader/file pair, with unknown/money/misleading-worker controls; no other POST is accepted.
+  The normal phone read found AdminKpi's touch-only ambiguity ("ACTIVE …", "AWAITING RESOL…"). Under Ali's later
+  encountered-visual-fix instruction, full balanced captions and shared header/body tracks preserve the existing
+  caption/amount tokens and align figures without a guessed reserved line height; the live signal stays on the
+  first line and unavailable values remain explicitly unavailable. Existing clip/type/consistency/spacing gates
+  pass; the new actual-page multilingual/width proof and its truncate/unaligned plants are still pending.
+  Linux CI at `4b92c13f7` is 530/533 and remains red on audit-drain, the old focus pin and house-bot-ops. Its previous
+  summary hid the early failing assertions behind later passes; the aggregator now preserves up to five actual
+  failures with their details as well as the final tail, and refuses an empty selector instead of printing 0/0
+  green. Actual renderer/empty-selector controls pass. The next CI run must disclose and resolve the two remaining
+  Linux failures, rather than reclassifying them without evidence.
+  The pushed `947c3f48e` recovery checkpoint's Linux CI is also 530/533 (672.9s), now with its actual early failures
+  visible: contacts-import-db's query census attributed a previous allowed read's delayed event to the following
+  bound refusal; eyebrow-roles still held the old AdminKpi signatures; and house-bot-ops' synthetic commit-tree
+  lacked author identity on a clean runner. Audit-drain and the repaired focus gate pass there. Each allowed bulk
+  read now gets its own counted positive control (one real statement), with the following refusal still requiring
+  zero; the real Postgres contact probe passes 63/63. The two reviewed inline caption signatures and existing live
+  status-chip signature are refreshed without changing their roles: all 658 sites are accounted for. Synthetic
+  release commits supply fixture identity only to that process: with ambient Git identity deliberately unavailable,
+  house-bot-ops passes 100 memory/104 Postgres and its parent 3/3. Typecheck passes; a new Linux run remains required.
+  Parity calibration's fresh encoded baseline is 51/51, expanded rendered reds 200/200 and fresh same-source NULL
+  67/67 (2052s), including all 56 question cells. The frozen-947 branch comparison finishes 66/67: eight home book
+  cells differ only in already-masked closing-day leaf widths. Actual day substitution reproduces the exact 0.5px
+  geometry difference; shell, Sell and all 56 question cells pass. Captures remain intact and a narrow pre-geometry
+  date calibration with new baseline/NULL/branch measurements is required, not a retrospective PASS.
+  A fresh-cache production build and a separate clean checkout with real C output both compile but retain missing
+  lazy preload files on home/results/question. The failed F-output cold build also records Next's workStore
+  invariant; moving output to C made that build complete, which does not establish the invariant's cause. The
+  isolated exact-947 browser drive is 41 pass/11 fail: all six heading samples are 234–316ms at 4× CPU, all precede
+  their delayed private response, the missing home preload is actually requested and returns 404, and the question
+  ghost is actually observed. No production PASS is claimed. A separate page-only diagnostic identifies the lift's
+  initial zero opacity: its first two frames hold the heading invisibly. A transform-identical, immediate-opacity
+  trial reads 111.4ms at 4× CPU versus 188.2ms in the control; this is a candidate experiment, not compiled closure.
+  The wider normal-site responsive audit remains open. Its 80 empty-state alignment findings require distinguishing
+  card-scoped headings from page headings before repairs; captures after a dev-server memory restart are invalid
+  premises and retained as such. Fresh bounded-runtime browser gates and the actual AdminKpi proof remain underway.
+  **2026-10-14 recovery checkpoints.** Root S8 is pushed through `9c5a8fd80`; independently reviewed normal section,
+  QR, queue, status-pill and rendered-symbol repairs are integrated from `5f3ad45c0` (root `7c8d774a7`). Their final
+  source proof is 77/0 across 36 actual cases, with scoped independent physical reads; actual populated overlays
+  are 36/0 without committing money. Exact-947 core browser evidence remains Chromium 186/0 plus settled-receipt
+  recapture 22/0, WebKit 182/0 plus fault-context lifecycle 14/0; normal motion 43/0, revoked 46/0, admin gate 21/0,
+  Needle 92/0 and AdminKpi 22/0. Interrupted memory-restart/worker-bypass/capture-premise attempts remain excluded.
+  These are measured predecessor proofs, not acceptance of later source. The four centered whole-collection
+  replacements are visually correct; their independent ownership-instrument amendment `31526cafd` is pushed
+  separately and still awaits fresh served-page proof/integration. No route exception has been broadened.
+  The next sheet arrival retains the existing transform and makes only its initial content opacity legible;
+  generic kit consumers default to their existing zero start. Its extended guards catch 119/119 and related
+  11/11 suites pass; exact compiled timing remains required. Both isolated Turbopack client-nesting and scope-hoist
+  option trials compile but retain absent lazy preloads. A supported Webpack diagnostic compiles and all 27 global
+  lazy rows name existing files, but its different manifest shape requires a measured adapter and actual served
+  asset checks. Its actual 20 GET-only browser cells have no missing JS assets, hash mismatches or page errors,
+  but HomeLazy is a real parser-loaded entry script on seven classic routes outside home. That first-load failure
+  remains; no production delivery PASS or default-bundler change is claimed. The new exact home close-day parity
+  instrument passes 58 focused controls, 247 full negative controls and a fresh 52/52 baseline; its independent
+  NULL comparison and final branch comparison remain pending.
+  Independent money review reproduces internal commit-answer loss followed by a pre-gate refusal and a failed
+  recovery read: the old wrapper discarded its uncertainty and could retire the key. The `9c5a8fd80` repair carries
+  that uncertainty between attempts and returns a neutral unknown on recovery fault. A matching owned landed
+  position also keeps authority if its fresh balance is missing/invalid/unreadable, without inventing zero; genuine
+  first pre-gate refusals remain. Proof: 49 memory, 47 Postgres and 20 plants; the extracted retry/host cases are
+  explicitly bounded-inner fixtures, not real PostgreSQL commit-loss injection. Actual action propagation,
+  typecheck and focused sheet guards pass. Production and the full final battery remain required.
+  Linux CI at `9c5a8fd80` is 531/533: the reports guard's seven exact lines moved while every nine-line money
+  write remains byte-identical to `1b93e44c5` (SHA256 compared; repaired memory run 251/0), and audit-drain's
+  fixture started completing its ten-row queue during Next cleanup before asking to exit. The latter correctly
+  drained the nine actually at risk. Its worker now starts in the exit-request turn, with the exact ten-row,
+  nonzero-wait, no-abandonment assertions retained; a delayed-cleanup control and a real prematurely started-worker
+  source plant use the same verdict. One isolated and four concurrent runs are 44/0. Production drain code is
+  unchanged; final Linux acceptance remains pending. New Next.js/bundling configurations are isolated diagnostics.
+  Separate S9 preparation `862e83fb4` is pushed: 105 memory/108 Postgres/45 plants plus related guards; status/review,
+  RG-held truth and the faithful wallet-currency read are recorded in S9-PLAN §5d. The post-UNKNOWN terminal retry
+  gap remains open in both the future controller and existing Card adapter; an explicit owned signed recheck is
+  preparation in progress, with no new payment dispatch. S10 auth carry preparation `f7bdc2ea1` is pushed, with
+  22 actual verdicts/20 plants and preserved classic landing: guest identity/storage partition and S9 integration
+  remain open. Staff production QA access is still unavailable; the earlier secret-safe `.env.qa.local` request
+  remains pending. Infrastructure Railway access is verified separately.
+  **Still NOT CLOSED / NOT LIVE:** current browser/visual closure, clean exact-tip production proof, repaired v4
+  baseline/null/branch parity, complete battery and both-host production read-back are required.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;
   WP8, WP9 and WP10; WP11a; WP11b; WP12 (A17's order).
 - **▶ IN FLIGHT (2026-10-13, from ~02:05 EAT) — the coordinator, a claude.ai/code cloud VM, with five builders on their

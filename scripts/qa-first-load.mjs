@@ -165,6 +165,14 @@ export const MARKERS = [
     file: "src/components/journey/bet-sheet/bet-sheet-host.tsx", marker: '"a[data-bet-side]"', expect: OWN_CHUNK },
   { id: "BetSheet", stage: "S8", wp: "WP6", journey: true,
     file: "src/components/journey/bet-sheet/bet-sheet.tsx", marker: '"journey-bet-sheet"', expect: () => ({ marker: "out" }) },
+  // S8 WP8/WP9: the client question ghost is inside the journey-only lazy drawing; picks and the home break are
+  // server drawings. None of their markers belongs in a classic route's entry scripts (WP11 step10).
+  { id: "QuestionGhost", stage: "S8", wp: "WP8", journey: true,
+    file: "src/components/journey/question/question-ghost.tsx", marker: '"journey-question-ghost"', expect: () => ({ marker: "out" }) },
+  { id: "JourneyBetButtons", stage: "S8", wp: "WP8", journey: true,
+    file: "src/components/journey/question/journey-bet-buttons.tsx", marker: '"journey-bet-buttons"', expect: () => ({ marker: "out" }) },
+  { id: "JourneyHomeBreak", stage: "S8", wp: "WP9", journey: true,
+    file: "src/components/journey/home/journey-home.tsx", marker: '"journey-home-break"', expect: () => ({ marker: "out" }) },
 ];
 
 /** S6's four (first-load-parts.py:32), S7's (A9 (2), A20 item 6) and /updown/history (A23 (d)). */
@@ -331,7 +339,8 @@ function readManifest(file) {
       if (at <= 0 && !p.startsWith("src/")) continue;
       const src = p.slice(Math.max(at, 0));
       if (!clientModules.has(src)) clientModules.set(src, new Set());
-      for (const c of mod.chunks ?? []) if (String(c).endsWith(".js")) clientModules.get(src).add(normFile(c));
+      // Normalize deployment queries before recognizing a script; the manifest carries real ?dpl URLs.
+      for (const c of mod.chunks ?? []) { const f = normFile(c); if (f.endsWith(".js")) clientModules.get(src).add(f); }
     }
   }
   return { entries, clientModules };
@@ -357,7 +366,7 @@ export function readRoute(build, route, plant = null) {
     return { route, missing: `no ${fs.existsSync(mf) ? "react-loadable" : "client-reference"} manifest at ${path.relative(build.nextDir, fs.existsSync(mf) ? lmf : mf).replace(/\\/g, "/")}` };
   }
   const { entries, clientModules } = readManifest(mf);
-  const texts = [...entries].sort().map((f) => ({ f, t: build.chunks.get(f) ?? null }));
+  const texts = [...entries].sort().map((f) => ({ f, t: exists(build.nextDir, f) ? build.chunks.get(f) ?? null : null }));
   if (plant !== null) texts.push({ f: "(planted in memory)", t: plant });
   const lm = JSON.parse(fs.readFileSync(lmf, "utf8"));
   const parts = new Map(); // export → [{ id, files }]
@@ -368,7 +377,10 @@ export function readRoute(build, route, plant = null) {
       parts.get(sym).push({ id, files: (row?.files ?? []).map(normFile) });
     }
   }
-  return { route, build, entries, clientModules, texts, parts, unreadable: texts.filter((x) => x.t === null).map((x) => x.f) };
+  // A lazy manifest can name a missing preload even when the client loader names an extant chunk. That build still
+  // sends a 404 on first navigation; "own chunk (0 KB)" must not pass as valid lazy delivery.
+  const unreadableParts = [...new Set([...parts.values()].flatMap(rows => rows.flatMap(row => row.files)))].filter(f => !exists(build.nextDir, f));
+  return { route, build, entries, clientModules, texts, parts, unreadable: texts.filter((x) => x.t === null).map((x) => x.f), unreadableParts };
 }
 
 /** first-load-parts.py:135-145. */
@@ -429,7 +441,7 @@ export function readAll(build, routes, { table = MARKERS, judgedRows, expectOn =
       continue;
     }
     const found = reading.texts.some((x) => x.t && x.t.includes(control.marker));
-    if (!found || reading.unreadable.length) controlOk = false;
+    if (!found || reading.unreadable.length || reading.unreadableParts.length) controlOk = false;
     const rows = table.map((row) => ({ row, j: judgeRow(row, reading, judged(row), expectOn) }));
     const known = new Set(table.map((r) => r.part).filter(Boolean));
     const others = [...reading.parts.keys()].filter((s) => !known.has(s)).sort().map((s) => ({ sym: s, struct: structOf(reading, s) }));
@@ -469,8 +481,9 @@ function printReading(result, build, table, { verdicts, tableRows }) {
   for (const r of result.routes) {
     if (r.missing) say(`  ✗ ${r.route}: NOT MEASURED (${r.missing})`);
     else {
-      say(`  ${r.found && !r.reading.unreadable.length ? "✓" : "✗"} ${r.route}: classic deposit test id ${JSON.stringify(result.control.marker)} ${r.found ? "FOUND" : "MISSING"} in its ${r.reading.entries.size} entry files` +
-        (r.reading.unreadable.length ? `; ${r.reading.unreadable.length} entry file(s) not on disk: ${r.reading.unreadable.map(base).join(", ")}` : ""));
+      say(`  ${r.found && !r.reading.unreadable.length && !r.reading.unreadableParts.length ? "✓" : "✗"} ${r.route}: classic deposit test id ${JSON.stringify(result.control.marker)} ${r.found ? "FOUND" : "MISSING"} in its ${r.reading.entries.size} entry files` +
+        (r.reading.unreadable.length ? `; ${r.reading.unreadable.length} entry file(s) not on disk: ${r.reading.unreadable.map(base).join(", ")}` : "") +
+        (r.reading.unreadableParts.length ? `; ${r.reading.unreadableParts.length} lazy file(s) not on disk: ${r.reading.unreadableParts.map(base).join(", ")}` : ""));
     }
   }
   say(`  ${result.plant.ok ? "✓" : "✗"} ${result.plant.text}`);
@@ -611,6 +624,15 @@ export function selfTest({ table = MARKERS } = {}) {
       good.routes.flatMap((r) => r.rows.filter((x) => x.j?.bad).map((x) => `${r.route} ${x.row.id}: ${x.j.struct ?? ""} ${x.j.mark}`)).join(" | "));
     check("C2 control: a journey marker planted in memory into one route's entry set is REPORTED", good.plant.ok, good.plant.text);
     check("C2 and the good reading passes as a whole", !good.bad);
+    for (const part of ["JourneyTopBar", "ChatRoot"]) {
+      const file = path.join(a, `.next/static/chunks/part-${part}.js`), bytes = fs.readFileSync(file);
+      fs.rmSync(file);
+      const lost = readAll(b1, ["/"], { table, judgedRows: t1.rows });
+      check(`C3 a missing ${part} lazy preload fails the same whole-build verdict`, !lost.controlOk && lost.bad
+        && lost.routes[0].reading.unreadableParts.includes(`static/chunks/part-${part}.js`));
+      fs.writeFileSync(file, bytes);
+    }
+    check("C3 restored lazy files recover the same whole-build verdict", !readAll(b1, ["/"], { table, judgedRows: t1.rows }).bad);
     const noCtl = readAll(b1, ["/help"], { table, judgedRows: t1.rows });
     check("C3 a route whose entry files lack the deposit test id FAILS the control", !noCtl.controlOk && noCtl.routes[0].found === false);
     const onDisk = readAll(b1, ["/positions"], { table, judgedRows: t1.rows });
@@ -660,6 +682,9 @@ export function selfTest({ table = MARKERS } = {}) {
     // C10: the S7 home lazy module judged by the route's client modules, once landed, mounted and given a marker.
     const c = path.join(tmp, "c");
     writeFixture(c, { homeLazy: true });
+    // C10 already creates the mounted journey-home owner. Since S8 it also owns this rendering marker.
+    const homeBreakMarker = table.find(row => row.id === "JourneyHomeBreak");
+    if (homeBreakMarker) fs.appendFileSync(path.join(c, homeBreakMarker.file), `\nexport const breakMarker = ${homeBreakMarker.marker};\n`);
     const withMarker = table.map((r) => (r.id === "HomeLazy" ? { ...r, marker: "kp-home-lazy-fixture" } : r));
     const t10 = checkMarkerTable(c, [...CONTROLS, ...withMarker]);
     check("C10 the landed home lazy module with a marker satisfies the table", t10.ok, t10.lines.filter((l) => l.startsWith("✗")).join(" | "));
@@ -668,9 +693,46 @@ export function selfTest({ table = MARKERS } = {}) {
     const hl = r10.routes.map((r) => r.rows.find((x) => x.row.id === "HomeLazy")?.j);
     check("C10 on / the home lazy module is a client reference in the first load, as expected", hl[0]?.verdict === "as expected" && hl[0].module.includes("in the first load"), hl[0] ? `${hl[0].module}; ${hl[0].mark}` : "PENDING");
     check("C10 on /markets it is not a client reference, as expected", hl[1]?.verdict === "as expected" && hl[1].module.startsWith("not"), hl[1]?.module);
+    // The same client-reference reader must keep query-bearing script URLs, without admitting numeric chunk ids.
+    const queryManifest = path.join(c, ".next/server/app/page_client-reference-manifest.js");
+    const queryOriginal = fs.readFileSync(queryManifest, "utf8");
+    const querySource = queryOriginal.replaceAll('/_next/static/chunks/home-lazy.js', '/_next/static/chunks/home-lazy.js?dpl=fixture');
+    fs.writeFileSync(queryManifest, querySource);
+    const queryRead = readAll(b10, ["/"], { table: withMarker, judgedRows: t10.rows });
+    check("C10 deployment-query module scripts keep the exact home client-reference verdict", querySource !== queryOriginal
+      && !queryRead.bad && queryRead.routes[0].reading.clientModules.get("src/components/journey/home/home-lazy.tsx").has("static/chunks/home-lazy.js"));
+    fs.writeFileSync(queryManifest, querySource.replaceAll('/_next/static/chunks/home-lazy.js?dpl=fixture', '/_next/static/chunks/part-JourneyTopBar.js?dpl=fixture'));
+    const queryWrong = readAll(b10, ["/"], { table: withMarker, judgedRows: t10.rows });
+    check("C10 a query-bearing lazy file keeps the module out of first load and fails the same home verdict", queryWrong.bad && queryWrong.routes[0].rows.find(x => x.row.id === "HomeLazy")?.j?.verdict === "UNEXPECTED"
+      && queryWrong.routes[0].reading.clientModules.get("src/components/journey/home/home-lazy.tsx").has("static/chunks/part-JourneyTopBar.js")
+      && !queryWrong.routes[0].reading.clientModules.get("src/components/journey/home/home-lazy.tsx").has("static/chunks/home-lazy.js"));
+    fs.writeFileSync(queryManifest, queryOriginal);
     const p10 = readRoute(b10, "/markets", "kp-home-lazy-fixture");
     const hp = judgeRow(withMarker.find((r) => r.id === "HomeLazy"), p10, true, true);
     check("C10 the home lazy marker planted into /markets' entry set is UNEXPECTED", hp.bad, `${hp.mark}; ${hp.verdict}`);
+
+    // C12: the three actual S8 rendering markers use the same entry reader as every earlier row. Their source owner
+    // must be unique, and each marker joined to a classic entry set must fail — server drawings included.
+    const s8Rendering = table.filter(row => ["QuestionGhost", "JourneyBetButtons", "JourneyHomeBreak"].includes(row.id));
+    check("C12 all three S8 rendering markers are in the canonical table", s8Rendering.length === 3);
+    for (const row of s8Rendering) writeAt(c, row.file, `export const marker = ${row.marker};\n`);
+    const t12 = checkMarkerTable(c, [...CONTROLS, ...withMarker]);
+    check("C12 the landed S8 marker owners satisfy the source table", t12.ok);
+    for (const row of s8Rendering) {
+      const clean = judgeRow(row, readRoute(b10, "/"), t12.rows.get(row.id)?.judged, true);
+      const joined = judgeRow(row, readRoute(b10, "/", row.marker), t12.rows.get(row.id)?.judged, true);
+      check(`C12 ${row.id}: absent from a classic entry set passes`, clean?.bad === false && clean.verdict === "as expected");
+      check(`C12 ${row.id}: planted into that same entry set is UNEXPECTED`, joined?.bad === true && joined.verdict === "UNEXPECTED");
+      const duplicate = `src/control-${row.id}.tsx`;
+      writeAt(c, duplicate, `export const duplicate = ${row.marker};\n`);
+      const duplicated = checkMarkerTable(c, [...CONTROLS, ...withMarker]);
+      check(`C12 ${row.id}: a second source owner is refused`, !duplicated.ok && duplicated.lines.some(line => line.startsWith("✗") && line.includes(row.id)));
+      fs.unlinkSync(path.join(c, duplicate));
+      writeAt(c, row.file, "export const missing = true;\n");
+      const missing = checkMarkerTable(c, [...CONTROLS, ...withMarker]);
+      check(`C12 ${row.id}: its source marker removed is refused`, !missing.ok && missing.lines.some(line => line.startsWith("✗") && line.includes(row.id)));
+      writeAt(c, row.file, `export const marker = ${row.marker};\n`);
+    }
 
     // C7: tied to HEAD.
     const nd = path.join(a, ".next");

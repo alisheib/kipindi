@@ -163,7 +163,7 @@ const REGISTRY: Record<string, [number, string]> = {
   "src/components/brand/reward-burst.tsx": [7, "the gold medallion for money earned (the proposal bonus) — `success` for an approval"],
   "src/components/journey/journey-top-bar.tsx": [1, "the journey's deposit pill — the deposit door (gilt-metal, §M3a)"],
   "src/components/journey/tickets/ticket-card.tsx": [2, "a won ticket's struck payout (§M3)"],
-  "src/components/journey/bet-sheet/bet-sheet.tsx": [2, "S8 money commit (D1) and deposit door label in gilt-metal (§M3a); the estimate remains neutral"],
+  "src/components/journey/bet-sheet/bet-sheet.tsx": [3, "S8 money commit (D1), and the deposit door's kit gold variant plus gilt-metal row (§M3a); gold hover preserves the metal wash behind its dark rail ink; the estimate remains neutral"],
   "src/components/journey/question/journey-holder.tsx": [2, "S8's settled WIN status and payout, money earned (§M3), as the classic holder"],
   "src/components/layout/wallet-balance-pill.tsx": [9, "the capsule: the live balance (§8a, 'gold on a live balance only')"],
   "src/components/layout/wallet-sheet.tsx": [1, "the Wallet's deposit door (gilt-metal)"],
@@ -201,7 +201,7 @@ const REGISTRY: Record<string, [number, string]> = {
   // S8 WP5 (+1, 92 → 93): `.kp-bsheet .btn-gold:disabled`, the bet sheet's own disabled gold — a `.btn-gold` selector
   // that DE-golds the button (a navy plate, subtle words), ruled by VODACOM-PLAN §0g design call 4 and scoped to the
   // sheet by S8-PLAN Open point 20; every other gold button keeps `.btn:disabled`.
-  "src/app/globals.css": [93, "the ramp and its aliases; `--metal-gold` and the tier/badge metal; `.btn-gold`; the bet sheet's disabled gold (`.kp-bsheet .btn-gold:disabled`, S8 WP5: a navy plate, §0g design call 4); the seal; the needle, shimmer and sweep (§B1a); the capsule and Wallet-sheet amounts (§8a); paid money (`.kp-settled__amt`, `.kp-mine__n--gold`); `count-up-flash` (celebration); OWNER: the classic rail dot and coin, `.claret-rule`'s gilt midpoint, the classic chrome's 'coming soon' tag tint (`.cs-badge` outside page bodies and the journey); dead: `.bg-damask`; admin: `poll-flash`"],
+  "src/app/globals.css": [94, "S8 deposit rails use the dark --gold-fg ink on the whole gilt-metal deposit door (S8 §WP6 and pick-3 canvas row); the ramp and its aliases; `--metal-gold` and the tier/badge metal; `.btn-gold`; the bet sheet's disabled gold (`.kp-bsheet .btn-gold:disabled`, S8 WP5: a navy plate, §0g design call 4); the seal; the needle, shimmer and sweep (§B1a); the capsule and Wallet-sheet amounts (§8a); paid money (`.kp-settled__amt`, `.kp-mine__n--gold`); `count-up-flash` (celebration); OWNER: the classic rail dot and coin, `.claret-rule`'s gilt midpoint, the classic chrome's 'coming soon' tag tint (`.cs-badge` outside page bodies and the journey); dead: `.bg-damask`; admin: `poll-flash`"],
   "src/app/motion.css": [22, "the gilt material — gilt-metal on deposit doors and the celebration, gilt-ink on earned figures, the win toast's tint; dead: `.m-skeleton`"],
   "src/app/state-tokens.css": [2, "`.countdown--urgent` — dead CSS (no consumer)"],
   "src/components/ui/button.tsx": [2, "the `gold` variant — bet and sell commits"],
@@ -260,6 +260,8 @@ const census = new Map<string, Hit[]>();
     const planted = read(f) + '\nconst unearned = <span className="text-gold-300">ordinary words</span>;';
     ok(`1.3s PLANT · a new non-money gold use in ${f} exceeds its ruled census`, goldHits(f, planted).length === REGISTRY[f][0] + 1);
   }
+  ok("1.3d CONTROL · S8's additional CSS use is the dark rail ink on its metal deposit door", /\.kp-bsheet__rails[^}]*color: var\(--gold-fg\)/.test(CSS));
+  ok("1.3d PLANT · an unrelated extra gold CSS use still exceeds the exact registry", goldHits("src/app/globals.css", CSS + '\n.unearned-sheet-words { color: var(--gold-300); }').length === REGISTRY["src/app/globals.css"][0] + 1);
 
   // ⭐ PLANTS — each spelling of gold the census promises to see, planted in memory, is seen; decoys are not.
   const n = (f: string, s: string) => goldHits(f, s).length;

@@ -129,7 +129,7 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
           const code = (err as { statusCode?: number }).statusCode;
           if (code === 404 || code === 410) {
             // Subscription is gone (uninstalled / permission revoked) — prune it.
-            await db.pushSub.deleteByEndpoint(s.endpoint).catch(() => {});
+            await Promise.resolve().then(() => db.pushSub.deleteByEndpoint(s.endpoint)).catch(() => {});
           }
           // Any other failure is swallowed: push must never break a caller.
         }

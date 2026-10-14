@@ -845,8 +845,11 @@ async function runAssertions(impl: Impl, tag: string): Promise<void> {
       const reader = body.getReader();
       await reader.read();
       const pending = reader.read().catch(() => undefined);
-      await reader.cancel();
+      // Cancellation waits for the in-flight generator step on Node's stream implementation. Initiate it first,
+      // then let that step land: awaiting cancellation before releasing its gate deadlocks this fixture.
+      const cancelled = reader.cancel();
       release();
+      await cancelled;
       await pending;
       await new Promise((r) => setTimeout(r, 30));
       return [!logged.some((e) => e.includes("the walk failed")), logged.join(" | ") || "nothing logged"];

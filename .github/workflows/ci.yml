@@ -41,6 +41,9 @@ jobs:
       CI_DB_URL: postgresql://postgres:pw@localhost:5432/kipindi_ci?schema=public
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Immutable classic render goldens use reviewed ancestors, not the current HEAD.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -57,16 +60,17 @@ jobs:
       - name: Content integrity
         run: npm run test:integrity
 
+      # db-scratch suites own a separate, marked cluster on 5433. Keep their optional
+      # binary runtime outside the locked application install and Railway builds.
+      - name: Install scratch database test runtime
+        run: |
+          npm install --prefix /tmp/50pick-ci-scratch --no-audit --no-fund embedded-postgres@18.3.0-beta.17
+          ln -s /tmp/50pick-ci-scratch/node_modules/embedded-postgres node_modules/embedded-postgres
+
       # In-memory suite (no DATABASE_URL).
       #
-      # 🔴 TWO suites need a live :3000 server and CI has none: test:responsive (the 9-width
-      # sweep) and test:motion (which proves the motion layer's tokens RESOLVE in a real
-      # browser — a green unit suite cannot see a dead var(), which is how the B5 outage
-      # killed all motion silently). Both are exercised by the pre-deploy/visual sweep.
-      # Only `responsive` was skipped here, so test:motion failed on EVERY push — and since
-      # this aggregator is the only place every suite runs, that is why CI had not been
-      # green in 200 runs. This is the invocation scripts/test-all.mjs's own header has
-      # recommended all along.
+      # Five suites drive a running local browser/server. Run them serially below against
+      # the same isolated in-memory dev process; the other suites keep their normal pool.
       #
       # ⛔ THE MATCH IS EXACT (scripts/test-all.mjs). It must NOT catch test:motion-ladder,
       # test:glyph-motion or test:reduce-motion — three serverless gates a substring skip
@@ -78,11 +82,65 @@ jobs:
       # anything the first did not. The steps are kept separate (rather than dropped in
       # favour of the aggregator) because they are the fast-fail pair — a tree that does
       # not compile should not wait for 457 suites to say so.
+      # The section-ownership controls use real about:blank DOMs without an app server.
+      # Install Chromium before the battery so that serverless browser proof also runs in CI.
+      - name: Install Chromium for browser gates
+        run: npx playwright install --with-deps chromium
+
+      - name: Section ownership DOM controls
+        run: npm run qa:empty-state-alignment
+
       - name: Test suite (in-memory)
-        run: node scripts/test-all.mjs --no-tsc --skip responsive,motion,integrity
+        run: node scripts/test-all.mjs --no-tsc --skip responsive,motion,revoked-deadend,admin-section-gate,needle-rest,integrity
 
       - name: Build
-        run: npm run build
+        run: |
+          set -euo pipefail
+          build_head=$(git rev-parse HEAD)
+          npm run build
+          test "$(git rev-parse HEAD)" = "$build_head"
+          test -z "$(git status --porcelain -- src scripts package.json)"
+          printf '%s\n' "$build_head" > .next/kp-head
+
+      # The compiler may succeed while a lazy preload manifest names an absent chunk.
+      # Read the actual artifact before any deployment, including the question route.
+      - name: Production first-load delivery
+        run: npm run qa:first-load -- --read --routes 'index,markets,positions,help,live,results,watchlist,markets/[id],account,updown/history'
+
+      - name: Browser gates (local in-memory server)
+        env:
+          BASE: http://127.0.0.1:3009
+          DISABLE_ADMIN_TOTP: "true"
+        run: |
+          set -euo pipefail
+          npm run dev -- --hostname 127.0.0.1 --port 3009 > /tmp/50pick-ci-browser-server.log 2>&1 &
+          browser_server_pid=$!
+          trap 'kill "$browser_server_pid" 2>/dev/null || true' EXIT
+          node --input-type=module <<'JS'
+          let ready = false;
+          for (let attempt = 0; attempt < 60; attempt++) {
+            try {
+              const response = await fetch(`${process.env.BASE}/api/health`);
+              const body = await response.json();
+              if (response.ok && body.ok && body.database?.configured === false) { ready = true; break; }
+            } catch {}
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+          if (!ready) throw new Error("Isolated browser server did not become ready without a database");
+          JS
+          npm run test:responsive
+          npm run test:motion
+          npm run test:revoked-deadend
+          npm run test:admin-section-gate
+          npm run test:needle-rest
+
+      - name: Upload browser server diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-server-log
+          path: /tmp/50pick-ci-browser-server.log
+          if-no-files-found: ignore
 
       # ── The real-Postgres proofs — what a single process cannot show ─────────
       - name: Migrate CI Postgres

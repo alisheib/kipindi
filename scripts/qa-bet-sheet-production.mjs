@@ -1,6 +1,7 @@
 /** S8 A21: production-build rendering evidence, never a money or database proof.
  * The root operator starts qa:bet-sheet-prod-serve on 127.0.0.1:3044 first. This driver only GETs pages and opens/closes
- * dialogs; it never seeds via HTTP, submits a bet, builds, starts a server, or alters a database. Synthetic read pools
+ * dialogs; the app's normal notification reader may POST a Server Action. It never seeds via HTTP, submits a bet,
+ * builds, starts a server, or alters a database. Synthetic read pools
  * are explicitly the local rendering fixture. Credentials are read from ignored fixture.json and never printed.
  * npm run qa:bet-sheet-production -- [OUTPUT_DIR] | --self-test
  * Exit 0 selected production gates passed; 1 defect/control failure; 2 invalid premise; 3 an unmeasured gate.
@@ -17,6 +18,7 @@ import { MARKERS, checkMarkerTable, loadBuild, readAll, readRoute, judgeRow } fr
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const BASE = process.env.KP_BASE ?? "http://127.0.0.1:3044";
 const NEXT = join(ROOT, ".next");
+const STARTED_AT = new Date().toISOString();
 const BUDGET_MS = 150;
 const CPU_RATE = 4;
 const sha256 = value => createHash("sha256").update(value).digest("hex");
@@ -42,11 +44,52 @@ function tapErrors(probe, { title, route }) {
   if (probe.path !== route) errors.push("pick navigated instead of opening in place");
   return errors;
 }
+/** Classify the real built action, never a request's route: the bell's read uses the same POST route as a bet. */
+function readOnlyAction(manifest, id) {
+  const action = manifest?.node?.[id];
+  if (!action || typeof action !== "object" || Array.isArray(action)) return false;
+  const workers = action.workers;
+  if (!workers || typeof workers !== "object" || Array.isArray(workers)) return false;
+  const entries = Object.values(workers);
+  if (entries.length === 0) return false;
+  const identity = entry => entry?.exportedName === "fetchMyNotifications"
+    && entry?.filename === "src/app/_actions/notifications.ts";
+  const hasIdentity = entry => Object.hasOwn(entry, "filename") || Object.hasOwn(entry, "exportedName");
+  // Next 16.4 records the source identity on the action, with moduleId/async-only worker rows.
+  // An incomplete or conflicting action identity must never fall back to a plausible worker name.
+  if (hasIdentity(action)) {
+    if (!identity(action)) return false;
+    return entries.every(worker => {
+      if (!worker || typeof worker !== "object" || Array.isArray(worker)) return false;
+      const moduleId = worker.moduleId;
+      const validModule = typeof moduleId === "string" ? moduleId.trim().length > 0
+        : typeof moduleId === "number" && Number.isSafeInteger(moduleId) && moduleId >= 0;
+      return Object.hasOwn(worker, "moduleId") && Object.hasOwn(worker, "async")
+        && validModule && typeof worker.async === "boolean"
+        && (!hasIdentity(worker) || identity(worker));
+    });
+  }
+  // Retain the older manifest's exact identity on every worker. Bare module IDs are unclassified here.
+  return entries.every(identity);
+}
 function controls() {
   const head = "a".repeat(40), local = { head, buildId: "one-build", deploymentId: head, sourceDirty: false };
   const meta = { mode: "production", localOnly: true, databaseConfigured: false, memoryFixtureBuildException: true, buildSha: head, sourceHead: head, sourceDirty: false, buildId: "one-build" };
   const good = { ms: 50, visible: true, heading: "Selected question", path: "/live" };
   const expected = { title: good.heading, route: good.path };
+  const actions = { node: { reader: { workers: { "app/page": { exportedName: "fetchMyNotifications", filename: "src/app/_actions/notifications.ts" } } },
+    bet: { workers: { "app/page": { exportedName: "buyPositionAction", filename: "src/app/markets/actions.ts" } } } } };
+  const readerIdentity = { exportedName: "fetchMyNotifications", filename: "src/app/_actions/notifications.ts" };
+  const validWorker = { moduleId: "123", async: false };
+  const modern = (changes = {}, workers = { "app/page": validWorker }) => ({ node: { reader: { ...readerIdentity, workers, ...changes } } });
+  const misleadingTop = modern({ exportedName: "buyPositionAction" });
+  const conflictingWorker = modern({}, { "app/page": { ...validWorker, exportedName: "buyPositionAction", filename: readerIdentity.filename } });
+  const invalidModule = modern({}, { "app/page": { moduleId: null, async: false } });
+  const source = readOnlyAction.toString();
+  const mutate = (before, after) => {
+    if (source.split(before).length !== 2) throw new Error("Read-only action classifier mutation anchor changed");
+    return new Function(`return (${source.replace(before, after)});`)();
+  };
   return [
     ["production premise accepts only its declared matching build", premiseErrors(BASE, meta, local).length === 0],
     ["dev metadata cannot claim production PASS", premiseErrors(BASE, { ...meta, mode: "development" }, local).length > 0],
@@ -58,6 +101,45 @@ function controls() {
     ["a hidden or wrong heading fails the same verdict", [{ ...good, visible: false }, { ...good, heading: "Another question" }, null].every(plant => tapErrors(plant, expected).length > 0)],
     ["navigation cannot pass as an in-place frame", tapErrors({ ...good, path: "/markets/other" }, expected).includes("pick navigated instead of opening in place")],
     ["classic served-trace controls hold", betSheetTracesControl().length === 0],
+    ["only the built notification reader is allowed as a background POST", readOnlyAction(actions, "reader") && !readOnlyAction(actions, "bet")],
+    ["an unknown, empty or misleading action cannot pass the reader verdict", !readOnlyAction(actions, "unknown")
+      && !readOnlyAction({ node: { reader: { workers: {} } } }, "reader")
+      && !readOnlyAction({ node: { reader: { workers: { "app/page": { exportedName: "fetchMyNotifications", filename: "src/app/markets/actions.ts" } } } } }, "reader")
+      && !readOnlyAction({ node: { reader: { workers: { ...actions.node.reader.workers, "app/live": actions.node.bet.workers["app/page"] } } } }, "reader")],
+    ["new manifest accepts the exact top-level notification identity with valid string/numeric module workers",
+      readOnlyAction(modern({}, { "app/page": validWorker, "app/help/page": { moduleId: 0, async: true } }), "reader")],
+    ["new manifest rejects missing, empty, array or invalid worker collections",
+      [undefined, null, {}, [], "workers"].every(workers => !readOnlyAction(modern({ workers }), "reader"))],
+    ["new manifest rejects malformed worker module IDs or async flags",
+      [null, undefined, [], "worker", {}, { moduleId: " ", async: false }, { moduleId: null, async: false },
+        { moduleId: -1, async: false }, { moduleId: Infinity, async: false }, { moduleId: 1.2, async: false },
+        { moduleId: "123" }, { moduleId: "123", async: "false" }]
+        .every(worker => !readOnlyAction(modern({}, { "app/page": worker }), "reader"))],
+    ["new manifest rejects conflicting or incomplete worker identities",
+      !readOnlyAction(conflictingWorker, "reader")
+      && !readOnlyAction(modern({}, { "app/page": { ...validWorker, filename: "src/app/markets/actions.ts" } }), "reader")
+      && !readOnlyAction(modern({}, { "app/page": { ...validWorker, exportedName: "fetchMyNotifications" } }), "reader")],
+    ["new manifest permits matching redundant worker identity",
+      readOnlyAction(modern({}, { "app/page": { ...validWorker, ...readerIdentity } }), "reader")],
+    ["misleading or incomplete top-level identity cannot use the legacy fallback",
+      [{ exportedName: "buyPositionAction" }, { filename: "src/app/markets/actions.ts" },
+        { filename: undefined }, { exportedName: undefined }]
+        .every(changes => !readOnlyAction(modern(changes, actions.node.reader.workers), "reader"))],
+    ["bare module worker metadata never classifies an unknown action as a reader",
+      !readOnlyAction({ node: { reader: { workers: { "app/page": validWorker } } } }, "reader")
+      && !readOnlyAction(modern(), "unknown")],
+    ["PLANTED CONTROL top-level source identity removal is caught by the same reader verdict",
+      mutate("if (!identity(action)) return false;", "")(misleadingTop, "reader") === true
+      && !readOnlyAction(misleadingTop, "reader")],
+    ["PLANTED CONTROL conflicting worker identity removal is caught by the same reader verdict",
+      mutate("&& (!hasIdentity(worker) || identity(worker))", "")(conflictingWorker, "reader") === true
+      && !readOnlyAction(conflictingWorker, "reader")],
+    ["PLANTED CONTROL nonempty-worker requirement removal is caught by the same reader verdict",
+      mutate("if (entries.length === 0) return false;", "")(modern({}, {}), "reader") === true
+      && !readOnlyAction(modern({}, {}), "reader")],
+    ["PLANTED CONTROL module-validity removal is caught by the same reader verdict",
+      mutate('validModule && typeof worker.async === "boolean"', 'true && typeof worker.async === "boolean"')(invalidModule, "reader") === true
+      && !readOnlyAction(invalidModule, "reader")],
   ];
 }
 
@@ -87,7 +169,8 @@ function installProbe({ pick, root }) {
       probe.frames++;
       const h = document.querySelector(root)?.querySelector("h2");
       if (visible(h)) {
-        Object.assign(probe, { ms: performance.now() - start, visible: true, heading: h.textContent.trim(), path: location.pathname, frame: document.querySelector(root)?.dataset.frame });
+        const observed = performance.now();
+        Object.assign(probe, { ms: observed - start, headingAtEpoch: performance.timeOrigin + observed, visible: true, heading: h.textContent.trim(), path: location.pathname, frame: document.querySelector(root)?.dataset.frame });
         requestAnimationFrame(() => { probe.confirmedAt = performance.now() - start; probe.remainedVisible = visible(h); });
       } else if (performance.now() - start < 5000) requestAnimationFrame(frame);
       else Object.assign(probe, { visible: false, path: location.pathname });
@@ -133,8 +216,11 @@ const row = (label, state, detail = {}) => { rows.push({ label, state, ...detail
 const ok = (label, pass, detail = {}) => row(label, pass ? "PASS" : "FAIL", detail);
 const chrome = process.env.QA_CHROMIUM_PATH ?? "C:/Program Files/Google/Chrome/Application/chrome.exe";
 if (!existsSync(chrome)) refuse("real Chrome executable unavailable; QA_CHROMIUM_PATH may identify the installed Chrome");
-const browser = await chromium.launch({ executablePath: chrome, headless: true });
+let browser;
+try { browser = await chromium.launch({ executablePath: chrome, headless: true }); }
+catch (error) { refuse(`Chrome launch unavailable: ${scrub(error.message)}`); }
 const browserVersion = browser.version();
+const actionManifest = JSON.parse(readFileSync(join(NEXT, "server", "server-reference-manifest.json"), "utf8"));
 const context = async (preview = true, js = true) => {
   const ctx = await browser.newContext({ viewport: { width: 360, height: 640 }, javaScriptEnabled: js }); contexts.add(ctx);
   await ctx.addCookies(fixture.cookies.filter(c => preview || c.name !== "kp_preview").map(c => ({ name: c.name, value: c.value, url: BASE })));
@@ -148,7 +234,9 @@ try {
   const routes = ["/", "/markets", "/positions", "/help", "/live", "/results", "/watchlist", "/markets/[id]", "/account", "/updown/history"];
   const reading = readAll(build, routes, { table: hostRows, judgedRows: table.rows });
   ok("first-load real classic control and in-memory S8 entry plant", reading.controlOk && reading.plant.ok, { plant: reading.plant.text });
-  for (const r of reading.routes) ok(`first-load ${r.route}: lazy host and absent sheet markers`, !r.missing && r.rows.every(x => x.j && !x.j.bad), { missing: r.missing ?? null, parts: r.rows?.map(x => ({ id: x.row.id, ...x.j })) });
+  for (const r of reading.routes) ok(`first-load ${r.route}: available lazy host and absent sheet markers`, !r.missing
+    && r.reading.unreadable.length === 0 && r.reading.unreadableParts.length === 0 && r.rows.every(x => x.j && !x.j.bad),
+    { missing: r.missing ?? null, unreadableParts: r.reading?.unreadableParts ?? [], parts: r.rows?.map(x => ({ id: x.row.id, ...x.j })) });
   const hostRow = hostRows.find(r => r.id === "BetSheetHost"), entry = readRoute(build, "/", hostRow.marker);
   const plant = judgeRow(hostRow, entry, true, true);
   ok("RED host marker joined to an entry set fails the same first-load verdict", plant?.bad === true && plant?.verdict === "UNEXPECTED");
@@ -178,11 +266,15 @@ try {
     const ctx = await context(), page = await ctx.newPage(), reads = [], actions = [];
     page.on("pageerror", error => { errors.push({ route, sample, kind: "pageerror", message: scrub(error.message) }); });
     page.on("console", message => { if (message.type() === "error") errors.push({ route, sample, kind: "console", message: scrub(message.text()) }); });
-    page.on("request", request => { if (request.method() === "POST" && request.headers()["next-action"]) actions.push({ method: "POST", path: new URL(request.url()).pathname }); });
+    page.on("request", request => {
+      if (request.method() !== "POST") return;
+      const id = request.headers()["next-action"];
+      actions.push({ method: "POST", path: new URL(request.url()).pathname, allowedRead: !!id && readOnlyAction(actionManifest, id) });
+    });
     await page.addInitScript(installProbe, { pick: S.pick, root: S.root });
     // Delay only the private GET, proving the selected heading does not wait for its wallet/facts response.
     await page.route("**/api/markets/*/sheet?**", async request => {
-      if (request.request().method() === "GET") { reads.push({ requestedAt: Date.now(), responseReleasedAt: null }); await new Promise(resolve => setTimeout(resolve, 500)); reads.at(-1).responseReleasedAt = Date.now(); }
+      if (request.request().method() === "GET") { const read = { requestedAt: Date.now(), responseReleasedAt: null }; reads.push(read); await new Promise(resolve => setTimeout(resolve, 500)); read.responseReleasedAt = Date.now(); }
       await request.continue();
     });
     const cdp = await ctx.newCDPSession(page);
@@ -197,7 +289,8 @@ try {
     await page.waitForFunction(() => Number.isFinite(window.__productionSheetTap?.ms) && Number.isFinite(window.__productionSheetTap?.confirmedAt), null, { timeout: 10_000 });
     const probe = await page.evaluate(() => window.__productionSheetTap), verdict = tapErrors(probe, { title, route });
     ok(`${route}: production heading frame sample ${sample} at 4× CPU`, verdict.length === 0 && probe.remainedVisible === true, { ...probe, verdict, cpuRate: CPU_RATE, viewport: "360x640", delayedPrivateRead: true });
-    const headingBeforeRead = reads.some(read => read.responseReleasedAt === null);
+    const headingBeforeRead = reads.some(read => read.requestedAt <= probe.headingAtEpoch)
+      && reads.every(read => read.responseReleasedAt === null || read.responseReleasedAt > probe.headingAtEpoch);
     ok(`${route}: sample ${sample} heading drawn before private response`, headingBeforeRead, { privateReads: reads.length });
     await page.screenshot({ path: join(OUT, `${route === "/" ? "home" : "live"}-tap-${sample}.png`) });
     await page.locator(S.close).click();
@@ -211,7 +304,9 @@ try {
     await page.waitForFunction(() => Number.isFinite(window.__productionSheetTap?.ms), null, { timeout: 10_000 });
     const red = await page.evaluate(() => window.__productionSheetTap), redVerdict = tapErrors(red, { title, route });
     ok(`${route}: RED delayed heading fails the same tap-frame verdict`, redVerdict.includes("heading frame exceeded 150ms") && red.ms >= 200, { ...red, verdict: redVerdict, pageOnlyPlant: "heading hidden 250ms" });
-    ok(`${route}: render-only drive submitted no money action`, actions.length === 0, { actionRequests: actions.length });
+    ok(`${route}: render-only drive submitted no money or unclassified action`, actions.every(action => action.allowedRead),
+      { backgroundReadRequests: actions.filter(action => action.allowedRead).length, blockedRequests: actions.filter(action => !action.allowedRead) });
+    await page.unrouteAll({ behavior: "wait" }); // let delayed read handlers finish before intentionally closing their page
     await cdp.detach(); await close(ctx);
   }
   ok("production drive had no uncaught browser or console errors", errors.length === 0, { errors });
@@ -223,7 +318,7 @@ try {
 } finally {
   for (const ctx of contexts) await ctx.close().catch(() => {});
   await browser.close();
-  writeFileSync(join(OUT, "evidence.json"), JSON.stringify({ scope: "local production rendering/latency only; synthetic pools, no money or database proof; served absence is not a full --main parity comparison", base: BASE, browser: browserVersion, cpuRate: CPU_RATE, budgetMs: BUDGET_MS, metadata: meta, controls: controlRows.map(([label, pass]) => ({ label, pass })), rows, errors }, null, 2));
+  writeFileSync(join(OUT, "evidence.json"), JSON.stringify({ scope: "local production rendering/latency only; synthetic pools, no money or database proof; served absence is not a full --main parity comparison", startedAt: STARTED_AT, finishedAt: new Date().toISOString(), base: BASE, browser: browserVersion, cpuRate: CPU_RATE, budgetMs: BUDGET_MS, metadata: meta, controls: controlRows.map(([label, pass]) => ({ label, pass })), rows, errors }, null, 2));
 }
 const failed = rows.filter(row => row.state === "FAIL"), outstanding = rows.filter(row => row.state === "NOT MEASURED");
 console.log(`qa:bet-sheet-production: ${rows.filter(row => row.state === "PASS").length} passed, ${failed.length} failed, ${outstanding.length} unmeasured; evidence ${OUT}`);

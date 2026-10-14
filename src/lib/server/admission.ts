@@ -79,15 +79,24 @@ export function clampLimits(raw: Partial<AdmissionLimits>): AdmissionLimits {
   };
 }
 
-let limits: AdmissionLimits = clampLimits({});
+// Next may compile route, action and admin imports independently. The shared semaphore must have one configuration
+// and one async context too: a copied module must neither restore defaults nor acquire a slot its parent holds.
+type AdmissionRuntime = { limits: AdmissionLimits; reentrancy: AsyncLocalStorage<true> };
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_ADMISSION_RUNTIME: AdmissionRuntime | undefined;
+}
+const runtime = globalThis.__50PICK_ADMISSION_RUNTIME ??= {
+  limits: clampLimits({}), reentrancy: new AsyncLocalStorage<true>(),
+};
 
 /** Applied by the admin config loader; always re-clamped. */
 export function setAdmissionLimits(raw: Partial<AdmissionLimits>): AdmissionLimits {
-  limits = clampLimits(raw);
-  return limits;
+  runtime.limits = clampLimits(raw);
+  return runtime.limits;
 }
 export function getAdmissionLimits(): AdmissionLimits {
-  return limits;
+  return runtime.limits;
 }
 
 /* ── State ───────────────────────────────────────────────────────────────── */
@@ -123,7 +132,7 @@ function recordWait(ms: number): void {
 }
 
 /** Marks "a slot is already held on this async context" — invariant 2. */
-const reentrancy = new AsyncLocalStorage<true>();
+const reentrancy = runtime.reentrancy;
 
 /**
  * True inside a withAdmission() slot on this async context. The house-bot engine refuses to fire an intent from
@@ -192,8 +201,8 @@ export async function withAdmission<T>(fn: () => Promise<T>, opts?: { maxWaitMs?
   // Invariant 2 — a nested acquire would wait on a slot its own caller holds.
   if (reentrancy.getStore()) return fn();
 
-  const { maxInFlight, maxQueue } = limits;
-  const maxWaitMs = Math.min(limits.maxWaitMs, Math.max(0, opts?.maxWaitMs ?? limits.maxWaitMs));
+  const { maxInFlight, maxQueue, maxWaitMs: configuredWaitMs } = runtime.limits;
+  const maxWaitMs = Math.min(configuredWaitMs, Math.max(0, opts?.maxWaitMs ?? configuredWaitMs));
   const startedAt = Date.now();
 
   if (st.inFlight < maxInFlight) {
@@ -266,7 +275,7 @@ export function admissionSnapshot(): AdmissionSnapshot {
     waitP50: percentile(sorted, 50),
     waitP95: percentile(sorted, 95),
     waitP99: percentile(sorted, 99),
-    limits,
+    limits: runtime.limits,
     poolSize: poolSize(),
   };
 }

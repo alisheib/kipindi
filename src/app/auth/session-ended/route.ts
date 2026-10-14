@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
   } else if (reason === "expired" || reason === "idle") {
     params.set("ended", "idle");
   } else if (reason === "no_record" && payload?.userId) {
-    const user = await db.user.findById(payload.userId).catch(() => null);
+    const user = await Promise.resolve().then(() => db.user.findById(payload.userId)).catch(() => null);
     if (user?.status === "CLOSED") {
       params.set("closed", "1");
     } else if (user?.status === "SUSPENDED") {

@@ -1,11 +1,12 @@
 "use client";
 
 /** S8's controller. The sheet draws pure frames; only an explicit commit tap calls the existing money action. */
-import { Component, useCallback, useEffect, useRef, useState, useTransition, type ErrorInfo, type ReactNode } from "react";
+import { Component, useCallback, useEffect, useLayoutEffect, useRef, useState, useTransition, type ErrorInfo, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { buyPositionAction } from "@/app/markets/actions";
 import { useT } from "@/lib/i18n";
 import { isActionRedirect } from "@/lib/action-redirect";
+import { playPressPop } from "@/lib/press-feedback";
 import { attributionFrom, pendingBetFrom, readMarker, writeMarker, stakeFromUrl, PENDING_BET_KEY, type PendingBetMarker } from "@/lib/journey/pending-bet";
 import { pendingIntents, pendingStorage, PENDING_STORAGE_MAX_BYTES } from "@/lib/journey/sheet-storage";
 import { parseSheetSeed } from "@/lib/journey/sheet-seed";
@@ -14,10 +15,11 @@ import { answerOf, refusalOutcome, settleRefusal, type Reread } from "@/lib/jour
 import {
   afterKeyRead, afterSettle, clockOffset, estimateMoved, keyReadDelay, nextKey, quoteAt, reopenInDoubt,
   requestFor, sheetEstimate, sheetFrame, sheetOpensOn, sheetPreset, watchdog, withBet, withoutBet,
-  type Quote, type Settled, type SheetIntent, type SheetSeed, type SheetSide, type SheetViewer, type SheetViewerRead,
+  type Quote, type Settled, type SheetFrame, type SheetIntent, type SheetSeed, type SheetSide, type SheetViewer, type SheetViewerRead,
 } from "@/lib/journey/sheet-state";
 import { BetSheet } from "./bet-sheet";
 import { VisibleCardRefresh } from "./visible-card-refresh";
+import { useExitPhase } from "@/components/ui/modal";
 
 type Active = {
   seed: SheetSeed; side: SheetSide; title: string; stakeText: string; viewer: SheetViewerRead;
@@ -51,6 +53,8 @@ export function BetSheetHost() {
   const { t } = useT();
   const [, startTransition] = useTransition();
   const [active, setActive] = useState<Active | null>(null);
+  const { present } = useExitPhase(active !== null);
+  const lastView = useRef<{ active: Active; frame: SheetFrame } | null>(null);
   const [now, setNow] = useState(0);
   const [, setRevision] = useState(0);
   const current = useRef<Active | null>(null);
@@ -66,9 +70,15 @@ export function BetSheetHost() {
   const lastOdds = useRef(0);
   const pageLoadedAt = useRef(0);
 
+  useLayoutEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+
   const revise = useCallback(() => { if (mounted.current) setRevision((v) => v + 1); }, []);
   const show = useCallback((value: Active | null) => { current.current = value; if (mounted.current) setActive(value); }, []);
   const save = useCallback(() => {
+    if (!mounted.current) return false;
     try {
       const items = [...pending.current.values()].filter((p) => p.intent.phase !== "retry").map((p) => ({ quote: p.intent.quote, key: p.intent.key, at: p.at }));
       const value = pendingStorage(selected.current, items);
@@ -79,6 +89,7 @@ export function BetSheetHost() {
     } catch { return false; /* the caller refuses a new commit unless its identity survives a reload */ }
   }, []);
   const stripAddress = useCallback((dropSide: boolean) => {
+    if (!mounted.current) return;
     window.history.replaceState(window.history.state, "", window.location.pathname + withoutBet(window.location.search, dropSide) + window.location.hash);
   }, []);
 
@@ -91,7 +102,7 @@ export function BetSheetHost() {
       const response = await fetch(`/api/markets/${encodeURIComponent(quote.marketId)}/sheet?${query}`, { cache: "no-store" });
       if (response.status === 404) return { ...failed, reread: { state: "read", market: { found: false }, viewer: null } };
       if (response.status === 401) {
-        if (options.open && current.current?.seed.id === quote.marketId) router.push(`/auth/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}` as never);
+        if (mounted.current && options.open && current.current?.seed.id === quote.marketId) router.push(`/auth/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}` as never);
         return failed;
       }
       if (!response.ok) return failed;
@@ -116,7 +127,7 @@ export function BetSheetHost() {
     readSequences.current.set(id, seq);
     const truth = await readTruth({ marketId: before.seed.id, side: before.side }, { open });
     const after = current.current;
-    if (!after || after.serial !== before.serial || readSequences.current.get(id) !== seq) return;
+    if (!mounted.current || !after || after.serial !== before.serial || readSequences.current.get(id) !== seq) return;
     if (truth.seed && truth.viewer) {
       const parsedStake = Number(after.stakeText);
       const moved = estimateMoved({ stake: parsedStake, estimate: sheetEstimate(after.seed, after.side, parsedStake) }, { stake: parsedStake, estimate: sheetEstimate(truth.seed, after.side, parsedStake) });
@@ -125,10 +136,11 @@ export function BetSheetHost() {
         ...(transient && truth.viewer.facts ? { settled: null } : {}) });
     } else if (truth.reread.state === "read" && !truth.reread.market.found) {
       show({ ...after, seed: { ...after.seed, bettable: false } });
-    } else if (after.viewer.state !== "read") show({ ...after, viewer: { state: "failed" } });
+    } else show({ ...after, viewer: { state: "failed" } });
   }, [readTruth, show]);
 
   const receipt = useCallback((record: Pending, positionId: string, replayed: boolean) => {
+    if (!mounted.current) return;
     const id = identity(record.intent.quote);
     if (pending.current.get(id)?.intent.key !== record.intent.key) return;
     pending.current.delete(id);
@@ -163,6 +175,7 @@ export function BetSheetHost() {
   }, [refreshed, revise, save, show, stripAddress]);
 
   const readKey = useCallback(async (record: Pending) => {
+    if (!mounted.current) return;
     const key = record.intent.key;
     if (readingKeys.current.has(key)) return;
     readingKeys.current.add(key);
@@ -170,7 +183,7 @@ export function BetSheetHost() {
     record.lastRead = readAtMs;
     try {
       const truth = await readTruth(record.intent.quote, { key });
-      if (pending.current.get(identity(record.intent.quote))?.intent.key !== key || truth.reread.state !== "read") return;
+      if (!mounted.current || pending.current.get(identity(record.intent.quote))?.intent.key !== key || truth.reread.state !== "read") return;
       if (truth.keyPosition) { receipt(record, truth.keyPosition.positionId, true); return; }
       // Only a successful, scoped null lookup after the settle window can retire a lost answer.
       if (afterKeyRead(record.intent, null, readAtMs) === "ended") {
@@ -201,6 +214,7 @@ export function BetSheetHost() {
   }, [readKey, refreshed, show, stripAddress]);
 
   const close = useCallback(() => {
+    if (!mounted.current) return;
     const a = current.current;
     if (!a) return;
     const record = pending.current.get(activeIdentity(a));
@@ -217,7 +231,13 @@ export function BetSheetHost() {
     const bet = pendingBetFrom(path, q);
     if (!bet || bet.kind !== "market") return;
     const id = identity({ marketId: bet.id, side: bet.side });
-    if (current.current && activeIdentity(current.current) === id) return;
+    const shown = current.current;
+    if (shown && activeIdentity(shown) === id) {
+      // Next may restore the action's canonical address after the receipt first replaced it. Retire that
+      // matching entry again when the router commits it; another question's new sheet keeps its address.
+      if (shown.settled?.view.kind === "receipt") stripAddress(shown.dropSide);
+      return;
+    }
     const token = ++generation.current;
     const element = [...document.querySelectorAll<HTMLElement>("[data-sheet]")].find((e) => parseSheetSeed(e.getAttribute("data-sheet"))?.id === bet.id);
     const seed = element ? parseSheetSeed(element.getAttribute("data-sheet")) : null;
@@ -229,6 +249,7 @@ export function BetSheetHost() {
   }, [open, readTruth, stripAddress]);
 
   const commit = useCallback((which: "cta" | "betInstead") => {
+    if (!mounted.current) return;
     const a = current.current;
     if (!a) return;
     const old = pending.current.get(activeIdentity(a));
@@ -259,10 +280,12 @@ export function BetSheetHost() {
     show({ ...a, settled: null, stakeText: String(chosen.quote.stake), estimateUpdated: false }); revise();
     startTransition(async () => {
       const answer = await answerOf(() => buyPositionAction(fd));
+      if (!mounted.current) return;
       requests.current.delete(chosen.key);
       if (pending.current.get(identity(chosen.quote))?.intent.key !== chosen.key) return;
       const outcome = refusalOutcome(answer);
       const truth = outcome.reread ? await readTruth(chosen.quote) : null;
+      if (!mounted.current) return;
       const build = String((globalThis as { NEXT_DEPLOYMENT_ID?: string }).NEXT_DEPLOYMENT_ID ?? "");
       const recoveryKey = `kp:recovered:${window.location.pathname}`;
       let reloadSpent = true;
@@ -289,6 +312,7 @@ export function BetSheetHost() {
   }, [readKey, readTruth, receipt, revise, save, show]);
 
   const deposit = useCallback((amount?: number) => {
+    if (!mounted.current) return;
     const a = current.current;
     if (!a) return;
     const frame = sheetFrame({ seed: a.seed, side: a.side, stakeText: a.stakeText, viewer: a.viewer, nowMs: Date.now(), offsetMs: a.offset, intent: pending.current.get(activeIdentity(a))?.intent ?? null, settled: a.settled });
@@ -323,7 +347,7 @@ export function BetSheetHost() {
       const href = new URL(anchor.href, window.location.href);
       if (href.origin !== window.location.origin) return;
       event.preventDefault();
-      anchor.classList.remove("press-pop"); void anchor.offsetWidth; anchor.classList.add("press-pop");
+      playPressPop(anchor);
       const bet = { kind: "market" as const, id: seed.id, side: side as SheetSide, stake: null };
       window.history.pushState(window.history.state, "", window.location.pathname + withBet(window.location.search, bet) + window.location.hash);
       open(seed, side, box.dataset.sheetTitle ?? "", true, false, box.dataset.sheetOrigin ?? "card");
@@ -384,6 +408,9 @@ export function BetSheetHost() {
 
   const record = active ? pending.current.get(activeIdentity(active)) : null;
   const frame = active ? sheetFrame({ seed: active.seed, side: active.side, stakeText: active.stakeText, viewer: active.viewer, nowMs: now, offsetMs: active.offset, intent: record?.intent ?? null, settled: active.settled }) : null;
+  if (active && frame) lastView.current = { active, frame };
+  // Only a drawing survives the kit's exit beat. Current intent, address and focus close immediately.
+  const view = active && frame ? { active, frame } : present ? lastView.current : null;
   useEffect(() => {
     const a = current.current;
     if (a && frame?.frame === "low" && !a.lowCounted) {
@@ -393,12 +420,15 @@ export function BetSheetHost() {
 
   return <>
     <VisibleCardRefresh sheetOpen={active !== null} />
-    {active && frame && <SheetBoundary key={active.serial} onFailed={() => { stripAddress(active.dropSide); show(null); }}>
-      <BetSheet seed={active.seed} side={active.side} title={active.title || t.common.temporarilyUnavailable} frame={frame}
-        stakeText={active.stakeText} estimateUpdated={active.estimateUpdated}
-        railNames={active.viewer.state === "read" ? active.viewer.viewer.facts?.deposit.railNames ?? [] : []}
-        onStakeChange={(value) => { const a = current.current; const intent = a && pending.current.get(activeIdentity(a))?.intent; if (a && intent?.phase !== "placing" && intent?.phase !== "inDoubt") show({ ...a, stakeText: value, settled: null, estimateUpdated: false }); }}
-        onPlace={() => commit("cta")} onBetInstead={() => commit("betInstead")} onDeposit={deposit} onClose={close} />
+    {view && <SheetBoundary key={view.active.serial} onFailed={() => { if (current.current?.serial === view.active.serial) { stripAddress(view.active.dropSide); show(null); } }}>
+      <BetSheet open={active !== null} seed={view.active.seed} side={view.active.side} title={view.active.title || t.common.temporarilyUnavailable} frame={view.frame}
+        stakeText={view.active.stakeText} estimateUpdated={view.active.estimateUpdated}
+        railNames={view.active.viewer.state === "read" ? view.active.viewer.viewer.facts?.deposit.railNames ?? [] : []}
+        onStakeChange={(value) => { const a = current.current; const intent = a && pending.current.get(activeIdentity(a))?.intent; if (a && a.serial === view.active.serial && intent?.phase !== "placing" && intent?.phase !== "inDoubt") show({ ...a, stakeText: value, settled: null, estimateUpdated: false }); }}
+        onPlace={() => { if (current.current?.serial === view.active.serial) commit("cta"); }}
+        onBetInstead={() => { if (current.current?.serial === view.active.serial) commit("betInstead"); }}
+        onDeposit={(amount) => { if (current.current?.serial === view.active.serial) deposit(amount); }}
+        onClose={() => { if (current.current?.serial === view.active.serial) close(); }} />
     </SheetBoundary>}
   </>;
 }

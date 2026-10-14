@@ -6,7 +6,7 @@ import { AdminAreaChart, AdminMeter } from "@/components/admin/admin-charts";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
-import { EmptyState } from "@/components/ui/empty-state";
+import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Button } from "@/components/ui/button";
@@ -601,16 +601,12 @@ async function AdminAiUsageContent({ searchParams }: { searchParams: Promise<SP>
               </thead>
               <tbody className="text-text-muted">
                 {cyc.years.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="!p-0">
-                      <EmptyState
+                      <AdminTableEmpty colSpan={5} className="!p-0" fill
                         kind="admin"
                         title="No cycle has closed yet"
                         titleSw="Hakuna mzunguko uliofungwa bado"
                         body="A year appears here as soon as its first cycle closes. Until then there is nothing honest to count."
                       />
-                    </td>
-                  </tr>
                 ) : cyc.years.map((y) => (
                   <tr key={y.year} className="border-b border-border/60 last:border-b-0">
                     <td className="p-3 text-text font-mono tabular-nums">{y.year}</td>
@@ -657,16 +653,12 @@ async function AdminAiUsageContent({ searchParams }: { searchParams: Promise<SP>
               </thead>
               <tbody className="text-text-muted">
                 {cycleList.rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="!p-0">
-                      <EmptyState
+                      <AdminTableEmpty colSpan={9} className="!p-0" fill
                         kind="admin"
                         title="No cycles yet"
                         titleSw="Bado hakuna mizunguko"
                         body="Cycle 1 opens by itself the first time a Claude call is metered. Nothing needs to be started by hand."
                       />
-                    </td>
-                  </tr>
                 ) : cycleList.rows.map((r) => (
                   <tr key={r.id} className="border-b border-border/60 last:border-b-0">
                     <td className="p-3 font-mono tabular-nums text-text">{r.index}</td>
@@ -822,16 +814,12 @@ async function AdminAiUsageContent({ searchParams }: { searchParams: Promise<SP>
                   </tr>
                 ))}
                 {s.windows.all.calls === 0 && (
-                  <tr>
-                    <td colSpan={8} className="!p-0">
-                      <EmptyState
+                      <AdminTableEmpty colSpan={8} className="!p-0" fill
                         kind="admin"
                         title="No AI usage recorded yet"
                         titleSw="Bado hakuna matumizi ya AI"
                         body="AI calls will appear here once the Up & Down oracle, market resolution, poll generation, or chatbot runs — each on its own line."
                       />
-                    </td>
-                  </tr>
                 )}
               </tbody>
             </table>
@@ -944,16 +932,12 @@ async function AdminAiUsageContent({ searchParams }: { searchParams: Promise<SP>
               </thead>
               <tbody className="text-text-muted">
                 {rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} className="!p-0">
-                      <EmptyState
+                      <AdminTableEmpty colSpan={10} className="!p-0" fill
                         kind="audit"
                         title="No calls match these filters"
                         titleSw="Hakuna maombi yanayolingana na chujio hili"
                         body="Try clearing filters or widening the date range."
                       />
-                    </td>
-                  </tr>
                 ) : rows.map((e) => (
                   <tr key={e.id} className="border-b border-border/60 last:border-b-0 align-top">
                     <td className="p-3 font-mono tabular-nums text-text-tertiary whitespace-nowrap text-caption">{ts(e.createdAt)}</td>
@@ -996,7 +980,7 @@ async function AdminAiUsageContent({ searchParams }: { searchParams: Promise<SP>
           <p className="px-4 py-3 text-caption text-text-tertiary leading-snug border-t border-border">
             {anthropic
               ? <>KPI tiles show <strong>real Anthropic-reported costs</strong> (via Cost API, cached 10 min). Per-call costs below are estimates from token counts. </>
-              : <>Cost estimated from token counts \u00d7 Anthropic pricing. Set <code className="text-text-subtle">ANTHROPIC_ADMIN_KEY</code> on Railway for real Anthropic-reported costs. </>}
+              : <>Cost estimated from token counts × Anthropic pricing. Set <code className="text-text-subtle">ANTHROPIC_ADMIN_KEY</code> on Railway for real Anthropic-reported costs. </>}
             Haiku $1/$5, Sonnet $3/$15, Opus $5/$25 per 1M tokens; web search $0.01/call. Ledger retained 180 days.
           </p>
         </AdminCard>

@@ -694,41 +694,27 @@ section("§6 · C8 — same password after a self-exclusion still needs a fresh 
   ok("6.8b · …re-verify, then Start succeeds", rv2.ok === true && s4.ok === true && (await bot(botId)).status === "ACTIVE", `${j(rv2)} | ${j(s4)}`);
 
   /**
-   * The backstop: a self-exclusion began after the last verification, and no detector wrote the void.
-   *
-   * 🔴 **6.9 BELOW IS A RECURRING POSTGRES-ONLY NON-DETERMINISM, AND IT IS NOT A DIAGNOSED FLAKE.** Seen on
-   * 2026-09-19 (C7 step 7 review, register row 74: "green on the second run; the first printed a Postgres-only
-   * 6.9 self-exclusion flake") and again on 2026-09-21 (C5-8, alerts lane) — two different days, same case,
-   * same store, green on the immediate re-run both times. Measured the second time: the Postgres child printed
-   * **160 passed / 1 failed** against a floor of 161, with 6.9's actual answer
-   * `{"ok":false,"code":"CONSENT","row":{"code":"CONSENT_VOID","short":"Permission ended"}}` where the
-   * assertion wants `RG_SINCE_VERIFIED`. The memory child was **169 / 0** both times.
-   *
-   * ⚠️ IT REFUSED EITHER WAY — the disagreement is about WHICH guard answered, not about whether the Start was
-   * let through, so no run has ever shown this case permitting something it should refuse.
-   *
-   * ⭐ THE PRIME SUSPECT, STATED AS A HYPOTHESIS AND NOT AS A FINDING: the entire separation between
-   * `verifiedAt` and the self-exclusion's start is the **`await sleep(5)`** above. On the memory store both
-   * stamps come from one JS clock and 5 ms is always enough; on Postgres they are written through separate
-   * round-trips against the server's clock, and on this machine a per-connection backend fork under load has
-   * already been measured taking longer than Prisma's own 5 s default (see `house-bot-two-stores.mts`). If the
-   * two stamps land in the same millisecond — or out of order — the self-exclusion is not "after `verifiedAt`",
-   * `RG_SINCE_VERIFIED` correctly does not fire, and the consent path answers instead. That would explain
-   * Postgres-only, intermittent, and always a refusal.
-   *
-   * ⛔ NOT ACTED ON HERE, deliberately: widening the sleep would make the red go away without anyone having
-   * READ the two timestamps, and a case that is green because it waits longer is not the same case. Whoever
-   * takes this next should print `verifiedAt` and the self-exclusion's `startedAt` from the Postgres row on a
-   * failing run — that is one `console.log`, and it either confirms the ordering or kills the hypothesis.
+   * The RG backstop's premise is that no holder detector wrote a consent void.
+   * The recurring Postgres-only disagreement was measured on 2026-10-13: verifiedAt preceded the RG start,
+   * but the asynchronous in-app hook raced the eligibility read and wrote SELF_EXCLUDED. Waiting for that actual
+   * hook reproduced CONSENT_VOID in BOTH stores (168/169 and 160/161), with correctly ordered real row stamps.
+   * Use the suite's existing ruling-156 fixture suspension, as the other backstop cases do. No product gate or
+   * clock changes: the writer still fires its hook, the helper waits for its suspended entry, and the row premise
+   * below independently requires no void and an exclusion start later than verification.
    */
   const bb = await runningBot();
   await w.dal.houseBotStore.setStatus(bb.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
   await sleep(5);
-  await RG.selfExclude(bb.userId, "24h");
+  await withoutInAppHook(() => RG.selfExclude(bb.userId, "24h"));
   await restoreSelfExclusion(bb.userId);
   rlReset();
   const sb = await start(bb.botId);
-  ok("6.9 · no void written, but a self-exclusion began after verifiedAt → Start refused (RG backstop)", sb.ok === false && sb.row?.code === "RG_SINCE_VERIFIED", j(sb));
+  const probeBot = await bot(bb.botId), probeRg = await RG.getRgSettings(bb.userId);
+  console.log(`DIAG [${STORE}] 6.9 ${JSON.stringify({ verifiedAt: probeBot?.verifiedAt,
+    selfExclusionStartedAt: probeRg.selfExclusionStartedAt, consentVoidAt: probeBot?.consentVoidAt,
+    consentVoidCause: probeBot?.consentVoidCause, answer: sb.row?.code })}`);
+  ok("6.9 · no void written, but a self-exclusion began after verifiedAt → Start refused (RG backstop)", sb.ok === false && sb.row?.code === "RG_SINCE_VERIFIED" && probeBot?.consentVoidAt == null
+      && Date.parse(probeRg.selfExclusionStartedAt ?? "") > Date.parse(probeBot?.verifiedAt ?? ""), j(sb));
 }
 
 // ═══ §7 · re-verify and Start, the other states (02 §2.6, §3.3; 04 C9, C10) ═════════════════════════

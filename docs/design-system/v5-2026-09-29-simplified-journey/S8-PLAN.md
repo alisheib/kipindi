@@ -1908,6 +1908,13 @@ Open point 5; WP11b (the tiles); the CLAUDE.md half of the plan critique's A-12.
    re-arms focus onto that h2 through Modal's `refocusKey` (modal.tsx:274-281, :383-391), so the 400 ms beat swallows a
    quick second Enter and a screen reader hears the new frame. test:bet-sheet §8 pins it (plant: a frame change with no
    re-arm).
+   **Implementation correction, 2026-10-13, within the owner's later visual/logic repair scope:** a change among edit,
+   low, loss-room and pending while the stake input itself is focused keeps that focus and keyboard layout. Actual
+   320/360 browser typing from the minimum to a short balance and back otherwise dismissed the keyboard and put the
+   commit below it. The polite region still announces the changed message. Every other frame change re-arms the h2
+   and its 400 ms beat, including a balance change while another control has focus; question/side/receipt identity
+   changes always re-arm. Blurring alone never triggers a deferred focus move. The pure focus sequence and actual
+   long-typing browser cell hold both sides of this exception.
 3. **Each message is spoken once.**
    - The closed frame and every block speak through their message's own `role="alert"`, as the boards draw them, and
      that message is the dialog's `describedBy` (modal.tsx:219-221: "the bet refusal names its reason here").
@@ -2147,6 +2154,27 @@ that says "soko", and the slow-placing and pending lines are A7's and A10's.
 
 1. WP11a's tap-frame cell runs against a local production build (`next build`, then `next start` on the in-memory store,
    under the lock), its sha recorded in §0k. A dev-server reading is RECORDED, never PASS.
+2. **2026-10-13 measured implementation correction, under the user's explicit authority to improve encountered
+   animations.** The production `4b92c13` drive failed six normal-motion heading cells at 542–846ms under 4× CPU.
+   Its captures remain failed evidence. An isolated timing probe found the host itself taking about 17ms at 4× CPU
+   (3.5ms at 1×), followed by the shared Modal's passive `setMounted` commit and a full sheet-height `m-sheet-rise`:
+   the heading was rendered at y=733–759, outside a 640px phone, until about 258ms after the press (88ms at 1×).
+   Modal now keeps its initial mounted state false for identical server/client markup, but supplies the portal in
+   a layout effect before first browser paint. The stake sheet alone replaces the entrance name through
+   `.kp-bsheet.m-sheet-in { animation-name: m-settle-lift; }`, using the existing kit's 14px/.975 lift, duration and
+   easing. This is an explicit scoped exception to the full-height sheet rise, not a new keyframe or duration.
+   The distinct M2 exit, 30ms first-focus guard, 400ms arming beat and all reduced-motion clamps remain in force.
+   `test:enter-where-pressed` runs the actual mounted initializer/setter before paint, the actual conditional focus
+   rule and render binding, plus source/behavior plants; its full in-memory red control passes 116/116. Popup fit,
+   reduced motion, motion ladder, sheet and R9-C guards pass. These guards are not a production timing PASS:
+   the corrected candidate must still pass WP11a on a fresh production build, with that exact sha recorded in §0k.
+   The exact-947 compiled drive subsequently measures six 234–316ms cells: the smaller lift still starts with zero
+   opacity in its first two frames. The same-transform page trial makes the heading legible at 111.4ms under 4×
+   CPU versus 188.2ms in its control. The next candidate therefore parameterizes only the existing lift's initial
+   opacity as `var(--m-settle-start-opacity, 0)`; only `.kp-bsheet.m-sheet-in` supplies `1`. Every unset kit consumer
+   retains its zero-opacity start, and the transform, duration, curve, exit and motion clamps are inherited.
+   The expanded actual-source guards catch 119/119 plants, including transparent start, removed scoped override
+   and changed generic fallback. This remains a candidate until the exact compiled six-cell production drive.
 
 *From:* Plan critique 13 (A-13), taken whole.
 
