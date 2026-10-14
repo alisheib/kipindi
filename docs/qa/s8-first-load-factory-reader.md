@@ -39,7 +39,7 @@ whole reading, including `--no-expect`. Other source and compiled-string marker 
 client-reference verdict, route parsing, deployment-query normalization and the HEAD tie remain in force. Declared
 files are printed separately from the selected primary factory.
 
-The instrument's 103 fixture controls pass; all previous 79 (including the original49) controls remain. Fifty-four additions use valid Turbopack
+The instrument's 106 fixture controls pass; all previous 103 (including the original49) controls remain. Fifty-seven additions use valid Turbopack
 registration syntax and the same whole-build verdict. They include shared-dependency-only acceptance; moving the
 actual primary into entries while leaving its marker lazy; missing nonprimary dependency; deleted, renamed,
 ambiguous and unreadable primary definitions; distinct virtual-module ambiguity; unknown chosen export; per-loader
@@ -51,6 +51,17 @@ namespaces, missing shim preloads, and directly invoked versus unreachable shell
 flow or mutation prevents a claimed unconditional export mapping; ordinary block-local shadowing remains valid.
 These fixtures do not require a server or execute client
 code.
+
+Post-checkpoint delegated review found three further direct violations of the factory-context invariant:
+destructuring into the context identifier, destructuring into its export method, and deleting that method. The narrow
+followup recursively inspects assignment-pattern targets and direct context-member deletion, with three additional
+whole-build negative controls. It does not evaluate arbitrary JavaScript or broaden supported mapping formats.
+Read-only current `bf0278b464120a4b4637905960ad604061d52a03` production-artifact verification remains10/10 PASS,
+with106/0 controls, source-marker table holding, and HEAD/BUILD_ID stable through the read. That evidence is
+`F:/50pick-work/generated/qa-first-load-context-write-bf0278-20261014/evidence.json`; no app edits, build or HTTP were
+performed for this followup. Root reviewed the narrow three-control diff and the exactbf10-route output before
+authorizing this QA-only followup checkpoint. No further generic parser fuzzing or supported-format changes form
+part of this packet.
 
 Measured artifact read, distinct from browser proof:
 
