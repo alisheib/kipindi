@@ -84,52 +84,106 @@ function plant(source:string,name:string,from:string,to:string){const old=arrow(
 
 /** Execute the real route-reconciliation callback after Next's canonical history write. React's
  * insertion → layout → paint → passive order is independently read from its vendored code by R5-H. */
-function routeReconciliation(source:string){
+function routeEffects(source:string){
   const file=ts.createSourceFile("host.tsx",source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX),found:ts.CallExpression[]=[];
   const visit=(n:ts.Node)=>{if(ts.isCallExpression(n)&&ts.isIdentifier(n.expression)&&["useLayoutEffect","useEffect"].includes(n.expression.text)
     &&ts.isArrowFunction(n.arguments[0])&&ts.isArrayLiteralExpression(n.arguments[1])
-    &&n.arguments[1].elements.map(e=>e.getText(file)).join(",")==="pathname,search,openAddress,show")found.push(n);ts.forEachChild(n,visit);};
-  visit(file);assert.equal(found.length,1,"unique address reconciliation effect");
-  const call=found[0];return{phase:call.expression.getText(file),callback:call.arguments[0].getText(file),source:call.getText(file)};
+    &&["pathname,search,openAddress,show","pathname,search,active?.settled,openAddress"].includes(n.arguments[1].elements.map(e=>e.getText(file)).join(",")))found.push(n);ts.forEachChild(n,visit);};
+  visit(file);assert.equal(found.length,2,"exact opening and receipt effects");
+  return found.map(call=>({phase:call.expression.getText(file),callback:call.arguments[0].getText(file),source:call.getText(file),
+    role:call.arguments[1].getText(file).includes("active?.settled")?"receipt":"opening"}));
 }
-async function addressAtPaint(source:string,frame:"receipt"|"edit"|"inDoubt",foreign=false){
-  const effect=routeReconciliation(source),{bytes,storage}=memory();assert(saveOwnedSheet(storage,OWNER,[entry(1)]));const authoritative=bytes.get(a);
+async function addressAtPaint(source:string,frame:"receipt"|"edit"|"inDoubt"|"cold",foreign=false){
+  const effects=routeEffects(source),{bytes,storage}=memory();assert(saveOwnedSheet(storage,OWNER,[entry(1)]));const authoritative=bytes.get(a);
   const search=`?cat=macro&bet=${foreign?"mkt_foreign":quote.marketId}.YES&side=YES`;
-  const current={current:{seed:{id:quote.marketId},side:"YES",pathname:"/",dropSide:true,settled:frame==="receipt"?{view:{kind:"receipt"}}:null}};
-  const location={pathname:"/",search,hash:"#kept"},generation={current:0};let stripped=0,opened=0,reads=0,work:Promise<void>|undefined,release:((v:unknown)=>void)|undefined;
+  type ActiveAddress={seed:{id:string};side:string;pathname:string;dropSide:boolean;settled:{view:{kind:string}}|null};
+  const current:{current:ActiveAddress|null}={current:frame==="cold"?null:{seed:{id:quote.marketId},side:"YES",pathname:"/",dropSide:true,settled:frame==="receipt"?{view:{kind:"receipt"}}:null}};
+  const location={pathname:"/",search,hash:"#kept"},generation={current:0};let stripped=0,opened=0,reads=0,calls=0,ownerRestored=false,work:Promise<void>|undefined,release:((v:unknown)=>void)|undefined;const readsAfterRestore:boolean[]=[];
   const window={location,sessionStorage:storage,history:{state:{__NA:true},replaceState:(_state:unknown,_title:string,url:string)=>{const value=new URL(url,"http://localhost");location.search=value.search;location.hash=value.hash;stripped++;}}};
   const stripAddress=bind(source,"stripAddress",{mounted:{current:true},window,withoutBet});
-  const reconcile=bind(source,"openAddress",{window,sheetOpensOn,pendingBetFrom,identity:(q:Quote)=>`${q.marketId}.${q.side}`,
-    activeIdentity:(v:typeof current.current)=>`${v.seed.id}.${v.side}`,current,stripAddress,generation,document:{querySelectorAll:()=>[]},parseSheetSeed,
-    readTruth:()=>{reads++;return new Promise(resolve=>{release=resolve;});},mounted:{current:true},open:()=>{opened++;}});
-  const js=ts.transpileModule(`const callback=${effect.callback};`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
-  const callback=new Function("current","pathname","show","generation","sheetOpensOn","openAddress",`${js}\nreturn callback;`)(current,"/",()=>{throw new Error("same-path sheet unexpectedly closed");},generation,sheetOpensOn,()=>{work=reconcile();});
-  if(effect.phase==="useLayoutEffect")callback();
-  const painted={search:location.search,stripped,opened,reads};
-  if(effect.phase==="useEffect")callback();
-  release?.({seed:{id:"mkt_foreign"},title:"Other question",reread:{state:"none"}});await work;
-  return{painted,final:{search:location.search,stripped,opened,reads},keysUntouched:bytes.get(a)===authoritative,hash:location.hash};
+  const identity=(q:Quote)=>`${q.marketId}.${q.side}`,activeIdentity=(v:ActiveAddress)=>`${v.seed.id}.${v.side}`;
+  const reconcile=bind(source,"openAddress",{window,sheetOpensOn,pendingBetFrom,identity,activeIdentity,current,stripAddress,generation,document:{querySelectorAll:()=>[]},parseSheetSeed,
+    readTruth:()=>{reads++;readsAfterRestore.push(ownerRestored);return new Promise(resolve=>{release=resolve;});},mounted:{current:true},open:()=>{opened++;}});
+  const callbacks=effects.map(effect=>{
+    const js=ts.transpileModule(`const callback=${effect.callback};`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+    const deps={current,pathname:"/",show:()=>{throw new Error("same-path sheet unexpectedly closed");},generation,sheetOpensOn,
+      openAddress:()=>{calls++;work=reconcile();},window,pendingBetFrom,identity,activeIdentity};
+    return{...effect,run:new Function(...Object.keys(deps),`${js}\nreturn callback;`)(...Object.values(deps))};
+  });
+  callbacks.filter(effect=>effect.phase==="useLayoutEffect").forEach(effect=>effect.run());
+  const painted={search:location.search,stripped,opened,reads,calls};
+  // The existing storage/listener passive effect is declared before the passive opening effect.
+  const restoreAt=source.indexOf("ownedSheetIntents(window.sessionStorage.getItem(ownerKey), viewerId)");
+  assert(restoreAt>=0&&restoreAt<source.indexOf(effects.find(effect=>effect.role==="opening")!.source),"owned restore declared before opening");
+  ownerRestored=true;
+  callbacks.filter(effect=>effect.phase==="useEffect").forEach(effect=>effect.run());
+  release?.({seed:{id:foreign?"mkt_foreign":quote.marketId},title:"Question",reread:{state:"none"}});await work;
+  return{painted,final:{search:location.search,stripped,opened,reads,calls},readsAfterRestore,keysUntouched:bytes.get(a)===authoritative,hash:location.hash};
 }
 const cleanReceipt=(v:Awaited<ReturnType<typeof addressAtPaint>>)=>!new URLSearchParams(v.painted.search).has("bet")
   &&!new URLSearchParams(v.painted.search).has("side")&&new URLSearchParams(v.painted.search).get("cat")==="macro"&&v.painted.stripped===1&&v.keysUntouched&&v.hash==="#kept";
 await checkAsync("actual matching receipt reconciliation clears queued canonical bet/side before paint, retaining filters/hash and owned keys",async()=>assert(cleanReceipt(await addressAtPaint(HOST,"receipt"))));
 await checkAsync("actual editable and doubtful matching sheets retain their addresses and keys",async()=>{
-  for(const frame of ["edit","inDoubt"] as const){const v=await addressAtPaint(HOST,frame);assert.equal(v.painted.stripped,0);assert.equal(v.final.opened,0);assert(new URLSearchParams(v.final.search).has("bet"));assert(v.keysUntouched);}
+  for(const frame of ["edit","inDoubt"] as const){const v=await addressAtPaint(HOST,frame);assert.equal(v.painted.stripped,0);assert.equal(v.painted.calls,0);assert.equal(v.final.opened,0);assert(new URLSearchParams(v.final.search).has("bet"));assert(v.keysUntouched);}
+});
+await checkAsync("actual cold address starts no layout read/open and only one passive read after owned restore",async()=>{
+  const v=await addressAtPaint(HOST,"cold");assert.equal(v.painted.calls,0);assert.equal(v.painted.reads,0);assert.equal(v.painted.opened,0);assert.equal(v.final.reads,1);assert.equal(v.final.opened,1);assert.deepEqual(v.readsAfterRestore,[true]);assert(v.keysUntouched);
 });
 await checkAsync("actual other-question address survives a current receipt and opens only that question after its read",async()=>{
-  const v=await addressAtPaint(HOST,"receipt",true);assert.equal(v.painted.stripped,0);assert.equal(v.painted.opened,0);assert.equal(v.final.opened,1);assert.equal(v.final.reads,1);assert.equal(new URLSearchParams(v.final.search).get("bet"),"mkt_foreign.YES");assert(v.keysUntouched);
+  const v=await addressAtPaint(HOST,"receipt",true);assert.equal(v.painted.stripped,0);assert.equal(v.painted.calls,0);assert.equal(v.painted.opened,0);assert.equal(v.final.opened,1);assert.equal(v.final.reads,1);assert.deepEqual(v.readsAfterRestore,[true]);assert.equal(new URLSearchParams(v.final.search).get("bet"),"mkt_foreign.YES");assert(v.keysUntouched);
 });
-const reconciliation=routeReconciliation(HOST),passive=HOST.replace(reconciliation.source,reconciliation.source.replace(/^useLayoutEffect\(/,"useEffect("));assert.notEqual(passive,HOST);
+const reconciliation=routeEffects(HOST).find(effect=>effect.role==="receipt")!,passive=HOST.replace(reconciliation.source,reconciliation.source.replace(/^useLayoutEffect\(/,"useEffect("));assert.notEqual(passive,HOST);
 await checkAsync("plant passive reconciliation fails the same before-paint receipt verdict even though it clears the URL later",async()=>{
   const v=await addressAtPaint(passive,"receipt");assert(!cleanReceipt(v));assert(new URLSearchParams(v.painted.search).has("bet"));assert(!new URLSearchParams(v.final.search).has("bet"));
 });
 await checkAsync("plant lost matching receipt strip fails the same before-paint verdict",async()=>assert(!cleanReceipt(await addressAtPaint(plant(HOST,"openAddress",'if (shown.settled?.view.kind === "receipt") stripAddress(shown.dropSide);',""),"receipt"))));
 await checkAsync("plant blanket matching-frame strip fails the actual editable/doubt address verdict",async()=>{
   const changed=plant(HOST,"openAddress",'if (shown.settled?.view.kind === "receipt") stripAddress(shown.dropSide);',"stripAddress(shown.dropSide);");
-  for(const frame of ["edit","inDoubt"] as const)assert.equal((await addressAtPaint(changed,frame)).painted.stripped,1);
+  for(const frame of ["edit","inDoubt"] as const)assert.equal((await addressAtPaint(changed,frame)).final.stripped,1);
 });
 await checkAsync("plant stripping another question fails the same foreign-address preservation verdict",async()=>{
-  const changed=plant(HOST,"openAddress","if (shown && activeIdentity(shown) === id)","if (shown)");const v=await addressAtPaint(changed,"receipt",true);assert.equal(v.painted.stripped,1);assert.equal(v.final.opened,0);
+  const changed=plant(HOST,"openAddress","if (shown && activeIdentity(shown) === id)","if (shown)");const v=await addressAtPaint(changed,"receipt",true);assert.equal(v.final.stripped,1);assert.equal(v.final.opened,0);
+});
+await checkAsync("plant moving cold opening into layout fails the same no-read-before-owned-restore verdict",async()=>{
+  const opening=routeEffects(HOST).find(effect=>effect.role==="opening")!;
+  const changed=HOST.replace(opening.source,opening.source.replace(/^useEffect\(/,"useLayoutEffect("));assert.notEqual(changed,HOST);
+  const v=await addressAtPaint(changed,"cold");assert.equal(v.painted.reads,1);assert.deepEqual(v.readsAfterRestore,[false]);
+});
+
+/** Execute Next's installed native API wrappers: passing its internal __NA state skips URL
+ * reconciliation; null copies the internal tree and calls the real restore boundary. */
+const nextHistorySource=readFileSync(new URL("../node_modules/next/dist/client/components/app-router.js",import.meta.url),"utf8");
+const nextHistoryFile=ts.createSourceFile("app-router.js",nextHistorySource,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS);
+let copyHistorySource="",applyHistorySource="";const nativeHistorySources=new Map<string,string>();
+const readHistoryNode=(n:ts.Node)=>{
+  if(ts.isFunctionDeclaration(n)&&n.name?.text==="copyNextJsInternalHistoryState")copyHistorySource=n.getText(nextHistoryFile);
+  if(ts.isVariableDeclaration(n)&&n.name.getText(nextHistoryFile)==="applyUrlFromHistoryPushReplace"&&n.initializer)applyHistorySource=n.initializer.getText(nextHistoryFile);
+  if(ts.isBinaryExpression(n)&&ts.isFunctionExpression(n.right)&&["window.history.pushState","window.history.replaceState"].includes(n.left.getText(nextHistoryFile)))nativeHistorySources.set(n.left.getText(nextHistoryFile).split(".").at(-1)!,n.right.getText(nextHistoryFile));
+  ts.forEachChild(n,readHistoryNode);
+};readHistoryNode(nextHistoryFile);
+assert(copyHistorySource&&applyHistorySource&&nativeHistorySources.size===2,"installed Next native-history implementation is readable");
+function nativeHistoryVerdict(source:string){
+  const file=ts.createSourceFile("host.tsx",source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX),calls:ts.CallExpression[]=[];
+  const visit=(n:ts.Node)=>{if(ts.isCallExpression(n)&&["window.history.pushState","window.history.replaceState"].includes(n.expression.getText(file)))calls.push(n);ts.forEachChild(n,visit);};visit(file);
+  const rows=calls.map(call=>{
+    const method=call.expression.getText(file).split(".").at(-1)!,argument=call.arguments[0].getText(file),tree={tree:"owned-current-tree",renderedSearch:"?bet=mkt_ownercheck.YES"};
+    let restored=0,canonical="http://localhost/?bet=mkt_ownercheck.YES",written:Record<string,unknown>|undefined;
+    const window={location:{href:canonical},history:{state:{__NA:true,__PRIVATE_NEXTJS_INTERNALS_TREE:tree}}};
+    const copy=new Function("window",`return (${copyHistorySource});`)(window);
+    const apply=new Function("window","_navigator",`return (${applyHistorySource});`)(window,{restore:(url:URL,state:unknown)=>{assert.equal(state,tree);canonical=url.href;restored++;}});
+    const original=(data:Record<string,unknown>)=>{written=data;};
+    const native=new Function("originalPushState","originalReplaceState","copyNextJsInternalHistoryState","applyUrlFromHistoryPushReplace",`return (${nativeHistorySources.get(method)});`)(original,original,copy,apply);
+    if(argument==="null")native(null,"","/?cat=macro");
+    else if(argument==="window.history.state")native(window.history.state,"","/?cat=macro");
+    return{method,argument,start:call.arguments[0].getStart(file),end:call.arguments[0].end,
+      passed:argument==="null"&&restored===1&&canonical==="http://localhost/?cat=macro"&&written?.__NA===true&&written?.__PRIVATE_NEXTJS_INTERNALS_TREE===tree};
+  });
+  return{rows,passed:rows.length===6&&rows.every(row=>row.passed)};
+}
+check("all six actual host history arguments take Next's supported native API restore path and retain its tree",()=>assert(nativeHistoryVerdict(HOST).passed));
+for(const [index,row] of nativeHistoryVerdict(HOST).rows.entries())check(`plant history-state bypass at actual ${row.method} site${index+1} fails the same installed Next API verdict`,()=>{
+  const changed=HOST.slice(0,row.start)+"window.history.state"+HOST.slice(row.end),verdict=nativeHistoryVerdict(changed);
+  assert(!verdict.passed);assert.equal(verdict.rows.filter(value=>!value.passed).length,1);assert.equal(verdict.rows[index].passed,false);
 });
 async function privateRead(source:string,body:unknown,{status=200,stale=false}:{status?:number;stale?:boolean}={}){
   const ownerEpoch={current:0},ownerInvalid={current:false};let changed=0,release!:(v:unknown)=>void;

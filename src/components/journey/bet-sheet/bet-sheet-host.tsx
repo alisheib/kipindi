@@ -107,7 +107,7 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
   }, [viewerId]);
   const stripAddress = useCallback((dropSide: boolean) => {
     if (!mounted.current) return;
-    window.history.replaceState(window.history.state, "", window.location.pathname + withoutBet(window.location.search, dropSide) + window.location.hash);
+    window.history.replaceState(null, "", window.location.pathname + withoutBet(window.location.search, dropSide) + window.location.hash);
   }, []);
 
   const readTruth = useCallback(async (quote: Pick<Quote, "marketId" | "side">, options: { key?: string; open?: boolean } = {}): Promise<Truth> => {
@@ -191,7 +191,7 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
       // reopen as an unplaced bet, including when its answer arrived while the dialog was closed.
       const bet = pendingBetFrom(window.location.pathname, new URLSearchParams(window.location.search));
       if (bet?.kind === "market" && identity({ marketId: bet.id, side: bet.side }) === id) stripAddress(true);
-      window.history.pushState(window.history.state, "", window.location.pathname + window.location.search + window.location.hash);
+      window.history.pushState(null, "", window.location.pathname + window.location.search + window.location.hash);
     }
     try {
       const watches: unknown = JSON.parse(window.localStorage.getItem("50pick-notify-markets") ?? "[]");
@@ -336,7 +336,7 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
       show({ ...a, settled: { row: 3, reason: null, view: { kind: "inline", line: { key: "common.temporarilyUnavailable" } }, retry: "new", doubt: "none", marker: "dropKey" } });
       return;
     }
-    window.history.replaceState(window.history.state, "", window.location.pathname + withBet(window.location.search, bet) + window.location.hash);
+    window.history.replaceState(null, "", window.location.pathname + withBet(window.location.search, bet) + window.location.hash);
     show({ ...a, settled: null, stakeText: String(chosen.quote.stake), estimateUpdated: false }); revise();
     startTransition(async () => {
       const answer = await answerOf(() => buyPositionAction(fd));
@@ -387,7 +387,7 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
     const bet = { kind: "market" as const, id: a.seed.id, side: a.side, stake: frame.stake };
     const stamp = Date.now();
     selected.current = readMarker(writeMarker(bet, stamp, attributionFrom(new URLSearchParams(window.location.search)), undefined, viewerId), stamp);
-    window.history.replaceState(window.history.state, "", window.location.pathname + withBet(window.location.search, bet) + window.location.hash);
+    window.history.replaceState(null, "", window.location.pathname + withBet(window.location.search, bet) + window.location.hash);
     if (!save()) { show({ ...a, settled: { row: 3, reason: null, view: { kind: "inline", line: { key: "common.temporarilyUnavailable" } }, retry: "new", doubt: "none", marker: "dropKey" } }); return; }
     show(null);
     const query = new URLSearchParams({ amount: String(chosen), bet: `${bet.id}.${bet.side}.${bet.stake}`, from: "low-balance" });
@@ -419,7 +419,7 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
       event.preventDefault();
       playPressPop(anchor);
       const bet = { kind: "market" as const, id: seed.id, side: side as SheetSide, stake: null };
-      window.history.pushState(window.history.state, "", window.location.pathname + withBet(window.location.search, bet) + window.location.hash);
+      window.history.pushState(null, "", window.location.pathname + withBet(window.location.search, bet) + window.location.hash);
       // The native capture listener supplies the public frame before downstream click work resumes.
       flushSync(() => open(seed, side, box.dataset.sheetTitle ?? "", true, false, box.dataset.sheetOrigin ?? "card"));
     };
@@ -430,7 +430,7 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
       if (a && !bet) {
         if (record?.intent.phase === "placing") {
           const quote = record.intent.quote;
-          window.history.pushState(window.history.state, "", window.location.pathname + withBet(window.location.search, { kind: "market", id: quote.marketId, side: quote.side, stake: quote.stake }));
+          window.history.pushState(null, "", window.location.pathname + withBet(window.location.search, { kind: "market", id: quote.marketId, side: quote.side, stake: quote.stake }) + window.location.hash);
         } else show(null);
       } else void openAddress();
     };
@@ -477,6 +477,13 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
   }, [open, openAddress, readKey, refreshed, resolveLegacy, revise, save, show, viewerId]);
 
   useLayoutEffect(() => {
+    const a = current.current;
+    if (a?.settled?.view.kind !== "receipt" || a.pathname !== pathname) return;
+    const bet = pendingBetFrom(window.location.pathname, new URLSearchParams(window.location.search));
+    if (bet?.kind === "market" && activeIdentity(a) === identity({marketId: bet.id, side: bet.side})) void openAddress();
+  }, [pathname, search, active?.settled, openAddress]);
+
+  useEffect(() => {
     const a = current.current;
     if (a && a.pathname !== pathname) { show(null); ++generation.current; }
     if (sheetOpensOn(pathname)) void openAddress();

@@ -836,6 +836,20 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   Campaign transport again preserves its original safe64-character codes, while auth/owned-marker readers
   keep their canonical account-code rules. These checkpoints and the exact `bf0278b46` parity record are saved;
   the new candidate still needs its own full battery, compiled proof and relevant final parity.
+  **2026-10-14 06:21 UTC final overnight candidate.** The receipt fix now uses a dedicated matching-receipt
+  layout effect; initial/address opening remains passive, after owned-storage restoration. All six native
+  history writes use Next's supported null-state entry path, which copies its internal tree and synchronizes
+  the canonical URL; the placing Back guard also keeps the fragment. Actual two-effect/owned-restore callbacks
+  and installed Next native wrappers pass **52/52**, including passive-cleanup, early-cold-read, foreign-question
+  and six individual history-bypass plants. Bootstrap binds the serialized build, exact source HEAD and both
+  startup environments before Next imports; it refuses a conflicting cached Next deployment before app
+  seeding. Its actual prefix/getter/HTTP-expression controls pass **40/40** and **65/65** plants. The production
+  driver requires all three runtime identities and actual classic/journey RSC header/body agreement, and checks
+  that every sheet Back/Forward cell retains its original document. A new exact candidate build/drive follows;
+  the earlier `950ec7944` measurements are not relabeled as this candidate. Overnight work is closing with
+  recoverable checkpoints; no main/live release has occurred. At 06:16 UTC all three Railway services are online,
+  no rollout is pending, all three host health endpoints are 200/ok, and production remains `7624cf8c9` on
+  deployment `e67084dd-b99b-4e38-b839-6bd5a748e7a7`. One existing Postgres warning is reported separately.
   **Still NOT CLOSED / NOT LIVE:** current browser/visual closure, clean exact-tip production proof, repaired v4
   baseline/null/branch parity, complete battery and both-host production read-back are required.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;
