@@ -5,6 +5,7 @@ import ts from "typescript";
 import * as ReactRuntime from "react/jsx-runtime";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as D from "../src/lib/journey/deposit-state.ts";
+import * as B from "../src/lib/journey/deposit-recheck-binding.ts";
 import { DepositSchema, AdminDepositSchema } from "../src/lib/server/validators.ts";
 import { paymentMethodName, isMobileMoneyMethodId, MOBILE_MONEY_METHODS } from "../src/lib/payment-providers.ts";
 import { RG_RETURN_MARK } from "../src/lib/wallet/receipts.ts";
@@ -25,7 +26,8 @@ const files = ["src/lib/server/deposit-status.ts", "src/lib/server/wallet-servic
 const sources = Object.fromEntries(files.map(file => [file, readFileSync(join(ROOT, file), "utf8")]));
 const RECHECK_FILE = "src/lib/server/deposit-recheck.ts";
 const RECHECK_ROUTE = "src/app/api/wallet/deposits/[id]/recheck/route.ts";
-for (const file of [RECHECK_FILE, RECHECK_ROUTE]) sources[file] = readFileSync(join(ROOT, file), "utf8");
+const BINDING_FILE = "src/lib/journey/deposit-recheck-binding.ts";
+for (const file of [RECHECK_FILE, RECHECK_ROUTE, BINDING_FILE]) sources[file] = readFileSync(join(ROOT, file), "utf8");
 const RECHECK = process.argv.includes("--recheck-only");
 const PG = process.argv.includes("--pg");
 if (process.env.NODE_ENV === "production" || (!!process.env.DATABASE_URL !== PG)) throw new Error("Use memory with DATABASE_URL unset, or explicit own scratch --pg");
@@ -86,6 +88,7 @@ function providerWriters(src: Record<string, string>) {
   return writers;
 }
 function system(src = sources, data = db) {
+  const bindingModule = compile(src[BINDING_FILE], { "./deposit-state": D });
   const reviewModule = compile(src[files[5]], {});
   const receiptsModule = compile(src[files[6]], { "@/lib/query/windows": QueryWindows, "@/lib/query/parse": {}, "@/lib/query/href": {},
     "@/lib/query/counts": {}, "@/lib/query/empty": {}, "@/lib/payment-providers": { paymentMethodName }, "./ledger": WalletLedger, "./deposit-review": reviewModule });
@@ -135,8 +138,20 @@ function system(src = sources, data = db) {
     "./payments": { verifyDepositStatus: async (ref: string) => { seen.verifies.push(ref); return verify(ref); } },
     "./wallet-service": { settlePaymentWebhook: async (input: any) => { seen.settles++; return money.settlePaymentWebhook(input); } },
     "./locks": { withLock }, "@/lib/journey/deposit-state": D, "@/lib/payment-providers": { isMobileMoneyMethodId },
+    "@/lib/journey/deposit-recheck-binding": bindingModule,
   });
-  return { read: core.readDepositStatus as (id: string, lookup: DLookup) => Promise<any>, recheck: recheck.recheckDepositStatus as (id: string, txnId: string) => Promise<any>, money, seen, reviewModule, receiptsModule,
+  const recheckRaw = recheck.recheckDepositStatus as (id: string, txnId: string, expected: unknown) => Promise<any>;
+  // These independent core controls simulate the earlier owned SSR tuple. Deliberately forged valid restrictions
+  // target invalid/foreign stored rows, so the shipped service (not this fixture) must refuse them before probing.
+  const recheckFixture = async (id: string, txnId: string, ...expected: unknown[]) => {
+    const stored = expected.length ? null : await db.txn.findById(txnId);
+    const funding = D.canonicalDepositFunding({ ...stored, userId: id, type: "DEPOSIT", currency: "TZS", houseBotId: null, pendingBet: null })
+      ?? D.canonicalDepositFunding({ userId: id, type: "DEPOSIT", amount: 5000, currency: "TZS", provider: "MPESA", msisdn: "+255712345678", pendingBet: null });
+    const binding = { v: 1, owner: id, txnId, fundingKey: stored?.idempotencyKey ?? null,
+      providerRef: stored?.providerRef ?? "own_missing_ref", funding };
+    return recheckRaw(id, txnId, expected.length ? expected[0] : binding);
+  };
+  return { read: core.readDepositStatus as (id: string, lookup: DLookup) => Promise<any>, recheck: recheckFixture, recheckRaw, bindingModule, money, seen, reviewModule, receiptsModule,
     verify: (next: typeof verify) => { verify = next; } };
 }
 type DLookup = { kind: "txn-id" | "funding-key" | "card-order"; value: string };
@@ -567,6 +582,48 @@ async function runRecheck(src = sources): Promise<Check[]> {
   ok("scope.invalid-audit", unknown(await malformed.recheck(me, "../private_identifier")) && malformed.seen.verifies.length === 0
     && malformed.seen.audits.length === 1 && malformed.seen.audits[0].targetId === null && !JSON.stringify(malformed.seen.audits[0].payload).includes("private_identifier"));
   const row = await txn(me, { status: "FAILED" });
+  const expected = B.depositRecheckBinding(me, row)!;
+  const foreignRow = await txn(other, { status: "FAILED" });
+  const foreignBinding = B.depositRecheckBinding(other, foreignRow)!;
+  const { fundingKey: _omittedKey, ...missingKey } = expected;
+  for (const [name, capsule, beforeLookup] of [
+    ["missing", undefined, true], ["null", null, true], ["array", [], true], ["version", { ...expected, v: 2 }, true],
+    ["extra-status", { ...expected, status: "FAILED" }, true], ["extra-funding", { ...expected, funding: { ...expected.funding, balance: 0 } }, true],
+    ["foreign-owner", foreignBinding, true], ["other-txn", { ...expected, txnId: foreignRow.id }, true],
+    ["missing-key", missingKey, true], ["invalid-key", { ...expected, fundingKey: "not-a-uuid" }, true],
+    ["null-key-mismatch", { ...expected, fundingKey: null }, false],
+    ["key-mismatch", { ...expected, fundingKey: foreignBinding.fundingKey }, false],
+    ["reference-mismatch", { ...expected, providerRef: foreignBinding.providerRef }, false],
+    ["long-reference", { ...expected, providerRef: "x".repeat(129) }, true],
+    ["control-reference", { ...expected, providerRef: "own\u0000ref" }, true],
+    ["amount-mismatch", { ...expected, funding: { ...expected.funding, amount: 6000 } }, false],
+    ["phone-mismatch", { ...expected, funding: { ...expected.funding, msisdn: "255712345679" } }, false],
+    ["provider-mismatch", { ...expected, funding: { ...expected.funding, provider: "CARD" } }, false],
+    ["pending-mismatch", { ...expected, funding: { ...expected.funding, pendingBet: { v: 1, bet: "mkt_own.YES.1000", returnPath: "/" } } }, false],
+    ["funding-owner", { ...expected, funding: { ...expected.funding, userId: other } }, true],
+    ["noncanonical-phone", { ...expected, funding: { ...expected.funding, msisdn: "+255712345678" } }, true],
+    ["malformed-pending", { ...expected, funding: { ...expected.funding, pendingBet: { v: 99 } } }, true],
+    ["undefined-pending", { ...expected, funding: { ...expected.funding, pendingBet: undefined } }, true],
+  ] as const) {
+    let lookups = 0, refLookups = 0;
+    const data = { ...db, txn: { ...db.txn, findById: async (id: string, tx: any) => { lookups++; return db.txn.findById(id, tx); },
+      findByProviderRef: async (ref: string) => { refLookups++; return db.txn.findByProviderRef(ref); } } } as typeof db;
+    const s = system(src, data); s.verify(async () => ({ status: "FAILED", amount: 5000 }));
+    const r = await s.recheckRaw(me, name === "foreign-owner" ? foreignRow.id : row.id, capsule);
+    ok(`capsule.${name}`, unknown(r) && s.seen.verifies.length === 0 && s.seen.settles === 0 && refLookups === 0
+      && (!beforeLookup || lookups === 0) && s.seen.groups.length === 0);
+  }
+  const historical = await txn(me, { status: "FAILED", idempotencyKey: null });
+  const historic = system(src); historic.verify(async () => ({ status: "FAILED", amount: historical.amount }));
+  const historicBinding = B.depositRecheckBinding(me, historical)!;
+  const historicRead = await historic.recheckRaw(me, historical.id, historicBinding);
+  ok("capsule.historical-null-key", historicBinding.fundingKey === null && historicRead.view.state === "FAILED"
+    && historicRead.view.failureAuthority === "signed-recheck" && (await db.txn.findById(historical.id))?.idempotencyKey == null);
+  ok("capsule.server-builder-scope", B.depositRecheckBinding(me, foreignRow) === null
+    && B.depositRecheckBinding(me, { ...row, houseBotId: "marked" }) === null && B.depositRecheckBinding(me, { ...row, type: "WITHDRAWAL" }) === null);
+  const reordered = system(src).bindingModule.parseDepositRecheckBinding({ ...expected,
+    funding: { ...expected.funding, pendingBet: { returnPath: "/", bet: "mkt_own.YES.1000", v: 1 } } });
+  ok("capsule.pending-key-order-is-not-billing-byte-equality", reordered?.funding.pendingBet?.bet === "mkt_own.YES.1000");
   let callerLookups = 0;
   const callerData = { ...db, txn: { ...db.txn, findById: async (id: string) => { callerLookups++; return db.txn.findById(id); } } } as typeof db;
   const limited = system(src, callerData); limited.seen.statusAllowed = false;
@@ -745,13 +802,19 @@ async function runRecheck(src = sources): Promise<Check[]> {
   const ordinary = await normal.read(me, byId(row)), recovered = await normal.read(me, { kind: "funding-key", value: row.idempotencyKey! });
   ok("policy.ordinary-and-recovery-no-terminal-probe", ordinary.view.state === "FAILED" && recovered.view.state === "FAILED"
     && !ordinary.view.failureAuthority && !recovered.view.failureAuthority && normal.seen.verifies.length === 0 && normal.seen.settles === 0);
-  let session: any = { userId: me }, coreCalls = 0, coreFailure = false, result: any = { view: { state: "FAILED", failureAuthority: "signed-recheck" }, rateLimited: false, unavailable: false };
+  let session: any = { userId: me }, coreCalls = 0, coreFailure = false, receivedBinding: unknown;
+  let result: any = { view: { state: "FAILED", failureAuthority: "signed-recheck" }, rateLimited: false, unavailable: false };
   const route = compile(src[RECHECK_ROUTE], { "next/server": { NextResponse: { json: (body: any, init: ResponseInit) => new Response(JSON.stringify(body), init) } },
-    "@/lib/server/session": { getSession: async () => session }, "@/lib/server/deposit-recheck": { recheckDepositStatus: async (owner: string, id: string) => {
-      coreCalls++; if (coreFailure) throw new Error("private route failure"); if (owner !== me || id !== row.id) throw new Error("wrong identity"); return result;
+    "@/lib/server/session": { getSession: async () => session }, "@/lib/journey/deposit-recheck-binding": B,
+    "@/lib/server/deposit-recheck": { recheckDepositStatus: async (owner: string, id: string, binding: unknown) => {
+      coreCalls++; receivedBinding = binding;
+      if (coreFailure) throw new Error("private route failure"); if (owner !== me || id !== row.id) throw new Error("wrong identity");
+      return B.parseDepositRecheckBinding(binding) ? result : { view: { state: "UNKNOWN" }, rateLimited: false, unavailable: false };
     } } });
-  const request = (headers: Record<string, string> = {}, method = "POST") => new Request("https://local.invalid/api/wallet/deposits/owned/recheck", { method,
-    headers: { "sec-fetch-site": "same-origin", "x-kp-deposit-recheck": "1", ...headers } });
+  const request = (headers: Record<string, string> = {}, method = "POST", body: string | undefined = JSON.stringify(expected)) =>
+    new Request("https://local.invalid/api/wallet/deposits/owned/recheck", { method,
+      ...(method === "POST" && body !== undefined ? { body } : {}),
+      headers: { "sec-fetch-site": "same-origin", "x-kp-deposit-recheck": "1", ...headers } });
   const invoke = (req = request()) => route.POST(req, { params: Promise.resolve({ id: row.id }) });
   for (const site of ["cross-site", "same-site", "none", ""]) {
     const response = await invoke(request({ "sec-fetch-site": site }));
@@ -760,7 +823,30 @@ async function runRecheck(src = sources): Promise<Check[]> {
   ok("route.no-header", (await invoke(request({ "x-kp-deposit-recheck": "" }))).status === 403 && coreCalls === 0);
   ok("route.not-post", (await invoke(request({}, "GET"))).status === 403 && coreCalls === 0);
   let response = await invoke();
-  ok("route.200-private", response.status === 200 && response.headers.get("cache-control") === "private, no-store" && (await response.json()).failureAuthority === "signed-recheck");
+  ok("route.200-private", response.status === 200 && response.headers.get("cache-control") === "private, no-store"
+    && (await response.json()).failureAuthority === "signed-recheck" && JSON.stringify(receivedBinding) === JSON.stringify(expected));
+  const exactBody = JSON.stringify(expected).padEnd(B.DEPOSIT_RECHECK_MAX_BYTES, " ");
+  const exact = await invoke(request({ "content-length": String(B.DEPOSIT_RECHECK_MAX_BYTES) }, "POST", exactBody));
+  ok("route.body.exact-cap-valid", exact.status === 200 && (await exact.json()).failureAuthority === "signed-recheck"
+    && exact.headers.get("cache-control") === "private, no-store");
+  for (const [name, body, headers] of [["malformed", "{private_secret", {}], ["missing", "", {}],
+    ["body-over-cap", " ".repeat(B.DEPOSIT_RECHECK_MAX_BYTES) + JSON.stringify(expected), {}],
+    ["declared-over-cap", JSON.stringify(expected), { "content-length": String(B.DEPOSIT_RECHECK_MAX_BYTES + 1) }],
+    ["invalid-length", JSON.stringify(expected), { "content-length": "-1" }]] as const) {
+    const refused = await invoke(request(headers, "POST", body)), view = await refused.json();
+    ok(`route.body.${name}`, refused.status === 200 && refused.headers.get("cache-control") === "private, no-store"
+      && receivedBinding === null && view.state === "UNKNOWN" && !view.failureAuthority && !JSON.stringify(view).includes("private_secret"));
+  }
+  let cancelled = false;
+  const stream = new ReadableStream<Uint8Array>({ start(controller) {
+    controller.enqueue(new Uint8Array(B.DEPOSIT_RECHECK_MAX_BYTES + 1)); controller.enqueue(new Uint8Array([32])); controller.close();
+  },
+    cancel() { cancelled = true; } });
+  const streamed = new Request("https://local.invalid/api/wallet/deposits/owned/recheck", { method: "POST", body: stream,
+    duplex: "half", headers: { "sec-fetch-site": "same-origin", "x-kp-deposit-recheck": "1", "content-length": "1" } } as RequestInit);
+  const streamedResponse = await invoke(streamed);
+  ok("route.body.stream-bound-and-cancel", (await streamedResponse.json()).state === "UNKNOWN" && receivedBinding === null && cancelled
+    && streamedResponse.headers.get("cache-control") === "private, no-store");
   session = null; response = await invoke();
   ok("route.401-private", response.status === 401 && response.headers.get("cache-control") === "private, no-store");
   session = { userId: me }; result = { view: { state: "UNKNOWN" }, rateLimited: true, unavailable: false }; response = await invoke();

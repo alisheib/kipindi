@@ -7,6 +7,7 @@ import { settlePaymentWebhook } from "./wallet-service";
 import { withLock } from "./locks";
 import { canonicalDepositFunding, depositProjection, ownedDeposit, sameDepositFunding } from "@/lib/journey/deposit-state";
 import { isMobileMoneyMethodId } from "@/lib/payment-providers";
+import { matchesDepositRecheckBinding, parseDepositRecheckBinding } from "@/lib/journey/deposit-recheck-binding";
 import type { DepositStatusView } from "./deposit-status";
 
 export type DepositRecheckRead = {
@@ -16,7 +17,7 @@ export type DepositRecheckRead = {
 };
 
 /** A signed FAILED is authority only for the same fresh, unmarked funding row and current wallet. No dispatch/key. */
-export async function recheckDepositStatus(userId: string, txnId: string): Promise<DepositRecheckRead> {
+export async function recheckDepositStatus(userId: string, txnId: string, expected: unknown): Promise<DepositRecheckRead> {
   const unknown = (retryAfterSec = 0, rateLimited = false, unavailable = false): DepositRecheckRead => ({
     view: { state: "UNKNOWN", serverNow: Date.now(), retryAfterSec }, rateLimited, unavailable,
   });
@@ -29,9 +30,11 @@ export async function recheckDepositStatus(userId: string, txnId: string): Promi
         targetType: "Transaction", targetId: null, payload: { reason: "invalid-identifier" } });
       return unknown();
     }
+    const binding = parseDepositRecheckBinding(expected);
+    if (!binding || binding.owner !== userId || binding.txnId !== txnId) return unknown();
     const stored = await db.txn.findById(txnId);
     const funding = canonicalDepositFunding(stored);
-    if (!ownedDeposit(userId, stored) || !funding) {
+    if (!ownedDeposit(userId, stored) || !funding || !matchesDepositRecheckBinding(userId, txnId, binding, stored)) {
       await audit({ category: "SECURITY", action: "deposit.recheck.lookup_refused", actorId: userId,
         targetType: "Transaction", targetId: null, payload: { reason: "scope" } });
       return unknown();
@@ -59,7 +62,8 @@ export async function recheckDepositStatus(userId: string, txnId: string): Promi
     return await withLock(`wallet:${userId}`, async (tx) => {
       let fresh = await db.txn.findById(initial.id, tx);
       if (!ownedDeposit(userId, fresh) || !sameDepositFunding(initial, fresh)
-        || fresh.providerRef !== initial.providerRef || fresh.idempotencyKey !== initial.idempotencyKey) return unknown();
+        || fresh.providerRef !== initial.providerRef || fresh.idempotencyKey !== initial.idempotencyKey
+        || !matchesDepositRecheckBinding(userId, txnId, binding, fresh)) return unknown();
       let projection = depositProjection(userId, fresh, Date.now());
       if (projection.state === "UNKNOWN" || projection.state === "PENDING" || projection.state === "RETURNED") return unknown();
       // A provider contradiction may be recorded only for a valid current wallet. Read before that mutation;
@@ -75,7 +79,8 @@ export async function recheckDepositStatus(userId: string, txnId: string): Promi
           ...(verifiedTerminal === "CONFIRMED" ? { amount: verifiedAmount } : {}) });
         fresh = await db.txn.findById(initial.id, tx);
         if (!ownedDeposit(userId, fresh) || !sameDepositFunding(initial, fresh)
-          || fresh.providerRef !== initial.providerRef || fresh.idempotencyKey !== initial.idempotencyKey) return unknown();
+          || fresh.providerRef !== initial.providerRef || fresh.idempotencyKey !== initial.idempotencyKey
+          || !matchesDepositRecheckBinding(userId, txnId, binding, fresh)) return unknown();
         projection = depositProjection(userId, fresh, Date.now());
       }
       if (projection.state === "UNKNOWN" || projection.state === "PENDING" || projection.state === "RETURNED") return unknown();

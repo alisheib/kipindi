@@ -588,3 +588,42 @@ recheck **88/88**, landed-key **49/49**, admission-copy **17** and lock-copy **1
 Postgres lock-copy proof also passed all **7** actual connection/commit/rollback/drain controls and stopped the cluster.
 This brings in the process-shared lock/admission runtime prerequisite; classic Card/controller/storage and UI work
 still require their own source and browser proof, including the S10-owned account-partition prerequisite.
+
+### 5h. Original funding restriction for explicit recheck — preparation, 2026-10-14
+
+The root agent reviewed the binding design under the owner's standing delegation. Before client wiring, the explicit
+POST now requires the [canonical original capsule](../../../src/lib/journey/deposit-recheck-binding.ts): version 1,
+owner, transaction id, original nullable funding UUID, bounded original provider reference, and canonical funding
+owner/type/amount/currency/provider/normalized phone/saved bet. An explicit null preserves a historical missing key;
+absence, malformed keys or unknown envelope fields fail closed. An owned server row can produce this capsule; a URL
+cannot. Posted fields only restrict an authenticated owned read: they never set money, status, a key or the provider
+reference used for lookup/verification.
+
+Caller budget still precedes lookup. Owner/id and canonical shape are checked before any row read, then the whole
+original restriction matches the stored row before probe and again under the wallet lock before marker claim and
+after it. The route bounds declared and streamed bodies to 4096 bytes, cancels an overflowing stream and parses
+strict UTF-8/JSON. A missing or invalid body reaches only a minimal UNKNOWN, with no retry authority; private 401,
+403, 429 and 503 behavior is retained. Ordinary status and funding-key recovery remain unchanged.
+
+The actual-source proof now covers capsule absence, explicit null keys, extra posted status/money, foreign owner with
+an otherwise matching foreign transaction, mismatched key/reference/amount/phone/provider/saved bet, malformed JSON,
+exact and exceeded byte bounds, and streaming with a lying length. Original/fresh tuple drift, valid current wallet,
+marker atomicity and deferred-notice controls remain. A clone-removal plant from the earlier endpoint became safely
+redundant under the complete original-capsule restriction and was retired without weakening its normal raw-row drift
+control. Fresh-tuple plants remove both equivalent comparisons for their named field; they still produce the actual
+wrong-result/probe verdict, rather than claiming a redundant single deletion unsafe.
+The current capsule preparation measured **121/121 memory, 123/123 Postgres, 30/30 memory source plants and 2/2
+actual-PG rollback plants caught**. Typecheck and the strict proof graph pass; ordinary status remains **105/105**.
+The final PG run migrated the isolated 103-migration cluster, checked its real data directory and stopped it. These
+controlled signed-adapter fixtures add no browser, real provider, release or LIVE claim.
+The root agent reviewed this six-file binding/body/proof packet under the owner's standing delegation and approved
+its recoverable `codex/vodacom-s9` checkpoint on 2026-10-14. This records an internal source review, without claiming
+an additional human or external agency approval.
+
+No client storage writer, classic Card UI or deposit action is connected yet. The next controller must use a separate
+bounded owner funding namespace and retain unresolved identities without age-based safe-retry inference, while the
+S10-owned `kp-sheet-intents:v2:<owner>` and keyless 24-hour `kp-pending-bet` namespaces remain independent. It must show
+ordinary bare FAILED as uncertainty, offer this explicit bound check, persist the correct resolved transition before
+permitting a later explicit Lipa, and reject account/epoch/unmount/stale completions. Cached A chrome must refuse a B
+session before money. Funding keys are allocated only on an explicit first Lipa, never observe/open/refusal/UNKNOWN.
+New tab disclosure and the concrete trusted page/action bridge are review gates before a writer or WP4 UI.
