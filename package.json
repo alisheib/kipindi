@@ -661,6 +661,7 @@
     "qa:bet-sheet": "node scripts/qa-bet-sheet.mjs",
     "qa:bet-sheet-busy": "node scripts/live/bet-sheet-busy-drive.mjs",
     "qa:bet-sheet-transport": "node scripts/live/bet-sheet-transport-drive.mjs",
+    "qa:bet-sheet-pending-age": "node scripts/live/bet-sheet-pending-age-drive.mjs",
     "qa:sheet-owner-recovery": "node scripts/qa-sheet-owner-recovery.mjs",
     "qa:whole-list-ownership": "node scripts/qa-whole-list-ownership.mjs",
     "red:journey-header-fit": "node scripts/journey-header-fit-red.mjs",
