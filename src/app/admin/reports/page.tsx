@@ -396,7 +396,7 @@ async function AdminReportsContent({
         <div className={`grid grid-cols-1 gap-3 ${categories.length ? "xl:grid-cols-[minmax(0,1fr)_360px]" : ""}`}>
           <AdminCard title="Daily P&amp;L" sw="Faida na hasara · kila siku" padding={activeRows.length ? "p-0" : "p-4"}>
             {activeRows.length === 0 ? (
-              <EmptyState kind="admin" title="No settled activity in this period" body="Stakes, payouts and GGR appear here once markets settle in the selected window." />
+              <EmptyState fill kind="admin" title="No settled activity in this period" body="Stakes, payouts and GGR appear here once markets settle in the selected window." />
             ) : (
               <ScrollX label="Daily P&L">
                 <table className="admin-tbl min-w-[680px]">
@@ -734,6 +734,7 @@ async function AdminReportsContent({
           action={<RefreshButton variant="icon" />}>
           {generated.length === 0 ? (
             <EmptyState
+              fill
               kind="audit"
               title="No reports generated yet"
               body="Each report generated here is logged with the officer who generated it and when — and, for a windowed report, the window it covered."

@@ -261,6 +261,7 @@ async function AdminMarketsContent({
                 })}
                 {filtered.length === 0 && (
                   <AdminTableEmpty
+                    fill
                     colSpan={9}
                     kind="markets"
                     title="No markets match"

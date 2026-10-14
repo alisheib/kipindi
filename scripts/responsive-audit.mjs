@@ -32,6 +32,7 @@
  */
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
+import { emptyStateAlignment } from "./live/empty-state-alignment.mjs";
 
 const BASE = process.env.BASE || "http://localhost:3000";
 const SURFACE = process.env.SURFACE || "all";
@@ -207,7 +208,8 @@ function soft(name, cond, detail = "") {
 // Assertions run in the page: overflow, clipped-not-scrolled, off-screen fixed,
 // small touch targets. Returns a plain object (no Playwright handles).
 async function assertCell(page) {
-  return await page.evaluate(() => {
+  const alignedEmptyStates = await page.evaluate(emptyStateAlignment);
+  return await page.evaluate((emptyStates) => {
     const root = document.documentElement;
     const vw = root.clientWidth, vh = window.innerHeight;
     const overflowPx = root.scrollWidth - root.clientWidth;
@@ -343,26 +345,6 @@ async function assertCell(page) {
      * A class-name probe stops working the day the box is restyled, and would silently report
      * zero — which reads exactly like a clean sweep.
      */
-    const HEAD = "h1,h2,h3,h4,[data-section-heading]";
-    const emptyStates = [...document.querySelectorAll("[data-empty-state]")].map((el) => {
-      const r = el.getBoundingClientRect();
-      /* The heading that introduces it: the nearest preceding heading in document order that
-         is actually above it on the page. `compareDocumentPosition` keeps this honest across
-         the wrappers a card may sit in. */
-      let head = null;
-      for (const h of document.querySelectorAll(HEAD)) {
-        const hr = h.getBoundingClientRect();
-        if (hr.top <= r.top + 1 && hr.width > 0 && h.textContent.trim()) head = { el: h, r: hr };
-      }
-      return {
-        variant: el.getAttribute("data-empty-state"),
-        left: Math.round(r.left),
-        width: Math.round(r.width),
-        headText: head ? head.el.textContent.trim().slice(0, 24) : null,
-        headLeft: head ? Math.round(head.r.left) : null,
-        delta: head ? Math.round(Math.abs(r.left - head.r.left)) : null,
-      };
-    });
 
     // DESIGN_AUTHORITY B7 / WCAG landmark navigation — EXACTLY ONE <main>, and it
     // is the shell's own #main-content.
@@ -422,7 +404,7 @@ async function assertCell(page) {
     }
 
     return { overflowPx, widestName, widestRight: Math.round(widestRight), vw, vh, offscreen, clipped: clipped.slice(0, 6), clippedCount: clipped.length, small: small.slice(0, 6), smallCount: small.length, measured, mains, emptyStates };
-  });
+  }, alignedEmptyStates);
 }
 
 // /auth/* pages must be viewed as a GUEST (real usage). An authenticated user
@@ -530,6 +512,15 @@ async function fitsViewport(page, locator, name, safeBottom = 0) {
   ok(name, fits, `box=(${Math.round(box.x)},${Math.round(box.y)},${Math.round(box.width)},${Math.round(box.height)}) vp=${vp.width}×${vp.height}`);
 }
 
+async function clickClient(locator) {
+  const element = await locator.elementHandle();
+  if (!element) throw new Error("Client control missing before interaction");
+  try {
+    await locator.page().waitForFunction(el => Object.keys(el).some(key => key.startsWith("__reactProps$") && typeof el[key]?.onClick === "function"), element, { timeout: 90_000 });
+    await locator.click();
+  } finally { await element.dispose(); }
+}
+
 async function overlaySweep(browser, playerCtxFactory, adminCtxFactory) {
   const OV_WIDTHS = [
     { tag: "xs", w: 320, h: 568 },
@@ -548,9 +539,9 @@ async function overlaySweep(browser, playerCtxFactory, adminCtxFactory) {
       await p.waitForTimeout(600);
       const bell = p.locator('button[aria-label^="Notifications"]').first();
       if (await bell.isVisible().catch(() => false)) {
-        await bell.click().catch(() => {});
-        await p.waitForTimeout(400);
+        await clickClient(bell);
         const dlg = p.locator('[role="dialog"][aria-label="Notifications"]').first();
+        await dlg.waitFor();
         // safeBottom 0: this is a backdrop overlay (z-61, full-screen scrim) that
         // legitimately covers the bottom nav — it only must fit the viewport.
         await fitsViewport(p, dlg, `overlay notifications @${bp.tag}`, 0);
@@ -566,9 +557,9 @@ async function overlaySweep(browser, playerCtxFactory, adminCtxFactory) {
       await p.waitForTimeout(600);
       const av = p.getByRole("button", { name: "Account menu" }).first();
       if (await av.isVisible().catch(() => false)) {
-        await av.click().catch(() => {});
-        await p.waitForTimeout(300);
+        await clickClient(av);
         const menu = p.locator('[role="menu"]').first();
+        await menu.waitFor();
         // safeBottom 0: backdrop overlay (z-61 scrim over the nav) — fits-viewport only.
         await fitsViewport(p, menu, `overlay avatar-menu @${bp.tag}`, 0);
         await p.screenshot({ path: `${SHOTS}/overlays/avatar-${bp.tag}.png` });
@@ -620,30 +611,54 @@ async function overlaySweep(browser, playerCtxFactory, adminCtxFactory) {
       const p = await ctx.newPage();
       await p.setViewportSize({ width: bp.w, height: bp.h });
       await p.goto(`${BASE}/markets`, { waitUntil: "domcontentloaded" });
+      let moneyActions=0;
+      p.on("request",request=>{if(request.method()==="POST"&&request.headers()["next-action"]&&request.postData()?.includes("idempotencyKey"))moneyActions++;});
       await p.waitForTimeout(700);
-      const card = p.locator('a[href^="/markets/mkt_"]').first();
+      // The stretched card link deliberately lies beneath the real YES/NO controls; its centre is not a tap target.
+      const card = p.locator('a.mcardp-details[href^="/markets/mkt_"]').first();
       if (await card.count()) {
-        await card.click().catch(() => {});
-        await p.waitForTimeout(1200);
+        const destination = new URL(await card.getAttribute("href"), BASE);
+        await card.click();
+        await p.waitForURL(url => url.pathname === destination.pathname, { timeout: 90_000 });
+        await p.getByRole("heading", { level: 1 }).waitFor();
+        await p.evaluate(() => document.fonts.ready);
+        ok(`overlay market-detail(dial) @${bp.tag} actual detail route`, new URL(p.url()).pathname === destination.pathname);
         const cell = await assertCell(p);
         ok(`overlay market-detail(dial) @${bp.tag} no h-overflow`, cell.overflowPx <= 1,
           `+${cell.overflowPx}px via ${cell.widestName}`);
+        const picker = p.getByTestId("side-picker");
+        await picker.waitFor();
+        const yes = picker.getByRole("button", { name: /^Back YES/ });
+        if (await yes.count()) await clickClient(yes);
+        await picker.getByRole("slider").waitFor();
         // unlock the dial if present, then look for a place-bet / confirm CTA
         const unlock = p.getByRole("button", { name: /Unlock|Fungua/i }).first();
-        if (await unlock.isVisible().catch(() => false)) await unlock.click().catch(() => {});
+        if (await unlock.isVisible().catch(() => false)) await unlock.click();
+        const stake = p.getByRole("textbox", { name: /^Stake amount in TZS/ });
+        if (await stake.count()) {
+          await stake.waitFor();
+          const min = await p.getByTestId("stake-range-min").innerText();
+          await stake.fill(min.replace(/[^0-9]/g, ""));
+          await stake.blur();
+        }
         await p.waitForTimeout(300);
+        await picker.scrollIntoViewIfNeeded();
         await p.screenshot({ path: `${SHOTS}/overlays/market-detail-${bp.tag}.png` });
         // open the confirm modal if a place-bet button is enabled
         const placeBtn = p.getByRole("button", { name: /Place|Weka|下注|Confirm/i }).first();
         if (await placeBtn.isEnabled().catch(() => false)) {
-          await placeBtn.click().catch(() => {});
-          await p.waitForTimeout(500);
-          const modal = p.locator('[role="dialog"], [role="alertdialog"]').first();
-          if (await modal.isVisible().catch(() => false)) {
-            await fitsViewport(p, modal, `overlay bet-confirm @${bp.tag}`);
-            await p.screenshot({ path: `${SHOTS}/overlays/bet-confirm-${bp.tag}.png` });
-          }
-        }
+          await clickClient(placeBtn);
+          const modal = p.getByRole("dialog", { name: "Confirm prediction", exact: true });
+          await modal.waitFor();
+          await modal.evaluate(async el => { await document.fonts.ready; await Promise.all(el.getAnimations({subtree:true}).filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {}))); });
+          await fitsViewport(p, modal, `overlay bet-confirm @${bp.tag}`);
+          await p.screenshot({ path: `${SHOTS}/overlays/bet-confirm-${bp.tag}.png` });
+          const body=p.getByTestId("bet-confirm-body");
+          const scrolled=await body.evaluate(el=>{const scrollable=el.scrollHeight>el.clientHeight;el.scrollTop=el.scrollHeight;return{scrollable,height:el.clientHeight,scrollHeight:el.scrollHeight,overflow:getComputedStyle(el).overflowY};});
+          ok(`overlay bet-confirm disclosures @${bp.tag} remain scroll-reachable`,scrolled.height>0&&(!scrolled.scrollable||["auto","scroll"].includes(scrolled.overflow)));
+          if(scrolled.scrollable)await p.screenshot({path:`${SHOTS}/overlays/bet-confirm-${bp.tag}-body-bottom.png`});
+          ok(`overlay bet-confirm @${bp.tag} opens without a money commitment`,moneyActions===0);
+        } else soft(`overlay bet-confirm @${bp.tag} NOT DRIVEN`, false, "actual detail has no enabled bet entry");
       } else soft(`overlay market-detail(dial) @${bp.tag}`, true, "no market card");
       await p.close();
     }

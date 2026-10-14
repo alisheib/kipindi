@@ -209,7 +209,6 @@ export const NOT_EYEBROW = new Map([
   ["app/admin/retention/purge-chain-card.tsx :: <p className=\"font-mono text-micro uppercase tracking-widest text-text-tertiary\"> ↵ {job.phase === \"exporting\" && \"Writing the evidence pack…\"}", "OTHER"],
   ["app/admin/settlement/page.tsx :: className=\"inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-warning-border bg-warning-bg px-3 py-2 font-mono text-micro font-bold uppercase tracking", "CONTROL_LABEL"],
   ["app/admin/settlement/settle-button.tsx :: className=\"inline-flex min-h-[40px] items-center gap-1.5 rounded-md border border-brand-500 bg-brand-500/10 px-3 py-2 font-mono text-micro font-bold uppercase tracking-[0", "CONTROL_LABEL"],
-  ["app/admin/sources/page.tsx :: <span className={`font-mono text-micro tracking-[0.12em] uppercase px-2 py-0.5 rounded-pill border ${ ↵ isGeneratable", "STATUS_CHIP"],
   ["app/admin/sources/source-controls.tsx :: className={`inline-flex h-7 items-center gap-1.5 rounded-pill border px-3 font-mono text-caption uppercase tracking-[0.14em] transition-colors ${ ↵ enabled", "CONTROL_LABEL"],
   ["app/admin/totp-verify/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.18em] font-bold text-brand-300 whitespace-nowrap\"> ↵ Step 2 of 2 · Authenticator", "STATUS_CHIP"],
   ["app/admin/transactions/page.tsx :: <span className=\"ml-1.5 text-micro uppercase tracking-[0.1em] text-[var(--gold-300)]\"> ↵ {t.payoutRail === \"SELCOM_PESA\" ? \"pesa\" : \"agent\"}", "OTHER"],
