@@ -5922,6 +5922,23 @@ html[data-sheet-open] .route-enter { animation: none; }
    measured on /admin/contacts at 360: 20px of card to its left, 62px to its right, the button off centre with it.
    Unlayered like the two rules above, so it outranks the utility that sets the cap. */
 .admin-tbl:has(> tbody > tr[data-table-empty]) [data-table-empty-pin] { max-width: none; }
+/* ⭐ …AND THE MESSAGE STARTS UNDER ITS CARD'S TITLE (S8, 2026-10-14). The message fills its row now (`AdminTableEmpty`), so
+   the cell's own 20px decides where the box begins — and that is right in only one kind of card. A flush card
+   (`padding="p-0"`) insets its title 20px and lets its table bleed, so the cell's 20px puts the box under the title. A
+   padded card has already put the table on its title's edge, so the same 20px left the box 20px right of the title and of
+   the prose above it: measured on /admin/kyc's four cards at 1280, box at 289 under titles at 269. `AdminCard` says which
+   kind it is (`data-card-pad`), and the row reads the inset from the NEAREST card — a custom property inherits, so a card
+   inside another reads its own. Outside a card the row keeps the cell's 20px. Only the empty row reads it.
+   ⚠️ `!important` because a table's own cell utilities are `!`-forced and would otherwise win in the one row they do not
+   describe: the desk's dense tables pad every cell 8px (`[&_td]:!px-1.5`, room for their money columns), which put the
+   message 12px left of "By account" and of "Newest first."; ai-usage's rows carry `!p-0`, which ran the dashed box into
+   the card's own border. An empty row has no column to make room for — its inset is the card's. */
+[data-card-pad="flush"] { --table-empty-inset: 20px; }
+[data-card-pad="padded"] { --table-empty-inset: 0; }
+.admin-tbl > tbody > tr[data-table-empty] > td {
+  padding-left: var(--table-empty-inset, 20px) !important;
+  padding-right: var(--table-empty-inset, 20px) !important;
+}
 /* 🔴 A MONEY FIGURE IS ONE OBJECT, AND 61 OF THEM WERE BROKEN IN HALF (2026-09-02).
    `th` above has carried `white-space: nowrap` since the table shipped; `td` never did. So a
    column narrower than its content split `TZS 550,560` into "TZS" above "550,560" — §M4 says a

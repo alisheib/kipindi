@@ -274,7 +274,8 @@ async function UpDownProposalsContent({ searchParams }: UpDownProposalsProps) {
 
         <AdminCard title={`Queue · ${filtered.length.toLocaleString()}`} sw="Foleni" padding="p-0">
           {proposals.length === 0 ? (
-            <div className="p-6">
+            /* `px-4` is the flush card's title inset, so the box (filled by the titled card) starts under "Queue". */
+            <div className="px-4 py-6">
               <EmptyState
                 kind="default"
                 title={allProposals.length === 0 ? "No proposals yet" : "No proposals match this filter"}

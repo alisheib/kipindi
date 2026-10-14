@@ -415,7 +415,7 @@ async function AdminAgentsContent({ searchParams }: AgentsPageProps) {
                   <p className="text-body-sm text-text-secondary">Invitations cannot be issued while the programme is switched off.</p>
                 )}
                 {!invR.ok ? <AdminLoadError what="invitations" /> : liveInvitations.length === 0 && pastInvitations.length === 0 ? (
-                    <EmptyBlock kind="admin" title="No invitations" body="An invitation you issue appears here until it is accepted, declined, withdrawn or expires." />
+                    <EmptyBlock padded kind="admin" title="No invitations" body="An invitation you issue appears here until it is accepted, declined, withdrawn or expires." />
                   ) : (
                   <ScrollX label="Invitations">
                     <table className="admin-tbl min-w-[640px]">
@@ -682,9 +682,11 @@ async function AdminAgentsContent({ searchParams }: AgentsPageProps) {
  * centred in 720px sits mostly off-screen — the officer read "Not…" and "Submitted app…" on the
  * first drive (qa:agent-drive, 2026-09-07). So the empty state renders in the card body, full
  * width, and the table (header included) exists only when there is a row to put in it.
+ * `px-4` is a flush card's title inset, so the box starts under the title. `padded`: the card pads
+ * its own body (Invitations), so the block adds only the vertical room and the box still starts there.
  */
-function EmptyBlock({ kind, title, body }: { kind: ComponentProps<typeof EmptyState>["kind"]; title: string; body: string }) {
-  return <div className="px-4 py-8"><EmptyState kind={kind} title={title} body={body} /></div>;
+function EmptyBlock({ kind, title, body, padded = false }: { kind: ComponentProps<typeof EmptyState>["kind"]; title: string; body: string; padded?: boolean }) {
+  return <div className={padded ? "py-8" : "px-4 py-8"}><EmptyState kind={kind} title={title} body={body} /></div>;
 }
 
 function FeeCell({ app }: { app: StoredAgentApplication }) {

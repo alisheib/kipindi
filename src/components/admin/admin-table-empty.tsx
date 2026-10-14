@@ -19,7 +19,7 @@ export function AdminTableEmpty({
   body,
   bodySw,
   action,
-  fill,
+  fill = true,
   className = "px-4 py-8",
 }: {
   colSpan: number;
@@ -29,7 +29,14 @@ export function AdminTableEmpty({
   body?: string;
   bodySw?: string;
   action?: ReactNode;
-  /** Opt in for a table that forms a named full-width section; narrow tables keep the boxed atom. */
+  /**
+   * ⭐ THE ROW'S MESSAGE FILLS THE ROW, BY DEFAULT (S8, 2026-10-14). This row stands in for the table's rows, and a row
+   * spans its table, so its message does too — starting under the card's title (the cell's inset is the card's to
+   * set: `--table-empty-inset`, globals.css). It used to be opt-in ("narrow tables keep the boxed atom"), and the
+   * opt-in left 12 of CI's 90 failing cells — the AML queue and its detector, the desk's roster — centred 320px (1280)
+   * to 588px (1920) from the heading over the table. A narrow table loses nothing: below 360px of cell the boxed atom
+   * already fills it. `false` brings the centred 360px box back where a call site means it.
+   */
   fill?: boolean;
   className?: string;
 }) {
