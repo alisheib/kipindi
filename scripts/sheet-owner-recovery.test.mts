@@ -2,10 +2,10 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import ts from "typescript";
-import {PENDING_BET_KEY, PENDING_BET_TTL_MS, readMarker, writeMarker, stakeFromUrl} from "../src/lib/journey/pending-bet.ts";
+import {PENDING_BET_KEY, PENDING_BET_TTL_MS, pendingBetFrom, readMarker, writeMarker, stakeFromUrl} from "../src/lib/journey/pending-bet.ts";
 import {ownedSheetIntents, legacySheetIntents, sheetOwnerKey, saveOwnedSheet, quarantineLegacySheet, saveSheetSelection, unresolvedLegacySheet,
   resolveLegacySheet, SHEET_LEGACY_KEY, SHEET_RECOVERY_MAX_BYTES, type TabStorage} from "../src/lib/journey/sheet-owned-storage.ts";
-import {afterKeyRead, requestFor, reopenInDoubt, sheetFrame, nextKey, quoteAt, withBet, type Quote} from "../src/lib/journey/sheet-state.ts";
+import {afterKeyRead, requestFor, reopenInDoubt, sheetFrame, nextKey, quoteAt, withBet, withoutBet, sheetOpensOn, type Quote} from "../src/lib/journey/sheet-state.ts";
 import {answerOf} from "../src/lib/journey/sheet-refusal.ts";
 import {attributionFrom} from "../src/lib/journey/pending-bet.ts";
 import {parseSheetSeed} from "../src/lib/journey/sheet-seed.ts";
@@ -81,6 +81,56 @@ function arrow(source:string,name:string){const file=ts.createSourceFile("host.t
   const visit=(n:ts.Node)=>{if(ts.isVariableDeclaration(n)&&n.name.getText(file)===name&&n.initializer){if(ts.isCallExpression(n.initializer)&&ts.isArrowFunction(n.initializer.arguments[0]))node=n.initializer.arguments[0];else if(ts.isArrowFunction(n.initializer))node=n.initializer;}ts.forEachChild(n,visit);};visit(file);if(!node)throw new Error(`Missing ${name}`);return node.getText(file);}
 function bind(source:string,name:string,deps:Record<string,unknown>){const js=ts.transpileModule(`const fn=${arrow(source,name)};`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;return new Function(...Object.keys(deps),`${js}\nreturn fn;`)(...Object.values(deps));}
 function plant(source:string,name:string,from:string,to:string){const old=arrow(source,name);assert.equal(old.split(from).length,2,`unique ${name} plant`);return source.replace(old,old.replace(from,to));}
+
+/** Execute the real route-reconciliation callback after Next's canonical history write. React's
+ * insertion → layout → paint → passive order is independently read from its vendored code by R5-H. */
+function routeReconciliation(source:string){
+  const file=ts.createSourceFile("host.tsx",source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX),found:ts.CallExpression[]=[];
+  const visit=(n:ts.Node)=>{if(ts.isCallExpression(n)&&ts.isIdentifier(n.expression)&&["useLayoutEffect","useEffect"].includes(n.expression.text)
+    &&ts.isArrowFunction(n.arguments[0])&&ts.isArrayLiteralExpression(n.arguments[1])
+    &&n.arguments[1].elements.map(e=>e.getText(file)).join(",")==="pathname,search,openAddress,show")found.push(n);ts.forEachChild(n,visit);};
+  visit(file);assert.equal(found.length,1,"unique address reconciliation effect");
+  const call=found[0];return{phase:call.expression.getText(file),callback:call.arguments[0].getText(file),source:call.getText(file)};
+}
+async function addressAtPaint(source:string,frame:"receipt"|"edit"|"inDoubt",foreign=false){
+  const effect=routeReconciliation(source),{bytes,storage}=memory();assert(saveOwnedSheet(storage,OWNER,[entry(1)]));const authoritative=bytes.get(a);
+  const search=`?cat=macro&bet=${foreign?"mkt_foreign":quote.marketId}.YES&side=YES`;
+  const current={current:{seed:{id:quote.marketId},side:"YES",pathname:"/",dropSide:true,settled:frame==="receipt"?{view:{kind:"receipt"}}:null}};
+  const location={pathname:"/",search,hash:"#kept"},generation={current:0};let stripped=0,opened=0,reads=0,work:Promise<void>|undefined,release:((v:unknown)=>void)|undefined;
+  const window={location,sessionStorage:storage,history:{state:{__NA:true},replaceState:(_state:unknown,_title:string,url:string)=>{const value=new URL(url,"http://localhost");location.search=value.search;location.hash=value.hash;stripped++;}}};
+  const stripAddress=bind(source,"stripAddress",{mounted:{current:true},window,withoutBet});
+  const reconcile=bind(source,"openAddress",{window,sheetOpensOn,pendingBetFrom,identity:(q:Quote)=>`${q.marketId}.${q.side}`,
+    activeIdentity:(v:typeof current.current)=>`${v.seed.id}.${v.side}`,current,stripAddress,generation,document:{querySelectorAll:()=>[]},parseSheetSeed,
+    readTruth:()=>{reads++;return new Promise(resolve=>{release=resolve;});},mounted:{current:true},open:()=>{opened++;}});
+  const js=ts.transpileModule(`const callback=${effect.callback};`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+  const callback=new Function("current","pathname","show","generation","sheetOpensOn","openAddress",`${js}\nreturn callback;`)(current,"/",()=>{throw new Error("same-path sheet unexpectedly closed");},generation,sheetOpensOn,()=>{work=reconcile();});
+  if(effect.phase==="useLayoutEffect")callback();
+  const painted={search:location.search,stripped,opened,reads};
+  if(effect.phase==="useEffect")callback();
+  release?.({seed:{id:"mkt_foreign"},title:"Other question",reread:{state:"none"}});await work;
+  return{painted,final:{search:location.search,stripped,opened,reads},keysUntouched:bytes.get(a)===authoritative,hash:location.hash};
+}
+const cleanReceipt=(v:Awaited<ReturnType<typeof addressAtPaint>>)=>!new URLSearchParams(v.painted.search).has("bet")
+  &&!new URLSearchParams(v.painted.search).has("side")&&new URLSearchParams(v.painted.search).get("cat")==="macro"&&v.painted.stripped===1&&v.keysUntouched&&v.hash==="#kept";
+await checkAsync("actual matching receipt reconciliation clears queued canonical bet/side before paint, retaining filters/hash and owned keys",async()=>assert(cleanReceipt(await addressAtPaint(HOST,"receipt"))));
+await checkAsync("actual editable and doubtful matching sheets retain their addresses and keys",async()=>{
+  for(const frame of ["edit","inDoubt"] as const){const v=await addressAtPaint(HOST,frame);assert.equal(v.painted.stripped,0);assert.equal(v.final.opened,0);assert(new URLSearchParams(v.final.search).has("bet"));assert(v.keysUntouched);}
+});
+await checkAsync("actual other-question address survives a current receipt and opens only that question after its read",async()=>{
+  const v=await addressAtPaint(HOST,"receipt",true);assert.equal(v.painted.stripped,0);assert.equal(v.painted.opened,0);assert.equal(v.final.opened,1);assert.equal(v.final.reads,1);assert.equal(new URLSearchParams(v.final.search).get("bet"),"mkt_foreign.YES");assert(v.keysUntouched);
+});
+const reconciliation=routeReconciliation(HOST),passive=HOST.replace(reconciliation.source,reconciliation.source.replace(/^useLayoutEffect\(/,"useEffect("));assert.notEqual(passive,HOST);
+await checkAsync("plant passive reconciliation fails the same before-paint receipt verdict even though it clears the URL later",async()=>{
+  const v=await addressAtPaint(passive,"receipt");assert(!cleanReceipt(v));assert(new URLSearchParams(v.painted.search).has("bet"));assert(!new URLSearchParams(v.final.search).has("bet"));
+});
+await checkAsync("plant lost matching receipt strip fails the same before-paint verdict",async()=>assert(!cleanReceipt(await addressAtPaint(plant(HOST,"openAddress",'if (shown.settled?.view.kind === "receipt") stripAddress(shown.dropSide);',""),"receipt"))));
+await checkAsync("plant blanket matching-frame strip fails the actual editable/doubt address verdict",async()=>{
+  const changed=plant(HOST,"openAddress",'if (shown.settled?.view.kind === "receipt") stripAddress(shown.dropSide);',"stripAddress(shown.dropSide);");
+  for(const frame of ["edit","inDoubt"] as const)assert.equal((await addressAtPaint(changed,frame)).painted.stripped,1);
+});
+await checkAsync("plant stripping another question fails the same foreign-address preservation verdict",async()=>{
+  const changed=plant(HOST,"openAddress","if (shown && activeIdentity(shown) === id)","if (shown)");const v=await addressAtPaint(changed,"receipt",true);assert.equal(v.painted.stripped,1);assert.equal(v.final.opened,0);
+});
 async function privateRead(source:string,body:unknown,{status=200,stale=false}:{status?:number;stale?:boolean}={}){
   const ownerEpoch={current:0},ownerInvalid={current:false};let changed=0,release!:(v:unknown)=>void;
   const fetch=()=>new Promise(r=>{release=r;});
