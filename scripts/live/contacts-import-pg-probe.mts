@@ -413,13 +413,16 @@ async function phaseC(): Promise<void> {
       ok("2.2 · an EMPTY set is answered [] with NO statement — the census heard none; CONTROL: the same census heard the call above",
         json(none.value) === "[]" && none.queries.length === 0 && asked.queries.length > 0,
         `${json(none.value)} · ${none.queries.length} statement(s) · the control heard ${asked.queries.length}`);
-      const at2000 = await db.marketingContact.snapshotsAmong([...many(1999), N.snapLive]);
-      const dup2001 = await db.marketingContact.snapshotsAmong([...many(1999), N.snapLive, N.snapLive]);
+      // Drain and account for each allowed read's query events inside its own census.
+      // Otherwise its event can arrive during the following synchronous refusal and be misattributed to it.
+      const at2000 = await counted(() => db.marketingContact.snapshotsAmong([...many(1999), N.snapLive]));
+      const dup2001 = await counted(() => db.marketingContact.snapshotsAmong([...many(1999), N.snapLive, N.snapLive]));
       const over = await counted(() => thrown(() => db.marketingContact.snapshotsAmong([...many(2000), N.snapLive])));
       ok("2.3 · ⭐ THE BOUND (§25, BULK_KEYED_READ_MAX) — 2,000 distinct keys are ANSWERED (only the held one comes back); 2,001 entries holding 2,000 distinct are answered too (folded BEFORE the bound); 2,001 distinct are REFUSED — a throw naming the read and the bound, before any statement — never cut off",
-        at2000.length === 1 && at2000[0]?.id === live.id && dup2001.length === 1 && over.value.threw
+        at2000.value.length === 1 && at2000.value[0]?.id === live.id && at2000.queries.length === 1
+          && dup2001.value.length === 1 && dup2001.queries.length === 1 && over.value.threw
           && over.value.message.includes("marketingContact.snapshotsAmong") && over.value.message.includes("2000") && over.queries.length === 0,
-        `2,000 → ${at2000.length} · 2,001 with a duplicate → ${dup2001.length} · 2,001 distinct → ${over.value.threw ? `${over.value.name}: ${over.value.message.slice(0, 100)}` : "ANSWERED"} · ${over.queries.length} statement(s)`);
+        `2,000 → ${at2000.value.length}/${at2000.queries.length} statement · 2,001 with a duplicate → ${dup2001.value.length}/${dup2001.queries.length} statement · 2,001 distinct → ${over.value.threw ? `${over.value.name}: ${over.value.message.slice(0, 100)}` : "ANSWERED"} · ${over.queries.length} statement(s)`);
     });
 
     /* ── 3 · firstLinesAmong — S15-7, each number's first DECIDABLE line in ONE grouped read ── */
@@ -924,12 +927,12 @@ async function phaseC(): Promise<void> {
       ok("7.2 · the grouped read answers, number by number, exactly what the ONE rule says of that number's whole history as the single read (listFor, the ledger's own order) hands it back — the twins cannot drift from the pure module",
         offRule.length === 0 && ALL.length === 11, offRule.length === 0 ? `${ALL.length} numbers agree` : `disagree on ${offRule.join(", ")}`);
       const none = await counted(() => db.messagingConsent.erasureStandsAmong({ channel: "SMS", category: "MARKETING", identifiers: [] }));
-      const at2000 = await db.messagingConsent.erasureStandsAmong({ channel: "SMS", category: "MARKETING", identifiers: [...many(1999), E.mark] });
+      const at2000 = await counted(() => db.messagingConsent.erasureStandsAmong({ channel: "SMS", category: "MARKETING", identifiers: [...many(1999), E.mark] }));
       const over = await counted(() => thrown(() => db.messagingConsent.erasureStandsAmong({ channel: "SMS", category: "MARKETING", identifiers: many(2001) })));
       ok("7.3 · §25's bound and shape on erasureStandsAmong — an empty set answered [] with NO statement; 2,000 distinct keys answered (only the one an erasure stands on comes back); 2,001 distinct REFUSED by a throw naming the read, before any statement",
-        json(none.value) === "[]" && none.queries.length === 0 && eq(at2000, [E.mark]) && over.value.threw
+        json(none.value) === "[]" && none.queries.length === 0 && eq(at2000.value, [E.mark]) && at2000.queries.length === 1 && over.value.threw
           && over.value.message.includes("messagingConsent.erasureStandsAmong") && over.queries.length === 0,
-        `${json(none.value)}/${none.queries.length} · 2,000 → ${json(at2000)} · 2,001 → ${over.value.threw ? over.value.message.slice(0, 80) : "ANSWERED"}`);
+        `${json(none.value)}/${none.queries.length} · 2,000 → ${json(at2000.value)}/${at2000.queries.length} statement · 2,001 → ${over.value.threw ? over.value.message.slice(0, 80) : "ANSWERED"}`);
       // The importer's facts loader and the Add form's lookup, on this same Postgres — the wiring the memory suites prove.
       const { loadImportFacts } = await import("../../src/lib/server/contacts/import-check.ts");
       const { lookupContactNumber, CONTACT_DUPLICATE } = await import("../../src/lib/server/contacts/contact-write.ts");

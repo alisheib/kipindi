@@ -79,8 +79,8 @@
  *  beats every selector — a class would be inert there, which is the §B8 defect, not a
  *  tidy-up. Their value is written in place and asserted to read 0.14em. */
 export const INLINE_EYEBROWS = new Map([
-  ["components/admin/admin-shell.tsx :: <span className=\"font-mono uppercase text-text-tertiary truncate\" style={{ fontSize: 9.5, letterSpacing: \"0.14em\", lineHeight: 1.3 }}>{label}</span> ↵ <div className=\"fon", 1],
-  ["components/admin/admin-shell.tsx :: className=\"font-mono uppercase text-text-tertiary truncate\" ↵ title={typeof label === \"string\" ? label : undefined}", 1],
+  ["components/admin/admin-shell.tsx :: <span className=\"font-mono uppercase text-text-tertiary min-w-0 whitespace-normal\" style={{ fontSize: 9.5, letterSpacing: \"0.14em\", lineHeight: 1.3, textWrap: \"balance\", ", 1],
+  ["components/admin/admin-shell.tsx :: className=\"min-w-0 flex-1 font-mono uppercase text-text-tertiary whitespace-normal\" ↵ title={typeof label === \"string\" ? label : undefined}", 1],
   ["components/brand.tsx :: textTransform: \"uppercase\", ↵ }}", 1],
   ["lib/server/email.ts :: <p style=\"margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:${TEXT_MUTED};line-height:1.55\"><span style=\"font-family:'JetBrains Mono','C", 1],
   ["lib/server/email.ts :: let html = `<p style=\"margin:0 0 6px;font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.14em;font-weight:700;co", 1],
@@ -309,7 +309,7 @@ export const NOT_EYEBROW = new Map([
   ["components/admin/admin-mobile-nav.tsx :: <span className=\"font-mono text-micro tracking-[0.14em] uppercase px-2.5 h-7 inline-flex items-center rounded-md border border-border bg-bg-inset text-text-secondary\"> ↵ ", "STATUS_CHIP"],
   ["components/admin/admin-shell.tsx :: <div className=\"bg-bg-sunken text-text border-b border-border-strong flex items-center justify-between px-4 lg:px-6 h-7 text-micro font-mono uppercase tracking-[0.18em]\">", "OTHER"],
   ["components/admin/admin-shell.tsx :: <span className=\"font-mono uppercase tracking-wider text-warning-fg\" style={{ fontSize: 9.5 }}>couldn&apos;t compute</span> ↵ </div>", "STATUS_CHIP"],
-  ["components/admin/admin-shell.tsx :: <span className=\"inline-flex items-center gap-1 text-micro font-mono uppercase tracking-wider\" style={{ color: \"var(--aqua-400)\" }}> ↵ <span className=\"h-1.5 w-1.5 rounde", "STATUS_CHIP"],
+  ["components/admin/admin-shell.tsx :: <span className=\"shrink-0 inline-flex items-center gap-1 text-micro font-mono uppercase tracking-wider\" style={{ color: \"var(--aqua-400)\" }}> ↵ <span className=\"h-1.5 w-1", "STATUS_CHIP"],
   ["components/admin/admin-shell.tsx :: className=\"hidden sm:inline-flex font-mono text-micro tracking-[0.14em] uppercase px-2.5 h-7 items-center rounded-md border border-border bg-bg-inset text-text-secondary\"", "STATUS_CHIP"],
   ["components/admin/admin-shell.tsx :: className=\"inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border bg-bg-inset text-text-secondary hover:text-text hover:border-border-strong hover:bg", "CONTROL_LABEL"],
   ["components/admin/admin-shell.tsx :: className=\"rounded-sm border border-dashed border-border-subtle flex items-center justify-center font-mono text-micro uppercase text-text-tertiary\" ↵ style={{ minHeight: ", "OTHER"],

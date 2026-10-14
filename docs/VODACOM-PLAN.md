@@ -686,6 +686,31 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   failures with their details as well as the final tail, and refuses an empty selector instead of printing 0/0
   green. Actual renderer/empty-selector controls pass. The next CI run must disclose and resolve the two remaining
   Linux failures, rather than reclassifying them without evidence.
+  The pushed `947c3f48e` recovery checkpoint's Linux CI is also 530/533 (672.9s), now with its actual early failures
+  visible: contacts-import-db's query census attributed a previous allowed read's delayed event to the following
+  bound refusal; eyebrow-roles still held the old AdminKpi signatures; and house-bot-ops' synthetic commit-tree
+  lacked author identity on a clean runner. Audit-drain and the repaired focus gate pass there. Each allowed bulk
+  read now gets its own counted positive control (one real statement), with the following refusal still requiring
+  zero; the real Postgres contact probe passes 63/63. The two reviewed inline caption signatures and existing live
+  status-chip signature are refreshed without changing their roles: all 658 sites are accounted for. Synthetic
+  release commits supply fixture identity only to that process: with ambient Git identity deliberately unavailable,
+  house-bot-ops passes 100 memory/104 Postgres and its parent 3/3. Typecheck passes; a new Linux run remains required.
+  Parity calibration's fresh encoded baseline is 51/51, expanded rendered reds 200/200 and fresh same-source NULL
+  67/67 (2052s), including all 56 question cells. The frozen-947 branch comparison finishes 66/67: eight home book
+  cells differ only in already-masked closing-day leaf widths. Actual day substitution reproduces the exact 0.5px
+  geometry difference; shell, Sell and all 56 question cells pass. Captures remain intact and a narrow pre-geometry
+  date calibration with new baseline/NULL/branch measurements is required, not a retrospective PASS.
+  A fresh-cache production build and a separate clean checkout with real C output both compile but retain missing
+  lazy preload files on home/results/question. The failed F-output cold build also records Next's workStore
+  invariant; moving output to C made that build complete, which does not establish the invariant's cause. The
+  isolated exact-947 browser drive is 41 pass/11 fail: all six heading samples are 234–316ms at 4× CPU, all precede
+  their delayed private response, the missing home preload is actually requested and returns 404, and the question
+  ghost is actually observed. No production PASS is claimed. A separate page-only diagnostic identifies the lift's
+  initial zero opacity: its first two frames hold the heading invisibly. A transform-identical, immediate-opacity
+  trial reads 111.4ms at 4× CPU versus 188.2ms in the control; this is a candidate experiment, not compiled closure.
+  The wider normal-site responsive audit remains open. Its 80 empty-state alignment findings require distinguishing
+  card-scoped headings from page headings before repairs; captures after a dev-server memory restart are invalid
+  premises and retained as such. Fresh bounded-runtime browser gates and the actual AdminKpi proof remain underway.
   **Still NOT CLOSED / NOT LIVE:** current browser/visual closure, clean exact-tip production proof, repaired v4
   baseline/null/branch parity, complete battery and both-host production read-back are required.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;
