@@ -106,10 +106,13 @@ export const MUTATIONS = [
     expect: "7.2 …and hand them on by a spread a classic reader's props never see (no `journey` key, not even null)",
   },
   {
-    name: "updown-arm.ts — the tab marker written before the privacy notice names a round",
-    file: "src/lib/journey/updown-arm.ts",
-    from: `export const JUD_TAB_MARKER = false;`,
-    to: `export const JUD_TAB_MARKER = true;`,
+    // Since Privacy v2026-10-15 the marker is ON; the defect is a language whose §7 no longer names the round it stores.
+    name: "privacy page — the English §7 round paragraph dropped while the arm writes a round marker",
+    file: "src/app/legal/privacy/page.tsx",
+    from: `        <p data-policy-addition="pending-round">
+          For an Up &amp; Down round,`,
+    to: `        <p>
+          For an Up &amp; Down round,`,
     expect: "3.4 ⛔ the tab marker that carries a stake is written only once the privacy notice names a round (S12-PLAN Risk 14): JUD_TAB_MARKER is false, or §7 holds the round sentence",
   },
   {
