@@ -1115,8 +1115,8 @@ NOT MEASURED, and the exact text proposed for the trackers this branch does not 
 | WP0 · start line | Citations re-read and corrected (Amendments above); precondition does not hold (B1); records proposed below (B2) | this commit |
 | WP1 · the X card | Done, every player, its own release. Proof at its commit: `test:brand-assets` §3 IN SYNC + 3 controls refused (red before: 600/600 rows differ), `test:static-cache-scope` 23/23, typecheck 0, `next build` 0 (186 s, `build.sh` at the exact commit), local `qa:live` 376/376 (port 3101); both pictures read at full size and the corners zoomed: no badge, no bubble. Production read-back is the coordinator's | `0986baa5a` |
 | WP2 · `primer-keys.ts` | Done. The primer imports four declarations (B10); `test:stacking` 138/0 (8.3 re-pinned, 8.3c its plant), `test:marketing-optout` 121/0 + red 45/45 (two primer plants), `test:journey-shell` + red 208/208, `test:popup-fit`, `test:design-frozen`, `test:client-graph-safe` 6/0, `test:hooks-order`, visual-pass r5a r5b r5c r5i r5j r6c r7c r8b r9a r9c and `test:social-panel` green, typecheck 0, `qa:lost-chunk --self-test` 14/14 with the new marker (B4); its browser cells run with WP10 | this commit |
-| WP3 · S11's words | Done: seven keys, the zh How-to corrections, review 9 signed (below) | this commit |
-| WP4 · the How-to host | — | — |
+| WP3 · S11's words | Done: seven keys, the zh How-to corrections, review 9 signed (below) | `65ad04b0c` |
+| WP4 · the How-to host | Done in source and in process (below); its browser drives are WP10's | this commit |
 | WP5 · the FAQ | — | — |
 | WP6 · the chat | — | — |
 | WP7 · the tagline and `test:flip-copy` | — | — |
@@ -1178,3 +1178,29 @@ is built as decided, not pending:
 
 **VODACOM-PLAN §3's How-to rows** (annotate, never rewrite): `journey.howStep1Body`, `howStep2Title`, `howStep3Body` and
 `howExampleBody` — append to each zh cell "⟶ corrected in S11 WP3 (S4-COPY-AUDIT :140; review 9): 「{yes}」/「{no}」 quoted, 赢家按投注比例分享奖池, 在「{side}」一方（显示 ≈{mult}×）".
+### WP4 — the How-to host (built 2026-10-14)
+
+- **Code:** `src/lib/onboarding/how-to-open.ts` (pure: `howToDecision`, `howToRoute`, `withoutHowTo`, `HOWTO_ROUTES`,
+  `HOWTO_DELAY_MS` 700, `HOWTO_PARAM`); `src/components/onboarding/how-to-host.tsx` (`HowToHost` + its landing hook
+  `useHowToLanding`, apart so the suite runs it as React does); the sheet's one `close` (key, then opener) and its slot
+  claim at −1 while open; `LazyHowToHost` in shell-lazy; AppShell's journey slot is now the fragment (B5); Privacy §7 in
+  three languages at v2026-10-14.2 with `POLICY_PAGES.privacy.codeVersion` and the COMPLIANCE-DECISIONS entry (which also
+  records Correction 3). ⚠️ If S11 lands on a later day than 2026-10-14, that day replaces 2026-10-14.2 in META,
+  `codeVersion`, `PRIVACY_VERSION` (test:privacy-notice) and the entry's heading.
+- **Amendment B14 (found building it):** journey-home §5's pins of the sheet's three exits (5.frame :1311, 5.limits :1396,
+  5.cta :1408 and the plants at :1571-1574) named `onClose` and are re-pinned to `close` — the plan named only 5.storage,
+  5.lazy and :1575. And `test:kyc-copy-truth` rule 2 matched the new sw §7 sentence's neighbourhood ("hazina
+  kitambulisho" + "ukurasa wa kwanza" + "Jinsi ya kucheza"): a TRUE unit, admitted by its exact hash with its reason
+  (ALLOW 3 → 4), as the S3b precedent did. `scripts/lib/hooks-host.mts` gains `useId` and `useSyncExternalStore`
+  (additive; campaign-visuals unchanged).
+- **Gates:** `test:howto` 33 checks, all green, and `red:howto` **48/48** (every rule of the decision, the timer, the
+  landing, the deep link's strip, the automation term, storage that throws, the route-change exit, the render guard, every
+  exit of the sheet, the slot claim and its release, the mount — each planted in memory and caught, most ALONE);
+  `test:journey-home` + red **247/247**; `test:journey-shell` + red **208/208**; `test:visual-pass-r5h` (3.2 + 3.2′);
+  `test:stacking` 144/0 (8.6–8.8 + three controls); `test:marketing-optout` 122/0 + red 47/47 (S21h + two plants);
+  `test:privacy-notice` 122/0 (§4n: 3 checks + 3 controls); `test:policy-lines` 11/0 + red; `test:simple-journey-flag`
+  135/0 + red 41/41; `test:kyc-copy-truth` 499/0; `test:popup-fit`, `test:social-panel`, `test:client-graph-safe`,
+  `test:hooks-order`, `test:dead-css`, `test:design-frozen`, `test:source-bytes`, `test:orphans`; `qa:first-load
+  --self-test` 106/0 (the HowToHost row; S11 rows wait for their WP like S7's and S8's); `qa:chunks-prod --self-test`
+  69/0; typecheck 0. Red by construction until on main: `test:house-bot-disclosure` 5.1 (the privacy page).
+- **Browser drives:** WP10.

@@ -907,5 +907,36 @@ if (stackTable) {
   ok("8.5 ⚠️ CONTROL — the UA block still exists (removing it would break ~10 drives)", uaLine.length > 0);
 }
 
+// ⭐ 8.6–8.8 · THE HOW-TO HOST'S TWINS OF 8.1, 8.3 AND 8.4 (the Vodacom plan S11 WP4, 2026-10-14). How to Play opens by itself
+// for a journey reader, as the primer did for everyone, so the primer's three lessons hold for it too: its RENDER asks its
+// route rule (the four routes, HIDE_ON, SUPPRESS_ON — the effect cannot take down a sheet already open), the two patterns are
+// the primer's own, imported from `primer-keys.ts` and never re-declared, and its automation term carries the opt-in at the
+// call site. `test:howto` runs the host itself; these read the source the way §8 reads the primer's, each with its control.
+{
+  const host = src("src/components/onboarding/how-to-host.tsx");
+  const rule = src("src/lib/onboarding/how-to-open.ts");
+  const ruleBody = (r: string) => (r.match(/export function howToRoute[(][^)]*[)][^{]*[{][^}]*[}]/) ?? [""])[0];
+  const hostRenderGuarded = (h: string, r: string) => {
+    const guards = h.match(/.*return null;.*/g) ?? [];
+    const body = ruleBody(r);
+    return guards.some((g) => /howToRoute[(]pathname[)]/.test(g)) && /HIDE_ON[.]test[(]pathname[)]/.test(body) && /SUPPRESS_ON[.]test[(]pathname[)]/.test(body);
+  };
+  ok("8.6 ⛔ the How-to host's RENDER guard asks its route rule, and that rule tests HIDE_ON and SUPPRESS_ON (8.1's lesson)",
+    hostRenderGuarded(host, rule), (host.match(/.*return null;.*/g) ?? []).join(" | ") || "no `return null` guard found at all");
+  ok("8.6c ⚠️ CONTROL — a route rule that stops testing SUPPRESS_ON, and a render with no guard, are each reported",
+    !hostRenderGuarded(host, rule.replace(" && !SUPPRESS_ON.test(pathname)", "")) && !hostRenderGuarded(host.replace("if (!howToRoute(pathname)) return null;", ""), rule)
+      && rule.includes(" && !SUPPRESS_ON.test(pathname)") && host.includes("if (!howToRoute(pathname)) return null;"));
+  const rulesShared = (r: string, h: string) => /import [{] HIDE_ON, SUPPRESS_ON [}] from "[.][/]primer-keys";/.test(r)
+    && !/const (HIDE_ON|SUPPRESS_ON) =/.test(r) && !/const (HIDE_ON|SUPPRESS_ON) =/.test(h);
+  ok("8.7 ⚠️ CONTROL — the host's route rule imports the primer's two patterns from primer-keys.ts and neither file re-declares them (8.3's twin)",
+    rulesShared(rule, host));
+  ok("8.7c ⚠️ CONTROL — a local SUPPRESS_ON planted in the rule module fails 8.7's rule",
+    !rulesShared(rule.replace("export function howToRoute(", "const SUPPRESS_ON = /plant/;\nexport function howToRoute("), host) && rule.includes("export function howToRoute("));
+  const forcedAt = (h: string) => (h.match(/.*forced: .*/g) ?? []).join(" · ");
+  ok("8.8 the host's automation term can be opted out of — `forced: primerForced()` at the decision's call (8.4's twin), beside `automated: automated(navigator)`",
+    forcedAt(host).includes("forced: primerForced(),") && host.includes("automated: automated(navigator),"), forcedAt(host) || "no forced fact found at all");
+  ok("8.8c ⚠️ CONTROL — the opt-in hard-wired off is reported", !forcedAt(host.replace("forced: primerForced(),", "forced: false,")).includes("primerForced()"));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

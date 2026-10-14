@@ -394,9 +394,12 @@ section("3 · G-3 · the journey flag and the not-found mark, up and down before
 }
 const FLAG_FILE = "src/components/journey/journey-flag.tsx", FLAG_LIB = "src/lib/journey/journey-on.ts", SHELL = "src/components/layout/app-shell.tsx";
 const NF_MARK = "src/components/ui/not-found-mark.tsx", NF_LIB = "src/lib/not-found-mark.ts";
+/** The journey's slot as AppShell writes it since the Vodacom plan S11 WP4: the flag first and bare, How to Play's host after
+ *  it in a Suspense boundary of its own (`test:journey-shell` JOURNEY_SLOT, `test:howto` §5). */
+const JOURNEY_SLOT = "{journeyShown && <><LazyJourneyFlag /><Suspense fallback={null}><LazyHowToHost signedIn={!!session} onBreak={promoSuppressed} /></Suspense></>}";
 const phasesOf = (t: (p: string) => string) => ({
   flagLayout: squash(decomment(t(FLAG_FILE))).includes("useLayoutEffect(() => raiseJourneyFlag(), []);") && !/\buseEffect\(/.test(decomment(t(FLAG_FILE))) && hasDirective(t(FLAG_FILE), "use client"),
-  flagBare: squash(decomment(t(SHELL))).includes("{journeyShown && <LazyJourneyFlag />}") && !/<Suspense[^>]*>\s*<LazyJourneyFlag/.test(decomment(t(SHELL))),
+  flagBare: squash(decomment(t(SHELL))).includes(JOURNEY_SLOT) && !/<Suspense[^>]*>\s*<LazyJourneyFlag/.test(decomment(t(SHELL))),
   lowerAfterCommit: squash(decomment(t(FLAG_LIB))).includes("document.documentElement.removeAttribute(JOURNEY_FLAG_ATTR); window.dispatchEvent(new Event(JOURNEY_FLAG_EVENT)); queueMicrotask(announceJourneyFlagAfterCommit);"),
   markLayout: squash(decomment(t(NF_MARK))).includes("useLayoutEffect(() => { announceNotFound(); }, [path]); useLayoutEffect(() => announceNotFoundAfterCommit, []);") && !/\buseEffect\(/.test(decomment(t(NF_MARK))),
   markAfterCommit: squash(decomment(t(NF_LIB))).includes("export function announceNotFoundAfterCommit(): void { queueMicrotask(() => { if (typeof window !== \"undefined\") announceNotFound(); }); }"),
@@ -406,7 +409,7 @@ const phasesOf = (t: (p: string) => string) => ({
   ok("3.2 · the flag rises in a LAYOUT effect, from a mount standing bare beside the journey's header and tabs (so it lands in the commit that first paints them); its lowering is announced at once AND once the commit is done; the not-found mark comes in a layout effect and its going is announced once the commit is done",
     Object.values(now).every(Boolean), j(now));
   const passive = phasesOf((p) => (p === FLAG_FILE ? raw(p).replace("useLayoutEffect(() => raiseJourneyFlag(), []);", "useEffect(() => raiseJourneyFlag(), []);") : raw(p)));
-  const boxed = phasesOf((p) => (p === SHELL ? raw(p).replace("{journeyShown && <LazyJourneyFlag />}", "{journeyShown && <Suspense fallback={null}><LazyJourneyFlag /></Suspense>}") : raw(p)));
+  const boxed = phasesOf((p) => (p === SHELL ? raw(p).replace("{journeyShown && <><LazyJourneyFlag /><Suspense", "{journeyShown && <><Suspense fallback={null}><LazyJourneyFlag /></Suspense><Suspense") : raw(p)));
   ok("3.2′ PLANT · the flag back in a passive effect, or back in a boundary of its own, is reported", !passive.flagLayout && !boxed.flagBare, j({ passive: passive.flagLayout, boxed: boxed.flagBare }));
 }
 {

@@ -264,6 +264,8 @@ const SHELL_PARTS: ReadonlyArray<readonly [string, string, string]> = [
   ["LazyWinCelebration", "@/components/markets/win-celebration", "WinCelebrationHost"],
   ["LazySellResultHost", "@/components/markets/sell-result-host", "SellResultHost"],
   ["LazyBetSheetHost", "@/components/journey/bet-sheet/bet-sheet-host", "BetSheetHost"],
+  // S11 WP4: How to Play's host, journey-only, in the flag's slot (JOURNEY_SLOT below).
+  ["LazyHowToHost", "@/components/onboarding/how-to-host", "HowToHost"],
   ["LazyNotifyPoller", "@/components/markets/notify-poller", "NotifyPoller"],
   ["LazyEventStream", "@/components/layout/event-stream-provider", "EventStreamProvider"],
   ["LazyInstallInvite", "@/components/pwa/install-invite", "InstallInvite"],
@@ -285,6 +287,13 @@ const BARE_PARTS: readonly string[] = ["LazyJourneyTopBar", "LazyJourneyTabs"];
  *  switches the journey on mounts it in the commit that first paints them. It is the `journeyShown &&` arm itself — it
  *  has no classic twin — so 12.shell.flag holds it, not 12.shell.bare's ternaries. */
 const BARE_FLAG = "LazyJourneyFlag";
+/**
+ * THE JOURNEY'S OWN SLOT, AS APPSHELL WRITES IT (the Vodacom plan S11 WP4; S11-PLAN Open point 3 and Amendment B5). It held
+ * the flag alone until S11; How to Play's host now shares it, in a fragment: the flag first and BARE (12.shell.flag), the host
+ * after it in a Suspense boundary of its own (it reads the address) — so a classic request still renders the slot as one
+ * `false`. 5.mount and 12.shell.flag both read this one string; `test:howto` §5 holds the host's half.
+ */
+const JOURNEY_SLOT = "{journeyShown && <><LazyJourneyFlag /><Suspense fallback={null}><LazyHowToHost signedIn={!!session} onBreak={promoSuppressed} /></Suspense></>}";
 /** A part's one line in the shell's lazy module, exactly as it is written there. */
 const partLine = ([binding, spec, symbol]: readonly [string, string, string]) =>
   `export const ${binding} = dynamic(() => import("${spec}").then((m) => m.${symbol}).catch(nothingIfLost));`;
@@ -865,7 +874,8 @@ function g5Flag(I: Impl, W: World, G: Graph, ok: Ok) {
   // ⭐ MOUNTED SINCE WP7: once, in AppShell, behind the resolver's own answer, through the shell's lazy binding (§11 holds
   // the binding). Nothing else renders it, so a page the server did not put in the journey never carries the flag.
   // ⚠️ BARE SINCE ROUND 5'S FOLLOW-UP (R5-H, G-3): 12.shell.flag holds why.
-  const flagMount = "{journeyShown && <LazyJourneyFlag />}";
+  // S11 WP4: the flag's mount is the journey's slot, which How to Play's host now shares (JOURNEY_SLOT).
+  const flagMount = JOURNEY_SLOT;
   const shellText = text(W, SHELL);
   const direct = [...W.files].filter(([p, s]) => p !== FLAG_COMPONENT && s.includes("<JourneyFlag")).map(([p]) => p);
   const lazyElsewhere = [...W.files].filter(([p, s]) => p !== SHELL && s.includes("<LazyJourneyFlag")).map(([p]) => p);
@@ -2517,7 +2527,7 @@ function g12ShellParts(W: World, G: Graph, ok: Ok) {
   const emptyBox = count(flat, `className="kp-jhdr"`);
   ok("12.shell.bare · the journey's header and tabs stand in NO Suspense boundary: each is the journeyShown arm itself, so React 19.2 draws them in the page's first HTML instead of outlining them after the shell behind an empty box (R4-J, E36); and AppShell draws no empty header box",
     chrome.every((r) => r.arm === 1 && r.boxed === 0) && emptyBox === 0, show({ chrome, emptyBox }));
-  const flagArm = { arm: count(flat, `{journeyShown && <${BARE_FLAG} />}`), boxed: [...flat.matchAll(wrappedPart(BARE_FLAG))].length, tags: count(flat, `<${BARE_FLAG}`) };
+  const flagArm = { arm: count(flat, JOURNEY_SLOT), boxed: [...flat.matchAll(wrappedPart(BARE_FLAG))].length, tags: count(flat, `<${BARE_FLAG}`) };
   ok("12.shell.flag · the journey flag stands in NO Suspense boundary either (round 5's follow-up, R5-H · G-3): the journeyShown arm itself, beside the header and the tabs, so a refresh that switches the journey on waits for its chunk as for theirs and mounts it in the commit that first paints them — and its layout effect raises the flag before that paint",
     flagArm.arm === 1 && flagArm.boxed === 0 && flagArm.tags === 1, show(flagArm));
   const offline = {
@@ -2784,7 +2794,7 @@ if (!PROVE_RED) {
     const flagClient = withFile(WORLD, FLAG_HOME, (s) => `"use client";\n${s}`);
     const flagNoCleanup = withFile(WORLD, FLAG_COMPONENT, (s) => s.replace("useLayoutEffect(() => raiseJourneyFlag(), [])", "useLayoutEffect(() => { raiseJourneyFlag(); }, [])"));
     const flagPassive = withFile(WORLD, FLAG_COMPONENT, (s) => s.replace("useLayoutEffect(() => raiseJourneyFlag(), [])", "useEffect(() => raiseJourneyFlag(), [])").replace("import { useLayoutEffect } from \"react\";", "import { useEffect } from \"react\";"));
-    const flagBoxed = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown && <LazyJourneyFlag />}", "{journeyShown && <Suspense fallback={null}><LazyJourneyFlag /></Suspense>}"));
+    const flagBoxed = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown && <><LazyJourneyFlag /><Suspense", "{journeyShown && <><Suspense fallback={null}><LazyJourneyFlag /></Suspense><Suspense"));
     const markForEveryone = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown && <span hidden id={JOURNEY_SHELL_MARK} />}", "<span hidden id={JOURNEY_SHELL_MARK} />"));
     const markClient = withFile(WORLD, MARK_HOME, (s) => `"use client";${LF}${s}`);
     const markIgnored: Impl["flag"]["snapshot"] = () => document.documentElement.hasAttribute(FLAG.JOURNEY_FLAG_ATTR);
@@ -2792,7 +2802,7 @@ if (!PROVE_RED) {
 
     // §11 — the overlays (WP7): a stand-down widened to every reader, dropped or misplaced; the flag read another way;
     // a HIDE_ON pattern moved; the consent prompt gated; the email bar back for a journey viewer; the flag loaded eagerly.
-    const flagForEveryone = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown && <LazyJourneyFlag />}", "<LazyJourneyFlag />"));
+    const flagForEveryone = withFile(WORLD, SHELL, (s) => s.replace("{journeyShown && <><LazyJourneyFlag /><Suspense", "<LazyJourneyFlag />{journeyShown && <><Suspense"));
     const needleForAll = withFile(WORLD, OVERLAY_NEEDLE, (s) => s.replace(`(${OVERLAY_TERM})`, "isJourneySurface(pathname)"));
     const needleDepsStale = withFile(WORLD, OVERLAY_NEEDLE, (s) => s.replace("}, [hiddenPref, pathname, journeyOn, notFoundShown]);", "}, [hiddenPref, pathname]);"));
     const panelEligibleAnyway = withFile(WORLD, OVERLAY_CHANNELS, (s) => s.replace(" && !journeyHidden;", ";"));

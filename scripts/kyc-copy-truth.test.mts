@@ -373,8 +373,21 @@ const ALLOW: readonly Allow[] = [
     excerpt: "kp-sheet-intents:v2: … vitambulisho vya maombi vilivyotengenezwa bila mpangilio",
     why: "this exact storage disclosure names account/request identifiers and random request keys; it makes no claim about identity verification or a money gate",
   },
+  {
+    // ⭐ Found 2026-10-14 (the Vodacom plan S11 WP4: §7 names How to play's seen key). Read in full and TRUE: the unit is
+    //   §7's last paragraph. Its kp-utm sentence says the campaign tags of the visit's FIRST page ("ukurasa wa kwanza") are
+    //   kept with no IDENTIFIER ("hazina kitambulisho", a technical identifier it denies keeping), and the next sentence names
+    //   the guide by its own name, "Jinsi ya kucheza" (How to play) — so identity, "kwanza" and "kucheza" meet in one unit
+    //   and nothing binds identity to betting. The en and zh twins trip nothing. ⛔ Not reworded here: player copy is not
+    //   this guard's to edit.
+    where: "src/app/legal/privacy/page.tsx · sw",
+    rule: 2,
+    sha: "53d95be86ae04fd4",
+    excerpt: "… ukurasa wa kwanza … hazina kitambulisho … kuwa umeshaona Jinsi ya kucheza (50pick-howto-seen, …)",
+    why: "kitambulisho is a technical identifier the kp-utm sentence denies keeping, kwanza is a visit's first page, and kucheza is the guide's own name — nothing binds identity to betting",
+  },
 ];
-const ALLOW_SIZE = 3;
+const ALLOW_SIZE = 4;
 const used = new Set<Allow>();
 const shaOf = (t: string) => createHash("sha256").update(t).digest("hex").slice(0, 16);
 

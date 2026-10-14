@@ -17,7 +17,7 @@ import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/server/su
 // `test:journey-shell` §12 holds this.
 import {
   LazyPullToRefresh, LazyNotifyPoller, LazyEventStream, LazyInstallInvite, LazyConsentPrompt, LazyChannelsPanel,
-  LazyJourneyFlag, LazyWinCelebration, LazySellResultHost, LazyJourneyTopBar, LazyJourneyTabs, LazyBetSheetHost,
+  LazyJourneyFlag, LazyWinCelebration, LazySellResultHost, LazyJourneyTopBar, LazyJourneyTabs, LazyBetSheetHost, LazyHowToHost,
 } from "./shell-lazy";
 // ⛔ THE OFFLINE BANNER IS NOT ONE OF THEM, ON PURPOSE (WP6c): its one job is a connection that fails, so its code comes
 // with the page's own scripts, as it always did, and never by a fetch of its own that the same failure could stop. It
@@ -488,8 +488,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           (`raiseJourneyFlag` has both directions). In a boundary of its own it could land a commit later, the journey's
           chrome painted while the overlays still read the classic answer. It renders nothing, so the first HTML gains no
           markup (only its boundary's two comment markers go); its chunk, a few hundred bytes, is preloaded in the head
-          beside the header's and the rail's, and the page's hydration waits for it as for theirs. */}
-      {journeyShown && <LazyJourneyFlag />}
+          beside the header's and the rail's, and the page's hydration waits for it as for theirs.
+          ⭐ AND HOW TO PLAY'S HOST SHARES THE SLOT (the Vodacom plan S11 WP4; S11-PLAN Open point 3): it opens the sheet by
+          itself once per browser on the four lobby routes, and at /?howto=1. In the fragment beside the flag, so a classic
+          request still renders this slot as the one `false` it always did; the flag stays bare, and the host stands in a
+          Suspense boundary of its own because it reads the address (`useSearchParams`), as BetSheetHost below does. It is
+          handed the session's answer and the break (`promoSuppressed`), both read above. */}
+      {journeyShown && <><LazyJourneyFlag /><Suspense fallback={null}><LazyHowToHost signedIn={!!session} onBreak={promoSuppressed} /></Suspense></>}
       {/* ⭐ AND THE SHELL'S MARK, IN THE SERVER'S HTML (`lib/journey/shell-mark.ts`): the flag above arrives with its own
           chunk, at hydration at the earliest, and the Needle once drew for a few frames before it landed. With the mark
           on the page from the first byte, every overlay reads the answer right after hydrating. A classic page never

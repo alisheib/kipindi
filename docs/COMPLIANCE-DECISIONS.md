@@ -8,6 +8,31 @@
 
 ---
 
+## 2026-10-14 · Privacy v2026-10-14.2 — How to play's seen note, named in §7 (Vodacom S11)
+
+**Authority.** Ali's instruction to complete the Vodacom plan, whose §3.10 asks that How to play's seen key be named in
+Privacy §7 in the same commit as its first write (S11-PLAN.md Open point 12), and his answer to S11-PLAN's Point for
+Ali 3: the recommended answer — name it, with a new version — accepted by Ali, 2026-10-14 (relayed by the coordinating
+session with his acceptance of all seven points). It adds no analytics or marketing permission.
+
+**What §7 says, in English, Swahili and Chinese.** How to play — the journey's three-step guide, seen by staff only until
+the S15 flip — remembers in the browser that it has been seen: the browser-storage key `50pick-howto-seen`, value "1",
+written by every way out of the guide (its close button, the scrim, Escape, "Got it", "Set limits", or leaving the page),
+so it opens by itself only once per browser. §7's existing sentence on display choices names it, with what it is for. No
+cookie, no identifier, nothing sent to 50pick's servers or to anyone else; clearing the browser's site data removes it.
+The shelved first-visit primer's own note (`50pick-primer-seen`) stays covered by the same sentence's "dismissing a
+prompt", as before.
+
+**Version.** The page's three labels and `POLICY_PAGES.privacy.codeVersion` move together to 2026-10-14.2 — the second
+change of the day, after S8's v2026-10-14, which is live. If this lands on a later day, that day replaces 2026-10-14.2 in
+all four places and in this heading. No 14-day notice: it discloses a note the device keeps for display and processes no
+new personal data.
+
+**Also recorded (S11-PLAN Correction 3).** The 2026-09-29 entry's §5 still says "the helpline is in How to Play and the
+footer". The owner's ruling of 2026-10-06 took the helpline off every player surface, and its "Supersedes" list did not
+name that line: How to play shows no helpline (S7-PLAN A6), and the 2026-09-29 entry is left as written — this log never
+edits an old entry.
+
 ## 2026-10-14 · Up & Down cards show Up and Down only — no multiplier on any Up & Down choice (owner ruling)
 
 **Authority.** Ali, 2026-10-14, as typed: *"remove odds from up and down market cards please and wherever this should be
