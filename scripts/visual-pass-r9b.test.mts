@@ -445,7 +445,7 @@ const ROUTED: Array<[string, string]> = [
     ["agent.wfColParam", CAP_TY, 231, "greedy", "KIPENGELE CHA FEDHA / HATUA YA / MAKATO", "KIPENGELE CHA FEDHA / HATUA / YA MAKATO"],
     ["agent.verifiedBadge", CAP_TY, 170, "greedy", "WAKALA / ALIYETHIBITISHWA WA / 50PICK", "WAKALA / ALIYETHIBITISHWA / WA 50PICK"],
     ["market.resEvidence", CAP_TY, 220, "greedy", "USHAHIDI ULIOREKODIWA NA / AFISA", "USHAHIDI ULIOREKODIWA / NA AFISA"],
-    ["market.probOverTime", CAP_TY, 199, "greedy", "UWEZEKANO WA NDIYO KWA / MUDA", "UWEZEKANO WA NDIYO / KWA MUDA"],
+    // ⚠️ RE-PINNED IN THE OPEN 2026-10-14 (S12 WP2): `market.probOverTime` left this list — see 3.8″ below.
     ["wallet.gatewayReference", CAP_TY, 98, "greedy", "KUMBUKUMBU YA / LANGO", "KUMBUKUMBU / YA LANGO"],
     ["help.liveChat", CAP_TY, 188, "greedy", "MAZUNGUMZO YA MOJA KWA / MOJA", "MAZUNGUMZO YA MOJA / KWA MOJA"],
     ["home.heroProofPaid", MONO(11, 0.14), 172, "greedy", "YALIYOLIPWA KWA / WACHEZAJI", "YALIYOLIPWA / KWA WACHEZAJI"],
@@ -459,6 +459,19 @@ const ROUTED: Array<[string, string]> = [
   const kadi = [93.3, 106.7].map((W) => show(layout(kr.keepConnectives(up(word("sw", "profile.idTypeVoterCard"))), MONO(10, 0), W, "balance").lines));
   ok("3.8′ · the voter's card on the KYC rail (two break candidates: Chromium's balance falls back to its bisection): \"KADI YA MPIGA / KURA\" at 320–360 — no line on \"ya\"; the owner's question (\"KADI / YA MPIGA KURA\" needs \"mpiga kura\" held)",
     kadi.every((v) => v === "KADI YA MPIGA / KURA"), j(kadi));
+  // ⚠️ RE-PINNED IN THE OPEN 2026-10-14 (S12 WP2). Spelt "NDIYO", the chart's title measured 199.8px against the
+  // toggle's 199px at sw 320 and wrapped — "UWEZEKANO WA NDIYO KWA / MUDA" raw, "UWEZEKANO WA NDIYO / KWA MUDA" through
+  // the keep (3.7/3.8's old cell). Spelt "NDIO", the product's side word, it measures 192.4px and draws on ONE line, so
+  // it has no line to end on a connective and 3.7's premise no longer holds for it. What is pinned now is that fact:
+  // one line, raw and through the keep, inside the measure. The site still draws through the keep (3.6), and a return
+  // of the misspelling fails here as well as in `test:labels` §12.
+  const pot = up(word("sw", "market.probOverTime"));
+  const potRaw = layout(pot, CAP_TY, 199, "greedy");
+  const potKept = layout(kr.keepConnectives(pot), CAP_TY, 199, "greedy");
+  ok("3.8″ · the chart's title, spelt NDIO (S12 WP2): \"UWEZEKANO WA NDIO KWA MUDA\" is ONE line in the toggle's 199px at sw 320 (192.4px), raw and through the keep",
+    show(potRaw.lines) === "UWEZEKANO WA NDIO KWA MUDA" && show(potKept.lines) === "UWEZEKANO WA NDIO KWA MUDA"
+      && !potRaw.over && !potKept.over && Math.abs(width(pot, CAP_TY) - 192.4) < 0.05,
+    j([show(potRaw.lines), show(potKept.lines), width(pot, CAP_TY)]));
 }
 {
   // The census: every raw dictionary string drawn as the direct words of an eyebrow / caption / label on a player surface,

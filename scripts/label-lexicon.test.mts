@@ -1326,5 +1326,161 @@ check("§5j private-map matcher ACCEPTS a tone ternary (a colour is not a word)"
   }
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// §12 · THE SIDE WORD IS SPELT "NDIO" — every Swahili dictionary value, every legal file
+// ───────────────────────────────────────────────────────────────────────────
+/**
+ * `common.yes` is "NDIO", and every button says it. Eleven places spelt the side "NDIYO" until S12 WP2 (2026-10-14):
+ * eight Swahili dictionary values (the question page's chart title and lean label, two aria-labels, the How-it-works
+ * dialog, two Help answers and one unread aria), the binding Terms §4, the YES/NO rules §1 and an officer's placeholder.
+ * Nothing read for it: §2 hunts ASCII enum tokens, and "NDIYO" is a Swahili word. Found by reading, as
+ * `_content-yes-no.tsx`'s header says its own first draft was.
+ *
+ * ⚠️ "ndiyo" IS ALSO CORRECT SWAHILI — the copula "it is / that is" ("…ndiyo yanayoamua matokeo") and the answer
+ * "Yes" — so the rule cannot be "never these letters". It is: every occurrence in a Swahili value, or in the served text
+ * of a legal file, is refused unless it is a DECIDED use below, and each decided use is pinned to its own PHRASE, not
+ * to its key. So a new correct-looking use is still refused until someone reads it and lists it with its reason, and a
+ * side word planted beside an allowed use is refused, because the allowance covers the phrase and nothing else.
+ *
+ * WHAT IS READ — the value, not the source line (standards §5b):
+ *   · `dict.sw` as the app reads it, every string leaf by its dotted key (two keys on one line are two values);
+ *   · every `.ts`/`.tsx` file under `src/app/legal/`, parsed by the TypeScript compiler: each string literal, template
+ *     part and JSX text, which is everything such a file can serve. Comments are trivia to the compiler, not nodes,
+ *     so a comment that records the old misspelling as history is not read.
+ * Both readers refuse to report green over an empty population, and §12c aims a planted defect at each predicate in
+ * this same run. Proved red by `red:labels` (its §12 mutations).
+ */
+{
+  log("");
+  type Allowance = { phrase: RegExp; why: string };
+  const NDIYO = /ndiyo/gi;
+  const countNdiyo = (s: string) => (s.match(NDIYO) ?? []).length;
+  /** The "ndiyo" in `text` that are NOT the allowed phrase, and how often the allowed phrase stands there. */
+  function strayNdiyo(text: string, allow?: Allowance): { stray: number; allowedSeen: number } {
+    if (!allow) return { stray: countNdiyo(text), allowedSeen: 0 };
+    const every = new RegExp(allow.phrase.source, allow.phrase.flags.includes("g") ? allow.phrase.flags : `${allow.phrase.flags}g`);
+    const allowedSeen = (text.match(every) ?? []).length;
+    return { stray: countNdiyo(text.replace(every, " ")), allowedSeen };
+  }
+
+  /** The decided correct uses in the Swahili dictionary. Each phrase carries "ndiyo" exactly once (checked below). */
+  const SW_NDIYO_OK = new Map<string, Allowance>([
+    ["market.contTodayLead", { phrase: /^Ndiyo yote yanayofunga /, why: "the copula — \"That's all closing today\"" }],
+    ["market.contSoonLead", { phrase: /^Ndiyo yote yanayofunga /, why: "the copula — \"That's all closing within the hour\"" }],
+    ["market.contWeekLead", { phrase: /^Ndiyo yote yanayofunga /, why: "the copula — \"That's all closing this week\"" }],
+    ["market.criterionEnglishBinding", { phrase: /Kiingereza ndiyo yanayoamua/, why: "the copula — \"The English wording is what decides\"" }],
+    ["market.thinUpsideNote", { phrase: /upande mwingine ndiyo zawadi/, why: "the copula — \"The other side's stakes are the prize\"" }],
+    ["toast.receiptsHere", { phrase: /tayari ndiyo anwani/, why: "the copula — \"This is already the address\"" }],
+    // The answer "Yes —" to the FAQ's question, not the side. S11 rewrites the answer (S12-PLAN Open point 29); delete
+    // this entry with it — the stale-entry check below fails the day the phrase is gone.
+    ["help.faq6a", { phrase: /^Ndiyo — /, why: "the answer \"Yes —\", not the side word" }],
+  ]);
+  /**
+   * The decided served uses in the legal tree, by file. ⏳ The Terms' one sentence waits for its OWN commit (S12 WP2's
+   * Terms commit, with `TERMS_VERSION` and `TERMS_TEXT_SHA` and its COMPLIANCE-DECISIONS entry), kept apart so the
+   * release can hold the Terms for S11's flip-time version (S12-PLAN Open point 21) without holding this guard. While
+   * it stands, that one sentence is allowed BY NAME and nothing else in the file is; the Terms commit deletes the entry.
+   */
+  const LEGAL_NDIYO_OK = new Map<string, Allowance>([
+    ["src/app/legal/terms/page.tsx", { phrase: /Dau zote — NDIYO na HAPANA — zinakusanywa kwenye bwawa moja\./, why: "the Terms §4 sentence, corrected in the Terms' own commit (Open point 21)" }],
+  ]);
+
+  // ── the readers ─────────────────────────────────────────────────────────
+  const swLeaves: Array<[string, string]> = [];
+  const leafWalk = (v: unknown, path: string): void => {
+    if (typeof v === "string") { swLeaves.push([path, v]); return; }
+    if (Array.isArray(v)) { v.forEach((x, i) => leafWalk(x, `${path}[${i}]`)); return; }
+    if (v && typeof v === "object") for (const [k, x] of Object.entries(v)) leafWalk(x, path ? `${path}.${k}` : k);
+  };
+  leafWalk(dict.sw, "");
+
+  /** Every string literal, template part and JSX text in a source file, whitespace-collapsed, with its line. */
+  function servedTextOf(fileName: string, source: string): Array<{ line: number; text: string }> {
+    const sf = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true,
+      fileName.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+    const out: Array<{ line: number; text: string }> = [];
+    const visit = (n: ts.Node): void => {
+      if (ts.isJsxText(n) || ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n)
+        || n.kind === ts.SyntaxKind.TemplateHead || n.kind === ts.SyntaxKind.TemplateMiddle || n.kind === ts.SyntaxKind.TemplateTail) {
+        const text = (n as unknown as { text: string }).text.replace(/\s+/g, " ");
+        if (text.trim()) out.push({ line: sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1, text });
+      }
+      ts.forEachChild(n, visit);
+    };
+    visit(sf);
+    return out;
+  }
+  const LEGAL = join(SRC, "app", "legal");
+  let legalFiles: string[] = [];
+  try { legalFiles = walk(LEGAL); } catch { legalFiles = []; }   // a missing tree is an empty population, refused below
+  const legalRel = legalFiles.map((f) => f.slice(ROOT.length + 1).replace(/\\/g, "/"));
+
+  // ── §12a · the Swahili dictionary ───────────────────────────────────────
+  check(`§12a the reader has the Swahili dictionary to read (${swLeaves.length} string leaves of \`dict.sw\`)`,
+    swLeaves.length > 2000, `${swLeaves.length} values`);
+  const swHits: string[] = [];
+  const swAllowedSeen = new Map<string, number>();
+  for (const [key, value] of swLeaves) {
+    const { stray, allowedSeen } = strayNdiyo(value, SW_NDIYO_OK.get(key));
+    if (SW_NDIYO_OK.has(key)) swAllowedSeen.set(key, allowedSeen);
+    if (stray > 0) swHits.push(`sw.${key} (${stray}): ${JSON.stringify(value.slice(0, 60))}`);
+  }
+  check("§12a no Swahili value spells the side \"NDIYO\" — every \"ndiyo\" is a decided use, in its own phrase",
+    swHits.length === 0, swHits.join(" · "));
+  const swStale = [...SW_NDIYO_OK.keys()].filter((k) => swAllowedSeen.get(k) !== 1)
+    .map((k) => `${k} (phrase seen ${swAllowedSeen.get(k) ?? "— no such key"} time(s), not once)`);
+  check("§12a every dictionary allowance stands exactly once where it is given (no stale or doubled entry)",
+    swStale.length === 0, swStale.join(" · "));
+
+  // ── §12b · the legal tree ───────────────────────────────────────────────
+  const DOCS = ["src/app/legal/terms/page.tsx", "src/app/legal/privacy/page.tsx", "src/app/legal/rules/_content-yes-no.tsx", "src/app/legal/rules/_content-up-down.tsx"];
+  check(`§12b the reader reached the legal tree (${legalRel.length} files), the four binding documents among it`,
+    legalRel.length >= 12 && DOCS.every((d) => legalRel.includes(d)), `${legalRel.length} files: ${legalRel.join(", ")}`);
+  const legalHits: string[] = [];
+  const legalAllowedSeen = new Map<string, number>();
+  let legalTexts = 0;
+  for (let i = 0; i < legalFiles.length; i++) {
+    const rel = legalRel[i];
+    const allow = LEGAL_NDIYO_OK.get(rel);
+    for (const { line, text } of servedTextOf(legalFiles[i], readFileSync(legalFiles[i], "utf8"))) {
+      legalTexts++;
+      const { stray, allowedSeen } = strayNdiyo(text, allow);
+      if (allow) legalAllowedSeen.set(rel, (legalAllowedSeen.get(rel) ?? 0) + allowedSeen);
+      if (stray > 0) legalHits.push(`${rel}:${line} (${stray}): ${JSON.stringify(text.trim().slice(0, 60))}`);
+    }
+  }
+  check(`§12b the reader found the legal tree's served text (${legalTexts} strings, template parts and JSX texts)`,
+    legalTexts > 1000, `${legalTexts} texts`);
+  check("§12b no legal file serves the side spelt \"NDIYO\"", legalHits.length === 0, legalHits.join(" · "));
+  const legalStale = [...LEGAL_NDIYO_OK.keys()].filter((f) => legalAllowedSeen.get(f) !== 1)
+    .map((f) => `${f} (phrase seen ${legalAllowedSeen.get(f) ?? 0} time(s), not once — delete the entry once the line is fixed)`);
+  check("§12b every legal allowance stands exactly once where it is given (no stale or doubled entry)",
+    legalStale.length === 0, legalStale.join(" · "));
+
+  // ── §12c · POSITIVE CONTROLS, both directions, aimed at the predicates above ─
+  check("§12c every allowance phrase carries \"ndiyo\" exactly once — it cannot allow a second, or nothing",
+    [...SW_NDIYO_OK.values(), ...LEGAL_NDIYO_OK.values()].every((a) => countNdiyo(a.phrase.source) === 1));
+  check("§12c the predicate REJECTS the shipped chart title \"Uwezekano wa NDIYO kwa muda\"",
+    strayNdiyo("Uwezekano wa NDIYO kwa muda").stray === 1);
+  check("§12c …and a lower-case side word (\"inaelekea ndiyo\", the lean label as it shipped)",
+    strayNdiyo("inaelekea ndiyo").stray === 1);
+  check("§12c …and a side word planted BESIDE an allowed phrase (the allowance is a phrase, not a key)",
+    strayNdiyo("Ndiyo — kwa muda mfupi. Chagua NDIYO.", SW_NDIYO_OK.get("help.faq6a")).stray === 1);
+  check("§12c the predicate ACCEPTS the allowed phrase alone, and the side spelt right",
+    strayNdiyo("Ndiyo — kwa muda mfupi.", SW_NDIYO_OK.get("help.faq6a")).stray === 0 && strayNdiyo("Chagua NDIO au HAPANA.").stray === 0);
+  {
+    const probe = servedTextOf("probe.tsx", [
+      "// NDIYO in a line comment",
+      "/* NDIYO in a block comment */",
+      "const a = \"soko la NDIYO\";",
+      "const b = `Chagua ${a} NDIYO`;",
+      "export const P = () => <p title=\"NDIYO\">kila soko la NDIYO/HAPANA {/* NDIYO */}</p>;",
+    ].join("\n"));
+    const seen = probe.reduce((n, { text }) => n + countNdiyo(text), 0);
+    check("§12c the served-text reader sees a string, a template part, an attribute and JSX text — and no comment",
+      seen === 4, `${seen} of 4: ${JSON.stringify(probe)}`);
+  }
+}
+
 log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — ${LOCALES.length} locales × ${LINES.length} products, ${files.length} files scanned, ${privateMaps.length}/${PRIVATE_MAP_RATCHET} private maps`);
 process.exit(fail === 0 ? 0 : 1);

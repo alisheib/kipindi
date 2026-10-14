@@ -56,6 +56,8 @@ const INTRO: Record<Locale, string> = {
  * So the Chinese card said `YES/NO 市场` and the Swahili said `NDIYO` (the dictionary says
  * **NDIO**) and nothing would ever have complained. The gate caught the same mistake one file
  * over, in JSX — here it had to be caught by reading the dictionary.
+ * ⭐ Since S12 WP2 (2026-10-14) the Swahili half is no longer invisible: `test:labels` §12 reads every string and
+ * every JSX text in every file under `src/app/legal/` — a `Record<Locale, string>` included — and refuses "NDIYO".
  */
 const CARDS = (l: Locale): { yesNo: [string, string]; upDown: [string, string]; common: string } => {
   const yes = sideWordIn(l, "YES", "MARKET");

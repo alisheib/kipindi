@@ -52,6 +52,11 @@ import {
  * nothing to say about my writing **NDIYO** where `t.common.yes` is **NDIO** — a one-letter
  * difference that still means the rulebook names the side differently from every screen a player
  * has already seen. Found by reading the dictionary, not by the gate. Both are now one lookup.
+ *
+ * ⚠️ ONE TYPED NDIYO SURVIVED THAT PASS — §1's second paragraph, "kila soko la NDIYO/HAPANA" — and was
+ * served until S12 WP2 (2026-10-14) read it as `{w.sw.yes}/{w.sw.no}`, the zh paragraph's own form. The
+ * drift is no longer invisible: `test:labels` §12 reads the served text of every file under
+ * `src/app/legal/` and refuses the misspelling.
  */
 const words = (l: Locale) => ({
   yes: sideWordIn(l, "YES", "MARKET"),
@@ -256,7 +261,7 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
             Huduma inaendeshwa na 50pick Ltd, iliyosajiliwa katika Jamhuri ya Muungano wa Tanzania, chini ya leseni
             kutoka Bodi ya Michezo ya Kubahatisha Tanzania, namba ya leseni{" "}
             <span className="font-mono tabular-nums text-text">{LICENCE_NUMBER()}</span>. Kanuni hizi zinasimamia kila
-            soko la NDIYO/HAPANA na ni makubaliano yenye nguvu kati ya Uongozi wa 50pick na kila mchezaji.
+            soko la {w.sw.yes}/{w.sw.no} na ni makubaliano yenye nguvu kati ya Uongozi wa 50pick na kila mchezaji.
           </p>
         </LegalSection>
 
@@ -312,7 +317,7 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
           </p>
           <p>
             Kamisheni huchukuliwa <strong className="text-text">kutoka upande ulioshindwa pekee</strong>, hivyo dau
-            lililoshinda halilipwi pungufu ya kilichowekwa. Kama dau zote zipo upande mmoja, hakuna upande ulioshindwa,
+            lililoshinda halilipwi pungufu ya kilichowekwa. Kama madau yote yapo upande mmoja, hakuna upande ulioshindwa,
             hivyo hatutozi chochote na kila dau hurudishwa kamili. Vivyo hivyo kwa soko lililobatilishwa.
           </p>
           <p>
@@ -355,7 +360,7 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
 
         <LegalSection n="6" title="Mida ya kufunga, utatuzi na uthibitisho">
           <ul className="list-disc pl-5 space-y-1">
-            <li>Kila soko hufungwa kwa muda ulioonyeshwa. Dau hazikubaliwi baada ya kufungwa.</li>
+            <li>Kila soko hufungwa kwa muda ulioonyeshwa. Madau hayakubaliwi baada ya kufungwa.</li>
             <li>Soko linaweza kufungwa mapema iwapo matokeo yatajulikana hadharani kabla ya muda.</li>
             <li>
               Kila matokeo hutatuliwa kwa <strong className="text-text">chanzo rasmi kilichotajwa</strong> — kamwe si
@@ -375,7 +380,7 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
         <LegalSection n="7" title="Marejesho, kubatilisha na kughairi">
           <ul className="list-disc pl-5 space-y-1">
             <li><strong className="text-text">Soko la upande mmoja:</strong> kama upande mmoja tu una dau wakati wa kufunga, kila dau hurudishwa kamili.</li>
-            <li><strong className="text-text">Utata:</strong> Uongozi unaweza kurudisha dau za soko lolote ambalo swali, chanzo au muda wake haukuwa wazi.</li>
+            <li><strong className="text-text">Utata:</strong> Uongozi unaweza kurudisha madau ya soko lolote ambalo swali, chanzo au muda wake haukuwa wazi.</li>
             <li><strong className="text-text">Hitilafu:</strong> hitilafu yoyote ya kiufundi, kiutendaji, data au utatuzi hubatilisha soko na kurudisha kila dau.</li>
             <li>Tukio lililoghairiwa, kuahirishwa au kubadilishwa kwa kiasi kikubwa, na chanzo kilichoshindwa kutoa taarifa, hubatilisha soko na kurudisha kamili.</li>
             <li>

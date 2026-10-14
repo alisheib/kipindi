@@ -125,6 +125,8 @@ rule as above: they ship with S12, never earlier.
 - `faq1a` and `faq1aLoser` · "Dau za kila mchezaji kwenye soko moja zinajiunga bwawa moja" → "Madau ya kila mchezaji
   kwenye soko moja yanaungana kuwa bwawa moja"; `faq1aLoser` also "kutoka dau za upande ulioshindwa" → "kutoka madau ya
   upande ulioshindwa".
+  ⟶ **Shipped on `codex/vodacom-s12-w`** (S12 WP2's commit: each line edited once, with its side word, "— NDIO na
+  HAPANA pamoja").
 
 - `failSessionLimit` · "kipindi hiki kimefika … rudi baadaye na kitaanza upya" → "kipindi hiki kimefikia kikomo hicho … rudi baadaye uanze kipindi kipya".
 - `failRateLimited` · "Hilo lilikuwa haraka." → "Umejaribu haraka mno."
@@ -141,6 +143,9 @@ rule as above: they ship with S12, never earlier.
 - `verifyGateTitle` · "ili kuweka fedha" → "ili uweke pesa"; `depositStarted` "Amana imeanza" → "Malipo yameanza" (journey screens). (`verifyGateTitle`'s change is moot since 2026-10-07: the gate is deleted.)
 - Payout delayed body · "— inaweza tu kutofika mara moja." → "— pesa zinaweza tu kuchelewa kufika."
 - Market chart "Uwezekano wa NDIYO kwa muda" → "NDIO"; market KPI "Kiasi" (pool) → "Bwawa"; "Inaisha {date}" → "Matokeo {date}".
+  ⟶ The chart: **shipped on `codex/vodacom-s12-w`** (S12 WP2, with the other side words spelt NDIYO — eight Swahili
+  values in all, the YES/NO rules §1 and the wizard's placeholder; guard `test:labels` §12).
+  "Inaisha {date}" (`market.resolves`) has had no reader since R4-I and stays (S12-PLAN ledger row 22).
 - Akaunti · "Maswali · Simu · Barua pepe" → "Maswali ya kawaida · Simu · Barua pepe" (no number: VODACOM-PLAN §0h point 10 reversed the panel here — 0800 11 0011 is the national helpline, not our desk, and keeps its own labelled row); "Nafasi ya kadi" → "Ukubwa wa kadi"; "Mipaka · Kujitenga" → "Mipaka · Pumzika · Jizuie".
 - Juu/Chini · "Kiasi" → "Dau lako"; "Gusa Juu au Chini" → "Bonyeza Juu au Chini".
 - Chinese How-to · side words quoted 「是」「否」 in running text; "赢家平分奖池" (split equally — false) → "赢家按投注比例分享奖池".
