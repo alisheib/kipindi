@@ -36,8 +36,9 @@ import { decomment } from "./lib/decomment.mts";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { BetSheetBody } from "../src/components/journey/bet-sheet/bet-sheet.tsx";
+import { sheetLineText } from "../src/components/journey/bet-sheet/sheet-parts.tsx";
 import type { Dict, Locale } from "../src/lib/i18n-dict.ts";
-import { formatTzs } from "../src/lib/utils.ts";
+import { fill, formatTzs } from "../src/lib/utils.ts";
 import { DWELL_BET_RECEIPT_MS } from "../src/lib/feedback-timing.ts";
 import { nextSheetFocus, type SheetFocusState } from "../src/lib/journey/sheet-focus.ts";
 import ts from "typescript";
@@ -70,7 +71,7 @@ function sheetLifecycle(source: string) {
     const arm = find("useCallback", "target.current = performance.now()");
     const receipt = find("useEffect", "remaining.current = DWELL_BET_RECEIPT_MS");
     const viewport = find("useEffect", "const resizeSheetViewport");
-    const announcement = find("useEffect", "lastFrame.current !== frame.frame");
+    const announcement = find("useEffect", "lastFrame.current !== spoken");
     let clock = 100, nextTimer = 1, closed = 0, armed = 0, watched = 0;
     const timers = new Map<number, { at: number; callback: () => void }>();
     const target = { current: null as number | null }, remaining = { current: DWELL_BET_RECEIPT_MS }, closeTimer = { current: null as number | null };
@@ -134,9 +135,22 @@ function sheetLifecycle(source: string) {
     const live: string[] = [];
     runCallback(announcement.body, { open: false, setLive: (value: string) => live.push(value) })();
     const liveClosed = /\[open, props\.frame,/.test(announcement.dependencies) && live.length === 1 && live[0] === "";
-    return { receiptCancelled, viewportClosed, liveClosed, unliftedQuiet };
+
+    // A pending deposit's age band is spoken once when it arrives (fresh, then long, then late with its offer to bet
+    // what is already there), never again within a band: the actual effect, run across five frames.
+    const t = dict.en as unknown as Dict, spokenLive: string[] = [], lastSpoken = { current: null as string | null }, wasUp = { current: false };
+    const band = (b: "fresh" | "long" | "late") => ({ frame: "pending", pending: { band: b,
+      title: b === "late" ? { key: "journey.lowPendingLateTitle" } : { key: "journey.lowPendingTitle", vars: { amount: 1_000 } },
+      body: { key: b === "late" ? "journey.lowPendingLateBody" : b === "long" ? "journey.lowPendingWaitBody" : "common.depositPendingBody" },
+      betInstead: b === "late" ? { stake: 1_200 } : null } });
+    for (const b of ["fresh", "fresh", "long", "long", "late"] as const) runCallback(announcement.body, { open: true, props: { frame: band(b), estimateUpdated: false },
+      lastFrame: lastSpoken, wasUpdated: wasUp, setLive: (value: string) => spokenLive.push(value), t, locale: "en", receiptId: null, nowMs: 0, sheetLineText, fill, formatTzs })();
+    const said = (b: "fresh" | "long" | "late") => { const f = band(b).pending as { title: SS.SheetLine; body: SS.SheetLine; betInstead: { stake: number } | null };
+      return `${sheetLineText(t, "en", f.title, 0)}. ${sheetLineText(t, "en", f.body, 0)}` + (f.betInstead ? ` ${fill(t.journey.lowBetInstead, { amount: formatTzs(f.betInstead.stake) })}` : ""); };
+    const bandsSpoken = JSON.stringify(spokenLive) === JSON.stringify([said("fresh"), said("long"), said("late")]) && said("late").includes(formatTzs(1_200));
+    return { receiptCancelled, viewportClosed, liveClosed, unliftedQuiet, bandsSpoken };
   } catch {
-    return { receiptCancelled: false, viewportClosed: false, liveClosed: false, unliftedQuiet: false };
+    return { receiptCancelled: false, viewportClosed: false, liveClosed: false, unliftedQuiet: false, bandsSpoken: false };
   }
 }
 
@@ -882,6 +896,8 @@ function run(impl: Impl, log: (l: string) => void): string[] {
       && /open\?: boolean/.test(sheetSrc) && sheetSrc.includes("const open = props.open ?? true;")
       && sheetSrc.includes("openRef.current = open;") && /<Modal open=\{open\}/.test(sheetSrc)
       && /\{open && <p className="sr-only" aria-live="polite"/.test(sheetSrc), j(lifecycle));
+  ok("8.live-bands · a pending deposit's age band is announced once when it arrives — fresh, long, then late with its offer to bet what is already there — never again within a band",
+    lifecycle.bandsSpoken, j(lifecycle));
   ok("8.viewport-quiet · an unlifted sheet only removes its keyboard properties: no inherited custom property is written onto the panel, which restyled the whole sheet inside the opening tap (A21)",
     lifecycle.unliftedQuiet && /translate: 0 calc\(-1 \* var\(--bsheet-keyboard-lift, 0px\)\)/.test(impl.src.css)
       && /var\(--bsheet-visible-height, 100dvh\)/.test(impl.src.css), j(lifecycle));
@@ -976,6 +992,8 @@ if (!PROVE_RED) {
     { name: "the rung written after the first read (an extra style pass inside the tap)", expect: /^9\.figure-fit /, impl: withSrc({ parts: SOURCES.parts.replace("if (element.style.fontSize !== fontSize) element.style.fontSize = fontSize;", "").replace("const room = element.getBoundingClientRect().width;", "const room = element.getBoundingClientRect().width; if (element.style.fontSize !== fontSize) element.style.fontSize = fontSize;") }) },
     { name: "padding on the figure shrinks the room its drawn box reports", expect: /^9\.figure-fit /, impl: withSrc({ css: SOURCES.css.replace(".kp-bsheet__estimate-figure { min-width: 0;", ".kp-bsheet__estimate-figure { padding-inline: var(--sp-2); min-width: 0;") }) },
     { name: "a size transition on the figure corrupts the in-place measurement", expect: /^9\.figure-fit /, impl: withSrc({ css: SOURCES.css.replace(".kp-bsheet__estimate-figure { min-width: 0;", ".kp-bsheet__estimate-figure { transition: font-size var(--t-quick); min-width: 0;") }) },
+    { name: "the live region keyed by the frame alone (the long and late bands are never spoken)", expect: /^8\.live-bands /, impl: withSrc({ sheet: SOURCES.sheet.replace('const spoken = frame.pending ? `${frame.frame}:${frame.pending.band}` : frame.frame;', "const spoken = frame.frame;") }) },
+    { name: "the late band's offer to bet what is already there is left out of what is spoken", expect: /^8\.live-bands /, impl: withSrc({ sheet: SOURCES.sheet.replace("(frame.pending.betInstead ? ", "(false ? ") }) },
     { name: "an unlifted open writes the keyboard lift onto the panel (a whole-sheet restyle inside the tap)", expect: /^8\.viewport-quiet /, impl: withSrc({ sheet: SOURCES.sheet.replace('} else {\n        panel?.style.removeProperty("--bsheet-keyboard-lift");', '} else {\n        panel?.style.setProperty("--bsheet-keyboard-lift", "0px");') }) },
     { name: "the panel's lift loses its stylesheet fallback", expect: /^8\.viewport-quiet /, impl: withSrc({ css: SOURCES.css.replace("var(--bsheet-keyboard-lift, 0px)", "var(--bsheet-keyboard-lift)") }) },
     { name: "the iOS zoom rule shrinks the xl stake back to sixteen", expect: /^9\.figure-fit /, impl: withSrc({ css: SOURCES.css.replace('input[data-input-size="xl"]:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]) { font-size: var(--type-h2) !important; }', '') }) },

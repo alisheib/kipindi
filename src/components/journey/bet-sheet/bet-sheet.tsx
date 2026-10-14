@@ -229,15 +229,20 @@ export function BetSheet(props: BetSheetProps) {
   useEffect(() => {
     if (!open) { setLive(""); return; }
     const frame = props.frame;
-    const moved = lastFrame.current !== frame.frame;
+    // A pending deposit's age band is spoken as a frame of its own: the long and late words (and the late band's offer
+    // to bet what is already there) are announced once when the band arrives, never on the ticks within it. Keyed by
+    // the frame alone, a listener heard only the fresh words for the whole wait (S8 pending-age drive, 2026-10-14).
+    const spoken = frame.pending ? `${frame.frame}:${frame.pending.band}` : frame.frame;
+    const moved = lastFrame.current !== spoken;
     const updated = props.estimateUpdated && !wasUpdated.current;
-    lastFrame.current = frame.frame; wasUpdated.current = props.estimateUpdated;
+    lastFrame.current = spoken; wasUpdated.current = props.estimateUpdated;
     if (!moved && !updated) return;
     let message = "";
     if (frame.frame === "receipt") message = `${t.common.betPlacedEyebrow}. ${t.common.ticket}: ${receiptId ?? ""}.`;
     else if (frame.low) message = t.journey.lowTitle;
     else if (frame.lossRoom) message = sheetLineText(t, locale, { key: "journey.lowLossRoom", vars: { amount: frame.lossRoom.headroom } }, nowMs);
-    else if (frame.pending) message = `${sheetLineText(t, locale, frame.pending.title, nowMs)}. ${sheetLineText(t, locale, frame.pending.body, nowMs)}`;
+    else if (frame.pending) message = `${sheetLineText(t, locale, frame.pending.title, nowMs)}. ${sheetLineText(t, locale, frame.pending.body, nowMs)}`
+      + (frame.pending.betInstead ? ` ${fill(t.journey.lowBetInstead, { amount: formatTzs(frame.pending.betInstead.stake) })}` : "");
     else if (updated && frame.estimate?.payout !== null && frame.estimate?.payout !== undefined) message = fill(t.journey.estimateUpdatedLive, { amount: formatTzs(frame.estimate.payout), mult: frame.estimate.multText ?? "—" });
     setLive(message);
   }, [open, props.frame, props.estimateUpdated, t, locale, receiptId, nowMs]);
