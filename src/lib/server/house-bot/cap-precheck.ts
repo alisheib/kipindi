@@ -14,7 +14,7 @@
  * decided at fire, and TARGET_ONCE reads the live target at fire (N2 §4 step 7).
  */
 import { eatDayKey } from "@/lib/house-bot/clock";
-import { capEngineCode, type CapCode, type EngineCode } from "@/lib/house-bot/constants";
+import { TURN_BUSY_HORIZON_SEC, capEngineCode, type CapCode, type EngineCode } from "@/lib/house-bot/constants";
 import { db } from "../store";
 import { houseBotIntentStore, houseSeamStore, type StoredHouseBot, type StoredHouseBotControl } from "../house-bot-dal";
 import { houseDayBook, houseOpenExposure } from "./book";
@@ -74,6 +74,125 @@ export function capPrecheck(f: CapFacts, stake: number): EngineCode | null {
     if (c.gCapStaffChosenPerDay == null || f.staffChosen.globalCount >= c.gCapStaffChosenPerDay) return hit("GLOBAL_STAFF_CHOSEN_PER_DAY");
     if (over(c.gCapStaffChosenDailyTzs, f.staffChosen.globalTzs + stake)) return hit("GLOBAL_STAFF_CHOSEN_DAILY_STAKE");
   }
+  return null;
+}
+
+/* ═══ N3 · the turn order's facts, and the check at the moment the stake is due ═══════════════════ */
+
+/**
+ * One account's rate facts for a pass: its placed stakes (the seam's own rolling windows) and what it already has
+ * queued. The queued figures move as the pass gives the account more rows (`noteQueued`).
+ */
+export type RateFacts = {
+  lastPlacedAt: string | null;
+  placedLastHour: number;
+  placedLastDay: number;
+  liveCount: number;
+  liveStakeTzs: number;
+  /** The soonest due time among its queued rows — the draw's busy term (`busyAtLoad`). */
+  minQueuedDueAt: string | null;
+  /** The latest due time among its queued rows — with the soonest, `capAtDue`'s minimum-gap term. */
+  maxQueuedDueAt: string | null;
+};
+
+const blankRates = (): RateFacts => ({ lastPlacedAt: null, placedLastHour: 0, placedLastDay: 0, liveCount: 0, liveStakeTzs: 0, minQueuedDueAt: null, maxQueuedDueAt: null });
+
+/**
+ * The whole roster's rate facts in TWO statements (never a per-account loop — ruling 351's shape): `botRateUsage`
+ * for every account, then `liveSummaryByBot`. An account absent from both reads gets zeros (`rateFactsFor`).
+ */
+export async function loadRosterRates(): Promise<Map<string, RateFacts>> {
+  const out = new Map<string, RateFacts>();
+  for (const r of await houseSeamStore.botRateUsage({ houseBotId: null })) {
+    out.set(r.houseBotId, { ...blankRates(), lastPlacedAt: r.lastPlacedAt, placedLastHour: r.placedLastHour, placedLastDay: r.placedLastDay });
+  }
+  for (const l of await houseBotIntentStore.liveSummaryByBot()) {
+    out.set(l.houseBotId, { ...(out.get(l.houseBotId) ?? blankRates()), liveCount: l.count, liveStakeTzs: l.stakeTzs, minQueuedDueAt: l.minDueAt, maxQueuedDueAt: l.maxDueAt });
+  }
+  return out;
+}
+
+/**
+ * These facts with one account's own queued rows taken out (N3 review finding 4) — for the trigger, which no longer
+ * counts that account's DEAD openers (a queued opener on a market that now holds money can never place) against it:
+ * neither their stake on the floor, their count on the rate, nor their due time on the gap. When the removed rows held
+ * the soonest or latest due time, that bound is dropped rather than guessed — the seam still measures the gap at fire.
+ */
+export function withoutQueued(rates: RateFacts, rows: ReadonlyArray<{ stakeTzs: number; dueAt: string }>): RateFacts {
+  if (rows.length === 0) return rates;
+  const dues = new Set(rows.map((r) => Date.parse(r.dueAt)));
+  const count = Math.max(0, rates.liveCount - rows.length);
+  return {
+    ...rates,
+    liveCount: count,
+    liveStakeTzs: Math.max(0, rates.liveStakeTzs - rows.reduce((s, r) => s + r.stakeTzs, 0)),
+    minQueuedDueAt: count === 0 || (rates.minQueuedDueAt != null && dues.has(Date.parse(rates.minQueuedDueAt))) ? null : rates.minQueuedDueAt,
+    maxQueuedDueAt: count === 0 || (rates.maxQueuedDueAt != null && dues.has(Date.parse(rates.maxQueuedDueAt))) ? null : rates.maxQueuedDueAt,
+  };
+}
+
+/** This account's facts from a roster read — zeros when it has never staked and has nothing queued. */
+export const rateFactsFor = (roster: ReadonlyMap<string, RateFacts>, botId: string): RateFacts => ({ ...(roster.get(botId) ?? blankRates()) });
+
+/**
+ * The draw's busy term at load (N3): the SOONEST queued due time, when it falls within `TURN_BUSY_HORIZON_SEC` of now
+ * — a stake about to be placed makes its account busy (weight 1 until it is due). A row due further ahead, a poll's
+ * fill queued 25 minutes out, makes it busy for nothing: holding such an account at the back of every draw until then
+ * was the very starvation N3 removes (review finding 3). Within a pass, `markBusy` moves it to each new row's due time.
+ */
+export function busyAtLoad(rates: RateFacts, nowMs: number): string | null {
+  if (rates.minQueuedDueAt == null) return null;
+  return Date.parse(rates.minQueuedDueAt) <= nowMs + TURN_BUSY_HORIZON_SEC * 1000 ? rates.minQueuedDueAt : null;
+}
+
+/** A pass queued another row on this account (N3): its stake still has to come out of the wallet, and it counts. */
+export function noteQueued(rates: RateFacts, row: { stakeTzs: number; dueAt: string }): void {
+  rates.liveCount += 1;
+  rates.liveStakeTzs += row.stakeTzs;
+  if (rates.minQueuedDueAt == null || Date.parse(row.dueAt) < Date.parse(rates.minQueuedDueAt)) rates.minQueuedDueAt = row.dueAt;
+  if (rates.maxQueuedDueAt == null || Date.parse(row.dueAt) > Date.parse(rates.maxQueuedDueAt)) rates.maxQueuedDueAt = row.dueAt;
+}
+
+/**
+ * ⭐ WOULD THE SEAM REFUSE THIS ROW WHEN IT IS DUE? (N3, Ali 2026-10-14) — the account-owned refusals `capPrecheck`
+ * cannot see, because it tests the smallest stake NOW and leaves the rate caps out (ruling 94). Measured on production
+ * over 7 days: 282 rounds lost at fire to CAP_BALANCE_FLOOR and 126 to CAP_MIN_GAP — each one planned onto an account
+ * that was always going to be refused, while another could have taken it.
+ *   · the balance floor at the row's OWN stake, less what the account already has queued;
+ *   · the minimum gap — refused only where the SEAM would refuse it: the seam answers MIN_GAP with an `until`, and the
+ *     mapper DEFERS the row to it when that is before the row's `staleAt` (N1 §4.3). So the row is refused only when
+ *     its earliest free time — the later of its last placed stake + gap and its latest queued stake due no later than
+ *     it + gap — is at or after `staleAt`. A queued stake due AFTER this row is that row's own gap to keep, at its fire.
+ *     ⛔ Refusing on the bare gap, as this first did, threw away the deferral: a player's one reaction
+ *     (`hbi_counter_anchor_uq`) was lost for good where the seam would have placed it a few seconds late (review
+ *     finding 1, 2026-10-14);
+ *   · the hourly and daily rate, counting its queued rows (the seam gives those no `until`, so it never defers them).
+ * In the seam's own order (BALANCE_FLOOR, then MIN_GAP, PER_HOUR, PER_DAY). A cap that is not set refuses, as there.
+ * ⛔ THE SEAM STAYS THE AUTHORITY (I6). This only keeps a row off an account the seam would refuse; a refusal here is
+ * a planning refusal, and the planner offers the market to the next account in the same pass.
+ */
+export function capAtDue(
+  bot: Pick<StoredHouseBot, "balanceFloorTzs" | "freqMinGapSec" | "freqMaxPerHour" | "freqMaxPerDay">,
+  f: { balance: number; rates: RateFacts },
+  row: { stakeTzs: number; dueAt: string; staleAt: string },
+): EngineCode | null {
+  const hit = (code: CapCode): EngineCode => capEngineCode(code);
+  if (bot.balanceFloorTzs == null || f.balance - f.rates.liveStakeTzs - row.stakeTzs < bot.balanceFloorTzs) return hit("BALANCE_FLOOR");
+  if (bot.freqMinGapSec == null) return hit("MIN_GAP");
+  const dueMs = Date.parse(row.dueAt);
+  const gapMs = bot.freqMinGapSec * 1000;
+  // The latest queued stake due no later than this row: the latest if it qualifies, else the soonest if that does.
+  const max = f.rates.maxQueuedDueAt == null ? null : Date.parse(f.rates.maxQueuedDueAt);
+  const min = f.rates.minQueuedDueAt == null ? null : Date.parse(f.rates.minQueuedDueAt);
+  const queuedBefore = max != null && max <= dueMs ? max : min != null && min <= dueMs ? min : null;
+  const freeAtMs = Math.max(
+    dueMs,
+    f.rates.lastPlacedAt != null ? Date.parse(f.rates.lastPlacedAt) + gapMs : Number.NEGATIVE_INFINITY,
+    queuedBefore != null ? queuedBefore + gapMs : Number.NEGATIVE_INFINITY,
+  );
+  if (!(freeAtMs < Date.parse(row.staleAt))) return hit("MIN_GAP");
+  if (bot.freqMaxPerHour == null || f.rates.placedLastHour + f.rates.liveCount >= bot.freqMaxPerHour) return hit("PER_HOUR");
+  if (bot.freqMaxPerDay == null || f.rates.placedLastDay + f.rates.liveCount >= bot.freqMaxPerDay) return hit("PER_DAY");
   return null;
 }
 

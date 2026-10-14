@@ -1589,6 +1589,14 @@ export interface HouseBotIntentStore {
   findByAnchor(kind: IntentKind, anchorKey: string, tx?: HouseTx): Promise<StoredHouseBotIntent | null>;
   /** PENDING or CLAIMED intents on a market (MARKET_HELD). */
   listLiveOnMarket(marketId: string, tx?: HouseTx): Promise<StoredHouseBotIntent[]>;
+  /**
+   * ⭐ N3 · WHAT EACH ACCOUNT ALREADY HAS QUEUED — PENDING or CLAIMED rows per account: how many, their stake, and the
+   * latest due time — for the whole desk in ONE statement, accounts in id order; an account with nothing queued is
+   * absent. The turn order reads the due time (an account with a stake due in a minute is busy), and the planner's
+   * at-due check reads the rest (a queued stake still has to come out of the wallet, and still counts toward the
+   * hourly and daily rate). Plain SELECT, no row lock.
+   */
+  liveSummaryByBot(tx?: HouseTx): Promise<LiveIntentSummary[]>;
   countLiveForTarget(targetId: string, tx?: HouseTx): Promise<number>;
   countPlacedForTarget(targetId: string, tx?: HouseTx): Promise<number>;
   /**
@@ -1784,6 +1792,9 @@ export interface HouseBookStore {
 
 /** One bot's PLACED rows in a window (hourly summaries, C4-SPEC ruling 80). Staff-chosen = MANUAL or targeted. */
 export type PlacedInWindow = { houseBotId: string; count: number; stakeTzs: number; staffChosenCount: number; staffChosenTzs: number };
+
+/** One account's queued (PENDING or CLAIMED) rows, summed, with the soonest and the latest due time (`liveSummaryByBot`, N3). */
+export type LiveIntentSummary = { houseBotId: string; count: number; stakeTzs: number; minDueAt: string | null; maxDueAt: string | null };
 
 export type PlannableMarketsInput = {
   kind: "FILL" | "OPENER";
@@ -2787,6 +2798,19 @@ const memoryHouseBotIntents: HouseBotIntentStore = {
   async listLiveOnMarket(marketId) {
     return [...memIntents.values()].filter((i) => i.marketId === marketId && LIVE_STATUSES.includes(i.status))
       .sort((a, b) => ms(a.createdAt) - ms(b.createdAt)).map(clone);
+  },
+  async liveSummaryByBot() {
+    const acc = new Map<string, LiveIntentSummary>();
+    for (const i of memIntents.values()) {
+      if (!LIVE_STATUSES.includes(i.status)) continue;
+      const s = acc.get(i.houseBotId) ?? { houseBotId: i.houseBotId, count: 0, stakeTzs: 0, minDueAt: null, maxDueAt: null };
+      s.count += 1;
+      s.stakeTzs += i.stakeTzs;
+      if (s.minDueAt == null || ms(i.dueAt) < ms(s.minDueAt)) s.minDueAt = i.dueAt;
+      if (s.maxDueAt == null || ms(i.dueAt) > ms(s.maxDueAt)) s.maxDueAt = i.dueAt;
+      acc.set(i.houseBotId, s);
+    }
+    return [...acc.values()].sort((a, b) => (a.houseBotId < b.houseBotId ? -1 : a.houseBotId > b.houseBotId ? 1 : 0));
   },
   async countLiveForTarget(targetId) {
     return [...memIntents.values()].filter((i) => i.targetId === targetId && LIVE_STATUSES.includes(i.status)).length;
@@ -4113,6 +4137,16 @@ const prismaHouseBotIntents: HouseBotIntentStore = {
   async listLiveOnMarket(marketId, tx) {
     const rows = await sql(tx, `SELECT * FROM "HouseBotIntent" WHERE "marketId" = $1::text AND ${LIVE_SQL} ORDER BY "createdAt", "id"`, [marketId]);
     return rows.map(toHouseBotIntent);
+  },
+  async liveSummaryByBot(tx) {
+    // One GROUP BY over the live rows, served by `HouseBotIntent_status_dueAt_idx`.
+    const rows = await sql(tx, `SELECT "houseBotId", count(*)::int AS "n", coalesce(sum("stakeTzs"), 0)::text AS "tzs",`
+      + ` min("dueAt") AS "soonest", max("dueAt") AS "due"`
+      + ` FROM "HouseBotIntent" WHERE ${LIVE_SQL} GROUP BY "houseBotId" ORDER BY "houseBotId"`, []);
+    return rows.map((r) => ({
+      houseBotId: String(r.houseBotId), count: Number(r.n), stakeTzs: Number(r.tzs),
+      minDueAt: r.soonest == null ? null : iso(r.soonest as Date), maxDueAt: r.due == null ? null : iso(r.due as Date),
+    }));
   },
   async countLiveForTarget(targetId, tx) {
     const rows = await sql(tx, `SELECT count(*)::int AS "n" FROM "HouseBotIntent" WHERE "targetId" = $1::text AND ${LIVE_SQL}`, [targetId]);

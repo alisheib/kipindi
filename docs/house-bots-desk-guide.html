@@ -88,6 +88,52 @@ completely healthy — Active, funded, limits set — and never place a bet. Alw
 <p>Counter and Fill both need players to have bet already — on a quiet market they correctly do nothing. Opener is
 the mode that starts things off, so an empty desk with only Counter and Fill enabled is working exactly as told.</p></div>
 
+<h3>How the desk shares markets between accounts</h3>
+<p>Only one account takes part in a market at a time. When several accounts could take the same market, the desk
+<b>draws one at random</b>. The draw is weighted: an account that has waited longer since its last bet is more likely
+to be drawn, so no account is ever left out, and nobody watching the markets can tell which account will bet next.</p>
+<table>
+  <thead><tr><th style="width:24%">What is random</th><th>How</th></tr></thead>
+  <tbody>
+    <tr><td><b>Which account bets</b></td><td>Drawn for every market, weighted by how long each account has waited.
+      An account that has just been given a market is very unlikely to be drawn again straight away.</td></tr>
+    <tr><td><b>An Opener's side</b></td><td>A fair coin flip, made once for each market and never repeated, so it
+      cannot be re-drawn until a preferred side comes up.</td></tr>
+    <tr><td><b>Timing and amounts</b></td><td>Every wait before a bet is drawn from the range you set, amounts vary
+      by the jitter you set, and a Counter answers only as often as its react chance allows.</td></tr>
+  </tbody>
+</table>
+<p>A Counter always takes the side opposite the player it answers, and a Fill always tops up the thinner side —
+that is what they are for. None of this tells anyone anything about the result: the desk never sees a result before
+a market settles.</p>
+<div class="box good"><b class="lead">"Passed on" — a market handed to the next account</b>
+<p>If the account drawn for a market cannot bet when the moment comes — its own balance floor, its gap between bets,
+its schedule, or another of its own limits stops it — the market is not lost. The desk passes it to another account
+that has not tried it yet (up to four accounts in all). The activity tables show the first account's row as
+<b>Passed on</b>. It is normal and needs no action; if one account is passed over often, look at its limits and
+its balance.</p></div>
+
+<h3>Recommended starting settings for Up &amp; Down</h3>
+<p>Up &amp; Down rounds are short, and the price the desk decides on goes stale within a few minutes, so these values
+keep the desk inside the round:</p>
+<table>
+  <thead><tr><th style="width:38%">Setting</th><th style="width:22%">Set it to</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr><td><b>Opener wait, maximum</b> (Rules)</td><td>45 seconds</td><td>A longer wait lets the price go stale
+      before the bet, and the bet is then refused. The desk now shortens the wait by itself when it must.</td></tr>
+    <tr><td><b>Gap between bets</b> (Rules)</td><td>20–30 seconds</td><td>Short enough for an account to take
+      part in several rounds a minute across chains, long enough to look natural.</td></tr>
+    <tr><td><b>Bets per market</b> (Rules)</td><td>2 or more</td><td>Room for an Opener and a later answer to a
+      player on the same round.</td></tr>
+    <tr><td><b>Bets per minute</b> (Limits)</td><td>12</td><td>Most rounds open together on the minute. A lower
+      limit makes the desk skip rounds at those moments.</td></tr>
+    <tr><td><b>Bets per day</b> (Limits)</td><td>1,000</td><td>Counted over the last 24 hours, not since midnight.
+      Below about 500 the desk runs out part-way through the day.</td></tr>
+    <tr><td><b>Balance</b> (each holder)</td><td>Well above the balance floor</td><td>An account that would go below
+      its floor is passed over until it is topped up.</td></tr>
+  </tbody>
+</table>
+
 <h2>3 · What each status means</h2>
 <table>
   <thead><tr><th style="width:22%">Status</th><th>Meaning</th><th style="width:34%">What to do</th></tr></thead>
@@ -203,6 +249,9 @@ the way it does when it decides whether to bet, and tells you in plain words wha
 "51 markets looked at (25 to open and 26 to fill), and this account would stake on 1 of them right now", or the
 reasons it refused, commonest first. It changes nothing and stakes nothing; it only reports. If you have changed
 a setting, press it again and the answer changes with it.</p>
+<p>It may also answer that the account <b>could stake, but another account is more likely to be drawn first</b>.
+That is not a fault: markets are drawn at random between the accounts that can take them, the longest-waiting most
+likely, so this account gets its share of the next markets that open. Nothing needs changing.</p>
 <p>The list below is what to check if that answer does not make the cause obvious. The account's own row on the
 roster, and the panel beside the Rules form, will usually name the reason too.</p>
 <table>
@@ -245,6 +294,9 @@ the ordinary money reports count house accounts as normal players, which is deli
       stake comes back as a refund. Neither a win nor a loss.</td></tr>
   </tbody>
 </table>
+<p>A row that never became a bet shows why instead: <b>Skipped</b> or <b>Expired</b> (the moment passed or the
+market changed), <b>Cancelled</b> (an officer or a stop cancelled it), or <b>Passed on</b> (the account's own limits
+stopped it, and the market went to another account — see section 2).</p>
 <p>The desk's <b>Activity</b> tab shows the same word in its <b>Outcome</b> column. Each row there is one round:
 <b>Opening</b> is what the account held before that stake left, <b>Stake</b> is the bet, and <b>Closing</b> is what
 it held right after — so Opening less Stake is always Closing. A later payout or refund does not change that row.</p>

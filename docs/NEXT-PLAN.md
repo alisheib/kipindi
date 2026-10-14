@@ -100,6 +100,21 @@ System"* v1.0, **made in coordination with the Gaming Board** (ruling in `COMPLI
 | **Where** | A worktree off `main` (`C:\kipindi-tax`, branch `tax-report`, on the laptop; `F:\kipindi-tax`, branch `tax-report-edits`, on OMEGA-COMPILE01) → `main` |
 | **Next** | Read [`TAX-REPORT.md`](TAX-REPORT.md) §0 — never this cell |
 
+## ▶ 0h · HOUSE BOTS — MANY ACCOUNTS, BOTH SIDES OF THE GAME — `HOUSE-BOTS-N3` · 🔨 **OPENED 2026-10-14 (Ali) · Phase 1 BUILT, release pending**
+
+Ali, 2026-10-14: *"find a way to allow as much as we want bots to work with each other, even bet against each other …
+so on bot blocks in queue the bot after it … the purpose of bots is adding real traffic on both sides of the game"*.
+His rulings the same day: desk-against-desk staking within a daily budget with one stop switch; the desk may fetch its
+own fresh price; more than 20 accounts (`COMPLIANCE-DECISIONS.md` § "2026-10-14 · Desk accounts are drawn at random for each market, may stake
+against each other within a daily budget, may fetch their own price, and the roster may pass 20").
+
+| | |
+|---|---|
+| **Why** | Measured on production over 7 days: 2,278 Up & Down rounds held house money on ONE side only (every stake refunded, not one two-sided); 1,111 rounds planned and then lost at fire, the round hidden from every other account; one account starved for fifteen days by the old order; 0 of 507 player stakes answered |
+| **Shape** | Phase 0 settings Ali saves · **Phase 1 the queue (N3 — the weighted random draw, hand-off, at-due check, price window, the dead opener, the panel)** · Phase 2 the desk's own price (A15 amended) · Phase 3 one house migration (the desk-against-desk budget and stop switch, a PAIR kind, a counter hand-off, a roster past 20) · Phase 4 two-sided play (answer a player from another account; pair empty rounds within the budget) |
+| **Where** | Worktree `F:\kipindi-house-bots-mb`, branch `house-bots-multibot`, off `origin/main` → `main` (on OMEGA-COMPILE01; heavy jobs through `F:/kipindi-locks/heavy-node.lock`) |
+| **Next** | Read [`plans/house-bots/RESUME-HERE.md`](../plans/house-bots/RESUME-HERE.md) §0e — never this cell |
+
 ## 0e · MONEY DOORS — `MONEY-DOORS` · 🏁 **DONE 2026-10-07, LIVE** · Phase A `c9b17053` (14:46 EAT) · Phase B `012cccbc` (17:34 EAT)
 
 Ali, 2026-10-07: *"for deposits. even if no mail was there remove the input to verify mail to deposit. its fine only

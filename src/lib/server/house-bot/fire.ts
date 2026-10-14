@@ -24,7 +24,7 @@ import { inAdmission } from "../admission";
 import { positionStore } from "../market-dal";
 import { placeHouseBet, stakeBoundsForMarket } from "../market-service";
 import { houseBotIntentStore, houseBotRuntimeStore, houseSeamStore, pressStore, targetStore, type StoredHouseBotIntent } from "../house-bot-dal";
-import { applyOutcome, boxAccount, stopBot, type AppliedOutcome, type BetAnswer, type EngineAlerts } from "./outcomes";
+import { applyOutcome, boxAccount, handoffStatus, stopBot, type AppliedOutcome, type BetAnswer, type EngineAlerts } from "./outcomes";
 import { maintenanceOn, readBotAndHolder, readControl } from "./control";
 import { engineState } from "./engine";
 import { infoBlackout } from "./blackout";
@@ -280,9 +280,11 @@ async function apply(intent: StoredHouseBotIntent, deps: FireDeps, answer: BetAn
 }
 
 async function finish(intent: StoredHouseBotIntent, deps: FireDeps, status: "SKIPPED" | "EXPIRED" | "CANCELLED", code: EngineCode): Promise<FireResult> {
-  const written = await houseBotIntentStore.finish(intent.id, deps.me, { status, reasonCode: code });
+  // N3 · a refusal that belongs to this row's own account hands an automatic FILL or OPENER on (`handoffStatus`).
+  const finalStatus = handoffStatus(intent, status, code);
+  const written = await houseBotIntentStore.finish(intent.id, deps.me, { status: finalStatus, reasonCode: code });
   await closePress(intent);
-  return { kind: "finished", status, code, written };
+  return { kind: "finished", status: finalStatus, code, written };
 }
 
 /** Back to PENDING with the MON-10 backoff, never throwing: a claim that cannot be handed back expires. */

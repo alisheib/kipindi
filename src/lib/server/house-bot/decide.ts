@@ -17,8 +17,11 @@ import {
   LOCK_MARGIN_MS,
   MIN_TIME_TO_CUTOFF_FLOOR_SEC,
   STALE_AFTER_SEC,
+  TURN_ROLL_SCALE,
+  TURN_WEIGHT_MAX_SEC,
   UD_CLOSENESS_FLOOR_BPS,
   UD_OBSERVATION_MAX_AGE_SEC,
+  UD_PRICE_FIRE_MARGIN_SEC,
   UD_VENDOR_BAR_MAX_AGE_SEC,
   type EngineCode,
 } from "@/lib/house-bot/constants";
@@ -57,6 +60,12 @@ export type DecideBot = {
   capOpenExposureTzs: number | null;
   openExposure: number;
   lastPlacedAt: string | null;
+  /**
+   * The latest `dueAt` among this account's queued (PENDING or CLAIMED) rows, or null — the moment it is next busy
+   * (N3). `orderBots` reads it beside `lastPlacedAt`, and a pass moves it forward each time it gives the account a
+   * row, so one pass shares its markets out instead of queueing them all on one account.
+   */
+  busyUntil?: string | null;
   /** Runtime `bot:<id>.scopeFrom` — the Start instant (A11). */
   scopeFrom: string | null;
   /** Another bot holds this market, or this bot already has a live intent on it (PLAN §4.4, N1 §4.4). */
@@ -70,6 +79,14 @@ export type DecideBot = {
    * bot reaches its roll without one, so a caller that forgets fails loudly instead of silently reacting.
    */
   reactRoll?: number;
+  /**
+   * ⭐ N3 · THE TURN ROLL, in (0, 1], DRAWN BY THE CALLER — once per market for the planner, once per decision for the
+   * trigger (memoised like `reactRoll`, so a re-run after the flags load never reorders). With a roll on every account
+   * and an instant, `orderBots` draws the order at random, weighted by how long each account has waited (Ali,
+   * 2026-10-14: "prevent anyone from predicting"). Without rolls the order is deterministic, which is what the
+   * console's explaining walk and every pure case use.
+   */
+  turnRoll?: number;
 };
 
 export type DecideTarget = {
@@ -168,13 +185,67 @@ function clampStake(stake: number, bot: DecideBot, bounds: { min: number; max: n
 }
 
 /**
- * PLAN §4.4 bot choice: the lowest open-exposure share, then the least recent bet, then the id. A bot whose
- * exposure cap is not set sorts last — it cannot bet at all.
+ * An account's weight in the draw (N3): the seconds since it was last busy, held to [1, `TURN_WEIGHT_MAX_SEC`]. An
+ * account that has never been busy weighs the most; one just given a row (busy in the future) weighs 1 — still in the
+ * draw, rarely drawn.
  */
-export function orderBots<T extends Pick<DecideBot, "botId" | "openExposure" | "capOpenExposureTzs" | "lastPlacedAt">>(bots: readonly T[]): T[] {
+export function turnWeight(busyMs: number, nowMs: number): number {
+  const waitedSec = (nowMs - busyMs) / 1000;
+  return Number.isNaN(waitedSec) ? 1 : Math.min(TURN_WEIGHT_MAX_SEC, Math.max(1, waitedSec));
+}
+
+/** A turn roll in (0, 1] from a `randomInt`-shaped source (N3). One draw. */
+export const drawTurnRoll = (randomInt: RandomInt): number => randomInt(1, TURN_ROLL_SCALE) / TURN_ROLL_SCALE;
+
+/**
+ * The account choice (PLAN §4.4 as amended by N3, Ali 2026-10-14).
+ *
+ * ⭐ DRAWN AT RANDOM, WEIGHTED BY HOW LONG EACH ACCOUNT HAS WAITED — when the caller hands every account a `turnRoll`
+ * and the instant. The order is an Efraimidis–Spirakis weighted random permutation: key = −ln(roll) / weight, smallest
+ * first, so an account is drawn first with probability weight / Σ weights. Nobody watching the desk can tell which
+ * account bets next, and none can be starved: the longer one waits, the likelier it is drawn. Equal keys fall back to
+ * the deterministic order below — which is also what equal rolls (a case's injected minimum) produce throughout.
+ *
+ * Without rolls the order is deterministic: the account least recently busy first — busy being the later of its last
+ * placed stake and its latest queued row's due time — then the lowest open-exposure share, then the id. Either way an
+ * account whose exposure cap is not set sorts last — it cannot bet at all.
+ *
+ * ⛔ WHY THE EXPOSURE SHARE IS NO LONGER FIRST. It ranked by a figure that barely moves: open stakes on polls stay
+ * open for weeks, while Up & Down stakes settle in minutes. Measured on production over 1,595 opener decisions, one
+ * account holding six old poll stakes (3.5% of its cap, against the others' 0–0.8%) ranked LAST 1,593 times and first
+ * never — switched on, funded and correctly scoped, it placed nothing for fifteen days.
+ * ⛔ A ROLL ON SOME ACCOUNTS BUT NOT OTHERS IS A CALLER DEFECT AND THROWS — a silent mix would rank the rolled ones by
+ * chance and the rest by rule, which is no order at all.
+ */
+export function orderBots<T extends Pick<DecideBot, "botId" | "openExposure" | "capOpenExposureTzs" | "lastPlacedAt" | "busyUntil" | "turnRoll">>(bots: readonly T[], nowMs?: number): T[] {
   const share = (b: T) => (b.capOpenExposureTzs && b.capOpenExposureTzs > 0 ? b.openExposure / b.capOpenExposureTzs : Number.POSITIVE_INFINITY);
-  const last = (b: T) => (b.lastPlacedAt ? Date.parse(b.lastPlacedAt) : Number.NEGATIVE_INFINITY);
-  return [...bots].sort((a, b) => share(a) - share(b) || last(a) - last(b) || (a.botId < b.botId ? -1 : a.botId > b.botId ? 1 : 0));
+  const busy = (b: T) => Math.max(
+    b.lastPlacedAt ? Date.parse(b.lastPlacedAt) : Number.NEGATIVE_INFINITY,
+    b.busyUntil ? Date.parse(b.busyUntil) : Number.NEGATIVE_INFINITY,
+  );
+  const lastIfNoCap = (b: T) => (Number.isFinite(share(b)) ? 0 : 1);
+  const rolled = bots.filter((b) => typeof b.turnRoll === "number").length;
+  if (rolled > 0 && nowMs != null) {
+    if (rolled !== bots.length) throw new Error("house-bot decide: orderBots got a turn roll for some accounts and not others");
+    for (const b of bots) {
+      if (!(b.turnRoll! > 0 && b.turnRoll! <= 1)) throw new Error(`house-bot decide: a turn roll is drawn in (0, 1], not ${String(b.turnRoll)}`);
+    }
+    const key = (b: T) => -Math.log(b.turnRoll!) / turnWeight(busy(b), nowMs);
+    const byRule = (a: T, b: T) => busy(a) - busy(b) || share(a) - share(b) || (a.botId < b.botId ? -1 : a.botId > b.botId ? 1 : 0);
+    return [...bots].sort((a, b) => lastIfNoCap(a) - lastIfNoCap(b) || key(a) - key(b) || byRule(a, b));
+  }
+  // ⚠️ The no-cap account sorts last here too (review finding 6) — this is the order the console's walk reads.
+  return [...bots].sort((a, b) => lastIfNoCap(a) - lastIfNoCap(b) || busy(a) - busy(b) || share(a) - share(b) || (a.botId < b.botId ? -1 : a.botId > b.botId ? 1 : 0));
+}
+
+/**
+ * A pass gave `botId` a row due at `dueAt`: move its turn to the back (N3). The planner, the trigger and the console's
+ * explaining walk all call this, so all three share markets out the same way.
+ */
+export function markBusy(bots: ReadonlyArray<Pick<DecideBot, "botId" | "busyUntil">>, botId: string, dueAt: string): void {
+  const bot = bots.find((b) => b.botId === botId);
+  if (!bot) return;
+  if (!bot.busyUntil || Date.parse(dueAt) > Date.parse(bot.busyUntil)) (bot as { busyUntil?: string | null }).busyUntil = dueAt;
 }
 
 const productOf = (view: PublicMarketView): "MARKET" | "UPDOWN" => (view.productLine === "UPDOWN" ? "UPDOWN" : "MARKET");
@@ -255,7 +326,18 @@ export type CounterInput = {
  * One row per trigger: the first eligible candidate's reaction, or ONE SKIPPED row naming why none reacted
  * (PLAN §4.3), or no row when the stake is outside every scope (A11, A12).
  */
-export function decideCounter(input: CounterInput, deps: { randomInt: RandomInt }): DecideResult {
+export function decideCounter(
+  input: CounterInput,
+  deps: {
+    randomInt: RandomInt;
+    /**
+     * N3 · an account's own draws (its delay, its amount's jitter), for a caller that runs this decision AGAIN once the
+     * named account's flags load: handing each account its own replaying source means the row the at-due check judged
+     * is the row that gets written (review finding 2). Absent, every draw comes from `randomInt`, as before.
+     */
+    randomFor?: (botId: string) => RandomInt;
+  },
+): DecideResult {
   const { view, trigger } = input;
   const scope = scopeCode(view);
   if (scope) return { row: null, code: scope };
@@ -320,7 +402,7 @@ export function decideCounter(input: CounterInput, deps: { randomInt: RandomInt 
 
   // Filtered accounts still leave one visible row when some bot covers the market (PLAN §4.3).
   if (input.filtered) {
-    const bot = targetEligible?.bot ?? orderBots(inBotScope)[0];
+    const bot = targetEligible?.bot ?? orderBots(inBotScope, passNowMs)[0];
     return {
       row: base(bot, {
         reasonCode: input.filtered,
@@ -403,11 +485,13 @@ export function decideCounter(input: CounterInput, deps: { randomInt: RandomInt 
   }
 
   // N2 §4 step 2 (b) · scope bots in PLAN §4.4 order, excluding the target's bot.
-  const scopeBots = orderBots(inBotScope.filter((b) => b.botId !== targetEligible?.bot.botId));
+  // N3 · with the caller's turn rolls, drawn at random weighted by waiting time; without them, the deterministic order.
+  const scopeBots = orderBots(inBotScope.filter((b) => b.botId !== targetEligible?.bot.botId), passNowMs);
   let firstCode: { bot: DecideBot; code: EngineCode } | null = null;
   for (const bot of scopeBots) {
     const g = guards(bot);
-    const delaySec = deps.randomInt(bot.rules.counter.delayMinSec, bot.rules.counter.delayMaxSec);
+    const rnd = deps.randomFor?.(bot.botId) ?? deps.randomInt;
+    const delaySec = rnd(bot.rules.counter.delayMinSec, bot.rules.counter.delayMaxSec);
     const requestedMs = placedMs + delaySec * 1000;
     // PLAN F4 for the untargeted COUNTER: held to the exit close, NO lock margin (N1 §4.1).
     const dueMs = Math.max(requestedMs, exit.exitCloseAtMs);
@@ -432,7 +516,7 @@ export function decideCounter(input: CounterInput, deps: { randomInt: RandomInt 
     let stake = 0;
     let asked = 0;
     if (!code) {
-      asked = shapedAmount(bot.rules, trigger.stakeTzs, deps.randomInt);
+      asked = shapedAmount(bot.rules, trigger.stakeTzs, rnd);
       // PLAN F4: bot side + stake ≤ the trigger side's non-house pool; fire re-cuts on `lockedA15` (A15).
       const cut = input.pools[trigger.side].nonHouse - input.pools[botSide].raw;
       const clamped = clampStake(Math.min(asked, cut), bot, input.bounds);
@@ -595,16 +679,37 @@ export function planOpener(input: PlanInput & { openerSide: DecideSide }, deps: 
   if (input.globalScopeFrom == null || bot.scopeFrom == null) return { row: null, code: "BEFORE_SCOPE" }; // ruling 92
   const scopeFromMs = Math.max(ms(input.globalScopeFrom), ms(bot.scopeFrom));
   if (fromMs < scopeFromMs) return { row: null, code: "BEFORE_SCOPE" };
+  const passNowMs = ms(input.passNow);
+  /**
+   * ⭐ AN UP & DOWN OPENER FIRES WHILE ITS PRICE IS STILL FRESH (N3). Fire judges closeness AGAIN on the price as it
+   * is then (`fire.ts` step 14), and the only price the desk had was often already a minute and a half old when the
+   * round opened — so a delay drawn up to 90 s routinely carried it past its source's age limit: 669 rounds in a
+   * week were planned, then lost at fire as UD_STALE_PRICE, each one hidden from every other account.
+   * The latest due time is the moment the price would turn stale, less `UD_PRICE_FIRE_MARGIN_SEC`; the draw's
+   * maximum is held to it. A round whose EARLIEST due time already misses it is refused HERE, with no row written,
+   * so a fresher price can still open it on a later pass.
+   * ⛔ ONE DRAW, AS BEFORE. Only the draw's upper bound moves, so `runMarket`'s recorded-draw replay is unchanged;
+   * and the refusal keeps its place AFTER CUTOFF and closeness, so every earlier answer is the answer it was.
+   */
+  let udMaxDelaySec = r.opener.delayUdMaxSec;
+  let staleAtFire = false;
+  if (product === "UPDOWN" && input.price) {
+    const maxAge = input.price.source === "vendor_bar" ? UD_VENDOR_BAR_MAX_AGE_SEC : UD_OBSERVATION_MAX_AGE_SEC;
+    const latestDueMs = passNowMs + (maxAge - input.price.ageSec - UD_PRICE_FIRE_MARGIN_SEC) * 1000;
+    if (Math.max(fromMs + r.opener.delayUdMinSec * 1000, passNowMs) > latestDueMs) staleAtFire = true;
+    else udMaxDelaySec = Math.max(r.opener.delayUdMinSec, Math.min(r.opener.delayUdMaxSec, Math.floor((latestDueMs - fromMs) / 1000)));
+  }
   const delaySec = product === "UPDOWN"
-    ? deps.randomInt(r.opener.delayUdMinSec, r.opener.delayUdMaxSec)
+    ? deps.randomInt(r.opener.delayUdMinSec, udMaxDelaySec)
     : deps.randomInt(r.opener.delayPollsMinMin, r.opener.delayPollsMaxMin) * 60;
   const cutoffMs = ms(cutoffOf(view));
   const g = guardsFor(r, product);
   const deadlineMs = cutoffMs - g.minTimeToCutoffSec * 1000;
-  const dueMs = Math.max(fromMs + delaySec * 1000, ms(input.passNow));
+  const dueMs = Math.max(fromMs + delaySec * 1000, passNowMs);
   if (dueMs > deadlineMs) return { row: null, code: "CUTOFF" };
   const close = product === "UPDOWN" ? udCloseness(view, input.price, r.updown.closenessPct) : null;
   if (close) return { row: null, code: close };
+  if (staleAtFire) return { row: null, code: "UD_STALE_PRICE" };
   const guard = guardCode(bot, dueMs);
   if (guard) return { row: null, code: guard };
   /**

@@ -3906,6 +3906,33 @@ try {
     ok("1.344 · the total and the rows are scoped to THIS account — the second account's stake is in neither, so the count is a scoped count and not a table count",
       p1.feedTotal === 41 && !ids(p1).concat(ids(p2), ids(p3)).some((x) => x.endsWith(`|${formatTzs(7_000)}`)),
       j({ total: p1.feedTotal }));
+
+    /* ⭐ N3 (2026-10-14) · A HANDED-ON ROW IS NOT A CANCELLATION. The engine now finishes an automatic stake CANCELLED,
+       keeping its code, when its own account's limits refused it — so the market goes to the next account. Painted
+       with the claret "Cancelled" of an officer's cancel, hundreds a week would read as officer actions. Its own
+       account, so the panel fixture above is untouched. */
+    {
+      const n3 = await w.bot({});
+      const row = (id: string, o: Any) => ({
+        id, houseBotId: n3.botId, botUserId: n3.userId, kind: "FILL", anchorKey: `mkt_${id}`, marketId: `mkt_${id}`, productLine: "MARKET",
+        triggerPositionId: null, triggerUserId: null, targetId: null, requestedById: null, entryCondition: null, side: "NO",
+        dueAt: w.iso(-1_000), deadlineAt: w.iso(3_600_000), staleAt: w.iso(600_000), why: null, decision: {}, attempts: 0, transientAttempts: 0,
+        nextAttemptAt: null, claimedBy: null, claimedUntil: null, positionId: null, finishedAt: w.iso(-500), alertedAt: null, ...o,
+      } as Any);
+      await w.dal.houseBotIntentStore.insert(row("hbi_n3_handed", { status: "CANCELLED", reasonCode: "CAP_BALANCE_FLOOR", stakeTzs: 3_100 }));
+      await w.dal.houseBotIntentStore.insert(row("hbi_n3_officer", { status: "CANCELLED", reasonCode: "CANCELLED_BY_ADMIN", stakeTzs: 3_200 }));
+      await w.dal.houseBotIntentStore.insert(row("hbi_n3_skipped", { status: "SKIPPED", reasonCode: "CONDITION_GONE", stakeTzs: 3_300 }));
+      const n3View: Any = await GATEM.houseDetailForConsole(OFFICER, "/admin/desk", n3.botId, { tab: "activity" });
+      const byStake = (tzs: number) => (n3View?.feed ?? []).find((r: Any) => r.stake === formatTzs(tzs));
+      const handed = byStake(3_100), officer = byStake(3_200), skipped = byStake(3_300);
+      ok("1.N3a · a stake its own account's limits refused, handed on to the next account, reads \"Passed on\" in the slate tone of a row that did not place — never the claret \"Cancelled\"",
+        handed?.statusWord === "Passed on" && handed.statusChip === skipped?.statusChip && handed.statusChip !== officer?.statusChip,
+        j({ handed: handed && [handed.statusWord, handed.statusChip], skipped: skipped && skipped.statusChip, officer: officer && [officer.statusWord, officer.statusChip] }));
+      ok("1.N3b · CONTROL · an officer's own cancel still reads \"Cancelled\", claret — the hand-off word is not painted on every cancelled row",
+        officer?.statusWord === "Cancelled" && officer.statusChip !== skipped?.statusChip, j(officer));
+      // ⛔ The roster holds 20: give the slot back by REMOVING the account (RESUME-HERE §1), never by raising the ceiling.
+      await w.dal.houseBotStore.setStatus(n3.botId, { from: ["ACTIVE"], to: "REMOVED", pauseReason: null, pausedFromStatus: null, removal: { byId: OFFICER, reason: "fixture", cause: "MANUAL" } });
+    }
     /* ⛔ A HAND-TYPED PAGE PAST THE END IS SERVED AS THE LAST PAGE — the idiom this section already ships. */
     const over = await feedView({ page: "99" });
     const junk = await feedView({ page: "x" });
@@ -9223,7 +9250,8 @@ try {
     return m ? Number(m[1].replace(/,/g, "")) : null;
   };
   const LIFECYCLE = ["PENDING", "CLAIMED", "PLACED", "WIN", "LOSS", "VOID", "CASHED_OUT", "SKIPPED", "EXPIRED", "FAILED", "CANCELLED"];
-  const CHIP_RANK: Record<string, number> = { Queued: 0, "In flight": 1, Placed: 2, Won: 3, Lost: 4, Void: 5, "Cashed out": 6, Skipped: 7, Expired: 8, Failed: 9, Cancelled: 10 };
+  /* N3 · "Passed on" is a CANCELLED row handed to the next account: the sort reads the status, so it ranks with Cancelled. */
+  const CHIP_RANK: Record<string, number> = { Queued: 0, "In flight": 1, Placed: 2, Won: 3, Lost: 4, Void: 5, "Cashed out": 6, Skipped: 7, Expired: 8, Failed: 9, Cancelled: 10, "Passed on": 10 };
   const newestFirst = (a: { ms: number; id: string }, b: { ms: number; id: string }) => b.ms - a.ms || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0);
   /** Every page of one address, in order — `pageWord` is the table's own page parameter. */
   const walk9 = async (read: (q: Record<string, unknown>) => Promise<Any>, q: Record<string, unknown>, pageWord: string,

@@ -457,6 +457,67 @@ export const DEFERRABLE_CAP_CODES = [
   "GLOBAL_BETS_PER_MINUTE",
 ] as const satisfies readonly CapCode[];
 
+/**
+ * ⭐ THE REFUSALS THAT BELONG TO ONE ACCOUNT, AND SO HAND THE MARKET ON (N3, Ali 2026-10-14).
+ *
+ * An automatic FILL or OPENER takes its market's single anchor (`hbi_fill_opener_anchor_uq`), and until N3 a
+ * row that then failed at fire ended SKIPPED — which hid the market from EVERY account's scan for the rest of
+ * its life. Measured on production over 7 days: 408 rounds lost that way to one account's own balance floor
+ * or minimum gap, while another account could have taken each of them.
+ * A refusal in this list reads only the refused account's own limits, rules or wallet, so the row finishes
+ * CANCELLED with the same code instead: the anchor index skips CANCELLED rows, `plannableMarkets` lists the
+ * market again, and the next pass offers it to an account that has not tried it yet.
+ * ⛔ NOT IN THE LIST, ON PURPOSE: a refusal that would refuse EVERY account the same way — a stale price, money
+ * that changed, a desk-wide limit, the clock — stays SKIPPED, because handing it on would only spend the round.
+ * ⛔ AUTOMATIC FILL AND OPENER ONLY. A COUNTER's anchor index has no CANCELLED exception (one decision per player
+ * stake, for ever), and staff-chosen rows belong to the officer who chose them.
+ */
+export const HANDOFF_CODES = [
+  "CAP_STAKE_MIN",
+  "CAP_STAKE_MAX",
+  "CAP_PER_MARKET",
+  "CAP_BALANCE_FLOOR",
+  "CAP_DAILY_STAKE",
+  "CAP_DAILY_LOSS_PROJECTED",
+  "CAP_EXPOSURE",
+  "CAP_MIN_GAP",
+  "CAP_PER_HOUR",
+  "CAP_PER_DAY",
+  "CAP_PER_MARKET_COUNT",
+  "OUTSIDE_SCHEDULE",
+  "OUT_OF_SCOPE",
+  "STAKE_BOUNDS_CHANGED",
+  // The account's own `closenessPct`: another account's wider band may still take the round.
+  "UD_CLOSENESS",
+] as const satisfies readonly EngineCode[];
+export const isHandoffCode = (code: string): boolean => (HANDOFF_CODES as readonly string[]).includes(code);
+
+/** How many accounts may try one market's FILL or OPENER before it is left alone (the first try included). */
+export const HANDOFF_MAX_TRIES = 4;
+
+/**
+ * N3 · THE DRAW (Ali, 2026-10-14: the accounts' choice must not be predictable). An account's weight is the seconds
+ * since it was last busy, held to this ceiling: an hour of waiting already makes it the likeliest pick, and a ceiling
+ * keeps an account idle for a week from outweighing the rest so heavily that the draw stops being one.
+ */
+export const TURN_WEIGHT_MAX_SEC = 3_600;
+/** A turn roll is `randomInt(1, this) / this` — one draw, in (0, 1], fine enough that ties are rare. */
+export const TURN_ROLL_SCALE = 1_000_000;
+/**
+ * A queued row makes its account busy in the draw only when it falls due within this horizon: a stake due in the next
+ * minute is a bet about to happen, while a poll's fill queued 25 minutes ahead must not hold the account at the back of
+ * every draw until then (review finding, 2026-10-14). Spacing beyond it is `capAtDue`'s job, not the draw's.
+ */
+export const TURN_BUSY_HORIZON_SEC = 60;
+
+/**
+ * An Up & Down OPENER is timed so the price it was decided on is still fresh when it fires: its due time is held to
+ * `passNow + (the source's max age − the price's age − this) s`. It covers the poller's claim lateness (2 s cadence,
+ * 2 s skew guard) with room to spare. A round whose earliest due time cannot meet it is refused at PLANNING, where no
+ * row is written and the next fresh price can still open it.
+ */
+export const UD_PRICE_FIRE_MARGIN_SEC = 10;
+
 /** `house_market_conflict{…}` details (PLAN §3). */
 export const CONFLICT_CODES = ["OWNER_POSITION", "OPPOSITE_SIDE", "OTHER_BOT", "TRIGGER_BOTH_SIDES"] as const;
 export type ConflictCode = (typeof CONFLICT_CODES)[number];

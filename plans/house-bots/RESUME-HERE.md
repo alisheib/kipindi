@@ -295,6 +295,56 @@ baseline and stops the red drive before it starts; (3) flipping `BY_HAND_SCREENS
 `10.start` red and **silently disarms the `scope-byhand-flag-without-screen` mutation**, whose `from`
 quotes that line byte-for-byte — both move in the same commit as the flag.
 
+## 0e · ▶ MANY ACCOUNTS, BOTH SIDES OF THE GAME (Ali, 2026-10-14) · 🔨 PHASE 1 BUILT, RELEASE PENDING — board row ▶ 0h
+
+**Ali's words, verbatim:** *"lets analye it and fid a way to allow as much as we wnat bots to work with each othr, eve
+et agasint eac hother … so on bot blcks in queu th ebot afetr it etc whast do u reocmmed for full workign expeirence.
+th epurpose of bots is addin real traffic on both sides of the game"* — and *"we have full authority fomr gbt dont
+wrry. wehndone iv em pdf to gudi eamdins on hwot sue ht ew fature"* (when done: a PDF guiding admins). His three
+rulings: `docs/COMPLIANCE-DECISIONS.md` § "2026-10-14 · Desk accounts are drawn at random for each market, may stake against each other within a
+daily budget, may fetch their own price, and the roster may pass 20".
+
+**Measured on production, read-only, 2026-10-14 ≈ 12:00 EAT** (labels never written to the repo — it is public):
+- Four ACTIVE accounts, all on the same six Up & Down chains (BTC 5/10/15, XAU 15/30/60; XAU 60 STOPPED); polls off.
+- 7 days of Up & Down: 3,722 rounds — 1,060 empty, **2,278 house-only and not one of them two-sided** (house stakes:
+  VOID 2,335 · WIN 137 · LOSS 123), 67 players-only, 317 house + players; 14 distinct players, 777 player stakes.
+- Openers planned then lost at fire, the round hidden from every account: UD_STALE_PRICE 669 · CAP_BALANCE_FLOOR 282 ·
+  CAP_MIN_GAP 126 · STALE 19 · CONDITION_GONE 15. COUNTER: 507 SKIPPED, 0 PLACED. FILL: none.
+- One account ranked LAST on 1,593 of 1,595 opener decisions after its 2026-10-11 Start (six old poll stakes held its
+  exposure share at 3.5% against the others' 0–0.8%) and placed nothing from 2026-09-29.
+
+**The plan (approved in the session), one release each:**
+
+| Phase | What | Needs | State |
+|---|---|---|---|
+| 0 | Settings Ali saves: opener delay max 90 → 45 s; gMaxBetsPerDay → 1,000; gMaxBetsPerMinute → 12; freqMaxPerMarket ≥ 2; freqMinGapSec 20–30; floats above their floors | Ali, on the desk | ⏳ told to Ali |
+| **1** | **N3 — the weighted random draw, hand-off, at-due check, price window, the dead opener, the panel** (`04-amendments.md` § N3) | engineering only | 🔨 built and green on branch `house-bots-multibot` (`F:\kipindi-house-bots-mb`); release pending |
+| 2 | The desk's own fresh price — a TwelveData refresher on the engine's leader, its own cache, a daily credit ceiling (amends A15) | Ali ✅ (ruled) | ⏳ |
+| 3 | One house migration: `gCapPairRoundsPerDay` / `gCapBothSidesDailyTzs` (NULL = never; checked in H4), a `PAIR` kind with its own anchor, a CANCELLED exception on `hbi_counter_anchor_uq`, CHECKs past 20 accounts and 20 bets a minute; the four "exactly two house folders" gates rewritten | Ali ✅ (ruled) | ⏳ |
+| 4 | Two-sided play: 4a answer a player from another account (same-side-only OTHER_BOT for an opted-in untargeted COUNTER); 4b pair empty Up & Down rounds within the budget (PAIR branches in H2/H3/fire, in-lock) — amends I3 and RULES.md §2.11 in the same commit | Ali ✅ (ruled) + the written AML officer procedure | ⏳ |
+
+**What Phase 1 built** — read `docs/HOUSE-BOTS.md` §4 (the N3 bullet) and §12.19, not this list:
+`orderBots` (a weighted random draw when every account carries a `turnRoll` — Ali's "random pick" ruling, the 4th
+answer in the compliance entry — and the deterministic order otherwise), `turnWeight`, `drawTurnRoll`, `markBusy`
+(`decide.ts`); the rolls drawn per market in `runMarket` and memoised per decision in `trigger.ts`; `loadRosterRates`, `rateFactsFor`, `busyAtLoad`, `noteQueued`, `capAtDue`
+(`cap-precheck.ts`); `liveSummaryByBot` (both twins, `house-bot-dal.ts`); `handoffStatus` (`outcomes.ts`, used by
+`fire.ts`'s `finish`); `triedAccounts` + the chain + `HANDOFF_MAX_TRIES` (`planner.ts` `runMarket`); the opener's price
+window (`planOpener`); `marketHeld`'s `ignoreDeadOpeners` (set by `trigger.ts` `loadFlags`); the panel's `rankedBehind`
+and the "Passed on" chip (`house-console-read.ts`); the two bet counts' hints ("Rolling 24 hours.", `rules.ts`).
+Tests: engine 7.17–7.17o, 7b.25–28, 13.14g–j, 13.52a, 17.80–17.102 (with 17.83b, 17.86c, 17.87b, 17.95b), 18.54n,
+18.54p, 18.54r, console 1.N3a–b, re-pins of 7.17, 7b.22,
+13.14, 13.52, 13.56, 16.9, 16.22, 16.23, 16.29, 17.53a/c; 27 red mutations `N3-*` in `house-bot-engine.anchors.mjs`.
+
+**⛔ Traps this phase found** (add to §1 when they bite again):
+- **A test's scope start of "a second before now" is too wide** — §17 creates polls faster than that (a poll made
+  157 ms earlier fell inside it). Use the market's own `createdAt` read through `houseSeamStore.marketView`.
+- **A FILL's scope is judged by CUTOFF, not creation**, so a case about openers must switch fill off, or older polls
+  holding locked money join every account's sample.
+- **`F:\kipindi-house-bots-mb`'s embedded Postgres needed three DLLs** (`msvcp140.dll`, `vcruntime140.dll`,
+  `vcruntime140_1.dll`) copied from `F:\kipindi-main\node_modules\@embedded-postgres\windows-x64\native\bin` — the
+  machine has no VC++ runtime installed, and `npm ci` in a new worktree does not bring them. Symptom: `initdb` exits
+  3221225781 (0xC0000135, DLL not found).
+
 ## 1 · Traps that cost a run each — all still live
 
 - ⛔ **`npm ci` deletes `embedded-postgres`**, which is installed `--no-save` and is not in the lockfile. Every

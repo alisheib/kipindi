@@ -561,6 +561,13 @@ function num(
 }
 
 const RESETS_AT_MIDNIGHT_HINT = "Resets at 00:00 EAT.";
+/**
+ * ⚠️ N3 (2026-10-14) · THE TWO BET COUNTS ARE A ROLLING DAY, AND THEIR HINT SAID MIDNIGHT. The seam counts them over
+ * `placedAt > now − 1 day` (`botUsage.placedLastDay`, `globalUsage.betsLastDay`), so a count reached at 23:00 still
+ * binds at 01:00. The officer was told it reset at 00:00; the amounts and the counterparty counts beside them really
+ * do read the EAT day, and keep that hint.
+ */
+const ROLLING_DAY_HINT = "Rolling 24 hours.";
 
 /** Both loss caps (04 R3 and PLAN §3). */
 export const LOSS_CAP_HINT =
@@ -792,7 +799,7 @@ const RAW_FIELDS = {
   freqMaxPerDay: num("caps", "Frequency", "Bets per day", "count", 1, 1_440, {
     nullable: true,
     recommended: 200,
-    hint: RESETS_AT_MIDNIGHT_HINT,
+    hint: ROLLING_DAY_HINT,
   }),
   freqMaxPerMarket: num("caps", "Frequency", "Bets per market", "count", 1, 6, { nullable: true, recommended: 2 }),
   capStaffChosenPerDay: num("caps", "Staff-chosen", "Staff-chosen stakes per day", "count", 1, 50, {
@@ -836,7 +843,7 @@ const RAW_FIELDS = {
   gMaxBetsPerDay: num("limits", "Global limits", "Bets per day", "count", 1, 28_800, {
     nullable: true,
     recommended: 1_000,
-    hint: RESETS_AT_MIDNIGHT_HINT,
+    hint: ROLLING_DAY_HINT,
   }),
   gCounterPerPlayerPerDay: num("limits", "Global limits", "Counters per player per day", "count", 1, 1_440, {
     nullable: true,

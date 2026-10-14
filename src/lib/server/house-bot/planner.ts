@@ -22,6 +22,7 @@ import { createHash, randomInt as cryptoRandomInt } from "node:crypto";
 import { eatDayKey, eatHourKey } from "@/lib/house-bot/clock";
 import {
   ALERT_KEY,
+  HANDOFF_MAX_TRIES,
   HOUSE_CONTROL_ID,
   HOUSE_PRODUCTS,
   PLANNER_INTERVAL_MS,
@@ -29,6 +30,7 @@ import {
   RUNTIME_KEY,
   SWEEP_LOOKBACK_MS,
   SWEEP_PAGE_SIZE,
+  isHandoffCode,
   type TargetEndCause,
 } from "@/lib/house-bot/constants";
 import { HOUSE_LIMITS_SCHEMA_VERSION, effectiveTargetTiming, minGapFloorSec, parseHouseBotRules, rulesCoverTarget, type HouseBotRulesV1, type ParseContext } from "@/lib/house-bot/rules";
@@ -38,23 +40,23 @@ import { db } from "../store";
 import { stakeBoundsForMarket } from "../market-service";
 import {
   houseBookStore, houseBotControlStore, houseBotEventStore, houseBotIntentStore, houseBotRuntimeStore, houseBotStore, houseSeamStore,
-  newHouseId, pressStore, targetStore, type StoredHouseBot, type StoredHouseBotControl,
+  newHouseId, pressStore, targetStore, type StoredHouseBot, type StoredHouseBotControl, type StoredHouseBotIntent,
 } from "../house-bot-dal";
 import { houseDayBook, houseDayBooks } from "./book";
 import { alertOnce, engineAudit, engineSwitchOff, stopBot, type EngineAlerts } from "./outcomes";
 import type { EngineState, EngineTicks, TickContext } from "./engine";
-import { botCovers, guardsFor, intentRowOf, orderBots, planFill, planOpener, type DecideBot, type DecideResult, type RandomInt } from "./decide";
+import { botCovers, drawTurnRoll, guardsFor, intentRowOf, markBusy, orderBots, planFill, planOpener, type DecideBot, type DecideResult, type RandomInt, type UdPrice } from "./decide";
 import type { EngineCode } from "@/lib/house-bot/constants";
 import { SCOPE_PRODUCTS } from "@/lib/house-bot/rules";
 import type { LockedPool, LockedPoolSide } from "../house-bot-dal";
-import { cutoffOf, projectMarketView, scopeCode } from "./market-view";
+import { cutoffOf, projectMarketView, scopeCode, type PublicMarketView } from "./market-view";
 import { lockedForHouse, lockedPoolInputsOfView } from "./pools";
 import { udPriceForDecision } from "./ud-price";
 import { infoBlackout } from "./blackout";
 import { marketHeld } from "./enter-now";
 import { openerSide, type DrawRandomInt } from "./opener-side";
 import { loadParseContext } from "./rules-context";
-import { capPrecheck, loadCapFacts } from "./cap-precheck";
+import { busyAtLoad, capAtDue, capPrecheck, loadCapFacts, loadRosterRates, noteQueued, rateFactsFor, type RateFacts } from "./cap-precheck";
 import { pressAuditEntry, writePressAudit } from "./press-audit";
 import { oversightPass } from "./oversight";
 
@@ -502,6 +504,38 @@ export async function walletMissing(alerts: EngineAlerts): Promise<number> {
 
 const assetIdOf = (chainKey: string) => chainKey.slice(0, chainKey.lastIndexOf(":"));
 
+/** An account as the planner (and the console's explaining walk) loads it for one pass. */
+type PlanCandidate = DecideBot & { stored: StoredHouseBot; rates: RateFacts };
+
+/**
+ * ⭐ ONE LOADER FOR THE PASS AND THE PANEL (N3). Exposure for every account in one statement, the turn order's and
+ * `capAtDue`'s rate facts for every account in two (`loadRosterRates`), and the scope start per account — so the
+ * planner and the "why is it not staking?" panel order accounts by the same facts.
+ */
+async function loadPlanCandidates(active: readonly ParsedBot[], nowMs: number): Promise<PlanCandidate[]> {
+  const exposure = new Map((await houseBookStore.openExposure(null)).map((r) => [r.houseBotId, r.openStakeTzs]));
+  const roster = await loadRosterRates();
+  const candidates: PlanCandidate[] = [];
+  for (const { bot, rules } of active) {
+    const scopeFrom = (await houseBotRuntimeStore.get(RUNTIME_KEY.bot(bot.id)))?.scopeFrom ?? null;
+    if (scopeFrom == null) continue;
+    const rates = rateFactsFor(roster, bot.id);
+    candidates.push({
+      botId: bot.id, botUserId: bot.userId, label: bot.label, rules, stakeMinTzs: bot.stakeMinTzs, stakeMaxTzs: bot.stakeMaxTzs,
+      capOpenExposureTzs: bot.capOpenExposureTzs, openExposure: exposure.get(bot.id) ?? 0, lastPlacedAt: rates.lastPlacedAt,
+      busyUntil: busyAtLoad(rates, nowMs), scopeFrom, marketHeld: false, capPrecheck: null, stored: bot, rates,
+    });
+  }
+  return candidates;
+}
+
+/** The pass gave this account a row: its turn moves to the back, and the row counts against its own limits (N3). */
+function takeTurn(candidates: readonly PlanCandidate[], winner: NonNullable<MarketExplain["winner"]>): void {
+  markBusy(candidates, winner.botId, winner.dueAt);
+  const c = candidates.find((b) => b.botId === winner.botId);
+  if (c) noteQueued(c.rates, winner);
+}
+
 export async function planFillAndOpener(
   nowMs: number,
   state: EngineState,
@@ -513,18 +547,7 @@ export async function planFillAndOpener(
   const globalScopeFrom = (await houseBotRuntimeStore.get(RUNTIME_KEY.global))?.scopeFrom ?? null;
   if (globalScopeFrom == null || active.length === 0) return result; // ruling 92: never switched on = nothing in scope
 
-  const exposure = new Map((await houseBookStore.openExposure(null)).map((r) => [r.houseBotId, r.openStakeTzs]));
-  const candidates: Array<DecideBot & { stored: StoredHouseBot }> = [];
-  for (const { bot, rules } of active) {
-    const scopeFrom = (await houseBotRuntimeStore.get(RUNTIME_KEY.bot(bot.id)))?.scopeFrom ?? null;
-    if (scopeFrom == null) continue;
-    const last = (await houseSeamStore.placedTimes({ houseBotId: bot.id, withinSec: 86_400 }))[0] ?? null;
-    candidates.push({
-      botId: bot.id, botUserId: bot.userId, label: bot.label, rules, stakeMinTzs: bot.stakeMinTzs, stakeMaxTzs: bot.stakeMaxTzs,
-      capOpenExposureTzs: bot.capOpenExposureTzs, openExposure: exposure.get(bot.id) ?? 0, lastPlacedAt: last, scopeFrom,
-      marketHeld: false, capPrecheck: null, stored: bot,
-    });
-  }
+  const candidates = await loadPlanCandidates(active, nowMs);
 
   for (const kind of ["FILL", "OPENER"] as const) {
     for (const product of ["MARKET", "UPDOWN"] as const) {
@@ -544,6 +567,8 @@ export async function planFillAndOpener(
         for (const r of rows) {
           const v = await runMarket(kind, r.id, eligible, { nowMs, control, globalScopeFrom, ...deps }, true);
           if (v.placed) result[kind === "FILL" ? "fill" : "opener"]++;
+          // N3 · the next market in this pass goes to the next account in turn.
+          if (v.placed && v.winner) takeTurn(candidates, v.winner);
         }
         const full = rows.length === SWEEP_PAGE_SIZE;
         state.planner.scan[cursorKey] = full ? rows[rows.length - 1] : null;
@@ -575,24 +600,76 @@ type MarketExplain = {
   marketCode: EngineCode | null;
   /** Per covering account, in PLAN §4.4 order. A null code is an account that WOULD have staked. */
   byBot: Array<{ botId: string; code: EngineCode | null }>;
+  /** N3 · the account the market went to (or, explaining, would go to), with that row's due time and stake. */
+  winner: { botId: string; dueAt: string; stakeTzs: number } | null;
+  /** The market as this walk read it; null when it could not be read. */
+  view: PublicMarketView | null;
+  /**
+   * N3 · the pure decision's market inputs, once the walk reached the accounts — so the explaining walk can ask the
+   * SAME `planFill`/`planOpener` whether another account would take this market, instead of a second ladder.
+   */
+  probe: { pools: LockedPool; price: UdPrice; bounds: { min: number; max: number }; passNow: string } | null;
+  /** N3 · the accounts that already tried this market (a hand-off chain), which no queue may count. */
+  tried: ReadonlySet<string>;
 };
+
+/**
+ * ⭐ WHO HAS ALREADY TRIED THIS MARKET (N3). A handed-on row is the newest of its kind on the market, CANCELLED with an
+ * account-owned code; it carries the accounts tried before it in `decision.triedBotIds`, so the chain needs no read
+ * beyond the newest row. Any other newest row — none, or one cancelled for another reason — starts a fresh chain.
+ */
+function triedAccounts(prior: StoredHouseBotIntent | null): Set<string> {
+  if (!prior || prior.status !== "CANCELLED" || !isHandoffCode(prior.reasonCode ?? "")) return new Set();
+  const before = (prior.decision as { triedBotIds?: unknown }).triedBotIds;
+  return new Set([...(Array.isArray(before) ? before.filter((x): x is string => typeof x === "string") : []), prior.houseBotId]);
+}
 
 async function runMarket(
   kind: "FILL" | "OPENER",
   marketId: string,
-  eligible: ReadonlyArray<DecideBot & { stored: StoredHouseBot }>,
+  eligible: readonly PlanCandidate[],
   o: { nowMs: number; control: StoredHouseBotControl; globalScopeFrom: string; randomInt: RandomInt; drawRandomInt?: DrawRandomInt },
   place: boolean,
 ): Promise<MarketExplain> {
   const byBot: MarketExplain["byBot"] = [];
-  const no = (marketCode: EngineCode | null): MarketExplain => ({ placed: false, marketCode, byBot });
+  let read: PublicMarketView | null = null;
+  let probeInputs: MarketExplain["probe"] = null;
+  let tried: ReadonlySet<string> = new Set();
+  const no = (marketCode: EngineCode | null): MarketExplain => ({ placed: false, marketCode, byBot, winner: null, view: read, probe: probeInputs, tried });
   const row = await houseSeamStore.marketView(marketId);
   if (!row) return no("MARKET_GONE");
   const view = projectMarketView(row);
+  read = view;
   const mode = kind === "FILL" ? "fill" : "opener";
-  // Ruling 96 · per market, the covering bots in PLAN §4.4 order; the first row wins.
-  const covering = orderBots(eligible.filter((b) => botCovers(b, view, mode)));
-  if (covering.length === 0) return no("OUT_OF_SCOPE");
+  const scoped = eligible.filter((b) => botCovers(b, view, mode));
+  if (scoped.length === 0) return no("OUT_OF_SCOPE");
+  // N3 · a market handed on skips the accounts that already tried it, and is left alone after HANDOFF_MAX_TRIES.
+  const prior = await houseBotIntentStore.findByAnchor(kind, view.id);
+  tried = triedAccounts(prior);
+  /* Ruling 96 as amended by N3 · per market, the covering accounts DRAWN AT RANDOM, weighted by how long each has
+     waited (one roll per account per market, from this pass's own `randomInt`, so a case can fix it); the first row
+     wins. Drawn here, outside the probe's recording RNG below, so the opener's replay is untouched. */
+  const untried = scoped.filter((b) => !tried.has(b.botId));
+  if (prior && tried.size > 0 && (tried.size >= HANDOFF_MAX_TRIES || untried.length === 0)) {
+    /* ⭐ A CHAIN THAT HAS RUN OUT IS CLOSED, NOT RE-READ (review finding 5). The newest row is a handed-on CANCELLED
+       one, which keeps the market in `plannableMarkets` — so with nobody left to try it, every 15 s pass until the
+       cutoff would read it again and spend a slot of its scan page on it. One SKIPPED(NO_ELIGIBLE_BOT) row takes the
+       anchor and ends it, carrying the whole chain; the officer reads "No account could take it". */
+    if (place) {
+      const passNowIso = iso(o.nowMs);
+      await houseBotIntentStore.insertIgnoringConflict(intentRowOf({
+        houseBotId: prior.houseBotId, botUserId: prior.botUserId, kind, marketId: view.id,
+        productLine: prior.productLine === "UPDOWN" ? "UPDOWN" : "MARKET", triggerPositionId: null, triggerUserId: null, targetId: null,
+        side: prior.side, stakeTzs: prior.stakeTzs, dueAt: passNowIso, deadlineAt: prior.deadlineAt, staleAt: passNowIso,
+        status: "SKIPPED", reasonCode: "NO_ELIGIBLE_BOT",
+        why: `${kind === "OPENER" ? "Opener" : "Fill"} · no account left to take it after ${tried.size} tried`,
+        decision: { triedBotIds: [...tried], handOffEnded: true, snapshot: (prior.decision as { snapshot?: unknown }).snapshot ?? null },
+      }, { id: newHouseId("intent"), anchorKey: view.id, nowIso: passNowIso }));
+    }
+    return no("NO_ELIGIBLE_BOT");
+  }
+  const covering = orderBots(untried.map((b) => ({ ...b, turnRoll: drawTurnRoll(o.randomInt) })), o.nowMs);
+  if (covering.length === 0) return no("NO_ELIGIBLE_BOT");
   // An OPENER needs only the raw pools (both 0, H3's own condition); `lockedForHouse` is a FILL's read.
   const rawSide = (raw: number): LockedPoolSide => ({ raw, nonHouse: 0, locked: 0, unlocked: 0, earliestLockAt: null, excluded: 0, lockedA15: 0, accounts: [] });
   const pools: LockedPool = kind === "FILL" ? await lockedForHouse(view.id, lockedPoolInputsOfView(view)) : { YES: rawSide(view.yesPool), NO: rawSide(view.noPool) };
@@ -601,6 +678,7 @@ async function runMarket(
   const price = product === "UPDOWN" && view.round ? await udPriceForDecision(assetIdOf(view.round.chainKey), { nowMs: o.nowMs }) : null;
   const bounds = await stakeBoundsForMarket({ id: view.id, productLine: product });
   const passNow = iso(o.nowMs);
+  probeInputs = { pools, price, bounds, passNow };
 
   for (const b of covering) {
     // A recording RNG, so the pure decision can run before the reads it would otherwise need (ruling 93) and the
@@ -615,6 +693,9 @@ async function runMarket(
     const facts = await loadCapFacts(b.stored, view.id, { control: o.control, nowMs: o.nowMs, staffChosen: false, counterpartyUserId: null });
     const capped = capPrecheck(facts, Math.max(b.stakeMinTzs ?? bounds.min, bounds.min));
     if (capped) { byBot.push({ botId: b.botId, code: capped }); continue; }
+    // N3 · the account-owned refusals the seam would meet AT THE DUE TIME, with this row's own stake.
+    const atDue = capAtDue(b.stored, { balance: facts.balance, rates: b.rates }, probe.row);
+    if (atDue) { byBot.push({ botId: b.botId, code: atDue }); continue; }
     let decided: DecideResult = probe;
     /**
      * ⛔ THE EXPLAINING WALK DOES NOT DRAW. `openerSide` INSERTS the draw event — it is the audited,
@@ -634,10 +715,13 @@ async function runMarket(
       if (!decided.row) { byBot.push({ botId: b.botId, code: decided.code }); continue; }
     }
     byBot.push({ botId: b.botId, code: null });
+    const chosen = decided.row!;
     // ⛔ THE EXPLAINING WALK NEVER WRITES, and it never stops early: the officer asked about every account.
     if (!place) continue;
-    const inserted = await houseBotIntentStore.insertIgnoringConflict(intentRowOf(decided.row!, { id: newHouseId("intent"), anchorKey: view.id, nowIso: passNow }));
-    return { placed: inserted != null, marketCode: null, byBot };
+    // N3 · a handed-on market carries the chain of accounts tried before this one; a first try writes no such field.
+    const rowToWrite = tried.size > 0 ? { ...chosen, decision: { ...chosen.decision, triedBotIds: [...tried] } } : chosen;
+    const inserted = await houseBotIntentStore.insertIgnoringConflict(intentRowOf(rowToWrite, { id: newHouseId("intent"), anchorKey: view.id, nowIso: passNow }));
+    return { placed: inserted != null, marketCode: null, byBot, winner: { botId: b.botId, dueAt: chosen.dueAt, stakeTzs: chosen.stakeTzs }, view, probe: probeInputs, tried };
   }
   return no(null);
 }
@@ -681,6 +765,13 @@ export type IdleExplain = {
   considered: number;
   /** Markets where this account would have staked right now — a non-zero count with no bets is its own story. */
   wouldStake: number;
+  /**
+   * ⭐ N3 · MARKETS THIS ACCOUNT COULD TAKE, BUT ANOTHER ACCOUNT IS MORE LIKELY TO BE DRAWN FIRST. This panel used to
+   * walk the account ALONE, so an account that never reached the front read "would stake right now" while it placed
+   * nothing for fifteen days. The order is the planner's own, read without rolls — its EXPECTED order, the account that
+   * has waited longest first — and moved on as the planner moves it.
+   */
+  rankedBehind: number;
   /** Every refusal met, commonest first; ties by code so the order is stable between reloads. */
   byCode: Array<{ code: EngineCode; markets: number }>;
   /**
@@ -714,7 +805,7 @@ export async function explainBotIdle(
   const bot = await houseBotStore.get(botId);
   if (!bot || bot.status === "REMOVED") return null;
   const parsed = parseHouseBotRules(bot.rules, await loadParseContext());
-  const blank = { rulesUnreadable: true, looked: [], considered: 0, wouldStake: 0, byCode: [], reactsOnly: false };
+  const blank = { rulesUnreadable: true, looked: [], considered: 0, wouldStake: 0, rankedBehind: 0, byCode: [], reactsOnly: false };
   const parseCtxScope = async () => ({
     scopeFrom: (await houseBotRuntimeStore.get(RUNTIME_KEY.bot(bot.id)))?.scopeFrom ?? null,
     globalScopeFrom: (await houseBotRuntimeStore.get(RUNTIME_KEY.global))?.scopeFrom ?? null,
@@ -728,18 +819,26 @@ export async function explainBotIdle(
   // The third entry mode never reaches a planner: a player's stake triggers it. Read it before the walk.
   const reactsOnly = SCOPE_PRODUCTS.every((k) => !(rules.scope.products[k] && (rules.modes[k].fill || rules.modes[k].opener)))
     && SCOPE_PRODUCTS.some((k) => rules.scope.products[k] && rules.modes[k].counter);
-  const out: IdleExplain = { rulesUnreadable: false, looked: [], considered: 0, wouldStake: 0, byCode: [], reactsOnly, scopeFrom, globalScopeFrom };
+  const out: IdleExplain = { rulesUnreadable: false, looked: [], considered: 0, wouldStake: 0, rankedBehind: 0, byCode: [], reactsOnly, scopeFrom, globalScopeFrom };
   // Ruling 92 · a NULL scope start is OUT of scope, never "no bound". The switch is the whole answer.
   if (globalScopeFrom == null || scopeFrom == null) return out;
 
   const control = await houseBotControlStore.get();
-  const exposure = (await houseBookStore.openExposure(null)).find((r) => r.houseBotId === bot.id)?.openStakeTzs ?? 0;
-  const last = (await houseSeamStore.placedTimes({ houseBotId: bot.id, withinSec: 86_400 }))[0] ?? null;
-  const candidate: DecideBot & { stored: StoredHouseBot } = {
-    botId: bot.id, botUserId: bot.userId, label: bot.label, rules, stakeMinTzs: bot.stakeMinTzs, stakeMaxTzs: bot.stakeMaxTzs,
-    capOpenExposureTzs: bot.capOpenExposureTzs, openExposure: exposure, lastPlacedAt: last, scopeFrom,
-    marketHeld: false, capPrecheck: null, stored: bot,
-  };
+  /* ⭐ N3 · THE WHOLE ROSTER, LOADED AS THE PLANNER LOADS IT. The account's own verdict still comes from walking it
+     alone (its refusals are its own); the roster answers the one question that walk cannot — whose turn it is. */
+  const parseCtx = await loadParseContext();
+  const others: ParsedBot[] = [];
+  for (const b of await houseBotStore.listNonRemoved()) {
+    if (b.status !== "ACTIVE" || b.id === bot.id) continue;
+    const p = parseHouseBotRules(b.rules, parseCtx);
+    if (p.ok) others.push({ bot: b, rules: p.rules });
+  }
+  const roster = await loadPlanCandidates([{ bot, rules }, ...others], nowMs);
+  const candidate = roster.find((c) => c.botId === bot.id);
+  if (!candidate) return out;
+  // The planner moves a winner's turn to its row's due time; this walk writes no row, so it moves it past everyone.
+  const busyMs = (b: PlanCandidate) => Math.max(b.lastPlacedAt ? Date.parse(b.lastPlacedAt) : nowMs, b.busyUntil ? Date.parse(b.busyUntil) : nowMs);
+  let backOfQueue = Math.max(nowMs, ...roster.map(busyMs));
 
   const tally = new Map<EngineCode, number>();
   const limit = o.limit ?? IDLE_EXPLAIN_LIMIT;
@@ -763,7 +862,24 @@ export async function explainBotIdle(
         const mine = v.byBot.find((x) => x.botId === bot.id);
         const code = v.marketCode ?? mine?.code ?? null;
         if (code != null) tally.set(code, (tally.get(code) ?? 0) + 1);
-        else if (mine) out.wouldStake++;
+        /* N3 · whose turn is it here? Every account the SAME pure decision would let take this market (its scope, its
+           rules, the market's money — not its holds or caps, which are read only for an account that wins), in turn
+           order; this account only if its own full walk said it would stake. Only a market someone would take moves
+           a turn — exactly as the planner moves one only for a row it writes. */
+        const view = v.view;
+        const p = v.probe;
+        const wouldTake = (b: PlanCandidate): boolean => {
+          if (b.botId === bot.id) return code == null && mine != null;
+          if (!view || !p || v.tried.has(b.botId) || !botCovers(b, view, mode)) return false;
+          const input = { view, bot: b as DecideBot, ...p, globalScopeFrom };
+          return (kind === "FILL" ? planFill(input, { randomInt }) : planOpener({ ...input, openerSide: "YES" }, { randomInt })).row != null;
+        };
+        const queue = orderBots(roster.filter(wouldTake));
+        if (code == null && mine) {
+          if (queue[0] == null || queue[0].botId === bot.id) out.wouldStake++;
+          else out.rankedBehind++;
+        }
+        if (queue[0]) { backOfQueue += 1000; markBusy(roster, queue[0].botId, iso(backOfQueue)); }
       }
     }
   }

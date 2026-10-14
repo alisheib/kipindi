@@ -94,5 +94,10 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
  * ⭐ 825/804 → 829/810 (2026-09-26, house-bots build step 6 — replan ruling 543), the counts that run PRINTED on the
  * integrated tree: 13.35b/c (a stop whose compliance row cannot be signed stamps no audit id; its control) and
  * 17.14b/c on both stores, and on Postgres 17.14d/e — a BEFORE INSERT trigger stands in for the outage, so an append
- * the database refuses answers PERSIST_FAILED and a press audit written through it answers null. */
-await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 829, postgres: 810 }, dbPrefix: "hb_engine" });
+ * the database refuses answers PERSIST_FAILED and a press audit written through it answers null.
+ * ⭐ 829/810 → 885/866 (2026-10-14, N3 — the account drawn at random, the hand-off, the at-due check, the opener's price
+ * window, the dead opener, the panel's queue, and the six cases behind the pre-commit review's fixes), what
+ * `test:house-bot-engine` PRINTED: `0.mem · exit 0 · 885 passed` and `0.pg · exit 0 · 866 passed`, ALL PASS — exactly
+ * +56 in EACH child, the new 7.17a–o, 7b.25–28, 13.14g–j, 13.52a, 17.80–17.102 (with 17.83b, 17.86c, 17.87b, 17.95b) and
+ * 18.54n/p/r labels reaching BOTH stores. */
+await runTwoStores({ suite: "test:house-bot-engine", casesFile: "scripts/lib/house-bot-engine-cases.mts", minPass: { memory: 885, postgres: 866 }, dbPrefix: "hb_engine" });

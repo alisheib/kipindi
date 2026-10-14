@@ -50,6 +50,7 @@ import {
   capEngineCode,
   isAllowedHouseAuditPayload,
   isCapCode,
+  isHandoffCode,
   type EatSuffixedKey,
   type EngineCode,
   type HouseAuditAction,
@@ -221,9 +222,26 @@ export async function engineSwitchOff(cause: Extract<OffCause, "ENGINE_FAULT" | 
 
 /* ═══ The mapper ═══════════════════════════════════════════════════════════════════════════════════ */
 
+/**
+ * ⭐ THE HAND-OFF (N3, Ali 2026-10-14). An automatic FILL or OPENER refused for a reason that belongs to its own account
+ * (`HANDOFF_CODES`) finishes CANCELLED, keeping its code, so the market goes back to the planner for the next account;
+ * every other answer keeps the status it was given. Fire's pre-checks and this mapper both write through it — one rule
+ * for both — and a COUNTER, a MANUAL row or a targeted reaction is never handed on.
+ */
+export function handoffStatus<S extends "SKIPPED" | "EXPIRED" | "FAILED" | "CANCELLED">(
+  intent: Pick<StoredHouseBotIntent, "kind" | "targetId">,
+  status: S,
+  code: EngineCode,
+): S | "CANCELLED" {
+  return status === "SKIPPED" && (intent.kind === "FILL" || intent.kind === "OPENER") && intent.targetId == null && isHandoffCode(code)
+    ? "CANCELLED"
+    : status;
+}
+
 async function terminal(intent: StoredHouseBotIntent, me: string, status: "SKIPPED" | "EXPIRED" | "FAILED" | "CANCELLED", code: EngineCode): Promise<Extract<AppliedOutcome, { kind: "terminal" }>> {
-  const written = await houseBotIntentStore.finish(intent.id, me, { status, reasonCode: code });
-  return { kind: "terminal", status, code, written };
+  const finalStatus = handoffStatus(intent, status, code);
+  const written = await houseBotIntentStore.finish(intent.id, me, { status: finalStatus, reasonCode: code });
+  return { kind: "terminal", status: finalStatus, code, written };
 }
 
 /** Back to PENDING with the MON-10 backoff, or — with no time left — terminal on whichever bound is nearer (ruling 50). */

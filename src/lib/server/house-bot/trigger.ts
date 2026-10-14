@@ -43,7 +43,7 @@ import {
 import { alertOnce, boxAccount, type EngineAlerts } from "./outcomes";
 import { engineState, hookSuspendedBySkew, type EngineState, type EngineTicks, type TickContext } from "./engine";
 import {
-  botCovers, decideCounter, drawTargetDelay, intentRowOf, targetDueAt,
+  botCovers, decideCounter, drawTargetDelay, drawTurnRoll, intentRowOf, markBusy, targetDueAt,
   type CounterInput, type DecideBot, type DecidedRow, type DecideResult, type RandomInt,
 } from "./decide";
 import { cutoffOf, projectMarketView, scopeCode, type PublicMarketView } from "./market-view";
@@ -52,7 +52,7 @@ import { udPriceForDecision } from "./ud-price";
 import { infoBlackout } from "./blackout";
 import { marketHeld } from "./enter-now";
 import { loadParseContext } from "./rules-context";
-import { capPrecheck, loadCapFacts } from "./cap-precheck";
+import { busyAtLoad, capAtDue, capPrecheck, loadCapFacts, loadRosterRates, noteQueued, rateFactsFor, withoutQueued, type RateFacts } from "./cap-precheck";
 import { playerHandle } from "./alerts";
 
 /** What the bet's committed block already holds — nothing read again for the call (ruling 101). */
@@ -82,7 +82,7 @@ export type TriggerOutcome =
   /** A row is already anchored on this stake — the hook, a replica or an earlier pass decided first. */
   | "decided";
 
-type Candidate = DecideBot & { stored: StoredHouseBot };
+type Candidate = DecideBot & { stored: StoredHouseBot; rates: RateFacts };
 
 /** What one pass (or one hook call) reads once (ruling 93). */
 export type PassFacts = {
@@ -120,17 +120,19 @@ export async function loadPassFacts(nowMs: number, opts: { targets: boolean }): 
   if (facts.globalScopeFrom == null) return facts; // ruling 92: never switched on = nothing in scope
   const parseCtx = await loadParseContext();
   const exposure = new Map((await houseBookStore.openExposure(null)).map((r) => [r.houseBotId, r.openStakeTzs]));
+  // N3 · the turn order's and the at-due check's facts for every account, in two statements.
+  const roster = await loadRosterRates();
   const bots: Candidate[] = [];
   for (const bot of active) {
     const parsed = parseHouseBotRules(bot.rules, parseCtx);
     if (!parsed.ok) continue; // the planner pauses or reports it (ruling 100); the engine never reads unparsed rules
     const scopeFrom = (await houseBotRuntimeStore.get(RUNTIME_KEY.bot(bot.id)))?.scopeFrom ?? null;
     if (scopeFrom == null) continue; // ruling 92
-    const last = (await houseSeamStore.placedTimes({ houseBotId: bot.id, withinSec: 86_400 }))[0] ?? null;
+    const rates = rateFactsFor(roster, bot.id);
     bots.push({
       botId: bot.id, botUserId: bot.userId, label: bot.label, rules: parsed.rules, stakeMinTzs: bot.stakeMinTzs, stakeMaxTzs: bot.stakeMaxTzs,
-      capOpenExposureTzs: bot.capOpenExposureTzs, openExposure: exposure.get(bot.id) ?? 0, lastPlacedAt: last, scopeFrom,
-      marketHeld: false, capPrecheck: null, stored: bot,
+      capOpenExposureTzs: bot.capOpenExposureTzs, openExposure: exposure.get(bot.id) ?? 0, lastPlacedAt: rates.lastPlacedAt,
+      busyUntil: busyAtLoad(rates, nowMs), scopeFrom, marketHeld: false, capPrecheck: null, stored: bot, rates,
     });
   }
   facts.bots = bots;
@@ -207,13 +209,23 @@ export async function decideTrigger(row: TriggerRow, f: PassFacts, deps: Trigger
   if (!decided.row) return "notCovered";
   if (decided.row.targetId != null) {
     const r = await houseBotIntentStore.insertTargetedIfActive(decided.row.targetId, intentOf(decided.row, row, f));
-    if (r.inserted) return "inserted";
+    if (r.inserted) { tookTurn(f, decided.row); return "inserted"; }
     if (r.targetActive) return "decided";
     // N2 §4 step 4.6 · the target ended between the pass read and the insert: decide again untargeted, in this pass.
     decided = await decideWithFlags(base, null, scope);
     if (!decided.row) return "notCovered";
   }
-  return (await houseBotIntentStore.insertIgnoringConflict(intentOf(decided.row, row, f))) ? "inserted" : "decided";
+  if (!(await houseBotIntentStore.insertIgnoringConflict(intentOf(decided.row, row, f)))) return "decided";
+  tookTurn(f, decided.row);
+  return "inserted";
+}
+
+/** N3 · a queued reaction moves its account's turn to the back for the rest of this pass, and counts against it. */
+function tookTurn(f: PassFacts, row: DecidedRow): void {
+  if (row.status !== "PENDING") return;
+  markBusy(f.bots, row.houseBotId, row.dueAt);
+  const c = f.bots.find((b) => b.botId === row.houseBotId);
+  if (c) noteQueued(c.rates, row);
 }
 
 type DecideBase = Omit<CounterInput, "bots" | "target">;
@@ -248,15 +260,20 @@ async function prepareTarget(t: StoredHouseBotTarget, view: PublicMarketView, ro
  */
 async function decideWithFlags(base: DecideBase, target: TargetPrep | null, s: DecideScope): Promise<DecideResult> {
   const flags = new Map<string, Flags>();
-  const input = (): CounterInput => ({
-    ...base,
-    bots: s.f.bots.map((b) => {
-      const fl = flags.get(b.botId);
-      return { ...b, reactRoll: rollFor(b.botId), ...(fl ? { marketHeld: fl.marketHeld, capPrecheck: fl.capPrecheck } : {}) };
-    }),
-    // Before its bot is loaded the room is not yet known; the row that would use it forces the load below.
-    target: target ? { ...target, staffChosenRoomTzs: flags.get(target.houseBotId)?.roomTzs ?? Number.POSITIVE_INFINITY } : null,
-  });
+  const input = (): CounterInput => {
+    // Every react roll first, then every turn roll, so the react rolls are drawn exactly as before the draw existed.
+    const reacts = s.f.bots.map((b) => rollFor(b.botId));
+    const turns = s.f.bots.map((b) => turnFor(b.botId));
+    return {
+      ...base,
+      bots: s.f.bots.map((b, k) => {
+        const fl = flags.get(b.botId);
+        return { ...b, reactRoll: reacts[k], turnRoll: turns[k], ...(fl ? { marketHeld: fl.marketHeld, capPrecheck: fl.capPrecheck } : {}) };
+      }),
+      // Before its bot is loaded the room is not yet known; the row that would use it forces the load below.
+      target: target ? { ...target, staffChosenRoomTzs: flags.get(target.houseBotId)?.roomTzs ?? Number.POSITIVE_INFINITY } : null,
+    };
+  };
   // Ruling 164 · one react roll per bot per pass. The decision is re-run once a bot's flags are loaded, and a second
   // draw would compound the configured probability (p²). Memoised by botId, not replayed by position: a bot its flags
   // refuse consumes fewer draws on the later run.
@@ -268,24 +285,66 @@ async function decideWithFlags(base: DecideBase, target: TargetPrep | null, s: D
     rolls.set(botId, v);
     return v;
   };
-  let decided = decideCounter(input(), { randomInt: s.randomInt });
+  /* N3 · one TURN roll per account per decision, memoised for the same reason as the react roll: the decision runs
+     again once an account's flags load, and a fresh draw there would reshuffle the order mid-decision — the account
+     named first could be replaced by one never checked. */
+  const turnRolls = new Map<string, number>();
+  const turnFor = (botId: string): number => {
+    const seen = turnRolls.get(botId);
+    if (seen != null) return seen;
+    const v = drawTurnRoll(s.randomInt);
+    turnRolls.set(botId, v);
+    return v;
+  };
+  /* N3 · EACH ACCOUNT'S OWN DRAWS, REPLAYED ON EVERY RE-RUN (review finding 2). An account's delay and its amount's
+     jitter used to be drawn afresh each run, so the row `loadFlags` judged with `capAtDue` (its due time, its stake)
+     was not the row the last run wrote. Keyed by account and by position within that account, the second run reads the
+     first run's values back; an account reaching a draw it never reached before draws it now. */
+  const draws = new Map<string, number[]>();
+  const replaying = (): ((botId: string) => RandomInt) => {
+    const at = new Map<string, number>();
+    return (botId) => (min, max) => {
+      const seq = draws.get(botId) ?? [];
+      const k = at.get(botId) ?? 0;
+      at.set(botId, k + 1);
+      if (k < seq.length) return seq[k];
+      const v = s.randomInt(min, max);
+      seq.push(v);
+      draws.set(botId, seq);
+      return v;
+    };
+  };
+  let decided = decideCounter(input(), { randomInt: s.randomInt, randomFor: replaying() });
   for (let i = 0; i <= s.f.bots.length; i++) {
     const r = decided.row;
     if (!r || r.status === "SKIPPED" || flags.has(r.houseBotId)) return decided;
     const bot = s.f.bots.find((b) => b.botId === r.houseBotId);
     if (!bot) return decided;
-    flags.set(bot.botId, await loadFlags(bot, r.targetId != null, s));
-    decided = decideCounter(input(), { randomInt: s.randomInt });
+    flags.set(bot.botId, await loadFlags(bot, r, s));
+    decided = decideCounter(input(), { randomInt: s.randomInt, randomFor: replaying() });
   }
   return decided;
 }
 
-async function loadFlags(bot: Candidate, staffChosen: boolean, s: DecideScope): Promise<Flags> {
-  // Rulings 58–59, 93 · the one holding predicate: any held answer is a hold, because the seam refuses each.
-  if ((await marketHeld(bot.botId, s.view.id)).held) return { marketHeld: true, capPrecheck: null, roomTzs: 0 };
+async function loadFlags(bot: Candidate, row: DecidedRow, s: DecideScope): Promise<Flags> {
+  const staffChosen = row.targetId != null;
+  /* Rulings 58–59, 93 · the one holding predicate: any held answer is a hold, because the seam refuses each.
+     ⭐ N3 · EXCEPT AN OPENER THAT CAN NO LONGER PLACE. An opener stands only on two empty pools (H3 refuses it on any
+     other), so once this player's money is in the market a queued opener is a dead row — and treating it as a hold
+     spent the player's ONE reaction (`hbi_counter_anchor_uq`) on MARKET_HELD, leaving them with no opponent and a
+     refund. 15 rounds a week on production went that way. */
+  const poolsHoldMoney = s.view.yesPool > 0 || s.view.noPool > 0;
+  if ((await marketHeld(bot.botId, s.view.id, { ignoreDeadOpeners: poolsHoldMoney })).held) return { marketHeld: true, capPrecheck: null, roomTzs: 0 };
   // Ruling 94 · the seam's money caps at the smallest stake the bot could place; the trigger account is the counterparty.
   const facts = await loadCapFacts(bot.stored, s.view.id, { control: s.f.control, nowMs: s.f.nowMs, staffChosen, counterpartyUserId: s.row.userId });
-  const code = capPrecheck(facts, Math.max(bot.stakeMinTzs ?? s.bounds.min, s.bounds.min));
+  /* N3 · then the account-owned refusals the seam would meet at the row's due time, with the row's own stake — and
+     without this account's own DEAD openers on this market (review finding 4): they can never place, so neither their
+     stake, their count nor their due time may refuse the one reaction this player gets. */
+  const deadOwn = poolsHoldMoney
+    ? (await houseBotIntentStore.listLiveOnMarket(s.view.id)).filter((i) => i.kind === "OPENER" && i.houseBotId === bot.botId)
+    : [];
+  const code = capPrecheck(facts, Math.max(bot.stakeMinTzs ?? s.bounds.min, s.bounds.min))
+    ?? (row.status === "PENDING" ? capAtDue(bot.stored, { balance: facts.balance, rates: withoutQueued(bot.rates, deadOwn) }, row) : null);
   // N2 §4 step 6 · the staff-chosen TZS left today, bot and platform (a cap that is not set leaves none; capPrecheck refuses it).
   const roomTzs = facts.staffChosen
     ? Math.min((bot.stored.capStaffChosenDailyTzs ?? 0) - facts.staffChosen.tzs, (s.f.control.gCapStaffChosenDailyTzs ?? 0) - facts.staffChosen.globalTzs)

@@ -285,6 +285,14 @@ With a null marker, each gives a player exactly what they had before; the letter
 - **Loss stops (PLAN §3).** A bot whose REALISED loss for today's EAT cohort reaches its daily loss cap is AUTO_PAUSED(DAILY_LOSS_STOP), audited `house_bot.loss_stop`, whatever the switch says. The global realised loss at the global cap switches house bots OFF(GLOBAL_LOSS_STOP) once — the same A19 order as any engine switch-off, its own `switchedOff` alert (never the security channel).
 - **WALLET_MISSING.** A bot with open house stakes whose holder wallet is missing is paused, with a daily `settle-blocked` alert while the stakes stay open.
 - **FILL and OPENER** are planned from `houseSeamStore.plannableMarkets` (ids and cutoffs only: LIVE, not reopened, not demo, in A12 scope, OPENER on two empty pools, never a market an officer's cancel closed), a page of 200 at most five times per kind per pass, the cursor kept on the engine state. FILL is planned only when its due time is within the next pass, so it sizes against pools that are nearly final. Per market the covering bots go in PLAN §4.4 order and the first row wins; the holding rule and the money-cap pre-check (`cap-precheck.ts`, the seam's own caps at the smallest stake) are read only for a bot that would write a row. An OPENER's side is drawn once, only for a row that will be written, naming that bot.
+- ⭐ **N3 (Ali, 2026-10-14) — EACH MARKET'S ACCOUNT IS DRAWN AT RANDOM, AND A MARKET IS HANDED ON, NOT LOST.** Measured first (§12.19): one account ranked last on 1,593 of 1,595 opener decisions and placed nothing for fifteen days, and 408 rounds a week were lost to one account's own limits while another could have taken each.
+  - **The order** (`orderBots`, PLAN §4.4 as amended): the covering accounts are **drawn at random, weighted by how long each has waited** (Ali: "prevent anyone from predicting") — an Efraimidis–Spirakis permutation, key = −ln(`turnRoll`) / weight, the weight being the seconds since the account was last busy held to [1, `TURN_WEIGHT_MAX_SEC` = 3,600]. Busy is the later of its last placed stake and its SOONEST queued row's due time when that falls within `TURN_BUSY_HORIZON_SEC` (60 s) — a stake about to be placed; a poll's fill queued 25 minutes out makes it busy for nothing (`busyAtLoad`). The caller draws the rolls: the planner one per account per market, the trigger once per decision, memoised like the react roll (ruling 164). Equal keys, and an order asked without rolls (the console's walk), fall back to least recently busy, then the lowest exposure share, then the id; an account with no exposure cap sorts last either way. Each row a pass writes moves its account's busy time to that row's due time (`markBusy`, weight 1), so one pass shares its markets out. The planner, the trigger and the console's walk load the same facts: `loadRosterRates` (`botRateUsage` + the new `liveSummaryByBot`, two statements for the whole roster).
+  - **Sides are NOT drawn here, and need not be:** an opener's side is already a cryptographic coin flip (`opener-side.ts`, once per market — 1,856 / 1,853 over the measured week); a COUNTER takes the side opposite the player it answers and a FILL the thinner side, by definition. The desk never sees a result (A13), so no side carries information.
+  - **The at-due check** (`capAtDue`): after `capPrecheck`, the planner and the trigger ask what the seam would refuse AT THE ROW'S DUE TIME with the row's OWN stake — the balance floor less what the account already has queued; the minimum gap only where the seam would refuse it (it DEFERS a row whose gap frees before its `staleAt`, so the row is refused only when its earliest free time — after its last stake and its latest queued stake due no later than it — is at or after `staleAt`); and the rolling hour and day counting queued rows. A refusal here passes the market to the next account in the same pass. The seam stays the authority (I6). The trigger replays each account's own draws when it re-runs a decision (`decideCounter`'s `randomFor`), so the row it judged is the row it writes, and it takes the account's own DEAD openers on the market out of its facts (`withoutQueued`).
+  - **The hand-off** (`handoffStatus`, `outcomes.ts`; both `fire.ts`'s `finish` and the mapper's `terminal` write through it): an automatic FILL or OPENER refused for a code in `HANDOFF_CODES` — the account's own caps, schedule, scope, stake bounds or closeness band — finishes **CANCELLED with that same code**, so the anchor index lets the market go and `plannableMarkets` lists it again. The next pass skips every account that already tried it (the chain rides on the newest row as `decision.triedBotIds`); after `HANDOFF_MAX_TRIES` (4), or when no covering account is left untried, one SKIPPED(NO_ELIGIBLE_BOT) row closes the chain, so the market leaves the scan instead of being re-read every pass. A refusal that would refuse every account alike (a stale price, money that moved, a desk-wide cap, the clock) stays SKIPPED; a COUNTER is never handed on (its anchor has no CANCELLED exception), nor is a staff-chosen row.
+  - **The price window** (`planOpener`): an Up & Down opener's delay is drawn only up to the moment its price would turn stale, less `UD_PRICE_FIRE_MARGIN_SEC`; a round whose earliest due time already misses it is refused at planning (UD_STALE_PRICE, no row written), so a fresher price can still open it. 669 rounds a week had been planned on a price that was stale by fire.
+  - **The dead opener** (`marketHeld`'s `ignoreDeadOpeners`, passed by the trigger when the market holds money): a queued OPENER on a market with money in it can never place, so it no longer holds the market against a player's one reaction.
+  - Still ONE account per market, one side per account: I3 is unchanged until the desk-against-desk build (COMPLIANCE-DECISIONS 2026-10-14).
 - **Oversight** (`oversight.ts`, only the planner imports it): a market holding a staff-chosen stake from the last 30 days that is VOIDED or reopened after the stake → one `staff-stake-voided` alert (its time from the audit row that voided it, or no time — never the moment the pass noticed); the officer who chose the stake also deciding the market → one `staff-stake-self-decided` alert. Records only; nothing is refused. ~~The monthly staff-edge alert lands in commit 5 with R1's scorecard.~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** there is no staff-edge alert and no R1 scorecard (C5-SPEC rulings 202, 218–223).
 - **Summaries.** Hourly, while the EAT minute is 1–58, for the hour just ended: the admins' summary when automatic stakes passed the per-bet bell cap, ~~and each holder's when their stakes passed their notice cap (0 = summary only)~~. ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no holder summary and no holder notice cap; the holder is told nothing (C4 rulings 149, 153), so the admins' summary is the only one. Keys name the hour summarised (`previousHour`).
 - **Inserts** go through `insertIgnoringConflict`, which treats only the row's own anchor index as "already decided"; any other unique violation raises.
@@ -453,7 +461,8 @@ Lowering `maxDesignatedBots` below the number of designated bots is allowed and 
 
 | Window | Fields |
 |---|---|
-| The EAT day, 00:00 to 24:00 | `capDailyStakeTzs`, `capDailyLossTzs`, `freqMaxPerDay`, `capStaffChosenPerDay`, `capStaffChosenDailyTzs`, `gCapDailyStakeTzs`, `gCapDailyLossTzs`, `gMaxBetsPerDay`, `gCounterPerPlayerPerDay`, `gCounterPerPlayerTzsPerDay`, `gCapStaffChosenPerDay`, `gCapStaffChosenDailyTzs` |
+| The EAT day, 00:00 to 24:00 | `capDailyStakeTzs`, `capDailyLossTzs`, `capStaffChosenPerDay`, `capStaffChosenDailyTzs`, `gCapDailyStakeTzs`, `gCapDailyLossTzs`, `gCounterPerPlayerPerDay`, `gCounterPerPlayerTzsPerDay`, `gCapStaffChosenPerDay`, `gCapStaffChosenDailyTzs` |
+| A rolling 24 hours, `placedAt > now − 1 day` on the database clock | `freqMaxPerDay`, `gMaxBetsPerDay` — ⚠️ **corrected 2026-10-14 (N3).** This table listed both under the EAT day, and their field hints said "Resets at 00:00 EAT"; the seam counts them as `botUsage.placedLastDay` and `globalUsage.betsLastDay`, a rolling day, so a count reached at 23:00 still binds at 01:00. The hints now say "Rolling 24 hours." |
 | A rolling 60 minutes, `(now − 60 min, now]` (`countInRollingWindow`) | `freqMaxPerHour` |
 | A rolling 60 seconds | `gMaxBetsPerMinute` |
 | Since this bot's last placed bet | `freqMinGapSec` |
@@ -2726,6 +2735,75 @@ above 0 read "Must be 0 or more" while 0 was refused too — it now reads the fi
   widths were read off tiles at 1280, 1024 and 360).
 - ⚠️ Found on the way, not this lane's: console pin 1.548 had been red on `main` since 2026-10-08 (marketing `a001261d`
   added `cmp` to the crumb builder's id list); the pin now types the list as it stands and keeps its point (`hb_` never).
+
+### 12.19 N3 — the account drawn at random, a market handed on, the opener timed to its price — built 2026-10-14
+
+**Why, measured first** (production, read-only, a `default_transaction_read_only` session, 2026-10-14 ≈ 12:00 EAT; no
+account label is written here — this repository is public). Four ACTIVE accounts, every one on the same Up & Down
+chains. Over the seven days before:
+
+| What | Measured |
+|---|---|
+| Up & Down rounds | 3,722 — empty 1,060 · house money on ONE side only 2,278 (not one of them two-sided) · players only 67 · house and players 317 |
+| How the house's Up & Down stakes ended | VOID 2,335 · WIN 137 · LOSS 123 — a one-sided pool refunds everyone |
+| Openers planned, then lost at fire — the market then hidden from EVERY account | UD_STALE_PRICE 669 · CAP_BALANCE_FLOOR 282 · CAP_MIN_GAP 126 · STALE 19 · CONDITION_GONE 15 |
+| Answers to players (COUNTER) | 507 decided, 0 placed |
+| The order | one account ranked LAST on 1,593 of 1,595 opener decisions after its Start — six old poll stakes held its exposure share at 3.5% against the others' 0–0.8% — and placed nothing for fifteen days |
+| Opener sides (already random) | 1,856 one way · 1,853 the other; the side matched the round's result 1,275 times and missed 1,178 — chance, as it must be: the desk sees no result (A13) |
+
+**What changed** is §4's N3 bullet, the sealed text is `04-amendments.md` § N3, and the owner's rulings are
+`COMPLIANCE-DECISIONS.md` § "2026-10-14 · Desk accounts are drawn at random for each market, may stake against each
+other within a daily budget, may fetch their own price, and the roster may pass 20". Still one account per market.
+
+**Two corrections the build found and made:**
+- `freqMaxPerDay` and `gMaxBetsPerDay` count a ROLLING 24 hours in the seam (`placedLastDay`, `betsLastDay`), while
+  §5.3, both field hints and the console's own Rules help said they restart at midnight EAT. All four now say what the
+  engine does.
+- `DEFERRABLE_CAP_CODES` names `PER_HOUR` and `PER_DAY`, which the seam never gives an `until`, so they never defer;
+  and `GLOBAL_BETS_PER_MINUTE` cannot defer on an Up & Down row (30 s `staleAt` against a 60 s window). Recorded, not
+  changed: removing names that never fire changes nothing (N3-7).
+
+**An adversarial review of the diff, before the first commit, found one HIGH and five smaller defects; each was fixed
+with a case that fails without the fix and a red mutation that proves the case bites:**
+
+| # | Finding | Fix | Case · mutation |
+|---|---|---|---|
+| 1 HIGH | `capAtDue` refused on the bare minimum gap where the seam only DEFERS — a player's one reaction (`hbi_counter_anchor_uq`) would have been lost for good | refuse only when the earliest free time is at or after the row's `staleAt`; a queued stake due after the row is that stake's own gap | 17.82–17.83b · `N3-due-gap-bare` |
+| 2 | the trigger judged run 1's row and wrote run 2's (delay and jitter re-drawn on the re-run) | `decideCounter`'s `randomFor`: each account's draws replayed across runs | 7.17o · `N3-decide-ignores-own-draws` |
+| 3 | anything queued put an account at the back of the draw (weight 1), even a poll's fill 25 minutes out | busy only for a queued stake due within `TURN_BUSY_HORIZON_SEC`, read from the new `minDueAt` | 17.86b, 17.87b · `N3-busy-any-horizon` |
+| 4 | an account's own DEAD opener still counted against its reaction's floor, gap and rate | `withoutQueued` takes those rows out of its facts | 17.86c, 18.54p · `N3-dead-own-counted` |
+| 5 | a chain that had run out was re-read every pass until the cutoff | one SKIPPED(NO_ELIGIBLE_BOT) row closes it | 17.93, 17.94 · `N3-chain-not-closed`, `N3-no-max-tries` |
+| 6 | the deterministic order (the console's) did not put a no-cap account last, and the panel counted accounts that had already tried | `lastIfNoCap` in both orders; `wouldTake` skips the chain's tried accounts | 7.17n · `N3-deterministic-no-cap-first` |
+
+Recorded, not changed: `botRateUsage` (all-time, by design for the console) now also runs per planner pass and per
+player bet through the roster loader — two statements in place of one bounded read per account, measured trivial at
+today's volume; and the activity filter's "Cancelled" chip also lists "Passed on" rows (cosmetic).
+
+**Proof** — every count is what a run PRINTED on this tree:
+
+| Gate | Result |
+|---|---|
+| `typecheck` | clean |
+| `test:house-bot-engine` | **885** memory / **866** Postgres, 0 failed — exactly +56 in each child (floors raised 829/810 → 885/866) |
+| `test:house-bot-console` | **1,125** memory / **824** Postgres, 0 failed (floors raised 1,123/822 → 1,125/824) |
+| `test:house-bot-money` · `-caps` · `-info-edge` · `-reports` · `-ops` · `-comms` | all ✓ on both stores; `-holder-lifecycle` 16/0 |
+| `test:dal-parity` | 2,326/0 (the new `liveSummaryByBot` in both twins) |
+| `test:red-anchors` | 5,369/0 — 27 new `N3-*` anchors, each resolving exactly once (and `leaf-delay-draw-narrowed` re-anchored on the account's own draw) |
+| `red:house-bot-engine --only N3` | ⏳ |
+| `test:all` · build · `verify:house-bot-bundle` | ⏳ |
+
+**New cases** (engine, both stores): 7.17–7.17o (the order, the draw — key order with fixed rolls, chance, the weight,
+first-pick frequency ∝ weight over 20,000 seeded draws, no-cap last, equal rolls ≡ the deterministic order, a half-rolled
+call throws, the deterministic no-cap order, an account's own replayed draws); 7b.25–28 (the opener's price window); 13.14g–j and 13.52a (what is handed on and what never is); 17.80–
+17.86c (`capAtDue`, `noteQueued`, `busyAtLoad`, `withoutQueued`); 17.87–88 (`liveSummaryByBot`); 17.89–17.95b (sharing out, the hand-off
+chain, the tries ceiling, the at-due floor); 17.96–98 (the dead opener); 17.99–17.102 (the panel and its words); 18.54n
+(a player staking while an opener is queued is answered); 18.54p (an account's own dead opener does not count against it); 18.54r (the turn roll drawn once per decision). Console:
+1.N3a–b ("Passed on" against an officer's "Cancelled").
+
+**Traps met on the way** — `RESUME-HERE.md` §0e: a test scope of "a second before now" caught a poll made 157 ms
+earlier; a FILL's scope is judged by cutoff, so an opener case must switch fill off; the new worktree's embedded
+Postgres needed three VC++ runtime DLLs copied in; and a console fixture account used the roster's 20th slot until it
+was removed after its case.
 
 ---
 

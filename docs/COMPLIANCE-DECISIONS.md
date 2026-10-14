@@ -8,6 +8,66 @@
 
 ---
 
+## 2026-10-14 · Desk accounts are drawn at random for each market, may stake against each other within a daily budget, may fetch their own price, and the roster may pass 20 (owner rulings)
+
+**Ali, 2026-10-14, in the session**, as typed: *"lets analye it and fid a way to allow as much as we wnat bots to work
+with each othr, eve et agasint eac hother … so on bot blcks in queu th ebot afetr it etc whast do u reocmmed for full
+workign expeirence. th epurpose of bots is addin real traffic on both sides of the game"*. Shown the measured cost and
+reporting consequences first, he answered the session's three questions:
+1. **Desk accounts may stake against each other in a round no player is in — "Yes, with a daily budget"** (offered
+   against "every empty round" and "only against real players"). One switch must stop all of it at any time.
+2. **The desk may fetch its own fresh price — "Yes, fetch fresh prices"**, at the TwelveData credits that costs.
+3. **More than 20 desk accounts — "More than 20"**, accepting the database change and the larger release it needs.
+
+And, before the build: *"we have full authority fomr gbt dont wrry"*. Then: *"shoudltn w emake th eplayg of bot sin
+poitions random/? … the posiions they tae to prevent anyone from predicint gagasin the even"* — shown that an opening
+stake's side is already a coin flip (production, 7 days: 1,856 one side, 1,853 the other; the desk sees no result, and
+its side matched the outcome 1,275 times against 1,178), that an answer to a player must take the other side and a
+fill the thinner one, and that what WAS predictable was which account bets next, he chose **4. "Yes, random pick"**:
+the account for each market is drawn at random, weighted by how long it has waited.
+
+⚠️ **THE GAMING BOARD'S AUTHORITY IS A VERBAL OWNER REPORT, NOT A REGULATOR DOCUMENT** — the same kind of record as
+D19a's, D21's and the 2026-10-11 "Counts as" entry's. No document is on file.
+
+**What changes NOW (N3, engineering, `docs/HOUSE-BOTS.md` §12.19):** nothing here needs a ruling beyond the owner's
+instruction, and every money rule stands.
+- **The account for each market is drawn at random, weighted by how long it has waited** — not the one with the
+  lowest exposure share. Nobody watching can tell which account bets next, and none can be starved. Measured before:
+  one account holding six old poll stakes ranked last on 1,593 of 1,595 decisions and placed nothing for fifteen days
+  while switched on and funded.
+- **A market refused by one account's OWN limits goes to the next account** instead of being lost to all of them
+  (408 rounds a week were lost that way). A refusal that would refuse every account the same way stays final.
+- **A player who stakes while a desk opener is still queued can be answered** — the queued opener can no longer place
+  and no longer blocks the reaction (it used to spend the player's one reaction and leave them with a refund).
+- **The "why is it not staking?" panel says when another account is more likely to be drawn first.**
+- Still exactly one desk account per market, one side per account: PLAN I3 and `docs/RULES.md` §2.11 hold unchanged
+  until the stake-against-each-other build lands.
+
+**What is DECIDED but not yet built**, each in its own release, in this order: the desk's own price (amends 04 A15:
+house bots made no metered call); one house migration (the daily budget for desk-against-desk stakes with its stop
+switch, a roster ceiling above 20, a higher per-minute ceiling); then desk-against-desk staking. **That last release
+amends PLAN I3 and `docs/RULES.md` §2.11 ("never trades against another bot") in the same commit as its code**, per
+`docs/RULES.md` §5.
+
+**Accepted consequences, stated before Ali answered:**
+- **Cost.** A desk-against-desk round settles instead of refunding: on a 1,000-against-1,000 Up & Down round the fee is
+  130, of which TRA and GBT levies take about 20 (about 36 under the filed tax model). Today the same round is refunded
+  and costs nothing. The budget bounds the total.
+- **Reporting (D20).** Those rounds reach the Gaming Board pack and the tax report as ordinary player turnover —
+  about TZS 2,000 a round at 1,000 a side.
+- **The count players see** rises on such rounds (the 2026-10-11 "Counts as" entry applies to each account).
+- **AML.** Repeated opposite-side stakes between the same two accounts are the textbook collusion pattern, and D20a
+  forbids excluding desk accounts from the detectors. A written officer procedure for such flags is required before
+  the build that enables it ships.
+- **The holders.** Accounts paired against each other must be held by different real people, and the out-of-band
+  reimbursement (D3b) must cover balance moving between holders.
+
+**Controls:** the daily budget is checked inside the bet's own locks (PLAN I6), a budget that is not set means never,
+and the switch stops every queued desk-against-desk stake. Plan: the session's approved plan, recorded in
+`plans/house-bots/RESUME-HERE.md` §0e.
+
+---
+
 ## 2026-10-14 · Privacy v2026-10-14 — account-bound bet recovery and historic quarantine (Vodacom S8)
 
 **Authority.** Ali's instruction to complete the Vodacom plan and repair logical defects; the reviewed account-change
