@@ -85,7 +85,7 @@ export type SheetForUser = {
    * not a house bot's; null when it placed none, or the key is not a UUID (no lookup). ⛔ A failed lookup is NOT null:
    * it throws, and the route answers 503, so a doubt is never settled by a read that did not happen.
    */
-  keyPosition: { positionId: string } | null;
+  keyPosition: { positionId: string; quote: {marketId: string; side: "YES" | "NO"; stake: number} } | null;
 };
 
 /**
@@ -216,7 +216,9 @@ const KEY_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
 async function keyPositionFor(marketId: string, userId: string, key: string | null | undefined): Promise<SheetForUser["keyPosition"]> {
   if (typeof key !== "string" || !KEY_UUID.test(key)) return null;
   const p = await positionStore.findByIdempotencyKey(key);
-  return p && p.userId === userId && p.marketId === marketId && p.houseBotId == null ? { positionId: p.id } : null;
+  if (!p || p.userId !== userId || p.marketId !== marketId || p.houseBotId != null) return null;
+  if ((p.side !== "YES" && p.side !== "NO") || !Number.isSafeInteger(p.stake) || p.stake <= 0) throw new Error("Unreadable key receipt tuple");
+  return {positionId: p.id, quote: {marketId: p.marketId, side: p.side, stake: p.stake}};
 }
 
 /**

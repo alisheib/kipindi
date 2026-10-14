@@ -75,6 +75,20 @@ async function pageIn(ctx, route = "/") {
   await page.waitForTimeout(1200);
   return page;
 }
+/** Read the current authenticated owner's account partition; no QA probe may select a different account's keys. */
+async function ownedRows(page) {
+  return page.evaluate(async () => {
+    const response = await fetch("/api/session/status", {cache: "no-store"});
+    const status = await response.json();
+    if (!response.ok || status.active !== true || typeof status.viewerId !== "string") throw new Error("Recovery evidence owner unreadable");
+    window.__qaRecoveryKey = `kp-sheet-intents:v2:${status.viewerId}`;
+    const raw = sessionStorage.getItem(window.__qaRecoveryKey);
+    if (raw === null) return [];
+    const record = JSON.parse(raw);
+    if (record.v !== 2 || record.owner !== status.viewerId || !Array.isArray(record.pending)) throw new Error("Recovery evidence partition unreadable");
+    return record.pending;
+  });
+}
 async function readyProbe(page) {
   await page.addInitScript(tracing => {
     // This diagnostic also runs in child documents whose secure-context UUID API may be unavailable.
@@ -527,7 +541,7 @@ try {
         if(status.held&&status.ownWalletBusy){inside=true;break;}
         await new Promise(resolve=>setTimeout(resolve,100));
       }
-      const ownKey = async () => page.evaluate(id => { const stored=JSON.parse(sessionStorage.getItem("kp-pending-bet")); return stored?.pending?.find(entry=>entry.bet.startsWith(id+".YES."))?.k ?? stored?.k; },seed.id);
+      const ownKey = async () => (await ownedRows(page)).find(entry=>entry.quote.marketId===seed.id&&entry.quote.side==="YES")?.key;
       const waiting = await observed(ctx,seed.id),keyBefore=await ownKey();
       if(!inside||waiting.positionCount!==before.positionCount||waiting.betPlacedCount!==before.betPlacedCount||!keyBefore) throw new Error(`A24 first real action did not reach its wallet mutex with an uncommitted key behind the real market hold: ${JSON.stringify({inside,status:lastStatus,positionsDelta:waiting.positionCount-before.positionCount,ledgerDelta:waiting.betPlacedCount-before.betPlacedCount,keyPresent:!!keyBefore,requests:watch.requests.length,frame:(await probe(page)).got.frame})}`);
       ok("A24 first actual action inside own wallet mutex, real market mutex held, key uncommitted",inside&&watch.requests.length===1);
@@ -630,6 +644,7 @@ try {
       const seed=await open(page),before=await observed(ctx,seed.id),watch=actionWatch(page);
       const otherId=await page.evaluate(([pick,id])=>[...document.querySelectorAll(pick)].map(a=>JSON.parse(a.closest("[data-sheet]").getAttribute("data-sheet")).id).find(value=>value!==id),[S.pick,seed.id]);
       if(!otherId)throw new Error("Close lifecycle needs a genuinely unrelated question");
+      await ownedRows(page);
       await page.evaluate(selectors=>{
         const place=document.querySelector(selectors.place),props=Object.keys(place).find(key=>key.startsWith("__reactProps$"));
         window.__staleSheetPlace=place[props].onClick;
@@ -638,7 +653,7 @@ try {
         const sample=()=>{
           if(started===null)return;
           const root=document.querySelector(selectors.root),wrap=root?.closest("[inert]"),url=new URL(location.href);
-          window.__sheetCloseSamples.push({ms:performance.now()-started,present:!!root,inert:!!wrap,hidden:!!root?.closest('[aria-hidden="true"]'),focusInside:!!root?.contains(document.activeElement),bet:url.searchParams.has("bet"),keys:JSON.parse(sessionStorage.getItem("kp-pending-bet")??"null")?.pending?.length??0,live:root?.querySelectorAll('[aria-live="polite"]').length??0});
+          window.__sheetCloseSamples.push({ms:performance.now()-started,present:!!root,inert:!!wrap,hidden:!!root?.closest('[aria-hidden="true"]'),focusInside:!!root?.contains(document.activeElement),bet:url.searchParams.has("bet"),keys:JSON.parse(sessionStorage.getItem(window.__qaRecoveryKey)??"null")?.pending?.length??0,live:root?.querySelectorAll('[aria-live="polite"]').length??0});
         };
         const observer=new MutationObserver(sample);observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:["inert","aria-hidden","aria-modal"]});
         window.addEventListener("click",function begin(event){if(!event.target.closest(selectors.close))return;window.removeEventListener("click",begin,true);started=performance.now();const frame=()=>{sample();if(performance.now()-started<600)requestAnimationFrame(frame);else observer.disconnect();};requestAnimationFrame(frame);},true);
@@ -662,10 +677,12 @@ try {
     SESSION = await demoSession(browser, BASE);
     // Two actual mounted questions coupled with the >16-identity pure storage proof, using the exact same module.
     const { build } = await import("esbuild");
-    const bundle = await build({ stdin: { contents: 'export { pendingIntents, pendingStorage } from "./src/lib/journey/sheet-storage.ts"', loader: "ts", resolveDir: ROOT }, bundle: true, write: false, platform: "node", format: "cjs", tsconfig: join(ROOT, "tsconfig.json") });
+    const bundle = await build({ stdin: { contents: 'export { ownedSheetIntents, saveOwnedSheet, sheetOwnerKey } from "./src/lib/journey/sheet-owned-storage.ts"', loader: "ts", resolveDir: ROOT }, bundle: true, write: false, platform: "node", format: "cjs", tsconfig: join(ROOT, "tsconfig.json") });
     const module = { exports: {} }; new Function("module", "exports", bundle.outputFiles[0].text)(module, module.exports);
     const intents = Array.from({ length: 17 }, (_, n) => ({ quote: { marketId: catalogue.ids[n % catalogue.ids.length].id, side: n % 2 ? "YES" : "NO", stake: 500 }, key: crypto.randomUUID(), at: Date.now() }));
-    const raw = module.exports.pendingStorage(null, intents), reread = module.exports.pendingIntents(raw, Date.now());
+    const bytes=new Map(),store={getItem:k=>bytes.get(k)??null,setItem:(k,v)=>bytes.set(k,v),removeItem:k=>bytes.delete(k)},owner="usr_qa_storage";
+    if(!module.exports.saveOwnedSheet(store,owner,intents))throw new Error("17-key durable account storage refused");
+    const reread=module.exports.ownedSheetIntents(bytes.get(module.exports.sheetOwnerKey(owner)),owner);
     ok("storage pure proof: all 17 unresolved identities survive serialization", reread.length === 17 && intents.every(intent => reread.some(kept => kept.key === intent.key)));
     {
       const ctx = await context(), page = await pageIn(ctx);
@@ -673,10 +690,10 @@ try {
       const ids = await page.locator("[data-sheet]").evaluateAll(cards => [...new Set(cards.map(card => JSON.parse(card.getAttribute("data-sheet")).id))].slice(0, 2));
       if (ids.length !== 2) throw new Error("Two-question retained-key premise absent");
       for (const id of ids) { await open(page, id); await page.locator(S.place).click(); await waitFrame(page, "inDoubt"); await page.locator(S.close).click(); await page.locator(S.root).waitFor({ state: "hidden" }); }
-      const keys = await page.evaluate(() => JSON.parse(sessionStorage.getItem("kp-pending-bet")).pending.map(p => p.k));
+      const keys = (await ownedRows(page)).map(p=>p.key);
       ok("mounted host preserves both unrelated doubtful keys", new Set(keys).size === 2);
       await page.reload({ waitUntil: "domcontentloaded" }); await page.waitForTimeout(1200); await open(page, ids[0]); await waitFrame(page, "inDoubt");
-      const afterReload = await page.evaluate(() => JSON.parse(sessionStorage.getItem("kp-pending-bet")).pending.map(p => p.k));
+      const afterReload = (await ownedRows(page)).map(p=>p.key);
       ok("reload/reopen keeps both identities and first question frozen", keys.every(key => afterReload.includes(key)) && (await probe(page)).got.stakeLocked);
       await tile(page, "host-two-doubts-reload"); await ctx.close(); contexts.delete(ctx);
     }
@@ -779,7 +796,7 @@ try {
         return req.method() === "POST" && req.headers()["next-action"] && req.postData()?.includes("idempotencyKey") ? route.abort("failed") : route.fallback();
       });
       await page.locator(S.place).click(); await waitFrame(page, "inDoubt"); await page.waitForTimeout(200);
-      const keysBefore = await page.evaluate(() => JSON.parse(sessionStorage.getItem("kp-pending-bet")).pending.map(p => p.k));
+      const keysBefore = (await ownedRows(page)).map(p=>p.key);
       await page.clock.install(); hold = true;
       await page.clock.fastForward(599_000);
       const held = await Promise.race([caught, new Promise((_, reject) => setTimeout(() => reject(new Error("9m59 key-read premise absent")), 10_000))]);
@@ -787,8 +804,10 @@ try {
       await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 1000));
       await held.route.fulfill({ response: held.response });
       await page.clock.runFor(25);
-      const after = await page.evaluate(selector => ({ frame: document.querySelector(selector)?.dataset.frame, keys: JSON.parse(sessionStorage.getItem("kp-pending-bet"))?.pending?.map(p => p.k) ?? [] }), S.root);
+      const after = {frame: await page.locator(S.root).getAttribute("data-frame"), keys: (await ownedRows(page)).map(p=>p.key)};
       ok("null key query sent9m59, answered10m01 keeps doubt: read time is request time", after.frame === "inDoubt" && keysBefore.every(key => after.keys.includes(key)));
+      // The criterion is measured above. Release the diagnostic clock so tile's two paint frames can complete.
+      await page.clock.resume();
       await tile(page, "host-slow-null-key-read"); await ctx.close(); contexts.delete(ctx);
     }
   }
@@ -955,10 +974,11 @@ try {
       const owner = await sibling(ctx), other = await freshPlayer(); await ctx.addCookies(await other.ctx.cookies(BASE));
       await page.evaluate(([id, key]) => { const m = { bet: `${id}.YES.500`, at: Date.now(), k: key }; sessionStorage.setItem("kp-pending-bet", JSON.stringify({ ...m, pending: [m] })); }, [seed.id, key]);
       await page.goto(`${BASE}/?bet=${seed.id}.YES.500`, { waitUntil: "domcontentloaded" }); await waitFrame(page, "inDoubt");
-      const b = await observed(ctx, seed.id); await page.locator(S.place).click(); await waitFrame(page, "edit");
+      const b = await observed(ctx, seed.id); await page.evaluate(()=>window.dispatchEvent(new Event("focus"))); await page.waitForTimeout(500);
       const after = await observed(ctx, seed.id), ownerAfter = await observed(owner, seed.id);
-      ok("actual account switch with foreign retained key: row16 ends doubt, no new own or original money rows", b.positionCount === after.positionCount && b.betPlacedCount === after.betPlacedCount && a.positionCount === ownerAfter.positionCount && a.betPlacedCount === ownerAfter.betPlacedCount && await page.evaluate(() => !JSON.parse(sessionStorage.getItem("kp-pending-bet"))?.k));
-      await tile(page, "doors-foreign-key-conflict"); await closeContext(owner); await closeContext(other.ctx); await closeContext(ctx);
+      const quarantined=await page.evaluate(key=>{const archive=JSON.parse(sessionStorage.getItem("kp-sheet-intents:legacy:v1"));return archive.records.some(raw=>JSON.parse(raw).k===key)&&!archive.resolved[key];},key);
+      ok("actual account switch with ownerless foreign key: quarantine keeps the original key, new dispatch disabled, no own/original money rows", b.positionCount === after.positionCount && b.betPlacedCount === after.betPlacedCount && a.positionCount === ownerAfter.positionCount && a.betPlacedCount === ownerAfter.betPlacedCount && quarantined && await page.locator(S.place).isDisabled());
+      await tile(page, "doors-foreign-legacy-held"); await closeContext(owner); await closeContext(other.ctx); await closeContext(ctx);
     }
     {
       const { ctx } = await freshPlayer(), page = await pageIn(ctx), seed = await open(page), before = await observed(ctx, seed.id);

@@ -32,6 +32,8 @@
  */
 import { startTransition, useActionState, useEffect, useRef, type ReactNode } from "react";
 import Link from "next/link";
+import { normalizeReferralCode } from "@/lib/referral-code";
+import { normalizeInviteCode } from "@/lib/invite-code";
 import { I } from "@/components/ui/glyphs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, Input } from "@/components/ui/input";
@@ -77,6 +79,8 @@ export function RegisterForm({
   phoneDefault,
   emailDefault,
   nextOk,
+  refCode,
+  inviteCode,
   dobMax,
   children,
 }: {
@@ -85,6 +89,9 @@ export function RegisterForm({
   emailDefault: string;
   /** The safe destination after sign-up, or "" - the panel's sign-in links carry it. */
   nextOk: string;
+  /** Codes retained through a duplicate-account sign-in panel; no binding or storage happens in this form. */
+  refCode: string;
+  inviteCode: string;
   /** The latest birth date an adult can have today, YYYY-MM-DD. */
   dobMax: string;
   /** The page's hidden fields (shownLocale, ref, invite, next) and the read-only referral code: first in the form. */
@@ -97,6 +104,12 @@ export function RegisterForm({
   }, [refusal]);
   const bad = refusalField(refusal);
   const nextQs = nextOk ? `&next=${encodeURIComponent(nextOk)}` : "";
+  const codes = new URLSearchParams();
+  const ref = normalizeReferralCode(refCode);
+  const invite = normalizeInviteCode(inviteCode);
+  if (ref) codes.set("ref", ref);
+  if (invite) codes.set("invite", invite);
+  const codeQs = codes.size ? `&${codes.toString()}` : "";
 
   const errorPanel = (() => {
     if (!refusal) return null;
@@ -105,7 +118,7 @@ export function RegisterForm({
         tone: "warning" as const,
         title: copy.accountExists,
         body: copy.accountExistsBody,
-        cta: { href: `/auth/login?phone=${encodeURIComponent(refusal.phone)}${nextQs}`, label: copy.signIn },
+        cta: { href: `/auth/login?phone=${encodeURIComponent(refusal.phone)}${nextQs}${codeQs}`, label: copy.signIn },
       };
     }
     // A duplicate EMAIL is a different problem with a different remedy from a
@@ -117,7 +130,7 @@ export function RegisterForm({
         tone: "warning" as const,
         title: copy.emailExists,
         body: copy.emailExistsBody,
-        cta: { href: `/auth/login?identifier=${encodeURIComponent(refusal.email)}${nextQs}`, label: copy.signIn },
+        cta: { href: `/auth/login?identifier=${encodeURIComponent(refusal.email)}${nextQs}${codeQs}`, label: copy.signIn },
       };
     }
     // C2 · the real wait, counting down; without one, the sentence that says to wait.

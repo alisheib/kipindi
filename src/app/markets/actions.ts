@@ -85,6 +85,12 @@ async function requireAdminOrThrow(userId: string, action: string) {
 export async function buyPositionAction(formData: FormData) {
   const session = await currentSession();
   if (!session) redirect((await signInPathForAction()) as never);
+  // The hint binds this explicit sheet tap to the account its authenticated shell showed. It grants no authority.
+  // Missing on an old sheet producer also refuses: a cached A shell must never debit the current B session.
+  const expectedOwner = formData.get("expectedOwnerId");
+  if ((formData.get("funnelOrigin") === "sheet" || expectedOwner !== null) && expectedOwner !== session.userId) {
+    return {ok: false as const, error: "The account changed. Reload before continuing.", code: "SESSION_CHANGED" as const};
+  }
   const marketId = String(formData.get("marketId") ?? "");
   const sideRaw = String(formData.get("side") ?? "");
   if (sideRaw !== "YES" && sideRaw !== "NO") return { ok: false as const, error: "Invalid side." };

@@ -115,13 +115,13 @@ function run(impl: Impl, log: (l: string) => void): string[] {
 
   /* 5 · the marker's attribution */
   const attr = safe(() => impl.attribution(new URLSearchParams(
-    `ref=abc_123&invite=INV-9&utm_source=facebook&utm_medium=cpc&utm_campaign=launch week&utm_term=x&utm_content=y&utm_evil=1&gclid=zz&ref2=q`)));
+    `ref=50pick-ag-abc123&invite=inv-9&utm_source=facebook&utm_medium=cpc&utm_campaign=launch week&utm_term=x&utm_content=y&utm_evil=1&gclid=zz&ref2=q`)));
   const hostile = safe(() => impl.attribution(new URLSearchParams(`ref=<script>&invite=${"a".repeat(65)}&utm_source=a"b&utm_medium=${"m".repeat(101)}`)));
   const round = safe(() => impl.read(impl.write(bet, NOW, attr === "threw" ? {} : attr), NOW));
   ok("5.attribution · ref, invite and the five utm_* are kept; utm_evil, gclid and ref2 are not",
-    j(attr) === j({ ref: "abc_123", invite: "INV-9", utm: { utm_source: "facebook", utm_medium: "cpc", utm_campaign: "launch week", utm_term: "x", utm_content: "y" } }), j(attr));
+    j(attr) === j({ ref: "50PICK-AG-ABC123", invite: "INV-9", utm: { utm_source: "facebook", utm_medium: "cpc", utm_campaign: "launch week", utm_term: "x", utm_content: "y" } }), j(attr));
   ok("5.hostile · a script tag, an over-long code, a quote and an over-long utm value are all dropped", j(hostile) === j({}), j(hostile));
-  ok("5.round-trip · the attribution survives the marker's write and read", round !== "threw" && round !== null && j(round.utm) === j(attr === "threw" ? null : attr.utm) && round.ref === "abc_123", j(round));
+  ok("5.round-trip · the canonical attribution survives the marker's write and read", round !== "threw" && round !== null && j(round.utm) === j(attr === "threw" ? null : attr.utm) && round.ref === "50PICK-AG-ABC123", j(round));
 
   /* 6 · the same-origin rule */
   const cases: Array<[unknown, string]> = [

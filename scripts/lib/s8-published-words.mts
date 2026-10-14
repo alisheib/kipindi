@@ -16,9 +16,9 @@ const KEYS = [
   "sheetPlacing", "sheetPlacingSlow", "sheetRailsPaused", "sheetRateLimited", "sheetRefundRule", "sheetSessionLimit",
   "sheetSofRequired", "stakeLabel", "ticketsHere",
 ] as const;
-// Measured from the reviewed WP4 strings and the v2026-10-13 necessary-marker paragraph; normal guards pin their semantics too.
+// Measured WP4 strings and the exact approved v2026-10-14 owner-recovery paragraphs; normal guards pin their semantics too.
 const WORD_HASH: Record<string, string> = { en: "c5a78e0f5c5a", sw: "7c5f547f68a6", zh: "53863b4a6af3" };
-const NOTICE_HASH: Record<string, string> = { en: "8cb90a2c1eaf", sw: "361bd05a0a04", zh: "b85000ece30b" };
+const NOTICE_HASH: Record<string, string> = { en: "fb825bd6a8a3", sw: "8b4d6871dca3", zh: "6e4b8029bd17" };
 const NOTICE = /\n {8}<p data-policy-addition="pending-bet">[\s\S]*?\n {8}<\/p>/g;
 
 export type S8Published = { legacy: string; accepted: boolean; hashes: Record<string, string>; count: number };
@@ -36,8 +36,8 @@ export function s8PublishedWords(rel: string, source: string, requireAdditions =
     const hashes = Object.fromEntries(LOCALES.map((loc, i) => [loc, sha((paragraphs[i]?.[0] ?? "").replace(/\s+/g, " ").trim())]));
     const accepted = (!requireAdditions && paragraphs.length === 0) || (paragraphs.length === 3
       && LOCALES.every((loc) => hashes[loc] === NOTICE_HASH[loc])
-      && (text.match(/(?:en: "Version |sw: "Toleo |zh: "版本 )2026-10-13/g) ?? []).length === 3);
-    const legacy = text.replace(NOTICE, "").replace(/((?:en: "Version |sw: "Toleo |zh: "版本 ))2026-10-(?:11|13)/g, "$1S8-version");
+      && (text.match(/(?:en: "Version |sw: "Toleo |zh: "版本 )2026-10-14/g) ?? []).length === 3);
+    const legacy = text.replace(NOTICE, "").replace(/((?:en: "Version |sw: "Toleo |zh: "版本 ))2026-10-(?:11|13|14)/g, "$1S8-version");
     return { legacy, accepted, hashes, count: paragraphs.length };
   }
   if (rel !== "src/lib/i18n-dict.ts") return { legacy: text, accepted: true, hashes: {}, count: 0 };

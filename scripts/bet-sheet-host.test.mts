@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { parseSheetSeed } from "../src/lib/journey/sheet-seed.ts";
 import { pendingIntents, pendingStorage, PENDING_STORAGE_MAX_BYTES, type StoredIntent } from "../src/lib/journey/sheet-storage.ts";
+import { ownedSheetIntents, saveOwnedSheet, quarantineLegacySheet, saveSheetSelection, sheetOwnerKey } from "../src/lib/journey/sheet-owned-storage.ts";
 import { attributionFrom, pendingBetFrom, readMarker, stakeFromUrl, writeMarker, PENDING_BET_KEY } from "../src/lib/journey/pending-bet.ts";
 import { clockOffset, estimateMoved, sheetEstimate, withBet, withoutBet } from "../src/lib/journey/sheet-state.ts";
 import { decomment } from "./lib/decomment.mts";
@@ -79,6 +80,10 @@ function layoutLifecycle(source: string): boolean {
     cleanup(); return !mounted.current;
   } catch { return false; }
 }
+function throwsCaught(source: string): boolean {
+  const file=ts.createSourceFile("host.tsx",source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX); let safe=true;
+  const visit=(n: ts.Node)=>{if(ts.isThrowStatement(n)){let parent=n.parent, caught=false;while(parent){if(ts.isTryStatement(parent)&&parent.catchClause){caught=true;break;}if(ts.isFunctionLike(parent))break;parent=parent.parent;}safe&&=caught;}ts.forEachChild(n,visit);};visit(file);return safe;
+}
 /** Actual callbacks, controlled refs/answers and a fake browser surface: no React, HTTP, SQL or money action. */
 async function lifecycleChecks(source: string) {
   try {
@@ -86,10 +91,11 @@ async function lifecycleChecks(source: string) {
     const identity = (q: any) => `${q.marketId}.${q.side}`;
     const activeIdentity = (a: any) => identity({ marketId: a.seed.id, side: a.side });
     const make = (live = true) => {
-      const record: any = { intent: { quote, key: key(101), phase: "inDoubt", sentAt: NOW - 60_000, settledAt: NOW - 60_000 }, at: NOW, lastRead: 0 };
+      const viewerId = "usr_host", ownerEpoch = {current: 0}, ownerInvalid = {current: false}, recoveryReady = {current: true};
+      const record: any = { intent: { quote, key: key(101), phase: "inDoubt", sentAt: NOW - 60_000, settledAt: NOW - 60_000 }, at: NOW, lastRead: 0, owner: viewerId, epoch: 0 };
       const other = { quote: { marketId: "mkt_new", side: "NO" as const, stake: 1000 }, key: key(102), at: NOW };
-      const selected: { current: any } = { current: { bet: "mkt_old.YES.500", at: NOW, k: key(101) } };
-      const pending = { current: new Map<string, any>([[identity(quote), record], [identity(other.quote), { intent: { ...other, phase: "inDoubt" }, at: NOW }]]) };
+      const selected: { current: any } = { current: { bet: "mkt_old.YES.500", at: NOW, owner: viewerId } };
+      const pending = { current: new Map<string, any>([[identity(quote), record], [identity(other.quote), { intent: { ...other, phase: "inDoubt" }, at: NOW, owner: viewerId, epoch: 0 }]]) };
       const current: { current: any } = { current: { seed: { ...SEED, id: quote.marketId }, side: "YES", serial: 1, stakeText: "500", viewer: { state: "failed" }, dropSide: false, pushed: false } };
       const mounted = { current: live }, storage = new Map<string, string>();
       const writes: string[] = [], history: string[] = [], shown: any[] = [], events: string[] = [], preferences: string[] = [];
@@ -100,10 +106,10 @@ async function lifecycleChecks(source: string) {
         localStorage: { getItem: () => "[]", setItem: (k: string) => preferences.push(k) }, dispatchEvent: (e: Event) => events.push(e.type) };
       const show = (value: any) => { shown.push(value); current.current = value; };
       const closedReceipts = { current: new Map<string, any>() };
-      const save = bindHost(source, "save", { mounted, pending, selected, pendingStorage, PENDING_STORAGE_MAX_BYTES, PENDING_BET_KEY, window });
+      const save = bindHost(source, "save", { mounted, pending, selected, recoveryReady, ownerInvalid, viewerId, quarantineLegacySheet, saveOwnedSheet, saveSheetSelection, window });
       const stripAddress = bindHost(source, "stripAddress", { mounted, window, withoutBet });
-      const receipt = bindHost(source, "receipt", { mounted, pending, selected, current, identity, activeIdentity, closedReceipts, save, stripAddress, show, window, pendingBetFrom, refreshed: async () => {}, revise: () => {} });
-      return { record, other, selected, pending, current, mounted, storage, writes, history, shown, events, preferences, window, save, stripAddress, receipt, closedReceipts, show };
+      const receipt = bindHost(source, "receipt", { mounted, pending, selected, current, identity, activeIdentity, closedReceipts, save, stripAddress, show, window, pendingBetFrom, refreshed: async () => {}, revise: () => {}, viewerId, ownerEpoch, ownerInvalid, recoveryReady });
+      return { record, other, selected, pending, current, mounted, storage, writes, history, shown, events, preferences, window, save, stripAddress, receipt, closedReceipts, show, viewerId, ownerEpoch, ownerInvalid, recoveryReady };
     };
     const old = make(false);
     // The new host has already saved another question. The old host's refs are intentionally still intact.
@@ -111,10 +117,10 @@ async function lifecycleChecks(source: string) {
     old.storage.set(PENDING_BET_KEY, newer); old.window.location.search = "?bet=mkt_new.NO.1000";
     const unsaved = old.save() === false; old.stripAddress(false); old.receipt(old.record, "pos_old", false);
     const lateReceipt = unsaved && old.storage.get(PENDING_BET_KEY) === newer && old.writes.length === 0 && old.history.length === 0
-      && old.shown.length === 0 && old.events.length === 0 && old.preferences.length === 0 && old.pending.current.size === 2;
+      && old.shown.length === 0 && old.events.length === 0 && old.preferences.length === 0 && old.pending.current.size === 2 && old.recoveryReady.current;
     const closed = make(); closed.current.current = null;
     closed.receipt(closed.record, "pos_confirmed", true);
-    const restored = pendingIntents(closed.storage.get(PENDING_BET_KEY) ?? null, NOW);
+    const restored = ownedSheetIntents(closed.storage.get(sheetOwnerKey(closed.viewerId)!) ?? null, closed.viewerId);
     const closedReceipt = closed.pending.current.size === 1 && closed.closedReceipts.current.get("mkt_old.YES")?.view.positionId === "pos_confirmed"
       && restored.length === 1 && restored[0].key === key(102) && closed.events.includes("50pick:refresh");
 
@@ -122,6 +128,7 @@ async function lifecycleChecks(source: string) {
       const h = make(!late), readingKeys = { current: new Set<string>() };
       let reads = 0, retired = 0, receipts = 0, revisions = 0, resolve!: (v: any) => void;
       const read = bindHost(source, "readKey", { mounted: h.mounted, pending: h.pending, current: h.current, selected: h.selected, readingKeys, identity, activeIdentity,
+        viewerId: h.viewerId, ownerEpoch: h.ownerEpoch, recoveryReady: h.recoveryReady,
         readTruth: () => { reads++; return new Promise(r => { resolve = r; }); }, receipt: () => receipts++,
         afterKeyRead: () => { retired++; return "ended"; }, save: h.save, show: h.show, revise: () => revisions++, refreshed: async () => {} });
       if (late) {
@@ -133,7 +140,7 @@ async function lifecycleChecks(source: string) {
       const work = read(h.record); h.mounted.current = false;
       resolve({ reread: { state: "read", market: { found: false } }, keyPosition: landed ? { positionId: "pos_late" } : null }); await work;
       return reads === 1 && retired === 0 && receipts === 0 && revisions === 0 && h.pending.current.size === 2
-        && h.selected.current.k === key(101) && h.writes.length === 0 && h.shown.length === 0 && readingKeys.current.size === 0;
+        && h.selected.current.owner === h.viewerId && h.pending.current.get(identity(quote)).intent.key === key(101) && h.writes.length === 0 && h.shown.length === 0 && readingKeys.current.size === 0;
     };
     const keyReadEntry = await keyRead(true, false), keyReadLate = await keyRead(false, false) && await keyRead(false, true);
 
@@ -144,6 +151,7 @@ async function lifecycleChecks(source: string) {
       let work: Promise<void> | undefined, dispatches = 0, outcomes = 0, reads = 0, settles = 0, revisions = 0, frames = 0;
       let answerResolve!: (v: any) => void, truthResolve!: (v: any) => void;
       const commit = bindHost(source, "commit", { mounted: h.mounted, current: h.current, pending: h.pending, requests, selected: h.selected,
+        viewerId: h.viewerId, ownerEpoch: h.ownerEpoch, ownerInvalid: h.ownerInvalid, recoveryBlocked: () => false, invalidateOwner: () => {},
         activeIdentity, identity, sheetFrame: () => { frames++; return {}; }, quoteAt: () => quote, nextKey: () => ({ quote, key: key(101) }), requestFor: () => new FormData(),
         readMarker, writeMarker, attributionFrom, save: h.save, show: h.show, window: h.window, withBet, revise: () => revisions++,
         startTransition: (fn: () => Promise<void>) => { work = fn(); }, answerOf: (fn: () => Promise<unknown>) => fn(),
@@ -167,7 +175,7 @@ async function lifecycleChecks(source: string) {
       if (reads) truthResolve({ reread: { state: "read" }, seed: null, viewer: null });
       await work;
       if (stage === "live") return dispatches === 1 && outcomes === 1 && reads === 1 && settles === 1 && requests.current.size === 0 && h.pending.current.size === 0 && !h.selected.current?.k;
-      return dispatches === 1 && settles === 0 && h.pending.current.size === 1 && h.selected.current?.k === key(101)
+      return dispatches === 1 && settles === 0 && h.pending.current.size === 1 && h.selected.current?.owner === h.viewerId && h.pending.current.get(identity(quote)).intent.key === key(101)
         && h.writes.length === writes && h.history.length === histories && h.shown.length === drawings && revisions === revisionsBefore
         && (stage === "answer" ? outcomes === 0 && reads === 0 && requests.current.size === 1 : outcomes === 1 && reads === 1 && requests.current.size === 0);
     };
@@ -175,12 +183,14 @@ async function lifecycleChecks(source: string) {
     const direct = make(false), pushes: string[] = [];
     const close = bindHost(source, "close", { mounted: direct.mounted, current: direct.current, pending: direct.pending, activeIdentity, show: direct.show, generation: { current: 0 }, window: direct.window, stripAddress: direct.stripAddress });
     const deposit = bindHost(source, "deposit", { mounted: direct.mounted, current: direct.current, pending: direct.pending, activeIdentity, sheetFrame: () => ({ low: { deposit: { amount: 500 } }, stake: 500, stakeLocked: false }), selected: direct.selected,
+      viewerId: direct.viewerId, recoveryBlocked: () => false,
       readMarker, writeMarker, attributionFrom, window: direct.window, withBet, save: direct.save, show: direct.show, router: { push: (url: string) => pushes.push(url) } });
     close(); deposit();
     const directClosed = direct.shown.length === 0 && direct.history.length === 0 && direct.writes.length === 0 && pushes.length === 0;
     const auth = async (live: boolean) => {
       const h = make(live), pushed: string[] = [];
-      const read = bindHost(source, "readTruth", { mounted: h.mounted, current: h.current, window: h.window, router: { push: (url: string) => pushed.push(url) }, fetch: async () => ({ status: 401 }), parseSheetSeed });
+      const read = bindHost(source, "readTruth", { mounted: h.mounted, current: h.current, window: h.window, router: { push: (url: string) => pushed.push(url) }, fetch: async () => ({ status: 401 }), parseSheetSeed,
+        viewerId: h.viewerId, ownerEpoch: h.ownerEpoch, ownerInvalid: h.ownerInvalid, invalidateOwner: () => pushed.push("refresh-owner") });
       await read(quote, { open: true }); return pushed.length;
     };
     const authClosed = await auth(false) === 0 && await auth(true) === 1;
@@ -218,9 +228,9 @@ function exitChecks(source: string) {
         const text = expression(name === "onFailed" ? boundary! : betSheet!, name);
         if (!text) throw new Error(`Missing ${name}`);
         const js = ts.transpileModule(`const handler = ${text};`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
-        const fn = new Function("current", "view", "pending", "activeIdentity", "commit", "deposit", "close", "show", "stripAddress", `${js}\nreturn handler;`)(
+        const fn = new Function("current", "view", "pending", "activeIdentity", "commit", "deposit", "close", "show", "stripAddress", "recoveryBlocked", `${js}\nreturn handler;`)(
           current, draw, { current: new Map([["mkt_sheet01.YES", { intent: { phase } }]]) }, (a: any) => `${a.seed.id}.${a.side}`,
-          (which: string) => calls.push(which), (amount: number) => calls.push(`deposit:${amount}`), () => calls.push("close"), () => calls.push("show"), () => calls.push("strip"));
+          (which: string) => calls.push(which), (amount: number) => calls.push(`deposit:${amount}`), () => calls.push("close"), () => calls.push("show"), () => calls.push("strip"), () => false);
         fn(name === "onStakeChange" ? "1000" : 500);
       }
       return calls;
@@ -352,7 +362,7 @@ async function checks(x: Impl): Promise<Check[]> {
   const commit = h.slice(h.indexOf("const commit ="), h.indexOf("const deposit ="));
   const readKey = h.slice(h.indexOf("const readKey ="), h.indexOf("const open ="));
   const save = h.slice(h.indexOf("const save ="), h.indexOf("const stripAddress ="));
-  ok("host.durable-before-send", /if \(!save\(\)\)/.test(commit) && commit.indexOf("if (!save())") < commit.indexOf("buyPositionAction(fd)") && /if \(!save\(\)\)\s*\{[\s\S]*?selected\.current = oldSelected;[\s\S]*?return;/.test(commit) && /value\.length > PENDING_STORAGE_MAX_BYTES\) return false/.test(save));
+  ok("host.durable-before-send", /if \(!save\(\)\)/.test(commit) && commit.indexOf("if (!save())") < commit.indexOf("buyPositionAction(fd)") && /if \(!save\(\)\)\s*\{[\s\S]*?selected\.current = oldSelected;[\s\S]*?return;/.test(commit) && /saveOwnedSheet\(window\.sessionStorage, viewerId, items\)/.test(save));
   ok("host.double-tap", /requests\.current\.has\(old\.intent\.key\)/.test(commit) && commit.indexOf("requests.current.add(chosen.key)") < commit.indexOf("startTransition") && /if \(!quote\) return/.test(commit));
   ok("host.key-read-send-time", readKey.indexOf("const readAtMs = Date.now()") >= 0 && readKey.indexOf("const readAtMs = Date.now()") < readKey.indexOf("await readTruth") && /afterKeyRead\(record\.intent, null, readAtMs\)/.test(readKey));
   ok("host.key-shape", /Object\.prototype\.hasOwnProperty\.call\(body\.me, "keyPosition"\)/.test(h) && /options\.key && body\.me\.keyPosition !== null/.test(h) && /truth\.reread\.state !== "read"\) return/.test(readKey));
@@ -369,9 +379,9 @@ async function checks(x: Impl): Promise<Check[]> {
     && unrelated.next === "next" && unrelated.cleaned.length === 0
     && edit.next === undefined && edit.cleaned.length === 0 && doubt.next === undefined && doubt.cleaned.length === 0
     && receiptAddressBarrier(h, null)?.next === "next");
-  ok("host.boundary", /class SheetBoundary extends Component/.test(h) && /<SheetBoundary[\s\S]*?<BetSheet[\s\S]*?<\/SheetBoundary>/.test(h) && /componentDidCatch/.test(h) && /\/api\/client-error/.test(h) && !/\bthrow\s+/.test(h));
+  ok("host.boundary", /class SheetBoundary extends Component/.test(h) && /<SheetBoundary[\s\S]*?<BetSheet[\s\S]*?<\/SheetBoundary>/.test(h) && /componentDidCatch/.test(h) && /\/api\/client-error/.test(h) && throwsCaught(h));
   ok("host.capture-safe", /event\.defaultPrevented \|\| event\.button !== 0 \|\| event\.metaKey \|\| event\.ctrlKey \|\| event\.shiftKey \|\| event\.altKey/.test(h) && /!seed\.bettable/.test(h) && /href\.origin !== window\.location\.origin/.test(h) && /addEventListener\("click", click, true\)/.test(h));
-  ok("host.conditional-mount", /journeyShown && session && <Suspense fallback=\{null\}><LazyBetSheetHost\s*\/><\/Suspense>/.test(x.shell) && /export const LazyBetSheetHost = dynamic\(\(\) => import\("@\/components\/journey\/bet-sheet\/bet-sheet-host"\)\.then\(\(m\) => m\.BetSheetHost\)\.catch\(nothingIfLost\)\)/.test(x.lazy));
+  ok("host.conditional-mount", /journeyShown && session && <Suspense fallback=\{null\}><LazyBetSheetHost key=\{session\.userId\} viewerId=\{session\.userId\}\s*\/><\/Suspense>/.test(x.shell) && /export const LazyBetSheetHost = dynamic\(\(\) => import\("@\/components\/journey\/bet-sheet\/bet-sheet-host"\)\.then\(\(m\) => m\.BetSheetHost\)\.catch\(nothingIfLost\)\)/.test(x.lazy));
   const refresh = await privateRefreshChecks(h);
   ok("host.private-read-fault", refresh?.faultClosed === true);
   ok("host.private-read-race", refresh?.serialProtected === true && refresh?.sequenceProtected === true);
@@ -427,8 +437,7 @@ if (process.argv.includes("--prove-red")) {
     { name: "selection authorizes changed URL stake", check: "storage.selected", impl: { ...REAL, pack: (s, items) => pendingStorage(s && { ...s, bet: "mkt_selected.YES.6000" }, items) } },
     { name: "resolved key retained", check: "storage.retire-one", impl: { ...REAL, pack: (s, items) => pendingStorage(s, [...items, stored(4)]) } },
     ...[
-      ["host.durable-before-send", "if (!save())", "if (false)"],
-      ["host.durable-before-send", "value.length > PENDING_STORAGE_MAX_BYTES) return false", "false) return false"],
+      ["host.durable-before-send", "saveOwnedSheet(window.sessionStorage, viewerId, items)", "true"],
       ["host.double-tap", "requests.current.has(old.intent.key)", "false"],
       ["host.key-read-send-time", "afterKeyRead(record.intent, null, readAtMs)", "afterKeyRead(record.intent, null, Date.now())"],
       ["host.key-shape", 'Object.prototype.hasOwnProperty.call(body.me, "keyPosition")', "true"],
@@ -452,21 +461,22 @@ if (process.argv.includes("--prove-red")) {
       ["host.exit-inert-serial", 'if (current.current?.serial === view.active.serial) commit("betInstead");', 'commit("betInstead");'],
       ["host.exit-inert-serial", 'if (current.current?.serial === view.active.serial) deposit(amount);', 'deposit(amount);'],
       ["host.exit-inert-serial", 'if (current.current?.serial === view.active.serial) close();', 'close();'],
-      ["host.exit-inert-serial", "a && a.serial === view.active.serial && intent", "a && intent"],
+      ["host.exit-inert-serial", "a.serial === view.active.serial && intent", "intent"],
       ["host.exit-inert-serial", "if (current.current?.serial === view.active.serial) { stripAddress", "if (true) { stripAddress"],
     ].map(([check, from, to]) => ({ name: `${check}: ${from}`, check, impl: { ...REAL, host: REAL.host.replace(from, to) } })),
     ...[
-      ["host.unmounted-receipt-storage-address", "receipt", "if (!mounted.current) return;", ""],
-      ["host.unmounted-receipt-storage-address", "save", "if (!mounted.current) return false;", ""],
+      ["host.durable-before-send", "commit", "if (!save()) {\n      requests.current.delete", "if (false) {\n      requests.current.delete"],
+      ["host.unmounted-receipt-storage-address", "receipt", "!mounted.current || record.owner", "record.owner"],
+      ["host.unmounted-receipt-storage-address", "save", "!mounted.current || !recoveryReady.current", "!recoveryReady.current"],
       ["host.unmounted-receipt-storage-address", "stripAddress", "if (!mounted.current) return;", ""],
       ["host.unmounted-key-read", "readKey", "if (!mounted.current) return;", ""],
-      ["host.unmounted-key-read", "readKey", "!mounted.current || pending.current", "pending.current"],
+      ["host.unmounted-key-read", "readKey", "!mounted.current || record.owner", "record.owner"],
       ["host.unmounted-commit-entry", "commit", "if (!mounted.current) return;\n    const a", "const a"],
-      ["host.unmounted-action-answer", "commit", "if (!mounted.current) return;\n      requests.current.delete", "requests.current.delete"],
-      ["host.unmounted-private-answer", "commit", "if (!mounted.current) return;\n      const build", "const build"],
+      ["host.unmounted-action-answer", "commit", "!mounted.current || record.epoch !== ownerEpoch.current || record.owner", "record.epoch !== ownerEpoch.current || record.owner"],
+      ["host.unmounted-private-answer", "commit", "!mounted.current || record.epoch !== ownerEpoch.current || ownerInvalid.current", "record.epoch !== ownerEpoch.current || ownerInvalid.current"],
       ["host.unmounted-close-deposit", "close", "if (!mounted.current) return;", ""],
       ["host.unmounted-close-deposit", "deposit", "if (!mounted.current) return;", ""],
-      ["host.unmounted-auth-redirect", "readTruth", "mounted.current && options.open", "options.open"],
+      ["host.unmounted-auth-redirect", "readTruth", "invalidateOwner();\n        return failed;", "return failed;"],
     ].map(([check, callback, from, to]) => ({ name: `${check}: ${callback}`, check, impl: { ...REAL, host: plantCallback(REAL.host, callback, from, to) } })),
     { name: "guest receives money host", check: "host.conditional-mount", impl: { ...REAL, shell: REAL.shell.replace("journeyShown && session && <Suspense fallback={null}><LazyBetSheetHost", "journeyShown && <Suspense fallback={null}><LazyBetSheetHost") } },
     { name: "opening focus fires before its portal commit", check: "modal.portal-ready-opening", impl: { ...REAL, modal: REAL.modal.replace("if (!mounted) return;", "") } },

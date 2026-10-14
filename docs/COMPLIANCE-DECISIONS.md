@@ -8,6 +8,39 @@
 
 ---
 
+## 2026-10-14 · Privacy v2026-10-14 — account-bound bet recovery and historic quarantine (Vodacom S8)
+
+**Authority.** Ali's instruction to complete the Vodacom plan and repair logical defects; the reviewed account-change
+recovery policy for S8. This supersedes the 2026-10-13 entry's shared unfinished-request envelope and 24-hour expiry
+for request keys. It adds no analytics or marketing permission and enables no guest betting host.
+
+**What §7 says, in English, Swahili and Chinese.** `kp-pending-bet` remains the tab's unplaced link selection with
+question, side, amount, referral/campaign tags, and (when signed in) an account identifier, for at most 24 hours.
+Dispatched unfinished bets instead live in `kp-sheet-intents:v2:` followed by their authenticated account identifier:
+the question, side, amount, time and random request key. Their age never expires a key. A confirmed owned receipt or
+a successful owned null check after the recovery wait removes only that unresolved entry; closing the tab removes
+all tab storage. Switching accounts never removes another account's unfinished requests.
+
+**Historic ambiguity is retained.** `kp-sheet-intents:legacy:v1` keeps complete earlier envelopes without a recorded
+owner, plus exact authenticated positive receipt proofs, until the tab closes. A null or another account's result
+cannot assign or retire an ambiguous key. Only the original account's positive receipt for the same key, question,
+side and original amount ends that entry's block on a new request; its historic bytes remain in the archive through
+tab close, as disclosed. Each account envelope and the archive are bounded to 64,000 string units; browser quota is
+also finite. Quota, malformed-storage, or exact readback failure refuses a new dispatch without evicting old keys.
+
+**Identity and authority.** Private reads name the authenticated viewer; a stale account invalidates the cached sheet
+epoch and refreshes its document without clearing the new account's cookie. An explicit sheet money tap carries the
+expected account as a consistency hint. The server still authenticates its own session and refuses a missing or
+different sheet hint before the money call. The hint grants no authority. The independent 24-hour selection and
+attribution auth bridge remains available; keyed historic data cannot become an ordinary unplaced selection.
+
+**Version and exact scope.** The page's three labels and `POLICY_PAGES.privacy.codeVersion` move together to 2026-10-14.
+The English content block measures `ec751bf6da90`; the three separately marked paragraphs measure
+`fb825bd6a8a3` / `8b4d6871dca3` / `6e4b8029bd17`. Published-text guards pin those exact words and version, with
+changed namespace/lifetime/identity/legacy-retention controls, while comparing every unrelated policy clause and
+existing dictionary entry against `origin/main`. Storage, actual controller/action source, and browser recovery
+proofs are required before integration. The server's ledger and tickets remain the record of placed bets.
+
 ## 2026-10-13 · Privacy v2026-10-13 — the bet sheet's necessary tab storage (Vodacom S8)
 
 **Authority.** The approved Vodacom S8 plan, WP7b and its amendments A2, A3 and A16; Ali's instruction to continue

@@ -14,16 +14,18 @@ import { usePathname } from "next/navigation";
  *
  * ⛔ AT MOST ONE ESCAPE A MINUTE (sessionStorage). If the status route and the handler ever disagreed, a loop of
  * document navigations would be worse than a stale avatar — the throttle makes that impossible.
- * ⛔ A failed request, a non-JSON answer or `active: true` does nothing.
+ * An active session for a different account refreshes the document immediately, without clearing its cookie.
+ * ⛔ A failed request, a non-JSON answer or the same active account does nothing.
  */
 const KEY = "50pick:session-escape-at";
 
-export function SessionPresence() {
+export function SessionPresence({viewerId}: {viewerId: string}) {
   const pathname = usePathname();
   const first = useRef(true);
   const lastCheck = useRef(0);
 
   useEffect(() => {
+    let current = true;
     const check = async () => {
       const now = Date.now();
       if (now - lastCheck.current < 3_000) return;
@@ -31,8 +33,12 @@ export function SessionPresence() {
       try {
         const r = await fetch("/api/session/status", { cache: "no-store", credentials: "same-origin" });
         if (!r.ok) return;
-        const body = (await r.json()) as { active?: unknown };
-        if (body.active !== false) return;
+        const body = (await r.json()) as { active?: unknown; viewerId?: unknown };
+        if (!current) return;
+        const ownerChanged = body.active === true && typeof body.viewerId === 'string' && body.viewerId !== viewerId;
+        if (body.active !== false && !ownerChanged) return;
+        // The inactive-session escape throttle must not hold legitimate rapid A → B → A account changes.
+        if (ownerChanged) { window.location.reload(); return; }
         let last = 0;
         try { last = Number(window.sessionStorage.getItem(KEY) ?? 0); } catch { /* storage blocked */ }
         if (Date.now() - last < 60_000) return;
@@ -47,8 +53,8 @@ export function SessionPresence() {
     else void check();
     const onVisible = () => { if (document.visibilityState === "visible") void check(); };
     document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [pathname]);
+    return () => { current = false; document.removeEventListener("visibilitychange", onVisible); };
+  }, [pathname, viewerId]);
 
   return null;
 }

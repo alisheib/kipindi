@@ -7,6 +7,7 @@ import { normalizeReferralCode } from "@/lib/server/affiliate-service";
 import { getServerT } from "@/lib/i18n-server";
 import { messagingLocaleOf, renderedLocaleOf } from "@/lib/server/marketing/consent-ledger";
 import { sanitizeNext } from "@/lib/safe-next";
+import { normalizeInviteCode } from "@/lib/invite-code";
 import { registerRefusalOf, type RegisterRefusal } from "./refusal";
 
 /**
@@ -48,7 +49,7 @@ export async function startRegisterAction(_prev: RegisterRefusal | null, formDat
   // ⛔ NEVER `.slice(0, 16)` — see `MAX_REFERRAL_CODE_LEN` in affiliate-service. Refuse, never
   // truncate: a cut prefix can match a different partner's code.
   const referralCode = normalizeReferralCode(String(formData.get("ref") ?? "")) ?? undefined;
-  const inviteCode = String(formData.get("invite") ?? "").trim().slice(0, 24) || undefined;
+  const inviteCode = normalizeInviteCode(String(formData.get("invite") ?? "")) ?? undefined;
   // Safe post-auth destination (the market the player tapped, etc.). Validated
   // same-origin relative, never an /auth/* loop.
   const nextRaw = String(formData.get("next") ?? "").trim();

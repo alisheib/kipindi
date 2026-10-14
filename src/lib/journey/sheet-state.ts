@@ -373,7 +373,7 @@ export function nextKey(prior: SheetIntent | null, quote: Quote, mint: () => str
  * three fields. Null for anything the bet path would refuse by construction: a side that is not YES or NO, a stake that
  * is not a whole positive number, a market id of the wrong shape, a key that is not an intent key (a house key included).
  */
-export function requestFor(quote: Quote, key: string): FormData | null {
+export function requestFor(quote: Quote, key: string, expectedOwnerId?: string): FormData | null {
   if (quote.side !== "YES" && quote.side !== "NO") return null;
   if (!Number.isSafeInteger(quote.stake) || quote.stake <= 0) return null;
   if (!MARKET_ID.test(quote.marketId) || !isIntentKey(key)) return null;
@@ -382,6 +382,10 @@ export function requestFor(quote: Quote, key: string): FormData | null {
   fd.set("side", quote.side);
   fd.set("stake", String(quote.stake));
   fd.set("idempotencyKey", key);
+  if (expectedOwnerId !== undefined) {
+    if (!/^[A-Za-z0-9_-]{1,128}$/.test(expectedOwnerId)) return null;
+    fd.set("expectedOwnerId", expectedOwnerId);
+  }
   funnelBetFields(fd, "sheet");
   return fd;
 }
@@ -603,6 +607,8 @@ export type SheetFrameInput = {
   intent: SheetIntent | null;
   /** The last answer's settled view, while it stands (the host drops it when the player edits or closes). */
   settled: Settled | null;
+  /** Historical ownerless recovery cannot turn into a fresh or foreign retry. */
+  recoveryBlocked?: boolean;
 };
 
 const ctaPlace = (stake: number): SheetLine => ({ key: "journey.placeCta", vars: { amount: stake } });
@@ -656,6 +662,10 @@ export function sheetFrame(input: SheetFrameInput): SheetFrame {
     closedBody: null, low: null, pending: null, lossRoom: null, receipt: null, cta: null, closable: true,
     quote: null, betInsteadQuote: null,
   };
+
+  if (input.recoveryBlocked) return {...base, frame: "inDoubt", stakeLocked: true, estimate: null, showEstimate: false,
+    balance: {kind: "unknown"}, lines: [lineOf("common.temporarilyUnavailable")],
+    cta: {label: CTA_BARE, enabled: false, describedBy: "line"}, quote: null};
 
   if (settled?.view.kind === "receipt") {
     return { ...base, frame: "receipt", estimate: null, showEstimate: false, receipt: { positionId: settled.view.positionId, replayed: settled.view.replayed, quote: settled.view.quote } };

@@ -107,9 +107,9 @@ const TITLE: Record<Locale, string> = {
 // unchanged; the data-rights text (`privacy.ts`, rights.erasure) says the same; `test:privacy-notice` §4j pins the bullet
 // and §4l holds it to the code. `POLICY_PAGES.privacy.codeVersion` moved with META.
 const META: Record<Locale, string> = {
-  en: "Version 2026-10-13 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
-  sw: "Toleo 2026-10-13 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
-  zh: "版本 2026-10-13 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
+  en: "Version 2026-10-14 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
+  sw: "Toleo 2026-10-14 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
+  zh: "版本 2026-10-14 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
 };
 
 /**
@@ -215,8 +215,11 @@ function content(): Record<Locale, React.ReactNode> { return {
         </p>
         <p data-policy-addition="pending-bet">
           A bet chosen through a link is kept in that tab&apos;s sessionStorage as kp-pending-bet for at most 24 hours: the question, side and amount you chose,
-          the link&apos;s referral and campaign tags, and random request ids for unfinished bets, so a bet interrupted by a reload is never placed twice.
-          A confirmed bet&apos;s entry is removed; closing the tab removes the stored entries.
+          the link&apos;s referral and campaign tags, and your account identifier when signed in. Separately, kp-sheet-intents:v2: followed by that account identifier
+          holds each unfinished bet&apos;s question, side, amount, time and random request ids, so a reload keeps the original request.
+          These unfinished bets have no 24-hour expiry: an entry is removed after a confirmed bet or a successful check by the same account after the recovery wait, or on closing the tab.
+          Changing accounts never removes another account&apos;s unfinished requests. kp-sheet-intents:legacy:v1 keeps complete earlier entries whose account was not recorded,
+          and any confirmed receipt details, until closing the tab. An earlier entry stops blocking another bet on that question and side only after its original account confirms a receipt with the same question, side and amount.
         </p>
         <AnalyticsChoice />
       </LegalSection>
@@ -342,8 +345,11 @@ function content(): Record<Locale, React.ReactNode> { return {
         </p>
         <p data-policy-addition="pending-bet">
           Dau ulilochagua kupitia kiungo huhifadhiwa kwenye sessionStorage ya kichupo hicho kama kp-pending-bet kwa muda usiozidi saa 24: swali, upande na kiasi ulichochagua,
-          lebo za mwaliko na kampeni za kiungo, pamoja na vitambulisho vya maombi vilivyotengenezwa bila mpangilio kwa dau ambazo bado hazijathibitishwa, ili kupakia ukurasa upya kusiweke dau mara mbili.
-          Rekodi ya dau lililothibitishwa huondolewa; ukifunga kichupo, rekodi zilizohifadhiwa huondolewa.
+          lebo za mwaliko na kampeni za kiungo, na kitambulisho cha akaunti yako ukiwa umeingia. Kando na hilo, kp-sheet-intents:v2: ikifuatiwa na kitambulisho hicho cha akaunti
+          huhifadhi swali, upande, kiasi, muda na vitambulisho vya maombi vilivyotengenezwa bila mpangilio kwa dau ambazo bado hazijathibitishwa, ili kupakia ukurasa upya kuhifadhi ombi la awali.
+          Dau hizi ambazo bado hazijathibitishwa haziishi baada ya saa 24: rekodi huondolewa baada ya dau lililothibitishwa au ukaguzi uliofanikiwa wa akaunti ileile baada ya muda wa kusubiri uthibitisho, au ukifunga kichupo.
+          Kubadilisha akaunti hakuondoi maombi ambayo bado hayajathibitishwa ya akaunti nyingine. kp-sheet-intents:legacy:v1 huhifadhi rekodi kamili za awali ambazo akaunti yake haikurekodiwa,
+          na taarifa zozote za risiti zilizothibitishwa, hadi ukifunga kichupo. Rekodi ya awali huacha kuzuia dau jingine kwenye swali na upande huo tu baada ya akaunti yake ya awali kuthibitisha risiti yenye swali, upande na kiasi kilekile.
         </p>
         <AnalyticsChoice />
       </LegalSection>
@@ -460,8 +466,11 @@ function content(): Record<Locale, React.ReactNode> { return {
           我们仅使用必要的最小 cookie 集合：您的登录会话（HMAC 签名的 HttpOnly cookie，登录后最长 7 天失效）、您的语言、一条保留 30 秒、说明您为何被退出登录的提示、您已关闭钱包身份提示的记录、您在手机上选择的卡片间距，以及仅限员工账户的双重验证登录 cookie。仅在您允许分析时，Google Analytics 才会设置两个 cookie：_ga 和 _ga_W66WRL67MQ，保存用于统计访问的随机标识符，有效期 395 天；关闭分析会将其删除。在您作出选择之前，分析处于关闭状态；您的选择保存在浏览器存储中——允许则保存 395 天，拒绝则保存 180 天，之后会再次询问。不使用任何广告 cookie。拒绝分析不会影响 50pick 的正常使用。仅当 50pick 员工开启尚未上线页面的预览，或您打开 50pick 发送给您的预览链接时，才会设置一个签名的预览 cookie：kp_preview；除签发者外，它不包含任何个人信息，有效期最长 24 小时。在浏览器标签页保持打开期间，您此次访问首个页面的推广标签（utm_source 和 utm_campaign）以 kp-utm 的名称保存在该标签页自身的存储中，以便按推广活动拆分使用流程计数；其中不含标识符，标签页关闭即删除。部分显示选择（例如隐藏余额或关闭提示）保存在您设备上的浏览器存储中。
         </p>
         <p data-policy-addition="pending-bet">
-          您通过链接选择的投注以 kp-pending-bet 的名称保存在该标签页的 sessionStorage 中，最长 24 小时：包括您选择的问题、方向和金额、链接的推荐与推广标签，以及尚未完成投注的随机请求标识符，以避免重新加载页面后重复下注。
-          已确认投注的记录会被移除；关闭标签页会移除所有保存的记录。
+          您通过链接选择的投注以 kp-pending-bet 的名称保存在该标签页的 sessionStorage 中，最长 24 小时：包括您选择的问题、方向和金额、链接的推荐与推广标签，以及登录后的账户标识符。
+          另外，kp-sheet-intents:v2: 后接该账户标识符，保存每笔尚未完成投注的问题、方向、金额、时间及随机请求标识符，使重新加载页面后仍保留原请求。
+          尚未完成投注没有 24 小时的过期限制：记录会在已确认投注后、同一账户在恢复等待期后成功核查，或关闭标签页时移除。
+          切换账户不会移除其他账户尚未完成的请求。kp-sheet-intents:legacy:v1 保存未记录账户的完整旧记录及任何已确认的收据详情，直到关闭标签页。
+          只有原账户确认收据的问题、方向和金额均与旧记录一致后，该记录才不再阻止对同一问题和方向再次投注。
         </p>
         <AnalyticsChoice />
       </LegalSection>

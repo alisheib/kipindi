@@ -401,6 +401,7 @@ function run(impl: Impl, log: (l: string) => void): string[] {
   const goldens: G[] = [
     { name: "1 BUSY", a: R(fail({ code: "BUSY", retryAfterSec: 1 })), want: { row: 1, view: "inline", line: "journey.sheetBusy", retry: "same", doubt: "none", marker: "dropKey" } },
     { name: "2 throw", a: T(new Error("dropped line")), want: { row: 2, view: "inDoubt", retry: "same", doubt: "enter", marker: "keepKey" } },
+    { name: "2 account epoch changed (host refresh; fallback holds original key)", a: R(fail({code: "SESSION_CHANGED"})), want: {row: 2, view: "inDoubt", retry: "same", doubt: "enter", marker: "keepKey"} },
     { name: "3 skew", a: T(Object.assign(new Error("Server Action x was not found"), { name: "UnrecognizedActionError" })), want: { row: 3, view: "skew", reload: true, retry: "none", doubt: "none", marker: "dropKey" } },
     { name: "3 skew spent", a: T(Object.assign(new Error("x"), { name: "UnrecognizedActionError" })), c: { reloadSpent: true }, want: { row: 3, view: "skew", reload: false } },
     { name: "4 redirect", a: T(Object.assign(new Error("NEXT_REDIRECT"), { digest: "NEXT_REDIRECT;replace;/auth/login?next=%2F;307;" })), want: { row: 4, view: "redirect", retry: "none", doubt: "none", marker: "dropKey" } },
@@ -1050,7 +1051,7 @@ if (!PROVE_RED) {
     { name: "a pre-lock site emitting balance_insufficient", expect: /^2\.lock /,
       impl: withSrc({ service: SOURCES.service.replace('if (!u) return { ok: false, error: "Account not found.", code: "NOT_FOUND" };', 'if (!u) return { ok: false, error: "Account not found.", code: "NOT_FOUND" };\n  if (u.poor) return { ok: false, error: "Poor.", code: "INVALID", reason: "balance_insufficient" };') }) },
     { name: "a second BUSY site after the L2 check", expect: /^2\.busy-once /,
-      impl: withSrc({ service: SOURCES.service.replace("return (await landedKeyAnswer(userId, opts, r)) ?? r;", 'if (r.ok === false && r.code === "INVALID") return { ok: false, error: "busy", code: "BUSY", retryAfterSec: 1 };\n      return (await landedKeyAnswer(userId, opts, r)) ?? r;') }) },
+      impl: withSrc({ service: SOURCES.service.replace("return (await landedKeyAnswer(userId, opts, r, reach.uncertain)) ?? r;", 'if (r.ok === false && r.code === "INVALID") return { ok: false, error: "busy", code: "BUSY", retryAfterSec: 1 };\n      return (await landedKeyAnswer(userId, opts, r, reach.uncertain)) ?? r;') }) },
     { name: "SUSPENDED classified by its code again", expect: /^2\.busy-once /,
       impl: withSR({ CLASSIFIED_CODES: [...SR.CLASSIFIED_CODES, "SUSPENDED"] }) },
     // §4
