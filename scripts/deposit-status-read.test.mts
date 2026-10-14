@@ -27,7 +27,8 @@ const sources = Object.fromEntries(files.map(file => [file, readFileSync(join(RO
 const RECHECK_FILE = "src/lib/server/deposit-recheck.ts";
 const RECHECK_ROUTE = "src/app/api/wallet/deposits/[id]/recheck/route.ts";
 const BINDING_FILE = "src/lib/journey/deposit-recheck-binding.ts";
-for (const file of [RECHECK_FILE, RECHECK_ROUTE, BINDING_FILE]) sources[file] = readFileSync(join(ROOT, file), "utf8");
+const MEMORY_FILE = "src/lib/server/store.ts";
+for (const file of [RECHECK_FILE, RECHECK_ROUTE, BINDING_FILE, MEMORY_FILE]) sources[file] = readFileSync(join(ROOT, file), "utf8");
 const RECHECK = process.argv.includes("--recheck-only");
 const PG = process.argv.includes("--pg");
 if (process.env.NODE_ENV === "production" || (!!process.env.DATABASE_URL !== PG)) throw new Error("Use memory with DATABASE_URL unset, or explicit own scratch --pg");
@@ -61,6 +62,29 @@ function compile(source: string, imports: Record<string, unknown>) {
   }, module, module.exports);
   return module.exports;
 }
+/** Invoke the actual selector AST with the real fixture rows (and actual SQL in --pg). This lets a memory source
+ * plant reproduce arbitrary selection in the money core rather than merely checking for a guard's spelling. */
+function referenceData(src: Record<string, string>) {
+  const file = PG ? files[12] : MEMORY_FILE;
+  const ast = ts.createSourceFile(file, src[file], ts.ScriptTarget.Latest, true);
+  const candidates: ts.PropertyAssignment[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isPropertyAssignment(node) && node.name.getText(ast) === "findByProviderRef") candidates.push(node);
+    ts.forEachChild(node, visit);
+  };
+  visit(ast);
+  if (candidates.length !== 1) throw new Error("Expected one actual provider-reference selector");
+  const initializer = candidates[0].initializer.getText(ast);
+  const mapper = new Function("num", "numOrNull", "iso", ts.transpileModule(fn(src[files[12]], "toStoredTxn"),
+    { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText + "\nreturn toStoredTxn;")(
+      (n: unknown) => Number(n ?? 0), (n: unknown) => n == null ? null : Number(n), (at: unknown) => at == null ? null : new Date(String(at)).toISOString());
+  const selector = new Function("store", "pc", "toStoredTxn", ts.transpileModule(`const reader = ${initializer}; return reader;`,
+    { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText);
+  return { ...db, txn: { ...db.txn, findByProviderRef: async (ref: string, tx: any) => {
+    const rows = PG ? [] : await db.txn.listAll();
+    return selector({ txns: new Map(rows.map(row => [row.id, row])) }, () => prisma(), mapper)(ref, tx);
+  } } } as typeof db;
+}
 const providerWriterCache = new Map<string, Array<{ file: string; fn: string; text: string; body: string }>>();
 function providerWriters(src: Record<string, string>) {
   const key = Object.entries(src).filter(([, source]) => source.includes("providerStatus")).map(([file, source]) => file + "\n" + source).join("\n");
@@ -92,7 +116,7 @@ function system(src = sources, data = db) {
   const reviewModule = compile(src[files[5]], {});
   const receiptsModule = compile(src[files[6]], { "@/lib/query/windows": QueryWindows, "@/lib/query/parse": {}, "@/lib/query/href": {},
     "@/lib/query/counts": {}, "@/lib/query/empty": {}, "@/lib/payment-providers": { paymentMethodName }, "./ledger": WalletLedger, "./deposit-review": reviewModule });
-  const seen = { verifies: [] as string[], settles: 0, audits: [] as any[], notices: [] as any[], groups: [] as string[], funnels: 0,
+  const seen = { verifies: [] as string[], settles: 0, reviewAttempts: 0, audits: [] as any[], notices: [] as any[], groups: [] as string[], funnels: 0,
     locked: false, statusAllowed: true, probeAllowed: true, lockAtDispatch: false, rateCalls: [] as Array<{ key: string; action: string }> };
   let verify: (ref: string) => Promise<any> = async () => ({ status: "PENDING" });
   let core: any;
@@ -106,37 +130,46 @@ function system(src = sources, data = db) {
     throw new Error(`Unexpected dynamic side-effect module ${id}`);
   };
   const deps = { db: data, withLock, runOutsideLock, currentLockTx, afterCommit, withMoneyTx: L.withMoneyTx,
+    onReviewAttempt: () => { seen.reviewAttempts++; },
     postLedgerEntries: async (id: string, lines: any, tx: any) => { seen.groups.push(id); return L.postLedgerEntries(id, lines, tx); },
     depositEntries: L.depositEntries, rgSuspenseEntries: L.rgSuspenseEntries,
+    withdrawalEntries: L.withdrawalEntries, getEffectiveConfig: async () => ({ withdrawalGatewayShareRate: 0 }),
+    notifyWithdrawalSent: (row: any) => seen.notices.push({ ownerId: row.userId, txnId: row.id, status: "CONFIRMED" }),
+    notifyWithdraw: (ownerId: string, notice: any) => seen.notices.push({ ownerId, ...notice }),
+    notifyRefusedFundsReturnFailed: () => {}, amlRejectRefundHtml: () => "", refusedFundsReturnFailedHtml: () => "", payoutRailLabel: () => "",
     audit, isLockedOut: async () => ({ locked: seen.locked, reason: "cooling-off" }), RG_RETURN_MARK, paymentMethodName, formatTzs, formatDateTime,
     DEPOSIT_STATUS_REVIEW_MARK: reviewModule.DEPOSIT_STATUS_REVIEW_MARK, depositResultStatus: receiptsModule.depositResultStatus,
     hasDepositStatusReview: reviewModule.hasDepositStatusReview, isRgHeldDeposit: receiptsModule.isRgHeldDeposit,
     DepositSchema, AdminDepositSchema, parseSavedDepositBet: D.parseSavedDepositBet, sameDepositFunding: D.sameDepositFunding,
+    parseDepositRecheckBinding: bindingModule.parseDepositRecheckBinding, matchesDepositRecheckBinding: bindingModule.matchesDepositRecheckBinding,
     rateCheckAsync: async () => ({ allowed: true }), randomId: () => String(++sequence).padStart(24, "0"),
     isMaintenanceMode: async () => false, maintenanceMessage: async () => "Maintenance", isPaymentPaused: async () => false,
     checkDepositLimit: async () => ({ allowed: true }), SOF_SINGLE_TXN_TZS: 1_000_000, SOF_ROLLING_30D_TZS: 5_000_000,
     readIdentityStanding: async () => ({ kycStatus: "NOT_STARTED", everApproved: false }),
     dispatchDeposit: async ({ correlationId }: any) => { if (seen.lockAtDispatch) seen.locked = true; return { ok: true, status: "CONFIRMED", providerRef: correlationId }; },
-    emit: () => {}, notifyDeposit: (_userId: string, notice: any) => seen.notices.push(notice),
+    emit: () => {}, notifyDeposit: (ownerId: string, notice: any) => seen.notices.push({ ownerId, ...notice }),
     sendEmailToUser: async () => {}, depositConfirmedHtml: () => "", depositReversedHtml: () => "", depositFailedHtml: () => "",
     require: requireFixture,
   };
-  const names = ["deposit", "settleDepositFromReturn", "settleDepositConfirmed", "settleDepositFailed", "settlePaymentWebhook", "markDepositStatusReview", "refundAmlRejection", "friendlyProvider", "friendlyDepositReason", "friendlyFailureReason", "auditNeedsReviewOnce"];
+  const names = ["deposit", "settleDepositFromReturn", "settleDepositConfirmed", "settleDepositFailed", "settleWithdrawalConfirmed", "settleWithdrawalFailed", "settlePaymentWebhook", "markDepositStatusReview", "assertUniquePaymentReference", "refundAmlRejection", "friendlyProvider", "friendlyDepositReason", "friendlyFailureReason", "auditNeedsReviewOnce"];
   const walletText = "const NEEDS_REVIEW_SEEN = new Set(); const NEEDS_REVIEW_CAP = 5000;\n" + names.map(name => fn(src[files[1]], name)).join("\n");
   const code = ts.transpileModule(walletText, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
-  const money = new Function(...Object.keys(deps), `${code}\nreturn { deposit, settleDepositFromReturn, settlePaymentWebhook, settleDepositConfirmed, settleDepositFailed, markDepositStatusReview, refundAmlRejection };`)(...Object.values(deps));
+  // Wrap only the entry counter; the compiled marker's actual source body and all real DAL/lock work stay intact.
+  const trackedMarker = "const actualMarkerClaim = markDepositStatusReview; markDepositStatusReview = (...args) => { onReviewAttempt(); return actualMarkerClaim(...args); };";
+  const money = new Function(...Object.keys(deps), `${code}\n${trackedMarker}\nreturn { deposit, settleDepositFromReturn, settlePaymentWebhook, settleDepositConfirmed, settleDepositFailed, markDepositStatusReview, refundAmlRejection };`)(...Object.values(deps));
   const rate = async (key: string, action: string) => {
     seen.rateCalls.push({ key, action });
     return { allowed: action === "deposit.status" ? seen.statusAllowed : seen.probeAllowed, retryAfterSec: 10 };
   };
   core = compile(src[files[0]], { "./store": { db: data }, "./audit": { audit }, "./rate-limit": { rateCheckAsync: rate },
     "./payments": { verifyDepositStatus: async (ref: string) => { seen.verifies.push(ref); return verify(ref); } },
-    "./wallet-service": { settlePaymentWebhook: async (input: any) => { seen.settles++; return money.settlePaymentWebhook(input); } },
+    "./wallet-service": { settlePaymentWebhook: async (input: any, restriction: any, original: any) => { seen.settles++; return money.settlePaymentWebhook(input, restriction, original); } },
     "@/lib/journey/deposit-state": D,
+    "@/lib/journey/deposit-recheck-binding": bindingModule,
   });
   const recheck = compile(src[RECHECK_FILE], { "./store": { db: data }, "./audit": { audit }, "./rate-limit": { rateCheckAsync: rate },
     "./payments": { verifyDepositStatus: async (ref: string) => { seen.verifies.push(ref); return verify(ref); } },
-    "./wallet-service": { settlePaymentWebhook: async (input: any) => { seen.settles++; return money.settlePaymentWebhook(input); } },
+    "./wallet-service": { settlePaymentWebhook: async (input: any, restriction: any) => { seen.settles++; return money.settlePaymentWebhook(input, restriction); } },
     "./locks": { withLock }, "@/lib/journey/deposit-state": D, "@/lib/payment-providers": { isMobileMoneyMethodId },
     "@/lib/journey/deposit-recheck-binding": bindingModule,
   });
@@ -172,8 +205,136 @@ async function txn(userId: string, patch: Record<string, unknown> = {}) {
     createdAt: new Date(Date.now() - 25_000).toISOString(), completedAt: null, origin: "low_balance", pendingBet: null, ...patch } as never);
 }
 const byId = (row: any): DLookup => ({ kind: "txn-id", value: row.id });
+async function referenceControls(src: Record<string, string>): Promise<Check[]> {
+  const checks: Check[] = [], ok = (name: string, pass: unknown) => checks.push({ name, pass: !!pass });
+  const selector = referenceData(src);
+  const unique = await txn(await player());
+  ok("reference.unique-and-missing", (await selector.txn.findByProviderRef(unique.providerRef!))?.id === unique.id
+    && await selector.txn.findByProviderRef("s9_ref_absent") === null);
+  if (PG) {
+    const other = await txn(await player());
+    let refusedInTx = false;
+    try {
+      await withLock(`wallet:${unique.userId}`, async (tx) => {
+        await db.txn.update(other.id, { providerRef: unique.providerRef }, tx);
+        try { await selector.txn.findByProviderRef(unique.providerRef!, tx); } catch { refusedInTx = true; }
+        throw new Error("controlled reference selector rollback");
+      });
+    } catch { /* Actual rollback must restore the unrelated row's original reference. */ }
+    const rows = await prisma()!.transaction.findMany({ where: { providerRef: unique.providerRef } });
+    ok("reference.pg-current-tx", refusedInTx && rows.length === 1 && rows[0].id === unique.id
+      && (await db.txn.findById(other.id))?.providerRef === other.providerRef);
+  }
+  for (const [firstType, secondType] of [["DEPOSIT", "DEPOSIT"], ["DEPOSIT", "WITHDRAWAL"], ["WITHDRAWAL", "DEPOSIT"], ["WITHDRAWAL", "WITHDRAWAL"]] as const) {
+    const a = await player(), b = await player();
+    const first = await txn(a, { type: firstType, amount: firstType === "WITHDRAWAL" ? -5000 : 5000 });
+    const second = await txn(b, { type: secondType, amount: secondType === "WITHDRAWAL" ? -5000 : 5000, providerRef: first.providerRef });
+    if (firstType === "WITHDRAWAL") await db.wallet.adjust(`wlt_${a}`, { hold: 5000 });
+    if (secondType === "WITHDRAWAL") await db.wallet.adjust(`wlt_${b}`, { hold: 5000 });
+    const s = system(src, selector); s.verify(async () => ({ status: "CONFIRMED", amount: 5000 }));
+    for (const reported of ["CONFIRMED", "FAILED"] as const) {
+      let refused = false;
+      try { const r = await s.money.settlePaymentWebhook({ providerRef: first.providerRef!, status: reported, amount: 5000 }); refused = !r.handled; }
+      catch { refused = true; }
+      const wA = await db.wallet.findByUserId(a), wB = await db.wallet.findByUserId(b);
+      ok(`reference.ambiguous.${firstType}-${secondType}.${reported}`, refused
+        && (await db.txn.findById(first.id))?.status === "PROCESSING" && (await db.txn.findById(second.id))?.status === "PROCESSING"
+        && wA?.balance === 0 && wB?.balance === 0 && wA.hold === (firstType === "WITHDRAWAL" ? 5000 : 0)
+        && wB.hold === (secondType === "WITHDRAWAL" ? 5000 : 0) && s.seen.groups.length === 0 && s.seen.notices.length === 0);
+    }
+    const deposit = secondType === "DEPOSIT" ? second : firstType === "DEPOSIT" ? first : null;
+    if (deposit) {
+      const result = await s.read(deposit.userId, byId(deposit));
+      ok(`reference.owned-probe.${firstType}-${secondType}`, result.view.state === "UNKNOWN" && !result.txn
+        && s.seen.verifies.length === 0 && s.seen.groups.length === 0 && s.seen.notices.length === 0);
+    }
+    if (PG) {
+      const ledger = await prisma()!.ledgerEntry.findMany({ where: { txnId: { in: [first.id, second.id] } } });
+      ok(`reference.pg-no-ledger.${firstType}-${secondType}`, ledger.length === 0);
+    }
+  }
+  // The first global read really is unique. Insert the second persisted row while the actual settlement is waiting
+  // at its pre-lock boundary; every mutation door must check the reference again inside its wallet transaction.
+  for (const [name, type, stored, reported] of [["deposit-confirm", "DEPOSIT", "PROCESSING", "CONFIRMED"],
+    ["deposit-fail", "DEPOSIT", "PROCESSING", "FAILED"], ["withdraw-confirm", "WITHDRAWAL", "PROCESSING", "CONFIRMED"],
+    ["withdraw-fail", "WITHDRAWAL", "PROCESSING", "FAILED"], ["deposit-review", "DEPOSIT", "FAILED", "CONFIRMED"]] as const) {
+    const a = await player(), b = await player(), own = await txn(a, { type, status: stored, amount: type === "WITHDRAWAL" ? -5000 : 5000 });
+    if (type === "WITHDRAWAL") await db.wallet.adjust(`wlt_${a}`, { hold: 5000 });
+    let entered!: () => void, release!: () => void, delayed = false, referenceInside = false, sameTx = false;
+    const enteredRead = new Promise<void>(r => { entered = r; }), releasedRead = new Promise<void>(r => { release = r; });
+    const data = { ...selector, txn: { ...selector.txn,
+      findById: async (id: string, tx: any) => {
+        const row = await db.txn.findById(id, tx);
+        if (id === own.id && !inLock() && !delayed) { delayed = true; entered(); await releasedRead; }
+        return row;
+      },
+      findByProviderRef: async (ref: string, tx: any) => {
+        if (inLock()) { referenceInside = true; sameTx = tx === currentLockTx() && (!PG || !!tx); }
+        return selector.txn.findByProviderRef(ref, tx);
+      },
+    } } as typeof db;
+    const s = system(src, data);
+    const settling = s.money.settlePaymentWebhook({ providerRef: own.providerRef!, status: reported, amount: 5000 })
+      .then((r: any) => !r.handled, () => true);
+    const reached = await Promise.race([enteredRead.then(() => true), settling.then(() => false)]);
+    let foreign: any = null;
+    try { if (reached) foreign = await txn(b, { providerRef: own.providerRef }); } finally { release(); }
+    const refused = await settling, after = await db.txn.findById(own.id), wallet = await db.wallet.findByUserId(a);
+    ok(`reference.late.${name}`, reached && refused && referenceInside && sameTx && after?.status === stored
+      && after?.providerStatus !== Review.DEPOSIT_STATUS_REVIEW_MARK && wallet?.balance === 0
+      && wallet.hold === (type === "WITHDRAWAL" ? 5000 : 0) && (await db.wallet.findByUserId(b))?.balance === 0
+      && (await db.txn.findById(foreign?.id ?? "absent"))?.status === "PROCESSING" && s.seen.groups.length === 0 && s.seen.notices.length === 0);
+  }
+  // A collision arising while provider I/O is outstanding must not escape the reader as PENDING or safe FAILED.
+  const a = await player(), b = await player(), own = await txn(a), raced = system(src, selector);
+  raced.verify(async () => { await txn(b, { providerRef: own.providerRef }); return { status: "CONFIRMED", amount: own.amount }; });
+  const result = await raced.read(a, byId(own));
+  ok("reference.probe-race-unknown", result.view.state === "UNKNOWN" && !result.txn && raced.seen.groups.length === 0
+    && raced.seen.notices.length === 0 && (await db.txn.findById(own.id))?.status === "PROCESSING"
+    && (await db.wallet.findByUserId(a))?.balance === 0 && (await db.wallet.findByUserId(b))?.balance === 0);
+  for (const kind of ["move-to-foreign", "move-to-foreign-terminal", "raw-mutable"] as const) {
+    const a = await player(), b = await player(), own = await txn(a), foreign = await txn(b, { status: kind === "move-to-foreign-terminal" ? "FAILED" : "PROCESSING" }), oldRef = own.providerRef!, newRef = oldRef + "_new";
+    const s = system(src, selector);
+    s.verify(async () => {
+      if (kind === "raw-mutable") {
+        if (PG) await prisma()!.transaction.update({ where: { id: own.id }, data: { providerRef: newRef } });
+        else Object.assign((await db.txn.findById(own.id))!, { providerRef: newRef });
+      } else {
+        await db.txn.update(own.id, { providerRef: newRef });
+        await db.txn.update(foreign.id, { providerRef: oldRef });
+      }
+      return { status: "CONFIRMED", amount: 5000 };
+    });
+    const r = await s.read(a, byId(own));
+    ok(`reference.original.${kind}`, r.view.state === "UNKNOWN" && !r.txn && s.seen.verifies.join() === oldRef
+      && (await db.wallet.findByUserId(a))?.balance === 0 && (await db.wallet.findByUserId(b))?.balance === 0
+      && (await db.txn.findById(own.id))?.status === "PROCESSING" && (await db.txn.findById(foreign.id))?.status === (kind === "move-to-foreign-terminal" ? "FAILED" : "PROCESSING")
+      && s.seen.groups.length === 0 && s.seen.notices.length === 0 && s.seen.reviewAttempts === 0
+      && s.seen.audits.every(audit => audit.actorId !== b && audit.targetId !== foreign.id));
+  }
+  // The binding also reaches the actual wallet claim, rather than ending at the post-provider global selection.
+  for (const [field, patch] of [["amount", { amount: 6000 }], ["phone", { msisdn: "+255712345679" }],
+    ["key", { idempotencyKey: "changed" }], ["provider", { provider: "CARD" }]] as const) {
+    const owner = await player(), row = await txn(owner);
+    let changed = false, inWallet = false;
+    const data = { ...selector, txn: { ...selector.txn, findById: async (id: string, tx: any) => {
+      if (id === row.id && inLock() && !changed) {
+        changed = true; inWallet = tx === currentLockTx() && (!PG || !!tx);
+        await db.txn.update(id, (field === "key" ? { idempotencyKey: `${patch.idempotencyKey}_${row.id}` } : patch) as never, tx);
+      }
+      return db.txn.findById(id, tx);
+    } } } as typeof db;
+    const s = system(src, data); s.verify(async () => ({ status: "CONFIRMED", amount: 5000 }));
+    const r = await s.read(owner, byId(row));
+    ok(`reference.original.claim.${field}`, changed && inWallet && r.view.state !== "PAID"
+      && (await db.wallet.findByUserId(owner))?.balance === 0 && (await db.txn.findById(row.id))?.status === "PROCESSING"
+      && s.seen.groups.length === 0 && s.seen.notices.length === 0);
+  }
+  return checks;
+}
 async function run(src = sources): Promise<Check[]> {
   const checks: Check[] = [], ok = (name: string, pass: unknown) => checks.push({ name, pass: !!pass });
+  checks.push(...await referenceControls(src));
   const me = await player(), other = await player(), own = await txn(me), s = system(src);
   const mapper = new Function("num", "iso", ts.transpileModule(fn(src[files[12]], "toStoredWallet"),
     { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText + "\nreturn toStoredWallet;")(
@@ -321,8 +482,8 @@ async function run(src = sources): Promise<Check[]> {
   const failRaceOwner = await player(), failRaceRow = await txn(failRaceOwner);
   let entered!: () => void, release!: () => void, reads = 0;
   const enteredRead = new Promise<void>(r => { entered = r; }), releasedRead = new Promise<void>(r => { release = r; });
-  const delayed = { ...db, txn: { ...db.txn, findById: async (id: string) => {
-    const row = await db.txn.findById(id);
+  const delayed = { ...db, txn: { ...db.txn, findById: async (id: string, tx: any) => {
+    const row = await db.txn.findById(id, tx);
     if (id === failRaceRow.id && ++reads === 2) { const old = row && { ...row }; entered(); await releasedRead; return old; }
     return row;
   } } } as typeof db;
@@ -340,8 +501,8 @@ async function run(src = sources): Promise<Check[]> {
   const confirmRaceOwner = await player(), confirmRaceRow = await txn(confirmRaceOwner);
   let confirmEntered!: () => void, confirmRelease!: () => void, confirmReads = 0;
   const confirmedReadEntered = new Promise<void>(r => { confirmEntered = r; }), confirmReleased = new Promise<void>(r => { confirmRelease = r; });
-  const delayedConfirm = { ...db, txn: { ...db.txn, findById: async (id: string) => {
-    const row = await db.txn.findById(id);
+  const delayedConfirm = { ...db, txn: { ...db.txn, findById: async (id: string, tx: any) => {
+    const row = await db.txn.findById(id, tx);
     if (id === confirmRaceRow.id && ++confirmReads === 2) { const old = row && { ...row }; confirmEntered(); await confirmReleased; return old; }
     return row;
   } } } as typeof db;
@@ -549,6 +710,7 @@ async function run(src = sources): Promise<Check[]> {
 }
 async function runRecheck(src = sources): Promise<Check[]> {
   const checks: Check[] = [], ok = (name: string, pass: unknown) => checks.push({ name, pass: !!pass });
+  checks.push(...await referenceControls(src));
   const me = await player(), other = await player();
   const unknown = (r: any) => r.view.state === "UNKNOWN" && !r.view.failureAuthority && r.view.balance === undefined && r.view.txnId === undefined;
   for (const provider of [...MOBILE_MONEY_METHODS.map(p => p.id), "CARD"]) {
@@ -648,7 +810,8 @@ async function runRecheck(src = sources): Promise<Check[]> {
   ] as const) {
     const changed = await txn(me, { status: "FAILED" }), s = system(src);
     s.verify(async () => {
-      await db.txn.update(changed.id, (name === "key" ? { idempotencyKey: `${patch.idempotencyKey}_${changed.id}` } : patch) as never);
+      await db.txn.update(changed.id, (name === "key" ? { idempotencyKey: `${patch.idempotencyKey}_${changed.id}` }
+        : name === "providerRef" ? { providerRef: `${patch.providerRef}_${changed.id}` } : patch) as never);
       return { status: "FAILED" };
     });
     ok(`fresh.${name}`, unknown(await s.recheck(me, changed.id)));
@@ -669,7 +832,8 @@ async function runRecheck(src = sources): Promise<Check[]> {
           if (!raw) throw new Error("Missing own pending-intent corruption fixture");
           Object.assign(raw, patch);
         }
-      } else await db.txn.update(changed.id, (name === "key" ? { idempotencyKey: `${patch.idempotencyKey}_${changed.id}` } : patch) as never);
+      } else await db.txn.update(changed.id, (name === "key" ? { idempotencyKey: `${patch.idempotencyKey}_${changed.id}` }
+        : name === "providerRef" ? { providerRef: `${patch.providerRef}_${changed.id}` } : patch) as never);
       return { status: "CONFIRMED", amount: 5000 };
     });
     ok(`binding.confirmed.${name}`, unknown(await s.recheck(me, changed.id)) && s.seen.settles === 0
@@ -750,6 +914,83 @@ async function runRecheck(src = sources): Promise<Check[]> {
       && after?.status === "FAILED" && after?.providerStatus !== Review.DEPOSIT_STATUS_REVIEW_MARK
       && rolled.seen.groups.length === 0 && (await db.wallet.findByUserId(me))?.balance === 0);
     ok("review.pg-rollback-no-review-notice", rolled.seen.notices.length === 0);
+  }
+  for (const [name, type, status, owner] of [
+    ["foreign-failed", "DEPOSIT", "FAILED", other], ["foreign-confirmed", "DEPOSIT", "CONFIRMED", other],
+    ["withdrawal-failed", "WITHDRAWAL", "FAILED", other], ["withdrawal-confirmed", "WITHDRAWAL", "CONFIRMED", other],
+    ["same-owner", "DEPOSIT", "FAILED", me],
+  ] as const) {
+    const prior = await txn(owner, { type, status }), own = await txn(me, { status: "FAILED", providerRef: prior.providerRef });
+    let refLookups = 0;
+    const data = { ...db, txn: { ...db.txn, findByProviderRef: async (ref: string) => { refLookups++; return db.txn.findByProviderRef(ref); } } } as typeof db;
+    const s = system(src, data); s.verify(async () => ({ status: "CONFIRMED", amount: own.amount }));
+    const r = await s.recheckRaw(me, own.id, B.depositRecheckBinding(me, own));
+    const priorAfter = await db.txn.findById(prior.id), ownAfter = await db.txn.findById(own.id);
+    ok(`claim.duplicate.${name}`, r.view.state === "REVIEW" && !r.view.failureAuthority && refLookups === 0
+      && ownAfter?.providerStatus === Review.DEPOSIT_STATUS_REVIEW_MARK && ownAfter?.status === "FAILED"
+      && priorAfter?.providerStatus !== Review.DEPOSIT_STATUS_REVIEW_MARK && priorAfter?.status === status
+      && s.seen.notices.length === 1 && s.seen.notices[0].ownerId === me && s.seen.notices[0].txnId === own.id
+      && s.seen.groups.length === 0 && (await db.wallet.findByUserId(me))?.balance === 0 && (await db.wallet.findByUserId(other))?.balance === 0);
+  }
+  const unrestrictedFirst = await txn(other, { status: "FAILED" });
+  const unrestrictedSecond = await txn(me, { status: "FAILED", providerRef: unrestrictedFirst.providerRef });
+  let selectorRefused = false;
+  try { await db.txn.findByProviderRef(unrestrictedFirst.providerRef!); } catch { selectorRefused = true; }
+  const unrestricted = system(src);
+  let refused = false;
+  try { const r = await unrestricted.money.settlePaymentWebhook({ providerRef: unrestrictedFirst.providerRef!, status: "CONFIRMED", amount: 5000 }); refused = !r.handled; }
+  catch { refused = true; }
+  ok("claim.unrestricted-ambiguity-refused", selectorRefused && refused
+    && (await db.txn.findById(unrestrictedFirst.id))?.providerStatus !== Review.DEPOSIT_STATUS_REVIEW_MARK
+    && (await db.txn.findById(unrestrictedSecond.id))?.providerStatus !== Review.DEPOSIT_STATUS_REVIEW_MARK
+    && unrestricted.seen.notices.length === 0 && unrestricted.seen.groups.length === 0);
+  const processingOwner = await player(), processing = await txn(processingOwner), restrictedProcessing = system(src);
+  const processingResult = await restrictedProcessing.money.settlePaymentWebhook({ providerRef: processing.providerRef!, status: "CONFIRMED", amount: 5000 }, B.depositRecheckBinding(processingOwner, processing));
+  ok("claim.processing-restriction-refused", !processingResult.handled && (await db.txn.findById(processing.id))?.status === "PROCESSING"
+    && (await db.wallet.findByUserId(processingOwner))?.balance === 0 && restrictedProcessing.seen.groups.length === 0 && restrictedProcessing.seen.notices.length === 0);
+  for (const kind of ["duplicate", "missing", "other-row"] as const) {
+    const owner = await player(), otherOwner = await player(), row = await txn(owner, { status: "FAILED" });
+    const other = await txn(otherOwner, { status: "FAILED", ...(kind === "duplicate" ? { providerRef: row.providerRef } : {}) });
+    let underLock = false, sameTx = false;
+    const data = { ...db, txn: { ...db.txn, findByProviderRef: async (ref: string, tx: any) => {
+      underLock = inLock(); sameTx = tx === currentLockTx() && (!PG || !!tx);
+      return kind === "missing" ? null : kind === "other-row" ? other : db.txn.findByProviderRef(ref, tx);
+    } } } as typeof db;
+    const s = system(src, data); s.verify(async () => ({ status: "FAILED", amount: row.amount }));
+    const r = await s.recheckRaw(owner, row.id, B.depositRecheckBinding(owner, row));
+    ok(`safe.reference.${kind}`, unknown(r) && underLock && sameTx && s.seen.groups.length === 0 && s.seen.notices.length === 0
+      && (await db.txn.findById(row.id))?.status === "FAILED" && (await db.txn.findById(row.id))?.providerStatus !== Review.DEPOSIT_STATUS_REVIEW_MARK
+      && (await db.wallet.findByUserId(owner))?.balance === 0 && (await db.wallet.findByUserId(otherOwner))?.balance === 0);
+  }
+  let invalidReads = 0;
+  const invalidData = { ...db, txn: { ...db.txn, findById: async (id: string, tx: any) => { invalidReads++; return db.txn.findById(id, tx); },
+    findByProviderRef: async (ref: string) => { invalidReads++; return db.txn.findByProviderRef(ref); } } } as typeof db;
+  const invalidClaim = await txn(me, { status: "FAILED" }), invalid = system(src, invalidData);
+  const invalidRestriction = await invalid.money.settlePaymentWebhook({ providerRef: invalidClaim.providerRef!, status: "CONFIRMED", amount: invalidClaim.amount }, null);
+  ok("claim.malformed-restriction", !invalidRestriction.handled && invalidReads === 0 && invalid.seen.notices.length === 0
+    && (await db.txn.findById(invalidClaim.id))?.providerStatus !== Review.DEPOSIT_STATUS_REVIEW_MARK);
+  const badReference = await invalid.money.settlePaymentWebhook({ providerRef: foreignRow.providerRef!, status: "CONFIRMED", amount: invalidClaim.amount }, B.depositRecheckBinding(me, invalidClaim));
+  ok("claim.input-reference-mismatch", !badReference.handled && invalidReads === 0 && invalid.seen.notices.length === 0);
+  for (const stage of ["selection", "marker"] as const) for (const [name, patch] of [
+    ["owner", { userId: other }], ["type", { type: "WITHDRAWAL" }], ["key", { idempotencyKey: "changed" }],
+    ["reference", { providerRef: "changed" }], ["amount", { amount: 6000 }], ["phone", { msisdn: "+255712345679" }], ["provider", { provider: "CARD" }],
+  ] as const) {
+    const changed = await txn(me, { status: "FAILED" });
+    let reads = 0, changedInClaim = false, refLookups = 0;
+    const data = { ...db, txn: { ...db.txn, findById: async (id: string, tx: any) => {
+      if (id === changed.id && ++reads === (stage === "selection" ? 3 : 5)) {
+        if (!inLock() || tx !== currentLockTx()) throw new Error("Scoped claim drift fixture missed the wallet transaction");
+        const actual = name === "key" ? { idempotencyKey: `11111111-1111-4111-8111-${String(++sequence).padStart(12, "0")}` }
+          : name === "reference" ? { providerRef: `changed_${changed.id}` } : patch;
+        await db.txn.update(id, actual as never, tx); changedInClaim = true;
+      }
+      return db.txn.findById(id, tx);
+    }, findByProviderRef: async (ref: string) => { refLookups++; return db.txn.findByProviderRef(ref); } } } as typeof db;
+    const s = system(src, data); s.verify(async () => ({ status: "CONFIRMED", amount: 5000 }));
+    const r = await s.recheckRaw(me, changed.id, B.depositRecheckBinding(me, changed)), after = await db.txn.findById(changed.id);
+    ok(`claim.drift.${stage}.${name}`, changedInClaim && s.seen.reviewAttempts === (stage === "selection" ? 0 : 1) && refLookups === 0 && unknown(r)
+      && after?.providerStatus !== Review.DEPOSIT_STATUS_REVIEW_MARK && after?.status === "FAILED" && s.seen.notices.length === 0
+      && s.seen.groups.length === 0 && (await db.wallet.findByUserId(me))?.balance === 0 && (await db.wallet.findByUserId(other))?.balance === 0);
   }
   const opposite = await txn(me, { status: "FAILED" }), failedAfterChange = system(src);
   failedAfterChange.verify(async () => { await db.txn.update(opposite.id, { status: "CONFIRMED" }); return { status: "FAILED" }; });

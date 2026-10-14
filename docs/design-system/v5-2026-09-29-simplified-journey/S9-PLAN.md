@@ -627,3 +627,109 @@ ordinary bare FAILED as uncertainty, offer this explicit bound check, persist th
 permitting a later explicit Lipa, and reject account/epoch/unmount/stale completions. Cached A chrome must refuse a B
 session before money. Funding keys are allocated only on an explicit first Lipa, never observe/open/refusal/UNKNOWN.
 New tab disclosure and the concrete trusted page/action bridge are review gates before a writer or WP4 UI.
+
+### 5i. Provider-reference scope repair — preparation, 2026-10-14
+
+Two actual-source local reproductions changed this packet's scope. An explicit recheck of B's fully bound FAILED
+deposit with a signed CONFIRMED answer selected A's first matching provider reference, marked A REVIEW and notified
+A, leaving B unchanged. The private restriction now reaches the common settlement door: it selects the original
+transaction id through the current wallet transaction and matches the complete original owner/type/funding key,
+reference and canonical funding tuple again at selection and before the fresh marker write. It refuses a
+PROCESSING row, so this terminal restriction cannot become a known-id collection/credit bypass. It does not create,
+dispatch, credit, debit, refund or resolve a funding key. The owned no-money REVIEW claim can still record a signed
+contradiction when another row has the same reference; its marker and notice retain the reviewed commit/rollback
+semantics.
+
+The second reproduction used ordinary PROCESSING deposits for two owners with the same reference. Reading B's status
+with a controlled signed CONFIRMED/5000 answer credited A 5000, left B at zero/PROCESSING and answered B PENDING.
+The ignored local artifacts `s9-ref-collision-before.json`, `s9-ref-collision.mts`,
+`s9-processing-ref-collision-before.json` and `s9-processing-ref-collision.mts` retain the original observations and
+fixtures. This is a reproduced source defect, not evidence that a live collection collided. The root agent approved
+the narrow repair under the owner's standing delegation. Both DAL `findByProviderRef` readers now refuse multiple
+matches instead of choosing an arbitrary owner, rail or transaction type. SQL asks for at most two rows; memory
+stops at the second match. Both retain missing/unique-reference behavior and accept the same optional current
+transaction argument. An ambiguity propagates non-success from common settlement and the existing webhook failure
+adapter; private readers return minimal UNKNOWN without raw database details or new-payment authority.
+
+The common ordinary settlement still uses the global reference selector. Each existing deposit confirmation,
+deposit failure, withdrawal confirmation, withdrawal failure and terminal-review wallet callback checks that the
+reference remains unique and identifies that same row before changing money, status or a review marker. The reread
+uses that callback's current transaction. No outer lock wrapper moves ordinary notices ahead of their existing
+commit boundary, and provider I/O stays outside wallet locks. The ordinary eligible status probe checks the reference
+before provider I/O and after its fresh row reread, so a collision during verification cannot return a misleading
+PENDING or raw safe FAILED. Automatic polling policy and funding-key read-only recovery remain unchanged.
+
+Even a matching signed FAILED cannot authorize a later payment when its reference belongs to multiple rows. The
+explicit core now verifies a unique, same-id reference under the current wallet transaction before returning
+`failureAuthority: signed-recheck`. Missing, ambiguous or other-row references stay UNKNOWN. It never turns an
+ordinary bare FAILED into this authority. Stored REVIEW and RG-held collection behavior is retained; no automatic
+review resolution, outbound-refund proof or policy is introduced.
+
+The initial reference-check proof measured **165/165 memory and 172/172 Postgres**. It executes the actual selector AST over real
+fixture rows, the actual SQL selector in Postgres, and the shipped core/settlement bodies with real DAL, locks and
+ledger; only signed adapter and notification leaves are controlled. It covers both deposit/withdrawal orderings,
+both signed terminal verdicts, a duplicate appearing at every pre-lock claim boundary, and a collision during the
+signed probe. Balances, withdrawal holds, rows, notices, review markers and actual PG ledger rows stay unchanged on
+refusal. The PG selector sees an uncommitted collision through its current transaction and rollback restores the
+original reference. All **45/45 memory and 4/4 actual-PG plants** were caught: arbitrary single-row SQL selection, a selector escaping
+the transaction, review-marker auto-commit and a notice escaping rollback. The isolated 103-migration PostgreSQL
+18.3 cluster on 5444 passed its real data-directory guard and stopped. The next owned-probe identity correction is
+recorded in §5j; no checkpoint acceptance is implied by the implementation ruling alone.
+Fresh-reference drift controls use a distinct changed reference per fixture so old fixture rows cannot accidentally
+mask a missing original-binding guard with unrelated ambiguity.
+
+This repair does **not** install the `Transaction @@unique([provider, providerRef])` declaration. Its missing migration
+is existing recorded drift (see `20260925160000_suppression_lifted_at/migration.sql` and the marketing plan's S3b
+handoff). A compound constraint would not itself make a reference-only cross-provider lookup unique. The packet
+detects an existing collision and rereads before mutation; it does not globally serialize every provider-reference
+writer or assert prevention of an insertion after the final check. No live scan, constraint/backfill or production
+schema change is part of this preparation. Separate funding storage, account/epoch retention, classic Card retry
+repair, the expected-owner deposit action, three-locale disclosure, controller/browser gates and WP4 remain open.
+
+### 5j. Freeze the owned automatic probe's original identity — preparation, 2026-10-14
+
+Independent source review by the S10 agent found an identity hole that uniqueness alone did not close. The actual
+local harness then reproduced it: while A awaited verification of old reference R, changing A to R2 and making B the
+sole holder of R let the signed old-R answer credit B 5000, answer A PENDING and post one ledger group. Mutating the
+memory DAL's A row object instead retargeted that same signed old-R answer to R2 and credited A under its changed
+reference. The ignored `s9-ref-move-before.mts` and `s9-ref-move-before.json` preserve both original observations.
+No actual gateway, HTTP request or live wallet was used. The root agent authorized the correction under the owner's
+standing delegation; the peer's follow-up source review found that lost-owned-row trace addressed, with no browser
+or test claim from their read-only review.
+
+Before awaiting provider I/O the ordinary owned core now freezes the normalized original owner, transaction id,
+funding UUID/null, provider reference and complete canonical funding tuple. It queries and submits the answer using
+that original reference. A separate processing restriction reaches common settlement; it still selects through
+the global unique reference reader and requires that row to match the original capsule. The existing deposit wallet
+claim checks both uniqueness and that original funding tuple through its current transaction before credit/failure;
+the same restriction survives a terminal race into the existing no-money review claim. The ordinary final projection
+rereads the original transaction and matches that original capsule/reference. It cannot treat the reference's new
+sole holder as the payment the caller checked, or use a mutable memory row as the original snapshot.
+
+This processing restriction is distinct from the private explicit terminal restriction, which continues to refuse
+PROCESSING and may only make the reviewed owned terminal claim. A private processing capsule restricts an existing
+owned signed probe; it supplies no dispatch, new key or amount authority. Generic unique-reference webhook semantics
+are retained. Ambiguous references remain refused before and inside the existing wallet transaction; the owned id
+is never a bypass that could credit both duplicated rows. No provider I/O was moved into a wallet lock.
+
+The expanded actual-source controls cover replacement of the old reference's sole holder, mutable memory retargeting,
+foreign-terminal marker/audit refusal, and amount/phone/key/rail drift at the actual wallet claim. They retain the
+earlier ambiguity, current-transaction visibility and review rollback/notice controls. The final real Postgres run
+measured **172/172 memory, 179/179 Postgres, 49/49 memory plants and 4/4 actual-PG plants caught**. The PG run migrated
+all 103 migrations, checked its own real data directory and stopped 5444. App typecheck and the strict proof graph
+passed. Ordinary status remains **130/130 memory with 45/45 plants**, payment webhook **77/77**, replay **39/39 with
+12/12 plants**, persistence **32/32**, DAL parity **2324/2324** and the house-report memory child **251/251**. The replay
+fixture's existing actual-core dependency map gained the real binding module import; no replay verdict or floor
+changed. The root agent reviewed the scoped implementation under the owner's standing delegation and authorized its
+ten-file preparation checkpoint on 2026-10-14, without implying new human/external approval. The broader
+missing-constraint/global-writer limit from §5i remains open; this packet addresses the
+observed drift during provider I/O without claiming serialization of every later reference writer. Funding controller,
+classic Card UNKNOWN recovery, owner-gated action, disclosure and UI integration remain unstarted and unverified.
+The caller inventory also finds known-row verification in `creditConfirmedDeposits`, `settleConfirmedWithdrawals`
+and `reconcileStalePayments` which is not yet given this private deposit restriction; the stale failure arms call
+known-id helpers directly. The actual-source ignored `s9-fast-ref-move-before.mts` then reproduced foreign B credit
+of 5000 by the deposit fast caller when A's old reference moved to B during verification, with A unchanged and one
+ledger group. Its before output is saved in the adjacent JSON artifact. That background repair remains open before
+client wiring. The deposit callers can retain their original deposit capsule; withdrawal drift needs a separately
+reviewed payment-type binding (a withdrawal cannot reuse the DEPOSIT capsule) and its own actual-source proof.
+This packet makes no all-background-callers-bound claim.

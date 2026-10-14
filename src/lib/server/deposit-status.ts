@@ -5,6 +5,7 @@ import { rateCheckAsync } from "./rate-limit";
 import { verifyDepositStatus } from "./payments";
 import { settlePaymentWebhook } from "./wallet-service";
 import { canonicalDepositFunding, canProbeDeposit, depositProjection, ownedDeposit, type DepositProjection } from "@/lib/journey/deposit-state";
+import { depositRecheckBinding, matchesDepositRecheckBinding, type DepositRecheckBinding } from "@/lib/journey/deposit-recheck-binding";
 
 export type DepositLookup = { kind: "txn-id" | "funding-key" | "card-order"; value: string };
 export type DepositStatusView =
@@ -45,6 +46,7 @@ export async function readDepositStatus(userId: string, lookup: DepositLookup): 
     }
     let retryAfterSec = 0;
     let verifiedTerminal: "CONFIRMED" | "FAILED" | undefined;
+    let original: DepositRecheckBinding | null = null;
     // Funding-key recovery is a read only. It can recover the original reservation after a lost action answer, but
     // never dispatches, probes or settles. Card's signed browser-return adapter remains available even hours later.
     const eligible = lookup.kind === "card-order"
@@ -52,25 +54,36 @@ export async function readDepositStatus(userId: string, lookup: DepositLookup): 
         && depositProjection(userId, txn, Date.now()).state === "PENDING"
       : lookup.kind === "txn-id" && canProbeDeposit(userId, txn, Date.now());
     if (eligible) {
+      // Freeze the owned funding identity before provider I/O. Memory rows can be mutable; a reference can move
+      // to another row while awaiting the signed answer. A unique reference alone is not the original payment.
+      original = depositRecheckBinding(userId, txn);
+      if (!original) return unknown();
+      const referenced = await db.txn.findByProviderRef(original.providerRef);
+      if (!referenced || referenced.id !== original.txnId) return unknown();
       const probeRate = await rateCheckAsync(txn.id, "deposit.probe");
       if (!probeRate.allowed) retryAfterSec = probeRate.retryAfterSec;
       else {
         try {
-          const verified = await verifyDepositStatus(txn.providerRef!);
+          const verified = await verifyDepositStatus(original.providerRef);
           if (verified.status === "CONFIRMED") {
             verifiedTerminal = "CONFIRMED";
-            await settlePaymentWebhook({ providerRef: txn.providerRef!, status: "CONFIRMED", amount: verified.amount });
+            await settlePaymentWebhook({ providerRef: original.providerRef, status: "CONFIRMED", amount: verified.amount }, undefined, original);
           } else if (verified.status === "FAILED") {
             verifiedTerminal = "FAILED";
-            await settlePaymentWebhook({ providerRef: txn.providerRef!, status: "FAILED" });
+            await settlePaymentWebhook({ providerRef: original.providerRef, status: "FAILED" }, undefined, original);
           }
           // PENDING, UNSUPPORTED and an unrecognised verdict carry no terminal authority.
         } catch { /* A transport/signature/settle fault remains uncertainty; reread in case a webhook won meanwhile. */ }
       }
     }
     // No stale fallback: a competing webhook or RG hold wins; a disappeared/changed row cannot retain old authority.
-    txn = await db.txn.findById(txn.id);
+    txn = await db.txn.findById(original?.txnId ?? txn.id);
     if (!ownedDeposit(userId, txn)) return unknown(retryAfterSec);
+    if (eligible) {
+      if (!original || !matchesDepositRecheckBinding(userId, original.txnId, original, txn)) return unknown(retryAfterSec);
+      const referenced = await db.txn.findByProviderRef(original.providerRef);
+      if (!referenced || referenced.id !== original.txnId) return unknown(retryAfterSec);
+    }
     const projection = depositProjection(userId, txn, Date.now());
     if (projection.state === "UNKNOWN") return unknown(retryAfterSec);
     // A failed review write must not turn the signed contradiction this request observed into safe-retry authority.

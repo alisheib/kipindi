@@ -2918,7 +2918,15 @@ const memoryDb = {
         .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || b.id.localeCompare(a.id))[0] ?? null,
     // Memory has no SQL transaction; accept the same explicit transaction argument as the Prisma twin.
     findById: (id: string, _tx?: unknown) => store.txns.get(id) ?? null,
-    findByProviderRef: (providerRef: string) => Array.from(store.txns.values()).find((t) => t.providerRef === providerRef) ?? null,
+    findByProviderRef: (providerRef: string, _tx?: unknown): StoredTxn | null => {
+      let match: StoredTxn | null = null;
+      for (const row of store.txns.values()) {
+        if (row.providerRef !== providerRef) continue;
+        if (match) throw new Error("Payment reference is ambiguous.");
+        match = row;
+      }
+      return match;
+    },
     update: (id: string, patch: Partial<StoredTxn>) => {
       const t = store.txns.get(id);
       if (!t) return null;

@@ -76,7 +76,7 @@ export async function recheckDepositStatus(userId: string, txnId: string, expect
         // Claim only after fresh canonical binding, including any drift during provider I/O. The existing claim
         // reenters this SAME wallet lock; it records review, never a debit/reversal or a new collection.
         await settlePaymentWebhook({ providerRef: fresh.providerRef!, status: verifiedTerminal!,
-          ...(verifiedTerminal === "CONFIRMED" ? { amount: verifiedAmount } : {}) });
+          ...(verifiedTerminal === "CONFIRMED" ? { amount: verifiedAmount } : {}) }, binding);
         fresh = await db.txn.findById(initial.id, tx);
         if (!ownedDeposit(userId, fresh) || !sameDepositFunding(initial, fresh)
           || fresh.providerRef !== initial.providerRef || fresh.idempotencyKey !== initial.idempotencyKey
@@ -86,6 +86,10 @@ export async function recheckDepositStatus(userId: string, txnId: string, expect
       if (projection.state === "UNKNOWN" || projection.state === "PENDING" || projection.state === "RETURNED") return unknown();
       if (opposed && projection.state !== "REVIEW" && projection.state !== "HELD") return unknown();
       if (projection.state === "FAILED" && (verifiedTerminal !== "FAILED" || fresh.status !== "FAILED")) return unknown();
+      if (projection.state === "FAILED") {
+        const referenced = await db.txn.findByProviderRef(fresh.providerRef!, tx);
+        if (!referenced || referenced.id !== fresh.id) return unknown();
+      }
       return { view: { ...projection, balance: wallet.balance, retryAfterSec: 0,
         ...(projection.state === "FAILED" ? { failureAuthority: "signed-recheck" as const } : {}) }, rateLimited: false, unavailable: false };
     });

@@ -11,6 +11,7 @@ import ts from "typescript";
 import { DepositSchema, AdminDepositSchema } from "../src/lib/server/validators.ts";
 import { parseSavedDepositBet, sameDepositFunding } from "../src/lib/journey/deposit-state.ts";
 import * as DepositState from "../src/lib/journey/deposit-state.ts";
+import * as DepositBinding from "../src/lib/journey/deposit-recheck-binding.ts";
 import { depositResultStatus } from "../src/lib/wallet/receipts.ts";
 import { paymentMethodName } from "../src/lib/payment-providers.ts";
 import { presentedStatus } from "../src/lib/wallet/receipts.ts";
@@ -80,7 +81,8 @@ function serviceFor(source: string, data = db, statusSource = STATUS) {
   };
   const statusImports: Record<string, unknown> = { "./store": { db: data }, "./audit": { audit: dependencies.audit },
     "./rate-limit": { rateCheckAsync: dependencies.rateCheckAsync }, "./payments": { verifyDepositStatus: dependencies.verifyDepositStatus },
-    "./wallet-service": { settlePaymentWebhook: dependencies.settlePaymentWebhook }, "@/lib/journey/deposit-state": DepositState };
+    "./wallet-service": { settlePaymentWebhook: dependencies.settlePaymentWebhook }, "@/lib/journey/deposit-state": DepositState,
+    "@/lib/journey/deposit-recheck-binding": DepositBinding };
   const statusModule = { exports: {} as any };
   const statusJs = ts.transpileModule(statusSource, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
   new Function("require", "module", "exports", statusJs)((id: string) => {

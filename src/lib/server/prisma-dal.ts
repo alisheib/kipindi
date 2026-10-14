@@ -2502,9 +2502,12 @@ export const prismaDb = {
       const row = await (tx ?? pc()).transaction.findUnique({ where: { id } });
       return row ? toStoredTxn(row) : null;
     },
-    findByProviderRef: async (providerRef: string): Promise<StoredTxn | null> => {
-      const row = await pc().transaction.findFirst({ where: { providerRef } });
-      return row ? toStoredTxn(row) : null;
+    findByProviderRef: async (providerRef: string, tx?: Prisma.TransactionClient | null): Promise<StoredTxn | null> => {
+      // A reference alone must identify ONE row across owners, rails and transaction types. The declared compound
+      // schema constraint is not installed by the migration history and would not make this single-field read unique.
+      const rows = await (tx ?? pc()).transaction.findMany({ where: { providerRef }, take: 2 });
+      if (rows.length > 1) throw new Error("Payment reference is ambiguous.");
+      return rows[0] ? toStoredTxn(rows[0]) : null;
     },
     update: async (id: string, patch: Partial<StoredTxn>, tx?: Prisma.TransactionClient | null): Promise<StoredTxn | null> => {
       const db: Db = tx ?? pc();
