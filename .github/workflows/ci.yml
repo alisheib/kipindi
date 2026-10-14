@@ -82,6 +82,11 @@ jobs:
       # anything the first did not. The steps are kept separate (rather than dropped in
       # favour of the aggregator) because they are the fast-fail pair — a tree that does
       # not compile should not wait for 457 suites to say so.
+      # The section-ownership controls use real about:blank DOMs without an app server.
+      # Install Chromium before the battery so that serverless browser proof also runs in CI.
+      - name: Install Chromium for browser gates
+        run: npx playwright install --with-deps chromium
+
       - name: Test suite (in-memory)
         run: node scripts/test-all.mjs --no-tsc --skip responsive,motion,revoked-deadend,admin-section-gate,needle-rest,integrity
 
@@ -98,9 +103,6 @@ jobs:
       # Read the actual artifact before any deployment, including the question route.
       - name: Production first-load delivery
         run: npm run qa:first-load -- --read --routes 'index,markets,positions,help,live,results,watchlist,markets/[id],account,updown/history'
-
-      - name: Install Chromium for browser gates
-        run: npx playwright install --with-deps chromium
 
       - name: Browser gates (local in-memory server)
         env:
