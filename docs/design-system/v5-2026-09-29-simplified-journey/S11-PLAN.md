@@ -268,7 +268,7 @@ precedent, "written so it is TRUE IN EVERY FEATURE STATE" (_content-yes-no.tsx:1
 |---|---|---|
 | §2, stake bounds | en "… per position." (:105); sw "kwa kila nafasi." (:280) | "… per bet."; "kwa kila dau." |
 | §3, the indicator | en "The conviction indicator shows where the crowd's money sits. It is information, not advice." (:127); sw (:301); zh (:458) | en "What a market shows before you bet — where the money sits, or an estimate of what a bet would return — is information, not advice." sw "Kile ambacho soko linaonyesha kabla hujaweka dau — pesa zilipo, au makadirio ya kiasi ambacho dau litalipa — ni taarifa, si ushauri." zh "市场在您下注前显示的内容——资金分布，或某笔投注可获回报的预估——仅供参考，不构成建议。" |
-| §4, new paragraph after the commission paragraph (en :140-144, sw :313-317, zh :470-472) | — | en "**Estimates shown before you bet.** Before you bet, a market may show an estimate of what a bet would return if its side wins. An estimate is information, not a promise: it changes as other players bet, and what a winning bet is paid is fixed only when betting closes, from the final pools and after our commission." sw "**Makadirio yanayoonyeshwa kabla ya kuweka dau.** Kabla hujaweka dau, soko linaweza kuonyesha makadirio ya kiasi ambacho dau litalipa upande wake ukishinda. Makadirio ni taarifa, si ahadi: hubadilika wachezaji wengine wanapoweka dau, na kiasi ambacho dau lililoshinda hulipwa huamuliwa tu uwekaji dau unapofungwa, kutoka kwa mabwawa ya mwisho na baada ya kamisheni yetu." zh "**下注前显示的预估。**下注前，市场可能会显示若所选一方获胜时某笔投注可获回报的预估。预估仅供参考，并非承诺：它会随其他玩家下注而变化；获胜投注的实际派彩仅在投注关闭时，依据最终资金池并扣除我们的佣金后确定。" |
+| §4, new paragraph after the commission paragraph (en :140-144, sw :313-317, zh :470-472) | — | en "**Estimates shown before you bet.** Before you bet, a market may show an estimate of what a bet would return if its side wins. An estimate is information, not a promise: it changes as other players bet, and what a winning bet is paid is fixed only when betting closes, from the final pools and after our commission." sw "**Makadirio yanayoonyeshwa kabla ya kuweka dau.** Kabla hujaweka dau, soko linaweza kuonyesha makadirio ya kiasi ambacho dau litalipa upande wake ukishinda. Makadirio ni taarifa, si ahadi: hubadilika wachezaji wengine wanapoweka dau, na kiasi ambacho dau lililoshinda hulipwa huamuliwa tu uwekaji dau unapofungwa, kutokana na mabwawa ya mwisho na baada ya kamisheni yetu." zh "**下注前显示的预估。**下注前，市场可能会显示若所选一方获胜时某笔投注可获回报的预估。预估仅供参考，并非承诺：它会随其他玩家下注而变化；获胜投注的实际派彩仅在投注关闭时，依据最终奖池并扣除我们的佣金后确定。" |
 | sw §1, §4 | "soko la NDIYO/HAPANA" (:259); "Kama dau zote zipo" (:315); "ikiwa nafasi hiyo haikugharamiwa" (:322-323) | `soko la {w.sw.yes}/{w.sw.no}`; "Kama madau yote yapo"; "ikiwa dau hilo halikugharamiwa" |
 | Version | META "Version 2026-10-12 · Effective on entering a market." (yes-no/page.tsx:52-56) | The S15 publication date, set in the S15 commit |
 | Subtitle | `SUBTITLE` (:40-44), the retired slogan | Reads `t.auth.railTagline` now (WP7, the same words); takes the tagline at S15 |
@@ -279,8 +279,8 @@ All of this is parked. The Terms §4 paragraph is true in both looks.
 
 | Where | Today | Target |
 |---|---|---|
-| §4, the dial paragraph | en :203-208 "The probabilities shown on the dial are *implied* by the current pool composition and update with every new bet — they are not guaranteed odds. While betting is open … **The moment betting closes, the pools are final and we notify you of the exact amount you will receive if your side wins.**"; sw :370-376 ("kipima-dau", "Wakati dau bado liko wazi", "Mara dau litakapofungwa"); zh :507-510 (转盘) | en "Before you bet, a market may show what its pools imply — the share of the pool on each side, or an estimate of what a bet would return if its side wins. Neither is guaranteed odds: both change with every new bet, and while betting is open your final payout is not yet determined, because the pools are still moving. **The moment betting closes, the pools are final and we notify you of the exact amount you will receive if your side wins.**" sw "Kabla hujaweka dau, soko linaweza kuonyesha kile ambacho mabwawa yake yanadokeza — sehemu ya bwawa iliyo kila upande, au makadirio ya kiasi ambacho dau litalipa upande wake ukishinda. Hivyo si bei (odds) za uhakika: vyote hubadilika kila linapowekwa dau jipya, na wakati uwekaji dau bado uko wazi, malipo yako ya mwisho bado hayajapangwa kwa sababu mabwawa bado yanabadilika. **Mara uwekaji dau utakapofungwa, mabwawa yatakuwa ya mwisho na tutakujulisha kiasi kamili utakachopata iwapo upande wako utashinda.**" zh "下注前，市场可能会显示其资金池所隐含的信息——各方在资金池中所占的份额，或若所选一方获胜时某笔投注可获回报的预估。两者均非保证的赔率：它们会随每一笔新下注而变化；在投注开放期间，由于资金池仍在变动，您的最终赔付尚未确定。**投注一经关闭，资金池即告最终确定，我们会通知您：若您所选一方获胜，您将收到的确切金额。**" |
-| sw §4, the other paragraphs | :351 "Dau zote — NDIYO na HAPANA — zinakusanywa"; :355-356 "Dau za upande ulioshinda zinarudishwa zote na haziguswi kamwe"; :361 "Kama dau zote ziko upande mmoja" | "Madau yote — NDIO na HAPANA — yanakusanywa"; "Madau ya upande ulioshinda yanarudishwa yote na hayaguswi kamwe"; "Kama madau yote yako upande mmoja" (Open point 20) |
+| §4, the dial paragraph | en :203-208 "The probabilities shown on the dial are *implied* by the current pool composition and update with every new bet — they are not guaranteed odds. While betting is open … **The moment betting closes, the pools are final and we notify you of the exact amount you will receive if your side wins.**"; sw :370-376 ("kipima-dau", "Wakati dau bado liko wazi", "Mara dau litakapofungwa"); zh :507-510 (转盘) | en "Before you bet, a market may show what its pools imply — the share of the pool on each side, or an estimate of what a bet would return if its side wins. Neither is guaranteed odds: both change with every new bet, and while betting is open your final payout is not yet determined, because the pools are still moving. **The moment betting closes, the pools are final and we notify you of the exact amount you will receive if your side wins.**" sw "Kabla hujaweka dau, soko linaweza kuonyesha kile ambacho mabwawa yake yanadokeza — sehemu ya bwawa iliyo kila upande, au makadirio ya kiasi ambacho dau litalipa upande wake ukishinda. Vyote viwili si bei (odds) za uhakika: vyote hubadilika kila linapowekwa dau jipya, na wakati uwekaji dau bado uko wazi, malipo yako ya mwisho bado hayajapangwa kwa sababu mabwawa bado yanabadilika. **Mara uwekaji dau utakapofungwa, mabwawa yatakuwa ya mwisho na tutakujulisha kiasi kamili utakachopata iwapo upande wako utashinda.**" zh "下注前，市场可能会显示其资金池所隐含的信息——各方在资金池中所占的份额，或若所选一方获胜时某笔投注可获回报的预估。两者均非保证的赔率：它们会随每一笔新下注而变化；在投注开放期间，由于资金池仍在变动，您的最终赔付尚未确定。**投注一经关闭，资金池即告最终确定，我们会通知您：若您所选一方获胜，您将收到的确切金额。**" |
+| sw §4, the other paragraphs | :351 "Dau zote — NDIYO na HAPANA — zinakusanywa"; :355-356 "Dau za upande ulioshinda zinarudishwa zote na haziguswi kamwe"; :361 "Kama dau zote ziko upande mmoja" | "Madau yote — NDIO na HAPANA — yanakusanywa"; "Madau ya upande ulioshinda yanarudishwa yote na hayaguswi kamwe"; "Kama madau yote yapo upande mmoja" (Open point 20) |
 | §7, the six links | `text-gold-300 hover:text-gold-200` (:247-248, :414-415, :537-538) | `text-brand-300 hover:text-brand-200` (§B4c); `test:visual-pass-r8a`'s HELD loses its Terms row (15 → 9 held links) |
 | `TERMS_VERSION` | "2026-10-10" (terms-version.ts:57) | **Set in the S15 commit** to the day it publishes (an ISO date, `test:terms-binding` 1.5-1.6). The page prints it and `auth-service` stamps it on new registrations; nothing forces re-acceptance (terms-version.ts:52-53) |
 | `TERMS_TEXT_SHA` | "06208a18691e" (:73) | **Prepared now:** re-measured by `test:terms-binding` §2 over the new bodies on the parked branch. The hash covers `content()` and `LEGAL_BINDING_LANGUAGE`, not the version string, so it stands at S15 unless the text moves again |
@@ -860,9 +860,9 @@ Every sw and zh value is a draft until review 9 signs it. Figures are placeholde
 | Key | en | sw | zh |
 |---|---|---|---|
 | `faq2q` | Does the estimate change after I bet? | Makadirio yanabadilika baada ya kuweka dau? | 下注后预估会变吗？ |
-| `faq2a` | Before you bet, a question shows an estimate of what you could win: ≈ a multiple of your bet on each button and, once you enter a stake, about what you would get if your side wins. It comes from the pools at that moment, after our commission, and it moves as others bet, so it is not guaranteed. Your bet is placed exactly as its button names it, and a question's fee rates are fixed when it is created, so a later change never re-prices a bet you placed. The moment betting closes, the pools are final and we tell you the exact amount you get if your side wins. | Kabla ya kuweka dau, swali linaonyesha makadirio ya unachoweza kushinda: ≈ mara ngapi ya dau lako kwenye kila kitufe na, ukishaandika dau, takriban kiasi utakachopata upande wako ukishinda. Yanatokana na mabwawa ya wakati huo, baada ya kamisheni yetu, na hubadilika wengine wanapoweka dau, kwa hiyo si ya uhakika. Dau lako linawekwa kama kitufe chake kinavyolitaja, na viwango vya ada vya swali vinawekwa linapoundwa, kwa hiyo mabadiliko ya baadaye hayabadilishi dau ulilokwisha weka. Uwekaji dau ukifungwa, mabwawa yanakuwa ya mwisho na tunakujulisha kiasi kamili utakachopata upande wako ukishinda. | 下注前，问题会显示您可赢取金额的预估：每个按钮上显示投注额的约 ≈ 倍数；输入投注额后，还会显示若所选一方获胜您约可获得的金额。预估依据当时的资金池计算，已扣除我们的佣金，并会随他人下注而变动，因此并非保证。您的投注会严格按按钮所示下单；问题的费率在创建时即已固定，之后的调整绝不会重新计价您已下的注。投注一经关闭，资金池即告最终确定，我们会告知您：若所选一方获胜，您将获得的确切金额。 |
-| `faq3a` | Tap your balance at the top and choose Withdraw — or open Account → Withdraw — then enter an amount, up to {max} per withdrawal. The money goes to the mobile-money number registered on your account. Before you withdraw, confirm your email address; before your first withdrawal we also verify your identity once. | Gusa salio lako juu kisha uchague Toa pesa — au fungua Akaunti → Toa pesa — kisha andika kiasi, hadi {max} kwa kila kutoa. Pesa hutumwa kwenye nambari ya pesa ya simu iliyosajiliwa kwenye akaunti yako. Kabla ya kutoa pesa, thibitisha barua pepe yako; kabla ya kutoa pesa kwa mara ya kwanza pia tunathibitisha utambulisho wako mara moja. | 点击顶部的余额并选择「提现」——或打开「账户」→「提现」——然后输入金额，每笔最高 {max}。款项将转入您账户注册的移动支付号码。提现前请先确认您的电子邮箱；首次提现前，我们还会对您的身份进行一次核验。 |
-| `faq5a` | Open Account → Set limits. You can set deposit and time limits, take a break, or self-exclude. | Fungua Akaunti → Weka mipaka. Unaweza kuweka mipaka ya amana na muda, kupumzika, au kujizuia. | 打开「账户」→「设置限额」。您可以设置充值和时间限额、休息一下或自我排除。 |
+| `faq2a` | Before you bet, a question shows an estimate of what you could win: where it can be worked out, ≈ a multiple of your bet on each button and, once you enter a stake, about what you would get if your side wins. It comes from the pools at that moment, after our commission, and it moves as others bet, so it is not guaranteed. Your bet is placed exactly as its button names it, and a question's fee rates are fixed when it is created, so a later change never re-prices a bet you placed. The moment betting closes, the pools are final and we tell you the exact amount you get if your side wins. | Kabla ya kuweka dau, swali linaonyesha makadirio ya unachoweza kushinda: pale yanapoweza kukadiriwa, ≈ mara ngapi ya dau lako kwenye kila kitufe na, ukishaandika dau, takriban kiasi utakachopata upande wako ukishinda. Yanatokana na mabwawa ya wakati huo, baada ya kamisheni yetu, na hubadilika wengine wanapoweka dau, kwa hiyo si ya uhakika. Dau lako linawekwa hasa kama kitufe chake kinavyolitaja, na viwango vya ada vya swali vinawekwa linapoundwa, kwa hiyo mabadiliko ya baadaye hayabadilishi kamwe dau uliloweka tayari. Uwekaji dau ukifungwa, mabwawa yanakuwa ya mwisho na tunakujulisha kiasi kamili utakachopata upande wako ukishinda. | 下注前，问题会显示您可赢取金额的预估：在可以估算时，每个按钮上以 ≈ 显示投注额的倍数；输入投注额后，还会显示若所选一方获胜您约可获得的金额。预估依据当时的奖池计算，已扣除我们的佣金，并会随他人下注而变动，因此并非保证。您的投注会严格按按钮所示下单；问题的费率在创建时即已固定，之后的调整绝不会重新计价您已下的注。投注一经关闭，奖池即告最终确定，我们会告知您：若所选一方获胜，您将获得的确切金额。 |
+| `faq3a` | Tap your balance at the top and choose Withdraw — or open Account → Withdraw — then enter an amount, up to {max} per withdrawal. The money goes to the mobile-money number registered on your account. Before you withdraw, confirm your email address; before your first withdrawal we also verify your identity once. | Bonyeza salio lako juu kisha uchague Toa pesa — au fungua Akaunti → Toa pesa — kisha andika kiasi, hadi {max} kwa kila kutoa. Pesa hutumwa kwenye nambari ya pesa ya simu iliyosajiliwa kwenye akaunti yako. Kabla ya kutoa pesa, thibitisha barua pepe yako; kabla ya kutoa pesa kwa mara ya kwanza pia tunathibitisha utambulisho wako mara moja. | 点击顶部的余额并选择「提现」——或打开「账户」→「提现」——然后输入金额，每笔最高 {max}。款项将转入您账户注册的移动支付号码。提现前请先确认您的电子邮箱；首次提现前，我们还会对您的身份进行一次核验。 |
+| `faq5a` | Open Account → Set limits. You can set deposit, loss and time limits, take a break, or self-exclude. | Fungua Akaunti → Weka mipaka. Unaweza kuweka mipaka ya amana, hasara na muda, kupumzika, au kujizuia. | 打开「账户」→「设置限额」。您可以设置充值、亏损和时间限额、休息一下或自我排除。 |
 | `faq6a` | Yes, for a short time. Right after you place a bet, its ticket in My tickets shows Sell free and the time it lasts until; selling before then gives your whole stake back at no cost. After that the bet waits for the result and can no longer be sold (a bet placed close to when betting shuts can't be sold at all). The money from a sold bet returns to your balance. | Unaweza, kwa muda mfupi. Mara baada ya kuweka dau, tiketi yake kwenye Tiketi zangu inaonyesha Uza bila ada na saa muda huo unapoisha; ukiuza kabla ya hapo, unarudishiwa dau lako lote bila gharama. Baada ya hapo dau linasubiri matokeo na haliwezi kuuzwa tena (dau lililowekwa karibu na kufungwa kwa uwekaji dau haliwezi kuuzwa kabisa). Pesa za dau ulilouza zinarudi kwenye salio lako. | 可以，但时间很短。下注后，「我的注单」中该投注的注单会显示「免费卖出」及截止时间；在此之前卖出，可全额取回投注额，不收任何费用。之后该投注将等待结果，无法再卖出（在投注即将关闭时下的注则无法卖出）。卖出投注的资金将返回您的余额。 |
 
 The sw faq6a opens with "Unaweza" rather than "Ndiyo", so no line reads as the side word's old spelling (§2's NDIO rule).
@@ -871,8 +871,8 @@ The sw faq6a opens with "Unaweza" rather than "Ndiyo", so no line reads as the s
 
 | Key | en | sw | zh |
 |---|---|---|---|
-| `chatIntro` | Ask me about deposits, betting, payouts, or anything you can't find in Help. | Niulize kuhusu amana, kuweka dau, malipo, au kitu chochote hupati kwenye Msaada. | 有关充值、投注、赔付或帮助页面找不到的任何问题，都可以问我。 |
-| `chatStarterHowTo` | How do I play? | Jinsi ya kucheza? | 怎么玩？ |
+| `chatIntro` | Ask me about deposits, betting, payouts, or anything you can't find in Help. | Niulize kuhusu amana, kuweka dau, malipo, au chochote usichokipata kwenye Msaada. | 有关充值、投注、赔付或帮助页面找不到的任何问题，都可以问我。 |
+| `chatStarterHowTo` | How do I play? | Ninawezaje kucheza? | 怎么玩？ |
 
 ### The chat's journey words (code strings, not keys; WP6)
 
@@ -884,10 +884,10 @@ The offline answers live in `send-message.ts` in en and sw, as today's do (zh ge
 | Out of scope (:218-219) | "I'm tuned for 50pick — deposits, betting, payouts, KYC, question rules. For that question you'll have better luck somewhere else. Anything I can help with on the platform itself?" | "Nimewekwa kwa 50pick — amana, kuweka dau, malipo, KYC, kanuni za maswali. Kwa swali hilo utapata jibu bora mahali pengine. Kuna kitu kingine ninachoweza kukusaidia kuhusu jukwaa?" |
 | Deposit, step 1 (:230; en only today) | "1. Tap **+ Deposit** at the top of the screen[1]" | — |
 | Withdraw, step 3 (:278; en only today) | "3. To withdraw, tap your balance at the top and choose **Withdraw** (or open **Account → Withdraw**), then enter the amount" | — |
-| Identity, step 1 (:350, :358) | "1. Go to **Account → Identity verification** to start[1]" | "1. Nenda **Akaunti → Uthibitisho wa kitambulisho** kuanza[1]" |
-| Invites (:402-403) | "…go to Account → Invite friends for your link…" | "…nenda Akaunti → Alika marafiki upate kiungo chako…" |
+| Identity, step 1 (:350, :358) | "1. Go to **Account → Identity verification** to start[1]" | "1. Nenda kwenye **Akaunti → Uthibitisho wa kitambulisho** kuanza[1]" |
+| Invites (:402-403) | "…go to Account → Invite friends for your link…" | "…nenda kwenye Akaunti → Alika marafiki upate kiungo chako…" |
 
-The zh hand-off (:195) becomes: "您好！您可以打开「玩法说明」（/?howto=1）了解如何投注，或在帮助页面（/help）找到中文版的平台指南——涵盖充值、投注、提现和身份验证。如需人工协助，我可以为您转接支持团队。"
+The zh hand-off (:195) becomes: "您好！您可以打开「玩法说明」（/?howto=1）了解如何投注，或在帮助页面（/help）找到中文版的平台指南——涵盖充值、投注、提现和身份验证。如需进一步协助，我可以为您转接支持团队。"
 
 The live prompt's journey lines (English instructions; the model answers in the reader's language):
 - **Format example (:148):** "To deposit money:\n\n1. Tap **+ Deposit** (Swahili: **+ Weka pesa**) at the top\n2. Choose M-Pesa, Airtel
@@ -930,7 +930,7 @@ The sheet's `multUnit` (how-to-play-sheet.tsx:86-89) still finds "≈{mult}×" i
 | Language | Today | Becomes |
 |---|---|---|
 | en (:214; the source spells `browser&apos;s`, and the new sentence keeps it) | Some display choices, such as hiding your balance or dismissing a prompt, are kept in your browser's own storage on your device. | Some display choices, such as hiding your balance, dismissing a prompt or having seen How to play (50pick-howto-seen, so the guide opens by itself only once), are kept in your browser's own storage on your device. |
-| sw (:344) | Baadhi ya machaguo ya maonyesho, kama kuficha salio lako au kufunga ujumbe, huhifadhiwa kwenye hifadhi ya kivinjari chako ndani ya kifaa chako. | Baadhi ya machaguo ya maonyesho, kama kuficha salio lako, kufunga ujumbe au kuwa umeshaona Jinsi ya kucheza (50pick-howto-seen, ili mwongozo ujifungue wenyewe mara moja tu), huhifadhiwa kwenye hifadhi ya kivinjari chako ndani ya kifaa chako. |
+| sw (:344) | Baadhi ya machaguo ya maonyesho, kama kuficha salio lako au kufunga ujumbe, huhifadhiwa kwenye hifadhi ya kivinjari chako ndani ya kifaa chako. | Baadhi ya machaguo ya maonyesho, kama kuficha salio lako, kufunga ujumbe au kuwa umeshaona Jinsi ya kucheza (50pick-howto-seen, ili mwongozo ufunguke wenyewe mara moja tu), huhifadhiwa kwenye hifadhi ya kivinjari chako ndani ya kifaa chako. |
 | zh (in :466) | 部分显示选择（例如隐藏余额或关闭提示）保存在您设备上的浏览器存储中。 | 部分显示选择（例如隐藏余额、关闭提示，或已看过「玩法说明」——50pick-howto-seen，使该指南只会自动打开一次）保存在您设备上的浏览器存储中。 |
 
 ### Not added
@@ -1115,7 +1115,7 @@ NOT MEASURED, and the exact text proposed for the trackers this branch does not 
 | WP0 · start line | Citations re-read and corrected (Amendments above); precondition does not hold (B1); records proposed below (B2) | this commit |
 | WP1 · the X card | Done, every player, its own release. Proof at its commit: `test:brand-assets` §3 IN SYNC + 3 controls refused (red before: 600/600 rows differ), `test:static-cache-scope` 23/23, typecheck 0, `next build` 0 (186 s, `build.sh` at the exact commit), local `qa:live` 376/376 (port 3101); both pictures read at full size and the corners zoomed: no badge, no bubble. Production read-back is the coordinator's | `0986baa5a` |
 | WP2 · `primer-keys.ts` | Done. The primer imports four declarations (B10); `test:stacking` 138/0 (8.3 re-pinned, 8.3c its plant), `test:marketing-optout` 121/0 + red 45/45 (two primer plants), `test:journey-shell` + red 208/208, `test:popup-fit`, `test:design-frozen`, `test:client-graph-safe` 6/0, `test:hooks-order`, visual-pass r5a r5b r5c r5i r5j r6c r7c r8b r9a r9c and `test:social-panel` green, typecheck 0, `qa:lost-chunk --self-test` 14/14 with the new marker (B4); its browser cells run with WP10 | this commit |
-| WP3 · S11's words | — | — |
+| WP3 · S11's words | Done: seven keys, the zh How-to corrections, review 9 signed (below) | this commit |
 | WP4 · the How-to host | — | — |
 | WP5 · the FAQ | — | — |
 | WP6 · the chat | — | — |
@@ -1124,3 +1124,57 @@ NOT MEASURED, and the exact text proposed for the trackers this branch does not 
 | WP9 · the parked S15 commit | — | — |
 | WP10 · the drives | — | — |
 | WP11 · proof, records, merge, deploy | The coordinator's | — |
+### Ali's answers — "accepted by Ali, 2026-10-14"
+
+The coordinating session relayed on 2026-10-14 that Ali ACCEPTED ALL SEVEN recommended answers in "Points for Ali". Each
+is built as decided, not pending:
+1. **The share pictures at launch carry the agency's line** ("Pick. See what you win. Play." over its Swahili) — on both
+   pictures and on the general share card (`/api/og/page`); rendered on the parked branch (WP9). Accepted by Ali,
+   2026-10-14.
+2. **The X picture fixed now, for everyone, in its own release** — WP1, commit `0986baa5a` (its message predates the
+   answer and says the ruling is owed: it is accepted). Accepted by Ali, 2026-10-14.
+3. **Privacy §7 names the How-to seen note, with a new version** — WP4; COMPLIANCE-DECISIONS "Privacy v2026-10-14.2"
+   records the acceptance. Accepted by Ali, 2026-10-14.
+4. **The new Terms and rules prepared now and published at launch** — WP9, parked on `codex/vodacom-s15-copy`. Accepted
+   by Ali, 2026-10-14.
+5. **No 14-day notice for the Terms change** (it describes a display and narrows no right) — recorded in WP9's drafted
+   COMPLIANCE-DECISIONS entry. Accepted by Ali, 2026-10-14.
+6. **The chat's live words switch at launch, with the rollout** — WP6 (the live prompt follows the global rollout, never
+   the reader). Accepted by Ali, 2026-10-14.
+7. **`50pick.tz/?howto=1` for the agency's campaign links** — WP4's deep link. Accepted by Ali, 2026-10-14.
+
+### WP3 — the words, and review 9
+
+- **Keys** (`journey` namespace, en/sw/zh): `faq2q`, `faq2a`, `faq3a`, `faq5a`, `faq6a`, `chatIntro`, `chatStarterHowTo`;
+  the four zh How-to values corrected (Correction 4). `test:i18n` 2751 keys in each language.
+- **Review 9** (S4-COPY-AUDIT "Swahili review" 9): an independent reader, under Ali's delegation of the Swahili-speaker
+  role — 54 strings, 42 approved, 12 corrected; every correction applied where the string lives, and this file's tables
+  brought to the signed words (they and the code say the same). Beyond the drafts, the review qualified faq2a's
+  multiple ("where it can be worked out" — the card prints one on its priced faces only) and named the loss limit in faq5a.
+- **Gates:** `test:i18n`, `test:translation-safety` 24/0, `test:labels` (1,507 files), `test:rate-copy` 40/0,
+  `test:support-contact` 79/0, `test:withdraw-email-gate` 84/0, `test:kyc-copy-truth` 499/0, `test:trilingual` 38/0,
+  `test:journey-home`, `test:journey-estimate`, `test:popup-fit`, `test:docs`; hero-copy's OVERCLAIM pattern over the new
+  keys and the tagline draft: none (WP7's `test:flip-copy` §4 runs it from then on).
+- **Red by construction (Correction 11), recorded, not fixed:** `test:house-bot-disclosure` 5.1 and 5.1.c3 —
+  `src/lib/i18n-dict.ts` (and, from WP4, `src/app/legal/privacy/page.tsx`) differ from `origin/main` until this lands.
+
+### Proposed records — the text for the trackers this branch does not edit (B2)
+
+**VODACOM-PLAN §3, after the S8 keys note** (proposed, verbatim):
+
+> **S11 keys (2026-10-14, `S11-PLAN.md` WP3; review 9).** No deck string is new in S11. Its own words are keys of the
+> `journey` namespace, read for a journey reader only — /help's FAQ (WP5) and the chat panel (WP6) — and signed in
+> [`S4-COPY-AUDIT.md`](design-system/v5-2026-09-29-simplified-journey/S4-COPY-AUDIT.md) "Swahili review" 9:
+>
+> | S11 key | sw | en | zh |
+> |---|---|---|---|
+> | `journey.faq2q` | Makadirio yanabadilika baada ya kuweka dau? | Does the estimate change after I bet? | 下注后预估会变吗？ |
+> | `journey.faq2a` | (the dictionary) | (the dictionary) | (the dictionary) |
+> | `journey.faq3a` | (the dictionary; `{max}` = WITHDRAW_MAX_TZS) | (the dictionary) | (the dictionary) |
+> | `journey.faq5a` | Fungua Akaunti → Weka mipaka. Unaweza kuweka mipaka ya amana, hasara na muda, kupumzika, au kujizuia. | Open Account → Set limits. You can set deposit, loss and time limits, take a break, or self-exclude. | 打开「账户」→「设置限额」。您可以设置充值、亏损和时间限额、休息一下或自我排除。 |
+> | `journey.faq6a` | (the dictionary) | (the dictionary) | (the dictionary) |
+> | `journey.chatIntro` | Niulize kuhusu amana, kuweka dau, malipo, au chochote usichokipata kwenye Msaada. | Ask me about deposits, betting, payouts, or anything you can’t find in Help. | 有关充值、投注、赔付或帮助页面找不到的任何问题，都可以问我。 |
+> | `journey.chatStarterHowTo` | Ninawezaje kucheza? | How do I play? | 怎么玩？ |
+
+**VODACOM-PLAN §3's How-to rows** (annotate, never rewrite): `journey.howStep1Body`, `howStep2Title`, `howStep3Body` and
+`howExampleBody` — append to each zh cell "⟶ corrected in S11 WP3 (S4-COPY-AUDIT :140; review 9): 「{yes}」/「{no}」 quoted, 赢家按投注比例分享奖池, 在「{side}」一方（显示 ≈{mult}×）".
