@@ -297,7 +297,7 @@ async function ResolverQueueContent({
           </div>
         }
       />
-      <AdminBody data-empty-state-owner="collection">
+      <AdminBody data-empty-state-owner={!marketsFailed && pending.length === 0 ? "collection" : undefined}>
         {/* Filters */}
         <AdminCard>
           <form className="flex flex-wrap items-center gap-2">

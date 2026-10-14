@@ -176,6 +176,7 @@ export function BulkResolveBar({
           <Checkbox
             checked={allOn}
             indeterminate={someOn}
+            disabled={rows.length === 0}
             onChange={(next) => setAll(next)}
             className="min-h-[44px] min-w-[44px] justify-center"
             ariaLabel={`${BULK_BAR.selectAllOnPage.en} (${rows.length} markets)`}

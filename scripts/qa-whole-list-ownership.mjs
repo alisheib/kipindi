@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 import { premise } from "./live/journey-pass.mjs";
 import { emptyStateAlignment } from "./live/empty-state-alignment.mjs";
+import { readOnlyAction } from "./live/read-only-action.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const base = process.env.BASE;
@@ -20,7 +21,8 @@ const knownChromium = "C:/Users/asheib/AppData/Local/ms-playwright/chromium-1217
 const executablePath = process.env.QA_CHROMIUM_PATH || (fs.existsSync(knownChromium) ? knownChromium : undefined);
 const files = ["scripts/qa-whole-list-ownership.mjs", "scripts/live/empty-state-alignment.mjs", "scripts/responsive-audit.mjs",
   "src/components/layout/page-container.tsx", "src/app/watchlist/page.tsx", "src/app/notifications/page.tsx",
-  "src/app/wallet/receipts/page.tsx", "src/app/admin/resolver-queue/page.tsx"];
+  "src/app/wallet/receipts/page.tsx", "src/app/admin/resolver-queue/page.tsx",
+  "src/app/admin/resolver-queue/bulk-resolve-bar.tsx", "src/components/ui/checkbox.tsx", "scripts/live/read-only-action.mjs"];
 const sourceProof = {
   head:execFileSync("git", ["rev-parse", "HEAD"], { cwd:root, encoding:"utf8" }).trim(),
   files:Object.fromEntries(files.map(file => [file, createHash("sha256").update(fs.readFileSync(path.join(root,file))).digest("hex")])),
@@ -28,7 +30,7 @@ const sourceProof = {
 };
 const browser = await chromium.launch({ ...(executablePath ? { executablePath } : {}) });
 const player = await browser.newContext(), admin = await browser.newContext();
-const evidence = { base, sourceProof, cells:[], errors:[], forbiddenActions:0, pass:0, fail:0 };
+const evidence = { base, sourceProof, cells:[], errors:[], actions:[], forbiddenActions:0, pass:0, fail:0 };
 const check = (name, passed, detail) => {
   evidence[passed ? "pass" : "fail"]++;
   console.log(`${passed ? "PASS" : "FAIL"} ${name}${passed ? "" : " " + JSON.stringify(detail)}`);
@@ -49,9 +51,16 @@ try {
       await page.setViewportSize({ width, height:900 });
       page.on("pageerror", error => evidence.errors.push({ route, width, error:error.message }));
       page.on("console", message => { if (message.type() === "error") evidence.errors.push({ route, width, error:message.text() }); });
-      page.on("request", request => {
-        if (request.method() === "POST" && /(?:next-action|\/api\/(?:markets|payments|withdrawals|bets))/.test(request.url())) evidence.forbiddenActions++;
-        if (request.headers()["next-action"]) evidence.forbiddenActions++;
+      await page.route("**/*", interception => {
+        const request = interception.request();
+        if (request.method() !== "POST") return interception.continue();
+        let manifest;
+        try { manifest = JSON.parse(fs.readFileSync(path.join(root,".next/dev/server/server-reference-manifest.json"),"utf8")); } catch {}
+        const allowedRead = readOnlyAction(manifest, request.headers()["next-action"]);
+        evidence.actions.push({ method:"POST", path:new URL(request.url()).pathname, allowedRead });
+        if (allowedRead) return interception.continue();
+        evidence.forbiddenActions++;
+        return interception.abort();
       });
       const response = await page.goto(base + route, { waitUntil:"domcontentloaded", timeout:180_000 });
       if (!response?.ok() || new URL(page.url()).pathname !== route) throw new Error(`Actual route/auth premise failed: ${route}`);
@@ -71,6 +80,13 @@ try {
       const normal = await page.evaluate(emptyStateAlignment);
       check(stem + " real enclosing collection ownership and geometry", normal.length === 1
         && normal[0].association === "collection" && normal[0].collection?.passed === true, normal);
+      if (route === "/admin/resolver-queue") {
+        const selectAll = page.getByRole("checkbox", { name:/^Select all on this page/ });
+        check(stem + " empty select-all is natively disabled", await selectAll.count() === 1
+          && await selectAll.isDisabled() && !(await selectAll.isChecked()));
+        await selectAll.evaluate(el => { el.click(); el.parentElement.click(); });
+        check(stem + " empty select-all ignores native and label activation", !(await selectAll.isChecked()));
+      }
       await page.screenshot({ path:path.join(out,stem + ".png"), fullPage:true });
       const cell = { route, width, fontPremise, normal, negatives:[] };
       for (const fault of ["offcenter", "oversized", "clipped"]) {
@@ -93,7 +109,7 @@ try {
     }
   }
   check("no console or page errors", evidence.errors.length === 0, evidence.errors);
-  check("no money or server actions", evidence.forbiddenActions === 0, evidence.forbiddenActions);
+  check("no money or unclassified server actions", evidence.forbiddenActions === 0, evidence.actions);
 } finally {
   await browser.close();
   fs.writeFileSync(path.join(out,"evidence.json"), JSON.stringify(evidence,null,2));

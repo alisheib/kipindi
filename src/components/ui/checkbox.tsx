@@ -21,6 +21,7 @@ export function Checkbox({
   indeterminate = false,
   ariaLabel,
   invalid = false,
+  disabled = false,
 }: {
   defaultChecked?: boolean;
   checked?: boolean;
@@ -62,6 +63,7 @@ export function Checkbox({
    * ⛔ camelCase, for the same reason as `ariaLabel`: a hyphenated attribute on a component is silently dropped.
    */
   invalid?: boolean;
+  disabled?: boolean;
 }) {
   const [internal, setInternal] = React.useState(defaultChecked ?? false);
   const isControlled = controlledChecked !== undefined;
@@ -154,7 +156,8 @@ export function Checkbox({
         alignItems: "center",
         minHeight: "var(--tap-min)",
         gap: 9,
-        cursor: "pointer",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.5 : undefined,
         fontSize: 13.5,
         color: "var(--text)",
       }}
@@ -196,6 +199,7 @@ export function Checkbox({
         name={name}
         value={value}
         required={required}
+        disabled={disabled}
         {...(isControlled ? { checked: controlledChecked } : { defaultChecked: defaultChecked ?? false })}
         aria-label={ariaLabel}
         aria-invalid={invalid ? true : undefined}
