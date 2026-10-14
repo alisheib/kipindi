@@ -737,6 +737,13 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   first pre-gate refusals remain. Proof: 49 memory, 47 Postgres and 20 plants; the extracted retry/host cases are
   explicitly bounded-inner fixtures, not real PostgreSQL commit-loss injection. Actual action propagation,
   typecheck and focused sheet guards pass. Production and the full final battery remain required.
+  Linux CI at `9c5a8fd80` is 531/533: the reports guard's seven exact lines moved while every nine-line money
+  write remains byte-identical to `1b93e44c5` (SHA256 compared; repaired memory run 251/0), and audit-drain's
+  fixture started completing its ten-row queue during Next cleanup before asking to exit. The latter correctly
+  drained the nine actually at risk. Its worker now starts in the exit-request turn, with the exact ten-row,
+  nonzero-wait, no-abandonment assertions retained; a delayed-cleanup control and a real prematurely started-worker
+  source plant use the same verdict. One isolated and four concurrent runs are 44/0. Production drain code is
+  unchanged; final Linux acceptance remains pending. New Next.js/bundling configurations are isolated diagnostics.
   Separate S9 preparation `862e83fb4` is pushed: 105 memory/108 Postgres/45 plants plus related guards; status/review,
   RG-held truth and the faithful wallet-currency read are recorded in S9-PLAN §5d. The post-UNKNOWN terminal retry
   gap remains open in both the future controller and existing Card adapter; an explicit owned signed recheck is

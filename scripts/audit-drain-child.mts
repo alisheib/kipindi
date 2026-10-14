@@ -25,7 +25,7 @@
  *   throwing       a flush that THROWS — the deferred exit must still happen, or the deferral has
  *                  become a hang on every deploy, which is worse than the loss it prevents
  *
- * env: N (appends), WORK_MS (ms per append), BUDGET_MS (drain budget)
+ * env: N (appends), WORK_MS (ms per append), BUDGET_MS (drain budget), CLEANUP_MS (real Next-cleanup delay)
  */
 import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
@@ -37,6 +37,8 @@ const mode = process.argv[2] ?? "";
 const N = Number(process.env.N ?? 10);
 const WORK_MS = Number(process.env.WORK_MS ?? 20);
 const BUDGET_MS = Number(process.env.BUDGET_MS ?? 5000);
+const CLEANUP_MS = Number(process.env.CLEANUP_MS ?? 10);
+if (!Number.isFinite(CLEANUP_MS) || CLEANUP_MS < 0 || CLEANUP_MS > 5000) throw new Error("Invalid CLEANUP_MS fixture premise");
 const ROOT = resolve(import.meta.dirname, "..");
 
 const DRAIN = (await import(pathToFileURL(resolve(ROOT, "src/lib/server/audit-drain.ts")).href)) as {
@@ -47,10 +49,18 @@ const DRAIN = (await import(pathToFileURL(resolve(ROOT, "src/lib/server/audit-dr
 const t0 = Date.now();
 const say = (m: string) => console.error(`[child ${mode}] +${Date.now() - t0}ms ${m}`);
 
-// ── the stub queue: N appends, one completing every WORK_MS, or never when `stuck` ───────────────
+// ── the stub queue: N appends AT RISK at exit, one completing every WORK_MS, or never when `stuck` ──
+// Hold its worker until Next actually requests exit. Cleanup/scheduling can take longer than one tick;
+// starting before cleanup would let real work finish and make the claimed N-at-exit premise false.
+// The release and process.exit stay in one synchronous turn, so no completion can race the depth capture.
 let pending = N;
+let queueStarted = false;
+let pendingAtExitRequest: number | null = null;
 const waiters: Array<() => void> = [];
-if (mode !== "stuck") {
+function startQueue() {
+  if (queueStarted) return;
+  queueStarted = true;
+  if (mode === "stuck") return;
   const t = setInterval(() => {
     if (pending > 0) pending--;
     if (pending === 0) { clearInterval(t); for (const w of waiters.splice(0)) w(); }
@@ -76,8 +86,10 @@ const nextCleanup = (signal: string) => {
   void (async () => {
     await new Promise((res) => setImmediate(res));            // await server.close()
     await Promise.all([Promise.resolve(), Promise.resolve()]); // nextServer.close() + cleanupListeners
-    await new Promise((res) => setTimeout(res, 10));           // flushAllTraces()
+    await new Promise((res) => setTimeout(res, CLEANUP_MS));   // flushAllTraces()
     say(`Next cleanup finished — calling process.exit(${signal === "SIGINT" ? 130 : 143})`);
+    pendingAtExitRequest = pending;
+    startQueue();
     process.exit(signal === "SIGINT" ? 130 : 143);
     // `break;` follows in the real source, and nothing after it. Reaching here is expected once the
     // exit is deferred; it must do no further work.
@@ -102,7 +114,7 @@ if (mode !== "no-drain") {
 process.on("exit", () => {
   const r = mode === "no-drain" ? null : DRAIN.auditDrainReport();
   console.log("CHILD " + JSON.stringify({
-    mode, N, workMs: WORK_MS, budgetMs: BUDGET_MS,
+    mode, N, workMs: WORK_MS, budgetMs: BUDGET_MS, cleanupMs: CLEANUP_MS, queueStarted, pendingAtExitRequest,
     pendingAtExit: pending, elapsedMs: Date.now() - t0, report: r,
   }));
 });
