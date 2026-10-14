@@ -16,6 +16,7 @@ import { sessionEndedThisRequest } from "@/lib/server/session";
 import { cookies } from "next/headers";
 import { isSafePath, sanitizeNext } from "@/lib/safe-next";
 import { normalizeReferralCode } from "@/lib/referral-code";
+import { normalizeInviteCode } from "@/lib/invite-code";
 import { fill } from "@/lib/utils";
 import { formatBreakEnd, readBreakEndParam } from "@/lib/break-end";
 import { keepText } from "@/components/ui/keep-run";
@@ -28,7 +29,7 @@ export async function generateMetadata() {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ phone?: string; identifier?: string; error?: string; retry?: string; next?: string; ref?: string; closed?: string; excluded?: string; until?: string; cooled?: string; reset?: string; revoked?: string; ended?: string }>;
+  searchParams: Promise<{ phone?: string; identifier?: string; error?: string; retry?: string; next?: string; ref?: string; invite?: string; closed?: string; excluded?: string; until?: string; cooled?: string; reset?: string; revoked?: string; ended?: string }>;
 }) {
   // ⛔ THE BOUNCE RUNS HERE, IN THE PAGE, AND IT MOVED OUT OF `auth/layout.tsx` BECAUSE A
   // LAYOUT IS NOT RE-EXECUTED ON A CLIENT-SIDE SOFT NAVIGATION. The layout compared the
@@ -82,9 +83,11 @@ export default async function LoginPage({
   // (`recruitedBy` is written once, at sign-up). The code rides the hidden field to the action's failure hop and every
   // link to sign-up or back here; normalised by the one rule, so a malformed code is dropped, never cut.
   const refCode = normalizeReferralCode(sp.ref) ?? "";
+  const inviteCode = normalizeInviteCode(sp.invite) ?? "";
   const keepQs = new URLSearchParams();
   if (nextSafe) keepQs.set("next", nextSafe);
   if (refCode) keepQs.set("ref", refCode);
+  if (inviteCode) keepQs.set("invite", inviteCode);
   const keep = keepQs.toString() ? `?${keepQs.toString()}` : "";
   const registerHref = `/auth/register${keep}`;
   const loginSelfHref = `/auth/login${keep}`;
@@ -352,6 +355,7 @@ export default async function LoginPage({
 
           <form action={startLoginAction} className="space-y-4">
             {nextSafe && <input type="hidden" name="next" value={nextSafe} />}
+            {inviteCode && <input type="hidden" name="invite" value={inviteCode} />}
             {refCode && <input type="hidden" name="ref" value={refCode} />}
             <NextHashField />
             {/* Phone/Email switcher. Both methods submit under `identifier`; the

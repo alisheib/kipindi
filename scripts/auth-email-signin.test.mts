@@ -501,8 +501,8 @@ for (const [label, input] of [
     return open >= 0 && at > open && at < PAGE.indexOf("</RegisterForm>");
   };
   const ctas = [
-    "`/auth/login?phone=${encodeURIComponent(refusal.phone)}${nextQs}`",
-    "`/auth/login?identifier=${encodeURIComponent(refusal.email)}${nextQs}`",
+    "`/auth/login?phone=${encodeURIComponent(refusal.phone)}${nextQs}${codeQs}`",
+    "`/auth/login?identifier=${encodeURIComponent(refusal.email)}${nextQs}${codeQs}`",
   ];
   ok("7.10 the page renders <RegisterForm> with the hidden ref, invite and next fields inside it, and both panel links keep next (nextQs)",
     inForm('<input type="hidden" name="ref" value={refCode} />') && inForm('<input type="hidden" name="invite" value={inviteCode} />')

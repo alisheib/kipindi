@@ -11,6 +11,7 @@ import { isAdminPath, isAuthPath, isSafePath, sanitizeNext } from "@/lib/safe-ne
 import { accountRefusalPath, landingAfterAuth } from "@/lib/auth-landing";
 import { breakEndParam } from "@/lib/break-end";
 import { normalizeReferralCode } from "@/lib/referral-code";
+import { normalizeInviteCode } from "@/lib/invite-code";
 import { phoneCodeSignInEnabled } from "@/lib/server/otp-door";
 
 /** Short-lived, HMAC-signed pre-session token proving the password step passed. */
@@ -98,9 +99,11 @@ export async function startLoginAction(formData: FormData) {
       params.set("retry", String(Math.max(1, Math.ceil(result.retryAfterSec))));
     }
     if (safeNext) params.set("next", safeNext);
-    // B3: the referral code rides back on the failure hop only; the excluded, closed and 2FA hops concern existing accounts
+    // S10/B3: both codes ride back on the failure hop; the excluded, closed and 2FA hops concern existing accounts.
     const ref = normalizeReferralCode(String(formData.get("ref") ?? ""));
     if (ref) params.set("ref", ref);
+    const invite = normalizeInviteCode(String(formData.get("invite") ?? ""));
+    if (invite) params.set("invite", invite);
     redirect(`/auth/login?${params.toString()}`);
   }
   // 2FA gate — the password was correct but the player has TOTP enabled. No

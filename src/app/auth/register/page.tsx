@@ -7,6 +7,7 @@ import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
 import { Field, Input } from "@/components/ui/input";
 import { resolveReferralPreview } from "@/lib/server/affiliate-service";
 import { normalizeReferralCode } from "@/lib/referral-code";
+import { normalizeInviteCode } from "@/lib/invite-code";
 import { VerifiedAgentBadge } from "@/components/agent/verified-agent-badge";
 import { bounceIfAuthed } from "../bounce-authed";
 import { getInvitePreview } from "@/lib/server/invite-service";
@@ -64,9 +65,8 @@ export default async function RegisterPage({
   // Carry the post-auth destination (e.g. the market the player tapped YES on)
   // through registration so they land back on it, and honour their intent.
   // ⭐ 2026-09-13: a new account is created ACTIVE and identity is asked before a withdrawal
-  // and nothing else, so the market they came from is somewhere they can act once their email
-  // is confirmed and money is in. The action honours a safe `next`, else sends them to add money
-  // (`auth/register/actions.ts`).
+  // and nothing else. The action honours a safe `next`, else greets them at home; deposits ask no email confirmation
+  // (`auth/register/actions.ts`, the owner's 2026-10-07 ladder).
   // ⚠️ This note used to say "new players are PENDING_KYC but can still bet with the starter
   // balance" — false twice: the starter balance is clamped to 0 on live money
   // (`clampStarterBalanceForLiveMoney`), and from 2026-09-05 to 2026-09-13 an unverified
@@ -78,7 +78,7 @@ export default async function RegisterPage({
   // binding (and its bonus). Throw to auth/error.tsx instead; a genuinely
   // invalid code still resolves null and simply shows no banner.
   const referral = refCode ? await resolveReferralPreview(refCode) : null;
-  const inviteCode = (sp.invite ?? "").trim().slice(0, 24);
+  const inviteCode = normalizeInviteCode(sp.invite) ?? "";
   const invite = inviteCode ? await getInvitePreview(inviteCode) : null;
 
   // The latest date of birth that is 18 today: the date box refuses anything later.
@@ -121,6 +121,7 @@ export default async function RegisterPage({
   const signInQs = new URLSearchParams();
   if (nextOk) signInQs.set("next", nextOk);
   if (refCode) signInQs.set("ref", refCode);
+  if (inviteCode) signInQs.set("invite", inviteCode);
 
   return (
     <AuthShell>
@@ -172,7 +173,7 @@ export default async function RegisterPage({
 
           {/* ⭐ The refusal panel and the form live in ONE client component, so a refusal returns to the form the
               player is looking at and loses nothing (register-form.tsx). These are its first children. */}
-          <RegisterForm copy={copy} phoneDefault={phoneDefault} emailDefault={emailDefault} nextOk={nextOk} dobMax={dobMax}>
+          <RegisterForm copy={copy} phoneDefault={phoneDefault} emailDefault={emailDefault} nextOk={nextOk} refCode={refCode} inviteCode={inviteCode} dobMax={dobMax}>
             {/* D2 · the language THIS form was drawn in, so the new account's language (`User.locale`) is the one the
                 person read, even if the cookie changes before they submit (actions.ts `shownLocale`). Until 2026-10-07
                 it also chose which sentence of the SMS-offers box the consent ledger stored; that box is removed. */}

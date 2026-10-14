@@ -22,6 +22,8 @@
  * Pure: storage is the caller's (the key and the TTL are here); this module only reads and writes strings.
  */
 import { isSafePath } from "@/lib/safe-next";
+import { normalizeReferralCode } from "@/lib/referral-code";
+import { normalizeInviteCode } from "@/lib/invite-code";
 
 export type PendingBet =
   | { kind: "market"; id: string; side: "YES" | "NO"; stake: number | null }
@@ -97,6 +99,8 @@ export type PendingBetMarker = {
   utm?: Record<string, string>;
 };
 
+// Historic codes stay readable; a new invite also keeps this existing storage alphabet, with the auth bound above it.
+// Changing attribution never invalidates a chosen bet/key.
 const CODE = /^[A-Za-z0-9_-]{1,64}$/;
 export const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"] as const;
 const UTM_VALUE = /^[A-Za-z0-9._~ -]{1,100}$/;
@@ -104,9 +108,9 @@ const UTM_VALUE = /^[A-Za-z0-9._~ -]{1,100}$/;
 /** The attribution a link arrived with — only `ref`, `invite` and the five `utm_*`, each in its own safe shape. */
 export function attributionFrom(search: URLSearchParams): Pick<PendingBetMarker, "ref" | "invite" | "utm"> {
   const out: Pick<PendingBetMarker, "ref" | "invite" | "utm"> = {};
-  const ref = search.get("ref");
-  if (ref && CODE.test(ref)) out.ref = ref;
-  const invite = search.get("invite");
+  const ref = normalizeReferralCode(search.get("ref"));
+  if (ref) out.ref = ref;
+  const invite = normalizeInviteCode(search.get("invite"));
   if (invite && CODE.test(invite)) out.invite = invite;
   const utm: Record<string, string> = {};
   for (const k of UTM_KEYS) {
@@ -119,7 +123,12 @@ export function attributionFrom(search: URLSearchParams): Pick<PendingBetMarker,
 
 /** The marker to store when a bet is chosen, as the string sessionStorage holds. */
 export function writeMarker(bet: PendingBet, nowMs: number, attribution: Pick<PendingBetMarker, "ref" | "invite" | "utm"> = {}, key?: string): string {
-  const m: PendingBetMarker = { bet: formatBetParam(bet), at: nowMs, ...attribution };
+  // Callers also include a recovered historic marker: validate NEW writes without discarding its bet, time or key.
+  const search = new URLSearchParams();
+  if (attribution.ref) search.set("ref", attribution.ref);
+  if (attribution.invite) search.set("invite", attribution.invite);
+  for (const k of UTM_KEYS) if (attribution.utm?.[k]) search.set(k, attribution.utm[k]);
+  const m: PendingBetMarker = { bet: formatBetParam(bet), at: nowMs, ...attributionFrom(search) };
   if (typeof key === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)) m.k = key;
   return JSON.stringify(m);
 }
