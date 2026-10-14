@@ -3919,11 +3919,18 @@ await guard("17", async () => {
         && at({ balance: 10_000, rates: rates() }, due(60), { ...bot, freqMinGapSec: null }) === "CAP_MIN_GAP"
         && at({ balance: 10_000, rates: rates() }, due(60), { ...bot, freqMaxPerHour: null }) === "CAP_PER_HOUR"
         && at({ balance: 10_000, rates: rates() }, due(60), { ...bot, freqMaxPerDay: null }) === "CAP_PER_DAY");
+    /* ⛔ BOTH ORDERS (red drive, 2026-10-14). Queued latest-first alone, a LATEST bound written once and never moved
+       still read 70, and `N3-noteQueued-keeps-first` stayed green. A pass queues rows in whatever order it plans its
+       markets, so each bound has to move in both: down-then-up and up-then-down. */
     const r = rates();
     CAPS.noteQueued(r, { stakeTzs: 2_000, dueAt: atS(70) });
     CAPS.noteQueued(r, { stakeTzs: 1_000, dueAt: atS(40) });
+    const rUp = rates();
+    CAPS.noteQueued(rUp, { stakeTzs: 1_000, dueAt: atS(40) });
+    CAPS.noteQueued(rUp, { stakeTzs: 2_000, dueAt: atS(70) });
     ok("17.86 · N3 · noteQueued counts the row, adds its stake and keeps the SOONEST and the LATEST due time",
-      r.liveCount === 2 && r.liveStakeTzs === 3_000 && r.maxQueuedDueAt === atS(70) && r.minQueuedDueAt === atS(40), j(r));
+      [r, rUp].every((x) => x.liveCount === 2 && x.liveStakeTzs === 3_000 && x.maxQueuedDueAt === atS(70) && x.minQueuedDueAt === atS(40)),
+      j({ latestFirst: r, earliestFirst: rUp }));
     /* ⭐ BUSY MEANS ABOUT TO BET (review finding 3): a stake due within TURN_BUSY_HORIZON_SEC of now; a poll's fill queued
        25 minutes out must not hold the account at the back of every draw until then. */
     ok("17.86b · N3 · busyAtLoad: a stake due in 30 s makes the account busy until then, one overdue at −5 s too; one due in 25 minutes does not, and nothing queued is not busy",

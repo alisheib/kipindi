@@ -144,6 +144,7 @@ for (const d of DEFECTS) {
   if (MEMORY_ONLY && d.suite.endsWith("-pg")) continue;
   if (!baselines.has(keyOf(d))) baselines.set(keyOf(d), d);
 }
+const baselinePasses = new Map();
 for (const [key, d] of baselines) {
   const base = run(d);
   haltIfStopped("house-bot-engine RED");
@@ -151,7 +152,21 @@ for (const [key, d] of baselines) {
     console.error(`REFUSING TO RUN — "${key}" is RED before any mutation:\n${base.fails.slice(0, 10).join("\n") || base.output.split("\n").slice(-6).join("\n")}`);
     process.exit(1);
   }
+  baselinePasses.set(key, base.output.split("\n").filter((l) => /^\s*PASS\b/.test(l)));
   console.log(`baseline green · ${key}`);
+}
+/**
+ * ⛔ A MUTATION WHOSE OWN ASSERTION NEVER RUNS CAN NEVER BE CAUGHT, and this drive used to report it only after the
+ * injection, as MISSED — "stayed GREEN", which points at the test when the fault is the declaration. Measured 2026-10-14:
+ * two N3 mutations named `sections: "7"` for assertions that live in §7b, so their narrowed run never reached them and
+ * both read MISSED against sound tests. Each declared `expect` must now be a PASS line in its OWN baseline run (its
+ * suite and sections) before anything is injected; one that is not is named here, and the drive refuses to start.
+ */
+const unreachable = DEFECTS.filter((d) => baselinePasses.has(keyOf(d)) && !baselinePasses.get(keyOf(d)).some((l) => l.includes(d.expect)));
+if (unreachable.length) {
+  for (const d of unreachable) console.error(`UNREACHABLE ${d.name} — "${d.expect}" is not a PASS line in its own baseline (${keyOf(d)}); fix its suite, sections or expect`);
+  console.error(`REFUSING TO RUN — ${unreachable.length} declared mutation(s) name an assertion their own run never reaches.`);
+  process.exit(1);
 }
 
 let caught = 0, missed = 0, notMeasured = 0;

@@ -1347,7 +1347,7 @@ export const MUTATIONS = [
     to: `    if (Math.max(fromMs + r.opener.delayUdMinSec * 1000, passNowMs) > latestDueMs) staleAtFire = false;`,
     expect: "7b.25 · N3 · a stake due 60 s ahead on an observation already 10 s old",
     suite: "engine-mem",
-    sections: "7",
+    sections: "7b",
   },
   {
     name: "N3-no-delay-clamp · an opener's delay is drawn past its price's life",
@@ -1356,7 +1356,7 @@ export const MUTATIONS = [
     to: `    else udMaxDelaySec = r.opener.delayUdMaxSec;`,
     expect: "7b.26 · N3 · …and a delay range that reaches past the price's life",
     suite: "engine-mem",
-    sections: "7",
+    sections: "7b",
   },
   {
     name: "N3-draw-uniform · the draw ignores how long each account has waited, so a starved account is no likelier to be picked",

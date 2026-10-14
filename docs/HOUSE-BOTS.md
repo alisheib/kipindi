@@ -2789,8 +2789,10 @@ today's volume; and the activity filter's "Cancelled" chip also lists "Passed on
 | `test:house-bot-money` · `-caps` · `-info-edge` · `-reports` · `-ops` · `-comms` | all ✓ on both stores; `-holder-lifecycle` 16/0 |
 | `test:dal-parity` | 2,326/0 (the new `liveSummaryByBot` in both twins) |
 | `test:red-anchors` | 5,369/0 — 27 new `N3-*` anchors, each resolving exactly once (and `leaf-delay-draw-narrowed` re-anchored on the account's own draw) |
-| `red:house-bot-engine --only N3` | ⏳ |
-| `test:all` · build · `verify:house-bot-bundle` | ⏳ |
+| `red:house-bot-engine --only N3` | **27/27 caught**, 0 files left dirty. The first run caught 24 and missed 3, none of them a code defect: 17.86 queued its two rows latest-first only, so a latest due time that was never moved still read right (it now queues them in both orders), and `N3-no-stale-refusal` and `N3-no-delay-clamp` were filed under `sections: "7"` for assertions that live in §7b, so their narrowed runs never reached 7b.25 and 7b.26 (re-filed under `"7b"`). The three, re-run after the fixes: 3/3 caught |
+| the red harness itself | a declared mutation whose `expect` is not a PASS line in its own baseline run (its suite and sections) is now refused before anything is injected, as `UNREACHABLE …` — the misfiling above is named at once instead of being reported as two missed tests. Seen refusing: `N3-no-delay-clamp` put back under `sections: "7"` → exit 1, nothing injected; the anchors file restored byte-identical. `test:red-engine-floor` 45/0 · `test:red-anchors` 5,369/0 |
+| the desk guide | `npm run docs:house-bots-guide` — HTML and PDF rebuilt with "How the desk shares markets between accounts" |
+| `test:all` · build · `verify:house-bot-bundle` · `qa:house-bot-fleet` · `red:house-bot-engine` (all 131) · `red:house-bot-money` | ⏳ the release gate |
 
 **New cases** (engine, both stores): 7.17–7.17o (the order, the draw — key order with fixed rolls, chance, the weight,
 first-pick frequency ∝ weight over 20,000 seeded draws, no-cap last, equal rolls ≡ the deterministic order, a half-rolled
