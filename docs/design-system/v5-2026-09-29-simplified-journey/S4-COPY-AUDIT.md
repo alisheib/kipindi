@@ -153,6 +153,8 @@ templates (prepared on branch `vodacom-s12-timeleft`, its guard in `test:time-le
 - `timeLeftH` · "masaa {n} yamebaki" → "saa {n} zimebaki"; new `timeLeftH1` · "saa {n} imebaki" (n = 1).
 - `timeLeftD` stays "siku {n} zimebaki"; new `timeLeftD1` · "siku {n} imebaki". `timeLeftM` stays "dakika {n} zimebaki";
   new `timeLeftM1` · "dakika {n} imebaki". (en and zh have no number agreement: their singular keys repeat the plural.)
+  ⟶ **Shipped on `codex/vodacom-s12-w`** (S12 WP4, 2026-10-14): `1468d7cca` cherry-picked onto `ed95ab031` with no
+  conflict; the five `timeLeftLabel(` callers pass the singular keys and no journey file calls it.
 
 ## S6 drafts (2026-10-01) — for the native review
 

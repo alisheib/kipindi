@@ -23,9 +23,17 @@
  * `Math.floor`, on the highest-traffic board on the platform. It went unnamed because this header
  * listed it among the four originals, and a reader takes "listed here" for "already dealt with".
  * If you ever remove a caller, re-derive the list with a grep; do not trust this line.
+ *
+ * SINGULAR FORMS. A language with number agreement needs a different TEMPLATE for exactly one, not just a
+ * different number: Swahili read "masaa 1 yamebaki" (a plural noun and a plural verb) for ONE hour, where a reader
+ * expects "saa 1 imebaki". So `TimeLeftLabels` takes OPTIONAL `daysOne` / `hoursOne` / `minutesOne`, used when the
+ * number being printed is exactly 1. A caller that gives none gets the plural template, as before; English and
+ * Chinese have no number agreement, so their singular text is simply the plural text. The count that picks the
+ * template is the count that is PRINTED, so the `Math.max(1, ...)` floor below still reads "1" with the singular
+ * form: forty seconds left is "dakika 1 imebaki". `test:time-left` §5 fails any caller that stops passing all three.
  */
 
-/** The four strings this needs, so the module stays pure and locale-agnostic. */
+/** The four strings this needs (plus three optional singular forms), so the module stays pure and locale-agnostic. */
 export type TimeLeftLabels = {
   /** Shown once the deadline has passed. */
   closed: string;
@@ -33,10 +41,18 @@ export type TimeLeftLabels = {
   days: string;
   hours: string;
   minutes: string;
+  /** Templates for exactly 1, where the language agrees with the number ("saa 1 imebaki", not "saa 1 zimebaki").
+   *  Absent, or `undefined` (a locale that lacks the key): the plural template above is used. */
+  daysOne?: string;
+  hoursOne?: string;
+  minutesOne?: string;
 };
 
 export const HOUR_MS = 3600_000;
 const DAY_MS = 24 * HOUR_MS;
+
+/** The singular template for a count of exactly 1 when the locale has one; the plural template otherwise. */
+const templateFor = (n: number, one: string | undefined, many: string): string => (n === 1 ? (one ?? many) : many);
 
 /**
  * `fill` is injected rather than imported so this module has no dependency on the i18n layer —
@@ -51,11 +67,12 @@ export function timeLeftLabel(
   const ms = deadlineMs - nowMs;
   if (!Number.isFinite(ms) || ms <= 0) return labels.closed;
   const d = Math.floor(ms / DAY_MS);
-  if (d > 0) return fillFn(labels.days, { n: d });
+  if (d > 0) return fillFn(templateFor(d, labels.daysOne, labels.days), { n: d });
   const h = Math.floor(ms / HOUR_MS);
-  if (h > 0) return fillFn(labels.hours, { n: h });
+  if (h > 0) return fillFn(templateFor(h, labels.hoursOne, labels.hours), { n: h });
   // ⛔ Never zero while the market is still open — see the header.
-  return fillFn(labels.minutes, { n: Math.max(1, Math.floor(ms / 60_000)) });
+  const m = Math.max(1, Math.floor(ms / 60_000));
+  return fillFn(templateFor(m, labels.minutesOne, labels.minutes), { n: m });
 }
 
 /**
