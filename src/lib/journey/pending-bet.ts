@@ -123,6 +123,17 @@ export function attributionFrom(search: URLSearchParams): Pick<PendingBetMarker,
   return out;
 }
 
+/** Transport a board link's existing campaign codes in their reviewed safe alphabet. This grants no referral binding
+ * or marker authority: new markers and auth doors still use their canonical referral/invite readers above. */
+export function transportAttributionFrom(search: URLSearchParams): Pick<PendingBetMarker, "ref" | "invite" | "utm"> {
+  const out = attributionFrom(search);
+  delete out.ref; delete out.invite;
+  const ref = search.get("ref"), invite = search.get("invite");
+  if (ref && CODE.test(ref)) out.ref = ref;
+  if (invite && CODE.test(invite)) out.invite = invite;
+  return out;
+}
+
 /** The marker to store when a bet is chosen, as the string sessionStorage holds. */
 export function writeMarker(bet: PendingBet, nowMs: number, attribution: Pick<PendingBetMarker, "ref" | "invite" | "utm"> = {}, key?: string, owner?: string): string {
   // Callers also include a recovered historic marker: validate NEW writes without discarding its bet, time or key.

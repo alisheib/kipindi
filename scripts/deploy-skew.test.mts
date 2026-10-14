@@ -130,29 +130,39 @@ const host = decomment(read("src/components/journey/bet-sheet/bet-sheet-host.tsx
 function hostRecoveryChecks(source: string): boolean[] {
   const from = source.indexOf('if (outcome.frame === "skew" && !reloadSpent)');
   const recovery = from < 0 ? "" : source.slice(from, source.indexOf('if (next?.phase === "inDoubt")', from));
+  const retireFrom = source.indexOf('const next = afterSettle(record.intent, settled, Date.now());');
+  const durable = retireFrom < 0 || from < 0 ? "" : source.slice(retireFrom, from);
   return [
     source.includes('const recoveryKey = `kp:recovered:${window.location.pathname}`'),
     source.includes('reloadSpent = !build || window.sessionStorage.getItem(recoveryKey) === build'),
-    from >= 0 && (source.match(/window\.location\.reload\(\)/g) ?? []).length === 1,
+    from >= 0 && (recovery.match(/window\.location\.reload\(\)/g) ?? []).length === 1
+      && (source.match(/window\.location\.reload\(\)/g) ?? []).length === 2,
     /setItem\(recoveryKey, build\); window\.location\.reload\(\)/.test(recovery) && /catch/.test(recovery),
     recovery !== "" && !/buyPositionAction|\bthrow\s+/.test(recovery),
     source.indexOf('if (outcome.frame === "redirect"') >= 0 && source.indexOf('if (outcome.frame === "redirect"') < from && /isActionRedirect\(answer\.error\)/.test(source),
-    source.indexOf('if (settled.marker === "dropKey"') >= 0 && source.indexOf('if (settled.marker === "dropKey"') < from && /delete selected\.current\.k;\s*save\(\)/.test(source),
+    durable.includes('else pending.current.delete(identity(chosen.quote));')
+      && durable.includes('if (settled.marker === "dropKey" && selected.current?.k === chosen.key) delete selected.current.k;')
+      && /if \(!save\(\)\) \{\s*pending\.current\.set\(identity\(chosen\.quote\), record\); revise\(\); return;\s*\}/.test(durable)
+      && durable.indexOf('else pending.current.delete') < durable.indexOf('if (!save())'),
   ];
 }
-const hostRules = ["the path uses RouteError's recovery key", "missing/spent build cannot loop", "only UnrecognizedActionError's classified skew reloads", "build stored before reload, storage failure contained", "reload cannot replay the money action or rethrow", "the handled navigation wins before skew", "a proved not-run answer retires its key before reload"];
+const hostRules = ["the path uses RouteError's recovery key", "missing/spent build cannot loop", "one classified skew reload beside the owned identity refresh, with no extra reload", "build stored before reload, storage failure contained", "reload cannot replay the money action or rethrow", "the handled navigation wins before skew", "a proved not-run answer retires its key before reload"];
 hostRecoveryChecks(host).forEach((holds, i) => ok(`§5.${i + 1} ${hostRules[i]}`, holds));
 const hostPlants = [
   { from: 'const recoveryKey = `kp:recovered:${window.location.pathname}`', to: 'const recoveryKey = "already-recovered"', rule: 0 },
   { from: 'reloadSpent = !build || window.sessionStorage.getItem(recoveryKey) === build', to: 'reloadSpent = false', rule: 1 },
   { from: 'if (outcome.frame === "skew" && !reloadSpent)', to: 'if (!reloadSpent)', rule: 2 },
   { from: 'window.sessionStorage.setItem(recoveryKey, build)', to: 'window.sessionStorage.setItem(recoveryKey, "1")', rule: 3 },
-  { from: 'window.location.reload();', to: 'buyPositionAction(fd); window.location.reload();', rule: 4 },
+  { from: 'window.sessionStorage.setItem(recoveryKey, build); window.location.reload();', to: 'window.sessionStorage.setItem(recoveryKey, build); buyPositionAction(fd); window.location.reload();', rule: 4 },
   { from: 'if (outcome.frame === "redirect"', to: 'if (outcome.frame === "inDoubt"', rule: 5 },
   { from: 'if (settled.marker === "dropKey"', to: 'if (settled.marker === "keepKey"', rule: 6 },
+  { from: 'else pending.current.delete(identity(chosen.quote));', to: 'else revise();', rule: 6, scopeAfter: 'const next = afterSettle(record.intent, settled, Date.now());' },
+  { from: 'pending.current.set(identity(chosen.quote), record); revise(); return;', to: 'revise();', rule: 6, scopeAfter: 'const next = afterSettle(record.intent, settled, Date.now());' },
+  { from: 'const recoveryKey = `kp:recovered:${window.location.pathname}`', to: 'window.location.reload(); const recoveryKey = `kp:recovered:${window.location.pathname}`', rule: 2 },
 ];
 for (const [i, plant] of hostPlants.entries()) {
-  const changed = host.replace(plant.from, plant.to);
+  const scopeAt = plant.scopeAfter ? host.indexOf(plant.scopeAfter) : 0;
+  const changed = scopeAt < 0 ? host : host.slice(0, scopeAt) + host.slice(scopeAt).replace(plant.from, plant.to);
   ok(`§5.plant${i + 1} ${hostRules[plant.rule]}`, changed !== host && !hostRecoveryChecks(changed)[plant.rule]);
 }
 

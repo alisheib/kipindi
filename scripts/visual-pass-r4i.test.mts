@@ -832,9 +832,14 @@ section("13 · E35 — a self-excluded person cannot register again with the sam
   ok("13.3 · EXECUTED · the same email is refused (EMAIL_EXISTS), whatever its case",
     !sameEmail.ok && sameEmail.code === "EMAIL_EXISTS" && !caseEmail.ok && caseEmail.code === "EMAIL_EXISTS", JSON.stringify([sameEmail, caseEmail]));
   const panel = registerRefusalOf({ code: "ALREADY_EXISTS" }, { phone: "0712340001", email: "x@y.tz" });
+  const formSource = read("src/app/auth/register/register-form.tsx");
+  const phoneCta = (s: string) => /cta: \{ href: `\/auth\/login\?phone=\$\{encodeURIComponent\(refusal\.phone\)\}\$\{nextQs\}\$\{codeQs\}`, label: copy\.signIn \}/.test(s);
   ok("13.4 · what they are told: the phone's \"account already exists — sign in\" panel, marking the phone, with a sign-in link",
-    panel.code === "exists" && refusalField(panel) === "phone" && /accountExists/.test(read("src/app/auth/register/register-form.tsx"))
-      && /cta: \{ href: `\/auth\/login\?phone=\$\{encodeURIComponent\(refusal\.phone\)\}\$\{nextQs\}`, label: copy\.signIn \}/.test(read("src/app/auth/register/register-form.tsx")));
+    panel.code === "exists" && refusalField(panel) === "phone" && /accountExists/.test(formSource) && phoneCta(formSource));
+  ok("13.4′ CONTROL · phone, destination and codes each remain required on that actual refusal CTA",
+    phoneCta(formSource) && !phoneCta(formSource.replace('encodeURIComponent(refusal.phone)', 'refusal.phone'))
+      && !phoneCta(formSource.replace('${nextQs}${codeQs}', '${codeQs}'))
+      && !phoneCta(formSource.replace('${nextQs}${codeQs}', '${nextQs}')));
   let login: { ok: boolean; code?: string; detail?: { standing?: string; until?: string } } = { ok: true };
   try { login = (await loginWithPassword({ identifier: "+255712340001", password: PW } as never)) as never; } catch { login = { ok: true }; }
   const where = !login.ok ? accountRefusalPath(login.detail as never, "") : "";
