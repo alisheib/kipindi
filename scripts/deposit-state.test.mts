@@ -4,6 +4,8 @@ import ts from "typescript";
 import * as D from "../src/lib/journey/deposit-state.ts";
 import * as PB from "../src/lib/journey/pending-bet.ts";
 import * as SS from "../src/lib/journey/sheet-storage.ts";
+import * as SST from "../src/lib/journey/sheet-state.ts";
+import * as SOM from "../src/lib/journey/sheet-owned-storage.ts";
 import * as SN from "../src/lib/safe-next.ts";
 import * as PH from "../src/lib/phone-normalize.ts";
 import * as PM from "../src/lib/payment-providers.ts";
@@ -22,8 +24,14 @@ const BASE: D.DepositRow = {
 };
 const age = (ms: number) => new Date(NOW - ms).toISOString();
 const j = (v: unknown) => JSON.stringify(v);
-const marker = PB.writeMarker(PB.parseBetParam(BET)!, NOW - 60_000);
+// ⭐ The marker as main's host writes it at the deposit tap since ee518f52a: keyless, and stamped with the signed-in owner.
+const marker = PB.writeMarker(PB.parseBetParam(BET)!, NOW - 60_000, {}, undefined, "usr_s9");
 const tab: D.DepositBetTrust = { kind: "tab-marker", hydrated: true, markerRaw: marker };
+/** A tab sessionStorage double for main's real bridge writer (`saveSheetSelection`); nothing here is the browser. */
+function tabStorage(seed: Record<string, string> = {}) {
+  const m = new Map(Object.entries(seed));
+  return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => { m.set(k, v); }, removeItem: (k: string) => { m.delete(k); }, m };
+}
 
 function run(impl: typeof D, verbose = false): { count: number; failed: string[] } {
   const failed: string[] = [];
@@ -42,11 +50,17 @@ function run(impl: typeof D, verbose = false): { count: number; failed: string[]
     ok(`intent.malformed.${j(raw)}`, impl.parseSavedDepositBet(raw) === null);
   }
   ok("intent.extra", impl.parseSavedDepositBet({ ...SAVED, k: "unfinished-bet-key" }) === null);
-  for (const path of ["/wallet/deposit", "/wallet/deposit/waiting?txn=x", "/auth/login", "/admin", "/markets/mkt_other",
+  for (const path of ["/wallet/deposit", "/wallet/deposit/waiting?txn=x", "/auth/login", "/admin", "/markets/mkt_other/extra",
+    "/markets/not-a-market", "/markets", "/markets/", "/live/", "/positions", "/wallet",
     "//evil.example", "https://evil.example", "/\t/evil.example", "/\\evil.example", "/live?status=PAID"]) {
     const value = impl.parseSavedDepositBet({ ...SAVED, returnPath: path });
     ok(`intent.payment-loop.${path}`, value === null);
   }
+  // ⭐ The page the sheet was opened on (S9 release candidate): the similar-questions rail opens question B's sheet on
+  // question A's page, so A's page is that bet's way back — as is every page S8's one list says opens the sheet.
+  ok("intent.similar-rail-page", j(impl.parseSavedDepositBet({ ...SAVED, returnPath: "/markets/mkt_other" })) === j({ ...SAVED, returnPath: "/markets/mkt_other" }));
+  ok("intent.own-question-page", impl.parseSavedDepositBet({ ...SAVED, returnPath: "/markets/mkt_s9" }) !== null);
+  ok("intent.sheet-pages", ["/", "/live", "/watchlist", "/markets/mkt_A1"].every((p) => SST.sheetOpensOn(p) && impl.depositReturnPath(p, PB.parseBetParam(BET)!) === p));
   ok("intent.query-dropped", impl.depositReturnPath("/live?status=PAID#x", PB.parseBetParam(BET)!) === "/live");
   ok("intent.oversize-path", impl.depositReturnPath(`/live?x=${"x".repeat(512)}`, PB.parseBetParam(BET)!) === null);
   const round = { v: 1, bet: "udr_s9.DOWN.2500", returnPath: "/updown/udr_s9" };
@@ -70,29 +84,49 @@ function run(impl: typeof D, verbose = false): { count: number; failed: string[]
   ok("trust.wrong-type", trust({ kind: "owned-deposit", row: { ...BASE, type: "WITHDRAWAL" } }) === null);
   ok("trust.house", trust({ kind: "owned-deposit", row: { ...BASE, houseBotId: "hbt_s9" } }) === null);
   ok("trust.legacy", trust({ kind: "owned-deposit", row: { ...BASE, pendingBet: null } }) === null);
-
+  // ⛔ The coordinator's item 1: since main's ee518f52a the host stamps the owner on the marker at the deposit tap and
+  // `stakeFromUrl` refuses a stamped marker read without that owner. `tab` above IS that stamped marker; this names it.
+  ok("trust.owner-stamped", j(trust(tab)) === j(SAVED) && PB.readMarker(marker, NOW)?.owner === "usr_s9");
+  ok("trust.guest-marker", trust({ ...tab, markerRaw: PB.writeMarker(PB.parseBetParam(BET)!, NOW - 60_000) } as D.DepositBetTrust) !== null);
+  ok("trust.foreign-owner-marker", trust({ ...tab, markerRaw: PB.writeMarker(PB.parseBetParam(BET)!, NOW - 60_000, {}, undefined, "usr_other") } as D.DepositBetTrust) === null);
   const key1 = "00000000-0000-4000-8000-000000000001", key2 = "00000000-0000-4000-8000-000000000002";
-  const raw = SS.pendingStorage(PB.readMarker(marker, NOW), [
-    { quote: { marketId: "mkt_old", side: "NO", stake: 1_000 }, key: key1, at: NOW - 300_000 },
-    { quote: { marketId: "mkt_other", side: "YES", stake: 2_000 }, key: key2, at: NOW - 500_000 },
+  ok("trust.keyed-marker", trust({ ...tab, markerRaw: PB.writeMarker(PB.parseBetParam(BET)!, NOW - 60_000, {}, key1, "usr_s9") } as D.DepositBetTrust) === null);
+
+  // ⛔ The coordinator's item 2: since ee518f52a `kp-pending-bet` is the SELECTION only (the auth bridge). Request keys
+  // live in the account's `kp-sheet-intents:v2:<owner>`; a legacy keyed envelope is quarantined by the bridge's writer.
+  const legacy = SS.pendingStorage({ ...PB.readMarker(PB.writeMarker(PB.parseBetParam(BET)!, NOW - 90_000, { ref: "REFS9" }), NOW)!, k: key1 }, [
+    { quote: { marketId: "mkt_old", side: "NO", stake: 1_000 }, key: key2, at: NOW - 300_000 },
   ])!;
-  const rewritten = impl.markerForDeposit("usr_s9", BET, "/live", tab, raw, NOW);
-  ok("marker.keys", j(SS.pendingIntents(rewritten, NOW)) === j(SS.pendingIntents(raw, NOW)));
-  ok("marker.age", PB.readMarker(rewritten, NOW)?.at === PB.readMarker(raw, NOW)?.at);
+  const noKeys = (raw: string | null) => !!raw && SOM.legacySheetIntents(raw).length === 0 && PB.readMarker(raw, NOW)?.k === undefined
+    && !Object.prototype.hasOwnProperty.call(JSON.parse(raw), "pending");
+  const rewritten = impl.markerForDeposit("usr_s9", BET, "/live", tab, legacy, NOW);
+  ok("marker.no-keys", noKeys(rewritten) && SOM.legacySheetIntents(legacy).length === 2);
+  ok("marker.owner", PB.readMarker(rewritten, NOW)?.owner === "usr_s9");
+  ok("marker.age", PB.readMarker(rewritten, NOW)?.at === PB.readMarker(marker, NOW)?.at);
   ok("marker.selected", PB.readMarker(rewritten, NOW)?.bet === BET);
-  ok("marker.input-untouched", raw === SS.pendingStorage(PB.readMarker(marker, NOW), SS.pendingIntents(raw, NOW)));
-  ok("marker.ssr-no-write", impl.markerForDeposit("usr_s9", BET, "/live", { kind: "none" }, raw, NOW) === null);
+  ok("marker.stake-survives-return", PB.stakeFromUrl(PB.parseBetParam(BET), rewritten, NOW, "usr_s9") === 5_000);
+  {
+    // Main's REAL bridge writer takes it, and the legacy keys it replaces are kept — in the quarantine, never the marker.
+    const store = tabStorage({ [PB.PENDING_BET_KEY]: legacy });
+    ok("marker.bridge-accepts", SOM.saveSheetSelection(store, rewritten) && store.getItem(PB.PENDING_BET_KEY) === rewritten);
+    ok("marker.legacy-keys-quarantined", j(SOM.unresolvedLegacySheet(store).map((e) => e.key).sort()) === j([key1, key2].sort()));
+    ok("marker.bridge-refuses-keyed", !SOM.saveSheetSelection(tabStorage(), legacy));
+  }
+  ok("marker.ssr-no-write", impl.markerForDeposit("usr_s9", BET, "/live", { kind: "none" }, legacy, NOW) === null);
   ok("marker.corrupt", impl.markerForDeposit("usr_s9", BET, "/live", { kind: "owned-deposit", row: BASE }, "{bad", NOW) === null);
-  const huge = JSON.stringify({ ...JSON.parse(raw), padding: "x".repeat(PB.PENDING_BET_MAX_BYTES) });
+  const huge = JSON.stringify({ ...JSON.parse(legacy), padding: "x".repeat(PB.PENDING_BET_MAX_BYTES) });
   ok("marker.overcap", impl.markerForDeposit("usr_s9", BET, "/live", { kind: "owned-deposit", row: BASE }, huge, NOW) === null);
-  const serverRaw = impl.markerForDeposit("usr_s9", "mkt_evil.NO.9999", "/watchlist", { kind: "owned-deposit", row: BASE }, raw, NOW);
-  ok("marker.owned-keeps-keys", j(SS.pendingIntents(serverRaw, NOW)) === j(SS.pendingIntents(raw, NOW)));
-  ok("marker.owned-no-url-override", PB.readMarker(serverRaw, NOW)?.bet === BET);
-  ok("marker.age-owned", PB.readMarker(serverRaw, NOW)?.at === PB.readMarker(raw, NOW)?.at);
-  const otherSelected = SS.pendingStorage(PB.readMarker(PB.writeMarker(PB.parseBetParam("mkt_other.NO.2000")!, NOW), NOW), SS.pendingIntents(raw, NOW))!;
+  const mineRaw = PB.writeMarker(PB.parseBetParam(BET)!, NOW - 120_000, { ref: "REFMINE" }, undefined, "usr_s9");
+  const serverRaw = impl.markerForDeposit("usr_s9", "mkt_evil.NO.9999", "/watchlist", { kind: "owned-deposit", row: BASE }, mineRaw, NOW);
+  ok("marker.owned-no-url-override", PB.readMarker(serverRaw, NOW)?.bet === BET && noKeys(serverRaw));
+  ok("marker.age-owned", PB.readMarker(serverRaw, NOW)?.at === NOW - 120_000 && PB.readMarker(serverRaw, NOW)?.ref === "REFMINE");
+  const foreignRaw = PB.writeMarker(PB.parseBetParam(BET)!, NOW - 120_000, { ref: "REFTHEIRS" }, undefined, "usr_other");
+  const notInherited = impl.markerForDeposit("usr_s9", BET, "/live", { kind: "owned-deposit", row: BASE }, foreignRaw, NOW);
+  ok("marker.foreign-existing-not-inherited", PB.readMarker(notInherited, NOW)?.at === NOW && PB.readMarker(notInherited, NOW)?.ref === undefined
+    && PB.readMarker(notInherited, NOW)?.owner === "usr_s9");
+  const otherSelected = PB.writeMarker(PB.parseBetParam("mkt_other.NO.2000")!, NOW, {}, undefined, "usr_s9");
   const restored = impl.markerForDeposit("usr_s9", BET, "/live", tab, otherSelected, NOW);
-  ok("marker.restored-age", PB.readMarker(restored, NOW)?.at === PB.readMarker(marker, NOW)?.at);
-  ok("marker.restored-keeps-keys", j(SS.pendingIntents(restored, NOW)) === j(SS.pendingIntents(raw, NOW)));
+  ok("marker.restored-age", PB.readMarker(restored, NOW)?.at === PB.readMarker(marker, NOW)?.at && noKeys(restored));
 
   ok("funding.same", impl.sameDepositFunding(BASE, BASE));
   for (const phone of ["0712345678", "712345678", "255712345678", "+255 712 345 678", "０７１２３４５６７８"]) {
@@ -208,7 +242,7 @@ if (normal.failed.length) {
 }
 const imports: Record<string, unknown> = {
   "../safe-next": SN, "../phone-normalize": PH, "../payment-providers": PM, "../wallet/receipts": RC,
-  "./pending-bet": PB, "./sheet-storage": SS,
+  "./pending-bet": PB, "./sheet-state": SST,
 };
 function compiled(text: string): typeof D {
   const code = ts.transpileModule(text, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;

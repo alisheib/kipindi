@@ -4,8 +4,8 @@ import { isGatewayMsisdn, readAsciiDigits, toMsisdn255 } from "../phone-normaliz
 import { isMobileMoneyMethodId, isPaymentMethodId, type PaymentMethodId } from "../payment-providers";
 import { hasDepositStatusReview, isRgHeldDeposit, presentedStatus, RG_RETURN_MARK } from "../wallet/receipts";
 import type { TxnStatusValue } from "../wallet/ledger";
-import { formatBetParam, parseBetParam, readMarker, stakeFromUrl, type PendingBet } from "./pending-bet";
-import { pendingIntents, pendingStorage, PENDING_STORAGE_MAX_BYTES } from "./sheet-storage";
+import { formatBetParam, parseBetParam, readMarker, stakeFromUrl, writeMarker, PENDING_BET_MAX_BYTES, type PendingBet, type PendingBetMarker } from "./pending-bet";
+import { sheetOpensOn } from "./sheet-state";
 
 export const DEPOSIT_PROBE_AGE_MS = 20_000;
 export const DEPOSIT_FRESH_MS = 60_000;
@@ -22,12 +22,18 @@ function record(raw: unknown): raw is Record<string, unknown> {
   return !!raw && typeof raw === "object" && !Array.isArray(raw);
 }
 
-/** A selected return surface, stripped of its query. Payment/auth/admin routes never become a payment loop. */
+/**
+ * A selected return surface, stripped of its query. Payment/auth/admin routes never become a payment loop.
+ * ⭐ A question bet returns to the page its sheet was opened on, and that is ANY page that opens the sheet — S8's one list,
+ * `sheetOpensOn` (`/`, `/live`, `/watchlist`, `/markets/<id>`): the similar-questions rail opens question B's sheet on
+ * question A's page, so `/markets/<A>` is a legitimate return for a bet on B (S9 release candidate, 2026-10-14; this
+ * accepted only `/markets/<bet's own id>` and refused that player's way back). Canonical paths only: no trailing slash.
+ */
 export function depositReturnPath(raw: unknown, bet: PendingBet): string | null {
   if (typeof raw !== "string" || raw.length > MAX_NEXT_LEN || boundedNext(raw) !== raw) return null;
   const path = raw.split("?")[0].split("#")[0];
   if (bet.kind === "round") return path === `/updown/${bet.id}` ? path : null;
-  return ["/", "/live", "/watchlist", `/markets/${bet.id}`].includes(path) ? path : null;
+  return sheetOpensOn(path) && (path === "/" || !path.endsWith("/")) ? path : null;
 }
 
 /** Legacy null and malformed/future versions fail closed. Canonical keys prevent arbitrary metadata being saved. */
@@ -71,6 +77,9 @@ export type DepositBetTrust =
 /**
  * SSR supplies none. Only a fresh exact tab marker AFTER hydration authorizes a URL stake; a server-owned deposit
  * instead supplies its stored canonical intent. Raw URL tags cannot override that intent or impersonate ownership.
+ * ⛔ THE CALLER IS THE MARKER'S OWNER (S9 release candidate, 2026-10-14). Since main's ee518f52a the host stamps the
+ * signed-in account on the marker at the deposit tap, and `stakeFromUrl` refuses a stamped marker read without that
+ * owner — so a read without `callerId` silently dropped every returning player's chosen stake.
  */
 export function trustedDepositBet(
   callerId: string, rawClaim: unknown, returnPath: unknown, trust: DepositBetTrust, nowMs: number,
@@ -82,28 +91,37 @@ export function trustedDepositBet(
   }
   if (!trust.hydrated) return null;
   const bet = parseBetParam(rawClaim);
-  if (!bet || stakeFromUrl(bet, trust.markerRaw, nowMs) === null) return null;
+  if (!bet || stakeFromUrl(bet, trust.markerRaw, nowMs, callerId) === null) return null;
   const path = depositReturnPath(returnPath, bet);
   return path ? { v: 1, bet: formatBetParam(bet), returnPath: path } : null;
 }
 
 /**
- * A proposed tab write, never a storage mutation. Keep every live S8 request key and its original age. An existing
- * matching choice keeps its age too: entering a payment cannot renew the disclosed 24-hour bet lifetime.
+ * A proposed SELECTION write for `kp-pending-bet`, never a storage mutation — and never a request key.
+ * ⛔ Since main's ee518f52a the shared marker is only the 24-hour auth bridge: unresolved bet keys live in the account's
+ * own `kp-sheet-intents:v2:<owner>` (`sheet-owned-storage.ts`), which a deposit neither reads nor writes, so entering a
+ * payment cannot drop, renew or move one, and a legacy keyed envelope is quarantined by `saveSheetSelection` (the only
+ * way the caller may store this) before it is replaced. This used to carry those keys forward inside the marker, which
+ * the bridge now refuses. The selection is stamped with the caller as its owner, as the host's own deposit tap does,
+ * and keeps the original choice's age and attribution — but only a choice of THIS account (or a keyless guest choice,
+ * which may cross its own sign-in): entering a payment cannot renew the disclosed 24-hour bet lifetime.
  */
 export function markerForDeposit(
   callerId: string, rawClaim: unknown, returnPath: unknown, trust: DepositBetTrust, existingRaw: string | null, nowMs: number,
 ): string | null {
   const saved = trustedDepositBet(callerId, rawClaim, returnPath, trust, nowMs);
-  if (!saved || (existingRaw?.length ?? 0) > PENDING_STORAGE_MAX_BYTES) return null;
+  if (!saved || (existingRaw?.length ?? 0) > PENDING_BET_MAX_BYTES) return null;
   if (existingRaw) {
     try { if (!record(JSON.parse(existingRaw))) return null; } catch { return null; }
   }
-  const old = readMarker(existingRaw, nowMs);
-  const fromTab = trust.kind === "tab-marker" ? readMarker(trust.markerRaw, nowMs) : null;
-  const selected = fromTab ?? (old?.bet === saved.bet ? old : { bet: saved.bet, at: nowMs });
-  const raw = pendingStorage(selected, pendingIntents(existingRaw, nowMs));
-  return raw && raw.length <= PENDING_STORAGE_MAX_BYTES ? raw : null;
+  const mine = (m: PendingBetMarker | null): PendingBetMarker | null =>
+    m && !m.k && (m.owner === undefined || m.owner === callerId) && m.bet === saved.bet ? m : null;
+  const fromTab = trust.kind === "tab-marker" ? mine(readMarker(trust.markerRaw, nowMs)) : null;
+  const selected = fromTab ?? mine(readMarker(existingRaw, nowMs));
+  const bet = parseBetParam(saved.bet);
+  if (!bet) return null;
+  const raw = writeMarker(bet, selected?.at ?? nowMs, selected ?? {}, undefined, callerId);
+  return raw.length <= PENDING_BET_MAX_BYTES ? raw : null;
 }
 
 function canonicalPhone(raw: unknown): string | null | false {
