@@ -26,7 +26,7 @@
  * compiles on first use, and a slow first answer would race the sheet's 20 s placing watchdog); no cell counts it.
  * The returned value is read from the page's own copy of the answer (`pageIn`'s observer, cross-checked against the
  * network copy when Chromium keeps one): a BUSY answer that waited 15 s in admission's queue left Chromium with no body.
- * An answer later than the watchdog is NOT MEASURED; a refusal line drawn below the fold is printed as a FINDING.
+ * An answer later than the watchdog is NOT MEASURED; a refusal line not wholly seen, or not above the CTA, is a FINDING.
  * Every request targets the operator's own memory server (`exclusiveLocalPremise`). Seeded local funds only; no payment
  * provider, no database, no production. Evidence keeps digests and verdicts, never cookies, passes or raw payloads.
  * Exit 0 all PASS · 1 a FAIL · 2 an INVALID premise · 3 NOT MEASURED. Every tile still needs a human read.
@@ -324,7 +324,8 @@ try {
         };
         round.cells.push(cell); cells.push(cell);
         result(cell.cell, v.state, v.errors.join("; ") || `code BUSY, retryAfterSec ${value?.retryAfterSec}, row ${outcome?.row}, ${e.elapsedMs} ms`);
-        if (p.after?.present && p.after.linesView !== "whole") finding(`${tag} ${p.locale}: the busy line is ${p.after.linesView} when the BUSY frame draws`, `the sheet's lines (role=status) sit at the end of its scroller; at this size they are not wholly visible above the CTA without scrolling (tile ${p.busyTile})`);
+        if (p.after?.present && p.after.linesView !== "whole") finding(`${tag} ${p.locale}: the busy line is ${p.after.linesView} when the BUSY frame draws`, `at this size the player does not see the whole line (role=status) without scrolling (tile ${p.busyTile})`);
+        if (p.after?.present && p.after.linesAboveCta === false) finding(`${tag} ${p.locale}: the busy line does not stand above the CTA`, `S8-PLAN's refusal matrix puts the line in the sheet's last rows, above the CTA (tile ${p.busyTile})`);
       }
     } finally {
       // 4 · release, and the original limits read back — always, even after a failure above.

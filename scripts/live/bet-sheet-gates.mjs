@@ -675,14 +675,23 @@ export async function sheetState(page) {
     const place = root.querySelector(sel.place), stake = root.querySelector(sel.stake);
     const balance = root.querySelector(".kp-bsheet__balance");
     const ticket = root.querySelector(".kp-bsheet__ticket-id"), link = root.querySelector(sel.ticket);
-    // An OBSERVATION, never a verdict input: whether the refusal lines sit inside the sheet's scroller and the viewport
-    // as the frame first draws, or below the fold (the scroller keeps its position).
-    const linesBox = root.querySelector(".kp-bsheet__lines")?.getBoundingClientRect(), scrollBox = root.querySelector(sel.scroll)?.getBoundingClientRect();
-    const linesView = !linesBox || !scrollBox ? "none"
-      : linesBox.top >= scrollBox.top - 1 && linesBox.bottom <= Math.min(scrollBox.bottom, innerHeight) + 1 ? "whole"
-        : linesBox.top < Math.min(scrollBox.bottom, innerHeight) && linesBox.bottom > scrollBox.top ? "partial" : "below the fold";
+    // An OBSERVATION, never a verdict input: how much of the refusal lines a player sees as the frame first draws, clipped
+    // by the viewport and by every ancestor that actually clips (whichever holds the lines — since 2026-10-14 the footer,
+    // above the CTA, not the scroller), and whether they stand above the CTA they explain.
+    const linesEl = root.querySelector(".kp-bsheet__lines");
+    let linesView = "none", linesAboveCta = null;
+    if (linesEl) {
+      const box = linesEl.getBoundingClientRect();
+      let top = Math.max(box.top, 0), bottom = Math.min(box.bottom, innerHeight);
+      for (let a = linesEl.parentElement; a; a = a.parentElement) {
+        if (/(auto|scroll|hidden|clip)/.test(getComputedStyle(a).overflowY)) { const b = a.getBoundingClientRect(); top = Math.max(top, b.top); bottom = Math.min(bottom, b.bottom); }
+      }
+      const seen = Math.max(0, bottom - top);
+      linesView = seen >= box.height - 1 ? "whole" : seen > 0 ? "partial" : "below the fold";
+      linesAboveCta = place ? box.bottom <= place.getBoundingClientRect().top + 1 : null;
+    }
     return {
-      present: true, frame: root.getAttribute("data-frame"), linesView,
+      present: true, frame: root.getAttribute("data-frame"), linesView, linesAboveCta,
       lines: [...root.querySelectorAll(".kp-bsheet__lines p")].map((p) => p.innerText.trim()),
       cta: place ? { text: place.innerText.trim(), enabled: !place.disabled } : null,
       stakeValue: stake ? stake.value : null, stakeLocked: stake ? stake.disabled : null,

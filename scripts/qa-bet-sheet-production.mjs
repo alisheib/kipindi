@@ -53,6 +53,16 @@ function tapErrors(probe, { title, route }) {
   if (probe.path !== route) errors.push("pick navigated instead of opening in place");
   return errors;
 }
+/** The heading did not wait for the private read: on the page's own clock, a read had started when the heading's frame
+ * was drawn, and no read's answer had arrived (each is held 500 ms at the route). */
+function readOrderErrors(probe, reads) {
+  if (!probe || !Number.isFinite(probe.headingAt)) return ["heading time unknown"];
+  if (!Array.isArray(reads) || reads.length === 0) return ["no private sheet read was observed on the page"];
+  const errors = [];
+  if (!reads.some(read => Number.isFinite(read.startedAt) && read.startedAt <= probe.headingAt)) errors.push("no private read had started when the heading was drawn");
+  if (reads.some(read => Number.isFinite(read.settledAt) && read.settledAt <= probe.headingAt)) errors.push("a private answer arrived before the heading was drawn");
+  return errors;
+}
 function controls() {
   const head = "a".repeat(40), local = { head, buildId: "one-build", deploymentId: head, sourceDirty: false };
   const meta = { mode: "production", localOnly: true, databaseConfigured: false, memoryFixtureBuildException: true, buildSha: head, sourceHead: head, sourceDirty: false, buildId: "one-build", runtimeIdentity: {railwayGitCommitSha: head, nextDeploymentId: head, deploymentId: head} };
@@ -86,6 +96,10 @@ function controls() {
     ["a late frame fails the same verdict", tapErrors({ ...good, ms: 151 }, expected).includes("heading frame exceeded 150ms")],
     ["a hidden or wrong heading fails the same verdict", [{ ...good, visible: false }, { ...good, heading: "Another question" }, null].every(plant => tapErrors(plant, expected).length > 0)],
     ["navigation cannot pass as an in-place frame", tapErrors({ ...good, path: "/markets/other" }, expected).includes("pick navigated instead of opening in place")],
+    ["a read started before the heading, answered after it, passes the page-clock order", readOrderErrors({ headingAt: 100 }, [{ startedAt: 20, settledAt: 600 }, { startedAt: 180, settledAt: null }]).length === 0],
+    ["PLANTED a heading that waited for the private answer fails the same order verdict", readOrderErrors({ headingAt: 100 }, [{ startedAt: 20, settledAt: 90 }]).includes("a private answer arrived before the heading was drawn")],
+    ["PLANTED a heading drawn before any read started cannot prove it did not wait", readOrderErrors({ headingAt: 100 }, [{ startedAt: 150, settledAt: 650 }]).includes("no private read had started when the heading was drawn")],
+    ["PLANTED no observed read, or no heading time, is never a pass", readOrderErrors({ headingAt: 100 }, []).length > 0 && readOrderErrors({}, [{ startedAt: 20, settledAt: 600 }]).length > 0],
     ["classic served-trace controls hold", betSheetTracesControl().length === 0],
     ["only the built notification reader is allowed as a background POST", readOnlyAction(actions, "reader") && !readOnlyAction(actions, "bet")],
     ["an unknown, empty or misleading action cannot pass the reader verdict", !readOnlyAction(actions, "unknown")
@@ -146,6 +160,22 @@ function installProbe({ pick, root }) {
     for (let e = element; e; e = e.parentElement) { const css = getComputedStyle(e); if (css.display === "none" || css.visibility !== "visible" || Number(css.opacity) === 0) return false; }
     return true;
   };
+  // ⭐ The sheet's private reads, timed on THE PAGE'S OWN CLOCK (2026-10-14). A read the tap starts leaves the renderer
+  // only once the click task ends, so the moment Node's route sees it is not the moment the page asked — comparing that
+  // Node time with the heading's page time raced (two /live samples at 79ead5647 read "no read before the heading" over
+  // a page that had asked at +18 ms). A transparent wrapper records when the page asked and when its answer arrived.
+  window.__productionSheetReads = [];
+  const fetchNative = window.fetch;
+  window.fetch = function(input, init) {
+    const answer = fetchNative.apply(this, arguments);
+    const url = String(input?.url ?? input), method = String(init?.method ?? input?.method ?? "GET").toUpperCase();
+    if (method === "GET" && /\/api\/markets\/[^/?#]+\/sheet\?/.test(url)) {
+      const read = { startedAt: performance.now(), settledAt: null };
+      window.__productionSheetReads.push(read);
+      answer.then(() => { read.settledAt = performance.now(); }, () => { read.settledAt = performance.now(); });
+    }
+    return answer;
+  };
   window.__productionSheetTap = null;
   window.addEventListener("pointerup", event => {
     if (!event.target.closest?.(pick)) return;
@@ -157,7 +187,7 @@ function installProbe({ pick, root }) {
       const h = document.querySelector(root)?.querySelector("h2");
       if (visible(h)) {
         const observed = performance.now();
-        Object.assign(probe, { ms: observed - start, headingAtEpoch: performance.timeOrigin + observed, visible: true, heading: h.textContent.trim(), path: location.pathname, frame: document.querySelector(root)?.dataset.frame });
+        Object.assign(probe, { ms: observed - start, headingAt: observed, headingAtEpoch: performance.timeOrigin + observed, visible: true, heading: h.textContent.trim(), path: location.pathname, frame: document.querySelector(root)?.dataset.frame });
         requestAnimationFrame(() => { probe.confirmedAt = performance.now() - start; probe.remainedVisible = visible(h); });
       } else if (performance.now() - start < 5000) requestAnimationFrame(frame);
       else Object.assign(probe, { visible: false, path: location.pathname });
@@ -289,9 +319,9 @@ try {
     await page.waitForFunction(() => Number.isFinite(window.__productionSheetTap?.ms) && Number.isFinite(window.__productionSheetTap?.confirmedAt), null, { timeout: 10_000 });
     const probe = await page.evaluate(() => window.__productionSheetTap), verdict = tapErrors(probe, { title, route });
     ok(`${route}: production heading frame sample ${sample} at 4× CPU`, verdict.length === 0 && probe.remainedVisible === true, { ...probe, verdict, cpuRate: CPU_RATE, viewport: "360x640", delayedPrivateRead: true });
-    const headingBeforeRead = reads.some(read => read.requestedAt <= probe.headingAtEpoch)
-      && reads.every(read => read.responseReleasedAt === null || read.responseReleasedAt > probe.headingAtEpoch);
-    ok(`${route}: sample ${sample} heading drawn before private response`, headingBeforeRead, { privateReads: reads.length });
+    const pageReads = await page.evaluate(() => window.__productionSheetReads), readOrder = readOrderErrors(probe, pageReads);
+    ok(`${route}: sample ${sample} heading drawn before private response`, readOrder.length === 0,
+      { privateReads: reads.length, pageReads: pageReads.map(r => ({ startedMs: +(r.startedAt - probe.started).toFixed(1), settledMs: r.settledAt === null ? null : +(r.settledAt - probe.started).toFixed(1) })), headingMs: probe.ms, verdict: readOrder });
     await page.screenshot({ path: join(OUT, `${route === "/" ? "home" : "live"}-tap-${sample}.png`) });
     await page.locator(S.close).click();
     await page.locator(S.root).waitFor({ state: "detached", timeout: 10_000 });

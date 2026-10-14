@@ -351,7 +351,8 @@ try {
     };
     cells.push(record);
     result(record.cell, v.state, v.errors.join("; ") || `${record.transport.change}; server answered ${JSON.stringify(record.answer.returned?.error)}; row ${record.matrixRow}`);
-    if (cell.e.after.present && cell.e.after.linesView !== "whole") finding(`row 23 ${cell.tag}: the check-your-wallet line is ${cell.e.after.linesView} when the in-doubt frame draws`, `the sheet's lines (role=status) sit at the end of its scroller; at this size they are not wholly visible above the CTA without scrolling (tile ${cell.refusedTile})`);
+    if (cell.e.after.present && cell.e.after.linesView !== "whole") finding(`row 23 ${cell.tag}: the check-your-wallet line is ${cell.e.after.linesView} when the in-doubt frame draws`, `at this size the player does not see the whole line (role=status) without scrolling (tile ${cell.refusedTile})`);
+    if (cell.e.after.present && cell.e.after.linesAboveCta === false) finding(`row 23 ${cell.tag}: the check-your-wallet line does not stand above the CTA`, `S8-PLAN's refusal matrix puts the line in the sheet's last rows, above the CTA (tile ${cell.refusedTile})`);
     if (cell.retry) {
       const rv = retryVerdict(cell.retry.e);
       const errors = [...rv.errors, ...(cell.retry.sameAction ? [] : ["the retry did not call the same action"])];
