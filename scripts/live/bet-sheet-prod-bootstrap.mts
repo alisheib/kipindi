@@ -16,17 +16,41 @@ function localProductionStart(entry: string, argv: readonly string[]): boolean {
   return options.get("--hostname") === "127.0.0.1" && options.get("--port") === "3044";
 }
 
+/** The fixture's serialized build, checkout and any inherited runtime identity must describe the SAME commit. */
+function localProductionDeployment(deploymentId: unknown, sourceHead: unknown, env: Readonly<Record<string, string | undefined>>): string {
+  if (typeof deploymentId !== "string" || !/^[a-f0-9]{40}$/.test(deploymentId)
+      || sourceHead !== deploymentId) throw new Error("Local fixture build deploymentId must match its exact source HEAD.");
+  for (const name of ["RAILWAY_GIT_COMMIT_SHA", "NEXT_DEPLOYMENT_ID"]) {
+    if (env[name] !== undefined && env[name] !== deploymentId) throw new Error(`Conflicting local fixture identity: ${name}.`);
+  }
+  return deploymentId;
+}
+
+function localProductionRuntime(deploymentId: string, cachedDeploymentId: unknown): string {
+  if (cachedDeploymentId !== deploymentId) throw new Error("Next loaded a different local fixture deployment identity.");
+  return cachedDeploymentId as string;
+}
+
 if (process.env.KP_QA_MEMORY_BOOTSTRAP !== "bet-sheet-local-production" || process.env.NODE_ENV !== "production" || process.env.DATABASE_URL ||
     !localProductionStart(process.argv[1] ?? "", process.argv.slice(2))) {
   throw new Error("Bet-sheet production fixture requires explicit local memory mode and Next start bound to127.0.0.1:3044, with no DATABASE_URL.");
 }
 if (!process.env.SESSION_SECRET || !process.env.JOURNEY_PREVIEW_SECRET) throw new Error("Local fixture secrets are required.");
 
+const required = JSON.parse(readFileSync(resolve(process.cwd(), ".next", "required-server-files.json"), "utf8"));
+const sourceHead = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+const deploymentId = localProductionDeployment(required.config?.deploymentId, sourceHead, process.env);
+// Next's deployment-id module caches this environment at import time. Set both before ANY Next or application import.
+process.env.RAILWAY_GIT_COMMIT_SHA = deploymentId;
+process.env.NEXT_DEPLOYMENT_ID = deploymentId;
+
 // A21 explicitly measures next start's production client on memory. Use the existing build-only memory exception
 // inside this guarded, loopback-only fixture process; the application's production store guard stays unchanged.
 process.env.NEXT_PHASE = "phase-production-build";
 // Next requires this environment shim before anything imports next/headers (the same ordering as its own server).
 await import("next/dist/server/node-environment.js");
+const { getDeploymentId } = await import("next/dist/shared/lib/deployment-id.js");
+const runtimeDeploymentId = localProductionRuntime(deploymentId, getDeploymentId());
 const { db } = await import("../../src/lib/server/store.ts");
 const { marketStore } = await import("../../src/lib/server/market-dal.ts");
 const { createMarket } = await import("../../src/lib/server/market-service.ts");
@@ -59,13 +83,13 @@ mkdirSync(outDir, { recursive: true });
 writeFileSync(resolve(outDir, "fixture.json"), JSON.stringify({ marketId: market.id, userId, cookies: [
   { name: "kp_session", value: session }, { name: "kp_preview", value: preview.token }, { name: "kp-locale", value: "en" },
 ] }), { mode: 0o600 });
-const required = JSON.parse(readFileSync(resolve(process.cwd(), ".next", "required-server-files.json"), "utf8"));
 const staticDir = resolve(process.cwd(), ".next", "static");
 mkdirSync(staticDir, { recursive: true });
 writeFileSync(resolve(staticDir, "kp-s8-local-build.json"), JSON.stringify({
   mode: process.env.NODE_ENV, databaseConfigured: false, localOnly: true, memoryFixtureBuildException: true,
   buildSha: required.config.deploymentId ?? null,
-  sourceHead: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
+  sourceHead,
+  runtimeIdentity: { railwayGitCommitSha: process.env.RAILWAY_GIT_COMMIT_SHA, nextDeploymentId: process.env.NEXT_DEPLOYMENT_ID, deploymentId: runtimeDeploymentId },
   sourceDirty: execFileSync("git", ["status", "--porcelain", "--", "src", "next.config.ts", "prisma", "package-lock.json"], { encoding: "utf8" }).trim().length > 0,
   buildId: readFileSync(resolve(process.cwd(), ".next", "BUILD_ID"), "utf8").trim(),
 }));

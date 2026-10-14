@@ -38,6 +38,51 @@ function bootstrapAllows(source: string, entry: string, args: string[], env: Rec
 const GOOD_ENTRY = "C:/local/node_modules/next/dist/bin/next";
 const GOOD_ARGS = ["start", "--hostname", "127.0.0.1", "--port", "3044"];
 const GOOD_ENV = { KP_QA_MEMORY_BOOTSTRAP: "bet-sheet-local-production", NODE_ENV: "production", DATABASE_URL: undefined };
+/** Execute the REAL guarded prefix only, stopping at its first dynamic import. Nothing imports Next, seeds or writes. */
+function bootstrapIdentity(source: string, serializedId: unknown, head: string, identityEnv: Record<string, string | undefined> = {}) {
+  try {
+    const file = ts.createSourceFile("bootstrap.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    if (file.statements.filter(ts.isImportDeclaration).some(s => !s.moduleSpecifier.getText(file).slice(1, -1).startsWith("node:"))) return null;
+    const firstImport = file.statements.find(s => /await\s+import\s*\(/.test(s.getText(file)));
+    if (!firstImport) return null;
+    const prefix = file.statements.filter(s => !ts.isImportDeclaration(s) && s.pos < firstImport.pos).map(s => s.getText(file)).join("\n");
+    const js = ts.transpileModule(prefix, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+    const env = {...GOOD_ENV, SESSION_SECRET: "local-only", JOURNEY_PREVIEW_SECRET: "local-only", ...identityEnv};
+    const readFileSync = (path: string) => path.endsWith("required-server-files.json") ? JSON.stringify({config: {deploymentId: serializedId}}) : "fixture-build";
+    const execFileSync = (name: string, args: string[]) => name === "git" && args.join(" ") === "rev-parse HEAD" ? head : "";
+    const resolve = (...parts: string[]) => parts.join("/");
+    const result = new Function("process", "readFileSync", "execFileSync", "resolve", `${js}\nreturn { deploymentId, sourceHead, env: {...process.env} };`)
+      ({env, argv: ["node", GOOD_ENTRY, ...GOOD_ARGS], cwd: () => "/fixture"}, readFileSync, execFileSync, resolve);
+    return result as {deploymentId: string; sourceHead: string; env: Record<string, string | undefined>};
+  } catch { return null; }
+}
+function bootstrapCachedIdentity(source: string, deploymentId: string, cached: unknown): string | null {
+  try {
+    const file = ts.createSourceFile("bootstrap.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    const predicate = file.statements.find(s => ts.isFunctionDeclaration(s) && s.name?.text === "localProductionRuntime");
+    if (!predicate) return null;
+    const js = ts.transpileModule(predicate.getText(file), {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText;
+    return new Function("deploymentId", "cached", `${js}\nreturn localProductionRuntime(deploymentId, cached);`)(deploymentId, cached);
+  } catch { return null; }
+}
+/** Read the actual HTTP metadata expression with controlled primitive leaves; never run the fixture/writer. */
+function bootstrapRuntimeMetadata(source: string, head: string, identityEnv: Record<string, string | undefined>) {
+  try {
+    const file = ts.createSourceFile("bootstrap.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    let object: ts.Expression | undefined;
+    const visit = (n: ts.Node) => {
+      if (ts.isCallExpression(n) && n.expression.getText(file) === "writeFileSync"
+          && n.arguments[0]?.getText(file).includes('"kp-s8-local-build.json"')
+          && ts.isCallExpression(n.arguments[1])) object = n.arguments[1].arguments[0];
+      ts.forEachChild(n, visit);
+    };
+    visit(file);
+    if (!object) return null;
+    const js = ts.transpileModule(`const metadata = ${object.getText(file)};`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+    return new Function("process", "required", "sourceHead", "runtimeDeploymentId", "execFileSync", "readFileSync", "resolve", `${js}\nreturn metadata;`)
+      ({env: identityEnv, cwd: () => "/fixture"}, {config: {deploymentId: head}}, head, identityEnv.NEXT_DEPLOYMENT_ID, () => "", () => "fixture-build", (...p: string[]) => p.join("/"));
+  } catch { return null; }
+}
 function hostArrow(source: string, name: string): string {
   const file = ts.createSourceFile("host.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   let callback: ts.ArrowFunction | undefined;
@@ -423,6 +468,32 @@ async function checks(x: Impl): Promise<Check[]> {
     && !allows(GOOD_ARGS, { ...GOOD_ENV, KP_QA_MEMORY_BOOTSTRAP: undefined })
     && !allows(GOOD_ARGS, { ...GOOD_ENV, NODE_ENV: "development" })
     && !allows(GOOD_ARGS, { ...GOOD_ENV, DATABASE_URL: "postgresql://local-test-only" }));
+  const head = "a".repeat(40), foreign = "b".repeat(40);
+  const goodIdentity = bootstrapIdentity(x.bootstrap, head, head);
+  const agrees = (v: ReturnType<typeof bootstrapIdentity>) => v?.deploymentId === head && v.sourceHead === head
+    && v.env.RAILWAY_GIT_COMMIT_SHA === head && v.env.NEXT_DEPLOYMENT_ID === head;
+  ok("bootstrap.identity-before-import", agrees(goodIdentity)
+    && agrees(bootstrapIdentity(x.bootstrap, head, head, {RAILWAY_GIT_COMMIT_SHA: head}))
+    && agrees(bootstrapIdentity(x.bootstrap, head, head, {NEXT_DEPLOYMENT_ID: head}))
+    && agrees(bootstrapIdentity(x.bootstrap, head, head, {RAILWAY_GIT_COMMIT_SHA: head, NEXT_DEPLOYMENT_ID: head})));
+  ok("bootstrap.identity-refuses", [undefined, null, "", "a".repeat(39), "a".repeat(41), "A".repeat(40), "g".repeat(40), ` ${head}`]
+    .every(id => bootstrapIdentity(x.bootstrap, id, head) === null && bootstrapIdentity(x.bootstrap, id, typeof id === "string" ? id : head) === null)
+    && [foreign, "", `${head}\nforeign`].every(sourceHead => bootstrapIdentity(x.bootstrap, head, sourceHead) === null)
+    && ["", foreign, "A".repeat(40)].every(value =>
+      bootstrapIdentity(x.bootstrap, head, head, {RAILWAY_GIT_COMMIT_SHA: value}) === null
+      && bootstrapIdentity(x.bootstrap, head, head, {NEXT_DEPLOYMENT_ID: value}) === null));
+  const runtimeAt = x.bootstrap.indexOf('const runtimeDeploymentId = localProductionRuntime(deploymentId, getDeploymentId());');
+  ok("bootstrap.identity-cached-runtime", bootstrapCachedIdentity(x.bootstrap, head, head) === head
+    && [undefined, null, "", foreign, "fixture-build"].every(cached => bootstrapCachedIdentity(x.bootstrap, head, cached) === null)
+    && runtimeAt >= 0 && runtimeAt < x.bootstrap.indexOf('await import("../../src/')
+    && x.bootstrap.includes('await import("next/dist/shared/lib/deployment-id.js")'));
+  const metadata = bootstrapRuntimeMetadata(x.bootstrap, head, {RAILWAY_GIT_COMMIT_SHA: head, NEXT_DEPLOYMENT_ID: head});
+  const movedMetadata = bootstrapRuntimeMetadata(x.bootstrap, head, {RAILWAY_GIT_COMMIT_SHA: foreign, NEXT_DEPLOYMENT_ID: foreign});
+  ok("bootstrap.identity-http", metadata?.buildSha === head && metadata?.sourceHead === head
+    && metadata?.runtimeIdentity?.railwayGitCommitSha === head && metadata?.runtimeIdentity?.nextDeploymentId === head
+    && metadata?.runtimeIdentity?.deploymentId === head
+    && movedMetadata?.runtimeIdentity?.railwayGitCommitSha === foreign && movedMetadata?.runtimeIdentity?.nextDeploymentId === foreign
+    && movedMetadata?.runtimeIdentity?.deploymentId === foreign);
   return result;
 }
 
@@ -488,6 +559,20 @@ if (process.argv.includes("--prove-red")) {
     { name: "dev may claim the production fixture", check: "bootstrap.local-only", impl: { ...REAL, bootstrap: REAL.bootstrap.replace('argv[0] !== "start"', "false") } },
     { name: "wrong port receives the production fixture", check: "bootstrap.local-only", impl: { ...REAL, bootstrap: REAL.bootstrap.replace('options.get("--port") === "3044"', "true") } },
     { name: "another entry may claim to be Next start", check: "bootstrap.local-only", impl: { ...REAL, bootstrap: REAL.bootstrap.replace('!/\\/node_modules\\/next\\/dist\\/bin\\/next(?:\\.js)?$/.test(cli)', "false") } },
+    ...[
+      ["bootstrap.identity-refuses", '!/^[a-f0-9]{40}$/.test(deploymentId)', "false"],
+      ["bootstrap.identity-refuses", 'sourceHead !== deploymentId', "false"],
+      ["bootstrap.identity-refuses", 'env[name] !== undefined && env[name] !== deploymentId', "false"],
+      ["bootstrap.identity-before-import", 'process.env.RAILWAY_GIT_COMMIT_SHA = deploymentId;', ""],
+      ["bootstrap.identity-before-import", 'process.env.NEXT_DEPLOYMENT_ID = deploymentId;', ""],
+      ["bootstrap.identity-before-import", 'process.env.RAILWAY_GIT_COMMIT_SHA = deploymentId;', 'await import("next/dist/server/node-environment.js"); process.env.RAILWAY_GIT_COMMIT_SHA = deploymentId;'],
+      ["bootstrap.identity-before-import", 'import { resolve } from "node:path";', 'import { resolve } from "node:path"; import "next/dist/server/node-environment.js";'],
+      ["bootstrap.identity-cached-runtime", 'cachedDeploymentId !== deploymentId', 'false'],
+      ["bootstrap.identity-cached-runtime", 'localProductionRuntime(deploymentId, getDeploymentId())', 'deploymentId'],
+      ["bootstrap.identity-http", 'railwayGitCommitSha: process.env.RAILWAY_GIT_COMMIT_SHA', 'railwayGitCommitSha: required.config.deploymentId'],
+      ["bootstrap.identity-http", 'nextDeploymentId: process.env.NEXT_DEPLOYMENT_ID', 'nextDeploymentId: required.config.deploymentId'],
+      ["bootstrap.identity-http", 'deploymentId: runtimeDeploymentId', 'deploymentId: required.config.deploymentId'],
+    ].map(([check, from, to]) => ({name: `${check}: ${from}`, check, impl: {...REAL, bootstrap: REAL.bootstrap.replace(from, to)}})),
   ];
   for (const m of mutants) {
     const caught = (await checks(m.impl)).some((c) => c.name === m.check && !c.pass);
