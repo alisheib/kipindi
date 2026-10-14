@@ -733,3 +733,71 @@ ledger group. Its before output is saved in the adjacent JSON artifact. That bac
 client wiring. The deposit callers can retain their original deposit capsule; withdrawal drift needs a separately
 reviewed payment-type binding (a withdrawal cannot reuse the DEPOSIT capsule) and its own actual-source proof.
 This packet makes no all-background-callers-bound claim.
+
+### §5k · Background signed claims, current wallet authority and publication (2026-10-14 preparation)
+
+The primary verified preparation snapshot is `ae18a4aa83a40432d201054a1f4acecfdd8796ee` (§5j). This subsequent
+isolated S9 packet addresses the background callers identified there; it is not main, integrated, deployed or S9
+completion. The root agent authorized these repairs under the owner's standing delegation. No new human or external
+agency approval is implied. Client funding storage/controller, the classic Card UNKNOWN/retry repair, expected-owner
+deposit action, new funding disclosure and UI integration remain unimplemented and unverified. Work stops at this
+recoverable server/proof checkpoint for the morning handoff.
+
+The ignored actual-source `s9-background-six-before.mts` executes the primary snapshot's six signed background
+lanes against bounded local fixtures. Moving A's reference during provider I/O to a new sole holder B credited or
+released B in the confirmed lanes; the stale failed lanes instead changed/refunded A after its original reference
+had changed. No actual provider, production wallet or HTTP was used. The fast/stale DEPOSIT callers now freeze
+their canonical owned deposit capsule before verification. WITHDRAWAL has a distinct server-only original tuple:
+owner, transaction/wallet ids, type, original reference, signed amount, stored fee/currency/provider/phone/rail and
+original funding key/null. Historical positive withdrawal amounts and internal `rfd:` keys are retained; a withdrawal
+cannot become a deposit capsule. Neither tuple includes mutable status/detail or grants dispatch authority.
+
+Every signed answer goes through the global unique reference selector, matches that same original row before the
+claim, and checks its current tuple/reference through the existing wallet transaction. Withdrawal provider-detail
+writes use the same restriction/current transaction. The final ordinary settlement read also uses that transaction.
+The distinct private terminal door still refuses PROCESSING. No provider I/O moved into a wallet lock, no reference
+ambiguity bypass was added, and ordinary unique-reference webhook routing remains available. Malformed/unavailable
+stored funding identity remains pending for review rather than being silently converted into a new identity. The
+existing no-reference mock timeout and non-live supported-identity fallback remain; an existing mock payment fixture
+was corrected to provide its registered phone so that it exercises a valid mobile-money tuple.
+
+The actual-source `s9-wallet-authority-before.mts` also reproduced settlement into a USD wallet and a successful
+common answer when a required wallet read returned null. Current wallet id/owner/TZS/safe balance, and withdrawal
+hold covering the movement, are now checked before mutation. A null withdrawal refund adjustment refuses the claim
+before FAILED or a returned-money notice; the failing before control is preserved in
+`s9-background-null-adjust-before.log`. Read faults and incomplete settlement return neutral non-success; they do
+not manufacture cash, a completed receipt or safe retry authority.
+
+An actual Postgres extension of the enclosing-transaction proof reproduced the inherited DEPOSIT/FAILED path
+writing outside its wallet transaction and publishing before commit (`s9-background-deposit-failed-before-pg.log`).
+That failure write now uses the current transaction. All four deposit/withdrawal terminal completion publication
+paths wait for an enclosing transaction to commit. Top-level behavior remains available immediately after its own
+committed claim. Rollback drops the money/status/ledger change and the queued notice; it does not announce a refund
+or deposit that never committed. Memory Maps are used for source/identity controls, not SQL rollback evidence.
+
+The background controls execute actual source bodies with the actual DAL, wallet locks and ledger, and a controlled
+signed adapter. They cover all six caller lanes with stable/duplicate/reference-move/mutable-row cases, exactly-once
+replay, late amount/key/reference/fee/rail drift, opposing terminal races, invalid/missing/unreadable wallets and null
+refund adjustment. Actual SQL checks also read balanced original-row ledger entries and all four enclosing commit/
+rollback pairs. Five actual-PG source plants independently remove the failure write's transaction or release each
+completion notice before commit. Final measured results are **109/109 memory controls, 141/141 Postgres controls,
+12/12 memory plants and 5/5 actual-PG plants caught**. Logs are the ignored
+`.qa-artifacts/s9-background-final-red.log` and `s9-background-final-pg.log` in this isolated S9 checkout. The SQL
+runner migrated all 103 migrations, verified its own real data directory and stopped port 5444. Payment webhook
+is **77/77**; retained ordinary status is **130/130 with 45/45 plants**. App typecheck, the strict proof TypeScript
+graph and the exact current-source private recheck normal **172/172** passed. The orphan reachability and
+**5672/5672** red-anchor checks passed. The new normal/red/guarded scratch keys are
+reachable; predeploy preserves all 239 previous unique commands and adds the background normal for 240 total.
+The retained private recheck defect run also caught **49/49** plants (`s9-background-recheck-regression.log`);
+the separate final normal is recorded in `s9-background-recheck-final-normal.log`.
+
+OPEN: the missing installed reference constraint/global writer serialization in §5i remains. This repair cannot
+prevent an uncoordinated reference writer inserting a collision after the final guarded read. A persistent lookup
+outage supplies no signed authority. The existing withdrawal contradiction alarm has no newly invented durable
+refund/reversal resolution policy; DEPOSIT opposition retains its exact durable review marker. RG-held collection
+does not prove an outbound refund arrived. Officer resolution, refund SLA/agency acknowledgment, controller storage/
+owner/expiry boundaries and real provider/live verification remain open. No all-money-paths/all-background-safety,
+refund-arrived, browser, release or LIVE claim follows from these local proofs.
+Queued publication remains the existing process-local best-effort side-effect mechanism; this packet adds no durable
+outbox and does not claim notices survive a crash after money commits. Sweep totals are not evidence that an outbound
+refund reached its recipient. Funding UI/controller work does not begin in this handoff packet.

@@ -182,7 +182,8 @@ ok("R.6 · a payout the webhook FAILED is notDone in the wallet's result — nev
 
 // ── RECONCILE: sweep a stuck pending deposit ───────────────────────────────
 await makePlayer("usr_rec");
-const d4 = await deposit("usr_rec", { provider: "MPESA", amount: 7_000 });
+// Exercise the real funding tuple even on the mock rail: a mobile-money row with no phone is not a signed-probe identity.
+const d4 = await deposit("usr_rec", { provider: "MPESA", amount: 7_000, msisdn: localDigits.get("usr_rec")! });
 const d4Txn = d4.ok ? d4.data!.txnId : "";
 ok("recon: deposit starts PROCESSING", await st(d4Txn) === "PROCESSING");
 const swept = await reconcileStalePayments(-1); // everything older than "now + 1ms" → all pending
