@@ -20,7 +20,6 @@ import {
   type Quote, type Settled, type SheetFrame, type SheetIntent, type SheetSeed, type SheetSide, type SheetViewer, type SheetViewerRead,
 } from "@/lib/journey/sheet-state";
 import { BetSheet } from "./bet-sheet";
-import { rehearseSheet } from "./sheet-rehearsal";
 import { VisibleCardRefresh } from "./visible-card-refresh";
 import { useExitPhase } from "@/components/ui/modal";
 
@@ -53,7 +52,7 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams();
-  const { t, locale } = useT();
+  const { t } = useT();
   const [, startTransition] = useTransition();
   const [active, setActive] = useState<Active | null>(null);
   const { present } = useExitPhase(active !== null);
@@ -476,25 +475,6 @@ export function BetSheetHost({viewerId}: {viewerId: string}) {
       window.removeEventListener("50pick:sse:market-odds", odds); window.removeEventListener("50pick:sse:wallet-balance", refresh);
     };
   }, [open, openAddress, readKey, refreshed, resolveLegacy, revise, save, show, viewerId]);
-
-  // ⭐ A21 · once the page is idle, rehearse the frame a tap draws, so the first tap is as fast as the second
-  // (sheet-rehearsal.tsx). Never while a sheet is open and never twice; the page's first bettable card supplies the seed.
-  const rehearsed = useRef(false);
-  useEffect(() => {
-    if (rehearsed.current) return;
-    let cancel: (() => void) | null = null;
-    const run = () => {
-      if (rehearsed.current || current.current) return;
-      const box = document.querySelector<HTMLElement>("[data-sheet]");
-      const seed = box ? parseSheetSeed(box.getAttribute("data-sheet")) : null;
-      if (!box || !seed?.bettable) return;
-      rehearsed.current = true;
-      cancel = rehearseSheet(seed, box.dataset.sheetTitle ?? "", t, locale);
-    };
-    const idle = typeof window.requestIdleCallback === "function";
-    const handle = idle ? window.requestIdleCallback(run, { timeout: 2_000 }) : window.setTimeout(run, 1_000);
-    return () => { if (idle) window.cancelIdleCallback(handle); else window.clearTimeout(handle); cancel?.(); };
-  }, [t, locale]);
 
   useLayoutEffect(() => {
     const a = current.current;
