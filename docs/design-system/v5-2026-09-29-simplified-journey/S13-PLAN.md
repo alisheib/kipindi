@@ -16,6 +16,94 @@
 > deposit page and action, `prisma-dal.ts`, `store.ts`), so WP0 re-reads every number at S13's real base before any
 > package starts (S7-PLAN A24's method).
 
+## Amendments — WP0's re-read at `c14cb403e` (2026-10-14, the build session; they override the body below)
+
+The build branch is `codex/vodacom-s13-build` (worktree `C:\50pick-ssd\kipindi-s13b`), from `origin/main` `c14cb403e`.
+Every citation below was re-read there (about 214 occurrences); what moved or was wrong is listed, and the body's own text is
+left as written. Progress, results and the proposed records are in "§ Build record" at the end of this file.
+
+**A1 · Line numbers that moved (the content is unchanged).** `docs/VODACOM-PLAN.md` grew by 3 lines in §0 and 41 in §0k,
+and 2 more after line 3562: old lines 28–964 are +3, every line after 3562 is +46. So §5 S13 is :5055 (was :5009), the §1 row
+:3929 (:3883), §3.10 :4841–4869 (:4795–4823), §0f :3666–3743 (:3620–3697), the session law :392–423 (:389–420), the
+OMEGA-COMPILE01 SSD rule :411–416 (:408–413), "`origin` is persisted on the deposit row and the position" :4859 (:4813), the
+definitions table :4851–4857 (:4805–4811), the export line :4865 (:4819), "House-bot rows are excluded per row" :4847
+(:4801), S15 "one commit" :5070–5071, §8's harm markers :5228–5229. `docs/COMPLIANCE-DECISIONS.md` gained 60 lines at its
+head: D20a is :3024 (:2964), "Keep them in reports as normal players" :3019 (:2959), D20d :3027 (:2967), and "Watched after
+launch … next to the 'short balance → deposit' measure" :1540–1541 (:1480–1481) — the old numbers now point at other rulings.
+`bet-sheet-host.tsx` gained the A21 warm-up: `open()`'s `sheet_open` is :259–271 (:258–270), the card tap :425 (:424), the
+deposit link with `from=low-balance` :394 (:393), the counted low-balance frame :512–517 (:498–503, the send at :515).
+
+**A2 · Correction 26's first bullet is resolved.** §0 now reads "its review fixes ready on `codex/vodacom-s9-fixes`
+(`daaffe1b3`, not on main)". Neither that branch nor S9's release candidate is on origin: the candidate is the LOCAL branch
+`codex/s9-release` (`402a3d79f`, then `d1753e5e0`), which merges the fixes onto `c14cb403e`. S9's cited lines (S9-PLAN
+:234–247 and :345–387; `deposit-state.ts` :16, :19, :34, :200–209) are identical there and on `origin/codex/vodacom-s9`.
+
+**A3 · The harm detector's citation.** `responsible-gambling.ts`:671–693 is the doc header and the start of the marker union.
+The detector Player Safety runs is `detectHarmMarkers` (:863–885; the DETECTORS list :734–858), called for every user by
+`detectHarmMarkersForAllUsers` (:887–902, not :892–903) from `admin/compliance/page.tsx`:581. It has no `now` parameter
+(it reads `Date.now()`), so WP3's snapshot time sets only the day key and the candidate window.
+
+**A4 · Correction 7 overstates `test:report-parity` §4.** It counts only the literal `db.txn.listAll()` in four named files
+(:267–274, the regex at :275): it would not catch `db.user.list()` or a Prisma `findMany` with no `where`. WP5 adds its files
+there as a belt, and the real proof of "no whole-table walk" is the Postgres child recording every client call (WP5).
+
+**A5 · Classifying a key does not delete it.** `scripts/ops-prelaunch-reset.mts` deletes `SystemConfig` rows with hand-written
+SQL in step 8 (:698–703) and checks them in its verify step (:989–990); `CONFIG_DROP_PATTERNS` (:152) only classifies. WP2 and
+WP3 add `journey.rollout.observed` and `journey.harm.daily` to all three places. Because the next lifecycle pass writes both
+rows again by design, the standalone `--verify` holds them to the reset's start (a new `resetStartedAt` in the receipt), while
+the in-transaction check requires them gone.
+
+**A6 · WP2 cannot observe `simpleJourneyStateNow()`.** It never rejects: a failed read of the stored switch (`UNREAD`) answers
+WITHDRAWN, so an observer built on it would record a rollback on any transient database error. WP2 reads `journeySwitchNow()`
+with `simpleJourneyCeiling()`: a WITHDRAWN ceiling is a real WITHDRAWN (the store is not read); an `UNREAD` stored switch is
+"state unreadable" and writes nothing; MALFORMED is recorded, because it is what players are shown. What WP2 calls
+`buildStartedAt` is the process start (`processStartedAt`).
+
+**A7 · The compare-and-swap writers throw without a database** (`config-store.ts`:162, :181). WP2 and WP3 keep an inline
+memory twin (a `globalThis` row, `simple-journey-switch.ts`'s pattern) and use the two writers only on Postgres.
+
+**A8 · WP3's "a plant that narrows 8 days to 7 fails" cannot fail.** RAPID_DEPOSIT_ESCALATION needs a confirmed deposit in the
+last 24 hours and CHASING_LOSSES three in the last 7 days, so a 7-day candidate window loses no flagged account — the eighth day
+is margin. A plant that cannot fail proves nothing (`50pick-standards` §5b rule 8): the plants narrow to 24 hours and to 6 days,
+and a fixture whose three top-ups are 6.88–6.96 days old makes the 6-day plant lose a flagged account at any hour of the day.
+
+**A9 · WP4 is not built on this branch** (it edits `bet-sheet-host.tsx` and waits for S10's edits there). Two of its facts
+change what the definitions may claim, so they are two flags in `measures.ts`, false today and turned true by WP4 in the same
+commit as its code: `HOME_OPEN_ONE_PER_VIEW` (until then the words say one home-page view can open several sheets, each
+counted) and `BET_COUNTER_SKIPS_AUTOMATION` (until then the notes say the bet counter does not yet skip automated browsers).
+For WP4 itself: `isAutomatedAgent` already matches HeadlessChrome and Playwright (case-insensitive) and also refuses an empty
+or under-12-character agent, so "or `HeadlessChrome|Playwright`" adds nothing; and `funnelBetFields`' origin type is
+`"dial" | "quick" | "sheet"`, which S9 must widen before any bet can be counted `deposit_return`.
+
+**A10 · S9 is not on main, and the S9-dependent figures say so.** Measure 3 after launch, measure 4 after launch and the
+reference row's question/round split read `Transaction.pendingBet` and `Position.origin`. Until S9 lands they print a new
+status, **unavailable** ("not available in this build yet") — never a counted 0 — through one seam,
+`src/lib/server/journey-measures-s9.ts`, whose plug-in is a single file edit that `test:journey-measures` holds to the schema
+(it refuses a build whose schema carries S9's columns while the seam is shut, and the reverse). Before launch nothing S9 reads is
+shown anyway (measure 3 is "no offer", measure 4 "not recorded"). The 30-minute rule is `DEPOSIT_FOLLOW_UP_MS` in `measures.ts`
+until S9 lands; the plug-in makes it S9's `DEPOSIT_RETURN_WINDOW_MS`.
+
+**A11 · Measure 4's match follows S9 on `completedAt`.** `isDepositReturnBet` needs a parseable `completedAt` (a NULL never
+matches, `deposit-state.ts`:205–208), so the one-to-one match uses `completedAt` only, while windows place a deposit by
+`COALESCE(completedAt, createdAt)`.
+
+**A12 · Rows are read through Prisma's typed API, not raw SQL.** `Position.placedAt` and `Transaction.createdAt/completedAt`
+are naive UTC timestamps; the typed API converts them, so the plan's SQL is the meaning, not the text, of the Prisma twin.
+A bet is a `Position` row (the plan's definition); S3b's report counted `BET_PLACED` transactions.
+
+**A13 · `src/lib/journey/funnel-measures.ts` is deleted, not trimmed.** `cellFor` holds E-103's hold; the module's only
+importers were the S3b card, the S3b report and `test:journey-funnel` §10, all retired or moved.
+
+**A14 · Both visit reads live in `site-visits.ts`** (the module that owns `SiteVisitPage` and `SiteVisitSource`, in both
+twins): `pathViewsByDay` and `campaignVisitsByDay`. The measures DAL calls them.
+
+**A15 · Records (the coordinator's rule, 2026-10-14).** `docs/VODACOM-PLAN.md`, `docs/NEXT-PLAN.md`,
+`docs/qa/claude-vodacom-continuation-20261014.md` and `docs/COMPLIANCE-DECISIONS.md` are not edited on this branch. WP0's
+annotations of §0, §1, §3.10 and §5, and the §0h points, are proposed as exact text in "§ Build record", for the coordinating
+session to apply when it lands this work. `docs/DATA-RETENTION.md` gains its two rows here (it is that document's own fact).
+
+**A16 · "The second decimal dropped" (WP1's plant list)** is read as two plants: whole numbers, and two decimals.
+
 ## Summary
 
 ### What S13 builds
