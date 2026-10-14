@@ -82,7 +82,7 @@ async function run(impl: Mod, log: (l: string) => void): Promise<string[]> {
   ].join("\n");
   ok("1.house · no house word and no house identifier anywhere in the definitions (D19)",
     !new RegExp(HOUSE_WORD_SOURCE, "i").test(words) && !new RegExp(HOUSE_IDENTIFIER_SOURCE).test(words));
-  ok("1.no-approval · the definitions never claim an owner's ruling or approval (the pending points are not his answers)",
+  ok("1.no-person · the definitions name no person and claim no one's ruling or approval (the files state rules, not who chose them)",
     !/\b(Ali|approved|ruling|ruled|owner)\b/i.test(words));
   ok("1.exclusions · the agency's sentence about who is counted", impl.definitionNotes()[0] === "Players only. Staff accounts, previews and automated visits are not counted.");
   ok("1.wp4-honest · until WP4 ships, the words say a home view can open several sheets and the bet counter does not yet skip automation",
@@ -332,7 +332,7 @@ if (!PROVE_RED) {
     { name: "the follow-up window set to 60 minutes", expect: /^1\.follow-up /, impl: { ...M, DEPOSIT_FOLLOW_UP_MS: 60 * 60_000 } },
     { name: "a house word in the definitions", expect: /^1\.house /,
       impl: { ...M, definitionNotes: () => [...M.definitionNotes(), "Liquidity added by the platform is excluded."] } },
-    { name: "a definition claiming the owner approved it", expect: /^1\.no-approval /,
+    { name: "a definition naming the person who approved it", expect: /^1\.no-person /,
       impl: { ...M, definitionNotes: () => [...M.definitionNotes(), "These rules were approved by Ali."] } },
     { name: "the words claim one home open per view before WP4 ships", expect: /^1\.wp4-honest /,
       impl: { ...M, MEASURES: M.MEASURES.map((m) => (m.key === "homeToSheet" ? { ...m, notes: m.notes.filter((n) => !/several bet sheets/.test(n)) } : m)) } },

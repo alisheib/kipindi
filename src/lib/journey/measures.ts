@@ -23,13 +23,13 @@
 import { eatDayKey, eatDayStartMs } from "../eat-day";
 import { FUNNEL_STEPS } from "./funnel";
 
-/* ── ⚠️ NOT RULED BY ALI — the plan's "Points for Ali", built with its recommended answers ─────────────────────────── */
+/* ── The owner's answers — the plan's "Points for Ali", accepted ──────────────────────────────────────────────────── */
 
 /**
- * ⚠️ PENDING OWNER RULINGS. The S13 plan's thirteen "Points for Ali", built with the plan's RECOMMENDED answer so the
- * panel and its files can be proven before he answers. Each answer that the code expresses is ONE key here, and an
- * overrule lands by changing that key (and the suites that read it). ⛔ NOTHING HERE IS HIS APPROVAL, and no surface may
- * say it is: the panel and the files state the rules, never who chose them.
+ * ✅ THE S13 RULINGS — ACCEPTED BY ALI, 2026-10-14 (relayed to this build by the coordinating session): the plan's
+ * recommended answer to each of its thirteen "Points for Ali", and Point 12 as he defined it. Each answer the code
+ * expresses is ONE key here; a later overrule lands by changing that key and the suites that read it. The panel and the
+ * files state the rules, never who chose them.
  *
  *   Point 1  (D20a)  marked stakes stay OUT of these five measures ............ `markedStakesExcluded`
  *   Point 2          the agency reply's two lines — wording only, no code knob (the files say "players only")
@@ -42,10 +42,12 @@ import { FUNNEL_STEPS } from "./funnel";
  *   Point 9          the rollback figures are a display, no alert, no switch ... `rollback`
  *   Point 10         the old dial's repeated bets stay counted (only overstates) `MEASURES` sheetToBet note
  *   Point 11         home views are the visit counter's (everyone) ............. `MEASURES` homeToSheet
- *   Point 12         "in bounds" for S16 is not defined — S13 invents none ..... `inBounds`
+ *   Point 12         S16's "measures in bounds", Ali's rule: seven days after launch, each of the five measures at or
+ *                    above its 14-day pre-launch baseline, and no harm marker's daily count above its baseline ...
+ *                    `inBounds`, `inBoundsVerdict`
  *   Point 13         S13 is done on test data + production's baseline — a process point, no code knob
  */
-export const S13_PENDING_RULINGS = {
+export const S13_RULINGS = {
   markedStakesExcluded: true,
   beforeDays: 14,
   afterDays: [7, 14, 28] as const,
@@ -56,7 +58,13 @@ export const S13_PENDING_RULINGS = {
   harmDomain: "compliance",
   harmInFiles: false,
   rollback: { betsShare: 0.7, betsDays: 3, confirmShare: 0.8, confirmDays: 3, alert: false, switch: false },
-  inBounds: null,
+  /** Point 12: the after window the verdict reads (all of its days must exist), the measures it judges (the agency's
+   *  five — 4b is a comparison row, not one of them) and the two harm markers it holds to their baseline. */
+  inBounds: {
+    afterDays: 7,
+    measures: ["homeToSheet", "sheetToBet", "shortToDeposit", "depositToBet", "timeToFirstBet"] as const,
+    harmMarkers: ["rapidDeposit", "chasingLosses"] as const,
+  },
   /** Open point 12 (not one of the thirteen, recorded with them): a denominator under this reads "small sample". */
   smallSampleBelow: 30,
 } as const;
@@ -78,7 +86,7 @@ export const FIRST_FULL_COUNTED_DAY = "2026-10-02";
 export const DEPOSIT_FOLLOW_UP_MS = 30 * 60_000;
 
 /** A new player's first bet is counted when it comes within this long of sign-up (Point 5). */
-export const FIRST_BET_HORIZON_MS = S13_PENDING_RULINGS.firstBetHorizonHours * 3_600_000;
+export const FIRST_BET_HORIZON_MS = S13_RULINGS.firstBetHorizonHours * 3_600_000;
 
 /**
  * ⚠️ WP4 (the counter corrections) IS NOT BUILT on this build: it waits for S10's edits to the sheet host. These two facts
@@ -306,8 +314,8 @@ export function definitionNotes(): string[] {
     ]),
     "Every day is a full East Africa day (00:00–24:00, UTC+3). The launch day is counted on neither side.",
     `Counting began on 2026-10-01; the first full day counted is ${FIRST_FULL_COUNTED_DAY}.`,
-    `"Before" is the ${S13_PENDING_RULINGS.beforeDays} days before the launch day. "After N days" is the first N days on which the new journey was on all day; a day it was not is skipped and named.`,
-    `A share over fewer than ${S13_PENDING_RULINGS.smallSampleBelow} is marked "small sample".`,
+    `"Before" is the ${S13_RULINGS.beforeDays} days before the launch day. "After N days" is the first N days on which the new journey was on all day; a day it was not is skipped and named.`,
+    `A share over fewer than ${S13_RULINGS.smallSampleBelow} is marked "small sample".`,
     "A share is printed to one decimal. When two counters disagree and the first passes the second, the share is held at 100.0% and marked *.",
     "Each figure is recomputed from the live counts when the file is made; counts older than 400 days are deleted, so such a window reads \"older than 400 days\".",
     "Campaign tags must use lowercase letters, digits, a space and . _ ~ - only, up to 64 characters; any other tag is not counted in these totals.",
@@ -449,16 +457,16 @@ export function measureWindows(opts: { launch: LaunchFacts | null; nowMs: number
   const yesterday = addDays(today, -1);
   const launchDay = launchDayOf(opts.launch);
   const beforeEnd = launchDay ? (addDays(launchDay, -1) < yesterday ? addDays(launchDay, -1) : yesterday) : yesterday;
-  const beforeStart = addDays(beforeEnd, -(S13_PENDING_RULINGS.beforeDays - 1));
+  const beforeStart = addDays(beforeEnd, -(S13_RULINGS.beforeDays - 1));
   const beforeDays: string[] = [], beforeSkipped: DayWindow["skipped"] = [];
   for (const d of dayRange(beforeStart, beforeEnd)) {
     if (d < FIRST_FULL_COUNTED_DAY) beforeSkipped.push({ day: d, why: "before counting began" });
     else beforeDays.push(d);
   }
-  const before = makeWindow("before", "old", S13_PENDING_RULINGS.beforeDays, beforeDays, beforeSkipped, opts.retainedFromDay, [beforeStart, beforeEnd]);
+  const before = makeWindow("before", "old", S13_RULINGS.beforeDays, beforeDays, beforeSkipped, opts.retainedFromDay, [beforeStart, beforeEnd]);
 
   const after = {} as Record<7 | 14 | 28, DayWindow>;
-  for (const n of S13_PENDING_RULINGS.afterDays) {
+  for (const n of S13_RULINGS.afterDays) {
     const key = `after${n}` as WindowKey;
     if (!opts.launch || !launchDay) { after[n] = makeWindow(key, "new", n, [], [], opts.retainedFromDay, null, true); continue; }
     const a = activeDays(opts.launch, launchDay, addDays(launchDay, 1), yesterday, n);
@@ -544,7 +552,7 @@ export function agencySchedule(launchDay: string | null, nowMs: number): AgencyS
   const today = eatDayKey(nowMs);
   if (!launchDay) return { today, due: { kind: "baseline" }, next: null, mondays: [] };
   const m1 = nextMondayAfter(addDays(launchDay, 1));
-  const of = S13_PENDING_RULINGS.weeklyReports;
+  const of = S13_RULINGS.weeklyReports;
   const mondays = Array.from({ length: of }, (_, i) => addDays(m1, 7 * i));
   const lastMonday = mondays[of - 1];
   let due: DueReport = { kind: "baseline" };
@@ -697,12 +705,12 @@ export function cellFor(n: number | null, d: number | null, ctx: CellContext): C
     return blank("not-recorded", "—", "the bet a deposit was made for is recorded from launch", ctx);
   }
   if (ctx.campaign && !m.campaignSplit) return blank("not-split", "—", "not split by campaign", ctx);
-  if (ctx.side === "after" && m.needsS9 && !ctx.s9) return blank("unavailable", "—", "not available in this build yet", ctx);
+  if (ctx.side === "after" && m.needsS9 && !ctx.s9) return blank("unavailable", "—", "not yet available", ctx);
   if (n === null || d === null || !Number.isFinite(n) || !Number.isFinite(d) || n < 0 || d < 0) {
     return blank("unreadable", "—", "could not be read", ctx);
   }
   if (d === 0) return blank("none", "—", m.noneYet, ctx, n, d);
-  const small = d < S13_PENDING_RULINGS.smallSampleBelow;
+  const small = d < S13_RULINGS.smallSampleBelow;
   if (n > d) {
     return {
       status: "held", n, d, tenths: 1000, text: percentText(1000), held: true, small, partial: partialOf(ctx.window),
@@ -732,6 +740,128 @@ export function halvesText(c: Cell): string | null {
   if (c.status === "no-offer") return c.d === null ? null : `${countText(c.d)} notices shown`;
   if (c.n === null || c.d === null) return null;
   return `${countText(c.n)} of ${countText(c.d)}`;
+}
+
+/* ── S16's "measures in bounds" — Ali's rule (S13 Point 12, 2026-10-14) ─────────────────────────────────────────────── */
+
+export type InBoundsKey = (typeof S13_RULINGS.inBounds.measures)[number];
+export type HarmMarkerKey = (typeof S13_RULINGS.inBounds.harmMarkers)[number];
+
+/** One measure against its baseline. */
+export type MeasureBound = {
+  key: InBoundsKey;
+  /** `excluded`: the measure has no pre-launch baseline BY DESIGN (no deposit was offered; the saved bet was not
+   *  recorded), so there is nothing for it to stay at or above — named, never counted as a pass or a zero.
+   *  `undecided`: a figure this rule needs is missing (unreadable, not yet available, held, none) — the verdict waits. */
+  status: "at-or-above" | "below" | "excluded" | "undecided";
+  before: number | null;
+  after: number | null;
+  why: string | null;
+};
+
+/** One harm marker's average daily count, seven days after launch against the 14-day baseline. */
+export type HarmBound = {
+  key: HarmMarkerKey;
+  status: "not-above" | "above" | "undecided";
+  beforeMean: number | null;
+  afterMean: number | null;
+  /** Counted days on each side (a day the count did not run is not a day of zeros). */
+  beforeDays: number;
+  afterDays: number;
+  why: string | null;
+};
+
+export type InBoundsVerdict = {
+  verdict: "in-bounds" | "out-of-bounds" | "not-yet";
+  /** One sentence a reader can act on. */
+  reason: string;
+  measures: MeasureBound[];
+  harm: HarmBound[];
+};
+
+/** A marker's daily counts on each side: null for a day not counted (the harm watch's "not counted" or a missing day). */
+export type HarmDays = Record<HarmMarkerKey, { before: Array<number | null>; after: Array<number | null> }>;
+
+const HARM_NAME: Record<HarmMarkerKey, string> = { rapidDeposit: "rapid deposits", chasingLosses: "top-ups after betting" };
+const MEASURE_NO: Record<InBoundsKey, string> = { homeToSheet: "1", sheetToBet: "2", shortToDeposit: "3", depositToBet: "4", timeToFirstBet: "5" };
+const listText = (xs: string[]) => (xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
+
+/**
+ * ⭐ S16's GO CONDITION, AS ALI DEFINED IT (2026-10-14): seven days after launch, each of the five measures is AT OR ABOVE
+ * its 14-day pre-launch baseline, and no harm marker (RAPID_DEPOSIT_ESCALATION, CHASING_LOSSES daily counts) rises above
+ * its baseline. Pure: the caller hands it the before and after-7 cells and the two markers' daily counts.
+ *
+ *   · Measures are compared on the PRINTED shares (tenths of a percent), so the verdict agrees with every screen and file;
+ *     "at or above" is ≥. A measure whose before column has no figure BY DESIGN (3: no deposit was offered; 4: not
+ *     recorded before launch) is EXCLUDED and named — it is neither a pass nor a fail, and never a zero. Any other missing
+ *     figure (unreadable, not yet available, held because two counters disagree, none yet) leaves the verdict "not yet".
+ *   · A harm marker is compared on its AVERAGE daily count: the seven days after launch against the counted baseline days.
+ *     All seven after days must have been counted; the baseline needs at least one counted day.
+ *   · Precedence: fewer than seven full days after launch → NOT YET (the rule is read at seven days, never on a partial
+ *     window); then any measure below, or any marker above → OUT OF BOUNDS (a definite failure is not hidden by a missing
+ *     figure elsewhere); then anything undecided → NOT YET; otherwise IN BOUNDS.
+ * ⛔ Nothing here switches, alerts or decides S16: it states the rule's answer on the launch watch (compliance VIEW only,
+ *    because it reads the harm counts).
+ */
+export function inBoundsVerdict(input: {
+  after7: DayWindow;
+  cells: Record<InBoundsKey, { before: Cell; after: Cell }>;
+  harm: HarmDays | null;
+}): InBoundsVerdict {
+  const need = S13_RULINGS.inBounds.afterDays;
+  const measures: MeasureBound[] = S13_RULINGS.inBounds.measures.map((key) => {
+    const { before, after } = input.cells[key];
+    if (before.status === "no-offer" || before.status === "not-recorded") {
+      return { key, status: "excluded", before: null, after: after.tenths, why: "no pre-launch baseline by design" };
+    }
+    if (before.status !== "figure" || before.tenths === null) {
+      return { key, status: "undecided", before: null, after: after.tenths, why: `the baseline reads "${before.note ?? before.text}"` };
+    }
+    if (after.status !== "figure" || after.tenths === null) {
+      return { key, status: "undecided", before: before.tenths, after: null, why: `the seven days after launch read "${after.note ?? after.text}"` };
+    }
+    return { key, status: after.tenths >= before.tenths ? "at-or-above" : "below", before: before.tenths, after: after.tenths, why: null };
+  });
+  const harm: HarmBound[] = S13_RULINGS.inBounds.harmMarkers.map((key) => {
+    const h = input.harm?.[key];
+    if (!h) return { key, status: "undecided", beforeMean: null, afterMean: null, beforeDays: 0, afterDays: 0, why: "the harm counts were not read" };
+    const b = h.before.filter((x): x is number => x !== null && Number.isFinite(x));
+    const a = h.after.filter((x): x is number => x !== null && Number.isFinite(x));
+    const beforeMean = b.length ? b.reduce((n, x) => n + x, 0) / b.length : null;
+    const afterMean = a.length ? a.reduce((n, x) => n + x, 0) / a.length : null;
+    const base = { key, beforeMean, afterMean, beforeDays: b.length, afterDays: a.length };
+    if (b.length === 0) return { ...base, status: "undecided", why: "no baseline day was counted" };
+    if (a.length < need || h.after.length < need) return { ...base, status: "undecided", why: `${a.length} of ${need} days after launch were counted` };
+    return { ...base, status: (afterMean as number) > (beforeMean as number) ? "above" : "not-above", why: null };
+  });
+
+  const below = measures.filter((m) => m.status === "below").map((m) => MEASURE_NO[m.key]);
+  const above = harm.filter((h) => h.status === "above").map((h) => HARM_NAME[h.key]);
+  const excluded = measures.filter((m) => m.status === "excluded").map((m) => MEASURE_NO[m.key]);
+  const judged = measures.filter((m) => m.status === "at-or-above").map((m) => MEASURE_NO[m.key]);
+  const excludedText = excluded.length ? ` (${listText(excluded)} ${excluded.length === 1 ? "has" : "have"} no pre-launch baseline)` : "";
+  // The rule is read SEVEN days after launch: before then nothing is decided, whatever a partial window shows.
+  const days = input.after7.notLaunched ? 0 : input.after7.days.length;
+  if (input.after7.notLaunched || days < need) {
+    return { verdict: "not-yet", reason: input.after7.notLaunched ? "Not yet: not launched." : `Not yet: ${days} of ${need} days after launch.`, measures, harm };
+  }
+  if (below.length || above.length) {
+    const parts = [
+      ...(below.length ? [`measure${below.length === 1 ? "" : "s"} ${listText(below)} below the pre-launch baseline`] : []),
+      ...(above.length ? [`${listText(above)} above the baseline`] : []),
+    ];
+    return { verdict: "out-of-bounds", reason: `Out of bounds: ${parts.join("; ")}.`, measures, harm };
+  }
+  const undecided = [
+    ...measures.filter((m) => m.status === "undecided").map((m) => `measure ${MEASURE_NO[m.key]}: ${m.why}`),
+    ...harm.filter((h) => h.status === "undecided").map((h) => `${HARM_NAME[h.key]}: ${h.why}`),
+  ];
+  if (undecided.length) return { verdict: "not-yet", reason: `Not yet: ${undecided.join("; ")}.`, measures, harm };
+  return {
+    verdict: "in-bounds",
+    reason: `In bounds: measure${judged.length === 1 ? "" : "s"} ${listText(judged)} at or above the pre-launch baseline${excludedText}, and neither harm marker's average daily count above its baseline.`,
+    measures, harm,
+  };
 }
 
 /* ── Row matching (pure, shared by both stores) ──────────────────────────────────────────────────────────────────── */
