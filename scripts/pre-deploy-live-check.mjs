@@ -947,8 +947,11 @@ if (LOCAL) {
     await page.waitForURL(/\/markets\/mkt_[^?]+\?side=YES/, { timeout: 12000 }).catch(() => {});
     const id = (page.url().match(/\/markets\/(mkt_[A-Za-z0-9]+)/) || [])[1];
     ok(`YES button opens locked dial (?side=YES)`, /\?side=YES/.test(page.url()), page.url());
-    await page.waitForTimeout(400);
-    ok(`?side=YES -> Place YES`, (await page.getByRole("button", { name: /Place YES/ }).count()) > 0);
+    // The locked dial is drawn once the market page hydrates: wait for its commit button itself (up to 15 s), never a
+    // fixed delay. A fixed 400 ms measured the machine, not the page: on a busy machine (2026-10-14) the button arrived
+    // 0.2–2.4 s after the address changed, and every later check on the same dial passed. Absent at 15 s still fails.
+    const placeYesDrawn = await page.getByRole("button", { name: /Place YES/ }).first().waitFor({ state: "attached", timeout: 15_000 }).then(() => true, () => false);
+    ok(`?side=YES -> Place YES`, placeYesDrawn && (await page.getByRole("button", { name: /Place YES/ }).count()) > 0);
     ok(`?side=YES -> cannot place NO (locked)`, (await page.getByRole("button", { name: /Place NO/ }).count()) === 0);
     ok(`"Your pick" indicator shown`, (await page.locator("body").innerText()).toLowerCase().includes("your pick"));
     ok(`no in-dial switch control (display-only)`, (await page.getByRole("button", { name: /Switch to (YES|NO)|Backing/ }).count()) === 0);
