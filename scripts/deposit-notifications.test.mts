@@ -198,17 +198,27 @@ await setPaymentControls({ provider: "mock" }, "test").catch(() => {});
   ok("C3 an excluded player was NOT credited", (await balanceOf("usr_dn_rg")) === 0);
 
   const ns = await notifsFor("usr_dn_rg");
+  // The TITLE is the owner's label — a held deposit reads "Reversed" on every player surface, as its notice and email do
+  // (COMPLIANCE-DECISIONS 2026-10-07 item 6). The BODY is the truth while the money waits: not added, held for return,
+  // and no claim that a return has been delivered (the same entry records that claim as untrue).
   const revNote = ns.find((n) => n.kind === "DEPOSIT" && /reversed/i.test(n.titleEn));
-  ok("C4 a reversal notification exists", !!revNote);
-  ok("C5 notification explains it was not added and was returned",
-    /not added/i.test(revNote?.bodyEn ?? "") && /returned/i.test(revNote?.bodyEn ?? ""));
+  ok("C4 a reversal notification exists, in the ruling's label in all three languages", !!revNote
+    && /^Deposit reversed · /.test(revNote.titleEn) && /^Amana imerudishwa · /.test(revNote.titleSw ?? "") && /^充值已退回 · /.test(revNote.titleZh ?? ""));
+  ok("C5 notification explains held funds without claiming a completed refund",
+    /not added/i.test(revNote?.bodyEn ?? "") && /held for return/i.test(revNote?.bodyEn ?? "")
+    && /zinashikiliwa ili zirudishwe/.test(revNote?.bodySw ?? "") && /待退还/.test(revNote?.bodyZh ?? "")
+    && !/has been returned|returned to where|imerudishwa|已(?:原路)?退回/.test([revNote?.bodyEn, revNote?.bodySw, revNote?.bodyZh].join(" ")));
   ok("C6 reversal notification is trilingual", !!revNote?.titleSw && !!revNote?.titleZh);
 
   const mail = depositMail();
   ok("C7 a reversal email was sent", mail.length === 1, `got ${mail.length}`);
   const html = mail[0]?.html ?? "";
   ok("C8 email explains the self-exclusion", /self-excluded|cooling-off/i.test(html));
-  ok("C9 email says the money went back", /returned to the account it came from/i.test(html));
+  ok("C9 email carries the ruling's label and says held for return, without claiming delivery or a refund deadline",
+    /Deposit reversed/.test(html) && /This deposit was reversed/.test(html) && />Reversed</.test(html)
+    && /held for return/i.test(html) && /zinashikiliwa ili zirudishwe/i.test(html) && /has not been confirmed/i.test(html)
+    && !/Deposit held for return|This deposit is held for return|>Held for return</.test(html)
+    && !/returned to the account it came from|Amana imerudishwa kwenye|5 working days|siku 5 za kazi/.test(html));
   ok("C10 email carries both references", html.includes("txn_dn_rg") && html.includes("dep_rg_001"));
   // We must not invite a self-excluded player back into the deposit flow.
   ok("C11 email does NOT link them back to depositing", !/\/wallet\/deposit/.test(html));

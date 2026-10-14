@@ -233,7 +233,8 @@ const ref = seededTxn.providerRef!;
 {
   const empty = await settleDepositFromReturn("usr_ret_owner", "");
   ok("empty order_id → UNKNOWN, no crash", empty.state === "UNKNOWN");
-  ok("empty order_id still reports the real balance", empty.balance === 25_000, String(empty.balance));
+  // S9: no owned payment was resolved, so UNKNOWN carries no financial snapshot. The page only renders PAID balances.
+  ok("empty order_id claims no current balance", empty.balance === null && empty.txn === undefined, String(empty.balance));
 }
 
 // B6 — PENDING IS NOT FAILURE. A transaction still PROCESSING (webhook not yet

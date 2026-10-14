@@ -58,6 +58,25 @@ const bodyOf = (src: string, anchor: string, span = 3500) => {
   const i = src.indexOf(anchor);
   return i < 0 ? "" : src.slice(i, i + span);
 };
+/** From `anchor` to the next top-level function (or the end) — a whole function whatever its length. */
+const functionOf = (src: string, anchor: string) => {
+  const i = src.indexOf(anchor);
+  if (i < 0) return "";
+  const next = src.slice(i + anchor.length).search(/\n(?:export )?(?:async )?function /);
+  return next < 0 ? src.slice(i) : src.slice(i, i + anchor.length + next);
+};
+/** §3.2's two hops (2026-10-14): the sweep's withdrawal arm snapshots the row, asks the rail, and hands a FAILED verdict to
+ *  the bound settle path with its own reason; that path's WITHDRAWAL arm refunds through settleWithdrawalFailed. */
+function routesFailedPayoutToRefund(src: string): boolean {
+  const sweep = functionOf(src, "export async function reconcileStalePayments");
+  const arm = sweep.slice(Math.max(0, sweep.indexOf('} else if (t.type === "WITHDRAWAL") {')));
+  const bound = arm.indexOf("const original = withdrawalProbeBinding(t);");
+  const asked = arm.indexOf("const v = await verifyWithdrawalStatus(original.providerRef, original.payoutRail);");
+  const failed = arm.search(/\} else if \(v\.status === "FAILED"\) \{\s*const r = await settlePaymentWebhook\(\{ providerRef: original\.providerRef, status: "FAILED" \}, undefined, original, "reconcile-verified-failed"\);\s*if \(r\.handled && r\.reason === "withdrawal-failed"\) \{ withdrawalsReversed\+\+;/);
+  const hook = functionOf(src, "export async function settlePaymentWebhook(");
+  const refunds = /if \(txn\.type === "WITHDRAWAL"\) \{\s*if \(input\.status === "CONFIRMED"\) await settleWithdrawalConfirmed\([^\n]*\);\s*else await settleWithdrawalFailed\(txn\.id, failureReason, input\.providerRef, original \?\? undefined\);/.test(hook);
+  return sweep.length > 0 && bound >= 0 && asked > bound && failed > asked && refunds;
+}
 
 // ── §1 · The premise: the AML branch really does store a never-dispatched id ──
 //
@@ -102,12 +121,19 @@ console.log("\n§2 · dispatchApprovedWithdrawal clears providerRef when it clai
 // where it started, and §2 would still be green.
 console.log("\n§3 · the sweep still refuses to auto-reverse a payout with no providerRef");
 {
-  const sweep = bodyOf(wallet, "export async function reconcileStalePayments", 6000);
+  // The WHOLE function, not a fixed span: S9's per-row isolation and original-funding binding grew the sweep past 6,000
+  // characters, and a span that stops short reports a defect that is not there (the same lesson as §2's note).
+  const sweep = functionOf(wallet, "export async function reconcileStalePayments");
   ok("3.1  the withdrawal arm skips a row with no ref, and moves no money",
     /if \(!ref\) \{ leftPending\+\+; auditNeedsReviewOnce\(t\.id, "stale withdrawal has no providerRef — not auto-reversed"/.test(sweep),
     "the !ref guard moved — clearing providerRef is no longer safe");
-  ok("3.2  a FAILED verdict still routes to settleWithdrawalFailed (the branch we are avoiding)",
-    /v\.status === "FAILED"[\s\S]{0,120}settleWithdrawalFailed\(t\.id, "reconcile-verified-failed"\)/.test(sweep));
+  // ⭐ 3.2 RE-DERIVED 2026-10-14 (S9 root review H3). Since 9869dd701 the sweep's verified FAILED no longer calls
+  // settleWithdrawalFailed directly: it hands the verdict, with the row's ORIGINAL funding tuple (`withdrawalProbeBinding(t)`)
+  // and its own reason, to settlePaymentWebhook — whose WITHDRAWAL arm calls settleWithdrawalFailed with that reason. The
+  // premise this section protects is unchanged (a FAILED verdict on a payout with a reference still REFUNDS it, which is
+  // why a phantom reference must be cleared), so both hops are pinned, and the old one-hop pattern no longer matches anything.
+  ok("3.2  a FAILED verdict still routes to settleWithdrawalFailed (the branch we are avoiding) — through the bound settle path",
+    routesFailedPayoutToRefund(wallet), "the sweep's FAILED payout arm no longer reaches the refund — §2's premise moved");
   ok("3.3  selection is still on createdAt — which is why the grace is already spent",
     /listByStatus\("PROCESSING"\)\)\.filter\(\(t\) => Date\.parse\(t\.createdAt\) < cutoff\)/.test(sweep),
     "if selection moved to updatedAt the premise changes and this gate should be re-derived");
@@ -130,6 +156,24 @@ console.log("\n§4 · POSITIVE CONTROL · pre-fix REJECTED, post-fix ACCEPTED");
   const fixed = `await db.txn.update(txnId, { status: "PROCESSING", providerRef: null, payoutRail: null }, tx);`;
   ok("4.3  post-fix: both patterns accept the corrected shape",
     /status: "PROCESSING", providerRef: null/.test(fixed) && /providerRef: null, payoutRail: null/.test(fixed));
+
+  // 3.2's controls (re-derived 2026-10-14): the two-hop predicate can still say NO, so its green above is evidence.
+  const plant = (from: string, to: string) => {
+    if (wallet.split(from).length !== 2) return null;   // the plant must land exactly once, or the control proves nothing
+    return wallet.replace(from, to);
+  };
+  const armWaits = plant('const r = await settlePaymentWebhook({ providerRef: original.providerRef, status: "FAILED" }, undefined, original, "reconcile-verified-failed");\n        if (r.handled && r.reason === "withdrawal-failed")',
+    'const r = { handled: false, reason: "left-pending" };\n        if (r.handled && r.reason === "withdrawal-failed")');
+  const pathStops = plant("else await settleWithdrawalFailed(txn.id, failureReason, input.providerRef, original ?? undefined);",
+    'else return { handled: false, reason: "not-refunded" };');
+  const unbound = plant('leftPending++; auditNeedsReviewOnce(t.id, "withdrawal funding identity unavailable — not auto-settled", {}); continue; }\n      const v = await verifyWithdrawalStatus(original.providerRef, original.payoutRail);',
+    'leftPending++; auditNeedsReviewOnce(t.id, "withdrawal funding identity unavailable — not auto-settled", {}); continue; }\n      const v = await verifyWithdrawalStatus(ref, t.payoutRail);');
+  ok("4.4  3.2 accepts the current source", routesFailedPayoutToRefund(wallet));
+  ok("4.5  3.2 rejects a sweep whose FAILED payout arm no longer refunds", armWaits !== null && !routesFailedPayoutToRefund(armWaits));
+  ok("4.6  3.2 rejects a settle path whose WITHDRAWAL FAILED branch no longer calls settleWithdrawalFailed",
+    pathStops !== null && !routesFailedPayoutToRefund(pathStops));
+  ok("4.7  3.2 rejects a sweep that asks the rail about the live row instead of its frozen snapshot",
+    unbound !== null && !routesFailedPayoutToRefund(unbound));
 }
 
 console.log(`\n${fail === 0 ? "PASS" : "FAILED"} · ${pass} ok, ${fail} failed`);
