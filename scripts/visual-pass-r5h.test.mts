@@ -366,15 +366,31 @@ section("3 · G-3 · the journey flag and the not-found mark, up and down before
   const SCH = squash(readFileSync("node_modules/next/dist/compiled/scheduler/cjs/scheduler.production.js", "utf8"));
   const fn = (s: string, head: string) => { const a = s.indexOf(head); return a < 0 ? "" : s.slice(a, s.indexOf(" function ", a + head.length)); };
   const del = fn(RD, "function commitDeletionEffectsOnFiber(");
+  // Next 16.4's React 19.2 adds fragment cleanup at case 6. The invariant remains the actual
+  // host-parent save, child traversal, then removeChild order, rather than adjacency to case 6.
+  const hostRemovedAfter = (body: string) => {
+    const c = body.indexOf("case 6:"), end = body.indexOf(" break;", c);
+    if (c < 0 || end < 0) return false;
+    const host = body.slice(c, end);
+    const save = host.indexOf("prevHostParent = hostParent;"), clear = host.indexOf("hostParent = null;"),
+      traverse = host.indexOf("recursivelyTraverseDeletionEffects("), restore = host.indexOf("hostParent = prevHostParent;"),
+      remove = host.indexOf("hostParent.removeChild(deletedFiber.stateNode)");
+    return save >= 0 && clear > save && traverse > clear && restore > traverse && remove > restore;
+  };
   const facts = {
     layoutCleanupFirst: del.includes("case 0: case 11: case 14: case 15: commitHookEffectListUnmount(2, deletedFiber, nearestMountedAncestor); offscreenSubtreeWasHidden || commitHookEffectListUnmount(4, deletedFiber, nearestMountedAncestor); recursivelyTraverseDeletionEffects("),
-    hostRemovedAfter: (() => { const c = del.indexOf("case 6: prevHostParent = hostParent;"); const t = del.indexOf("recursivelyTraverseDeletionEffects(", c); const r = del.indexOf("hostParent.removeChild(deletedFiber.stateNode)", c); return c > 0 && t > c && r > t; })(),
+    hostRemovedAfter: hostRemovedAfter(del),
     commitRequestsPaint: fn(RD, "function flushSpawnedWork() {").includes("requestPaint();"),
     schedulerYieldsForPaint: SCH.includes("function shouldYieldToHost() { return needsPaint ? !0") && SCH.includes("exports.unstable_requestPaint = function () { needsPaint = !0; };"),
     syncInMicrotask: RD.includes("function scheduleImmediateRootScheduleTask() { scheduleMicrotask(function () { 0 !== (executionContext & 6) ? scheduleCallback$3( ImmediatePriority, processRootScheduleInImmediateTask ) : processRootScheduleInMicrotask(); }); }"),
   };
   ok("3.1 · React 19.2, as Next ships it: a removed function component's layout cleanup runs BEFORE the host nodes after it are removed; a commit asks for a paint and the scheduler yields for it before the next task (a transition's passive effects run after the paint); an update scheduled from outside React is rendered in a microtask — before the browser paints",
     Object.values(facts).every(Boolean), j(facts));
+  const remove = "hostParent.removeChild(deletedFiber.stateNode)";
+  const beforeChildren = del.replace(remove, "undefined").replace("hostParent = null;", remove + "; hostParent = null;");
+  ok("3.1′ PLANTS · removing child traversal, losing node removal, or removing the host before its children fails the same vendored order reader",
+    !hostRemovedAfter(del.replace(/recursivelyTraverseDeletionEffects\(/g, "lostDeletionTraversal("))
+      && !hostRemovedAfter(del.replace(remove, "undefined")) && !hostRemovedAfter(beforeChildren));
 }
 const FLAG_FILE = "src/components/journey/journey-flag.tsx", FLAG_LIB = "src/lib/journey/journey-on.ts", SHELL = "src/components/layout/app-shell.tsx";
 const NF_MARK = "src/components/ui/not-found-mark.tsx", NF_LIB = "src/lib/not-found-mark.ts";

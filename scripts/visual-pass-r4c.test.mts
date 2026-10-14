@@ -128,13 +128,13 @@ const HANG_REST = restRule ? Number(restRule[1]) : NaN;
   // ⭐ THE MODEL, page by page: the gap a reader sees over the box, between the box and the pills, and under the bar's last
   // row. The rung is the page's own (its container's class); the band and the bar add their 10px; the echo row is lent
   // to the gap below the box. Equal on every page, and the rung + 10 of each.
-  type Page = { file: string; rung: string; band: RegExp };
+  type Page = { file: string; rung: string; band: RegExp; owner?: string };
   const BAND_ON_WRAPPER = /<div className=\{QUERY_SEARCH_BAND_CLASS\}>\s*<Suspense>\s*<SearchBox/;
   const BAND_ON_BOX = /<SearchBox[^>]*className=\{QUERY_SEARCH_BAND_CLASS\}/;
   const PAGES: Page[] = [
     { file: "src/app/results/page.tsx", rung: `<div className="flex flex-col gap-5">`, band: BAND_ON_WRAPPER },
-    { file: "src/app/notifications/page.tsx", rung: `<PageContainer tier="reading" className="space-y-5">`, band: BAND_ON_BOX },
-    { file: "src/app/watchlist/page.tsx", rung: `<PageContainer tier="board" className="space-y-5">`, band: BAND_ON_WRAPPER },
+    { file: "src/app/notifications/page.tsx", rung: `<PageContainer tier="reading" className="space-y-5">`, band: BAND_ON_BOX, owner: 'emptyStateOwner={items.length === 0 ? "collection" : undefined}' },
+    { file: "src/app/watchlist/page.tsx", rung: `<PageContainer tier="board" className="space-y-5">`, band: BAND_ON_WRAPPER, owner: 'emptyStateOwner={paged.length === 0 ? "collection" : undefined}' },
     { file: "src/app/proposals/page.tsx", rung: `<PageContainer tier="reading" className="space-y-6">`, band: BAND_ON_WRAPPER },
     { file: "src/app/positions/page.tsx", rung: `<PageContainer tier="reading" className="space-y-6">`, band: BAND_ON_BOX },
     { file: "src/app/fairness/page.tsx", rung: `<section className="flex flex-col gap-5">`, band: BAND_ON_WRAPPER },
@@ -147,12 +147,20 @@ const HANG_REST = restRule ? Number(restRule[1]) : NaN;
   });
   const report: Record<string, unknown> = {};
   const bad: string[] = [];
+  // The exact collection-owner attributes have no spacing. Keep the class/tier/band pins intact;
+  // accept the reviewed original collection marker and its later empty-only expression only.
+  const hasRung = (src: string, p: Page) => src.includes(p.rung) || !!p.owner && [p.owner, 'emptyStateOwner="collection"']
+    .some(owner => src.includes(p.rung.slice(0, -1) + " " + owner + ">"));
+  const equalGaps = (src: string, p: Page) => {
+    const rung = rungOf(p.rung), g = gaps(rung, p.band.test(src));
+    return hasRung(src, p) && p.band.test(src) && g.over === g.boxToPills && g.boxToPills === g.under && g.under === rung + 10;
+  };
   for (const p of PAGES) {
     const src = code(p.file);
     const rung = rungOf(p.rung);
     const g = gaps(rung, p.band.test(src));
     report[p.file.split("/")[2]] = g;
-    if (!src.includes(p.rung) || !p.band.test(src) || !(g.over === g.boxToPills && g.boxToPills === g.under && g.under === rung + 10)) bad.push(p.file);
+    if (!equalGaps(src, p)) bad.push(p.file);
     if (/<div className="(?:py-2\.5|pb-2|py-\[10px\])">\s*<Suspense>\s*<SearchBox/.test(src)) bad.push(`${p.file}: an old wrapper`);
   }
   ok("1.5 · on every page with a search over its bar the box sits rung + 10 under the block above it, the pills rung + 10 under the box, the next block rung + 10 under the sort — 34 · 34 · 34 on a 24px rung, 42 · 42 · 42 on 32",
@@ -160,6 +168,13 @@ const HANG_REST = restRule ? Number(restRule[1]) : NaN;
   const before = gaps(24, false, 10);
   ok("1.5′ CONTROL · /results as round 4 found it (no band, `py-2.5` round the box) puts 69px between the box and the pills (tiles 171 172), and /notifications 59",
     before.boxToPills === 69 && gaps(24, false).boxToPills === 59, show({ results: before.boxToPills, notifications: gaps(24, false).boxToPills }));
+  const ownerPages = PAGES.filter(p => p.owner);
+  ok("1.5″ PLANTS · the exact empty-only ownership attrs do not hide a changed rung or a lost search band",
+    ownerPages.every(p => {
+      const src = code(p.file);
+      return !equalGaps(src.replace('className="space-y-5"', 'className="space-y-6"'), p)
+        && !equalGaps(src.replace(/QUERY_SEARCH_BAND_CLASS/g, "LOST_SEARCH_BAND"), p);
+    }));
 
   // The ghosts stand in with the same band, so nothing moves when the page lands.
   const ghosts = [
