@@ -706,6 +706,8 @@
     "test:journey-funnel": "tsx scripts/journey-funnel.test.mts",
     "red:journey-funnel": "tsx scripts/journey-funnel.test.mts --prove-red",
     "qa:journey-funnel": "node scripts/qa-journey-funnel.cjs",
+    "test:journey-measures-core": "tsx scripts/journey-measures-core.test.mts",
+    "red:journey-measures-core": "tsx scripts/journey-measures-core.test.mts --prove-red",
     "test:journey-shell": "tsx scripts/journey-shell.test.mts",
     "red:journey-shell": "tsx scripts/journey-shell.test.mts --prove-red",
     "test:offline-neutral": "tsx scripts/offline-neutral.test.mts",
