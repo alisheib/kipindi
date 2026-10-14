@@ -19,4 +19,10 @@ export const MUTATIONS = [
   m("non-rerunnable-metadata", "prisma/migrations/20261013160000_deposit_return_intent/migration.sql", 'ADD COLUMN IF NOT EXISTS "pendingBet"', 'ADD COLUMN "pendingBet"', "source.additive-migration"),
   m("unbounded-migration-lock-wait", "prisma/migrations/20261013160000_deposit_return_intent/migration.sql", "PERFORM set_config('lock_timeout', '3s', true);", "", "source.additive-migration"),
   m("unbounded-migration-retry", "prisma/migrations/20261013160000_deposit_return_intent/migration.sql", "IF attempt >= 20 THEN", "IF false THEN", "source.additive-migration"),
+  // M1 (S9 root review): the file must take "Position" before "Transaction" (the bet's write order) and retry a deadlock.
+  m("migration-takes-transaction-first", "prisma/migrations/20261013160000_deposit_return_intent/migration.sql",
+    'ALTER TABLE "Position" ADD COLUMN IF NOT EXISTS "origin" TEXT;\n      ALTER TABLE "Transaction" ADD COLUMN IF NOT EXISTS "pendingBet" JSONB;',
+    'ALTER TABLE "Transaction" ADD COLUMN IF NOT EXISTS "pendingBet" JSONB;\n      ALTER TABLE "Position" ADD COLUMN IF NOT EXISTS "origin" TEXT;', "source.migration-bet-lock-order"),
+  m("migration-deadlock-not-retried", "prisma/migrations/20261013160000_deposit_return_intent/migration.sql",
+    "EXCEPTION WHEN lock_not_available OR deadlock_detected THEN", "EXCEPTION WHEN lock_not_available THEN", "source.migration-deadlock-retried"),
 ];

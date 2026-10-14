@@ -108,6 +108,32 @@ async function realChecks(): Promise<Check[]> {
       const elapsed = performance.now() - began;
       ok("real.migration-lock-timeout-retries", elapsed >= 4_300 && elapsed < 15_000);
     } finally { if (releaseTimer) clearTimeout(releaseTimer); await blocker.query("ROLLBACK").catch(() => {}); await blocker.end(); await retry.end(); }
+    // M1 (S9 root review): a REAL deadlock that the migration loses is retried, never a failed boot migration. A
+    // daily-loss-limit bet reads "Transaction" (ACCESS SHARE), then writes "Position" (ROW EXCLUSIVE); the migration,
+    // already holding "Position", is the first waiter, so the detector aborts it after deadlock_timeout and it retries.
+    // Two fresh tables in a private schema, reached by both sessions through search_path, keep the real schema untouched.
+    const bet = new pgLib.Client({ connectionString: process.env.DATABASE_URL });
+    const migration = new pgLib.Client({ connectionString: process.env.DATABASE_URL, query_timeout: 30_000 });
+    await bet.connect(); await migration.connect();
+    try {
+      await bet.query('DROP SCHEMA IF EXISTS s9_deadlock_probe CASCADE; CREATE SCHEMA s9_deadlock_probe;'
+        + ' CREATE TABLE s9_deadlock_probe."Transaction" (id text PRIMARY KEY); CREATE TABLE s9_deadlock_probe."Position" (id text PRIMARY KEY)');
+      for (const c of [bet, migration]) await c.query("SET search_path TO s9_deadlock_probe");
+      await bet.query("BEGIN"); await bet.query('SELECT count(*) FROM "Transaction"');
+      const began = performance.now();
+      const applied = migration.query(sources[MIGRATION]).then(() => "committed", (e: { code?: string }) => `error ${e.code}`);
+      await new Promise(r => setTimeout(r, 400));
+      const wrote = bet.query('LOCK TABLE "Position" IN ROW EXCLUSIVE MODE').then(() => bet.query("COMMIT")).then(() => "committed",
+        async (e: { code?: string }) => { await bet.query("ROLLBACK").catch(() => {}); return `error ${e.code}`; });
+      const [m, b] = await Promise.all([applied, wrote]);
+      const elapsed = performance.now() - began;
+      const added = await migration.query("SELECT column_name FROM information_schema.columns WHERE table_schema = 's9_deadlock_probe' AND column_name IN ('origin', 'pendingBet')");
+      ok("real.migration-deadlock-retried", m === "committed" && b === "committed" && added.rows.length === 2 && elapsed >= 2_000);
+    } finally {
+      await bet.query("ROLLBACK").catch(() => {});
+      await bet.query("DROP SCHEMA IF EXISTS s9_deadlock_probe CASCADE").catch(() => {});
+      await bet.end(); await migration.end();
+    }
   }
   return checks;
 }
@@ -171,11 +197,18 @@ async function sourceChecks(world: Record<string, string>): Promise<Check[]> {
   };
   const prismaLatest = method(pri, "prismaDb", "txn", "latestConfirmedMobileDeposit", { pc: () => ({ transaction: { findFirst } }), MOBILE_MONEY_METHODS, toStoredTxn: (r: any) => r });
   ok("source.prisma-history", (await prismaLatest("me"))?.id === "tieB" && await prismaLatest("missing") === null);
-  const sql = world[MIGRATION].replace(/--[^\n]*/g, "");
+  const sql = world[MIGRATION].replace(/\r\n/g, "\n").replace(/--[^\n]*/g, "");
   const additions = [...sql.matchAll(/ALTER TABLE "(?:Transaction|Position)"\s+ADD COLUMN IF NOT EXISTS "(?:pendingBet|origin)" (?:JSONB|TEXT);/g)].map(m => m[0].replace(/\s+/g, " "));
-  ok("source.additive-migration", eq(additions, ['ALTER TABLE "Transaction" ADD COLUMN IF NOT EXISTS "pendingBet" JSONB;', 'ALTER TABLE "Position" ADD COLUMN IF NOT EXISTS "origin" TEXT;'])
+  ok("source.additive-migration", additions.length === 2 && additions.includes('ALTER TABLE "Transaction" ADD COLUMN IF NOT EXISTS "pendingBet" JSONB;')
+    && additions.includes('ALTER TABLE "Position" ADD COLUMN IF NOT EXISTS "origin" TEXT;')
     && (sql.match(/\bALTER TABLE\b/g)?.length ?? 0) === 2 && !/\b(?:DROP|UPDATE|DELETE|INSERT|TRUNCATE|CREATE|EXECUTE|DEFAULT|NOT NULL)\b/.test(sql)
-    && sql.includes("PERFORM set_config('lock_timeout', '3s', true);") && /EXCEPTION WHEN lock_not_available THEN[\s\S]*attempt >= 20[\s\S]*RAISE;[\s\S]*pg_sleep\(1\.5\)/.test(sql));
+    && sql.includes("PERFORM set_config('lock_timeout', '3s', true);")
+    && /EXCEPTION WHEN lock_not_available(?: OR deadlock_detected)? THEN[\s\S]*attempt >= 20[\s\S]*RAISE;[\s\S]*pg_sleep\(1\.5\)/.test(sql));
+  // M1 (S9 root review): the bet path writes "Position" before "Transaction"; the file takes its locks in that order, so a
+  // bet holding "Position" never waits on a migration that holds "Transaction" while it waits for "Position".
+  ok("source.migration-bet-lock-order", eq(additions, ['ALTER TABLE "Position" ADD COLUMN IF NOT EXISTS "origin" TEXT;', 'ALTER TABLE "Transaction" ADD COLUMN IF NOT EXISTS "pendingBet" JSONB;']));
+  // ...and the deadlock it can still lose (a loss-limit read holds "Transaction" first) is retried like a lock timeout.
+  ok("source.migration-deadlock-retried", sql.includes("EXCEPTION WHEN lock_not_available OR deadlock_detected THEN"));
   return checks;
 }
 try {
