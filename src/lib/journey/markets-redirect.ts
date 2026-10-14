@@ -40,7 +40,7 @@
  * the same list. `test:markets-redirect` §1 holds the table and pins these four imports, and `red:markets-redirect`
  * plants a defect against each check.
  */
-import { attributionFrom, formatBetParam, parseBetParam, UTM_KEYS } from "@/lib/journey/pending-bet";
+import { transportAttributionFrom, formatBetParam, parseBetParam, UTM_KEYS } from "@/lib/journey/pending-bet";
 import { MARKET_CATEGORIES, type MarketCategory } from "@/lib/markets/categories";
 import { clampText, oneParam } from "@/lib/query/parse";
 import { MAX_QUERY_LEN } from "@/lib/search/query";
@@ -129,7 +129,7 @@ export function journeyMarketsTarget(search: MarketsSearch | null | undefined): 
     const v = one(k);
     if (typeof v === "string") firsts.set(k, v);
   }
-  const attribution = attributionFrom(firsts);
+  const attribution = transportAttributionFrom(firsts);
   if (attribution.ref) parts.push(["ref", attribution.ref]);
   if (attribution.invite) parts.push(["invite", attribution.invite]);
   for (const k of UTM_KEYS) {

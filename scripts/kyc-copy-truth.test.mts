@@ -366,8 +366,15 @@ const ALLOW: readonly Allow[] = [
     excerpt: "Hesabu za safari: … kufungua karatasi ya dau … kuweka dau … jumla hizi hazina kidakuzi, kitambulisho wala chochote kinachoweza kukutambulisha",
     why: "kitambulisho is a technical identifier the sentence DENIES keeping; betting and the bet slip are counted steps, not gated by identity",
   },
+  {
+    where: "src/app/legal/privacy/page.tsx · sw",
+    rule: 1,
+    sha: "b0addccb1a87c724",
+    excerpt: "kp-sheet-intents:v2: … vitambulisho vya maombi vilivyotengenezwa bila mpangilio",
+    why: "this exact storage disclosure names account/request identifiers and random request keys; it makes no claim about identity verification or a money gate",
+  },
 ];
-const ALLOW_SIZE = 2;
+const ALLOW_SIZE = 3;
 const used = new Set<Allow>();
 const shaOf = (t: string) => createHash("sha256").update(t).digest("hex").slice(0, 16);
 
@@ -1001,6 +1008,30 @@ ok(`§5 the allow-set holds exactly ${ALLOW_SIZE} entr${ALLOW_SIZE === 1 ? "y" :
 for (const a of ALLOW) {
   ok(`§5 allow · ${a.where} · rule ${a.rule} · still matches a live unit — ${a.why}`, used.has(a),
     used.has(a) ? "" : `"${a.excerpt}" matched nothing — the string changed or went; delete the allowance`);
+}
+// The new storage paragraph is read through the SAME legal-unit parser, with an exact live hash and source scope.
+// A false identity claim appended to it changes that hash and remains a real rule-1 hit; no legal unit is blanket exempt.
+{
+  const where = "src/app/legal/privacy/page.tsx · sw";
+  const src = readSrc("src/app/legal/privacy/page.tsx");
+  const blocks = findBlocks(src, (i) => i).blocks.filter((b) => b.loc === "sw");
+  const units = blocks.flatMap((b) => unitsOf(src, b, (i) => i).units);
+  const mine = units.filter((u) => u.text.includes("kp-sheet-intents:v2:"));
+  const unit = mine[0];
+  ok("§5 storage · exact unchanged Swahili unit is live and still triggers the narrow lexical false positive",
+    mine.length === 1 && shaOf(unit.text) === "b0addccb1a87c724" && rule1("sw", unit.text));
+  if (unit) {
+    ok("§5 storage · exact positive unit is allowed only in its actual source scope",
+      scan(where, ["sw"], [unit], [1])[1].length === 0
+        && scan("src/app/legal/other/page.tsx · sw", ["sw"], [unit], [1])[1].length === 1);
+    const falseClaim = {...unit, text: `${unit.text} Unaweza kuweka dau bila kuthibitisha utambulisho.`};
+    const changedWords = {...unit, text: unit.text.replace("bila mpangilio", "bila uthibitisho wa utambulisho")};
+    ok("§5 storage · an actual false money/identity claim or changed storage words void the same-unit allowance",
+      shaOf(falseClaim.text) !== shaOf(unit.text) && rule1("sw", falseClaim.text)
+        && scan(where, ["sw"], [falseClaim], [1])[1].length === 1
+        && changedWords.text !== unit.text && rule1("sw", changedWords.text)
+        && scan(where, ["sw"], [changedWords], [1])[1].length === 1);
+  }
 }
 
 // ═══ §6 · RULE 4 — a NEW withdrawal held, reviewed, or 24 hours before it pays ═════════════════════════

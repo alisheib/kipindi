@@ -315,11 +315,24 @@ section("5 · share links — the market page and /positions share the plain lin
   });
   const files = [...walk("src/app"), ...walk("src/components")];
   const minters = files.filter((f) => code(f).includes("ensureAffiliateAccount(")).sort();
-  const refProps = files.filter((f) => /refCode=\{/.test(code(f))).sort();
+  // Auth carry forwards the already supplied code to the refusal form; it never mints a share code. Remove ONLY that
+  // exact reviewed carrier on its own page. A second prop, a changed carrier or a share control there remains counted.
+  const carrierFile = "src/app/auth/register/page.tsx";
+  const authCarrier = '<RegisterForm copy={copy} phoneDefault={phoneDefault} emailDefault={emailDefault} nextOk={nextOk} refCode={refCode} inviteCode={inviteCode} dobMax={dobMax}>';
+  const withoutAuthCarrier = (file: string, src: string) => file === carrierFile
+    ? src.replace(authCarrier, authCarrier.replace(' refCode={refCode}', '')) : src;
+  const hasShareCode = (file: string, src: string) => /refCode=\{/.test(withoutAuthCarrier(file, src));
+  const refProps = files.filter((f) => hasShareCode(f, code(f))).sort();
   ok("5.5 · CENSUS · the pages that mint a code for a share link are exactly these two, both gated on the break (a new one fails here until it is)",
     j(minters) === j(["src/app/markets/[id]/page.tsx", "src/app/positions/page.tsx"]), j(minters));
   ok("5.6 · CENSUS · a code reaches a share control only from those two pages, and through the position card that hands it on",
     j(refProps) === j(["src/app/markets/[id]/page.tsx", "src/app/positions/page.tsx", "src/components/markets/position-card.tsx"]), j(refProps));
+  const carrierNow = code(carrierFile);
+  ok("5.6′ CONTROL · the exact auth refusal carrier is distinct from a share prop; changed, additional or foreign carriers stay counted",
+    carrierNow.includes(authCarrier) && !hasShareCode(carrierFile, carrierNow)
+      && hasShareCode(carrierFile, carrierNow.replace('refCode={refCode}', 'refCode={otherCode}'))
+      && hasShareCode(carrierFile, carrierNow + '<ShareButton refCode={refCode} />')
+      && hasShareCode("src/app/other/page.tsx", authCarrier));
 }
 
 /* ══ §6 · LETTERS — the soliciting lines only, decided at send time ═══════════════════════════════════════════════════ */
@@ -569,7 +582,7 @@ section("10 · untouched — the dictionary, R8-C's one rule, the voting door");
     .replace("{noticeBody(endedNotice.reason", "{endedNotice.reason").replace(": t.auth.sessionIdleBody)}", ": t.auth.sessionIdleBody}");
   // S8 adds exactly the signed-in journey host. Remove only this import/slot on BOTH sides; PTR's classic mount stays pinned.
   const hostImport = ", LazyBetSheetHost";
-  const hostSlot = "{journeyShown && session && <Suspense fallback={null}><LazyBetSheetHost /></Suspense>}";
+  const hostSlot = "{journeyShown && session && <Suspense fallback={null}><LazyBetSheetHost key={session.userId} viewerId={session.userId} /></Suspense>}";
   const priorShell = (s: string) => r10b(s).replace(hostImport, "").replace(hostSlot, "");
   const sameShell = (a: string, b: string) => squash(decomment(priorShell(a))) === squash(decomment(priorShell(b)));
   const shellFile = "src/components/layout/app-shell.tsx", shellNow = raw(shellFile);
@@ -582,6 +595,8 @@ section("10 · untouched — the dictionary, R8-C's one rule, the voting door");
     shellNow.includes(hostImport) && shellNow.includes(hostSlot) && sameShell(shellNow, shellBeforeS8) && sameShell(shellBeforeS8, shellNow)
       && unrelatedShell !== shellNow && !sameShell(shellNow, unrelatedShell)
       && !sameShell(shellNow, shellNow.replace(hostSlot, hostSlot.replace("journeyShown && session", "journeyShown")))
+      && !sameShell(shellNow, shellNow.replace(hostSlot, hostSlot.replace(' key={session.userId}', '')))
+      && !sameShell(shellNow, shellNow.replace(hostSlot, hostSlot.replace('viewerId={session.userId}', 'viewerId={otherId}')))
       && shellNow.includes("<LazyPullToRefresh />") && !sameShell(shellNow, shellNow.replace("<LazyPullToRefresh />", "")));
   const PS = code("src/lib/server/proposals-service.ts");
   ok("10.3 · voting is kept by decision: castVote reads no break", !/isLockedOut|breakStateOf/.test(decl(PS, "export async function castVote(")));
