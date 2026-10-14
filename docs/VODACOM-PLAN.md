@@ -27,7 +27,39 @@ tap is still FAILED (218 ms median under load vs 150; its next cause is found an
 [`qa/claude-vodacom-continuation-20261014.md`](qa/claude-vodacom-continuation-20261014.md); the newest state is on `main`
 (the `codex/*` branches may lag). S9 preparation is on `codex/vodacom-s9`, its review fixes ready on
 `codex/vodacom-s9-fixes` (`daaffe1b3`, not on main); the S11, S12 and S13 build plans are filed on their own
-`codex/vodacom-s1N-plan` branches (§0k). S7 (home and cards, flagged)
+`codex/vodacom-s1N-plan` branches (§0k).
+
+**⏳ WAITING ON ALI — ONE LIST (2026-10-14).** Each point carries a recommended answer, so "accept the recommendations"
+is one reply that names only the exceptions; the full wording is in the source named after each.
+- **To close S8:** (1) [E3] — the QA player `mobile01`'s password in `.env.qa.local` on the machine that runs `qa:live`
+  against production (S7-PLAN A23 item 2). Nothing else of S8 waits on Ali.
+- **Up & Down (the 2026-10-14 ruling, live):** (2) are the money shares — "Up 75% · 25% Down" on the card, "Up @ 75%" on
+  /live — odds too? (recommended: no — they are shares of the money, not prices); (3) keep the projected return on the
+  round's confirm panel and on the receipt? (keep); (4) a signed-in quick bet shows the stake before the tap and the
+  projection only on the receipt — acceptable? (yes); (5) keep DESIGN_AUTHORITY §C3's two standing exceptions, the
+  receipt's projection and "If it closes UP · TZS …" after the lock? (keep); (6) noted: the Up & Down Rules §2 wording was
+  changed under "wherever this should be reflected" (v2026-10-14), no right changed.
+- **S9 (deposit, waiting, return; S9-PLAN §5l):** (7) sw "Imerudishwa" and zh "已退回" (the approved "Reversed") literally
+  say "returned" while the bodies say "held for return" — keep or change?; (8) the held and under-review bodies need your
+  sign-off; (9) the /wallet result modal's words for a deposit marked for review (L6).
+- **S10 (visitor path): 11 points** (S10-PLAN "Points for Ali"; recommended: yes to each as written). One is live for
+  every player today — a question page's sign-up and sign-in doors drop a campaign's invite code: its fix is in flight
+  as its own release.
+- **S11 (How to Play, the flip's copy): 7 points** (S11-PLAN "Points for Ali"): the share pictures' words at launch; the
+  X picture, which shows a developer badge and our chat bubble, fixed now (in flight); the privacy notice naming the
+  How-to "seen" note; when the new Terms and rules go up (recommended: prepared now, published at launch); no 14-day
+  notice; the chat's words change at launch; `/?howto=1` for the agency's links.
+- **S12 (consistency sweep): 14 points** (S12-PLAN "Points for Ali"), among them "Paid out" counting house winnings, two
+  RG sentences, one-word choices, NDIO in the Terms now or with S11, and admin colours (reject and debit in danger red,
+  approve in royal). Two Up & Down defects it found are live — the board's balance check ignores bonus, and a round in its
+  lock window disappears on a reload: fixes in flight as their own releases.
+- **S13 (measures panel): 13 points** (S13-PLAN "Points for Ali"), among them house-marked stakes against ruling D20a, the
+  agency reply's wording, the before/after definitions, who may see the panel, and S16's "measures in bounds", which the
+  plan never defined.
+- **S14–S16:** a real TZS 1,000 journey on production with a staff account; the agency's sign-off or your override; the
+  go for the launch; then at least seven real days before S16.
+
+S7 (home and cards, flagged)
 is closed and live (§0j), ✅ only at S14. S6 (the flagged shell) is ✅ — CLOSED 2026-10-12 03:01 EAT, its close record the
 first ✅ paragraph below. S6's own history (§0i): WP0–WP12 are live behind the flag, the S6 visual
 pass (rounds 1–6), its round 7 and round 8 (the owner's four rulings of 2026-10-10) are live from ALI-BLADE15 (the ✅
