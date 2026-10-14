@@ -1376,14 +1376,12 @@ check("§5j private-map matcher ACCEPTS a tone ternary (a colour is not a word)"
     ["help.faq6a", { phrase: /^Ndiyo — /, why: "the answer \"Yes —\", not the side word" }],
   ]);
   /**
-   * The decided served uses in the legal tree, by file. ⏳ The Terms' one sentence waits for its OWN commit (S12 WP2's
-   * Terms commit, with `TERMS_VERSION` and `TERMS_TEXT_SHA` and its COMPLIANCE-DECISIONS entry), kept apart so the
-   * release can hold the Terms for S11's flip-time version (S12-PLAN Open point 21) without holding this guard. While
-   * it stands, that one sentence is allowed BY NAME and nothing else in the file is; the Terms commit deletes the entry.
+   * The decided served uses in the legal tree, by file. EMPTY: no legal text uses "ndiyo" at all. The Terms §4 sentence
+   * ("Dau zote — NDIYO na HAPANA — zinakusanywa …") was allowed here by name for one commit and left with the Terms'
+   * own correction (S12 WP2, version 2026-10-14). A future entry is a read decision with its reason, like the
+   * dictionary's — never a way to park a misspelling.
    */
-  const LEGAL_NDIYO_OK = new Map<string, Allowance>([
-    ["src/app/legal/terms/page.tsx", { phrase: /Dau zote — NDIYO na HAPANA — zinakusanywa kwenye bwawa moja\./, why: "the Terms §4 sentence, corrected in the Terms' own commit (Open point 21)" }],
-  ]);
+  const LEGAL_NDIYO_OK = new Map<string, Allowance>([]);
 
   // ── the readers ─────────────────────────────────────────────────────────
   const swLeaves: Array<[string, string]> = [];

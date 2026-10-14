@@ -170,6 +170,14 @@ const MUTATIONS = [
     to: `soko la NDIYO/HAPANA na ni makubaliano`,
   },
   {
+    // The binding Terms §4 sentence as it shipped until version 2026-10-14 — allowed by name for one commit, never again.
+    name: "§12b · the Terms §4 spells the side NDIYO again (the binding sentence as it shipped until S12 WP2)",
+    section: "§12b",
+    file: p("src", "app", "legal", "terms", "page.tsx"),
+    from: `Madau yote — NDIO na HAPANA — yanakusanywa kwenye bwawa moja.`,
+    to: `Dau zote — NDIYO na HAPANA — zinakusanywa kwenye bwawa moja.`,
+  },
+  {
     // Good Swahili ("This is how it works") — and still refused: an allowance is given by reading, never by looking right.
     name: "§12a · a SEVENTH correct-looking \"ndiyo\" outside the allowlist, in a value nobody has read for it",
     section: "§12a",
