@@ -5,8 +5,17 @@
  *  2) Re-rasterise mark-color at 512 and compare RAW PIXELS with the committed
  *     public/icons/mark-color-512.png (byte-compare is not safe across libvips
  *     versions; pixel-compare is the honest test of "same image").
+ *  3) THE X CARD IS THE 1200×630 SHARE PICTURE'S MIDDLE, PIXEL FOR PIXEL (Vodacom S11 WP1). public/og/twitter-1200x600.png
+ *     must be exactly 1200×600 and equal, row y and column x, to row y+15 and column x of the held
+ *     public/og/og-1200x630.png — a lossless cut, so the tolerance is ZERO. The window is re-derived here by its own
+ *     arithmetic (never imported from the generator), so a generator that cut the wrong rows cannot agree with its own
+ *     check. Controls, each of which this comparison must REFUSE: the X card this repository served until 2026-10-14
+ *     (captured from a development page — the Next.js dev badge bottom-left and the chat bubble bottom-right; read from
+ *     git by its blob id, reported as unavailable rather than passed if the history is not there), the right cut one
+ *     row off, and the right cut with a badge-sized block painted into its bottom-left corner.
  */
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import sharp from "sharp";
 import { markSvg, maskableSvg, tileSvg } from "../src/lib/brand-mark.ts";
@@ -75,5 +84,70 @@ for (const [svg, size, out] of [
   );
 }
 
-console.log(`\nVERDICT: ${bad === 0 ? "every report/brand asset is in sync with src/lib/brand-mark.ts" : bad + " asset(s) DRIFTED from the source of truth"}`);
+console.log("\n== 3. the X card: the share picture's middle 1200×600, pixel for pixel ==");
+type Raw = { data: Buffer; width: number; height: number; channels: number };
+const rawOf = async (png: Buffer): Promise<Raw> => {
+  const { data, info } = await sharp(png).raw().toBuffer({ resolveWithObject: true });
+  return { data, width: info.width, height: info.height, channels: info.channels };
+};
+const X_W = 1200, X_H = 600, OG_H = 630;
+const X_TOP = (OG_H - X_H) / 2; // 15: the centred window, by arithmetic
+/** Every way `card` fails to be the centred 1200×600 window of `og`, or none. ⭐ ONE comparison: the real check and every
+ *  control below call it. */
+function xCardDefects(og: Raw, card: Raw): string[] {
+  const out: string[] = [];
+  if (og.width !== X_W || og.height !== OG_H) out.push(`the share picture is ${og.width}×${og.height}, not ${X_W}×${OG_H}`);
+  if (card.width !== X_W || card.height !== X_H) out.push(`the X card is ${card.width}×${card.height}, not ${X_W}×${X_H}`);
+  if (card.channels !== og.channels) out.push(`the X card has ${card.channels} channels, the share picture ${og.channels}`);
+  if (out.length > 0) return out;
+  const row = X_W * og.channels;
+  let rows = 0, first = -1, maxDelta = 0;
+  for (let y = 0; y < X_H; y++) {
+    const a = card.data.subarray(y * row, (y + 1) * row);
+    const b = og.data.subarray((y + X_TOP) * row, (y + X_TOP + 1) * row);
+    if (a.equals(b)) continue;
+    rows++;
+    if (first < 0) first = y;
+    for (let i = 0; i < row; i++) maxDelta = Math.max(maxDelta, Math.abs(a[i] - b[i]));
+  }
+  if (rows > 0) out.push(`${rows} of ${X_H} rows differ from the share picture's rows ${X_TOP}–${X_TOP + X_H - 1} (first at y=${first}, max channel delta ${maxDelta})`);
+  return out;
+}
+const ogRaw = await rawOf(readFileSync(resolve(ROOT, "public/og/og-1200x630.png")));
+const cardRaw = await rawOf(readFileSync(resolve(ROOT, "public/og/twitter-1200x600.png")));
+{
+  const defects = xCardDefects(ogRaw, cardRaw);
+  const ok = defects.length === 0;
+  if (!ok) bad++;
+  console.log(`  ${ok ? "IN SYNC " : "DRIFTED "} public/og/twitter-1200x600.png = public/og/og-1200x630.png rows ${X_TOP}–${X_TOP + X_H - 1}${ok ? "" : ` — ${defects.join("; ")}`}`);
+}
+// Controls: the comparison must refuse each of these, or it has not been shown able to fail.
+{
+  const refuse = (label: string, card: Raw | null, why = "") => {
+    if (card === null) { console.log(`  UNAVAILABLE ${label}${why ? ` — ${why}` : ""}`); return; }
+    const defects = xCardDefects(ogRaw, card);
+    const ok = defects.length > 0;
+    if (!ok) bad++;
+    console.log(`  ${ok ? "REFUSED " : "ACCEPTED"} control: ${label}${ok ? ` — ${defects[0]}` : " — the check cannot see this defect"}`);
+  };
+  /** The X card served until 2026-10-14, by its git blob id (the history holds it forever; a shallow clone may not). */
+  const OLD_X_CARD_BLOB = "164a03cf268dcd526f5aaab90918faddae10fac7";
+  let old: Raw | null = null, oldWhy = "";
+  try {
+    old = await rawOf(execFileSync("git", ["cat-file", "blob", OLD_X_CARD_BLOB], { cwd: ROOT, maxBuffer: 16 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"] }));
+  } catch { oldWhy = `git holds no blob ${OLD_X_CARD_BLOB} here (a shallow clone?) — the two controls below still run`; }
+  refuse("the X card captured from a development page (dev badge bottom-left, chat bubble bottom-right)", old, oldWhy);
+  const cut = (top: number): Raw => {
+    const row = X_W * ogRaw.channels;
+    return { ...ogRaw, height: X_H, data: Buffer.from(ogRaw.data.subarray(top * row, (top + X_H) * row)) };
+  };
+  refuse("the right window one row low (rows 16–615)", cut(X_TOP + 1));
+  const badged = cut(X_TOP);
+  for (let y = X_H - 56; y < X_H - 20; y++) {
+    for (let x = 20; x < 56; x++) badged.data.fill(0, (y * X_W + x) * ogRaw.channels, (y * X_W + x + 1) * ogRaw.channels);
+  }
+  refuse("the right window with a 36px badge painted in its bottom-left corner", badged);
+}
+
+console.log(`\nVERDICT: ${bad === 0 ? "every report/brand asset is in sync with src/lib/brand-mark.ts, and the X card is the share picture's middle" : bad + " asset(s) DRIFTED from the source of truth"}`);
 process.exitCode = bad === 0 ? 0 : 1;
