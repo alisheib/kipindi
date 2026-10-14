@@ -2,6 +2,31 @@
 
 Prepared 2026-10-14. This is a continuation of the existing Vodacom plan, not a new project. Product name: **50pick**; repository: **https://github.com/alisheib/kipindi** (legacy directory names contain kipindi). Ali authorizes continued visual/logic/animation fixes, parallel isolated work, recoverable GitHub checkpoints and verified LIVE releases. Keep the journey **STAFF_PREVIEW** until its actual S15 gates are satisfied. A saved LIVE checkpoint does not mean S8 or the whole plan is complete.
 
+## ⭐ UPDATE 2026-10-14 ~10:45 UTC (Claude, OMEGA-COMPILE01) — read this first
+
+- **LIVE is `08a8c04728219690b91eba5ae34a2ac4697f40b3`** (main `da19e5a21..08a8c0472`), read back on all three hosts:
+  exact `dpl`, health ok, DB migrated (102, unchanged), lease on the new instance, STAFF_PREVIEW, service worker = Git blob,
+  pages no-store. **`qa:chunks-prod` now PASSES 6/6 on www and apex** (the Next 16.4 owner-mark repair); production
+  `qa:live` 351/0 signed out, [E3] NOT MEASURED. Full record: `docs/VODACOM-PLAN.md` §0k, the "2026-10-14 Claude
+  continuation" bullet. **The newest notes live on `main`** — this session's pushes of `codex/*` branches were refused by the
+  auto-mode safety classifier (only the main push went through), so `origin/codex/vodacom-s8` may lag main.
+- **Closed today:** CI's 90 admin empty-state cells (owner-level fix; admin sweep 4060/0); the chunk gate; the BUSY
+  (22/0), row-23 transport (26/0) and pending-age (101/0, real 34.5 min) browser gates, each with its own new drive; the
+  refusal line now stands above the CTA in the footer; each pending band is announced once with the late offer.
+  Rows 11/18 stay NOT DRIVEN with their in-process proofs.
+- **Still open for S8:** A21 — measured on THIS machine (i7-8700, Chrome for Testing 147) at 196–288 ms vs 150 (it was
+  249–351 at da19); the first-open premium is first-use cost (V8 lazy compile, the `≈` system-font fallback, shaping, the
+  Modal's first open), and an idle body rehearsal was measured useless and reverted. Then the parity v4 baseline at the
+  live main plus one compare (the 105 served bytes of the two owner templates are the named difference; classic parity
+  reads none of it), `test:all` with the database suites, [E3], exact-tip CI (main CI 38550351294 was running).
+- **S9:** independent review of `9869dd701` says LAND WITH FIXES (H1–H3, M1–M4; review file on this machine
+  `F:\50pick-work\s9-review\REVIEW-9869dd701.md`); fixes in progress on `codex/vodacom-s9-fixes`.
+- **Owner request 2026-10-14:** remove the odds from Up & Down cards (keep Up/Down only), its own release
+  (`codex/updown-no-odds`, in progress).
+- **This machine:** F: is a spinning disk — work from SSD worktrees `C:\50pick-ssd\kipindi-int` (integration) and
+  `C:\50pick-ssd\kipindi-s8`; never recursive-delete a `.next` without unlinking `.next/dev/node_modules` junctions; a stale
+  dev cache causes `reloadPage: HMR hash mismatch` (crashes qa:live). Ali (2026-10-14): parallelise as needed on this PC.
+
 ## Release facts — 2026-10-14 checkpoint
 
 - Exact app/main/LIVE commit: `da19e5a21a4aae56c8f9dfa49eb18e74d97c6f09`, pushed to main at 06:56 UTC on Ali's explicit instruction, "before anything push live then give me prompt." This is an authorized checkpoint release with known open gates, not S8 acceptance or completion of the whole plan. There is no Prisma delta from prior main and boot reports no pending migrations.

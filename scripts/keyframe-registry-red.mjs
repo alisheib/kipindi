@@ -88,12 +88,15 @@ const MUTATIONS = [
     file: "src/app/globals.css",
     from: `@keyframes mark-breathe { 0%, 100% { transform: rotate(0deg) scale(1); } 50% { transform: rotate(0.6deg) scale(1.015); } }`,
     to: `/* relocated by the red harness */`,
+    // ⚠️ RE-ANCHORED 2026-10-14: R9-C extended this calm branch's comment past "resting state" (the press pop's
+    // `scale` note), so an anchor ending in its closing ` */` matched nothing and the plant never ran ("second anchor
+    // missing"). The anchor is now the branch's opening and the comment's unchanged first words.
     also: {
       from: `@media (prefers-reduced-motion: reduce) {
-  /* presses / votes / streaks: no transform, just the resting state */`,
+  /* presses / votes / streaks: no transform, just the resting state`,
       to: `@media (prefers-reduced-motion: reduce) {
   @keyframes mark-breathe { 0%, 100% { transform: none; } 50% { transform: none; } }
-  /* presses / votes / streaks: no transform, just the resting state */`,
+  /* presses / votes / streaks: no transform, just the resting state`,
     },
   },
   {

@@ -16,11 +16,15 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-14):** S8 (the bet sheet and low balance, flagged) is in progress (§0k), with checkpoint
-`da19e5a21a4aae56c8f9dfa49eb18e74d97c6f09` LIVE on the owner's explicit instruction. It is not S8 acceptance:
-the strict tap, final browser/parity/CI and chunk-boundary gates remain open. The portable continuation and access
-guide is [`qa/claude-vodacom-continuation-20261014.md`](qa/claude-vodacom-continuation-20261014.md).
-Current notes are on `codex/vodacom-s8`; separate S9 preparation is on `codex/vodacom-s9`. S7 (home and cards, flagged)
+**State (2026-10-14):** (as of 10:45 UTC) S8 (the bet sheet and low balance, flagged) is in progress (§0k). Release
+`08a8c04728219690b91eba5ae34a2ac4697f40b3` is LIVE and read back (§0k's 2026-10-14 Claude bullet): the chunk-boundary
+gate now passes 6/6 on both hosts, CI's 90 admin cells are fixed, the BUSY / row-23 / pending-age browser gates are
+measured, and the refusal line stands above the CTA. It is not S8 acceptance: the strict A21 tap (FAILED on this
+machine, 196–288 ms vs 150), the final parity v4 compare, the full battery with the database suites, [E3] and exact-tip
+CI remain open. The portable continuation and access guide is
+[`qa/claude-vodacom-continuation-20261014.md`](qa/claude-vodacom-continuation-20261014.md); the newest state is on `main`
+(the `codex/*` branches may lag: this session's branch pushes were refused). S9 preparation is on `codex/vodacom-s9`, its
+review fixes on `codex/vodacom-s9-fixes`. S7 (home and cards, flagged)
 is closed and live (§0j), ✅ only at S14. S6 (the flagged shell) is ✅ — CLOSED 2026-10-12 03:01 EAT, its close record the
 first ✅ paragraph below. S6's own history (§0i): WP0–WP12 are live behind the flag, the S6 visual
 pass (rounds 1–6), its round 7 and round 8 (the owner's four rulings of 2026-10-10) are live from ALI-BLADE15 (the ✅
@@ -401,6 +405,12 @@ or that are very repetitive … maximum efficiency of our time through this plan
   scratch database ports and artifact paths; stop only processes started by this session. Keep lockfile versions for
   reproducible verification. Ali also instructs us to fix encountered visual defects as we go: sizing, borders,
   spacing and inconsistent implementations of the same component. Visual and logical correctness are both release gates.
+- **OMEGA-COMPILE01 (Ali, 2026-10-14):** "this pc got good compute … parallelize as needed … we have ssd." Its F: is a
+  spinning disk (a build there took 16 minutes under load); builds, dev servers, drives and suite batches run from SSD
+  worktrees under `C:\50pick-ssd\` (own `npm ci`), in parallel as needed. The shared `F:/kipindi-locks` lock stays a
+  courtesy for other sessions' heavy jobs, never a reason to idle. Two rules that stay: file-mutating `red:*` twins run
+  one at a time with `git diff` clean after each (two in parallel once clobbered `globals.css`), and an A21 timing
+  verdict is taken on a quiet machine.
 - On the resource-constrained machine: heavy Node only through `~/heavy-node-lock.sh`, one heavy job at a time and no helper running suites beside it (this
   laptop's RAM fails); ⭐ the LIGHT profile (Ali, 2026-10-11, after the fifth crash): one in-memory dev server per lock
   job and no heap cap (a cap makes `next dev` restart and wipe its store), a 30 s cool-down, routes warmed one at a time,
@@ -895,6 +905,63 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   a07:17UTC public home follow-up visited every section in400px steps, revealing the lower content at unchanged
   viewport/document geometry. The existing Reveal observer explains why a whole-page capture before visiting
   sections can be blank; this is not a proven permanent page gap or grounds for a speculative CSS change.
+- **2026-10-14 Claude continuation, OMEGA-COMPILE01 — release `08a8c0472` (main `da19e5a21..08a8c0472`, pushed ~10:33
+  UTC on Ali's "push live what's done until now").** Not S8 acceptance: A21 and the closing gates below stay open.
+  - *Access, verified first:* GitHub `alisheib` admin/push (main unprotected); Railway alisheib07 → 50pick/production/50pick;
+    production Postgres read-only: 102 migrations, 0 unfinished (latest `20261011170000_market_predictor_extra`), 263 users,
+    263 wallets, Σ balance TZS 1,041,299.00, pending/hold/bonus 0. Main CI 38525147376 at da19: memory 535, typecheck, build
+    and first-load passed; the browser gates failed only CI's 90 admin empty-state cells (fixed below).
+  - *The machine:* F: is a spinning disk (measured ~310% busy; a build took 16 min); work moved to SSD worktrees under
+    `C:\50pick-ssd\` (build 32–73 s, 104 suites in 95–225 s). ⭐ Ali, 2026-10-14: with the SSD, parallelise as needed on this
+    PC — the one-heavy-job rule below is for the RAM-failing laptop. Two hazards recorded: `.next/dev/node_modules` holds
+    junctions into the real `node_modules` (unlink before deleting a `.next`); a dev cache from an earlier source answers
+    `reloadPage: HMR hash mismatch`, which crashes `qa:live` — clear it safely and restart.
+  - *In the release:* (1) A21 — `EstimateFigure` measures in place (a Range over its own text against its own drawn box,
+    the rung written before the first read) instead of a probe on <body>, and the unlifted sheet removes its keyboard
+    properties instead of writing `0px` — two whole-sheet (307-element) restyles gone from the tap (trace at da19: click
+    task 265–309 ms at 4× CPU). test:bet-sheet restates 9.figure-fit and adds 8.viewport-quiet; red 122/122. Real-browser
+    fit proof 27/27 (en/sw/zh × 320/360/390, long two-sided payouts; the largest fitting rung each time, tiles read). An
+    idle rehearsal render was built, measured (first tap 175.7/261.9/174.2 ms vs 172.1/247.7/160.3 ms after it ran) and
+    reverted: no gain. (2) a11y — each pending-deposit age band is announced once, with the late offer (8.live-bands).
+    (3) The refusal line and placing status stand in the footer directly above the CTA (the refusal matrix's "last rows,
+    above the CTA"; at 360×640 they had been below the fold). visual-pass-r9a's footer exception reads the footer by its
+    balanced <div>s, still one Button per branch (54/0). (4) Admin empty states align with their card title at the owner:
+    a titled `AdminCard` declares `EmptyStateSection`, `AdminTableEmpty` fills by default, the row inset comes from the card
+    (`--table-empty-inset`) — CI's 90 cells → 0, full admin sweep 4060/0. (5) `qa:chunks-prod` for Next 16.4: the two
+    `ssr:false` loaders in lazy-overlays.tsx render an inert `<template data-csr-owner>` as their fallback, and the reader
+    accepts an empty digest only inside a boundary whose whole fallback is exactly one expected owner (69 controls; local
+    build 6/6; production at da19 0/6, the negative control). ⚠️ Served bytes: every page +105 bytes (two inert templates);
+    `qa:served-skeleton` shows `+ template` ×2 per cell — the intended difference; classic parity reads none of it.
+    (6) New drives: `qa:bet-sheet-busy` 22/0, `qa:bet-sheet-transport` (rows 23) 26/0 — both 0 findings at the candidate —
+    and `qa:bet-sheet-pending-age` 101/0 (real 34.5 minutes; bands switched at 10m00 and 30m00 in en/sw/zh). Rows 11 and 18
+    stay NOT DRIVEN with their in-process proofs (test:bet-sheet §2): the dev-only divergence fixture was refused by the
+    session's safety classifier and is not pursued. (7) Instruments: bet-sheet-gates reads what the player sees (clip by
+    viewport and real clipping ancestors, line above the CTA); qa:bet-sheet-production orders the private read on the
+    page's own clock (Node's arrival time raced the heading: two false /live failures at 79ead5647).
+  - *Proof at the candidate:* typecheck 0; 82 in-process suites that read the changed files green; the 22 red twins one
+    at a time with `git diff` clean after each — 21 pass; `red:keyframes` fails identically at the untouched da19 source
+    (pre-existing anchor rot, "second anchor missing": OPEN); production build 32 s; local `qa:live` 376/0.
+  - *A21 on this machine (i7-8700, Chrome for Testing 147, 4× CPU; slower than OMEGA-DEV072's i7-12700):* da19 249–351 ms;
+    79ead5647 196–288 ms — **FAILED**, budget 150. A first-versus-second-open measurement on one page shows the first
+    opening's premium (234–272 vs 81–120 ms) sits in first-use costs (V8 lazy compile ~47 ms of 115–126 functions, the
+    `≈` glyph's system-font fallback ~35 ms, shaping ~41–56 ms, React's first render): next work.
+  - *S9:* independent root review of `9869dd701` (and the stack since S8): LAND WITH FIXES — no critical; H1 one bad row
+    stalls the 30-min sweep, H2 integer-only wallet checks (production has 0 non-integer wallet amounts, read-only), H3 four
+    existing suites red; M1 the migration's lock order can deadlock at boot; M2 copy contradicting the 2026-10-07 ruling;
+    M3/M4 test and key-shape issues. Record: `F:\50pick-work\s9-review\REVIEW-9869dd701.md` (this machine). Fixes in progress
+    on `codex/vodacom-s9-fixes`.
+  - *Owner request, 2026-10-14:* remove the odds from Up & Down cards ("keep up and down only"), its own release — in
+    progress on `codex/updown-no-odds`.
+  - *Production read-back (10:37–10:45 UTC):* all three hosts serve `dpl=08a8c04728219690b91eba5ae34a2ac4697f40b3`,
+    health ok, database reachable and migrated (102, latest unchanged), the lifecycle lease on the new instance, journey
+    STAFF_PREVIEW; service-worker bytes equal the Git blob; pages `private, no-cache, no-store`. **`qa:chunks-prod` PASS
+    6/6 on www and on the apex (123 GETs each)** — the gate that failed 0/6 at da19 is closed. Production `qa:live` 351/0
+    signed out; [E3] NOT MEASURED (no QA player credentials on this machine). Users 263; the wallet total moved
+    1,041,299.00 → 784,234.00 between 07:27 and 10:45 and is exactly the ledger's 80 BET_PLACED (−338,900), 2 BET_PAYOUT
+    (+2,435) and 63 BET_REFUND (+79,400) — ordinary play, nothing else. Main CI 38550351294 at 08a8c0472 was in progress
+    at 10:45.
+  - *Also fixed (next push):* `red:keyframes` — its "move mark-breathe into the calm branch" plant had lost its second
+    anchor when R9-C extended the comment; re-anchored on the unchanged prefix, 7/7 caught, src clean.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;
   WP8, WP9 and WP10; WP11a; WP11b; WP12 (A17's order).
 - **▶ IN FLIGHT (2026-10-13, from ~02:05 EAT) — the coordinator, a claude.ai/code cloud VM, with five builders on their
