@@ -19,6 +19,8 @@ import { publicSourceClassFor, type PublicSourceClass } from "./updown-symbols";
 // CHART-SPRINT-2 · the terminal chart's vendor-bars tier (real market OHLC; E-53-safe proxying).
 import { vendorBarsFor, VENDOR_PLAN } from "./updown-terminal-vendor";
 import { ratesFor, listPositionsForUser, listPositionsForMarket, projectedPayout } from "./market-service";
+// What a wallet can stake — the bet path's own figure (`buyPosition`'s refusal states it), for the quick-bet pre-flight.
+import { spendableOf } from "@/lib/spendable";
 // ⭐ D2 · the shape the player surfaces price a bet from. Isomorphic by design — the card is a
 // client component, this is the server, and one definition of "what would I be paid" is the
 // point (same reasoning as `updown-refund-reason.ts`).
@@ -650,13 +652,20 @@ async function latestConfirmed(assetId: string): Promise<{ price: number; quoted
  * surface a fabricated zero would DISABLE betting for a player whose money is fine —
  * B-1's "a failed read never renders as zero", pointed the other way. The gate is UX
  * only; `buyPosition` re-checks the real balance inside the wallet lock.
+ *
+ * 🔴 SPENDABLE, AND UNTIL 2026-10-14 IT WAS NOT (S12-PLAN F1). This returned `w.balance` — the
+ * cash alone — while `buyPosition` funds a stake from the cash first and the bonus wallet for the
+ * rest. A player whose bonus covered the stake read "not enough balance" on the board and on the
+ * round page (both read this) for a bet the server would have taken. ⭐ `spendableOf` is the bet
+ * path's own figure — the one its `balance_insufficient` refusal states — so the gate and the
+ * server cannot disagree about what a wallet can stake (`test:updown-spendable`, both stores).
  */
 async function walletBalanceOf(userId: string | undefined): Promise<number | null> {
   if (!userId) return null;
   try {
     const { db } = await import("./store");
     const w = await Promise.resolve(db.wallet.findByUserId(userId));
-    return w ? Number(w.balance) : null;
+    return w ? spendableOf(w) : null;
   } catch {
     return null;
   }
@@ -671,9 +680,9 @@ export async function getBoard(opts?: { assetKey?: string; durationMinutes?: num
   chainPaused: boolean;
   /** Stake bounds for the ACTIVE chain — the quick-bet stake selector's range. */
   stakeBounds: { min: number; max: number };
-  /** UD-1 · the viewer's balance for the quick-bet pre-flight. Null = signed out or
-   *  the read failed — UNKNOWN, never zero (B-1): a fabricated 0 would falsely
-   *  disable betting, so a failed read simply leaves the gate unarmed. */
+  /** UD-1 · the viewer's SPENDABLE balance (cash + bonus, `spendableOf`) for the quick-bet
+   *  pre-flight. Null = signed out or the read failed — UNKNOWN, never zero (B-1): a
+   *  fabricated 0 would falsely disable betting, so a failed read leaves the gate unarmed. */
   walletBalance: number | null;
 }> {
   const cfg = await getUpDownConfig();
@@ -1395,8 +1404,8 @@ export async function getRoundDetail(roundId: string, userId?: string): Promise<
     openEvidence: string | null; closeEvidence: string | null;
   } | null;
   minStake: number; maxStake: number;
-  /** UD-1 · viewer's balance for the quick-bet pre-flight. Null = signed out / read
-   *  failed — unknown, never zero (see `walletBalanceOf`). */
+  /** UD-1 · viewer's SPENDABLE balance (cash + bonus) for the quick-bet pre-flight. Null =
+   *  signed out / read failed — unknown, never zero (see `walletBalanceOf`). */
   walletBalance: number | null;
 } | null> {
   const r = await roundStore.get(roundId);
