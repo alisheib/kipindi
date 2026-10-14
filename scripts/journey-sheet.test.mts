@@ -244,7 +244,7 @@ async function run(impl: Impl, log: (l: string) => void, tag = "real"): Promise<
   ok("4.rate · rate-limited per IP on `sheet.ip`, a rule that exists", /rateCheckAsync\(ip, "sheet\.ip"\)/.test(code) && Object.prototype.hasOwnProperty.call(impl.rules, "sheet.ip"));
   ok("4.cache · the public half is shared-cacheable for at most 5 seconds; the viewer's half is private, no-store",
     !!sMax && Number(sMax[1]) <= 5 && /const PRIVATE = \{ "Cache-Control": "private, no-store" \};/.test(code)
-      && /const mine = await sheetForUser\(pub\.id, session\.userId, \{/.test(code) && /\{ \.\.\.pub, title, me: mine \}, \{ headers: PRIVATE \}/.test(code)
+      && /const mine = await sheetForUser\(pub\.id, session\.userId, \{/.test(code) && /\{ \.\.\.pub, title, me: \{\.\.\.mine, viewerId: session\.userId\} \}, \{ headers: PRIVATE \}/.test(code)
       && /NextResponse\.json\(pub, \{ headers: PUBLIC \}\)/.test(code), sMax?.[0] ?? "no public cache header");
   ok("4.errors · ?me=1 without a session is 401; a non-sheet is 404; a store failure is 503 — each no-store",
     /status: 401, headers: NO_STORE/.test(code) && /status: 404, headers: NO_STORE/.test(code) && /status: 503, headers: NO_STORE/.test(code)
@@ -475,9 +475,9 @@ async function seedAndRoute(impl: Impl, ok: Ok) {
   ok("8.params · the viewer's read takes the session's play clock, the side only as YES or NO, the key as given (the read checks its shape), and `open` only from open=1 — handed the public half it just read",
     /playStartedAt: session\.playStartedAt \?\? null,/.test(code) && /side: side === "YES" \|\| side === "NO" \? side : null,/.test(code)
       && /key: q\.get\("key"\),/.test(code) && /open: q\.get\("open"\) === "1" \? pub : null,/.test(code)
-      && /\{ \.\.\.pub, title, me: mine \}, \{ headers: PRIVATE \}/.test(code));
+      && /\{ \.\.\.pub, title, me: \{\.\.\.mine, viewerId: session\.userId\} \}, \{ headers: PRIVATE \}/.test(code));
   const mine = await impl.forUser("mkt_sheet0live", "usr_sheet_1", { key: KEY_MINE });
-  ok("8.key.mine · the viewer's own key names its position", j(mine.keyPosition) === j({ positionId: "pos_sheet_k1" }), j(mine.keyPosition));
+  ok("8.key.mine · the viewer's own key names its position", j(mine.keyPosition) === j({ positionId: "pos_sheet_k1", quote: {marketId: "mkt_sheet0live", side: "YES", stake: 2000} }), j(mine.keyPosition));
   const theirs = await impl.forUser("mkt_sheet0live", "usr_sheet_1", { key: KEY_THEIRS });
   ok("8.key.theirs · another player's key is answered null — a key never reveals someone else's bet", theirs.keyPosition === null, j(theirs.keyPosition));
   const house = await impl.forUser("mkt_sheet0live", "usr_sheet_1", { key: KEY_HOUSE });
@@ -517,7 +517,7 @@ async function seedAndRoute(impl: Impl, ok: Ok) {
     closedAnswers.push({ public: await impl.pub("mkt_sheet0receipt", NOW), key: await impl.closedKey("mkt_sheet0receipt", "usr_sheet_1", KEY_CLOSED) });
   }
   ok("8.closedKey.receipt · after a landed bet's question closes, resolves or voids, its public sheet stays absent but the private key read still answers its one receipt",
-    closedAnswers.every((x) => j(x) === j({ public: null, key: { public: null, me: { keyPosition: { positionId: "pos_sheet_closed" } } } })), j(closedAnswers));
+    closedAnswers.every((x) => j(x) === j({ public: null, key: { public: null, me: { keyPosition: { positionId: "pos_sheet_closed", quote: {marketId: "mkt_sheet0receipt", side: "YES", stake: 2000} } } } })), j(closedAnswers));
   const hidden = await Promise.all([
     impl.closedKey("mkt_sheet0receipt", "usr_sheet_2", KEY_CLOSED),
     impl.closedKey("mkt_sheet0live", "usr_sheet_1", KEY_HOUSE),
@@ -530,7 +530,7 @@ async function seedAndRoute(impl: Impl, ok: Ok) {
       && (await impl.closedKey("mkt_sheet0receipt", "usr_sheet_1", "not-a-uuid")) === null
       && (await impl.closedKey("not-an-id", "usr_sheet_1", KEY_CLOSED)) === null);
   ok("8.closedKey.route · only a signed-in me read may use the missing-public-sheet key fallback, before the 404, and its response is private/no-store",
-    /if \(!pub\) \{\s*const receipt = me && session \? await sheetClosedKeyRead\(id, session\.userId, q\.get\("key"\)\) : null;\s*if \(receipt\) return NextResponse\.json\(receipt, \{ headers: PRIVATE \}\);\s*return NextResponse\.json\(\{ error: "NOT_FOUND" \}, \{ status: 404, headers: NO_STORE \}\);\s*\}/.test(code));
+    /if \(!pub\) \{\s*const receipt = me && session \? await sheetClosedKeyRead\(id, session\.userId, q\.get\("key"\)\) : null;\s*if \(receipt && session\) return NextResponse\.json\(\{\.\.\.receipt, me: \{\.\.\.receipt\.me, viewerId: session\.userId\}\}, \{ headers: PRIVATE \}\);\s*return NextResponse\.json\(\{ error: "NOT_FOUND" \}, \{ status: 404, headers: NO_STORE \}\);\s*\}/.test(code));
   const findKey = positionStore.findByIdempotencyKey;
   positionStore.findByIdempotencyKey = () => { throw new Error("planted key read outage"); };
   let keyOutageThrown = false;
@@ -568,7 +568,7 @@ if (!PROVE_RED) {
     { name: "the rate limit removed", expect: /^4\.rate /, impl: swap('rateCheckAsync(ip, "sheet.ip")', "({ allowed: true })") },
     { name: "the public half cached for a minute", expect: /^4\.cache /, impl: swap("s-maxage=5,", "s-maxage=60,") },
     { name: "the viewer's half served with the public cache header", expect: /^4\.cache /,
-      impl: swap("NextResponse.json({ ...pub, title, me: mine }, { headers: PRIVATE })", "NextResponse.json({ ...pub, title, me: mine }, { headers: PUBLIC })") },
+      impl: swap("NextResponse.json({ ...pub, title, me: {...mine, viewerId: session.userId} }, { headers: PRIVATE })", "NextResponse.json({ ...pub, title, me: {...mine, viewerId: session.userId} }, { headers: PUBLIC })") },
     { name: "a 503 that a cache may keep", expect: /^4\.errors /, impl: swap("status: 503, headers: NO_STORE", "status: 503, headers: PUBLIC") },
     // §5 · the card's figures (S7 WP3 step 5)
     { name: "the card's figures drop the selection close (a closed market still prices its card)", expect: /^5[.]figures /,
@@ -650,7 +650,7 @@ if (!PROVE_RED) {
     { name: "a closed question hides its landed receipt", expect: /^8[.]closedKey[.]receipt /,
       impl: { ...REAL, closedKey: async () => null } },
     { name: "the closed-key route uses a public cache header", expect: /^8[.]closedKey[.]route /,
-      impl: swap("if (receipt) return NextResponse.json(receipt, { headers: PRIVATE });", "if (receipt) return NextResponse.json(receipt, { headers: PUBLIC });") },
+      impl: swap("if (receipt && session) return NextResponse.json({...receipt, me: {...receipt.me, viewerId: session.userId}}, { headers: PRIVATE });", "if (receipt && session) return NextResponse.json({...receipt, me: {...receipt.me, viewerId: session.userId}}, { headers: PUBLIC });") },
     { name: "the closed-key lookup outage is answered as no bet", expect: /^8[.]closedKey[.]outage /,
       impl: { ...REAL, closedKey: async (m, u, k) => { try { return await REAL.closedKey(m, u, k); } catch { return { public: null, me: { keyPosition: null } }; } } } },
     { name: "another player's key answered", expect: /^8[.]key[.]theirs /,

@@ -49,7 +49,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const pub = await sheetPublic(id);
     if (!pub) {
       const receipt = me && session ? await sheetClosedKeyRead(id, session.userId, q.get("key")) : null;
-      if (receipt) return NextResponse.json(receipt, { headers: PRIVATE });
+      if (receipt && session) return NextResponse.json({...receipt, me: {...receipt.me, viewerId: session.userId}}, { headers: PRIVATE });
       return NextResponse.json({ error: "NOT_FOUND" }, { status: 404, headers: NO_STORE });
     }
     if (!me || !session) return NextResponse.json(pub, { headers: PUBLIC });
@@ -62,7 +62,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     });
     const { locale } = await getServerT();
     const title = await sheetTitleFor(pub.id, locale);
-    return NextResponse.json({ ...pub, title, me: mine }, { headers: PRIVATE });
+    return NextResponse.json({ ...pub, title, me: {...mine, viewerId: session.userId} }, { headers: PRIVATE });
   } catch (err) {
     console.error("[markets/sheet] read failed", { id, err });
     return NextResponse.json({ error: "temporarily unavailable" }, { status: 503, headers: NO_STORE });

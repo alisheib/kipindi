@@ -58,7 +58,8 @@ import { dict } from "../src/lib/i18n-dict.ts";
 import { OPTOUT_PATH, composeMarketing, footerMeasurementToken } from "../src/lib/marketing/footer.ts";
 import { REFEREE_PROMISE_REWORDED_IN } from "../src/lib/legal/privacy-referees.ts";
 import { PENDING_BET_KEY, PENDING_BET_TTL_MS, readMarker, writeMarker } from "../src/lib/journey/pending-bet.ts";
-import { pendingIntents, pendingStorage } from "../src/lib/journey/sheet-storage.ts";
+import { ownedSheetIntents, saveOwnedSheet, sheetOwnerKey, saveSheetSelection, quarantineLegacySheet, unresolvedLegacySheet, resolveLegacySheet,
+  SHEET_OWNER_PREFIX, SHEET_LEGACY_KEY, type TabStorage } from "../src/lib/journey/sheet-owned-storage.ts";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
@@ -81,11 +82,12 @@ const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[
 // it to the code). PRIVACY_EN_SHA re-pinned 2026-10-11 from the measured English block (99219bf5625a -> 8c519b652ed0 -> 2009d2e3707b: the selfie named and the images erased with the record, reviews PC-2).
 // 2026-10-13 · S8 WP7b: §7 discloses the necessary bet/link and unresolved request identities in tab storage;
 // §4m proves the marker's field/expiry/recovery contract; the separate necessary-state paragraph measures as 6cb5b4f816b1.
-const PRIVACY_VERSION = "2026-10-13";
+// 2026-10-14 · owner partition: selection expiry stays 24h; unresolved owned keys and complete legacy archive do not expire by age.
+const PRIVACY_VERSION = "2026-10-14";
 /** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one.
  *  (Re-pinned 2026-10-09 within v2026-10-09: §4's SMS gateway bullet names no company — COMPLIANCE-DECISIONS "Privacy
  *  v2026-10-09", item 5.) */
-const PRIVACY_EN_SHA = "6cb5b4f816b1";
+const PRIVACY_EN_SHA = "ec751bf6da90";
 /** Every cookie name the code writes, as of v2026-09-30. A new one must be described in §7 first. */
 const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-density", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_preview", "kp_revoked", "kp_session"];
 // ⭐ `_ga` / `_ga_W66WRL67MQ` joined the census 2026-09-15.2: gtag.js SETS them, and our code EXPIRES them when consent is
@@ -1274,9 +1276,9 @@ console.log(String.fromCharCode(10) + "§4l · v2026-10-11 · §5: on erasure th
 {
   const hours = PENDING_BET_TTL_MS / (60 * 60 * 1000);
   const words: Record<Loc, string[]> = {
-    en: ["sessionStorage", "question, side and amount you chose", "referral and campaign tags", "random request ids", "unfinished bets", "reload", "confirmed bet", "closing the tab"],
-    sw: ["sessionStorage", "swali, upande na kiasi ulichochagua", "lebo za mwaliko na kampeni", "vitambulisho vya maombi", "bila mpangilio", "bado hazijathibitishwa", "kupakia ukurasa upya", "lililothibitishwa", "ukifunga kichupo"],
-    zh: ["sessionStorage", "问题、方向和金额", "推荐与推广标签", "随机请求标识符", "尚未完成投注", "重新加载页面", "已确认投注", "关闭标签页"],
+    en: ["sessionStorage", "question, side and amount you chose", "referral and campaign tags", "random request ids", "unfinished bets", "reload", "confirmed bet", "closing the tab", "account identifier", "no 24-hour expiry", "same account after the recovery wait", "another account", "complete earlier entries", "confirmed receipt details, until closing the tab", "same question, side and amount"],
+    sw: ["sessionStorage", "swali, upande na kiasi ulichochagua", "lebo za mwaliko na kampeni", "vitambulisho vya maombi", "bila mpangilio", "bado hazijathibitishwa", "kupakia ukurasa upya", "lililothibitishwa", "ukifunga kichupo", "kitambulisho cha akaunti", "haziishi baada ya saa 24", "akaunti ileile", "akaunti nyingine", "rekodi kamili za awali", "taarifa zozote za risiti zilizothibitishwa, hadi ukifunga kichupo", "swali, upande na kiasi kilekile"],
+    zh: ["sessionStorage", "问题、方向和金额", "推荐与推广标签", "随机请求标识符", "尚未完成投注", "重新加载页面", "已确认投注", "关闭标签页", "账户标识符", "没有 24 小时的过期限制", "同一账户在恢复等待期后成功核查", "其他账户", "完整旧记录", "已确认的收据详情，直到关闭标签页", "问题、方向和金额均与旧记录一致"],
   };
   const tabWordsDefects = (page: string, key = PENDING_BET_KEY, lifetimeHours = hours): string[] => {
     const d: string[] = [];
@@ -1284,13 +1286,13 @@ console.log(String.fromCharCode(10) + "§4l · v2026-10-11 · §5: on erasure th
     const lifetime: Record<Loc, string> = { en: `at most ${lifetimeHours} hours`, sw: `usiozidi saa ${lifetimeHours}`, zh: `最长 ${lifetimeHours} 小时` };
     for (const l of LOCS) {
       const text = section(bl[l], "7").replace(/\s+/g, " ").toLowerCase();
-      for (const word of [key, lifetime[l], ...words[l]]) if (!text.includes(word.toLowerCase())) d.push(`${l}: ${word}`);
+      for (const word of [key, SHEET_OWNER_PREFIX, SHEET_LEGACY_KEY, lifetime[l], ...words[l]]) if (!text.includes(word.toLowerCase())) d.push(`${l}: ${word}`);
     }
     return d;
   };
   ok("§4m en/sw/zh §7 name the necessary tab key, sessionStorage, its code's own lifetime, chosen question/side/amount, referral/campaign tags, random unfinished-request identities, reload recovery and confirmed/tab-close removal",
     Number.isInteger(hours) && hours > 0 && hours <= 24 && tabWordsDefects(pageSrc).length === 0, tabWordsDefects(pageSrc).join("; "), `${PENDING_BET_KEY} · ${hours} hours`);
-  const missingZh = pageSrc.replace("问题、方向和金额", "问题和方向");
+  const missingZh = pageSrc.replaceAll("问题、方向和金额", "问题和方向");
   ok("§4m control · removing the chosen amount from the Chinese disclosure is reported, without changing either other language",
     missingZh !== pageSrc && tabWordsDefects(missingZh).some((d) => d.startsWith("zh:")) && !tabWordsDefects(missingZh).some((d) => !d.startsWith("zh:")));
   ok("§4m control · changing only the stored key or the lifetime leaves a false disclosure in every language",
@@ -1302,30 +1304,46 @@ console.log(String.fromCharCode(10) + "§4l · v2026-10-11 · §5: on erasure th
     { ref: "referral", invite: "invite", utm: { utm_source: "source", utm_campaign: "campaign" } }), nowMs)!;
   const unfinished = Array.from({ length: 20 }, (_, i) => ({
     quote: { marketId: `mkt_privacy${i}`, side: (i % 2 === 0 ? "YES" : "NO") as "YES" | "NO", stake: 500 + i },
-    key: `01234567-89ab-4cde-8fab-${i.toString(16).padStart(12, "0")}`, at: nowMs,
+    key: `01234567-89ab-4cde-8fab-${i.toString(16).padStart(12, "0")}`, at: nowMs - 2 * PENDING_BET_TTL_MS,
   }));
-  const storageDefects = (serialize = pendingStorage, resume = pendingIntents, markerRead = readMarker): string[] => {
+  const storageDefects = (serialize = saveOwnedSheet, resume = ownedSheetIntents, markerRead = readMarker): string[] => {
     const d: string[] = [];
-    const raw = serialize(selected, unfinished);
-    const parsed = raw ? JSON.parse(raw) : null;
-    if (!parsed || parsed.bet !== "mkt_privacychosen.YES.500" || parsed.at !== nowMs || parsed.ref !== "referral" || parsed.invite !== "invite"
+    const bytes = new Map<string, string>();
+    const store: TabStorage = {getItem: k => bytes.get(k) ?? null, setItem: (k, v) => {bytes.set(k, v);}, removeItem: k => {bytes.delete(k);}};
+    const owner = "usr_privacyowner", ownerKey = sheetOwnerKey(owner)!;
+    saveSheetSelection(store, JSON.stringify(selected));
+    const raw = store.getItem(PENDING_BET_KEY), parsed = raw ? JSON.parse(raw) : null;
+    if (!parsed || parsed.bet !== "mkt_privacychosen.YES.500" || parsed.at !== nowMs || parsed.ref !== selected.ref || parsed.invite !== selected.invite
       || parsed.utm?.utm_source !== "source" || parsed.utm?.utm_campaign !== "campaign") d.push("chosen fields and attribution");
-    if (JSON.stringify(resume(raw, nowMs)) !== JSON.stringify(unfinished)) d.push("unfinished quotes and keys survive a reload after changing questions");
-    const retired = serialize(null, unfinished.slice(1));
-    if (resume(retired, nowMs).some((i) => i.key === unfinished[0].key) || resume(retired, nowMs).length !== unfinished.length - 1) d.push("retiring one confirmed key leaves the other unfinished requests");
-    if (serialize(null, []) !== null) d.push("the envelope is removed once it has no chosen link or unfinished request");
-    if (markerRead(raw, nowMs + PENDING_BET_TTL_MS) !== null || resume(raw, nowMs + PENDING_BET_TTL_MS).length !== 0
+    if (!serialize(store, owner, unfinished) || JSON.stringify(resume(store.getItem(ownerKey), owner)) !== JSON.stringify(unfinished)) d.push("unfinished quotes and keys survive a reload beyond selection expiry");
+    const oldOwned = store.getItem(ownerKey);
+    saveOwnedSheet(store, "usr_privacyother", [unfinished[0]]);
+    if (store.getItem(ownerKey) !== oldOwned) d.push("another account never removes unfinished keys");
+    serialize(store, owner, unfinished.slice(1));
+    const retired = resume(store.getItem(ownerKey), owner);
+    if (retired.some((i) => i.key === unfinished[0].key) || retired.length !== unfinished.length - 1) d.push("retiring one confirmed key leaves the other unfinished requests");
+    if (markerRead(raw, nowMs + PENDING_BET_TTL_MS) !== null
       || markerRead(raw, nowMs + PENDING_BET_TTL_MS - 1) === null) d.push("the exact lifetime boundary");
+    const first = unfinished[0], legacy = writeMarker({kind: "market", id: first.quote.marketId, side: first.quote.side, stake: first.quote.stake}, first.at, {}, first.key);
+    store.setItem(PENDING_BET_KEY, legacy);
+    if (!quarantineLegacySheet(store) || !saveSheetSelection(store, null) || unresolvedLegacySheet(store)[0]?.key !== first.key) d.push("expired historic key survives selection rewrite");
+    if (!resolveLegacySheet(store, owner, first.key, {ownerId: owner, positionId: "pos_privacy", quote: first.quote}) || unresolvedLegacySheet(store).length !== 0
+      || !store.getItem(SHEET_LEGACY_KEY)?.includes(first.key)) d.push("complete historic bytes and owned positive proof remain until tab close");
     return d;
   };
-  ok("§4m the real serializer preserves only chosen-link fields/tags and every unresolved quote/key across a reload; retiring a confirmed entry preserves the others, an empty envelope is removed, and entries expire at the exact code lifetime",
+  ok("§4m actual storage separates the 24h selection from account-owned unresolved keys, preserves other accounts and complete legacy bytes, and retires only the resolved pending entry",
     storageDefects().length === 0, storageDefects().join("; "));
   ok("§4m control · dropping the random request key from the serialized bytes is reported",
-    storageDefects((choice, rows) => { const raw = pendingStorage(choice, rows); return raw ? raw.replace(/,"k":"[^"]*"/g, "") : raw; }).includes("unfinished quotes and keys survive a reload after changing questions"));
+    storageDefects((store, owner, rows) => saveOwnedSheet(store, owner, rows.map(r => ({...r, key: ""})))).includes("unfinished quotes and keys survive a reload beyond selection expiry"));
   ok("§4m control · retaining only sixteen unresolved requests silently loses identities and is reported",
-    storageDefects(pendingStorage, (raw, at) => pendingIntents(raw, at).slice(0, 16)).includes("unfinished quotes and keys survive a reload after changing questions"));
+    storageDefects(saveOwnedSheet, (raw, owner) => ownedSheetIntents(raw, owner).slice(0, 16)).includes("unfinished quotes and keys survive a reload beyond selection expiry"));
   ok("§4m control · a marker whose lifetime check is bypassed is reported",
-    storageDefects(pendingStorage, pendingIntents, (raw, _at) => readMarker(raw, nowMs)).includes("the exact lifetime boundary"));
+    storageDefects(saveOwnedSheet, ownedSheetIntents, (raw, _at) => readMarker(raw, nowMs)).includes("the exact lifetime boundary"));
+  for (const [name, from, to] of [["owner namespace", SHEET_OWNER_PREFIX, "kp-other-intents:"], ["legacy namespace", SHEET_LEGACY_KEY, "kp-other-legacy"],
+    ["unfinished lifetime", "no 24-hour expiry", "a 24-hour expiry"], ["archive receipt lifetime", "confirmed receipt details, until closing the tab", "confirmed receipt details for 24 hours"]]) {
+    const changed = pageSrc.replace(from, to);
+    ok(`§4m control · altered ${name} is reported in the actual disclosure`, changed !== pageSrc && tabWordsDefects(changed).some(d => d.startsWith("en:")));
+  }
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);

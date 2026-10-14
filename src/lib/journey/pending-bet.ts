@@ -94,6 +94,8 @@ export type PendingBetMarker = {
   at: number;
   /** The random request id, retained only while that bet can still be in flight (S8 A3). */
   k?: string;
+  /** Signed-in selections are scoped; a keyless guest selection can cross its own sign-in. */
+  owner?: string;
   ref?: string;
   invite?: string;
   utm?: Record<string, string>;
@@ -122,7 +124,7 @@ export function attributionFrom(search: URLSearchParams): Pick<PendingBetMarker,
 }
 
 /** The marker to store when a bet is chosen, as the string sessionStorage holds. */
-export function writeMarker(bet: PendingBet, nowMs: number, attribution: Pick<PendingBetMarker, "ref" | "invite" | "utm"> = {}, key?: string): string {
+export function writeMarker(bet: PendingBet, nowMs: number, attribution: Pick<PendingBetMarker, "ref" | "invite" | "utm"> = {}, key?: string, owner?: string): string {
   // Callers also include a recovered historic marker: validate NEW writes without discarding its bet, time or key.
   const search = new URLSearchParams();
   if (attribution.ref) search.set("ref", attribution.ref);
@@ -130,6 +132,7 @@ export function writeMarker(bet: PendingBet, nowMs: number, attribution: Pick<Pe
   for (const k of UTM_KEYS) if (attribution.utm?.[k]) search.set(k, attribution.utm[k]);
   const m: PendingBetMarker = { bet: formatBetParam(bet), at: nowMs, ...attributionFrom(search) };
   if (typeof key === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)) m.k = key;
+  if (typeof owner === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(owner)) m.owner = owner;
   return JSON.stringify(m);
 }
 
@@ -144,6 +147,10 @@ export function readMarker(raw: string | null | undefined, nowMs: number): Pendi
   if (typeof m.at !== "number" || !Number.isFinite(m.at)) return null;
   if (m.at > nowMs + FUTURE_TOLERANCE_MS || nowMs - m.at >= PENDING_BET_TTL_MS) return null;
   const out: PendingBetMarker = { bet: m.bet, at: m.at };
+  if (m.owner !== undefined) {
+    if (typeof m.owner !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(m.owner)) return null;
+    out.owner = m.owner;
+  }
   if (typeof m.k === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(m.k)) out.k = m.k;
   if (typeof m.ref === "string" && CODE.test(m.ref)) out.ref = m.ref;
   if (typeof m.invite === "string" && CODE.test(m.invite)) out.invite = m.invite;
@@ -162,8 +169,8 @@ export function readMarker(raw: string | null | undefined, nowMs: number): Pendi
  * ⭐ THE STAKE THE SHEET MAY PREFILL: the URL's stake only when this browser's own marker names the SAME bet (id, side
  * and stake) and is under 24 hours old; otherwise null — the sheet opens at the market's minimum.
  */
-export function stakeFromUrl(bet: PendingBet | null, markerRaw: string | null | undefined, nowMs: number): number | null {
+export function stakeFromUrl(bet: PendingBet | null, markerRaw: string | null | undefined, nowMs: number, owner?: string): number | null {
   if (!bet || bet.stake === null) return null;
   const m = readMarker(markerRaw, nowMs);
-  return m && m.bet === formatBetParam(bet) ? bet.stake : null;
+  return m && !m.k && (m.owner === undefined || m.owner === owner) && m.bet === formatBetParam(bet) ? bet.stake : null;
 }

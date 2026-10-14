@@ -87,7 +87,7 @@ async function verdict(w: World): Promise<string[]> {
   const legacy = JSON.stringify({ bet: `${M}.YES.5000`, at: now, k: key, ref: "abc_123", invite: "x".repeat(30), utm: { utm_source: "friend" } });
   const old = PB.readMarker(legacy, now);
   ok("marker.old-readable", old?.bet === `${M}.YES.5000` && old.k === key && old.ref === "abc_123" && old.invite === "x".repeat(30)
-    && PB.stakeFromUrl(bet, legacy, now) === 5000);
+    && PB.stakeFromUrl(bet, legacy, now) === null);
   const rewritten = PB.readMarker(PB.writeMarker(bet, now, old, key), now);
   ok("marker.new-write", rewritten?.bet === old.bet && rewritten.k === key && rewritten.utm?.utm_source === "friend"
     && !rewritten.ref && !rewritten.invite);

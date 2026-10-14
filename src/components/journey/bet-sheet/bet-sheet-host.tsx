@@ -3,12 +3,14 @@
 /** S8's controller. The sheet draws pure frames; only an explicit commit tap calls the existing money action. */
 import { Component, useCallback, useEffect, useLayoutEffect, useRef, useState, useTransition, type ErrorInfo, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { flushSync } from "react-dom";
 import { buyPositionAction } from "@/app/markets/actions";
 import { useT } from "@/lib/i18n";
 import { isActionRedirect } from "@/lib/action-redirect";
 import { playPressPop } from "@/lib/press-feedback";
 import { attributionFrom, pendingBetFrom, readMarker, writeMarker, stakeFromUrl, PENDING_BET_KEY, type PendingBetMarker } from "@/lib/journey/pending-bet";
-import { pendingIntents, pendingStorage, PENDING_STORAGE_MAX_BYTES } from "@/lib/journey/sheet-storage";
+import { ownedSheetIntents, quarantineLegacySheet, unresolvedLegacySheet, resolveLegacySheet, saveOwnedSheet, saveSheetSelection, sheetOwnerKey, type KeyReceipt } from "@/lib/journey/sheet-owned-storage";
+import type { StoredIntent } from "@/lib/journey/sheet-storage";
 import { parseSheetSeed } from "@/lib/journey/sheet-seed";
 import { sendFunnel } from "@/lib/journey/funnel-beacon";
 import { answerOf, refusalOutcome, settleRefusal, type Reread } from "@/lib/journey/sheet-refusal";
@@ -26,8 +28,8 @@ type Active = {
   offset: number; serial: number; pathname: string; pushed: boolean; dropSide: boolean;
   settled: Settled | null; estimateUpdated: boolean; lowCounted: boolean;
 };
-type Pending = { intent: SheetIntent; seed: SheetSeed | null; at: number; everDoubt: boolean; lastRead: number };
-type Truth = { reread: Reread; seed: SheetSeed | null; viewer: SheetViewer | null; keyPosition: { positionId: string } | null; title: string | null };
+type Pending = { intent: SheetIntent; seed: SheetSeed | null; at: number; everDoubt: boolean; lastRead: number; owner: string; epoch: number };
+type Truth = { reread: Reread; seed: SheetSeed | null; viewer: SheetViewer | null; keyPosition: { positionId: string; quote: Quote } | null; title: string | null };
 const identity = (q: Pick<Quote, "marketId" | "side">) => `${q.marketId}.${q.side}`;
 const activeIdentity = (a: Active) => identity({ marketId: a.seed.id, side: a.side });
 
@@ -46,7 +48,7 @@ class SheetBoundary extends Component<{ children: ReactNode; onFailed: () => voi
   render() { return this.state.failed ? null : this.props.children; }
 }
 
-export function BetSheetHost() {
+export function BetSheetHost({viewerId}: {viewerId: string}) {
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams();
@@ -69,6 +71,13 @@ export function BetSheetHost() {
   const mounted = useRef(true);
   const lastOdds = useRef(0);
   const pageLoadedAt = useRef(0);
+  const ownerEpoch = useRef(0);
+  const ownerInvalid = useRef(false);
+  const recoveryReady = useRef(false);
+  const legacy = useRef<StoredIntent[]>([]);
+  const legacyReads = useRef(new Set<string>());
+  const recoveryBlocked = useCallback((q: Pick<Quote, "marketId" | "side">) => !recoveryReady.current || ownerInvalid.current
+    || legacy.current.some((e) => e.quote.marketId === q.marketId && e.quote.side === q.side), []);
 
   useLayoutEffect(() => {
     mounted.current = true;
@@ -77,39 +86,56 @@ export function BetSheetHost() {
 
   const revise = useCallback(() => { if (mounted.current) setRevision((v) => v + 1); }, []);
   const show = useCallback((value: Active | null) => { current.current = value; if (mounted.current) setActive(value); }, []);
+  const invalidateOwner = useCallback(() => {
+    if (ownerInvalid.current) return;
+    ownerInvalid.current = true; recoveryReady.current = false; ++ownerEpoch.current; ++generation.current;
+    pending.current.clear(); closedReceipts.current.clear(); requests.current.clear(); readingKeys.current.clear();
+    readSequences.current.clear(); lastView.current = null; show(null);
+    // Keep the current account's cookie. A document refresh replaces cached chrome; old durable keys stay put.
+    window.location.reload();
+  }, [show]);
   const save = useCallback(() => {
-    if (!mounted.current) return false;
+    if (!mounted.current || !recoveryReady.current || ownerInvalid.current) return false;
     try {
       const items = [...pending.current.values()].filter((p) => p.intent.phase !== "retry").map((p) => ({ quote: p.intent.quote, key: p.intent.key, at: p.at }));
-      const value = pendingStorage(selected.current, items);
-      if (value !== null && value.length > PENDING_STORAGE_MAX_BYTES) return false;
-      if (value === null) window.sessionStorage.removeItem(PENDING_BET_KEY);
-      else window.sessionStorage.setItem(PENDING_BET_KEY, value);
-      return true;
-    } catch { return false; /* the caller refuses a new commit unless its identity survives a reload */ }
-  }, []);
+      const stored = quarantineLegacySheet(window.sessionStorage)
+        && saveSheetSelection(window.sessionStorage, selected.current ? JSON.stringify(selected.current) : null)
+        && saveOwnedSheet(window.sessionStorage, viewerId, items);
+      if (!stored) recoveryReady.current = false;
+      return stored;
+    } catch { recoveryReady.current = false; return false; /* a new commit requires a readable durable identity */ }
+  }, [viewerId]);
   const stripAddress = useCallback((dropSide: boolean) => {
     if (!mounted.current) return;
     window.history.replaceState(window.history.state, "", window.location.pathname + withoutBet(window.location.search, dropSide) + window.location.hash);
   }, []);
 
   const readTruth = useCallback(async (quote: Pick<Quote, "marketId" | "side">, options: { key?: string; open?: boolean } = {}): Promise<Truth> => {
+    const epoch = ownerEpoch.current;
     const query = new URLSearchParams({ me: "1", side: quote.side });
     if (options.key) query.set("key", options.key);
     if (options.open) query.set("open", "1");
     const failed: Truth = { reread: { state: "failed" }, seed: null, viewer: null, keyPosition: null, title: null };
     try {
       const response = await fetch(`/api/markets/${encodeURIComponent(quote.marketId)}/sheet?${query}`, { cache: "no-store" });
-      if (response.status === 404) return { ...failed, reread: { state: "read", market: { found: false }, viewer: null } };
+      if (!mounted.current || epoch !== ownerEpoch.current || ownerInvalid.current) return failed;
+      // A bare 404 names no authenticated owner. It cannot retire an outstanding key as an owned null receipt.
+      if (response.status === 404) return failed;
       if (response.status === 401) {
-        if (mounted.current && options.open && current.current?.seed.id === quote.marketId) router.push(`/auth/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}` as never);
+        // Known auth loss ends this runtime epoch too; a late A answer cannot revive it after sign-out.
+        invalidateOwner();
         return failed;
       }
       if (!response.ok) return failed;
       const body = await response.json();
+      if (!mounted.current || epoch !== ownerEpoch.current || ownerInvalid.current) return failed;
+      if (typeof body?.me?.viewerId !== "string") return failed;
+      if (body.me.viewerId !== viewerId) { invalidateOwner(); return failed; }
       if (options.key && (!body?.me || !Object.prototype.hasOwnProperty.call(body.me, "keyPosition"))) return failed;
       if (options.key && body.me.keyPosition !== null && !(typeof body.me.keyPosition?.positionId === "string" && body.me.keyPosition.positionId.length > 0 && body.me.keyPosition.positionId.length <= 128)) return failed;
-      const keyPosition = typeof body?.me?.keyPosition?.positionId === "string" && body.me.keyPosition.positionId ? { positionId: body.me.keyPosition.positionId } : null;
+      const kp = body?.me?.keyPosition;
+      if (kp !== null && options.key && (!kp?.quote || kp.quote.marketId !== quote.marketId || kp.quote.side !== quote.side || !Number.isSafeInteger(kp.quote.stake) || kp.quote.stake <= 0)) return failed;
+      const keyPosition = typeof kp?.positionId === "string" && kp.positionId ? {positionId: kp.positionId, quote: kp.quote as Quote} : null;
       // A terminal question still answers a scoped key lookup; it never becomes a new bettable seed.
       if (body?.public === null) return { ...failed, keyPosition, reread: { state: "read", market: { found: false }, viewer: null } };
       const seed = parseSheetSeed({ ...body, v: 1 });
@@ -117,7 +143,7 @@ export function BetSheetHost() {
       const viewer: SheetViewer = { spendable: typeof body.me.spendable === "number" && Number.isFinite(body.me.spendable) ? body.me.spendable : null, heldSides: Array.isArray(body.me.heldSides) ? body.me.heldSides.filter((s: unknown) => s === "YES" || s === "NO") : [], bonusWager: body.me.bonusWager ?? null, facts: body.me.facts ?? null };
       return { seed, viewer, keyPosition, title: typeof body.title === "string" ? body.title : null, reread: { state: "read", market: { found: true, bettable: seed.bettable }, viewer } };
     } catch { return failed; }
-  }, [router]);
+  }, [router, viewerId, invalidateOwner]);
 
   const refreshed = useCallback(async (open = false) => {
     const before = current.current;
@@ -140,12 +166,17 @@ export function BetSheetHost() {
   }, [readTruth, show]);
 
   const receipt = useCallback((record: Pending, positionId: string, replayed: boolean) => {
-    if (!mounted.current) return;
+    if (!mounted.current || record.owner !== viewerId || record.epoch !== ownerEpoch.current || ownerInvalid.current) return;
     const id = identity(record.intent.quote);
     if (pending.current.get(id)?.intent.key !== record.intent.key) return;
     pending.current.delete(id);
     const a = current.current;
-    if (selected.current?.k === record.intent.key) selected.current = null;
+    const oldSelected = selected.current ? {...selected.current} : null;
+    if (selected.current?.owner === viewerId && selected.current.bet === `${record.intent.quote.marketId}.${record.intent.quote.side}.${record.intent.quote.stake}`) selected.current = null;
+    if (!save()) {
+      pending.current.set(id, record); selected.current = oldSelected; recoveryReady.current = false;
+      revise(); return;
+    }
     const settled: Settled = { row: replayed ? 24 : 25, reason: null, view: { kind: "receipt", positionId, replayed, quote: record.intent.quote }, retry: "none", doubt: "end", marker: "clear" };
     if (a && activeIdentity(a) === id) {
       stripAddress(a.dropSide);
@@ -162,7 +193,6 @@ export function BetSheetHost() {
       if (bet?.kind === "market" && identity({ marketId: bet.id, side: bet.side }) === id) stripAddress(true);
       window.history.pushState(window.history.state, "", window.location.pathname + window.location.search + window.location.hash);
     }
-    save();
     try {
       const watches: unknown = JSON.parse(window.localStorage.getItem("50pick-notify-markets") ?? "[]");
       const ids = Array.isArray(watches) ? watches.filter((v) => typeof v === "string") : [];
@@ -172,7 +202,7 @@ export function BetSheetHost() {
     window.dispatchEvent(new Event("50pick:refresh-notifications"));
     void refreshed();
     revise();
-  }, [refreshed, revise, save, show, stripAddress]);
+  }, [refreshed, revise, save, show, stripAddress, viewerId]);
 
   const readKey = useCallback(async (record: Pending) => {
     if (!mounted.current) return;
@@ -183,18 +213,47 @@ export function BetSheetHost() {
     record.lastRead = readAtMs;
     try {
       const truth = await readTruth(record.intent.quote, { key });
-      if (!mounted.current || pending.current.get(identity(record.intent.quote))?.intent.key !== key || truth.reread.state !== "read") return;
-      if (truth.keyPosition) { receipt(record, truth.keyPosition.positionId, true); return; }
+      if (!mounted.current || record.owner !== viewerId || record.epoch !== ownerEpoch.current || pending.current.get(identity(record.intent.quote))?.intent.key !== key || truth.reread.state !== "read") return;
+      if (truth.keyPosition) {
+        if (truth.keyPosition.quote.stake !== record.intent.quote.stake) return;
+        receipt(record, truth.keyPosition.positionId, true); return;
+      }
       // Only a successful, scoped null lookup after the settle window can retire a lost answer.
       if (afterKeyRead(record.intent, null, readAtMs) === "ended") {
         pending.current.delete(identity(record.intent.quote));
+        const oldSelected = selected.current ? {...selected.current} : null;
         if (selected.current?.k === key) delete selected.current.k;
+        if (!save()) {
+          pending.current.set(identity(record.intent.quote), record); selected.current = oldSelected;
+          recoveryReady.current = false; revise(); return;
+        }
         const a = current.current;
         if (a && activeIdentity(a) === identity(record.intent.quote)) show({ ...a, settled: null });
-        save(); revise(); void refreshed();
+        revise(); void refreshed();
       }
     } finally { readingKeys.current.delete(key); }
-  }, [readTruth, receipt, refreshed, revise, save, show]);
+  }, [readTruth, receipt, refreshed, revise, save, show, viewerId]);
+
+  const resolveLegacy = useCallback(async (quote: Pick<Quote, "marketId" | "side">) => {
+    const epoch = ownerEpoch.current;
+    for (const stored of legacy.current.filter((e) => e.quote.marketId === quote.marketId && e.quote.side === quote.side)) {
+      if (legacyReads.current.has(stored.key)) continue;
+      legacyReads.current.add(stored.key);
+      try {
+        const truth = await readTruth(stored.quote, {key: stored.key});
+        if (!mounted.current || epoch !== ownerEpoch.current || ownerInvalid.current || !truth.keyPosition || truth.keyPosition.quote.stake !== stored.quote.stake) continue;
+        const proof: KeyReceipt = {ownerId: viewerId, positionId: truth.keyPosition.positionId, quote: truth.keyPosition.quote};
+        if (!resolveLegacySheet(window.sessionStorage, viewerId, stored.key, proof)) continue;
+        legacy.current = unresolvedLegacySheet(window.sessionStorage);
+        const prior = pending.current.get(identity(stored.quote));
+        if (prior && prior.intent.key !== stored.key) { revise(); continue; }
+        const record: Pending = {intent: reopenInDoubt(stored.quote, stored.key, pageLoadedAt.current), seed: truth.seed, at: stored.at, everDoubt: true, lastRead: 0, owner: viewerId, epoch};
+        pending.current.set(identity(stored.quote), record);
+        receipt(record, proof.positionId, true); revise();
+      } catch { /* unreadable quarantine stays held; no new key is dispatched */ }
+      finally { legacyReads.current.delete(stored.key); }
+    }
+  }, [readTruth, receipt, revise, viewerId]);
 
   const open = useCallback((seed: SheetSeed, side: SheetSide, title: string, pushed: boolean, dropSide: boolean, origin: string) => {
     const stamp = Date.now();
@@ -204,14 +263,15 @@ export function BetSheetHost() {
     const id = identity({ marketId: seed.id, side });
     const received = closedReceipts.current.get(id) ?? null;
     closedReceipts.current.delete(id);
-    const stake = received?.view.kind === "receipt" ? received.view.quote.stake : remembered?.intent.quote.stake ?? sheetPreset(seed, stakeFromUrl(bet, raw, stamp));
+    const stake = received?.view.kind === "receipt" ? received.view.quote.stake : remembered?.intent.quote.stake ?? sheetPreset(seed, stakeFromUrl(bet, raw, stamp, viewerId));
     if (received) stripAddress(dropSide);
     show({ seed, side, title, stakeText: String(stake), viewer: { state: "loading" }, offset: clockOffset(seed.serverNow, stamp), serial: ++serial.current, pathname: window.location.pathname, pushed: received ? false : pushed, dropSide, settled: received, estimateUpdated: false, lowCounted: false });
     setNow(stamp);
     sendFunnel("sheet_open", origin);
     void refreshed(true);
     if (remembered?.intent.phase === "inDoubt") void readKey(remembered);
-  }, [readKey, refreshed, show, stripAddress]);
+    if (recoveryBlocked({marketId: seed.id, side})) void resolveLegacy({marketId: seed.id, side});
+  }, [readKey, refreshed, show, stripAddress, viewerId, recoveryBlocked, resolveLegacy]);
 
   const close = useCallback(() => {
     if (!mounted.current) return;
@@ -251,24 +311,24 @@ export function BetSheetHost() {
   const commit = useCallback((which: "cta" | "betInstead") => {
     if (!mounted.current) return;
     const a = current.current;
-    if (!a) return;
+    if (!a || recoveryBlocked({marketId: a.seed.id, side: a.side})) return;
     const old = pending.current.get(activeIdentity(a));
     if (old && requests.current.has(old.intent.key)) return;
     const frame = sheetFrame({ seed: a.seed, side: a.side, stakeText: a.stakeText, viewer: a.viewer, nowMs: Date.now(), offsetMs: a.offset, intent: old?.intent ?? null, settled: a.settled });
     const quote = quoteAt(frame, which);
     if (!quote) return;
     const chosen = nextKey(old?.intent ?? null, quote);
-    const fd = requestFor(chosen.quote, chosen.key);
+    const fd = requestFor(chosen.quote, chosen.key, viewerId);
     if (!fd) return;
     const stamp = Date.now();
     const alreadyDoubt = old?.everDoubt === true || old?.intent.phase === "inDoubt";
     const priorSettledAt = alreadyDoubt ? old?.intent.settledAt ?? null : null;
-    const record: Pending = { intent: { quote: chosen.quote, key: chosen.key, phase: "placing", sentAt: stamp, settledAt: null }, seed: a.seed, at: old?.at ?? stamp, everDoubt: alreadyDoubt, lastRead: 0 };
+    const record: Pending = { intent: { quote: chosen.quote, key: chosen.key, phase: "placing", sentAt: stamp, settledAt: null }, seed: a.seed, at: old?.at ?? stamp, everDoubt: alreadyDoubt, lastRead: 0, owner: viewerId, epoch: ownerEpoch.current };
     const oldSelected = selected.current;
     pending.current.set(identity(chosen.quote), record);
     requests.current.add(chosen.key); // synchronous: two taps before React's commit still send one action
     const bet = { kind: "market" as const, id: chosen.quote.marketId, side: chosen.quote.side, stake: chosen.quote.stake };
-    selected.current = readMarker(writeMarker(bet, stamp, attributionFrom(new URLSearchParams(window.location.search)), chosen.key), stamp);
+    selected.current = readMarker(writeMarker(bet, stamp, attributionFrom(new URLSearchParams(window.location.search)), undefined, viewerId), stamp);
     if (!save()) {
       requests.current.delete(chosen.key);
       if (old) pending.current.set(identity(chosen.quote), old); else pending.current.delete(identity(chosen.quote));
@@ -280,12 +340,13 @@ export function BetSheetHost() {
     show({ ...a, settled: null, stakeText: String(chosen.quote.stake), estimateUpdated: false }); revise();
     startTransition(async () => {
       const answer = await answerOf(() => buyPositionAction(fd));
-      if (!mounted.current) return;
+      if (!mounted.current || record.epoch !== ownerEpoch.current || record.owner !== viewerId || ownerInvalid.current) return;
+      if (answer.kind === "resolved" && (answer.value as {code?: unknown})?.code === "SESSION_CHANGED") { invalidateOwner(); return; }
       requests.current.delete(chosen.key);
       if (pending.current.get(identity(chosen.quote))?.intent.key !== chosen.key) return;
       const outcome = refusalOutcome(answer);
       const truth = outcome.reread ? await readTruth(chosen.quote) : null;
-      if (!mounted.current) return;
+      if (!mounted.current || record.epoch !== ownerEpoch.current || ownerInvalid.current) return;
       const build = String((globalThis as { NEXT_DEPLOYMENT_ID?: string }).NEXT_DEPLOYMENT_ID ?? "");
       const recoveryKey = `kp:recovered:${window.location.pathname}`;
       let reloadSpent = true;
@@ -296,7 +357,9 @@ export function BetSheetHost() {
       if (next) { record.intent = next; record.everDoubt ||= next.phase === "inDoubt"; }
       else pending.current.delete(identity(chosen.quote));
       if (settled.marker === "dropKey" && selected.current?.k === chosen.key) delete selected.current.k;
-      save();
+      if (!save()) {
+        pending.current.set(identity(chosen.quote), record); revise(); return;
+      }
       const live = current.current;
       if (live && activeIdentity(live) === identity(chosen.quote)) {
         show({ ...live, settled, ...(truth?.seed ? { seed: truth.seed } : {}), ...(truth?.viewer ? { viewer: { state: "read" as const, viewer: truth.viewer } } : {}) });
@@ -309,12 +372,12 @@ export function BetSheetHost() {
       }
       if (next?.phase === "inDoubt") void readKey(record);
     });
-  }, [readKey, readTruth, receipt, revise, save, show]);
+  }, [readKey, readTruth, receipt, revise, save, show, viewerId, recoveryBlocked, invalidateOwner]);
 
   const deposit = useCallback((amount?: number) => {
     if (!mounted.current) return;
     const a = current.current;
-    if (!a) return;
+    if (!a || recoveryBlocked({marketId: a.seed.id, side: a.side})) return;
     const frame = sheetFrame({ seed: a.seed, side: a.side, stakeText: a.stakeText, viewer: a.viewer, nowMs: Date.now(), offsetMs: a.offset, intent: pending.current.get(activeIdentity(a))?.intent ?? null, settled: a.settled });
     const offer = frame.low?.deposit;
     if (!offer || frame.stake === null || frame.stakeLocked) return;
@@ -323,19 +386,26 @@ export function BetSheetHost() {
     if (chosen !== offer.amount && !offer.chips?.includes(chosen)) return;
     const bet = { kind: "market" as const, id: a.seed.id, side: a.side, stake: frame.stake };
     const stamp = Date.now();
-    selected.current = readMarker(writeMarker(bet, stamp, attributionFrom(new URLSearchParams(window.location.search))), stamp);
+    selected.current = readMarker(writeMarker(bet, stamp, attributionFrom(new URLSearchParams(window.location.search)), undefined, viewerId), stamp);
     window.history.replaceState(window.history.state, "", window.location.pathname + withBet(window.location.search, bet) + window.location.hash);
-    save(); show(null);
+    if (!save()) { show({ ...a, settled: { row: 3, reason: null, view: { kind: "inline", line: { key: "common.temporarilyUnavailable" } }, retry: "new", doubt: "none", marker: "dropKey" } }); return; }
+    show(null);
     const query = new URLSearchParams({ amount: String(chosen), bet: `${bet.id}.${bet.side}.${bet.stake}`, from: "low-balance" });
     router.push(`/wallet/deposit?${query}` as never);
-  }, [router, save, show]);
+  }, [router, save, show, viewerId, recoveryBlocked]);
 
   useEffect(() => {
     mounted.current = true; pageLoadedAt.current = Date.now();
     try {
       const raw = window.sessionStorage.getItem(PENDING_BET_KEY);
-      selected.current = readMarker(raw, pageLoadedAt.current);
-      for (const stored of pendingIntents(raw, pageLoadedAt.current)) pending.current.set(identity(stored.quote), { intent: reopenInDoubt(stored.quote, stored.key, pageLoadedAt.current), seed: null, at: stored.at, everDoubt: true, lastRead: 0 });
+      if (!quarantineLegacySheet(window.sessionStorage)) throw new Error("Legacy request cannot be preserved");
+      legacy.current = unresolvedLegacySheet(window.sessionStorage);
+      const marker = readMarker(raw, pageLoadedAt.current);
+      selected.current = marker && !marker.k && (marker.owner === undefined || marker.owner === viewerId) ? marker : null;
+      const ownerKey = sheetOwnerKey(viewerId);
+      if (!ownerKey) throw new Error("Recovery owner unavailable");
+      for (const stored of ownedSheetIntents(window.sessionStorage.getItem(ownerKey), viewerId)) pending.current.set(identity(stored.quote), { intent: reopenInDoubt(stored.quote, stored.key, pageLoadedAt.current), seed: null, at: stored.at, everDoubt: true, lastRead: 0, owner: viewerId, epoch: ownerEpoch.current });
+      recoveryReady.current = true;
     } catch { /* tab storage can be disabled */ }
     const click = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -350,7 +420,8 @@ export function BetSheetHost() {
       playPressPop(anchor);
       const bet = { kind: "market" as const, id: seed.id, side: side as SheetSide, stake: null };
       window.history.pushState(window.history.state, "", window.location.pathname + withBet(window.location.search, bet) + window.location.hash);
-      open(seed, side, box.dataset.sheetTitle ?? "", true, false, box.dataset.sheetOrigin ?? "card");
+      // The native capture listener supplies the public frame before downstream click work resumes.
+      flushSync(() => open(seed, side, box.dataset.sheetTitle ?? "", true, false, box.dataset.sheetOrigin ?? "card"));
     };
     const pop = () => {
       const a = current.current;
@@ -367,6 +438,8 @@ export function BetSheetHost() {
       if (document.visibilityState !== "visible") return;
       void refreshed();
       for (const record of pending.current.values()) if (record.intent.phase === "inDoubt") void readKey(record);
+      const a = current.current;
+      if (a && legacy.current.length) void resolveLegacy({marketId: a.seed.id, side: a.side});
     };
     const odds = (event: Event) => {
       const a = current.current;
@@ -383,7 +456,10 @@ export function BetSheetHost() {
         if (next !== record.intent) { record.intent = next; record.everDoubt = true; save(); revise(); }
         if (document.visibilityState === "visible" && record.intent.phase === "inDoubt" && stamp - record.lastRead >= keyReadDelay(record.intent.settledAt ?? record.intent.sentAt ?? pageLoadedAt.current, stamp)) void readKey(record);
       }
-      if (document.visibilityState === "visible" && current.current && stamp - lastTruth >= 10_000) { lastTruth = stamp; void refreshed(); }
+      if (document.visibilityState === "visible" && current.current && stamp - lastTruth >= 10_000) {
+        lastTruth = stamp; void refreshed();
+        if (legacy.current.length) void resolveLegacy({marketId: current.current.seed.id, side: current.current.side});
+      }
     }, 250);
     window.addEventListener("click", click, true);
     window.addEventListener("popstate", pop);
@@ -398,7 +474,7 @@ export function BetSheetHost() {
       window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh);
       window.removeEventListener("50pick:sse:market-odds", odds); window.removeEventListener("50pick:sse:wallet-balance", refresh);
     };
-  }, [open, openAddress, readKey, refreshed, revise, save, show]);
+  }, [open, openAddress, readKey, refreshed, resolveLegacy, revise, save, show, viewerId]);
 
   useEffect(() => {
     const a = current.current;
@@ -407,7 +483,8 @@ export function BetSheetHost() {
   }, [pathname, search, openAddress, show]);
 
   const record = active ? pending.current.get(activeIdentity(active)) : null;
-  const frame = active ? sheetFrame({ seed: active.seed, side: active.side, stakeText: active.stakeText, viewer: active.viewer, nowMs: now, offsetMs: active.offset, intent: record?.intent ?? null, settled: active.settled }) : null;
+  const frame = active ? sheetFrame({ seed: active.seed, side: active.side, stakeText: active.stakeText, viewer: active.viewer, nowMs: now, offsetMs: active.offset, intent: record?.intent ?? null, settled: active.settled,
+    recoveryBlocked: recoveryBlocked({marketId: active.seed.id, side: active.side}) }) : null;
   if (active && frame) lastView.current = { active, frame };
   // Only a drawing survives the kit's exit beat. Current intent, address and focus close immediately.
   const view = active && frame ? { active, frame } : present ? lastView.current : null;
@@ -424,7 +501,7 @@ export function BetSheetHost() {
       <BetSheet open={active !== null} seed={view.active.seed} side={view.active.side} title={view.active.title || t.common.temporarilyUnavailable} frame={view.frame}
         stakeText={view.active.stakeText} estimateUpdated={view.active.estimateUpdated}
         railNames={view.active.viewer.state === "read" ? view.active.viewer.viewer.facts?.deposit.railNames ?? [] : []}
-        onStakeChange={(value) => { const a = current.current; const intent = a && pending.current.get(activeIdentity(a))?.intent; if (a && a.serial === view.active.serial && intent?.phase !== "placing" && intent?.phase !== "inDoubt") show({ ...a, stakeText: value, settled: null, estimateUpdated: false }); }}
+        onStakeChange={(value) => { const a = current.current; const intent = a && pending.current.get(activeIdentity(a))?.intent; if (a && !recoveryBlocked({marketId: a.seed.id, side: a.side}) && a.serial === view.active.serial && intent?.phase !== "placing" && intent?.phase !== "inDoubt") show({ ...a, stakeText: value, settled: null, estimateUpdated: false }); }}
         onPlace={() => { if (current.current?.serial === view.active.serial) commit("cta"); }}
         onBetInstead={() => { if (current.current?.serial === view.active.serial) commit("betInstead"); }}
         onDeposit={(amount) => { if (current.current?.serial === view.active.serial) deposit(amount); }}

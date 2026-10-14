@@ -146,10 +146,10 @@ export type PolicyPageSpec = {
    Privacy 2026-10-11 (Part C, the owner's ruling of 2026-10-10): §5's first bullet — on erasure the identity record (name,
    date of birth, document number) is held 7 years from closure, then erased except a coded form of the number. The same
    suffix rule holds for a save made on 2026-10-11 before it deploys.
-   Privacy 2026-10-13 (Vodacom S8 WP7b): §7 names the necessary kp-pending-bet tab marker and unfinished request keys. */
+   Privacy 2026-10-14 (Vodacom S8 owner recovery): §7 distinguishes the 24-hour link selection from account-partitioned unresolved keys and historic quarantine. */
 const PAGES: Record<PolicyPage, PolicyPageSpec> = {
   rg: { path: "/legal/responsible-gambling", title: "Responsible Gambling Policy", codeVersion: "2026-10-06", versionKey: "version.rg" },
-  privacy: { path: "/legal/privacy", title: "Privacy Policy", codeVersion: "2026-10-13", versionKey: "version.privacy" },
+  privacy: { path: "/legal/privacy", title: "Privacy Policy", codeVersion: "2026-10-14", versionKey: "version.privacy" },
 };
 
 export const POLICY_PAGES: Readonly<Record<PolicyPage, PolicyPageSpec>> = Object.freeze(PAGES);

@@ -117,6 +117,8 @@ const BY_CODE: Readonly<Record<string, Row>> = {
   INVALID:          { row: 12, frame: "decide", retry: "new", reread: "public", inLock: false, moneyClaim: false },
   // The pre-lock selection check (row 13): no reason, closed by its code.
   SELECTION_CLOSED: { row: 13, frame: "closed", retry: "none", reread: null, inLock: false, moneyClaim: false },
+  // The host replaces its account epoch before applying this answer. Any other consumer must conservatively keep the original key.
+  SESSION_CHANGED:  { row: 2, frame: "unknown", line: L("error.failSystemError"), retry: "same", reread: null, inLock: false, moneyClaim: false },
 };
 
 /*

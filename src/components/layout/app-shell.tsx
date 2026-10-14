@@ -606,7 +606,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       {session && <Suspense fallback={null}><LazyNotifyPoller /></Suspense>}
       {session && <Suspense fallback={null}><LazyEventStream /></Suspense>}
       {/* E-381 §6 item 4 — the signed-in shell notices, on the next navigation, that the session ended. */}
-      {session && <SessionPresence />}
+      {session && <SessionPresence viewerId={session.userId} />}
       <Suspense fallback={null}><LazyWinCelebration /></Suspense>
       {/* ⭐ THE RESULT OF A SALE (S6 A8h), signed in only, like the poller and the event stream above. A Sell button hands
           its result to this host, so a redrawn page no longer takes it away: a sold ticket leaves the open lens, and before
@@ -614,7 +614,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           shared 5 s), and a move to another page closes it. It draws nothing until a sale, and a lost chunk leaves each
           button drawing its own result, as before. */}
       {session && <Suspense fallback={null}><LazySellResultHost /></Suspense>}
-      {journeyShown && session && <Suspense fallback={null}><LazyBetSheetHost /></Suspense>}
+      {journeyShown && session && <Suspense fallback={null}><LazyBetSheetHost key={session.userId} viewerId={session.userId} /></Suspense>}
       <Suspense fallback={null}>
         <AuthFlash />
       </Suspense>
