@@ -3,6 +3,7 @@
 /** S8's controller. The sheet draws pure frames; only an explicit commit tap calls the existing money action. */
 import { Component, useCallback, useEffect, useLayoutEffect, useRef, useState, useTransition, type ErrorInfo, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { flushSync } from "react-dom";
 import { buyPositionAction } from "@/app/markets/actions";
 import { useT } from "@/lib/i18n";
 import { isActionRedirect } from "@/lib/action-redirect";
@@ -350,7 +351,8 @@ export function BetSheetHost() {
       playPressPop(anchor);
       const bet = { kind: "market" as const, id: seed.id, side: side as SheetSide, stake: null };
       window.history.pushState(window.history.state, "", window.location.pathname + withBet(window.location.search, bet) + window.location.hash);
-      open(seed, side, box.dataset.sheetTitle ?? "", true, false, box.dataset.sheetOrigin ?? "card");
+      // The native capture listener supplies the public frame before downstream click work resumes.
+      flushSync(() => open(seed, side, box.dataset.sheetTitle ?? "", true, false, box.dataset.sheetOrigin ?? "card"));
     };
     const pop = () => {
       const a = current.current;
