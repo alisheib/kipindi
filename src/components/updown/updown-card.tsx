@@ -15,10 +15,11 @@
  * ── HONESTY RULES BAKED INTO THIS COMPONENT ─────────────────────────────────
  *  · `livePrice = null` renders an em-dash and "awaiting price". NEVER a zero, never a
  *    stale value dressed as current. (Platform rule A-5 — real data or nothing.)
- *  · The `× 1.4` on the buttons is a DISPLAY ESTIMATE, not fixed odds. It is marked
- *    "est." on the button and carries a qualifier line beneath. Pari-mutuel payouts
- *    depend on how the pools close, and implying otherwise would be a lie to a
- *    real-money bettor.
+ *  · THE TWO CHOICES SAY "UP" AND "DOWN" AND NOTHING ELSE (Ali's ruling of 2026-10-14 — DESIGN_AUTHORITY §C3,
+ *    COMPLIANCE-DECISIONS § "2026-10-14 · Up & Down cards show Up and Down only"). No multiplier on the buttons and
+ *    no note about one: what a stake would return is said at the commit (the round page's confirm panel, the bet
+ *    receipt) and, once betting closes, as the viewer's exact payout. The empty-side sentence stays — it is a fact
+ *    about the pools, never an estimate.
  *  · `confirming` is CALM, not an error — no red, no spinner, no alarm. The round is
  *    waiting for a source to confirm, which is the system working as designed.
  *  · `void` is NEUTRAL — a refund, not a failure.
@@ -40,7 +41,7 @@ import { valueTone, READ_TONE_TOKEN } from "@/lib/updown-match";
 import { useT } from "@/lib/i18n";
 import { formatBreakEnd } from "@/lib/break-end";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
-import { UpDownStakeControls, GLYPH_NO_SHRINK, EstimateNote } from "./updown-stake-controls";
+import { UpDownStakeControls, GLYPH_NO_SHRINK } from "./updown-stake-controls";
 import { AssetMark } from "./asset-mark";
 import { Button } from "@/components/ui/button";
 // ⭐ The kit's ONE pool-split bar, and the home of the cold-start rail (§B9). See the pool-split
@@ -58,9 +59,9 @@ import type { RoundSuccessor } from "@/lib/server/updown-board";
 // proof, the push and the inbox. Five copies is five chances to disagree about someone money.
 import { refundReasonFor, viewerRefundCopy } from "@/lib/updown-refund-reason";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
-// ⛔ ONE RULE for "what would I be paid" (D2) — shared with the quick-bet controls, the round
-// page and the server's own `myExactPayout`. The card never re-derives money.
-import { impliedMultiplier, emptySideOf, formatMultiplier, type UpDownPricing } from "@/lib/updown-pricing";
+// ⛔ ONE RULE for "which side is empty" (D2) — read from the round's RAW pools and shared with the quick-bet controls
+// and the round page. The card prints no multiplier (the owner's ruling of 2026-10-14) and never re-derives money.
+import { emptySideOf, type UpDownPricing } from "@/lib/updown-pricing";
 import type { PublicSourceClass } from "@/lib/server/updown-symbols";
 import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
 import { noticeBody, type KeptBody } from "@/components/ui/empty-state-text";
@@ -119,12 +120,14 @@ export type UpDownCardProps = {
   volumeTzs: number;
   players: number;
   /**
-   * ⭐ D2 · THE ROUND'S REAL POOL + ITS FROZEN RATES, so the two buttons can quote what a
-   * player would ACTUALLY be paid instead of a config constant. See `@/lib/updown-pricing`.
+   * ⭐ D2 · THE ROUND'S REAL POOL + ITS FROZEN RATES. The card reads the RAW pools for its split and its empty-side
+   * sentence, and hands the whole object to the quick-bet controls, whose bet receipt states the projected return.
+   * See `@/lib/updown-pricing`.
    *
-   * 🔴 This replaced `estMultiplier`, a flat `1 + estimatedWinningsRate` that read the same
-   * when the other side held TZS 36,000 and when it held nothing. Required, never optional —
-   * the E-99 lesson is that an omitted optional argument type-checks and silently does nothing.
+   * ⛔ THE BUTTONS QUOTE NOTHING FROM IT — no multiplier on an Up & Down card (the owner's ruling of 2026-10-14). Until
+   * then they printed `× N` from it, and before D2 a flat `1 + estimatedWinningsRate` that read the same whatever the
+   * other side held. Required, never optional — the E-99 lesson is that an omitted optional argument type-checks and
+   * silently does nothing.
    */
   pricing: UpDownPricing;
   state: UpDownCardState;
@@ -563,10 +566,10 @@ export function UpDownCard(props: UpDownCardProps) {
     () => (selectionClosesAtMs != null ? formatClock(selectionClosesAtMs) : null),
     [selectionClosesAtMs],
   );
-  // ⭐ THE LOCK IS WHAT LETS US STOP ESTIMATING. Once betting closes the pool is frozen, so a
-  // payout stops being a projection and becomes arithmetic — `× 1.4 est.` can become a real
-  // number. That deletes an estimate from a screen about someone's money, which is the shape
-  // of half the findings in this campaign.
+  // ⭐ THE LOCK IS WHAT LETS THIS CARD STATE MONEY AT ALL. Once betting closes the pool is frozen,
+  // so a payout stops being a projection and becomes arithmetic. Before the lock the card states
+  // no payout figure — its buttons say Up and Down only (the owner's ruling of 2026-10-14) — and
+  // after it, the viewer's own exact payouts below.
   //
   // ⛔ AND IT IS COMPUTED ON THE SERVER, NOT HERE. The first version of this line derived it
   // from `upPct` and the estimate multiplier, which ignores the round's FROZEN FEE SNAPSHOT
@@ -694,16 +697,13 @@ export function UpDownCard(props: UpDownCardProps) {
   // A placed bet pulses the whole card (non-intrusive confirmation, reduced-motion aware).
   const cardPulse = usePlacePulse(bet.justPlaced?.nonce);
 
-  // ── D2 · WHAT THE OTHER SIDE IS WORTH, ON THE DISPLAY-ONLY CARD ───────────
+  // ── D2 · THE EMPTY SIDE, ON THE DISPLAY-ONLY CARD ─────────────────────────
   //
-  // The authed card renders `UpDownStakeControls`, which prices against the stake the player
-  // has chosen. A SIGNED-OUT card has no stake control, so it prices at `bet.stake` — the
-  // default preset, i.e. exactly the stake those buttons would start on after sign-in. It is a
-  // reference amount, and the pari-mutuel multiplier barely moves with stake size on any pool
-  // that is not nearly empty; where it does move, the empty-side sentence below says so in
-  // words. ⛔ What it must NOT be is one number for both sides — that was the defect.
-  const outMultUp = impliedMultiplier(pricing, "UP", bet.stake);
-  const outMultDown = impliedMultiplier(pricing, "DOWN", bet.stake);
+  // A SIGNED-OUT card has no stake control, so it says the one fact about the pools a visitor
+  // needs before deciding to sign up: which side nobody has backed. It is read from the RAW
+  // pools (`emptySideOf`), the rule the authed control and the round page use — never from a
+  // printed multiple. ⛔ The buttons quote no multiplier (the owner's ruling of 2026-10-14);
+  // until then they printed `× N` here, priced at the default preset.
   const outEmpty = emptySideOf(pricing);
   const outEmptyCopy =
     outEmpty === "BOTH" ? t.market.udNobodyBackedEither
@@ -1024,36 +1024,29 @@ export function UpDownCard(props: UpDownCardProps) {
             // Signed-out / display-only → the buttons route to the round detail, where
             // the sign-in gate lives. No stake control, no money path from here.
             <>
-              {/* ⛔ E-196 · THE SAME PADDING OBJECT THE AUTHED CONTROL USES, IMPORTED.
-                  🔴 These two buttons are a SECOND COPY of the pair in `updown-stake-controls.tsx`
-                  — same classes, same content shape, different file — because the signed-out card
-                  navigates instead of betting. That duplication is exactly why the clipped payout
-                  figure appeared ONLY to signed-out visitors, and why the first repair MISSED: it
-                  went into the authed copy, which was never the broken one. ⭐ One padding
-                  definition, imported, so on this axis at least the two cannot drift again. */}
+              {/* ⛔ E-196 · these two buttons are a SECOND COPY of the pair in `updown-stake-controls.tsx` — same
+                  classes, same content shape, different file — because the signed-out card navigates instead of
+                  betting. That duplication is why a clipped figure once reached signed-out visitors only, and why the
+                  first repair missed it: it went into the authed copy. ⭐ Since the owner's ruling of 2026-10-14 both
+                  copies hold the same two things and nothing else — the side's arrow and its word (DESIGN_AUTHORITY
+                  §C3). No `× N` on either, and no note about one. */}
               <div className="grid grid-cols-2 gap-2">
-                {/* PV-10 (2026-09-03) — this `×N` suffix carried the SAME `opacity-85` as the
-                    market-card `@pct%` suffix (market-card.tsx), found while re-deriving that
-                    row: filed as 4 sites, the shape repeats here and in updown-stake-controls.tsx
-                    (8 real sites, not 4). Dropped for the same reason — see market-card.tsx. */}
                 <button type="button" onClick={go("UP")} className="btn btn-yes btn-lg"
                         aria-label={`${t.market.udUp} — ${assetName}`}>
                   {/* The trend pictogram leads the centred pick, so its ink stands on the start padding (round 10, R10-A6). */}
                   <I.trendingUp s={14} edge="start" className={GLYPH_NO_SHRINK} /> {t.market.udUp}
-                  {outMultUp != null && <span className="font-mono text-[12.5px]">× {formatMultiplier(outMultUp)}</span>}
                 </button>
                 <button type="button" onClick={go("DOWN")} className="btn btn-no btn-lg"
                         aria-label={`${t.market.udDown} — ${assetName}`}>
                   <I.trendingDown s={14} edge="start" className={GLYPH_NO_SHRINK} /> {t.market.udDown}
-                  {outMultDown != null && <span className="font-mono text-[12.5px]">× {formatMultiplier(outMultDown)}</span>}
                 </button>
               </div>
               {/* ⭐ D2 · the empty-side state — the same sentence the signed-in control shows,
                   because a visitor deciding whether to sign up deserves the same fact. Faint
                   informational ink + the `info` glyph: not gold, not an alarm (G5). */}
-              {/* F1 (2026-09-27) · both are SENTENCES — a refund promise and what the multiplier means — and they sat
-                  at 10px, under §T4's 12.5px reading floor. They take the kit's 13px, the size the round page already
-                  prints them at, and the authed card's copy moved with them (`updown-stake-controls.tsx`). */}
+              {/* F1 (2026-09-27) · it is a SENTENCE — a refund promise — and it sat at 10px, under §T4's 12.5px reading
+                  floor. It takes the kit's 13px, the size the round page already prints it at, and the authed card's copy
+                  moved with it (`updown-stake-controls.tsx`). */}
               {outEmptyCopy && (
                 <p className="mt-1.5 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]">
                   <I.info s={11} className="mt-[2px] shrink-0" />
@@ -1061,8 +1054,6 @@ export function UpDownCard(props: UpDownCardProps) {
                   <span>{noticeBody(outEmptyCopy)}</span>
                 </p>
               )}
-              {/* The × note hangs like the ⓘ note above it — `EstimateNote` (round 4, tile 166). */}
-              {(outMultUp != null || outMultDown != null) && <EstimateNote className="mt-1" text={t.market.udEstimateNote} />}
             </>
           )
         ) : locked ? (
@@ -1082,7 +1073,8 @@ export function UpDownCard(props: UpDownCardProps) {
             <p className="mt-2 text-body-sm leading-[1.5] text-text-muted">
               {lockClock ? t.market.udLockedWhy.replace("{time}", lockClock) : t.market.udLockedWhy.replace("{time}", "—")}
             </p>
-            {/* ⭐ The estimate is GONE here — the pool is frozen, so these are the real figures.
+            {/* ⭐ The pool is frozen here, so these are the real figures — the only payout figures this card ever states
+                (before the lock it quotes none: the owner's ruling of 2026-10-14).
                 ⭐ UD-20 (Ali, 2026-08-14) · BOTH OUTCOMES. A hedged holder saw nothing at all
                 here: `myExactPayout` is null for them, because one number cannot state a
                 two-sided position and pricing `up + down` as if it all sat on UP printed a

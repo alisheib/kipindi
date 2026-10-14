@@ -36,81 +36,27 @@ import { UpDownBetReceiptModal } from "./updown-bet-receipt-modal";
 import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
 import { stakeChipLabel } from "./stake-math";
 import { noticeBody } from "@/components/ui/empty-state-text";
-// ⭐ D2 · ONE RULE for "what would I be paid", shared with the card, the round page and the
-// server's own `myExactPayout`. Never re-derived here — see `@/lib/updown-pricing`.
-import { impliedMultiplier, emptySideOf, formatMultiplier, type UpDownPricing } from "@/lib/updown-pricing";
+// ⭐ D2 · ONE RULE for "which side is empty", read from the round's RAW pools and shared with the card and the round
+// page — see `@/lib/updown-pricing`. The buttons quote no multiplier (the owner's ruling of 2026-10-14).
+import { emptySideOf, type UpDownPricing } from "@/lib/updown-pricing";
 
 type Bet = ReturnType<typeof useUpDownQuickBet>;
 
 /**
- * ⭐ E-196 · WHY THESE BUTTONS FIT NOW, AND THE TWO WRONG ANSWERS THAT CAME FIRST.
+ * ⭐ E-196 · THE ARROW NEVER SHRINKS. A flex row crushes an unprotected `<svg>` before anything else gives: driven on
+ * production as a signed-out visitor, the side button's arrow was **0px wide at every width, 1920 included**, because
+ * the button's content (then "Down × 1.00 est.") overflowed and the icon was the shock absorber. `shrink-0` restored it.
+ * ⛔ Two wrong answers came first and are worth keeping: shrinking `.btn-lg`'s padding bought zero pixels (`.btn` centres
+ * its content, so an overflowing row spills both edges whatever the padding), and the first repair went into THIS
+ * component while the broken pair was the signed-out card's own copy (`updown-card.tsx`).
+ * ⚠️ The payout chip that made that content too wide is gone — since the owner's ruling of 2026-10-14 both pairs say the
+ * side's word and nothing else — but the rule stays: Swahili at 320 is still a flex row with an icon in it.
  *
- * 🔴 THE DEFECT, driven on production as a SIGNED-OUT visitor: the DOWN button clipped its own
- * payout figure — `Down × 1.00 est.` needing **144px of content in a 133px box** at 1024, +9px
- * in Swahili, and **+9/+7 at 360**, which is the width most players are on.
- *
- * ⛔ WRONG ANSWER 1 — "the padding is too generous". It is not the binding constraint at all.
- * `.btn` is `justify-content: center`, so once the content is wider than the box it has ALREADY
- * overflowed the padding box symmetrically: shrinking the padding moves the box edges, not the
- * glyphs. Proven by driving it on the live page — `.btn-lg` padding 20px → 12px moved
- * `scrollWidth − clientWidth` from **11 to 11**. A whole deploy bought zero pixels.
- *
- * ⛔ WRONG ANSWER 2 — fixing it here. The signed-out card does not use this component; it renders
- * its own pair in `updown-card.tsx`. The first repair landed in the copy that was never broken.
- *
- * ⭐ WHAT THE MEASUREMENT ACTUALLY SAID, once the button was dissected child by child:
- *
- *     box 133  ·  needs 144  ·  padding 24  ·  gap 8  ·  "Down" ~36  ·  chip **92**  ·  icon **0**
- *
- * Two facts fall out. **The chip is two thirds of the button** — and 5 of its 11 characters are
- * the suffix ` est.`. And **the icon is 0px wide at EVERY width, including 1920**, where the
- * button has zero spare: flexbox had been crushing the un-shrink-protected `<svg>` to nothing,
- * which is why the deficit read as 11px instead of the ~21px it really is. The icon was the
- * shock absorber, and it had already been spent everywhere.
- *
- * ✅ THE FIX IS BOTH HALVES TOGETHER, and neither works alone. `shrink-0` restores the arrow
- * (+14px of need), and dropping ` est.` from the chip returns ~37px — so the button ends up
- * ~12px inside its box at 1024 and ~14px at 360, with the arrow visible for the first time.
- *
- * ⛔ AND THE MONEY FIGURE IS UNTOUCHED: `× 1.00` stays exactly as it was. What goes is a
- * five-character ABBREVIATION of a qualifier this same component already states in full, one
- * line below, in all three languages — `udEstimateNote`: *"× moves with every bet — it is this
- * pool right now, not fixed odds. When betting closes it becomes your exact payout."* Saying it
- * twice, once in prose and once in a control too small to hold it, was the redundancy; the
- * number was never the problem.
- */
-/**
  * ⚠️ Applied to the settled-outcome arrow on the card too (`updown-card.tsx`), not only to the
  * two side buttons — it is an icon in a flex row, which is the same crush, and naming the
  * constant for what it DOES rather than where it started keeps that honest.
  */
 export const GLYPH_NO_SHRINK = "shrink-0";
-
-/**
- * ⭐ THE × NOTE HANGS LIKE ITS ⓘ SIBLINGS (2026-10-09, the visual pass's round 4, tile 166). Under the bet buttons the
- * empty-side note sets its `info` glyph in an 11px column with the sentence beside it, so its second line hangs at the
- * text (x811); the multiplier note ran its "×" inline and wrapped flush under it (x796) — two indent rules, one stack.
- * The sentence opens on the multiplier's own sign in every language ("× moves with every bet…", "× hubadilika…",
- * "× 会随…"), so that sign takes the glyph's column and the words hang beside it: one rule for every note here, on the
- * card, the round page and the locked-side panel. ⛔ Nothing is re-worded: the sign is read off the sentence, never
- * typed here, and a sentence that ever stops opening on it renders whole, as before.
- */
-const LEAD_SIGN = /^×\s+/u;
-export function EstimateNote({ text, className }: { text: string; className?: string }) {
-  const lead = LEAD_SIGN.exec(text);
-  return (
-    <p className={cn("flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]", className)}>
-      {lead ? (
-        <>
-          <span className="w-[11px] shrink-0 text-center">×</span>
-          <span>{text.slice(lead[0].length)}</span>
-        </>
-      ) : (
-        <span>{text}</span>
-      )}
-    </p>
-  );
-}
 
 export function UpDownStakeControls({
   bet,
@@ -132,6 +78,8 @@ export function UpDownStakeControls({
   /** Ghost CTA on the receipt. Omitted on `/updown/[roundId]` — already there. */
   onWatchRound?: () => void;
   /**
+   * The round's raw pools and frozen rates: they name the empty side under the buttons and price the receipt's
+   * projected return. ⛔ The buttons themselves quote nothing from it (the owner's ruling of 2026-10-14).
    * ⛔ REQUIRED, not optional, and that is deliberate. The E-99 near-miss was a fourth argument
    * left off one call site: it type-checked perfectly and the feature silently did nothing on
    * half the surfaces it claimed to cover. A required prop makes forgetting it a compile error.
@@ -144,18 +92,13 @@ export function UpDownStakeControls({
 }) {
   const { t } = useT();
   const compact = size === "card";
-  // ── D2 · THE HONEST MULTIPLIER ────────────────────────────────────────────
+  // ── D2 · THE EMPTY SIDE, NOT A MULTIPLIER ──────────────────────────────────
   //
-  // 🔴 These two used to be ONE flat number, the same on both buttons whatever the pool held.
-  // They are now priced against the stake the player has actually chosen, through the same
-  // `payoutFor` settlement pays with — so on a round holding UP 36,000 / DOWN 0 the UP button
-  // reads `× 1.00` (your stake, back) and the DOWN button `× 16.6`. That asymmetry IS the
-  // information; nothing else on the card could have carried it.
+  // ⛔ NO MULTIPLIER ON THESE BUTTONS (Ali's ruling of 2026-10-14: "keep up and down only"). They printed
+  // `× N` priced at the chosen stake through `payoutFor` (D2, and before it one flat constant on both); the
+  // one payout figure a player is shown before betting closes is now the projected return AT THE COMMIT —
+  // the round page's confirm panel and the receipt this control hosts below.
   //
-  // ⚠️ It moves with every later bet, which is what `udEstimateNote` now says. It is never a
-  // promise — the LOCK freezes the pool and `myExactPayout` replaces it with arithmetic.
-  const multUp = impliedMultiplier(pricing, "UP", bet.stake);
-  const multDown = impliedMultiplier(pricing, "DOWN", bet.stake);
   // ⭐ Which side nobody has backed. Round-wide (not side-aware) because this control offers
   // BOTH sides — the player can see which one is empty and choose. The round PAGE, where the
   // side is already locked, uses `refundWarningFor` instead so it never warns the player who
@@ -288,9 +231,6 @@ export function UpDownStakeControls({
           aria-label={`${t.market.udUp} — ${assetName}${bet.stakeReady ? ` · ${formatTzs(bet.stake)}` : ""}`}
         >
           {bet.pendingSide === "UP" ? <Spinner size={12} /> : <I.trendingUp s={compact ? 14 : 15} className={GLYPH_NO_SHRINK} />} {t.market.udUp}
-          {/* PV-10 (2026-09-03) — same `opacity-85` defect as market-card.tsx's `@pct%`
-              suffix (~3.5:1 on a money button, under AA 4.5); dropped, not re-hued. */}
-          {multUp != null && <span className="font-mono text-[12.5px]">× {formatMultiplier(multUp)}</span>}
         </button>
         <button
           type="button" onClick={guard(() => bet.place("DOWN"))} disabled={!bet.stakeReady || bet.insufficient || bet.locallyLocked}
@@ -299,7 +239,6 @@ export function UpDownStakeControls({
           aria-label={`${t.market.udDown} — ${assetName}${bet.stakeReady ? ` · ${formatTzs(bet.stake)}` : ""}`}
         >
           {bet.pendingSide === "DOWN" ? <Spinner size={12} /> : <I.trendingDown s={compact ? 14 : 15} className={GLYPH_NO_SHRINK} />} {t.market.udDown}
-          {multDown != null && <span className="font-mono text-[12.5px]">× {formatMultiplier(multDown)}</span>}
         </button>
       </div>
 
@@ -358,11 +297,9 @@ export function UpDownStakeControls({
           <span>{noticeBody(emptyCopy)}</span>
         </p>
       )}
-      {/* ⛔ THE NOTE NOW RENDERS ON THE CARD TOO. It used to be `!compact`, so the board card —
-          the surface a quick-bet is actually placed from — carried a bare "× 1.5 est." with
-          nothing saying what the figure was. Now that the number moves with every later bet
-          (G3), the sentence that says so has to travel with it. */}
-      {(multUp != null || multDown != null) && <EstimateNote className="mt-1" text={t.market.udEstimateNote} />}
+      {/* ⛔ NO ESTIMATE NOTE HERE ANY MORE: it explained the `× N` these buttons no longer print (the owner's ruling of
+          2026-10-14). Its sentence now qualifies the projected return where one is shown — the round page's confirm
+          panel and the receipt below. */}
 
       {/* Screen-reader confirmation. ⛔ NOT a replacement for the toast — both, always: a
           toast is a transient region a screen reader may never voice, and this is the

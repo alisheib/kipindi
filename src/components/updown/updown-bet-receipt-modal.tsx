@@ -22,8 +22,12 @@
  * ⛔ THE PROJECTED RETURN IS NEVER GILDED. `stripTone` is the SIDE (`yes`/`no`), which is the
  * modal's own definition of "a side was staked" and buys the `seal-commit` crest plus the
  * side-coloured button. Gold means money that was EARNED (§M3, `test:gold-is-money`); a
- * projection has not been decided, and `udEstimateNote` — the same disclaimer the buttons
- * carry — travels with the figure so the card and the receipt cannot drift.
+ * projection has not been decided, and `udEstimateNote` — the same qualifier the round page's
+ * confirm panel prints under its projection — travels with the figure, so the two commit
+ * surfaces cannot drift.
+ * ⭐ THE RECEIPT IS A COMMIT-TIME DISCLOSURE AND KEEPS ITS FIGURE (Ali's ruling of 2026-10-14
+ * took the multiple off every Up & Down CARD; the money stated at the commit stays — CLAUDE.md,
+ * "UX commitments", and COMPLIANCE-DECISIONS § "2026-10-14 · Up & Down cards show Up and Down only").
  */
 import { OperationResultModal, type OperationDetail } from "@/components/markets/operation-result-modal";
 import { useT } from "@/lib/i18n";
@@ -68,8 +72,8 @@ export function UpDownBetReceiptModal({
   const { t } = useT();
   if (!placed) return null;
 
-  // ⛔ ONE RULE for "what would I be paid" (D2) — the same function the Up/Down buttons and
-  // `myExactPayout` use, asked at the amount actually staked. Never a second formula.
+  // ⛔ ONE RULE for "what would I be paid" (D2) — the same function the round page's confirm
+  // panel and `myExactPayout` use, asked at the amount actually staked. Never a second formula.
   const mult = impliedMultiplier(pricing, placed.side, placed.amount);
   const projected = mult != null ? Math.round(placed.amount * mult) : null;
 
@@ -119,8 +123,8 @@ export function UpDownBetReceiptModal({
       // screen) wearing its opposite face. The card writes `{n} {udMin}`; so does this.
       subtitle={`${info.durationMinutes} ${t.market.udMin} · ${t.market[SOURCE_CLASS_KEY[info.sourceClass]]}`}
       details={details}
-      // The projection disclaimer that already travels with every "× N est." figure. Reused,
-      // not restated, so the card and the receipt can never say different things about it.
+      // The projection's qualifier, the sentence the confirm panel prints under its projection.
+      // Reused, not restated, so the two commit surfaces can never say different things about it.
       footnote={projected != null ? t.market.udEstimateNote : undefined}
       primaryLabel={t.market.udRcKeepPlaying}
       secondaryLabel={onWatchRound ? t.market.udRcWatchRound : undefined}

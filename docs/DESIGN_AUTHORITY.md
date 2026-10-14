@@ -1563,6 +1563,25 @@ The platform's hardest-won rules. Most were bought with an incident.
    Every such figure comes from the settlement function (`payoutFor`), never from a constant. The rest of this rule
    stands unchanged: open positions say "if settled now", and ⛔ the per-position potential payout stays hidden
    pre-resolution, on the post-bet receipt and in Tiketi zangu alike.
+
+   ⭐ **Up & Down's choices carry no estimate — Ali's ruling of 2026-10-14:** *"remove odds from up and down market
+   cards please and wherever this should be reflected as well. mark this as decision, keep up and down only"*
+   (COMPLIANCE-DECISIONS § "2026-10-14 · Up & Down cards show Up and Down only").
+   - **The choices:** an Up & Down card's two buttons read the side's word and its arrow and nothing else — no
+     multiplier, and no note about one. This holds on the `/updown` board signed in and signed out, and on the round
+     page's two-way control, which draws the same pair. ⛔ A multiple returns only by a new owner ruling.
+   - **What Up & Down still prints under this rule is money at the commit**, from `payoutFor` and labelled as an
+     estimate: the projected return on the round page's confirm panel, with `udEstimateNote` as its qualifier line,
+     shown exactly where the figure is.
+   - ⚠️ **Two older figures stand as EXCEPTIONS to this rule's hidden-payout clause — left as they were by the ruling,
+     not licensed by this paragraph:** the bet receipt's projected return and qualifier (`UpDownBetReceiptModal`,
+     2026-08-15), and from the lock the viewer's exact payout per outcome (UD-20, Ali, 2026-08-14). Whether the receipt
+     keeps its figure is the owner's to say (COMPLIANCE-DECISIONS, the same entry).
+   - **The empty-side sentence is not an estimate and stays.** It appears iff the round's raw pools leave a side empty
+     (`emptySideOf`) — on the card, iff its split row states no two-sided price — and is never inferred from a printed
+     multiple.
+
+   Guards: `test:updown-pricing` §3, §5, §6, §8 and `red:updown-pricing`; on a served board, `qa:card360`.
 4. **Losses are stated with dignity: calm, factual, final.** No punishment styling, no
    alarm panels. The closing line is *"Every figure here is final — nothing further is
    owed."* **VOID / refunded is NEUTRAL — never an error treatment**; the money came back.

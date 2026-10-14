@@ -12,8 +12,9 @@
  *    The card's ≈2.8× and the sheet's ≈2.7× differ on purpose: the player's own stake dilutes their side.
  *
  * ⛔ HALF-UP IS A SCOPED EXCEPTION (SJ-2). The platform's rule for a payout estimate is to FLOOR (never nudge a
- * figure upwards — `formatMultiplier` in `updown-pricing.ts`), and Up & Down keeps it. The journey's figures carry
- * "≈" and must read exactly as the deck, which is half-up; that exception is ruled, and it lives only here.
+ * figure upwards — the rule Up & Down's printed `× N` followed until Ali's ruling of 2026-10-14 took every multiple
+ * off its surfaces). The journey's figures carry "≈" and must read exactly as the deck, which is half-up; that
+ * exception is ruled, and it lives only here.
  *
  * ── WHEN THERE IS NO FIGURE ───────────────────────────────────────────────────────────────────────────────────────
  * `state` says why, and the surface prints words instead of a number — never a guess:

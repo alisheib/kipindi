@@ -3560,6 +3560,8 @@ shares it). ⭐ The canvas is the source of truth for S4's frames — no copy li
     - Open tickets show no payout figure (SJ-4 keeps §C3), and every timer names its absolute instant.
     - Juu/Chini keeps its own side buttons and floor-rounded × multiples; only the chips (full figures) and the
       low-balance pattern change.
+      ⚠️ The multiples are superseded by Ali's ruling of 2026-10-14 ("keep up and down only" — COMPLIANCE-DECISIONS
+      § "2026-10-14 · Up & Down cards show Up and Down only"): Juu/Chini's side buttons carry the side's word only.
     - "Tumia TZS 2,000 badala yake" (draft) sets the stake, because a Juu/Chini bet needs a side.
     - The market chart title is spelt NDIO; the dictionary still says NDIYO, one of SJ-19's seven fixes.
 - **All eleven brief items are on the canvas: 91 frames.**

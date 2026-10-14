@@ -153,7 +153,7 @@ as before.
 > 2026-08-14 the platform charges **13% of the LOSING side** on both products
 > ([`docs/RULES.md`](RULES.md) is the authority; the ⅓ ceiling applies only to rounds frozen
 > before the cutover). The containment claim itself is unchanged and is the point of this
-> section: the price band decides the OUTCOME, never the money, so it is unaffected either way. The `× 1.4 est.` headline is a display estimate of payout, unrelated to the price band. Up & Down
+> section: the price band decides the OUTCOME, never the money, so it is unaffected either way. The payout figure shown before betting closes — since Ali's ruling of 2026-10-14 only the projected return at the commit, the card's buttons carrying none — is a display estimate of payout, unrelated to the price band. Up & Down
 stays contained to `productLine: "UPDOWN"`.
 
 ## Backward compatibility

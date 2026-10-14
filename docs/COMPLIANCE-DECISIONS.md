@@ -8,6 +8,66 @@
 
 ---
 
+## 2026-10-14 · Up & Down cards show Up and Down only — no multiplier on any Up & Down choice (owner ruling)
+
+**Authority.** Ali, 2026-10-14, as typed: *"remove odds from up and down market cards please and wherever this should be
+reflected as well. mark this as decision, keep up and down only"*. The rule in force is DESIGN_AUTHORITY §C3 (its
+2026-10-14 paragraph); this entry records the decision, its reach and what it deliberately keeps.
+
+**What it rules — in force from the release that carries it.**
+1. **An Up & Down card's two choices read "Up" and "Down"** (Juu / Chini · 涨 / 跌) with their arrow, and nothing else:
+   no multiplier ("× 1.26") and no note under the buttons about one. On the `/updown` board signed out (the card's own
+   pair) and signed in (the one-tap stake control), and on the round page's two-way control (`/updown/<round>` with no
+   side chosen), which draws the same buttons.
+2. **The round page's confirm panel loses its "× N"** beside the projected return — it was the card's multiple stated
+   again. The projected return itself stays (item 4).
+3. **Already true, and unchanged:** the home page's Up & Down band (it carries no pool, multiplier or payout — law 40);
+   the journey cards (an Up & Down pick is the side word alone, `src/lib/journey/card-face.ts`); `/live`'s Up & Down
+   tiles (no multiple — see (b) below for their split); the help page, the FAQ and the help chat (none of them tells a
+   player to read a multiple on an Up & Down card).
+4. **What it deliberately keeps — the money stated at the commit** (CLAUDE.md, "UX commitments": a consequential
+   mutation has its confirmation step and ends in the shared result modal, the receipt):
+   - the confirm panel's projected return ("TZS 500 → TZS 634"), computed by `payoutFor` from the round's pool and frozen
+     rates, with its qualifier line;
+   - the bet receipt's "Projected return" row and the same qualifier;
+   - from the lock, each viewer's exact payout per outcome ("If it closes Up · TZS …") on the card and the round page,
+     and every settled result and payout.
+5. **The empty-side sentence stays, and its truth is the pools'.** "Nobody has backed Down yet — if that does not change,
+   your stake comes back." is a fact about the round, not an estimate. It appears iff the round's raw pools leave a side
+   empty (`emptySideOf`); with no multiple on the card, the old way of reading it there (a side quoted at exactly 1.00×,
+   standards §5b rule 9) is gone, and the card's own split row — a two-sided price iff both pools hold money — is what
+   the drive reads instead.
+6. **The qualifier names what it qualifies.** `udEstimateNote` opened on "×", the multiple the buttons printed. It now
+   names the projected return in each language, in the receipt row's own words ("The projected return moves with every
+   bet …" · "Marejesho yanayotarajiwa hubadilika …" · "预计回报会随…"), and it travels with the figure: shown exactly
+   where a projected return is (`projected != null`, the receipt's own gate).
+7. **The Up & Down Rules say the same.** §2's bullet *"The multiplier moves. The displayed multiplier reflects the live
+   pools, not fixed odds. It is not a promise until betting closes."* described a display that no longer exists. It now
+   reads *"The projected return moves. The projected return shown when you place a stake reflects the live pools, not
+   fixed odds. It is not a promise until betting closes."* (sw and zh alike). The binding words moved, so the document is
+   re-dated **v2026-10-14** (`src/app/legal/rules/up-down/page.tsx`). **Why no notice:** nothing a player may do, and no
+   figure a player is paid, changed — the sentence now names the figure the platform actually shows.
+
+**What it supersedes, in part.** `UPDOWN-FINAL-DESIGN.md` D2 part 1 ("a live, pool-implied multiplier" on the card) — the
+card half only; D2 part 2, the empty-side state, stands. The Vodacom record's S4 canvas call "Juu/Chini keeps its own side
+buttons and floor-rounded × multiples" (VODACOM-PLAN, items 9–11) — its multiples. Neither entry is edited beyond a pointer.
+
+**Kept unchanged, for the owner to rule on.** (a) The share of the money on each side — the board card's split row
+("Up 75% · 25% Down") and `/live`'s Up & Down tiles ("Up @ 75%") — is the pool split, not a payout multiple; it was left as
+it is. ⚠️ The platform's own `/markets` filter calls a question's YES share "Odds", so the owner may count these as odds
+too. (b) The money at the commit (item 4): the confirm panel's and the receipt's projected return. (c) A signed-in tap on
+the board places the bet at once; with the multiple gone, the player sees the stake before the tap and the projected
+return only on the receipt after it.
+
+**Do not restore.** A multiplier on an Up & Down choice needs a new owner ruling. `formatMultiplier` was deleted with its
+last caller.
+
+**Records:** DESIGN_AUTHORITY §C3 · `docs/UPDOWN-SPEC.md` §1, §5, §8 · `docs/UPDOWN-FINAL-DESIGN.md` D2 · the Up & Down
+Rules §2 (v2026-10-14) · the operator guide §4, §9, §13 (`docs/updown-operator-guide.html` and its PDF) · standards
+skill §5b rule 9 · guards `test:updown-pricing` (§3, §5, §6, §8 rendered in en/sw/zh) and `red:updown-pricing`,
+`test:visual-pass-r4d` §3, `test:updown-match` §11b.12, `red:contrast-callsite`'s two Up & Down anchors (re-aimed),
+`qa:card360`.
+
 ## 2026-10-14 · Privacy v2026-10-14 — account-bound bet recovery and historic quarantine (Vodacom S8)
 
 **Authority.** Ali's instruction to complete the Vodacom plan and repair logical defects; the reviewed account-change

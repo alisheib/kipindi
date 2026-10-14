@@ -271,9 +271,12 @@ export const DEFAULT_UPDOWN_CONFIG: UpDownConfig = {
     // ⚠️ INERT under loser-share — `poolFee` never reads it. Kept defined so a reader of
     // an old snapshot never sees `undefined` where it expects a number. It governs nothing.
     feeCeilingRate: 1 / 3,
-    // Display-only: the "× 1.4 est." headline on the Up/Down buttons. It is an
-    // ESTIMATE, never fixed odds — the card carries the qualifier that says so.
+    // ⚠️ INERT on Up & Down's surfaces. It fed the "× 1.4 est." headline on the Up/Down buttons until D2
+    // (2026-08-06) priced the figure from the pool, and since Ali's ruling of 2026-10-14 the buttons carry no
+    // figure at all. Kept defined so a frozen snapshot never reads `undefined`.
     estimatedWinningsRate: 0.4,
+    // Display switch, frozen per round: it gates the projected return at the commit (the round page's
+    // confirm panel and the bet receipt) — `UpDownPricing.show`. It never gates the empty-side sentence.
     showEstimatedWinnings: true,
   },
   // ⛔ ZERO — THE MARGIN IS NOW THE TICK FLOOR (Ali's decision, 2026-08-04).
