@@ -181,6 +181,8 @@ let shellMatch: (p: string) => boolean = isOptOutPath;
 type SurfacePlant = { file: string; from: string; to: string };
 let SURFACE_PLANT: SurfacePlant | null = null;
 let surfacePlantHits = -1;
+/** S11 WP2 (2026-10-14): where the first-visit primer's HIDE_ON is declared, shared with the How-to host (S21 reads it). */
+const PRIMER_KEYS = "src/lib/onboarding/primer-keys.ts";
 
 /** ⚠️ A token of the right SHAPE that nobody minted, FRESH on every call. The acts' cap is keyed per
  *  LINK, so a miss token shared between runs would reach the next run's walker already dry and answer
@@ -1000,9 +1002,18 @@ async function runSurface(f: Fixtures): Promise<void> {
   ];
   const hit = [`${OPTOUT_PATH}${f.contactToken}`, "/s", `${OPTOUT_PATH}ZZZZZZZZ`];
   const miss = ["/settings", "/support", "/", "/markets", "/sx/abc"];
+  /* ⭐ S11 WP2 (2026-10-14): the primer's HIDE_ON is DECLARED in `primer-keys.ts`, shared with the How-to host, and the primer
+     imports it from there. A file that imports it is held to the rule where the rule is declared — and must declare no copy of
+     its own, which would shadow the shared one. A file that neither declares nor imports one reads "no HIDE_ON found". */
+  const hideOnOf = (src: string) => {
+    const own = src.match(/const HIDE_ON = \/(.+)\/;/);
+    const imported = /import\s*\{[^}]*\bHIDE_ON\b[^}]*\}\s*from\s*"@\/lib\/onboarding\/primer-keys";/.test(src);
+    if (imported) return own ? null : read(PRIMER_KEYS).match(/export const HIDE_ON = \/(.+)\/;/);
+    return own;
+  };
   for (const file of OVERLAYS) {
     const src = read(file);
-    const m = src.match(/const HIDE_ON = \/(.+)\/;/);
+    const m = hideOnOf(src);
     const re = m ? new RegExp(m[1]) : null;
     ok(SL.overlay(file.split("/").pop() ?? file),
       !!re && hit.every((x) => re.test(x)) && miss.filter((x) => x !== "/markets" || !file.includes("channels")).every((x) => !re.test(x)),
@@ -1385,8 +1396,12 @@ if (!PROVE_RED) {
   };
   /** `swap` (2026-09-27): replaces an imported function the S-checks call, for the length of a case. */
   const SURFACE_CASES: Array<{ name: string; expect: string; plant?: SurfacePlant; copy?: () => () => void; swap?: () => () => void }> = [
+    // S11 WP2: the primer's rule is declared in primer-keys.ts, so the plant edits it there; the second plant gives the
+    // primer a local copy that would shadow it.
     { name: "D6 · the first-visit primer opens on /s again", expect: SL.overlay("first-visit-primer.tsx"),
-      plant: { file: PRIMER, from: "(auth|admin|s)(", to: "(auth|admin)(" } },
+      plant: { file: PRIMER_KEYS, from: "(auth|admin|s)(", to: "(auth|admin)(" } },
+    { name: "D6 · the first-visit primer declares its own HIDE_ON again, shadowing the shared rule", expect: SL.overlay("first-visit-primer.tsx"),
+      plant: { file: PRIMER, from: "export function FirstVisitPrimer() {", to: "const HIDE_ON = /^\\/(auth|admin|s)(\\/|$)/;\nexport function FirstVisitPrimer() {" } },
     { name: "D6 · the chat bubble sits on /s again", expect: SL.overlay("ChatRoot.tsx"),
       plant: { file: CHAT, from: "(auth|admin|s)(", to: "(auth|admin)(" } },
     { name: "D6 · the socials interstitial may open on /s again", expect: SL.overlay("channels-panel.tsx"),

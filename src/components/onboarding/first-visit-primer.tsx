@@ -20,35 +20,11 @@ import { sideWord } from "@/lib/side-label";
 import { useT } from "@/lib/i18n";
 import { stemOf } from "@/lib/display-stem";
 import { useJourneyOn } from "@/lib/journey/journey-on";
-
-const STORAGE_KEY = "50pick-primer-seen";
-// ⛔ `s` = the marketing opt-out page (D6): somebody who came to STOP marketing is never shown a betting
-// tutorial — and they arrive in exactly the fresh browser this opens for. `test:marketing-optout` pins it.
-const HIDE_ON = /^\/(auth|admin|s)(\/|$)/;
-// B-26 — a deep-linked market detail (especially one carrying `?side=` from a
-// shared card) is a bet-intent moment: ambushing it 700ms in with a four-card
-// primer costs the platform its most valuable arriving click. The primer waits
-// for a board-level landing instead.
-const SUPPRESS_ON = /^\/markets\/[^/]+|^\/updown\/[^/]+/;
-
-/**
- * ⭐ THE EXPLICIT OPT-IN THAT MAKES THE PRIMER PHOTOGRAPHABLE.
- *
- * A driver sets `?primer=1` (or `localStorage.kp-primer-force = "1"`) and the automation block
- * above stands down for that context only. ⛔ Deliberately NOT a UA allowlist and not an env
- * flag: a query parameter is visible in the drive that used it, so a screenshot can always be
- * traced back to the thing that asked for the modal.
- */
-function primerForced(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    if (new URLSearchParams(window.location.search).get("primer") === "1") return true;
-    return window.localStorage.getItem("kp-primer-force") === "1";
-  } catch {
-    return false;
-  }
-}
-
+/* ⭐ THE SEEN KEY, THE TWO PATH RULES AND THE AUTOMATION OPT-IN ARE DECLARED IN `primer-keys.ts` (the Vodacom plan S11 WP2),
+   which the How-to host reads too — one definition for both. They come in under the names this file always used, so every
+   line below that reads them is the line it was: the primer behaves as before (SHELVED.md). The notes on each — `s` for
+   the opt-out page (D6), SUPPRESS_ON's bet-intent moment (B-26), `?primer=1` and `kp-primer-force` — moved with them. */
+import { HIDE_ON, PRIMER_SEEN_KEY as STORAGE_KEY, SUPPRESS_ON, primerForced } from "@/lib/onboarding/primer-keys";
 
 /**
  * 🔴 THE COPY USED TO LIVE HERE, IN ITS OWN `L10n` OBJECTS, AND THAT WAS TWO DEFINITIONS OF ONE
@@ -271,8 +247,8 @@ export function FirstVisitPrimer() {
   /* ⭐ THE OLD PRIMER STANDS DOWN FOR A JOURNEY READER, ON EVERY ROUTE (the Vodacom plan S7, WP8; S7-PLAN Open point 17).
      Whether the shell put this page in the new journey: false for everybody else, and on the server (`journey-on.ts`).
      The How-to sheet replaces the primer for that reader (VODACOM-PLAN §3.8), so the term is the flag alone, never the
-     overlays' `isJourneySurface`. One term in the open effect and one in the render, and nothing else moves until S11
-     (Open point 18): HIDE_ON, SUPPRESS_ON, STORAGE_KEY and `primerForced` stay here, where their gates read them.
+     overlays' `isJourneySurface`. One term in the open effect and one in the render. (S11 WP2 moved the declarations of
+     HIDE_ON, SUPPRESS_ON, STORAGE_KEY and `primerForced` to `primer-keys.ts`; every line here that reads them is unchanged.)
      No flash: this component mounts in the browser only (`lazy-overlays.tsx`, `ssr: false`), after the shell's mark is
      on the page, so for a journey reader the first answer it reads is already true. */
   const journeyOn = useJourneyOn();

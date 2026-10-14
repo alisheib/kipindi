@@ -878,8 +878,21 @@ if (stackTable) {
   // ⚠️ CONTROLS — the population must exist, or 8.1 could pass by matching nothing, and both
   // patterns must still be declared or the guard is asserting against names that are gone.
   ok("8.2 ⚠️ CONTROL — a render-time `return null` guard was actually found", renderGuard.length > 0);
-  ok("8.3 ⚠️ CONTROL — both path patterns are still declared",
-    /const HIDE_ON =/.test(primer) && /const SUPPRESS_ON =/.test(primer));
+  // ⭐ S11 WP2 (2026-10-14): the two patterns are DECLARED in `primer-keys.ts`, shared with the How-to host, and the primer
+  // imports both from there — so "still declared" now means: declared there, imported here, and NOT declared here again (a
+  // local copy would shadow the shared rule and let the two readers drift). 8.3c plants exactly that local copy.
+  const primerKeys = src("src/lib/onboarding/primer-keys.ts");
+  const keysImport = (file: string) => (file.match(/import\s*\{([^}]*)\}\s*from\s*"@\/lib\/onboarding\/primer-keys";/) ?? ["", ""])[1];
+  const pathRulesShared = (file: string) => {
+    const names = keysImport(file);
+    return /\bHIDE_ON\b/.test(names) && /\bSUPPRESS_ON\b/.test(names) && !/const (HIDE_ON|SUPPRESS_ON) =/.test(file);
+  };
+  ok("8.3 ⚠️ CONTROL — both path patterns are declared in primer-keys.ts, and the primer imports both and declares neither",
+    /export const HIDE_ON =/.test(primerKeys) && /export const SUPPRESS_ON =/.test(primerKeys) && pathRulesShared(primer),
+    `the primer imports {${keysImport(primer).trim()}}`);
+  ok("8.3c ⚠️ CONTROL — a second, LOCAL HIDE_ON planted in the primer fails 8.3's rule",
+    !pathRulesShared(primer.replace("export function FirstVisitPrimer()", "const HIDE_ON = /plant/;\nexport function FirstVisitPrimer()"))
+      && primer.includes("export function FirstVisitPrimer()"));
   // ⭐ And the automation block must remain OVERRIDABLE, or every design verdict on this modal
   // goes back to being source-derived: a default-UA Chromium sees a page where it never opened.
   // ⛔ ASSERT THE CALL SITE, NOT THE DECLARATION. The first version tested whether the string

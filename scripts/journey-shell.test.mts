@@ -954,9 +954,11 @@ const EMAIL_BAR_MOUNT = "{emailVerifyState && !journeyShown && !promoSuppressed 
  * sheet replaces the primer for that reader (VODACOM-PLAN §3.8), and S11's auto-open will run on /live, /results and
  * /watchlist too. One term in the open effect, straight after the SUPPRESS_ON line, with the flag among that effect's
  * dependencies; one in the render, straight after the HIDE_ON and SUPPRESS_ON guard, the only place a primer already open
- * when a refresh switches the journey on can be taken down. Nothing moves out of the file in S7: HIDE_ON
- * (`test:marketing-optout`), SUPPRESS_ON and the automation opt-in (`test:stacking` 8.1–8.5) and the seen key stay where
- * their gates read them.
+ * when a refresh switches the journey on can be taken down. Nothing moved out of the file in S7. S11 WP2 (2026-10-14)
+ * moved the DECLARATIONS of HIDE_ON, SUPPRESS_ON, the seen key and the automation opt-in to `src/lib/onboarding/
+ * primer-keys.ts`, shared with the How-to host; the primer imports them under the names it always used, so every line
+ * below that reads them — the two this section pins among them — is unchanged (`test:marketing-optout` S21 and
+ * `test:stacking` 8.1–8.5 read the declarations where they now are).
  */
 const OVERLAY_PRIMER = "src/components/onboarding/first-visit-primer.tsx";
 const PRIMER_EFFECT_PINNED = `if (SUPPRESS_ON.test(pathname ?? "/")) return;`;

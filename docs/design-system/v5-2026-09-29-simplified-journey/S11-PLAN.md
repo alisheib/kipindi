@@ -1113,8 +1113,8 @@ NOT MEASURED, and the exact text proposed for the trackers this branch does not 
 | Package | State | Commit |
 |---|---|---|
 | WP0 · start line | Citations re-read and corrected (Amendments above); precondition does not hold (B1); records proposed below (B2) | this commit |
-| WP1 · the X card | — | — |
-| WP2 · `primer-keys.ts` | — | — |
+| WP1 · the X card | Done, every player, its own release. Proof at its commit: `test:brand-assets` §3 IN SYNC + 3 controls refused (red before: 600/600 rows differ), `test:static-cache-scope` 23/23, typecheck 0, `next build` 0 (186 s, `build.sh` at the exact commit), local `qa:live` 376/376 (port 3101); both pictures read at full size and the corners zoomed: no badge, no bubble. Production read-back is the coordinator's | `0986baa5a` |
+| WP2 · `primer-keys.ts` | Done. The primer imports four declarations (B10); `test:stacking` 138/0 (8.3 re-pinned, 8.3c its plant), `test:marketing-optout` 121/0 + red 45/45 (two primer plants), `test:journey-shell` + red 208/208, `test:popup-fit`, `test:design-frozen`, `test:client-graph-safe` 6/0, `test:hooks-order`, visual-pass r5a r5b r5c r5i r5j r6c r7c r8b r9a r9c and `test:social-panel` green, typecheck 0, `qa:lost-chunk --self-test` 14/14 with the new marker (B4); its browser cells run with WP10 | this commit |
 | WP3 · S11's words | — | — |
 | WP4 · the How-to host | — | — |
 | WP5 · the FAQ | — | — |
