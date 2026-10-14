@@ -178,7 +178,7 @@ export default async function WatchlistPage({
     : t.market.filterMissBody;
 
   return (
-    <PageContainer tier="board" className="space-y-5">
+    <PageContainer tier="board" className="space-y-5" emptyStateOwner="collection">
       {/* B-17 — the watchlist is a "what's moving" surface; it polled never.
           Same cadence as wallet/positions (pauses when the tab is hidden).
           ⭐ It is no longer expensive: the read behind it is now scoped to the starred ids. */}

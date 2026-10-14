@@ -177,7 +177,7 @@ export default async function NotificationsPage({
   const { journey } = await resolveSimpleJourney();
 
   return (
-    <PageContainer tier="reading" className="space-y-5">
+    <PageContainer tier="reading" className="space-y-5" emptyStateOwner="collection">
       <BackLink fallbackHref={journey ? "/account" : "/profile"} label={journey ? t.journey.tabAccount : t.profile.title} />
       <PageHeader
         icon={<I.bellRing s={22} />}

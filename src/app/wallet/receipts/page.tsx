@@ -118,7 +118,7 @@ export default async function ReceiptsPage({ searchParams }: { searchParams: Pro
     : t.wallet.emptyFilterBody;
 
   return (
-    <PageContainer tier="reading" className="space-y-5">
+    <PageContainer tier="reading" className="space-y-5" emptyStateOwner="collection">
       {/* Re-reads itself only while a listed receipt is still moving — silent otherwise (§F5). */}
       <RefreshPoller intervalMs={15_000} enabled={anyInFlight(shown)} />
       {/* "Back": the player arrives from the profile row, /wallet's "All receipts" or a receipt, so the label names no

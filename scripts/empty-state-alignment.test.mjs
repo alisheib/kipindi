@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { createHash } from "node:crypto";
 import { chromium } from "playwright";
 import { emptyStateAlignment } from "./live/empty-state-alignment.mjs";
 
@@ -17,10 +18,11 @@ const style = `<style>*{box-sizing:border-box}body{margin:0;padding:20px;font:16
 h1,h2,p{margin:0 0 16px} [data-empty-state-scope],section,article,[data-measure]{position:relative}
 .card{padding:32px;border:1px solid #555;width:1000px;margin-top:20px}.empty{border:1px dashed #777;padding:28px;text-align:center}
 .boxed{max-width:360px;margin-inline:auto}.fill{width:100%}.narrow{width:360px}.later{position:absolute;top:0;left:550px}
-.neighbour{position:absolute;top:0;left:550px;width:300px}.offset{margin-left:220px}</style>`;
+.neighbour{position:absolute;top:0;left:550px;width:300px}.offset{margin-left:220px}.nested{width:100%}</style>`;
 const empty = (variant="fill", content="No rows yet") => `<div class="empty ${variant}" data-empty-state="${variant}">${content}</div>`;
 const card = (body, classes="") => `<div class="card ${classes}" data-empty-state-scope>${body}</div>`;
 const title = `<p data-section-heading>Local section</p>`;
+const collection = (body, extra="") => `<div class="card" data-measure="reading" data-empty-state-owner="collection" ${extra}><h1>Collection page</h1>${body}</div>`;
 const fixtures = [
   { name:"padded-filled-local", html:card(title+empty()), head:"Local section", aligned:true, association:"card" },
   { name:"wide-boxed-real-misalignment", html:card(title+empty("boxed")), head:"Local section", aligned:false, association:"card" },
@@ -41,13 +43,33 @@ const fixtures = [
   { name:"partially-clipped-heading-still-paints", html:card(`<h2 style="position:absolute;top:0;left:32px;width:200px;height:30px;clip:rect(0,180px,24px,0)">Partly painted heading</h2><div style="height:44px"></div>`+empty()), head:"Partly painted heading", aligned:true, association:"card" },
   { name:"child-visible-overrides-hidden-ancestor", html:card(`<div style="visibility:hidden"><h2 style="visibility:visible">Visible override heading</h2></div>`+empty()), head:"Visible override heading", aligned:true, association:"card" },
   { name:"below-fold-heading-reachable-by-document-scroll", css:"html{overflow-y:auto;height:640px}main{padding-top:700px}", html:card(title+empty()), head:"Local section", aligned:true, association:"card" },
+  { name:"collection-centered-boxed-desktop", html:collection(empty("boxed")), head:null, aligned:null, association:"collection", geometry:true },
+  { name:"collection-centered-narrow-column", html:collection(empty("boxed"),'style="width:320px;padding:20px"'), head:null, aligned:null, association:"collection", geometry:true },
+  { name:"collection-asymmetric-padding-is-measured", html:collection(empty("boxed"),'style="padding-left:80px;padding-right:20px"'), head:null, aligned:null, association:"collection", geometry:true },
+  { name:"collection-off-center", html:collection(empty("boxed").replace('class="empty boxed"','class="empty boxed" style="transform:translateX(40px)"')), head:null, aligned:null, association:"collection", geometry:false },
+  { name:"collection-oversized", html:collection(empty("boxed").replace('class="empty boxed"','class="empty boxed" style="max-width:520px"')), head:null, aligned:null, association:"collection", geometry:false },
+  { name:"collection-undersized", html:collection(empty("boxed").replace('class="empty boxed"','class="empty boxed" style="width:240px"')), head:null, aligned:null, association:"collection", geometry:false },
+  { name:"collection-stretched-fill", html:collection(empty()), head:null, aligned:null, association:"collection", geometry:false },
+  { name:"collection-wrong-variant-contract", html:collection(empty("boxed").replace('data-empty-state="boxed"','data-empty-state="fill"')), head:null, aligned:null, association:"collection", geometry:false },
+  { name:"collection-nested-clipping", html:collection(`<div style="height:48px;overflow:hidden">${empty("boxed")}</div><div style="height:120px"></div>`), head:null, aligned:null, association:"collection", geometry:false },
+  { name:"collection-outside-content-vertically", html:collection(empty("boxed").replace('class="empty boxed"','class="empty boxed" style="transform:translateY(-80px)"')), head:null, aligned:null, association:"collection", geometry:false },
+  { name:"collection-closer-titled-card-wins", html:collection(card(title+empty("boxed"),"nested")), head:"Local section", aligned:false, association:"card" },
+  { name:"collection-cannot-waive-local-title", html:collection(title+empty("boxed")), head:"Local section", aligned:false, association:"page-container" },
+  { name:"collection-explicit-local-h1-wins", html:collection(`<h1 data-section-heading>Local section</h1>${empty("boxed")}`), head:"Local section", aligned:false, association:"page-container" },
+  { name:"wrongly-marked-local-section-title-wins", html:`<section class="card" data-empty-state-owner="collection"><h2>Local section</h2>${empty("boxed")}</section>`, head:"Local section", aligned:false, association:"section" },
+  { name:"wrongly-marked-local-section-h1-wins", html:`<section class="card" data-empty-state-owner="collection"><h1>Local section</h1>${empty("boxed")}</section>`, head:"Local section", aligned:false, association:"section" },
 ];
 function verdict(f, rows) {
   if (rows.length !== 1) return false;
   const e=rows[0], aligned=e.delta === null ? null : e.delta <= 24;
-  return e.headText === f.head && aligned === f.aligned && e.association === f.association;
+  return e.headText === f.head && aligned === f.aligned && e.association === f.association
+    && (f.geometry === undefined || e.collection?.passed === f.geometry);
 }
-const evidence = { browser:browser.version(), viewport:{width:1280,height:640}, tolerance:24, requests:0, controls:[], mutants:[] };
+const evidence = { browser:browser.version(), viewport:{width:1280,height:640}, tolerance:24, requests:0,
+  sourceProof:{ evaluator:createHash("sha256").update(emptyStateAlignment.toString()).digest("hex"),
+    files:Object.fromEntries(["./live/empty-state-alignment.mjs","./empty-state-alignment.test.mjs"].map(file =>
+      [file,createHash("sha256").update(fs.readFileSync(new URL(file,import.meta.url))).digest("hex")])) },
+  controls:[], mutants:[] };
 let pass=0,fail=0;
 const ok=(name,yes)=>{yes?pass++:fail++;console.log(`${yes?"PASS":"FAIL"} ${name}`);};
 async function read(f, evaluator=emptyStateAlignment) {
@@ -70,6 +92,13 @@ try {
     {name:"zero-opacity ancestor accepted",fixture:"opacity-hidden-ancestor",before:"if (Number(cs.opacity) === 0) return false;",after:""},
     {name:"inset clipping ignored",fixture:"inset-fully-clipped-heading",before:"if (inset) {",after:"if (false && inset) {"},
     {name:"document viewport mistaken for an unreachable clip",fixture:"below-fold-heading-reachable-by-document-scroll",before:"const viewportScroller = node === document.scrollingElement;",after:"const viewportScroller = false;"},
+    {name:"collection center check ignored",fixture:"collection-off-center",before:"centerDelta <= 1",after:"true"},
+    {name:"collection boxed cap ignored",fixture:"collection-oversized",before:"widthDelta <= 1",after:"true"},
+    {name:"collection nested clipping ignored",fixture:"collection-nested-clipping",before:"&& contained && unclipped",after:"&& contained"},
+    {name:"collection containment ignored",fixture:"collection-outside-content-vertically",before:"&& contained && unclipped",after:"&& unclipped"},
+    {name:"collection variant ignored",fixture:"collection-wrong-variant-contract",before:"passed: boxed &&",after:"passed: true &&"},
+    {name:"collection declaration overrides its local title",fixture:"collection-cannot-waive-local-title",before:"if (heads.length) { head = heads[heads.length - 1]; owner = scope; break; }",after:"if (heads.length && !collection) { head = heads[heads.length - 1]; owner = scope; break; }"},
+    {name:"explicit local h1 dismissed as a page title",fixture:"collection-explicit-local-h1-wins",before:' && !h.hasAttribute("data-section-heading")',after:""},
   ];
   for(const plant of plants) {
     if(source.split(plant.before).length!==2)throw new Error(`mutation anchor not unique: ${plant.name}`);
