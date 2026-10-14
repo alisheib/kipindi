@@ -16,7 +16,11 @@
 
 ## §0 · RESUME AT
 
-**State (2026-10-13):** S8 (the bet sheet and low balance, flagged) is in progress (§0k). S7 (home and cards, flagged)
+**State (2026-10-14):** S8 (the bet sheet and low balance, flagged) is in progress (§0k), with checkpoint
+`da19e5a21a4aae56c8f9dfa49eb18e74d97c6f09` LIVE on the owner's explicit instruction. It is not S8 acceptance:
+the strict tap, final browser/parity/CI and chunk-boundary gates remain open. The portable continuation and access
+guide is [`qa/claude-vodacom-continuation-20261014.md`](qa/claude-vodacom-continuation-20261014.md).
+Current notes are on `codex/vodacom-s8`; separate S9 preparation is on `codex/vodacom-s9`. S7 (home and cards, flagged)
 is closed and live (§0j), ✅ only at S14. S6 (the flagged shell) is ✅ — CLOSED 2026-10-12 03:01 EAT, its close record the
 first ✅ paragraph below. S6's own history (§0i): WP0–WP12 are live behind the flag, the S6 visual
 pass (rounds 1–6), its round 7 and round 8 (the owner's four rulings of 2026-10-10) are live from ALI-BLADE15 (the ✅
@@ -367,10 +371,12 @@ it is committed once §0i records S6's v2 compares (A2 item 3: this commit). **I
 S6-PLAN notes and the handover's `tools/WP12.json`; this machine's tools are on `vodacom-handover`,
 `handover/vodacom-2026-10-07/omega-tools/` (its README). (Left alone on that PC: `F:\kipindi-journey` keeps uncommitted
 edits from 2026-10-06, an early start that the handover draft supersedes.)
-**Next:** (1) S8 — the bet sheet and low balance — is in progress (§0k): WP0 is live with its record (2026-10-13);
-next WP1 (parity v4) and WP2 (the pure core), then A17's order ([`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md),
+**Next:** (1) S8 — the bet sheet and low balance — is in progress (§0k): the saved implementation checkpoint is live;
+finish the strict150ms tap failure, the six outstanding browser scenarios, current responsive/chunk diagnostics,
+then the final WP11/WP12 closure and relevant parity ([`S8-PLAN.md`](design-system/v5-2026-09-29-simplified-journey/S8-PLAN.md),
 its Amendments A1–A24 overriding its body). (2) S7 is closed (§0j): WP0–WP12 live, the close at `a590790c` (2026-10-13
-01:39 EAT) read back but for [E3] measured, which needs the QA player's password on the machine that runs it; S7 is ✅
+01:39 EAT); the current temporary zero-wallet PLAYER proves E3 page isolation (§0k), while existing mobile01 remains
+unused and notification transport is not proved by its blocked requests. S7 is ✅
 only at S14. (3) The two classic gaps Ali ruled "fix now" are live, each its own release: L3 `c604343b` (§0h point 80)
 and L2 `9c167bef` (§0h point 81). OMEGA's own 2026-10-07/08 S7 WP1 is on origin for reference only as
 `vodacom-s7-wp1-omega`, never to be merged (§0h point 66). (4) When Ali says so, and not before (nothing turns on until
@@ -852,6 +858,43 @@ body. Owner-level calls: §0h point 82, with 80 and 81 (the classic gaps, fixed 
   deployment `e67084dd-b99b-4e38-b839-6bd5a748e7a7`. One existing Postgres warning is reported separately.
   **Still NOT CLOSED / NOT LIVE:** current browser/visual closure, clean exact-tip production proof, repaired v4
   baseline/null/branch parity, complete battery and both-host production read-back are required.
+- **2026-10-14 07:00 UTC owner-directed LIVE checkpoint.** Ali instructed "before anything push live then give
+  me prompt," superseding the previous withholding of this saved candidate; no gate is relabeled passed.
+  Clean exact `da19e5a21a4aae56c8f9dfa49eb18e74d97c6f09` fast-forwarded main. Railway deployment
+  `eb3bb94b-afc0-4f23-8fa2-88fe6767f472` is SUCCESS; boot reports no pending migrations. At07:00:20 both public
+  hosts and Railway's host serve the exact SHA in initial script `dpl` values and200/ok health with a reachable,
+  migrated database. Service-worker bytes equal the Git blob; page cache headers are private/no-store. Journey
+  ceiling/state stay STAFF_PREVIEW. WWW production `qa:live` is **349/0**, existing mobile01 E3 NOT MEASURED.
+  Both public `qa:chunks-prod` runs **fail0/6**,123GETs each, solely on two empty expected-boundary digests:
+  diagnose the locked Next16.4 browser-bailout serialization before a narrow instrument repair; this is not a PASS.
+  Exact-da local build/first-load10/10 pass; compiled A21 **77pass/1fail**, six4xCPU samples141.2,139.8,
+  **152.1**,148.5,148.3,139ms against150ms. Receipt **98/98** (24bets,480clean frames), cold original5000/key
+  **7/7** (zero own money), temporal/native-history **52/52**, startup40/40+65/65,26images read. Exact-da20-cell
+  entry read has no missing literal assets/hash mismatch/page errors;21console errors are the21deliberately
+  aborted POSTs, with compression/noModule limitations retained. Earlier67/67classic parity belongs only to bf0278.
+  PR CI38521854830's actual merge checkoutca64ee8 passed535/535memory, typecheck/build/first-load; responsive
+  failed90wide alignment cells across15admin routes, subsequent browser/PG gates not reached. Main exact-da
+  CI38525147376 remains pending at07:01. Six actual WP11 scenarios and final parity/CI closure remain open;
+  **S8 is NOT CLOSED**. S9's isolated preparation is pushed9869dd701, local realPG141/5plants, with independent
+  review/integration and funding/controller/persistence/constraint/policy gates open. No S9 migration was deployed.
+  Portable instructions, source-bound release evidence and the six-gate proof plan are in
+  [`qa/claude-vodacom-continuation-20261014.md`](qa/claude-vodacom-continuation-20261014.md),
+  [`qa/vodacom-checkpoint-release-20261014.json`](qa/vodacom-checkpoint-release-20261014.json) and
+  [`qa/s8-outstanding-browser-proof-plan-20261014.md`](qa/s8-outstanding-browser-proof-plan-20261014.md).
+  The authorized single temporary PLAYER production login/cleanup is **92checks/0failed**, with the original
+  E3 readers and12signed-in pages. Actual logout and exact owned user/phone/wallet/session/contact deletion are
+  verified; balances/dependent money/KYC/rewards/housebots/campaigns are zero. Its empty auto-created invite-code
+  leaf was scoped and cascaded only after zero recruits/commission/dependents; five auth audit rows are retained,
+  the private credential file removed.17unknown notification POSTs were blocked due to Windows/production action
+  manifest IDs: this is page-isolation/cleanup evidence, not bell transport or console-clean proof. Mobile01,
+  signup/adult and S14production money remain unmeasured. Actual installed Next16.4 SSR reproduces the blank
+  boundary digest, but so does a foreign browser bailout; the narrow next repair is documented in
+  [`qa/s8-next164-boundary-diagnostic-20261014.md`](qa/s8-next164-boundary-diagnostic-20261014.md), not implemented
+  or waived. Exact main CI is still in its memory suite at07:10:47; later gates remain pending.
+  All14temporary-player screenshots were read. The initial unvisited home image contains a3697px blank band;
+  a07:17UTC public home follow-up visited every section in400px steps, revealing the lower content at unchanged
+  viewport/document geometry. The existing Reveal observer explains why a whole-page capture before visiting
+  sections can be blank; this is not a proven permanent page gap or grounds for a speculative CSS change.
 - **Original package order:** WP1 (parity v4) and WP2 (the pure core), which depend only on WP0; then WP3, WP4 and WP5; WP6; WP7a; WP7b;
   WP8, WP9 and WP10; WP11a; WP11b; WP12 (A17's order).
 - **▶ IN FLIGHT (2026-10-13, from ~02:05 EAT) — the coordinator, a claude.ai/code cloud VM, with five builders on their

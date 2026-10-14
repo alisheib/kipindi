@@ -1,0 +1,209 @@
+{
+  "measuredAt": "2026-10-14T07:02:02Z",
+  "releaseKind": "user-directed checkpoint; S8 remains open",
+  "appCommit": "da19e5a21a4aae56c8f9dfa49eb18e74d97c6f09",
+  "railwayDeployment": "eb3bb94b-afc0-4f23-8fa2-88fe6767f472",
+  "railwayStatus": "SUCCESS",
+  "hostReadback": {
+    "measuredAt": "2026-10-14T07:00:20.262Z",
+    "expectedCommit": "da19e5a21a4aae56c8f9dfa49eb18e74d97c6f09",
+    "cells": [
+      {
+        "host": "https://www.50pick.tz",
+        "healthStatus": 200,
+        "ok": true,
+        "database": {
+          "configured": true,
+          "reachable": true,
+          "migrated": true,
+          "latencyMs": 11
+        },
+        "simpleJourney": {
+          "ceiling": "STAFF_PREVIEW",
+          "state": "STAFF_PREVIEW"
+        },
+        "pageStatus": 200,
+        "pageCacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+        "nextScriptCount": 68,
+        "deploymentIdentities": [
+          "da19e5a21a4aae56c8f9dfa49eb18e74d97c6f09"
+        ],
+        "workerStatus": 200,
+        "workerCacheControl": "public, max-age=14400",
+        "workerSHA256": "323618599bdb3b3b3e19ad104fc330c58af30b2c2d687f7f6d51a3d2c7b870d1",
+        "workerMatchesSource": true,
+        "pass": true
+      },
+      {
+        "host": "https://50pick.tz",
+        "healthStatus": 200,
+        "ok": true,
+        "database": {
+          "configured": true,
+          "reachable": true,
+          "migrated": true,
+          "latencyMs": 6
+        },
+        "simpleJourney": {
+          "ceiling": "STAFF_PREVIEW",
+          "state": "STAFF_PREVIEW"
+        },
+        "pageStatus": 200,
+        "pageCacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+        "nextScriptCount": 68,
+        "deploymentIdentities": [
+          "da19e5a21a4aae56c8f9dfa49eb18e74d97c6f09"
+        ],
+        "workerStatus": 200,
+        "workerCacheControl": "public, max-age=0",
+        "workerSHA256": "323618599bdb3b3b3e19ad104fc330c58af30b2c2d687f7f6d51a3d2c7b870d1",
+        "workerMatchesSource": true,
+        "pass": true
+      },
+      {
+        "host": "https://kipindi-production.up.railway.app",
+        "healthStatus": 200,
+        "ok": true,
+        "database": {
+          "configured": true,
+          "reachable": true,
+          "migrated": true,
+          "latencyMs": 13
+        },
+        "simpleJourney": {
+          "ceiling": "STAFF_PREVIEW",
+          "state": "STAFF_PREVIEW"
+        },
+        "pageStatus": 200,
+        "pageCacheControl": "private, no-cache, no-store, max-age=0, must-revalidate",
+        "nextScriptCount": 68,
+        "deploymentIdentities": [
+          "da19e5a21a4aae56c8f9dfa49eb18e74d97c6f09"
+        ],
+        "workerStatus": 200,
+        "workerCacheControl": "public, max-age=0",
+        "workerSHA256": "323618599bdb3b3b3e19ad104fc330c58af30b2c2d687f7f6d51a3d2c7b870d1",
+        "workerMatchesSource": true,
+        "pass": true
+      }
+    ],
+    "pass": true
+  },
+  "signedOutBrowser": {
+    "E3": "NOT MEASURED: mobile01 not used",
+    "host": "https://www.50pick.tz",
+    "failed": 0,
+    "passed": 349
+  },
+  "chunks": {
+    "apex": {
+      "failure": "empty data-dgst on both expected client boundaries",
+      "passed": 0,
+      "GETs": 123,
+      "routes": 6
+    },
+    "www": {
+      "failure": "empty data-dgst on both expected client boundaries",
+      "passed": 0,
+      "GETs": 123,
+      "routes": 6
+    }
+  },
+  "prCI": {
+    "responsive": {
+      "scope": "six wide-width alignment cells on 15 admin routes",
+      "passed": 7191,
+      "failed": 90,
+      "warnings": 317
+    },
+    "typecheck": "PASS",
+    "checkout": "ca64ee8ec3f6af37b5be8449f0357b40bdd3b853",
+    "firstLoad": "PASS",
+    "run": 38521854830,
+    "inMemorySuitesPassed": 535,
+    "inMemorySuitesFailed": 0,
+    "build": "PASS",
+    "remainingBrowserAndPG": "NOT REACHED"
+  },
+  "mainCI": {
+    "checkout": "da19e5a21a4aae56c8f9dfa49eb18e74d97c6f09",
+    "status": "in_progress in memory suite at 07:10:47 UTC, not accepted",
+    "run": 38525147376
+  },
+  "strictTap": {
+    "source": "da19e5a21a4aae56c8f9dfa49eb18e74d97c6f09",
+    "limitMs": 150,
+    "passed": 77,
+    "failed": 1,
+    "timesMs": [
+      141.2,
+      139.8,
+      152.1,
+      148.5,
+      148.3,
+      139
+    ]
+  },
+  "outstandingS8BrowserGates": 6,
+  "S9": {
+    "state": "isolated, review/integration open, not live",
+    "branch": "codex/vodacom-s9",
+    "commit": "9869dd701c427b04a71b3bbd1c6c142daa18061d"
+  },
+  "localArtifactHashes": [
+    {
+      "sha256": "D708E5DDD12E6FE795AC826A5A99150D65BE8FB2C6B64601762B6E0D00F69817",
+      "file": "F:\\50pick-work\\da19-live-www-browser-20261014.log"
+    },
+    {
+      "sha256": "FD3FBA923EAFF0479D3AE0739C62276A7C594215F420F57BAF17526CC56211A6",
+      "file": "F:\\50pick-work\\da19-live-www-chunks-20261014.log"
+    },
+    {
+      "sha256": "331A577BEE55C2AC9409694BDB60E2B6F6AF2857C31A0F46134F9C0FF2AE682F",
+      "file": "F:\\50pick-work\\da19-live-apex-chunks-20261014.log"
+    },
+    {
+      "sha256": "D9691C6C450E3F1A3ED5F58BC6DCC34D4990F3EA4F346FBA3EF2C0DCB92DD619",
+      "file": "F:\\50pick-work\\da19-production-host-readback-20261014.json"
+    }
+  ],
+  "settledRailway": {
+    "PostgresWarnings": 1,
+    "allThreeServices": "online",
+    "pendingOperations": 0,
+    "monitoringAlerting": true,
+    "appReplicas": 1,
+    "lifecycleLease": "this instance"
+  },
+  "temporaryPlayer": {
+    "signedInPages": 12,
+    "cleanup": "COMPLETE; user/phone/wallet/ActiveSession/contact absent; owned empty invite leaf guarded",
+    "logout": "actual",
+    "originalE3Readers": true,
+    "blockedNotificationPOSTs": 17,
+    "retainedOwnedAuthAuditRows": 5,
+    "failed": 0,
+    "temporaryCredential": "removed; absent before run",
+    "notProven": [
+      "notification transport",
+      "console-clean operation",
+      "mobile01",
+      "signup/adult gates",
+      "S14 production money"
+    ],
+    "actualChecksPassed": 92,
+    "zeroWallet": true,
+    "normalUILogins": 1,
+    "evidenceSHA256": "8055bdb9ede31ffe4fc7b52ebf7ba3f45320cc994fd2cfd1dd062f68a0b987ce",
+    "screenshotsRead": 14
+  },
+  "homeScreenshotFollowup": {
+    "publicFollowup": "2026-10-14T07:17:33.497Z; 390x844; before/after full-page viewport geometry unchanged; actual 400px sequential scrolling revealed the existing sections",
+    "unvisitedSignedInImage": "01--.png",
+    "conclusion": "unvisited full-page raster is not sufficient evidence of a permanent blank page; preserve original; no speculative CSS fix or whole-site perfection claim",
+    "unvisitedSHA256": "003ae28bc43b8b41d7a2d789192e9c59a6efe054659ce67b2bcd2d9f76ae9aff",
+    "unvisitedBlankRows": "2982-6678",
+    "source": "src/components/layout/reveal.tsx: existing IntersectionObserver one-time reveals"
+  }
+}
