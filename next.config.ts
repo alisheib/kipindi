@@ -72,8 +72,6 @@ const config: NextConfig = {
   serverExternalPackages: ["pdfkit", "exceljs", "@aws-sdk/client-s3"],
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns"],
-    // Isolated delivery probe: disable only production scope hoisting.
-    turbopackScopeHoisting: false,
   },
   images: {
     formats: ["image/webp", "image/avif"],
