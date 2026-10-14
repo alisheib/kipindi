@@ -14,6 +14,10 @@
  *   · A FORM ERROR (§6, 2026-09-30, the Vodacom plan S2 design panel) — the market wizard's and the AI poll form's
  *     validation lines wore `text-no-300` / `border-no-700` while the counter above them wore `text-danger-fg`: two
  *     reds stacked on one field, and the betting NO pair spent on an app state. A form error is the danger ink.
+ *   · AN OFFICER'S VERDICT (§8, 2026-10-14, the Vodacom plan S12 WP6) — the console's Reject, Debit, Suspend and Remove
+ *     wore the NO side's button or tint and its Approve, Credit, Restore and Reopen the YES side's. A verdict is the
+ *     console's `primary` / `danger` (Ali accepted it, 2026-10-14); the restoring actions' family is ONE constant
+ *     (`RESTORING_FAMILY`) over one named list (`RESTORING`).
  *
  * ⛔ SCOPED TO THE NAMED SITES, and the scope is the point: these files use the betting pair correctly elsewhere
  * (Up/Down price arrows, split labels, the YES/NO buttons). Each check is a function returning defects, run on the
@@ -284,6 +288,223 @@ ok("§7e control · the NO side's button as a refusal's way out is reported", ap
 ok("§7f control · a YES-green placed pulse and a YES-green balance move are reported", appStateDefects(ORM, plantPulse, BELL, DIAL, STAKE).length > 0 && appStateDefects(ORM, plantDelta, BELL, DIAL, STAKE).length > 0);
 ok("§7g control · the journey bell's count back in the NO rose is reported", appStateDefects(ORM, css, plantBell, DIAL, STAKE).length > 0);
 ok("§7h control · a destructive hover in the NO rose is reported", sideInk(plantHover).length === 2, "", sideInk(plantHover).join(" "));
+
+/* §8 · AN OFFICER'S VERDICT IS NOT A SIDE (the Vodacom plan S12 WP6, 2026-10-14) ───────────────────────────────────────────
+   §B2a, read in the console: the YES/NO ink names the side a stake is on, never an officer's verdict. The console's decisions
+   were moved once (78546e830: Approve `primary`, Reject `danger` — the source-of-funds review, the agent decision rail, the
+   proposals, Up & Down's proposals, the stuck payouts, the contact lists) and these were missed: two NO-side Rejects, the AML
+   approve arm, the player's Suspend / Restore / Reopen, the balance adjustment's Credit / Debit (its commit AND its direction
+   toggle, which S12-PLAN's table did not list) and moderation's Remove / Restore. Each is a NAMED arm below: its site, read
+   exactly once with comments out; the paint that arm takes (the kit Button's `variant`, a raw button's `.btn-*` class, or a
+   hand-typed tint); the family its verdict wears; and the betting spelling §8e plants back (the shipped one, except AML's
+   reject arm, which shipped `danger` and is planted as `no`). */
+console.log("\n§8 · an officer's verdict wears the console's primary or danger, never a side's");
+type Fam = "brand" | "danger" | "success";
+type Paint = "variant" | "cls" | "tint";
+/** Each family as each paint spells it. A tint names every token it needs: the brand tint is the kit's own selected-control
+ *  tint (`ui/pagination.tsx`, `wallet/amount-field.tsx`), the danger tint the danger family's three tokens. */
+const SPELL: Record<Fam, { variant: string; cls: string; tint: string[] }> = {
+  brand: { variant: "primary", cls: "btn-primary", tint: ["border-brand-500", "bg-brand-500/15", "text-brand-300"] },
+  danger: { variant: "danger", cls: "btn-danger", tint: ["border-danger-border", "bg-danger-bg", "text-danger-fg"] },
+  // The family the plan offered as the overrule, and Ali did not choose. ⚠️ The kit `<Button>` has no `success` variant and
+  // globals.css no `.btn-success`: a later change to it adds one to the kit (§B9, §B10), or keeps the two kit commits on
+  // brand and moves the four tints.
+  success: { variant: "success", cls: "btn-success", tint: ["border-success-border", "bg-success-bg", "text-success-fg"] },
+};
+/** ⭐ THE RESTORING ACTIONS' FAMILY — DECIDED, AND WRITTEN IN ONE PLACE. Credit, Restore and Reopen wear the brand ink, the
+ *  console's `primary` (Reject, Debit, Suspend and Remove the danger red; Resolve YES/NO stays a side): S12-PLAN's Open
+ *  point 30 / Point for Ali 13, accepted by Ali, 2026-10-14 (COMPLIANCE-DECISIONS, "The owner's answers to the open
+ *  points", item 9: every recommended answer in S12-PLAN's "Points for Ali" accepted). The list below stays named because
+ *  it documents the decision: a later change of mind (the plan's overrule, "the success family for the restoring
+ *  actions") is this constant plus re-classing the six arms of `RESTORING`; §8f proves the constant reaches exactly
+ *  those six arms and nothing else. */
+const RESTORING_FAMILY: Fam = "brand";
+type Arm = { name: string; file: string; at: RegExp; group: number; paint: Paint; onPair: string };
+const CANDIDATES = "src/app/admin/candidates/candidate-actions.tsx";
+const AML = "src/app/admin/aml/aml-actions-client.tsx";
+const SUSPEND = "src/app/admin/players/[id]/suspend-controls.tsx";
+const ADJUST = "src/app/admin/players/[id]/balance-adjust-controls.tsx";
+const MODERATION = "src/app/admin/moderation/moderation-client.tsx";
+// One control, two verdicts: the arms of one ternary share one reader, each its own capture group.
+const AML_SUBMIT = /<Button size="sm" variant=\{mode === "approve" \? "([\w-]+)" : "([\w-]+)"\} onClick=\{\(\) => submit\(mode\)\}/;
+const SUSPEND_COMMIT = /variant=\{mode === "suspend" \? "([\w-]+)" : "([\w-]+)"\}[^]{0,200}?onClick=\{submit\}/;
+const ADJUST_COMMIT = /variant=\{direction === "credit" \? "([\w-]+)" : "([\w-]+)"\}[^]{0,200}?onClick=\{submit\}/;
+const ADJUST_CHOSEN = /\(d === "credit" \? "([^"]*)" : "([^"]*)"\)/;
+const SUSPEND_OPENER = /className=\{`\$\{btnBase\} ([^`]*)`\}\s*>\s*<I\.shieldOff s=\{11\} aria-hidden \/>\s*Suspend player/;
+const RESTORE_OPENER = /className=\{`\$\{btnBase\} ([^`]*)`\}\s*>\s*<I\.shieldcheck s=\{11\} \/>\s*Restore player/;
+const REOPEN_OPENER = /className=\{`\$\{btnBase\} ([^`]*)`\}\s*>\s*<I\.shieldcheck s=\{11\} \/>\s*Reopen after self-exclusion/;
+const MOD_RESTORE = /onClick=\{\(\) => act\("restore", c\)\}\s*disabled=\{pending\}\s*className="([^"]*)"\s*>\s*<I\.rotateCcw s=\{12\} aria-hidden \/> Restore/;
+const MOD_REMOVE = /onClick=\{\(\) => act\("remove", c\)\}\s*disabled=\{pending\}\s*className="([^"]*)"\s*>\s*<I\.trash s=\{12\} \/> Remove/;
+const YES_TINT_OPENER = "border-yes-700 bg-yes-500/15 text-yes-300 hover:bg-yes-500/25 transition-colors";
+/** Moderation's two buttons as they shipped: one class list, the betting tint in its middle. */
+const MOD_BASE = (middle: string) => `inline-flex min-h-[var(--tap-min)] items-center gap-1.5 rounded-md border ${middle} transition-colors disabled:opacity-50`;
+/** The refusing verdicts — Reject, Suspend, Debit, Remove — wear danger. */
+const REFUSING: Arm[] = [
+  { name: "the AI poll's Reject (its popover's commit)", file: POLL_FORM, group: 1, paint: "cls", onPair: "btn btn-no btn-md w-full",
+    at: /<button type="button" onClick=\{submit\} disabled=\{pending\} className="([^"]*)">\s*\{pending \? "Rejecting…" : "Reject"\}/ },
+  { name: "the candidate's Reject (its popover's commit)", file: CANDIDATES, group: 1, paint: "cls", onPair: "btn btn-no btn-md w-full",
+    at: /<button type="button" onClick=\{\(\) => onSubmit\(reason, note\)\} className="([^"]*)">Reject<\/button>/ },
+  { name: "AML's Submit, its reject arm", file: AML, at: AML_SUBMIT, group: 2, paint: "variant", onPair: "no" },
+  { name: "the player's Suspend (the modal's commit)", file: SUSPEND, at: SUSPEND_COMMIT, group: 1, paint: "variant", onPair: "no" },
+  { name: "Suspend player (the opener)", file: SUSPEND, at: SUSPEND_OPENER, group: 1, paint: "tint",
+    onPair: "border-no-700 bg-no-500/15 text-no-300 hover:bg-no-500/25 transition-colors" },
+  { name: "the balance's Debit (the commit)", file: ADJUST, at: ADJUST_COMMIT, group: 2, paint: "variant", onPair: "no" },
+  { name: "the balance's Debit (the direction chosen)", file: ADJUST, at: ADJUST_CHOSEN, group: 2, paint: "tint", onPair: "border-no-700 bg-no-500/15 text-no-300" },
+  { name: "moderation's Remove", file: MODERATION, at: MOD_REMOVE, group: 1, paint: "tint",
+    onPair: MOD_BASE("border-no-700 bg-no-500/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-no-300 hover:bg-no-500/20") },
+];
+/** The approving verdict wears the console's established `primary` (78546e830's precedent). */
+const APPROVING: Arm[] = [
+  { name: "AML's Submit, its approve arm", file: AML, at: AML_SUBMIT, group: 1, paint: "variant", onPair: "yes" },
+];
+/** ⭐ THE RESTORING ACTIONS — Credit, Restore, Reopen — the one named list `RESTORING_FAMILY` governs. */
+const RESTORING: Arm[] = [
+  { name: "the player's Restore (the modal's commit)", file: SUSPEND, at: SUSPEND_COMMIT, group: 2, paint: "variant", onPair: "yes" },
+  { name: "Restore player (the opener)", file: SUSPEND, at: RESTORE_OPENER, group: 1, paint: "tint", onPair: YES_TINT_OPENER },
+  { name: "Reopen after self-exclusion (the opener)", file: SUSPEND, at: REOPEN_OPENER, group: 1, paint: "tint", onPair: YES_TINT_OPENER },
+  { name: "the balance's Credit (the commit)", file: ADJUST, at: ADJUST_COMMIT, group: 1, paint: "variant", onPair: "yes" },
+  { name: "the balance's Credit (the direction chosen)", file: ADJUST, at: ADJUST_CHOSEN, group: 1, paint: "tint", onPair: "border-yes-700 bg-yes-500/15 text-yes-300" },
+  { name: "moderation's Restore", file: MODERATION, at: MOD_RESTORE, group: 1, paint: "tint",
+    onPair: MOD_BASE("border-yes-700 bg-yes-500/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-yes-300 hover:bg-yes-500/20") },
+];
+const VERDICTS: Array<[Arm, Fam | "restoring"]> = [
+  ...REFUSING.map((a): [Arm, Fam | "restoring"] => [a, "danger"]),
+  ...APPROVING.map((a): [Arm, Fam | "restoring"] => [a, "brand"]),
+  ...RESTORING.map((a): [Arm, Fam | "restoring"] => [a, "restoring"]),
+];
+const treeCache = new Map<string, string>();
+/** The tree as it stands; a planted copy overrides one file (`withCopy`). */
+const tree = (f: string) => { let s = treeCache.get(f); if (s === undefined) { s = read(f); treeCache.set(f, s); } return s; };
+const withCopy = (file: string, copy: string) => (f: string) => (f === file ? copy : tree(f));
+/** Every defect of the verdict arms: a site not read exactly once, an arm on the betting pair, an arm off its family. */
+function verdictDefects(src: (f: string) => string, restoring: Fam = RESTORING_FAMILY): string[] {
+  const d: string[] = [];
+  for (const [arm, f] of VERDICTS) {
+    const fam = f === "restoring" ? restoring : f;
+    const hits = [...code(N(src(arm.file))).matchAll(new RegExp(arm.at.source, "g"))];
+    if (hits.length !== 1) { d.push(`${arm.name}: its site was read ${hits.length} times in ${arm.file}, not once`); continue; }
+    const paint = hits[0][arm.group];
+    const tokens = paint.split(/\s+/);
+    const side = arm.paint === "variant" ? (/^(?:yes|no)$/.test(paint) ? [`variant "${paint}"`] : []) : sideInk(paint);
+    if (side.length) d.push(`${arm.name} wears the betting pair: ${side.join(" ")}`);
+    const want = SPELL[fam];
+    const wears = arm.paint === "variant" ? paint === want.variant
+      : arm.paint === "cls" ? tokens.includes(want.cls) : want.tint.every((t) => tokens.includes(t));
+    if (!wears) d.push(`${arm.name} does not wear the ${fam} family (${arm.paint === "variant" ? `variant "${want.variant}"` : arm.paint === "cls" ? want.cls : want.tint.join(" ")}): ${paint}`);
+  }
+  return d;
+}
+const verdicts = verdictDefects(tree);
+ok(`§8a ${VERDICTS.length} verdict arms wear the console's family, never a side's — ${REFUSING.length} refusing → danger, ${APPROVING.length} approving → brand, ${RESTORING.length} restoring → ${RESTORING_FAMILY}`,
+  verdicts.length === 0, verdicts.join("; "));
+
+/* The console's legitimate betting uses — each a SIDE, so held ON the pair. */
+const RESOLVE = "src/app/admin/resolver-queue/resolve-controls.tsx";
+const CEREMONY = "src/app/admin/resolver/[id]/resolution-ceremony.tsx";
+const FEE_SIM = "src/app/admin/config/fee-simulator.tsx";
+type SidePin = { name: string; file: string; at: RegExp; off: [string, string] };
+const SIDES: SidePin[] = [
+  { name: "Resolve YES", file: RESOLVE, at: /onClick=\{\(\) => submit\("YES"\)\} disabled=\{pending\} className="btn btn-yes btn-md w-full"/,
+    off: ['submit("YES")} disabled={pending} className="btn btn-yes', 'submit("YES")} disabled={pending} className="btn btn-primary'] },
+  { name: "Resolve NO", file: RESOLVE, at: /onClick=\{\(\) => submit\("NO"\)\} disabled=\{pending\} className="btn btn-no btn-md w-full"/,
+    off: ['submit("NO")} disabled={pending} className="btn btn-no', 'submit("NO")} disabled={pending} className="btn btn-danger'] },
+  { name: "the second officer's Confirm, in the staged side's ink", file: RESOLVE,
+    at: /const toneClass = \(o: "YES" \| "NO" \| "VOID"\) => \(o === "YES" \? "btn-yes" : o === "NO" \? "btn-no" : "btn-claret"\);/,
+    off: ['o === "YES" ? "btn-yes" : o === "NO" ? "btn-no"', 'o === "YES" ? "btn-primary" : o === "NO" ? "btn-danger"'] },
+  { name: "the verdict ceremony's YES", file: CEREMONY, at: /\{ value: "YES",[^}]*ring: "var\(--yes-500\)", text: "var\(--yes-300\)" \}/,
+    off: ['ring: "var(--yes-500)", text: "var(--yes-300)"', 'ring: "var(--brand-500)", text: "var(--brand-300)"'] },
+  { name: "the verdict ceremony's NO", file: CEREMONY, at: /\{ value: "NO",[^}]*ring: "var\(--no-500\)", text: "var\(--no-300\)" \}/,
+    off: ['ring: "var(--no-500)", text: "var(--no-300)"', 'ring: "var(--danger-500)", text: "var(--danger-fg)"'] },
+  { name: "the fee simulator's winning-side picker", file: FEE_SIM, at: /side === s \? \(s === "YES" \? "btn-yes" : "btn-no"\) : "btn-ghost"/,
+    off: ['(s === "YES" ? "btn-yes" : "btn-no")', '(s === "YES" ? "btn-primary" : "btn-danger")'] },
+];
+const sideDefects = (src: (f: string) => string) => SIDES
+  .filter((p) => [...code(N(src(p.file))).matchAll(new RegExp(p.at.source, "g"))].length !== 1)
+  .map((p) => `${p.name} is not on the betting pair where it was named (${p.file})`);
+ok(`§8b the console's ${SIDES.length} betting uses stay ON the pair — Resolve YES / NO, the staged side's Confirm, the ceremony's two sides, the simulator's winning side`,
+  sideDefects(tree).length === 0, sideDefects(tree).join("; "));
+
+/* §8c · THE CENSUS. The console's solid betting buttons — a `btn-yes` / `btn-no` class, or a kit `<Button>` asked for `yes` /
+   `no` — are the named sides and nothing else. That family CAN stand at zero (§B2a: scope a guard to the sub-population that
+   can); the hand-typed tints cannot (about 80 app-state lines remain in the console), so those are held by name above. */
+const SIDE_FILES = new Set([RESOLVE, FEE_SIM]);
+const CONSOLE: string[] = [];
+for (const top of ["src/app/admin", "src/components/admin"]) (function scanConsole(dir: string) {
+  for (const e of readdirSync(join(ROOT, dir))) {
+    const p = `${dir}/${e}`;
+    if (statSync(join(ROOT, p)).isDirectory()) scanConsole(p);
+    else if (/\.tsx?$/.test(e)) CONSOLE.push(p);
+  }
+})(top);
+/** A JSX open tag from its `<`, read with a small lexer (an inline handler's `=>` holds a `>`); null when it runs away. */
+function openTag(s: string, from: number): string | null {
+  const stack: string[] = [];
+  for (let i = from + 1; i < s.length && i < from + 4000; i++) {
+    const c = s[i], top = stack[stack.length - 1];
+    if (top === '"' || top === "'" || top === "`") { if (c === "\\") i++; else if (c === top) stack.pop(); continue; }
+    if (c === '"' || c === "'" || c === "`" || c === "{") stack.push(c);
+    else if (c === "}") { if (top === "{") stack.pop(); }
+    else if (c === ">" && stack.length === 0) return s.slice(from, i + 1);
+  }
+  return null;
+}
+function consoleSideButtons(src: (f: string) => string): string[] {
+  const d: string[] = [];
+  for (const f of CONSOLE) {
+    const k = code(N(src(f)));
+    if (!SIDE_FILES.has(f)) for (const m of k.matchAll(/\bbtn-(?:yes|no)\b/g)) d.push(`${f}: ${m[0]}`);
+    for (const m of k.matchAll(/<Button\b/g)) {
+      const tag = openTag(k, m.index ?? 0);
+      if (tag === null) { d.push(`${f}: a <Button> open tag the lexer could not read`); continue; }
+      const v = /\bvariant=(\{[^}]*\}|"[^"]*")/.exec(tag)?.[1] ?? "";
+      if (/["'`](?:yes|no)["'`]/.test(v)) d.push(`${f}: <Button variant=${v}>`);
+    }
+  }
+  return d;
+}
+const census8 = consoleSideButtons(tree);
+ok(`§8c the console's solid betting buttons are the named sides alone — ${CONSOLE.length} console files read`, census8.length === 0, census8.join(" | "));
+const sidesSeen = [...SIDE_FILES].map((f) => (code(N(tree(f))).match(/\bbtn-(?:yes|no)\b/g) ?? []).length);
+ok("§8c control · the census reads the side buttons where they are — the resolver's 4, the simulator's 2",
+  CONSOLE.includes(RESOLVE) && CONSOLE.includes(FEE_SIM) && sidesSeen[0] === 4 && sidesSeen[1] === 2, "", `resolver ${sidesSeen[0]}, simulator ${sidesSeen[1]}`);
+
+/* §8d–§8f · PLANTED CONTROLS — every arm put back on the pair, every side taken off it, the census given a new one. */
+/** A copy of an arm's file with that arm's paint replaced, on the raw text (no arm's reader spans a comment). */
+function plantArm(arm: Arm, paint: string): string {
+  const raw = N(tree(arm.file));
+  const m = new RegExp(arm.at.source, "d").exec(raw);
+  const span = m?.indices?.[arm.group];
+  return span ? raw.slice(0, span[0]) + paint + raw.slice(span[1]) : raw;
+}
+const armPlants = VERDICTS.map(([arm]) => [arm, plantArm(arm, arm.onPair)] as const);
+const sidePlants = SIDES.map((p) => {
+  const raw = N(tree(p.file));
+  return [p, raw.split(p.off[0]).length === 2 ? raw.replace(p.off[0], p.off[1]) : raw] as const;
+});
+const SOF = "src/app/admin/approvals/sof-review-client.tsx";
+const LISTS = "src/app/admin/contacts/lists-card.tsx";
+// 78546e830's own shipped defect, reversed: the source-of-funds Accept back on the YES side's button.
+const plantSof = N(tree(SOF)).replace('<Button size="sm" variant="primary" disabled={busy !== null} loading={busy === "ACCEPT"}', '<Button size="sm" variant="yes" disabled={busy !== null} loading={busy === "ACCEPT"}');
+const plantLists = N(tree(LISTS)) + '\nexport const PlantedReject = () => <button type="button" className="btn btn-no btn-sm">Reject</button>;\n';
+ok("§8d control · every planted copy found its target",
+  armPlants.every(([a, s]) => s !== N(tree(a.file))) && sidePlants.every(([p, s]) => s !== N(tree(p.file))) && plantSof !== N(tree(SOF)),
+  [...armPlants.filter(([a, s]) => s === N(tree(a.file))).map(([a]) => a.name), ...sidePlants.filter(([p, s]) => s === N(tree(p.file))).map(([p]) => p.name), ...(plantSof === N(tree(SOF)) ? ["the source-of-funds Accept"] : [])].join(", "));
+for (const [arm, planted] of armPlants) {
+  const got = verdictDefects(withCopy(arm.file, planted)).filter((x) => x.startsWith(arm.name) && x.includes("betting pair"));
+  ok(`§8e control · ${arm.name}, put back on the pair, is reported`, got.length > 0, "", got.join("; "));
+}
+for (const [p, planted] of sidePlants) {
+  const got = sideDefects(withCopy(p.file, planted));
+  ok(`§8e control · ${p.name}, taken off the pair, is reported`, got.length > 0 && got.every((x) => x.startsWith(p.name)), "", got.join("; "));
+}
+const sofGot = consoleSideButtons(withCopy(SOF, plantSof)), listsGot = consoleSideButtons(withCopy(LISTS, plantLists));
+ok("§8e control · the census reports a kit <Button> asked for the YES side (the source-of-funds Accept, 78546e830's defect)", sofGot.length === 1, "", sofGot.join(" | "));
+ok("§8e control · the census reports a raw NO-side Reject in a console file that names no side", listsGot.length === 1, "", listsGot.join(" | "));
+// §8f · the overrule is ONE constant: read with the restoring family switched, exactly the six RESTORING arms leave it.
+const overrule = verdictDefects(tree, "success");
+ok(`§8f control · switched to success, the restoring family reaches exactly the ${RESTORING.length} RESTORING arms and nothing else`,
+  overrule.length === RESTORING.length && RESTORING.every((a) => overrule.some((x) => x.startsWith(a.name))) && !overrule.some((x) => x.includes("betting pair")),
+  "", `${overrule.length} reported: ${overrule.map((x) => x.split(" does not")[0]).join(", ")}`);
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 if (pass + fail < 8) { console.error(`!! only ${pass + fail} assertions ran`); process.exit(3); }
