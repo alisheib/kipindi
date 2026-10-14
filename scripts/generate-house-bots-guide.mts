@@ -264,8 +264,9 @@ roster, and the panel beside the Rules form, will usually name the reason too.</
     <tr><td><b>Is a pool ceiling set to 0?</b></td><td>A pool maximum of 0 means "only bet when the pool holds
       nothing", which a Counter can never see. Leave it empty for no ceiling.</td></tr>
     <tr><td><b>Is it inside its schedule?</b></td><td>Outside the days and hours you chose, it waits.</td></tr>
-    <tr><td><b>Has it already hit a limit today?</b></td><td>Its row shows what it has used of each limit. Once a
-      cap is reached it stops until the cap resets.</td></tr>
+    <tr><td><b>Has it already hit one of its limits?</b></td><td>Its row shows what it has used of each limit. A money
+      limit (daily stake, daily loss) starts again at midnight, East Africa time; a bet count (per hour, per day) is
+      counted over the last hour or the last 24 hours, so room comes back as its oldest bets drop out.</td></tr>
     <tr><td><b>Are there markets open at all?</b></td><td>Up &amp; Down chains must be running, and only Opener
       acts on a market with no bets yet.</td></tr>
   </tbody>

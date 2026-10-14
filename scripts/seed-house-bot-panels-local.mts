@@ -335,6 +335,8 @@ for (const r of evMade) {
  * Everything here goes through the services the product itself uses; only TIME is moved (see the header). */
 type DayRead = { day: string; bets: number; open: number; settled: number; result: number };
 let resultsRead: { days: DayRead[]; secondStatus: string; switchedOnHere: boolean; switchOnNow: boolean } | null = null;
+/** The second account once it is REMOVED — handed to the browser gate's removed-account routes through the fixture file. */
+let removedBotId: string | null = null;
 if (resultsWorld) {
   const { w, running, officer } = resultsWorld;
   let switchedOnHere = false;
@@ -443,6 +445,7 @@ if (resultsWorld) {
     if (!paused?.ok || !removed?.ok || removed.status !== "REMOVED") {
       throw new Error(`the second account could not be paused and removed: ${JSON.stringify({ paused, removed })}`);
     }
+    removedBotId = secondId;
 
     /* ── READ BACK from the day book the tab reads, never from what this script believes it wrote ── */
     const read: DayRead[] = [];
@@ -589,7 +592,7 @@ const OUT_DIR = new URL("./.out/", import.meta.url);
 const fsp: Any = await import("node:fs/promises");
 await fsp.mkdir(OUT_DIR, { recursive: true });
 await fsp.writeFile(new URL("house-bot-visual-fixture.json", OUT_DIR),
-  `${JSON.stringify({ botId: active.id, targets: madeT.length, writtenAt: new Date().toISOString() }, null, 2)}
+  `${JSON.stringify({ botId: active.id, removedBotId, targets: madeT.length, writtenAt: new Date().toISOString() }, null, 2)}
 `, "utf8");
 
 const q = async (sql: string) => (await pg.query(sql)).rows[0].n as number;
