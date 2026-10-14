@@ -72,9 +72,8 @@ const config: NextConfig = {
   serverExternalPackages: ["pdfkit", "exceljs", "@aws-sdk/client-s3"],
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns"],
-    // Same-build next/dynamic preloads named files Turbopack did not emit.
-    // Keep lazy imports and SSR; disable only its production nested-client chunk optimization.
-    turbopackClientSideNestedAsyncChunking: false,
+    // Isolated delivery probe: disable only production scope hoisting.
+    turbopackScopeHoisting: false,
   },
   images: {
     formats: ["image/webp", "image/avif"],
