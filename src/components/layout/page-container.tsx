@@ -91,15 +91,18 @@ type Props = {
    *  measure guard fails the build if it does. */
   className?: string;
   id?: string;
+  /** PV-03: a single collection replaces this page's content when empty. Local titled sections still own their empties. */
+  emptyStateOwner?: "collection";
   children: React.ReactNode;
 };
 
-export function PageContainer({ tier, as = "div", pad = "page", className, id, children }: Props) {
+export function PageContainer({ tier, as = "div", pad = "page", className, id, emptyStateOwner, children }: Props) {
   const Tag = as;
   return (
     <Tag
       id={id}
       data-measure={tier}
+      data-empty-state-owner={emptyStateOwner}
       className={cn(
         "mx-auto w-full",
         TIER_CLASS[tier],

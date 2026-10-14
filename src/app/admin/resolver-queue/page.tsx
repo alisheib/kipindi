@@ -297,7 +297,7 @@ async function ResolverQueueContent({
           </div>
         }
       />
-      <AdminBody>
+      <AdminBody data-empty-state-owner="collection">
         {/* Filters */}
         <AdminCard>
           <form className="flex flex-wrap items-center gap-2">

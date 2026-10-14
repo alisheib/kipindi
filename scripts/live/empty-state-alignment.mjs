@@ -2,13 +2,15 @@
  * PV-03's measured relationship: the heading that introduces THIS empty state, not the last heading whose box is
  * above it. Self-contained for page.evaluate. No route exceptions and no changed 24px tolerance live here.
  * AdminCard declares data-empty-state-scope; its title declares data-section-heading. Semantic sections and the
- * PageContainer/main provide the same ownership when no card contract exists. A missing association is reported,
- * never fabricated as aligned. The caller retains the named page/tab-level rulings.
+ * PageContainer/main provide the same ownership when no card contract exists. Explicit collection owners measure
+ * the primitive's centered, contained 360px box against their real content box; this is not a route exemption.
+ * A closer local title always wins. A missing association is reported, never fabricated as aligned.
+ * The caller retains the seven historical page/tab-level rulings.
  */
 export function emptyStateAlignment() {
   const HEAD = "h1,h2,h3,h4,[data-section-heading]";
-  const SCOPE = "[data-empty-state-scope],section,article,[role=region],[role=tabpanel],[data-measure],main";
-  function headingPaints(h) {
+  const SCOPE = "[data-empty-state-scope],[data-empty-state-owner],section,article,[role=region],[role=tabpanel],[data-measure],main";
+  function paintedRect(h) {
     const style = getComputedStyle(h);
     if (style.visibility === "hidden" || style.visibility === "collapse") return false;
     const box = h.getBoundingClientRect();
@@ -56,22 +58,53 @@ export function emptyStateAlignment() {
       }
       if (!(paint.right > paint.left && paint.bottom > paint.top)) return false;
     }
-    return true;
+    return paint;
   }
+  const headingPaints = (h) => Boolean(paintedRect(h));
   return [...document.querySelectorAll("[data-empty-state]")].map((el) => {
     const r = el.getBoundingClientRect();
-    let head = null, owner = null;
+    let head = null, owner = null, collectionOwner = null;
     for (let scope = el.parentElement; scope; scope = scope.parentElement) {
       if (!scope.matches(SCOPE)) continue;
+      const collection = scope.getAttribute("data-empty-state-owner") === "collection";
       const heads = [...scope.querySelectorAll(HEAD)].filter((h) => {
         if (el.contains(h) || h.contains(el)) return false;
         if (!(h.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)) return false;
         if (h.closest(SCOPE) !== scope) return false;
+        // A PageContainer's h1 names the whole page. Other headings, including a local section's h1, still win.
+        if (collection && scope.matches("[data-measure]") && h.tagName === "H1" && !h.hasAttribute("data-section-heading")) return false;
         if (!headingPaints(h)) return false;
         const hr = h.getBoundingClientRect();
         return hr.top <= r.top + 1 && hr.width > 0 && hr.height > 0 && h.textContent.trim();
       });
       if (heads.length) { head = heads[heads.length - 1]; owner = scope; break; }
+      if (collection) { collectionOwner = scope; break; }
+    }
+    if (collectionOwner) {
+      const cr = collectionOwner.getBoundingClientRect(), cs = getComputedStyle(collectionOwner);
+      const content = {
+        left: cr.left + parseFloat(cs.borderLeftWidth) + parseFloat(cs.paddingLeft),
+        right: cr.right - parseFloat(cs.borderRightWidth) - parseFloat(cs.paddingRight),
+        top: cr.top + parseFloat(cs.borderTopWidth) + parseFloat(cs.paddingTop),
+        bottom: cr.bottom - parseFloat(cs.borderBottomWidth) - parseFloat(cs.paddingBottom),
+      };
+      const centerDelta = Math.abs((r.left + r.right) / 2 - (content.left + content.right) / 2);
+      // 360px is EmptyState's existing boxed cap. Check the cap rather than trusting a mutated computed max-width.
+      const expectedWidth = Math.min(360, content.right - content.left);
+      const widthDelta = Math.abs(r.width - expectedWidth);
+      const contained = r.left >= content.left - 1 && r.right <= content.right + 1
+        && r.top >= content.top - 1 && r.bottom <= content.bottom + 1;
+      const paint = paintedRect(el);
+      const unclipped = Boolean(paint) && paint.left <= r.left + 1 && paint.right >= r.right - 1
+        && paint.top <= r.top + 1 && paint.bottom >= r.bottom - 1;
+      const boxed = el.getAttribute("data-empty-state") === "boxed";
+      return {
+        variant: el.getAttribute("data-empty-state"), left: Math.round(r.left), width: Math.round(r.width),
+        headText: null, headLeft: null, delta: null, association: "collection",
+        scopeTag: collectionOwner.tagName.toLowerCase(), reference: content,
+        collection: { centerDelta, expectedWidth, widthDelta, contained, unclipped, boxed,
+          passed: boxed && centerDelta <= 1 && widthDelta <= 1 && contained && unclipped },
+      };
     }
     const hr = head?.getBoundingClientRect() ?? null;
     const left = Math.round(r.left), headLeft = hr ? Math.round(hr.left) : null;

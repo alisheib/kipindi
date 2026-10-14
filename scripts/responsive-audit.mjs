@@ -456,6 +456,13 @@ async function sweep(browser, label, paths, contextFactory, guestContextFactory)
           // An empty state aligns with the heading that introduces it. 24px is the
           // tolerance a card's own border/padding can legitimately introduce; the
           // defect this caught was 328px.
+          // Explicit whole-collection ownership gets a hard geometry check, never the seven-route soft ruling.
+          const collectionStates = (r.emptyStates ?? []).filter((e) => e.association === "collection");
+          if (collectionStates.length) {
+            ok(`${cell} collection empty states are centered, boxed and fully contained`,
+              collectionStates.every((e) => e.collection?.passed === true),
+              collectionStates.filter((e) => e.collection?.passed !== true).map((e) => JSON.stringify(e.collection)).join(" | "));
+          }
           const misaligned = (r.emptyStates ?? []).filter((e) => e.delta !== null && e.delta > 24);
           if (EMPTY_ALIGN_PENDING.has(path)) {
             if (misaligned.length) emptyAlignSeen.add(path);
