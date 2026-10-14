@@ -8,7 +8,8 @@
  * defect was measured on (S/visual/tiles-r4) and the file that fixes it; the measurements are in those files' notes.
  *   §1 the Up & Down chart's price scale speaks the page's price ("$2,896.04", `usd()`)
  *   §2 the chart's controls keep one 12px rhythm on a phone, measured to the key's ink
- *   §3 the round page's panel: the stake is money, the × note hangs like the ⓘ note, the quote stamp opens on a capital
+ *   §3 the round page's panel: the stake is money, the projection's qualifier hangs like the ⓘ notes (an ⓘ note itself
+ *      since Ali's ruling of 2026-10-14 took the "×" it opened on off Up & Down), the quote stamp opens on a capital
  *   §4 /live: a card's top row is 20px in either state; the market grid's gutter is a rung of the space scale
  *   §5 the probability bar's caption centres on the bar
  *   §6 the market page: the star midway between its neighbours' ink; the question opens on the page's edge
@@ -23,7 +24,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { decomment, decommentCss } from "./lib/decomment.mts";
 import { dict as DICTS } from "../src/lib/i18n-dict.ts";
 import { usd } from "../src/lib/usd-price.ts";
-import { EstimateNote } from "../src/components/updown/updown-stake-controls.tsx";
+import { noticeBody } from "../src/components/ui/empty-state-text.ts";
 import twConfigModule from "../tailwind.config.ts";
 
 let pass = 0;
@@ -132,7 +133,7 @@ section("2 · the chart's controls keep one 12px rhythm on a phone (tile 202)");
 }
 
 /* ══ §3 · THE ROUND PAGE'S PANEL ═════════════════════════════════════════════════════════════════════════════════════ */
-section("3 · the round page: the stake is money, the × note hangs, the quote stamp opens on a capital (tiles 165 166)");
+section("3 · the round page: the stake is money, the projection's qualifier is an ⓘ note, the quote stamp opens on a capital (tiles 165 166)");
 {
   const ctl = code("src/components/updown/updown-stake-controls.tsx");
   ok("3.1 · \"Gusa Juu au Chini kuweka dau · TZS 1,000\": the stake is an .amount, inside ONE flex item",
@@ -141,27 +142,47 @@ section("3 · the round page: the stake is money, the × note hangs, the quote s
   ok("3.1′ PLANT · the line as it shipped — the figure in the sentence's face — is reported",
     !`<>{t.market.udTapToBet} · {formatTzs(bet.stake)}</>`.includes(`<span className="amount">{formatTzs(bet.stake)}</span>`));
 
-  // The × note: the sign takes the ⓘ glyph's column in every language.
-  const COLUMN = `<span class="w-[11px] shrink-0 text-center">×</span>`;
+  // ⭐ RESTATED 2026-10-14 (Ali's ruling: Up & Down cards show Up and Down only). Round 4 hung the note's opening "×" in
+  // the ⓘ glyph's column (`EstimateNote`). The ruling took the multiple off every Up & Down choice, the note left the card
+  // and the two-way control with it, and on the confirm panel it now names the projected return — there is no sign to
+  // hang. Round 4's rule still holds, by the note BEING an ⓘ note: the glyph's 11px column, the sentence hanging beside
+  // it, one indent for every note in the stack. `EstimateNote` was deleted with the sign it hung.
+  const pnl = code("src/components/updown/round-stake-panel.tsx");
+  const INFO_NOTE = /<p className="mt-2 flex items-start gap-1 text-body-sm leading-\[1\.45\] text-text-faint">\s*<I\.info s=\{11\} className="mt-\[2px\] shrink-0" \/>\s*<span>\{noticeBody\(t\.market\.udEstimateNote\)\}<\/span>\s*<\/p>/;
   for (const loc of ["sw", "en", "zh"] as const) {
     const s = DICTS[loc].market.udEstimateNote;
-    const out = html(h(EstimateNote, { text: s }));
-    ok(`3.3.${loc} · the "×" sits in an 11px column and the sentence hangs beside it, every word as written`,
-      out.includes(COLUMN) && out.replace(/<[^>]+>/g, "") === s.replace(/^×\s+/u, "×") && /^<p class="flex items-start gap-1 /.test(out), out.slice(0, 160));
+    const out = html(h("span", null, noticeBody(s) as never));
+    ok(`3.3.${loc} · the qualifier opens on no sign and is drawn whole by the notice body, every word as written`,
+      !s.startsWith("×") && out.replace(/<[^>]+>/g, "") === s, out.slice(0, 160));
   }
   ok("3.4 · the column is the ⓘ glyph's own width — the sibling notes draw `I.info s={11}`",
     ctl.includes(`<I.info s={11} className="mt-[2px] shrink-0" />`));
-  const plain = html(h(EstimateNote, { text: "hubadilika kwa kila dau jipya" }));
-  ok("3.5 CONTROL · a sentence that does not open on the sign renders whole, no column",
-    !plain.includes("w-[11px]") && plain.replace(/<[^>]+>/g, "") === "hubadilika kwa kila dau jipya", plain);
+  ok("3.5 · the confirm panel sets the qualifier as an ⓘ note: the glyph's column, the sentence beside it, the panel's ⓘ class",
+    INFO_NOTE.test(pnl));
+  // ⛔ A REAL CONTROL: each near-miss is a `<p>` of the same note that 3.5's reader must REFUSE — the flush paragraph round 4
+  // removed (no glyph column), the note drawn raw (no notice body), and the sign in the column — while the right shape,
+  // written out, is accepted. A reader loosened to "any <p> holding the note" passes the first three and fails here.
+  const NOTE_P = `<p className="mt-2 flex items-start gap-1 text-body-sm leading-[1.45] text-text-faint">`;
+  const nearMisses = [
+    `<p className="mt-2 text-body-sm leading-[1.45] text-text-faint">{t.market.udEstimateNote}</p>`,
+    `${NOTE_P}\n  <I.info s={11} className="mt-[2px] shrink-0" />\n  <span>{t.market.udEstimateNote}</span>\n</p>`,
+    `${NOTE_P}\n  <span className="w-[11px] shrink-0 text-center">×</span>\n  <span>{noticeBody(t.market.udEstimateNote)}</span>\n</p>`,
+  ];
+  const rightShape = `${NOTE_P}\n  <I.info s={11} className="mt-[2px] shrink-0" />\n  <span>{noticeBody(t.market.udEstimateNote)}</span>\n</p>`;
+  ok("3.5′ CONTROL · 3.5 refuses the flush note, the raw note and the sign-in-the-column note, and accepts the ⓘ shape written out",
+    nearMisses.every((s) => !INFO_NOTE.test(s)) && INFO_NOTE.test(rightShape));
   const sites = [
-    ["the two-way panel", "src/components/updown/updown-stake-controls.tsx", `<EstimateNote className="mt-1" text={t.market.udEstimateNote} />`],
-    ["the board card", "src/components/updown/updown-card.tsx", `<EstimateNote className="mt-1" text={t.market.udEstimateNote} />`],
-    ["the locked-side panel (was 10px)", "src/components/updown/round-stake-panel.tsx", `<EstimateNote className="mt-2" text={t.market.udEstimateNote} />`],
+    ["the two-way panel", "src/components/updown/updown-stake-controls.tsx"],
+    ["the board card", "src/components/updown/updown-card.tsx"],
   ] as const;
-  for (const [what, file, call] of sites) ok(`3.6 · ${what} sets the note through EstimateNote`, code(file).includes(call), file);
+  for (const [what, file] of sites) {
+    ok(`3.6 · ${what} carries no estimate note at all — it explained a multiple the buttons no longer print`,
+      !/udEstimateNote|EstimateNote/.test(code(file)), file);
+  }
+  ok("3.6′ · …and `EstimateNote`, the sign-hanging note, is gone from the kit file", !/EstimateNote|LEAD_SIGN/.test(ctl));
   const FLUSH = /<p className="[^"]*">\{t\.market\.udEstimateNote\}<\/p>/;
-  ok("3.7 · ⛔ no flush <p> of the note is left in the three panels", !sites.some(([, f]) => FLUSH.test(code(f))));
+  ok("3.7 · ⛔ no flush <p> of the note is left in the three panels",
+    ![...sites.map(([, f]) => f), "src/components/updown/round-stake-panel.tsx"].some((f) => FLUSH.test(code(f))));
   ok("3.7′ PLANT · the flush shape as it shipped is what 3.7 reads",
     FLUSH.test(`<p className="mt-1 text-body-sm leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]">{t.market.udEstimateNote}</p>`));
 

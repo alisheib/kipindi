@@ -53,6 +53,15 @@ option — it was the consequence.
 
 ### D2 · The card tells the truth about the other side, *before* the bet
 
+> ⛔ **PART 1 SUPERSEDED ON THE CARD — Ali's ruling of 2026-10-14:** *"remove odds from up and down market cards please
+> and wherever this should be reflected as well. mark this as decision, keep up and down only"*
+> ([`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md) § "2026-10-14 · Up & Down cards show Up and Down only"; the rule
+> is `DESIGN_AUTHORITY.md` §C3). The card's two choices — and the round page's two-way control — read Up and Down and
+> nothing else: no multiplier, no estimate note. **Part 2 stands:** the empty-side sentence is still said before any
+> stake, from the raw pools. The pool's own arithmetic is still what a player is shown at the commit — the projected
+> return on the round page's confirm panel and on the bet receipt. The paragraphs below are the record of why the
+> figure, wherever it is shown, is the pool's.
+>
 > ✅ **BUILT AND LIVE 2026-08-06 (session 32) — E-109.** `src/lib/updown-pricing.ts` +
 > `test:updown-pricing` (62) + `red:updown-pricing` (11/11). The multiplier is per-side and
 > pool-implied, the empty-side sentence is on the card, the quick-bet controls and the round
@@ -115,8 +124,8 @@ exists and works.
 | **`/admin/updown` · Add-chain form** | band defaults to tick floor; each wider option carries its **measured refund rate** for that asset | D1 |
 | **`/admin/updown` · Edit band (in-cell)** | same advisory — the in-cell editor is how both live chains were set | D1 |
 | **`/admin/updown` · chain row** | surface the chain's **live refund rate split** (`no-move` vs `one-sided`), so an operator sees the consequence of their own band without leaving the page | D1 |
-| **Player card (`updown-card.tsx`)** | ✅ **DONE (E-109)** — flat `estMultiplier` replaced by the **per-side pool-implied** figure; **empty-side** sentence added | D2 |
-| **Round page (`/updown/[roundId]`)** | ✅ **DONE (E-109)** — same two on the stake panel, **side-aware**, and its pool-TZS figures now read raw shillings instead of a rounded percentage | D2 |
+| **Player card (`updown-card.tsx`)** | ✅ **DONE (E-109)** — flat `estMultiplier` replaced by the **per-side pool-implied** figure; **empty-side** sentence added. ⛔ **2026-10-14:** the figure left the card by Ali's ruling ("keep up and down only"); the empty-side sentence stays | D2 |
+| **Round page (`/updown/[roundId]`)** | ✅ **DONE (E-109)** — same two on the stake panel, **side-aware**, and its pool-TZS figures now read raw shillings instead of a rounded percentage. ⛔ **2026-10-14:** the two-way control's buttons and the confirm panel lost their `× N`; the confirm panel keeps the projected return in shillings | D2 |
 | **Round page · settlement proof** | already states the one-sided reason correctly (E-65/E-87). **No change.** | — |
 | **Result moment (E-105)** | already distinguishes WIN / LOSS / refund in their own words. **No change.** | — |
 | **`/admin/insights` · GGR tile** | still counts open unsettled stake as revenue — a money-reporting call, **Ali's** | open |

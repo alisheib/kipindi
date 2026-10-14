@@ -94,6 +94,10 @@ export type BoardRound = {
   /**
    * ⭐ D2 · THE ROUND'S REAL MONEY, so a player can be told what they would ACTUALLY be paid
    * before they bet — see `@/lib/updown-pricing`.
+   * ⛔ SINCE 2026-10-14 THAT IS SAID AT THE COMMIT ONLY (Ali's ruling: Up & Down cards show Up and
+   * Down only): the confirm panel and the bet receipt state the projected return; no card or
+   * side button prints a multiple. The cards read these pools for their split and the empty-side
+   * sentence.
    *
    * 🔴 THIS REPLACED A FLAT CONFIG CONSTANT. The field was `estMultiplier: 1 +
    * rates.estimatedWinningsRate`, which is a number an admin types at `/admin/config`. It read
@@ -435,8 +439,9 @@ async function toBoardRound(
     volumeTzs: m.yesPool + m.noPool,
     // The count players see (`predictors.ts`): the Up & Down card and the round page both read this value.
     players: shownPredictors(m),
-    // ⭐ D2 · the pool itself, so every player surface can price a bet through the SAME
-    // `payoutFor` settlement pays with. See the field comment for what this replaced.
+    // ⭐ D2 · the pool itself, so the commit surfaces (the confirm panel, the receipt) price a bet
+    // through the SAME `payoutFor` settlement pays with, and the cards read the raw pools for the
+    // empty side. See the field comment for what this replaced.
     pricing: {
       upPool: m.yesPool,
       downPool: m.noPool,
@@ -449,10 +454,9 @@ async function toBoardRound(
         platformFeeRate: rates.platformFeeRate,
         operatorFeeRate: rates.operatorFeeRate,
       },
-      // The operator's display switch, unchanged in meaning: a round that never froze the
-      // display fields shows no "× …" at all, exactly as before. ⚠️ It gates the MULTIPLIER
-      // only — the empty-side sentence is a fact about the round, and no display switch may
-      // suppress that.
+      // The operator's display switch: a round that never froze the display fields shows no
+      // projected return at all, exactly as before. ⚠️ It gates the ESTIMATE only — the
+      // empty-side sentence is a fact about the round, and no display switch may suppress that.
       show: rates.showEstimatedWinnings === true,
     },
     // ⛔ The MARKET'S `selectionClosedAt`, because that is the exact field `isSelectionClosed`

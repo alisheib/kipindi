@@ -1038,7 +1038,11 @@ export const dict = {
       // estimates" while the × beside it was a fixed config constant. Now that the figure IS
       // the pool, the note owns the other half of the truth: pari-mutuel odds move with every
       // later bet, and the LOCK is where the estimate stops being one.
-      udEstimateNote: "× moves with every bet — it is this pool right now, not fixed odds. When betting closes it becomes your exact payout.",
+      // ⭐ 2026-10-14 (Ali's ruling: Up & Down cards show Up and Down only) · it opened on "×", the
+      // multiple the buttons printed; no Up & Down surface prints one now, so it names the figure it
+      // qualifies — the projected return (`udRcProjected`, word for word) on the confirm panel and
+      // the receipt, the commit-time disclosures the ruling keeps.
+      udEstimateNote: "The projected return moves with every bet — it is priced from this pool right now, not from fixed odds. When betting closes it becomes your exact payout.",
       // 🔴 UD-13b · the phone filter sheet. ⚠️ The trigger NAMES THE ACTIVE SELECTION
       // rather than saying "Filters": a collapsed filter whose trigger does
       // not say what is selected is WORSE than visible chips, because the player loses the
@@ -1156,7 +1160,7 @@ export const dict = {
       // ⛔ `udRcProjected` is a PROJECTION and is never gilded: gold on this platform means
       // money that was earned, and nothing has been decided yet. The sentence that qualifies
       // it is `udEstimateNote`, which already exists and already says exactly this — it is
-      // reused rather than restated so the board card and this receipt cannot drift.
+      // reused rather than restated so the round page's confirm panel and this receipt cannot drift.
       udRcProjected: "Projected return", udRcOpenPrice: "Open price",
       udRcBetsClose: "Betting closes", udRcResultDue: "Result due",
       // ⛔ The exit row is COMPUTED per bet, never stated as a constant. Cash-out needs
@@ -4061,7 +4065,7 @@ export const dict = {
       udLowerThan: "Chini",
       udTickNote: "Bei inahitaji kusogea hatua moja tu upande wowote.",
       udAwaitingRead: "Inasubiri bei",
-      udEstimateNote: "× hubadilika kwa kila dau jipya — ni bwawa la sasa hivi, si odds zisizobadilika. Dau zikifungwa, inakuwa malipo yako kamili.",
+      udEstimateNote: "Marejesho yanayotarajiwa hubadilika kwa kila dau jipya — hutokana na bwawa la sasa hivi, si odds zisizobadilika. Dau zikifungwa, yanakuwa malipo yako kamili.",
       udFilterTitle: "Chuja ubao",
       udFilterAria: "Vichujio — inaonyesha {asset}, {duration}",
       udNobodyBacked: "Hakuna aliyeweka dau {side} bado — kama hali hii haitabadilika, dau lako litarudi.",
@@ -6532,7 +6536,7 @@ export const dict = {
       udLowerThan: "低于",
       udTickNote: "价格只需向任一方向变动一档即可。",
       udAwaitingRead: "等待价格",
-      udEstimateNote: "× 会随每一笔新投注变动——它是此刻的奖池，并非固定赔率。投注截止时，它将变为您的确切派彩。",
+      udEstimateNote: "预计回报会随每一笔新投注变动——它按此刻的奖池计算，而非按固定赔率计算。投注截止时，它将变为您的确切派彩。",
       udFilterTitle: "筛选看板",
       udFilterAria: "筛选——正在显示 {asset}、{duration}",
       udNobodyBacked: "目前还没有人投注{side}——若情况不变，您的投注将全额退回。",

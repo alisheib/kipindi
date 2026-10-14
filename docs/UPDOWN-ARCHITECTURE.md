@@ -389,8 +389,12 @@ not two.
 
 > ⚠️ Known code detail: `snapshotOrLegacy` currently forces `estimatedWinningsRate = 0`
 > and `showEstimatedWinnings = false` on any non-`loser-share` snapshot. Those two
-> **display-only** fields must become model-independent or the "× 1.4 est." headline
-> cannot render on a capped-commission round. The *maths* must stay untouched.
+> **display-only** fields must become model-independent or the projected return cannot
+> render on a capped-commission round. The *maths* must stay untouched.
+> ⚠️ Corrected 2026-10-14: this note named the "× 1.4 est." headline on the buttons. Since
+> Ali's ruling of that day the card carries no figure at all (its choices read Up and Down
+> only); `showEstimatedWinnings` gates the projected return at the commit — the round page's
+> confirm panel and the bet receipt.
 
 ---
 

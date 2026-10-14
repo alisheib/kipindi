@@ -25,17 +25,21 @@ export const MUTATIONS = [
     from: `<span className="font-mono text-[12.5px]">@ {yesPct}%</span>`,
     to: `<span className="font-mono text-[12.5px] opacity-85">@ {yesPct}%</span>`,
   },
+  // ⚠️ RE-AIMED 2026-10-14. These two restored the `opacity-85` on the Up button's `×N` suffix; Ali's ruling of that day
+  // took the suffix off every Up & Down choice ("keep up and down only"), so the anchors were gone. The call sites are
+  // not: the two Up buttons are still solid `btn-yes` money buttons whose children §P-u2 reads, and a faded label inside
+  // either is the same defect. Each now plants the fade on the side's WORD, the one label those buttons still carry.
   {
-    name: "updown-card.tsx — restore the UP ×N suffix's opacity-85",
+    name: "updown-card.tsx — a faded opacity-85 Up label inside the signed-out Up button (where the ×N suffix stood)",
     file: "src/components/updown/updown-card.tsx",
-    from: `{outMultUp != null && <span className="font-mono text-[12.5px]">× {formatMultiplier(outMultUp)}</span>}`,
-    to: `{outMultUp != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(outMultUp)}</span>}`,
+    from: `<I.trendingUp s={14} edge="start" className={GLYPH_NO_SHRINK} /> {t.market.udUp}`,
+    to: `<I.trendingUp s={14} edge="start" className={GLYPH_NO_SHRINK} /> <span className="opacity-85">{t.market.udUp}</span>`,
   },
   {
-    name: "updown-stake-controls.tsx — restore the UP ×N suffix's opacity-85",
+    name: "updown-stake-controls.tsx — a faded opacity-85 Up label inside the quick-bet Up button (where the ×N suffix stood)",
     file: "src/components/updown/updown-stake-controls.tsx",
-    from: `{multUp != null && <span className="font-mono text-[12.5px]">× {formatMultiplier(multUp)}</span>}`,
-    to: `{multUp != null && <span className="font-mono text-[12.5px] opacity-85">× {formatMultiplier(multUp)}</span>}`,
+    from: `<I.trendingUp s={compact ? 14 : 15} className={GLYPH_NO_SHRINK} />} {t.market.udUp}`,
+    to: `<I.trendingUp s={compact ? 14 : 15} className={GLYPH_NO_SHRINK} />} <span className="opacity-85">{t.market.udUp}</span>`,
   },
   {
     name: "conviction-dial.tsx — restore the commit button's stake opacity-90 (the site §P-u2 itself found)",

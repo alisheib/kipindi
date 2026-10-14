@@ -1,6 +1,15 @@
 /**
  * E-109 · D2 DRIVEN ON PRODUCTION — is the number on the card the number the money path pays?
  *
+ * ⛔ SUPERSEDED BY THE OWNER'S RULING OF 2026-10-14 — read this before running it. Ali: *"remove odds from up and down
+ * market cards … keep up and down only"* (DESIGN_AUTHORITY §C3; COMPLIANCE-DECISIONS § "2026-10-14 · Up & Down cards
+ * show Up and Down only"). The card carries NO number any more, so this drive's browser half waits for a `× N` that
+ * never renders and times out. It is kept unchanged below as the evidence tool session 32's finding cites by name
+ * (`scripts/orphan-allowlist.json`). What it proved is held now where the figure still lives — the projected return at
+ * the commit: `npm run test:updown-pricing` §1 (every shown figure IS `payoutFor`'s) and §8.4 (the round page's confirm
+ * panel, rendered in three languages, states exactly `projectedReturn` for the stake it shows); the card's ABSENCE of a
+ * multiple is §5, §8.1 and `npm run qa:card360`.
+ *
  *   SHOT_DIR=.qa-s32 node scripts/live-s32-pricing.mjs
  *
  * ⛔ THE CLAIM THIS EXISTS TO TEST CANNOT BE TESTED BY THE PRODUCT ALONE. Reading the card's

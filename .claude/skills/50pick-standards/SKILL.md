@@ -192,9 +192,13 @@ day, four checks passed while the thing they named was broken — each asserting
    required the Up & Down card's empty-side sentence on every card, and failed in all three
    languages on a **correct** screen once the round gained a second side — the sentence was
    rightly absent. ⭐ **State the INVARIANT, not the presence:** the sentence must appear *iff*
-   one of the two multiples reads exactly `1.00×` (the pari-mutuel signature of an empty
-   counterparty). That form also catches the opposite defect a presence check never can — the
-   sentence appearing on a two-sided round, where it would be a lie.
+   the round's pools leave a side empty (`emptySideOf`) — on the card, *iff* its split row
+   states no two-sided price. That form also catches the opposite defect a presence check never
+   can — the sentence appearing on a two-sided round, where it would be a lie.
+   ⚠️ Restated 2026-10-14: this read *"iff one of the two multiples reads exactly `1.00×`"* (the
+   pari-mutuel signature of an empty counterparty). Ali's ruling of that day took every multiple
+   off the Up & Down choices ("keep up and down only"), so the signature is gone from the screen;
+   the pools are what the invariant reads (`test:updown-pricing` §8, `qa:card360`).
 10. ⛔ **A DERIVED FIGURE IS ONLY COMPARABLE AT THE SAME INPUTS** (2026-08-06). A live driver
    hardcoded a 1,000 stake "the platform floor", priced the expected multiplier at that, and
    reported the product wrong (card `1.74` vs its own `1.33`). The card was right: the live

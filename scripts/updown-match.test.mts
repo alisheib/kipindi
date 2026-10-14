@@ -536,14 +536,16 @@ console.log("\n§11b · F1 — the card's figure and the terminal's live line we
     const signedOut = (loc: Locale) => renderToStaticMarkup(createElement(AppRouterContext.Provider, { value: router as never },
       createElement(I18nProvider, { initial: loc }, createElement(UpDownCard, { ...BASE, livePrice: 85018.52, pricing: { ...BASE.pricing, show: true, rates: { estimatedWinningsRate: 0.4 } } } as never))));
     const PRE_F1_FOOT = '<div class="ud-foot flex flex-wrap items-center justify-between gap-x-2 gap-y-1 font-mono text-[9.5px] text-text-faint"><span class="min-w-0">Soko la crypto · imenukuliwa 14:25:34 EAT</span><span class="shrink-0 tabular-nums">Ufunguzi $85,000.00</span></div></article>';
-    // The authed card's quick-bet control (`updown-stake-controls.tsx`, size "card") — its helper line, the empty-side
-    // sentence and the estimate note: three sentences that were 10px on the board card.
+    // The authed card's quick-bet control (`updown-stake-controls.tsx`, size "card") — its helper line and the empty-side
+    // sentence, two sentences that were 10px on the board card. ⚠️ RE-COUNTED 2026-10-14: the estimate note was the third
+    // (and the signed-out card's second); Ali's ruling of that day ("keep up and down only") took the multiple it explained
+    // off the buttons, and the note left the card with it — so the populations are 2 signed in and 1 signed out, measured.
     const signedIn = (loc: Locale) => renderToStaticMarkup(createElement(AppRouterContext.Provider, { value: router as never },
       createElement(I18nProvider, { initial: loc }, createElement(UpDownCard, { ...BASE, livePrice: 85018.52, isAuthed: true, marketId: "mkt_f1",
         minStake: 1000, maxStake: 100000, walletBalance: 50000, pricing: { ...BASE.pricing, show: true, rates: { estimatedWinningsRate: 0.4 } } } as never))));
     const real = (["sw", "en", "zh"] as const).flatMap((l) => [
-      ...floorDefects(signedOut(l), 2).map((x) => `${l} signed out: ${x}`),
-      ...floorDefects(signedIn(l), 3).map((x) => `${l} signed in: ${x}`),
+      ...floorDefects(signedOut(l), 1).map((x) => `${l} signed out: ${x}`),
+      ...floorDefects(signedIn(l), 2).map((x) => `${l} signed in: ${x}`),
     ]);
     const html0 = signedOut("sw");
     proves("11b.12 the trust line is 13px with its seconds and every figure whole; the win-target heading never truncates its price; every sentence under the action row is 13px, signed in and out (en/sw/zh)",
@@ -551,7 +553,7 @@ console.log("\n§11b · F1 — the card's figure and the terminal's live line we
     // One control per defect, so each clause is shown to bite on its own.
     const truncPlant = floorDefects(html0.replace('<span class="whitespace-nowrap tabular-nums">$85,000.00</span>', '<span class="truncate">$85,000.00</span>'));
     ok("11b.12b · CONTROL bites: a heading that truncates the open price", truncPlant.some((x) => /heading/.test(x)), truncPlant.join("; "));
-    const tenPlant = floorDefects(signedIn("sw").replaceAll(' text-body-sm leading-[1.45] text-text-faint', ' text-[10px] leading-[1.45] text-text-faint'), 3);
+    const tenPlant = floorDefects(signedIn("sw").replaceAll(' text-body-sm leading-[1.45] text-text-faint', ' text-[10px] leading-[1.45] text-text-faint'), 2);
     ok("11b.12c · CONTROL bites: the quick-bet sentences back at 10px", tenPlant.some((x) => /10px/.test(x)) && tenPlant.some((x) => /nothing was measured/.test(x)), tenPlant.join("; "));
   } catch (e) {
     ok("11b.10 the card renders on the server", false, String((e as Error)?.stack ?? e).split("\n").slice(0, 3).join(" | "));

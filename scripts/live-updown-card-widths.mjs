@@ -1,6 +1,15 @@
 /**
  * A4 · LOOK AT THE UP & DOWN CARD, AT FOUR WIDTHS, WITH REAL MONEY ON BOTH SIDES.
  *
+ * ⛔ ITS PREMISE IS GONE SINCE THE OWNER'S RULING OF 2026-10-14 — read this before running it. Ali: *"remove odds from
+ * up and down market cards … keep up and down only"* (DESIGN_AUTHORITY §C3; COMPLIANCE-DECISIONS § "2026-10-14 · Up &
+ * Down cards show Up and Down only"). The card's buttons print no `× N`, so there is no card figure left for A4's
+ * "a smaller fee reads higher" to be seen on. (Its button filter on "est." had already found nothing since E-196 dropped
+ * that suffix.) The fee's effect on what a player is told is now visible only at the commit — the round page's confirm
+ * panel and the bet receipt state the projected return, priced by the same `payoutFor` this drive's counterfactual
+ * uses (`npm run test:updown-pricing` §1 and §8.4). Kept as the A4 record; re-aim it at `/updown/<round>?side=UP` before
+ * using it again.
+ *
  *   SHOT_DIR=./shots/RUN node scripts/live-updown-card-widths.mjs [assetQuery]
  *
  * A2 made the fee smaller on Up & Down (capped-commission → loser-share). The card's
